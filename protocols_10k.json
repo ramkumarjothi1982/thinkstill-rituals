@@ -1,0 +1,121 @@
+const SERVICE_NAME = "thinkstill-static-protocol-worker";
+
+// Put your hosted json file here (public URL)
+const PROTOCOLS_URL = "https://YOUR_PUBLIC_HOST/protocols_10k.json";
+
+let CACHE = null;
+let CACHE_AT = 0;
+const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour
+
+function corsHeaders() {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+    "Access-Control-Allow-Headers": "content-type",
+    "Access-Control-Max-Age": "86400",
+  };
+}
+
+function json(obj, status = 200) {
+  return new Response(JSON.stringify(obj, null, 2), {
+    status,
+    headers: { "content-type": "application/json; charset=utf-8", ...corsHeaders() },
+  });
+}
+
+async function loadProtocols() {
+  const now = Date.now();
+  if (CACHE && (now - CACHE_AT) < CACHE_TTL_MS) return CACHE;
+
+  const res = await fetch(PROTOCOLS_URL, { cf: { cacheTtl: 3600, cacheEverything: true } });
+  if (!res.ok) throw new Error(`Failed to fetch protocols: ${res.status}`);
+  const data = await res.json();
+  if (!Array.isArray(data) || !data.length) throw new Error("Protocols file invalid.");
+
+  CACHE = data;
+  CACHE_AT = now;
+  return CACHE;
+}
+
+function scoreProtocol(p, issue) {
+  // Simple keyword score (fast, free). You can expand later.
+  const s = (issue || "").toLowerCase();
+  const f = String(p.family || "").toLowerCase();
+  let score = 0;
+
+  if (s.includes("panic") || s.includes("anx")) score += (f === "panic") ? 8 : 0;
+  if (s.includes("loop") || s.includes("rumin") || s.includes("intrusive")) score += (f === "loops") ? 8 : 0;
+  if (s.includes("shame") || s.includes("guilt")) score += (f === "shame") ? 8 : 0;
+  if (s.includes("anger") || s.includes("rage")) score += (f === "anger") ? 8 : 0;
+  if (s.includes("burnout") || s.includes("tired") || s.includes("sleep")) score += (f === "burnout") ? 8 : 0;
+  if (s.includes("stuck") || s.includes("avoid") || s.includes("procrast")) score += (f === "stuck") ? 8 : 0;
+  if (s.includes("relationship") || s.includes("conflict")) score += (f === "relationship") ? 8 : 0;
+
+  // minor boost to matching bubble
+  return score;
+}
+
+function pickNonRepeat(protocols, bubble, issue, recentIds) {
+  const pool = protocols.filter(p => (bubble === "AUTO" || p.bubble === bubble));
+  const recent = new Set(Array.isArray(recentIds) ? recentIds : []);
+
+  // rank top ~80 by score
+  const ranked = pool
+    .map(p => ({ p, sc: scoreProtocol(p, issue) }))
+    .sort((a,b) => b.sc - a.sc)
+    .slice(0, 80)
+    .map(x => x.p);
+
+  // pick first not seen
+  for (const p of ranked) {
+    if (!recent.has(p.id)) return p;
+  }
+
+  // fallback: random from pool not seen
+  for (let i=0;i<300;i++){
+    const p = pool[Math.floor(Math.random() * pool.length)];
+    if (!recent.has(p.id)) return p;
+  }
+
+  // absolute fallback: return anything
+  return ranked[0] || pool[0] || null;
+}
+
+addEventListener("fetch", (event) => {
+  event.respondWith(handle(event.request));
+});
+
+async function handle(req) {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders() });
+
+  const url = new URL(req.url);
+
+  if (req.method === "GET" && url.pathname === "/") {
+    return json({ ok: true, service: SERVICE_NAME, time: new Date().toISOString() });
+  }
+
+  if (req.method === "POST" && url.pathname === "/ritual") {
+    const bodyText = await req.text();
+    let body = {};
+    try { body = bodyText ? JSON.parse(bodyText) : {}; } catch {}
+
+    const bubble = String(body.bubble || "AUTO").toUpperCase();
+    const issue = String(body.issue || "").slice(0, 600);
+
+    const recentIds = body?.session?.recentIds || []; // from chatbot sessionStorage
+    try {
+      const protocols = await loadProtocols();
+      const pick = pickNonRepeat(protocols, bubble, issue, recentIds);
+      if (!pick) return json({ ok:false, error:"No protocol available." }, 500);
+
+      // inject issue into returned ritual
+      const ritual = { ...pick, issue };
+
+      return json({ ok:true, ritual });
+    } catch (e) {
+      return json({ ok:false, error: e?.message || "Failed." }, 500);
+    }
+  }
+
+  return json({ ok:false, error:"Not found" }, 404);
+}
