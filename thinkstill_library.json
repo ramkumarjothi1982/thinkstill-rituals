@@ -1,0 +1,63 @@
+{
+  "frames": {
+    "panic": [
+      "Panic is not danger. It is a system misfiring under load.",
+      "Urgency is a signal error, not a command.",
+      "The nervous system is over-reporting threat.",
+      "This surge is mechanical, not meaningful.",
+      "Alarm intensity does not equal importance.",
+      "The system is loud, not broken.",
+      "This state is structural, not personal.",
+      "The signal is real; the interpretation is not."
+    ]
+  },
+
+  "families": {
+    "GROUNDING": [
+      "Press both feet into the floor until resistance pushes back.",
+      "Place one hand on a solid surface and register texture.",
+      "Shift weight slowly from heel to toe.",
+      "Anchor posture upright without rigidity.",
+      "Notice temperature where skin meets fabric.",
+      "Stabilize stance as if bracing lightly."
+    ],
+
+    "BREATH": [
+      "Extend the exhale longer than the inhale.",
+      "Breathe out as if releasing excess pressure.",
+      "Pause briefly after the exhale.",
+      "Allow the inhale to arrive on its own.",
+      "Exhale through slightly pursed lips.",
+      "Let breathing slow without forcing depth."
+    ],
+
+    "LOOPS": [
+      "Label the thought as 'signal noise'.",
+      "Interrupt the loop with the phrase 'Not actionable.'",
+      "Refuse to answer the thought.",
+      "Let the thought pass without correction.",
+      "Name the loop and return to sensation.",
+      "Acknowledge the thought and disengage."
+    ],
+
+    "CONTROL": [
+      "Choose one action that can be completed in two minutes.",
+      "Select stillness instead of reaction.",
+      "Reduce the next ten minutes to one controllable task.",
+      "Decide what will not be done next.",
+      "Restore agency by choosing a pause.",
+      "Commit to one bounded action only."
+    ]
+  },
+
+  "closures": [
+    "End by loosening the jaw and letting the system stand down.",
+    "Pause for two seconds before moving again.",
+    "Notice what remains stable and unchanged.",
+    "Allow the system to idle briefly.",
+    "Resume movement only when pressure drops.",
+    "Close by releasing the shoulders.",
+    "Let the body confirm stability.",
+    "Finish without evaluating the result."
+  ]
+}
