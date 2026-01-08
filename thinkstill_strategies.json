@@ -2,231 +2,86 @@
   "issues": {
     "panic": [
       "CBT_CATASTROPHIZING",
-      "CBT_DISTORTION",
       "BREATHWORK",
-      "SOMATIC_DISCHARGE",
       "ACT_DEFUSION",
-      "DBT_DISTRESS",
-      "GROUNDING",
-      "EMDR_LITE",
+      "SOMATIC_GROUNDING",
       "STILLNESS"
     ],
     "rumination": [
       "CBT_RUMINATION",
       "ACT_DEFUSION",
       "METACOGNITIVE",
-      "ATTENTION_TRAINING",
       "STILLNESS"
     ],
     "shame": [
-      "CBT_REFRAME",
       "SELF_COMPASSION",
+      "CBT_REFRAME",
       "SOMATIC_RELEASE",
-      "PARTS_WORK",
       "STILLNESS"
     ]
   },
 
   "bubbles": {
-    "GLITCH": {
-      "lexicon": ["signal", "noise", "desync", "jitter", "collapse", "artifact"],
-      "tone": "technical"
-    },
-    "SYNC": {
-      "lexicon": ["frequency", "alignment", "phase", "resonance", "coherence"],
-      "tone": "harmonic"
-    },
-    "PATCH": {
-      "lexicon": ["stitch", "seal", "bind", "repair", "mend"],
-      "tone": "repair"
-    },
-    "DROP": {
-      "lexicon": ["gravity", "weight", "descent", "release", "discharge"],
-      "tone": "somatic"
-    },
-    "STILL": {
-      "lexicon": ["settling", "quiet", "suspension", "field", "silence"],
-      "tone": "minimal"
-    },
-    "RUSH": {
-      "lexicon": ["ignition", "thrust", "momentum", "drive"],
-      "tone": "activating"
-    },
-    "LOOPIE": {
-      "lexicon": ["loop", "pattern", "recursion", "flip", "curiosity"],
-      "tone": "playful"
-    }
+    "GLITCH": ["signal", "noise", "jitter", "artifact", "desync"],
+    "SYNC": ["frequency", "alignment", "phase", "resonance"],
+    "PATCH": ["stitch", "repair", "seal", "bind"],
+    "DROP": ["gravity", "weight", "release", "discharge"],
+    "STILL": ["settling", "quiet", "suspension", "field"],
+    "RUSH": ["momentum", "ignition", "thrust"],
+    "LOOPIE": ["loop", "pattern", "flip", "recursion"]
   },
 
   "strategies": {
     "CBT_CATASTROPHIZING": {
-      "therapy": "CBT",
       "steps": [
-        {
-          "variants": [
-            "Identify the exact outcome the mind is predicting.",
-            "Name the future scenario being treated as inevitable."
-          ]
-        },
-        {
-          "variants": [
-            "Reduce the prediction to a probability percentage.",
-            "Translate certainty into likelihood."
-          ]
-        },
-        {
-          "variants": [
-            "Name one neutral outcome that is being ignored.",
-            "Introduce a non-catastrophic alternative."
-          ]
-        },
-        {
-          "variants": [
-            "Limit the prediction to the next ten minutes.",
-            "Compress the timeline to what is knowable now."
-          ]
-        },
-        {
-          "variants": [
-            "Notice how urgency drops when certainty dissolves.",
-            "Observe the system recalibrate without force."
-          ]
-        }
+        ["Identify the exact future outcome the mind predicts."],
+        ["Translate certainty into probability."],
+        ["Name one neutral alternative outcome."],
+        ["Limit the future to the next ten minutes only."],
+        ["Observe urgency decrease as certainty dissolves."],
+        ["Refuse further prediction."],
+        ["End without resolving the future."]
       ],
-      "closures": [
-        "End by labeling the thought as an unverified projection.",
-        "Close without resolving the future."
-      ],
-      "mantras": [
-        "Predictions are not outcomes.",
-        "Urgency is not evidence."
-      ]
+      "mantra": "Predictions are not outcomes."
     },
 
     "BREATHWORK": {
-      "therapy": "Pranayama",
       "steps": [
-        {
-          "variants": [
-            "Place one hand on the lower abdomen.",
-            "Anchor attention to the belly."
-          ]
-        },
-        {
-          "variants": [
-            "Extend the exhale longer than the inhale.",
-            "Allow breath to descend and lengthen."
-          ]
-        },
-        {
-          "variants": [
-            "Pause briefly after the exhale.",
-            "Let the system idle between breaths."
-          ]
-        },
-        {
-          "variants": [
-            "Allow the next inhale to arrive unaided.",
-            "Do not pull the breath in."
-          ]
-        },
-        {
-          "variants": [
-            "Continue until pressure reduces.",
-            "Stop when the nervous system softens."
-          ]
-        }
+        ["Place attention in the lower abdomen."],
+        ["Extend the exhale beyond the inhale."],
+        ["Pause briefly after exhale."],
+        ["Allow the inhale to arrive unaided."],
+        ["Continue until pressure drops."],
+        ["Release shoulders and jaw."],
+        ["Rest for two breaths."]
       ],
-      "closures": [
-        "Resume movement slowly.",
-        "Remain still for two breaths."
-      ],
-      "mantras": [
-        "Breath leads, panic follows.",
-        "The body knows how to slow."
-      ]
+      "mantra": "The body knows how to slow."
     },
 
     "ACT_DEFUSION": {
-      "therapy": "ACT",
       "steps": [
-        {
-          "variants": [
-            "Notice the thought without entering it.",
-            "Watch the thought as an object."
-          ]
-        },
-        {
-          "variants": [
-            "Prefix the thought with 'I am noticing'.",
-            "Insert distance between you and the content."
-          ]
-        },
-        {
-          "variants": [
-            "Allow the thought to pass unchallenged.",
-            "Do not correct or continue it."
-          ]
-        },
-        {
-          "variants": [
-            "Return attention to physical sensation.",
-            "Anchor awareness outside the narrative."
-          ]
-        },
-        {
-          "variants": [
-            "Resume activity without resolving meaning.",
-            "Continue without agreement."
-          ]
-        }
+        ["Notice the thought without entering it."],
+        ["Prefix it with ‘I am noticing’."],
+        ["Allow the thought to pass unchallenged."],
+        ["Return attention to sensation."],
+        ["Do not resolve meaning."],
+        ["Continue activity."],
+        ["End without evaluation."]
       ],
-      "closures": [
-        "End without analysis.",
-        "Close by choosing presence."
-      ],
-      "mantras": [
-        "Thoughts are events, not commands.",
-        "Meaning is optional."
-      ]
+      "mantra": "Thoughts are not commands."
     },
 
     "STILLNESS": {
-      "therapy": "Stillness",
       "steps": [
-        {
-          "variants": [
-            "Allow the internal field to settle.",
-            "Suspend effort without collapse."
-          ]
-        },
-        {
-          "variants": [
-            "Notice what is already quiet.",
-            "Locate the absence of movement."
-          ]
-        },
-        {
-          "variants": [
-            "Do not intervene.",
-            "Let settling complete itself."
-          ]
-        },
-        {
-          "variants": [
-            "Remain without evaluation.",
-            "End without commentary."
-          ]
-        }
+        ["Allow the internal field to settle."],
+        ["Suspend effort."],
+        ["Notice what is already quiet."],
+        ["Do not intervene."],
+        ["Let settling complete itself."],
+        ["Remain without commentary."],
+        ["Close in silence."]
       ],
-      "closures": [
-        "Rest in silence briefly.",
-        "Let the system idle."
-      ],
-      "mantras": [
-        "Stillness restores order.",
-        "Silence precedes clarity."
-      ]
+      "mantra": "Stillness restores order."
     }
   }
 }
