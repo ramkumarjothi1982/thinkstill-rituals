@@ -1,0 +1,44 @@
+{
+  "schema": "thinkstill.rituals.manifest.v8",
+  "version": "v8",
+  "generated_at": "2026-01-10",
+  "row_count": 9200,
+  "files": {
+    "GLITCH": {
+      "filename": "thinkstill_v8_glitch_under25mb.min.json",
+      "sha256": "d285c8a43df024a36be0930a21bd5264d57414e58520b3d364d3c64f11917168",
+      "bytes": 17384748
+    },
+    "SYNC": {
+      "filename": "thinkstill_v8_sync_under25mb.min.json",
+      "sha256": "a4af513c365aabb92a9599fda5a6a6292c44c5014199d08cf4607aeff9cd3c33",
+      "bytes": 17372296
+    },
+    "PATCH": {
+      "filename": "thinkstill_v8_patch_under25mb.min.json",
+      "sha256": "00f834343634a02c8303de0961a5e5ab5665d95b07d0a189da4de35acbd53905",
+      "bytes": 17328313
+    },
+    "DROP": {
+      "filename": "thinkstill_v8_drop_under25mb.min.json",
+      "sha256": "e06e695232b1c5957c76d803aecbfe826ab315aa7794b9c8d8bd7f54a9fa2aa0",
+      "bytes": 17295476
+    },
+    "STILL": {
+      "filename": "thinkstill_v8_still_under25mb.min.json",
+      "sha256": "70ac056c02bcb1830645fed3f92ef764d602b74a50f4982d136da776da9f6c9f",
+      "bytes": 17403297
+    },
+    "RUSH": {
+      "filename": "thinkstill_v8_rush_under25mb.min.json",
+      "sha256": "0c2005fed3812fc50bcddbc7a630f55c43044e63bbc7b959c33a8997b651b80e",
+      "bytes": 17302960
+    },
+    "LOOPIE": {
+      "filename": "thinkstill_v8_loopie_under25mb.min.json",
+      "sha256": "7eb5e71c77dcc886af43ad839aafdd6c56969d34f3814d67d1e6da25efc96bfd",
+      "bytes": 17427314
+    }
+  },
+  "notes": "Each bubble file contains 9,200 rituals with default + poetic_action + plain strings copied verbatim from the v8 Excel."
+}
