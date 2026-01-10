@@ -1,0 +1,135 @@
+{
+  "meta": {
+    "schema": "thinkstill.rituals.manifest.v2",
+    "generated_at": "2026-01-10T03:25:22.281483+00:00",
+    "format": "minified_json_shards_split_under_25mb",
+    "limit_bytes": 25000000,
+    "target_bytes": 24200000,
+    "notes": [
+      "Each bubble is split into multiple part files so every file is <25MB for GitHub.",
+      "Load all parts for the selected bubble in order, then concatenate rituals arrays."
+    ]
+  },
+  "base_url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main",
+  "bubbles": [
+    {
+      "bubble": "GLITCH",
+      "parts": [
+        {
+          "filename": "thinkstill_rituals_GLITCH.part01.min.json",
+          "url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/thinkstill_rituals_GLITCH.part01.min.json",
+          "rows": 7914,
+          "bytes": 24197428
+        },
+        {
+          "filename": "thinkstill_rituals_GLITCH.part02.min.json",
+          "url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/thinkstill_rituals_GLITCH.part02.min.json",
+          "rows": 1286,
+          "bytes": 4000198
+        }
+      ]
+    },
+    {
+      "bubble": "SYNC",
+      "parts": [
+        {
+          "filename": "thinkstill_rituals_SYNC.part01.min.json",
+          "url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/thinkstill_rituals_SYNC.part01.min.json",
+          "rows": 7899,
+          "bytes": 24198351
+        },
+        {
+          "filename": "thinkstill_rituals_SYNC.part02.min.json",
+          "url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/thinkstill_rituals_SYNC.part02.min.json",
+          "rows": 1301,
+          "bytes": 4054554
+        }
+      ]
+    },
+    {
+      "bubble": "PATCH",
+      "parts": [
+        {
+          "filename": "thinkstill_rituals_PATCH.part01.min.json",
+          "url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/thinkstill_rituals_PATCH.part01.min.json",
+          "rows": 8072,
+          "bytes": 24197705
+        },
+        {
+          "filename": "thinkstill_rituals_PATCH.part02.min.json",
+          "url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/thinkstill_rituals_PATCH.part02.min.json",
+          "rows": 1128,
+          "bytes": 3451637
+        }
+      ]
+    },
+    {
+      "bubble": "DROP",
+      "parts": [
+        {
+          "filename": "thinkstill_rituals_DROP.part01.min.json",
+          "url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/thinkstill_rituals_DROP.part01.min.json",
+          "rows": 8060,
+          "bytes": 24197329
+        },
+        {
+          "filename": "thinkstill_rituals_DROP.part02.min.json",
+          "url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/thinkstill_rituals_DROP.part02.min.json",
+          "rows": 1140,
+          "bytes": 3486565
+        }
+      ]
+    },
+    {
+      "bubble": "STILL",
+      "parts": [
+        {
+          "filename": "thinkstill_rituals_STILL.part01.min.json",
+          "url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/thinkstill_rituals_STILL.part01.min.json",
+          "rows": 8206,
+          "bytes": 24199414
+        },
+        {
+          "filename": "thinkstill_rituals_STILL.part02.min.json",
+          "url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/thinkstill_rituals_STILL.part02.min.json",
+          "rows": 994,
+          "bytes": 2995539
+        }
+      ]
+    },
+    {
+      "bubble": "RUSH",
+      "parts": [
+        {
+          "filename": "thinkstill_rituals_RUSH.part01.min.json",
+          "url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/thinkstill_rituals_RUSH.part01.min.json",
+          "rows": 8039,
+          "bytes": 24198430
+        },
+        {
+          "filename": "thinkstill_rituals_RUSH.part02.min.json",
+          "url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/thinkstill_rituals_RUSH.part02.min.json",
+          "rows": 1161,
+          "bytes": 3561713
+        }
+      ]
+    },
+    {
+      "bubble": "LOOPIE",
+      "parts": [
+        {
+          "filename": "thinkstill_rituals_LOOPIE.part01.min.json",
+          "url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/thinkstill_rituals_LOOPIE.part01.min.json",
+          "rows": 8023,
+          "bytes": 24199294
+        },
+        {
+          "filename": "thinkstill_rituals_LOOPIE.part02.min.json",
+          "url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/thinkstill_rituals_LOOPIE.part02.min.json",
+          "rows": 1177,
+          "bytes": 3616945
+        }
+      ]
+    }
+  ]
+}
