@@ -9,12 +9,12 @@
       "bubble": "GLITCH",
       "parts": [
         {
-          "filename": "by_bubble/glitch_v11_part_01.json",
+          "filename": "glitch_v11_part_01.json",
           "rows": null,
           "bytes": 846695
         },
         {
-          "filename": "by_bubble/glitch_v11_part_02.json",
+          "filename": "glitch_v11_part_02.json",
           "rows": null,
           "bytes": 162286
         }
@@ -24,12 +24,12 @@
       "bubble": "SYNC",
       "parts": [
         {
-          "filename": "by_bubble/sync_v11_part_01.json",
+          "filename": "sync_v11_part_01.json",
           "rows": null,
           "bytes": 862978
         },
         {
-          "filename": "by_bubble/sync_v11_part_02.json",
+          "filename": "sync_v11_part_02.json",
           "rows": null,
           "bytes": 164386
         }
@@ -39,12 +39,12 @@
       "bubble": "PATCH",
       "parts": [
         {
-          "filename": "by_bubble/patch_v11_part_01.json",
+          "filename": "patch_v11_part_01.json",
           "rows": null,
           "bytes": 828372
         },
         {
-          "filename": "by_bubble/patch_v11_part_02.json",
+          "filename": "patch_v11_part_02.json",
           "rows": null,
           "bytes": 157655
         }
@@ -54,12 +54,12 @@
       "bubble": "DROP",
       "parts": [
         {
-          "filename": "by_bubble/drop_v11_part_01.json",
+          "filename": "drop_v11_part_01.json",
           "rows": null,
           "bytes": 849404
         },
         {
-          "filename": "by_bubble/drop_v11_part_02.json",
+          "filename": "drop_v11_part_02.json",
           "rows": null,
           "bytes": 164221
         }
@@ -69,12 +69,12 @@
       "bubble": "STILL",
       "parts": [
         {
-          "filename": "by_bubble/still_v11_part_01.json",
+          "filename": "still_v11_part_01.json",
           "rows": null,
           "bytes": 855026
         },
         {
-          "filename": "by_bubble/still_v11_part_02.json",
+          "filename": "still_v11_part_02.json",
           "rows": null,
           "bytes": 163749
         }
@@ -84,12 +84,12 @@
       "bubble": "RUSH",
       "parts": [
         {
-          "filename": "by_bubble/rush_v11_part_01.json",
+          "filename": "rush_v11_part_01.json",
           "rows": null,
           "bytes": 853614
         },
         {
-          "filename": "by_bubble/rush_v11_part_02.json",
+          "filename": "rush_v11_part_02.json",
           "rows": null,
           "bytes": 161949
         }
@@ -99,12 +99,12 @@
       "bubble": "LOOPIE",
       "parts": [
         {
-          "filename": "by_bubble/loopie_v11_part_01.json",
+          "filename": "loopie_v11_part_01.json",
           "rows": null,
           "bytes": 856991
         },
         {
-          "filename": "by_bubble/loopie_v11_part_02.json",
+          "filename": "loopie_v11_part_02.json",
           "rows": null,
           "bytes": 163103
         }
