@@ -1,0 +1,3431 @@
+{
+  "meta": {
+    "bubble": "STILL",
+    "version": "v11",
+    "generated_at": "2026-01-21T09:01:51.168625Z",
+    "rewritten_at": "2026-01-21T09:53:05.041339Z",
+    "rewrite_style": "simple_actionable_no_diagnosis"
+  },
+  "rituals": [
+    {
+      "id": "TS-08405",
+      "b": "STILL",
+      "r": 8405,
+      "name": "Suspension Pause — TS-08405",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08405"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 2 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 5 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08412",
+      "b": "STILL",
+      "r": 8412,
+      "name": "Stillness Valve — TS-08412",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08412"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 3 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 30 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08419",
+      "b": "STILL",
+      "r": 8419,
+      "name": "Stillness Valve — TS-08419",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08419"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 5 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 60 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08426",
+      "b": "STILL",
+      "r": 8426,
+      "name": "Soft Anchor — TS-08426",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08426"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 3 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 30 seconds. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08433",
+      "b": "STILL",
+      "r": 8433,
+      "name": "Settling Pocket — TS-08433",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08433"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 2 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 5 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08440",
+      "b": "STILL",
+      "r": 8440,
+      "name": "Quiet Field Reset — TS-08440",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08440"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 5 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 60 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08447",
+      "b": "STILL",
+      "r": 8447,
+      "name": "Suspension Pause — TS-08447",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08447"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 5 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 60 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08454",
+      "b": "STILL",
+      "r": 8454,
+      "name": "Soft Anchor — TS-08454",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08454"
+      ],
+      "plain": "settling: Sit or stand steady. Set 30 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 2 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08461",
+      "b": "STILL",
+      "r": 8461,
+      "name": "Settling Pocket — TS-08461",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08461"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 30 seconds. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 2 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08468",
+      "b": "STILL",
+      "r": 8468,
+      "name": "Soft Anchor — TS-08468",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08468"
+      ],
+      "plain": "settling: Sit or stand steady. Set 2 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 5 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08475",
+      "b": "STILL",
+      "r": 8475,
+      "name": "Settling Pocket — TS-08475",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08475"
+      ],
+      "plain": "settling: Sit or stand steady. Set 60 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 3 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08482",
+      "b": "STILL",
+      "r": 8482,
+      "name": "Wide Gap — TS-08482",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08482"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 30 seconds. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 2 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08489",
+      "b": "STILL",
+      "r": 8489,
+      "name": "Settling Pocket — TS-08489",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08489"
+      ],
+      "plain": "settling: Sit or stand steady. Set 2 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 5 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08496",
+      "b": "STILL",
+      "r": 8496,
+      "name": "Suspension Pause — TS-08496",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08496"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 5 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 60 seconds. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08503",
+      "b": "STILL",
+      "r": 8503,
+      "name": "Quiet Field Reset — TS-08503",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08503"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 2 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 5 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08510",
+      "b": "STILL",
+      "r": 8510,
+      "name": "Suspension Pause — TS-08510",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08510"
+      ],
+      "plain": "settling: Sit or stand steady. Set 30 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 2 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08517",
+      "b": "STILL",
+      "r": 8517,
+      "name": "Settling Pocket — TS-08517",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08517"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 30 seconds. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 2 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08524",
+      "b": "STILL",
+      "r": 8524,
+      "name": "Settling Pocket — TS-08524",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08524"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 5 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 60 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08531",
+      "b": "STILL",
+      "r": 8531,
+      "name": "Quiet Field Reset — TS-08531",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08531"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 2 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 5 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08538",
+      "b": "STILL",
+      "r": 8538,
+      "name": "Stillness Valve — TS-08538",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08538"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 60 seconds. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 3 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08545",
+      "b": "STILL",
+      "r": 8545,
+      "name": "Soft Anchor — TS-08545",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08545"
+      ],
+      "plain": "settling: Sit or stand steady. Set 2 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 5 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08552",
+      "b": "STILL",
+      "r": 8552,
+      "name": "Stillness Valve — TS-08552",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08552"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 30 seconds. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 2 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08559",
+      "b": "STILL",
+      "r": 8559,
+      "name": "Soft Anchor — TS-08559",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08559"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 60 seconds. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 3 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08566",
+      "b": "STILL",
+      "r": 8566,
+      "name": "Quiet Field Reset — TS-08566",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08566"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 2 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 5 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08573",
+      "b": "STILL",
+      "r": 8573,
+      "name": "Soft Anchor — TS-08573",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08573"
+      ],
+      "plain": "settling: Sit or stand steady. Set 5 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 60 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08580",
+      "b": "STILL",
+      "r": 8580,
+      "name": "Stillness Valve — TS-08580",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08580"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 2 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 5 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08587",
+      "b": "STILL",
+      "r": 8587,
+      "name": "Stillness Valve — TS-08587",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08587"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 60 seconds. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 3 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08594",
+      "b": "STILL",
+      "r": 8594,
+      "name": "Settling Pocket — TS-08594",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08594"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 60 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 3 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08601",
+      "b": "STILL",
+      "r": 8601,
+      "name": "Wide Gap — TS-08601",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08601"
+      ],
+      "plain": "settling: Sit or stand steady. Set 5 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 60 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08608",
+      "b": "STILL",
+      "r": 8608,
+      "name": "Settling Pocket — TS-08608",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08608"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 5 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 60 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08615",
+      "b": "STILL",
+      "r": 8615,
+      "name": "Wide Gap — TS-08615",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08615"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 5 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 60 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08622",
+      "b": "STILL",
+      "r": 8622,
+      "name": "Quiet Field Reset — TS-08622",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08622"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 2 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 5 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08629",
+      "b": "STILL",
+      "r": 8629,
+      "name": "Settling Pocket — TS-08629",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08629"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 3 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 30 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08636",
+      "b": "STILL",
+      "r": 8636,
+      "name": "Stillness Valve — TS-08636",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08636"
+      ],
+      "plain": "settling: Sit or stand steady. Set 3 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 30 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08643",
+      "b": "STILL",
+      "r": 8643,
+      "name": "Wide Gap — TS-08643",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08643"
+      ],
+      "plain": "settling: Sit or stand steady. Set 60 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 3 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08650",
+      "b": "STILL",
+      "r": 8650,
+      "name": "Settling Pocket — TS-08650",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08650"
+      ],
+      "plain": "settling: Sit or stand steady. Set 5 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 60 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08657",
+      "b": "STILL",
+      "r": 8657,
+      "name": "Settling Pocket — TS-08657",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08657"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 3 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 30 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08664",
+      "b": "STILL",
+      "r": 8664,
+      "name": "Stillness Valve — TS-08664",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08664"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 5 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 60 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08671",
+      "b": "STILL",
+      "r": 8671,
+      "name": "Settling Pocket — TS-08671",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08671"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 2 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 5 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08678",
+      "b": "STILL",
+      "r": 8678,
+      "name": "Settling Pocket — TS-08678",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08678"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 5 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 60 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08685",
+      "b": "STILL",
+      "r": 8685,
+      "name": "Stillness Valve — TS-08685",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08685"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 2 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 5 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08692",
+      "b": "STILL",
+      "r": 8692,
+      "name": "Quiet Field Reset — TS-08692",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08692"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 2 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 5 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08699",
+      "b": "STILL",
+      "r": 8699,
+      "name": "Quiet Field Reset — TS-08699",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08699"
+      ],
+      "plain": "settling: Sit or stand steady. Set 2 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 5 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08706",
+      "b": "STILL",
+      "r": 8706,
+      "name": "Settling Pocket — TS-08706",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08706"
+      ],
+      "plain": "settling: Sit or stand steady. Set 30 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 2 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08713",
+      "b": "STILL",
+      "r": 8713,
+      "name": "Wide Gap — TS-08713",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08713"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 30 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 2 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08720",
+      "b": "STILL",
+      "r": 8720,
+      "name": "Suspension Pause — TS-08720",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08720"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 2 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 5 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08727",
+      "b": "STILL",
+      "r": 8727,
+      "name": "Settling Pocket — TS-08727",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08727"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 30 seconds. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 2 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08734",
+      "b": "STILL",
+      "r": 8734,
+      "name": "Wide Gap — TS-08734",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08734"
+      ],
+      "plain": "settling: Sit or stand steady. Set 5 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 60 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08741",
+      "b": "STILL",
+      "r": 8741,
+      "name": "Suspension Pause — TS-08741",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08741"
+      ],
+      "plain": "settling: Sit or stand steady. Set 2 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 5 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08748",
+      "b": "STILL",
+      "r": 8748,
+      "name": "Soft Anchor — TS-08748",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08748"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 60 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 3 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08755",
+      "b": "STILL",
+      "r": 8755,
+      "name": "Stillness Valve — TS-08755",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08755"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 3 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 30 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08762",
+      "b": "STILL",
+      "r": 8762,
+      "name": "Suspension Pause — TS-08762",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08762"
+      ],
+      "plain": "settling: Sit or stand steady. Set 5 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 60 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08769",
+      "b": "STILL",
+      "r": 8769,
+      "name": "Settling Pocket — TS-08769",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08769"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 2 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 5 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08776",
+      "b": "STILL",
+      "r": 8776,
+      "name": "Suspension Pause — TS-08776",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08776"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 5 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 60 seconds. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08783",
+      "b": "STILL",
+      "r": 8783,
+      "name": "Soft Anchor — TS-08783",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08783"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 2 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 5 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08790",
+      "b": "STILL",
+      "r": 8790,
+      "name": "Quiet Field Reset — TS-08790",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08790"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 30 seconds. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 2 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08797",
+      "b": "STILL",
+      "r": 8797,
+      "name": "Settling Pocket — TS-08797",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08797"
+      ],
+      "plain": "settling: Sit or stand steady. Set 5 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 60 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08804",
+      "b": "STILL",
+      "r": 8804,
+      "name": "Quiet Field Reset — TS-08804",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08804"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 2 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 5 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08811",
+      "b": "STILL",
+      "r": 8811,
+      "name": "Stillness Valve — TS-08811",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08811"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 5 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 60 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08818",
+      "b": "STILL",
+      "r": 8818,
+      "name": "Wide Gap — TS-08818",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08818"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 2 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 5 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08825",
+      "b": "STILL",
+      "r": 8825,
+      "name": "Quiet Field Reset — TS-08825",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08825"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 30 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 2 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08832",
+      "b": "STILL",
+      "r": 8832,
+      "name": "Wide Gap — TS-08832",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08832"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 5 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 60 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08839",
+      "b": "STILL",
+      "r": 8839,
+      "name": "Settling Pocket — TS-08839",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08839"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 60 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 3 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08846",
+      "b": "STILL",
+      "r": 8846,
+      "name": "Suspension Pause — TS-08846",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08846"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 2 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 5 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08853",
+      "b": "STILL",
+      "r": 8853,
+      "name": "Soft Anchor — TS-08853",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08853"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 2 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 5 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08860",
+      "b": "STILL",
+      "r": 8860,
+      "name": "Suspension Pause — TS-08860",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08860"
+      ],
+      "plain": "settling: Sit or stand steady. Set 5 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 60 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08867",
+      "b": "STILL",
+      "r": 8867,
+      "name": "Quiet Field Reset — TS-08867",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08867"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 2 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 5 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08874",
+      "b": "STILL",
+      "r": 8874,
+      "name": "Wide Gap — TS-08874",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08874"
+      ],
+      "plain": "settling: Sit or stand steady. Set 2 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 5 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08881",
+      "b": "STILL",
+      "r": 8881,
+      "name": "Wide Gap — TS-08881",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08881"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 30 seconds. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 2 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08888",
+      "b": "STILL",
+      "r": 8888,
+      "name": "Wide Gap — TS-08888",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08888"
+      ],
+      "plain": "settling: Sit or stand steady. Set 30 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 2 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08895",
+      "b": "STILL",
+      "r": 8895,
+      "name": "Stillness Valve — TS-08895",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08895"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 60 seconds. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 3 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08902",
+      "b": "STILL",
+      "r": 8902,
+      "name": "Stillness Valve — TS-08902",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08902"
+      ],
+      "plain": "settling: Sit or stand steady. Set 30 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 2 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08909",
+      "b": "STILL",
+      "r": 8909,
+      "name": "Settling Pocket — TS-08909",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08909"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 3 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 30 seconds. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08916",
+      "b": "STILL",
+      "r": 8916,
+      "name": "Quiet Field Reset — TS-08916",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08916"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 60 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 3 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08923",
+      "b": "STILL",
+      "r": 8923,
+      "name": "Soft Anchor — TS-08923",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08923"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 5 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 60 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08930",
+      "b": "STILL",
+      "r": 8930,
+      "name": "Stillness Valve — TS-08930",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08930"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 2 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 5 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08937",
+      "b": "STILL",
+      "r": 8937,
+      "name": "Stillness Valve — TS-08937",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08937"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 5 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 60 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08944",
+      "b": "STILL",
+      "r": 8944,
+      "name": "Stillness Valve — TS-08944",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08944"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 30 seconds. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 2 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08951",
+      "b": "STILL",
+      "r": 8951,
+      "name": "Settling Pocket — TS-08951",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08951"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 2 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 5 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08958",
+      "b": "STILL",
+      "r": 8958,
+      "name": "Wide Gap — TS-08958",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08958"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 60 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 3 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08965",
+      "b": "STILL",
+      "r": 8965,
+      "name": "Soft Anchor — TS-08965",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08965"
+      ],
+      "plain": "settling: Sit or stand steady. Set 3 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 30 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08972",
+      "b": "STILL",
+      "r": 8972,
+      "name": "Suspension Pause — TS-08972",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08972"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 3 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 30 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08979",
+      "b": "STILL",
+      "r": 8979,
+      "name": "Quiet Field Reset — TS-08979",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08979"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 3 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 30 seconds. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08986",
+      "b": "STILL",
+      "r": 8986,
+      "name": "Settling Pocket — TS-08986",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08986"
+      ],
+      "plain": "settling: Sit or stand steady. Set 3 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 30 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08993",
+      "b": "STILL",
+      "r": 8993,
+      "name": "Settling Pocket — TS-08993",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08993"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 30 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 2 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09000",
+      "b": "STILL",
+      "r": 9000,
+      "name": "Suspension Pause — TS-09000",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09000"
+      ],
+      "plain": "settling: Sit or stand steady. Set 5 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 60 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09007",
+      "b": "STILL",
+      "r": 9007,
+      "name": "Settling Pocket — TS-09007",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09007"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 3 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 30 seconds. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09014",
+      "b": "STILL",
+      "r": 9014,
+      "name": "Soft Anchor — TS-09014",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09014"
+      ],
+      "plain": "settling: Sit or stand steady. Set 2 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 5 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09021",
+      "b": "STILL",
+      "r": 9021,
+      "name": "Suspension Pause — TS-09021",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09021"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 60 seconds. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 3 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09028",
+      "b": "STILL",
+      "r": 9028,
+      "name": "Settling Pocket — TS-09028",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09028"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 60 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 3 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09035",
+      "b": "STILL",
+      "r": 9035,
+      "name": "Suspension Pause — TS-09035",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09035"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 5 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 60 seconds. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09042",
+      "b": "STILL",
+      "r": 9042,
+      "name": "Quiet Field Reset — TS-09042",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09042"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 3 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 30 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09049",
+      "b": "STILL",
+      "r": 9049,
+      "name": "Wide Gap — TS-09049",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09049"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 5 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 60 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09056",
+      "b": "STILL",
+      "r": 9056,
+      "name": "Suspension Pause — TS-09056",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09056"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 3 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 30 seconds. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09063",
+      "b": "STILL",
+      "r": 9063,
+      "name": "Settling Pocket — TS-09063",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09063"
+      ],
+      "plain": "settling: Sit or stand steady. Set 60 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 3 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09070",
+      "b": "STILL",
+      "r": 9070,
+      "name": "Settling Pocket — TS-09070",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09070"
+      ],
+      "plain": "settling: Sit or stand steady. Set 60 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 3 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09077",
+      "b": "STILL",
+      "r": 9077,
+      "name": "Suspension Pause — TS-09077",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09077"
+      ],
+      "plain": "settling: Sit or stand steady. Set 2 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 5 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09084",
+      "b": "STILL",
+      "r": 9084,
+      "name": "Stillness Valve — TS-09084",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09084"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 30 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 2 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09091",
+      "b": "STILL",
+      "r": 9091,
+      "name": "Settling Pocket — TS-09091",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09091"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 30 seconds. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 2 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09098",
+      "b": "STILL",
+      "r": 9098,
+      "name": "Settling Pocket — TS-09098",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09098"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 60 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 3 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09105",
+      "b": "STILL",
+      "r": 9105,
+      "name": "Settling Pocket — TS-09105",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09105"
+      ],
+      "plain": "settling: Sit or stand steady. Set 2 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 5 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09112",
+      "b": "STILL",
+      "r": 9112,
+      "name": "Soft Anchor — TS-09112",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09112"
+      ],
+      "plain": "settling: Sit or stand steady. Set 60 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 3 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09119",
+      "b": "STILL",
+      "r": 9119,
+      "name": "Stillness Valve — TS-09119",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09119"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 5 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 60 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09126",
+      "b": "STILL",
+      "r": 9126,
+      "name": "Quiet Field Reset — TS-09126",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09126"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 2 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 5 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09133",
+      "b": "STILL",
+      "r": 9133,
+      "name": "Stillness Valve — TS-09133",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09133"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 60 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 3 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09140",
+      "b": "STILL",
+      "r": 9140,
+      "name": "Soft Anchor — TS-09140",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09140"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 2 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 5 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09147",
+      "b": "STILL",
+      "r": 9147,
+      "name": "Soft Anchor — TS-09147",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09147"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 60 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 3 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09154",
+      "b": "STILL",
+      "r": 9154,
+      "name": "Suspension Pause — TS-09154",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09154"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 3 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 30 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09161",
+      "b": "STILL",
+      "r": 9161,
+      "name": "Quiet Field Reset — TS-09161",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09161"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 5 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 60 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09168",
+      "b": "STILL",
+      "r": 9168,
+      "name": "Soft Anchor — TS-09168",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09168"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 2 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 5 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09175",
+      "b": "STILL",
+      "r": 9175,
+      "name": "Settling Pocket — TS-09175",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09175"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 5 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 60 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09182",
+      "b": "STILL",
+      "r": 9182,
+      "name": "Settling Pocket — TS-09182",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09182"
+      ],
+      "plain": "settling: Sit or stand steady. Set 30 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 2 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09189",
+      "b": "STILL",
+      "r": 9189,
+      "name": "Quiet Field Reset — TS-09189",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09189"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 2 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 5 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09196",
+      "b": "STILL",
+      "r": 9196,
+      "name": "Settling Pocket — TS-09196",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09196"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 3 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 30 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09203",
+      "b": "STILL",
+      "r": 9203,
+      "name": "Settling Pocket — TS-09203",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09203"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 5 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 60 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09210",
+      "b": "STILL",
+      "r": 9210,
+      "name": "Suspension Pause — TS-09210",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09210"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 30 seconds. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 2 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09217",
+      "b": "STILL",
+      "r": 9217,
+      "name": "Stillness Valve — TS-09217",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09217"
+      ],
+      "plain": "settling: Sit or stand steady. Set 30 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 2 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09224",
+      "b": "STILL",
+      "r": 9224,
+      "name": "Soft Anchor — TS-09224",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09224"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 5 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 60 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09231",
+      "b": "STILL",
+      "r": 9231,
+      "name": "Suspension Pause — TS-09231",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09231"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 30 seconds. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 2 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09238",
+      "b": "STILL",
+      "r": 9238,
+      "name": "Suspension Pause — TS-09238",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09238"
+      ],
+      "plain": "settling: Sit or stand steady. Set 60 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 3 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09245",
+      "b": "STILL",
+      "r": 9245,
+      "name": "Quiet Field Reset — TS-09245",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09245"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 3 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 30 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09252",
+      "b": "STILL",
+      "r": 9252,
+      "name": "Stillness Valve — TS-09252",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09252"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 30 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 2 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09259",
+      "b": "STILL",
+      "r": 9259,
+      "name": "Suspension Pause — TS-09259",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09259"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 3 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 30 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09266",
+      "b": "STILL",
+      "r": 9266,
+      "name": "Quiet Field Reset — TS-09266",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09266"
+      ],
+      "plain": "settling: Sit or stand steady. Set 60 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 3 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09273",
+      "b": "STILL",
+      "r": 9273,
+      "name": "Wide Gap — TS-09273",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09273"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 3 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 30 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09280",
+      "b": "STILL",
+      "r": 9280,
+      "name": "Soft Anchor — TS-09280",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09280"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 2 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 5 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09287",
+      "b": "STILL",
+      "r": 9287,
+      "name": "Settling Pocket — TS-09287",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09287"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 2 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 5 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09294",
+      "b": "STILL",
+      "r": 9294,
+      "name": "Wide Gap — TS-09294",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09294"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 5 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 60 seconds. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09301",
+      "b": "STILL",
+      "r": 9301,
+      "name": "Quiet Field Reset — TS-09301",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09301"
+      ],
+      "plain": "settling: Sit or stand steady. Set 2 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 5 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09308",
+      "b": "STILL",
+      "r": 9308,
+      "name": "Quiet Field Reset — TS-09308",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09308"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 2 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 5 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09315",
+      "b": "STILL",
+      "r": 9315,
+      "name": "Soft Anchor — TS-09315",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09315"
+      ],
+      "plain": "settling: Sit or stand steady. Set 3 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 30 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09322",
+      "b": "STILL",
+      "r": 9322,
+      "name": "Wide Gap — TS-09322",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09322"
+      ],
+      "plain": "settling: Sit or stand steady. Set 5 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 60 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09329",
+      "b": "STILL",
+      "r": 9329,
+      "name": "Quiet Field Reset — TS-09329",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09329"
+      ],
+      "plain": "settling: Sit or stand steady. Set 3 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 30 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09336",
+      "b": "STILL",
+      "r": 9336,
+      "name": "Quiet Field Reset — TS-09336",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09336"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 3 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 30 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09343",
+      "b": "STILL",
+      "r": 9343,
+      "name": "Stillness Valve — TS-09343",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09343"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 3 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 30 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09350",
+      "b": "STILL",
+      "r": 9350,
+      "name": "Settling Pocket — TS-09350",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09350"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 60 seconds. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 3 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09357",
+      "b": "STILL",
+      "r": 9357,
+      "name": "Stillness Valve — TS-09357",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09357"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 5 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 60 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09364",
+      "b": "STILL",
+      "r": 9364,
+      "name": "Suspension Pause — TS-09364",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09364"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 30 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 2 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09371",
+      "b": "STILL",
+      "r": 9371,
+      "name": "Soft Anchor — TS-09371",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09371"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 3 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 30 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09378",
+      "b": "STILL",
+      "r": 9378,
+      "name": "Soft Anchor — TS-09378",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09378"
+      ],
+      "plain": "settling: Sit or stand steady. Set 30 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 2 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09385",
+      "b": "STILL",
+      "r": 9385,
+      "name": "Suspension Pause — TS-09385",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09385"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 2 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 5 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09392",
+      "b": "STILL",
+      "r": 9392,
+      "name": "Quiet Field Reset — TS-09392",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09392"
+      ],
+      "plain": "settling: Sit or stand steady. Set 5 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 60 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09399",
+      "b": "STILL",
+      "r": 9399,
+      "name": "Suspension Pause — TS-09399",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09399"
+      ],
+      "plain": "settling: Sit or stand steady. Set 60 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 3 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09406",
+      "b": "STILL",
+      "r": 9406,
+      "name": "Suspension Pause — TS-09406",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09406"
+      ],
+      "plain": "settling: Sit or stand steady. Set 30 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 2 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09413",
+      "b": "STILL",
+      "r": 9413,
+      "name": "Settling Pocket — TS-09413",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09413"
+      ],
+      "plain": "settling: Sit or stand steady. Set 30 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 2 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09420",
+      "b": "STILL",
+      "r": 9420,
+      "name": "Stillness Valve — TS-09420",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09420"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 2 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 5 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09427",
+      "b": "STILL",
+      "r": 9427,
+      "name": "Stillness Valve — TS-09427",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09427"
+      ],
+      "plain": "settling: Sit or stand steady. Set 3 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 30 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09434",
+      "b": "STILL",
+      "r": 9434,
+      "name": "Stillness Valve — TS-09434",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09434"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 2 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 5 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09441",
+      "b": "STILL",
+      "r": 9441,
+      "name": "Soft Anchor — TS-09441",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09441"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 60 seconds. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 3 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09448",
+      "b": "STILL",
+      "r": 9448,
+      "name": "Settling Pocket — TS-09448",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09448"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 5 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 60 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09455",
+      "b": "STILL",
+      "r": 9455,
+      "name": "Wide Gap — TS-09455",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09455"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 3 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 30 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09462",
+      "b": "STILL",
+      "r": 9462,
+      "name": "Suspension Pause — TS-09462",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09462"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 60 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 3 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09469",
+      "b": "STILL",
+      "r": 9469,
+      "name": "Soft Anchor — TS-09469",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09469"
+      ],
+      "plain": "settling: Sit or stand steady. Set 3 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 30 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09476",
+      "b": "STILL",
+      "r": 9476,
+      "name": "Quiet Field Reset — TS-09476",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09476"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 30 seconds. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 2 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09483",
+      "b": "STILL",
+      "r": 9483,
+      "name": "Quiet Field Reset — TS-09483",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09483"
+      ],
+      "plain": "settling: Sit or stand steady. Set 2 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 5 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09490",
+      "b": "STILL",
+      "r": 9490,
+      "name": "Suspension Pause — TS-09490",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09490"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 60 seconds. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 3 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09497",
+      "b": "STILL",
+      "r": 9497,
+      "name": "Soft Anchor — TS-09497",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09497"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 2 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 5 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09504",
+      "b": "STILL",
+      "r": 9504,
+      "name": "Settling Pocket — TS-09504",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09504"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 30 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 2 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09511",
+      "b": "STILL",
+      "r": 9511,
+      "name": "Stillness Valve — TS-09511",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09511"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 5 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 60 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09518",
+      "b": "STILL",
+      "r": 9518,
+      "name": "Settling Pocket — TS-09518",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09518"
+      ],
+      "plain": "settling: Sit or stand steady. Set 3 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 30 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09525",
+      "b": "STILL",
+      "r": 9525,
+      "name": "Wide Gap — TS-09525",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09525"
+      ],
+      "plain": "settling: Sit or stand steady. Set 60 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 3 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09532",
+      "b": "STILL",
+      "r": 9532,
+      "name": "Soft Anchor — TS-09532",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09532"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 2 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 5 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09539",
+      "b": "STILL",
+      "r": 9539,
+      "name": "Settling Pocket — TS-09539",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09539"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 5 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 60 seconds. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09546",
+      "b": "STILL",
+      "r": 9546,
+      "name": "Stillness Valve — TS-09546",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09546"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 5 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 60 seconds. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09553",
+      "b": "STILL",
+      "r": 9553,
+      "name": "Soft Anchor — TS-09553",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09553"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 60 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 3 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09560",
+      "b": "STILL",
+      "r": 9560,
+      "name": "Wide Gap — TS-09560",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09560"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 3 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 30 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09567",
+      "b": "STILL",
+      "r": 9567,
+      "name": "Quiet Field Reset — TS-09567",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09567"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 5 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 60 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09574",
+      "b": "STILL",
+      "r": 9574,
+      "name": "Settling Pocket — TS-09574",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09574"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 5 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 60 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09581",
+      "b": "STILL",
+      "r": 9581,
+      "name": "Soft Anchor — TS-09581",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09581"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 60 seconds. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 3 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09588",
+      "b": "STILL",
+      "r": 9588,
+      "name": "Settling Pocket — TS-09588",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09588"
+      ],
+      "plain": "settling: Sit or stand steady. Set 5 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 60 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09595",
+      "b": "STILL",
+      "r": 9595,
+      "name": "Suspension Pause — TS-09595",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09595"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 5 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 60 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09602",
+      "b": "STILL",
+      "r": 9602,
+      "name": "Suspension Pause — TS-09602",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09602"
+      ],
+      "plain": "settling: Sit or stand steady. Set 60 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 3 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09609",
+      "b": "STILL",
+      "r": 9609,
+      "name": "Quiet Field Reset — TS-09609",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09609"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 3 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 30 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09616",
+      "b": "STILL",
+      "r": 9616,
+      "name": "Settling Pocket — TS-09616",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09616"
+      ],
+      "plain": "settling: Sit or stand steady. Set 3 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 30 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09623",
+      "b": "STILL",
+      "r": 9623,
+      "name": "Wide Gap — TS-09623",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09623"
+      ],
+      "plain": "settling: Sit or stand steady. Set 5 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 60 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09630",
+      "b": "STILL",
+      "r": 9630,
+      "name": "Settling Pocket — TS-09630",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09630"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 30 seconds. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 2 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09637",
+      "b": "STILL",
+      "r": 9637,
+      "name": "Wide Gap — TS-09637",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09637"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 5 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 60 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09644",
+      "b": "STILL",
+      "r": 9644,
+      "name": "Soft Anchor — TS-09644",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09644"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 60 seconds. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 3 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09651",
+      "b": "STILL",
+      "r": 9651,
+      "name": "Wide Gap — TS-09651",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09651"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 3 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 30 seconds. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09658",
+      "b": "STILL",
+      "r": 9658,
+      "name": "Settling Pocket — TS-09658",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09658"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 3 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 30 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09665",
+      "b": "STILL",
+      "r": 9665,
+      "name": "Quiet Field Reset — TS-09665",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09665"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 60 seconds. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 3 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09672",
+      "b": "STILL",
+      "r": 9672,
+      "name": "Settling Pocket — TS-09672",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09672"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 5 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 60 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09679",
+      "b": "STILL",
+      "r": 9679,
+      "name": "Suspension Pause — TS-09679",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09679"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 2 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 5 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09686",
+      "b": "STILL",
+      "r": 9686,
+      "name": "Settling Pocket — TS-09686",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09686"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 2 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 5 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09693",
+      "b": "STILL",
+      "r": 9693,
+      "name": "Soft Anchor — TS-09693",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09693"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 5 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 60 seconds. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09700",
+      "b": "STILL",
+      "r": 9700,
+      "name": "Quiet Field Reset — TS-09700",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09700"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 30 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 2 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09707",
+      "b": "STILL",
+      "r": 9707,
+      "name": "Stillness Valve — TS-09707",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09707"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 60 seconds. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 3 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09714",
+      "b": "STILL",
+      "r": 9714,
+      "name": "Settling Pocket — TS-09714",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09714"
+      ],
+      "plain": "settling: Sit or stand steady. Set 30 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 2 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09721",
+      "b": "STILL",
+      "r": 9721,
+      "name": "Stillness Valve — TS-09721",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09721"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 30 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 2 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09728",
+      "b": "STILL",
+      "r": 9728,
+      "name": "Quiet Field Reset — TS-09728",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09728"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 60 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 3 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09735",
+      "b": "STILL",
+      "r": 9735,
+      "name": "Suspension Pause — TS-09735",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09735"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 30 seconds. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 2 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09742",
+      "b": "STILL",
+      "r": 9742,
+      "name": "Stillness Valve — TS-09742",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09742"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 3 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 30 seconds. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09749",
+      "b": "STILL",
+      "r": 9749,
+      "name": "Stillness Valve — TS-09749",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09749"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 30 seconds. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 2 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09756",
+      "b": "STILL",
+      "r": 9756,
+      "name": "Soft Anchor — TS-09756",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09756"
+      ],
+      "plain": "settling: Sit or stand steady. Set 5 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 60 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09763",
+      "b": "STILL",
+      "r": 9763,
+      "name": "Soft Anchor — TS-09763",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09763"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 2 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 5 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09770",
+      "b": "STILL",
+      "r": 9770,
+      "name": "Soft Anchor — TS-09770",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09770"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 5 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 60 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09777",
+      "b": "STILL",
+      "r": 9777,
+      "name": "Suspension Pause — TS-09777",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09777"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 2 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 5 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09784",
+      "b": "STILL",
+      "r": 9784,
+      "name": "Soft Anchor — TS-09784",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09784"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 60 seconds. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 3 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09791",
+      "b": "STILL",
+      "r": 9791,
+      "name": "Soft Anchor — TS-09791",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09791"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 60 seconds. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 3 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09798",
+      "b": "STILL",
+      "r": 9798,
+      "name": "Wide Gap — TS-09798",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09798"
+      ],
+      "plain": "settling: Sit or stand steady. Set 30 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 2 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09805",
+      "b": "STILL",
+      "r": 9805,
+      "name": "Wide Gap — TS-09805",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09805"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 2 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 5 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09812",
+      "b": "STILL",
+      "r": 9812,
+      "name": "Wide Gap — TS-09812",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09812"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 2 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 5 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09819",
+      "b": "STILL",
+      "r": 9819,
+      "name": "Soft Anchor — TS-09819",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09819"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 5 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 60 seconds. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09826",
+      "b": "STILL",
+      "r": 9826,
+      "name": "Soft Anchor — TS-09826",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09826"
+      ],
+      "plain": "settling: Sit or stand steady. Set 30 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 2 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09833",
+      "b": "STILL",
+      "r": 9833,
+      "name": "Suspension Pause — TS-09833",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09833"
+      ],
+      "plain": "settling: Sit or stand steady. Set 5 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 60 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09840",
+      "b": "STILL",
+      "r": 9840,
+      "name": "Wide Gap — TS-09840",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09840"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 30 seconds. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 2 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09847",
+      "b": "STILL",
+      "r": 9847,
+      "name": "Settling Pocket — TS-09847",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09847"
+      ],
+      "plain": "settling: Sit or stand steady. Set 60 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 3 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09854",
+      "b": "STILL",
+      "r": 9854,
+      "name": "Suspension Pause — TS-09854",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09854"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 30 seconds. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 2 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09861",
+      "b": "STILL",
+      "r": 9861,
+      "name": "Settling Pocket — TS-09861",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09861"
+      ],
+      "plain": "settling: Sit or stand steady. Set 60 seconds. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 3 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09868",
+      "b": "STILL",
+      "r": 9868,
+      "name": "Soft Anchor — TS-09868",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09868"
+      ],
+      "plain": "settling: Sit or stand steady. Set 5 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 60 seconds. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09875",
+      "b": "STILL",
+      "r": 9875,
+      "name": "Suspension Pause — TS-09875",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09875"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 3 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 30 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09882",
+      "b": "STILL",
+      "r": 9882,
+      "name": "Soft Anchor — TS-09882",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09882"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 30 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 2 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09889",
+      "b": "STILL",
+      "r": 9889,
+      "name": "Stillness Valve — TS-09889",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09889"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 2 minutes. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 5 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09896",
+      "b": "STILL",
+      "r": 9896,
+      "name": "Stillness Valve — TS-09896",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09896"
+      ],
+      "plain": "settling: Sit or stand steady. Set 2 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 5 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09903",
+      "b": "STILL",
+      "r": 9903,
+      "name": "Soft Anchor — TS-09903",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09903"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 30 seconds. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 2 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09910",
+      "b": "STILL",
+      "r": 9910,
+      "name": "Quiet Field Reset — TS-09910",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09910"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 3 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 30 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09917",
+      "b": "STILL",
+      "r": 9917,
+      "name": "Soft Anchor — TS-09917",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09917"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 60 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 3 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09924",
+      "b": "STILL",
+      "r": 9924,
+      "name": "Soft Anchor — TS-09924",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09924"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 60 seconds. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 3 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09931",
+      "b": "STILL",
+      "r": 9931,
+      "name": "Stillness Valve — TS-09931",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09931"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 30 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 2 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09938",
+      "b": "STILL",
+      "r": 9938,
+      "name": "Wide Gap — TS-09938",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09938"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 3 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 30 seconds. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09945",
+      "b": "STILL",
+      "r": 9945,
+      "name": "Stillness Valve — TS-09945",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09945"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 3 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 30 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09952",
+      "b": "STILL",
+      "r": 9952,
+      "name": "Suspension Pause — TS-09952",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09952"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 2 minutes. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 5 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09959",
+      "b": "STILL",
+      "r": 9959,
+      "name": "Wide Gap — TS-09959",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09959"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 5 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 60 seconds. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09966",
+      "b": "STILL",
+      "r": 9966,
+      "name": "Wide Gap — TS-09966",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09966"
+      ],
+      "plain": "quiet fields: Loosen the hands. Set 30 seconds. Start now.\nsettling: Exhale longer than inhale. Make it easy. Remove one blocker.\nsuspension: Notice sound and light. Stay for 2 minutes. Stop at timer.\nCheck body. Return to breath. Return once.\nDo one more. Stretch the neck. Keep it small.\nClose gently. Set a tiny boundary. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09973",
+      "b": "STILL",
+      "r": 9973,
+      "name": "Settling Pocket — TS-09973",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09973"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 60 seconds. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 3 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09980",
+      "b": "STILL",
+      "r": 9980,
+      "name": "Stillness Valve — TS-09980",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09980"
+      ],
+      "plain": "quiet field: Drop the shoulders. Set 2 minutes. Start now.\nquiet fields: Let the breath fall. Make it easy. Remove one blocker.\nsettling: Name three sensations. Stay for 5 minutes. Stop at timer.\nCheck body. Label it and release. Return once.\nDo one more. Step outside briefly. Keep it small.\nClose gently. End with one breath. Mark next time.\nWhy: A slow body cue can reset the whole system.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09987",
+      "b": "STILL",
+      "r": 9987,
+      "name": "Suspension Pause — TS-09987",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09987"
+      ],
+      "plain": "settling: Sit or stand steady. Set 2 minutes. Start now.\nsuspension: Count five slow breaths. Make it easy. Remove one blocker.\nquiet field: Feel feet on ground. Stay for 5 minutes. Stop at timer.\nCheck body. Allow quiet space. Return once.\nDo one more. Choose one gentle action. Keep it small.\nClose gently. Write one sentence. Mark next time.\nWhy: Settling lowers load; suspension creates room.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09994",
+      "b": "STILL",
+      "r": 9994,
+      "name": "Wide Gap — TS-09994",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09994"
+      ],
+      "plain": "suspension: Unclench the jaw. Set 30 seconds. Start now.\nquiet field: Breathe into the belly. Make it easy. Remove one blocker.\nquiet fields: Scan face and throat. Stay for 2 minutes. Stop at timer.\nCheck body. Let thoughts pass by. Return once.\nDo one more. Drink water slowly. Keep it small.\nClose gently. Pick the next calm step. Mark next time.\nWhy: Quiet fields widen attention and reduce pressure.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    }
+  ]
+}

@@ -1,0 +1,3446 @@
+{
+  "meta": {
+    "bubble": "PATCH",
+    "version": "v11",
+    "generated_at": "2026-01-21T09:01:51.067782Z",
+    "rewritten_at": "2026-01-21T09:53:05.041339Z",
+    "rewrite_style": "simple_actionable_no_diagnosis"
+  },
+  "rituals": [
+    {
+      "id": "TS-08403",
+      "b": "PATCH",
+      "r": 8403,
+      "name": "Stitch & Seal — TS-08403",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08403"
+      ],
+      "plain": "stitch: Find one tear point. Set 60 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 3 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08410",
+      "b": "PATCH",
+      "r": 8410,
+      "name": "Repair Pass — TS-08410",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08410"
+      ],
+      "plain": "seal: Name what broke. Set 3 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 30 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08417",
+      "b": "PATCH",
+      "r": 8417,
+      "name": "Patchwork Step — TS-08417",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08417"
+      ],
+      "plain": "stitch: Find one tear point. Set 60 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 3 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08424",
+      "b": "PATCH",
+      "r": 8424,
+      "name": "Bind Support — TS-08424",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08424"
+      ],
+      "plain": "repair: Choose one issue. Set 3 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 30 seconds. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08431",
+      "b": "PATCH",
+      "r": 8431,
+      "name": "Bind Support — TS-08431",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08431"
+      ],
+      "plain": "seal: Name what broke. Set 5 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 60 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08438",
+      "b": "PATCH",
+      "r": 8438,
+      "name": "Bind Support — TS-08438",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08438"
+      ],
+      "plain": "bind: Pick the sore spot. Set 5 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 60 seconds. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08445",
+      "b": "PATCH",
+      "r": 8445,
+      "name": "Repair Pass — TS-08445",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08445"
+      ],
+      "plain": "bind: Pick the sore spot. Set 5 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 60 seconds. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08452",
+      "b": "PATCH",
+      "r": 8452,
+      "name": "Seal the Leak — TS-08452",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08452"
+      ],
+      "plain": "seal: Name what broke. Set 60 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 3 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08459",
+      "b": "PATCH",
+      "r": 8459,
+      "name": "Bind Support — TS-08459",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08459"
+      ],
+      "plain": "stitch: Find one tear point. Set 60 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 3 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08466",
+      "b": "PATCH",
+      "r": 8466,
+      "name": "Patchwork Step — TS-08466",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08466"
+      ],
+      "plain": "seal: Name what broke. Set 30 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 2 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08473",
+      "b": "PATCH",
+      "r": 8473,
+      "name": "Repair Pass — TS-08473",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08473"
+      ],
+      "plain": "seal: Name what broke. Set 30 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 2 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08480",
+      "b": "PATCH",
+      "r": 8480,
+      "name": "Repair Pass — TS-08480",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08480"
+      ],
+      "plain": "seal: Name what broke. Set 60 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 3 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08487",
+      "b": "PATCH",
+      "r": 8487,
+      "name": "Stitch & Seal — TS-08487",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08487"
+      ],
+      "plain": "seal: Name what broke. Set 3 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 30 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08494",
+      "b": "PATCH",
+      "r": 8494,
+      "name": "Repair Pass — TS-08494",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08494"
+      ],
+      "plain": "seal: Name what broke. Set 2 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 5 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08501",
+      "b": "PATCH",
+      "r": 8501,
+      "name": "Repair Pass — TS-08501",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08501"
+      ],
+      "plain": "bind: Pick the sore spot. Set 30 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 2 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08508",
+      "b": "PATCH",
+      "r": 8508,
+      "name": "Repair Pass — TS-08508",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08508"
+      ],
+      "plain": "bind: Pick the sore spot. Set 5 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 60 seconds. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08515",
+      "b": "PATCH",
+      "r": 8515,
+      "name": "Seal the Leak — TS-08515",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08515"
+      ],
+      "plain": "stitch: Find one tear point. Set 2 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 5 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08522",
+      "b": "PATCH",
+      "r": 8522,
+      "name": "Patchwork Step — TS-08522",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08522"
+      ],
+      "plain": "stitch: Find one tear point. Set 60 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 3 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08529",
+      "b": "PATCH",
+      "r": 8529,
+      "name": "Seal the Leak — TS-08529",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08529"
+      ],
+      "plain": "repair: Choose one issue. Set 3 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 30 seconds. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08536",
+      "b": "PATCH",
+      "r": 8536,
+      "name": "Stitch & Seal — TS-08536",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08536"
+      ],
+      "plain": "seal: Name what broke. Set 60 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 3 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08543",
+      "b": "PATCH",
+      "r": 8543,
+      "name": "Stitch Map — TS-08543",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08543"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08550",
+      "b": "PATCH",
+      "r": 8550,
+      "name": "Seal the Leak — TS-08550",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08550"
+      ],
+      "plain": "stitch: Find one tear point. Set 30 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 2 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08557",
+      "b": "PATCH",
+      "r": 8557,
+      "name": "Repair Pass — TS-08557",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08557"
+      ],
+      "plain": "stitch: Find one tear point. Set 60 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 3 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08564",
+      "b": "PATCH",
+      "r": 8564,
+      "name": "Repair Pass — TS-08564",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08564"
+      ],
+      "plain": "seal: Name what broke. Set 2 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 5 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08571",
+      "b": "PATCH",
+      "r": 8571,
+      "name": "Repair Pass — TS-08571",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08571"
+      ],
+      "plain": "bind: Pick the sore spot. Set 5 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 60 seconds. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08578",
+      "b": "PATCH",
+      "r": 8578,
+      "name": "Seal the Leak — TS-08578",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08578"
+      ],
+      "plain": "bind: Pick the sore spot. Set 2 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 5 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08585",
+      "b": "PATCH",
+      "r": 8585,
+      "name": "Repair Pass — TS-08585",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08585"
+      ],
+      "plain": "repair: Choose one issue. Set 2 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 5 minutes. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08592",
+      "b": "PATCH",
+      "r": 8592,
+      "name": "Seal the Leak — TS-08592",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08592"
+      ],
+      "plain": "stitch: Find one tear point. Set 60 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 3 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08599",
+      "b": "PATCH",
+      "r": 8599,
+      "name": "Stitch & Seal — TS-08599",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08599"
+      ],
+      "plain": "seal: Name what broke. Set 3 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 30 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08606",
+      "b": "PATCH",
+      "r": 8606,
+      "name": "Patchwork Step — TS-08606",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08606"
+      ],
+      "plain": "seal: Name what broke. Set 30 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 2 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08613",
+      "b": "PATCH",
+      "r": 8613,
+      "name": "Stitch Map — TS-08613",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08613"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08620",
+      "b": "PATCH",
+      "r": 8620,
+      "name": "Bind Support — TS-08620",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08620"
+      ],
+      "plain": "bind: Pick the sore spot. Set 30 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 2 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08627",
+      "b": "PATCH",
+      "r": 8627,
+      "name": "Stitch Map — TS-08627",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08627"
+      ],
+      "plain": "seal: Name what broke. Set 60 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 3 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08634",
+      "b": "PATCH",
+      "r": 8634,
+      "name": "Repair Pass — TS-08634",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08634"
+      ],
+      "plain": "stitch: Find one tear point. Set 30 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 2 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08641",
+      "b": "PATCH",
+      "r": 8641,
+      "name": "Stitch & Seal — TS-08641",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08641"
+      ],
+      "plain": "repair: Choose one issue. Set 30 seconds. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 2 minutes. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08648",
+      "b": "PATCH",
+      "r": 8648,
+      "name": "Stitch Map — TS-08648",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08648"
+      ],
+      "plain": "repair: Choose one issue. Set 2 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 5 minutes. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08655",
+      "b": "PATCH",
+      "r": 8655,
+      "name": "Seal the Leak — TS-08655",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08655"
+      ],
+      "plain": "bind: Pick the sore spot. Set 2 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 5 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08662",
+      "b": "PATCH",
+      "r": 8662,
+      "name": "Stitch Map — TS-08662",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08662"
+      ],
+      "plain": "seal: Name what broke. Set 60 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 3 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08669",
+      "b": "PATCH",
+      "r": 8669,
+      "name": "Repair Pass — TS-08669",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08669"
+      ],
+      "plain": "seal: Name what broke. Set 5 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 60 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08676",
+      "b": "PATCH",
+      "r": 8676,
+      "name": "Bind Support — TS-08676",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08676"
+      ],
+      "plain": "stitch: Find one tear point. Set 30 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 2 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08683",
+      "b": "PATCH",
+      "r": 8683,
+      "name": "Repair Pass — TS-08683",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08683"
+      ],
+      "plain": "seal: Name what broke. Set 30 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 2 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08690",
+      "b": "PATCH",
+      "r": 8690,
+      "name": "Patchwork Step — TS-08690",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08690"
+      ],
+      "plain": "bind: Pick the sore spot. Set 5 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 60 seconds. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08697",
+      "b": "PATCH",
+      "r": 8697,
+      "name": "Bind Support — TS-08697",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08697"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08704",
+      "b": "PATCH",
+      "r": 8704,
+      "name": "Repair Pass — TS-08704",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08704"
+      ],
+      "plain": "stitch: Find one tear point. Set 2 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 5 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08711",
+      "b": "PATCH",
+      "r": 8711,
+      "name": "Repair Pass — TS-08711",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08711"
+      ],
+      "plain": "stitch: Find one tear point. Set 30 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 2 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08718",
+      "b": "PATCH",
+      "r": 8718,
+      "name": "Seal the Leak — TS-08718",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08718"
+      ],
+      "plain": "stitch: Find one tear point. Set 2 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 5 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08725",
+      "b": "PATCH",
+      "r": 8725,
+      "name": "Repair Pass — TS-08725",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08725"
+      ],
+      "plain": "stitch: Find one tear point. Set 3 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 30 seconds. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08732",
+      "b": "PATCH",
+      "r": 8732,
+      "name": "Bind Support — TS-08732",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08732"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08739",
+      "b": "PATCH",
+      "r": 8739,
+      "name": "Stitch & Seal — TS-08739",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08739"
+      ],
+      "plain": "repair: Choose one issue. Set 2 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 5 minutes. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08746",
+      "b": "PATCH",
+      "r": 8746,
+      "name": "Patchwork Step — TS-08746",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08746"
+      ],
+      "plain": "stitch: Find one tear point. Set 5 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 60 seconds. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08753",
+      "b": "PATCH",
+      "r": 8753,
+      "name": "Stitch Map — TS-08753",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08753"
+      ],
+      "plain": "repair: Choose one issue. Set 3 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 30 seconds. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08760",
+      "b": "PATCH",
+      "r": 8760,
+      "name": "Patchwork Step — TS-08760",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08760"
+      ],
+      "plain": "seal: Name what broke. Set 2 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 5 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08767",
+      "b": "PATCH",
+      "r": 8767,
+      "name": "Stitch Map — TS-08767",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08767"
+      ],
+      "plain": "seal: Name what broke. Set 3 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 30 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08774",
+      "b": "PATCH",
+      "r": 8774,
+      "name": "Seal the Leak — TS-08774",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08774"
+      ],
+      "plain": "seal: Name what broke. Set 2 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 5 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08781",
+      "b": "PATCH",
+      "r": 8781,
+      "name": "Stitch & Seal — TS-08781",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08781"
+      ],
+      "plain": "seal: Name what broke. Set 3 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 30 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08788",
+      "b": "PATCH",
+      "r": 8788,
+      "name": "Bind Support — TS-08788",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08788"
+      ],
+      "plain": "stitch: Find one tear point. Set 5 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 60 seconds. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08795",
+      "b": "PATCH",
+      "r": 8795,
+      "name": "Seal the Leak — TS-08795",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08795"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08802",
+      "b": "PATCH",
+      "r": 8802,
+      "name": "Repair Pass — TS-08802",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08802"
+      ],
+      "plain": "seal: Name what broke. Set 5 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 60 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08809",
+      "b": "PATCH",
+      "r": 8809,
+      "name": "Stitch & Seal — TS-08809",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08809"
+      ],
+      "plain": "stitch: Find one tear point. Set 30 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 2 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08816",
+      "b": "PATCH",
+      "r": 8816,
+      "name": "Bind Support — TS-08816",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08816"
+      ],
+      "plain": "stitch: Find one tear point. Set 5 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 60 seconds. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08823",
+      "b": "PATCH",
+      "r": 8823,
+      "name": "Stitch Map — TS-08823",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08823"
+      ],
+      "plain": "bind: Pick the sore spot. Set 3 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 30 seconds. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08830",
+      "b": "PATCH",
+      "r": 8830,
+      "name": "Bind Support — TS-08830",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08830"
+      ],
+      "plain": "stitch: Find one tear point. Set 30 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 2 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08837",
+      "b": "PATCH",
+      "r": 8837,
+      "name": "Stitch Map — TS-08837",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08837"
+      ],
+      "plain": "seal: Name what broke. Set 60 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 3 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08844",
+      "b": "PATCH",
+      "r": 8844,
+      "name": "Patchwork Step — TS-08844",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08844"
+      ],
+      "plain": "stitch: Find one tear point. Set 60 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 3 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08851",
+      "b": "PATCH",
+      "r": 8851,
+      "name": "Seal the Leak — TS-08851",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08851"
+      ],
+      "plain": "seal: Name what broke. Set 3 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 30 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08858",
+      "b": "PATCH",
+      "r": 8858,
+      "name": "Bind Support — TS-08858",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08858"
+      ],
+      "plain": "stitch: Find one tear point. Set 5 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 60 seconds. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08865",
+      "b": "PATCH",
+      "r": 8865,
+      "name": "Stitch Map — TS-08865",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08865"
+      ],
+      "plain": "stitch: Find one tear point. Set 60 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 3 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08872",
+      "b": "PATCH",
+      "r": 8872,
+      "name": "Patchwork Step — TS-08872",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08872"
+      ],
+      "plain": "bind: Pick the sore spot. Set 5 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 60 seconds. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08879",
+      "b": "PATCH",
+      "r": 8879,
+      "name": "Seal the Leak — TS-08879",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08879"
+      ],
+      "plain": "bind: Pick the sore spot. Set 30 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 2 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08886",
+      "b": "PATCH",
+      "r": 8886,
+      "name": "Seal the Leak — TS-08886",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08886"
+      ],
+      "plain": "bind: Pick the sore spot. Set 2 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 5 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08893",
+      "b": "PATCH",
+      "r": 8893,
+      "name": "Patchwork Step — TS-08893",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08893"
+      ],
+      "plain": "stitch: Find one tear point. Set 3 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 30 seconds. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08900",
+      "b": "PATCH",
+      "r": 8900,
+      "name": "Bind Support — TS-08900",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08900"
+      ],
+      "plain": "bind: Pick the sore spot. Set 2 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 5 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08907",
+      "b": "PATCH",
+      "r": 8907,
+      "name": "Stitch Map — TS-08907",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08907"
+      ],
+      "plain": "seal: Name what broke. Set 5 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 60 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08914",
+      "b": "PATCH",
+      "r": 8914,
+      "name": "Patchwork Step — TS-08914",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08914"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08921",
+      "b": "PATCH",
+      "r": 8921,
+      "name": "Stitch & Seal — TS-08921",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08921"
+      ],
+      "plain": "bind: Pick the sore spot. Set 2 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 5 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08928",
+      "b": "PATCH",
+      "r": 8928,
+      "name": "Stitch & Seal — TS-08928",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08928"
+      ],
+      "plain": "repair: Choose one issue. Set 2 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 5 minutes. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08935",
+      "b": "PATCH",
+      "r": 8935,
+      "name": "Bind Support — TS-08935",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08935"
+      ],
+      "plain": "bind: Pick the sore spot. Set 30 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 2 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08942",
+      "b": "PATCH",
+      "r": 8942,
+      "name": "Bind Support — TS-08942",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08942"
+      ],
+      "plain": "seal: Name what broke. Set 3 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 30 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08949",
+      "b": "PATCH",
+      "r": 8949,
+      "name": "Stitch & Seal — TS-08949",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08949"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08956",
+      "b": "PATCH",
+      "r": 8956,
+      "name": "Stitch & Seal — TS-08956",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08956"
+      ],
+      "plain": "stitch: Find one tear point. Set 30 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 2 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08963",
+      "b": "PATCH",
+      "r": 8963,
+      "name": "Repair Pass — TS-08963",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08963"
+      ],
+      "plain": "stitch: Find one tear point. Set 3 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 30 seconds. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08970",
+      "b": "PATCH",
+      "r": 8970,
+      "name": "Bind Support — TS-08970",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08970"
+      ],
+      "plain": "seal: Name what broke. Set 5 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 60 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08977",
+      "b": "PATCH",
+      "r": 8977,
+      "name": "Bind Support — TS-08977",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08977"
+      ],
+      "plain": "stitch: Find one tear point. Set 30 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 2 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08984",
+      "b": "PATCH",
+      "r": 8984,
+      "name": "Stitch Map — TS-08984",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08984"
+      ],
+      "plain": "bind: Pick the sore spot. Set 5 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 60 seconds. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08991",
+      "b": "PATCH",
+      "r": 8991,
+      "name": "Stitch Map — TS-08991",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08991"
+      ],
+      "plain": "repair: Choose one issue. Set 60 seconds. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 3 minutes. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08998",
+      "b": "PATCH",
+      "r": 8998,
+      "name": "Seal the Leak — TS-08998",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08998"
+      ],
+      "plain": "seal: Name what broke. Set 5 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 60 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09005",
+      "b": "PATCH",
+      "r": 9005,
+      "name": "Stitch Map — TS-09005",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09005"
+      ],
+      "plain": "seal: Name what broke. Set 60 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 3 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09012",
+      "b": "PATCH",
+      "r": 9012,
+      "name": "Stitch Map — TS-09012",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09012"
+      ],
+      "plain": "seal: Name what broke. Set 30 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 2 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09019",
+      "b": "PATCH",
+      "r": 9019,
+      "name": "Stitch Map — TS-09019",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09019"
+      ],
+      "plain": "stitch: Find one tear point. Set 30 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 2 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09026",
+      "b": "PATCH",
+      "r": 9026,
+      "name": "Patchwork Step — TS-09026",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09026"
+      ],
+      "plain": "stitch: Find one tear point. Set 30 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 2 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09033",
+      "b": "PATCH",
+      "r": 9033,
+      "name": "Seal the Leak — TS-09033",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09033"
+      ],
+      "plain": "bind: Pick the sore spot. Set 2 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 5 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09040",
+      "b": "PATCH",
+      "r": 9040,
+      "name": "Patchwork Step — TS-09040",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09040"
+      ],
+      "plain": "seal: Name what broke. Set 2 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 5 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09047",
+      "b": "PATCH",
+      "r": 9047,
+      "name": "Repair Pass — TS-09047",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09047"
+      ],
+      "plain": "stitch: Find one tear point. Set 3 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 30 seconds. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09054",
+      "b": "PATCH",
+      "r": 9054,
+      "name": "Stitch & Seal — TS-09054",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09054"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09061",
+      "b": "PATCH",
+      "r": 9061,
+      "name": "Stitch & Seal — TS-09061",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09061"
+      ],
+      "plain": "stitch: Find one tear point. Set 5 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 60 seconds. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09068",
+      "b": "PATCH",
+      "r": 9068,
+      "name": "Seal the Leak — TS-09068",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09068"
+      ],
+      "plain": "seal: Name what broke. Set 2 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 5 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09075",
+      "b": "PATCH",
+      "r": 9075,
+      "name": "Stitch Map — TS-09075",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09075"
+      ],
+      "plain": "bind: Pick the sore spot. Set 2 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 5 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09082",
+      "b": "PATCH",
+      "r": 9082,
+      "name": "Stitch Map — TS-09082",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09082"
+      ],
+      "plain": "bind: Pick the sore spot. Set 30 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 2 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09089",
+      "b": "PATCH",
+      "r": 9089,
+      "name": "Seal the Leak — TS-09089",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09089"
+      ],
+      "plain": "bind: Pick the sore spot. Set 30 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 2 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09096",
+      "b": "PATCH",
+      "r": 9096,
+      "name": "Seal the Leak — TS-09096",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09096"
+      ],
+      "plain": "seal: Name what broke. Set 3 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 30 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09103",
+      "b": "PATCH",
+      "r": 9103,
+      "name": "Patchwork Step — TS-09103",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09103"
+      ],
+      "plain": "seal: Name what broke. Set 5 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 60 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09110",
+      "b": "PATCH",
+      "r": 9110,
+      "name": "Bind Support — TS-09110",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09110"
+      ],
+      "plain": "seal: Name what broke. Set 3 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 30 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09117",
+      "b": "PATCH",
+      "r": 9117,
+      "name": "Seal the Leak — TS-09117",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09117"
+      ],
+      "plain": "stitch: Find one tear point. Set 2 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 5 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09124",
+      "b": "PATCH",
+      "r": 9124,
+      "name": "Bind Support — TS-09124",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09124"
+      ],
+      "plain": "seal: Name what broke. Set 30 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 2 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09131",
+      "b": "PATCH",
+      "r": 9131,
+      "name": "Patchwork Step — TS-09131",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09131"
+      ],
+      "plain": "seal: Name what broke. Set 60 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 3 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09138",
+      "b": "PATCH",
+      "r": 9138,
+      "name": "Seal the Leak — TS-09138",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09138"
+      ],
+      "plain": "stitch: Find one tear point. Set 5 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 60 seconds. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09145",
+      "b": "PATCH",
+      "r": 9145,
+      "name": "Bind Support — TS-09145",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09145"
+      ],
+      "plain": "seal: Name what broke. Set 30 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 2 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09152",
+      "b": "PATCH",
+      "r": 9152,
+      "name": "Patchwork Step — TS-09152",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09152"
+      ],
+      "plain": "seal: Name what broke. Set 3 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 30 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09159",
+      "b": "PATCH",
+      "r": 9159,
+      "name": "Stitch Map — TS-09159",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09159"
+      ],
+      "plain": "stitch: Find one tear point. Set 2 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 5 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09166",
+      "b": "PATCH",
+      "r": 9166,
+      "name": "Stitch & Seal — TS-09166",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09166"
+      ],
+      "plain": "bind: Pick the sore spot. Set 30 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 2 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09173",
+      "b": "PATCH",
+      "r": 9173,
+      "name": "Bind Support — TS-09173",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09173"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09180",
+      "b": "PATCH",
+      "r": 9180,
+      "name": "Seal the Leak — TS-09180",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09180"
+      ],
+      "plain": "bind: Pick the sore spot. Set 3 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 30 seconds. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09187",
+      "b": "PATCH",
+      "r": 9187,
+      "name": "Stitch Map — TS-09187",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09187"
+      ],
+      "plain": "bind: Pick the sore spot. Set 5 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 60 seconds. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09194",
+      "b": "PATCH",
+      "r": 9194,
+      "name": "Repair Pass — TS-09194",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09194"
+      ],
+      "plain": "stitch: Find one tear point. Set 3 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 30 seconds. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09201",
+      "b": "PATCH",
+      "r": 9201,
+      "name": "Patchwork Step — TS-09201",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09201"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09208",
+      "b": "PATCH",
+      "r": 9208,
+      "name": "Stitch Map — TS-09208",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09208"
+      ],
+      "plain": "seal: Name what broke. Set 2 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 5 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09215",
+      "b": "PATCH",
+      "r": 9215,
+      "name": "Repair Pass — TS-09215",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09215"
+      ],
+      "plain": "seal: Name what broke. Set 2 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 5 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09222",
+      "b": "PATCH",
+      "r": 9222,
+      "name": "Stitch & Seal — TS-09222",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09222"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09229",
+      "b": "PATCH",
+      "r": 9229,
+      "name": "Patchwork Step — TS-09229",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09229"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09236",
+      "b": "PATCH",
+      "r": 9236,
+      "name": "Stitch & Seal — TS-09236",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09236"
+      ],
+      "plain": "repair: Choose one issue. Set 5 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 60 seconds. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09243",
+      "b": "PATCH",
+      "r": 9243,
+      "name": "Stitch Map — TS-09243",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09243"
+      ],
+      "plain": "seal: Name what broke. Set 3 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 30 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09250",
+      "b": "PATCH",
+      "r": 9250,
+      "name": "Patchwork Step — TS-09250",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09250"
+      ],
+      "plain": "stitch: Find one tear point. Set 60 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 3 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09257",
+      "b": "PATCH",
+      "r": 9257,
+      "name": "Repair Pass — TS-09257",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09257"
+      ],
+      "plain": "stitch: Find one tear point. Set 60 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 3 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09264",
+      "b": "PATCH",
+      "r": 9264,
+      "name": "Seal the Leak — TS-09264",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09264"
+      ],
+      "plain": "stitch: Find one tear point. Set 5 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 60 seconds. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09271",
+      "b": "PATCH",
+      "r": 9271,
+      "name": "Stitch Map — TS-09271",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09271"
+      ],
+      "plain": "seal: Name what broke. Set 5 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 60 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09278",
+      "b": "PATCH",
+      "r": 9278,
+      "name": "Stitch & Seal — TS-09278",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09278"
+      ],
+      "plain": "stitch: Find one tear point. Set 5 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 60 seconds. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09285",
+      "b": "PATCH",
+      "r": 9285,
+      "name": "Stitch Map — TS-09285",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09285"
+      ],
+      "plain": "repair: Choose one issue. Set 5 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 60 seconds. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09292",
+      "b": "PATCH",
+      "r": 9292,
+      "name": "Bind Support — TS-09292",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09292"
+      ],
+      "plain": "bind: Pick the sore spot. Set 2 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 5 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09299",
+      "b": "PATCH",
+      "r": 9299,
+      "name": "Stitch & Seal — TS-09299",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09299"
+      ],
+      "plain": "repair: Choose one issue. Set 30 seconds. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 2 minutes. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09306",
+      "b": "PATCH",
+      "r": 9306,
+      "name": "Repair Pass — TS-09306",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09306"
+      ],
+      "plain": "repair: Choose one issue. Set 5 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 60 seconds. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09313",
+      "b": "PATCH",
+      "r": 9313,
+      "name": "Stitch Map — TS-09313",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09313"
+      ],
+      "plain": "bind: Pick the sore spot. Set 5 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 60 seconds. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09320",
+      "b": "PATCH",
+      "r": 9320,
+      "name": "Repair Pass — TS-09320",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09320"
+      ],
+      "plain": "bind: Pick the sore spot. Set 30 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 2 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09327",
+      "b": "PATCH",
+      "r": 9327,
+      "name": "Stitch Map — TS-09327",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09327"
+      ],
+      "plain": "stitch: Find one tear point. Set 30 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 2 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09334",
+      "b": "PATCH",
+      "r": 9334,
+      "name": "Bind Support — TS-09334",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09334"
+      ],
+      "plain": "repair: Choose one issue. Set 2 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 5 minutes. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09341",
+      "b": "PATCH",
+      "r": 9341,
+      "name": "Stitch Map — TS-09341",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09341"
+      ],
+      "plain": "repair: Choose one issue. Set 60 seconds. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 3 minutes. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09348",
+      "b": "PATCH",
+      "r": 9348,
+      "name": "Bind Support — TS-09348",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09348"
+      ],
+      "plain": "bind: Pick the sore spot. Set 2 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 5 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09355",
+      "b": "PATCH",
+      "r": 9355,
+      "name": "Patchwork Step — TS-09355",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09355"
+      ],
+      "plain": "bind: Pick the sore spot. Set 30 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 2 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09362",
+      "b": "PATCH",
+      "r": 9362,
+      "name": "Patchwork Step — TS-09362",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09362"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09369",
+      "b": "PATCH",
+      "r": 9369,
+      "name": "Stitch Map — TS-09369",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09369"
+      ],
+      "plain": "seal: Name what broke. Set 30 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 2 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09376",
+      "b": "PATCH",
+      "r": 9376,
+      "name": "Seal the Leak — TS-09376",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09376"
+      ],
+      "plain": "seal: Name what broke. Set 5 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 60 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09383",
+      "b": "PATCH",
+      "r": 9383,
+      "name": "Seal the Leak — TS-09383",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09383"
+      ],
+      "plain": "seal: Name what broke. Set 5 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 60 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09390",
+      "b": "PATCH",
+      "r": 9390,
+      "name": "Seal the Leak — TS-09390",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09390"
+      ],
+      "plain": "bind: Pick the sore spot. Set 5 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 60 seconds. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09397",
+      "b": "PATCH",
+      "r": 9397,
+      "name": "Bind Support — TS-09397",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09397"
+      ],
+      "plain": "seal: Name what broke. Set 3 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 30 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09404",
+      "b": "PATCH",
+      "r": 9404,
+      "name": "Patchwork Step — TS-09404",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09404"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09411",
+      "b": "PATCH",
+      "r": 9411,
+      "name": "Patchwork Step — TS-09411",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09411"
+      ],
+      "plain": "seal: Name what broke. Set 5 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 60 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09418",
+      "b": "PATCH",
+      "r": 9418,
+      "name": "Bind Support — TS-09418",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09418"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09425",
+      "b": "PATCH",
+      "r": 9425,
+      "name": "Repair Pass — TS-09425",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09425"
+      ],
+      "plain": "seal: Name what broke. Set 5 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 60 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09432",
+      "b": "PATCH",
+      "r": 9432,
+      "name": "Stitch & Seal — TS-09432",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09432"
+      ],
+      "plain": "repair: Choose one issue. Set 5 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 60 seconds. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09439",
+      "b": "PATCH",
+      "r": 9439,
+      "name": "Patchwork Step — TS-09439",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09439"
+      ],
+      "plain": "stitch: Find one tear point. Set 5 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 60 seconds. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09446",
+      "b": "PATCH",
+      "r": 9446,
+      "name": "Repair Pass — TS-09446",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09446"
+      ],
+      "plain": "repair: Choose one issue. Set 5 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 60 seconds. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09453",
+      "b": "PATCH",
+      "r": 9453,
+      "name": "Bind Support — TS-09453",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09453"
+      ],
+      "plain": "bind: Pick the sore spot. Set 30 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 2 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09460",
+      "b": "PATCH",
+      "r": 9460,
+      "name": "Repair Pass — TS-09460",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09460"
+      ],
+      "plain": "seal: Name what broke. Set 3 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 30 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09467",
+      "b": "PATCH",
+      "r": 9467,
+      "name": "Seal the Leak — TS-09467",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09467"
+      ],
+      "plain": "repair: Choose one issue. Set 30 seconds. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 2 minutes. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09474",
+      "b": "PATCH",
+      "r": 9474,
+      "name": "Patchwork Step — TS-09474",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09474"
+      ],
+      "plain": "repair: Choose one issue. Set 30 seconds. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 2 minutes. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09481",
+      "b": "PATCH",
+      "r": 9481,
+      "name": "Patchwork Step — TS-09481",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09481"
+      ],
+      "plain": "stitch: Find one tear point. Set 30 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 2 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09488",
+      "b": "PATCH",
+      "r": 9488,
+      "name": "Stitch Map — TS-09488",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09488"
+      ],
+      "plain": "repair: Choose one issue. Set 3 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 30 seconds. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09495",
+      "b": "PATCH",
+      "r": 9495,
+      "name": "Seal the Leak — TS-09495",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09495"
+      ],
+      "plain": "seal: Name what broke. Set 5 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 60 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09502",
+      "b": "PATCH",
+      "r": 9502,
+      "name": "Repair Pass — TS-09502",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09502"
+      ],
+      "plain": "seal: Name what broke. Set 2 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 5 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09509",
+      "b": "PATCH",
+      "r": 9509,
+      "name": "Patchwork Step — TS-09509",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09509"
+      ],
+      "plain": "bind: Pick the sore spot. Set 30 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 2 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09516",
+      "b": "PATCH",
+      "r": 9516,
+      "name": "Patchwork Step — TS-09516",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09516"
+      ],
+      "plain": "seal: Name what broke. Set 60 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 3 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09523",
+      "b": "PATCH",
+      "r": 9523,
+      "name": "Stitch Map — TS-09523",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09523"
+      ],
+      "plain": "repair: Choose one issue. Set 3 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 30 seconds. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09530",
+      "b": "PATCH",
+      "r": 9530,
+      "name": "Bind Support — TS-09530",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09530"
+      ],
+      "plain": "seal: Name what broke. Set 60 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 3 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09537",
+      "b": "PATCH",
+      "r": 9537,
+      "name": "Stitch Map — TS-09537",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09537"
+      ],
+      "plain": "repair: Choose one issue. Set 30 seconds. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 2 minutes. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09544",
+      "b": "PATCH",
+      "r": 9544,
+      "name": "Bind Support — TS-09544",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09544"
+      ],
+      "plain": "bind: Pick the sore spot. Set 5 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 60 seconds. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09551",
+      "b": "PATCH",
+      "r": 9551,
+      "name": "Stitch Map — TS-09551",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09551"
+      ],
+      "plain": "seal: Name what broke. Set 60 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 3 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09558",
+      "b": "PATCH",
+      "r": 9558,
+      "name": "Patchwork Step — TS-09558",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09558"
+      ],
+      "plain": "stitch: Find one tear point. Set 60 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 3 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09565",
+      "b": "PATCH",
+      "r": 9565,
+      "name": "Bind Support — TS-09565",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09565"
+      ],
+      "plain": "stitch: Find one tear point. Set 60 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 3 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09572",
+      "b": "PATCH",
+      "r": 9572,
+      "name": "Bind Support — TS-09572",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09572"
+      ],
+      "plain": "stitch: Find one tear point. Set 30 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 2 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09579",
+      "b": "PATCH",
+      "r": 9579,
+      "name": "Stitch & Seal — TS-09579",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09579"
+      ],
+      "plain": "repair: Choose one issue. Set 60 seconds. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 3 minutes. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09586",
+      "b": "PATCH",
+      "r": 9586,
+      "name": "Seal the Leak — TS-09586",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09586"
+      ],
+      "plain": "seal: Name what broke. Set 60 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 3 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09593",
+      "b": "PATCH",
+      "r": 9593,
+      "name": "Bind Support — TS-09593",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09593"
+      ],
+      "plain": "stitch: Find one tear point. Set 3 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 30 seconds. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09600",
+      "b": "PATCH",
+      "r": 9600,
+      "name": "Stitch & Seal — TS-09600",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09600"
+      ],
+      "plain": "seal: Name what broke. Set 5 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 60 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09607",
+      "b": "PATCH",
+      "r": 9607,
+      "name": "Repair Pass — TS-09607",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09607"
+      ],
+      "plain": "repair: Choose one issue. Set 60 seconds. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 3 minutes. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09614",
+      "b": "PATCH",
+      "r": 9614,
+      "name": "Patchwork Step — TS-09614",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09614"
+      ],
+      "plain": "seal: Name what broke. Set 2 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 5 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09621",
+      "b": "PATCH",
+      "r": 9621,
+      "name": "Repair Pass — TS-09621",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09621"
+      ],
+      "plain": "repair: Choose one issue. Set 5 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 60 seconds. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09628",
+      "b": "PATCH",
+      "r": 9628,
+      "name": "Stitch Map — TS-09628",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09628"
+      ],
+      "plain": "repair: Choose one issue. Set 60 seconds. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 3 minutes. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09635",
+      "b": "PATCH",
+      "r": 9635,
+      "name": "Seal the Leak — TS-09635",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09635"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09642",
+      "b": "PATCH",
+      "r": 9642,
+      "name": "Stitch & Seal — TS-09642",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09642"
+      ],
+      "plain": "repair: Choose one issue. Set 60 seconds. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 3 minutes. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09649",
+      "b": "PATCH",
+      "r": 9649,
+      "name": "Stitch & Seal — TS-09649",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09649"
+      ],
+      "plain": "seal: Name what broke. Set 2 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 5 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09656",
+      "b": "PATCH",
+      "r": 9656,
+      "name": "Seal the Leak — TS-09656",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09656"
+      ],
+      "plain": "stitch: Find one tear point. Set 30 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 2 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09663",
+      "b": "PATCH",
+      "r": 9663,
+      "name": "Stitch Map — TS-09663",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09663"
+      ],
+      "plain": "bind: Pick the sore spot. Set 5 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 60 seconds. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09670",
+      "b": "PATCH",
+      "r": 9670,
+      "name": "Seal the Leak — TS-09670",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09670"
+      ],
+      "plain": "repair: Choose one issue. Set 5 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 60 seconds. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09677",
+      "b": "PATCH",
+      "r": 9677,
+      "name": "Patchwork Step — TS-09677",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09677"
+      ],
+      "plain": "stitch: Find one tear point. Set 30 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 2 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09684",
+      "b": "PATCH",
+      "r": 9684,
+      "name": "Stitch & Seal — TS-09684",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09684"
+      ],
+      "plain": "bind: Pick the sore spot. Set 2 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 5 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09691",
+      "b": "PATCH",
+      "r": 9691,
+      "name": "Repair Pass — TS-09691",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09691"
+      ],
+      "plain": "seal: Name what broke. Set 3 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 30 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09698",
+      "b": "PATCH",
+      "r": 9698,
+      "name": "Patchwork Step — TS-09698",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09698"
+      ],
+      "plain": "stitch: Find one tear point. Set 30 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 2 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09705",
+      "b": "PATCH",
+      "r": 9705,
+      "name": "Stitch Map — TS-09705",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09705"
+      ],
+      "plain": "stitch: Find one tear point. Set 2 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 5 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09712",
+      "b": "PATCH",
+      "r": 9712,
+      "name": "Bind Support — TS-09712",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09712"
+      ],
+      "plain": "seal: Name what broke. Set 30 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 2 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09719",
+      "b": "PATCH",
+      "r": 9719,
+      "name": "Stitch & Seal — TS-09719",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09719"
+      ],
+      "plain": "stitch: Find one tear point. Set 3 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 30 seconds. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09726",
+      "b": "PATCH",
+      "r": 9726,
+      "name": "Repair Pass — TS-09726",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09726"
+      ],
+      "plain": "stitch: Find one tear point. Set 5 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 60 seconds. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09733",
+      "b": "PATCH",
+      "r": 9733,
+      "name": "Seal the Leak — TS-09733",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09733"
+      ],
+      "plain": "stitch: Find one tear point. Set 60 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 3 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09740",
+      "b": "PATCH",
+      "r": 9740,
+      "name": "Bind Support — TS-09740",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09740"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09747",
+      "b": "PATCH",
+      "r": 9747,
+      "name": "Patchwork Step — TS-09747",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09747"
+      ],
+      "plain": "seal: Name what broke. Set 30 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 2 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09754",
+      "b": "PATCH",
+      "r": 9754,
+      "name": "Stitch & Seal — TS-09754",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09754"
+      ],
+      "plain": "repair: Choose one issue. Set 3 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 30 seconds. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09761",
+      "b": "PATCH",
+      "r": 9761,
+      "name": "Repair Pass — TS-09761",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09761"
+      ],
+      "plain": "bind: Pick the sore spot. Set 30 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 2 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09768",
+      "b": "PATCH",
+      "r": 9768,
+      "name": "Repair Pass — TS-09768",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09768"
+      ],
+      "plain": "stitch: Find one tear point. Set 5 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 60 seconds. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09775",
+      "b": "PATCH",
+      "r": 9775,
+      "name": "Seal the Leak — TS-09775",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09775"
+      ],
+      "plain": "seal: Name what broke. Set 30 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 2 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09782",
+      "b": "PATCH",
+      "r": 9782,
+      "name": "Bind Support — TS-09782",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09782"
+      ],
+      "plain": "seal: Name what broke. Set 60 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 3 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09789",
+      "b": "PATCH",
+      "r": 9789,
+      "name": "Stitch & Seal — TS-09789",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09789"
+      ],
+      "plain": "stitch: Find one tear point. Set 60 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 3 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09796",
+      "b": "PATCH",
+      "r": 9796,
+      "name": "Stitch & Seal — TS-09796",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09796"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09803",
+      "b": "PATCH",
+      "r": 9803,
+      "name": "Repair Pass — TS-09803",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09803"
+      ],
+      "plain": "seal: Name what broke. Set 3 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 30 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09810",
+      "b": "PATCH",
+      "r": 9810,
+      "name": "Repair Pass — TS-09810",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09810"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09817",
+      "b": "PATCH",
+      "r": 9817,
+      "name": "Bind Support — TS-09817",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09817"
+      ],
+      "plain": "seal: Name what broke. Set 5 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 60 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09824",
+      "b": "PATCH",
+      "r": 9824,
+      "name": "Patchwork Step — TS-09824",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09824"
+      ],
+      "plain": "seal: Name what broke. Set 60 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 3 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09831",
+      "b": "PATCH",
+      "r": 9831,
+      "name": "Repair Pass — TS-09831",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09831"
+      ],
+      "plain": "stitch: Find one tear point. Set 5 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 60 seconds. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09838",
+      "b": "PATCH",
+      "r": 9838,
+      "name": "Patchwork Step — TS-09838",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09838"
+      ],
+      "plain": "stitch: Find one tear point. Set 30 seconds. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 2 minutes. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09845",
+      "b": "PATCH",
+      "r": 9845,
+      "name": "Seal the Leak — TS-09845",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09845"
+      ],
+      "plain": "bind: Pick the sore spot. Set 5 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 60 seconds. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09852",
+      "b": "PATCH",
+      "r": 9852,
+      "name": "Bind Support — TS-09852",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09852"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09859",
+      "b": "PATCH",
+      "r": 9859,
+      "name": "Stitch Map — TS-09859",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09859"
+      ],
+      "plain": "bind: Pick the sore spot. Set 2 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 5 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09866",
+      "b": "PATCH",
+      "r": 9866,
+      "name": "Patchwork Step — TS-09866",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09866"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09873",
+      "b": "PATCH",
+      "r": 9873,
+      "name": "Seal the Leak — TS-09873",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09873"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09880",
+      "b": "PATCH",
+      "r": 9880,
+      "name": "Seal the Leak — TS-09880",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09880"
+      ],
+      "plain": "seal: Name what broke. Set 30 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 2 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09887",
+      "b": "PATCH",
+      "r": 9887,
+      "name": "Patchwork Step — TS-09887",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09887"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09894",
+      "b": "PATCH",
+      "r": 9894,
+      "name": "Bind Support — TS-09894",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09894"
+      ],
+      "plain": "seal: Name what broke. Set 30 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 2 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09901",
+      "b": "PATCH",
+      "r": 9901,
+      "name": "Stitch Map — TS-09901",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09901"
+      ],
+      "plain": "bind: Pick the sore spot. Set 3 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 30 seconds. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09908",
+      "b": "PATCH",
+      "r": 9908,
+      "name": "Bind Support — TS-09908",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09908"
+      ],
+      "plain": "repair: Choose one issue. Set 5 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 60 seconds. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09915",
+      "b": "PATCH",
+      "r": 9915,
+      "name": "Patchwork Step — TS-09915",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09915"
+      ],
+      "plain": "seal: Name what broke. Set 60 seconds. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 3 minutes. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09922",
+      "b": "PATCH",
+      "r": 9922,
+      "name": "Seal the Leak — TS-09922",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09922"
+      ],
+      "plain": "stitch: Find one tear point. Set 5 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 60 seconds. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09929",
+      "b": "PATCH",
+      "r": 9929,
+      "name": "Stitch Map — TS-09929",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09929"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09936",
+      "b": "PATCH",
+      "r": 9936,
+      "name": "Stitch & Seal — TS-09936",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09936"
+      ],
+      "plain": "repair: Choose one issue. Set 5 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 60 seconds. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09943",
+      "b": "PATCH",
+      "r": 9943,
+      "name": "Repair Pass — TS-09943",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09943"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09950",
+      "b": "PATCH",
+      "r": 9950,
+      "name": "Stitch & Seal — TS-09950",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09950"
+      ],
+      "plain": "bind: Pick the sore spot. Set 2 minutes. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 5 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Small stitches stop big leaks.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09957",
+      "b": "PATCH",
+      "r": 9957,
+      "name": "Stitch & Seal — TS-09957",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09957"
+      ],
+      "plain": "repair: Choose one issue. Set 2 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 5 minutes. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09964",
+      "b": "PATCH",
+      "r": 9964,
+      "name": "Repair Pass — TS-09964",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09964"
+      ],
+      "plain": "seal: Name what broke. Set 3 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 30 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09971",
+      "b": "PATCH",
+      "r": 9971,
+      "name": "Stitch & Seal — TS-09971",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09971"
+      ],
+      "plain": "stitch: Find one tear point. Set 5 minutes. Start now.\nseal: Do a 2-minute repair. Make it easy. Remove one blocker.\nbind: Prevent re-open. Stay for 60 seconds. Stop at timer.\nCheck body. Add a reminder. Return once.\nDo one more. Repair the next weak link. Keep it small.\nClose gently. Note what worked. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09978",
+      "b": "PATCH",
+      "r": 9978,
+      "name": "Repair Pass — TS-09978",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09978"
+      ],
+      "plain": "repair: Choose one issue. Set 3 minutes. Start now.\nstitch: Stitch a tiny fix. Make it easy. Remove one blocker.\nseal: Set one boundary. Stay for 30 seconds. Stop at timer.\nCheck body. Use a checklist. Return once.\nDo one more. Confirm it holds. Keep it small.\nClose gently. Record the patch. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09985",
+      "b": "PATCH",
+      "r": 9985,
+      "name": "Seal the Leak — TS-09985",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09985"
+      ],
+      "plain": "bind: Pick the sore spot. Set 60 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 3 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09992",
+      "b": "PATCH",
+      "r": 9992,
+      "name": "Stitch Map — TS-09992",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09992"
+      ],
+      "plain": "seal: Name what broke. Set 5 minutes. Start now.\nbind: Make one quick edit. Make it easy. Remove one blocker.\nrepair: Add a guardrail. Stay for 60 seconds. Stop at timer.\nCheck body. Bind support in place. Return once.\nDo one more. Tidy one more area. Keep it small.\nClose gently. Keep the template. Mark next time.\nWhy: Binding support keeps the repair stable.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09999",
+      "b": "PATCH",
+      "r": 9999,
+      "name": "Stitch Map — TS-09999",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09999"
+      ],
+      "plain": "bind: Pick the sore spot. Set 30 seconds. Start now.\nrepair: Replace one missing piece. Make it easy. Remove one blocker.\nstitch: Seal the edge. Stay for 2 minutes. Stop at timer.\nCheck body. Ask for help once. Return once.\nDo one more. Test the fix. Keep it small.\nClose gently. Close the repair. Mark next time.\nWhy: Sealing prevents relapse into the same break.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    }
+  ]
+}

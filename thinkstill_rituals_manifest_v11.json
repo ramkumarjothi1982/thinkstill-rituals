@@ -1,0 +1,115 @@
+{
+  "schema": "thinkstill_manifest_under25",
+  "version": "v11",
+  "generated_at": "2026-01-21T09:53:05.041339Z",
+  "row_count": 10000,
+  "base_url": "",
+  "bubbles": [
+    {
+      "bubble": "GLITCH",
+      "parts": [
+        {
+          "filename": "glitch_v11_part_01.json",
+          "rows": 1200,
+          "bytes": 943014
+        },
+        {
+          "filename": "glitch_v11_part_02.json",
+          "rows": 229,
+          "bytes": 180181
+        }
+      ]
+    },
+    {
+      "bubble": "SYNC",
+      "parts": [
+        {
+          "filename": "sync_v11_part_01.json",
+          "rows": 1200,
+          "bytes": 951176
+        },
+        {
+          "filename": "sync_v11_part_02.json",
+          "rows": 229,
+          "bytes": 181670
+        }
+      ]
+    },
+    {
+      "bubble": "PATCH",
+      "parts": [
+        {
+          "filename": "patch_v11_part_01.json",
+          "rows": 1200,
+          "bytes": 917249
+        },
+        {
+          "filename": "patch_v11_part_02.json",
+          "rows": 229,
+          "bytes": 175330
+        }
+      ]
+    },
+    {
+      "bubble": "DROP",
+      "parts": [
+        {
+          "filename": "drop_v11_part_01.json",
+          "rows": 1200,
+          "bytes": 934340
+        },
+        {
+          "filename": "drop_v11_part_02.json",
+          "rows": 229,
+          "bytes": 178455
+        }
+      ]
+    },
+    {
+      "bubble": "STILL",
+      "parts": [
+        {
+          "filename": "still_v11_part_01.json",
+          "rows": 1200,
+          "bytes": 964892
+        },
+        {
+          "filename": "still_v11_part_02.json",
+          "rows": 228,
+          "bytes": 183514
+        }
+      ]
+    },
+    {
+      "bubble": "RUSH",
+      "parts": [
+        {
+          "filename": "rush_v11_part_01.json",
+          "rows": 1200,
+          "bytes": 958332
+        },
+        {
+          "filename": "rush_v11_part_02.json",
+          "rows": 228,
+          "bytes": 182182
+        }
+      ]
+    },
+    {
+      "bubble": "LOOPIE",
+      "parts": [
+        {
+          "filename": "loopie_v11_part_01.json",
+          "rows": 1200,
+          "bytes": 941984
+        },
+        {
+          "filename": "loopie_v11_part_02.json",
+          "rows": 228,
+          "bytes": 179200
+        }
+      ]
+    }
+  ],
+  "notes": "Rewritten to simple, user-friendly rituals; diagnosis terms removed; filenames in repo root."
+}

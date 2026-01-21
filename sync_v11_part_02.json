@@ -1,0 +1,3446 @@
+{
+  "meta": {
+    "bubble": "SYNC",
+    "version": "v11",
+    "generated_at": "2026-01-21T09:01:51.022678Z",
+    "rewritten_at": "2026-01-21T09:53:05.041339Z",
+    "rewrite_style": "simple_actionable_no_diagnosis"
+  },
+  "rituals": [
+    {
+      "id": "TS-08402",
+      "b": "SYNC",
+      "r": 8402,
+      "name": "Alignment Check — TS-08402",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08402"
+      ],
+      "plain": "resonance: Check focus level. Set 60 seconds. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 3 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08409",
+      "b": "SYNC",
+      "r": 8409,
+      "name": "Signal Coherence — TS-08409",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08409"
+      ],
+      "plain": "frequency: Scan your frequency. Set 30 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 2 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08416",
+      "b": "SYNC",
+      "r": 8416,
+      "name": "Phase Ladder — TS-08416",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08416"
+      ],
+      "plain": "phase: Name your current state. Set 5 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 60 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08423",
+      "b": "SYNC",
+      "r": 8423,
+      "name": "Resonance Anchor — TS-08423",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08423"
+      ],
+      "plain": "resonance: Check focus level. Set 2 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 5 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08430",
+      "b": "SYNC",
+      "r": 8430,
+      "name": "Phase Ladder — TS-08430",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08430"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 2 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 5 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08437",
+      "b": "SYNC",
+      "r": 8437,
+      "name": "Resonance Anchor — TS-08437",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08437"
+      ],
+      "plain": "resonance: Check focus level. Set 30 seconds. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 2 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08444",
+      "b": "SYNC",
+      "r": 8444,
+      "name": "Resonance Anchor — TS-08444",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08444"
+      ],
+      "plain": "frequency: Scan your frequency. Set 30 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 2 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08451",
+      "b": "SYNC",
+      "r": 8451,
+      "name": "Phase Step — TS-08451",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08451"
+      ],
+      "plain": "frequency: Scan your frequency. Set 3 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 30 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08458",
+      "b": "SYNC",
+      "r": 8458,
+      "name": "Phase Ladder — TS-08458",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08458"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 60 seconds. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 3 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08465",
+      "b": "SYNC",
+      "r": 8465,
+      "name": "Phase Step — TS-08465",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08465"
+      ],
+      "plain": "phase: Name your current state. Set 30 seconds. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 2 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08472",
+      "b": "SYNC",
+      "r": 8472,
+      "name": "Alignment Check — TS-08472",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08472"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 30 seconds. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 2 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08479",
+      "b": "SYNC",
+      "r": 8479,
+      "name": "Phase Step — TS-08479",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08479"
+      ],
+      "plain": "phase: Name your current state. Set 5 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 60 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08486",
+      "b": "SYNC",
+      "r": 8486,
+      "name": "Signal Coherence — TS-08486",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08486"
+      ],
+      "plain": "resonance: Check focus level. Set 5 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 60 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08493",
+      "b": "SYNC",
+      "r": 8493,
+      "name": "Frequency Tune — TS-08493",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08493"
+      ],
+      "plain": "frequency: Scan your frequency. Set 2 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 5 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08500",
+      "b": "SYNC",
+      "r": 8500,
+      "name": "Alignment Check — TS-08500",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08500"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 2 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 5 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08507",
+      "b": "SYNC",
+      "r": 8507,
+      "name": "Resonance Anchor — TS-08507",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08507"
+      ],
+      "plain": "phase: Name your current state. Set 60 seconds. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 3 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08514",
+      "b": "SYNC",
+      "r": 8514,
+      "name": "Phase Step — TS-08514",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08514"
+      ],
+      "plain": "phase: Name your current state. Set 2 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 5 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08521",
+      "b": "SYNC",
+      "r": 8521,
+      "name": "Frequency Tune — TS-08521",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08521"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 30 seconds. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 2 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08528",
+      "b": "SYNC",
+      "r": 8528,
+      "name": "Alignment Check — TS-08528",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08528"
+      ],
+      "plain": "frequency: Scan your frequency. Set 5 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 60 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08535",
+      "b": "SYNC",
+      "r": 8535,
+      "name": "Phase Step — TS-08535",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08535"
+      ],
+      "plain": "frequency: Scan your frequency. Set 60 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 3 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08542",
+      "b": "SYNC",
+      "r": 8542,
+      "name": "Phase Ladder — TS-08542",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08542"
+      ],
+      "plain": "resonance: Check focus level. Set 2 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 5 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08549",
+      "b": "SYNC",
+      "r": 8549,
+      "name": "Phase Step — TS-08549",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08549"
+      ],
+      "plain": "frequency: Scan your frequency. Set 3 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 30 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08556",
+      "b": "SYNC",
+      "r": 8556,
+      "name": "Alignment Check — TS-08556",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08556"
+      ],
+      "plain": "frequency: Scan your frequency. Set 30 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 2 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08563",
+      "b": "SYNC",
+      "r": 8563,
+      "name": "Frequency Tune — TS-08563",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08563"
+      ],
+      "plain": "phase: Name your current state. Set 60 seconds. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 3 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08570",
+      "b": "SYNC",
+      "r": 8570,
+      "name": "Alignment Check — TS-08570",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08570"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 5 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 60 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08577",
+      "b": "SYNC",
+      "r": 8577,
+      "name": "Phase Ladder — TS-08577",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08577"
+      ],
+      "plain": "resonance: Check focus level. Set 30 seconds. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 2 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08584",
+      "b": "SYNC",
+      "r": 8584,
+      "name": "Alignment Check — TS-08584",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08584"
+      ],
+      "plain": "frequency: Scan your frequency. Set 60 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 3 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08591",
+      "b": "SYNC",
+      "r": 8591,
+      "name": "Resonance Anchor — TS-08591",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08591"
+      ],
+      "plain": "phase: Name your current state. Set 30 seconds. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 2 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08598",
+      "b": "SYNC",
+      "r": 8598,
+      "name": "Phase Step — TS-08598",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08598"
+      ],
+      "plain": "phase: Name your current state. Set 5 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 60 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08605",
+      "b": "SYNC",
+      "r": 8605,
+      "name": "Phase Step — TS-08605",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08605"
+      ],
+      "plain": "resonance: Check focus level. Set 30 seconds. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 2 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08612",
+      "b": "SYNC",
+      "r": 8612,
+      "name": "Resonance Anchor — TS-08612",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08612"
+      ],
+      "plain": "frequency: Scan your frequency. Set 2 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 5 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08619",
+      "b": "SYNC",
+      "r": 8619,
+      "name": "Phase Ladder — TS-08619",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08619"
+      ],
+      "plain": "frequency: Scan your frequency. Set 5 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 60 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08626",
+      "b": "SYNC",
+      "r": 8626,
+      "name": "Resonance Anchor — TS-08626",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08626"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 30 seconds. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 2 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08633",
+      "b": "SYNC",
+      "r": 8633,
+      "name": "Frequency Tune — TS-08633",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08633"
+      ],
+      "plain": "phase: Name your current state. Set 60 seconds. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 3 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08640",
+      "b": "SYNC",
+      "r": 8640,
+      "name": "Resonance Anchor — TS-08640",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08640"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 3 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 30 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08647",
+      "b": "SYNC",
+      "r": 8647,
+      "name": "Resonance Anchor — TS-08647",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08647"
+      ],
+      "plain": "frequency: Scan your frequency. Set 30 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 2 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08654",
+      "b": "SYNC",
+      "r": 8654,
+      "name": "Phase Step — TS-08654",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08654"
+      ],
+      "plain": "resonance: Check focus level. Set 2 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 5 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08661",
+      "b": "SYNC",
+      "r": 8661,
+      "name": "Alignment Check — TS-08661",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08661"
+      ],
+      "plain": "phase: Name your current state. Set 3 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 30 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08668",
+      "b": "SYNC",
+      "r": 8668,
+      "name": "Resonance Anchor — TS-08668",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08668"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 2 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 5 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08675",
+      "b": "SYNC",
+      "r": 8675,
+      "name": "Alignment Check — TS-08675",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08675"
+      ],
+      "plain": "frequency: Scan your frequency. Set 60 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 3 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08682",
+      "b": "SYNC",
+      "r": 8682,
+      "name": "Frequency Tune — TS-08682",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08682"
+      ],
+      "plain": "resonance: Check focus level. Set 5 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 60 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08689",
+      "b": "SYNC",
+      "r": 8689,
+      "name": "Signal Coherence — TS-08689",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08689"
+      ],
+      "plain": "phase: Name your current state. Set 5 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 60 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08696",
+      "b": "SYNC",
+      "r": 8696,
+      "name": "Alignment Check — TS-08696",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08696"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 2 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 5 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08703",
+      "b": "SYNC",
+      "r": 8703,
+      "name": "Resonance Anchor — TS-08703",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08703"
+      ],
+      "plain": "frequency: Scan your frequency. Set 60 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 3 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08710",
+      "b": "SYNC",
+      "r": 8710,
+      "name": "Alignment Check — TS-08710",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08710"
+      ],
+      "plain": "phase: Name your current state. Set 5 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 60 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08717",
+      "b": "SYNC",
+      "r": 8717,
+      "name": "Signal Coherence — TS-08717",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08717"
+      ],
+      "plain": "phase: Name your current state. Set 2 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 5 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08724",
+      "b": "SYNC",
+      "r": 8724,
+      "name": "Resonance Anchor — TS-08724",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08724"
+      ],
+      "plain": "resonance: Check focus level. Set 5 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 60 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08731",
+      "b": "SYNC",
+      "r": 8731,
+      "name": "Signal Coherence — TS-08731",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08731"
+      ],
+      "plain": "resonance: Check focus level. Set 60 seconds. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 3 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08738",
+      "b": "SYNC",
+      "r": 8738,
+      "name": "Frequency Tune — TS-08738",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08738"
+      ],
+      "plain": "resonance: Check focus level. Set 30 seconds. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 2 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08745",
+      "b": "SYNC",
+      "r": 8745,
+      "name": "Frequency Tune — TS-08745",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08745"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 30 seconds. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 2 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08752",
+      "b": "SYNC",
+      "r": 8752,
+      "name": "Resonance Anchor — TS-08752",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08752"
+      ],
+      "plain": "frequency: Scan your frequency. Set 60 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 3 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08759",
+      "b": "SYNC",
+      "r": 8759,
+      "name": "Frequency Tune — TS-08759",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08759"
+      ],
+      "plain": "frequency: Scan your frequency. Set 2 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 5 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08766",
+      "b": "SYNC",
+      "r": 8766,
+      "name": "Phase Step — TS-08766",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08766"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 60 seconds. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 3 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08773",
+      "b": "SYNC",
+      "r": 8773,
+      "name": "Resonance Anchor — TS-08773",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08773"
+      ],
+      "plain": "resonance: Check focus level. Set 30 seconds. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 2 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08780",
+      "b": "SYNC",
+      "r": 8780,
+      "name": "Alignment Check — TS-08780",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08780"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 5 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 60 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08787",
+      "b": "SYNC",
+      "r": 8787,
+      "name": "Signal Coherence — TS-08787",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08787"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 2 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 5 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08794",
+      "b": "SYNC",
+      "r": 8794,
+      "name": "Signal Coherence — TS-08794",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08794"
+      ],
+      "plain": "resonance: Check focus level. Set 30 seconds. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 2 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08801",
+      "b": "SYNC",
+      "r": 8801,
+      "name": "Frequency Tune — TS-08801",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08801"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 3 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 30 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08808",
+      "b": "SYNC",
+      "r": 8808,
+      "name": "Alignment Check — TS-08808",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08808"
+      ],
+      "plain": "resonance: Check focus level. Set 5 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 60 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08815",
+      "b": "SYNC",
+      "r": 8815,
+      "name": "Phase Ladder — TS-08815",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08815"
+      ],
+      "plain": "frequency: Scan your frequency. Set 5 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 60 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08822",
+      "b": "SYNC",
+      "r": 8822,
+      "name": "Resonance Anchor — TS-08822",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08822"
+      ],
+      "plain": "resonance: Check focus level. Set 3 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 30 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08829",
+      "b": "SYNC",
+      "r": 8829,
+      "name": "Frequency Tune — TS-08829",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08829"
+      ],
+      "plain": "phase: Name your current state. Set 2 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 5 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08836",
+      "b": "SYNC",
+      "r": 8836,
+      "name": "Phase Ladder — TS-08836",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08836"
+      ],
+      "plain": "resonance: Check focus level. Set 2 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 5 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08843",
+      "b": "SYNC",
+      "r": 8843,
+      "name": "Frequency Tune — TS-08843",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08843"
+      ],
+      "plain": "resonance: Check focus level. Set 30 seconds. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 2 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08850",
+      "b": "SYNC",
+      "r": 8850,
+      "name": "Frequency Tune — TS-08850",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08850"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 3 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 30 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08857",
+      "b": "SYNC",
+      "r": 8857,
+      "name": "Signal Coherence — TS-08857",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08857"
+      ],
+      "plain": "phase: Name your current state. Set 30 seconds. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 2 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08864",
+      "b": "SYNC",
+      "r": 8864,
+      "name": "Alignment Check — TS-08864",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08864"
+      ],
+      "plain": "phase: Name your current state. Set 3 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 30 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08871",
+      "b": "SYNC",
+      "r": 8871,
+      "name": "Alignment Check — TS-08871",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08871"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 2 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 5 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08878",
+      "b": "SYNC",
+      "r": 8878,
+      "name": "Phase Ladder — TS-08878",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08878"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 60 seconds. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 3 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08885",
+      "b": "SYNC",
+      "r": 8885,
+      "name": "Resonance Anchor — TS-08885",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08885"
+      ],
+      "plain": "phase: Name your current state. Set 5 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 60 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08892",
+      "b": "SYNC",
+      "r": 8892,
+      "name": "Phase Ladder — TS-08892",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08892"
+      ],
+      "plain": "frequency: Scan your frequency. Set 3 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 30 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08899",
+      "b": "SYNC",
+      "r": 8899,
+      "name": "Phase Ladder — TS-08899",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08899"
+      ],
+      "plain": "resonance: Check focus level. Set 60 seconds. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 3 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08906",
+      "b": "SYNC",
+      "r": 8906,
+      "name": "Resonance Anchor — TS-08906",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08906"
+      ],
+      "plain": "phase: Name your current state. Set 5 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 60 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08913",
+      "b": "SYNC",
+      "r": 8913,
+      "name": "Phase Ladder — TS-08913",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08913"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 5 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 60 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08920",
+      "b": "SYNC",
+      "r": 8920,
+      "name": "Frequency Tune — TS-08920",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08920"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 3 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 30 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08927",
+      "b": "SYNC",
+      "r": 8927,
+      "name": "Phase Step — TS-08927",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08927"
+      ],
+      "plain": "phase: Name your current state. Set 30 seconds. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 2 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08934",
+      "b": "SYNC",
+      "r": 8934,
+      "name": "Signal Coherence — TS-08934",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08934"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 60 seconds. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 3 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08941",
+      "b": "SYNC",
+      "r": 8941,
+      "name": "Phase Step — TS-08941",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08941"
+      ],
+      "plain": "resonance: Check focus level. Set 2 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 5 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08948",
+      "b": "SYNC",
+      "r": 8948,
+      "name": "Phase Step — TS-08948",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08948"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 30 seconds. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 2 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08955",
+      "b": "SYNC",
+      "r": 8955,
+      "name": "Phase Ladder — TS-08955",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08955"
+      ],
+      "plain": "frequency: Scan your frequency. Set 5 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 60 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08962",
+      "b": "SYNC",
+      "r": 8962,
+      "name": "Phase Ladder — TS-08962",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08962"
+      ],
+      "plain": "frequency: Scan your frequency. Set 60 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 3 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08969",
+      "b": "SYNC",
+      "r": 8969,
+      "name": "Signal Coherence — TS-08969",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08969"
+      ],
+      "plain": "phase: Name your current state. Set 30 seconds. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 2 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08976",
+      "b": "SYNC",
+      "r": 8976,
+      "name": "Resonance Anchor — TS-08976",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08976"
+      ],
+      "plain": "frequency: Scan your frequency. Set 60 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 3 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08983",
+      "b": "SYNC",
+      "r": 8983,
+      "name": "Signal Coherence — TS-08983",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08983"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 5 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 60 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08990",
+      "b": "SYNC",
+      "r": 8990,
+      "name": "Phase Step — TS-08990",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08990"
+      ],
+      "plain": "phase: Name your current state. Set 2 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 5 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08997",
+      "b": "SYNC",
+      "r": 8997,
+      "name": "Alignment Check — TS-08997",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08997"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 5 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 60 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09004",
+      "b": "SYNC",
+      "r": 9004,
+      "name": "Alignment Check — TS-09004",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09004"
+      ],
+      "plain": "resonance: Check focus level. Set 30 seconds. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 2 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09011",
+      "b": "SYNC",
+      "r": 9011,
+      "name": "Phase Ladder — TS-09011",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09011"
+      ],
+      "plain": "phase: Name your current state. Set 2 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 5 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09018",
+      "b": "SYNC",
+      "r": 9018,
+      "name": "Frequency Tune — TS-09018",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09018"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 3 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 30 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09025",
+      "b": "SYNC",
+      "r": 9025,
+      "name": "Resonance Anchor — TS-09025",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09025"
+      ],
+      "plain": "frequency: Scan your frequency. Set 3 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 30 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09032",
+      "b": "SYNC",
+      "r": 9032,
+      "name": "Phase Ladder — TS-09032",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09032"
+      ],
+      "plain": "frequency: Scan your frequency. Set 30 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 2 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09039",
+      "b": "SYNC",
+      "r": 9039,
+      "name": "Alignment Check — TS-09039",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09039"
+      ],
+      "plain": "frequency: Scan your frequency. Set 3 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 30 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09046",
+      "b": "SYNC",
+      "r": 9046,
+      "name": "Signal Coherence — TS-09046",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09046"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 2 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 5 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09053",
+      "b": "SYNC",
+      "r": 9053,
+      "name": "Resonance Anchor — TS-09053",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09053"
+      ],
+      "plain": "frequency: Scan your frequency. Set 30 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 2 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09060",
+      "b": "SYNC",
+      "r": 9060,
+      "name": "Alignment Check — TS-09060",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09060"
+      ],
+      "plain": "resonance: Check focus level. Set 5 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 60 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09067",
+      "b": "SYNC",
+      "r": 9067,
+      "name": "Phase Step — TS-09067",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09067"
+      ],
+      "plain": "resonance: Check focus level. Set 30 seconds. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 2 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09074",
+      "b": "SYNC",
+      "r": 9074,
+      "name": "Signal Coherence — TS-09074",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09074"
+      ],
+      "plain": "frequency: Scan your frequency. Set 3 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 30 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09081",
+      "b": "SYNC",
+      "r": 9081,
+      "name": "Phase Step — TS-09081",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09081"
+      ],
+      "plain": "frequency: Scan your frequency. Set 5 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 60 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09088",
+      "b": "SYNC",
+      "r": 9088,
+      "name": "Signal Coherence — TS-09088",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09088"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 5 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 60 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09095",
+      "b": "SYNC",
+      "r": 9095,
+      "name": "Signal Coherence — TS-09095",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09095"
+      ],
+      "plain": "frequency: Scan your frequency. Set 5 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 60 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09102",
+      "b": "SYNC",
+      "r": 9102,
+      "name": "Signal Coherence — TS-09102",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09102"
+      ],
+      "plain": "frequency: Scan your frequency. Set 5 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 60 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09109",
+      "b": "SYNC",
+      "r": 9109,
+      "name": "Resonance Anchor — TS-09109",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09109"
+      ],
+      "plain": "phase: Name your current state. Set 5 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 60 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09116",
+      "b": "SYNC",
+      "r": 9116,
+      "name": "Alignment Check — TS-09116",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09116"
+      ],
+      "plain": "frequency: Scan your frequency. Set 2 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 5 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09123",
+      "b": "SYNC",
+      "r": 9123,
+      "name": "Phase Ladder — TS-09123",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09123"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 3 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 30 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09130",
+      "b": "SYNC",
+      "r": 9130,
+      "name": "Phase Ladder — TS-09130",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09130"
+      ],
+      "plain": "frequency: Scan your frequency. Set 60 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 3 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09137",
+      "b": "SYNC",
+      "r": 9137,
+      "name": "Phase Ladder — TS-09137",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09137"
+      ],
+      "plain": "frequency: Scan your frequency. Set 30 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 2 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09144",
+      "b": "SYNC",
+      "r": 9144,
+      "name": "Resonance Anchor — TS-09144",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09144"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 2 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 5 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09151",
+      "b": "SYNC",
+      "r": 9151,
+      "name": "Phase Step — TS-09151",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09151"
+      ],
+      "plain": "resonance: Check focus level. Set 3 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 30 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09158",
+      "b": "SYNC",
+      "r": 9158,
+      "name": "Resonance Anchor — TS-09158",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09158"
+      ],
+      "plain": "resonance: Check focus level. Set 30 seconds. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 2 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09165",
+      "b": "SYNC",
+      "r": 9165,
+      "name": "Resonance Anchor — TS-09165",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09165"
+      ],
+      "plain": "frequency: Scan your frequency. Set 5 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 60 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09172",
+      "b": "SYNC",
+      "r": 9172,
+      "name": "Resonance Anchor — TS-09172",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09172"
+      ],
+      "plain": "frequency: Scan your frequency. Set 2 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 5 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09179",
+      "b": "SYNC",
+      "r": 9179,
+      "name": "Frequency Tune — TS-09179",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09179"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 30 seconds. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 2 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09186",
+      "b": "SYNC",
+      "r": 9186,
+      "name": "Phase Ladder — TS-09186",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09186"
+      ],
+      "plain": "resonance: Check focus level. Set 5 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 60 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09193",
+      "b": "SYNC",
+      "r": 9193,
+      "name": "Signal Coherence — TS-09193",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09193"
+      ],
+      "plain": "frequency: Scan your frequency. Set 5 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 60 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09200",
+      "b": "SYNC",
+      "r": 9200,
+      "name": "Resonance Anchor — TS-09200",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09200"
+      ],
+      "plain": "frequency: Scan your frequency. Set 3 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 30 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09207",
+      "b": "SYNC",
+      "r": 9207,
+      "name": "Resonance Anchor — TS-09207",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09207"
+      ],
+      "plain": "phase: Name your current state. Set 30 seconds. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 2 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09214",
+      "b": "SYNC",
+      "r": 9214,
+      "name": "Phase Step — TS-09214",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09214"
+      ],
+      "plain": "phase: Name your current state. Set 5 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 60 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09221",
+      "b": "SYNC",
+      "r": 9221,
+      "name": "Resonance Anchor — TS-09221",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09221"
+      ],
+      "plain": "phase: Name your current state. Set 30 seconds. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 2 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09228",
+      "b": "SYNC",
+      "r": 9228,
+      "name": "Resonance Anchor — TS-09228",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09228"
+      ],
+      "plain": "frequency: Scan your frequency. Set 2 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 5 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09235",
+      "b": "SYNC",
+      "r": 9235,
+      "name": "Resonance Anchor — TS-09235",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09235"
+      ],
+      "plain": "resonance: Check focus level. Set 5 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 60 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09242",
+      "b": "SYNC",
+      "r": 9242,
+      "name": "Phase Ladder — TS-09242",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09242"
+      ],
+      "plain": "resonance: Check focus level. Set 3 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 30 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09249",
+      "b": "SYNC",
+      "r": 9249,
+      "name": "Phase Step — TS-09249",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09249"
+      ],
+      "plain": "phase: Name your current state. Set 30 seconds. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 2 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09256",
+      "b": "SYNC",
+      "r": 9256,
+      "name": "Frequency Tune — TS-09256",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09256"
+      ],
+      "plain": "frequency: Scan your frequency. Set 2 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 5 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09263",
+      "b": "SYNC",
+      "r": 9263,
+      "name": "Signal Coherence — TS-09263",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09263"
+      ],
+      "plain": "phase: Name your current state. Set 5 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 60 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09270",
+      "b": "SYNC",
+      "r": 9270,
+      "name": "Signal Coherence — TS-09270",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09270"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 3 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 30 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09277",
+      "b": "SYNC",
+      "r": 9277,
+      "name": "Signal Coherence — TS-09277",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09277"
+      ],
+      "plain": "phase: Name your current state. Set 5 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 60 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09284",
+      "b": "SYNC",
+      "r": 9284,
+      "name": "Phase Step — TS-09284",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09284"
+      ],
+      "plain": "phase: Name your current state. Set 60 seconds. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 3 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09291",
+      "b": "SYNC",
+      "r": 9291,
+      "name": "Resonance Anchor — TS-09291",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09291"
+      ],
+      "plain": "phase: Name your current state. Set 60 seconds. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 3 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09298",
+      "b": "SYNC",
+      "r": 9298,
+      "name": "Phase Ladder — TS-09298",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09298"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 60 seconds. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 3 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09305",
+      "b": "SYNC",
+      "r": 9305,
+      "name": "Alignment Check — TS-09305",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09305"
+      ],
+      "plain": "phase: Name your current state. Set 3 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 30 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09312",
+      "b": "SYNC",
+      "r": 9312,
+      "name": "Phase Step — TS-09312",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09312"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 60 seconds. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 3 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09319",
+      "b": "SYNC",
+      "r": 9319,
+      "name": "Phase Ladder — TS-09319",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09319"
+      ],
+      "plain": "frequency: Scan your frequency. Set 5 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 60 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09326",
+      "b": "SYNC",
+      "r": 9326,
+      "name": "Phase Ladder — TS-09326",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09326"
+      ],
+      "plain": "frequency: Scan your frequency. Set 60 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 3 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09333",
+      "b": "SYNC",
+      "r": 9333,
+      "name": "Signal Coherence — TS-09333",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09333"
+      ],
+      "plain": "phase: Name your current state. Set 60 seconds. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 3 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09340",
+      "b": "SYNC",
+      "r": 9340,
+      "name": "Phase Ladder — TS-09340",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09340"
+      ],
+      "plain": "resonance: Check focus level. Set 3 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 30 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09347",
+      "b": "SYNC",
+      "r": 9347,
+      "name": "Resonance Anchor — TS-09347",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09347"
+      ],
+      "plain": "resonance: Check focus level. Set 5 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 60 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09354",
+      "b": "SYNC",
+      "r": 9354,
+      "name": "Frequency Tune — TS-09354",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09354"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 2 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 5 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09361",
+      "b": "SYNC",
+      "r": 9361,
+      "name": "Resonance Anchor — TS-09361",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09361"
+      ],
+      "plain": "frequency: Scan your frequency. Set 60 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 3 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09368",
+      "b": "SYNC",
+      "r": 9368,
+      "name": "Phase Ladder — TS-09368",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09368"
+      ],
+      "plain": "phase: Name your current state. Set 5 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 60 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09375",
+      "b": "SYNC",
+      "r": 9375,
+      "name": "Frequency Tune — TS-09375",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09375"
+      ],
+      "plain": "frequency: Scan your frequency. Set 30 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 2 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09382",
+      "b": "SYNC",
+      "r": 9382,
+      "name": "Alignment Check — TS-09382",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09382"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 5 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 60 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09389",
+      "b": "SYNC",
+      "r": 9389,
+      "name": "Frequency Tune — TS-09389",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09389"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 5 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 60 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09396",
+      "b": "SYNC",
+      "r": 9396,
+      "name": "Alignment Check — TS-09396",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09396"
+      ],
+      "plain": "phase: Name your current state. Set 3 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 30 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09403",
+      "b": "SYNC",
+      "r": 9403,
+      "name": "Phase Ladder — TS-09403",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09403"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 60 seconds. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 3 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09410",
+      "b": "SYNC",
+      "r": 9410,
+      "name": "Signal Coherence — TS-09410",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09410"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 5 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 60 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09417",
+      "b": "SYNC",
+      "r": 9417,
+      "name": "Alignment Check — TS-09417",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09417"
+      ],
+      "plain": "frequency: Scan your frequency. Set 30 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 2 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09424",
+      "b": "SYNC",
+      "r": 9424,
+      "name": "Signal Coherence — TS-09424",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09424"
+      ],
+      "plain": "frequency: Scan your frequency. Set 60 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 3 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09431",
+      "b": "SYNC",
+      "r": 9431,
+      "name": "Alignment Check — TS-09431",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09431"
+      ],
+      "plain": "frequency: Scan your frequency. Set 5 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 60 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09438",
+      "b": "SYNC",
+      "r": 9438,
+      "name": "Phase Step — TS-09438",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09438"
+      ],
+      "plain": "frequency: Scan your frequency. Set 30 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 2 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09445",
+      "b": "SYNC",
+      "r": 9445,
+      "name": "Frequency Tune — TS-09445",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09445"
+      ],
+      "plain": "resonance: Check focus level. Set 2 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 5 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09452",
+      "b": "SYNC",
+      "r": 9452,
+      "name": "Alignment Check — TS-09452",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09452"
+      ],
+      "plain": "resonance: Check focus level. Set 5 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 60 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09459",
+      "b": "SYNC",
+      "r": 9459,
+      "name": "Resonance Anchor — TS-09459",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09459"
+      ],
+      "plain": "frequency: Scan your frequency. Set 3 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 30 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09466",
+      "b": "SYNC",
+      "r": 9466,
+      "name": "Resonance Anchor — TS-09466",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09466"
+      ],
+      "plain": "resonance: Check focus level. Set 5 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 60 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09473",
+      "b": "SYNC",
+      "r": 9473,
+      "name": "Alignment Check — TS-09473",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09473"
+      ],
+      "plain": "frequency: Scan your frequency. Set 30 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 2 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09480",
+      "b": "SYNC",
+      "r": 9480,
+      "name": "Resonance Anchor — TS-09480",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09480"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 3 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 30 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09487",
+      "b": "SYNC",
+      "r": 9487,
+      "name": "Phase Ladder — TS-09487",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09487"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 2 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 5 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09494",
+      "b": "SYNC",
+      "r": 9494,
+      "name": "Phase Ladder — TS-09494",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09494"
+      ],
+      "plain": "phase: Name your current state. Set 30 seconds. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 2 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09501",
+      "b": "SYNC",
+      "r": 9501,
+      "name": "Alignment Check — TS-09501",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09501"
+      ],
+      "plain": "resonance: Check focus level. Set 3 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 30 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09508",
+      "b": "SYNC",
+      "r": 9508,
+      "name": "Signal Coherence — TS-09508",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09508"
+      ],
+      "plain": "resonance: Check focus level. Set 5 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 60 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09515",
+      "b": "SYNC",
+      "r": 9515,
+      "name": "Alignment Check — TS-09515",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09515"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 60 seconds. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 3 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09522",
+      "b": "SYNC",
+      "r": 9522,
+      "name": "Phase Ladder — TS-09522",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09522"
+      ],
+      "plain": "resonance: Check focus level. Set 30 seconds. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 2 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09529",
+      "b": "SYNC",
+      "r": 9529,
+      "name": "Alignment Check — TS-09529",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09529"
+      ],
+      "plain": "frequency: Scan your frequency. Set 5 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 60 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09536",
+      "b": "SYNC",
+      "r": 9536,
+      "name": "Resonance Anchor — TS-09536",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09536"
+      ],
+      "plain": "phase: Name your current state. Set 2 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 5 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09543",
+      "b": "SYNC",
+      "r": 9543,
+      "name": "Alignment Check — TS-09543",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09543"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 2 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 5 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09550",
+      "b": "SYNC",
+      "r": 9550,
+      "name": "Phase Ladder — TS-09550",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09550"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 2 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 5 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09557",
+      "b": "SYNC",
+      "r": 9557,
+      "name": "Frequency Tune — TS-09557",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09557"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 30 seconds. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 2 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09564",
+      "b": "SYNC",
+      "r": 9564,
+      "name": "Phase Ladder — TS-09564",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09564"
+      ],
+      "plain": "frequency: Scan your frequency. Set 60 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 3 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09571",
+      "b": "SYNC",
+      "r": 9571,
+      "name": "Phase Ladder — TS-09571",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09571"
+      ],
+      "plain": "phase: Name your current state. Set 5 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 60 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09578",
+      "b": "SYNC",
+      "r": 9578,
+      "name": "Alignment Check — TS-09578",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09578"
+      ],
+      "plain": "phase: Name your current state. Set 2 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 5 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09585",
+      "b": "SYNC",
+      "r": 9585,
+      "name": "Signal Coherence — TS-09585",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09585"
+      ],
+      "plain": "phase: Name your current state. Set 5 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 60 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09592",
+      "b": "SYNC",
+      "r": 9592,
+      "name": "Signal Coherence — TS-09592",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09592"
+      ],
+      "plain": "phase: Name your current state. Set 5 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 60 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09599",
+      "b": "SYNC",
+      "r": 9599,
+      "name": "Signal Coherence — TS-09599",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09599"
+      ],
+      "plain": "resonance: Check focus level. Set 30 seconds. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 2 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09606",
+      "b": "SYNC",
+      "r": 9606,
+      "name": "Frequency Tune — TS-09606",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09606"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 2 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 5 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09613",
+      "b": "SYNC",
+      "r": 9613,
+      "name": "Resonance Anchor — TS-09613",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09613"
+      ],
+      "plain": "phase: Name your current state. Set 30 seconds. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 2 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09620",
+      "b": "SYNC",
+      "r": 9620,
+      "name": "Resonance Anchor — TS-09620",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09620"
+      ],
+      "plain": "frequency: Scan your frequency. Set 5 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 60 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09627",
+      "b": "SYNC",
+      "r": 9627,
+      "name": "Phase Ladder — TS-09627",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09627"
+      ],
+      "plain": "resonance: Check focus level. Set 60 seconds. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 3 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09634",
+      "b": "SYNC",
+      "r": 9634,
+      "name": "Phase Ladder — TS-09634",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09634"
+      ],
+      "plain": "resonance: Check focus level. Set 3 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 30 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09641",
+      "b": "SYNC",
+      "r": 9641,
+      "name": "Resonance Anchor — TS-09641",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09641"
+      ],
+      "plain": "frequency: Scan your frequency. Set 30 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 2 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09648",
+      "b": "SYNC",
+      "r": 9648,
+      "name": "Alignment Check — TS-09648",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09648"
+      ],
+      "plain": "phase: Name your current state. Set 30 seconds. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 2 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09655",
+      "b": "SYNC",
+      "r": 9655,
+      "name": "Frequency Tune — TS-09655",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09655"
+      ],
+      "plain": "frequency: Scan your frequency. Set 3 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 30 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09662",
+      "b": "SYNC",
+      "r": 9662,
+      "name": "Phase Ladder — TS-09662",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09662"
+      ],
+      "plain": "frequency: Scan your frequency. Set 3 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 30 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09669",
+      "b": "SYNC",
+      "r": 9669,
+      "name": "Frequency Tune — TS-09669",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09669"
+      ],
+      "plain": "frequency: Scan your frequency. Set 2 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 5 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09676",
+      "b": "SYNC",
+      "r": 9676,
+      "name": "Alignment Check — TS-09676",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09676"
+      ],
+      "plain": "resonance: Check focus level. Set 60 seconds. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 3 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09683",
+      "b": "SYNC",
+      "r": 9683,
+      "name": "Resonance Anchor — TS-09683",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09683"
+      ],
+      "plain": "frequency: Scan your frequency. Set 2 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 5 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09690",
+      "b": "SYNC",
+      "r": 9690,
+      "name": "Signal Coherence — TS-09690",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09690"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 3 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 30 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09697",
+      "b": "SYNC",
+      "r": 9697,
+      "name": "Resonance Anchor — TS-09697",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09697"
+      ],
+      "plain": "resonance: Check focus level. Set 3 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 30 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09704",
+      "b": "SYNC",
+      "r": 9704,
+      "name": "Alignment Check — TS-09704",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09704"
+      ],
+      "plain": "phase: Name your current state. Set 60 seconds. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 3 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09711",
+      "b": "SYNC",
+      "r": 9711,
+      "name": "Frequency Tune — TS-09711",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09711"
+      ],
+      "plain": "phase: Name your current state. Set 3 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 30 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09718",
+      "b": "SYNC",
+      "r": 9718,
+      "name": "Frequency Tune — TS-09718",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09718"
+      ],
+      "plain": "phase: Name your current state. Set 60 seconds. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 3 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09725",
+      "b": "SYNC",
+      "r": 9725,
+      "name": "Alignment Check — TS-09725",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09725"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 30 seconds. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 2 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09732",
+      "b": "SYNC",
+      "r": 9732,
+      "name": "Resonance Anchor — TS-09732",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09732"
+      ],
+      "plain": "phase: Name your current state. Set 30 seconds. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 2 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09739",
+      "b": "SYNC",
+      "r": 9739,
+      "name": "Signal Coherence — TS-09739",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09739"
+      ],
+      "plain": "frequency: Scan your frequency. Set 60 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 3 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09746",
+      "b": "SYNC",
+      "r": 9746,
+      "name": "Signal Coherence — TS-09746",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09746"
+      ],
+      "plain": "frequency: Scan your frequency. Set 2 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 5 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09753",
+      "b": "SYNC",
+      "r": 9753,
+      "name": "Phase Ladder — TS-09753",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09753"
+      ],
+      "plain": "phase: Name your current state. Set 3 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 30 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09760",
+      "b": "SYNC",
+      "r": 9760,
+      "name": "Phase Step — TS-09760",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09760"
+      ],
+      "plain": "phase: Name your current state. Set 30 seconds. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 2 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09767",
+      "b": "SYNC",
+      "r": 9767,
+      "name": "Phase Ladder — TS-09767",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09767"
+      ],
+      "plain": "resonance: Check focus level. Set 3 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 30 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09774",
+      "b": "SYNC",
+      "r": 9774,
+      "name": "Phase Step — TS-09774",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09774"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 2 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 5 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09781",
+      "b": "SYNC",
+      "r": 9781,
+      "name": "Frequency Tune — TS-09781",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09781"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 2 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 5 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09788",
+      "b": "SYNC",
+      "r": 9788,
+      "name": "Frequency Tune — TS-09788",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09788"
+      ],
+      "plain": "resonance: Check focus level. Set 30 seconds. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 2 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09795",
+      "b": "SYNC",
+      "r": 9795,
+      "name": "Frequency Tune — TS-09795",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09795"
+      ],
+      "plain": "resonance: Check focus level. Set 30 seconds. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 2 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09802",
+      "b": "SYNC",
+      "r": 9802,
+      "name": "Resonance Anchor — TS-09802",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09802"
+      ],
+      "plain": "phase: Name your current state. Set 2 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 5 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09809",
+      "b": "SYNC",
+      "r": 9809,
+      "name": "Resonance Anchor — TS-09809",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09809"
+      ],
+      "plain": "resonance: Check focus level. Set 5 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 60 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09816",
+      "b": "SYNC",
+      "r": 9816,
+      "name": "Phase Ladder — TS-09816",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09816"
+      ],
+      "plain": "resonance: Check focus level. Set 5 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 60 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09823",
+      "b": "SYNC",
+      "r": 9823,
+      "name": "Phase Ladder — TS-09823",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09823"
+      ],
+      "plain": "frequency: Scan your frequency. Set 30 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 2 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09830",
+      "b": "SYNC",
+      "r": 9830,
+      "name": "Phase Step — TS-09830",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09830"
+      ],
+      "plain": "frequency: Scan your frequency. Set 3 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 30 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09837",
+      "b": "SYNC",
+      "r": 9837,
+      "name": "Signal Coherence — TS-09837",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09837"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 5 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 60 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09844",
+      "b": "SYNC",
+      "r": 9844,
+      "name": "Alignment Check — TS-09844",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09844"
+      ],
+      "plain": "frequency: Scan your frequency. Set 30 seconds. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 2 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09851",
+      "b": "SYNC",
+      "r": 9851,
+      "name": "Alignment Check — TS-09851",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09851"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 30 seconds. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 2 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09858",
+      "b": "SYNC",
+      "r": 9858,
+      "name": "Frequency Tune — TS-09858",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09858"
+      ],
+      "plain": "resonance: Check focus level. Set 2 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 5 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09865",
+      "b": "SYNC",
+      "r": 9865,
+      "name": "Alignment Check — TS-09865",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09865"
+      ],
+      "plain": "resonance: Check focus level. Set 30 seconds. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 2 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09872",
+      "b": "SYNC",
+      "r": 9872,
+      "name": "Alignment Check — TS-09872",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09872"
+      ],
+      "plain": "phase: Name your current state. Set 2 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 5 minutes. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09879",
+      "b": "SYNC",
+      "r": 9879,
+      "name": "Phase Ladder — TS-09879",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09879"
+      ],
+      "plain": "frequency: Scan your frequency. Set 2 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 5 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09886",
+      "b": "SYNC",
+      "r": 9886,
+      "name": "Phase Step — TS-09886",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09886"
+      ],
+      "plain": "frequency: Scan your frequency. Set 5 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 60 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09893",
+      "b": "SYNC",
+      "r": 9893,
+      "name": "Alignment Check — TS-09893",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09893"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 3 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 30 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09900",
+      "b": "SYNC",
+      "r": 9900,
+      "name": "Frequency Tune — TS-09900",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09900"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 60 seconds. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 3 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09907",
+      "b": "SYNC",
+      "r": 9907,
+      "name": "Resonance Anchor — TS-09907",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09907"
+      ],
+      "plain": "frequency: Scan your frequency. Set 2 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 5 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09914",
+      "b": "SYNC",
+      "r": 9914,
+      "name": "Phase Step — TS-09914",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09914"
+      ],
+      "plain": "frequency: Scan your frequency. Set 2 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 5 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09921",
+      "b": "SYNC",
+      "r": 9921,
+      "name": "Phase Ladder — TS-09921",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09921"
+      ],
+      "plain": "resonance: Check focus level. Set 30 seconds. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 2 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09928",
+      "b": "SYNC",
+      "r": 9928,
+      "name": "Frequency Tune — TS-09928",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09928"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 30 seconds. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 2 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09935",
+      "b": "SYNC",
+      "r": 9935,
+      "name": "Phase Step — TS-09935",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09935"
+      ],
+      "plain": "frequency: Scan your frequency. Set 2 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 5 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09942",
+      "b": "SYNC",
+      "r": 9942,
+      "name": "Phase Ladder — TS-09942",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09942"
+      ],
+      "plain": "resonance: Check focus level. Set 3 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 30 seconds. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09949",
+      "b": "SYNC",
+      "r": 9949,
+      "name": "Phase Step — TS-09949",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09949"
+      ],
+      "plain": "resonance: Check focus level. Set 2 minutes. Start now.\nfrequency: Pick one alignment target. Make it easy. Remove one blocker.\nalignment: Reorder the next task. Stay for 5 minutes. Stop at timer.\nCheck body. Play one steady sound. Return once.\nDo one more. Cut one distraction. Keep it small.\nClose gently. Lock the next phase. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09956",
+      "b": "SYNC",
+      "r": 9956,
+      "name": "Alignment Check — TS-09956",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09956"
+      ],
+      "plain": "phase: Name your current state. Set 5 minutes. Start now.\nresonance: Set one intention. Make it easy. Remove one blocker.\nfrequency: Adjust phase by one step. Stay for 60 seconds. Stop at timer.\nCheck body. Use a cue word. Return once.\nDo one more. Re-center the intention. Keep it small.\nClose gently. Close the loop. Mark next time.\nWhy: Frequency + alignment turns scatter into flow.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09963",
+      "b": "SYNC",
+      "r": 9963,
+      "name": "Phase Ladder — TS-09963",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09963"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 5 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 60 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09970",
+      "b": "SYNC",
+      "r": 9970,
+      "name": "Phase Ladder — TS-09970",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09970"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 60 seconds. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 3 minutes. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09977",
+      "b": "SYNC",
+      "r": 9977,
+      "name": "Frequency Tune — TS-09977",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09977"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 3 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 30 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09984",
+      "b": "SYNC",
+      "r": 9984,
+      "name": "Alignment Check — TS-09984",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09984"
+      ],
+      "plain": "frequency: Scan your frequency. Set 3 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 30 seconds. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09991",
+      "b": "SYNC",
+      "r": 9991,
+      "name": "Signal Coherence — TS-09991",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09991"
+      ],
+      "plain": "frequency: Scan your frequency. Set 2 minutes. Start now.\nalignment: Choose one priority. Make it easy. Remove one blocker.\nphase: Shift to a smaller unit. Stay for 5 minutes. Stop at timer.\nCheck body. Hold one object. Return once.\nDo one more. Review alignment again. Keep it small.\nClose gently. Write the next slot. Mark next time.\nWhy: A resonance anchor makes focus stick.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09998",
+      "b": "SYNC",
+      "r": 9998,
+      "name": "Phase Ladder — TS-09998",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09998"
+      ],
+      "plain": "alignment: Rate energy 0–10. Set 5 minutes. Start now.\nphase: Select one outcome. Make it easy. Remove one blocker.\nresonance: Do the first 2 minutes. Stay for 60 seconds. Stop at timer.\nCheck body. Add a resonance anchor. Return once.\nDo one more. Notice drift and return. Keep it small.\nClose gently. Schedule a follow-up. Mark next time.\nWhy: Tiny phase shifts create big alignment.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    }
+  ]
+}

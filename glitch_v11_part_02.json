@@ -1,0 +1,3446 @@
+{
+  "meta": {
+    "bubble": "GLITCH",
+    "version": "v11",
+    "generated_at": "2026-01-21T09:01:51.000434Z",
+    "rewritten_at": "2026-01-21T09:53:05.041339Z",
+    "rewrite_style": "simple_actionable_no_diagnosis"
+  },
+  "rituals": [
+    {
+      "id": "TS-08401",
+      "b": "GLITCH",
+      "r": 8401,
+      "name": "Desync Repair — TS-08401",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08401"
+      ],
+      "plain": "jitter: Name the main fact. Set 3 minutes. Start now.\ncollapse: Name the fear-script. Make it easy. Remove one blocker.\nsignal: Do a desync pause. Stay for 30 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08408",
+      "b": "GLITCH",
+      "r": 8408,
+      "name": "Desync Repair — TS-08408",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08408"
+      ],
+      "plain": "noise: Name the main fact. Set 60 seconds. Start now.\ndesync: Name the fear-script. Make it easy. Remove one blocker.\njitter: Do a desync pause. Stay for 3 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08415",
+      "b": "GLITCH",
+      "r": 8415,
+      "name": "Signal Gate — TS-08415",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08415"
+      ],
+      "plain": "collapse: Name the main fact. Set 5 minutes. Start now.\nsignal: Name the fear-script. Make it easy. Remove one blocker.\nnoise: Do a desync pause. Stay for 60 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08422",
+      "b": "GLITCH",
+      "r": 8422,
+      "name": "Noise Filter — TS-08422",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08422"
+      ],
+      "plain": "noise: Say what is true. Set 60 seconds. Start now.\ndesync: Mark assumptions. Make it easy. Remove one blocker.\njitter: Touch a solid surface. Stay for 3 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08429",
+      "b": "GLITCH",
+      "r": 8429,
+      "name": "Desync Repair — TS-08429",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08429"
+      ],
+      "plain": "jitter: Write the raw signal. Set 3 minutes. Start now.\ncollapse: Spot the extra layer. Make it easy. Remove one blocker.\nsignal: Look around once. Stay for 30 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08436",
+      "b": "GLITCH",
+      "r": 8436,
+      "name": "Collapse Cushion — TS-08436",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08436"
+      ],
+      "plain": "desync: State the situation. Set 2 minutes. Start now.\njitter: List the noise story. Make it easy. Remove one blocker.\ncollapse: Stop for ten seconds. Stay for 5 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08443",
+      "b": "GLITCH",
+      "r": 8443,
+      "name": "Collapse Cushion — TS-08443",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08443"
+      ],
+      "plain": "collapse: Say what is true. Set 5 minutes. Start now.\nsignal: Mark assumptions. Make it easy. Remove one blocker.\nnoise: Touch a solid surface. Stay for 60 seconds. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08450",
+      "b": "GLITCH",
+      "r": 8450,
+      "name": "Signal/Noise Split — TS-08450",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08450"
+      ],
+      "plain": "signal: State the situation. Set 30 seconds. Start now.\nnoise: List the noise story. Make it easy. Remove one blocker.\ndesync: Stop for ten seconds. Stay for 2 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08457",
+      "b": "GLITCH",
+      "r": 8457,
+      "name": "Signal/Noise Split — TS-08457",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08457"
+      ],
+      "plain": "noise: State the situation. Set 60 seconds. Start now.\ndesync: List the noise story. Make it easy. Remove one blocker.\njitter: Stop for ten seconds. Stay for 3 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08464",
+      "b": "GLITCH",
+      "r": 8464,
+      "name": "Collapse Cushion — TS-08464",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08464"
+      ],
+      "plain": "signal: Name the main fact. Set 30 seconds. Start now.\nnoise: Name the fear-script. Make it easy. Remove one blocker.\ndesync: Do a desync pause. Stay for 2 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08471",
+      "b": "GLITCH",
+      "r": 8471,
+      "name": "Signal Gate — TS-08471",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08471"
+      ],
+      "plain": "signal: Say what is true. Set 30 seconds. Start now.\nnoise: Mark assumptions. Make it easy. Remove one blocker.\ndesync: Touch a solid surface. Stay for 2 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08478",
+      "b": "GLITCH",
+      "r": 8478,
+      "name": "Collapse Cushion — TS-08478",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08478"
+      ],
+      "plain": "desync: Name the main fact. Set 2 minutes. Start now.\njitter: Name the fear-script. Make it easy. Remove one blocker.\ncollapse: Do a desync pause. Stay for 5 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08485",
+      "b": "GLITCH",
+      "r": 8485,
+      "name": "Jitter Dampener — TS-08485",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08485"
+      ],
+      "plain": "desync: Name the main fact. Set 2 minutes. Start now.\njitter: Name the fear-script. Make it easy. Remove one blocker.\ncollapse: Do a desync pause. Stay for 5 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08492",
+      "b": "GLITCH",
+      "r": 8492,
+      "name": "Noise Filter — TS-08492",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08492"
+      ],
+      "plain": "jitter: Name the main fact. Set 3 minutes. Start now.\ncollapse: Name the fear-script. Make it easy. Remove one blocker.\nsignal: Do a desync pause. Stay for 30 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08499",
+      "b": "GLITCH",
+      "r": 8499,
+      "name": "Signal/Noise Split — TS-08499",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08499"
+      ],
+      "plain": "desync: Say what is true. Set 2 minutes. Start now.\njitter: Mark assumptions. Make it easy. Remove one blocker.\ncollapse: Touch a solid surface. Stay for 5 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08506",
+      "b": "GLITCH",
+      "r": 8506,
+      "name": "Desync Repair — TS-08506",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08506"
+      ],
+      "plain": "noise: Name the main fact. Set 60 seconds. Start now.\ndesync: Name the fear-script. Make it easy. Remove one blocker.\njitter: Do a desync pause. Stay for 3 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08513",
+      "b": "GLITCH",
+      "r": 8513,
+      "name": "Collapse Cushion — TS-08513",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08513"
+      ],
+      "plain": "jitter: Name the main fact. Set 3 minutes. Start now.\ncollapse: Name the fear-script. Make it easy. Remove one blocker.\nsignal: Do a desync pause. Stay for 30 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08520",
+      "b": "GLITCH",
+      "r": 8520,
+      "name": "Collapse Cushion — TS-08520",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08520"
+      ],
+      "plain": "signal: State the situation. Set 30 seconds. Start now.\nnoise: List the noise story. Make it easy. Remove one blocker.\ndesync: Stop for ten seconds. Stay for 2 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08527",
+      "b": "GLITCH",
+      "r": 8527,
+      "name": "Signal/Noise Split — TS-08527",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08527"
+      ],
+      "plain": "collapse: State the situation. Set 5 minutes. Start now.\nsignal: List the noise story. Make it easy. Remove one blocker.\nnoise: Stop for ten seconds. Stay for 60 seconds. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08534",
+      "b": "GLITCH",
+      "r": 8534,
+      "name": "Signal Gate — TS-08534",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08534"
+      ],
+      "plain": "signal: State the situation. Set 30 seconds. Start now.\nnoise: List the noise story. Make it easy. Remove one blocker.\ndesync: Stop for ten seconds. Stay for 2 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08541",
+      "b": "GLITCH",
+      "r": 8541,
+      "name": "Signal Gate — TS-08541",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08541"
+      ],
+      "plain": "noise: Say what is true. Set 60 seconds. Start now.\ndesync: Mark assumptions. Make it easy. Remove one blocker.\njitter: Touch a solid surface. Stay for 3 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08548",
+      "b": "GLITCH",
+      "r": 8548,
+      "name": "Noise Filter — TS-08548",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08548"
+      ],
+      "plain": "signal: Name the main fact. Set 30 seconds. Start now.\nnoise: Name the fear-script. Make it easy. Remove one blocker.\ndesync: Do a desync pause. Stay for 2 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08555",
+      "b": "GLITCH",
+      "r": 8555,
+      "name": "Collapse Cushion — TS-08555",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08555"
+      ],
+      "plain": "jitter: Name the main fact. Set 3 minutes. Start now.\ncollapse: Name the fear-script. Make it easy. Remove one blocker.\nsignal: Do a desync pause. Stay for 30 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08562",
+      "b": "GLITCH",
+      "r": 8562,
+      "name": "Collapse Cushion — TS-08562",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08562"
+      ],
+      "plain": "jitter: Name the main fact. Set 3 minutes. Start now.\ncollapse: Name the fear-script. Make it easy. Remove one blocker.\nsignal: Do a desync pause. Stay for 30 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08569",
+      "b": "GLITCH",
+      "r": 8569,
+      "name": "Desync Repair — TS-08569",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08569"
+      ],
+      "plain": "signal: Say what is true. Set 30 seconds. Start now.\nnoise: Mark assumptions. Make it easy. Remove one blocker.\ndesync: Touch a solid surface. Stay for 2 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08576",
+      "b": "GLITCH",
+      "r": 8576,
+      "name": "Collapse Cushion — TS-08576",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08576"
+      ],
+      "plain": "signal: Name the main fact. Set 30 seconds. Start now.\nnoise: Name the fear-script. Make it easy. Remove one blocker.\ndesync: Do a desync pause. Stay for 2 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08583",
+      "b": "GLITCH",
+      "r": 8583,
+      "name": "Signal/Noise Split — TS-08583",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08583"
+      ],
+      "plain": "noise: State the situation. Set 60 seconds. Start now.\ndesync: List the noise story. Make it easy. Remove one blocker.\njitter: Stop for ten seconds. Stay for 3 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08590",
+      "b": "GLITCH",
+      "r": 8590,
+      "name": "Signal/Noise Split — TS-08590",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08590"
+      ],
+      "plain": "noise: State the situation. Set 60 seconds. Start now.\ndesync: List the noise story. Make it easy. Remove one blocker.\njitter: Stop for ten seconds. Stay for 3 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08597",
+      "b": "GLITCH",
+      "r": 8597,
+      "name": "Collapse Cushion — TS-08597",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08597"
+      ],
+      "plain": "desync: State the situation. Set 2 minutes. Start now.\njitter: List the noise story. Make it easy. Remove one blocker.\ncollapse: Stop for ten seconds. Stay for 5 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08604",
+      "b": "GLITCH",
+      "r": 8604,
+      "name": "Collapse Cushion — TS-08604",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08604"
+      ],
+      "plain": "noise: Name the main fact. Set 60 seconds. Start now.\ndesync: Name the fear-script. Make it easy. Remove one blocker.\njitter: Do a desync pause. Stay for 3 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08611",
+      "b": "GLITCH",
+      "r": 8611,
+      "name": "Signal/Noise Split — TS-08611",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08611"
+      ],
+      "plain": "noise: State the situation. Set 60 seconds. Start now.\ndesync: List the noise story. Make it easy. Remove one blocker.\njitter: Stop for ten seconds. Stay for 3 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08618",
+      "b": "GLITCH",
+      "r": 8618,
+      "name": "Jitter Dampener — TS-08618",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08618"
+      ],
+      "plain": "jitter: Say what is true. Set 3 minutes. Start now.\ncollapse: Mark assumptions. Make it easy. Remove one blocker.\nsignal: Touch a solid surface. Stay for 30 seconds. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08625",
+      "b": "GLITCH",
+      "r": 8625,
+      "name": "Jitter Dampener — TS-08625",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08625"
+      ],
+      "plain": "collapse: Name the main fact. Set 5 minutes. Start now.\nsignal: Name the fear-script. Make it easy. Remove one blocker.\nnoise: Do a desync pause. Stay for 60 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08632",
+      "b": "GLITCH",
+      "r": 8632,
+      "name": "Signal/Noise Split — TS-08632",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08632"
+      ],
+      "plain": "noise: Write the raw signal. Set 60 seconds. Start now.\ndesync: Spot the extra layer. Make it easy. Remove one blocker.\njitter: Look around once. Stay for 3 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08639",
+      "b": "GLITCH",
+      "r": 8639,
+      "name": "Signal/Noise Split — TS-08639",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08639"
+      ],
+      "plain": "jitter: Say what is true. Set 3 minutes. Start now.\ncollapse: Mark assumptions. Make it easy. Remove one blocker.\nsignal: Touch a solid surface. Stay for 30 seconds. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08646",
+      "b": "GLITCH",
+      "r": 8646,
+      "name": "Collapse Cushion — TS-08646",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08646"
+      ],
+      "plain": "jitter: Write the raw signal. Set 3 minutes. Start now.\ncollapse: Spot the extra layer. Make it easy. Remove one blocker.\nsignal: Look around once. Stay for 30 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08653",
+      "b": "GLITCH",
+      "r": 8653,
+      "name": "Desync Repair — TS-08653",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08653"
+      ],
+      "plain": "desync: Say what is true. Set 2 minutes. Start now.\njitter: Mark assumptions. Make it easy. Remove one blocker.\ncollapse: Touch a solid surface. Stay for 5 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08660",
+      "b": "GLITCH",
+      "r": 8660,
+      "name": "Noise Filter — TS-08660",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08660"
+      ],
+      "plain": "signal: Say what is true. Set 30 seconds. Start now.\nnoise: Mark assumptions. Make it easy. Remove one blocker.\ndesync: Touch a solid surface. Stay for 2 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08667",
+      "b": "GLITCH",
+      "r": 8667,
+      "name": "Collapse Cushion — TS-08667",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08667"
+      ],
+      "plain": "signal: State the situation. Set 30 seconds. Start now.\nnoise: List the noise story. Make it easy. Remove one blocker.\ndesync: Stop for ten seconds. Stay for 2 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08674",
+      "b": "GLITCH",
+      "r": 8674,
+      "name": "Noise Filter — TS-08674",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08674"
+      ],
+      "plain": "desync: State the situation. Set 2 minutes. Start now.\njitter: List the noise story. Make it easy. Remove one blocker.\ncollapse: Stop for ten seconds. Stay for 5 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08681",
+      "b": "GLITCH",
+      "r": 8681,
+      "name": "Signal/Noise Split — TS-08681",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08681"
+      ],
+      "plain": "collapse: Say what is true. Set 5 minutes. Start now.\nsignal: Mark assumptions. Make it easy. Remove one blocker.\nnoise: Touch a solid surface. Stay for 60 seconds. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08688",
+      "b": "GLITCH",
+      "r": 8688,
+      "name": "Signal Gate — TS-08688",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08688"
+      ],
+      "plain": "desync: Write the raw signal. Set 2 minutes. Start now.\njitter: Spot the extra layer. Make it easy. Remove one blocker.\ncollapse: Look around once. Stay for 5 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08695",
+      "b": "GLITCH",
+      "r": 8695,
+      "name": "Signal Gate — TS-08695",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08695"
+      ],
+      "plain": "signal: State the situation. Set 30 seconds. Start now.\nnoise: List the noise story. Make it easy. Remove one blocker.\ndesync: Stop for ten seconds. Stay for 2 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08702",
+      "b": "GLITCH",
+      "r": 8702,
+      "name": "Signal Gate — TS-08702",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08702"
+      ],
+      "plain": "noise: State the situation. Set 60 seconds. Start now.\ndesync: List the noise story. Make it easy. Remove one blocker.\njitter: Stop for ten seconds. Stay for 3 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08709",
+      "b": "GLITCH",
+      "r": 8709,
+      "name": "Collapse Cushion — TS-08709",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08709"
+      ],
+      "plain": "noise: Name the main fact. Set 60 seconds. Start now.\ndesync: Name the fear-script. Make it easy. Remove one blocker.\njitter: Do a desync pause. Stay for 3 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08716",
+      "b": "GLITCH",
+      "r": 8716,
+      "name": "Noise Filter — TS-08716",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08716"
+      ],
+      "plain": "jitter: Say what is true. Set 3 minutes. Start now.\ncollapse: Mark assumptions. Make it easy. Remove one blocker.\nsignal: Touch a solid surface. Stay for 30 seconds. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08723",
+      "b": "GLITCH",
+      "r": 8723,
+      "name": "Jitter Dampener — TS-08723",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08723"
+      ],
+      "plain": "signal: Say what is true. Set 30 seconds. Start now.\nnoise: Mark assumptions. Make it easy. Remove one blocker.\ndesync: Touch a solid surface. Stay for 2 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08730",
+      "b": "GLITCH",
+      "r": 8730,
+      "name": "Jitter Dampener — TS-08730",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08730"
+      ],
+      "plain": "collapse: Say what is true. Set 5 minutes. Start now.\nsignal: Mark assumptions. Make it easy. Remove one blocker.\nnoise: Touch a solid surface. Stay for 60 seconds. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08737",
+      "b": "GLITCH",
+      "r": 8737,
+      "name": "Collapse Cushion — TS-08737",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08737"
+      ],
+      "plain": "desync: Say what is true. Set 2 minutes. Start now.\njitter: Mark assumptions. Make it easy. Remove one blocker.\ncollapse: Touch a solid surface. Stay for 5 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08744",
+      "b": "GLITCH",
+      "r": 8744,
+      "name": "Collapse Cushion — TS-08744",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08744"
+      ],
+      "plain": "noise: Name the main fact. Set 60 seconds. Start now.\ndesync: Name the fear-script. Make it easy. Remove one blocker.\njitter: Do a desync pause. Stay for 3 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08751",
+      "b": "GLITCH",
+      "r": 8751,
+      "name": "Jitter Dampener — TS-08751",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08751"
+      ],
+      "plain": "noise: Write the raw signal. Set 60 seconds. Start now.\ndesync: Spot the extra layer. Make it easy. Remove one blocker.\njitter: Look around once. Stay for 3 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08758",
+      "b": "GLITCH",
+      "r": 8758,
+      "name": "Collapse Cushion — TS-08758",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08758"
+      ],
+      "plain": "noise: State the situation. Set 60 seconds. Start now.\ndesync: List the noise story. Make it easy. Remove one blocker.\njitter: Stop for ten seconds. Stay for 3 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08765",
+      "b": "GLITCH",
+      "r": 8765,
+      "name": "Signal Gate — TS-08765",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08765"
+      ],
+      "plain": "collapse: Name the main fact. Set 5 minutes. Start now.\nsignal: Name the fear-script. Make it easy. Remove one blocker.\nnoise: Do a desync pause. Stay for 60 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08772",
+      "b": "GLITCH",
+      "r": 8772,
+      "name": "Collapse Cushion — TS-08772",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08772"
+      ],
+      "plain": "collapse: Name the main fact. Set 5 minutes. Start now.\nsignal: Name the fear-script. Make it easy. Remove one blocker.\nnoise: Do a desync pause. Stay for 60 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08779",
+      "b": "GLITCH",
+      "r": 8779,
+      "name": "Collapse Cushion — TS-08779",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08779"
+      ],
+      "plain": "collapse: State the situation. Set 5 minutes. Start now.\nsignal: List the noise story. Make it easy. Remove one blocker.\nnoise: Stop for ten seconds. Stay for 60 seconds. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08786",
+      "b": "GLITCH",
+      "r": 8786,
+      "name": "Signal/Noise Split — TS-08786",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08786"
+      ],
+      "plain": "noise: Say what is true. Set 60 seconds. Start now.\ndesync: Mark assumptions. Make it easy. Remove one blocker.\njitter: Touch a solid surface. Stay for 3 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08793",
+      "b": "GLITCH",
+      "r": 8793,
+      "name": "Jitter Dampener — TS-08793",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08793"
+      ],
+      "plain": "jitter: Say what is true. Set 3 minutes. Start now.\ncollapse: Mark assumptions. Make it easy. Remove one blocker.\nsignal: Touch a solid surface. Stay for 30 seconds. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08800",
+      "b": "GLITCH",
+      "r": 8800,
+      "name": "Signal Gate — TS-08800",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08800"
+      ],
+      "plain": "desync: Name the main fact. Set 2 minutes. Start now.\njitter: Name the fear-script. Make it easy. Remove one blocker.\ncollapse: Do a desync pause. Stay for 5 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08807",
+      "b": "GLITCH",
+      "r": 8807,
+      "name": "Jitter Dampener — TS-08807",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08807"
+      ],
+      "plain": "signal: State the situation. Set 30 seconds. Start now.\nnoise: List the noise story. Make it easy. Remove one blocker.\ndesync: Stop for ten seconds. Stay for 2 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08814",
+      "b": "GLITCH",
+      "r": 8814,
+      "name": "Jitter Dampener — TS-08814",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08814"
+      ],
+      "plain": "desync: Name the main fact. Set 2 minutes. Start now.\njitter: Name the fear-script. Make it easy. Remove one blocker.\ncollapse: Do a desync pause. Stay for 5 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08821",
+      "b": "GLITCH",
+      "r": 8821,
+      "name": "Jitter Dampener — TS-08821",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08821"
+      ],
+      "plain": "collapse: State the situation. Set 5 minutes. Start now.\nsignal: List the noise story. Make it easy. Remove one blocker.\nnoise: Stop for ten seconds. Stay for 60 seconds. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08828",
+      "b": "GLITCH",
+      "r": 8828,
+      "name": "Collapse Cushion — TS-08828",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08828"
+      ],
+      "plain": "jitter: Write the raw signal. Set 3 minutes. Start now.\ncollapse: Spot the extra layer. Make it easy. Remove one blocker.\nsignal: Look around once. Stay for 30 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08835",
+      "b": "GLITCH",
+      "r": 8835,
+      "name": "Signal Gate — TS-08835",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08835"
+      ],
+      "plain": "signal: State the situation. Set 30 seconds. Start now.\nnoise: List the noise story. Make it easy. Remove one blocker.\ndesync: Stop for ten seconds. Stay for 2 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08842",
+      "b": "GLITCH",
+      "r": 8842,
+      "name": "Noise Filter — TS-08842",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08842"
+      ],
+      "plain": "noise: State the situation. Set 60 seconds. Start now.\ndesync: List the noise story. Make it easy. Remove one blocker.\njitter: Stop for ten seconds. Stay for 3 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08849",
+      "b": "GLITCH",
+      "r": 8849,
+      "name": "Desync Repair — TS-08849",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08849"
+      ],
+      "plain": "collapse: State the situation. Set 5 minutes. Start now.\nsignal: List the noise story. Make it easy. Remove one blocker.\nnoise: Stop for ten seconds. Stay for 60 seconds. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08856",
+      "b": "GLITCH",
+      "r": 8856,
+      "name": "Desync Repair — TS-08856",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08856"
+      ],
+      "plain": "collapse: Write the raw signal. Set 5 minutes. Start now.\nsignal: Spot the extra layer. Make it easy. Remove one blocker.\nnoise: Look around once. Stay for 60 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08863",
+      "b": "GLITCH",
+      "r": 8863,
+      "name": "Jitter Dampener — TS-08863",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08863"
+      ],
+      "plain": "collapse: Write the raw signal. Set 5 minutes. Start now.\nsignal: Spot the extra layer. Make it easy. Remove one blocker.\nnoise: Look around once. Stay for 60 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08870",
+      "b": "GLITCH",
+      "r": 8870,
+      "name": "Collapse Cushion — TS-08870",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08870"
+      ],
+      "plain": "desync: Say what is true. Set 2 minutes. Start now.\njitter: Mark assumptions. Make it easy. Remove one blocker.\ncollapse: Touch a solid surface. Stay for 5 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08877",
+      "b": "GLITCH",
+      "r": 8877,
+      "name": "Jitter Dampener — TS-08877",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08877"
+      ],
+      "plain": "noise: Say what is true. Set 60 seconds. Start now.\ndesync: Mark assumptions. Make it easy. Remove one blocker.\njitter: Touch a solid surface. Stay for 3 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08884",
+      "b": "GLITCH",
+      "r": 8884,
+      "name": "Signal/Noise Split — TS-08884",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08884"
+      ],
+      "plain": "jitter: Name the main fact. Set 3 minutes. Start now.\ncollapse: Name the fear-script. Make it easy. Remove one blocker.\nsignal: Do a desync pause. Stay for 30 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08891",
+      "b": "GLITCH",
+      "r": 8891,
+      "name": "Noise Filter — TS-08891",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08891"
+      ],
+      "plain": "desync: Write the raw signal. Set 2 minutes. Start now.\njitter: Spot the extra layer. Make it easy. Remove one blocker.\ncollapse: Look around once. Stay for 5 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08898",
+      "b": "GLITCH",
+      "r": 8898,
+      "name": "Jitter Dampener — TS-08898",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08898"
+      ],
+      "plain": "noise: Name the main fact. Set 60 seconds. Start now.\ndesync: Name the fear-script. Make it easy. Remove one blocker.\njitter: Do a desync pause. Stay for 3 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08905",
+      "b": "GLITCH",
+      "r": 8905,
+      "name": "Desync Repair — TS-08905",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08905"
+      ],
+      "plain": "desync: Say what is true. Set 2 minutes. Start now.\njitter: Mark assumptions. Make it easy. Remove one blocker.\ncollapse: Touch a solid surface. Stay for 5 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08912",
+      "b": "GLITCH",
+      "r": 8912,
+      "name": "Desync Repair — TS-08912",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08912"
+      ],
+      "plain": "jitter: Write the raw signal. Set 3 minutes. Start now.\ncollapse: Spot the extra layer. Make it easy. Remove one blocker.\nsignal: Look around once. Stay for 30 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08919",
+      "b": "GLITCH",
+      "r": 8919,
+      "name": "Collapse Cushion — TS-08919",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08919"
+      ],
+      "plain": "jitter: Name the main fact. Set 3 minutes. Start now.\ncollapse: Name the fear-script. Make it easy. Remove one blocker.\nsignal: Do a desync pause. Stay for 30 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08926",
+      "b": "GLITCH",
+      "r": 8926,
+      "name": "Collapse Cushion — TS-08926",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08926"
+      ],
+      "plain": "noise: Name the main fact. Set 60 seconds. Start now.\ndesync: Name the fear-script. Make it easy. Remove one blocker.\njitter: Do a desync pause. Stay for 3 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08933",
+      "b": "GLITCH",
+      "r": 8933,
+      "name": "Signal Gate — TS-08933",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08933"
+      ],
+      "plain": "signal: Name the main fact. Set 30 seconds. Start now.\nnoise: Name the fear-script. Make it easy. Remove one blocker.\ndesync: Do a desync pause. Stay for 2 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08940",
+      "b": "GLITCH",
+      "r": 8940,
+      "name": "Signal Gate — TS-08940",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08940"
+      ],
+      "plain": "jitter: Name the main fact. Set 3 minutes. Start now.\ncollapse: Name the fear-script. Make it easy. Remove one blocker.\nsignal: Do a desync pause. Stay for 30 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08947",
+      "b": "GLITCH",
+      "r": 8947,
+      "name": "Jitter Dampener — TS-08947",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08947"
+      ],
+      "plain": "noise: Name the main fact. Set 60 seconds. Start now.\ndesync: Name the fear-script. Make it easy. Remove one blocker.\njitter: Do a desync pause. Stay for 3 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08954",
+      "b": "GLITCH",
+      "r": 8954,
+      "name": "Collapse Cushion — TS-08954",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08954"
+      ],
+      "plain": "desync: Say what is true. Set 2 minutes. Start now.\njitter: Mark assumptions. Make it easy. Remove one blocker.\ncollapse: Touch a solid surface. Stay for 5 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08961",
+      "b": "GLITCH",
+      "r": 8961,
+      "name": "Noise Filter — TS-08961",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08961"
+      ],
+      "plain": "signal: Name the main fact. Set 30 seconds. Start now.\nnoise: Name the fear-script. Make it easy. Remove one blocker.\ndesync: Do a desync pause. Stay for 2 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08968",
+      "b": "GLITCH",
+      "r": 8968,
+      "name": "Desync Repair — TS-08968",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08968"
+      ],
+      "plain": "signal: Name the main fact. Set 30 seconds. Start now.\nnoise: Name the fear-script. Make it easy. Remove one blocker.\ndesync: Do a desync pause. Stay for 2 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08975",
+      "b": "GLITCH",
+      "r": 8975,
+      "name": "Collapse Cushion — TS-08975",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08975"
+      ],
+      "plain": "noise: Write the raw signal. Set 60 seconds. Start now.\ndesync: Spot the extra layer. Make it easy. Remove one blocker.\njitter: Look around once. Stay for 3 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08982",
+      "b": "GLITCH",
+      "r": 8982,
+      "name": "Collapse Cushion — TS-08982",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08982"
+      ],
+      "plain": "signal: State the situation. Set 30 seconds. Start now.\nnoise: List the noise story. Make it easy. Remove one blocker.\ndesync: Stop for ten seconds. Stay for 2 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08989",
+      "b": "GLITCH",
+      "r": 8989,
+      "name": "Noise Filter — TS-08989",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08989"
+      ],
+      "plain": "desync: State the situation. Set 2 minutes. Start now.\njitter: List the noise story. Make it easy. Remove one blocker.\ncollapse: Stop for ten seconds. Stay for 5 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-08996",
+      "b": "GLITCH",
+      "r": 8996,
+      "name": "Noise Filter — TS-08996",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_08996"
+      ],
+      "plain": "noise: Name the main fact. Set 60 seconds. Start now.\ndesync: Name the fear-script. Make it easy. Remove one blocker.\njitter: Do a desync pause. Stay for 3 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09003",
+      "b": "GLITCH",
+      "r": 9003,
+      "name": "Jitter Dampener — TS-09003",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09003"
+      ],
+      "plain": "noise: Write the raw signal. Set 60 seconds. Start now.\ndesync: Spot the extra layer. Make it easy. Remove one blocker.\njitter: Look around once. Stay for 3 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09010",
+      "b": "GLITCH",
+      "r": 9010,
+      "name": "Noise Filter — TS-09010",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09010"
+      ],
+      "plain": "jitter: Name the main fact. Set 3 minutes. Start now.\ncollapse: Name the fear-script. Make it easy. Remove one blocker.\nsignal: Do a desync pause. Stay for 30 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09017",
+      "b": "GLITCH",
+      "r": 9017,
+      "name": "Signal/Noise Split — TS-09017",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09017"
+      ],
+      "plain": "desync: Name the main fact. Set 2 minutes. Start now.\njitter: Name the fear-script. Make it easy. Remove one blocker.\ncollapse: Do a desync pause. Stay for 5 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09024",
+      "b": "GLITCH",
+      "r": 9024,
+      "name": "Desync Repair — TS-09024",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09024"
+      ],
+      "plain": "collapse: State the situation. Set 5 minutes. Start now.\nsignal: List the noise story. Make it easy. Remove one blocker.\nnoise: Stop for ten seconds. Stay for 60 seconds. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09031",
+      "b": "GLITCH",
+      "r": 9031,
+      "name": "Desync Repair — TS-09031",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09031"
+      ],
+      "plain": "jitter: Write the raw signal. Set 3 minutes. Start now.\ncollapse: Spot the extra layer. Make it easy. Remove one blocker.\nsignal: Look around once. Stay for 30 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09038",
+      "b": "GLITCH",
+      "r": 9038,
+      "name": "Signal Gate — TS-09038",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09038"
+      ],
+      "plain": "signal: State the situation. Set 30 seconds. Start now.\nnoise: List the noise story. Make it easy. Remove one blocker.\ndesync: Stop for ten seconds. Stay for 2 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09045",
+      "b": "GLITCH",
+      "r": 9045,
+      "name": "Jitter Dampener — TS-09045",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09045"
+      ],
+      "plain": "desync: Name the main fact. Set 2 minutes. Start now.\njitter: Name the fear-script. Make it easy. Remove one blocker.\ncollapse: Do a desync pause. Stay for 5 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09052",
+      "b": "GLITCH",
+      "r": 9052,
+      "name": "Jitter Dampener — TS-09052",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09052"
+      ],
+      "plain": "desync: Write the raw signal. Set 2 minutes. Start now.\njitter: Spot the extra layer. Make it easy. Remove one blocker.\ncollapse: Look around once. Stay for 5 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09059",
+      "b": "GLITCH",
+      "r": 9059,
+      "name": "Desync Repair — TS-09059",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09059"
+      ],
+      "plain": "signal: Name the main fact. Set 30 seconds. Start now.\nnoise: Name the fear-script. Make it easy. Remove one blocker.\ndesync: Do a desync pause. Stay for 2 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09066",
+      "b": "GLITCH",
+      "r": 9066,
+      "name": "Signal Gate — TS-09066",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09066"
+      ],
+      "plain": "signal: Say what is true. Set 30 seconds. Start now.\nnoise: Mark assumptions. Make it easy. Remove one blocker.\ndesync: Touch a solid surface. Stay for 2 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09073",
+      "b": "GLITCH",
+      "r": 9073,
+      "name": "Jitter Dampener — TS-09073",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09073"
+      ],
+      "plain": "desync: State the situation. Set 2 minutes. Start now.\njitter: List the noise story. Make it easy. Remove one blocker.\ncollapse: Stop for ten seconds. Stay for 5 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09080",
+      "b": "GLITCH",
+      "r": 9080,
+      "name": "Signal/Noise Split — TS-09080",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09080"
+      ],
+      "plain": "jitter: Say what is true. Set 3 minutes. Start now.\ncollapse: Mark assumptions. Make it easy. Remove one blocker.\nsignal: Touch a solid surface. Stay for 30 seconds. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09087",
+      "b": "GLITCH",
+      "r": 9087,
+      "name": "Desync Repair — TS-09087",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09087"
+      ],
+      "plain": "collapse: Write the raw signal. Set 5 minutes. Start now.\nsignal: Spot the extra layer. Make it easy. Remove one blocker.\nnoise: Look around once. Stay for 60 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09094",
+      "b": "GLITCH",
+      "r": 9094,
+      "name": "Noise Filter — TS-09094",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09094"
+      ],
+      "plain": "noise: Name the main fact. Set 60 seconds. Start now.\ndesync: Name the fear-script. Make it easy. Remove one blocker.\njitter: Do a desync pause. Stay for 3 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09101",
+      "b": "GLITCH",
+      "r": 9101,
+      "name": "Signal Gate — TS-09101",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09101"
+      ],
+      "plain": "collapse: Say what is true. Set 5 minutes. Start now.\nsignal: Mark assumptions. Make it easy. Remove one blocker.\nnoise: Touch a solid surface. Stay for 60 seconds. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09108",
+      "b": "GLITCH",
+      "r": 9108,
+      "name": "Desync Repair — TS-09108",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09108"
+      ],
+      "plain": "jitter: State the situation. Set 3 minutes. Start now.\ncollapse: List the noise story. Make it easy. Remove one blocker.\nsignal: Stop for ten seconds. Stay for 30 seconds. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09115",
+      "b": "GLITCH",
+      "r": 9115,
+      "name": "Signal/Noise Split — TS-09115",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09115"
+      ],
+      "plain": "collapse: Name the main fact. Set 5 minutes. Start now.\nsignal: Name the fear-script. Make it easy. Remove one blocker.\nnoise: Do a desync pause. Stay for 60 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09122",
+      "b": "GLITCH",
+      "r": 9122,
+      "name": "Collapse Cushion — TS-09122",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09122"
+      ],
+      "plain": "noise: State the situation. Set 60 seconds. Start now.\ndesync: List the noise story. Make it easy. Remove one blocker.\njitter: Stop for ten seconds. Stay for 3 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09129",
+      "b": "GLITCH",
+      "r": 9129,
+      "name": "Signal Gate — TS-09129",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09129"
+      ],
+      "plain": "desync: Name the main fact. Set 2 minutes. Start now.\njitter: Name the fear-script. Make it easy. Remove one blocker.\ncollapse: Do a desync pause. Stay for 5 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09136",
+      "b": "GLITCH",
+      "r": 9136,
+      "name": "Signal/Noise Split — TS-09136",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09136"
+      ],
+      "plain": "signal: Name the main fact. Set 30 seconds. Start now.\nnoise: Name the fear-script. Make it easy. Remove one blocker.\ndesync: Do a desync pause. Stay for 2 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09143",
+      "b": "GLITCH",
+      "r": 9143,
+      "name": "Signal/Noise Split — TS-09143",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09143"
+      ],
+      "plain": "collapse: State the situation. Set 5 minutes. Start now.\nsignal: List the noise story. Make it easy. Remove one blocker.\nnoise: Stop for ten seconds. Stay for 60 seconds. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09150",
+      "b": "GLITCH",
+      "r": 9150,
+      "name": "Jitter Dampener — TS-09150",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09150"
+      ],
+      "plain": "noise: Write the raw signal. Set 60 seconds. Start now.\ndesync: Spot the extra layer. Make it easy. Remove one blocker.\njitter: Look around once. Stay for 3 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09157",
+      "b": "GLITCH",
+      "r": 9157,
+      "name": "Jitter Dampener — TS-09157",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09157"
+      ],
+      "plain": "desync: Name the main fact. Set 2 minutes. Start now.\njitter: Name the fear-script. Make it easy. Remove one blocker.\ncollapse: Do a desync pause. Stay for 5 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09164",
+      "b": "GLITCH",
+      "r": 9164,
+      "name": "Collapse Cushion — TS-09164",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09164"
+      ],
+      "plain": "collapse: Say what is true. Set 5 minutes. Start now.\nsignal: Mark assumptions. Make it easy. Remove one blocker.\nnoise: Touch a solid surface. Stay for 60 seconds. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09171",
+      "b": "GLITCH",
+      "r": 9171,
+      "name": "Signal/Noise Split — TS-09171",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09171"
+      ],
+      "plain": "collapse: Write the raw signal. Set 5 minutes. Start now.\nsignal: Spot the extra layer. Make it easy. Remove one blocker.\nnoise: Look around once. Stay for 60 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09178",
+      "b": "GLITCH",
+      "r": 9178,
+      "name": "Signal Gate — TS-09178",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09178"
+      ],
+      "plain": "signal: Say what is true. Set 30 seconds. Start now.\nnoise: Mark assumptions. Make it easy. Remove one blocker.\ndesync: Touch a solid surface. Stay for 2 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09185",
+      "b": "GLITCH",
+      "r": 9185,
+      "name": "Signal Gate — TS-09185",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09185"
+      ],
+      "plain": "collapse: Write the raw signal. Set 5 minutes. Start now.\nsignal: Spot the extra layer. Make it easy. Remove one blocker.\nnoise: Look around once. Stay for 60 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09192",
+      "b": "GLITCH",
+      "r": 9192,
+      "name": "Signal/Noise Split — TS-09192",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09192"
+      ],
+      "plain": "signal: Name the main fact. Set 30 seconds. Start now.\nnoise: Name the fear-script. Make it easy. Remove one blocker.\ndesync: Do a desync pause. Stay for 2 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09199",
+      "b": "GLITCH",
+      "r": 9199,
+      "name": "Signal/Noise Split — TS-09199",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09199"
+      ],
+      "plain": "noise: State the situation. Set 60 seconds. Start now.\ndesync: List the noise story. Make it easy. Remove one blocker.\njitter: Stop for ten seconds. Stay for 3 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09206",
+      "b": "GLITCH",
+      "r": 9206,
+      "name": "Noise Filter — TS-09206",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09206"
+      ],
+      "plain": "signal: Say what is true. Set 30 seconds. Start now.\nnoise: Mark assumptions. Make it easy. Remove one blocker.\ndesync: Touch a solid surface. Stay for 2 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09213",
+      "b": "GLITCH",
+      "r": 9213,
+      "name": "Signal/Noise Split — TS-09213",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09213"
+      ],
+      "plain": "desync: Name the main fact. Set 2 minutes. Start now.\njitter: Name the fear-script. Make it easy. Remove one blocker.\ncollapse: Do a desync pause. Stay for 5 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09220",
+      "b": "GLITCH",
+      "r": 9220,
+      "name": "Desync Repair — TS-09220",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09220"
+      ],
+      "plain": "jitter: Write the raw signal. Set 3 minutes. Start now.\ncollapse: Spot the extra layer. Make it easy. Remove one blocker.\nsignal: Look around once. Stay for 30 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09227",
+      "b": "GLITCH",
+      "r": 9227,
+      "name": "Collapse Cushion — TS-09227",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09227"
+      ],
+      "plain": "desync: Write the raw signal. Set 2 minutes. Start now.\njitter: Spot the extra layer. Make it easy. Remove one blocker.\ncollapse: Look around once. Stay for 5 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09234",
+      "b": "GLITCH",
+      "r": 9234,
+      "name": "Collapse Cushion — TS-09234",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09234"
+      ],
+      "plain": "noise: Write the raw signal. Set 60 seconds. Start now.\ndesync: Spot the extra layer. Make it easy. Remove one blocker.\njitter: Look around once. Stay for 3 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09241",
+      "b": "GLITCH",
+      "r": 9241,
+      "name": "Collapse Cushion — TS-09241",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09241"
+      ],
+      "plain": "noise: Say what is true. Set 60 seconds. Start now.\ndesync: Mark assumptions. Make it easy. Remove one blocker.\njitter: Touch a solid surface. Stay for 3 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09248",
+      "b": "GLITCH",
+      "r": 9248,
+      "name": "Jitter Dampener — TS-09248",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09248"
+      ],
+      "plain": "noise: Write the raw signal. Set 60 seconds. Start now.\ndesync: Spot the extra layer. Make it easy. Remove one blocker.\njitter: Look around once. Stay for 3 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09255",
+      "b": "GLITCH",
+      "r": 9255,
+      "name": "Signal Gate — TS-09255",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09255"
+      ],
+      "plain": "collapse: Write the raw signal. Set 5 minutes. Start now.\nsignal: Spot the extra layer. Make it easy. Remove one blocker.\nnoise: Look around once. Stay for 60 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09262",
+      "b": "GLITCH",
+      "r": 9262,
+      "name": "Noise Filter — TS-09262",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09262"
+      ],
+      "plain": "noise: Say what is true. Set 60 seconds. Start now.\ndesync: Mark assumptions. Make it easy. Remove one blocker.\njitter: Touch a solid surface. Stay for 3 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09269",
+      "b": "GLITCH",
+      "r": 9269,
+      "name": "Signal/Noise Split — TS-09269",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09269"
+      ],
+      "plain": "signal: Say what is true. Set 30 seconds. Start now.\nnoise: Mark assumptions. Make it easy. Remove one blocker.\ndesync: Touch a solid surface. Stay for 2 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09276",
+      "b": "GLITCH",
+      "r": 9276,
+      "name": "Signal Gate — TS-09276",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09276"
+      ],
+      "plain": "signal: Write the raw signal. Set 30 seconds. Start now.\nnoise: Spot the extra layer. Make it easy. Remove one blocker.\ndesync: Look around once. Stay for 2 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09283",
+      "b": "GLITCH",
+      "r": 9283,
+      "name": "Signal/Noise Split — TS-09283",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09283"
+      ],
+      "plain": "signal: Write the raw signal. Set 30 seconds. Start now.\nnoise: Spot the extra layer. Make it easy. Remove one blocker.\ndesync: Look around once. Stay for 2 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09290",
+      "b": "GLITCH",
+      "r": 9290,
+      "name": "Collapse Cushion — TS-09290",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09290"
+      ],
+      "plain": "jitter: State the situation. Set 3 minutes. Start now.\ncollapse: List the noise story. Make it easy. Remove one blocker.\nsignal: Stop for ten seconds. Stay for 30 seconds. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09297",
+      "b": "GLITCH",
+      "r": 9297,
+      "name": "Jitter Dampener — TS-09297",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09297"
+      ],
+      "plain": "collapse: Name the main fact. Set 5 minutes. Start now.\nsignal: Name the fear-script. Make it easy. Remove one blocker.\nnoise: Do a desync pause. Stay for 60 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09304",
+      "b": "GLITCH",
+      "r": 9304,
+      "name": "Noise Filter — TS-09304",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09304"
+      ],
+      "plain": "noise: Say what is true. Set 60 seconds. Start now.\ndesync: Mark assumptions. Make it easy. Remove one blocker.\njitter: Touch a solid surface. Stay for 3 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09311",
+      "b": "GLITCH",
+      "r": 9311,
+      "name": "Noise Filter — TS-09311",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09311"
+      ],
+      "plain": "noise: Name the main fact. Set 60 seconds. Start now.\ndesync: Name the fear-script. Make it easy. Remove one blocker.\njitter: Do a desync pause. Stay for 3 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09318",
+      "b": "GLITCH",
+      "r": 9318,
+      "name": "Signal Gate — TS-09318",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09318"
+      ],
+      "plain": "noise: Write the raw signal. Set 60 seconds. Start now.\ndesync: Spot the extra layer. Make it easy. Remove one blocker.\njitter: Look around once. Stay for 3 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09325",
+      "b": "GLITCH",
+      "r": 9325,
+      "name": "Desync Repair — TS-09325",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09325"
+      ],
+      "plain": "signal: Write the raw signal. Set 30 seconds. Start now.\nnoise: Spot the extra layer. Make it easy. Remove one blocker.\ndesync: Look around once. Stay for 2 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09332",
+      "b": "GLITCH",
+      "r": 9332,
+      "name": "Signal Gate — TS-09332",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09332"
+      ],
+      "plain": "collapse: State the situation. Set 5 minutes. Start now.\nsignal: List the noise story. Make it easy. Remove one blocker.\nnoise: Stop for ten seconds. Stay for 60 seconds. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09339",
+      "b": "GLITCH",
+      "r": 9339,
+      "name": "Signal Gate — TS-09339",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09339"
+      ],
+      "plain": "jitter: State the situation. Set 3 minutes. Start now.\ncollapse: List the noise story. Make it easy. Remove one blocker.\nsignal: Stop for ten seconds. Stay for 30 seconds. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09346",
+      "b": "GLITCH",
+      "r": 9346,
+      "name": "Signal/Noise Split — TS-09346",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09346"
+      ],
+      "plain": "noise: Write the raw signal. Set 60 seconds. Start now.\ndesync: Spot the extra layer. Make it easy. Remove one blocker.\njitter: Look around once. Stay for 3 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09353",
+      "b": "GLITCH",
+      "r": 9353,
+      "name": "Jitter Dampener — TS-09353",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09353"
+      ],
+      "plain": "signal: Name the main fact. Set 30 seconds. Start now.\nnoise: Name the fear-script. Make it easy. Remove one blocker.\ndesync: Do a desync pause. Stay for 2 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09360",
+      "b": "GLITCH",
+      "r": 9360,
+      "name": "Noise Filter — TS-09360",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09360"
+      ],
+      "plain": "noise: Write the raw signal. Set 60 seconds. Start now.\ndesync: Spot the extra layer. Make it easy. Remove one blocker.\njitter: Look around once. Stay for 3 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09367",
+      "b": "GLITCH",
+      "r": 9367,
+      "name": "Collapse Cushion — TS-09367",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09367"
+      ],
+      "plain": "collapse: Write the raw signal. Set 5 minutes. Start now.\nsignal: Spot the extra layer. Make it easy. Remove one blocker.\nnoise: Look around once. Stay for 60 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09374",
+      "b": "GLITCH",
+      "r": 9374,
+      "name": "Noise Filter — TS-09374",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09374"
+      ],
+      "plain": "collapse: Say what is true. Set 5 minutes. Start now.\nsignal: Mark assumptions. Make it easy. Remove one blocker.\nnoise: Touch a solid surface. Stay for 60 seconds. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09381",
+      "b": "GLITCH",
+      "r": 9381,
+      "name": "Signal/Noise Split — TS-09381",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09381"
+      ],
+      "plain": "jitter: Write the raw signal. Set 3 minutes. Start now.\ncollapse: Spot the extra layer. Make it easy. Remove one blocker.\nsignal: Look around once. Stay for 30 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09388",
+      "b": "GLITCH",
+      "r": 9388,
+      "name": "Desync Repair — TS-09388",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09388"
+      ],
+      "plain": "jitter: Name the main fact. Set 3 minutes. Start now.\ncollapse: Name the fear-script. Make it easy. Remove one blocker.\nsignal: Do a desync pause. Stay for 30 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09395",
+      "b": "GLITCH",
+      "r": 9395,
+      "name": "Noise Filter — TS-09395",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09395"
+      ],
+      "plain": "noise: Say what is true. Set 60 seconds. Start now.\ndesync: Mark assumptions. Make it easy. Remove one blocker.\njitter: Touch a solid surface. Stay for 3 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09402",
+      "b": "GLITCH",
+      "r": 9402,
+      "name": "Signal/Noise Split — TS-09402",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09402"
+      ],
+      "plain": "noise: Name the main fact. Set 60 seconds. Start now.\ndesync: Name the fear-script. Make it easy. Remove one blocker.\njitter: Do a desync pause. Stay for 3 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09409",
+      "b": "GLITCH",
+      "r": 9409,
+      "name": "Collapse Cushion — TS-09409",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09409"
+      ],
+      "plain": "noise: Name the main fact. Set 60 seconds. Start now.\ndesync: Name the fear-script. Make it easy. Remove one blocker.\njitter: Do a desync pause. Stay for 3 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09416",
+      "b": "GLITCH",
+      "r": 9416,
+      "name": "Jitter Dampener — TS-09416",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09416"
+      ],
+      "plain": "desync: Name the main fact. Set 2 minutes. Start now.\njitter: Name the fear-script. Make it easy. Remove one blocker.\ncollapse: Do a desync pause. Stay for 5 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09423",
+      "b": "GLITCH",
+      "r": 9423,
+      "name": "Collapse Cushion — TS-09423",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09423"
+      ],
+      "plain": "jitter: Say what is true. Set 3 minutes. Start now.\ncollapse: Mark assumptions. Make it easy. Remove one blocker.\nsignal: Touch a solid surface. Stay for 30 seconds. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09430",
+      "b": "GLITCH",
+      "r": 9430,
+      "name": "Jitter Dampener — TS-09430",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09430"
+      ],
+      "plain": "jitter: Write the raw signal. Set 3 minutes. Start now.\ncollapse: Spot the extra layer. Make it easy. Remove one blocker.\nsignal: Look around once. Stay for 30 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09437",
+      "b": "GLITCH",
+      "r": 9437,
+      "name": "Collapse Cushion — TS-09437",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09437"
+      ],
+      "plain": "jitter: Say what is true. Set 3 minutes. Start now.\ncollapse: Mark assumptions. Make it easy. Remove one blocker.\nsignal: Touch a solid surface. Stay for 30 seconds. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09444",
+      "b": "GLITCH",
+      "r": 9444,
+      "name": "Signal/Noise Split — TS-09444",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09444"
+      ],
+      "plain": "collapse: Write the raw signal. Set 5 minutes. Start now.\nsignal: Spot the extra layer. Make it easy. Remove one blocker.\nnoise: Look around once. Stay for 60 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09451",
+      "b": "GLITCH",
+      "r": 9451,
+      "name": "Desync Repair — TS-09451",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09451"
+      ],
+      "plain": "noise: Say what is true. Set 60 seconds. Start now.\ndesync: Mark assumptions. Make it easy. Remove one blocker.\njitter: Touch a solid surface. Stay for 3 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09458",
+      "b": "GLITCH",
+      "r": 9458,
+      "name": "Collapse Cushion — TS-09458",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09458"
+      ],
+      "plain": "collapse: State the situation. Set 5 minutes. Start now.\nsignal: List the noise story. Make it easy. Remove one blocker.\nnoise: Stop for ten seconds. Stay for 60 seconds. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09465",
+      "b": "GLITCH",
+      "r": 9465,
+      "name": "Collapse Cushion — TS-09465",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09465"
+      ],
+      "plain": "noise: Name the main fact. Set 60 seconds. Start now.\ndesync: Name the fear-script. Make it easy. Remove one blocker.\njitter: Do a desync pause. Stay for 3 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09472",
+      "b": "GLITCH",
+      "r": 9472,
+      "name": "Desync Repair — TS-09472",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09472"
+      ],
+      "plain": "jitter: Name the main fact. Set 3 minutes. Start now.\ncollapse: Name the fear-script. Make it easy. Remove one blocker.\nsignal: Do a desync pause. Stay for 30 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09479",
+      "b": "GLITCH",
+      "r": 9479,
+      "name": "Signal/Noise Split — TS-09479",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09479"
+      ],
+      "plain": "jitter: Name the main fact. Set 3 minutes. Start now.\ncollapse: Name the fear-script. Make it easy. Remove one blocker.\nsignal: Do a desync pause. Stay for 30 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09486",
+      "b": "GLITCH",
+      "r": 9486,
+      "name": "Noise Filter — TS-09486",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09486"
+      ],
+      "plain": "noise: State the situation. Set 60 seconds. Start now.\ndesync: List the noise story. Make it easy. Remove one blocker.\njitter: Stop for ten seconds. Stay for 3 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09493",
+      "b": "GLITCH",
+      "r": 9493,
+      "name": "Desync Repair — TS-09493",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09493"
+      ],
+      "plain": "desync: State the situation. Set 2 minutes. Start now.\njitter: List the noise story. Make it easy. Remove one blocker.\ncollapse: Stop for ten seconds. Stay for 5 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09500",
+      "b": "GLITCH",
+      "r": 9500,
+      "name": "Jitter Dampener — TS-09500",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09500"
+      ],
+      "plain": "noise: State the situation. Set 60 seconds. Start now.\ndesync: List the noise story. Make it easy. Remove one blocker.\njitter: Stop for ten seconds. Stay for 3 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09507",
+      "b": "GLITCH",
+      "r": 9507,
+      "name": "Signal Gate — TS-09507",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09507"
+      ],
+      "plain": "jitter: State the situation. Set 3 minutes. Start now.\ncollapse: List the noise story. Make it easy. Remove one blocker.\nsignal: Stop for ten seconds. Stay for 30 seconds. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09514",
+      "b": "GLITCH",
+      "r": 9514,
+      "name": "Noise Filter — TS-09514",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09514"
+      ],
+      "plain": "collapse: Say what is true. Set 5 minutes. Start now.\nsignal: Mark assumptions. Make it easy. Remove one blocker.\nnoise: Touch a solid surface. Stay for 60 seconds. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09521",
+      "b": "GLITCH",
+      "r": 9521,
+      "name": "Signal/Noise Split — TS-09521",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09521"
+      ],
+      "plain": "signal: Say what is true. Set 30 seconds. Start now.\nnoise: Mark assumptions. Make it easy. Remove one blocker.\ndesync: Touch a solid surface. Stay for 2 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09528",
+      "b": "GLITCH",
+      "r": 9528,
+      "name": "Jitter Dampener — TS-09528",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09528"
+      ],
+      "plain": "collapse: Write the raw signal. Set 5 minutes. Start now.\nsignal: Spot the extra layer. Make it easy. Remove one blocker.\nnoise: Look around once. Stay for 60 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09535",
+      "b": "GLITCH",
+      "r": 9535,
+      "name": "Jitter Dampener — TS-09535",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09535"
+      ],
+      "plain": "jitter: Say what is true. Set 3 minutes. Start now.\ncollapse: Mark assumptions. Make it easy. Remove one blocker.\nsignal: Touch a solid surface. Stay for 30 seconds. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09542",
+      "b": "GLITCH",
+      "r": 9542,
+      "name": "Collapse Cushion — TS-09542",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09542"
+      ],
+      "plain": "desync: State the situation. Set 2 minutes. Start now.\njitter: List the noise story. Make it easy. Remove one blocker.\ncollapse: Stop for ten seconds. Stay for 5 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09549",
+      "b": "GLITCH",
+      "r": 9549,
+      "name": "Jitter Dampener — TS-09549",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09549"
+      ],
+      "plain": "noise: Name the main fact. Set 60 seconds. Start now.\ndesync: Name the fear-script. Make it easy. Remove one blocker.\njitter: Do a desync pause. Stay for 3 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09556",
+      "b": "GLITCH",
+      "r": 9556,
+      "name": "Signal/Noise Split — TS-09556",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09556"
+      ],
+      "plain": "desync: Name the main fact. Set 2 minutes. Start now.\njitter: Name the fear-script. Make it easy. Remove one blocker.\ncollapse: Do a desync pause. Stay for 5 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09563",
+      "b": "GLITCH",
+      "r": 9563,
+      "name": "Noise Filter — TS-09563",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09563"
+      ],
+      "plain": "desync: Say what is true. Set 2 minutes. Start now.\njitter: Mark assumptions. Make it easy. Remove one blocker.\ncollapse: Touch a solid surface. Stay for 5 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09570",
+      "b": "GLITCH",
+      "r": 9570,
+      "name": "Noise Filter — TS-09570",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09570"
+      ],
+      "plain": "jitter: Name the main fact. Set 3 minutes. Start now.\ncollapse: Name the fear-script. Make it easy. Remove one blocker.\nsignal: Do a desync pause. Stay for 30 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09577",
+      "b": "GLITCH",
+      "r": 9577,
+      "name": "Signal/Noise Split — TS-09577",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09577"
+      ],
+      "plain": "signal: State the situation. Set 30 seconds. Start now.\nnoise: List the noise story. Make it easy. Remove one blocker.\ndesync: Stop for ten seconds. Stay for 2 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09584",
+      "b": "GLITCH",
+      "r": 9584,
+      "name": "Collapse Cushion — TS-09584",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09584"
+      ],
+      "plain": "collapse: State the situation. Set 5 minutes. Start now.\nsignal: List the noise story. Make it easy. Remove one blocker.\nnoise: Stop for ten seconds. Stay for 60 seconds. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09591",
+      "b": "GLITCH",
+      "r": 9591,
+      "name": "Noise Filter — TS-09591",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09591"
+      ],
+      "plain": "noise: State the situation. Set 60 seconds. Start now.\ndesync: List the noise story. Make it easy. Remove one blocker.\njitter: Stop for ten seconds. Stay for 3 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09598",
+      "b": "GLITCH",
+      "r": 9598,
+      "name": "Jitter Dampener — TS-09598",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09598"
+      ],
+      "plain": "desync: Name the main fact. Set 2 minutes. Start now.\njitter: Name the fear-script. Make it easy. Remove one blocker.\ncollapse: Do a desync pause. Stay for 5 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09605",
+      "b": "GLITCH",
+      "r": 9605,
+      "name": "Signal Gate — TS-09605",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09605"
+      ],
+      "plain": "noise: Name the main fact. Set 60 seconds. Start now.\ndesync: Name the fear-script. Make it easy. Remove one blocker.\njitter: Do a desync pause. Stay for 3 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09612",
+      "b": "GLITCH",
+      "r": 9612,
+      "name": "Jitter Dampener — TS-09612",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09612"
+      ],
+      "plain": "desync: Write the raw signal. Set 2 minutes. Start now.\njitter: Spot the extra layer. Make it easy. Remove one blocker.\ncollapse: Look around once. Stay for 5 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09619",
+      "b": "GLITCH",
+      "r": 9619,
+      "name": "Jitter Dampener — TS-09619",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09619"
+      ],
+      "plain": "jitter: Write the raw signal. Set 3 minutes. Start now.\ncollapse: Spot the extra layer. Make it easy. Remove one blocker.\nsignal: Look around once. Stay for 30 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09626",
+      "b": "GLITCH",
+      "r": 9626,
+      "name": "Desync Repair — TS-09626",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09626"
+      ],
+      "plain": "desync: Write the raw signal. Set 2 minutes. Start now.\njitter: Spot the extra layer. Make it easy. Remove one blocker.\ncollapse: Look around once. Stay for 5 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09633",
+      "b": "GLITCH",
+      "r": 9633,
+      "name": "Desync Repair — TS-09633",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09633"
+      ],
+      "plain": "desync: Say what is true. Set 2 minutes. Start now.\njitter: Mark assumptions. Make it easy. Remove one blocker.\ncollapse: Touch a solid surface. Stay for 5 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09640",
+      "b": "GLITCH",
+      "r": 9640,
+      "name": "Desync Repair — TS-09640",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09640"
+      ],
+      "plain": "noise: Say what is true. Set 60 seconds. Start now.\ndesync: Mark assumptions. Make it easy. Remove one blocker.\njitter: Touch a solid surface. Stay for 3 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09647",
+      "b": "GLITCH",
+      "r": 9647,
+      "name": "Collapse Cushion — TS-09647",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09647"
+      ],
+      "plain": "collapse: Write the raw signal. Set 5 minutes. Start now.\nsignal: Spot the extra layer. Make it easy. Remove one blocker.\nnoise: Look around once. Stay for 60 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09654",
+      "b": "GLITCH",
+      "r": 9654,
+      "name": "Noise Filter — TS-09654",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09654"
+      ],
+      "plain": "desync: State the situation. Set 2 minutes. Start now.\njitter: List the noise story. Make it easy. Remove one blocker.\ncollapse: Stop for ten seconds. Stay for 5 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09661",
+      "b": "GLITCH",
+      "r": 9661,
+      "name": "Collapse Cushion — TS-09661",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09661"
+      ],
+      "plain": "noise: Write the raw signal. Set 60 seconds. Start now.\ndesync: Spot the extra layer. Make it easy. Remove one blocker.\njitter: Look around once. Stay for 3 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09668",
+      "b": "GLITCH",
+      "r": 9668,
+      "name": "Signal Gate — TS-09668",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09668"
+      ],
+      "plain": "jitter: State the situation. Set 3 minutes. Start now.\ncollapse: List the noise story. Make it easy. Remove one blocker.\nsignal: Stop for ten seconds. Stay for 30 seconds. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09675",
+      "b": "GLITCH",
+      "r": 9675,
+      "name": "Signal Gate — TS-09675",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09675"
+      ],
+      "plain": "noise: Name the main fact. Set 60 seconds. Start now.\ndesync: Name the fear-script. Make it easy. Remove one blocker.\njitter: Do a desync pause. Stay for 3 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09682",
+      "b": "GLITCH",
+      "r": 9682,
+      "name": "Signal Gate — TS-09682",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09682"
+      ],
+      "plain": "jitter: Write the raw signal. Set 3 minutes. Start now.\ncollapse: Spot the extra layer. Make it easy. Remove one blocker.\nsignal: Look around once. Stay for 30 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09689",
+      "b": "GLITCH",
+      "r": 9689,
+      "name": "Collapse Cushion — TS-09689",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09689"
+      ],
+      "plain": "desync: Name the main fact. Set 2 minutes. Start now.\njitter: Name the fear-script. Make it easy. Remove one blocker.\ncollapse: Do a desync pause. Stay for 5 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09696",
+      "b": "GLITCH",
+      "r": 9696,
+      "name": "Signal/Noise Split — TS-09696",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09696"
+      ],
+      "plain": "signal: Say what is true. Set 30 seconds. Start now.\nnoise: Mark assumptions. Make it easy. Remove one blocker.\ndesync: Touch a solid surface. Stay for 2 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09703",
+      "b": "GLITCH",
+      "r": 9703,
+      "name": "Signal/Noise Split — TS-09703",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09703"
+      ],
+      "plain": "jitter: State the situation. Set 3 minutes. Start now.\ncollapse: List the noise story. Make it easy. Remove one blocker.\nsignal: Stop for ten seconds. Stay for 30 seconds. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09710",
+      "b": "GLITCH",
+      "r": 9710,
+      "name": "Jitter Dampener — TS-09710",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09710"
+      ],
+      "plain": "signal: Write the raw signal. Set 30 seconds. Start now.\nnoise: Spot the extra layer. Make it easy. Remove one blocker.\ndesync: Look around once. Stay for 2 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09717",
+      "b": "GLITCH",
+      "r": 9717,
+      "name": "Noise Filter — TS-09717",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09717"
+      ],
+      "plain": "signal: State the situation. Set 30 seconds. Start now.\nnoise: List the noise story. Make it easy. Remove one blocker.\ndesync: Stop for ten seconds. Stay for 2 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09724",
+      "b": "GLITCH",
+      "r": 9724,
+      "name": "Noise Filter — TS-09724",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09724"
+      ],
+      "plain": "noise: Say what is true. Set 60 seconds. Start now.\ndesync: Mark assumptions. Make it easy. Remove one blocker.\njitter: Touch a solid surface. Stay for 3 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09731",
+      "b": "GLITCH",
+      "r": 9731,
+      "name": "Jitter Dampener — TS-09731",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09731"
+      ],
+      "plain": "desync: Say what is true. Set 2 minutes. Start now.\njitter: Mark assumptions. Make it easy. Remove one blocker.\ncollapse: Touch a solid surface. Stay for 5 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09738",
+      "b": "GLITCH",
+      "r": 9738,
+      "name": "Signal/Noise Split — TS-09738",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09738"
+      ],
+      "plain": "desync: State the situation. Set 2 minutes. Start now.\njitter: List the noise story. Make it easy. Remove one blocker.\ncollapse: Stop for ten seconds. Stay for 5 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09745",
+      "b": "GLITCH",
+      "r": 9745,
+      "name": "Signal/Noise Split — TS-09745",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09745"
+      ],
+      "plain": "desync: Write the raw signal. Set 2 minutes. Start now.\njitter: Spot the extra layer. Make it easy. Remove one blocker.\ncollapse: Look around once. Stay for 5 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09752",
+      "b": "GLITCH",
+      "r": 9752,
+      "name": "Desync Repair — TS-09752",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09752"
+      ],
+      "plain": "jitter: Say what is true. Set 3 minutes. Start now.\ncollapse: Mark assumptions. Make it easy. Remove one blocker.\nsignal: Touch a solid surface. Stay for 30 seconds. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09759",
+      "b": "GLITCH",
+      "r": 9759,
+      "name": "Desync Repair — TS-09759",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09759"
+      ],
+      "plain": "noise: Say what is true. Set 60 seconds. Start now.\ndesync: Mark assumptions. Make it easy. Remove one blocker.\njitter: Touch a solid surface. Stay for 3 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09766",
+      "b": "GLITCH",
+      "r": 9766,
+      "name": "Desync Repair — TS-09766",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09766"
+      ],
+      "plain": "noise: Say what is true. Set 60 seconds. Start now.\ndesync: Mark assumptions. Make it easy. Remove one blocker.\njitter: Touch a solid surface. Stay for 3 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09773",
+      "b": "GLITCH",
+      "r": 9773,
+      "name": "Collapse Cushion — TS-09773",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09773"
+      ],
+      "plain": "noise: Name the main fact. Set 60 seconds. Start now.\ndesync: Name the fear-script. Make it easy. Remove one blocker.\njitter: Do a desync pause. Stay for 3 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09780",
+      "b": "GLITCH",
+      "r": 9780,
+      "name": "Jitter Dampener — TS-09780",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09780"
+      ],
+      "plain": "noise: State the situation. Set 60 seconds. Start now.\ndesync: List the noise story. Make it easy. Remove one blocker.\njitter: Stop for ten seconds. Stay for 3 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09787",
+      "b": "GLITCH",
+      "r": 9787,
+      "name": "Desync Repair — TS-09787",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09787"
+      ],
+      "plain": "noise: Say what is true. Set 60 seconds. Start now.\ndesync: Mark assumptions. Make it easy. Remove one blocker.\njitter: Touch a solid surface. Stay for 3 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09794",
+      "b": "GLITCH",
+      "r": 9794,
+      "name": "Signal Gate — TS-09794",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09794"
+      ],
+      "plain": "collapse: State the situation. Set 5 minutes. Start now.\nsignal: List the noise story. Make it easy. Remove one blocker.\nnoise: Stop for ten seconds. Stay for 60 seconds. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09801",
+      "b": "GLITCH",
+      "r": 9801,
+      "name": "Collapse Cushion — TS-09801",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09801"
+      ],
+      "plain": "signal: State the situation. Set 30 seconds. Start now.\nnoise: List the noise story. Make it easy. Remove one blocker.\ndesync: Stop for ten seconds. Stay for 2 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09808",
+      "b": "GLITCH",
+      "r": 9808,
+      "name": "Desync Repair — TS-09808",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09808"
+      ],
+      "plain": "jitter: Write the raw signal. Set 3 minutes. Start now.\ncollapse: Spot the extra layer. Make it easy. Remove one blocker.\nsignal: Look around once. Stay for 30 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09815",
+      "b": "GLITCH",
+      "r": 9815,
+      "name": "Signal/Noise Split — TS-09815",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09815"
+      ],
+      "plain": "signal: State the situation. Set 30 seconds. Start now.\nnoise: List the noise story. Make it easy. Remove one blocker.\ndesync: Stop for ten seconds. Stay for 2 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09822",
+      "b": "GLITCH",
+      "r": 9822,
+      "name": "Jitter Dampener — TS-09822",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09822"
+      ],
+      "plain": "desync: State the situation. Set 2 minutes. Start now.\njitter: List the noise story. Make it easy. Remove one blocker.\ncollapse: Stop for ten seconds. Stay for 5 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09829",
+      "b": "GLITCH",
+      "r": 9829,
+      "name": "Noise Filter — TS-09829",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09829"
+      ],
+      "plain": "noise: Name the main fact. Set 60 seconds. Start now.\ndesync: Name the fear-script. Make it easy. Remove one blocker.\njitter: Do a desync pause. Stay for 3 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09836",
+      "b": "GLITCH",
+      "r": 9836,
+      "name": "Noise Filter — TS-09836",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09836"
+      ],
+      "plain": "desync: Write the raw signal. Set 2 minutes. Start now.\njitter: Spot the extra layer. Make it easy. Remove one blocker.\ncollapse: Look around once. Stay for 5 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09843",
+      "b": "GLITCH",
+      "r": 9843,
+      "name": "Signal/Noise Split — TS-09843",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09843"
+      ],
+      "plain": "desync: Name the main fact. Set 2 minutes. Start now.\njitter: Name the fear-script. Make it easy. Remove one blocker.\ncollapse: Do a desync pause. Stay for 5 minutes. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09850",
+      "b": "GLITCH",
+      "r": 9850,
+      "name": "Desync Repair — TS-09850",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09850"
+      ],
+      "plain": "collapse: Write the raw signal. Set 5 minutes. Start now.\nsignal: Spot the extra layer. Make it easy. Remove one blocker.\nnoise: Look around once. Stay for 60 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09857",
+      "b": "GLITCH",
+      "r": 9857,
+      "name": "Signal Gate — TS-09857",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09857"
+      ],
+      "plain": "desync: State the situation. Set 2 minutes. Start now.\njitter: List the noise story. Make it easy. Remove one blocker.\ncollapse: Stop for ten seconds. Stay for 5 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09864",
+      "b": "GLITCH",
+      "r": 9864,
+      "name": "Jitter Dampener — TS-09864",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09864"
+      ],
+      "plain": "collapse: Write the raw signal. Set 5 minutes. Start now.\nsignal: Spot the extra layer. Make it easy. Remove one blocker.\nnoise: Look around once. Stay for 60 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09871",
+      "b": "GLITCH",
+      "r": 9871,
+      "name": "Collapse Cushion — TS-09871",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09871"
+      ],
+      "plain": "desync: Write the raw signal. Set 2 minutes. Start now.\njitter: Spot the extra layer. Make it easy. Remove one blocker.\ncollapse: Look around once. Stay for 5 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09878",
+      "b": "GLITCH",
+      "r": 9878,
+      "name": "Jitter Dampener — TS-09878",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09878"
+      ],
+      "plain": "jitter: State the situation. Set 3 minutes. Start now.\ncollapse: List the noise story. Make it easy. Remove one blocker.\nsignal: Stop for ten seconds. Stay for 30 seconds. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09885",
+      "b": "GLITCH",
+      "r": 9885,
+      "name": "Signal/Noise Split — TS-09885",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09885"
+      ],
+      "plain": "collapse: Say what is true. Set 5 minutes. Start now.\nsignal: Mark assumptions. Make it easy. Remove one blocker.\nnoise: Touch a solid surface. Stay for 60 seconds. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09892",
+      "b": "GLITCH",
+      "r": 9892,
+      "name": "Signal/Noise Split — TS-09892",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09892"
+      ],
+      "plain": "jitter: Name the main fact. Set 3 minutes. Start now.\ncollapse: Name the fear-script. Make it easy. Remove one blocker.\nsignal: Do a desync pause. Stay for 30 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09899",
+      "b": "GLITCH",
+      "r": 9899,
+      "name": "Signal Gate — TS-09899",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09899"
+      ],
+      "plain": "collapse: Name the main fact. Set 5 minutes. Start now.\nsignal: Name the fear-script. Make it easy. Remove one blocker.\nnoise: Do a desync pause. Stay for 60 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09906",
+      "b": "GLITCH",
+      "r": 9906,
+      "name": "Desync Repair — TS-09906",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09906"
+      ],
+      "plain": "desync: State the situation. Set 2 minutes. Start now.\njitter: List the noise story. Make it easy. Remove one blocker.\ncollapse: Stop for ten seconds. Stay for 5 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09913",
+      "b": "GLITCH",
+      "r": 9913,
+      "name": "Jitter Dampener — TS-09913",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09913"
+      ],
+      "plain": "jitter: State the situation. Set 3 minutes. Start now.\ncollapse: List the noise story. Make it easy. Remove one blocker.\nsignal: Stop for ten seconds. Stay for 30 seconds. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09920",
+      "b": "GLITCH",
+      "r": 9920,
+      "name": "Signal Gate — TS-09920",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09920"
+      ],
+      "plain": "jitter: State the situation. Set 3 minutes. Start now.\ncollapse: List the noise story. Make it easy. Remove one blocker.\nsignal: Stop for ten seconds. Stay for 30 seconds. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09927",
+      "b": "GLITCH",
+      "r": 9927,
+      "name": "Signal/Noise Split — TS-09927",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09927"
+      ],
+      "plain": "signal: State the situation. Set 30 seconds. Start now.\nnoise: List the noise story. Make it easy. Remove one blocker.\ndesync: Stop for ten seconds. Stay for 2 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09934",
+      "b": "GLITCH",
+      "r": 9934,
+      "name": "Collapse Cushion — TS-09934",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09934"
+      ],
+      "plain": "signal: State the situation. Set 30 seconds. Start now.\nnoise: List the noise story. Make it easy. Remove one blocker.\ndesync: Stop for ten seconds. Stay for 2 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09941",
+      "b": "GLITCH",
+      "r": 9941,
+      "name": "Signal Gate — TS-09941",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09941"
+      ],
+      "plain": "noise: Say what is true. Set 60 seconds. Start now.\ndesync: Mark assumptions. Make it easy. Remove one blocker.\njitter: Touch a solid surface. Stay for 3 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09948",
+      "b": "GLITCH",
+      "r": 9948,
+      "name": "Collapse Cushion — TS-09948",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09948"
+      ],
+      "plain": "desync: Write the raw signal. Set 2 minutes. Start now.\njitter: Spot the extra layer. Make it easy. Remove one blocker.\ncollapse: Look around once. Stay for 5 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09955",
+      "b": "GLITCH",
+      "r": 9955,
+      "name": "Desync Repair — TS-09955",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09955"
+      ],
+      "plain": "noise: Say what is true. Set 60 seconds. Start now.\ndesync: Mark assumptions. Make it easy. Remove one blocker.\njitter: Touch a solid surface. Stay for 3 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09962",
+      "b": "GLITCH",
+      "r": 9962,
+      "name": "Desync Repair — TS-09962",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09962"
+      ],
+      "plain": "signal: Write the raw signal. Set 30 seconds. Start now.\nnoise: Spot the extra layer. Make it easy. Remove one blocker.\ndesync: Look around once. Stay for 2 minutes. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09969",
+      "b": "GLITCH",
+      "r": 9969,
+      "name": "Signal Gate — TS-09969",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09969"
+      ],
+      "plain": "collapse: Write the raw signal. Set 5 minutes. Start now.\nsignal: Spot the extra layer. Make it easy. Remove one blocker.\nnoise: Look around once. Stay for 60 seconds. Stop at timer.\nCheck body. Lower brightness. Return once.\nDo one more. Choose one next action. Keep it small.\nClose gently. Save a short note. Mark next time.\nWhy: Separating signal from noise cuts spirals.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09976",
+      "b": "GLITCH",
+      "r": 9976,
+      "name": "Noise Filter — TS-09976",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09976"
+      ],
+      "plain": "jitter: Say what is true. Set 3 minutes. Start now.\ncollapse: Mark assumptions. Make it easy. Remove one blocker.\nsignal: Touch a solid surface. Stay for 30 seconds. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: A brief desync pause drops jitter and restores control.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09983",
+      "b": "GLITCH",
+      "r": 9983,
+      "name": "Signal/Noise Split — TS-09983",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09983"
+      ],
+      "plain": "jitter: Name the main fact. Set 3 minutes. Start now.\ncollapse: Name the fear-script. Make it easy. Remove one blocker.\nsignal: Do a desync pause. Stay for 30 seconds. Stop at timer.\nCheck body. Close extra tabs. Return once.\nDo one more. Do the simplest fix. Keep it small.\nClose gently. End the pass. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09990",
+      "b": "GLITCH",
+      "r": 9990,
+      "name": "Noise Filter — TS-09990",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09990"
+      ],
+      "plain": "signal: State the situation. Set 30 seconds. Start now.\nnoise: List the noise story. Make it easy. Remove one blocker.\ndesync: Stop for ten seconds. Stay for 2 minutes. Stop at timer.\nCheck body. Mute notifications. Return once.\nDo one more. Ask one clear question. Keep it small.\nClose gently. Log the outcome. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    },
+    {
+      "id": "TS-09997",
+      "b": "GLITCH",
+      "r": 9997,
+      "name": "Jitter Dampener — TS-09997",
+      "challenge_type": "signal_input",
+      "challenge": "user_text",
+      "domain": "thinkstill",
+      "mechanism_signature": [
+        "TECH_09997"
+      ],
+      "plain": "signal: Say what is true. Set 30 seconds. Start now.\nnoise: Mark assumptions. Make it easy. Remove one blocker.\ndesync: Touch a solid surface. Stay for 2 minutes. Stop at timer.\nCheck body. Reduce jitter inputs. Return once.\nDo one more. Pick one clean step. Keep it small.\nClose gently. Set a reminder. Mark next time.\nWhy: One clean action prevents collapse-by-overload.",
+      "safety": "If this feels too intense, stop and return to a neutral task.",
+      "sources": []
+    }
+  ]
+}
