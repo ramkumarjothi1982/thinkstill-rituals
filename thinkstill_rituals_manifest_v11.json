@@ -3,111 +3,55 @@
   "version": "v11",
   "generated_at": "2026-01-21T09:01:51.253984Z",
   "row_count": 10000,
-  "base_url": "",
+  "base_url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/",
   "bubbles": [
     {
       "bubble": "GLITCH",
       "parts": [
-        {
-          "filename": "glitch_v11_part_01.json",
-          "rows": null,
-          "bytes": 846695
-        },
-        {
-          "filename": "glitch_v11_part_02.json",
-          "rows": null,
-          "bytes": 162286
-        }
+        { "filename": "glitch_v11_part_01.json", "rows": null, "bytes": 846695 },
+        { "filename": "glitch_v11_part_02.json", "rows": null, "bytes": 162286 }
       ]
     },
     {
       "bubble": "SYNC",
       "parts": [
-        {
-          "filename": "sync_v11_part_01.json",
-          "rows": null,
-          "bytes": 862978
-        },
-        {
-          "filename": "sync_v11_part_02.json",
-          "rows": null,
-          "bytes": 164386
-        }
+        { "filename": "sync_v11_part_01.json", "rows": null, "bytes": 862978 },
+        { "filename": "sync_v11_part_02.json", "rows": null, "bytes": 164386 }
       ]
     },
     {
       "bubble": "PATCH",
       "parts": [
-        {
-          "filename": "patch_v11_part_01.json",
-          "rows": null,
-          "bytes": 828372
-        },
-        {
-          "filename": "patch_v11_part_02.json",
-          "rows": null,
-          "bytes": 157655
-        }
+        { "filename": "patch_v11_part_01.json", "rows": null, "bytes": 828372 },
+        { "filename": "patch_v11_part_02.json", "rows": null, "bytes": 157655 }
       ]
     },
     {
       "bubble": "DROP",
       "parts": [
-        {
-          "filename": "drop_v11_part_01.json",
-          "rows": null,
-          "bytes": 849404
-        },
-        {
-          "filename": "drop_v11_part_02.json",
-          "rows": null,
-          "bytes": 164221
-        }
+        { "filename": "drop_v11_part_01.json", "rows": null, "bytes": 849404 },
+        { "filename": "drop_v11_part_02.json", "rows": null, "bytes": 164221 }
       ]
     },
     {
       "bubble": "STILL",
       "parts": [
-        {
-          "filename": "still_v11_part_01.json",
-          "rows": null,
-          "bytes": 855026
-        },
-        {
-          "filename": "still_v11_part_02.json",
-          "rows": null,
-          "bytes": 163749
-        }
+        { "filename": "still_v11_part_01.json", "rows": null, "bytes": 855026 },
+        { "filename": "still_v11_part_02.json", "rows": null, "bytes": 163749 }
       ]
     },
     {
       "bubble": "RUSH",
       "parts": [
-        {
-          "filename": "rush_v11_part_01.json",
-          "rows": null,
-          "bytes": 853614
-        },
-        {
-          "filename": "rush_v11_part_02.json",
-          "rows": null,
-          "bytes": 161949
-        }
+        { "filename": "rush_v11_part_01.json", "rows": null, "bytes": 853614 },
+        { "filename": "rush_v11_part_02.json", "rows": null, "bytes": 161949 }
       ]
     },
     {
       "bubble": "LOOPIE",
       "parts": [
-        {
-          "filename": "loopie_v11_part_01.json",
-          "rows": null,
-          "bytes": 856991
-        },
-        {
-          "filename": "loopie_v11_part_02.json",
-          "rows": null,
-          "bytes": 163103
-        }
+        { "filename": "loopie_v11_part_01.json", "rows": null, "bytes": 856991 },
+        { "filename": "loopie_v11_part_02.json", "rows": null, "bytes": 163103 }
       ]
     }
   ]
