@@ -1,0 +1,84 @@
+{
+  "project": "ThinkStill Rituals",
+  "version": "v10",
+  "source_workbook": "ThinkStill_FINAL_10K.xlsx",
+  "source_sheet": "Sheet1",
+  "total_records": 10000,
+  "bubbles": [
+    "DROP",
+    "GLITCH",
+    "LOOPIE",
+    "PATCH",
+    "RUSH",
+    "STILL",
+    "SYNC"
+  ],
+  "files": [
+    {
+      "file": "thinkstill_DROP_v10.json",
+      "bubble": "DROP",
+      "count": 1500,
+      "sha256": "b0b14026419860eb7c51d44867d2e314ae361acc4b5fd27b3ca7fc5d17cb0faf"
+    },
+    {
+      "file": "thinkstill_GLITCH_v10.json",
+      "bubble": "GLITCH",
+      "count": 1549,
+      "sha256": "66e2395eb84725828cce0c6ec452568efeee61cde9fa3694c1565b456f112dba"
+    },
+    {
+      "file": "thinkstill_LOOPIE_v10.json",
+      "bubble": "LOOPIE",
+      "count": 1438,
+      "sha256": "3234b9972de3b7e5ef59ff2a4e13edea786678b83a3fef288ae01c0e6cb8f7b4"
+    },
+    {
+      "file": "thinkstill_PATCH_v10.json",
+      "bubble": "PATCH",
+      "count": 1412,
+      "sha256": "b8cb1ed750c69c6760aebc7ba890a3d3388002fefa09472d4de4ac28b43cd941"
+    },
+    {
+      "file": "thinkstill_RUSH_v10.json",
+      "bubble": "RUSH",
+      "count": 1138,
+      "sha256": "03ff13fe33aaa70e243d39ef521b5b3dfe061542d8b68ae07801dea5a9bbd5ee"
+    },
+    {
+      "file": "thinkstill_STILL_v10.json",
+      "bubble": "STILL",
+      "count": 1525,
+      "sha256": "85df9c7b017c82add9e88bce9c871675381ec40f2ffafa43ec39d5238da6a090"
+    },
+    {
+      "file": "thinkstill_SYNC_v10.json",
+      "bubble": "SYNC",
+      "count": 1438,
+      "sha256": "d275d89c24b078b18e7c096b8e17c2fc7ecdad83539daedcd1e4367cd183f1e0"
+    }
+  ],
+  "combined_file": {
+    "file": "thinkstill_ALL_v10.json",
+    "count": 10000,
+    "sha256": "19e287038d5863706f7e117096de7b2eb70c6e6723bf78af6007172b88c963cb"
+  },
+  "schema": [
+    "record_index",
+    "source_row",
+    "ritual_id",
+    "bubble",
+    "title",
+    "slug",
+    "technique_dna",
+    "ritual_text",
+    "first_line",
+    "last_line",
+    "opening_key",
+    "loop_key",
+    "texture",
+    "structure_family",
+    "emotional_arc",
+    "formula_flow",
+    "engagement_tail"
+  ]
+}
