@@ -1,9 +1,69 @@
 {
-  "GLITCH": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_GLITCH_v10.json",
-  "DROP": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_DROP_v10.json",
-  "PATCH": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_PATCH_v10.json",
-  "SYNC": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_SYNC_v10.json",
-  "STILL": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_STILL_v10.json",
-  "RUSH": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_RUSH_v10.json",
-  "LOOPIE": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_LOOPIE_v10.json"
+  "schema": "thinkstill-manifest-v1",
+  "version": "v10",
+  "bubbles": [
+    {
+      "bubble": "GLITCH",
+      "parts": [
+        {
+          "filename": "thinkstill_GLITCH_v10.json",
+          "url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_GLITCH_v10.json"
+        }
+      ]
+    },
+    {
+      "bubble": "DROP",
+      "parts": [
+        {
+          "filename": "thinkstill_DROP_v10.json",
+          "url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_DROP_v10.json"
+        }
+      ]
+    },
+    {
+      "bubble": "PATCH",
+      "parts": [
+        {
+          "filename": "thinkstill_PATCH_v10.json",
+          "url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_PATCH_v10.json"
+        }
+      ]
+    },
+    {
+      "bubble": "SYNC",
+      "parts": [
+        {
+          "filename": "thinkstill_SYNC_v10.json",
+          "url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_SYNC_v10.json"
+        }
+      ]
+    },
+    {
+      "bubble": "STILL",
+      "parts": [
+        {
+          "filename": "thinkstill_STILL_v10.json",
+          "url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_STILL_v10.json"
+        }
+      ]
+    },
+    {
+      "bubble": "RUSH",
+      "parts": [
+        {
+          "filename": "thinkstill_RUSH_v10.json",
+          "url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_RUSH_v10.json"
+        }
+      ]
+    },
+    {
+      "bubble": "LOOPIE",
+      "parts": [
+        {
+          "filename": "thinkstill_LOOPIE_v10.json",
+          "url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_LOOPIE_v10.json"
+        }
+      ]
+    }
+  ]
 }
