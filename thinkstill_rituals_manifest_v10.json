@@ -1,24 +1,9 @@
 {
-  "project": "ThinkStill Rituals",
-  "version": "v10",
-  "format": "ui-parts",
-  "bubbles": {
-    "GLITCH": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_GLITCH_v10.json",
-    "DROP": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_DROP_v10.json",
-    "PATCH": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_PATCH_v10.json",
-    "SYNC": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_SYNC_v10.json",
-    "STILL": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_STILL_v10.json",
-    "RUSH": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_RUSH_v10.json",
-    "LOOPIE": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_LOOPIE_v10.json"
-  },
-  "counts": {
-    "GLITCH": 1549,
-    "DROP": 1500,
-    "PATCH": 1412,
-    "SYNC": 1438,
-    "STILL": 1525,
-    "RUSH": 1138,
-    "LOOPIE": 1438
-  },
-  "total": 10000
+  "GLITCH": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_GLITCH_v10.json",
+  "DROP": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_DROP_v10.json",
+  "PATCH": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_PATCH_v10.json",
+  "SYNC": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_SYNC_v10.json",
+  "STILL": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_STILL_v10.json",
+  "RUSH": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_RUSH_v10.json",
+  "LOOPIE": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill_LOOPIE_v10.json"
 }
