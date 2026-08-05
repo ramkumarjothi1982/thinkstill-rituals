@@ -1,49 +1,77 @@
 {
   "schema": "thinkstill-manifest-v17",
-  "version": "17.0",
+  "version": "17.1",
   "project": "ThinkStill 400 FINAL NO REPLAY NO LEVELUP",
   "row_count": 400,
   "routing": {
     "user_facing_thinking_errors": 22,
     "precise_subpatterns": 63,
-    "selection": "issue \u2192 parent thinking error \u2192 precise subpattern \u2192 weighted best unused ritual",
+    "selection": "issue → parent thinking error → precise subpattern → weighted best unused ritual",
     "repeat_policy": "No ritual repeats until all 400 have been served; then the global pool resets."
   },
   "bubbles": [
     {
       "bubble": "GLITCH",
-      "filename": "rituals_glitch.json",
-      "rows": 58
+      "parts": [
+        {
+          "filename": "rituals_glitch.json",
+          "rows": 58
+        }
+      ]
     },
     {
       "bubble": "DROP",
-      "filename": "rituals_drop.json",
-      "rows": 57
+      "parts": [
+        {
+          "filename": "rituals_drop.json",
+          "rows": 57
+        }
+      ]
     },
     {
       "bubble": "STILL",
-      "filename": "rituals_still.json",
-      "rows": 57
+      "parts": [
+        {
+          "filename": "rituals_still.json",
+          "rows": 57
+        }
+      ]
     },
     {
       "bubble": "PATCH",
-      "filename": "rituals_patch.json",
-      "rows": 57
+      "parts": [
+        {
+          "filename": "rituals_patch.json",
+          "rows": 57
+        }
+      ]
     },
     {
       "bubble": "LOOPIE",
-      "filename": "rituals_loopie.json",
-      "rows": 57
+      "parts": [
+        {
+          "filename": "rituals_loopie.json",
+          "rows": 57
+        }
+      ]
     },
     {
       "bubble": "RUSH",
-      "filename": "rituals_rush.json",
-      "rows": 57
+      "parts": [
+        {
+          "filename": "rituals_rush.json",
+          "rows": 57
+        }
+      ]
     },
     {
       "bubble": "SYNC",
-      "filename": "rituals_sync.json",
-      "rows": 57
+      "parts": [
+        {
+          "filename": "rituals_sync.json",
+          "rows": 57
+        }
+      ]
     }
   ]
 }
