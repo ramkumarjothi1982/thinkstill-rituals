@@ -1,0 +1,49 @@
+{
+  "schema": "thinkstill-ritual-package-v1",
+  "version": "18.2.0",
+  "release": "full-engagement-rewrite-flat-package",
+  "generatedAt": "2026-08-06T07:07:44.305440+00:00",
+  "ritualCount": 400,
+  "bubbleCount": 7,
+  "bubbles": [
+    "DROP",
+    "GLITCH",
+    "LOOPIE",
+    "PATCH",
+    "RUSH",
+    "STILL",
+    "SYNC"
+  ],
+  "userFacingErrorCount": 22,
+  "preciseSubpatternCount": 63,
+  "entryFile": "rituals.json",
+  "sourceWorkbook": "ThinkStill_400_FULL_ENGAGEMENT_REWRITE_FINAL.xlsx",
+  "features": [
+    "simple-language",
+    "imagination-first",
+    "no-writing-or-drawing",
+    "solo-play",
+    "balanced-routing",
+    "private-share-card",
+    "return-cue",
+    "safety-pause-rule"
+  ],
+  "bubbleFiles": {
+    "GLITCH": "rituals_glitch.json",
+    "DROP": "rituals_drop.json",
+    "STILL": "rituals_still.json",
+    "PATCH": "rituals_patch.json",
+    "LOOPIE": "rituals_loopie.json",
+    "RUSH": "rituals_rush.json",
+    "SYNC": "rituals_sync.json"
+  },
+  "bubbleCounts": {
+    "GLITCH": 58,
+    "DROP": 57,
+    "STILL": 57,
+    "PATCH": 57,
+    "LOOPIE": 57,
+    "RUSH": 57,
+    "SYNC": 57
+  }
+}

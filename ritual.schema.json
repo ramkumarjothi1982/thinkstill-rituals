@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thinkstill.app/schemas/ritual.schema.json",
+  "title": "ThinkStill Ritual",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "bubble",
+    "triggerPlayTime",
+    "intro",
+    "play",
+    "winReward",
+    "formulaFlow",
+    "safety",
+    "returnCue",
+    "routing"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^T-[0-9]{3}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "bubble": {
+      "enum": [
+        "GLITCH",
+        "DROP",
+        "STILL",
+        "PATCH",
+        "LOOPIE",
+        "RUSH",
+        "SYNC"
+      ]
+    },
+    "triggerPlayTime": {
+      "type": "string"
+    },
+    "intro": {
+      "type": "string"
+    },
+    "play": {
+      "type": "string"
+    },
+    "winReward": {
+      "type": "string"
+    },
+    "formulaFlow": {
+      "type": "string"
+    },
+    "safety": {
+      "type": "string"
+    },
+    "privateShareCard": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "returnCue": {
+      "type": "string"
+    },
+    "routing": {
+      "type": "object",
+      "required": [
+        "patternFamily",
+        "primaryTrigger",
+        "userFacingThinkingError",
+        "preciseSubpattern",
+        "coverageTier"
+      ],
+      "properties": {
+        "patternFamily": {
+          "type": "string"
+        },
+        "primaryTrigger": {
+          "type": "string"
+        },
+        "secondaryPatterns": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recognitionCue": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "matchReason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "uniqueGameMove": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "auditStatus": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "userFacingThinkingError": {
+          "type": "string"
+        },
+        "preciseSubpattern": {
+          "type": "string"
+        },
+        "coverageTier": {
+          "type": "string"
+        },
+        "routingStandard": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "routingWeight": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "routingProbabilityPercent": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "parentPoolSize": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "bubblePoolSize": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "balanceStatus": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

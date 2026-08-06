@@ -1,0 +1,632 @@
+[
+  {
+    "patternFamily": "Action, habits & motivation",
+    "primaryTrigger": "Action avoidance",
+    "ritualCount": 48,
+    "coverageTier": "CORE",
+    "productRole": "High-frequency discovery",
+    "example1": "THE RULE UNDER THE RULE",
+    "example2": "MAKE THE BELIEF BET",
+    "example3": "THE FORECAST SCOREBOARD"
+  },
+  {
+    "patternFamily": "Action, habits & motivation",
+    "primaryTrigger": "Avoidance reinforcement",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "REMOVE ONE INVISIBLE CRUTCH",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Action, habits & motivation",
+    "primaryTrigger": "Perfectionism",
+    "ritualCount": 8,
+    "coverageTier": "CORE",
+    "productRole": "High-frequency discovery",
+    "example1": "ONE VISIBLE VOTE",
+    "example2": "ENTER THE ACTION",
+    "example3": "THE CRISIS MENU"
+  },
+  {
+    "patternFamily": "Attention & metacognition",
+    "primaryTrigger": "Attention capture",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "VIVID IS NOT IMPORTANT",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Attention & metacognition",
+    "primaryTrigger": "Attention fragmentation",
+    "ritualCount": 2,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "CLOSE THE MICRO-GAPS",
+    "example2": "PIN A RETURN ADDRESS",
+    "example3": null
+  },
+  {
+    "patternFamily": "Attention & metacognition",
+    "primaryTrigger": "Attention misallocation",
+    "ritualCount": 12,
+    "coverageTier": "CORE",
+    "productRole": "High-frequency discovery",
+    "example1": "THE ATTENTION BOUNCER",
+    "example2": "FOUR PARTS OF ONE STEP",
+    "example3": "NOTICE THE NOTICING"
+  },
+  {
+    "patternFamily": "Attention & metacognition",
+    "primaryTrigger": "Cognitive overload",
+    "ritualCount": 11,
+    "coverageTier": "CORE",
+    "productRole": "High-frequency discovery",
+    "example1": "EMPTY THE MENTAL COUNTERTOP",
+    "example2": "RUN THE TWO-WORD TASK",
+    "example3": "COUNT EVERY OPEN LOOP"
+  },
+  {
+    "patternFamily": "Attention & metacognition",
+    "primaryTrigger": "Memory-as-present confusion",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "THEN / NOW SUBTITLES",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Attention & metacognition",
+    "primaryTrigger": "Mental filtering",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "FIND THE SENSE FACT THE STORY CANNOT EXPLAIN",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Attention & metacognition",
+    "primaryTrigger": "Observer loss",
+    "ritualCount": 9,
+    "coverageTier": "CORE",
+    "productRole": "High-frequency discovery",
+    "example1": "LET BREATH BREATHE YOU",
+    "example2": "ADD THE WITNESS WHO SHOULD HAVE BEEN THERE",
+    "example3": "DEMOTE THE HEADLINE EXPERIENCE"
+  },
+  {
+    "patternFamily": "Attention & metacognition",
+    "primaryTrigger": "Present-moment loss",
+    "ritualCount": 4,
+    "coverageTier": "STANDARD",
+    "productRole": "Regular matching",
+    "example1": "THE CONTROLLED REPLAY",
+    "example2": "BORROW THE FLOOR",
+    "example3": "GROUNDING ANCHOR RELAY"
+  },
+  {
+    "patternFamily": "Attention & metacognition",
+    "primaryTrigger": "Rumination",
+    "ritualCount": 5,
+    "coverageTier": "STANDARD",
+    "productRole": "Regular matching",
+    "example1": "WHAT IS NEW THIS LAP?",
+    "example2": "PAY FOR THE NEXT LAP",
+    "example3": "ASK WHAT THE MEMORY IS STILL BILLING"
+  },
+  {
+    "patternFamily": "Attention & metacognition",
+    "primaryTrigger": "Tunnel vision",
+    "ritualCount": 2,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "KEEP THE THREAT, ADD THE PERIPHERY",
+    "example2": "PUT THE COMMENTATOR IN THE CHEAP SEAT",
+    "example3": null
+  },
+  {
+    "patternFamily": "Beliefs, evidence & interpretation",
+    "primaryTrigger": "Automatic-pattern blindness",
+    "ritualCount": 39,
+    "coverageTier": "CORE",
+    "productRole": "High-frequency discovery",
+    "example1": "WORD MELT",
+    "example2": "CAMERA FIRST, CAPTION SECOND",
+    "example3": "TRANSLATE THE VERDICT"
+  },
+  {
+    "patternFamily": "Beliefs, evidence & interpretation",
+    "primaryTrigger": "Black-and-white thinking",
+    "ritualCount": 3,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "THE GREY DIAL",
+    "example2": "THE SUSTAINABLE MIDDLE",
+    "example3": "SET THE CONTACT DOSE"
+  },
+  {
+    "patternFamily": "Beliefs, evidence & interpretation",
+    "primaryTrigger": "Conceptual entanglement",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "WHO RECEIVED THAT THOUGHT?",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Beliefs, evidence & interpretation",
+    "primaryTrigger": "Context neglect",
+    "ritualCount": 9,
+    "coverageTier": "CORE",
+    "productRole": "High-frequency discovery",
+    "example1": "MOVE THE LESSON",
+    "example2": "TAKE SAFETY ON TOUR",
+    "example3": "SAME FACTS, THREE ASSUMPTIONS"
+  },
+  {
+    "patternFamily": "Beliefs, evidence & interpretation",
+    "primaryTrigger": "Decision paralysis",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "CLOSE ONE DOOR FOR THIRTY SECONDS",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Beliefs, evidence & interpretation",
+    "primaryTrigger": "Digital compulsion",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "MAKE PROGRESS LEAVE FOOTPRINTS",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Beliefs, evidence & interpretation",
+    "primaryTrigger": "Grief resistance",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "A PLACE FOR THE LOSS",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Beliefs, evidence & interpretation",
+    "primaryTrigger": "Guilt overreach",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "THE FIVE-BRICK REPAIR",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Beliefs, evidence & interpretation",
+    "primaryTrigger": "Hindsight bias",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "CAPTURE THE MODEL’S MISS",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Beliefs, evidence & interpretation",
+    "primaryTrigger": "Labelling",
+    "ritualCount": 2,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "GLOBAL LABELS NEED THREE RECEIPTS",
+    "example2": "BLANK THE NAMEPLATE",
+    "example3": null
+  },
+  {
+    "patternFamily": "Beliefs, evidence & interpretation",
+    "primaryTrigger": "Narrative overbuilding",
+    "ritualCount": 6,
+    "coverageTier": "STANDARD",
+    "productRole": "Regular matching",
+    "example1": "THE FIRST FRAME",
+    "example2": "BREAK THE NIGHT'S STORYLINE",
+    "example3": "THE TWENTY-MINUTE TRUTH DRAFT"
+  },
+  {
+    "patternFamily": "Beliefs, evidence & interpretation",
+    "primaryTrigger": "Overgeneralising",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "SAVE THE LESSON, DELETE THE VERDICT",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Beliefs, evidence & interpretation",
+    "primaryTrigger": "Personalisation",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "THE BLAME PIE",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Beliefs, evidence & interpretation",
+    "primaryTrigger": "Scarcity thinking",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "ONE-WORD LIGHT TOUCH",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Beliefs, evidence & interpretation",
+    "primaryTrigger": "Success discounting",
+    "ritualCount": 2,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "SAME VALUE, TWO OUTCOMES",
+    "example2": "LEAVE ONE THING BETTER",
+    "example3": null
+  },
+  {
+    "patternFamily": "Beliefs, evidence & interpretation",
+    "primaryTrigger": "Sunk-cost thinking",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "THE PAST INVESTMENT GETS NO NEW VOTE",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Beliefs, evidence & interpretation",
+    "primaryTrigger": "Unexamined belief",
+    "ritualCount": 12,
+    "coverageTier": "CORE",
+    "productRole": "High-frequency discovery",
+    "example1": "BORROW THEIR MIRROR",
+    "example2": "THE SCHEMA CONTRABAND FILE",
+    "example3": "THE BAD VOICE ACTOR"
+  },
+  {
+    "patternFamily": "Beliefs, evidence & interpretation",
+    "primaryTrigger": "Value disconnection",
+    "ritualCount": 13,
+    "coverageTier": "CORE",
+    "productRole": "High-frequency discovery",
+    "example1": "THANKS, MIND. NO CONTRACT.",
+    "example2": "THE LIFE DIRECTION TEST",
+    "example3": "MAKE A WIDER CONTAINER"
+  },
+  {
+    "patternFamily": "Beliefs, evidence & interpretation",
+    "primaryTrigger": "Worry looping",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "WORRY HAS OFFICE HOURS",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Body & nervous-system interpretation",
+    "primaryTrigger": "Body alarm escalation",
+    "ritualCount": 21,
+    "coverageTier": "CORE",
+    "productRole": "High-frequency discovery",
+    "example1": "THE 2% SOFTENING",
+    "example2": "PLAY THE BODY PASSWORD",
+    "example3": "COOL THE ALARM PANEL"
+  },
+  {
+    "patternFamily": "Body & nervous-system interpretation",
+    "primaryTrigger": "Body-sensation misinterpretation",
+    "ritualCount": 4,
+    "coverageTier": "STANDARD",
+    "productRole": "Regular matching",
+    "example1": "BORROW THE SENSATION",
+    "example2": "ONE DROP, NOT THE OCEAN",
+    "example3": "FIND THE FIRST ‘I’"
+  },
+  {
+    "patternFamily": "Body & nervous-system interpretation",
+    "primaryTrigger": "Body-state misreading",
+    "ritualCount": 25,
+    "coverageTier": "CORE",
+    "productRole": "High-frequency discovery",
+    "example1": "THE FIRST DRIFT",
+    "example2": "EMOTION, COMPLETE YOUR ARC",
+    "example3": "CHECK THE BIOLOGICAL VOLUME KNOBS"
+  },
+  {
+    "patternFamily": "Body & nervous-system interpretation",
+    "primaryTrigger": "Breath-control overeffort",
+    "ritualCount": 7,
+    "coverageTier": "STANDARD",
+    "productRole": "Regular matching",
+    "example1": "TENSION’S EXIT PARTNER",
+    "example2": "THE EVEN BRIDGE",
+    "example3": "VIBRATION ON THE WAY OUT"
+  },
+  {
+    "patternFamily": "Body & nervous-system interpretation",
+    "primaryTrigger": "Dissociation drift",
+    "ritualCount": 2,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "THE BODY AS INNER SPACE",
+    "example2": "NOT THIS, STILL HERE",
+    "example3": null
+  },
+  {
+    "patternFamily": "Body & nervous-system interpretation",
+    "primaryTrigger": "Physiological tension holding",
+    "ritualCount": 2,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "UPGRADE THE WAITING ROOM",
+    "example2": "UNWIND IN REVERSE",
+    "example3": null
+  },
+  {
+    "patternFamily": "Body & nervous-system interpretation",
+    "primaryTrigger": "Posture–mood locking",
+    "ritualCount": 3,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "WAIT FOR THE WHOLE BODY ANSWER",
+    "example2": "POSTURE WITHOUT PROPHECY",
+    "example3": "BORROW ONE MOVE FROM THE AVATAR"
+  },
+  {
+    "patternFamily": "Body & nervous-system interpretation",
+    "primaryTrigger": "Sensory disconnection",
+    "ritualCount": 15,
+    "coverageTier": "CORE",
+    "productRole": "High-frequency discovery",
+    "example1": "COOL AIR, WARM DECISION",
+    "example2": "THE SENSE ROLL CALL",
+    "example3": "STAY AT THE SENSE DOOR"
+  },
+  {
+    "patternFamily": "Emotion & urge processing",
+    "primaryTrigger": "Emotion blending",
+    "ritualCount": 2,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "CHANGE ONE THING, WATCH ONE FEELING",
+    "example2": "PUT THE FEELINGS BACK IN ORDER",
+    "example3": null
+  },
+  {
+    "patternFamily": "Emotion & urge processing",
+    "primaryTrigger": "Emotion mislabelling",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "VALIDATE AT THE DEPTH YOU ACTUALLY HAVE",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Emotion & urge processing",
+    "primaryTrigger": "Emotion stacking",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "THE FEELING UNDER THE FEELING ABOUT IT",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Emotion & urge processing",
+    "primaryTrigger": "Emotional reasoning",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "THE TWO-TRAY TEST",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Emotion & urge processing",
+    "primaryTrigger": "Emotion–fact confusion",
+    "ritualCount": 16,
+    "coverageTier": "CORE",
+    "productRole": "High-frequency discovery",
+    "example1": "MOOD HAS ALIBIS",
+    "example2": "THE THIRD VOICE",
+    "example3": "DOES THE FEELING FIT THE FILE?"
+  },
+  {
+    "patternFamily": "Emotion & urge processing",
+    "primaryTrigger": "Impulse fusion",
+    "ritualCount": 20,
+    "coverageTier": "CORE",
+    "productRole": "High-frequency discovery",
+    "example1": "LET THE URGE MISS ITS APPOINTMENT",
+    "example2": "BODY VETO",
+    "example3": "COMMAND DOWNGRADE"
+  },
+  {
+    "patternFamily": "Emotion & urge processing",
+    "primaryTrigger": "Shame globalisation",
+    "ritualCount": 2,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "ONE INCH BEYOND EASY",
+    "example2": "RETURN THE SHAME TO ITS OLD ADDRESS",
+    "example3": null
+  },
+  {
+    "patternFamily": "Emotion & urge processing",
+    "primaryTrigger": "Urgency bias",
+    "ritualCount": 5,
+    "coverageTier": "STANDARD",
+    "productRole": "Regular matching",
+    "example1": "THE LONGER OUT-BREATH",
+    "example2": "PUT THE YEARS BACK BETWEEN THEM",
+    "example3": "SORT THE SOUNDS BY DISTANCE"
+  },
+  {
+    "patternFamily": "Relationships & boundaries",
+    "primaryTrigger": "Blame fixation",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "DROP THE APPEAL",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Relationships & boundaries",
+    "primaryTrigger": "Boundary avoidance",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "THE REQUEST SPINE",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Relationships & boundaries",
+    "primaryTrigger": "Boundary confusion",
+    "ritualCount": 18,
+    "coverageTier": "CORE",
+    "productRole": "High-frequency discovery",
+    "example1": "MORE THAN THIS STATE",
+    "example2": "ONE CLEAN WISH",
+    "example3": "ERASE THE OBJECT, KEEP THE CONTACT"
+  },
+  {
+    "patternFamily": "Relationships & boundaries",
+    "primaryTrigger": "Communication distortion",
+    "ritualCount": 5,
+    "coverageTier": "STANDARD",
+    "productRole": "Regular matching",
+    "example1": "SET THE CONVERSATION SIZE",
+    "example2": "SOFT DELIVERY, SOLID MESSAGE",
+    "example3": "ROTATE THE CHAIR"
+  },
+  {
+    "patternFamily": "Relationships & boundaries",
+    "primaryTrigger": "Conflict escalation",
+    "ritualCount": 3,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "THE SIX-LINK FIRE CHAIN",
+    "example2": "FIND THE MOVE NO FEELING MUST BETRAY",
+    "example3": "ONE FIGHT, THREE TIME SCALES"
+  },
+  {
+    "patternFamily": "Relationships & boundaries",
+    "primaryTrigger": "Rejection magnification",
+    "ritualCount": 4,
+    "coverageTier": "STANDARD",
+    "productRole": "Regular matching",
+    "example1": "NAME THE SERIES",
+    "example2": "TURN AGAIN",
+    "example3": "NOT FOR, NOT AGAINST"
+  },
+  {
+    "patternFamily": "Self, identity & comparison",
+    "primaryTrigger": "Comparison distortion",
+    "ritualCount": 7,
+    "coverageTier": "STANDARD",
+    "productRole": "Regular matching",
+    "example1": "FIND THE BUSY HALF",
+    "example2": "WHAT SURVIVES THREE STATES?",
+    "example3": "THE WAKING DREAM CHECK"
+  },
+  {
+    "patternFamily": "Self, identity & comparison",
+    "primaryTrigger": "Self-criticism",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "PAIN PLUS THE FIGHT",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Threat, uncertainty & time",
+    "primaryTrigger": "Catastrophising",
+    "ritualCount": 1,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "WORST CASE, WITH EXITS",
+    "example2": null,
+    "example3": null
+  },
+  {
+    "patternFamily": "Threat, uncertainty & time",
+    "primaryTrigger": "Fortune telling",
+    "ritualCount": 2,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "THREE WORLDS, ONE FACT",
+    "example2": "CROSS OUT THE EXPIRED FUTURE",
+    "example3": null
+  },
+  {
+    "patternFamily": "Threat, uncertainty & time",
+    "primaryTrigger": "Probability overestimation",
+    "ritualCount": 3,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "THE ODDS RECEIPT",
+    "example2": "MAKE FEAR NAME A DEADLINE",
+    "example3": "POSSIBLE IS NOT PROBABLE"
+  },
+  {
+    "patternFamily": "Threat, uncertainty & time",
+    "primaryTrigger": "Reassurance dependence",
+    "ritualCount": 2,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "THE CONTROL GRAVEYARD",
+    "example2": "DO ONE GOOD THING WITH NO APPLAUSE BUTTON",
+    "example3": null
+  },
+  {
+    "patternFamily": "Threat, uncertainty & time",
+    "primaryTrigger": "Time-pressure distortion",
+    "ritualCount": 3,
+    "coverageTier": "SPECIALIST",
+    "productRole": "Precision match",
+    "example1": "FIVE SAFE SIGNALS",
+    "example2": "BREAK THE DEADLINE MONOLITH",
+    "example3": "MAKE THE ORDINARY WORTHY OF FULL CONTACT"
+  },
+  {
+    "patternFamily": "Threat, uncertainty & time",
+    "primaryTrigger": "Trauma time collapse",
+    "ritualCount": 7,
+    "coverageTier": "STANDARD",
+    "productRole": "Regular matching",
+    "example1": "DATE-STAMP THE PRESENT",
+    "example2": "ONE FOOT HERE, ONE FOOT NEAR IT",
+    "example3": "THE SECURE PENDING BOX"
+  },
+  {
+    "patternFamily": "Threat, uncertainty & time",
+    "primaryTrigger": "Uncertainty intolerance",
+    "ritualCount": 13,
+    "coverageTier": "CORE",
+    "productRole": "High-frequency discovery",
+    "example1": "LEAVE ONE QUESTION OPEN",
+    "example2": "STAMP WHERE THE DETAIL CAME FROM",
+    "example3": "IMPACT IS KNOWN; MOTIVE IS PENDING"
+  }
+]
