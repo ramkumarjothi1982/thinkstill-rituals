@@ -1,0 +1,38 @@
+{
+  "name": "@thinkstill/rituals",
+  "version": "18.1.0",
+  "description": "ThinkStill 400 full-engagement ritual dataset and routing metadata.",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./rituals": "./data/rituals.json",
+    "./manifest": "./manifest.json",
+    "./bubbles": "./data/bubbles.json",
+    "./bubbles/glitch": "./data/bubbles/glitch.json",
+    "./bubbles/drop": "./data/bubbles/drop.json",
+    "./bubbles/still": "./data/bubbles/still.json",
+    "./bubbles/patch": "./data/bubbles/patch.json",
+    "./bubbles/loopie": "./data/bubbles/loopie.json",
+    "./bubbles/rush": "./data/bubbles/rush.json",
+    "./bubbles/sync": "./data/bubbles/sync.json"
+  },
+  "files": [
+    "data",
+    "src",
+    "manifest.json",
+    "README.md"
+  ],
+  "scripts": {
+    "validate": "node scripts/validate.mjs"
+  },
+  "keywords": [
+    "thinkstill",
+    "rituals",
+    "mental-games",
+    "wellbeing",
+    "routing"
+  ],
+  "license": "UNLICENSED",
+  "private": true
+}

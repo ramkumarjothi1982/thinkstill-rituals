@@ -1,0 +1,42 @@
+{
+  "schema": "thinkstill-bubble-index-v1",
+  "bubbleCount": 7,
+  "totalRitualCount": 400,
+  "bubbles": [
+    {
+      "bubble": "GLITCH",
+      "file": "data/bubbles/glitch.json",
+      "ritualCount": 58
+    },
+    {
+      "bubble": "DROP",
+      "file": "data/bubbles/drop.json",
+      "ritualCount": 57
+    },
+    {
+      "bubble": "STILL",
+      "file": "data/bubbles/still.json",
+      "ritualCount": 57
+    },
+    {
+      "bubble": "PATCH",
+      "file": "data/bubbles/patch.json",
+      "ritualCount": 57
+    },
+    {
+      "bubble": "LOOPIE",
+      "file": "data/bubbles/loopie.json",
+      "ritualCount": 57
+    },
+    {
+      "bubble": "RUSH",
+      "file": "data/bubbles/rush.json",
+      "ritualCount": 57
+    },
+    {
+      "bubble": "SYNC",
+      "file": "data/bubbles/sync.json",
+      "ritualCount": 57
+    }
+  ]
+}
