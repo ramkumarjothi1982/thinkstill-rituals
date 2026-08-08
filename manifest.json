@@ -1,0 +1,78 @@
+{
+  "schema": "thinkstill-manifest-v17",
+  "version": "23.0",
+  "release": "v23 FINAL Micro-Polish Product Ready",
+  "project": "ThinkStill 400 Rituals",
+  "row_count": 400,
+  "source_workbook": "ThinkStill_400_Rituals_v23_FINAL_Micro_Polish_Product_Ready.xlsx",
+  "raw_base_url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main",
+  "routing": {
+    "mode": "auto",
+    "user_selects_bubble": false,
+    "user_facing_thinking_errors": 22,
+    "precise_subpatterns": 62,
+    "selection_path": "issue → parent thinking error → precise subpattern → weighted best unused ritual",
+    "repeat_policy": "No ritual repeats until all 400 have been served; then the global pool resets.",
+    "persist_seen_ids": true,
+    "persistence_note": "Store seen ritual IDs in durable browser storage or server-side user state so closing and reopening the browser does not reset history."
+  },
+  "bubbles": [
+    {
+      "name": "GLITCH",
+      "count": 58,
+      "file": "glitch.json"
+    },
+    {
+      "name": "DROP",
+      "count": 57,
+      "file": "drop.json"
+    },
+    {
+      "name": "STILL",
+      "count": 57,
+      "file": "still.json"
+    },
+    {
+      "name": "PATCH",
+      "count": 57,
+      "file": "patch.json"
+    },
+    {
+      "name": "LOOPIE",
+      "count": 57,
+      "file": "loopie.json"
+    },
+    {
+      "name": "RUSH",
+      "count": 57,
+      "file": "rush.json"
+    },
+    {
+      "name": "SYNC",
+      "count": 57,
+      "file": "sync.json"
+    }
+  ],
+  "files": {
+    "master": "rituals.json",
+    "normalized_master": "rituals.normalized.json",
+    "routing": "routing.json",
+    "thinking_errors": "thinking-errors.json",
+    "patterns": "patterns.json",
+    "loader": "thinkstill-loader.js",
+    "source_workbook": "ThinkStill_400_Rituals_v23_FINAL_Micro_Polish_Product_Ready.xlsx",
+    "integrity": "CHECKSUMS.sha256"
+  },
+  "urls": {
+    "manifest": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/manifest.json",
+    "rituals": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/rituals.json",
+    "normalized_rituals": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/rituals.normalized.json",
+    "glitch": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/glitch.json",
+    "drop": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/drop.json",
+    "still": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/still.json",
+    "patch": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/patch.json",
+    "loopie": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/loopie.json",
+    "rush": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/rush.json",
+    "sync": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/refs/heads/main/sync.json"
+  }
+}

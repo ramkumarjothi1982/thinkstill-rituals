@@ -1,0 +1,36 @@
+{
+  "schema": "thinkstill-routing-v23",
+  "version": "23.0",
+  "selection": {
+    "input": "free_text_issue",
+    "steps": [
+      "classify parent thinking error",
+      "classify precise subpattern",
+      "score candidate rituals",
+      "exclude already-seen ritual IDs",
+      "select highest-weight eligible ritual",
+      "fallback to next eligible thinking error only when required"
+    ],
+    "bubble_selection": "automatic",
+    "repeat_policy": {
+      "scope": "global_400",
+      "rule": "Do not repeat a ritual until all 400 ritual IDs have been served.",
+      "reset": "Reset the global seen pool only after all 400 have been served."
+    },
+    "recommended_seen_storage_key": "thinkstill_seen_ritual_ids_v23"
+  },
+  "counts": {
+    "rituals": 400,
+    "thinking_errors": 22,
+    "patterns": 62,
+    "bubbles": {
+      "GLITCH": 58,
+      "DROP": 57,
+      "SYNC": 57,
+      "STILL": 57,
+      "RUSH": 57,
+      "LOOPIE": 57,
+      "PATCH": 57
+    }
+  }
+}
