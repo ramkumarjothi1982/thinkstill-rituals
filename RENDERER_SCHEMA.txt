@@ -1,0 +1,13 @@
+ThinkStill v23.2 exact renderer schema
+
+The current ThinkStill ritualTextDefault() consumes:
+1. title
+2. trigger_play_time
+3. goal_why_game_move
+4. play_the_loop
+5. potency_stack OR potency_1/2/3 (POWERUP builds)
+6. win_reward
+7. formula_flow
+Safety is read separately from safety/safety_notes.
+
+This package fills every field for all 400 rituals.

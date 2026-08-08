@@ -1,0 +1,1 @@
+REPLACE manifest.json AND ALL SEVEN bubble JSON files in the GitHub repo root. For a clean release, replace all package files.
