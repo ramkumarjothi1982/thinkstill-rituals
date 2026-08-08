@@ -1,0 +1,40 @@
+{
+  "rituals.normalized.json fields": [
+    "ritual_number",
+    "id",
+    "bubble",
+    "ritual_title",
+    "trigger",
+    "pattern",
+    "play_time",
+    "hook",
+    "mission",
+    "game_move",
+    "how_to_play",
+    "power_up_1",
+    "power_up_2",
+    "power_up_3",
+    "win_reward",
+    "formula_flow",
+    "safety"
+  ],
+  "required": [
+    "ritual_number",
+    "id",
+    "bubble",
+    "ritual_title",
+    "trigger",
+    "pattern",
+    "how_to_play",
+    "safety"
+  ],
+  "bubble_values": [
+    "GLITCH",
+    "DROP",
+    "STILL",
+    "PATCH",
+    "LOOPIE",
+    "RUSH",
+    "SYNC"
+  ]
+}
