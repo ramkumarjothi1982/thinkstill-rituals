@@ -1,0 +1,9 @@
+{
+  "name": "thinkstill-rituals",
+  "version": "21.2.0",
+  "private": true,
+  "scripts": {
+    "validate": "node validate.js"
+  },
+  "description": "ThinkStill 400 — v21.2 TRUE ZERO Copy Overlap FINAL"
+}
