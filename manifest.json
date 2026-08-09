@@ -1,0 +1,62 @@
+{
+  "schema": "thinkstill-manifest-v36",
+  "version": "36.0",
+  "project": "ThinkStill 400 FINAL Clean Consumer MASTER",
+  "row_count": 400,
+  "consumer_display_order": [
+    "title",
+    "goal",
+    "numbered_ritual_steps",
+    "win",
+    "formula_flow",
+    "safety"
+  ],
+  "do_not_render": [
+    "internal.hook",
+    "internal.gameMove"
+  ],
+  "files": {
+    "all": "rituals.json",
+    "routingIndex": "routing-index.json",
+    "bubbles": {
+      "GLITCH": "glitch.json",
+      "DROP": "drop.json",
+      "STILL": "still.json",
+      "PATCH": "patch.json",
+      "LOOPIE": "loopie.json",
+      "RUSH": "rush.json",
+      "SYNC": "sync.json"
+    }
+  },
+  "counts": {
+    "bubbles": {
+      "GLITCH": 58,
+      "DROP": 57,
+      "SYNC": 57,
+      "STILL": 57,
+      "RUSH": 57,
+      "LOOPIE": 57,
+      "PATCH": 57
+    },
+    "triggers": 22,
+    "patterns": 63,
+    "playTimes": {
+      "30–60 seconds": 80,
+      "about 1 minute": 80,
+      "1–2 minutes": 80,
+      "under 2 minutes": 80,
+      "about 90 seconds": 80
+    }
+  },
+  "routing": {
+    "userFacingThinkingErrorField": "trigger",
+    "preciseSubpatternField": "pattern",
+    "bubbleField": "bubble",
+    "ritualIdField": "id"
+  },
+  "source": {
+    "workbook": "ThinkStill_400_Rituals_v36_FINAL_Clean_Consumer_MASTER(3).xlsx",
+    "sheet": "FINAL MASTER",
+    "rows": "5:404"
+  }
+}

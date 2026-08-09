@@ -1,0 +1,10 @@
+{
+  "name": "thinkstill-rituals-v36",
+  "private": true,
+  "version": "36.0.0",
+  "type": "module",
+  "scripts": {
+    "validate": "node validate.mjs",
+    "smoke": "node smoke-test.mjs"
+  }
+}

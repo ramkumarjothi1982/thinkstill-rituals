@@ -1,0 +1,3517 @@
+[
+  {
+    "ritualNumber": 11,
+    "id": "T-011",
+    "bubble": "RUSH",
+    "title": "MAKE THE BELIEF BET",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance",
+    "playTime": "30–60 seconds",
+    "display": {
+      "title": "MAKE THE BELIEF BET",
+      "goal": "Let behaviour settle what argument cannot.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "State Belief",
+          "instruction": "State the belief as a clear forecast. Make Belief — feel support.",
+          "raw": "1. State Belief — State the belief as a clear forecast. Make Belief — feel support."
+        },
+        {
+          "number": 2,
+          "label": "Choose Safe",
+          "instruction": "Choose a safe, small action that could prove it wrong as well as right.",
+          "raw": "2. Choose Safe — Choose a safe, small action that could prove it wrong as well as right."
+        },
+        {
+          "number": 3,
+          "label": "Picture Outcome",
+          "instruction": "Hold the expected result before acting. Make Belief — pick action.",
+          "raw": "3. Picture Outcome — Hold the expected result before acting. Make Belief — pick action."
+        },
+        {
+          "number": 4,
+          "label": "Test Observation",
+          "instruction": "Run the test, then compare observation with prediction.",
+          "raw": "4. Test Observation — Run the test, then compare observation with prediction."
+        },
+        {
+          "number": 5,
+          "label": "Pay Out",
+          "instruction": "Pay out only to evidence. Make Belief — next action.",
+          "raw": "5. Pay Out — Pay out only to evidence. Make Belief — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Pay Out.",
+      "win": "✓ I can let behaviour settle what argument cannot.",
+      "formulaFlow": "State Belief → Choose Safe → Picture Outcome → Test Observation → Pay Out",
+      "formulaFlowParts": [
+        "State Belief",
+        "Choose Safe",
+        "Picture Outcome",
+        "Test Observation",
+        "Pay Out"
+      ],
+      "safety": {
+        "pause": "Cancel any experiment involving danger, coercion, medical risk, or another person’s consent.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nCancel any experiment involving danger, coercion, medical risk, or another person’s consent.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Bet: Let behaviour settle what argument cannot.",
+      "gameMove": "PLAY: State Belief → Picture Outcome → Pay Out"
+    },
+    "source": {
+      "goal": "Let behaviour settle what argument cannot.",
+      "goalAndStepsRaw": "GOAL\nLet behaviour settle what argument cannot.\n\n1. State Belief — State the belief as a clear forecast. Make Belief — feel support.\n2. Choose Safe — Choose a safe, small action that could prove it wrong as well as right.\n3. Picture Outcome — Hold the expected result before acting. Make Belief — pick action.\n4. Test Observation — Run the test, then compare observation with prediction.\n5. Pay Out — Pay out only to evidence. Make Belief — next action.\n\n⚡ FINISH — Pay Out.",
+      "winRewardRaw": "✓ I can let behaviour settle what argument cannot.",
+      "formulaFlowRaw": "State Belief → Choose Safe → Picture Outcome → Test Observation → Pay Out",
+      "safetyRaw": "PAUSE\nCancel any experiment involving danger, coercion, medical risk, or another person’s consent.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 13,
+    "id": "T-013",
+    "bubble": "RUSH",
+    "title": "THE EFFORT STAIRCASE",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance",
+    "playTime": "1–2 minutes",
+    "display": {
+      "title": "THE EFFORT STAIRCASE",
+      "goal": "Start where movement is possible, not where pride prefers.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Name",
+          "instruction": "Name five versions of the task from almost easy to genuinely stretching. Effort Staircase — breathe naturally.",
+          "raw": "1. Name — Name five versions of the task from almost easy to genuinely stretching. Effort Staircase — breathe naturally."
+        },
+        {
+          "number": 2,
+          "label": "Cross Out",
+          "instruction": "Remove the zero-effort decoy.",
+          "raw": "2. Cross Out — Remove the zero-effort decoy."
+        },
+        {
+          "number": 3,
+          "label": "Remain Version",
+          "instruction": "Do the smallest remaining version that leaves visible evidence—one paragraph, one call, one plate washed. Effort Staircase — pick action.",
+          "raw": "3. Remain Version — Do the smallest remaining version that leaves visible evidence—one paragraph, one call, one plate washed. Effort Staircase — pick action."
+        },
+        {
+          "number": 4,
+          "label": "Climb Stair",
+          "instruction": "Next time, climb only one stair. Effort Staircase — next action.",
+          "raw": "4. Climb Stair — Next time, climb only one stair. Effort Staircase — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Climb Stair.",
+      "win": "✓ I can start where movement is possible, not where pride prefers.",
+      "formulaFlow": "Name → Cross Out → Remain Version → Climb Stair",
+      "formulaFlowParts": [
+        "Name",
+        "Cross Out",
+        "Remain Version",
+        "Climb Stair"
+      ],
+      "safety": {
+        "pause": "Reduce the step further if illness, exhaustion, or overload is being ignored.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nReduce the step further if illness, exhaustion, or overload is being ignored.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Play: Start where movement is possible, not where pride prefers.",
+      "gameMove": "PLAY: Name → Remain Version → Climb Stair"
+    },
+    "source": {
+      "goal": "Start where movement is possible, not where pride prefers.",
+      "goalAndStepsRaw": "GOAL\nStart where movement is possible, not where pride prefers.\n\n1. Name — Name five versions of the task from almost easy to genuinely stretching. Effort Staircase — breathe naturally.\n2. Cross Out — Remove the zero-effort decoy.\n3. Remain Version — Do the smallest remaining version that leaves visible evidence—one paragraph, one call, one plate washed. Effort Staircase — pick action.\n4. Climb Stair — Next time, climb only one stair. Effort Staircase — next action.\n\n⚡ FINISH — Climb Stair.",
+      "winRewardRaw": "✓ I can start where movement is possible, not where pride prefers.",
+      "formulaFlowRaw": "Name → Cross Out → Remain Version → Climb Stair",
+      "safetyRaw": "PAUSE\nReduce the step further if illness, exhaustion, or overload is being ignored.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 14,
+    "id": "T-014",
+    "bubble": "RUSH",
+    "title": "MOOD HAS ALIBIS",
+    "trigger": "Emotional reasoning",
+    "pattern": "Emotion–fact confusion",
+    "playTime": "under 2 minutes",
+    "display": {
+      "title": "MOOD HAS ALIBIS",
+      "goal": "Test what the day does to the feeling.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Choose Activity",
+          "instruction": "Choose one activity. Mood Has — move slowly.",
+          "raw": "1. Choose Activity — Choose one activity. Mood Has — move slowly."
+        },
+        {
+          "number": 2,
+          "label": "Score Expected",
+          "instruction": "Before it, score expected mood; at the start, Notice actual mood; at the end, score again.",
+          "raw": "2. Score Expected — Before it, score expected mood; at the start, Notice actual mood; at the end, score again."
+        },
+        {
+          "number": 3,
+          "label": "Add Sentence",
+          "instruction": "Add one sentence about what changed during the activity. Mood Has — name feeling.",
+          "raw": "3. Add Sentence — Add one sentence about what changed during the activity. Mood Has — name feeling."
+        },
+        {
+          "number": 4,
+          "label": "Repeat Different",
+          "instruction": "Repeat with three different actions before deciding ‘nothing helps.’. Mood Has — next action.",
+          "raw": "4. Repeat Different — Repeat with three different actions before deciding ‘nothing helps.’. Mood Has — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Repeat Different.",
+      "win": "✓ I can test what the day does to the feeling.",
+      "formulaFlow": "Choose Activity → Score Expected → Add Sentence → Repeat Different",
+      "formulaFlowParts": [
+        "Choose Activity",
+        "Score Expected",
+        "Add Sentence",
+        "Repeat Different"
+      ],
+      "safety": {
+        "pause": "Seek professional support if low mood is severe, persistent, or linked to self-harm thoughts.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nSeek professional support if low mood is severe, persistent, or linked to self-harm thoughts.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Spot: Test what the day does to the feeling.",
+      "gameMove": "PLAY: Choose Activity → Add Sentence → Repeat Different"
+    },
+    "source": {
+      "goal": "Test what the day does to the feeling.",
+      "goalAndStepsRaw": "GOAL\nTest what the day does to the feeling.\n\n1. Choose Activity — Choose one activity. Mood Has — move slowly.\n2. Score Expected — Before it, score expected mood; at the start, Notice actual mood; at the end, score again.\n3. Add Sentence — Add one sentence about what changed during the activity. Mood Has — name feeling.\n4. Repeat Different — Repeat with three different actions before deciding ‘nothing helps.’. Mood Has — next action.\n\n⚡ FINISH — Repeat Different.",
+      "winRewardRaw": "✓ I can test what the day does to the feeling.",
+      "formulaFlowRaw": "Choose Activity → Score Expected → Add Sentence → Repeat Different",
+      "safetyRaw": "PAUSE\nSeek professional support if low mood is severe, persistent, or linked to self-harm thoughts.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 15,
+    "id": "T-015",
+    "bubble": "RUSH",
+    "title": "TWO ENGINES",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance",
+    "playTime": "about 90 seconds",
+    "display": {
+      "title": "TWO ENGINES",
+      "goal": "Pleasure and mastery refuel different parts of you.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Schedule Chosen",
+          "instruction": "For the next day, schedule one act chosen purely for enjoyment and one chosen for competence. Two Engines — loosen hands.",
+          "raw": "1. Schedule Chosen — For the next day, schedule one act chosen purely for enjoyment and one chosen for competence. Two Engines — loosen hands."
+        },
+        {
+          "number": 2,
+          "label": "Make Small",
+          "instruction": "Make both small enough to happen.",
+          "raw": "2. Make Small — Make both small enough to happen."
+        },
+        {
+          "number": 3,
+          "label": "Check Both",
+          "instruction": "After each activity, ask which engine it fed: pleasure or mastery. Rate that one channel only. Two Engines — pick action.",
+          "raw": "3. Check Both — After each activity, ask which engine it fed: pleasure or mastery. Rate that one channel only. Two Engines — pick action."
+        },
+        {
+          "number": 4,
+          "label": "Drop Demand",
+          "instruction": "Do not demand that either activity fix everything. Two Engines — next action.",
+          "raw": "4. Drop Demand — Do not demand that either activity fix everything. Two Engines — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Drop Demand.",
+      "win": "✓ Pleasure and mastery refuel different parts of you.",
+      "formulaFlow": "Schedule Chosen → Make Small → Check Both → Drop Demand",
+      "formulaFlowParts": [
+        "Schedule Chosen",
+        "Make Small",
+        "Check Both",
+        "Drop Demand"
+      ],
+      "safety": {
+        "pause": "Rebalance if achievement becomes punishment or pleasure becomes avoidance.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nRebalance if achievement becomes punishment or pleasure becomes avoidance.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Imagine: Pleasure and mastery refuel different parts of you.",
+      "gameMove": "PLAY: Schedule Chosen → Check Both → Drop Demand"
+    },
+    "source": {
+      "goal": "Pleasure and mastery refuel different parts of you.",
+      "goalAndStepsRaw": "GOAL\nPleasure and mastery refuel different parts of you.\n\n1. Schedule Chosen — For the next day, schedule one act chosen purely for enjoyment and one chosen for competence. Two Engines — loosen hands.\n2. Make Small — Make both small enough to happen.\n3. Check Both — After each activity, ask which engine it fed: pleasure or mastery. Rate that one channel only. Two Engines — pick action.\n4. Drop Demand — Do not demand that either activity fix everything. Two Engines — next action.\n\n⚡ FINISH — Drop Demand.",
+      "winRewardRaw": "✓ Pleasure and mastery refuel different parts of you.",
+      "formulaFlowRaw": "Schedule Chosen → Make Small → Check Both → Drop Demand",
+      "safetyRaw": "PAUSE\nRebalance if achievement becomes punishment or pleasure becomes avoidance.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 16,
+    "id": "T-016",
+    "bubble": "RUSH",
+    "title": "MAKE THE ROOM VOTE",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance",
+    "playTime": "30–60 seconds",
+    "display": {
+      "title": "MAKE THE ROOM VOTE",
+      "goal": "Your environment casts ballots before willpower arrives.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Pick Desired",
+          "instruction": "Pick one desired behaviour and one unwanted default. Make Room — widen gaze.",
+          "raw": "1. Pick Desired — Pick one desired behaviour and one unwanted default. Make Room — widen gaze."
+        },
+        {
+          "number": 2,
+          "label": "Place Object",
+          "instruction": "Place the first object needed for the desired action directly in your path.",
+          "raw": "2. Place Object — Place the first object needed for the desired action directly in your path."
+        },
+        {
+          "number": 3,
+          "label": "Add Deliberate",
+          "instruction": "Add one deliberate obstacle to the unwanted route: distance, logout, container, timer, or removal. Make Room — pick action.",
+          "raw": "3. Add Deliberate — Add one deliberate obstacle to the unwanted route: distance, logout, container, timer, or removal. Make Room — pick action."
+        },
+        {
+          "number": 4,
+          "label": "Let Room",
+          "instruction": "Let the room make the better vote easier. Make Room — next action.",
+          "raw": "4. Let Room — Let the room make the better vote easier. Make Room — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Let Room.",
+      "win": "✓ Your environment casts ballots before willpower arrives.",
+      "formulaFlow": "Pick Desired → Place Object → Add Deliberate → Let Room",
+      "formulaFlowParts": [
+        "Pick Desired",
+        "Place Object",
+        "Add Deliberate",
+        "Let Room"
+      ],
+      "safety": {
+        "pause": "Keep changes reversible and never block access to medication, food, safety, or essential contact.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nKeep changes reversible and never block access to medication, food, safety, or essential contact.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Pause: Your environment casts ballots before willpower arrives.",
+      "gameMove": "PLAY: Pick Desired → Add Deliberate → Let Room"
+    },
+    "source": {
+      "goal": "Your environment casts ballots before willpower arrives.",
+      "goalAndStepsRaw": "GOAL\nYour environment casts ballots before willpower arrives.\n\n1. Pick Desired — Pick one desired behaviour and one unwanted default. Make Room — widen gaze.\n2. Place Object — Place the first object needed for the desired action directly in your path.\n3. Add Deliberate — Add one deliberate obstacle to the unwanted route: distance, logout, container, timer, or removal. Make Room — pick action.\n4. Let Room — Let the room make the better vote easier. Make Room — next action.\n\n⚡ FINISH — Let Room.",
+      "winRewardRaw": "✓ Your environment casts ballots before willpower arrives.",
+      "formulaFlowRaw": "Pick Desired → Place Object → Add Deliberate → Let Room",
+      "safetyRaw": "PAUSE\nKeep changes reversible and never block access to medication, food, safety, or essential contact.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 17,
+    "id": "T-017",
+    "bubble": "RUSH",
+    "title": "LET THE URGE MISS ITS APPOINTMENT",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion",
+    "playTime": "about 1 minute",
+    "display": {
+      "title": "LET THE URGE MISS ITS APPOINTMENT",
+      "goal": "The ritual expects you; do not show up.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Name Cue",
+          "instruction": "Name the cue and the usual calming act it normally summons. Let Urge — soften shoulders.",
+          "raw": "1. Name Cue — Name the cue and the usual calming act it normally summons. Let Urge — soften shoulders."
+        },
+        {
+          "number": 2,
+          "label": "Contact",
+          "instruction": "Contact only a tolerable dose of the cue.",
+          "raw": "2. Contact — Contact only a tolerable dose of the cue."
+        },
+        {
+          "number": 3,
+          "label": "Keep Hands",
+          "instruction": "Keep your hands and attention out of the ritual while the urge changes on its own. Let Urge — name feeling.",
+          "raw": "3. Keep Hands — Keep your hands and attention out of the ritual while the urge changes on its own. Let Urge — name feeling."
+        },
+        {
+          "number": 4,
+          "label": "Mark Peak",
+          "instruction": "Hold the peak and the first natural drop.",
+          "raw": "4. Mark Peak — Hold the peak and the first natural drop."
+        },
+        {
+          "number": 5,
+          "label": "Learning",
+          "instruction": "Learning happens in the missed appointment. Let Urge — next action.",
+          "raw": "5. Learning — Learning happens in the missed appointment. Let Urge — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Learning.",
+      "win": "✓ The ritual expects you; do not show up.",
+      "formulaFlow": "Name Cue → Contact → Keep Hands → Mark Peak → Learning",
+      "formulaFlowParts": [
+        "Name Cue",
+        "Contact",
+        "Keep Hands",
+        "Mark Peak",
+        "Learning"
+      ],
+      "safety": {
+        "pause": "Use clinical guidance for severe OCD, addiction, eating disorders, or exposures that feel unsafe.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nUse clinical guidance for severe OCD, addiction, eating disorders, or exposures that feel unsafe.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Aim: The ritual expects you; do not show up.",
+      "gameMove": "PLAY: Name Cue → Keep Hands → Learning"
+    },
+    "source": {
+      "goal": "The ritual expects you; do not show up.",
+      "goalAndStepsRaw": "GOAL\nThe ritual expects you; do not show up.\n\n1. Name Cue — Name the cue and the usual calming act it normally summons. Let Urge — soften shoulders.\n2. Contact — Contact only a tolerable dose of the cue.\n3. Keep Hands — Keep your hands and attention out of the ritual while the urge changes on its own. Let Urge — name feeling.\n4. Mark Peak — Hold the peak and the first natural drop.\n5. Learning — Learning happens in the missed appointment. Let Urge — next action.\n\n⚡ FINISH — Learning.",
+      "winRewardRaw": "✓ The ritual expects you; do not show up.",
+      "formulaFlowRaw": "Name Cue → Contact → Keep Hands → Mark Peak → Learning",
+      "safetyRaw": "PAUSE\nUse clinical guidance for severe OCD, addiction, eating disorders, or exposures that feel unsafe.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 18,
+    "id": "T-018",
+    "bubble": "RUSH",
+    "title": "BODY VETO",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion",
+    "playTime": "1–2 minutes",
+    "display": {
+      "title": "BODY VETO",
+      "goal": "Install a movement the habit cannot perform beside.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Identify Motor",
+          "instruction": "Spot the first motor cue—reaching, picking, scrolling, biting, clenching. Body Veto — hear sound.",
+          "raw": "1. Identify Motor — Spot the first motor cue—reaching, picking, scrolling, biting, clenching. Body Veto — hear sound."
+        },
+        {
+          "number": 2,
+          "label": "Choose Safe",
+          "instruction": "Use a safe opposite posture and rehearse it slowly three times.",
+          "raw": "2. Choose Safe — Use a safe opposite posture and rehearse it slowly three times."
+        },
+        {
+          "number": 3,
+          "label": "Enter Posture",
+          "instruction": "When the cue appears, enter that posture for ten seconds while naming the urge. Body Veto — name feeling.",
+          "raw": "3. Enter Posture — When the cue appears, enter that posture for ten seconds while naming the urge. Body Veto — name feeling."
+        },
+        {
+          "number": 4,
+          "label": "Decide Consciously",
+          "instruction": "Then decide consciously. Body Veto — next action.",
+          "raw": "4. Decide Consciously — Then decide consciously. Body Veto — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Decide Consciously.",
+      "win": "✓ I can install a movement the habit cannot perform beside.",
+      "formulaFlow": "Identify Motor → Choose Safe → Enter Posture → Decide Consciously",
+      "formulaFlowParts": [
+        "Identify Motor",
+        "Choose Safe",
+        "Enter Posture",
+        "Decide Consciously"
+      ],
+      "safety": {
+        "pause": "Choose another response if the posture causes pain, strain, or social risk.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nChoose another response if the posture causes pain, strain, or social risk.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Probe: Install a movement the habit cannot perform beside.",
+      "gameMove": "PLAY: Identify Motor → Enter Posture → Decide Consciously"
+    },
+    "source": {
+      "goal": "Install a movement the habit cannot perform beside.",
+      "goalAndStepsRaw": "GOAL\nInstall a movement the habit cannot perform beside.\n\n1. Identify Motor — Spot the first motor cue—reaching, picking, scrolling, biting, clenching. Body Veto — hear sound.\n2. Choose Safe — Use a safe opposite posture and rehearse it slowly three times.\n3. Enter Posture — When the cue appears, enter that posture for ten seconds while naming the urge. Body Veto — name feeling.\n4. Decide Consciously — Then decide consciously. Body Veto — next action.\n\n⚡ FINISH — Decide Consciously.",
+      "winRewardRaw": "✓ I can install a movement the habit cannot perform beside.",
+      "formulaFlowRaw": "Identify Motor → Choose Safe → Enter Posture → Decide Consciously",
+      "safetyRaw": "PAUSE\nChoose another response if the posture causes pain, strain, or social risk.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 19,
+    "id": "T-019",
+    "bubble": "RUSH",
+    "title": "WHEN/THEN FIRMWARE",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance",
+    "playTime": "under 2 minutes",
+    "display": {
+      "title": "WHEN/THEN FIRMWARE",
+      "goal": "Pre-decide the moment that usually steals the decision.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Picture Line",
+          "instruction": "Picture one line only: WHEN [specific visible cue], THEN I WILL [small physical action]. Firmware Rush — feel support.",
+          "raw": "1. Picture Line — Picture one line only: WHEN [specific visible cue], THEN I WILL [small physical action]. Firmware Rush — feel support."
+        },
+        {
+          "number": 2,
+          "label": "Remove Vague",
+          "instruction": "Remove vague words such as try, soon, or better.",
+          "raw": "2. Remove Vague — Remove vague words such as try, soon, or better."
+        },
+        {
+          "number": 3,
+          "label": "Imagine Cue",
+          "instruction": "Imagine the cue once, perform the action once, and place the rule where the cue occurs. Firmware Rush — pick action.",
+          "raw": "3. Imagine Cue — Imagine the cue once, perform the action once, and place the rule where the cue occurs. Firmware Rush — pick action."
+        },
+        {
+          "number": 4,
+          "label": "Skip Pep Talk",
+          "instruction": "Skip Pep Talk motivational speech required. Firmware Rush — next action.",
+          "raw": "4. Skip Pep Talk — Skip Pep Talk motivational speech required. Firmware Rush — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Skip Pep Talk.",
+      "win": "✓ I can pre-decide the moment that usually steals the decision.",
+      "formulaFlow": "Picture Line → Remove Vague → Imagine Cue → Skip Pep Talk",
+      "formulaFlowParts": [
+        "Picture Line",
+        "Remove Vague",
+        "Imagine Cue",
+        "Skip Pep Talk"
+      ],
+      "safety": {
+        "pause": "Rewrite the rule if the trigger is unclear or the response depends on another person.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nRewrite the rule if the trigger is unclear or the response depends on another person.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Peek: Pre-decide the moment that usually steals the decision.",
+      "gameMove": "PLAY: Picture Line → Imagine Cue → Skip Pep Talk"
+    },
+    "source": {
+      "goal": "Pre-decide the moment that usually steals the decision.",
+      "goalAndStepsRaw": "GOAL\nPre-decide the moment that usually steals the decision.\n\n1. Picture Line — Picture one line only: WHEN [specific visible cue], THEN I WILL [small physical action]. Firmware Rush — feel support.\n2. Remove Vague — Remove vague words such as try, soon, or better.\n3. Imagine Cue — Imagine the cue once, perform the action once, and place the rule where the cue occurs. Firmware Rush — pick action.\n4. Skip Pep Talk — Skip Pep Talk motivational speech required. Firmware Rush — next action.\n\n⚡ FINISH — Skip Pep Talk.",
+      "winRewardRaw": "✓ I can pre-decide the moment that usually steals the decision.",
+      "formulaFlowRaw": "Picture Line → Remove Vague → Imagine Cue → Skip Pep Talk",
+      "safetyRaw": "PAUSE\nRewrite the rule if the trigger is unclear or the response depends on another person.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 20,
+    "id": "T-020",
+    "bubble": "RUSH",
+    "title": "THE FIRST DRIFT",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading",
+    "playTime": "about 90 seconds",
+    "display": {
+      "title": "THE FIRST DRIFT",
+      "goal": "Relapse announces itself quietly before it becomes a return.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Imagine A Path Sequence",
+          "instruction": "Imagine your sequence backward from the unwanted behaviour: first act, private permission, routine change, environment shift, body state. First Drift — press feet.",
+          "raw": "1. Imagine A Path Sequence — Imagine your sequence backward from the unwanted behaviour: first act, private permission, routine change, environment shift, body state. First Drift — press feet."
+        },
+        {
+          "number": 2,
+          "label": "Mark Earliest",
+          "instruction": "Mark Earliest a red dot on the earliest sign you could realistically notice. First Drift — notice detail.",
+          "raw": "2. Mark Earliest — Mark Earliest a red dot on the earliest sign you could realistically notice. First Drift — notice detail."
+        },
+        {
+          "number": 3,
+          "label": "Tell Support",
+          "instruction": "Attach one interruption to that dot and tell one support person what it means. First Drift — next action.",
+          "raw": "3. Tell Support — Attach one interruption to that dot and tell one support person what it means. First Drift — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Tell Support.",
+      "win": "✓ Relapse announces itself quietly before it becomes a return.",
+      "formulaFlow": "Imagine A Path Sequence → Mark Earliest → Tell Support",
+      "formulaFlowParts": [
+        "Imagine A Path Sequence",
+        "Mark Earliest",
+        "Tell Support"
+      ],
+      "safety": {
+        "pause": "For substance withdrawal, overdose risk, or dangerous relapse, use medical and emergency support rather than self-management alone.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nFor substance withdrawal, overdose risk, or dangerous relapse, use medical and emergency support rather than self-management alone.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Switch: Relapse announces itself quietly before it becomes a return.",
+      "gameMove": "PLAY: Imagine A Path Sequence → Mark Earliest → Tell Support"
+    },
+    "source": {
+      "goal": "Relapse announces itself quietly before it becomes a return.",
+      "goalAndStepsRaw": "GOAL\nRelapse announces itself quietly before it becomes a return.\n\n1. Imagine A Path Sequence — Imagine your sequence backward from the unwanted behaviour: first act, private permission, routine change, environment shift, body state. First Drift — press feet.\n2. Mark Earliest — Mark Earliest a red dot on the earliest sign you could realistically notice. First Drift — notice detail.\n3. Tell Support — Attach one interruption to that dot and tell one support person what it means. First Drift — next action.\n\n⚡ FINISH — Tell Support.",
+      "winRewardRaw": "✓ Relapse announces itself quietly before it becomes a return.",
+      "formulaFlowRaw": "Imagine A Path Sequence → Mark Earliest → Tell Support",
+      "safetyRaw": "PAUSE\nFor substance withdrawal, overdose risk, or dangerous relapse, use medical and emergency support rather than self-management alone.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 32,
+    "id": "T-032",
+    "bubble": "RUSH",
+    "title": "RIDE THE CRAVING GRAPH",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion",
+    "playTime": "about 1 minute",
+    "display": {
+      "title": "RIDE THE CRAVING GRAPH",
+      "goal": "An urge is a curve pretending to be a command.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Level",
+          "instruction": "Notice its current level and where it moves in the body. Ride Craving — widen gaze.",
+          "raw": "1. Level — Notice its current level and where it moves in the body. Ride Craving — widen gaze."
+        },
+        {
+          "number": 2,
+          "label": "Watch Slope",
+          "instruction": "Watch for slope: rising, flattening, cresting, falling.",
+          "raw": "2. Watch Slope — Watch for slope: rising, flattening, cresting, falling."
+        },
+        {
+          "number": 3,
+          "label": "Imagine Urge",
+          "instruction": "Every thirty seconds, Imagine the next point without acting on the urge. Ride Craving — name feeling.",
+          "raw": "3. Imagine Urge — Every thirty seconds, Imagine the next point without acting on the urge. Ride Craving — name feeling."
+        },
+        {
+          "number": 4,
+          "label": "Name Change",
+          "instruction": "When the line changes direction, name the change.",
+          "raw": "4. Name Change — When the line changes direction, name the change."
+        },
+        {
+          "number": 5,
+          "label": "Choose Time",
+          "instruction": "Choose what protects the next hour. Ride Craving — next action.",
+          "raw": "5. Choose Time — Choose what protects the next hour. Ride Craving — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Choose Time.",
+      "win": "✓ An urge is a curve pretending to be a command.",
+      "formulaFlow": "Level → Watch Slope → Imagine Urge → Name Change → Choose Time",
+      "formulaFlowParts": [
+        "Level",
+        "Watch Slope",
+        "Imagine Urge",
+        "Name Change",
+        "Choose Time"
+      ],
+      "safety": {
+        "pause": "Cravings linked to withdrawal, overdose, or medical danger require professional help.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nCravings linked to withdrawal, overdose, or medical danger require professional help.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Check: An urge is a curve pretending to be a command.",
+      "gameMove": "PLAY: Level → Imagine Urge → Choose Time"
+    },
+    "source": {
+      "goal": "An urge is a curve pretending to be a command.",
+      "goalAndStepsRaw": "GOAL\nAn urge is a curve pretending to be a command.\n\n1. Level — Notice its current level and where it moves in the body. Ride Craving — widen gaze.\n2. Watch Slope — Watch for slope: rising, flattening, cresting, falling.\n3. Imagine Urge — Every thirty seconds, Imagine the next point without acting on the urge. Ride Craving — name feeling.\n4. Name Change — When the line changes direction, name the change.\n5. Choose Time — Choose what protects the next hour. Ride Craving — next action.\n\n⚡ FINISH — Choose Time.",
+      "winRewardRaw": "✓ An urge is a curve pretending to be a command.",
+      "formulaFlowRaw": "Level → Watch Slope → Imagine Urge → Name Change → Choose Time",
+      "safetyRaw": "PAUSE\nCravings linked to withdrawal, overdose, or medical danger require professional help.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 36,
+    "id": "T-036",
+    "bubble": "RUSH",
+    "title": "ONE VISIBLE VOTE",
+    "trigger": "Perfectionism & performance pressure",
+    "pattern": "Perfectionism",
+    "playTime": "30–60 seconds",
+    "display": {
+      "title": "ONE VISIBLE VOTE",
+      "goal": "Values become real only after the body votes.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Choose Value",
+          "instruction": "Choose a value and design its smallest public evidence: send the honest line, open the document, place the medicine beside water, step outside for two minutes. Visible Vote — press feet.",
+          "raw": "1. Choose Value — Choose a value and design its smallest public evidence: send the honest line, open the document, place the medicine beside water, step outside for two minutes. Visible Vote — press feet."
+        },
+        {
+          "number": 2,
+          "label": "Complete Shift",
+          "instruction": "Complete it before upgrading the plan. Visible Vote — allow opposite.",
+          "raw": "2. Complete Shift — Complete it before upgrading the plan. Visible Vote — allow opposite."
+        },
+        {
+          "number": 3,
+          "label": "Tiny",
+          "instruction": "A tiny enacted vote outranks a perfect private speech. Visible Vote — next action.",
+          "raw": "3. Tiny — A tiny enacted vote outranks a perfect private speech. Visible Vote — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Tiny.",
+      "win": "✓ Values become real only after the body votes.",
+      "formulaFlow": "Choose Value → Complete Shift → Tiny",
+      "formulaFlowParts": [
+        "Choose Value",
+        "Complete Shift",
+        "Tiny"
+      ],
+      "safety": {
+        "pause": "Scale down without shame if the action exceeds current capacity.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nScale down without shame if the action exceeds current capacity.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Pause: Values become real only after the body votes.",
+      "gameMove": "PLAY: Choose Value → Complete Shift → Tiny"
+    },
+    "source": {
+      "goal": "Values become real only after the body votes.",
+      "goalAndStepsRaw": "GOAL\nValues become real only after the body votes.\n\n1. Choose Value — Choose a value and design its smallest public evidence: send the honest line, open the document, place the medicine beside water, step outside for two minutes. Visible Vote — press feet.\n2. Complete Shift — Complete it before upgrading the plan. Visible Vote — allow opposite.\n3. Tiny — A tiny enacted vote outranks a perfect private speech. Visible Vote — next action.\n\n⚡ FINISH — Tiny.",
+      "winRewardRaw": "✓ Values become real only after the body votes.",
+      "formulaFlowRaw": "Choose Value → Complete Shift → Tiny",
+      "safetyRaw": "PAUSE\nScale down without shame if the action exceeds current capacity.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 45,
+    "id": "T-045",
+    "bubble": "RUSH",
+    "title": "OBJECTIVE OVER EGO",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance",
+    "playTime": "about 90 seconds",
+    "display": {
+      "title": "OBJECTIVE OVER EGO",
+      "goal": "The best move may not be the most satisfying proof.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Picture Real",
+          "instruction": "Picture the real objective in seven words or fewer. Objective Over — breathe naturally.",
+          "raw": "1. Picture Real — Picture the real objective in seven words or fewer. Objective Over — breathe naturally."
+        },
+        {
+          "number": 2,
+          "label": "Name",
+          "instruction": "Name the action that advances it and the action that merely wins, punishes, impresses, or avoids embarrassment.",
+          "raw": "2. Name — Name the action that advances it and the action that merely wins, punishes, impresses, or avoids embarrassment."
+        },
+        {
+          "number": 3,
+          "label": "Imagine Tomorrow",
+          "instruction": "Imagine tomorrow’s result after each. Objective Over — pick action.",
+          "raw": "3. Imagine Tomorrow — Imagine tomorrow’s result after each. Objective Over — pick action."
+        },
+        {
+          "number": 4,
+          "label": "Select Works",
+          "instruction": "Select what works, even if the ego receives no trophy. Objective Over — next action.",
+          "raw": "4. Select Works — Select what works, even if the ego receives no trophy. Objective Over — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Select Works.",
+      "win": "✓ The best move may not be the most satisfying proof.",
+      "formulaFlow": "Picture Real → Name → Imagine Tomorrow → Select Works",
+      "formulaFlowParts": [
+        "Picture Real",
+        "Name",
+        "Imagine Tomorrow",
+        "Select Works"
+      ],
+      "safety": {
+        "pause": "Revisit the objective if it excludes dignity, consent, or safety.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nRevisit the objective if it excludes dignity, consent, or safety.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Catch: The best move may not be the most satisfying proof.",
+      "gameMove": "PLAY: Picture Real → Imagine Tomorrow → Select Works"
+    },
+    "source": {
+      "goal": "The best move may not be the most satisfying proof.",
+      "goalAndStepsRaw": "GOAL\nThe best move may not be the most satisfying proof.\n\n1. Picture Real — Picture the real objective in seven words or fewer. Objective Over — breathe naturally.\n2. Name — Name the action that advances it and the action that merely wins, punishes, impresses, or avoids embarrassment.\n3. Imagine Tomorrow — Imagine tomorrow’s result after each. Objective Over — pick action.\n4. Select Works — Select what works, even if the ego receives no trophy. Objective Over — next action.\n\n⚡ FINISH — Select Works.",
+      "winRewardRaw": "✓ The best move may not be the most satisfying proof.",
+      "formulaFlowRaw": "Picture Real → Name → Imagine Tomorrow → Select Works",
+      "safetyRaw": "PAUSE\nRevisit the objective if it excludes dignity, consent, or safety.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 52,
+    "id": "T-052",
+    "bubble": "RUSH",
+    "title": "COOL THE ALARM PANEL",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation",
+    "playTime": "about 1 minute",
+    "display": {
+      "title": "COOL THE ALARM PANEL",
+      "goal": "Temperature can reach body alarm before language does.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Use Cool",
+          "instruction": "Use cool—not painfully cold—water or a wrapped cool pack on the cheeks and around the eyes for a brief interval. Cool Alarm — press feet.",
+          "raw": "1. Use Cool — Use cool—not painfully cold—water or a wrapped cool pack on the cheeks and around the eyes for a brief interval. Cool Alarm — press feet."
+        },
+        {
+          "number": 2,
+          "label": "Slow",
+          "instruction": "Slow your body while the sensation lands.",
+          "raw": "2. Slow — Slow your body while the sensation lands."
+        },
+        {
+          "number": 3,
+          "label": "Remove Name",
+          "instruction": "Remove it, name the room, and reassess the next safe action. Cool Alarm — name sensation.",
+          "raw": "3. Remove Name — Remove it, name the room, and reassess the next safe action. Cool Alarm — name sensation."
+        },
+        {
+          "number": 4,
+          "label": "Test Endurance",
+          "instruction": "Cooling is a reset cue, not a test of endurance. Cool Alarm — next action.",
+          "raw": "4. Test Endurance — Cooling is a reset cue, not a test of endurance. Cool Alarm — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Test Endurance.",
+      "win": "✓ Temperature can reach body alarm before language does.",
+      "formulaFlow": "Use Cool → Slow → Remove Name → Test Endurance",
+      "formulaFlowParts": [
+        "Use Cool",
+        "Slow",
+        "Remove Name",
+        "Test Endurance"
+      ],
+      "safety": {
+        "pause": "Avoid with medical contraindications; never use ice directly or hold your breath.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nAvoid with medical contraindications; never use ice directly or hold your breath.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Check: Temperature can reach body alarm before language does.",
+      "gameMove": "PLAY: Use Cool → Remove Name → Test Endurance"
+    },
+    "source": {
+      "goal": "Temperature can reach body alarm before language does.",
+      "goalAndStepsRaw": "GOAL\nTemperature can reach body alarm before language does.\n\n1. Use Cool — Use cool—not painfully cold—water or a wrapped cool pack on the cheeks and around the eyes for a brief interval. Cool Alarm — press feet.\n2. Slow — Slow your body while the sensation lands.\n3. Remove Name — Remove it, name the room, and reassess the next safe action. Cool Alarm — name sensation.\n4. Test Endurance — Cooling is a reset cue, not a test of endurance. Cool Alarm — next action.\n\n⚡ FINISH — Test Endurance.",
+      "winRewardRaw": "✓ Temperature can reach body alarm before language does.",
+      "formulaFlowRaw": "Use Cool → Slow → Remove Name → Test Endurance",
+      "safetyRaw": "PAUSE\nAvoid with medical contraindications; never use ice directly or hold your breath.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 53,
+    "id": "T-053",
+    "bubble": "RUSH",
+    "title": "BURN THE EXCESS CHARGE",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation",
+    "playTime": "1–2 minutes",
+    "display": {
+      "title": "BURN THE EXCESS CHARGE",
+      "goal": "Give body alarm a finish line.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Choose Burst",
+          "instruction": "Choose a contained burst: fast stairs, wall pushes, brisk marching, or another safe vigorous movement. Burn Excess — breathe naturally.",
+          "raw": "1. Choose Burst — Choose a contained burst: fast stairs, wall pushes, brisk marching, or another safe vigorous movement. Burn Excess — breathe naturally."
+        },
+        {
+          "number": 2,
+          "label": "Set Short",
+          "instruction": "Set a short timer before starting.",
+          "raw": "2. Set Short — Set a short timer before starting."
+        },
+        {
+          "number": 3,
+          "label": "End Completely",
+          "instruction": "When it ends, stop completely, feel the after-pulse, and drink water. Burn Excess — name sensation.",
+          "raw": "3. End Completely — When it ends, stop completely, feel the after-pulse, and drink water. Burn Excess — name sensation."
+        },
+        {
+          "number": 4,
+          "label": "Let Body",
+          "instruction": "Let the body spend energy without spending your future. Burn Excess — next action.",
+          "raw": "4. Let Body — Let the body spend energy without spending your future. Burn Excess — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Let Body.",
+      "win": "✓ I can give body alarm a finish line.",
+      "formulaFlow": "Choose Burst → Set Short → End Completely → Let Body",
+      "formulaFlowParts": [
+        "Choose Burst",
+        "Set Short",
+        "End Completely",
+        "Let Body"
+      ],
+      "safety": {
+        "pause": "Do not attempt intense movement with injury, illness, pregnancy concerns, or medical restrictions.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nDo not attempt intense movement with injury, illness, pregnancy concerns, or medical restrictions.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Play: Give body alarm a finish line.",
+      "gameMove": "PLAY: Choose Burst → End Completely → Let Body"
+    },
+    "source": {
+      "goal": "Give body alarm a finish line.",
+      "goalAndStepsRaw": "GOAL\nGive body alarm a finish line.\n\n1. Choose Burst — Choose a contained burst: fast stairs, wall pushes, brisk marching, or another safe vigorous movement. Burn Excess — breathe naturally.\n2. Set Short — Set a short timer before starting.\n3. End Completely — When it ends, stop completely, feel the after-pulse, and drink water. Burn Excess — name sensation.\n4. Let Body — Let the body spend energy without spending your future. Burn Excess — next action.\n\n⚡ FINISH — Let Body.",
+      "winRewardRaw": "✓ I can give body alarm a finish line.",
+      "formulaFlowRaw": "Choose Burst → Set Short → End Completely → Let Body",
+      "safetyRaw": "PAUSE\nDo not attempt intense movement with injury, illness, pregnancy concerns, or medical restrictions.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 54,
+    "id": "T-054",
+    "bubble": "RUSH",
+    "title": "THE LONGER OUT-BREATH",
+    "trigger": "Urgency & decision pressure",
+    "pattern": "Urgency bias",
+    "playTime": "under 2 minutes",
+    "display": {
+      "title": "THE LONGER OUT-BREATH",
+      "goal": "Make urgency leave through a gentler exit.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Breathe Pulling",
+          "instruction": "Breathe in without pulling extra air. Longer Out — move slowly.",
+          "raw": "1. Breathe Pulling — Breathe in without pulling extra air. Longer Out — move slowly."
+        },
+        {
+          "number": 2,
+          "label": "Let Outflow",
+          "instruction": "Let the outflow last slightly longer, as though fogging a distant window silently.",
+          "raw": "2. Let Outflow — Let the outflow last slightly longer, as though fogging a distant window silently."
+        },
+        {
+          "number": 3,
+          "label": "Repeat Comfortable",
+          "instruction": "Repeat only while comfortable; keep shoulders quiet and jaw loose. Longer Out — pick action.",
+          "raw": "3. Repeat Comfortable — Repeat only while comfortable; keep shoulders quiet and jaw loose. Longer Out — pick action."
+        },
+        {
+          "number": 4,
+          "label": "Breathe Workable",
+          "instruction": "After several rounds, resume natural breathing and look for one workable decision. Longer Out — next action.",
+          "raw": "4. Breathe Workable — After several rounds, resume natural breathing and look for one workable decision. Longer Out — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Breathe Workable.",
+      "win": "✓ I can make urgency leave through a gentler exit.",
+      "formulaFlow": "Breathe Pulling → Let Outflow → Repeat Comfortable → Breathe Workable",
+      "formulaFlowParts": [
+        "Breathe Pulling",
+        "Let Outflow",
+        "Repeat Comfortable",
+        "Breathe Workable"
+      ],
+      "safety": {
+        "pause": "Return to ordinary breathing immediately if light-headed, air-hungry, or panicky.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nReturn to ordinary breathing immediately if light-headed, air-hungry, or panicky.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Spot: Make urgency leave through a gentler exit.",
+      "gameMove": "PLAY: Breathe Pulling → Repeat Comfortable → Breathe Workable"
+    },
+    "source": {
+      "goal": "Make urgency leave through a gentler exit.",
+      "goalAndStepsRaw": "GOAL\nMake urgency leave through a gentler exit.\n\n1. Breathe Pulling — Breathe in without pulling extra air. Longer Out — move slowly.\n2. Let Outflow — Let the outflow last slightly longer, as though fogging a distant window silently.\n3. Repeat Comfortable — Repeat only while comfortable; keep shoulders quiet and jaw loose. Longer Out — pick action.\n4. Breathe Workable — After several rounds, resume natural breathing and look for one workable decision. Longer Out — next action.\n\n⚡ FINISH — Breathe Workable.",
+      "winRewardRaw": "✓ I can make urgency leave through a gentler exit.",
+      "formulaFlowRaw": "Breathe Pulling → Let Outflow → Repeat Comfortable → Breathe Workable",
+      "safetyRaw": "PAUSE\nReturn to ordinary breathing immediately if light-headed, air-hungry, or panicky.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 71,
+    "id": "T-071",
+    "bubble": "RUSH",
+    "title": "STAY FOR THE UPDATE",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness",
+    "playTime": "30–60 seconds",
+    "display": {
+      "title": "STAY FOR THE UPDATE",
+      "goal": "Safe contact gives fear new data.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Choose External",
+          "instruction": "Choose an external cue low enough on your fear ladder to approach voluntarily. Stay Update — loosen hands.",
+          "raw": "1. Choose External — Choose an external cue low enough on your fear ladder to approach voluntarily. Stay Update — loosen hands."
+        },
+        {
+          "number": 2,
+          "label": "Enter Escape",
+          "instruction": "Enter without escape and remain until you observe at least one mismatch between prediction and reality.",
+          "raw": "2. Enter Escape — Enter without escape and remain until you observe at least one mismatch between prediction and reality."
+        },
+        {
+          "number": 3,
+          "label": "Name Mismatch",
+          "instruction": "Name the mismatch before leaving. Stay Update — notice detail.",
+          "raw": "3. Name Mismatch — Name the mismatch before leaving. Stay Update — notice detail."
+        },
+        {
+          "number": 4,
+          "label": "Repeat Later",
+          "instruction": "Repeat later under safe conditions rather than chasing maximum distress. Stay Update — next action.",
+          "raw": "4. Repeat Later — Repeat later under safe conditions rather than chasing maximum distress. Stay Update — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Repeat Later.",
+      "win": "✓ Safe contact gives fear new data.",
+      "formulaFlow": "Choose External → Enter Escape → Name Mismatch → Repeat Later",
+      "formulaFlowParts": [
+        "Choose External",
+        "Enter Escape",
+        "Name Mismatch",
+        "Repeat Later"
+      ],
+      "safety": {
+        "pause": "Exposure needs clinical support when trauma, medical risk, severe phobia, or feeling unreal or disconnected is involved.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nExposure needs clinical support when trauma, medical risk, severe phobia, or feeling unreal or disconnected is involved.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Bet: Safe contact gives fear new data.",
+      "gameMove": "PLAY: Choose External → Name Mismatch → Repeat Later"
+    },
+    "source": {
+      "goal": "Safe contact gives fear new data.",
+      "goalAndStepsRaw": "GOAL\nSafe contact gives fear new data.\n\n1. Choose External — Choose an external cue low enough on your fear ladder to approach voluntarily. Stay Update — loosen hands.\n2. Enter Escape — Enter without escape and remain until you observe at least one mismatch between prediction and reality.\n3. Name Mismatch — Name the mismatch before leaving. Stay Update — notice detail.\n4. Repeat Later — Repeat later under safe conditions rather than chasing maximum distress. Stay Update — next action.\n\n⚡ FINISH — Repeat Later.",
+      "winRewardRaw": "✓ Safe contact gives fear new data.",
+      "formulaFlowRaw": "Choose External → Enter Escape → Name Mismatch → Repeat Later",
+      "safetyRaw": "PAUSE\nExposure needs clinical support when trauma, medical risk, severe phobia, or feeling unreal or disconnected is involved.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 72,
+    "id": "T-072",
+    "bubble": "RUSH",
+    "title": "THE CONTROLLED REPLAY",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Present-moment loss",
+    "playTime": "about 1 minute",
+    "display": {
+      "title": "THE CONTROLLED REPLAY",
+      "goal": "Avoided imagery can be processed inside a clear container.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Set Time",
+          "instruction": "Set a start time, endpoint, grounding object, and recovery plan. Controlled Replay — widen gaze.",
+          "raw": "1. Set Time — Set a start time, endpoint, grounding object, and recovery plan. Controlled Replay — widen gaze."
+        },
+        {
+          "number": 2,
+          "label": "Recount",
+          "instruction": "Recount or visualise the feared scene at a tolerable pace without changing key facts.",
+          "raw": "2. Recount — Recount or visualise the feared scene at a tolerable pace without changing key facts."
+        },
+        {
+          "number": 3,
+          "label": "Prediction",
+          "instruction": "Notice shifts in prediction or emotion across the telling. Controlled Replay — notice detail.",
+          "raw": "3. Prediction — Notice shifts in prediction or emotion across the telling. Controlled Replay — notice detail."
+        },
+        {
+          "number": 4,
+          "label": "Finish Location",
+          "instruction": "Finish by naming present location and date. Controlled Replay — next action.",
+          "raw": "4. Finish Location — Finish by naming present location and date. Controlled Replay — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Finish Location.",
+      "win": "✓ Avoided imagery can be processed inside a clear container.",
+      "formulaFlow": "Set Time → Recount → Prediction → Finish Location",
+      "formulaFlowParts": [
+        "Set Time",
+        "Recount",
+        "Prediction",
+        "Finish Location"
+      ],
+      "safety": {
+        "pause": "Do not self-administer for severe trauma, psychosis, acute crisis, or destabilising memories.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nDo not self-administer for severe trauma, psychosis, acute crisis, or destabilising memories.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Check: Avoided imagery can be processed inside a clear container.",
+      "gameMove": "PLAY: Set Time → Prediction → Finish Location"
+    },
+    "source": {
+      "goal": "Avoided imagery can be processed inside a clear container.",
+      "goalAndStepsRaw": "GOAL\nAvoided imagery can be processed inside a clear container.\n\n1. Set Time — Set a start time, endpoint, grounding object, and recovery plan. Controlled Replay — widen gaze.\n2. Recount — Recount or visualise the feared scene at a tolerable pace without changing key facts.\n3. Prediction — Notice shifts in prediction or emotion across the telling. Controlled Replay — notice detail.\n4. Finish Location — Finish by naming present location and date. Controlled Replay — next action.\n\n⚡ FINISH — Finish Location.",
+      "winRewardRaw": "✓ Avoided imagery can be processed inside a clear container.",
+      "formulaFlowRaw": "Set Time → Recount → Prediction → Finish Location",
+      "safetyRaw": "PAUSE\nDo not self-administer for severe trauma, psychosis, acute crisis, or destabilising memories.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 74,
+    "id": "T-074",
+    "bubble": "RUSH",
+    "title": "LEAVE ONE QUESTION OPEN",
+    "trigger": "Uncertainty & reassurance seeking",
+    "pattern": "Uncertainty intolerance",
+    "playTime": "under 2 minutes",
+    "display": {
+      "title": "LEAVE ONE QUESTION OPEN",
+      "goal": "Uncertainty can remain unfinished without becoming an emergency.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Choose Low",
+          "instruction": "Choose a low-stakes unknown. Leave Question — hear sound.",
+          "raw": "1. Choose Low — Choose a low-stakes unknown. Leave Question — hear sound."
+        },
+        {
+          "number": 2,
+          "label": "Picture Card",
+          "instruction": "Picture it on a card and forbid checking, asking, or mentally solving until a set time.",
+          "raw": "2. Picture Card — Picture it on a card and forbid checking, asking, or mentally solving until a set time."
+        },
+        {
+          "number": 3,
+          "label": "Carry Unanswered",
+          "instruction": "Carry the unanswered card while doing normal life. Leave Question — allow opposite.",
+          "raw": "3. Carry Unanswered — Carry the unanswered card while doing normal life. Leave Question — allow opposite."
+        },
+        {
+          "number": 4,
+          "label": "Watch The Urge",
+          "instruction": "At review, Notice what the urge did—not whether certainty arrived. Leave Question — next action.",
+          "raw": "4. Watch The Urge — At review, Notice what the urge did—not whether certainty arrived. Leave Question — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Watch The Urge.",
+      "win": "✓ Uncertainty can remain unfinished without becoming an emergency.",
+      "formulaFlow": "Choose Low → Picture Card → Carry Unanswered → Watch The Urge",
+      "formulaFlowParts": [
+        "Choose Low",
+        "Picture Card",
+        "Carry Unanswered",
+        "Watch The Urge"
+      ],
+      "safety": {
+        "pause": "Begin with smaller unknowns if abstaining causes overwhelming distress.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nBegin with smaller unknowns if abstaining causes overwhelming distress.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Spot: Uncertainty can remain unfinished without becoming an emergency.",
+      "gameMove": "PLAY: Choose Low → Carry Unanswered → Watch The Urge"
+    },
+    "source": {
+      "goal": "Uncertainty can remain unfinished without becoming an emergency.",
+      "goalAndStepsRaw": "GOAL\nUncertainty can remain unfinished without becoming an emergency.\n\n1. Choose Low — Choose a low-stakes unknown. Leave Question — hear sound.\n2. Picture Card — Picture it on a card and forbid checking, asking, or mentally solving until a set time.\n3. Carry Unanswered — Carry the unanswered card while doing normal life. Leave Question — allow opposite.\n4. Watch The Urge — At review, Notice what the urge did—not whether certainty arrived. Leave Question — next action.\n\n⚡ FINISH — Watch The Urge.",
+      "winRewardRaw": "✓ Uncertainty can remain unfinished without becoming an emergency.",
+      "formulaFlowRaw": "Choose Low → Picture Card → Carry Unanswered → Watch The Urge",
+      "safetyRaw": "PAUSE\nBegin with smaller unknowns if abstaining causes overwhelming distress.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 75,
+    "id": "T-075",
+    "bubble": "RUSH",
+    "title": "STAY THROUGH RECOVERY",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation",
+    "playTime": "about 90 seconds",
+    "display": {
+      "title": "STAY THROUGH RECOVERY",
+      "goal": "The nervous system learns more after the peak than at the exit.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Highest",
+          "instruction": "During a safe exposure, notice the highest point and the first downward shift. Stay Through — feel support.",
+          "raw": "1. Highest — During a safe exposure, notice the highest point and the first downward shift. Stay Through — feel support."
+        },
+        {
+          "number": 2,
+          "label": "Stay Past Relief",
+          "instruction": "Do not leave at that first relief.",
+          "raw": "2. Stay Past Relief — Do not leave at that first relief."
+        },
+        {
+          "number": 3,
+          "label": "Remain Cue",
+          "instruction": "Remain with the cue through a visible recovery phase—steady gaze, slower movement, reduced urge—then end on purpose. Stay Through — name sensation.",
+          "raw": "3. Remain Cue — Remain with the cue through a visible recovery phase—steady gaze, slower movement, reduced urge—then end on purpose. Stay Through — name sensation."
+        },
+        {
+          "number": 4,
+          "label": "Follow Learning",
+          "instruction": "Departure follows learning, not panic. Stay Through — next action.",
+          "raw": "4. Follow Learning — Departure follows learning, not panic. Stay Through — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Follow Learning.",
+      "win": "✓ The nervous system learns more after the peak than at the exit.",
+      "formulaFlow": "Highest → Stay Past Relief → Remain Cue → Follow Learning",
+      "formulaFlowParts": [
+        "Highest",
+        "Stay Past Relief",
+        "Remain Cue",
+        "Follow Learning"
+      ],
+      "safety": {
+        "pause": "Leave immediately if circumstances become genuinely unsafe or sense of where you are deteriorates.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nLeave immediately if circumstances become genuinely unsafe or sense of where you are deteriorates.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Imagine: The nervous system learns more after the peak than at the exit.",
+      "gameMove": "PLAY: Highest → Remain Cue → Follow Learning"
+    },
+    "source": {
+      "goal": "The nervous system learns more after the peak than at the exit.",
+      "goalAndStepsRaw": "GOAL\nThe nervous system learns more after the peak than at the exit.\n\n1. Highest — During a safe exposure, notice the highest point and the first downward shift. Stay Through — feel support.\n2. Stay Past Relief — Do not leave at that first relief.\n3. Remain Cue — Remain with the cue through a visible recovery phase—steady gaze, slower movement, reduced urge—then end on purpose. Stay Through — name sensation.\n4. Follow Learning — Departure follows learning, not panic. Stay Through — next action.\n\n⚡ FINISH — Follow Learning.",
+      "winRewardRaw": "✓ The nervous system learns more after the peak than at the exit.",
+      "formulaFlowRaw": "Highest → Stay Past Relief → Remain Cue → Follow Learning",
+      "safetyRaw": "PAUSE\nLeave immediately if circumstances become genuinely unsafe or sense of where you are deteriorates.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 77,
+    "id": "T-077",
+    "bubble": "RUSH",
+    "title": "REMOVE ONE INVISIBLE CRUTCH",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Avoidance reinforcement",
+    "playTime": "about 1 minute",
+    "display": {
+      "title": "REMOVE ONE INVISIBLE CRUTCH",
+      "goal": "Safety behaviours can hide the safety you are trying to learn.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Identify Protective",
+          "instruction": "During a manageable exposure, spot one protective act that is unnecessary: gripping, rehearsing, sitting by the exit, checking pulse, carrying reassurance. Remove Invisible — breathe naturally.",
+          "raw": "1. Identify Protective — During a manageable exposure, spot one protective act that is unnecessary: gripping, rehearsing, sitting by the exit, checking pulse, carrying reassurance. Remove Invisible — breathe naturally."
+        },
+        {
+          "number": 2,
+          "label": "Drop Legitimate",
+          "instruction": "Drop only that act while keeping legitimate safety intact. Remove Invisible — pick action.",
+          "raw": "2. Drop Legitimate — Drop only that act while keeping legitimate safety intact. Remove Invisible — pick action."
+        },
+        {
+          "number": 3,
+          "label": "Observe Outcome",
+          "instruction": "Observe what the outcome says without it. Remove Invisible — next action.",
+          "raw": "3. Observe Outcome — Observe what the outcome says without it. Remove Invisible — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Observe Outcome.",
+      "win": "✓ I made the avoided thing a little smaller by meeting it.",
+      "formulaFlow": "Identify Protective → Drop Legitimate → Observe Outcome",
+      "formulaFlowParts": [
+        "Identify Protective",
+        "Drop Legitimate",
+        "Observe Outcome"
+      ],
+      "safety": {
+        "pause": "Never remove medically required or genuinely protective behaviour.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nNever remove medically required or genuinely protective behaviour.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Aim: Safety behaviours can hide the safety you are trying to learn.",
+      "gameMove": "PLAY: Identify Protective → Drop Legitimate → Observe Outcome"
+    },
+    "source": {
+      "goal": "Safety behaviours can hide the safety you are trying to learn.",
+      "goalAndStepsRaw": "GOAL\nSafety behaviours can hide the safety you are trying to learn.\n\n1. Identify Protective — During a manageable exposure, spot one protective act that is unnecessary: gripping, rehearsing, sitting by the exit, checking pulse, carrying reassurance. Remove Invisible — breathe naturally.\n2. Drop Legitimate — Drop only that act while keeping legitimate safety intact. Remove Invisible — pick action.\n3. Observe Outcome — Observe what the outcome says without it. Remove Invisible — next action.\n\n⚡ FINISH — Observe Outcome.",
+      "winRewardRaw": "✓ I made the avoided thing a little smaller by meeting it.",
+      "formulaFlowRaw": "Identify Protective → Drop Legitimate → Observe Outcome",
+      "safetyRaw": "PAUSE\nNever remove medically required or genuinely protective behaviour.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 78,
+    "id": "T-078",
+    "bubble": "RUSH",
+    "title": "MOVE THE LESSON",
+    "trigger": "Evidence distortion & selective thinking",
+    "pattern": "Context neglect",
+    "playTime": "1–2 minutes",
+    "display": {
+      "title": "MOVE THE LESSON",
+      "goal": "Learning that works in one room may not travel by itself.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Repeat Mastered",
+          "instruction": "Repeat a mastered practice while changing one feature: location, time, cue order, duration, or intensity. Move Lesson — move slowly.",
+          "raw": "1. Repeat Mastered — Repeat a mastered practice while changing one feature: location, time, cue order, duration, or intensity. Move Lesson — move slowly."
+        },
+        {
+          "number": 2,
+          "label": "Round",
+          "instruction": "On the next round, alter a different feature.",
+          "raw": "2. Round — On the next round, alter a different feature."
+        },
+        {
+          "number": 3,
+          "label": "Keep Small",
+          "instruction": "Keep a small Keep of where the skill still works. Move Lesson — find evidence.",
+          "raw": "3. Keep Small — Keep a small Keep of where the skill still works. Move Lesson — find evidence."
+        },
+        {
+          "number": 4,
+          "label": "Turn Local",
+          "instruction": "Variation turns a local exception into portable knowledge. Move Lesson — next action.",
+          "raw": "4. Turn Local — Variation turns a local exception into portable knowledge. Move Lesson — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Turn Local.",
+      "win": "✓ Learning that works in one room may not travel by itself.",
+      "formulaFlow": "Repeat Mastered → Round → Keep Small → Turn Local",
+      "formulaFlowParts": [
+        "Repeat Mastered",
+        "Round",
+        "Keep Small",
+        "Turn Local"
+      ],
+      "safety": {
+        "pause": "Vary only within the established safe range.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nVary only within the established safe range.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Probe: Learning that works in one room may not travel by itself.",
+      "gameMove": "PLAY: Repeat Mastered → Keep Small → Turn Local"
+    },
+    "source": {
+      "goal": "Learning that works in one room may not travel by itself.",
+      "goalAndStepsRaw": "GOAL\nLearning that works in one room may not travel by itself.\n\n1. Repeat Mastered — Repeat a mastered practice while changing one feature: location, time, cue order, duration, or intensity. Move Lesson — move slowly.\n2. Round — On the next round, alter a different feature.\n3. Keep Small — Keep a small Keep of where the skill still works. Move Lesson — find evidence.\n4. Turn Local — Variation turns a local exception into portable knowledge. Move Lesson — next action.\n\n⚡ FINISH — Turn Local.",
+      "winRewardRaw": "✓ Learning that works in one room may not travel by itself.",
+      "formulaFlowRaw": "Repeat Mastered → Round → Keep Small → Turn Local",
+      "safetyRaw": "PAUSE\nVary only within the established safe range.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 79,
+    "id": "T-079",
+    "bubble": "RUSH",
+    "title": "THE TWO-CUE MERGE",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness",
+    "playTime": "under 2 minutes",
+    "display": {
+      "title": "THE TWO-CUE MERGE",
+      "goal": "Combine mastered signals only after each can stand alone.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Select Triggers",
+          "instruction": "Select two triggers already tolerable separately. Two Cue — loosen hands.",
+          "raw": "1. Select Triggers — Select two triggers already tolerable separately. Two Cue — loosen hands."
+        },
+        {
+          "number": 2,
+          "label": "Predict Joining",
+          "instruction": "Predict what joining them will add.",
+          "raw": "2. Predict Joining — Predict what joining them will add."
+        },
+        {
+          "number": 3,
+          "label": "Drop Unnecessary",
+          "instruction": "Contact both at a modest dose while dropping unnecessary escape. Two Cue — notice detail.",
+          "raw": "3. Drop Unnecessary — Contact both at a modest dose while dropping unnecessary escape. Two Cue — notice detail."
+        },
+        {
+          "number": 4,
+          "label": "Stay Long",
+          "instruction": "Stay long enough to compare the combined result with the forecast, then recover fully. Two Cue — next action.",
+          "raw": "4. Stay Long — Stay long enough to compare the combined result with the forecast, then recover fully. Two Cue — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Stay Long.",
+      "win": "✓ Combine mastered signals only after each can stand alone.",
+      "formulaFlow": "Select Triggers → Predict Joining → Drop Unnecessary → Stay Long",
+      "formulaFlowParts": [
+        "Select Triggers",
+        "Predict Joining",
+        "Drop Unnecessary",
+        "Stay Long"
+      ],
+      "safety": {
+        "pause": "Do not compound unmastered trauma cues or exceed the planned tolerance range.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nDo not compound unmastered trauma cues or exceed the planned tolerance range.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Peek: Combine mastered signals only after each can stand alone.",
+      "gameMove": "PLAY: Select Triggers → Drop Unnecessary → Stay Long"
+    },
+    "source": {
+      "goal": "Combine mastered signals only after each can stand alone.",
+      "goalAndStepsRaw": "GOAL\nCombine mastered signals only after each can stand alone.\n\n1. Select Triggers — Select two triggers already tolerable separately. Two Cue — loosen hands.\n2. Predict Joining — Predict what joining them will add.\n3. Drop Unnecessary — Contact both at a modest dose while dropping unnecessary escape. Two Cue — notice detail.\n4. Stay Long — Stay long enough to compare the combined result with the forecast, then recover fully. Two Cue — next action.\n\n⚡ FINISH — Stay Long.",
+      "winRewardRaw": "✓ Combine mastered signals only after each can stand alone.",
+      "formulaFlowRaw": "Select Triggers → Predict Joining → Drop Unnecessary → Stay Long",
+      "safetyRaw": "PAUSE\nDo not compound unmastered trauma cues or exceed the planned tolerance range.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 80,
+    "id": "T-080",
+    "bubble": "RUSH",
+    "title": "TAKE SAFETY ON TOUR",
+    "trigger": "Evidence distortion & selective thinking",
+    "pattern": "Context neglect",
+    "playTime": "about 90 seconds",
+    "display": {
+      "title": "TAKE SAFETY ON TOUR",
+      "goal": "A lesson becomes reliable when the address changes.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Choose Safe",
+          "instruction": "Pick a different secure setting for a skill already learned elsewhere. Take Safety — widen gaze.",
+          "raw": "1. Choose Safe — Pick a different secure setting for a skill already learned elsewhere. Take Safety — widen gaze."
+        },
+        {
+          "number": 2,
+          "label": "Enter Earlier",
+          "instruction": "Before entering, recall the earlier evidence in one sentence.",
+          "raw": "2. Enter Earlier — Before entering, recall the earlier evidence in one sentence."
+        },
+        {
+          "number": 3,
+          "label": "Practise Transfers",
+          "instruction": "Practise, notice what transfers, and spot any context-specific obstacle. Take Safety — challenge answer.",
+          "raw": "3. Practise Transfers — Practise, notice what transfers, and spot any context-specific obstacle. Take Safety — challenge answer."
+        },
+        {
+          "number": 4,
+          "label": "Leave Local",
+          "instruction": "Leave with a local reminder for next time. Take Safety — next action.",
+          "raw": "4. Leave Local — Leave with a local reminder for next time. Take Safety — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Leave Local.",
+      "win": "✓ A lesson becomes reliable when the address changes.",
+      "formulaFlow": "Choose Safe → Enter Earlier → Practise Transfers → Leave Local",
+      "formulaFlowParts": [
+        "Choose Safe",
+        "Enter Earlier",
+        "Practise Transfers",
+        "Leave Local"
+      ],
+      "safety": {
+        "pause": "Use supported settings when unfamiliar places create major risk.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nUse supported settings when unfamiliar places create major risk.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Switch: A lesson becomes reliable when the address changes.",
+      "gameMove": "PLAY: Choose Safe → Practise Transfers → Leave Local"
+    },
+    "source": {
+      "goal": "A lesson becomes reliable when the address changes.",
+      "goalAndStepsRaw": "GOAL\nA lesson becomes reliable when the address changes.\n\n1. Choose Safe — Pick a different secure setting for a skill already learned elsewhere. Take Safety — widen gaze.\n2. Enter Earlier — Before entering, recall the earlier evidence in one sentence.\n3. Practise Transfers — Practise, notice what transfers, and spot any context-specific obstacle. Take Safety — challenge answer.\n4. Leave Local — Leave with a local reminder for next time. Take Safety — next action.\n\n⚡ FINISH — Leave Local.",
+      "winRewardRaw": "✓ A lesson becomes reliable when the address changes.",
+      "formulaFlowRaw": "Choose Safe → Enter Earlier → Practise Transfers → Leave Local",
+      "safetyRaw": "PAUSE\nUse supported settings when unfamiliar places create major risk.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 89,
+    "id": "T-089",
+    "bubble": "RUSH",
+    "title": "TURN UP THE WHISPER",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading",
+    "playTime": "under 2 minutes",
+    "display": {
+      "title": "TURN UP THE WHISPER",
+      "goal": "A tiny movement may be the body’s unfinished instruction.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Smallest",
+          "instruction": "Notice the smallest spontaneous tendency: sway, curl, stretch, turn, reach. Turn Up — soften shoulders.",
+          "raw": "1. Smallest — Notice the smallest spontaneous tendency: sway, curl, stretch, turn, reach. Turn Up — soften shoulders."
+        },
+        {
+          "number": 2,
+          "label": "Pause Enlarge",
+          "instruction": "Enlarge it by only ten percent and pause.",
+          "raw": "2. Pause Enlarge — Enlarge it by only ten percent and pause."
+        },
+        {
+          "number": 3,
+          "label": "Ask Whether",
+          "instruction": "Check if it brings ease, protection, energy, or nothing. Turn Up — notice detail.",
+          "raw": "3. Ask Whether — Check if it brings ease, protection, energy, or nothing. Turn Up — notice detail."
+        },
+        {
+          "number": 4,
+          "label": "Let Determine",
+          "instruction": "Let the answer determine whether to continue, reverse, or stop. Turn Up — next action.",
+          "raw": "4. Let Determine — Let the answer determine whether to continue, reverse, or stop. Turn Up — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Let Determine.",
+      "win": "✓ A tiny movement may be the body’s unfinished instruction.",
+      "formulaFlow": "Smallest → Pause Enlarge → Ask Whether → Let Determine",
+      "formulaFlowParts": [
+        "Smallest",
+        "Pause Enlarge",
+        "Ask Whether",
+        "Let Determine"
+      ],
+      "safety": {
+        "pause": "Keep amplitude small around pain, injury, or unstable balance.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nKeep amplitude small around pain, injury, or unstable balance.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Notice: A tiny movement may be the body’s unfinished instruction.",
+      "gameMove": "PLAY: Smallest → Ask Whether → Let Determine"
+    },
+    "source": {
+      "goal": "A tiny movement may be the body’s unfinished instruction.",
+      "goalAndStepsRaw": "GOAL\nA tiny movement may be the body’s unfinished instruction.\n\n1. Smallest — Notice the smallest spontaneous tendency: sway, curl, stretch, turn, reach. Turn Up — soften shoulders.\n2. Pause Enlarge — Enlarge it by only ten percent and pause.\n3. Ask Whether — Check if it brings ease, protection, energy, or nothing. Turn Up — notice detail.\n4. Let Determine — Let the answer determine whether to continue, reverse, or stop. Turn Up — next action.\n\n⚡ FINISH — Let Determine.",
+      "winRewardRaw": "✓ A tiny movement may be the body’s unfinished instruction.",
+      "formulaFlowRaw": "Smallest → Pause Enlarge → Ask Whether → Let Determine",
+      "safetyRaw": "PAUSE\nKeep amplitude small around pain, injury, or unstable balance.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 91,
+    "id": "T-091",
+    "bubble": "RUSH",
+    "title": "DATE-STAMP THE PRESENT",
+    "trigger": "Trauma & memory-as-present",
+    "pattern": "Trauma time collapse",
+    "playTime": "30–60 seconds",
+    "display": {
+      "title": "DATE-STAMP THE PRESENT",
+      "goal": "Give the nervous system evidence that time has moved.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Say Age",
+          "instruction": "Say the full date, your current age, location, and who is here. Date Stamp — feel support.",
+          "raw": "1. Say Age — Say the full date, your current age, location, and who is here. Date Stamp — feel support."
+        },
+        {
+          "number": 2,
+          "label": "Name Differences",
+          "instruction": "Name three differences between now and the remembered danger: exits, resources, authority, distance, or choice. Date Stamp — name sensation.",
+          "raw": "2. Name Differences — Name three differences between now and the remembered danger: exits, resources, authority, distance, or choice. Date Stamp — name sensation."
+        },
+        {
+          "number": 3,
+          "label": "State Belongs",
+          "instruction": "Touch one present object while stating, ‘This object belongs to the present.’. Date Stamp — next action.",
+          "raw": "3. State Belongs — Touch one present object while stating, ‘This object belongs to the present.’. Date Stamp — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — State Belongs.",
+      "win": "✓ I can give the nervous system evidence that time has moved.",
+      "formulaFlow": "Say Age → Name Differences → State Belongs",
+      "formulaFlowParts": [
+        "Say Age",
+        "Name Differences",
+        "State Belongs"
+      ],
+      "safety": {
+        "pause": "Use immediate professional help if you cannot regain sense of where you are or safety.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nUse immediate professional help if you cannot regain sense of where you are or safety.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Bet: Give the nervous system evidence that time has moved.",
+      "gameMove": "PLAY: Say Age → Name Differences → State Belongs"
+    },
+    "source": {
+      "goal": "Give the nervous system evidence that time has moved.",
+      "goalAndStepsRaw": "GOAL\nGive the nervous system evidence that time has moved.\n\n1. Say Age — Say the full date, your current age, location, and who is here. Date Stamp — feel support.\n2. Name Differences — Name three differences between now and the remembered danger: exits, resources, authority, distance, or choice. Date Stamp — name sensation.\n3. State Belongs — Touch one present object while stating, ‘This object belongs to the present.’. Date Stamp — next action.\n\n⚡ FINISH — State Belongs.",
+      "winRewardRaw": "✓ I can give the nervous system evidence that time has moved.",
+      "formulaFlowRaw": "Say Age → Name Differences → State Belongs",
+      "safetyRaw": "PAUSE\nUse immediate professional help if you cannot regain sense of where you are or safety.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 127,
+    "id": "T-127",
+    "bubble": "RUSH",
+    "title": "FEAR WITHOUT THE MOVIE",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation",
+    "playTime": "about 1 minute",
+    "display": {
+      "title": "FEAR WITHOUT THE MOVIE",
+      "goal": "At the peak, meet energy before narrative claims it.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Locate Most",
+          "instruction": "If safely steady, locate the most intense fear sensation and say only its movement, charge, heat, and boundary. Fear Without — loosen hands.",
+          "raw": "1. Locate Most — If safely steady, locate the most intense fear sensation and say only its movement, charge, heat, and boundary. Fear Without — loosen hands."
+        },
+        {
+          "number": 2,
+          "label": "Remove Prediction",
+          "instruction": "Remove prediction briefly.",
+          "raw": "2. Remove Prediction — Remove prediction briefly."
+        },
+        {
+          "number": 3,
+          "label": "Keep Hand",
+          "instruction": "Keep one hand or gaze anchored in the room. Fear Without — name sensation.",
+          "raw": "3. Keep Hand — Keep one hand or gaze anchored in the room. Fear Without — name sensation."
+        },
+        {
+          "number": 4,
+          "label": "Let Raw",
+          "instruction": "Let raw body alarm be observed without following its film script. Fear Without — next action.",
+          "raw": "4. Let Raw — Let raw body alarm be observed without following its film script. Fear Without — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Let Raw.",
+      "win": "✓ At the peak, meet energy before narrative claims it.",
+      "formulaFlow": "Locate Most → Remove Prediction → Keep Hand → Let Raw",
+      "formulaFlowParts": [
+        "Locate Most",
+        "Remove Prediction",
+        "Keep Hand",
+        "Let Raw"
+      ],
+      "safety": {
+        "pause": "Do not attempt at overwhelming intensity, active danger, or trauma flooding.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nDo not attempt at overwhelming intensity, active danger, or trauma flooding.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Zoom: At the peak, meet energy before narrative claims it.",
+      "gameMove": "PLAY: Locate Most → Keep Hand → Let Raw"
+    },
+    "source": {
+      "goal": "At the peak, meet energy before narrative claims it.",
+      "goalAndStepsRaw": "GOAL\nAt the peak, meet energy before narrative claims it.\n\n1. Locate Most — If safely steady, locate the most intense fear sensation and say only its movement, charge, heat, and boundary. Fear Without — loosen hands.\n2. Remove Prediction — Remove prediction briefly.\n3. Keep Hand — Keep one hand or gaze anchored in the room. Fear Without — name sensation.\n4. Let Raw — Let raw body alarm be observed without following its film script. Fear Without — next action.\n\n⚡ FINISH — Let Raw.",
+      "winRewardRaw": "✓ At the peak, meet energy before narrative claims it.",
+      "formulaFlowRaw": "Locate Most → Remove Prediction → Keep Hand → Let Raw",
+      "safetyRaw": "PAUSE\nDo not attempt at overwhelming intensity, active danger, or trauma flooding.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 138,
+    "id": "T-138",
+    "bubble": "RUSH",
+    "title": "STUDY THE REACTION, NOT THE CHARACTER",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading",
+    "playTime": "1–2 minutes",
+    "display": {
+      "title": "STUDY THE REACTION, NOT THE CHARACTER",
+      "goal": "Self-inquiry works better as disciplined research.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Choose Recurring",
+          "instruction": "Choose a reaction that happens often and remember three times it happened. Study Reaction — hear sound.",
+          "raw": "1. Choose Recurring — Choose a reaction that happens often and remember three times it happened. Study Reaction — hear sound."
+        },
+        {
+          "number": 2,
+          "label": "Read Pattern",
+          "instruction": "For each time, notice the trigger, meaning, body feeling, action, and result.",
+          "raw": "2. Read Pattern — For each time, notice the trigger, meaning, body feeling, action, and result."
+        },
+        {
+          "number": 3,
+          "label": "Compare Trusted",
+          "instruction": "Compare the three examples with a trusted idea or guide. Study Reaction — notice detail.",
+          "raw": "3. Compare Trusted — Compare the three examples with a trusted idea or guide. Study Reaction — notice detail."
+        },
+        {
+          "number": 4,
+          "label": "Picture A Guess",
+          "instruction": "Picture one idea to test. Do not judge your whole character. Study Reaction — next action.",
+          "raw": "4. Picture A Guess — Picture one idea to test. Do not judge your whole character. Study Reaction — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Picture A Guess.",
+      "win": "✓ Self-inquiry works better as disciplined research.",
+      "formulaFlow": "Choose Recurring → Read Pattern → Compare Trusted → Picture A Guess",
+      "formulaFlowParts": [
+        "Choose Recurring",
+        "Read Pattern",
+        "Compare Trusted",
+        "Picture A Guess"
+      ],
+      "safety": {
+        "pause": "Pause study when reflection becomes self-surveillance or shame.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nPause study when reflection becomes self-surveillance or shame.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Probe: Self-inquiry works better as disciplined research.",
+      "gameMove": "PLAY: Choose Recurring → Compare Trusted → Picture A Guess"
+    },
+    "source": {
+      "goal": "Self-inquiry works better as disciplined research.",
+      "goalAndStepsRaw": "GOAL\nSelf-inquiry works better as disciplined research.\n\n1. Choose Recurring — Choose a reaction that happens often and remember three times it happened. Study Reaction — hear sound.\n2. Read Pattern — For each time, notice the trigger, meaning, body feeling, action, and result.\n3. Compare Trusted — Compare the three examples with a trusted idea or guide. Study Reaction — notice detail.\n4. Picture A Guess — Picture one idea to test. Do not judge your whole character. Study Reaction — next action.\n\n⚡ FINISH — Picture A Guess.",
+      "winRewardRaw": "✓ Self-inquiry works better as disciplined research.",
+      "formulaFlowRaw": "Choose Recurring → Read Pattern → Compare Trusted → Picture A Guess",
+      "safetyRaw": "PAUSE\nPause study when reflection becomes self-surveillance or shame.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 152,
+    "id": "T-152",
+    "bubble": "RUSH",
+    "title": "WHAT REMAINS WHEN REWARD LEAVES?",
+    "trigger": "Values, meaning & loss",
+    "pattern": "Value disconnection",
+    "playTime": "about 1 minute",
+    "display": {
+      "title": "WHAT REMAINS WHEN REWARD LEAVES?",
+      "goal": "Duty becomes clearer after fear and praise exit the room.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Name Role",
+          "instruction": "Name your role, the people affected, and the values governing it. Remains Reward — widen gaze.",
+          "raw": "1. Name Role — Name your role, the people affected, and the values governing it. Remains Reward — widen gaze."
+        },
+        {
+          "number": 2,
+          "label": "Remove Applause",
+          "instruction": "Mentally remove applause, punishment, and personal advantage.",
+          "raw": "2. Remove Applause — Mentally remove applause, punishment, and personal advantage."
+        },
+        {
+          "number": 3,
+          "label": "Ask Responsibility",
+          "instruction": "Ask which responsibility still stands. Remains Reward — split duty.",
+          "raw": "3. Ask Responsibility — Ask which responsibility still stands. Remains Reward — split duty."
+        },
+        {
+          "number": 4,
+          "label": "Set Role Limit",
+          "instruction": "Convert that answer into a time-bound action and one limit on what the role does not require. Remains Reward — next action.",
+          "raw": "4. Set Role Limit — Convert that answer into a time-bound action and one limit on what the role does not require. Remains Reward — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Set Role Limit.",
+      "win": "✓ Duty becomes clearer after fear and praise exit the room.",
+      "formulaFlow": "Name Role → Remove Applause → Ask Responsibility → Set Role Limit",
+      "formulaFlowParts": [
+        "Name Role",
+        "Remove Applause",
+        "Ask Responsibility",
+        "Set Role Limit"
+      ],
+      "safety": {
+        "pause": "Reject duties that violate safety, ethics, consent, or lawful limits.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nReject duties that violate safety, ethics, consent, or lawful limits.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Check: Duty becomes clearer after fear and praise exit the room.",
+      "gameMove": "PLAY: Name Role → Ask Responsibility → Set Role Limit"
+    },
+    "source": {
+      "goal": "Duty becomes clearer after fear and praise exit the room.",
+      "goalAndStepsRaw": "GOAL\nDuty becomes clearer after fear and praise exit the room.\n\n1. Name Role — Name your role, the people affected, and the values governing it. Remains Reward — widen gaze.\n2. Remove Applause — Mentally remove applause, punishment, and personal advantage.\n3. Ask Responsibility — Ask which responsibility still stands. Remains Reward — split duty.\n4. Set Role Limit — Convert that answer into a time-bound action and one limit on what the role does not require. Remains Reward — next action.\n\n⚡ FINISH — Set Role Limit.",
+      "winRewardRaw": "✓ Duty becomes clearer after fear and praise exit the room.",
+      "formulaFlowRaw": "Name Role → Remove Applause → Ask Responsibility → Set Role Limit",
+      "safetyRaw": "PAUSE\nReject duties that violate safety, ethics, consent, or lawful limits.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 160,
+    "id": "T-160",
+    "bubble": "RUSH",
+    "title": "DEDICATE THE MOVE",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading",
+    "playTime": "about 90 seconds",
+    "display": {
+      "title": "DEDICATE THE MOVE",
+      "goal": "A larger recipient can change the flavour of effort.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Select Behaviour",
+          "instruction": "Select a behaviour; spot who or what it serves beyond immediate reward: a child, patient, craft, community, future generation, or principle. Dedicate Move — widen gaze.",
+          "raw": "1. Select Behaviour — Select a behaviour; spot who or what it serves beyond immediate reward: a child, patient, craft, community, future generation, or principle. Dedicate Move — widen gaze."
+        },
+        {
+          "number": 2,
+          "label": "Act Offering",
+          "instruction": "Perform the act as an offering to that recipient. Dedicate Move — notice detail.",
+          "raw": "2. Act Offering — Perform the act as an offering to that recipient. Dedicate Move — notice detail."
+        },
+        {
+          "number": 3,
+          "label": "Keep Quality",
+          "instruction": "Keep quality high even if nobody knows. Dedicate Move — next action.",
+          "raw": "3. Keep Quality — Keep quality high even if nobody knows. Dedicate Move — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Keep Quality.",
+      "win": "✓ A larger recipient can change the flavour of effort.",
+      "formulaFlow": "Select Behaviour → Act Offering → Keep Quality",
+      "formulaFlowParts": [
+        "Select Behaviour",
+        "Act Offering",
+        "Keep Quality"
+      ],
+      "safety": {
+        "pause": "Do not dedicate self-harm, overwork, or boundary violations as virtue.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nDo not dedicate self-harm, overwork, or boundary violations as virtue.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Switch: A larger recipient can change the flavour of effort.",
+      "gameMove": "PLAY: Select Behaviour → Act Offering → Keep Quality"
+    },
+    "source": {
+      "goal": "A larger recipient can change the flavour of effort.",
+      "goalAndStepsRaw": "GOAL\nA larger recipient can change the flavour of effort.\n\n1. Select Behaviour — Select a behaviour; spot who or what it serves beyond immediate reward: a child, patient, craft, community, future generation, or principle. Dedicate Move — widen gaze.\n2. Act Offering — Perform the act as an offering to that recipient. Dedicate Move — notice detail.\n3. Keep Quality — Keep quality high even if nobody knows. Dedicate Move — next action.\n\n⚡ FINISH — Keep Quality.",
+      "winRewardRaw": "✓ A larger recipient can change the flavour of effort.",
+      "formulaFlowRaw": "Select Behaviour → Act Offering → Keep Quality",
+      "safetyRaw": "PAUSE\nDo not dedicate self-harm, overwork, or boundary violations as virtue.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 190,
+    "id": "T-190",
+    "bubble": "RUSH",
+    "title": "THE FIVE-BRICK REPAIR",
+    "trigger": "Self-blame, guilt & shame",
+    "pattern": "Guilt overreach",
+    "playTime": "about 90 seconds",
+    "display": {
+      "title": "THE FIVE-BRICK REPAIR",
+      "goal": "Reconnection is built from specific materials.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Build Repair",
+          "instruction": "Build Repair the bricks in order: event without spin; impact without defence; your responsibility without dilution; the unmet need; a concrete repair action. Five Brick — move slowly.",
+          "raw": "1. Build Repair — Build Repair the bricks in order: event without spin; impact without defence; your responsibility without dilution; the unmet need; a concrete repair action. Five Brick — move slowly."
+        },
+        {
+          "number": 2,
+          "label": "Ask Evidence",
+          "instruction": "Ask what would count as evidence over time. Five Brick — split duty.",
+          "raw": "2. Ask Evidence — Ask what would count as evidence over time. Five Brick — split duty."
+        },
+        {
+          "number": 3,
+          "label": "Apology",
+          "instruction": "An apology is the doorway; changed behaviour is the surroundings. Five Brick — next action.",
+          "raw": "3. Apology — An apology is the doorway; changed behaviour is the surroundings. Five Brick — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Apology.",
+      "win": "✓ I just kept the part that was mine and put down the rest.",
+      "formulaFlow": "Build Repair → Ask Evidence → Apology",
+      "formulaFlowParts": [
+        "Build Repair",
+        "Ask Evidence",
+        "Apology"
+      ],
+      "safety": {
+        "pause": "Do not seek reconnection where safety, consent, or accountability is absent.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nDo not seek reconnection where safety, consent, or accountability is absent.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Look: Reconnection is built from specific materials.",
+      "gameMove": "PLAY: Build Repair → Ask Evidence → Apology"
+    },
+    "source": {
+      "goal": "Reconnection is built from specific materials.",
+      "goalAndStepsRaw": "GOAL\nReconnection is built from specific materials.\n\n1. Build Repair — Build Repair the bricks in order: event without spin; impact without defence; your responsibility without dilution; the unmet need; a concrete repair action. Five Brick — move slowly.\n2. Ask Evidence — Ask what would count as evidence over time. Five Brick — split duty.\n3. Apology — An apology is the doorway; changed behaviour is the surroundings. Five Brick — next action.\n\n⚡ FINISH — Apology.",
+      "winRewardRaw": "✓ I just kept the part that was mine and put down the rest.",
+      "formulaFlowRaw": "Build Repair → Ask Evidence → Apology",
+      "safetyRaw": "PAUSE\nDo not seek reconnection where safety, consent, or accountability is absent.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 194,
+    "id": "T-194",
+    "bubble": "RUSH",
+    "title": "MOVE THE CHARGE INTO A CONTAINER",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation",
+    "playTime": "under 2 minutes",
+    "display": {
+      "title": "MOVE THE CHARGE INTO A CONTAINER",
+      "goal": "Body alarm needs a route with walls.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Choose Shaking",
+          "instruction": "Choose shaking, pushing a wall, stamping, stretching, or strong walking. Move Charge — hear sound.",
+          "raw": "1. Choose Shaking — Choose shaking, pushing a wall, stamping, stretching, or strong walking. Move Charge — hear sound."
+        },
+        {
+          "number": 2,
+          "label": "Start Define",
+          "instruction": "Define space, duration, and maximum intensity before starting.",
+          "raw": "2. Start Define — Define space, duration, and maximum intensity before starting."
+        },
+        {
+          "number": 3,
+          "label": "Keep Movement",
+          "instruction": "Keep movement nonviolent and stop at the timer. Move Charge — name sensation.",
+          "raw": "3. Keep Movement — Keep movement nonviolent and stop at the timer. Move Charge — name sensation."
+        },
+        {
+          "number": 4,
+          "label": "Earliest",
+          "instruction": "Stand still afterward until you notice the earliest settling marker. Move Charge — next action.",
+          "raw": "4. Earliest — Stand still afterward until you notice the earliest settling marker. Move Charge — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Earliest.",
+      "win": "✓ Body alarm needs a route with walls.",
+      "formulaFlow": "Choose Shaking → Start Define → Keep Movement → Earliest",
+      "formulaFlowParts": [
+        "Choose Shaking",
+        "Start Define",
+        "Keep Movement",
+        "Earliest"
+      ],
+      "safety": {
+        "pause": "Stop for pain, dizziness, aggression, or loss of action control.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nStop for pain, dizziness, aggression, or loss of action control.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Spot: Body alarm needs a route with walls.",
+      "gameMove": "PLAY: Choose Shaking → Keep Movement → Earliest"
+    },
+    "source": {
+      "goal": "Body alarm needs a route with walls.",
+      "goalAndStepsRaw": "GOAL\nBody alarm needs a route with walls.\n\n1. Choose Shaking — Choose shaking, pushing a wall, stamping, stretching, or strong walking. Move Charge — hear sound.\n2. Start Define — Define space, duration, and maximum intensity before starting.\n3. Keep Movement — Keep movement nonviolent and stop at the timer. Move Charge — name sensation.\n4. Earliest — Stand still afterward until you notice the earliest settling marker. Move Charge — next action.\n\n⚡ FINISH — Earliest.",
+      "winRewardRaw": "✓ Body alarm needs a route with walls.",
+      "formulaFlowRaw": "Choose Shaking → Start Define → Keep Movement → Earliest",
+      "safetyRaw": "PAUSE\nStop for pain, dizziness, aggression, or loss of action control.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 199,
+    "id": "T-199",
+    "bubble": "RUSH",
+    "title": "ANGER WITH WALLS",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary confusion",
+    "playTime": "under 2 minutes",
+    "display": {
+      "title": "ANGER WITH WALLS",
+      "goal": "Power may be expressed without becoming a weapon.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Choose Private",
+          "instruction": "Choose private space, a timer, and non-harmful materials. Anger Walls — loosen hands.",
+          "raw": "1. Choose Private — Choose private space, a timer, and non-harmful materials. Anger Walls — loosen hands."
+        },
+        {
+          "number": 2,
+          "label": "State Anger",
+          "instruction": "State the anger plainly, push against a stable surface, tear scrap your imagination, or move strongly without rehearsing violence. Anger Walls — split duty.",
+          "raw": "2. State Anger — State the anger plainly, push against a stable surface, tear scrap your imagination, or move strongly without rehearsing violence. Anger Walls — split duty."
+        },
+        {
+          "number": 3,
+          "label": "End Hands",
+          "instruction": "When time ends, open hands, name the boundary underneath, and select a safe action. Anger Walls — next action.",
+          "raw": "3. End Hands — When time ends, open hands, name the boundary underneath, and select a safe action. Anger Walls — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — End Hands.",
+      "win": "✓ Power may be expressed without becoming a weapon.",
+      "formulaFlow": "Choose Private → State Anger → End Hands",
+      "formulaFlowParts": [
+        "Choose Private",
+        "State Anger",
+        "End Hands"
+      ],
+      "safety": {
+        "pause": "Leave immediately and get help if there is risk of harming anyone or damaging property.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nLeave immediately and get help if there is risk of harming anyone or damaging property.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Peek: Power may be expressed without becoming a weapon.",
+      "gameMove": "PLAY: Choose Private → State Anger → End Hands"
+    },
+    "source": {
+      "goal": "Power may be expressed without becoming a weapon.",
+      "goalAndStepsRaw": "GOAL\nPower may be expressed without becoming a weapon.\n\n1. Choose Private — Choose private space, a timer, and non-harmful materials. Anger Walls — loosen hands.\n2. State Anger — State the anger plainly, push against a stable surface, tear scrap your imagination, or move strongly without rehearsing violence. Anger Walls — split duty.\n3. End Hands — When time ends, open hands, name the boundary underneath, and select a safe action. Anger Walls — next action.\n\n⚡ FINISH — End Hands.",
+      "winRewardRaw": "✓ Power may be expressed without becoming a weapon.",
+      "formulaFlowRaw": "Choose Private → State Anger → End Hands",
+      "safetyRaw": "PAUSE\nLeave immediately and get help if there is risk of harming anyone or damaging property.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 205,
+    "id": "T-205",
+    "bubble": "RUSH",
+    "title": "BREAK THE DEADLINE MONOLITH",
+    "trigger": "Urgency & decision pressure",
+    "pattern": "Time-pressure distortion",
+    "playTime": "about 90 seconds",
+    "display": {
+      "title": "BREAK THE DEADLINE MONOLITH",
+      "goal": "Time pressure shrinks when it gains windows.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Count Usable",
+          "instruction": "Count the usable work blocks remaining, subtracting sleep and fixed duties. Break Deadline — breathe naturally.",
+          "raw": "1. Count Usable — Count the usable work blocks remaining, subtracting sleep and fixed duties. Break Deadline — breathe naturally."
+        },
+        {
+          "number": 2,
+          "label": "Give Block",
+          "instruction": "Give each block one deliverable with a visible finish.",
+          "raw": "2. Give Block — Give each block one deliverable with a visible finish."
+        },
+        {
+          "number": 3,
+          "label": "Place Buffers",
+          "instruction": "Place buffers before the final deadline. Break Deadline — pick action.",
+          "raw": "3. Place Buffers — Place buffers before the final deadline. Break Deadline — pick action."
+        },
+        {
+          "number": 4,
+          "label": "Start Earliest",
+          "instruction": "Start the earliest window; refuse to mentally carry later windows inside it. Break Deadline — next action.",
+          "raw": "4. Start Earliest — Start the earliest window; refuse to mentally carry later windows inside it. Break Deadline — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Start Earliest.",
+      "win": "✓ Time pressure shrinks when it gains windows.",
+      "formulaFlow": "Count Usable → Give Block → Place Buffers → Start Earliest",
+      "formulaFlowParts": [
+        "Count Usable",
+        "Give Block",
+        "Place Buffers",
+        "Start Earliest"
+      ],
+      "safety": {
+        "pause": "Renegotiate scope early when the arithmetic is impossible.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nRenegotiate scope early when the arithmetic is impossible.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Catch: Time pressure shrinks when it gains windows.",
+      "gameMove": "PLAY: Count Usable → Place Buffers → Start Earliest"
+    },
+    "source": {
+      "goal": "Time pressure shrinks when it gains windows.",
+      "goalAndStepsRaw": "GOAL\nTime pressure shrinks when it gains windows.\n\n1. Count Usable — Count the usable work blocks remaining, subtracting sleep and fixed duties. Break Deadline — breathe naturally.\n2. Give Block — Give each block one deliverable with a visible finish.\n3. Place Buffers — Place buffers before the final deadline. Break Deadline — pick action.\n4. Start Earliest — Start the earliest window; refuse to mentally carry later windows inside it. Break Deadline — next action.\n\n⚡ FINISH — Start Earliest.",
+      "winRewardRaw": "✓ Time pressure shrinks when it gains windows.",
+      "formulaFlowRaw": "Count Usable → Give Block → Place Buffers → Start Earliest",
+      "safetyRaw": "PAUSE\nRenegotiate scope early when the arithmetic is impossible.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 211,
+    "id": "T-211",
+    "bubble": "RUSH",
+    "title": "TWENTY SECONDS BEFORE THE STORY",
+    "trigger": "Emotional reasoning",
+    "pattern": "Emotion–fact confusion",
+    "playTime": "30–60 seconds",
+    "display": {
+      "title": "TWENTY SECONDS BEFORE THE STORY",
+      "goal": "Let sensation stay fluid before language freezes it.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Name Causes",
+          "instruction": "For twenty seconds, ban emotion names and causes. Twenty Seconds — feel support.",
+          "raw": "1. Name Causes — For twenty seconds, ban emotion names and causes. Twenty Seconds — feel support."
+        },
+        {
+          "number": 2,
+          "label": "Describe Geometry",
+          "instruction": "Say only geometry and physics: shape, temperature, pressure, texture, direction, pulse. Twenty Seconds — name feeling.",
+          "raw": "2. Describe Geometry — Say only geometry and physics: shape, temperature, pressure, texture, direction, pulse. Twenty Seconds — name feeling."
+        },
+        {
+          "number": 3,
+          "label": "Choose Smallest",
+          "instruction": "At the bell, choose the smallest Name that fits, or keep it unnamed if none does. Twenty Seconds — next action.",
+          "raw": "3. Choose Smallest — At the bell, choose the smallest Name that fits, or keep it unnamed if none does. Twenty Seconds — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Choose Smallest.",
+      "win": "✓ I can let sensation stay fluid before language freezes it.",
+      "formulaFlow": "Name Causes → Describe Geometry → Choose Smallest",
+      "formulaFlowParts": [
+        "Name Causes",
+        "Describe Geometry",
+        "Choose Smallest"
+      ],
+      "safety": {
+        "pause": "Stop internal focus if it triggers panic, feeling unreal or disconnected, or pain concern.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nStop internal focus if it triggers panic, feeling unreal or disconnected, or pain concern.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Bet: Let sensation stay fluid before language freezes it.",
+      "gameMove": "PLAY: Name Causes → Describe Geometry → Choose Smallest"
+    },
+    "source": {
+      "goal": "Let sensation stay fluid before language freezes it.",
+      "goalAndStepsRaw": "GOAL\nLet sensation stay fluid before language freezes it.\n\n1. Name Causes — For twenty seconds, ban emotion names and causes. Twenty Seconds — feel support.\n2. Describe Geometry — Say only geometry and physics: shape, temperature, pressure, texture, direction, pulse. Twenty Seconds — name feeling.\n3. Choose Smallest — At the bell, choose the smallest Name that fits, or keep it unnamed if none does. Twenty Seconds — next action.\n\n⚡ FINISH — Choose Smallest.",
+      "winRewardRaw": "✓ I can let sensation stay fluid before language freezes it.",
+      "formulaFlowRaw": "Name Causes → Describe Geometry → Choose Smallest",
+      "safetyRaw": "PAUSE\nStop internal focus if it triggers panic, feeling unreal or disconnected, or pain concern.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 215,
+    "id": "T-215",
+    "bubble": "RUSH",
+    "title": "NO-CONCEPT MINUTE",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Sensory disconnection",
+    "playTime": "about 90 seconds",
+    "display": {
+      "title": "NO-CONCEPT MINUTE",
+      "goal": "Reality gets one minute without explanation.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Set Brief",
+          "instruction": "Set a brief interval. No Concept — loosen hands.",
+          "raw": "1. Set Brief — Set a brief interval. No Concept — loosen hands."
+        },
+        {
+          "number": 2,
+          "label": "Name Comparisons",
+          "instruction": "During it, no diagnoses, causes, labels, comparisons, or solutions may be generated.",
+          "raw": "2. Name Comparisons — During it, no diagnoses, causes, labels, comparisons, or solutions may be generated."
+        },
+        {
+          "number": 3,
+          "label": "Attend Direct",
+          "instruction": "Attend to direct colour, sound, contact, and movement. No Concept — name sensation.",
+          "raw": "3. Attend Direct — Attend to direct colour, sound, contact, and movement. No Concept — name sensation."
+        },
+        {
+          "number": 4,
+          "label": "Let Sensory",
+          "instruction": "If a concept appears, acknowledge ‘explanation’ and let the sensory world continue. No Concept — next action.",
+          "raw": "4. Let Sensory — If a concept appears, acknowledge ‘explanation’ and let the sensory world continue. No Concept — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Let Sensory.",
+      "win": "✓ Reality gets one minute without explanation.",
+      "formulaFlow": "Set Brief → Name Comparisons → Attend Direct → Let Sensory",
+      "formulaFlowParts": [
+        "Set Brief",
+        "Name Comparisons",
+        "Attend Direct",
+        "Let Sensory"
+      ],
+      "safety": {
+        "pause": "Concept fasting must not delay necessary decisions or medical care.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nConcept fasting must not delay necessary decisions or medical care.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Imagine: Reality gets one minute without explanation.",
+      "gameMove": "PLAY: Set Brief → Attend Direct → Let Sensory"
+    },
+    "source": {
+      "goal": "Reality gets one minute without explanation.",
+      "goalAndStepsRaw": "GOAL\nReality gets one minute without explanation.\n\n1. Set Brief — Set a brief interval. No Concept — loosen hands.\n2. Name Comparisons — During it, no diagnoses, causes, labels, comparisons, or solutions may be generated.\n3. Attend Direct — Attend to direct colour, sound, contact, and movement. No Concept — name sensation.\n4. Let Sensory — If a concept appears, acknowledge ‘explanation’ and let the sensory world continue. No Concept — next action.\n\n⚡ FINISH — Let Sensory.",
+      "winRewardRaw": "✓ Reality gets one minute without explanation.",
+      "formulaFlowRaw": "Set Brief → Name Comparisons → Attend Direct → Let Sensory",
+      "safetyRaw": "PAUSE\nConcept fasting must not delay necessary decisions or medical care.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 217,
+    "id": "T-217",
+    "bubble": "RUSH",
+    "title": "MUTE THE INNER SUBTITLES",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Sensory disconnection",
+    "playTime": "about 1 minute",
+    "display": {
+      "title": "MUTE THE INNER SUBTITLES",
+      "goal": "One ordinary event requires no running review.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Choose Washing",
+          "instruction": "Choose washing, walking, eating, or dressing. Mute Inner — soften shoulders.",
+          "raw": "1. Choose Washing — Choose washing, walking, eating, or dressing. Mute Inner — soften shoulders."
+        },
+        {
+          "number": 2,
+          "label": "Duration",
+          "instruction": "For the duration, omit internal narration and meet only sensation and movement. Mute Inner — name sensation.",
+          "raw": "2. Duration — For the duration, omit internal narration and meet only sensation and movement. Mute Inner — name sensation."
+        },
+        {
+          "number": 3,
+          "label": "Rejoin Activity",
+          "instruction": "When commentary resumes, do not answer it; rejoin the activity at the next contact point. Mute Inner — next action.",
+          "raw": "3. Rejoin Activity — When commentary resumes, do not answer it; rejoin the activity at the next contact point. Mute Inner — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Rejoin Activity.",
+      "win": "✓ One ordinary event requires no running review.",
+      "formulaFlow": "Choose Washing → Duration → Rejoin Activity",
+      "formulaFlowParts": [
+        "Choose Washing",
+        "Duration",
+        "Rejoin Activity"
+      ],
+      "safety": {
+        "pause": "Keep internal language available for safety-critical tasks.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nKeep internal language available for safety-critical tasks.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Aim: One ordinary event requires no running review.",
+      "gameMove": "PLAY: Choose Washing → Duration → Rejoin Activity"
+    },
+    "source": {
+      "goal": "One ordinary event requires no running review.",
+      "goalAndStepsRaw": "GOAL\nOne ordinary event requires no running review.\n\n1. Choose Washing — Choose washing, walking, eating, or dressing. Mute Inner — soften shoulders.\n2. Duration — For the duration, omit internal narration and meet only sensation and movement. Mute Inner — name sensation.\n3. Rejoin Activity — When commentary resumes, do not answer it; rejoin the activity at the next contact point. Mute Inner — next action.\n\n⚡ FINISH — Rejoin Activity.",
+      "winRewardRaw": "✓ One ordinary event requires no running review.",
+      "formulaFlowRaw": "Choose Washing → Duration → Rejoin Activity",
+      "safetyRaw": "PAUSE\nKeep internal language available for safety-critical tasks.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 238,
+    "id": "T-238",
+    "bubble": "RUSH",
+    "title": "RUN THE TWO-WORD TASK",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Cognitive overload",
+    "playTime": "1–2 minutes",
+    "display": {
+      "title": "RUN THE TWO-WORD TASK",
+      "goal": "Focus needs one live command, not the whole project shouting at once.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Scan Work",
+          "instruction": "Look at the task and choose the single action verb needed for the next minute: read, compare, type, sort, call, or check. Run Two — move slowly.",
+          "raw": "1. Scan Work — Look at the task and choose the single action verb needed for the next minute: read, compare, type, sort, call, or check. Run Two — move slowly."
+        },
+        {
+          "number": 2,
+          "label": "Pick Verb",
+          "instruction": "Choose the exact object receiving that action: paragraph, invoice, shelf, patient Name, pan, or message.",
+          "raw": "2. Pick Verb — Choose the exact object receiving that action: paragraph, invoice, shelf, patient Name, pan, or message."
+        },
+        {
+          "number": 3,
+          "label": "Bind Object",
+          "instruction": "Join them into a two-word command such as TYPE SUMMARY or SORT RECEIPTS. Hide every other instruction for now. Run Two — notice detail.",
+          "raw": "3. Bind Object — Join them into a two-word command such as TYPE SUMMARY or SORT RECEIPTS. Hide every other instruction for now. Run Two — notice detail."
+        },
+        {
+          "number": 4,
+          "label": "Run Command",
+          "instruction": "Run the command for sixty to ninety seconds. Stop only when the verb or object genuinely needs to change. Run Two — next action.",
+          "raw": "4. Run Command — Run the command for sixty to ninety seconds. Stop only when the verb or object genuinely needs to change. Run Two — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Run Command.",
+      "win": "✓ Focus needs one live command, not the whole project shouting at once.",
+      "formulaFlow": "Scan Work → Pick Verb → Bind Object → Run Command",
+      "formulaFlowParts": [
+        "Scan Work",
+        "Pick Verb",
+        "Bind Object",
+        "Run Command"
+      ],
+      "safety": {
+        "pause": "Keep full protocols visible for clinical, legal, financial, driving, medication, machinery, or other safety-critical work.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nKeep full protocols visible for clinical, legal, financial, driving, medication, machinery, or other safety-critical work.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Probe: Focus needs one live command, not the whole project shouting at once.",
+      "gameMove": "PLAY: Scan Work → Bind Object → Run Command"
+    },
+    "source": {
+      "goal": "Focus needs one live command, not the whole project shouting at once.",
+      "goalAndStepsRaw": "GOAL\nFocus needs one live command, not the whole project shouting at once.\n\n1. Scan Work — Look at the task and choose the single action verb needed for the next minute: read, compare, type, sort, call, or check. Run Two — move slowly.\n2. Pick Verb — Choose the exact object receiving that action: paragraph, invoice, shelf, patient Name, pan, or message.\n3. Bind Object — Join them into a two-word command such as TYPE SUMMARY or SORT RECEIPTS. Hide every other instruction for now. Run Two — notice detail.\n4. Run Command — Run the command for sixty to ninety seconds. Stop only when the verb or object genuinely needs to change. Run Two — next action.\n\n⚡ FINISH — Run Command.",
+      "winRewardRaw": "✓ Focus needs one live command, not the whole project shouting at once.",
+      "formulaFlowRaw": "Scan Work → Pick Verb → Bind Object → Run Command",
+      "safetyRaw": "PAUSE\nKeep full protocols visible for clinical, legal, financial, driving, medication, machinery, or other safety-critical work.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 239,
+    "id": "T-239",
+    "bubble": "RUSH",
+    "title": "THE RELEVANCE BOUNCER",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Attention misallocation",
+    "playTime": "under 2 minutes",
+    "display": {
+      "title": "THE RELEVANCE BOUNCER",
+      "goal": "Information must show a present purpose at the door.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Open Input",
+          "instruction": "Before opening, reading, or following an input, ask whether it changes a current decision, action, or safety need. Relevance Bouncer — loosen hands.",
+          "raw": "1. Open Input — Before opening, reading, or following an input, ask whether it changes a current decision, action, or safety need. Relevance Bouncer — loosen hands."
+        },
+        {
+          "number": 2,
+          "label": "Route It",
+          "instruction": "If no, route it to later, reference, or delete. Relevance Bouncer — notice detail.",
+          "raw": "2. Route It — If no, route it to later, reference, or delete. Relevance Bouncer — notice detail."
+        },
+        {
+          "number": 3,
+          "label": "Name Granting",
+          "instruction": "If yes, name the exact use before granting attention. Relevance Bouncer — next action.",
+          "raw": "3. Name Granting — If yes, name the exact use before granting attention. Relevance Bouncer — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Name Granting.",
+      "win": "✓ Information must show a present purpose at the door.",
+      "formulaFlow": "Open Input → Route It → Name Granting",
+      "formulaFlowParts": [
+        "Open Input",
+        "Route It",
+        "Name Granting"
+      ],
+      "safety": {
+        "pause": "Permit restorative curiosity and leisure without forcing productivity tests.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nPermit restorative curiosity and leisure without forcing productivity tests.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Peek: Information must show a present purpose at the door.",
+      "gameMove": "PLAY: Open Input → Route It → Name Granting"
+    },
+    "source": {
+      "goal": "Information must show a present purpose at the door.",
+      "goalAndStepsRaw": "GOAL\nInformation must show a present purpose at the door.\n\n1. Open Input — Before opening, reading, or following an input, ask whether it changes a current decision, action, or safety need. Relevance Bouncer — loosen hands.\n2. Route It — If no, route it to later, reference, or delete. Relevance Bouncer — notice detail.\n3. Name Granting — If yes, name the exact use before granting attention. Relevance Bouncer — next action.\n\n⚡ FINISH — Name Granting.",
+      "winRewardRaw": "✓ Information must show a present purpose at the door.",
+      "formulaFlowRaw": "Open Input → Route It → Name Granting",
+      "safetyRaw": "PAUSE\nPermit restorative curiosity and leisure without forcing productivity tests.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 240,
+    "id": "T-240",
+    "bubble": "RUSH",
+    "title": "CLOSE THE ATTENTION TABS",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Attention misallocation",
+    "playTime": "about 90 seconds",
+    "display": {
+      "title": "CLOSE THE ATTENTION TABS",
+      "goal": "Interrupted tasks leave residue until a restart point exists.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Visit",
+          "instruction": "Visit each abandoned item briefly. Close Attention — widen gaze.",
+          "raw": "1. Visit — Visit each abandoned item briefly. Close Attention — widen gaze."
+        },
+        {
+          "number": 2,
+          "label": "Name Immediate Need",
+          "instruction": "Hold the immediate resumption move and choose close, schedule, delegate, or resume.",
+          "raw": "2. Name Immediate Need — Hold the immediate resumption move and choose close, schedule, delegate, or resume."
+        },
+        {
+          "number": 3,
+          "label": "Don't Perform",
+          "instruction": "Do not perform the tasks during the sweep. Close Attention — notice detail.",
+          "raw": "3. Don't Perform — Do not perform the tasks during the sweep. Close Attention — notice detail."
+        },
+        {
+          "number": 4,
+          "label": "End Active",
+          "instruction": "End with one protected active tab and a written return address for the rest. Close Attention — next action.",
+          "raw": "4. End Active — End with one protected active tab and a written return address for the rest. Close Attention — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — End Active.",
+      "win": "✓ Interrupted tasks leave residue until a restart point exists.",
+      "formulaFlow": "Visit → Name Immediate Need → Don't Perform → End Active",
+      "formulaFlowParts": [
+        "Visit",
+        "Name Immediate Need",
+        "Don't Perform",
+        "End Active"
+      ],
+      "safety": {
+        "pause": "Limit the sweep if inventory becomes another avoidance project.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nLimit the sweep if inventory becomes another avoidance project.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Switch: Interrupted tasks leave residue until a restart point exists.",
+      "gameMove": "PLAY: Visit → Don't Perform → End Active"
+    },
+    "source": {
+      "goal": "Interrupted tasks leave residue until a restart point exists.",
+      "goalAndStepsRaw": "GOAL\nInterrupted tasks leave residue until a restart point exists.\n\n1. Visit — Visit each abandoned item briefly. Close Attention — widen gaze.\n2. Name Immediate Need — Hold the immediate resumption move and choose close, schedule, delegate, or resume.\n3. Don't Perform — Do not perform the tasks during the sweep. Close Attention — notice detail.\n4. End Active — End with one protected active tab and a written return address for the rest. Close Attention — next action.\n\n⚡ FINISH — End Active.",
+      "winRewardRaw": "✓ Interrupted tasks leave residue until a restart point exists.",
+      "formulaFlowRaw": "Visit → Name Immediate Need → Don't Perform → End Active",
+      "safetyRaw": "PAUSE\nLimit the sweep if inventory becomes another avoidance project.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 245,
+    "id": "T-245",
+    "bubble": "RUSH",
+    "title": "THE EMOTION STOPS AT THE SKIN",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary confusion",
+    "playTime": "about 90 seconds",
+    "display": {
+      "title": "THE EMOTION STOPS AT THE SKIN",
+      "goal": "Another person’s state is information, not automatic duty.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Emotion",
+          "instruction": "Notice where their emotion seems to enter your body. Emotion Stops — breathe naturally.",
+          "raw": "1. Emotion — Notice where their emotion seems to enter your body. Emotion Stops — breathe naturally."
+        },
+        {
+          "number": 2,
+          "label": "Trace Physical",
+          "instruction": "Trace your physical boundary with gaze or touch.",
+          "raw": "2. Trace Physical — Trace your physical boundary with gaze or touch."
+        },
+        {
+          "number": 3,
+          "label": "State Action",
+          "instruction": "State what action is yours, what remains theirs, and what you can offer without taking ownership. Emotion Stops — split duty.",
+          "raw": "3. State Action — State what action is yours, what remains theirs, and what you can offer without taking ownership. Emotion Stops — split duty."
+        },
+        {
+          "number": 4,
+          "label": "Stay Blurred",
+          "instruction": "Adjust distance if the distinction stays blurred. Emotion Stops — next action.",
+          "raw": "4. Stay Blurred — Adjust distance if the distinction stays blurred. Emotion Stops — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Stay Blurred.",
+      "win": "✓ Another person’s state is information, not automatic duty.",
+      "formulaFlow": "Emotion → Trace Physical → State Action → Stay Blurred",
+      "formulaFlowParts": [
+        "Emotion",
+        "Trace Physical",
+        "State Action",
+        "Stay Blurred"
+      ],
+      "safety": {
+        "pause": "Honour mandated or genuine care responsibilities rather than withdrawing reflexively.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nHonour mandated or genuine care responsibilities rather than withdrawing reflexively.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Catch: Another person’s state is information, not automatic duty.",
+      "gameMove": "PLAY: Emotion → State Action → Stay Blurred"
+    },
+    "source": {
+      "goal": "Another person’s state is information, not automatic duty.",
+      "goalAndStepsRaw": "GOAL\nAnother person’s state is information, not automatic duty.\n\n1. Emotion — Notice where their emotion seems to enter your body. Emotion Stops — breathe naturally.\n2. Trace Physical — Trace your physical boundary with gaze or touch.\n3. State Action — State what action is yours, what remains theirs, and what you can offer without taking ownership. Emotion Stops — split duty.\n4. Stay Blurred — Adjust distance if the distinction stays blurred. Emotion Stops — next action.\n\n⚡ FINISH — Stay Blurred.",
+      "winRewardRaw": "✓ Another person’s state is information, not automatic duty.",
+      "formulaFlowRaw": "Emotion → Trace Physical → State Action → Stay Blurred",
+      "safetyRaw": "PAUSE\nHonour mandated or genuine care responsibilities rather than withdrawing reflexively.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 251,
+    "id": "T-251",
+    "bubble": "RUSH",
+    "title": "OPEN THE IDENTITY PORTFOLIO",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Attention misallocation",
+    "playTime": "30–60 seconds",
+    "display": {
+      "title": "OPEN THE IDENTITY PORTFOLIO",
+      "goal": "One role should not own every share of self.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Estimate Much",
+          "instruction": "Name five identities active in your life and estimate how much attention each received this week. Open Identity — feel support.",
+          "raw": "1. Estimate Much — Name five identities active in your life and estimate how much attention each received this week. Open Identity — feel support."
+        },
+        {
+          "number": 2,
+          "label": "Choose Neglected",
+          "instruction": "Choose the neglected role that still matters. Open Identity — notice detail.",
+          "raw": "2. Choose Neglected — Choose the neglected role that still matters. Open Identity — notice detail."
+        },
+        {
+          "number": 3,
+          "label": "Perform",
+          "instruction": "Perform one tiny action from its perspective today—friend, learner, neighbour, artist, caregiver, citizen. Open Identity — next action.",
+          "raw": "3. Perform — Perform one tiny action from its perspective today—friend, learner, neighbour, artist, caregiver, citizen. Open Identity — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Perform.",
+      "win": "✓ One role should not own every share of self.",
+      "formulaFlow": "Estimate Much → Choose Neglected → Perform",
+      "formulaFlowParts": [
+        "Estimate Much",
+        "Choose Neglected",
+        "Perform"
+      ],
+      "safety": {
+        "pause": "Do not use role expansion to avoid urgent responsibilities in the dominant role.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nDo not use role expansion to avoid urgent responsibilities in the dominant role.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Bet: One role should not own every share of self.",
+      "gameMove": "PLAY: Estimate Much → Choose Neglected → Perform"
+    },
+    "source": {
+      "goal": "One role should not own every share of self.",
+      "goalAndStepsRaw": "GOAL\nOne role should not own every share of self.\n\n1. Estimate Much — Name five identities active in your life and estimate how much attention each received this week. Open Identity — feel support.\n2. Choose Neglected — Choose the neglected role that still matters. Open Identity — notice detail.\n3. Perform — Perform one tiny action from its perspective today—friend, learner, neighbour, artist, caregiver, citizen. Open Identity — next action.\n\n⚡ FINISH — Perform.",
+      "winRewardRaw": "✓ One role should not own every share of self.",
+      "formulaFlowRaw": "Estimate Much → Choose Neglected → Perform",
+      "safetyRaw": "PAUSE\nDo not use role expansion to avoid urgent responsibilities in the dominant role.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 257,
+    "id": "T-257",
+    "bubble": "RUSH",
+    "title": "REMOVE THE AUDIENCE",
+    "trigger": "Values, meaning & loss",
+    "pattern": "Value disconnection",
+    "playTime": "about 1 minute",
+    "display": {
+      "title": "REMOVE THE AUDIENCE",
+      "goal": "Find the choice that survives without witnesses.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Imagine Nobody",
+          "instruction": "Imagine nobody will see, praise, criticise, repost, or hear about the action. Remove Audience — soften shoulders.",
+          "raw": "1. Imagine Nobody — Imagine nobody will see, praise, criticise, repost, or hear about the action. Remove Audience — soften shoulders."
+        },
+        {
+          "number": 2,
+          "label": "Erase Audience",
+          "instruction": "Erase the imagined audience one row at a time.",
+          "raw": "2. Erase Audience — Erase the imagined audience one row at a time."
+        },
+        {
+          "number": 3,
+          "label": "Choose Direct",
+          "instruction": "What would you choose if only direct consequences and values remained?. Remove Audience — split duty.",
+          "raw": "3. Choose Direct — What would you choose if only direct consequences and values remained?. Remove Audience — split duty."
+        },
+        {
+          "number": 4,
+          "label": "Take Smallest",
+          "instruction": "Take the smallest version privately. Remove Audience — next action.",
+          "raw": "4. Take Smallest — Take the smallest version privately. Remove Audience — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Take Smallest.",
+      "win": "✓ I can find the choice that survives without witnesses.",
+      "formulaFlow": "Imagine Nobody → Erase Audience → Choose Direct → Take Smallest",
+      "formulaFlowParts": [
+        "Imagine Nobody",
+        "Erase Audience",
+        "Choose Direct",
+        "Take Smallest"
+      ],
+      "safety": {
+        "pause": "Keep consultation where decisions emotion other people.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nKeep consultation where decisions emotion other people.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Aim: Find the choice that survives without witnesses.",
+      "gameMove": "PLAY: Imagine Nobody → Choose Direct → Take Smallest"
+    },
+    "source": {
+      "goal": "Find the choice that survives without witnesses.",
+      "goalAndStepsRaw": "GOAL\nFind the choice that survives without witnesses.\n\n1. Imagine Nobody — Imagine nobody will see, praise, criticise, repost, or hear about the action. Remove Audience — soften shoulders.\n2. Erase Audience — Erase the imagined audience one row at a time.\n3. Choose Direct — What would you choose if only direct consequences and values remained?. Remove Audience — split duty.\n4. Take Smallest — Take the smallest version privately. Remove Audience — next action.\n\n⚡ FINISH — Take Smallest.",
+      "winRewardRaw": "✓ I can find the choice that survives without witnesses.",
+      "formulaFlowRaw": "Imagine Nobody → Erase Audience → Choose Direct → Take Smallest",
+      "safetyRaw": "PAUSE\nKeep consultation where decisions emotion other people.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 261,
+    "id": "T-261",
+    "bubble": "RUSH",
+    "title": "MOVE THE MEMORY CAMERA",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness",
+    "playTime": "30–60 seconds",
+    "display": {
+      "title": "MOVE THE MEMORY CAMERA",
+      "goal": "You can preserve facts without re-entering the old viewpoint.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Place Memory",
+          "instruction": "Place the memory on a screen with enough visual distance. Move Memory — breathe naturally.",
+          "raw": "1. Place Memory — Place the memory on a screen with enough visual distance. Move Memory — breathe naturally."
+        },
+        {
+          "number": 2,
+          "label": "View Scene",
+          "instruction": "View the scene from above, behind, or beside a compassionate observer.",
+          "raw": "2. View Scene — View the scene from above, behind, or beside a compassionate observer."
+        },
+        {
+          "number": 3,
+          "label": "Keep Events",
+          "instruction": "Keep events accurate while changing camera position. Move Memory — notice detail.",
+          "raw": "3. Keep Events — Keep events accurate while changing camera position. Move Memory — notice detail."
+        },
+        {
+          "number": 4,
+          "label": "Add Resources",
+          "instruction": "Add current-you outside the frame with present resources. Move Memory — next action.",
+          "raw": "4. Add Resources — Add current-you outside the frame with present resources. Move Memory — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Add Resources.",
+      "win": "✓ You can preserve facts without re-entering the old viewpoint.",
+      "formulaFlow": "Place Memory → View Scene → Keep Events → Add Resources",
+      "formulaFlowParts": [
+        "Place Memory",
+        "View Scene",
+        "Keep Events",
+        "Add Resources"
+      ],
+      "safety": {
+        "pause": "Traumatic memory perspective work should be supported if destabilising.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nTraumatic memory perspective work should be supported if destabilising.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Twist: You can preserve facts without re-entering the old viewpoint.",
+      "gameMove": "PLAY: Place Memory → Keep Events → Add Resources"
+    },
+    "source": {
+      "goal": "You can preserve facts without re-entering the old viewpoint.",
+      "goalAndStepsRaw": "GOAL\nYou can preserve facts without re-entering the old viewpoint.\n\n1. Place Memory — Place the memory on a screen with enough visual distance. Move Memory — breathe naturally.\n2. View Scene — View the scene from above, behind, or beside a compassionate observer.\n3. Keep Events — Keep events accurate while changing camera position. Move Memory — notice detail.\n4. Add Resources — Add current-you outside the frame with present resources. Move Memory — next action.\n\n⚡ FINISH — Add Resources.",
+      "winRewardRaw": "✓ You can preserve facts without re-entering the old viewpoint.",
+      "formulaFlowRaw": "Place Memory → View Scene → Keep Events → Add Resources",
+      "safetyRaw": "PAUSE\nTraumatic memory perspective work should be supported if destabilising.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 269,
+    "id": "T-269",
+    "bubble": "RUSH",
+    "title": "ASK WHAT THE MEMORY IS STILL BILLING",
+    "trigger": "Rumination & worry loops",
+    "pattern": "Rumination",
+    "playTime": "under 2 minutes",
+    "display": {
+      "title": "ASK WHAT THE MEMORY IS STILL BILLING",
+      "goal": "The memory can submit one claim without replaying the entire case.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Headline Event",
+          "instruction": "State the event as one factual headline with no motive and no sensory replay. Ask Memory — breathe naturally.",
+          "raw": "1. Headline Event — State the event as one factual headline with no motive and no sensory replay. Ask Memory — breathe naturally."
+        },
+        {
+          "number": 2,
+          "label": "Extract Claim",
+          "instruction": "Finish this sentence once: ‘This memory still seems to demand ___.’ Keep only one claim.",
+          "raw": "2. Extract Claim — Finish this sentence once: ‘This memory still seems to demand ___.’ Keep only one claim."
+        },
+        {
+          "number": 3,
+          "label": "Route Bill",
+          "instruction": "Route the claim to BOUNDARY, REPAIR, GRIEF, or IMPOSSIBLE REVERSAL. Do not create a fifth category. Ask Memory — notice detail.",
+          "raw": "3. Route Bill — Route the claim to BOUNDARY, REPAIR, GRIEF, or IMPOSSIBLE REVERSAL. Do not create a fifth category. Ask Memory — notice detail."
+        },
+        {
+          "number": 4,
+          "label": "Act Present",
+          "instruction": "Choose the matching present response: set protection, request safe repair, make room for grief, or stop billing today for a reversal history cannot provide. Ask Memory — next action.",
+          "raw": "4. Act Present — Choose the matching present response: set protection, request safe repair, make room for grief, or stop billing today for a reversal history cannot provide. Ask Memory — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Act Present.",
+      "win": "✓ The memory can submit one claim without replaying the entire case.",
+      "formulaFlow": "Headline Event → Extract Claim → Route Bill → Act Present",
+      "formulaFlowParts": [
+        "Headline Event",
+        "Extract Claim",
+        "Route Bill",
+        "Act Present"
+      ],
+      "safety": {
+        "pause": "Do not contact unsafe people, seek revenge, force reconciliation, or use this game during trauma flooding or immediate danger.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nDo not contact unsafe people, seek revenge, force reconciliation, or use this game during trauma flooding or immediate danger.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Notice: The memory can submit one claim without replaying the entire case.",
+      "gameMove": "PLAY: Headline Event → Route Bill → Act Present"
+    },
+    "source": {
+      "goal": "The memory can submit one claim without replaying the entire case.",
+      "goalAndStepsRaw": "GOAL\nThe memory can submit one claim without replaying the entire case.\n\n1. Headline Event — State the event as one factual headline with no motive and no sensory replay. Ask Memory — breathe naturally.\n2. Extract Claim — Finish this sentence once: ‘This memory still seems to demand ___.’ Keep only one claim.\n3. Route Bill — Route the claim to BOUNDARY, REPAIR, GRIEF, or IMPOSSIBLE REVERSAL. Do not create a fifth category. Ask Memory — notice detail.\n4. Act Present — Choose the matching present response: set protection, request safe repair, make room for grief, or stop billing today for a reversal history cannot provide. Ask Memory — next action.\n\n⚡ FINISH — Act Present.",
+      "winRewardRaw": "✓ The memory can submit one claim without replaying the entire case.",
+      "formulaFlowRaw": "Headline Event → Extract Claim → Route Bill → Act Present",
+      "safetyRaw": "PAUSE\nDo not contact unsafe people, seek revenge, force reconciliation, or use this game during trauma flooding or immediate danger.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 280,
+    "id": "T-280",
+    "bubble": "RUSH",
+    "title": "THE LAPSE FIRE DRILL",
+    "trigger": "Comparison & rejection",
+    "pattern": "Rejection magnification",
+    "playTime": "about 90 seconds",
+    "display": {
+      "title": "THE LAPSE FIRE DRILL",
+      "goal": "One miss should trigger recovery, not identity collapse.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Name What Happened",
+          "instruction": "Pre-plan three actions after a lapse: name what happened without judgement; restore the environment or schedule; perform the next smallest valid repetition. Lapse Fire — widen gaze.",
+          "raw": "1. Name What Happened — Pre-plan three actions after a lapse: name what happened without judgement; restore the environment or schedule; perform the next smallest valid repetition. Lapse Fire — widen gaze."
+        },
+        {
+          "number": 2,
+          "label": "Store",
+          "instruction": "Store the script beside the behaviour. Lapse Fire — split duty.",
+          "raw": "2. Store — Store the script beside the behaviour. Lapse Fire — split duty."
+        },
+        {
+          "number": 3,
+          "label": "Use After",
+          "instruction": "Use it after one miss—before a second is negotiated. Lapse Fire — next action.",
+          "raw": "3. Use After — Use it after one miss—before a second is negotiated. Lapse Fire — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Use After.",
+      "win": "✓ One miss should trigger recovery, not identity collapse.",
+      "formulaFlow": "Name What Happened → Store → Use After",
+      "formulaFlowParts": [
+        "Name What Happened",
+        "Store",
+        "Use After"
+      ],
+      "safety": {
+        "pause": "Escalate to support when lapses involve danger, relapse, or repeated loss of control.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nEscalate to support when lapses involve danger, relapse, or repeated loss of control.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Switch: One miss should trigger recovery, not identity collapse.",
+      "gameMove": "PLAY: Name What Happened → Store → Use After"
+    },
+    "source": {
+      "goal": "One miss should trigger recovery, not identity collapse.",
+      "goalAndStepsRaw": "GOAL\nOne miss should trigger recovery, not identity collapse.\n\n1. Name What Happened — Pre-plan three actions after a lapse: name what happened without judgement; restore the environment or schedule; perform the next smallest valid repetition. Lapse Fire — widen gaze.\n2. Store — Store the script beside the behaviour. Lapse Fire — split duty.\n3. Use After — Use it after one miss—before a second is negotiated. Lapse Fire — next action.\n\n⚡ FINISH — Use After.",
+      "winRewardRaw": "✓ One miss should trigger recovery, not identity collapse.",
+      "formulaFlowRaw": "Name What Happened → Store → Use After",
+      "safetyRaw": "PAUSE\nEscalate to support when lapses involve danger, relapse, or repeated loss of control.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 285,
+    "id": "T-285",
+    "bubble": "RUSH",
+    "title": "UNDERSTAND, THEN DISAGREE CLEANLY",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness",
+    "playTime": "about 90 seconds",
+    "display": {
+      "title": "UNDERSTAND, THEN DISAGREE CLEANLY",
+      "goal": "Empathy does not sign their conclusion.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "View They",
+          "instruction": "Summarise their view until they could recognise it. Understand Disagree — breathe naturally.",
+          "raw": "1. View They — Summarise their view until they could recognise it. Understand Disagree — breathe naturally."
+        },
+        {
+          "number": 2,
+          "label": "Name Need",
+          "instruction": "Name the need or logic you understand.",
+          "raw": "2. Name Need — Name the need or logic you understand."
+        },
+        {
+          "number": 3,
+          "label": "Say Meaning",
+          "instruction": "Then say exactly where your meaning, value, or decision differs. Understand Disagree — notice detail.",
+          "raw": "3. Say Meaning — Then say exactly where your meaning, value, or decision differs. Understand Disagree — notice detail."
+        },
+        {
+          "number": 4,
+          "label": "Receive Own",
+          "instruction": "No ‘but’ inside the summary; disagreement receives its own sentence. Understand Disagree — next action.",
+          "raw": "4. Receive Own — No ‘but’ inside the summary; disagreement receives its own sentence. Understand Disagree — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Receive Own.",
+      "win": "✓ Empathy does not sign their conclusion.",
+      "formulaFlow": "View They → Name Need → Say Meaning → Receive Own",
+      "formulaFlowParts": [
+        "View They",
+        "Name Need",
+        "Say Meaning",
+        "Receive Own"
+      ],
+      "safety": {
+        "pause": "Do not require mutual understanding before protecting yourself.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nDo not require mutual understanding before protecting yourself.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Catch: Empathy does not sign their conclusion.",
+      "gameMove": "PLAY: View They → Say Meaning → Receive Own"
+    },
+    "source": {
+      "goal": "Empathy does not sign their conclusion.",
+      "goalAndStepsRaw": "GOAL\nEmpathy does not sign their conclusion.\n\n1. View They — Summarise their view until they could recognise it. Understand Disagree — breathe naturally.\n2. Name Need — Name the need or logic you understand.\n3. Say Meaning — Then say exactly where your meaning, value, or decision differs. Understand Disagree — notice detail.\n4. Receive Own — No ‘but’ inside the summary; disagreement receives its own sentence. Understand Disagree — next action.\n\n⚡ FINISH — Receive Own.",
+      "winRewardRaw": "✓ Empathy does not sign their conclusion.",
+      "formulaFlowRaw": "View They → Name Need → Say Meaning → Receive Own",
+      "safetyRaw": "PAUSE\nDo not require mutual understanding before protecting yourself.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 287,
+    "id": "T-287",
+    "bubble": "RUSH",
+    "title": "ONE FIGHT, THREE TIME SCALES",
+    "trigger": "Communication & conflict",
+    "pattern": "Conflict escalation",
+    "playTime": "about 1 minute",
+    "display": {
+      "title": "ONE FIGHT, THREE TIME SCALES",
+      "goal": "Today’s argument should not impersonate the whole relationship.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Issue Recurring",
+          "instruction": "Check the immediate issue, the recurring pattern, and the full relationship history separately. Fight Three — loosen hands.",
+          "raw": "1. Issue Recurring — Check the immediate issue, the recurring pattern, and the full relationship history separately. Fight Three — loosen hands."
+        },
+        {
+          "number": 2,
+          "label": "Give Own",
+          "instruction": "Give each its own conclusion and action. Fight Three — name event.",
+          "raw": "2. Give Own — Give each its own conclusion and action. Fight Three — name event."
+        },
+        {
+          "number": 3,
+          "label": "Don't Erase",
+          "instruction": "Do not let a good history erase a harmful pattern or one incident erase all context. Fight Three — next action.",
+          "raw": "3. Don't Erase — Do not let a good history erase a harmful pattern or one incident erase all context. Fight Three — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Don't Erase.",
+      "win": "✓ Today’s argument should not impersonate the whole relationship.",
+      "formulaFlow": "Issue Recurring → Give Own → Don't Erase",
+      "formulaFlowParts": [
+        "Issue Recurring",
+        "Give Own",
+        "Don't Erase"
+      ],
+      "safety": {
+        "pause": "Prioritise present safety regardless of historical positives.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nPrioritise present safety regardless of historical positives.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Zoom: Today’s argument should not impersonate the whole relationship.",
+      "gameMove": "PLAY: Issue Recurring → Give Own → Don't Erase"
+    },
+    "source": {
+      "goal": "Today’s argument should not impersonate the whole relationship.",
+      "goalAndStepsRaw": "GOAL\nToday’s argument should not impersonate the whole relationship.\n\n1. Issue Recurring — Check the immediate issue, the recurring pattern, and the full relationship history separately. Fight Three — loosen hands.\n2. Give Own — Give each its own conclusion and action. Fight Three — name event.\n3. Don't Erase — Do not let a good history erase a harmful pattern or one incident erase all context. Fight Three — next action.\n\n⚡ FINISH — Don't Erase.",
+      "winRewardRaw": "✓ Today’s argument should not impersonate the whole relationship.",
+      "formulaFlowRaw": "Issue Recurring → Give Own → Don't Erase",
+      "safetyRaw": "PAUSE\nPrioritise present safety regardless of historical positives.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 330,
+    "id": "T-330",
+    "bubble": "RUSH",
+    "title": "BURY THE GOAL, FREE THE ENERGY",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness",
+    "playTime": "about 90 seconds",
+    "display": {
+      "title": "BURY THE GOAL, FREE THE ENERGY",
+      "goal": "Some ambitions deserve a formal ending.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Name Goal",
+          "instruction": "Name the goal, why it once mattered, what changed, and which obligations can now close. Bury Goal — hear sound.",
+          "raw": "1. Name Goal — Name the goal, why it once mattered, what changed, and which obligations can now close. Bury Goal — hear sound."
+        },
+        {
+          "number": 2,
+          "label": "Keep Value",
+          "instruction": "Thank any value it revealed. Bury Goal — notice detail.",
+          "raw": "2. Keep Value — Thank any value it revealed. Bury Goal — notice detail."
+        },
+        {
+          "number": 3,
+          "label": "Cancel",
+          "instruction": "Cancel one concrete commitment, archive materials, and redirect the recovered resource toward a living priority. Bury Goal — next action.",
+          "raw": "3. Cancel — Cancel one concrete commitment, archive materials, and redirect the recovered resource toward a living priority. Bury Goal — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Cancel.",
+      "win": "✓ Some ambitions deserve a formal ending.",
+      "formulaFlow": "Name Goal → Keep Value → Cancel",
+      "formulaFlowParts": [
+        "Name Goal",
+        "Keep Value",
+        "Cancel"
+      ],
+      "safety": {
+        "pause": "Distinguish wise closure from quitting during a temporary setback.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nDistinguish wise closure from quitting during a temporary setback.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Look: Some ambitions deserve a formal ending.",
+      "gameMove": "PLAY: Name Goal → Keep Value → Cancel"
+    },
+    "source": {
+      "goal": "Some ambitions deserve a formal ending.",
+      "goalAndStepsRaw": "GOAL\nSome ambitions deserve a formal ending.\n\n1. Name Goal — Name the goal, why it once mattered, what changed, and which obligations can now close. Bury Goal — hear sound.\n2. Keep Value — Thank any value it revealed. Bury Goal — notice detail.\n3. Cancel — Cancel one concrete commitment, archive materials, and redirect the recovered resource toward a living priority. Bury Goal — next action.\n\n⚡ FINISH — Cancel.",
+      "winRewardRaw": "✓ Some ambitions deserve a formal ending.",
+      "formulaFlowRaw": "Name Goal → Keep Value → Cancel",
+      "safetyRaw": "PAUSE\nDistinguish wise closure from quitting during a temporary setback.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 333,
+    "id": "T-333",
+    "bubble": "RUSH",
+    "title": "THE UNANSWERED URGE EXPERIMENT",
+    "trigger": "Uncertainty & reassurance seeking",
+    "pattern": "Uncertainty intolerance",
+    "playTime": "1–2 minutes",
+    "display": {
+      "title": "THE UNANSWERED URGE EXPERIMENT",
+      "goal": "Reassurance can wait while its appetite changes.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Question Demands",
+          "instruction": "When the question demands an answer, Picture it and delay asking for a short, chosen interval. Unanswered Urge — breathe naturally.",
+          "raw": "1. Question Demands — When the question demands an answer, Picture it and delay asking for a short, chosen interval. Unanswered Urge — breathe naturally."
+        },
+        {
+          "number": 2,
+          "label": "Track Urge",
+          "instruction": "Track urge intensity at beginning, middle, and end without researching. Unanswered Urge — allow opposite.",
+          "raw": "2. Track Urge — Track urge intensity at beginning, middle, and end without researching. Unanswered Urge — allow opposite."
+        },
+        {
+          "number": 3,
+          "label": "Decide Afterward",
+          "instruction": "Decide afterward whether information is still needed for action or only for relief. Unanswered Urge — next action.",
+          "raw": "3. Decide Afterward — Decide afterward whether information is still needed for action or only for relief. Unanswered Urge — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Decide Afterward.",
+      "win": "✓ Reassurance can wait while its appetite changes.",
+      "formulaFlow": "Question Demands → Track Urge → Decide Afterward",
+      "formulaFlowParts": [
+        "Question Demands",
+        "Track Urge",
+        "Decide Afterward"
+      ],
+      "safety": {
+        "pause": "Do not delay answers required for health, safety, or deadlines.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nDo not delay answers required for health, safety, or deadlines.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Play: Reassurance can wait while its appetite changes.",
+      "gameMove": "PLAY: Question Demands → Track Urge → Decide Afterward"
+    },
+    "source": {
+      "goal": "Reassurance can wait while its appetite changes.",
+      "goalAndStepsRaw": "GOAL\nReassurance can wait while its appetite changes.\n\n1. Question Demands — When the question demands an answer, Picture it and delay asking for a short, chosen interval. Unanswered Urge — breathe naturally.\n2. Track Urge — Track urge intensity at beginning, middle, and end without researching. Unanswered Urge — allow opposite.\n3. Decide Afterward — Decide afterward whether information is still needed for action or only for relief. Unanswered Urge — next action.\n\n⚡ FINISH — Decide Afterward.",
+      "winRewardRaw": "✓ Reassurance can wait while its appetite changes.",
+      "formulaFlowRaw": "Question Demands → Track Urge → Decide Afterward",
+      "safetyRaw": "PAUSE\nDo not delay answers required for health, safety, or deadlines.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 334,
+    "id": "T-334",
+    "bubble": "RUSH",
+    "title": "POSSIBLE IS NOT PROBABLE",
+    "trigger": "Catastrophic prediction",
+    "pattern": "Probability overestimation",
+    "playTime": "under 2 minutes",
+    "display": {
+      "title": "POSSIBLE IS NOT PROBABLE",
+      "goal": "Separate existence from likelihood and support.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "State Lines",
+          "instruction": "State three lines: It is possible that…; It is probable that…; The evidence currently supports…. Possible Probable — move slowly.",
+          "raw": "1. State Lines — State three lines: It is possible that…; It is probable that…; The evidence currently supports…. Possible Probable — move slowly."
+        },
+        {
+          "number": 2,
+          "label": "Don't Allow",
+          "instruction": "Do not allow content to migrate upward without justification. Possible Probable — camera check.",
+          "raw": "2. Don't Allow — Do not allow content to migrate upward without justification. Possible Probable — camera check."
+        },
+        {
+          "number": 3,
+          "label": "Plan Probability",
+          "instruction": "Base planning on probability and safety margin, not possibility alone. Possible Probable — next action.",
+          "raw": "3. Plan Probability — Base planning on probability and safety margin, not possibility alone. Possible Probable — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Plan Probability.",
+      "win": "✓ I can separate existence from likelihood and support.",
+      "formulaFlow": "State Lines → Don't Allow → Plan Probability",
+      "formulaFlowParts": [
+        "State Lines",
+        "Don't Allow",
+        "Plan Probability"
+      ],
+      "safety": {
+        "pause": "Low-probability high-impact risks may still justify proportionate precautions.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nLow-probability high-impact risks may still justify proportionate precautions.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Spot: Separate existence from likelihood and support.",
+      "gameMove": "PLAY: State Lines → Don't Allow → Plan Probability"
+    },
+    "source": {
+      "goal": "Separate existence from likelihood and support.",
+      "goalAndStepsRaw": "GOAL\nSeparate existence from likelihood and support.\n\n1. State Lines — State three lines: It is possible that…; It is probable that…; The evidence currently supports…. Possible Probable — move slowly.\n2. Don't Allow — Do not allow content to migrate upward without justification. Possible Probable — camera check.\n3. Plan Probability — Base planning on probability and safety margin, not possibility alone. Possible Probable — next action.\n\n⚡ FINISH — Plan Probability.",
+      "winRewardRaw": "✓ I can separate existence from likelihood and support.",
+      "formulaFlowRaw": "State Lines → Don't Allow → Plan Probability",
+      "safetyRaw": "PAUSE\nLow-probability high-impact risks may still justify proportionate precautions.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 350,
+    "id": "T-350",
+    "bubble": "RUSH",
+    "title": "THIS IS A CHAPTER, NOT THE BOOK",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Narrative overbuilding",
+    "playTime": "about 90 seconds",
+    "display": {
+      "title": "THIS IS A CHAPTER, NOT THE BOOK",
+      "goal": "The present cannot forecast unopened pages.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Place Today",
+          "instruction": "Position today’s event on a long timeline with past chapters already survived and blank space ahead. Chapter Book — move slowly.",
+          "raw": "1. Place Today — Position today’s event on a long timeline with past chapters already survived and blank space ahead. Chapter Book — move slowly."
+        },
+        {
+          "number": 2,
+          "label": "Picture Future",
+          "instruction": "Picture three future signposts that remain possible but unknown. Chapter Book — allow opposite.",
+          "raw": "2. Picture Future — Picture three future signposts that remain possible but unknown. Chapter Book — allow opposite."
+        },
+        {
+          "number": 3,
+          "label": "Choose Sentence",
+          "instruction": "Choose one sentence describing this chapter accurately without making it the title of the whole life. Chapter Book — next action.",
+          "raw": "3. Choose Sentence — Choose one sentence describing this chapter accurately without making it the title of the whole life. Chapter Book — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Choose Sentence.",
+      "win": "✓ I just caught the moment before it became the whole room.",
+      "formulaFlow": "Place Today → Picture Future → Choose Sentence",
+      "formulaFlowParts": [
+        "Place Today",
+        "Picture Future",
+        "Choose Sentence"
+      ],
+      "safety": {
+        "pause": "Avoid future projection when immediate crisis requires present support.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nAvoid future projection when immediate crisis requires present support.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Look: The present cannot forecast unopened pages.",
+      "gameMove": "PLAY: Place Today → Picture Future → Choose Sentence"
+    },
+    "source": {
+      "goal": "The present cannot forecast unopened pages.",
+      "goalAndStepsRaw": "GOAL\nThe present cannot forecast unopened pages.\n\n1. Place Today — Position today’s event on a long timeline with past chapters already survived and blank space ahead. Chapter Book — move slowly.\n2. Picture Future — Picture three future signposts that remain possible but unknown. Chapter Book — allow opposite.\n3. Choose Sentence — Choose one sentence describing this chapter accurately without making it the title of the whole life. Chapter Book — next action.\n\n⚡ FINISH — Choose Sentence.",
+      "winRewardRaw": "✓ I just caught the moment before it became the whole room.",
+      "formulaFlowRaw": "Place Today → Picture Future → Choose Sentence",
+      "safetyRaw": "PAUSE\nAvoid future projection when immediate crisis requires present support.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 351,
+    "id": "T-351",
+    "bubble": "RUSH",
+    "title": "THOUGHTS MUST BRING AN AGENDA",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Unexamined belief",
+    "playTime": "30–60 seconds",
+    "display": {
+      "title": "THOUGHTS MUST BRING AN AGENDA",
+      "goal": "Extended thinking is earned by a clear question and output.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Give Topic",
+          "instruction": "Before giving a topic more time, require two items: the exact question and the form of a useful result—decision, plan, explanation, message, or acceptance. Thoughts Must — loosen hands.",
+          "raw": "1. Give Topic — Before giving a topic more time, require two items: the exact question and the form of a useful result—decision, plan, explanation, message, or acceptance. Thoughts Must — loosen hands."
+        },
+        {
+          "number": 2,
+          "label": "Return Direct",
+          "instruction": "If either is missing, deny the session and return to direct life. Return Direct next. Thoughts Must — allow opposite. Thoughts Must — next action.",
+          "raw": "2. Return Direct — If either is missing, deny the session and return to direct life. Return Direct next. Thoughts Must — allow opposite. Thoughts Must — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Return Direct.",
+      "win": "✓ Extended thinking is earned by a clear question and output.",
+      "formulaFlow": "Give Topic → Return Direct",
+      "formulaFlowParts": [
+        "Give Topic",
+        "Return Direct"
+      ],
+      "safety": {
+        "pause": "Allow free reflection and creativity when productivity is not the purpose.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nAllow free reflection and creativity when productivity is not the purpose.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Bet: Extended thinking is earned by a clear question and output.",
+      "gameMove": "PLAY: Give Topic → Return Direct"
+    },
+    "source": {
+      "goal": "Extended thinking is earned by a clear question and output.",
+      "goalAndStepsRaw": "GOAL\nExtended thinking is earned by a clear question and output.\n\n1. Give Topic — Before giving a topic more time, require two items: the exact question and the form of a useful result—decision, plan, explanation, message, or acceptance. Thoughts Must — loosen hands.\n2. Return Direct — If either is missing, deny the session and return to direct life. Return Direct next. Thoughts Must — allow opposite. Thoughts Must — next action.\n\n⚡ FINISH — Return Direct.",
+      "winRewardRaw": "✓ Extended thinking is earned by a clear question and output.",
+      "formulaFlowRaw": "Give Topic → Return Direct",
+      "safetyRaw": "PAUSE\nAllow free reflection and creativity when productivity is not the purpose.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 354,
+    "id": "T-354",
+    "bubble": "RUSH",
+    "title": "CALL THE MENTAL MEETING TO ORDER",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Unexamined belief",
+    "playTime": "under 2 minutes",
+    "display": {
+      "title": "CALL THE MENTAL MEETING TO ORDER",
+      "goal": "Concerns interrupt because none has an allocated agenda.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Picture Topic",
+          "instruction": "Picture each topic as a meeting item with desired decision, time allowance, and required evidence. Call Mental — hear sound.",
+          "raw": "1. Picture Topic — Picture each topic as a meeting item with desired decision, time allowance, and required evidence. Call Mental — hear sound."
+        },
+        {
+          "number": 2,
+          "label": "Order",
+          "instruction": "Order by consequence and deadline. Call Mental — allow opposite.",
+          "raw": "2. Order — Order by consequence and deadline. Call Mental — allow opposite."
+        },
+        {
+          "number": 3,
+          "label": "Place Interruption",
+          "instruction": "Process only the first item; place every interruption in the parking lot for its scheduled turn. Call Mental — next action.",
+          "raw": "3. Place Interruption — Process only the first item; place every interruption in the parking lot for its scheduled turn. Call Mental — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Place Interruption.",
+      "win": "✓ Concerns interrupt because none has an allocated agenda.",
+      "formulaFlow": "Picture Topic → Order → Place Interruption",
+      "formulaFlowParts": [
+        "Picture Topic",
+        "Order",
+        "Place Interruption"
+      ],
+      "safety": {
+        "pause": "Keep capacity for emergencies that legitimately override the agenda.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nKeep capacity for emergencies that legitimately override the agenda.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Spot: Concerns interrupt because none has an allocated agenda.",
+      "gameMove": "PLAY: Picture Topic → Order → Place Interruption"
+    },
+    "source": {
+      "goal": "Concerns interrupt because none has an allocated agenda.",
+      "goalAndStepsRaw": "GOAL\nConcerns interrupt because none has an allocated agenda.\n\n1. Picture Topic — Picture each topic as a meeting item with desired decision, time allowance, and required evidence. Call Mental — hear sound.\n2. Order — Order by consequence and deadline. Call Mental — allow opposite.\n3. Place Interruption — Process only the first item; place every interruption in the parking lot for its scheduled turn. Call Mental — next action.\n\n⚡ FINISH — Place Interruption.",
+      "winRewardRaw": "✓ Concerns interrupt because none has an allocated agenda.",
+      "formulaFlowRaw": "Picture Topic → Order → Place Interruption",
+      "safetyRaw": "PAUSE\nKeep capacity for emergencies that legitimately override the agenda.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 368,
+    "id": "T-368",
+    "bubble": "RUSH",
+    "title": "NOTICE THE SPACE DOING THE HOLDING",
+    "trigger": "Observer loss & cognitive fusion",
+    "pattern": "Observer loss",
+    "playTime": "1–2 minutes",
+    "display": {
+      "title": "NOTICE THE SPACE DOING THE HOLDING",
+      "goal": "Objects dominate because intervals are treated as nothing.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Choose Forms",
+          "instruction": "Choose three forms. Notice Space — widen gaze.",
+          "raw": "1. Choose Forms — Choose three forms. Notice Space — widen gaze."
+        },
+        {
+          "number": 2,
+          "label": "Attend Space",
+          "instruction": "Attend to the space inside openings, around edges, and between objects.",
+          "raw": "2. Attend Space — Attend to the space inside openings, around edges, and between objects."
+        },
+        {
+          "number": 3,
+          "label": "Reverse Figure",
+          "instruction": "Reverse figure and ground until space becomes as perceptible as matter. Notice Space — notice detail.",
+          "raw": "3. Reverse Figure — Reverse figure and ground until space becomes as perceptible as matter. Notice Space — notice detail."
+        },
+        {
+          "number": 4,
+          "label": "Include Room",
+          "instruction": "Include the room around your body. Notice Space — next action.",
+          "raw": "4. Include Room — Include the room around your body. Notice Space — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Include Room.",
+      "win": "✓ Objects dominate because intervals are treated as nothing.",
+      "formulaFlow": "Choose Forms → Attend Space → Reverse Figure → Include Room",
+      "formulaFlowParts": [
+        "Choose Forms",
+        "Attend Space",
+        "Reverse Figure",
+        "Include Room"
+      ],
+      "safety": {
+        "pause": "Maintain object focus where navigation or task precision demands it.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nMaintain object focus where navigation or task precision demands it.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Shift: Objects dominate because intervals are treated as nothing.",
+      "gameMove": "PLAY: Choose Forms → Reverse Figure → Include Room"
+    },
+    "source": {
+      "goal": "Objects dominate because intervals are treated as nothing.",
+      "goalAndStepsRaw": "GOAL\nObjects dominate because intervals are treated as nothing.\n\n1. Choose Forms — Choose three forms. Notice Space — widen gaze.\n2. Attend Space — Attend to the space inside openings, around edges, and between objects.\n3. Reverse Figure — Reverse figure and ground until space becomes as perceptible as matter. Notice Space — notice detail.\n4. Include Room — Include the room around your body. Notice Space — next action.\n\n⚡ FINISH — Include Room.",
+      "winRewardRaw": "✓ Objects dominate because intervals are treated as nothing.",
+      "formulaFlowRaw": "Choose Forms → Attend Space → Reverse Figure → Include Room",
+      "safetyRaw": "PAUSE\nMaintain object focus where navigation or task precision demands it.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 370,
+    "id": "T-370",
+    "bubble": "RUSH",
+    "title": "LET THE WATCHER GO TOO",
+    "trigger": "Observer loss & cognitive fusion",
+    "pattern": "Observer loss",
+    "playTime": "about 90 seconds",
+    "display": {
+      "title": "LET THE WATCHER GO TOO",
+      "goal": "Witnessing can become another identity to defend.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Subtle",
+          "instruction": "Notice the subtle position that says ‘I am the observer.’ Treat that position, effort, or location as another known experience. Let Watcher — hear sound.",
+          "raw": "1. Subtle — Notice the subtle position that says ‘I am the observer.’ Treat that position, effort, or location as another known experience. Let Watcher — hear sound."
+        },
+        {
+          "number": 2,
+          "label": "Allow Awareness",
+          "instruction": "Allow awareness without maintaining a separate watcher. Let Watcher — notice detail.",
+          "raw": "2. Allow Awareness — Allow awareness without maintaining a separate watcher. Let Watcher — notice detail."
+        },
+        {
+          "number": 3,
+          "label": "Ground",
+          "instruction": "Ground through ordinary action immediately afterward. Let Watcher — next action.",
+          "raw": "3. Ground — Ground through ordinary action immediately afterward. Let Watcher — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Ground.",
+      "win": "✓ Witnessing can become another identity to defend.",
+      "formulaFlow": "Subtle → Allow Awareness → Ground",
+      "formulaFlowParts": [
+        "Subtle",
+        "Allow Awareness",
+        "Ground"
+      ],
+      "safety": {
+        "pause": "Do not attempt when self-experience is unstable or unreal.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nDo not attempt when self-experience is unstable or unreal.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Look: Witnessing can become another identity to defend.",
+      "gameMove": "PLAY: Subtle → Allow Awareness → Ground"
+    },
+    "source": {
+      "goal": "Witnessing can become another identity to defend.",
+      "goalAndStepsRaw": "GOAL\nWitnessing can become another identity to defend.\n\n1. Subtle — Notice the subtle position that says ‘I am the observer.’ Treat that position, effort, or location as another known experience. Let Watcher — hear sound.\n2. Allow Awareness — Allow awareness without maintaining a separate watcher. Let Watcher — notice detail.\n3. Ground — Ground through ordinary action immediately afterward. Let Watcher — next action.\n\n⚡ FINISH — Ground.",
+      "winRewardRaw": "✓ Witnessing can become another identity to defend.",
+      "formulaFlowRaw": "Subtle → Allow Awareness → Ground",
+      "safetyRaw": "PAUSE\nDo not attempt when self-experience is unstable or unreal.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 377,
+    "id": "T-377",
+    "bubble": "RUSH",
+    "title": "CHANGE THE SYMBOL’S JOB",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness",
+    "playTime": "about 1 minute",
+    "display": {
+      "title": "CHANGE THE SYMBOL’S JOB",
+      "goal": "Unspoken experience may respond to transformation before explanation.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Choose Image",
+          "instruction": "Choose the image or object that represents the state. Change Symbol — soften shoulders.",
+          "raw": "1. Choose Image — Choose the image or object that represents the state. Change Symbol — soften shoulders."
+        },
+        {
+          "number": 2,
+          "label": "Open Cage",
+          "instruction": "Alter one property—open the cage, cool the metal, add roots, repair the crack, move the weight, give the storm a shoreline. Change Symbol — notice detail.",
+          "raw": "2. Open Cage — Alter one property—open the cage, cool the metal, add roots, repair the crack, move the weight, give the storm a shoreline. Change Symbol — notice detail."
+        },
+        {
+          "number": 3,
+          "label": "Observe Inner",
+          "instruction": "Observe the inner response and translate it into one practical move. Change Symbol — next action.",
+          "raw": "3. Observe Inner — Observe the inner response and translate it into one practical move. Change Symbol — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Observe Inner.",
+      "win": "✓ Unspoken experience may respond to transformation before explanation.",
+      "formulaFlow": "Choose Image → Open Cage → Observe Inner",
+      "formulaFlowParts": [
+        "Choose Image",
+        "Open Cage",
+        "Observe Inner"
+      ],
+      "safety": {
+        "pause": "End the exercise when imagery grows disturbing, bizarre, or detached from reality.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nEnd the exercise when imagery grows disturbing, bizarre, or detached from reality.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Aim: Unspoken experience may respond to transformation before explanation.",
+      "gameMove": "PLAY: Choose Image → Open Cage → Observe Inner"
+    },
+    "source": {
+      "goal": "Unspoken experience may respond to transformation before explanation.",
+      "goalAndStepsRaw": "GOAL\nUnspoken experience may respond to transformation before explanation.\n\n1. Choose Image — Choose the image or object that represents the state. Change Symbol — soften shoulders.\n2. Open Cage — Alter one property—open the cage, cool the metal, add roots, repair the crack, move the weight, give the storm a shoreline. Change Symbol — notice detail.\n3. Observe Inner — Observe the inner response and translate it into one practical move. Change Symbol — next action.\n\n⚡ FINISH — Observe Inner.",
+      "winRewardRaw": "✓ Unspoken experience may respond to transformation before explanation.",
+      "formulaFlowRaw": "Choose Image → Open Cage → Observe Inner",
+      "safetyRaw": "PAUSE\nEnd the exercise when imagery grows disturbing, bizarre, or detached from reality.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  },
+  {
+    "ritualNumber": 388,
+    "id": "T-388",
+    "bubble": "RUSH",
+    "title": "CONSTRAINTS ENTER BEFORE OPTIONS",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary confusion",
+    "playTime": "1–2 minutes",
+    "display": {
+      "title": "CONSTRAINTS ENTER BEFORE OPTIONS",
+      "goal": "Must-have limits should shape the field before desire fills it.",
+      "steps": [
+        {
+          "number": 1,
+          "label": "Picture Safety",
+          "instruction": "Picture safety, ethics, consent, resources, and timing constraints first. Constraints Enter — press feet.",
+          "raw": "1. Picture Safety — Picture safety, ethics, consent, resources, and timing constraints first. Constraints Enter — press feet."
+        },
+        {
+          "number": 2,
+          "label": "Eliminate",
+          "instruction": "Eliminate choices that violate them.",
+          "raw": "2. Eliminate — Eliminate choices that violate them."
+        },
+        {
+          "number": 3,
+          "label": "Generate",
+          "instruction": "Generate options only inside the surviving space. Constraints Enter — split duty.",
+          "raw": "3. Generate — Generate options only inside the surviving space. Constraints Enter — split duty."
+        },
+        {
+          "number": 4,
+          "label": "Treat",
+          "instruction": "Treat creativity as solving within reality, not arguing with the boundary. Constraints Enter — next action.",
+          "raw": "4. Treat — Treat creativity as solving within reality, not arguing with the boundary. Constraints Enter — next action."
+        }
+      ],
+      "finish": "⚡ FINISH — Treat.",
+      "win": "✓ Must-have limits should shape the field before desire fills it.",
+      "formulaFlow": "Picture Safety → Eliminate → Generate → Treat",
+      "formulaFlowParts": [
+        "Picture Safety",
+        "Eliminate",
+        "Generate",
+        "Treat"
+      ],
+      "safety": {
+        "pause": "Challenge assumed constraints that lack factual support.",
+        "disclaimer": "This is a self-help exercise, not emergency or medical care.",
+        "raw": "PAUSE\nChallenge assumed constraints that lack factual support.\n\nThis is a self-help exercise, not emergency or medical care."
+      }
+    },
+    "internal": {
+      "hook": "Shift: Must-have limits should shape the field before desire fills it.",
+      "gameMove": "PLAY: Picture Safety → Generate → Treat"
+    },
+    "source": {
+      "goal": "Must-have limits should shape the field before desire fills it.",
+      "goalAndStepsRaw": "GOAL\nMust-have limits should shape the field before desire fills it.\n\n1. Picture Safety — Picture safety, ethics, consent, resources, and timing constraints first. Constraints Enter — press feet.\n2. Eliminate — Eliminate choices that violate them.\n3. Generate — Generate options only inside the surviving space. Constraints Enter — split duty.\n4. Treat — Treat creativity as solving within reality, not arguing with the boundary. Constraints Enter — next action.\n\n⚡ FINISH — Treat.",
+      "winRewardRaw": "✓ Must-have limits should shape the field before desire fills it.",
+      "formulaFlowRaw": "Picture Safety → Eliminate → Generate → Treat",
+      "safetyRaw": "PAUSE\nChallenge assumed constraints that lack factual support.\n\nThis is a self-help exercise, not emergency or medical care."
+    }
+  }
+]
