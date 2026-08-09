@@ -1,1 +1,0 @@
-Upload ALL files in this ZIP to the ROOT of the GitHub repository. Replace manifest.json and all seven Bubble JSON files first.
