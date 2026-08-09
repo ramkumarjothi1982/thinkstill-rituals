@@ -1,0 +1,2402 @@
+{
+  "T-001": {
+    "bubble": "GLITCH",
+    "title": "THE FIRST FRAME",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Narrative overbuilding"
+  },
+  "T-002": {
+    "bubble": "GLITCH",
+    "title": "THE TWO-TRAY TEST",
+    "trigger": "Emotional reasoning",
+    "pattern": "Emotional reasoning"
+  },
+  "T-003": {
+    "bubble": "GLITCH",
+    "title": "WORST CASE, WITH EXITS",
+    "trigger": "Catastrophic prediction",
+    "pattern": "Catastrophising"
+  },
+  "T-004": {
+    "bubble": "DROP",
+    "title": "THE ODDS RECEIPT",
+    "trigger": "Catastrophic prediction",
+    "pattern": "Probability overestimation"
+  },
+  "T-005": {
+    "bubble": "SYNC",
+    "title": "THE BLAME PIE",
+    "trigger": "Self-blame, guilt & shame",
+    "pattern": "Personalisation"
+  },
+  "T-006": {
+    "bubble": "GLITCH",
+    "title": "THE GREY DIAL",
+    "trigger": "Evidence distortion & selective thinking",
+    "pattern": "Black-and-white thinking"
+  },
+  "T-007": {
+    "bubble": "GLITCH",
+    "title": "BORROW THEIR MIRROR",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Unexamined belief"
+  },
+  "T-008": {
+    "bubble": "STILL",
+    "title": "THREE WORLDS, ONE FACT",
+    "trigger": "Catastrophic prediction",
+    "pattern": "Fortune telling"
+  },
+  "T-009": {
+    "bubble": "GLITCH",
+    "title": "THE RULE UNDER THE RULE",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-010": {
+    "bubble": "GLITCH",
+    "title": "THE SCHEMA CONTRABAND FILE",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Unexamined belief"
+  },
+  "T-011": {
+    "bubble": "RUSH",
+    "title": "MAKE THE BELIEF BET",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-012": {
+    "bubble": "GLITCH",
+    "title": "THE FORECAST SCOREBOARD",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-013": {
+    "bubble": "RUSH",
+    "title": "THE EFFORT STAIRCASE",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-014": {
+    "bubble": "RUSH",
+    "title": "MOOD HAS ALIBIS",
+    "trigger": "Emotional reasoning",
+    "pattern": "Emotion–fact confusion"
+  },
+  "T-015": {
+    "bubble": "RUSH",
+    "title": "TWO ENGINES",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-016": {
+    "bubble": "RUSH",
+    "title": "MAKE THE ROOM VOTE",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-017": {
+    "bubble": "RUSH",
+    "title": "LET THE URGE MISS ITS APPOINTMENT",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion"
+  },
+  "T-018": {
+    "bubble": "RUSH",
+    "title": "BODY VETO",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion"
+  },
+  "T-019": {
+    "bubble": "RUSH",
+    "title": "WHEN/THEN FIRMWARE",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-020": {
+    "bubble": "RUSH",
+    "title": "THE FIRST DRIFT",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-021": {
+    "bubble": "STILL",
+    "title": "ADD THE PREFIX",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-022": {
+    "bubble": "STILL",
+    "title": "THANKS, MIND. NO CONTRACT.",
+    "trigger": "Values, meaning & loss",
+    "pattern": "Value disconnection"
+  },
+  "T-023": {
+    "bubble": "LOOPIE",
+    "title": "WORD MELT",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-024": {
+    "bubble": "DROP",
+    "title": "THE BAD VOICE ACTOR",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Unexamined belief"
+  },
+  "T-025": {
+    "bubble": "STILL",
+    "title": "THOUGHT DEPARTURES",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Unexamined belief"
+  },
+  "T-026": {
+    "bubble": "STILL",
+    "title": "NAME THE SERIES",
+    "trigger": "Comparison & rejection",
+    "pattern": "Rejection magnification"
+  },
+  "T-027": {
+    "bubble": "SYNC",
+    "title": "THE LIFE DIRECTION TEST",
+    "trigger": "Values, meaning & loss",
+    "pattern": "Value disconnection"
+  },
+  "T-028": {
+    "bubble": "DROP",
+    "title": "EDIT THE FONT, NOT YOURSELF",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Unexamined belief"
+  },
+  "T-029": {
+    "bubble": "STILL",
+    "title": "COMMAND DOWNGRADE",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion"
+  },
+  "T-030": {
+    "bubble": "STILL",
+    "title": "PASSENGER THOUGHT",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-031": {
+    "bubble": "STILL",
+    "title": "MAKE A WIDER CONTAINER",
+    "trigger": "Values, meaning & loss",
+    "pattern": "Value disconnection"
+  },
+  "T-032": {
+    "bubble": "RUSH",
+    "title": "RIDE THE CRAVING GRAPH",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion"
+  },
+  "T-033": {
+    "bubble": "STILL",
+    "title": "PAIN PLUS THE FIGHT",
+    "trigger": "Self-blame, guilt & shame",
+    "pattern": "Self-criticism"
+  },
+  "T-034": {
+    "bubble": "SYNC",
+    "title": "CLOSE ONE DOOR FOR THIRTY SECONDS",
+    "trigger": "Perfectionism & performance pressure",
+    "pattern": "Decision paralysis"
+  },
+  "T-035": {
+    "bubble": "SYNC",
+    "title": "VALUE BEFORE CERTAINTY",
+    "trigger": "Values, meaning & loss",
+    "pattern": "Value disconnection"
+  },
+  "T-036": {
+    "bubble": "RUSH",
+    "title": "ONE VISIBLE VOTE",
+    "trigger": "Perfectionism & performance pressure",
+    "pattern": "Perfectionism"
+  },
+  "T-037": {
+    "bubble": "SYNC",
+    "title": "THE CONTROL GRAVEYARD",
+    "trigger": "Uncertainty & reassurance seeking",
+    "pattern": "Reassurance dependence"
+  },
+  "T-038": {
+    "bubble": "GLITCH",
+    "title": "THE SKY DOES NOT BECOME THE WEATHER",
+    "trigger": "Values, meaning & loss",
+    "pattern": "Value disconnection"
+  },
+  "T-039": {
+    "bubble": "SYNC",
+    "title": "MORE THAN THIS STATE",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary confusion"
+  },
+  "T-040": {
+    "bubble": "DROP",
+    "title": "RETURN WITHOUT A TRIAL",
+    "trigger": "Values, meaning & loss",
+    "pattern": "Value disconnection"
+  },
+  "T-041": {
+    "bubble": "SYNC",
+    "title": "THE THIRD VOICE",
+    "trigger": "Emotional reasoning",
+    "pattern": "Emotion–fact confusion"
+  },
+  "T-042": {
+    "bubble": "STILL",
+    "title": "CAMERA FIRST, CAPTION SECOND",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-043": {
+    "bubble": "STILL",
+    "title": "ENTER THE ACTION",
+    "trigger": "Perfectionism & performance pressure",
+    "pattern": "Perfectionism"
+  },
+  "T-044": {
+    "bubble": "GLITCH",
+    "title": "TRANSLATE THE VERDICT",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-045": {
+    "bubble": "RUSH",
+    "title": "OBJECTIVE OVER EGO",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-046": {
+    "bubble": "STILL",
+    "title": "THE ATTENTION BOUNCER",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Attention misallocation"
+  },
+  "T-047": {
+    "bubble": "STILL",
+    "title": "EMOTION, COMPLETE YOUR ARC",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-048": {
+    "bubble": "STILL",
+    "title": "ONE CLEAN WISH",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary confusion"
+  },
+  "T-049": {
+    "bubble": "STILL",
+    "title": "THE 2% SOFTENING",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation"
+  },
+  "T-050": {
+    "bubble": "STILL",
+    "title": "PLAY THE BODY PASSWORD",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation"
+  },
+  "T-051": {
+    "bubble": "STILL",
+    "title": "THE FOUR-LETTER BRAKE",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion"
+  },
+  "T-052": {
+    "bubble": "RUSH",
+    "title": "COOL THE ALARM PANEL",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation"
+  },
+  "T-053": {
+    "bubble": "RUSH",
+    "title": "BURN THE EXCESS CHARGE",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation"
+  },
+  "T-054": {
+    "bubble": "RUSH",
+    "title": "THE LONGER OUT-BREATH",
+    "trigger": "Urgency & decision pressure",
+    "pattern": "Urgency bias"
+  },
+  "T-055": {
+    "bubble": "DROP",
+    "title": "TENSION’S EXIT PARTNER",
+    "trigger": "Panic & body alarm",
+    "pattern": "Breath-control overeffort"
+  },
+  "T-056": {
+    "bubble": "GLITCH",
+    "title": "THE CRISIS MENU",
+    "trigger": "Perfectionism & performance pressure",
+    "pattern": "Perfectionism"
+  },
+  "T-057": {
+    "bubble": "DROP",
+    "title": "FIVE SAFE SIGNALS",
+    "trigger": "Urgency & decision pressure",
+    "pattern": "Time-pressure distortion"
+  },
+  "T-058": {
+    "bubble": "GLITCH",
+    "title": "UPGRADE THE WAITING ROOM",
+    "trigger": "Panic & body alarm",
+    "pattern": "Physiological tension holding"
+  },
+  "T-059": {
+    "bubble": "DROP",
+    "title": "DROP THE APPEAL",
+    "trigger": "Self-blame, guilt & shame",
+    "pattern": "Blame fixation"
+  },
+  "T-060": {
+    "bubble": "DROP",
+    "title": "TURN AGAIN",
+    "trigger": "Comparison & rejection",
+    "pattern": "Rejection magnification"
+  },
+  "T-061": {
+    "bubble": "GLITCH",
+    "title": "DOES THE FEELING FIT THE FILE?",
+    "trigger": "Emotional reasoning",
+    "pattern": "Emotion–fact confusion"
+  },
+  "T-062": {
+    "bubble": "GLITCH",
+    "title": "REVERSE THE URGE, COMPLETELY",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion"
+  },
+  "T-063": {
+    "bubble": "SYNC",
+    "title": "WHAT JOB IS THIS FEELING DOING?",
+    "trigger": "Emotional reasoning",
+    "pattern": "Emotion–fact confusion"
+  },
+  "T-064": {
+    "bubble": "GLITCH",
+    "title": "URGE IS NOT EMOTION",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion"
+  },
+  "T-065": {
+    "bubble": "SYNC",
+    "title": "CHECK THE BIOLOGICAL VOLUME KNOBS",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-066": {
+    "bubble": "SYNC",
+    "title": "PRELIVE THE HARD MOMENT",
+    "trigger": "Perfectionism & performance pressure",
+    "pattern": "Perfectionism"
+  },
+  "T-067": {
+    "bubble": "LOOPIE",
+    "title": "ONE INCH BEYOND EASY",
+    "trigger": "Self-blame, guilt & shame",
+    "pattern": "Shame globalisation"
+  },
+  "T-068": {
+    "bubble": "DROP",
+    "title": "PUT GOOD ON THE CALENDAR",
+    "trigger": "Emotional reasoning",
+    "pattern": "Emotion–fact confusion"
+  },
+  "T-069": {
+    "bubble": "SYNC",
+    "title": "FEELING OR FIXING?",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation"
+  },
+  "T-070": {
+    "bubble": "GLITCH",
+    "title": "LET THE EMOTION FINISH ONE CHAPTER",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion"
+  },
+  "T-071": {
+    "bubble": "RUSH",
+    "title": "STAY FOR THE UPDATE",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-072": {
+    "bubble": "RUSH",
+    "title": "THE CONTROLLED REPLAY",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Present-moment loss"
+  },
+  "T-073": {
+    "bubble": "DROP",
+    "title": "BORROW THE SENSATION",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-sensation misinterpretation"
+  },
+  "T-074": {
+    "bubble": "RUSH",
+    "title": "LEAVE ONE QUESTION OPEN",
+    "trigger": "Uncertainty & reassurance seeking",
+    "pattern": "Uncertainty intolerance"
+  },
+  "T-075": {
+    "bubble": "RUSH",
+    "title": "STAY THROUGH RECOVERY",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation"
+  },
+  "T-076": {
+    "bubble": "DROP",
+    "title": "DESIGN THE SURPRISE",
+    "trigger": "Emotional reasoning",
+    "pattern": "Emotion–fact confusion"
+  },
+  "T-077": {
+    "bubble": "RUSH",
+    "title": "REMOVE ONE INVISIBLE CRUTCH",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Avoidance reinforcement"
+  },
+  "T-078": {
+    "bubble": "RUSH",
+    "title": "MOVE THE LESSON",
+    "trigger": "Evidence distortion & selective thinking",
+    "pattern": "Context neglect"
+  },
+  "T-079": {
+    "bubble": "RUSH",
+    "title": "THE TWO-CUE MERGE",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-080": {
+    "bubble": "RUSH",
+    "title": "TAKE SAFETY ON TOUR",
+    "trigger": "Evidence distortion & selective thinking",
+    "pattern": "Context neglect"
+  },
+  "T-081": {
+    "bubble": "SYNC",
+    "title": "FINISH THE LOOK",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-082": {
+    "bubble": "DROP",
+    "title": "PENDULUM BETWEEN TWO TRUTHS",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation"
+  },
+  "T-083": {
+    "bubble": "SYNC",
+    "title": "ONE DROP, NOT THE OCEAN",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-sensation misinterpretation"
+  },
+  "T-084": {
+    "bubble": "SYNC",
+    "title": "TRACK WHAT HOLDS",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion"
+  },
+  "T-085": {
+    "bubble": "DROP",
+    "title": "WAIT FOR THE WHOLE BODY ANSWER",
+    "trigger": "Panic & body alarm",
+    "pattern": "Posture–mood locking"
+  },
+  "T-086": {
+    "bubble": "DROP",
+    "title": "COMPLETE THE DEFENCE IN MINIATURE",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion"
+  },
+  "T-087": {
+    "bubble": "DROP",
+    "title": "FIND THE BODY’S WORKABLE DISTANCE",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion"
+  },
+  "T-088": {
+    "bubble": "DROP",
+    "title": "BORROW THE FLOOR",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Present-moment loss"
+  },
+  "T-089": {
+    "bubble": "RUSH",
+    "title": "TURN UP THE WHISPER",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-090": {
+    "bubble": "DROP",
+    "title": "CATCH THE RECOVERY SIGNAL",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation"
+  },
+  "T-091": {
+    "bubble": "RUSH",
+    "title": "DATE-STAMP THE PRESENT",
+    "trigger": "Trauma & memory-as-present",
+    "pattern": "Trauma time collapse"
+  },
+  "T-092": {
+    "bubble": "STILL",
+    "title": "ONE FOOT HERE, ONE FOOT NEAR IT",
+    "trigger": "Trauma & memory-as-present",
+    "pattern": "Trauma time collapse"
+  },
+  "T-093": {
+    "bubble": "PATCH",
+    "title": "THE SECURE PENDING BOX",
+    "trigger": "Trauma & memory-as-present",
+    "pattern": "Trauma time collapse"
+  },
+  "T-094": {
+    "bubble": "PATCH",
+    "title": "BUILD SAFE-ENOUGH, NOT PERFECT",
+    "trigger": "Trauma & memory-as-present",
+    "pattern": "Trauma time collapse"
+  },
+  "T-095": {
+    "bubble": "LOOPIE",
+    "title": "SET THE CONVERSATION SIZE",
+    "trigger": "Communication & conflict",
+    "pattern": "Communication distortion"
+  },
+  "T-096": {
+    "bubble": "DROP",
+    "title": "CLOSE THE BODY FILE",
+    "trigger": "Trauma & memory-as-present",
+    "pattern": "Trauma time collapse"
+  },
+  "T-097": {
+    "bubble": "GLITCH",
+    "title": "INSTALL THE CAPABLE MEMORY",
+    "trigger": "Trauma & memory-as-present",
+    "pattern": "Trauma time collapse"
+  },
+  "T-098": {
+    "bubble": "LOOPIE",
+    "title": "THEN / NOW SUBTITLES",
+    "trigger": "Trauma & memory-as-present",
+    "pattern": "Memory-as-present confusion"
+  },
+  "T-099": {
+    "bubble": "SYNC",
+    "title": "MAP YOUR OPERATING WINDOW",
+    "trigger": "Trauma & memory-as-present",
+    "pattern": "Trauma time collapse"
+  },
+  "T-100": {
+    "bubble": "GLITCH",
+    "title": "STAMP WHERE THE DETAIL CAME FROM",
+    "trigger": "Uncertainty & reassurance seeking",
+    "pattern": "Uncertainty intolerance"
+  },
+  "T-101": {
+    "bubble": "SYNC",
+    "title": "LET BREATH BREATHE YOU",
+    "trigger": "Observer loss & cognitive fusion",
+    "pattern": "Observer loss"
+  },
+  "T-102": {
+    "bubble": "DROP",
+    "title": "FIND THE BUSY HALF",
+    "trigger": "Comparison & rejection",
+    "pattern": "Comparison distortion"
+  },
+  "T-103": {
+    "bubble": "SYNC",
+    "title": "RHYTHM BEFORE DEPTH",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation"
+  },
+  "T-104": {
+    "bubble": "SYNC",
+    "title": "THE EVEN BRIDGE",
+    "trigger": "Panic & body alarm",
+    "pattern": "Breath-control overeffort"
+  },
+  "T-105": {
+    "bubble": "DROP",
+    "title": "ALTERNATE THE AIRWAY",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-106": {
+    "bubble": "DROP",
+    "title": "VIBRATION ON THE WAY OUT",
+    "trigger": "Panic & body alarm",
+    "pattern": "Breath-control overeffort"
+  },
+  "T-107": {
+    "bubble": "GLITCH",
+    "title": "OCEAN IN THE THROAT",
+    "trigger": "Panic & body alarm",
+    "pattern": "Breath-control overeffort"
+  },
+  "T-108": {
+    "bubble": "DROP",
+    "title": "COOL AIR, WARM DECISION",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Sensory disconnection"
+  },
+  "T-109": {
+    "bubble": "STILL",
+    "title": "EXHALE IN CHAPTERS",
+    "trigger": "Panic & body alarm",
+    "pattern": "Breath-control overeffort"
+  },
+  "T-110": {
+    "bubble": "SYNC",
+    "title": "BREATHE THE GESTURE",
+    "trigger": "Panic & body alarm",
+    "pattern": "Breath-control overeffort"
+  },
+  "T-111": {
+    "bubble": "DROP",
+    "title": "THE RETURN REP",
+    "trigger": "Perfectionism & performance pressure",
+    "pattern": "Perfectionism"
+  },
+  "T-112": {
+    "bubble": "STILL",
+    "title": "LET THE FIELD SELF-PUBLISH",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Unexamined belief"
+  },
+  "T-113": {
+    "bubble": "STILL",
+    "title": "NO FAVOURITE SENSATION",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-114": {
+    "bubble": "PATCH",
+    "title": "ONE-WORD LIGHT TOUCH",
+    "trigger": "Values, meaning & loss",
+    "pattern": "Scarcity thinking"
+  },
+  "T-115": {
+    "bubble": "STILL",
+    "title": "THE SENSE ROLL CALL",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Sensory disconnection"
+  },
+  "T-116": {
+    "bubble": "STILL",
+    "title": "EXPAND–GATHER–EXPAND",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-117": {
+    "bubble": "STILL",
+    "title": "RAIN WITHOUT THE UMBRELLA",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-118": {
+    "bubble": "STILL",
+    "title": "FOUR PARTS OF ONE STEP",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Attention misallocation"
+  },
+  "T-119": {
+    "bubble": "STILL",
+    "title": "LISTEN PAST THE SOUND",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-120": {
+    "bubble": "STILL",
+    "title": "NOTICE THE NOTICING",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Attention misallocation"
+  },
+  "T-121": {
+    "bubble": "STILL",
+    "title": "THE BREATH HINGE",
+    "trigger": "Panic & body alarm",
+    "pattern": "Breath-control overeffort"
+  },
+  "T-122": {
+    "bubble": "STILL",
+    "title": "WHERE SOUND BECOMES HEARING",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-123": {
+    "bubble": "STILL",
+    "title": "BORROW THE SKY’S WIDTH",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Attention misallocation"
+  },
+  "T-124": {
+    "bubble": "DROP",
+    "title": "LET DARKNESS BE COMPLETE",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Attention misallocation"
+  },
+  "T-125": {
+    "bubble": "STILL",
+    "title": "THE BODY AS INNER SPACE",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Dissociation drift"
+  },
+  "T-126": {
+    "bubble": "STILL",
+    "title": "CATCH WANTING BEFORE THE OBJECT",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-127": {
+    "bubble": "RUSH",
+    "title": "FEAR WITHOUT THE MOVIE",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation"
+  },
+  "T-128": {
+    "bubble": "STILL",
+    "title": "WATCH PLEASURE LEAVE CLEANLY",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-129": {
+    "bubble": "DROP",
+    "title": "BEFORE THE SENTENCE",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Attention misallocation"
+  },
+  "T-130": {
+    "bubble": "DROP",
+    "title": "FOLLOW IT TO ZERO",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Unexamined belief"
+  },
+  "T-131": {
+    "bubble": "DROP",
+    "title": "THE RETURN CHAIN",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Attention misallocation"
+  },
+  "T-132": {
+    "bubble": "STILL",
+    "title": "NOT FOR, NOT AGAINST",
+    "trigger": "Comparison & rejection",
+    "pattern": "Rejection magnification"
+  },
+  "T-133": {
+    "bubble": "GLITCH",
+    "title": "INSTALL THE COUNTER-QUALITY",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation"
+  },
+  "T-134": {
+    "bubble": "STILL",
+    "title": "STAY AT THE SENSE DOOR",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Sensory disconnection"
+  },
+  "T-135": {
+    "bubble": "GLITCH",
+    "title": "ERASE THE OBJECT, KEEP THE CONTACT",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary confusion"
+  },
+  "T-136": {
+    "bubble": "PATCH",
+    "title": "CLOSE THE MICRO-GAPS",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Attention fragmentation"
+  },
+  "T-137": {
+    "bubble": "LOOPIE",
+    "title": "ENOUGH IS A CURRENT FACT",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-138": {
+    "bubble": "RUSH",
+    "title": "STUDY THE REACTION, NOT THE CHARACTER",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-139": {
+    "bubble": "DROP",
+    "title": "RETURN THE OUTCOME",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-140": {
+    "bubble": "DROP",
+    "title": "TRACE THE FIRST SPARK",
+    "trigger": "Emotional reasoning",
+    "pattern": "Emotion–fact confusion"
+  },
+  "T-141": {
+    "bubble": "DROP",
+    "title": "NOT THIS, STILL HERE",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Dissociation drift"
+  },
+  "T-142": {
+    "bubble": "STILL",
+    "title": "WHO RECEIVED THAT THOUGHT?",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Conceptual entanglement"
+  },
+  "T-143": {
+    "bubble": "GLITCH",
+    "title": "FIND THE FIRST ‘I’",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-sensation misinterpretation"
+  },
+  "T-144": {
+    "bubble": "LOOPIE",
+    "title": "CHANGE ONE THING, WATCH ONE FEELING",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Emotion blending"
+  },
+  "T-145": {
+    "bubble": "GLITCH",
+    "title": "THE FIVE-LAYER INSPECTION",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-146": {
+    "bubble": "SYNC",
+    "title": "WHAT SURVIVES THREE STATES?",
+    "trigger": "Comparison & rejection",
+    "pattern": "Comparison distortion"
+  },
+  "T-147": {
+    "bubble": "PATCH",
+    "title": "BREAK THE NIGHT'S STORYLINE",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Narrative overbuilding"
+  },
+  "T-148": {
+    "bubble": "PATCH",
+    "title": "THE ACTION HAD MANY AUTHORS",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-149": {
+    "bubble": "STILL",
+    "title": "REMOVE THE NAME BADGES",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-150": {
+    "bubble": "STILL",
+    "title": "PUT THE FEELINGS BACK IN ORDER",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Emotion blending"
+  },
+  "T-151": {
+    "bubble": "DROP",
+    "title": "CLEAN ACTION, OPEN HANDS",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-152": {
+    "bubble": "RUSH",
+    "title": "WHAT REMAINS WHEN REWARD LEAVES?",
+    "trigger": "Values, meaning & loss",
+    "pattern": "Value disconnection"
+  },
+  "T-153": {
+    "bubble": "SYNC",
+    "title": "SAME VALUE, TWO OUTCOMES",
+    "trigger": "Evidence distortion & selective thinking",
+    "pattern": "Success discounting"
+  },
+  "T-154": {
+    "bubble": "STILL",
+    "title": "THE THREE QUALITIES WEATHER REPORT",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation"
+  },
+  "T-155": {
+    "bubble": "PATCH",
+    "title": "MAKE THE FIRST MOVE DELIBERATELY WRONG",
+    "trigger": "Perfectionism & performance pressure",
+    "pattern": "Perfectionism"
+  },
+  "T-156": {
+    "bubble": "PATCH",
+    "title": "ALLY OR SABOTEUR?",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-157": {
+    "bubble": "STILL",
+    "title": "THE SIX-LINK FIRE CHAIN",
+    "trigger": "Communication & conflict",
+    "pattern": "Conflict escalation"
+  },
+  "T-158": {
+    "bubble": "DROP",
+    "title": "CLOSE THE FEED BEFORE CRAVING VOTES",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion"
+  },
+  "T-159": {
+    "bubble": "SYNC",
+    "title": "THE SUSTAINABLE MIDDLE",
+    "trigger": "Evidence distortion & selective thinking",
+    "pattern": "Black-and-white thinking"
+  },
+  "T-160": {
+    "bubble": "RUSH",
+    "title": "DEDICATE THE MOVE",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-161": {
+    "bubble": "GLITCH",
+    "title": "THE WAKING DREAM CHECK",
+    "trigger": "Comparison & rejection",
+    "pattern": "Comparison distortion"
+  },
+  "T-162": {
+    "bubble": "DROP",
+    "title": "FIND WHERE THE PATTERN MISSED",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-163": {
+    "bubble": "PATCH",
+    "title": "STOP RENEWING THE CONSTRUCTION",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Sensory disconnection"
+  },
+  "T-164": {
+    "bubble": "GLITCH",
+    "title": "RETURN THE PROJECTION TO SENDER",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-165": {
+    "bubble": "STILL",
+    "title": "DO NOT REPLACE THE LAST THOUGHT",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-166": {
+    "bubble": "DROP",
+    "title": "EFFORT IS STILL AVAILABLE",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-167": {
+    "bubble": "DROP",
+    "title": "RUN THE START GATE TWICE",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-168": {
+    "bubble": "DROP",
+    "title": "DIFFERENCE INSIDE ONE FIELD",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-169": {
+    "bubble": "PATCH",
+    "title": "PRECISE OUTSIDE, QUIET INSIDE",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-170": {
+    "bubble": "GLITCH",
+    "title": "CHANGE ONE LENS, WATCH THE WORLD",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-171": {
+    "bubble": "GLITCH",
+    "title": "BOX THE PROBLEM",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-172": {
+    "bubble": "GLITCH",
+    "title": "FIXED, FLEXIBLE, UNKNOWN, ASSUMED",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary confusion"
+  },
+  "T-173": {
+    "bubble": "GLITCH",
+    "title": "THE NO-JUDGEMENT OPTION STORM",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-174": {
+    "bubble": "GLITCH",
+    "title": "DECIDE THE STOPPING LINE FIRST",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-175": {
+    "bubble": "DROP",
+    "title": "THE REVERSIBLE DOOR",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-176": {
+    "bubble": "DROP",
+    "title": "WORRY HAS OFFICE HOURS",
+    "trigger": "Rumination & worry loops",
+    "pattern": "Worry looping"
+  },
+  "T-177": {
+    "bubble": "LOOPIE",
+    "title": "WHAT IS NEW THIS LAP?",
+    "trigger": "Rumination & worry loops",
+    "pattern": "Rumination"
+  },
+  "T-178": {
+    "bubble": "STILL",
+    "title": "PAY FOR THE NEXT LAP",
+    "trigger": "Rumination & worry loops",
+    "pattern": "Rumination"
+  },
+  "T-179": {
+    "bubble": "SYNC",
+    "title": "EMPTY THE MENTAL COUNTERTOP",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Cognitive overload"
+  },
+  "T-180": {
+    "bubble": "PATCH",
+    "title": "NEXT PHYSICAL MOVEMENT",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-181": {
+    "bubble": "SYNC",
+    "title": "THE REQUEST SPINE",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary avoidance"
+  },
+  "T-182": {
+    "bubble": "PATCH",
+    "title": "SOFT DELIVERY, SOLID MESSAGE",
+    "trigger": "Communication & conflict",
+    "pattern": "Communication distortion"
+  },
+  "T-183": {
+    "bubble": "PATCH",
+    "title": "SELF-RESPECT CHECKSUM",
+    "trigger": "Values, meaning & loss",
+    "pattern": "Value disconnection"
+  },
+  "T-184": {
+    "bubble": "PATCH",
+    "title": "VALIDATE AT THE DEPTH YOU ACTUALLY HAVE",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Emotion mislabelling"
+  },
+  "T-185": {
+    "bubble": "SYNC",
+    "title": "IMPACT IS KNOWN; MOTIVE IS PENDING",
+    "trigger": "Uncertainty & reassurance seeking",
+    "pattern": "Uncertainty intolerance"
+  },
+  "T-186": {
+    "bubble": "PATCH",
+    "title": "THE FOUR-PART LIMIT",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary confusion"
+  },
+  "T-187": {
+    "bubble": "DROP",
+    "title": "ROTATE THE CHAIR",
+    "trigger": "Communication & conflict",
+    "pattern": "Communication distortion"
+  },
+  "T-188": {
+    "bubble": "SYNC",
+    "title": "MOTIVE: ACCESS DENIED",
+    "trigger": "Communication & conflict",
+    "pattern": "Communication distortion"
+  },
+  "T-189": {
+    "bubble": "PATCH",
+    "title": "CARE WITHOUT CARRYING",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary confusion"
+  },
+  "T-190": {
+    "bubble": "RUSH",
+    "title": "THE FIVE-BRICK REPAIR",
+    "trigger": "Self-blame, guilt & shame",
+    "pattern": "Guilt overreach"
+  },
+  "T-191": {
+    "bubble": "PATCH",
+    "title": "SAY IT IN YOUR MIND. DO NOT SEND IT.",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-192": {
+    "bubble": "PATCH",
+    "title": "THE TWENTY-MINUTE TRUTH STORY",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Narrative overbuilding"
+  },
+  "T-193": {
+    "bubble": "LOOPIE",
+    "title": "TWO CHAIRS, NO TELEPATHY",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-194": {
+    "bubble": "RUSH",
+    "title": "MOVE THE CHARGE INTO A CONTAINER",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation"
+  },
+  "T-195": {
+    "bubble": "DROP",
+    "title": "MOVE THE HEAVIEST WORD",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-196": {
+    "bubble": "DROP",
+    "title": "A PLACE FOR THE LOSS",
+    "trigger": "Values, meaning & loss",
+    "pattern": "Grief resistance"
+  },
+  "T-197": {
+    "bubble": "DROP",
+    "title": "CHANGE THE OBJECT, MARK THE RELEASE",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-198": {
+    "bubble": "STILL",
+    "title": "IMAGINE THE FEELING’S SHAPE",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary confusion"
+  },
+  "T-199": {
+    "bubble": "RUSH",
+    "title": "ANGER WITH WALLS",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary confusion"
+  },
+  "T-200": {
+    "bubble": "LOOPIE",
+    "title": "TELL IT AT THE SPEED OF SAFETY",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Narrative overbuilding"
+  },
+  "T-201": {
+    "bubble": "PATCH",
+    "title": "CROSS OUT THE EXPIRED FUTURE",
+    "trigger": "Catastrophic prediction",
+    "pattern": "Fortune telling"
+  },
+  "T-202": {
+    "bubble": "STILL",
+    "title": "PUT THE MEMORY BACK IN PAST TENSE",
+    "trigger": "Emotional reasoning",
+    "pattern": "Emotion–fact confusion"
+  },
+  "T-203": {
+    "bubble": "DROP",
+    "title": "TODAY’S FURTHEST USEFUL HORIZON",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-204": {
+    "bubble": "STILL",
+    "title": "THREE SELVES, THREE JOBS",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-205": {
+    "bubble": "RUSH",
+    "title": "BREAK THE DEADLINE MONOLITH",
+    "trigger": "Urgency & decision pressure",
+    "pattern": "Time-pressure distortion"
+  },
+  "T-206": {
+    "bubble": "PATCH",
+    "title": "TURN ANTICIPATION INTO INVENTORY",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation"
+  },
+  "T-207": {
+    "bubble": "GLITCH",
+    "title": "THE AFTERSHOCK CLOCK",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation"
+  },
+  "T-208": {
+    "bubble": "PATCH",
+    "title": "THE LIFE RETURNED TEST",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-209": {
+    "bubble": "STILL",
+    "title": "PUT THE YEARS BACK BETWEEN THEM",
+    "trigger": "Urgency & decision pressure",
+    "pattern": "Urgency bias"
+  },
+  "T-210": {
+    "bubble": "PATCH",
+    "title": "A NOTE FROM TOMORROW MORNING",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion"
+  },
+  "T-211": {
+    "bubble": "RUSH",
+    "title": "TWENTY SECONDS BEFORE THE STORY",
+    "trigger": "Emotional reasoning",
+    "pattern": "Emotion–fact confusion"
+  },
+  "T-212": {
+    "bubble": "STILL",
+    "title": "DELETE ‘AM’ FROM THE SENTENCE",
+    "trigger": "Emotional reasoning",
+    "pattern": "Emotion–fact confusion"
+  },
+  "T-213": {
+    "bubble": "STILL",
+    "title": "THIRD-PERSON OWNERSHIP TEST",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-214": {
+    "bubble": "GLITCH",
+    "title": "LET THE IMAGE FIND ITS LAST FRAME",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Sensory disconnection"
+  },
+  "T-215": {
+    "bubble": "RUSH",
+    "title": "NO-CONCEPT MINUTE",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Sensory disconnection"
+  },
+  "T-216": {
+    "bubble": "DROP",
+    "title": "TURN THE LABEL INTO MOTION",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-217": {
+    "bubble": "RUSH",
+    "title": "MUTE THE INNER SUBTITLES",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Sensory disconnection"
+  },
+  "T-218": {
+    "bubble": "DROP",
+    "title": "MEANING ON HOLD",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-219": {
+    "bubble": "PATCH",
+    "title": "COOL THE WORDS, KEEP THE FACTS",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation"
+  },
+  "T-220": {
+    "bubble": "DROP",
+    "title": "ONE WORD, ONE BREATH, RELEASE",
+    "trigger": "Uncertainty & reassurance seeking",
+    "pattern": "Uncertainty intolerance"
+  },
+  "T-221": {
+    "bubble": "GLITCH",
+    "title": "CAPTURE THE MODEL’S MISS",
+    "trigger": "Urgency & decision pressure",
+    "pattern": "Hindsight bias"
+  },
+  "T-222": {
+    "bubble": "LOOPIE",
+    "title": "MAKE FEAR NAME A DEADLINE",
+    "trigger": "Catastrophic prediction",
+    "pattern": "Probability overestimation"
+  },
+  "T-223": {
+    "bubble": "GLITCH",
+    "title": "CONFIDENCE IS NOT EVIDENCE",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-224": {
+    "bubble": "DROP",
+    "title": "GIVE THE FORECAST EDGES",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-225": {
+    "bubble": "PATCH",
+    "title": "LOOK FOR THE MISSING DANGER",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-226": {
+    "bubble": "PATCH",
+    "title": "THREE ACTIVE FUTURES ONLY",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-227": {
+    "bubble": "GLITCH",
+    "title": "PUT AN EXPIRY DATE ON THE CONCLUSION",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-228": {
+    "bubble": "GLITCH",
+    "title": "SAME FACTS, THREE ASSUMPTIONS",
+    "trigger": "Evidence distortion & selective thinking",
+    "pattern": "Context neglect"
+  },
+  "T-229": {
+    "bubble": "GLITCH",
+    "title": "FORECAST WITH A LANDING ZONE",
+    "trigger": "Perfectionism & performance pressure",
+    "pattern": "Perfectionism"
+  },
+  "T-230": {
+    "bubble": "GLITCH",
+    "title": "WAIT FOR THE EVIDENCE THAT CAN EXIST",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-231": {
+    "bubble": "GLITCH",
+    "title": "KEEP THE THREAT, ADD THE PERIPHERY",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Tunnel vision"
+  },
+  "T-232": {
+    "bubble": "STILL",
+    "title": "ZOOM LENS TRAINING",
+    "trigger": "Evidence distortion & selective thinking",
+    "pattern": "Context neglect"
+  },
+  "T-233": {
+    "bubble": "PATCH",
+    "title": "VIVID IS NOT IMPORTANT",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Attention capture"
+  },
+  "T-234": {
+    "bubble": "LOOPIE",
+    "title": "GROUNDING ANCHOR RELAY",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Present-moment loss"
+  },
+  "T-235": {
+    "bubble": "SYNC",
+    "title": "BRAID THE SIGNALS",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Attention misallocation"
+  },
+  "T-236": {
+    "bubble": "PATCH",
+    "title": "STAMP THE ENDING INTO THE SENSES",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Sensory disconnection"
+  },
+  "T-237": {
+    "bubble": "GLITCH",
+    "title": "MOVE NOVELTY TO THE RIGHT TEAM",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Attention misallocation"
+  },
+  "T-238": {
+    "bubble": "RUSH",
+    "title": "RUN THE TWO-WORD TASK",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Cognitive overload"
+  },
+  "T-239": {
+    "bubble": "RUSH",
+    "title": "THE RELEVANCE BOUNCER",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Attention misallocation"
+  },
+  "T-240": {
+    "bubble": "RUSH",
+    "title": "CLOSE THE ATTENTION TABS",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Attention misallocation"
+  },
+  "T-241": {
+    "bubble": "PATCH",
+    "title": "MEASURE THE EMOTION’S VELOCITY",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion"
+  },
+  "T-242": {
+    "bubble": "LOOPIE",
+    "title": "THE FEELING UNDER THE FEELING ABOUT IT",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Emotion stacking"
+  },
+  "T-243": {
+    "bubble": "LOOPIE",
+    "title": "HALF-SPEED THE FIRST MOVE",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion"
+  },
+  "T-244": {
+    "bubble": "PATCH",
+    "title": "RETURN EACH LOAD TO ITS SOURCE",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation"
+  },
+  "T-245": {
+    "bubble": "RUSH",
+    "title": "THE EMOTION STOPS AT THE SKIN",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary confusion"
+  },
+  "T-246": {
+    "bubble": "SYNC",
+    "title": "MATCH THE PRESSURE, THEN ZERO IT",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion"
+  },
+  "T-247": {
+    "bubble": "GLITCH",
+    "title": "PIN A RETURN ADDRESS",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Attention fragmentation"
+  },
+  "T-248": {
+    "bubble": "LOOPIE",
+    "title": "DISASSEMBLE THE ALARM PANEL",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation"
+  },
+  "T-249": {
+    "bubble": "PATCH",
+    "title": "CHANGE THE RHYTHM, CHANGE THE STATE",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-250": {
+    "bubble": "GLITCH",
+    "title": "FIND THE MOVE NO FEELING MUST BETRAY",
+    "trigger": "Communication & conflict",
+    "pattern": "Conflict escalation"
+  },
+  "T-251": {
+    "bubble": "RUSH",
+    "title": "OPEN THE IDENTITY PORTFOLIO",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Attention misallocation"
+  },
+  "T-252": {
+    "bubble": "PATCH",
+    "title": "GLOBAL LABELS NEED THREE RECEIPTS",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Labelling"
+  },
+  "T-253": {
+    "bubble": "GLITCH",
+    "title": "ADD THE TEMPORARY CLAUSE",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-254": {
+    "bubble": "PATCH",
+    "title": "TRAIT OR OLD PROTECTION STRATEGY?",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-255": {
+    "bubble": "STILL",
+    "title": "THE PRICE OF KEEPING THIS SELF",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-256": {
+    "bubble": "GLITCH",
+    "title": "PRACTISE THE QUALITY ANONYMOUSLY",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary confusion"
+  },
+  "T-257": {
+    "bubble": "RUSH",
+    "title": "REMOVE THE AUDIENCE",
+    "trigger": "Values, meaning & loss",
+    "pattern": "Value disconnection"
+  },
+  "T-258": {
+    "bubble": "LOOPIE",
+    "title": "BLANK THE NAMEPLATE",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Labelling"
+  },
+  "T-259": {
+    "bubble": "STILL",
+    "title": "CALL THE INNER COUNCIL",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-260": {
+    "bubble": "LOOPIE",
+    "title": "EXIST FOR ONE MINUTE WITHOUT AUTOBIOGRAPHY",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Narrative overbuilding"
+  },
+  "T-261": {
+    "bubble": "RUSH",
+    "title": "MOVE THE MEMORY CAMERA",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-262": {
+    "bubble": "PATCH",
+    "title": "THE MEMORY DOES NOT END THERE",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-263": {
+    "bubble": "DROP",
+    "title": "TURN DOWN THE DOMINANT CHANNEL",
+    "trigger": "Evidence distortion & selective thinking",
+    "pattern": "Context neglect"
+  },
+  "T-264": {
+    "bubble": "GLITCH",
+    "title": "POWER THEN, RESOURCES NOW",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-265": {
+    "bubble": "LOOPIE",
+    "title": "RETURN THEIR ACTION; KEEP YOUR CHOICE",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-266": {
+    "bubble": "PATCH",
+    "title": "SAY THE SENTENCE HISTORY NEVER RECEIVED",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-267": {
+    "bubble": "LOOPIE",
+    "title": "MEMORY REVIEW BY APPOINTMENT ONLY",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-268": {
+    "bubble": "STILL",
+    "title": "ADD THE WITNESS WHO SHOULD HAVE BEEN THERE",
+    "trigger": "Observer loss & cognitive fusion",
+    "pattern": "Observer loss"
+  },
+  "T-269": {
+    "bubble": "RUSH",
+    "title": "ASK WHAT THE MEMORY IS STILL BILLING",
+    "trigger": "Rumination & worry loops",
+    "pattern": "Rumination"
+  },
+  "T-270": {
+    "bubble": "DROP",
+    "title": "SAVE THE LESSON, DELETE THE VERDICT",
+    "trigger": "Evidence distortion & selective thinking",
+    "pattern": "Overgeneralising"
+  },
+  "T-271": {
+    "bubble": "PATCH",
+    "title": "ENTER THROUGH A RANDOM DOOR",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-272": {
+    "bubble": "GLITCH",
+    "title": "MAKE PROGRESS LEAVE FOOTPRINTS",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Digital compulsion"
+  },
+  "T-273": {
+    "bubble": "PATCH",
+    "title": "SET UP WHILE ENERGY IS CHEAP",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-274": {
+    "bubble": "PATCH",
+    "title": "LEAVE A BRIDGE BACK",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-275": {
+    "bubble": "LOOPIE",
+    "title": "MATCH THE TASK TO THE BODY’S TEMPERATURE",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation"
+  },
+  "T-276": {
+    "bubble": "PATCH",
+    "title": "ENTER THROUGH THE SIDE DOOR",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-277": {
+    "bubble": "LOOPIE",
+    "title": "THE VERSION THAT STILL COUNTS",
+    "trigger": "Perfectionism & performance pressure",
+    "pattern": "Perfectionism"
+  },
+  "T-278": {
+    "bubble": "PATCH",
+    "title": "PUT THE FIRST OBJECT IN THE PATH",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-279": {
+    "bubble": "LOOPIE",
+    "title": "PAY THE PROCESS IMMEDIATELY",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-280": {
+    "bubble": "RUSH",
+    "title": "THE LAPSE FIRE DRILL",
+    "trigger": "Comparison & rejection",
+    "pattern": "Rejection magnification"
+  },
+  "T-281": {
+    "bubble": "DROP",
+    "title": "SET THE LIMIT BEFORE THE NEXT TEST",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary confusion"
+  },
+  "T-282": {
+    "bubble": "STILL",
+    "title": "RELATIONSHIP DATA, NOT ONE BIG FEELING",
+    "trigger": "Evidence distortion & selective thinking",
+    "pattern": "Context neglect"
+  },
+  "T-283": {
+    "bubble": "DROP",
+    "title": "COME BACK FROM THEIR IMAGINED HEAD",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary confusion"
+  },
+  "T-284": {
+    "bubble": "LOOPIE",
+    "title": "TURN DOWN ONE DOOR, NOT THE WHOLE HOUSE",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary confusion"
+  },
+  "T-285": {
+    "bubble": "RUSH",
+    "title": "UNDERSTAND, THEN DISAGREE CLEANLY",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-286": {
+    "bubble": "STILL",
+    "title": "APOLOGY NEEDS THREE EVIDENCE POINTS",
+    "trigger": "Emotional reasoning",
+    "pattern": "Emotion–fact confusion"
+  },
+  "T-287": {
+    "bubble": "RUSH",
+    "title": "ONE FIGHT, THREE TIME SCALES",
+    "trigger": "Communication & conflict",
+    "pattern": "Conflict escalation"
+  },
+  "T-288": {
+    "bubble": "STILL",
+    "title": "SET THE CONTACT DOSE",
+    "trigger": "Evidence distortion & selective thinking",
+    "pattern": "Black-and-white thinking"
+  },
+  "T-289": {
+    "bubble": "PATCH",
+    "title": "MAP THE RELATIONSHIP LABOUR",
+    "trigger": "Evidence distortion & selective thinking",
+    "pattern": "Context neglect"
+  },
+  "T-290": {
+    "bubble": "SYNC",
+    "title": "ASK THE QUESTION FEAR KEEPS ANSWERING",
+    "trigger": "Communication & conflict",
+    "pattern": "Communication distortion"
+  },
+  "T-291": {
+    "bubble": "GLITCH",
+    "title": "POSTURE WITHOUT PROPHECY",
+    "trigger": "Panic & body alarm",
+    "pattern": "Posture–mood locking"
+  },
+  "T-292": {
+    "bubble": "DROP",
+    "title": "SOFT JAW, SAME BOUNDARY",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary confusion"
+  },
+  "T-293": {
+    "bubble": "PATCH",
+    "title": "CHOOSE THE EASIEST MISTAKE TO CATCH",
+    "trigger": "Emotional reasoning",
+    "pattern": "Emotion–fact confusion"
+  },
+  "T-294": {
+    "bubble": "PATCH",
+    "title": "FIND THE MOMENT THE FLOOR CATCHES YOU",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation"
+  },
+  "T-295": {
+    "bubble": "LOOPIE",
+    "title": "TAKE UP 5% MORE SPACE",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-296": {
+    "bubble": "GLITCH",
+    "title": "LET THE SHAKE BE SMALL",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-297": {
+    "bubble": "LOOPIE",
+    "title": "SETTLE WITHOUT USING BREATH",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-state misreading"
+  },
+  "T-298": {
+    "bubble": "LOOPIE",
+    "title": "UNWIND IN REVERSE",
+    "trigger": "Panic & body alarm",
+    "pattern": "Physiological tension holding"
+  },
+  "T-299": {
+    "bubble": "LOOPIE",
+    "title": "WHICH WAY DOES THE URGE POINT?",
+    "trigger": "Panic & body alarm",
+    "pattern": "Body alarm escalation"
+  },
+  "T-300": {
+    "bubble": "DROP",
+    "title": "FINISH THE BODY'S FULL STOP",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion"
+  },
+  "T-301": {
+    "bubble": "PATCH",
+    "title": "BORROW STILLNESS FROM THE WALL",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Sensory disconnection"
+  },
+  "T-302": {
+    "bubble": "PATCH",
+    "title": "SORT THE SOUNDS BY DISTANCE",
+    "trigger": "Urgency & decision pressure",
+    "pattern": "Urgency bias"
+  },
+  "T-303": {
+    "bubble": "PATCH",
+    "title": "GIVE THE FINGERS A HARDER PROBLEM",
+    "trigger": "Rumination & worry loops",
+    "pattern": "Rumination"
+  },
+  "T-304": {
+    "bubble": "GLITCH",
+    "title": "THREE TEMPERATURE FACTS",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Sensory disconnection"
+  },
+  "T-305": {
+    "bubble": "LOOPIE",
+    "title": "FIND FIVE COLOURS WITHOUT CHASING THEM",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Sensory disconnection"
+  },
+  "T-306": {
+    "bubble": "GLITCH",
+    "title": "SCENT THE RETURN",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Present-moment loss"
+  },
+  "T-307": {
+    "bubble": "LOOPIE",
+    "title": "LET ONE TASTE FINISH",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Sensory disconnection"
+  },
+  "T-308": {
+    "bubble": "PATCH",
+    "title": "FIND THE SENSE FACT THE STORY CANNOT EXPLAIN",
+    "trigger": "Evidence distortion & selective thinking",
+    "pattern": "Mental filtering"
+  },
+  "T-309": {
+    "bubble": "LOOPIE",
+    "title": "THE ROOM HAS JOBS, NOT DEMANDS",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-310": {
+    "bubble": "SYNC",
+    "title": "TRANSLATE ACROSS SENSES",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Sensory disconnection"
+  },
+  "T-311": {
+    "bubble": "SYNC",
+    "title": "COUNT EVERY OPEN LOOP",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Cognitive overload"
+  },
+  "T-312": {
+    "bubble": "DROP",
+    "title": "ONE ACTIVE SLOT",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Cognitive overload"
+  },
+  "T-313": {
+    "bubble": "PATCH",
+    "title": "HIDE THE OPTION NAMES",
+    "trigger": "Comparison & rejection",
+    "pattern": "Comparison distortion"
+  },
+  "T-314": {
+    "bubble": "PATCH",
+    "title": "CLOSE THE INPUT VALVE",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Cognitive overload"
+  },
+  "T-315": {
+    "bubble": "PATCH",
+    "title": "GROUP BY BRAIN MODE",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Cognitive overload"
+  },
+  "T-316": {
+    "bubble": "PATCH",
+    "title": "WHEN DOES THIS INFORMATION EXPIRE?",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Cognitive overload"
+  },
+  "T-317": {
+    "bubble": "SYNC",
+    "title": "SEPARATE THE MENTAL INBOXES",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Cognitive overload"
+  },
+  "T-318": {
+    "bubble": "LOOPIE",
+    "title": "QUARANTINE THE UNAVAILABLE VARIABLE",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Cognitive overload"
+  },
+  "T-319": {
+    "bubble": "LOOPIE",
+    "title": "ISSUE THE DECISION RECEIPT",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Cognitive overload"
+  },
+  "T-320": {
+    "bubble": "LOOPIE",
+    "title": "GIVE THE THOUGHT A RETURN ADDRESS",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Cognitive overload"
+  },
+  "T-321": {
+    "bubble": "PATCH",
+    "title": "MOVE BEFORE MOTIVATION",
+    "trigger": "Emotional reasoning",
+    "pattern": "Emotion–fact confusion"
+  },
+  "T-322": {
+    "bubble": "SYNC",
+    "title": "WANT NOW / PROTECT LATER",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion"
+  },
+  "T-323": {
+    "bubble": "PATCH",
+    "title": "WHAT KIND OF EFFORT IS THIS?",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-324": {
+    "bubble": "SYNC",
+    "title": "PREVIEW THE AFTER",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Sensory disconnection"
+  },
+  "T-325": {
+    "bubble": "LOOPIE",
+    "title": "PUT THE PROMISE AT THE CROSSROADS",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-326": {
+    "bubble": "LOOPIE",
+    "title": "FIND YOUR WORKING GEAR",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-327": {
+    "bubble": "SYNC",
+    "title": "THE BORING DOSE",
+    "trigger": "Body-state misreading",
+    "pattern": "Body-sensation misinterpretation"
+  },
+  "T-328": {
+    "bubble": "LOOPIE",
+    "title": "HARVEST THE PROOF OF PROGRESS",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-329": {
+    "bubble": "LOOPIE",
+    "title": "TURN PURPOSE INTO A TUESDAY",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-330": {
+    "bubble": "RUSH",
+    "title": "BURY THE GOAL, FREE THE ENERGY",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-331": {
+    "bubble": "STILL",
+    "title": "WHAT SPECIES OF UNKNOWN IS THIS?",
+    "trigger": "Uncertainty & reassurance seeking",
+    "pattern": "Uncertainty intolerance"
+  },
+  "T-332": {
+    "bubble": "GLITCH",
+    "title": "THREE RINGS OF AGENCY",
+    "trigger": "Uncertainty & reassurance seeking",
+    "pattern": "Uncertainty intolerance"
+  },
+  "T-333": {
+    "bubble": "RUSH",
+    "title": "THE UNANSWERED URGE EXPERIMENT",
+    "trigger": "Uncertainty & reassurance seeking",
+    "pattern": "Uncertainty intolerance"
+  },
+  "T-334": {
+    "bubble": "RUSH",
+    "title": "POSSIBLE IS NOT PROBABLE",
+    "trigger": "Catastrophic prediction",
+    "pattern": "Probability overestimation"
+  },
+  "T-335": {
+    "bubble": "STILL",
+    "title": "PLAN BOTH BRANCHES",
+    "trigger": "Uncertainty & reassurance seeking",
+    "pattern": "Uncertainty intolerance"
+  },
+  "T-336": {
+    "bubble": "PATCH",
+    "title": "SWAP OUTCOME CONTROL FOR PROCESS CONTROL",
+    "trigger": "Uncertainty & reassurance seeking",
+    "pattern": "Uncertainty intolerance"
+  },
+  "T-337": {
+    "bubble": "LOOPIE",
+    "title": "FIVE CLUES MAY BE ONE CLUE",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-338": {
+    "bubble": "PATCH",
+    "title": "THREE INCOMPATIBLE READINGS",
+    "trigger": "Uncertainty & reassurance seeking",
+    "pattern": "Uncertainty intolerance"
+  },
+  "T-339": {
+    "bubble": "LOOPIE",
+    "title": "CHOOSE WITH THE UNKNOWN INCLUDED",
+    "trigger": "Uncertainty & reassurance seeking",
+    "pattern": "Uncertainty intolerance"
+  },
+  "T-340": {
+    "bubble": "DROP",
+    "title": "THE POINT OF NO MORE INFLUENCE",
+    "trigger": "Uncertainty & reassurance seeking",
+    "pattern": "Uncertainty intolerance"
+  },
+  "T-341": {
+    "bubble": "LOOPIE",
+    "title": "ONE LOCAL REASON",
+    "trigger": "Emotional reasoning",
+    "pattern": "Emotion–fact confusion"
+  },
+  "T-342": {
+    "bubble": "LOOPIE",
+    "title": "CARRY FORWARD WITHOUT CALLING IT GOOD",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary confusion"
+  },
+  "T-343": {
+    "bubble": "LOOPIE",
+    "title": "THE LAST-DAY FILTER",
+    "trigger": "Urgency & decision pressure",
+    "pattern": "Urgency bias"
+  },
+  "T-344": {
+    "bubble": "PATCH",
+    "title": "LEAVE ONE THING BETTER",
+    "trigger": "Evidence distortion & selective thinking",
+    "pattern": "Success discounting"
+  },
+  "T-345": {
+    "bubble": "LOOPIE",
+    "title": "PAIN IS PRESENT; LIFE HAS OTHER DEPARTMENTS",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-346": {
+    "bubble": "LOOPIE",
+    "title": "GIVE THE BIG QUESTION A ROOM, NOT THE HOUSE",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-347": {
+    "bubble": "GLITCH",
+    "title": "MOVE THE VALUE TO A NEW VESSEL",
+    "trigger": "Values, meaning & loss",
+    "pattern": "Value disconnection"
+  },
+  "T-348": {
+    "bubble": "SYNC",
+    "title": "BUILD MEANING ON FIVE LEGS",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-349": {
+    "bubble": "GLITCH",
+    "title": "MAKE THE ORDINARY WORTHY OF FULL CONTACT",
+    "trigger": "Urgency & decision pressure",
+    "pattern": "Time-pressure distortion"
+  },
+  "T-350": {
+    "bubble": "RUSH",
+    "title": "THIS IS A CHAPTER, NOT THE BOOK",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Narrative overbuilding"
+  },
+  "T-351": {
+    "bubble": "RUSH",
+    "title": "THOUGHTS MUST BRING AN AGENDA",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Unexamined belief"
+  },
+  "T-352": {
+    "bubble": "DROP",
+    "title": "CHANGE THE MENTAL TOOL, NOT THE PRESSURE",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-353": {
+    "bubble": "SYNC",
+    "title": "WHAT PREPARATION DID WORRY ACTUALLY PRODUCE?",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-354": {
+    "bubble": "RUSH",
+    "title": "CALL THE MENTAL MEETING TO ORDER",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Unexamined belief"
+  },
+  "T-355": {
+    "bubble": "SYNC",
+    "title": "MARK THE QUALITY DROP",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Unexamined belief"
+  },
+  "T-356": {
+    "bubble": "LOOPIE",
+    "title": "NAME THE GUARANTEE YOU ARE SECRETLY BUYING",
+    "trigger": "Uncertainty & reassurance seeking",
+    "pattern": "Uncertainty intolerance"
+  },
+  "T-357": {
+    "bubble": "SYNC",
+    "title": "REPLAY THE TURNING POINT AT HALF SPEED",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-358": {
+    "bubble": "SYNC",
+    "title": "GIVE THOUGHTS WEIGHTED VOTES",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-359": {
+    "bubble": "SYNC",
+    "title": "AUCTION THE NEXT ATTENTION BLOCK",
+    "trigger": "Urgency & decision pressure",
+    "pattern": "Urgency bias"
+  },
+  "T-360": {
+    "bubble": "SYNC",
+    "title": "TURN THE LOOP INTO FIVE ICONS",
+    "trigger": "Rumination & worry loops",
+    "pattern": "Rumination"
+  },
+  "T-361": {
+    "bubble": "DROP",
+    "title": "DEMOTE THE HEADLINE EXPERIENCE",
+    "trigger": "Observer loss & cognitive fusion",
+    "pattern": "Observer loss"
+  },
+  "T-362": {
+    "bubble": "LOOPIE",
+    "title": "WHERE EXACTLY IS THE OBSERVER?",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary confusion"
+  },
+  "T-363": {
+    "bubble": "GLITCH",
+    "title": "CATCH THE MOMENT ‘MINE’ ARRIVES",
+    "trigger": "Observer loss & cognitive fusion",
+    "pattern": "Observer loss"
+  },
+  "T-364": {
+    "bubble": "PATCH",
+    "title": "SOFTEN BOTH SIDES OF SEEING",
+    "trigger": "Observer loss & cognitive fusion",
+    "pattern": "Observer loss"
+  },
+  "T-365": {
+    "bubble": "LOOPIE",
+    "title": "PUT THE COMMENTATOR IN THE CHEAP SEAT",
+    "trigger": "Attention & cognitive overload",
+    "pattern": "Tunnel vision"
+  },
+  "T-366": {
+    "bubble": "LOOPIE",
+    "title": "ROTATE THE OBSERVATION DECK",
+    "trigger": "Observer loss & cognitive fusion",
+    "pattern": "Observer loss"
+  },
+  "T-367": {
+    "bubble": "LOOPIE",
+    "title": "THE MILLISECOND BEFORE THE NAME",
+    "trigger": "Observer loss & cognitive fusion",
+    "pattern": "Observer loss"
+  },
+  "T-368": {
+    "bubble": "RUSH",
+    "title": "NOTICE THE SPACE DOING THE HOLDING",
+    "trigger": "Observer loss & cognitive fusion",
+    "pattern": "Observer loss"
+  },
+  "T-369": {
+    "bubble": "GLITCH",
+    "title": "PLAY EMOTION JENGA",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion"
+  },
+  "T-370": {
+    "bubble": "RUSH",
+    "title": "LET THE WATCHER GO TOO",
+    "trigger": "Observer loss & cognitive fusion",
+    "pattern": "Observer loss"
+  },
+  "T-371": {
+    "bubble": "SYNC",
+    "title": "SCULPT THE PROBLEM",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-372": {
+    "bubble": "LOOPIE",
+    "title": "IMAGINE TODAY’S EMOTIONAL WEATHER",
+    "trigger": "Emotional reasoning",
+    "pattern": "Emotion–fact confusion"
+  },
+  "T-373": {
+    "bubble": "SYNC",
+    "title": "REMEMBER THE FUTURE IN ADVANCE",
+    "trigger": "Grounding & present-moment loss",
+    "pattern": "Sensory disconnection"
+  },
+  "T-374": {
+    "bubble": "SYNC",
+    "title": "INTERVIEW THE OBSTACLE",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-375": {
+    "bubble": "SYNC",
+    "title": "IMAGINE THE INNER MACHINE",
+    "trigger": "Urges, impulses & cravings",
+    "pattern": "Impulse fusion"
+  },
+  "T-376": {
+    "bubble": "GLITCH",
+    "title": "OPEN THREE ENDING ROOMS",
+    "trigger": "Values, meaning & loss",
+    "pattern": "Value disconnection"
+  },
+  "T-377": {
+    "bubble": "RUSH",
+    "title": "CHANGE THE SYMBOL’S JOB",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-378": {
+    "bubble": "LOOPIE",
+    "title": "MOVE THE INNER CAMERA",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-379": {
+    "bubble": "SYNC",
+    "title": "BORROW ONE MOVE FROM THE AVATAR",
+    "trigger": "Panic & body alarm",
+    "pattern": "Posture–mood locking"
+  },
+  "T-380": {
+    "bubble": "SYNC",
+    "title": "BUILD THE MINIATURE FIRST",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-381": {
+    "bubble": "LOOPIE",
+    "title": "FOUR-CELL DECISION MATRIX",
+    "trigger": "Emotional reasoning",
+    "pattern": "Emotion–fact confusion"
+  },
+  "T-382": {
+    "bubble": "LOOPIE",
+    "title": "WHICH REGRET ARE YOU AVOIDING?",
+    "trigger": "Values, meaning & loss",
+    "pattern": "Value disconnection"
+  },
+  "T-383": {
+    "bubble": "SYNC",
+    "title": "PUT TIME ARROWS ON THE OPTIONS",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-384": {
+    "bubble": "SYNC",
+    "title": "WHAT WOULD THIS FACT CHANGE?",
+    "trigger": "Action avoidance & procrastination",
+    "pattern": "Action avoidance"
+  },
+  "T-385": {
+    "bubble": "SYNC",
+    "title": "RUN A TWO-OPTION KNOCKOUT",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-386": {
+    "bubble": "LOOPIE",
+    "title": "REMOVE WHAT THE CHOICE WOULD ‘PROVE’",
+    "trigger": "Values, meaning & loss",
+    "pattern": "Value disconnection"
+  },
+  "T-387": {
+    "bubble": "SYNC",
+    "title": "THE PAST INVESTMENT GETS NO NEW VOTE",
+    "trigger": "Urgency & decision pressure",
+    "pattern": "Sunk-cost thinking"
+  },
+  "T-388": {
+    "bubble": "RUSH",
+    "title": "CONSTRAINTS ENTER BEFORE OPTIONS",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary confusion"
+  },
+  "T-389": {
+    "bubble": "SYNC",
+    "title": "IMAGINE THE FAILURE HEADLINE EARLY",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-390": {
+    "bubble": "SYNC",
+    "title": "PROTECT THE VALID CHOICE",
+    "trigger": "Automatic habits & autopilot",
+    "pattern": "Automatic-pattern blindness"
+  },
+  "T-391": {
+    "bubble": "LOOPIE",
+    "title": "WHOSE HANDWRITING IS ON THIS BELIEF?",
+    "trigger": "Evidence distortion & selective thinking",
+    "pattern": "Context neglect"
+  },
+  "T-392": {
+    "bubble": "LOOPIE",
+    "title": "MOVE THE RULE BETWEEN WORLDS",
+    "trigger": "Evidence distortion & selective thinking",
+    "pattern": "Context neglect"
+  },
+  "T-393": {
+    "bubble": "GLITCH",
+    "title": "COMMON IS NOT THE SAME AS RIGHT",
+    "trigger": "Comparison & rejection",
+    "pattern": "Comparison distortion"
+  },
+  "T-394": {
+    "bubble": "PATCH",
+    "title": "WHAT MATERIAL CONSEQUENCE DOES STATUS ACTUALLY HAVE?",
+    "trigger": "Comparison & rejection",
+    "pattern": "Comparison distortion"
+  },
+  "T-395": {
+    "bubble": "LOOPIE",
+    "title": "CHANGE THE COMPARISON DENOMINATOR",
+    "trigger": "Comparison & rejection",
+    "pattern": "Comparison distortion"
+  },
+  "T-396": {
+    "bubble": "SYNC",
+    "title": "BREAK THE EXPECTED SEQUENCE",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Unexamined belief"
+  },
+  "T-397": {
+    "bubble": "LOOPIE",
+    "title": "DO ONE GOOD THING WITH NO APPLAUSE BUTTON",
+    "trigger": "Uncertainty & reassurance seeking",
+    "pattern": "Reassurance dependence"
+  },
+  "T-398": {
+    "bubble": "SYNC",
+    "title": "HIDE THE CROWD’S ANSWER",
+    "trigger": "Rigid beliefs, labels & stories",
+    "pattern": "Unexamined belief"
+  },
+  "T-399": {
+    "bubble": "GLITCH",
+    "title": "RETURN THE SHAME TO ITS OLD ADDRESS",
+    "trigger": "Self-blame, guilt & shame",
+    "pattern": "Shame globalisation"
+  },
+  "T-400": {
+    "bubble": "SYNC",
+    "title": "GIVE THE BELIEF A POSTCODE",
+    "trigger": "Boundaries & over-responsibility",
+    "pattern": "Boundary confusion"
+  }
+}
