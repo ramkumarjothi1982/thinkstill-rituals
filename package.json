@@ -1,0 +1,9 @@
+{
+  "name": "thinkstill-rituals",
+  "version": "37.2.0",
+  "private": true,
+  "description": "ThinkStill 400 — v37.2 EASY INTEGRATED ZERO-REPEAT FINAL",
+  "scripts": {
+    "validate": "node validate.js"
+  }
+}
