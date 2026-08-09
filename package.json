@@ -1,0 +1,9 @@
+{
+  "name": "thinkstill-rituals",
+  "version": "36.0.0",
+  "private": true,
+  "description": "ThinkStill 400 — v36 FINAL Clean Consumer",
+  "scripts": {
+    "validate": "node validate.js"
+  }
+}
