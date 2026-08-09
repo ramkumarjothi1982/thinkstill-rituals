@@ -1,0 +1,56 @@
+{
+  "schema": "thinkstill-manifest-v36.1-compatible",
+  "version": "36.1",
+  "project": "ThinkStill 400 FINAL Clean Consumer MASTER — Full Ritual Compatibility Fix",
+  "row_count": 400,
+  "files": {
+    "all": "rituals.json",
+    "routingIndex": "routing-index.json",
+    "bubbles": {
+      "GLITCH": "glitch.json",
+      "DROP": "drop.json",
+      "STILL": "still.json",
+      "PATCH": "patch.json",
+      "LOOPIE": "loopie.json",
+      "RUSH": "rush.json",
+      "SYNC": "sync.json"
+    }
+  },
+  "consumer": {
+    "recommendedField": "ritualText",
+    "titleField": "title",
+    "goalField": "goal",
+    "stepsField": "steps",
+    "winField": "win",
+    "formulaFlowField": "formulaFlow",
+    "safetyField": "safety",
+    "doNotRender": [
+      "internal.hook",
+      "internal.gameMove"
+    ]
+  },
+  "compatibilityAliases": [
+    "Goal",
+    "Goal + Steps",
+    "Win / Reward",
+    "Formula Flow",
+    "Safety",
+    "ritual",
+    "ritualText",
+    "fullRitual",
+    "content"
+  ],
+  "counts": {
+    "bubbles": {
+      "GLITCH": 58,
+      "DROP": 57,
+      "STILL": 57,
+      "PATCH": 57,
+      "LOOPIE": 57,
+      "RUSH": 57,
+      "SYNC": 57
+    },
+    "triggers": 22,
+    "patterns": 63
+  }
+}
