@@ -1,9 +1,0 @@
-{
-  "name": "thinkstill-rituals",
-  "version": "400.0.0",
-  "private": true,
-  "description": "ThinkStill 400 \u2014 FINAL PRODUCT-READY MASTER",
-  "scripts": {
-    "validate": "node validate.js"
-  }
-}
