@@ -1,0 +1,9 @@
+{
+  "name": "thinkstill-rituals",
+  "version": "400.1.0",
+  "private": true,
+  "description": "ThinkStill 400 \u2014 TRUE ONE-OF-ONE PRODUCT-READY LOCKED MASTER",
+  "scripts": {
+    "validate": "node validate.js"
+  }
+}
