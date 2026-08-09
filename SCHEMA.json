@@ -1,0 +1,25 @@
+{
+  "schema": "thinkstill-package-schema-v30",
+  "version": "30.0",
+  "renderer_fields": {
+    "title": "Ritual title",
+    "trigger_play_time": "TRIGGER + PLAY TIME + HOOK composite",
+    "goal_why_game_move": "GOAL + GAME MOVE composite",
+    "play_the_loop": "Numbered steps + optional FINISH MOVE; deliberately no HOW TO PLAY heading",
+    "win_reward": "WIN SIGNAL block",
+    "formula_flow": "Formula Flow",
+    "safety": "Safety block"
+  },
+  "removed_user_facing_sections": [
+    "HOW TO PLAY",
+    "POWER-UP",
+    "POWER-UPS",
+    "POTENCY STACK"
+  ],
+  "required_routing_fields": [
+    "id",
+    "bubble",
+    "thinking_error",
+    "precise_subpattern"
+  ]
+}

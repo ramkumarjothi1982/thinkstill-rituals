@@ -1,0 +1,641 @@
+{
+  "schema": "thinkstill-routing-v30",
+  "version": "30.0",
+  "ritual_count": 400,
+  "thinking_error_count": 22,
+  "pattern_count": 63,
+  "bubble_counts": {
+    "GLITCH": 58,
+    "DROP": 57,
+    "SYNC": 57,
+    "STILL": 57,
+    "RUSH": 57,
+    "LOOPIE": 57,
+    "PATCH": 57
+  },
+  "selection": {
+    "bubble_selection": "automatic",
+    "no_replay_scope": "global_400",
+    "rule": "Classify the issue, match the thinking error and precise pattern, exclude seen IDs, then choose the strongest eligible ritual.",
+    "seen_storage_key": "thinkstill_seen_ritual_ids_v30"
+  },
+  "thinking_errors": {
+    "Action avoidance & procrastination": {
+      "count": 50,
+      "patterns": [
+        "Action avoidance",
+        "Avoidance reinforcement",
+        "Digital compulsion"
+      ],
+      "ritual_ids": [
+        "T-009",
+        "T-011",
+        "T-012",
+        "T-013",
+        "T-015",
+        "T-016",
+        "T-019",
+        "T-021",
+        "T-030",
+        "T-045",
+        "T-077",
+        "T-139",
+        "T-151",
+        "T-156",
+        "T-165",
+        "T-166",
+        "T-167",
+        "T-175",
+        "T-203",
+        "T-204",
+        "T-213",
+        "T-223",
+        "T-227",
+        "T-230",
+        "T-253",
+        "T-255",
+        "T-259",
+        "T-264",
+        "T-266",
+        "T-271",
+        "T-272",
+        "T-273",
+        "T-274",
+        "T-276",
+        "T-278",
+        "T-279",
+        "T-309",
+        "T-325",
+        "T-326",
+        "T-328",
+        "T-329",
+        "T-345",
+        "T-348",
+        "T-352",
+        "T-353",
+        "T-357",
+        "T-358",
+        "T-371",
+        "T-374",
+        "T-384"
+      ]
+    },
+    "Attention & cognitive overload": {
+      "count": 27,
+      "patterns": [
+        "Attention fragmentation",
+        "Attention misallocation",
+        "Cognitive overload",
+        "Tunnel vision"
+      ],
+      "ritual_ids": [
+        "T-046",
+        "T-118",
+        "T-120",
+        "T-123",
+        "T-124",
+        "T-129",
+        "T-131",
+        "T-136",
+        "T-179",
+        "T-231",
+        "T-235",
+        "T-237",
+        "T-238",
+        "T-239",
+        "T-240",
+        "T-247",
+        "T-251",
+        "T-311",
+        "T-312",
+        "T-314",
+        "T-315",
+        "T-316",
+        "T-317",
+        "T-318",
+        "T-319",
+        "T-320",
+        "T-365"
+      ]
+    },
+    "Automatic habits & autopilot": {
+      "count": 39,
+      "patterns": [
+        "Automatic-pattern blindness"
+      ],
+      "ritual_ids": [
+        "T-023",
+        "T-042",
+        "T-044",
+        "T-071",
+        "T-079",
+        "T-113",
+        "T-119",
+        "T-126",
+        "T-128",
+        "T-149",
+        "T-164",
+        "T-168",
+        "T-171",
+        "T-173",
+        "T-174",
+        "T-191",
+        "T-193",
+        "T-197",
+        "T-216",
+        "T-218",
+        "T-224",
+        "T-225",
+        "T-226",
+        "T-254",
+        "T-261",
+        "T-262",
+        "T-267",
+        "T-285",
+        "T-323",
+        "T-330",
+        "T-337",
+        "T-346",
+        "T-377",
+        "T-378",
+        "T-380",
+        "T-383",
+        "T-385",
+        "T-389",
+        "T-390"
+      ]
+    },
+    "Body-state misreading": {
+      "count": 29,
+      "patterns": [
+        "Body-sensation misinterpretation",
+        "Body-state misreading"
+      ],
+      "ritual_ids": [
+        "T-020",
+        "T-047",
+        "T-065",
+        "T-073",
+        "T-081",
+        "T-083",
+        "T-089",
+        "T-105",
+        "T-116",
+        "T-117",
+        "T-122",
+        "T-137",
+        "T-138",
+        "T-143",
+        "T-145",
+        "T-148",
+        "T-160",
+        "T-162",
+        "T-169",
+        "T-170",
+        "T-180",
+        "T-195",
+        "T-208",
+        "T-249",
+        "T-265",
+        "T-295",
+        "T-296",
+        "T-297",
+        "T-327"
+      ]
+    },
+    "Boundaries & over-responsibility": {
+      "count": 19,
+      "patterns": [
+        "Boundary avoidance",
+        "Boundary confusion"
+      ],
+      "ritual_ids": [
+        "T-039",
+        "T-048",
+        "T-135",
+        "T-172",
+        "T-181",
+        "T-186",
+        "T-189",
+        "T-198",
+        "T-199",
+        "T-245",
+        "T-256",
+        "T-281",
+        "T-283",
+        "T-284",
+        "T-292",
+        "T-342",
+        "T-362",
+        "T-388",
+        "T-400"
+      ]
+    },
+    "Catastrophic prediction": {
+      "count": 6,
+      "patterns": [
+        "Catastrophising",
+        "Fortune telling",
+        "Probability overestimation"
+      ],
+      "ritual_ids": [
+        "T-003",
+        "T-004",
+        "T-008",
+        "T-201",
+        "T-222",
+        "T-334"
+      ]
+    },
+    "Communication & conflict": {
+      "count": 8,
+      "patterns": [
+        "Communication distortion",
+        "Conflict escalation"
+      ],
+      "ritual_ids": [
+        "T-095",
+        "T-157",
+        "T-182",
+        "T-187",
+        "T-188",
+        "T-250",
+        "T-287",
+        "T-290"
+      ]
+    },
+    "Comparison & rejection": {
+      "count": 11,
+      "patterns": [
+        "Comparison distortion",
+        "Rejection magnification"
+      ],
+      "ritual_ids": [
+        "T-026",
+        "T-060",
+        "T-102",
+        "T-132",
+        "T-146",
+        "T-161",
+        "T-280",
+        "T-313",
+        "T-393",
+        "T-394",
+        "T-395"
+      ]
+    },
+    "Emotional reasoning": {
+      "count": 17,
+      "patterns": [
+        "Emotional reasoning",
+        "Emotion–fact confusion"
+      ],
+      "ritual_ids": [
+        "T-002",
+        "T-014",
+        "T-041",
+        "T-061",
+        "T-063",
+        "T-068",
+        "T-076",
+        "T-140",
+        "T-202",
+        "T-211",
+        "T-212",
+        "T-286",
+        "T-293",
+        "T-321",
+        "T-341",
+        "T-372",
+        "T-381"
+      ]
+    },
+    "Evidence distortion & selective thinking": {
+      "count": 16,
+      "patterns": [
+        "Black-and-white thinking",
+        "Context neglect",
+        "Mental filtering",
+        "Overgeneralising",
+        "Success discounting"
+      ],
+      "ritual_ids": [
+        "T-006",
+        "T-078",
+        "T-080",
+        "T-153",
+        "T-159",
+        "T-228",
+        "T-232",
+        "T-263",
+        "T-270",
+        "T-282",
+        "T-288",
+        "T-289",
+        "T-308",
+        "T-344",
+        "T-391",
+        "T-392"
+      ]
+    },
+    "Grounding & present-moment loss": {
+      "count": 22,
+      "patterns": [
+        "Attention capture",
+        "Dissociation drift",
+        "Present-moment loss",
+        "Sensory disconnection"
+      ],
+      "ritual_ids": [
+        "T-072",
+        "T-088",
+        "T-108",
+        "T-115",
+        "T-125",
+        "T-134",
+        "T-141",
+        "T-163",
+        "T-214",
+        "T-215",
+        "T-217",
+        "T-233",
+        "T-234",
+        "T-236",
+        "T-301",
+        "T-304",
+        "T-305",
+        "T-306",
+        "T-307",
+        "T-310",
+        "T-324",
+        "T-373"
+      ]
+    },
+    "Observer loss & cognitive fusion": {
+      "count": 9,
+      "patterns": [
+        "Observer loss"
+      ],
+      "ritual_ids": [
+        "T-101",
+        "T-268",
+        "T-361",
+        "T-363",
+        "T-364",
+        "T-366",
+        "T-367",
+        "T-368",
+        "T-370"
+      ]
+    },
+    "Panic & body alarm": {
+      "count": 33,
+      "patterns": [
+        "Body alarm escalation",
+        "Breath-control overeffort",
+        "Physiological tension holding",
+        "Posture–mood locking"
+      ],
+      "ritual_ids": [
+        "T-049",
+        "T-050",
+        "T-052",
+        "T-053",
+        "T-055",
+        "T-058",
+        "T-069",
+        "T-075",
+        "T-082",
+        "T-085",
+        "T-090",
+        "T-103",
+        "T-104",
+        "T-106",
+        "T-107",
+        "T-109",
+        "T-110",
+        "T-121",
+        "T-127",
+        "T-133",
+        "T-154",
+        "T-194",
+        "T-206",
+        "T-207",
+        "T-219",
+        "T-244",
+        "T-248",
+        "T-275",
+        "T-291",
+        "T-294",
+        "T-298",
+        "T-299",
+        "T-379"
+      ]
+    },
+    "Perfectionism & performance pressure": {
+      "count": 9,
+      "patterns": [
+        "Decision paralysis",
+        "Perfectionism"
+      ],
+      "ritual_ids": [
+        "T-034",
+        "T-036",
+        "T-043",
+        "T-056",
+        "T-066",
+        "T-111",
+        "T-155",
+        "T-229",
+        "T-277"
+      ]
+    },
+    "Rigid beliefs, labels & stories": {
+      "count": 21,
+      "patterns": [
+        "Conceptual entanglement",
+        "Labelling",
+        "Narrative overbuilding",
+        "Unexamined belief"
+      ],
+      "ritual_ids": [
+        "T-001",
+        "T-007",
+        "T-010",
+        "T-024",
+        "T-025",
+        "T-028",
+        "T-112",
+        "T-130",
+        "T-142",
+        "T-147",
+        "T-192",
+        "T-200",
+        "T-252",
+        "T-258",
+        "T-260",
+        "T-350",
+        "T-351",
+        "T-354",
+        "T-355",
+        "T-396",
+        "T-398"
+      ]
+    },
+    "Rumination & worry loops": {
+      "count": 6,
+      "patterns": [
+        "Rumination",
+        "Worry looping"
+      ],
+      "ritual_ids": [
+        "T-176",
+        "T-177",
+        "T-178",
+        "T-269",
+        "T-303",
+        "T-360"
+      ]
+    },
+    "Self-blame, guilt & shame": {
+      "count": 6,
+      "patterns": [
+        "Blame fixation",
+        "Guilt overreach",
+        "Personalisation",
+        "Self-criticism",
+        "Shame globalisation"
+      ],
+      "ritual_ids": [
+        "T-005",
+        "T-033",
+        "T-059",
+        "T-067",
+        "T-190",
+        "T-399"
+      ]
+    },
+    "Trauma & memory-as-present": {
+      "count": 8,
+      "patterns": [
+        "Memory-as-present confusion",
+        "Trauma time collapse"
+      ],
+      "ritual_ids": [
+        "T-091",
+        "T-092",
+        "T-093",
+        "T-094",
+        "T-096",
+        "T-097",
+        "T-098",
+        "T-099"
+      ]
+    },
+    "Uncertainty & reassurance seeking": {
+      "count": 15,
+      "patterns": [
+        "Reassurance dependence",
+        "Uncertainty intolerance"
+      ],
+      "ritual_ids": [
+        "T-037",
+        "T-074",
+        "T-100",
+        "T-185",
+        "T-220",
+        "T-331",
+        "T-332",
+        "T-333",
+        "T-335",
+        "T-336",
+        "T-338",
+        "T-339",
+        "T-340",
+        "T-356",
+        "T-397"
+      ]
+    },
+    "Urgency & decision pressure": {
+      "count": 10,
+      "patterns": [
+        "Hindsight bias",
+        "Sunk-cost thinking",
+        "Time-pressure distortion",
+        "Urgency bias"
+      ],
+      "ritual_ids": [
+        "T-054",
+        "T-057",
+        "T-205",
+        "T-209",
+        "T-221",
+        "T-302",
+        "T-343",
+        "T-349",
+        "T-359",
+        "T-387"
+      ]
+    },
+    "Urges, impulses & cravings": {
+      "count": 24,
+      "patterns": [
+        "Emotion blending",
+        "Emotion mislabelling",
+        "Emotion stacking",
+        "Impulse fusion"
+      ],
+      "ritual_ids": [
+        "T-017",
+        "T-018",
+        "T-029",
+        "T-032",
+        "T-051",
+        "T-062",
+        "T-064",
+        "T-070",
+        "T-084",
+        "T-086",
+        "T-087",
+        "T-144",
+        "T-150",
+        "T-158",
+        "T-184",
+        "T-210",
+        "T-241",
+        "T-242",
+        "T-243",
+        "T-246",
+        "T-300",
+        "T-322",
+        "T-369",
+        "T-375"
+      ]
+    },
+    "Values, meaning & loss": {
+      "count": 15,
+      "patterns": [
+        "Grief resistance",
+        "Scarcity thinking",
+        "Value disconnection"
+      ],
+      "ritual_ids": [
+        "T-022",
+        "T-027",
+        "T-031",
+        "T-035",
+        "T-038",
+        "T-040",
+        "T-114",
+        "T-152",
+        "T-183",
+        "T-196",
+        "T-257",
+        "T-347",
+        "T-376",
+        "T-382",
+        "T-386"
+      ]
+    }
+  }
+}
