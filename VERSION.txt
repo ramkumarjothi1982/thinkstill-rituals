@@ -1,3 +1,0 @@
-ThinkStill 400 v37.9 TRUE ONE-OF-ONE WIN LOCK
-Schema: thinkstill-manifest-v17
-Rituals: 400
