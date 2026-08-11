@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0c" />
+  <meta name="description" content="ThinkStill — a short ritual for the thought you are in." />
+  <title>ThinkStill Reset</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="ThinkStill home"><span class="brand-mark">◌</span> ThinkStill</a>
+      <button id="themeToggle" class="icon-btn" type="button" aria-label="Switch theme">☀</button>
+    </header>
+
+    <section id="inputScreen" class="input-screen">
+      <div class="hero-copy">
+        <p class="eyebrow">RESET THE THOUGHT. NOT YOUR WHOLE LIFE.</p>
+        <h1>What is your mind doing <em>right now?</em></h1>
+        <p class="subcopy">Say it in your own words. ThinkStill will choose one short ritual from the 400 — automatically.</p>
+      </div>
+      <form id="ritualForm" class="thought-box">
+        <textarea id="thoughtInput" rows="4" maxlength="700" placeholder="Example: I keep replaying what I said and I’m sure they think badly of me…" aria-label="What is happening in your mind"></textarea>
+        <div class="form-footer">
+          <span id="remaining" class="remaining">700</span>
+          <button class="primary" type="submit">Find my ritual <span>→</span></button>
+        </div>
+      </form>
+      <button id="surpriseBtn" class="ghost" type="button">Or give me a random reset</button>
+      <p class="micro">Self-help only. If you are in immediate danger or need urgent medical help, use local emergency services.</p>
+    </section>
+
+    <section id="ritualScreen" class="ritual-screen" hidden>
+      <div class="ritual-head">
+        <div>
+          <span id="bubblePill" class="bubble-pill">GLITCH</span>
+          <span id="timePill" class="time-pill">about 1 minute</span>
+        </div>
+        <button id="closeRitual" class="icon-btn" type="button" aria-label="Close ritual">×</button>
+      </div>
+
+      <article class="ritual-card">
+        <p class="section-kicker">YOUR RESET</p>
+        <h2 id="ritualTitle"></h2>
+        <p id="ritualGoal" class="goal"></p>
+
+        <div class="divider"></div>
+        <section>
+          <h3>Ritual</h3>
+          <ol id="stepsList" class="steps"></ol>
+        </section>
+
+        <section class="win-box">
+          <span class="tiny-label">WIN</span>
+          <p id="ritualWin"></p>
+        </section>
+
+        <section>
+          <h3>Keep it going</h3>
+          <ul id="supportsList" class="supports"></ul>
+        </section>
+
+        <section class="flow-box">
+          <span class="tiny-label">FORMULA FLOW</span>
+          <div id="flow" class="flow"></div>
+        </section>
+
+        <section class="safety-box">
+          <span class="tiny-label">SAFETY</span>
+          <p id="safety"></p>
+        </section>
+      </article>
+
+      <div class="actions">
+        <button id="anotherBtn" class="primary wide" type="button">Give me another <span>→</span></button>
+        <button id="backBtn" class="ghost" type="button">Change what I typed</button>
+      </div>
+      <p id="progressText" class="micro center"></p>
+    </section>
+  </main>
+  <script src="app.js" defer></script>
+</body>
+</html>
