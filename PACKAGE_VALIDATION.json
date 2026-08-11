@@ -1,0 +1,35 @@
+{
+  "status": "PASS",
+  "ritual_count": 400,
+  "unique_ids": 400,
+  "missing_fields": {
+    "title": 0,
+    "goal": 0,
+    "steps": 0,
+    "win": 0,
+    "supports": 0,
+    "formulaFlow": 0,
+    "safety": 0,
+    "ritualText": 0
+  },
+  "support_lines_min": 5,
+  "support_lines_max": 5,
+  "first_ritual_expected_order": [
+    "TITLE",
+    "GOAL",
+    "RITUAL",
+    "WIN",
+    "5 SUPPORT LINES",
+    "FORMULA FLOW",
+    "SAFETY/PAUSE"
+  ],
+  "framer_code_file": "ThinkStill_Framer_FULL_v37_9_COMPLETE_RITUAL_DISPLAY.txt",
+  "framer_display_fixes": [
+    "v37.9 string steps are preserved",
+    "WIN label recognized",
+    "all 5 support lines rendered",
+    "SAFETY/PAUSE always visible",
+    "duplicate safety block prevented",
+    "title does not fall back to Mind Reset when ritual title exists"
+  ]
+}
