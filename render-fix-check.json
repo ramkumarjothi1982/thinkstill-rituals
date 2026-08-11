@@ -1,0 +1,17 @@
+{
+  "status": "PASS",
+  "ritual_count": 400,
+  "bubble_counts": {
+    "GLITCH": 58,
+    "DROP": 57,
+    "STILL": 57,
+    "PATCH": 57,
+    "LOOPIE": 57,
+    "RUSH": 57,
+    "SYNC": 57
+  },
+  "legacy_bubble_files_present": true,
+  "new_bubble_files_present": true,
+  "full_consumer_ritual_present": true,
+  "required_render_fields_complete": true
+}

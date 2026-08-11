@@ -1,0 +1,247 @@
+{
+  "count": 22,
+  "triggers": [
+    {
+      "trigger": "Action avoidance & procrastination",
+      "count": 19,
+      "patterns": [
+        "Action avoidance",
+        "Avoidance reinforcement",
+        "Breath-control overeffort",
+        "Posture–mood locking"
+      ]
+    },
+    {
+      "trigger": "Attention & cognitive overload",
+      "count": 19,
+      "patterns": [
+        "Attention fragmentation",
+        "Attention misallocation",
+        "Cognitive overload",
+        "Tunnel vision"
+      ]
+    },
+    {
+      "trigger": "Automatic habits & autopilot",
+      "count": 19,
+      "patterns": [
+        "Attention fragmentation",
+        "Automatic-pattern blindness",
+        "Cognitive overload",
+        "Emotion mislabelling",
+        "Emotion stacking",
+        "Physiological tension holding",
+        "Tunnel vision"
+      ]
+    },
+    {
+      "trigger": "Body-state misreading",
+      "count": 19,
+      "patterns": [
+        "Avoidance reinforcement",
+        "Body-sensation misinterpretation",
+        "Body-state misreading",
+        "Dissociation drift",
+        "Present-moment loss"
+      ]
+    },
+    {
+      "trigger": "Boundaries & over-responsibility",
+      "count": 18,
+      "patterns": [
+        "Blame fixation",
+        "Boundary avoidance",
+        "Boundary confusion",
+        "Communication distortion",
+        "Conflict escalation"
+      ]
+    },
+    {
+      "trigger": "Catastrophic prediction",
+      "count": 18,
+      "patterns": [
+        "Catastrophising",
+        "Digital compulsion",
+        "Fortune telling",
+        "Posture–mood locking",
+        "Probability overestimation"
+      ]
+    },
+    {
+      "trigger": "Communication & conflict",
+      "count": 18,
+      "patterns": [
+        "Communication distortion",
+        "Conflict escalation",
+        "Decision paralysis",
+        "Digital compulsion",
+        "Emotion stacking",
+        "Tunnel vision"
+      ]
+    },
+    {
+      "trigger": "Comparison & rejection",
+      "count": 18,
+      "patterns": [
+        "Comparison distortion",
+        "Decision paralysis",
+        "Guilt overreach",
+        "Rejection magnification"
+      ]
+    },
+    {
+      "trigger": "Emotional reasoning",
+      "count": 18,
+      "patterns": [
+        "Blame fixation",
+        "Emotional reasoning",
+        "Emotion–fact confusion",
+        "Guilt overreach"
+      ]
+    },
+    {
+      "trigger": "Evidence distortion & selective thinking",
+      "count": 18,
+      "patterns": [
+        "Black-and-white thinking",
+        "Context neglect",
+        "Mental filtering",
+        "Overgeneralising",
+        "Success discounting"
+      ]
+    },
+    {
+      "trigger": "Grounding & present-moment loss",
+      "count": 18,
+      "patterns": [
+        "Attention capture",
+        "Dissociation drift",
+        "Present-moment loss",
+        "Sensory disconnection"
+      ]
+    },
+    {
+      "trigger": "Observer loss & cognitive fusion",
+      "count": 18,
+      "patterns": [
+        "Attention capture",
+        "Conceptual entanglement",
+        "Hindsight bias",
+        "Labelling",
+        "Observer loss"
+      ]
+    },
+    {
+      "trigger": "Panic & body alarm",
+      "count": 18,
+      "patterns": [
+        "Avoidance reinforcement",
+        "Body alarm escalation",
+        "Body-sensation misinterpretation",
+        "Breath-control overeffort",
+        "Catastrophising",
+        "Conceptual entanglement",
+        "Physiological tension holding"
+      ]
+    },
+    {
+      "trigger": "Perfectionism & performance pressure",
+      "count": 18,
+      "patterns": [
+        "Decision paralysis",
+        "Labelling",
+        "Memory-as-present confusion",
+        "Perfectionism",
+        "Rumination",
+        "Scarcity thinking",
+        "Sunk-cost thinking"
+      ]
+    },
+    {
+      "trigger": "Rigid beliefs, labels & stories",
+      "count": 18,
+      "patterns": [
+        "Conceptual entanglement",
+        "Labelling",
+        "Narrative overbuilding",
+        "Unexamined belief"
+      ]
+    },
+    {
+      "trigger": "Rumination & worry loops",
+      "count": 18,
+      "patterns": [
+        "Memory-as-present confusion",
+        "Mental filtering",
+        "Overgeneralising",
+        "Rumination",
+        "Worry looping"
+      ]
+    },
+    {
+      "trigger": "Self-blame, guilt & shame",
+      "count": 18,
+      "patterns": [
+        "Blame fixation",
+        "Digital compulsion",
+        "Guilt overreach",
+        "Personalisation",
+        "Self-criticism",
+        "Shame globalisation"
+      ]
+    },
+    {
+      "trigger": "Trauma & memory-as-present",
+      "count": 18,
+      "patterns": [
+        "Memory-as-present confusion",
+        "Overgeneralising",
+        "Shame globalisation",
+        "Success discounting",
+        "Trauma time collapse"
+      ]
+    },
+    {
+      "trigger": "Uncertainty & reassurance seeking",
+      "count": 18,
+      "patterns": [
+        "Body alarm escalation",
+        "Physiological tension holding",
+        "Posture–mood locking",
+        "Reassurance dependence",
+        "Uncertainty intolerance"
+      ]
+    },
+    {
+      "trigger": "Urgency & decision pressure",
+      "count": 18,
+      "patterns": [
+        "Avoidance reinforcement",
+        "Hindsight bias",
+        "Sunk-cost thinking",
+        "Time-pressure distortion",
+        "Urgency bias"
+      ]
+    },
+    {
+      "trigger": "Urges, impulses & cravings",
+      "count": 18,
+      "patterns": [
+        "Emotion blending",
+        "Emotion mislabelling",
+        "Emotion stacking",
+        "Impulse fusion"
+      ]
+    },
+    {
+      "trigger": "Values, meaning & loss",
+      "count": 18,
+      "patterns": [
+        "Grief resistance",
+        "Scarcity thinking",
+        "Value disconnection",
+        "Worry looping"
+      ]
+    }
+  ]
+}
