@@ -1,0 +1,2197 @@
+[
+  {
+    "ritual_number": 4,
+    "id": "T-004",
+    "bubble": "DROP",
+    "title": "THE ODDS RECEIPT",
+    "play_time": "60–90 seconds",
+    "goal": "Fear speaks in certainty; reality keeps percentages.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Score Odds",
+        "action": "Give the prediction a number from 0 to 100."
+      },
+      {
+        "n": 2,
+        "move": "Check Baseline",
+        "action": "Find one real reference point: how often has this happened in similar situations?"
+      },
+      {
+        "n": 3,
+        "move": "Weigh Evidence",
+        "action": "Notice one fact that raises the odds and another that lowers them."
+      },
+      {
+        "n": 4,
+        "move": "Revise Odds",
+        "action": "Pick a new number and remember it."
+      },
+      {
+        "n": 5,
+        "move": "Follow Evidence",
+        "action": "Act from the revision, not the original alarm."
+      }
+    ],
+    "win": "✓ Disaster stopped being the only ending.",
+    "supports": [
+      "Exhale after “Follow Evidence”; leave the forecast.",
+      "Loop back? Use “Weigh Evidence”.",
+      "“Revise Odds” — fear isn’t fate.",
+      "What lost power: “Score Odds” → “Follow Evidence”?",
+      "I can use “Check Baseline” while fear stays loud."
+    ],
+    "formula_flow": "Score Odds → Check Baseline → Weigh Evidence → Revise Odds → Follow Evidence",
+    "safety": "PAUSE\nEnd the count if numbers become reassurance checking or you cannot stop recalculating.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 24,
+    "id": "T-024",
+    "bubble": "DROP",
+    "title": "THE BAD VOICE ACTOR",
+    "play_time": "45–60 seconds",
+    "goal": "Authority often hides inside delivery.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Read Wrong",
+        "action": "Hear the thought as a tired GPS, an overdramatic sports commentator, or a hesitant intern reading the wrong memo."
+      },
+      {
+        "n": 2,
+        "move": "Keep Words",
+        "action": "Keep the words unchanged; alter only tempo, pitch, and confidence."
+      },
+      {
+        "n": 3,
+        "move": "Replay",
+        "action": "Then replay it in your natural voice as a possibility, not an order."
+      }
+    ],
+    "win": "✓ A fixed rule turned back into a context-dependent idea.",
+    "supports": [
+      "Exhale after “Replay”; loosen the label.",
+      "Shortcut: “Keep Words”, once.",
+      "“Keep Words” — the rule loosened.",
+      "“Read Wrong” versus “Replay”: what eased?",
+      "I can use “Keep Words” without becoming the label."
+    ],
+    "formula_flow": "Read Wrong → Keep Words → Replay",
+    "safety": "PAUSE\nUse a neutral voice instead if playful recasting feels shaming or agitating.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 28,
+    "id": "T-028",
+    "bubble": "DROP",
+    "title": "EDIT THE FONT, NOT YOURSELF",
+    "play_time": "60–90 seconds",
+    "goal": "A thought displayed differently can be held differently.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Project",
+        "action": "Project the sentence on an inner screen."
+      },
+      {
+        "n": 2,
+        "move": "Shrink",
+        "action": "Shrink it to caption size."
+      },
+      {
+        "n": 3,
+        "move": "Move Metres",
+        "action": "Move it two metres away."
+      },
+      {
+        "n": 4,
+        "move": "Lower Opacity",
+        "action": "Lower opacity, swap the heavy typeface for something ordinary, and place generous blank space around it."
+      },
+      {
+        "n": 5,
+        "move": "Read Version",
+        "action": "Read the edited version once, then look at real text nearby."
+      }
+    ],
+    "win": "✓ The thought changed format, and some of its spell broke.",
+    "supports": [
+      "Exhale after “Read Version”; loosen the label.",
+      "Skip replay; use “Move Metres”.",
+      "“Lower Opacity” — the rule loosened.",
+      "At “Read Version”, compare “Project”.",
+      "I can use “Shrink” without becoming the label."
+    ],
+    "formula_flow": "Project → Shrink → Move Metres → Lower Opacity → Read Version",
+    "safety": "PAUSE\nReturn to external grounding if visual manipulation feels unreal or disorienting.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 40,
+    "id": "T-040",
+    "bubble": "DROP",
+    "title": "RETURN WITHOUT A TRIAL",
+    "play_time": "60–90 seconds",
+    "goal": "Drift needs a direction change, not a prosecution.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "State Off",
+        "action": "State what moved off course in plain language."
+      },
+      {
+        "n": 2,
+        "move": "Delete Adjectives",
+        "action": "Remove every adjective about your character."
+      },
+      {
+        "n": 3,
+        "move": "Name Value",
+        "action": "Name the value still available, then take the smallest move that serves it now."
+      },
+      {
+        "n": 4,
+        "move": "Check After",
+        "action": "Only after moving, decide whether the plan itself needs repair."
+      },
+      {
+        "n": 5,
+        "move": "Skip Verdict",
+        "action": "Re-enter the plan without putting yourself on trial."
+      }
+    ],
+    "win": "✓ Re-entry happened without opening a courtroom.",
+    "supports": [
+      "Exhale after “Skip Verdict”; keep the compass.",
+      "Restart detected: “Name Value”.",
+      "“Check After” keeps meaning in motion.",
+      "Compare “State Off” with “Skip Verdict”.",
+      "I can use “Delete Adjectives” while pain stays real."
+    ],
+    "formula_flow": "State Off → Delete → Name Value → Move Whether → Skip Verdict",
+    "safety": "PAUSE\nAddress repeated harmful drift with accountability and support, not endless self-restarts.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 55,
+    "id": "T-055",
+    "bubble": "DROP",
+    "title": "TENSION’S EXIT PARTNER",
+    "play_time": "60–90 seconds",
+    "goal": "Teach one muscle where release lives.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Select Safe",
+        "action": "Select a safe body region."
+      },
+      {
+        "n": 2,
+        "move": "Tighten",
+        "action": "Tighten it lightly—not maximally—during an easy inhale."
+      },
+      {
+        "n": 3,
+        "move": "Leave Muscle",
+        "action": "As air leaves, let the muscle become heavy and wide."
+      },
+      {
+        "n": 4,
+        "move": "Compare After",
+        "action": "Compare before and after, then move to a second region only if the first fully released."
+      },
+      {
+        "n": 5,
+        "move": "End Clean",
+        "action": "One clean contrast is enough."
+      }
+    ],
+    "win": "✓ I felt one clean contrast and stopped before turning it into a test.",
+    "supports": [
+      "Gently exhale after “End Clean”; no breath-holding.",
+      "Skip replay; use “Leave Muscle”.",
+      "“Compare After” — alarm isn’t command.",
+      "What lost power: “Select Safe” → “End Clean”?",
+      "I can use “Tighten” while alarm rises."
+    ],
+    "formula_flow": "Select Safe → Tighten → Leave Muscle → Compare After → End Clean",
+    "safety": "PAUSE\nAvoid injured, painful, recently operated, or cramping areas.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 57,
+    "id": "T-057",
+    "bubble": "DROP",
+    "title": "FIVE SAFE SIGNALS",
+    "play_time": "45–60 seconds",
+    "goal": "Send calm through more than one doorway.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Build Sensory",
+        "action": "Build a sensory sequence from what is available: one pleasing sight, steady sound, comforting texture, mild scent, and nourishing taste."
+      },
+      {
+        "n": 2,
+        "move": "Receive Instead",
+        "action": "Spend a few seconds receiving each instead of rushing to the next cue."
+      },
+      {
+        "n": 3,
+        "move": "End Sense",
+        "action": "End on the sense that feels most trustworthy today."
+      }
+    ],
+    "win": "✓ The clock stopped voting louder than the facts.",
+    "supports": [
+      "Exhale after “End Sense”; slow the clock.",
+      "Return once to “Receive Instead”.",
+      "“Receive Instead” puts facts above speed.",
+      "Difference check: “Build Sensory” → “End Sense”.",
+      "I can use “Receive Instead” without rushing."
+    ],
+    "formula_flow": "Build Sensory → Receive Instead → End Sense",
+    "safety": "PAUSE\nAvoid allergens, unsafe temperatures, substance triggers, or sensory input that overwhelms.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 59,
+    "id": "T-059",
+    "bubble": "DROP",
+    "title": "DROP THE APPEAL",
+    "play_time": "about 1 minute",
+    "goal": "Reality has already entered the room; the appeal is only in your mind.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "State Fact",
+        "action": "State the fact in plain past or present tense."
+      },
+      {
+        "n": 2,
+        "move": "Remove Approval",
+        "action": "Remove approval, blame, and every ‘should not have happened.’ Notice the body’s protest and answer, ‘Not liking it is allowed."
+      },
+      {
+        "n": 3,
+        "move": "Add Nothing",
+        "action": "Refusing its existence adds nothing.’ Choose the next response available in the world that actually exists."
+      }
+    ],
+    "win": "✓ I stopped appealing reality and moved inside the version that exists.",
+    "supports": [
+      "Exhale after “Add Nothing”; release extra blame.",
+      "On return: “Remove Approval”.",
+      "“Remove Approval” keeps blame in proportion.",
+      "“Add Nothing”: what changed from “State Fact”?",
+      "I can use “Remove Approval” without owning everything."
+    ],
+    "formula_flow": "State Fact → Remove Approval → Add Nothing",
+    "safety": "PAUSE\nAcceptance must never be used to legitimise abuse, injustice, or preventable harm.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 60,
+    "id": "T-060",
+    "bubble": "DROP",
+    "title": "TURN AGAIN",
+    "play_time": "about 1 minute",
+    "goal": "Acceptance is often a direction repeated, not a mood achieved.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Catch Mind",
+        "action": "Catch the mind reopening the case against what has already occurred."
+      },
+      {
+        "n": 2,
+        "move": "Name Refusal",
+        "action": "Name the refusal without criticism."
+      },
+      {
+        "n": 3,
+        "move": "Rotate Attention",
+        "action": "Rotate attention toward the existing fact and the action now possible."
+      },
+      {
+        "n": 4,
+        "move": "Return Wheel",
+        "action": "Each return is one turn of the wheel; stop counting after the chosen behaviour begins."
+      }
+    ],
+    "win": "✓ I turned back toward reality once more—and stopped counting when action began.",
+    "supports": [
+      "Exhale after “Return Wheel”; drop the scoreboard.",
+      "Catch restart with “Rotate Attention”.",
+      "“Rotate Attention” keeps worth off scoreboards.",
+      "What changed: “Catch Mind” → “Return Wheel”?",
+      "I can use “Name Refusal” without ranking my worth."
+    ],
+    "formula_flow": "Catch Mind → Name Refusal → Rotate Attention → Return Wheel",
+    "safety": "PAUSE\nIf repeated turning becomes compulsive, step away and use ordinary support.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 68,
+    "id": "T-068",
+    "bubble": "DROP",
+    "title": "PUT GOOD ON THE CALENDAR",
+    "play_time": "about 1 minute",
+    "goal": "Positive events need appointments, not vague hope.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Choose Genuinely",
+        "action": "Choose one really reinforcing experience; assign it a time, place, and first action."
+      },
+      {
+        "n": 2,
+        "move": "Protect Appointment",
+        "action": "Protect the appointment from unnecessary multitasking."
+      },
+      {
+        "n": 3,
+        "move": "Details",
+        "action": "While it happens, notice three details worth encoding."
+      },
+      {
+        "n": 4,
+        "move": "Lock It In",
+        "action": "Afterward, resist grading whether you enjoyed it ‘enough.’"
+      }
+    ],
+    "win": "✓ Good got a place on the calendar without needing a score.",
+    "supports": [
+      "Exhale after “Lock It In”; let feeling settle.",
+      "On return: “Details”.",
+      "“Details” separates feeling from fact.",
+      "“Choose Genuinely” versus “Lock It In”: what eased?",
+      "I can use “Protect Appointment” while emotion stays loud."
+    ],
+    "formula_flow": "Choose Genuinely → Protect Appointment → Details → Lock It In",
+    "safety": "PAUSE\nDo not force pleasure during grief or depression; attendance itself can be the result.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 73,
+    "id": "T-073",
+    "bubble": "DROP",
+    "title": "BORROW THE SENSATION",
+    "play_time": "45–60 seconds",
+    "goal": "Teach the body that a safe signal is not the worst-case story.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Select Medically",
+        "action": "Select a medically safe exercise that creates a mild feared sensation—brief spinning, stair walking, or breathing through a narrow straw only when appropriate."
+      },
+      {
+        "n": 2,
+        "move": "Test Sensation",
+        "action": "Predict what will happen, induce the sensation briefly, and observe recovery without usual calming it."
+      }
+    ],
+    "win": "✓ I predicted the sensation, borrowed it briefly, and watched my body recover.",
+    "supports": [
+      "Gently exhale after “Test Sensation”; no forcing.",
+      "On return: “Test Sensation”.",
+      "“Select Medically” keeps sensation as data.",
+      "“Select Medically” → “Test Sensation”: what changed?",
+      "I can use “Test Sensation” while sensation stays."
+    ],
+    "formula_flow": "Select Medically → Test Sensation",
+    "safety": "PAUSE\nObtain professional and medical guidance before body-sensation exposure, especially with health conditions.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 76,
+    "id": "T-076",
+    "bubble": "DROP",
+    "title": "DESIGN THE SURPRISE",
+    "play_time": "45–60 seconds",
+    "goal": "A practice round works when reality breaks the prediction.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Picture Strongest",
+        "action": "Picture the strongest testable prediction in visible terms."
+      },
+      {
+        "n": 2,
+        "move": "Build Safe",
+        "action": "Build a safe practice round aimed at that exact claim, not merely at feeling anxious."
+      },
+      {
+        "n": 3,
+        "move": "Picture Outcome",
+        "action": "Afterward, keep the original prediction, what occurred, and what the old model cannot easily explain."
+      }
+    ],
+    "win": "✓ What I feel and what is true are separate lanes again.",
+    "supports": [
+      "Exhale after “Picture Outcome”; let feeling settle.",
+      "Return once to “Build Safe”.",
+      "“Build Safe” separates feeling from fact.",
+      "Look back: “Picture Strongest” → “Picture Outcome”.",
+      "I can use “Build Safe” while emotion stays loud."
+    ],
+    "formula_flow": "Picture Strongest → Build Safe → Picture Outcome",
+    "safety": "PAUSE\nRedesign rather than intensify when the test cannot fairly evaluate the belief.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 82,
+    "id": "T-082",
+    "bubble": "DROP",
+    "title": "PENDULUM BETWEEN TWO TRUTHS",
+    "play_time": "about 1 minute",
+    "goal": "Regulation can be built by travelling, not staying still.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Find Activated",
+        "action": "Find one activated region and another settled or supported area."
+      },
+      {
+        "n": 2,
+        "move": "Move Resource",
+        "action": "Touch the difficult region with attention for a few seconds, then move to the resource."
+      },
+      {
+        "n": 3,
+        "move": "Travel",
+        "action": "Travel back and forth at a pace that preserves choice."
+      },
+      {
+        "n": 4,
+        "move": "Finish Whichever",
+        "action": "Finish on whichever location offers steadier awareness of your location."
+      }
+    ],
+    "win": "✓ Certainty remained unavailable; movement did not.",
+    "supports": [
+      "Exhale after “Finish Whichever”; leave it unanswered.",
+      "If it flares, choose “Travel”.",
+      "“Travel” keeps uncertainty carryable.",
+      "“Find Activated” versus “Finish Whichever”: what eased?",
+      "I can use “Move Resource” without a guarantee."
+    ],
+    "formula_flow": "Find Activated → Move Resource → Travel → Finish Whichever",
+    "safety": "PAUSE\nStop crossing if each visit amplifies distress rather than returning balance.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 85,
+    "id": "T-085",
+    "bubble": "DROP",
+    "title": "WAIT FOR THE WHOLE BODY ANSWER",
+    "play_time": "60–90 seconds",
+    "goal": "Some experience forms before it can be explained.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Bring Mind",
+        "action": "Bring the issue to mind lightly, then pause verbal analysis."
+      },
+      {
+        "n": 2,
+        "move": "Ask Body",
+        "action": "Ask the body, ‘What is the whole of this like?’ Wait for an image, phrase, posture, or global texture."
+      },
+      {
+        "n": 3,
+        "move": "Check Whether",
+        "action": "Check whether it fits by noticing a small inner yes, no, or shift."
+      },
+      {
+        "n": 4,
+        "move": "Leave It Raw",
+        "action": "Leave the answer unpolished."
+      }
+    ],
+    "win": "✓ The body answered before language polished it.",
+    "supports": [
+      "Exhale after “Leave It Raw”; leave it unanswered.",
+      "If it flares, choose “Check Whether”.",
+      "“Check Whether” keeps uncertainty carryable.",
+      "“Leave It Raw”: what changed from “Bring Mind”?",
+      "I can use “Ask Body” without a guarantee."
+    ],
+    "formula_flow": "Bring Mind → Ask Body → Check Whether → Leave It Raw",
+    "safety": "PAUSE\nEnd the inquiry if bodily attention creates panic, numbness, or feeling unreal or disconnected.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 86,
+    "id": "T-086",
+    "bubble": "DROP",
+    "title": "COMPLETE THE DEFENCE IN MINIATURE",
+    "play_time": "about 1 minute",
+    "goal": "An interrupted protective move may still be waiting.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Small",
+        "action": "Notice the small impulse to push, turn, step back, shield, or say no."
+      },
+      {
+        "n": 2,
+        "move": "Let Unfold",
+        "action": "In a safe space, let it unfold slowly at ten percent strength."
+      },
+      {
+        "n": 3,
+        "move": "Stop Completion",
+        "action": "Stop at the natural completion and return to neutral posture."
+      },
+      {
+        "n": 4,
+        "move": "Observe Whether",
+        "action": "Observe whether the body receives an ending."
+      }
+    ],
+    "win": "✓ The urge peaked without becoming a contract.",
+    "supports": [
+      "Exhale after “Observe Whether”; let wanting crest.",
+      "Use “Stop Completion” on return.",
+      "“Stop Completion” keeps wanting off controls.",
+      "“Observe Whether”: what changed from “Small”?",
+      "I can use “Let Unfold” without obeying the urge."
+    ],
+    "formula_flow": "Small → Let Unfold → Stop Completion → Observe Whether",
+    "safety": "PAUSE\nNever direct movement toward a person or continue if aggression escalates.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 87,
+    "id": "T-087",
+    "bubble": "DROP",
+    "title": "FIND THE BODY’S WORKABLE DISTANCE",
+    "play_time": "about 1 minute",
+    "goal": "Boundaries can be measured before they are argued.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Use Object",
+        "action": "Using an object, doorway, or trusted person with consent, test near and far in small increments."
+      },
+      {
+        "n": 2,
+        "move": "Breath",
+        "action": "Notice breath, posture, urge, and clarity at each point."
+      },
+      {
+        "n": 3,
+        "move": "Body",
+        "action": "Notice where the body can stay present and communicate."
+      },
+      {
+        "n": 4,
+        "move": "Set Workable Distance",
+        "action": "That distance is data, not a permanent verdict."
+      }
+    ],
+    "win": "✓ The body found a workable distance without turning it into a verdict.",
+    "supports": [
+      "Exhale after “Set Workable Distance”; let wanting crest.",
+      "Re-entry move: “Body”.",
+      "“Body” keeps wanting off controls.",
+      "“Set Workable Distance”: what changed from “Use Object”?",
+      "I can use “Breath” without obeying the urge."
+    ],
+    "formula_flow": "Use Object → Breath → Body → Set Workable Distance",
+    "safety": "PAUSE\nStop immediately if consent changes or the exercise feels threatening.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 88,
+    "id": "T-088",
+    "bubble": "DROP",
+    "title": "BORROW THE FLOOR",
+    "play_time": "about 1 minute",
+    "goal": "Let external support do part of the holding.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Choose Contact",
+        "action": "Choose one contact point—feet, seat, back, forearms, or hands."
+      },
+      {
+        "n": 2,
+        "move": "Release Extra",
+        "action": "Increase pressure slightly, then release extra effort and notice what the surface continues to carry."
+      },
+      {
+        "n": 3,
+        "move": "Name Texture",
+        "action": "Name its texture, temperature, and steadiness."
+      },
+      {
+        "n": 4,
+        "move": "Trust Ground",
+        "action": "You need not manufacture a sense of ground."
+      }
+    ],
+    "win": "✓ The present regained enough detail to hold me.",
+    "supports": [
+      "Exhale after “Trust Ground”; notice the room.",
+      "On return: “Name Texture”.",
+      "“Name Texture” proves the present returned.",
+      "At “Trust Ground”, compare “Choose Contact”.",
+      "I can use “Release Extra” to return here."
+    ],
+    "formula_flow": "Choose Contact → Release Extra → Name Texture → Trust Ground",
+    "safety": "PAUSE\nChange position if pressure causes pain, numbness, or restricted circulation.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 90,
+    "id": "T-090",
+    "bubble": "DROP",
+    "title": "CATCH THE RECOVERY SIGNAL",
+    "play_time": "about 1 minute",
+    "goal": "Settling deserves as much attention as alarm.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Watch Swallow",
+        "action": "After body alarm, watch for a swallow, sigh, warmth, trembling, yawn, moisture in the eyes, breath shift, or muscle release."
+      },
+      {
+        "n": 2,
+        "move": "Name Accurately",
+        "action": "When one appears, name it accurately and stay with its after-effect."
+      },
+      {
+        "n": 3,
+        "move": "No Extra Trigger",
+        "action": "Do not provoke more."
+      },
+      {
+        "n": 4,
+        "move": "Look Like",
+        "action": "Teach the mind what recovery looks like."
+      }
+    ],
+    "win": "✓ The alarm stayed loud, but the world got wider.",
+    "supports": [
+      "Exhale after “Look Like”; leave it unanswered.",
+      "Restart detected: “No Extra Trigger”.",
+      "“No Extra Trigger” keeps uncertainty carryable.",
+      "“Watch Swallow” versus “Look Like”: what eased?",
+      "I can use “Name Accurately” without a guarantee."
+    ],
+    "formula_flow": "Watch Swallow → Name Accurately → No Extra Trigger → Look Like",
+    "safety": "PAUSE\nSeek care if shaking, breathing changes, or other symptoms seem medically concerning.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 96,
+    "id": "T-096",
+    "bubble": "DROP",
+    "title": "CLOSE THE BODY FILE",
+    "play_time": "about 1 minute",
+    "goal": "Do not close the file while the body is still asking for attention.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Scan Head",
+        "action": "Scan from head to feet for remaining body alarm."
+      },
+      {
+        "n": 2,
+        "move": "Select Strongest",
+        "action": "Select the strongest residue and give it one stabilising response: support, movement, warmth, grounding in the present, or rest."
+      },
+      {
+        "n": 3,
+        "move": "Rescan",
+        "action": "Rescan only once."
+      },
+      {
+        "n": 4,
+        "move": "State Today",
+        "action": "State what is complete today and what belongs to later care."
+      }
+    ],
+    "win": "✓ Sensation became data instead of a verdict.",
+    "supports": [
+      "Gently exhale after “State Today”; orient to now.",
+      "Pulled back? Touch “Rescan”.",
+      "“Rescan” moves memory toward then.",
+      "Look back: “Scan Head” → “State Today”.",
+      "I can use “Select Strongest” while staying in now."
+    ],
+    "formula_flow": "Scan Head → Select Strongest → Rescan → State Today",
+    "safety": "PAUSE\nSeek help if the scan uncovers severe symptoms or increasing destabilisation.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 102,
+    "id": "T-102",
+    "bubble": "DROP",
+    "title": "FIND THE BUSY HALF",
+    "play_time": "60–90 seconds",
+    "goal": "Not every unsettled breath needs a longer exhale.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Observe Ordinary",
+        "action": "Observe three ordinary cycles."
+      },
+      {
+        "n": 2,
+        "move": "Rate Inhale",
+        "action": "Rate inhale effort and exhale release separately."
+      },
+      {
+        "n": 3,
+        "move": "Phase",
+        "action": "Which phase is working too hard?"
+      },
+      {
+        "n": 4,
+        "move": "Leave Timing",
+        "action": "Ease only that side toward neutral—less pulling in or less pushing out—while leaving timing alone."
+      },
+      {
+        "n": 5,
+        "move": "Check Whether",
+        "action": "Check if urgency changes when imbalance decreases."
+      }
+    ],
+    "win": "✓ Comparison lost its right to set my value.",
+    "supports": [
+      "Exhale after “Check Whether”; drop the scoreboard.",
+      "Re-entry move: “Phase”.",
+      "“Leave Timing” keeps worth off scoreboards.",
+      "Compare “Observe Ordinary” with “Check Whether”.",
+      "I can use “Rate Inhale” without ranking my worth."
+    ],
+    "formula_flow": "Observe Ordinary → Rate Inhale → Phase → Leave Timing → Check Whether",
+    "safety": "PAUSE\nStop adjustment at the first sign of dizziness, strain, or breath fixation.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 105,
+    "id": "T-105",
+    "bubble": "DROP",
+    "title": "ALTERNATE THE AIRWAY",
+    "play_time": "about 1 minute",
+    "goal": "Move attention left and right until state feels organised.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Sit Easy",
+        "action": "Sit comfortably."
+      },
+      {
+        "n": 2,
+        "move": "Close Nostril",
+        "action": "Without force, close one nostril and breathe through the other; switch sides for the next gentle cycle."
+      },
+      {
+        "n": 3,
+        "move": "Continue Unhurried",
+        "action": "Continue alternating with an unhurried hand."
+      },
+      {
+        "n": 4,
+        "move": "Keep Breath",
+        "action": "Keep the breath quiet and abandon retention."
+      },
+      {
+        "n": 5,
+        "move": "Open Both Sides",
+        "action": "Finish with both sides open and let breathing return to normal."
+      }
+    ],
+    "win": "✓ Left, right, centre: attention finished organised and unforced.",
+    "supports": [
+      "Gently exhale after “Open Both Sides”; no forcing.",
+      "Use “Continue Unhurried” on return.",
+      "“Keep Breath” keeps sensation as data.",
+      "“Sit Easy” → “Open Both Sides”: what changed?",
+      "I can use “Close Nostril” while sensation stays."
+    ],
+    "formula_flow": "Sit Easy → Close Nostril → Continue Unhurried → Keep Breath → Open Both Sides",
+    "safety": "PAUSE\nSkip when congested, dizzy, breath-sensitive, or advised against the practice.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 106,
+    "id": "T-106",
+    "bubble": "DROP",
+    "title": "VIBRATION ON THE WAY OUT",
+    "play_time": "about 1 minute",
+    "goal": "Let sound carry the exhale without squeezing it.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Take Ordinary",
+        "action": "Take an ordinary inhale."
+      },
+      {
+        "n": 2,
+        "move": "Leave Feeling",
+        "action": "Hum at a soft, comfortable pitch as air leaves, feeling vibration in lips, face, or chest."
+      },
+      {
+        "n": 3,
+        "move": "Stop Empty",
+        "action": "Stop before empty."
+      },
+      {
+        "n": 4,
+        "move": "Listen Silence",
+        "action": "Listen to the silence after the hum, then decide whether another round would still feel kind."
+      }
+    ],
+    "win": "✓ The current moment has edges again.",
+    "supports": [
+      "Exhale after “Listen Silence”; then keep moving.",
+      "Loop back? Use “Stop Empty”.",
+      "“Stop Empty” proves motion is available.",
+      "At “Listen Silence”, compare “Take Ordinary”.",
+      "I can use “Leave Feeling” before motivation."
+    ],
+    "formula_flow": "Take Ordinary → Leave Feeling → Stop Empty → Listen Silence",
+    "safety": "PAUSE\nCease with pain, coughing, light-headedness, or vocal discomfort.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 108,
+    "id": "T-108",
+    "bubble": "DROP",
+    "title": "COOL AIR, WARM DECISION",
+    "play_time": "45–60 seconds",
+    "goal": "Borrow a settling cue from temperature.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Imagine Mild",
+        "action": "Shape the lips or tongue only if comfortable, notice a mild stream of cool air, and let exhalation leave naturally through the nose."
+      },
+      {
+        "n": 2,
+        "move": "Coolness",
+        "action": "Notice coolness rather than volume."
+      },
+      {
+        "n": 3,
+        "move": "End After",
+        "action": "Stop after a few easy cycles and choose one unhurried action."
+      }
+    ],
+    "win": "✓ Cooling changed the body volume before the mind wrote the explanation.",
+    "supports": [
+      "Exhale after “End After”; notice the room.",
+      "Shortcut: “Coolness”, once.",
+      "“Coolness” proves the present returned.",
+      "“Imagine Mild” → “End After”: what changed?",
+      "I can use “Coolness” to return here."
+    ],
+    "formula_flow": "Imagine Mild → Coolness → End After",
+    "safety": "PAUSE\nAvoid in cold sensitivity, unsuitable weather, breathing conditions, or discomfort.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 111,
+    "id": "T-111",
+    "bubble": "DROP",
+    "title": "THE RETURN REP",
+    "play_time": "about 1 minute",
+    "goal": "Attention strengthens on the comeback, not the stay.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Select Neutral",
+        "action": "Select one neutral anchor."
+      },
+      {
+        "n": 2,
+        "move": "Attention",
+        "action": "Each time distraction appears, notice where attention went and escort it back without commentary."
+      },
+      {
+        "n": 3,
+        "move": "Count Rather",
+        "action": "Count returns rather than uninterrupted seconds."
+      },
+      {
+        "n": 4,
+        "move": "End After",
+        "action": "Finish after ten honest comebacks, even if focus never felt perfect."
+      }
+    ],
+    "win": "✓ Ten returns happened. Perfect focus was never required.",
+    "supports": [
+      "Exhale after “End After”; release the score.",
+      "Skip replay; use “Count Rather”.",
+      "“Count Rather” keeps progress moving imperfectly.",
+      "Look back: “Select Neutral” → “End After”.",
+      "I can use “Attention” without perfecting."
+    ],
+    "formula_flow": "Select Neutral → Attention → Count Rather → End After",
+    "safety": "PAUSE\nChoose a broader practice if narrow focus increases agitation.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 124,
+    "id": "T-124",
+    "bubble": "DROP",
+    "title": "LET DARKNESS BE COMPLETE",
+    "play_time": "45–60 seconds",
+    "goal": "Visual absence does not need a replacement image.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Set Darkness",
+        "action": "In a safe darkened setting, notice darkness as the actual visual field."
+      },
+      {
+        "n": 2,
+        "move": "Return Unfilled",
+        "action": "When the mind manufactures shapes or stories, recognise image production and return to the unfilled field."
+      },
+      {
+        "n": 3,
+        "move": "Stay Briefly",
+        "action": "Stay briefly, then reintroduce light on purpose."
+      }
+    ],
+    "win": "✓ Darkness stayed complete for a moment; light returned by choice.",
+    "supports": [
+      "One exhale after “Stay Briefly”; redirect attention.",
+      "If it flares, choose “Return Unfilled”.",
+      "“Return Unfilled” proves one signal leads.",
+      "“Set Darkness” → “Stay Briefly”: what changed?",
+      "I can use “Return Unfilled” amid noise."
+    ],
+    "formula_flow": "Set Darkness → Return Unfilled → Stay Briefly",
+    "safety": "PAUSE\nAvoid this practice if darkness triggers panic, trauma, or perceptual disturbance.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 129,
+    "id": "T-129",
+    "bubble": "DROP",
+    "title": "BEFORE THE SENTENCE",
+    "play_time": "about 1 minute",
+    "goal": "Look for thought at the moment of assembly.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Hold Attention",
+        "action": "Hold attention quietly and wait."
+      },
+      {
+        "n": 2,
+        "move": "Earliest",
+        "action": "When a thought begins, notice its earliest form: pressure, fragment, image, word, or felt orientation in space."
+      },
+      {
+        "n": 3,
+        "move": "No Backtracking",
+        "action": "Do not chase backward after it fully forms."
+      },
+      {
+        "n": 4,
+        "move": "Catch the Birth",
+        "action": "Simply Notice ‘birth’ and let the completed thought continue."
+      }
+    ],
+    "win": "✓ I caught the instant before the sentence became a story.",
+    "supports": [
+      "One exhale after “Catch the Birth”; redirect attention.",
+      "Return once to “No Backtracking”.",
+      "“No Backtracking” proves one signal leads.",
+      "Look back: “Hold Attention” → “Catch the Birth”.",
+      "I can use “Earliest” amid noise."
+    ],
+    "formula_flow": "Hold Attention → Earliest → No Backtracking → Catch the Birth",
+    "safety": "PAUSE\nChoose a visible anchor when vigilant waiting increases tension.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 130,
+    "id": "T-130",
+    "bubble": "DROP",
+    "title": "FOLLOW IT TO ZERO",
+    "play_time": "about 1 minute",
+    "goal": "A thought’s disappearance is usually ignored.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Select Naturally",
+        "action": "Select one naturally occurring thought."
+      },
+      {
+        "n": 2,
+        "move": "Stay Wording",
+        "action": "Stay with its exact wording or image as it alters, fragments, loses relevance, or is replaced."
+      },
+      {
+        "n": 3,
+        "move": "Identify Instant",
+        "action": "Spot the first instant when no trace can be found."
+      },
+      {
+        "n": 4,
+        "move": "Let It End",
+        "action": "Do not resurrect it to verify the ending."
+      }
+    ],
+    "win": "✓ The thought ended. I did not drag it back for an encore.",
+    "supports": [
+      "Exhale after “Let It End”; loosen the label.",
+      "Return once to “Identify Instant”.",
+      "“Identify Instant” — the rule loosened.",
+      "“Select Naturally” → “Let It End”: what changed?",
+      "I can use “Stay Wording” without becoming the label."
+    ],
+    "formula_flow": "Select Naturally → Stay Wording → Identify Instant → Let It End",
+    "safety": "PAUSE\nEnd observation if tracking becomes obsessive or exhausting.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 131,
+    "id": "T-131",
+    "bubble": "DROP",
+    "title": "THE RETURN CHAIN",
+    "play_time": "about 1 minute",
+    "goal": "Ongoing sense is built from linked renewals.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Choose Attention",
+        "action": "Choose one attentional act small enough to repeat daily."
+      },
+      {
+        "n": 2,
+        "move": "Set Cue",
+        "action": "Define its cue, duration, and one tiny restart signal."
+      },
+      {
+        "n": 3,
+        "move": "Return Repetition",
+        "action": "Each session begins with the final second of yesterday’s intention: ‘return again.’ Protect repetition from heroic increases."
+      },
+      {
+        "n": 4,
+        "move": "Link the Return",
+        "action": "A chain is made of modest links."
+      }
+    ],
+    "win": "✓ I built the return out of small links instead of one heroic comeback.",
+    "supports": [
+      "One exhale after “Link the Return”; redirect attention.",
+      "Return once to “Return Repetition”.",
+      "“Return Repetition” proves one signal leads.",
+      "Look back: “Choose Attention” → “Link the Return”.",
+      "I can use “Set Cue” amid noise."
+    ],
+    "formula_flow": "Choose Attention → Set Cue → Return Repetition → Link the Return",
+    "safety": "PAUSE\nReduce frequency if ongoing sense crowds out sleep, duties, or flexibility.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 139,
+    "id": "T-139",
+    "bubble": "DROP",
+    "title": "RETURN THE OUTCOME",
+    "play_time": "about 1 minute",
+    "goal": "Effort is yours; total control was never issued.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Name Action",
+        "action": "Name the action within your responsibility."
+      },
+      {
+        "n": 2,
+        "move": "Name Result",
+        "action": "Name the result you cannot command."
+      },
+      {
+        "n": 3,
+        "move": "Use Language",
+        "action": "Offer the second to God, life, reality, community, or a principle larger than ego—using language authentic to you."
+      },
+      {
+        "n": 4,
+        "move": "Return the Outcome",
+        "action": "Then do the first with full care."
+      }
+    ],
+    "win": "✓ Gave the outcome back and kept the quality of my action.",
+    "supports": [
+      "Exhale after “Return the Outcome”; slow the clock.",
+      "If it flares, choose “Use Language”.",
+      "“Use Language” puts facts above speed.",
+      "What changed: “Name Action” → “Return the Outcome”?",
+      "I can use “Name Result” without rushing."
+    ],
+    "formula_flow": "Name Action → Name Result → Use Language → Return the Outcome",
+    "safety": "PAUSE\nChoose secular release if spiritual framing creates conflict or coercion.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 140,
+    "id": "T-140",
+    "bubble": "DROP",
+    "title": "TRACE THE FIRST SPARK",
+    "play_time": "45–60 seconds",
+    "goal": "Find what started the fluctuation before content took over.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Take Recurring",
+        "action": "Take one recurring state and move backward through its chain: current thought, preceding sensation, image, memory, external cue, and hidden tendency."
+      },
+      {
+        "n": 2,
+        "move": "Stop Earliest",
+        "action": "Stop at the earliest condition you can really spot."
+      },
+      {
+        "n": 3,
+        "move": "Mark the Spark",
+        "action": "Notice the point where future interruption could happen."
+      }
+    ],
+    "win": "✓ The spark became visible early enough to interrupt next time.",
+    "supports": [
+      "Exhale after “Mark the Spark”; let feeling settle.",
+      "On return: “Stop Earliest”.",
+      "“Stop Earliest” separates feeling from fact.",
+      "“Take Recurring” to “Mark the Spark”: what loosened?",
+      "I can use “Stop Earliest” while emotion stays loud."
+    ],
+    "formula_flow": "Take Recurring → Stop Earliest → Mark the Spark",
+    "safety": "PAUSE\nDo not force inaccessible memories or invent causes to complete the chain.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 141,
+    "id": "T-141",
+    "bubble": "DROP",
+    "title": "NOT THIS, STILL HERE",
+    "play_time": "45–60 seconds",
+    "goal": "Remove identities without attacking experience.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Body",
+        "action": "Notice body, sensation, thought, emotion, and role in turn."
+      },
+      {
+        "n": 2,
+        "move": "Keep Perspective",
+        "action": "For each say, ‘Observed—therefore not the whole observer.’ Do not claim they are unreal."
+      },
+      {
+        "n": 3,
+        "move": "Rest Unlabelled",
+        "action": "After the sequence, rest with what remains unlabelled, then reconnect to name and place."
+      }
+    ],
+    "win": "✓ The present reclaimed one clear channel.",
+    "supports": [
+      "Exhale after “Rest Unlabelled”; notice the room.",
+      "Skip replay; use “Keep Perspective”.",
+      "“Keep Perspective” proves the present returned.",
+      "“Rest Unlabelled”: what changed from “Body”?",
+      "I can use “Keep Perspective” to return here."
+    ],
+    "formula_flow": "Body → Keep Perspective → Rest Unlabelled",
+    "safety": "PAUSE\nAvoid negation practices during feeling unreal or disconnected, psychosis, or unstable self-experience.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 151,
+    "id": "T-151",
+    "bubble": "DROP",
+    "title": "CLEAN ACTION, OPEN HANDS",
+    "play_time": "45–60 seconds",
+    "goal": "Own the quality of the move, not the universe’s reply.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Look Like",
+        "action": "Define what right action looks like in process terms: honest words, careful preparation, timely follow-through."
+      },
+      {
+        "n": 2,
+        "move": "Place Outside",
+        "action": "Specify the outcome you hope for, then place it outside the scoring system."
+      },
+      {
+        "n": 3,
+        "move": "Judge the Action",
+        "action": "Judge today only by whether the action met its standard."
+      }
+    ],
+    "win": "✓ I did the clean action and left the outcome with open hands.",
+    "supports": [
+      "Exhale after “Judge the Action”; slow the clock.",
+      "Shortcut: “Place Outside”, once.",
+      "“Place Outside” puts facts above speed.",
+      "Look back: “Look Like” → “Judge the Action”.",
+      "I can use “Place Outside” without rushing."
+    ],
+    "formula_flow": "Look Like → Place Outside → Judge the Action",
+    "safety": "PAUSE\nResults still matter when they reveal harm, error, or a need to change course.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 158,
+    "id": "T-158",
+    "bubble": "DROP",
+    "title": "CLOSE THE FEED BEFORE CRAVING VOTES",
+    "play_time": "45–60 seconds",
+    "goal": "Restraint works earlier than willpower.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Identify Cue",
+        "action": "Spot the cue that repeatedly captures a sense—screen, smell, image, taste, location."
+      },
+      {
+        "n": 2,
+        "move": "Set Concrete",
+        "action": "Set a concrete contact limit before practice round: duration, distance, quantity, or block."
+      },
+      {
+        "n": 3,
+        "move": "Leave Choice",
+        "action": "Leave while choice is still available, not after bargaining begins."
+      }
+    ],
+    "win": "✓ I left before craving got a chance to negotiate.",
+    "supports": [
+      "Exhale after “Leave Choice”; let wanting crest.",
+      "Restart detected: “Set Concrete”.",
+      "“Set Concrete” keeps wanting off controls.",
+      "Look back: “Identify Cue” → “Leave Choice”.",
+      "I can use “Set Concrete” without obeying the urge."
+    ],
+    "formula_flow": "Identify Cue → Set Concrete → Leave Choice",
+    "safety": "PAUSE\nUse specialist support for substance use, eating disorders, or compulsions.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 162,
+    "id": "T-162",
+    "bubble": "DROP",
+    "title": "FIND WHERE THE PATTERN MISSED",
+    "play_time": "about 90 seconds",
+    "goal": "One exception is enough to weaken inevitability.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Name Pattern",
+        "action": "Name the recurring pattern in one line, including the trigger and usual response."
+      },
+      {
+        "n": 2,
+        "move": "Find Misses",
+        "action": "Find two occasions when the same kind of trigger produced no pattern or a clearly weaker version."
+      },
+      {
+        "n": 3,
+        "move": "Compare Conditions",
+        "action": "Compare the exceptions. Spot one shared condition that you can influence: timing, preparation, company, distance, information, or body care."
+      },
+      {
+        "n": 4,
+        "move": "Transplant Edge",
+        "action": "Place that condition into the next comparable situation and define what weaker would look like."
+      }
+    ],
+    "win": "✓ The pattern already has an exception; inevitability just lost ground.",
+    "supports": [
+      "Gently exhale after “Transplant Edge”; no forcing.",
+      "Loop back? Use “Compare Conditions”.",
+      "“Compare Conditions” keeps sensation as data.",
+      "At “Transplant Edge”, compare “Name Pattern”.",
+      "I can use “Find Misses” while sensation stays."
+    ],
+    "formula_flow": "Name Pattern → Find Misses → Compare Conditions → Transplant Edge",
+    "safety": "PAUSE\nExceptions do not make unsafe situations safe; do not use this game to blame yourself for trauma, illness, abuse, discrimination, or coercion.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 166,
+    "id": "T-166",
+    "bubble": "DROP",
+    "title": "EFFORT IS STILL AVAILABLE",
+    "play_time": "about 1 minute",
+    "goal": "Spiritual acceptance should not disguise preventable passivity.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Name Cannot",
+        "action": "Name what cannot be changed today."
+      },
+      {
+        "n": 2,
+        "move": "Name Smallest",
+        "action": "Beside it, name the smallest domain where effort remains possible."
+      },
+      {
+        "n": 3,
+        "move": "Take Concrete",
+        "action": "Take one concrete step there before returning to contemplation."
+      },
+      {
+        "n": 4,
+        "move": "Let Action",
+        "action": "Let action answer the part of the problem that is actually yours."
+      }
+    ],
+    "win": "✓ Acceptance stopped disguising the part that still needs action.",
+    "supports": [
+      "Exhale after “Let Action”; keep the compass.",
+      "Use “Take Concrete” on return.",
+      "“Take Concrete” keeps meaning in motion.",
+      "“Name Cannot” → “Let Action”: what changed?",
+      "I can use “Name Smallest” while pain stays real."
+    ],
+    "formula_flow": "Name Cannot → Name Smallest → Take Concrete → Let Action",
+    "safety": "PAUSE\nDo not frame incapacity, disability, or exhaustion as moral failure.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 167,
+    "id": "T-167",
+    "bubble": "DROP",
+    "title": "RUN THE START GATE TWICE",
+    "play_time": "about 90 seconds",
+    "goal": "The first start can be rehearsal; the second one becomes real.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Stage Door",
+        "action": "Choose the opening movements: open the file, place the tool, find the line, or position your hands. Keep it under ten seconds."
+      },
+      {
+        "n": 2,
+        "move": "Dry Launch",
+        "action": "do that sequence once without producing work. Stop at the edge of action; this is the dry launch."
+      },
+      {
+        "n": 3,
+        "move": "Full Reset",
+        "action": "Return your hands or screen to neutral exactly once. Leave the plan unchanged or add another rehearsal."
+      },
+      {
+        "n": 4,
+        "move": "Live Entry",
+        "action": "Repeat the same sequence and continue straight into thirty seconds of real work."
+      }
+    ],
+    "win": "✓ The pain kept its truth while life kept another department open.",
+    "supports": [
+      "Exhale after “Live Entry”; keep the compass.",
+      "If it flares, choose “Full Reset”.",
+      "“Full Reset” keeps meaning in motion.",
+      "“Stage Door” to “Live Entry”: what loosened?",
+      "I can use “Dry Launch” while pain stays real."
+    ],
+    "formula_flow": "Stage Door → Dry Launch → Full Reset → Live Entry",
+    "safety": "PAUSE\nDo not rehearse machinery, driving, hazardous tools, or any start sequence that requires formal safety checks.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 168,
+    "id": "T-168",
+    "bubble": "DROP",
+    "title": "DIFFERENCE INSIDE ONE FIELD",
+    "play_time": "about 1 minute",
+    "goal": "Diversity need not become division.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Contrasting",
+        "action": "Notice two contrasting experiences—pleasant and painful, self and other, sound and silence."
+      },
+      {
+        "n": 2,
+        "move": "Hold Distinct",
+        "action": "Hold their distinct qualities without merging them."
+      },
+      {
+        "n": 3,
+        "move": "Include Shared",
+        "action": "Then include the shared field in which both are present."
+      },
+      {
+        "n": 4,
+        "move": "Let Difference",
+        "action": "Let difference remain vivid without translating it into separation."
+      }
+    ],
+    "win": "✓ Difference stayed visible; separation never became necessary.",
+    "supports": [
+      "Exhale after “Let Difference”; soften the jaw.",
+      "Skip replay; use “Include Shared”.",
+      "“Include Shared” keeps clarity above heat.",
+      "What lost power: “Contrasting” → “Let Difference”?",
+      "I can use “Hold Distinct” without extra heat."
+    ],
+    "formula_flow": "Contrasting → Hold Distinct → Include Shared → Let Difference",
+    "safety": "PAUSE\nUse ordinary distinctions when boundaries or safety require clear separation.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 175,
+    "id": "T-175",
+    "bubble": "DROP",
+    "title": "THE REVERSIBLE DOOR",
+    "play_time": "45–60 seconds",
+    "goal": "When uncertain, buy information without buying a prison.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Find Smallest",
+        "action": "Find the smallest action that tests the direction and can be undone: trial, prototype, conversation, temporary booking, one-week schedule."
+      },
+      {
+        "n": 2,
+        "move": "Name Exit",
+        "action": "Name the exit cost and the fact the step could reveal."
+      },
+      {
+        "n": 3,
+        "move": "Choose Door",
+        "action": "Choose the door that returns with data."
+      }
+    ],
+    "win": "✓ The door opened into data, not a prison.",
+    "supports": [
+      "Exhale after “Choose Door”; end the lap.",
+      "Pulled back? Touch “Name Exit”.",
+      "“Name Exit” proves loops can stop.",
+      "“Find Smallest” versus “Choose Door”: what eased?",
+      "I can use “Name Exit” without another lap."
+    ],
+    "formula_flow": "Find Smallest → Name Exit → Choose Door",
+    "safety": "PAUSE\nDo not treat apparently reversible steps as harmless without checking consequences.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 176,
+    "id": "T-176",
+    "bubble": "DROP",
+    "title": "WORRY HAS OFFICE HOURS",
+    "play_time": "about 1 minute",
+    "goal": "Give concern an appointment so it stops running reception.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Picture Worry",
+        "action": "Picture the worry exactly and schedule a specific review window later today."
+      },
+      {
+        "n": 2,
+        "move": "Add Genuinely",
+        "action": "Until then, add only really new facts to the Notice; no live analysis."
+      },
+      {
+        "n": 3,
+        "move": "Decide Accept",
+        "action": "At the appointment, decide: act, plan, accept, or discard."
+      },
+      {
+        "n": 4,
+        "move": "Close Time",
+        "action": "Close on time even if certainty is absent."
+      }
+    ],
+    "win": "✓ The replay lost another lap.",
+    "supports": [
+      "Exhale after “Close Time”; end the lap.",
+      "Shortcut: “Decide Accept”, once.",
+      "“Decide Accept” proves loops can stop.",
+      "“Picture Worry” to “Close Time”: what loosened?",
+      "I can use “Add Genuinely” without another lap."
+    ],
+    "formula_flow": "Picture Worry → Add Genuinely → Decide Accept → Close Time",
+    "safety": "PAUSE\nUse immediate action for urgent safety or time-sensitive problems.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 187,
+    "id": "T-187",
+    "bubble": "DROP",
+    "title": "ROTATE THE CHAIR",
+    "play_time": "about 1 minute",
+    "goal": "One perspective is data, not the whole room.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Describe Event",
+        "action": "Describe the event from your position."
+      },
+      {
+        "n": 2,
+        "move": "Move Seats",
+        "action": "Move seats and say what the other person might perceive, labelling guesses."
+      },
+      {
+        "n": 3,
+        "move": "Watch Behaviour",
+        "action": "Stand as a neutral observer and keep only observable behaviour."
+      },
+      {
+        "n": 4,
+        "move": "Ask Future",
+        "action": "Finally, ask what future-you would wish had happened next."
+      }
+    ],
+    "win": "✓ The conversation gained structure instead of more force.",
+    "supports": [
+      "Exhale after “Ask Future”; soften the jaw.",
+      "On return: “Watch Behaviour”.",
+      "“Watch Behaviour” keeps clarity above heat.",
+      "“Ask Future”: what changed from “Describe Event”?",
+      "I can use “Move Seats” without extra heat."
+    ],
+    "formula_flow": "Describe Event → Move Seats → Watch Behaviour → Ask Future",
+    "safety": "PAUSE\nSkip the other-person chair if it invites self-blame after abuse.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 195,
+    "id": "T-195",
+    "bubble": "DROP",
+    "title": "MOVE THE HEAVIEST WORD",
+    "play_time": "60–90 seconds",
+    "goal": "Move the emphasis and find where the sentence keeps its weight.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Say Alarm",
+        "action": "Choose the exact alarm sentence and shorten it to seven words or fewer."
+      },
+      {
+        "n": 2,
+        "move": "Shift Stress",
+        "action": "Say it quietly several times, moving emphasis to one different word per round. Keep pitch and speed comfortable."
+      },
+      {
+        "n": 3,
+        "move": "Find Weight",
+        "action": "Notice which emphasis changes the meaning or body response most. Focus only on that word."
+      },
+      {
+        "n": 4,
+        "move": "Keep Signal",
+        "action": "Keep the weighted word as information; stop the repetitions without debating the whole sentence."
+      }
+    ],
+    "win": "✓ I found the word carrying the weight and stopped rehearsing the whole sentence.",
+    "supports": [
+      "Gently exhale after “Keep Signal”; no breath-holding.",
+      "Re-entry move: “Find Weight”.",
+      "“Find Weight” — alarm isn’t command.",
+      "Before/after: “Say Alarm” → “Keep Signal”.",
+      "I can use “Shift Stress” while alarm rises."
+    ],
+    "formula_flow": "Say Alarm → Shift Stress → Find Weight → Keep Signal",
+    "safety": "PAUSE\nUse silent emphasis if speaking is unsafe; stop for voice strain, breathing difficulty, or rising panic.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 196,
+    "id": "T-196",
+    "bubble": "DROP",
+    "title": "A PLACE FOR THE LOSS",
+    "play_time": "45–60 seconds",
+    "goal": "Grief needs a deliberate address in time.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Choose Object",
+        "action": "Choose an object, date, location, and act of remembrance."
+      },
+      {
+        "n": 2,
+        "move": "Say Name",
+        "action": "Say the name of what was lost, honour what remains meaningful, and name a farewell to what cannot continue."
+      },
+      {
+        "n": 3,
+        "move": "Close Bond",
+        "action": "Close by deciding how the bond or value will be carried forward."
+      }
+    ],
+    "win": "✓ A meaningful next step survived the heaviness.",
+    "supports": [
+      "Exhale after “Close Bond”; keep the compass.",
+      "Restart detected: “Say Name”.",
+      "“Say Name” keeps meaning in motion.",
+      "Look back: “Choose Object” → “Close Bond”.",
+      "I can use “Say Name” while pain stays real."
+    ],
+    "formula_flow": "Choose Object → Say Name → Close Bond",
+    "safety": "PAUSE\nSeek grief or crisis support when mourning makes safety or functioning difficult.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 197,
+    "id": "T-197",
+    "bubble": "DROP",
+    "title": "CHANGE THE OBJECT, MARK THE RELEASE",
+    "play_time": "about 1 minute",
+    "goal": "Let matter carry a decision the mind keeps reopening.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Picture Safe",
+        "action": "Picture or select a safe symbol for what you are relinquishing."
+      },
+      {
+        "n": 2,
+        "move": "Choose Transformation",
+        "action": "Choose a transformation that fits: fold, seal, store, shred, bury where lawful, or dissolve safely."
+      },
+      {
+        "n": 3,
+        "move": "Name Responsibility",
+        "action": "Name what is ending and what responsibility remains."
+      },
+      {
+        "n": 4,
+        "move": "Mark the Release",
+        "action": "Complete the physical change once."
+      }
+    ],
+    "win": "✓ The object changed once; the decision got a physical full stop.",
+    "supports": [
+      "Exhale after “Mark the Release”; soften the jaw.",
+      "Return once to “Name Responsibility”.",
+      "“Name Responsibility” keeps clarity above heat.",
+      "“Mark the Release”: what changed from “Picture Safe”?",
+      "I can use “Choose Transformation” without extra heat."
+    ],
+    "formula_flow": "Picture Safe → Choose Transformation → Name Responsibility → Mark the Release",
+    "safety": "PAUSE\nNever burn, bury, ingest, or destroy items unsafely or illegally.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 203,
+    "id": "T-203",
+    "bubble": "DROP",
+    "title": "TODAY’S FURTHEST USEFUL HORIZON",
+    "play_time": "about 1 minute",
+    "goal": "Not every distant scenario deserves a seat in this decision.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Ask Far",
+        "action": "Ask how far ahead consequences can meaningfully alter today’s move: tonight, one week, six months."
+      },
+      {
+        "n": 2,
+        "move": "Imagine Line",
+        "action": "Imagine a line at that horizon."
+      },
+      {
+        "n": 3,
+        "move": "Park Scenario",
+        "action": "Park every scenario beyond it unless it changes a present safety or commitment fact."
+      },
+      {
+        "n": 4,
+        "move": "Decide Information",
+        "action": "Decide using information inside the line."
+      }
+    ],
+    "win": "✓ The decision stayed inside today’s useful horizon.",
+    "supports": [
+      "Exhale after “Decide Information”; end the lap.",
+      "On return: “Park Scenario”.",
+      "“Park Scenario” proves loops can stop.",
+      "Compare “Ask Far” with “Decide Information”.",
+      "I can use “Imagine Line” without another lap."
+    ],
+    "formula_flow": "Ask Far → Imagine Line → Park Scenario → Decide Information",
+    "safety": "PAUSE\nExtend the horizon for hard to undo actions or long-term obligations.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 216,
+    "id": "T-216",
+    "bubble": "DROP",
+    "title": "TURN THE LABEL INTO MOTION",
+    "play_time": "45–60 seconds",
+    "goal": "Turn the label into a process you can interrupt.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Take Identity",
+        "action": "Take the identity or label word dominating the moment."
+      },
+      {
+        "n": 2,
+        "move": "Translate Active",
+        "action": "Translate it into active, time-specific verbs ending in -ing: withdrawing, scanning, grieving, protecting, predicting."
+      },
+      {
+        "n": 3,
+        "move": "Ask Strengthens",
+        "action": "Ask what starts, strengthens, interrupts, and ends that process."
+      }
+    ],
+    "win": "✓ The noun lost its cage; motion exposed a change point.",
+    "supports": [
+      "Exhale after “Ask Strengthens”; soften the jaw.",
+      "On return, repeat “Translate Active”.",
+      "“Translate Active” keeps clarity above heat.",
+      "What changed: “Take Identity” → “Ask Strengthens”?",
+      "I can use “Translate Active” without extra heat."
+    ],
+    "formula_flow": "Take Identity → Translate Active → Ask Strengthens",
+    "safety": "PAUSE\nDo not discard formal diagnoses needed for treatment or access to support.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 218,
+    "id": "T-218",
+    "bubble": "DROP",
+    "title": "MEANING ON HOLD",
+    "play_time": "about 1 minute",
+    "goal": "Meaning must wait for independent witnesses.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Hold Event",
+        "action": "Hold the event without explaining it."
+      },
+      {
+        "n": 2,
+        "move": "Find Facts",
+        "action": "Find three facts from different channels—what was said, what was observed, what occurred over time."
+      },
+      {
+        "n": 3,
+        "move": "Name Meaning",
+        "action": "Until all three exist, name every meaning temporary."
+      },
+      {
+        "n": 4,
+        "move": "Assign Narrowest",
+        "action": "Then assign the narrowest meaning supported."
+      }
+    ],
+    "win": "✓ I put meaning on hold until the facts had enough witnesses.",
+    "supports": [
+      "Exhale after “Assign Narrowest”; soften the jaw.",
+      "Re-entry move: “Name Meaning”.",
+      "“Name Meaning” keeps clarity above heat.",
+      "Keep one lesson: “Hold Event” → “Assign Narrowest”.",
+      "I can use “Find Facts” without extra heat."
+    ],
+    "formula_flow": "Hold Event → Find Facts → Name Meaning → Assign Narrowest",
+    "safety": "PAUSE\nDo not postpone action when even one fact confirms urgent danger.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 220,
+    "id": "T-220",
+    "bubble": "DROP",
+    "title": "ONE WORD, ONE BREATH, RELEASE",
+    "play_time": "about 1 minute",
+    "goal": "Compress the noise without pretending it is solved.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Choose Temporary",
+        "action": "Choose a temporary word that holds the issue: betrayal, pressure, uncertainty, loss."
+      },
+      {
+        "n": 2,
+        "move": "Say During",
+        "action": "Say it once during a natural breath, feel its weight, and let the word leave with the breath’s end."
+      },
+      {
+        "n": 3,
+        "move": "Keep One Name",
+        "action": "Do not replace it with a second Name for thirty seconds."
+      }
+    ],
+    "win": "✓ One word rode one breath, then left without needing a replacement.",
+    "supports": [
+      "Exhale after “Keep One Name”; leave it unanswered.",
+      "Skip replay; use “Say During”.",
+      "“Say During” keeps uncertainty carryable.",
+      "Look back: “Choose Temporary” → “Keep One Name”.",
+      "I can use “Say During” without a guarantee."
+    ],
+    "formula_flow": "Choose Temporary → Say During → Keep One Name",
+    "safety": "PAUSE\nAvoid compression when important complexity must be communicated.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 224,
+    "id": "T-224",
+    "bubble": "DROP",
+    "title": "GIVE THE FORECAST EDGES",
+    "play_time": "45–60 seconds",
+    "goal": "A vague fear cannot lose because it never defines a result.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Sharpen Forecast",
+        "action": "Sharpen the prediction with who, what visible event, exact time window, location, and clear threshold."
+      },
+      {
+        "n": 2,
+        "move": "Define",
+        "action": "Define the sign of the event not happening."
+      },
+      {
+        "n": 3,
+        "move": "Set Review",
+        "action": "Set a review date and refuse to score the prediction before then."
+      }
+    ],
+    "win": "✓ One feared ending just got competition.",
+    "supports": [
+      "Exhale after “Set Review”; drop the scoreboard.",
+      "Loop back? Use “Define”.",
+      "“Define” keeps worth off scoreboards.",
+      "“Sharpen Forecast” → “Set Review”: what changed?",
+      "I can use “Define” without ranking my worth."
+    ],
+    "formula_flow": "Sharpen Forecast → Define → Set Review",
+    "safety": "PAUSE\nDo not use precision to obsessively monitor low-stakes uncertainty.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 263,
+    "id": "T-263",
+    "bubble": "DROP",
+    "title": "TURN DOWN THE DOMINANT CHANNEL",
+    "play_time": "45–60 seconds",
+    "goal": "A memory can feel present because one sense owns the mix.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Identify Loudest",
+        "action": "Spot the loudest recall channel—image, sound, touch, smell."
+      },
+      {
+        "n": 2,
+        "move": "Reduce Brightness",
+        "action": "Reduce its brightness, volume, proximity, or texture slightly."
+      },
+      {
+        "n": 3,
+        "move": "Anchor the Present",
+        "action": "At the same time, strengthen neutral present-day context: the room layout, today’s date, your clothing, or a distant sound."
+      }
+    ],
+    "win": "✓ Memory lost the whole screen; the present regained channels.",
+    "supports": [
+      "Exhale after “Anchor the Present”; keep both sides.",
+      "Skip replay; use “Reduce Brightness”.",
+      "“Reduce Brightness” widens the evidence field.",
+      "“Anchor the Present”: what changed from “Identify Loudest”?",
+      "I can use “Reduce Brightness” before concluding."
+    ],
+    "formula_flow": "Identify Loudest → Reduce Brightness → Anchor the Present",
+    "safety": "PAUSE\nDo not manipulate testimony or use this when precise recall is legally important.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 270,
+    "id": "T-270",
+    "bubble": "DROP",
+    "title": "SAVE THE LESSON, DELETE THE VERDICT",
+    "play_time": "45–60 seconds",
+    "goal": "A useful warning does not require a ruined identity or world.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Save Lesson",
+        "action": "Name the specific lesson the event genuinely supports."
+      },
+      {
+        "n": 2,
+        "move": "Spot Verdict",
+        "action": "Notice the global conclusion attached to it: ‘Nobody is safe,’ ‘I am weak,’ ‘Life is over,’ or another all-life verdict."
+      },
+      {
+        "n": 3,
+        "move": "Separate Them",
+        "action": "Ask whether the specific lesson still works without the global verdict. Keep what teaches; delete what condemns."
+      }
+    ],
+    "win": "✓ The lesson stayed. The life sentence was deleted.",
+    "supports": [
+      "Exhale after “Separate Them”; keep both sides.",
+      "Restart detected: “Spot Verdict”.",
+      "“Spot Verdict” widens the evidence field.",
+      "“Separate Them”: what changed from “Save Lesson”?",
+      "I can use “Spot Verdict” before concluding."
+    ],
+    "formula_flow": "Picture Specific → Picture Global",
+    "safety": "PAUSE\nDo not dilute lessons that accurately identify continuing danger.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 281,
+    "id": "T-281",
+    "bubble": "DROP",
+    "title": "SET THE LIMIT BEFORE THE NEXT TEST",
+    "play_time": "60–90 seconds",
+    "goal": "Decide the enforcement rule while the room is calm.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Count Pattern",
+        "action": "Define the behaviour in terms a camera could Keep."
+      },
+      {
+        "n": 2,
+        "move": "Set Threshold",
+        "action": "Choose the count, duration, or date that will Notice the limit."
+      },
+      {
+        "n": 3,
+        "move": "Link Consequence",
+        "action": "Attach one consequence under your control, such as ending the call, leaving, or changing access."
+      },
+      {
+        "n": 4,
+        "move": "Follow Contract",
+        "action": "If the threshold is crossed, follow the contract once without holding a motive trial."
+      }
+    ],
+    "win": "✓ The boundary was decided in calm, so motive did not get a retrial.",
+    "supports": [
+      "Exhale after “Follow Contract”; release extra load.",
+      "On return: “Link Consequence”.",
+      "“Link Consequence” keeps responsibility proportionate.",
+      "Difference check: “Count Pattern” → “Follow Contract”.",
+      "I can use “Set Threshold” without carrying it all."
+    ],
+    "formula_flow": "Count Pattern → Set Threshold → Link Consequence → Follow Contract",
+    "safety": "PAUSE\nLeave immediately instead of counting repetitions when there is intimidation, violence, or immediate danger.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 283,
+    "id": "T-283",
+    "bubble": "DROP",
+    "title": "COME BACK FROM THEIR IMAGINED HEAD",
+    "play_time": "about 1 minute",
+    "goal": "Attention belongs first to what can be known.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Sort Three Boxes",
+        "action": "Picture three boxes: KNOWN, INFERRED, UNKNOWABLE."
+      },
+      {
+        "n": 2,
+        "move": "Move Claim",
+        "action": "Move every claim about the other person into its correct box."
+      },
+      {
+        "n": 3,
+        "move": "Choose Direct",
+        "action": "Choose one direct question or boundary based on known facts."
+      },
+      {
+        "n": 4,
+        "move": "Leave Unknowable",
+        "action": "Leave the unknowable box empty of action."
+      }
+    ],
+    "win": "✓ What I know became actionable; what I cannot know stayed empty.",
+    "supports": [
+      "Exhale after “Leave Unknowable”; release extra load.",
+      "Skip replay; use “Choose Direct”.",
+      "“Choose Direct” keeps responsibility proportionate.",
+      "What lost power: “Sort Three Boxes” → “Leave Unknowable”?",
+      "I can use “Move Claim” without carrying it all."
+    ],
+    "formula_flow": "Sort Three Boxes → Move Claim → Choose Direct → Leave Unknowable",
+    "safety": "PAUSE\nRely on observed patterns when asking would be unsafe or futile.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 292,
+    "id": "T-292",
+    "bubble": "DROP",
+    "title": "SOFT JAW, SAME BOUNDARY",
+    "play_time": "about 1 minute",
+    "goal": "Reduce aggression preparation without weakening the sentence.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Notice Jaw",
+        "action": "Notice jaw pressure before speaking."
+      },
+      {
+        "n": 2,
+        "move": "Separate Teeth",
+        "action": "Separate the teeth, relax the tongue, and exhale naturally."
+      },
+      {
+        "n": 3,
+        "move": "Deliver Limit",
+        "action": "Deliver the exact limit you planned—no extra smile, apology, or attack."
+      },
+      {
+        "n": 4,
+        "move": "Let Articulation",
+        "action": "Let articulation stay clear while muscular threat signalling drops."
+      }
+    ],
+    "win": "✓ The boundary kept its strength after the body dropped the threat pose.",
+    "supports": [
+      "Exhale after “Let Articulation”; release extra load.",
+      "On return, repeat “Deliver Limit”.",
+      "“Deliver Limit” keeps responsibility proportionate.",
+      "At “Let Articulation”, compare “Notice Jaw”.",
+      "I can use “Separate Teeth” without carrying it all."
+    ],
+    "formula_flow": "Notice Jaw → Separate Teeth → Deliver Limit → Let Articulation",
+    "safety": "PAUSE\nStop the conversation if safety or self-control is deteriorating.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 300,
+    "id": "T-300",
+    "bubble": "DROP",
+    "title": "FINISH THE BODY'S FULL STOP",
+    "play_time": "60–90 seconds",
+    "goal": "Let leftover readiness complete one harmless ending.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Find Readiness",
+        "action": "While safely seated, locate one area that still feels ready to push, brace, turn, or withdraw."
+      },
+      {
+        "n": 2,
+        "move": "Add Resistance",
+        "action": "Choose a pain-free direction and add only light self-resistance."
+      },
+      {
+        "n": 3,
+        "move": "Complete Slowly",
+        "action": "Complete the movement slowly once, then release all effort rather than repeating it."
+      },
+      {
+        "n": 4,
+        "move": "Check Neutral",
+        "action": "Compare resting pressure, movement range, and urge before and after."
+      }
+    ],
+    "win": "✓ Leftover readiness completed its harmless ending and stopped asking for more.",
+    "supports": [
+      "Exhale after “Check Neutral”; mark the pause.",
+      "Re-entry move: “Complete Slowly”.",
+      "“Complete Slowly” proves choice interrupted habit.",
+      "Before/after: “Find Readiness” → “Check Neutral”.",
+      "I can use “Add Resistance” before autopilot."
+    ],
+    "formula_flow": "Find Readiness → Add Resistance → Complete Slowly → Check Neutral",
+    "safety": "PAUSE\nStop immediately with pain, dizziness, numbness, injury risk, or uncertain movement.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 312,
+    "id": "T-312",
+    "bubble": "DROP",
+    "title": "ONE ACTIVE SLOT",
+    "play_time": "45–60 seconds",
+    "goal": "Short-term attention needs a deliberate admission policy.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Create Positions",
+        "action": "Create three positions: ACTIVE, WAITING, ARCHIVE."
+      },
+      {
+        "n": 2,
+        "move": "Wait Route",
+        "action": "Put only one concern in active, one likely next item in waiting, and route everything else to archive with a retrieval Notice."
+      },
+      {
+        "n": 3,
+        "move": "Give Active",
+        "action": "Give the active concern a protected time box."
+      }
+    ],
+    "win": "✓ Attention admitted one concern and gave the rest a booked return time.",
+    "supports": [
+      "Exhale after “Give Active”; mark the pause.",
+      "Restart detected: “Wait Route”.",
+      "“Wait Route” proves choice interrupted habit.",
+      "“Create Positions” → “Give Active”: what changed?",
+      "I can use “Wait Route” before autopilot."
+    ],
+    "formula_flow": "Create Positions → Wait Route → Give Active",
+    "safety": "PAUSE\nExpand active capacity only when parallel monitoring is genuinely required.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 340,
+    "id": "T-340",
+    "bubble": "DROP",
+    "title": "THE POINT OF NO MORE INFLUENCE",
+    "play_time": "45–60 seconds",
+    "goal": "The body needs to know when available action is complete.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Remain Unknown",
+        "action": "Name what you have already done, what remains unknown, and which outcomes no longer respond to effort."
+      },
+      {
+        "n": 2,
+        "move": "Boundary",
+        "action": "Notice the exact boundary where influence ends."
+      },
+      {
+        "n": 3,
+        "move": "Use Physical",
+        "action": "Use one physical closing action and redirect into a present responsibility."
+      }
+    ],
+    "win": "✓ Available action reached its edge; the body got permission to close.",
+    "supports": [
+      "Exhale after “Use Physical”; leave it unanswered.",
+      "Use “Boundary” on return.",
+      "“Boundary” keeps uncertainty carryable.",
+      "Difference check: “Remain Unknown” → “Use Physical”.",
+      "I can use “Boundary” without a guarantee."
+    ],
+    "formula_flow": "Remain Unknown → Boundary → Use Physical",
+    "safety": "PAUSE\nRe-enter action if genuinely new controllable information appears.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 352,
+    "id": "T-352",
+    "bubble": "DROP",
+    "title": "CHANGE THE MENTAL TOOL, NOT THE PRESSURE",
+    "play_time": "45–60 seconds",
+    "goal": "Wrong mental mode makes effort repeat itself.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Decide Accept",
+        "action": "Classify the demand as SOLVE, DECIDE, FEEL, ACCEPT, COMMUNICATE, or WAIT."
+      },
+      {
+        "n": 2,
+        "move": "Name Mode",
+        "action": "Name the mode currently running."
+      },
+      {
+        "n": 3,
+        "move": "Choose Shut",
+        "action": "Shut it down and do the first action belonging to the correct mode—calculate, choose, allow, release, speak, or schedule."
+      }
+    ],
+    "win": "✓ I changed mental tools instead of pushing the wrong one harder.",
+    "supports": [
+      "Gently exhale after “Choose Shut”; orient to now.",
+      "Use “Name Mode” on return.",
+      "“Name Mode” moves memory toward then.",
+      "What changed: “Decide Accept” → “Choose Shut”?",
+      "I can use “Name Mode” while staying in now."
+    ],
+    "formula_flow": "Decide Accept → Name Mode → Choose Shut",
+    "safety": "PAUSE\nMixed situations may need modes in sequence rather than one label.\nThis is a self-help exercise, not emergency or medical care."
+  },
+  {
+    "ritual_number": 361,
+    "id": "T-361",
+    "bubble": "DROP",
+    "title": "DEMOTE THE HEADLINE EXPERIENCE",
+    "play_time": "45–60 seconds",
+    "goal": "Foreground and background can share equal status.",
+    "steps": [
+      {
+        "n": 1,
+        "move": "Hold Sensation",
+        "action": "Hold the dominant sensation or thought with three background what you notices—one sound, one contact point, one visual feature."
+      },
+      {
+        "n": 2,
+        "move": "Give Attention",
+        "action": "For a contained interval, give all four equal attentional weight without imagining a separate watcher."
+      },
+      {
+        "n": 3,
+        "move": "Demote the Headline",
+        "action": "Notice how centrality changes."
+      }
+    ],
+    "win": "✓ Headline demoted. The background gets equal screen time now.",
+    "supports": [
+      "Exhale after “Demote the Headline”; watch the thought.",
+      "Skip replay; use “Give Attention”.",
+      "“Give Attention” proves thought is observable.",
+      "Difference check: “Hold Sensation” → “Demote the Headline”.",
+      "I can use “Give Attention” without obeying thought."
+    ],
+    "formula_flow": "Hold Sensation → Give Attention → Demote the Headline",
+    "safety": "PAUSE\nStop equalisation when one signal requires urgent priority.\nThis is a self-help exercise, not emergency or medical care."
+  }
+]
