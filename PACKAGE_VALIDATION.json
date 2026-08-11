@@ -1,0 +1,25 @@
+{
+  "status": "PASS",
+  "ritual_count": 400,
+  "all_required_display_fields_present": {
+    "title": 0,
+    "goal": 0,
+    "steps": 0,
+    "win": 0,
+    "supports": 0,
+    "formulaFlow": 0,
+    "safety": 0
+  },
+  "display_order": [
+    "TITLE",
+    "GOAL",
+    "RITUAL",
+    "WIN",
+    "5 SUPPORT LINES",
+    "FORMULA FLOW",
+    "SAFETY",
+    "PAUSE"
+  ],
+  "first_ritual": "T-001 — THE FIRST FRAME",
+  "full_body_not_collapsed": true
+}
