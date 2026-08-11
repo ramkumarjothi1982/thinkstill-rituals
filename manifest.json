@@ -1,0 +1,67 @@
+{
+  "schema": "thinkstill-manifest-v17",
+  "version": "37.9",
+  "project": "ThinkStill 400 TRUE ONE-OF-ONE WIN LOCK",
+  "row_count": 400,
+  "consumer_contract": [
+    "TITLE",
+    "GOAL",
+    "NUMBERED RITUAL",
+    "ONE-OF-ONE RESULT WIN",
+    "5 PLAIN RITUAL-MATCHED SUPPORT MOVES",
+    "FORMULA FLOW",
+    "SAFETY"
+  ],
+  "source_workbook": "ThinkStill_400_Rituals_v37_9_TRUE_ONE_OF_ONE_WIN_LOCKED_MASTER(4).xlsx",
+  "routing": {
+    "selection_path": "issue → release trigger → precise pattern → weighted best unused ritual",
+    "repeat_policy": "No ritual repeats until all 400 have been served in the browser profile; then the global pool resets.",
+    "primary_release_triggers": 22,
+    "precise_patterns": 63
+  },
+  "bubbles": [
+    {
+      "name": "DROP",
+      "count": 57,
+      "file": "bubble-drop.json"
+    },
+    {
+      "name": "GLITCH",
+      "count": 58,
+      "file": "bubble-glitch.json"
+    },
+    {
+      "name": "LOOPIE",
+      "count": 57,
+      "file": "bubble-loopie.json"
+    },
+    {
+      "name": "PATCH",
+      "count": 57,
+      "file": "bubble-patch.json"
+    },
+    {
+      "name": "RUSH",
+      "count": 57,
+      "file": "bubble-rush.json"
+    },
+    {
+      "name": "STILL",
+      "count": 57,
+      "file": "bubble-still.json"
+    },
+    {
+      "name": "SYNC",
+      "count": 57,
+      "file": "bubble-sync.json"
+    }
+  ],
+  "files": {
+    "all_rituals": "rituals.json",
+    "routing": "routing.json",
+    "app": "index.html",
+    "javascript": "app.js",
+    "styles": "styles.css",
+    "readme": "README.md"
+  }
+}
