@@ -1,8 +1,0 @@
-THINKSTILL v37.9 — ONE-FOLDER GITHUB UPLOAD
-
-1. Create/open your GitHub repository.
-2. Upload EVERY file from this folder to the repository ROOT.
-3. Commit to main.
-4. Enable GitHub Pages from main / root if using the included web app.
-5. Confirm manifest.json opens via the RAW GitHub URL.
-6. Do not rename bubble JSON files unless you also update manifest.json.
