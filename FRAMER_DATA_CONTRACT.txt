@@ -1,0 +1,36 @@
+ThinkStill v38.4.3 DATA CONTRACT
+
+DISPLAY ORDER
+Ritual Name
+Play Time
+GOAL
+Numbered Steps
+WIN
+5 Short Counselling Hits — unlabelled
+FORMULA FLOW
+SAFETY / PAUSE
+
+DO NOT DISPLAY
+TITLE heading
+RITUAL heading
+Internal Hook
+Internal Game Move
+Routing diagnostics
+
+PREFERRED FIELDS
+title
+playTime
+goal
+steps / stepsArray
+win
+supports / supportsArray
+formulaFlow
+safety
+
+ROUTING FIELDS
+routing.trigger
+routing.secondaryTrigger
+routing.pattern
+routing.triggerWeight
+routing.patternWeight
+routing.distressCue
