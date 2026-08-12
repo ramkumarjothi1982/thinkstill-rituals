@@ -1,0 +1,4 @@
+ThinkStill v38.4.3 TRUE 10/10 FINAL LOCK
+GitHub/Framer renderer revision: FULL-RITUAL-DISPLAY-1
+Source master: ThinkStill_400_Rituals_v38_4_3_TRUE_10of10_FINAL_LOCK_MASTER.xlsx
+Display contract: Name → Play Time → Goal → Numbered Steps → Win → 5 unlabelled counselling hits → Formula Flow → Safety/PAUSE
