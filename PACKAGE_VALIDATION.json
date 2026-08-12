@@ -1,0 +1,39 @@
+{
+  "version": "38.4.3",
+  "ritual_count": 400,
+  "unique_ids": 400,
+  "unique_titles": 400,
+  "bubble_counts": {
+    "GLITCH": 58,
+    "DROP": 57,
+    "STILL": 57,
+    "PATCH": 57,
+    "LOOPIE": 57,
+    "RUSH": 57,
+    "SYNC": 57
+  },
+  "trigger_count": 22,
+  "pattern_count": 63,
+  "support_line_count": 2000,
+  "unique_support_lines": 2000,
+  "all_rituals_have_5_supports": true,
+  "missing_required_fields": {
+    "id": 0,
+    "bubble": 0,
+    "title": 0,
+    "playTime": 0,
+    "goal": 0,
+    "steps": 0,
+    "win": 0,
+    "formulaFlow": 0,
+    "safety": 0,
+    "ritualText": 0
+  },
+  "repeated_8_word_phrase_types": 0,
+  "repeated_7_word_phrase_types": 0,
+  "repeated_6_word_phrase_types": 0,
+  "max_5_word_phrase_occurrences": 2,
+  "ritualText_has_TITLE_heading": 0,
+  "ritualText_has_RITUAL_heading": 0,
+  "release_gate_pass": true
+}
