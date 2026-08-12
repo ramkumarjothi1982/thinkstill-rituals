@@ -1,0 +1,10 @@
+{
+  "name": "thinkstill-750-v40",
+  "version": "40.0.0",
+  "private": true,
+  "description": "ThinkStill — When your mind hits hard, hit ThinkStill. Built for during.",
+  "scripts": {
+    "validate": "node validate.js",
+    "serve": "npx serve ."
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "version": "40.0",
+  "rituals": 750,
+  "uniqueIds": 750,
+  "uniqueTitles": 750,
+  "uniqueTips": 3750,
+  "uniqueMindBends": 750,
+  "worlds": [
+    "CLEAR",
+    "CALM",
+    "FOCUS",
+    "MEANING",
+    "CONNECT",
+    "PERFORM",
+    "WORK"
+  ],
+  "specialists": 56,
+  "tier3": 16,
+  "failures": []
+}
