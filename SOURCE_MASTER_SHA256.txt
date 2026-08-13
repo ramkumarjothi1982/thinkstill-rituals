@@ -1,6 +1,0 @@
-ThinkStill v40.6 package source
-
-Workbook: ThinkStill_750_v40_6_SIMPLE_FAST_RESET_MASTER.xlsx
-SHA-256: c2d81c15d8c9c1b0f8d1f88fa51b0f72ac67d4c3c133cb794660675e42418740
-Ritual rows: 750
-Generated: 2026-08-13
