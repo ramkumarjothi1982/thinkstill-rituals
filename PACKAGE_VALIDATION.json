@@ -1,0 +1,10 @@
+{
+  "version": "v38.4.3-game-quest-ui",
+  "ritual_count": 400,
+  "data_changed": false,
+  "framer_game_ui": true,
+  "follow_up_feedback": true,
+  "retry_cues": 5,
+  "bounded_round_hint": 3,
+  "full_ritual_display": true
+}
