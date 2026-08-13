@@ -1,0 +1,81 @@
+{
+  "schema": "thinkstill-manifest-v40.5.3",
+  "version": "v40.5.3",
+  "generated_at": "2026-08-13",
+  "project": "ThinkStill 750 TRUE FINAL Framer Library",
+  "row_count": 750,
+  "base_url": "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/",
+  "repeat_policy": "No ritual repeats until all 750 have been served; then the global pool resets.",
+  "bubbles": [
+    {
+      "bubble": "GLITCH",
+      "count": 108,
+      "parts": [
+        {
+          "filename": "rituals_glitch.json",
+          "rows": 108
+        }
+      ]
+    },
+    {
+      "bubble": "DROP",
+      "count": 107,
+      "parts": [
+        {
+          "filename": "rituals_drop.json",
+          "rows": 107
+        }
+      ]
+    },
+    {
+      "bubble": "LOOPIE",
+      "count": 107,
+      "parts": [
+        {
+          "filename": "rituals_loopie.json",
+          "rows": 107
+        }
+      ]
+    },
+    {
+      "bubble": "PATCH",
+      "count": 107,
+      "parts": [
+        {
+          "filename": "rituals_patch.json",
+          "rows": 107
+        }
+      ]
+    },
+    {
+      "bubble": "RUSH",
+      "count": 107,
+      "parts": [
+        {
+          "filename": "rituals_rush.json",
+          "rows": 107
+        }
+      ]
+    },
+    {
+      "bubble": "STILL",
+      "count": 107,
+      "parts": [
+        {
+          "filename": "rituals_still.json",
+          "rows": 107
+        }
+      ]
+    },
+    {
+      "bubble": "SYNC",
+      "count": 107,
+      "parts": [
+        {
+          "filename": "rituals_sync.json",
+          "rows": 107
+        }
+      ]
+    }
+  ]
+}
