@@ -1,0 +1,24 @@
+UPLOAD THESE FILES TO THE GITHUB REPOSITORY ROOT
+
+FASTEST FIX FOR THE CURRENT SCREENSHOT:
+Replace manifest.json only, then republish Framer.
+
+DURABLE FIX:
+Replace all files below and replace the Framer component code.
+
+manifest.json
+rituals_glitch.json
+rituals_drop.json
+rituals_loopie.json
+rituals_patch.json
+rituals_rush.json
+rituals_still.json
+rituals_sync.json
+ThinkStillUnifiedChat.tsx
+
+Then replace the old Framer code with ThinkStillUnifiedChat.tsx and republish.
+
+The Manifest URL is already set inside the fixed component:
+https://raw.githubusercontent.com/rankumarjothi1982/thinkstill-rituals/main/manifest.json
+
+IMPORTANT: upload the files themselves, not the outer folder.
