@@ -1,0 +1,38 @@
+{
+  "schema": "thinkstill-manifest-v40.5.3",
+  "project": "ThinkStill 750 — TRUE FINAL 100/10",
+  "version": "40.5.3",
+  "releaseStatus": "FINAL LOCK",
+  "rowCount": 750,
+  "idRange": "TS-001 → TS-750",
+  "entry": "index.html",
+  "app": "app.js",
+  "styles": "styles.css",
+  "data": {
+    "rituals": "data/rituals.json",
+    "routing": "data/routing.json"
+  },
+  "integrity": {
+    "algorithm": "sha256",
+    "rituals": "3337fd76cdb0ad9b45d8dbfc6caf947d371a42430d7e911095a9586f30adc601"
+  },
+  "displayOrder": [
+    "Name",
+    "Goal",
+    "Moves",
+    "WIN",
+    "TIPS",
+    "MIND BEND",
+    "Formula Flow",
+    "Safety"
+  ],
+  "rules": {
+    "titleOnce": true,
+    "winLines": 1,
+    "tipsPerRitual": 5,
+    "noReplayUntilPoolExhausted": true,
+    "hideBackendTaxonomy": true,
+    "preferStructuredFields": true,
+    "preserveFullRitualText": true
+  }
+}

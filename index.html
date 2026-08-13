@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="description" content="ThinkStill gives you one practical mental move for the exact moment.">
+  <title>ThinkStill — When your mind hits hard</title>
+  <link rel="icon" href="assets/thinkstill-mark.svg" type="image/svg+xml">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+
+  <header class="topbar">
+    <button class="brand" type="button" data-view-target="home" aria-label="ThinkStill home">
+      <img src="assets/thinkstill-mark.svg" alt="" width="34" height="34">
+      <span>ThinkStill</span>
+    </button>
+    <nav aria-label="Main navigation">
+      <button type="button" class="nav-link is-active" data-view-target="home">Reset</button>
+      <button type="button" class="nav-link" data-view-target="library">Library</button>
+      <button type="button" class="nav-link" data-view-target="progress">My shifts</button>
+    </nav>
+    <button id="themeToggle" class="icon-button" type="button" aria-label="Switch to bright theme" title="Switch theme">
+      <span aria-hidden="true">☀</span>
+    </button>
+  </header>
+
+  <main id="main">
+    <section id="homeView" class="view home-view is-active" aria-labelledby="heroTitle">
+      <div class="hero">
+        <p class="eyebrow">ONE MOVE. RIGHT NOW.</p>
+        <h1 id="heroTitle">When your mind hits hard,<br><span>hit ThinkStill.</span></h1>
+        <p class="hero-copy">Name what is happening. Get one matched, practical ritual. Check the shift. Change mechanism when needed.</p>
+
+        <form id="matchForm" class="signal-card">
+          <label for="signalInput">What is hitting your mind right now?</label>
+          <textarea id="signalInput" rows="3" maxlength="500" placeholder="For example: I keep imagining the worst before tomorrow’s meeting"></textarea>
+          <div class="signal-actions">
+            <button class="button button-primary" type="submit">Match my ritual <span aria-hidden="true">→</span></button>
+            <button id="surpriseButton" class="button button-secondary" type="button">Surprise me</button>
+          </div>
+          <p class="microcopy">Your words stay in this browser. ThinkStill does not send them anywhere.</p>
+        </form>
+
+        <div class="world-strip" aria-label="Ritual worlds">
+          <span>Start with</span>
+          <div id="worldButtons" class="world-buttons"></div>
+        </div>
+      </div>
+
+      <div class="proof-strip" aria-label="ThinkStill library summary">
+        <div><strong id="ritualCount">750</strong><span>distinct rituals</span></div>
+        <div><strong>1–2</strong><span>minute moves</span></div>
+        <div><strong>0</strong><span>repeats before reset</span></div>
+      </div>
+    </section>
+
+    <section id="ritualView" class="view ritual-view" aria-labelledby="ritualTitle">
+      <div class="ritual-toolbar">
+        <button class="back-button" type="button" data-view-target="home"><span aria-hidden="true">←</span> Back</button>
+        <div class="ritual-toolbar-actions">
+          <button id="copyRitualButton" class="quiet-button" type="button">Copy ritual</button>
+          <button id="newMatchButton" class="quiet-button" type="button">New match</button>
+        </div>
+      </div>
+
+      <article class="ritual-shell">
+        <div class="ritual-heading">
+          <div id="ritualMeta" class="meta-row"></div>
+          <p id="ritualId" class="ritual-id"></p>
+          <h2 id="ritualTitle"></h2>
+        </div>
+
+        <section class="goal-panel" aria-labelledby="goalLabel">
+          <p id="goalLabel" class="section-kicker">GOAL</p>
+          <p id="ritualGoal" class="goal-text"></p>
+        </section>
+
+        <section class="moves-panel" aria-labelledby="movesLabel">
+          <div class="section-heading">
+            <p id="movesLabel" class="section-kicker">THE MOVES</p>
+            <span id="moveCount"></span>
+          </div>
+          <ol id="ritualMoves" class="moves-list"></ol>
+        </section>
+
+        <section class="win-panel" aria-labelledby="winLabel">
+          <p id="winLabel" class="section-kicker">WIN</p>
+          <p id="ritualWin" class="win-text"></p>
+        </section>
+
+        <div class="ritual-grid">
+          <section class="content-panel" aria-labelledby="tipsLabel">
+            <p id="tipsLabel" class="section-kicker">5 TIPS</p>
+            <ul id="ritualTips" class="tips-list"></ul>
+          </section>
+          <section class="content-panel mind-panel" aria-labelledby="mindBendLabel">
+            <p id="mindBendLabel" class="section-kicker">MIND BEND</p>
+            <p id="ritualMindBend"></p>
+          </section>
+        </div>
+
+        <section class="flow-panel" aria-labelledby="flowLabel">
+          <p id="flowLabel" class="section-kicker">FORMULA FLOW</p>
+          <div id="ritualFlow" class="flow-list"></div>
+        </section>
+
+        <section class="safety-panel" aria-labelledby="safetyLabel">
+          <p id="safetyLabel" class="section-kicker">PAUSE</p>
+          <div id="ritualSafety"></div>
+        </section>
+
+        <section id="feedbackPanel" class="feedback-panel" aria-labelledby="feedbackTitle">
+          <p class="section-kicker">CHECK THE SHIFT</p>
+          <h3 id="feedbackTitle">Did anything shift?</h3>
+          <div class="feedback-buttons">
+            <button class="feedback-button better" type="button" data-feedback="better">BETTER</button>
+            <button class="feedback-button little" type="button" data-feedback="aLittle">A LITTLE</button>
+            <button class="feedback-button not-yet" type="button" data-feedback="notYet">NOT YET</button>
+          </div>
+          <div id="feedbackResult" class="feedback-result" aria-live="polite"></div>
+          <div id="remainingOptions" class="remaining-options"></div>
+        </section>
+      </article>
+    </section>
+
+    <section id="libraryView" class="view library-view" aria-labelledby="libraryTitle">
+      <div class="page-heading">
+        <p class="eyebrow">THE FULL LIBRARY</p>
+        <h1 id="libraryTitle">Find the move that fits.</h1>
+        <p>Browse all 750 distinct rituals without exposing the engine underneath.</p>
+      </div>
+      <div class="library-controls">
+        <label class="search-field">
+          <span>Search rituals</span>
+          <input id="librarySearch" type="search" placeholder="Search title, goal, world or need">
+        </label>
+        <label class="select-field">
+          <span>World</span>
+          <select id="worldFilter"><option value="">All worlds</option></select>
+        </label>
+      </div>
+      <div class="library-summary"><span id="libraryResultCount">750 rituals</span><button id="clearFilters" class="quiet-button" type="button">Clear filters</button></div>
+      <div id="libraryGrid" class="library-grid"></div>
+      <button id="loadMoreButton" class="button button-secondary load-more" type="button">Show more</button>
+    </section>
+
+    <section id="progressView" class="view progress-view" aria-labelledby="progressTitle">
+      <div class="page-heading">
+        <p class="eyebrow">YOUR LOCAL HISTORY</p>
+        <h1 id="progressTitle">Your shifts, on this device.</h1>
+        <p>No account. No cloud profile. Your history remains in this browser.</p>
+      </div>
+      <div id="progressStats" class="progress-stats"></div>
+      <div class="history-header"><h2>Recent rituals</h2><button id="clearHistoryButton" class="quiet-button danger" type="button">Clear history</button></div>
+      <div id="historyList" class="history-list"></div>
+    </section>
+  </main>
+
+  <footer>
+    <div>
+      <strong>ThinkStill</strong>
+      <span>Self-help rituals for the exact moment.</span>
+    </div>
+    <p>Not emergency or medical care. If you may be in immediate danger, contact local emergency services or a trusted person now.</p>
+  </footer>
+
+  <dialog id="supportDialog" class="support-dialog" aria-labelledby="supportTitle">
+    <form method="dialog">
+      <button class="dialog-close" value="close" aria-label="Close">×</button>
+      <p class="section-kicker">CHANGE SUPPORT TYPE</p>
+      <h2 id="supportTitle">This should not become an endless retry loop.</h2>
+      <p id="supportCopy">Pause the rituals and connect with a trusted person, qualified professional, crisis service, or local emergency support when safety requires it.</p>
+      <div class="support-callout">
+        <strong>Immediate danger</strong>
+        <span>Call your local emergency number now. In Australia, call 000. Lifeline: 13 11 14.</span>
+      </div>
+      <button class="button button-primary" value="close">I understand</button>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <noscript>ThinkStill needs JavaScript enabled to load the ritual library.</noscript>
+  <script src="app.js" defer></script>
+</body>
+</html>
