@@ -1,0 +1,22 @@
+CURRENT ERRORS FIXED
+Fetch failed (404): ./rituals_glitch.json
+Fetch failed (404): raw.githubusercontent.com/rankumarjothi1982/...
+
+CAUSE
+The old manifest used "base_url": "./". Framer therefore requested the ritual
+file from the Framer site instead of the GitHub repository. The first absolute
+URL also misspelled the owner as "rankumarjothi1982". The correct owner is
+"ramkumarjothi1982".
+
+FASTEST FIX
+1. In the GitHub repository root, replace manifest.json with the manifest.json
+   in this package.
+2. Wait for the GitHub commit to finish.
+3. Republish the Framer project, then reload the published page.
+
+DURABLE FIX
+Also replace the Framer code component with ThinkStillUnifiedChat.tsx. The
+component now handles both absolute and relative manifest base URLs correctly.
+
+CORRECT MANIFEST URL
+https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/manifest.json
