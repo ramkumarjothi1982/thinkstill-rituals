@@ -1,0 +1,9 @@
+{
+  "name": "thinkstill-750-framer-library",
+  "version": "40.5.3",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "verify": "node verify-package.mjs"
+  }
+}
