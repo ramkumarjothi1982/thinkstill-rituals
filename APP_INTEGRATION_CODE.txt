@@ -1,0 +1,22 @@
+THINKSTILL v58.19 — SINGLE-FOLDER APP INTEGRATION QUICK COPY
+
+1) Frontend content:
+   rituals.json
+
+2) Backend routing:
+   routing.json
+
+3) Import:
+   import { getRitual, getRouting, getFullRitual } from "./index.js";
+
+4) Lookup:
+   const ritual = getRitual("TS-001");
+
+5) Optional routing helper:
+   import { selectRitual } from "./selector.js";
+
+6) Validate package:
+   npm run validate
+
+All files are intentionally in this one folder.
+DO NOT expose routing.json publicly if you want internal routing/safety logic hidden.

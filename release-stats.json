@@ -1,0 +1,29 @@
+{
+  "ritualCount": 750,
+  "worldDistribution": {
+    "CALM": 172,
+    "CLEAR": 97,
+    "CONNECT": 99,
+    "FOCUS": 196,
+    "MEANING": 59,
+    "PERFORM": 57,
+    "WORK": 70
+  },
+  "legacyVisualModeDistribution": {
+    "DROP": 107,
+    "GLITCH": 108,
+    "LOOPIE": 107,
+    "PATCH": 107,
+    "RUSH": 107,
+    "STILL": 107,
+    "SYNC": 107
+  },
+  "safetyTierDistribution": {
+    "1": 578,
+    "2": 164,
+    "3": 8
+  },
+  "specialistCount": 52,
+  "precisePatternCount": 236,
+  "mechanismFamilyCount": 234
+}
