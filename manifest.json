@@ -1,0 +1,78 @@
+{
+  "schema": "thinkstill-manifest-v17",
+  "version": "58.19",
+  "release": "v58.19",
+  "project": "ThinkStill 750 FINAL 10of10 BESPOKE GOAL WIN MINDBEND",
+  "status": "FINAL PRODUCT RELEASE",
+  "row_count": 750,
+  "ritual_count": 750,
+  "consumer_contract": [
+    "TITLE",
+    "GOAL",
+    "NUMBERED RITUAL",
+    "WIN",
+    "5 TIPS",
+    "MIND BEND",
+    "FORMULA FLOW",
+    "SAFETY"
+  ],
+  "source_workbook": "ThinkStill_750_v58_19_FINAL_10of10_BESPOKE_GOAL_WIN_MINDBEND_RELEASE_MASTER(1).xlsx",
+  "routing": {
+    "selection_path": "issue → specialist/trigger → precise pattern → weighted best unused ritual",
+    "repeat_policy": "No ritual repeats until all 750 have been served; then the pool may reset.",
+    "primary_release_triggers": 52,
+    "precise_patterns": 236,
+    "worlds": 7
+  },
+  "bubbles": [
+    {
+      "name": "DROP",
+      "count": 107,
+      "file": "bubble-drop.json"
+    },
+    {
+      "name": "GLITCH",
+      "count": 108,
+      "file": "bubble-glitch.json"
+    },
+    {
+      "name": "LOOPIE",
+      "count": 107,
+      "file": "bubble-loopie.json"
+    },
+    {
+      "name": "PATCH",
+      "count": 107,
+      "file": "bubble-patch.json"
+    },
+    {
+      "name": "RUSH",
+      "count": 107,
+      "file": "bubble-rush.json"
+    },
+    {
+      "name": "STILL",
+      "count": 107,
+      "file": "bubble-still.json"
+    },
+    {
+      "name": "SYNC",
+      "count": 107,
+      "file": "bubble-sync.json"
+    }
+  ],
+  "files": {
+    "all_rituals": "rituals.json",
+    "rituals": "rituals.json",
+    "consumer": "rituals.json",
+    "modern_rituals": "rituals-modern.json",
+    "routing": "routing.json",
+    "modern_routing": "routing-modern.json",
+    "triggers": "triggers.json",
+    "readme": "README.md"
+  },
+  "rituals_file": "rituals.json",
+  "routing_file": "routing.json",
+  "consumer_file": "rituals.json",
+  "data_file": "rituals.json"
+}

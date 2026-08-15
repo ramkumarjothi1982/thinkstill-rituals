@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://thinkstill.app/schema/ritual-v58.19.json",
+  "title": "ThinkStill 750 Consumer Ritual",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "playTime",
+    "goal",
+    "steps",
+    "win",
+    "tips",
+    "mindBend",
+    "formulaFlow",
+    "safety",
+    "feedback"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^TS-[0-9]{3}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "playTime": {
+      "type": "string",
+      "minLength": 1
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 1
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "win": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tips": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "mindBend": {
+      "type": "string",
+      "minLength": 1
+    },
+    "formulaFlow": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "safety": {
+      "type": "string",
+      "minLength": 1
+    },
+    "feedback": {
+      "type": "object",
+      "required": [
+        "prompt",
+        "options"
+      ],
+      "properties": {
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "options": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

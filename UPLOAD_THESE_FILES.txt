@@ -1,0 +1,2 @@
+UPLOAD EVERY FILE IN THIS FOLDER TO THE ROOT OF GitHub main.
+manifest.json MUST sit beside rituals.json.
