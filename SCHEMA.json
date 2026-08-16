@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ThinkStill v58.20 Runtime Ritual",
+  "description": "Runtime schema for the v58.20 no-Tips consumer release.",
+  "type": "object",
+  "required": [
+    "id",
+    "r",
+    "b",
+    "name",
+    "thinking_error",
+    "precise_subpattern",
+    "goal",
+    "steps",
+    "win",
+    "mindBend",
+    "formulaFlow",
+    "safety",
+    "plain"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^TS-\\d{3}$"
+    },
+    "r": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 750
+    },
+    "b": {
+      "type": "string",
+      "enum": [
+        "GLITCH",
+        "DROP",
+        "LOOPIE",
+        "PATCH",
+        "RUSH",
+        "STILL",
+        "SYNC"
+      ]
+    },
+    "bubble": {
+      "type": "string",
+      "enum": [
+        "GLITCH",
+        "DROP",
+        "LOOPIE",
+        "PATCH",
+        "RUSH",
+        "STILL",
+        "SYNC"
+      ]
+    },
+    "name": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "domain": {
+      "type": "string"
+    },
+    "challenge_type": {
+      "type": "string"
+    },
+    "challenge": {
+      "type": "string"
+    },
+    "thinking_error": {
+      "type": "string"
+    },
+    "precise_subpattern": {
+      "type": "string"
+    },
+    "primary_trigger": {
+      "type": "string"
+    },
+    "unique_game_move": {
+      "type": "string"
+    },
+    "coverage_tier": {
+      "type": "string"
+    },
+    "routing_weight": {
+      "type": [
+        "number",
+        "integer"
+      ]
+    },
+    "keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "playTime": {
+      "type": "string"
+    },
+    "goal": {
+      "type": "string"
+    },
+    "steps": {
+      "type": "string"
+    },
+    "stepsArray": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "winReward": {
+      "type": "string"
+    },
+    "win": {
+      "type": "string"
+    },
+    "mindBend": {
+      "type": "string"
+    },
+    "formulaFlow": {
+      "type": "string"
+    },
+    "safety": {
+      "type": "string"
+    },
+    "feedbackPrompt": {
+      "type": "string"
+    },
+    "feedbackOptions": {
+      "type": "string"
+    },
+    "ritualText": {
+      "type": "string"
+    },
+    "fullRitual": {
+      "type": "string"
+    },
+    "plain": {
+      "type": "string"
+    },
+    "t": {
+      "type": "string"
+    }
+  },
+  "forbidden_runtime_fields": [
+    "tips",
+    "5 Tips",
+    "supports"
+  ],
+  "release_rules": {
+    "tips": "Not included in runtime JSON.",
+    "consumer_sequence": "PLAY TIME → GOAL → STEPS → WIN → MIND BEND → FORMULA FLOW → SAFETY"
+  }
+}

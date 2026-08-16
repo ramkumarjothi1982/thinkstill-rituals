@@ -1,0 +1,1723 @@
+{
+  "schema": "thinkstill-thinking-errors-v58.20",
+  "version": "58.20",
+  "count": 52,
+  "thinking_errors": [
+    {
+      "name": "Anger De-escalation",
+      "ritual_count": 6,
+      "precise_subpatterns": [
+        {
+          "name": "Anger arousal",
+          "ritual_count": 1
+        },
+        {
+          "name": "Anger rehearsal",
+          "ritual_count": 1
+        },
+        {
+          "name": "Confrontation urgency",
+          "ritual_count": 1
+        },
+        {
+          "name": "Hot-message risk",
+          "ritual_count": 2
+        },
+        {
+          "name": "Status-threat retaliation",
+          "ritual_count": 1
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "GLITCH": 1,
+        "LOOPIE": 1,
+        "RUSH": 1,
+        "STILL": 1,
+        "SYNC": 1
+      }
+    },
+    {
+      "name": "Attention & Distraction",
+      "ritual_count": 15,
+      "precise_subpatterns": [
+        {
+          "name": "Attention fragmentation",
+          "ritual_count": 3
+        },
+        {
+          "name": "Attention slip",
+          "ritual_count": 3
+        },
+        {
+          "name": "Cue-driven attention",
+          "ritual_count": 3
+        },
+        {
+          "name": "Distractor capture",
+          "ritual_count": 3
+        },
+        {
+          "name": "Stimulus overload",
+          "ritual_count": 3
+        }
+      ],
+      "bubbles": {
+        "DROP": 2,
+        "GLITCH": 3,
+        "LOOPIE": 2,
+        "PATCH": 2,
+        "RUSH": 2,
+        "STILL": 2,
+        "SYNC": 2
+      }
+    },
+    {
+      "name": "Attention & Overload",
+      "ritual_count": 28,
+      "precise_subpatterns": [
+        {
+          "name": "Attention capture",
+          "ritual_count": 1
+        },
+        {
+          "name": "Attention fragmentation",
+          "ritual_count": 2
+        },
+        {
+          "name": "Attention misallocation",
+          "ritual_count": 12
+        },
+        {
+          "name": "Cognitive overload",
+          "ritual_count": 11
+        },
+        {
+          "name": "Tunnel vision",
+          "ritual_count": 2
+        }
+      ],
+      "bubbles": {
+        "DROP": 4,
+        "GLITCH": 3,
+        "LOOPIE": 4,
+        "PATCH": 5,
+        "RUSH": 4,
+        "STILL": 4,
+        "SYNC": 4
+      }
+    },
+    {
+      "name": "Boundaries & Assertiveness",
+      "ritual_count": 15,
+      "precise_subpatterns": [
+        {
+          "name": "Boundary erosion",
+          "ritual_count": 3
+        },
+        {
+          "name": "Boundary guilt",
+          "ritual_count": 3
+        },
+        {
+          "name": "Compliance reflex",
+          "ritual_count": 3
+        },
+        {
+          "name": "Justification compulsion",
+          "ritual_count": 3
+        },
+        {
+          "name": "Kindness-boundary fusion",
+          "ritual_count": 3
+        }
+      ],
+      "bubbles": {
+        "DROP": 2,
+        "GLITCH": 2,
+        "LOOPIE": 2,
+        "PATCH": 2,
+        "RUSH": 2,
+        "STILL": 3,
+        "SYNC": 2
+      }
+    },
+    {
+      "name": "Boundaries & Responsibility",
+      "ritual_count": 19,
+      "precise_subpatterns": [
+        {
+          "name": "Boundary avoidance",
+          "ritual_count": 1
+        },
+        {
+          "name": "Boundary confusion",
+          "ritual_count": 18
+        }
+      ],
+      "bubbles": {
+        "DROP": 3,
+        "GLITCH": 3,
+        "LOOPIE": 3,
+        "PATCH": 2,
+        "RUSH": 3,
+        "STILL": 2,
+        "SYNC": 3
+      }
+    },
+    {
+      "name": "Catastrophic Thinking",
+      "ritual_count": 6,
+      "precise_subpatterns": [
+        {
+          "name": "Catastrophising",
+          "ritual_count": 1
+        },
+        {
+          "name": "Fortune telling",
+          "ritual_count": 2
+        },
+        {
+          "name": "Probability overestimation",
+          "ritual_count": 3
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "GLITCH": 1,
+        "LOOPIE": 1,
+        "PATCH": 1,
+        "RUSH": 1,
+        "STILL": 1
+      }
+    },
+    {
+      "name": "Communication & Conflict",
+      "ritual_count": 9,
+      "precise_subpatterns": [
+        {
+          "name": "Blame fixation",
+          "ritual_count": 1
+        },
+        {
+          "name": "Communication distortion",
+          "ritual_count": 5
+        },
+        {
+          "name": "Conflict escalation",
+          "ritual_count": 3
+        }
+      ],
+      "bubbles": {
+        "DROP": 2,
+        "GLITCH": 1,
+        "LOOPIE": 1,
+        "PATCH": 1,
+        "RUSH": 1,
+        "STILL": 1,
+        "SYNC": 2
+      }
+    },
+    {
+      "name": "Confidence Under Pressure",
+      "ritual_count": 10,
+      "precise_subpatterns": [
+        {
+          "name": "Confidence dependency",
+          "ritual_count": 2
+        },
+        {
+          "name": "Error-globalisation",
+          "ritual_count": 2
+        },
+        {
+          "name": "Evaluation pressure",
+          "ritual_count": 2
+        },
+        {
+          "name": "Last-minute self-doubt",
+          "ritual_count": 2
+        },
+        {
+          "name": "Performance comparison",
+          "ritual_count": 2
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "GLITCH": 1,
+        "LOOPIE": 2,
+        "PATCH": 2,
+        "RUSH": 2,
+        "STILL": 1,
+        "SYNC": 1
+      }
+    },
+    {
+      "name": "Creative Blocks",
+      "ritual_count": 5,
+      "precise_subpatterns": [
+        {
+          "name": "Draft perfectionism",
+          "ritual_count": 1
+        },
+        {
+          "name": "Idea scarcity",
+          "ritual_count": 1
+        },
+        {
+          "name": "Originality pressure",
+          "ritual_count": 1
+        },
+        {
+          "name": "Premature editing",
+          "ritual_count": 1
+        },
+        {
+          "name": "Process comparison",
+          "ritual_count": 1
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "GLITCH": 1,
+        "LOOPIE": 1,
+        "STILL": 1,
+        "SYNC": 1
+      }
+    },
+    {
+      "name": "Decision Performance",
+      "ritual_count": 10,
+      "precise_subpatterns": [
+        {
+          "name": "Certainty demand",
+          "ritual_count": 2
+        },
+        {
+          "name": "External-opinion capture",
+          "ritual_count": 2
+        },
+        {
+          "name": "Option lock",
+          "ritual_count": 2
+        },
+        {
+          "name": "Regret forecasting",
+          "ritual_count": 2
+        },
+        {
+          "name": "Research-as-delay",
+          "ritual_count": 2
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "GLITCH": 1,
+        "LOOPIE": 1,
+        "PATCH": 2,
+        "RUSH": 2,
+        "STILL": 2,
+        "SYNC": 1
+      }
+    },
+    {
+      "name": "Decision Pressure",
+      "ritual_count": 9,
+      "precise_subpatterns": [
+        {
+          "name": "Decision paralysis",
+          "ritual_count": 1
+        },
+        {
+          "name": "Time-pressure distortion",
+          "ritual_count": 3
+        },
+        {
+          "name": "Urgency bias",
+          "ritual_count": 5
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "GLITCH": 1,
+        "LOOPIE": 1,
+        "PATCH": 1,
+        "RUSH": 2,
+        "STILL": 1,
+        "SYNC": 2
+      }
+    },
+    {
+      "name": "Difficult Conversations",
+      "ritual_count": 15,
+      "precise_subpatterns": [
+        {
+          "name": "Conversation avoidance",
+          "ritual_count": 3
+        },
+        {
+          "name": "Emotion-message fusion",
+          "ritual_count": 3
+        },
+        {
+          "name": "Issue stacking",
+          "ritual_count": 3
+        },
+        {
+          "name": "Opening paralysis",
+          "ritual_count": 3
+        },
+        {
+          "name": "Tone-threat conflict",
+          "ritual_count": 3
+        }
+      ],
+      "bubbles": {
+        "DROP": 2,
+        "GLITCH": 2,
+        "LOOPIE": 2,
+        "PATCH": 2,
+        "RUSH": 3,
+        "STILL": 2,
+        "SYNC": 2
+      }
+    },
+    {
+      "name": "Emotional Overload",
+      "ritual_count": 21,
+      "precise_subpatterns": [
+        {
+          "name": "Emotion blending",
+          "ritual_count": 2
+        },
+        {
+          "name": "Emotion mislabelling",
+          "ritual_count": 1
+        },
+        {
+          "name": "Emotion stacking",
+          "ritual_count": 1
+        },
+        {
+          "name": "Emotional reasoning",
+          "ritual_count": 1
+        },
+        {
+          "name": "Emotion–fact confusion",
+          "ritual_count": 16
+        }
+      ],
+      "bubbles": {
+        "DROP": 3,
+        "GLITCH": 2,
+        "LOOPIE": 5,
+        "PATCH": 3,
+        "RUSH": 2,
+        "STILL": 4,
+        "SYNC": 2
+      }
+    },
+    {
+      "name": "Evidence & Perspective",
+      "ritual_count": 16,
+      "precise_subpatterns": [
+        {
+          "name": "Context neglect",
+          "ritual_count": 9
+        },
+        {
+          "name": "Hindsight bias",
+          "ritual_count": 1
+        },
+        {
+          "name": "Mental filtering",
+          "ritual_count": 1
+        },
+        {
+          "name": "Overgeneralising",
+          "ritual_count": 1
+        },
+        {
+          "name": "Scarcity thinking",
+          "ritual_count": 1
+        },
+        {
+          "name": "Success discounting",
+          "ritual_count": 2
+        },
+        {
+          "name": "Sunk-cost thinking",
+          "ritual_count": 1
+        }
+      ],
+      "bubbles": {
+        "DROP": 2,
+        "GLITCH": 2,
+        "LOOPIE": 2,
+        "PATCH": 4,
+        "RUSH": 2,
+        "STILL": 2,
+        "SYNC": 2
+      }
+    },
+    {
+      "name": "Feedback & Accountability",
+      "ritual_count": 10,
+      "precise_subpatterns": [
+        {
+          "name": "Accountability tone",
+          "ritual_count": 2
+        },
+        {
+          "name": "Evidence clarity",
+          "ritual_count": 2
+        },
+        {
+          "name": "Feedback avoidance",
+          "ritual_count": 2
+        },
+        {
+          "name": "Feedback threat",
+          "ritual_count": 2
+        },
+        {
+          "name": "Follow-through failure",
+          "ritual_count": 2
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "GLITCH": 1,
+        "LOOPIE": 2,
+        "PATCH": 2,
+        "RUSH": 2,
+        "STILL": 1,
+        "SYNC": 1
+      }
+    },
+    {
+      "name": "Gratitude & Enoughness",
+      "ritual_count": 5,
+      "precise_subpatterns": [
+        {
+          "name": "Absence dominance",
+          "ritual_count": 1
+        },
+        {
+          "name": "Comparison scarcity",
+          "ritual_count": 1
+        },
+        {
+          "name": "Enoughness drift",
+          "ritual_count": 1
+        },
+        {
+          "name": "Forced gratitude",
+          "ritual_count": 1
+        },
+        {
+          "name": "Positive under-registration",
+          "ritual_count": 1
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "LOOPIE": 1,
+        "PATCH": 1,
+        "RUSH": 1,
+        "STILL": 1
+      }
+    },
+    {
+      "name": "Grounding & Presence",
+      "ritual_count": 21,
+      "precise_subpatterns": [
+        {
+          "name": "Dissociation drift",
+          "ritual_count": 2
+        },
+        {
+          "name": "Present-moment loss",
+          "ritual_count": 4
+        },
+        {
+          "name": "Sensory disconnection",
+          "ritual_count": 15
+        }
+      ],
+      "bubbles": {
+        "DROP": 3,
+        "GLITCH": 3,
+        "LOOPIE": 3,
+        "PATCH": 3,
+        "RUSH": 3,
+        "STILL": 3,
+        "SYNC": 3
+      }
+    },
+    {
+      "name": "Habits & Autopilot",
+      "ritual_count": 39,
+      "precise_subpatterns": [
+        {
+          "name": "Automatic-pattern blindness",
+          "ritual_count": 39
+        }
+      ],
+      "bubbles": {
+        "DROP": 5,
+        "GLITCH": 5,
+        "LOOPIE": 6,
+        "PATCH": 6,
+        "RUSH": 6,
+        "STILL": 6,
+        "SYNC": 5
+      }
+    },
+    {
+      "name": "Hyperfocus & Stopping",
+      "ritual_count": 10,
+      "precise_subpatterns": [
+        {
+          "name": "Attention overstay",
+          "ritual_count": 2
+        },
+        {
+          "name": "Context loss",
+          "ritual_count": 2
+        },
+        {
+          "name": "Exit friction",
+          "ritual_count": 2
+        },
+        {
+          "name": "Sunk-focus pull",
+          "ritual_count": 2
+        },
+        {
+          "name": "Switch-cost avoidance",
+          "ritual_count": 2
+        }
+      ],
+      "bubbles": {
+        "DROP": 2,
+        "GLITCH": 1,
+        "LOOPIE": 2,
+        "PATCH": 2,
+        "RUSH": 1,
+        "STILL": 1,
+        "SYNC": 1
+      }
+    },
+    {
+      "name": "Identity & Self-Concept",
+      "ritual_count": 10,
+      "precise_subpatterns": [
+        {
+          "name": "Borrowed identity",
+          "ritual_count": 2
+        },
+        {
+          "name": "Failure-identity fusion",
+          "ritual_count": 2
+        },
+        {
+          "name": "Identity transition",
+          "ritual_count": 2
+        },
+        {
+          "name": "Role fusion",
+          "ritual_count": 2
+        },
+        {
+          "name": "Stale self-story",
+          "ritual_count": 2
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "GLITCH": 1,
+        "LOOPIE": 1,
+        "PATCH": 1,
+        "RUSH": 2,
+        "STILL": 2,
+        "SYNC": 2
+      }
+    },
+    {
+      "name": "Intrusive Thoughts & Fusion",
+      "ritual_count": 5,
+      "precise_subpatterns": [
+        {
+          "name": "Intrusion monitoring",
+          "ritual_count": 1
+        },
+        {
+          "name": "Suppression rebound",
+          "ritual_count": 1
+        },
+        {
+          "name": "Thought-command fusion",
+          "ritual_count": 1
+        },
+        {
+          "name": "Thought-identity fusion",
+          "ritual_count": 1
+        },
+        {
+          "name": "Thought-meaning fusion",
+          "ritual_count": 1
+        }
+      ],
+      "bubbles": {
+        "GLITCH": 1,
+        "PATCH": 1,
+        "RUSH": 1,
+        "STILL": 1,
+        "SYNC": 1
+      }
+    },
+    {
+      "name": "Leadership Under Pressure",
+      "ritual_count": 10,
+      "precise_subpatterns": [
+        {
+          "name": "Approval-leadership conflict",
+          "ritual_count": 2
+        },
+        {
+          "name": "Bad-news leadership",
+          "ritual_count": 2
+        },
+        {
+          "name": "Emotional contagion",
+          "ritual_count": 2
+        },
+        {
+          "name": "Premature certainty pressure",
+          "ritual_count": 2
+        },
+        {
+          "name": "Visible uncertainty",
+          "ritual_count": 2
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "GLITCH": 2,
+        "LOOPIE": 1,
+        "PATCH": 1,
+        "RUSH": 1,
+        "STILL": 2,
+        "SYNC": 2
+      }
+    },
+    {
+      "name": "Letting Go & Acceptance",
+      "ritual_count": 8,
+      "precise_subpatterns": [
+        {
+          "name": "Closure perfectionism",
+          "ritual_count": 1
+        },
+        {
+          "name": "Closure resistance",
+          "ritual_count": 2
+        },
+        {
+          "name": "Outcome attachment",
+          "ritual_count": 2
+        },
+        {
+          "name": "Reality resistance",
+          "ritual_count": 2
+        },
+        {
+          "name": "Release-approval confusion",
+          "ritual_count": 1
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "GLITCH": 2,
+        "LOOPIE": 1,
+        "PATCH": 1,
+        "RUSH": 1,
+        "STILL": 1,
+        "SYNC": 1
+      }
+    },
+    {
+      "name": "Listening & Misunderstanding",
+      "ritual_count": 10,
+      "precise_subpatterns": [
+        {
+          "name": "Escalating repetition",
+          "ritual_count": 2
+        },
+        {
+          "name": "Meaning completion",
+          "ritual_count": 2
+        },
+        {
+          "name": "Premature defence",
+          "ritual_count": 2
+        },
+        {
+          "name": "Reply rehearsal",
+          "ritual_count": 2
+        },
+        {
+          "name": "Signal loss",
+          "ritual_count": 2
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "GLITCH": 2,
+        "LOOPIE": 1,
+        "PATCH": 1,
+        "RUSH": 1,
+        "STILL": 2,
+        "SYNC": 2
+      }
+    },
+    {
+      "name": "Managing People",
+      "ritual_count": 15,
+      "precise_subpatterns": [
+        {
+          "name": "Accountability drift",
+          "ritual_count": 3
+        },
+        {
+          "name": "Control loop",
+          "ritual_count": 3
+        },
+        {
+          "name": "Correction-threat",
+          "ritual_count": 3
+        },
+        {
+          "name": "Delegation anxiety",
+          "ritual_count": 3
+        },
+        {
+          "name": "Motivation ambiguity",
+          "ritual_count": 3
+        }
+      ],
+      "bubbles": {
+        "DROP": 2,
+        "GLITCH": 2,
+        "LOOPIE": 3,
+        "PATCH": 2,
+        "RUSH": 2,
+        "STILL": 2,
+        "SYNC": 2
+      }
+    },
+    {
+      "name": "Managing Up",
+      "ritual_count": 10,
+      "precise_subpatterns": [
+        {
+          "name": "Authority disagreement",
+          "ritual_count": 2
+        },
+        {
+          "name": "Authority-boundary conflict",
+          "ritual_count": 2
+        },
+        {
+          "name": "Resource-ask anxiety",
+          "ritual_count": 2
+        },
+        {
+          "name": "Upward-clarity gap",
+          "ritual_count": 2
+        },
+        {
+          "name": "Upward-risk hesitation",
+          "ritual_count": 2
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "GLITCH": 1,
+        "LOOPIE": 1,
+        "PATCH": 2,
+        "RUSH": 2,
+        "STILL": 2,
+        "SYNC": 1
+      }
+    },
+    {
+      "name": "Mortality & Impermanence",
+      "ritual_count": 5,
+      "precise_subpatterns": [
+        {
+          "name": "Finite-time avoidance",
+          "ritual_count": 1
+        },
+        {
+          "name": "Impermanence fear",
+          "ritual_count": 1
+        },
+        {
+          "name": "Legacy reflection",
+          "ritual_count": 1
+        },
+        {
+          "name": "Life-chapter grief",
+          "ritual_count": 1
+        },
+        {
+          "name": "Mortality salience",
+          "ritual_count": 1
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "GLITCH": 1,
+        "RUSH": 1,
+        "STILL": 1,
+        "SYNC": 1
+      }
+    },
+    {
+      "name": "Overthinking & Rumination",
+      "ritual_count": 16,
+      "precise_subpatterns": [
+        {
+          "name": "Analysis saturation",
+          "ritual_count": 2
+        },
+        {
+          "name": "Decision reopening",
+          "ritual_count": 2
+        },
+        {
+          "name": "Loop persistence",
+          "ritual_count": 2
+        },
+        {
+          "name": "Past-rehearsal loop",
+          "ritual_count": 2
+        },
+        {
+          "name": "Rumination",
+          "ritual_count": 5
+        },
+        {
+          "name": "Unsolvable-question loop",
+          "ritual_count": 2
+        },
+        {
+          "name": "Worry looping",
+          "ritual_count": 1
+        }
+      ],
+      "bubbles": {
+        "DROP": 2,
+        "GLITCH": 1,
+        "LOOPIE": 3,
+        "PATCH": 3,
+        "RUSH": 3,
+        "STILL": 2,
+        "SYNC": 2
+      }
+    },
+    {
+      "name": "Panic & Body Alarm",
+      "ritual_count": 75,
+      "precise_subpatterns": [
+        {
+          "name": "Activation misreading",
+          "ritual_count": 1
+        },
+        {
+          "name": "Acute panic surge",
+          "ritual_count": 2
+        },
+        {
+          "name": "Body alarm escalation",
+          "ritual_count": 21
+        },
+        {
+          "name": "Body-check amplification",
+          "ritual_count": 1
+        },
+        {
+          "name": "Body-monitoring loop",
+          "ritual_count": 1
+        },
+        {
+          "name": "Body-sensation misinterpretation",
+          "ritual_count": 4
+        },
+        {
+          "name": "Body-state misreading",
+          "ritual_count": 25
+        },
+        {
+          "name": "Body-thought amplification",
+          "ritual_count": 1
+        },
+        {
+          "name": "Breath-control overeffort",
+          "ritual_count": 7
+        },
+        {
+          "name": "Cardiac-sensation alarm",
+          "ritual_count": 2
+        },
+        {
+          "name": "Control struggle",
+          "ritual_count": 1
+        },
+        {
+          "name": "Derealisation fear",
+          "ritual_count": 1
+        },
+        {
+          "name": "Panic entrapment",
+          "ritual_count": 2
+        },
+        {
+          "name": "Physiological tension holding",
+          "ritual_count": 2
+        },
+        {
+          "name": "Posture–mood locking",
+          "ritual_count": 3
+        },
+        {
+          "name": "Sensation-threat fusion",
+          "ritual_count": 1
+        }
+      ],
+      "bubbles": {
+        "DROP": 10,
+        "GLITCH": 11,
+        "LOOPIE": 10,
+        "PATCH": 11,
+        "RUSH": 11,
+        "STILL": 11,
+        "SYNC": 11
+      }
+    },
+    {
+      "name": "Performance & Perfectionism",
+      "ritual_count": 8,
+      "precise_subpatterns": [
+        {
+          "name": "Perfectionism",
+          "ritual_count": 8
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "GLITCH": 2,
+        "LOOPIE": 1,
+        "PATCH": 1,
+        "RUSH": 1,
+        "STILL": 1,
+        "SYNC": 1
+      }
+    },
+    {
+      "name": "Presentations & Interviews",
+      "ritual_count": 15,
+      "precise_subpatterns": [
+        {
+          "name": "Failure rehearsal",
+          "ritual_count": 3
+        },
+        {
+          "name": "Pace acceleration",
+          "ritual_count": 3
+        },
+        {
+          "name": "Pre-performance activation",
+          "ritual_count": 3
+        },
+        {
+          "name": "Spotlight blank",
+          "ritual_count": 3
+        },
+        {
+          "name": "Unexpected-question freeze",
+          "ritual_count": 3
+        }
+      ],
+      "bubbles": {
+        "DROP": 3,
+        "GLITCH": 2,
+        "LOOPIE": 2,
+        "PATCH": 2,
+        "RUSH": 2,
+        "STILL": 2,
+        "SYNC": 2
+      }
+    },
+    {
+      "name": "Prioritising & Planning",
+      "ritual_count": 15,
+      "precise_subpatterns": [
+        {
+          "name": "Capacity blindness",
+          "ritual_count": 3
+        },
+        {
+          "name": "Choice overload",
+          "ritual_count": 3
+        },
+        {
+          "name": "Planning loop",
+          "ritual_count": 3
+        },
+        {
+          "name": "Priority ambiguity",
+          "ritual_count": 3
+        },
+        {
+          "name": "Priority flattening",
+          "ritual_count": 3
+        }
+      ],
+      "bubbles": {
+        "DROP": 3,
+        "GLITCH": 2,
+        "LOOPIE": 2,
+        "PATCH": 2,
+        "RUSH": 2,
+        "STILL": 2,
+        "SYNC": 2
+      }
+    },
+    {
+      "name": "Purpose & Values",
+      "ritual_count": 12,
+      "precise_subpatterns": [
+        {
+          "name": "Achievement-values conflict",
+          "ritual_count": 2
+        },
+        {
+          "name": "Direction search",
+          "ritual_count": 2
+        },
+        {
+          "name": "Goal-value mismatch",
+          "ritual_count": 3
+        },
+        {
+          "name": "Purpose drift",
+          "ritual_count": 3
+        },
+        {
+          "name": "Values competition",
+          "ritual_count": 2
+        }
+      ],
+      "bubbles": {
+        "DROP": 2,
+        "GLITCH": 2,
+        "LOOPIE": 2,
+        "PATCH": 2,
+        "RUSH": 1,
+        "STILL": 1,
+        "SYNC": 2
+      }
+    },
+    {
+      "name": "Rejection & Comparison",
+      "ritual_count": 11,
+      "precise_subpatterns": [
+        {
+          "name": "Comparison distortion",
+          "ritual_count": 7
+        },
+        {
+          "name": "Rejection magnification",
+          "ritual_count": 4
+        }
+      ],
+      "bubbles": {
+        "DROP": 2,
+        "GLITCH": 2,
+        "LOOPIE": 1,
+        "PATCH": 2,
+        "RUSH": 1,
+        "STILL": 2,
+        "SYNC": 1
+      }
+    },
+    {
+      "name": "Relationship Repair",
+      "ritual_count": 10,
+      "precise_subpatterns": [
+        {
+          "name": "Defensive apology",
+          "ritual_count": 2
+        },
+        {
+          "name": "Repair hesitation",
+          "ritual_count": 2
+        },
+        {
+          "name": "Resentment rehearsal",
+          "ritual_count": 2
+        },
+        {
+          "name": "Validation urgency",
+          "ritual_count": 2
+        },
+        {
+          "name": "Victory-over-connection",
+          "ritual_count": 2
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "GLITCH": 1,
+        "LOOPIE": 2,
+        "PATCH": 2,
+        "RUSH": 2,
+        "STILL": 1,
+        "SYNC": 1
+      }
+    },
+    {
+      "name": "Rigid Stories & Labels",
+      "ritual_count": 24,
+      "precise_subpatterns": [
+        {
+          "name": "Black-and-white thinking",
+          "ritual_count": 3
+        },
+        {
+          "name": "Labelling",
+          "ritual_count": 2
+        },
+        {
+          "name": "Narrative overbuilding",
+          "ritual_count": 6
+        },
+        {
+          "name": "Unexamined belief",
+          "ritual_count": 13
+        }
+      ],
+      "bubbles": {
+        "DROP": 3,
+        "GLITCH": 4,
+        "LOOPIE": 3,
+        "PATCH": 3,
+        "RUSH": 4,
+        "STILL": 3,
+        "SYNC": 4
+      }
+    },
+    {
+      "name": "Shame & Self-Attack",
+      "ritual_count": 5,
+      "precise_subpatterns": [
+        {
+          "name": "Guilt overreach",
+          "ritual_count": 1
+        },
+        {
+          "name": "Personalisation",
+          "ritual_count": 1
+        },
+        {
+          "name": "Self-criticism",
+          "ritual_count": 1
+        },
+        {
+          "name": "Shame globalisation",
+          "ritual_count": 2
+        }
+      ],
+      "bubbles": {
+        "GLITCH": 1,
+        "LOOPIE": 1,
+        "RUSH": 1,
+        "STILL": 1,
+        "SYNC": 1
+      }
+    },
+    {
+      "name": "Social Confidence",
+      "ritual_count": 10,
+      "precise_subpatterns": [
+        {
+          "name": "Conversation entry",
+          "ritual_count": 2
+        },
+        {
+          "name": "Evaluation forecasting",
+          "ritual_count": 2
+        },
+        {
+          "name": "Post-social replay",
+          "ritual_count": 2
+        },
+        {
+          "name": "Social entry anxiety",
+          "ritual_count": 2
+        },
+        {
+          "name": "Social working-memory pressure",
+          "ritual_count": 2
+        }
+      ],
+      "bubbles": {
+        "DROP": 2,
+        "GLITCH": 2,
+        "LOOPIE": 1,
+        "PATCH": 1,
+        "RUSH": 1,
+        "STILL": 1,
+        "SYNC": 2
+      }
+    },
+    {
+      "name": "Spiritual Reflection",
+      "ritual_count": 5,
+      "precise_subpatterns": [
+        {
+          "name": "Devotion ambiguity",
+          "ritual_count": 1
+        },
+        {
+          "name": "Meaning orientation",
+          "ritual_count": 1
+        },
+        {
+          "name": "Open spirituality",
+          "ritual_count": 1
+        },
+        {
+          "name": "Spiritual bypass risk",
+          "ritual_count": 1
+        },
+        {
+          "name": "Transcendent disconnection",
+          "ritual_count": 1
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "GLITCH": 1,
+        "LOOPIE": 1,
+        "PATCH": 1,
+        "SYNC": 1
+      }
+    },
+    {
+      "name": "Starting & Procrastination",
+      "ritual_count": 49,
+      "precise_subpatterns": [
+        {
+          "name": "Action avoidance",
+          "ritual_count": 48
+        },
+        {
+          "name": "Avoidance reinforcement",
+          "ritual_count": 1
+        }
+      ],
+      "bubbles": {
+        "DROP": 7,
+        "GLITCH": 8,
+        "LOOPIE": 7,
+        "PATCH": 7,
+        "RUSH": 6,
+        "STILL": 7,
+        "SYNC": 7
+      }
+    },
+    {
+      "name": "Task Initiation",
+      "ritual_count": 20,
+      "precise_subpatterns": [
+        {
+          "name": "Action threshold",
+          "ritual_count": 4
+        },
+        {
+          "name": "Entry ambiguity",
+          "ritual_count": 4
+        },
+        {
+          "name": "Motivation dependency",
+          "ritual_count": 4
+        },
+        {
+          "name": "Start friction",
+          "ritual_count": 4
+        },
+        {
+          "name": "Task-size inflation",
+          "ritual_count": 4
+        }
+      ],
+      "bubbles": {
+        "DROP": 3,
+        "GLITCH": 2,
+        "LOOPIE": 3,
+        "PATCH": 3,
+        "RUSH": 3,
+        "STILL": 3,
+        "SYNC": 3
+      }
+    },
+    {
+      "name": "Task Switching & Working Memory",
+      "ritual_count": 10,
+      "precise_subpatterns": [
+        {
+          "name": "Re-entry loss",
+          "ritual_count": 2
+        },
+        {
+          "name": "Sequence loss",
+          "ritual_count": 2
+        },
+        {
+          "name": "Switch friction",
+          "ritual_count": 2
+        },
+        {
+          "name": "Working-memory drop",
+          "ritual_count": 2
+        },
+        {
+          "name": "Working-memory overload",
+          "ritual_count": 2
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "GLITCH": 1,
+        "LOOPIE": 2,
+        "PATCH": 2,
+        "RUSH": 2,
+        "STILL": 1,
+        "SYNC": 1
+      }
+    },
+    {
+      "name": "Team Communication",
+      "ritual_count": 15,
+      "precise_subpatterns": [
+        {
+          "name": "Change-message gap",
+          "ritual_count": 3
+        },
+        {
+          "name": "Decision diffusion",
+          "ritual_count": 3
+        },
+        {
+          "name": "Handoff ambiguity",
+          "ritual_count": 3
+        },
+        {
+          "name": "Ownership blur",
+          "ritual_count": 3
+        },
+        {
+          "name": "Shared-model mismatch",
+          "ritual_count": 3
+        }
+      ],
+      "bubbles": {
+        "DROP": 3,
+        "GLITCH": 2,
+        "LOOPIE": 2,
+        "PATCH": 2,
+        "RUSH": 2,
+        "STILL": 2,
+        "SYNC": 2
+      }
+    },
+    {
+      "name": "Thought Distance",
+      "ritual_count": 10,
+      "precise_subpatterns": [
+        {
+          "name": "Conceptual entanglement",
+          "ritual_count": 1
+        },
+        {
+          "name": "Observer loss",
+          "ritual_count": 9
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "GLITCH": 1,
+        "LOOPIE": 2,
+        "PATCH": 1,
+        "RUSH": 2,
+        "STILL": 2,
+        "SYNC": 1
+      }
+    },
+    {
+      "name": "Time Blindness & Deadlines",
+      "ritual_count": 10,
+      "precise_subpatterns": [
+        {
+          "name": "Deadline compression",
+          "ritual_count": 2
+        },
+        {
+          "name": "Duration blindness",
+          "ritual_count": 2
+        },
+        {
+          "name": "Future-distance bias",
+          "ritual_count": 2
+        },
+        {
+          "name": "Temporal discounting",
+          "ritual_count": 2
+        },
+        {
+          "name": "Time drift",
+          "ritual_count": 2
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "GLITCH": 2,
+        "LOOPIE": 1,
+        "PATCH": 1,
+        "RUSH": 1,
+        "STILL": 2,
+        "SYNC": 2
+      }
+    },
+    {
+      "name": "Trauma Stabilisation",
+      "ritual_count": 8,
+      "precise_subpatterns": [
+        {
+          "name": "Memory-as-present confusion",
+          "ritual_count": 1
+        },
+        {
+          "name": "Trauma time collapse",
+          "ritual_count": 7
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "GLITCH": 1,
+        "LOOPIE": 1,
+        "PATCH": 2,
+        "RUSH": 1,
+        "STILL": 1,
+        "SYNC": 1
+      }
+    },
+    {
+      "name": "Uncertainty & Decisions",
+      "ritual_count": 5,
+      "precise_subpatterns": [
+        {
+          "name": "Certainty gate",
+          "ritual_count": 1
+        },
+        {
+          "name": "Decision-error fear",
+          "ritual_count": 1
+        },
+        {
+          "name": "Proof completion",
+          "ritual_count": 1
+        },
+        {
+          "name": "Reassurance dependence",
+          "ritual_count": 1
+        },
+        {
+          "name": "Uncertainty-threat fusion",
+          "ritual_count": 1
+        }
+      ],
+      "bubbles": {
+        "DROP": 1,
+        "GLITCH": 1,
+        "LOOPIE": 1,
+        "STILL": 1,
+        "SYNC": 1
+      }
+    },
+    {
+      "name": "Uncertainty & Reassurance",
+      "ritual_count": 15,
+      "precise_subpatterns": [
+        {
+          "name": "Reassurance dependence",
+          "ritual_count": 2
+        },
+        {
+          "name": "Uncertainty intolerance",
+          "ritual_count": 13
+        }
+      ],
+      "bubbles": {
+        "DROP": 2,
+        "GLITCH": 2,
+        "LOOPIE": 3,
+        "PATCH": 2,
+        "RUSH": 2,
+        "STILL": 2,
+        "SYNC": 2
+      }
+    },
+    {
+      "name": "Urgent Human Support",
+      "ritual_count": 8,
+      "precise_subpatterns": [
+        {
+          "name": "High-activation support",
+          "ritual_count": 2
+        },
+        {
+          "name": "Immediate-safety support",
+          "ritual_count": 1
+        },
+        {
+          "name": "Medical-escalation support",
+          "ritual_count": 1
+        },
+        {
+          "name": "Reality-check support",
+          "ritual_count": 2
+        },
+        {
+          "name": "Unusual-experience support",
+          "ritual_count": 2
+        }
+      ],
+      "bubbles": {
+        "DROP": 2,
+        "GLITCH": 1,
+        "LOOPIE": 1,
+        "PATCH": 1,
+        "RUSH": 1,
+        "STILL": 1,
+        "SYNC": 1
+      }
+    },
+    {
+      "name": "Urges & Cravings",
+      "ritual_count": 28,
+      "precise_subpatterns": [
+        {
+          "name": "Cue-reactive craving",
+          "ritual_count": 2
+        },
+        {
+          "name": "Digital compulsion",
+          "ritual_count": 1
+        },
+        {
+          "name": "High-intensity urge",
+          "ritual_count": 2
+        },
+        {
+          "name": "Impulse fusion",
+          "ritual_count": 19
+        },
+        {
+          "name": "Permission bargaining",
+          "ritual_count": 1
+        },
+        {
+          "name": "Urge monitoring",
+          "ritual_count": 1
+        },
+        {
+          "name": "Urge-command fusion",
+          "ritual_count": 2
+        }
+      ],
+      "bubbles": {
+        "DROP": 5,
+        "GLITCH": 5,
+        "LOOPIE": 2,
+        "PATCH": 4,
+        "RUSH": 4,
+        "STILL": 3,
+        "SYNC": 5
+      }
+    },
+    {
+      "name": "Values, Meaning & Loss",
+      "ritual_count": 14,
+      "precise_subpatterns": [
+        {
+          "name": "Grief resistance",
+          "ritual_count": 1
+        },
+        {
+          "name": "Value disconnection",
+          "ritual_count": 13
+        }
+      ],
+      "bubbles": {
+        "DROP": 2,
+        "GLITCH": 3,
+        "LOOPIE": 2,
+        "PATCH": 1,
+        "RUSH": 2,
+        "STILL": 2,
+        "SYNC": 2
+      }
+    },
+    {
+      "name": "Workplace Conflict",
+      "ritual_count": 10,
+      "precise_subpatterns": [
+        {
+          "name": "Hot-response risk",
+          "ritual_count": 2
+        },
+        {
+          "name": "Intent-threat interpretation",
+          "ritual_count": 2
+        },
+        {
+          "name": "Person-problem fusion",
+          "ritual_count": 2
+        },
+        {
+          "name": "Public-status injury",
+          "ritual_count": 2
+        },
+        {
+          "name": "Role boundary conflict",
+          "ritual_count": 2
+        }
+      ],
+      "bubbles": {
+        "DROP": 2,
+        "GLITCH": 2,
+        "LOOPIE": 1,
+        "PATCH": 1,
+        "RUSH": 1,
+        "STILL": 1,
+        "SYNC": 2
+      }
+    }
+  ]
+}
