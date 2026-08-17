@@ -1,0 +1,4444 @@
+[
+  {
+    "id": "TS-004",
+    "title": "THE ODDS RECEIPT",
+    "playTime": "60–90 seconds",
+    "goal": "Revise a scary probability using real reference points and opposing evidence.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Give the prediction a number from 0 to 100."
+      },
+      {
+        "n": 2,
+        "text": "Find one real reference point: how often has this happened in similar situations."
+      },
+      {
+        "n": 3,
+        "text": "Notice one fact that raises the odds and another that lowers them."
+      },
+      {
+        "n": 4,
+        "text": "Pick a new number and remember it."
+      },
+      {
+        "n": 5,
+        "text": "Act from the revision, not the original alarm."
+      }
+    ],
+    "win": "Your second estimate differed from the alarm number because actual evidence had entered the calculation.",
+    "mindBend": "Fear often reports probability as intensity. A strong feeling can sound like a statistic without being one.",
+    "formulaFlow": "Score Odds → Check Baseline → Weigh Evidence → Revise Odds → Follow Evidence",
+    "safety": {
+      "raw": "PAUSE\nEnd the count if numbers become reassurance checking or you cannot stop recalculating.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "End the count if numbers become reassurance checking or you cannot stop recalculating.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the thought has less control of the next move",
+        "PARTLY — one angle opened",
+        "NO SHIFT — the same thought still dominates",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-024",
+    "title": "THE BAD VOICE ACTOR",
+    "playTime": "45–60 seconds",
+    "goal": "Loosen a thought's authority by changing how its voice sounds.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Hear the thought as a tired GPS, an overdramatic sports commentator, or a hesitant intern reading the wrong memo."
+      },
+      {
+        "n": 2,
+        "text": "Keep the words unchanged; alter only tempo, pitch, and confidence."
+      },
+      {
+        "n": 3,
+        "text": "Then say it again in your natural voice as a possibility, not an order."
+      }
+    ],
+    "win": "The same words felt more like a possibility once tone and confidence were altered.",
+    "mindBend": "Your brain partly judges a thought by delivery. Certainty can be smuggled in through tone.",
+    "formulaFlow": "Read Wrong → Keep Words → Natural Voice",
+    "safety": {
+      "raw": "PAUSE\nUse a neutral voice instead if playful recasting feels shaming or agitating.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Use a neutral voice instead if playful recasting feels shaming or agitating.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the thought has less control of the next move",
+        "PARTLY — one angle opened",
+        "NO SHIFT — the same thought still dominates",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-028",
+    "title": "EDIT THE FONT, NOT YOURSELF",
+    "playTime": "60–90 seconds",
+    "goal": "Make a heavy thought visually smaller without arguing with its words.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Project the sentence on an inner screen."
+      },
+      {
+        "n": 2,
+        "text": "Shrink it to caption size."
+      },
+      {
+        "n": 3,
+        "text": "Move it two metres away."
+      },
+      {
+        "n": 4,
+        "text": "Lower opacity, swap the heavy typeface for something ordinary, and place generous blank space around it."
+      },
+      {
+        "n": 5,
+        "text": "Read the edited version once, then look at real text nearby."
+      }
+    ],
+    "win": "The sentence took up less imagined space, and your eyes returned to real text nearby.",
+    "mindBend": "Psychological weight is partly a presentation effect — size, distance, and visual density can change how commanding a thought feels.",
+    "formulaFlow": "Project → Shrink → Move Metres → Lower Opacity → Read Version",
+    "safety": {
+      "raw": "PAUSE\nReturn to external grounding if visual manipulation feels unreal or disorienting.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Return to external grounding if visual manipulation feels unreal or disorienting.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the thought has less control of the next move",
+        "PARTLY — one angle opened",
+        "NO SHIFT — the same thought still dominates",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-040",
+    "title": "RETURN WITHOUT A TRIAL",
+    "playTime": "60–90 seconds",
+    "goal": "Return to what matters without turning a detour into a character trial.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "State what moved off course in plain language."
+      },
+      {
+        "n": 2,
+        "text": "Remove every adjective about your character."
+      },
+      {
+        "n": 3,
+        "text": "Name the value still available, then take the smallest move that serves it now."
+      },
+      {
+        "n": 4,
+        "text": "Only after moving, decide whether the plan itself needs repair."
+      },
+      {
+        "n": 5,
+        "text": "Re-enter the plan without putting yourself on trial."
+      }
+    ],
+    "win": "One value-based move happened before you judged yourself or redesigned the whole plan.",
+    "mindBend": "A lapse becomes identity evidence only when the mind adds a verdict; behaviour can restart without that sentence.",
+    "formulaFlow": "State Off → Delete Adjectives → Name Value → Check After → Skip Verdict",
+    "safety": {
+      "raw": "PAUSE\nAddress repeated harmful drift with accountability and support, not endless self-restarts.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Address repeated harmful drift with accountability and support, not endless self-restarts.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-055",
+    "title": "TENSION’S EXIT PARTNER",
+    "playTime": "60–90 seconds",
+    "goal": "Feel the contrast between light tension and full release in one body area.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Select a safe body region."
+      },
+      {
+        "n": 2,
+        "text": "Tighten it lightly—not maximally—during an easy inhale."
+      },
+      {
+        "n": 3,
+        "text": "As air leaves, let the muscle become heavy and wide."
+      },
+      {
+        "n": 4,
+        "text": "Compare before and after, then move to a second region only if the first fully released."
+      },
+      {
+        "n": 5,
+        "text": "One clean contrast is enough."
+      }
+    ],
+    "win": "One region clearly softened before you decided whether to continue elsewhere.",
+    "mindBend": "Relaxation is easier to detect after a deliberate contrast; the body can recognise release better than it can obey 'relax'.",
+    "formulaFlow": "Select Safe → Tighten → Leave Muscle → Compare After → End Clean",
+    "safety": {
+      "raw": "PAUSE\nAvoid injured, painful, recently operated, or cramping areas.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Avoid injured, painful, recently operated, or cramping areas.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-057",
+    "title": "FIVE SAFE SIGNALS",
+    "playTime": "45–60 seconds",
+    "goal": "Receive five ordinary sensory cues slowly enough for one to feel trustworthy.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Build a sensory sequence from what is available: one pleasing sight, steady sound, comforting texture, mild scent, and nourishing taste."
+      },
+      {
+        "n": 2,
+        "text": "Spend a few seconds receiving each instead of rushing to the next cue."
+      },
+      {
+        "n": 3,
+        "text": "End on the sense that feels most trustworthy today."
+      }
+    ],
+    "win": "You reached the final sense without rushing and knew which cue felt most steady today.",
+    "mindBend": "Safety can be registered through ordinary sensation. The brain misses that evidence when it races past it.",
+    "formulaFlow": "Build Sensory → Receive Instead → End Sense",
+    "safety": {
+      "raw": "PAUSE\nAvoid allergens, unsafe temperatures, substance triggers, or sensory input that overwhelms.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Avoid allergens, unsafe temperatures, substance triggers, or sensory input that overwhelms.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-059",
+    "title": "DROP THE APPEAL",
+    "playTime": "about 1 minute",
+    "goal": "Stop arguing with the existence of what happened and respond to the reality that remains.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "State the fact in plain past or present tense."
+      },
+      {
+        "n": 2,
+        "text": "Remove every ‘should not have happened.’ Notice the protest and answer: ‘I can dislike this without denying that it happened.’"
+      },
+      {
+        "n": 3,
+        "text": "Choose the next response available in the world that actually exists."
+      }
+    ],
+    "win": "The fact stayed plain, the 'shouldn't' was removed, and one real-world response became available.",
+    "mindBend": "Rejecting a fact does not reverse it. It only spends energy fighting a past or present that has already arrived.",
+    "formulaFlow": "State Fact → Remove Approval → Add Nothing",
+    "safety": {
+      "raw": "PAUSE\nAcceptance must never be used to legitimise abuse, injustice, or preventable harm.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Acceptance must never be used to legitimise abuse, injustice, or preventable harm.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the interaction feels more workable",
+        "PARTLY — one boundary or perspective helped",
+        "NO SHIFT — the same tension remains",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-060",
+    "title": "TURN AGAIN",
+    "playTime": "about 1 minute",
+    "goal": "Stop reopening the case and turn toward what is possible now.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Catch the mind reopening the case against what has already occurred."
+      },
+      {
+        "n": 2,
+        "text": "Name the refusal without criticism."
+      },
+      {
+        "n": 3,
+        "text": "Rotate attention toward the existing fact and the action now possible."
+      },
+      {
+        "n": 4,
+        "text": "Each return is one turn of the wheel; stop counting after the chosen behaviour begins."
+      }
+    ],
+    "win": "The old fact stayed closed long enough for one available action to begin.",
+    "mindBend": "Rejection often hurts twice—once from the event and again each time the mind appeals a verdict reality has already delivered.",
+    "formulaFlow": "Catch Mind → Name Refusal → Rotate Attention → Return Wheel",
+    "safety": {
+      "raw": "PAUSE\nIf repeated turning becomes compulsive, step away and use ordinary support.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "If repeated turning becomes compulsive, step away and use ordinary support.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the interaction feels more workable",
+        "PARTLY — one boundary or perspective helped",
+        "NO SHIFT — the same tension remains",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-068",
+    "title": "PUT GOOD ON THE CALENDAR",
+    "playTime": "about 1 minute",
+    "goal": "Put one genuinely reinforcing experience into real time and notice it while it happens.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Choose one really reinforcing experience; assign it a time, place, and first action."
+      },
+      {
+        "n": 2,
+        "text": "Protect the appointment from unnecessary multitasking."
+      },
+      {
+        "n": 3,
+        "text": "While it happens, notice three details worth encoding."
+      },
+      {
+        "n": 4,
+        "text": "Afterward, resist grading whether you enjoyed it ‘enough.’"
+      }
+    ],
+    "win": "The activity happened at a protected time and three details were actually registered.",
+    "mindBend": "Pleasure can be under-recorded even when it occurs — attention helps the brain keep the receipt.",
+    "formulaFlow": "Choose Genuinely → Protect Appointment → Details → Lock In",
+    "safety": {
+      "raw": "PAUSE\nDo not force pleasure during grief or depression; attendance itself can be the result.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Do not force pleasure during grief or depression; attendance itself can be the result.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-073",
+    "title": "READ THE SIGNAL WITHOUT TURNING IT UP",
+    "playTime": "45–60 seconds",
+    "goal": "Describe one existing body sensation neutrally and stop after one sensible check.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Notice only a sensation already present and do not intensify it."
+      },
+      {
+        "n": 2,
+        "text": "Check the room, recent activity, and any known medical information."
+      },
+      {
+        "n": 3,
+        "text": "Describe the sensation with neutral words such as warm, tight, or moving."
+      },
+      {
+        "n": 4,
+        "text": "Choose rest, ordinary movement, support, or medical advice as appropriate."
+      },
+      {
+        "n": 5,
+        "text": "Stop after one check and avoid repeated body monitoring."
+      }
+    ],
+    "win": "The sensation was named without amplification, and the next response matched context rather than repeated monitoring.",
+    "mindBend": "Repeated checking can make one body feeling seem bigger. One sensible check gives you information without turning monitoring into the main event.",
+    "formulaFlow": "Notice Signal → Check Facts → Name Quality → Choose Response → End Check",
+    "safety": {
+      "raw": "PAUSE\nDo not deliberately trigger, intensify, or test feared body sensations. Use this content only as non-exposure education unless a qualified clinician has assessed and supervised an exposure plan. Seek medical advice for uncertain symptoms.\nThis is not diagnosis, treatment, or emergency care.",
+      "pause": "Do not deliberately trigger, intensify, or test feared body sensations. Use this content only as non-exposure education unless a qualified clinician has assessed and supervised an exposure plan. Seek medical advice for uncertain symptoms.",
+      "disclaimer": "This is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-076",
+    "title": "DESIGN THE SURPRISE",
+    "playTime": "45–60 seconds",
+    "goal": "Test the feared prediction directly and keep whatever reality does not fit.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Picture the strongest testable prediction in visible terms."
+      },
+      {
+        "n": 2,
+        "text": "Build a safe practice round aimed at that exact claim, not merely at feeling anxious."
+      },
+      {
+        "n": 3,
+        "text": "Afterward, keep the original prediction, what occurred, and what the old model cannot easily explain."
+      }
+    ],
+    "win": "The practice produced a visible result that could be compared with the original prediction instead of just anxiety level.",
+    "mindBend": "A fear model changes fastest when reality produces a surprise it cannot easily explain away.",
+    "formulaFlow": "Picture Strongest → Build Safe → Picture Outcome",
+    "safety": {
+      "raw": "PAUSE\nRedesign rather than intensify when the test cannot fairly evaluate the belief.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Redesign rather than intensify when the test cannot fairly evaluate the belief.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-082",
+    "title": "PENDULUM BETWEEN TWO TRUTHS",
+    "playTime": "about 1 minute",
+    "goal": "Move attention between body tension and steadiness without getting trapped in either.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Find one tense or activated area and another area that feels settled or supported."
+      },
+      {
+        "n": 2,
+        "text": "Notice the difficult area for a few seconds, then move attention to the settled area."
+      },
+      {
+        "n": 3,
+        "text": "Travel back and forth at a pace that preserves choice."
+      },
+      {
+        "n": 4,
+        "text": "Finish where you feel more steadily aware of your surroundings."
+      }
+    ],
+    "win": "You moved between a difficult area and a settled area while keeping control of the pace.",
+    "mindBend": "Settling does not always mean leaving discomfort. Capacity can grow when you learn you can visit discomfort and return.",
+    "formulaFlow": "Find Activated → Move Resource → Travel → Finish Whichever",
+    "safety": {
+      "raw": "PAUSE\nStop crossing if each visit amplifies distress rather than returning balance.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Stop crossing if each visit amplifies distress rather than returning balance.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-085",
+    "title": "WAIT FOR THE WHOLE BODY ANSWER",
+    "playTime": "60–90 seconds",
+    "goal": "Let the body give a whole-picture response before analysis takes over.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Bring the issue to mind lightly, then pause verbal analysis."
+      },
+      {
+        "n": 2,
+        "text": "Ask the body, ‘What is the whole of this like?’ Wait for an image, phrase, posture, or global texture."
+      },
+      {
+        "n": 3,
+        "text": "Check whether it fits by noticing a small inner yes, no, or shift."
+      },
+      {
+        "n": 4,
+        "text": "Leave the answer unpolished."
+      }
+    ],
+    "win": "An image, phrase, posture, or felt texture arrived and was checked for a small inner fit.",
+    "mindBend": "The body can summarise a situation before language has organised it; the first useful signal may be global rather than verbal.",
+    "formulaFlow": "Bring Mind → Ask Body → Check Whether → Leave Raw",
+    "safety": {
+      "raw": "PAUSE\nEnd the inquiry if bodily attention creates panic, numbness, or feeling unreal or disconnected.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "End the inquiry if bodily attention creates panic, numbness, or feeling unreal or disconnected.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-086",
+    "title": "COMPLETE THE DEFENCE IN MINIATURE",
+    "playTime": "about 1 minute",
+    "goal": "Let a safe defensive impulse finish in miniature instead of freezing halfway.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Notice the small impulse to push, turn, step back, shield, or say no."
+      },
+      {
+        "n": 2,
+        "text": "In a safe space, let it unfold slowly at ten percent strength."
+      },
+      {
+        "n": 3,
+        "text": "Stop at the natural completion and return to neutral posture."
+      },
+      {
+        "n": 4,
+        "text": "Observe whether the body receives an ending."
+      }
+    ],
+    "win": "A tiny push, turn, step, shield, or no reached a natural endpoint and returned to neutral.",
+    "mindBend": "An unfinished defence can keep feeling current. A small completed movement may give the body the ending the original impulse never reached.",
+    "formulaFlow": "Small → Let Unfold → Stop Completion → Observe Whether",
+    "safety": {
+      "raw": "PAUSE\nNever direct movement toward a person or continue if aggression escalates.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Never direct movement toward a person or continue if aggression escalates.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-087",
+    "title": "FIND THE BODY’S WORKABLE DISTANCE",
+    "playTime": "about 1 minute",
+    "goal": "Find the distance where your body can stay present enough to communicate.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Picture the person, place, or demand at different safe distances."
+      },
+      {
+        "n": 2,
+        "text": "Notice breath, posture, urge, and clarity at each imagined distance."
+      },
+      {
+        "n": 3,
+        "text": "Find where your body can stay present and communicate."
+      },
+      {
+        "n": 4,
+        "text": "Treat that distance as information, not a permanent verdict."
+      }
+    ],
+    "win": "One imagined distance supported clearer breath, posture, urge control, or thinking than the others.",
+    "mindBend": "Distance is not only avoidance or closeness. It can be a dial that changes how much capacity remains available.",
+    "formulaFlow": "Imagine Distance → Notice Body → Find Workable → Keep Data",
+    "safety": {
+      "raw": "PAUSE\nStop immediately if consent changes or the exercise feels threatening.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Stop immediately if consent changes or the exercise feels threatening.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-088",
+    "title": "BORROW THE FLOOR",
+    "playTime": "about 1 minute",
+    "goal": "Feel what the surface is already holding instead of trying to manufacture grounding.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Choose one contact point—feet, seat, back, forearms, or hands."
+      },
+      {
+        "n": 2,
+        "text": "Increase pressure slightly, then release extra effort and notice what the surface continues to carry."
+      },
+      {
+        "n": 3,
+        "text": "Name its texture, temperature, and steadiness."
+      },
+      {
+        "n": 4,
+        "text": "You need not manufacture a sense of ground."
+      }
+    ],
+    "win": "Pressure softened while texture, temperature, and steadiness remained available through one contact point.",
+    "mindBend": "Ground is doing part of the work before you notice it — support can be received rather than produced.",
+    "formulaFlow": "Choose Contact → Release Extra → Name Texture → Trust Ground",
+    "safety": {
+      "raw": "PAUSE\nChange position if pressure causes pain, numbness, or restricted circulation.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Change position if pressure causes pain, numbness, or restricted circulation.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-090",
+    "title": "CATCH THE RECOVERY SIGNAL",
+    "playTime": "about 1 minute",
+    "goal": "Notice the first real sign that body alarm is already beginning to recover.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "After body alarm, watch for a swallow, sigh, warmth, trembling, yawn, moisture in the eyes, breath shift, or muscle release."
+      },
+      {
+        "n": 2,
+        "text": "When one appears, name it accurately and stay with its after-effect."
+      },
+      {
+        "n": 3,
+        "text": "Do not provoke more."
+      },
+      {
+        "n": 4,
+        "text": "Teach the mind what recovery looks like."
+      }
+    ],
+    "win": "A swallow, sigh, warmth, tremble, yawn, tear, breath shift, or muscle release was recognised without provoking more.",
+    "mindBend": "Recovery can begin while discomfort is still present; spotting its first signal prevents the alarm from being mistaken for a permanent state.",
+    "formulaFlow": "Watch Swallow → Name Accurately → No Trigger → Look Like",
+    "safety": {
+      "raw": "PAUSE\nSeek care if shaking, breathing changes, or other symptoms seem medically concerning.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Seek care if shaking, breathing changes, or other symptoms seem medically concerning.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-096",
+    "title": "CLOSE THE SCAN, OPEN THE ROOM",
+    "playTime": "60–90 seconds",
+    "goal": "Stop scanning inward and reopen attention to the ordinary room around you.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Stop searching the body for remaining danger signals."
+      },
+      {
+        "n": 2,
+        "text": "Widen your gaze until both sides of the room are visible."
+      },
+      {
+        "n": 3,
+        "text": "Name two neutral sounds without judging what they mean."
+      },
+      {
+        "n": 4,
+        "text": "Touch a safe ordinary texture and describe its surface."
+      },
+      {
+        "n": 5,
+        "text": "Choose a simple external task that does not involve the memory."
+      }
+    ],
+    "win": "Your gaze widened, neutral sounds and texture registered, and an external task replaced the body search.",
+    "mindBend": "Repeated danger-checking can keep the alarm central. Widening outward gives the brain competing evidence about where you are.",
+    "formulaFlow": "End Search → Open Field → Name Sounds → Touch Texture → Choose Task",
+    "safety": {
+      "raw": "PAUSE\nKeep your eyes open. Use only present-day room, date, place and support orientation. Do not revisit memories in detail, use trauma imagery, intensify sensations, or attempt unsupervised processing. Stop for flooding, feeling unreal or disconnected, or weakened orientation and connect with qualified human support.\nThis is grounding only, not trauma treatment.",
+      "pause": "Keep your eyes open. Use only present-day room, date, place and support orientation. Do not revisit memories in detail, use trauma imagery, intensify sensations, or attempt unsupervised processing. Stop for flooding, feeling unreal or disconnected, or weakened orientation and connect with qualified human support.",
+      "disclaimer": "This is grounding only, not trauma treatment."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-102",
+    "title": "FIND THE BUSY HALF",
+    "playTime": "60–90 seconds",
+    "goal": "Find which half of breathing is working too hard and ease only that side.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Observe three ordinary cycles."
+      },
+      {
+        "n": 2,
+        "text": "Rate inhale effort and exhale release separately."
+      },
+      {
+        "n": 3,
+        "text": "Which phase is working too hard."
+      },
+      {
+        "n": 4,
+        "text": "Ease only that side toward neutral—less pulling in or less pushing out—while leaving timing alone."
+      },
+      {
+        "n": 5,
+        "text": "Check if urgency changes when imbalance decreases."
+      }
+    ],
+    "win": "Inhale and exhale effort were compared separately, and only the busier phase moved toward neutral.",
+    "mindBend": "Breathing can feel globally wrong when the real imbalance is local. Changing one overworked half may be enough.",
+    "formulaFlow": "Observe Ordinary → Rate Inhale → Phase → Leave Timing → Check Whether",
+    "safety": {
+      "raw": "PAUSE\nStop adjustment at the first sign of dizziness, strain, or breath fixation.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Stop adjustment at the first sign of dizziness, strain, or breath fixation.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the interaction feels more workable",
+        "PARTLY — one boundary or perspective helped",
+        "NO SHIFT — the same tension remains",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-105",
+    "title": "ALTERNATE THE AIRWAY",
+    "playTime": "about 1 minute",
+    "goal": "Alternate nostrils gently without holding, forcing, or chasing a special state.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Sit comfortably."
+      },
+      {
+        "n": 2,
+        "text": "Without force, close one nostril and breathe through the other; switch sides for the next gentle cycle."
+      },
+      {
+        "n": 3,
+        "text": "Continue alternating with an unhurried hand."
+      },
+      {
+        "n": 4,
+        "text": "Keep the breath quiet and abandon retention."
+      },
+      {
+        "n": 5,
+        "text": "Finish with both sides open and let breathing return to normal."
+      }
+    ],
+    "win": "Both sides were used quietly and the practice ended with normal breathing restored.",
+    "mindBend": "A breathing technique is useful only while it remains easier than the state you are trying to change.",
+    "formulaFlow": "Sit Easy → Close Nostril → Continue Unhurried → Keep Breath → Open Sides",
+    "safety": {
+      "raw": "PAUSE\nSkip when congested, dizzy, breath-sensitive, or advised against the practice.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Skip when congested, dizzy, breath-sensitive, or advised against the practice.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-106",
+    "title": "VIBRATION ON THE WAY OUT",
+    "playTime": "about 1 minute",
+    "goal": "Use a soft hum on the exhale and stop while it still feels kind.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Take an ordinary inhale."
+      },
+      {
+        "n": 2,
+        "text": "Hum at a soft, comfortable pitch as air leaves, feeling vibration in lips, face, or chest."
+      },
+      {
+        "n": 3,
+        "text": "Stop before empty."
+      },
+      {
+        "n": 4,
+        "text": "Listen to the silence after the hum, then decide whether another round would still feel kind."
+      }
+    ],
+    "win": "Vibration was felt, the breath ended before empty, and the silence afterward became noticeable.",
+    "mindBend": "The quiet after a hum can be part of the practice. Contrast often makes stillness easier to notice than effort does.",
+    "formulaFlow": "Take Ordinary → Leave Feeling → Stop Empty → Listen Silence",
+    "safety": {
+      "raw": "PAUSE\nCease with pain, coughing, light-headedness, or vocal discomfort.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Cease with pain, coughing, light-headedness, or vocal discomfort.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-108",
+    "title": "COOL AIR, WARM DECISION",
+    "playTime": "45–60 seconds",
+    "goal": "Notice mild coolness in the breath, then choose one unhurried action.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Shape the lips or tongue only if comfortable, notice a mild stream of cool air, and let exhalation leave naturally through the nose."
+      },
+      {
+        "n": 2,
+        "text": "Notice coolness rather than volume."
+      },
+      {
+        "n": 3,
+        "text": "Stop after a few easy cycles and choose one unhurried action."
+      }
+    ],
+    "win": "A few easy cycles ended before strain, and the next move was chosen at a slower pace.",
+    "mindBend": "Attention to temperature can change the felt quality of breathing without requiring more air.",
+    "formulaFlow": "Imagine Mild → Coolness → End After",
+    "safety": {
+      "raw": "PAUSE\nAvoid in cold sensitivity, unsuitable weather, breathing conditions, or discomfort.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Avoid in cold sensitivity, unsuitable weather, breathing conditions, or discomfort.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-111",
+    "title": "THE RETURN REP",
+    "playTime": "about 1 minute",
+    "goal": "Count honest returns of attention instead of demanding unbroken focus.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Select one neutral anchor."
+      },
+      {
+        "n": 2,
+        "text": "Each time distraction appears, notice where attention went and escort it back without commentary."
+      },
+      {
+        "n": 3,
+        "text": "Count returns rather than uninterrupted seconds."
+      },
+      {
+        "n": 4,
+        "text": "Finish after ten honest comebacks, even if focus never felt perfect."
+      }
+    ],
+    "win": "Ten distractions became ten successful comebacks rather than ten failures.",
+    "mindBend": "Attention is not proved by never wandering. It is trained at the exact moment you notice and return.",
+    "formulaFlow": "Select Neutral → Attention → Count Rather → End After",
+    "safety": {
+      "raw": "PAUSE\nChoose a broader practice if narrow focus increases agitation.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Choose a broader practice if narrow focus increases agitation.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-124",
+    "title": "LET DARKNESS BE COMPLETE",
+    "playTime": "45–60 seconds",
+    "goal": "Look at darkness as a visual field without filling it with imagined shapes.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "In a safe darkened setting, notice darkness as the actual visual field."
+      },
+      {
+        "n": 2,
+        "text": "When the mind manufactures shapes or stories, recognise image production and return to the unfilled field."
+      },
+      {
+        "n": 3,
+        "text": "Stay briefly, then reintroduce light on purpose."
+      }
+    ],
+    "win": "Mental images were noticed as image-making, and the unfilled darkness became visible again.",
+    "mindBend": "The mind dislikes blank space enough to manufacture content. Noticing the manufacture is different from believing what it draws.",
+    "formulaFlow": "Set Darkness → Return Unfilled → Stay Briefly",
+    "safety": {
+      "raw": "PAUSE\nAvoid this practice if darkness triggers panic, trauma, or perceptual disturbance.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Avoid this practice if darkness triggers panic, trauma, or perceptual disturbance.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-129",
+    "title": "BEFORE THE SENTENCE",
+    "playTime": "about 1 minute",
+    "goal": "Notice the first tiny form of a thought before it becomes a full sentence.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Hold attention quietly and wait."
+      },
+      {
+        "n": 2,
+        "text": "When a thought begins, notice its earliest form: pressure, fragment, image, word, or felt orientation in space."
+      },
+      {
+        "n": 3,
+        "text": "Do not chase backward after it fully forms."
+      },
+      {
+        "n": 4,
+        "text": "Notice the thought’s “birth” and let the completed thought continue."
+      }
+    ],
+    "win": "A pressure, fragment, image, word, or orientation was caught at the thought's beginning.",
+    "mindBend": "Thoughts often feel fully formed because attention notices them late. Their earliest form can be much less definite than the finished sentence.",
+    "formulaFlow": "Hold Attention → Earliest → No Backtracking → Catch Birth",
+    "safety": {
+      "raw": "PAUSE\nChoose a visible anchor when vigilant waiting increases tension.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Choose a visible anchor when vigilant waiting increases tension.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-130",
+    "title": "FOLLOW IT TO ZERO",
+    "playTime": "about 1 minute",
+    "goal": "Stay with one thought until it naturally changes or disappears.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Select one naturally occurring thought."
+      },
+      {
+        "n": 2,
+        "text": "Stay with its exact wording or image as it alters, fragments, loses relevance, or is replaced."
+      },
+      {
+        "n": 3,
+        "text": "Spot the first instant when no trace can be found."
+      },
+      {
+        "n": 4,
+        "text": "Do not resurrect it to verify the ending."
+      }
+    ],
+    "win": "The thought reached a point where no trace was findable without being resurrected for checking.",
+    "mindBend": "A thought can end without being solved; verifying that it is gone would be the act that brings it back.",
+    "formulaFlow": "Select Naturally → Stay Wording → Identify Instant → Allow End",
+    "safety": {
+      "raw": "PAUSE\nEnd observation if tracking becomes obsessive or exhausting.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "End observation if tracking becomes obsessive or exhausting.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the thought has less control of the next move",
+        "PARTLY — one angle opened",
+        "NO SHIFT — the same thought still dominates",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-131",
+    "title": "THE RETURN CHAIN",
+    "playTime": "about 1 minute",
+    "goal": "Build attention through a modest daily return instead of heroic sessions.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Choose one attentional act small enough to repeat daily."
+      },
+      {
+        "n": 2,
+        "text": "Define its cue, duration, and one tiny restart signal."
+      },
+      {
+        "n": 3,
+        "text": "Each session begins with the final second of yesterday’s intention: ‘return again.’ Protect repetition from heroic increases."
+      },
+      {
+        "n": 4,
+        "text": "A chain is made of modest links."
+      }
+    ],
+    "win": "The cue, duration, restart signal, and tomorrow's 'return again' stayed small enough to repeat.",
+    "mindBend": "Consistency is made from recoverable links. A practice becomes fragile when every session has to prove ambition.",
+    "formulaFlow": "Choose Attention → Set Cue → Return Repetition → Link Return",
+    "safety": {
+      "raw": "PAUSE\nReduce frequency if ongoing sense crowds out sleep, duties, or flexibility.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Reduce frequency if ongoing sense crowds out sleep, duties, or flexibility.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-139",
+    "title": "RETURN THE OUTCOME",
+    "playTime": "about 1 minute",
+    "goal": "Do your part fully while releasing the result you cannot command.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Name the action within your responsibility."
+      },
+      {
+        "n": 2,
+        "text": "Name the result you cannot command."
+      },
+      {
+        "n": 3,
+        "text": "Offer the second to God, life, reality, community, or a principle larger than ego—using language authentic to you."
+      },
+      {
+        "n": 4,
+        "text": "Then do the first with full care."
+      }
+    ],
+    "win": "Responsibility and outcome were separated, so effort could stay wholehearted without pretending control was total.",
+    "mindBend": "Care and control are not the same resource. You can increase the first even where the second ends.",
+    "formulaFlow": "Name Action → Name Result → Use Language → Return Outcome",
+    "safety": {
+      "raw": "PAUSE\nChoose secular release if spiritual framing creates conflict or coercion.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Choose secular release if spiritual framing creates conflict or coercion.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-140",
+    "title": "TRACE THE FIRST SPARK",
+    "playTime": "45–60 seconds",
+    "goal": "Trace a recurring state back to the earliest condition you can actually notice.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Take one recurring state and move backward through its chain: current thought, preceding sensation, image, memory, external cue, and hidden tendency."
+      },
+      {
+        "n": 2,
+        "text": "Stop at the earliest condition you can really spot."
+      },
+      {
+        "n": 3,
+        "text": "Notice the point where future interruption could happen."
+      }
+    ],
+    "win": "The chain stopped at one early cue that could become a future interruption point.",
+    "mindBend": "A reaction becomes less mysterious when you find its first detectable spark instead of studying only the final fire.",
+    "formulaFlow": "Take Recurring → Stop Earliest → Mark Spark",
+    "safety": {
+      "raw": "PAUSE\nDo not force inaccessible memories or invent causes to complete the chain.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Do not force inaccessible memories or invent causes to complete the chain.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-141",
+    "title": "NOT THIS, STILL HERE",
+    "playTime": "45–60 seconds",
+    "goal": "Observe body, thought, feeling, and role without calling any one the whole self.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Notice body, sensation, thought, emotion, and role in turn."
+      },
+      {
+        "n": 2,
+        "text": "For each say, ‘Observed—therefore not the whole observer.’ Do not claim they are unreal."
+      },
+      {
+        "n": 3,
+        "text": "After the sequence, rest with what remains unlabelled, then reconnect to name and place."
+      }
+    ],
+    "win": "Each layer was noticed, then you reconnected to your current name and place.",
+    "mindBend": "Something can belong to your experience without exhausting your identity. Observation creates a boundary without declaring the experience unreal.",
+    "formulaFlow": "Body → Keep Perspective → Rest Unlabelled",
+    "safety": {
+      "raw": "PAUSE\nAvoid negation practices during feeling unreal or disconnected, psychosis, or unstable self-experience.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Avoid negation practices during feeling unreal or disconnected, psychosis, or unstable self-experience.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-151",
+    "title": "CLEAN ACTION, OPEN HANDS",
+    "playTime": "45–60 seconds",
+    "goal": "Judge the quality of your action without making the hoped-for result part of the score.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Define what right action looks like in process terms: honest words, careful preparation, timely follow-through."
+      },
+      {
+        "n": 2,
+        "text": "Specify the outcome you hope for, then place it outside the scoring system."
+      },
+      {
+        "n": 3,
+        "text": "Judge today only by whether the action met its standard."
+      }
+    ],
+    "win": "Honesty, preparation, and follow-through could be evaluated even while the outcome stayed outside your control.",
+    "mindBend": "Process standards remain usable before results arrive. Outcome scoring can turn good action into failure for reasons action could never command.",
+    "formulaFlow": "Look Like → Place Outside → Judge Action",
+    "safety": {
+      "raw": "PAUSE\nResults still matter when they reveal harm, error, or a need to change course.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Results still matter when they reveal harm, error, or a need to change course.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-158",
+    "title": "CLOSE THE FEED BEFORE CRAVING VOTES",
+    "playTime": "45–60 seconds",
+    "goal": "Set the contact limit before the craving gets a vote.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Spot the cue that repeatedly captures a sense—screen, smell, image, taste, location."
+      },
+      {
+        "n": 2,
+        "text": "Set a concrete contact limit before practice round: duration, distance, quantity, or block."
+      },
+      {
+        "n": 3,
+        "text": "Leave while choice is still available, not after bargaining begins."
+      }
+    ],
+    "win": "The cue was approached within a pre-decided boundary and left while choice was still intact.",
+    "mindBend": "A limit negotiated before desire rises is a rule — the same limit negotiated at the peak can become a bargaining session.",
+    "formulaFlow": "Identify Cue → Set Concrete → Leave Choice",
+    "safety": {
+      "raw": "PAUSE\nUse specialist support for substance use, eating disorders, or compulsions.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Use specialist support for substance use, eating disorders, or compulsions.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-162",
+    "title": "FIND WHERE THE PATTERN MISSED",
+    "playTime": "about 90 seconds",
+    "goal": "Find the conditions under which a recurring pattern is weaker, then recreate one.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Name the recurring pattern in one line, including the trigger and usual response."
+      },
+      {
+        "n": 2,
+        "text": "Find two occasions when the same kind of trigger produced no pattern or a clearly weaker version."
+      },
+      {
+        "n": 3,
+        "text": "Compare the exceptions. Spot one shared condition that you can influence: timing, preparation, company, distance, information, or body care."
+      },
+      {
+        "n": 4,
+        "text": "Place that condition into the next comparable situation and define what weaker would look like."
+      }
+    ],
+    "win": "Two exceptions revealed one influenceable condition that could be deliberately placed into the next similar situation.",
+    "mindBend": "A pattern's exceptions are not noise. They are clues to the conditions that keep the pattern from becoming inevitable.",
+    "formulaFlow": "Name Pattern → Find Misses → Compare Conditions → Transplant Edge",
+    "safety": {
+      "raw": "PAUSE\nExceptions do not make unsafe situations safe; do not use this game to blame yourself for trauma, illness, abuse, discrimination, or coercion.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Exceptions do not make unsafe situations safe; do not use this game to blame yourself for trauma, illness, abuse, discrimination, or coercion.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-166",
+    "title": "EFFORT IS STILL AVAILABLE",
+    "playTime": "about 1 minute",
+    "goal": "Put effort into the smallest part of the situation that is still changeable.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Name what cannot be changed today."
+      },
+      {
+        "n": 2,
+        "text": "Beside it, name the smallest domain where effort remains possible."
+      },
+      {
+        "n": 3,
+        "text": "Take one concrete step there before returning to contemplation."
+      },
+      {
+        "n": 4,
+        "text": "Let action answer the part of the problem that is actually yours."
+      }
+    ],
+    "win": "One concrete action happened in the domain you could influence instead of circling what could not move.",
+    "mindBend": "Powerlessness grows when changeable and unchangeable parts are mentally mixed. Separating them returns effort to a real target.",
+    "formulaFlow": "Name Cannot → Name Smallest → Take Concrete → Let Action",
+    "safety": {
+      "raw": "PAUSE\nDo not frame incapacity, disability, or exhaustion as moral failure.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Do not frame incapacity, disability, or exhaustion as moral failure.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-167",
+    "title": "RUN THE START GATE TWICE",
+    "playTime": "about 90 seconds",
+    "goal": "Rehearse the opening movements twice, then enter the real task through the same doorway.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Mentally rehearse the first few movements that would begin the task."
+      },
+      {
+        "n": 2,
+        "text": "Run that opening sequence once in imagination without producing work."
+      },
+      {
+        "n": 3,
+        "text": "Return the imagined scene to neutral once."
+      },
+      {
+        "n": 4,
+        "text": "Repeat the same sequence, then begin the real task from its first movement."
+      }
+    ],
+    "win": "The imagined start became the actual first movement without needing a new round of planning.",
+    "mindBend": "Starting can become easier when the body has already run the first seconds. Rehearsal reduces the novelty at the threshold.",
+    "formulaFlow": "Stage Door → Dry Launch → Reset → Live Entry",
+    "safety": {
+      "raw": "PAUSE\nDo not rehearse machinery, driving, hazardous tools, or any start sequence that requires formal safety checks.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Do not rehearse machinery, driving, hazardous tools, or any start sequence that requires formal safety checks.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-168",
+    "title": "DIFFERENCE INSIDE ONE FIELD",
+    "playTime": "about 1 minute",
+    "goal": "Hold two opposite experiences clearly while noticing the space that contains both.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Notice two contrasting experiences—pleasant and painful, self and other, sound and silence."
+      },
+      {
+        "n": 2,
+        "text": "Hold their distinct qualities without merging them."
+      },
+      {
+        "n": 3,
+        "text": "Then include the shared field in which both are present."
+      },
+      {
+        "n": 4,
+        "text": "Let difference remain vivid without translating it into separation."
+      }
+    ],
+    "win": "Difference stayed vivid without forcing either side to erase the other or become total separation.",
+    "mindBend": "Opposites can share one field without becoming the same — distinction does not require disconnection.",
+    "formulaFlow": "Contrasting → Hold Distinct → Include Shared → Let Difference",
+    "safety": {
+      "raw": "PAUSE\nUse ordinary distinctions when boundaries or safety require clear separation.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Use ordinary distinctions when boundaries or safety require clear separation.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-175",
+    "title": "THE REVERSIBLE DOOR",
+    "playTime": "45–60 seconds",
+    "goal": "Take the smallest reversible step that can return useful information.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Find the smallest action that tests the direction and can be undone: trial, prototype, conversation, temporary booking, one-week schedule."
+      },
+      {
+        "n": 2,
+        "text": "Name the exit cost and the fact the step could reveal."
+      },
+      {
+        "n": 3,
+        "text": "Choose the door that returns with data."
+      }
+    ],
+    "win": "The chosen move had a known exit cost and produced data without demanding a permanent commitment.",
+    "mindBend": "A reversible action can turn a decision from a verdict into an experiment, replacing imagined certainty with live evidence.",
+    "formulaFlow": "Find Smallest → Name Exit → Choose Door",
+    "safety": {
+      "raw": "PAUSE\nDo not treat apparently reversible steps as harmless without checking consequences.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Do not treat apparently reversible steps as harmless without checking consequences.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-176",
+    "title": "WORRY HAS OFFICE HOURS",
+    "playTime": "about 1 minute",
+    "goal": "Give worry a later appointment instead of letting it occupy the whole day.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Picture the worry exactly and schedule a specific review window later today."
+      },
+      {
+        "n": 2,
+        "text": "Until then, add only genuinely new facts to the mental note; do not analyse it live."
+      },
+      {
+        "n": 3,
+        "text": "At the appointment, decide: act, plan, accept, or discard."
+      },
+      {
+        "n": 4,
+        "text": "Close on time even if certainty is absent."
+      }
+    ],
+    "win": "New facts could be saved, but live analysis waited until the scheduled window and closed on time.",
+    "mindBend": "Worry feels urgent partly because it has no office hours. A boundary separates remembering a concern from continuously working it.",
+    "formulaFlow": "Picture Worry → Add Genuinely → Decide Accept → Close Time",
+    "safety": {
+      "raw": "PAUSE\nUse immediate action for urgent safety or time-sensitive problems.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Use immediate action for urgent safety or time-sensitive problems.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the thought has less control of the next move",
+        "PARTLY — one angle opened",
+        "NO SHIFT — the same thought still dominates",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-187",
+    "title": "ROTATE THE CHAIR",
+    "playTime": "about 1 minute",
+    "goal": "View the same event from your view, the other person’s possible view, a neutral view, and future-you.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Describe the event from your position."
+      },
+      {
+        "n": 2,
+        "text": "Move seats and say what the other person might perceive, labelling guesses."
+      },
+      {
+        "n": 3,
+        "text": "Stand as a neutral observer and keep only observable behaviour."
+      },
+      {
+        "n": 4,
+        "text": "Finally, ask what future-you would wish had happened next."
+      }
+    ],
+    "win": "Facts and guesses became easier to separate after the event was seen from four different positions.",
+    "mindBend": "Perspective-taking is useful only when guesses stay labelled. Empathy becomes mind-reading when possibility is promoted into fact.",
+    "formulaFlow": "Describe Event → Move Seats → Watch Behaviour → Ask Future",
+    "safety": {
+      "raw": "PAUSE\nSkip the other-person chair if it invites self-blame after abuse.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Skip the other-person chair if it invites self-blame after abuse.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the interaction feels more workable",
+        "PARTLY — one boundary or perspective helped",
+        "NO SHIFT — the same tension remains",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-195",
+    "title": "MOVE THE HEAVIEST WORD",
+    "playTime": "60–90 seconds",
+    "goal": "Change which word carries the weight and notice how the sentence's meaning shifts.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Choose one short alarm sentence."
+      },
+      {
+        "n": 2,
+        "text": "Say it quietly several times, moving emphasis to one different word per round. Keep pitch and speed comfortable."
+      },
+      {
+        "n": 3,
+        "text": "Notice which emphasis changes the meaning or body response most. Focus only on that word."
+      },
+      {
+        "n": 4,
+        "text": "Keep the weighted word as information; stop the repetitions without debating the whole sentence."
+      }
+    ],
+    "win": "One emphasized word changed the body response enough to reveal where the alarm sentence was really loaded.",
+    "mindBend": "A sentence can feel globally threatening when one word is doing most of the emotional work.",
+    "formulaFlow": "Say Alarm → Shift Stress → Find Weight → Keep Signal",
+    "safety": {
+      "raw": "PAUSE\nUse silent emphasis if speaking is unsafe; stop for voice strain, breathing difficulty, or rising panic.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Use silent emphasis if speaking is unsafe; stop for voice strain, breathing difficulty, or rising panic.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-196",
+    "title": "A PLACE FOR THE LOSS",
+    "playTime": "45–60 seconds",
+    "goal": "Give the loss a place while choosing what can still be carried forward.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Imagine a symbol, date, or place that represents what was lost."
+      },
+      {
+        "n": 2,
+        "text": "Say what mattered and what you want to keep carrying forward."
+      },
+      {
+        "n": 3,
+        "text": "Name what cannot continue."
+      },
+      {
+        "n": 4,
+        "text": "Choose one value or memory you can carry without forcing closure."
+      }
+    ],
+    "win": "What mattered, what cannot continue, and one enduring value or memory were all allowed to coexist.",
+    "mindBend": "Grief does not require choosing between holding on and letting go. Different parts of a loss can move in different directions.",
+    "formulaFlow": "Choose Symbol → Honour → Farewell → Continue Bond",
+    "safety": {
+      "raw": "PAUSE\nSeek grief or crisis support when mourning makes safety or functioning difficult.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Seek grief or crisis support when mourning makes safety or functioning difficult.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-197",
+    "title": "CHANGE THE OBJECT, MARK THE RELEASE",
+    "playTime": "about 1 minute",
+    "goal": "Mark a release with one safe physical transformation and keep the responsibility that remains.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Picture or select a safe symbol for what you are relinquishing."
+      },
+      {
+        "n": 2,
+        "text": "Choose a transformation that fits: fold, seal, store, shred, bury where lawful, or dissolve safely."
+      },
+      {
+        "n": 3,
+        "text": "Name what is ending and what responsibility remains."
+      },
+      {
+        "n": 4,
+        "text": "Complete the physical change once."
+      }
+    ],
+    "win": "The symbol changed once, making the ending visible without pretending every consequence disappeared.",
+    "mindBend": "Ritual can give an ending a body. Changing an object does not erase history, but it can mark where your active carrying stops.",
+    "formulaFlow": "Picture Safe → Choose Transformation → Name Responsibility → Mark Release",
+    "safety": {
+      "raw": "PAUSE\nNever burn, bury, ingest, or destroy items unsafely or illegally.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Never burn, bury, ingest, or destroy items unsafely or illegally.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-203",
+    "title": "TODAY’S FURTHEST USEFUL HORIZON",
+    "playTime": "about 1 minute",
+    "goal": "Decide only as far into the future as consequences can still change today's move.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Ask how far ahead consequences can meaningfully alter today’s move: tonight, one week, six months."
+      },
+      {
+        "n": 2,
+        "text": "Imagine a line at that horizon."
+      },
+      {
+        "n": 3,
+        "text": "Park every scenario beyond it unless it changes a present safety or commitment fact."
+      },
+      {
+        "n": 4,
+        "text": "Decide using information inside the line."
+      }
+    ],
+    "win": "Scenarios beyond the useful horizon were parked unless they affected a current safety or commitment fact.",
+    "mindBend": "Far-future possibilities can consume present attention without changing present action — usefulness is a better horizon than imagination.",
+    "formulaFlow": "Ask Far → Imagine Line → Park Scenario → Decide Information",
+    "safety": {
+      "raw": "PAUSE\nExtend the horizon for hard to undo actions or long-term obligations.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Extend the horizon for hard to undo actions or long-term obligations.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-216",
+    "title": "TURN THE LABEL INTO MOTION",
+    "playTime": "45–60 seconds",
+    "goal": "Translate a fixed label into the moving behaviours and conditions underneath it.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Take the identity or label word dominating the moment."
+      },
+      {
+        "n": 2,
+        "text": "Translate it into active, time-specific verbs ending in -ing: withdrawing, scanning, grieving, protecting, predicting."
+      },
+      {
+        "n": 3,
+        "text": "Ask what starts, strengthens, interrupts, and ends that process."
+      }
+    ],
+    "win": "The identity word became active verbs with clear triggers, intensifiers, interruptions, and endings.",
+    "mindBend": "Labels freeze a process into a person. Verbs restore the parts that can begin, change, and stop.",
+    "formulaFlow": "Take Identity → Translate Active → Ask Strengthens",
+    "safety": {
+      "raw": "PAUSE\nDo not discard formal diagnoses needed for treatment or access to support.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Do not discard formal diagnoses needed for treatment or access to support.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-218",
+    "title": "MEANING ON HOLD",
+    "playTime": "about 1 minute",
+    "goal": "Delay meaning until facts from several channels are actually present.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Notice the event without explaining it."
+      },
+      {
+        "n": 2,
+        "text": "Find three facts from different channels—what was said, what was observed, what occurred over time."
+      },
+      {
+        "n": 3,
+        "text": "Until all three exist, name every meaning temporary."
+      },
+      {
+        "n": 4,
+        "text": "Then assign the narrowest meaning supported."
+      }
+    ],
+    "win": "Observed facts and timing came first; the final meaning stayed no broader than the evidence.",
+    "mindBend": "Meaning rushes to fill missing information — making it temporary prevents the first explanation from becoming the permanent one.",
+    "formulaFlow": "Hold Event → Find Facts → Name Meaning → Assign Narrowest",
+    "safety": {
+      "raw": "PAUSE\nDo not postpone action when even one fact confirms urgent danger.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Do not postpone action when even one fact confirms urgent danger.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-220",
+    "title": "ONE WORD, ONE BREATH, RELEASE",
+    "playTime": "about 1 minute",
+    "goal": "Let one temporary word carry the issue for a breath, then leave the label empty.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Choose a temporary word that holds the issue: betrayal, pressure, uncertainty, loss."
+      },
+      {
+        "n": 2,
+        "text": "Say it once during a natural breath, feel its weight, and let the word leave with the breath’s end."
+      },
+      {
+        "n": 3,
+        "text": "Do not replace it with another label for thirty seconds."
+      }
+    ],
+    "win": "The word ended with the breath and no replacement label was supplied for the next thirty seconds.",
+    "mindBend": "Naming can organise experience, but continuous renaming keeps the issue cognitively active after the first label has done its job.",
+    "formulaFlow": "Choose Temporary → Say During → Keep Name",
+    "safety": {
+      "raw": "PAUSE\nAvoid compression when important complexity must be communicated.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Avoid compression when important complexity must be communicated.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the thought has less control of the next move",
+        "PARTLY — one angle opened",
+        "NO SHIFT — the same thought still dominates",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-224",
+    "title": "GIVE THE FORECAST EDGES",
+    "playTime": "45–60 seconds",
+    "goal": "Give a forecast enough detail that both success and failure can be recognised later.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Sharpen the prediction with who, what visible event, exact time window, location, and clear threshold."
+      },
+      {
+        "n": 2,
+        "text": "Define the sign of the event not happening."
+      },
+      {
+        "n": 3,
+        "text": "Set a review date and refuse to score the prediction before then."
+      }
+    ],
+    "win": "Who, what, when, where, threshold, non-event sign, and review date made the prediction scoreable.",
+    "mindBend": "Predictions stay powerful when their edges move after the fact. A defined forecast cannot quietly escape being tested.",
+    "formulaFlow": "Sharpen Forecast → Define → Set Review",
+    "safety": {
+      "raw": "PAUSE\nDo not use precision to obsessively monitor low-stakes uncertainty.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Do not use precision to obsessively monitor low-stakes uncertainty.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-263",
+    "title": "TURN DOWN THE DOMINANT CHANNEL",
+    "playTime": "45–60 seconds",
+    "goal": "Lower one dominant memory channel while strengthening neutral present-day context.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Spot the loudest recall channel—image, sound, touch, smell."
+      },
+      {
+        "n": 2,
+        "text": "Reduce its brightness, volume, proximity, or texture slightly."
+      },
+      {
+        "n": 3,
+        "text": "At the same time, strengthen neutral present-day context: the room layout, today’s date, your clothing, or a distant sound."
+      }
+    ],
+    "win": "Image, sound, touch, or smell softened slightly as today's room, date, clothing, or distant sound became stronger.",
+    "mindBend": "A memory feels current partly when one sensory channel overwhelms contextual cues that would otherwise place it in time.",
+    "formulaFlow": "Identify Loudest → Reduce Brightness → Anchor Present",
+    "safety": {
+      "raw": "PAUSE\nDo not manipulate testimony or use this when precise recall is legally important.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Do not manipulate testimony or use this when precise recall is legally important.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the thought has less control of the next move",
+        "PARTLY — one angle opened",
+        "NO SHIFT — the same thought still dominates",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-270",
+    "title": "SAVE THE LESSON, DELETE THE VERDICT",
+    "playTime": "45–60 seconds",
+    "goal": "Keep the specific lesson from a painful event without letting it become a verdict on your whole life.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Name the specific lesson the event genuinely supports."
+      },
+      {
+        "n": 2,
+        "text": "Notice the global conclusion attached to it: ‘Nobody is safe,’ ‘I am weak,’ ‘Life is over,’ or another all-life verdict."
+      },
+      {
+        "n": 3,
+        "text": "Ask whether the specific lesson still works without the global verdict. Keep what teaches; delete what condemns."
+      }
+    ],
+    "win": "A useful lesson survived after the global condemnation was removed.",
+    "mindBend": "Experience can teach caution without proving 'always', 'nobody', or 'I am'; wisdom becomes distorted when one event is promoted into a law.",
+    "formulaFlow": "Save Lesson → Spot Verdict → Separate Them",
+    "safety": {
+      "raw": "PAUSE\nDo not dilute lessons that accurately identify continuing danger.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Do not dilute lessons that accurately identify continuing danger.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the thought has less control of the next move",
+        "PARTLY — one angle opened",
+        "NO SHIFT — the same thought still dominates",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-281",
+    "title": "SET THE LIMIT BEFORE THE NEXT TEST",
+    "playTime": "60–90 seconds",
+    "goal": "Define the boundary in camera-visible terms and decide the consequence before the next test.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Define the behaviour in terms a camera could observe."
+      },
+      {
+        "n": 2,
+        "text": "Choose the count, duration, or date that marks the limit."
+      },
+      {
+        "n": 3,
+        "text": "Choose one consequence under your control, such as ending the call, leaving, or changing access."
+      },
+      {
+        "n": 4,
+        "text": "If the threshold is crossed, follow the contract once without debating motive."
+      }
+    ],
+    "win": "A clear threshold and an action under your control were ready to execute without debating motive.",
+    "mindBend": "Boundaries become unstable when the trigger is vague or the consequence requires agreement. Observable rules keep enforcement on your side.",
+    "formulaFlow": "Count Pattern → Set Threshold → Link Consequence → Follow Contract",
+    "safety": {
+      "raw": "PAUSE\nLeave immediately instead of counting repetitions when there is intimidation, violence, or immediate danger.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Leave immediately instead of counting repetitions when there is intimidation, violence, or immediate danger.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the interaction feels more workable",
+        "PARTLY — one boundary or perspective helped",
+        "NO SHIFT — the same tension remains",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-283",
+    "title": "COME BACK FROM THEIR IMAGINED HEAD",
+    "playTime": "about 1 minute",
+    "goal": "Sort claims about another person's mind into known, inferred, and unknowable.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Picture three boxes: KNOWN, INFERRED, UNKNOWABLE."
+      },
+      {
+        "n": 2,
+        "text": "Move every claim about the other person into its correct box."
+      },
+      {
+        "n": 3,
+        "text": "Choose one direct question or boundary based on known facts."
+      },
+      {
+        "n": 4,
+        "text": "Leave the unknowable box empty of action."
+      }
+    ],
+    "win": "Your next question or boundary used known facts while the unknowable box stayed empty of action.",
+    "mindBend": "Imagined motives feel actionable because they arrive as sentences — putting them in an unknowable box prevents guesses from becoming instructions.",
+    "formulaFlow": "Sort Boxes → Move Claim → Choose Direct → Leave Unknowable",
+    "safety": {
+      "raw": "PAUSE\nRely on observed patterns when asking would be unsafe or futile.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Rely on observed patterns when asking would be unsafe or futile.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the interaction feels more workable",
+        "PARTLY — one boundary or perspective helped",
+        "NO SHIFT — the same tension remains",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-292",
+    "title": "SOFT JAW, SAME BOUNDARY",
+    "playTime": "about 1 minute",
+    "goal": "Lower jaw tension while keeping the exact boundary unchanged.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Notice jaw pressure before speaking."
+      },
+      {
+        "n": 2,
+        "text": "Separate the teeth, relax the tongue, and exhale naturally."
+      },
+      {
+        "n": 3,
+        "text": "Deliver the exact limit you planned—no extra smile, apology, or attack."
+      },
+      {
+        "n": 4,
+        "text": "Let articulation stay clear while muscular threat signalling drops."
+      }
+    ],
+    "win": "The limit was spoken clearly without added apology, attack, or performative friendliness.",
+    "mindBend": "Muscular threat and verbal firmness are separate channels. Softening one does not require weakening the other.",
+    "formulaFlow": "Notice Jaw → Separate Teeth → Deliver Limit → Let Articulation",
+    "safety": {
+      "raw": "PAUSE\nStop the conversation if safety or self-control is deteriorating.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Stop the conversation if safety or self-control is deteriorating.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the interaction feels more workable",
+        "PARTLY — one boundary or perspective helped",
+        "NO SHIFT — the same tension remains",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-300",
+    "title": "FINISH THE BODY'S FULL STOP",
+    "playTime": "60–90 seconds",
+    "goal": "Complete one safe defensive movement slowly, then return all effort to zero.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "While safely seated, locate one area that still feels ready to push, brace, turn, or withdraw."
+      },
+      {
+        "n": 2,
+        "text": "Choose a pain-free direction and add only light self-resistance."
+      },
+      {
+        "n": 3,
+        "text": "Complete the movement slowly once, then release all effort rather than repeating it."
+      },
+      {
+        "n": 4,
+        "text": "Compare resting pressure, movement range, and urge before and after."
+      }
+    ],
+    "win": "The body finished a single push, brace, turn, or withdrawal and could compare pressure, range, and urge afterward.",
+    "mindBend": "A body can stay prepared when a movement never receives a clear ending; one deliberate completion may create a full stop.",
+    "formulaFlow": "Find Readiness → Add Resistance → Complete Slowly → Check Neutral",
+    "safety": {
+      "raw": "PAUSE\nStop immediately with pain, dizziness, numbness, injury risk, or uncertain movement.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Stop immediately with pain, dizziness, numbness, injury risk, or uncertain movement.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-312",
+    "title": "ONE ACTIVE SLOT",
+    "playTime": "45–60 seconds",
+    "goal": "Protect one active concern while giving the next item and the rest clear places to wait.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Create three positions: ACTIVE, WAITING, ARCHIVE."
+      },
+      {
+        "n": 2,
+        "text": "Put only one concern in ACTIVE, one likely next item in WAITING, and mentally route everything else to ARCHIVE with a clear retrieval cue."
+      },
+      {
+        "n": 3,
+        "text": "Give the active concern a protected time box."
+      }
+    ],
+    "win": "One concern occupied ACTIVE, one sat in WAITING, and everything else had a retrieval cue in ARCHIVE.",
+    "mindBend": "Working memory overload is partly a queueing problem. A thought can wait more quietly when it knows where its turn lives.",
+    "formulaFlow": "Create Positions → Wait Route → Give Active",
+    "safety": {
+      "raw": "PAUSE\nExpand active capacity only when parallel monitoring is genuinely required.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Expand active capacity only when parallel monitoring is genuinely required.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-340",
+    "title": "THE POINT OF NO MORE INFLUENCE",
+    "playTime": "45–60 seconds",
+    "goal": "Find the exact point where further effort can no longer influence the outcome and close there.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Name what you have already done, what remains unknown, and which outcomes no longer respond to effort."
+      },
+      {
+        "n": 2,
+        "text": "Notice the exact boundary where influence ends."
+      },
+      {
+        "n": 3,
+        "text": "Use one physical closing action and redirect into a present responsibility."
+      }
+    ],
+    "win": "Completed effort, remaining unknowns, and non-responsive outcomes separated before attention returned to a present responsibility.",
+    "mindBend": "Persistence becomes control-seeking after influence ends; recognising the boundary prevents effort from being spent on a result that cannot hear it.",
+    "formulaFlow": "Remain Unknown → Boundary → Use Physical",
+    "safety": {
+      "raw": "PAUSE\nRe-enter action if genuinely new controllable information appears.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Re-enter action if genuinely new controllable information appears.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the thought has less control of the next move",
+        "PARTLY — one angle opened",
+        "NO SHIFT — the same thought still dominates",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-352",
+    "title": "CHANGE THE MENTAL TOOL, NOT THE PRESSURE",
+    "playTime": "45–60 seconds",
+    "goal": "Use the mental mode that matches the actual demand instead of applying pressure with the wrong tool.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Classify the demand as SOLVE, DECIDE, FEEL, ACCEPT, COMMUNICATE, or WAIT."
+      },
+      {
+        "n": 2,
+        "text": "Name the mode currently running."
+      },
+      {
+        "n": 3,
+        "text": "Shut it down and do the first action belonging to the correct mode—calculate, choose, allow, release, speak, or schedule."
+      }
+    ],
+    "win": "Solve, decide, feel, accept, communicate, or wait was identified and the first matching action replaced the mismatched mode.",
+    "mindBend": "More effort cannot fix a tool mismatch. Using the wrong mental operation creates friction that masquerades as difficulty.",
+    "formulaFlow": "Decide Accept → Name Mode → Choose Shut",
+    "safety": {
+      "raw": "PAUSE\nMixed situations may need modes in sequence rather than one label.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Mixed situations may need modes in sequence rather than one label.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-361",
+    "title": "DEMOTE THE HEADLINE EXPERIENCE",
+    "playTime": "45–60 seconds",
+    "goal": "Give the dominant thought or sensation equal status with three background details.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Hold the dominant sensation or thought with three background what you notices—one sound, one contact point, one visual feature."
+      },
+      {
+        "n": 2,
+        "text": "For a contained interval, give all four equal attentional weight without imagining a separate watcher."
+      },
+      {
+        "n": 3,
+        "text": "Notice how centrality changes."
+      }
+    ],
+    "win": "Sound, contact, vision, and the headline experience shared attention, changing which one felt central.",
+    "mindBend": "Centrality is partly an attentional decision. An experience can remain intense while no longer occupying the whole stage.",
+    "formulaFlow": "Hold Sensation → Give Attention → Demote Headline",
+    "safety": {
+      "raw": "PAUSE\nStop equalisation when one signal requires urgent priority.\nThis is a self-help exercise, not emergency or medical care.",
+      "pause": "Stop equalisation when one signal requires urgent priority.",
+      "disclaimer": "This is a self-help exercise, not emergency or medical care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the thought has less control of the next move",
+        "PARTLY — one angle opened",
+        "NO SHIFT — the same thought still dominates",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-401",
+    "title": "FIRST INCH",
+    "playTime": "30–60 seconds",
+    "goal": "Start the task and leave yourself a clear place to return.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Name the task you will start."
+      },
+      {
+        "n": 2,
+        "text": "Choose where you will restart."
+      }
+    ],
+    "win": "The task had begun and a specific restart location existed before you stopped thinking about setup.",
+    "mindBend": "Starting and restarting are two different problems. Solving the return point early makes the first start less costly.",
+    "formulaFlow": "Open It → Set Bookmark",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-408",
+    "title": "TINY START",
+    "playTime": "45–90 seconds",
+    "goal": "Take one workable move and stop with a clear way back.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Picture the required move."
+      },
+      {
+        "n": 2,
+        "text": "Take one workable move."
+      },
+      {
+        "n": 3,
+        "text": "Settle on the re-entry point you can return to."
+      }
+    ],
+    "win": "The task gained a real action plus a re-entry point instead of another round of mental preparation.",
+    "mindBend": "A very small beginning can reduce task size twice: first by creating progress, then by defining where unfinished work now begins.",
+    "formulaFlow": "Bring Up → Start Small → Set Bookmark",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-415",
+    "title": "POINT, THEN GO",
+    "playTime": "60–120 seconds",
+    "goal": "Make the first step obvious by shrinking the task and quieting incoming noise.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Notice the moment pressure makes the first step feel unclear."
+      },
+      {
+        "n": 2,
+        "text": "Reduce the task to its basic version."
+      },
+      {
+        "n": 3,
+        "text": "Silence notifications."
+      },
+      {
+        "n": 4,
+        "text": "Focus on a restart point."
+      }
+    ],
+    "win": "The basic version of the task and its restart point became clearer than the pressure surrounding them.",
+    "mindBend": "Unclear entry often comes from too much task plus too much input; reducing both can reveal a doorway that was already there.",
+    "formulaFlow": "Show Target → Cut Scope → Quiet Cues → Aim Cue",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-422",
+    "title": "ONE TARGET BACK",
+    "playTime": "45–90 seconds",
+    "goal": "Bring one priority back and give it a short place to restart.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Catch a single attention drift."
+      },
+      {
+        "n": 2,
+        "text": "Mark the one thing that genuinely comes first."
+      },
+      {
+        "n": 3,
+        "text": "Choose a short restart point and leave the rest."
+      }
+    ],
+    "win": "One drift was caught, one item reclaimed first place, and the rest stayed outside the immediate return.",
+    "mindBend": "Priority can be restored before motivation or calm. Deciding what comes first is itself an attentional intervention.",
+    "formulaFlow": "Notice Shift → Select One → Leave Trail",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-429",
+    "title": "A RETURN IN REACH",
+    "playTime": "60–120 seconds",
+    "goal": "Set the strongest pull aside, use a visible countdown, and leave a short resume point.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Name the strongest pull, then set it aside."
+      },
+      {
+        "n": 2,
+        "text": "Name the loudest distraction in one breath."
+      },
+      {
+        "n": 3,
+        "text": "Put a visible countdown in place."
+      },
+      {
+        "n": 4,
+        "text": "Settle on a short place to resume from."
+      }
+    ],
+    "win": "The distraction was contained for a fixed interval and the chosen task had a clear place to continue afterward.",
+    "mindBend": "Attention becomes easier to lend when it knows both when the loan ends and where the task will be waiting.",
+    "formulaFlow": "Name Pull → Block Noise → Set Timer → Set Bookmark",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-436",
+    "title": "ONE THING GETS THE TURN",
+    "playTime": "45–90 seconds",
+    "goal": "Delay the decision briefly and let one choice have the whole turn.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Hold the thought in one short mental line; keep it in your head with no notes."
+      },
+      {
+        "n": 2,
+        "text": "Delay the decision for ten minutes."
+      },
+      {
+        "n": 3,
+        "text": "Keep the unused options mentally parked while one choice gets the turn."
+      }
+    ],
+    "win": "Unused options stayed mentally parked while one choice received ten uninterrupted minutes of consideration.",
+    "mindBend": "When every option keeps speaking, none can be evaluated cleanly. Temporary exclusivity is not commitment.",
+    "formulaFlow": "Catch Thought → Delay Action → Close Queue",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-443",
+    "title": "TASK CLEAR LANE",
+    "playTime": "60–120 seconds",
+    "goal": "Compare two choices by impact, finish the smallest useful task, and postpone the later questions.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Choose one plain reminder."
+      },
+      {
+        "n": 2,
+        "text": "Check two choices by impact."
+      },
+      {
+        "n": 3,
+        "text": "Complete the smallest task."
+      },
+      {
+        "n": 4,
+        "text": "Set the later questions aside for another round."
+      }
+    ],
+    "win": "One task reached completion before planning was allowed to reopen the remaining decisions.",
+    "mindBend": "Planning becomes a loop when it keeps borrowing time from the smallest action that would create new information.",
+    "formulaFlow": "Catch Thought → Rank Two → Begin Now → Hold Later",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-450",
+    "title": "CAPACITY CUT",
+    "playTime": "60–120 seconds",
+    "goal": "Cut today's options to what fits your actual capacity and do the smallest useful piece.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "State the choice that actually needs making."
+      },
+      {
+        "n": 2,
+        "text": "Rate today's usable capacity as low, medium, or high."
+      },
+      {
+        "n": 3,
+        "text": "Cut the options to what fits that capacity."
+      },
+      {
+        "n": 4,
+        "text": "Do the smallest useful piece now."
+      },
+      {
+        "n": 5,
+        "text": "Park anything that asks for more than today can give."
+      }
+    ],
+    "win": "Low, medium, or high capacity shaped the choice, and work beyond that level was deliberately parked.",
+    "mindBend": "Overcommitment often begins before the work starts, when capacity is ignored during selection rather than during execution.",
+    "formulaFlow": "Catch Thought → Rank Two → Test Space → Do One → Aim Unchosen",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-457",
+    "title": "CLEAN SWITCH",
+    "playTime": "60–120 seconds",
+    "goal": "Switch cleanly by saving context, completing one small piece, and defining the next action.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Hold the loose context as one brief mental snapshot."
+      },
+      {
+        "n": 2,
+        "text": "Choose this decision for now."
+      },
+      {
+        "n": 3,
+        "text": "Begin a small piece you can complete now."
+      },
+      {
+        "n": 4,
+        "text": "Set the required move as the next action."
+      },
+      {
+        "n": 5,
+        "text": "Bring a clear restart point to mind."
+      }
+    ],
+    "win": "The new task got a finished unit while the old context and future restart remained intact.",
+    "mindBend": "Switching cost rises when both sides are unfinished. Even a tiny completion plus a saved handoff can reduce the cognitive tear.",
+    "formulaFlow": "Set Place → End Round → Start Small → Set Out → Save Place",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-464",
+    "title": "MAKE LATER VISIBLE",
+    "playTime": "45–90 seconds",
+    "goal": "Make future effort visible with an honest estimate and a countdown.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Select one truthful time estimate."
+      },
+      {
+        "n": 2,
+        "text": "Focus on a visible countdown on the task."
+      },
+      {
+        "n": 3,
+        "text": "Pin down what is genuinely finished now."
+      }
+    ],
+    "win": "The timer showed real remaining time while one genuinely finished piece became visible.",
+    "mindBend": "Delayed benefits become easier to value when the path to them is represented in concrete time rather than vague 'later'.",
+    "formulaFlow": "Check Time → Use Clock → Voice Part",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-471",
+    "title": "CLOSE THE OLD DOOR",
+    "playTime": "45–90 seconds",
+    "goal": "Close the strongest competing door and keep one unfinished item as the route back.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Identify the strongest distraction."
+      },
+      {
+        "n": 2,
+        "text": "Choose one unfinished item as your restart point."
+      },
+      {
+        "n": 3,
+        "text": "Choose the intended outcome and leave the rest."
+      }
+    ],
+    "win": "The intended outcome stayed active while the rest of the pull was left outside the current round.",
+    "mindBend": "Exit friction decreases when leaving one focus does not mean losing it. A restart point makes switching less like abandonment.",
+    "formulaFlow": "Spot Pull → Shut Door → Recall Outcome",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-478",
+    "title": "CLOSE BEFORE DRIFT",
+    "playTime": "60–120 seconds",
+    "goal": "Recognise when attention has become overstay and close one useful unit before leaving.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Notice when your attention stays locked on something after it stops helping."
+      },
+      {
+        "n": 2,
+        "text": "Name the current work state in one sentence."
+      },
+      {
+        "n": 3,
+        "text": "Choose the one thing you are no longer going to chase."
+      },
+      {
+        "n": 4,
+        "text": "Complete one manageable action on the work you are actively doing."
+      },
+      {
+        "n": 5,
+        "text": "Picture the part you completed."
+      }
+    ],
+    "win": "The current work state was captured, one chase was dropped, and a manageable piece reached completion.",
+    "mindBend": "More attention is not always more progress — after usefulness falls, staying can convert focus into inertia.",
+    "formulaFlow": "Catch Drift → Save State → Shut Door → Move Once → Picture Part",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-485",
+    "title": "OPEN ONE BRIDGE",
+    "playTime": "45–90 seconds",
+    "goal": "Keep one issue active and listen before interpretation recruits more problems.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Distinguish need from interpretation."
+      },
+      {
+        "n": 2,
+        "text": "Turn off nearby competing items."
+      },
+      {
+        "n": 3,
+        "text": "Hear the response before defending."
+      }
+    ],
+    "win": "Competing topics were muted, one need stayed central, and the response was heard before defence began.",
+    "mindBend": "Issue stacking can be a protection strategy: adding more complaints prevents one vulnerable need from having to stand alone.",
+    "formulaFlow": "Name Difference → Block Noise → Hear Reply",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the interaction feels more workable",
+        "PARTLY — one boundary or perspective helped",
+        "NO SHIFT — the same tension remains",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-492",
+    "title": "ONE BEAT BEFORE ANSWER",
+    "playTime": "60–120 seconds",
+    "goal": "Pause between impact and intention, name the concrete help, and finish one sentence cleanly.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Distinguish impact from intention."
+      },
+      {
+        "n": 2,
+        "text": "Steady the message tempo."
+      },
+      {
+        "n": 3,
+        "text": "Carry out the next action you settled on."
+      },
+      {
+        "n": 4,
+        "text": "Name the concrete help you need and leave the rest."
+      },
+      {
+        "n": 5,
+        "text": "Say one complete sentence and stop."
+      }
+    ],
+    "win": "A complete response reached its endpoint without gathering extra interpretation or unfinished requests around it.",
+    "mindBend": "A beat before answering can protect the message from becoming a reaction to a motive you do not actually know.",
+    "formulaFlow": "Unmix Story → Lower Heat → Begin Now → State Need → Follow Sentence",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the interaction feels more workable",
+        "PARTLY — one boundary or perspective helped",
+        "NO SHIFT — the same tension remains",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-499",
+    "title": "BRIDGE, CLEAN EXIT",
+    "playTime": "45–90 seconds",
+    "goal": "Exit the interaction with one factual line, then put your attention back on the real task.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Name the strongest awareness pull."
+      },
+      {
+        "n": 2,
+        "text": "Say one short factual message."
+      },
+      {
+        "n": 3,
+        "text": "Identify the current task."
+      }
+    ],
+    "win": "The boundary stopped at a short message instead of continuing as an internal debate.",
+    "mindBend": "A clean exit protects the boundary twice: first from pressure, then from the attention it would keep consuming afterward.",
+    "formulaFlow": "Name Pull → Draft Words → Active Lane",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the interaction feels more workable",
+        "PARTLY — one boundary or perspective helped",
+        "NO SHIFT — the same tension remains",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-506",
+    "title": "ASK, THEN HOLD",
+    "playTime": "60–120 seconds",
+    "goal": "State where your responsibility ends and close one issue before sending anything.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Recognise the latest point where concentration loosened."
+      },
+      {
+        "n": 2,
+        "text": "Say the responsibility edge in one short sentence."
+      },
+      {
+        "n": 3,
+        "text": "Separate the information from the fear."
+      },
+      {
+        "n": 4,
+        "text": "Name the intended outcome before sending anything."
+      },
+      {
+        "n": 5,
+        "text": "Name the one issue you are closing for now."
+      }
+    ],
+    "win": "Fact and fear separated, the intended outcome became clear, and one topic was deliberately closed for now.",
+    "mindBend": "Boundary guilt can create extra messages because the mind keeps trying to make the limit feel emotionally painless.",
+    "formulaFlow": "Notice Shift → Name Boundary → Unmix Story → Wait Beat → Shut Door",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the interaction feels more workable",
+        "PARTLY — one boundary or perspective helped",
+        "NO SHIFT — the same tension remains",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-513",
+    "title": "MESSAGE ENDS HERE",
+    "playTime": "45–90 seconds",
+    "goal": "End the social review with an outside-observer sentence and leave the remaining unknowns behind.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Choose the present location."
+      },
+      {
+        "n": 2,
+        "text": "State one sentence as an outside observer."
+      },
+      {
+        "n": 3,
+        "text": "Leave the remaining uncertainty with the task instead of carrying it forward."
+      }
+    ],
+    "win": "Location and observable facts replaced the loop, and unfinished uncertainty stopped following into the next task.",
+    "mindBend": "Post-social looping can feel like learning even when no new information is available — an observer sentence marks where evidence ends.",
+    "formulaFlow": "Look Around → Voice It → Shut Door",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the interaction feels more workable",
+        "PARTLY — one boundary or perspective helped",
+        "NO SHIFT — the same tension remains",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-520",
+    "title": "ONE CONNECTION POINT",
+    "playTime": "60–120 seconds",
+    "goal": "Keep the exchange to one short reply, one detail, and one planned review point.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Name the memory-pressure cue."
+      },
+      {
+        "n": 2,
+        "text": "Put your reply into one short sentence."
+      },
+      {
+        "n": 3,
+        "text": "Ask for a single detail you can answer now."
+      },
+      {
+        "n": 4,
+        "text": "Take in the answer before planning the next point."
+      },
+      {
+        "n": 5,
+        "text": "Choose when this round will be reviewed again."
+      }
+    ],
+    "win": "The pressure cue was noticed, one answer landed fully, and the next round received a specific time.",
+    "mindBend": "Conversation memory improves when each round has edges; an open-ended exchange asks working memory to hold too many future branches.",
+    "formulaFlow": "Name Place → Draft Words → Ask One → Take Answer → Stop Clean",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the interaction feels more workable",
+        "PARTLY — one boundary or perspective helped",
+        "NO SHIFT — the same tension remains",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-527",
+    "title": "APOLOGY WITH AN EXIT",
+    "playTime": "60–120 seconds",
+    "goal": "Own one specific miss, choose one response, and hear what comes back before defending.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "State one observable fact."
+      },
+      {
+        "n": 2,
+        "text": "Choose one specific miss."
+      },
+      {
+        "n": 3,
+        "text": "Choose one specific response."
+      },
+      {
+        "n": 4,
+        "text": "Receive what is really said."
+      },
+      {
+        "n": 5,
+        "text": "Call out the issue still circling."
+      }
+    ],
+    "win": "The apology stayed attached to an observable fact and one repair rather than spreading into a character defence.",
+    "mindBend": "Defensiveness grows when accountability feels global. One specific miss creates a smaller surface where repair can actually land.",
+    "formulaFlow": "Use Detail → Say Sorry → Make Ask → Take Answer → Stop Clean",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the interaction feels more workable",
+        "PARTLY — one boundary or perspective helped",
+        "NO SHIFT — the same tension remains",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-534",
+    "title": "PULL THE SIGNAL FROM THE NOISE",
+    "playTime": "45–90 seconds",
+    "goal": "Pull the shared next step out of the noise and keep the rest outside this round.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Set the unchosen options aside for this round."
+      },
+      {
+        "n": 2,
+        "text": "Make sure the shared next step is clear."
+      },
+      {
+        "n": 3,
+        "text": "Say one steady reply aloud."
+      }
+    ],
+    "win": "Unchosen options were parked, the agreement became clear, and one steady reply carried only the useful signal.",
+    "mindBend": "Signal disappears when every possibility stays active. Clarity often comes from reducing channels rather than adding explanation.",
+    "formulaFlow": "Close Queue → Recall Back → Draft Words",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the interaction feels more workable",
+        "PARTLY — one boundary or perspective helped",
+        "NO SHIFT — the same tension remains",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-541",
+    "title": "NAME ONE HANDOFF",
+    "playTime": "45–90 seconds",
+    "goal": "Name the exact missing handoff detail and the outcome the handoff must produce.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Notice the exact part of the handoff that keeps being misunderstood."
+      },
+      {
+        "n": 2,
+        "text": "Name the missing handoff information once."
+      },
+      {
+        "n": 3,
+        "text": "State the requested outcome."
+      }
+    ],
+    "win": "The misunderstood part became one piece of information tied to one requested result.",
+    "mindBend": "A handoff fails less from lack of words than from one missing bridge between current state and expected outcome.",
+    "formulaFlow": "Use Detail → Leave Blank → Check Meaning",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-548",
+    "title": "NAME ONE DECISION",
+    "playTime": "60–120 seconds",
+    "goal": "Make a changed plan unmistakable by naming the work item, final authority, owner, and new meaning.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Show the work item that changed."
+      },
+      {
+        "n": 2,
+        "text": "Name the person with final authority."
+      },
+      {
+        "n": 3,
+        "text": "Say the revised plan and owner in one breath."
+      },
+      {
+        "n": 4,
+        "text": "Ask the receiver to repeat the new meaning."
+      }
+    ],
+    "win": "The receiver repeated the revised plan, turning a broadcast into evidence that the change was actually understood.",
+    "mindBend": "A message has not landed just because it was sent — shared meaning is proved when the receiver can play it back.",
+    "formulaFlow": "Name Evidence → Name Owner → Close Handoff → Recall Back",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-555",
+    "title": "OWNER BEFORE DEADLINE",
+    "playTime": "60–120 seconds",
+    "goal": "Attach the immediate action to one owner and one check-in time.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Name only the practical impact."
+      },
+      {
+        "n": 2,
+        "text": "Name one individual who owns the immediate action."
+      },
+      {
+        "n": 3,
+        "text": "Choose the next check-in time."
+      },
+      {
+        "n": 4,
+        "text": "Say one concise status line."
+      },
+      {
+        "n": 5,
+        "text": "Say what was agreed."
+      }
+    ],
+    "win": "The practical impact became a concise status line ending in a specific agreement.",
+    "mindBend": "Deadlines without ownership create urgency without movement; an owner gives time somewhere to land.",
+    "formulaFlow": "Name Evidence → Name Owner → Set Finish → Post Brief → Confirm It",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-562",
+    "title": "RESPECTFUL HANDOFF",
+    "playTime": "60–120 seconds",
+    "goal": "Correct one visible issue by naming impact, offering one resource, and defining one check.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Identify a single visible fact."
+      },
+      {
+        "n": 2,
+        "text": "Describe the impact without guessing the intention."
+      },
+      {
+        "n": 3,
+        "text": "Offer one resource that makes the handoff doable."
+      },
+      {
+        "n": 4,
+        "text": "Define what will be checked once, and when."
+      }
+    ],
+    "win": "The handoff stayed respectful because motive was left out and success had a concrete review point.",
+    "mindBend": "Feedback becomes less threatening when it describes behaviour and support rather than guessing character.",
+    "formulaFlow": "State Fact → Divide Parts → Add Help → Review Once",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-569",
+    "title": "STATUS LINE, STEADY BEAT",
+    "playTime": "60–120 seconds",
+    "goal": "Use a dated example, remove identity language, and check one visible result after offering support.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Say a dated example aloud."
+      },
+      {
+        "n": 2,
+        "text": "Keep the event separate from identity."
+      },
+      {
+        "n": 3,
+        "text": "Close the uncertain piece."
+      },
+      {
+        "n": 4,
+        "text": "Choose a practical support offer."
+      },
+      {
+        "n": 5,
+        "text": "Check the visible result once."
+      }
+    ],
+    "win": "The uncertain motive story closed while the practical next step stayed measurable.",
+    "mindBend": "A single event can be coached without becoming a diagnosis of someone's attitude.",
+    "formulaFlow": "State Fact → Divide Parts → Set Unclear → Ask Need → Check Result",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-576",
+    "title": "AGENDA, EASY PIVOT",
+    "playTime": "60–120 seconds",
+    "goal": "Disagree with authority using facts, one clear view, and a test or compromise where useful.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Name the facts that support your concern."
+      },
+      {
+        "n": 2,
+        "text": "Separate the work issue from the fear of disagreeing with authority."
+      },
+      {
+        "n": 3,
+        "text": "State your different view in one sentence."
+      },
+      {
+        "n": 4,
+        "text": "Offer one compromise or test if it protects the outcome."
+      },
+      {
+        "n": 5,
+        "text": "End with the decision or next review point."
+      }
+    ],
+    "win": "The concern stayed about the work issue and ended in a decision or review point instead of a status contest.",
+    "mindBend": "Respect and disagreement are compatible when the evidence remains concrete and the next step is shared.",
+    "formulaFlow": "Name Proof → Name Difference → Ask Clearly → Offer Option → Test Match",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-583",
+    "title": "AGENDA IGNITION",
+    "playTime": "45–90 seconds",
+    "goal": "Lower your physical threat signal, state one neutral workplace fact, and wait one breath.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Lower your hands and voice."
+      },
+      {
+        "n": 2,
+        "text": "Say one neutral workplace fact."
+      },
+      {
+        "n": 3,
+        "text": "Delay the reply for one breath."
+      }
+    ],
+    "win": "The first reply was delayed long enough for fact to arrive before intent prediction.",
+    "mindBend": "A threatening interpretation can be generated in less than a breath — one beat creates room for another explanation to exist.",
+    "formulaFlow": "Slow Hands → State Fact → Hold Choice",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-590",
+    "title": "COOL HANDS, CLEAR OWNER",
+    "playTime": "60–120 seconds",
+    "goal": "Slow your hands, name the work priority, and pause before the first pressured response.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Pause your hand speed first."
+      },
+      {
+        "n": 2,
+        "text": "Choose the priority and separate it from the meaning you are adding."
+      },
+      {
+        "n": 3,
+        "text": "Check the visible work issue."
+      },
+      {
+        "n": 4,
+        "text": "Name the responsibility edge on the task."
+      },
+      {
+        "n": 5,
+        "text": "Pause before responding to the first pressure."
+      }
+    ],
+    "win": "Meaning stayed separate from the visible issue and the responsibility edge remained clear.",
+    "mindBend": "Hot responses often begin in the body before they reach language; slowing the motor channel can interrupt the message before it is sent.",
+    "formulaFlow": "Slow Hands → Split Facts → Show Record → Name Boundary → Pause First",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-597",
+    "title": "OWN ONE RESPONSE",
+    "playTime": "60–120 seconds",
+    "goal": "Separate the defensive urge from the action feedback actually requires.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Say the recurring question in your head."
+      },
+      {
+        "n": 2,
+        "text": "Separate the urge from what actually needs doing."
+      },
+      {
+        "n": 3,
+        "text": "Say the first feedback line."
+      },
+      {
+        "n": 4,
+        "text": "Choose one sign of progress to remember."
+      },
+      {
+        "n": 5,
+        "text": "Pin down the difference you can see."
+      }
+    ],
+    "win": "The first feedback line was spoken and one visible sign of progress was chosen for later comparison.",
+    "mindBend": "Criticism threatens identity when response and self-worth are fused. One observable action gives the mind a smaller problem to solve.",
+    "formulaFlow": "Catch Thought → Split Facts → Begin Now → Save Evidence → Review Once",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-604",
+    "title": "KEEP YOUR OWN DIRECTION",
+    "playTime": "45–90 seconds",
+    "goal": "Keep your leadership direction separate from the emotional temperature the team is borrowing from you.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Notice the emotional temperature the team is taking from you."
+      },
+      {
+        "n": 2,
+        "text": "Choose the task that still needs leadership."
+      },
+      {
+        "n": 3,
+        "text": "Name the outcome your team needs next."
+      }
+    ],
+    "win": "The team had one clear task and outcome even while the room's mood remained unsettled.",
+    "mindBend": "Teams often copy a leader's pace before they copy the leader's words. Emotional steadiness can be part of operational clarity.",
+    "formulaFlow": "Use Detail → Pick Lane → Name Outcome",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-611",
+    "title": "THE PROOF POINT FIRST",
+    "playTime": "45–90 seconds",
+    "goal": "Give your body one balanced stance and your attention one proof point before judging performance.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Picture one balanced stance."
+      },
+      {
+        "n": 2,
+        "text": "Keep one clear target."
+      },
+      {
+        "n": 3,
+        "text": "Leave performance judgment until later."
+      }
+    ],
+    "win": "The target stayed visible while evaluation waited until after the action had something real to evaluate.",
+    "mindBend": "Pre-performance nerves often ask for a verdict before the performance exists. Let evidence arrive before giving yourself a score.",
+    "formulaFlow": "Plant Feet → Choose Target → Park Review",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-618",
+    "title": "PALMS BEFORE PERFORMANCE",
+    "playTime": "60–120 seconds",
+    "goal": "Anchor your hands, say the likely question, and complete one answer point before judging yourself.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Place both palms on the table."
+      },
+      {
+        "n": 2,
+        "text": "State the most likely question."
+      },
+      {
+        "n": 3,
+        "text": "Say one complete answer point aloud."
+      },
+      {
+        "n": 4,
+        "text": "Name any self-judgment after the practice ends without explaining."
+      }
+    ],
+    "win": "One full point was spoken while the self-judgment waited outside the practice.",
+    "mindBend": "Failure rehearsal competes with working memory — physical grounding plus one complete point gives the brain an actual performance to store.",
+    "formulaFlow": "Set Posture → Test Start → Answer Now → Voice After",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-625",
+    "title": "ANSWER ON ONE RAIL",
+    "playTime": "60–120 seconds",
+    "goal": "Stay physically steady, give one complete point, and withhold self-judgment until the response ends.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Sit or stand in a steady, comfortable position."
+      },
+      {
+        "n": 2,
+        "text": "Say only the prepared first phrase."
+      },
+      {
+        "n": 3,
+        "text": "Choose today's one focus."
+      },
+      {
+        "n": 4,
+        "text": "Name one complete point."
+      },
+      {
+        "n": 5,
+        "text": "Delay self-judgment until the response is complete."
+      }
+    ],
+    "win": "The prepared first phrase opened the rail and one answer travelled to its endpoint.",
+    "mindBend": "A freeze can be broken by sequence: first phrase, one focus, one point—rather than by trying to feel confident all at once.",
+    "formulaFlow": "Set Stance → Practice Line → Pick Lane → Give Aim → Close After",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-632",
+    "title": "OPEN THE TEMPO",
+    "playTime": "60–120 seconds",
+    "goal": "Answer from one source fact and stop after one proof point you can verify.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Mark the biggest signal tugging at you."
+      },
+      {
+        "n": 2,
+        "text": "Name one concise source fact."
+      },
+      {
+        "n": 3,
+        "text": "Reduce the alarm to one short statement."
+      },
+      {
+        "n": 4,
+        "text": "Say one calm answer based only on that fact."
+      },
+      {
+        "n": 5,
+        "text": "Stop with the one proof point you can verify."
+      }
+    ],
+    "win": "The alarm was reduced to a short statement and the response stayed grounded in evidence instead of comparison.",
+    "mindBend": "Comparison pressure creates a second audience inside the task. Source facts return attention to the content rather than the ranking.",
+    "formulaFlow": "Spot Pull → Name Proof → Name Difference → Speak Once → Keep Proof",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-639",
+    "title": "THE PROCESS CUE",
+    "playTime": "30–60 seconds",
+    "goal": "Compare the work with its previous state, not with someone else's finished process.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Take one process step instead of comparing unfinished work with finished work."
+      },
+      {
+        "n": 2,
+        "text": "Say the visible result once."
+      }
+    ],
+    "win": "A single process step created an observable result inside your own sequence of work.",
+    "mindBend": "Process comparison is distorted when your middle is measured against another person's polished endpoint.",
+    "formulaFlow": "Take Action → Check Result",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-646",
+    "title": "CHOOSE ONE TEMPO",
+    "playTime": "60–120 seconds",
+    "goal": "Rank what matters, run one limited first pass, and schedule the next honest review.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Choose one honest capacity limit."
+      },
+      {
+        "n": 2,
+        "text": "Rank the possibilities by impact."
+      },
+      {
+        "n": 3,
+        "text": "Set one limited first pass."
+      },
+      {
+        "n": 4,
+        "text": "Choose the next believable review date or time."
+      },
+      {
+        "n": 5,
+        "text": "Name the unfinished loop and stop there."
+      }
+    ],
+    "win": "Capacity, impact, trial size, and review time kept the other options from reopening during the round.",
+    "mindBend": "Option lock weakens when a decision has both a temporary commitment and a legitimate future exit.",
+    "formulaFlow": "Count Room → Rank Two → Make Trial → Fix Date → End Round",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-653",
+    "title": "PURPOSE, DOORWAY",
+    "playTime": "45–90 seconds",
+    "goal": "Separate the urge to prove yourself from the action that actually matches the value.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Mark one guiding value."
+      },
+      {
+        "n": 2,
+        "text": "Separate the urge to prove yourself from the choice you actually want."
+      },
+      {
+        "n": 3,
+        "text": "Choose the next action that matches the value."
+      }
+    ],
+    "win": "One next move served the value even if it offered less status or achievement evidence.",
+    "mindBend": "Achievement can imitate values because both create effort — the difference appears when no trophy is attached to the action.",
+    "formulaFlow": "Set Compass → Pick Lane → Check Result",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-660",
+    "title": "PUT THE VALUE IN MOTION",
+    "playTime": "60–120 seconds",
+    "goal": "Put the value into a move that fits the minutes actually available.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "State the direction that matters most right now."
+      },
+      {
+        "n": 2,
+        "text": "Compare expected and actual minutes."
+      },
+      {
+        "n": 3,
+        "text": "Pick a move that fits the minutes truly available."
+      },
+      {
+        "n": 4,
+        "text": "Start that action."
+      },
+      {
+        "n": 5,
+        "text": "Mark what you want to preserve."
+      }
+    ],
+    "win": "Expected time met real time, action began, and one thing worth preserving became explicit.",
+    "mindBend": "Direction search ends when a value acquires a verb and a duration.",
+    "formulaFlow": "Set Compass → Check Estimate → Choose Target → Begin Now → Recall Outcome",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-667",
+    "title": "SET ONE PURPOSE",
+    "playTime": "45–90 seconds",
+    "goal": "Choose the next safe action without enlarging this moment into a verdict about your identity.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Notice the pull to turn this moment into a bigger story."
+      },
+      {
+        "n": 2,
+        "text": "Pick the safer option available next."
+      },
+      {
+        "n": 3,
+        "text": "Save the remaining evidence for later."
+      }
+    ],
+    "win": "The move stayed local and the remaining evidence was saved instead of being recruited into an identity conclusion.",
+    "mindBend": "Borrowed identity grows when a single moment is forced to answer a much bigger question than the moment can support.",
+    "formulaFlow": "Name Difference → Pick Lane → Keep Later",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-674",
+    "title": "CLEAR ONE HORIZON",
+    "playTime": "45–90 seconds",
+    "goal": "Name the outcome you want, separate what you cannot control, and stop feeding the unfinished loop.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Say what outcome you want, even though you cannot fully control it."
+      },
+      {
+        "n": 2,
+        "text": "State what remains outside your control."
+      },
+      {
+        "n": 3,
+        "text": "Leave the unfinished mental loop alone."
+      }
+    ],
+    "win": "Desire remained honest while control ended at its real boundary.",
+    "mindBend": "Outcome attachment becomes exhausting when wanting a result is mistaken for having leverage over it.",
+    "formulaFlow": "State Fact → End Chase → Stop Clean",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-681",
+    "title": "THE ENOUGHNESS MARK",
+    "playTime": "60–120 seconds",
+    "goal": "Notice what already counts before the mind moves the line for enough again.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Mark the urge to decide that nothing is enough."
+      },
+      {
+        "n": 2,
+        "text": "Compare one observable detail with what is absent."
+      },
+      {
+        "n": 3,
+        "text": "Name one good thing that counts."
+      },
+      {
+        "n": 4,
+        "text": "Name one action that protects that enough-point."
+      },
+      {
+        "n": 5,
+        "text": "Stop when you can name why that is enough for now."
+      }
+    ],
+    "win": "One genuine good thing was protected and you could state why it was sufficient for now.",
+    "mindBend": "Enoughness disappears when the finish line is allowed to move after every gain. Naming the line makes satisfaction measurable.",
+    "formulaFlow": "Catch Drift → State Fact → Hold Enough → Save Evidence → End Round",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-688",
+    "title": "HORIZON HINGE",
+    "playTime": "30–60 seconds",
+    "goal": "Choose what deserves sustained attention and mark where you will return to it.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Look around and ask what is genuinely worth your sustained attention."
+      },
+      {
+        "n": 2,
+        "text": "Set the restart point."
+      }
+    ],
+    "win": "One worthy focus replaced scattered devotion and a specific restart point was set.",
+    "mindBend": "Devotion is not measured by intensity of feeling. What repeatedly receives your attention becomes the practical object of devotion.",
+    "formulaFlow": "See Edges → Save Place",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-695",
+    "title": "COMPASS, LAUNCH",
+    "playTime": "60–120 seconds",
+    "goal": "Turn limited time into a reason for one value-aligned action, not more avoidance.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Describe one observable detail without interpreting it."
+      },
+      {
+        "n": 2,
+        "text": "Choose the principle that matters today."
+      },
+      {
+        "n": 3,
+        "text": "Do one action that follows from that principle."
+      },
+      {
+        "n": 4,
+        "text": "Stop and name what changed."
+      }
+    ],
+    "win": "A principle produced one observable action and you could name what changed afterward.",
+    "mindBend": "Avoidance spends the same finite time it is trying to protect. Acting on one value converts time from a threat into a resource.",
+    "formulaFlow": "State Fact → Pick Principle → Do One → End Round",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the next move feels more available",
+        "PARTLY — one step helped",
+        "NO SHIFT — the same pull is still here",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-702",
+    "title": "SIGNAL CLEARANCE",
+    "playTime": "60–120 seconds",
+    "goal": "Treat the body alarm as a signal to orient and seek support, not to keep checking.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "State where you are right now."
+      },
+      {
+        "n": 2,
+        "text": "Notice the current body signal."
+      },
+      {
+        "n": 3,
+        "text": "Notice how fast your hands are moving and slow them one notch."
+      },
+      {
+        "n": 4,
+        "text": "Step once away from the cue."
+      },
+      {
+        "n": 5,
+        "text": "Move toward or contact the chosen support person."
+      }
+    ],
+    "win": "You located yourself, slowed your hands, created distance from the cue, and moved toward support.",
+    "mindBend": "When attention narrows around a sensation, even neutral changes can look like confirmation. Widening the frame restores information the alarm was excluding.",
+    "formulaFlow": "See Edges → Notice Wave → Slow Hands → Change Place → Stay Connected",
+    "safety": {
+      "raw": "PAUSE\nKeep your eyes open and orient to the room. Stop if symptoms intensify, you feel faint, or a medical problem may be possible. Call Triple Zero (000) for an emergency; otherwise use qualified medical advice. Do not induce or test symptoms.\nThis is brief self-help, not diagnosis or treatment.",
+      "pause": "Keep your eyes open and orient to the room. Stop if symptoms intensify, you feel faint, or a medical problem may be possible. Call Triple Zero (000) for an emergency; otherwise use qualified medical advice. Do not induce or test symptoms.",
+      "disclaimer": "This is brief self-help, not diagnosis or treatment."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-709",
+    "title": "ROOM, SPARK",
+    "playTime": "60–120 seconds",
+    "goal": "Keep a strong urge separate from identity while moving toward ordinary action and support.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Name one current sensation."
+      },
+      {
+        "n": 2,
+        "text": "Pause for ten minutes before deciding."
+      },
+      {
+        "n": 3,
+        "text": "Name the difference between this episode and your identity."
+      },
+      {
+        "n": 4,
+        "text": "Move into ordinary movement."
+      },
+      {
+        "n": 5,
+        "text": "Move toward a calm human voice."
+      }
+    ],
+    "win": "The episode was named as temporary, the decision was delayed, and you moved toward a calm human voice.",
+    "mindBend": "An episode can be intense without being a definition of you. Identity fusion makes a temporary state feel like a permanent instruction.",
+    "formulaFlow": "Label Alarm → Postpone Move → Unmix Story → Change Place → Stay Connected",
+    "safety": {
+      "raw": "PAUSE\nMove away from access, money, apps, substances, traffic, or other hazards. Contact a trusted person or qualified service if the urge feels difficult to manage safely. Call Triple Zero (000) for immediate danger.\nThis is brief self-help, not treatment or emergency care.",
+      "pause": "Move away from access, money, apps, substances, traffic, or other hazards. Contact a trusted person or qualified service if the urge feels difficult to manage safely. Call Triple Zero (000) for immediate danger.",
+      "disclaimer": "This is brief self-help, not treatment or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-716",
+    "title": "PUT TIME BETWEEN HEAT AND REPLY",
+    "playTime": "30–60 seconds",
+    "goal": "Put enough time between confrontation heat and the response to find the smallest honest sentence.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Wait on any irreversible response."
+      },
+      {
+        "n": 2,
+        "text": "Picture the smallest honest sentence."
+      }
+    ],
+    "win": "The irreversible reply stayed unsent while a shorter, more stable sentence became imaginable.",
+    "mindBend": "Urgency can disguise itself as courage in confrontation. Waiting does not weaken the truth. It tests whether the delivery can survive the heat.",
+    "formulaFlow": "Wait Lane → Voice Line",
+    "safety": {
+      "raw": "PAUSE\nDo not send, drive, confront, threaten, or act while control feels reduced. Move away from weapons and hazards; use human or emergency support if anyone may be unsafe.\nThis is brief self-help, not treatment or emergency care.",
+      "pause": "Do not send, drive, confront, threaten, or act while control feels reduced. Move away from weapons and hazards; use human or emergency support if anyone may be unsafe.",
+      "disclaimer": "This is brief self-help, not treatment or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the intensity dropped or feels more workable",
+        "PARTLY — one step helped",
+        "NO SHIFT — the alarm or urge is still strong",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-723",
+    "title": "BRING IN A REALITY PARTNER",
+    "playTime": "ACT NOW — MOVE TO LIVE SUPPORT",
+    "goal": "Do not test reality alone and bring in a trusted person and qualified support.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Stop testing the experience alone and avoid acting on unverified conclusions."
+      },
+      {
+        "n": 2,
+        "text": "Contact a trusted person who can stay physically or verbally present."
+      },
+      {
+        "n": 3,
+        "text": "Say, “I feel unsafe and need help checking what is real.”"
+      },
+      {
+        "n": 4,
+        "text": "Use the crisis or emergency options shown in the Safety box."
+      },
+      {
+        "n": 5,
+        "text": "Stay connected until a qualified professional takes over."
+      }
+    ],
+    "win": "You stayed connected to another person and urgent professional help took over the reality check.",
+    "mindBend": "When reality-testing feels unreliable, more solo analysis can produce more certainty without more accuracy. External verification is the safer source of information.",
+    "formulaFlow": "Stop Checking → Choose Person → Use Words → Follow Advice → Remain Together",
+    "safety": {
+      "raw": "PAUSE\nIMMEDIATE DANGER OR POSSIBLE MEDICAL EMERGENCY: call Triple Zero (000) now.\n24/7 CRISIS SUPPORT: call Lifeline 13 11 14 or text 0477 13 11 14.\nStay with a safe person and follow qualified support. Do not return to ordinary rituals.",
+      "pause": "IMMEDIATE DANGER OR POSSIBLE MEDICAL EMERGENCY: call Triple Zero (000) now.",
+      "disclaimer": "24/7 CRISIS SUPPORT: call Lifeline 13 11 14 or text 0477 13 11 14. Stay with a safe person and follow qualified support. Do not return to ordinary rituals."
+    },
+    "feedback": {
+      "prompt": "Are you connected to live support or another safe person now?",
+      "options": [
+        "CONNECTED — live support is with you",
+        "SUPPORT ON THE WAY — keep contact active",
+        "NOT CONNECTED — use crisis support now",
+        "IMMEDIATE DANGER / POSSIBLE MEDICAL EMERGENCY — call 000"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-730",
+    "title": "LET ANOTHER PERSON HOLD THE PACE",
+    "playTime": "ACT NOW — MOVE TO LIVE SUPPORT",
+    "goal": "Let another person set the pace when your body is speeding up plans and judgement.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Stop making new plans while judgement feels accelerated."
+      },
+      {
+        "n": 2,
+        "text": "Move with support to a quiet, familiar, low-risk setting."
+      },
+      {
+        "n": 3,
+        "text": "Let a trusted person make the support call if needed."
+      },
+      {
+        "n": 4,
+        "text": "Use the Australian emergency and crisis details in Safety."
+      },
+      {
+        "n": 5,
+        "text": "Follow the slower external plan until professional care begins."
+      }
+    ],
+    "win": "New plans stopped, the setting became lower-risk, and a slower external plan carried you toward professional care.",
+    "mindBend": "When your system is running too fast, speed can masquerade as clarity. Letting someone steadier set the pace protects decisions until judgement returns.",
+    "formulaFlow": "Stop Self-Direction → Choose Setting → Hand Phone → Use Service → Follow Pace",
+    "safety": {
+      "raw": "PAUSE\nIMMEDIATE DANGER OR POSSIBLE MEDICAL EMERGENCY: call Triple Zero (000) now.\n24/7 CRISIS SUPPORT: call Lifeline 13 11 14 or text 0477 13 11 14.\nStay with a safe person and follow qualified support. Do not return to ordinary rituals.",
+      "pause": "IMMEDIATE DANGER OR POSSIBLE MEDICAL EMERGENCY: call Triple Zero (000) now.",
+      "disclaimer": "24/7 CRISIS SUPPORT: call Lifeline 13 11 14 or text 0477 13 11 14. Stay with a safe person and follow qualified support. Do not return to ordinary rituals."
+    },
+    "feedback": {
+      "prompt": "Is immediate human support with you or on the way?",
+      "options": [
+        "CONNECTED — live support is with you",
+        "SUPPORT ON THE WAY — keep contact active",
+        "NOT CONNECTED — use crisis support now",
+        "IMMEDIATE DANGER / POSSIBLE MEDICAL EMERGENCY — call 000"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-737",
+    "title": "THE NEW-INFORMATION TEST",
+    "playTime": "60–120 seconds",
+    "goal": "Test whether more analysis is adding information before giving it another round.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "Notice whether this round of analysis has produced any genuinely new information."
+      },
+      {
+        "n": 2,
+        "text": "Separate what happened from the role you are assigning yourself."
+      },
+      {
+        "n": 3,
+        "text": "Set any extra work aside."
+      },
+      {
+        "n": 4,
+        "text": "Check the first action against one immediate fact."
+      },
+      {
+        "n": 5,
+        "text": "Reduce the remaining question to three words."
+      }
+    ],
+    "win": "No-new-information analysis was stopped and the remaining question was reduced to a small, usable form.",
+    "mindBend": "Thinking harder cannot extract new evidence from a closed information set. The moment analysis stops producing novelty is a legitimate stopping signal.",
+    "formulaFlow": "Make Cue → Unmix Story → Park Rest → Begin Now → Stop Clean",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the thought has less control of the next move",
+        "PARTLY — one angle opened",
+        "NO SHIFT — the same thought still dominates",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  },
+  {
+    "id": "TS-744",
+    "title": "PROOF THROUGH ONE WINDOW",
+    "playTime": "60–120 seconds",
+    "goal": "Stop demanding final proof when the existing evidence is already enough to choose the next action.",
+    "steps": [
+      {
+        "n": 1,
+        "text": "State a single direct reality about the situation."
+      },
+      {
+        "n": 2,
+        "text": "Pinpoint the final proof your mind is demanding."
+      },
+      {
+        "n": 3,
+        "text": "Ask whether that proof would change the decision or only change the feeling of certainty."
+      },
+      {
+        "n": 4,
+        "text": "Choose the next action using the evidence you already have."
+      },
+      {
+        "n": 5,
+        "text": "Stop the review after that one decision."
+      }
+    ],
+    "win": "The last proof demand was tested for usefulness and the review ended after one evidence-based decision.",
+    "mindBend": "If extra proof would change only the feeling of certainty, not the decision, it is no longer decision information.",
+    "formulaFlow": "Name Unknown → Test Space → Sample It → Wait Lane → Check Result",
+    "safety": {
+      "raw": "PAUSE\nStop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.\nThis brief reset is not diagnosis, treatment, or emergency care.",
+      "pause": "Stop if this makes you less steady, more distressed, or less able to act safely. Use human, professional, medical, or emergency support when the situation needs more than self-help.",
+      "disclaimer": "This brief reset is not diagnosis, treatment, or emergency care."
+    },
+    "feedback": {
+      "prompt": "Did that shift anything?",
+      "options": [
+        "CLEAR SHIFT — the thought has less control of the next move",
+        "PARTLY — one angle opened",
+        "NO SHIFT — the same thought still dominates",
+        "LESS STEADY — stop and use support"
+      ]
+    },
+    "bubble": "DROP"
+  }
+]

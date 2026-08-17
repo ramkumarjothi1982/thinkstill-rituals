@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "thinkstill-ritual-v58.20.5",
+  "title": "ThinkStill Consumer Ritual",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "playTime",
+    "goal",
+    "steps",
+    "win",
+    "mindBend",
+    "formulaFlow",
+    "safety",
+    "feedback",
+    "bubble"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^TS-[0-9]{3}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "playTime": {
+      "type": "string",
+      "minLength": 1
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 1
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "n",
+          "text"
+        ],
+        "properties": {
+          "n": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "win": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mindBend": {
+      "type": "string",
+      "minLength": 1
+    },
+    "formulaFlow": {
+      "type": "string",
+      "minLength": 1
+    },
+    "safety": {
+      "type": "object",
+      "required": [
+        "raw",
+        "pause",
+        "disclaimer"
+      ],
+      "properties": {
+        "raw": {
+          "type": "string"
+        },
+        "pause": {
+          "type": "string"
+        },
+        "disclaimer": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "feedback": {
+      "type": "object",
+      "required": [
+        "prompt",
+        "options"
+      ],
+      "properties": {
+        "prompt": {
+          "type": "string"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "bubble": {
+      "enum": [
+        "GLITCH",
+        "DROP",
+        "STILL",
+        "PATCH",
+        "LOOPIE",
+        "RUSH",
+        "SYNC"
+      ]
+    }
+  },
+  "additionalProperties": false
+}
