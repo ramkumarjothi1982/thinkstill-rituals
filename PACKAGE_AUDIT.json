@@ -1,0 +1,33 @@
+{
+  "schema": "thinkstill-package-audit-v58.20.7-no-tips",
+  "version": "58.20.7-no-tips",
+  "status": "PASS",
+  "checks": {
+    "ritual_count": 750,
+    "unique_ids": 750,
+    "thinking_error_count": 22,
+    "precise_subpattern_count": 63,
+    "bubble_counts": {
+      "GLITCH": 108,
+      "DROP": 107,
+      "STILL": 107,
+      "PATCH": 107,
+      "LOOPIE": 107,
+      "RUSH": 107,
+      "SYNC": 107
+    },
+    "archived_advice_fields_removed": true,
+    "runtime_rows_with_supportsArray": 0,
+    "runtime_rows_with_tips_key": 0,
+    "runtime_fullRitual_tip_sections": 0,
+    "framer_advice_renderer_removed": true,
+    "source_workbook_excluded_from_github_runtime_package": true,
+    "tier3_count": 8,
+    "tier3_controls_protected": 8,
+    "ts727_breathing_ambiguity_present": false,
+    "ts727_fixed_phrase_present": true,
+    "framer_tsx_transpile_syntax": "PASS",
+    "manifest_file_references": "PASS",
+    "all_750_runtime_rows_have_no_archived_advice_fields": true
+  }
+}
