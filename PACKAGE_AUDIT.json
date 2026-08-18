@@ -1,0 +1,24 @@
+{
+  "schema": "thinkstill-package-audit-v58.20.7",
+  "version": "58.20.7",
+  "status": "PASS",
+  "checks": {
+    "ritual_count": 750,
+    "unique_ids": 750,
+    "thinking_error_count": 22,
+    "precise_subpattern_count": 63,
+    "bubble_counts": {
+      "GLITCH": 108,
+      "DROP": 107,
+      "STILL": 107,
+      "PATCH": 107,
+      "LOOPIE": 107,
+      "RUSH": 107,
+      "SYNC": 107
+    },
+    "tier3_count": 8,
+    "tier3_controls_protected": 8,
+    "ts727_breathing_ambiguity_present": false,
+    "ts727_fixed_phrase_present": true
+  }
+}
