@@ -1,0 +1,82 @@
+{
+  "schema": "thinkstill-package-audit-v58.20.9",
+  "version": "58.20.9",
+  "status": "PASS",
+  "ritual_count": 750,
+  "unique_ids": 750,
+  "bubble_counts": {
+    "GLITCH": 108,
+    "DROP": 107,
+    "STILL": 107,
+    "PATCH": 107,
+    "LOOPIE": 107,
+    "RUSH": 107,
+    "SYNC": 107
+  },
+  "thinking_errors": 22,
+  "precise_subpatterns": 63,
+  "return_key_coverage": 750,
+  "feedback_prompt_coverage": 750,
+  "feedback_buttons": 3000,
+  "unique_feedback_buttons": 3000,
+  "tier3_count": 8,
+  "tier3_share_enabled": 0,
+  "tier3_reward_enabled": 0,
+  "tier3_retry_enabled": 0,
+  "all_reward_enabled": 0,
+  "phrase_collisions": {
+    "steps": {
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0
+    },
+    "goal": {
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0
+    },
+    "win": {
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0
+    },
+    "mind_bend": {
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0
+    },
+    "return_key": {
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0
+    },
+    "feedback_prompt": {
+      "4": 0,
+      "5": 0,
+      "6": 0,
+      "7": 0
+    }
+  },
+  "feedback_button_phrase_collisions": {
+    "4": 0,
+    "5": 0,
+    "6": 0,
+    "7": 0
+  },
+  "manifest_rows_match": true,
+  "component": {
+    "file": "ThinkStill_UnifiedChat_v58_20_9_FINAL_RELEASE.tsx",
+    "router_version": "v1900",
+    "separate_transition_video_gate": true,
+    "transition_video_preload": true,
+    "video_play_time_control": true,
+    "return_key_rendering": true,
+    "four_option_feedback": true,
+    "tier3_support_only_feedback": true
+  }
+}

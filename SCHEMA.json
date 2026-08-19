@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "thinkstill-ritual-v58.20.9.schema.json",
+  "title": "ThinkStill Ritual v58.20.9",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "bubble",
+    "thinking_error",
+    "precise_subpattern",
+    "play_time",
+    "goal",
+    "steps",
+    "win",
+    "return_key",
+    "mind_bend",
+    "formula_flow",
+    "safety",
+    "feedback_prompt",
+    "feedback_options",
+    "safety_tier"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^TS-\\d{3}$"
+    },
+    "ritual_number": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 750
+    },
+    "name": {
+      "type": "string"
+    },
+    "bubble": {
+      "enum": [
+        "GLITCH",
+        "DROP",
+        "STILL",
+        "PATCH",
+        "LOOPIE",
+        "RUSH",
+        "SYNC"
+      ]
+    },
+    "thinking_error": {
+      "type": "string"
+    },
+    "precise_subpattern": {
+      "type": "string"
+    },
+    "precise_pattern": {
+      "type": "string"
+    },
+    "safety_tier": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3
+    },
+    "play_time": {
+      "type": "string"
+    },
+    "goal": {
+      "type": "string"
+    },
+    "steps": {
+      "type": "string"
+    },
+    "stepsStructured": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "number",
+          "text"
+        ],
+        "properties": {
+          "number": {
+            "type": "integer"
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "win": {
+      "type": "string"
+    },
+    "return_key": {
+      "type": "string"
+    },
+    "mind_bend": {
+      "type": "string"
+    },
+    "formula_flow": {
+      "type": "string"
+    },
+    "safety": {
+      "type": "string"
+    },
+    "feedback_prompt": {
+      "type": "string"
+    },
+    "feedback_options": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "string"
+      }
+    },
+    "if_better": {
+      "type": "string"
+    },
+    "if_a_little": {
+      "type": "string"
+    },
+    "if_not_yet": {
+      "type": "string"
+    },
+    "share_enabled": {
+      "type": "boolean"
+    },
+    "reward_enabled": {
+      "type": "boolean"
+    },
+    "retry_allowed": {
+      "type": "boolean"
+    },
+    "ritualText": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}
