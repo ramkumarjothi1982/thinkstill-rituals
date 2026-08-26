@@ -1,5 +1,0 @@
-ThinkStill v6.0 FINAL 10/10
-750 ZERO-RESKIN PLAYABLE RITUALS
-MIND BEND INTEGRATED INTO FULL RITUAL
-GitHub package build: 2026-08-27
-Runtime storage: thinkstill_v6_seen_ids
