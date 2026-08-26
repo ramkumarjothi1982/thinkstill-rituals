@@ -1,0 +1,38 @@
+{
+  "version": "7.0",
+  "ritual_count": 750,
+  "unique_ids": 750,
+  "bubble_counts": {
+    "DROP": 114,
+    "GLITCH": 144,
+    "LOOPIE": 71,
+    "PATCH": 171,
+    "RUSH": 51,
+    "STILL": 106,
+    "SYNC": 93
+  },
+  "thinking_error_parent_count": 22,
+  "precise_best_for_count": 73,
+  "safety_nonblank": 750,
+  "support_first_rows": 25,
+  "full_ritual_required_section_failures": {
+    "GAME": [],
+    "MISSION": [],
+    "ONE RULE": [],
+    "PLAY": [],
+    "TWIST": [],
+    "WIN": [],
+    "MIND BEND": [],
+    "SAFETY": []
+  },
+  "tsx": {
+    "filename": "ThinkStill_UnifiedChat_v38.4.7_EXACT_FORMAT_v7_SAFETY.tsx",
+    "exact_format_fast_path": true,
+    "premium_renderer_replaced": true,
+    "goal_steps_comment_removed_from_release_header": true
+  },
+  "manifest_row_total": 750,
+  "missing_manifest_files": [],
+  "json_files_parse": true,
+  "typescript_syntax_smoke_test": "PASS — tsc reported only unresolved react/framer/framer-motion modules outside Framer."
+}
