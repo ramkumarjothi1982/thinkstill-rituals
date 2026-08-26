@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ThinkStill v6 Ritual",
+  "type": "object",
+  "required": [
+    "ritual_number",
+    "id",
+    "bubble",
+    "best_for",
+    "title",
+    "play_time",
+    "mission",
+    "rule",
+    "play",
+    "twist",
+    "win",
+    "mind_bend",
+    "full_ritual"
+  ],
+  "properties": {
+    "ritual_number": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 750
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^TS-[0-9]{3}$"
+    },
+    "bubble": {
+      "enum": [
+        "GLITCH",
+        "DROP",
+        "STILL",
+        "PATCH",
+        "LOOPIE",
+        "RUSH",
+        "SYNC"
+      ]
+    },
+    "best_for": {
+      "type": "string"
+    },
+    "route_categories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "routing_keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "title": {
+      "type": "string"
+    },
+    "play_time": {
+      "type": "string"
+    },
+    "mission": {
+      "type": "string"
+    },
+    "rule": {
+      "type": "string"
+    },
+    "play": {
+      "type": "string"
+    },
+    "twist": {
+      "type": "string"
+    },
+    "win": {
+      "type": "string"
+    },
+    "mind_bend": {
+      "type": "string"
+    },
+    "support_first": {
+      "type": "string"
+    },
+    "safety_tier": {
+      "type": "integer",
+      "enum": [
+        1,
+        3
+      ]
+    },
+    "full_ritual": {
+      "type": "string"
+    }
+  }
+}

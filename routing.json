@@ -1,0 +1,604 @@
+{
+  "schema": "thinkstill-routing-v6",
+  "version": "6.0",
+  "mode": "automatic",
+  "manual_bubble_selector": false,
+  "selection": "safety gate → intent aliases + Best For categories + ritual keyword overlap → highest scoring globally unused ritual",
+  "repeat_policy": "No ritual repeats until all 750 IDs have been served in this browser. Then the seen pool resets.",
+  "storage_key": "thinkstill_v6_seen_ids",
+  "history_key": "thinkstill_v6_history",
+  "route_intents": {
+    "overthinking": [
+      "overthinking",
+      "thinking too much",
+      "can't stop thinking",
+      "cant stop thinking",
+      "mental noise",
+      "thoughts racing"
+    ],
+    "rumination": [
+      "rumination",
+      "looping",
+      "same thought",
+      "keep replaying",
+      "stuck in my head",
+      "thought loop"
+    ],
+    "mental_quiet": [
+      "mental quiet",
+      "quiet my mind",
+      "calm my mind",
+      "slow my thoughts",
+      "need quiet",
+      "mind won't stop"
+    ],
+    "mental_overload": [
+      "mental overload",
+      "overwhelmed",
+      "too much in my head",
+      "brain full",
+      "too many thoughts",
+      "cognitive overload"
+    ],
+    "inner_speech": [
+      "inner speech",
+      "self talk",
+      "self-talk",
+      "voice in my head",
+      "internal monologue",
+      "thought sentence"
+    ],
+    "worry_uncertainty": [
+      "worry",
+      "worried",
+      "uncertain",
+      "uncertainty",
+      "what if",
+      "reassurance",
+      "need certainty",
+      "keep checking"
+    ],
+    "panic_body": [
+      "panic",
+      "panic attack",
+      "body alarm",
+      "anxious body",
+      "heart racing",
+      "adrenaline",
+      "activated",
+      "physical anxiety"
+    ],
+    "grounding": [
+      "grounding",
+      "ground me",
+      "present moment",
+      "feel unreal",
+      "dissociated",
+      "dissociation",
+      "back in the room",
+      "sensory"
+    ],
+    "attention": [
+      "attention",
+      "focus",
+      "distracted",
+      "can't focus",
+      "cant focus",
+      "concentration",
+      "mind wandering"
+    ],
+    "memory_replay": [
+      "memory",
+      "replay",
+      "flashback",
+      "keep remembering",
+      "past event",
+      "mental replay",
+      "memory loop"
+    ],
+    "mental_imagery": [
+      "mental image",
+      "imagery",
+      "picture in my head",
+      "visual thought",
+      "mental movie",
+      "image"
+    ],
+    "decision": [
+      "decision",
+      "can't decide",
+      "cant decide",
+      "choice",
+      "decision pressure",
+      "what should i choose",
+      "indecisive"
+    ],
+    "getting_started": [
+      "procrastination",
+      "can't start",
+      "cant start",
+      "getting started",
+      "start task",
+      "avoid task",
+      "stuck starting"
+    ],
+    "urges_habits": [
+      "urge",
+      "craving",
+      "impulse",
+      "habit",
+      "autopilot",
+      "compulsion",
+      "relapse",
+      "temptation"
+    ],
+    "performance_confidence": [
+      "performance",
+      "confidence",
+      "nervous about performance",
+      "presentation",
+      "exam",
+      "pressure",
+      "perfectionism"
+    ],
+    "emotion": [
+      "emotion",
+      "feeling",
+      "angry",
+      "anger",
+      "sad",
+      "sadness",
+      "upset",
+      "frustrated",
+      "emotionally overwhelmed"
+    ],
+    "social_communication": [
+      "social pressure",
+      "rejection",
+      "lonely",
+      "loneliness",
+      "conversation",
+      "conflict",
+      "communication",
+      "embarrassed",
+      "self conscious"
+    ],
+    "identity_self": [
+      "identity",
+      "self story",
+      "who am i",
+      "self-worth",
+      "self worth",
+      "label myself",
+      "shame",
+      "guilt"
+    ],
+    "values_meaning": [
+      "meaning",
+      "values",
+      "purpose",
+      "grief",
+      "loss",
+      "what matters",
+      "direction in life"
+    ],
+    "creativity": [
+      "creative",
+      "creativity",
+      "idea",
+      "brainstorm",
+      "stuck creatively",
+      "new idea"
+    ],
+    "sleep_winding_down": [
+      "sleep",
+      "can't sleep",
+      "cant sleep",
+      "winding down",
+      "bedtime",
+      "insomnia",
+      "rest"
+    ],
+    "working_memory": [
+      "working memory",
+      "remember this",
+      "hold in mind",
+      "mental buffer",
+      "short term memory"
+    ],
+    "beliefs_evidence": [
+      "belief",
+      "evidence",
+      "is this true",
+      "fact check",
+      "thinking error",
+      "bias",
+      "assumption"
+    ],
+    "mind_play_reset": [
+      "mental reset",
+      "mind game",
+      "thought experiment",
+      "play a game",
+      "reset my mind",
+      "mental play"
+    ],
+    "support_first": [
+      "support first",
+      "need help",
+      "need someone",
+      "stay with me",
+      "human support",
+      "professional support"
+    ]
+  },
+  "intent_label_terms": {
+    "overthinking": [
+      "overthinking"
+    ],
+    "rumination": [
+      "rumination",
+      "replay",
+      "habit loops"
+    ],
+    "mental_quiet": [
+      "mental quiet",
+      "winding down",
+      "sleep & quiet"
+    ],
+    "mental_overload": [
+      "mental overload",
+      "working memory"
+    ],
+    "inner_speech": [
+      "inner speech",
+      "mental text"
+    ],
+    "worry_uncertainty": [
+      "worry",
+      "uncertainty",
+      "reassurance"
+    ],
+    "panic_body": [
+      "panic/body alarm"
+    ],
+    "grounding": [
+      "grounding",
+      "body awareness",
+      "present"
+    ],
+    "attention": [
+      "attention"
+    ],
+    "memory_replay": [
+      "memory/replay",
+      "memory •",
+      "replay",
+      "grief/loss"
+    ],
+    "mental_imagery": [
+      "mental imagery",
+      "mental replay",
+      "mental movies",
+      "visual"
+    ],
+    "decision": [
+      "decision pressure",
+      "leadership",
+      "team/leadership"
+    ],
+    "getting_started": [
+      "getting started",
+      "procrastination"
+    ],
+    "urges_habits": [
+      "urges",
+      "habit loops",
+      "action gap"
+    ],
+    "performance_confidence": [
+      "performance pressure",
+      "confidence"
+    ],
+    "emotion": [
+      "emotion play",
+      "panic/body alarm",
+      "grief/loss"
+    ],
+    "social_communication": [
+      "social pressure",
+      "communication",
+      "boundaries",
+      "repair"
+    ],
+    "identity_self": [
+      "identity",
+      "self-story",
+      "self-consciousness"
+    ],
+    "values_meaning": [
+      "values",
+      "meaning",
+      "grief/loss"
+    ],
+    "creativity": [
+      "creativity",
+      "mental flexibility"
+    ],
+    "sleep_winding_down": [
+      "winding down",
+      "sleep & quiet",
+      "mental quiet"
+    ],
+    "working_memory": [
+      "working memory"
+    ],
+    "beliefs_evidence": [
+      "beliefs",
+      "evidence",
+      "thought experiments"
+    ],
+    "mind_play_reset": [
+      "mind play",
+      "mental reset",
+      "thought experiments",
+      "cognitive play"
+    ],
+    "support_first": [
+      "support first",
+      "real-world safety"
+    ]
+  },
+  "safety_intent_phrases": [
+    "suicide",
+    "kill myself",
+    "end my life",
+    "self harm",
+    "self-harm",
+    "hurt myself",
+    "overdose",
+    "cannot stay safe",
+    "can't stay safe",
+    "cant stay safe",
+    "hurt someone",
+    "kill someone",
+    "hearing voices",
+    "seeing things",
+    "can't tell what's real",
+    "cant tell whats real",
+    "not sure what's real",
+    "not sure whats real",
+    "severe withdrawal",
+    "medical emergency",
+    "chest pain",
+    "cannot breathe",
+    "can't breathe",
+    "cant breathe"
+  ],
+  "bubble_language": {
+    "GLITCH": [
+      "signal",
+      "static",
+      "distortion",
+      "interference",
+      "thought",
+      "pattern"
+    ],
+    "DROP": [
+      "weight",
+      "load",
+      "burden",
+      "release",
+      "memory",
+      "emotion"
+    ],
+    "STILL": [
+      "quiet",
+      "anchor",
+      "stillness",
+      "pause",
+      "steady",
+      "ground"
+    ],
+    "PATCH": [
+      "patch",
+      "mend",
+      "repair",
+      "reconnect",
+      "build",
+      "solve"
+    ],
+    "LOOPIE": [
+      "loop",
+      "cycle",
+      "echo",
+      "orbit",
+      "repeat",
+      "replay"
+    ],
+    "RUSH": [
+      "surge",
+      "charge",
+      "momentum",
+      "urge",
+      "panic",
+      "pace"
+    ],
+    "SYNC": [
+      "align",
+      "calibrate",
+      "rhythm",
+      "timing",
+      "social",
+      "coordinate"
+    ]
+  },
+  "best_for_distribution": {
+    "Attention": 31,
+    "Attention • Mental quiet": 6,
+    "Beliefs • Evidence": 6,
+    "Beliefs/evidence": 21,
+    "Body awareness • Grounding": 2,
+    "Boundaries": 1,
+    "Communication": 8,
+    "Communication • Perspective": 4,
+    "Confidence": 1,
+    "Creativity": 22,
+    "Creativity • Mental flexibility": 1,
+    "Decision pressure": 25,
+    "Decision pressure • Mental clarity": 9,
+    "Distance": 2,
+    "Emotion play": 17,
+    "Emotion play • Mental flexibility": 1,
+    "Feedback": 2,
+    "Future worry • Uncertainty": 2,
+    "Getting started": 22,
+    "Getting started • Procrastination": 4,
+    "Grief/loss": 1,
+    "Grounding": 33,
+    "Grounding • Attention": 8,
+    "Habit loops": 4,
+    "Identity & Self": 2,
+    "Identity/self-story": 16,
+    "Inner speech": 18,
+    "Inner speech • Overthinking": 8,
+    "Leadership": 2,
+    "Meaning": 1,
+    "Memory • Cognitive play": 7,
+    "Memory/replay": 23,
+    "Mental imagery": 36,
+    "Mental imagery • Visual play": 11,
+    "Mental imagery • Visual thought": 1,
+    "Mental overload": 17,
+    "Mental quiet": 24,
+    "Mental replay • Mental movies": 4,
+    "Mental reset • Attention": 4,
+    "Mental text • Overthinking": 5,
+    "Mind play • Mental reset": 58,
+    "Overthinking": 4,
+    "Overthinking • Mental quiet": 2,
+    "Panic/body alarm": 16,
+    "Performance pressure": 15,
+    "Performance pressure • Confidence": 10,
+    "Positive-state play": 17,
+    "Positive-state play • Calm": 4,
+    "Reassurance loops": 5,
+    "Repair": 2,
+    "Replay": 7,
+    "Rumination": 21,
+    "Sleep & Quiet": 4,
+    "Social pressure": 14,
+    "Social pressure • Perspective": 4,
+    "Social pressure • Self-consciousness": 1,
+    "Support first": 23,
+    "Support first • Real-world safety": 2,
+    "Team/leadership": 3,
+    "Thought experiments": 25,
+    "Thought experiments • Mental flexibility": 6,
+    "Thought experiments • Overthinking": 3,
+    "Thought fusion": 10,
+    "Uncertainty": 10,
+    "Uncertainty • Reassurance loops": 3,
+    "Urges": 16,
+    "Urges • Action gap": 2,
+    "Values • Meaning": 4,
+    "Values/meaning": 15,
+    "Winding down": 14,
+    "Working memory • Mental reset": 10,
+    "Worry": 7,
+    "Worry • Mental imagery": 1
+  },
+  "routing_fixes": [
+    "Panic/body-alarm intent no longer inherits generic Body Awareness • Grounding labels; this prevents panic from being over-routed into STILL."
+  ],
+  "intent_bubble_bias": {
+    "overthinking": {
+      "GLITCH": 3
+    },
+    "rumination": {
+      "LOOPIE": 3,
+      "GLITCH": 1
+    },
+    "mental_quiet": {
+      "STILL": 3
+    },
+    "mental_overload": {
+      "PATCH": 2,
+      "STILL": 1
+    },
+    "inner_speech": {
+      "GLITCH": 3
+    },
+    "worry_uncertainty": {
+      "GLITCH": 2,
+      "STILL": 1
+    },
+    "panic_body": {
+      "RUSH": 6,
+      "PATCH": 2,
+      "DROP": 1
+    },
+    "grounding": {
+      "STILL": 3
+    },
+    "attention": {
+      "STILL": 2,
+      "GLITCH": 1
+    },
+    "memory_replay": {
+      "DROP": 3,
+      "LOOPIE": 2
+    },
+    "mental_imagery": {
+      "DROP": 2
+    },
+    "decision": {
+      "PATCH": 3,
+      "SYNC": 1
+    },
+    "getting_started": {
+      "PATCH": 3,
+      "RUSH": 1
+    },
+    "urges_habits": {
+      "RUSH": 4,
+      "LOOPIE": 2
+    },
+    "performance_confidence": {
+      "RUSH": 3,
+      "SYNC": 1
+    },
+    "emotion": {
+      "DROP": 2,
+      "RUSH": 1
+    },
+    "social_communication": {
+      "SYNC": 3
+    },
+    "identity_self": {
+      "SYNC": 2,
+      "DROP": 1
+    },
+    "values_meaning": {
+      "SYNC": 3
+    },
+    "creativity": {
+      "PATCH": 3
+    },
+    "sleep_winding_down": {
+      "STILL": 4
+    },
+    "working_memory": {
+      "PATCH": 2
+    },
+    "beliefs_evidence": {
+      "GLITCH": 3
+    },
+    "mind_play_reset": {
+      "PATCH": 2
+    },
+    "support_first": {
+      "SYNC": 3
+    }
+  }
+}
