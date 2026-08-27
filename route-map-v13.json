@@ -1,0 +1,675 @@
+{
+  "schema": "thinkstill-routing-v13",
+  "version": "13.0.0",
+  "parent_count": 22,
+  "precise_subpattern_count": 73,
+  "parents": [
+    {
+      "parent": "Attention / Grounding / Mental Quiet",
+      "rows": 111,
+      "keywords": [
+        "focus",
+        "distracted",
+        "attention",
+        "grounding",
+        "present",
+        "restless",
+        "mental quiet",
+        "anchor"
+      ],
+      "immediate_need": "steady attention and return to the present",
+      "subpatterns": [
+        {
+          "name": "Attention",
+          "rows": 31
+        },
+        {
+          "name": "Attention • Mental quiet",
+          "rows": 7
+        },
+        {
+          "name": "Body awareness • Grounding",
+          "rows": 2
+        },
+        {
+          "name": "Distance",
+          "rows": 2
+        },
+        {
+          "name": "Grounding",
+          "rows": 33
+        },
+        {
+          "name": "Grounding • Attention",
+          "rows": 7
+        },
+        {
+          "name": "Mental quiet",
+          "rows": 24
+        },
+        {
+          "name": "Mental reset • Attention",
+          "rows": 5
+        }
+      ]
+    },
+    {
+      "parent": "Beliefs / Evidence",
+      "rows": 27,
+      "keywords": [
+        "belief",
+        "beliefs",
+        "evidence",
+        "facts",
+        "proof",
+        "assumption",
+        "interpretation",
+        "conclusion"
+      ],
+      "immediate_need": "separate evidence from interpretation",
+      "subpatterns": [
+        {
+          "name": "Beliefs • Evidence",
+          "rows": 6
+        },
+        {
+          "name": "Beliefs/evidence",
+          "rows": 21
+        }
+      ]
+    },
+    {
+      "parent": "Communication / Boundaries",
+      "rows": 16,
+      "keywords": [
+        "communication",
+        "conversation",
+        "message",
+        "boundary",
+        "boundaries",
+        "conflict",
+        "repair",
+        "feedback"
+      ],
+      "immediate_need": "create a clearer and safer interaction",
+      "subpatterns": [
+        {
+          "name": "Boundaries",
+          "rows": 1
+        },
+        {
+          "name": "Communication",
+          "rows": 8
+        },
+        {
+          "name": "Communication • Perspective",
+          "rows": 3
+        },
+        {
+          "name": "Feedback",
+          "rows": 2
+        },
+        {
+          "name": "Repair",
+          "rows": 2
+        }
+      ]
+    },
+    {
+      "parent": "Creativity / Mind Play",
+      "rows": 115,
+      "keywords": [
+        "creative",
+        "creativity",
+        "ideas",
+        "idea",
+        "bored",
+        "mind play",
+        "thought experiment",
+        "flexibility"
+      ],
+      "immediate_need": "restore flexible thinking",
+      "subpatterns": [
+        {
+          "name": "Creativity",
+          "rows": 22
+        },
+        {
+          "name": "Creativity • Mental flexibility",
+          "rows": 1
+        },
+        {
+          "name": "Mind play • Mental reset",
+          "rows": 60
+        },
+        {
+          "name": "Thought experiments",
+          "rows": 25
+        },
+        {
+          "name": "Thought experiments • Mental flexibility",
+          "rows": 7
+        }
+      ]
+    },
+    {
+      "parent": "Decision Pressure",
+      "rows": 35,
+      "keywords": [
+        "decide",
+        "decision",
+        "choose",
+        "choosing",
+        "choice",
+        "indecision",
+        "options",
+        "confused",
+        "confusion"
+      ],
+      "immediate_need": "reduce decision noise and choose clearly",
+      "subpatterns": [
+        {
+          "name": "Decision pressure",
+          "rows": 25
+        },
+        {
+          "name": "Decision pressure • Mental clarity",
+          "rows": 10
+        }
+      ]
+    },
+    {
+      "parent": "Emotion",
+      "rows": 18,
+      "keywords": [
+        "anger",
+        "angry",
+        "rage",
+        "guilt",
+        "guilty",
+        "shame",
+        "ashamed",
+        "sad",
+        "hurt",
+        "emotional"
+      ],
+      "immediate_need": "create space around the emotion before acting",
+      "subpatterns": [
+        {
+          "name": "Emotion play",
+          "rows": 17
+        },
+        {
+          "name": "Emotion play • Mental flexibility",
+          "rows": 1
+        }
+      ]
+    },
+    {
+      "parent": "Getting Started",
+      "rows": 25,
+      "keywords": [
+        "start",
+        "started",
+        "begin",
+        "procrastinate",
+        "procrastinating",
+        "procrastination",
+        "motivation",
+        "momentum"
+      ],
+      "immediate_need": "make the first action small enough to begin",
+      "subpatterns": [
+        {
+          "name": "Getting started",
+          "rows": 22
+        },
+        {
+          "name": "Getting started • Procrastination",
+          "rows": 3
+        }
+      ]
+    },
+    {
+      "parent": "Identity / Self",
+      "rows": 18,
+      "keywords": [
+        "identity",
+        "self",
+        "self worth",
+        "self-worth",
+        "label",
+        "not good enough",
+        "who am i"
+      ],
+      "immediate_need": "loosen a global self-story",
+      "subpatterns": [
+        {
+          "name": "Identity & Self",
+          "rows": 2
+        },
+        {
+          "name": "Identity/self-story",
+          "rows": 16
+        }
+      ]
+    },
+    {
+      "parent": "Inner Speech / Mental Text",
+      "rows": 31,
+      "keywords": [
+        "inner speech",
+        "self talk",
+        "self-talk",
+        "words",
+        "voice",
+        "mental text",
+        "wording"
+      ],
+      "immediate_need": "change the relationship to inner wording",
+      "subpatterns": [
+        {
+          "name": "Inner speech",
+          "rows": 18
+        },
+        {
+          "name": "Inner speech • Overthinking",
+          "rows": 8
+        },
+        {
+          "name": "Mental text • Overthinking",
+          "rows": 5
+        }
+      ]
+    },
+    {
+      "parent": "Memory / Replay / Rumination",
+      "rows": 73,
+      "keywords": [
+        "replay",
+        "replaying",
+        "rumination",
+        "ruminating",
+        "regret",
+        "past",
+        "memory",
+        "looping"
+      ],
+      "immediate_need": "interrupt replay and unhook from the loop",
+      "subpatterns": [
+        {
+          "name": "Memory • Cognitive play",
+          "rows": 7
+        },
+        {
+          "name": "Memory/replay",
+          "rows": 23
+        },
+        {
+          "name": "Mental replay • Mental movies",
+          "rows": 4
+        },
+        {
+          "name": "Replay",
+          "rows": 7
+        },
+        {
+          "name": "Rumination",
+          "rows": 21
+        },
+        {
+          "name": "Working memory • Mental reset",
+          "rows": 11
+        }
+      ]
+    },
+    {
+      "parent": "Mental Imagery",
+      "rows": 48,
+      "keywords": [
+        "image",
+        "imagery",
+        "visual",
+        "picture",
+        "mental movie",
+        "movie",
+        "flashback",
+        "scene"
+      ],
+      "immediate_need": "shift the mental image without forcing it away",
+      "subpatterns": [
+        {
+          "name": "Mental imagery",
+          "rows": 36
+        },
+        {
+          "name": "Mental imagery • Visual play",
+          "rows": 11
+        },
+        {
+          "name": "Mental imagery • Visual thought",
+          "rows": 1
+        }
+      ]
+    },
+    {
+      "parent": "Mental Overload / Working Memory",
+      "rows": 17,
+      "keywords": [
+        "overwhelmed",
+        "overload",
+        "too much",
+        "busy mind",
+        "working memory",
+        "mental load"
+      ],
+      "immediate_need": "reduce what the mind has to hold at once",
+      "subpatterns": [
+        {
+          "name": "Mental overload",
+          "rows": 17
+        }
+      ]
+    },
+    {
+      "parent": "Overthinking / Thought Fusion",
+      "rows": 19,
+      "keywords": [
+        "overthinking",
+        "overthink",
+        "spiral",
+        "thoughts",
+        "thought fusion",
+        "stuck thinking"
+      ],
+      "immediate_need": "create distance from the thought stream",
+      "subpatterns": [
+        {
+          "name": "Overthinking",
+          "rows": 4
+        },
+        {
+          "name": "Overthinking • Mental quiet",
+          "rows": 2
+        },
+        {
+          "name": "Thought experiments • Overthinking",
+          "rows": 3
+        },
+        {
+          "name": "Thought fusion",
+          "rows": 10
+        }
+      ]
+    },
+    {
+      "parent": "Panic / Body Alarm",
+      "rows": 16,
+      "keywords": [
+        "panic",
+        "panicking",
+        "anxiety",
+        "anxious",
+        "heart racing",
+        "breath",
+        "breathing",
+        "dizzy",
+        "scared",
+        "fear"
+      ],
+      "immediate_need": "lower the alarm and orient to safety",
+      "subpatterns": [
+        {
+          "name": "Panic/body alarm",
+          "rows": 16
+        }
+      ]
+    },
+    {
+      "parent": "Performance / Confidence",
+      "rows": 26,
+      "keywords": [
+        "performance",
+        "confidence",
+        "presentation",
+        "exam",
+        "meeting",
+        "nervous",
+        "perfection",
+        "mistake"
+      ],
+      "immediate_need": "reduce performance pressure and regain control",
+      "subpatterns": [
+        {
+          "name": "Confidence",
+          "rows": 1
+        },
+        {
+          "name": "Performance pressure",
+          "rows": 15
+        },
+        {
+          "name": "Performance pressure • Confidence",
+          "rows": 10
+        }
+      ]
+    },
+    {
+      "parent": "Positive State",
+      "rows": 20,
+      "keywords": [
+        "positive",
+        "joy",
+        "gratitude",
+        "pleasant",
+        "hope",
+        "comfort",
+        "good moment"
+      ],
+      "immediate_need": "notice a safe positive cue without forcing positivity",
+      "subpatterns": [
+        {
+          "name": "Positive-state play",
+          "rows": 17
+        },
+        {
+          "name": "Positive-state play • Calm",
+          "rows": 3
+        }
+      ]
+    },
+    {
+      "parent": "Sleep / Winding Down",
+      "rows": 17,
+      "keywords": [
+        "sleep",
+        "insomnia",
+        "bedtime",
+        "awake",
+        "tired",
+        "night",
+        "switch off"
+      ],
+      "immediate_need": "reduce effort and wind down",
+      "subpatterns": [
+        {
+          "name": "Sleep & Quiet",
+          "rows": 3
+        },
+        {
+          "name": "Winding down",
+          "rows": 14
+        }
+      ]
+    },
+    {
+      "parent": "Social / Team / Perspective",
+      "rows": 24,
+      "keywords": [
+        "rejected",
+        "rejection",
+        "judged",
+        "judging",
+        "comparison",
+        "embarrassed",
+        "lonely",
+        "ignored",
+        "social"
+      ],
+      "immediate_need": "widen perspective around social pressure",
+      "subpatterns": [
+        {
+          "name": "Leadership",
+          "rows": 2
+        },
+        {
+          "name": "Social pressure",
+          "rows": 14
+        },
+        {
+          "name": "Social pressure • Perspective",
+          "rows": 4
+        },
+        {
+          "name": "Social pressure • Self-consciousness",
+          "rows": 1
+        },
+        {
+          "name": "Team/leadership",
+          "rows": 3
+        }
+      ]
+    },
+    {
+      "parent": "Support First / Safety",
+      "rows": 25,
+      "keywords": [
+        "unsafe",
+        "self harm",
+        "suicidal",
+        "suicide",
+        "hurt myself",
+        "hurt someone",
+        "emergency",
+        "medical emergency",
+        "hallucination",
+        "withdrawal",
+        "danger"
+      ],
+      "immediate_need": "stop inward play and use real-world support",
+      "subpatterns": [
+        {
+          "name": "Support first",
+          "rows": 23
+        },
+        {
+          "name": "Support first • Real-world safety",
+          "rows": 2
+        }
+      ]
+    },
+    {
+      "parent": "Uncertainty / Future Worry / Reassurance",
+      "rows": 28,
+      "keywords": [
+        "uncertainty",
+        "uncertain",
+        "worry",
+        "worried",
+        "reassurance",
+        "doubt",
+        "checking",
+        "future"
+      ],
+      "immediate_need": "stop feeding uncertainty with repeated checking",
+      "subpatterns": [
+        {
+          "name": "Future worry • Uncertainty",
+          "rows": 2
+        },
+        {
+          "name": "Reassurance loops",
+          "rows": 5
+        },
+        {
+          "name": "Uncertainty",
+          "rows": 10
+        },
+        {
+          "name": "Uncertainty • Reassurance loops",
+          "rows": 3
+        },
+        {
+          "name": "Worry",
+          "rows": 7
+        },
+        {
+          "name": "Worry • Mental imagery",
+          "rows": 1
+        }
+      ]
+    },
+    {
+      "parent": "Urges / Habit Loops",
+      "rows": 22,
+      "keywords": [
+        "urge",
+        "impulse",
+        "craving",
+        "habit",
+        "compulsion",
+        "temptation",
+        "addiction"
+      ],
+      "immediate_need": "widen the gap between urge and action",
+      "subpatterns": [
+        {
+          "name": "Habit loops",
+          "rows": 4
+        },
+        {
+          "name": "Urges",
+          "rows": 16
+        },
+        {
+          "name": "Urges • Action gap",
+          "rows": 2
+        }
+      ]
+    },
+    {
+      "parent": "Values / Meaning / Grief",
+      "rows": 19,
+      "keywords": [
+        "grief",
+        "grieving",
+        "loss",
+        "meaning",
+        "purpose",
+        "values",
+        "let go",
+        "letting go",
+        "bereavement"
+      ],
+      "immediate_need": "reconnect with what matters without forcing resolution",
+      "subpatterns": [
+        {
+          "name": "Grief/loss",
+          "rows": 1
+        },
+        {
+          "name": "Meaning",
+          "rows": 1
+        },
+        {
+          "name": "Values • Meaning",
+          "rows": 2
+        },
+        {
+          "name": "Values/meaning",
+          "rows": 15
+        }
+      ]
+    }
+  ]
+}
