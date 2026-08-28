@@ -1,8 +1,0 @@
-ThinkStill 750
-Release: v13
-Status: FINAL RELEASE — PERMANENT 10/10 MASTER
-UI: v38.11.0 — Semantic Routing + Slab Reveal
-Rituals: 750
-Router parents: 22
-Precise Best For subpatterns: 73
-Global no-replay cycle: 750
