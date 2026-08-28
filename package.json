@@ -1,0 +1,10 @@
+{
+  "name": "thinkstill-750-v13-final-release",
+  "version": "13.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ThinkStill 750 locked v13 ritual library + v38.12 viral growth layer for Framer",
+  "scripts": {
+    "validate": "node scripts/validate-release.mjs"
+  }
+}
