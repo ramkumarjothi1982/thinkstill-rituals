@@ -1,0 +1,478 @@
+{
+  "schema": "thinkstill-growth-layer-v1",
+  "core_content_version": "v13",
+  "growth_version": "1.0.0",
+  "first_session_policy": {
+    "boosted_serves": 3,
+    "curated_pick_count": 50,
+    "rule": "Prefer a curated first-session ritual only when it remains semantically competitive; relevance and SUPPORT FIRST safety always win."
+  },
+  "reset_dna_families": [
+    "ACT",
+    "AMPLIFY",
+    "CHOOSE",
+    "CLARIFY",
+    "CONNECT",
+    "DISTANCE",
+    "FEEL",
+    "GROUND",
+    "INTERRUPT",
+    "ORGANISE",
+    "PLAY",
+    "QUIET",
+    "REFRAME",
+    "SUPPORT"
+  ],
+  "top_50": [
+    {
+      "rank": 1,
+      "id": "TS-163",
+      "name": "BLINK RESET",
+      "thinking_error": "Attention / Grounding / Mental Quiet",
+      "best_for": "Attention",
+      "reset_dna_family": "GROUND",
+      "mind_bend": "A natural blink can divide experience into before and after. Ordinary bodily events already provide boundaries for resetting attention."
+    },
+    {
+      "rank": 2,
+      "id": "TS-159",
+      "name": "NEAR-FAR JUMP",
+      "thinking_error": "Attention / Grounding / Mental Quiet",
+      "best_for": "Grounding",
+      "reset_dna_family": "GROUND",
+      "mind_bend": "Switching between near and far objects makes depth itself the attentional dimension. Attention can travel through distance as well as across direction."
+    },
+    {
+      "rank": 3,
+      "id": "TS-037",
+      "name": "IF-FRAME",
+      "thinking_error": "Beliefs / Evidence",
+      "best_for": "Beliefs/evidence",
+      "reset_dna_family": "REFRAME",
+      "mind_bend": "An absolute statement changes once a single condition is made explicit. Hidden ‘if’ clauses often sit underneath mental certainty."
+    },
+    {
+      "rank": 4,
+      "id": "TS-707",
+      "name": "RULE BOUNDARY",
+      "thinking_error": "Beliefs / Evidence",
+      "best_for": "Beliefs/evidence",
+      "reset_dna_family": "REFRAME",
+      "mind_bend": "A personal rule can be accurate in one context and overextended in another. Validity is bounded by conditions rather than guaranteed by familiar wording."
+    },
+    {
+      "rank": 5,
+      "id": "TS-427",
+      "name": "FACT-FEELING-ASK",
+      "thinking_error": "Communication / Boundaries",
+      "best_for": "Communication",
+      "reset_dna_family": "CONNECT",
+      "mind_bend": "Fact, feeling and ask can occupy separate channels in one message. This indicates how conflict grows when observation, experience and request are blended together."
+    },
+    {
+      "rank": 6,
+      "id": "TS-430",
+      "name": "BOUNDARY LOOP",
+      "thinking_error": "Communication / Boundaries",
+      "best_for": "Boundaries",
+      "reset_dna_family": "CONNECT",
+      "mind_bend": "A boundary can survive repetition without acquiring new reasons. Explanation is not what gives a limit its legitimacy."
+    },
+    {
+      "rank": 7,
+      "id": "TS-019",
+      "name": "THOUGHT LATENCY",
+      "thinking_error": "Creativity / Mind Play",
+      "best_for": "Thought experiments",
+      "reset_dna_family": "PLAY",
+      "mind_bend": "There is measurable space between a cue and the mind’s response, so reaction can have latency even when it feels instantaneous."
+    },
+    {
+      "rank": 8,
+      "id": "TS-073",
+      "name": "TYPEWRITER DELAY",
+      "thinking_error": "Creativity / Mind Play",
+      "best_for": "Thought experiments",
+      "reset_dna_family": "PLAY",
+      "mind_bend": "Character-by-character display reveals how much of reading normally happens ahead of awareness; the mind wants to predict text before the text has arrived."
+    },
+    {
+      "rank": 9,
+      "id": "TS-257",
+      "name": "OPPORTUNITY-COST SHADOW",
+      "thinking_error": "Decision Pressure",
+      "best_for": "Decision pressure • Mental clarity",
+      "reset_dna_family": "CHOOSE",
+      "mind_bend": "Choosing one use of scarce time or money silently chooses against its best alternative. Opportunity cost is part of the decision even when it is invisible."
+    },
+    {
+      "rank": 10,
+      "id": "TS-454",
+      "name": "REGRET PAIR",
+      "thinking_error": "Decision Pressure",
+      "best_for": "Decision pressure",
+      "reset_dna_family": "CHOOSE",
+      "mind_bend": "Regret can come from acting or from not acting, and comparing both on the same horizon exposes omission as a decision path with consequences too."
+    },
+    {
+      "rank": 11,
+      "id": "TS-276",
+      "name": "EMOTION ORB",
+      "thinking_error": "Emotion",
+      "best_for": "Emotion play",
+      "reset_dna_family": "FEEL",
+      "mind_bend": "A feeling can be represented with a boundary around it. Emotional presence does not require the emotion to occupy all of inner space."
+    },
+    {
+      "rank": 12,
+      "id": "TS-280",
+      "name": "EMOTION ACTION BLOCK",
+      "thinking_error": "Emotion",
+      "best_for": "Emotion play",
+      "reset_dna_family": "FEEL",
+      "mind_bend": "An emotion can produce a clear action urge while the action remains unperformed. Feeling, impulse and behaviour are three distinguishable stages."
+    },
+    {
+      "rank": 13,
+      "id": "TS-479",
+      "name": "BAD FIRST MOVE",
+      "thinking_error": "Getting Started",
+      "best_for": "Getting started",
+      "reset_dna_family": "ACT",
+      "mind_bend": "An intentionally imperfect first move can create real progress before correction. Perfection is a quality-control process instead of a prerequisite for action."
+    },
+    {
+      "rank": 14,
+      "id": "TS-488",
+      "name": "FRICTION HUNT",
+      "thinking_error": "Getting Started",
+      "best_for": "Getting started",
+      "reset_dna_family": "ACT",
+      "mind_bend": "Start resistance often spikes at one identifiable point. Procrastination is local friction that can be targeted rather than a global personality trait."
+    },
+    {
+      "rank": 15,
+      "id": "TS-034",
+      "name": "PRONOUN ZERO",
+      "thinking_error": "Identity / Self",
+      "best_for": "Identity/self-story",
+      "reset_dna_family": "CLARIFY",
+      "mind_bend": "Self-talk can retain its subject matter after personal pronouns disappear. Identity markers are additions to content rather than the content itself."
+    },
+    {
+      "rank": 16,
+      "id": "TS-395",
+      "name": "ROLE EXIT",
+      "thinking_error": "Identity / Self",
+      "best_for": "Identity/self-story",
+      "reset_dna_family": "CLARIFY",
+      "mind_bend": "A role can be mentally left when its task ends. Responsibilities do not have to remain active inside identity after the situation is over."
+    },
+    {
+      "rank": 17,
+      "id": "TS-026",
+      "name": "VOLUME LADDER",
+      "thinking_error": "Inner Speech / Mental Text",
+      "best_for": "Inner speech",
+      "reset_dna_family": "INTERRUPT",
+      "mind_bend": "Inner-voice loudness can be adjusted while every word stays fixed. Volume is a presentation property rather than part of the message itself."
+    },
+    {
+      "rank": 18,
+      "id": "TS-028",
+      "name": "ROBOT READ",
+      "thinking_error": "Inner Speech / Mental Text",
+      "best_for": "Inner speech",
+      "reset_dna_family": "INTERRUPT",
+      "mind_bend": "When expressive prosody is removed, the same words lose part of their emotional force; tone is carrying information the sentence never states."
+    },
+    {
+      "rank": 19,
+      "id": "TS-004",
+      "name": "NO-SEQUEL",
+      "thinking_error": "Memory / Replay / Rumination",
+      "best_for": "Rumination",
+      "reset_dna_family": "INTERRUPT",
+      "mind_bend": "The first thought and its explanatory sequel are separate events; rumination begins in what gets added after the thought is already complete."
+    },
+    {
+      "rank": 20,
+      "id": "TS-075",
+      "name": "STAMP COMPLETE",
+      "thinking_error": "Memory / Replay / Rumination",
+      "best_for": "Rumination",
+      "reset_dna_family": "INTERRUPT",
+      "mind_bend": "A simple completion marker can change whether the mind treats material as still open. Closure signals influence revisiting even without changing content."
+    },
+    {
+      "rank": 21,
+      "id": "TS-081",
+      "name": "CARD EDGE",
+      "thinking_error": "Mental Imagery",
+      "best_for": "Mental imagery",
+      "reset_dna_family": "DISTANCE",
+      "mind_bend": "An image can become almost invisible edge-on while remaining the same imagined object, separating what exists in representation from what a viewpoint makes visible."
+    },
+    {
+      "rank": 22,
+      "id": "TS-078",
+      "name": "MIRROR FRAME",
+      "thinking_error": "Mental Imagery",
+      "best_for": "Mental imagery",
+      "reset_dna_family": "DISTANCE",
+      "mind_bend": "Horizontal reflection preserves the scene while reversing left-right relations. The shift makes clear how recognition can survive a major change in orientation."
+    },
+    {
+      "rank": 23,
+      "id": "TS-005",
+      "name": "QUEUE MASTER",
+      "thinking_error": "Mental Overload / Working Memory",
+      "best_for": "Mental overload",
+      "reset_dna_family": "ORGANISE",
+      "mind_bend": "Mental overload can come from simultaneous competition, not sheer quantity; sequencing the arrivals changes the pressure without deleting any of them."
+    },
+    {
+      "rank": 24,
+      "id": "TS-520",
+      "name": "BUFFER CLEAR",
+      "thinking_error": "Mental Overload / Working Memory",
+      "best_for": "Mental overload",
+      "reset_dna_family": "ORGANISE",
+      "mind_bend": "Working memory can be intentionally left empty for a few beats after one task segment. The next task need not occupy the buffer immediately."
+    },
+    {
+      "rank": 25,
+      "id": "TS-001",
+      "name": "BIRTH CATCHER",
+      "thinking_error": "Overthinking / Thought Fusion",
+      "best_for": "Overthinking • Mental quiet",
+      "reset_dna_family": "INTERRUPT",
+      "mind_bend": "A spontaneous thought has a beginning you can catch, separating the arrival of mental content from the act of choosing it."
+    },
+    {
+      "rank": 26,
+      "id": "TS-040",
+      "name": "HEADLINE CUT",
+      "thinking_error": "Overthinking / Thought Fusion",
+      "best_for": "Overthinking",
+      "reset_dna_family": "INTERRUPT",
+      "mind_bend": "Compressing a long monologue to five words reveals how little information may sit underneath a large amount of mental narration."
+    },
+    {
+      "rank": 27,
+      "id": "TS-362",
+      "name": "SENSATION LOCATION SWITCH",
+      "thinking_error": "Panic / Body Alarm",
+      "best_for": "Panic/body alarm",
+      "reset_dna_family": "GROUND",
+      "mind_bend": "Moving attention from a mild sensation to neutral contact changes what pulls awareness without requiring the sensation itself to change, separating salience from physical intensity."
+    },
+    {
+      "rank": 28,
+      "id": "TS-353",
+      "name": "TENSION LOCATION",
+      "thinking_error": "Panic / Body Alarm",
+      "best_for": "Panic/body alarm",
+      "reset_dna_family": "GROUND",
+      "mind_bend": "Tension can be located in one obvious area without launching a whole-body search. A local sensation does not require global surveillance."
+    },
+    {
+      "rank": 29,
+      "id": "TS-634",
+      "name": "SKILL BOUNDARY",
+      "thinking_error": "Performance / Confidence",
+      "best_for": "Performance pressure",
+      "reset_dna_family": "ACT",
+      "mind_bend": "One mistake can be contained to the exact skill that failed. This underscores how performance errors become identity threats only when they spread beyond their actual boundary."
+    },
+    {
+      "rank": 30,
+      "id": "TS-648",
+      "name": "STUMBLE IMMUNITY",
+      "thinking_error": "Performance / Confidence",
+      "best_for": "Performance pressure • Confidence",
+      "reset_dna_family": "ACT",
+      "mind_bend": "A deliberate harmless stumble can be left behind while performance continues. Restart and correction are optional responses rather than consequences built into error."
+    },
+    {
+      "rank": 31,
+      "id": "TS-559",
+      "name": "SAFE PLACE FEATURE",
+      "thinking_error": "Positive State",
+      "best_for": "Positive-state play",
+      "reset_dna_family": "AMPLIFY",
+      "mind_bend": "One genuine feature of a safe place may be enough to contact safety information, separating a real cue from an elaborate fantasy of perfect protection."
+    },
+    {
+      "rank": 32,
+      "id": "TS-575",
+      "name": "GOODNESS WITHOUT STORY",
+      "thinking_error": "Positive State",
+      "best_for": "Positive-state play",
+      "reset_dna_family": "AMPLIFY",
+      "mind_bend": "Something can be simply okay before any explanation of why. Positive fact is separable from the story used to justify or amplify it."
+    },
+    {
+      "rank": 33,
+      "id": "TS-662",
+      "name": "SLOW ROOM SCAN",
+      "thinking_error": "Sleep / Winding Down",
+      "best_for": "Winding down",
+      "reset_dna_family": "QUIET",
+      "mind_bend": "Scanning a room extremely slowly changes the tempo of visual search. Speed itself is a feature that can amplify or soften the sense of scanning for something."
+    },
+    {
+      "rank": 34,
+      "id": "TS-674",
+      "name": "BODY HEAVY IMAGERY",
+      "thinking_error": "Sleep / Winding Down",
+      "best_for": "Winding down",
+      "reset_dna_family": "QUIET",
+      "mind_bend": "Imagining the support surface carrying more of the body’s weight can change felt heaviness without changing the surface. Bodily support is part sensation and part representation."
+    },
+    {
+      "rank": 35,
+      "id": "TS-398",
+      "name": "SOCIAL STATUS STRIP",
+      "thinking_error": "Social / Team / Perspective",
+      "best_for": "Social pressure",
+      "reset_dna_family": "CONNECT",
+      "mind_bend": "Removing titles, brands or status symbols while keeping behaviour fixed exposes how symbolic rank can alter judgments of the same person and interaction."
+    },
+    {
+      "rank": 36,
+      "id": "TS-411",
+      "name": "ONE-FRIEND ANCHOR",
+      "thinking_error": "Social / Team / Perspective",
+      "best_for": "Social pressure",
+      "reset_dna_family": "CONNECT",
+      "mind_bend": "A vague imagined crowd changes when reduced to one known safe person. This illustrates how social threat can be amplified by representing many unknown observers as one undifferentiated mass."
+    },
+    {
+      "rank": 37,
+      "id": "TS-727",
+      "name": "ONE HELP LINE",
+      "thinking_error": "Support First / Safety",
+      "best_for": "Support first",
+      "reset_dna_family": "SUPPORT",
+      "mind_bend": "Human help may begin with one plain sentence rather than a complete explanation. Connection is an action that can happen before you have perfect words."
+    },
+    {
+      "rank": 38,
+      "id": "TS-735",
+      "name": "SAFE COMPANION",
+      "thinking_error": "Support First / Safety",
+      "best_for": "Support first",
+      "reset_dna_family": "SUPPORT",
+      "mind_bend": "Asking someone to stay converts support from an idea into shared physical time. Companionship is a practical safety resource during high activation."
+    },
+    {
+      "rank": 39,
+      "id": "TS-076",
+      "name": "PIXEL PANIC",
+      "thinking_error": "Uncertainty / Future Worry / Reassurance",
+      "best_for": "Worry • Mental imagery",
+      "reset_dna_family": "DISTANCE",
+      "mind_bend": "A troubling image can retain its identity while losing almost all spatial size. Visual dominance and informational content are different properties."
+    },
+    {
+      "rank": 40,
+      "id": "TS-269",
+      "name": "FUTURE WEATHER",
+      "thinking_error": "Uncertainty / Future Worry / Reassurance",
+      "best_for": "Uncertainty",
+      "reset_dna_family": "DISTANCE",
+      "mind_bend": "Forecast confidence can change like weather without invalidating the person making the forecast. Uncertainty is updateable rather than as a verdict that must stay fixed."
+    },
+    {
+      "rank": 41,
+      "id": "TS-301",
+      "name": "URGE + CHOICE",
+      "thinking_error": "Urges / Habit Loops",
+      "best_for": "Urges",
+      "reset_dna_family": "CHOOSE",
+      "mind_bend": "An urge and a chosen action can remain visible together. Desire need not disappear before behaviour can follow a different path."
+    },
+    {
+      "rank": 42,
+      "id": "TS-304",
+      "name": "URGE AUCTION",
+      "thinking_error": "Urges / Habit Loops",
+      "best_for": "Urges",
+      "reset_dna_family": "CHOOSE",
+      "mind_bend": "Urge, value and consequence can compete under the same finite token budget. Action is the outcome of multiple claims rather than whichever feeling shouts loudest."
+    },
+    {
+      "rank": 43,
+      "id": "TS-383",
+      "name": "VALUES WITHOUT ROLE",
+      "thinking_error": "Values / Meaning / Grief",
+      "best_for": "Values/meaning",
+      "reset_dna_family": "CLARIFY",
+      "mind_bend": "A value can remain meaningful after one role is mentally removed. Values are deeper continuity that need not depend on a particular title or position."
+    },
+    {
+      "rank": 44,
+      "id": "TS-595",
+      "name": "LOSS CARRY",
+      "thinking_error": "Values / Meaning / Grief",
+      "best_for": "Grief/loss",
+      "reset_dna_family": "CLARIFY",
+      "mind_bend": "A valued quality can be carried forward from something that ended without claiming the loss was good. What changes is continuity of value alongside genuine absence."
+    },
+    {
+      "rank": 45,
+      "id": "TS-007",
+      "name": "LOOP COUNTER",
+      "thinking_error": "Memory / Replay / Rumination",
+      "best_for": "Rumination",
+      "reset_dna_family": "INTERRUPT",
+      "mind_bend": "A repeated thought may feel productive while contributing nothing new; information gain, not mental motion, is what distinguishes thinking from looping."
+    },
+    {
+      "rank": 46,
+      "id": "TS-150",
+      "name": "ONE-TAKE RULE",
+      "thinking_error": "Memory / Replay / Rumination",
+      "best_for": "Rumination",
+      "reset_dna_family": "INTERRUPT",
+      "mind_bend": "One complete viewing can end without a restart. Replay is an additional mental action rather than an unavoidable continuation of the original clip."
+    },
+    {
+      "rank": 47,
+      "id": "TS-252",
+      "name": "FIRST MINUTE AFTER",
+      "thinking_error": "Uncertainty / Future Worry / Reassurance",
+      "best_for": "Worry",
+      "reset_dna_family": "DISTANCE",
+      "mind_bend": "The immediate minute following a feared outcome can be ordinary and procedural. This explains how catastrophe imagery often skips the mundane continuation that comes next."
+    },
+    {
+      "rank": 48,
+      "id": "TS-408",
+      "name": "SHARED-FACT CENTRE",
+      "thinking_error": "Social / Team / Perspective",
+      "best_for": "Social pressure",
+      "reset_dna_family": "CONNECT",
+      "mind_bend": "One mutually verifiable fact can create common ground without requiring agreement about motives or interpretations. One implication is a stable centre for interaction."
+    },
+    {
+      "rank": 49,
+      "id": "TS-305",
+      "name": "URGE FALSE START",
+      "thinking_error": "Urges / Habit Loops",
+      "best_for": "Urges",
+      "reset_dna_family": "CHOOSE",
+      "mind_bend": "A motor plan can begin in imagination and still be aborted before completion. What changes is an early zone where initiation has occurred but commitment has not."
+    },
+    {
+      "rank": 50,
+      "id": "TS-587",
+      "name": "VALUE TRADEOFF",
+      "thinking_error": "Values / Meaning / Grief",
+      "best_for": "Values/meaning",
+      "reset_dna_family": "CLARIFY",
+      "mind_bend": "Two genuine values can point in different directions at the unchanged time. Moral conflict is a real trade-off rather than evidence that one value must be fake."
+    }
+  ]
+}
