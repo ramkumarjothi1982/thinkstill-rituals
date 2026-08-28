@@ -1,6 +1,0 @@
-ThinkStill — All Rights Reserved
-Copyright (c) 2026 ThinkStill.
-
-This repository and its ritual library, routing metadata, interface code, text, game mechanics,
-and related product assets are proprietary. No permission is granted to copy, redistribute,
-sublicense, resell, publish, or create derivative commercial products without written permission.
