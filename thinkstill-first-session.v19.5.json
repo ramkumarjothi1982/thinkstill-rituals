@@ -1,0 +1,457 @@
+{
+  "schema": "thinkstill-first-session-v19.5",
+  "version": "19.5.0",
+  "rowCount": 50,
+  "rituals": [
+    {
+      "rank": 1,
+      "id": "TS-163",
+      "displayName": "BLINK RESET",
+      "bubble": "STILL",
+      "bestFor": "Attention",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "GROUND"
+    },
+    {
+      "rank": 2,
+      "id": "TS-159",
+      "displayName": "NEAR-FAR JUMP",
+      "bubble": "STILL",
+      "bestFor": "Grounding",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "GROUND"
+    },
+    {
+      "rank": 3,
+      "id": "TS-037",
+      "displayName": "IF-FRAME",
+      "bubble": "GLITCH",
+      "bestFor": "Beliefs/evidence",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "REFRAME"
+    },
+    {
+      "rank": 4,
+      "id": "TS-707",
+      "displayName": "RULE BOUNDARY",
+      "bubble": "GLITCH",
+      "bestFor": "Beliefs/evidence",
+      "cognitiveLoad": "MEDIUM",
+      "resetDNA": "REFRAME"
+    },
+    {
+      "rank": 5,
+      "id": "TS-427",
+      "displayName": "FACT-FEELING-ASK",
+      "bubble": "SYNC",
+      "bestFor": "Communication",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "CONNECT"
+    },
+    {
+      "rank": 6,
+      "id": "TS-430",
+      "displayName": "BOUNDARY LOOP",
+      "bubble": "SYNC",
+      "bestFor": "Boundaries",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "CONNECT"
+    },
+    {
+      "rank": 7,
+      "id": "TS-019",
+      "displayName": "THOUGHT DELAY",
+      "bubble": "GLITCH",
+      "bestFor": "Thought experiments",
+      "cognitiveLoad": "MEDIUM",
+      "resetDNA": "PLAY"
+    },
+    {
+      "rank": 8,
+      "id": "TS-073",
+      "displayName": "LETTER DELAY",
+      "bubble": "GLITCH",
+      "bestFor": "Thought experiments",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "PLAY"
+    },
+    {
+      "rank": 9,
+      "id": "TS-002",
+      "displayName": "DEATH CATCHER",
+      "bubble": "GLITCH",
+      "bestFor": "Overthinking • Mental quiet",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "INTERRUPT"
+    },
+    {
+      "rank": 10,
+      "id": "TS-454",
+      "displayName": "REGRET PAIR",
+      "bubble": "PATCH",
+      "bestFor": "Decision pressure",
+      "cognitiveLoad": "MEDIUM",
+      "resetDNA": "CHOOSE"
+    },
+    {
+      "rank": 11,
+      "id": "TS-276",
+      "displayName": "EMOTION ORB",
+      "bubble": "SYNC",
+      "bestFor": "Emotion play",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "FEEL"
+    },
+    {
+      "rank": 12,
+      "id": "TS-280",
+      "displayName": "EMOTION ACTION BLOCK",
+      "bubble": "RUSH",
+      "bestFor": "Emotion play",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "FEEL"
+    },
+    {
+      "rank": 13,
+      "id": "TS-479",
+      "displayName": "BAD FIRST MOVE",
+      "bubble": "PATCH",
+      "bestFor": "Getting started",
+      "cognitiveLoad": "MEDIUM",
+      "resetDNA": "ACT"
+    },
+    {
+      "rank": 14,
+      "id": "TS-488",
+      "displayName": "FRICTION HUNT",
+      "bubble": "PATCH",
+      "bestFor": "Getting started",
+      "cognitiveLoad": "MEDIUM",
+      "resetDNA": "ACT"
+    },
+    {
+      "rank": 15,
+      "id": "TS-034",
+      "displayName": "PRONOUN ZERO",
+      "bubble": "GLITCH",
+      "bestFor": "Identity/self-story",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "CLARIFY"
+    },
+    {
+      "rank": 16,
+      "id": "TS-395",
+      "displayName": "ROLE EXIT",
+      "bubble": "SYNC",
+      "bestFor": "Identity/self-story",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "CLARIFY"
+    },
+    {
+      "rank": 17,
+      "id": "TS-026",
+      "displayName": "VOLUME LADDER",
+      "bubble": "GLITCH",
+      "bestFor": "Inner speech",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "INTERRUPT"
+    },
+    {
+      "rank": 18,
+      "id": "TS-028",
+      "displayName": "ROBOT READ",
+      "bubble": "GLITCH",
+      "bestFor": "Inner speech",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "INTERRUPT"
+    },
+    {
+      "rank": 19,
+      "id": "TS-004",
+      "displayName": "NO-SEQUEL",
+      "bubble": "GLITCH",
+      "bestFor": "Rumination",
+      "cognitiveLoad": "MEDIUM",
+      "resetDNA": "INTERRUPT"
+    },
+    {
+      "rank": 20,
+      "id": "TS-075",
+      "displayName": "STAMP COMPLETE",
+      "bubble": "GLITCH",
+      "bestFor": "Rumination",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "INTERRUPT"
+    },
+    {
+      "rank": 21,
+      "id": "TS-081",
+      "displayName": "CARD EDGE",
+      "bubble": "DROP",
+      "bestFor": "Mental imagery",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "DISTANCE"
+    },
+    {
+      "rank": 22,
+      "id": "TS-078",
+      "displayName": "MIRROR FRAME",
+      "bubble": "DROP",
+      "bestFor": "Mental imagery",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "DISTANCE"
+    },
+    {
+      "rank": 23,
+      "id": "TS-005",
+      "displayName": "QUEUE MASTER",
+      "bubble": "GLITCH",
+      "bestFor": "Mental overload",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "ORGANISE"
+    },
+    {
+      "rank": 24,
+      "id": "TS-520",
+      "displayName": "BUFFER CLEAR",
+      "bubble": "PATCH",
+      "bestFor": "Mental overload • Task switching",
+      "cognitiveLoad": "MEDIUM",
+      "resetDNA": "ORGANISE"
+    },
+    {
+      "rank": 25,
+      "id": "TS-001",
+      "displayName": "BIRTH CATCHER",
+      "bubble": "GLITCH",
+      "bestFor": "Overthinking • Mental quiet",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "INTERRUPT"
+    },
+    {
+      "rank": 26,
+      "id": "TS-040",
+      "displayName": "HEADLINE CUT",
+      "bubble": "GLITCH",
+      "bestFor": "Overthinking",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "INTERRUPT"
+    },
+    {
+      "rank": 27,
+      "id": "TS-362",
+      "displayName": "SENSATION LOCATION SWITCH",
+      "bubble": "STILL",
+      "bestFor": "Panic/body alarm",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "GROUND"
+    },
+    {
+      "rank": 28,
+      "id": "TS-353",
+      "displayName": "TENSION LOCATION",
+      "bubble": "STILL",
+      "bestFor": "Panic/body alarm",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "GROUND"
+    },
+    {
+      "rank": 29,
+      "id": "TS-634",
+      "displayName": "SKILL BOUNDARY",
+      "bubble": "RUSH",
+      "bestFor": "Performance pressure",
+      "cognitiveLoad": "MEDIUM",
+      "resetDNA": "ACT"
+    },
+    {
+      "rank": 30,
+      "id": "TS-648",
+      "displayName": "STUMBLE IMMUNITY",
+      "bubble": "RUSH",
+      "bestFor": "Performance pressure • Confidence",
+      "cognitiveLoad": "MEDIUM",
+      "resetDNA": "ACT"
+    },
+    {
+      "rank": 31,
+      "id": "TS-559",
+      "displayName": "SAFE PLACE FEATURE",
+      "bubble": "DROP",
+      "bestFor": "Positive-state play",
+      "cognitiveLoad": "MEDIUM",
+      "resetDNA": "AMPLIFY"
+    },
+    {
+      "rank": 32,
+      "id": "TS-575",
+      "displayName": "GOODNESS WITHOUT STORY",
+      "bubble": "DROP",
+      "bestFor": "Positive-state play",
+      "cognitiveLoad": "MEDIUM",
+      "resetDNA": "AMPLIFY"
+    },
+    {
+      "rank": 33,
+      "id": "TS-662",
+      "displayName": "SLOW ROOM SCAN",
+      "bubble": "STILL",
+      "bestFor": "Winding down",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "QUIET"
+    },
+    {
+      "rank": 34,
+      "id": "TS-674",
+      "displayName": "BODY HEAVY IMAGERY",
+      "bubble": "STILL",
+      "bestFor": "Winding down",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "QUIET"
+    },
+    {
+      "rank": 35,
+      "id": "TS-398",
+      "displayName": "SOCIAL STATUS STRIP",
+      "bubble": "SYNC",
+      "bestFor": "Social pressure",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "CONNECT"
+    },
+    {
+      "rank": 36,
+      "id": "TS-411",
+      "displayName": "ONE-FRIEND ANCHOR",
+      "bubble": "SYNC",
+      "bestFor": "Social pressure",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "CONNECT"
+    },
+    {
+      "rank": 37,
+      "id": "TS-582",
+      "displayName": "GUESS LEFTOVER",
+      "bubble": "PATCH",
+      "bestFor": "Beliefs/evidence • Interpretation",
+      "cognitiveLoad": "MEDIUM",
+      "resetDNA": "REFRAME"
+    },
+    {
+      "rank": 38,
+      "id": "TS-573",
+      "displayName": "MINIMUM EDIT",
+      "bubble": "PATCH",
+      "bestFor": "Catastrophising • Thought accuracy",
+      "cognitiveLoad": "MEDIUM",
+      "resetDNA": "REFRAME"
+    },
+    {
+      "rank": 39,
+      "id": "TS-076",
+      "displayName": "PIXEL PANIC",
+      "bubble": "DROP",
+      "bestFor": "Worry • Mental imagery",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "DISTANCE"
+    },
+    {
+      "rank": 40,
+      "id": "TS-269",
+      "displayName": "FUTURE WEATHER",
+      "bubble": "LOOPIE",
+      "bestFor": "Uncertainty",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "DISTANCE"
+    },
+    {
+      "rank": 41,
+      "id": "TS-301",
+      "displayName": "URGE + CHOICE",
+      "bubble": "RUSH",
+      "bestFor": "Urges",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "CHOOSE"
+    },
+    {
+      "rank": 42,
+      "id": "TS-304",
+      "displayName": "URGE AUCTION",
+      "bubble": "RUSH",
+      "bestFor": "Urges",
+      "cognitiveLoad": "MEDIUM",
+      "resetDNA": "CHOOSE"
+    },
+    {
+      "rank": 43,
+      "id": "TS-383",
+      "displayName": "VALUES WITHOUT ROLE",
+      "bubble": "SYNC",
+      "bestFor": "Values/meaning",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "CLARIFY"
+    },
+    {
+      "rank": 44,
+      "id": "TS-595",
+      "displayName": "LOSS CARRY",
+      "bubble": "DROP",
+      "bestFor": "Grief/loss",
+      "cognitiveLoad": "MEDIUM",
+      "resetDNA": "CLARIFY"
+    },
+    {
+      "rank": 45,
+      "id": "TS-007",
+      "displayName": "LOOP COUNTER",
+      "bubble": "GLITCH",
+      "bestFor": "Rumination",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "INTERRUPT"
+    },
+    {
+      "rank": 46,
+      "id": "TS-150",
+      "displayName": "ONE-TAKE RULE",
+      "bubble": "LOOPIE",
+      "bestFor": "Rumination",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "INTERRUPT"
+    },
+    {
+      "rank": 47,
+      "id": "TS-252",
+      "displayName": "FIRST MINUTE AFTER",
+      "bubble": "LOOPIE",
+      "bestFor": "Worry",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "DISTANCE"
+    },
+    {
+      "rank": 48,
+      "id": "TS-408",
+      "displayName": "SHARED-FACT CENTRE",
+      "bubble": "PATCH",
+      "bestFor": "Social pressure",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "CONNECT"
+    },
+    {
+      "rank": 49,
+      "id": "TS-305",
+      "displayName": "URGE FALSE START",
+      "bubble": "RUSH",
+      "bestFor": "Urges",
+      "cognitiveLoad": "LOW",
+      "resetDNA": "CHOOSE"
+    },
+    {
+      "rank": 50,
+      "id": "TS-587",
+      "displayName": "VALUE TRADEOFF",
+      "bubble": "DROP",
+      "bestFor": "Values/meaning",
+      "cognitiveLoad": "MEDIUM",
+      "resetDNA": "CLARIFY"
+    }
+  ]
+}

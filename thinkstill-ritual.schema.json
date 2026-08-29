@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "thinkstill-ritual.schema.json",
+  "type": "object",
+  "required": [
+    "id",
+    "displayName",
+    "play",
+    "twist",
+    "reveal",
+    "mindBend",
+    "fingerprint",
+    "cognitiveLoad",
+    "renderMode",
+    "supportFirstBypass"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^TS-[0-9]{3}$"
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{16}$"
+    },
+    "cognitiveLoad": {
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    "renderMode": {
+      "enum": [
+        "RITUAL",
+        "SUPPORT FIRST"
+      ]
+    },
+    "supportFirstBypass": {
+      "type": "boolean"
+    },
+    "intentAliases": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "supportTrigger": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "supportFirst": {
+      "type": "boolean"
+    }
+  }
+}
