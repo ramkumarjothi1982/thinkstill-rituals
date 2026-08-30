@@ -1,0 +1,138 @@
+{
+  "schema": "thinkstill-bubble-voice-v2",
+  "version": "18.3.0",
+  "release": "BUBBLE_CHARACTER_VOICE_HARDENED",
+  "policy": {
+    "standardRituals": "Bubble-character language applies to Hook, Rule, PLAY, Twist, Reveal and Mind Bend for all 725 non-safety rituals.",
+    "semanticAnchor": "The clean v18.1 semantic sentence is retained verbatim inside every voiced field. Bubble expression frames meaning; it does not replace mechanism-critical nouns or verbs.",
+    "supportFirst": "Keep all 25 safety-critical SUPPORT FIRST rows plain, direct and un-gamified.",
+    "mechanisms": "Canonical mechanisms, IDs, routing, safety text and canonical technique names remain unchanged.",
+    "prohibitedBlindSubstitutions": [
+      "sequence → cycle",
+      "social → connection",
+      "becomes → settles into",
+      "answer → answer-loop",
+      "future → future-loop"
+    ]
+  },
+  "audit": {
+    "rituals": 750,
+    "voicedRituals": 725,
+    "supportFirst": 25,
+    "voicedComponents": "4350 / 4350",
+    "semanticAnchorsPreserved": "4350 / 4350",
+    "semanticPairsAtOrAbove050": 0,
+    "maxSemanticSimilarity": 0.4103,
+    "repeated4WordBlocksAcross5Plus": 0,
+    "repeated5WordBlocksAcross5Plus": 0,
+    "repeated6WordBlocksAcross5Plus": 0,
+    "uniqueFingerprints": 750
+  },
+  "bubbles": [
+    {
+      "bubble": "GLITCH",
+      "character": "Cyber-diagnostic; treats thoughts as signals, frames, noise and distortion without changing the underlying mechanism.",
+      "signatureVocabulary": [
+        "signal",
+        "static",
+        "distortion",
+        "noise",
+        "feed",
+        "frame",
+        "pixel",
+        "error",
+        "interference"
+      ]
+    },
+    {
+      "bubble": "DROP",
+      "character": "Gravity/release; lowers grip, pressure and mental weight while retaining the exact task meaning.",
+      "signatureVocabulary": [
+        "weight",
+        "release",
+        "pressure",
+        "grip",
+        "tension",
+        "landing",
+        "lighten",
+        "ease",
+        "gravity"
+      ]
+    },
+    {
+      "bubble": "STILL",
+      "character": "Quiet precision; opens space, slows cadence and steadies attention without forcing blankness.",
+      "signatureVocabulary": [
+        "quiet",
+        "space",
+        "steady",
+        "soft",
+        "clear",
+        "still",
+        "anchor",
+        "pause",
+        "centre"
+      ]
+    },
+    {
+      "bubble": "PATCH",
+      "character": "Repair/update; frames the task as a route, repair, update or recalibration while preserving the original operation.",
+      "signatureVocabulary": [
+        "patch",
+        "repair",
+        "update",
+        "rewire",
+        "restore",
+        "stitch",
+        "rebuild",
+        "recalibrate",
+        "route"
+      ]
+    },
+    {
+      "bubble": "LOOPIE",
+      "character": "Recursive/playback; uses replay, echo, return and timeline language without converting sequences into cycles.",
+      "signatureVocabulary": [
+        "loop",
+        "replay",
+        "echo",
+        "orbit",
+        "return",
+        "pattern",
+        "timeline",
+        "repeat",
+        "pass"
+      ]
+    },
+    {
+      "bubble": "RUSH",
+      "character": "Kinetic/punchy; reads pulse, surge, charge and momentum without adding urgency to the mechanism.",
+      "signatureVocabulary": [
+        "pulse",
+        "surge",
+        "charge",
+        "momentum",
+        "beat",
+        "wave",
+        "spark",
+        "burst",
+        "tempo"
+      ]
+    },
+    {
+      "bubble": "SYNC",
+      "character": "Integrative/relational; uses alignment, channels, rhythm and pairing while preserving semantically important social terms.",
+      "signatureVocabulary": [
+        "align",
+        "channel",
+        "rhythm",
+        "link",
+        "pair",
+        "balance",
+        "harmony",
+        "connection",
+        "signal"
+      ]
+    }
+  ]
+}

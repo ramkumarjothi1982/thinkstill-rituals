@@ -1,0 +1,46 @@
+{
+  "schema": "thinkstill-manifest-v18.3",
+  "project": "ThinkStill 750 BUBBLE CHARACTER VOICE HARDENED MASTER",
+  "version": "18.3.0",
+  "release": "BUBBLE_CHARACTER_VOICE_HARDENED",
+  "rowCount": 750,
+  "supportFirstCount": 25,
+  "firstSessionCount": 50,
+  "uniqueFingerprintCount": 750,
+  "data": {
+    "rituals": {
+      "url": "/data/thinkstill-rituals.json",
+      "versionedUrl": "/data/thinkstill-rituals.v18.3.json",
+      "sha256": "705f33769001c5bf9aaf6638dd5f31142aea7a1b06c19c1d4202faedddb1184d"
+    },
+    "routing": {
+      "url": "/data/thinkstill-routing.json",
+      "versionedUrl": "/data/thinkstill-routing.v18.3.json",
+      "sha256": "e45e061373a44e48682882f472aa0f4673752fc8a4685da46685095719b4568d"
+    },
+    "safety": {
+      "url": "/data/thinkstill-safety.json",
+      "versionedUrl": "/data/thinkstill-safety.v18.3.json",
+      "sha256": "96650a4a756683f56be025e3afe1cbb0a4fb577b6a210312667188c2e0827120"
+    },
+    "firstSession": {
+      "url": "/data/thinkstill-first-session.json",
+      "versionedUrl": "/data/thinkstill-first-session.v18.3.json",
+      "sha256": "1eb41b78d04cd0e28fa813b1904704c8536098edd34b96fc6f6083128da453cf"
+    }
+  },
+  "routingPolicy": {
+    "order": [
+      "SUPPORT_FIRST",
+      "SUBSTANCE_TIER_1_URGE",
+      "SUBSTANCE_TIER_2_HABIT",
+      "SUBSTANCE_TIER_3_DELIBERATION",
+      "INTENT_MATCH",
+      "COGNITIVE_LOAD",
+      "RESET_DNA"
+    ],
+    "supportFirstBypassesGameShell": true,
+    "tier3RequiresDeliberationLanguage": true,
+    "preferLowCognitiveLoadDuringAcuteDistress": true
+  }
+}

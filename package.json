@@ -1,0 +1,9 @@
+{
+  "name": "thinkstill-data-v18-3",
+  "private": true,
+  "version": "18.3.0",
+  "type": "module",
+  "scripts": {
+    "validate:thinkstill": "node validate-thinkstill.mjs"
+  }
+}
