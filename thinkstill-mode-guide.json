@@ -1,0 +1,185 @@
+{
+  "schema": "thinkstill-mode-guide-v20.3",
+  "version": "20.3.0",
+  "controlLabel": "Intensity",
+  "storageKey": "thinkstill.intensity",
+  "legacyStorageKey": "thinkstill.vibe",
+  "defaultMode": "Cheeky",
+  "availableModes": [
+    "Jolly",
+    "Cheeky",
+    "Unfiltered"
+  ],
+  "settings": [
+    {
+      "setting": "Implementation specification for the chat UI. The workbook supplies final copy; the live UI must consume these fields.",
+      "value": "",
+      "behaviour": "",
+      "scope": ""
+    },
+    {
+      "setting": "Control label",
+      "value": "Intensity",
+      "behaviour": "Show only the current choice with a dropdown chevron.",
+      "scope": "Beside the message input"
+    },
+    {
+      "setting": "Choices",
+      "value": "Jolly / Cheeky / Unfiltered",
+      "behaviour": "Jolly: playful, no swearing. Cheeky: bold, light language. Unfiltered: stronger language is allowed selectively, never by default in every card.",
+      "scope": "All seven bubbles"
+    },
+    {
+      "setting": "Default",
+      "value": "Cheeky",
+      "behaviour": "Use only when there is no valid remembered selection. Never silently upgrade to Unfiltered.",
+      "scope": "Shared preference"
+    },
+    {
+      "setting": "Storage key",
+      "value": "thinkstill.intensity",
+      "behaviour": "Persist jolly / cheeky / unfiltered and map it to the workbook Mode field.",
+      "scope": "Across sessions on the same browser/origin"
+    },
+    {
+      "setting": "Across bubbles",
+      "value": "One shared preference",
+      "behaviour": "Carry the choice into each bubble while keeping that bubble's pace and personality.",
+      "scope": "Shared chat state"
+    },
+    {
+      "setting": "Across devices",
+      "value": "Account preference, if available",
+      "behaviour": "Local browser storage alone does not synchronise devices. Use an existing account preference service if cross-device sync is required.",
+      "scope": "Integration detail"
+    },
+    {
+      "setting": "On change",
+      "value": "Same ID, new wording",
+      "behaviour": "Replace Opening Line / Ritual Card / Optional Check-in immediately from the selected Mode row. Keep current step, progress, saved state and history.",
+      "scope": "No new technique or repeat count"
+    },
+    {
+      "setting": "Content lookup",
+      "value": "ID + Mode",
+      "behaviour": "Choose the ritual through existing routing first, then select its wording. Do not route by profanity or treat modes as different rituals.",
+      "scope": "ALL 3 MODES"
+    },
+    {
+      "setting": "Card layout",
+      "value": "Opening + three short lines",
+      "behaviour": "Give the opening visual prominence. All card text is visible immediately. No slow reveal, forced wait or required extra tap.",
+      "scope": "Normal rituals"
+    },
+    {
+      "setting": "Opening duplication",
+      "value": "Render once",
+      "behaviour": "Ritual Card already starts with Opening Line. Split its first line for typography; do not prepend the separate field again.",
+      "scope": "Normal rituals"
+    },
+    {
+      "setting": "Reflection",
+      "value": "Optional Check-in",
+      "behaviour": "Use the Optional Check-in supplied for that ID + Mode. Prompts deliberately vary across the library and allow shift, no shift, discomfort or something different without implying success.",
+      "scope": "After the action, if useful"
+    },
+    {
+      "setting": "Secondary text",
+      "value": "Mind Bend / Safety",
+      "behaviour": "Keep Mind Bend secondary and optional. Keep the existing Safety note accessible once alongside the card.",
+      "scope": "Normal rituals"
+    },
+    {
+      "setting": "Support bypass",
+      "value": "Before intensity",
+      "behaviour": "Use original Support First copy directly, with its safety block once. Preserve every emergency and severe-substance route.",
+      "scope": "25 existing entries"
+    },
+    {
+      "setting": "Sensitive context",
+      "value": "Gentle Card",
+      "behaviour": "For grief or serious distress, use the plain action-first version. Do not change the remembered preference. Immediate danger still routes to Support First.",
+      "scope": "Context override"
+    },
+    {
+      "setting": "TS-595",
+      "value": "Gentle in all modes",
+      "behaviour": "Loss is never the punchline. This ritual deliberately uses the same compassionate card in all three modes.",
+      "scope": "Grief/loss ritual"
+    },
+    {
+      "setting": "Humour target",
+      "value": "The mental story or its delivery",
+      "behaviour": "Avoid insulting the user, dismissing real problems, laughing at suffering, or turning responsibilities into things to ignore.",
+      "scope": "All authored voices"
+    },
+    {
+      "setting": "Technique preservation",
+      "value": "Shared action, rule and twist",
+      "behaviour": "Tone changes delivery only. Do not add repetitions, exposure, physical actions or urgency.",
+      "scope": "All modes"
+    },
+    {
+      "setting": "Return navigation",
+      "value": "Return Prompt",
+      "behaviour": "Use as a simple optional link; preserve the selected intensity. No forced replay, streak threat or pressure to keep reading.",
+      "scope": "Normal rituals"
+    },
+    {
+      "setting": "Copy fallback",
+      "value": "Cheeky for an invalid preference",
+      "behaviour": "Validate the stored value. If a required mode is unavailable, use the same ID's default card; never change the technique silently.",
+      "scope": "Implementation rule"
+    },
+    {
+      "setting": "Legacy migration",
+      "value": "Read old thinkstill.vibe once if present",
+      "behaviour": "Map its valid jolly / cheeky / unfiltered value into thinkstill.intensity, then use the new key going forward.",
+      "scope": "Backward compatibility"
+    }
+  ],
+  "bubbles": [
+    {
+      "bubble": "GLITCH",
+      "personality": "Funny sceptic",
+      "delivery": "Dry, curious, mildly grumpy; expose the thought's delivery tricks.",
+      "boundaries": "Receipts, suspicious claims, noisy narrators; joke about the thought, never the person."
+    },
+    {
+      "bubble": "DROP",
+      "personality": "Laid-back companion",
+      "delivery": "Warm, unhurried; make room, loosen the grip and keep meaning local.",
+      "boundaries": "Light luggage, smaller pictures, modest pleasures; never dismiss loss or responsibility."
+    },
+    {
+      "bubble": "STILL",
+      "personality": "Quiet friend",
+      "delivery": "Short, low-pressure invitations with dry humour; no shouting or forced happiness.",
+      "boundaries": "Off-duty committees, ordinary rooms, permission to pause; Unfiltered stays soft and uses no strong profanity."
+    },
+    {
+      "bubble": "PATCH",
+      "personality": "Warm problem-solving friend",
+      "delivery": "Friendly, inventive and practical; help a small part fit without judging the user.",
+      "boundaries": "Small repairs, missing links, mistaken paperwork; no robotic diagnostic prefixes."
+    },
+    {
+      "bubble": "LOOPIE",
+      "personality": "Playful storyteller",
+      "delivery": "Theatrical and curious about replays, imagined futures and repeated checking.",
+      "boundaries": "Sequels, directors, scripts and echoes; do not encourage extra compulsive repetitions."
+    },
+    {
+      "bubble": "RUSH",
+      "personality": "Energetic teammate",
+      "delivery": "Punchy, encouraging and mischievous; turn readiness into one bounded move.",
+      "boundaries": "Queues, permits, first steps, productivity jokes; no added urgency or risky challenges."
+    },
+    {
+      "bubble": "SYNC",
+      "personality": "Calm, sharp companion",
+      "delivery": "Clear, warm and relational; organise competing feelings, roles and conversations.",
+      "boundaries": "Shared space, microphones, labels and social scripts; never ridicule a real person."
+    }
+  ]
+}
