@@ -1,0 +1,66 @@
+{
+  "schema": "thinkstill-manifest-v20-runtime",
+  "project": "ThinkStill",
+  "version": "20.0.0",
+  "release": "FINAL MASTER RELEASE",
+  "generated_at": "2026-09-17",
+  "row_count": 750,
+  "mode_row_count": 2250,
+  "support_first_count": 25,
+  "default_vibe": "Cheeky",
+  "vibe_choices": [
+    "Jolly",
+    "Cheeky",
+    "Unfiltered"
+  ],
+  "mode_file": "thinkstill-modes.json",
+  "bubbles": [
+    {
+      "bubble": "GLITCH",
+      "filename": "rituals_glitch.json",
+      "rows": 145,
+      "sha256": "8356b9f7d849a56ef5540e918564d11429b6fb326f08832099ac512bdd6c3b03"
+    },
+    {
+      "bubble": "DROP",
+      "filename": "rituals_drop.json",
+      "rows": 111,
+      "sha256": "94631022d168139f369749335e0f5ff10c71853067c78e6e5ce1057046280016"
+    },
+    {
+      "bubble": "STILL",
+      "filename": "rituals_still.json",
+      "rows": 105,
+      "sha256": "1a7745031e088a727a5b1b2da6f82d44608c875c6c29a59b2f5d6b55481890f0"
+    },
+    {
+      "bubble": "PATCH",
+      "filename": "rituals_patch.json",
+      "rows": 175,
+      "sha256": "e21e58b1b1d2d4157d59e1c017522d726a517b97917d96b4d100e60611d09c0a"
+    },
+    {
+      "bubble": "LOOPIE",
+      "filename": "rituals_loopie.json",
+      "rows": 71,
+      "sha256": "a3506472c28ce1c40dcc2232678ca331c888a4c353dda2145a46b53ee2b7b8b6"
+    },
+    {
+      "bubble": "RUSH",
+      "filename": "rituals_rush.json",
+      "rows": 51,
+      "sha256": "b21c2b7a628088b1ed3284cae88069787c7f2fd7e0ae1f2b65240220f7b5189a"
+    },
+    {
+      "bubble": "SYNC",
+      "filename": "rituals_sync.json",
+      "rows": 92,
+      "sha256": "23911cb1399727b6b2bf503ac3d2ccddfb4c917c41fc6d4d66d5eb06b5fd2889"
+    }
+  ],
+  "meta": {
+    "purpose": "Minimal browser-upload runtime package for the ThinkStill Reset Console",
+    "source": "ThinkStill_750_v20_FINAL_MASTER_RELEASE.xlsx",
+    "note": "Upload these files to the repository root. The Reset Console auto-detects thinkstill-modes.json beside manifest.json."
+  }
+}
