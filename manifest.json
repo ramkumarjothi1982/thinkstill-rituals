@@ -1,0 +1,95 @@
+{
+  "schema": "thinkstill.manifest.v21",
+  "version": "2026-09-19-final-1000",
+  "project": "ThinkStill",
+  "generated_at": "2026-09-19T20:30:00+10:00",
+  "row_count": 1000,
+  "mode_count": 3000,
+  "default_mode": "Cheeky",
+  "modes_file": "thinkstill-modes.json",
+  "files": {
+    "all_rituals": "thinkstill-rituals.json",
+    "modes": "thinkstill-modes.json",
+    "routing": "thinkstill-routing.json",
+    "safety": "thinkstill-safety.json"
+  },
+  "bubbles": [
+    {
+      "bubble": "GLITCH",
+      "parts": [
+        {
+          "filename": "rituals_glitch.json",
+          "rows": 150,
+          "bytes": 782893,
+          "sha256": "51a8452ce66f8d10c5de23b9ab8157058e1f12c560d89539b22b8317f0e46210"
+        }
+      ]
+    },
+    {
+      "bubble": "DROP",
+      "parts": [
+        {
+          "filename": "rituals_drop.json",
+          "rows": 150,
+          "bytes": 780420,
+          "sha256": "1ffb7eae3e0c4bef1d7f991ec685e6c498a526d261fa57c139eb7e33fb123739"
+        }
+      ]
+    },
+    {
+      "bubble": "STILL",
+      "parts": [
+        {
+          "filename": "rituals_still.json",
+          "rows": 150,
+          "bytes": 757737,
+          "sha256": "915e3a5b0c601dd1d051f0030e1eb846975ab0dda2c6f106978ee162917271f2"
+        }
+      ]
+    },
+    {
+      "bubble": "PATCH",
+      "parts": [
+        {
+          "filename": "rituals_patch.json",
+          "rows": 150,
+          "bytes": 787646,
+          "sha256": "14019f5cb17063a449d506b2eecdf3e37488b433a70d3e2f8fd924103153bb7b"
+        }
+      ]
+    },
+    {
+      "bubble": "LOOPIE",
+      "parts": [
+        {
+          "filename": "rituals_loopie.json",
+          "rows": 150,
+          "bytes": 767791,
+          "sha256": "be3589b43b65c1b9b82fffd2bc8958e1f8eaac1a5f34f61cd0f80d278a329120"
+        }
+      ]
+    },
+    {
+      "bubble": "RUSH",
+      "parts": [
+        {
+          "filename": "rituals_rush.json",
+          "rows": 150,
+          "bytes": 766258,
+          "sha256": "b3241f6526b3c508e93dc3d6d69a919441f40ee0383ae1e498a35c5b76d4eaf0"
+        }
+      ]
+    },
+    {
+      "bubble": "SYNC",
+      "parts": [
+        {
+          "filename": "rituals_sync.json",
+          "rows": 100,
+          "bytes": 518707,
+          "sha256": "5697bf94af925152ab899a5085aa428b48a01c9a771c5797b2261d0702ef9cfe"
+        }
+      ]
+    }
+  ]
+}

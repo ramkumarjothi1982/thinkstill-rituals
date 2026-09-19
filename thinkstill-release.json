@@ -1,0 +1,17 @@
+{
+  "project": "ThinkStill",
+  "version": "2026-09-19-final-1000",
+  "status": "FINAL RELEASE LOCKED",
+  "ritual_count": 1000,
+  "mode_count": 3000,
+  "bubble_counts": {
+    "GLITCH": 150,
+    "DROP": 150,
+    "STILL": 150,
+    "PATCH": 150,
+    "LOOPIE": 150,
+    "RUSH": 150,
+    "SYNC": 100
+  },
+  "source_workbook": "ThinkStill_MASTER_1000_FINAL_RELEASE_LOCKED(1).xlsx"
+}
