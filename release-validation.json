@@ -1,0 +1,29 @@
+{
+  "release": "v61-final-release-locked",
+  "canonical_rituals": 750,
+  "mode_variants": 2250,
+  "runtime_mode_rows": 2250,
+  "bubble_counts": {
+    "GLITCH": 108,
+    "SYNC": 107,
+    "PATCH": 107,
+    "DROP": 107,
+    "STILL": 107,
+    "RUSH": 107,
+    "LOOPIE": 107
+  },
+  "safety_tiers": {
+    "1": 578,
+    "2": 164,
+    "3": 8
+  },
+  "unique_ids": 750,
+  "unique_variant_keys": 2250,
+  "all_variants_have_full_safety": true,
+  "tier3_support_first": 24,
+  "tier3_variant_rows": 24,
+  "expression_rows": 750,
+  "ui_title_rows": 750,
+  "safety_rows": 750,
+  "framer_rows": 750
+}

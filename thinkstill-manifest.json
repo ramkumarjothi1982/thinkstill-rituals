@@ -1,0 +1,82 @@
+{
+  "meta": {
+    "project": "ThinkStill",
+    "version": "v61-final-release-locked",
+    "row_count": 750,
+    "mode_count": 2250,
+    "vibes": [
+      "Jolly",
+      "Cheeky",
+      "Unfiltered"
+    ],
+    "safety_protocols": 750,
+    "ui_title_map": 750,
+    "expression_map": 750,
+    "source_workbook": "ThinkStill_750_v61_FINAL_RELEASE_MASTER_LOCKED.xlsx"
+  },
+  "bubbles": [
+    {
+      "bubble": "GLITCH",
+      "parts": [
+        {
+          "filename": "rituals_glitch.json",
+          "rows": 108
+        }
+      ]
+    },
+    {
+      "bubble": "SYNC",
+      "parts": [
+        {
+          "filename": "rituals_sync.json",
+          "rows": 107
+        }
+      ]
+    },
+    {
+      "bubble": "PATCH",
+      "parts": [
+        {
+          "filename": "rituals_patch.json",
+          "rows": 107
+        }
+      ]
+    },
+    {
+      "bubble": "DROP",
+      "parts": [
+        {
+          "filename": "rituals_drop.json",
+          "rows": 107
+        }
+      ]
+    },
+    {
+      "bubble": "STILL",
+      "parts": [
+        {
+          "filename": "rituals_still.json",
+          "rows": 107
+        }
+      ]
+    },
+    {
+      "bubble": "RUSH",
+      "parts": [
+        {
+          "filename": "rituals_rush.json",
+          "rows": 107
+        }
+      ]
+    },
+    {
+      "bubble": "LOOPIE",
+      "parts": [
+        {
+          "filename": "rituals_loopie.json",
+          "rows": 107
+        }
+      ]
+    }
+  ]
+}
