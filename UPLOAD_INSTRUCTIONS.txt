@@ -1,0 +1,37 @@
+THINKSTILL — EXACT GITHUB LOADER PACKAGE
+
+UPLOAD ALL FILES IN THIS FOLDER TO THE SAME DIRECTORY IN YOUR PUBLIC GITHUB REPO.
+
+Required by the current Framer loader:
+- thinkstill-manifest.json   (or manifest.json / thinkstill-manifest-v17.json)
+- glitch.json
+- drop.json
+- loopie.json
+- patch.json
+- rush.json
+- still.json
+- sync.json
+- thinkstill-modes.json
+
+Also included:
+- rituals.json (all 1,000 records in one file, for compatibility / debugging)
+
+CRITICAL FRAMER STEP
+Your current component has Manifest URL defaulting to blank.
+In Framer, select the component and set:
+Manifest URL (Optional)
+to the RAW GitHub URL, for example:
+
+https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/thinkstill-manifest.json
+
+Modes URL can remain blank because the code automatically looks for thinkstill-modes.json
+beside the manifest.
+
+If Manifest URL is blank, the current code throws:
+"GitHub ritual library is required for this release."
+
+IMPORTANT
+The current Framer code itself still adds phrases such as "One damn rule:", "Do this:",
+"Flip the script:" and "And here's the point:" for vibe rendering. Those are code prefixes,
+not present in these ritual files. They should be removed in the Framer code if you want the
+clean UI-copy contract from the production workbook.

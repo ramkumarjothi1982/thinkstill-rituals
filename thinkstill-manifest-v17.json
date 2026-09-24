@@ -1,0 +1,106 @@
+{
+  "schema": "thinkstill-manifest-v17-production-locked",
+  "version": "17.0.0-production-locked",
+  "generated_at": "2026-09-24",
+  "project": "ThinkStill MASTER 1000 — PRODUCTION LOCKED FINAL",
+  "row_count": 1000,
+  "base_url": "",
+  "format": "MISSION → ONE RULE → YOUR MOVE → PLOT TWIST → MIND BEND → LOOP → SAFETY",
+  "bubbles": [
+    {
+      "bubble": "GLITCH",
+      "parts": [
+        {
+          "filename": "glitch.json",
+          "rows": 150,
+          "bytes": 674894,
+          "sha256": "342b558096c045311421290c753873622d559a922f45496d94f1a85eb18ce15a"
+        }
+      ]
+    },
+    {
+      "bubble": "DROP",
+      "parts": [
+        {
+          "filename": "drop.json",
+          "rows": 150,
+          "bytes": 671840,
+          "sha256": "6c1d99d80ecf18ee4fdfe2bde78d18dc713c4891c196ece3ad007bcdfe2f31d2"
+        }
+      ]
+    },
+    {
+      "bubble": "LOOPIE",
+      "parts": [
+        {
+          "filename": "loopie.json",
+          "rows": 150,
+          "bytes": 669113,
+          "sha256": "193bd1b04dac29e70bccc1cac2bd2bf8a498c35747ba45a2307c27491efe67d6"
+        }
+      ]
+    },
+    {
+      "bubble": "PATCH",
+      "parts": [
+        {
+          "filename": "patch.json",
+          "rows": 150,
+          "bytes": 690491,
+          "sha256": "0797cb68c498f81824935638e17b15735fa60fa422020dd8382336e4cfdbddfe"
+        }
+      ]
+    },
+    {
+      "bubble": "RUSH",
+      "parts": [
+        {
+          "filename": "rush.json",
+          "rows": 150,
+          "bytes": 669046,
+          "sha256": "8f539636b9fa200bdc199728a388dcfe7dde48f8f844aba814ca56ed9d0e783a"
+        }
+      ]
+    },
+    {
+      "bubble": "STILL",
+      "parts": [
+        {
+          "filename": "still.json",
+          "rows": 150,
+          "bytes": 663046,
+          "sha256": "445f8cb0c6f26e1452e6657a12b1159860da809db3da14404ed357166d59fbbc"
+        }
+      ]
+    },
+    {
+      "bubble": "SYNC",
+      "parts": [
+        {
+          "filename": "sync.json",
+          "rows": 100,
+          "bytes": 449275,
+          "sha256": "7c68865dcce2d88c450817a29173fea12f9f05a862ac28bde90c33a7da84fe96"
+        }
+      ]
+    }
+  ],
+  "files": {
+    "all": "rituals.json",
+    "modes": "thinkstill-modes.json",
+    "bubbles": {
+      "GLITCH": "glitch.json",
+      "DROP": "drop.json",
+      "LOOPIE": "loopie.json",
+      "PATCH": "patch.json",
+      "RUSH": "rush.json",
+      "STILL": "still.json",
+      "SYNC": "sync.json"
+    }
+  },
+  "notes": {
+    "framer": "Set the component Manifest URL property to the RAW GitHub URL of this manifest file.",
+    "modes": "Keep thinkstill-modes.json in the same GitHub folder as the manifest.",
+    "release": "Production locked 1000-ritual psychological magic library."
+  }
+}
