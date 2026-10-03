@@ -1,0 +1,20 @@
+{
+  "purpose": "Normalize ThinkStill reaction-character visual size across all Release bubbles.",
+  "files_processed": 448,
+  "output_dimensions": "320x320",
+  "family_scale": {
+    "drop": 1.26,
+    "glitch": 2.2,
+    "loopie": 1.56,
+    "patch": 1.51,
+    "rush": 1.47,
+    "still": 1.45,
+    "sync": 1.44
+  },
+  "behavior": {
+    "filenames_preserved": true,
+    "expression_map_preserved": true,
+    "github_paths_preserved": true,
+    "note": "Images were center-zoomed only; no filenames or JSON mappings were changed."
+  }
+}
