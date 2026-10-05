@@ -1,44 +1,33 @@
-# ThinkStill Bubble Expressions
+# ThinkStill Bubble Expressions — Final 100 × 7
 
-Standalone GitHub package for ThinkStill character expression assets.
+Standalone expressions repository built from the latest approved character sheets.
 
-## Contents
+## Included
 
-- `bubble-expressions/` — 448 WebP expression images
-  - Drop: 64
-  - Glitch: 64
-  - Loopie: 64
-  - Patch: 64
-  - Rush: 64
-  - Still: 64
-  - Sync: 64
-- `thinkstill_750_expression_map.json` — maps ThinkStill ritual states to the expression assets.
+- Glitch — 100 expressions
+- Drop — 100 expressions
+- Loopie — 100 expressions
+- Patch — 100 expressions
+- Rush — 100 expressions
+- Sync — 100 expressions (latest rounded Rush-like head silhouette + lightning identity)
+- Still — 100 expressions
 
-## Asset paths
+**Total: 700 individual bubble images.**
 
-Keep the folder and filenames exactly as supplied. The JSON uses flat paths such as:
+## Asset standard
 
-`bubble-expressions/patch_E01.webp`
+- 512 × 512
+- WebP
+- Circular crop
+- Transparent corners/outside the circle
+- Entire bubble preserved inside each file
+- Naming: `bubble-expressions/<character>_E01.webp` through `E100.webp`
 
-Do not move the character images into separate subfolders unless the JSON paths are also changed.
+## JSON
 
-## Patch update
+- `thinkstill_750_expression_map.json` — existing ritual mapping; continues to reference E01–E64 and remains path-compatible.
+- `expressions_manifest.json` — full index for E01–E100 across all seven characters.
 
-Patch assets have been normalised to the same 512 × 512 canvas/visual scale as the other bubble expressions so Patch fills the bubble consistently.
+## Previews
 
-## GitHub upload
-
-Create a separate repository for the expression assets, then upload the **contents of this ZIP** to the repository root.
-
-Expected structure:
-
-```text
-<repo-root>/
-├── README.md
-├── thinkstill_750_expression_map.json
-└── bubble-expressions/
-    ├── drop_E01.webp
-    ├── ...
-    ├── patch_E01.webp
-    └── ...
-```
+`previews/` contains the seven 100-expression source grids used for this build.
