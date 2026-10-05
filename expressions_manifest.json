@@ -1,0 +1,2848 @@
+{
+  "version": "2026-10-05-corrected-v2-hough-circles",
+  "assetFormat": "webp",
+  "assetSize": [
+    512,
+    512
+  ],
+  "circularCrop": true,
+  "expressionRange": "E01-E100",
+  "totalAssets": 700,
+  "characters": {
+    "glitch": {
+      "count": 100,
+      "assets": [
+        {
+          "expression": "E01",
+          "asset": "bubble-expressions/glitch_E01.webp"
+        },
+        {
+          "expression": "E02",
+          "asset": "bubble-expressions/glitch_E02.webp"
+        },
+        {
+          "expression": "E03",
+          "asset": "bubble-expressions/glitch_E03.webp"
+        },
+        {
+          "expression": "E04",
+          "asset": "bubble-expressions/glitch_E04.webp"
+        },
+        {
+          "expression": "E05",
+          "asset": "bubble-expressions/glitch_E05.webp"
+        },
+        {
+          "expression": "E06",
+          "asset": "bubble-expressions/glitch_E06.webp"
+        },
+        {
+          "expression": "E07",
+          "asset": "bubble-expressions/glitch_E07.webp"
+        },
+        {
+          "expression": "E08",
+          "asset": "bubble-expressions/glitch_E08.webp"
+        },
+        {
+          "expression": "E09",
+          "asset": "bubble-expressions/glitch_E09.webp"
+        },
+        {
+          "expression": "E10",
+          "asset": "bubble-expressions/glitch_E10.webp"
+        },
+        {
+          "expression": "E11",
+          "asset": "bubble-expressions/glitch_E11.webp"
+        },
+        {
+          "expression": "E12",
+          "asset": "bubble-expressions/glitch_E12.webp"
+        },
+        {
+          "expression": "E13",
+          "asset": "bubble-expressions/glitch_E13.webp"
+        },
+        {
+          "expression": "E14",
+          "asset": "bubble-expressions/glitch_E14.webp"
+        },
+        {
+          "expression": "E15",
+          "asset": "bubble-expressions/glitch_E15.webp"
+        },
+        {
+          "expression": "E16",
+          "asset": "bubble-expressions/glitch_E16.webp"
+        },
+        {
+          "expression": "E17",
+          "asset": "bubble-expressions/glitch_E17.webp"
+        },
+        {
+          "expression": "E18",
+          "asset": "bubble-expressions/glitch_E18.webp"
+        },
+        {
+          "expression": "E19",
+          "asset": "bubble-expressions/glitch_E19.webp"
+        },
+        {
+          "expression": "E20",
+          "asset": "bubble-expressions/glitch_E20.webp"
+        },
+        {
+          "expression": "E21",
+          "asset": "bubble-expressions/glitch_E21.webp"
+        },
+        {
+          "expression": "E22",
+          "asset": "bubble-expressions/glitch_E22.webp"
+        },
+        {
+          "expression": "E23",
+          "asset": "bubble-expressions/glitch_E23.webp"
+        },
+        {
+          "expression": "E24",
+          "asset": "bubble-expressions/glitch_E24.webp"
+        },
+        {
+          "expression": "E25",
+          "asset": "bubble-expressions/glitch_E25.webp"
+        },
+        {
+          "expression": "E26",
+          "asset": "bubble-expressions/glitch_E26.webp"
+        },
+        {
+          "expression": "E27",
+          "asset": "bubble-expressions/glitch_E27.webp"
+        },
+        {
+          "expression": "E28",
+          "asset": "bubble-expressions/glitch_E28.webp"
+        },
+        {
+          "expression": "E29",
+          "asset": "bubble-expressions/glitch_E29.webp"
+        },
+        {
+          "expression": "E30",
+          "asset": "bubble-expressions/glitch_E30.webp"
+        },
+        {
+          "expression": "E31",
+          "asset": "bubble-expressions/glitch_E31.webp"
+        },
+        {
+          "expression": "E32",
+          "asset": "bubble-expressions/glitch_E32.webp"
+        },
+        {
+          "expression": "E33",
+          "asset": "bubble-expressions/glitch_E33.webp"
+        },
+        {
+          "expression": "E34",
+          "asset": "bubble-expressions/glitch_E34.webp"
+        },
+        {
+          "expression": "E35",
+          "asset": "bubble-expressions/glitch_E35.webp"
+        },
+        {
+          "expression": "E36",
+          "asset": "bubble-expressions/glitch_E36.webp"
+        },
+        {
+          "expression": "E37",
+          "asset": "bubble-expressions/glitch_E37.webp"
+        },
+        {
+          "expression": "E38",
+          "asset": "bubble-expressions/glitch_E38.webp"
+        },
+        {
+          "expression": "E39",
+          "asset": "bubble-expressions/glitch_E39.webp"
+        },
+        {
+          "expression": "E40",
+          "asset": "bubble-expressions/glitch_E40.webp"
+        },
+        {
+          "expression": "E41",
+          "asset": "bubble-expressions/glitch_E41.webp"
+        },
+        {
+          "expression": "E42",
+          "asset": "bubble-expressions/glitch_E42.webp"
+        },
+        {
+          "expression": "E43",
+          "asset": "bubble-expressions/glitch_E43.webp"
+        },
+        {
+          "expression": "E44",
+          "asset": "bubble-expressions/glitch_E44.webp"
+        },
+        {
+          "expression": "E45",
+          "asset": "bubble-expressions/glitch_E45.webp"
+        },
+        {
+          "expression": "E46",
+          "asset": "bubble-expressions/glitch_E46.webp"
+        },
+        {
+          "expression": "E47",
+          "asset": "bubble-expressions/glitch_E47.webp"
+        },
+        {
+          "expression": "E48",
+          "asset": "bubble-expressions/glitch_E48.webp"
+        },
+        {
+          "expression": "E49",
+          "asset": "bubble-expressions/glitch_E49.webp"
+        },
+        {
+          "expression": "E50",
+          "asset": "bubble-expressions/glitch_E50.webp"
+        },
+        {
+          "expression": "E51",
+          "asset": "bubble-expressions/glitch_E51.webp"
+        },
+        {
+          "expression": "E52",
+          "asset": "bubble-expressions/glitch_E52.webp"
+        },
+        {
+          "expression": "E53",
+          "asset": "bubble-expressions/glitch_E53.webp"
+        },
+        {
+          "expression": "E54",
+          "asset": "bubble-expressions/glitch_E54.webp"
+        },
+        {
+          "expression": "E55",
+          "asset": "bubble-expressions/glitch_E55.webp"
+        },
+        {
+          "expression": "E56",
+          "asset": "bubble-expressions/glitch_E56.webp"
+        },
+        {
+          "expression": "E57",
+          "asset": "bubble-expressions/glitch_E57.webp"
+        },
+        {
+          "expression": "E58",
+          "asset": "bubble-expressions/glitch_E58.webp"
+        },
+        {
+          "expression": "E59",
+          "asset": "bubble-expressions/glitch_E59.webp"
+        },
+        {
+          "expression": "E60",
+          "asset": "bubble-expressions/glitch_E60.webp"
+        },
+        {
+          "expression": "E61",
+          "asset": "bubble-expressions/glitch_E61.webp"
+        },
+        {
+          "expression": "E62",
+          "asset": "bubble-expressions/glitch_E62.webp"
+        },
+        {
+          "expression": "E63",
+          "asset": "bubble-expressions/glitch_E63.webp"
+        },
+        {
+          "expression": "E64",
+          "asset": "bubble-expressions/glitch_E64.webp"
+        },
+        {
+          "expression": "E65",
+          "asset": "bubble-expressions/glitch_E65.webp"
+        },
+        {
+          "expression": "E66",
+          "asset": "bubble-expressions/glitch_E66.webp"
+        },
+        {
+          "expression": "E67",
+          "asset": "bubble-expressions/glitch_E67.webp"
+        },
+        {
+          "expression": "E68",
+          "asset": "bubble-expressions/glitch_E68.webp"
+        },
+        {
+          "expression": "E69",
+          "asset": "bubble-expressions/glitch_E69.webp"
+        },
+        {
+          "expression": "E70",
+          "asset": "bubble-expressions/glitch_E70.webp"
+        },
+        {
+          "expression": "E71",
+          "asset": "bubble-expressions/glitch_E71.webp"
+        },
+        {
+          "expression": "E72",
+          "asset": "bubble-expressions/glitch_E72.webp"
+        },
+        {
+          "expression": "E73",
+          "asset": "bubble-expressions/glitch_E73.webp"
+        },
+        {
+          "expression": "E74",
+          "asset": "bubble-expressions/glitch_E74.webp"
+        },
+        {
+          "expression": "E75",
+          "asset": "bubble-expressions/glitch_E75.webp"
+        },
+        {
+          "expression": "E76",
+          "asset": "bubble-expressions/glitch_E76.webp"
+        },
+        {
+          "expression": "E77",
+          "asset": "bubble-expressions/glitch_E77.webp"
+        },
+        {
+          "expression": "E78",
+          "asset": "bubble-expressions/glitch_E78.webp"
+        },
+        {
+          "expression": "E79",
+          "asset": "bubble-expressions/glitch_E79.webp"
+        },
+        {
+          "expression": "E80",
+          "asset": "bubble-expressions/glitch_E80.webp"
+        },
+        {
+          "expression": "E81",
+          "asset": "bubble-expressions/glitch_E81.webp"
+        },
+        {
+          "expression": "E82",
+          "asset": "bubble-expressions/glitch_E82.webp"
+        },
+        {
+          "expression": "E83",
+          "asset": "bubble-expressions/glitch_E83.webp"
+        },
+        {
+          "expression": "E84",
+          "asset": "bubble-expressions/glitch_E84.webp"
+        },
+        {
+          "expression": "E85",
+          "asset": "bubble-expressions/glitch_E85.webp"
+        },
+        {
+          "expression": "E86",
+          "asset": "bubble-expressions/glitch_E86.webp"
+        },
+        {
+          "expression": "E87",
+          "asset": "bubble-expressions/glitch_E87.webp"
+        },
+        {
+          "expression": "E88",
+          "asset": "bubble-expressions/glitch_E88.webp"
+        },
+        {
+          "expression": "E89",
+          "asset": "bubble-expressions/glitch_E89.webp"
+        },
+        {
+          "expression": "E90",
+          "asset": "bubble-expressions/glitch_E90.webp"
+        },
+        {
+          "expression": "E91",
+          "asset": "bubble-expressions/glitch_E91.webp"
+        },
+        {
+          "expression": "E92",
+          "asset": "bubble-expressions/glitch_E92.webp"
+        },
+        {
+          "expression": "E93",
+          "asset": "bubble-expressions/glitch_E93.webp"
+        },
+        {
+          "expression": "E94",
+          "asset": "bubble-expressions/glitch_E94.webp"
+        },
+        {
+          "expression": "E95",
+          "asset": "bubble-expressions/glitch_E95.webp"
+        },
+        {
+          "expression": "E96",
+          "asset": "bubble-expressions/glitch_E96.webp"
+        },
+        {
+          "expression": "E97",
+          "asset": "bubble-expressions/glitch_E97.webp"
+        },
+        {
+          "expression": "E98",
+          "asset": "bubble-expressions/glitch_E98.webp"
+        },
+        {
+          "expression": "E99",
+          "asset": "bubble-expressions/glitch_E99.webp"
+        },
+        {
+          "expression": "E100",
+          "asset": "bubble-expressions/glitch_E100.webp"
+        }
+      ]
+    },
+    "drop": {
+      "count": 100,
+      "assets": [
+        {
+          "expression": "E01",
+          "asset": "bubble-expressions/drop_E01.webp"
+        },
+        {
+          "expression": "E02",
+          "asset": "bubble-expressions/drop_E02.webp"
+        },
+        {
+          "expression": "E03",
+          "asset": "bubble-expressions/drop_E03.webp"
+        },
+        {
+          "expression": "E04",
+          "asset": "bubble-expressions/drop_E04.webp"
+        },
+        {
+          "expression": "E05",
+          "asset": "bubble-expressions/drop_E05.webp"
+        },
+        {
+          "expression": "E06",
+          "asset": "bubble-expressions/drop_E06.webp"
+        },
+        {
+          "expression": "E07",
+          "asset": "bubble-expressions/drop_E07.webp"
+        },
+        {
+          "expression": "E08",
+          "asset": "bubble-expressions/drop_E08.webp"
+        },
+        {
+          "expression": "E09",
+          "asset": "bubble-expressions/drop_E09.webp"
+        },
+        {
+          "expression": "E10",
+          "asset": "bubble-expressions/drop_E10.webp"
+        },
+        {
+          "expression": "E11",
+          "asset": "bubble-expressions/drop_E11.webp"
+        },
+        {
+          "expression": "E12",
+          "asset": "bubble-expressions/drop_E12.webp"
+        },
+        {
+          "expression": "E13",
+          "asset": "bubble-expressions/drop_E13.webp"
+        },
+        {
+          "expression": "E14",
+          "asset": "bubble-expressions/drop_E14.webp"
+        },
+        {
+          "expression": "E15",
+          "asset": "bubble-expressions/drop_E15.webp"
+        },
+        {
+          "expression": "E16",
+          "asset": "bubble-expressions/drop_E16.webp"
+        },
+        {
+          "expression": "E17",
+          "asset": "bubble-expressions/drop_E17.webp"
+        },
+        {
+          "expression": "E18",
+          "asset": "bubble-expressions/drop_E18.webp"
+        },
+        {
+          "expression": "E19",
+          "asset": "bubble-expressions/drop_E19.webp"
+        },
+        {
+          "expression": "E20",
+          "asset": "bubble-expressions/drop_E20.webp"
+        },
+        {
+          "expression": "E21",
+          "asset": "bubble-expressions/drop_E21.webp"
+        },
+        {
+          "expression": "E22",
+          "asset": "bubble-expressions/drop_E22.webp"
+        },
+        {
+          "expression": "E23",
+          "asset": "bubble-expressions/drop_E23.webp"
+        },
+        {
+          "expression": "E24",
+          "asset": "bubble-expressions/drop_E24.webp"
+        },
+        {
+          "expression": "E25",
+          "asset": "bubble-expressions/drop_E25.webp"
+        },
+        {
+          "expression": "E26",
+          "asset": "bubble-expressions/drop_E26.webp"
+        },
+        {
+          "expression": "E27",
+          "asset": "bubble-expressions/drop_E27.webp"
+        },
+        {
+          "expression": "E28",
+          "asset": "bubble-expressions/drop_E28.webp"
+        },
+        {
+          "expression": "E29",
+          "asset": "bubble-expressions/drop_E29.webp"
+        },
+        {
+          "expression": "E30",
+          "asset": "bubble-expressions/drop_E30.webp"
+        },
+        {
+          "expression": "E31",
+          "asset": "bubble-expressions/drop_E31.webp"
+        },
+        {
+          "expression": "E32",
+          "asset": "bubble-expressions/drop_E32.webp"
+        },
+        {
+          "expression": "E33",
+          "asset": "bubble-expressions/drop_E33.webp"
+        },
+        {
+          "expression": "E34",
+          "asset": "bubble-expressions/drop_E34.webp"
+        },
+        {
+          "expression": "E35",
+          "asset": "bubble-expressions/drop_E35.webp"
+        },
+        {
+          "expression": "E36",
+          "asset": "bubble-expressions/drop_E36.webp"
+        },
+        {
+          "expression": "E37",
+          "asset": "bubble-expressions/drop_E37.webp"
+        },
+        {
+          "expression": "E38",
+          "asset": "bubble-expressions/drop_E38.webp"
+        },
+        {
+          "expression": "E39",
+          "asset": "bubble-expressions/drop_E39.webp"
+        },
+        {
+          "expression": "E40",
+          "asset": "bubble-expressions/drop_E40.webp"
+        },
+        {
+          "expression": "E41",
+          "asset": "bubble-expressions/drop_E41.webp"
+        },
+        {
+          "expression": "E42",
+          "asset": "bubble-expressions/drop_E42.webp"
+        },
+        {
+          "expression": "E43",
+          "asset": "bubble-expressions/drop_E43.webp"
+        },
+        {
+          "expression": "E44",
+          "asset": "bubble-expressions/drop_E44.webp"
+        },
+        {
+          "expression": "E45",
+          "asset": "bubble-expressions/drop_E45.webp"
+        },
+        {
+          "expression": "E46",
+          "asset": "bubble-expressions/drop_E46.webp"
+        },
+        {
+          "expression": "E47",
+          "asset": "bubble-expressions/drop_E47.webp"
+        },
+        {
+          "expression": "E48",
+          "asset": "bubble-expressions/drop_E48.webp"
+        },
+        {
+          "expression": "E49",
+          "asset": "bubble-expressions/drop_E49.webp"
+        },
+        {
+          "expression": "E50",
+          "asset": "bubble-expressions/drop_E50.webp"
+        },
+        {
+          "expression": "E51",
+          "asset": "bubble-expressions/drop_E51.webp"
+        },
+        {
+          "expression": "E52",
+          "asset": "bubble-expressions/drop_E52.webp"
+        },
+        {
+          "expression": "E53",
+          "asset": "bubble-expressions/drop_E53.webp"
+        },
+        {
+          "expression": "E54",
+          "asset": "bubble-expressions/drop_E54.webp"
+        },
+        {
+          "expression": "E55",
+          "asset": "bubble-expressions/drop_E55.webp"
+        },
+        {
+          "expression": "E56",
+          "asset": "bubble-expressions/drop_E56.webp"
+        },
+        {
+          "expression": "E57",
+          "asset": "bubble-expressions/drop_E57.webp"
+        },
+        {
+          "expression": "E58",
+          "asset": "bubble-expressions/drop_E58.webp"
+        },
+        {
+          "expression": "E59",
+          "asset": "bubble-expressions/drop_E59.webp"
+        },
+        {
+          "expression": "E60",
+          "asset": "bubble-expressions/drop_E60.webp"
+        },
+        {
+          "expression": "E61",
+          "asset": "bubble-expressions/drop_E61.webp"
+        },
+        {
+          "expression": "E62",
+          "asset": "bubble-expressions/drop_E62.webp"
+        },
+        {
+          "expression": "E63",
+          "asset": "bubble-expressions/drop_E63.webp"
+        },
+        {
+          "expression": "E64",
+          "asset": "bubble-expressions/drop_E64.webp"
+        },
+        {
+          "expression": "E65",
+          "asset": "bubble-expressions/drop_E65.webp"
+        },
+        {
+          "expression": "E66",
+          "asset": "bubble-expressions/drop_E66.webp"
+        },
+        {
+          "expression": "E67",
+          "asset": "bubble-expressions/drop_E67.webp"
+        },
+        {
+          "expression": "E68",
+          "asset": "bubble-expressions/drop_E68.webp"
+        },
+        {
+          "expression": "E69",
+          "asset": "bubble-expressions/drop_E69.webp"
+        },
+        {
+          "expression": "E70",
+          "asset": "bubble-expressions/drop_E70.webp"
+        },
+        {
+          "expression": "E71",
+          "asset": "bubble-expressions/drop_E71.webp"
+        },
+        {
+          "expression": "E72",
+          "asset": "bubble-expressions/drop_E72.webp"
+        },
+        {
+          "expression": "E73",
+          "asset": "bubble-expressions/drop_E73.webp"
+        },
+        {
+          "expression": "E74",
+          "asset": "bubble-expressions/drop_E74.webp"
+        },
+        {
+          "expression": "E75",
+          "asset": "bubble-expressions/drop_E75.webp"
+        },
+        {
+          "expression": "E76",
+          "asset": "bubble-expressions/drop_E76.webp"
+        },
+        {
+          "expression": "E77",
+          "asset": "bubble-expressions/drop_E77.webp"
+        },
+        {
+          "expression": "E78",
+          "asset": "bubble-expressions/drop_E78.webp"
+        },
+        {
+          "expression": "E79",
+          "asset": "bubble-expressions/drop_E79.webp"
+        },
+        {
+          "expression": "E80",
+          "asset": "bubble-expressions/drop_E80.webp"
+        },
+        {
+          "expression": "E81",
+          "asset": "bubble-expressions/drop_E81.webp"
+        },
+        {
+          "expression": "E82",
+          "asset": "bubble-expressions/drop_E82.webp"
+        },
+        {
+          "expression": "E83",
+          "asset": "bubble-expressions/drop_E83.webp"
+        },
+        {
+          "expression": "E84",
+          "asset": "bubble-expressions/drop_E84.webp"
+        },
+        {
+          "expression": "E85",
+          "asset": "bubble-expressions/drop_E85.webp"
+        },
+        {
+          "expression": "E86",
+          "asset": "bubble-expressions/drop_E86.webp"
+        },
+        {
+          "expression": "E87",
+          "asset": "bubble-expressions/drop_E87.webp"
+        },
+        {
+          "expression": "E88",
+          "asset": "bubble-expressions/drop_E88.webp"
+        },
+        {
+          "expression": "E89",
+          "asset": "bubble-expressions/drop_E89.webp"
+        },
+        {
+          "expression": "E90",
+          "asset": "bubble-expressions/drop_E90.webp"
+        },
+        {
+          "expression": "E91",
+          "asset": "bubble-expressions/drop_E91.webp"
+        },
+        {
+          "expression": "E92",
+          "asset": "bubble-expressions/drop_E92.webp"
+        },
+        {
+          "expression": "E93",
+          "asset": "bubble-expressions/drop_E93.webp"
+        },
+        {
+          "expression": "E94",
+          "asset": "bubble-expressions/drop_E94.webp"
+        },
+        {
+          "expression": "E95",
+          "asset": "bubble-expressions/drop_E95.webp"
+        },
+        {
+          "expression": "E96",
+          "asset": "bubble-expressions/drop_E96.webp"
+        },
+        {
+          "expression": "E97",
+          "asset": "bubble-expressions/drop_E97.webp"
+        },
+        {
+          "expression": "E98",
+          "asset": "bubble-expressions/drop_E98.webp"
+        },
+        {
+          "expression": "E99",
+          "asset": "bubble-expressions/drop_E99.webp"
+        },
+        {
+          "expression": "E100",
+          "asset": "bubble-expressions/drop_E100.webp"
+        }
+      ]
+    },
+    "loopie": {
+      "count": 100,
+      "assets": [
+        {
+          "expression": "E01",
+          "asset": "bubble-expressions/loopie_E01.webp"
+        },
+        {
+          "expression": "E02",
+          "asset": "bubble-expressions/loopie_E02.webp"
+        },
+        {
+          "expression": "E03",
+          "asset": "bubble-expressions/loopie_E03.webp"
+        },
+        {
+          "expression": "E04",
+          "asset": "bubble-expressions/loopie_E04.webp"
+        },
+        {
+          "expression": "E05",
+          "asset": "bubble-expressions/loopie_E05.webp"
+        },
+        {
+          "expression": "E06",
+          "asset": "bubble-expressions/loopie_E06.webp"
+        },
+        {
+          "expression": "E07",
+          "asset": "bubble-expressions/loopie_E07.webp"
+        },
+        {
+          "expression": "E08",
+          "asset": "bubble-expressions/loopie_E08.webp"
+        },
+        {
+          "expression": "E09",
+          "asset": "bubble-expressions/loopie_E09.webp"
+        },
+        {
+          "expression": "E10",
+          "asset": "bubble-expressions/loopie_E10.webp"
+        },
+        {
+          "expression": "E11",
+          "asset": "bubble-expressions/loopie_E11.webp"
+        },
+        {
+          "expression": "E12",
+          "asset": "bubble-expressions/loopie_E12.webp"
+        },
+        {
+          "expression": "E13",
+          "asset": "bubble-expressions/loopie_E13.webp"
+        },
+        {
+          "expression": "E14",
+          "asset": "bubble-expressions/loopie_E14.webp"
+        },
+        {
+          "expression": "E15",
+          "asset": "bubble-expressions/loopie_E15.webp"
+        },
+        {
+          "expression": "E16",
+          "asset": "bubble-expressions/loopie_E16.webp"
+        },
+        {
+          "expression": "E17",
+          "asset": "bubble-expressions/loopie_E17.webp"
+        },
+        {
+          "expression": "E18",
+          "asset": "bubble-expressions/loopie_E18.webp"
+        },
+        {
+          "expression": "E19",
+          "asset": "bubble-expressions/loopie_E19.webp"
+        },
+        {
+          "expression": "E20",
+          "asset": "bubble-expressions/loopie_E20.webp"
+        },
+        {
+          "expression": "E21",
+          "asset": "bubble-expressions/loopie_E21.webp"
+        },
+        {
+          "expression": "E22",
+          "asset": "bubble-expressions/loopie_E22.webp"
+        },
+        {
+          "expression": "E23",
+          "asset": "bubble-expressions/loopie_E23.webp"
+        },
+        {
+          "expression": "E24",
+          "asset": "bubble-expressions/loopie_E24.webp"
+        },
+        {
+          "expression": "E25",
+          "asset": "bubble-expressions/loopie_E25.webp"
+        },
+        {
+          "expression": "E26",
+          "asset": "bubble-expressions/loopie_E26.webp"
+        },
+        {
+          "expression": "E27",
+          "asset": "bubble-expressions/loopie_E27.webp"
+        },
+        {
+          "expression": "E28",
+          "asset": "bubble-expressions/loopie_E28.webp"
+        },
+        {
+          "expression": "E29",
+          "asset": "bubble-expressions/loopie_E29.webp"
+        },
+        {
+          "expression": "E30",
+          "asset": "bubble-expressions/loopie_E30.webp"
+        },
+        {
+          "expression": "E31",
+          "asset": "bubble-expressions/loopie_E31.webp"
+        },
+        {
+          "expression": "E32",
+          "asset": "bubble-expressions/loopie_E32.webp"
+        },
+        {
+          "expression": "E33",
+          "asset": "bubble-expressions/loopie_E33.webp"
+        },
+        {
+          "expression": "E34",
+          "asset": "bubble-expressions/loopie_E34.webp"
+        },
+        {
+          "expression": "E35",
+          "asset": "bubble-expressions/loopie_E35.webp"
+        },
+        {
+          "expression": "E36",
+          "asset": "bubble-expressions/loopie_E36.webp"
+        },
+        {
+          "expression": "E37",
+          "asset": "bubble-expressions/loopie_E37.webp"
+        },
+        {
+          "expression": "E38",
+          "asset": "bubble-expressions/loopie_E38.webp"
+        },
+        {
+          "expression": "E39",
+          "asset": "bubble-expressions/loopie_E39.webp"
+        },
+        {
+          "expression": "E40",
+          "asset": "bubble-expressions/loopie_E40.webp"
+        },
+        {
+          "expression": "E41",
+          "asset": "bubble-expressions/loopie_E41.webp"
+        },
+        {
+          "expression": "E42",
+          "asset": "bubble-expressions/loopie_E42.webp"
+        },
+        {
+          "expression": "E43",
+          "asset": "bubble-expressions/loopie_E43.webp"
+        },
+        {
+          "expression": "E44",
+          "asset": "bubble-expressions/loopie_E44.webp"
+        },
+        {
+          "expression": "E45",
+          "asset": "bubble-expressions/loopie_E45.webp"
+        },
+        {
+          "expression": "E46",
+          "asset": "bubble-expressions/loopie_E46.webp"
+        },
+        {
+          "expression": "E47",
+          "asset": "bubble-expressions/loopie_E47.webp"
+        },
+        {
+          "expression": "E48",
+          "asset": "bubble-expressions/loopie_E48.webp"
+        },
+        {
+          "expression": "E49",
+          "asset": "bubble-expressions/loopie_E49.webp"
+        },
+        {
+          "expression": "E50",
+          "asset": "bubble-expressions/loopie_E50.webp"
+        },
+        {
+          "expression": "E51",
+          "asset": "bubble-expressions/loopie_E51.webp"
+        },
+        {
+          "expression": "E52",
+          "asset": "bubble-expressions/loopie_E52.webp"
+        },
+        {
+          "expression": "E53",
+          "asset": "bubble-expressions/loopie_E53.webp"
+        },
+        {
+          "expression": "E54",
+          "asset": "bubble-expressions/loopie_E54.webp"
+        },
+        {
+          "expression": "E55",
+          "asset": "bubble-expressions/loopie_E55.webp"
+        },
+        {
+          "expression": "E56",
+          "asset": "bubble-expressions/loopie_E56.webp"
+        },
+        {
+          "expression": "E57",
+          "asset": "bubble-expressions/loopie_E57.webp"
+        },
+        {
+          "expression": "E58",
+          "asset": "bubble-expressions/loopie_E58.webp"
+        },
+        {
+          "expression": "E59",
+          "asset": "bubble-expressions/loopie_E59.webp"
+        },
+        {
+          "expression": "E60",
+          "asset": "bubble-expressions/loopie_E60.webp"
+        },
+        {
+          "expression": "E61",
+          "asset": "bubble-expressions/loopie_E61.webp"
+        },
+        {
+          "expression": "E62",
+          "asset": "bubble-expressions/loopie_E62.webp"
+        },
+        {
+          "expression": "E63",
+          "asset": "bubble-expressions/loopie_E63.webp"
+        },
+        {
+          "expression": "E64",
+          "asset": "bubble-expressions/loopie_E64.webp"
+        },
+        {
+          "expression": "E65",
+          "asset": "bubble-expressions/loopie_E65.webp"
+        },
+        {
+          "expression": "E66",
+          "asset": "bubble-expressions/loopie_E66.webp"
+        },
+        {
+          "expression": "E67",
+          "asset": "bubble-expressions/loopie_E67.webp"
+        },
+        {
+          "expression": "E68",
+          "asset": "bubble-expressions/loopie_E68.webp"
+        },
+        {
+          "expression": "E69",
+          "asset": "bubble-expressions/loopie_E69.webp"
+        },
+        {
+          "expression": "E70",
+          "asset": "bubble-expressions/loopie_E70.webp"
+        },
+        {
+          "expression": "E71",
+          "asset": "bubble-expressions/loopie_E71.webp"
+        },
+        {
+          "expression": "E72",
+          "asset": "bubble-expressions/loopie_E72.webp"
+        },
+        {
+          "expression": "E73",
+          "asset": "bubble-expressions/loopie_E73.webp"
+        },
+        {
+          "expression": "E74",
+          "asset": "bubble-expressions/loopie_E74.webp"
+        },
+        {
+          "expression": "E75",
+          "asset": "bubble-expressions/loopie_E75.webp"
+        },
+        {
+          "expression": "E76",
+          "asset": "bubble-expressions/loopie_E76.webp"
+        },
+        {
+          "expression": "E77",
+          "asset": "bubble-expressions/loopie_E77.webp"
+        },
+        {
+          "expression": "E78",
+          "asset": "bubble-expressions/loopie_E78.webp"
+        },
+        {
+          "expression": "E79",
+          "asset": "bubble-expressions/loopie_E79.webp"
+        },
+        {
+          "expression": "E80",
+          "asset": "bubble-expressions/loopie_E80.webp"
+        },
+        {
+          "expression": "E81",
+          "asset": "bubble-expressions/loopie_E81.webp"
+        },
+        {
+          "expression": "E82",
+          "asset": "bubble-expressions/loopie_E82.webp"
+        },
+        {
+          "expression": "E83",
+          "asset": "bubble-expressions/loopie_E83.webp"
+        },
+        {
+          "expression": "E84",
+          "asset": "bubble-expressions/loopie_E84.webp"
+        },
+        {
+          "expression": "E85",
+          "asset": "bubble-expressions/loopie_E85.webp"
+        },
+        {
+          "expression": "E86",
+          "asset": "bubble-expressions/loopie_E86.webp"
+        },
+        {
+          "expression": "E87",
+          "asset": "bubble-expressions/loopie_E87.webp"
+        },
+        {
+          "expression": "E88",
+          "asset": "bubble-expressions/loopie_E88.webp"
+        },
+        {
+          "expression": "E89",
+          "asset": "bubble-expressions/loopie_E89.webp"
+        },
+        {
+          "expression": "E90",
+          "asset": "bubble-expressions/loopie_E90.webp"
+        },
+        {
+          "expression": "E91",
+          "asset": "bubble-expressions/loopie_E91.webp"
+        },
+        {
+          "expression": "E92",
+          "asset": "bubble-expressions/loopie_E92.webp"
+        },
+        {
+          "expression": "E93",
+          "asset": "bubble-expressions/loopie_E93.webp"
+        },
+        {
+          "expression": "E94",
+          "asset": "bubble-expressions/loopie_E94.webp"
+        },
+        {
+          "expression": "E95",
+          "asset": "bubble-expressions/loopie_E95.webp"
+        },
+        {
+          "expression": "E96",
+          "asset": "bubble-expressions/loopie_E96.webp"
+        },
+        {
+          "expression": "E97",
+          "asset": "bubble-expressions/loopie_E97.webp"
+        },
+        {
+          "expression": "E98",
+          "asset": "bubble-expressions/loopie_E98.webp"
+        },
+        {
+          "expression": "E99",
+          "asset": "bubble-expressions/loopie_E99.webp"
+        },
+        {
+          "expression": "E100",
+          "asset": "bubble-expressions/loopie_E100.webp"
+        }
+      ]
+    },
+    "patch": {
+      "count": 100,
+      "assets": [
+        {
+          "expression": "E01",
+          "asset": "bubble-expressions/patch_E01.webp"
+        },
+        {
+          "expression": "E02",
+          "asset": "bubble-expressions/patch_E02.webp"
+        },
+        {
+          "expression": "E03",
+          "asset": "bubble-expressions/patch_E03.webp"
+        },
+        {
+          "expression": "E04",
+          "asset": "bubble-expressions/patch_E04.webp"
+        },
+        {
+          "expression": "E05",
+          "asset": "bubble-expressions/patch_E05.webp"
+        },
+        {
+          "expression": "E06",
+          "asset": "bubble-expressions/patch_E06.webp"
+        },
+        {
+          "expression": "E07",
+          "asset": "bubble-expressions/patch_E07.webp"
+        },
+        {
+          "expression": "E08",
+          "asset": "bubble-expressions/patch_E08.webp"
+        },
+        {
+          "expression": "E09",
+          "asset": "bubble-expressions/patch_E09.webp"
+        },
+        {
+          "expression": "E10",
+          "asset": "bubble-expressions/patch_E10.webp"
+        },
+        {
+          "expression": "E11",
+          "asset": "bubble-expressions/patch_E11.webp"
+        },
+        {
+          "expression": "E12",
+          "asset": "bubble-expressions/patch_E12.webp"
+        },
+        {
+          "expression": "E13",
+          "asset": "bubble-expressions/patch_E13.webp"
+        },
+        {
+          "expression": "E14",
+          "asset": "bubble-expressions/patch_E14.webp"
+        },
+        {
+          "expression": "E15",
+          "asset": "bubble-expressions/patch_E15.webp"
+        },
+        {
+          "expression": "E16",
+          "asset": "bubble-expressions/patch_E16.webp"
+        },
+        {
+          "expression": "E17",
+          "asset": "bubble-expressions/patch_E17.webp"
+        },
+        {
+          "expression": "E18",
+          "asset": "bubble-expressions/patch_E18.webp"
+        },
+        {
+          "expression": "E19",
+          "asset": "bubble-expressions/patch_E19.webp"
+        },
+        {
+          "expression": "E20",
+          "asset": "bubble-expressions/patch_E20.webp"
+        },
+        {
+          "expression": "E21",
+          "asset": "bubble-expressions/patch_E21.webp"
+        },
+        {
+          "expression": "E22",
+          "asset": "bubble-expressions/patch_E22.webp"
+        },
+        {
+          "expression": "E23",
+          "asset": "bubble-expressions/patch_E23.webp"
+        },
+        {
+          "expression": "E24",
+          "asset": "bubble-expressions/patch_E24.webp"
+        },
+        {
+          "expression": "E25",
+          "asset": "bubble-expressions/patch_E25.webp"
+        },
+        {
+          "expression": "E26",
+          "asset": "bubble-expressions/patch_E26.webp"
+        },
+        {
+          "expression": "E27",
+          "asset": "bubble-expressions/patch_E27.webp"
+        },
+        {
+          "expression": "E28",
+          "asset": "bubble-expressions/patch_E28.webp"
+        },
+        {
+          "expression": "E29",
+          "asset": "bubble-expressions/patch_E29.webp"
+        },
+        {
+          "expression": "E30",
+          "asset": "bubble-expressions/patch_E30.webp"
+        },
+        {
+          "expression": "E31",
+          "asset": "bubble-expressions/patch_E31.webp"
+        },
+        {
+          "expression": "E32",
+          "asset": "bubble-expressions/patch_E32.webp"
+        },
+        {
+          "expression": "E33",
+          "asset": "bubble-expressions/patch_E33.webp"
+        },
+        {
+          "expression": "E34",
+          "asset": "bubble-expressions/patch_E34.webp"
+        },
+        {
+          "expression": "E35",
+          "asset": "bubble-expressions/patch_E35.webp"
+        },
+        {
+          "expression": "E36",
+          "asset": "bubble-expressions/patch_E36.webp"
+        },
+        {
+          "expression": "E37",
+          "asset": "bubble-expressions/patch_E37.webp"
+        },
+        {
+          "expression": "E38",
+          "asset": "bubble-expressions/patch_E38.webp"
+        },
+        {
+          "expression": "E39",
+          "asset": "bubble-expressions/patch_E39.webp"
+        },
+        {
+          "expression": "E40",
+          "asset": "bubble-expressions/patch_E40.webp"
+        },
+        {
+          "expression": "E41",
+          "asset": "bubble-expressions/patch_E41.webp"
+        },
+        {
+          "expression": "E42",
+          "asset": "bubble-expressions/patch_E42.webp"
+        },
+        {
+          "expression": "E43",
+          "asset": "bubble-expressions/patch_E43.webp"
+        },
+        {
+          "expression": "E44",
+          "asset": "bubble-expressions/patch_E44.webp"
+        },
+        {
+          "expression": "E45",
+          "asset": "bubble-expressions/patch_E45.webp"
+        },
+        {
+          "expression": "E46",
+          "asset": "bubble-expressions/patch_E46.webp"
+        },
+        {
+          "expression": "E47",
+          "asset": "bubble-expressions/patch_E47.webp"
+        },
+        {
+          "expression": "E48",
+          "asset": "bubble-expressions/patch_E48.webp"
+        },
+        {
+          "expression": "E49",
+          "asset": "bubble-expressions/patch_E49.webp"
+        },
+        {
+          "expression": "E50",
+          "asset": "bubble-expressions/patch_E50.webp"
+        },
+        {
+          "expression": "E51",
+          "asset": "bubble-expressions/patch_E51.webp"
+        },
+        {
+          "expression": "E52",
+          "asset": "bubble-expressions/patch_E52.webp"
+        },
+        {
+          "expression": "E53",
+          "asset": "bubble-expressions/patch_E53.webp"
+        },
+        {
+          "expression": "E54",
+          "asset": "bubble-expressions/patch_E54.webp"
+        },
+        {
+          "expression": "E55",
+          "asset": "bubble-expressions/patch_E55.webp"
+        },
+        {
+          "expression": "E56",
+          "asset": "bubble-expressions/patch_E56.webp"
+        },
+        {
+          "expression": "E57",
+          "asset": "bubble-expressions/patch_E57.webp"
+        },
+        {
+          "expression": "E58",
+          "asset": "bubble-expressions/patch_E58.webp"
+        },
+        {
+          "expression": "E59",
+          "asset": "bubble-expressions/patch_E59.webp"
+        },
+        {
+          "expression": "E60",
+          "asset": "bubble-expressions/patch_E60.webp"
+        },
+        {
+          "expression": "E61",
+          "asset": "bubble-expressions/patch_E61.webp"
+        },
+        {
+          "expression": "E62",
+          "asset": "bubble-expressions/patch_E62.webp"
+        },
+        {
+          "expression": "E63",
+          "asset": "bubble-expressions/patch_E63.webp"
+        },
+        {
+          "expression": "E64",
+          "asset": "bubble-expressions/patch_E64.webp"
+        },
+        {
+          "expression": "E65",
+          "asset": "bubble-expressions/patch_E65.webp"
+        },
+        {
+          "expression": "E66",
+          "asset": "bubble-expressions/patch_E66.webp"
+        },
+        {
+          "expression": "E67",
+          "asset": "bubble-expressions/patch_E67.webp"
+        },
+        {
+          "expression": "E68",
+          "asset": "bubble-expressions/patch_E68.webp"
+        },
+        {
+          "expression": "E69",
+          "asset": "bubble-expressions/patch_E69.webp"
+        },
+        {
+          "expression": "E70",
+          "asset": "bubble-expressions/patch_E70.webp"
+        },
+        {
+          "expression": "E71",
+          "asset": "bubble-expressions/patch_E71.webp"
+        },
+        {
+          "expression": "E72",
+          "asset": "bubble-expressions/patch_E72.webp"
+        },
+        {
+          "expression": "E73",
+          "asset": "bubble-expressions/patch_E73.webp"
+        },
+        {
+          "expression": "E74",
+          "asset": "bubble-expressions/patch_E74.webp"
+        },
+        {
+          "expression": "E75",
+          "asset": "bubble-expressions/patch_E75.webp"
+        },
+        {
+          "expression": "E76",
+          "asset": "bubble-expressions/patch_E76.webp"
+        },
+        {
+          "expression": "E77",
+          "asset": "bubble-expressions/patch_E77.webp"
+        },
+        {
+          "expression": "E78",
+          "asset": "bubble-expressions/patch_E78.webp"
+        },
+        {
+          "expression": "E79",
+          "asset": "bubble-expressions/patch_E79.webp"
+        },
+        {
+          "expression": "E80",
+          "asset": "bubble-expressions/patch_E80.webp"
+        },
+        {
+          "expression": "E81",
+          "asset": "bubble-expressions/patch_E81.webp"
+        },
+        {
+          "expression": "E82",
+          "asset": "bubble-expressions/patch_E82.webp"
+        },
+        {
+          "expression": "E83",
+          "asset": "bubble-expressions/patch_E83.webp"
+        },
+        {
+          "expression": "E84",
+          "asset": "bubble-expressions/patch_E84.webp"
+        },
+        {
+          "expression": "E85",
+          "asset": "bubble-expressions/patch_E85.webp"
+        },
+        {
+          "expression": "E86",
+          "asset": "bubble-expressions/patch_E86.webp"
+        },
+        {
+          "expression": "E87",
+          "asset": "bubble-expressions/patch_E87.webp"
+        },
+        {
+          "expression": "E88",
+          "asset": "bubble-expressions/patch_E88.webp"
+        },
+        {
+          "expression": "E89",
+          "asset": "bubble-expressions/patch_E89.webp"
+        },
+        {
+          "expression": "E90",
+          "asset": "bubble-expressions/patch_E90.webp"
+        },
+        {
+          "expression": "E91",
+          "asset": "bubble-expressions/patch_E91.webp"
+        },
+        {
+          "expression": "E92",
+          "asset": "bubble-expressions/patch_E92.webp"
+        },
+        {
+          "expression": "E93",
+          "asset": "bubble-expressions/patch_E93.webp"
+        },
+        {
+          "expression": "E94",
+          "asset": "bubble-expressions/patch_E94.webp"
+        },
+        {
+          "expression": "E95",
+          "asset": "bubble-expressions/patch_E95.webp"
+        },
+        {
+          "expression": "E96",
+          "asset": "bubble-expressions/patch_E96.webp"
+        },
+        {
+          "expression": "E97",
+          "asset": "bubble-expressions/patch_E97.webp"
+        },
+        {
+          "expression": "E98",
+          "asset": "bubble-expressions/patch_E98.webp"
+        },
+        {
+          "expression": "E99",
+          "asset": "bubble-expressions/patch_E99.webp"
+        },
+        {
+          "expression": "E100",
+          "asset": "bubble-expressions/patch_E100.webp"
+        }
+      ]
+    },
+    "rush": {
+      "count": 100,
+      "assets": [
+        {
+          "expression": "E01",
+          "asset": "bubble-expressions/rush_E01.webp"
+        },
+        {
+          "expression": "E02",
+          "asset": "bubble-expressions/rush_E02.webp"
+        },
+        {
+          "expression": "E03",
+          "asset": "bubble-expressions/rush_E03.webp"
+        },
+        {
+          "expression": "E04",
+          "asset": "bubble-expressions/rush_E04.webp"
+        },
+        {
+          "expression": "E05",
+          "asset": "bubble-expressions/rush_E05.webp"
+        },
+        {
+          "expression": "E06",
+          "asset": "bubble-expressions/rush_E06.webp"
+        },
+        {
+          "expression": "E07",
+          "asset": "bubble-expressions/rush_E07.webp"
+        },
+        {
+          "expression": "E08",
+          "asset": "bubble-expressions/rush_E08.webp"
+        },
+        {
+          "expression": "E09",
+          "asset": "bubble-expressions/rush_E09.webp"
+        },
+        {
+          "expression": "E10",
+          "asset": "bubble-expressions/rush_E10.webp"
+        },
+        {
+          "expression": "E11",
+          "asset": "bubble-expressions/rush_E11.webp"
+        },
+        {
+          "expression": "E12",
+          "asset": "bubble-expressions/rush_E12.webp"
+        },
+        {
+          "expression": "E13",
+          "asset": "bubble-expressions/rush_E13.webp"
+        },
+        {
+          "expression": "E14",
+          "asset": "bubble-expressions/rush_E14.webp"
+        },
+        {
+          "expression": "E15",
+          "asset": "bubble-expressions/rush_E15.webp"
+        },
+        {
+          "expression": "E16",
+          "asset": "bubble-expressions/rush_E16.webp"
+        },
+        {
+          "expression": "E17",
+          "asset": "bubble-expressions/rush_E17.webp"
+        },
+        {
+          "expression": "E18",
+          "asset": "bubble-expressions/rush_E18.webp"
+        },
+        {
+          "expression": "E19",
+          "asset": "bubble-expressions/rush_E19.webp"
+        },
+        {
+          "expression": "E20",
+          "asset": "bubble-expressions/rush_E20.webp"
+        },
+        {
+          "expression": "E21",
+          "asset": "bubble-expressions/rush_E21.webp"
+        },
+        {
+          "expression": "E22",
+          "asset": "bubble-expressions/rush_E22.webp"
+        },
+        {
+          "expression": "E23",
+          "asset": "bubble-expressions/rush_E23.webp"
+        },
+        {
+          "expression": "E24",
+          "asset": "bubble-expressions/rush_E24.webp"
+        },
+        {
+          "expression": "E25",
+          "asset": "bubble-expressions/rush_E25.webp"
+        },
+        {
+          "expression": "E26",
+          "asset": "bubble-expressions/rush_E26.webp"
+        },
+        {
+          "expression": "E27",
+          "asset": "bubble-expressions/rush_E27.webp"
+        },
+        {
+          "expression": "E28",
+          "asset": "bubble-expressions/rush_E28.webp"
+        },
+        {
+          "expression": "E29",
+          "asset": "bubble-expressions/rush_E29.webp"
+        },
+        {
+          "expression": "E30",
+          "asset": "bubble-expressions/rush_E30.webp"
+        },
+        {
+          "expression": "E31",
+          "asset": "bubble-expressions/rush_E31.webp"
+        },
+        {
+          "expression": "E32",
+          "asset": "bubble-expressions/rush_E32.webp"
+        },
+        {
+          "expression": "E33",
+          "asset": "bubble-expressions/rush_E33.webp"
+        },
+        {
+          "expression": "E34",
+          "asset": "bubble-expressions/rush_E34.webp"
+        },
+        {
+          "expression": "E35",
+          "asset": "bubble-expressions/rush_E35.webp"
+        },
+        {
+          "expression": "E36",
+          "asset": "bubble-expressions/rush_E36.webp"
+        },
+        {
+          "expression": "E37",
+          "asset": "bubble-expressions/rush_E37.webp"
+        },
+        {
+          "expression": "E38",
+          "asset": "bubble-expressions/rush_E38.webp"
+        },
+        {
+          "expression": "E39",
+          "asset": "bubble-expressions/rush_E39.webp"
+        },
+        {
+          "expression": "E40",
+          "asset": "bubble-expressions/rush_E40.webp"
+        },
+        {
+          "expression": "E41",
+          "asset": "bubble-expressions/rush_E41.webp"
+        },
+        {
+          "expression": "E42",
+          "asset": "bubble-expressions/rush_E42.webp"
+        },
+        {
+          "expression": "E43",
+          "asset": "bubble-expressions/rush_E43.webp"
+        },
+        {
+          "expression": "E44",
+          "asset": "bubble-expressions/rush_E44.webp"
+        },
+        {
+          "expression": "E45",
+          "asset": "bubble-expressions/rush_E45.webp"
+        },
+        {
+          "expression": "E46",
+          "asset": "bubble-expressions/rush_E46.webp"
+        },
+        {
+          "expression": "E47",
+          "asset": "bubble-expressions/rush_E47.webp"
+        },
+        {
+          "expression": "E48",
+          "asset": "bubble-expressions/rush_E48.webp"
+        },
+        {
+          "expression": "E49",
+          "asset": "bubble-expressions/rush_E49.webp"
+        },
+        {
+          "expression": "E50",
+          "asset": "bubble-expressions/rush_E50.webp"
+        },
+        {
+          "expression": "E51",
+          "asset": "bubble-expressions/rush_E51.webp"
+        },
+        {
+          "expression": "E52",
+          "asset": "bubble-expressions/rush_E52.webp"
+        },
+        {
+          "expression": "E53",
+          "asset": "bubble-expressions/rush_E53.webp"
+        },
+        {
+          "expression": "E54",
+          "asset": "bubble-expressions/rush_E54.webp"
+        },
+        {
+          "expression": "E55",
+          "asset": "bubble-expressions/rush_E55.webp"
+        },
+        {
+          "expression": "E56",
+          "asset": "bubble-expressions/rush_E56.webp"
+        },
+        {
+          "expression": "E57",
+          "asset": "bubble-expressions/rush_E57.webp"
+        },
+        {
+          "expression": "E58",
+          "asset": "bubble-expressions/rush_E58.webp"
+        },
+        {
+          "expression": "E59",
+          "asset": "bubble-expressions/rush_E59.webp"
+        },
+        {
+          "expression": "E60",
+          "asset": "bubble-expressions/rush_E60.webp"
+        },
+        {
+          "expression": "E61",
+          "asset": "bubble-expressions/rush_E61.webp"
+        },
+        {
+          "expression": "E62",
+          "asset": "bubble-expressions/rush_E62.webp"
+        },
+        {
+          "expression": "E63",
+          "asset": "bubble-expressions/rush_E63.webp"
+        },
+        {
+          "expression": "E64",
+          "asset": "bubble-expressions/rush_E64.webp"
+        },
+        {
+          "expression": "E65",
+          "asset": "bubble-expressions/rush_E65.webp"
+        },
+        {
+          "expression": "E66",
+          "asset": "bubble-expressions/rush_E66.webp"
+        },
+        {
+          "expression": "E67",
+          "asset": "bubble-expressions/rush_E67.webp"
+        },
+        {
+          "expression": "E68",
+          "asset": "bubble-expressions/rush_E68.webp"
+        },
+        {
+          "expression": "E69",
+          "asset": "bubble-expressions/rush_E69.webp"
+        },
+        {
+          "expression": "E70",
+          "asset": "bubble-expressions/rush_E70.webp"
+        },
+        {
+          "expression": "E71",
+          "asset": "bubble-expressions/rush_E71.webp"
+        },
+        {
+          "expression": "E72",
+          "asset": "bubble-expressions/rush_E72.webp"
+        },
+        {
+          "expression": "E73",
+          "asset": "bubble-expressions/rush_E73.webp"
+        },
+        {
+          "expression": "E74",
+          "asset": "bubble-expressions/rush_E74.webp"
+        },
+        {
+          "expression": "E75",
+          "asset": "bubble-expressions/rush_E75.webp"
+        },
+        {
+          "expression": "E76",
+          "asset": "bubble-expressions/rush_E76.webp"
+        },
+        {
+          "expression": "E77",
+          "asset": "bubble-expressions/rush_E77.webp"
+        },
+        {
+          "expression": "E78",
+          "asset": "bubble-expressions/rush_E78.webp"
+        },
+        {
+          "expression": "E79",
+          "asset": "bubble-expressions/rush_E79.webp"
+        },
+        {
+          "expression": "E80",
+          "asset": "bubble-expressions/rush_E80.webp"
+        },
+        {
+          "expression": "E81",
+          "asset": "bubble-expressions/rush_E81.webp"
+        },
+        {
+          "expression": "E82",
+          "asset": "bubble-expressions/rush_E82.webp"
+        },
+        {
+          "expression": "E83",
+          "asset": "bubble-expressions/rush_E83.webp"
+        },
+        {
+          "expression": "E84",
+          "asset": "bubble-expressions/rush_E84.webp"
+        },
+        {
+          "expression": "E85",
+          "asset": "bubble-expressions/rush_E85.webp"
+        },
+        {
+          "expression": "E86",
+          "asset": "bubble-expressions/rush_E86.webp"
+        },
+        {
+          "expression": "E87",
+          "asset": "bubble-expressions/rush_E87.webp"
+        },
+        {
+          "expression": "E88",
+          "asset": "bubble-expressions/rush_E88.webp"
+        },
+        {
+          "expression": "E89",
+          "asset": "bubble-expressions/rush_E89.webp"
+        },
+        {
+          "expression": "E90",
+          "asset": "bubble-expressions/rush_E90.webp"
+        },
+        {
+          "expression": "E91",
+          "asset": "bubble-expressions/rush_E91.webp"
+        },
+        {
+          "expression": "E92",
+          "asset": "bubble-expressions/rush_E92.webp"
+        },
+        {
+          "expression": "E93",
+          "asset": "bubble-expressions/rush_E93.webp"
+        },
+        {
+          "expression": "E94",
+          "asset": "bubble-expressions/rush_E94.webp"
+        },
+        {
+          "expression": "E95",
+          "asset": "bubble-expressions/rush_E95.webp"
+        },
+        {
+          "expression": "E96",
+          "asset": "bubble-expressions/rush_E96.webp"
+        },
+        {
+          "expression": "E97",
+          "asset": "bubble-expressions/rush_E97.webp"
+        },
+        {
+          "expression": "E98",
+          "asset": "bubble-expressions/rush_E98.webp"
+        },
+        {
+          "expression": "E99",
+          "asset": "bubble-expressions/rush_E99.webp"
+        },
+        {
+          "expression": "E100",
+          "asset": "bubble-expressions/rush_E100.webp"
+        }
+      ]
+    },
+    "sync": {
+      "count": 100,
+      "assets": [
+        {
+          "expression": "E01",
+          "asset": "bubble-expressions/sync_E01.webp"
+        },
+        {
+          "expression": "E02",
+          "asset": "bubble-expressions/sync_E02.webp"
+        },
+        {
+          "expression": "E03",
+          "asset": "bubble-expressions/sync_E03.webp"
+        },
+        {
+          "expression": "E04",
+          "asset": "bubble-expressions/sync_E04.webp"
+        },
+        {
+          "expression": "E05",
+          "asset": "bubble-expressions/sync_E05.webp"
+        },
+        {
+          "expression": "E06",
+          "asset": "bubble-expressions/sync_E06.webp"
+        },
+        {
+          "expression": "E07",
+          "asset": "bubble-expressions/sync_E07.webp"
+        },
+        {
+          "expression": "E08",
+          "asset": "bubble-expressions/sync_E08.webp"
+        },
+        {
+          "expression": "E09",
+          "asset": "bubble-expressions/sync_E09.webp"
+        },
+        {
+          "expression": "E10",
+          "asset": "bubble-expressions/sync_E10.webp"
+        },
+        {
+          "expression": "E11",
+          "asset": "bubble-expressions/sync_E11.webp"
+        },
+        {
+          "expression": "E12",
+          "asset": "bubble-expressions/sync_E12.webp"
+        },
+        {
+          "expression": "E13",
+          "asset": "bubble-expressions/sync_E13.webp"
+        },
+        {
+          "expression": "E14",
+          "asset": "bubble-expressions/sync_E14.webp"
+        },
+        {
+          "expression": "E15",
+          "asset": "bubble-expressions/sync_E15.webp"
+        },
+        {
+          "expression": "E16",
+          "asset": "bubble-expressions/sync_E16.webp"
+        },
+        {
+          "expression": "E17",
+          "asset": "bubble-expressions/sync_E17.webp"
+        },
+        {
+          "expression": "E18",
+          "asset": "bubble-expressions/sync_E18.webp"
+        },
+        {
+          "expression": "E19",
+          "asset": "bubble-expressions/sync_E19.webp"
+        },
+        {
+          "expression": "E20",
+          "asset": "bubble-expressions/sync_E20.webp"
+        },
+        {
+          "expression": "E21",
+          "asset": "bubble-expressions/sync_E21.webp"
+        },
+        {
+          "expression": "E22",
+          "asset": "bubble-expressions/sync_E22.webp"
+        },
+        {
+          "expression": "E23",
+          "asset": "bubble-expressions/sync_E23.webp"
+        },
+        {
+          "expression": "E24",
+          "asset": "bubble-expressions/sync_E24.webp"
+        },
+        {
+          "expression": "E25",
+          "asset": "bubble-expressions/sync_E25.webp"
+        },
+        {
+          "expression": "E26",
+          "asset": "bubble-expressions/sync_E26.webp"
+        },
+        {
+          "expression": "E27",
+          "asset": "bubble-expressions/sync_E27.webp"
+        },
+        {
+          "expression": "E28",
+          "asset": "bubble-expressions/sync_E28.webp"
+        },
+        {
+          "expression": "E29",
+          "asset": "bubble-expressions/sync_E29.webp"
+        },
+        {
+          "expression": "E30",
+          "asset": "bubble-expressions/sync_E30.webp"
+        },
+        {
+          "expression": "E31",
+          "asset": "bubble-expressions/sync_E31.webp"
+        },
+        {
+          "expression": "E32",
+          "asset": "bubble-expressions/sync_E32.webp"
+        },
+        {
+          "expression": "E33",
+          "asset": "bubble-expressions/sync_E33.webp"
+        },
+        {
+          "expression": "E34",
+          "asset": "bubble-expressions/sync_E34.webp"
+        },
+        {
+          "expression": "E35",
+          "asset": "bubble-expressions/sync_E35.webp"
+        },
+        {
+          "expression": "E36",
+          "asset": "bubble-expressions/sync_E36.webp"
+        },
+        {
+          "expression": "E37",
+          "asset": "bubble-expressions/sync_E37.webp"
+        },
+        {
+          "expression": "E38",
+          "asset": "bubble-expressions/sync_E38.webp"
+        },
+        {
+          "expression": "E39",
+          "asset": "bubble-expressions/sync_E39.webp"
+        },
+        {
+          "expression": "E40",
+          "asset": "bubble-expressions/sync_E40.webp"
+        },
+        {
+          "expression": "E41",
+          "asset": "bubble-expressions/sync_E41.webp"
+        },
+        {
+          "expression": "E42",
+          "asset": "bubble-expressions/sync_E42.webp"
+        },
+        {
+          "expression": "E43",
+          "asset": "bubble-expressions/sync_E43.webp"
+        },
+        {
+          "expression": "E44",
+          "asset": "bubble-expressions/sync_E44.webp"
+        },
+        {
+          "expression": "E45",
+          "asset": "bubble-expressions/sync_E45.webp"
+        },
+        {
+          "expression": "E46",
+          "asset": "bubble-expressions/sync_E46.webp"
+        },
+        {
+          "expression": "E47",
+          "asset": "bubble-expressions/sync_E47.webp"
+        },
+        {
+          "expression": "E48",
+          "asset": "bubble-expressions/sync_E48.webp"
+        },
+        {
+          "expression": "E49",
+          "asset": "bubble-expressions/sync_E49.webp"
+        },
+        {
+          "expression": "E50",
+          "asset": "bubble-expressions/sync_E50.webp"
+        },
+        {
+          "expression": "E51",
+          "asset": "bubble-expressions/sync_E51.webp"
+        },
+        {
+          "expression": "E52",
+          "asset": "bubble-expressions/sync_E52.webp"
+        },
+        {
+          "expression": "E53",
+          "asset": "bubble-expressions/sync_E53.webp"
+        },
+        {
+          "expression": "E54",
+          "asset": "bubble-expressions/sync_E54.webp"
+        },
+        {
+          "expression": "E55",
+          "asset": "bubble-expressions/sync_E55.webp"
+        },
+        {
+          "expression": "E56",
+          "asset": "bubble-expressions/sync_E56.webp"
+        },
+        {
+          "expression": "E57",
+          "asset": "bubble-expressions/sync_E57.webp"
+        },
+        {
+          "expression": "E58",
+          "asset": "bubble-expressions/sync_E58.webp"
+        },
+        {
+          "expression": "E59",
+          "asset": "bubble-expressions/sync_E59.webp"
+        },
+        {
+          "expression": "E60",
+          "asset": "bubble-expressions/sync_E60.webp"
+        },
+        {
+          "expression": "E61",
+          "asset": "bubble-expressions/sync_E61.webp"
+        },
+        {
+          "expression": "E62",
+          "asset": "bubble-expressions/sync_E62.webp"
+        },
+        {
+          "expression": "E63",
+          "asset": "bubble-expressions/sync_E63.webp"
+        },
+        {
+          "expression": "E64",
+          "asset": "bubble-expressions/sync_E64.webp"
+        },
+        {
+          "expression": "E65",
+          "asset": "bubble-expressions/sync_E65.webp"
+        },
+        {
+          "expression": "E66",
+          "asset": "bubble-expressions/sync_E66.webp"
+        },
+        {
+          "expression": "E67",
+          "asset": "bubble-expressions/sync_E67.webp"
+        },
+        {
+          "expression": "E68",
+          "asset": "bubble-expressions/sync_E68.webp"
+        },
+        {
+          "expression": "E69",
+          "asset": "bubble-expressions/sync_E69.webp"
+        },
+        {
+          "expression": "E70",
+          "asset": "bubble-expressions/sync_E70.webp"
+        },
+        {
+          "expression": "E71",
+          "asset": "bubble-expressions/sync_E71.webp"
+        },
+        {
+          "expression": "E72",
+          "asset": "bubble-expressions/sync_E72.webp"
+        },
+        {
+          "expression": "E73",
+          "asset": "bubble-expressions/sync_E73.webp"
+        },
+        {
+          "expression": "E74",
+          "asset": "bubble-expressions/sync_E74.webp"
+        },
+        {
+          "expression": "E75",
+          "asset": "bubble-expressions/sync_E75.webp"
+        },
+        {
+          "expression": "E76",
+          "asset": "bubble-expressions/sync_E76.webp"
+        },
+        {
+          "expression": "E77",
+          "asset": "bubble-expressions/sync_E77.webp"
+        },
+        {
+          "expression": "E78",
+          "asset": "bubble-expressions/sync_E78.webp"
+        },
+        {
+          "expression": "E79",
+          "asset": "bubble-expressions/sync_E79.webp"
+        },
+        {
+          "expression": "E80",
+          "asset": "bubble-expressions/sync_E80.webp"
+        },
+        {
+          "expression": "E81",
+          "asset": "bubble-expressions/sync_E81.webp"
+        },
+        {
+          "expression": "E82",
+          "asset": "bubble-expressions/sync_E82.webp"
+        },
+        {
+          "expression": "E83",
+          "asset": "bubble-expressions/sync_E83.webp"
+        },
+        {
+          "expression": "E84",
+          "asset": "bubble-expressions/sync_E84.webp"
+        },
+        {
+          "expression": "E85",
+          "asset": "bubble-expressions/sync_E85.webp"
+        },
+        {
+          "expression": "E86",
+          "asset": "bubble-expressions/sync_E86.webp"
+        },
+        {
+          "expression": "E87",
+          "asset": "bubble-expressions/sync_E87.webp"
+        },
+        {
+          "expression": "E88",
+          "asset": "bubble-expressions/sync_E88.webp"
+        },
+        {
+          "expression": "E89",
+          "asset": "bubble-expressions/sync_E89.webp"
+        },
+        {
+          "expression": "E90",
+          "asset": "bubble-expressions/sync_E90.webp"
+        },
+        {
+          "expression": "E91",
+          "asset": "bubble-expressions/sync_E91.webp"
+        },
+        {
+          "expression": "E92",
+          "asset": "bubble-expressions/sync_E92.webp"
+        },
+        {
+          "expression": "E93",
+          "asset": "bubble-expressions/sync_E93.webp"
+        },
+        {
+          "expression": "E94",
+          "asset": "bubble-expressions/sync_E94.webp"
+        },
+        {
+          "expression": "E95",
+          "asset": "bubble-expressions/sync_E95.webp"
+        },
+        {
+          "expression": "E96",
+          "asset": "bubble-expressions/sync_E96.webp"
+        },
+        {
+          "expression": "E97",
+          "asset": "bubble-expressions/sync_E97.webp"
+        },
+        {
+          "expression": "E98",
+          "asset": "bubble-expressions/sync_E98.webp"
+        },
+        {
+          "expression": "E99",
+          "asset": "bubble-expressions/sync_E99.webp"
+        },
+        {
+          "expression": "E100",
+          "asset": "bubble-expressions/sync_E100.webp"
+        }
+      ]
+    },
+    "still": {
+      "count": 100,
+      "assets": [
+        {
+          "expression": "E01",
+          "asset": "bubble-expressions/still_E01.webp"
+        },
+        {
+          "expression": "E02",
+          "asset": "bubble-expressions/still_E02.webp"
+        },
+        {
+          "expression": "E03",
+          "asset": "bubble-expressions/still_E03.webp"
+        },
+        {
+          "expression": "E04",
+          "asset": "bubble-expressions/still_E04.webp"
+        },
+        {
+          "expression": "E05",
+          "asset": "bubble-expressions/still_E05.webp"
+        },
+        {
+          "expression": "E06",
+          "asset": "bubble-expressions/still_E06.webp"
+        },
+        {
+          "expression": "E07",
+          "asset": "bubble-expressions/still_E07.webp"
+        },
+        {
+          "expression": "E08",
+          "asset": "bubble-expressions/still_E08.webp"
+        },
+        {
+          "expression": "E09",
+          "asset": "bubble-expressions/still_E09.webp"
+        },
+        {
+          "expression": "E10",
+          "asset": "bubble-expressions/still_E10.webp"
+        },
+        {
+          "expression": "E11",
+          "asset": "bubble-expressions/still_E11.webp"
+        },
+        {
+          "expression": "E12",
+          "asset": "bubble-expressions/still_E12.webp"
+        },
+        {
+          "expression": "E13",
+          "asset": "bubble-expressions/still_E13.webp"
+        },
+        {
+          "expression": "E14",
+          "asset": "bubble-expressions/still_E14.webp"
+        },
+        {
+          "expression": "E15",
+          "asset": "bubble-expressions/still_E15.webp"
+        },
+        {
+          "expression": "E16",
+          "asset": "bubble-expressions/still_E16.webp"
+        },
+        {
+          "expression": "E17",
+          "asset": "bubble-expressions/still_E17.webp"
+        },
+        {
+          "expression": "E18",
+          "asset": "bubble-expressions/still_E18.webp"
+        },
+        {
+          "expression": "E19",
+          "asset": "bubble-expressions/still_E19.webp"
+        },
+        {
+          "expression": "E20",
+          "asset": "bubble-expressions/still_E20.webp"
+        },
+        {
+          "expression": "E21",
+          "asset": "bubble-expressions/still_E21.webp"
+        },
+        {
+          "expression": "E22",
+          "asset": "bubble-expressions/still_E22.webp"
+        },
+        {
+          "expression": "E23",
+          "asset": "bubble-expressions/still_E23.webp"
+        },
+        {
+          "expression": "E24",
+          "asset": "bubble-expressions/still_E24.webp"
+        },
+        {
+          "expression": "E25",
+          "asset": "bubble-expressions/still_E25.webp"
+        },
+        {
+          "expression": "E26",
+          "asset": "bubble-expressions/still_E26.webp"
+        },
+        {
+          "expression": "E27",
+          "asset": "bubble-expressions/still_E27.webp"
+        },
+        {
+          "expression": "E28",
+          "asset": "bubble-expressions/still_E28.webp"
+        },
+        {
+          "expression": "E29",
+          "asset": "bubble-expressions/still_E29.webp"
+        },
+        {
+          "expression": "E30",
+          "asset": "bubble-expressions/still_E30.webp"
+        },
+        {
+          "expression": "E31",
+          "asset": "bubble-expressions/still_E31.webp"
+        },
+        {
+          "expression": "E32",
+          "asset": "bubble-expressions/still_E32.webp"
+        },
+        {
+          "expression": "E33",
+          "asset": "bubble-expressions/still_E33.webp"
+        },
+        {
+          "expression": "E34",
+          "asset": "bubble-expressions/still_E34.webp"
+        },
+        {
+          "expression": "E35",
+          "asset": "bubble-expressions/still_E35.webp"
+        },
+        {
+          "expression": "E36",
+          "asset": "bubble-expressions/still_E36.webp"
+        },
+        {
+          "expression": "E37",
+          "asset": "bubble-expressions/still_E37.webp"
+        },
+        {
+          "expression": "E38",
+          "asset": "bubble-expressions/still_E38.webp"
+        },
+        {
+          "expression": "E39",
+          "asset": "bubble-expressions/still_E39.webp"
+        },
+        {
+          "expression": "E40",
+          "asset": "bubble-expressions/still_E40.webp"
+        },
+        {
+          "expression": "E41",
+          "asset": "bubble-expressions/still_E41.webp"
+        },
+        {
+          "expression": "E42",
+          "asset": "bubble-expressions/still_E42.webp"
+        },
+        {
+          "expression": "E43",
+          "asset": "bubble-expressions/still_E43.webp"
+        },
+        {
+          "expression": "E44",
+          "asset": "bubble-expressions/still_E44.webp"
+        },
+        {
+          "expression": "E45",
+          "asset": "bubble-expressions/still_E45.webp"
+        },
+        {
+          "expression": "E46",
+          "asset": "bubble-expressions/still_E46.webp"
+        },
+        {
+          "expression": "E47",
+          "asset": "bubble-expressions/still_E47.webp"
+        },
+        {
+          "expression": "E48",
+          "asset": "bubble-expressions/still_E48.webp"
+        },
+        {
+          "expression": "E49",
+          "asset": "bubble-expressions/still_E49.webp"
+        },
+        {
+          "expression": "E50",
+          "asset": "bubble-expressions/still_E50.webp"
+        },
+        {
+          "expression": "E51",
+          "asset": "bubble-expressions/still_E51.webp"
+        },
+        {
+          "expression": "E52",
+          "asset": "bubble-expressions/still_E52.webp"
+        },
+        {
+          "expression": "E53",
+          "asset": "bubble-expressions/still_E53.webp"
+        },
+        {
+          "expression": "E54",
+          "asset": "bubble-expressions/still_E54.webp"
+        },
+        {
+          "expression": "E55",
+          "asset": "bubble-expressions/still_E55.webp"
+        },
+        {
+          "expression": "E56",
+          "asset": "bubble-expressions/still_E56.webp"
+        },
+        {
+          "expression": "E57",
+          "asset": "bubble-expressions/still_E57.webp"
+        },
+        {
+          "expression": "E58",
+          "asset": "bubble-expressions/still_E58.webp"
+        },
+        {
+          "expression": "E59",
+          "asset": "bubble-expressions/still_E59.webp"
+        },
+        {
+          "expression": "E60",
+          "asset": "bubble-expressions/still_E60.webp"
+        },
+        {
+          "expression": "E61",
+          "asset": "bubble-expressions/still_E61.webp"
+        },
+        {
+          "expression": "E62",
+          "asset": "bubble-expressions/still_E62.webp"
+        },
+        {
+          "expression": "E63",
+          "asset": "bubble-expressions/still_E63.webp"
+        },
+        {
+          "expression": "E64",
+          "asset": "bubble-expressions/still_E64.webp"
+        },
+        {
+          "expression": "E65",
+          "asset": "bubble-expressions/still_E65.webp"
+        },
+        {
+          "expression": "E66",
+          "asset": "bubble-expressions/still_E66.webp"
+        },
+        {
+          "expression": "E67",
+          "asset": "bubble-expressions/still_E67.webp"
+        },
+        {
+          "expression": "E68",
+          "asset": "bubble-expressions/still_E68.webp"
+        },
+        {
+          "expression": "E69",
+          "asset": "bubble-expressions/still_E69.webp"
+        },
+        {
+          "expression": "E70",
+          "asset": "bubble-expressions/still_E70.webp"
+        },
+        {
+          "expression": "E71",
+          "asset": "bubble-expressions/still_E71.webp"
+        },
+        {
+          "expression": "E72",
+          "asset": "bubble-expressions/still_E72.webp"
+        },
+        {
+          "expression": "E73",
+          "asset": "bubble-expressions/still_E73.webp"
+        },
+        {
+          "expression": "E74",
+          "asset": "bubble-expressions/still_E74.webp"
+        },
+        {
+          "expression": "E75",
+          "asset": "bubble-expressions/still_E75.webp"
+        },
+        {
+          "expression": "E76",
+          "asset": "bubble-expressions/still_E76.webp"
+        },
+        {
+          "expression": "E77",
+          "asset": "bubble-expressions/still_E77.webp"
+        },
+        {
+          "expression": "E78",
+          "asset": "bubble-expressions/still_E78.webp"
+        },
+        {
+          "expression": "E79",
+          "asset": "bubble-expressions/still_E79.webp"
+        },
+        {
+          "expression": "E80",
+          "asset": "bubble-expressions/still_E80.webp"
+        },
+        {
+          "expression": "E81",
+          "asset": "bubble-expressions/still_E81.webp"
+        },
+        {
+          "expression": "E82",
+          "asset": "bubble-expressions/still_E82.webp"
+        },
+        {
+          "expression": "E83",
+          "asset": "bubble-expressions/still_E83.webp"
+        },
+        {
+          "expression": "E84",
+          "asset": "bubble-expressions/still_E84.webp"
+        },
+        {
+          "expression": "E85",
+          "asset": "bubble-expressions/still_E85.webp"
+        },
+        {
+          "expression": "E86",
+          "asset": "bubble-expressions/still_E86.webp"
+        },
+        {
+          "expression": "E87",
+          "asset": "bubble-expressions/still_E87.webp"
+        },
+        {
+          "expression": "E88",
+          "asset": "bubble-expressions/still_E88.webp"
+        },
+        {
+          "expression": "E89",
+          "asset": "bubble-expressions/still_E89.webp"
+        },
+        {
+          "expression": "E90",
+          "asset": "bubble-expressions/still_E90.webp"
+        },
+        {
+          "expression": "E91",
+          "asset": "bubble-expressions/still_E91.webp"
+        },
+        {
+          "expression": "E92",
+          "asset": "bubble-expressions/still_E92.webp"
+        },
+        {
+          "expression": "E93",
+          "asset": "bubble-expressions/still_E93.webp"
+        },
+        {
+          "expression": "E94",
+          "asset": "bubble-expressions/still_E94.webp"
+        },
+        {
+          "expression": "E95",
+          "asset": "bubble-expressions/still_E95.webp"
+        },
+        {
+          "expression": "E96",
+          "asset": "bubble-expressions/still_E96.webp"
+        },
+        {
+          "expression": "E97",
+          "asset": "bubble-expressions/still_E97.webp"
+        },
+        {
+          "expression": "E98",
+          "asset": "bubble-expressions/still_E98.webp"
+        },
+        {
+          "expression": "E99",
+          "asset": "bubble-expressions/still_E99.webp"
+        },
+        {
+          "expression": "E100",
+          "asset": "bubble-expressions/still_E100.webp"
+        }
+      ]
+    }
+  }
+}
