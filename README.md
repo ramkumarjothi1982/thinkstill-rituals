@@ -1,70 +1,44 @@
-# ThinkStill — GitHub Final 1000
+# ThinkStill Bubble Expressions
 
-Release: `2026-09-19-final-1000`  
-Status: **FINAL RELEASE LOCKED**
+Standalone GitHub package for ThinkStill character expression assets.
 
-## Runtime files to upload to the same GitHub folder
+## Contents
 
-- `thinkstill-manifest.json`
-- `thinkstill-modes.json`
-- `rituals_glitch.json`
-- `rituals_drop.json`
-- `rituals_still.json`
-- `rituals_patch.json`
-- `rituals_loopie.json`
-- `rituals_rush.json`
-- `rituals_sync.json`
+- `bubble-expressions/` — 448 WebP expression images
+  - Drop: 64
+  - Glitch: 64
+  - Loopie: 64
+  - Patch: 64
+  - Rush: 64
+  - Still: 64
+  - Sync: 64
+- `thinkstill_750_expression_map.json` — maps ThinkStill ritual states to the expression assets.
 
-Recommended supporting runtime files:
+## Asset paths
 
-- `thinkstill-rituals.json`
-- `thinkstill-routing.json`
-- `thinkstill-safety.json`
-- `thinkstill-release.json`
+Keep the folder and filenames exactly as supplied. The JSON uses flat paths such as:
 
-`manifest.json` is included as a compatibility alias.
+`bubble-expressions/patch_E01.webp`
 
-## Framer
+Do not move the character images into separate subfolders unless the JSON paths are also changed.
 
-Set **Manifest URL** to the RAW GitHub URL for:
+## Patch update
 
-`thinkstill-manifest.json`
+Patch assets have been normalised to the same 512 × 512 canvas/visual scale as the other bubble expressions so Patch fills the bubble consistently.
 
-The current Reset Console can automatically look for `thinkstill-modes.json`
-in the same folder as the manifest, so the separate Modes URL can remain blank.
+## GitHub upload
 
-## Counts
+Create a separate repository for the expression assets, then upload the **contents of this ZIP** to the repository root.
 
-- Rituals: **1000**
-- Vibe records: **3000**
-- GLITCH: 150
-- DROP: 150
-- STILL: 150
-- PATCH: 150
-- LOOPIE: 150
-- RUSH: 150
-- SYNC: 100
+Expected structure:
 
-Default vibe: **Cheeky**
-
-## Important
-
-Keep filenames and letter case exactly as supplied.
-
-This package does not replace your existing character expression assets.
-If your repository already contains the `bubble-expressions/` folder and
-expression-map JSON used by the Reset Console, leave those assets in place.
-
-## Validation
-
-Run from this folder:
-
-```bash
-node validate-release.mjs
+```text
+<repo-root>/
+├── README.md
+├── thinkstill_750_expression_map.json
+└── bubble-expressions/
+    ├── drop_E01.webp
+    ├── ...
+    ├── patch_E01.webp
+    └── ...
 ```
-
-Expected output:
-
-`PASS — 1000 rituals, 3000 mode records, all bubble counts and IDs valid.`
-
-The locked source workbook is included under `source/`.
