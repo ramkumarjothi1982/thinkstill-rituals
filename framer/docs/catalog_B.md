@@ -1,6 +1,6 @@
 # CATALOG AUDIT B: games 56-110
 
-Baseline: `src/00_arcade.jsx` md5 `b9e220c391b7e86bfb46b8c718e7f489` (22,786 lines, commit `485500c`). The last GAMES id is **110** (RAIN OUT), so this audit covers 55 games. I verified every row against the source. I also ran all 55 games live in the Playwright harness with the input "I am panicking about tomorrow" (DOM, font-size and arrow sweep), and ran interaction probes on NET IT, BUBBLE WRAP, WORD SALAD, THE ECHO CHAMBER and SEESAW.
+Baseline: `src/00_arcade.jsx` md5 `b9e220c391b7e86bfb46b8c718e7f489` (22,786 lines, commit `485500c`). The last GAMES id is **110** (RAIN OUT), so this audit covers 55 games. I verified every row against the source. I also ran all 55 games live in the Playwright harness with the input "I am panicking about tomorrow" (DOM, font-size and arrow sweep), and ran interaction probes on NET IT, BUBBLE WRAP, WORD SALAD, THE ECHO CHAMBER and SEESAW. On resume (same md5) I re-ran the sweep, measuring rendered text size (computed font-size × ancestor transform scale) after a 2.2s settle. Where the first draft's size, HUD and cue claims disagreed with that measurement, they are corrected below.
 
 ## 0. Routing facts for 56-110 (these differ from the task brief)
 
@@ -12,27 +12,49 @@ Baseline: `src/00_arcade.jsx` md5 `b9e220c391b7e86bfb46b8c718e7f489` (22,786 lin
   - **100-108 and 110** are not in `UNIQUE_HERO_IDS`, so they go to **`UniqueReleaseEngine` (L11539) → `switch (game.id)` (L12193) → `case N`**.
   - None of 56-110 reaches an E01-E15 engine or `UniversalToolModeEngine`.
 - **Consequences of the engine split:**
-  - Ids 56-99 get the legacy HUD: only `GAME PROGRESS · N%`, with no sparks, LVL or XP feedback, and no `.tsDynamicActionCue` arrows.
-  - Ids 100-110 get the reward HUD pills and the DOM-injected `.tsDynamicActionCue` (arrow + "VERB TO TARGET") on `.tsThoughtLabelHost` units.
+  - Every game shares the header `.releaseScoreBar` ("LVL n", "⚡ score", 12px; L21987). That score only changes in `done()` (L21519) at completion, so it gives no feedback during play.
+  - Ids 56-99 (`GameEngineLegacy`) show only `GAME PROGRESS · N%` (`.engineProgressText`, 10px), with no in-play sparks or tokens, and never get a `.tsDynamicActionCue`.
+  - Ids 100-110 (`GameEngine`) show `SHIFT · N%` plus `.tsShiftRewardPill` "✦ SHIFT SPARKS" / "◆ TOKENS" pills at **8.3px**.
+  - `GameEngine` injects `.tsDynamicActionCue` (arrow + "VERB TO TARGET", L20295) only on `.tsThoughtLabelHost` units, which need a high text-match score.
+    - In the live sweep the cue was visible only in **101** ("← PULL TO BREATHE").
+    - In 106 (`.tinySoundBubble`) and 109 (`.cleanseStone`), the cue is injected ("TAP TO BREATHE", "HOLD TO SOFTEN" …) but computes to `display: none`. For 109 the cause is `CLEANSE_HOLD_CUE_CSS` (L21054).
+    - 110 removes it on purpose (L20296).
+    - The other 100-110 games had no host at all.
 - **Six rounds again.** `cleanEntries` always returns 6 chunks. Every `case` that calls `advance()` repeats the same micro-move 6 times on chunks such as `I / am / panicking / about / tomorrow / I`.
   - Exceptions that finish in one pass (`completeAll`): 81, 89, 91, 93, 94, 95, 97, 98, 99, 100-110.
-- **The user's own words are tiny.** In most legacy cases (`W`/`ExactWords` → `.tsExactUserText`), the thought renders at roughly 4-7px: a barely visible "I" on screen. The cause is the Framer prop `bubbleTextPx` (default **4**, L21026, property control L22767), which is fed into `--bubble-text-size` and the engines.
-  - 99 ECHO CHAMBER sets `.echoBubbleWord` to `font-size: 4px !important` through a ref (L18222).
-  - Other fixed small sizes: `.potatoWord` 10.5px (100), `.rainCloudUnit` text 11px (110), `.uniqControl` 10px, `.literalStatus b/span` 9px (61, 71).
-  - Live sweep numbers are in section 1b.
+- **The user's own words are small, and the size control is broken.**
+  - **Measured sizes.** In most games the thought renders at about **11px** (`.tsExactUserText` / `.plainUserThoughtText`), usually as a single chunk such as "I".
+    - 100 HOT POTATO, 101 TUG and 109 CLEANSE render at 9-9.7px.
+    - **99 ECHO CHAMBER renders at 3.9px**, which is unreadable.
+    - Only 86 (22px), 96 (23px), 91/98 (14px), 108 (13.5px) and 94 (13px) are comfortably readable.
+  - **The `bubbleTextPx` prop does nothing for most games.** It is a Framer prop (default **4**, L21026; property control L22767), so it does not explain the 11px.
+    - `dynamicBubbleTextCss` (L21047) uses `.tsArcade.tsArcade.stage-play.stage-play:is(.tsExactUserText, …)`. That is a compound selector on the root element, with no descendant space, so it matches nothing.
+    - `--bubble-text-size` (L21843) is set but never read.
+    - The prop only takes effect where an engine applies it directly: 99 forces `.echoBubbleWord` to `${engineBubbleTextPx}px !important` through a ref (L18222), so the default 4 lands there.
+  - **External thought labels** (`.tsExternalThoughtLabel`, used by 100-110) are `clamp(9px, .72vw, 11.5px)`, which is 9.2px at 1280px wide, and drop to **8.5px** below 620px.
+  - **Smallest measured UI text:**
+    - 5px: 98 ("CHOOSE" / "LEVER")
+    - 6px: 61 ("0/3 ICE FILLS") and 71 ("THOUGHT SIGNAL" / "STEPS LEFT" / "STEP 1"), both status labels; also 101
+    - 6.4px: 66 and 106
+    - 7px: 89, 97, 100-110
+    - 8px: 82 ("← SHIFT" / "CHECK BALANCE")
+    - 8.3px: the 100-110 spark and token pills
+    - 9px: 68 `.combo` ("FREE DRUMS 0/10")
+    - About 10px everywhere: the guide card's "How to play" and "MIND BEND" (9.8px) labels
+  - Per-game numbers are in section 1b.
 - **Built-in on-screen arrows already exist in 10 of these games:**
   - 87 `.keepDropCueArrow` ↑/↓
   - 93 `.spaceMoveArrow` per tile
   - 95 `.shelfGuideV2` ↑
   - 97 `.xrayDragGuide` →
-  - 98 `.magicLeverGuide` ↓
+  - 98 `.magicLeverGuide` ↓ (it appears only after a bubble is picked; step 1 has no arrow)
   - 99 `.echoHoldGuide` ↓ (the arrow is wrong for a hold gesture)
   - 100 `.hotPotatoGuide` ↔
-  - 101 `.tugDirectionArrow` ←
+  - 101 `.tugDirectionArrow` ← (plus the injected `.tsDynamicActionCue`)
   - 102 `.ftArrow` → ←
   - 110 `.rainPullHint`
 
-  These are the house style to copy. The other 45 have no arrow pointing at the target.
+  These are the house style to copy. The other 45 have no arrow pointing at the target. 90 has only a text line (`.coinReleaseHint` "FLIP THE COIN TO SEND THE THOUGHT OUT OF YOUR HANDS").
 - **The guide card contradicts the real mechanic in 13 games:**
 
   | Game | Guide text | Actual mechanic |
@@ -71,7 +93,7 @@ Speed values assume 6 rounds where a game repeats.
 | 58 | MICROSCOPE | Reframe | `UniqueReleaseEngineLegacy` case 58 L16098 | rapid-tap | `button.focusKnob` (90px corner dial) ×4 | anxiety, overthinking (fixation on a detail) - the word visibly shrinks (scale 1 → 0.4) | instant ~12s (24 taps) | 3 - real shrink feedback; but the knob is a corner widget, and "one dot among many" is not implemented | 30, 39, 57 |
 | 59 | SPOTLIGHT | Reframe | `UniqueReleaseEngineLegacy` case 59 L16120 | drag (\|x\| >110) | `.spotLamp` | anxiety, fear, rumination - attention shifting: move the light, not the object | instant ~10s | 2 - no feedback during or after a failed drag (no sfx); the promised neutral objects never appear; the beam is static | 29, 45, 77 |
 | 60 | CROP TOOL | Reframe | `UniqueReleaseEngineLegacy` case 60 L16145 | sequence-tap | `button.cropHandle.h{step}` (32px white squares; the others are disabled) | overwhelm, catastrophising - widening the frame adds context | instant ~15s (24 taps) | 2 - the catalog says drag outward; it is 4 ordered taps; disabled handles look identical to live ones | 14, 17, 51 |
-| 61 | FREEZE | Interrupt | `FreezeLiteralEngine` L9148 (hero) | rapid-tap (3 per cube) | `button.freezeWordCube` ×6 | panic, anger, racing thoughts - freezing stops motion; the cold imagery maps to cooling down | instant ~12s (18 taps) | 4 - you tap the word itself, and the 3 ice layers are tactile. "SHATTER" is promised but the word only blurs; `.literalStatus` is 9px with a 40-word paragraph | 16, 41 (catalog A cluster A without the arm step) |
+| 61 | FREEZE | Interrupt | `FreezeLiteralEngine` L9148 (hero) | rapid-tap (3 per cube) | `button.freezeWordCube` ×6 | panic, anger, racing thoughts - freezing stops motion; the cold imagery maps to cooling down | instant ~12s (18 taps) | 4 - you tap the word itself, and the 3 ice layers are tactile. "SHATTER" is promised but the word only blurs; the status labels ("0/3 ICE FILLS") render at 6px | 16, 41 (catalog A cluster A without the arm step) |
 | 62 | NET IT | Interrupt | `UniqueReleaseEngineLegacy` case 62 L16168 | tap (drag is optional and irrelevant) | `button.catchNet` | anxiety - in theory approach and curiosity | instant ~5s | **1** - any click on the net advances, with no collision check (confirmed live); the flying card cannot be "caught"; "slow beats frantic" is not implemented | 72 |
 | 63 | PATTERN POP | Interrupt | `UniqueReleaseEngineLegacy` case 63 L16201 | sequence-tap | `.portalRing button.hot` (1 → 2 → 3 → 1 → 2) | overthinking - learnable patterns give a sense of predictability | short ~25s (30 taps) | **1** - "predict" is fake because the answer is lit; a wrong tap silently resets to 0 | 20, 17 |
 | 64 | RED LIGHT | Interrupt | `UniqueReleaseEngineLegacy` case 64 L16230 | timing-tap | `button.uniqControl` "STOP ON RED", only while `.trafficLamp.p0` (red) is lit | anger, impulsivity - a real wait-for-the-cue rule trains impulse delay | instant ~15s | 3 - a genuine timing mechanic (850ms red window per 2.55s cycle); early taps only increment an unused `meter`, with no "too early" feedback | 70, 79 |
@@ -81,10 +103,10 @@ Speed values assume 6 rounds where a game repeats.
 | 68 | DRUM IT | Rhythm | `UniqueReleaseEngineLegacy` case 68 L16330 | rapid-tap | `.drumKit button` (KICK / SNARE / TOM / CLAP) ×10 | anger, frustration, numbness - high-energy percussion discharges arousal | short ~25s (60 taps) | 3 - all four pads play the same `sfx("tap")`, so there is no real drum feel; the phrase never fractures into glyphs; 60 taps is a grind | 2, 74 |
 | 69 | PULSE | Rhythm | `UniqueReleaseEngineLegacy` case 69 L16357 | timing-tap (gaps >650ms) | `button.uniqControl` "TAP THE SLOW PULSE" | **panic**, anxiety - leading a slower tempo entrains slower breathing | short ~25-35s | 3 - the right concept for panic, but the rule is invisible (fast taps just play a different click); the 1.4s pulse is not used for scoring; no inhale/exhale cue | 36, 70 |
 | 70 | METRONOME | Rhythm | `UniqueReleaseEngineLegacy` case 70 L16385 | timing-tap (every 2nd beat, 620ms) | `button.uniqControl` while `.metronomeRig b` shows an even BEAT | anger, impulsivity - skipping a beat is inhibition practice | short ~20s (24 taps) | 2 - off-beat taps give only a quiet click with no fail signal; the "bait taps" are not implemented | 64, 79 |
-| 71 | DEFUSE | Interrupt | `DefuseLiteralEngine` L9311 (hero) | sequence-tap (3 per word) | `.defuseZone.active button` (OPEN PANEL → CUT BLUE WIRE → PRESS SAFE) | panic, anxiety - "disarm the alarm"; the 3 → 2 → 1 → SAFE countdown gives a felt down-shift | instant ~15s (18 taps) | 4 - clear locked/active zones and a STEPS LEFT counter. Bomb imagery can prime threat; 6 identical 3-step chores; 9px `.literalStatus` | 55 |
+| 71 | DEFUSE | Interrupt | `DefuseLiteralEngine` L9311 (hero) | sequence-tap (3 per word) | `.defuseZone.active button` (OPEN PANEL → CUT BLUE WIRE → PRESS SAFE) | panic, anxiety - "disarm the alarm"; the 3 → 2 → 1 → SAFE countdown gives a felt down-shift | instant ~15s (18 taps) | 4 - clear locked/active zones and a STEPS LEFT counter. Bomb imagery can prime threat; 6 identical 3-step chores; "THOUGHT SIGNAL" / "STEPS LEFT" labels render at 6px | 55 |
 | 72 | CATCH & LABEL | Interrupt | `UniqueReleaseEngineLegacy` case 72 L16415 | tap, then choose | `button.uniqControl` "CATCH CARD", then `.labelButtons button` (FACT / STORY / MAYBE) | anxiety, overthinking - affect labelling ("name it to tame it") | instant ~10s (12 taps) | 2 - "catch" is a pill tap wherever the card is; the label changes nothing | 86, 56, 62 |
 | 73 | TRAFFIC LIGHT | Interrupt | `UniqueReleaseEngineLegacy` case 73 L16450 | choose | `.signalConsole button.light` (STOP / WAIT / GO) | anger, impulse - pause before acting | instant ~5s | 2 - one tap ×6; the "WAIT slows the vehicle" surprise is not implemented, and there is no lane | 64, 85, 83 |
-| 74 | BUBBLE WRAP | Interrupt | `UniqueReleaseEngineLegacy` case 74 L16472 | sequence-tap (12 cells in strict order) | `.bubbleWrapSheet button`, where only cell `i === step` responds | anxiety, stress, frustration - bubble-wrap popping is a universal stim | short ~35s (72 taps) | **2** - out-of-order pops are silently ignored (confirmed live), which kills the joy of free popping; the next cell is unmarked; the words show as a ~5px "I" in 4 of 12 cells | 1 POP |
+| 74 | BUBBLE WRAP | Interrupt | `UniqueReleaseEngineLegacy` case 74 L16472 | sequence-tap (12 cells in strict order) | `.bubbleWrapSheet button`, where only cell `i === step` responds | anxiety, stress, frustration - bubble-wrap popping is a universal stim | short ~35s (72 taps) | **2** - out-of-order pops are silently ignored (confirmed live), which kills the joy of free popping; the next cell is unmarked; the words show as an 11px "I" in 4 of 12 cells | 1 POP |
 | 75 | INK BLEED | Release | `UniqueReleaseEngineLegacy` case 75 L16498 | drag (x >150) | `.inkDrop` (42px droplet, bottom-left) | sadness, shame, overthinking - live blur and letter-spacing loosen the sentence (defusion) | instant ~12s | 3 - the live bleed is satisfying; but the drop is small, x-only, and has no direction cue | 7, 49, 34 |
 | 76 | REVERSE IT | Interrupt | `UniqueReleaseEngineLegacy` case 76 L16526 | rapid-tap | `button.uniqControl` "REWIND REEL" ×4 | rumination - reversing the loop | instant ~12s (24 taps) | 2 - the catalog says swipe; it is a pill ×4; the effect is a scaleX squash, not backwards glyphs | 57, 2 |
 | 77 | SLOW MOTION | Interrupt | `UniqueReleaseEngineLegacy` case 77 L16558 | drag (down >125) | `.brakeHandle` (right edge) | **panic**, racing thoughts - pulling the brake slows the moving phrase, mirroring slowing the mind | instant ~12s | 3 - a good live coupling between pull and speed, but the brake is an unlabelled bar on the far right; the "gaps between words" payoff is not implemented | 29, 36 |
@@ -109,8 +131,8 @@ Speed values assume 6 rounds where a game repeats.
 | 96 | SCRATCH REVEAL | Reveal | `UniqueReleaseEngineLegacy` case 96 L17728 | trace (arm tool, then scratch to 62% coverage) | `button.scratchToolButton`, then the `.scratchPlayArea` canvas | none well. As built, you scratch foil off to uncover your own distress word | long 45-90s (6 rounds) | **1** - anti-relief: it reveals the negative word 6 times; the fact chips are not implemented; scratches do nothing until you arm the tool | 19 |
 | 97 | X-RAY | Reveal | `UniqueReleaseEngineLegacy` case 97 L17805 | drag (x >150) ×3, then tap | `button.xrayScannerHandle`, then `button.xrayBurnAllButton` | overthinking, fear - inspect, then incinerate | instant ~10s (one pass) | 4 - a clear → guide and a big BURN ALL finale; but the scans make the scary words sharper before they go | 18 |
 | 98 | MAGIC TRAPDOOR | Reveal | `UniqueReleaseEngineLegacy` case 98 L17985 | choose, then drag (down >58) ×3 | `button.magicTrapBubble`, then `button.magicLeverHandle` | catastrophising, overthinking - isolating the most "certain" word | instant ~10s (one pass) | 3 - a built-in ↓ guide; but only 1 of 6 bubbles drops and the rest stay on screen | 46, 26 |
-| 99 | THE ECHO CHAMBER | Reveal | `UniqueReleaseEngineLegacy` case 99 L18154 | hold (5s each, continuous) | `button.echoHoldBubble` ×5 | rumination - holding quiets each echo | short ~30s | **2** - the word is forced to `bubbleTextPx` (4px), so it is unreadable (confirmed live); letting go resets to 0; the ↓ arrow is wrong for a hold; the guide says "HOLD SOURCE" | 109, 65 |
-| 100 | HOT POTATO | Reveal | `UniqueReleaseEngine` case 100 L12194 | drag (≥48px, any direction) | `button.thoughtPotato` ×6 | **anger**, stress, frustration - "too hot to hold": each thought cools from red to blue and swaps to a positive face | instant ~10s (one pass) | 4 - direct, fast, with a literal cool-down and a positive turn; `.potatoWord` is fixed at 10.5px | 93, 21 |
+| 99 | THE ECHO CHAMBER | Reveal | `UniqueReleaseEngineLegacy` case 99 L18154 | hold (5s each, continuous) | `button.echoHoldBubble` ×5 | rumination - holding quiets each echo | short ~30s | **2** - the word is forced to `bubbleTextPx` (default 4; measured 3.9px), so it is unreadable; letting go resets to 0; the ↓ arrow is wrong for a hold; the guide says "HOLD SOURCE" | 109, 65 |
+| 100 | HOT POTATO | Reveal | `UniqueReleaseEngine` case 100 L12194 | drag (≥48px, any direction) | `button.thoughtPotato` ×6 | **anger**, stress, frustration - "too hot to hold": each thought cools from red to blue and swaps to a positive face | instant ~10s (one pass) | 4 - direct, fast, with a literal cool-down and a positive turn; the words render at 9-9.7px | 93, 21 |
 | 101 | TUG OF WAR | Reveal | `UniqueReleaseEngine` case 101 L12408 | drag (left ~36px), then tap | `button.tugPullHandle`, then `button.uniqControl.tugLetGo` | anxiety, control struggles, anger - ACT's "drop the rope" | short ~25s (12 actions) | 4 - an ACT-grade metaphor with tension visuals and a ← arrow. The guide says ×3 but it is ×6; LET GO is a pill under the rope | 102 |
 | 102 | FINGER TRAP | Reveal | `UniqueReleaseEngine` case 102 L12703 | drag inward (~107px toward the centre) | `.ftRow` (press either end) ×5 | **anxiety, panic**, overthinking - paradoxical effort: pushing in instead of pulling away is acceptance in one gesture | short ~20s (one pass) | **5** - the most therapeutically precise mechanic, with built-in → ← PUSH arrows and a live LOOSENING % cue; the slide is long on narrow phones | 101 |
 | 103 | SINKING PLATFORM | Reveal | `UniqueReleaseEngine` case 103 L12874 | tap (then watch 0.74s) | `button.spDropButton` ×6 | stress, burden, overwhelm - "stop holding it up" | instant ~8s | 2 - tap-then-watch; the user never lowers anything; the bays are text-heavy | 10, 22, 90 |
@@ -120,11 +142,74 @@ Speed values assume 6 rounds where a game repeats.
 | 107 | GO WEIRD | Absurdity | `UniqueReleaseEngine` case 107 L13635 | choose, then tap (or drag) | `button.gwProp`, then `.gwCard.weirdWordBubble` | fear, shame, anger - humour defusion (googly eyes on the thought) | instant ~15s (one pass) | 4 - a tap fallback plus drag; props visibly land; 5 props | 53 |
 | 108 | WORD SALAD | Absurdity | `UniqueReleaseEngine` case 108 L13813 | tap, then tap-to-swap | `button.uniqControl` "SHAKE WORD SALAD", then `.saladBowl button` | rumination (in theory, scrambling defuses) | instant ~8s | **1** - the "shake" is always an exact reversal (confirmed live), and the goal is to rebuild the original negative sentence, so the user ends exactly where they started | 20 |
 | 109 | CLEANSE | Release | `CleanseEngine` L6143 (`RoutedGameContent` id 109) | hold (≥72%, ~0.8s) | `button.cleanseBubbleHoldButton` ×6 | panic, anxiety, stress - charge and release is like an exhale; the labels come from the emotion profile (HOLD TO CALM / SLOW / BREATHE …) | short ~25s | 4 - the only emotion-aware labels in the set. A 3.2s lock between releases feels sluggish; panic labels fire only on the exact words "panic" / "anxious" | 65, 11, 18 |
-| 110 | RAIN OUT | Release | `UniqueReleaseEngine` case 110 L14071 | drag (down >70) | `.rainCloudUnit` ×6 | **sadness, grief**, overwhelm - "let it out" (a crying metaphor); a full-screen rain catharsis where the words wash off | short ~20s (including a 3s finale) | **5** - the most cinematic payoff in the catalog, with built-in pull hints; cloud text is fixed at 11px | 34 |
+| 110 | RAIN OUT | Release | `UniqueReleaseEngine` case 110 L14071 | drag (down >70) | `.rainCloudUnit` ×6 | **sadness, grief**, overwhelm - "let it out" (a crying metaphor); a full-screen rain catharsis where the words wash off | short ~20s (including a 3s finale) | **5** - the most cinematic payoff in the catalog, with built-in pull hints; cloud text renders at 10.6px | 34 |
 
 ## 1b. Live sweep (1280×860, "I am panicking about tomorrow")
 
-LIVE_SWEEP_PLACEHOLDER
+Measurement method:
+- Viewport 1280×860; input "I am panicking about tomorrow".
+- Each game was read 2.2s after the play stage mounted, before any interaction.
+- "User words" are the visible `.tsExactUserText`, `.plainUserThoughtText`, `.tsExternalThoughtLabel`, `.echoBubbleWord`, `.potatoWord`, `.spaceTileWord` and `.coinReleaseWord` elements; "-" means the thought sat in an untagged element at that moment.
+- "Smallest text" and "text nodes <12px" cover the whole `.releaseStage`, including the guide card (about 10px "How to play", 9.8px "MIND BEND") and the progress HUD (10px). So about 5 nodes per game come from shared chrome.
+- No page errors were thrown in any of the 55 games.
+
+| id | name | user words (px, rendered) | smallest text (px) | text nodes <12px | arrow or cue on screen at start |
+|---|---|---|---|---|---|
+| 56 | COURTROOM | - | 9.6 | 5 | none |
+| 57 | CAMERA ANGLE | - | 9.6 | 5 | none |
+| 58 | MICROSCOPE | 11.1 | 9.6 | 6 | none |
+| 59 | SPOTLIGHT | 11.1 | 9.6 | 6 | none |
+| 60 | CROP TOOL | 11.1 | 9.6 | 6 | none |
+| 61 | FREEZE | 11.1 | 6 | 17 | none |
+| 62 | NET IT | 11.1 | 9.6 | 6 | none |
+| 63 | PATTERN POP | - | 9.6 | 5 | none |
+| 64 | RED LIGHT | 11.1 | 9.6 | 6 | none |
+| 65 | PAUSE BUTTON | - | 9.6 | 5 | none |
+| 66 | BUFFERING | - | 6.4 | 6 | none |
+| 67 | TAP OUT | - | 9.6 | 5 | none |
+| 68 | DRUM IT | - | 9 | 8 | none |
+| 69 | PULSE | - | 9.6 | 5 | none |
+| 70 | METRONOME | - | 9.6 | 5 | none |
+| 71 | DEFUSE | 11.1 | 6 | 17 | none |
+| 72 | CATCH & LABEL | 11.1 | 9.6 | 6 | none |
+| 73 | TRAFFIC LIGHT | - | 9.6 | 5 | none |
+| 74 | BUBBLE WRAP | 11 | 9.6 | 9 | none |
+| 75 | INK BLEED | 11.1 | 9.6 | 6 | none |
+| 76 | REVERSE IT | 11.1 | 9.6 | 6 | none |
+| 77 | SLOW MOTION | 11.1 | 9.6 | 6 | none |
+| 78 | ONE WORD | 11 | 9.6 | 6 | none |
+| 79 | MISS ON PURPOSE | - | 9.6 | 5 | none |
+| 80 | DON'T TAP | - | 9.6 | 5 | none |
+| 81 | STACK IT | 11 | 9.6 | 11 | none |
+| 82 | SEESAW | 11.2 | 8 | 9 | none |
+| 83 | SORT STATION | 11.1 | 9.6 | 6 | none |
+| 84 | MINE / NOT MINE | 11.1 | 9.6 | 8 | none |
+| 85 | CONTROL PANEL | 11.1 | 9.3 | 13 | none |
+| 86 | FACT / STORY | 22 | 9.6 | 8 | none |
+| 87 | KEEP / DROP | 10.2 | 9.6 | 7 | `.keepDropCueArrow` ↑/↓ + micro-guide |
+| 88 | TRADE MACHINE | 12.3 | 9.6 | 7 | none |
+| 89 | DOOR A / B | - | 7 | 14 | none |
+| 90 | COIN FLIP REACTION | 11.1 | 9.6 | 6 | text hint only (`.coinReleaseHint`), no arrow |
+| 91 | PRIORITY BLOCKS | 14 | 9.6 | 11 | none |
+| 92 | SCALE DOWN | 11.1 | 9.6 | 7 | none |
+| 93 | SPACE MAKER | 11.2-11.4 | 9.6 | 11 | `.spaceMoveArrow` on each tile |
+| 94 | JUGGLE | 13.2 | 9.6 | 5 | none |
+| 95 | SHELF IT | 11.1 | 9.6 | 17 | `.shelfGuideV2` ↑ |
+| 96 | SCRATCH REVEAL | 23.1 | 9.6 | 5 | none |
+| 97 | X-RAY | 10.9 | 7 | 14 | `.xrayDragGuide` → |
+| 98 | MAGIC TRAPDOOR | 14 | 5 | 14 | none at start (`.magicLeverGuide` ↓ appears after a bubble is picked) |
+| 99 | THE ECHO CHAMBER | 3.9 | 3.9 | 15 | `.echoHoldGuide` ↓ |
+| 100 | HOT POTATO | 9-9.7 | 7 | 22 | `.hotPotatoGuide` ↔ |
+| 101 | TUG OF WAR | 9.2 | 6 | 20 | `.tugDirectionArrow` ← + `.tsDynamicActionCue` "← PULL TO BREATHE" |
+| 102 | FINGER TRAP | 11.1 | 7 | 39 | `.ftArrow` → ← + `.ftCue` track |
+| 103 | SINKING PLATFORM | 11-11.2 | 7 | 45 | none |
+| 104 | VOLUME KNOB | 11.1 | 7 | 30 | none |
+| 105 | DRAMA MACHINE | 11 | 7 | 45 | none |
+| 106 | TINY SOUNDTRACK | 11.1 | 6.4 | 62 | none |
+| 107 | GO WEIRD | - | 7 | 36 | none |
+| 108 | WORD SALAD | 13.5 | 7 | 16 | none |
+| 109 | CLEANSE | 9.2 | 7 | 29 | none |
+| 110 | RAIN OUT | 10.6 | 7 | 28 | `.rainPullHint` |
 
 ## 2. Mechanic duplicate clusters (56-110)
 
@@ -202,7 +287,11 @@ Also weak:
 - **Anger.** 100 HOT POTATO is the only "discharge → cool down → positive" arc. 68 DRUM IT discharges but never cools. There is no smash-then-exhale sequence.
 - **Positive ending (the "Inside Out" beat).** Only 100 (cool face), 105 (the face flips), 110 (rain → positive), 88 (a prize) and 109 (cleansed) turn the moment positive. Most others end on deletion or on nothing, and 94/108 end on keeping or restoring the user's negative words.
 - **Routing.** None of the strongest games in 56-110 (102, 110, 105, 101, 100, 109) has a `keywordBoost` in `chooseRelevantGame`, and the emotion profiles do not route games. A user who types "I'm so angry" can never be routed to 100 HOT POTATO, and "I'm grieving" can never reach 110 RAIN OUT.
-- **Readability and arrows.** 45 of 55 games have no arrow aimed at the target. The user's words render at about 4-7px in most legacy cases (`bubbleTextPx` default 4). Status lines are 9-10px.
+- **Readability and arrows.**
+  - 45 of 55 games have no arrow aimed at the target. The injected `.tsDynamicActionCue` is visible only in 101.
+  - The user's words render at about 11px in most games, 9-9.7px in 100/101/109, and 3.9px in 99.
+  - HUD and status text is 5-10px: spark and token pills 8.3px, progress 10px, and the 61/71/98 status labels 5-6px.
+  - The `bubbleTextPx` size control is a no-op except in 99 (see section 0).
 
 ## 6. Cross-cutting fixes these rows point to (for the redesign and arrow agents)
 
@@ -221,8 +310,18 @@ Also weak:
      - 108: SHAKE → tiles
    - For the wait games (66, 80), show a "hands off" icon instead of an arrow.
 2. **Raise the minimum text size to about 13px and the user's words to at least 16px.**
-   - Change the `bubbleTextPx` default from 4 to about 16, and remove the forced 4px ref on `.echoBubbleWord` (L18222).
-   - Other targets: `.literalStatus b/span` (9px), `.uniqControl` (10px), `.potatoWord` (10.5px), and the `.rainCloudUnit` text (11px).
+   - Fix the `dynamicBubbleTextCss` selector (L21047): add the missing descendant space, so it reads `.tsArcade.stage-play :is(.tsExactUserText, …)`. Then change the `bubbleTextPx` default from 4 to about 16, and remove the forced-size ref on `.echoBubbleWord` (L18222).
+     - Until the selector is fixed, raising the default would only enlarge 99.
+   - Raise `.tsExternalThoughtLabel` from `clamp(9px, .72vw, 11.5px)` (and 8.5px under 620px) to at least 14px.
+   - Other targets:
+     - `.tsShiftRewardPill` (8.3px)
+     - `.engineProgressText` (10px)
+     - the guide card's "How to play" and "MIND BEND" labels (about 10px)
+     - the 61/71 status labels (6px)
+     - 98 "CHOOSE" / "LEVER" (5px)
+     - 82 nudge buttons (8px)
+     - 68 `.combo` (9px)
+     - the 89 door labels (7-9px)
 3. **Fix the guide text** for the 13 mismatches in section 0, or implement the promised mechanic: 63 predict, 67 beat, 74 free popping, 90 reaction, 96 facts, 99 source, 101 ×6.
 4. **Stop rebuilding or keeping the negative thought** (94, 108). End every game on a positive transform, as 100, 105 and 110 already do.
 5. **Collapse 6 rounds to 1 pass** for the cluster-I/B/C/J games, or deduplicate chunks so short inputs do not repeat the same word 6 times.

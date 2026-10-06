@@ -1,0 +1,6962 @@
+[
+  {
+    "index": 0,
+    "name": "POP",
+    "smallText": [
+      {
+        "text": "POPPED 0 / 6",
+        "px": 9,
+        "renderedPx": 9,
+        "selector": ".cinematicContentShell > .arena.burstArena > div.combo.premiumCombo",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.2,
+        "selector": ".arena.burstArena > .wordBubble.premiumBubble > span.plainUserThoughtText.tsGlobalThoughtText.tsExactUserText",
+        "zone": "arena",
+        "n": 6
+      },
+      {
+        "text": "Big thought. Tiny pop.",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Tap to pop",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "POP · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 15,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.burstArena > button.wordBubble.premiumBubble.allCircularBubble",
+        "rect": [
+          627,
+          239,
+          92,
+          92
+        ],
+        "cursor": "pointer",
+        "text": "me and",
+        "handlers": [
+          "onPointerDown"
+        ],
+        "isButton": true,
+        "userText": true,
+        "hitTestOk": true,
+        "count": 6
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.burstArena > button.wordBubble.premiumBubble.allCircularBubble",
+    "playWorked": true,
+    "progressBefore": 0,
+    "progressAfter": 50,
+    "existingCue": [],
+    "guideText": "POP · LIVE GUIDE | How to play | Tap to pop | MIND BEND | Big thought. Tiny pop.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/POP.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.burstArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 6,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "POPPED 0 / 6"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@674,285",
+      "click@241,290",
+      "click@908,254"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "POPPED 3 / 6"
+      ]
+    },
+    "stateChanged": true,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "phone": {
+      "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/POP_phone.png",
+      "smallTextCount": 10,
+      "smallTextTotal": 15,
+      "smallText": [
+        {
+          "text": "my boss",
+          "px": 8.2,
+          "renderedPx": 8.6,
+          "selector": ".arena.burstArena > .wordBubble.premiumBubble > span.plainUserThoughtText.tsGlobalThoughtText.tsExactUserText",
+          "zone": "arena",
+          "n": 6
+        },
+        {
+          "text": "MIND BEND",
+          "px": 8.5,
+          "renderedPx": 8,
+          "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "How to play",
+          "px": 8.7,
+          "renderedPx": 8.4,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "GAME PROGRESS · 0 %",
+          "px": 9,
+          "renderedPx": 9,
+          "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+          "zone": "hud",
+          "n": 1
+        },
+        {
+          "text": "POPPED 0 / 6",
+          "px": 9,
+          "renderedPx": 9,
+          "selector": ".cinematicContentShell > .arena.burstArena > div.combo.premiumCombo",
+          "zone": "arena",
+          "n": 1
+        },
+        {
+          "text": "Big thought. Tiny pop.",
+          "px": 9.3,
+          "renderedPx": 9.1,
+          "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "Tap to pop",
+          "px": 9.8,
+          "renderedPx": 10.1,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "LVL 1",
+          "px": 10,
+          "renderedPx": 10,
+          "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+          "zone": "header-score",
+          "n": 1
+        },
+        {
+          "text": "⚡ 0",
+          "px": 10,
+          "renderedPx": 10,
+          "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+          "zone": "header-score",
+          "n": 1
+        },
+        {
+          "text": "POP · LIVE GUIDE",
+          "px": 10.2,
+          "renderedPx": 9.9,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+          "zone": "guide",
+          "n": 1
+        }
+      ],
+      "targets": [
+        {
+          "selector": ".cinematicContentShell > .arena.burstArena > button.wordBubble.premiumBubble.allCircularBubble",
+          "rect": [
+            88,
+            359,
+            84,
+            92
+          ],
+          "cursor": "pointer",
+          "text": "panic",
+          "handlers": [
+            "onPointerDown"
+          ],
+          "isButton": true,
+          "userText": true,
+          "hitTestOk": true,
+          "count": 6
+        }
+      ],
+      "errors": []
+    }
+  },
+  {
+    "index": 1,
+    "name": "CRACK",
+    "smallText": [
+      {
+        "text": "0 /3",
+        "px": 9,
+        "renderedPx": 9.3,
+        "selector": ".crackBubbleSlot > .eggShell.multiEgg > div.miniCrackCount",
+        "zone": "arena",
+        "n": 6
+      },
+      {
+        "text": "SELECT CRACK TOOL",
+        "px": 9,
+        "renderedPx": 9.1,
+        "selector": ".arena.literalCrackArena > .crackToolDock > span",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 10.8,
+        "selector": ".crackBubbleSlot > .eggShell.multiEgg > span.plainUserThoughtText.tsGlobalThoughtText.tsExactUserText",
+        "zone": "arena",
+        "n": 6
+      },
+      {
+        "text": "Something can feel sealed until you watc",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Tap to crack",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "CRACK · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 21,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.literalCrackArena > button.crackToolDock",
+        "rect": [
+          586,
+          648,
+          108,
+          108
+        ],
+        "cursor": "grab",
+        "text": "SELECT CRACK TOOL",
+        "handlers": [
+          "onPointerDown",
+          "onDoubleClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.literalCrackArena > button.crackToolDock",
+    "playWorked": false,
+    "progressBefore": 0,
+    "progressAfter": 0,
+    "existingCue": [],
+    "guideText": "CRACK · LIVE GUIDE | How to play | Tap to crack | MIND BEND | Something can feel sealed until you watch the shell around it break.",
+    "errors": [
+      "Warning: Cannot update a component (`%s`) while rendering a different component (`%s`). To locate the bad setState() call inside `%s`, follow the stack trace as described in https://reactjs.org/link/setstate-in-render%s GameEngineLegacy CrackEngine CrackEngine \n    at CrackEngine (file:///home/user/thinkstill-rituals/framer/dev/out.js:38416:26)\n    at RoutedGameContentLegacy (file:///home/user/thinkstill-rituals/framer/dev/out.js:48879:32)\n    at div\n    at div\n    at GameEngineLegacy (file:///home/user/thinkstill-rituals/framer/dev/out.js:48964:44)\n    at div\n    at section\n    at div\n    at div\n    at ThinkStillReleaseArcade (file:///home/user/thinkstill-rituals/framer/dev/out.js:51363:7)\n    at div\n    at ThinkStillReleaseArcadePixar (file:///home/user/thinkstill-rituals/framer/dev/out.js:53148:7)\n    at div"
+    ],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/CRACK.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.literalCrackArena.premiumArena",
+        "cursor": "auto",
+        "handlers": [
+          "onDoubleClick",
+          "onPointerEnter",
+          "onPointerMove"
+        ]
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3"
+      ]
+    },
+    "playAction": "hold1.2s+drag200",
+    "playLog": [
+      "hold1200+drag200@640,702"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3"
+      ]
+    },
+    "stateChanged": false,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "fallback": {
+      "action": "click x3",
+      "log": [
+        "click@195,211",
+        "click@195,211",
+        "click@195,211"
+      ],
+      "progress": 17,
+      "worked": true
+    }
+  },
+  {
+    "index": 2,
+    "name": "STOMP",
+    "smallText": [
+      {
+        "text": "0 /3",
+        "px": 9,
+        "renderedPx": 9,
+        "selector": ".stompBubbleSlot > .stompWordBubble.allCircularBubble > b.toolHitCount",
+        "zone": "arena",
+        "n": 6
+      },
+      {
+        "text": "ACTIVATE STOMP TOOL",
+        "px": 9,
+        "renderedPx": 9.1,
+        "selector": ".arena.literalStompArena > .stompToolDock > span",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.2,
+        "selector": ".stompBubbleSlot > .stompWordBubble.allCircularBubble > span.plainUserThoughtText.tsGlobalThoughtText.tsExactUserText",
+        "zone": "arena",
+        "n": 6
+      },
+      {
+        "text": "It looked solid until repeated contact c",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Stomp it flat",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "STOMP · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 21,
+    "targets": [
+      {
+        "selector": ".arena.literalStompArena > .stompBubbleField > div.stompBubbleSlot",
+        "rect": [
+          78,
+          265,
+          104,
+          104
+        ],
+        "cursor": "auto",
+        "text": "my boss 0/3",
+        "handlers": [
+          "onPointerDown"
+        ],
+        "isButton": false,
+        "userText": true,
+        "hitTestOk": true,
+        "count": 6
+      },
+      {
+        "selector": ".cinematicContentShell > .arena.literalStompArena > button.stompToolDock",
+        "rect": [
+          584,
+          638,
+          112,
+          112
+        ],
+        "cursor": "pointer",
+        "text": "ACTIVATE STOMP TOOL",
+        "handlers": [
+          "onPointerDown",
+          "onDoubleClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".arena.literalStompArena > .stompBubbleField > div.stompBubbleSlot",
+    "playWorked": false,
+    "progressBefore": 0,
+    "progressAfter": 0,
+    "existingCue": [],
+    "guideText": "STOMP · LIVE GUIDE | How to play | Stomp it flat | MIND BEND | It looked solid until repeated contact changed its shape.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/STOMP.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.literalStompArena.premiumArena",
+        "cursor": "auto",
+        "handlers": [
+          "onDoubleClick",
+          "onPointerEnter",
+          "onPointerMove"
+        ]
+      }
+    ],
+    "interactiveCount": 7,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@130,317",
+      "click@130,317",
+      "click@130,317"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3"
+      ]
+    },
+    "stateChanged": false,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "fallback": {
+      "action": "hold1.2s+drag200",
+      "log": [
+        "hold1200+drag200@130,317"
+      ],
+      "progress": 0,
+      "worked": false
+    }
+  },
+  {
+    "index": 3,
+    "name": "ZAP",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "0/3",
+        "px": 10,
+        "renderedPx": 10.2,
+        "selector": ".zapBubbleField.zapBubbleFieldFive > .zapMultiBubble.allCircularBubble > b.zapBubbleCount",
+        "zone": "arena",
+        "n": 6
+      },
+      {
+        "text": "ZAP FIELD 1 / 3",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".arena.literalZapArena > .zapGroundButton.multiZapButton > span",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".zapBubbleField.zapBubbleFieldFive > .zapMultiBubble.allCircularBubble > span.plainUserThoughtText.tsGlobalThoughtText.tsExactUserText",
+        "zone": "arena",
+        "n": 6
+      },
+      {
+        "text": "The buzz looked powerful until you contr",
+        "px": 11.8,
+        "renderedPx": 11.7,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Hold to zap",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "ZAP · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 21,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.literalZapArena > button.zapGroundButton.multiZapButton",
+        "rect": [
+          592,
+          660,
+          96,
+          96
+        ],
+        "cursor": "pointer",
+        "text": "ZAP FIELD 1 / 3",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.literalZapArena > button.zapGroundButton.multiZapButton",
+    "playWorked": true,
+    "progressBefore": 0,
+    "progressAfter": 67,
+    "existingCue": [],
+    "guideText": "ZAP · LIVE GUIDE | How to play | Hold to zap | MIND BEND | The buzz looked powerful until you controlled when the electricity existed.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/ZAP.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.literalZapArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "0/3",
+        "0/3",
+        "0/3",
+        "0/3",
+        "0/3",
+        "0/3"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@640,708",
+      "click@688,707",
+      "click@640,708"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "2/3",
+        "2/3",
+        "2/3",
+        "2/3",
+        "2/3",
+        "2/3"
+      ]
+    },
+    "stateChanged": true,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade"
+  },
+  {
+    "index": 4,
+    "name": "MELT",
+    "smallText": [
+      {
+        "text": "0 /3",
+        "px": 9,
+        "renderedPx": 10.6,
+        "selector": ".meltCubeField > .cartoonIceCube.cubeStageFull > b.toolHitCount.iceHitCount",
+        "zone": "arena",
+        "n": 6
+      },
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "ACTIVATE BLOW TORCH",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".arena.literalMeltArena > .meltGroundButton.meltToolButton > span",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 13.5,
+        "selector": ".meltCubeField > .cartoonIceCube.cubeStageFull > span.iceCubeWord.tsExactUserText",
+        "zone": "arena",
+        "n": 6
+      },
+      {
+        "text": "What looked fixed can change shape witho",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Hold to melt",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "MELT · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 21,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.literalMeltArena > button.meltGroundButton.meltToolButton",
+        "rect": [
+          592,
+          660,
+          96,
+          96
+        ],
+        "cursor": "pointer",
+        "text": "ACTIVATE BLOW TORCH",
+        "handlers": [
+          "onPointerDown"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.literalMeltArena > button.meltGroundButton.meltToolButton",
+    "playWorked": false,
+    "progressBefore": 0,
+    "progressAfter": 0,
+    "existingCue": [],
+    "guideText": "MELT · LIVE GUIDE | How to play | Hold to melt | MIND BEND | What looked fixed can change shape without you arguing with it.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/MELT.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.literalMeltArena.premiumArena",
+        "cursor": "auto",
+        "handlers": [
+          "onDoubleClick",
+          "onPointerEnter",
+          "onPointerMove"
+        ]
+      },
+      {
+        "selector": ".cinematicContentShell > .arena.literalMeltArena > div.meltCubeField",
+        "cursor": "auto",
+        "handlers": [
+          "onPointerDown"
+        ]
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@640,708",
+      "click@688,707",
+      "click@640,708"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3"
+      ]
+    },
+    "stateChanged": false,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "fallback": {
+      "action": "hold1.2s+drag200",
+      "log": [
+        "hold1200+drag200@310,252"
+      ],
+      "progress": 6,
+      "worked": true
+    }
+  },
+  {
+    "index": 5,
+    "name": "SHRED",
+    "smallText": [
+      {
+        "text": "FEED SLOT",
+        "px": 6,
+        "renderedPx": 6,
+        "selector": ".shredderBody.premiumShredder > .shredderMouth > b",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "THINKSTILL // CROSS-CUT",
+        "px": 8,
+        "renderedPx": 8,
+        "selector": ".shredderBody.premiumShredder > .shredderTop > span",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "Break the shape. Break the hold.",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Tap to shred",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "SHRED · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 10,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.literalShredArena > button.bigAction.shredAction.primaryBottomControl",
+        "rect": [
+          490,
+          705,
+          300,
+          49
+        ],
+        "cursor": "pointer",
+        "text": "START SHREDDER",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.literalShredArena > button.bigAction.shredAction.primaryBottomControl",
+    "playWorked": true,
+    "progressBefore": 0,
+    "progressAfter": 10,
+    "existingCue": [
+      {
+        "selector": ".arena.literalShredArena > .shredderBody.premiumShredder > div.shredFeedGuide",
+        "matched": "shredFeedGuide",
+        "visible": true
+      }
+    ],
+    "guideText": "SHRED · LIVE GUIDE | How to play | Tap to shred | MIND BEND | Break the shape. Break the hold.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/SHRED.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.literalShredArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "0% SHREDDED",
+        "1 / 6"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@640,730",
+      "click@790,729",
+      "click@790,729"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "KEEP SHREDDING · 60%",
+        "60% SHREDDED",
+        "1 / 6"
+      ]
+    },
+    "stateChanged": true,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "phone": {
+      "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/SHRED_phone.png",
+      "smallTextCount": 13,
+      "smallTextTotal": 13,
+      "smallText": [
+        {
+          "text": "FEED SLOT",
+          "px": 6,
+          "renderedPx": 6,
+          "selector": ".shredderBody.premiumShredder > .shredderMouth > b",
+          "zone": "arena",
+          "n": 1
+        },
+        {
+          "text": "THINKSTILL // CROSS-CUT",
+          "px": 8,
+          "renderedPx": 8,
+          "selector": ".shredderBody.premiumShredder > .shredderTop > span",
+          "zone": "arena",
+          "n": 1
+        },
+        {
+          "text": "MIND BEND",
+          "px": 8.5,
+          "renderedPx": 8,
+          "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "How to play",
+          "px": 8.7,
+          "renderedPx": 8.4,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "GAME PROGRESS · 0 %",
+          "px": 9,
+          "renderedPx": 9,
+          "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+          "zone": "hud",
+          "n": 1
+        },
+        {
+          "text": "Break the shape. Break the hold.",
+          "px": 9.3,
+          "renderedPx": 9.1,
+          "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "Tap to shred",
+          "px": 9.8,
+          "renderedPx": 10.1,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "LVL 1",
+          "px": 10,
+          "renderedPx": 10,
+          "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+          "zone": "header-score",
+          "n": 1
+        },
+        {
+          "text": "⚡ 0",
+          "px": 10,
+          "renderedPx": 10,
+          "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+          "zone": "header-score",
+          "n": 1
+        },
+        {
+          "text": "SHRED · LIVE GUIDE",
+          "px": 10.2,
+          "renderedPx": 9.9,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "The paper is sitting directly on the fee",
+          "px": 10.5,
+          "renderedPx": 10.5,
+          "selector": ".arena.literalShredArena > .literalStatus.shredStatus > span",
+          "zone": "arena",
+          "n": 1
+        },
+        {
+          "text": "1 / 6",
+          "px": 11,
+          "renderedPx": 11,
+          "selector": ".cinematicContentShell > .arena.literalShredArena > div.literalProgress",
+          "zone": "arena",
+          "n": 1
+        },
+        {
+          "text": "0% SHREDDED",
+          "px": 12,
+          "renderedPx": 12,
+          "selector": ".arena.literalShredArena > .literalStatus.shredStatus > b",
+          "zone": "arena",
+          "n": 1
+        }
+      ],
+      "targets": [
+        {
+          "selector": ".cinematicContentShell > .arena.literalShredArena > button.bigAction.shredAction.primaryBottomControl",
+          "rect": [
+            55,
+            655,
+            280,
+            49
+          ],
+          "cursor": "pointer",
+          "text": "START SHREDDER",
+          "handlers": [
+            "onClick"
+          ],
+          "isButton": true,
+          "userText": false,
+          "hitTestOk": true,
+          "count": 1
+        }
+      ],
+      "errors": []
+    }
+  },
+  {
+    "index": 6,
+    "name": "FLUSH",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "FLUSH DOWN THE DRAIN",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".arena.literalFlushArena > .flushLever.primaryBottomControl > span",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".sinkPaperAnchor > .sinkPaperWord > span.plainUserThoughtText.tsGlobalThoughtText.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "You can stop circling something by chang",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Flush it",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "FLUSH · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 10,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.literalFlushArena > button.flushLever.primaryBottomControl",
+        "rect": [
+          490,
+          702,
+          300,
+          52
+        ],
+        "cursor": "default",
+        "text": "FLUSH DOWN THE DRAIN",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.literalFlushArena > button.flushLever.primaryBottomControl",
+    "playWorked": true,
+    "progressBefore": 0,
+    "progressAfter": 17,
+    "existingCue": [
+      {
+        "selector": ".arena.literalFlushArena > .sinkFaucet > i.faucetHandle",
+        "matched": "faucetHandle",
+        "visible": true
+      }
+    ],
+    "guideText": "FLUSH · LIVE GUIDE | How to play | Flush it | MIND BEND | You can stop circling something by changing the direction of the motion.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/FLUSH.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.literalFlushArena.sinkFlushArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "READY · 1/6",
+        "1 / 6"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@640,728",
+      "click@640,728",
+      "click@640,728"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "READY · 2/6",
+        "2 / 6"
+      ]
+    },
+    "stateChanged": true,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade"
+  },
+  {
+    "index": 7,
+    "name": "BURN",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "HOLD TO BURN",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".arena.literalBurnArena > .burnGroundButton > span",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".burnPaperRemaining > .burnWordCenter > span.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "A sentence can lose its form without nee",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Hold to burn",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "BURN · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 10,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.literalBurnArena > button.burnGroundButton",
+        "rect": [
+          592,
+          660,
+          96,
+          96
+        ],
+        "cursor": "pointer",
+        "text": "HOLD TO BURN",
+        "handlers": [
+          "onPointerDown",
+          "onPointerUp"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.literalBurnArena > button.burnGroundButton",
+    "playWorked": false,
+    "progressBefore": 0,
+    "progressAfter": 0,
+    "existingCue": [],
+    "guideText": "BURN · LIVE GUIDE | How to play | Hold to burn | MIND BEND | A sentence can lose its form without needing another argument.",
+    "errors": [
+      "Warning: Cannot update a component (`%s`) while rendering a different component (`%s`). To locate the bad setState() call inside `%s`, follow the stack trace as described in https://reactjs.org/link/setstate-in-render%s GameEngineLegacy BurnEngine BurnEngine \n    at BurnEngine (file:///home/user/thinkstill-rituals/framer/dev/out.js:38943:25)\n    at RoutedGameContentLegacy (file:///home/user/thinkstill-rituals/framer/dev/out.js:48879:32)\n    at div\n    at div\n    at GameEngineLegacy (file:///home/user/thinkstill-rituals/framer/dev/out.js:48964:44)\n    at div\n    at section\n    at div\n    at div\n    at ThinkStillReleaseArcade (file:///home/user/thinkstill-rituals/framer/dev/out.js:51363:7)\n    at div\n    at ThinkStillReleaseArcadePixar (file:///home/user/thinkstill-rituals/framer/dev/out.js:53148:7)\n    at div"
+    ],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/BURN.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.literalBurnArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "0% BURNT",
+        "1 / 6"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@640,708",
+      "click@688,707",
+      "click@640,708"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "0% BURNT",
+        "1 / 6"
+      ]
+    },
+    "stateChanged": false,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "fallback": {
+      "action": "hold1.2s+drag200",
+      "log": [
+        "hold1200+drag200@688,707"
+      ],
+      "progress": 1,
+      "worked": true
+    }
+  },
+  {
+    "index": 8,
+    "name": "SWIPE AWAY",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "SWIPE RIGHT",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".arena.literalSwipeArena > .swipeCard.physical > b",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11,
+        "selector": ".arena.literalSwipeArena > .swipeCard.physical > span.plainUserThoughtText.tsGlobalThoughtText.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "A thought returning does not mean you ha",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Swipe it away",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "SWIPE AWAY · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 10,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.literalSwipeArena > div.swipeCard.physical",
+        "rect": [
+          294,
+          339,
+          340,
+          140
+        ],
+        "cursor": "grab",
+        "text": "my boss SWIPE RIGHT",
+        "handlers": [
+          "onPointerDown",
+          "onPointerUp",
+          "onPointerMove"
+        ],
+        "isButton": false,
+        "userText": true,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.literalSwipeArena > div.swipeCard.physical",
+    "playWorked": true,
+    "progressBefore": 0,
+    "progressAfter": 17,
+    "existingCue": [
+      {
+        "selector": ".cinematicContentShell > .arena.literalSwipeArena > div.swipeHintLane",
+        "matched": "swipeHintLane",
+        "visible": true
+      }
+    ],
+    "guideText": "SWIPE AWAY · LIVE GUIDE | How to play | Swipe it away | MIND BEND | A thought returning does not mean you have to keep holding the card.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/SWIPE_AWAY.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.literalSwipeArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "hold1.2s+drag200",
+    "playLog": [
+      "hold1200+drag200@464,409"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "2 / 6"
+      ]
+    },
+    "stateChanged": true,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade"
+  },
+  {
+    "index": 9,
+    "name": "VACUUM",
+    "smallText": [
+      {
+        "text": "CYCLONE",
+        "px": 8,
+        "renderedPx": 8,
+        "selector": ".arena.literalVacuumArena > .realVacuumMachine > text",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "RUBBISH BAG INTAKE",
+        "px": 8,
+        "renderedPx": 8,
+        "selector": ".arena.literalVacuumArena > .realVacuumMachine > div.vacuumMachineLabel",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".vacuumBubbleGrid > .vacuumCircleBubble.active > span.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "yelled at",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".vacuumBubbleGrid > .vacuumCircleBubble > span.tsExactUserText",
+        "zone": "arena",
+        "n": 5
+      },
+      {
+        "text": "Change the move. Change the size.",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Suck it up",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "VACUUM · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 16,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.literalVacuumArena > button.bigAction.literalActionBtn.vacuumBtn",
+        "rect": [
+          490,
+          699,
+          300,
+          55
+        ],
+        "cursor": "pointer",
+        "text": "VACUUM SUCK",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.literalVacuumArena > button.bigAction.literalActionBtn.vacuumBtn",
+    "playWorked": true,
+    "progressBefore": 0,
+    "progressAfter": 17,
+    "existingCue": [
+      {
+        "selector": ".arena.literalVacuumArena > .realVacuumMachine > path.vacuumHandle",
+        "matched": "vacuumHandle",
+        "visible": true
+      }
+    ],
+    "guideText": "VACUUM · LIVE GUIDE | How to play | Suck it up | MIND BEND | Change the move. Change the size.",
+    "errors": [
+      "Warning: Cannot update a component (`%s`) while rendering a different component (`%s`). To locate the bad setState() call inside `%s`, follow the stack trace as described in https://reactjs.org/link/setstate-in-render%s GameEngineLegacy VacuumEngine VacuumEngine \n    at VacuumEngine (file:///home/user/thinkstill-rituals/framer/dev/out.js:39346:27)\n    at RoutedGameContentLegacy (file:///home/user/thinkstill-rituals/framer/dev/out.js:48879:32)\n    at div\n    at div\n    at GameEngineLegacy (file:///home/user/thinkstill-rituals/framer/dev/out.js:48964:44)\n    at div\n    at section\n    at div\n    at div\n    at ThinkStillReleaseArcade (file:///home/user/thinkstill-rituals/framer/dev/out.js:51363:7)\n    at div\n    at ThinkStillReleaseArcadePixar (file:///home/user/thinkstill-rituals/framer/dev/out.js:53148:7)\n    at div"
+    ],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/VACUUM.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.literalVacuumArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@640,727",
+      "click@790,726",
+      "click@790,726"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "stateChanged": true,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade"
+  },
+  {
+    "index": 10,
+    "name": "SLINGSHOT",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".slingshotFrame > .slingshotWord > span.plainUserThoughtText.tsGlobalThoughtText.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "Distance can change how large something ",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Pull. Release. Fly.",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "SLINGSHOT · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 9,
+    "targets": [
+      {
+        "selector": ".arena.literalSlingshotArena > .slingshotFrame > div.slingshotWord",
+        "rect": [
+          567,
+          448,
+          146,
+          82
+        ],
+        "cursor": "grab",
+        "text": "my boss",
+        "handlers": [
+          "onPointerDown",
+          "onPointerUp",
+          "onPointerMove"
+        ],
+        "isButton": false,
+        "userText": true,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".arena.literalSlingshotArena > .slingshotFrame > div.slingshotWord",
+    "playWorked": true,
+    "progressBefore": 0,
+    "progressAfter": 17,
+    "existingCue": [],
+    "guideText": "SLINGSHOT · LIVE GUIDE | How to play | Pull. Release. Fly. | MIND BEND | Distance can change how large something feels.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/SLINGSHOT.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.literalSlingshotArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "hold1.2s+drag200",
+    "playLog": [
+      "hold1200+drag200@640,489"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "2 / 6"
+      ]
+    },
+    "stateChanged": true,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "phone": {
+      "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/SLINGSHOT_phone.png",
+      "smallTextCount": 12,
+      "smallTextTotal": 12,
+      "smallText": [
+        {
+          "text": "my boss",
+          "px": 8.2,
+          "renderedPx": 8.6,
+          "selector": ".slingshotFrame > .slingshotWord > span.plainUserThoughtText.tsGlobalThoughtText.tsExactUserText",
+          "zone": "arena",
+          "n": 1
+        },
+        {
+          "text": "MIND BEND",
+          "px": 8.5,
+          "renderedPx": 8,
+          "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "How to play",
+          "px": 8.7,
+          "renderedPx": 8.4,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "GAME PROGRESS · 0 %",
+          "px": 9,
+          "renderedPx": 9,
+          "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+          "zone": "hud",
+          "n": 1
+        },
+        {
+          "text": "Distance can change how large something ",
+          "px": 9.3,
+          "renderedPx": 9.1,
+          "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "Pull. Release. Fly.",
+          "px": 9.8,
+          "renderedPx": 10.1,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "LVL 1",
+          "px": 10,
+          "renderedPx": 10,
+          "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+          "zone": "header-score",
+          "n": 1
+        },
+        {
+          "text": "⚡ 0",
+          "px": 10,
+          "renderedPx": 10,
+          "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+          "zone": "header-score",
+          "n": 1
+        },
+        {
+          "text": "SLINGSHOT · LIVE GUIDE",
+          "px": 10.2,
+          "renderedPx": 9.9,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "Grab the word, pull it all the way towar",
+          "px": 10.5,
+          "renderedPx": 10.5,
+          "selector": ".arena.literalSlingshotArena > .literalStatus.slingshotStatus > span",
+          "zone": "arena",
+          "n": 1
+        },
+        {
+          "text": "1 / 6",
+          "px": 11,
+          "renderedPx": 11,
+          "selector": ".cinematicContentShell > .arena.literalSlingshotArena > div.literalProgress",
+          "zone": "arena",
+          "n": 1
+        },
+        {
+          "text": "PULL AND RELEASE",
+          "px": 12,
+          "renderedPx": 12,
+          "selector": ".arena.literalSlingshotArena > .literalStatus.slingshotStatus > b",
+          "zone": "arena",
+          "n": 1
+        }
+      ],
+      "targets": [
+        {
+          "selector": ".arena.literalSlingshotArena > .slingshotFrame > div.slingshotWord",
+          "rect": [
+            122,
+            413,
+            146,
+            82
+          ],
+          "cursor": "grab",
+          "text": "my boss",
+          "handlers": [
+            "onPointerDown",
+            "onPointerUp",
+            "onPointerMove"
+          ],
+          "isButton": false,
+          "userText": true,
+          "hitTestOk": true,
+          "count": 1
+        }
+      ],
+      "errors": []
+    }
+  },
+  {
+    "index": 11,
+    "name": "ERASE",
+    "smallText": [
+      {
+        "text": "0/3",
+        "px": 7,
+        "renderedPx": 6.6,
+        "selector": ".eraseBubbleField > .eraseWordBubble.allCircularBubble > b",
+        "zone": "arena",
+        "n": 6
+      },
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".eraseBubbleField > .eraseWordBubble.allCircularBubble > span.tsExactUserText",
+        "zone": "arena",
+        "n": 6
+      },
+      {
+        "text": "A mark can be visible without being perm",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Erase words",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "ERASE · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 20,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.literalEraseArena > button.eraseActivateBtn",
+        "rect": [
+          550,
+          588,
+          180,
+          44
+        ],
+        "cursor": "pointer",
+        "text": "ACTIVATE ERASER",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.literalEraseArena > button.eraseActivateBtn",
+    "playWorked": false,
+    "progressBefore": 0,
+    "progressAfter": 0,
+    "existingCue": [],
+    "guideText": "ERASE · LIVE GUIDE | How to play | Erase words | MIND BEND | A mark can be visible without being permanent.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/ERASE.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.literalEraseArena.premiumArena",
+        "cursor": "auto",
+        "handlers": [
+          "onPointerDown",
+          "onPointerUp",
+          "onPointerEnter",
+          "onPointerMove"
+        ]
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "0/3",
+        "0/3",
+        "0/3",
+        "0/3",
+        "0/3",
+        "0/3"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@640,610",
+      "click@730,609",
+      "click@730,609"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "0/3",
+        "0/3",
+        "0/3",
+        "0/3",
+        "0/3",
+        "0/3"
+      ]
+    },
+    "stateChanged": false,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "fallback": {
+      "action": "hold1.2s+drag200",
+      "log": [
+        "hold1200+drag200@201,459"
+      ],
+      "progress": 17,
+      "worked": true
+    }
+  },
+  {
+    "index": 12,
+    "name": "UNHOOK",
+    "smallText": [
+      {
+        "text": "3 STRINGS HOLDING",
+        "px": 6,
+        "renderedPx": 5.6,
+        "selector": ".unhookBubbleField > .unhookWordBubble > small",
+        "zone": "arena",
+        "n": 6
+      },
+      {
+        "text": "BIG HOOK",
+        "px": 7,
+        "renderedPx": 23.5,
+        "selector": ".cinematicContentShell > .arena.literalUnhookArena > div.bigHookLabel",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".unhookBubbleField > .unhookWordBubble > span.tsExactUserText",
+        "zone": "arena",
+        "n": 6
+      },
+      {
+        "text": "Attached is not the same as permanent.",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Unhook each bubble",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "UNHOOK · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 21,
+    "targets": [
+      {
+        "selector": ".arena.literalUnhookArena > .unhookBubbleField > button.unhookWordBubble",
+        "rect": [
+          697,
+          102,
+          108,
+          108
+        ],
+        "cursor": "pointer",
+        "text": "my boss 3 STRINGS HOLDING",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": true,
+        "hitTestOk": true,
+        "count": 6
+      }
+    ],
+    "guessedTarget": ".arena.literalUnhookArena > .unhookBubbleField > button.unhookWordBubble",
+    "playWorked": true,
+    "progressBefore": 0,
+    "progressAfter": 17,
+    "existingCue": [],
+    "guideText": "UNHOOK · LIVE GUIDE | How to play | Unhook each bubble | MIND BEND | Attached is not the same as permanent.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/UNHOOK.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.literalUnhookArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 6,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "3 STRINGS HOLDING",
+        "3 STRINGS HOLDING",
+        "3 STRINGS HOLDING",
+        "3 STRINGS HOLDING",
+        "3 STRINGS HOLDING",
+        "3 STRINGS HOLDING"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@751,156",
+      "click@751,156",
+      "click@751,155"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "3 STRINGS HOLDING",
+        "3 STRINGS HOLDING",
+        "3 STRINGS HOLDING",
+        "3 STRINGS HOLDING",
+        "3 STRINGS HOLDING",
+        "5 WORDS STILL ON THE HOOK"
+      ]
+    },
+    "stateChanged": true,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade"
+  },
+  {
+    "index": 13,
+    "name": "DEFUSE",
+    "smallText": [
+      {
+        "text": "THOUGHT SIGNAL",
+        "px": 6,
+        "renderedPx": 6,
+        "selector": ".defuseV2Header > .defuseV2Screen > small",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "STEPS LEFT",
+        "px": 6,
+        "renderedPx": 6,
+        "selector": ".defuseV2Header > .defuseV2Timer > span",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "STEP 1",
+        "px": 6,
+        "renderedPx": 6,
+        "selector": ".defuseV2Zones > .defuseZone.z1 > small",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "STEP 2",
+        "px": 6,
+        "renderedPx": 6,
+        "selector": ".defuseV2Zones > .defuseZone.z2 > small",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "STEP 3",
+        "px": 6,
+        "renderedPx": 6,
+        "selector": ".defuseV2Zones > .defuseZone.z3 > small",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "OPEN PANEL",
+        "px": 8,
+        "renderedPx": 8,
+        "selector": ".defuseV2Zones > .defuseZone.z1 > button",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "CUT BLUE WIRE",
+        "px": 8,
+        "renderedPx": 8,
+        "selector": ".defuseV2Zones > .defuseZone.z2 > button",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "PRESS SAFE",
+        "px": 8,
+        "renderedPx": 8,
+        "selector": ".defuseV2Zones > .defuseZone.z3 > button",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "OPEN PANEL",
+        "px": 9,
+        "renderedPx": 9,
+        "selector": ".defuseV2Zones > .defuseZone.z1 > strong",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "CUT BLUE",
+        "px": 9,
+        "renderedPx": 9,
+        "selector": ".defuseV2Zones > .defuseZone.z2 > strong",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "PRESS SAFE",
+        "px": 9,
+        "renderedPx": 9,
+        "selector": ".defuseV2Zones > .defuseZone.z3 > strong",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".defuseV2Header > .defuseV2Screen > span.plainUserThoughtText.tsGlobalThoughtText.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "The alarm around a thought is not the th",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Open. Cut. Safe.",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "DEFUSE · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 20,
+    "targets": [
+      {
+        "selector": ".defuseV2Zones > .defuseZone.z1 > button",
+        "rect": [
+          117,
+          523,
+          322,
+          38
+        ],
+        "cursor": "default",
+        "text": "OPEN PANEL",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".defuseV2Zones > .defuseZone.z1 > button",
+    "playWorked": true,
+    "progressBefore": 0,
+    "progressAfter": 6,
+    "existingCue": [],
+    "guideText": "DEFUSE · LIVE GUIDE | How to play | Open. Cut. Safe. | MIND BEND | The alarm around a thought is not the thought itself.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/DEFUSE.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.literalDefuseArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "3",
+        "STEP 1",
+        "STEP 2",
+        "STEP 3",
+        "STEP 1 OF 3",
+        "1 / 6"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@278,542",
+      "click@278,542",
+      "click@278,542"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "2",
+        "STEP 1",
+        "STEP 2",
+        "STEP 3",
+        "STEP 2 OF 3",
+        "1 / 6"
+      ]
+    },
+    "stateChanged": true,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade"
+  },
+  {
+    "index": 14,
+    "name": "FREEZE",
+    "smallText": [
+      {
+        "text": "0/3 ICE FILLS",
+        "px": 6,
+        "renderedPx": 6,
+        "selector": ".freezeCubeGrid > .freezeWordCube.fill0 > b",
+        "zone": "arena",
+        "n": 6
+      },
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".freezeCubeGrid > .freezeWordCube.fill0 > span.tsExactUserText",
+        "zone": "arena",
+        "n": 6
+      },
+      {
+        "text": "Speed and urgency can change when you in",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Freeze. Shatter.",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "FREEZE · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 20,
+    "targets": [
+      {
+        "selector": ".arena.literalFreezeArena > .freezeCubeGrid > button.freezeWordCube.fill0",
+        "rect": [
+          462,
+          129,
+          356,
+          210
+        ],
+        "cursor": "pointer",
+        "text": "yelled at 0/3 ICE FILLS",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": true,
+        "hitTestOk": true,
+        "count": 6
+      }
+    ],
+    "guessedTarget": ".arena.literalFreezeArena > .freezeCubeGrid > button.freezeWordCube.fill0",
+    "playWorked": true,
+    "progressBefore": 0,
+    "progressAfter": 17,
+    "existingCue": [],
+    "guideText": "FREEZE · LIVE GUIDE | How to play | Freeze. Shatter. | MIND BEND | Speed and urgency can change when you interrupt the motion.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/FREEZE.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.literalFreezeArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 6,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "0/3 ICE FILLS",
+        "0/3 ICE FILLS",
+        "0/3 ICE FILLS",
+        "0/3 ICE FILLS",
+        "0/3 ICE FILLS",
+        "0/3 ICE FILLS"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@640,234",
+      "click@640,234",
+      "click@640,234"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "0/3 ICE FILLS",
+        "0/3 ICE FILLS",
+        "0/3 ICE FILLS",
+        "0/3 ICE FILLS",
+        "0/3 ICE FILLS",
+        "1 / 6 WORDS FINISHED"
+      ]
+    },
+    "stateChanged": true,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade"
+  },
+  {
+    "index": 15,
+    "name": "CRUSH",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.3,
+        "selector": ".crusherRig > .uniqWord.hasDirectThoughtImage > span.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "It looked solid. It wasn’t.",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Rapid-tap to crush",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "CRUSH · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 9,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.uniqArena > button.uniqControl",
+        "rect": [
+          504,
+          459,
+          271,
+          49
+        ],
+        "cursor": "pointer",
+        "text": "THOUGHT MOVE · CRUSH 1/4",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.uniqArena > button.uniqControl",
+    "playWorked": true,
+    "progressBefore": 0,
+    "progressAfter": 45,
+    "existingCue": [],
+    "guideText": "CRUSH · LIVE GUIDE | How to play | Rapid-tap to crush | MIND BEND | It looked solid. It wasn’t.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/CRUSH.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.uniqArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "CRUSH 1 /4",
+        "1 / 6"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@640,483",
+      "click@640,482",
+      "click@640,482"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "CRUSH 4 /4",
+        "1 / 6"
+      ]
+    },
+    "stateChanged": true,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "phone": {
+      "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/CRUSH_phone.png",
+      "smallTextCount": 10,
+      "smallTextTotal": 10,
+      "smallText": [
+        {
+          "text": "my boss",
+          "px": 8.2,
+          "renderedPx": 8.6,
+          "selector": ".crusherRig > .uniqWord.hasDirectThoughtImage > span.tsExactUserText",
+          "zone": "arena",
+          "n": 1
+        },
+        {
+          "text": "MIND BEND",
+          "px": 8.5,
+          "renderedPx": 8,
+          "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "How to play",
+          "px": 8.7,
+          "renderedPx": 8.4,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "GAME PROGRESS · 0 %",
+          "px": 9,
+          "renderedPx": 9,
+          "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+          "zone": "hud",
+          "n": 1
+        },
+        {
+          "text": "It looked solid. It wasn’t.",
+          "px": 9.3,
+          "renderedPx": 9.1,
+          "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "Rapid-tap to crush",
+          "px": 9.8,
+          "renderedPx": 10.1,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "LVL 1",
+          "px": 10,
+          "renderedPx": 10,
+          "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+          "zone": "header-score",
+          "n": 1
+        },
+        {
+          "text": "⚡ 0",
+          "px": 10,
+          "renderedPx": 10,
+          "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+          "zone": "header-score",
+          "n": 1
+        },
+        {
+          "text": "CRUSH · LIVE GUIDE",
+          "px": 10.2,
+          "renderedPx": 9.9,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "1 / 6",
+          "px": 11,
+          "renderedPx": 11,
+          "selector": ".cinematicContentShell > .arena.uniqArena > div.literalProgress",
+          "zone": "arena",
+          "n": 1
+        }
+      ],
+      "targets": [
+        {
+          "selector": ".cinematicContentShell > .arena.uniqArena > button.uniqControl",
+          "rect": [
+            59,
+            429,
+            271,
+            49
+          ],
+          "cursor": "pointer",
+          "text": "THOUGHT MOVE · CRUSH 1/4",
+          "handlers": [
+            "onClick"
+          ],
+          "isButton": true,
+          "userText": false,
+          "hitTestOk": true,
+          "count": 1
+        }
+      ],
+      "errors": []
+    }
+  },
+  {
+    "index": 16,
+    "name": "HAMMER",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.3,
+        "selector": ".hammerLane > .uniqWord.hasDirectThoughtImage > span.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "Precision beats rush.",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Time the hit",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "HAMMER · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 9,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.uniqArena > button.uniqControl",
+        "rect": [
+          481,
+          464,
+          318,
+          49
+        ],
+        "cursor": "pointer",
+        "text": "THOUGHT MOVE · SWING HAMMER",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.uniqArena > button.uniqControl",
+    "playWorked": true,
+    "progressBefore": 0,
+    "progressAfter": 50,
+    "existingCue": [],
+    "guideText": "HAMMER · LIVE GUIDE | How to play | Time the hit | MIND BEND | Precision beats rush.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/HAMMER.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.uniqArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@640,488",
+      "click@640,487",
+      "click@640,487"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "4 / 6"
+      ]
+    },
+    "stateChanged": true,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade"
+  },
+  {
+    "index": 17,
+    "name": "PIN POP",
+    "smallText": [
+      {
+        "text": "PIN",
+        "px": 9,
+        "renderedPx": 9,
+        "selector": ".cinematicContentShell > .arena.uniqArena > div.pinTool",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".arena.uniqArena > .uniqWord.balloonWord > span.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "Big feeling. Mostly air.",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Drag pin → pop",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "PIN POP · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 10,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.uniqArena > div.pinTool",
+        "rect": [
+          604,
+          457,
+          72,
+          32
+        ],
+        "cursor": "grab",
+        "text": "PIN",
+        "handlers": [],
+        "isButton": false,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.uniqArena > div.pinTool",
+    "playWorked": true,
+    "progressBefore": 0,
+    "progressAfter": 17,
+    "existingCue": [],
+    "guideText": "PIN POP · LIVE GUIDE | How to play | Drag pin → pop | MIND BEND | Big feeling. Mostly air.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/PIN_POP.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.uniqArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "hold1.2s+drag200",
+    "playLog": [
+      "hold1200+drag200@640,473"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "2 / 6"
+      ]
+    },
+    "stateChanged": true,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade"
+  },
+  {
+    "index": 18,
+    "name": "METEOR",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".arena.uniqArena > .meteorRock > span.plainUserThoughtText.tsGlobalThoughtText.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "Distance changes what feels close.",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Pull. Flick. Launch.",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "METEOR · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 9,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.uniqArena > div.meteorRock",
+        "rect": [
+          555,
+          304,
+          170,
+          130
+        ],
+        "cursor": "grab",
+        "text": "my boss",
+        "handlers": [],
+        "isButton": false,
+        "userText": true,
+        "hitTestOk": false,
+        "hitBy": ".cinematicContentShell > .arena.uniqArena > div.orbitArc",
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.uniqArena > div.meteorRock",
+    "playWorked": false,
+    "progressBefore": 0,
+    "progressAfter": 0,
+    "existingCue": [],
+    "guideText": "METEOR · LIVE GUIDE | How to play | Pull. Flick. Launch. | MIND BEND | Distance changes what feels close.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/METEOR.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.uniqArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "hold1.2s+drag200",
+    "playLog": [
+      "hold1200+drag200@640,369"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "stateChanged": false,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "fallback": {
+      "action": "click x3",
+      "log": [
+        "click@640,369",
+        "click@640,369",
+        "click@640,369"
+      ],
+      "progress": 0,
+      "worked": false
+    }
+  },
+  {
+    "index": 19,
+    "name": "LASER SLICE",
+    "smallText": [
+      {
+        "text": "0 /3",
+        "px": 9,
+        "renderedPx": 9.1,
+        "selector": ".laserBubbleField > .laserTargetBubble.allCircularBubble > b.toolHitCount",
+        "zone": "arena",
+        "n": 6
+      },
+      {
+        "text": "ACTIVATE LASER",
+        "px": 9,
+        "renderedPx": 9,
+        "selector": ".arena.laserSliceArena > .laserToolDock > span",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.2,
+        "selector": ".laserBubbleField > .laserTargetBubble.allCircularBubble > span.plainUserThoughtText.tsGlobalThoughtText.tsExactUserText",
+        "zone": "arena",
+        "n": 6
+      },
+      {
+        "text": "A sentence is made of pieces.",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Swipe to slice",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LASER SLICE · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 21,
+    "targets": [
+      {
+        "selector": ".arena.laserSliceArena > .laserBubbleField > button.laserTargetBubble.allCircularBubble.laserDamage0",
+        "rect": [
+          306,
+          199,
+          97,
+          97
+        ],
+        "cursor": "default",
+        "text": "my boss 0/3",
+        "handlers": [
+          "onPointerDown"
+        ],
+        "isButton": true,
+        "userText": true,
+        "hitTestOk": true,
+        "count": 6
+      },
+      {
+        "selector": ".cinematicContentShell > .arena.laserSliceArena > button.laserToolDock",
+        "rect": [
+          584,
+          640,
+          112,
+          112
+        ],
+        "cursor": "pointer",
+        "text": "ACTIVATE LASER",
+        "handlers": [
+          "onPointerDown"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".arena.laserSliceArena > .laserBubbleField > button.laserTargetBubble.allCircularBubble.laserDamage0",
+    "playWorked": false,
+    "progressBefore": 0,
+    "progressAfter": 0,
+    "existingCue": [],
+    "guideText": "LASER SLICE · LIVE GUIDE | How to play | Swipe to slice | MIND BEND | A sentence is made of pieces.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/LASER_SLICE.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.laserSliceArena.premiumArena",
+        "cursor": "auto",
+        "handlers": [
+          "onDoubleClick",
+          "onPointerEnter",
+          "onPointerMove"
+        ]
+      }
+    ],
+    "interactiveCount": 7,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@354,248",
+      "click@354,248",
+      "click@354,248"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3",
+        "0 /3"
+      ]
+    },
+    "stateChanged": false,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "fallback": {
+      "action": "hold1.2s+drag200",
+      "log": [
+        "hold1200+drag200@354,248"
+      ],
+      "progress": 0,
+      "worked": false
+    }
+  },
+  {
+    "index": 20,
+    "name": "DOMINO DROP",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.2,
+        "selector": ".arena.uniqArena > .uniqWord.hasDirectThoughtImage > span.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "Sometimes the whole spiral starts with o",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Tap first domino",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "DOMINO DROP · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 9,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.uniqArena > button.uniqControl",
+        "rect": [
+          471,
+          481,
+          339,
+          49
+        ],
+        "cursor": "pointer",
+        "text": "THOUGHT MOVE · TIP FIRST DOMINO",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.uniqArena > button.uniqControl",
+    "playWorked": true,
+    "progressBefore": 0,
+    "progressAfter": 17,
+    "existingCue": [],
+    "guideText": "DOMINO DROP · LIVE GUIDE | How to play | Tap first domino | MIND BEND | Sometimes the whole spiral starts with one tiny piece.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/DOMINO_DROP.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.uniqArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@640,506",
+      "click@640,535",
+      "click@640,535"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "4 / 6"
+      ]
+    },
+    "stateChanged": true,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "phone": {
+      "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/DOMINO_DROP_phone.png",
+      "smallTextCount": 10,
+      "smallTextTotal": 10,
+      "smallText": [
+        {
+          "text": "my boss",
+          "px": 8.2,
+          "renderedPx": 8.7,
+          "selector": ".arena.uniqArena > .uniqWord.hasDirectThoughtImage > span.tsExactUserText",
+          "zone": "arena",
+          "n": 1
+        },
+        {
+          "text": "MIND BEND",
+          "px": 8.5,
+          "renderedPx": 8,
+          "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "How to play",
+          "px": 8.7,
+          "renderedPx": 8.4,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "GAME PROGRESS · 0 %",
+          "px": 9,
+          "renderedPx": 9,
+          "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+          "zone": "hud",
+          "n": 1
+        },
+        {
+          "text": "Sometimes the whole spiral starts with o",
+          "px": 9.3,
+          "renderedPx": 9.1,
+          "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "Tap first domino",
+          "px": 9.8,
+          "renderedPx": 10.1,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "LVL 1",
+          "px": 10,
+          "renderedPx": 10,
+          "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+          "zone": "header-score",
+          "n": 1
+        },
+        {
+          "text": "⚡ 0",
+          "px": 10,
+          "renderedPx": 10,
+          "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+          "zone": "header-score",
+          "n": 1
+        },
+        {
+          "text": "DOMINO DROP · LIVE GUIDE",
+          "px": 10.2,
+          "renderedPx": 9.9,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "1 / 6",
+          "px": 11,
+          "renderedPx": 11,
+          "selector": ".cinematicContentShell > .arena.uniqArena > div.literalProgress",
+          "zone": "arena",
+          "n": 1
+        }
+      ],
+      "targets": [
+        {
+          "selector": ".cinematicContentShell > .arena.uniqArena > button.uniqControl",
+          "rect": [
+            28,
+            426,
+            334,
+            74
+          ],
+          "cursor": "pointer",
+          "text": "THOUGHT MOVE · TIP FIRST DOMINO",
+          "handlers": [
+            "onClick"
+          ],
+          "isButton": true,
+          "userText": false,
+          "hitTestOk": true,
+          "count": 1
+        }
+      ],
+      "errors": []
+    }
+  },
+  {
+    "index": 21,
+    "name": "PRESSURE POP",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".pressureCapsule > .uniqWord.hasDirectThoughtImage > span.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "Pressure can leave without taking you wi",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Hold. Charge. Vent.",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "PRESSURE POP · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 9,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.uniqArena > button.uniqControl",
+        "rect": [
+          414,
+          439,
+          452,
+          49
+        ],
+        "cursor": "pointer",
+        "text": "THOUGHT MOVE · HOLD · RELEASE IN SWEET Z",
+        "handlers": [
+          "onPointerDown",
+          "onPointerUp"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.uniqArena > button.uniqControl",
+    "playWorked": false,
+    "progressBefore": 0,
+    "progressAfter": 0,
+    "existingCue": [],
+    "guideText": "PRESSURE POP · LIVE GUIDE | How to play | Hold. Charge. Vent. | MIND BEND | Pressure can leave without taking you with it.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/PRESSURE_POP.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.uniqArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@640,463",
+      "click@640,462",
+      "click@640,462"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "stateChanged": false,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "fallback": {
+      "action": "hold1.2s+drag200",
+      "log": [
+        "hold1200+drag200@640,462"
+      ],
+      "progress": 0,
+      "worked": false
+    }
+  },
+  {
+    "index": 22,
+    "name": "BOUNCE OUT",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".arena.uniqArena > .bounceBall > span.plainUserThoughtText.tsGlobalThoughtText.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "Repeats can lose energy.",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Bounce it out",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "BOUNCE OUT · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 9,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.uniqArena > button.uniqControl",
+        "rect": [
+          498,
+          395,
+          284,
+          49
+        ],
+        "cursor": "pointer",
+        "text": "THOUGHT MOVE · HIT PADDLE",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.uniqArena > button.uniqControl",
+    "playWorked": true,
+    "progressBefore": 0,
+    "progressAfter": 17,
+    "existingCue": [],
+    "guideText": "BOUNCE OUT · LIVE GUIDE | How to play | Bounce it out | MIND BEND | Repeats can lose energy.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/BOUNCE_OUT.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.uniqArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@640,419",
+      "click@640,418",
+      "click@640,418"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "2 / 6"
+      ]
+    },
+    "stateChanged": true,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade"
+  },
+  {
+    "index": 23,
+    "name": "SQUASH",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".arena.uniqArena > .foamWord > span.plainUserThoughtText.tsGlobalThoughtText.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "Smaller doesn’t mean denied.",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Hold to squash",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "SQUASH · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 9,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.uniqArena > button.uniqControl",
+        "rect": [
+          437,
+          364,
+          406,
+          49
+        ],
+        "cursor": "pointer",
+        "text": "THOUGHT MOVE · PRESS & HOLD TO SQUASH",
+        "handlers": [
+          "onPointerDown",
+          "onPointerUp"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.uniqArena > button.uniqControl",
+    "playWorked": true,
+    "progressBefore": 0,
+    "progressAfter": 45,
+    "existingCue": [],
+    "guideText": "SQUASH · LIVE GUIDE | How to play | Hold to squash | MIND BEND | Smaller doesn’t mean denied.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/SQUASH.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.uniqArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@640,388",
+      "click@640,387",
+      "click@640,387"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "stateChanged": true,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade"
+  },
+  {
+    "index": 24,
+    "name": "CRUMPLE",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".arena.uniqArena > .paperCrumple.s0 > span.plainUserThoughtText.tsGlobalThoughtText.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "You don’t owe every sentence perfect pre",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Crumple it",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "CRUMPLE · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 9,
+    "targets": [
+      {
+        "selector": ".arena.uniqArena > .paperCrumple.s0 > button.paperCorner.c0",
+        "rect": [
+          448,
+          242,
+          32,
+          32
+        ],
+        "cursor": "default",
+        "text": "",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".arena.uniqArena > .paperCrumple.s0 > button.paperCorner.c0",
+    "playWorked": true,
+    "progressBefore": 0,
+    "progressAfter": 25,
+    "existingCue": [],
+    "guideText": "CRUMPLE · LIVE GUIDE | How to play | Crumple it | MIND BEND | You don’t owe every sentence perfect preservation.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/CRUMPLE.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.uniqArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@464,258",
+      "click@464,258",
+      "click@464,258"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "stateChanged": true,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade"
+  },
+  {
+    "index": 25,
+    "name": "BOSS BATTLE",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.3,
+        "selector": ".bossBlob > .uniqWord.hasDirectThoughtImage > span.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "Scary gets smaller when its pattern beco",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Hit the weak spots",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "BOSS BATTLE · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 9,
+    "targets": [
+      {
+        "selector": ".arena.uniqArena > .bossBlob > button.weakSpot.w0",
+        "rect": [
+          557,
+          297,
+          28,
+          28
+        ],
+        "cursor": "default",
+        "text": "",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": false,
+        "hitBy": ".arena.uniqArena > .bossBlob > div.uniqWord.hasDirectThoughtImage",
+        "count": 1
+      },
+      {
+        "selector": ".arena.uniqArena > .bossBlob > button.weakSpot.w1",
+        "rect": [
+          700,
+          288,
+          28,
+          28
+        ],
+        "cursor": "default",
+        "text": "",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      },
+      {
+        "selector": ".arena.uniqArena > .bossBlob > button.weakSpot.w2",
+        "rect": [
+          630,
+          347,
+          28,
+          28
+        ],
+        "cursor": "default",
+        "text": "",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": false,
+        "hitBy": ".arena.uniqArena > .bossBlob > div.uniqWord.hasDirectThoughtImage",
+        "count": 1
+      },
+      {
+        "selector": ".arena.uniqArena > .bossBlob > button.weakSpot.w3",
+        "rect": [
+          572,
+          396,
+          28,
+          28
+        ],
+        "cursor": "default",
+        "text": "",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      },
+      {
+        "selector": ".arena.uniqArena > .bossBlob > button.weakSpot.w4",
+        "rect": [
+          690,
+          396,
+          28,
+          28
+        ],
+        "cursor": "default",
+        "text": "",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".arena.uniqArena > .bossBlob > button.weakSpot.w0",
+    "playWorked": false,
+    "progressBefore": 0,
+    "progressAfter": 0,
+    "existingCue": [],
+    "guideText": "BOSS BATTLE · LIVE GUIDE | How to play | Hit the weak spots | MIND BEND | Scary gets smaller when its pattern becomes visible.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/BOSS_BATTLE.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.uniqArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 5,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@571,311",
+      "click@571,311",
+      "click@571,311"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "stateChanged": false,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "fallback": {
+      "action": "hold1.2s+drag200",
+      "log": [
+        "hold1200+drag200@571,311"
+      ],
+      "progress": 0,
+      "worked": false
+    },
+    "phone": {
+      "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/BOSS_BATTLE_phone.png",
+      "smallTextCount": 10,
+      "smallTextTotal": 10,
+      "smallText": [
+        {
+          "text": "my boss",
+          "px": 8.2,
+          "renderedPx": 8.6,
+          "selector": ".bossBlob > .uniqWord.hasDirectThoughtImage > span.tsExactUserText",
+          "zone": "arena",
+          "n": 1
+        },
+        {
+          "text": "MIND BEND",
+          "px": 8.5,
+          "renderedPx": 8,
+          "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "How to play",
+          "px": 8.7,
+          "renderedPx": 8.4,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "GAME PROGRESS · 0 %",
+          "px": 9,
+          "renderedPx": 9,
+          "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+          "zone": "hud",
+          "n": 1
+        },
+        {
+          "text": "Scary gets smaller when its pattern beco",
+          "px": 9.3,
+          "renderedPx": 9.1,
+          "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "Hit the weak spots",
+          "px": 9.8,
+          "renderedPx": 10.1,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "LVL 1",
+          "px": 10,
+          "renderedPx": 10,
+          "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+          "zone": "header-score",
+          "n": 1
+        },
+        {
+          "text": "⚡ 0",
+          "px": 10,
+          "renderedPx": 10,
+          "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+          "zone": "header-score",
+          "n": 1
+        },
+        {
+          "text": "BOSS BATTLE · LIVE GUIDE",
+          "px": 10.2,
+          "renderedPx": 9.9,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "1 / 6",
+          "px": 11,
+          "renderedPx": 11,
+          "selector": ".cinematicContentShell > .arena.uniqArena > div.literalProgress",
+          "zone": "arena",
+          "n": 1
+        }
+      ],
+      "targets": [
+        {
+          "selector": ".arena.uniqArena > .bossBlob > button.weakSpot.w0",
+          "rect": [
+            112,
+            273,
+            28,
+            28
+          ],
+          "cursor": "default",
+          "text": "",
+          "handlers": [
+            "onClick"
+          ],
+          "isButton": true,
+          "userText": false,
+          "hitTestOk": true,
+          "count": 1
+        },
+        {
+          "selector": ".arena.uniqArena > .bossBlob > button.weakSpot.w1",
+          "rect": [
+            255,
+            264,
+            28,
+            28
+          ],
+          "cursor": "default",
+          "text": "",
+          "handlers": [
+            "onClick"
+          ],
+          "isButton": true,
+          "userText": false,
+          "hitTestOk": true,
+          "count": 1
+        },
+        {
+          "selector": ".arena.uniqArena > .bossBlob > button.weakSpot.w2",
+          "rect": [
+            185,
+            323,
+            28,
+            28
+          ],
+          "cursor": "default",
+          "text": "",
+          "handlers": [
+            "onClick"
+          ],
+          "isButton": true,
+          "userText": false,
+          "hitTestOk": false,
+          "hitBy": ".arena.uniqArena > .bossBlob > div.uniqWord.hasDirectThoughtImage",
+          "count": 1
+        }
+      ],
+      "errors": []
+    }
+  },
+  {
+    "index": 26,
+    "name": "GLITCH OUT",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".glitchPanel.g0 > .uniqWord.hasDirectThoughtImage > span.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "Meaning can collapse when the pattern is",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Tap the glitches",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GLITCH OUT · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 9,
+    "targets": [
+      {
+        "selector": ".arena.uniqArena > .glitchPanel.g0 > button",
+        "rect": [
+          570,
+          413,
+          141,
+          48
+        ],
+        "cursor": "default",
+        "text": "◇",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 2
+      },
+      {
+        "selector": ".arena.uniqArena > .glitchPanel.g0 > button.live",
+        "rect": [
+          411,
+          413,
+          141,
+          48
+        ],
+        "cursor": "default",
+        "text": "△",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".arena.uniqArena > .glitchPanel.g0 > button",
+    "playWorked": true,
+    "progressBefore": 0,
+    "progressAfter": 75,
+    "existingCue": [],
+    "guideText": "GLITCH OUT · LIVE GUIDE | How to play | Tap the glitches | MIND BEND | Meaning can collapse when the pattern is interrupted.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/GLITCH_OUT.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.uniqArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 3,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@640,437",
+      "click@640,437",
+      "click@640,437"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "stateChanged": true,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade"
+  },
+  {
+    "index": 27,
+    "name": "BIN",
+    "smallText": [
+      {
+        "text": "DRAG",
+        "px": 6,
+        "renderedPx": 5.6,
+        "selector": ".binBubbleSlot > .binWordBubble.allCircularBubble > b",
+        "zone": "arena",
+        "n": 6
+      },
+      {
+        "text": "THINKSTILL BIN",
+        "px": 9,
+        "renderedPx": 9,
+        "selector": ".arena.binLiteralArena > .neonBin.masterBin > span",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".binBubbleSlot > .binWordBubble.allCircularBubble > span.tsExactUserText",
+        "zone": "arena",
+        "n": 6
+      },
+      {
+        "text": "You can decide what gets more space.",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Flick it in",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "BIN · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 21,
+    "targets": [
+      {
+        "selector": ".binBubbleField > .binBubbleSlot > button.binWordBubble.allCircularBubble",
+        "rect": [
+          141,
+          123,
+          88,
+          88
+        ],
+        "cursor": "grab",
+        "text": "my boss DRAG",
+        "handlers": [
+          "onDoubleClick"
+        ],
+        "isButton": true,
+        "userText": true,
+        "hitTestOk": true,
+        "count": 6
+      },
+      {
+        "selector": ".cinematicContentShell > .arena.binLiteralArena > button.bigAction.binAllButton",
+        "rect": [
+          490,
+          699,
+          300,
+          55
+        ],
+        "cursor": "pointer",
+        "text": "BIN THEM ALL",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".binBubbleField > .binBubbleSlot > button.binWordBubble.allCircularBubble",
+    "playWorked": false,
+    "progressBefore": 0,
+    "progressAfter": 0,
+    "existingCue": [],
+    "guideText": "BIN · LIVE GUIDE | How to play | Flick it in | MIND BEND | You can decide what gets more space.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/BIN.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.binLiteralArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 7,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "0",
+        "0 / 6 WORDS IN THE BIN",
+        "0 / 6 BINNED"
+      ]
+    },
+    "playAction": "hold1.2s+drag200",
+    "playLog": [
+      "hold1200+drag200@185,167"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "0",
+        "0 / 6 WORDS IN THE BIN",
+        "0 / 6 BINNED"
+      ]
+    },
+    "stateChanged": false,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "fallback": {
+      "action": "click x3",
+      "log": [
+        "click@390,141",
+        "click@390,141",
+        "click@390,141"
+      ],
+      "progress": 0,
+      "worked": false
+    }
+  },
+  {
+    "index": 28,
+    "name": "SEND TO SPACE",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.3,
+        "selector": ".rocketScene.phase0 > .uniqWord.rocketWindow > span.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "Close-up isn’t the only view.",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Pull the lever",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "SEND TO SPACE · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 9,
+    "targets": [
+      {
+        "selector": ".arena.uniqArena > .rocketScene.phase0 > div.launchLever",
+        "rect": [
+          832,
+          258,
+          42,
+          150
+        ],
+        "cursor": "grab",
+        "text": "",
+        "handlers": [],
+        "isButton": false,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".arena.uniqArena > .rocketScene.phase0 > div.launchLever",
+    "playWorked": false,
+    "progressBefore": 0,
+    "progressAfter": 0,
+    "existingCue": [],
+    "guideText": "SEND TO SPACE · LIVE GUIDE | How to play | Pull the lever | MIND BEND | Close-up isn’t the only view.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/SEND_TO_SPACE.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.uniqArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "hold1.2s+drag200",
+    "playLog": [
+      "hold1200+drag200@853,333"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "stateChanged": false,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "fallback": {
+      "action": "click x3",
+      "log": [
+        "click@853,328",
+        "click@853,328",
+        "click@853,328"
+      ],
+      "progress": 0,
+      "worked": false
+    }
+  },
+  {
+    "index": 29,
+    "name": "DROP ZONE",
+    "smallText": [
+      {
+        "text": "WEIGHT",
+        "px": 7,
+        "renderedPx": 7,
+        "selector": ".arena.uniqArena > .weightedBlock > b",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".arena.uniqArena > .weightedBlock > span.plainUserThoughtText.tsGlobalThoughtText.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "Putting something down is different from",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Drop it",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "DROP ZONE · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 10,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.uniqArena > div.weightedBlock",
+        "rect": [
+          550,
+          309,
+          180,
+          120
+        ],
+        "cursor": "grab",
+        "text": "my boss WEIGHT",
+        "handlers": [],
+        "isButton": false,
+        "userText": true,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.uniqArena > div.weightedBlock",
+    "playWorked": true,
+    "progressBefore": 0,
+    "progressAfter": 17,
+    "existingCue": [],
+    "guideText": "DROP ZONE · LIVE GUIDE | How to play | Drop it | MIND BEND | Putting something down is different from solving it.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/DROP_ZONE.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.uniqArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "hold1.2s+drag200",
+    "playLog": [
+      "hold1200+drag200@640,369"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "2 / 6"
+      ]
+    },
+    "stateChanged": true,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade"
+  },
+  {
+    "index": 30,
+    "name": "ARCHIVE",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".arena.uniqArena > .fileCard > span.plainUserThoughtText.tsGlobalThoughtText.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "Not everything needs front-page status.",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Archive it",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "ARCHIVE · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 9,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.uniqArena > div.fileCard",
+        "rect": [
+          535,
+          385,
+          210,
+          48
+        ],
+        "cursor": "grab",
+        "text": "my boss",
+        "handlers": [],
+        "isButton": false,
+        "userText": true,
+        "hitTestOk": true,
+        "count": 1
+      },
+      {
+        "selector": ".cinematicContentShell > .arena.uniqArena > button.uniqControl",
+        "rect": [
+          463,
+          452,
+          353,
+          49
+        ],
+        "cursor": "pointer",
+        "text": "THOUGHT MOVE · PULL DRAWER OPEN",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.uniqArena > div.fileCard",
+    "playWorked": false,
+    "progressBefore": 0,
+    "progressAfter": 0,
+    "existingCue": [],
+    "guideText": "ARCHIVE · LIVE GUIDE | How to play | Archive it | MIND BEND | Not everything needs front-page status.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/ARCHIVE.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.uniqArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 2,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "hold1.2s+drag200",
+    "playLog": [
+      "hold1200+drag200@640,409"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "stateChanged": false,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "fallback": {
+      "action": "click x3",
+      "log": [
+        "click@640,409",
+        "click@640,409",
+        "click@640,409"
+      ],
+      "progress": 0,
+      "worked": false
+    },
+    "phone": {
+      "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/ARCHIVE_phone.png",
+      "smallTextCount": 10,
+      "smallTextTotal": 10,
+      "smallText": [
+        {
+          "text": "my boss",
+          "px": 8.2,
+          "renderedPx": 8.6,
+          "selector": ".arena.uniqArena > .fileCard > span.plainUserThoughtText.tsGlobalThoughtText.tsExactUserText",
+          "zone": "arena",
+          "n": 1
+        },
+        {
+          "text": "MIND BEND",
+          "px": 8.5,
+          "renderedPx": 8,
+          "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "How to play",
+          "px": 8.7,
+          "renderedPx": 8.4,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "GAME PROGRESS · 0 %",
+          "px": 9,
+          "renderedPx": 9,
+          "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+          "zone": "hud",
+          "n": 1
+        },
+        {
+          "text": "Not everything needs front-page status.",
+          "px": 9.3,
+          "renderedPx": 9.1,
+          "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "Archive it",
+          "px": 9.8,
+          "renderedPx": 10.1,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "LVL 1",
+          "px": 10,
+          "renderedPx": 10,
+          "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+          "zone": "header-score",
+          "n": 1
+        },
+        {
+          "text": "⚡ 0",
+          "px": 10,
+          "renderedPx": 10,
+          "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+          "zone": "header-score",
+          "n": 1
+        },
+        {
+          "text": "ARCHIVE · LIVE GUIDE",
+          "px": 10.2,
+          "renderedPx": 9.9,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "1 / 6",
+          "px": 11,
+          "renderedPx": 11,
+          "selector": ".cinematicContentShell > .arena.uniqArena > div.literalProgress",
+          "zone": "arena",
+          "n": 1
+        }
+      ],
+      "targets": [
+        {
+          "selector": ".cinematicContentShell > .arena.uniqArena > div.fileCard",
+          "rect": [
+            90,
+            347,
+            210,
+            45
+          ],
+          "cursor": "grab",
+          "text": "my boss",
+          "handlers": [],
+          "isButton": false,
+          "userText": true,
+          "hitTestOk": true,
+          "count": 1
+        },
+        {
+          "selector": ".cinematicContentShell > .arena.uniqArena > button.uniqControl",
+          "rect": [
+            28,
+            405,
+            334,
+            74
+          ],
+          "cursor": "pointer",
+          "text": "THOUGHT MOVE · PULL DRAWER OPEN",
+          "handlers": [
+            "onClick"
+          ],
+          "isButton": true,
+          "userText": false,
+          "hitTestOk": true,
+          "count": 1
+        }
+      ],
+      "errors": []
+    }
+  },
+  {
+    "index": 31,
+    "name": "MUTE",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.3,
+        "selector": ".muteConsole > .uniqWord.hasDirectThoughtImage > span.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "Quiet is enough; gone is optional.",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Turn it down",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "MUTE · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 9,
+    "targets": [
+      {
+        "selector": ".arena.uniqArena > .muteConsole > div.verticalFader",
+        "rect": [
+          839,
+          262,
+          42,
+          190
+        ],
+        "cursor": "grab",
+        "text": "",
+        "handlers": [],
+        "isButton": false,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".arena.uniqArena > .muteConsole > div.verticalFader",
+    "playWorked": false,
+    "progressBefore": 0,
+    "progressAfter": 0,
+    "existingCue": [],
+    "guideText": "MUTE · LIVE GUIDE | How to play | Turn it down | MIND BEND | Quiet is enough; gone is optional.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/MUTE.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.uniqArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "hold1.2s+drag200",
+    "playLog": [
+      "hold1200+drag200@860,357"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "stateChanged": false,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "fallback": {
+      "action": "click x3",
+      "log": [
+        "click@860,351",
+        "click@860,351",
+        "click@860,351"
+      ],
+      "progress": 0,
+      "worked": false
+    }
+  },
+  {
+    "index": 32,
+    "name": "ZOOM OUT",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.3,
+        "selector": ".zoomWorld > .uniqWord.hasDirectThoughtImage > span.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "Nothing changed except the frame.",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Zoom out",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "ZOOM OUT · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 9,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.uniqArena > button.uniqControl",
+        "rect": [
+          455,
+          407,
+          371,
+          49
+        ],
+        "cursor": "pointer",
+        "text": "THOUGHT MOVE · ZOOM OUT ONE LEVEL",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.uniqArena > button.uniqControl",
+    "playWorked": false,
+    "progressBefore": 0,
+    "progressAfter": 0,
+    "existingCue": [],
+    "guideText": "ZOOM OUT · LIVE GUIDE | How to play | Zoom out | MIND BEND | Nothing changed except the frame.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/ZOOM_OUT.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.uniqArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@640,432",
+      "click@640,431",
+      "click@640,455"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "stateChanged": false,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "fallback": {
+      "action": "hold1.2s+drag200",
+      "log": [
+        "hold1200+drag200@640,431"
+      ],
+      "progress": 0,
+      "worked": false
+    }
+  },
+  {
+    "index": 33,
+    "name": "BACK SEAT",
+    "smallText": [
+      {
+        "text": "DRIVER",
+        "px": 8,
+        "renderedPx": 8,
+        "selector": ".arena.uniqArena > .carCabin > div.frontSeat",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "BACK SEAT",
+        "px": 8,
+        "renderedPx": 8,
+        "selector": ".arena.uniqArena > .carCabin > div.backSeat",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".carCabin > .passengerCard > span.plainUserThoughtText.tsGlobalThoughtText.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "Present doesn’t mean in charge.",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Move it back",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "BACK SEAT · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 11,
+    "targets": [
+      {
+        "selector": ".arena.uniqArena > .carCabin > div.passengerCard",
+        "rect": [
+          461,
+          406,
+          180,
+          48
+        ],
+        "cursor": "grab",
+        "text": "my boss",
+        "handlers": [],
+        "isButton": false,
+        "userText": true,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".arena.uniqArena > .carCabin > div.passengerCard",
+    "playWorked": false,
+    "progressBefore": 0,
+    "progressAfter": 0,
+    "existingCue": [],
+    "guideText": "BACK SEAT · LIVE GUIDE | How to play | Move it back | MIND BEND | Present doesn’t mean in charge.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/BACK_SEAT.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.uniqArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "hold1.2s+drag200",
+    "playLog": [
+      "hold1200+drag200@551,430"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "stateChanged": false,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "fallback": {
+      "action": "click x3",
+      "log": [
+        "click@701,430",
+        "click@701,430",
+        "click@701,430"
+      ],
+      "progress": 0,
+      "worked": false
+    }
+  },
+  {
+    "index": 34,
+    "name": "PARK IT",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.3,
+        "selector": ".arena.uniqArena > .uniqWord.miniVehicle > span.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "Later is a real place.",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Park it",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "PARK IT · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 9,
+    "targets": [
+      {
+        "selector": ".arena.uniqArena > .parkingDeck > button.parkBay.b0",
+        "rect": [
+          340,
+          216,
+          192,
+          180
+        ],
+        "cursor": "default",
+        "text": "LATER TODAY",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      },
+      {
+        "selector": ".arena.uniqArena > .parkingDeck > button.parkBay.b1",
+        "rect": [
+          544,
+          216,
+          192,
+          180
+        ],
+        "cursor": "default",
+        "text": "TOMORROW",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      },
+      {
+        "selector": ".arena.uniqArena > .parkingDeck > button.parkBay.b2",
+        "rect": [
+          748,
+          216,
+          192,
+          180
+        ],
+        "cursor": "default",
+        "text": "NOT NOW",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".arena.uniqArena > .parkingDeck > button.parkBay.b0",
+    "playWorked": true,
+    "progressBefore": 0,
+    "progressAfter": 50,
+    "existingCue": [],
+    "guideText": "PARK IT · LIVE GUIDE | How to play | Park it | MIND BEND | Later is a real place.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/PARK_IT.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.uniqArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 3,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@436,306",
+      "click@436,277",
+      "click@436,310"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "4 / 6"
+      ]
+    },
+    "stateChanged": true,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade"
+  },
+  {
+    "index": 35,
+    "name": "FLOAT AWAY",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.3,
+        "selector": ".balloonRig > .uniqWord.heliumBalloon > span.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "You can loosen grip without pretending i",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Cut. Release. Float.",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "FLOAT AWAY · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 9,
+    "targets": [
+      {
+        "selector": ".arena.uniqArena > .balloonRig > button.balloonWeight.w0",
+        "rect": [
+          526,
+          441,
+          54,
+          54
+        ],
+        "cursor": "default",
+        "text": "✂",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      },
+      {
+        "selector": ".arena.uniqArena > .balloonRig > button.balloonWeight.w1",
+        "rect": [
+          619,
+          441,
+          54,
+          54
+        ],
+        "cursor": "default",
+        "text": "✂",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      },
+      {
+        "selector": ".arena.uniqArena > .balloonRig > button.balloonWeight.w2",
+        "rect": [
+          700,
+          441,
+          54,
+          54
+        ],
+        "cursor": "default",
+        "text": "✂",
+        "handlers": [
+          "onClick"
+        ],
+        "isButton": true,
+        "userText": false,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".arena.uniqArena > .balloonRig > button.balloonWeight.w0",
+    "playWorked": false,
+    "progressBefore": 0,
+    "progressAfter": 0,
+    "existingCue": [],
+    "guideText": "FLOAT AWAY · LIVE GUIDE | How to play | Cut. Release. Float. | MIND BEND | You can loosen grip without pretending it never existed.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/FLOAT_AWAY.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.uniqArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 3,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "click x3",
+    "playLog": [
+      "click@553,468",
+      "click@553,468",
+      "click@553,468"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "stateChanged": false,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "fallback": {
+      "action": "hold1.2s+drag200",
+      "log": [
+        "hold1200+drag200@553,467"
+      ],
+      "progress": 0,
+      "worked": false
+    },
+    "phone": {
+      "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/FLOAT_AWAY_phone.png",
+      "smallTextCount": 10,
+      "smallTextTotal": 10,
+      "smallText": [
+        {
+          "text": "my boss",
+          "px": 8.2,
+          "renderedPx": 8.7,
+          "selector": ".balloonRig > .uniqWord.heliumBalloon > span.tsExactUserText",
+          "zone": "arena",
+          "n": 1
+        },
+        {
+          "text": "MIND BEND",
+          "px": 8.5,
+          "renderedPx": 8,
+          "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "How to play",
+          "px": 8.7,
+          "renderedPx": 8.4,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "GAME PROGRESS · 0 %",
+          "px": 9,
+          "renderedPx": 9,
+          "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+          "zone": "hud",
+          "n": 1
+        },
+        {
+          "text": "You can loosen grip without pretending i",
+          "px": 9.3,
+          "renderedPx": 9.1,
+          "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "Cut. Release. Float.",
+          "px": 9.8,
+          "renderedPx": 10.1,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "LVL 1",
+          "px": 10,
+          "renderedPx": 10,
+          "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+          "zone": "header-score",
+          "n": 1
+        },
+        {
+          "text": "⚡ 0",
+          "px": 10,
+          "renderedPx": 10,
+          "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+          "zone": "header-score",
+          "n": 1
+        },
+        {
+          "text": "FLOAT AWAY · LIVE GUIDE",
+          "px": 10.2,
+          "renderedPx": 9.9,
+          "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+          "zone": "guide",
+          "n": 1
+        },
+        {
+          "text": "1 / 6",
+          "px": 11,
+          "renderedPx": 11,
+          "selector": ".cinematicContentShell > .arena.uniqArena > div.literalProgress",
+          "zone": "arena",
+          "n": 1
+        }
+      ],
+      "targets": [
+        {
+          "selector": ".arena.uniqArena > .balloonRig > button.balloonWeight.w0",
+          "rect": [
+            129,
+            414,
+            54,
+            54
+          ],
+          "cursor": "default",
+          "text": "✂",
+          "handlers": [
+            "onClick"
+          ],
+          "isButton": true,
+          "userText": false,
+          "hitTestOk": true,
+          "count": 1
+        },
+        {
+          "selector": ".arena.uniqArena > .balloonRig > button.balloonWeight.w1",
+          "rect": [
+            183,
+            414,
+            54,
+            54
+          ],
+          "cursor": "default",
+          "text": "✂",
+          "handlers": [
+            "onClick"
+          ],
+          "isButton": true,
+          "userText": false,
+          "hitTestOk": false,
+          "hitBy": ".arena.uniqArena > .balloonRig > button.balloonWeight.w2",
+          "count": 1
+        },
+        {
+          "selector": ".arena.uniqArena > .balloonRig > button.balloonWeight.w2",
+          "rect": [
+            207,
+            414,
+            54,
+            54
+          ],
+          "cursor": "default",
+          "text": "✂",
+          "handlers": [
+            "onClick"
+          ],
+          "isButton": true,
+          "userText": false,
+          "hitTestOk": true,
+          "count": 1
+        }
+      ],
+      "errors": []
+    }
+  },
+  {
+    "index": 36,
+    "name": "RIVER",
+    "smallText": [
+      {
+        "text": "MIND BEND",
+        "px": 9.8,
+        "renderedPx": 9.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > strong",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "GAME PROGRESS · 0 %",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".engineProgressHud > .engineProgressTrack > span.engineProgressText",
+        "zone": "hud",
+        "n": 1
+      },
+      {
+        "text": "How to play",
+        "px": 10,
+        "renderedPx": 10,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > small",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "my boss",
+        "px": 11,
+        "renderedPx": 11.1,
+        "selector": ".arena.uniqArena > .leafWord > span.plainUserThoughtText.tsGlobalThoughtText.tsExactUserText",
+        "zone": "arena",
+        "n": 1
+      },
+      {
+        "text": "Passing is a valid state.",
+        "px": 11.8,
+        "renderedPx": 12.1,
+        "selector": ".globalPlayGuide.hypnoticGuide > .globalMindBend > em",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "LVL 1",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > span",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "⚡ 0",
+        "px": 12,
+        "renderedPx": 12,
+        "selector": ".releaseConsoleHeader > .releaseScoreBar > strong",
+        "zone": "header-score",
+        "n": 1
+      },
+      {
+        "text": "Drop it in the river",
+        "px": 12.4,
+        "renderedPx": 12.5,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideStepCard > span",
+        "zone": "guide",
+        "n": 1
+      },
+      {
+        "text": "RIVER · LIVE GUIDE",
+        "px": 12.5,
+        "renderedPx": 12.6,
+        "selector": ".globalPlayGuide.hypnoticGuide > .guideHeaderRow > b",
+        "zone": "guide",
+        "n": 1
+      }
+    ],
+    "smallTextTotal": 9,
+    "targets": [
+      {
+        "selector": ".cinematicContentShell > .arena.uniqArena > div.leafWord",
+        "rect": [
+          565,
+          324,
+          150,
+          90
+        ],
+        "cursor": "grab",
+        "text": "my boss",
+        "handlers": [],
+        "isButton": false,
+        "userText": true,
+        "hitTestOk": true,
+        "count": 1
+      }
+    ],
+    "guessedTarget": ".cinematicContentShell > .arena.uniqArena > div.leafWord",
+    "playWorked": true,
+    "progressBefore": 0,
+    "progressAfter": 25,
+    "existingCue": [],
+    "guideText": "RIVER · LIVE GUIDE | How to play | Drop it in the river | MIND BEND | Passing is a valid state.",
+    "errors": [],
+    "shot": "/home/user/thinkstill-rituals/framer/dev/shots/audit/RIVER.png",
+    "stageClass": "tsArcade stage-play  releaseGlobal99Upgrade",
+    "surfaces": [
+      {
+        "selector": ".engineProgressWrap.cinematicEngineShell > .cinematicContentShell > div.arena.uniqArena.premiumArena",
+        "cursor": "auto",
+        "handlers": []
+      }
+    ],
+    "interactiveCount": 1,
+    "autoProgress": false,
+    "hudBefore": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "playAction": "hold1.2s+drag200",
+    "playLog": [
+      "hold1200+drag200@640,369"
+    ],
+    "hudAfter": {
+      "score": "LVL 1 ⚡ 0",
+      "sparks": "⚡ 0",
+      "counters": [
+        "1 / 6"
+      ]
+    },
+    "stateChanged": true,
+    "stageAfter": "tsArcade stage-play  releaseGlobal99Upgrade"
+  }
+]
