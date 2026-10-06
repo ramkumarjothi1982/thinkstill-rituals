@@ -1,6 +1,6 @@
 import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
-import ThinkStillReleaseArcade from "./ThinkStillReleaseArcade.tsx"
+import ThinkStillReleaseArcade from "./ThinkStillReleaseConsole1.tsx"
 
 /*
  * ThinkStill Release Arcade — PIXAR / VIRAL / HYPNOTIC layer

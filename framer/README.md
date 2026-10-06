@@ -4,7 +4,7 @@
 It does not change any game logic.
 
 ## Install (Framer)
-1. Keep your existing code file named **`ThinkStillReleaseArcade.tsx`** (the base component).
+1. Keep your existing code file named **`ThinkStillReleaseConsole1.tsx`** (the base component).
 2. Add `ThinkStillReleaseArcadePixar.tsx` as a second code file in the same Framer project.
 3. Put **ThinkStillReleaseArcadePixar** on the canvas instead of the original. All the original
    property controls carry over, plus three new ones: **Pixar Juice**, **Combo Pops** and **Pixar Intensity** (0–2).
