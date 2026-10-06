@@ -1,6 +1,6 @@
 import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
-import ThinkStillReleaseArcade from "./ThinkStillReleaseConsole1.tsx"
+import ThinkStillReleaseArcade from "./ThinkStillReleaseConsoleBase.tsx"
 
 /*
  * ThinkStill Release Arcade — PIXAR / VIRAL / HYPNOTIC layer
@@ -417,7 +417,7 @@ export default function ThinkStillReleaseArcadePixar(props: any) {
 }
 
 addPropertyControls(ThinkStillReleaseArcadePixar, {
-    ...((ThinkStillReleaseArcade as any).propertyControls || {}),
+    ...((ThinkStillReleaseArcade as any)?.propertyControls || {}),
     pixarJuice: {
         type: ControlType.Boolean,
         title: "Pixar Juice",
