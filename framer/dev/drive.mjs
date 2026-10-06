@@ -1,20 +1,20 @@
 // Test driver for the ThinkStill arcade harness.
 // Usage from another script:
 //   import { launch, startGame, listGames } from "./drive.mjs"
-//   const { browser, page, errors } = await launch({ width: 1280, height: 860 })
+//   const { browser, page, errors } = await launch({ width: 1280, height: 860, dir: "/tmp/eos_x" /* isolated build dir, default framer/dev */ })
 //   await startGame(page, "POP", "my boss yelled at me")
 // CLI: node drive.mjs "POP" [out.png] [width] [height]
 import { chromium } from "playwright-core"
 import path from "path"
 import { fileURLToPath } from "url"
 const here = path.dirname(fileURLToPath(import.meta.url))
-export async function launch({ width = 1280, height = 860 } = {}) {
+export async function launch({ width = 1280, height = 860, dir = here, reducedMotion } = {}) {
     const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium" })
-    const page = await browser.newPage({ viewport: { width, height } })
+    const page = await browser.newPage({ viewport: { width, height }, ...(reducedMotion ? { reducedMotion: "reduce" } : {}) })
     const errors = []
     page.on("pageerror", (e) => errors.push(String(e)))
     page.on("console", (m) => m.type() === "error" && errors.push(m.text()))
-    await page.goto("file://" + path.join(here, "index.html"))
+    await page.goto("file://" + path.join(dir, "index.html"))
     await page.waitForTimeout(1200)
     return { browser, page, errors }
 }
