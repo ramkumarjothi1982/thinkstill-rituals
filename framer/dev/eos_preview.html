@@ -1,0 +1,19 @@
+<!doctype html>
+<!--
+  EOS engine preview page (dev only). Do not open this source file directly: build it first —
+    python3 dev/eos_preview.py --id 111            → /tmp/eos_preview_111/index.html (+ out.js)
+  then open file:///tmp/eos_preview_111/index.html?id=111&text=…&reduced=1&seed=2&emotion=anger&before=8&guides=1
+  or drive it with dev/eos_drive.mjs: launchEos({dir: "/tmp/eos_preview_111", query: "id=111"}).
+  See dev/eos_preview.jsx for every URL parameter and window.__eosPreview.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EOS engine preview</title>
+</head>
+<body style="margin:0;background:#05040f">
+<div id="root"></div>
+<script src="out.js"></script>
+</body>
+</html>

@@ -22805,9 +22805,20 @@ addPropertyControls(ThinkStillReleaseArcade, {
 // v1.2.0: critique fixes (docs/EOS_SPEC.md §13): per-emotion dial/flip/grade/dial words, wider lexicon,
 // safety lexicon + scan + neutral words in core, breath/beat pacer clock, calm haptics, dial digit buffer,
 // dev-only window.__eos, a11y/arena/safe-area CSS, retro + keepHistory session rows, win-face pool.
+// v1.2.1 (foundation, FROZEN from here on for module builders):
+//   * `.eosArena button` starts as a clean shell — the arcade skins EVERY `.arena button` with !important
+//     (neon gradient, border, glow, text-shadow, a 180 ms transform transition that lags framer-motion);
+//     see the CSS comment at EOS_CORE_CSS for how a game styles its own buttons;
+//   * EosCharacterOrb carries data-eos-emotion / data-eos-char (stable test + CSS hooks);
+//   * useEosProgress(rootRef) — one shared, self-cleaning 4 Hz progress poll for overlays (mood, companion, …);
+//   * eosRegisterGame warns (dev only) about missing GAMES fields, duplicate ids/names, a bad gesture, ids < 111;
+//   * EosEnginePreview: `seed` prop + live §8.0 engine-contract checks on window.__eosPreview.checks
+//     (dev/eos_preview.* sets emotion / before / safety / calm from URL params before the first render);
+//   * eosDayPart() / eosLateNight(): one local-time rule for games (dawn/day/dusk/night palettes), mood, router;
+//   * window.__eos.core exposes every transition and table the test harness (dev/eos_drive.mjs) reads.
 // ===================================================================================
 
-const EOS_VERSION = "1.2.0"
+const EOS_VERSION = "1.2.1"
 
 // ID-boosted selector roots: (3,1,0) beats every `.tsArcade … !important` rule in the
 // arcade and Pixar's PX_B (2 ids), regardless of <style> order.
@@ -23465,8 +23476,19 @@ function EosEngineFor(game) {
 }
 // def = full GAMES entry (all 15 fields, strings; engine "E04" ⇒ explicit progress, no arcade CSS
 // keys off it). opts = { hint, mindBend, css, gesture, char, seconds }.
+const EOS_GAME_FIELDS = ["name", "family", "engine", "prompt", "object", "action", "mechanism", "hook", "surprise", "mindBend", "score", "replay", "sound", "notes"]
+const EOS_GESTURE_NAMES = ["tap", "taps", "hold", "holdRelease", "drag", "dragTo", "swipe", "sling", "slow", "scrub", "choose", "seq", "timing", "alt", "tool", "wait", "type"]
 function eosRegisterGame(def, Engine, opts = {}) {
     if (!def || !def.id || typeof Engine !== "function") return
+    if (eosIsDev()) {
+        // console.warn (never console.error: the test harness counts console errors as page errors)
+        const bad = EOS_GAME_FIELDS.filter((k) => typeof def[k] !== "string" || !def[k])
+        if (bad.length) console.warn(`[eos] game ${def.id}: missing/empty GAMES fields: ${bad.join(", ")}`)
+        if (EOS_ENGINES[def.id] && EOS_ENGINES[def.id] !== Engine) console.warn(`[eos] game ${def.id} registered twice`)
+        if (GAMES.some((g) => g.id !== def.id && g.name === def.name)) console.warn(`[eos] game ${def.id}: name "${def.name}" already used`)
+        if (opts.gesture && !EOS_GESTURE_NAMES.includes(opts.gesture)) console.warn(`[eos] game ${def.id}: unknown gesture "${opts.gesture}"`)
+        if (Number(def.id) < 111) console.warn(`[eos] game ${def.id}: new games use ids ≥ 111 (EosEngineFor ignores lower ids)`)
+    }
     if (!GAMES.some((g) => g.id === def.id)) GAMES.push(def)
     EOS_ENGINES[def.id] = Engine
     EOS_GAME_META[def.id] = { gesture: String(opts.gesture || "tap"), char: opts.char ? String(opts.char) : null, seconds: Number(opts.seconds) || 30 }
@@ -23496,6 +23518,16 @@ function eosTarget(spec) {
 }
 
 // ---------------------------------------------------------------- small helpers
+// Local time of day, shared so every game / the mood layer / the router agree (§5.6 R8, §7.3, §8.0):
+// eosDayPart → "dawn" 5-10 · "day" 10-17 · "dusk" 17-21 · "night" 21-5; eosLateNight → 23:00-05:00.
+function eosDayPart(d = new Date()) {
+    const h = d.getHours()
+    return h >= 5 && h < 10 ? "dawn" : h >= 10 && h < 17 ? "day" : h >= 17 && h < 21 ? "dusk" : "night"
+}
+function eosLateNight(d = new Date()) {
+    const h = d.getHours()
+    return h >= 23 || h < 5
+}
 function eosNoise(i, salt = 0) {
     return noveltyNoise(Number(i) + 1, Number(salt) + 7)
 }
@@ -23658,6 +23690,30 @@ function eosProgressOf(root) {
     const v = el ? Number(el.getAttribute("aria-valuenow")) : NaN
     return Number.isFinite(v) ? v : null
 }
+// The ONE shared progress poll (mood, companion, dots, arrows …): re-renders only when the rounded value
+// changes. rootRef = a ref to (or inside) the game host / .releaseStage; reads the closest .releaseStage so
+// both wrappers work. Returns 0-100 or null (no progress bar yet). The interval is cleaned up on unmount.
+function useEosProgress(rootRef, hz = 4) {
+    const [p, setP] = React.useState(null)
+    React.useEffect(() => {
+        let alive = true
+        const read = () => {
+            if (!alive) return
+            const el = rootRef && rootRef.current
+            const stage = el ? (el.closest && el.closest(".releaseStage")) || el : null
+            const v = eosProgressOf(stage)
+            const next = v == null ? null : Math.round(v)
+            setP((prev) => (prev === next ? prev : next))
+        }
+        read()
+        const t = setInterval(read, Math.max(50, 1000 / Math.max(0.5, Number(hz) || 4)))
+        return () => {
+            alive = false
+            clearInterval(t)
+        }
+    }, [rootRef, hz])
+    return p
+}
 
 // ---- tiny synth for musical feedback (gated by the arcade sound toggle mirrored in the store)
 let eosAudioCtx = null
@@ -23741,6 +23797,8 @@ function EosCharacterOrb({
     return (
         <Tag
             {...(onClick ? { type: "button", onClick, "aria-label": ariaLabel || [label, sub].filter(Boolean).join(" — ") || EOS_CHAR_NAMES[c] } : { "aria-hidden": "true" })}
+            data-eos-emotion={e ? e.id : undefined}
+            data-eos-char={c}
             className={cls}
             style={{ "--eos-h": h, "--eos-orb": `${size}px`, "--eos-bob": `${(eosNoise(h, 3) * 1.6 + 2.6).toFixed(2)}s`, ...style }}
             {...domRest}
@@ -23881,47 +23939,117 @@ function EosIntensityDial({ value, onChange, emotion = null, min = 1, max = 10, 
 // QUICK ITERATION ONLY — it has no arcade CSS (no forced .arena rules, no guide panel, no step rewards,
 // no .tsExactUserText tagging). Every acceptance check runs in a scratch integrated build instead:
 //   python3 dev/eos_integrate.py --dev-dir /tmp/eos_<task> --modules <your files>
-// window.__eos.core.EosEnginePreview({id, text, reduced}) publishes
-// {progress, label, done, sfx:[{kind, t}], progressLog} on window.__eosPreview (dev only).
-function EosEnginePreview({ id = 111, text = "my boss yelled at me and I feel panic", reduced = false }) {
+// Mounted by dev/eos_preview.html (python3 dev/eos_preview.py --id 111 …), or directly:
+//   window.__eos.core.EosEnginePreview({id, text, reduced, seed})
+// Publishes on window.__eosPreview (dev only):
+//   {id, progress, label, done, sfx:[{kind, t}], rain:[{s, t}], progressLog:[n…], log:[{t, v, label}],
+//    checks:{thirdArg, backwards, flat, outOfRange, afterDone, afterUnmount, doneCalls, nonSoft, longLabels:[…],
+//            firstProgressMs, doneDelayMs}}
+// i.e. the §8.0 engine contract: onProgress(value, label) — never a 3rd argument — strictly increasing 0..100,
+// labels ≤ 18 chars, onDone(bonus) exactly once ~450 ms after 100, nothing after unmount.
+function EosEnginePreview({ id = 111, text = "my boss yelled at me and I feel panic", reduced = false, seed: seed0 = 1 }) {
     const game = GAMES.find((g) => g.id === Number(id)) || null
     const Engine = EosEngineFor(game)
     const entries = React.useMemo(() => cleanEntries(text), [text])
     const [progress, setProgress] = React.useState(0)
     const [label, setLabel] = React.useState("")
     const [done, setDone] = React.useState(null)
-    const [seed, setSeed] = React.useState(1)
-    const doneRef = React.useRef(false)
-    const t0 = React.useRef(Date.now())
-    const pub = (patch) => {
+    const [seed, setSeed] = React.useState(Number(seed0) || 1)
+    const gen = React.useRef({ seed: Number(seed0) || 1, mounted: true })
+    const st = React.useRef(null)
+    const fresh = () => ({
+        t0: Date.now(), last: null, done: false, at100: 0,
+        pub: { id: Number(id), progress: 0, label: "", done: null, sfx: [], rain: [], progressLog: [], log: [],
+            checks: { thirdArg: 0, backwards: 0, flat: 0, outOfRange: 0, afterDone: 0, afterUnmount: 0, doneCalls: 0, nonSoft: 0, longLabels: [], firstProgressMs: null, doneDelayMs: null } },
+    })
+    if (!st.current) st.current = fresh()
+    const publish = () => {
         try {
-            if (eosIsDev()) window.__eosPreview = { ...(window.__eosPreview || { sfx: [], progressLog: [] }), ...patch }
+            if (eosIsDev()) window.__eosPreview = st.current.pub
         } catch {}
     }
     React.useEffect(() => {
-        t0.current = Date.now()
-        pub({ id: Number(id), progress: 0, label: "", done: null, sfx: [], progressLog: [] })
-    }, [id, seed])
-    const onProgress = (val, l) => {
-        const p = Math.round(eosClamp(val, 0, 100))
-        setProgress(p)
-        setLabel(l || "")
-        const prev = (typeof window !== "undefined" && window.__eosPreview) || {}
-        pub({ progress: p, label: l || "", progressLog: (prev.progressLog || []).concat([p]).slice(-200) })
+        publish()
+        return () => {
+            gen.current.mounted = false
+        }
+    }, [])
+    // Restart = a new engine generation. Switched in the click handler (before the new engine mounts, so its
+    // mount-time onProgress(0) lands in the fresh log); calls from an older generation count as afterUnmount.
+    const restart = () => {
+        const next = gen.current.seed + 1
+        gen.current = { seed: next, mounted: true }
+        st.current = fresh()
+        publish()
+        setDone(null)
+        setProgress(0)
+        setLabel("")
+        setSeed(next)
     }
-    const onDone = (bonus) => {
-        if (doneRef.current) return
-        doneRef.current = true
-        setDone(bonus ?? 0)
-        setProgress(100)
-        pub({ done: bonus ?? 0, progress: 100 })
-    }
-    const sfx = (kind) => {
-        const prev = (typeof window !== "undefined" && window.__eosPreview) || {}
-        pub({ sfx: (prev.sfx || []).concat([{ kind: String(kind), t: Date.now() - t0.current }]).slice(-200) })
-    }
+    // Callbacks are bound to the engine generation they were created for.
+    const makeProps = (g) => ({
+        onProgress: function (val, l) {
+            const s = st.current
+            const c = s.pub.checks
+            if (gen.current.seed !== g || !gen.current.mounted) {
+                c.afterUnmount++
+                return publish()
+            }
+            if (arguments.length > 2 && arguments[2] !== undefined) c.thirdArg++
+            const raw = Number(val)
+            if (!Number.isFinite(raw) || raw < 0 || raw > 100) c.outOfRange++
+            const p = Math.round(eosClamp(raw, 0, 100))
+            if (s.done) c.afterDone++
+            if (s.last != null && p < s.last) c.backwards++
+            if (s.last != null && p === s.last && p > 0) c.flat++
+            if (l && String(l).length > 18 && !c.longLabels.includes(String(l))) c.longLabels.push(String(l))
+            const t = Date.now() - s.t0
+            if (c.firstProgressMs == null) c.firstProgressMs = t
+            if (p >= 100 && !s.at100) s.at100 = Date.now()
+            s.last = p
+            s.pub.progress = p
+            s.pub.label = l || ""
+            s.pub.progressLog = s.pub.progressLog.concat([p]).slice(-300)
+            s.pub.log = s.pub.log.concat([{ t, v: p, label: l || "" }]).slice(-300)
+            publish()
+            setProgress(p)
+            setLabel(l || "")
+        },
+        onDone: (bonus) => {
+            const s = st.current
+            const c = s.pub.checks
+            if (gen.current.seed !== g || !gen.current.mounted) {
+                c.afterUnmount++
+                return publish()
+            }
+            c.doneCalls++
+            if (s.done) return publish()
+            s.done = true
+            c.doneDelayMs = s.at100 ? Date.now() - s.at100 : null
+            s.pub.done = bonus ?? 0
+            s.pub.progress = 100
+            publish()
+            setDone(bonus ?? 0)
+            setProgress(100)
+        },
+        sfx: (kind) => {
+            const s = st.current
+            const k = String(kind)
+            if (k !== "soft") s.pub.checks.nonSoft++
+            s.pub.sfx = s.pub.sfx.concat([{ kind: k, t: Date.now() - s.t0 }]).slice(-300)
+            publish()
+        },
+        rainSfx: (secs) => {
+            const s = st.current
+            s.pub.rain = s.pub.rain.concat([{ s: Number(secs) || 0, t: Date.now() - s.t0 }]).slice(-100)
+            publish()
+        },
+    })
+    const cb = React.useMemo(() => makeProps(seed), [seed])
     if (!game || !Engine)
         return <div style={{ color: "#fff", font: "16px system-ui", padding: 24 }}>EOS preview: no engine registered for id {String(id)}</div>
+    const c = st.current.pub.checks
+    const flags = [c.thirdArg && `3rd arg ×${c.thirdArg}`, c.backwards && `backwards ×${c.backwards}`, c.outOfRange && `out of range ×${c.outOfRange}`, c.afterDone && `after done ×${c.afterDone}`, c.afterUnmount && `after unmount ×${c.afterUnmount}`, c.doneCalls > 1 && `onDone ×${c.doneCalls}`, c.longLabels.length && `label > 18: ${c.longLabels[0]}`].filter(Boolean)
     return (
         <div className="tsPixarRoot eosPreviewRoot" style={{ position: "fixed", inset: 0, background: "radial-gradient(120% 90% at 50% 40%,#1a1550,#05040f)" }}>
             <style>{"@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap');"}</style>
@@ -23935,19 +24063,24 @@ function EosEnginePreview({ id = 111, text = "my boss yelled at me and I feel pa
                                     <i style={{ width: `${progress}%` }} />
                                     <span className="engineProgressText">{`${game.name} · ${label || "…"} · ${progress}%`}</span>
                                 </div>
-                                <button type="button" className="eosPreviewReset" onClick={() => { doneRef.current = false; setDone(null); setProgress(0); setSeed((s) => s + 1) }}>
+                                <button
+                                    type="button"
+                                    className="eosPreviewReset"
+                                    onClick={restart}
+                                >
                                     ↻ restart
                                 </button>
                             </div>
+                            {flags.length ? <div className="eosPreviewFlags">{"contract: " + flags.join(" · ")}</div> : null}
                             <div className="cinematicContentShell" style={{ position: "absolute", inset: 0 }}>
                                 <Engine
                                     key={seed}
                                     game={game}
                                     entries={entries}
-                                    onProgress={onProgress}
-                                    onDone={onDone}
-                                    sfx={sfx}
-                                    rainSfx={() => {}}
+                                    onProgress={cb.onProgress}
+                                    onDone={cb.onDone}
+                                    sfx={cb.sfx}
+                                    rainSfx={cb.rainSfx}
                                     reduced={!!reduced}
                                     imageSrc=""
                                     imageSources={[]}
@@ -23979,6 +24112,14 @@ ${EOS_A} .eosArena{position:absolute;inset:0;overflow:hidden;user-select:none;-w
 ${EOS_A} .cinematicContentShell>.arena.eosArena{position:absolute!important;inset:0!important;padding:0!important;min-height:0!important}
 @media (max-width:560px){${EOS_A} .eosArena{--eos-safe-top:104px;--eos-safe-bottom:164px}}
 ${EOS_A} .eosArena button{font-family:var(--eos-font)}
+/* Clean button shells for EOS games (v1.2.1). The arcade skins EVERY \`.cinematicContentShell > .arena button\`
+   with !important (neon gradient background, border, glow, text-shadow, and a 180 ms transform/box-shadow
+   transition that makes framer-motion transforms lag). Inside .eosArena this reset removes all of it.
+   Its specificity is only the ID-boosted root (:where adds nothing), so ANY game rule written as
+   \`\${EOS_A} .eosG<id> …{…!important}\` beats it. React inline styles cannot beat an !important rule, so draw a
+   button's visuals on a child element (span/div with inline styles) or in your CSS string with !important. */
+${EOS_A} :where(.eosArena button){background:none!important;border:0!important;box-shadow:none!important;color:inherit!important;text-shadow:none!important;transition:none!important;padding:0;margin:0;font:inherit;line-height:inherit;cursor:pointer;-webkit-appearance:none;appearance:none;-webkit-tap-highlight-color:transparent}
+${EOS_A} :where(.eosArena button:focus-visible){outline:3px solid var(--eos-gold-1)!important;outline-offset:3px}
 ${EOS_A} .eosSrOnly{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 ${EOS_A} :is(.eosCheckIn,.eosShiftMeter,.eosStillMoment,.eosSafetyCard,.eosSupportPill,.eosOrbShelf,.eosWorldChips,.eosCheckInChip) :is(button,a,[role=button]){min-height:44px;min-width:44px}
 ${EOS_A} .eosOrb{--eos-orb:88px;position:relative;display:inline-flex;flex-direction:column;align-items:center;gap:6px;padding:0;margin:0;border:0;background:none;color:#fff;cursor:pointer;font-family:var(--eos-font);-webkit-tap-highlight-color:transparent;transition:opacity .25s ease,filter .25s ease}
@@ -24019,6 +24160,7 @@ ${EOS_A}.eosPreview .engineProgressTrack{position:relative;flex:1;height:26px;bo
 ${EOS_A}.eosPreview .engineProgressTrack>i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#3fe6ff,#7c6bff 45%,#ff6fd8 75%,#ffd36b);transition:width .25s ease}
 ${EOS_A}.eosPreview .engineProgressText{position:relative;display:block;text-align:center;font:800 13px/26px var(--eos-font);color:#fff}
 ${EOS_A}.eosPreview .eosPreviewReset{font:800 13px/1 var(--eos-font);padding:8px 12px;border-radius:999px;border:0;background:#fff;color:#111;cursor:pointer}
+${EOS_A}.eosPreview .eosPreviewFlags{position:absolute;top:44px;left:10px;right:10px;z-index:50;padding:6px 10px;border-radius:10px;background:rgba(160,20,40,.88);color:#fff;font:800 13px/1.2 var(--eos-font);pointer-events:none}
 ${EOS_A}.eosPreview .eosPreviewDone{position:absolute;left:50%;bottom:16px;translate:-50% 0;z-index:60;padding:10px 16px;border-radius:999px;background:#ffd04a;color:#2a1600;font:900 15px/1 var(--eos-font)}
 @keyframes eosPulse{0%,100%{opacity:.7;scale:.96}50%{opacity:1;scale:1.04}}
 @keyframes eosPop{0%{scale:.6;opacity:0}60%{scale:1.08;opacity:1}100%{scale:1}}
@@ -24029,48 +24171,84 @@ ${EOS_A}[data-eos-calm="1"] .eosOrb.isBob .eosOrbBall{animation:none}
 `
 eosCss("core", EOS_CORE_CSS)
 
+// Dev / test handle (window.__eos.core exists only when eosIsDev()). dev/eos_drive.mjs reads these.
 eosExpose("core", {
     EOS_VERSION,
     EOS_STORE,
+    EOS_STORE_INITIAL,
     EOS_EMOTIONS,
     EOS_EMO,
     EOS_KEYS,
     EOS_ENGINES,
     EOS_GAME_META,
+    EOS_GAME_FIELDS,
+    EOS_GESTURE_NAMES,
     EOS_GUIDE_CHAR,
+    EOS_CHAR_NAMES,
     EOS_WIN_FACES,
+    EOS_LEXICON,
     EOS_SAFETY_LEX,
+    EOS_TEXT_SAFETY,
     EOS_NEUTRAL_WORDS,
     EOS_COPY_RULES,
     EOS_DISCLAIMER,
+    EOS_DISCHARGE_IDS,
+    EOS_SLOW_IDS,
+    EOS_PROP_DEFAULTS,
+    EOS_PREF_DEFAULTS,
+    EOS_PRIVATE_ATTRS,
     EOS_BREATH,
+    EOS_PACER,
+    EOS_HAPTIC,
     EOS_Z,
     GAMES,
+    eosIsDev,
+    eosGet,
+    eosSet,
     eosSessions,
+    eosDays,
     eosPushSession,
+    eosLearnedCount,
     eosPrefs,
     eosSetPref,
     eosWords,
+    eosTarget,
     eosFaceFor,
     eosFacePool,
+    eosHue,
+    eosGrade,
+    eosCurrentEmotion,
     eosDetectEmotion,
     eosGuessIntensity,
     eosBand,
     eosDialQuestion,
     eosDialWord,
     eosMeterWord,
+    eosProgressOf,
+    eosStageScale,
+    eosRelRect,
     EosSafetyScan,
     eosRealThreat,
+    eosSafetyStrong,
+    eosTextSafety,
     EosFlagSafety,
     eosBreathPhase,
     eosBreathOwn,
     eosPacerBeat,
+    eosCalm,
+    eosDayPart,
+    eosLateNight,
+    eosNoise,
+    EosEngineFor,
     EosCommitCheckin,
+    EosSkipCheckin,
+    EosOpenCheckin,
     EosMarkLaunch,
     EosMarkFinish,
     EosRecordShift,
     EosResetFeeling,
     EosEnginePreview,
+    apis: () => Object.keys(EOS_DEV).filter((k) => k !== "version"),
     cssParts: () => Array.from(EOS_CSS_PARTS.keys()),
     cssText: () => Array.from(EOS_CSS_PARTS.values()).join("\n"),
 })
