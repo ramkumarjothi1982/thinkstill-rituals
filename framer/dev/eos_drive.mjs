@@ -33,18 +33,25 @@
 //   resetToInput(page)                                     clicks × (clearForNext) → input stage
 //   currentGameId(page)                                    id of the running game (store, else guide header)
 //   openCheckin(page)                                      → {ok, via: "visible"|"chip"|"store"|null}
+//                                                            (from play / reveal it first returns to the input stage)
 //   runCheckin(page, {emotion, intensity | dial, words, express, go, pickMyself, waitPlayMs})
 //       emotion: an EOS_EMOTIONS id ("panic", "anger", … "good") or "auto"/null (NOT SURE).
 //       → {ok, emotion, dial, step, stage, gameId, store}
-//   finishGame(page, [id], {timeoutMs = 120000, stuckMs = 45000, perStage, assertArrows, alt: "pointer"|"keyboard", log})
+//   finishGame(page, [id], {timeoutMs = 150000, stuckMs = 45000, cooldownMs = 700, perStage, assertArrows,
+//              alt: "pointer"|"keyboard", log})
 //       Plays the running game to the reveal with the real gestures: EOS_GESTURES (the arrows module's table,
 //       else the copy in docs/EOS_SPEC.md §3.11) for ids ≤ 110, the engines' data-eos-* markers for 111+
 //       (no marker = automatic phase → it waits; 8 s without one is noted as a contract breach), and the §3.4
 //       fallback list. Implements all 17 gestures (a hold whose marker turns into a drag while pressed — 111's
-//       sip — is followed). Before each new stage it waits for the arrow (window.__eos.arrows.state(): 2.2 s
-//       for the first stage, 1.5 s after) and records visibility + label; assertArrows: "auto" (check when the
-//       arrows module is in the build) | true (a missing API is a miss) | false. alt:"keyboard" plays marker
-//       games with Space/Enter/arrow keys (the §8.0 single-pointer / keyboard alternative).
+//       sip — is followed; a scrub over a surface > 200×120 px uses dense synthetic pointer events because
+//       coverage games count every event and each real event costs a headless frame). Robustness: success =
+//       the bar moved (either way); a target that fails twice is tried last; drags grow 35 % per failure and
+//       every 3rd failure first drags back the other way (a lever parked at its end stop); table games wait
+//       2.5 s in transitions before the fallback; stops as "stuck" after 45 s with no reaction. Before each
+//       new stage it waits for the arrow (window.__eos.arrows.state(): 2.2 s for the first stage, 1.5 s
+//       after) and records visibility + label; assertArrows: "auto" (check when the arrows module is in the
+//       build) | true (a missing API is a miss) | false. alt:"keyboard" plays marker games with
+//       Space/Enter/arrow keys (the §8.0 single-pointer / keyboard alternative).
 //       → {id, name, done, ms, reason, finalProgress, progressLog:[{t, v}], stages:[{key, g, label, arrow…}],
 //          actions, arrowsChecked, arrowMisses:[…], labelMismatches:[…], occluded, completeEarly, notes:[…]}
 //   readProgress(page)                → 0-100 | null   (.engineProgressTrack[aria-valuenow])
@@ -84,7 +91,8 @@
 //   node eos_drive.mjs smoke  [--dir D] [--id 1 | --name POP] [--text "…"] [--size 1280x860] [--shot out.png]
 //   node eos_drive.mjs finish --id 2 [--dir D] [--size 390x844] [--keyboard]
 //   node eos_drive.mjs sweep  [--ids 1-110,111] [--workers 2] [--dir D] [--size WxH] [--out file.json] [--render]
-//        (finishGame for every id, lite mode unless --render; ~2 workers per 4 cores — more starves the raster)
+//        (finishGame for every id, lite mode unless --render; 2-3 workers per 4 cores — more starves the raster;
+//        110 games ≈ 25 min at 390×844, ≈ 35 min at 1280×860 here)
 //   node eos_drive.mjs small  --name POP [--min 12] [--dir D] [--size WxH]
 //   node eos_drive.mjs lint   [--dir D]           (copy lint of the input stage EOS surfaces)
 //   node eos_drive.mjs css    [--grep "binWordBubble"]   (the arcade's real CSS: gz blob + *_CSS strings)
@@ -125,7 +133,9 @@ function eosDrivePageLib() {
             return []
         }
     }
-    const DEAD = /\b(dead|gone|popped|cut|loose|released|pulled|done|isDone|isGone|melted|binned|cooled|exploredDoor)\b/
+    // §3.4 dead-state classes + the finished states the foundation sweep found (shelved 95, severed 43, erased 19,
+    // moved 93, restored 108 — each verified to be set only on a finished element)
+    const DEAD = /\b(dead|gone|popped|cut|loose|released|pulled|done|isDone|isGone|melted|binned|cooled|exploredDoor|shelved|severed|erased|moved|restored)\b/
     const EXCLUDE = ".globalPlayGuide, .engineProgressHud, .tsShiftRewardHud, .eosArrowLayer"
     const cls = (el) => (el && el.getAttribute && el.getAttribute("class")) || ""
     const host = () => q(".releaseGameHost") || q(".eosPreview")
@@ -211,6 +221,11 @@ function eosDrivePageLib() {
         if (el.closest(EXCLUDE)) return false
         if (DEAD.test(cls(el))) return false
         return true
+    }
+    // targets that failed twice in a row are tagged by finishGame and tried last (rotates through candidates)
+    const preferFresh = (els) => {
+        const fresh = els.filter((e) => !e.hasAttribute("data-eos-drive-skip"))
+        return fresh.length ? fresh : els
     }
     const inEl = (el, x, y) => {
         const h = document.elementFromPoint(x, y)
@@ -310,8 +325,8 @@ function eosDrivePageLib() {
             if (!els.length) continue
             let chosen
             if (s.g === "choose") chosen = els.slice(0, 6)
-            else if (s.pick === "near") chosen = [near(els, lx, ly)]
-            else chosen = [els[0]]
+            else if (s.pick === "near") chosen = [near(preferFresh(els), lx, ly)]
+            else chosen = [preferFresh(els)[0]]
             const targets = chosen.map((el, k) => ({ ...describe(el, k, s.ox, s.oy), pick: tag(el), ord: els.indexOf(el) }))
             let to = null
             if (s.to) {
@@ -323,6 +338,7 @@ function eosDrivePageLib() {
             return { ok: true, kind: "stage", i, key: `s:${i}`, spec: s, g: s.g, targets, to, label }
         }
         // 3. fallback (no table entry / stale selector): tap
+        if (st && st.noFallback) return { ok: false, why: "no stage (finished-looking arena: no fallback)" }
         for (const sel of FALLBACK) {
             const els = qa(sel, A).filter(usable)
             if (els.length) {
@@ -499,7 +515,50 @@ function eosDrivePageLib() {
         }
         return { centre, noCore, dots, names }
     }
-    D.lib = { q, qa, arena, host, progress, stageName, state, usable, describe, resolve, meterValue, markerAt, textSweep, copyTexts, dotsSample, guideName }
+    // cheap "did the game react?" signature: classes of the arena's interactive elements + its status text
+    const sig = () => {
+        const A = arena()
+        if (!A) return ""
+        const parts = [cls(A)]
+        qa("button, [role=button], [data-eos-target]", A)
+            .slice(0, 40)
+            .forEach((e) => parts.push(cls(e) + (e.disabled ? "!" : "")))
+        const st = q(".literalStatus, .uniqStatus, .literalProgress, .combo", A)
+        if (st) parts.push(st.textContent)
+        return parts.join("|")
+    }
+    const skip = (pick, on) => {
+        const el = q(`[data-eos-drive-pick="${pick}"]`)
+        if (el) on ? el.setAttribute("data-eos-drive-skip", "1") : el.removeAttribute("data-eos-drive-skip")
+    }
+    const clearSkips = () => qa("[data-eos-drive-skip]").forEach((e) => e.removeAttribute("data-eos-drive-skip"))
+    // Dense scratch over a big surface (coverage games such as 96 count cells at EVERY pointer event; real mouse
+    // events cost a frame each in headless): synthetic pointer events, one per ~step px, on the element under
+    // each point. Only used for `scrub` targets larger than 200×120.
+    const fastScrub = (pick, pass = 0, step = 12, rowH = 16) => {
+        const el = q(`[data-eos-drive-pick="${pick}"]`)
+        if (!el) return 0
+        const r = el.getBoundingClientRect()
+        const pts = []
+        let k = 0
+        for (let y = r.top + rowH / 2 + (pass % 2) * (rowH / 2); y < r.bottom - 2; y += rowH, k++) {
+            const xs = []
+            for (let x = r.left + 4; x < r.right - 4; x += step) xs.push(x)
+            if (k % 2) xs.reverse()
+            xs.forEach((x) => pts.push([x, y]))
+        }
+        if (!pts.length) return 0
+        const fire = (type, x, y) => {
+            const t = document.elementFromPoint(x, y) || el
+            const o = { bubbles: true, cancelable: true, composed: true, pointerId: 1, pointerType: "mouse", isPrimary: true, clientX: x, clientY: y, buttons: type === "pointerup" ? 0 : 1, button: 0 }
+            t.dispatchEvent(new PointerEvent(type, o))
+        }
+        fire("pointerdown", pts[0][0], pts[0][1])
+        for (const [x, y] of pts) fire("pointermove", x, y)
+        fire("pointerup", pts[pts.length - 1][0], pts[pts.length - 1][1])
+        return pts.length
+    }
+    D.lib = { q, qa, arena, host, progress, stageName, state, usable, describe, resolve, meterValue, markerAt, textSweep, copyTexts, dotsSample, guideName, sig, skip, clearSkips, fastScrub }
 }
 
 async function ensureLib(page) {
@@ -665,6 +724,8 @@ async function firstVisible(page, selectors) {
 }
 export async function openCheckin(page, { waitMs = 1500 } = {}) {
     await ensureLib(page)
+    // the check-in lives on the input stage: from play / reveal go back first (× = clearForNext → EosResetFeeling)
+    if ((await page.evaluate(() => window.__eosDrive.lib.stageName())) !== "input") await resetToInput(page)
     const vis = async () => !!(await firstVisible(page, [".eosCheckIn"]))
     if (await vis()) return { ok: true, via: "visible" }
     const chip = await firstVisible(page, [".eosCheckInChip"])
@@ -1001,6 +1062,11 @@ async function perform(page, r, st, ctx) {
     }
     if (g === "hold" || g === "holdRelease") return performHold(page, r, st, ctx)
     if (g === "scrub") {
+        if (T.w > 200 && T.h > 120) {
+            const n = await page.evaluate(([pick, pass]) => window.__eosDrive.lib.fastScrub(pick, pass), [T.pick, ctx.attempt || 0])
+            await sleep(120)
+            return `scrub:synthetic×${n}`
+        }
         await page.mouse.move(T.x, T.y)
         await page.mouse.down()
         const w = Math.max(40, Math.min(T.w, 600))
@@ -1076,7 +1142,7 @@ async function performHold(page, r, st, ctx) {
     let y = T.y
     let moved = false
     let why = "timer"
-    const maxMs = r.g === "holdRelease" ? ms * 3 + 1500 : ms + (r.kind === "marker" ? 2600 : 350)
+    const maxMs = r.g === "holdRelease" ? ms * 3 + 1500 : mvar ? ms * 4 + 2200 : ms + (r.kind === "marker" ? 2600 : 350)
     while (Date.now() - t0 < maxMs) {
         await sleep(r.g === "holdRelease" ? 12 : 70)
         const el = Date.now() - t0
@@ -1091,6 +1157,27 @@ async function performHold(page, r, st, ctx) {
                     break
                 }
             }
+            continue
+        }
+        if (r.g === "hold" && mvar) {
+            // a hold with a live meter (65 --p, 109 --hold-pct): keep pressing until the meter is full — under a
+            // loaded CPU the game's own timer runs slower than the table's ms
+            const v = await page.evaluate(([sel, mvar, x, y]) => {
+                const L = window.__eosDrive.lib
+                if (sel) return L.meterValue(sel, mvar)
+                const h = document.elementFromPoint(x, y)
+                const b = h && h.closest("button, [role=button]")
+                if (!b) return null
+                const raw = (b.style.getPropertyValue(mvar) || getComputedStyle(b).getPropertyValue(mvar) || "").trim()
+                const n = parseFloat(raw)
+                return Number.isFinite(n) ? n : null
+            }, [s.meter || null, mvar, x, y])
+            if (v != null && v >= 97) {
+                why = `meter ${v}`
+                break
+            }
+            if (el >= ms * 4 + 2000) break
+            if (v == null && el >= ms) break
             continue
         }
         if (r.kind === "marker") {
@@ -1187,7 +1274,7 @@ const norm = (s) => String(s || "").toUpperCase().replace(/\s+/g, " ").trim()
 export async function finishGame(page, idOrOpts, maybeOpts) {
     let id = typeof idOrOpts === "number" || typeof idOrOpts === "string" ? Number(idOrOpts) : null
     const opts = { ...(idOrOpts && typeof idOrOpts === "object" ? idOrOpts : {}), ...(maybeOpts || {}) }
-    const { timeoutMs = 120000, stuckMs = 45000, perStage = true, assertArrows = "auto", alt = "pointer", settleMs = 220, finishWaitMs = 5500, log = false } = opts
+    const { timeoutMs = 150000, stuckMs = 45000, perStage = true, assertArrows = "auto", alt = "pointer", settleMs = 220, cooldownMs = 700, finishWaitMs = 9000, log = false } = opts
     await ensureLib(page)
     if (!id) id = await currentGameId(page)
     const name = id ? await gameNameById(page, id) : null
@@ -1224,13 +1311,18 @@ export async function finishGame(page, idOrOpts, maybeOpts) {
             // the wrapper holds the finish ~3 s (legacy) / ~4 s (new) before the reveal. A bar can also read
             // 100 before the ENGINE is done (sfx-driven creep without the I1-E7 gate) → after the grace period
             // keep playing until the reveal.
+            // (CLEANSE: onDone 2.2 s after the last release + the new wrapper's 4 s hold ≈ 6.4 s → wait 9 s)
             if (!completeAt) completeAt = Date.now()
             if (Date.now() - completeAt < finishWaitMs) {
                 await sleep(200)
                 continue
             }
             if (!out.completeEarly) out.completeEarly = true
-        } else completeAt = 0
+            st.noFallback = true // never poke generic buttons in a finished-looking arena (replay buttons!)
+        } else {
+            completeAt = 0
+            st.noFallback = false
+        }
         const r = await resolveNow(page, stages, st)
         if (!r.ok) {
             if (markersOnly) {
@@ -1279,7 +1371,20 @@ export async function finishGame(page, idOrOpts, maybeOpts) {
         }
         const attempt = fails[r.key] || 0
         if (r.g === "choose" && attempt > 0) chooseIdx[r.key] = (chooseIdx[r.key] || 0) + 1
-        const what = await perform(page, r, st, { ...ctxBase, attempt, chooseIdx: chooseIdx[r.key] || 0 })
+        const sig0 = await page.evaluate(() => window.__eosDrive.lib.sig())
+        // a drag that keeps failing may be parked at its end stop (e.g. 77's brake stays down): every 3rd try,
+        // push it back the other way first
+        let rr = r
+        if (["drag", "slow", "sling"].includes(r.g) && attempt >= 2 && attempt % 3 === 2 && r.spec && r.spec.dir && !["lr", "ud"].includes(r.spec.dir)) {
+            const back = { u: "d", d: "u", l: "r", r: "l", ur: "dl", ul: "dr", dr: "ul", dl: "ur", out: "in", in: "out" }[r.spec.dir]
+            if (back) {
+                await perform(page, { ...r, g: "drag", spec: { ...r.spec, dir: back } }, st, { ...ctxBase, attempt: 0 })
+                await sleep(250)
+                const again = await resolveNow(page, stages, st) // the element moved: aim at where it is now
+                if (again.ok && again.key === r.key) rr = again
+            }
+        }
+        const what = await perform(page, rr, st, { ...ctxBase, attempt, chooseIdx: chooseIdx[r.key] || 0 })
         out.actions++
         if (r.spec && r.spec.until === "touch" && r.i != null && !st.touched.includes(r.i)) st.touched.push(r.i)
         if (r.spec && r.spec.once && r.i != null && !st.once.includes(r.i)) st.once.push(r.i)
@@ -1288,23 +1393,34 @@ export async function finishGame(page, idOrOpts, maybeOpts) {
         if (log) console.log(`  ${what} → ${p}`)
         // success = the bar moved (either way: without the I1-E7 gate an engine report can drop below the
         // sfx-driven creep, e.g. CRUSH 45 → 17 on a real success) or the game left the stage / finished
+        const sig1 = await page.evaluate(() => window.__eosDrive.lib.sig())
+        // moved = the bar changed (either way); reacted = the bar OR the arena's controls / status changed.
+        // Escalation (longer drags, the reverse "reset" drag, rotating choose options and targets) keys off
+        // `moved`; the stuck timer keys off `reacted` (a game may react for a while before the bar moves).
         const moved = p !== lastProgress
+        const reacted = moved || sig1 !== sig0
         if (moved) {
             noMarkerSince = 0
             fails[r.key] = 0
             if (p != null && lastProgress != null && p > lastProgress) st.touched = []
-            stuckTotal = 0
+            await page.evaluate(() => window.__eosDrive.lib.clearSkips())
+            // human cadence: let the success animation / advance() timers settle before the next move
+            // (several games schedule advance() 0.4-1 s after the success and ignore or double-count input meanwhile)
+            if (cooldownMs) await sleep(cooldownMs)
         } else if (r.g !== "wait") {
             fails[r.key] = attempt + 1
-            stuckTotal++
+            // the same element failed twice → try the other candidates first
+            if (fails[r.key] % 2 === 0 && r.targets[0] && r.targets[0].pick && r.g !== "choose") await page.evaluate((k) => window.__eosDrive.lib.skip(k, true), r.targets[0].pick)
         }
+        if (reacted) stuckTotal = 0
+        else if (r.g !== "wait") stuckTotal++
         lastProgress = p ?? lastProgress
         // escape hatch: a stage that never moves → poke the fallback targets once in a while
-        if (fails[r.key] && fails[r.key] % 9 === 0 && r.kind !== "fallback") {
+        if (fails[r.key] && fails[r.key] % 9 === 0 && r.kind !== "fallback" && !st.noFallback) {
             const f = await page.evaluate(() => window.__eosDrive.lib.resolve([], {}))
             if (f.ok && f.targets[0]) await clickAt(page, f.targets[0].x, f.targets[0].y)
         }
-        if (moved) lastMoveAt = Date.now()
+        if (reacted) lastMoveAt = Date.now()
         if (stuckTotal > 60 || Date.now() - lastMoveAt > stuckMs) {
             out.reason = `stuck (no bar movement for ${stuckTotal} actions / ${Math.round((Date.now() - lastMoveAt) / 1000)} s)`
             break
@@ -1797,7 +1913,7 @@ async function runOne(id, a) {
     try {
         const s = await startGameById(L.page, id, a.text || "my boss yelled at me and I feel stuck")
         if (!s.ok) return { id, ok: false, start: s, errors: L.errors.slice(0, 5) }
-        const r = await finishGame(L.page, id, { alt: a.keyboard ? "keyboard" : "pointer", timeoutMs: Number(a.timeout) || 120000 })
+        const r = await finishGame(L.page, id, { alt: a.keyboard ? "keyboard" : "pointer", timeoutMs: Number(a.timeout) || 150000 })
         const log = r.progressLog.map((e) => e.v)
         let back = 0
         for (let i = 1; i < log.length; i++) if (log[i] != null && log[i - 1] != null && log[i] < log[i - 1]) back++

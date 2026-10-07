@@ -98,11 +98,27 @@ Builders **read the file**; this is the index. All names below exist today, the 
 | `window.__eos.core` (dev only) | also exposes `EosOpenCheckin`, `EosSkipCheckin`, `EOS_STORE_INITIAL`, `EOS_LEXICON`, `EOS_TEXT_SAFETY`, `EOS_DISCHARGE_IDS`, `EOS_SLOW_IDS`, `EOS_PROP_DEFAULTS`, `EOS_PREF_DEFAULTS`, `EOS_PACER`, `eosGet/eosSet`, `eosLearnedCount`, `eosTarget`, `eosProgressOf`, `eosRelRect`, `eosSafetyStrong`, `eosTextSafety`, `eosCalm`, `EosEngineFor`, `apis()` … |
 
 **Test tooling (task `foundation`, usage at the top of each file):**
-- `dev/eos_drive.mjs` — `launchEos` (`lite` hides decoration-only layers for gameplay sweeps; `storage` pre-seeds localStorage; `errors` / `warnings` / `noise` split), `listGames` (de-duplicated, `withIds`), `startGameById` / `startGameByName` / `resetToInput` / `currentGameId`, `openCheckin`, `runCheckin({emotion, intensity|dial, words, express, go, pickMyself})`, `finishGame(page, [id], {timeoutMs, stuckMs, perStage, assertArrows, alt})` (all 17 gestures; `EOS_GESTURES` from the arrows module when present, else the §3.11 copy; markers for 111+, where "no marker" means an automatic phase; per-stage arrow check → `arrowMisses` / `labelMismatches`), `readProgress`, `progressLog` / `stageLog` / `pointerLog` (an in-page recorder installed before any script), `smallText(minPx)` (+ `readability.scan()`), `textSizes`, `noShrink(page, baselineDir, setup)`, `arrowState`, `lintCopy`, `flashCheck` (+ `reliable`), `dotsNearCentre`, `pixelVisible`, `loadCoreNode` (core + modules in node with arcade stubs — the §12.3 unit method, used by `flipdata`), `specGestures`. CLI: `node dev/eos_drive.mjs smoke | finish | sweep | small | lint`.
+- `dev/eos_drive.mjs` — `launchEos` (`lite` hides decoration-only layers for gameplay sweeps; `storage` pre-seeds localStorage; `errors` / `warnings` / `noise` split), `listGames` (de-duplicated, `withIds`), `startGameById` / `startGameByName` / `resetToInput` / `currentGameId`, `openCheckin`, `runCheckin({emotion, intensity|dial, words, express, go, pickMyself})`, `finishGame(page, [id], {timeoutMs, stuckMs, perStage, assertArrows, alt})` (all 17 gestures; `EOS_GESTURES` from the arrows module when present, else the §3.11 copy; markers for 111+, where "no marker" means an automatic phase; per-stage arrow check → `arrowMisses` / `labelMismatches`), `readProgress`, `progressLog` / `stageLog` / `pointerLog` (an in-page recorder installed before any script), `smallText(minPx)` (+ `readability.scan()`), `textSizes`, `noShrink(page, baselineDir, setup)`, `arrowState`, `lintCopy`, `flashCheck` (+ `reliable`), `dotsNearCentre`, `pixelVisible`, `loadCoreNode` (core + modules in node with arcade stubs — the §12.3 unit method, used by `flipdata`), `specGestures`, `arcadeCss()` / `arcadeCssRules(re)` (the arcade's base CSS lives in the gzipped `CSS_GZIP_B64` blob and is **not** greppable in the source — use these to find the rule an override must beat). CLI: `node dev/eos_drive.mjs smoke | finish | sweep | small | lint | css --grep …`.
 - `dev/eos_preview.py --id 111 [--modules …] [--files /tmp/draft.jsx] [--check | --finish] [--shots dir]` → `/tmp/eos_preview_<id>/index.html?id=&text=&reduced=1&seed=&emotion=&before=&safety=&calm=1&guides=1` (`guides=1` draws the arcade's HUD / LIVE GUIDE no-go zones).
 - **Headless speed:** this UI rasterises in software at ~3-4 fps at 1280×860 (~9 fps at 390×844) here — independent of EOS (measured with and without core) — and every pointer event waits for a frame. Interaction scripts therefore use few, long pointer moves; flash checks need ≥ 8 captured fps (`flashCheck(...).reliable`, run them at 390×844).
 
-FOUNDATION_SWEEP_PLACEHOLDER
+**Foundation sweep (full build, core only, `finishGame` + the §3.11 table as corrected below, lite mode):** 1280×860 → **101 / 110** reach the reveal, 390×844 → **98 / 110** (whole-catalogue sweeps plus targeted re-runs; 24 SLINGSHOT is timing-flaky in headless — it passes on most runs and is counted as a failure here). Every remaining failure is a **real game bug**, each verified by a probe — they belong to task `fixes` (§11.6 / §11.8), and `finishGame` doubles as their regression test:
+
+| id | where | evidence (probe) | suggested fix |
+|---|---|---|---|
+| 8 METEOR · 17 BOSS BATTLE · 48 UNSTICK | both | known (§11.6): `.orbitArc` / `.uniqWord` cover the targets, `.stickerWord` collapses | §11.6 rules |
+| 14 CRUMPLE | both | gz CSS `.paperCrumple.s1/.s2{clip-path:polygon(…)}` clips the corner buttons (they sit at −12 px outside the paper): at step 2 `elementFromPoint` on corner `.c2` returns the arena — the 3rd corner can never be tapped | `${EOS_A} .arena .paperCrumple:is(.s1,.s2){clip-path:none!important}` + a skew / border-radius crumple look |
+| 21 BIN | both | gz CSS `.freeAngleBinArena .binBubbleSlot .binWordBubble{transform:none!important}` cancels framer-motion's drag transform: the dragged bubble never moves, so no drop ever lands in the mouth (only a double-click bins it) | a guard: on `pointerup` after a drag that started on a `.binWordBubble`, if the pointer is inside the `.binMouthTarget` rect (+ the I3-E4 margins) dispatch `dblclick` on that bubble (`binOne(i, true)`); and mirror the inline transform into a custom property during the drag so it is visible (`transform:var(--eos-bin-t,none)!important`) |
+| 51 MIRROR FLIP | both | at step 1 `.mirrorStage.a1` overlaps the ABOVE button (`elementFromPoint` at its centre = the stage) | `${EOS_A} .arena .mirrorStage{pointer-events:none!important}` (decorative) |
+| 77 SLOW MOTION | both | after the first pull the brake stays at `translateY(150px)`, outside its clipped `.filmGate` → unhittable: word 2 can never be braked | `${EOS_A} .arena.u77 .filmGate{overflow:visible!important}` or an I3 source edit adding `dragSnapToOrigin` to `.brakeHandle` |
+| 109 CLEANSE | both (cadence) | race: each release schedules `setReleasedIndices(next)` after **3200 ms** but the last one after 170 ms, so releasing the last two bubbles < 3.2 s apart lands the stale 5-item array after the 6-item one → length 6 → 5 clears the `onDone` timer while `finishLock` stays set → the game sits at 100 % forever. **Fast, panicking players hit it; 109 is panic.high #2.** | I3 source edit in `CleanseEngine.finishHold`: `setReleasedIndices(releasedRef.current.slice())` (or a functional update that never shrinks) |
+| 45 MAGNETS | 390 | after a pull the orb stays at `translateX(220px)` → x 439 > the 375 px stage: off-screen, the next word cannot be pulled | `dragSnapToOrigin` (I3) or narrower phone constraints |
+| 47 UNFOLLOW | 390 | the `.plug` centre is covered by `.uniqWord` | add `:has(.plug)` to the §11.6 `.uniqWord{pointer-events:none}` rule |
+| 71 DEFUSE | 390 | the third zone's button is clipped (`elementFromPoint` = the arena) | phone layout fit |
+| 103 SINKING PLATFORM | 390 | `button.spDropButton` renders at y ≈ 1059, below the 844 px viewport | phone layout fit |
+| 107 GO WEIRD | 390 | props clipped by `.gwGame` (§11.6) | §11.6 grid fit, verify at 390 |
+
+**§3.11 table corrections made by the sweep** (stale selectors that pointed the arrow at finished or wrong elements): 43 `button.cutLoopWord:not(:disabled)` (the slot stays usable after its word is severed) · 82 SEESAW by beam angle (`rotate(-…)` → SHIFT IT →, `rotate(0deg)` → CHECK BALANCE; a "choose" arrow never taught the balance) · 93 `.spaceTile:not(.moved)` · 95 `.shelfThoughtBubble:not(.shelved)` · 102 drag **r from the left end** (`ox −0.4`: the row's own rule is "press either end and slide toward the centre"; "in" from the arena centre pushed down) · 104 the first knob with `aria-valuenow` > 12 · 108 `.saladBowl button:not(.restored)` (a tap swaps a card into its home cell); §3.4's dead-state regex also gains `shelved|severed|erased|moved|restored`.
 
 ---------------------------------------------------------------------------------------------------
 ## 1. Scores + rationale
@@ -222,7 +238,7 @@ Direction tokens: `r l u d ur ul dr dl` fixed; `lr` / `ud` double-headed (demo a
 2. **Explicit markers first:** `arena.querySelectorAll('[data-eos-target="1"]')` (all new games). Fields come from `data-eos-g / dir / d / n / ms / to / bpm / label / win / meter / mvar / armed / max-speed / own / ox / oy`. When the first marker's `g` is `choose`, every marker is an option (engines mark every option); otherwise the first marker wins.
 3. **Per-game stages** `EOS_GESTURES[id]` (priority order). A stage is eligible when: `when` (if given) matches something in the arena; it is not `once`-satisfied; its `until:"touch"` is not satisfied in the current cycle; for `tool` stages, the resolved element does NOT match `armed`. The first eligible stage whose selector yields a **usable element** wins. Stages are written so the most-advanced state comes first (e.g. 101 lists LET GO before PULL), so no counters are needed for most games. A cycle resets (`until` cleared) whenever progress increases.
 4. **Which match:** `pick:"first"` (default for `seq`, `tool`, ordered games) = first usable in DOM order; `pick:"near"` = nearest to the last pointerdown (stage centre before any touch); `choose` uses all usable matches (max 6).
-5. **Usable element:** rect ≥ 12×12 px and intersects the stage; computed `visibility` visible, `display` not none, opacity ≥ .05 (checked up to 3 ancestors); not `:disabled`, not `[aria-disabled=true]`; not inside `.globalPlayGuide`, `.engineProgressHud`, `.tsShiftRewardHud`, `.eosArrowLayer`; class does not match `/\b(dead|gone|popped|cut|loose|released|pulled|done|isDone|isGone|melted|binned|cooled|exploredDoor)\b/`. Hit test `document.elementFromPoint(centre)` must be the element or inside it; if not, try the 4 points at 25 %/75 % and **aim the hand at the first sample point that hits**; if all fail keep it but mark `occluded` (dev log) — §11.6 fixes the known occlusions. (Lead live check of this table on all 110 games, 1280×860, text "my boss yelled at me and I feel panic": 110/110 resolve a usable element for the active stage; 106/110 hit-test at the centre; the 4 exceptions are 8, 17, 59 — fixed by §11.6 — and 107, whose props are clipped below their centre — fixed by §11.6 and handled meanwhile by the sample-point rule.)
+5. **Usable element:** rect ≥ 12×12 px and intersects the stage; computed `visibility` visible, `display` not none, opacity ≥ .05 (checked up to 3 ancestors); not `:disabled`, not `[aria-disabled=true]`; not inside `.globalPlayGuide`, `.engineProgressHud`, `.tsShiftRewardHud`, `.eosArrowLayer`; class does not match `/\b(dead|gone|popped|cut|loose|released|pulled|done|isDone|isGone|melted|binned|cooled|exploredDoor|shelved|severed|erased|moved|restored)\b/` (the last five added by the foundation sweep, §0.5). Hit test `document.elementFromPoint(centre)` must be the element or inside it; if not, try the 4 points at 25 %/75 % and **aim the hand at the first sample point that hits**; if all fail keep it but mark `occluded` (dev log) — §11.6 fixes the known occlusions. (Lead live check of this table on all 110 games, 1280×860, text "my boss yelled at me and I feel panic": 110/110 resolve a usable element for the active stage; 106/110 hit-test at the centre; the 4 exceptions are 8, 17, 59 — fixed by §11.6 — and 107, whose props are clipped below their centre — fixed by §11.6 and handled meanwhile by the sample-point rule.)
 6. **Fallback** (ids with no table entry or a stale selector): `.arena button:not(:disabled)`, `button.uniqControl:not(:disabled)`, `.arena [style*="touch-action: none"]`, `.uniqWord`, `[class*=ToolDock]`, `.tsThoughtLabelHost`, `[class*=ToolButton]`, `[class*=ActivateBtn]`, `button.wordBubble`; gesture `tap`. If nothing qualifies show **no** arrow (never a wrong one).
 7. **Coordinates:** `eosRelRect(el, stage)` (divides by the Framer canvas scale). The target point is the centre plus optional `ox/oy` (fraction of width/height).
 8. **Label placement:** 18 px above the target if there is ≥ 64 px of room, else below; clamp 12 px inside the stage; if it would overlap `.globalPlayGuide`, `.engineProgressHud`, `.tsShiftRewardHud`, `.eosCompanion`, `.eosSafetyCard`, `.eosSupportPill`, `.eosWorldChips` or the target itself, flip to the other side / opposite horizontal side.
@@ -300,7 +316,7 @@ W = wrapper (L = `GameEngineLegacy`, N = `GameEngine`). Gesture names per §3.3.
 | 40 | PAPER PLANE | L | taps → swipe r 170 | `button.uniqControl` (L `@text`) → `.paperPlane` | FOLD → THROW IT → | ✎ → Fold both wings, then swipe the plane right |
 | 41 | UNHOOK | L | taps ×3 (near) | `.unhookWordBubble` | UNHOOK ×3 | ✎ → Tap each bubble 3× to cut its strings |
 | 42 | UNTANGLE | L | drag ur 70 (seq) | `.knot:not(.loose)` (first) | WIGGLE THIS KNOT | ✎ → Drag the glowing knot |
-| 43 | CUT THE LOOP | L | tool → taps ×3 | `button.cutLoopScissorPicker` (`.active`) → `.cutLoopWordSlot` | GRAB THE SCISSORS → SNIP ×3 | ✎ → Grab the scissors, then tap each word 3× |
+| 43 | CUT THE LOOP | L | tool → taps ×3 | `button.cutLoopScissorPicker` (`.active`) → `button.cutLoopWord:not(:disabled)` (v1.2.1: the slot stays usable after its word is severed) | GRAB THE SCISSORS → SNIP ×3 | ✎ → Grab the scissors, then tap each word 3× |
 | 44 | VELCRO | L | slow r 170 | `.velcroPatch` | PEEL… SLOWLY → | ✓ |
 | 45 | MAGNETS | L | drag r 200 | `.attentionOrb` | PULL IT FREE → | ✓ |
 | 46 | UNPIN | L | drag u 110 | `.pushPin` | PULL STRAIGHT UP ↑ | ✓ |
@@ -339,7 +355,7 @@ W = wrapper (L = `GameEngineLegacy`, N = `GameEngine`). Gesture names per §3.3.
 | 79 | MISS ON PURPOSE | L | tap | `.missPads button:not(.target)` | MISS ON PURPOSE | ✓ |
 | 80 | DON'T TAP | L | wait 5000 | — | DON'T TOUCH / BREATHE WITH THE GLOW | ✎ → Don't touch — breathe with the glow |
 | 81 | STACK IT | L | choose | `.blockTray button` | STACK IT | ✓ |
-| 82 | SEESAW | L | choose | `.nudgeRow button` | NUDGE IT | ✓ |
+| 82 | SEESAW | L | tap (by beam angle, v1.2.1) | `.nudgeRow button:nth-child(3)` while the beam tilts left (`rotate(-…)`) → `:nth-child(2)` at `rotate(0deg)` → else `:nth-child(1)` | SHIFT IT → / CHECK BALANCE / ← SHIFT IT | ✓ (a "choose" arrow never taught the balance) |
 | 83 | SORT STATION | L | choose | `.chuteRow button` | SEND IT | ✓ |
 | 84 | MINE / NOT MINE | L | swipe lr 150 | `.ownershipCard` | ← MINE · NOT MINE → | ✎ → Swipe left for mine, right for not mine |
 | 85 | CONTROL PANEL | L | choose | `.controlPanelSwitches button` | PICK ONE MOVE | ✎ "Sort the controls" → Pick one move you can make |
@@ -350,22 +366,22 @@ W = wrapper (L = `GameEngineLegacy`, N = `GameEngine`). Gesture names per §3.3.
 | 90 | COIN FLIP REACTION | L | tap | `button.coin.realFlipCoin` | FLIP IT | ✎ → Tap the coin to flip it |
 | 91 | PRIORITY BLOCKS | L | drag u 120 | `.priorityBubbleTray button` | DRAG INTO A SLOT | ✓ |
 | 92 | SCALE DOWN | L | choose | `.intensityRuler button` | TAP A NUMBER | ✎ "Slide it down" → Tap how big it feels |
-| 93 | SPACE MAKER | L | drag out 90 (own) | `.spaceTile` | PUSH IT OUT | ✓ |
+| 93 | SPACE MAKER | L | drag out 90 (own) | `.spaceTile:not(.moved)` | PUSH IT OUT | ✓ |
 | 94 | JUGGLE | L | choose → taps ×3 | `.juggleBall.selected` → `.juggleBall` | KEEP ONE → TAP ×3 | ✓ |
-| 95 | SHELF IT | L | drag u 120 (own) | `.shelfThoughtBubble` | LIFT IT ONTO THE SHELF | ✓ |
+| 95 | SHELF IT | L | drag u 120 (own) | `.shelfThoughtBubble:not(.shelved)` | LIFT IT ONTO THE SHELF | ✓ |
 | 96 | SCRATCH REVEAL | L | tool → scrub | `button.scratchToolButton` (`.toolArmed`) → `.scratchPlayArea` | GRAB THE SCRATCHER → SCRATCH | ✎ → Grab the scratcher, then scratch the card |
 | 97 | X-RAY | L | drag r 180 (own) → tap | `button.xrayBurnAllButton` → `button.xrayScannerHandle` | SCAN IT → → BURN IT ALL | ✓ |
 | 98 | MAGIC TRAPDOOR | L | choose → drag d 90 | `button.magicLeverHandle` (when `.magicTrapBubble.selected`) → `button.magicTrapBubble` | PICK ONE → PULL THE LEVER ↓ | ✓ |
 | 99 | THE ECHO CHAMBER | L | hold 5000 | `button.echoHoldBubble:not(.gone)` | HOLD TO QUIET IT | ✎ "Hold source" → Hold each bubble until it goes quiet |
 | 100 | HOT POTATO | N | drag out 90 (own) | `button.thoughtPotato.hot` | TOSS IT AWAY | ✓ |
 | 101 | TUG OF WAR | N | drag l 80 (own) → tap | `button.tugLetGo:not(:disabled)` → `button.tugPullHandle` | PULL ← → NOW LET GO | ✎ "×3" (it is ×6) → Pull left, then let go — 6 times |
-| 102 | FINGER TRAP | N | drag in 110 (own) | `.ftRow:not(.released)` | PUSH IN · DON'T PULL | ✓ |
+| 102 | FINGER TRAP | N | drag r 110 from the left end (`ox -0.4`; the row's own rule: press either END and slide toward its centre — "in" from the arena centre pushed down) (own) | `.ftRow:not(.released)` | PUSH IN · DON'T PULL | ✓ |
 | 103 | SINKING PLATFORM | N | tap | `button.spDropButton` | LOWER IT | ✓ |
-| 104 | VOLUME KNOB | N | drag d 90 | `.knobHitZone` | TURN IT DOWN ↓ | ✓ |
+| 104 | VOLUME KNOB | N | drag d 90 | the first `.knobHitZone` whose `aria-valuenow` > 12 (all must be ≤ 12) | TURN IT DOWN ↓ | ✓ |
 | 105 | DRAMA MACHINE | N | tap → tap | `button.dmCutButton:not(:disabled)` → `button.dmDramaButton:not(:disabled)` | MAKE IT DRAMATIC → CUT! | ✓ |
 | 106 | TINY SOUNDTRACK | N | choose → taps ×3 | `button.tsndKey:not(.done):not(:disabled)` → `.tsndVibes button` | PICK A VIBE → PLAY ×3 | ✓ |
 | 107 | GO WEIRD | N | choose → tap | `.gwCard.weirdWordBubble` (when `button.gwProp.propSelected`) → `button.gwProp:not(:disabled)` (needs §11.6 clip fix) | PICK A PROP → STICK IT ON | ✓ |
-| 108 | WORD SALAD | N | tap → tap | `button.uniqControl` (until touch, once) → `.saladBowl button` | SHAKE IT → TAP TO SWAP | ✓ |
+| 108 | WORD SALAD | N | tap → tap | `button.uniqControl` (until touch, once) → `.saladBowl button:not(.restored)` (a tap on a card swaps it into its home cell) | SHAKE IT → TAP TO SWAP | ✓ |
 | 109 | CLEANSE | N | hold 900 · meter `--hold-pct` | `button.cleanseBubbleHoldButton:not(:disabled)` | HOLD… THEN LET GO | ✎ → Hold… then let go slowly |
 | 110 | RAIN OUT | N | drag d 110 (own) | `.rainCloudUnit:not(.pulled)` | PULL IT DOWN ↓ | ✓ |
 | 111-120 | new EOS games | N | from `data-eos-*` (needs I1-E11; preview mode = `EosEnginePreview`) | `[data-eos-target="1"]` (all of them for `choose`) | per §8 | per §8 |
@@ -416,7 +432,7 @@ const EOS_GESTURES = {
     40: [{ t: "button.uniqControl", g: "tap", L: "@text" }, { t: ".paperPlane", g: "swipe", dir: "r", d: 170, L: "THROW IT →" }],
     41: [{ t: ".unhookWordBubble", g: "taps", n: 3, pick: "near", L: "UNHOOK ×3" }],
     42: [{ t: ".knot:not(.loose)", g: "drag", dir: "ur", d: 70, L: "WIGGLE THIS KNOT" }],
-    43: [{ t: "button.cutLoopScissorPicker", g: "tool", armed: ".active", L: "GRAB THE SCISSORS" }, { t: ".cutLoopWordSlot", g: "taps", n: 3, pick: "near", L: "SNIP ×3" }],
+    43: [{ t: "button.cutLoopScissorPicker", g: "tool", armed: ".active", L: "GRAB THE SCISSORS" }, { t: "button.cutLoopWord:not(:disabled)", g: "taps", n: 3, pick: "near", L: "SNIP ×3" }],
     44: [{ t: ".velcroPatch", g: "slow", dir: "r", d: 170, ms: 1800, L: "PEEL… SLOWLY →" }],
     45: [{ t: ".attentionOrb", g: "drag", dir: "r", d: 200, L: "PULL IT FREE →" }],
     46: [{ t: ".pushPin", g: "drag", dir: "u", d: 110, L: "PULL STRAIGHT UP ↑" }],
@@ -455,7 +471,7 @@ const EOS_GESTURES = {
     79: [{ t: ".missPads button:not(.target)", g: "tap", pick: "near", L: "MISS ON PURPOSE" }],
     80: [{ g: "wait", ms: 5000, L: "DON'T TOUCH", L2: "BREATHE WITH THE GLOW" }],
     81: [{ t: ".blockTray button", g: "choose", L: "STACK IT" }],
-    82: [{ t: ".nudgeRow button", g: "choose", L: "NUDGE IT" }],
+    82: [{ t: ".nudgeRow button:nth-child(2)", g: "tap", when: '.seesawBeam[style*="rotate(0deg)"]', L: "CHECK BALANCE" }, { t: ".nudgeRow button:nth-child(3)", g: "tap", when: '.seesawBeam[style*="rotate(-"]', L: "SHIFT IT →" }, { t: ".nudgeRow button:nth-child(1)", g: "tap", L: "← SHIFT IT" }],
     83: [{ t: ".chuteRow button", g: "choose", L: "SEND IT" }],
     84: [{ t: ".ownershipCard", g: "swipe", dir: "lr", d: 150, L: "← MINE · NOT MINE →" }],
     85: [{ t: ".controlPanelSwitches button", g: "choose", L: "PICK ONE MOVE" }],
@@ -466,22 +482,22 @@ const EOS_GESTURES = {
     90: [{ t: "button.coin.realFlipCoin", g: "tap", L: "FLIP IT" }],
     91: [{ t: ".priorityBubbleTray button", g: "drag", dir: "u", d: 120, L: "DRAG INTO A SLOT" }],
     92: [{ t: ".intensityRuler button", g: "choose", L: "TAP A NUMBER" }],
-    93: [{ t: ".spaceTile", g: "drag", dir: "out", d: 90, pick: "near", own: true, L: "PUSH IT OUT" }],
+    93: [{ t: ".spaceTile:not(.moved)", g: "drag", dir: "out", d: 90, pick: "near", own: true, L: "PUSH IT OUT" }],
     94: [{ t: ".juggleBall.selected", g: "taps", n: 3, L: "TAP ×3" }, { t: ".juggleBall", g: "choose", L: "KEEP ONE" }],
-    95: [{ t: ".shelfThoughtBubble", g: "drag", dir: "u", d: 120, pick: "near", own: true, L: "LIFT IT ONTO THE SHELF" }],
+    95: [{ t: ".shelfThoughtBubble:not(.shelved)", g: "drag", dir: "u", d: 120, pick: "near", own: true, L: "LIFT IT ONTO THE SHELF" }],
     96: [{ t: "button.scratchToolButton", g: "tool", armed: ".toolArmed", L: "GRAB THE SCRATCHER" }, { t: ".scratchPlayArea", g: "scrub", L: "SCRATCH" }],
     97: [{ t: "button.xrayBurnAllButton", g: "tap", L: "BURN IT ALL" }, { t: "button.xrayScannerHandle", g: "drag", dir: "r", d: 180, own: true, L: "SCAN IT →" }],
     98: [{ t: "button.magicLeverHandle", g: "drag", dir: "d", d: 90, when: ".magicTrapBubble.selected", L: "PULL THE LEVER ↓" }, { t: "button.magicTrapBubble", g: "choose", L: "PICK ONE" }],
     99: [{ t: "button.echoHoldBubble:not(.gone)", g: "hold", ms: 5000, pick: "near", L: "HOLD TO QUIET IT" }],
     100: [{ t: "button.thoughtPotato.hot", g: "drag", dir: "out", d: 90, pick: "near", own: true, L: "TOSS IT AWAY" }],
     101: [{ t: "button.tugLetGo:not(:disabled)", g: "tap", L: "NOW LET GO" }, { t: "button.tugPullHandle", g: "drag", dir: "l", d: 80, own: true, L: "PULL ←" }],
-    102: [{ t: ".ftRow:not(.released)", g: "drag", dir: "in", d: 110, own: true, L: "PUSH IN · DON'T PULL" }],
+    102: [{ t: ".ftRow:not(.released)", g: "drag", dir: "r", d: 110, ox: -0.4, own: true, L: "PUSH IN · DON'T PULL" }],
     103: [{ t: "button.spDropButton", g: "tap", L: "LOWER IT" }],
-    104: [{ t: ".knobHitZone", g: "drag", dir: "d", d: 90, L: "TURN IT DOWN ↓" }],
+    104: [{ t: '.knobHitZone:not([aria-valuenow="0"]):not([aria-valuenow="1"]):not([aria-valuenow="2"]):not([aria-valuenow="3"]):not([aria-valuenow="4"]):not([aria-valuenow="5"]):not([aria-valuenow="6"]):not([aria-valuenow="7"]):not([aria-valuenow="8"]):not([aria-valuenow="9"]):not([aria-valuenow="10"]):not([aria-valuenow="11"]):not([aria-valuenow="12"])', g: "drag", dir: "d", d: 90, L: "TURN IT DOWN ↓" }],
     105: [{ t: "button.dmCutButton:not(:disabled)", g: "tap", L: "CUT!" }, { t: "button.dmDramaButton:not(:disabled)", g: "tap", L: "MAKE IT DRAMATIC" }],
     106: [{ t: "button.tsndKey:not(.done):not(:disabled)", g: "taps", n: 3, L: "PLAY ×3" }, { t: ".tsndVibes button", g: "choose", L: "PICK A VIBE" }],
     107: [{ t: ".gwCard.weirdWordBubble", g: "tap", when: "button.gwProp.propSelected", pick: "near", L: "STICK IT ON" }, { t: "button.gwProp:not(:disabled)", g: "choose", L: "PICK A PROP" }],
-    108: [{ t: "button.uniqControl", g: "tap", until: "touch", once: true, L: "SHAKE IT" }, { t: ".saladBowl button", g: "tap", L: "TAP TO SWAP" }],
+    108: [{ t: "button.uniqControl", g: "tap", until: "touch", once: true, L: "SHAKE IT" }, { t: ".saladBowl button:not(.restored)", g: "tap", L: "TAP TO SWAP" }],
     109: [{ t: "button.cleanseBubbleHoldButton:not(:disabled)", g: "hold", ms: 900, mvar: "--hold-pct", pick: "near", L: "HOLD… THEN LET GO" }],
     110: [{ t: ".rainCloudUnit:not(.pulled)", g: "drag", dir: "d", d: 110, pick: "near", own: true, L: "PULL IT DOWN ↓" }],
     // 111+ (EOS games): no entry — engines mark the live element(s) with eosTarget({...}).
@@ -1433,6 +1449,8 @@ ${EOS_A} .arena.u107 .gwGame{overflow:clip!important;overflow-clip-margin:72px!i
 ${EOS_A} .arena .pressureCapsule{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.22) 0 6px,transparent 6px 12px)!important}
 ```
 Lead verification (live, this commit): with the first two rules injected, every sample point of `.meteorRock`, all 5 `.weakSpot`, `.spotLamp` and all 3 `.knot` hit-test to the element itself (before: 0 / 25 points for METEOR). For 107 the builder must confirm all five props are fully visible and hittable at 1280×860 **and 390×844 in WebKit as well as Chromium** (Playwright `webkit` is not installed here: verify the lift alone, with the `overflow-clip-margin` rule removed, in Chromium); measure `.gwDock` bottom ≤ `.gwGame` bottom at both sizes. For 11 the builder screenshots the capsule and adjusts the stripe rule to the real window element if `.pressureCapsule` is the whole capsule.
+
+**Foundation sweep additions (§0.5):** 14 CRUMPLE (clip-path clips the corners), 21 BIN (`transform:none!important` freezes the drag), 51 MIRROR FLIP (stage over the ABOVE button), 77 SLOW MOTION (brake parked outside its clipped gate), 109 CLEANSE (release race → stuck at 100 %), and at 390×844 45 MAGNETS (orb off-screen), 47 UNFOLLOW (word over the plug), 71 DEFUSE (clipped button), 103 SINKING PLATFORM (button below the viewport) — evidence and suggested fixes in the §0.5 table; `node dev/eos_drive.mjs sweep --ids <ids> --size 390x844` is their regression test.
 
 ### 11.7 `EosLegacyGuards({game, hostRef})` (mounted by I1 in the play fragment)
 - **Hold release guard** for 11, 13, 39, 65 (legacy `U` hold buttons have `onPointerUp` only, so sliding off keeps charging): on capture `pointerdown` inside `.arena button.uniqControl` remember the pointer; on window capture `pointerup`/`pointercancel` whose target is not inside a `.uniqControl`, dispatch `new PointerEvent("pointerup", {bubbles:true, cancelable:true, pointerId, clientX, clientY, isPrimary:true})` on the **current** `.arena button.uniqControl` (re-queried: `U` remounts every render). React's root listener runs the original handler.
