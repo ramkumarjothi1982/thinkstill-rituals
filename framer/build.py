@@ -13,7 +13,7 @@ Isolated builds (for parallel agents, so they never clobber each other):
      and the shared FULL.txt is NOT touched. Open file:///tmp/eos_mytask/index.html or use
      launch({ dir: "/tmp/eos_mytask" }) from dev/drive.mjs.
 """
-import argparse, glob, os, shutil, subprocess, sys
+import argparse, glob, os, re, shutil, subprocess, sys
 here = os.path.dirname(os.path.abspath(__file__))
 ap = argparse.ArgumentParser()
 ap.add_argument("--dev-dir", default=None, help="isolated harness dir (default: framer/dev)")
@@ -36,11 +36,18 @@ for i, p in enumerate(parts):
         bad = [l for l in body.splitlines() if l.startswith("import ")]
         if bad:
             sys.exit(f"{p}: modules must not have import lines (shared file scope): {bad[0]}")
+        if p != parts[-1]:  # eos modules (99_pixar owns the single export default)
+            exp = [l for l in body.splitlines() if re.match(r"^export\b", l)]
+            if exp:
+                sys.exit(f"{p}: eos modules must not export anything (Framer lists every export): {exp[0]}")
+            lb = [l for l in body.splitlines() if re.search(r"\(\?<[=!]", l)]
+            if lb:
+                sys.exit(f"{p}: regex lookbehind is banned (SyntaxError on iOS Safari < 16.4): {lb[0].strip()[:90]}")
         body = f"// ===== {os.path.relpath(p, here)} =====\n" + body
     chunks.append(body)
 out = "\n\n".join(chunks) + "\n"
-if out.count("export default") != 1:
-    sys.exit("exactly one export default expected")
+if len(re.findall(r"^export default ", out, re.M)) != 1:
+    sys.exit("exactly one `export default` line expected")
 
 dev = os.path.join(here, "dev")
 if a.dev_dir:
