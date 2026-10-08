@@ -29,14 +29,34 @@ ${EOS_A} .releaseThoughtInput{font-size:16px!important}
 ${EOS_A} .releaseChoiceMenu .releaseChoiceGroupLabel{font:900 13px/1.2 var(--eos-font)!important;letter-spacing:.08em!important}
 /* reveal */
 ${EOS_A}.stage-reveal .releaseCompleteCard small{font-size:13px!important}
-${EOS_A}.stage-reveal :is(.releaseReplaySame,.releaseCompleteSideNav){font:800 14px/1 var(--eos-font)!important;min-height:44px!important}
-${EOS_A}.stage-reveal .releaseShiftChoices>button{font:900 15px/1 var(--eos-font)!important;min-height:48px!important}
-/* in-game HUD — both wrappers; fixes the ids ≥100 overflow (track pushed off-screen at 390) */
-${EOS_A}.stage-play .releaseGameHost .engineProgressHud{display:flex!important;flex-direction:column!important;align-items:stretch!important;height:auto!important;gap:6px!important;pointer-events:none!important}
-${EOS_A}.stage-play .releaseGameHost .engineProgressTrack{width:100%!important;height:26px!important;min-height:26px!important;flex:none!important}
+/* reveal controls: the live baseline inherits 16 px here (the arcade's 8-10 px rules do not apply), so the
+   size is max(target, 1em) — 1em is exactly the inherited size: never below 14/15 px, never below today */
+${EOS_A}.stage-reveal :is(.releaseReplaySame,.releaseCompleteSideNav){font-family:var(--eos-font)!important;font-weight:800!important;font-size:max(14px,1em)!important;line-height:1!important;min-height:44px!important}
+${EOS_A}.stage-reveal .releaseShiftChoices>button{font-family:var(--eos-font)!important;font-weight:900!important;font-size:max(15px,1em)!important;line-height:1!important;min-height:48px!important}
+/* reveal of ids ≥ 100: the arcade's GLOBAL_RELEASE_MORE_CSS (only loaded when no legacy game is selected, i.e.
+   :not(.releaseGlobal99Upgrade)) draws these controls at 8-10 px in 84 / 58 px side columns — they get 14 / 15 px
+   and side columns that fit their words; on phones PREVIOUS / NEXT sit in one row under a full-width card */
+${EOS_A}.stage-reveal:not(.releaseGlobal99Upgrade) .releaseCompleteShell{grid-template-columns:auto minmax(0,620px) auto!important}
+${EOS_A}.stage-reveal:not(.releaseGlobal99Upgrade) .releaseCompleteSideNav{width:auto!important;min-width:84px!important;padding:0 16px!important;white-space:nowrap!important;font-size:14px!important;letter-spacing:.05em!important}
+${EOS_A}.stage-reveal:not(.releaseGlobal99Upgrade) .releaseReplaySame{font-size:14px!important}
+${EOS_A}.stage-reveal:not(.releaseGlobal99Upgrade) .releaseShiftChoices>button{font-size:15px!important}
+@media (max-width:760px){
+  ${EOS_A}.stage-reveal:not(.releaseGlobal99Upgrade) .releaseCompleteShell{grid-template-columns:1fr 1fr!important;grid-template-areas:"card card" "prev next"!important;row-gap:12px!important;column-gap:10px!important}
+  ${EOS_A}.stage-reveal:not(.releaseGlobal99Upgrade) .releaseCompleteCard{grid-area:card!important}
+  ${EOS_A}.stage-reveal:not(.releaseGlobal99Upgrade) .releaseCompletePrev{grid-area:prev!important;justify-self:start!important}
+  ${EOS_A}.stage-reveal:not(.releaseGlobal99Upgrade) .releaseCompleteNext{grid-area:next!important;justify-self:end!important}
+  ${EOS_A}.stage-reveal:not(.releaseGlobal99Upgrade) .releaseCompleteSideNav{min-width:0!important;height:44px!important;padding:0 18px!important;font-size:13px!important}
+  ${EOS_A}.stage-reveal:not(.releaseGlobal99Upgrade) .releaseReplaySame{font-size:13px!important}
+}
+/* in-game HUD — both wrappers. Desktop: one compact row like today's (track + pills), ~30 px taller pills only;
+   phones: a column (full-width track, wrapping pill row) — fixes the ids ≥ 100 overflow (track off-screen at 390).
+   pointer-events stay off (it sits above game targets). */
+${EOS_A}.stage-play .releaseGameHost .engineProgressHud{display:flex!important;flex-direction:row!important;flex-wrap:wrap!important;align-items:center!important;justify-content:flex-end!important;height:auto!important;gap:6px 8px!important;pointer-events:none!important;box-sizing:border-box!important;padding:6px 7px!important;border-radius:18px!important;width:auto!important;max-width:calc(100% - 20px)!important}
+${EOS_A}.stage-play .releaseGameHost .engineProgressTrack{width:430px!important;max-width:100%!important;height:26px!important;min-height:26px!important;flex:0 1 auto!important}
+${EOS_A}.stage-play .releaseGameHost .engineProgressHud:has(.tsShiftRewardHud) .engineProgressTrack{width:300px!important}
 ${EOS_A}.stage-play .releaseGameHost .engineProgressText{font:900 14px/26px var(--eos-font)!important;letter-spacing:.05em!important}
-${EOS_A}.stage-play .tsShiftRewardHud{display:flex!important;flex-wrap:wrap!important;justify-content:flex-end!important;gap:6px!important;width:100%!important}
-${EOS_A}.stage-play :is(.tsShiftRewardPill,.tsShiftLevel){height:30px!important;padding:0 10px!important;display:inline-flex!important;align-items:center!important}
+${EOS_A}.stage-play .tsShiftRewardHud{display:flex!important;flex-wrap:nowrap!important;justify-content:flex-end!important;gap:6px!important;width:auto!important;flex:0 0 auto!important}
+${EOS_A}.stage-play :is(.tsShiftRewardPill,.tsShiftLevel){height:30px!important;padding:0 10px!important;display:inline-flex!important;align-items:center!important;white-space:nowrap!important}
 ${EOS_A}.stage-play :is(.tsShiftRewardPill,.tsShiftLevel>b){font-family:var(--eos-font)!important;font-weight:900!important;font-size:14px!important;line-height:1!important;letter-spacing:.03em!important}
 /* live guide */
 ${EOS_A} .globalPlayGuide .guideHeaderRow b{font-size:14px!important}
@@ -48,6 +68,14 @@ ${EOS_A}.stage-play .releaseGameHost :is(.tsExactUserText,.plainUserThoughtText,
 /* ≤ 11 px-only selectors (every existing arcade rule is ≤ 11 px, so 1em cannot shrink them) */
 ${EOS_A}.stage-play .releaseGameHost :is(.toolHitCount,.miniCrackCount,.pinTool,.combo,.spStatus,.echoBubbleTimer,.doorABTopLabel,.keepDropMicroGuide){font-size:max(12.5px,1em)!important;letter-spacing:.04em!important}
 ${EOS_A}.stage-play .releaseGameHost :is(.uniqControl,.bigAction,.parkBay,.dmCutButton,.eraseActivateBtn,.cutLoopScissorPicker,.cleanseBubbleHoldButton){font-size:max(14px,1em)!important;min-height:44px!important}
+/* VACUUM (23): the machine art is aria-hidden decoration, but its labels are words on screen. The brand plate is
+   SVG text in user units (viewBox 560×300, drawn at .89 on desktop and .37 at 390 px), so its size is set here in
+   user units, never by the JS floor; the bag label (8 px today, every arcade rule ≤ 11 px) reads at 12.5 px. */
+${EOS_A}.stage-play .realVacuumMachine svg>text:last-of-type{font-size:10.5px}
+${EOS_A}.stage-play .releaseGameHost .vacuumMachineLabel{font-size:12.5px!important;color:rgba(170,240,252,.78)!important;white-space:nowrap}
+/* SHELF IT (95): a shelved bubble is drawn at scale .82 (framer-motion), so its "SHELVED" label (9 px rule) is
+   sized for that scale: 15.5 × .82 = 12.7 px on screen from the moment it lands */
+${EOS_A}.stage-play .releaseGameHost .shelfThoughtBubble.shelved>b{font-size:15.5px!important}
 /* legacy combo counters ("POPPED 2 / 6") sat under the progress HUD: move them just below it */
 ${EOS_A}.stage-play .releaseGameHost .arena>.combo{top:46px!important}
 /* idle story (classic mode): its how-to lines were 8-11.5 px */
@@ -57,10 +85,16 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
   ${EOS_A} .releaseIdleStep small{font-size:12.5px!important;line-height:1.16!important}
   ${EOS_A} .releaseIdleStoryCaption span{font-size:12.5px!important;line-height:1.15!important;white-space:normal!important}
 }
+@media (max-width:720px){
+  /* phones draw the machine at .37 and clip its right edge: the brand plate stays the art's own texture there */
+  ${EOS_A}.stage-play .realVacuumMachine svg>text:last-of-type{font-size:8px}
+}
 @media (max-width:700px){
-  ${EOS_A}.stage-play .releaseGameHost .engineProgressHud{left:10px!important;right:10px!important;width:auto!important}
+  ${EOS_A}.stage-play .releaseGameHost .engineProgressHud{left:10px!important;right:10px!important;width:auto!important;max-width:none!important;flex-direction:column!important;flex-wrap:nowrap!important;align-items:stretch!important;gap:6px!important;padding:5px 6px 6px!important;border-radius:16px!important}
+  ${EOS_A}.stage-play .releaseGameHost :is(.engineProgressTrack,.engineProgressHud:has(.tsShiftRewardHud) .engineProgressTrack){width:100%!important;flex:none!important}
+  ${EOS_A}.stage-play .tsShiftRewardHud{flex-wrap:wrap!important;gap:5px!important;width:100%!important}
   ${EOS_A}.stage-play .tsShiftRewardPill.chain{display:inline-flex!important}
-  ${EOS_A}.stage-play :is(.tsShiftRewardPill,.tsShiftLevel){height:28px!important}
+  ${EOS_A}.stage-play :is(.tsShiftRewardPill,.tsShiftLevel){height:28px!important;padding:0 8px!important}
   ${EOS_A}.stage-play :is(.tsShiftRewardPill,.tsShiftLevel>b){font-size:13px!important}
   ${EOS_A}.stage-play .releaseGameHost .engineProgressText{font-size:13px!important}
   ${EOS_A} .globalPlayGuide .guideStepCard span{font-size:15px!important}
@@ -89,7 +123,7 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
   ${EOS_A} .releaseScoreBar .releaseScoreTrack{display:none!important}
   ${EOS_A} .releaseScoreBar>span{display:inline!important;font-size:13px!important}
   ${EOS_A} .releaseScoreBar>strong{font-size:16px!important}
-  ${EOS_A}.stage-reveal :is(.releaseReplaySame,.releaseCompleteSideNav){font-size:13px!important}
+  ${EOS_A}.stage-reveal :is(.releaseReplaySame,.releaseCompleteSideNav){font-size:max(13px,1em)!important}
   ${EOS_A}.stage-play .releaseGameHost .uniqControl>span:first-child{display:none!important}
 }
 `
@@ -113,24 +147,29 @@ const EOS_READ_TARGETS = [
     ...EOS_READ_COUNTERS.map((s) => [s, 12, 12]),
 ]
 const EOS_READ_MIN = 12 // the catch-all target (§4.1)
-// What the floor WRITES for a 12 px target: rendered size is measured as font-size × the box's scale, and
-// subpixel boxes (offsetWidth is rounded) or a 0.99 canvas scale would read an exact 12 px as 11.9.
+// What the floor WRITES for a 12 px target: the harness measures rendered size as font-size × the box's
+// scale, and integer offsetWidth/Height (or a 0.99 canvas scale) would read an exact 12 px as 11.7-11.9.
 const EOS_READ_FLOOR_PX = 12.5
-const EOS_READ_BUDGET_MS = 1.4 // own work per pass; the rest of the sweep continues next pass (§4.4: ≤ 2 ms)
-const EOS_READ_MAX_EL = 400
+const EOS_READ_BUDGET_MS = 0.8 // own sweep work per pass (checked after every element); the sweep resumes next frame
+const EOS_READ_MAX_EL = 400 // §4.4: stop after 400 elements
+const EOS_READ_CHAIN = 12 // a sweep with work left continues on the next frames, at most this many in a row
+const EOS_READ_ANIM_TTL_MS = 300 // the element → running-animations map is rebuilt at most this often
+const EOS_READ_HOLD_MS = 350 // a scaled box must keep the same scale this long (and not be animated) to be compensated
+const EOS_READ_RECHECK_MAX = 4 // queued re-checks (a class changed on / above a raised element) per pass
 const EOS_READ_FIRST = ".globalFeedbackCopyLayer, .releaseCompleteOverlay, .tsShiftRewardHud, .engineProgressHud, .globalPlayGuide"
-const EOS_READ_MO_MAX = 160 // new text elements one MutationObserver callback raises before they are painted
+const EOS_READ_MO_MAX = 160 // new text elements the pre-paint pass of one frame looks at
+const EOS_READ_RELIST_MS = 5000 // the sweep list is re-collected on DOM changes, and at least this often
 // where the floor looks: the stage (games, reveal, idle story), the header and the open game menu
 const EOS_READ_SCOPES = [".releaseStage", ".releaseConsoleHeader", ".releaseChoiceMenu"]
-// subtrees the floor never touches (aria-hidden decoration, burst particles, .chainStart, SVG)
+const EOS_READ_SCOPE_SEL = EOS_READ_SCOPES.join(", ")
+// subtrees the floor never touches (aria-hidden decoration, burst particles, .chainStart, SVG in a viewBox)
 const EOS_READ_SKIP = '[aria-hidden="true"],[hidden],.eosSrOnly,.eosArrowLayer,.tsRewardSurge,.chainStart,script,style,noscript,svg'
 const EOS_READ_OWN = /(^|\s)eos[A-Z]/
 const EOS_READ_TEXT = /[\p{L}\p{N}]/u
 const EOS_READ_MOVE = /transform|scale|rotate|translate/
 
 // Target index: every selector is filed under the class / tag / [class*=…] key of its rightmost compound,
-// so a text element and its ancestors only run matches() against the few selectors that could apply
-// (one 75-selector list per element costs ~0.2 ms here; the index costs a Map lookup per class).
+// so a text element and its ancestors only run matches() against the few selectors that could apply.
 function eosReadRightmost(sel) {
     let depth = 0
     let last = 0
@@ -157,7 +196,7 @@ function eosReadBuildIndex(targets) {
         const e = { sel, d, p, word: kind === "word", need: null, needSub: null }
         const rm = eosReadRightmost(sel)
         // the compound left of the rightmost one ("x" in ".x > span", ".x span"): one of its classes must sit on
-        // the element's ancestor chain, a cheap pre-filter before matches()
+        // the element's ancestor chain — a cheap pre-filter before matches()
         const left = sel.slice(0, sel.length - rm.length).replace(/[\s>+~]+$/, "")
         if (left) {
             const lc = eosReadRightmost(left)
@@ -206,16 +245,23 @@ function eosReadCandidates(n, idx, out) {
 
 // module state (one arcade per page; the component is mounted once by I1)
 const EOS_READ_STATE = {
-    tagged: new Map(), // element we raised → { px we wrote, natural size before }
+    tagged: new Map(), // element we raised → { px, v (the exact inline value we wrote), natural, scaled, tr }
     orig: new WeakMap(), // el → [inline value, priority] before our first write
-    scaleSeen: new WeakMap(), // el → { s, since } — a scale must hold ≥ 1.2 s before we compensate it
+    scaleSeen: new WeakMap(), // el → { s, since } — a scale must hold EOS_READ_HOLD_MS before we compensate it
+    animVerdict: new WeakMap(), // Animation → true when it changes the box size (entrance pop, shrink-away)
+    recheckQ: new Set(), // raised elements to re-check (a class changed on them / an ancestor, a resize)
+    list: null, // the sweep's text elements (null = re-collect: the DOM changed)
+    listAt: 0,
+    ctx: null, // last regular-pass context (MO passes reuse it: they must never force a layout)
+    k: 1, // last measured canvas scale
+    anims: null, // { at, map } — the cached element → running animations map
     cursor: 0,
-    recheck: 0,
+    rr: 0, // round-robin position of the slow background re-check
     passes: 0,
     stats: null,
 }
 function eosReadStatsZero() {
-    return { passes: 0, lastMs: 0, maxMs: 0, maxOwnMs: 0, flushMaxMs: 0, moPasses: 0, moMaxMs: 0, over2: 0, ownOver2: 0, log: [], totalMs: 0, ownTotalMs: 0, writes: 0, scaled: 0, unfloored: 0, seen: 0, capped: 0 }
+    return { passes: 0, lastMs: 0, maxMs: 0, maxOwnMs: 0, flushMaxMs: 0, moPasses: 0, moMaxOwnMs: 0, moCbMaxMs: 0, moCbs: 0, over2: 0, ownOver2: 0, log: [], totalMs: 0, ownTotalMs: 0, writes: 0, lowered: 0, scaled: 0, unfloored: 0, dropped: 0, seen: 0, capped: 0 }
 }
 EOS_READ_STATE.stats = eosReadStatsZero()
 
@@ -236,12 +282,22 @@ function eosReadWordPx(root, phone) {
     const base = phone ? 15 : 16
     return Number.isFinite(v) ? Math.max(base, Math.min(28, v)) : base
 }
-function eosReadCtx(root) {
-    const phone = eosReadPhone(root)
+// Pass context. A regular pass (style + layout already flushed) measures it; an MO pass reuses the last one
+// so it never forces a layout of its own (the canvas scale and the breakpoint do not change between frames).
+function eosReadCtx(root, reuse) {
+    const S = EOS_READ_STATE
+    const now = performance.now()
+    if (reuse && S.ctx && S.ctx.root === root) return { ...S.ctx, now }
+    // no regular pass yet (or after a resize): an MO pass takes the breakpoint from the viewport and the last
+    // known canvas scale, and leaves the exact numbers to the regular pass that follows it
+    const phone = reuse ? (typeof innerWidth === "number" ? innerWidth : 9999) <= 560 : eosReadPhone(root)
     const wordPx = eosReadWordPx(root, phone)
-    let top = EOS_READ_FLOOR_PX
-    for (const [, d, p, kind] of EOS_READ_TARGETS) top = Math.max(top, kind === "word" ? wordPx : phone ? p : d)
-    return { root, phone, wordPx, wordBase: phone ? 15 : 16, k: eosStageScale(root) || 1, idx: eosReadIndex(), stop: root, top, key: (phone ? "p" : "d") + wordPx, now: performance.now() }
+    // the Framer canvas scale: compensated between .5 and 1 (a zoomed-out editor canvas must not get 4× text;
+    // a zoomed-in one needs no help)
+    const k = reuse ? S.k || 1 : (S.k = Math.max(0.5, Math.min(1, eosStageScale(root) || 1)))
+    const ctx = { root, phone, wordPx, wordBase: phone ? 15 : 16, k, idx: eosReadIndex(), stop: root, key: (phone ? "p" : "d") + wordPx, now }
+    if (!reuse) S.ctx = ctx
+    return ctx
 }
 // the target (CSS px, before the canvas scale) for one text element; words report kind "word" so the caller
 // can apply the small-object rule. Cached per element: the match only changes with the element's or its
@@ -354,7 +410,48 @@ function eosReadGentle(kf) {
     }
     return true
 }
-// exact scale of `el` relative to the arcade root, and whether a running animation moves any of its boxes
+// does this animation change its element's box (an entrance pop, a shrink-away)? Classified once per Animation
+// object (getKeyframes() serialises every keyframe, so it is never called twice for the same animation).
+function eosReadAnimMoves(a) {
+    const S = EOS_READ_STATE
+    let v = S.animVerdict.get(a)
+    if (v !== undefined) return v
+    v = false
+    try {
+        const kf = a.effect.getKeyframes()
+        if (kf.some((f) => Object.keys(f).some((k) => EOS_READ_MOVE.test(k)))) {
+            const tm = a.effect.getComputedTiming()
+            // a perpetual gentle breath (bubbleHypno: scale 1 ↔ 1.018) is not a size change
+            v = !(tm && tm.iterations === Infinity && eosReadGentle(kf))
+        }
+    } catch {}
+    S.animVerdict.set(a, v)
+    return v
+}
+// element → its running animations: one document.getAnimations() call, re-used for EOS_READ_ANIM_TTL_MS
+// (Element.getAnimations() per ancestor scans the document's animations every time). A pop that starts within
+// that window is still caught by the two-sample hold, and a wrong compensation follows the scale back down.
+function eosReadAnimMap(memo) {
+    if (memo.anims) return memo.anims
+    const S = EOS_READ_STATE
+    const now = performance.now()
+    if (S.anims && now - S.anims.at < EOS_READ_ANIM_TTL_MS) return (memo.anims = S.anims.map)
+    const m = new Map()
+    try {
+        for (const a of document.getAnimations()) {
+            const ef = a.effect
+            const t = ef && ef.target
+            if (!t || ef.pseudoElement || (a.playState !== "running" && a.playState !== "pending")) continue
+            const l = m.get(t)
+            if (l) l.push(a)
+            else m.set(t, [a])
+        }
+    } catch {}
+    S.anims = { at: now, map: m }
+    memo.anims = m
+    return m
+}
+// exact scale of `el` relative to the arcade root, and whether a running animation changes any of its boxes
 // (an entrance pop is never "compensated": the text would end up too big once the pop finishes)
 function eosReadChainScale(el, root, memo) {
     const chain = []
@@ -369,29 +466,16 @@ function eosReadChainScale(el, root, memo) {
         }
         chain.push(n)
     }
+    const anims = eosReadAnimMap(memo)
     // fold from the top of the walked chain down, memoising every node's cumulative scale
     for (let i = chain.length - 1; i >= 0; i--) {
         const n = chain[i]
-        const own = eosReadOwnScale(getComputedStyle(n))
-        let mv = false
-        try {
-            for (const a of n.getAnimations()) {
-                if (a.playState !== "running" && a.playState !== "pending") continue
-                const kf = a.effect && a.effect.getKeyframes ? a.effect.getKeyframes() : []
-                if (!kf.some((f) => Object.keys(f).some((k) => EOS_READ_MOVE.test(k)))) continue
-                // a perpetual gentle breath (bubbleHypno: scale 1 ↔ 1.018) is not a size change
-                const tm = a.effect.getComputedTiming ? a.effect.getComputedTiming() : null
-                if (tm && tm.iterations === Infinity && eosReadGentle(kf)) continue
-                mv = true
-                break
-            }
-        } catch {}
-        s *= own
-        moving = moving || mv
+        s *= eosReadOwnScale(getComputedStyle(n))
+        const list = anims.get(n)
+        if (list && !moving) for (const a of list) if (eosReadAnimMoves(a)) moving = true
         memo.set(n, { s, moving })
     }
-    const top = memo.get(el)
-    return top || { s, moving }
+    return memo.get(el) || { s, moving }
 }
 // collect text elements (direct non-empty text) inside the scopes, in DOM order
 function eosReadCollect(scopes, max = 2000) {
@@ -435,39 +519,91 @@ function eosReadScopes(root) {
     }
     return out
 }
+// the sweep list, re-collected only after the DOM changed (or every EOS_READ_RELIST_MS as a safety net)
+function eosReadList(root, now) {
+    const S = EOS_READ_STATE
+    if (!S.list || now - S.listAt > EOS_READ_RELIST_MS) {
+        S.list = eosReadCollect(eosReadScopes(root))
+        S.listAt = now
+        // forget raised elements React has unmounted (no references kept to dead nodes)
+        for (const el of S.tagged.keys()) if (!el.isConnected) S.tagged.delete(el)
+        for (const el of S.recheckQ) if (!el.isConnected) S.recheckQ.delete(el)
+    }
+    return S.list
+}
+
+// ---- writes. Our value is an inline `font-size: Npx !important`; React only rewrites an inline font-size when
+// its own value changes, which replaces ours — then the element is simply forgotten and re-measured.
+function eosReadIsOurs(el, rec) {
+    return el.style.getPropertyValue("font-size") === rec.v && el.style.getPropertyPriority("font-size") === "important"
+}
 // remove our write and restore whatever inline value the element had before
 function eosReadRestore(el) {
     const o = EOS_READ_STATE.orig.get(el)
     if (o && o[0]) el.style.setProperty("font-size", o[0], o[1])
     else el.style.removeProperty("font-size")
 }
-function eosReadWrite(el, px, natural) {
+function eosReadForget(el, restore) {
     const S = EOS_READ_STATE
-    const had = S.tagged.get(el)
+    const rec = S.tagged.get(el)
+    if (restore && rec && eosReadIsOurs(el, rec)) eosReadRestore(el)
+    S.tagged.delete(el)
+    S.recheckQ.delete(el)
+    el.removeAttribute("data-eos-floor")
+}
+// does a transition run on this element's font-size (transition: all / font / font-size with a duration)?
+function eosReadTransitions(cs) {
+    const props = String(cs.transitionProperty || "").split(",")
+    const durs = String(cs.transitionDuration || "0s").split(",")
+    for (let i = 0; i < props.length; i++) {
+        const p = props[i].trim()
+        if ((p === "all" || p === "font" || p === "font-size") && parseFloat(durs[i % durs.length]) > 0) return true
+    }
+    return false
+}
+function eosReadWrite(el, px, natural, scaled, tr) {
+    const S = EOS_READ_STATE
+    let had = S.tagged.get(el)
+    if (had && !eosReadIsOurs(el, had)) had = null // someone (React) replaced our value since
     if (!had) S.orig.set(el, [el.style.getPropertyValue("font-size"), el.style.getPropertyPriority("font-size")])
     el.style.setProperty("font-size", px.toFixed(2) + "px", "important")
+    const v = el.style.getPropertyValue("font-size") // as the browser serialises it ("12.5px"), for eosReadIsOurs
     el.setAttribute("data-eos-floor", px.toFixed(1))
-    S.tagged.set(el, { px, natural: had ? had.natural : natural })
+    S.tagged.set(el, { px, v, natural: had ? had.natural : natural, scaled, tr: had ? had.tr : !!tr })
     S.stats.writes++
 }
-// Re-check a slice of the elements we raised: where the game's own size has meanwhile grown past ours (a
-// later state, a "big" class), our inline value is removed — it can never hold text smaller than the game
-// wants. Batched: restore all → read all (one style recalc) → put back the ones still needed.
-function eosReadRecheck(max = 16) {
+// Re-check raised elements: where the game's own size has meanwhile grown past ours (a later state, a "big"
+// class, a media query), our inline value is removed — it can never hold text smaller than the game wants.
+// Batched: restore all → read all (one small style recalc of just these elements) → put back the ones still needed.
+function eosReadRecheck(els) {
     const S = EOS_READ_STATE
-    if (!S.tagged.size) return
-    const all = Array.from(S.tagged.keys())
-    const slice = []
-    for (let i = 0; i < Math.min(max, all.length); i++) {
-        const el = all[(S.recheck + i) % all.length]
-        if (!el.isConnected) S.tagged.delete(el)
-        else if (!slice.includes(el)) slice.push(el)
+    const keep = []
+    for (const el of els) {
+        S.recheckQ.delete(el)
+        const rec = S.tagged.get(el)
+        if (!rec) continue
+        if (!el.isConnected) {
+            S.tagged.delete(el)
+            continue
+        }
+        if (!eosReadIsOurs(el, rec)) {
+            eosReadForget(el, false)
+            S.stats.dropped++
+            continue
+        }
+        keep.push([el, rec])
     }
-    S.recheck = (S.recheck + max) % Math.max(1, all.length)
-    if (!slice.length) return
-    const keep = slice.map((el) => [el, el.style.getPropertyValue("font-size"), S.tagged.get(el)])
+    if (!keep.length) return 0
+    // an element that transitions font-size would animate the restore → re-put dip: freeze its transitions for
+    // the measurement and commit the re-put before they come back
+    const frozen = []
+    for (const [el, rec] of keep)
+        if (rec.tr) {
+            frozen.push([el, el.style.getPropertyValue("transition"), el.style.getPropertyPriority("transition")])
+            el.style.setProperty("transition", "none", "important")
+        }
     for (const [el] of keep) eosReadRestore(el)
-    for (const [el, val, rec] of keep) {
+    for (const [el, rec] of keep) {
         const fs = parseFloat(getComputedStyle(el).fontSize) || 0
         if (fs >= rec.px - 0.25) {
             S.tagged.delete(el)
@@ -475,91 +611,169 @@ function eosReadRecheck(max = 16) {
             S.stats.unfloored++
         } else {
             rec.natural = fs
-            el.style.setProperty("font-size", val, "important") // exactly as it was: no visible change
+            el.style.setProperty("font-size", rec.v, "important") // exactly as it was: no visible change
         }
     }
+    if (frozen.length) {
+        for (const [el] of frozen) void getComputedStyle(el).fontSize
+        for (const [el, v, pr] of frozen) {
+            if (v) el.style.setProperty("transition", v, pr)
+            else el.style.removeProperty("transition")
+        }
+    }
+    return keep.length
+}
+// raised elements that sit on / under an element whose class just changed (one ancestor walk each)
+function eosReadAffected(targets) {
+    const S = EOS_READ_STATE
+    const out = []
+    if (!targets.size || !S.tagged.size) return out
+    for (const el of S.tagged.keys()) {
+        for (let n = el, d = 0; n && d < 24; n = n.parentElement, d++)
+            if (targets.has(n)) {
+                out.push(el)
+                break
+            }
+    }
+    return out
 }
 
 // One floor pass. list = elements to look at (null = sweep the scopes; fromMo = new nodes, before their first
-// paint: style reads only, no layout). Reads first, then writes. Time-boxed: stops after EOS_READ_BUDGET_MS of
-// its own work and resumes from there on the next pass.
-function eosReadPass(root, { list = null, fromMo = false } = {}) {
+// paint: style reads only, never a layout). The pass first brings what it reads up to date — a regular pass runs
+// right after a frame, where `root.offsetWidth` is free; an MO pass reads the new nodes' font sizes, i.e. the style
+// recalc the coming frame does anyway — and reports that separately as `flush`. Its own work is time-boxed
+// (EOS_READ_BUDGET_MS, checked after every element) and resumes where it stopped. Returns {more, retry}: more =
+// work left (sweep not finished, queued re-checks) → continue next frame; retry = a scaled box has not settled yet
+// → look again shortly.
+function eosReadPass(root, opts) {
     const S = EOS_READ_STATE
-    if (!root || !root.isConnected) return
+    if (!root || !root.isConnected) return { more: false, retry: false }
+    const fromMo = !!(opts && opts.fromMo)
+    const list = (opts && opts.list) || null
     const t0 = performance.now()
-    // bring style (and, for a sweep, layout) up to date first: a flush the next frame would do anyway;
-    // it is reported separately (passes are scheduled right after a frame, when it costs ~0)
+    let pre = null
     if (fromMo) {
-        if (list && list[0]) getComputedStyle(list[0]).fontSize // the new subtree's pending style recalc
+        pre = new Map()
+        if (list) for (const el of list) if (el.isConnected) pre.set(el, getComputedStyle(el).fontSize)
     } else void root.offsetWidth
     const t1 = performance.now()
-    const ctx = eosReadCtx(root)
-    const els = list || eosReadCollect(eosReadScopes(root))
+    const ctx = eosReadCtx(root, fromMo)
+    const tc = performance.now()
+    const els = list || eosReadList(root, t1)
+    const tl = performance.now()
     const n = els.length
     const writes = []
+    const lowers = []
     const memo = new Map()
+    const big = (EOS_READ_FLOOR_PX / ctx.k) * 1.5 // ≥ this a box would need a < .67 scale to drop below 12
     const start = list ? 0 : S.cursor % Math.max(1, n)
+    const lim = Math.min(n, EOS_READ_MAX_EL)
     let i = 0
-    for (; i < Math.min(n, EOS_READ_MAX_EL); i++) {
-        if ((i & 3) === 3 && performance.now() - t1 > EOS_READ_BUDGET_MS) break
+    let retry = false
+    for (; i < lim; i++) {
+        if (i && performance.now() - t1 > EOS_READ_BUDGET_MS) break
         const el = els[(start + i) % n]
         if (!el.isConnected || el instanceof SVGElement) continue
+        let rec = S.tagged.get(el)
+        if (rec && !eosReadIsOurs(el, rec)) {
+            eosReadForget(el, false)
+            S.stats.dropped++
+            rec = null
+        }
         const cs = getComputedStyle(el)
-        const fs = parseFloat(cs.fontSize) || 0
-        if (fs >= 40) continue
+        const fs = parseFloat(pre ? pre.get(el) : cs.fontSize) || 0
+        if (fs >= 40 && !rec) continue
         const tg = eosReadTargetFor(el, ctx)
-        let tpx = tg.px
-        let want = tpx / ctx.k
+        let want = tg.px / ctx.k
         if (fromMo) {
             if (tg.word) want = Math.min(want, ctx.wordBase / ctx.k) // the regular pass decides on bigger words
             if (fs >= want - 0.25) continue
             if (cs.display === "none" || cs.visibility === "hidden" || eosReadSkipped(el)) continue
-            writes.push([el, want, fs])
+            writes.push([el, want, fs, null, eosReadTransitions(cs)])
             continue
         }
-        // a quick layout read: is the box drawn smaller than its CSS size (a scaled object)?
-        if (fs >= want - 0.25 && fs >= (EOS_READ_FLOOR_PX / ctx.k) * 1.5) continue
+        if (!rec && fs >= want - 0.25 && fs >= big) continue
+        // a layout read (clean after the flush): is the box drawn smaller than its CSS size (a scaled object)?
         const r = el.getBoundingClientRect()
         if (r.width < 1 || r.height < 1) continue
         const ow = el.offsetWidth
         const oh = el.offsetHeight
         const quick = Math.max(ow ? r.width / ow : 1, oh ? r.height / oh : 1) / ctx.k
-        if (tg.word && tpx > ctx.wordBase) {
+        if (tg.word && tg.px > ctx.wordBase) {
             // words inside small objects (≤ 96 px) keep the base size; the Bubble Text prop raises the rest
             const op = el.offsetParent
             if (op && op.offsetWidth <= 96 && op.offsetHeight <= 96) want = ctx.wordBase / ctx.k
         }
-        let scaled = false
-        if (quick < 0.97) {
+        let scaled = null
+        if (quick < 0.97 && rec && rec.scaled && Math.abs(eosReadChainScale(el, root, memo).s - rec.scaled) < 0.02) {
+            // still drawn at the scale we compensated: keep it (no flicker while something animates nearby)
+            want = Math.max(want, rec.px)
+            scaled = rec.scaled
+        } else if (quick < 0.97) {
             const c = eosReadChainScale(el, root, memo)
             const seen = S.scaleSeen.get(el)
-            const sameScale = seen && Math.abs(seen.s - c.s) < 0.01
-            if (!sameScale) S.scaleSeen.set(el, { s: c.s, since: ctx.now })
-            // compensate only a scale that has held still for 1.2 s and is not being animated (a shelved
-            // card, a parked object) — never an entrance pop or a shrink-away mechanic
-            if (sameScale && ctx.now - seen.since >= 1200 && !c.moving && c.s >= 0.6 && c.s < 0.97) {
+            const same = seen && Math.abs(seen.s - c.s) < 0.01
+            if (!same) S.scaleSeen.set(el, { s: c.s, since: ctx.now })
+            // compensate only a scale that has held still (EOS_READ_HOLD_MS, two samples) and is not being animated
+            // (a shelved card, a parked object) — never an entrance pop or a shrink-away mechanic
+            const held = same && ctx.now - seen.since >= EOS_READ_HOLD_MS
+            if (!held && c.s >= 0.6) retry = true // look again once it may have settled
+            if (held && !c.moving && c.s >= 0.6 && c.s < 0.97) {
                 const need = EOS_READ_FLOOR_PX / (c.s * ctx.k)
                 if (need > want) {
                     want = need
-                    scaled = true
+                    scaled = c.s
                 }
             }
+        }
+        // a raised element follows its current target back down — a scale that ended, a canvas zoom, a breakpoint,
+        // a smaller Bubble Text — but never below its own natural size (so never below today)
+        if (rec && want < rec.px - 0.25) {
+            lowers.push([el, want, rec])
+            continue
         }
         if (fs >= want - 0.25) continue
         if (cs.display === "none" || cs.visibility === "hidden") continue
         if (eosReadSkipped(el)) continue
         // no opacity skip: text that is fading in (a reveal card, a feedback line) must already be readable
         // when it becomes visible; growing a transparent label is harmless
-        writes.push([el, want, fs])
+        writes.push([el, want, fs, scaled, eosReadTransitions(cs)])
+    }
+    const tz = performance.now()
+    let more = false
+    if (!list) {
+        if (i < lim) {
+            S.stats.capped++
+            more = true
+        }
+        S.cursor = n ? (start + i) % n : 0
+        // re-checks before our writes (their style recalc then touches only the restored elements); a few per
+        // pass, the rest on the next frames
+        const used = tz - t1
+        const q = []
+        if (used < EOS_READ_BUDGET_MS * 1.5)
+            for (const el of S.recheckQ) {
+                q.push(el)
+                if (q.length >= EOS_READ_RECHECK_MAX) break
+            }
+        if (!q.length && used < EOS_READ_BUDGET_MS * 0.6 && S.tagged.size && S.passes % 2 === 1) {
+            // slow background re-check, 2 raised elements every other pass (catches what no class change announced)
+            const all = Array.from(S.tagged.keys())
+            for (let k = 0; k < Math.min(2, all.length); k++) q.push(all[(S.rr + k) % all.length])
+            S.rr = (S.rr + 2) % Math.max(1, all.length)
+        }
+        if (q.length) eosReadRecheck(q)
+        if (S.recheckQ.size) more = true
+    }
+    for (const [el, want, rec] of lowers) {
+        if (want <= rec.natural + 0.25) eosReadForget(el, true)
+        else eosReadWrite(el, want, rec.natural, null, rec.tr)
+        S.stats.lowered++
+    }
+    for (const [el, want, fs, scaled, tr] of writes) {
+        eosReadWrite(el, want, fs, scaled, tr)
         if (scaled) S.stats.scaled++
     }
-    if (!list) {
-        if (i < Math.min(n, EOS_READ_MAX_EL)) S.stats.capped++
-        S.cursor = n ? (start + i) % n : 0
-    }
-    for (const [el, want, fs] of writes) eosReadWrite(el, want, fs)
-    // last, so its style invalidation never lands in the middle of the sweep's reads
-    if (!fromMo && S.passes % 3 === 2 && performance.now() - t1 < 0.9) eosReadRecheck(8)
     const t2 = performance.now()
     const ms = Math.round((t2 - t0) * 1000) / 1000
     const own = Math.round((t2 - t1) * 1000) / 1000
@@ -574,11 +788,13 @@ function eosReadPass(root, { list = null, fromMo = false } = {}) {
     st.maxOwnMs = Math.max(st.maxOwnMs, own)
     if (fromMo) {
         st.moPasses++
-        st.moMaxMs = Math.max(st.moMaxMs, ms)
+        st.moMaxOwnMs = Math.max(st.moMaxOwnMs, own)
     } else st.maxMs = Math.max(st.maxMs, ms)
     if (ms > 2) st.over2++
     if (own > 2) st.ownOver2++
-    if (st.log.length < 400) st.log.push([fromMo ? 1 : 0, Math.round(own * 100) / 100, Math.round((t1 - t0) * 100) / 100, i])
+    const r2 = (v) => Math.round(v * 100) / 100
+    if (st.log.length < 600) st.log.push([fromMo ? 1 : 0, r2(own), r2(t1 - t0), i, writes.length, r2(tc - t1), r2(tl - tc), r2(tz - tl), r2(t2 - tz)])
+    return { more, retry }
 }
 
 // Read-only report for the harness (window.__eos.readability.scan → eos_drive.smallText): every visible text
@@ -589,7 +805,7 @@ function eosReadScan(rootIn) {
     try {
         const root = rootIn || (typeof document !== "undefined" ? document.querySelector(".tsArcade") : null)
         if (!root) return out
-        const ctx = eosReadCtx(root)
+        const ctx = eosReadCtx(root, false)
         const groups = new Map()
         const add = (el, px, target, kind) => {
             const sel = eosReadSel(el)
@@ -629,8 +845,8 @@ function eosReadScan(rootIn) {
     return out.sort((a, b) => a.px - b.px)
 }
 
-// a class change only matters (and only costs a pass) when it adds a class some target row keys on
-// (.tsExactUserText, .potatoWord …); state toggles like isHit / hot / active are ignored here
+// a class change only adds work when it adds a class some target row keys on (.tsExactUserText, .potatoWord …);
+// state toggles like isHit / hot / active only matter for elements we already raised (eosReadAffected)
 function eosReadClassGain(r) {
     const el = r.target
     if (!el || el.nodeType !== 1 || !el.isConnected) return false
@@ -647,26 +863,42 @@ function eosReadClassGain(r) {
 }
 
 // The floor component: mounted once by I1 inside .releaseStage (renders a hidden marker span). Runs in
-// stage-play, stage-reveal and stage-input while the game menu is open: right after a frame (style and
-// layout are clean then, so a pass costs well under 2 ms), every 900 ms, 250 ms after a pointerup, and —
-// for small DOM additions (a feedback line, a re-mounted control) — inside the MutationObserver callback,
-// i.e. before that text is first painted (no flash of tiny text).
+// stage-play, stage-reveal and stage-input while the game menu is open: right after a frame (style and layout
+// are clean then), every 900 ms, 250 ms after a pointerup, after a resize, and — for DOM additions (a feedback
+// line, a re-mounted control) — in one pre-paint pass per frame, i.e. before that text is first painted (no flash
+// of tiny text). A class change on / above a raised element queues it for a re-check by the next after-frame
+// pass (a game state that wants that text bigger gets it one frame later, never smaller).
 function EosTextFloor({ stage }) {
     const ref = React.useRef(null)
     React.useEffect(() => {
         const marker = ref.current
         const root = marker && marker.closest ? marker.closest(".tsArcade") : null
         if (!root || typeof MutationObserver === "undefined") return
+        const S = EOS_READ_STATE
         let alive = true
         let queued = false
+        let chain = 0 // continuation passes in a row (work left after the time box)
+        let cont = false
+        let retryAt = 0 // a settle re-look is scheduled
         const timers = new Set()
         const active = () => stage === "play" || stage === "reveal" || !!root.querySelector(".releaseChoiceMenu")
         const run = () => {
             queued = false
             if (!alive) return
+            const isCont = cont
+            cont = false
+            chain = isCont ? chain + 1 : 0
+            let r = null
             try {
-                if (active()) eosReadPass(root)
+                if (active()) r = eosReadPass(root)
             } catch {}
+            if (r && r.more && chain < EOS_READ_CHAIN) {
+                cont = true
+                soon()
+            } else if (r && r.retry && !retryAt) {
+                retryAt = 1
+                later(EOS_READ_HOLD_MS + 50)
+            }
         }
         // right after the next frame has rendered: style + layout are clean, so reading them is cheap
         const soon = () => {
@@ -685,49 +917,94 @@ function EosTextFloor({ stage }) {
         const later = (ms) => {
             const t = setTimeout(() => {
                 timers.delete(t)
+                retryAt = 0
                 soon()
             }, ms)
             timers.add(t)
         }
-        const mo = new MutationObserver((recs) => {
-            if (!alive || !active()) return
-            // short-lived copy (a hit's feedback line, the finish card, the reveal) first: it is on screen for
-            // about a second, so it must be right at its first paint; re-mounted game controls come next
-            const first = []
-            const rest = []
-            const seen = new Set()
-            const done = new Set()
-            let total = 0
-            for (const r of recs) {
-                const nodes = r.type === "attributes" ? (eosReadClassGain(r) && r.target.childElementCount <= 24 && !done.has(r.target) ? [r.target] : []) : r.addedNodes
-                for (const node of nodes) {
-                    done.add(node)
-                    const el = node.nodeType === 1 ? node : node.nodeType === 3 ? node.parentElement : null
-                    if (!el || !el.isConnected) continue
-                    if (el.closest(EOS_READ_SKIP) || !el.closest(".releaseStage, .releaseConsoleHeader, .releaseChoiceMenu")) continue
-                    const bucket = el.closest(EOS_READ_FIRST) || (node.nodeType === 1 && node.querySelector(EOS_READ_FIRST)) ? first : rest
-                    for (const t of node.nodeType === 3 ? [el] : eosReadCollect([el], EOS_READ_MO_MAX))
-                        if (!seen.has(t)) {
-                            seen.add(t)
-                            bucket.push(t)
-                            total++
-                        }
-                    if (total >= EOS_READ_MO_MAX) break
-                }
-                if (total >= EOS_READ_MO_MAX) break
-            }
-            if (!total) return
+        // New text found by the MO is floored in ONE pre-paint pass per frame: a requestAnimationFrame callback runs
+        // before that frame's style / layout / paint, so its style read is the recalc the frame does anyway (once,
+        // however many React commits came before it) and the new text is painted at its floor size from the start.
+        const pend = { first: [], rest: [], seen: new Set(), raf: 0 }
+        const flushPending = () => {
+            pend.raf = 0
+            const list = pend.first.concat(pend.rest).filter((el) => el.isConnected)
+            pend.first = []
+            pend.rest = []
+            pend.seen = new Set()
+            if (!alive || !list.length || !active()) return
             try {
-                eosReadPass(root, { list: first.concat(rest), fromMo: true })
+                eosReadPass(root, { list, fromMo: true })
             } catch {}
             soon() // the regular pass adds the layout-aware parts (scaled objects) and anything past the budget
+        }
+        const mo = new MutationObserver((recs) => {
+            if (!alive) return
+            const c0 = performance.now()
+            let structural = false
+            for (const r of recs)
+                if (r.type === "childList") {
+                    structural = true
+                    break
+                }
+            if (structural) S.list = null // the sweep re-collects its text elements
+            if (!active()) return
+            try {
+                // 1. raised elements on / under a class change: re-checked by the next after-frame pass (style is clean
+                // there, so restore → read recalculates only those elements); until then they keep the floor size
+                if (S.tagged.size) {
+                    const changed = new Set()
+                    for (const r of recs) if (r.type === "attributes") changed.add(r.target)
+                    const hit = eosReadAffected(changed)
+                    if (hit.length) {
+                        for (const el of hit) S.recheckQ.add(el)
+                        soon()
+                    }
+                }
+                // 2. new text: short-lived copy (a hit's feedback line, the finish card, the reveal) first — it is on
+                // screen for about a second, so it must be right at its first paint; re-mounted controls next
+                const done = new Set()
+                let added = 0
+                for (const r of recs) {
+                    if (pend.seen.size >= EOS_READ_MO_MAX) break
+                    const nodes = r.type === "attributes" ? (eosReadClassGain(r) && r.target.childElementCount <= 24 && !done.has(r.target) ? [r.target] : []) : r.addedNodes
+                    for (const node of nodes) {
+                        done.add(node)
+                        const el = node.nodeType === 1 ? node : node.nodeType === 3 ? node.parentElement : null
+                        if (!el || !el.isConnected) continue
+                        if (el.closest(EOS_READ_SKIP) || !el.closest(EOS_READ_SCOPE_SEL)) continue
+                        const bucket = el.closest(EOS_READ_FIRST) || (node.nodeType === 1 && node.querySelector(EOS_READ_FIRST)) ? pend.first : pend.rest
+                        for (const t of node.nodeType === 3 ? [el] : eosReadCollect([el], EOS_READ_MO_MAX))
+                            if (!pend.seen.has(t)) {
+                                pend.seen.add(t)
+                                bucket.push(t)
+                                added++
+                            }
+                        if (pend.seen.size >= EOS_READ_MO_MAX) break
+                    }
+                }
+                if (added && !pend.raf) {
+                    if (typeof requestAnimationFrame === "function") pend.raf = requestAnimationFrame(flushPending)
+                    else flushPending()
+                }
+            } catch {}
+            const st = S.stats
+            st.moCbs++
+            st.moCbMaxMs = Math.max(st.moCbMaxMs, Math.round((performance.now() - c0) * 1000) / 1000)
         })
-        // class changes too: the wrappers tag a re-mounted word with .tsExactUserText (and a smaller size)
-        // after React mounts it — that is caught here, before it is painted
+        // class changes too: the wrappers tag a re-mounted word with .tsExactUserText (and a smaller size) after
+        // React mounts it, and game states toggle classes that change sizes — both are caught before the paint
         mo.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"], attributeOldValue: true })
         const onUp = () => later(250)
+        const onResize = () => {
+            S.ctx = null
+            for (const el of S.tagged.keys()) S.recheckQ.add(el) // a media query may now want some text bigger
+            later(120)
+        }
         root.addEventListener("pointerup", onUp, true)
-        EOS_READ_STATE.cursor = 0
+        if (typeof window !== "undefined") window.addEventListener("resize", onResize)
+        S.cursor = 0
+        S.list = null
         soon()
         ;[300, 700].forEach(later)
         const iv = setInterval(soon, 900)
@@ -735,7 +1012,9 @@ function EosTextFloor({ stage }) {
             alive = false
             clearInterval(iv)
             for (const t of timers) clearTimeout(t)
+            if (pend.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(pend.raf)
             root.removeEventListener("pointerup", onUp, true)
+            if (typeof window !== "undefined") window.removeEventListener("resize", onResize)
             mo.disconnect()
         }
     }, [stage])
@@ -749,7 +1028,7 @@ eosExpose("readability", {
     pass: () => {
         const root = eosReadRoot()
         if (root) eosReadPass(root)
-        return { ...EOS_READ_STATE.stats }
+        return { ...EOS_READ_STATE.stats, log: undefined }
     },
     stats: () => {
         const st = EOS_READ_STATE.stats
@@ -759,15 +1038,17 @@ eosExpose("readability", {
     reset: () => {
         EOS_READ_STATE.stats = eosReadStatsZero()
     },
+    // per pass (first 600 after reset): [fromMo 0|1, own ms, flush ms, elements looked at, writes, ctx ms, list ms,
+    // loop ms, re-check + write ms]
     log: () => EOS_READ_STATE.stats.log.slice(),
-    // test hook: the floor target (CSS px) the table gives one element
+    // test hooks: the floor target (CSS px) the table gives one element / many
     targetOf: (el) => {
         const root = eosReadRoot()
-        return root && el ? eosReadTargetCompute(el, eosReadCtx(root)) : null
+        return root && el ? eosReadTargetCompute(el, eosReadCtx(root, false)) : null
     },
     targetsOf: (els) => {
         const root = eosReadRoot()
-        const ctx = root ? eosReadCtx(root) : null
+        const ctx = root ? eosReadCtx(root, false) : null
         return ctx ? Array.from(els, (el) => eosReadTargetCompute(el, ctx)) : []
     },
 })

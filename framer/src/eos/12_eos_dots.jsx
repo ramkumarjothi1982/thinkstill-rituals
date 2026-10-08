@@ -6,27 +6,117 @@
 // cinema dust, 109's star tiles; the big bokeh drifts a quarter of the way) travel into ONE measured centre —
 // the Still Point — which breathes with the shared pacer (core EOS_PACER: 4 s in / 6 s out, or whoever owns the
 // breath). Their speed mirrors how loud the feeling is and slows as the game's progress rises; at the finish the
-// dust GATHERS and the core BLOOMS; in the reveal it bursts outward once and drifts home slowly.
+// dust GATHERS and the core BLOOMS; in the reveal it bursts outward once, drifts home slowly and glows as a calm
+// aura behind the result. The light's colour follows the feeling's colour script: its own hue → the hue of its
+// CALM grade (anger red → teal, panic → dawn gold, sad → peach; numb starts grey and regains colour).
 //
 // Mount (integration I1-E2): the FIRST child of section.releaseStage:
 //     <EosThoughtFlow stage={stage} reduced={!!reduced} />
 // API: eosApi("dots").pulse?.("in"|"out") · breath(phase, ms) · phase() · beat(bpm) · setLevel(n|null) · gather()
-//      · state() (dev/test read-out: stage, level, rate, mode, calm, dust, pacer, centre, audio …)
+//      · state() (dev/test read-out: stage, level, rate, mode, calm, dust, pacer, centre, audio, perf …)
 //
 // Performance: the lanes animate only `scale` / `rotate` / `opacity` (compositor); the 14 Pixar motes and ≤14
 // cinema dots animate `left/top` on tiny absolutely positioned nodes (spec §5.3). No React re-render is needed for
-// any per-frame or per-progress change: a 4 Hz controller pass, run inside requestAnimationFrame so its reads share
-// the frame's own style/layout work, writes CSS variables / attributes / playbackRate only when they change.
-// Every timer, frame request, observer, listener and audio node is released on unmount.
+// any per-frame or per-progress change: a 4 Hz controller pass runs right AFTER a painted frame (rAF → message
+// task), when style and layout are clean, so its reads force no recalc; it writes CSS variables / attributes /
+// playbackRate only when they change. The pacer is rendered from an analytic model of the core's scale (never read
+// back), so a game's eosBreathOwn() call costs no style flush and hand-overs never jump.
+// Every timer, frame request, message port, observer, listener and audio node is released on unmount.
 // ===================================================================================
 
 const EOS_DOTS_HUES = [195, 265, 42, 320] //       default palette (cyan, violet, gold, pink)
 const EOS_DOTS_STYLES = ["default", "fireflies", "aurora", "snow", "gold"] // §9.2 cosmetic styles (eos_prefs_v1.dust)
 const EOS_DOTS_CX = 50 //                           nominal Still Point (% of the stage) — the measured one wins
 const EOS_DOTS_CY = 52
-const EOS_DOTS_CALM_HUE = 190 //                    the hue every feeling slides toward as progress rises
+const EOS_DOTS_CALM_HUE = 190 //                    fallback calm hue (STILL's cyan)
 const EOS_DOTS_LIVE = { ctl: null } //              the mounted controller (one stage at a time)
 const EOS_DOTS_BED_MAX = 0.024 //                   audio bed peak gain (spec: ≤ .03)
+
+const EOS_DOTS_CYCLE = (EOS_BREATH.coreIn + EOS_BREATH.coreOut) * 1000 // the shared 10 s autonomous breath
+const EOS_DOTS_OWN_SCALE = { in: 1.12, hold: 1.17, out: 0.84 } //  owned phase targets (mirrors the CSS below)
+
+// cubic-bezier(x1, y1, x2, y2) at x ∈ [0, 1] (Newton with a bisection fallback) — models the CSS curves exactly.
+function eosDotsBezier(x1, y1, x2, y2, x) {
+    if (x <= 0) return 0
+    if (x >= 1) return 1
+    const cx = 3 * x1
+    const bx = 3 * (x2 - x1) - cx
+    const ax = 1 - cx - bx
+    const cy = 3 * y1
+    const by = 3 * (y2 - y1) - cy
+    const ay = 1 - cy - by
+    const fx = (u) => ((ax * u + bx) * u + cx) * u
+    let u = x
+    for (let i = 0; i < 6; i++) {
+        const d = (3 * ax * u + 2 * bx) * u + cx
+        if (Math.abs(d) < 1e-6) break
+        const nu = u - (fx(u) - x) / d
+        if (nu < 0 || nu > 1) break
+        u = nu
+    }
+    if (Math.abs(fx(u) - x) > 1e-4) {
+        let lo = 0
+        let hi = 1
+        u = x
+        for (let i = 0; i < 24; i++) {
+            if (fx(u) < x) lo = u
+            else hi = u
+            u = (lo + hi) / 2
+        }
+    }
+    return ((ay * u + by) * u + cy) * u
+}
+// The autonomous CSS breath (keyframes eosDotsBreathe, locked to the shared clock) at time t → [scale, opacity].
+function eosDotsBreathAt(t) {
+    const k = ((t % EOS_DOTS_CYCLE) + EOS_DOTS_CYCLE) % EOS_DOTS_CYCLE
+    const inMs = EOS_BREATH.coreIn * 1000
+    if (k < inMs) {
+        const e = eosDotsBezier(0.37, 0, 0.32, 1, k / inMs)
+        return [0.86 + 0.24 * e, 0.8 + 0.2 * e]
+    }
+    const p = (k - inMs) / (EOS_DOTS_CYCLE - inMs)
+    return [1.1 - 0.24 * p, 1 - 0.2 * p]
+}
+
+// "#ffcf7a" → hue in degrees (null when not a hex colour).
+function eosDotsHexHue(hex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || "").trim())
+    if (!m) return null
+    const n = parseInt(m[1], 16)
+    const r = ((n >> 16) & 255) / 255
+    const g = ((n >> 8) & 255) / 255
+    const b = (n & 255) / 255
+    const mx = Math.max(r, g, b)
+    const d = mx - Math.min(r, g, b)
+    if (!d) return 0
+    const h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4
+    return Math.round((h * 60 + 360) % 360)
+}
+// The Still Point's colour script (§0.2 grade): from the feeling's own hue to the hue of its CALM grade (anger red →
+// teal, panic → dawn gold, sad → peach, numb → candy pink …), so the light lands where EosMoodGrade lands. Of the two
+// ways round the colour wheel it takes the one that avoids the sickly yellow-green band (panic's sunrise and anger's
+// cool-down both go the long way, through violet). Cached per emotion. → {h0, d}: hue = h0 + d × progress.
+const EOS_DOTS_HUE_PATHS = {}
+function eosDotsHuePath(emo) {
+    const key = emo || "auto"
+    if (EOS_DOTS_HUE_PATHS[key]) return EOS_DOTS_HUE_PATHS[key]
+    const e = EOS_EMO[emo] || EOS_GUIDE_CHAR
+    const h0 = Number(e.hue) || EOS_DOTS_CALM_HUE
+    const h1 = eosDotsHexHue(e.grade && e.grade.calm && e.grade.calm[0])
+    const to = h1 == null ? EOS_DOTS_CALM_HUE : h1
+    const short = ((((to - h0) % 360) + 540) % 360) - 180
+    const long = short > 0 ? short - 360 : short + 360
+    const green = (d) => {
+        let n = 0
+        for (let k = 1; k < 12; k++) {
+            const h = (((h0 + (d * k) / 12) % 360) + 360) % 360
+            if (h > 68 && h < 152) n++
+        }
+        return n
+    }
+    const fromGreen = h0 > 68 && h0 < 152 // jealous starts green: leaving it the short way (→ gold) is right
+    return (EOS_DOTS_HUE_PATHS[key] = { h0, d: !fromGreen && green(long) < green(short) ? long : short })
+}
 
 // Lane specs: an even angular spread with jitter, on a ring 40-56 % from the centre, seeded (stable per index).
 function eosDotsLaneSpecs(n) {
@@ -57,7 +147,7 @@ const EOS_DOTS_NOISE = { rate: 0, buf: null }
 function eosDotsNoiseBuffer(ctx) {
     if (EOS_DOTS_NOISE.buf && EOS_DOTS_NOISE.rate === ctx.sampleRate) return EOS_DOTS_NOISE.buf
     const sr = ctx.sampleRate
-    const N = Math.round(sr * 8)
+    const N = Math.round(sr * 6) //  6 s loop: brown noise this low-passed never sounds repetitive
     const F = Math.round(sr * 0.5)
     const x = new Float32Array(N + F)
     let last = 0
@@ -103,6 +193,10 @@ function eosDotsController(root, opts = {}) {
         dust: "default",
         pacer: "",
         phase: "",
+        phaseP: 0,
+        sip: false,
+        handT: 0,
+        laneAnims: [], //   the lanes' Animation objects from the last read (pulse() answers in the next frame)
         centre: null,
         vars: new Map(),
         narrow: null,
@@ -125,11 +219,33 @@ function eosDotsController(root, opts = {}) {
     const canAnim = typeof Element !== "undefined" && typeof Element.prototype.getAnimations === "function"
     const raf = typeof requestAnimationFrame === "function" ? (f) => requestAnimationFrame(f) : (f) => setTimeout(f, 16)
     const caf = typeof cancelAnimationFrame === "function" ? (id) => cancelAnimationFrame(id) : (id) => clearTimeout(id)
+    // After-paint task: a message posted from requestAnimationFrame is handled once that frame has been painted, when
+    // style and layout are clean — so getBoundingClientRect / getAnimations / getComputedStyle there force NO extra
+    // style recalc (measured: the 1 Hz measure used to force a 10-14 ms recalc inside rAF on this arcade's DOM).
+    const chan = typeof MessageChannel === "function" ? new MessageChannel() : null
+    let posted = null
+    if (chan)
+        chan.port1.onmessage = () => {
+            const f = posted
+            posted = null
+            if (f) f()
+        }
+    const afterPaint = (f) => {
+        if (!chan) return setTimeout(f, 0)
+        posted = f
+        try {
+            chan.port2.postMessage(0)
+        } catch {
+            posted = null
+            setTimeout(f, 0)
+        }
+    }
     const stageEl = () => (root && (root.closest(".releaseStage") || root.parentElement)) || null
     const pxRoot = () => (root && root.closest(".tsPixarRoot")) || null
     const arcadeEl = () => (root && root.closest(".tsArcade")) || null
     const core = () => root.querySelector(".eosCore")
     const body = () => root.querySelector(".eosCoreBody")
+    const handEl = () => root.querySelector(".eosCoreHand")
     const lanes = () => Array.from(root.querySelectorAll(":scope > .eosLane"))
     const anims = (el) => {
         try {
@@ -167,7 +283,7 @@ function eosDotsController(root, opts = {}) {
         let r = 0.7 + 0.09 * L * (1 - pTerm)
         if (spark()) r *= 1.8 //                    numb / good: lanes ≈ 8-12 s (up-regulation)
         if (S.dust === "snow") r *= 0.8 //          snow falls slower (cosmetic)
-        if (S.stage === "reveal") r *= 0.6 //       reveal: ≈ 30 s lanes, still converging
+        if (S.stage === "reveal") r *= 0.86 //      reveal: ≈ 30 s lanes (0.7 × .86 → 18 s / .6), still converging
         return r
     }
     const setRate = (a, r) => {
@@ -205,7 +321,8 @@ function eosDotsController(root, opts = {}) {
         const rd = r * (t < S.gatherBoostUntil ? 2.6 : 1)
         const lanesOn = t >= S.burstUntil && !S.gathered
         const key = `${r.toFixed(3)}|${rd.toFixed(3)}|${lanesOn ? 1 : 0}`
-        if (force || key !== S.rateKey || !S.rateSeen) {
+        const fresh = force || key !== S.rateKey || !S.rateSeen
+        if (fresh) {
             S.rateKey = key
             S.rateSeen = new WeakSet()
         }
@@ -223,6 +340,10 @@ function eosDotsController(root, opts = {}) {
             for (const a of anims(el)) if (a.animationName === "eosDotsX" || a.animationName === "eosDotsY" || a.animationName === "eosDotsFade") todo.push([a, rd])
         }
         for (const [a, v] of todo) setRate(a, v)
+        if (lanesOn) {
+            const la = todo.filter((x) => x[0].animationName === "eosDotsLane").map((x) => x[0])
+            S.laneAnims = fresh ? la : S.laneAnims.concat(la).slice(-64)
+        }
     }
 
     // ---------------------------------------------------------------- one measured centre (C1)
@@ -331,20 +452,34 @@ function eosDotsController(root, opts = {}) {
     }
 
     // ---------------------------------------------------------------- the pacer, rendered (B4)
+    // The core body's scale is MODELLED, never read back: the autonomous CSS breath is locked to the shared clock and
+    // owned phases are CSS transitions this controller starts. Both hand-overs use the model so the light never jumps
+    // and no style is flushed inside a game's eosBreathOwn() call.
+    const seg = { from: 1, to: 1, t0: 0, ms: 0, out: false } // the owned transition in flight
+    const bodyScaleNow = (t) => {
+        if (S.pacer === "own") {
+            const k = seg.ms ? eosClamp((t - seg.t0) / seg.ms, 0, 1) : 1
+            return seg.from + (seg.to - seg.from) * (seg.out ? k : eosDotsBezier(0.3, 0.55, 0.4, 1, k))
+        }
+        if (S.pacer === "auto" && !spark()) return eosDotsBreathAt(t)[0]
+        return 1
+    }
     const resyncBreath = () => {
         const b = body()
         if (!b) return
         if (!canAnim) {
             // no Web Animations: the spec's negative-delay sync against the shared performance.now() clock
-            const cyc = (EOS_BREATH.coreIn + EOS_BREATH.coreOut) * 1000
-            b.style.animationDelay = `${-(now() % cyc)}ms`
+            b.style.animationDelay = `${-(now() % EOS_DOTS_CYCLE)}ms`
             return
         }
         for (const a of anims(b)) {
             if (a.animationName !== "eosDotsBreathe" && a.animationName !== "eosDotsBeat") continue
-            // startTime 0 on the document timeline ⇒ iteration progress = (t mod duration) = the pacer clock
+            // start time = −delay on the document timeline ⇒ active time = performance.now() ⇒ iteration progress =
+            // (t mod duration) = the pacer clock (the breath's 10 s cycle, or the beat's 60000/bpm ms)
             try {
-                if (a.startTime !== 0 && a.playbackRate === 1) a.startTime = 0
+                const tm = a.effect && a.effect.getTiming ? a.effect.getTiming() : null
+                const want = -(Number(tm && tm.delay) || 0)
+                if (a.playbackRate === 1 && (a.startTime == null || Math.abs(a.startTime - want) > 0.5)) a.startTime = want
             } catch {}
         }
     }
@@ -353,46 +488,82 @@ function eosDotsController(root, opts = {}) {
         const c = core()
         const b = body()
         if (!c || !b) return
+        const t = now()
         const ph = eosBreathPhase()
         const mode = ph.bpm ? "beat" : ph.owned ? "own" : "auto"
         const phase = mode === "beat" ? "beat" : ph.phase
-        if (mode !== S.pacer) {
-            const prev = S.pacer
-            if (mode === "own" && prev && !S.calm && !S.gathered) {
-                // hand over from the CSS breath to the owner's phase without a jump: freeze the live scale first
-                let cs = null
-                try {
-                    cs = getComputedStyle(b)
-                } catch {}
-                const sc = cs && cs.scale && cs.scale !== "none" ? cs.scale : "1"
-                const op = cs ? cs.opacity : "1"
+        const prev = S.pacer
+        // the same phase owned again (111's "one more sip": in → in) restarts the owner's clock
+        const renew = mode === "own" && prev === "own" && phase === S.phase && ph.p + 0.02 < S.phaseP
+        S.phaseP = ph.p
+        if (mode === prev && phase === S.phase && !renew) {
+            if (mode === "beat") setVarAny(c, "--eos-beat-ms", `${Math.round(ph.ms)}ms`)
+            return
+        }
+        const from = bodyScaleNow(t) // the model's value BEFORE this change
+        const smooth = !S.calm && !S.gathered && prev !== ""
+        S.pacer = mode
+        S.phase = phase
+        if (mode === "own") {
+            S.sip = phase === "in" && (renew || (S.sip && prev === "own")) // a top-up swells a little further
+            const ms = Math.max(120, Math.round(ph.ms || 0))
+            const to = S.sip ? 1.19 : EOS_DOTS_OWN_SCALE[phase] || 1
+            Object.assign(seg, { from, to, t0: t + 33, ms, out: phase === "out" })
+            if (prev !== "own" && smooth) {
+                // freeze the CSS breath where the model says it is; two frames later the owned transition starts there
                 b.style.transition = "none"
-                b.style.scale = sc
-                b.style.opacity = op
-                c.setAttribute("data-pacer", mode)
-                c.setAttribute("data-phase", phase)
-                void getComputedStyle(b).scale // commit the frozen value (style only, no layout)
-                b.style.transition = ""
-                b.style.scale = ""
-                b.style.opacity = ""
-            } else {
-                c.setAttribute("data-pacer", mode)
-                c.setAttribute("data-phase", phase)
+                b.style.scale = from.toFixed(4)
+                b.style.opacity = (prev === "auto" && !spark() ? eosDotsBreathAt(t)[1] : 0.95).toFixed(3)
+                raf(() =>
+                    raf(() => {
+                        if (!S.alive || S.pacer !== "own") return
+                        b.style.transition = ""
+                        b.style.scale = ""
+                        b.style.opacity = ""
+                    })
+                )
             }
-            S.pacer = mode
-            S.phase = phase
-            if (mode === "beat") c.style.setProperty("--eos-beat-ms", `${Math.round(ph.ms)}ms`)
-            if (mode !== "own") {
-                resyncBreath()
-                S.needSync = 3
+            c.style.setProperty("--eos-breath-ms", `${ms}ms`)
+            if (S.sip) c.setAttribute("data-sip", "1")
+            else c.removeAttribute("data-sip")
+            c.setAttribute("data-pacer", "own")
+            c.setAttribute("data-phase", phase)
+            return
+        }
+        // auto / beat: the CSS cycle resumes locked to the shared clock (negative delay now, exact start time next tick)
+        S.sip = false
+        c.removeAttribute("data-sip")
+        b.style.transition = ""
+        b.style.scale = ""
+        b.style.opacity = ""
+        b.style.animationDelay = `${-(t % (mode === "beat" ? Math.max(1, ph.ms) : EOS_DOTS_CYCLE))}ms`
+        if (mode === "beat") c.style.setProperty("--eos-beat-ms", `${Math.round(ph.ms)}ms`)
+        c.setAttribute("data-pacer", mode)
+        c.setAttribute("data-phase", phase)
+        S.needSync = 3
+        schedule()
+        const hand = handEl()
+        if (prev === "own" && smooth && hand) {
+            // hand the light back without a pop: the inner layer carries (owned ÷ clock) and relaxes to 1
+            const to = mode === "auto" && !spark() ? eosDotsBreathAt(t)[0] : 1
+            const ratio = from / Math.max(0.2, to)
+            if (Math.abs(ratio - 1) > 0.01) {
+                clearTimeout(S.handT)
+                hand.style.transition = "none"
+                hand.style.scale = ratio.toFixed(4)
+                raf(() =>
+                    raf(() => {
+                        if (!S.alive) return
+                        hand.style.transition = "scale .9s cubic-bezier(.45,0,.2,1)"
+                        hand.style.scale = "1"
+                        S.handT = setTimeout(() => {
+                            hand.style.transition = ""
+                            hand.style.scale = ""
+                        }, 1000)
+                    })
+                )
             }
         }
-        if (phase !== S.phase || mode === "own") {
-            if (mode === "own") c.style.setProperty("--eos-breath-ms", `${Math.max(120, Math.round(ph.ms || 0))}ms`)
-            if (phase !== S.phase) c.setAttribute("data-phase", phase)
-            S.phase = phase
-        }
-        if (mode === "beat") setVarAny(c, "--eos-beat-ms", `${Math.round(ph.ms)}ms`)
     }
 
     // ---------------------------------------------------------------- gather / bloom / burst
@@ -476,6 +647,13 @@ function eosDotsController(root, opts = {}) {
         root.classList.remove("eosPulseIn", "eosPulseOut")
         raf(() => S.alive && root.classList.add(out ? "eosPulseOut" : "eosPulseIn")) // re-add next frame = restart, no reflow
         S.pulseK = out ? -1 : 3
+        if (!out)
+            // speed up right away on the cached animations (no style read); the next tick re-asserts every rate
+            for (const a of S.laneAnims) {
+                try {
+                    if (a.playbackRate > 0 && a.updatePlaybackRate) a.updatePlaybackRate(rate() * 3)
+                } catch {}
+            }
         schedule()
         clearTimeout(S.pulseT)
         S.pulseT = setTimeout(() => {
@@ -585,8 +763,10 @@ function eosDotsController(root, opts = {}) {
         S.progress = p
         setVar(root, "--eos-p", (p / 100).toFixed(3))
         const emo = st.emotion || st.detected
-        const h0 = (EOS_EMO[emo] || EOS_GUIDE_CHAR).hue
-        setVar(root, "--eos-h", String(Math.round(h0 + (EOS_DOTS_CALM_HUE - h0) * (p / 100))))
+        const hp = eosDotsHuePath(emo)
+        setVar(root, "--eos-h", String(Math.round((((hp.h0 + hp.d * (p / 100)) % 360) + 360) % 360)))
+        // numb (greyLoud): the light starts flat grey and the colour comes back as the game moves (R6)
+        setVar(root, "--eos-sat", EOS_EMO[emo] && EOS_EMO[emo].greyLoud ? `${Math.round(16 + 84 * (p / 100))}%` : "100%")
         const L = level()
         const jitter = !S.calm && L >= 7 && S.stage !== "reveal" && !S.gathered && S.progress < 50
         if (root.classList.contains("eosJitter") !== jitter) root.classList.toggle("eosJitter", jitter)
@@ -610,8 +790,8 @@ function eosDotsController(root, opts = {}) {
     }
 
     // ---------------------------------------------------------------- frame-scheduled work
-    // Everything that reads layout or animations runs inside requestAnimationFrame, so it shares the frame's own
-    // style + layout pass instead of forcing an extra flush from a timer task (no long tasks from the dots).
+    // Everything that reads layout or animations runs right after a painted frame (rAF → after-paint task), when the
+    // frame's own style + layout pass has just run: the reads are free and the writes land in the next frame's pass.
     const want = { measure: false, force: false }
     const frame = () => {
         S.raf = 0
@@ -639,7 +819,7 @@ function eosDotsController(root, opts = {}) {
     const schedule = (o) => {
         if (o && o.measure) want.measure = true
         if (o && o.force) want.force = true
-        if (!S.raf && S.alive) S.raf = raf(frame)
+        if (!S.raf && S.alive) S.raf = raf(() => afterPaint(frame))
     }
 
     // ---------------------------------------------------------------- calm visuals (A7)
@@ -696,6 +876,13 @@ function eosDotsController(root, opts = {}) {
     const destroy = () => {
         S.alive = false
         if (S.raf) caf(S.raf)
+        posted = null
+        if (chan)
+            try {
+                chan.port1.onmessage = null
+                chan.port1.close()
+                chan.port2.close()
+            } catch {}
         clearTimeout(S.gatherT)
         clearInterval(intTick)
         clearInterval(intMeasure)
@@ -703,6 +890,7 @@ function eosDotsController(root, opts = {}) {
         clearTimeout(S.pulseT)
         clearTimeout(S.burstT)
         clearTimeout(S.flowInT)
+        clearTimeout(S.handT)
         try {
             ro && ro.disconnect()
         } catch {}
@@ -857,9 +1045,11 @@ function EosThoughtFlow({ stage = "input", reduced = false }) {
                 <i className="eosCoreHalo" />
                 <i className="eosCoreRays" />
                 <i className="eosCoreBody">
-                    <i className="eosCoreGlow" />
-                    <i className="eosCoreFlash" />
-                    <i className="eosCoreSpark" />
+                    <i className="eosCoreHand">
+                        <i className="eosCoreGlow" />
+                        <i className="eosCoreFlash" />
+                        <i className="eosCoreSpark" />
+                    </i>
                 </i>
                 <i className="eosCoreRing" />
                 <i className="eosCoreWave" />
@@ -894,7 +1084,7 @@ const EOS_DOTS_CSS = `
 @keyframes eosDotsGlint{0%,62%,100%{opacity:0;scale:.4}78%{opacity:1;scale:1}}
 
 /* ---------------- the field (first child of .releaseStage; z 0 inside the stage's stacking context) */
-${EOS_DOTS_FIELD}{position:absolute;inset:0;z-index:0;display:block;pointer-events:none;overflow:hidden;contain:strict;--eos-cx:50%;--eos-cy:52%;--eos-p:0;--eos-h:190;--eos-dot-o:.85;--eos-core-size:min(36vmin,280px)}
+${EOS_DOTS_FIELD}{position:absolute;inset:0;z-index:0;display:block;pointer-events:none;overflow:hidden;contain:strict;--eos-cx:50%;--eos-cy:52%;--eos-p:0;--eos-h:190;--eos-sat:100%;--eos-dot-o:.85;--eos-core-size:min(36vmin,280px)}
 ${EOS_DOTS_FIELD} i,${EOS_DOTS_FIELD} b{display:block;pointer-events:none;font-style:normal}
 /* home screen: keep the idle glows, drop only the opaque base layer; the flow paints the base under the dust */
 ${EOS_A} .releaseStage > .releaseIdleStage{background-image:radial-gradient(circle at 24% 34%,rgba(0,229,255,.086),transparent 30%),radial-gradient(circle at 78% 32%,rgba(138,92,255,.075),transparent 31%),radial-gradient(circle at 72% 76%,rgba(192,0,255,.05),transparent 32%),radial-gradient(circle at 30% 78%,rgba(255,241,138,.035),transparent 27%),radial-gradient(circle at 50% 52%,rgba(7,14,28,0) 0 9%,rgba(7,14,28,.42) 24%,rgba(7,5,16,.3) 40%,transparent 64%)!important}
@@ -924,25 +1114,29 @@ ${EOS_DOTS_FIELD}.eosGather .eosLane{animation:eosDotsGather .9s cubic-bezier(.5
 
 /* ---------------- the Still Point */
 ${EOS_DOTS_FIELD} .eosCore{position:absolute;left:50%;top:52%;width:var(--eos-core-size);height:var(--eos-core-size);translate:-50% -50%;scale:1;opacity:1;transition:scale .7s cubic-bezier(.3,1.25,.45,1),opacity .6s ease}
-${EOS_DOTS_FIELD}[data-stage="play"] .eosCore{scale:calc(.8 + .5 * var(--eos-p,0));opacity:.62}
-${EOS_DOTS_FIELD}[data-stage="reveal"] .eosCore{scale:1.06;opacity:.92}
+${EOS_DOTS_FIELD}[data-stage="play"] .eosCore{scale:calc(.8 + .5 * var(--eos-p,0));opacity:.74}
+${EOS_DOTS_FIELD}[data-stage="reveal"] .eosCore{scale:1.4;opacity:1}
+/* reveal: the calm light glows around the result card like an aura */
+${EOS_DOTS_FIELD}[data-stage="reveal"] .eosCoreHalo{inset:-80%;background:radial-gradient(closest-side,hsla(var(--eos-h),var(--eos-sat,100%),74%,.9),hsla(var(--eos-h),var(--eos-sat,100%),68%,.56) 26%,hsla(var(--eos-h),var(--eos-sat,100%),62%,.24) 50%,hsla(var(--eos-h),var(--eos-sat,100%),58%,.07) 74%,hsla(var(--eos-h),var(--eos-sat,100%),55%,0) 100%)}
 ${EOS_DOTS_FIELD}.eosGather .eosCore{opacity:1}
-${EOS_DOTS_FIELD} .eosCore>i,${EOS_DOTS_FIELD} .eosCoreBody>i{position:absolute;border-radius:50%}
-${EOS_DOTS_FIELD} .eosCoreHalo{inset:-55%;background:radial-gradient(closest-side,hsla(var(--eos-h),100%,74%,.26),hsla(var(--eos-h),100%,64%,.1) 44%,hsla(var(--eos-h),100%,55%,.03) 70%,hsla(var(--eos-h),100%,55%,0) 100%)}
-${EOS_DOTS_FIELD} .eosCoreRays{inset:-18%;background:repeating-conic-gradient(from 8deg,hsla(var(--eos-h),100%,86%,0) 0deg 9deg,hsla(var(--eos-h),100%,88%,.13) 13deg,hsla(var(--eos-h),100%,86%,0) 17deg 31deg,rgba(255,244,214,.09) 35deg,hsla(var(--eos-h),100%,86%,0) 39deg 52deg);-webkit-mask-image:radial-gradient(closest-side,transparent 9%,#000 24%,rgba(0,0,0,.5) 55%,transparent 92%);mask-image:radial-gradient(closest-side,transparent 9%,#000 24%,rgba(0,0,0,.5) 55%,transparent 92%);animation:eosDotsSpin 90s linear infinite}
+${EOS_DOTS_FIELD} .eosCore>i,${EOS_DOTS_FIELD} .eosCoreBody>i,${EOS_DOTS_FIELD} .eosCoreHand>i{position:absolute;border-radius:50%}
+${EOS_DOTS_FIELD} .eosCoreHand{inset:0}
+${EOS_DOTS_FIELD} .eosCoreHalo{inset:-55%;background:radial-gradient(closest-side,hsla(var(--eos-h),var(--eos-sat,100%),74%,.26),hsla(var(--eos-h),var(--eos-sat,100%),64%,.1) 44%,hsla(var(--eos-h),var(--eos-sat,100%),55%,.03) 70%,hsla(var(--eos-h),var(--eos-sat,100%),55%,0) 100%)}
+${EOS_DOTS_FIELD} .eosCoreRays{inset:-18%;background:repeating-conic-gradient(from 8deg,hsla(var(--eos-h),var(--eos-sat,100%),86%,0) 0deg 9deg,hsla(var(--eos-h),var(--eos-sat,100%),88%,.13) 13deg,hsla(var(--eos-h),var(--eos-sat,100%),86%,0) 17deg 31deg,rgba(255,244,214,.09) 35deg,hsla(var(--eos-h),var(--eos-sat,100%),86%,0) 39deg 52deg);-webkit-mask-image:radial-gradient(closest-side,transparent 9%,#000 24%,rgba(0,0,0,.5) 55%,transparent 92%);mask-image:radial-gradient(closest-side,transparent 9%,#000 24%,rgba(0,0,0,.5) 55%,transparent 92%);animation:eosDotsSpin 90s linear infinite}
 ${EOS_DOTS_FIELD} .eosCoreBody{inset:0;animation:eosDotsBreathe 10s linear infinite}
-${EOS_DOTS_FIELD} .eosCoreGlow{inset:0;background:radial-gradient(closest-side,#fffdf4 0 4%,rgba(255,250,232,.94) 7%,hsla(var(--eos-h),100%,85%,.74) 14%,hsla(var(--eos-h),100%,71%,.42) 28%,hsla(var(--eos-h),96%,61%,.18) 50%,hsla(var(--eos-h),92%,53%,.05) 74%,hsla(var(--eos-h),90%,50%,0) 100%)}
-${EOS_DOTS_FIELD} .eosCoreSpark{left:50%;top:50%;width:9%;height:9%;translate:-50% -50%;background:radial-gradient(closest-side,#fff,rgba(255,255,255,.6) 45%,rgba(255,255,255,0));box-shadow:0 0 18px 6px rgba(255,250,235,.55),0 0 46px 14px hsla(var(--eos-h),100%,76%,.35)}
-${EOS_DOTS_FIELD} .eosCoreRing{inset:31%;border:1.5px solid hsla(var(--eos-h),100%,88%,.62);box-shadow:0 0 14px hsla(var(--eos-h),100%,72%,.45),inset 0 0 12px hsla(var(--eos-h),100%,72%,.3);opacity:0;animation:eosDotsAbsorb 2.8s cubic-bezier(.2,.7,.3,1) infinite}
-${EOS_DOTS_FIELD} .eosCoreFlash{inset:-4%;background:radial-gradient(closest-side,#fff 0 12%,rgba(255,250,232,.85) 26%,hsla(var(--eos-h),100%,80%,.42) 50%,hsla(var(--eos-h),100%,72%,.12) 74%,hsla(var(--eos-h),100%,70%,0) 100%);opacity:0}
-${EOS_DOTS_FIELD} .eosCoreWave{inset:18%;border:2px solid hsla(var(--eos-h),100%,90%,.9);box-shadow:0 0 22px hsla(var(--eos-h),100%,74%,.6);opacity:0}
+${EOS_DOTS_FIELD} .eosCoreGlow{inset:0;background:radial-gradient(closest-side,#fffdf4 0 4%,rgba(255,250,232,.94) 7%,hsla(var(--eos-h),var(--eos-sat,100%),85%,.74) 14%,hsla(var(--eos-h),var(--eos-sat,100%),71%,.42) 28%,hsla(var(--eos-h),calc(var(--eos-sat,100%) * .96),61%,.18) 50%,hsla(var(--eos-h),calc(var(--eos-sat,100%) * .92),53%,.05) 74%,hsla(var(--eos-h),calc(var(--eos-sat,100%) * .90),50%,0) 100%)}
+${EOS_DOTS_FIELD} .eosCoreSpark{left:50%;top:50%;width:9%;height:9%;translate:-50% -50%;background:radial-gradient(closest-side,#fff,rgba(255,255,255,.6) 45%,rgba(255,255,255,0));box-shadow:0 0 18px 6px rgba(255,250,235,.55),0 0 46px 14px hsla(var(--eos-h),var(--eos-sat,100%),76%,.35)}
+${EOS_DOTS_FIELD} .eosCoreRing{inset:31%;border:1.5px solid hsla(var(--eos-h),var(--eos-sat,100%),88%,.62);box-shadow:0 0 14px hsla(var(--eos-h),var(--eos-sat,100%),72%,.45),inset 0 0 12px hsla(var(--eos-h),var(--eos-sat,100%),72%,.3);opacity:0;animation:eosDotsAbsorb 2.8s cubic-bezier(.2,.7,.3,1) infinite}
+${EOS_DOTS_FIELD} .eosCoreFlash{inset:-4%;background:radial-gradient(closest-side,#fff 0 12%,rgba(255,250,232,.85) 26%,hsla(var(--eos-h),var(--eos-sat,100%),80%,.42) 50%,hsla(var(--eos-h),var(--eos-sat,100%),72%,.12) 74%,hsla(var(--eos-h),var(--eos-sat,100%),70%,0) 100%);opacity:0}
+${EOS_DOTS_FIELD} .eosCoreWave{inset:18%;border:2px solid hsla(var(--eos-h),var(--eos-sat,100%),90%,.9);box-shadow:0 0 22px hsla(var(--eos-h),var(--eos-sat,100%),74%,.6);opacity:0}
 /* one pacer (B4): autonomous = the CSS breath synced to the shared clock; owned = transitions over the phase ms */
 ${EOS_DOTS_FIELD} .eosCore[data-pacer="own"] .eosCoreBody{animation:none;transition:scale var(--eos-breath-ms,4000ms) cubic-bezier(.3,.55,.4,1),opacity var(--eos-breath-ms,4000ms) ease}
 ${EOS_DOTS_FIELD} .eosCore[data-pacer="own"][data-phase="in"] .eosCoreBody{scale:1.12;opacity:1}
-${EOS_DOTS_FIELD} .eosCore[data-pacer="own"][data-phase="hold"] .eosCoreBody{scale:1.17;opacity:1}
+${EOS_DOTS_FIELD} .eosCore[data-pacer="own"][data-phase="hold"] .eosCoreBody,${EOS_DOTS_FIELD} .eosCore[data-pacer="own"][data-sip="1"] .eosCoreBody{scale:1.17;opacity:1}
+${EOS_DOTS_FIELD} .eosCore[data-pacer="own"][data-sip="1"] .eosCoreBody{scale:1.19}
 ${EOS_DOTS_FIELD} .eosCore[data-pacer="own"][data-phase="out"] .eosCoreBody{scale:.84;opacity:.82;transition-timing-function:linear}
 ${EOS_DOTS_FIELD} .eosCore[data-pacer="beat"] .eosCoreBody,${EOS_DOTS_FIELD}[data-eos-mode="spark"] .eosCore[data-pacer="auto"] .eosCoreBody{animation:eosDotsBeat var(--eos-beat-ms,833ms) linear infinite}
-${EOS_DOTS_FIELD}.eosGather .eosCore .eosCoreBody{animation:eosDotsBloom 1.3s cubic-bezier(.3,.9,.4,1) forwards;transition:none}
+${EOS_DOTS_FIELD}.eosGather .eosCore .eosCoreBody{animation:eosDotsBloom 1.3s cubic-bezier(.3,.9,.4,1) forwards!important;transition:none}
 ${EOS_DOTS_FIELD}.eosGather .eosCoreFlash{animation:eosDotsFlash 1.3s ease-out forwards}
 ${EOS_DOTS_FIELD}.eosGather .eosCoreWave{animation:eosDotsBurst .9s cubic-bezier(.15,.7,.3,1) .82s 1 both}
 ${EOS_DOTS_FIELD}.eosBurst .eosCoreWave{animation:eosDotsBurst .9s cubic-bezier(.15,.7,.3,1) 1 both}
@@ -950,7 +1144,8 @@ ${EOS_DOTS_FIELD}.eosPulseIn .eosCoreFlash{animation:eosDotsPulse 1.2s ease-out 
 ${EOS_DOTS_FIELD}.eosPulseIn .eosCoreRing{animation-duration:.9s}
 ${EOS_DOTS_FIELD}.eosPulseOut .eosCoreWave{animation:eosDotsBurst 1.2s cubic-bezier(.2,.6,.3,1) 1 both}
 /* spark states (numb, good): warm, vivid, alive — the core pulses at 72 bpm instead of breathing */
-${EOS_DOTS_FIELD}[data-eos-mode="spark"] .eosCoreHalo{animation:eosDotsHue 6s ease-in-out infinite alternate}
+${EOS_DOTS_FIELD}[data-eos-mode="spark"] :is(.eosCoreHalo,.eosCoreGlow,.eosCoreRays){animation:eosDotsHue 5s ease-in-out infinite alternate}
+${EOS_DOTS_FIELD}[data-eos-mode="spark"] .eosCoreRays{animation:eosDotsSpin 40s linear infinite,eosDotsHue 5s ease-in-out infinite alternate}
 ${EOS_DOTS_FIELD}[data-eos-mode="spark"] .eosLane[data-k="0"]{--h:330!important}
 ${EOS_DOTS_FIELD}[data-eos-mode="spark"] .eosLane[data-k="1"]{--h:42!important}
 ${EOS_DOTS_FIELD}[data-eos-mode="spark"] .eosLane[data-k="2"]{--h:16!important}
