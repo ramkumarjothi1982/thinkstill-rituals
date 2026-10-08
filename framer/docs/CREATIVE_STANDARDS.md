@@ -17,3 +17,12 @@ Set by the owner on 2026-10-08. These override any weaker wording elsewhere in t
 9. **Mobile first.** Design, review and score at phone size (390×844) first; desktop second. It must feel like a premium mobile product, not a desktop page squeezed onto a phone (thumb reach, large targets, safe areas, portrait composition).
 
 Efficiency rule: build reusable systems (character reaction layer, finale toolkit, environment kits, gesture library), but every game must keep its own identity — reusable parts are customised per game, never stamped identically.
+
+## Architecture principle (owner, 2026-10-08)
+Cinematic quality, characters as active participants, distinctive gameplay and a unique dopamine finale are **core gameplay requirements, not cosmetic polish**. They are designed into a game's architecture from the start:
+- **Games still being built (111-114 and any later ones):** the engine's state machine must include the character's in-world role (what it does on each player action, how it transforms with progress) and the game's own finale sequence as first-class states — not overlays added afterwards. Reviewers reject a game that only has decoration plus the shared colour shift.
+- **Existing games:** the audit classifies each game as needing *structural gameplay work* (mechanic/feedback loop/finale/character role must change) or *visual polish only*. Structural work is planned as gameplay changes, not skins.
+- **Reusable systems** (animation/squash library, character reaction layer, lighting rigs, sound cues, finale toolkit) are parameterised per game so interactions and emotional journeys stay distinctive.
+- **Pilot first:** before any change rolls out across many games, it is built on a small set of representative games (one per look-alike cluster + the most-routed games + some of the weakest), reviewed on rendered phone and desktop screenshots by independent reviewers, shown to the owner, and only then rolled out.
+- Avoid unnecessary rewrites; preserve completed work; commit progress continuously.
+- Priority is a premium experience users enjoy and return to, not the fastest delivery of 114 functional games.
