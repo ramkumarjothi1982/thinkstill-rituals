@@ -47,3 +47,8 @@ Test scripts: /tmp/eos_readability_work/{noshrink5,states3,acc45b,review13,perf4
   Words in MELT/ERASE/BIN/UNHOOK/CUT THE LOOP now >= 15.2 @390 / 16.2 @1280.
 - Running: review13 at 1280 (12 games) -> review_1280_v4.json + dev/shots/eos/readability_*_1280.png.
 - Next: look at review shots, write build.md, commit + push.
+- (20:40) acc 6 re-run at 1280 (review13, 12 games): clean except GO WEIRD's prop hint ("TAP A THOUGHT" 114 > 104 px).
+  Fixed: the .gwProp button row now targets .gwProp>span (name 14/13); the em hint takes the counter row (12.5 px,
+  fits: sw = cw = 104); phones (<= 560) hide the 7 px hint (65 px buttons; guide + arrow carry it). Verified both
+  sizes, smallText empty, 0 errors. Full build (python3 build.py) OK; FULL.txt restored (not mine to commit).
+- Next: commit + push, then write readability.build.md (final report) and commit + push it.
