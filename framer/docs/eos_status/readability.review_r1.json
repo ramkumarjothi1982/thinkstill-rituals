@@ -1,0 +1,82 @@
+{
+ "round": 1,
+ "findings": [
+  {
+   "severity": "major",
+   "area": "390 px layout: DRAMA MACHINE (105) main buttons cut off",
+   "file": "src/eos/10_eos_readability.jsx",
+   "evidence": "Scratch integrated build /tmp/eos_rev_readability_code_int, 390x844, id 105, 2.5 s after start (probe /tmp/rev_read/t4.mjs, crops /tmp/rev_read/dm_base.png vs dm_read.png). (1) .dmDramaButton '\u2726 MAKE IT DRAMATIC' is now 13 px and .dmCutButton '\u2702 CUT THE DRAMA' is 16 px. Both wrap to 2-3 lines inside 78-84 px buttons whose rects end at y 619/621. (2) Their ancestor .dmStageMachine clips at y 602, so the screen shows only '\u2726 MAKE IT' and '\u2702 CUT THE'. (3) In the baseline the labels were 8 px and both buttons sat under the taller LIVE GUIDE. The guide is now shorter, so the buttons show, but with their labels cut. (4) .dmCutButton is 16 px, not 14, because it is in the max(14px,1em) list at line 107: 1em resolves to the 16 px parent. This is the same flaw the builder already fixed for .toolHitCount, and the two sibling buttons end up 14 px and 16 px at 1280. Both still respond to taps at their centres (elementFromPoint OK). 1280 is fine: the buttons sit inside the machine at y 444-550. This fails \u00a74.7, which names DRAMA MACHINE for the screenshot review and requires a guard wherever a label overflows its object. The build report says it passed.",
+   "fix": "In the \u2264560 block next to the existing .u105 rules (lines 243-247), give .dmDramaButton and .dmCutButton an explicit 12.5-13 px, white-space:nowrap or a short two-line label with line-height:1, and a tighter letter-spacing. Also either let the controls row sit higher, or set .u105 .dmStageMachine to overflow:visible / padding-bottom so the whole label shows. Take .dmCutButton out of the max(14px,1em) rule (or give it an explicit 14 px) so the two buttons match. Then re-check with elementFromPoint plus a crop at 390 and 1280."
+  },
+  {
+   "severity": "minor",
+   "area": "Memory: module state keeps the unmounted arcade's DOM alive",
+   "file": "src/eos/10_eos_readability.jsx",
+   "evidence": "EOS_READ_STATE (line 410) is module-level, and its tagged Map, list array (up to 2000 elements), recheckQ Set and ctx.root all hold strong references to arcade nodes. The effect cleanup (lines 1224-1237) stops the MO, timers, listeners and MessageChannel, but never clears this state. After the component unmounts (for example on Framer client-side navigation), the last game's whole detached tree stays in memory until the floor mounts again. The leak is bounded to one tree and does not grow.",
+   "fix": "In the cleanup, add: S.list = null; S.tagged.clear(); S.recheckQ.clear(); S.ctx = null; S.cursor = 0."
+  },
+  {
+   "severity": "minor",
+   "area": "Several arcade instances share one floor state",
+   "file": "src/eos/10_eos_readability.jsx",
+   "evidence": "eosReadList(root) returns the shared S.list whichever root asks for it, and S.k / S.ctx are shared too. If two instances are active at once (two components on a page, or Framer canvas breakpoints, though the canvas is normally inactive), one root's pass sweeps the other root's elements using its own breakpoint and canvas scale. Writes stay grow-only, so nothing shrinks, but phone and desktop targets get mixed.",
+   "fix": "Key the list, ctx and cursor per root (a WeakMap root \u2192 state), or store root on S.list and re-collect when it differs."
+  },
+  {
+   "severity": "minor",
+   "area": "Performance: MutationObserver passes force a style recalc; budget overrun",
+   "file": "src/eos/10_eos_readability.jsx",
+   "evidence": "Lines 829-831 read getComputedStyle inside the MO microtask. Measured stats from a full playthrough with two browsers running in parallel (headless, software rendering): (1) CRUSH 1280: MO flush p95 108.6 ms, max 182.7 ms; own time p50 0.2 ms, p95 4.2 ms; maxOwnMs 37.5; one .crusherRig .tsExactUserText element took 37.3 ms inside the time-boxed loop. (2) HOT POTATO 390: regular-pass own p95 7.5 ms (spec \u2264 2 ms); single elements took 7-8 ms (.guideStepCard small, .tsShiftRewardPill.spark). Gameplay time matched the baseline (76 vs 72 s, 48 vs 52 s; both reached the reveal, 0 errors), so nothing broke. But the forced recalc can run twice per frame whenever framer-motion writes after React's commit, and the \u22642 ms budget is only met on a quiet machine.",
+   "fix": "Measure on a real mid-range phone (Chrome remote profiler) before release. If the MO flush shows up there, read styles only for nodes from the 'first' bucket (feedback / reveal copy) in the MO and leave the rest to the after-frame pass. Also check the time budget before the costly per-element steps (word fit, chain scale), not only after each element."
+  },
+  {
+   "severity": "minor",
+   "area": "Floor skips any element with an eos* class on itself or an ancestor",
+   "file": "src/eos/10_eos_readability.jsx",
+   "evidence": "eosReadSkipped (lines 536-546) tests EOS_READ_OWN = /(^|\\s)eos[A-Z]/ on every ancestor, and on .releaseStage / .tsArcade themselves before it stops. Integration edit I3-E1/E2 already puts the class 'eosNext' on the TAP OUT (67) pad the user must tap next, so the floor skips that pad. This is harmless today only because the pads are 16 px. Any later module that adds an eos* state class to .arena, .releaseGameHost, .releaseStage or .tsArcade would silently switch the floor off for every game.",
+   "fix": "Skip only real EOS overlay roots: an explicit list (.eosCheckIn, .eosArena, .eosShiftMeter, .eosThoughtFlow, .eosMoodGrade \u2026) or a data-eos-overlay attribute. Stop the walk before checking the classes of .releaseStage / .tsArcade, and exclude marker classes such as eosNext."
+  },
+  {
+   "severity": "minor",
+   "area": "Spec deviation: phones hide existing HUD and guide content",
+   "file": "src/eos/10_eos_readability.jsx",
+   "evidence": "At \u2264700 px (lines 157-160), .tsShiftRewardHud (sparks, tokens, chain, LVL) has opacity 0 / visibility hidden except while .isHit is set, about 3.2 s per hit. Polling at 390 on HOT POTATO confirmed this: '-0/h' between hits, 'H1/v' during hits. \u00a74.2 says 'chain visible on phone' and \u00a74.5 says 'two rows on phone'. At \u2264560 px, .globalMindBend is hidden for the whole game (the spec hides it only after the first hit), and the 'How to play' kicker and .gwProp>em are dropped. Only the new wrapper (ids 100-110, plus 111-114 if they use it) renders .tsShiftRewardHud, so the legacy games are unaffected. The builder documents and justifies this, but the owner rule says never remove existing functionality.",
+   "fix": "Get the lead's explicit sign-off. Otherwise keep one compact pill visible at all times on phones (for example LVL with the spark count, at 13 px, beside or inside the meter) and keep the hit toast for the full set."
+  },
+  {
+   "severity": "minor",
+   "area": "Word-fit minimum is below the spec",
+   "file": "src/eos/10_eos_readability.jsx",
+   "evidence": "EOS_READ_WORD_FIT_MIN = 13 (line 683): a word that does not fit its object is fitted down to 13 px rendered. \u00a74.1 allows 14 px only inside objects \u2264 96 px. The builder says no release-1 game needs this at 390 today.",
+   "fix": "Set it to 14, or document this as a lead-approved deviation."
+  },
+  {
+   "severity": "major",
+   "area": "Grow-only floor fights the 'shrink the thought' relief games (held-scale compensation)",
+   "file": "src/eos/10_eos_readability.jsx",
+   "evidence": "Script /tmp/rev_read_exp/pace.mjs taps once, waits 3 s and samples the largest user word every 120 ms (390x844, integrated build /tmp/eos_rev_readability_exp_int against /tmp/eos_rev_read_base_int). ZOOM OUT (30), tap 1: the word shrinks to 12.8 px (scale .79, width 23 to 18 px). At +1.6 s the floor raises font-size from 16.3 to 19.1 px, so the word renders at 15 px again (width 21). Tap 2: 9.6 px (scale .59, width 14). At +0.8 s font-size becomes 25.4 px and the word renders at 15.1 px (width 21), as big as before the first tap. It only stays small on tap 3 (scale .40, below the .6 cut-off). Baseline is monotonic: 8.2, 6.8, 5.1, 3.4 px. MICROSCOPE (58), tap 2: 9.0 px, then font-size goes from 15.3 to 21.7 px 0.6 s later and the word renders at 12.9 px. Over a full play (shrink.mjs) the rendered size runs 9.1, 12.9, 6.4, 14.7, 9.1, 12.9 px, rising and falling instead of only shrinking. The catalog's relief mechanic for 58 is 'the word visibly shrinks' and for 30 is 'zooming the thought to a pixel'. The player now sees the thought shrink and then bounce back bigger about 1 s later. That reads as a glitch, or as the thought fighting back, which is the opposite of relief. Cause: the held-scale block in eosReadPass (about lines 880-897) compensates any scale between 0.6 and 0.97 that has held for 350 ms, and a stepwise shrink mechanic holds its scale between taps. The cut-off is also leaky: a measured .59 was compensated, because quick and chain scale are measured differently.",
+   "fix": "Never compensate a scale that the element reached by shrinking during play. In S.scaleSeen, record the first scale seen for each element. If the element was ever seen at 0.97 or above, mark it 'shrunk by the game' and skip compensation; compensate only boxes that were born scaled, such as a shelved card or FINGER TRAP's tube. Alternatively, limit compensation to non-word elements plus an explicit allowlist of statically scaled containers. Add a skip list for the shrink mechanics (legacy cases 26, 29, 30, 53, 58, and 104), and use one scale measure for the 0.6 cut-off. Re-run pace.mjs on 30 and 58: the rendered word size must go down at every step and never rise between taps."
+  },
+  {
+   "severity": "minor",
+   "area": "Floor pass cost above the 2 ms budget on the busiest desktop game",
+   "file": "src/eos/10_eos_readability.jsx",
+   "evidence": "/tmp/rev_read_exp/hp.mjs ran HOT POTATO (100) at 1280x860 on a quiet machine, using window.__eos.readability.log(). Own pass time: p50 0.8 ms, p95 4.5 ms, max 30.5 ms; 17 of 170 passes are over 2 ms; flushMaxMs is 179 ms, from the forced `void root.offsetWidth` before each timer pass. In fps.mjs (headless, software raster), median frame time is 550 ms against 467 ms in the baseline (+18%), and the game takes 71.7 s against 58.7 s to finish. POP at 390 is fine: p95 1.5 ms, max 4.5 ms. The headless numbers exaggerate the cost, but the \u00a74.4 budget (\u2264 2 ms per pass) is not met at desktop size, and the builder's p95 of 1.6-2.0 ms does not cover this game.",
+   "fix": "Remove the forced layout flush from timer passes: take rect reads in a rAF callback after layout, or rely on the layout the MO and pointerup paths already produce. On a regular sweep, revisit only elements that are new, changed or raised since the last pass, and cache the opacity and scale chains per ancestor per pass. Then confirm p95 \u2264 2 ms for HOT POTATO, CLEANSE and DRAMA MACHINE at 1280, and on a real mid-range phone in the Performance panel."
+  },
+  {
+   "severity": "minor",
+   "area": "Phone LIVE GUIDE drops the MIND BEND reframe line for the whole game (spec says only after the first hit)",
+   "file": "src/eos/10_eos_readability.jsx",
+   "evidence": "In the \u2264560 px block: `${EOS_A}.stage-play .globalPlayGuide .globalMindBend{display:none!important}` and `.guideStepCard>small{display:none}`. In /tmp/rev_read_exp/shots/new_390_g1_a_start.png the POP guide shows only 'Tap to pop' at play start. In the baseline phone shot (base_390_g1_b_mid.png) and on desktop, 'MIND BEND \u00b7 Big thought. Tiny pop.' is shown. \u00a74.3 hides it only on `.globalPlayGuide.isActive`, which the builder kept for 561-700 px. On phones, the primary viral surface, players never see the reframe line that carries part of the relief design. That conflicts with the owner rule 'never removing existing functionality'.",
+   "fix": "Under 560 px, keep the spec rule: show MIND BEND until the first hit and hide it on `.globalPlayGuide.isActive`. If the panel height is the concern, show it as a one-line, 13 px kicker until the first hit, or surface the line on the reveal card instead of dropping it."
+  },
+  {
+   "severity": "minor",
+   "area": "Legacy (ids < 100) reveal on phones: enlarged PREVIOUS / NEXT pills crowd the card",
+   "file": "src/eos/10_eos_readability.jsx",
+   "evidence": "In /tmp/rev_read_exp/shots/new_390_g1_c_reveal.png (POP) and new_390_g99_c_reveal.png (ECHO), the 44 px-tall '\u2039 PREVIOUS' pill sits on the card's top-left corner and 'NEXT \u203a' overlaps its bottom-left corner. Both are left-aligned, while the card is centred. Ids \u2265 100 (HOT POTATO, CLEANSE in new_390_g100_c_reveal.png / new_390_g109_c_reveal.png) get the tidy layout of a full-width card with a PREVIOUS | NEXT row under it. The \u2264760 grid rule only targets `:not(.releaseGlobal99Upgrade)`, so legacy reveals do not get it. Classic stacked layout, now bigger; cosmetic, but the two reveal looks are inconsistent.",
+   "fix": "Apply the same \u2264760 px `card / prev next` grid, or at least an 8-10 px vertical gap and centring, to `.releaseGlobal99Upgrade` reveals. Check POP and ECHO at 390 after the card's entrance animation has settled."
+  }
+ ]
+}

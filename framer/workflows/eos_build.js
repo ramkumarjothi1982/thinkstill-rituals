@@ -142,6 +142,7 @@ const REVIEW_LENSES = [
 const asMap = (v, kind) => Array.isArray(v) ? Object.fromEntries(v.map(id => [id, `The ${kind} report is in ${DOCS}/eos_status/${id}.${kind === 'final' ? 'done' : 'build'}.md — read that file.`])) : (v || {})
 const DONE = asMap(args && args.done, 'final')
 const BUILT = asMap(args && args.built, 'builder')
+const REVIEWS = (args && args.reviews) || {}  // {taskId: [findings]} saved from an interrupted round-1 review
 const INTEGRATED = (args && args.integrated) || []
 const STATUS = DOCS + '/eos_status'
 const record = (file, content) => agent(`Write the text between the markers EXACTLY (no changes) to the file ${file} (create parent dirs; overwrite). Then reply OK.\n<<<BEGIN>>>\n${content}\n<<<END>>>`, { label: 'record:' + file.split('/').pop(), phase: 'Module review', model: 'haiku', effort: 'low' })
@@ -154,9 +155,10 @@ const reviewAndFix = async (buildReport, t) => {
   let prevFindings = []
   for (let round = 1; round <= 3; round++) {
     const focus = round > 1 ? `\nTARGETED RE-REVIEW (round ${round}): verify each previous finding below is really fixed, and check ONLY the code the fixer changed for regressions — do not redo the whole review. Previous findings:\n${JSON.stringify(prevFindings, null, 1).slice(0, 8000)}\n` : ''
-    const reviews = (await parallel(REVIEW_LENSES.map(L => () =>
+    const saved = round === 1 && REVIEWS[t.id] ? [{ verdict: 'fix', findings: REVIEWS[t.id] }, { verdict: 'fix', findings: [] }] : null
+    const reviews = saved || (await parallel(REVIEW_LENSES.map(L => () =>
       agent(`${CONTEXT}\n${USER_ASK}\n\n${TOOLING}\n${SCOPE}\n${LEAN}\nREVIEW task "${t.id}" (${t.title}), round ${round}. Files: ${t.files.join(', ')}. Brief: ${DOCS}/briefs/${t.id}.md (spec sections ${t.spec_sections}). Builder's report:\n${report}\n\nLENS: ${L.text}${focus}\nBuild in isolation yourself (python3 ${ROOT}/build.py --dev-dir /tmp/eos_rev_${t.id}_${L.key} --modules 00_eos_core.jsx,${eosFiles(t)}) and actually run/play it in the browser (budget: at most ~35 tool calls and 6 screenshot views; focus on the highest-risk behaviours). Do NOT edit files. verdict "ship" only if there is no blocker/major finding.`,
-        { label: `review:${t.id}:${L.key}:r${round}`, phase: 'Module review', schema: FINDINGS_SCHEMA })))).filter(Boolean)
+        { label: `review:${t.id}:${L.key}:r${round}`, phase: 'Module review', schema: FINDINGS_SCHEMA })))).filter(Boolean))
     if (reviews.length < REVIEW_LENSES.length) throw new Error(`review incomplete for ${t.id} r${round}`)
     const serious = reviews.flatMap(r => r.findings.filter(f => f.severity !== 'minor'))
     const minor = reviews.flatMap(r => r.findings.filter(f => f.severity === 'minor'))

@@ -52,10 +52,13 @@ ${EOS_A}.stage-reveal:not(.releaseGlobal99Upgrade) .releaseCompleteSideNav{width
 ${EOS_A}.stage-reveal:not(.releaseGlobal99Upgrade) .releaseReplaySame{font-size:14px!important}
 ${EOS_A}.stage-reveal:not(.releaseGlobal99Upgrade) .releaseShiftChoices>button{font-size:15px!important}
 @media (max-width:760px){
-  ${EOS_A}.stage-reveal:not(.releaseGlobal99Upgrade) .releaseCompleteShell{grid-template-columns:1fr 1fr!important;grid-template-areas:"card card" "prev next"!important;row-gap:12px!important;column-gap:10px!important}
-  ${EOS_A}.stage-reveal:not(.releaseGlobal99Upgrade) .releaseCompleteCard{grid-area:card!important}
-  ${EOS_A}.stage-reveal:not(.releaseGlobal99Upgrade) .releaseCompletePrev{grid-area:prev!important;justify-self:start!important}
-  ${EOS_A}.stage-reveal:not(.releaseGlobal99Upgrade) .releaseCompleteNext{grid-area:next!important;justify-self:end!important}
+  /* phones, both wrappers: a full-width card with PREVIOUS | NEXT in one row under it (the legacy reveal stacked the
+     two pills on the card's left corners) */
+  ${EOS_A}.stage-reveal .releaseCompleteShell{display:grid!important;width:min(620px,100%)!important;margin-left:auto!important;margin-right:auto!important;align-items:center!important;grid-template-columns:1fr 1fr!important;grid-template-areas:"card card" "prev next"!important;row-gap:12px!important;column-gap:10px!important}
+  ${EOS_A}.stage-reveal .releaseCompleteCard{grid-area:card!important}
+  ${EOS_A}.stage-reveal .releaseCompletePrev{grid-area:prev!important;justify-self:start!important}
+  ${EOS_A}.stage-reveal .releaseCompleteNext{grid-area:next!important;justify-self:end!important}
+  ${EOS_A}.stage-reveal.releaseGlobal99Upgrade .releaseCompleteSideNav{width:auto!important;min-width:0!important;height:44px!important;margin:0!important;padding:0 18px!important;white-space:nowrap!important;position:static!important;transform:none!important}
   ${EOS_A}.stage-reveal:not(.releaseGlobal99Upgrade) .releaseCompleteSideNav{min-width:0!important;height:44px!important;padding:0 18px!important;font-size:13px!important}
   ${EOS_A}.stage-reveal:not(.releaseGlobal99Upgrade) .releaseReplaySame{font-size:13px!important}
 }
@@ -104,7 +107,10 @@ ${EOS_A}.stage-play .releaseGameHost :is(.toolHitCount,.miniCrackCount,.pinTool,
    LASER …) grew to 16 px and covered the cube's word. These in-object counters read at exactly 12.5 px (every
    arcade rule for them is 9-11 px, so nothing shrinks) in a slimmer chip */
 ${EOS_A}.stage-play .releaseGameHost :is(.toolHitCount,.miniCrackCount){font-size:12.5px!important;line-height:1.05!important;padding:1px 6px!important}
-${EOS_A}.stage-play .releaseGameHost :is(.uniqControl,.bigAction,.parkBay,.dmCutButton,.eraseActivateBtn,.cutLoopScissorPicker,.cleanseBubbleHoldButton){font-size:max(14px,1em)!important;min-height:44px!important}
+${EOS_A}.stage-play .releaseGameHost :is(.uniqControl,.bigAction,.parkBay,.eraseActivateBtn,.cutLoopScissorPicker,.cleanseBubbleHoldButton){font-size:max(14px,1em)!important;min-height:44px!important}
+/* DRAMA MACHINE (105): its two machine buttons are siblings and read the same — an explicit 14 px (every arcade rule
+   is 8-10 px). Not max(14px,1em): 1em is the 16 px parent there, which drew CUT THE DRAMA 2 px bigger than its twin */
+${EOS_A}.stage-play .u105 :is(.dmDramaButton,.dmCutButton){font-size:14px!important;letter-spacing:.06em!important;line-height:1.05!important;min-height:44px!important}
 /* the games that narrow the LIVE GUIDE to 300-360 px so it clears their busy arenas (FINGER TRAP, SINKING
    PLATFORM, TINY SOUNDTRACK, GO WEIRD) get the phone sizes inside it on every screen, so its lines do not wrap into
    a taller panel than today's */
@@ -154,10 +160,17 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
      (sparks · tokens · chain · LVL) become a toast that drops in under the meter for each hit — exactly while the
      wrapper marks the hit (.tsShiftRewardHud.isHit, 3.2 s), with the arcade's tsRewardPillHit pop — and tucks away
      again. Overlay only: the HUD box never changes height, so nothing measured from its bottom jumps. */
-  ${EOS_A}.stage-play .releaseGameHost .engineProgressHud{left:10px!important;right:10px!important;width:auto!important;max-width:none!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:stretch!important;gap:0!important;padding:2px!important;border-radius:14px!important;overflow:visible!important}
+  ${EOS_A}.stage-play .releaseGameHost .engineProgressHud{left:10px!important;right:10px!important;width:auto!important;max-width:none!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:stretch!important;gap:4px!important;padding:2px!important;border-radius:14px!important;overflow:visible!important}
   ${EOS_A}.stage-play .releaseGameHost :is(.engineProgressTrack,.engineProgressHud:has(.tsShiftRewardHud) .engineProgressTrack){width:auto!important;min-width:0!important;flex:1 1 auto!important;height:22px!important;min-height:22px!important}
-  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud{position:absolute!important;left:0!important;right:0!important;top:calc(100% + 6px)!important;margin:0!important;width:auto!important;display:flex!important;flex-wrap:wrap!important;justify-content:center!important;gap:4px!important;opacity:0!important;visibility:hidden!important;transform:translateY(-8px)!important;transition:opacity .18s ease,transform .2s ease,visibility 0s linear .2s!important;pointer-events:none!important}
-  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud.isHit{opacity:1!important;visibility:visible!important;transform:none!important;transition:opacity .12s ease,transform .3s cubic-bezier(.2,1.5,.4,1),visibility 0s!important}
+  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud{position:relative!important;left:auto!important;right:auto!important;top:auto!important;margin:0!important;width:auto!important;flex:0 0 auto!important;display:flex!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:flex-end!important;gap:4px!important;opacity:1!important;visibility:visible!important;transform:none!important;pointer-events:none!important}
+  /* always on, inside the meter row (same 22 px height: the HUD box keeps its height): sparks + LVL */
+  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud>:is(.spark,.tsShiftLevel){height:22px!important;padding:0 7px!important;box-shadow:none!important}
+  /* the hit toast: TOKENS and CHAIN drop in under the meter's right end (two short rows) while the wrapper marks the
+     hit (.isHit, 3.2 s) and tuck away again. The slide uses translate, so the arcade's tsRewardPillHit pop (transform)
+     still plays on top of it */
+  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud>:is(.token,.chain){position:absolute!important;right:0!important;top:calc(100% + 8px)!important;opacity:0!important;visibility:hidden!important;translate:0 -8px!important;transition:opacity .18s ease,translate .2s ease,visibility 0s linear .2s!important}
+  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud>.chain{top:calc(100% + 40px)!important}
+  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud.isHit>:is(.token,.chain){opacity:1!important;visibility:visible!important;translate:0 0!important;transition:opacity .12s ease,translate .3s cubic-bezier(.2,1.5,.4,1),visibility 0s!important}
   ${EOS_A}.stage-play .releaseGameHost .tsShiftLevel{min-width:56px!important}
   ${EOS_A}.stage-play .tsShiftRewardPill.chain{display:inline-flex!important}
   ${EOS_A}.stage-play :is(.tsShiftRewardPill,.tsShiftLevel){height:28px!important;padding:0 6px!important;box-shadow:0 6px 16px rgba(0,0,0,.42)!important}
@@ -174,7 +187,7 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
   ${EOS_A}.stage-play .releaseGameHost .cleanseBubbleHoldButton{font-size:12.5px!important;letter-spacing:.045em!important;line-height:1.02!important;white-space:normal!important;height:auto!important;min-height:34px!important;min-width:0!important;width:max-content!important;max-width:100px!important;padding:3px 11px!important;display:flex!important;align-items:center!important;justify-content:center!important}
 }
 @media (max-width:700px) and (prefers-reduced-motion:reduce){
-  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud{transform:none!important;transition:none!important}
+  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud>*{translate:none!important;transition:none!important}
 }
 @media (max-width:560px){
   ${EOS_A}.stage-play:not(.releaseGlobal99Upgrade) .tsThoughtLabelHost>:is(.tsBubbleTextContainer,.tsExternalThoughtLabel){min-width:56px!important;max-width:min(118px,31vw)!important;padding:4px 7px!important}
@@ -187,14 +200,10 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
   ${EOS_A}.stage-play .rainPullHint{gap:3px!important}
   ${EOS_A}.stage-play .rainPullHint>span:last-child{white-space:normal!important;max-width:56px!important;line-height:1.02!important;letter-spacing:.02em!important}
   /* the LIVE GUIDE's text is 2-3 px larger now, so its box gives back some padding: it covers less of the arena.
-     The card's "How to play" / "Next move" tag is dropped on phones — the header already names the guide and the
-     instruction (with the arrows module's gesture disc beside it) is the line that matters — so the panel stays
-     as tall as today's and never covers the controls the games keep in the space above it */
-  ${EOS_A} .globalPlayGuide .guideStepCard>small{display:none!important}
-  /* …and the MIND BEND line is not shown during play on phones (spec: hidden after the first hit; here from the
-     start): with it the panel stood 150-170 px tall over the games' bottom controls (DRAMA MACHINE's "make it
-     dramatic", CLEANSE's lower pill) before the player had found the first move. 561-700 px keeps the spec rule. */
-  ${EOS_A}.stage-play .globalPlayGuide .globalMindBend{display:none!important}
+     The card's "How to play" / "Next move" tag stays an inline kicker in front of the instruction */
+  /* …and the MIND BEND reframe line is shown until the first hit (spec rule; .isActive hides it, ≤ 700 px block) as
+     ONE 13 px line, so the panel grows by one short row only while the player looks for the first move */
+  ${EOS_A} .globalPlayGuide .globalMindBend{display:block!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
   ${EOS_A} .globalPlayGuide{padding-top:7px!important;padding-bottom:8px!important}
   ${EOS_A} .globalPlayGuide .guideHeaderRow{margin-bottom:4px!important}
   ${EOS_A} .globalPlayGuide .guideStepCard{padding-top:6px!important;padding-bottom:7px!important}
@@ -245,6 +254,14 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
   ${EOS_A}.stage-play .u105 .dmTake{grid-template-columns:20px minmax(0,1fr)!important;column-gap:3px!important;padding:3px 2px 3px 3px!important}
   ${EOS_A}.stage-play .u105 .dmTakeFace{width:20px!important;height:20px!important;max-width:20px!important;min-width:20px!important}
   ${EOS_A}.stage-play .u105 .dmTakeCopy>*{letter-spacing:.01em!important;white-space:nowrap!important;overflow:visible!important}
+  /* …and its control room: the machine clips at its own bottom edge (overflow:hidden keeps its glow rings inside), and
+     the room's 132 px minimum pushed the two buttons 17 px past it ("✦ MAKE IT" / "✂ CUT THE"). The room now hugs its
+     content (dial 70 px, tighter gaps) and each button reads on two whole lines at 13 px — the labels sit inside */
+  ${EOS_A}.stage-play .u105 .dmControlRoom{min-height:0!important;gap:6px!important;padding:7px!important;grid-template-columns:76px 1fr 1fr!important}
+  ${EOS_A}.stage-play .u105 .dmDial{width:70px!important;height:70px!important}
+  ${EOS_A}.stage-play .u105 .dmDial>small{bottom:13px!important}
+  ${EOS_A}.stage-play .u105 .dmControlCopy{min-height:0!important;line-height:1.12!important;letter-spacing:.04em!important}
+  ${EOS_A}.stage-play .u105 :is(.dmDramaButton,.dmCutButton){font-size:13px!important;line-height:1!important;letter-spacing:.03em!important;white-space:normal!important;overflow-wrap:normal!important;word-break:normal!important;height:42px!important;min-height:42px!important;padding:0 5px!important}
   /* TUG OF WAR (101): the 12.5 px "COUNTERFORCE" tag centred under the right anchor ran past the arena edge —
      it lines up with the anchor's outer edge instead */
   ${EOS_A}.stage-play .releaseGameHost .tugRightForce>b{left:auto!important;right:0!important;letter-spacing:.04em!important}

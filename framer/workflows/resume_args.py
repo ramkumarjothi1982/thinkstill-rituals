@@ -10,7 +10,7 @@ import glob, json, os
 here = os.path.dirname(os.path.abspath(__file__))
 st = os.path.join(here, "..", "docs", "eos_status")
 args = json.load(open(os.path.join(here, "eos_build_args.json")))
-built, done, integrated = {}, {}, []
+built, done, integrated, reviews = {}, {}, [], {}
 for p in sorted(glob.glob(os.path.join(st, "*.md"))):
     name = os.path.basename(p)[:-3]
     body = open(p, encoding="utf-8").read()
@@ -22,7 +22,10 @@ for p in sorted(glob.glob(os.path.join(st, "*.md"))):
         if "IN PROGRESS" in body.splitlines()[0].upper() if body.strip() else True:
             continue  # an interrupted agent's notes, not a final report
         built[name[:-6]] = body
+for p in sorted(glob.glob(os.path.join(st, "*.review_r1.json"))):
+    tid = os.path.basename(p)[: -len(".review_r1.json")]
+    reviews[tid] = json.load(open(p))["findings"]
 for k in done:
     built.pop(k, None)
-args.update({"built": sorted(built), "done": sorted(done), "integrated": integrated})
+args.update({"built": sorted(built), "done": sorted(done), "integrated": integrated, "reviews": {k: v for k, v in reviews.items() if k not in done}})
 print(json.dumps(args))
