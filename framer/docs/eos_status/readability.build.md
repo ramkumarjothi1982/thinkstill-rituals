@@ -5,7 +5,7 @@
 1. **`EOS_READ_CSS`** (registered at top level with `eosCss("readability", EOS_READ_CSS)`). It sets explicit sizes for the chrome:
    - header: score bar 14/18 px; on phones the header shows "THINKSTILL" at 15 px, left-aligned and clear of the score pill
    - menu: group labels 13 px; game button label on 2 lines
-   - HUD: column layout on phones, with the track at full width and a wrapping pill row
+   - HUD on phones: one slim full-width meter row with an always-visible LVL pill (plus sparks when there is room); TOKENS / CHAIN (and sparks where the meter is narrowed) show as a hit toast
    - pills: `.tsShiftRewardPill` 14/13 px at 30/28 px height, and it keeps the arcade's `tsRewardPillHit` pop
    - progress text: `.engineProgressText` 14/13 px
    - LIVE GUIDE: kicker tags, and 15-17 px instruction lines
@@ -16,8 +16,8 @@
 2. **`EOS_READ_TARGETS`**: a `[selector, desktopPx, phonePx]` table. User words are 16/15 px (or `--bubble-text-size` up to 28 if larger). Payoff/hint lines are 15/14, arena buttons 14/13 and counters 12. Everything else falls to the 12 px catch-all (written as 12.5 px; 1-3 glyph counters get 13.5).
 3. **`EosTextFloor({stage})`**: the grow-only JS floor.
    - Active in `stage-play`, in `stage-reveal`, and while the game menu is open.
-   - New text is floored inside the MutationObserver callback, before its first paint.
-   - A time-boxed sweep runs after each frame, every 900 ms, and 250 ms after a pointerup.
+   - Every pass runs in the frame's ResizeObserver step (after layout, before paint). New text found by the MutationObserver is floored before its first paint, with no forced style or layout flush.
+   - A time-boxed sweep runs every 900 ms, 250 ms after a pointerup, after a resize and on a stage change.
    - It re-checks elements it raised and removes its inline size once the game's own size is larger.
    - It compensates held scales only for boxes born scaled (never a shrink the game made, never in the shrink games), and fits a word to its box (≥ 14 px rendered) so it never breaks mid-word.
    - It skips the listed EOS overlay roots (or `[data-eos-overlay]`), `.tsRewardSurge`, `svg` and aria-hidden decoration. Exception: aria-hidden copies of the user's words (`.tsBubbleTextContainer` name tags) are floored.
@@ -28,19 +28,19 @@
 
 ## Fix round 1 (docs/eos_status/readability.review_r1.json) — what changed
 All 11 findings applied (2 majors, 9 minors). Only `src/eos/10_eos_readability.jsx` changed.
-1. **DRAMA MACHINE (105) buttons, major.** `.dmCutButton` is out of the `max(14px,1em)` rule. Both machine buttons now get an explicit size: 14 px at 1280 (was 14/16) and 13 px at 390.
+1. **DRAMA MACHINE (105) buttons, major** (finding 1). `.dmCutButton` is out of the `max(14px,1em)` rule. Both machine buttons now get an explicit size: 14 px at 1280 (was 14/16) and 13 px at 390.
    - At ≤ 560 px the control room hugs its content (min-height 0, 70 px dial, tighter gaps).
    - Each label reads on two whole lines ("✦ MAKE IT / DRAMATIC", "✂ CUT THE / DRAMA") inside the machine.
    - Measured at 390: buttons y 541-583 against the machine bottom at 602. Not clipped, `sw = cw` and `sh = ch`, `elementFromPoint` at each centre hits the button. 1280: both 14 px, y 444-550, inside, hit OK.
-2. **Held-scale compensation vs. shrink games, major.**
+2. **Held-scale compensation vs. shrink games, major** (finding 8).
    - The floor compensates a held scale only for a box that was BORN scaled: a new per-element `full` WeakSet records every element ever drawn at scale ≥ .97, and those are never compensated.
    - Compensation is also skipped inside the shrink mechanics `.u26 .u29 .u30 .u53 .u58 .u104`.
    - One scale measure (the exact transform-chain scale) now drives every decision, including the .6 cut-off and the word-fit ratio.
    - Re-run of the reviewer's `shrink.mjs` at 390: ZOOM OUT renders 16 → 12.6 → 10 → 5.3 → 3.2 per word, and 16.3 → 12.9 → 10.5 → 6.3 → 3.3. MICROSCOPE renders 13.7 → 12 → 9.1 → 6 → 4.6. Within a word the size only goes down; it rises only when the next thought appears (progress steps with it). Same at 1280.
    - FINGER TRAP's born-scaled .86 tube is still compensated (13.9 → 16.2). SHELF IT words stay at 16.3-16.6.
-3. **Memory.** The cleanup restores the inline size of every raised element still on the page, then clears `tagged` / `recheckQ` / `list` / `ctx` / `cursor` and drops the root's state. Detached trees are no longer held.
-4. **Several instances.** State is now per arcade root: a WeakMap from root to its state, selected with `eosReadUse(root)` by every entry point (pass, MO and RO callbacks, cleanup, scan and test hooks). Each root keeps its own list, breakpoint, canvas scale, cursor and stats.
-5–9. **Performance** (findings 4 and 9). Every floor pass now runs in the frame's ResizeObserver step, which comes after layout and before paint. A pass is requested by toggling the width of a 1 px invisible probe span, which replaces the old `hidden` marker span: `aria-hidden`, `visibility:hidden`, `pointer-events:none`, `contain:strict`, `position:absolute`.
+3. **Memory** (finding 2). The cleanup restores the inline size of every raised element still on the page, then clears `tagged` / `recheckQ` / `list` / `ctx` / `cursor` and drops the root's state. Detached trees are no longer held.
+4. **Several instances** (finding 3). State is now per arcade root: a WeakMap from root to its state, selected with `eosReadUse(root)` by every entry point (pass, MO and RO callbacks, cleanup, scan and test hooks). Each root keeps its own list, breakpoint, canvas scale, cursor and stats.
+5. **Performance** (review findings 4 and 9). Every floor pass now runs in the frame's ResizeObserver step, which comes after layout and before paint. A pass is requested by toggling the width of a 1 px invisible probe span, which replaces the old `hidden` marker span: `aria-hidden`, `visibility:hidden`, `pointer-events:none`, `contain:strict`, `position:absolute`.
    - There is no forced layout flush any more, since the timer-pass `void root.offsetWidth` is gone.
    - The MutationObserver does DOM reads only (no `getComputedStyle`), and new text is still floored before its first paint, even when React commits inside a rAF.
    - What a pass writes is painted in the same frame.
@@ -56,18 +56,18 @@ All 11 findings applied (2 majors, 9 minors). Only `src/eos/10_eos_readability.j
      - CLEANSE at 390: p95 1.4-1.6 ms
    - Rare single passes still reach 6-17 ms, when a whole open menu or a HUD pill is first laid out after writes. That is the relayout the browser does before that paint anyway, now counted in our time.
    - Not yet measured on a real mid-range phone (needs Chrome remote profiling; left for Regression).
-6. **Overlay skip.** The `/eos[A-Z]/`-on-any-ancestor test is gone. The floor now skips only an explicit list of EOS overlay roots or a `data-eos-overlay` attribute:
+6. **Overlay skip** (finding 5). The `/eos[A-Z]/`-on-any-ancestor test is gone. The floor now skips only an explicit list of EOS overlay roots or a `data-eos-overlay` attribute:
    - the list: `.eosCheckIn` / `CheckInChip` / `ShiftMeter` / `SafetyCard` / `SupportPill` / `OrbShelf` / `Companion` / `Arena` / `StillMoment` / `WorldChips` / `ArrowLayer` / `SrOnly`, the mood layers, `eosThoughtFlow` / `Core` / `Dial` / `Lane`
    - the walk stops before checking the classes of `.releaseStage` / `.tsArcade`
    - marker classes such as `.eosNext` no longer switch the floor off
-7. **Word-fit minimum:** 13 → 14 px rendered (§4.1).
-8. **Phone HUD, owner rule.** At ≤ 700 px:
+7. **Word-fit minimum** (finding 7): 13 → 14 px rendered (§4.1).
+8. **Phone HUD, owner rule** (finding 6). At ≤ 700 px:
    - Always visible in the meter row: the LVL pill, and the sparks pill when the meter has room (13 px, 22 px tall).
    - TOKENS and CHAIN drop in as a hit toast under the meter while `.isHit` is set, with `tsRewardPillHit` still playing.
    - Where a legacy `.literalProgress` pill narrows the meter (for example DRAMA MACHINE's "0 / 6 THOUGHTS"), LVL stays on and the sparks pill joins the toast as its first row ("✦ 0 SHIFT SPARKS" is one text node, so it cannot be shortened). That keeps the meter ("SHIFT · 0%") visible.
    - Reduced motion: no slide.
-9. **MIND BEND on phones.** At ≤ 560 px the reframe line stays visible as one 13 px line (ellipsis) until the first hit; `.globalPlayGuide.isActive` hides it (spec rule). The "How to play" kicker is back on phones as an inline kicker.
-10. **Legacy reveal on phones.** At ≤ 760 px both wrappers use the "card / PREVIOUS | NEXT" grid. The legacy card keeps its own 313 px width and is centred (x 39-351 at 390). PREVIOUS and NEXT sit in one row under it with no overlap (POP and ECHO checked after the card settled).
+9. **MIND BEND on phones** (finding 10). At ≤ 560 px the reframe line stays visible as one 13 px line (ellipsis) until the first hit; `.globalPlayGuide.isActive` hides it (spec rule). The "How to play" kicker is back on phones as an inline kicker.
+10. **Legacy reveal on phones** (finding 11). At ≤ 760 px both wrappers use the "card / PREVIOUS | NEXT" grid. The legacy card keeps its own 313 px width and is centred (x 39-351 at 390). PREVIOUS and NEXT sit in one row under it with no overlap (POP and ECHO checked after the card settled).
 11. **Not changed:** GO WEIRD's 7 px prop hint is still hidden on phones. It cannot fit a 65 px button at a readable size, and the LIVE GUIDE plus the arrow carry it. This is a documented exception, not a removal of gameplay.
 
 ## Fix-round acceptance (scratch integrated build /tmp/eos_readability_int; baseline /tmp/eos_rev_read_base_int)
