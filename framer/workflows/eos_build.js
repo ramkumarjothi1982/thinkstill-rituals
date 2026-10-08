@@ -139,8 +139,9 @@ const REVIEW_LENSES = [
   { key: 'code', text: 'CODE CORRECTNESS: React hooks rules, cleanup of timers/listeners/rAF, no memory leaks, no top-level PX_B/pxNoise, identifier collisions with 00_arcade.jsx (grep every new top-level name in src/00_arcade.jsx and other src/eos files), pointer events on touch + mouse, works at 390px and 1280px, prefers-reduced-motion path, no user text persisted, performance (no layout thrash, <=60 animated nodes), spec conformance (exports/contract exactly as EOS_SPEC.md).' },
   { key: 'experience', text: 'EXPERIENCE QUALITY: take screenshots at several moments (start, mid, finish) desktop + phone and LOOK at them (Read the png). Judge against: Pixar / Inside-Out cinematic quality (warm light, characterful, squash & stretch, glow), instantly understandable with zero reading (arrow/cue obvious), juicy dopamine feedback, the specific relief mechanic actually delivered (timings, pacing), text readable (>=12px), finishes in <=45s, feels like play not therapy.' },
 ]
-const DONE = (args && args.done) || {}
-const BUILT = (args && args.built) || {}
+const asMap = (v, kind) => Array.isArray(v) ? Object.fromEntries(v.map(id => [id, `The ${kind} report is in ${DOCS}/eos_status/${id}.${kind === 'final' ? 'done' : 'build'}.md — read that file.`])) : (v || {})
+const DONE = asMap(args && args.done, 'final')
+const BUILT = asMap(args && args.built, 'builder')
 const INTEGRATED = (args && args.integrated) || []
 const STATUS = DOCS + '/eos_status'
 const record = (file, content) => agent(`Write the text between the markers EXACTLY (no changes) to the file ${file} (create parent dirs; overwrite). Then reply OK.\n<<<BEGIN>>>\n${content}\n<<<END>>>`, { label: 'record:' + file.split('/').pop(), phase: 'Module review', model: 'haiku', effort: 'low' })

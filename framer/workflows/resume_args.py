@@ -24,5 +24,5 @@ for p in sorted(glob.glob(os.path.join(st, "*.md"))):
         built[name[:-6]] = body
 for k in done:
     built.pop(k, None)
-args.update({"built": built, "done": done, "integrated": integrated})
+args.update({"built": sorted(built), "done": sorted(done), "integrated": integrated})
 print(json.dumps(args))
