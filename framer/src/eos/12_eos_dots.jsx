@@ -173,6 +173,13 @@ function eosDotsController(root, opts = {}) {
     const setRate = (a, r) => {
         try {
             if (Math.abs((Number(a.playbackRate) || 0) - r) < 0.004) return
+            if (r < 0) {
+                // reversing (pulse "out") an infinite CSS animation that was created a moment ago would run it past
+                // time 0 and FINISH it (the dot would freeze). Jump whole iterations ahead first: same frame on screen.
+                const D = Number(a.effect && a.effect.getTiming ? a.effect.getTiming().duration : 0) || 0
+                const ct = Number(a.currentTime) || 0
+                if (D > 0 && ct < 3 * D) a.currentTime = ct + 4 * D
+            }
             if (a.updatePlaybackRate && Math.sign(a.playbackRate) === Math.sign(r)) a.updatePlaybackRate(r)
             else a.playbackRate = r
         } catch {}
@@ -482,7 +489,10 @@ function eosDotsController(root, opts = {}) {
     const bedWant = () => {
         const st = EOS_STORE.get()
         const hidden = typeof document !== "undefined" && document.hidden
-        return S.alive && S.bed.armed && !hidden && (S.stage === "input" || S.stage === "play") && !!st.sound && !st.music
+        // §5.2: during the check-in (the EOS home screen, not the classic "just let me play" composer) and play;
+        // silent in the reveal, while the arcade's music plays, with sound off, or in a background tab
+        const where = S.stage === "play" || (S.stage === "input" && st.phase === "checkin" && st.checkinEnabled !== false)
+        return S.alive && S.bed.armed && !hidden && where && !!st.sound && !st.music
     }
     const bedStart = () => {
         const B = S.bed
