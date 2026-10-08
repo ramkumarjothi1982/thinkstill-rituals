@@ -151,9 +151,11 @@ const buildOne = (t) => mustAgent(`${CONTEXT}\n${USER_ASK}\n\n${TOOLING}\n${SCOP
 
 const reviewAndFix = async (buildReport, t) => {
   let report = buildReport
+  let prevFindings = []
   for (let round = 1; round <= 3; round++) {
+    const focus = round > 1 ? `\nTARGETED RE-REVIEW (round ${round}): verify each previous finding below is really fixed, and check ONLY the code the fixer changed for regressions — do not redo the whole review. Previous findings:\n${JSON.stringify(prevFindings, null, 1).slice(0, 8000)}\n` : ''
     const reviews = (await parallel(REVIEW_LENSES.map(L => () =>
-      agent(`${CONTEXT}\n${USER_ASK}\n\n${TOOLING}\n${SCOPE}\n${LEAN}\nREVIEW task "${t.id}" (${t.title}), round ${round}. Files: ${t.files.join(', ')}. Brief: ${DOCS}/briefs/${t.id}.md (spec sections ${t.spec_sections}). Builder's report:\n${report}\n\nLENS: ${L.text}\nBuild in isolation yourself (python3 ${ROOT}/build.py --dev-dir /tmp/eos_rev_${t.id}_${L.key} --modules 00_eos_core.jsx,${eosFiles(t)}) and actually run/play it in the browser (budget: at most ~35 tool calls and 6 screenshot views; focus on the highest-risk behaviours). Do NOT edit files. verdict "ship" only if there is no blocker/major finding.`,
+      agent(`${CONTEXT}\n${USER_ASK}\n\n${TOOLING}\n${SCOPE}\n${LEAN}\nREVIEW task "${t.id}" (${t.title}), round ${round}. Files: ${t.files.join(', ')}. Brief: ${DOCS}/briefs/${t.id}.md (spec sections ${t.spec_sections}). Builder's report:\n${report}\n\nLENS: ${L.text}${focus}\nBuild in isolation yourself (python3 ${ROOT}/build.py --dev-dir /tmp/eos_rev_${t.id}_${L.key} --modules 00_eos_core.jsx,${eosFiles(t)}) and actually run/play it in the browser (budget: at most ~35 tool calls and 6 screenshot views; focus on the highest-risk behaviours). Do NOT edit files. verdict "ship" only if there is no blocker/major finding.`,
         { label: `review:${t.id}:${L.key}:r${round}`, phase: 'Module review', schema: FINDINGS_SCHEMA })))).filter(Boolean)
     if (reviews.length < REVIEW_LENSES.length) throw new Error(`review incomplete for ${t.id} r${round}`)
     const serious = reviews.flatMap(r => r.findings.filter(f => f.severity !== 'minor'))
@@ -162,6 +164,7 @@ const reviewAndFix = async (buildReport, t) => {
       await record(`${STATUS}/${t.id}.done.md`, report + (minor.length ? '\n\nOpen minor notes: ' + JSON.stringify(minor) : ''))
       return { id: t.id, report, rounds: round, open: round > 1 ? minor : [] }
     }
+    prevFindings = [...serious, ...minor]
     report = await mustAgent(`${CONTEXT}\n${USER_ASK}\n\n${TOOLING}\n${SCOPE}\n${LEAN}\nFIX task "${t.id}" (${t.title}). You own ONLY: ${t.files.join(', ')}. Apply every finding below (blockers and majors mandatory; minors too unless clearly wrong — say why). Budget: at most ~45 tool calls and 6 screenshot views; append progress notes to ${STATUS}/${t.id}.progress.md every ~15 tool calls. Re-test in isolation (python3 ${ROOT}/build.py --dev-dir /tmp/eos_${t.id} --modules 00_eos_core.jsx,${eosFiles(t)}), re-screenshot and LOOK. Then commit ONLY your own files plus ${STATUS}/${t.id}.* (message "EOS fix: ${t.id} round ${round}"). ${COMMIT_RULE}\nFindings:\n${JSON.stringify([...serious, ...minor], null, 1)}\n\nReturn an updated builder report (same format as before) listing what changed, and ALSO overwrite ${STATUS}/${t.id}.build.md with that updated report.`, { label: `fix:${t.id}:r${round}`, phase: 'Module review' })
   }
   await record(`${STATUS}/${t.id}.done.md`, report)
