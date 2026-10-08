@@ -18,9 +18,13 @@
 // Performance: the lanes animate only `scale` / `rotate` / `opacity` (compositor); the 14 Pixar motes and ≤14
 // cinema dots animate `left/top` on tiny absolutely positioned nodes (spec §5.3). No React re-render is needed for
 // any per-frame or per-progress change: a 4 Hz controller pass runs right AFTER a painted frame (rAF → message
-// task), when style and layout are clean, so its reads force no recalc; it writes CSS variables / attributes /
-// playbackRate only when they change. The pacer is rendered from an analytic model of the core's scale (never read
-// back), so a game's eosBreathOwn() call costs no style flush and hand-overs never jump.
+// task), when style and layout are normally clean; it writes CSS variables / attributes / playbackRate only when
+// they change. Nothing on the per-tick path forces a style recalc: the dots' Animation objects are cached (read in
+// batches when `animationstart` reports new ones), rates are plain property writes, the finish rushes each lane
+// home on its own running animation (nothing is re-created), and the pacer is rendered from an analytic model of
+// the core's scale (never read back), so a game's eosBreathOwn() call costs no style flush and hand-overs never
+// jump. Only the centre measure (1 Hz, and at idle moments after a stage change / resize) reads layout.
+// state().perf reports the controller's own cost (avg ≈ 0.5-2 ms per pass in headless).
 // Every timer, frame request, message port, observer, listener and audio node is released on unmount.
 // ===================================================================================
 
@@ -187,6 +191,13 @@ function eosDotsController(root, opts = {}) {
         gatherBoostUntil: 0,
         burstUntil: 0,
         burstT: 0,
+        burstBy: 0,
+        burstRead: false,
+        burstEndT: 0,
+        idleT: 0,
+        idleIds: [],
+        ready: false, // the first idle pass after mount has measured
+        boostT: 0,
         flowInT: 0,
         progress: 0,
         rate: 1,
@@ -196,18 +207,15 @@ function eosDotsController(root, opts = {}) {
         phaseP: 0,
         sip: false,
         handT: 0,
-        laneAnims: [], //   the lanes' Animation objects from the last read (pulse() answers in the next frame)
         centre: null,
         vars: new Map(),
         narrow: null,
         aspect: 0,
         calmHosts: [],
         measureTs: [],
-        rateKey: "",
-        rateSeen: null,
         ticks: 0,
         needSync: 3, //      re-assert the breath clock for the next N ticks (animations re-created)
-        perf: { frameN: 0, frameMs: 0, frameMax: 0 },
+        perf: { frameN: 0, frameMs: 0, frameMax: 0, maxAt: "" },
         raf: 0,
         gatherSrc: "",
         gatherT: 0,
@@ -280,23 +288,32 @@ function eosDotsController(root, opts = {}) {
         const L = level()
         let pTerm = S.progress / 100
         if (S.stage === "reveal") pTerm = S.levelOv != null ? 0.4 : 1
-        let r = 0.7 + 0.09 * L * (1 - pTerm)
-        if (spark()) r *= 1.8 //                    numb / good: lanes ≈ 8-12 s (up-regulation)
+        // numb / good (§5.2 R6): up-regulation, not a calming field — lanes stay lively (≈ 8-12 s at level 5) and
+        // do NOT slow with progress (the colour coming back is the shift); a louder dial still churns a little more
+        let r = spark() ? 1.5 + 0.06 * L : 0.7 + 0.09 * L * (1 - pTerm)
         if (S.dust === "snow") r *= 0.8 //          snow falls slower (cosmetic)
         if (S.stage === "reveal") r *= 0.86 //      reveal: ≈ 30 s lanes (0.7 × .86 → 18 s / .6), still converging
         return r
     }
-    const setRate = (a, r) => {
+    // x = a cache entry {a, D (iteration ms), dl (delay ms), lane, req}. updatePlaybackRate() is asynchronous (the
+    // getter keeps the old rate until the next frame commits it) and asking again before that re-arms the pending
+    // task — on a slow device it would never settle — so each rate is requested exactly once (x.req).
+    const setRate = (x, r) => {
+        const a = x.a
         try {
+            if (x.req != null && Math.abs(x.req - r) < 0.004) return
+            const flip = Math.sign(Number(a.playbackRate) || 1) !== Math.sign(r)
+            if ((r < 0 || flip) && !x.started) return // reversing needs a started animation (see entryOf)
+            x.req = r
             if (Math.abs((Number(a.playbackRate) || 0) - r) < 0.004) return
             if (r < 0) {
                 // reversing (pulse "out") an infinite CSS animation that was created a moment ago would run it past
                 // time 0 and FINISH it (the dot would freeze). Jump whole iterations ahead first: same frame on screen.
-                const D = Number(a.effect && a.effect.getTiming ? a.effect.getTiming().duration : 0) || 0
+                const D = x.D
                 const ct = Number(a.currentTime) || 0
                 if (D > 0 && ct < 3 * D) a.currentTime = ct + 4 * D
             }
-            if (a.updatePlaybackRate && Math.sign(a.playbackRate) === Math.sign(r)) a.updatePlaybackRate(r)
+            if (a.updatePlaybackRate && !flip) a.updatePlaybackRate(r)
             else a.playbackRate = r
         } catch {}
     }
@@ -308,123 +325,226 @@ function eosDotsController(root, opts = {}) {
         if (st) st.querySelectorAll(".cinemaDust i").forEach((e) => out.push(e))
         return out
     }
-    // Rates are pushed only when the target changes or an element is new (getAnimations() flushes style, so
-    // calling it on ~60 nodes every tick would cost main-thread time for nothing). force = animations were
-    // re-created (gather / burst / stage / calm / lanes re-rendered).
+    // ---- the animation cache (no forced style recalc on the rate path)
+    // Measured on this arcade's DOM: getAnimations(), getComputedStyle(), effect.getTiming() and playState each force
+    // a FULL style recalc when anything is dirty (20-50 ms in headless), while playbackRate / updatePlaybackRate /
+    // currentTime / startTime / getComputedTiming() never do. So every dot's Animation objects are read ONCE — when
+    // the browser reports them (`animationstart` bubbles up to the Pixar root right after the frame that created
+    // them), at mount, or by the slow safety-net scan — and every later rate change (progress, dial, pulse, gather
+    // boost) is a plain property write on the cached objects. A cached CSS animation that the cascade cancelled
+    // (gather, calm visuals, a game unmounting) reads currentTime null → dropped; its replacement fires a new
+    // animationstart.
+    const DOT_ANIM = /^eosDots(Lane|X|Y|Fade)$/
+    const BODY_ANIM = /^eosDots(Breathe|Beat)$/
+    const AN = { map: new Map(), empty: new WeakSet(), dirty: new Set(), body: null, bodyDirty: true, host: null }
+    const entryOf = (a) => {
+        const n = String(a.animationName || "")
+        if (!DOT_ANIM.test(n)) return null
+        let D = 0
+        let dl = 0
+        try {
+            const tm = a.effect.getTiming() // style is clean right after getAnimations(): free
+            D = Number(tm.duration) || 0
+            dl = Number(tm.delay) || 0
+        } catch {}
+        // started: the animation has left its pending state. Writing currentTime / a direct playbackRate to a
+        // play-pending composited animation can leave it pending for good (measured: frozen lanes in the reveal), so
+        // those writes wait for `ready`; updatePlaybackRate() is safe either way.
+        const x = { a, lane: n === "eosDotsLane", D, dl, req: null, started: false }
+        try {
+            a.ready.then(
+                () => {
+                    x.started = true
+                },
+                () => {}
+            )
+        } catch {}
+        return x
+    }
+    const store = (el, list) => {
+        if (list.length) {
+            AN.map.set(el, list)
+            AN.empty.delete(el)
+        } else {
+            AN.map.delete(el)
+            AN.empty.add(el)
+        }
+    }
+    const collectOne = (el) => store(el, anims(el).map(entryOf).filter(Boolean))
+    // Element.getAnimations() walks every animation in the document (~0.4 ms each on this arcade), so dots are read in
+    // batches: ONE getAnimations({subtree:true}) per container (the flow root, the Pixar rig, each game's .cinemaDust),
+    // split by effect target. A container that reports nothing (no subtree support) falls back to per-element reads.
+    const collect = (els) => {
+        const groups = new Map()
+        for (const el of els) {
+            const g = el.classList.contains("eosLane") ? root : el.parentElement || el
+            if (!groups.has(g)) groups.set(g, [])
+            groups.get(g).push(el)
+        }
+        for (const [g, list] of groups) {
+            let all = null
+            try {
+                all = g === list[0] ? null : g.getAnimations({ subtree: true })
+            } catch {
+                all = null
+            }
+            if (!all || !all.length) {
+                list.forEach(collectOne)
+                continue
+            }
+            const by = new Map(list.map((el) => [el, []]))
+            for (const a of all) {
+                const tg = a.effect && a.effect.target
+                const arr = tg && by.get(tg)
+                if (!arr) continue
+                const x = entryOf(a)
+                if (x) arr.push(x)
+            }
+            for (const [el, arr] of by) store(el, arr)
+        }
+    }
+    const collectBody = () => {
+        const b = body()
+        AN.body = null
+        if (!b) return
+        for (const a of anims(b))
+            if (BODY_ANIM.test(String(a.animationName || ""))) {
+                let dl = 0
+                try {
+                    dl = Number(a.effect.getTiming().delay) || 0
+                } catch {}
+                AN.body = { a, dl }
+                break
+            }
+    }
+    const live = (x) => {
+        try {
+            return x.a.currentTime != null
+        } catch {
+            return false
+        }
+    }
+    // mode "full" = re-read every dot (mount, lanes re-rendered, calm toggled); "safety" (every 4 s) = re-read every dot
+    // without a live animation (a couple of batched reads — the net under the events); otherwise only elements that are
+    // new or reported by animationstart, and a cancelled entry is parked (no read) until its replacement reports in.
+    const scan = (mode) => {
+        const full = mode === "full"
+        const safety = mode === "safety"
+        const els = lanes().concat(dustEls())
+        if (full) {
+            AN.map.clear()
+            AN.empty = new WeakSet()
+            AN.bodyDirty = true
+        }
+        const keep = new Set(els)
+        for (const el of AN.map.keys()) if (!keep.has(el) || !el.isConnected) AN.map.delete(el)
+        const todo = []
+        for (const el of els) {
+            const c = AN.map.get(el)
+            if (full || AN.dirty.has(el) || (!c && (safety || !AN.empty.has(el))) || (safety && c && !c.some(live))) todo.push(el)
+            else if (c && !c.some(live)) {
+                AN.map.delete(el)
+                AN.empty.add(el)
+            }
+        }
+        if (todo.length) collect(todo)
+        AN.dirty.clear()
+        if (safety && S.pacer !== "own" && !S.gathered && (!AN.body || !live(AN.body))) AN.bodyDirty = true
+        if (AN.bodyDirty) {
+            AN.bodyDirty = false
+            collectBody()
+        }
+    }
+    const onAnimStart = (e) => {
+        const n = String(e.animationName || "")
+        if (DOT_ANIM.test(n)) AN.dirty.add(e.target)
+        else if (BODY_ANIM.test(n) && e.target === body()) {
+            AN.bodyDirty = true
+            S.needSync = 3
+        } else return
+        schedule()
+    }
+    // Rates follow the target every tick from the cache (property reads/writes only). force = full re-read.
     const applyRates = (force) => {
         if (!S.alive || !canAnim) return
         const t = now()
         const base = rate()
         S.rate = +base.toFixed(3)
-        if (S.calm) return
+        if (S.calm) return // calm visuals / reduced motion: no dot animation runs, nothing to cache
+        if (force) scan("full")
+        else if (S.ticks % 16 === 0) scan("safety") // every 4 s
+        else if (AN.dirty.size || AN.bodyDirty) scan("")
         const r = base * S.pulseK
         const rd = r * (t < S.gatherBoostUntil ? 2.6 : 1)
         const lanesOn = t >= S.burstUntil && !S.gathered
-        const key = `${r.toFixed(3)}|${rd.toFixed(3)}|${lanesOn ? 1 : 0}`
-        const fresh = force || key !== S.rateKey || !S.rateSeen
-        if (fresh) {
-            S.rateKey = key
-            S.rateSeen = new WeakSet()
-        }
-        const seen = S.rateSeen
-        const todo = [] // read every animation first, then write (one style flush, not one per node)
-        if (lanesOn)
-            for (const lane of lanes()) {
-                if (seen.has(lane)) continue
-                seen.add(lane)
-                for (const a of anims(lane)) if (a.animationName === "eosDotsLane") todo.push([a, r])
+        for (const list of AN.map.values())
+            for (const x of list) {
+                if (x.lane && !lanesOn) continue
+                if (!live(x)) continue
+                setRate(x, x.lane ? r : rd)
             }
-        for (const el of dustEls()) {
-            if (seen.has(el)) continue
-            seen.add(el)
-            for (const a of anims(el)) if (a.animationName === "eosDotsX" || a.animationName === "eosDotsY" || a.animationName === "eosDotsFade") todo.push([a, rd])
-        }
-        for (const [a, v] of todo) setRate(a, v)
-        if (lanesOn) {
-            const la = todo.filter((x) => x[0].animationName === "eosDotsLane").map((x) => x[0])
-            S.laneAnims = fresh ? la : S.laneAnims.concat(la).slice(-64)
-        }
+    }
+    const laneAnims = () => {
+        const out = []
+        for (const list of AN.map.values()) for (const x of list) if (x.lane && live(x)) out.push(x)
+        return out
     }
 
     // ---------------------------------------------------------------- one measured centre (C1)
-    const pctIn = (box, cx, cy) => {
-        // box = {left, top, w, h} in viewport px (padding box)
-        if (!box || box.w < 1 || box.h < 1) return null
-        return [((cx - box.left) / box.w) * 100, ((cy - box.top) / box.h) * 100]
-    }
-    const padBox = (el) => {
-        const r = el.getBoundingClientRect()
-        const k = el.offsetWidth ? r.width / el.offsetWidth || 1 : 1
-        return { left: r.left + (el.clientLeft || 0) * k, top: r.top + (el.clientTop || 0) * k, w: (el.clientWidth || el.offsetWidth) * k, h: (el.clientHeight || el.offsetHeight) * k }
-    }
-    const borderBox = (el) => {
-        const r = el.getBoundingClientRect()
-        return { left: r.left, top: r.top, w: r.width, h: r.height }
-    }
-    const measure = () => {
-        if (!S.alive || !root.isConnected) return
+    // Measured WITHOUT forcing layout: the core, the flow root, the Pixar rig, each game's cinema-dust box and 109's
+    // star tiles are (re-)observed by an IntersectionObserver, whose first entry for a target carries its
+    // boundingClientRect as computed by the browser's own rendering update (layout already clean). The answer arrives
+    // a frame later and only style writes follow. (No IntersectionObserver: the same maths on getBoundingClientRect.)
+    const pctIn = (r, cx, cy) => (!r || r.width < 1 || r.height < 1 ? null : [((cx - r.left) / r.width) * 100, ((cy - r.top) / r.height) * 100])
+    const measureTargets = () => {
         const c = core()
-        if (!c) return
-        // ---- reads
-        const cr = c.getBoundingClientRect()
-        if (cr.width < 1) return
+        if (!c) return null
+        const px = pxRoot()
+        const rig = px ? px.querySelector(".tsPxRig") : null
+        const st = stageEl()
+        const dusts = st ? Array.from(st.querySelectorAll(".cinemaDust")) : []
+        const spaces = st ? Array.from(st.querySelectorAll(".cleanseSpace")) : []
+        // a .cinemaDust is static: its dots are placed in its parent's box (.cinematicStageFX, verified in every game)
+        const boxOf = (d) => d.parentElement || d
+        return { c, rig, dusts, spaces, boxOf, all: [c, root, rig, ...dusts.map(boxOf), ...spaces].filter(Boolean) }
+    }
+    // rect(el) → {left, top, width, height} in viewport px
+    const applyMeasure = (T, rect) => {
+        if (!S.alive || !root.isConnected) return
+        const cr = rect(T.c)
+        if (!cr || cr.width < 1) return
         const cx = cr.left + cr.width / 2
         const cy = cr.top + cr.height / 2
         S.centre = { x: Math.round(cx * 10) / 10, y: Math.round(cy * 10) / 10 }
-        const writes = []
-        const rootBox = padBox(root)
-        writes.push([root, pctIn(rootBox, cx, cy)])
-        const px = pxRoot()
-        const rig = px ? px.querySelector(".tsPxRig") : null
+        const rb = rect(root)
+        const writes = [[root, pctIn(rb, cx, cy)]]
         let rigPct = null
-        if (rig) {
-            rigPct = pctIn(padBox(rig), cx, cy)
-            writes.push([rig, rigPct])
+        if (T.rig) {
+            rigPct = pctIn(rect(T.rig), cx, cy)
+            writes.push([T.rig, rigPct])
         }
-        const st = stageEl()
-        if (st) {
-            st.querySelectorAll(".cinemaDust").forEach((dust) => {
-                let cb = null
-                for (const i of dust.children) {
-                    if (i.offsetParent) {
-                        cb = i.offsetParent
-                        break
-                    }
-                }
-                writes.push([dust, pctIn(padBox(cb || dust), cx, cy)])
-            })
-            st.querySelectorAll(".cleanseSpace").forEach((sp) => writes.push([sp, pctIn(borderBox(sp), cx, cy)]))
-        }
-        // lane tails point away from the centre (needs the stage's px aspect)
-        const aspect = rootBox.h ? +(rootBox.w / rootBox.h).toFixed(3) : 0
-        const narrow = rootBox.w > 0 && rootBox.w < 600
-        // ---- writes
+        T.dusts.forEach((d) => writes.push([d, pctIn(rect(T.boxOf(d)), cx, cy)]))
+        T.spaces.forEach((sp) => writes.push([sp, pctIn(rect(sp), cx, cy)]))
         for (const [el, p] of writes) {
             if (!p) continue
             setVarAny(el, "--eos-cx", `${p[0].toFixed(2)}%`)
             setVarAny(el, "--eos-cy", `${p[1].toFixed(2)}%`)
         }
+        // lane tails point away from the centre (needs the stage's px aspect)
+        const aspect = rb && rb.height ? +(rb.width / rb.height).toFixed(3) : 0
         if (aspect && aspect !== S.aspect) {
             S.aspect = aspect
-            const ox = EOS_DOTS_CX
-            const oy = EOS_DOTS_CY
             lanes().forEach((lane) => {
                 const x = parseFloat(lane.style.getPropertyValue("--x"))
                 const y = parseFloat(lane.style.getPropertyValue("--y"))
                 if (!Number.isFinite(x) || !Number.isFinite(y)) return
-                const ang = (Math.atan2((y - oy) * rootBox.h, (x - ox) * rootBox.w) * 180) / Math.PI
+                const ang = (Math.atan2((y - EOS_DOTS_CY) * rb.height, (x - EOS_DOTS_CX) * rb.width) * 180) / Math.PI
                 lane.style.setProperty("--ta", `${ang.toFixed(1)}deg`)
             })
         }
-        if (narrow !== S.narrow) {
-            S.narrow = narrow
-            try {
-                opts.onNarrow?.(narrow)
-            } catch {}
-        }
         // bokeh: a quarter of the way home, gliding over 60 s (C3). Not in calm visuals.
-        if (rig && rigPct) {
-            rig.querySelectorAll(".tsPxBokeh").forEach((b) => {
+        if (T.rig && rigPct) {
+            T.rig.querySelectorAll(".tsPxBokeh").forEach((b) => {
                 if (S.calm) {
                     if (b.style.getPropertyValue("--eos-bl")) {
                         b.style.removeProperty("--eos-bl")
@@ -440,15 +560,59 @@ function eosDotsController(root, opts = {}) {
             })
         }
     }
+    let io = null
+    let ioBatch = null
+    try {
+        if (typeof IntersectionObserver === "function")
+            io = new IntersectionObserver((entries) => {
+                const B = ioBatch
+                if (!B || !S.alive) return
+                for (const e of entries) if (B.need.has(e.target)) B.rects.set(e.target, e.boundingClientRect)
+                for (const el of B.need) if (!B.rects.has(el)) return
+                ioBatch = null
+                for (const el of B.need) io.unobserve(el)
+                applyMeasure(B.T, (el) => B.rects.get(el))
+            })
+    } catch {
+        io = null
+    }
+    const measure = () => {
+        if (!S.alive || !root.isConnected) return
+        const T = measureTargets()
+        if (!T) return
+        if (!io) return applyMeasure(T, (el) => el.getBoundingClientRect())
+        if (ioBatch) for (const el of ioBatch.need) io.unobserve(el)
+        ioBatch = { T, need: new Set(T.all), rects: new Map() }
+        for (const el of ioBatch.need) {
+            try {
+                io.unobserve(el)
+                io.observe(el) // → one entry with the element's rect at the next rendering update
+            } catch {}
+        }
+    }
     const setVarAny = (el, k, v) => {
         if (el === root) return setVar(root, k, v)
         try {
             if (el.style.getPropertyValue(k) !== v) el.style.setProperty(k, v)
         } catch {}
     }
+    // after a stage change / resize the layout is still settling (a game mounting lays out for a few frames): measure
+    // again at the next idle moments so the centre reflects where things land
+    const idle = (f) => {
+        if (typeof requestIdleCallback !== "function") return f()
+        const id = requestIdleCallback(
+            () => {
+                S.idleIds = S.idleIds.filter((x) => x !== id)
+                f()
+            },
+            { timeout: 500 }
+        )
+        S.idleIds.push(id)
+    }
     const measureSoon = () => {
+        if (!S.ready) return // (the ResizeObserver's initial call at mount: the first idle pass measures)
         S.measureTs.forEach(clearTimeout)
-        S.measureTs = [40, 260, 700, 1500].map((ms) => setTimeout(() => schedule({ measure: true, force: true }), ms))
+        S.measureTs = [0, 700, 1600].map((ms) => setTimeout(() => idle(measure), ms))
     }
 
     // ---------------------------------------------------------------- the pacer, rendered (B4)
@@ -472,16 +636,17 @@ function eosDotsController(root, opts = {}) {
             b.style.animationDelay = `${-(now() % EOS_DOTS_CYCLE)}ms`
             return
         }
-        for (const a of anims(b)) {
-            if (a.animationName !== "eosDotsBreathe" && a.animationName !== "eosDotsBeat") continue
-            // start time = −delay on the document timeline ⇒ active time = performance.now() ⇒ iteration progress =
-            // (t mod duration) = the pacer clock (the breath's 10 s cycle, or the beat's 60000/bpm ms)
-            try {
-                const tm = a.effect && a.effect.getTiming ? a.effect.getTiming() : null
-                const want = -(Number(tm && tm.delay) || 0)
-                if (a.playbackRate === 1 && (a.startTime == null || Math.abs(a.startTime - want) > 0.5)) a.startTime = want
-            } catch {}
-        }
+        const x = AN.body // cached (no style flush); re-read only when its animationstart reports a new one
+        if (!x || !live(x)) return
+        // start time = −delay on the document timeline ⇒ active time = performance.now() ⇒ iteration progress =
+        // (t mod duration) = the pacer clock (the breath's 10 s cycle, or the beat's 60000/bpm ms). The delay is the
+        // one this controller wrote inline (read back from the style attribute: no flush).
+        try {
+            const d = parseFloat(b.style.animationDelay)
+            const want = -(Number.isFinite(d) ? d : x.dl)
+            const a = x.a
+            if (a.playbackRate === 1 && (a.startTime == null || Math.abs(a.startTime - want) > 0.5)) a.startTime = want
+        } catch {}
     }
     const pacerRender = () => {
         if (!S.alive) return
@@ -496,10 +661,26 @@ function eosDotsController(root, opts = {}) {
         // the same phase owned again (111's "one more sip": in → in) restarts the owner's clock
         const renew = mode === "own" && prev === "own" && phase === S.phase && ph.p + 0.02 < S.phaseP
         S.phaseP = ph.p
-        if (mode === prev && phase === S.phase && !renew) {
-            if (mode === "beat") setVarAny(c, "--eos-beat-ms", `${Math.round(ph.ms)}ms`)
+        if (mode === prev && mode !== "own") {
+            // the free-running CSS cycle needs no restart: the clock's in ↔ out flips only re-label the core (touching
+            // animation-delay here would shift the running breath until the next re-sync)
+            if (phase !== S.phase) {
+                S.phase = phase
+                c.setAttribute("data-phase", phase)
+            }
+            if (mode === "beat") {
+                const ms = `${Math.round(ph.ms)}ms`
+                if (c.style.getPropertyValue("--eos-beat-ms") !== ms) {
+                    // a new tempo: restart the beat on the shared beat clock
+                    c.style.setProperty("--eos-beat-ms", ms)
+                    b.style.animationDelay = `${-(t % Math.max(1, ph.ms))}ms`
+                    S.needSync = 3
+                    schedule()
+                }
+            }
             return
         }
+        if (mode === prev && phase === S.phase && !renew) return
         const from = bodyScaleNow(t) // the model's value BEFORE this change
         const smooth = !S.calm && !S.gathered && prev !== ""
         S.pacer = mode
@@ -537,7 +718,8 @@ function eosDotsController(root, opts = {}) {
         b.style.scale = ""
         b.style.opacity = ""
         b.style.animationDelay = `${-(t % (mode === "beat" ? Math.max(1, ph.ms) : EOS_DOTS_CYCLE))}ms`
-        if (mode === "beat") c.style.setProperty("--eos-beat-ms", `${Math.round(ph.ms)}ms`)
+        // a released game beat (117) must not leave its tempo behind: the spark states' own pulse is 72 bpm
+        c.style.setProperty("--eos-beat-ms", `${Math.round(mode === "beat" ? ph.ms : 60000 / (EOS_BREATH.beatBpm || 72))}ms`)
         c.setAttribute("data-pacer", mode)
         c.setAttribute("data-phase", phase)
         S.needSync = 3
@@ -567,6 +749,12 @@ function eosDotsController(root, opts = {}) {
     }
 
     // ---------------------------------------------------------------- gather / bloom / burst
+    // The rush home drives the lanes' OWN running animations (no animation is swapped or re-created, so nothing
+    // snaps and nothing goes back to pending): each lane gets the playback rate that brings it from where it is to
+    // the light in exactly GATHER_MS — every dot arrives together, accelerating along its own spiral (the
+    // lane keyframes ease in) — then it sinks into the light at a crawl until the field re-flows.
+    const GATHER_MS = 900
+    const GATHER_AT = 0.9 // iteration progress just past the centre (scale ≈ .02, fading into the light)
     const gather = (src = "auto") => {
         if (!S.alive || S.gathered) return
         S.gathered = true
@@ -575,25 +763,28 @@ function eosDotsController(root, opts = {}) {
         // an API gather (a game's big moment) is one-shot: the dust re-flows unless the game has just finished
         if (src === "api") S.gatherT = setTimeout(() => S.gathered && S.gatherSrc === "api" && ungather(true), 1700)
         if (!S.calm && canAnim) {
-            // freeze each lane where it is, then rush it home from there (no snap back to the rim)
-            const ls = lanes()
-            const vals = ls.map((l) => {
+            const rush = laneAnims().filter((x) => x.started)
+            for (const x of rush) {
+                let p = 0
                 try {
-                    const cs = getComputedStyle(l)
-                    const sc = cs.scale && cs.scale !== "none" ? cs.scale.split(" ")[0] : "1"
-                    const ro = cs.rotate && cs.rotate !== "none" ? cs.rotate.split(" ").pop() : "0deg"
-                    return [sc, /deg|rad|turn/.test(ro) ? ro : `${parseFloat(ro) || 0}deg`, cs.opacity]
-                } catch {
-                    return ["1", "0deg", "1"]
-                }
-            })
-            ls.forEach((l, i) => {
-                l.style.setProperty("--g0s", vals[i][0])
-                l.style.setProperty("--g0r", vals[i][1])
-                l.style.setProperty("--g0o", String(Math.max(0.35, Number(vals[i][2]) || 0)))
-            })
-            S.gatherBoostUntil = now() + 900
-            setTimeout(() => schedule(), 920)
+                    p = Number(x.a.effect.getComputedTiming().progress) || 0 // no style flush
+                } catch {}
+                const rest = Math.max(0, GATHER_AT - p)
+                try {
+                    x.a.playbackRate = x.req = Math.max(0.02, (rest * (x.D || 18000)) / GATHER_MS)
+                } catch {}
+            }
+            S.gatherBoostUntil = now() + GATHER_MS
+            clearTimeout(S.boostT)
+            S.boostT = setTimeout(() => {
+                if (S.gathered)
+                    for (const x of rush) {
+                        try {
+                            if (x.a.playbackRate > 0) x.a.playbackRate = x.req = 0.02
+                        } catch {}
+                    }
+                schedule()
+            }, GATHER_MS + 20)
         }
         // calm visuals: no rush, no bloom — the core only brightens softly (opacity cross-fade)
         root.classList.add(S.calm ? "eosGatherCalm" : "eosGather")
@@ -603,15 +794,25 @@ function eosDotsController(root, opts = {}) {
         if (!S.gathered) return
         S.gathered = false
         S.gatherSrc = ""
+        S.gatherBoostUntil = 0
         clearTimeout(S.gatherT)
+        clearTimeout(S.boostT)
         root.classList.remove("eosGather", "eosGatherCalm")
-        S.needSync = 3
-        schedule({ force: true })
-        if (fade && !S.calm) {
+        S.needSync = 3 // the bloom replaced the breath animation: lock the new one to the clock
+        if (fade && !S.calm && canAnim) {
+            // every dot sat in the light: spread them back along their runs and let them fade in there
+            laneAnims().forEach((x, i) => {
+                if (!x.started) return
+                try {
+                    x.a.currentTime = (6 + ((i * 0.6180339887 + 0.13) % 1) * 0.8) * (x.D || 18000) + x.dl
+                } catch {}
+            })
             root.classList.add("eosFlowIn")
             clearTimeout(S.flowInT)
             S.flowInT = setTimeout(() => root.classList.remove("eosFlowIn"), 1400)
         }
+        // (the reveal follows with the burst instead, which flings them out of the light)
+        schedule() // the next pass hands every lane its forward rate back
     }
     const burst = () => {
         if (!S.alive || S.calm) return
@@ -621,22 +822,29 @@ function eosDotsController(root, opts = {}) {
         if (!canAnim) return
         const T = 900
         S.burstUntil = now() + T + 40
-        lanes().forEach((lane, i) => {
-            const a = anims(lane).find((x) => x.animationName === "eosDotsLane")
-            if (!a || !a.effect || !a.effect.getTiming) return
+        // every lane jumps to the end of its run (at the centre) and plays BACKWARDS to a random point on its way in:
+        // the dust is flung out of the Still Point once, then turns round and keeps coming home
+        const flung = laneAnims().filter((x) => x.started)
+        flung.forEach((x, i) => {
             try {
-                const tm = a.effect.getTiming()
-                const D = Number(tm.duration) || 18000
-                const delay = Number(tm.delay) || 0
+                const D = x.D || 18000
                 const p0 = 0.985
                 const p1 = 0.16 + eosNoise(i, 11) * 0.52
-                a.currentTime = (4 + p0) * D + delay
-                a.playbackRate = -((p0 - p1) * D) / T
+                x.a.currentTime = (4 + p0) * D + x.dl
+                x.a.playbackRate = x.req = -((p0 - p1) * D) / T
             } catch {}
         })
-        setTimeout(() => {
+        clearTimeout(S.burstEndT)
+        S.burstEndT = setTimeout(() => {
             S.burstUntil = 0
-            schedule({ force: true })
+            // turn them round right on time (a slow frame must not let them overshoot), then the tick takes over
+            const r = rate() * S.pulseK
+            flung.forEach((x) => {
+                try {
+                    if (x.a.playbackRate < 0) x.a.playbackRate = x.req = r
+                } catch {}
+            })
+            schedule()
         }, T + 60)
     }
 
@@ -647,13 +855,11 @@ function eosDotsController(root, opts = {}) {
         root.classList.remove("eosPulseIn", "eosPulseOut")
         raf(() => S.alive && root.classList.add(out ? "eosPulseOut" : "eosPulseIn")) // re-add next frame = restart, no reflow
         S.pulseK = out ? -1 : 3
-        if (!out)
+        if (!out) {
             // speed up right away on the cached animations (no style read); the next tick re-asserts every rate
-            for (const a of S.laneAnims) {
-                try {
-                    if (a.playbackRate > 0 && a.updatePlaybackRate) a.updatePlaybackRate(rate() * 3)
-                } catch {}
-            }
+            const r3 = rate() * 3
+            for (const x of laneAnims()) if (x.a.playbackRate > 0) setRate(x, r3)
+        }
         schedule()
         clearTimeout(S.pulseT)
         S.pulseT = setTimeout(() => {
@@ -674,8 +880,13 @@ function eosDotsController(root, opts = {}) {
     }
     const bedStart = () => {
         const B = S.bed
-        clearTimeout(B.stopT)
         if (B.on) return
+        if (B.src && B.gain) {
+            // still fading out: take the same voice back up (one source at a time — never orphan a playing node)
+            clearTimeout(B.stopT)
+            B.on = true
+            return
+        }
         const ctx = eosAudio()
         if (!ctx) return
         try {
@@ -692,7 +903,8 @@ function eosDotsController(root, opts = {}) {
     }
     const bedStop = (fadeMs = 900) => {
         const B = S.bed
-        if (!B.on) return
+        if (!B.src || !B.gain) return
+        if (!B.on && fadeMs > 0) return // already fading out
         const { ctx, src, gain } = B
         B.on = false
         B.gainNow = 0
@@ -709,6 +921,10 @@ function eosDotsController(root, opts = {}) {
                 src.disconnect()
                 gain.disconnect()
             } catch {}
+            if (B.src === src) {
+                B.src = null
+                B.gain = null
+            }
         }
         if (fadeMs <= 0) kill()
         else B.stopT = setTimeout(kill, fadeMs + 60)
@@ -745,8 +961,26 @@ function eosDotsController(root, opts = {}) {
     }
     const onVis = () => bedUpdate()
     if (typeof document !== "undefined") document.addEventListener("visibilitychange", onVis)
+    // sound / music / phase toggles answer at once (the 4 Hz pass keeps following the breath)
+    const unsubStore = EOS_STORE.subscribe(() => {
+        paintVars()
+        bedUpdate()
+    })
 
     // ---------------------------------------------------------------- the 4 Hz loop
+    // progress + feeling → the light's variables (style writes only: also called straight from store changes, so the
+    // core takes the feeling's colour in the same frame as the check-in tap)
+    const paintVars = () => {
+        if (!S.alive) return
+        const st = EOS_STORE.get()
+        const p = S.progress
+        setVar(root, "--eos-p", (p / 100).toFixed(3))
+        const emo = st.emotion || st.detected
+        const hp = eosDotsHuePath(emo)
+        setVar(root, "--eos-h", String(Math.round((((hp.h0 + hp.d * (p / 100)) % 360) + 360) % 360)))
+        // numb (greyLoud): the light starts flat grey and the colour comes back as the game moves (R6)
+        setVar(root, "--eos-sat", EOS_EMO[emo] && EOS_EMO[emo].greyLoud ? `${Math.round(16 + 84 * (p / 100))}%` : "100%")
+    }
     const tick = (force) => {
         if (!S.alive || !root.isConnected) return
         const st = EOS_STORE.get()
@@ -761,12 +995,7 @@ function eosDotsController(root, opts = {}) {
             else if (!done && S.gathered && S.gatherSrc === "auto" && p < 100) ungather(true) // a new round began
         } else if (S.stage === "reveal") p = 100
         S.progress = p
-        setVar(root, "--eos-p", (p / 100).toFixed(3))
-        const emo = st.emotion || st.detected
-        const hp = eosDotsHuePath(emo)
-        setVar(root, "--eos-h", String(Math.round((((hp.h0 + hp.d * (p / 100)) % 360) + 360) % 360)))
-        // numb (greyLoud): the light starts flat grey and the colour comes back as the game moves (R6)
-        setVar(root, "--eos-sat", EOS_EMO[emo] && EOS_EMO[emo].greyLoud ? `${Math.round(16 + 84 * (p / 100))}%` : "100%")
+        paintVars()
         const L = level()
         const jitter = !S.calm && L >= 7 && S.stage !== "reveal" && !S.gathered && S.progress < 50
         if (root.classList.contains("eosJitter") !== jitter) root.classList.toggle("eosJitter", jitter)
@@ -780,9 +1009,12 @@ function eosDotsController(root, opts = {}) {
             root.setAttribute("data-eos-dust", dust)
         }
         S.ticks++
-        applyRates(force || S.ticks % 16 === 0) // every 4 s: safety net for animations re-created behind our back
+        applyRates(force) // (+ its own 4 s safety-net scan for dots that never reported in)
         pacerRender()
         if (S.pacer !== "own" && (S.needSync > 0 || S.ticks % 8 === 0)) {
+            // a hand-back re-creates the breath animation: read it in the first pass after that frame (style is clean
+            // here) instead of waiting a frame more for its animationstart, so the light locks to the clock at once
+            if (S.needSync > 0 && !S.calm && !S.gathered && !(AN.body && live(AN.body))) collectBody()
             resyncBreath()
             if (S.needSync > 0) S.needSync--
         }
@@ -801,20 +1033,34 @@ function eosDotsController(root, opts = {}) {
         const f = want.force
         want.measure = want.force = false
         if (m) measure()
+        const t1 = now()
         if (S.pendingBurst) {
-            S.pendingBurst = false
-            burst()
+            // the reveal re-creates the lane animations (gather → flow): read them once now (one batched read in the
+            // after-paint slot of the frame that created them; later ones report in through animationstart) and
+            // burst as soon as they have started — so the burst fires with the reveal, not frames later
+            if (!S.burstRead && !laneAnims().length) {
+                S.burstRead = true
+                collect(lanes())
+            }
+            if (laneAnims().some((x) => x.started) || S.calm || t1 > S.burstBy) {
+                S.pendingBurst = false
+                burst()
+            } else schedule()
         }
         if (S.pendingGather) {
             S.pendingGather = false
             gather("api")
         }
         tick(f)
-        const dt = now() - t0
+        const t2 = now()
+        const dt = t2 - t0
         const P = S.perf
         P.frameN++
         P.frameMs += dt
-        if (dt > P.frameMax) P.frameMax = dt
+        if (dt > P.frameMax) {
+            P.frameMax = dt
+            P.maxAt = `${S.stage}:${t1 - t0 >= t2 - t1 ? "measure" : f ? "tick+force" : "tick"}`
+        }
     }
     const schedule = (o) => {
         if (o && o.measure) want.measure = true
@@ -840,7 +1086,9 @@ function eosDotsController(root, opts = {}) {
             root.classList.add(S.calm ? "eosGatherCalm" : "eosGather")
         }
         S.needSync = 3
-        schedule({ measure: true, force: true })
+        // re-created dot animations report in through animationstart; the bokeh vars follow at the next measure
+        measureSoon()
+        schedule()
     }
 
     // ---------------------------------------------------------------- stage
@@ -849,29 +1097,62 @@ function eosDotsController(root, opts = {}) {
         S.stage = String(stage || "input")
         S.levelOv = null
         if (S.stage !== "play" && S.gathered) ungather(S.stage !== "reveal")
-        if (S.stage === "reveal" && prev !== "reveal") S.pendingBurst = true
+        if (S.stage === "reveal" && prev !== "reveal") {
+            S.pendingBurst = true
+            S.burstRead = false
+            S.burstBy = now() + 1500
+        }
         if (S.stage === "play" && prev !== "play") S.progress = 0
         S.needSync = 3
-        measureSoon()
-        schedule({ measure: true, force: true })
+        if (!S.ready) return schedule() // mount: the first idle pass measures and reads everything
+        measureSoon() // (new cinema dust reports in through animationstart; no full re-read needed)
+        schedule()
     }
 
     // ---------------------------------------------------------------- wiring
     const intTick = setInterval(() => schedule(), 250) //                 4 Hz: progress, rate, pacer, audio
-    const intMeasure = setInterval(() => schedule({ measure: true }), 1000) // 1 Hz: the measured centre
+    const intMeasure = setInterval(() => S.ready && measure(), 1000) // 1 Hz: the measured centre (no layout read)
     let ro = null
     try {
         if (typeof ResizeObserver !== "undefined") {
-            ro = new ResizeObserver(() => measureSoon())
+            // the flow root's content box (layout px, free in the observer) → the phone lane count (18 below 600 px)
+            ro = new ResizeObserver((entries) => {
+                for (const e of entries) {
+                    if (e.target !== root) continue
+                    const w = e.contentRect ? e.contentRect.width : 0
+                    const narrow = w > 0 && w < 600
+                    if (narrow !== S.narrow) {
+                        S.narrow = narrow
+                        try {
+                            opts.onNarrow?.(narrow)
+                        } catch {}
+                    }
+                }
+                measureSoon()
+            })
             const st = stageEl()
             if (st) ro.observe(st)
+            ro.observe(root)
         }
     } catch {}
     const onResize = () => measureSoon()
     if (typeof window !== "undefined") window.addEventListener("resize", onResize)
     const unsubPacer = EOS_PACER.subscribe(() => pacerRender())
+    // every dot animation the browser creates reports in here (lanes, Pixar motes, each new game's cinema dust)
+    AN.host = pxRoot() || arcadeEl() || stageEl()
+    try {
+        AN.host && AN.host.addEventListener("animationstart", onAnimStart, true)
+    } catch {}
     pacerRender()
-    schedule({ measure: true, force: true })
+    // the first measure + full read wait for the first idle moment after mount (the page is still laying itself
+    // out then; until it lands every layer already aims at the nominal centre through the CSS defaults)
+    const ric = typeof requestIdleCallback === "function" ? requestIdleCallback : null
+    const first = () => {
+        S.idleT = 0
+        S.ready = true
+        schedule({ measure: true, force: true })
+    }
+    S.idleT = ric ? ric(first, { timeout: 900 }) : setTimeout(first, 300)
 
     const destroy = () => {
         S.alive = false
@@ -884,21 +1165,41 @@ function eosDotsController(root, opts = {}) {
                 chan.port2.close()
             } catch {}
         clearTimeout(S.gatherT)
+        if (S.idleT) {
+            try {
+                ric ? cancelIdleCallback(S.idleT) : clearTimeout(S.idleT)
+            } catch {}
+        }
+        try {
+            S.idleIds.forEach((id) => cancelIdleCallback(id))
+        } catch {}
+        S.idleIds = []
+        try {
+            AN.host && AN.host.removeEventListener("animationstart", onAnimStart, true)
+        } catch {}
+        AN.map.clear()
+        AN.dirty.clear()
+        AN.body = null
         clearInterval(intTick)
         clearInterval(intMeasure)
         S.measureTs.forEach(clearTimeout)
         clearTimeout(S.pulseT)
         clearTimeout(S.burstT)
+        clearTimeout(S.burstEndT)
+        clearTimeout(S.boostT)
         clearTimeout(S.flowInT)
         clearTimeout(S.handT)
         try {
             ro && ro.disconnect()
+            io && io.disconnect()
         } catch {}
+        ioBatch = null
         if (typeof window !== "undefined") window.removeEventListener("resize", onResize)
         if (typeof document !== "undefined") document.removeEventListener("visibilitychange", onVis)
         unarm()
         try {
             unsubPacer()
+            unsubStore()
         } catch {}
         bedStop(0)
         clearTimeout(S.bed.stopT)
@@ -930,8 +1231,9 @@ function eosDotsController(root, opts = {}) {
             pacer: c ? c.getAttribute("data-pacer") : null,
             phase: c ? c.getAttribute("data-phase") : null,
             centre: S.centre,
-            perf: { frames: S.perf.frameN, avgMs: S.perf.frameN ? +(S.perf.frameMs / S.perf.frameN).toFixed(2) : 0, maxMs: +S.perf.frameMax.toFixed(2) },
+            perf: { frames: S.perf.frameN, avgMs: S.perf.frameN ? +(S.perf.frameMs / S.perf.frameN).toFixed(2) : 0, maxMs: +S.perf.frameMax.toFixed(2), maxAt: S.perf.maxAt },
             audio: { armed: S.bed.armed, playing: S.bed.on, gain: S.bed.on ? S.bed.gainNow : 0, ctx: S.bed.ctx ? S.bed.ctx.state : null },
+            cache: { elements: AN.map.size, lanes: laneAnims().length, body: !!(AN.body && live(AN.body)) },
         }
     }
 
@@ -948,9 +1250,10 @@ function eosDotsController(root, opts = {}) {
         state,
         destroy,
         refresh() {
-            S.aspect = 0
+            S.aspect = 0 // lanes re-rendered / straightened: re-aim their tails at the next measure
             S.needSync = 3
-            schedule({ measure: true, force: true })
+            measureSoon()
+            schedule()
         },
         setLevel(n) {
             const st = EOS_STORE.get()
@@ -1067,7 +1370,6 @@ const EOS_DOTS_CSS = `
 @keyframes eosDotsFade{0%{opacity:0;scale:.6}12%{opacity:.85;scale:1}74%{opacity:.9;scale:1}86%{opacity:.55;scale:.45}93%{opacity:0;scale:.12}100%{opacity:0;scale:.1}}
 @keyframes eosDotsTileIn{0%{scale:1.5;opacity:0}20%{opacity:.45}100%{scale:.6;opacity:0}}
 @keyframes eosDotsLane{0%{scale:1;rotate:0deg;opacity:0;animation-timing-function:cubic-bezier(.33,0,.8,.45)}9%{opacity:1}84%{scale:.028;rotate:calc(var(--sw,30deg) * .96);opacity:1;animation-timing-function:linear}100%{scale:0;rotate:var(--sw,30deg);opacity:0}}
-@keyframes eosDotsGather{0%{scale:var(--g0s,1);rotate:var(--g0r,0deg);opacity:var(--g0o,1)}62%{opacity:1}100%{scale:0;rotate:var(--sw,30deg);opacity:0}}
 @keyframes eosDotsBreathe{0%{scale:.86;opacity:.8;animation-timing-function:cubic-bezier(.37,0,.32,1)}40%{scale:1.1;opacity:1;animation-timing-function:linear}100%{scale:.86;opacity:.8}}
 @keyframes eosDotsBeat{0%{scale:.95;opacity:.86;animation-timing-function:cubic-bezier(.2,.9,.3,1)}13%{scale:1.1;opacity:1;animation-timing-function:cubic-bezier(.5,0,.5,1)}32%{scale:.98;opacity:.9;animation-timing-function:cubic-bezier(.2,.9,.3,1)}44%{scale:1.04;opacity:.96;animation-timing-function:ease-in-out}100%{scale:.95;opacity:.86}}
 @keyframes eosDotsAbsorb{0%{scale:.6;opacity:.5}100%{scale:1.1;opacity:0}}
@@ -1109,8 +1411,7 @@ box-shadow:0 0 calc(var(--s) * 1.4 + 2px) hsla(var(--h),100%,72%,.75),0 0 calc(v
 ${EOS_DOTS_FIELD} .eosLane>[data-eos-dot]::after{content:"";position:absolute;left:50%;top:50%;width:calc(var(--s) * 4.5 + 7px);height:max(1px,calc(var(--s) * .55));transform-origin:0 50%;translate:0 -50%;rotate:var(--ta,0deg);border-radius:999px;background:linear-gradient(90deg,hsla(var(--h),100%,84%,.5),hsla(var(--h),100%,70%,0));pointer-events:none}
 ${EOS_DOTS_FIELD}.eosJitter .eosLane>[data-eos-dot]{animation:eosDotsJitter calc(var(--bk,2s) * .3) ease-in-out infinite alternate}
 ${EOS_DOTS_FIELD}.eosFlowIn .eosLane>[data-eos-dot]{animation:eosDotsAppear 1.2s ease-out both}
-/* finish: every lane rushes home from where it is (JS freezes --g0s/--g0r/--g0o), the core anticipates then blooms */
-${EOS_DOTS_FIELD}.eosGather .eosLane{animation:eosDotsGather .9s cubic-bezier(.5,0,.9,.4) forwards!important}
+/* finish (.eosGather): JS rushes every lane home on its own animation (see gather()); the core anticipates, then blooms */
 
 /* ---------------- the Still Point */
 ${EOS_DOTS_FIELD} .eosCore{position:absolute;left:50%;top:52%;width:var(--eos-core-size);height:var(--eos-core-size);translate:-50% -50%;scale:1;opacity:1;transition:scale .7s cubic-bezier(.3,1.25,.45,1),opacity .6s ease}
@@ -1183,7 +1484,7 @@ ${EOS_A} .infinityField{display:none!important}
   ${EOS_A} :is(.cinemaDust i,.cleanseSpace){animation:none!important}
   ${EOS_A} .cinemaDust i{opacity:.2!important}
   ${EOS_PX} .tsPxBokeh[style*="--eos-bl"]{transition:none!important}
-  ${EOS_DOTS_FIELD} .eosLane,${EOS_DOTS_FIELD}.eosGather .eosLane{animation:none!important;opacity:.25;scale:var(--ks,.6);rotate:calc(var(--sw,30deg) * (1 - var(--ks,.6)))}
+  ${EOS_DOTS_FIELD} .eosLane{animation:none!important;opacity:.25;scale:var(--ks,.6);rotate:calc(var(--sw,30deg) * (1 - var(--ks,.6)))}
   ${EOS_DOTS_FIELD} .eosLane>[data-eos-dot]{animation:none!important}
   ${EOS_DOTS_FIELD} .eosCore,${EOS_DOTS_FIELD} .eosCore *{animation:none!important;transition:opacity .8s ease!important}
   ${EOS_DOTS_FIELD} .eosCore .eosCoreBody,${EOS_DOTS_FIELD} .eosCore{scale:1!important}
@@ -1194,7 +1495,7 @@ ${EOS_PX}[data-eos-calm="1"] .tsPxDust{animation:none!important;opacity:0!import
 ${EOS_PX}[data-eos-calm="1"] .tsPxBokeh{transition:none!important}
 ${EOS_A}[data-eos-calm="1"] :is(.cinemaDust i,.cleanseSpace,.eosLane){animation:none!important}
 ${EOS_A}[data-eos-calm="1"] .cinemaDust i{opacity:.2!important}
-${EOS_DOTS_FIELD}[data-eos-calm="1"] .eosLane,${EOS_DOTS_FIELD}[data-eos-calm="1"].eosGather .eosLane{animation:none!important;opacity:.25;scale:var(--ks,.6);rotate:calc(var(--sw,30deg) * (1 - var(--ks,.6)))}
+${EOS_DOTS_FIELD}[data-eos-calm="1"] .eosLane{animation:none!important;opacity:.25;scale:var(--ks,.6);rotate:calc(var(--sw,30deg) * (1 - var(--ks,.6)))}
 ${EOS_DOTS_FIELD}[data-eos-calm="1"] .eosLane>[data-eos-dot]{animation:none!important}
 ${EOS_DOTS_FIELD}[data-eos-calm="1"] .eosCore,${EOS_DOTS_FIELD}[data-eos-calm="1"] .eosCore *{animation:none!important;transition:opacity .8s ease!important}
 ${EOS_DOTS_FIELD}[data-eos-calm="1"] .eosCore .eosCoreBody{scale:1!important}

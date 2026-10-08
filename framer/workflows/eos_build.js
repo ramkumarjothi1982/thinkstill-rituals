@@ -131,9 +131,14 @@ const REVIEW_LENSES = [
   { key: 'code', text: 'CODE CORRECTNESS: React hooks rules, cleanup of timers/listeners/rAF, no memory leaks, no top-level PX_B/pxNoise, identifier collisions with 00_arcade.jsx (grep every new top-level name in src/00_arcade.jsx and other src/eos files), pointer events on touch + mouse, works at 390px and 1280px, prefers-reduced-motion path, no user text persisted, performance (no layout thrash, <=60 animated nodes), spec conformance (exports/contract exactly as EOS_SPEC.md).' },
   { key: 'experience', text: 'EXPERIENCE QUALITY: take screenshots at several moments (start, mid, finish) desktop + phone and LOOK at them (Read the png). Judge against: Pixar / Inside-Out cinematic quality (warm light, characterful, squash & stretch, glow), instantly understandable with zero reading (arrow/cue obvious), juicy dopamine feedback, the specific relief mechanic actually delivered (timings, pacing), text readable (>=12px), finishes in <=45s, feels like play not therapy.' },
 ]
+const DONE = (args && args.done) || {}
+const BUILT = (args && args.built) || {}
+const INTEGRATED = (args && args.integrated) || []
+const STATUS = DOCS + '/eos_status'
+const record = (file, content) => agent(`Write the text between the markers EXACTLY (no changes) to the file ${file} (create parent dirs; overwrite). Then reply OK.\n<<<BEGIN>>>\n${content}\n<<<END>>>`, { label: 'record:' + file.split('/').pop(), phase: 'Module review', model: 'haiku', effort: 'low' })
 const mustAgent = async (prompt, opts) => { const r = await agent(prompt, opts); if (r == null) throw new Error(`agent ${opts && opts.label} returned nothing (likely usage limit)`); return r }
 const eosFiles = (t) => t.files.filter(f => f.endsWith('.jsx') && !f.includes('dev/')).map(f => f.split('/').pop()).join(',')
-const buildOne = (t) => mustAgent(`${CONTEXT}\n${USER_ASK}\n\n${TOOLING}\n${SCOPE}\nBUILD TASK "${t.id}": ${t.title}\nYou exclusively own: ${t.files.join(', ')} (create them; do NOT edit any other src file — 00_eos_core.jsx is frozen, 00_arcade.jsx/99_pixar.jsx are for integrators only; if you need something from them, expose a hook/function/data the integrator can wire and describe it in your report).\nIf any of your files already exist, they are a DRAFT from an earlier attempt that was cut off by a usage limit: read them first and finish, fix and test them instead of rewriting from scratch. Implement exactly ${DOCS}/EOS_SPEC.md sections: ${t.spec_sections}. Exports: ${t.exports.join(', ')}.\nQuality bar: production-grade, Pixar / Inside-Out cinematic polish, juicy, zero-reading clarity, phone + desktop, reduced motion, no dark patterns.\nTest in isolation: python3 ${ROOT}/build.py --dev-dir /tmp/eos_${t.id} --modules 00_eos_core.jsx,${eosFiles(t)} ; for games also use the dev/eos_preview tooling; run the acceptance checks: ${t.acceptance}. Take screenshots into ${ROOT}/dev/shots/eos/${t.id}_*.png and LOOK at them; iterate until it looks and plays great. Ensure zero page errors. Do NOT commit (parallel builders). Final answer: what you built, exports, anything the integrator must wire (exact), screenshots paths, known limitations.`, { label: `build:${t.id}`, phase: 'Build' })
+const buildOne = (t) => mustAgent(`${CONTEXT}\n${USER_ASK}\n\n${TOOLING}\n${SCOPE}\nBUILD TASK "${t.id}": ${t.title}\nYou exclusively own: ${t.files.join(', ')} (create them; do NOT edit any other src file — 00_eos_core.jsx is frozen, 00_arcade.jsx/99_pixar.jsx are for integrators only; if you need something from them, expose a hook/function/data the integrator can wire and describe it in your report).\nIf any of your files already exist, they are a DRAFT from an earlier attempt that was cut off by a usage limit: read them first and finish, fix and test them instead of rewriting from scratch. Implement exactly ${DOCS}/EOS_SPEC.md sections: ${t.spec_sections}. Exports: ${t.exports.join(', ')}.\nQuality bar: production-grade, Pixar / Inside-Out cinematic polish, juicy, zero-reading clarity, phone + desktop, reduced motion, no dark patterns.\nTest in isolation: python3 ${ROOT}/build.py --dev-dir /tmp/eos_${t.id} --modules 00_eos_core.jsx,${eosFiles(t)} ; for games also use the dev/eos_preview tooling; run the acceptance checks: ${t.acceptance}. Take screenshots into ${ROOT}/dev/shots/eos/${t.id}_*.png and LOOK at them; iterate until it looks and plays great. Ensure zero page errors. Do NOT commit (parallel builders). Final answer: what you built, exports, anything the integrator must wire (exact), screenshots paths, known limitations. ALSO write that exact final answer to ${STATUS}/${t.id}.build.md before finishing (so progress survives interruptions).`, { label: `build:${t.id}`, phase: 'Build' })
 
 const reviewAndFix = async (buildReport, t) => {
   let report = buildReport
@@ -144,16 +149,22 @@ const reviewAndFix = async (buildReport, t) => {
     if (reviews.length < REVIEW_LENSES.length) throw new Error(`review incomplete for ${t.id} r${round}`)
     const serious = reviews.flatMap(r => r.findings.filter(f => f.severity !== 'minor'))
     const minor = reviews.flatMap(r => r.findings.filter(f => f.severity === 'minor'))
-    if (!serious.length && round > 1) return { id: t.id, report, rounds: round, open: minor }
-    if (!serious.length && !minor.length) return { id: t.id, report, rounds: round, open: [] }
-    report = await mustAgent(`${CONTEXT}\n${USER_ASK}\n\n${TOOLING}\n${SCOPE}\nFIX task "${t.id}" (${t.title}). You own ONLY: ${t.files.join(', ')}. Apply every finding below (blockers and majors mandatory; minors too unless clearly wrong — say why). Re-test in isolation (python3 ${ROOT}/build.py --dev-dir /tmp/eos_${t.id} --modules 00_eos_core.jsx,${eosFiles(t)}), re-screenshot and LOOK. Do NOT commit.\nFindings:\n${JSON.stringify([...serious, ...minor], null, 1)}\n\nReturn an updated builder report (same format as before) listing what changed.`, { label: `fix:${t.id}:r${round}`, phase: 'Module review' })
+    if ((!serious.length && round > 1) || (!serious.length && !minor.length)) {
+      await record(`${STATUS}/${t.id}.done.md`, report + (minor.length ? '\n\nOpen minor notes: ' + JSON.stringify(minor) : ''))
+      return { id: t.id, report, rounds: round, open: round > 1 ? minor : [] }
+    }
+    report = await mustAgent(`${CONTEXT}\n${USER_ASK}\n\n${TOOLING}\n${SCOPE}\nFIX task "${t.id}" (${t.title}). You own ONLY: ${t.files.join(', ')}. Apply every finding below (blockers and majors mandatory; minors too unless clearly wrong — say why). Re-test in isolation (python3 ${ROOT}/build.py --dev-dir /tmp/eos_${t.id} --modules 00_eos_core.jsx,${eosFiles(t)}), re-screenshot and LOOK. Do NOT commit.\nFindings:\n${JSON.stringify([...serious, ...minor], null, 1)}\n\nReturn an updated builder report (same format as before) listing what changed, and ALSO overwrite ${STATUS}/${t.id}.build.md with that updated report.`, { label: `fix:${t.id}:r${round}`, phase: 'Module review' })
   }
+  await record(`${STATUS}/${t.id}.done.md`, report)
   return { id: t.id, report, rounds: 3, open: [] }
 }
 
 const buildTasks = plan.tasks.filter(t => t.id !== 'foundation' && RELEASE1.includes(t.id))
 log(`Release 1 scope: building ${buildTasks.map(t => t.id).join(', ')}`)
-const built = (await pipeline(buildTasks, (_, t) => buildOne(t), (rep, t) => reviewAndFix(rep, t))).filter(Boolean)
+log(`Already done: ${Object.keys(DONE).join(', ') || 'none'}; built awaiting review: ${Object.keys(BUILT).join(', ') || 'none'}`)
+const built = (await pipeline(buildTasks,
+  (_, t) => DONE[t.id] ? { done: DONE[t.id] } : BUILT[t.id] ? BUILT[t.id] : buildOne(t),
+  (rep, t) => rep && rep.done ? { id: t.id, report: rep.done, rounds: 0, open: [] } : reviewAndFix(rep, t))).filter(Boolean)
 log(`Built + reviewed ${built.length}/${buildTasks.length} tasks`)
 if (built.length < buildTasks.length) { const ok = new Set(built.map(b => b.id)); throw new Error('Build incomplete, resume later. Missing: ' + buildTasks.filter(t => !ok.has(t.id)).map(t => t.id).join(', ')) }
 
@@ -161,8 +172,10 @@ if (built.length < buildTasks.length) { const ok = new Set(built.map(b => b.id))
 phase('Integrate')
 const builtReports = built.map(b => `### ${b.id}\n${b.report}\n${b.open && b.open.length ? 'Open minor notes: ' + JSON.stringify(b.open) : ''}`).join('\n\n')
 for (const g of plan.integration_groups) {
+  if (INTEGRATED.includes(g.id)) { log(`Integration ${g.id} already applied, skipping`); continue }
   const ir = await mustAgent(`${CONTEXT}\n${USER_ASK}\n\n${TOOLING}\n${SCOPE}\nINTEGRATION STEP "${g.id}": ${g.title}. You are the only agent editing src/00_arcade.jsx / src/99_pixar.jsx right now. Spec sections: ${g.spec_sections}. Planned edits:\n${g.edits}\n\nModule builders' reports (what each exposes and needs wired):\n${builtReports}\n\nRules: surgical edits with unique anchors (grep -c == 1 before each replacement); never delete existing games, controls or features; keep input.releaseThoughtInput / button.releaseChoiceButton / button.releaseChoiceItem working; preserve the single export default. Run the FULL build (cd ${ROOT} && python3 build.py), then acceptance: ${g.acceptance}; plus a smoke test: the input stage loads, POP, CRUSH (legacy wrapper) and a 100+ game start without page errors, and every new game id starts. Screenshot to ${ROOT}/dev/shots/eos/integrate_${g.id}_*.png and LOOK. Commit ("EOS integrate: ${g.title}"). ${COMMIT_RULE} Return what you wired and test results. If you could NOT apply the step, start your answer with the word BLOCKED.`, { label: `integrate:${g.id}`, phase: 'Integrate' })
   if (/^\s*\**BLOCKED/i.test(ir)) throw new Error(`Integration ${g.id} blocked: ` + ir.slice(0, 400))
+  await record(`${STATUS}/integrate_${g.id}.done.md`, ir)
 }
 
 // ------------------------------------------------------------------ REGRESSION + ADVERSARIAL REVIEW, loop until clean
