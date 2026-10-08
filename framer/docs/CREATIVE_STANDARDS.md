@@ -26,3 +26,14 @@ Cinematic quality, characters as active participants, distinctive gameplay and a
 - **Pilot first:** before any change rolls out across many games, it is built on a small set of representative games (one per look-alike cluster + the most-routed games + some of the weakest), reviewed on rendered phone and desktop screenshots by independent reviewers, shown to the owner, and only then rolled out.
 - Avoid unnecessary rewrites; preserve completed work; commit progress continuously.
 - Priority is a premium experience users enjoy and return to, not the fastest delivery of 114 functional games.
+
+## Pilot approval package (owner, 2026-10-08) — the OWNER approves, never AI scores alone
+For every pilot game, before any rollout:
+1. **Before / after screenshots** at phone (390×844) and desktop (1280×860): start, mid-play, finale, reveal.
+2. **A playable build** the owner can open and play (hosted page of the real component build, plus the Framer `.txt`).
+3. **A gameplay recording** (video) showing character animations and reactions, interactions, cinematic transitions and the complete finale / dopamine burst, at phone size first.
+4. **Responsiveness evidence:** input-to-next-frame latency per interaction (Event Timing API) and frame-time distribution during play and the finale (p50 / p95 / long frames), measured on the same build.
+5. **Sound sync evidence:** a log of each user action and the sound cue it triggered, with the time offset in ms (target ≤ 50 ms), plus the playable build so the owner can listen.
+6. **A distinctiveness explainer:** what makes the mechanic, environment, character role and finale unique, and how it differs from its look-alike siblings.
+AI reviewer scores are supporting evidence only. Rollout to the remaining games starts only after the owner has played the pilot and approved it.
+Caveat recorded honestly: recordings and timings come from a headless cloud browser without a GPU, so they understate real-device smoothness; the playable build is the owner's ground truth.
