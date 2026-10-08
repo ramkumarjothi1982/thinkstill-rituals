@@ -88,7 +88,7 @@ const EOS_SIGH_MOTES = Array.from({ length: 10 }, (_, i) => {
 const EOS_SIGH_SPARKS = Array.from({ length: 12 }, (_, i) => ({ a: i * 30 + (i % 2) * 9, r: 96 + (i % 3) * 22 }))
 // Cue copy (§2 rules: no clinical words, no "just breathe" / "relax" / "calm down"). [main, sub]
 const EOS_SIGH_CUES = {
-    start: ["Hold the orb · breathe in through your nose", ""],
+    start: ["Hold the orb · breathe in", "in through your nose"],
     again: ["Again · hold and breathe in", ""],
     in: ["in through the nose…", ""],
     ready: ["…one more sip ↑", "slide up while you hold"],
@@ -251,10 +251,13 @@ function EosBigSighEngine({ game, entries = [], onProgress, onDone, sfx, rainSfx
             lastAck: 0,
             ab: { bloom: 0, puff: 0, wind: 0, pop: 0, sq: 0, ack: 0 },
             timers: [],
+            sfxLog: [], //     kinds only (dev handle; never words)
+            plog: [], //       every onProgress value
         }
 
     const fx = {
         sfx(kind) {
+            S.current.sfxLog.push(String(kind))
             try {
                 cbRef.current.sfx?.(kind)
             } catch {}
@@ -265,6 +268,7 @@ function EosBigSighEngine({ game, entries = [], onProgress, onDone, sfx, rainSfx
             const n = Math.max(0, Math.min(100, Math.round(v)))
             if (n <= s.prog) return
             s.prog = n
+            s.plog.push(n)
             try {
                 cbRef.current.onProgress?.(n, label)
             } catch {}
@@ -676,7 +680,9 @@ function EosBigSighEngine({ game, entries = [], onProgress, onDone, sfx, rainSfx
             : ph === "ready"
               ? eosTarget({ g: "drag", dir: "u", d: 30, label: "SIP MORE ↑" })
               : {}
-    const cue = EOS_SIGH_CUES[ui.cue === "start" && ui.done > 0 ? "again" : ui.cue] || EOS_SIGH_CUES.start
+    const cue0 = EOS_SIGH_CUES[ui.cue === "start" && ui.done > 0 ? "again" : ui.cue] || EOS_SIGH_CUES.start
+    // the once-per-device safety line rides under the first cue (never over the words)
+    const cue = ui.tip && (ui.cue === "start" || ui.cue === "in") ? [cue0[0], EOS_SIGH_TIP] : cue0
     const countWord = ph === "in" ? "in" : ph === "out" ? "out" : ph === "ready" || ph === "sip" ? "sip" : ph === "full" ? "let go" : ""
     const countBig = ph === "in" || ph === "out" ? (ui.count == null ? "" : String(ui.count)) : ph === "ready" || ph === "sip" ? "↑" : ""
     const pips = Array.from({ length: setup.n }, (_, i) => i)
@@ -772,9 +778,6 @@ function EosBigSighEngine({ game, entries = [], onProgress, onDone, sfx, rainSfx
                         )
                     })}
                 </div>
-                <div className={`eosSighTip ${ui.tip ? "isOn" : ""}`} aria-hidden={ui.tip ? undefined : "true"}>
-                    {EOS_SIGH_TIP}
-                </div>
             </div>
             {/* the wind ribbon that carries the exhale out to sea */}
             {geo ? (
@@ -788,7 +791,7 @@ function EosBigSighEngine({ game, entries = [], onProgress, onDone, sfx, rainSfx
             <div className="eosSighOrbWrap" ref={orbRef} data-n1={ui.n1 ? "1" : "0"} data-n2={ui.n2 ? "1" : "0"}>
                 <div className="eosSighCue" aria-live="polite">
                     <b>{cue[0]}</b>
-                    {cue[1] ? <small>{cue[1]}</small> : null}
+                    {cue[1] ? <small className={cue[1] === EOS_SIGH_TIP ? "isTip" : ""}>{cue[1]}</small> : null}
                     <span className="eosSrOnly">{`Sigh ${Math.min(ui.done + (ph === "done" ? 0 : 1), setup.n)} of ${setup.n}.`}</span>
                 </div>
                 <div className="eosSighPips" aria-hidden="true">
@@ -905,11 +908,9 @@ ${EOS_SIGH_R} .eosSighThumb{width:40px;height:40px;border-radius:50%;object-fit:
 ${EOS_SIGH_R} .eosSighRain{position:absolute;left:14%;right:14%;top:62%;height:150%;display:block;opacity:0;pointer-events:none;background:repeating-linear-gradient(104deg,rgba(205,220,255,0) 0 8px,rgba(205,220,255,.55) 8px 9.5px);background-size:100% 40px;-webkit-mask-image:linear-gradient(180deg,#000 20%,transparent);mask-image:linear-gradient(180deg,#000 20%,transparent)}
 ${EOS_SIGH_R} .eosSighCloud[data-gone="1"] .eosSighRain{animation:eosSighRainLife var(--D) linear forwards,eosSighRainFall .6s linear infinite}
 ${EOS_SIGH_R}[data-calm="1"] .eosSighCloud[data-gone="1"] .eosSighRain{animation:eosSighRainLife var(--D) linear forwards}
-${EOS_SIGH_R} .eosSighTip{position:absolute;left:50%;top:-4px;transform:translateX(-50%);z-index:9;width:max-content;max-width:min(92%,460px);padding:8px 14px;border-radius:999px;background:var(--eos-glass);box-shadow:0 6px 18px rgba(0,0,0,.35);font:700 15px/1.25 var(--eos-font);color:#fff;text-align:center;opacity:0;transition:opacity .5s ease}
-${EOS_SIGH_R} .eosSighTip.isOn{opacity:1}
 ${EOS_SIGH_R} .eosSighWind{position:absolute;inset:0;width:100%;height:100%;z-index:5;pointer-events:none;opacity:0;overflow:visible}
-${EOS_SIGH_R} .eosSighWind path{fill:none;stroke:rgba(235,244,255,.62);stroke-width:4px;stroke-linecap:round;stroke-dasharray:22 140;stroke-dashoffset:30}
-${EOS_SIGH_R} .eosSighWind path.w2{stroke:rgba(255,226,180,.42);stroke-width:2.5px;stroke-dasharray:14 140}
+${EOS_SIGH_R} .eosSighWind path{fill:none;stroke:rgba(235,244,255,.5);stroke-width:7px;stroke-linecap:round;stroke-dasharray:34 140;stroke-dashoffset:40;filter:drop-shadow(0 0 6px rgba(220,235,255,.6))}
+${EOS_SIGH_R} .eosSighWind path.w2{stroke:rgba(255,226,180,.38);stroke-width:4px;stroke-dasharray:24 140}
 ${EOS_SIGH_R}[data-phase="out"] .eosSighWind[data-w="a"]{animation:eosSighWindShowA var(--D) ease-in-out forwards}
 ${EOS_SIGH_R}[data-phase="out"] .eosSighWind[data-w="b"]{animation:eosSighWindShowB var(--D) ease-in-out forwards}
 ${EOS_SIGH_R}[data-phase="out"] .eosSighWind[data-w="a"] path{animation:eosSighWindA calc(var(--D) * .5) ease-in-out 2}
@@ -956,7 +957,8 @@ ${EOS_SIGH_R}[data-calm="1"] .eosSighNotch{animation:none!important}
 ${EOS_SIGH_R} .eosSighCue{position:absolute;left:50%;bottom:calc(100% + var(--os) * var(--k) + 16px);transform:translateX(-50%);width:max-content;max-width:520px;text-align:center;pointer-events:none}
 ${EOS_SIGH_R} .eosSighCue b{display:block;font:800 20px/1.15 var(--eos-font);color:#fff;text-shadow:0 2px 10px rgba(10,4,40,.85),0 0 2px rgba(10,4,40,.9)}
 ${EOS_SIGH_R} .eosSighCue small{display:block;margin-top:4px;font:700 15px/1.2 var(--eos-font);color:rgba(240,236,255,.92);text-shadow:0 2px 8px rgba(10,4,40,.85)}
-@media (max-width:560px){${EOS_SIGH_R} .eosSighCue{max-width:330px}${EOS_SIGH_R} .eosSighCue b{font-size:17px}${EOS_SIGH_R} .eosSighCue small{font-size:14px}${EOS_SIGH_R} .eosSighTip{font-size:14px}${EOS_SIGH_R} .eosSighOrbCount small{font-size:14px}}
+${EOS_SIGH_R} .eosSighCue small.isTip{display:inline-block;margin-top:6px;padding:4px 12px;border-radius:999px;background:rgba(10,8,40,.62);color:#ffe9b8}
+@media (max-width:560px){${EOS_SIGH_R} .eosSighCue{max-width:330px}${EOS_SIGH_R} .eosSighCue b{font-size:17px}${EOS_SIGH_R} .eosSighCue small{font-size:14px}${EOS_SIGH_R} .eosSighOrbCount small{font-size:14px}}
 ${EOS_SIGH_R} .eosSighPips{position:absolute;left:calc(100% + 22px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column-reverse;gap:9px;pointer-events:none}
 ${EOS_SIGH_R} .eosSighPips>i{display:block;width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.14);box-shadow:inset 0 0 0 2px rgba(255,255,255,.45);transition:background .4s ease,box-shadow .4s ease}
 ${EOS_SIGH_R} .eosSighPips>i.on{background:radial-gradient(circle at 40% 35%,#fff6c8,#ffc45a 60%,#ff9a4a);box-shadow:0 0 12px rgba(255,196,96,.85)}
@@ -987,8 +989,8 @@ ${EOS_SIGH_R}[data-calm="1"] .eosSighBloom[data-b]>b{animation-name:eosSighFadeO
 @keyframes eosSighRainFall{to{background-position:0 40px}}
 @keyframes eosSighWindShowA{0%{opacity:0}15%{opacity:1}80%{opacity:.8}100%{opacity:0}}
 @keyframes eosSighWindShowB{0%{opacity:0}15%{opacity:1}80%{opacity:.8}100%{opacity:0}}
-@keyframes eosSighWindA{0%{stroke-dashoffset:30}100%{stroke-dashoffset:-110}}
-@keyframes eosSighWindB{0%{stroke-dashoffset:30}100%{stroke-dashoffset:-110}}
+@keyframes eosSighWindA{0%{stroke-dashoffset:40}100%{stroke-dashoffset:-104}}
+@keyframes eosSighWindB{0%{stroke-dashoffset:40}100%{stroke-dashoffset:-104}}
 @keyframes eosSighIntro{0%{opacity:0;scale:.7}100%{opacity:1;scale:1}}
 @keyframes eosSighFadeIn{0%{opacity:0}100%{opacity:1}}
 @keyframes eosSighFadeOut{0%{opacity:.8}100%{opacity:0}}
@@ -1026,7 +1028,7 @@ eosExpose("sigh", {
         const L = eosSighLive
         if (!L) return null
         const s = L.S
-        return { phase: s.phase, f: +s.f.toFixed(3), cycle: s.cycle, n: L.setup.n, early: s.early, easy: s.easy, prog: s.prog, D: s.D, pointer: s.pointer == null ? null : String(s.pointer) }
+        return { phase: s.phase, f: +s.f.toFixed(3), cycle: s.cycle, n: L.setup.n, early: s.early, easy: s.easy, prog: s.prog, D: s.D, pointer: s.pointer == null ? null : String(s.pointer), sfx: s.sfxLog.slice(), plog: s.plog.slice(), done: s.doneSent }
     },
     EOS_GAME_111,
 })

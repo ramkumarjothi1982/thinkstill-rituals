@@ -1,0 +1,138 @@
+[
+ {
+  "id": 1,
+  "name": "POP",
+  "size": "390x844",
+  "progressMax": 100,
+  "finished": true,
+  "secondsToFinish": 11.4,
+  "frame": {
+   "p50": 200,
+   "p95": 649.9,
+   "max": 649.9,
+   "over50": 10,
+   "frames": 10,
+   "fps": 3.3
+  },
+  "longTasks": {
+   "count": 52,
+   "totalMs": 8568,
+   "maxMs": 589
+  },
+  "heapStartMB": 14.55,
+  "heapEndMB": 19.86,
+  "domNodes": 134,
+  "domNodesStart": 202,
+  "domNodesMax": 409,
+  "errors": [],
+  "reason": "reveal",
+  "midAt": 5.8,
+  "midProgress": 50,
+  "revealed": true,
+  "playMs": 15663,
+  "actions": 6,
+  "wallMs": 27114
+ },
+ {
+  "id": 1,
+  "name": "POP",
+  "size": "1280x860",
+  "progressMax": 100,
+  "finished": true,
+  "secondsToFinish": 8.5,
+  "frame": {
+   "p50": 483.3,
+   "p95": 833.3,
+   "max": 833.3,
+   "over50": 6,
+   "frames": 6,
+   "fps": 1.8
+  },
+  "longTasks": {
+   "count": 23,
+   "totalMs": 2024,
+   "maxMs": 178
+  },
+  "heapStartMB": 13.43,
+  "heapEndMB": 19.75,
+  "domNodes": 134,
+  "domNodesStart": 202,
+  "domNodesMax": 409,
+  "errors": [],
+  "reason": "reveal",
+  "midAt": 3.7,
+  "midProgress": 50,
+  "revealed": true,
+  "playMs": 12430,
+  "actions": 6,
+  "wallMs": 34378
+ },
+ {
+  "id": 3,
+  "name": "CRACK",
+  "size": "390x844",
+  "progressMax": 100,
+  "finished": true,
+  "secondsToFinish": 19.9,
+  "frame": {
+   "p50": 150,
+   "p95": 466.7,
+   "max": 466.7,
+   "over50": 17,
+   "frames": 17,
+   "fps": 5.5
+  },
+  "longTasks": {
+   "count": 89,
+   "totalMs": 12727,
+   "maxMs": 737
+  },
+  "heapStartMB": 18.39,
+  "heapEndMB": 20.02,
+  "domNodes": 134,
+  "domNodesStart": 242,
+  "domNodesMax": 456,
+  "errors": [],
+  "reason": "reveal",
+  "midAt": 8.8,
+  "midProgress": 44,
+  "revealed": true,
+  "playMs": 23858,
+  "actions": 7,
+  "wallMs": 30682
+ },
+ {
+  "id": 3,
+  "name": "CRACK",
+  "size": "1280x860",
+  "progressMax": 100,
+  "finished": true,
+  "secondsToFinish": 19.5,
+  "frame": {
+   "p50": 650,
+   "p95": 816.7,
+   "max": 816.7,
+   "over50": 5,
+   "frames": 5,
+   "fps": 1.7
+  },
+  "longTasks": {
+   "count": 45,
+   "totalMs": 7489,
+   "maxMs": 1175
+  },
+  "heapStartMB": 14.95,
+  "heapEndMB": 19.95,
+  "domNodes": 134,
+  "domNodesStart": 242,
+  "domNodesMax": 454,
+  "errors": [],
+  "reason": "reveal",
+  "midAt": 7.8,
+  "midProgress": 44,
+  "revealed": true,
+  "playMs": 23844,
+  "actions": 7,
+  "wallMs": 35571
+ }
+]
