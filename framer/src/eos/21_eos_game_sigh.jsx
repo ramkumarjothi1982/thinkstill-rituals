@@ -85,6 +85,15 @@ const EOS_SIGH_MOTES = Array.from({ length: 10 }, (_, i) => {
     const r = 150 + (i % 3) * 46
     return { mx: Math.round(Math.cos(a) * r), my: Math.round(Math.sin(a) * r * 0.7 - 40), md: (i % 5) * 0.14 }
 })
+// Wind gusts that carry the exhale out to sea (pre-mounted; transform-only, so the exhale never repaints the sky).
+const EOS_SIGH_GUSTS = [
+    { r: -148, d: 0.42, dl: 0, w: 1 },
+    { r: -166, d: 0.5, dl: 0.36, w: 0.62 },
+    { r: -131, d: 0.34, dl: 0.7, w: 0.78 },
+    { r: -32, d: 0.42, dl: 0.14, w: 1 },
+    { r: -14, d: 0.5, dl: 0.5, w: 0.62 },
+    { r: -49, d: 0.34, dl: 0.84, w: 0.78 },
+]
 const EOS_SIGH_SPARKS = Array.from({ length: 12 }, (_, i) => ({ a: i * 30 + (i % 2) * 9, r: 96 + (i % 3) * 22 }))
 // Cue copy (§2 rules: no clinical words, no "just breathe" / "relax" / "calm down"). [main, sub]
 const EOS_SIGH_CUES = {
@@ -111,7 +120,7 @@ function eosSighNow() {
 }
 // Measured layout (the arena is rarely the viewport: Framer frames, the arcade HUD and guide). Everything is
 // stacked inside the safe box: clouds (rows A/B) on top → SYNC's island on the horizon → the cue → the orb at the
-// bottom. Returns CSS variables (px) for the root and the wind ribbon geometry.
+// bottom. Returns CSS variables (px) for the root.
 function eosSighLayout(W, H, safeTop, safeBottom) {
     const boxH = Math.max(240, H - safeTop - safeBottom)
     const narrow = W < 560
@@ -135,23 +144,11 @@ function eosSighLayout(W, H, safeTop, safeBottom) {
     }
     const sy = Math.round(eosClamp(L.sy, 40, narrow ? 76 : 96))
     const hz = Math.round(L.hz)
-    // wind ribbons: from the orb up to where the clouds sail away (arena px)
-    const ox = W / 2
-    const oy = safeTop + boxH - os * 0.62
-    const ty = safeTop + rowB + cbh * 0.5
-    const ty2 = safeTop + hz * 0.82
-    const wind = [
-        `M${ox} ${oy} C ${ox - W * 0.06} ${oy - (oy - ty) * 0.35}, ${ox - W * 0.22} ${ty + (oy - ty) * 0.15}, ${W * 0.03} ${ty}`,
-        `M${ox} ${oy} C ${ox + W * 0.06} ${oy - (oy - ty) * 0.35}, ${ox + W * 0.22} ${ty + (oy - ty) * 0.15}, ${W * 0.97} ${ty}`,
-        `M${ox} ${oy + 8} C ${ox - W * 0.12} ${oy - (oy - ty2) * 0.2}, ${ox - W * 0.3} ${ty2}, ${-W * 0.02} ${ty2 - 20}`,
-        `M${ox} ${oy + 8} C ${ox + W * 0.12} ${oy - (oy - ty2) * 0.2}, ${ox + W * 0.3} ${ty2}, ${W * 1.02} ${ty2 - 20}`,
-    ].map((d) => d.replace(/(\d+\.\d)\d+/g, "$1"))
     return {
         narrow,
         W: Math.round(W),
         H: Math.round(H),
-        wind,
-        vars: { "--os": `${os}px`, "--cw": `${cw}px`, "--cbh": `${cbh}px`, "--rowA": `${rowA}px`, "--rowB": `${rowB}px`, "--hzpx": `${hz}px`, "--sy": `${sy}px`, "--mn": `${narrow ? 50 : 66}px`, "--sun": `${narrow ? 104 : 150}px` },
+        vars: { "--aw": `${Math.round(W)}px`, "--os": `${os}px`, "--cw": `${cw}px`, "--cbh": `${cbh}px`, "--rowA": `${rowA}px`, "--rowB": `${rowB}px`, "--hzpx": `${hz}px`, "--sy": `${sy}px`, "--mn": `${narrow ? 50 : 66}px`, "--sun": `${narrow ? 104 : 150}px` },
     }
 }
 // Cloud captions: the user's words (eosWords pads with the feeling's seeds; neutral words under a strong flag).
@@ -211,7 +208,6 @@ function EosBigSighEngine({ game, entries = [], onProgress, onDone, sfx, rainSfx
         clr: 0, //        how clear the sky is (0 storm → 1 dawn)
         gone: [], //      cloud slots that left
         cue: "start",
-        count: null,
         n1: false,
         n2: false,
         face: EOS_SIGH_FACE.start,
@@ -253,6 +249,7 @@ function EosBigSighEngine({ game, entries = [], onProgress, onDone, sfx, rainSfx
             timers: [],
             sfxLog: [], //     kinds only (dev handle; never words)
             plog: [], //       every onProgress value
+            tipUntil: 0,
         }
 
     const fx = {
@@ -277,6 +274,11 @@ function EosBigSighEngine({ game, entries = [], onProgress, onDone, sfx, rainSfx
             const s = S.current
             s.ab[key] = (s.ab[key] + 1) % 2
             return s.ab[key] ? "a" : "b"
+        },
+        count(n) {
+            S.current.count = n
+            const w = orbRef.current
+            if (w) w.style.setProperty("--n", String(n))
         },
         // instant (same-frame) squash on the orb — a DOM attribute, so it never waits for React
         squash() {
@@ -312,6 +314,7 @@ function EosBigSighEngine({ game, entries = [], onProgress, onDone, sfx, rainSfx
         s.pendingOut = false
         go("in", { cue: "in", n1: false, n2: false })
         const left = Math.max(300, ((EOS_SIGH_TOP - s.f0) / EOS_SIGH_TOP) * EOS_SIGH_IN_MS)
+        fx.count(Math.ceil(left / 1000))
         eosBreathOwn("in", left)
         fx.sfx("soft")
         eosTone(174, Math.min(2000, left), { type: "sine", gain: 0.035, glide: 262 })
@@ -377,6 +380,7 @@ function EosBigSighEngine({ game, entries = [], onProgress, onDone, sfx, rainSfx
         }))
         s.phase = "out"
         s.t0 = eosSighNow()
+        fx.count(Math.ceil(D / 1000))
         eosBreathOwn("out", D)
         eosHaptic("exhale")
         try {
@@ -410,7 +414,7 @@ function EosBigSighEngine({ game, entries = [], onProgress, onDone, sfx, rainSfx
         fx.sfx("chime")
         eosHaptic("hit")
         eosTone(eosNote(4 + c * 2, 262), 420, { type: "triangle", gain: 0.04 })
-        const p = { done: c, bloom: fx.toggle("bloom"), big: false, count: null, n1: false, n2: false }
+        const p = { done: c, bloom: fx.toggle("bloom"), big: false, n1: false, n2: false }
         if (face != null) {
             p.face = face
             p.pop = fx.toggle("pop")
@@ -508,12 +512,13 @@ function EosBigSighEngine({ game, entries = [], onProgress, onDone, sfx, rainSfx
                 go("idle")
             }
         }
+        const w = orbRef.current
         if (s.phase !== "in" && s.phase !== "out") count = null
         if (count !== s.count) {
+            // the 1 Hz count is a CSS counter (style only): no text mutation for the wrappers' DOM audit
             s.count = count
-            patch({ count })
+            if (w && count != null) w.style.setProperty("--n", String(count))
         }
-        const w = orbRef.current
         if (w && Math.abs(s.painted - s.f) > 0.002) {
             s.painted = s.f
             w.style.setProperty("--f", s.f.toFixed(4))
@@ -565,11 +570,12 @@ function EosBigSighEngine({ game, entries = [], onProgress, onDone, sfx, rainSfx
         raf = requestAnimationFrame(tick)
         try {
             if (!eosPrefs().sighTip) {
-                eosSetPref("sighTip", true)
+                eosSetPref("sighTip", true) // a flag only (never words)
+                s.tipUntil = Date.now() + EOS_SIGH_TIP_MS
                 patch({ tip: true })
-                s.timers.push(setTimeout(() => s.alive && patch({ tip: false }), EOS_SIGH_TIP_MS))
             }
         } catch {}
+        if (s.tipUntil > Date.now()) s.timers.push(setTimeout(() => s.alive && patch({ tip: false }), s.tipUntil - Date.now()))
         const isKey = (e) => e.key === " " || e.key === "Spacebar" || e.key === "Enter"
         const mine = () => {
             const root = rootRef.current
@@ -683,8 +689,6 @@ function EosBigSighEngine({ game, entries = [], onProgress, onDone, sfx, rainSfx
     const cue0 = EOS_SIGH_CUES[ui.cue === "start" && ui.done > 0 ? "again" : ui.cue] || EOS_SIGH_CUES.start
     // the once-per-device safety line rides under the first cue (never over the words)
     const cue = ui.tip && (ui.cue === "start" || ui.cue === "in") ? [cue0[0], EOS_SIGH_TIP] : cue0
-    const countWord = ph === "in" ? "in" : ph === "out" ? "out" : ph === "ready" || ph === "sip" ? "sip" : ph === "full" ? "let go" : ""
-    const countBig = ph === "in" || ph === "out" ? (ui.count == null ? "" : String(ui.count)) : ph === "ready" || ph === "sip" ? "↑" : ""
     const pips = Array.from({ length: setup.n }, (_, i) => i)
     return (
         <div
@@ -762,7 +766,9 @@ function EosBigSighEngine({ game, entries = [], onProgress, onDone, sfx, rainSfx
                                     "--bd": `${(-i * 0.9).toFixed(1)}s`,
                                 }}
                             >
-                                <i className="eosSighRain" aria-hidden="true" />
+                                <i className="eosSighRain" aria-hidden="true">
+                                    <i />
+                                </i>
                                 <div className="eosSighCloudFloat">
                                     <span className="eosSighPuffs" aria-hidden="true">
                                         <i />
@@ -780,13 +786,6 @@ function EosBigSighEngine({ game, entries = [], onProgress, onDone, sfx, rainSfx
                 </div>
             </div>
             {/* the wind ribbon that carries the exhale out to sea */}
-            {geo ? (
-                <svg className="eosSighWind" data-w={ui.wind} viewBox={`0 0 ${geo.W} ${geo.H}`} preserveAspectRatio="none" aria-hidden="true">
-                    {geo.wind.map((d, i) => (
-                        <path key={i} className={i > 1 ? "w2" : ""} pathLength="100" d={d} />
-                    ))}
-                </svg>
-            ) : null}
             {/* foreground · the breath orb (centre-low, above the safe-bottom line) */}
             <div className="eosSighOrbWrap" ref={orbRef} data-n1={ui.n1 ? "1" : "0"} data-n2={ui.n2 ? "1" : "0"}>
                 <div className="eosSighCue" aria-live="polite">
@@ -799,6 +798,11 @@ function EosBigSighEngine({ game, entries = [], onProgress, onDone, sfx, rainSfx
                         <i key={i} className={i < ui.done ? "on" : ""} />
                     ))}
                 </div>
+                <div className="eosSighGusts" data-w={ui.wind} aria-hidden="true">
+                    {EOS_SIGH_GUSTS.map((g, i) => (
+                        <i key={i} style={{ "--gr": `${g.r}deg`, "--gd": `calc(var(--aw) * ${g.d})`, "--gl": `${g.dl}`, "--gw": g.w }} />
+                    ))}
+                </div>
                 <div className="eosSighMotes" aria-hidden="true">
                     {EOS_SIGH_MOTES.map((m, i) => (
                         <i key={i} className="eosSighMote" style={{ "--mx": `${m.mx}px`, "--my": `${m.my}px`, "--md": `${m.md}s` }} />
@@ -806,7 +810,7 @@ function EosBigSighEngine({ game, entries = [], onProgress, onDone, sfx, rainSfx
                 </div>
                 <button type="button" className="eosSighOrb" aria-label={EOS_SIGH_ARIA} {...marker}>
                     <span className="eosSighOrbSquash">
-                        <span className="eosSighOrbScale">
+                        <span className="eosSighOrbGrow">
                             <span className="eosSighOrbHalo" />
                             <span className="eosSighOrbBall">
                                 <span className="eosSighOrbFill">
@@ -816,8 +820,8 @@ function EosBigSighEngine({ game, entries = [], onProgress, onDone, sfx, rainSfx
                                 <span className="eosSighOrbSunny" />
                                 <span className="eosSighOrbGloss" />
                                 <span className="eosSighOrbCount" aria-hidden="true">
-                                    {countWord ? <small>{countWord}</small> : null}
-                                    {countBig ? <b>{countBig}</b> : null}
+                                    <small />
+                                    <b />
                                 </span>
                             </span>
                             <svg className="eosSighRing" viewBox="0 0 100 100" aria-hidden="true">
@@ -845,7 +849,7 @@ function EosBigSighEngine({ game, entries = [], onProgress, onDone, sfx, rainSfx
 // ---------------------------------------------------------------- CSS (every rule under ${EOS_A} .eosG111)
 const EOS_SIGH_R = `${EOS_A} .eosG111`
 const EOS_SIGH_CSS = `
-${EOS_SIGH_R}{--hzpx:200px;--os:160px;--cw:190px;--cbh:60px;--rowA:38px;--rowB:124px;--mn:66px;--sy:90px;--sun:150px;--k:.16;--og:190,150,255;--f:0;background:var(--st1);color:#fff;font-family:var(--eos-font);cursor:default;isolation:isolate}
+${EOS_SIGH_R}{--hzpx:200px;--os:160px;--cw:190px;--cbh:60px;--rowA:38px;--rowB:124px;--mn:66px;--sy:90px;--sun:150px;--k:.16;--og:190,150,255;--f:0;background:var(--st1);color:#fff;font-family:var(--eos-font);cursor:default;isolation:isolate;filter:none!important}
 ${EOS_SIGH_R}[data-calm="1"]{--k:.04}
 ${EOS_SIGH_R} .eosSighSky,${EOS_SIGH_R} .eosSighSky>i{position:absolute;inset:0;pointer-events:none;display:block}
 ${EOS_SIGH_R} .eosSighSkyStorm{background:linear-gradient(180deg,var(--st1) 0%,var(--st2) 30%,var(--st3) 50%)}
@@ -895,7 +899,7 @@ ${EOS_SIGH_R} .eosSighCloud{position:absolute;left:var(--x);top:var(--y);width:c
 ${EOS_SIGH_R}[data-narrow="1"] .eosSighCloud{left:var(--px);top:var(--py)}
 ${EOS_SIGH_R} .eosSighCloud[data-gone="1"]{transform:translate(calc(-50% + var(--gx)),-24px) scale(.74);transition:transform var(--D) cubic-bezier(.35,.05,.45,1)}
 ${EOS_SIGH_R}[data-calm="1"] .eosSighCloud[data-gone="1"]{transform:translate(-50%,0)}
-${EOS_SIGH_R} .eosSighCloudFloat{position:relative;animation:eosSighCloudIn .5s ease-out both,eosSighBob var(--bob) ease-in-out var(--bd) infinite;transition:opacity .4s}
+${EOS_SIGH_R} .eosSighCloudFloat{position:relative;animation:eosSighCloudIn .5s ease-out backwards,eosSighBob var(--bob) ease-in-out var(--bd) infinite;transition:opacity .4s}
 ${EOS_SIGH_R} .eosSighCloud[data-gone="1"] .eosSighCloudFloat{opacity:0;transition:opacity calc(var(--D) * .7) ease-in calc(var(--D) * .3)}
 ${EOS_SIGH_R} .eosSighPuffs{position:absolute;inset:0;display:block;pointer-events:none}
 ${EOS_SIGH_R} .eosSighPuffs>i{position:absolute;display:block;border-radius:50%;background:radial-gradient(circle at 50% 30%,var(--sc1),var(--sc2) 80%)}
@@ -905,24 +909,23 @@ ${EOS_SIGH_R} .eosSighPuffs>i:nth-child(3){left:61%;top:calc(var(--cw) * -.09);w
 ${EOS_SIGH_R} .eosSighCloudBody{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:var(--cbh);padding:7px 12px;border-radius:999px;text-align:center;background:radial-gradient(130% 150% at 50% 0%,var(--sc1),var(--sc2) 72%);box-shadow:inset 0 -7px 12px rgba(12,6,44,.38),inset 0 4px 8px rgba(255,255,255,.2),0 12px 22px rgba(0,0,0,.28)}
 ${EOS_SIGH_R} .eosSighWord{max-width:100%;line-height:1.08!important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 ${EOS_SIGH_R} .eosSighThumb{width:40px;height:40px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px rgba(255,255,255,.7)}
-${EOS_SIGH_R} .eosSighRain{position:absolute;left:14%;right:14%;top:62%;height:150%;display:block;opacity:0;pointer-events:none;background:repeating-linear-gradient(104deg,rgba(205,220,255,0) 0 8px,rgba(205,220,255,.55) 8px 9.5px);background-size:100% 40px;-webkit-mask-image:linear-gradient(180deg,#000 20%,transparent);mask-image:linear-gradient(180deg,#000 20%,transparent)}
-${EOS_SIGH_R} .eosSighCloud[data-gone="1"] .eosSighRain{animation:eosSighRainLife var(--D) linear forwards,eosSighRainFall .6s linear infinite}
-${EOS_SIGH_R}[data-calm="1"] .eosSighCloud[data-gone="1"] .eosSighRain{animation:eosSighRainLife var(--D) linear forwards}
-${EOS_SIGH_R} .eosSighWind{position:absolute;inset:0;width:100%;height:100%;z-index:5;pointer-events:none;opacity:0;overflow:visible}
-${EOS_SIGH_R} .eosSighWind path{fill:none;stroke:rgba(235,244,255,.5);stroke-width:7px;stroke-linecap:round;stroke-dasharray:34 140;stroke-dashoffset:40;opacity:.9}
-${EOS_SIGH_R} .eosSighWind path.w2{stroke:rgba(255,226,180,.38);stroke-width:4px;stroke-dasharray:24 140}
-${EOS_SIGH_R}[data-phase="out"] .eosSighWind[data-w="a"]{animation:eosSighWindShowA var(--D) ease-in-out forwards}
-${EOS_SIGH_R}[data-phase="out"] .eosSighWind[data-w="b"]{animation:eosSighWindShowB var(--D) ease-in-out forwards}
-${EOS_SIGH_R}[data-phase="out"] .eosSighWind[data-w="a"] path{animation:eosSighWindA calc(var(--D) * .5) ease-in-out 2}
-${EOS_SIGH_R}[data-phase="out"] .eosSighWind[data-w="b"] path{animation:eosSighWindB calc(var(--D) * .5) ease-in-out 2}
-${EOS_SIGH_R}[data-phase="out"] .eosSighWind path.w2{animation-delay:.5s}
-${EOS_SIGH_R}[data-calm="1"] .eosSighWind path{animation:none!important;stroke-dasharray:none;opacity:.35}
+${EOS_SIGH_R} .eosSighRain{position:absolute;left:14%;right:14%;top:62%;height:150%;display:block;overflow:hidden;opacity:0;pointer-events:none;-webkit-mask-image:linear-gradient(180deg,#000 20%,transparent);mask-image:linear-gradient(180deg,#000 20%,transparent)}
+${EOS_SIGH_R} .eosSighRain>i{position:absolute;left:0;right:0;top:-40px;bottom:0;display:block;background:repeating-linear-gradient(104deg,rgba(205,220,255,0) 0 8px,rgba(205,220,255,.55) 8px 9.5px)}
+${EOS_SIGH_R} .eosSighCloud[data-gone="1"] .eosSighRain{animation:eosSighRainLife var(--D) linear forwards}
+${EOS_SIGH_R} .eosSighCloud[data-gone="1"] .eosSighRain>i{animation:eosSighRainFall .7s linear infinite}
+${EOS_SIGH_R}[data-calm="1"] .eosSighCloud[data-gone="1"] .eosSighRain>i{animation:none}
+${EOS_SIGH_R} .eosSighGusts{position:absolute;left:50%;top:40%;width:0;height:0;z-index:6;pointer-events:none}
+${EOS_SIGH_R} .eosSighGusts>i{position:absolute;left:0;top:-3px;width:calc(130px * var(--gw));height:5px;display:block;border-radius:999px;transform-origin:0 50%;background:linear-gradient(90deg,rgba(235,244,255,0),rgba(240,247,255,.85) 60%,rgba(255,255,255,0));opacity:0;transform:rotate(var(--gr)) translateX(30px) scaleX(.3)}
+${EOS_SIGH_R} .eosSighGusts>i::after{content:"";position:absolute;left:22%;top:9px;width:58%;height:3px;border-radius:999px;background:linear-gradient(90deg,rgba(255,236,210,0),rgba(255,236,210,.6),rgba(255,236,210,0))}
+${EOS_SIGH_R}[data-phase="out"] .eosSighGusts[data-w="a"]>i{animation:eosSighGustA calc(var(--D) * .42) cubic-bezier(.25,.6,.35,1) calc(var(--D) * .1 * var(--gl)) 2}
+${EOS_SIGH_R}[data-phase="out"] .eosSighGusts[data-w="b"]>i{animation:eosSighGustB calc(var(--D) * .42) cubic-bezier(.25,.6,.35,1) calc(var(--D) * .1 * var(--gl)) 2}
+${EOS_SIGH_R}[data-calm="1"][data-phase="out"] .eosSighGusts>i{animation-name:eosSighGustCalm;animation-iteration-count:1;animation-duration:var(--D);transform:rotate(var(--gr)) translateX(calc(var(--gd) * .5)) scaleX(1)}
 ${EOS_SIGH_R} .eosSighOrbWrap{position:absolute;left:50%;bottom:calc(var(--eos-safe-bottom) + 6px);width:var(--os);height:var(--os);margin-left:calc(var(--os) / -2);z-index:7;animation:eosSighIntro .5s cubic-bezier(.3,1.4,.5,1) both}
 ${EOS_SIGH_R}[data-calm="1"] .eosSighOrbWrap{animation:eosSighFadeIn .4s ease both}
 ${EOS_SIGH_R} .eosSighOrb{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;border-radius:50%!important;display:block!important;touch-action:none;cursor:pointer!important;outline-offset:8px!important}
 ${EOS_SIGH_R}[data-phase="out"] .eosSighOrb,${EOS_SIGH_R}[data-phase="done"] .eosSighOrb{cursor:default!important}
-${EOS_SIGH_R} .eosSighOrbSquash,${EOS_SIGH_R} .eosSighOrbScale{position:absolute;inset:0;display:block;border-radius:50%;pointer-events:none}
-${EOS_SIGH_R} .eosSighOrbScale{transform:scale(calc(1 + var(--f) * var(--k)));transform-origin:50% 100%;will-change:transform}
+${EOS_SIGH_R} .eosSighOrbSquash,${EOS_SIGH_R} .eosSighOrbGrow{position:absolute;inset:0;display:block;border-radius:50%;pointer-events:none}
+${EOS_SIGH_R} .eosSighOrbGrow{transform:scale(calc(1 + var(--f) * var(--k)));transform-origin:50% 100%;will-change:transform}
 ${EOS_SIGH_R} .eosSighOrbWrap[data-sq="a"] .eosSighOrbSquash{animation:eosSighSquashA .46s cubic-bezier(.3,1.3,.5,1)}
 ${EOS_SIGH_R} .eosSighOrbWrap[data-sq="b"] .eosSighOrbSquash{animation:eosSighSquashB .46s cubic-bezier(.3,1.3,.5,1)}
 ${EOS_SIGH_R}[data-calm="1"] .eosSighOrbWrap[data-sq="a"] .eosSighOrbSquash{animation:eosSighSquashCalmA .4s ease}
@@ -931,12 +934,12 @@ ${EOS_SIGH_R} .eosSighOrbHalo{position:absolute;inset:-30%;display:block;border-
 ${EOS_SIGH_R} .eosSighOrbWrap[data-ack="a"] .eosSighOrbHalo{animation:eosSighAckA .5s ease-out}
 ${EOS_SIGH_R} .eosSighOrbWrap[data-ack="b"] .eosSighOrbHalo{animation:eosSighAckB .5s ease-out}
 ${EOS_SIGH_R} .eosSighOrbBall{position:absolute;inset:0;display:block;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 50% 64%,rgba(70,48,150,.6),rgba(14,10,46,.9) 74%);box-shadow:inset 0 -12px 24px rgba(8,4,36,.6),inset 0 6px 16px rgba(255,255,255,.2),0 12px 0 rgba(6,4,24,.32),0 22px 40px rgba(0,0,0,.45),0 0 0 3px rgba(255,255,255,.24),0 0 22px rgba(var(--og),.5)}
-${EOS_SIGH_R} .eosSighOrbBall::before{content:"";position:absolute;left:26%;top:30%;width:48%;height:48%;border-radius:50%;background:radial-gradient(closest-side,rgba(200,170,255,.55),rgba(200,170,255,0));opacity:calc(1 - var(--f))}
+${EOS_SIGH_R} .eosSighOrbBall::before{content:"";position:absolute;left:26%;top:30%;width:48%;height:48%;border-radius:50%;background:radial-gradient(closest-side,rgba(200,170,255,.55),rgba(200,170,255,0));opacity:calc(1 - var(--f));will-change:opacity}
 ${EOS_SIGH_R} .eosSighOrbFill{position:absolute;left:0;right:0;bottom:0;height:100%;display:block;transform:translateY(calc((1 - var(--f)) * 100% + 2px));background:linear-gradient(180deg,#d6b8ff,#8a5cf0 55%,#4b2aa6)}
 ${EOS_SIGH_R} .eosSighOrbGold{position:absolute;inset:0;display:block;background:linear-gradient(180deg,#fff2b8,#ffc45a 55%,#ff9a4a);opacity:var(--clr);transition:opacity 2.4s ease}
-${EOS_SIGH_R} .eosSighOrbWave{position:absolute;left:-20px;right:-20px;top:-9px;height:18px;display:block;background:radial-gradient(circle at 10px 0,rgba(255,255,255,0) 9px,rgba(255,255,255,.42) 10px) repeat-x;background-size:20px 18px;animation:eosSighWave 1.8s linear infinite}
+${EOS_SIGH_R} .eosSighOrbWave{position:absolute;left:-20px;right:-20px;top:-9px;height:18px;display:block;background:radial-gradient(circle at 10px 0,rgba(255,255,255,0) 9px,rgba(255,255,255,.42) 10px) repeat-x;background-size:20px 18px;animation:eosSighWave 1.8s linear infinite;will-change:transform}
 ${EOS_SIGH_R}[data-calm="1"] :is(.eosSighOrbWave,.eosSighWaves,.eosSighStorm>b){animation:none!important}
-${EOS_SIGH_R}[data-calm="1"] .eosSighCloudFloat{animation:eosSighFadeIn .5s ease both}
+${EOS_SIGH_R}[data-calm="1"] .eosSighCloudFloat{animation:eosSighFadeIn .5s ease backwards}
 ${EOS_SIGH_R}[data-calm="1"] .eosSighSyncFace{animation:none!important}
 ${EOS_SIGH_R} .eosSighOrbSunny{position:absolute;inset:0;display:block;border-radius:50%;background:radial-gradient(circle at 50% 42%,#fff6c8,#ffc45a 58%,#ff9a4a);opacity:0;transition:opacity 1.2s ease}
 ${EOS_SIGH_R}[data-phase="done"] .eosSighOrbSunny{opacity:1}
@@ -945,6 +948,12 @@ ${EOS_SIGH_R} .eosSighOrbGloss{position:absolute;left:17%;top:9%;width:36%;heigh
 ${EOS_SIGH_R} .eosSighOrbCount{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#fff;text-shadow:0 2px 8px rgba(20,6,60,.75);pointer-events:none}
 ${EOS_SIGH_R} .eosSighOrbCount small{font:800 15px/1 var(--eos-font);letter-spacing:.14em;text-transform:uppercase}
 ${EOS_SIGH_R} .eosSighOrbCount b{font:900 calc(var(--os) * .26)/1 var(--eos-font);font-variant-numeric:tabular-nums}
+${EOS_SIGH_R}:is([data-phase="in"],[data-phase="out"]) .eosSighOrbCount b::after{counter-reset:eosSighN var(--n,2);content:counter(eosSighN)}
+${EOS_SIGH_R}:is([data-phase="ready"],[data-phase="sip"]) .eosSighOrbCount b::after{content:"↑"}
+${EOS_SIGH_R}[data-phase="in"] .eosSighOrbCount small::after{content:"in"}
+${EOS_SIGH_R}[data-phase="out"] .eosSighOrbCount small::after{content:"out"}
+${EOS_SIGH_R}:is([data-phase="ready"],[data-phase="sip"]) .eosSighOrbCount small::after{content:"sip"}
+${EOS_SIGH_R}[data-phase="full"] .eosSighOrbCount small::after{content:"let go"}
 ${EOS_SIGH_R}[data-phase="ready"] .eosSighOrbCount b{animation:eosSighUp .9s ease-in-out infinite}
 ${EOS_SIGH_R}[data-calm="1"] .eosSighOrbCount b{animation:none!important;font-size:calc(var(--os) * .3)}
 ${EOS_SIGH_R} .eosSighRing{position:absolute;left:-9%;top:-9%;width:118%;height:118%;overflow:visible;pointer-events:none}
@@ -959,7 +968,9 @@ ${EOS_SIGH_R} .eosSighCue{position:absolute;left:50%;bottom:calc(100% + var(--os
 ${EOS_SIGH_R} .eosSighCue b{display:block;font:800 20px/1.15 var(--eos-font);color:#fff;text-shadow:0 2px 10px rgba(10,4,40,.85),0 0 2px rgba(10,4,40,.9)}
 ${EOS_SIGH_R} .eosSighCue small{display:block;margin-top:4px;font:700 15px/1.2 var(--eos-font);color:rgba(240,236,255,.92);text-shadow:0 2px 8px rgba(10,4,40,.85)}
 ${EOS_SIGH_R} .eosSighCue small.isTip{display:inline-block;margin-top:6px;padding:4px 12px;border-radius:999px;background:rgba(10,8,40,.62);color:#ffe9b8}
-@media (max-width:560px){${EOS_SIGH_R} .eosSighCue{max-width:330px}${EOS_SIGH_R} .eosSighCue b{font-size:17px}${EOS_SIGH_R} .eosSighCue small{font-size:14px}${EOS_SIGH_R} .eosSighOrbCount small{font-size:14px}}
+${EOS_SIGH_R}[data-narrow="1"] .eosSighCue{max-width:330px}
+${EOS_SIGH_R}[data-narrow="1"] .eosSighCue b{font-size:17px}
+${EOS_SIGH_R}[data-narrow="1"] .eosSighCue small{font-size:15px}
 ${EOS_SIGH_R} .eosSighPips{position:absolute;left:calc(100% + 22px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column-reverse;gap:9px;pointer-events:none}
 ${EOS_SIGH_R} .eosSighPips>i{display:block;width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.14);box-shadow:inset 0 0 0 2px rgba(255,255,255,.45);transition:background .4s ease,box-shadow .4s ease}
 ${EOS_SIGH_R} .eosSighPips>i.on{background:radial-gradient(circle at 40% 35%,#fff6c8,#ffc45a 60%,#ff9a4a);box-shadow:0 0 12px rgba(255,196,96,.85)}
@@ -987,11 +998,10 @@ ${EOS_SIGH_R}[data-calm="1"] .eosSighBloom[data-b]>b{animation-name:eosSighFadeO
 @keyframes eosSighSyncBob{0%,100%{translate:0 0;scale:1 1}50%{translate:0 -4px;scale:.98 1.02}}
 @keyframes eosSighCloudIn{0%{opacity:0;scale:.9}100%{opacity:1;scale:1}}
 @keyframes eosSighRainLife{0%{opacity:0}18%{opacity:.85}70%{opacity:.55}100%{opacity:0}}
-@keyframes eosSighRainFall{to{background-position:0 40px}}
-@keyframes eosSighWindShowA{0%{opacity:0}15%{opacity:1}80%{opacity:.8}100%{opacity:0}}
-@keyframes eosSighWindShowB{0%{opacity:0}15%{opacity:1}80%{opacity:.8}100%{opacity:0}}
-@keyframes eosSighWindA{0%{stroke-dashoffset:40}100%{stroke-dashoffset:-104}}
-@keyframes eosSighWindB{0%{stroke-dashoffset:40}100%{stroke-dashoffset:-104}}
+@keyframes eosSighRainFall{to{transform:translateY(40px)}}
+@keyframes eosSighGustA{0%{opacity:0;transform:rotate(var(--gr)) translateX(30px) scaleX(.3)}18%{opacity:.95}70%{opacity:.7}100%{opacity:0;transform:rotate(var(--gr)) translateX(var(--gd)) scaleX(1.15)}}
+@keyframes eosSighGustB{0%{opacity:0;transform:rotate(var(--gr)) translateX(30px) scaleX(.3)}18%{opacity:.95}70%{opacity:.7}100%{opacity:0;transform:rotate(var(--gr)) translateX(var(--gd)) scaleX(1.15)}}
+@keyframes eosSighGustCalm{0%{opacity:0}25%{opacity:.55}75%{opacity:.4}100%{opacity:0}}
 @keyframes eosSighIntro{0%{opacity:0;scale:.7}100%{opacity:1;scale:1}}
 @keyframes eosSighFadeIn{0%{opacity:0}100%{opacity:1}}
 @keyframes eosSighFadeOut{0%{opacity:.8}100%{opacity:0}}
@@ -1001,7 +1011,7 @@ ${EOS_SIGH_R}[data-calm="1"] .eosSighBloom[data-b]>b{animation-name:eosSighFadeO
 @keyframes eosSighSquashCalmB{0%{scale:1 1}40%{scale:1.03 .97}100%{scale:1 1}}
 @keyframes eosSighAckA{0%{filter:brightness(1.5)}100%{filter:none}}
 @keyframes eosSighAckB{0%{filter:brightness(1.5)}100%{filter:none}}
-@keyframes eosSighWave{to{background-position:20px 0}}
+@keyframes eosSighWave{from{transform:translateX(-20px)}to{transform:translateX(0)}}
 @keyframes eosSighUp{0%,100%{translate:0 3px}50%{translate:0 -6px}}
 @keyframes eosSighNotchPulse{0%{opacity:.55}100%{opacity:1}}
 @keyframes eosSighMote{0%{opacity:0;transform:translate(var(--mx),var(--my)) scale(1)}18%{opacity:.95}85%{opacity:.85}100%{opacity:0;transform:translate(0,0) scale(.3)}}
