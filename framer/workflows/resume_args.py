@@ -19,6 +19,8 @@ for p in sorted(glob.glob(os.path.join(st, "*.md"))):
     elif name.endswith(".done"):
         done[name[:-5]] = body
     elif name.endswith(".build"):
+        if "IN PROGRESS" in body.splitlines()[0].upper() if body.strip() else True:
+            continue  # an interrupted agent's notes, not a final report
         built[name[:-6]] = body
 for k in done:
     built.pop(k, None)
