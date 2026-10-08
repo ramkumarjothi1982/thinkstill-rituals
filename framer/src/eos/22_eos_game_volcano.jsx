@@ -54,9 +54,9 @@ const EOS_VOLCANO = {
 }
 // Hot skies (variationSeed % 3) — the anger "loud" grade, smoky.
 const EOS_VOLCANO_HOT = [
-    "linear-gradient(180deg,#2a0b1f 0%,#6e1430 38%,#c4243a 72%,#ff7a1a 100%)",
-    "linear-gradient(180deg,#1d0b2e 0%,#561846 40%,#b8263f 74%,#ff6a2a 100%)",
-    "linear-gradient(180deg,#14061a 0%,#480e22 40%,#a91f2e 74%,#ff8a3a 100%)",
+    "linear-gradient(180deg,#2a0b1f 0%,#6e1430 30%,#c4243a 56%,#ff7a1a 76%,#ffc061 100%)",
+    "linear-gradient(180deg,#1d0b2e 0%,#561846 32%,#b8263f 58%,#ff6a2a 78%,#ffb35a 100%)",
+    "linear-gradient(180deg,#14061a 0%,#480e22 32%,#a91f2e 58%,#ff8a3a 80%,#ffcf7a 100%)",
 ]
 // Calm skies by local time (eosDayPart) — the anger "calm" grade (teal #2ec4b6 / #4fd1e8) lit for the hour.
 const EOS_VOLCANO_COOL = {
@@ -103,25 +103,34 @@ function eosVolcanoPaths(variant) {
     const body = `M0,620 L${pts.join(" L")} L1000,620 Z`
     // lava rivers down the front face, inside the silhouette, spreading from the lip
     const spec = [
-        [-1, 0.62, 0.0],
-        [1, 0.58, 1.3],
-        [-1, 0.2, 2.1],
-        [1, 0.27, 3.4],
+        [-1, 0.66, 0.0, 1],
+        [1, 0.6, 1.3, 0.92],
+        [-1, 0.24, 2.1, 0.66],
+        [1, 0.3, 3.4, 0.78],
     ]
     if (variant === 2) spec.reverse()
-    const rivers = spec.map(([side, f, ph], i) => {
+    const rivers = spec.map(([side, f, ph, len], i) => {
         const seg = []
         const n = 18
         for (let k = 0; k <= n; k++) {
             const a = k / n
-            const v = 0.118 + a * 0.84
+            const v = 0.118 + a * 0.84 * len
             const half = eosVolcanoHalf(v)
-            const u = 0.5 + side * (half * f * Math.pow(a, 0.75) + 0.02 * Math.sin(a * 8 + ph + variant)) * (k === 0 ? 0.3 : 1)
+            const u = 0.5 + side * (0.016 + 0.045 * f + half * f * Math.pow(a, 0.8) + 0.022 * Math.sin(a * 8 + ph + variant) * a)
             seg.push(`${(u * 1000).toFixed(1)},${(v * 620).toFixed(1)}`)
         }
         return "M" + seg.join(" L")
     })
-    return { ridge, body, rivers, shoulder }
+    // soft strata bands across the face (depth + texture)
+    const strata = [0.3, 0.48, 0.66, 0.84].map((v, i) => {
+        const half = eosVolcanoHalf(v) * 0.92
+        const y = v * 620
+        const x0 = (0.5 - half) * 1000
+        const x1 = (0.5 + half) * 1000
+        const sag = 14 + i * 6
+        return `M${x0.toFixed(1)},${y.toFixed(1)} Q500,${(y + sag).toFixed(1)} ${x1.toFixed(1)},${(y - 4).toFixed(1)}`
+    })
+    return { ridge, body, rivers, shoulder, strata }
 }
 // Layout in arena CSS px (unscaled). Everything interactive / wordy stays inside [U0, U1].
 function eosVolcanoLayout(W, H, sT, sB, variant) {
@@ -153,6 +162,16 @@ function eosVolcanoLayout(W, H, sT, sB, variant) {
         craterH: Math.max(76, mh * 0.18),
     }
 }
+// Rocks should carry the heavy words: drop chunks made only of filler ("I am", "so", "my") when enough
+// real words remain (order kept; eosWords already handled safety + padding). Never returns an empty list.
+const EOS_VOLCANO_FILLER = /^(?:i|i'm|im|am|a|an|the|so|my|me|to|and|of|in|on|at|is|it|its|it's|be|was|were|just|really|very|that|this|for|with|but|or|you|he|she|they|we|our|your|his|her|their|been|being|have|has|had|do|did|feel|feeling|like)$/i
+function eosVolcanoWords(list) {
+    const all = (Array.isArray(list) ? list : []).filter(Boolean)
+    const real = all.filter((w) => String(w).split(/\s+/).some((t) => t && !EOS_VOLCANO_FILLER.test(t.replace(/[^\w']/g, ""))))
+    const pick = real.length >= 3 ? real : real.concat(all.filter((w) => !real.includes(w)))
+    const out = pick.slice(0, 6)
+    return out.length ? out : (EOS_EMO.anger.seeds || ["boiling over"]).slice(0, 3)
+}
 function eosVolcanoNow() {
     return typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()
 }
@@ -168,14 +187,14 @@ function eosVolcanoIntensity() {
 }
 
 // Dev/test handle: the live instance (dev builds only — eosExpose publishes window.__eos only in dev).
-const EOS_VOLCANO_DEV = { cur: null }
+const EOS_VOLCANO_DEV = { cur: null, last: null } // last = the most recent instance (kept after unmount for tests)
 eosExpose("volcano", {
     rocksPerTap: eosVolcanoRocksPerTap,
     state: () => {
-        const s = EOS_VOLCANO_DEV.cur
+        const s = EOS_VOLCANO_DEV.cur || EOS_VOLCANO_DEV.last
         if (!s) return null
         return {
-            act: s.act, taps: s.taps, rocks: s.rocks, rocksPerTap: s.rocksPerTap, shakes: s.shakes, heat: Math.round(s.heat * 10) / 10,
+            mounted: s.mounted, act: s.act, taps: s.taps, rocks: s.rocks, rocksPerTap: s.rocksPerTap, shakes: s.shakes, heat: Math.round(s.heat * 10) / 10,
             mode: s.mode, phase: s.phase, speed: Math.round(s.speed), chimes: s.chimes, nonSoft: s.nonSoft, sfx: s.sfxLog.slice(-60),
             slowerShown: s.slowerShown, holding: s.holding, cloudX: Math.round(s.cloudX), owned: s.owned, done: s.doneCalled,
             msAtA: s.msAtA, msAtC: s.msAtC, rates: { slow: EOS_VOLCANO.rate, mist: EOS_VOLCANO.rate / 2 },
@@ -202,10 +221,7 @@ function EosVolcanoEngine({ game, entries, onProgress, onDone, sfx, rainSfx, red
     P.current = { onProgress, onDone, sfx, rainSfx, red }
     const uid = String(React.useId ? React.useId() : "v").replace(/[^a-zA-Z0-9]/g, "")
     const entryKey = Array.isArray(entries) ? entries.join("|") : String(entries || "")
-    const words = React.useMemo(() => {
-        const w = eosWords(entries, 6)
-        return w.length ? w : (EOS_EMO.anger.seeds || ["boiling over"]).slice(0, 3)
-    }, [entryKey])
+    const words = React.useMemo(() => eosVolcanoWords(eosWords(entries, 8)), [entryKey])
     const seed = Math.abs(Number(variationSeed) || 1)
     const variant = seed % 3
     const dayPart = React.useMemo(() => eosDayPart(), [])
@@ -268,6 +284,7 @@ function EosVolcanoEngine({ game, entries, onProgress, onDone, sfx, rainSfx, red
         const s = S.current
         s.mounted = true
         EOS_VOLCANO_DEV.cur = s
+        EOS_VOLCANO_DEV.last = s
         report(0, "TAP THE CRATER")
         return () => {
             s.mounted = false
@@ -345,7 +362,7 @@ function EosVolcanoEngine({ game, entries, onProgress, onDone, sfx, rainSfx, red
             const ty = eosClamp(G.peakY + eosNoise(s.taps * 3 + j, 9) * G.uh * 0.16 + (k === 3 && j === 1 ? -14 : 0), G.U0 + 40, G.cy - 70)
             el.style.setProperty("--rx", `${Math.round(tx - G.cx)}px`)
             el.style.setProperty("--ry", `${Math.round(ty - G.cy)}px`)
-            el.style.setProperty("--rot", `${Math.round((eosNoise(s.rocks, 11) - 0.5) * 36)}deg`)
+            el.style.setProperty("--rot", `${Math.round((eosNoise(s.rocks, 11) - 0.5) * 20)}deg`)
             el.style.setProperty("--s", String(tier))
             el.setAttribute("data-fly", el.getAttribute("data-fly") === "a" ? "b" : "a")
         }
@@ -456,7 +473,7 @@ function EosVolcanoEngine({ game, entries, onProgress, onDone, sfx, rainSfx, red
         s.raf = 0
         if (!s.mounted || s.act !== "b") return
         const t = eosVolcanoNow()
-        const dt = Math.min(0.4, Math.max(0, (t - s.lastT) / 1000))
+        const dt = Math.min(1, Math.max(0, (t - s.lastT) / 1000)) // ≤ 1 s: a backgrounded tab never jumps
         s.lastT = t
         if (t - s.phaseT0 >= (s.phase === "in" ? V.inMs : V.outMs)) setPhase(s.phase === "in" ? "out" : "in", t)
         // keyboard glide (always slow)
@@ -477,7 +494,7 @@ function EosVolcanoEngine({ game, entries, onProgress, onDone, sfx, rainSfx, red
         s.heat = Math.max(0, s.heat - Math.max(rate, floor) * dt)
         if (mode === "rain") s.slowCool += before - s.heat
         const h = s.heat / 100
-        if (Math.abs(h - s.hShown) >= 0.006 && t - s.hAt >= 60) {
+        if ((Math.abs(h - s.hShown) >= 0.01 && t - s.hAt >= 90) || (h === 0 && s.hShown !== 0)) {
             s.hShown = h
             s.hAt = t
             rootRef.current?.style.setProperty("--h", h.toFixed(3))
@@ -740,9 +757,9 @@ function EosVolcanoEngine({ game, entries, onProgress, onDone, sfx, rainSfx, red
                         <svg className="eosVolcMtn" viewBox="0 0 1000 620" preserveAspectRatio="none" style={{ left: G.mx, top: G.my, width: G.mw, height: G.mh }} aria-hidden="true">
                             <defs>
                                 <linearGradient id={`eosVolcRock${uid}`} x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0" stopColor="#4a2a3c" />
-                                    <stop offset="0.55" stopColor="#2a1626" />
-                                    <stop offset="1" stopColor="#170b16" />
+                                    <stop offset="0" stopColor="#3b1a2a" />
+                                    <stop offset="0.5" stopColor="#1e0a18" />
+                                    <stop offset="1" stopColor="#0c040b" />
                                 </linearGradient>
                                 <radialGradient id={`eosVolcWarm${uid}`} cx="0.5" cy="0.08" r="0.75">
                                     <stop offset="0" stopColor="#ff8a2e" stopOpacity="0.75" />
@@ -758,6 +775,11 @@ function EosVolcanoEngine({ game, entries, onProgress, onDone, sfx, rainSfx, red
                                     <stop offset="0.5" stopColor="#000" stopOpacity="0" />
                                     <stop offset="1" stopColor="#05020a" stopOpacity="0.42" />
                                 </linearGradient>
+                                <linearGradient id={`eosVolcMeadow${uid}`} x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0" stopColor="#9ff0b8" />
+                                    <stop offset="0.35" stopColor="#4fcf86" />
+                                    <stop offset="1" stopColor="#1d6b52" />
+                                </linearGradient>
                                 <linearGradient id={`eosVolcLava${uid}`} x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="0" stopColor="#ffb13b" />
                                     <stop offset="0.5" stopColor="#ff5a1f" />
@@ -768,6 +790,10 @@ function EosVolcanoEngine({ game, entries, onProgress, onDone, sfx, rainSfx, red
                             <path className="eosVolcCoolLight" d={paths.body} fill={`url(#eosVolcCoolL${uid})`} />
                             <path className="eosVolcHeatGlow" d={paths.body} fill={`url(#eosVolcWarm${uid})`} />
                             <path d={paths.body} fill={`url(#eosVolcShade${uid})`} />
+                            <path className="eosVolcMeadow" d={paths.body} fill={`url(#eosVolcMeadow${uid})`} />
+                            {paths.strata.map((d, i) => (
+                                <path key={`s${i}`} className="eosVolcStrata" d={d} />
+                            ))}
                             <path className="eosVolcRimHot" d={paths.ridge} />
                             <path className="eosVolcRimCool" d={paths.ridge} />
                             {paths.rivers.map((d, i) => (
@@ -797,12 +823,9 @@ function EosVolcanoEngine({ game, entries, onProgress, onDone, sfx, rainSfx, red
                         </div>
                         <div className="eosVolcGarden" aria-hidden="true" style={{ left: G.mx, top: G.my, width: G.mw, height: G.mh }}>
                             {EOS_VOLCANO_FLOWERS.map((f, i) => (
-                                <i key={i} className="eosVolcFlower" style={{ left: `${f.u * 100}%`, top: `${f.v * 100}%`, "--i": i, "--fh": f.hue, "--fs": `${Math.round(f.s * (G.phone ? 0.78 : 1))}px` }}>
+                                <i key={i} className="eosVolcFlower" style={{ left: `${f.u * 100}%`, top: `${f.v * 100}%`, "--i": i, "--fh": f.hue, "--fs": `${Math.round(f.s * (G.phone ? 0.95 : 1.4))}px` }}>
                                     <b />
                                 </i>
-                            ))}
-                            {[0.34, 0.47, 0.62, 0.74].map((u, i) => (
-                                <i key={`t${i}`} className="eosVolcTuft" style={{ left: `${u * 100}%`, top: `${(eosVolcanoSurf(u, paths.shoulder) + 0.06 + i * 0.07) * 100}%`, "--i": i }} />
                             ))}
                         </div>
                         <div className="eosVolcPuffs" aria-hidden="true">
@@ -914,8 +937,8 @@ ${EOS_VOLCANO_P}[data-act="c"] .eosVolcSkyCool{opacity:1;transition:opacity 1s e
 ${EOS_VOLCANO_P} .eosVolcStars{position:absolute;inset:0;opacity:calc(1 - var(--h))}
 ${EOS_VOLCANO_P} .eosVolcStars i{position:absolute;width:3px;height:3px;border-radius:50%;background:#e8fbff;box-shadow:0 0 6px #bff3ff}
 ${EOS_VOLCANO_P} .eosVolcRidge{position:absolute;left:0;width:100%;overflow:visible}
-${EOS_VOLCANO_P} .eosVolcRidgeFar{fill:#3a1030;opacity:.75}
-${EOS_VOLCANO_P} .eosVolcRidgeNear{fill:#24091f}
+${EOS_VOLCANO_P} .eosVolcRidgeFar{fill:#4a1230;opacity:.85}
+${EOS_VOLCANO_P} .eosVolcRidgeNear{fill:#1c0716}
 ${EOS_VOLCANO_P}[data-daypart="day"] .eosVolcRidge,${EOS_VOLCANO_P}[data-daypart="dawn"] .eosVolcRidge{filter:none}
 ${EOS_VOLCANO_P} .eosVolcRidge path{transition:fill 1s ease}
 ${EOS_VOLCANO_P}[data-act="c"] .eosVolcRidgeFar{fill:#1f6f78}
@@ -938,18 +961,21 @@ ${EOS_VOLCANO_P} .eosVolcRainB{background-image:repeating-linear-gradient(100deg
 ${EOS_VOLCANO_P}[data-rain="mist"] :is(.eosVolcRainA,.eosVolcRainB){opacity:.15}
 ${EOS_VOLCANO_P} .eosVolcMist{position:absolute;left:-30%;right:-30%;top:0;height:70%;border-radius:50%;background:radial-gradient(closest-side,rgba(230,248,255,.55),rgba(230,248,255,0));opacity:0;transition:opacity .4s ease}
 ${EOS_VOLCANO_P}[data-rain="mist"] .eosVolcMist{opacity:1}
-${EOS_VOLCANO_P} .eosVolcMtn{position:absolute;z-index:4;overflow:visible;filter:drop-shadow(0 -2px 14px rgba(0,0,0,.35))}
+${EOS_VOLCANO_P} .eosVolcMtn{position:absolute;z-index:4;overflow:visible}
 ${EOS_VOLCANO_P} .eosVolcHeatGlow{opacity:var(--h)}
 ${EOS_VOLCANO_P} .eosVolcCoolLight{opacity:calc(1 - var(--h))}
 ${EOS_VOLCANO_P} .eosVolcRimHot{fill:none;stroke:#ff9a3d;stroke-width:5;stroke-linejoin:round;opacity:calc(var(--h) * .85)}
 ${EOS_VOLCANO_P} .eosVolcRimCool{fill:none;stroke:#8ff3ea;stroke-width:4;stroke-linejoin:round;opacity:calc((1 - var(--h)) * .8)}
 ${EOS_VOLCANO_P} .eosVolcFlow{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1 1;stroke-dashoffset:calc(1 - var(--flow));transition:stroke-dashoffset .7s cubic-bezier(.2,.8,.2,1)}
-${EOS_VOLCANO_P} .eosVolcObsidian{stroke:#38343f;stroke-width:26}
-${EOS_VOLCANO_P} .eosVolcLavaGlow{stroke:rgba(255,96,30,.38);stroke-width:52;opacity:var(--h)}
-${EOS_VOLCANO_P} .eosVolcLavaHot{stroke-width:22;opacity:clamp(0,calc(var(--h) * 1.6),1)}
-${EOS_VOLCANO_P} .eosVolcLavaCore{stroke:#ffe08a;stroke-width:7;opacity:clamp(0,calc((var(--h) - .45) * 2.2),1)}
-${EOS_VOLCANO_P} .eosVolcCrack{fill:none;stroke:#7ff0e0;stroke-width:4;stroke-linecap:round;stroke-dasharray:.018 .03;opacity:calc((1 - var(--h)) * .45);transition:opacity .8s ease,stroke .8s ease}
-${EOS_VOLCANO_P}[data-act="c"] .eosVolcCrack{opacity:1;stroke:#ffe58a;filter:drop-shadow(0 0 4px #ffb23e)}
+${EOS_VOLCANO_P} .eosVolcObsidian{stroke:#38343f;stroke-width:21}
+${EOS_VOLCANO_P} .eosVolcLavaGlow{stroke:rgba(255,96,30,.34);stroke-width:42;opacity:var(--h)}
+${EOS_VOLCANO_P} .eosVolcLavaHot{stroke-width:17;opacity:clamp(0,calc(var(--h) * 1.6),1)}
+${EOS_VOLCANO_P} .eosVolcLavaCore{stroke:#ffe08a;stroke-width:5;opacity:clamp(0,calc((var(--h) - .45) * 2.2),1)}
+${EOS_VOLCANO_P} .eosVolcStrata{fill:none;stroke:rgba(255,190,150,.07);stroke-width:5;stroke-linecap:round}
+${EOS_VOLCANO_P} .eosVolcCrack{fill:none;stroke:#8ff3ea;stroke-width:3;stroke-linecap:round;stroke-dasharray:.006 .045 .012 .03;opacity:calc((1 - var(--h)) * .5);transition:opacity .8s ease,stroke .8s ease,stroke-width .8s ease}
+${EOS_VOLCANO_P}[data-act="c"] .eosVolcCrack{opacity:1;stroke:#ffe58a;stroke-width:7;stroke-dasharray:0 .06;filter:drop-shadow(0 0 5px #ffb23e)}
+${EOS_VOLCANO_P}[data-act="c"] .eosVolcObsidian{stroke:#1f6b4c;transition:stroke 1s ease}
+${EOS_VOLCANO_P}[data-act="c"] .eosVolcStrata{stroke:rgba(255,255,255,.12)}
 ${EOS_VOLCANO_P} .eosVolcPoolCool{fill:#2c2833}
 ${EOS_VOLCANO_P} .eosVolcPoolHot{opacity:var(--h)}
 ${EOS_VOLCANO_P} .eosVolcGlow{position:absolute;z-index:5;translate:-50% -50%;border-radius:50%;background:radial-gradient(closest-side,rgba(255,214,120,.95),rgba(255,110,40,.55) 45%,rgba(215,38,61,0));opacity:calc(var(--h) * .9)}
@@ -967,8 +993,8 @@ ${EOS_VOLCANO_P} .eosVolcFlower{position:absolute;width:var(--fs);height:var(--f
 ${EOS_VOLCANO_P} .eosVolcFlower::before{content:"";position:absolute;left:50%;bottom:0;width:4px;height:52%;margin-left:-2px;border-radius:3px;background:linear-gradient(#5fd38d,#2a8f5a)}
 ${EOS_VOLCANO_P} .eosVolcFlower b{position:absolute;left:50%;top:0;width:62%;height:62%;translate:-50% 0;border-radius:50%;background:radial-gradient(circle,#fff6c2 0 22%,#ffcf4a 23% 30%,transparent 31%),radial-gradient(circle at 50% 12%,hsl(var(--fh),95%,72%) 0 22%,transparent 23%),radial-gradient(circle at 88% 40%,hsl(var(--fh),95%,68%) 0 22%,transparent 23%),radial-gradient(circle at 74% 86%,hsl(var(--fh),92%,64%) 0 22%,transparent 23%),radial-gradient(circle at 26% 86%,hsl(var(--fh),92%,64%) 0 22%,transparent 23%),radial-gradient(circle at 12% 40%,hsl(var(--fh),95%,68%) 0 22%,transparent 23%);filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
 ${EOS_VOLCANO_P}[data-act="c"] .eosVolcFlower{animation:eosVolcanoBloom .7s cubic-bezier(.3,1.6,.4,1) both;animation-delay:calc(var(--i) * 110ms)}
-${EOS_VOLCANO_P} .eosVolcTuft{position:absolute;width:26px;height:12px;translate:-50% -100%;border-radius:50% 50% 0 0;background:radial-gradient(circle at 25% 100%,#4fcf7f 0 40%,transparent 41%),radial-gradient(circle at 75% 100%,#3fb86c 0 40%,transparent 41%),radial-gradient(circle at 50% 100%,#6fe39a 0 46%,transparent 47%);opacity:0;scale:0;transform-origin:50% 100%}
-${EOS_VOLCANO_P}[data-act="c"] .eosVolcTuft{animation:eosVolcanoBloom .6s cubic-bezier(.3,1.6,.4,1) both;animation-delay:calc(250ms + var(--i) * 120ms)}
+${EOS_VOLCANO_P} .eosVolcMeadow{opacity:0;transition:opacity 1.2s ease}
+${EOS_VOLCANO_P}[data-act="c"] .eosVolcMeadow{opacity:.92}
 ${EOS_VOLCANO_P} .eosVolcPuffs{position:absolute;inset:0;z-index:8}
 ${EOS_VOLCANO_P} .eosVolcPuff{position:absolute;width:46px;height:40px;margin:-20px 0 0 -23px;border-radius:50%;background:radial-gradient(circle at 45% 40%,rgba(255,255,255,.85),rgba(230,240,250,.45) 50%,rgba(230,240,250,0) 72%);opacity:0}
 ${EOS_VOLCANO_P} .eosVolcPuff[data-puff="a"]{animation:eosVolcanoPuffA 1.5s ease-out both}
@@ -1038,7 +1064,7 @@ ${EOS_VOLCANO_P} .eosVolcHero{position:absolute;z-index:14;left:50%;translate:-5
 ${EOS_VOLCANO_P} .eosVolcHero span{display:block;font:900 var(--eos-fs-hero)/1.05 var(--eos-font);color:#fff;text-shadow:0 3px 0 rgba(20,10,40,.55),0 0 22px rgba(79,209,232,.55);opacity:0;height:0;transition:opacity .45s ease}
 ${EOS_VOLCANO_P}[data-act="ab"] .eosVolcHero .h1{opacity:1;height:auto}
 ${EOS_VOLCANO_P}[data-act="c"] .eosVolcHero .h2{opacity:1;height:auto;background:linear-gradient(180deg,#fff7c8,#ffd04a 55%,#ff9a2e);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 3px 0 rgba(90,30,0,.45))}
-${EOS_VOLCANO_P} .eosWord{font-size:var(--eos-fs-word)!important}
+${EOS_VOLCANO_P} .eosWord{font-size:var(--eos-fs-word)!important;max-width:none!important;white-space:normal!important;overflow-wrap:break-word!important}
 /* reduced motion / calm visuals: no shake, no travel (rocks fade in place), rain is an opacity pulse */
 ${EOS_VOLCANO_P}[data-calm="1"] .eosVolcScene[data-shake]{animation:none!important}
 ${EOS_VOLCANO_P}[data-calm="1"] .eosVolcRock[data-fly]{animation:none!important;translate:var(--rx,0) 0}
@@ -1052,7 +1078,7 @@ ${EOS_VOLCANO_P}[data-calm="1"] .eosVolcEmbers{display:none}
 ${EOS_VOLCANO_P}[data-calm="1"] .eosVolcCloudBody{scale:1!important;transition:filter .6s ease}
 ${EOS_VOLCANO_P}[data-calm="1"] .eosVolcCloud[data-breath="out"] .eosVolcCloudBody{filter:brightness(1.12)}
 ${EOS_VOLCANO_P}[data-calm="1"] .eosVolcPuff[data-puff]{animation:eosVolcanoFadeA 1.5s ease both!important}
-${EOS_VOLCANO_P}[data-calm="1"][data-act="c"] :is(.eosVolcFlower,.eosVolcTuft){animation:eosVolcanoFadeIn .8s ease both!important;scale:1}
+${EOS_VOLCANO_P}[data-calm="1"][data-act="c"] .eosVolcFlower{animation:eosVolcanoFadeIn .8s ease both!important;scale:1}
 ${EOS_VOLCANO_P}[data-calm="1"] .eosVolcFlow{transition:none}
 @media (prefers-reduced-motion:reduce){${EOS_VOLCANO_P} .eosVolcScene[data-shake]{animation:none!important}${EOS_VOLCANO_P} .eosVolcEmbers{display:none}}
 @keyframes eosVolcanoShakeA{0%,100%{translate:0 0}20%{translate:-6px 2px}40%{translate:6px -2px}60%{translate:-4px 1px}80%{translate:3px 0}}
