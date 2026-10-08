@@ -1,0 +1,232 @@
+# BRIEF for task `dots` — extracted from docs/EOS_SPEC.md (sections: §5.1-§5.5, §0.4 (EOS_PACER, eosBreathPhase, EOS_BREATH), §2.1, §9.2 (dust styles))
+Read THIS file instead of the whole spec. If you truly need another section, grep docs/EOS_SPEC.md for it rather than reading the whole file.
+
+# EOS SPEC · ThinkStill Emotional Operating System
+
+**Status:** build spec **v1.2** (lead; all three critiques applied, resolution log in §13). **Baseline:** `src/00_arcade.jsx` md5 `b9e220c391b7e86bfb46b8c718e7f489` (22,786 lines), `src/99_pixar.jsx` md5 `8457fe0d9dd273143480fc1798c1ead4`, `src/eos/00_eos_core.jsx` **v1.2.1** (foundation additions in §0.5; **frozen for builders**).
+**Inputs:** `docs/design_relief.md`, `docs/design_pixar.md` (read in full), `map_main.md`, `map_engine_hud.md`, `catalog_A.md`, `catalog_B.md`, `audit_1-3.json` (110 live runs), audit screenshots, `EOS_SPEC_CRITIQUE_asks.md`, `EOS_SPEC_CRITIQUE_build.md`, `EOS_SPEC_CRITIQUE_science.md`, and source checks made for this spec (listed where used).
+
+**The user's request, restated as acceptance goals**
+| # | goal | where |
+|---|---|---|
+| G1 | An arrow in **every** game, **every step** of it, and on every EOS interaction (check-in, reveal), shows exactly how to play | §3 |
+| G2 | No text a person must read is tiny (score, sparks, tokens, LVL, labels, words) in **any** stage (input, menu, play, finish, reveal, shelf, safety) | §4 |
+| G3 | **All** tiny background dots drift and merge into **one** measured centre, and their speed mirrors how calm the player is | §5 |
+| G4 | Emotion first: say how you feel (panic, anger, anxiety…) and get the game that relieves *that* state — panic in **one tap** | §6, §7 |
+| G5 | New games where the catalogue has gaps (**10 new games, 111-120**); every one of the 120 games visibly moves from negative to positive | §5.6, §8, §11 |
+| G6 | Instant, non-clinical dopamine: negative → positive in under a minute, never "therapy homework" | §2, §6, §8, §9 |
+| G7 | Healthy, viral, hypnotic, Pixar / Inside-Out quality (testable checklist) | §2, §5, §8.0, §9 |
+| G8 | Nothing existing is removed or broken (110 games, mic, uploads, sound, property controls, Pixar layer) | §12 |
+| G9 | Safe: help is always reachable, crisis words never land on a game object, no dark patterns, private by default | §9.4, §10 |
+
+**Hard rules for every builder** (repeated in §12.1): one shared file scope, no `import` and no `export` lines in `src/eos/*`, every new top-level name uses **your task namespace** (`Eos<Task>…` / `EOS_<TASK>_…` / `eos<Task>…`; the public names this spec lists are exempt), keyframes `eos<Task><Name>`, `eosCss` key = task id, never touch `PX_B` / `pxNoise` / `PIXAR_CSS` / `PX_SQUASH_TARGETS` at module top level, **no regex lookbehind** (`build.py` rejects it), never store user text, every timer / listener / rAF cleaned up, works at 390×844 and 1280×860, honours reduced motion **and** the in-app calm-visuals toggle (`eosCalm(reduced)`), every runtime check runs in a scratch **integrated** build (`dev/eos_integrate.py --dev-dir`, §12.3).
+
+---------------------------------------------------------------------------------------------------
+
+## 0. Shared core contract (`src/eos/00_eos_core.jsx` v1.2.1, frozen after Foundation)
+
+Builders **read the file**; this is the index. All names below exist today, the full build passes, and the pure functions were run in node against every phrase list in this spec (§7.4, §10.1).
+
+### 0.1 Selector roots, CSS, API registry, dev gate, stacking
+| name | what |
+|---|---|
+| `EOS_A` | `.tsArcade:not(#eosA):not(#eosB):not(#eosC)` — prefix every EOS rule that styles arcade DOM (beats every arcade `!important` and Pixar's 2-id `PX_B`). For our own nodes inside `.tsArcade` use it too. |
+| `EOS_PX` | `.tsPixarRoot:not(#eosA):not(#eosB):not(#eosC)` — for the Pixar rig (`.tsPxRig`, `.tsPxDust`, `.tsPxBokeh`), which lives beside `.tsArcade`. |
+| `eosCss(name, css)` | register a CSS string once at module top level, **name = your task id**. `<EosGlobalStyle/>` (mounted once by I1) renders all parts in file order. Games pass `opts.css` to `eosRegisterGame` instead. |
+| `eosExpose(name, api)` / `eosApi(name)` | publish / read a module API. `eosApi("rewards").grantForShift?.(shift)` (always optional-chained, also for `eosApi("dots").pulse?.("in")`) is the ONLY allowed way for one module to call another module's function (isolated builds contain only core + your files). Integration edits in `00_arcade.jsx` / `99_pixar.jsx` reference functions/components directly by name. |
+| `eosIsDev()` | `true` on `file://`, `localhost`, `127.0.0.1` or `?eosdev=1`. **`window.__eos`, `window.__eosPreview` and `window.__eosArrowMiss` are assigned only when it is true** — a published Framer site never exposes the emotional state (incl. `safety`) to other scripts. The Playwright harness uses `file://`, so tests are unaffected. |
+| `EOS_Z` | z-index map inside the `.releaseStage` stacking context: flow 0 · check-in 30 · check-in chip 32 · mood 54 · companion 55 · guards 58 · arrows 60 · world chips 170 · shelf 220 · safety card + support pill 230. (`.releaseCompleteOverlay` is z 160 there; the composer is outside the stage at z 240 and never covered.) |
+| `EOS_PRIVATE_ATTRS` | `{data-private, data-hj-suppress, data-clarity-mask}` — spread (plus class `fs-mask`) on every EOS root that shows feelings: `.eosCheckIn`, `.eosShiftMeter`, `.eosSafetyCard`, `.eosOrbShelf`, `.eosCompanion`, `.eosArena`. `EosConfigSync` masks `input.releaseThoughtInput`. |
+
+### 0.2 Data
+| name | what |
+|---|---|
+| `EOS_EMOTIONS` / `EOS_EMO[id]` | the 12 states: `panic, anger, anxiety, overthinking, overwhelm, sad, lonely, shame` (`primary:true`, on the ring) + `fear, jealous, numb` ("more feelings") + `good` (its own "☀ good day? bank it" chip). Fields: `label, noun, sub, char, loud, calm, hue, meter, spark, profile, moment ("sigh"/"heart"/"spark"), better ("down"/"up"), dial, flip[3], grade{loud[2],calm[2]}, dialQ?[2], dialWords?[5], starter, seeds[6]`. v1.2: subs use everyday words (`frustrated · boiling`, `stressed · too much`, `low · heavy`, `guilty · not enough`…); starters/seeds are sensations, situations or feeling names only (§2 copy rules); `numb.calm = 61` (awake, dancing — was the same face as loud). |
+| `dial` | check-in pre-light: panic 8 · anger 8 · anxiety 7 · overwhelm 7 · fear 7 · overthinking 6 · sad 6 · lonely 6 · shame 6 · good 6 · jealous 5 · numb 5. |
+| `flip` | 3 positive words that rise out of the Still Point bloom at every finish (§5.6): panic safe/slow/right here · anger cool/clear/strong · anxiety steady/here/okay · overthinking clear/quiet/done · overwhelm space/one thing/enough · sad lighter/warm/held · lonely seen/connected/not alone · shame kind/human/enough · fear brave/closer/smaller · jealous my glow/my path/grateful · numb awake/colour/alive · good savoured/kept/mine. |
+| `grade` | the colour script loud pair → calm pair per emotion (anger red-orange → teal, panic storm-violet → dawn gold, sad slate → peach, numb grey → full colour…). Used by `EosMoodGrade`, the share card and the Still Point hue. `eosGrade(id)`. |
+| `dialQ`, `dialWords`, `eosDialQuestion(id, "before"\|"after")`, `eosDialWord(id, n)`, `EOS_DIAL_ANCHOR` | low-arousal states get their own question and 5 words over 0-10: sad "How heavy is it?" light…crushing · lonely "How alone does it feel?" connected…completely alone · numb "How far away do you feel?" right here…totally blank · good "How good is it?" meh…glowing. Others: "How loud is RUSH right now?" / after: "How loud is RUSH (anger) now?" + the loudness words. NOT SURE: "How big does it feel?". |
+| `EOS_GUIDE_CHAR` | STILL, the narrator and the centre **NOT SURE** orb (`id:"auto"`). |
+| `EOS_CHAR_NAMES` | `sync rush glitch loopie drop patch still` → display names. |
+| `EOS_WIN_FACES`, `eosFacePool(char, "negative"\|"positive"\|"win")` | `win` = arcade positive ∪ the curated `win` faces of `thinkstill_750_expression_map.json` = **102 faces** (was 39; every id verified HTTP 200). |
+| `EOS_LEXICON`, `eosDetectEmotion(text)` | score-based detection with stems. v1.2 adds sensations and everyday words (§7.4: "tension", "shaking", "punch", "hopeless", "ghosted", "broke up", "insecure", "can't sleep", "burden", "stuck"…; "everyone hates me" → lonely, "I hate myself" → shame, "I hate my life" → sad). Returns `{id, score, intensity}`; `intensity = max(guess, dial − 1)` unless the text softens itself ("a bit", "kinda"). Pure. |
+| `eosGuessIntensity(text)` (3-9), `eosBand(n)` → `"high"` (7-10) / `"mid"` (4-6) / `"low"` (0-3). |
+| `EOS_SAFETY_LEX`, `EosSafetyScan(text)`, `eosRealThreat(text)`, `eosSafetyStrong(type)`, `eosTextSafety(text)`, `EOS_TEXT_SAFETY`, `EosFlagSafety(type)`, `EOS_NEUTRAL_WORDS` | the safety lexicon lives in **core** so every caller scans synchronously (§10.1). `EosSafetyScan` → `null \| "selfharm" \| "abuse" \| "threat" \| "soft"`; strong = selfharm/abuse/threat. `EosFlagSafety` raises the store flag with precedence selfharm > abuse > threat > soft and never downgrades. `eosTextSafety` = scan + remember the flag type (never text) for `EosMarkLaunch`. |
+| `EOS_DISCHARGE_IDS`, `EOS_SLOW_IDS` | discharge games `{2,3,4,5,6,13,15,18,61,68,100,101}` (anger after these always gets the cool-down); breath/slow games `{111,112,109,65,66,69,80,36,44}` (never followed by a Still Moment). Shared by router, shift, companion, rewards. |
+| `EOS_COPY_RULES`, `EOS_DISCLAIMER` | banned clinical words, invalidating phrases and medical claims as data (lint in review and tests). `EOS_DISCLAIMER` = "ThinkStill is a playful tool for everyday feelings — not therapy, diagnosis or a crisis service." — exempt from the banned-word list, and so is the safety card copy. |
+| `EOS_KEYS` | localStorage keys `eos_sessions_v1, eos_orbs_v1, eos_days_v1, eos_learned_v1, eos_bonds_v1, eos_prefs_v1`. |
+| `EOS_PREF_DEFAULTS`, `eosPrefs()` (cached in memory), `eosSetPref(k, v)` | `shareWords:false, enrich:true, keepHistory:true, calmVisuals:false, dust:"default", namedOnce, metOnce, micNoted, coldOpen, speak:false`. |
+| `EOS_PROP_DEFAULTS` | defaults for the new Framer controls (§10.3); support lines now include **Canada · 988**. |
+| `EOS_BREATH` | one set of breath numbers for everyone: core 4 s in / 6 s out · Still Moment sigh 1.6 s in + 0.5 s sip + 4.4 s out (≈ 6.5 s, ratio 2.1) · 111 inhale 2.0 s + sip 0.6 s, exhale 4.5 → 5.5 → 6 → 6 s · spark states beat 72 bpm. Every exhale drain is **linear**. |
+| `EOS_HAPTIC`, `eosHaptic(pattern)`, `eosHeartbeat(fromBpm=60, toBpm=52, ms, onBeat)` | `heart` = 60 bpm (`[12,140,12,836]`), `exhale` = a ~3.2 s decaying train, `notch` = 8 ms tick. `eosHeartbeat` slows from → to and calls `onBeat` on every beat even with haptics off (drive the **visual twin** from it — iOS has no vibration). Never a heartbeat in the panic game. |
+
+### 0.3 Store and session lifecycle
+`EOS_STORE` = `{get, set(patch), resetFeeling(), subscribe}`; `useEosStore()` = React 18 `useSyncExternalStore` (the one name without the `Eos/EOS_/eos` prefix: React hooks must start with `use`). **Never call `EOS_STORE.set` during render.** Shape (see `EOS_STORE_INITIAL`): `phase ("checkin"|"skip"|"play"|"meter"), emotion, before, after, express, source, detected, intensityGuess, launchAt, finishAt, gameId, act, path, recordedFor, lastShift, flipKey, safety, safetyDismissed ({type:true}), loops, skipSticky, checkinEnabled, sound, haptics, music, calmVisuals, crisisLines, crisisUrl, emergencyText, shareUrl`.
+
+| transition | called by | effect |
+|---|---|---|
+| `EosCommitCheckin({emotion, before, express})` | check-in GO / express orb / good-day chip / "pick a game myself" | sets `emotion` (null = NOT SURE), `before` 0-10 (null for express), `express` |
+| `EosSkipCheckin()` / `EosOpenCheckin()` | "just let me play" / the check-in chip | `phase` skip (sticky) / checkin |
+| `EosMarkLaunch(game, entries)` | I2 edits in `startChosenGame` + `replay` | **raises the safety flag synchronously** (`EosSafetyScan(entries) \|\| EOS_TEXT_SAFETY.last`); `phase:"play"`, `launchAt`, `gameId`, act/path (follow-up ⇒ act+1 and `before = previous after`), detection when no check-in, `flipKey` from `eosApi("flip").match?.()` |
+| `EosMarkFinish(game, bonus)` | I2 edit in `done()` | `phase:"meter"`, `finishAt`; +1 `eos_learned_v1[id]`; marks today in `eos_days_v1` |
+| `EosRecordShift(after \| null, {before, retro})` | shift meter | writes ONE history row per launch (idempotent; nothing written when `keepHistory` is off); a `before` supplied in the reveal ⇒ `retro: 1` (recall-biased, excluded from learning); returns `{t, emo, before, after, gameId, ms, act, retro, delta}` (`delta` > 0 = relief; `after − before` for `better:"up"`) |
+| `EosResetFeeling()` | I2 edit in `clearForNext` | fresh feeling; keeps session facts (incl. safety + dismissals); phase → checkin (or skip when sticky / disabled) |
+| `EosConfigSync(props)` | I1 edit in `99_pixar.jsx` | property controls → store in a **layout** effect (a disabled check-in never paints); masks the composer for session-replay tools |
+| `eosCalm(reduced)` | every EOS component (after `useEosStore()`) | `reduced` OR the in-app calm-visuals toggle |
+
+### 0.4 Games, arrows, pacer, helpers, shared UI
+| name | what |
+|---|---|
+| `eosRegisterGame(def, Engine, {hint, mindBend, css, gesture, char, seconds})` | pushes the GAMES entry, maps `EOS_ENGINES[id]`, records `EOS_GAME_META[id] = {gesture, char, seconds}` (LIVE GUIDE glyph + verb, companion de-duplication, CTA "≈30 s"), sets `SHORT_ACTION/SHORT_HINT[id]` and `RELEASE_MIND_BEND[id]`, registers CSS. `EosEngineFor(game)` is what the I1 router edit calls. |
+| `eosTarget({g, dir, d, n, ms, to, bpm, label, win, meter, mvar, armed, maxSpeed, own, ox, oy})` | spread onto the element the player must touch **now** (for `choose`: onto **every** option) → `data-eos-target="1" data-eos-g=… data-eos-label=… data-eos-win="55,92" data-eos-max-speed=… data-eos-own="1"…`. The arrow overlay reads it before any table. |
+| `eosWords(entries, n)`, `EosWord` | unique readable chunks (pads with the emotion's `seeds`; **`EOS_NEUTRAL_WORDS` under a strong safety flag**), and the ≥16 px word style. `EosWord` is the **only** place user words may appear in EOS DOM. |
+| `eosFace`, `eosFaceFor`, `eosFacePool`, `eosHue`, `eosGrade`, `eosCurrentEmotion()`, `eosMeterWord()` | character art (the arcade's own 7-character cast; no new art); `eosMeterWord` = the emotion's meter word ("SLOW-DOWN") or "SHIFT" (legacy HUD, I1-E13). |
+| `eosRelRect(el, root)`, `eosStageScale(el)`, `eosProgressOf(root)` | geometry corrected for the Framer canvas scale; progress 0-100 from `.engineProgressTrack[aria-valuenow]` (both wrappers). |
+| `eosTone(freq, ms, opts)`, `eosNote(i)` | musical feedback gated by the arcade's sound toggle (mirrored by I1-E14). |
+| `EOS_PACER`, `eosBreathOwn(phase \| null, ms)`, `eosBreathPhase()`, `eosPacerBeat(bpm \| 0)` | **one breath pacer for the whole screen.** A game / Still Moment that paces breath calls `eosBreathOwn("in"\|"hold"\|"out", ms)` at each phase change and `eosBreathOwn(null)` when done; a beat game calls `eosPacerBeat(bpm)`. Everything else that shows a rhythm (the Still Point, the arrows' wait ring, 112's rain, the audio bed) **reads** `eosBreathPhase()` → `{phase, p, owned, bpm, ms}`, so two pacers are never out of phase. The autonomous cycle is a fixed 10 s clock on `performance.now()`. |
+| `EosCharacterOrb` | glossy Pixar bubble with a character face (+ label/sub, `showName` 12 px name tag). `<button>` when `onClick` is given. Plain DOM: framer-motion props are **dropped** — wrap it in `motion.div` to animate it. `.eosObj` ⇒ Pixar squash (I1 adds it to `PX_SQUASH_TARGETS`); never on an element whose `scale`/animation carries game state (squash replaces the animation for 700 ms) — wrap that element instead. |
+| `EosIntensityDial` | 0/1-10 scrub track, `role="slider"`, keyboard (arrows, Home/End, digits with a 700 ms "1"+"0" = 10 buffer), `ghost` marker (= before), haptic tick + rising pitch, the emotion's question + words (`label`/`words` override), `value=null` shows "–" (the after-dial **starts empty**), re-syncs when the parent resets the value. Segment numbers use dark ink on lit segments (11.8:1). |
+| `EosEnginePreview({id, text, reduced})` | dev only, **quick iteration only** (no arcade CSS, guide panel, step rewards or word tagging — never an acceptance surface). Publishes `window.__eosPreview = {progress, label, done, sfx:[{kind, t}], progressLog}`. Foundation wraps it in `dev/eos_preview.*`. |
+| CSS tokens | `--eos-fs-xs 12 · --eos-fs-sm 13 · --eos-fs-md 15 · --eos-fs-num 17 · --eos-fs-word clamp(16px,1.35vw,20px) · --eos-fs-hero clamp(30px,4vw,48px)` (phone ≤560: 12 / 12 / 14 / 15 / 15), gold `--eos-gold-1..3`, `--eos-still`, `--eos-ink`, `--eos-glass`, `--eos-font` ("Baloo 2"). |
+| CSS rules | `.eosSrOnly` (visually hidden, for live regions) · 44×44 px minimum for every `button, a, [role=button]` inside `.eosCheckIn, .eosShiftMeter, .eosStillMoment, .eosSafetyCard, .eosSupportPill, .eosOrbShelf, .eosWorldChips, .eosCheckInChip` · **arena reset** `.cinematicContentShell>.arena.eosArena{position:absolute; inset:0; padding:0; min-height:0}` (the arcade forces `relative` + 18/158 px padding on `.arena`) · safe-area variables on `.eosArena`: `--eos-safe-top` 48 px (phone 104) and `--eos-safe-bottom` 200 px (phone 164) — the LIVE GUIDE covers the bottom-left 460×182 px at 1280 and the full-width bottom 150 px at 390, the HUD the top · dimmed orbs dim only the ball (labels stay readable) · `[data-eos-calm="1"]` stops the orb bob. Note: the arcade's `.tsArcade.stage-play .arena{filter:…}` stays, so `.arena` is the containing block for any `position:fixed` child. |
+
+### 0.5 Foundation additions (core v1.2.1) and the test tooling — read before building
+| name | what |
+|---|---|
+| **clean button shells** | The arcade skins **every** `.cinematicContentShell > .arena button` with `!important` (neon gradient background, cyan border, glow, text-shadow) and `.tsArcade.stage-play button` adds a 180 ms `transform`/`box-shadow` transition that makes framer-motion transforms lag. Core resets all of it inside `.eosArena` with `${EOS_A} :where(.eosArena button){background:none!important;border:0!important;box-shadow:none!important;color:inherit!important;text-shadow:none!important;transition:none!important;…}` + a gold `:focus-visible` ring. Its specificity is only the ID-boosted root, so **any** game rule `${EOS_A} .eosG<id> …{…!important}` beats it. React inline styles can never beat an `!important` rule: draw a button's visuals on a child `span`/`div` (inline styles work there) or in your CSS string with `!important`. Plain `div`s are not skinned. |
+| `EosCharacterOrb` hooks | renders `data-eos-emotion="<id>"` (NOT SURE = `"auto"`) and `data-eos-char="<char>"` — the check-in's test hooks (`eos_drive.runCheckin`) and handy CSS hooks. |
+| `useEosProgress(rootRef, hz = 4)` | 0-100 \| null — the one shared, self-cleaning progress poll for overlays (reads the closest `.releaseStage`; re-renders only on change). Use it instead of a private interval (mood, companion, dots, arrows …). |
+| `eosDayPart(d?)`, `eosLateNight(d?)` | one local-time rule: `"dawn"` 5-10 · `"day"` 10-17 · `"dusk"` 17-21 · `"night"` 21-5 (§8.0 replay palettes); late night = 23:00-05:00 (§5.6 R8, §7.3). |
+| `eosRegisterGame` checks | in dev, `console.warn("[eos] …")` (never `console.error`) for missing / empty GAMES fields, a duplicate id or name, an unknown `gesture`, an id < 111. `EOS_GAME_FIELDS`, `EOS_GESTURE_NAMES` list them. |
+| `EosEnginePreview({id, text, reduced, seed})` | now checks the §8.0 engine contract live: `window.__eosPreview.checks = {thirdArg, backwards, flat, outOfRange, afterDone, afterUnmount, doneCalls, nonSoft, longLabels, firstProgressMs, doneDelayMs}` plus `log:[{t, v, label}]` and `rain:[…]`; violations show as a red strip. |
+| `window.__eos.core` (dev only) | also exposes `EosOpenCheckin`, `EosSkipCheckin`, `EOS_STORE_INITIAL`, `EOS_LEXICON`, `EOS_TEXT_SAFETY`, `EOS_DISCHARGE_IDS`, `EOS_SLOW_IDS`, `EOS_PROP_DEFAULTS`, `EOS_PREF_DEFAULTS`, `EOS_PACER`, `eosGet/eosSet`, `eosLearnedCount`, `eosTarget`, `eosProgressOf`, `eosRelRect`, `eosSafetyStrong`, `eosTextSafety`, `eosCalm`, `EosEngineFor`, `apis()` … |
+
+**Test tooling (task `foundation`, usage at the top of each file):**
+- `dev/eos_drive.mjs` — `launchEos` (`lite` hides decoration-only layers for gameplay sweeps; `storage` pre-seeds localStorage; `errors` / `warnings` / `noise` split), `listGames` (de-duplicated, `withIds`), `startGameById` / `startGameByName` / `resetToInput` / `currentGameId`, `openCheckin`, `runCheckin({emotion, intensity|dial, words, express, go, pickMyself})`, `finishGame(page, [id], {timeoutMs, stuckMs, perStage, assertArrows, alt})` (all 17 gestures; `EOS_GESTURES` from the arrows module when present, else the §3.11 copy; markers for 111+, where "no marker" means an automatic phase; per-stage arrow check → `arrowMisses` / `labelMismatches`), `readProgress`, `progressLog` / `stageLog` / `pointerLog` (an in-page recorder installed before any script), `smallText(minPx)` (+ `readability.scan()`), `textSizes`, `noShrink(page, baselineDir, setup)`, `arrowState`, `lintCopy`, `flashCheck` (+ `reliable`), `dotsNearCentre`, `pixelVisible`, `loadCoreNode` (core + modules in node with arcade stubs — the §12.3 unit method, used by `flipdata`), `specGestures`, `arcadeCss()` / `arcadeCssRules(re)` (the arcade's base CSS lives in the gzipped `CSS_GZIP_B64` blob and is **not** greppable in the source — use these to find the rule an override must beat). CLI: `node dev/eos_drive.mjs smoke | finish | sweep | small | lint | css --grep …`.
+- `dev/eos_preview.py --id 111 [--modules …] [--files /tmp/draft.jsx] [--check | --finish] [--shots dir]` → `/tmp/eos_preview_<id>/index.html?id=&text=&reduced=1&seed=&emotion=&before=&safety=&calm=1&guides=1` (`guides=1` draws the arcade's HUD / LIVE GUIDE no-go zones).
+- **Headless speed:** this UI rasterises in software at ~3-4 fps at 1280×860 (~9 fps at 390×844) here — independent of EOS (measured with and without core) — and every pointer event waits for a frame. Interaction scripts therefore use few, long pointer moves; flash checks need ≥ 8 captured fps (`flashCheck(...).reliable`, run them at 390×844).
+
+**Foundation sweep (full build, core only, `finishGame` + the §3.11 table as corrected below, lite mode):** 1280×860 → **101 / 110** reach the reveal, 390×844 → **98 / 110** (whole-catalogue sweeps plus targeted re-runs; 24 SLINGSHOT is timing-flaky in headless — it passes on most runs and is counted as a failure here). Every remaining failure is a **real game bug**, each verified by a probe — they belong to task `fixes` (§11.6 / §11.8), and `finishGame` doubles as their regression test:
+
+| id | where | evidence (probe) | suggested fix |
+|---|---|---|---|
+| 8 METEOR · 17 BOSS BATTLE · 48 UNSTICK | both | known (§11.6): `.orbitArc` / `.uniqWord` cover the targets, `.stickerWord` collapses | §11.6 rules |
+| 14 CRUMPLE | both | gz CSS `.paperCrumple.s1/.s2{clip-path:polygon(…)}` clips the corner buttons (they sit at −12 px outside the paper): at step 2 `elementFromPoint` on corner `.c2` returns the arena — the 3rd corner can never be tapped | `${EOS_A} .arena .paperCrumple:is(.s1,.s2){clip-path:none!important}` + a skew / border-radius crumple look |
+| 21 BIN | both | gz CSS `.freeAngleBinArena .binBubbleSlot .binWordBubble{transform:none!important}` cancels framer-motion's drag transform: the dragged bubble never moves, so no drop ever lands in the mouth (only a double-click bins it) | a guard: on `pointerup` after a drag that started on a `.binWordBubble`, if the pointer is inside the `.binMouthTarget` rect (+ the I3-E4 margins) dispatch `dblclick` on that bubble (`binOne(i, true)`); and mirror the inline transform into a custom property during the drag so it is visible (`transform:var(--eos-bin-t,none)!important`) |
+| 51 MIRROR FLIP | both | at step 1 `.mirrorStage.a1` overlaps the ABOVE button (`elementFromPoint` at its centre = the stage) | `${EOS_A} .arena .mirrorStage{pointer-events:none!important}` (decorative) |
+| 77 SLOW MOTION | both | after the first pull the brake stays at `translateY(150px)`, outside its clipped `.filmGate` → unhittable: word 2 can never be braked | `${EOS_A} .arena.u77 .filmGate{overflow:visible!important}` or an I3 source edit adding `dragSnapToOrigin` to `.brakeHandle` |
+| 109 CLEANSE | both (cadence) | race: each release schedules `setReleasedIndices(next)` after **3200 ms** but the last one after 170 ms, so releasing the last two bubbles < 3.2 s apart lands the stale 5-item array after the 6-item one → length 6 → 5 clears the `onDone` timer while `finishLock` stays set → the game sits at 100 % forever. **Fast, panicking players hit it; 109 is panic.high #2.** | I3 source edit in `CleanseEngine.finishHold`: `setReleasedIndices(releasedRef.current.slice())` (or a functional update that never shrinks) |
+| 45 MAGNETS | 390 | after a pull the orb stays at `translateX(220px)` → x 439 > the 375 px stage: off-screen, the next word cannot be pulled | `dragSnapToOrigin` (I3) or narrower phone constraints |
+| 47 UNFOLLOW | 390 | the `.plug` centre is covered by `.uniqWord` | add `:has(.plug)` to the §11.6 `.uniqWord{pointer-events:none}` rule |
+| 71 DEFUSE | 390 | the third zone's button is clipped (`elementFromPoint` = the arena) | phone layout fit |
+| 103 SINKING PLATFORM | 390 | `button.spDropButton` renders at y ≈ 1059, below the 844 px viewport | phone layout fit |
+| 107 GO WEIRD | 390 | props clipped by `.gwGame` (§11.6) | §11.6 grid fit, verify at 390 |
+
+**§3.11 table corrections made by the sweep** (stale selectors that pointed the arrow at finished or wrong elements): 43 `button.cutLoopWord:not(:disabled)` (the slot stays usable after its word is severed) · 82 SEESAW by beam angle (`rotate(-…)` → SHIFT IT →, `rotate(0deg)` → CHECK BALANCE; a "choose" arrow never taught the balance) · 93 `.spaceTile:not(.moved)` · 95 `.shelfThoughtBubble:not(.shelved)` · 102 drag **r from the left end** (`ox −0.4`: the row's own rule is "press either end and slide toward the centre"; "in" from the arena centre pushed down) · 104 the first knob with `aria-valuenow` > 12 · 108 `.saladBowl button:not(.restored)` (a tap swaps a card into its home cell); §3.4's dead-state regex also gains `shelved|severed|erased|moved|restored`.
+
+---------------------------------------------------------------------------------------------------
+
+### 2.1 Open the app — HQ
+- The console opens on the **Still Point**: a soft glowing core in the middle of the stage that breathes at 6 breaths/min (4 s in, 6 s out, `EOS_BREATH`). **All** Thought Dust (every background dot: the Pixar motes, every game's cinema dust, 109's star tiles, the flow lanes; the big soft bokeh drifts slowly inward too) spirals into that one measured centre (§5). The core is visible on the home screen (the idle stage's opaque base layer moves under the flow, §5.3).
+- The **check-in ring** is already there (no extra screen): 8 character orbs on an ellipse around the Still Point, STILL in the centre as **NOT SURE**. Title: **"Who's at the controls?"**, sub-line "Tap the feeling that's loudest right now." A gold "pick one" halo hops across the orbs for first-timers (never a hand on one orb — that would bias the choice). A small "more feelings ▾" chip reveals SCARED, JEALOUS, NUMB; a separate **"☀ good day? bank it"** chip launches COLOUR RUSH in savour mode (habits trained when calm are there when you need them).
+- Footer (12-13 px links, ≥44 px hit areas): "just let me play →" (restores today's classic composer flow unchanged) · **"Need to talk to someone?"** · "about ThinkStill" (the disclaimer) · "◐ calm visuals".
+- The composer (text, 🎙 mic, ＋ upload, game menu) stays live underneath at all times; nothing about it changes.
+- Once per device, a ≤3 s non-blocking cold open: STILL pops up: "Hi, I'm Still. Your feelings are a crew. Tap whoever's loudest." (P2)
+- A shared link `…?eos=anger&t=41` preselects that feeling with a banner "A friend shifted ANGER in 41 s. Your turn?" (never a comparison).
+
+
+### 5.1 Inventory (verified)
+| layer | where | visible today | EOS treatment |
+|---|---|---|---|
+| `.tsPxDust` ×14 (`pixarDust` prop) | Pixar rig over the whole component (z 2147483000) | yes — drift **up**, spawn only in the bottom 60 % | retarget: spiral into the **measured** Still Point centre (CSS override) + full-height spawn (I1-P1) |
+| `.cinemaDust i` ×14 per game (7 shown) | `CinematicStageFX` in every game, both wrappers | yes (opacity ≤ .28) | retarget into the same measured centre (CSS override + `--eos-cx/cy` written per `.cinemaDust`) |
+| `.cleanseSpace` star tiles (1-1.5 px dots tiled 83/121/143 px) | 109 CLEANSE arena | yes | zoom them in toward the centre (`eosDotsTileIn`) |
+| `InfinityField` ×18 | behind `.shell` (`position:fixed; z 0`) | **never** — `.shell` paints opaque `rgb(2,4,7)` and `--flow-hue` is undefined | retired (`display:none`); superseded by `EosThoughtFlow` |
+| `.ts-abyss-particle-*`, `.ts-magnetic-dust-*` | idle input stage | yes | already converge to the centre — keep |
+| `.tsPxBokeh` ×9 | Pixar rig | large soft blobs (not "tiny dots") | drift 25 % of the way toward the measured centre over 60 s (Pixar animates their `translate`, so JS writes base `--eos-bl/--eos-bt` and CSS transitions `left/top`) so *everything* comes home (C3) |
+| `.tsArcade::after` grain (0.45 px, tiled 7/11 px, z 3) | under `.shell` (z 20, opaque) | effectively invisible | unchanged (hidden) |
+| reward sparks (`.surgeSparks`, glyph fields) | finish bursts | transient effects, not background | unchanged |
+| `throwStarfield`, `spaceDots` | `ThrowEngine`, `LensEngine` | dead code (never routed) | unchanged |
+
+
+### 5.2 `EosThoughtFlow({stage, reduced})` — the Still Point and the Thought Dust
+- Mounted by I1 as the **first child of `section.releaseStage`**: `div.eosThoughtFlow[data-stage={stage}]` (`position:absolute; inset:0; z-index:0; pointer-events:none; overflow:hidden; contain:strict`). During play the game host / arena are transparent, so the field shows behind every game. **On the input stage** `.releaseIdleStage` (rendered after the flow, `z-index:auto`) paints an opaque base gradient that hides a z-0 layer (pixel test: a red z-0 child read `(35,45,45)`); §5.3 strips that base layer by CSS and the flow paints it on its own root instead, so the dust and the core are visible on the home screen and under the check-in.
+- **Lane scaling (compositor only):** each dot is an `i.eosLane` (`position:absolute; inset:0; transform-origin:var(--eos-cx) var(--eos-cy)`) whose `::before` (or a `data-eos-dot` child span, so tests can measure it) is the dot at `left:var(--x); top:var(--y)` on a ring 40-56 % from the centre. Animating the lane `scale 1 → 0` moves the dot in a straight line into the centre while shrinking it; adding `rotate 0 → var(--sw)` (±25-40°, alternating sign) turns it into a **spiral**. Negative delays keep the field always full.
+- Counts: 30 desktop, 18 when the stage is < 600 px wide, 10 with reduced motion / calm visuals (static). Dot size 2-6 px, hue from `[195, 265, 42, 320]` cycle, duration 14-22 s, `--dl` 0…−22 s, seeded by `eosNoise`.
+- **One measured centre (C1, L10):** every 1 s and on resize (`ResizeObserver` on `.releaseStage`), measure the `.eosCore` centre in viewport px and write it as a percentage of each container: `--eos-cx/--eos-cy` on the flow root, on `.tsPxRig` (inside `.tsPixarRoot`) and on every `.cinemaDust` in the stage (style-attribute writes are ignored by both wrapper MutationObservers). All dust keyframes animate `left/top` to `var(--eos-cx)` / `var(--eos-cy)`.
+- **Still Point core** `i.eosCore`: `min(36vmin, 280px)` soft radial glow at the stage centre; hue = current emotion (`--eos-h`), sliding toward calm cyan 190 as progress rises. A ring twinkle `eosDotsAbsorb` every ~2.8 s (scale .6 → 1.1, opacity .5 → 0) makes the merge legible.
+- **One pacer (B4):** the core breathes by **reading** core's `eosBreathPhase()`. Autonomous: CSS `eosDotsBreathe` 10 s (4 s swell, 6 s linear settle) with `animation-delay: −(performance.now() % 10000) ms` set at mount and whenever the pacer is released, so it matches the shared clock. Owned (111, the Still Moment, 112's cool phase): subscribe to `EOS_PACER`, set `data-phase` = in/hold/out and `--eos-breath-ms` = the phase `ms`, and transition the core's scale over that time (`linear` for out). The audio bed and the arrows' wait ring read the same clock.
+- **Mirror the feeling (C2):** `r = 0.7 + 0.09 × level × (1 − progress/100)` applied with `getAnimations().forEach(a => a.updatePlaybackRate(r))` to the lanes, `.tsPxDust` and `.cinemaDust i` (no position jumps). `level` = the live dial value while the check-in or after-dial is being dragged (`eosApi("dots").setLevel?.(n)`), else `before ?? intensityGuess ?? 5`. Add `.eosJitter` (±2 px wobble) while level ≥ 7. Say "9" and the dust churns; play and it visibly slows and smooths. Not with reduced motion / calm visuals.
+- **Spark states (R6):** when the emotion's `moment` is `"spark"` (numb, good) the field switches to `data-eos-mode="spark"`: lanes 8-12 s, a warm hue cycle, and the core **pulses at 72 bpm** (`EOS_BREATH.beatBpm`) instead of breathing; 117 drives the beat with `eosPacerBeat(bpm)`. Numb needs up-regulation, not a slow calming field.
+- **Calm visuals (A7):** `eosCalm(reduced)` → the reduced field (10 static dots, no rotation) and the flow sets `data-eos-calm="1"` on its closest `.tsArcade` and `.tsPixarRoot` (attribute writes only) so the CSS can quiet `.tsPxDust`, `.cinemaDust` and `.cleanseSpace` too. For panic and fear in the high band the spiral rotation is 0 by default (straight-in drift; spirals add vection).
+- **Cosmetic dust styles (F6):** `eosPrefs().dust` ∈ `default | fireflies (warm, blinking) | aurora (slow hue-cycling ribbons of dots) | snow (white, slower) | gold (gold sparkle)`, unlocked by ⚡ milestones in the rewards module. Applied with `data-eos-dust` on the flow root; never changes speed rules or the pacer.
+- **Per stage:** `input` → flow opacity .85 (+ the base gradient); `play` → .45 and the core size `.8 + .5 × progress` (poll `eosProgressOf(stage)` at 4 Hz, set `--eos-p` on the root via `style.setProperty`); finish (`.globalPlayGuide.isComplete` appears) → add `.eosGather` (all lanes rush in within 0.9 s, core **blooms** 0.2 → 1.25 → 1 with brightness 1.6; the mood layer's flip words rise from it, §5.6); `reveal` → the field bursts outward once (`eosDotsBurst` .9 s) then keeps converging slowly (30 s lanes).
+- **Audio bed (F8, P2):** during check-in and play, a very quiet (gain ≤ .03) swell of low-passed noise following the pacer (rises on "in", falls on "out"); only when `EOS_STORE.sound && !EOS_STORE.music` (I1-E14 mirrors `musicOn && sound`); stops in the reveal; one `AudioBufferSourceNode` loop + one gain node, cleaned up on unmount.
+- API: `eosExpose("dots", { pulse(kind), breath(phase, ms) /* = eosBreathOwn */, phase() /* = eosBreathPhase */, beat(bpm) /* = eosPacerBeat */, setLevel(n), gather() })`. `pulse("in")` makes all lanes speed ×3 for 1.2 s (games call it on an inhale / big success), `pulse("out")` reverses for 1.2 s. Implemented with a class toggle on the root (no React re-render of 30 nodes). Callers always use `eosApi("dots").pulse?.("in")`.
+
+
+### 5.3 `EOS_DOTS_CSS` (core of it; builder completes the flow rules from §5.2)
+```css
+@keyframes eosDotsX{to{left:var(--eos-cx,50%)}}
+@keyframes eosDotsY{to{top:var(--eos-cy,50%)}}
+@keyframes eosDotsFade{0%{opacity:0;scale:.6}12%{opacity:.85;scale:1}80%{opacity:.9;scale:1}92%{opacity:.5;scale:.4}100%{opacity:0;scale:.1}}
+@keyframes eosDotsTileIn{0%{scale:1.5;opacity:0}20%{opacity:.45}100%{scale:.6;opacity:0}}
+/* home screen: keep the idle glows, drop only the opaque base layer; the flow paints the base under the dust */
+${EOS_A} .releaseStage > .releaseIdleStage{background-image:radial-gradient(circle at 24% 34%,rgba(0,229,255,.086),transparent 30%),radial-gradient(circle at 78% 32%,rgba(138,92,255,.075),transparent 31%),radial-gradient(circle at 72% 76%,rgba(192,0,255,.05),transparent 32%),radial-gradient(circle at 30% 78%,rgba(255,241,138,.035),transparent 27%),radial-gradient(circle at 50% 52%,rgba(7,14,28,.58) 0%,rgba(7,5,16,.32) 36%,transparent 64%)!important}
+${EOS_A} .eosThoughtFlow[data-stage="input"]{background:linear-gradient(rgba(3,6,14,.996),rgb(1,1,5))}
+/* Pixar motes: left/top animate FROM the inline spawn values to the measured centre; two easings = curved, odd/even swap = both spin directions */
+${EOS_PX} .tsPxDust{animation:eosDotsX var(--d,11s) cubic-bezier(.55,.05,.7,.35) var(--dl,0s) infinite,eosDotsY var(--d,11s) cubic-bezier(.2,.6,.35,1) var(--dl,0s) infinite,eosDotsFade var(--d,11s) linear var(--dl,0s) infinite!important}
+${EOS_PX} .tsPxDust:nth-of-type(odd){animation-timing-function:cubic-bezier(.2,.6,.35,1),cubic-bezier(.55,.05,.7,.35),linear!important}
+/* bokeh: Pixar's own tsPxBokeh keyframes animate `translate`, so drift the base position instead. JS reads each blob's inline
+   left/top (%), writes --eos-bl/--eos-bt = 25 % of the way toward the measured centre (once per measure); CSS glides there over 60 s. */
+${EOS_PX} .tsPxBokeh[style*="--eos-bl"]{left:var(--eos-bl)!important;top:var(--eos-bt)!important;transition:left 60s linear,top 60s linear}
+/* per-game cinema dust (inline animationDuration / animationDelay are kept and apply to all three names) */
+${EOS_A}.stage-play .cinemaDust i{animation-name:eosDotsX,eosDotsY,eosDotsFade!important;animation-timing-function:cubic-bezier(.55,.05,.7,.35),cubic-bezier(.2,.6,.35,1),linear!important;animation-iteration-count:infinite!important;animation-direction:normal!important;transform:none!important}
+${EOS_A}.stage-play .cinemaDust i:nth-child(4n+1){animation-timing-function:cubic-bezier(.2,.6,.35,1),cubic-bezier(.55,.05,.7,.35),linear!important}
+/* 109 CLEANSE star tiles */
+${EOS_A}.stage-play .cleanseSpace{transform-origin:var(--eos-cx,50%) var(--eos-cy,50%);animation:eosDotsTileIn 14s linear infinite!important}
+/* retire the invisible legacy field */
+${EOS_A} .infinityField{display:none!important}
+@media (prefers-reduced-motion:reduce){
+  ${EOS_PX} .tsPxDust{animation:none!important;opacity:0!important}
+  ${EOS_A} :is(.cinemaDust i,.cleanseSpace){animation:none!important}
+  ${EOS_A} .cinemaDust i{opacity:.2!important}
+  ${EOS_A} .eosLane{animation:none!important;opacity:.25}
+  ${EOS_A} .eosCore{animation:none!important}
+}
+/* in-app calm visuals: the same quiet field without the OS setting */
+${EOS_PX}[data-eos-calm="1"] .tsPxDust{animation:none!important;opacity:0!important}
+${EOS_A}[data-eos-calm="1"] :is(.cinemaDust i,.cleanseSpace,.eosLane){animation:none!important}
+```
+(The arcade's own reduced-motion rule hides `.tsPxDust`; our ID-boosted `!important` rule would otherwise re-animate it, hence the explicit reduced block. Keyframe and class names use the `eosDots` namespace.)
+
+
+### 5.4 Acceptance (dots)
+- Computed `animation-name` of `.tsPxDust` includes `eosDotsX`; of `.cinemaDust i` includes `eosDotsY`.
+- **One centre (C1):** sampling every visible `.tsPxDust`, `.cinemaDust i` and `.eosLane [data-eos-dot]` position at t and t+2 s: ≥ 70 % are closer to the measured `.eosCore` centre, and ≥ 70 % of dots near the end of their cycle sit within 24 px of it — in input, play and reveal, at both sizes.
+- **Visible (C4, H1):** on stage-input, 4×4 screenshot clips at three `.eosLane` dot positions differ from the background colour (elementFromPoint cannot see a pointer-events:none layer); in POP, CRUSH, BURN, RAIN OUT, HOT POTATO, BLACK HOLE, SEND TO SPACE, 111, 114 and 117 at least 8 dust points are visible (screenshot pixel delta, or no opaque background along `elementsFromPoint` at their centres).
+- **Mirror (C2):** lane `playbackRate` at level 9 > at level 3, and falls as progress rises.
+- **One pacer (B4):** while 111 owns the breath, `eosBreathPhase().owned === true` and `.eosCore[data-phase]` equals its phase; after release the CSS cycle is within 200 ms of the shared clock.
+- With `reducedMotion:"reduce"` or calm visuals on: no running EOS dot animation. Frame budget: no long tasks from the dots (they are transform/opacity or 28 tiny `left/top` nodes).
+
+
+### 5.5 Ownership note
+Dots owns the field, the core, the pacer *rendering*, the audio bed and the dust styles. Core owns the pacer *clock* (`EOS_PACER`). Mood (§5.6) owns the colour script and the flip words. The bloom is dots'; the words rising out of it are mood's.
+
+
+### 9.2 Rules (all derived from `eos_*` storage and the arcade score; never user text)
+- **⚡ for showing up:** the shift meter calls `addScore(25)` once per launch **when the reveal is reached** (header ⚡ count-up as particles land on the score). Copy: "+25 ⚡ for showing up".
+- **Memory orb** — one per completed loop (rated or skipped), max 5 per local day (later loops still pay ⚡ and days). `{t, emo, char, face, tier, before, after, gameId}` in `eos_orbs_v1` (cap 400; not written when `keepHistory` is off — then the orb exists for this app session only). `face` = an expression of the emotion's character the user does not own yet from `eosFacePool(char, "win")` (**102 faces** across the cast), else any. **"Expression of the Day":** the first loop of each local day is guaranteed a new face.
+- **Rarity comes from the loop, never from Δ:** **gold "CORE MEMORY ✦"** for the first orb of the day, a game played for the first time, an emotion checked in for the first time, or a bond level-up; **silver** otherwise. Never "lost", never expires.
+- **Bonds** — `eos_bonds_v1[char]` += 1 on **any** loop where that character appears (as the companion or as the game's scene character). Levels at **1, 3, 6, 10, 15** each unlock the next face from the win pool (shown on the check-in orb after the shift) and a one-liner: RUSH "learned to laugh it off" · SYNC "can nap through thunder" · GLITCH "found the off switch" · LOOPIE "can stop the spin" · DROP "knows rain ends" · PATCH "is kinder to PATCH" · STILL "is proud of you". Finite collection, not a slot machine.
+- **Skills, not suffering (mastery):** ranks count **skills by mechanism, whatever the check-in emotion** (GOOD and NOT SURE plays count too): `EOS_REWARDS_SKILLS` = **Sigh** (111, 109, 65, the sigh Still Moment) · **Cool-down** (112, the cool Still Moment, 36, 44, 77) · **Grounding** (113, 102, 66, 80) · **Kind-voice** (115, 114) · **Loop-breaker** (116, 61, 43, 41, 34, 22, 29, 99) · **Spark** (117, 68, 1) · **Space** (120, 93, 95, 21, 87) · **Own-glow** (119, 47) · **Brave-look** (118, 31, 97). Ranks Rookie 1 → Steady 5 → Pilot 15 → Master 40, each naming what you can now do *without* the app ("you know the double-sip sigh", "you let it out, then cool it down", "you can land in the here and now", "you talk to yourself like a friend", "you turn a loop into a squeak", "you start before you feel like it", "you make space", "you find your own glow", "you look closer"). Copy: *"Practise when calm — it works better when you need it."*
+- **Days you showed up** — "☀ 4 days this week" (**no denominator**, no 7/7) and lifetime "days you showed up: 23", which never resets. Milestones on **lifetime** days 3 / 10 / 30 / 100 grant one gold orb each. There is no streak that can break and no "you missed a day" copy.
+- **⚡ milestones → cosmetic dust (F6):** lifetime ⚡ (the arcade score, `localStorage[SCORE_KEY]`, read with a `typeof SCORE_KEY` guard) at 250 / 1000 / 2500 / 5000 unlocks the Thought-Dust styles fireflies / aurora / snow / gold (picked in the shelf, stored in `eos_prefs_v1.dust`, rendered by dots). Cosmetic only; relief is never gated.
+- **Your own stats (no speed pressure):** "points shifted: 47" (sum of positive Δ over non-retro rows) and **"helps you most · ANGER: COOL THE VOLCANO (avg 5 lighter)"** (non-retro rows, ≥ 2 per game). No "fastest" records of any kind.
+- **API:** `eosGrantForShift(shift)` → `{orb, bond:{char, level, next, unlocked}, skill:{id, rank, next}, week, line}` (writes orbs/bonds; idempotent per `shift.t`), `eosBondFor(char)`, `eosSkillFor(skillId)`, `eosWeek()`, `eosMyStats()`. `eosExpose("rewards", {grantForShift: eosGrantForShift, EosShareButton, eosMakeShareCard, eosBondFor, eosSkillFor, eosWeek, eosMyStats})`.
+
+
+## Owner decisions (delegated to the lead, binding for builders and reviewers)
+- 2026-10-08 · Dots / Still Point colour: the core travels from the feeling's own hue to the hue of that feeling's calm grade (§0.2: anger red → teal, panic → dawn gold, sad → peach; numb grey → colour), taking the hue path that avoids yellow-green. This supersedes the "always ends on cyan 190" line in §5.2. Reviewers must not flag it.
+- 2026-10-08 · Release 1 scope: see the workflow SCOPE note (games 115-120 and flipdata deferred to release 2; router and rewards degrade gracefully).
+- The lead decides all remaining open design questions in favour of: clearer first-time guidance, faster felt relief, warmer Pixar / Inside Out look, and never removing existing functionality.

@@ -1,0 +1,400 @@
+{
+ "tasks": [
+  {
+   "id": "foundation",
+   "title": "Test tooling: eos_drive helpers (finishGame for all 17 gestures, per-stage arrow asserts, smallText, noShrink, lintCopy, flashCheck, dots helpers) + eos_preview",
+   "kind": "module",
+   "files": [
+    "dev/eos_drive.mjs",
+    "dev/eos_preview.html",
+    "dev/eos_preview.jsx",
+    "dev/eos_preview.py"
+   ],
+   "spec_sections": "\u00a712.0, \u00a712.3 (Foundation task adds), \u00a73.3 (gesture grammar to perform), \u00a73.12, \u00a74.7, \u00a75.4, \u00a78.12, \u00a710.4; core \u00a70 (window.__eos is dev-only: file:// is fine)",
+   "exports": [
+    "launchEos",
+    "startGameById",
+    "listGames",
+    "openCheckin",
+    "runCheckin",
+    "finishGame",
+    "readProgress",
+    "progressLog",
+    "smallText",
+    "noShrink",
+    "arrowState",
+    "lintCopy",
+    "flashCheck",
+    "dotsNearCentre",
+    "pixelVisible"
+   ],
+   "acceptance": "Runs FIRST, alone. Build a scratch integrated build with core only: python3 dev/eos_integrate.py --dev-dir /tmp/eos_foundation --modules 00_eos_core.jsx, then import dev/eos_drive.mjs. (1) finishGame(page,id) drives to stage-reveal at 1280x860 AND 390x844 for: 1 POP (tap), 2 CRUSH (taps), 3 CRACK (tool then taps), 7 PIN POP (drag), 24 SLINGSHOT (sling), 11 PRESSURE POP (holdRelease), 18 BURN (hold), 21 BIN (dragTo), 36 CLOUD PASS (slow), 25 SWIPE AWAY (swipe), 19 ERASE (tool then scrub), 64 RED LIGHT (timing/lit), 67 TAP OUT (alt), 32 PARK IT (choose), 14 CRUMPLE (seq), 66 BUFFERING (wait), 50 UNFINISHED SENTENCE (type), 100 HOT POTATO, 109 CLEANSE, 110 RAIN OUT; it reads stages from window.__eos.arrows.EOS_GESTURES when present, otherwise from a copy of \u00a73.11 bundled in eos_drive, and from [data-eos-target] markers for ids >= 111. The per-stage arrow assertion (arrows.state().visible + label) is enabled automatically when window.__eos.arrows exists and skipped otherwise. (2) listGames returns 110 unique names. (3) smallText(12) returns an array of {selector,text,px}; noShrink('/tmp/eos_base') compares rendered sizes against a baseline build made with python3 build.py --dev-dir /tmp/eos_base --modules 00_eos_core.jsx and returns [] for the baseline against itself. (4) lintCopy flags a planted 'calm down' and does not flag EOS_DISCLAIMER. (5) flashCheck returns a per-second count of large luminance jumps. (6) launchEos({timezoneId:'America/Toronto'}) sets the page time zone. (7) python3 dev/eos_preview.py --id 111 builds into /tmp/eos_preview_111 and renders the 'no engine registered' message with zero page errors. (8) window.__eosArrowMiss is initialised to [] before load. Zero edits outside dev/."
+  },
+  {
+   "id": "readability",
+   "title": "Readability: chrome CSS, <=11px-only max() rules, grow-only JS floor (12px everywhere, user words 16/15)",
+   "kind": "module",
+   "files": [
+    "src/eos/10_eos_readability.jsx"
+   ],
+   "spec_sections": "\u00a74 (all), \u00a70.4 tokens, \u00a712.1 rules",
+   "exports": [
+    "EOS_READ_CSS",
+    "EOS_READ_TARGETS",
+    "EosTextFloor"
+   ],
+   "acceptance": "python3 dev/eos_integrate.py --dev-dir /tmp/eos_readability --modules 10_eos_readability.jsx; launch({dir:'/tmp/eos_readability'}). (1) eos_drive.smallText(12) is empty in the 8 states of \u00a74.7 (input; menu open; play start; right after the first hit; finish hold; reveal) for POP, CRUSH, HOT POTATO, CLEANSE, RAIN OUT, SHELF IT at 1280x860 and 390x844 (the meter/shelf/safety states are re-checked after I2). (2) User-word selectors render >= 16px desktop / >= 15px phone, ECHO included. (3) noShrink('/tmp/eos_base') is empty for all 110 games at both sizes (SCRATCH REVEAL words stay >= 23px at 1280; .chainStart unchanged). (4) .tsShiftRewardPill renders 14/13px at 30/28px height and still plays the arcade's tsRewardPillHit pop; .engineProgressText 14/13; the menu group label 13px; reveal AGAIN / PREVIOUS / NEXT 14/13. (5) At 390 the header shows 'THINKSTILL' at 15px and .engineProgressHud and .releaseScoreBar are fully inside the viewport. (6) Screenshots of DEFUSE, FREEZE, MAGIC TRAPDOOR, DRAMA MACHINE, TINY SOUNDTRACK, DOOR A/B, X-RAY, SINKING PLATFORM, MIRROR FLIP, HEADLINE, PARK IT, GO WEIRD at both sizes are reviewed, and no resized label has scrollWidth > clientWidth + 2. (7) EosTextFloor takes <= 2ms per pass. Zero page errors; python3 build.py passes."
+  },
+  {
+   "id": "dots",
+   "title": "Thought Dust + Still Point: one measured centre, intensity-mirroring speed, shared pacer, spark mode, calm visuals, dust styles, audio bed",
+   "kind": "module",
+   "files": [
+    "src/eos/12_eos_dots.jsx"
+   ],
+   "spec_sections": "\u00a75.1-\u00a75.5, \u00a70.4 (EOS_PACER, eosBreathPhase, EOS_BREATH), \u00a72.1, \u00a79.2 (dust styles)",
+   "exports": [
+    "EosThoughtFlow",
+    "EOS_DOTS_CSS"
+   ],
+   "acceptance": "python3 dev/eos_integrate.py --dev-dir /tmp/eos_dots --modules 12_eos_dots.jsx. (1) On stage-input, 4x4 screenshot clips at three .eosLane dot positions differ from the background colour, i.e. the idle base layer has moved under the flow. (2) Computed animation-name of .tsPxDust includes eosDotsX and of .cinemaDust i includes eosDotsY; .cleanseSpace animates in CLEANSE. (3) dotsNearCentre: >= 70% of sampled .tsPxDust / .cinemaDust i / .eosLane [data-eos-dot] move closer to the measured .eosCore centre over 2s, and >= 70% of dots near the end of their cycle are within 24px of it, in input, play and reveal at both sizes. (4) At least 8 dust points are visible in POP, CRUSH, BURN, RAIN OUT, HOT POTATO, BLACK HOLE and SEND TO SPACE. (5) Lane playbackRate after eosApi('dots').setLevel(9) is greater than after setLevel(3). (6) eosBreathOwn('out',4000) sets .eosCore[data-phase='out'], and after eosBreathOwn(null) the CSS cycle is within 200ms of eosBreathPhase(). (7) With EOS_STORE emotion 'numb' the root has data-eos-mode='spark'. (8) reducedMotion:'reduce', or eosSetPref('calmVisuals',true), leaves no running EOS dot animation and sets data-eos-calm on .tsArcade and .tsPixarRoot. (9) The audio bed is silent when EOS_STORE.music is true. No long tasks; zero page errors."
+  },
+  {
+   "id": "mood",
+   "title": "Colour script (loud -> calm grade over every game) + flip-word bloom at the finish",
+   "kind": "module",
+   "files": [
+    "src/eos/14_eos_mood.jsx"
+   ],
+   "spec_sections": "\u00a75.6, \u00a70.2 (grade, flip), \u00a711.9",
+   "exports": [
+    "EosMoodGrade",
+    "EOS_MOOD_CSS"
+   ],
+   "acceptance": "python3 dev/eos_integrate.py --dev-dir /tmp/eos_mood --modules 14_eos_mood.jsx (I1-E3 mounts EosMoodGrade). In POP (legacy), HOT POTATO (new) and CLEANSE, with EOS_STORE emotion set to anger and to panic: (1) .eosMoodGrade has z-index 54, pointer-events none and aria-hidden. (2) Its computed background uses the grade.loud colours at progress 0 and the grade.calm colours at progress >= 95. (3) elementFromPoint at the game target is still the target. (4) Finishing the game (eos_drive.finishGame) shows the emotion's 3 flip words at >= 20px (18 on phone) within 600ms of .globalPlayGuide.isComplete. (5) With emotion numb the backdrop-filter saturate value rises with progress. (6) Reduced/calm mode switches in 3 steps without transforms. Zero page errors at 1280x860 and 390x844."
+  },
+  {
+   "id": "flipdata",
+   "title": "Personal flip line: generator over the 1,000-ritual library -> inline EOS_FLIP_INDEX + matcher (P2)",
+   "kind": "module",
+   "files": [
+    "dev/eos_flip_index.mjs",
+    "src/eos/16_eos_flipdata.jsx"
+   ],
+   "spec_sections": "\u00a79.6, \u00a70.2 (EOS_COPY_RULES), \u00a70.3 (EosMarkLaunch calls flip.match)",
+   "exports": [
+    "EOS_FLIP_INDEX",
+    "eosExpose('flip', {match, line})"
+   ],
+   "acceptance": "(1) node dev/eos_flip_index.mjs reads /home/user/thinkstill-rituals/{rush,sync,glitch,loopie,drop,patch,still}.json, classifies each ritual with core's eosDetectEmotion (core compiled with esbuild, as in \u00a712.3), and writes src/eos/16_eos_flipdata.jsx (<= 40 kB, <= 24 lines per emotion, only safe rituals, every line <= 90 chars and passing EOS_COPY_RULES). (2) python3 build.py passes. (3) In python3 build.py --dev-dir /tmp/eos_flip --modules 00_eos_core.jsx,16_eos_flipdata.jsx, window.__eos.flip.match(['my boss yelled at me'],'anger') returns a key and line(key) is non-empty. (4) After startGame(page,'POP','my boss yelled at me'), EOS_STORE.get().flipKey is set. (5) No index line contains test user text, and nothing is fetched over the network."
+  },
+  {
+   "id": "game-sigh",
+   "title": "111 BIG SIGH (panic hero, express-orb target): finger-down double inhale, graduated linear exhale, owns the pacer",
+   "kind": "game",
+   "files": [
+    "src/eos/21_eos_game_sigh.jsx"
+   ],
+   "spec_sections": "\u00a78.0, \u00a78.1, \u00a70.4 (EOS_BREATH, eosBreathOwn, EOS_HAPTIC), \u00a73.3",
+   "exports": [
+    "EOS_GAME_111",
+    "EosBigSighEngine",
+    "EOS_SIGH_CSS"
+   ],
+   "acceptance": "python3 dev/eos_integrate.py --dev-dir /tmp/eos_game-sigh --modules 21_eos_game_sigh.jsx. (1) BIG SIGH is in GAMES with all 15 fields and EOS_GAME_META[111] = {gesture:'hold', char:'sync', seconds:30}; it starts from the menu. (2) The orb is holdable within 1.0s of mount and [data-eos-target] g=hold appears by 0.5s; at 72% the marker switches to g=drag dir=u. (3) Holding fills to 72%; a >= 24px slide-up while still pressed sips to 100%; with no slide, the auto top-up happens while the pointer is still down; releasing runs the linear exhale (4.5 -> 5.5 -> 6s) and eosBreathPhase().phase === 'out' with owned true. (4) Releasing before 72% shows the puff message, never a penalty. (5) finishGame completes in <= 35s at 1280x860 and 390x844, and by keyboard (Space down / ArrowUp / Space up). (6) progressLog is strictly increasing, reaches 100 once, onDone fires once, and no onProgress call has a 3rd argument. (7) The non-soft sfx count equals the completed sighs plus the finale (CHAIN pill). (8) No heartbeat haptic pattern; flashCheck shows no flashes (no lightning). (9) The orb rect does not intersect .globalPlayGuide or .engineProgressHud at either size. (10) No avoid-list classes; user words only in .eosWord. (11) The Pixar checklist is ticked with start/mid/finish screenshots at both sizes; reduced motion has no travel. Zero page errors."
+  },
+  {
+   "id": "game-volcano",
+   "title": "112 COOL THE VOLCANO (anger hero): 6-tap eruption with intensity-scaled juice, slow breath-paced cool-down",
+   "kind": "game",
+   "files": [
+    "src/eos/22_eos_game_volcano.jsx"
+   ],
+   "spec_sections": "\u00a78.0, \u00a78.2, \u00a70.4 (pacer), \u00a76.5 (companion hidden via char)",
+   "exports": [
+    "EOS_GAME_112",
+    "EosVolcanoEngine",
+    "EOS_VOLCANO_CSS"
+   ],
+   "acceptance": "python3 dev/eos_integrate.py --dev-dir /tmp/eos_game-volcano --modules 22_eos_game_volcano.jsx. (1) Registered with gesture:'taps', char:'rush'. (2) Act A takes exactly 6 crater taps, finishes in <= 8s and reaches progress 30. With EOS_STORE.before at 5, 8 and 10 the number of rocks per tap is 1, 2 and 3, and the length is unchanged. (3) Shake fires only on alternate taps when taps come < 300ms apart. (4) Act B: the cloud marker is g=slow dir=lr data-eos-max-speed=350. A fast drag (> 350 CSS px/s, scaled by eosStageScale) shows 'slower' and cools at half rate. Press-and-hold on the cloud cools by itself. Arrow keys plus Space work. eosBreathPhase().owned is true during act B. (5) finishGame completes in <= 45s at both sizes. (6) Progress is monotonic, onDone fires once, and non-soft sfx = 6 eruptions + cooling steps + finale. (7) No flashes; targets clear of the guide panel and HUD; Pixar checklist and screenshots; reduced motion has no shake or travel. Zero page errors."
+  },
+  {
+   "id": "game-ground",
+   "title": "113 GROUND CONTROL (anxiety hero): 3 real-world spot beacons with swaps + 2 body-hold beacons, beam reveal",
+   "kind": "game",
+   "files": [
+    "src/eos/23_eos_game_ground.jsx"
+   ],
+   "spec_sections": "\u00a78.0, \u00a78.3",
+   "exports": [
+    "EOS_GAME_113",
+    "EosGroundControlEngine",
+    "EOS_GROUND_CSS"
+   ],
+   "acceptance": "python3 dev/eos_integrate.py --dev-dir /tmp/eos_game-ground --modules 23_eos_game_ground.jsx. (1) Registered with gesture:'tap', char:'glitch'. (2) There are 5 beacons, each mission <= 4 words with a big icon, and each spot beacon has an 'another' swap whose pool includes non-visual and non-auditory options. (3) Two body beacons need a 3s hold with a live hold ring, and releasing pauses rather than resets. (4) A tap within 1.5s of the previous one fills over 2.4s instead of 1.2s. (5) Each confirmation sweeps the beam and removes one worry word. (6) The arrow targets the next unlit beacon nearest the thumb, with tap/hold labels. (7) finishGame completes in <= 45s at both sizes and by keyboard. (8) Monotonic progress; onDone once; no flashes; safe-area overlap check passes; Pixar checklist; reduced motion. Zero page errors."
+  },
+  {
+   "id": "game-lanterns",
+   "title": "114 SKY LANTERNS (sad / lonely hero): hold to light, let it rise, own past lanterns, reach-out finale with safety copy",
+   "kind": "game",
+   "files": [
+    "src/eos/24_eos_game_lanterns.jsx"
+   ],
+   "spec_sections": "\u00a78.0, \u00a78.4, \u00a710.2 (safety copy)",
+   "exports": [
+    "EOS_GAME_114",
+    "EosSkyLanternsEngine",
+    "EOS_LANTERNS_CSS"
+   ],
+   "acceptance": "python3 dev/eos_integrate.py --dev-dir /tmp/eos_game-lanterns --modules 24_eos_game_lanterns.jsx. (1) Registered with gesture:'hold', char:'drop'. (2) Three lanterns follow the hold (1.2s) -> rise flow; markers go hold -> drag u -> choose, with both finale options marked. (3) The sky count equals the eos_sessions_v1 rows for 114 and shows no text when there are none. (4) Both finale buttons are the same size and both finish the game; navigator.share is stubbed and the clipboard fallback shows a toast. (5) With EOS_STORE.safety = 'selfharm' the finale reads 'Text someone you trust' with the help message, and the lanterns show neutral words. (6) finishGame completes in <= 45s at both sizes; monotonic progress; onDone once; visual heartbeat twin present; Pixar checklist; reduced motion. Zero page errors."
+  },
+  {
+   "id": "game-kind",
+   "title": "115 KIND ECHO (shame hero): thumb on PATCH's heart (+ own chest), kind lines dragged onto the harsh card, safety + jealous banks",
+   "kind": "game",
+   "files": [
+    "src/eos/25_eos_game_kind.jsx"
+   ],
+   "spec_sections": "\u00a78.0, \u00a78.5, \u00a70.4 (eosHeartbeat)",
+   "exports": [
+    "EOS_GAME_115",
+    "EosKindEchoEngine",
+    "EOS_KIND_CSS"
+   ],
+   "acceptance": "python3 dev/eos_integrate.py --dev-dir /tmp/eos_game-kind --modules 25_eos_game_kind.jsx. (1) Registered with gesture:'hold', char:'patch'. (2) The heart copy includes the two-hands line. A 3s hold drives a visual heartbeat that slows from 72 to 56 bpm (eosHeartbeat onBeat). Release pauses, never resets. The optional 5s 'stay here' can be skipped. (3) Two rounds of drag-or-tap of a kind orb onto .eosKindCard, with every orb marked dragTo. (4) The line bank is emotion-matched: jealous gets own-wins lines; with EOS_STORE.safety = 'abuse' only the 4 safety lines appear. (5) finishGame completes in <= 45s at both sizes and by keyboard. (6) Monotonic progress; onDone once; no avoid-list classes; Pixar checklist; reduced motion. Zero page errors."
+  },
+  {
+   "id": "game-squeaky",
+   "title": "116 SQUEAKY THOUGHT (overthinking hero): >= 18 s of say-it-with-each-tap repetition, local-voice-only optional speech",
+   "kind": "game",
+   "files": [
+    "src/eos/26_eos_game_squeaky.jsx"
+   ],
+   "spec_sections": "\u00a78.0, \u00a78.6",
+   "exports": [
+    "EOS_GAME_116",
+    "EosSqueakyEngine",
+    "EOS_SQUEAKY_CSS"
+   ],
+   "acceptance": "python3 dev/eos_integrate.py --dev-dir /tmp/eos_game-squeaky --modules 26_eos_game_squeaky.jsx. (1) Registered with gesture:'taps', char:'loopie'. (2) The cue says 'say it with each tap'. The meter drains only with >= 18s of active tapping in two 9s rounds; 40 taps in 4s does not finish the game. It auto-completes at 30s with >= 10 taps. (3) data-eos-n counts seconds left, updated at most 1 Hz. (4) speechSynthesis.speak is never called by default (spy). After toggling the 'say it out loud' chip, only voices with localService are used. (5) Text/child-list mutations inside .arena stay <= 4 per second (MutationObserver count). (6) Non-soft sfx = 4 letter-stage changes + finale. (7) Under EOS_STORE.safety = 'selfharm' the bubble shows neutral words. (8) finishGame completes in <= 45s at both sizes; monotonic progress; onDone once; Pixar checklist; reduced motion. Zero page errors."
+  },
+  {
+   "id": "game-colour",
+   "title": "117 COLOUR RUSH (numb hero, GOOD savour): beat splashes, rate-limited big splashes, drives the core beat",
+   "kind": "game",
+   "files": [
+    "src/eos/27_eos_game_colour.jsx"
+   ],
+   "spec_sections": "\u00a78.0, \u00a78.7, \u00a75.2 (spark mode / eosPacerBeat)",
+   "exports": [
+    "EOS_GAME_117",
+    "EosColourRushEngine",
+    "EOS_COLOUR_CSS"
+   ],
+   "acceptance": "python3 dev/eos_integrate.py --dev-dir /tmp/eos_game-colour --modules 27_eos_game_colour.jsx. (1) Registered with gesture:'timing', char:'sync'. (2) eosBreathPhase().phase === 'beat' during play and is released on unmount. (3) Scribbling at 20 Hz produces at most 3 big splashes per second, each <= 10% of the arena; flashCheck shows no flashes. (4) Splashes come from a recycled pool of 24 nodes, so child-list mutations stay <= 4/s. (5) Coverage drives --g; three splashes on a stone turn it into a gem. (6) With emotion 'good' the savour end card reads 'bank it'. (7) finishGame completes in <= 45s at both sizes and the visual metronome works with sound off. (8) Monotonic progress; onDone once; non-soft sfx only at combo milestones and the finale; Pixar checklist; reduced motion. Zero page errors."
+  },
+  {
+   "id": "game-shadow",
+   "title": "118 SHADOW SHRINK (fear, mid band): approach from 2x, no regrow, tap-steps and keyboard always available",
+   "kind": "game",
+   "files": [
+    "src/eos/28_eos_game_shadow.jsx"
+   ],
+   "spec_sections": "\u00a78.0, \u00a78.8, \u00a72 copy rules",
+   "exports": [
+    "EOS_GAME_118",
+    "EosShadowShrinkEngine",
+    "EOS_SHADOW_CSS"
+   ],
+   "acceptance": "python3 dev/eos_integrate.py --dev-dir /tmp/eos_game-shadow --modules 28_eos_game_shadow.jsx. (1) Registered with gesture:'dragTo', char:'glitch'. (2) The shadow starts at scale 2 and never grows: pointing away for 3s leaves the scale <= its previous value and the light drifts closer by itself. (3) A 1.5s hold reveals the puppet with the copy 'smaller up close.' or 'you looked right at it.'; lintCopy finds no \"that's it\". (4) Tapping the shadow steps the light closer, so the game finishes with taps only; arrow keys plus Space also work. (5) Markers go dragTo .eosShadow.isLive -> hold 1500. (6) finishGame completes in <= 45s at both sizes; monotonic progress; onDone once; Pixar checklist; reduced motion defaults to tap-steps. Zero page errors."
+  },
+  {
+   "id": "game-spotlight",
+   "title": "119 YOUR SPOTLIGHT (jealousy hero, GOOD wins mode): swing the spotlight to your stage, pick a win, trophies rise",
+   "kind": "game",
+   "files": [
+    "src/eos/29_eos_game_spotlight.jsx"
+   ],
+   "spec_sections": "\u00a78.0, \u00a78.9",
+   "exports": [
+    "EOS_GAME_119",
+    "EosSpotlightEngine",
+    "EOS_SPOTLIGHT_CSS"
+   ],
+   "acceptance": "python3 dev/eos_integrate.py --dev-dir /tmp/eos_game-spotlight --modules 29_eos_game_spotlight.jsx. (1) Registered with all 15 fields, family Reframe, gesture:'dragTo', char:'patch', seconds:30. It is listed in the menu and startGame(page,'YOUR SPOTLIGHT') works. (2) Three rounds: dragging the lamp to .eosSpotPedestal.isEmpty, then picking a chip (every chip marked choose), turns the pedestal into a trophy showing the chip text in >= 16px gold; the billboard shrinks each round. (3) Tapping an empty pedestal swings the light there (single-pointer), and Enter on the lamp works. (4) No typed text appears outside .eosWord; chips never contain user text. (5) Wins mode with emotion 'good' uses its own prompt and end card. (6) Under the safety flag the billboard shows neutral words. (7) finishGame completes in <= 45s at 1280x860 and 390x844; monotonic progress; onDone once; non-soft sfx = 3 trophies + finale; targets clear of the guide panel and HUD; Pixar checklist; reduced motion. Zero page errors."
+  },
+  {
+   "id": "game-onething",
+   "title": "120 ONE THING (overwhelm hero): sort the pile LATER / LET GO / NOW, the box breathes out, make one thing tiny",
+   "kind": "game",
+   "files": [
+    "src/eos/2a_eos_game_onething.jsx"
+   ],
+   "spec_sections": "\u00a78.0, \u00a78.10",
+   "exports": [
+    "EOS_GAME_120",
+    "EosOneThingEngine",
+    "EOS_ONETHING_CSS"
+   ],
+   "acceptance": "python3 dev/eos_integrate.py --dev-dir /tmp/eos_game-onething --modules 2a_eos_game_onething.jsx. (1) Registered with all 15 fields, family Sort, gesture:'swipe', char:'glitch', seconds:25; it starts from the menu. (2) Each block can be swiped left to LATER, swiped right to LET GO or tapped to NOW (90px or 500px/s thresholds in CSS px); a second NOW asks 'swap?'. The three small buttons and the left / Enter / right keys also work. (3) Blocks come from a pre-mounted pool, so no remounts. (4) When <= 1 block is left the box breathes out (eosBreathPhase().owned with phase 'out'). (5) The size chips and when chips are all marked choose and produce the pebble label. With no NOW, the 'nothing needs doing right now' finale is offered and finishes the game. lintCopy finds no minimising 'just'. (6) finishGame completes in <= 45s at both sizes; monotonic progress; onDone once; safe-area overlap check passes; Pixar checklist; reduced motion. Zero page errors."
+  },
+  {
+   "id": "arrows",
+   "title": "Guide arrows: every stage of every game, stage-advance re-show, pinned count badge, drag goal + speed gauge, EosHandCue/EosHandHint, glyph overrides, SR live line",
+   "kind": "module",
+   "files": [
+    "src/eos/30_eos_arrows.jsx"
+   ],
+   "spec_sections": "\u00a73 (all, incl. \u00a73.10-\u00a73.11 tables), \u00a70.4 (eosTarget fields), \u00a76.2 / \u00a76.6 (hint consumers)",
+   "exports": [
+    "EOS_GESTURES",
+    "EOS_GLYPH_OVERRIDE",
+    "EosGestureFor",
+    "eosGlyph",
+    "EosGuideArrows",
+    "EosHandCue",
+    "EosHandHint",
+    "EOS_ARROWS_CSS"
+   ],
+   "acceptance": "python3 dev/eos_integrate.py --dev-dir /tmp/eos_arrows --modules 30_eos_arrows.jsx. (1) For all 110 ids at 1280x860 and 390x844, a hand appears within 1.5s with its hotspot inside the target rect (+-10px), inside the group bbox for choose, or as a palm for 66/80; labels are >= 14px. (2) eos_drive.finishGame with per-stage asserts passes for all 110: before each stage arrows.state().visible is true and the label matches. For 3, 28, 40, 88, 98 and 107 the stage-2 label appears within 800ms of finishing stage 1. (3) In CRUSH, .eosCount stays visible and reads 4 -> 3 -> 2 -> 1 even though the button remounts. (4) A missed tap re-shows within ~1.3s; 4s idle re-shows; the hand hides within 200ms of a touch. (5) Dragging 36 fast shows the amber 'slower' gauge. (6) The LIVE GUIDE glyph is present in both wrappers; ids 88, 94, 97, 98, 101, 106 and 107 show the override glyphs. (7) EosHandHint rendered on a test page with g:'choose' over 3 elements hops a halo across all of them. (8) div.eosSrOnly[aria-live] carries the label. (9) With reduced motion there is no travel. (10) window.__eosArrowMiss is empty; zero page errors; the layer never writes into .cinematicContentShell (MutationObserver on the shell sees no eos nodes)."
+  },
+  {
+   "id": "checkin",
+   "title": "Check-in ring (express PANIC, halo hint, name tags, good-day chip, deep link, support/about/calm footer), chip, companion",
+   "kind": "module",
+   "files": [
+    "src/eos/40_eos_checkin.jsx"
+   ],
+   "spec_sections": "\u00a72.1, \u00a72.2, \u00a72.5, \u00a76.2, \u00a76.3, \u00a76.5, \u00a70.3 (EosCommitCheckin express), \u00a70.2 (dial, dialQ, sub, starters)",
+   "exports": [
+    "EosCheckIn",
+    "EosCheckInChip",
+    "EosCompanion",
+    "EOS_CHECKIN_CSS"
+   ],
+   "acceptance": "python3 dev/eos_integrate.py --dev-dir /tmp/eos_checkin --modules 40_eos_checkin.jsx (router, shift and arrows are stubbed; also run with 30_eos_arrows.jsx,45_eos_router.jsx when they exist). (1) Fresh load shows .eosCheckIn[data-step='1'] with 8 orbs plus name tags and NOT SURE; the composer input and the choice button stay clickable. (2) The footer has 'just let me play', 'Need to talk to someone?', 'about ThinkStill' (EOS_DISCLAIMER) and 'calm visuals'. (3) Tapping PANIC sets EOS_STORE {emotion:'panic', express:true, before:null} and reaches stage-play in <= 2.0s (with the router: game 111). (4) ANGRY goes to step 2 with the dial pre-lit at 8 and the first-ever 'Meet RUSH, your anger.' line; GO with dial 8 commits before 8 and launches. (5) 'pick a game myself' commits the check-in, then opens the menu. (6) The good-day chip launches 117 through onPlay (stub-safe). (7) ?eos=anger&t=41 preselects ANGRY, shows the banner and cleans the URL. (8) .eosCheckInChip is z 32, visible in skip phase over the idle stage, and hidden while the menu is open. (9) The companion hides when EOS_GAME_META[id].char equals its char, sits 8px under the measured HUD bottom at 390, shows the 'spent' face plus 'nice hit \u2014 now let it cool' for anger in CRUSH, and uses face 61 for numb at >= 67%. (10) Private attributes are on the root; reduced motion gives cross-fades only; zero page errors at both sizes."
+  },
+  {
+   "id": "router",
+   "title": "Router v1.2: re-tuned routes, bench, gentle list, real-threat rules, no recency in high band, late night, express band, menu group, profile override",
+   "kind": "module",
+   "files": [
+    "src/eos/45_eos_router.jsx"
+   ],
+   "spec_sections": "\u00a77 (all, incl. \u00a77.6 verdicts), \u00a70.2 (EOS_DISCHARGE_IDS, eosRealThreat, eosTextSafety), \u00a76.4",
+   "exports": [
+    "EOS_EMOTION_ROUTES",
+    "EOS_ROUTE_RULES",
+    "EOS_VAULT",
+    "EOS_BENCH",
+    "EOS_GENTLE_IDS",
+    "EOS_SECOND_ACT",
+    "EOS_LOUD_IDS",
+    "EOS_GAME_SECONDS",
+    "EosRouteGame",
+    "EosSecondAct",
+    "EosRoutePreview",
+    "EosMenuGroup",
+    "EosProfileOverride"
+   ],
+   "acceptance": "python3 dev/eos_integrate.py --dev-dir /tmp/eos_router --modules 45_eos_router.jsx, then unit checks via window.__eos.router in the page. (1) For every emotion x band, the pick is in that band's list or its fallbacks, and no vault or bench id is ever returned. (2) With EOS_STORE.safety set, or with the text 'i want to die' and no check-in or store flag, every pick is in EOS_GENTLE_IDS. (3) EosSecondAct('anger',4,5) returns 112. (4) Anger at 8 with 112 and 100 in played and in the last 3 eos_sessions still returns 112. (5) With the clock faked to 23:30, anger and good never get 117 and numb can. (6) 'I'm scared he'll follow me home' never yields 118, 105 or 53. (7) 89 appears only with 'or'/'vs'. (8) Express with emotion panic and before null gives 111. (9) Typed 'my boss yelled at me and I feel panic' with no check-in gives 111. (10) A score moves at most 0.15 from history, and retro rows are ignored. (11) EosProfileOverride('i am panicking') returns the panic profile and changes after a check-in to anger with the same text. (12) EosMenuGroup renders 'FOR YOUR ANGER' using menu markup, and startGame(page,'POP') still works. (13) EOS_STORE snapshots are unchanged by every call. Zero page errors."
+  },
+  {
+   "id": "shift",
+   "title": "Shift meter: conditional Still Moment (sigh / cool / heart / spark), one empty after-dial driving the character, LIGHTER stamp, controls payoff, orb flight, <= 3 buttons",
+   "kind": "module",
+   "files": [
+    "src/eos/50_eos_shift.jsx"
+   ],
+   "spec_sections": "\u00a72.4, \u00a76.6, \u00a70.3 (EosRecordShift retro), \u00a70.4 (EOS_BREATH, pacer), \u00a710.2 (safety tie-in)",
+   "exports": [
+    "EosShiftMeter",
+    "EosStillMoment",
+    "EOS_SHIFT_CSS"
+   ],
+   "acceptance": "python3 dev/eos_integrate.py --dev-dir /tmp/eos_shift --modules 50_eos_shift.jsx (also run with 30_eos_arrows.jsx,52_eos_rewards.jsx,45_eos_router.jsx when present). (1) After POP with anger at 8 (a non-discharge game, high band, anger), the sigh Still Moment auto-runs and tapping anywhere skips it from 0s. After 111 or 109 there is no moment. After CRUSH with anger the cool variant (2 sighs) auto-runs even with >= 5 prior loops, and the button reads 'COOL IT DOWN' (onPlay receives 112). (2) The sigh moment uses the 1.6 / 0.5 / 4.4s timings with a linear drain and owns the pacer; heart and spark moments auto-complete at 6.5s. (3) The after-dial starts at '\u2013' with a ghost at before and the CTA disabled; 'skip' records after = null. When before is null the 'you came in at about N \u00b7 change' chip appears and the row has retro:1. (4) The payoff reaches 'ANGER 8 \u2192 3 \u00b7 COOL' with the stamp '5 LIGHTER \u2726' and the controls sub-line <= 7s after the game's finish when the moment is skipped. (5) addScore(25) is called exactly once per launch, when the meter mounts. (6) Old reveal copy and PREVIOUS/NEXT are hidden until data-step='done'; there are at most 3 buttons. (7) Under a safety flag there is no stamp or share and the 'Talk to someone' button is present; for sad, share is a text link. (8) The orb flies into [data-eos-chip='orbs'] when the chip is present. (9) eosApi('safety').soft is called after recording. (10) Reduced/calm gives cross-fades; zero page errors at both sizes."
+  },
+  {
+   "id": "rewards",
+   "title": "Rewards: loop-based orbs (102-face win pool, Expression of the Day), bonds on appearance, skill ranks, days without denominator, dust unlocks, stats, chips, shelf, story/feed/week share cards",
+   "kind": "module",
+   "files": [
+    "src/eos/52_eos_rewards.jsx"
+   ],
+   "spec_sections": "\u00a79.1-\u00a79.5, \u00a70.2 (EOS_WIN_FACES, keepHistory), \u00a75.2 (dust styles)",
+   "exports": [
+    "EOS_REWARDS_SKILLS",
+    "eosGrantForShift",
+    "eosBondFor",
+    "eosSkillFor",
+    "eosWeek",
+    "eosMyStats",
+    "EosWorldChips",
+    "EosOrbShelf",
+    "eosMakeShareCard",
+    "EosShareButton",
+    "EOS_REWARDS_CSS"
+   ],
+   "acceptance": "python3 dev/eos_integrate.py --dev-dir /tmp/eos_rewards --modules 52_eos_rewards.jsx, with unit calls via window.__eos.rewards plus UI checks. (1) eosGrantForShift on the first loop of the day writes one gold orb with a face unowned from eosFacePool(char,'win'); later loops are silver unless they bring a new game, new emotion or bond level; rarity is identical for delta 0 and delta 6. (2) There is a cap of 5 orbs per day, and the call is idempotent per shift.t. (3) Bonds +1 for both the companion char and the scene char. (4) Skill ranks count by mechanism, including GOOD and NOT SURE plays. (5) eosWeek shows the day count with no denominator, and lifetime milestones are 3/10/30/100. (6) A lifetime SCORE_KEY of 1000 unlocks two dust styles. (7) eosMyStats excludes retro rows and has no speed records. (8) Chips are at z 170 and clickable in stage-reveal (elementFromPoint), and hidden while the menu is open. (9) The shelf (z 220) opens and closes with the keyboard, traps focus and shows day-only stamps, the support link, EOS_DISCLAIMER, the keepHistory toggle (off means no rows are written) and reset (two-tap). (10) eosMakeShareCard resolves 1080x1920 (story) and 1080x1350 (feed) PNGs (> 50 kB) and a week card. The SAD default has no feeling name. There is no user text, and the deep-link caption ends with ?eos=&t= when shareUrl is set. (11) No localStorage value contains the typed thought. Zero page errors at both sizes."
+  },
+  {
+   "id": "safety",
+   "title": "Safety UI: card variants (selfharm / abuse / threat / soft / numb-soft / info), no focus stealing, per-type dismissal, support pill + persistent link, local-first one-tap lines, soft rule",
+   "kind": "module",
+   "files": [
+    "src/eos/55_eos_safety.jsx"
+   ],
+   "spec_sections": "\u00a710 (all), \u00a72.6, \u00a70.2 (EOS_SAFETY_LEX, EosSafetyScan, EosFlagSafety, EOS_NEUTRAL_WORDS are CORE \u2014 do not redeclare)",
+   "exports": [
+    "EosSafetyLayer",
+    "EosSafetyCard",
+    "EosSupportPill",
+    "eosSafetyOrderLines",
+    "EOS_SAFETY_CSS"
+   ],
+   "acceptance": "python3 dev/eos_integrate.py --dev-dir /tmp/eos_safety --modules 55_eos_safety.jsx. (1) Typing each \u00a710.1 must-match phrase shows .eosSafetyCard[role=alertdialog][aria-modal=false] within 1s, with the right variant copy, while a running game keeps running; must-not-match phrases show nothing. (2) Typing 'i want to die and then some' leaves every character in the input and focus stays there; the assertive live region announces. (3) Dismissing selfharm, then typing an abuse phrase, shows the abuse card; after dismissal the support pill is visible at z 230. (4) eosApi('safety').open('info') shows the info card from any stage. (5) In stage-reveal the card is the elementFromPoint hit at its own centre. (6) soft(): GOOD 5 -> 9 never fires; anger 8 -> 9 with delta <= 1 fires; numb uses the numb copy; precedence never downgrades. (7) With timezoneId 'America/Toronto' the first line is Canada and the primary button is tel:988; 'text HOME to 741741' becomes sms:741741?&body=HOME; digits in labels are never dialled. (8) Nothing is written to storage, and private attributes are on the card. Zero page errors at both sizes."
+  },
+  {
+   "id": "fixes",
+   "title": "Existing-game fixes: hint texts, progress gate (L1), live highlights, tool pulse, EosEntries (safety-neutral + stopwords), occlusion/107 grid fit, guards + almost! lines, drum sounds",
+   "kind": "module",
+   "files": [
+    "src/eos/60_eos_fixes.jsx"
+   ],
+   "spec_sections": "\u00a711 (all), \u00a70.2 (eosTextSafety, EOS_NEUTRAL_WORDS), \u00a73.10 (66/80 copy)",
+   "exports": [
+    "EOS_HINT_FIX",
+    "EOS_FIXES_ALMOST",
+    "EOS_LIVE_SELECTORS",
+    "eosGateProgress",
+    "EosEntries",
+    "EosLegacyGuards",
+    "EOS_FIXES_CSS"
+   ],
+   "acceptance": "python3 dev/eos_integrate.py --dev-dir /tmp/eos_fixes --modules 60_eos_fixes.jsx. (1) In CRUSH, PIN POP, ARCHIVE and TAP OUT the aria-valuenow log never decreases and reaches 100 only at onDone; UNFINISHED SENTENCE's bar goes above 12 before the finish. (2) Every EOS_HINT_FIX id shows its new LIVE GUIDE line. (3) The live highlight matches exactly one element at the start of 14, 17, 20, 33, 37, 42, 51, 55, 60, 63, 71 and 74. (4) cleanEntries('i am panicking') gives 6 unique chunks starting 'i am panicking', 'about tomorrow'. cleanEntries('i want to die') gives EOS_NEUTRAL_WORDS with enrich on and off. Text with >= 6 tokens is unchanged. (5) Sliding off PRESSURE POP stops charging. (6) Each EOS_FIXES_ALMOST line appears for its condition in 11, 13, 36, 64, 65, 69 and 70, and after 2 restarts in 66/80. (7) All five GO WEIRD props are hittable at 1280x860 and 390x844 with the overflow-clip-margin rule removed. (8) DRUM IT plays 4 distinct eosTone voices. (9) The scratch stub and the real eosGateProgress give identical results on a recorded CRUSH sequence. Zero page errors."
+  }
+ ],
+ "integration_groups": [
+  {
+   "id": "I1",
+   "title": "Visible layer: global style, Thought Dust, colour script, arrows + guards + text floor, guide glyphs + verbs, monotonic progress, meter word, readable words prop, new-game routing, store + sound mirror, Pixar dust/squash/props",
+   "spec_sections": "\u00a712.2 I1, \u00a73, \u00a74, \u00a75, \u00a75.6, \u00a78.0, \u00a710.3, \u00a711.2, \u00a711.7; tooling \u00a712.3",
+   "edits": "Apply ONLY with: python3 dev/eos_integrate.py --check, then python3 dev/eos_integrate.py --in-place --groups I1. This refuses to write unless EosThoughtFlow, EosMoodGrade, EosGuideArrows, EosLegacyGuards, EosTextFloor, eosGlyph and eosGateProgress are defined in src/eos/*.jsx (needs the readability, dots, mood, arrows and fixes modules merged). Then review git diff and run python3 build.py. Edits in src/00_arcade.jsx (exact anchors; byte-for-byte in dev/eos_integrate.py EDITS):\nE1: after '            </style>' in the block '            </style>\\n\\n            <div className=\"ambient a1\" />', insert '<EosGlobalStyle />'.\nE2: after '                <section className=\"releaseStage\">', append '<EosThoughtFlow stage={stage} reduced={!!reduced} />'.\nE3: before '                    {stage === \"reveal\" && selected ? (', insert the play fragment {stage === \"play\" && selected ? <React.Fragment key={`eos-play-${selected.id}-${variationSeed}-${materialRevision}`}> containing EosMoodGrade, EosGuideArrows (entries=renderedEntries, hostRef=gameHostRef) and EosLegacyGuards (exactly 28 leading spaces; I2-E13 anchors on it), then </React.Fragment> : null}, followed by <EosTextFloor stage={stage} />.\nE4: in the legacy guide card block (key={`guide-${p.game.id}-${guideText}`} / className=\"guideStepCard\" / > / <small>{guideParts.label}</small>), insert '<i className=\"guideActionArrow\" aria-hidden=\"true\">{eosGlyph(p.game)}</i>' before <small>.\nE5: '{Number(p.game?.id || 0) < 100 ? (' -> '{true ? ('.\nE6: '{guideGesture.arrow || \"\u2191\"}' -> '{eosGlyph(p.game) || guideGesture.arrow || \"\u2191\"}'.\nE7 (x2): 'const reportProgress = (value, nextLabel) => {\\n        const v = pct(value),' -> '(value, nextLabel, eosFromSfx) \u2026 eosGateProgress(progressRef, value, eosFromSfx),'.\nE8 (x2): 'reportProgress(next, progressLabel(p.game, next))' -> add ', true'.\nE9 (x2): 'engineBubbleTextPx = Math.max(\\n        1,' -> 15.\nE10a/b/c: bubbleTextPx default 4 -> 16, clamp 18 -> 28, property control max 28 and defaultValue 16.\nE11: before '    if (!UNIQUE_HERO_IDS.has(p.game.id)) return <UniqueReleaseEngine {...p} />', insert the EosEngineFor(p.game) early return.\nE12 (new): after 'function releaseGestureForGame(game) {\\n    const a = `${game?.action || \"\"} ${game?.hook || \"\"}`.toLowerCase()', insert an ids>=111 return of {arrow:\"\", verb from EOS_GAME_META gesture}.\nE13 (new): '                        GAME PROGRESS \u00b7 {progress}%' -> '                        {eosMeterWord(p.game)} \u00b7 {progress}%'.\nE14 (moved from I2-E1): after '    const [releaseCheck, setReleaseCheck] = React.useState(null)', append 'const eos = useEosStore()' and a useEffect calling EOS_STORE.set({sound:!!sound, haptics:!!hapticsOn, music:!!(musicOn && sound)}) with deps [sound, hapticsOn, musicOn] (musicOn is declared at L21062, before L21078).\nIn src/99_pixar.jsx:\nP1: dust spawn 'top: `${40 + pxNoise(i, 23) * 60}%`,' -> '`${pxNoise(i, 23) * 100}%`'.\nP2: add '\".eosObj\",' to PX_SQUASH_TARGETS before '].join(\",\")'.\nP3: add eosCheckin / eosCrisisLines / eosCrisisUrl / eosEmergencyText / eosShareUrl destructured props after 'pixarDust = 14,'.\nP4: insert <EosConfigSync \u2026/> before '            <ThinkStillReleaseArcade {...arcadeProps} />'.\nP5: add the 5 eos* property controls before the final '})'.",
+   "acceptance": "python3 dev/eos_integrate.py --check reports I1 SKIP (already applied) and I2/I3 OK; python3 build.py passes (one export default); every original property control key survives (title, accent, accent2, background, soundOn, hapticsOn, musicOnDefault, musicVolume, tapOutBpm, bubbleTextPx, maxWidth, pixarIntensity, pixarWarmth, pixarParallax, pixarSquash, pixarBokeh, pixarDust) plus the 5 eos* keys. In the full build at 1280x860 and 390x844: POP, CRUSH, HOT POTATO and every registered 111-120 game start from the menu with zero page errors. The legacy HUD reads '{meter word} \u00b7 n%' after a typed panic/anger phrase. .eosMoodGrade is present in play and its background moves from loud to calm. An .eosArrowLayer hand is on the target in POP, CRUSH, HOT POTATO and CRACK (tool stage first). .guideActionArrow is visible in POP and HOT POTATO, and new games' guide text has no regex arrow. CRUSH's aria-valuenow over 24 taps is non-decreasing and stays below 100 until onDone. .tsPxDust animation includes eosDotsX and .eosLane is present in input and play. ECHO words are >= 15px; .engineProgressHud is inside the viewport at 390. EosTextFloor scan is empty for POP and HOT POTATO. Toggling sound off sets EOS_STORE.sound to false. Mic, upload, sound toggle and the Pixar rig still work."
+  },
+  {
+   "id": "I2",
+   "title": "Emotion-first loop: check-in / chip / world chips / safety layer, routing, launch & finish marks, shift meter, menu group, profile override, short-input + safety entries, companion",
+   "spec_sections": "\u00a712.2 I2, \u00a72, \u00a76, \u00a77, \u00a79.3, \u00a710.2, \u00a711.5",
+   "edits": "Apply ONLY with: python3 dev/eos_integrate.py --in-place --groups I2. It refuses unless EosCheckIn, EosCheckInChip, EosWorldChips, EosSafetyLayer, EosShiftMeter, EosMenuGroup, EosCompanion, EosRouteGame, EosProfileOverride and EosEntries are defined (needs the checkin, router, shift, rewards, safety and fixes modules merged). Then git diff and python3 build.py. Edits in src/00_arcade.jsx:\nE1: moved to I1-E14 (id kept free).\nE2: before '                    {stage === \"input\" && !selected ? (', insert: <EosCheckIn raw setRaw onLaunch={startThinkStillChoice} onPlay={startChosenGame} toggleMic listening openMenu={() => setGameMenuOpen(true)} sfx reduced/>, gated on stage input && !selected && eos.phase === 'checkin' && eos.checkinEnabled; <EosCheckInChip/> when eos.phase !== 'checkin'; <EosWorldChips stage reduced/>; <EosSafetyLayer raw stage reduced/>.\nE3: after '    const clearForNext = React.useCallback(() => {', append 'EosResetFeeling()'.\nE4: '        const best = chooseRelevantGame(sourceThought)' -> 'EosRouteGame(sourceThought, played) || chooseRelevantGame(sourceThought)'.\nE5: '        return chooseRelevantGame(sourceThought, selected.id, selected)' -> 'EosRouteGame(sourceThought, played, selected.id) || \u2026'.\nE6: insert 'EosMarkLaunch(g, e)' between '            setVariationSeed((v) => v + 1)' and '            setStage(\"play\")'.\nE7: insert 'EosMarkLaunch(selected, entries)' between '        setVariationSeed((v) => v + 101)' and '        setStage(\"play\")'.\nE8: insert 'EosMarkFinish(selected, bonus)' before '            setReleaseCheck(null)\\n            setStage(\"reveal\")'.\nE9: before '                                    <div className=\"releaseShiftCheck\">', insert <EosShiftMeter game sfx rainSfx reduced onAgain={replay} onPlay={startChosenGame} onNext={tryRecommendedRelease} onDoneForNow={clearForNext} addScore={\u2026setScore + SCORE_KEY\u2026}/>.\nE10: before '                                <div className=\"releaseChoiceGroupLabel\">\\n                                    15 SIGNATURE RELEASES', insert <EosMenuGroup played gameChoice onPick={startChosenGame}/>.\nE11: after 'function releaseEmotionProfile(input) {', add the EosProfileOverride early return.\nE12: after 'function cleanEntries(raw) {', add the EosEntries early return.\nE13 (anchor created by I1-E3): after the 28-space '<EosLegacyGuards game={selected} hostRef={gameHostRef} />' line, append '<EosCompanion game={selected} hostRef={gameHostRef} reduced={!!reduced} />'.",
+   "acceptance": "python3 build.py passes and dev/eos_integrate.py --check reports I1 and I2 SKIP and I3 OK. In the full build at 1280x860 and 390x844, plus one reduced-motion pass and one calm-visuals pass, \u00a76.7, \u00a77.5, \u00a79.5 and \u00a710.4 hold. A fresh load shows the check-in with the Still Point visible; the composer is clickable. A PANIC tap reaches 111 holdable in <= 2.0s. ANGRY -> 8 -> GO routes a game in anger.high. Finishing shows .eosShiftMeter, and the payoff is visible <= 7s after the finish with the moment skipped. The orb lands in the \u25c9 chip; one eos_sessions_v1 row with no text; header \u26a1 +25 once. I'M GOOD returns to the check-in. 'i want to die' + Enter within 100ms routes a gentle id and the arena shows EOS_NEUTRAL_WORDS. The safety card is clickable above the reveal overlay. 'just let me play' followed by startGame(page,'POP',text) behaves exactly as before. LET THINKSTILL CHOOSE without a check-in still works (falling back to chooseRelevantGame when nothing is detected). localStorage contains no typed text."
+  },
+  {
+   "id": "I3",
+   "title": "Existing-game source fixes (behaviour-preserving)",
+   "spec_sections": "\u00a712.2 I3, \u00a711.8",
+   "edits": "Apply ONLY with: python3 dev/eos_integrate.py --in-place --groups I3, then git diff and python3 build.py. Edits in src/00_arcade.jsx:\nE1: before '                            onClick={() => {\\n                                if (step % 2 === 0) tapStep(8)', prepend 'className={step % 2 === 0 ? \"eosNext\" : \"\"}' (TAP OUT LEFT).\nE2: same for the 'if (step % 2 === 1) tapStep(8)' block with 'step % 2 === 1' (TAP OUT RIGHT).\nE3: 'if (meter >= 62 && meter <= 88) advance()\\n\u2026else {\\n\u2026setMeter(0)' -> window 55-92 and 'setMeter((m) => Math.min(m, 40))' (PRESSURE POP).\nE4: BIN drop margins 'cx >= m.left - 32 && cx <= m.right + 32 && cy >= m.top - 34 && cy <= m.bottom + 46' -> 70 / 70 / 80 / 90.\nE5: in the ECHO block the three 'stopEchoHold(true)' calls (onPointerUp, onPointerCancel, onPointerLeave) become 'stopEchoHold(false)'.",
+   "acceptance": "dev/eos_integrate.py --check reports all 38 edits SKIP (applied) and python3 build.py passes. TAP OUT has exactly one .tapOutPads .eosNext, alternating on each correct tap, and the arrow follows it. PRESSURE POP finishes with ~0.9s holds and a miss keeps the needle partly charged. BIN accepts a drop 60px beside the mouth. ECHO keeps a bubble's fill after a release. Full smoke, zero page errors at 1280x860 and 390x844: input stage; all 110 original games via eos_drive.finishGame; every 111-120 game; the check-in flow including PANIC express; the reveal (meter, orb flight, share card); the safety card; the Orb Shelf; reduced-motion and calm-visuals passes; mic, upload, sound and property controls intact. ThinkStillReleaseArcade_EOS_FULL.txt has exactly one export default."
+  }
+ ]
+}
