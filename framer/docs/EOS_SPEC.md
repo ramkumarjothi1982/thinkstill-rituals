@@ -1830,3 +1830,8 @@ Every item of `EOS_SPEC_CRITIQUE_asks.md` (A-H), `EOS_SPEC_CRITIQUE_build.md` (H
 16. **build M14 — "lift `.gwDock`":** `.gwDock` is the last row of the `.gwGame` grid (not positioned), so the lift is a measured grid fit (smaller gap / padding, `overflow:visible` as the fallback); `overflow-clip-margin` stays as a progressive enhancement only.
 17. **Consequence of R2 / R9 (not a critique item):** 14 CRUMPLE, 19 ERASE and 71 DEFUSE left their lists; they are re-routed where the fit is real (19 → overthinking mid tail, 14 → anger mid tail, 71 → anger low — "defuse" is the anger metaphor; the bomb is only a threat cue for panic and fear), so §7.6 classifies all 120 ids.
 18. **Copy rule "just":** banned as a minimiser of the user's effort ("just breathe"); the user's own voice in "just let me play →" is kept.
+
+## Owner decisions (delegated to the lead, binding for builders and reviewers)
+- 2026-10-08 · Dots / Still Point colour: the core travels from the feeling's own hue to the hue of that feeling's calm grade (§0.2: anger red → teal, panic → dawn gold, sad → peach; numb grey → colour), taking the hue path that avoids yellow-green. This supersedes the "always ends on cyan 190" line in §5.2. Reviewers must not flag it.
+- 2026-10-08 · Release 1 scope: see the workflow SCOPE note (games 115-120 and flipdata deferred to release 2; router and rewards degrade gracefully).
+- The lead decides all remaining open design questions in favour of: clearer first-time guidance, faster felt relief, warmer Pixar / Inside Out look, and never removing existing functionality.
