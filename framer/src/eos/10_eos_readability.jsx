@@ -56,6 +56,7 @@ ${EOS_A}.stage-reveal:not(.releaseGlobal99Upgrade) .releaseShiftChoices>button{f
      two pills on the card's left corners) */
   ${EOS_A}.stage-reveal .releaseCompleteShell{display:grid!important;width:min(620px,100%)!important;margin-left:auto!important;margin-right:auto!important;align-items:center!important;grid-template-columns:1fr 1fr!important;grid-template-areas:"card card" "prev next"!important;row-gap:12px!important;column-gap:10px!important}
   ${EOS_A}.stage-reveal .releaseCompleteCard{grid-area:card!important}
+  ${EOS_A}.stage-reveal.releaseGlobal99Upgrade .releaseCompleteCard{justify-self:center!important} /* its own 313 px width */
   ${EOS_A}.stage-reveal .releaseCompletePrev{grid-area:prev!important;justify-self:start!important}
   ${EOS_A}.stage-reveal .releaseCompleteNext{grid-area:next!important;justify-self:end!important}
   ${EOS_A}.stage-reveal.releaseGlobal99Upgrade .releaseCompleteSideNav{width:auto!important;min-width:0!important;height:44px!important;margin:0!important;padding:0 18px!important;white-space:nowrap!important;position:static!important;transform:none!important}
@@ -188,6 +189,7 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
 }
 @media (max-width:700px) and (prefers-reduced-motion:reduce){
   ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud>*{translate:none!important;transition:none!important}
+  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud.tsShiftRewardHud.tsShiftRewardHud>.spark{translate:none!important;transition:none!important}
 }
 @media (max-width:560px){
   ${EOS_A}.stage-play:not(.releaseGlobal99Upgrade) .tsThoughtLabelHost>:is(.tsBubbleTextContainer,.tsExternalThoughtLabel){min-width:56px!important;max-width:min(118px,31vw)!important;padding:4px 7px!important}
@@ -227,6 +229,12 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
      the full-width phone meter would cover it, so the meter starts right of it (as today, when the HUD began at
      x 89) and the pill lines up with the meter, wrapping to a second line rather than being cut */
   ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .engineProgressHud{left:156px!important}
+  /* …that narrowed meter has no room for the always-on sparks pill as well ("✦ 0 SHIFT SPARKS" is one text node, it
+     cannot be shortened): there LVL stays on and the sparks join the hit toast, first of its three short rows */
+  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud>.spark{position:absolute!important;right:0!important;top:calc(100% + 8px)!important;height:28px!important;padding:0 6px!important;box-shadow:0 6px 16px rgba(0,0,0,.42)!important;opacity:0!important;visibility:hidden!important;translate:0 -8px!important;transition:opacity .18s ease,translate .2s ease,visibility 0s linear .2s!important}
+  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud>.token{top:calc(100% + 40px)!important}
+  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud>.chain{top:calc(100% + 72px)!important}
+  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud.isHit>.spark{opacity:1!important;visibility:visible!important;translate:0 0!important;transition:opacity .12s ease,translate .3s cubic-bezier(.2,1.5,.4,1),visibility 0s!important}
   ${EOS_A}.stage-play .releaseGameHost .arena:not(.u103)>.literalProgress{top:8px!important;left:10px!important;max-width:140px!important;white-space:normal!important;text-overflow:clip!important;line-height:1.08!important}
   /* small word bubbles (UNHOOK 78 px, CUT THE LOOP 60 px): the word gets the bubble's width (the floor sizes it so no
      word breaks inside itself); UNHOOK's "3 STRINGS HOLDING" tag reads on two short lines */
@@ -345,7 +353,14 @@ const EOS_READ_SKIP = '[hidden],.eosSrOnly,.eosArrowLayer,.tsRewardSurge,script,
 // time as an aria-hidden name tag (.tsBubbleTextContainer: CLEANSE, the new-wrapper bubbles, 8.5 / 7.5 px today)
 // beside the accessible, visually hidden source span, and some art carries real labels (DOOR A / B's "OR")
 const EOS_READ_HIDDEN = '[aria-hidden="true"]'
-const EOS_READ_OWN = /(^|\s)eos[A-Z]/
+// our own overlay ROOTS (designed ≥ 12 px by their modules; spec §0 EOS_Z / EOS_PRIVATE_ATTRS + the core's and the
+// mood module's layers) — or any root that carries data-eos-overlay. An explicit list, never "any eos* class": state
+// / marker classes other modules put on game elements (TAP OUT's .eosNext pad) or on .arena / .releaseGameHost must
+// never switch the floor off for a game
+const EOS_READ_OVERLAYS = new Set(["eosCheckIn", "eosCheckInChip", "eosShiftMeter", "eosSafetyCard", "eosSupportPill", "eosOrbShelf", "eosCompanion", "eosArena", "eosStillMoment", "eosWorldChips", "eosArrowLayer", "eosSrOnly", "eosMoodGrade", "eosMoodFlip", "eosMoodAir", "eosMoodSparks", "eosMoodWord", "eosThoughtFlow", "eosCore", "eosDial", "eosLane"])
+// "shrink the thought" relief mechanics (legacy ZOOM OUT 30, MICROSCOPE 58 and 26, 29, 53, 104): the thought getting
+// smaller IS the relief, so the floor never compensates a scale there (it would bounce the word back up between taps)
+const EOS_READ_SHRINK_SEL = ".u26, .u29, .u30, .u53, .u58, .u104"
 const EOS_READ_TEXT = /[\p{L}\p{N}]/u
 
 // Target index: every selector is filed under the class / tag / [class*=…] key of its rightmost compound,
@@ -423,20 +438,39 @@ function eosReadCandidates(n, idx, out) {
     return out
 }
 
-// module state (one arcade per page; the component is mounted once by I1)
-const EOS_READ_STATE = {
-    tagged: new Map(), // element we raised → { px, v (the exact inline value we wrote), natural, scaled, tr }
-    orig: new WeakMap(), // el → [inline value, priority] before our first write
-    scaleSeen: new WeakMap(), // el → { s, since } — a scale must hold EOS_READ_HOLD_MS before we compensate it
-    recheckQ: new Set(), // raised elements to re-check (a class changed on them / an ancestor, a resize)
-    list: null, // the sweep's text elements (null = re-collect: the DOM changed)
-    listAt: 0,
-    ctx: null, // last regular-pass context (MO passes reuse it: they must never force a layout)
-    k: 1, // last measured canvas scale
-    cursor: 0,
-    rr: 0, // round-robin position of the slow background re-check
-    passes: 0,
-    stats: null,
+// Floor state, one per arcade root (two components on a page, or Framer canvas breakpoints, each keep their own
+// list, breakpoint, canvas scale and cursor). Every entry point (a pass, the MO callback, the RO callback, the
+// cleanup, the test hooks) selects its root's state with eosReadUse(root) first; the helpers below read the
+// selected one through EOS_READ_STATE (JS is single-threaded and every entry point is synchronous).
+function eosReadNewState() {
+    return {
+        tagged: new Map(), // element we raised → { px, v (the exact inline value we wrote), natural, scaled, tr }
+        orig: new WeakMap(), // el → [inline value, priority] before our first write
+        scaleSeen: new WeakMap(), // el → { s, since } — a scale must hold EOS_READ_HOLD_MS before we compensate it
+        full: new WeakSet(), // elements seen drawn at full size (scale ≥ .97): a later shrink is the game's own
+        recheckQ: new Set(), // raised elements to re-check (a class changed on them / an ancestor, a resize)
+        list: null, // the sweep's text elements (null = re-collect: the DOM changed)
+        listAt: 0,
+        ctx: null, // last regular-pass context (MO passes reuse it: they must never force a layout)
+        k: 1, // last measured canvas scale
+        cursor: 0,
+        rr: 0, // round-robin position of the slow background re-check
+        passes: 0,
+        stats: null,
+    }
+}
+const EOS_READ_STATES = new WeakMap() // arcade root → its floor state (gone with the root)
+let EOS_READ_STATE = eosReadNewState() // the selected state (a detached default until a root is selected)
+function eosReadUse(root) {
+    if (!root) return EOS_READ_STATE
+    let s = EOS_READ_STATES.get(root)
+    if (!s) {
+        s = eosReadNewState()
+        s.stats = eosReadStatsZero()
+        EOS_READ_STATES.set(root, s)
+    }
+    EOS_READ_STATE = s
+    return s
 }
 // diagnostics: elements that alone took > 2 ms in a pass's loop (first 30 after reset)
 function eosReadSlow(el, ms) {
@@ -553,11 +587,13 @@ function eosReadTargetCompute(el, ctx) {
 function eosReadSkipped(el, named) {
     if (el.closest(EOS_READ_SKIP)) return true
     if (!named && el.closest(EOS_READ_HIDDEN)) return true
-    // our own overlays (.eosCheckIn, .eosArena, .eosShiftMeter …) are designed ≥ 12 px
+    // our own overlay roots (.eosCheckIn, .eosArena, .eosShiftMeter …) are designed ≥ 12 px. The walk stops before
+    // .releaseStage / .tsArcade: a class another module puts on those never counts
     for (let n = el, i = 0; n && n.nodeType === 1 && i < 14; n = n.parentElement, i++) {
-        const c = n.getAttribute("class")
-        if (c && EOS_READ_OWN.test(c)) return true
-        if (n.classList.contains("releaseStage") || n.classList.contains("tsArcade")) break
+        const cl = n.classList
+        if (cl.contains("releaseStage") || cl.contains("tsArcade")) break
+        if (n.hasAttribute("data-eos-overlay")) return true
+        for (let k = 0; k < cl.length; k++) if (EOS_READ_OVERLAYS.has(cl[k])) return true
     }
     return false
 }
@@ -697,7 +733,7 @@ function eosReadForget(el, restore) {
 // px (§4.1 allows 14 inside objects ≤ 96 px) and never below the element's own size today. Only in-flow, wrapping
 // elements in small boxes (≤ 220 px) are measured — words by canvas measureText in the element's font, the box
 // from its parent's content width and its own max-width (layout is clean in a regular pass) — and cached.
-const EOS_READ_WORD_FIT_MIN = 13
+const EOS_READ_WORD_FIT_MIN = 14
 const EOS_READ_FIT_CACHE = new WeakMap() // el → [key, result]: the same text, size and box give the same answer
 let eosReadMeasureCtx = null
 // width of `word` in CSS px at `px` with the element's font (a 2D canvas: no layout, no transforms, no Ranges)
@@ -836,17 +872,21 @@ function eosReadAffected(targets) {
 // whatever an MO pass leaves is picked up by the regular pass it schedules. Returns {more, retry}: more =
 // work left (sweep not finished, queued re-checks) → continue next frame; retry = a scaled box has not settled yet
 // → look again shortly.
+// opts.clean: the caller runs where style and layout are already clean (the ResizeObserver step of a frame: after
+// layout, before paint), so there is nothing to flush. opts.budget overrides the loop's time box. A list pass
+// returns the elements it had no time for in `left` (the caller keeps them for its next pass).
 function eosReadPass(root, opts) {
-    const S = EOS_READ_STATE
-    if (!root || !root.isConnected) return { more: false, retry: false }
+    if (!root || !root.isConnected) return { more: false, retry: false, left: null, wrote: 0 }
+    const S = eosReadUse(root)
     const fromMo = !!(opts && opts.fromMo)
+    const clean = !!(opts && opts.clean)
     const list = (opts && opts.list) || null
     const t0 = performance.now()
     let pre = null
     if (fromMo) {
         pre = new Map()
         if (list) for (const el of list) if (el.isConnected) pre.set(el, getComputedStyle(el).fontSize)
-    } else void root.offsetWidth
+    } else if (!clean) void root.offsetWidth
     const t1 = performance.now()
     const ctx = eosReadCtx(root, fromMo)
     const tc = performance.now()
@@ -862,7 +902,8 @@ function eosReadPass(root, opts) {
     const lim = Math.min(n, EOS_READ_MAX_EL)
     let i = 0
     let retry = false
-    const budget = fromMo ? EOS_READ_MO_BUDGET_MS : EOS_READ_BUDGET_MS
+    const budget = (opts && opts.budget) || (fromMo ? EOS_READ_MO_BUDGET_MS : EOS_READ_BUDGET_MS)
+    const over = () => i > 0 && performance.now() - tl > budget // checked again before the costly steps
     let prevEl = null
     let prevT = tl
     for (; i < lim; i++) {
@@ -908,21 +949,30 @@ function eosReadPass(root, opts) {
         }
         if (tg.short) want += 2 / ctx.k
         if (tg.word) want += EOS_READ_WORD_PAD / ctx.k
+        // ONE scale measure for every decision below: the exact transform-chain scale (rotation-free), taken only when
+        // the bbox says the box is drawn smaller than its layout size (a costly step: the time box is checked first)
+        let sc = 1
+        if (quick < 0.97) {
+            if (over()) break
+            sc = eosReadChainScale(el, root, memo) // ≥ .97 here: integer offset rounding or a rotation
+        }
+        if (sc >= 0.97) S.full.add(el) // drawn at full size: any later shrink is the game's own
         let scaled = null
-        if (quick < 0.97 && rec && rec.scaled && Math.abs(eosReadChainScale(el, root, memo) - rec.scaled) < 0.02) {
+        if (sc < 0.97 && rec && rec.scaled && Math.abs(sc - rec.scaled) < 0.02) {
             // still drawn at the scale we compensated: keep it (no flicker while something animates nearby)
             want = Math.max(want, rec.px)
             scaled = rec.scaled
-        } else if (quick < 0.97) {
-            const sc = eosReadChainScale(el, root, memo)
-            const seen = sc < 0.97 ? S.scaleSeen.get(el) : null // ≥ .97: integer offset rounding or a rotation
+        } else if (sc < 0.97 && sc >= 0.6 && !S.full.has(el) && !el.closest(EOS_READ_SHRINK_SEL)) {
+            // compensate only a box BORN scaled (a shelved card, FINGER TRAP's .86 tube, VACUUM's machine) whose scale
+            // has held still (EOS_READ_HOLD_MS, two samples). Never a box the game shrank during play (seen at full
+            // size before: ZOOM OUT / MICROSCOPE shrink the thought per tap — compensating that bounced the word back
+            // up ~1 s after each tap), never the shrink mechanics, never a moment of an entrance pop
+            const seen = S.scaleSeen.get(el)
             const same = seen && Math.abs(seen.s - sc) < 0.01
-            if (!same && sc < 0.97) S.scaleSeen.set(el, { s: sc, since: ctx.now })
-            // compensate only a scale that has held still (EOS_READ_HOLD_MS, two samples: a shelved card, a parked
-            // object, a tube drawn small) — never a moment of an entrance pop or a shrink-away mechanic
+            if (!same) S.scaleSeen.set(el, { s: sc, since: ctx.now })
             const held = same && ctx.now - seen.since >= EOS_READ_HOLD_MS
-            if (!held && sc >= 0.6 && sc < 0.97) retry = true // look again once it may have settled
-            if (held && sc >= 0.6 && sc < 0.97) {
+            if (!held) retry = true // look again once it may have settled
+            else {
                 // words are compensated up to their own floor (they must RENDER at 16 / 15 px), the rest to 12
                 let need = (tg.word ? ctx.wordBase + EOS_READ_WORD_PAD : EOS_READ_FLOOR_PX) / (sc * ctx.k)
                 if (tg.short) need += 2 / (sc * ctx.k)
@@ -932,7 +982,11 @@ function eosReadPass(root, opts) {
                 }
             }
         }
-        if (tg.word) want = eosReadWordFit(el, cs, fs, rec ? rec.natural : fs, want, quick * ctx.k)
+        const nat = rec ? rec.natural : fs
+        if (tg.word && want > nat + 0.25) {
+            if (over()) break // the word fit measures text (a costly step): next pass
+            want = eosReadWordFit(el, cs, fs, nat, want, sc * ctx.k)
+        }
         // a raised element follows its current target back down — a scale that ended, a canvas zoom, a breakpoint,
         // a smaller Bubble Text, a word that would break — but never below its own natural size (so never below today)
         if (rec && want < rec.px - 0.25) {
@@ -994,15 +1048,15 @@ function eosReadPass(root, opts) {
     st.seen = n
     st.flushMaxMs = Math.max(st.flushMaxMs, Math.round((t1 - t0) * 1000) / 1000)
     st.maxOwnMs = Math.max(st.maxOwnMs, own)
-    if (fromMo) {
+    if (fromMo || list) {
         st.moPasses++
         st.moMaxOwnMs = Math.max(st.moMaxOwnMs, own)
     } else st.maxMs = Math.max(st.maxMs, ms)
     if (ms > 2) st.over2++
     if (own > 2) st.ownOver2++
     const r2 = (v) => Math.round(v * 100) / 100
-    if (st.log.length < 600) st.log.push([fromMo ? 1 : 0, r2(own), r2(t1 - t0), i, writes.length, r2(tc - t1), r2(tl - tc), r2(tz - tl), r2(t2 - tz), n, Math.round(t0)])
-    return { more, retry }
+    if (st.log.length < 600) st.log.push([fromMo ? 1 : clean ? 2 : 0, r2(own), r2(t1 - t0), i, writes.length, r2(tc - t1), r2(tl - tc), r2(tz - tl), r2(t2 - tz), n, Math.round(t0)])
+    return { more, retry, left: list && i < n ? list.slice(i) : null, wrote: writes.length + lowers.length }
 }
 
 // Read-only report for the harness (window.__eos.readability.scan → eos_drive.smallText): every visible text
@@ -1013,6 +1067,7 @@ function eosReadScan(rootIn) {
     try {
         const root = rootIn || (typeof document !== "undefined" ? document.querySelector(".tsArcade") : null)
         if (!root) return out
+        eosReadUse(root)
         const ctx = eosReadCtx(root, false)
         const memo = new Map()
         const groups = new Map()
@@ -1076,55 +1131,113 @@ function eosReadClassGain(r) {
     return false
 }
 
-// The floor component: mounted once by I1 inside .releaseStage (renders a hidden marker span). Runs in
-// stage-play, stage-reveal and stage-input while the game menu is open: right after a frame (style and layout
-// are clean then), every 900 ms, 250 ms after a pointerup, after a resize, and — for DOM additions (a feedback
-// line, a re-mounted control) — in one pre-paint pass per frame, i.e. before that text is first painted (no flash
-// of tiny text). A class change on / above a raised element queues it for a re-check by the next after-frame
-// pass (a game state that wants that text bigger gets it one frame later, never smaller).
+// The floor component: mounted once by I1 inside .releaseStage (renders a 1 px invisible probe span). Runs in
+// stage-play, stage-reveal and stage-input while the game menu is open.
+// WHEN: every pass runs in the ResizeObserver step of a frame — after that frame's style + layout, before its paint.
+// Reading styles and boxes there is free (nothing to flush), and what the pass writes is painted in that same frame.
+// A pass is requested by changing the probe's width (1 ↔ 2 px; the RO reports it in the next frame's RO step):
+//   · new text (the MutationObserver collects it — DOM reads only, never a style read) → floored before its first
+//     paint, even when React committed inside a rAF callback (framer-motion's frame loop), since rAF runs before RO;
+//   · a sweep: every 900 ms, 250 ms after a pointerup, after a resize, on a stage change, and to continue a sweep
+//     that ran out of its time box (requested from a rAF, never from inside the RO callback: no RO loop errors);
+//   · a class change on / above a raised element queues it for a re-check by the next sweep (a game state that
+//     wants that text bigger gets it one frame later, never smaller).
+// Without ResizeObserver it falls back to the old timing: MO pass in the microtask + a sweep right after a frame.
 function EosTextFloor({ stage }) {
     const ref = React.useRef(null)
     const kickRef = React.useRef(null)
     // One observer for the component's life: whether the floor works is read from the arcade root's live class
     // (stage-play / stage-reveal) or an open game menu — never from a render-time closure — so the commit that
-    // switches the stage AND mounts the game is floored by that same MutationObserver callback, before its first
-    // paint (an effect keyed on `stage` would only start after that paint).
+    // switches the stage AND mounts the game is floored before its first paint.
     React.useEffect(() => {
-        const marker = ref.current
-        const root = marker && marker.closest ? marker.closest(".tsArcade") : null
+        const probe = ref.current
+        const root = probe && probe.closest ? probe.closest(".tsArcade") : null
         if (!root || typeof MutationObserver === "undefined") return
-        const S = EOS_READ_STATE
+        const S = eosReadUse(root)
+        if (!S.stats) S.stats = eosReadStatsZero()
         let alive = true
-        let queued = false
-        let chain = 0 // continuation passes in a row (work left after the time box)
-        let cont = false
+        let chain = 0 // continuation sweeps in a row (work left after the time box)
         let retryAt = 0 // a settle re-look is scheduled
+        let sweep = false // a sweep is wanted at the next pass
+        let pending = [] // new text from the MO, floored by the next pass (before its first paint)
         const timers = new Set()
         const active = () => EOS_READ_ACTIVE.test(root.className) || !!root.querySelector(".releaseChoiceMenu")
+        const after = (r) => {
+            if (r && r.more && chain < EOS_READ_CHAIN) {
+                chain++
+                request(true, true)
+            } else {
+                chain = 0
+                if (r && r.retry && !retryAt) {
+                    retryAt = 1
+                    later(EOS_READ_HOLD_MS + 50)
+                }
+            }
+        }
+        // ---- pre-paint passes (ResizeObserver step)
+        const RO = typeof ResizeObserver === "function" ? ResizeObserver : null
+        let armed = false
+        let armedAt = 0
+        let inRo = false
+        let w = 1
+        const arm = () => {
+            if (!alive || armed) return
+            armed = true
+            armedAt = performance.now()
+            w = w === 1 ? 2 : 1
+            probe.style.width = w + "px"
+        }
+        const onRo = () => {
+            armed = false
+            if (!alive) return
+            if (!active()) {
+                pending = []
+                sweep = false
+                return
+            }
+            inRo = true
+            try {
+                eosReadUse(root)
+                let wrote = 0
+                if (pending.length) {
+                    const r = eosReadPass(root, { list: pending, clean: true, budget: EOS_READ_MO_BUDGET_MS })
+                    pending = r.left || []
+                    wrote = r.wrote
+                    if (pending.length) request(false, true)
+                }
+                // after writes the layout is dirty again: the sweep then waits for the next frame's clean layout
+                // (its reads would otherwise force the relayout of everything just raised — a whole open menu)
+                if (wrote && (sweep || S.recheckQ.size)) request(true, true)
+                else if (sweep || S.recheckQ.size) {
+                    sweep = false
+                    after(eosReadPass(root, { clean: true }))
+                }
+            } catch {}
+            inRo = false
+        }
+        const ro = RO ? new RO(onRo) : null
+        if (ro) {
+            probe.style.cssText = "position:absolute;left:0;top:0;width:1px;height:1px;visibility:hidden;pointer-events:none;overflow:hidden;contain:strict"
+            ro.observe(probe) // its first report is the kick pass's frame
+            armed = true
+            armedAt = performance.now()
+        }
+        // ---- fallback timing (no ResizeObserver): right after the next frame — a message on a private channel is
+        // the first task after the frame (a 0 ms timeout can queue behind the game's own timers)
+        const mc = !ro && typeof MessageChannel === "function" ? new MessageChannel() : null
+        let queued = false
         const run = () => {
             queued = false
             if (!alive) return
-            const isCont = cont
-            cont = false
-            chain = isCont ? chain + 1 : 0
+            sweep = false
             let r = null
             try {
                 if (active()) r = eosReadPass(root)
             } catch {}
-            if (r && r.more && chain < EOS_READ_CHAIN) {
-                cont = true
-                soon()
-            } else if (r && r.retry && !retryAt) {
-                retryAt = 1
-                later(EOS_READ_HOLD_MS + 50)
-            }
+            after(r)
         }
-        // right after the next frame has rendered: style + layout are clean, so reading them is cheap. A message on
-        // a private channel is the first task after the frame (a 0 ms timeout can queue behind the game's own
-        // timers, which dirty the layout again and turn the pass's first read into a forced reflow)
-        const mc = typeof MessageChannel === "function" ? new MessageChannel() : null
         if (mc) mc.port1.onmessage = () => run()
-        const soon = () => {
+        const fallback = () => {
             if (queued || !alive) return
             queued = true
             const go = () => {
@@ -1142,6 +1255,27 @@ function EosTextFloor({ stage }) {
             if (typeof requestAnimationFrame === "function") requestAnimationFrame(go)
             else go()
         }
+        // request a pass: wantSweep = a sweep (else only the pending new text); viaFrame = from a rAF (continuations,
+        // and always when called from inside the RO callback: changing the probe there would be an RO loop)
+        let rafQ = false
+        const request = (wantSweep, viaFrame) => {
+            if (!alive) return
+            if (wantSweep) sweep = true
+            if (!ro) {
+                fallback()
+                return
+            }
+            if (armed) return
+            if ((viaFrame || inRo) && typeof requestAnimationFrame === "function") {
+                if (rafQ) return
+                rafQ = true
+                requestAnimationFrame(() => {
+                    rafQ = false
+                    arm()
+                })
+            } else arm()
+        }
+        const soon = () => request(true, false)
         const later = (ms) => {
             const t = setTimeout(() => {
                 timers.delete(t)
@@ -1150,15 +1284,10 @@ function EosTextFloor({ stage }) {
             }, ms)
             timers.add(t)
         }
-        // New text found by the MO is floored right in the MO callback. It is a microtask, so it always runs before
-        // the next paint: the text is painted at its floor size from its first frame. (A requestAnimationFrame asked
-        // for from here would be a frame late whenever the commit itself ran inside a rAF callback — framer-motion's
-        // frame loop, the wrappers' re-tagging — and the measurement harness, at ~3 fps, sees that frame.) Its one
-        // style read is the recalc that frame does anyway; the loop is time-boxed and the regular pass that follows
-        // adds the layout-aware parts (scaled objects) and anything past the budget.
         const mo = new MutationObserver((recs) => {
             if (!alive) return
             const c0 = performance.now()
+            eosReadUse(root)
             let structural = false
             for (const r of recs)
                 if (r.type === "childList") {
@@ -1170,8 +1299,8 @@ function EosTextFloor({ stage }) {
                 return
             }
             try {
-                // 1. raised elements on / under a class change: re-checked by the next after-frame pass (style is clean
-                // there, so restore → read recalculates only those elements); until then they keep the floor size
+                // 1. raised elements on / under a class change: re-checked by the next sweep (style is clean there, so
+                // restore → read recalculates only those elements); until then they keep the floor size
                 if (S.tagged.size) {
                     const changed = new Set()
                     for (const r of recs) if (r.type === "attributes") changed.add(r.target)
@@ -1182,7 +1311,7 @@ function EosTextFloor({ stage }) {
                     }
                 }
                 // 2. new text: short-lived copy (a hit's feedback line, the finish card, the reveal) first — it is on
-                // screen for about a second — then re-mounted words and controls
+                // screen for about a second — then re-mounted words and controls. DOM reads only here.
                 const done = new Set()
                 const seen = new Set()
                 const first = []
@@ -1210,8 +1339,15 @@ function EosTextFloor({ stage }) {
                     // removed nodes are skipped and pruned at the periodic re-collect
                     if (seen.size >= EOS_READ_MO_MAX) S.list = null
                     else if (S.list) for (const t of seen) S.list.push(t)
-                    eosReadPass(root, { list: first.length ? first.concat(rest) : rest, fromMo: true })
-                    soon()
+                    const batch = first.length ? first.concat(rest) : rest
+                    if (ro) {
+                        pending = pending.length ? batch.concat(pending) : batch
+                        if (pending.length > EOS_READ_MO_MAX) pending.length = EOS_READ_MO_MAX // the sweep has the rest
+                        request(true, false)
+                    } else {
+                        eosReadPass(root, { list: batch, fromMo: true })
+                        fallback()
+                    }
                 }
             } catch {}
             const st = S.stats
@@ -1219,7 +1355,7 @@ function EosTextFloor({ stage }) {
             st.moCbMaxMs = Math.max(st.moCbMaxMs, Math.round((performance.now() - c0) * 1000) / 1000)
         })
         // class changes too: the wrappers tag a re-mounted word with .tsExactUserText (and a smaller size) after
-        // React mounts it, and game states toggle classes that change sizes — both are caught before the paint
+        // React mounts it, and game states toggle classes that change sizes
         mo.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"], attributeOldValue: true })
         const onUp = () => later(250)
         const onResize = () => {
@@ -1229,7 +1365,7 @@ function EosTextFloor({ stage }) {
         }
         root.addEventListener("pointerup", onUp, true)
         if (typeof window !== "undefined") window.addEventListener("resize", onResize)
-        // a stage change: sweep from the top (the MO already floored the new stage's text before its first paint)
+        // a stage change: sweep from the top
         kickRef.current = () => {
             S.cursor = 0
             S.list = null
@@ -1237,7 +1373,11 @@ function EosTextFloor({ stage }) {
             ;[300, 700].forEach(later)
         }
         kickRef.current()
-        const iv = setInterval(soon, 900)
+        const iv = setInterval(() => {
+            // watchdog: a requested frame that never came (hidden tab, probe detached) must not stall the floor
+            if (armed && performance.now() - armedAt > 1500) armed = false
+            soon()
+        }, 900)
         return () => {
             alive = false
             kickRef.current = null
@@ -1246,11 +1386,25 @@ function EosTextFloor({ stage }) {
             root.removeEventListener("pointerup", onUp, true)
             if (typeof window !== "undefined") window.removeEventListener("resize", onResize)
             mo.disconnect()
+            if (ro) ro.disconnect()
             if (mc) {
                 mc.port1.onmessage = null
                 mc.port1.close()
                 mc.port2.close()
             }
+            // release the arcade's nodes: text still on the page gets back exactly the inline size it had before us
+            // (a re-mount floors it again in its first pass), detached nodes are simply dropped
+            eosReadUse(root)
+            for (const el of Array.from(S.tagged.keys())) if (el.isConnected) eosReadForget(el, true)
+            S.tagged.clear()
+            S.recheckQ.clear()
+            S.list = null
+            S.ctx = null
+            S.cursor = 0
+            pending = []
+            EOS_READ_STATES.delete(root)
+            EOS_READ_STATE = eosReadNewState()
+            EOS_READ_STATE.stats = eosReadStatsZero()
         }
     }, [])
     const firstStage = React.useRef(true)
@@ -1258,7 +1412,7 @@ function EosTextFloor({ stage }) {
         if (firstStage.current) firstStage.current = false
         else if (kickRef.current) kickRef.current()
     }, [stage])
-    return <span hidden data-eos="text-floor" ref={ref} />
+    return <span aria-hidden="true" data-eos="text-floor" ref={ref} style={{ position: "absolute", left: 0, top: 0, width: 1, height: 1, visibility: "hidden", pointerEvents: "none", overflow: "hidden" }} />
 }
 
 const eosReadRoot = () => (typeof document !== "undefined" ? document.querySelector(".tsArcade") : null)
@@ -1272,16 +1426,22 @@ eosExpose("readability", {
         return { ...EOS_READ_STATE.stats, log: undefined }
     },
     stats: () => {
+        eosReadUse(eosReadRoot())
         const st = EOS_READ_STATE.stats
         const r3 = (v) => Math.round(v * 1000) / 1000
         return { ...st, log: undefined, tagged: EOS_READ_STATE.tagged.size, avgMs: st.passes ? r3(st.totalMs / st.passes) : 0, avgOwnMs: st.passes ? r3(st.ownTotalMs / st.passes) : 0 }
     },
     reset: () => {
+        eosReadUse(eosReadRoot())
         EOS_READ_STATE.stats = eosReadStatsZero()
     },
-    // per pass (first 600 after reset): [fromMo 0|1, own ms, flush ms, elements looked at, writes, ctx ms, list ms,
+    // per pass (first 600 after reset): [kind (0 timer + flush | 1 MO microtask, fallback | 2 pre-paint RO pass),
+    // own ms, flush ms, elements looked at, writes, ctx ms, list ms,
     // loop ms, re-check + write ms, list size, page time ms]
-    log: () => EOS_READ_STATE.stats.log.slice(),
+    log: () => {
+        eosReadUse(eosReadRoot())
+        return EOS_READ_STATE.stats.log.slice()
+    },
     // Test hook: headless Chromium renders this UI at ~3 fps and starts CSS animations late, so a measurement right
     // after a hit can land on keyframe 0 of an entrance pop (the feedback card scales in from .54-.78, the finish
     // word from .58 — ~0.2 s in a real browser). settle() jumps the finite animations of the transient copy layers
@@ -1304,10 +1464,12 @@ eosExpose("readability", {
     // test hooks: the floor target (CSS px) the table gives one element / many
     targetOf: (el) => {
         const root = eosReadRoot()
+        if (root) eosReadUse(root)
         return root && el ? eosReadTargetCompute(el, eosReadCtx(root, false)) : null
     },
     targetsOf: (els) => {
         const root = eosReadRoot()
+        if (root) eosReadUse(root)
         const ctx = root ? eosReadCtx(root, false) : null
         return ctx ? Array.from(els, (el) => eosReadTargetCompute(el, ctx)) : []
     },

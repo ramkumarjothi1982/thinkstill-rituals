@@ -52,3 +52,23 @@ Test scripts: /tmp/eos_readability_work/{noshrink5,states3,acc45b,review13,perf4
   fits: sw = cw = 104); phones (<= 560) hide the 7 px hint (65 px buttons; guide + arrow carry it). Verified both
   sizes, smallText empty, 0 errors. Full build (python3 build.py) OK; FULL.txt restored (not mine to commit).
 - Next: commit + push, then write readability.build.md (final report) and commit + push it.
+
+## Fix round 1 (review_r1.json) — session 4
+- Found the earlier fixer checkpoint (a5e7b0d) already carries CSS for findings 1 (DRAMA buttons explicit 14/13 px,
+  out of max(14px,1em), control room hugs content), 6 (phone HUD: sparks+LVL always on, tokens/chain hit toast),
+  10 (MIND BEND kept on phones until first hit, one 13 px line), 11 (legacy reveal grid on phones). Untested yet.
+- Todo (JS): 8 held-scale (shrunk-by-game + skip list 26/29/30/53/58/104, one scale measure), 2 memory cleanup,
+  3 per-root state, 4 MO style reads only for 'first' bucket + budget before costly steps, 5 eos overlay skip list,
+  7 word-fit min 14, 9 drop forced layout flush on timer passes.
+- (s4) JS done: per-root state (WeakMap root→state, eosReadUse), overlay-root list (no eos* heuristic), word-fit min 14,
+  held-scale only for boxes BORN scaled (S.full) + skip list .u26/.u29/.u30/.u53/.u58/.u104, one scale measure (chain
+  scale), budget checked before chain scale + word fit, passes now run in the ResizeObserver step (after layout,
+  before paint: no forced flush, no MO style read; fallback = old timing), cleanup restores + clears state.
+- Running: shrink.mjs 30,58,102,95 @390 → fx_shrink390.json; fx_states.mjs 105,1,99,109 @390 → fx_s390.json.
+- (s4) 390 re-run (fy_s390.json): DRAMA buttons 13/13 px, inside the machine, elementFromPoint OK, no overflow; LVL
+  always on (sparks join the hit toast only where a .literalProgress pill narrows the meter); MIND BEND visible until
+  first hit; legacy reveal card centred, PREVIOUS | NEXT row under it; smallText(12) empty; 0 errors; all passes run
+  pre-paint (RO), flush 0 ms, own p95 0.9-2.1 ms. ZOOM OUT / MICROSCOPE monotonic per word; FINGER TRAP still
+  compensated (13.9 → 16.2). CLEANSE @390 did not reach the reveal in 90 s → checking the baseline (fb_s390.json).
+- (s4) 1280 (HOT POTATO, DRAMA, CLEANSE) clean; CLEANSE @390 alone finishes in 36 s (90 s misses were load). Full build OK,
+  FULL.txt restored. build.md updated with the fix-round section. Committing.
