@@ -13,12 +13,19 @@
 //       colour presses in from the edges (the grip) and lets go as you play, while the calm colour opens from
 //       the Still Point. Numb also gets backdrop-filter: saturate(.6 → 1): the game itself goes grey → colour.
 //       Late at night (23:00-05:00 local) the calm pair is warmed 10° toward amber (R8).
-//       Reduced motion / calm visuals: the script moves in three steps (33 / 66 / 95 %) with cross-fades only.
+//       Each progress change glides there in .6 s (a per-frame JS tween in OKLCH, not a CSS transition, so a starved
+//       main thread can never leave the stage stuck on the loud colours; no @property needed).
+//       Reduced motion / calm visuals: the script moves in three steps (33 / 66 / 95 %) with .9 s cross-fades only —
+//       95, not 100, so the calm pair is on screen before the finish in every mode. The finish itself always lands
+//       on the calm pair.
 //   (b) FLIP BLOOM. The moment `.globalPlayGuide.isComplete` or `.tsRewardSurge.mega` first appears, the
 //       feeling's three `flip` words (core data: panic safe · slow · right here, sad lighter · warm · held …)
 //       bloom out of the Still Point (the measured `.eosCore` centre, else the stage centre), 250 ms apart, and
-//       float up 60 px as they fade (1.8 s). Negative words went in; positive words come out.
-//       Reduced / calm: they fade in place (no transforms).
+//       float up 60 px as they fade (1.8 s). Negative words went in; positive words come out. The words are
+//       pre-rendered (hidden) and painted by the finish observer itself, so they start in the frame that shows the
+//       finish. They settle in a "crown" that avoids the finish card (predicted from the last press, then tracked),
+//       the LIVE GUIDE, the HUD and the companion, and always stays inside the stage.
+//       Reduced / calm: they fade in place (no transforms at all, not even for centring).
 //
 // Mount (integration I1-E3, inside the play fragment, both wrappers, every game):
 //   <EosMoodGrade game={selected} hostRef={gameHostRef} reduced={!!reduced} />
@@ -27,7 +34,9 @@
 // They are siblings — not children — because a z-indexed root is an isolated blending group: a soft-light child
 // would blend with nothing, and the words must not be blended or faded with the grade.
 // Reads progress through core's shared useEosProgress poll; the finish watch is a 100 ms query on the game host
-// that stops at the bloom. No store writes, no user text, every timer cleaned up.
+// that stops at the bloom. No store writes, no user text, every timer cleaned up. The flip words name a feeling's
+// opposite, so their root carries EOS_PRIVATE_ATTRS + fs-mask (session-replay tools skip it).
+// The finish always lands on the calm pair (data-eos-done="1"), even if a game completes below 95 % on its bar.
 // ===================================================================================
 
 // ---------------------------------------------------------------- colour maths (pure)
@@ -218,7 +227,7 @@ function eosMoodColours(emo, t, opts = {}) {
         b,
         alpha: eosMoodLerp(EOS_MOOD_ALPHA.wash, k),
         grip: eosMoodLerp(EOS_MOOD_ALPHA.grip, k) * L.grip,
-        gripAt: Math.round(46 + 36 * k), // inner radius (%) of the edge pressure: the grip loosens as you play
+        gripAt: Math.round((46 + 36 * k) * 10) / 10, // inner radius (%) of the edge pressure: the grip loosens as you play
         heat: L.heat ? eosMoodLerp(EOS_MOOD_ALPHA.heat, k) : 0,
         heatShape: L.heat || "ellipse 100% 60% at 50% 112%",
         light: eosMoodLerp(EOS_MOOD_ALPHA.light, k),
@@ -243,6 +252,12 @@ const EOS_MOOD_SLOTS = [
     [1, 0.28],
 ]
 const EOS_MOOD_RISE = 60
+// Offset of word i from the crown anchor. dx = [left, right] spread (each side sized to its neighbour's width).
+function eosMoodSlotOff(i, dx, lift) {
+    const s = EOS_MOOD_SLOTS[i] || [0, 0]
+    const d = Array.isArray(dx) ? (s[0] < 0 ? dx[0] : dx[1]) : Number(dx) || 0
+    return [s[0] * d, -s[1] * lift]
+}
 // Things the words must not land on (stage-relative): the arcade's finish card (it sits where the last tap
 // was), the LIVE GUIDE panel, the HUD, the companion.
 const EOS_MOOD_AVOID = ".globalFinishFeedbackCopy, .globalPlayGuide, .engineProgressHud, .tsShiftRewardHud, .eosCompanion"
@@ -270,18 +285,32 @@ function eosMoodOverlap(a, b) {
     const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y)
     return w > 0 && h > 0 ? w * h : 0
 }
-// → {x, y, dx, lift, fs, boxes, score} — the anchor nearest the Still Point (x0, y0) whose word boxes
-// (including their 60 px rise) stay inside the stage and off every obstacle.
+// → {x, y, dx:[left, right], lift, fs, boxes, score} — the anchor nearest the Still Point (x0, y0) whose word
+// boxes (including their 60 px rise) stay inside the stage and off every obstacle. The centre word sits at least
+// one line above the side words (lift × .72 ≥ 1.15 em), so the words never touch, whatever their length; each
+// side also spreads out to clear its neighbour (two-word flips such as "right here" / "not alone").
 function eosMoodPlace({ W, H, x0, y0, phone, words, obstacles = [] }) {
     const fs = phone ? eosClamp(W * 0.07, 22, 30) : eosClamp(W * 0.044, 22, 42)
-    const dx = phone ? eosClamp(W * 0.27, 78, 118) : eosClamp(W * 0.17, 120, 210)
-    const lift = phone ? 54 : 66
+    const base = phone ? eosClamp(W * 0.27, 78, 118) : eosClamp(W * 0.17, 120, 210)
+    const lift = Math.max(phone ? 54 : 66, fs * 1.6)
     const widths = words.map((w) => eosMoodTextWidth(w, fs) + 12)
+    const gap = phone ? 6 : 16
+    const cap = Math.max(base, W * 0.42)
+    const spread = (a, b) => eosClamp((a + b) / 2 + gap, base, cap)
+    const dx = [spread(widths[0] || 0, widths[1] || 0), spread(widths[1] || 0, widths[2] || 0)]
+    // …but the whole crown must fit the stage: squeeze the spread (never below the side words' own clearance)
+    const sides = ((widths[0] || 0) + (widths[2] || 0)) / 2
+    const room = Math.max(sides + gap, W - 16 - sides)
+    if (dx[0] + dx[1] > room) {
+        const k = room / (dx[0] + dx[1])
+        dx[0] *= k
+        dx[1] *= k
+    }
     const boxesAt = (x, y) =>
         words.map((_, i) => {
-            const s = EOS_MOOD_SLOTS[i] || [0, 0]
-            const cx = x + s[0] * dx
-            const cy = y - s[1] * lift
+            const o = eosMoodSlotOff(i, dx, lift)
+            const cx = x + o[0]
+            const cy = y + o[1]
             const h = fs * 1.2
             return { x: cx - widths[i] / 2, y: cy - h / 2 - EOS_MOOD_RISE, w: widths[i], h: h + EOS_MOOD_RISE, cx, cy }
         })
@@ -302,28 +331,163 @@ function eosMoodPlace({ W, H, x0, y0, phone, words, obstacles = [] }) {
             }
             if (!best || score < best.score) best = { x, y, dx, lift, fs, boxes, score }
         }
+    // final nudge: slide the chosen crown sideways into the stage when it pokes out (kept only if it scores better)
+    const lo = Math.min(...best.boxes.map((b) => b.x))
+    const hi = Math.max(...best.boxes.map((b) => b.x + b.w))
+    const shift = lo < m ? Math.min(m - lo, Math.max(0, W - m - hi)) : hi > W - m ? -Math.min(hi - (W - m), Math.max(0, lo - m)) : 0
+    if (shift) {
+        const x = best.x + shift
+        const boxes = boxesAt(x, best.y)
+        let score = (Math.abs(x - x0) + Math.abs(best.y - y0)) * 22
+        for (const b of boxes) {
+            score += (b.w * b.h - eosMoodOverlap(b, inside)) * 6
+            for (const o of obstacles) score += eosMoodOverlap(b, o) * 4
+        }
+        if (score < best.score) best = { ...best, x, boxes, score }
+    }
     return best
 }
 
 // ---------------------------------------------------------------- live state for tests (dev handle)
-const EOS_MOOD_LIVE = { emo: null, p: null, t: 0, step: 0, calm: false, late: false, bloomAt: 0, bloomPerf: 0, words: [], bloomFrom: null, place: null }
+const EOS_MOOD_LIVE = { emo: null, p: null, t: 0, shown: 0, step: 0, calm: false, late: false, done: false, bloomAt: 0, bloomPerf: 0, painted: false, words: [], bloomFrom: null, place: null }
 
 // ---------------------------------------------------------------- component
 const EOS_MOOD_DONE_SEL = ".globalPlayGuide.isComplete, .tsRewardSurge.mega"
 const EOS_MOOD_STAGGER = 250
 
+// Writes the colour script at one script position straight onto the two layers (custom properties only; React
+// never renders these keys, so the two never fight). Driven per frame by the component's tween.
+function eosMoodWrite(grade, air, col) {
+    try {
+        if (grade) {
+            const g = grade.style
+            g.setProperty("--eos-mood-a", eosMoodRgba(col.a, col.alpha))
+            g.setProperty("--eos-mood-b", eosMoodRgba(col.b, col.alpha))
+            g.setProperty("--eos-p", String(Math.round(col.t * 1000) / 1000))
+            if (col.sat != null) g.setProperty("--eos-mood-sat", String(col.sat))
+            else g.removeProperty("--eos-mood-sat")
+        }
+        if (air) {
+            const a = air.style
+            a.setProperty("--eos-mood-edge", eosMoodRgba(col.b, col.grip))
+            a.setProperty("--eos-mood-grip", `${col.gripAt}%`)
+            a.setProperty("--eos-mood-heat", eosMoodRgba(col.a, col.heat))
+            a.setProperty("--eos-mood-hshape", col.heatShape)
+            a.setProperty("--eos-mood-glow", eosMoodRgba(col.a, col.light))
+            a.setProperty("--eos-mood-lshape", col.lightShape)
+        }
+    } catch {}
+}
+const eosMoodUseLayout = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect
+
+// The per-bloom style of word i: its place in the crown + where it is born (the Still Point), as an offset.
+function eosMoodWordStyle(b, i) {
+    const o = (b.start && b.start[i]) || [0, 0]
+    const at = eosMoodSlotOff(i, b.dx, b.lift)
+    return {
+        left: `${Math.round(b.x + at[0])}px`,
+        top: `${Math.round(b.y + at[1])}px`,
+        "--eos-mood-dx": `${o[0]}px`,
+        "--eos-mood-dy": `${o[1]}px`,
+    }
+}
+// The words are pre-rendered (hidden) from mount, so the bloom can start in the SAME frame that paints
+// `isComplete`: the finish observer writes exactly the values React renders next (React then re-writes the same
+// values — no flicker, no remount). Skipped when the rendered words differ from the bloom's (an emotion change in
+// the same tick): React's render then starts the bloom one task later. → true when painted.
+function eosMoodPaint(root, b) {
+    try {
+        const els = root ? Array.from(root.children).filter((el) => el.classList && el.classList.contains("eosMoodWord")) : []
+        if (els.length !== b.words.length) return false
+        for (let i = 0; i < els.length; i++) {
+            const tx = els[i].querySelector(".eosMoodWordTx")
+            if (!tx || tx.textContent !== b.words[i]) return false
+        }
+        els.forEach((el, i) => {
+            const st = eosMoodWordStyle(b, i)
+            for (const k in st) el.style.setProperty(k, st[k])
+        })
+        root.setAttribute("data-eos-from", b.from)
+        if (b.phone) root.classList.add("isPhone")
+        root.classList.add("isBloom")
+        return true
+    } catch {
+        return false
+    }
+}
+
 function EosMoodGrade({ game, hostRef, reduced = false }) {
-    const st = useEosStore()
+    useEosStore() // re-render on emotion / calm-visuals changes
     const calm = eosCalm(reduced)
-    const emo = st.emotion || st.detected || null
+    const emo = eosCurrentEmotion()
     const p = useEosProgress(hostRef, 4)
     const late = React.useMemo(() => eosLateNight(), [])
     const flipRef = React.useRef(null)
+    const gradeRef = React.useRef(null)
+    const airRef = React.useRef(null)
+    const tween = React.useRef({ shown: null, key: "", raf: 0 })
     const [bloom, setBloom] = React.useState(null)
 
-    const t = eosMoodT(p == null ? 0 : p, calm)
-    const col = eosMoodColours(emo, t, { late })
-    const step = eosMoodStepOf(p == null ? 0 : p)
+    // The finish always lands on the calm pair, even when a game completes below 95 % on its bar.
+    const done = !!bloom
+    const t = done ? 1 : eosMoodT(p == null ? 0 : p, calm)
+    const pal = eosMoodPalette(emo, { late })
+    const step = done ? EOS_MOOD_STEPS.length : eosMoodStepOf(p == null ? 0 : p)
+    // numb's backdrop saturate filter only exists while it does something (dropped at full colour: cheaper finish)
+    const grey = !!(EOS_EMO[emo] && EOS_EMO[emo].greyLoud)
+
+    // ---- the colour script tween. Every progress change glides the script position from where it is shown to the
+    // new target in OKLCH (.6 s linear; calm / reduced: a .9 s ease-in-out cross-fade between the three steps).
+    // JS, not a CSS transition: a CSS transition restarts on every change and only advances on rendered frames, so on
+    // a starved main thread (a heavy finish on a low-end phone) it can stall on the loud colours; this tween
+    // lands on the target on the very next frame once its time is up, and it interpolates perceptually all the way.
+    eosMoodUseLayout(() => {
+        const S = tween.current
+        const key = `${emo || "auto"}|${late ? 1 : 0}`
+        const paint = (v) => {
+            S.shown = v
+            EOS_MOOD_LIVE.shown = v
+            eosMoodWrite(gradeRef.current, airRef.current, eosMoodColours(emo, v, { late }))
+        }
+        // any glide in flight belongs to the previous target / palette
+        if (S.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(S.raf)
+        S.raf = 0
+        if (S.shown == null) {
+            S.key = key
+            paint(t) // first paint: exactly the target, before the browser paints
+            return
+        }
+        if (S.key !== key) {
+            S.key = key
+            paint(S.shown) // a new feeling mid-game: same script position, its own palette
+        }
+        if (Math.abs(t - S.shown) < 1e-4) {
+            if (S.shown !== t) paint(t)
+            return
+        }
+        if (typeof requestAnimationFrame !== "function" || typeof performance === "undefined") {
+            paint(t)
+            return
+        }
+        const from = S.shown
+        const to = t
+        const dur = calm ? 900 : 600
+        const t0 = performance.now()
+        const tick = () => {
+            const k = eosClamp((performance.now() - t0) / dur, 0, 1)
+            paint(from + (to - from) * (calm ? k * k * (3 - 2 * k) : k))
+            S.raf = k < 1 ? requestAnimationFrame(tick) : 0
+        }
+        S.raf = requestAnimationFrame(tick)
+    }, [t, emo, late, calm])
+    React.useEffect(
+        () => () => {
+            const S = tween.current
+            if (S.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(S.raf)
+            S.raf = 0
+        },
+        []
+    )
 
     // ---- finish watch: the first `.globalPlayGuide.isComplete` / `.tsRewardSurge.mega` → bloom once per mount.
     // The arcade's finish card (`.globalFinishFeedbackCopy`, placed where the last tap was) can arrive up to a few
@@ -335,6 +499,7 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
         let sig = ""
         let geo = null
         let guess = null
+        let firedAt = 0
         const tones = []
         const measure = () => {
             const root = flipRef.current
@@ -417,10 +582,10 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
                 from = "core"
             }
             const phone = W < 560
-            const st0 = EOS_STORE.get()
-            const words = eosMoodFlipWords(st0.emotion || st0.detected || null)
+            const words = eosMoodFlipWords(eosCurrentEmotion())
             const place = eosMoodPlace({ W, H, x0: x, y0: y, phone, words, obstacles })
             const at = Date.now()
+            firedAt = at
             geo = { W, H, x0: x, y0: y, phone, words, x: place.x, y: place.y }
             sig = eosMoodSig(obstacles)
             EOS_MOOD_LIVE.bloomAt = at
@@ -430,10 +595,12 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
             EOS_MOOD_LIVE.place = { x: Math.round(place.x), y: Math.round(place.y), core: [Math.round(x), Math.round(y)], obstacles: obstacles.length, predicted, score: Math.round(place.score), moves: 0 }
             // start offsets: every word is born in the Still Point (fixed for the word's life, even if the crown moves)
             const start = words.map((_, i) => {
-                const s = EOS_MOOD_SLOTS[i] || [0, 0]
-                return [Math.round(x - (place.x + s[0] * place.dx)), Math.round(y - (place.y - s[1] * place.lift))]
+                const o = eosMoodSlotOff(i, place.dx, place.lift)
+                return [Math.round(x - (place.x + o[0])), Math.round(y - (place.y + o[1]))]
             })
-            setBloom({ x: place.x, y: place.y, dx: place.dx, lift: place.lift, start, phone, words, at, from })
+            const b = { x: place.x, y: place.y, dx: place.dx, lift: place.lift, start, phone, words, at, from }
+            EOS_MOOD_LIVE.painted = eosMoodPaint(root, b)
+            setBloom(b)
             // a soft rising sparkle under each word (gated by the arcade's sound toggle inside eosTone)
             words.forEach((_, i) => {
                 tones.push(
@@ -450,7 +617,7 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
         const LIFE = 1800 + EOS_MOOD_STAGGER * 2
         const follow = () => {
             if (!alive || !geo) return
-            if (Date.now() - EOS_MOOD_LIVE.bloomAt > LIFE) return
+            if (Date.now() - firedAt > LIFE) return
             const m = measure()
             if (m) {
                 // until the real card shows up, keep its predicted place reserved
@@ -528,110 +695,83 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
         EOS_MOOD_LIVE.step = step
         EOS_MOOD_LIVE.calm = calm
         EOS_MOOD_LIVE.late = late
+        EOS_MOOD_LIVE.done = done
     })
     React.useEffect(
         () => () => {
             EOS_MOOD_LIVE.bloomAt = 0
             EOS_MOOD_LIVE.bloomPerf = 0
+            EOS_MOOD_LIVE.painted = false
             EOS_MOOD_LIVE.words = []
             EOS_MOOD_LIVE.bloomFrom = null
             EOS_MOOD_LIVE.place = null
+            EOS_MOOD_LIVE.done = false
         },
         []
     )
 
-    const vars = {
-        "--eos-mood-a": eosMoodRgba(col.a, col.alpha),
-        "--eos-mood-b": eosMoodRgba(col.b, col.alpha),
-        "--eos-p": String(Math.round(t * 1000) / 1000),
-    }
-    if (col.sat != null) vars["--eos-mood-sat"] = String(col.sat)
-    const air = {
-        "--eos-mood-edge": eosMoodRgba(col.b, col.grip),
-        "--eos-mood-grip": `${col.gripAt}%`,
-        "--eos-mood-heat": eosMoodRgba(col.a, col.heat),
-        "--eos-mood-hshape": col.heatShape,
-        "--eos-mood-glow": eosMoodRgba(col.a, col.light),
-        "--eos-mood-lshape": col.lightShape,
-    }
     const common = { "aria-hidden": "true", "data-eos-emotion": emo || "auto", "data-eos-calm": calm ? "1" : "0" }
-    const glowA = eosMoodRgba(eosMoodHexRgb(col.palette.calm[0]) || [255, 220, 140], 0.9)
-    const glowB = eosMoodRgba(eosMoodHexRgb(col.palette.calm[1]) || [255, 190, 110], 0.65)
+    const glowA = eosMoodRgba(eosMoodHexRgb(pal.calm[0]) || [255, 220, 140], 0.9)
+    const glowB = eosMoodRgba(eosMoodHexRgb(pal.calm[1]) || [255, 190, 110], 0.65)
+    // Pre-rendered and hidden until the bloom; each word is born in the Still Point and blooms out to its crown place.
+    const words = bloom ? bloom.words : eosMoodFlipWords(emo)
     return (
         <>
-            <div className="eosMoodGrade" {...common} data-eos-step={step} data-eos-late={late ? "1" : "0"} data-eos-grey={col.sat != null ? "1" : "0"} style={vars} />
-            <div className="eosMoodAir" {...common} style={air} />
-            <div ref={flipRef} className={`eosMoodFlip${bloom ? " isBloom" : ""}${bloom && bloom.phone ? " isPhone" : ""}`} {...common} data-eos-from={bloom ? bloom.from : ""}>
-                {bloom
-                    ? bloom.words.map((w, i) => {
-                          const slot = EOS_MOOD_SLOTS[i] || [0, 0]
-                          const wx = Math.round(bloom.x + slot[0] * bloom.dx)
-                          const wy = Math.round(bloom.y - slot[1] * bloom.lift)
-                          const style = {
-                              left: `${wx}px`,
-                              top: `${wy}px`,
-                              "--eos-mood-i": String(i),
-                              // each word is born in the Still Point and blooms out to its place in the crown
-                              "--eos-mood-dx": `${(bloom.start[i] || [0, 0])[0]}px`,
-                              "--eos-mood-dy": `${(bloom.start[i] || [0, 0])[1]}px`,
-                              "--eos-mood-glow-a": glowA,
-                              "--eos-mood-glow-b": glowB,
-                          }
-                          return (
-                              <span key={`${bloom.at}-${i}`} className="eosMoodWord" style={style} data-eos-flip={i}>
-                                  <span className="eosMoodWordIn">
-                                      <span className="eosMoodWordTx">{w}</span>
-                                      {calm ? null : (
-                                          <i className="eosMoodSparks">
-                                              <i />
-                                              <i />
-                                              <i />
-                                              <i />
-                                          </i>
-                                      )}
-                                  </span>
-                              </span>
-                          )
-                      })
-                    : null}
+            <div ref={gradeRef} className="eosMoodGrade" {...common} data-eos-step={step} data-eos-done={done ? "1" : "0"} data-eos-late={late ? "1" : "0"} data-eos-grey={grey && t < 1 ? "1" : "0"} />
+            <div ref={airRef} className="eosMoodAir" {...common} />
+            <div ref={flipRef} className={`eosMoodFlip fs-mask${bloom ? " isBloom" : ""}${bloom && bloom.phone ? " isPhone" : ""}`} {...common} {...EOS_PRIVATE_ATTRS} data-eos-from={bloom ? bloom.from : ""}>
+                {words.map((w, i) => (
+                    <span
+                        key={i}
+                        className="eosMoodWord"
+                        data-eos-flip={i}
+                        style={{ "--eos-mood-i": String(i), "--eos-mood-glow-a": glowA, "--eos-mood-glow-b": glowB, ...(bloom ? eosMoodWordStyle(bloom, i) : null) }}
+                    >
+                        <span className="eosMoodWordIn">
+                            <span className="eosMoodWordTx">{w}</span>
+                            {calm ? null : (
+                                <i className="eosMoodSparks">
+                                    <i />
+                                    <i />
+                                    <i />
+                                    <i />
+                                </i>
+                            )}
+                        </span>
+                    </span>
+                ))}
             </div>
         </>
     )
 }
 
 // ---------------------------------------------------------------- CSS
-// Registered custom properties let the gradient colours (and numb's saturation) cross-fade smoothly between the
-// 4 Hz progress updates — a plain `transition: background` cannot interpolate gradients. Browsers without
-// @property simply step (still correct). Inherits:false keeps them local to the layer.
+// The layers' colours are custom properties written per frame by the component's tween (eosMoodWrite): no CSS
+// transition, no @property — the same smooth OKLCH glide in every browser. The fallbacks are fully transparent.
 const EOS_MOOD_CSS = `
-@property --eos-mood-a{syntax:"<color>";inherits:false;initial-value:rgba(0,0,0,0)}
-@property --eos-mood-b{syntax:"<color>";inherits:false;initial-value:rgba(0,0,0,0)}
-@property --eos-mood-edge{syntax:"<color>";inherits:false;initial-value:rgba(0,0,0,0)}
-@property --eos-mood-glow{syntax:"<color>";inherits:false;initial-value:rgba(0,0,0,0)}
-@property --eos-mood-heat{syntax:"<color>";inherits:false;initial-value:rgba(0,0,0,0)}
-@property --eos-mood-grip{syntax:"<percentage>";inherits:false;initial-value:46%}
-@property --eos-mood-sat{syntax:"<number>";inherits:false;initial-value:1}
 ${EOS_A} .eosMoodGrade,${EOS_A} .eosMoodAir,${EOS_A} .eosMoodFlip{position:absolute;inset:0;z-index:${EOS_Z.mood};pointer-events:none!important;margin:0;padding:0;border:0;border-radius:inherit}
-${EOS_A} .eosMoodGrade{mix-blend-mode:soft-light;background:linear-gradient(158deg,var(--eos-mood-a) 0%,var(--eos-mood-b) 100%);
-transition:--eos-mood-a .6s linear,--eos-mood-b .6s linear,--eos-mood-sat .6s linear,background .6s linear}
-${EOS_A} .eosMoodGrade[data-eos-grey="1"]{-webkit-backdrop-filter:saturate(var(--eos-mood-sat));backdrop-filter:saturate(var(--eos-mood-sat))}
-${EOS_A} .eosMoodAir{mix-blend-mode:screen;background:radial-gradient(var(--eos-mood-lshape,ellipse 62% 58% at 50% 52%),var(--eos-mood-glow) 0%,rgba(0,0,0,0) 100%),
-radial-gradient(var(--eos-mood-hshape,ellipse 100% 60% at 50% 112%),var(--eos-mood-heat) 0%,rgba(0,0,0,0) 100%),
-radial-gradient(ellipse 76% 70% at 50% 52%,rgba(0,0,0,0) var(--eos-mood-grip),var(--eos-mood-edge) 100%);
-transition:--eos-mood-edge .6s linear,--eos-mood-glow .6s linear,--eos-mood-heat .6s linear,--eos-mood-grip .9s cubic-bezier(.3,.6,.3,1)}
+${EOS_A} .eosMoodGrade{mix-blend-mode:soft-light;background:linear-gradient(158deg,var(--eos-mood-a,rgba(0,0,0,0)) 0%,var(--eos-mood-b,rgba(0,0,0,0)) 100%)}
+${EOS_A} .eosMoodGrade[data-eos-grey="1"]{-webkit-backdrop-filter:saturate(var(--eos-mood-sat,1));backdrop-filter:saturate(var(--eos-mood-sat,1))}
+${EOS_A} .eosMoodAir{mix-blend-mode:screen;background:radial-gradient(var(--eos-mood-lshape,ellipse 62% 58% at 50% 52%),var(--eos-mood-glow,rgba(0,0,0,0)) 0%,rgba(0,0,0,0) 100%),
+radial-gradient(var(--eos-mood-hshape,ellipse 100% 60% at 50% 112%),var(--eos-mood-heat,rgba(0,0,0,0)) 0%,rgba(0,0,0,0) 100%),
+radial-gradient(ellipse 76% 70% at 50% 52%,rgba(0,0,0,0) var(--eos-mood-grip,46%),var(--eos-mood-edge,rgba(0,0,0,0)) 100%)}
 ${EOS_A} .eosMoodFlip{overflow:hidden;container-type:size}
-${EOS_A} .eosMoodWord{position:absolute;display:block;translate:-50% -50%;white-space:nowrap;line-height:1;transition:left .5s cubic-bezier(.3,.7,.3,1),top .5s cubic-bezier(.3,.7,.3,1)}
+${EOS_A} .eosMoodFlip:not(.isBloom){visibility:hidden}
+${EOS_A} .eosMoodWord{position:absolute;display:flex;width:0;height:0;align-items:center;justify-content:center;white-space:nowrap;line-height:1;transition:left .5s cubic-bezier(.3,.7,.3,1),top .5s cubic-bezier(.3,.7,.3,1)}
 ${EOS_A} .eosMoodFlip[data-eos-calm="1"] .eosMoodWord{transition:none}
-${EOS_A} .eosMoodWordIn{position:relative;display:block;opacity:0;translate:var(--eos-mood-dx) var(--eos-mood-dy);scale:.4;
-animation:eosMoodRise 1.8s linear calc(var(--eos-mood-i) * ${EOS_MOOD_STAGGER}ms) 1 both}
-${EOS_A} .eosMoodWordIn::before{content:"";position:absolute;inset:-34% -16%;z-index:-1;border-radius:50%;background:radial-gradient(closest-side,rgba(10,8,34,.6),rgba(10,8,34,.28) 55%,rgba(10,8,34,0))}
+${EOS_A} .eosMoodWordIn{position:relative;display:block;flex:none;opacity:0;translate:var(--eos-mood-dx,0px) var(--eos-mood-dy,0px);scale:.4}
+${EOS_A} .eosMoodFlip.isBloom .eosMoodWordIn{animation:eosMoodRise 1.8s linear calc(var(--eos-mood-i) * ${EOS_MOOD_STAGGER}ms) 1 both}
+/* a soft dusk cloud behind each word: keeps the cream letters readable on the Still Point's white bloom and the finish rays */
+${EOS_A} .eosMoodWordIn::before{content:"";position:absolute;inset:-42% -20%;z-index:-1;border-radius:50%;background:radial-gradient(closest-side,rgba(14,8,30,.74),rgba(14,8,30,.44) 52%,rgba(14,8,30,0))}
+/* solid cream + a warm-brown hairline and bevel + the calm glow (not a background-clip:text gradient: iOS Safari drops
+   clip-text inside animated layers). The hairline keeps the words legible on white blooms; the glow on dark scenes. */
 ${EOS_A} .eosMoodWordTx{display:block;font:900 26px/1.06 var(--eos-font,"Baloo 2","Nunito",system-ui,sans-serif)!important;font-size:clamp(22px,4.4cqi,42px)!important;letter-spacing:.015em!important;
-color:#fff6dc!important;background:linear-gradient(180deg,#ffffff 22%,#fff1c4 52%,#ffd77a 86%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+color:#fff2cf!important;-webkit-text-fill-color:#fff2cf!important;background:none!important;
 text-shadow:none!important;-webkit-text-stroke:0!important;text-transform:none!important;opacity:1!important;
-filter:drop-shadow(0 2px 0 rgba(96,46,0,.55)) drop-shadow(0 0 10px var(--eos-mood-glow-a)) drop-shadow(0 0 26px var(--eos-mood-glow-b))}
-${EOS_A} .eosMoodSparks{position:absolute;left:50%;top:50%;width:0;height:0}
-${EOS_A} .eosMoodSparks>i{position:absolute;left:-3px;top:-3px;width:6px;height:6px;border-radius:50%;background:#fff7d6;box-shadow:0 0 8px 2px var(--eos-mood-glow-a);opacity:0;
-animation:eosMoodSpark .9s cubic-bezier(.15,.7,.3,1) calc(var(--eos-mood-i) * ${EOS_MOOD_STAGGER}ms + .18s) 1 both}
+filter:drop-shadow(0 0 1.2px rgba(66,26,0,.95)) drop-shadow(0 2px 0 rgba(128,58,0,.75)) drop-shadow(0 0 9px var(--eos-mood-glow-a)) drop-shadow(0 0 22px var(--eos-mood-glow-b))}
+${EOS_A} .eosMoodSparks{position:absolute;left:50%;top:50%;width:0;height:0;z-index:-1}
+${EOS_A} .eosMoodSparks>i{position:absolute;left:-3px;top:-3px;width:6px;height:6px;border-radius:50%;background:#fff7d6;box-shadow:0 0 8px 2px var(--eos-mood-glow-a);opacity:0}
+${EOS_A} .eosMoodFlip.isBloom .eosMoodSparks>i{animation:eosMoodSpark .9s cubic-bezier(.15,.7,.3,1) calc(var(--eos-mood-i) * ${EOS_MOOD_STAGGER}ms + .18s) 1 both}
 ${EOS_A} .eosMoodSparks>i:nth-child(1){--eos-mood-sx:-74px;--eos-mood-sy:-26px}
 ${EOS_A} .eosMoodSparks>i:nth-child(2){--eos-mood-sx:70px;--eos-mood-sy:-30px}
 ${EOS_A} .eosMoodSparks>i:nth-child(3){--eos-mood-sx:-52px;--eos-mood-sy:30px}
@@ -648,15 +788,13 @@ ${EOS_A} .eosMoodFlip.isPhone .eosMoodWordTx{font-size:clamp(22px,7cqi,30px)!imp
 100%{opacity:0;translate:0 -${EOS_MOOD_RISE}px;scale:1}}
 @keyframes eosMoodFade{0%{opacity:0;animation-timing-function:ease-out}16%{opacity:1}74%{opacity:1;animation-timing-function:ease-in}100%{opacity:0}}
 @keyframes eosMoodSpark{0%{opacity:0;translate:0 0;scale:.4}22%{opacity:1;scale:1.2}100%{opacity:0;translate:var(--eos-mood-sx) var(--eos-mood-sy);scale:.3}}
-${EOS_A} .eosMoodGrade[data-eos-calm="1"]{transition:--eos-mood-a .9s ease-in-out,--eos-mood-b .9s ease-in-out,--eos-mood-sat .9s ease-in-out,background .9s ease-in-out}
-${EOS_A} .eosMoodAir[data-eos-calm="1"]{transition:--eos-mood-edge .9s ease-in-out,--eos-mood-glow .9s ease-in-out,--eos-mood-heat .9s ease-in-out,--eos-mood-grip .9s ease-in-out}
-${EOS_A} .eosMoodFlip[data-eos-calm="1"] .eosMoodWordIn{translate:none;scale:none;animation:eosMoodFade 2.2s ease-in-out calc(var(--eos-mood-i) * ${EOS_MOOD_STAGGER}ms) 1 both}
+${EOS_A} .eosMoodFlip[data-eos-calm="1"] .eosMoodWordIn{translate:none;scale:none}
+${EOS_A} .eosMoodFlip.isBloom[data-eos-calm="1"] .eosMoodWordIn{animation:eosMoodFade 2.2s ease-in-out calc(var(--eos-mood-i) * ${EOS_MOOD_STAGGER}ms) 1 both}
 @media (prefers-reduced-motion:reduce){
-  ${EOS_A} .eosMoodWordIn{translate:none!important;scale:none!important;animation:eosMoodFade 2.2s ease-in-out calc(var(--eos-mood-i) * ${EOS_MOOD_STAGGER}ms) 1 both!important}
+  ${EOS_A} .eosMoodWordIn{translate:none!important;scale:none!important}
+  ${EOS_A} .eosMoodFlip.isBloom .eosMoodWordIn{animation:eosMoodFade 2.2s ease-in-out calc(var(--eos-mood-i) * ${EOS_MOOD_STAGGER}ms) 1 both!important}
   ${EOS_A} .eosMoodSparks{display:none!important}
   ${EOS_A} .eosMoodWord{transition:none!important}
-  ${EOS_A} .eosMoodGrade{transition:--eos-mood-a .9s ease-in-out,--eos-mood-b .9s ease-in-out,--eos-mood-sat .9s ease-in-out,background .9s ease-in-out}
-  ${EOS_A} .eosMoodAir{transition:--eos-mood-edge .9s ease-in-out,--eos-mood-glow .9s ease-in-out,--eos-mood-heat .9s ease-in-out,--eos-mood-grip .9s ease-in-out}
 }
 `
 eosCss("mood", EOS_MOOD_CSS)
