@@ -1,0 +1,2 @@
+# game-sigh progress
+- [~20 calls] Read brief, core, driver (marker hold->drag sip follow, keyboard Space/ArrowUp), GameEngine sfx/done. Design settled: whole arena = breath pad (pointer capture on root), orb button = marker + keyboard focus; rAF fill via --f; progress base+3/+6/+8/+10 then cycle/N*100; chime per sigh at exhale end + win at finale. NEXT: write src/eos/21_eos_game_sigh.jsx, isolated build, integrate build, measure HUD/guide rects.
