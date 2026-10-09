@@ -24,6 +24,22 @@ file, then read `games-reset/002-lighthouse-keeper.js` (the reference game) befo
 - **Distinct.** Your core verb and structure must differ from every other game in the console. Look-alike games must play
   differently.
 
+## 1b. Hypnotic, fun, and worth coming back to (the founder's bar: max quality, viral, addictive in a healthy way)
+- **Juice on every touch.** Within 50 ms of any input: a sound, a visual response (squash and stretch, glow, particles, a tiny
+  camera nudge). Nothing feels dead. Physics should feel satisfying (springs, easing, weight, follow-through).
+- **Hypnotic flow.** One core gesture the player repeats with growing mastery, in rhythm with the music and the visuals
+  (audio-visual sync, smooth continuous motion, colour that drifts from tense to calm). No dead air, no walls of text.
+- **Surprise and escalation.** A twist about halfway; characters with comic timing that react to *what the player just did*;
+  spectacle that builds; a finale that tops everything before it and leaves a frame worth screenshotting.
+- **Reasons to come back** (use the kit): `K.daily()` / `K.dailyPick(arr)` for a world that changes each day (weather, time of
+  day, props, palette); `K.best(key, value, 'higher'|'lower')` for personal bests in calm skill (longest exhale, smoothest sync);
+  `K.tier(score)` for Bronze/Silver/Gold mastery; `K.collect(item)` for a per-game collection that fills over visits;
+  `K.visits()` for content that evolves after repeat plays (a new variant, a new character cameo, a harder twist); and a natural
+  "next time" hook where it fits. Report achievements with `ctx.finish({ ..., badges: ['New best: 7.4 s exhale', 'Gold', 'Collected: Moon Moth'] })`.
+- **Viral moment.** A share-worthy final frame and a one-line share text with no private words.
+- **Ethics, non-negotiable.** No streak shaming, no penalties for not returning, no countdowns that pressure, no endless loops,
+  no loot-box randomness for rewards. Sessions end calmly. Rewards celebrate the shift and the skill, never time spent.
+
 ## 2. File format
 One file: `games/games-<mode>/<NNN>-<id>.js` (NNN = the number you were given). Exactly this shape:
 

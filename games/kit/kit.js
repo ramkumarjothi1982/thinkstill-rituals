@@ -617,6 +617,31 @@
     };
     K.sentence = (s) => { s = String(s || '').trim(); if (!s) return s; s = s[0].toUpperCase() + s.slice(1); return /[.!?…]$/.test(s) ? s : s + '.'; };
 
+    /* ---------------- reasons to come back (delight and progress, never guilt) ---------------- */
+    const gameId = () => (TS.game && TS.game.id) || 'game';
+    /* Personal best. better: 'higher' | 'lower'. Returns { isNew, prev, value }. */
+    K.best = (key, value, better) => {
+      const k = gameId() + ':best:' + key, prev = TS.store.get(k, null);
+      const isNew = prev == null || (better === 'lower' ? value < prev : value > prev);
+      if (isNew) TS.store.set(k, value);
+      return { isNew: isNew && prev != null, first: prev == null, prev, value };
+    };
+    /* A per-game collection that fills over visits. Returns { isNew, count, items }. */
+    K.collect = (item) => {
+      const k = gameId() + ':collection', set = TS.store.get(k, []);
+      const isNew = !set.includes(item);
+      if (isNew) { set.push(item); TS.store.set(k, set.slice(-200)); }
+      return { isNew, count: set.length, items: set };
+    };
+    K.collection = () => TS.store.get(gameId() + ':collection', []);
+    /* How many times this player has finished this game before (for content that evolves with repeat visits). */
+    K.visits = () => TS.store.get('guide-learned:' + gameId(), 0) || 0;
+    /* Today's variant: the same all day, different tomorrow (weather, time of day, props, palette). */
+    K.daily = () => { const d = new Date(); return d.getFullYear() * 1000 + Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000); };
+    K.dailyPick = (arr, salt) => arr[(K.daily() * 7 + (salt || 0) * 13 + gameId().length) % arr.length];
+    /* Mastery tier for calm skill (never for time spent). thresholds: [bronze, silver, gold] on a 0-1 score. */
+    K.tier = (score, th) => { th = th || [0.35, 0.65, 0.85]; return score >= th[2] ? 'Gold' : score >= th[1] ? 'Silver' : score >= th[0] ? 'Bronze' : ''; };
+
     /* ---------------- test helpers (autoplay in QA) ---------------- */
     let pid = 40;
     const fire = (el, type, x, y, id) => {

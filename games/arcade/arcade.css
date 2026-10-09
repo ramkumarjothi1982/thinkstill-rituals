@@ -118,6 +118,10 @@
 .tsg-arcade .a-afterimg { width: 72px; height: 72px; object-fit: contain; flex: none; animation: gk-pop 0.6s cubic-bezier(.2, 1.6, .4, 1) both; }
 .tsg-arcade .a-aftertitle { font: 800 24px/1.1 var(--font-display); text-wrap: balance; }
 .tsg-arcade .a-lines { margin: 0; padding: 0 0 0 18px; display: flex; flex-direction: column; gap: 4px; font: 500 15px/1.4 var(--font-ui); color: var(--ui-fg); }
+.tsg-arcade .a-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.tsg-arcade .a-badge { font: 700 13px/1 var(--font-ui); letter-spacing: 0.04em; padding: 8px 11px; border-radius: 999px; color: #3a2405;
+  background: linear-gradient(135deg, #fff1b8, #ffd36b 55%, #f0a63a); box-shadow: 0 3px 0 rgba(120, 70, 10, 0.35); animation: gk-pop 0.6s cubic-bezier(.2, 1.6, .4, 1) both; }
+.tsg-arcade .a-badge:nth-child(2) { animation-delay: 0.12s; } .tsg-arcade .a-badge:nth-child(3) { animation-delay: 0.24s; }
 .tsg-arcade .a-delta { font: 600 15px/1.4 var(--font-ui); min-height: 1.4em; color: var(--ui-fg); }
 .tsg-arcade .a-care { font: 500 14px/1.4 var(--font-ui); color: var(--ui-muted); }
 .tsg-arcade .a-xpafter .a-xpnum { color: var(--ui-accent); }

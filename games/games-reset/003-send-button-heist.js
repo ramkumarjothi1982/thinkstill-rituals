@@ -7,6 +7,39 @@
  */
 (function (env) {
   'use strict';
+  /* An opaque, DPR-aware canvas with the kit's canvas interface ({ el, g, w, h, dpr, onResize, fit }). Opaque layers let the
+     compositor skip blending and cull what is underneath, which keeps a full-screen animated scene smooth on weaker devices. */
+  function opaqueCanvas(parent, o, S) {
+    const c = document.createElement('canvas');
+    c.className = 'gk-canvas'; c.setAttribute('aria-hidden', 'true');
+    parent.append(c);
+    const st = { el: c, g: null, w: 0, h: 0, dpr: 1 }, cbs = [];
+    st.fit = () => {
+      const w = c.clientWidth || parent.clientWidth, hh = c.clientHeight || parent.clientHeight;
+      if (!w || !hh) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, o.maxDpr || 2), pw = Math.round(w * dpr), ph = Math.round(hh * dpr);
+      if (c.width !== pw || c.height !== ph) { c.width = pw; c.height = ph; }
+      c.style.width = w + 'px'; c.style.height = hh + 'px';
+      st.g = st.g || c.getContext('2d', { alpha: false });
+      st.g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      st.dpr = dpr; st.w = w; st.h = hh;
+      cbs.forEach(f => { try { f(st); } catch (e) { console.error(e); } });
+    };
+    st.onResize = (f) => { cbs.push(f); if (st.w) f(st); };
+    try { const ro = new ResizeObserver(() => st.fit()); ro.observe(c); S.onDestroy(() => ro.disconnect()); } catch (e) { S.listen(window, 'resize', st.fit); }
+    st.fit();
+    return st;
+  }
+  /* Software-rendered canvases (no GPU: VMs, old or blocklisted devices) get a 1x canvas so motion stays smooth. */
+  function softwareGfx() {
+    try {
+      const c = document.createElement('canvas'), gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+      if (!gl) return true;
+      const ext = gl.getExtension('WEBGL_debug_renderer_info'), r = ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : '';
+      const lose = gl.getExtension('WEBGL_lose_context'); if (lose) lose.loseContext();
+      return /swiftshader|llvmpipe|softpipe|software|basic render/i.test(r);
+    } catch (e) { return false; }
+  }
   (env.games = env.games || []).push({
     id: 'send-button-heist', mode: 'reset', name: 'Send Button Heist', verb: 'guard', family: 'CHOOSE', minutes: 2,
     parents: ['Urges / Habit Loops', 'Communication / Boundaries'],
@@ -16,8 +49,8 @@
     css: `
 .g-send-button-heist { --hb-fg: #eef1ff; }
 .g-send-button-heist .hb-hud { position: absolute; z-index: 32; left: 12px; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 60px); margin: 0 auto; max-width: 520px; padding: 7px 12px 6px; border-radius: 16px;
-  background: linear-gradient(180deg, rgba(18, 20, 48, 0.86), rgba(8, 10, 28, 0.82)); border: 1px solid rgba(150, 165, 255, 0.26); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.07);
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); color: var(--hb-fg); pointer-events: none; }
+  background: linear-gradient(180deg, rgba(20, 22, 52, 0.94), rgba(9, 11, 30, 0.92)); border: 1px solid rgba(150, 165, 255, 0.26); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  color: var(--hb-fg); pointer-events: none; }
 .g-send-button-heist .hb-row { display: flex; align-items: center; gap: 8px; font: 700 12px/1 var(--font-ui); letter-spacing: 0.12em; text-transform: uppercase; white-space: nowrap; }
 .g-send-button-heist .hb-ph { padding: 4px 8px 3px; border-radius: 999px; background: rgba(255, 61, 99, 0.26); color: #ffd6df; transition: background 0.6s ease, color 0.6s ease; }
 .g-send-button-heist .hb-ph.peak { background: rgba(255, 45, 85, 0.62); color: #fff; }
@@ -28,11 +61,11 @@
 .g-send-button-heist .hb-target { position: absolute; z-index: 20; left: 50%; top: 0; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; gap: 9px; pointer-events: none; }
 .g-send-button-heist .hb-neon { font: 800 16px/1.15 var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: #ffe6f6; text-align: center; padding: 6px 13px 5px; border-radius: 10px; width: max-content;
   max-width: min(300px, calc(100cqw - 40px)); border: 2px solid rgba(255, 92, 200, 0.92); background: rgba(42, 6, 38, 0.7); text-wrap: balance;
-  box-shadow: 0 0 16px rgba(255, 70, 190, 0.55), inset 0 0 12px rgba(255, 70, 190, 0.35); text-shadow: 0 0 8px rgba(255, 90, 200, 0.95); transition: color 1.2s ease, border-color 1.2s ease, box-shadow 1.2s ease, text-shadow 1.2s ease, background 1.2s ease; }
+  box-shadow: 0 0 16px rgba(255, 70, 190, 0.55), inset 0 0 12px rgba(255, 70, 190, 0.35); text-shadow: 0 0 8px rgba(255, 90, 200, 0.95); transition: color 1.2s ease, border-color 1.2s ease, box-shadow 1.2s ease, text-shadow 1.2s ease, background 1.2s ease, transform 0.6s cubic-bezier(.2, 1.3, .4, 1), opacity 0.6s ease; }
 .g-send-button-heist .hb-calm .hb-neon { color: #e4f3ff; border-color: rgba(110, 196, 255, 0.92); background: rgba(6, 22, 48, 0.72); box-shadow: 0 0 16px rgba(80, 170, 255, 0.5), inset 0 0 12px rgba(80, 170, 255, 0.3); text-shadow: 0 0 8px rgba(110, 196, 255, 0.95); }
 .g-send-button-heist .hb-btn { position: relative; width: 108px; height: 64px; transition: transform 0.45s cubic-bezier(.5, -0.4, .7, 1), opacity 0.4s ease; }
 .g-send-button-heist .hb-dome { position: absolute; left: 8px; right: 8px; top: 0; bottom: 12px; border-radius: 50% 50% 14px 14px / 78% 78% 14px 14px; display: grid; place-items: center;
-  background: radial-gradient(ellipse at 50% 24%, #ffd0da 0%, #ff4a6e 34%, #d1103a 70%, #6e0018 100%); box-shadow: 0 0 calc(16px + var(--pulse, 0) * 26px) rgba(255, 40, 80, 0.85), inset 0 -7px 10px rgba(0, 0, 0, 0.35), inset 0 3px 4px rgba(255, 255, 255, 0.35); }
+  background: radial-gradient(ellipse at 50% 24%, #ffd0da 0%, #ff4a6e 34%, #d1103a 70%, #6e0018 100%); box-shadow: 0 0 18px rgba(255, 40, 80, 0.8), inset 0 -7px 10px rgba(0, 0, 0, 0.35), inset 0 3px 4px rgba(255, 255, 255, 0.35); }
 .g-send-button-heist .hb-dome b { font: 800 18px/1 var(--font-display); letter-spacing: 0.08em; color: #fff; text-shadow: 0 2px 0 rgba(90, 0, 20, 0.6), 0 0 10px rgba(255, 200, 210, 0.6); padding-top: 4px; }
 .g-send-button-heist .hb-base { position: absolute; left: 0; right: 0; bottom: 0; height: 16px; border-radius: 8px; background: linear-gradient(180deg, #5b6386, #262a44 60%, #15172a); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); }
 .g-send-button-heist .hb-drafted .hb-btn::before { content: "DRAFT"; position: absolute; z-index: 2; right: -16px; top: -10px; font: 800 12px/1 var(--font-ui); letter-spacing: 0.08em; color: #251a05; background: #ffd36b; padding: 5px 7px 4px; border-radius: 6px; transform: rotate(10deg); box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45); }
@@ -63,26 +96,43 @@
   display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 4px; color: #e9edff; font: 700 14px/1 var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase;
   background: linear-gradient(180deg, #2a3160 0%, #171b38 55%, #0f1229 100%); border: 1px solid rgba(130, 150, 255, 0.4); box-shadow: 0 8px 18px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   transition: transform 0.12s ease, box-shadow 0.25s ease, border-color 0.25s ease, opacity 0.3s ease; }
+.g-send-button-heist .hb-sw { will-change: transform; }
 .g-send-button-heist .hb-sw:active { transform: scale(0.95); }
 .g-send-button-heist .hb-sw:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 .g-send-button-heist .hb-sw-top { display: flex; align-items: center; gap: 8px; }
 .g-send-button-heist .hb-led { width: 10px; height: 10px; border-radius: 50%; background: #4a1a2a; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6); transition: background 0.2s ease, box-shadow 0.2s ease; }
 .g-send-button-heist .hb-lev { position: relative; width: 34px; height: 22px; border-radius: 11px; background: #0a0c1d; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8), 0 1px 0 rgba(255, 255, 255, 0.1); }
 .g-send-button-heist .hb-lev::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #f4f6ff, #8d96c4 70%, #5a6290); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6); transition: transform 0.18s cubic-bezier(.3, 1.6, .5, 1), background 0.2s ease; }
-.g-send-button-heist .hb-sw[aria-pressed="true"] { border-color: #ff4d6d; box-shadow: 0 0 0 1px rgba(255, 77, 109, 0.9), 0 0 24px rgba(255, 45, 85, 0.6), inset 0 0 18px rgba(255, 45, 85, 0.3); background: linear-gradient(180deg, #4a1f3a 0%, #24122a 60%, #160c1f 100%); }
-.g-send-button-heist .hb-sw[aria-pressed="true"] .hb-led { background: #ff3d63; box-shadow: 0 0 10px #ff3d63, 0 0 3px #fff inset; }
-.g-send-button-heist .hb-sw[aria-pressed="true"] .hb-lev::after { transform: translateX(12px); background: radial-gradient(circle at 40% 35%, #fff2f4, #ff6a86 60%, #c2183e); }
+.g-send-button-heist .hb-sw[aria-pressed="true"] { border-color: var(--hb-lz); box-shadow: 0 0 0 1px var(--hb-lz), 0 0 24px var(--hb-lza), inset 0 0 18px var(--hb-lza); background: linear-gradient(180deg, #3a1f4a 0%, #1f1230 60%, #140c22 100%); }
+.g-send-button-heist .hb-sw[aria-pressed="true"] .hb-led { background: var(--hb-lz); box-shadow: 0 0 10px var(--hb-lz), 0 0 3px #fff inset; }
+.g-send-button-heist .hb-sw[aria-pressed="true"] .hb-lev::after { transform: translateX(12px); background: radial-gradient(circle at 40% 35%, #ffffff, var(--hb-lz) 72%); }
+.g-send-button-heist .hb-sw.hb-hit { animation: hb-hit 0.35s ease; }
+@keyframes hb-hit { 0% { transform: none; } 30% { transform: translateY(3px) scale(0.96); } 100% { transform: none; } }
+.g-send-button-heist .hb-op { position: absolute; z-index: 22; left: 50%; top: 0; transform: translate(-50%, -40%) scale(0.92); display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 10px 18px 9px; border-radius: 14px;
+  background: rgba(8, 10, 28, 0.86); border: 1px solid var(--hb-lza); box-shadow: 0 0 18px var(--hb-lza), 0 12px 26px rgba(0, 0, 0, 0.45); color: #eef1ff; pointer-events: none; opacity: 0; transition: opacity 0.5s ease, transform 0.5s cubic-bezier(.2, 1.4, .4, 1); }
+.g-send-button-heist .hb-op.on { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.g-send-button-heist .hb-op span { font: 800 16px/1.1 var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; }
+.g-send-button-heist .hb-op i { font: 600 13px/1.2 var(--font-ui); font-style: normal; color: #c3cbf2; }
+.g-send-button-heist .hb-sign { position: absolute; z-index: 22; left: 50%; top: 0; transform: translate(-50%, -50%); width: max-content; max-width: calc(100% - 32px); text-align: center; pointer-events: none; padding: 14px 22px 13px; border-radius: 20px;
+  border: 2px solid rgba(150, 224, 255, 0.95); background: rgba(4, 14, 36, 0.55); box-shadow: 0 0 14px rgba(90, 180, 255, 0.8), 0 0 44px rgba(60, 140, 255, 0.45), inset 0 0 18px rgba(90, 180, 255, 0.4); animation: hb-flicker 1.2s steps(1, end) both; }
+.g-send-button-heist .hb-sign.hb-still { animation: none; }
+.g-send-button-heist .hb-sign b { display: block; font: 800 clamp(34px, 10cqw, 60px)/1 var(--font-display); letter-spacing: 0.06em; color: #f4fbff; text-shadow: 0 0 6px #9fe0ff, 0 0 18px #3aa8ff, 0 0 40px #1e6bff; white-space: nowrap; }
+.g-send-button-heist .hb-sign-s { display: block; margin-top: 9px; font: 700 15px/1.2 var(--font-ui); letter-spacing: 0.1em; text-transform: uppercase; color: #dbf1ff; text-shadow: 0 0 8px rgba(80, 170, 255, 0.9); }
+@keyframes hb-flicker { 0% { opacity: 0; } 8% { opacity: 1; } 12% { opacity: 0.15; } 20% { opacity: 1; } 26% { opacity: 0.45; } 32%, 100% { opacity: 1; } }
+.g-send-button-heist .hb-morph .hb-neon { transform: translateY(-14px) scale(0.86); opacity: 0; }
 .g-send-button-heist .hb-sw.hb-drop { animation: hb-drop 0.5s ease; }
 @keyframes hb-drop { 0%, 100% { border-color: rgba(130, 150, 255, 0.4); } 35% { border-color: #ffd36b; box-shadow: 0 0 18px rgba(255, 211, 107, 0.6); } }
 .g-send-button-heist .hb-power { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; white-space: nowrap; font: 700 12px/1 var(--font-ui); letter-spacing: 0.12em; text-transform: uppercase;
   color: #c9d0f5; background: rgba(8, 10, 26, 0.72); border: 1px solid rgba(130, 150, 255, 0.22); padding: 5px 11px 4px; border-radius: 999px; }
 .g-send-button-heist .hb-power i { width: 15px; height: 7px; border-radius: 4px; background: rgba(255, 255, 255, 0.16); transition: background 0.2s ease, box-shadow 0.2s ease; }
-.g-send-button-heist .hb-power i.on { background: #ff3d63; box-shadow: 0 0 8px rgba(255, 61, 99, 0.85); }
+.g-send-button-heist .hb-power i.on { background: var(--hb-lz); box-shadow: 0 0 8px var(--hb-lz); }
 .g-send-button-heist .hb-choosing .hb-sw, .g-send-button-heist .hb-choosing .hb-power { opacity: 0; pointer-events: none; }
 .g-send-button-heist .hb-choice { position: absolute; left: 12px; right: 12px; bottom: 34px; display: flex; justify-content: center; }
 .g-send-button-heist .hb-choice .gk-chips { gap: 10px; }
 .g-send-button-heist .hb-choice .gk-chip { pointer-events: auto; font: 700 16px/1.1 var(--font-ui); min-height: 52px; padding: 14px 20px; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45); animation: gk-say 0.3s cubic-bezier(.2, 1.4, .4, 1) both; }
 .g-send-button-heist .hb-choice .gk-chip:first-child { background: var(--ui-accent); color: var(--ui-accent-ink); border-color: transparent; }
+.g-send-button-heist .hb-rushbox { position: absolute; z-index: 30; left: 0; top: 0; width: 0; height: 0; will-change: transform; pointer-events: none; }
+.g-send-button-heist .hb-rush .gk-char-img { will-change: transform, rotate; }
 .g-send-button-heist .hb-rush .gk-bubble { max-width: min(250px, calc(100cqw - 24px)); }
 .g-send-button-heist .hb-rush.gk-side-above .gk-bubble::after, .g-send-button-heist .hb-rush.gk-side-below .gk-bubble::after { content: ""; position: absolute; left: calc(var(--ax, 40px) - 7px); width: 13px; height: 13px; background: inherit; transform: rotate(45deg); }
 .g-send-button-heist .hb-rush.gk-side-above .gk-bubble::after { bottom: -7px; border-right: 1px solid var(--ui-line); border-bottom: 1px solid var(--ui-line); }
@@ -103,6 +153,20 @@
       const FONT = '"Fredoka", "Nunito", "Trebuchet MS", system-ui, sans-serif';
       const urgeLabel = cleanUrge(an.urge) || 'SEND IT NOW';
       const line = (o) => ctx.line(o);
+
+      /* ---------------- reasons to come back: today's heist, a vault that fills with your drafts ---------------- */
+      const VISITS = K.visits();
+      const DAY = K.dailyPick([
+        { op: 'Operation Velvet Paw', treasure: 'Golden Rubber Duck', t: 'duck', lz: [255, 45, 85] },
+        { op: 'Operation Midnight Mango', treasure: 'Emerald Teapot', t: 'teapot', lz: [40, 240, 140] },
+        { op: 'Operation Quiet Sprinkles', treasure: 'Diamond Donut', t: 'donut', lz: [186, 110, 255] },
+        { op: 'Operation Snooze Button', treasure: 'Royal Crown', t: 'crown', lz: [255, 176, 46] },
+        { op: 'Operation Disco Biscuit', treasure: 'Disco Ball', t: 'disco', lz: [255, 70, 214] },
+        { op: 'Operation Slow Jam', treasure: 'Lucky Goldfish', t: 'fish', lz: [255, 104, 64] }
+      ], 3);
+      const LZ = DAY.lz, LZC = `rgb(${LZ[0]},${LZ[1]},${LZ[2]})`;
+      const lzA = (a) => `rgba(${LZ[0]},${LZ[1]},${LZ[2]},${a})`;
+      const PEAK_MOVE = VISITS === 0 ? 'spin' : ['moonwalk', 'feint', 'spin', 'feint'][VISITS % 4];
 
       /* ---------------- lines (every vibe) ---------------- */
       const LN = {
@@ -125,17 +189,32 @@
 
       /* ---------------- state ---------------- */
       const W = { stage: 'intro', t: 0, T: BASE_T, urge: urgeAt(0), phase: 'rise', tint: 0, tintGoal: 0, flat: 0, peaked: false, fell: false, plead: false, said: {},
-        lock: -1, reaches: 0, choice: null, choiceT: 0, draft: false, alarm: 0, taps: 0, shower: 0, endT: 0 };
-      const RU = { v: 0, lx: Math.floor((LANES - 1) / 2), tl: 0, state: 'idle', timer: 0, reroutes: 0, slips: 0, sx: 0, sy: 0, sz: 76, stepT: 0, lineAt: -9, bonks: 0, burst: 0, sleepK: 0 };
+        lock: -1, reaches: 0, choice: null, choiceT: 0, draft: false, alarm: 0, taps: 0, shower: 0, endT: 0, roll: 0, bounces: 0, sprint: 0, feint: false, waveN: 0 };
+      const RU = { v: 0, lx: Math.floor((LANES - 1) / 2), tl: 0, state: 'idle', timer: 0, reroutes: 0, slips: 0, sx: 0, sy: 0, sz: 76, stepT: 0, lineAt: -9, bonks: 0, burst: 0, sleepK: 0, back: 0 };
+      const ribbons = [];
       RU.tl = RU.lx;
       const lasers = Array.from({ length: LANES }, () => ({ up: false, k: 0, at: 0, ph: Math.random() * 6 }));
       let seq = 0, finished = false;
 
       /* ---------------- DOM ---------------- */
-      const cv = K.canvas(el);
+      /* SOFT: no GPU raster here, so draw at 1x and (below) at half rate; logic, input and audio stay at full rate */
+      const SOFT = softwareGfx(), cvOpt = { maxDpr: SOFT ? 1 : 1.5 }, cv = opaqueCanvas(el, cvOpt, S);
+      let accDt = 0, frameN = 0;
+      /* adaptive pacing on software raster: if the device is starved (many long frames), draw every third frame instead of every second */
+      const PACE = { rate: 2, n: 0, slow: 0, calm: 0 };
+      function paceTick(rawDt) {
+        if (!SOFT) return;
+        PACE.n++; if (rawDt > 0.04) PACE.slow++;
+        if (PACE.n >= 60) {
+          const r = PACE.slow / PACE.n; PACE.n = 0; PACE.slow = 0;
+          if (r > 0.08) { PACE.rate = 3; PACE.calm = 0; } else if (r < 0.02 && ++PACE.calm >= 3) PACE.rate = 2;
+        }
+      }
       const P = K.particles({ max: 720 });
+      el.style.setProperty('--hb-lz', LZC);
+      el.style.setProperty('--hb-lza', lzA(0.6));
       const hudPh = h('span', { class: 'hb-ph', text: 'Rising' });
-      const hudRe = h('span', { class: 'hb-re', text: 'Re-routes 0' });
+      const hudRe = h('span', { class: 'hb-re', text: 'Blocks 0' });
       const hudTm = h('span', { class: 'hb-tm', text: '0:00' });
       const waveWrap = h('div', { class: 'hb-wave' });
       const hud = h('div', { class: 'hb-hud', role: 'status' }, h('div', { class: 'hb-row' }, h('span', { text: 'Urge' }), hudPh, hudRe, hudTm), waveWrap);
@@ -146,6 +225,8 @@
       const box = h('div', { class: 'hb-box', hidden: true }, h('i', { class: 'hb-slot' }), h('span', { class: 'hb-box-t', text: 'DRAFT SAVED' }), h('span', { class: 'hb-box-s', text: 'decide tomorrow' }), h('i', { class: 'hb-bolt' }));
       const target = h('div', { class: 'hb-target' }, neon, btn, box);
       const ask = h('div', { class: 'hb-ask', role: 'status', hidden: true }, h('b', { text: 'Still want to send?' }), h('span', { text: 'Wait 30 more seconds?' }));
+      const sign = h('div', { class: 'hb-sign', role: 'status', hidden: true }, h('b', { text: 'URGE PASSED' }), h('span', { class: 'hb-sign-s', text: 'Nothing sent' }));
+      const opTag = h('div', { class: 'hb-op' }, h('span', { text: DAY.op }), h('i', { text: VISITS ? 'Drafts in your vault: ' + VISITS : 'Your first night on guard' }));
       const ctrl = h('div', { class: 'hb-ctrl' });
       const sw = [];
       for (let i = 0; i < LANES; i++) {
@@ -159,9 +240,11 @@
       for (let i = 0; i < POWER; i++) { const p = h('i'); pips.push(p); power.append(p); }
       const choiceWrap = h('div', { class: 'hb-choice' });
       ctrl.append(power, choiceWrap);
-      el.append(target, ask, hud, ctrl);
+      el.append(target, ask, sign, opTag, hud, ctrl);
       const wv = K.canvas(waveWrap);
-      const rush = K.character('rush', { side: 'above', mood: 'determined', x: -300, y: -300, size: 76 });
+      const rushBox = h('div', { class: 'hb-rushbox' });
+      el.append(rushBox);
+      const rush = K.character('rush', { side: 'above', mood: 'determined', x: 0, y: 0, size: 76, parent: rushBox });
       rush.el.classList.add('hb-rush');
       K.onKey(['Digit1', 'Digit2', 'Digit3', 'Digit4'], (e) => { const i = Number(String(e.code).slice(-1)) - 1; if (i < LANES) toggle(i); });
 
@@ -191,12 +274,15 @@
         L.boxY = L.yFar - L.pedH - (phone ? 42 : 49);
         target.style.top = (L.yFar - L.pedH + 4) + 'px';
         ask.style.top = (L.yFar + 18) + 'px';
+        sign.style.top = Math.round(L.yFar + (L.yNear - L.yFar) * 0.44) + 'px';
+        opTag.style.top = Math.round(L.yFar + (L.yNear - L.yFar) * 0.3) + 'px';
         const ySw = H - 16 - 30 - 35, zSw = L.K / (ySw - L.yH);
         const spread = Math.min(L.half / zSw, (w - 24) / 2 - (w - 24) / (2 * LANES));
         const sww = Math.min((2 * spread) / Math.max(1, LANES - 1) - 10, phone ? 112 : 150, (w - 24) / LANES - 8);
         sw.forEach((b, i) => { b.style.left = (L.cx + (LANES > 1 ? (-1 + 2 * i / (LANES - 1)) * spread : 0)) + 'px'; b.style.setProperty('--sww', Math.max(64, sww) + 'px'); });
         buildBg();
         placeRush(0);
+        W.drawn = 0;
       }
 
       /* ---------------- the static vault, drawn once per size ---------------- */
@@ -207,8 +293,44 @@
         [[wid * 4, 0.1], [wid * 2, 0.22], [wid, 0.9]].forEach(([lw, al]) => { g.strokeStyle = K.hexA(col, al); g.lineWidth = lw; g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); });
         g.restore();
       }
+      function drawTreasure(g, x, y, s, kind) {
+        g.save(); g.lineJoin = 'round'; g.lineCap = 'round';
+        g.shadowColor = 'rgba(255,240,200,0.6)'; g.shadowBlur = 6;
+        if (kind === 'duck') {
+          g.fillStyle = '#ffd23f'; g.beginPath(); g.ellipse(x - s * 0.05, y + s * 0.3, s * 0.72, s * 0.42, 0, 0, K.TAU); g.fill();
+          g.beginPath(); g.arc(x + s * 0.32, y - s * 0.2, s * 0.32, 0, K.TAU); g.fill();
+          g.shadowBlur = 0; g.fillStyle = '#ff8a1f'; g.beginPath(); g.moveTo(x + s * 0.58, y - s * 0.24); g.lineTo(x + s * 0.92, y - s * 0.12); g.lineTo(x + s * 0.58, y - s * 0.04); g.closePath(); g.fill();
+          g.fillStyle = '#1b1b2e'; g.beginPath(); g.arc(x + s * 0.4, y - s * 0.28, s * 0.06, 0, K.TAU); g.fill();
+        } else if (kind === 'teapot') {
+          g.fillStyle = '#2fd67f'; g.beginPath(); g.ellipse(x, y + s * 0.2, s * 0.6, s * 0.48, 0, 0, K.TAU); g.fill();
+          g.strokeStyle = '#2fd67f'; g.lineWidth = s * 0.14; g.beginPath(); g.moveTo(x + s * 0.5, y + s * 0.15); g.quadraticCurveTo(x + s * 0.85, y, x + s * 0.92, y - s * 0.3); g.stroke();
+          g.beginPath(); g.arc(x - s * 0.66, y + s * 0.18, s * 0.24, Math.PI * 0.5, Math.PI * 1.5); g.stroke();
+          g.shadowBlur = 0; g.fillStyle = '#c9ffe2'; g.beginPath(); g.ellipse(x, y - s * 0.26, s * 0.3, s * 0.1, 0, 0, K.TAU); g.fill(); g.beginPath(); g.arc(x, y - s * 0.4, s * 0.08, 0, K.TAU); g.fill();
+        } else if (kind === 'donut') {
+          g.strokeStyle = '#e8a35c'; g.lineWidth = s * 0.42; g.beginPath(); g.arc(x, y + s * 0.05, s * 0.48, 0, K.TAU); g.stroke();
+          g.strokeStyle = '#ff9ad5'; g.lineWidth = s * 0.3; g.beginPath(); g.arc(x, y + s * 0.02, s * 0.48, Math.PI * 1.05, Math.PI * 1.95 + 0.6); g.stroke();
+          g.shadowBlur = 0; ['#fff', '#7fe8ff', '#ffe58a', '#b98bff'].forEach((c, i) => { const a = 3.4 + i * 0.6; g.fillStyle = c; g.fillRect(x + Math.cos(a) * s * 0.48 - 1, y + Math.sin(a) * s * 0.48 - 1, 2.4, 2.4); });
+          g.fillStyle = '#f2fbff'; K.starPath(g, x + s * 0.55, y - s * 0.55, s * 0.24, s * 0.08, 4, 0); g.fill();
+        } else if (kind === 'crown') {
+          g.fillStyle = '#ffc93f'; g.beginPath(); g.moveTo(x - s * 0.7, y + s * 0.5); g.lineTo(x - s * 0.7, y - s * 0.2); g.lineTo(x - s * 0.35, y + s * 0.1); g.lineTo(x, y - s * 0.5); g.lineTo(x + s * 0.35, y + s * 0.1); g.lineTo(x + s * 0.7, y - s * 0.2); g.lineTo(x + s * 0.7, y + s * 0.5); g.closePath(); g.fill();
+          g.shadowBlur = 0; [['#ff4d6d', -0.4], ['#5ad1ff', 0], ['#7be08a', 0.4]].forEach(([c, dx]) => { g.fillStyle = c; g.beginPath(); g.arc(x + dx * s, y + s * 0.28, s * 0.1, 0, K.TAU); g.fill(); });
+        } else if (kind === 'disco') {
+          const gr2 = g.createRadialGradient(x - s * 0.2, y - s * 0.2, s * 0.05, x, y, s * 0.62); gr2.addColorStop(0, '#ffffff'); gr2.addColorStop(0.5, '#b8c2e0'); gr2.addColorStop(1, '#5d6690');
+          g.fillStyle = gr2; g.beginPath(); g.arc(x, y + s * 0.05, s * 0.6, 0, K.TAU); g.fill();
+          g.shadowBlur = 0; g.save(); g.clip(); g.strokeStyle = 'rgba(40,46,80,0.55)'; g.lineWidth = 0.8;
+          for (let k = -3; k <= 3; k++) { g.beginPath(); g.moveTo(x - s, y + k * s * 0.2); g.lineTo(x + s, y + k * s * 0.2); g.stroke(); g.beginPath(); g.moveTo(x + k * s * 0.2, y - s); g.lineTo(x + k * s * 0.2, y + s); g.stroke(); }
+          g.restore(); g.fillStyle = lzA(0.9); g.fillRect(x + s * 0.12, y - s * 0.3, s * 0.18, s * 0.16); g.fillStyle = '#7fe8ff'; g.fillRect(x - s * 0.34, y + s * 0.1, s * 0.16, s * 0.14);
+        } else {
+          g.fillStyle = 'rgba(140,210,255,0.25)'; g.beginPath(); g.arc(x, y + s * 0.1, s * 0.68, 0, K.TAU); g.fill();
+          g.shadowBlur = 0; g.fillStyle = '#ff8a3d'; g.beginPath(); g.ellipse(x - s * 0.05, y + s * 0.15, s * 0.32, s * 0.2, 0, 0, K.TAU); g.fill();
+          g.beginPath(); g.moveTo(x + s * 0.22, y + s * 0.15); g.lineTo(x + s * 0.5, y - s * 0.05); g.lineTo(x + s * 0.5, y + s * 0.35); g.closePath(); g.fill();
+          g.fillStyle = '#1b1b2e'; g.beginPath(); g.arc(x - s * 0.22, y + s * 0.1, s * 0.05, 0, K.TAU); g.fill();
+          g.strokeStyle = 'rgba(200,235,255,0.8)'; g.lineWidth = 1; g.beginPath(); g.arc(x, y + s * 0.1, s * 0.68, 0, K.TAU); g.stroke();
+        }
+        g.restore();
+      }
       function buildBg() {
-        const w = L.w, H = L.h, dpr = Math.min(2, window.devicePixelRatio || 1);
+        const w = L.w, H = L.h, dpr = cv.dpr || 1;
         if (!w || !H) return;
         if (!bgC) bgC = document.createElement('canvas');
         bgC.width = Math.max(1, Math.round(w * dpr)); bgC.height = Math.max(1, Math.round(H * dpr));
@@ -237,6 +359,7 @@
         g.fillStyle = sheen; g.fillRect(0, L.yFar, w, H - L.yFar);
         g.restore();
         // side walls with safe-deposit boxes
+        const cells = [];
         for (const sx of [-1, 1]) {
           poly(g, [proj(sx, 0, zN), proj(sx, 0, 2), proj(sx, WH, 2), proj(sx, WH, zN)]);
           gr = g.createLinearGradient(sx < 0 ? 0 : w, 0, L.cx + sx * L.half * 0.5, 0); gr.addColorStop(0, C.wallA); gr.addColorStop(1, C.wallB);
@@ -252,12 +375,25 @@
               g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 1; g.stroke();
               const m = proj(sx, (y0 + y1) / 2, (z0 + z1) / 2), r = Math.max(0.8, 2.6 / ((z0 + z1) / 2));
               g.fillStyle = 'rgba(200,210,255,0.35)'; g.beginPath(); g.arc(m[0], m[1], r, 0, K.TAU); g.fill();
+              if (m[1] > 70 && m[1] < L.yFar + 60) cells.push({ q, m, z: (z0 + z1) / 2 });
             }
           }
           neonLine(g, proj(sx, 0, zN), proj(sx, 0, 2), C.cyan, 1.4);
           neonLine(g, proj(sx, 0, 2), proj(sx, WH, 2), sx < 0 ? C.mag : C.cyan, 1.2);
         }
         neonLine(g, proj(-1, 0, 2), proj(1, 0, 2), C.cyan, 1.2);
+        // your vault: one glowing saved draft per finished heist
+        const lit = Math.min(VISITS, 48);
+        if (lit && cells.length) {
+          K.shuffle(cells, K.rng(77)).slice(0, lit).forEach(c => {
+            g.save(); g.shadowColor = 'rgba(80,170,255,0.95)'; g.shadowBlur = 10;
+            poly(g, c.q); g.fillStyle = 'rgba(60,150,255,0.55)'; g.fill(); g.restore();
+            poly(g, c.q); g.strokeStyle = 'rgba(170,225,255,0.95)'; g.lineWidth = 1; g.stroke();
+            const s = Math.max(2.4, 6.5 / c.z); g.strokeStyle = 'rgba(235,248,255,0.95)'; g.lineWidth = Math.max(0.8, 1.3 / c.z);
+            g.strokeRect(c.m[0] - s, c.m[1] - s * 0.62, s * 2, s * 1.24);
+            g.beginPath(); g.moveTo(c.m[0] - s, c.m[1] - s * 0.62); g.lineTo(c.m[0], c.m[1] + s * 0.12); g.lineTo(c.m[0] + s, c.m[1] - s * 0.62); g.stroke();
+          });
+        }
         // vault ring behind the button
         const rx = L.cx, ry = L.ringY, rr = L.ring;
         g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.arc(rx, ry + 3, rr + 9, 0, K.TAU); g.fill();
@@ -278,6 +414,23 @@
         g.fillStyle = C.ped[0]; g.beginPath(); g.ellipse(L.cx, top + 4, pw / 2 + 4, 6, 0, 0, K.TAU); g.fill();
         neonLine(g, [px0 + pw * 0.3, top + 12], [px0 + pw * 0.28, L.yFar - 4], C.cyan, 1);
         neonLine(g, [px0 + pw * 0.7, top + 12], [px0 + pw * 0.72, L.yFar - 4], C.cyan, 1);
+        // today's decoy treasure on its plinth (Rush only wants the button)
+        {
+          const tz = 1.86, tx = 0.8, b0 = proj(tx, 0, tz), u = L.half / tz;
+          const pw2 = 0.15 * u, ph2 = 0.36 * u, top2 = b0[1] - ph2;
+          const sp = g.createRadialGradient(b0[0], top2 - 0.2 * u, 2, b0[0], top2 - 0.2 * u, 0.7 * u);
+          sp.addColorStop(0, lzA(0.28)); sp.addColorStop(1, lzA(0));
+          g.fillStyle = sp; g.fillRect(b0[0] - 0.7 * u, top2 - 0.9 * u, 1.4 * u, 1.4 * u);
+          g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.ellipse(b0[0], b0[1] + 1, pw2 * 1.5, 3, 0, 0, K.TAU); g.fill();
+          gr = g.createLinearGradient(b0[0] - pw2, 0, b0[0] + pw2, 0); gr.addColorStop(0, C.ped[1]); gr.addColorStop(0.4, C.ped[0]); gr.addColorStop(1, C.ped[2]);
+          g.fillStyle = gr; g.fillRect(b0[0] - pw2, top2, pw2 * 2, ph2);
+          g.fillStyle = C.ped[0]; g.fillRect(b0[0] - pw2 * 1.2, top2 - 2, pw2 * 2.4, 3);
+          const cs = 0.2 * u, cy2 = top2 - cs - 2;
+          drawTreasure(g, b0[0], cy2 + cs * 0.15, cs * 0.82, DAY.t);
+          g.strokeStyle = 'rgba(210,230,255,0.55)'; g.lineWidth = 1; g.beginPath(); g.roundRect ? g.roundRect(b0[0] - cs, cy2 - cs, cs * 2, cs * 2, 3) : g.rect(b0[0] - cs, cy2 - cs, cs * 2, cs * 2); g.stroke();
+          g.fillStyle = 'rgba(210,230,255,0.12)'; g.fill();
+          g.strokeStyle = 'rgba(255,255,255,0.5)'; g.beginPath(); g.moveTo(b0[0] - cs * 0.7, cy2 - cs * 0.6); g.lineTo(b0[0] - cs * 0.25, cy2 - cs * 0.95); g.stroke();
+        }
         // the guard's console (near edge)
         const cy0 = H - (L.phone ? 124 : 130);
         gr = g.createLinearGradient(0, cy0, 0, H); gr.addColorStop(0, D ? '#1b2048' : '#26306a'); gr.addColorStop(0.12, D ? '#0e1130' : '#151c48'); gr.addColorStop(1, D ? '#05060f' : '#0a0f2c');
@@ -327,12 +480,13 @@
         const pan = laneWX(i) * 0.7;
         if (up) snd.up(pan); else snd.down(pan, why === 'power');
         if (why === 'power') { sw[i].classList.remove('hb-drop'); void sw[i].offsetWidth; sw[i].classList.add('hb-drop'); }
-        GATES.forEach((gv) => { const z = zOfV(gv), a = proj(-1 + 2 * i / LANES, 0.05, z), b = proj(-1 + 2 * (i + 1) / LANES, 0.05, z); P.emit('spark', (a[0] + b[0]) / 2, a[1], up ? 5 : 3, { colors: up ? ['#ff4d6d', '#ffd1dc'] : ['#ff8fb1', '#7fd8ff'], speed: [40, 140] }); });
+        GATES.forEach((gv) => { const z = zOfV(gv), a = proj(-1 + 2 * i / LANES, 0.05, z), b = proj(-1 + 2 * (i + 1) / LANES, 0.05, z); P.emit('spark', (a[0] + b[0]) / 2, a[1], up ? 5 : 3, { colors: up ? [LZC, '#ffffff'] : [lzA(0.7), '#7fd8ff'], speed: [40, 140] }); });
         const n = upCount(); pips.forEach((p, j) => p.classList.toggle('on', j < n));
       }
       function toggle(i) {
         if (W.stage !== 'play' || W.choice) return;
         K.sfx.tap();
+        sw[i].classList.remove('hb-hit'); void sw[i].offsetWidth; sw[i].classList.add('hb-hit');
         if (lasers[i].up) setLaser(i, false);
         else {
           const ups = []; lasers.forEach((l, j) => { if (l.up) ups.push(j); });
@@ -348,12 +502,23 @@
       function nearestOpen(from) { let best = -1, bd = 99; for (let i = 0; i < LANES; i++) { if (lasers[i].up) continue; const d = Math.abs(i - from) + Math.random() * 0.01; if (d < bd) { bd = d; best = i; } } return best; }
       function guideLane() { const a = laneAhead(); if (!lasers[a].up) return a; const o = nearestOpen(RU.lx); return o >= 0 ? o : a; }
       function say(key, o) { const txt = line(LN[key]); rush.say(txt, Object.assign({ ms: Math.max(2600, txt.length * 62) }, o || {})); RU.lineAt = W.t; }
-      function float(text, x, y, col) { floats.push({ text, x, y, t: 0, col }); }
+      function float(text, x, y, col, size) { if (floats.some(f => f.text === text && f.t < 0.45)) return; floats.push({ text, x, y, t: 0, col, size: size || 13 }); }
+      function fancyMove() {
+        const mv = PEAK_MOVE;
+        float({ spin: 'SPIN MOVE!', moonwalk: 'MOONWALK!', feint: 'FAKE YAWN!' }[mv], RU.sx, RU.sy - RU.sz - 18, '#ffe58a', 17);
+        if (mv === 'spin') { rush.react('spin'); W.sprint = 1.4; }
+        else if (mv === 'moonwalk') { RU.back = 0.8; rush.react('bounce'); }
+        else {
+          rush.face('sleepy', 900); if (RU.state === 'run') { RU.state = 'sit'; RU.timer = 0.9; }
+          W.sprint = 2.4; K.later(() => { if (W.stage === 'play') { rush.react('glitch'); rush.face('speed', 900); } }, 900);
+        }
+        snd.whoop();
+      }
       const floats = [];
       function think(sec) { RU.state = 'think'; RU.timer = sec; }
       function thinkTime() { return W.phase === 'peak' ? 0.16 : (0.24 + 0.85 * (1 - W.urge)) * (inten === 0 ? 1.25 : 1); }
       function rushReact() {
-        if (RU.state === 'shift' && lasers[RU.tl].up) { RU.reroutes++; float('RE-ROUTE', RU.sx, RU.sy - RU.sz - 6, '#7fe8ff'); think(Math.min(0.3, thinkTime())); }
+        if (RU.state === 'shift' && lasers[RU.tl].up) { RU.reroutes++; RU.bonks++; float('RE-ROUTE', RU.sx, RU.sy - RU.sz - 6, '#7fe8ff'); rush.face('surprised', 500); think(Math.min(0.3, thinkTime())); }
         else if (RU.state === 'wait') RU.timer = Math.min(RU.timer, 0.12);
       }
       function plan() {
@@ -365,10 +530,9 @@
       }
       function bonk(lane, g) {
         RU.reroutes++; RU.bonks++;
-        hudRe.textContent = 'Re-routes ' + RU.reroutes;
         snd.bonk(laneWX(lane) * 0.7);
         const z = zOfV(GATES[g]), p = proj(laneWX(lane), 0.16, z);
-        P.emit('spark', p[0], p[1], 12, { colors: ['#ff4d6d', '#fff1f4', '#ffb3c4'], speed: [60, 220] });
+        P.emit('spark', p[0], p[1], 12, { colors: [LZC, '#ffffff', lzA(0.6)], speed: [60, 220] });
         float('RE-ROUTE', RU.sx, RU.sy - RU.sz - 6, '#7fe8ff');
         rush.face(W.phase === 'fall' ? 'sad' : 'angry', 800);
         rush.react('shake');
@@ -387,7 +551,8 @@
       }
       function rushUpdate(dt, t) {
         const u = W.urge, peak = W.phase === 'peak';
-        const fwd = (0.04 + 0.17 * u) * SPD * (peak ? 1.22 : 1);
+        const fwd = (0.04 + 0.17 * u) * SPD * (peak ? 1.22 : 1) * (W.sprint > 0 ? 1.45 : 1);
+        if (RU.back > 0 && RU.state === 'run') { RU.back -= dt; RU.v = Math.max(0, RU.v - dt * 0.07); if (RU.back <= 0) W.sprint = 1.5; return; }
         const side = (1.3 + 3.2 * u) * SPD * (peak ? 1.35 : 1);
         if (RU.state === 'run') {
           const lane = Math.round(RU.lx), g = nextGate(RU.v);
@@ -441,7 +606,7 @@
       function reach() {
         RU.v = 1;
         if (W.t < W.lock) {
-          RU.reroutes++; hudRe.textContent = 'Re-routes ' + RU.reroutes;
+          W.bounces++;
           snd.boing(); rush.react('spin'); rush.face('surprised', 900);
           float('TIME-LOCKED', RU.sx, RU.sy - RU.sz - 6, '#9fdcff');
           if (W.t - RU.lineAt > 5) say('shield');
@@ -455,7 +620,7 @@
       }
       function resolveReach(id) {
         ask.hidden = true;
-        W.lock = W.t + 30; W.T = Math.max(W.T, W.t + 30);
+        W.lock = W.t + 30; W.T = Math.max(W.T, Math.min(W.t + 30, BASE_T + 16));
         target.classList.add('hb-shield'); lockPill.hidden = false;
         snd.shield();
         if (id === 'draft') markDraft();
@@ -478,15 +643,15 @@
             W.phase = ph;
             if (ph === 'peak' && !W.peaked) {
               W.peaked = true; RU.burst = 1;
-              say('peak', { mood: 'speed', moodMs: 4200, ms: 4600 }); rush.react('spin');
-              K.sfx.rise(); K.sfx.heartbeat();
+              say('peak', { mood: 'speed', moodMs: 4200, ms: 4600 });
+              K.sfx.rise(); K.sfx.heartbeat(); fancyMove();
               guardGuide('PEAK: KEEP BLOCKING', 'peak', 300);
             }
             if (ph === 'fall' && !W.fell) { W.fell = true; rush.base('calm'); }
           }
           const x = W.t / BASE_T;
           if (!W.plead && x >= PLEA_X && !W.choice && RU.state !== 'return') plea();
-          if (W.plead && !W.said.fall && x >= 0.68 && !W.choice) { W.said.fall = true; say('fall', { mood: 'E44', moodMs: 1500 }); }
+          if (W.plead && !W.said.fall && x >= 0.68 && !W.choice) { W.said.fall = true; say('fall', { mood: 'E99', moodMs: 1800 }); }
           if (W.plead && !W.said.fall2 && x >= 0.86 && !W.choice) { W.said.fall2 = true; say('fall2', { mood: 'calm' }); }
           if (W.choice) {
             W.choiceT += dt;
@@ -505,26 +670,28 @@
         W.tint += (W.tintGoal - W.tint) * Math.min(1, dt * 0.9);
         W.flat += ((W.stage === 'end' ? 1 : 0) - W.flat) * Math.min(1, dt * 1.5);
         W.alarm = Math.max(0, W.alarm - dt * 0.8);
+        if (W.roll > 0) W.roll += dt * 0.5;
         // HUD text (only on change)
-        if (RU.reroutes !== lastRe) { lastRe = RU.reroutes; hudRe.textContent = 'Re-routes ' + RU.reroutes; }
+        if (RU.reroutes !== lastRe) { lastRe = RU.reroutes; hudRe.textContent = 'Blocks ' + RU.reroutes; }
+        W.sprint = Math.max(0, W.sprint - dt);
         const sec = Math.floor(W.t), tm = Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
         if (tm !== lastTm) { lastTm = tm; hudTm.textContent = tm; }
         const phTxt = W.stage === 'end' ? 'Passed' : W.phase === 'rise' ? 'Rising' : W.phase === 'peak' ? 'Peak' : (W.T - W.t < 10 ? 'Fading' : 'Passing');
         if (phTxt !== lastPh) { lastPh = phTxt; hudPh.textContent = phTxt; hudPh.className = 'hb-ph' + (W.phase === 'peak' && W.stage === 'play' ? ' peak' : W.phase === 'fall' || W.stage === 'end' ? ' fall' : ''); }
-        dome.style.setProperty('--pulse', (0.4 + 0.6 * W.urge * (0.6 + 0.4 * Math.sin(t * 5))).toFixed(3));
         // sound beds follow the urge
         if (W.stage !== 'end') { music.level(0.16 + 0.22 * W.urge); music.tempo(96 + 30 * W.urge); }
         if (!hum && A.ctx) { hum = A.loop({ filter: 'bandpass', freq: 130, q: 9 }); S.onDestroy(() => { if (hum) hum.stop(); }); }
         if (hum) hum.level(W.stage === 'end' ? 0.0001 : 0.01 * upCount(), 0.12);
+        if (W.twinkle > 0) { W.twinkle -= dt; if (Math.random() < 0.5) P.emit('star', Math.random() * L.w, 70 + Math.random() * (L.yFar - 40), 1, { colors: ['#ffffff', '#cfeaff', '#9fdcff'], speed: [4, 16] }); }
         // finale sparkle shower built from the laser colours
         if (W.shower > 0) {
           W.shower -= dt;
-          if (Math.random() < 0.85) P.emit('snow', L.cx + (Math.random() - 0.5) * L.half * 2.1, L.yFar - 120 + Math.random() * 60, 2, { colors: ['#ff6b8b', '#ffb3c4', '#7fd8ff', '#c6f0ff', '#ffe58a'], speed: [10, 50] });
+          if (Math.random() < 0.85) P.emit('snow', L.cx + (Math.random() - 0.5) * L.half * 2.1, L.yFar - 160 + Math.random() * 80, 2, { colors: [LZC, lzA(0.8), '#ffffff', '#7fd8ff', '#c6f0ff'], speed: [10, 50] });
         }
       }
 
       /* ---------------- placement of Rush + his bubble ---------------- */
-      let bubbleUp = true, lastSz = 0;
+      let bubbleUp = true, lastSz = 0, bwN = 0, bwC = 220, lastTilt = '';
       function placeRush(t) {
         let sx, sy, sz;
         const z = zOfV(RU.v), scale = 0.62 + 0.38 * Math.max(0, Math.min(1, 2 - z));
@@ -537,35 +704,49 @@
         const running = RU.state === 'run' || RU.state === 'shift' || RU.state === 'return' || RU.state === 'sleepwalk';
         const bob = running && !K.reduced() ? Math.abs(Math.sin(t * (9 + 8 * W.urge))) * 4 * scale : 0;
         RU.sx = sx; RU.sy = sy; RU.sz = sz;
-        if (Math.abs(sz - lastSz) >= 1) { lastSz = sz; rush.el.style.setProperty('--sz', sz + 'px'); }
-        rush.el.style.left = (sx - sz / 2).toFixed(1) + 'px';
-        rush.el.style.top = (sy - sz + 3 - bob).toFixed(1) + 'px';
+        if (Math.abs(sz - lastSz) >= 2) { lastSz = sz; rush.el.style.setProperty('--sz', sz + 'px'); }
+        const qs = lastSz || sz;
+        rushBox.style.transform = 'translate3d(' + (sx - qs / 2).toFixed(1) + 'px,' + (sy - qs + 3 - bob).toFixed(1) + 'px,0)';
         const tilt = RU.state === 'shift' ? Math.sign(RU.tl - RU.lx) * 9 : running && !K.reduced() ? Math.sin(t * 9) * 3 : 0;
-        rush.img.style.rotate = tilt.toFixed(1) + 'deg';
+        const tl = (Math.round(tilt * 2) / 2).toFixed(1);
+        if (tl !== lastTilt) { lastTilt = tl; rush.img.style.rotate = tl + 'deg'; }
         const b = rush.bubble;
         if (!b.hidden) {
-          const top = sy - sz;
+          const top = sy - qs;
           const up = top > L.yFar + 70 && RU.state !== 'reached';
           if (up !== bubbleUp) { bubbleUp = up; rush.side(up ? 'above' : 'below'); }
-          const bw = b.offsetWidth || 220, left = K.clamp(sx - bw / 2, 10, L.w - 10 - bw);
-          b.style.left = (left - (sx - sz / 2)).toFixed(1) + 'px';
+          if (bwN++ % 15 === 0) bwC = b.offsetWidth || 220;
+          const bw = bwC, left = K.clamp(sx - bw / 2, 10, L.w - 10 - bw);
+          b.style.left = (left - (sx - qs / 2)).toFixed(1) + 'px';
           b.style.setProperty('--ax', K.clamp(sx - left, 20, bw - 20).toFixed(1) + 'px');
         }
       }
 
+      /* the music's own beat (the kit's scheduler), so the vault pulses with the track */
+      function beatPos(t) {
+        if (A.ctx && music.next > 0) { const now = A.now() - A.latency(); return music.beat - (music.next - now) * music.bpm / 60; }
+        return t * (music.bpm || 112) / 60;
+      }
       /* ---------------- render ---------------- */
-      const LASER = { core: '#fff3f6', mid: '#ff3d63', glow: '#ff2d55' };
       const HB = inten === 2 ? [0.07, 0.17, 0.27] : [0.08, 0.22];
       function mixRGB(a, b, k) { return [Math.round(a[0] + (b[0] - a[0]) * k), Math.round(a[1] + (b[1] - a[1]) * k), Math.round(a[2] + (b[2] - a[2]) * k)]; }
       K.loop((dt, t) => {
         const g = cv.g; if (!g || !bgC) return;
+        if (W.stage === 'intro' && W.drawn > 1) return;
+        accDt += dt; paceTick(dt);
+        if (SOFT && (++frameN % PACE.rate) && W.drawn > 2) return;
+        /* the urge wave runs on real time, so a busy device never stretches the session */
+        const nowMs = performance.now(), real = W.lastMs ? Math.min(0.25, (nowMs - W.lastMs) / 1000) : accDt;
+        W.lastMs = nowMs;
+        dt = Math.max(accDt, real); accDt = 0;
+        W.drawn = (W.drawn || 0) + 1;
         step(dt, t);
         placeRush(t);
         const w = L.w, H = L.h, calm = W.tint, red = mixRGB([255, 42, 74], [70, 160, 255], calm);
         g.drawImage(bgC, 0, 0, w, H);
         g.save(); g.globalCompositeOperation = 'lighter';
         // vault ring rim glow
-        const pulse = 0.55 + 0.45 * Math.sin(t * (2 + 3 * W.urge));
+        const bp = beatPos(t), beat = Math.pow(1 - (((bp % 1) + 1) % 1), 2.5), pulse = 0.45 + 0.55 * beat;
         g.strokeStyle = `rgba(${red[0]},${red[1]},${red[2]},${(0.25 + 0.35 * W.urge * (1 - calm) + 0.3 * calm) * pulse})`;
         g.lineWidth = 3; g.beginPath(); g.arc(L.cx, L.ringY, L.ring - L.ring * 0.1, 0, K.TAU); g.stroke();
         g.lineWidth = 9; g.strokeStyle = `rgba(${red[0]},${red[1]},${red[2]},${0.08 * pulse})`; g.stroke();
@@ -573,7 +754,7 @@
         const alarmLvl = Math.min(1, (0.35 + 0.65 * W.urge) * (1 - calm) + W.alarm * 0.5) + calm * 0.45;
         for (const s of [-1, 1]) {
           const b = proj(s, 2.5, 1.55), ang = K.reduced() ? (s < 0 ? 0.6 : Math.PI - 0.6) : t * (2.2 + 2.5 * W.urge) * s + (s > 0 ? Math.PI : 0);
-          const len = Math.max(w, H) * 0.9, sp = 0.32;
+          const len = Math.max(w, H) * (SOFT ? 0.6 : 0.9), sp = 0.32;
           const gr = g.createRadialGradient(b[0], b[1], 2, b[0], b[1], len);
           gr.addColorStop(0, `rgba(${red[0]},${red[1]},${red[2]},${0.3 * alarmLvl})`); gr.addColorStop(1, `rgba(${red[0]},${red[1]},${red[2]},0)`);
           g.fillStyle = gr; g.beginPath(); g.moveTo(b[0], b[1]); g.lineTo(b[0] + Math.cos(ang - sp) * len, b[1] + Math.sin(ang - sp) * len); g.lineTo(b[0] + Math.cos(ang + sp) * len, b[1] + Math.sin(ang + sp) * len); g.closePath(); g.fill();
@@ -583,7 +764,7 @@
         }
         // pedestal glow
         const pg = g.createRadialGradient(L.cx, L.yFar - L.pedH, 4, L.cx, L.yFar - L.pedH, L.pedW * 1.4);
-        pg.addColorStop(0, calm > 0.5 ? 'rgba(120,200,255,0.35)' : `rgba(255,70,110,${0.18 + 0.2 * W.urge})`); pg.addColorStop(1, 'rgba(0,0,0,0)');
+        pg.addColorStop(0, calm > 0.5 ? 'rgba(120,200,255,0.35)' : `rgba(255,70,110,${((0.2 + 0.28 * W.urge) * (0.6 + 0.4 * beat)).toFixed(3)})`); pg.addColorStop(1, 'rgba(0,0,0,0)');
         g.fillStyle = pg; g.fillRect(L.cx - L.pedW * 1.4, L.yFar - L.pedH - L.pedW * 1.4, L.pedW * 2.8, L.pedW * 2.8);
         // spotlight following Rush
         if (W.stage !== 'intro') {
@@ -610,21 +791,29 @@
             const l = lasers[i], x0 = -1 + 2 * i / LANES + 0.03, x1 = -1 + 2 * (i + 1) / LANES - 0.03;
             const a = proj(x0, 0, z), b = proj(x1, 0, z), er = 4.2 / z;
             g.fillStyle = '#20264a'; g.beginPath(); g.ellipse(a[0], a[1], er * 1.6, er * 0.7, 0, 0, K.TAU); g.ellipse(b[0], b[1], er * 1.6, er * 0.7, 0, 0, K.TAU); g.fill();
-            g.fillStyle = l.k > 0.1 ? '#ff3d63' : 'rgba(255,61,99,0.35)';
+            g.fillStyle = l.k > 0.1 ? LZC : lzA(0.35);
             g.beginPath(); g.arc(a[0], a[1] - er * 0.2, er * 0.5, 0, K.TAU); g.arc(b[0], b[1] - er * 0.2, er * 0.5, 0, K.TAU); g.fill();
-            if (l.k < 0.02) { g.strokeStyle = 'rgba(255,61,99,0.18)'; g.lineWidth = 1.5 / z; g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); continue; }
+            if (l.k < 0.02) { g.strokeStyle = lzA(0.18); g.lineWidth = 1.5 / z; g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); continue; }
             const fl = 0.82 + 0.18 * Math.sin(t * 31 + l.ph + gi * 2) * (K.reduced() ? 0 : 1);
             g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
             for (const hb of HB) {
               const y = hb * l.k, p0 = proj(x0, y, z), p1 = proj(x1, y, z), r0 = proj(x0, -y * 0.55, z), r1 = proj(x1, -y * 0.55, z);
-              g.strokeStyle = `rgba(255,45,85,${0.07 * l.k})`; g.lineWidth = 5 / z; g.beginPath(); g.moveTo(r0[0], r0[1]); g.lineTo(r1[0], r1[1]); g.stroke();
-              g.strokeStyle = `rgba(255,45,85,${0.16 * fl * l.k})`; g.lineWidth = 10 / z; g.beginPath(); g.moveTo(p0[0], p0[1]); g.lineTo(p1[0], p1[1]); g.stroke();
-              g.strokeStyle = `rgba(255,61,99,${0.55 * fl * l.k})`; g.lineWidth = 3.6 / z; g.stroke();
+              g.strokeStyle = lzA(0.07 * l.k); g.lineWidth = 5 / z; g.beginPath(); g.moveTo(r0[0], r0[1]); g.lineTo(r1[0], r1[1]); g.stroke();
+              g.strokeStyle = lzA(0.16 * fl * l.k); g.lineWidth = 10 / z; g.beginPath(); g.moveTo(p0[0], p0[1]); g.lineTo(p1[0], p1[1]); g.stroke();
+              g.strokeStyle = lzA(0.6 * fl * l.k); g.lineWidth = 3.6 / z; g.stroke();
               g.strokeStyle = `rgba(255,243,246,${0.95 * l.k})`; g.lineWidth = 1.4 / z; g.stroke();
             }
             g.restore();
           }
         }
+        // finale: a calm wave rolls down the corridor, and your beams fly home as ribbons of light
+        if (W.roll > 0 && W.roll < 1.4) {
+          const v = Math.max(0, 1 - W.roll), z = zOfV(v), y = L.yNear - v * (L.yNear - L.yFar), hw = L.half / z, bh = 46 / z, a = Math.min(1, 1.4 - W.roll);
+          const gr = g.createLinearGradient(0, y - bh, 0, y + bh);
+          gr.addColorStop(0, 'rgba(90,180,255,0)'); gr.addColorStop(0.5, `rgba(130,205,255,${(0.42 * a).toFixed(3)})`); gr.addColorStop(1, 'rgba(90,180,255,0)');
+          g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = gr; g.fillRect(L.cx - hw, y - bh, hw * 2, bh * 2); g.restore();
+        }
+        if (ribbons.length) drawRibbons(g, dt);
         // Rush's shadow
         if (RU.state !== 'idle' || W.stage === 'intro') { g.fillStyle = 'rgba(0,0,0,0.42)'; g.beginPath(); g.ellipse(RU.sx, RU.sy + 1, RU.sz * 0.34, RU.sz * 0.09, 0, 0, K.TAU); g.fill(); }
         P.update(dt); P.draw(g);
@@ -632,14 +821,14 @@
         for (let i = floats.length - 1; i >= 0; i--) {
           const f = floats[i]; f.t += dt;
           if (f.t > 1) { floats.splice(i, 1); continue; }
-          g.globalAlpha = 1 - f.t; g.font = '700 13px ' + FONT; g.textAlign = 'center'; g.fillStyle = 'rgba(4,6,20,0.7)';
+          g.globalAlpha = 1 - f.t; g.font = '700 ' + f.size + 'px ' + FONT; g.textAlign = 'center'; g.fillStyle = 'rgba(4,6,20,0.7)';
           g.fillText(f.text, f.x + 1, f.y - f.t * 26 + 1); g.fillStyle = f.col; g.fillText(f.text, f.x, f.y - f.t * 26);
         }
         g.globalAlpha = 1;
         // room light: alarm red cooling to calm blue
         const wash = (0.05 + 0.07 * W.urge * (0.7 + 0.3 * Math.sin(t * 3))) * (1 - calm) + 0.09 * calm + W.alarm * 0.05;
         g.fillStyle = `rgba(${red[0]},${red[1]},${red[2]},${wash.toFixed(3)})`; g.fillRect(0, 0, w, H);
-        drawWave(t);
+        if (!SOFT || W.waveN++ % 3 === 0 || W.stage === 'end') drawWave(t);
       });
       function drawWave(t) {
         const g = wv.g; if (!g) return;
@@ -668,6 +857,60 @@
       }
 
       /* ---------------- finale ---------------- */
+      function launchRibbons() {
+        let n = 0;
+        for (let gi = GATES.length - 1; gi >= 0; gi--) {
+          const z = zOfV(GATES[gi]);
+          for (let i = 0; i < LANES; i++) {
+            const x0 = -1 + 2 * i / LANES + 0.03, x1 = -1 + 2 * (i + 1) / LANES - 0.03;
+            const a = proj(x0, 0.14, z), b = proj(x1, 0.14, z), side = (i - (LANES - 1) / 2) || (n % 2 ? 0.6 : -0.6);
+            ribbons.push({ ax: a[0], ay: a[1], bx: b[0], by: b[1], tx: L.cx, ty: L.boxY - 6, d: 0.1 + n * 0.11, t: 0, done: false, side: K.clamp(side, -1.2, 1.2), i: n });
+            n++;
+          }
+        }
+      }
+      function drawRibbons(g, dt) {
+        g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+        for (const r of ribbons) {
+          if (r.done) continue;
+          r.t += dt;
+          const k = (r.t - r.d) / 1.1;
+          if (k >= 1) { r.done = true; ribbonHome(r); continue; }
+          const mx = (r.ax + r.bx) / 2, my = (r.ay + r.by) / 2, half = Math.hypot(r.bx - r.ax, r.by - r.ay) / 2, a0 = Math.atan2(r.by - r.ay, r.bx - r.ax);
+          let px = mx, py = my, len = half, ang = a0, e = 0;
+          if (k > 0) {
+            e = K.ease.inOutCubic(k);
+            const qx = mx + r.side * L.half * 0.42 + (r.tx - mx) * 0.3, qy = Math.min(my, r.ty) - 30 - 50 * Math.abs(r.side);
+            px = (1 - e) * (1 - e) * mx + 2 * (1 - e) * e * qx + e * e * r.tx;
+            py = (1 - e) * (1 - e) * my + 2 * (1 - e) * e * qy + e * e * r.ty;
+            len = half * (1 - e * 0.88); ang = a0 + e * r.side * 2.6;
+            if (Math.random() < 0.3) P.emit('mote', px, py, 1, { colors: [e < 0.5 ? LZC : '#9fdcff'] });
+          }
+          const c = mixRGB(LZ, [120, 205, 255], e), dx = Math.cos(ang) * len, dy = Math.sin(ang) * len, wz = Math.max(0.7, 1.5 - e);
+          [[11 * wz, 0.14], [4.2 * wz, 0.5], [1.7 * wz, 1]].forEach(([lw, al], j) => {
+            g.strokeStyle = j === 2 ? `rgba(255,255,255,${al})` : `rgba(${c[0]},${c[1]},${c[2]},${al})`; g.lineWidth = lw;
+            g.beginPath(); g.moveTo(px - dx, py - dy); g.lineTo(px + dx, py + dy); g.stroke();
+          });
+        }
+        g.restore();
+      }
+      const HOME_NOTES = ['D4', 'F#4', 'A4', 'B4', 'D5', 'E5', 'F#5', 'A5', 'B5', 'D6', 'E6', 'F#6'];
+      let homed = 0, lockResolve = null;
+      function ribbonHome(r) {
+        homed++;
+        P.emit('star', r.tx, r.ty, 5, { colors: ['#ffffff', '#9fdcff', LZC], speed: [40, 150] });
+        if (A.ctx) A.chime(A.note(HOME_NOTES[Math.min(HOME_NOTES.length - 1, Math.round(r.i * (HOME_NOTES.length - 1) / Math.max(1, ribbons.length - 1)))]), { vol: 0.06, dur: 1.4 });
+        if (homed === ribbons.length) lockChunk();
+      }
+      function lockChunk() {
+        if (target.classList.contains('hb-locked')) return;
+        box.hidden = false; target.classList.add('hb-morph', 'hb-locked');
+        K.sfx.lock(); snd.clank(); K.sfx.thud();
+        if (!K.reduced()) el.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(2px,-3px)' }, { transform: 'translate(-2px,2px)' }, { transform: 'translate(0,0)' }], { duration: 260, easing: 'ease-out' });
+        P.emit('spark', L.cx, L.boxY, 28, { colors: ['#9fdcff', '#ffffff', '#7fd8ff', LZC], speed: [80, 260] });
+        W.roll = 0.001; W.shower = 3.8;
+        if (lockResolve) lockResolve();
+      }
       async function finale() {
         if (W.stage === 'end') return;
         W.stage = 'end'; W.endT = W.t;
@@ -676,41 +919,40 @@
         ctrl.classList.add('hb-gone');
         music.level(0.14); music.tempo(80);
         W.tintGoal = 1; target.classList.add('hb-calm');
-        // your lasers power down, one by one, and burst into light
-        const order = [];
-        for (let i = 0; i < LANES; i++) order.push(i);
-        order.forEach((i, n) => K.later(() => {
-          const was = lasers[i].k;
-          lasers[i].up = true; lasers[i].k = Math.max(was, 0.85);
-          K.later(() => { lasers[i].up = false; snd.down(laneWX(i) * 0.7, true); }, 160);
-          GATES.forEach((gv) => {
-            const z = zOfV(gv);
-            for (let k = 0; k < 7; k++) { const x = -1 + 2 * (i + (k + 0.5) / 7) / LANES, p = proj(x, 0.15, z); P.emit('star', p[0], p[1], 2, { colors: ['#ff6b8b', '#ffd1dc', '#7fd8ff', '#ffe58a'], speed: [30, 120], angle: -Math.PI / 2, spread: 1.8 }); }
-          });
-          K.sfx.sparkle();
-        }, 220 * n));
+        // every laser surges on for a moment, then lifts off the floor as a ribbon of light and flies into the lock
+        lasers.forEach(l => { l.up = true; });
+        K.sfx.rise();
         pips.forEach(p => p.classList.remove('on'));
+        const locked = new Promise(res => { lockResolve = res; });
+        K.later(() => { lasers.forEach(l => { l.up = false; l.k = 0; }); launchRibbons(); K.sfx.sparkle(); }, 280);
+        K.later(() => { box.hidden = false; void box.offsetWidth; target.classList.add('hb-morph'); K.sfx.whoosh(); }, 900);
         // Rush gives up the heist and curls up at the pedestal
         RU.state = 'sleepwalk'; RU.sleepK = 0; rush.base('sleepy');
         const v0 = RU.v;
         await K.anim(1700, (k) => { RU.v = K.lerp(v0, 1, k); RU.sleepK = k; }, K.ease.inOutCubic);
         RU.state = 'sleep';
         say('sleep', { mood: 'sleepy', ms: 0 });
-        // SEND morphs into the draft deposit box, which locks with a chunk
-        box.hidden = false; void box.offsetWidth;
-        target.classList.add('hb-morph'); K.sfx.whoosh();
-        await K.sleep(760);
-        target.classList.add('hb-locked'); K.sfx.lock(); snd.clank(); K.sfx.thud();
-        if (!K.reduced()) { el.animate([{ transform: 'translate(0,0)' }, { transform: 'translate(2px,-3px)' }, { transform: 'translate(-2px,2px)' }, { transform: 'translate(0,0)' }], { duration: 260, easing: 'ease-out' }); }
-        P.emit('spark', L.cx, L.boxY, 26, { colors: ['#9fdcff', '#ffffff', '#7fd8ff'], speed: [80, 260] });
-        W.shower = 3.2;
-        ctx.track('heist_end', { seconds: Math.round(W.t), reroutes: RU.reroutes, slips: RU.slips, reaches: W.reaches, draft: W.draft ? 1 : 0, taps: W.taps });
-        await K.finale('ripple', { from: [{ x: L.cx, y: L.boxY }, { x: RU.sx, y: RU.sy - RU.sz * 0.5 }], colors: ['#7fd8ff', '#5aa9ff', '#b79bff', '#9be7ff', '#7fd8ff'], chord: ['D4', 'A4', 'D5', 'F#5'], ms: 4400 });
+        await Promise.race([locked, K.wait(3400)]);
+        lockChunk();
+        await K.sleep(420);
+        sign.hidden = false; if (K.reduced()) sign.classList.add('hb-still');
+        if (A.ctx) { A.tone({ type: 'sawtooth', freq: 110, dur: 0.6, vol: 0.03, lp: 420, attack: 0.02 }); A.chime(A.note('A5'), { vol: 0.07, dur: 2 }); }
+        // mastery: calm guarding means each switch you flick actually stops him (no frantic tapping)
+        const calm = K.clamp(RU.bonks / Math.max(1, W.taps), 0, 1), pct = Math.round(calm * 100);
+        const tier = K.tier(0.75 * calm + 0.25 * (W.reaches === 0 ? 1 : W.reaches === 1 ? 0.5 : 0.2));
+        const best = W.taps ? K.best('calm', pct, 'higher') : { isNew: false };
+        const col = K.collect(DAY.treasure);
+        const badges = [tier ? tier + ' guard' : 'Night guard', best.isNew ? 'New best: ' + pct + '% calm guard' : null, col.isNew ? 'Collected: ' + DAY.treasure : null, W.reaches === 0 ? 'Vault never breached' : 'Waited it out'].filter(Boolean).slice(0, 4);
+        ctx.track('heist_end', { seconds: Math.round(W.endT), blocks: RU.reroutes, slips: RU.slips, reaches: W.reaches, draft: W.draft ? 1 : 0, taps: W.taps, calm: pct });
+        if (A.ctx) { A.pad(['D4', 'A4', 'D5', 'F#5'].map(n => A.note(n)), { dur: 5.5, vol: 0.16, attack: 0.6 }); A.sync('finale', performance.now()); }
+        W.twinkle = 3.6;
+        await K.sleep(4000);
         finished = true;
         const secs = Math.round(W.endT);
         ctx.finish({
           title: 'The urge passed', mood: 'sleepy',
-          lines: ['Urge peaked and passed in ' + secs + ' seconds', 'Nothing sent. Draft saved for tomorrow.', RU.reroutes ? 'Rush re-routed ' + RU.reroutes + ' time' + (RU.reroutes === 1 ? '' : 's') : 'You guarded the vault the whole way'],
+          lines: ['Urge peaked and passed in ' + secs + ' seconds', 'Nothing sent. Draft saved for tomorrow.', W.taps ? pct + '% calm guard · ' + RU.reroutes + ' block' + (RU.reroutes === 1 ? '' : 's') : 'You let the wave pass on its own'],
+          badges,
           share: 'Rode out an urge for ' + secs + ' seconds. Nothing sent.'
         });
       }
@@ -720,11 +962,14 @@
       S.on('theme', () => buildBg());
       (async () => {
         await K.intro({ title: 'Send Button Heist', sub: 'The urge wants to hit SEND right now. Guard the vault while the wave rises, peaks and passes.', how: 'Tap a switch to raise lasers in Rush’s lane.', char: 'rush', mood: 'determined' });
+        opTag.classList.add('on');
+        if (A.ctx) { snd.whoop(); }
         say('start', { mood: 'wink', moodMs: 1400 });
         rush.react('bounce');
         await K.sleep(1300);
         W.stage = 'play'; RU.state = 'run';
         guardGuide('TAP A SWITCH: BLOCK', 'block', 900);
+        K.later(() => opTag.classList.remove('on'), 2400);
       })();
 
       return {

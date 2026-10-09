@@ -414,8 +414,10 @@
     card.append(
       h('div', { class: 'a-afterhead' }, h('img', { class: 'a-afterimg', alt: '', src: TS.faceUrl((g.cast && g.cast[0]) || CFG.host, result.mood || 'celebrate') }),
         h('div', null, h('span', { class: 'a-gfam', text: g.name }), h('h2', { class: 'a-aftertitle', text: result.title || 'Nicely done' }))),
-      result.lines && result.lines.length ? h('ul', { class: 'a-lines' }, result.lines.slice(0, 3).map(l => h('li', { text: l }))) : null
+      result.lines && result.lines.length ? h('ul', { class: 'a-lines' }, result.lines.slice(0, 3).map(l => h('li', { text: l }))) : null,
+      result.badges && result.badges.length ? h('div', { class: 'a-badges' }, result.badges.slice(0, 4).map(b => h('span', { class: 'a-badge', text: b }))) : null
     );
+    if (result.badges && result.badges.length && A.ctx) TS.later(() => { ['E5', 'G5', 'C6'].forEach((n, i) => A.chime(A.note(n), { when: A.now() + i * 0.08, vol: 0.07, dur: 1.2 })); }, 500);
     const deltaEl = h('p', { class: 'a-delta', 'aria-live': 'polite' });
     const d = dial(card, {
       q: R.after, value: null, ghost: session.before,
