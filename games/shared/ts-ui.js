@@ -257,7 +257,9 @@
       if (!p) { layer.classList.add('tsg-guide-lost'); return; }
       layer.classList.remove('tsg-guide-lost');
       const W = TS.root.offsetWidth || 390, H = TS.root.offsetHeight || 700;
-      const above = spec.place === 'below' ? false : spec.place === 'above' ? true : p.y > 120;
+      let above = spec.place === 'below' ? false : spec.place === 'above' ? true : p.y > 120;
+      if (!above && p.y + 150 > H) above = true;   // never push the label off the bottom
+      if (above && p.y < 70 && p.y + 150 <= H) above = false;
       const key = Math.round(p.x / 2) + ':' + Math.round(p.y / 2) + ':' + above + ':' + W;
       if (key !== lastKey) {
         lastKey = key;
@@ -272,7 +274,6 @@
           p.rects.forEach((r, i) => halos.append(h('span', { class: 'tsg-halo', style: { left: (r.x - 5) + 'px', top: (r.y - 5) + 'px', width: (r.w + 10) + 'px', height: (r.h + 10) + 'px', '--i': String(i) } })));
         } else if (halos.firstChild) halos.innerHTML = '';
       }
-      void H;
     }
     function tick() {
       raf = 0;
@@ -285,10 +286,17 @@
       TS.cancel(showTimer);
       layer.hidden = false;
       layer.className = 'tsg-guide g-' + (spec.g || 'tap') + (TS.reduced() ? ' tsg-calm' : '');
-      demo.style.setProperty('--r', (spec.r || 60) + 'px');
-      demo.style.setProperty('--d', (spec.d || 80) + 'px');
-      demo.style.setProperty('--ms', (spec.ms || 1800) + 'ms');
-      demo.setAttribute('data-dir', spec.dir || 'r');
+      // every gesture variable lives on the anchor, so the demo AND the label/chevron can use it
+      const d = spec.d || 80, dir = spec.dir || 'r';
+      const vec = spec.dx != null || spec.dy != null ? [spec.dx || 0, spec.dy || 0] : ({ r: [d, 0], l: [-d, 0], u: [0, -d], d: [0, d], ur: [d * 0.7, -d * 0.7], ul: [-d * 0.7, -d * 0.7], dr: [d * 0.7, d * 0.7], dl: [-d * 0.7, d * 0.7] }[dir] || [d, 0]);
+      anchor.style.setProperty('--r', (spec.r || 60) + 'px');
+      anchor.style.setProperty('--d', d + 'px');
+      anchor.style.setProperty('--dx', vec[0].toFixed(1) + 'px');
+      anchor.style.setProperty('--dy', vec[1].toFixed(1) + 'px');
+      anchor.style.setProperty('--len', Math.hypot(vec[0], vec[1]).toFixed(1) + 'px');
+      anchor.style.setProperty('--ang', (Math.atan2(vec[1], vec[0]) * 180 / Math.PI).toFixed(1) + 'deg');
+      anchor.style.setProperty('--ms', (spec.ms || 1800) + 'ms');
+      demo.setAttribute('data-dir', dir);
       if (labelEl.textContent !== spec.label) { labelEl.textContent = spec.label || ''; labelW = 0; }
       if (sr.textContent !== spec.label) sr.textContent = spec.label || '';
       lastKey = '';

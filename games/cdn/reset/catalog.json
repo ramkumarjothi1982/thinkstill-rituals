@@ -1,0 +1,235 @@
+[
+ {
+  "id": "loop-rodeo",
+  "mode": "reset",
+  "name": "Loop Rodeo",
+  "verb": "circle",
+  "family": "INTERRUPT",
+  "minutes": 3,
+  "parents": [
+   "Memory / Replay / Rumination",
+   "Overthinking / Thought Fusion",
+   "Uncertainty / Future Worry / Reassurance"
+  ],
+  "cast": [
+   "loopie"
+  ],
+  "poster": {
+   "char": "loopie",
+   "mood": "dizzy"
+  },
+  "tagline": "Rope your racing thoughts while the music slows down.",
+  "why": "For thoughts on repeat: your thumb takes the wheel while the beat slows.",
+  "flagship": true,
+  "n": 1,
+  "file": "loop-rodeo.bbcb7f7a2b.js"
+ },
+ {
+  "id": "lighthouse-keeper",
+  "mode": "reset",
+  "name": "Lighthouse Keeper",
+  "verb": "breathe",
+  "family": "GROUND",
+  "minutes": 2,
+  "parents": [
+   "Panic / Body Alarm",
+   "Attention / Grounding / Mental Quiet",
+   "Sleep / Winding Down"
+  ],
+  "cast": [
+   "still"
+  ],
+  "poster": {
+   "char": "still",
+   "mood": "glow"
+  },
+  "tagline": "Breathe the beam across a stormy sea and bring your thoughts home.",
+  "why": "For a racing body: two breaths in, one long breath out, the fastest way to settle an alarm.",
+  "n": 2,
+  "file": "lighthouse-keeper.41270bccb5.js"
+ },
+ {
+  "id": "send-button-heist",
+  "mode": "reset",
+  "name": "Send Button Heist",
+  "verb": "guard",
+  "family": "CHOOSE",
+  "minutes": 2,
+  "parents": [
+   "Urges / Habit Loops",
+   "Communication / Boundaries"
+  ],
+  "cast": [
+   "rush"
+  ],
+  "poster": {
+   "char": "rush",
+   "mood": "determined"
+  },
+  "tagline": "Guard the SEND button with lasers while the urge peaks and passes.",
+  "why": "For an urge to send, text or act right now: ride the wave out without acting on it.",
+  "n": 3,
+  "file": "send-button-heist.cee692d0f4.js"
+ },
+ {
+  "id": "wrong-answers-only",
+  "mode": "reset",
+  "name": "Wrong Answers Only",
+  "verb": "buzz",
+  "family": "ACT",
+  "minutes": 2,
+  "parents": [
+   "Getting Started",
+   "Performance / Confidence"
+  ],
+  "cast": [
+   "rush"
+  ],
+  "poster": {
+   "char": "rush",
+   "mood": "laugh"
+  },
+  "tagline": "Game show: buzz the worst first steps, then find the tiniest real one.",
+  "why": "For a task you keep putting off: absurd giant steps make one tiny real start feel easy.",
+  "n": 4,
+  "file": "wrong-answers-only.9abbcaa30e.js"
+ },
+ {
+  "id": "pocket-universe",
+  "mode": "reset",
+  "name": "Pocket Universe",
+  "verb": "tune",
+  "family": "ORGANISE",
+  "minutes": 2,
+  "parents": [
+   "Mental Overload / Working Memory",
+   "Overthinking / Thought Fusion"
+  ],
+  "cast": [
+   "sync"
+  ],
+  "poster": {
+   "char": "sync",
+   "mood": "moon"
+  },
+  "tagline": "Tune gravity and time until every thought holds its own calm orbit.",
+  "why": "For too many thoughts at once: give each one its own orbit, then sort them by when.",
+  "n": 5,
+  "file": "pocket-universe.df03b8831a.js"
+ },
+ {
+  "id": "literally",
+  "mode": "reset",
+  "name": "Literally",
+  "verb": "stage",
+  "family": "INTERRUPT",
+  "minutes": 2,
+  "parents": [
+   "Inner Speech / Mental Text",
+   "Overthinking / Thought Fusion"
+  ],
+  "cast": [
+   "loopie"
+  ],
+  "poster": {
+   "char": "loopie",
+   "mood": "E38"
+  },
+  "tagline": "Put your thoughts on stage. Loopie acts them out, word for word.",
+  "why": "For a loud inner voice: act a thought out literally and it starts to sound like just words.",
+  "n": 6,
+  "file": "literally.21e80ec358.js"
+ },
+ {
+  "id": "block-party",
+  "mode": "reset",
+  "name": "Block Party",
+  "verb": "stack",
+  "family": "DISTANCE",
+  "minutes": 2,
+  "parents": [
+   "Mental Imagery",
+   "Memory / Replay / Rumination"
+  ],
+  "cast": [
+   "patch"
+  ],
+  "poster": {
+   "char": "patch",
+   "mood": "E04"
+  },
+  "tagline": "Stack pastel house parts into lit streets and build a town at dusk.",
+  "why": "For pictures that won’t leave: shapes fill the same mental space, so replays fade.",
+  "n": 7,
+  "file": "block-party.6b8e77f938.js"
+ },
+ {
+  "id": "lantern-down",
+  "mode": "reset",
+  "name": "Lantern Down",
+  "verb": "pull",
+  "family": "QUIET",
+  "minutes": 2,
+  "parents": [
+   "Sleep / Winding Down",
+   "Mental Overload / Working Memory"
+  ],
+  "cast": [
+   "still"
+  ],
+  "poster": {
+   "char": "still",
+   "mood": "E18"
+  },
+  "tagline": "Pull the city’s blinds down slowly and post tomorrow to tomorrow.",
+  "why": "For a busy head at bedtime: park tomorrow’s list, slow right down, lights out.",
+  "n": 8,
+  "file": "lantern-down.4e25ec78aa.js"
+ },
+ {
+  "id": "weather-report",
+  "mode": "reset",
+  "name": "Weather Report",
+  "verb": "forecast",
+  "family": "FEEL",
+  "minutes": 2,
+  "parents": [
+   "Emotion",
+   "Identity / Self"
+  ],
+  "cast": [
+   "sync"
+  ],
+  "poster": {
+   "char": "sync",
+   "mood": "E65"
+  },
+  "tagline": "Present the weather inside you, name it exactly, watch it pass.",
+  "why": "For a big or murky feeling: naming it precisely turns the volume down.",
+  "n": 9,
+  "file": "weather-report.5504b61a52.js"
+ },
+ {
+  "id": "let-off-steam",
+  "mode": "reset",
+  "name": "Let Off Steam",
+  "verb": "turn",
+  "family": "FEEL",
+  "minutes": 2,
+  "parents": [
+   "Emotion",
+   "Panic / Body Alarm"
+  ],
+  "cast": [
+   "rush"
+  ],
+  "poster": {
+   "char": "rush",
+   "mood": "fume"
+  },
+  "tagline": "Turn the kettle’s valve slowly, let the pressure out, pour a calm cup.",
+  "why": "For anger or frustration: slow, steady release settles it; blowing up keeps it hot.",
+  "n": 10,
+  "file": "let-off-steam.81db31ea37.js"
+ }
+]

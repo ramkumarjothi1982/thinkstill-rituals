@@ -58,7 +58,7 @@
     master.gain.value = TS.settings.sound ? 0.85 : 0;
     master.connect(comp); comp.connect(ctx.destination);
     const reverb = ctx.createConvolver();
-    reverb.buffer = makeImpulse(ctx, 2.6, 2.8);
+    reverb.buffer = makeImpulse(ctx, 1.8, 2.6);
     reverbIn = ctx.createGain(); reverbIn.gain.value = 0.9;
     const reverbOut = ctx.createGain(); reverbOut.gain.value = 0.32;
     reverbIn.connect(reverb); reverb.connect(reverbOut); reverbOut.connect(master);
@@ -211,9 +211,9 @@
     A.tone({ when, type: 'sine', freq: 150, to: 42, glide: 0.12, dur: 0.32, vol: vol ?? 0.75, attack: 0.002 });
     A.noise({ when, freq: 2400, q: 0.8, dur: 0.02, vol: (vol ?? 0.75) * 0.25 });
   };
-  A.drum = (when, vol, pitch) => { // a rawhide hand drum: low body + skin slap
+  A.drum = (when, vol, pitch, verb) => { // a rawhide hand drum: low body + skin slap (verb 0 keeps it dry and cheap)
     const p = pitch || 1;
-    A.tone({ when, type: 'sine', freq: 190 * p, to: 92 * p, glide: 0.18, dur: 0.42, vol: vol ?? 0.6, attack: 0.002, verb: 0.15 });
+    A.tone({ when, type: 'sine', freq: 190 * p, to: 92 * p, glide: 0.18, dur: 0.42, vol: vol ?? 0.6, attack: 0.002, verb: verb ?? 0.15 });
     A.tone({ when, type: 'triangle', freq: 320 * p, to: 210 * p, glide: 0.05, dur: 0.09, vol: (vol ?? 0.6) * 0.3, attack: 0.001 });
     A.noise({ when, freq: 900 * p, q: 1.4, dur: 0.06, vol: (vol ?? 0.6) * 0.35 });
   };
@@ -251,7 +251,7 @@
     g.gain.setValueAtTime(vol, when + dur * 0.6);
     g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
     osc.connect(f1); osc.connect(f2); f1.connect(g); f2.connect(g);
-    out(g, { pan: o.pan, verb: 0.2 });
+    out(g, { pan: o.pan, verb: o.verb ?? 0.2 });
     osc.start(when); lfo.start(when); osc.stop(when + dur + 0.05); lfo.stop(when + dur + 0.05);
     osc.onended = () => { try { g.disconnect(); } catch (e) { /* gone */ } };
   };

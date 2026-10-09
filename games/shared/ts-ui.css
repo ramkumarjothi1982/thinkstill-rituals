@@ -67,7 +67,8 @@
 /* ---------- toast ---------- */
 .tsg .ts-toast { position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); transform: translateX(-50%); background: var(--ui-surface); color: var(--ui-fg);
   border: 1px solid var(--ui-line); padding: 12px 16px; border-radius: 999px; font: 500 14px/1.25 var(--font-ui); z-index: 95; box-shadow: 0 8px 26px rgba(0, 0, 0, 0.3);
-  animation: tsg-rise 0.22s ease both; width: max-content; max-width: calc(100% - 32px); text-align: center; }
+  animation: tsg-toast-in 0.22s ease both; width: max-content; max-width: calc(100% - 32px); text-align: center; }
+@keyframes tsg-toast-in { from { transform: translate(-50%, 30px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
 .tsg .ts-toast-out { opacity: 0; transition: opacity 0.35s ease; }
 
 /* ---------- help check ---------- */
@@ -149,10 +150,8 @@
 .tsg .g-circle .tsg-guide-pointer { transform: translate(-50%, calc(-100% - var(--r) - 14px)); }
 .tsg .g-sweep .tsg-guide-handwrap { animation: tsg-sweep 1.7s ease-in-out infinite; }
 .tsg .g-sweep .tsg-guide-path { display: block; left: calc(var(--d) * -1); top: -2px; width: calc(var(--d) * 2); height: 0; border-top: 4px dashed rgba(255, 211, 107, 0.9); }
-.tsg .g-drag .tsg-guide-handwrap { animation: tsg-drag 1.9s ease-in-out infinite; }
-.tsg .g-drag[data-dir="l"] .tsg-guide-handwrap, .tsg .g-drag .tsg-guide-demo[data-dir="l"] .tsg-guide-handwrap { animation-name: tsg-drag-l; }
-.tsg .g-drag .tsg-guide-path { display: block; left: 0; top: -2px; width: var(--d); height: 0; border-top: 4px dashed rgba(255, 211, 107, 0.9); }
-.tsg .g-drag .tsg-guide-demo[data-dir="l"] .tsg-guide-path { left: calc(var(--d) * -1); }
+.tsg .g-drag .tsg-guide-handwrap { animation: tsg-drag-v 1.9s ease-in-out infinite; }
+.tsg .g-drag .tsg-guide-path { display: block; left: 0; top: -2px; width: var(--len, var(--d)); height: 0; border-top: 4px dashed rgba(255, 211, 107, 0.9); transform-origin: 0 50%; transform: rotate(var(--ang, 0deg)); }
 
 /* reduced motion: the hand rests on the target; only a slow opacity pulse */
 .tsg .tsg-calm .tsg-guide-handwrap, .tsg .tsg-calm .tsg-guide-orbit, .tsg .tsg-calm .tsg-hand, .tsg .tsg-calm .tsg-guide-chevwrap, .tsg .tsg-calm .tsg-guide-ripple,
@@ -171,6 +170,7 @@
 @keyframes tsg-rev { from { rotate: 0deg; } to { rotate: -360deg; } }
 @keyframes tsg-sweep { 0%, 100% { transform: translate(calc(var(--d) * -1), 0); } 25% { transform: translate(0, 12px); } 50% { transform: translate(var(--d), 0); } 75% { transform: translate(0, 12px); } }
 @keyframes tsg-drag { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 15% { transform: translate(0, 0) scale(0.88); } 72% { transform: translate(var(--d), 0) scale(0.88); opacity: 1; } 90%, 100% { transform: translate(var(--d), 0) scale(1); opacity: 0; } }
+@keyframes tsg-drag-v { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 15% { transform: translate(0, 0) scale(0.88); } 72% { transform: translate(var(--dx), var(--dy)) scale(0.88); opacity: 1; } 90%, 100% { transform: translate(var(--dx), var(--dy)) scale(1); opacity: 0; } }
 @keyframes tsg-drag-l { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 15% { transform: translate(0, 0) scale(0.88); } 72% { transform: translate(calc(var(--d) * -1), 0) scale(0.88); opacity: 1; } 90%, 100% { transform: translate(calc(var(--d) * -1), 0) scale(1); opacity: 0; } }
 @keyframes tsg-bob { 0%, 100% { transform: translateY(-4px); } 50% { transform: translateY(4px); } }
 @keyframes tsg-bob-up { 0%, 100% { transform: translateY(4px); } 50% { transform: translateY(-4px); } }

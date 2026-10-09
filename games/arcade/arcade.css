@@ -99,6 +99,9 @@
 .tsg-arcade .a-search:focus { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
 .tsg-arcade .a-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 10px; padding: 4px 16px calc(env(safe-area-inset-bottom, 0px) + 28px); width: min(1100px, 100%); margin: 0 auto; }
 .tsg-arcade .a-empty { color: var(--ui-muted); font-size: 15px; }
+.tsg-arcade .a-loading { position: absolute; z-index: 85; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+  border-radius: 18px; background: var(--ui-surface); border: 1px solid var(--ui-line); box-shadow: 0 12px 34px rgba(0, 0, 0, 0.35); font: 600 15px/1.2 var(--font-ui); width: max-content; max-width: calc(100% - 40px); }
+.tsg-arcade .a-loading img { width: 44px; height: 44px; object-fit: contain; animation: gk-spin 2.4s linear infinite; }
 
 /* play */
 .tsg-arcade .a-play { overflow: hidden; }
@@ -109,6 +112,8 @@
 .tsg-arcade .a-confirm { position: absolute; left: 0; top: calc(100% + 8px); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px; border-radius: 16px; background: var(--ui-surface); border: 1px solid var(--ui-line);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); font: 600 15px/1.2 var(--font-ui); width: max-content; max-width: calc(100cqw - 24px); }
 .tsg-arcade:has(.a-play:not([hidden])) .ts-brand { display: none; }
+/* No backdrop blur over a game that redraws every frame (expensive without a GPU); solid chips instead. */
+.tsg-arcade:has(.a-play:not([hidden])) .ts-icon-btn, .tsg-arcade .a-gname { -webkit-backdrop-filter: none; backdrop-filter: none; background: color-mix(in srgb, var(--ui-surface) 88%, transparent); }
 
 /* after */
 .tsg-arcade .a-after { position: absolute; inset: 0; z-index: 70; display: flex; align-items: flex-end; justify-content: center; overflow-y: auto; }

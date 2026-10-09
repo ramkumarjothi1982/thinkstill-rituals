@@ -52,17 +52,25 @@
       if (o.before) parent.prepend(c); else parent.append(c);
       const st = { el: c, g: null, w: 0, h: 0, dpr: 1 };
       const cbs = [];
+      /* The canvas always fills its parent (CSS 100%); its pixel size follows the parent, the device pixel ratio
+         (capped by maxDpr) and st.quality (lower it on slow devices). opaque: true skips alpha compositing. */
+      st.quality = 1;
       const fit = () => {
-        const w = c.clientWidth || parent.clientWidth, hh = c.clientHeight || parent.clientHeight;
+        const w = parent.clientWidth || c.clientWidth, hh = parent.clientHeight || c.clientHeight;
         if (!w || !hh) return;
-        const r = TS.fitCanvas(c, w, hh, o.maxDpr || 2);
-        st.g = r.ctx; st.dpr = r.dpr; st.w = w; st.h = hh;
+        const dpr = Math.max(0.75, Math.min(window.devicePixelRatio || 1, o.maxDpr || 2) * st.quality);
+        const pw = Math.round(w * dpr), ph = Math.round(hh * dpr);
+        if (c.width !== pw || c.height !== ph) { c.width = pw; c.height = ph; }
+        st.g = c.getContext('2d', o.opaque ? { alpha: false } : undefined);
+        st.g.setTransform(dpr, 0, 0, dpr, 0, 0);
+        st.dpr = dpr; st.w = w; st.h = hh;
         cbs.forEach(f => { try { f(st); } catch (e) { console.error(e); } });
       };
       st.onResize = (f) => { cbs.push(f); if (st.w) f(st); };
       st.clear = () => { if (st.g) { st.g.setTransform(st.dpr, 0, 0, st.dpr, 0, 0); st.g.clearRect(0, 0, st.w, st.h); } };
+      st.setQuality = (q) => { st.quality = TS.clamp(q, 0.5, 1); fit(); };
       st.fit = fit;
-      try { const ro = new ResizeObserver(() => fit()); ro.observe(c); S.onDestroy(() => ro.disconnect()); } catch (e) { S.listen(window, 'resize', fit); }
+      try { const ro = new ResizeObserver(() => fit()); ro.observe(parent); S.onDestroy(() => ro.disconnect()); } catch (e) { S.listen(window, 'resize', fit); }
       fit();
       return st;
     };
@@ -133,11 +141,7 @@
           const a = q.p.flicker ? k * (0.6 + 0.4 * Math.sin(q.age * 30 + q.ph)) : k;
           const s = q.size * (q.p.grow ? 1 + (1 - k) * 1.6 : 1);
           g.globalAlpha = Math.max(0, Math.min(1, a));
-          if (q.p.glow) {
-            const gl = g.createRadialGradient(q.x, q.y, 0, q.x, q.y, s * 3);
-            gl.addColorStop(0, q.col); gl.addColorStop(1, 'rgba(255,255,255,0)');
-            g.fillStyle = gl; g.fillRect(q.x - s * 3, q.y - s * 3, s * 6, s * 6);
-          }
+          if (q.p.glow) { const spr = glowSprite(q.col); g.drawImage(spr, q.x - s * 3, q.y - s * 3, s * 6, s * 6); }
           g.fillStyle = q.col; g.strokeStyle = q.col;
           if (q.p.rect) { g.save(); g.translate(q.x, q.y); g.rotate(q.rot); g.fillRect(-s / 2, -s / 4, s, s / 2); g.restore(); }
           else if (q.p.petal) { g.save(); g.translate(q.x, q.y); g.rotate(q.rot); g.beginPath(); g.ellipse(0, 0, s, s * 0.5, 0, 0, TAU); g.fill(); g.restore(); }
@@ -150,6 +154,16 @@
       P.count = () => P.list.length;
       return P;
     };
+    const glowCache = new Map();
+    function glowSprite(col) { // one soft radial sprite per colour, reused by every glowing particle
+      if (glowCache.has(col)) return glowCache.get(col);
+      const c = document.createElement('canvas'); c.width = c.height = 64;
+      const x = c.getContext('2d'), gr = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
+      glowCache.set(col, c); return c;
+    }
+    K.glowSprite = glowSprite;
     function starPath(g, x, y, R, r, n, rot) {
       g.beginPath();
       for (let i = 0; i < n * 2; i++) { const a = (rot || 0) + i * Math.PI / n - Math.PI / 2, rad = i % 2 ? r : R; g.lineTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad); }
@@ -442,6 +456,16 @@
       o = o || {};
       const st = STYLES[style] || STYLES.calm;
       const M = { on: true, bpm: o.bpm || st.bpm, beat: 0, next: 0, vol: 1 };
+      const beatCbs = [], recent = [];
+      /* Sync visuals to the music: M.onBeat(fn(time, index, beatInBar)) fires as each beat is scheduled (audio time);
+         M.phase() -> { beat, p } where p is 0..1 through the current beat as heard. */
+      M.onBeat = (fn) => { beatCbs.push(fn); };
+      M.phase = () => {
+        const vt = A.now() - A.latency();
+        let prev = null; for (const b of recent) { if (b.t <= vt) prev = b; }
+        if (!prev) return { beat: 0, p: 0 };
+        return { beat: prev.i, p: TS.clamp((vt - prev.t) / (60 / M.bpm), 0, 1) };
+      };
       let waves = null;
       const startIt = () => { if (!A.ctx) return false; M.next = A.now() + 0.15; if (st.waves && !waves) { waves = A.loop({ pink: true, filter: 'lowpass', freq: 600, q: 0.4, bus: 'amb' }); } return true; };
       let started = startIt();
@@ -466,6 +490,8 @@
             A.shaker(time + 30 / M.bpm, 0.025 * st.perc * v);
           }
           if (st.twinkle && Math.random() < 0.35) A.tone({ when: time + Math.random() * 0.4, type: 'sine', freq: A.note(chord[Math.floor(Math.random() * chord.length)]) * 2, dur: 0.6, vol: 0.02 * v, verb: 0.6, bus: 'music' });
+          recent.push({ t: time, i }); if (recent.length > 8) recent.shift();
+          beatCbs.forEach(f => { try { f(time, i, b); } catch (e) { console.error(e); } });
           M.beat++; M.next += 60 / M.bpm;
         }
       });
@@ -475,14 +501,20 @@
       S.onDestroy(M.stop);
       return M;
     };
-    K.ambience = (kind) => { const a = A.ambience(kind); S.onDestroy(() => a.stop(0.4)); return a; };
+    K.ambience = (kind) => {
+      let a = A.ctx ? A.ambience(kind) : null, lvl = null, stopped = false;
+      if (!a) S.on('audio-ready', () => { if (!a && !stopped) { a = A.ambience(kind); if (lvl) a.level(lvl[0], lvl[1]); } });
+      const proxy = { get layers() { return a ? a.layers : {}; }, level(v, t) { lvl = [v, t]; if (a) a.level(v, t); }, stop(f) { stopped = true; if (a) a.stop(f); } };
+      S.onDestroy(() => proxy.stop(0.4));
+      return proxy;
+    };
 
     /* ---------------- finales ---------------- */
     /* A library of spectacular endings. Games combine one with their own objects and colours, so each ending is the game's own. */
     K.finale = (kind, o) => {
       o = o || {};
       const dur = (o.ms || 3600) * (TS.reduced() ? 0.5 : 1);
-      const cv = K.canvas(root, { cls: 'gk-finale' });
+      const cv = K.canvas(root, { cls: 'gk-finale', maxDpr: 1.5 });
       const P = K.particles({ max: 900 });
       const W = () => cv.w, H = () => cv.h;
       const cols = o.colors || ['#ffd36b', '#ff8fb1', '#7fd8ff', '#b79bff', '#9ff0c0'];
@@ -532,10 +564,10 @@
         if (kind === 'confetti' && t < 1.4 && Math.random() < 0.9) P.emit('confetti', W() * Math.random(), -10, 6, { angle: Math.PI / 2, spread: 0.8, speed: [60, 200], colors: cols });
         if (kind === 'confetti' && t < 0.1) from.forEach(p => P.emit('confetti', p.x, p.y, 40, { angle: -Math.PI / 2, spread: 1.2, colors: cols }));
         if (kind === 'bubbles' && t < dur / 1000 - 1) from.forEach(p => { if (Math.random() < 0.3) P.emit('bubble', p.x + (Math.random() - 0.5) * 40, p.y, 1); });
-        if (kind === 'fireflies' && t < dur / 1000 - 0.8 && Math.random() < 0.5) P.emit('mote', Math.random() * W(), H() * (0.3 + Math.random() * 0.6), 1, { colors: ['#e9ff9a', '#fff3a0'] });
+        if (kind === 'fireflies' && t < dur / 1000 - 0.8 && Math.random() < 0.5) P.emit('mote', Math.random() * W(), H() * (0.3 + Math.random() * 0.6), 1, { colors: o.colors || ['#e9ff9a', '#fff3a0'] });
         if (kind === 'petals' && t < dur / 1000 - 1 && Math.random() < 0.7) P.emit('petal', Math.random() * W(), -10, 1, { angle: Math.PI / 2, spread: 0.6, speed: [30, 80], colors: cols });
         if (kind === 'lanterns' && t < dur / 1000 - 1 && Math.random() < 0.25) P.emit('mote', Math.random() * W(), H() * (0.2 + Math.random() * 0.5), 1, { colors: ['#fff3c4'] });
-        if (kind === 'stars' && t < dur / 1000 - 1 && Math.random() < 0.6) P.emit('star', Math.random() * W(), Math.random() * H() * 0.6, 1, { speed: [5, 20] });
+        if (kind === 'stars' && t < dur / 1000 - 1 && Math.random() < 0.6) P.emit('star', Math.random() * W(), Math.random() * H() * 0.6, 1, { speed: [5, 20], colors: o.colors });
         if (kind === 'lanterns') items.forEach(it => {
           const lt = t - it.d; if (lt < 0) return;
           it.x += it.vx * dt; const y = it.y - lt * lt * 18 - lt * 40;
@@ -610,7 +642,7 @@
     K.phrases = (text, max, maxWords) => {
       const raw = TS.clean(text || '', 600);
       if (!raw) return [];
-      const parts = raw.split(/[.!?;\n]+|,\s+|\s+(?:and|but|so|because|then)\s+/i).map(x => x.trim()).filter(x => x.split(/\s+/).length >= 2);
+      const parts = raw.split(/[.!?;\n]+|,\s+(?=(?:and|but|so|then|now|i|i'm|i’m|she|he|they|it|my|we|everyone|nobody)\b)|\s+(?:and|but|because)\s+(?=(?:i|i'm|i’m|she|he|they|it|my|we|you|everyone|nobody|people)\b)/i).map(x => x.trim().replace(/^(and|but|so|then|now)\s+/i, '')).filter(x => x.split(/\s+/).length >= 2);
       const out = [];
       parts.forEach(p => { const w = p.split(/\s+/); out.push(w.length > (maxWords || 7) ? w.slice(0, maxWords || 7).join(' ') + '…' : p); });
       return out.slice(0, max || 6);
@@ -644,15 +676,13 @@
 
     /* ---------------- test helpers (autoplay in QA) ---------------- */
     let pid = 40;
-    const fire = (el, type, x, y, id) => {
-      const r = el.getBoundingClientRect();
-      const cx = x == null ? r.left + r.width / 2 : r.left + x * K.scaleOf(el), cy = y == null ? r.top + r.height / 2 : r.top + y * K.scaleOf(el);
-      el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, composed: true, clientX: cx, clientY: cy, pointerId: id, pointerType: 'touch', isPrimary: true, button: 0, buttons: type === 'pointerup' ? 0 : 1 }));
-    };
+    const toClient = (el, x, y, r) => { r = r || el.getBoundingClientRect(); const sc = K.scaleOf(el); return { cx: x == null ? r.left + r.width / 2 : r.left + x * sc, cy: y == null ? r.top + r.height / 2 : r.top + y * sc }; };
+    const fireAt = (el, type, cx, cy, id) => el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, composed: true, clientX: cx, clientY: cy, pointerId: id, pointerType: 'touch', isPrimary: true, button: 0, buttons: type === 'pointerup' ? 0 : 1 }));
+    const fire = (el, type, x, y, id, rect) => { const p = toClient(el, x, y, rect); fireAt(el, type, p.cx, p.cy, id); };
     K.sim = {
       async tap(el, x, y) { const id = ++pid; fire(el, 'pointerdown', x, y, id); await S.sleep(60); fire(el, 'pointerup', x, y, id); try { el.click(); } catch (e) { /* not clickable */ } await S.sleep(40); },
-      async press(el, x, y) { const id = ++pid; fire(el, 'pointerdown', x, y, id); return { id, move: (mx, my) => fire(el, 'pointermove', mx, my, id), up: (ux, uy) => fire(el, 'pointerup', ux, uy, id) }; },
-      async drag(el, a, b, ms, steps) { const id = ++pid; steps = steps || 12; fire(el, 'pointerdown', a.x, a.y, id); for (let i = 1; i <= steps; i++) { await S.sleep((ms || 400) / steps); fire(el, 'pointermove', TS.lerp(a.x, b.x, i / steps), TS.lerp(a.y, b.y, i / steps), id); } fire(el, 'pointerup', b.x, b.y, id); await S.sleep(40); },
+      async press(el, x, y) { const id = ++pid, r0 = el.getBoundingClientRect(); fire(el, 'pointerdown', x, y, id, r0); return { id, move: (mx, my) => fire(el, 'pointermove', mx, my, id, r0), up: (ux, uy) => fire(el, 'pointerup', ux, uy, id, r0) }; },
+      async drag(el, a, b, ms, steps) { const id = ++pid, r0 = el.getBoundingClientRect(); steps = steps || 12; fire(el, 'pointerdown', a.x, a.y, id, r0); for (let i = 1; i <= steps; i++) { await S.sleep((ms || 400) / steps); fire(el, 'pointermove', TS.lerp(a.x, b.x, i / steps), TS.lerp(a.y, b.y, i / steps), id, r0); } fire(el, 'pointerup', b.x, b.y, id, r0); await S.sleep(40); },
       async hold(el, ms, x, y) { const id = ++pid; fire(el, 'pointerdown', x, y, id); await S.sleep(ms); fire(el, 'pointerup', x, y, id); },
       click(el) { el.click(); },
       wait: (ms) => S.sleep(ms)

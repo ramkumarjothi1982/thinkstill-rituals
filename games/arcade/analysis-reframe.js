@@ -37,7 +37,7 @@
   /* Clauses that are exact substrings of the original text (for spans and the UV scan). */
   function clauses(text) {
     const out = [];
-    const re = /[^.!?;\n]+[.!?]*/g;
+    const re = /(?:"[^"\n]*"|“[^”\n]*”|[^.!?;\n"“])+[.!?]*/g;
     let m;
     while ((m = re.exec(text))) {
       const sentence = m[0], base = m.index;
@@ -126,7 +126,8 @@
     if (!witness) { witness = { id: 'ew', kind: 'brain', text: 'This means something bad.', why: 'A conclusion, not something a camera could see.', quote: '' }; exhibits.push(witness); }
     exhibits = exhibits.filter(e => e !== witness).concat([witness]);
     const camIds = exhibits.filter(e => e.kind === 'camera').map(e => e.id);
-    const dom = DOMAINS.find(d => d.re.test(raw)) || GENERIC;
+    const domScore = (d) => (raw.match(new RegExp(d.re.source, 'gi')) || []).length * (d.key === 'reply' ? 0.8 : 1) + (d.key === 'money' ? 0.5 : 0);
+    const dom = DOMAINS.map(d => [d, domScore(d)]).filter(x => x[1] > 0.5).sort((a, b) => b[1] - a[1]).map(x => x[0])[0] || GENERIC;
     const first = witness.text.replace(/[.!?…]+$/, '').split(/,\s+|\s+(?:and|but|so)\s+/i)[0];
     const cw = first.split(/\s+/);
     const conclusion = (cw.length > 10 ? cw.slice(0, 10).join(' ') : first) + '.';
@@ -153,7 +154,7 @@
       distortions, spans, exhibits: exhibits.map(({ quote, ...e }) => e), witness_id: witness.id, unknowns, alternatives,
       fear_support: strong ? 'strong' : some ? 'some' : 'weak',
       support_reason: strong ? 'Something on record points toward this, so it deserves a plan.' : some ? 'There is a real basis for concern here, but it isn’t decided yet.' : 'The facts on record don’t point to this more than to the other explanations.',
-      balanced: TS.words((cams[0] ? cams[0].text.replace(/\.$/, '') + '. ' : '') + (strong ? 'This is a real concern and worth a plan.' : 'That fits several explanations, and the facts don’t settle it yet.'), 26),
+      balanced: (cams[0] && cams[0].text.split(/\s+/).length <= 12 ? cams[0].text.replace(/\.$/, '') + '. ' : '') + (strong ? 'This is a real concern and worth a plan.' : some ? 'There’s a real basis for concern, but it isn’t decided yet.' : 'That fits several explanations, and the facts don’t settle it yet.'),
       friend: dom.friend, future: dom.future,
       evidence_for: cams.slice(0, 2).map(e => e.text), evidence_against: alternatives.filter(a => !a.fear).slice(0, 2).map(a => a.theory),
       probability: { fear: strong ? 70 : some ? 40 : 20, basis: strong ? 'Something on record points this way.' : 'Several ordinary explanations fit the same facts.' },

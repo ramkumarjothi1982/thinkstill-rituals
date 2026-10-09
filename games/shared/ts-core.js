@@ -67,6 +67,8 @@
   TS.INTENSITIES = ['Gentle', 'Standard', 'Full'];
   const defaults = { vibe: 'Jolly', intensity: 'Standard', theme: 'system', sound: true, motion: 'system' };
   const settings = Object.assign({}, defaults, TS.store.get('settings', {}));
+  const storedSettings = TS.store.get('settings', {}) || {};
+  if (opts.defaults) Object.keys(opts.defaults).forEach(k => { if (storedSettings[k] == null && opts.defaults[k] != null && opts.defaults[k] !== '') settings[k] = opts.defaults[k]; });
   ['vibe', 'intensity', 'theme', 'motion'].forEach(k => { if (opts[k]) settings[k] = opts[k]; });
   if (typeof opts.sound === 'boolean') settings.sound = opts.sound;
   try {
@@ -79,9 +81,10 @@
   if (!['system', 'dark', 'bright'].includes(settings.theme)) settings.theme = 'system';
   TS.settings = settings;
 
-  TS.set = (key, value) => {
+  TS.set = (key, value, o) => {
+    if (settings[key] === value && o && o.quiet) return;
     settings[key] = value;
-    TS.store.set('settings', settings);
+    if (!o || o.persist !== false) TS.store.set('settings', settings); // host prop changes (Framer canvas) are not the player's choice
     if (key === 'theme') { if (value === 'dark' || value === 'bright') rawSet('__ts_chat_theme_v181', value); applyTheme(); }
     if (key === 'motion') applyMotion();
     TS.emit('settings', { key, value });
@@ -232,9 +235,13 @@
 
   /* Expression art: the same GitHub base the Release Arcade uses, overridable from Framer. */
   TS.ASSET_BASE = String(opts.assetBase || env.assetBase || 'https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/main/bubble-expressions/').replace(/\/?$/, '/');
+  /* A build that ships only some expressions (the claude.ai artifact) lists them; anything else falls back to the
+     character's neutral face rather than a broken image. */
+  const assetSet = Array.isArray(env.assetList) ? new Set(env.assetList) : null;
   TS.face = (slug, e) => {
-    const key = slug + '_' + e;
+    let key = slug + '_' + e;
     if (env.assets && env.assets[key]) return env.assets[key];
+    if (assetSet && !assetSet.has(key)) key = slug + '_' + ((env.assetFallback && env.assetFallback[slug]) || 'E01');
     return TS.ASSET_BASE + key + '.webp';
   };
 

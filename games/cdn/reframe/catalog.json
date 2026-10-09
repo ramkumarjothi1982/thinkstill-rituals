@@ -1,0 +1,244 @@
+[
+ {
+  "id": "case-file",
+  "mode": "reframe",
+  "name": "Case File",
+  "verb": "scan",
+  "family": "REFRAME",
+  "minutes": 3,
+  "parents": [
+   "Beliefs / Evidence",
+   "Social / Team / Perspective",
+   "Uncertainty / Future Worry / Reassurance"
+  ],
+  "cast": [
+   "glitch",
+   "patch",
+   "drop",
+   "rush",
+   "still",
+   "sync"
+  ],
+  "poster": {
+   "char": "glitch",
+   "mood": "smug"
+  },
+  "tagline": "Inspector Glitch closed your case in 0.3 seconds. Reopen it.",
+  "why": "For a scary conclusion: separate what a camera saw from what your brain added.",
+  "flagship": true,
+  "n": 1,
+  "file": "case-file.7a8d07ae93.js"
+ },
+ {
+  "id": "map-of-maybes",
+  "mode": "reframe",
+  "name": "Map of Maybes",
+  "verb": "route",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Uncertainty / Future Worry / Reassurance",
+   "Beliefs / Evidence"
+  ],
+  "cast": [
+   "glitch"
+  ],
+  "poster": {
+   "char": "glitch",
+   "mood": "cool"
+  },
+  "tagline": "Drive every road the facts allow. The fear is one district.",
+  "why": "For a story stuck on one ending: drive every explanation the facts allow, then pick a hunch.",
+  "n": 2,
+  "file": "map-of-maybes.83260c4253.js"
+ },
+ {
+  "id": "prediction-vault",
+  "mode": "reframe",
+  "name": "Prediction Vault",
+  "verb": "seal",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Uncertainty / Future Worry / Reassurance",
+   "Performance / Confidence"
+  ],
+  "cast": [
+   "glitch"
+  ],
+  "poster": {
+   "char": "glitch",
+   "mood": "cool"
+  },
+  "tagline": "Seal your prediction in the vault. Reality opens it later.",
+  "why": "For a fear about what will happen: write it as a prediction, set the odds, check it on the day.",
+  "n": 3,
+  "file": "prediction-vault.5e13a81ef2.js"
+ },
+ {
+  "id": "missing-scene",
+  "mode": "reframe",
+  "name": "Missing Scene",
+  "verb": "splice",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Memory / Replay / Rumination",
+   "Social / Team / Perspective"
+  ],
+  "cast": [
+   "drop"
+  ],
+  "poster": {
+   "char": "drop",
+   "mood": "happy"
+  },
+  "tagline": "Splice the missing scenes into a memory on repeat. Then roll it.",
+  "why": "For a moment you keep replaying: add the context the replay cut out, then watch it again.",
+  "n": 4,
+  "file": "missing-scene.3832c3e56e.js"
+ },
+ {
+  "id": "mood-glasses",
+  "mode": "reframe",
+  "name": "Mood Glasses",
+  "verb": "swap",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Emotion",
+   "Beliefs / Evidence"
+  ],
+  "cast": [
+   "sync"
+  ],
+  "poster": {
+   "char": "sync",
+   "mood": "rainbow"
+  },
+  "tagline": "Swap four lenses on the same street. See what the feeling adds.",
+  "why": "When a feeling feels like proof: compare the fear lens with the facts, then pick a fairer pair.",
+  "n": 5,
+  "file": "mood-glasses.8637ea97d6.js"
+ },
+ {
+  "id": "late-night-line",
+  "mode": "reframe",
+  "name": "Late Night Line",
+  "verb": "mix",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Identity / Self",
+   "Inner Speech / Mental Text",
+   "Social / Team / Perspective"
+  ],
+  "cast": [
+   "patch"
+  ],
+  "poster": {
+   "char": "patch",
+   "mood": "cosy"
+  },
+  "tagline": "Host a 2am call-in. Mix a kind, fair reply. Then hear who called.",
+  "why": "For a harsh inner voice: answer yourself the way you would answer a friend.",
+  "n": 6,
+  "file": "late-night-line.9370992d37.js"
+ },
+ {
+  "id": "time-telescope",
+  "mode": "reframe",
+  "name": "Time Telescope",
+  "verb": "focus",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Decision Pressure",
+   "Uncertainty / Future Worry / Reassurance",
+   "Values / Meaning / Grief"
+  ],
+  "cast": [
+   "drop"
+  ],
+  "poster": {
+   "char": "drop",
+   "mood": "wow"
+  },
+  "tagline": "Turn the ring: see your worry from 10 minutes, months and years away.",
+  "why": "For a worry that fills the sky: the 10-10-10 view from the future shrinks it to size, honestly.",
+  "n": 7,
+  "file": "time-telescope.cfee3963a3.js"
+ },
+ {
+  "id": "spectrum-factory",
+  "mode": "reframe",
+  "name": "Spectrum Factory",
+  "verb": "blend",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Performance / Confidence",
+   "Identity / Self",
+   "Beliefs / Evidence"
+  ],
+  "cast": [
+   "patch"
+  ],
+  "poster": {
+   "char": "patch",
+   "mood": "idea"
+  },
+  "tagline": "Black-and-white label? Blend its real colour on a 0-100 spectrum.",
+  "why": "For all-or-nothing verdicts: anchor a 0-100 line with real examples, then place what happened.",
+  "n": 8,
+  "file": "spectrum-factory.8fbfff3042.js"
+ },
+ {
+  "id": "scale-shop",
+  "mode": "reframe",
+  "name": "Scale Shop",
+  "verb": "weigh",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Mental Overload / Working Memory",
+   "Uncertainty / Future Worry / Reassurance",
+   "Emotion"
+  ],
+  "cast": [
+   "rush"
+  ],
+  "poster": {
+   "char": "rush",
+   "mood": "determined"
+  },
+  "tagline": "It feels like a 10. Weigh it against real things on a brass scale.",
+  "why": "When a worry feels enormous: compare it with everyday mishaps to find its real weight.",
+  "n": 9,
+  "file": "scale-shop.52836df7d2.js"
+ },
+ {
+  "id": "responsibility-pie",
+  "mode": "reframe",
+  "name": "Responsibility Pie",
+  "verb": "slice",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Social / Team / Perspective",
+   "Identity / Self",
+   "Communication / Boundaries"
+  ],
+  "cast": [
+   "patch"
+  ],
+  "poster": {
+   "char": "patch",
+   "mood": "cosy"
+  },
+  "tagline": "Feels all your fault? Bake a pie of every cause and slice it fairly.",
+  "why": "For self-blame: list every factor that played a part, then size your share honestly.",
+  "n": 10,
+  "file": "responsibility-pie.7154bbd271.js"
+ }
+]

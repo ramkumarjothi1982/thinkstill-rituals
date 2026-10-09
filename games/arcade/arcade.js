@@ -46,7 +46,10 @@
   const TITLE = String(TS.opts.title || CFG.title);
 
   /* ---------------- games ---------------- */
-  const GAMES = (env.games || []).filter(g => g && g.mode === MODE && typeof g.mount === 'function');
+  /* Games are either inline (env.games: full definitions) or in the catalog (env.catalog: metadata only), loaded on
+     first play from env.gameBase. The Framer build ships the catalog, so the component stays small at 100+ games. */
+  const inline = (env.games || []).filter(g => g && g.mode === MODE && typeof g.mount === 'function');
+  const GAMES = inline.concat((env.catalog || []).filter(c => c && c.mode === MODE && !inline.some(g => g.id === c.id)).map(c => Object.assign({}, c, { lazy: true })));
   GAMES.forEach((g, i) => { g.order = i; g.family = g.family || PARENT_FAMILY[(g.parents || [])[0]] || 'EXPLORE'; g.parents = g.parents || []; });
   const byId = (id) => GAMES.find(g => g.id === id);
   TS.arcadeGames = GAMES;
@@ -247,7 +250,7 @@
     if (stage.current !== sc.home) return;
     const n = TS.clean(textEl.value, 700).split(/\s+/).filter(Boolean).length;
     if (n >= 3) UI.guide.set({ id: 'home-find', g: 'tap', target: $('.a-find'), label: 'FIND MY GAME', delay: 500 });
-    else UI.guide.set({ id: 'home-type', g: 'type', target: textEl, label: MODE === 'reset' ? 'TYPE WHAT’S GOING ON' : 'TYPE WHAT HAPPENED', oy: 0.35, delay: 1200 });
+    else UI.guide.set({ id: 'home-type', g: 'type', target: textEl, label: MODE === 'reset' ? 'TYPE WHAT’S GOING ON' : 'TYPE WHAT HAPPENED', ox: 0.62, oy: 0.86, delay: 1200 }); // low in the box, so the label never covers the question
   }
   function renderRecent() {
     const ids = recent().slice(0, 8), strip = $('.a-strip');
@@ -341,6 +344,10 @@
       await Promise.race([session.ready, wait]);
     }
     if (session.analysis && session.analysis.safety === 'support') { support(); return; }
+    if (typeof g.mount !== 'function') {
+      const ok = await loadGame(g);
+      if (!ok) { UI.toast('Couldn’t load that game. Check your connection and try again.'); return; }
+    }
     const an = session.analysis || AN.local(session.text || '');
     $('.a-gname').textContent = g.name;
     const el = h('div', { class: 'gk-game g-' + g.id, 'aria-label': g.name });
@@ -372,6 +379,42 @@
     try { current.api = (await g.mount(ctx)) || {}; }
     catch (e) { console.error('game failed', g.id, e); TS.track('game_error', { id: g.id }); UI.toast('That game hit a snag. Try another.'); leave(); }
   }
+  /* Lazy game loader: one <script> per game from env.gameBase; the script hands its module back by key. */
+  const loading = {};
+  function loadGame(g) {
+    if (loading[g.id]) return loading[g.id];
+    const reg = (window.__tsgGame = window.__tsgGame || {});
+    const key = MODE + '/' + g.id;
+    const take = () => {
+      const fn = reg[key]; if (typeof fn !== 'function') return false;
+      const sink = Object.create(env); sink.games = []; // the game sees this console's env (env.TS) but registers into the sink
+      try { fn(sink); } catch (e) { console.error('game load failed', g.id, e); return false; }
+      const def = sink.games.find(x => x && x.id === g.id);
+      if (!def) return false;
+      Object.assign(g, def, { lazy: false });
+      return true;
+    };
+    if (take()) return Promise.resolve(true);
+    const base = String(env.gameBase || TS.opts.gameBase || '').replace(/\/?$/, '/');
+    if (!base || base === '/') return Promise.resolve(false);
+    const veil = h('div', { class: 'a-loading', role: 'status' }, h('img', { alt: '', src: TS.faceUrl((g.cast && g.cast[0]) || CFG.host, 'think') }), h('span', { text: 'Loading ' + g.name + '…' }));
+    root.append(veil);
+    loading[g.id] = new Promise((resolve) => {
+      const s = document.createElement('script');
+      s.async = true; s.src = base + (g.file || (g.id + '.js')); s.crossOrigin = 'anonymous';
+      let done = false;
+      const fin = (ok) => { if (done) return; done = true; veil.remove(); if (!ok) delete loading[g.id]; resolve(ok); };
+      s.onload = () => fin(take());
+      s.onerror = () => fin(false);
+      TS.later(() => fin(take()), 20000);
+      document.head.appendChild(s);
+    });
+    return loading[g.id];
+  }
+  /* Warm the next likely games quietly once the console is idle, so taps feel instant. */
+  function prefetch(list) { list.filter(x => typeof x.mount !== 'function').slice(0, 2).forEach(x => { TS.later(() => loadGame(x).then(() => {}), 1500); }); }
+  TS.on('analysis', () => { if (stage.current === sc.check) prefetch(recommend(session.analysis, 3)); });
+
   function unmount() {
     if (!current) return;
     try { current.S.destroy(); } catch (e) { console.error(e); }
@@ -411,12 +454,12 @@
     const card = h('div', { class: 'a-card a-aftercard' });
     after.append(h('div', { class: 'a-afterscrim' }), card);
     const R = CFG.rate;
-    card.append(
+    card.append(...[
       h('div', { class: 'a-afterhead' }, h('img', { class: 'a-afterimg', alt: '', src: TS.faceUrl((g.cast && g.cast[0]) || CFG.host, result.mood || 'celebrate') }),
         h('div', null, h('span', { class: 'a-gfam', text: g.name }), h('h2', { class: 'a-aftertitle', text: result.title || 'Nicely done' }))),
       result.lines && result.lines.length ? h('ul', { class: 'a-lines' }, result.lines.slice(0, 3).map(l => h('li', { text: l }))) : null,
       result.badges && result.badges.length ? h('div', { class: 'a-badges' }, result.badges.slice(0, 4).map(b => h('span', { class: 'a-badge', text: b }))) : null
-    );
+    ].filter(Boolean));
     if (result.badges && result.badges.length && A.ctx) TS.later(() => { ['E5', 'G5', 'C6'].forEach((n, i) => A.chime(A.note(n), { when: A.now() + i * 0.08, vol: 0.07, dur: 1.2 })); }, 500);
     const deltaEl = h('p', { class: 'a-delta', 'aria-live': 'polite' });
     const d = dial(card, {
