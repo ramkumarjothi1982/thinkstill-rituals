@@ -174,9 +174,9 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
      !important, so the keyframes can show them */
   ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud::before{content:""!important;position:absolute!important;inset:0!important;border-radius:14px!important;background:linear-gradient(180deg,rgba(3,20,31,.97),rgba(5,8,22,.97))!important;box-shadow:inset 0 0 0 1px rgba(255,230,115,.24),0 0 16px rgba(255,214,102,.14)!important;z-index:3!important;pointer-events:none!important;opacity:0;visibility:hidden}
   ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud>:is(.token,.chain){position:absolute!important;top:3px!important;bottom:auto!important;height:22px!important;padding:0 7px!important;letter-spacing:.04em!important;box-shadow:none!important;z-index:4!important;opacity:0;visibility:hidden}
-  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud>.token{right:calc(45% + 2px)!important;left:auto!important}
-  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud>.chain{left:calc(55% + 2px)!important;right:auto!important}
-  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud.isHit::before{animation:eosReadTick 1.6s ease both!important}
+  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud>.token{right:calc(45% + 2px)!important;left:auto!important;transform-origin:right center!important}
+  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud>.chain{left:calc(55% + 2px)!important;right:auto!important;transform-origin:left center!important}
+  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud.isHit::before{animation:eosReadBand 1.75s ease both!important}
   ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud.isHit>:is(.token,.chain){animation:eosReadTick 1.6s ease both!important}
   ${EOS_A}.stage-play .releaseGameHost .tsShiftLevel{min-width:56px!important}
   ${EOS_A}.stage-play .tsShiftRewardPill.chain{display:inline-flex!important}
@@ -198,11 +198,16 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
   ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud.isHit>:is(.token,.chain){animation:eosReadTick 1.6s ease both,tsRewardPillHit .52s cubic-bezier(.15,.9,.2,1.25) both!important}
 }
 @media (max-width:560px) and (prefers-reduced-motion:no-preference){
-  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud.isHit>.spark{animation:eosReadTick 1.3s ease both,tsRewardPillHit .52s cubic-bezier(.15,.9,.2,1.25) both!important}
-  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud.isHit>:is(.token,.chain){animation:eosReadTick 1.3s ease 1.3s both,tsRewardPillHit .52s cubic-bezier(.15,.9,.2,1.25) 1.3s both!important}
+  /* the narrowed meter's pop: one more class, so it wins over the plain (max-width:560px) rules further down */
+  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud.tsShiftRewardHud.isHit>.spark{animation:eosReadTick 1.3s ease both,tsRewardPillHit .52s cubic-bezier(.15,.9,.2,1.25) both!important}
+  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud.tsShiftRewardHud.isHit>:is(.token,.chain){animation:eosReadTick 1.3s ease 1.3s both,tsRewardPillHit .52s cubic-bezier(.15,.9,.2,1.25) 1.3s both!important}
 }
 /* the phone hit ticker: fade in, hold, fade out; ends hidden (fill both) */
 @keyframes eosReadTick{0%{opacity:0;visibility:visible}10%{opacity:1;visibility:visible}84%{opacity:1;visibility:visible}100%{opacity:0;visibility:hidden}}
+/* the band under the ticker pills: in first, and it holds until the pills have faded out (1.6 s / 2.6 s), then it goes
+   (a band fading first let SHIFT / LVL show through behind half-visible pills) */
+@keyframes eosReadBand{0%{opacity:0;visibility:visible}6%{opacity:1;visibility:visible}91.5%{opacity:1;visibility:visible}100%{opacity:0;visibility:hidden}}
+@keyframes eosReadBand2{0%{opacity:0;visibility:visible}4%{opacity:1;visibility:visible}94.6%{opacity:1;visibility:visible}100%{opacity:0;visibility:hidden}}
 @media (max-width:560px){
   ${EOS_A}.stage-play:not(.releaseGlobal99Upgrade) .tsThoughtLabelHost>:is(.tsBubbleTextContainer,.tsExternalThoughtLabel){min-width:56px!important;max-width:min(118px,31vw)!important;padding:4px 7px!important}
   /* feedback cards on phones (every arcade rule ≤ 10-12 px at this width) */
@@ -246,7 +251,7 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
      the hit ticker runs in two phases inside the same row — SPARKS centred (0-1.3 s, with its pop), then TOKENS +
      CHAIN (1.3-2.6 s) — never a stack of pills over the arena */
   ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud>.spark{position:absolute!important;left:50%!important;right:auto!important;top:3px!important;bottom:auto!important;height:22px!important;padding:0 7px!important;letter-spacing:.04em!important;translate:-50% 0!important;box-shadow:none!important;z-index:4!important;opacity:0;visibility:hidden}
-  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud.isHit::before{animation:eosReadTick 2.6s ease both!important}
+  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud.isHit::before{animation:eosReadBand2 2.75s ease both!important}
   ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud.isHit>.spark{animation:eosReadTick 1.3s ease both!important}
   ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud.isHit>:is(.token,.chain){animation:eosReadTick 1.3s ease 1.3s both!important}
   ${EOS_A}.stage-play .releaseGameHost .arena:not(.u103)>.literalProgress{top:8px!important;left:10px!important;max-width:140px!important;white-space:normal!important;text-overflow:clip!important;line-height:1.08!important}
@@ -772,15 +777,55 @@ function eosReadTextWidth(cs, word, px) {
         return 0
     }
 }
-function eosReadWordFit(el, cs, fs, nat, want, ratio) {
+// is this box's width set BY its content (shrink-to-fit), so that it grows with a bigger font? Only such a box may be
+// climbed past by the word fit. A block that fills its parent, or any box with a definite width (px / % / calc), is a
+// real constraint: climbing past it measured the word against a far wider ancestor, and the word then flipped
+// between the fitted and the full size on every pass (round 3: VACUUM, RED LIGHT, TINY SOUNDTRACK at 390)
+function eosReadSizedByContent(b, bcs) {
+    let w = ""
+    try {
+        const m = typeof b.computedStyleMap === "function" ? b.computedStyleMap() : null
+        const v = m && m.get("width")
+        if (v) w = String(v)
+    } catch {}
+    if (!w && b.style && b.style.width) w = b.style.width // no Typed OM: an inline width at least
+    if (w && w !== "auto" && !/content/.test(w)) return false // a definite width
+    if (/content/.test(w)) return true // fit-content / max-content / min-content
+    if (bcs.float && bcs.float !== "none") return true
+    if (bcs.position === "absolute" || bcs.position === "fixed") {
+        try {
+            const m = typeof b.computedStyleMap === "function" ? b.computedStyleMap() : null
+            if (m && String(m.get("left")) !== "auto" && String(m.get("right")) !== "auto") return false // stretched
+        } catch {}
+        return true
+    }
+    if (/^inline-|^table/.test(bcs.display)) return true // inline-block / -flex / -grid / table: shrink-to-fit
+    const q = b.parentElement
+    if (!q) return false
+    const qcs = getComputedStyle(q)
+    if (/flex/.test(qcs.display)) {
+        if (!/column/.test(qcs.flexDirection)) return (parseFloat(bcs.flexGrow) || 0) === 0 // a row item, not grown
+        const al = bcs.alignSelf === "auto" || bcs.alignSelf === "normal" ? qcs.alignItems : bcs.alignSelf
+        return !/normal|stretch/.test(al) // a column item that is not stretched
+    }
+    if (/grid/.test(qcs.display)) {
+        const js = bcs.justifySelf === "auto" || bcs.justifySelf === "normal" ? qcs.justifyItems : bcs.justifySelf
+        return !/normal|stretch|legacy/.test(js)
+    }
+    return false // a block that fills its container
+}
+// held = the size the floor wrote last time (0 = none). A word the fit stepped DOWN (held < want) that now exactly
+// fills its box keeps that size (hysteresis): no pass re-fits it against a farther box, so it never flips back
+function eosReadWordFit(el, cs, fs, nat, want, ratio, held) {
     if (!(fs > 0) || want <= nat + 0.25) return want
     if (cs.position === "absolute" || cs.position === "fixed" || cs.whiteSpace === "nowrap" || cs.whiteSpace === "pre") return want
     const p = el.parentElement
     if (!p) return want
     const text = el.textContent || ""
-    const key = text + "|" + fs + "|" + nat + "|" + want + "|" + p.clientWidth + "|" + cs.maxWidth + "|" + Math.round(ratio * 10)
+    const key = text + "|" + fs + "|" + nat + "|" + want + "|" + p.clientWidth + "|" + cs.maxWidth + "|" + Math.round(ratio * 10) + "|" + Math.round((held || 0) * 4)
     const hit = EOS_READ_FIT_CACHE.get(el)
-    if (hit && hit[0] === key) return hit[1]
+    // the cache also checks the box the answer was measured against (an ancestor past a hugging parent may change alone)
+    if (hit && hit[0] === key && (!hit[2] || hit[2].clientWidth === hit[3])) return hit[1]
     let res = want
     const num = (v) => parseFloat(v) || 0
     // a box that is sized BY its text (an inline / shrink-to-fit label hugging the word, inside a parent that hugs it
@@ -790,13 +835,21 @@ function eosReadWordFit(el, cs, fs, nat, want, ratio) {
     let box = p
     const inner = el.offsetWidth - num(cs.paddingLeft) - num(cs.paddingRight) - num(cs.borderLeftWidth) - num(cs.borderRightWidth)
     const line = eosReadTextWidth(cs, text.trim().replace(/\s+/g, " "), fs)
-    if (line > 0 && Math.abs(inner - line) <= 2) {
-        // el hugs its one-line text; climb while each box hugs its child (≤ 3 levels)
+    const hugs = line > 0 && Math.abs(inner - line) <= 2
+    if (hugs && held > 0 && held < want - 0.25 && Math.abs(fs - held) <= 0.3) {
+        // fitted down earlier and exactly filling its box now: it fits as it is — keep it (no creep, no flip)
+        res = Math.max(nat, held)
+        EOS_READ_FIT_CACHE.set(el, [key, res, null, 0])
+        return res
+    }
+    if (hugs) {
+        // el hugs its one-line text; climb while each box hugs its child AND is itself sized by its content (≤ 3 levels)
         let child = el
         for (let d = 0; d < 3 && box && box.parentElement; d++) {
             const bcs = getComputedStyle(box)
             const content = box.clientWidth - num(bcs.paddingLeft) - num(bcs.paddingRight)
             if (Math.abs(content - child.offsetWidth) > 1.5) break
+            if (!eosReadSizedByContent(box, bcs)) break
             child = box
             box = box.parentElement
         }
@@ -814,7 +867,7 @@ function eosReadWordFit(el, cs, fs, nat, want, ratio) {
             res = Math.max(nat, Math.min(want, Math.max(fit, EOS_READ_WORD_FIT_MIN / (ratio > 0 ? ratio : 1))))
         }
     }
-    EOS_READ_FIT_CACHE.set(el, [key, res])
+    EOS_READ_FIT_CACHE.set(el, [key, res, box, box.clientWidth])
     return res
 }
 function eosReadTransitions(cs) {
@@ -1041,7 +1094,7 @@ function eosReadPass(root, opts) {
             if (over()) break // the word fit measures text (a costly step): next pass
             // the fit's 14 px minimum is in RENDERED px only for a scale we compensate; a scale the game made is its own
             // (14 / .78 would otherwise turn the minimum into 17.9 px and push the word back up)
-            want = eosReadWordFit(el, cs, fs, nat, want, (scaled || 1) * ctx.k)
+            want = eosReadWordFit(el, cs, fs, nat, want, (scaled || 1) * ctx.k, rec ? rec.px : 0)
         }
         // a raised element follows its current target back down — a scale that ended, a canvas zoom, a breakpoint,
         // a smaller Bubble Text, a word that would break — but never below its own natural size (so never below today)

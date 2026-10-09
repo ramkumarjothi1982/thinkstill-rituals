@@ -1,0 +1,7 @@
+# v2 readability close-out (round 3 findings) — progress
+- [call ~4] Read review_r3: 1 major (hug-climb oscillation in eosReadWordFit), 5 minors (dead pop CSS on narrowed meter; band fades before pills; token/chain overlap during pop; feedback headline punch scale .48; progressive flooring at start).
+- Review scripts available: /tmp/rev_rd3/osc.mjs, micro.mjs, hud.mjs; /tmp/rev_rd3_code/unit.mjs, t106.mjs; /tmp/rev_rd3_exp/card.mjs
+- [call ~22] Major fixed in eosReadWordFit: climb only past boxes sized by their content (eosReadSizedByContent: computedStyleMap width auto, inline-*/table, abs/fixed not stretched, float, unstretched flex/grid items) + hysteresis (held = rec.px: a fitted-down word that exactly fills its box keeps its size) + cache validates the box used. Unit test /tmp/v2_readability_t/unit.mjs: all 4 reviewer layouts stable at 15.08; hug-in-wide cases stay 16.25.
+- CSS minors done: narrowed pop (.tsShiftRewardHud doubled class), band keyframes eosReadBand 1.75s / eosReadBand2 2.75s hold until pills gone, token/chain transform-origin right/left.
+- Build: /tmp/v2_readability (all src/eos modules). Osc sweep 390 running (/tmp/v2_readability_t/osc390_*.log).
+- [call ~33] 390 osc sweep ids 1-110 (4 chunks): 0 elements with >=2 reversals, 0 page errors, all games started. 1280 sweep running (osc1280_*.log, adds floored-element count). Next: micro.mjs (MICROSCOPE creep) at both sizes, hud.mjs (pop on 105/110, band timing), card_raf.mjs (headline punch), then docs + commit.

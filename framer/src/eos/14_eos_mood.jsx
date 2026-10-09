@@ -375,7 +375,14 @@ function eosMoodPlace({ W, H, x0, y0, phone, words, obstacles = [] }) {
     const tiers = [[{ fs: fs0, layout: "crown", grid: near }], [{ fs: fs0, layout: "crown", grid: wide(fs0) }], [{ fs: fs0, layout: "tight", grid: wide(fs0) }, { fs: fs0, layout: "stack", grid: wide(fs0) }], []]
     for (const f of fsList.slice(1)) for (const layout of ["crown", "tight", "stack"]) tiers[3].push({ fs: f, layout, grid: wide(f) })
     const LAYOUT_COST = { crown: 0, tight: 600, stack: 1400 }
-    const evalAt = (g, x0c, y, tier) => {
+    let best = null
+    let found = null
+    // Exact pruning (the result is identical to scoring every candidate in full; it only skips work that cannot win):
+    //   · each anchor row only tests the obstacles that cross its vertical band (the word boxes never move vertically
+    //     when the crown slides sideways), so a busy finale costs rows × (a slice of the obstacles), not the whole list;
+    //   · a candidate stops scoring as soon as it can neither be clean nor beat the best score so far (and, once a
+    //     clean place exists, as soon as it cannot beat that one). Scores only grow as overlap is added.
+    const evalAt = (g, x0c, y, tier, obs) => {
         // slide the crown sideways into the stage when it pokes out and fits (a long right word, an edge anchor)
         let x = x0c
         let boxes = eosMoodBoxes(g, x, y)
@@ -386,21 +393,54 @@ function eosMoodPlace({ W, H, x0, y0, phone, words, obstacles = [] }) {
             x += shift
             boxes = eosMoodBoxes(g, x, y)
         }
-        const h = eosMoodHits(boxes, obstacles, inside)
-        const score = (Math.abs(x - x0) + Math.abs(y - y0)) * C.dist + h.out * C.out + h.soft * C.soft + h.hard * C.hard + LAYOUT_COST[g.layout] + (fs0 - g.fs) * 140
-        return { x, y, dx: g.dx, lift: g.lift, fs: g.fs, layout: g.layout, widths: g.widths, boxes, score, clean: h.out < 1 && h.soft < 1 && h.hard < 1, tier, ...h }
+        const base = (Math.abs(x - x0) + Math.abs(y - y0)) * C.dist + LAYOUT_COST[g.layout] + (fs0 - g.fs) * 140
+        // (a 1e-3 margin: the outside term can carry -1e-13 of float noise, so a pruned candidate is a sure loser)
+        const cap = (found ? found.score : Infinity) + 1e-3
+        if (base >= cap) return null
+        let out = 0
+        let soft = 0
+        let hard = 0
+        let score = base
+        const dead = () => (out >= 1 || soft >= 1 || hard >= 1) && (score >= cap || (best && score >= best.score + 1e-3))
+        for (const b of boxes) {
+            const o1 = b.w * b.h - eosMoodOverlap(b, inside)
+            out += o1
+            score += o1 * C.out
+            if (dead()) return null
+            for (const o of obs) {
+                const v = eosMoodOverlap(b, o)
+                if (!v) continue
+                if (o.hard) {
+                    hard += v
+                    score += v * C.hard
+                } else {
+                    const s = o.card ? (v * C.card) / C.soft : v
+                    soft += s
+                    score += s * C.soft
+                }
+                if (dead()) return null
+            }
+        }
+        // the reported score in the full formula's own order (bit-identical ties with an unpruned search)
+        score = (Math.abs(x - x0) + Math.abs(y - y0)) * C.dist + out * C.out + soft * C.soft + hard * C.hard + LAYOUT_COST[g.layout] + (fs0 - g.fs) * 140
+        return { x, y, dx: g.dx, lift: g.lift, fs: g.fs, layout: g.layout, widths: g.widths, boxes, score, clean: out < 1 && soft < 1 && hard < 1, tier, out, soft, hard }
     }
-    let best = null
-    let found = null
     for (let t = 0; t < tiers.length && !found; t++) {
         for (const v of tiers[t]) {
             const g = eosMoodGeom(W, phone, words, v.fs, v.layout)
-            for (const oy of v.grid.ys)
+            const ext = eosMoodBoxes(g, 0, 0)
+            const top = Math.min(...ext.map((q) => q.y))
+            const bot = Math.max(...ext.map((q) => q.y + q.h))
+            for (const oy of v.grid.ys) {
+                const y = y0 + oy
+                const obs = obstacles.filter((o) => o.y < y + bot && o.y + o.h > y + top)
                 for (const ox of v.grid.xs) {
-                    const c = evalAt(g, x0 + ox, y0 + oy, t)
+                    const c = evalAt(g, x0 + ox, y, t, obs)
+                    if (!c) continue
                     if (!best || c.score < best.score) best = c
                     if (c.clean && (!found || c.score < found.score)) found = c
                 }
+            }
         }
     }
     return found || best
@@ -410,11 +450,13 @@ function eosMoodPlace({ W, H, x0, y0, phone, words, obstacles = [] }) {
 //     character bubble and finale headline), [data-eos-finale], [data-eos-char] (EosCharacterOrb) and the known
 //     roots of 111-114 until they carry the tag;
 //   · every visible picture ≥ 20 px (<img> icons and bubbles, circular background-image bubbles);
-//   · every visible text of ≥ 2 letters at ≥ 14 px (the user's words, the finale headline, in-world labels).
+//   · every visible text of ≥ 2 letters at ≥ 14 px (the user's words, the finale headline, in-world labels);
+//   · every standing pictograph ≥ 18 px (emoji anchors and characters; see eosMoodGlyphOk).
 // Skips the arcade chrome (soft obstacles), anything larger than 45 % of the stage (a backdrop, a container) and
-// sub-word glyphs (emoji particles, "+10"). Capped (80 pictures, 220 text lines) so a busy finale stays cheap.
+// sub-word glyphs ("+10", emoji particles in transit). Capped (80 pictures, 40 pictographs, 220 text lines) so a busy
+// finale stays cheap.
 const EOS_MOOD_CHROME = ".globalPlayGuide, .engineProgressHud, .tsShiftRewardHud, .globalFeedbackCopyLayer, .eosCompanion, .eosMoodFlip"
-const EOS_MOOD_PIN = "[data-eos-avoid], [data-eos-finale], [data-eos-char], .eosOrbFace, .eosVolcHero, .eosVolcCloudFace, .eosGroundHero, .eosGroundFace, .eosGroundFin, .eosSighOrbWrap, .eosSighMoonFace, .eosSighSyncFace"
+const EOS_MOOD_PIN = "[data-eos-avoid], [data-eos-finale], [data-eos-char], .eosOrbFace, .eosVolcHero, .eosVolcCloudFace, .eosGroundHero, .eosGroundFace, .eosGroundFin, .eosGroundSlot[data-burn=\"1\"] .eosGroundFound, .eosSighOrbWrap, .eosSighMoonFace, .eosSighSyncFace"
 function eosMoodShown(el, opacity) {
     try {
         if (typeof el.checkVisibility === "function") return el.checkVisibility({ opacityProperty: opacity, checkOpacity: opacity, visibilityProperty: true, checkVisibilityCSS: true })
@@ -423,6 +465,31 @@ function eosMoodShown(el, opacity) {
     } catch {
         return true
     }
+}
+// Standing pictographs (an emoji anchor, a game's emoji character) are hard content too; emoji PARTICLES are not: a
+// glyph in a particle container, or one still in transit (a running finite animation on it or on its 3 nearest
+// ancestors: a flying spark, a burst), is skipped. Ambient idle loops (an infinite bob or twinkle) still count.
+const EOS_MOOD_PICTO = /\p{Extended_Pictographic}/u
+const EOS_MOOD_PARTICLE = /particle|confetti|spark|burst|ember|floater|trail/i
+function eosMoodGlyphOk(node, chrome) {
+    const el = node && node.parentElement
+    if (!el || chrome(el) || !eosMoodShown(el, true)) return false
+    let e = el
+    for (let i = 0; i < 4 && e; i++, e = e.parentElement) {
+        const cls = typeof e.className === "string" ? e.className : (e.getAttribute && e.getAttribute("class")) || ""
+        if (EOS_MOOD_PARTICLE.test(cls)) return false
+        if (typeof e.getAnimations === "function") {
+            for (const a of e.getAnimations()) {
+                if (a.playState !== "running") continue
+                let end = Infinity
+                try {
+                    end = a.effect ? a.effect.getComputedTiming().endTime : Infinity
+                } catch {}
+                if (end !== Infinity) return false
+            }
+        }
+    }
+    return true
 }
 function eosMoodContent(scope, root, W, H) {
     const out = []
@@ -448,7 +515,12 @@ function eosMoodContent(scope, root, W, H) {
     const chrome = (el) => !!(el && el.closest && el.closest(EOS_MOOD_CHROME))
     try {
         scope.querySelectorAll(EOS_MOOD_PIN).forEach((el) => {
-            if (!chrome(el) && eosMoodShown(el, false)) add(el.getBoundingClientRect(), 6, "pin")
+            if (chrome(el) || !eosMoodShown(el, false)) return
+            // a root still in its entrance scale (113's found anchors pop in from .3) is reserved at its full size
+            const r = el.getBoundingClientRect()
+            const w = Math.max(r.width, (el.offsetWidth || 0) * k)
+            const h = Math.max(r.height, (el.offsetHeight || 0) * k)
+            add({ left: r.left + r.width / 2 - w / 2, top: r.top + r.height / 2 - h / 2, width: w, height: h }, 6, "pin")
         })
         let n = 0
         scope.querySelectorAll('img, [style*="background-image"]').forEach((el) => {
@@ -468,11 +540,23 @@ function eosMoodContent(scope, root, W, H) {
         const rg = document.createRange()
         const okOf = new Map()
         let lines = 0
+        let glyphs = 0
         for (let node = tw.nextNode(); node && lines < 220; node = tw.nextNode()) {
             const s = node.nodeValue
-            if (!s || s.length < 2 || !/\S/.test(s)) continue
+            if (!s || !/\S/.test(s)) continue
             const letters = s.match(/\p{L}/gu)
-            if (!letters || letters.length < 2) continue
+            if (!letters || letters.length < 2) {
+                // a standing pictograph (113's found-thing anchors, a game's emoji character) counts as a picture
+                if (glyphs < 40 && EOS_MOOD_PICTO.test(s) && s.trim().length <= 8 && eosMoodGlyphOk(node, chrome)) {
+                    rg.selectNodeContents(node)
+                    const r = rg.getBoundingClientRect()
+                    if (r.width / k >= 18 && r.height / k >= 18) {
+                        glyphs++
+                        add(r, 4, "img")
+                    }
+                }
+                continue
+            }
             const el = node.parentElement
             if (!el) continue
             let ok = okOf.get(el)
@@ -620,6 +704,8 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
     const [bloom, setBloom] = React.useState(null)
     const gameIdRef = React.useRef(0)
     gameIdRef.current = Number(game && game.id) || 0
+    const gameRef = React.useRef(null)
+    gameRef.current = game || null
 
     // The finish always lands on the calm pair, even when a game completes below 95 % on its bar.
     const done = !!bloom
@@ -780,9 +866,65 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
             if (t && t.closest && t.closest(".cinematicContentShell")) press = { x: e.clientX, y: e.clientY }
         }
         if (host0 && host0.addEventListener) ["pointerdown", "pointerup", "pointermove"].forEach((k) => host0.addEventListener(k, onPress, true))
+        // The card's place, MEASURED: a hidden copy of the card (same classes, same parent, same two-line body, the
+        // arcade's own clamp applied) is laid out for one read and removed in the same task, so every CSS rule that will
+        // place the real card applies to it too: the arcade's wrapper rules and any per-game override (112 lifts its
+        // card under the summit with `:has(>.eosG112)>.globalFinishFeedbackCopy{top:var(--eosVolcFinY)}`). The fixed
+        // per-wrapper model below stays as the fallback.
+        const probeCard = (root, shell) => {
+            if (typeof document === "undefined" || !shell || !shell.appendChild) return null
+            const R = shell.getBoundingClientRect()
+            if (!R.width || !R.height) return null
+            const fx = press ? eosClamp(((press.x - R.left) / R.width) * 100, 0, 100) : 74
+            const fy = press ? eosClamp(((press.y - R.top) / R.height) * 100, 0, 100) : 14
+            const legacy = gameIdRef.current < 100
+            const fam = String((gameRef.current && gameRef.current.family) || "").toLowerCase().replace(/[^a-z0-9]+/g, "-")
+            const d = document.createElement("div")
+            d.className = `globalFeedbackCopyLayer globalFinishFeedbackCopy feedbackFlavor${(((gameIdRef.current || 0) % 6) + 6) % 6 + 1}${fam ? ` feedbackFamily-${fam}` : ""}`
+            d.setAttribute("aria-hidden", "true")
+            d.setAttribute("data-eos-mood-probe", "")
+            const st = d.style
+            st.setProperty("--fx-x", `${fx}%`)
+            st.setProperty("--fx-y", `${fy}%`)
+            ;[["visibility", "hidden"], ["animation", "none"], ["transition", "none"], ["pointer-events", "none"]].forEach(([k, v]) => st.setProperty(k, v, "important"))
+            const lines = legacy
+                ? [["small", "RELEASED · SHIFT COMPLETE"], ["b", "LESS GRIP. MORE STILL."], ["span", "✦ ✦ ✦"], ["em", "SHIFT MADE · KEEP YOUR STILL"]]
+                : [["b", "SHIFTED ✓"], ["span", "LIGHTER ✓"], ["strong", "◆ +1 · ✦ +10", "tsFinishRewardPayout"]]
+            lines.forEach(([tag, text, cls]) => {
+                const e = document.createElement(tag)
+                if (cls) e.className = cls
+                e.textContent = text
+                d.appendChild(e)
+            })
+            let out = null
+            shell.appendChild(d)
+            try {
+                // the arcade's own clamp for the finish card (fitFeedbackInsideGameWindow, kind "finish")
+                const w0 = Math.min(d.offsetWidth || 0, R.width)
+                const h0 = Math.min(d.offsetHeight || 0, R.height)
+                if (w0 && h0) {
+                    const rawL = (fx / 100) * R.width - w0 / 2
+                    const rawT = (fy / 100) * R.height - h0 / 2
+                    st.setProperty("--fb-shift-x", `${eosClamp(rawL, 42, Math.max(42, R.width - 42 - w0)) - rawL}px`)
+                    st.setProperty("--fb-shift-y", `${eosClamp(rawT, 58, Math.max(58, R.height - 28 - h0)) - rawT}px`)
+                    const q = eosRelRect(d, root)
+                    const w = Math.max(q ? q.w : 0, d.offsetWidth || 0)
+                    const h = Math.max(q ? q.h : 0, d.offsetHeight || 0)
+                    if (q && w > 4 && h > 4) out = { x: q.cx - w / 2 - 10, y: q.cy - h / 2 - 10, w: w + 20, h: h + 20, predicted: true, card: true, probe: true }
+                }
+            } catch {}
+            try {
+                d.remove()
+            } catch {}
+            return out
+        }
         const predictCard = (root) => {
             const host = hostRef && hostRef.current
             const shell = host && host.querySelector(".cinematicContentShell")
+            try {
+                const pr = probeCard(root, shell)
+                if (pr) return pr
+            } catch {}
             const sr = shell ? eosRelRect(shell, root) : null
             if (!sr || !sr.w || !sr.h) return null
             const vw = typeof window !== "undefined" ? window.innerWidth : 1280
@@ -1077,6 +1219,7 @@ eosExpose("mood", {
     step: eosMoodStepOf,
     flipWords: eosMoodFlipWords,
     place: eosMoodPlace,
+    content: eosMoodContent,
     carveUrl: eosMoodCarveUrl,
     mix: eosMoodMix,
     warm: eosMoodWarm,

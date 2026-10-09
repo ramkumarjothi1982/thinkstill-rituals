@@ -1,0 +1,8 @@
+# v2 mood close-out: progress
+- (call ~12) Read r2 review: 1 major + 4 minors, all in src/eos/14_eos_mood.jsx.
+- Plan: F1/F3 card prediction -> hidden probe card in .cinematicContentShell (picks up per-game CSS, e.g. 112 --eosVolcFinY), replicating the arcade's own finish clamp; old model kept as fallback.
+- F2/F5 perf -> exact pruning in eosMoodPlace (row-band obstacle buckets + early exit once a candidate cannot win). Same result.
+- F4 emoji anchors -> static pictographic glyphs >= 18 px count as hard 'img' obstacles (skip running finite animations / particle containers).
+- (call ~24) All three code changes in. Node equivalence (/tmp/v2_mood_t/equiv.mjs): 400 random stages, 0 diffs vs HEAD eosMoodPlace; ~6x less time overall. Scratch build /tmp/v2_mood builds (all 15 src/eos modules). Next: browser tests 112/113 @390, then 1280, legacy, perf throttled.
+- (call ~44) Added pin `.eosGroundSlot[data-burn="1"] .eosGroundFound` (counted while still popping in, at full layout size). Results (/tmp/v2_mood_t/r*.json, fin.mjs): 112@390 x2 card after bloom -> guess y367 (real ~371), tier0 clean crown, yields 0, card on words 0%; 113@390 guess == real card, yields 0, 0 glyph/text overlap; 112@1280 clean, 0 errors. Next: legacy 2@390, 113@1280, 114@390, 111@1280, perf, screenshots.
+- (call ~57) More runs, all 0 page errors, 0 yields, card on words 0%: legacy 2@390 (guess == real card centre within 1 px), 113@1280 (guess == real), 114@390 (guess == real, tier0), 113@390 reduced (tier3 tight, no overlap), 111@1280 (alone; an earlier parallel run timed out under load avg 20, no bloom reached, rerun alone passed). unit2.mjs PASS. Next: 112@390 visual, legacy 1@1280, perf in browser.
