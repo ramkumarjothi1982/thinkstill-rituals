@@ -1,0 +1,5 @@
+# v2 shift close-out progress
+- [call 3] Read review r1 (3 major, 11 minor). Starting fixes in src/eos/50_eos_shift.jsx.
+- [call ~27] Applied code fixes: retro settle pause+chip first+1.6s retro settle, isSolo, veteran chip pause, rated count, chip bump, touch-action, dial digits 13.5px, cool/sigh idle 2.5/4s, RUSH calm face 59 (shift-local), face retry+hue fallback, isMore wrap. TODO: 1280 centring, phone done jump/chip overlap, hint placement; then build /tmp/v2_shift + tests.
+- [call ~40] 1280 centring fixed (grid 84/1fr/84, card centre 640 all steps, nav beside). Phone: old copy ordered below meter (no jump, head y 293 payoff=done), overlay top mask under chips. Hint anchored at orb rim via rest. Next: rebuild, phone shots moment/solo/retro tests.
+- [call ~47] Verified: 1280 centre 640 (moment/rate/done), phone no jump, GOOD solo centred+tag+rim at 390, retroB (chip-first) row before6/after2 retro1. Running retroA (keyboard+fast change tap), vet chip pause + skip-count + still retry, coolT timing + still fallback. Test scripts in scratchpad/t (s.mjs <scenario> <width>).

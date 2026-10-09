@@ -71,3 +71,43 @@ Dev globals (file:/localhost/?eosdev=1 only): `window.__eosArrowMiss` (ids whose
 - **96 SCRATCH**: the bar reports 100% after ticket 1. The arrows now resume for the following tickets; the bar bug itself belongs to the fixes task.
 - `occluded` (dev flag only) is reported for 8, 17 @1280 and 8, 47, 107 @390. The hand aims at the element centre; §11.6 handles these occlusions.
 - **Deferred games 115-120**: there are no table entries, and the marker path handles them automatically if they ship later. Glyphs fall back to ☝ through `EOS_GAME_META`. Nothing references them.
+
+## Round-1 review close-out (v2)
+All changes are in `src/eos/30_eos_arrows.jsx`; no other piece's file was touched.
+
+- **Hand covered the copy (major)**: the glove now has 5 poses: `d` (below-right, the drawn pose), `dl` (mirrored), `u` (above, pointing down), `l` and `r` (from the side). The pose is a `.eosHandO` wrapper around the svg only, so the tap-press and drag-travel animations keep their layer-space direction. `eosArrowsRankSpots` scores each (hotspot, pose) pair against:
+  - the game's text-node rects (soft)
+  - the HUD / guide / companion rects (hard, ×4)
+  - the layer edges
+
+  Hotspot candidates are:
+  - the hit-tested aim
+  - the target's bottom, top, left and right edge points
+  - the centre of an icon, image or character inside the target
+  - for `choose`: each option's centre, top edge and bottom edge, plus the midpoints between options (the middle option is preferred)
+
+  Edge and media points are hit-tested with `elementFromPoint` before use (at most 6 per re-score). `data-eos-ox/oy` is still honoured exactly; only the pose is scored for it. Drags strongly prefer the drawn pose. The result is cached as a fraction of the target rect and re-scored every 600 ms, or on a new target or size.
+- **Phone: cue drawn over the LIVE GUIDE (major)**: hotspot candidates inside `.globalPlayGuide` / `.engineProgressHud` are rejected. `choose` options whose centre lies under the panel are dropped from the halo set. A single target with no visible part outside the panel is drawn label-only (`.eosCue.isNoHand`: no hand, chevron, ring or halo). The label still says what to do, and `state().occluded` is true. Lifting the 3 CRACK / 85 docks above the panel is the fixes task's §11.6 job.
+- **Chevron over user words / prompts**: the chevron tries above, left, right and below the target (or the `choose` group). It takes the spot that covers the least copy (×1), characters / images (×2), HUD / guide (×4) and the glove (×3).
+- **Label over characters / images**: `EOS_ARROWS_MEDIA` (img, canvas, svg[role=img], `[class*=Orb]`, `[class*=haracter]`, `.eosCharacterOrb`, `[data-eos-char]`, each 16 px+ and under 30 % of the layer) is soft-avoided at ×2.
+- **dragTo chevron on the DROP HERE tag**: the chevron backs off along its path in 8 px steps until it clears the tag box.
+- **seq stage-advance**: the key now carries the target's index among every match, so the hand moves on to the next glowing target 350 ms after pointerup. The step number has already gone up by then.
+- **Lost pointerup**: `S.down` is now cleared by any of:
+  - window `blur`
+  - `visibilitychange` to hidden
+  - host `lostpointercapture` with no buttons held
+  - a mouse `pointermove` with `buttons === 0`
+  - staleness: 8 s without pointermove (20 s during a live hold or drag)
+- **Layout reads**:
+  - The full candidate scan runs at 4 Hz. It also runs right after any pointerdown, pointerup, progress, due stage-advance or due miss re-show. In between, only the chosen element(s) are re-validated.
+  - The hotspot is cached, so there are no per-tick `elementFromPoint` calls.
+  - A hidden `taps` stage ticks at 110 ms instead of 50 ms; it only keeps the pinned badge on its target.
+  - `onDown` does every geometry read before `hide()` writes the DOM.
+- **EosHandHint**:
+  - Measures at 10 Hz on a timer (no rAF), and at 6 Hz when hidden or when there is no target.
+  - Re-renders only on 3 px steps. CSS eases the steps (`transition: left/top .1s`; none in calm mode).
+  - Scores the glove pose / rest edge against the root's copy.
+  - Remembers the last input per label|gesture, so a consumer that re-keys or remounts the same hint right after a touch keeps the idle wait.
+- **SVG ids**: the gradient and stripe ids come from `React.useId()`, with a ref counter as fallback, so they are unique per instance. The stripe stroke is set inline.
+- **Idle in paced phases**: markers may carry `data-eos-idle` (ms) and `data-eos-level` (1 = no label). The same marker ask repeated after a success (113 finds) waits 8 s before the idle re-show, instead of 4 s.
+- **Not fixed here (other piece)**: the check-in's own 1100 ms `hintEls` delay plus `key={layoutSig}` are in `40_eos_checkin.jsx`. The remount half is neutralised by the hint's input memory above. The first-show delay (`showAfterMs={0}`) is for the check-in owner.

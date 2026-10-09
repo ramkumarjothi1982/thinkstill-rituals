@@ -248,6 +248,9 @@ function eosArrowsMarkerSpec(el) {
         g: d.eosG || "tap", dir: d.eosDir, d: num(d.eosD), n: num(d.eosN), ms: num(d.eosMs), to: d.eosTo, bpm: num(d.eosBpm), L: d.eosLabel,
         win: d.eosWin ? d.eosWin.split(",").map(Number) : undefined, meter: d.eosMeter, mvar: d.eosMvar, armed: d.eosArmed,
         maxSpeed: num(d.eosMaxSpeed), own: d.eosOwn === "1", ox: num(d.eosOx), oy: num(d.eosOy),
+        // paced / reflective phases (113 look-around, 111 hold): data-eos-idle="10000" delays the idle re-show,
+        // data-eos-level="1" keeps the cue label-free
+        idle: num(d.eosIdle), level: num(d.eosLevel),
     }
 }
 function eosArrowsMarkerIdent(el) {
@@ -292,7 +295,7 @@ function eosArrowsTextRects(A, L, k, max = 80) {
             const t = n.nodeValue
             if (!t || t.trim().length < 2) continue
             const pe = n.parentElement
-            if (!pe || (pe.closest && pe.closest(".eosArrowLayer, [aria-hidden='true'] svg"))) continue
+            if (!pe || (pe.closest && pe.closest(".eosArrowsRoot, .eosArrowLayer, [aria-hidden='true'] svg"))) continue
             rg.selectNodeContents(n)
             const r = rg.getBoundingClientRect()
             if (r.width < 6 || r.height < 6 || r.right < R.left || r.left > R.right || r.bottom < R.top || r.top > R.bottom) continue
@@ -359,7 +362,8 @@ function eosArrowsHandBoxes(tx, ty, pose, s) {
 // Rank (hotspot, pose) pairs: covered copy (soft) + covered HUD / guide (hard ×4) + off-layer + small preferences.
 // cands: [{x, y, pref, bad}] (layer px); returns [{c, pose, sc}] sorted best first (sc ≥ 1e9 = unusable).
 function eosArrowsRankSpots(cands, s, W, H, soft, hard, moving) {
-    const pp = moving ? { d: 0, dl: 0.3, u: 0.5, l: 0.5, r: 0.5 } : { d: 0, dl: 0.03, u: 0.06, l: 0.08, r: 0.08 }
+    // moving gestures keep the drawn pose unless it would cover copy (a glove pushing from behind reads fine)
+    const pp = moving ? { d: 0, dl: 0.06, u: 0.12, l: 0.12, r: 0.12 } : { d: 0, dl: 0.03, u: 0.06, l: 0.08, r: 0.08 }
     const A0 = s * s
     const out = []
     for (const c of cands) {
@@ -470,12 +474,29 @@ function eosArrowsModel(o) {
         mdx = 0.25 * tx + 0.5 * cx + 0.25 * x1 - tx
         mdy = 0.25 * ty + 0.5 * cy + 0.25 * y1 - ty
         const off = chevS / 2 + 10
-        v.chev = chevAt(x1 + u[0] * off, y1 + u[1] * off, ang - 90)
+        // the arrowhead past the path end, or (when that covers copy / a character) just short of it or beside it
+        const endChev = (ex, ey, sgn) => {
+            const cs = [
+                [chevAt(ex + sgn * u[0] * off, ey + sgn * u[1] * off, ang - 90 + (sgn < 0 ? 180 : 0)), 0],
+                [chevAt(ex - sgn * u[0] * off * 0.6, ey - sgn * u[1] * off * 0.6, ang - 90 + (sgn < 0 ? 180 : 0)), 0.1],
+                [chevAt(ex + px * chevS * 0.9, ey + py * chevS * 0.9, ang - 90 + (sgn < 0 ? 180 : 0)), 0.15],
+                [chevAt(ex - px * chevS * 0.9, ey - py * chevS * 0.9, ang - 90 + (sgn < 0 ? 180 : 0)), 0.15],
+            ]
+            let best = null
+            for (const [c, pref] of cs) {
+                const b = chevBox(c)
+                if (b.x + 8 < 2 || b.y + 8 < 2 || b.x + b.w - 8 > W - 2 || b.y + b.h - 8 > H - 2) continue
+                const sc = pref * chevS * chevS + eosArrowsArea(soft, b) + eosArrowsArea(media, b) * 2 + eosArrowsArea(hard, b) * 4
+                if (!best || sc < best.sc) best = { c, sc }
+            }
+            return best ? best.c : cs[0][0]
+        }
+        v.chev = endChev(x1, y1, 1)
         if (both) {
             const dd2 = Math.max(Math.min(d, eosArrowsRoom(tx, ty, [-u[0], -u[1]], W, H, 16)), Math.min(d, 60))
             v.path.x2 = tx - u[0] * dd2
             v.path.y2 = ty - u[1] * dd2
-            v.chev2 = chevAt(v.path.x2 - u[0] * off, v.path.y2 - u[1] * off, ang + 90)
+            v.chev2 = endChev(v.path.x2, v.path.y2, -1)
             U = eosArrowsUnion(U, { x: v.path.x2 - 20, y: v.path.y2 - 20, w: 40, h: 40 })
         }
         if (g === "sling") {
@@ -905,7 +926,7 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             lastPt: null, cur: null, lastStageKey: null, tableEver: false, arenaAt: 0,
             touched: new Set(), onceDone: new Set(), count: null, token: 0, wiggle: 0, shake: 0,
             near: null, avoid: [], soft: [], avoidAt: 0, sig: "", srText: "", srAt: 0, srTimer: 0,
-            frame: 0, raf: 0, timer: 0, press: null, labW: {}, seqDone: 0,
+            frame: 0, raf: 0, timer: 0, press: null, labW: {}, seqDone: 0, guide: [], media: [], aimC: null, res: null, resAt: 0, keyAtProgress: null, downMoveAt: 0,
             completeAt: 0, completeKey: null, ignoreDone: false, forceShow: false,
         }
         const layer = () => layerRef.current
@@ -1023,7 +1044,10 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
                 let label = s.L || eosArrowsDefaultLabel(s)
                 if (label === "@text") label = eosArrowsElText(chosen[0]) || eosArrowsDefaultLabel(s)
                 S.tableEver = true
-                return { kind: "stage", i, spec: s, g: s.g, els: chosen, stageKey: `s:${i}`, key: `s:${i}:${s.g === "choose" ? "*" : ord}`, ident: `${i}|${s.t}|${ord}`, label, sel: s.t }
+                // seq: the next glowing target is a new key (its index among every match), so the stage-advance rule
+                // moves the hand on to it 350 ms after pointerup instead of waiting for the idle re-show
+                const kk = s.g === "choose" ? "*" : s.g === "seq" ? `q${Math.max(0, all.indexOf(chosen[0]))}` : ord
+                return { kind: "stage", i, spec: s, g: s.g, els: chosen, stageKey: `s:${i}`, key: `s:${i}:${kk}`, ident: `${i}|${s.t}|${ord}`, label, sel: s.t }
             }
             // 3. fallback — only for ids without a table, or a table that never resolved for 2.5 s (stale selector)
             if (stages.length && (S.tableEver || now - (S.arenaAt || now) < 2500)) return null
@@ -1049,34 +1073,134 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             let halos = null
             let occluded = false
             let clientPt = null
+            let pose = "d"
+            let hideHand = false
+            const k = eosStageScale(L)
+            const Rl = L.getBoundingClientRect()
+            if (now - S.avoidAt > 600) {
+                S.avoidAt = now
+                const st = stageOf(L)
+                const rel = (sel, root) =>
+                    eosArrowsQsa(root, sel)
+                        .map((e) => eosRelRect(e, L))
+                        .filter((r) => r && r.w > 4 && r.h > 4)
+                S.avoid = rel(EOS_ARROWS_AVOID, st)
+                S.guide = rel(".globalPlayGuide, .engineProgressHud", st)
+                S.soft = eosArrowsTextRects(A, L, k)
+                S.media = eosArrowsQsa(st, EOS_ARROWS_MEDIA)
+                    .slice(0, 80)
+                    .filter((e) => !(e.closest && e.closest(".eosArrowsRoot")))
+                    .map((e) => eosRelRect(e, L))
+                    .filter((r) => r && r.w >= 16 && r.h >= 16 && r.w * r.h < W * H * 0.3)
+                    .slice(0, 40)
+            }
+            const G = S.guide || []
+            const inG = (x, y) => G.some((q) => x > q.x && x < q.x + q.w && y > q.y && y < q.y + q.h)
             if (g === "wait") {
                 // the arena centre, but never under the HUD row or the bottom guide panel
                 tx = arenaC.x
                 ty = eosClamp(arenaC.y, phone ? 150 : 130, H - (phone ? 230 : 170))
                 rect = { x: tx - 75, y: ty - 75, w: 150, h: 150 }
-                const R = L.getBoundingClientRect()
-                const k = eosStageScale(L)
-                clientPt = { x: R.left + tx * k, y: R.top + ty * k }
+                clientPt = { x: Rl.left + tx * k, y: Rl.top + ty * k }
             } else {
-                const rects = res.els.map((e) => eosRelRect(e, L))
-                const restIdx = g === "choose" ? Math.floor((rects.length - 1) / 2) : 0
-                const el = res.els[restIdx]
-                rect = rects[restIdx]
-                if (g === "choose") halos = rects
-                if (s.ox != null || s.oy != null) {
-                    tx = rect.cx + (Number(s.ox) || 0) * rect.w
-                    ty = rect.cy + (Number(s.oy) || 0) * rect.h
-                    const R = L.getBoundingClientRect()
-                    const k = eosStageScale(L)
-                    clientPt = { x: R.left + tx * k, y: R.top + ty * k }
-                } else {
-                    const aim = eosArrowsAim(el, el.getBoundingClientRect())
-                    occluded = aim.occluded
-                    clientPt = { x: aim.x, y: aim.y }
-                    const p = toLayer(aim.x, aim.y)
-                    tx = p.x
-                    ty = p.y
+                let els = res.els
+                let rects = els.map((e) => eosRelRect(e, L))
+                if (g === "choose") {
+                    // an option laid out under the LIVE GUIDE / HUD (phone) is no option: no halo on the reading panel
+                    const keep = rects.map((r, i) => (r && !inG(r.cx, r.cy) ? i : -1)).filter((i) => i >= 0)
+                    if (!keep.length) hideHand = true
+                    else if (keep.length < rects.length) {
+                        els = keep.map((i) => els[i])
+                        rects = keep.map((i) => rects[i])
+                    }
                 }
+                const restIdx = g === "choose" ? Math.floor((rects.length - 1) / 2) : 0
+                const el = els[restIdx]
+                rect = rects[restIdx]
+                if (g === "choose" && !hideHand) halos = rects
+                // hotspot + glove pose: the glove body lands on empty space, never on the copy (instruction text,
+                // the options, the user's own words) and never on the guide panel. Re-scored every 600 ms (or on a
+                // new target / size); in between the hotspot rides along as a fraction of the target's rect.
+                const ck = `${res.ident}|${restIdx}|${els.length}`
+                const C = S.aimC
+                if (C && C.key === ck && C.el === el && now - C.at < 600 && Math.abs(C.w - rect.w) < 4 && Math.abs(C.h - rect.h) < 4) {
+                    tx = rect.x + C.fx * rect.w
+                    ty = rect.y + C.fy * rect.h
+                    pose = C.pose
+                    occluded = C.occ
+                    hideHand = hideHand || C.hide
+                } else {
+                    const fixed = s.ox != null || s.oy != null
+                    const moving = !!(EOS_ARROWS_DRAGS[g] || g === "dragTo" || g === "alt" || g === "scrub")
+                    const cands = []
+                    const add = (x, y, pref, ok) => cands.push({ x, y, pref, ok, bad: inG(x, y) })
+                    if (fixed) add(rect.cx + (Number(s.ox) || 0) * rect.w, rect.cy + (Number(s.oy) || 0) * rect.h, 0, true)
+                    else if (g === "choose") {
+                        rects.forEach((r, i) => {
+                            const pf = i === restIdx ? 0 : 0.04
+                            const e = Math.min(9, r.h * 0.2)
+                            add(r.cx, r.cy, pf, true)
+                            add(r.cx, r.y + r.h - e, pf + 0.01, true)
+                            add(r.cx, r.y + e, pf + 0.02, true)
+                            if (i) add((rects[i - 1].cx + r.cx) / 2, (rects[i - 1].cy + r.cy) / 2, 0.03, true)
+                        })
+                    } else {
+                        const aim = eosArrowsAim(el, el.getBoundingClientRect())
+                        occluded = aim.occluded
+                        const p0 = toLayer(aim.x, aim.y)
+                        add(p0.x, p0.y, 0, true)
+                        const ex = Math.min(10, rect.w * 0.2)
+                        const ey = Math.min(10, rect.h * 0.22)
+                        const far = (x, y) => (Math.hypot(x - p0.x, y - p0.y) > 110 ? 0.06 : 0)
+                        const edge = [
+                            [rect.cx, rect.y + rect.h - ey, 0.02],
+                            [rect.cx, rect.y + ey, 0.02],
+                            [rect.x + ex, rect.cy, 0.03],
+                            [rect.x + rect.w - ex, rect.cy, 0.03],
+                        ]
+                        for (const [x, y, pf] of edge) add(x, y, pf + far(x, y), null)
+                        // an icon / image / character inside the target is a text-free place to point at
+                        const mc = eosArrowsQsa(el, EOS_ARROWS_MEDIA + ", svg, [class*=con], [class*=moji], [class*=Face]").find((m) => {
+                            const r = m.getBoundingClientRect()
+                            return r.width >= 12 && r.height >= 12
+                        })
+                        const mr = mc ? eosRelRect(mc, L) : null
+                        if (mr) add(mr.cx, mr.cy, 0.01 + far(mr.cx, mr.cy), null)
+                    }
+                    const ranked = eosArrowsRankSpots(cands, narrow ? 52 : 64, W, H, S.soft || [], S.avoid || [], moving)
+                    let pick = null
+                    let tests = 0
+                    for (const q of ranked) {
+                        if (q.sc >= 1e9) break
+                        const c = q.c
+                        if (c.ok == null) {
+                            if (tests >= 6) continue
+                            tests += 1
+                            let hit = null
+                            try {
+                                hit = document.elementFromPoint(Rl.left + c.x * k, Rl.top + c.y * k)
+                            } catch {}
+                            c.ok = !!hit && (hit === el || el.contains(hit))
+                        }
+                        if (c.ok) {
+                            pick = q
+                            break
+                        }
+                    }
+                    if (pick) {
+                        tx = pick.c.x
+                        ty = pick.c.y
+                        pose = pick.pose
+                    } else {
+                        // the whole target is under the guide panel / HUD: label only (the fixes task lifts it)
+                        tx = cands[0].x
+                        ty = cands[0].y
+                        hideHand = true
+                        occluded = true
+                    }
+                    S.aimC = { key: ck, el, at: now, fx: (tx - rect.x) / Math.max(1, rect.w), fy: (ty - rect.y) / Math.max(1, rect.h), pose, occ: occluded, hide: hideHand && !pick ? true : hideHand, w: rect.w, h: rect.h }
+                }
+                clientPt = { x: Rl.left + tx * k, y: Rl.top + ty * k }
             }
             let to = null
             if (s.to) {
@@ -1086,17 +1210,11 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             let alt = null
             if (g === "alt") {
                 const pads = eosArrowsQsa(A, ".tapOutPads button").filter((e) => e !== res.els[0] && eosArrowsUsable(e, null, 1))
-                if (pads.length) {
+                if (pads.length && rect) {
+                    // hop to the same text-free spot on the other pad
                     const r2 = eosRelRect(pads[0], L)
-                    alt = { x: r2.cx, y: r2.cy }
+                    alt = { x: r2.x + ((tx - rect.x) / Math.max(1, rect.w)) * r2.w, y: r2.y + ((ty - rect.y) / Math.max(1, rect.h)) * r2.h }
                 }
-            }
-            if (now - S.avoidAt > 600) {
-                S.avoidAt = now
-                S.avoid = eosArrowsQsa(stageOf(L), EOS_ARROWS_AVOID)
-                    .map((e) => eosRelRect(e, L))
-                    .filter((r) => r && r.w > 4 && r.h > 4)
-                S.soft = eosArrowsTextRects(A, L, eosStageScale(L))
             }
             // count badge (taps): markers carry their live n; table stages count our own pointerdowns
             let count = null
@@ -1114,7 +1232,7 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             if (g === "timing" && s.lit) text = eosArrowsQ(A, s.lit) ? "NOW!" : res.label
             const v = eosArrowsModel({
                 g, label: text, L2: s.L2, n: s.n, count, seqNum: g === "seq" ? S.seqDone + 1 : 0, dir: s.dir, d: s.d, ms: s.ms, bpm: s.bpm, win: s.win, maxSpeed: s.maxSpeed,
-                tx, ty, rect, halos, to, alt, W, H, phone, narrow, arenaC, avoid: S.avoid, soft: S.soft, labW: S.labW[text],
+                tx, ty, rect, halos, to, alt, W, H, phone, narrow, arenaC, avoid: S.avoid, soft: S.soft, media: S.media, labW: S.labW[text], pose, hideHand,
             })
             v.text = text
             v.occluded = occluded
@@ -1124,6 +1242,8 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
         // ---------------- progress + completion
         const onProgress = (now) => {
             S.lastProgressAt = now
+            S.keyAtProgress = S.lastStageKey
+            S.resAt = 0
             if (S.cur && S.cur.g === "seq") S.seqDone += 1
             S.touched.clear()
             S.missAt = 0
@@ -1194,7 +1314,22 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
                 S.lastProgress = pr
             }
             if (now - S.t0 < S.delay) return schedule(false)
-            const res = resolve(A, L, now)
+            if (S.down && now - S.downMoveAt > (S.press ? 20000 : 8000)) onUp() // a pointerup that never came (stale)
+            // §3.5 one element per tick: the full candidate scan runs at 4 Hz (and right after any input or
+            // progress); in between only the chosen element(s) are re-validated
+            let res = S.res
+            const due = (S.advanceAt && now >= S.advanceAt) || (S.missAt && now - S.missAt >= 1200)
+            let keep = !due && now - S.resAt < 250
+            if (keep && res && res.els.length) {
+                const SR0 = L.getBoundingClientRect()
+                const k0 = eosStageScale(L)
+                keep = res.els.every((e) => eosArrowsUsable(e, SR0, k0))
+            }
+            if (!keep) {
+                res = resolve(A, L, now)
+                S.res = res
+                S.resAt = now
+            }
             // lifecycle (§3.5)
             if (res) {
                 const stageChanged = S.lastStageKey != null && res.stageKey !== S.lastStageKey
@@ -1214,7 +1349,9 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
                 S.missAt = 0
                 if (res && S.lastProgressAt < at && !S.shown && !S.down) show(now, { wiggle: true })
             }
-            const idleMs = veteran() ? 6000 : 4000
+            let idleMs = veteran() ? 6000 : 4000
+            if (res && res.spec && res.spec.idle > 0) idleMs = res.spec.idle
+            else if (res && res.kind === "marker" && res.g === "tap" && S.keyAtProgress === res.stageKey) idleMs = Math.max(idleMs, 8000) // same ask again (113 finds): don't nag
             if (res && !S.shown && !S.down && now - Math.max(S.lastTouchAt, S.lastProgressAt, S.hiddenAt) >= idleMs) show(now, { idle: true })
             if (S.autoHideAt && now >= S.autoHideAt) hide(now)
             if (S.spotUntil && now >= S.spotUntil) {
@@ -1228,8 +1365,8 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             if (res) {
                 v = layout(res, A, L, now)
                 v.shown = S.shown
-                v.level = S.level
-                v.spot = S.level === 3 && S.spotUntil > now
+                v.level = res.spec && res.spec.level > 0 ? Math.min(S.level, res.spec.level) : S.level
+                v.spot = v.level === 3 && S.spotUntil > now
                 v.token = S.token
                 v.wiggle = S.wiggle
                 v.shake = S.shake
@@ -1275,7 +1412,8 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             if (S.press && S.press.kind === "hold") updateHold(now, A)
             // wait ring breathes with the shared pacer
             if (v && v.g === "wait") updateWait(L, calmRef.current)
-            return schedule(!!(S.shown || S.press || S.missAt || S.advanceAt || (v && v.count)))
+            // a hidden taps stage only keeps the pinned badge on its (possibly moving) target: 9 Hz is plenty
+            return schedule(S.shown || S.press || S.missAt || S.advanceAt ? true : v && v.count ? "mid" : false)
         }
         const schedule = (fast) => {
             clearTimeout(S.timer)
@@ -1288,7 +1426,7 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             }
             // ~20 Hz while something is visible / pressed, 4-5 Hz while hidden (timers, so a slow
             // compositor never delays a hide or a stage-advance re-show)
-            S.timer = setTimeout(tick, fast ? 50 : 220)
+            S.timer = setTimeout(tick, fast === "mid" ? 110 : fast ? 50 : 220)
         }
         // ---------------- live ring + wait ring writers (our own nodes only)
         const readMeter = (A) => {
@@ -1392,14 +1530,17 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             const L = layer()
             const Hh = host()
             if (!L || !Hh) return
+            S.resAt = 0
             if (S.complete) {
                 S.lastTouchAt = now
                 return
             }
+            // every layout read happens before hide() writes the DOM (one forced layout per pointerdown at most)
             const p = toLayer(e.clientX, e.clientY)
             S.lastPt = p
             S.lastTouchAt = now
             S.down = true
+            S.downMoveAt = now
             S.downKey = S.cur ? S.cur.key : null
             S.advanceAt = 0
             const cur = S.cur
@@ -1407,15 +1548,30 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
                 S.shake += 1
                 return
             }
-            hide(now)
-            if (!cur) return
-            const A = eosArrowsQ(Hh, ".cinematicContentShell > .arena")
-            const sel = cur.kind === "marker" ? '[data-eos-target="1"]' : cur.spec && cur.spec.t
+            const A = cur ? eosArrowsQ(Hh, ".cinematicContentShell > .arena") : null
+            const sel = cur ? (cur.kind === "marker" ? '[data-eos-target="1"]' : cur.spec && cur.spec.t) : null
             let el = null
             try {
                 el = sel && e.target && e.target.closest ? e.target.closest(sel) : null
             } catch {}
             if (el && A && !A.contains(el)) el = null
+            const s = (cur && cur.spec) || {}
+            let ord = 0
+            if (el && cur.g === "taps" && cur.kind !== "marker" && s.pick === "near") {
+                const SR = L.getBoundingClientRect()
+                const k = eosStageScale(L)
+                const us = eosArrowsQsa(A, s.t)
+                    .filter((x) => eosArrowsUsable(x, SR, k))
+                    .slice(0, 24)
+                ord = Math.max(0, us.indexOf(el))
+            }
+            let dragGeo = null
+            if (el && EOS_ARROWS_DRAGS[cur.g]) {
+                const ar = eosRelRect(A, L)
+                dragGeo = { u: eosArrowsUnit(s.dir, p, ar ? { x: ar.cx, y: ar.cy } : null), W: L.offsetWidth || 1, H: L.offsetHeight || 1 }
+            }
+            hide(now)
+            if (!cur) return
             if (!el) {
                 S.missAt = now
                 return
@@ -1425,19 +1581,8 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
                 if (cur.spec.until === "touch") S.touched.add(cur.i)
                 if (cur.spec.once) S.onceDone.add(cur.i)
             }
-            const s = cur.spec || {}
             if (cur.g === "taps" && cur.kind !== "marker") {
                 const n = Number(s.n) || 3
-                let ord = 0
-                if (s.pick === "near") {
-                    const L0 = layer()
-                    const SR = L0.getBoundingClientRect()
-                    const k = eosStageScale(L0)
-                    const us = eosArrowsQsa(A, s.t)
-                        .filter((x) => eosArrowsUsable(x, SR, k))
-                        .slice(0, 24)
-                    ord = Math.max(0, us.indexOf(el))
-                }
                 const cid = `${cur.i}|${s.t}|${ord}`
                 if (S.count && S.count.id === cid && S.count.left > 0) S.count = { ...S.count, left: S.count.left - 1 }
                 else S.count = { id: cid, n, left: n - 1 }
@@ -1454,11 +1599,8 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             if (EOS_ARROWS_HOLDS[cur.g]) {
                 S.press = { kind: "hold", g: cur.g, spec: s, el, t0: now }
                 setLive({ kind: "hold", x: p.x, y: p.y, win: cur.g === "holdRelease" && Array.isArray(s.win) ? s.win : null, k: now })
-            } else if (EOS_ARROWS_DRAGS[cur.g]) {
-                const ar = eosRelRect(A, L)
-                const u = eosArrowsUnit(s.dir, p, ar ? { x: ar.cx, y: ar.cy } : null)
-                const W = L.offsetWidth || 1
-                const H = L.offsetHeight || 1
+            } else if (dragGeo) {
+                const { u, W, H } = dragGeo
                 let d = Number(s.d) || 120
                 if (W <= 560) d = Math.max(60, d * 0.75)
                 const both = s.dir === "lr" || s.dir === "ud"
@@ -1472,13 +1614,18 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             if (S.press || S.cur) schedule(true)
         }
         const onMove = (e) => {
-            if (!S.down || !S.press || S.press.kind !== "drag") return
+            if (!S.down) return
+            // a mouse that moves with no button held lost its pointerup (released outside the frame)
+            if (e && e.pointerType === "mouse" && e.buttons === 0) return onUp()
+            S.downMoveAt = performance.now()
+            if (!S.press || S.press.kind !== "drag") return
             updateDrag(e.clientX, e.clientY, performance.now(), e.timeStamp)
         }
         const onUp = () => {
             if (!S.down) return
             const now = performance.now()
             S.down = false
+            S.resAt = 0
             S.lastTouchAt = now
             S.advanceAt = now + 350
             if (S.press) {
@@ -1501,6 +1648,15 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             if (S.cur && S.cur.g !== "wait" && S.shown) hide(now)
             S.downKey = S.cur ? S.cur.key : null
         }
+        // pointerup can go missing (capture lost without an up, mouse released outside an embedding iframe, tab
+        // switch): any of these clears S.down so the miss / idle / stage-advance re-shows are never blocked
+        const onLost = (e) => {
+            if (!e || !e.buttons) onUp()
+        }
+        const onBlur = () => onUp()
+        const onVis = () => {
+            if (typeof document !== "undefined" && document.visibilityState === "hidden") onUp()
+        }
         let boundHost = null
         const bind = () => {
             const Hh = host()
@@ -1508,16 +1664,20 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             if (boundHost) {
                 boundHost.removeEventListener("pointerdown", onDown, true)
                 boundHost.removeEventListener("keydown", onKey, true)
+                boundHost.removeEventListener("lostpointercapture", onLost, true)
             }
             boundHost = Hh
             Hh.addEventListener("pointerdown", onDown, true)
             Hh.addEventListener("keydown", onKey, true)
+            Hh.addEventListener("lostpointercapture", onLost, true)
         }
         bind()
         const bindTimer = setInterval(bind, 500)
         window.addEventListener("pointermove", onMove, true)
         window.addEventListener("pointerup", onUp, true)
         window.addEventListener("pointercancel", onUp, true)
+        window.addEventListener("blur", onBlur)
+        document.addEventListener("visibilitychange", onVis)
         S.timer = setTimeout(tick, 120)
         return () => {
             S.alive = false
@@ -1528,7 +1688,10 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             if (boundHost) {
                 boundHost.removeEventListener("pointerdown", onDown, true)
                 boundHost.removeEventListener("keydown", onKey, true)
+                boundHost.removeEventListener("lostpointercapture", onLost, true)
             }
+            window.removeEventListener("blur", onBlur)
+            document.removeEventListener("visibilitychange", onVis)
             window.removeEventListener("pointermove", onMove, true)
             window.removeEventListener("pointerup", onUp, true)
             window.removeEventListener("pointercancel", onUp, true)
@@ -1598,6 +1761,9 @@ function EosHandCue({ x, y, g = "tap", label, L2, n, dir, d, ms, win, bpm, reduc
 // target: Element | selector | Element[] | () => any of those. For g:"choose" the gold halo hops across every
 // element and the hand rests on the middle one (or on `rest`). Hidden on any pointerdown / key inside `root`
 // (default: the hint's parent), re-shown after idleMs without input (`once` = never again).
+// Last input per hint (label|gesture): a consumer that re-keys / remounts the same hint right after a touch keeps
+// the idle wait instead of popping the hand again after showAfterMs.
+const EOS_ARROWS_HINT_INPUT = new Map()
 function EosHandHint({ target, root, g = "tap", label, L2, n, ms, dir, d, win, to, rest, reduced, showAfterMs = 600, idleMs = 3000, once = false, level = 2 }) {
     useEosStore()
     const calm = eosCalm(reduced)
@@ -1606,7 +1772,11 @@ function EosHandHint({ target, root, g = "tap", label, L2, n, ms, dir, d, win, t
     const P = React.useRef({})
     P.current = { target, root, g, label, L2, n, ms, dir, d, win, to, rest, level }
     React.useEffect(() => {
-        const S = { alive: true, shown: false, done: false, showAt: performance.now() + Math.max(0, Number(showAfterMs) || 0), token: 0, sig: "", raf: 0, timer: 0, frame: 0 }
+        const now0 = performance.now()
+        const memKey = () => `${P.current.label == null ? "" : P.current.label}|${P.current.g || "tap"}`
+        const lastIn = EOS_ARROWS_HINT_INPUT.get(memKey()) || -1e9
+        const idle0 = Math.max(400, Number(idleMs) || 3000)
+        const S = { alive: true, shown: false, done: false, showAt: Math.max(now0 + Math.max(0, Number(showAfterMs) || 0), lastIn + idle0), token: 0, sig: "", raf: 0, timer: 0, frame: 0, soft: [], softAt: 0, has: false, pose: null }
         const layer = () => layerRef.current
         const rootEl = () => {
             const r = P.current.root
@@ -1654,10 +1824,24 @@ function EosHandHint({ target, root, g = "tap", label, L2, n, ms, dir, d, win, t
                         toR = te ? eosRelRect(te, L) : null
                     }
                     const lab = p.label == null ? eosArrowsDefaultLabel({ g: gg, n: p.n, dir: p.dir }) : p.label
+                    // the glove takes the pose (and the edge of the rest target) that covers the least copy
+                    if (now - S.softAt > 600) {
+                        S.softAt = now
+                        S.soft = eosArrowsTextRects(scope && scope.nodeType === 1 ? scope : L.parentElement, L, 1)
+                        S.pose = null
+                    }
+                    const still = !(EOS_ARROWS_DRAGS[gg] || gg === "dragTo")
+                    if (!S.pose || S.pose.w !== Math.round(restR.w) || S.pose.h !== Math.round(restR.h)) {
+                        const e = Math.min(9, restR.h * 0.2)
+                        const cands = [{ x: restR.cx, y: restR.cy, pref: 0 }]
+                        if (still) cands.push({ x: restR.cx, y: restR.y + restR.h - e, pref: 0.01 }, { x: restR.cx, y: restR.y + e, pref: 0.02 })
+                        const best = eosArrowsRankSpots(cands, vw <= 700 ? 52 : 64, W, H, S.soft, [], !still)[0]
+                        S.pose = { w: Math.round(restR.w), h: Math.round(restR.h), pose: best ? best.pose : "d", fy: best ? (best.c.y - restR.y) / Math.max(1, restR.h) : 0.5 }
+                    }
                     next = eosArrowsModel({
-                        g: gg, label: lab, L2: p.L2, n: p.n, dir: p.dir, d: p.d, ms: p.ms, win: p.win, tx: restR.cx, ty: restR.cy, rect: restR,
+                        g: gg, label: lab, L2: p.L2, n: p.n, dir: p.dir, d: p.d, ms: p.ms, win: p.win, tx: restR.cx, ty: restR.y + S.pose.fy * restR.h, rect: restR,
                         halos: gg === "choose" ? rects.slice(0, 12) : null, to: toR, W, H, phone: vw <= 560, narrow: vw <= 700,
-                        count: gg === "taps" && p.n ? { left: p.n, text: `×${p.n}` } : null,
+                        count: gg === "taps" && p.n ? { left: p.n, text: `×${p.n}` } : null, soft: S.soft, pose: S.pose.pose,
                     })
                     if (gg === "choose") next.halos = rects.slice(0, 12)
                     next.text = lab
@@ -1666,7 +1850,9 @@ function EosHandHint({ target, root, g = "tap", label, L2, n, ms, dir, d, win, t
                     next.token = S.token
                 }
             }
-            const sig = next ? [next.shown ? 1 : 0, next.token, next.text, next.tx, next.ty, next.lab.x, next.lab.y, next.W, next.H].map((q) => (typeof q === "number" ? Math.round(q / 2) : q)).join("|") + (next.halos ? next.halos.map((h) => `${Math.round(h.x / 2)},${Math.round(h.y / 2)}`).join(";") : "") : ""
+            S.has = !!next
+            // 3 px steps: bobbing orbs must not re-render the hint every frame (the CSS eases the 10 Hz steps)
+            const sig = next ? [next.shown ? 1 : 0, next.token, next.text, next.pose, next.tx, next.ty, next.lab.x, next.lab.y, next.W, next.H].map((q) => (typeof q === "number" ? Math.round(q / 3) : q)).join("|") + (next.halos ? next.halos.map((h) => `${Math.round(h.x / 3)},${Math.round(h.y / 3)}`).join(";") : "") : ""
             if (sig !== S.sig) {
                 S.sig = sig
                 setV(next)
@@ -1677,15 +1863,11 @@ function EosHandHint({ target, root, g = "tap", label, L2, n, ms, dir, d, win, t
             cancelAnimationFrame(S.raf)
             clearTimeout(S.timer)
             if (!S.alive) return
-            if (S.shown) {
-                S.raf = requestAnimationFrame(() => {
-                    S.frame += 1
-                    if (S.frame % 2 === 0) measure()
-                    else loop()
-                })
-            } else S.timer = setTimeout(measure, 160)
+            // ~10 Hz while a hint is on screen, 6 Hz while hidden or while there is nothing to point at
+            S.timer = setTimeout(measure, S.shown && S.has ? 100 : 160)
         }
         const onInput = () => {
+            EOS_ARROWS_HINT_INPUT.set(memKey(), performance.now())
             if (once) S.done = true
             S.shown = false
             S.showAt = performance.now() + Math.max(400, Number(idleMs) || 3000)

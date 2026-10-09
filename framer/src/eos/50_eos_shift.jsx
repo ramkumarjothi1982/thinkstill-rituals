@@ -18,10 +18,31 @@ const EOS_SHIFT_NO_HEART = new Set([114, 115]) // these games already were the s
 const EOS_SHIFT_NO_SPARK = new Set([117])
 const EOS_SHIFT_VETERAN = 5 // rated loops in eos_sessions_v1 → a one-tap chip instead of an auto-start
 const EOS_SHIFT_SETTLE_MS = 900 // payoff starts this long after the last dial change
+const EOS_SHIFT_SETTLE_RETRO_MS = 1600 // …longer while the "you came in at about N · change" chip is offered
 const EOS_SHIFT_TICK_MS = 60 // count-down speed of the payoff number
 const EOS_SHIFT_AUTO_MS = 6500 // heart / spark finish by themselves
 const EOS_SHIFT_SPARK_BPM = 90
-const EOS_SHIFT_SIGH_IDLE_MS = 8000 // nobody touches the sigh orb → it plays the blow by itself once
+const EOS_SHIFT_SIGH_IDLE_MS = 4000 // nobody touches the sigh orb → it plays the blow by itself once
+const EOS_SHIFT_COOL_IDLE_MS = 2500 // cool always auto-starts (spec): round 1 begins after a short look
+// Shift-local face overrides for the "calm" end of the loud → calm crossfade (core's anger.calm 44 is a wide-open
+// shout/laugh that reads as RUSH yelling harder while the dial turns down; 59 = eyes closed, headphones, relieved).
+const EOS_SHIFT_CALM_FACE = { anger: 59 }
+function eosShiftEmo(emotion) {
+    const e = EOS_EMO[emotion] || EOS_GUIDE_CHAR
+    const c = EOS_SHIFT_CALM_FACE[emotion]
+    return c != null && e.calm !== c ? { ...e, calm: c } : e
+}
+// Rated loops this app session ("After 3 rated loops"): skips (after = null) never count.
+const EOS_SHIFT_RATED = { session: 0, n: 0 }
+function eosShiftRatedThisSession() {
+    const st = EOS_STORE.get()
+    const since = Number(st.sessionStart) || 0
+    let fromRows = 0
+    try {
+        fromRows = eosSessions().filter((r) => r && r.after != null && (Number(r.t) || 0) >= since).length
+    } catch {}
+    return Math.max(fromRows, EOS_SHIFT_RATED.session === since ? EOS_SHIFT_RATED.n : 0)
+}
 const EOS_SHIFT_PAID = new Set() // launchAt keys that already paid "+25 ⚡ for showing up"
 const EOS_SHIFT_DEV = { log: [], paid: [], last: null }
 function eosShiftLog(type, data) {
@@ -95,7 +116,7 @@ function eosShiftMomentPlan({ emotion = null, gameId = 0, band = "mid", veteran 
 function eosShiftContext(game) {
     const st = EOS_STORE.get()
     const emotion = EOS_EMO[st.emotion] ? st.emotion : EOS_EMO[st.detected] ? st.detected : null
-    const e = EOS_EMO[emotion] || EOS_GUIDE_CHAR
+    const e = eosShiftEmo(emotion)
     const gameId = Number(st.gameId) || Number(game && game.id) || 0
     const before = st.before == null ? null : eosClamp(Math.round(Number(st.before)), 0, 10)
     const guess = before != null ? before : eosClamp(Math.round(Number(st.intensityGuess != null ? st.intensityGuess : e.dial != null ? e.dial : 6)), 0, 10)
@@ -240,7 +261,8 @@ function eosShiftFlyOrb({ from, face, tier = "silver", hue = 190, reduced = fals
             eosHaptic("notch")
             if (chip) {
                 try {
-                    anims.push(chip.animate([{ transform: "scale(1)" }, { transform: "scale(1.22)" }, { transform: "scale(.94)" }, { transform: "scale(1)" }], { duration: 460, easing: "cubic-bezier(.3,1.6,.4,1)" }))
+                    // the chip bump outlives the orb (cleanup cancels only the orb's own animations)
+                    chip.animate([{ transform: "scale(1)" }, { transform: "scale(1.22)" }, { transform: "scale(.94)" }, { transform: "scale(1)" }], { duration: 460, easing: "cubic-bezier(.3,1.6,.4,1)" })
                     chip.dispatchEvent(new CustomEvent("eos:orb-landed", { bubbles: true, detail: { tier } }))
                 } catch {}
                 const plus = document.createElement("div")
@@ -307,17 +329,36 @@ function eosShiftFlyOrb({ from, face, tier = "silver", hue = 190, reduced = fals
 // ---------------------------------------------------------------- shared bits
 // The character bubble used by the moment and the meter: two stacked faces (loud → calm crossfade),
 // the core orb look (.eosOrbBall), circular, no text inside, no black mask.
+// A face image that fails (network flake) is retried once with a cache-buster after 800 ms; only then the bubble
+// falls back to a calm face glyph on a disc in the CHARACTER's own hue (never a letter on the emotion's colour).
+function eosShiftCharHue(char) {
+    const c = String(char || "still")
+    if (c === "still") return EOS_GUIDE_CHAR.hue
+    for (const k in EOS_EMO) if (EOS_EMO[k] && EOS_EMO[k].char === c) return EOS_EMO[k].hue
+    return EOS_GUIDE_CHAR.hue
+}
 function EosShiftFace({ char, loud, calmFace, calmness = 0, grey = false, className = "", ballRef }) {
-    const [broken, setBroken] = React.useState(false)
+    const [att, setAtt] = React.useState(0) // 0 first load · 1 retry (cache-buster) · 2 fallback
+    const tRef = React.useRef(0)
+    React.useEffect(() => () => clearTimeout(tRef.current), [])
+    const onErr = () => {
+        if (att === 0) {
+            if (!tRef.current) tRef.current = setTimeout(() => setAtt(1), 800)
+        } else setAtt(2)
+    }
+    const q = att === 1 ? "?eosr=1" : ""
+    const broken = att === 2
     return (
-        <span className={`eosOrbBall eosShiftBall ${grey ? "isGrey" : ""} ${className}`} ref={ballRef}>
+        <span className={`eosOrbBall eosShiftBall ${grey ? "isGrey" : ""} ${broken ? "isFallback" : ""} ${className}`} ref={ballRef} style={broken ? { "--eos-h": eosShiftCharHue(char) } : undefined}>
             {!broken ? (
                 <>
-                    <img className="eosOrbFace eosShiftFaceLoud" src={eosFace(char, loud)} alt="" draggable={false} onError={() => setBroken(true)} style={{ opacity: 1 - calmness * 0.92 }} />
-                    <img className="eosOrbFace eosShiftFaceCalm" src={eosFace(char, calmFace)} alt="" draggable={false} style={{ opacity: calmness }} />
+                    <img key={`l${att}`} className="eosOrbFace eosShiftFaceLoud" src={eosFace(char, loud) + q} alt="" draggable={false} onError={onErr} style={{ opacity: 1 - calmness * 0.92 }} />
+                    <img key={`c${att}`} className="eosOrbFace eosShiftFaceCalm" src={eosFace(char, calmFace) + q} alt="" draggable={false} onError={onErr} style={{ opacity: calmness }} />
                 </>
             ) : (
-                <b className="eosOrbFallback">{(EOS_CHAR_NAMES[char] || "?").slice(0, 1)}</b>
+                <svg className="eosShiftFallFace" viewBox="0 0 100 100" aria-hidden="true">
+                    <path d="M28 46q9-9 18 0M54 46q9-9 18 0M34 62q16 13 32 0" />
+                </svg>
             )}
             <i className="eosOrbGloss" />
         </span>
@@ -345,7 +386,7 @@ function eosShiftTextFocused() {
 function EosStillMoment({ emotion = null, gameId = 0, band = "mid", variant = "sigh", onDone, reduced = false, rainSfx }) {
     useEosStore()
     const calm = eosCalm(reduced)
-    const e = EOS_EMO[emotion] || EOS_GUIDE_CHAR
+    const e = eosShiftEmo(emotion)
     const v = ["sigh", "cool", "heart", "spark"].includes(variant) ? variant : "sigh"
     const kind = v === "cool" ? "sigh" : v
     const rounds = v === "cool" ? 2 : 1
@@ -355,6 +396,7 @@ function EosStillMoment({ emotion = null, gameId = 0, band = "mid", variant = "s
     const thumpRef = React.useRef(null)
     const [rootEl, setRootEl] = React.useState(null)
     const [orbEl, setOrbEl] = React.useState(null)
+    const [hintAt, setHintAt] = React.useState(null) // the hand rests on the orb's lower-right rim, never on the face
     const setRoot = React.useCallback((el) => {
         rootRef.current = el
         setRootEl(el)
@@ -605,7 +647,7 @@ function EosStillMoment({ emotion = null, gameId = 0, band = "mid", variant = "s
         else
             later(() => {
                 if (s.phase === "ready" && !s.touched) startIn(true)
-            }, EOS_SHIFT_SIGH_IDLE_MS)
+            }, v === "cool" ? EOS_SHIFT_COOL_IDLE_MS : EOS_SHIFT_SIGH_IDLE_MS)
         return () => {
             s.alive = false
             s.timers.forEach((t) => clearTimeout(t))
@@ -857,6 +899,7 @@ function EosStillMoment({ emotion = null, gameId = 0, band = "mid", variant = "s
                         style={{ "--eos-orb": `${sz}px` }}
                         {...(hint ? eosTarget(hint) : {})}
                     >
+                        <i className="eosSmHintAt" ref={setHintAt} aria-hidden="true" />
                         <span className="eosSmThump" ref={thumpRef}>
                             <EosShiftFace char={char} loud={e.loud} calmFace={e.calm} calmness={calmness} grey={!!e.greyLoud && calmness < 0.5} className="eosSmFaceWrap" />
                         </span>
@@ -877,7 +920,7 @@ function EosStillMoment({ emotion = null, gameId = 0, band = "mid", variant = "s
                 {kind === "heart" && ph === "stay" ? "continue ›" : "skip ›"}
             </button>
             {HandHint && hint && rootEl && orbEl ? (
-                <HandHint key={`${ph}-${round}`} target={orbEl} root={rootEl} g={hint.g} label={hint.label} ms={hint.ms} n={hint.n} dir={hint.dir} d={hint.d} reduced={calm} showAfterMs={ph === "full" ? 0 : 600} idleMs={3000} />
+                <HandHint key={`${ph}-${round}`} target={orbEl} rest={hintAt || undefined} root={rootEl} g={hint.g} label={hint.label} ms={hint.ms} n={hint.n} dir={hint.dir} d={hint.d} reduced={calm} showAfterMs={ph === "full" ? 0 : 600} idleMs={3000} />
             ) : null}
         </div>
     )
@@ -915,7 +958,7 @@ function EosShiftMeter({ game, sfx, rainSfx, reduced = false, onAgain, onPlay, o
     const stageRef = React.useRef(null)
     const stillRef = React.useRef(null)
     const charRef = React.useRef(null)
-    const R = React.useRef({ committed: false, settle: 0, timers: new Set(), dialDown: false, flyCancel: null })
+    const R = React.useRef({ committed: false, settle: 0, timers: new Set(), dialDown: false, retroOpen: false, flyCancel: null })
     const live = React.useRef({})
     live.current = { after, retroBefore, sfx, addScore, onPlay, onNext, onAgain, onDoneForNow }
 
@@ -973,6 +1016,11 @@ function EosShiftMeter({ game, sfx, rainSfx, reduced = false, onAgain, onPlay, o
             if (r.committed) return
             r.committed = true
             clearTimeout(r.settle)
+            if (val != null) {
+                const ss = Number(EOS_STORE.get().sessionStart) || 0
+                if (EOS_SHIFT_RATED.session !== ss) Object.assign(EOS_SHIFT_RATED, { session: ss, n: 0 })
+                EOS_SHIFT_RATED.n += 1
+            }
             const opts = {}
             if (ctx.before == null && val != null) {
                 opts.before = live.current.retroBefore != null ? live.current.retroBefore : ctx.guess
@@ -1045,20 +1093,35 @@ function EosShiftMeter({ game, sfx, rainSfx, reduced = false, onAgain, onPlay, o
     }, [step, pay]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // ---- the dial turns the feeling down by hand (character + dust follow live)
+    // The auto-commit waits while a finger is on a dial or the retro before-dial is open (✓ SET or "done" commits).
+    const armSettle = () => {
+        const r = R.current
+        clearTimeout(r.settle)
+        const arm = () => {
+            r.settle = setTimeout(
+                () => {
+                    if (R.current.dialDown || R.current.retroOpen) return arm()
+                    if (live.current.after != null) commit(live.current.after)
+                },
+                ctx.before == null ? EOS_SHIFT_SETTLE_RETRO_MS : EOS_SHIFT_SETTLE_MS
+            )
+        }
+        arm()
+    }
+    const pauseSettle = () => clearTimeout(R.current.settle)
     const onDial = (n) => {
         setAfter(n)
         try {
             eosApi("dots").setLevel?.(n)
         } catch {}
-        const r = R.current
-        clearTimeout(r.settle)
-        const arm = () => {
-            r.settle = setTimeout(() => {
-                if (R.current.dialDown) return arm()
-                commit(live.current.after)
-            }, EOS_SHIFT_SETTLE_MS)
-        }
-        arm()
+        armSettle()
+    }
+    const toggleRetro = () => {
+        const open = !R.current.retroOpen
+        R.current.retroOpen = open
+        setRetroOpen(open)
+        if (open) pauseSettle()
+        else if (live.current.after != null) armSettle() // "done": the payoff follows the usual settle
     }
     // focus moves to the dial once the rate step is up (never steals focus from a text field)
     React.useEffect(() => {
@@ -1087,15 +1150,16 @@ function EosShiftMeter({ game, sfx, rainSfx, reduced = false, onAgain, onPlay, o
     const HandHint = eosApi("arrows").EosHandHint
     const Share = eosApi("rewards").EosShareButton
     const sensitive = EOS_SHIFT_SENSITIVE.has(emoId)
-    const many = (eos.loops || 0) >= 3 || Date.now() - (eos.sessionStart || Date.now()) >= 10 * 60 * 1000
+    const rated = step === "done" ? eosShiftRatedThisSession() : 0
+    const many = rated >= 3 || Date.now() - (eos.sessionStart || Date.now()) >= 10 * 60 * 1000
     const next = React.useMemo(() => (step === "done" ? eosShiftNext(ctx, delta) : null), [step, delta, ctx, eos.safety])
     const coolLabel = ctx.coolPath && next && Number(next.id) === 112
 
     // character on the meter: scale .85 + .04n, face loud → calm as n falls (rises for GOOD)
     const n = step === "rate" ? (after != null ? after : refBefore) : pay && pay.after != null ? pay.after : refBefore
     const calmness = step === "rate" ? eosShiftCalmness(after, refBefore, better) : resolved ? (won || safety ? 1 : 0.35) : eosShiftCalmness(pay && pay.after, refBefore, better)
-    const charScale = handBack && !calm ? 0.74 : 0.85 + 0.04 * (n == null ? 6 : n)
     const isStillChar = ctx.char === "still"
+    const charScale = handBack && !calm && !isStillChar ? 0.74 : 0.85 + 0.04 * (n == null ? 6 : n)
     const noun = emoId ? String(e.noun || e.label || "").toUpperCase() : "FEELING"
     const spark = emoId ? e.spark : "LIGHTER"
     const headText = (() => {
@@ -1153,7 +1217,7 @@ function EosShiftMeter({ game, sfx, rainSfx, reduced = false, onAgain, onPlay, o
     return (
         <div
             ref={setRoot}
-            className={`eosShiftMeter fs-mask${calm ? " isCalm" : ""}${handBack ? " isHandBack" : ""}${won ? " isWon" : ""}`}
+            className={`eosShiftMeter fs-mask${calm ? " isCalm" : ""}${handBack ? " isHandBack" : ""}${won ? " isWon" : ""}${isStillChar ? " isSolo" : ""}`}
             data-step={step}
             data-eos-moment={ctx.plan ? ctx.plan.variant : "none"}
             data-eos-retro={ctx.before == null ? "1" : "0"}
@@ -1217,12 +1281,47 @@ function EosShiftMeter({ game, sfx, rainSfx, reduced = false, onAgain, onPlay, o
                             type="button"
                             className="eosShiftMomentChip"
                             onClick={() => {
+                                pauseSettle() // a dial value set just before keeps; ✓ SET still works after the moment
                                 setMomentOn(true)
                                 setStep("moment")
                             }}
                         >
                             {EOS_SHIFT_COPY.chip[chipVariant]}
                         </button>
+                    ) : null}
+                    {ctx.before == null ? (
+                        <div
+                            className="eosShiftRetro"
+                            onPointerDown={pauseSettle}
+                            onPointerUp={() => {
+                                if (!R.current.retroOpen && live.current.after != null) armSettle()
+                            }}
+                        >
+                            <span>
+                                you came in at about <b>{retroBefore != null ? retroBefore : ctx.guess}</b>
+                            </span>
+                            <span aria-hidden="true">·</span>
+                            <button type="button" className="eosShiftLink" aria-expanded={retroOpen} onClick={toggleRetro}>
+                                {retroOpen ? "done" : "change"}
+                            </button>
+                        </div>
+                    ) : null}
+                    {ctx.before == null && retroOpen ? (
+                        <div className="eosShiftRetroDial" onPointerDown={pauseSettle}>
+                            <EosIntensityDial
+                                value={retroBefore != null ? retroBefore : ctx.guess}
+                                onChange={(x) => {
+                                    pauseSettle()
+                                    setRetroBefore(x)
+                                }}
+                                emotion={emoId || "auto"}
+                                min={0}
+                                max={10}
+                                label="When you came in, it was about…"
+                                reduced={calm}
+                                id="eosShiftBefore"
+                            />
+                        </div>
                     ) : null}
                     <div
                         className="eosShiftDialWrap"
@@ -1242,31 +1341,6 @@ function EosShiftMeter({ game, sfx, rainSfx, reduced = false, onAgain, onPlay, o
                     >
                         <EosIntensityDial value={after} onChange={onDial} emotion={emoId || "auto"} min={0} max={10} ghost={refBefore} label={eosDialQuestion(emoId || "auto", "after")} reduced={calm} id="eosShiftDial" />
                     </div>
-                    {ctx.before == null ? (
-                        <div className="eosShiftRetro">
-                            <span>
-                                you came in at about <b>{retroBefore != null ? retroBefore : ctx.guess}</b>
-                            </span>
-                            <span aria-hidden="true">·</span>
-                            <button type="button" className="eosShiftLink" aria-expanded={retroOpen} onClick={() => setRetroOpen((x) => !x)}>
-                                {retroOpen ? "done" : "change"}
-                            </button>
-                        </div>
-                    ) : null}
-                    {ctx.before == null && retroOpen ? (
-                        <div className="eosShiftRetroDial">
-                            <EosIntensityDial
-                                value={retroBefore != null ? retroBefore : ctx.guess}
-                                onChange={(x) => setRetroBefore(x)}
-                                emotion={emoId || "auto"}
-                                min={0}
-                                max={10}
-                                label="When you came in, it was about…"
-                                reduced={calm}
-                                id="eosShiftBefore"
-                            />
-                        </div>
-                    ) : null}
                     <div className="eosShiftRateRow">
                         <button type="button" className="eosShiftSet" disabled={after == null} aria-disabled={after == null} onClick={() => after != null && commit(after)}>
                             ✓ SET
@@ -1310,7 +1384,7 @@ function EosShiftMeter({ game, sfx, rainSfx, reduced = false, onAgain, onPlay, o
             {step === "done" ? (
                 <div className="eosShiftDone">
                     <p className="eosShiftRewards">{eosShiftRewardsLine(pay && pay.grant, ctx)}</p>
-                    {many ? <p className="eosShiftMany">{`You've shifted ${Math.max(3, eos.loops || 0)} times — nice. Take the calm with you?`}</p> : null}
+                    {many ? <p className="eosShiftMany">{rated >= 3 ? `You've shifted ${rated} times — nice. Take the calm with you?` : "You've given yourself real time — nice. Take the calm with you?"}</p> : null}
                     <div className={`eosShiftActions${many ? " isMany" : ""} n${safety || (Share && !sensitive && shift) ? 3 : 2}`}>
                         <button type="button" className="eosShiftBtn isGood" ref={setGoodEl} onClick={() => live.current.onDoneForNow?.()}>
                             <span>I'M GOOD ✓</span>
@@ -1410,14 +1484,26 @@ ${EOS_A}.stage-reveal .releaseCompleteCard:has(.eosShiftMeter[data-eos-cool-repl
 ${EOS_A}.stage-reveal .releaseCompleteOverlay:has(.eosShiftMeter){overflow-y:auto!important;overscroll-behavior:contain}
 ${EOS_A}.stage-reveal .releaseCompleteCard:has(.eosShiftMeter){overflow:hidden!important}
 ${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter){width:min(840px,100%)!important}
+${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter)>.releaseCompleteCard{margin-inline:auto!important}
+@media (min-width:561px){
+${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter){display:grid!important;grid-template-columns:84px minmax(0,1fr) 84px!important;gap:14px!important;align-items:center!important;margin-inline:auto!important}
+${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter)>.releaseCompleteCard{grid-row:1!important;grid-column:2!important;max-width:100%!important}
+${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter)>.releaseCompleteSideNav{grid-row:1!important;justify-self:center}
+${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter)>.releaseCompleteSideNav:first-child{grid-column:1!important}
+${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter)>.releaseCompleteSideNav:last-child{grid-column:3!important}
+}
 ${EOS_A}.stage-reveal .releaseCompleteCard:has(.eosShiftMeter)>strong{font-size:clamp(17px,2vw,24px)!important}
 @media (max-width:560px){
 ${EOS_A}.stage-reveal .releaseCompleteOverlay:has(.eosShiftMeter){padding:10px 8px!important;grid-template-columns:minmax(0,1fr)!important}
-${EOS_A}.stage-reveal:has(.eosWorldChips) .releaseCompleteOverlay:has(.eosShiftMeter){padding-top:60px!important}
+${EOS_A}.stage-reveal:has(.eosWorldChips) .releaseCompleteOverlay:has(.eosShiftMeter){padding-top:60px!important;scroll-padding-top:60px;-webkit-mask-image:linear-gradient(to bottom,transparent 0,transparent 52px,#000 60px);mask-image:linear-gradient(to bottom,transparent 0,transparent 52px,#000 60px)}
 ${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter){display:grid!important;width:100%!important;max-width:none!important;grid-template-columns:1fr 1fr!important;gap:8px!important;align-self:start}
 ${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter)>.releaseCompleteCard{grid-column:1/-1!important;grid-row:1!important;width:100%!important;max-width:none!important;padding:16px 12px!important}
 ${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter)>.releaseCompleteSideNav{grid-row:2!important;width:100%!important;height:44px!important;font-size:12px!important}
 ${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter:not([data-step="done"]))>.releaseCompleteSideNav{display:none!important}
+/* the old reveal copy comes back BELOW the meter on phone, so the payoff never jumps down when it returns */
+${EOS_A}.stage-reveal .releaseCompleteCard:has(.eosShiftMeter)>:is(small,.releasePersistentFinalMessage){order:2}
+${EOS_A}.stage-reveal .releaseCompleteCard:has(.eosShiftMeter)>.releaseShiftCheck{order:3}
+${EOS_A}.stage-reveal .releaseCompleteCard:has(.eosShiftMeter[data-step="done"])>:is(small,.releasePersistentFinalMessage){animation:eosShiftFade .5s ease .2s both}
 }
 
 ${EOS_SHIFT_M}{position:relative;width:100%;display:flex;flex-direction:column;align-items:center;gap:10px;font-family:var(--eos-font);color:#fff;text-align:center;isolation:isolate}
@@ -1440,15 +1526,17 @@ ${EOS_SHIFT_M} .eosShiftStill .eosShiftCharIn{--eos-orb:104px}
 ${EOS_SHIFT_M} .eosShiftBall{position:relative}
 ${EOS_SHIFT_M} .eosShiftBall .eosOrbFace{transition:opacity .45s ease}
 ${EOS_SHIFT_M} .eosShiftBall.isGrey .eosShiftFaceLoud{filter:grayscale(1) brightness(.85)}
+${EOS_A} .eosShiftBall .eosShiftFallFace{position:absolute;inset:16%;width:68%;height:68%;fill:none;stroke:#fff;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
 ${EOS_SHIFT_M} .eosShiftTag{font:900 13px/1 var(--eos-font)!important;letter-spacing:.08em;color:hsl(var(--eos-h),100%,86%);padding:4px 8px;border-radius:999px;background:rgba(8,10,34,.72);white-space:nowrap;transition:opacity .4s ease}
 ${EOS_SHIFT_M} .eosShiftTag.isStill{color:var(--eos-gold-1)}
-${EOS_SHIFT_M}.isHandBack .eosShiftChar{transform:translateX(-118px)}
-${EOS_SHIFT_M}.isHandBack .eosShiftChar .eosShiftCharIn{transform:scale(.7)}
+/* .isSolo = the feeling's character IS STILL (GOOD / NOT SURE): it stays centred, glowing and labelled (no hand-back) */
+${EOS_SHIFT_M}.isHandBack:not(.isSolo) .eosShiftChar{transform:translateX(-118px)}
+${EOS_SHIFT_M}.isHandBack:not(.isSolo) .eosShiftChar .eosShiftCharIn{transform:scale(.7)}
 ${EOS_SHIFT_M}.isHandBack .eosShiftStill{opacity:1;transform:translateY(0) scale(1)}
-${EOS_SHIFT_M}.isHandBack .eosShiftChar .eosShiftTag{opacity:0}
-${EOS_SHIFT_M}.isHandBack:not(.isWon) .eosShiftChar{transform:translateX(-96px)}
+${EOS_SHIFT_M}.isHandBack:not(.isSolo) .eosShiftChar .eosShiftTag{opacity:0}
+${EOS_SHIFT_M}.isHandBack:not(.isWon):not(.isSolo) .eosShiftChar{transform:translateX(-96px)}
 ${EOS_SHIFT_M}.isHandBack.isWon .eosShiftStill .eosOrbBall{box-shadow:inset 0 -8px 18px rgba(20,8,48,.45),0 0 0 3px var(--eos-gold-1),0 0 50px rgba(255,214,110,.75)}
-${EOS_SHIFT_M}.isWon .eosShiftChar:only-of-type .eosOrbBall{box-shadow:inset 0 -8px 18px rgba(20,8,48,.45),0 0 0 3px var(--eos-gold-1),0 0 50px rgba(255,214,110,.75)}
+${EOS_SHIFT_M}.isSolo.isWon .eosShiftChar .eosOrbBall{box-shadow:inset 0 -8px 18px rgba(20,8,48,.45),0 0 0 3px var(--eos-gold-1),0 0 50px rgba(255,214,110,.75)}
 ${EOS_SHIFT_M} .eosShiftConfetti{position:absolute;left:50%;top:52px;width:0;height:0}
 ${EOS_SHIFT_M} .eosShiftConfetti i{position:absolute;left:-4px;top:-4px;width:8px;height:8px;border-radius:2px;background:var(--c);opacity:0;animation:eosShiftConfetti 1.1s cubic-bezier(.2,.8,.3,1) var(--d) 1 both}
 @keyframes eosShiftConfetti{0%{opacity:0;transform:rotate(var(--a)) translateY(0) scale(.4)}15%{opacity:1}100%{opacity:0;transform:rotate(var(--a)) translateY(calc(-1 * var(--r))) rotate(220deg) scale(1)}}
@@ -1457,6 +1545,7 @@ ${EOS_SHIFT_M} .eosShiftConfetti i{position:absolute;left:-4px;top:-4px;width:8p
 ${EOS_SHIFT_M} .eosShiftRate{width:100%;display:flex;flex-direction:column;align-items:center;gap:8px}
 ${EOS_SHIFT_M} .eosShiftDialWrap{width:min(100%,520px);display:flex;justify-content:center}
 ${EOS_SHIFT_M} .eosShiftDialWrap .eosDial{width:100%}
+${EOS_SHIFT_M} .eosDialTrack .eosDialSeg span{font-size:13.5px!important}
 ${EOS_SHIFT_M} .eosShiftRetro{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;padding:0 12px;border-radius:999px;background:rgba(255,229,138,.1);border:1px solid rgba(255,229,138,.3);font:700 13px/1.2 var(--eos-font);color:#fff3cf}
 ${EOS_SHIFT_M} .eosShiftRetro b{font:900 var(--eos-fs-num)/1 var(--eos-font);color:var(--eos-gold-1)}
 ${EOS_SHIFT_M} .eosShiftRetroDial{width:min(100%,420px)}
@@ -1491,6 +1580,7 @@ ${EOS_SHIFT_M} .eosShiftBtn:hover{filter:brightness(1.08)}
 ${EOS_SHIFT_M} .eosShiftBtn small{font:800 13px/1.1 var(--eos-font)!important;letter-spacing:.05em;opacity:.9;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 ${EOS_SHIFT_M} .eosShiftBtn.isGood{border:0!important;background:linear-gradient(180deg,var(--eos-gold-1),var(--eos-gold-2) 60%,var(--eos-gold-3))!important;color:#2a1600!important;box-shadow:0 5px 0 #a8541a,0 12px 28px rgba(255,160,60,.35)!important}
 ${EOS_SHIFT_M} .eosShiftBtn.isMore{border:2px solid hsla(var(--eos-h),100%,75%,.55)!important;background:linear-gradient(180deg,hsla(var(--eos-h),80%,45%,.55),hsla(var(--eos-h),80%,25%,.55))!important;color:#fff!important;box-shadow:0 5px 0 rgba(6,6,30,.6)!important}
+${EOS_SHIFT_M} .eosShiftBtn.isMore small{white-space:normal;text-overflow:clip;overflow:visible;line-height:1.15!important;overflow-wrap:anywhere}
 ${EOS_SHIFT_M} .eosShiftBtn.isMore.isSecondary{background:rgba(255,255,255,.06)!important;border-color:rgba(255,255,255,.25)!important;box-shadow:none!important;min-height:48px}
 ${EOS_SHIFT_M} .eosShiftBtn.isTalk{border:2px solid rgba(255,214,110,.7)!important;background:rgba(255,214,110,.14)!important;color:#fff3cf!important;box-shadow:0 5px 0 rgba(60,40,0,.5)!important;letter-spacing:.02em!important}
 ${EOS_SHIFT_M} .eosShiftShare{display:flex}
@@ -1504,7 +1594,7 @@ ${EOS_SHIFT_M} .eosShiftHelp a{color:var(--eos-gold-1);font:800 13px/1.2 var(--e
 ${EOS_SHIFT_M} .eosShiftHelp small{font:700 13px/1.3 var(--eos-font)!important;letter-spacing:.02em!important;color:rgba(230,240,255,.85)}
 
 /* ---- the Still Moment */
-${EOS_SHIFT_SM}{position:relative;width:100%;display:flex;flex-direction:column;align-items:center;gap:6px;user-select:none;-webkit-user-select:none;touch-action:none}
+${EOS_SHIFT_SM}{position:relative;width:100%;display:flex;flex-direction:column;align-items:center;gap:6px;user-select:none;-webkit-user-select:none}
 ${EOS_SHIFT_SM} .eosSmHead{display:flex;align-items:center;justify-content:center;gap:10px;min-height:28px;padding:0 6px}
 ${EOS_SHIFT_SM} .eosSmTitle{font:900 var(--eos-fs-md)/1.2 var(--eos-font)!important;letter-spacing:.04em;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.6);max-width:460px}
 ${EOS_SHIFT_SM}.is-sigh .eosSmTitle,${EOS_SHIFT_SM}.is-cool .eosSmTitle,${EOS_SHIFT_SM}.is-spark .eosSmTitle{text-transform:uppercase;letter-spacing:.08em}
@@ -1523,6 +1613,7 @@ ${EOS_SHIFT_SM} .eosSmRingFill{fill:none;stroke:var(--eos-gold-1);stroke-width:7
 ${EOS_SHIFT_SM}.is-cool .eosSmRingFill{stroke:var(--eos-c1);filter:drop-shadow(0 0 6px var(--eos-c1))}
 ${EOS_SHIFT_SM}.is-heart .eosSmRingFill{stroke:#ffb59a;filter:drop-shadow(0 0 8px rgba(255,170,140,.9))}
 ${EOS_SHIFT_SM} .eosSmOrb{position:relative;display:grid;place-items:center;width:var(--eos-orb);height:var(--eos-orb);min-width:44px;min-height:44px;padding:0!important;margin:0;border:0!important;border-radius:50%!important;background:none!important;box-shadow:none!important;cursor:pointer;touch-action:none;-webkit-touch-callout:none}
+${EOS_SHIFT_SM} .eosSmHintAt{position:absolute;left:86%;top:86%;width:34px;height:34px;translate:-50% -50%;pointer-events:none;z-index:-1}
 ${EOS_SHIFT_SM} .eosSmOrb:focus-visible{outline:3px solid var(--eos-gold-1)!important;outline-offset:6px}
 ${EOS_SHIFT_SM} .eosSmThump{display:block;border-radius:50%}
 ${EOS_SHIFT_SM} .eosSmFaceWrap{--eos-orb:inherit;width:var(--eos-orb);height:var(--eos-orb)}
@@ -1558,8 +1649,8 @@ ${EOS_A} .eosShiftPlus{position:absolute;transform:translate(-50%,0);padding:4px
 ${EOS_SHIFT_M}{gap:8px}
 ${EOS_SHIFT_M} .eosShiftStage{height:132px}
 ${EOS_SHIFT_M} .eosShiftCharIn,${EOS_SHIFT_M} .eosShiftStill .eosShiftCharIn{--eos-orb:88px}
-${EOS_SHIFT_M}.isHandBack .eosShiftChar{transform:translateX(-84px)}
-${EOS_SHIFT_M}.isHandBack:not(.isWon) .eosShiftChar{transform:translateX(-74px)}
+${EOS_SHIFT_M}.isHandBack:not(.isSolo) .eosShiftChar{transform:translateX(-84px)}
+${EOS_SHIFT_M}.isHandBack:not(.isWon):not(.isSolo) .eosShiftChar{transform:translateX(-74px)}
 ${EOS_SHIFT_M} .eosShiftActions{grid-template-columns:1fr 1fr;gap:8px}
 ${EOS_SHIFT_M} .eosShiftActions>.isGood,${EOS_SHIFT_M} .eosShiftActions.n2>*{grid-column:1/-1}
 ${EOS_SHIFT_M} .eosShiftActions.isMany>.isGood{grid-column:1/-1}
@@ -1571,12 +1662,12 @@ ${EOS_SHIFT_SM} .eosSmOrb{--eos-orb:112px!important}
 }
 @media (prefers-reduced-motion:reduce){
 ${EOS_SHIFT_M} :is(.eosShiftChar,.eosShiftStill,.eosShiftCharIn){transition:opacity .4s ease!important}
-${EOS_SHIFT_M}.isHandBack .eosShiftChar{transform:none;opacity:0}
+${EOS_SHIFT_M}.isHandBack:not(.isSolo) .eosShiftChar{transform:none;opacity:0}
 ${EOS_SHIFT_M} :is(.eosShiftStamp,.eosShiftSub,.eosShiftLine,.eosShiftDone){animation:eosShiftFade .4s ease both!important}
 ${EOS_SHIFT_SM} .eosSmMover{transition-property:opacity!important}
 }
 ${EOS_SHIFT_M}.isCalm :is(.eosShiftChar,.eosShiftStill,.eosShiftCharIn){transition:opacity .4s ease!important}
-${EOS_SHIFT_M}.isCalm.isHandBack .eosShiftChar{transform:none;opacity:0}
+${EOS_SHIFT_M}.isCalm.isHandBack:not(.isSolo) .eosShiftChar{transform:none;opacity:0}
 ${EOS_SHIFT_M}.isCalm .eosShiftStill{transform:none}
 ${EOS_SHIFT_M}.isCalm :is(.eosShiftStamp,.eosShiftSub,.eosShiftLine,.eosShiftDone){animation:eosShiftFade .4s ease both!important}
 ${EOS_SHIFT_M}.isCalm .eosShiftStamp{transform:rotate(-4deg)}
