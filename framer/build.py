@@ -89,6 +89,7 @@ def dark_mask_lint(parts):
             except Exception as e:
                 print(f"dark-mask lint: could not read CSS_GZIP_B64 ({e})", file=sys.stderr)
     for p, src in texts:
+        src = re.sub(r"/\*.*?\*/", lambda c: "\n" * c.group(0).count("\n"), src, flags=re.S)  # CSS comments
         for m in re.finditer(r"([^{}`;]{1,4000})\{([^{}]*)\}", src):
             sel, body = m.group(1).strip(), m.group(2)
             if not sel_re.search(sel) or "@keyframes" in sel:
