@@ -1,0 +1,107 @@
+{
+ "round": 1,
+ "verdicts": {
+  "code": "fix",
+  "experience": "ship"
+ },
+ "findings": [
+  {
+   "severity": "major",
+   "area": "rate step / retro before (spec \u00a76.6 item 2: 'change' opens a before-dial, then EosRecordShift(after,{before}) retro)",
+   "file": "src/eos/50_eos_shift.jsx",
+   "evidence": "onDial (L1048-1062) arms a 900 ms settle timer that calls commit(). Changing the retro before-dial (L1258-1260, onChange={(x)=>setRetroBefore(x)}) and clicking 'change' (L1251) never clear or re-arm that timer. The chip sits under the after-dial, and the SLIDE TO RIGHT NOW arrow points at the after-dial, so that is the order people use. In practice the payoff fires 0.9 s after the after-dial is set and the 'change' link unmounts before anyone can use it. Repro (integrated build /tmp/eos_rev_shift_int, 390x844, no check-in, POP): skip the moment, click after=3, then click '.eosShiftRetro .eosShiftLink'. The click timed out after 30 s because the step was already 'done'. The recorded row was {emo:'anger', before:7 (the guess), after:3, retro:1}, and the headline showed 'ANGER 7 -> 3' with a 4 LIGHTER stamp built on a value the user could not correct.",
+   "fix": "Pause the auto-commit while the retro control is in use. In the 'change' onClick and in the retro dial's onChange, run clearTimeout(R.current.settle). While retroOpen, skip the 900 ms auto-commit so \u2713 SET or closing with 'done' commits. Alternatively, re-arm the settle timer on each retro change (pointerdown/up tracking like dialDown on .eosShiftRetroDial). Another option is to place the 'you came in at' chip above the after-dial so it comes first."
+  },
+  {
+   "severity": "major",
+   "area": "payoff composition when the feeling's character is STILL (emotion 'good', and NOT SURE / undetected = EOS_GUIDE_CHAR)",
+   "file": "src/eos/50_eos_shift.jsx",
+   "evidence": "When isStillChar is true, no .eosShiftStill is rendered (L1195). The hand-back CSS still applies: L1445 / L1561 '.isHandBack .eosShiftChar{transform:translateX(-118px | -84px)}', L1448 hides the only tag, and L1574/L1579 (reduced motion / calm) set the only character to opacity:0. Measured with GOOD 4->8 at 390: stage centre x=195, the lone STILL orb centre x=111. The tag has opacity 0 and the centre holds an empty glow halo (screenshot /tmp/rev_shift_code/good_390.png). Under reduced motion or calm the stage is empty at the payoff. Separately, the gold rim rule '.isWon .eosShiftChar:only-of-type' (L1451) can never match when confetti renders, because div.eosShiftConfetti is a div sibling of div.eosShiftChar.",
+   "fix": "Add a class (e.g. 'isSolo') to the meter root when isStillChar, and exclude it from every hand-back rule: :not(.isSolo).isHandBack .eosShiftChar{translateX\u2026}, the tag-hide rule, and the reduced/calm opacity:0 rules. Give the gold rim to .isSolo.isWon .eosShiftChar .eosOrbBall instead of :only-of-type, so STILL stays centred, glowing and labelled."
+  },
+  {
+   "severity": "major",
+   "area": "layout at 1280 px (reveal card off-centre in every meter state)",
+   "file": "src/eos/50_eos_shift.jsx",
+   "evidence": "L1412 forces '.releaseCompleteShell:has(.eosShiftMeter){width:min(840px,100%)}', but the card does not grow and stays left-aligned inside the shell. Measured on the same reveal at 1280x860 (anger 8, POP): with the meter, shell x=220 w=840 and card x=239 w=502, so the card centre is at 490 against a viewport centre of 640, about 150 px off. With checkinEnabled set to false at runtime (meter returns null), shell x=494 w=291 and card x=504 w=249, which is centred. The builder's own shots dev/shots/eos/shift_crush_cool_1280_* and shift_pop_sad_1280_done.png show the same left-shifted card during the moment, rate and done steps.",
+   "fix": "Centre the card inside the widened shell, e.g. '${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter)>.releaseCompleteCard{margin-inline:auto!important;width:min(100%,760px)!important}'. Or drop the shell width override and widen only the card. Re-measure at 1280 that card centre equals viewport centre \u00b18 px, and that PREVIOUS/NEXT still sit beside it."
+  },
+  {
+   "severity": "minor",
+   "area": "veteran chip vs pending auto-commit",
+   "file": "src/eos/50_eos_shift.jsx",
+   "evidence": "The chip onClick (L1219-1222) does setStep('moment') but leaves R.current.settle armed. A veteran who moves the dial and then taps 'one big sigh? \u203a' within 0.9 s gets commit() during the Still Moment, and the moment is unmounted into the payoff mid-breath.",
+   "fix": "Call clearTimeout(R.current.settle) in the chip handler. The dial value is kept, so \u2713 SET still works after the moment."
+  },
+  {
+   "severity": "minor",
+   "area": "'many' prompt counts skipped ratings",
+   "file": "src/eos/50_eos_shift.jsx",
+   "evidence": "L1090 uses eos.loops. Core EosRecordShift increments loops for after=null (skip) too, but spec \u00a72.4/\u00a76.6 say 'After 3 rated loops'. Three skips therefore show 'You've shifted 3 times \u2014 nice.', which is not true.",
+   "fix": "Use eosShiftRatedCount() for the current session, i.e. sessions with after != null since sessionStart, or count rated rows instead of eos.loops."
+  },
+  {
+   "severity": "minor",
+   "area": "orb landing bump truncated",
+   "file": "src/eos/50_eos_shift.jsx",
+   "evidence": "land() pushes the 460 ms chip bump into anims (L243), then cleanup() cancels every anim. In the reduced/no-chip path, cleanup runs immediately after land() (L269-272). In the normal path it runs when the 300 ms squash ends (L299). The chip bump is therefore cut short or cancelled, and the chip snaps back to scale 1.",
+   "fix": "Keep the chip animation out of the anims list that cleanup cancels, or cancel only the orb's own animations in cleanup."
+  },
+  {
+   "severity": "minor",
+   "area": "touch scrolling on short phones",
+   "file": "src/eos/50_eos_shift.jsx",
+   "evidence": "L1507 puts touch-action:none on the whole .eosStillMoment root, about 330 px tall. The overlay is made scrollable at \u2264560 px (L1410/L1415), but a swipe that starts anywhere on the moment cannot scroll it on short screens (e.g. 360x640), so the skip link or AGAIN can end up out of reach.",
+   "fix": "Limit touch-action:none to .eosSmOrb, which already sets it, and leave the moment root at the default."
+  },
+  {
+   "severity": "minor",
+   "area": "readability (rate step, phone)",
+   "evidence": "In the integrated build /tmp/eos_rev_shift_experience_int, eos.smallText(page,12) in the rate step at 390x844 flags 'div.eosDialTrack > i.eosDialSeg > span' (text '10') at 11.6 px. It reproduced in every phone run: p1 POP/anger, p2 CRUSH/sad and p3 CRUSH/numb (/tmp/rev_shx/p1.json, p2.json, p3.json 'smallRate'). The 0.975-scaled reveal card pulls the core dial digits under the 12 px floor. That contradicts the build report's claim that every small text in the meter is at least 13 px. At 1280 the check is clean.",
+   "file": "src/eos/50_eos_shift.jsx",
+   "fix": "In EOS_SHIFT_CSS add a meter-scoped override such as `${EOS_SHIFT_M} .eosDialTrack .eosDialSeg span{font-size:13px!important}`, or compensate for the card scale, then re-run smallText at 390 in both the rate and done steps."
+  },
+  {
+   "severity": "minor",
+   "area": "pacing of the untouched moment (cool / sigh)",
+   "evidence": "d1 (CRUSH + anger 8 at 1280, nobody touching the orb): meter mount \u2192 rate took momentMs = 23140 ms. That is 8 s idle (EOS_SHIFT_SIGH_IDLE_MS) + in/sip/out 6.5 s + 0.9 s + round 2 + 0.9 s landing, against the spec's 'cool \u2026 the same, twice (\u2248 13 s)'. An untouched sigh likewise idles 8 s before its auto-blow, about 15 s in total. The arrow and 'skip \u203a' are visible the whole time, so this is pacing, not a dead end.",
+   "file": "src/eos/50_eos_shift.jsx",
+   "fix": "For the cool variant, which by spec always auto-starts, start round 1 after about 2.5 s of idle instead of 8 s, and keep round 2's auto-start at 900 ms. For plain sigh, cut the idle to about 4 s. Untouched cool then lands near 15 s and untouched sigh near 11 s."
+  },
+  {
+   "severity": "minor",
+   "area": "phone done-step layout (jump + chip overlap)",
+   "evidence": "Shots p1_6payoff \u2192 p1_7done (sheet /tmp/rev_shx/sheet_p1.png): when data-step=done restores 'RELEASE COMPLETE \u00b7 +598', the game name and the PRESSURE line above the meter, the headline and stamp block jumps about 60 px down right after the payoff resolves. The overlay overflows (scroll [807,688] for anger, [849,688] for sad). Scrolled to the bottom (p1_8scrolled), the fixed \u25c9/\u2600 world chips sit on top of the restored reveal line ('PRESSURE \u2193YOU BROK[chip]LD'). I'M GOOD stays above the fold (y545).",
+   "file": "src/eos/50_eos_shift.jsx",
+   "fix": "Bring the old copy back without shifting the payoff: animate its max-height and opacity in after the stamp has settled, or render it below the meter's actions on phone. Give `.releaseCompleteOverlay` a top fade mask or scroll-padding-top equal to the chip row, so scrolled text never passes under the chips."
+  },
+  {
+   "severity": "minor",
+   "area": "hero moment robustness (STILL image fallback)",
+   "evidence": "In run p1 (phone), STILL's face image failed to load (a network flake; it loaded as still_E15.webp:512 in p2 and p3). EosShiftFace switched permanently to `<b class=eosOrbFallback>S</b>` on a flat RED disc (the emotion's colour, not STILL's cyan), at the exact 'STILL \u00b7 at the controls' hand-back moment (p1_7done, p1_8scrolled). onError sets broken with no retry.",
+   "file": "src/eos/50_eos_shift.jsx",
+   "fix": "In EosShiftFace onError, retry once (re-set src after about 800 ms with a cache-buster) before falling back. Style the fallback in the character's own hue (var(--eos-still) for STILL) with a simple calm face glyph, so the hand-back never shows a red letter disc."
+  },
+  {
+   "severity": "minor",
+   "area": "character transformation reads wrong for RUSH",
+   "evidence": "The faces crop /tmp/rev_shx/faces.png plus p1_3blow and p1_5drag show that the 'calm' face used for anger (core EOS_EMO.anger.calm = 44, rush_E44.webp) is a wide-open-mouth shout or laugh. During the cool blow, and as the dial is turned down from 8 to 3, RUSH looks like it is yelling harder, which undercuts 'the character shrinks and calms with the number'. SYNC (panic) and DROP (sad) transform convincingly (q_b1 \u2192 q_b2: crying \u2192 eyes-closed calm).",
+   "file": "src/eos/00_eos_core.jsx",
+   "fix": "Pick a relieved or closed-eye RUSH expression from eosFacePool('rush','positive') for anger.calm in core, or have the shift module override it locally for the moment and the dial. Verify visually at 390."
+  },
+  {
+   "severity": "minor",
+   "area": "hint placement covers the focal point",
+   "evidence": "In every moment shot (p1_1moment, p2_1moment/2mid heart, p3_1moment/2mid spark) the EosHandHint hand sits directly on the character's face inside the orb. In the rate step (p1_4rate) the left and right arrows plus the hand cover dial digits 1-2 and 7-9 until first touch. The cue itself is obvious (HOLD TO FILL IT / HOLD \u00b7 HAND ON HEART / TAP \u00d73 ON THE BEAT / SLIDE TO RIGHT NOW).",
+   "file": "src/eos/50_eos_shift.jsx",
+   "fix": "Anchor the hand hint to the orb's lower-right rim (an offset or anchor prop when calling EosHandHint), so the face stays visible while the arrow still points at the orb. On the dial, place the arrows outside the track ends or above it."
+  },
+  {
+   "severity": "minor",
+   "area": "desktop button label truncation",
+   "evidence": "In d1_7done (1280x860, anger after CRUSH) three actions share one row, and the act-2 button reads 'COOL IT DOWN \u25b6 / COOL THE VOLC\u2026' with the next game's name truncated. The builder's shot without SHARE shows the full name.",
+   "file": "src/eos/50_eos_shift.jsx",
+   "fix": "Let .eosShiftBtn.isMore's game-name line wrap or shrink its letter-spacing and font-size, or give the isMore button flex-grow:1.4 when three buttons share a row, so 'COOL THE VOLCANO' and other long names never ellipsize."
+  }
+ ]
+}

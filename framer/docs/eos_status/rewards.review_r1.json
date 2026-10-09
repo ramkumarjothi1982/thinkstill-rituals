@@ -1,0 +1,114 @@
+{
+ "round": 1,
+ "verdicts": {
+  "code": "fix",
+  "experience": "ship"
+ },
+ "findings": [
+  {
+   "severity": "major",
+   "area": "safety path / focus trap: the shelf's support link opens a card that keyboard and screen-reader users cannot reach",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/52_eos_rewards.jsx",
+   "evidence": "Lines 1308-1314 (onFocusIn pull-back), 1281-1306 (Tab trap, Escape in capture phase), 1340-1350 (openHelp), 1374 (aria-modal=\"true\"). Repro: integrated build of 50+52+55 (/tmp/eos_rev_rewards_int) at 1280. Play CRUSH, open the shelf from the chip, click \"Need to talk to someone?\". eosApi(\"safety\").open(\"info\") draws .eosSafetyCard at z 230 above the shelf (screenshot /tmp/rv_rw/help_1280.png). The safety module's focusCard() runs 40 ms later, and the shelf's focusin handler pulls focus straight back to \u2715 (afterHelp.activeElement = \u2715, inSafety=false). Calling .focus() on the card's first link from script does not stick either (stuck=false, now='\u2715'). Four Tab presses all stay inside the shelf (starlight, fireflies, aurora, snow). Escape closes the SHELF underneath while the card stays open. The shelf also stays aria-modal, so assistive tech treats the card outside it as inert. Mouse and touch clicks still activate the tel: links, but keyboard and VoiceOver/NVDA users cannot use the crisis-support card from the shelf.",
+   "fix": "In openHelp, when the safety API exists, close the shelf first and then open the card: call close() / onCloseRef.current(), then eosApi(\"safety\").open?.(\"info\") on the next tick. The pill CSS already hides while .eosOrbShelf is mounted, so nothing else needs to change. If the shelf has to stay open, make onFocusIn and onKey return early when e.target or document.activeElement is inside .eosSafetyCard or when a safety card is mounted, skip the Escape handling in that case, and drop aria-modal while the card is up."
+  },
+  {
+   "severity": "minor",
+   "area": "share: user activation can expire before navigator.share() is called",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/52_eos_rewards.jsx",
+   "evidence": "Lines 1030-1052: navigator.share runs only after await eosMakeShareCard. That await includes document.fonts.load (up to 1.8 s), two face image loads (up to 2.6 s each, and a failed load is never cached, so each card waits again) and the canvas render. Measured in headless Chromium with faces unreachable: sad story 7422 ms, anger feed 6961 ms, week story 7027 ms per card. With the week card in one run, share was called 2008 ms after the click and userActivation was still active. Chrome's transient activation lasts about 5 s and WebKit is stricter. On a slow network share() throws NotAllowedError and the button quietly falls back to a download, and clipboard.writeText can lose activation the same way, which hurts the viral share sheet on phones.",
+   "fix": "Warm up before the click: on mount, preload the two faces and the Baloo 2 font, or render the blob in an idle callback (requestIdleCallback or setTimeout) and cache it per shift.t and format. Then on click call navigator.share with the cached blob right away. Also cache a failed image as null for the rest of the visit so later cards don't each wait out the 2.6 s timeout."
+  },
+  {
+   "severity": "minor",
+   "area": "React lifecycle: alive ref is never re-armed",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/52_eos_rewards.jsx",
+   "evidence": "Lines 1011-1019: the effect only sets alive.current=false in its cleanup and never sets it back to true. Under React 18 StrictMode (dev double-mount), or any remount that keeps the ref, alive stays false. go() then returns at line 1039 after setBusy(true), so the button stays on 'making your card\u2026' and nothing is shared or downloaded. This doesn't trigger in the current harness (no StrictMode), but the pattern is fragile.",
+   "fix": "Set alive.current = true at the start of the effect: React.useEffect(() => { alive.current = true; return () => { alive.current = false; clearTimeout(timer.current) } }, [])."
+  },
+  {
+   "severity": "minor",
+   "area": "modal scope on phone: the composer stays interactive and its focus is stolen",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/52_eos_rewards.jsx",
+   "evidence": "The shelf covers only .releaseStage (inset:0, line 1589), so at 390x844 the composer and header remain visible and tappable below and above the sheet (/tmp/rv_rw/b_shelf_390.png). Clicking input.releaseThoughtInput while the shelf is open leaves activeElement = BUTTON.eosRwClose (e.mjs composerFocus): onFocusIn pulls focus back. On a phone the soft keyboard would flash open and closed.",
+   "fix": "In onFocusIn, when focus moves to an element outside the stage (or on a pointerdown outside the panel), close the shelf instead of pulling focus back. Alternatively, set inert on siblings outside .releaseStage while the shelf is open."
+  },
+  {
+   "severity": "minor",
+   "area": "idempotence: a grant with no key repeats",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/52_eos_rewards.jsx",
+   "evidence": "Line 404: key = Number(shift.t) || Number(st.launchAt) || 0. When both are missing, key is 0, the results/granted checks are skipped, and every call writes a new orb and bond. In-page test: grantForShift(null) twice before any launch gave 2 orbs and different result objects. This only happens if EosRecordShift fails before any launch, so it's an edge case, but the spec says the grant is idempotent per loop.",
+   "fix": "When key is 0, use a per-visit fallback key (for example the last finishAt, or a module-level 'nokey' sentinel that is cleared on the next launch), or return a read-only result without writing."
+  },
+  {
+   "severity": "minor",
+   "area": "chip count pops twice",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/52_eos_rewards.jsx",
+   "evidence": "Lines 1119-1140: when eos:orb-landed arrives (setShown and setPop), the 2.6 s fallback timer from the count effect is still pending. It fires later and calls setPop again, which re-keys <b key={pop}> and replays the eosRewardsPop bounce. The count is correct (0,0,0,0,1,1,1,1 over 4 s at 390), but the number bounces twice for one orb.",
+   "fix": "Keep the fallback timer id in a ref and clear it in the eos:orb-landed handler, or only pop when shown < realRef.current."
+  },
+  {
+   "severity": "minor",
+   "area": "orb flight / chip honesty when the daily cap is hit",
+   "file": "src/eos/50_eos_shift.jsx",
+   "evidence": "Integrated build /tmp/eos_rev_rewards_experience_int at 390x844. I pre-granted 5 loops through window.__eos.rewards.grantForShift, then played a real 6th loop (SAD check-in, game 110, rated 7 \u2192 4). Polled samples: {fly:true, plus:'+1', num:'5', line:\"today's 5 orbs are on your shelf \u00b7 DROP bond 1 \u00b7 \u2600 1 day this week \u00b7 +25 \u26a1 for showing up\"}. So the orb flies, the '+1' pill pops under the \u25c9 chip and the chip bumps, but the count stays 5 and the copy says no orb was added. Screenshot: /tmp/eos_rev_rw/h_cap_plus_390.png. Cause: shift lines ~1020-1026 call eosShiftFlyOrb whatever pay.grant.orb is. EosWorldChips (52_eos_rewards.jsx ~1131-1140) also pops on every eos:orb-landed event, even when the count has not changed.",
+   "fix": "In 50_eos_shift.jsx, fly the orb and add the '+1' only when pay.grant?.orb is set, or when the rewards module is absent (the degraded path). On a capped loop, fly a small sun to [data-eos-chip=\"days\"] instead, with no '+1'. In 52_eos_rewards.jsx, make the eos:orb-landed handler pop only when realRef.current > shown."
+  },
+  {
+   "severity": "minor",
+   "area": "reward reveal: chip shows the new face before the orb lands",
+   "file": "src/eos/52_eos_rewards.jsx",
+   "evidence": "/tmp/eos_rev_rw/c_fly_390.png (t\u22481.3 s after SET): the \u25c9 chip already shows the newly won RUSH face while its count still reads 0. Cause: lastFace comes from data.last, which updates on the grant bus straight away, while the count waits for eos:orb-landed (lines ~1112-1116 and 1159). This gives away the 'expression you don't own yet' before the orb arrives.",
+   "fix": "Hold the previous last orb in state next to `shown`. Switch the chip's face and its gold rim in the same setter that updates the count, on landing or at the 2.6 s fallback."
+  },
+  {
+   "severity": "minor",
+   "area": "reveal copy hidden by the 'ALL DONE?' hand hint (cross-module)",
+   "file": "src/eos/30_eos_arrows.jsx",
+   "evidence": "In d_reveal_390.png, d_reveal_1280.png and i_cap_reveal_sad_390.png, EosHandHint's 'ALL DONE?' pill, the down arrow and the hand sit on top of the meter's text. They cover 'RUSH/DROP handed back the controls', 'You were gentle with a heavy moment' and the rewards line ('\u2726 C..EMORY', 'today's 5 orbs are on your [sh]elf'). The hint is still there about 5 s after SET, so the rewards line, which is the main reward copy, is partly unreadable on every reveal at both sizes.",
+   "fix": "Place the hint beside the I'M GOOD button (left or right of it, pointing sideways), or under the rewards line in the free space between the line and the button. Alternatively, wait until about 1.5 s after the rewards line has rendered and fade it after one pulse. Re-check with smallText/occlusion on .eosShiftRewards."
+  },
+  {
+   "severity": "minor",
+   "area": "Orb Shelf feel: empty and locked states",
+   "file": "src/eos/52_eos_rewards.jsx",
+   "evidence": "crop_shelfrow.png, e_shelf_390.png and e_shelf_1280.png. The locked 'next bond face' renders as a plain grey disc. The CSS filter brightness(0) invert(1) opacity(.26) (line 1638) turns the full-bleed circular face art into a solid disc, so nothing hints at what comes next. After the first loop, 6 of the 7 rows read 'play with X to meet them' over a grey disc and an empty bar, including STILL, who was 'at the controls' in the reveal. The result reads as a settings list, not an Inside-Out memory shelf of glowing orbs.",
+   "fix": "Show the locked face as the real face with filter: blur(5px) grayscale(.6) brightness(.55), plus a small '?' sparkle, so it works as a teaser. Collapse characters with bond 0 into a single 'crew you'll meet' row of small dim portraits. Seat the owned orbs on a curved glowing ledge with an inner glow in the character's hue (EOS_REWARDS_CHAR_HUE)."
+  },
+  {
+   "severity": "minor",
+   "area": "copy grammar on the shelf stat tiles",
+   "file": "src/eos/52_eos_rewards.jsx",
+   "evidence": "The shelf text reads '1 days you showed up' and '1 memory orbs' (lines ~1393-1403; only the first tile handles the singular).",
+   "fix": "Use singular and plural for each tile: 'day you showed up' / 'days you showed up', and 'memory orb' / 'memory orbs'."
+  },
+  {
+   "severity": "minor",
+   "area": "first-screen zero state and the folded chip on the phone check-in",
+   "file": "src/eos/52_eos_rewards.jsx",
+   "evidence": "a_input_390.png and a_input_1280.png. A brand-new user's first screen shows '\u25c9 0  \u2600 0' on desktop, and an empty grey ball with a '0' badge on phone. At 390 the folded chip (x343-387, y51-95) sits on the check-in title bubble .eosCkHeadCold (x13-377, y57-110), a 34\u00d738 px overlap that covers the bubble's top-right corner. The text is not covered, but it looks like a collision, and '\u2600 0' on day one sits awkwardly with the no-guilt tone.",
+   "fix": "While both counts are 0, show the chips as a quiet glyph-only state (sun and empty orb, no numbers) or fade them to 0.6. On phone step 1, either give the title bubble right padding equal to the chip width plus 8 px (a check-in CSS change, coordinated), or move the folded chip down onto the stage's top edge so the two do not intersect."
+  },
+  {
+   "severity": "minor",
+   "area": "share flow robustness on iOS (viral surface)",
+   "file": "src/eos/52_eos_rewards.jsx",
+   "evidence": "EosShareButton.go (lines 1030-1048) waits for eosMakeShareCard (fonts.load, up to two image loads with a 2.6 s timeout, a 1080\u00d71920 canvas and PNG encoding) and only then calls navigator.share. Measured in Chromium: share() was called 1.36 s after the click with navigator.userActivation.isActive true, so Chromium passes. The shift story card took 6.3-7.4 s in headless, which is past Chrome's 5 s activation window. WebKit is stricter about user activation after long async work, so on iPhones the call can fail with NotAllowedError and drop to a[download] (no share sheet).",
+   "fix": "Pre-render the blob when the button mounts (reveal resolved, or shelf opened) and keep it in a ref. In the click handler, call navigator.share synchronously when the blob is ready, and fall back to the current render-then-share path only when it is not. Treat NotAllowedError like the other non-share errors, with a toast that says the card was saved."
+  },
+  {
+   "severity": "minor",
+   "area": "share card legibility and dust motif",
+   "file": "src/eos/52_eos_rewards.jsx",
+   "evidence": "card_anger_story.png, card_panic0_feed.png and card_week_story.png. The gold sublines ('6 lighter \u2726', 'for my panic \u2726', 'I showed up for me this week') sit on the peach/orange lower gradient with low contrast and will be hard to read at Instagram-story thumbnail size. The '60-dot Thought Dust spiral converging on the calm character' reads as random diagonal streaks across the whole card. Otherwise the cards are strong: warm gradient, loud \u2192 arrow \u2192 calm faces, a big headline, no user words, and SAD hides the feeling name.",
+   "fix": "Draw the gold sublines with a dark warm stroke (ctx.strokeText, rgba(70,25,0,.55), about 8 px, lineJoin round) or on a translucent dark pill. Bend the dust paths into a visible spiral that ends at the calm orb's rim, with brighter heads near the orb."
+  },
+  {
+   "severity": "minor",
+   "area": "dust unlock has no reward moment",
+   "file": "src/eos/52_eos_rewards.jsx",
+   "evidence": "With the score set to 1200 (localStorage __ts_release_arcade_score_v1), fireflies and aurora show as unlocked ('tap'). Picking aurora writes eos_prefs_v1.dust='aurora' and dots sets data-eos-dust='aurora' (works). Nothing announces an unlock when \u26a1 crosses 250/1000/2500/5000; there is no code path for it (grep finds no new/unlock announcement), so users find it only by opening the shelf. On phone the aurora look is hard to tell from the default (dust_pair_crop.png). The swatches are static dots with no preview.",
+   "fix": "In eosRewardsGrant, compare the dust state before and after the +25 \u26a1. When a style unlocks, add 'new Thought Dust: aurora \u2726' to the result line and put a small badge dot on the \u25c9 chip until the shelf is opened. Animate each swatch with its own keyframes (blink, shimmer, fall, glint) so the reward is visible before it is picked."
+  }
+ ]
+}

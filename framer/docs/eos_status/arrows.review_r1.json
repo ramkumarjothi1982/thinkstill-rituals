@@ -1,0 +1,93 @@
+{
+ "round": 1,
+ "verdicts": {
+  "code": "ship",
+  "experience": "fix"
+ },
+ "findings": [
+  {
+   "severity": "minor",
+   "area": "performance / spec \u00a73.5 (one element measured per tick)",
+   "file": "src/eos/30_eos_arrows.jsx",
+   "evidence": "resolve() (l.883-925) runs eosArrowsUsable on every candidate (up to 24 for pick:\"near\"). Each call does getBoundingClientRect plus up to 4 getComputedStyle, and eosArrowsAim adds up to 5 elementFromPoint, every 50 ms while the cue is shown. For taps stages it keeps running at 20 Hz while hidden, because schedule() is fast whenever v.count is set (l.1176). Measured in the integrated build at 1280 (/tmp/revarr/a_leak.mjs): 1 POP 464 getComputedStyle/s + 714 getBoundingClientRect/s (7.6 ms/s of layout reads), 68 DRUM 315 + 569, 99 ECHO 387 + 637 (8.7 ms/s). This is under 1% CPU, so it does not block shipping, but it is far from the spec's 'one element measured per tick'. onDown also forces one layout per pointerdown: hide() writes classList, then the code reads getBoundingClientRect for the near-ordinal / drag room.",
+   "fix": "Re-collect and filter the candidate list at 4 Hz (cache it for 250 ms) and measure only the chosen element at 20 Hz. Drop to the 220 ms cadence for taps stages while the cue is hidden (the badge only changes on pointerdown). In onDown, read geometry before calling hide()."
+  },
+  {
+   "severity": "minor",
+   "area": "performance (EosHandHint)",
+   "file": "src/eos/30_eos_arrows.jsx",
+   "evidence": "While shown, EosHandHint measures every 2nd rAF frame (l.1574-1585) and calls setV whenever any halo or rect moves 2 px. The check-in orbs bob, so the hint re-renders continuously. Measured on the check-in at 390: ~98 DOM mutations/s and ~105 getBoundingClientRect/s inside .eosHintLayer in headless (~9 fps). That would be ~30 React commits/s on a 60 Hz phone for as long as the first-run check-in is open. The rAF loop also keeps running when the target list is empty (next = null).",
+   "fix": "Throttle measure() to about 8-10 Hz, or round the halo geometry to 4-6 px. Stop the rAF loop and fall back to the 160 ms timer when els is empty. Optionally make the halos track the bob through CSS instead of re-rendering React."
+  },
+  {
+   "severity": "minor",
+   "area": "SVG id collisions",
+   "file": "src/eos/30_eos_arrows.jsx",
+   "evidence": "Every EosArrowsChevronSvg renders <linearGradient id=\"eosArrowsGold\"> (l.558) and every hold ring renders <pattern id=\"eosArrowsStripes\"> (l.600). An lr/ud drag shows 2 chevrons, and the hint layers (check-in, Still Moment, shift meter) render more. url(#id) resolves to the first element in document order. If that first copy is in a display:none subtree or is being unmounted, the gold fill or green stripes can render empty (known Firefox/Safari behaviour).",
+   "fix": "Give each instance a unique id with React.useId() (React 18), or render one shared hidden <svg><defs> in each layer root and reference it from there."
+  },
+  {
+   "severity": "minor",
+   "area": "dragTo layout (visual collision)",
+   "file": "src/eos/30_eos_arrows.jsx",
+   "evidence": "In 21 BIN at 390 (/tmp/revarr/bin21_390.png) the gold chevron sits on the 'DROP HERE' tag, so it reads 'DR\u2193 HERE'. The chevron is placed at back = min(z.w,z.h)/2 + chevS/2 + 6 from the zone centre (l.429-430). For a wide, short zone that is exactly where the tag sits (top:-14px, translate -100%, CSS l.1663).",
+   "fix": "Add the tag height (about 30 px) to `back` when the path enters from above, or move the tag below or beside the zone when the chevron arrives from the top."
+  },
+  {
+   "severity": "minor",
+   "area": "stage-advance for seq games (UX within spec letter)",
+   "file": "src/eos/30_eos_arrows.jsx",
+   "evidence": "For seq stages (pick 'first') the identity is `${i}|${s.t}|0` and the key is `s:i:0` (l.920-924). After a correct tap the next glowing element has the same key, so the stage-advance rule (l.1106-1108) never re-shows the arrow. The hand stays hidden until the 4 s idle re-show, or until a wrong tap triggers the 1.2 s miss re-show. This affects 14, 17, 20, 33, 37, 51, 55, 60, 63, 71 and 74, the games where the order is hidden. It matches the \u00a73.2 identity definition, but it works against the \u00a73.3 seq intent ('re-resolves on DOM change').",
+   "fix": "For g==='seq', add the resolved element's rounded rect centre (or its index among all matches of s.t) to `key`. The hand then jumps to the next glowing target 350 ms after pointerup, with the seq number already incremented."
+  },
+  {
+   "severity": "minor",
+   "area": "pointer robustness",
+   "file": "src/eos/30_eos_arrows.jsx",
+   "evidence": "S.down is cleared only by window pointerup/pointercancel (l.1376-1387). The idle re-show (l.1116), the miss re-show (l.1113) and the stage-advance re-show (l.1108) are all gated on !S.down. If pointerup never arrives (lostpointercapture without pointerup, or a mouse released outside an embedding iframe), the arrow stays hidden until the player touches again.",
+   "fix": "Also reset S.down on window blur, on visibilitychange and on lostpointercapture (capture, on the host). Or treat S.down as stale after about 8 s without pointermove."
+  },
+  {
+   "severity": "minor",
+   "area": "consumer: check-in hint timing (outside the arrows file)",
+   "file": "src/eos/40_eos_checkin.jsx",
+   "evidence": "The check-in waits 1100 ms before setting hintEls (l.877-881), then EosHandHint waits its default showAfterMs of 600 ms. The first hand therefore appears about 1.7 s after the check-in mounts, against the \u00a73.12 goal of within 1 s. The hint is also keyed with key={layoutSig} (l.1069): a background tap on the check-in remounted .eosHintLayer 575 ms later (MutationObserver in /tmp/revarr/h_hint.mjs), so the hint re-showed 1.28 s after the touch instead of after the 3 s idle. The likely trigger is the cold-open dismissal changing layoutSig. EosHandHint's own hide and idle logic is correct.",
+   "fix": "Pass showAfterMs={0} (or a short delay) since the check-in already waits for the pop-in. Avoid re-keying the hint on layout changes: target is re-measured every frame, so a key is not needed."
+  },
+  {
+   "severity": "major",
+   "area": "hand placement covers the text the player has to read (instruction text, choose options, the user's own words)",
+   "file": "src/eos/30_eos_arrows.jsx",
+   "evidence": "The fingertip sits on the target's centre, so the 52-64 px glove covers the lower-right of the target, which is exactly where the text is (the bubble rule puts text below the image). I measured it with a script: the hand's bbox against the game's text-node rects 1.8 s after start, in the scratch integrated build /tmp/eos_rev_arrows_exp_int, script /tmp/rev_arrows_exp/s3.mjs. At 390x844: 113 GROUND CONTROL 'something BLUE' 45-73% covered (82% at 1280), 'SHINY' 42%. That is the hero anxiety game's grounding prompt itself. It is covered again on every idle re-show: 'SMOOTH' 19-34% at 5.5 s (s4 log). 85 CONTROL PANEL (choose): 'PARK IT' 80-91% and 'COME BACK LATER' 68-74%, so the player cannot read one of the options they must pick from. Also 105 'MAKE IT DRAMATIC' 81%, 109 'HOLD TO BREATHE' 69-79%, 4 'ACTIVATE STOMP TOOL' 71%, 18 'HOLD TO BURN' 63-71%. The user's own words: 1 POP 'panic' 100%, 93/100/110 'feel' 100%, 99 'feel panic' 51%. The screenshots confirm it: /tmp/rev_arrows_exp/start_113_390.png ('some[hand] BLUE'), fx_85_390.png ('PA[hand]', 'COME BAC[hand]ATER'), start_2_390.png ('THOUGHT MO[hand]CRUSH'), start_11_390.png ('IN SWE[hand]ONE'). This works against the owner's readability request and the 'zero reading' goal at the moment the player first sees their words become objects.",
+   "fix": "Choose the hotspot point and the glove's orientation so the glove body lands on empty space, never on text. When a target contains text, aim at its non-text part: the icon or image child, or the top 30% of a tall button. Use the soft-avoid text rects you already compute (eosArrowsTextRects) to pick a glove rotation or mirror (from below-left, from above, from the side) that minimises overlap with text inside the target. For choose, rest the hand on the bottom edge of the group or between options, not on an option's label. For marker games, honour or default data-eos-oy (e.g. 113 beacons aim at the icon disc). Add a test: hand bbox overlap with target text below 20% for every id at 390 and 1280."
+  },
+  {
+   "severity": "major",
+   "area": "phone: arrow and choose halo drawn over the LIVE GUIDE panel",
+   "file": "src/eos/30_eos_arrows.jsx",
+   "evidence": "3 CRACK at 390x844, stage 1 'GRAB THE HAMMER'. The tool dock is laid out underneath .globalPlayGuide, so the hand and chevron point at the guide's 'MIND BEND' copy and no hammer is visible (start_3_390.png). I re-checked with 60_eos_fixes + 10_eos_readability in /tmp/eos_rev_arrows_exp_int2: still hand y 649 vs guide top 589 (underGuide true). 85 CONTROL PANEL at 390: the choose halo frames the LIVE GUIDE panel, because the 5th option sits under it (fx_85_390.png dashed box; fx_85_390_rm.png solid gold box around 'CONTROL PANEL \u00b7 LIVE GUIDE / How to play / MIND BEND'), so the guide card looks like a choice. Phone is the primary target, and a first-time player sees the cue pointing at reading material.",
+   "fix": "In the usable/aim step, treat an element whose visible centre (or most of its rect) lies inside the .globalPlayGuide / .engineProgressHud rect as occluded for display. For choose, drop such options from the halo set. For a single target, raise it with the fixes task (\u00a711.6 phone layout: lift the 3 CRACK dock and the 85 5th option above the guide panel) and, until then, do not draw the hand over the panel. Add a 390 check: no .eosHand, .eosChevron or halo rect intersects .globalPlayGuide."
+  },
+  {
+   "severity": "minor",
+   "area": "label placement ignores characters and images",
+   "file": "src/eos/30_eos_arrows.jsx",
+   "evidence": "The label avoids text and HUD but not characters or images. 85 at 390: 'PICK ONE MOVE' sits over the lower face of the emotion character and the bottom of the user's word 'my boss' (fx_85_390.png). 114 SKY LANTERNS mid-play: 'HOLD TO LIGHT IT' butts into or overlaps the droplet character (play_114_mid_390.png). 114 start: the label touches the character orb (start_114_390.png). 67 at 1280: 'LEFT \u00b7 RIGHT \u00b7 LEFT' overlaps the word card (start_67_1280.png). CREATIVE_STANDARDS #1/#4: characters are first-class and nothing may overlap the image.",
+   "fix": "Add character and image rects to the soft-avoid set: img, canvas, svg with role img, [class*=Orb], [class*=haracter], .eosCharacterOrb, and [data-eos-char] if engines can mark it. Score them like text, or weight them higher than text."
+  },
+  {
+   "severity": "minor",
+   "area": "chevron covers user words and game prompts",
+   "file": "src/eos/30_eos_arrows.jsx",
+   "evidence": "The chevron is always placed 'above' the target and does not go through the text-avoid step. The user's word 'my boss' is 100% covered in 13 at both sizes, 61-71% in 10, 30, 72 and 88 at 1280, and 79-100% in 10, 13, 30 and 88 at 390. 109 at 1280: 'yelled at' 100%. 103 at 1280: 'QUEUE \u00b7 5/6' 80%. Visible in fx_85_390.png ('WI[chevron] THIS THOUGHT'), start_3_1280.png ('SELECT TH[chevron]ACK TOOL') and play_114_mid_390.png ('the sa[chevron]me sky').",
+   "fix": "Run the chevron box through the same text-avoid scoring as the label. Rotate it to the free side (left, right or below, pointing at the target) or shorten its offset when its box hits text, especially a .uniqWord or a user-word node."
+  },
+  {
+   "severity": "minor",
+   "area": "idle re-show timing in a look-around grounding game",
+   "file": "src/eos/30_eos_arrows.jsx",
+   "evidence": "113 at 390 after a successful find: the arrow stays hidden from 0.5 to 5.0 s, then re-shows at 5.5 s at level 2 with the 'FOUND IT? TAP' label over the next beacon (s4 log). That happens while the game has deliberately asked the player to look around their real room, so the cue nags during the relief mechanic itself and covers the next prompt (see finding 1).",
+   "fix": "Let markers carry an idle override, e.g. data-eos-idle='10000', or data-eos-level='1' for paced or reflective phases (113 find, 111 hold), and honour it in the idle rule. Alternatively, default to the 6 s veteran idle for 'tap' markers whose label is unchanged across consecutive stages."
+  }
+ ]
+}

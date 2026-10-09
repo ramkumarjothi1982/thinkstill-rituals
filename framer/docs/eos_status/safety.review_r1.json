@@ -1,0 +1,93 @@
+{
+ "round": 1,
+ "verdicts": {
+  "code": "fix",
+  "experience": "fix"
+ },
+ "findings": [
+  {
+   "severity": "major",
+   "area": "Safety lines: local-first fallback (spec S7 / G9)",
+   "file": "src/eos/55_eos_safety.jsx",
+   "evidence": "I ran eosApi('safety').orderLines('', {tz}) in the integrated build (/tmp/rev_safety_code/t4.mjs). With the default Support Lines, the primary one-tap button is 'Call or text 988 \u00b7 US' (tel:988) for Europe/Paris, Asia/Tokyo, Africa/Lagos, Pacific/Auckland, America/Sao_Paulo and America/Mexico_City. 988 does not connect from those countries. Cause 1: eosSafetyRegion maps every other America/* zone to US (line 65). Cause 2: eosSafetyOrderLines falls back to the list order, which puts US first, when the region is null (lines 144-152). This follows the spec's wording ('other America/ \u2192 US', 'else the list order'), but for most of the world the main crisis action on the card dials a dead number. That defeats S7 (local first) and G9 (help always reachable). The working 'Anywhere \u00b7 findahelpline.com' line is hidden under 'more lines \u25be'.",
+   "fix": "In eosSafetyOrderLines, when the region is null or no line label matches it, move the first url/domain line (the 'Anywhere' findahelpline line) to the front with local:false. It then becomes the primary 'Visit findahelpline.com' button, and that site localises. Limit the US mapping to US zones (America/New_York|Chicago|Denver|Los_Angeles|Phoenix|Anchorage|Detroit|Boise|Juneau|Adak|Indiana/*|Kentucky/*|North_Dakota/*\u2026, US/*, Pacific/Honolulu) and send other America/* zones (S\u00e3o Paulo, Mexico City, Bogot\u00e1, Buenos Aires\u2026) to the same 'Anywhere' fallback. This change needs a one-line lead sign-off because it deviates from the \u00a710.3 text."
+  },
+  {
+   "severity": "minor",
+   "area": "Phone layout: card covers most of the arena during play",
+   "file": "src/eos/55_eos_safety.jsx",
+   "evidence": "With a triggered card open in stage-play at 390\u00d7844 (t3.mjs, game 2), the card rect is [23,71,344,387] inside an arena of [15,63,360,658], so it covers about 59 % of the playfield. Game targets under it cannot be tapped until dismissal. The builder reports game 7 stalled this way. Game 2's target sat just below the card and still finished, and releaseChoiceButton and the composer stayed hittable, so the \u00a710.4 acceptance passes.",
+   "fix": "In stage-play at \u2264560 px, render a compact card: title, primary call and 'I'm safe' only. Put the body and 'Text someone I trust' behind 'more \u25be'. For example: ${EOS_A}.stage-play .eosSafetyCard .eosSafetyBody{display:none} plus a smaller head, keeping the card under about 30 % of the arena height."
+  },
+  {
+   "severity": "minor",
+   "area": "Focus: automatic hand-over lands on a tel: link",
+   "file": "src/eos/55_eos_safety.jsx",
+   "evidence": "Both the deferred hand-over on the next non-play stage (line 532) and the not-busy path (line 560) call focusCard(), which focuses the primary <a href='tel:988'>. Verified in t3: after the game finished, document.activeElement was 'eosSafetyBtn eosSafetyCall' in stage-reveal. A keyboard user who presses Enter right after a game ends, or after mic dictation where focus was on the mic button and not an input, activates a phone call they did not intend.",
+   "fix": "For automatic, non-tap hand-overs, focus the card container (tabIndex=-1, which also reads the alertdialog title) or the dismiss button. Keep focusing the primary line only when the user opened the card by a tap (userAsked)."
+  },
+  {
+   "severity": "minor",
+   "area": "'Text someone I trust' can silently do nothing",
+   "file": "src/eos/55_eos_safety.jsx",
+   "evidence": "share() (lines 354-361) calls e.preventDefault() before navigator.share and swallows any rejection with .catch(() => {}). Where navigator.share exists but is blocked (NotAllowedError in an iframe without allow='web-share', such as the Framer canvas preview or some embeds), the sms: fallback has already been cancelled and the tap does nothing.",
+   "fix": "navigator.share(...).catch(err => { if (err && err.name !== 'AbortError') { try { window.location.href = trustHref } catch {} } })"
+  },
+  {
+   "severity": "minor",
+   "area": "Line parsing: service names lose words",
+   "file": "src/eos/55_eos_safety.jsx",
+   "evidence": "Line 126 strips the words call/or/text/to anywhere in the value. parseLines('NZ \u00b7 Need to talk? 1737') gives the button text 'Call Need talk? 1737' (t4.mjs output). 'Need to talk? 1737' is the real NZ service name an owner would enter.",
+   "fix": "Strip only the leading verb phrase, for example value.replace(/^\\s*(?:call(?:\\s+or\\s+text)?|text)\\b\\s*/i, '') and the matched 'text WORD to N' span. Do not remove 'to', 'or' and 'call' everywhere."
+  },
+  {
+   "severity": "minor",
+   "area": "Cross-module focus: shift meter can take focus from the safety card",
+   "file": "src/eos/50_eos_shift.jsx",
+   "evidence": "grep finds no holdsFocus guard in 50_eos_shift.jsx. The builder's recommended guard (eosApi('safety').holdsFocus?.() before the orb autofocus near line 593 and the rate-dial tr.focus near line 1067) was not applied. A soft card raised from the meter's commit gets focus after 300 ms, then the dial's autofocus can pull focus away again. The card stays visible.",
+   "fix": "Shift owner: add `&& !eosApi('safety').holdsFocus?.()` to both automatic focus moves in 50_eos_shift.jsx."
+  },
+  {
+   "severity": "minor",
+   "area": "Copy: soft card for a first-time text trigger",
+   "file": "src/eos/55_eos_safety.jsx",
+   "evidence": "Text soft triggers ('I want to disappear', 'I hate my life', 'feeling hopeless') show the shift-loop copy 'Big feelings keep coming back?' (EOS_SAFETY_COPY.soft) even on the user's first entry, where 'keep coming back' does not fit. This matches the spec, which defines a single soft copy, but it reads oddly.",
+   "fix": "Optional, lead call: add a text-soft title such as 'That sounds like a lot to carry.' with the same body, and use it when soft came from the composer scan (softKind 'text') instead of from soft(shift)."
+  },
+  {
+   "severity": "major",
+   "area": "Phone layout: the card hides the game, the check-in and the reveal, which breaks the spec's 'never blocks' rule",
+   "file": "src/eos/55_eos_safety.jsx",
+   "evidence": "All-modules scratch build (/tmp/eos_rev_safety_experience_all), 390x844, America/Toronto. (1) Play: the strong-flag card is 387-433 px tall and covers 56-63 % of the 658 px arena (/tmp/rev_safety_x/c_play_111_390.png, c_play_2_390.png). In 111 BIG SIGH, the panic hero game, the breath orb's centre is under the card (elementFromPoint hits the card) and the orb cannot be seen at all. The arrow hand points at the card's bottom edge. The soft card is still 362 px (56 %) and hides the top half of the 113 GROUND CONTROL world. The builder's report says game 7 stalled at 390 with the card open. (2) Input/check-in: the card covers 9 check-in orbs, including PANIC, so panic in one tap (G4) is unreachable until the user dismisses (a_input_390.png). At 1280 it still hides the PANIC and ANGRY orbs and half of NOT SURE (a_input_1280.png). (3) Reveal: the card covers the whole shift-meter dial, leaving only a greyed '\u2713 SET' and 'skip' with nothing to set (d_reveal_111_390.png, h_soft_reveal_390.png). Spec \u00a710.2: 'Never blocks ... the game, composer, menu and mic keep working underneath'. Mobile first is binding (CREATIVE_STANDARDS \u00a79).",
+   "fix": "Add a compact phone layout (\u2264560 px) for play, reveal and check-in. Option A: put a 36 px STILL in the title row so the 20 px title gets the full width; use one action row [\ud83d\udcde Call or text 988][\ud83d\udcac][I'm safe \u2713]; move the body, 'Text someone I trust', 'more lines' and the emergency text behind a 'more \u25be' expander. Target \u2264 35 % of the arena. Option B: show the full card for about 6 s or until the first pointerdown in the arena, then collapse it, without dismissing the type, into a slim banner of about 64-72 px: '\ud83d\udc9b Support is here \u00b7 \ud83d\udcde 988 \u00b7 I'm safe'. Tapping the banner re-expands it. In both cases, never cover the arrow's current target: read the arrows state or target rect and dock the card at the bottom, above the guide or composer, when the target is in the top half. On desktop with the check-in open, dock the card beside the emotion ring (for example in the right column) instead of over PANIC and ANGRY."
+  },
+  {
+   "severity": "minor",
+   "area": "Copy: the typed soft trigger shows 'keep coming back' the first time",
+   "file": "src/eos/55_eos_safety.jsx",
+   "evidence": "On a fresh session, launching 111 or 113 with the text \"i can't do this anymore\" shows the soft card titled 'Big feelings keep coming back?' (s6 probe, cardH 362). The user said it once, so the title reads as presumptuous and clinical. The 'keep coming back' copy fits only the shift-loop trigger (line 32).",
+   "fix": "Track why the soft card fired (for example softKind 'soft-text' vs 'soft-loop' in EOS_SAFETY_UI). Use a warm title for text triggers, such as 'That sounds like a lot to carry.' with the same body. Keep 'Big feelings keep coming back?' for the shift-meter loop. Needs the spec owner's OK because \u00a710.3 fixes the copy."
+  },
+  {
+   "severity": "minor",
+   "area": "Character: STILL is a static sticker on the card",
+   "file": "src/eos/55_eos_safety.jsx",
+   "evidence": "Line 386: <EosCharacterOrb char=\"still\" mood={15} ... bob={false} reduced /> forces reduced motion even when calm visuals are off. Only the halo breathes. In every screenshot STILL is frozen. CREATIVE_STANDARDS \u00a71 expects characters to act, and a calm, breathing companion is the relief cue here.",
+   "fix": "When not calm or reduced, let STILL breathe slowly (scale 1\u21921.04, 6 s, in phase with eosSafetyHalo) as a co-regulation cue. Add a small warm nod or squash (about 200 ms) when the user taps Call, Text or 'I'm safe'. Keep the current static orb under calm or reduced motion."
+  },
+  {
+   "severity": "minor",
+   "area": "'Text someone I trust' does nothing on desktop",
+   "file": "src/eos/55_eos_safety.jsx",
+   "evidence": "Lines 353-361: without navigator.share (desktop Linux Chrome, desktop Firefox) the button is an sms:?&body=\u2026 link, which most desktops cannot open. The user taps and nothing happens, at a sensitive moment.",
+   "fix": "When navigator.share is missing and the device is not touch-first, copy EOS_SAFETY_TRUST_TEXT to the clipboard on tap. Show a 'Copied \u2014 paste it to someone you trust' confirmation inside the card (\u226513 px, aria-live polite) for about 3 s. Keep sms: on phones."
+  },
+  {
+   "severity": "minor",
+   "area": "Duplicate support line in 'more lines'",
+   "file": "src/eos/55_eos_safety.jsx",
+   "evidence": "/tmp/rev_safety_x/g_info_more_390.png and g_info_more_1280.png: in a Canada time zone the primary is 'Call or text 988 \u00b7 Canada', and 'more lines' repeats a US row with the same 'Call or text 988 / Text 988' buttons (line 351 filters by object, not by action). The UK screenshot also shows US and Canada as two identical rows.",
+   "fix": "Remove any line whose action href matches the primary's or an earlier line's. Merge the labels instead, for example 'US & Canada', so the expanded list is shorter and every row is a distinct service."
+  }
+ ]
+}
