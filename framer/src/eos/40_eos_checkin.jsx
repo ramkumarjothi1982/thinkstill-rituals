@@ -46,6 +46,21 @@ function eosCheckinFaces(emotionId) {
     const spent = neg.length > 1 ? neg[1] : soft
     return { char, loud: e.loud, soft, spent, calm: e.calm }
 }
+// "nervous · what-ifs" → two no-wrap chunks, so a narrow phone cell breaks at the dot, never inside "what-ifs"
+function eosCheckinSub(txt) {
+    const parts = String(txt || "").split(" · ")
+    const out = []
+    parts.forEach((part, i) => {
+        if (i) out.push(" ")
+        out.push(
+            <span key={i} className="eosCkSubPart">
+                {part}
+                {i < parts.length - 1 ? " ·" : ""}
+            </span>
+        )
+    })
+    return out
+}
 function eosCheckinChord(id) {
     const f = EOS_CHECKIN_ROOT[id] || 261.63
     eosTone(f, 460, { type: "triangle", gain: 0.04 })
@@ -128,7 +143,7 @@ function useEosCheckinSize(ref) {
 // Desktop: the 8 orbs on an ellipse (rx 34 %, ry ≤ 30 % of the stage) sized to fit between the measured header
 // and bottom bar; "more feelings" slot SCARED / JEALOUS / NUMB into the ring's three gaps (left, bottom, right).
 // Phone: a 3 × 3 grid (NOT SURE in the middle cell) + a 4th row for "more feelings"; the root scrolls if needed.
-function eosCheckinLayout({ w, h, phone, more, labH, headH, footH, step, sel, spot }) {
+function eosCheckinLayout({ w, h, phone, more, labH, labRows, lane = 0, headH, footH, step, sel, spot }) {
     const pos = {}
     const ids = EOS_CHECKIN_RING.concat(["auto"], EOS_CHECKIN_MORE)
     if (!w || !h) {
@@ -141,7 +156,7 @@ function eosCheckinLayout({ w, h, phone, more, labH, headH, footH, step, sel, sp
     const lab = labH
     if (!phone) {
         const top = headH
-        const bottom = h - footH
+        const bottom = h - footH - lane // lane = room for the first-timer "TAP HOW YOU FEEL" label under the ring
         const avail = Math.max(200, bottom - top)
         const S = Math.round(eosClamp(avail / 2.88 - lab, 64, 96))
         const C = Math.round(S * 1.15)
@@ -165,7 +180,6 @@ function eosCheckinLayout({ w, h, phone, more, labH, headH, footH, step, sel, sp
         const S = 84
         const C = 92
         const M = 72
-        const rowH = S + lab + 8
         const cellW = Math.min(132, (w - 16) / 3)
         const top = headH
         const grid = [
@@ -173,17 +187,23 @@ function eosCheckinLayout({ w, h, phone, more, labH, headH, footH, step, sel, sp
             ["overthinking", "auto", "overwhelm"],
             ["sad", "lonely", "shame"],
         ]
-        grid.forEach((row, r) =>
+        // each row is as tall as ITS tallest label (PANIC's two-line sub only grows the first row);
+        // the middle row also makes room for the bigger NOT SURE ball
+        let y = top
+        grid.forEach((row, r) => {
+            const lr = labRows && labRows[r] ? labRows[r] : lab
+            const extra = r === 1 ? (C - S) / 2 : 0
             row.forEach((id, c) => {
-                pos[id] = { x: w / 2 + (c - 1) * cellW, y: top + r * rowH + S / 2 + 2, size: id === "auto" ? C : S, show: true }
+                pos[id] = { x: w / 2 + (c - 1) * cellW, y: y + extra + S / 2 + 2, size: id === "auto" ? C : S, show: true }
             })
-        )
-        const moreTop = top + 3 * rowH
+            y += S + 2 * extra + lr + 5
+        })
+        const moreTop = y
         EOS_CHECKIN_MORE.forEach((id, j) => {
             pos[id] = { x: w / 2 + (j - 1) * cellW, y: moreTop + M / 2 + 2, size: M, show: !!more }
         })
-        chipsY = moreTop + (more ? M + lab + 14 : 0)
-        canvasH = Math.max(h, chipsY + footH + 6)
+        chipsY = moreTop + (more ? M + lab + 14 : 0) + lane
+        canvasH = Math.max(h, chipsY + footH - 10)
     }
     if (step === 2) {
         // the chosen orb flies to the measured spot; the crew steps to the sidelines (desktop) or out (phone)
@@ -229,6 +249,7 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
     const [n, setN] = React.useState(6)
     const [more, setMore] = React.useState(false)
     const [labH, setLabH] = React.useState(44)
+    const [labRows, setLabRows] = React.useState(null)
     const [bands, setBands] = React.useState({ head: 104, foot: 106 })
     const headRef = React.useRef(null)
     const bottomRef = React.useRef(null)
@@ -277,7 +298,14 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
         []
     )
 
-    const layout = eosCheckinLayout({ w: size.w, h: size.h, phone, more, labH, headH: bands.head, footH: bands.foot, step, sel, spot })
+    const HandHint = eosApi("arrows").EosHandHint
+    // first-timers get the arrows module's "TAP HOW YOU FEEL" hint: its label sits just under the ring, so keep a lane free there
+    const lane = first && HandHint && step === 1 ? 44 : 0
+    const layout = eosCheckinLayout({ w: size.w, h: size.h, phone, more, labH, labRows, lane, headH: bands.head, footH: bands.foot, step, sel, spot })
+    const layoutSig = EOS_CHECKIN_RING.map((id) => {
+        const q = layout.pos[id]
+        return q ? `${Math.round(q.x)},${Math.round(q.y)}` : ""
+    }).join(";")
     const slots = EOS_CHECKIN_RING.concat(["auto"], EOS_CHECKIN_MORE)
     if (sel && !slots.includes(sel)) slots.push(sel)
     const focusable = EOS_CHECKIN_RING.concat(["auto"], more ? EOS_CHECKIN_MORE : [])
@@ -287,18 +315,43 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
         const root = rootRef.current
         if (!root || step !== 1) return
         let m = 0
-        root.querySelectorAll(".eosCkSlot[data-eos-ring='1'] .eosOrb").forEach((el) => {
-            const ball = el.querySelector(".eosOrbBall")
+        const per = {}
+        root.querySelectorAll(".eosCkSlot[data-eos-ring='1']").forEach((slot) => {
+            const el = slot.querySelector(".eosOrb")
+            const ball = el && el.querySelector(".eosOrbBall")
             if (!ball) return
-            m = Math.max(m, el.offsetHeight - ball.offsetHeight)
+            const lh = el.offsetHeight - ball.offsetHeight
+            per[slot.getAttribute("data-eos-slot")] = lh
+            m = Math.max(m, lh)
         })
         if (m > 0 && Math.abs(m - labH) > 1) setLabH(Math.min(80, Math.max(30, Math.ceil(m))))
+        const rowOf = (ids) => Math.min(80, Math.max(26, Math.ceil(Math.max(0, ...ids.map((k) => per[k] || 0)))))
+        if (per.panic != null) {
+            const rows = [rowOf(["panic", "anger", "anxiety"]), rowOf(["overthinking", "auto", "overwhelm"]), rowOf(["sad", "lonely", "shame"])]
+            if (!labRows || rows.some((v, i) => Math.abs(v - labRows[i]) > 1)) setLabRows(rows)
+        }
         const hd = headRef.current
         const ft = bottomRef.current
-        const head = hd ? Math.ceil(hd.offsetTop + hd.offsetHeight + (phone ? 10 : 18)) : bands.head
+        const head = hd ? Math.ceil(hd.offsetTop + hd.offsetHeight + (phone ? 6 : 18)) : bands.head
         const foot = ft ? Math.ceil(ft.offsetHeight + 12) : bands.foot
         if (Math.abs(head - bands.head) > 1 || Math.abs(foot - bands.foot) > 1) setBands({ head, foot })
     })
+    // Baloo 2 may arrive after the first measure: re-render once fonts settle so rows use the real label heights
+    const [, setFontTick] = React.useState(0)
+    React.useEffect(() => {
+        let alive = true
+        const bump = () => alive && setFontTick((k) => k + 1)
+        try {
+            document.fonts?.ready?.then(bump)
+            document.fonts?.addEventListener?.("loadingdone", bump)
+        } catch {}
+        return () => {
+            alive = false
+            try {
+                document.fonts?.removeEventListener?.("loadingdone", bump)
+            } catch {}
+        }
+    }, [])
     // where the chosen orb lands on step 2 (the spacer in the panel)
     eosLayoutEffect(() => {
         if (step !== 2) return
@@ -328,7 +381,6 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
     }, [])
 
     // ---- first-timer halo hops across ALL orbs (never one) — fallback when the arrows module is absent
-    const HandHint = eosApi("arrows").EosHandHint
     const haloOn = first && !touched && step === 1 && !HandHint && !dive
     React.useEffect(() => {
         if (!haloOn || red) return
@@ -639,14 +691,14 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
         const sub =
             id === "panic" ? (
                 <>
-                    {e.sub}
+                    {eosCheckinSub(e.sub)}
                     <br />
-                    tap = start now
+                    <span className="eosCkSubPart">tap = start now</span>
                 </>
             ) : id === "auto" ? (
-                EOS_GUIDE_CHAR.sub
+                eosCheckinSub(EOS_GUIDE_CHAR.sub)
             ) : (
-                e.sub
+                eosCheckinSub(e.sub)
             )
         const scale = isSel ? 0.85 + n * 0.04 : 1
         const shake = isSel && n >= 7 && !red
@@ -717,10 +769,10 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
             const els = ringEls()
             const rest = rootRef.current?.querySelector(".eosCkSlot[data-eos-slot='auto'] button.eosOrb") || null
             if (els.length) setHintEls({ els, rest })
-        }, 520)
+        }, red ? 300 : 1100) // after the staggered pop-in has settled, so the halos are measured on the final ring
         return () => clearTimeout(t)
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [!!HH, step, first, touched, more, size.w, size.h])
+    }, [!!HH, step, first, touched, more, size.w, size.h, layoutSig])
 
     const supportLines = eosCheckinSupportLines(st.crisisLines)
     const banEmo = banner ? eosCheckinEmo(banner.emo) : null
@@ -852,7 +904,8 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
                             about ThinkStill
                         </button>
                         <button type="button" className={`eosCkLink ${calmOn ? "isOn" : ""}`} data-eos-calmtoggle="1" aria-pressed={calmOn} onClick={() => eosSetPref("calmVisuals", !calmOn)}>
-                            ◐ calm visuals · {calmOn ? "on" : "off"}
+                            <i className="eosCkHalf" aria-hidden="true" />
+                            calm visuals · {calmOn ? "on" : "off"}
                         </button>
                     </nav>
                 </div>
@@ -879,7 +932,7 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
                 </div>
             ) : null}
 
-            {HH && step === 1 && hintEls && !touched && !dive ? <HH target={hintEls.els} rest={hintEls.rest} root={rootRef.current} g="choose" label="TAP HOW YOU FEEL" reduced={red} /> : null}
+            {HH && step === 1 && hintEls && !touched && !dive ? <HH key={layoutSig} target={hintEls.els} rest={hintEls.rest} root={rootRef.current} g="choose" label="TAP HOW YOU FEEL" reduced={red} /> : null}
             {HH && step === 2 && !dive && dialHint && !idleCta && dialRef.current ? (
                 <HH target={dialRef.current.querySelector(".eosDialTrack") || dialRef.current} root={rootRef.current} g="drag" dir="lr" d={120} label="SLIDE IT" reduced={red} />
             ) : null}
@@ -916,6 +969,7 @@ function EosCompanion({ game, hostRef, reduced = false }) {
     const st = useEosStore()
     const red = eosCalm(reduced)
     const selfRef = React.useRef(null)
+    const bodyRef = React.useRef(null)
     const p = useEosProgress(hostRef || selfRef, 4)
     const emo = st.emotion || st.detected || null
     const e = EOS_EMO[emo] || null
@@ -928,7 +982,6 @@ function EosCompanion({ game, hostRef, reduced = false }) {
     const [geo, setGeo] = React.useState({ phone: false, top: null })
     const [done, setDone] = React.useState(false)
     const [bubble, setBubble] = React.useState(null)
-    const [squash, setSquash] = React.useState(0)
     const [shown, setShown] = React.useState({ cur: null, prev: null })
     const lastP = React.useRef(null)
     const ups = React.useRef(0)
@@ -967,7 +1020,15 @@ function EosCompanion({ game, hostRef, reduced = false }) {
         lastP.current = p
         if (p == null || prev == null || p <= prev || hidden) return
         ups.current += 1
-        if (!red) setSquash((k) => k + 1)
+        // Pixar squash & stretch on every hit — Web Animations on the body, so the face <img> never remounts (no blink)
+        if (!red) {
+            try {
+                bodyRef.current?.animate(
+                    [{ transform: "scale(1,1)" }, { transform: "scale(1.16,.84)" }, { transform: "scale(.9,1.1)" }, { transform: "scale(1.04,.97)" }, { transform: "scale(1,1)" }],
+                    { duration: 520, easing: "cubic-bezier(.3,1.4,.4,1)" }
+                )
+            } catch {}
+        }
         if (ups.current % 3 === 0 && p < 100) {
             const line = char === "rush" && smash ? "HAH!" : EOS_CHECKIN_VOICE[char] || EOS_CHECKIN_VOICE.still
             setBubble(line)
@@ -1010,7 +1071,7 @@ function EosCompanion({ game, hostRef, reduced = false }) {
             {...EOS_PRIVATE_ATTRS}
             style={{ ...style, "--eos-h": e2.hue, "--eos-orb": `${size}px` }}
         >
-            <div key={red ? "s" : `q${squash}-${done ? 1 : 0}`} className={`eosCompBody ${!red && squash ? "isSquash" : ""} ${!red && done && !smash ? "isBounce" : ""}`}>
+            <div ref={bodyRef} className={`eosCompBody ${!red && done && !smash ? "isBounce" : ""}`}>
                 <span className={`eosOrbBall ${e2.greyLoud && mood === "loud" ? "isGrey" : ""}`}>
                     {shown.prev != null ? <img className="eosOrbFace eosCompPrev" src={eosFace(char, shown.prev)} alt="" draggable={false} /> : null}
                     <img key={`f${shown.cur}`} className="eosOrbFace eosCompCur" src={eosFace(char, shown.cur == null ? face : shown.cur)} alt="" draggable={false} />
@@ -1055,6 +1116,7 @@ ${EOS_A} .eosCkSlot .eosOrbLabel{font-size:15px}
 ${EOS_A} .eosCkSlot .eosOrbSub{white-space:nowrap;text-align:center;font-size:12.5px;line-height:1.18;color:rgba(232,240,255,.9)}
 ${EOS_A} .eosCkSlot .eosOrbName{position:absolute;left:50%;top:calc(var(--eos-orb) - 13px);translate:-50% 0;font-size:12.5px;box-shadow:0 2px 0 rgba(0,0,0,.4),0 0 0 1.5px hsla(var(--eos-h),100%,70%,.55);z-index:2;pointer-events:none}
 ${EOS_A} .eosCkSlot .eosOrbLabel{margin-top:8px}
+${EOS_A} .eosCkSubPart{white-space:nowrap}
 ${EOS_A} .eosCkSlot.isSel .eosOrbName{font-size:13px;top:calc(var(--eos-orb) - 15px)}
 ${EOS_A} .eosCkSlot .eosOrbBall{transition:width .45s cubic-bezier(.3,1.5,.4,1),height .45s cubic-bezier(.3,1.5,.4,1),opacity .25s ease,filter .25s ease,box-shadow .25s ease}
 ${EOS_A} .eosCkNotSure .eosOrbBall{box-shadow:inset 0 -8px 18px rgba(20,8,48,.45),inset 0 5px 12px rgba(255,240,215,.25),0 10px 0 rgba(8,6,30,.45),0 0 0 3px rgba(125,227,255,.35),0 0 56px rgba(125,227,255,.55)}
@@ -1084,6 +1146,7 @@ ${EOS_A} .eosCkLink{display:inline-flex;align-items:center;justify-content:cente
 ${EOS_A} .eosCkLink:hover,${EOS_A} .eosCkLink:focus-visible{color:#fff;text-decoration-color:var(--eos-gold-1);outline:none}
 ${EOS_A} .eosCkLink.isSupport{color:#ffe9b0}
 ${EOS_A} .eosCkLink.isOn{color:#7de3ff}
+${EOS_A} .eosCkHalf{display:inline-block;flex:0 0 auto;width:11px;height:11px;margin-right:6px;border-radius:50%;border:1.5px solid currentColor;background:linear-gradient(90deg,currentColor 0 50%,transparent 50%)}
 ${EOS_A} .eosCkPanel{position:absolute;left:50%;top:0;bottom:62px;width:min(560px,calc(100% - 300px));translate:-50% 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:10px 0;animation:eosCheckinFade .35s ease both}
 ${EOS_A} .eosCkBanner{padding:8px 14px;border-radius:999px;background:linear-gradient(90deg,rgba(255,229,138,.18),rgba(125,227,255,.16));border:1px solid rgba(255,229,138,.5);font:800 14px/1.2 var(--eos-font);color:#fff3c4;text-align:center}
 ${EOS_A} .eosCkQ{margin:0;font:900 clamp(24px,2.6vw,34px)/1.1 var(--eos-font);text-align:center;color:#fff;text-shadow:0 3px 0 rgba(10,6,40,.6),0 0 24px hsla(var(--eos-h),100%,60%,.45)}
@@ -1134,12 +1197,13 @@ ${EOS_A} .eosCheckIn.isPhone .eosCkTitle{font-size:29px}
 ${EOS_A} .eosCheckIn.isPhone .eosCkSub{font-size:14px}
 ${EOS_A} .eosCheckIn.isPhone .eosCkSlot .eosOrb{gap:4px}
 ${EOS_A} .eosCheckIn.isPhone .eosCkSlot .eosOrbLabel{margin-top:6px}
-${EOS_A} .eosCheckIn.isPhone .eosCkSlot .eosOrbSub{white-space:normal;max-width:124px;font-size:12.2px;letter-spacing:0;line-height:1.12}
+${EOS_A} .eosCheckIn.isPhone .eosCkSlot .eosOrbSub{white-space:normal;max-width:132px;font-size:12.5px;letter-spacing:0;line-height:1.12}
 ${EOS_A} .eosCheckIn.isPhone .eosCkSlot[data-eos-slot="overthinking"] .eosOrbLabel{font-size:13px;letter-spacing:.02em}
 ${EOS_A} .eosCheckIn.isPhone .eosCkPanel{width:calc(100% - 24px);gap:8px}
 ${EOS_A} .eosCheckIn.isPhone .eosCkSpot{height:142px}
 ${EOS_A} .eosCheckIn.isPhone .eosCkQ{font-size:24px}
 ${EOS_A} .eosCheckIn.isPhone .eosCkFoot{gap:0 4px}
+${EOS_A} .eosCheckIn.isPhone[data-step="1"] .eosCkBottom{gap:0}
 ${EOS_A} .eosCheckIn.isPhone[data-step="2"] .eosCkPanel{position:relative;left:auto;top:auto;bottom:auto;translate:none;margin:0 auto;min-height:0;padding:12px 0 4px}
 ${EOS_A} .eosCheckIn.isPhone[data-step="2"] .eosCkBottom{position:relative;bottom:auto;margin:4px 0 8px}
 ${EOS_A} .eosCheckIn.isPhone .eosCkPop{bottom:auto;top:90px}
@@ -1151,7 +1215,6 @@ ${EOS_A} .eosCheckInChip .eosOrbBall{box-shadow:inset 0 -3px 6px rgba(20,8,48,.4
 ${EOS_A} .eosCkChipText{font:800 13px/1 var(--eos-font);letter-spacing:.02em;white-space:nowrap}
 ${EOS_A} .eosCompanion{position:absolute;z-index:55;pointer-events:none;display:flex;align-items:center;flex-direction:row-reverse;gap:8px;font-family:var(--eos-font);animation:eosCheckinBubble .5s cubic-bezier(.3,1.5,.4,1) both}
 ${EOS_A} .eosCompBody{position:relative;flex:0 0 auto}
-${EOS_A} .eosCompBody.isSquash{animation:eosSquash .6s ease}
 ${EOS_A} .eosCompBody.isBounce{animation:eosCheckinBounce .9s cubic-bezier(.3,1.6,.4,1)}
 ${EOS_A} .eosCompanion .eosOrbBall{width:var(--eos-orb);height:var(--eos-orb)}
 ${EOS_A} .eosCompanion .eosOrbBall.isGrey .eosOrbFace{filter:grayscale(1) brightness(.85)}
@@ -1189,5 +1252,6 @@ eosExpose("checkin", {
     EOS_CHECKIN_MORE,
     EOS_CHECKIN_GOOD_GAME,
     faces: eosCheckinFaces,
+    faceSrc: eosFace,
     preview: eosCheckinPreview,
 })
