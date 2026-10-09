@@ -1,0 +1,52 @@
+{
+ "round": 3,
+ "verdicts": {
+  "code": "fix",
+  "experience": "ship"
+ },
+ "partial": false,
+ "findings": [
+  {
+   "severity": "major",
+   "area": "Regression from round 2: the new hug-climb in eosReadWordFit makes the user's words flicker between two sizes forever",
+   "file": "src/eos/10_eos_readability.jsx",
+   "evidence": "The new climb at lines 790-803 reads a word that was already fitted as a box that hugs its text, and then climbs past the box that actually constrains it.\n\nWhy it flips:\n- After a fit, the word's one-line width is avail-1. So `|inner - line| <= 2` holds.\n- Its parent's content width matches the child: a block child fills its parent, and a flex, inline-block or grid item sits 1 px short, inside the 1.5 px tolerance. So the loop climbs to a wide ancestor.\n- That ancestor gives avail > 220, so the fit returns the full `want`.\n- On the next pass the word overflows at `want`. It no longer hugs, so the fit applies again.\n- The cache key changes with fs, so the cache never stops the loop.\n\nUnit test (/tmp/rev_rd3_code/unit.mjs) runs the extracted lines 757-819 in Chromium on 'overwhelmingly' in a 115 px box, target 16.25, natural 12. All four layouts (block, flex item, inline-block, grid cell) alternate 15.08 -> 16.25 -> 15.08 on every pass. A 100 or 130 px box is stable.\n\nReal games at 390x844 (/tmp/rev_rd3/osc.mjs sweeps ids 1-110 with the text 'my boss yelled at me in the meeting today' and counts reversals of data-eos-floor):\n- VACUUM (23), `.tsExactUserText` 'meeting': 14.0 <-> 15.3, 25 reversals in about 10 s.\n- RED LIGHT (64), `.plainUserThoughtText` 'my boss': 16.3 <-> 15.3, 8 reversals.\n- TINY SOUNDTRACK (106), `.tsndText` 'meeting' in a 53 px card at opacity 1: /tmp/rev_rd3_code/t106.mjs shows 14px -> 16.25px at 367 ms, 750, 2606, 2792, 4031, 4831, 5241, 6270 ms, and it never settles.\n\nAt 1280, 106 is stable because its box is 175 px wide. Other words, longer thoughts and other phone widths will hit more games. These are the user's own words on the primary targets. Each flip is also a write plus relayout every ~0.4-1.9 s for the whole play, and the 'word that would break' protection is lost half the time. The old code (box = p) is stable in the same unit test, so this round introduced the bug.",
+   "fix": "Only climb past a box that really is sized by its content: inline-block, inline-flex or table display, position absolute or fixed with width auto, a float, or a flex or grid item whose own width is auto in a shrink-to-fit parent. Never climb past a box with a definite width, and never past a block child that just fills its parent.\n\nAlternatively, add hysteresis: when rec.px < want and the word's line at rec.px is within 2 px of the parent's content width, keep rec.px instead of re-fitting against a farther ancestor.\n\nAlso key the fit cache on the box actually used, not on p.clientWidth.\n\nThen re-run a floor-reversal sweep over ids 1-110 at 390 and 1280 and require 0 elements with 2 or more reversals. Keep /tmp/rev_rd3/osc.mjs as a regression check. Re-check the MICROSCOPE birth-creep case at the same time, since the climb was added to stop that creep."
+  },
+  {
+   "severity": "minor",
+   "area": "The pop on the narrowed-meter ticker (literalProgress games) is dead CSS, so the report's claim of a pop is wrong",
+   "file": "src/eos/10_eos_readability.jsx",
+   "evidence": "Lines 200-203 sit in `@media (max-width:560px) and (prefers-reduced-motion:no-preference)` and add tsRewardPillHit to the spark, token and chain pills. Lines 250-251 sit in the plain `@media (max-width:560px)` block further down. They use the same selectors (same specificity), are also !important, and set `animation: eosReadTick ...` only. Being later in the file, they win.\n\nMeasured at 390 with normal motion (/tmp/rev_rd3/hud.mjs, .isHit forced):\n- DRAMA MACHINE (105) and RAIN OUT (110): the computed animation-name on spark, token and chain is only 'eosReadTick'.\n- FINGER TRAP (102), a full-width meter game: token and chain show 'eosReadTick, tsRewardPillHit' as intended.\n\nThe build report says 'Sparks, centred, for 0-1.3 s with its pop'. That is cosmetic only, because the fade still works.",
+   "fix": "Move the `(max-width:560px) and (prefers-reduced-motion:no-preference)` block below the plain `@media (max-width:560px)` block, or give its selectors one more class (for example `.tsShiftRewardHud.tsShiftRewardHud`). Then confirm that animation-name includes tsRewardPillHit on 105 and 110 at 390."
+  },
+  {
+   "severity": "minor",
+   "area": "Phone hit ticker, narrowed meter: the band fades out before the TOKENS/CHAIN pills",
+   "file": "src/eos/10_eos_readability.jsx",
+   "evidence": "ROUND-3 VERIFICATION: all six round-2 findings are fixed. Builds: isolated /tmp/eos_rev_readability_experience and integrated /tmp/eos_rev_readability_experience_int.\n(1) MICROSCOPE 58, the major: per-frame trace /tmp/rev_rd3_exp/micro.mjs with one knob tap every 1.8 s at 1280 and 1.5 s at 390. Result: upsScaled 0 and fsUpScaled 0 at both sizes, and one font size per word at full scale (16.25 at 1280, 15.25 at 390). Both the rebound and the creep at the start of each word are gone, and the word only shrinks (screenshot sheet_phone.png).\n(2) SHELF IT 95, full play: smallest word 13.1 px on .shelfThoughtBubble.shelved at both 390 and 1280, 0 samples under 12 px, 0 errors.\n(3) FINGER TRAP 102: median rendered word 15.2 px at 390 and 16.2 px at 1280. The only low samples (13.9 and 14.0) are at 251 ms, before the hold ends.\n(4) Reduced motion at 390: TOKENS and CHAIN have translate none and transform none and run only eosReadTick, so they fade.\n(5 and 6) The ticker stays inside the meter row (y 73-95). The HUD box stays 28 px tall. sheet_tick.png shows DRAMA's '0 / 6 TAKES CUT' counter and TAKE cards, RAIN OUT's clouds and WORD SALAD's tiles all clear.\nSmaller problems in the new code:\n- The band runs eosReadTick for 2.6 s and starts fading at 84%, i.e. 2.18 s. The TOKENS/CHAIN pills run 1.3 s + 1.3 s and only start fading at 2.39 s.\n- Measured at 390 (tick.mjs): 105 band opacity .14 while the token is at .88; 110 band .09 while the token is at .53.\n- For about 0.2 s the pills float over a half-transparent band, with 'SHIFT \u00b7 x% / LVL 1' showing through.\n- On the full-width meter (102), the band at partial opacity also shows ghost 'SHIFT' and 'LVL 1' text (t_102_a in /tmp/rev_rd3_exp/sheet_tick.png).",
+   "fix": "Give the band its own keyframes that hold until the pills are gone, e.g. @keyframes eosReadBand{0%{opacity:0;visibility:visible}6%{opacity:1}94%{opacity:1}100%{opacity:0;visibility:hidden}}. Alternatively, end the pills' fade about 150 ms before the band's."
+  },
+  {
+   "severity": "minor",
+   "area": "Phone full-width meter: TOKENS and CHAIN overlap during the tsRewardPillHit pop",
+   "file": "src/eos/10_eos_readability.jsx",
+   "evidence": "FINGER TRAP 102 at 390, no reduced motion, 450 ms after .isHit: the token rect is x 106-219 and the chain rect is x 207-295, an overlap of about 12 px. At rest they are 115-210 and 214-288, so the gap is only 4 px. Each pill scales up to 1.16 around its own centre, so the pills collide for about 0.3 s on every streak start. This is transient and cosmetic. With reduced motion there is no overlap.",
+   "fix": "Set transform-origin to right center on .token and left center on .chain in the ticker rules, or widen the split gap (e.g. right:calc(45% + 6px) and left:calc(55% + 6px))."
+  },
+  {
+   "severity": "minor",
+   "area": "Per-hit feedback headline reads 7.7-8.9 px in headless runs (likely a frame-starvation artifact; confirm in a real browser)",
+   "file": "src/eos/10_eos_readability.jsx",
+   "evidence": "/tmp/rev_rd3_exp/card.mjs sampled .globalStepFeedbackCopy>b every 120 ms during full plays:\n- FINGER TRAP at 1280: 180 of 182 visible samples were under 12 px ('SHIFTED \u2713' at font 18.56, scale .48, 8.9 px rendered).\n- DRAMA at 390: 99 of 111 samples were under 12 px (7.7 px).\n- smallText flagged 'LIGHTER \u2713' at 8.7 px in FINGER TRAP mid-play.\n- The tiny label above '+10 \u00b7 \u00d72' shows in s_102_1280_1mid.png and s_105_390_1mid.png.\nCause: the arcade's tsCursorWordPunch keyframe 0 (scale .48 \u2192 1.18 \u2192 1), which stays at currentTime 0 with playState running. During the probe the page produced only 3 rAF frames in 1.85 s, under machine load. This matches the starvation the builder documents for settle(), and the floor's 16/18 px font is correct. In a 60 fps browser this should last about 1 frame. The round-2 ticker design relies on this card to carry every hit, so it is worth one confirmation.",
+   "fix": "Confirm with a non-starved run (headed or single browser, rAF trace of the headline scale over 1 s). If it reproduces, start the punch from >= .78 under EOS_A (e.g. override with an eos keyframe whose 0% is scale(.78)). The Regression sweep should call settle() or sample after .8 s."
+  },
+  {
+   "severity": "minor",
+   "area": "Progressive flooring visible at play start on desktop under load (FINGER TRAP)",
+   "file": "src/eos/10_eos_readability.jsx",
+   "evidence": "s_102_1280_0start.png (/tmp/rev_rd3_exp/sheet_ft.png), 1.5 s after play start at 1280: rows 1-2 have readable 'PRESS AN END \u00b7 PUSH TO CENTRE' cues and PUSH labels. Rows 3-5 still show the arcade's tiny cue and PUSH text, and 'me today' is visibly smaller. By the 6 s screenshot everything is floored. The machine was heavily loaded at the time (a parallel sweep and other agents' browsers). The round-2 word fit adds up to 3 getComputedStyle reads per hugging word, which may spread the first settle over more budgeted passes. Not reproduced on phone (the DRAMA and MICROSCOPE starts were fine).",
+   "fix": "Optional: in the first pass after a game mounts, process the user words and in-arena cue labels before decorative text, or allow a larger first-pass budget. Re-check the 1280 FINGER TRAP start on an unloaded machine."
+  }
+ ]
+}

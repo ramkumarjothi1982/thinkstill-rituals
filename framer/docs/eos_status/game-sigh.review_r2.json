@@ -1,0 +1,37 @@
+{
+ "round": 2,
+ "verdicts": {
+  "code": "ship"
+ },
+ "partial": true,
+ "findings": [
+  {
+   "severity": "minor",
+   "area": "SYNC rig: the slump replays at the wrong moments (CSS cascade fallback)",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/21_eos_game_sigh.jsx",
+   "evidence": "Lines 1062-1067: .eosSighSyncHop[data-sl=a|b]{animation:eosSighSlumpA|B} is the fallback for every phase that has no data-phase rule (idle, in, full). The slump is meant to play only at the end of a sigh, but data-sl stays 'a' or 'b' for the whole next sigh (it is only toggled in sighDone). When the phase changes sip -> full on sigh 2 or later (the normal path whenever the finger stays down through the top-up, sipEnd line 436), animation-name switches from eosSighSipBounce back to eosSighSlumpX, so SYNC plays its relieved slump while it should be holding a full breath. The same happens on puff -> idle (Cough -> Slump) after an early lift. The runtime probe (/tmp/rsig2/t4.mjs) confirmed the per-phase names (sip=SipBounce, out=BlowLean, idle=SlumpA/B), and on sigh 1 (data-sl '') 'full' has no animation, which shows the slump rule is the only fallback. The sigh-2 'full' frame was not captured in headless, so the replay itself follows from the CSS cascade and was not seen at runtime. Round-1 verification, for the record: all 14 r1 findings are fixed. At 390x844 and 1280x720, with and without the tip and with 30_eos_arrows, cue, words and arrows labels over the SYNC face measure 0 px\u00b2 in the start, full, out, after and ready states, with no horizontal scroll. ArrowUp at f=0.2 plays the sip at 0.72. Clumsy taps (220/380 ms) finish in 29.6 s. The pacer gets a single own(null) and unmount is guarded by s.owned. Progress goes 3,6,8,10,33,\u2026,77,96 (held through the finale),100, with sfx soft\u2026chime\u00d73,win and onDone once. The reduced-motion button transform is none. Orb growth measured 1.04 at full, which is within the spec's \u22644 % but not the 1.02 the builder reported. 0 page errors and 0 warnings.",
+   "fix": "Clear the slump at the start of every breath, e.g. in press(): go(\"in\", { cue: \"in\", n1: false, n2: false, slump: \"\" }). data-sl is then '' during in/ready/sip/full/out/puff and only sighDone sets it, so the slump plays exactly once per completed sigh. Alternatively scope the rules to [data-phase=\"idle\"] AND clear slump in puff()."
+  },
+  {
+   "severity": "minor",
+   "area": "performance: SYNC glow repaints every frame",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/21_eos_game_sigh.jsx",
+   "evidence": "Line 1058: .eosSighSyncGlow's radial-gradient alpha now includes var(--f) * .16. In round 0 the rule used only --clr, and --f was not written to SYNC at all. The rAF loop writes --f to syncRef on every frame in in, sip and out (line 650), so a gradient background about 1.6 \u00d7 SYNC in size (\u2248140-160 px) is repainted every frame for the whole breath, on top of the orb's repaints. The animated-node budget is fine (measured 40 running animations on 37 targets in the exhale and 26 on 22 in the finale, \u2264 60), but this is a per-frame paint that a compositor-only property avoids.",
+   "fix": "Keep the gradient static (alpha .12 + clr*.3 + .16) and drive the breath part with opacity, e.g. opacity:calc(.7 + var(--f) * .3), or add a second pre-mounted glow layer whose opacity follows --f."
+  },
+  {
+   "severity": "minor",
+   "area": "finale robustness on slow devices (wall-clock beats vs CSS transitions)",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/21_eos_game_sigh.jsx",
+   "evidence": "The finale beats (yawn 1750, sleep 2150, 100 % + win 2600, onDone +450; lines 540-562) run on setTimeout, while the flight is a 1.55 s CSS transition that starts at the next style recalc. Headless 1280x720 ran at 1.3 fps (/tmp/rsig2/t3.mjs). 400 ms after phase 'done', .eosSighSync's computed translate was still '0px' against --stx 688px, the moon was unscaled, and fin was already 'sleep' (SYNC asleep on the island). A second earlier run measured translate 501.88px, again mid-flight. About 1.5 s later SYNC landed exactly in the hollow: face centre (992,226) inside the moon [955..1067, 156..268]. The geometry in finGeo is correct, and at 390 (\u22489 fps) the flight lands on time: face centre (76,230) inside the moon [44,173,95]. This is mostly a headless artifact, but on a slow phone the 'asleep' face, the Zz and the wrapper's reward card can arrive before SYNC reaches the moon.",
+   "fix": "Optional: listen for transitionend (propertyName 'translate') on .eosSighSyncLift to trigger the yawn/sleep beats, keep the current timers as an upper-bound fallback, and keep the 100 %/onDone timer as is so the \u226445 s contract does not depend on rendering."
+  },
+  {
+   "severity": "minor",
+   "area": "cross-module (00_arcade GameEngine, pre-existing, not 21): the reveal fires after the user exits",
+   "file": "/home/user/thinkstill-rituals/framer/src/00_arcade.jsx",
+   "evidence": "Found while testing an unmount mid-finale (/tmp/rsig2/t2.mjs unmount 390). Leaving with \u00d7 just after 100 % logged stages play -> input (40897 ms) -> reveal (43864 ms): the user lands on the input screen and is pulled to the reveal 3 s later. This engine is not the cause: it clears its timers and checks s.alive, and the pacer log shows a single own(null). The cause is GameEngine's finish handler (around line 19801): setTimeout(() => p.onDone(bonus), finishAdvanceDelayMs) plus the two sfx('win') timeouts are never stored or cleared on unmount. The same applies to every game routed through GameEngine (100-114).",
+   "fix": "Owner of the wrapper/integration: store the finish timeouts in refs and clear them in GameEngine's unmount cleanup (as stepRewardTimer and finishRewardTimer already are)."
+  }
+ ]
+}

@@ -1,0 +1,80 @@
+{
+ "round": 1,
+ "verdicts": {
+  "code": "fix",
+  "experience": "fix"
+ },
+ "partial": false,
+ "findings": [
+  {
+   "severity": "major",
+   "area": "21 BIN: the binned word flies back out of the bin (introduced by the --eos-bin-t mirror)",
+   "file": "src/eos/60_eos_fixes.jsx",
+   "evidence": "Lines 431-451 and 544. Scratch integrated build /tmp/eos_rev_fixes_code_int at 390x844, script /tmp/rfc/t1.mjs. I dragged the first .binWordBubble from (63,148) and dropped it on the mouth (195,490), then sampled its rect every frame. It bins correctly: class 'binned', progress 0->17. Then it travels back: t=1528 (195,492) -> t=1932 (127,314), scale .69 -> t=2318 (63,148), opacity 0. That is its home slot, so the word visibly leaves the bin on every successful drop. Cause: measureTarget() (00_arcade.jsx L10445) reads getBoundingClientRect, which now includes the mirrored drag transform, so target = mouth - (home + d). framer-motion then animates the same x/y motion values from d to that target, which ends at mouth - d, about the home slot. Before this module, transform:none!important hid the gone animation. The double-click fallback (binOne(i,true)) has the same problem.",
+   "fix": "Make measureTarget see the home rect. In the window-capture pointerup for a dragged bubble (it runs before framer-motion's window pointerup -> onDragEnd -> binOne), and just before dispatching the fallback dblclick: (1) add the element to a 'suspended' WeakSet that sync() respects, (2) set --eos-bin-t:none, (3) in the next requestAnimationFrame, clear the suspension and re-sync from the inline transform. Paint only happens after rAF, so nothing flashes. Track that rAF id and cancel it in cleanup. The gone animation then runs from the drop point (x=d) to the mouth (x=mouth-home). Re-run the rect track and require the final centre to be within ~10 px of the .binMouthTarget centre at both 390 and 1280."
+  },
+  {
+   "severity": "major",
+   "area": "109 CLEANSE release race (assigned to task fixes in spec \u00a70.5) is still unfixed and has no integration edit",
+   "file": "dev/eos_integrate.py",
+   "evidence": "grep -n 'Cleanse|releasedRef|109' dev/eos_integrate.py returns nothing. 00_arcade.jsx L6259-6274 still calls setReleasedIndices(nextReleased) after a 3200 ms delay for each release and after 170 ms for the last one. If the last two bubbles are released less than 3.2 s apart, the stale 5-item array lands after the 6-item one. That clears the onDone timer while finishLock stays set, and the game sits at 100% forever. 109 is the #2 game for panic.high, and fast, panicking players are exactly the ones who hit this. The builder report lists it as 'Still missing'. CSS or a guard in 60_eos_fixes.jsx cannot fix it.",
+   "fix": "Add an I3 edit (e.g. I3-E6) to dev/eos_integrate.py and the real integration step for CleanseEngine.finishHold. Use setReleasedIndices(releasedRef.current.slice()), or a functional update that never shrinks: setReleasedIndices(prev => prev.length >= releasedRef.current.length ? prev : releasedRef.current.slice()). Add a regression test: release the last two bubbles 1 s apart and require the reveal."
+  },
+  {
+   "severity": "minor",
+   "area": "Guard games: a wrong tap shows a reward pill and +12% at the same moment the guard says 'wait for red\u2026'",
+   "file": "src/eos/60_eos_fixes.jsx",
+   "evidence": "/tmp/rfc/l64_390.png, 64 RED LIGHT at 390, one tap on an amber light. The 'wait for red\u2026' line (15 px) sits right above the wrapper's step reward 'RELEASED \u00b7 + STILL HIT \u00b7 CHAIN \u00d71', and the HUD moves to 12%. The cause is wrappedSfx (00_arcade.jsx ~L18555): for non-explicit games every sfx, including 'soft', triggers triggerStepReward and adds a creep step. Measured with /tmp/rfc/t5.mjs: 8 wrong taps keep the bar at 12, and a correct stop then moves it to 17. The gate caps the creep correctly, but the feedback still contradicts itself. The same applies to 11/13/39/65/69/70/66/80, whose miss paths call sfx('soft') or sfx('tap').",
+   "fix": "For EOS_FIXES_GUARD_IDS, suppress the wrapper's step reward and creep on the miss sfx. Options: expose a predicate from the fixes API, e.g. eosApi('fixes').isMiss?.(id, kind), checked by an I1 edit in wrappedSfx; or have the guard's capture listener set a short 'miss' flag that wrappedSfx reads. Then 'almost!' is the only feedback for a miss."
+  },
+  {
+   "severity": "minor",
+   "area": "EosEntries: input made only of stopwords still splits into 'i' / 'am' bubbles",
+   "file": "src/eos/60_eos_fixes.jsx",
+   "evidence": "Line 128 (const chunks = phrases.length ? phrases : tokens). In-page window.__eos.fixes.EosEntries('i am') returns ['i','am','a lot','on my mind','this feeling','right now'], and 'i i i' returns ['i', \u2026seeds]. This is the spec's literal fallback, but it produces the exact 'I / am' bubbles that \u00a711.5 is meant to remove. Every other case checked is correct: 'i want to die' gives EOS_NEUTRAL_WORDS, 'panic panic Panic' gives ['panic', +panic seeds], 'it is what it is' stays one phrase, input of 6+ tokens returns null, and 'I'm so ANGRY!!' gets anger seeds.",
+   "fix": "When grouping yields no content word, keep the whole input as one phrase (lead.join(' '), e.g. 'i am'), then pad with seeds. Add 'i am' and 'i i i' to the node unit cases."
+  },
+  {
+   "severity": "minor",
+   "area": "21 BIN mirror observes every style write in the game host for the whole game",
+   "file": "src/eos/60_eos_fixes.jsx",
+   "evidence": "Lines 439-450. mo.observe(host, {subtree:true, attributes:true, attributeFilter:['style']}) runs for the whole BIN session. Now that the transform is visible, each bubble also runs framer-motion's infinite y bob (00_arcade.jsx L10563: animate {y:[-2,3,-2]}, repeat Infinity). So up to 6 bubbles \u00d7 60 fps produce 2 mutation records each per frame: the inline write, then the guard's own setProperty, which re-triggers the observer. This is cheap per call but never stops. No errors or jank were measured in headless.",
+   "fix": "Mirror only while needed: start mirroring a bubble on its pointerdown (S.bin) and while it is .binned and animating, and stop on idle. Or set --eos-bin-t directly from a pointermove/rAF loop during the drag instead of a subtree MutationObserver. Either way, keep cleanup in the effect's return."
+  },
+  {
+   "severity": "major",
+   "area": "107 GO WEIRD: compact cards break the bubble image rule (Creative Standard 4) at both sizes",
+   "file": "src/eos/60_eos_fixes.jsx",
+   "evidence": "Built in /tmp/eos_rev_fixes_exp_int2 (eos_integrate with 10_readability, 12_dots, 30_arrows and 60_fixes) and compared against /tmp/eos_rev_fixes_exp_base (the same build without 60_fixes).\n- 1280x860: on all 6 cards the .gwThought label pill covers the bottom 19 px of the 90 px orb. Baseline overlap is 0 px with 114 px orbs. See /tmp/rfx/crop_d2_107.png vs /tmp/rfx/crop_db_107.png: the characters' faces are cut off by the pills.\n- 390x844: the new 3-column layout makes cards 103x116. With readability's 16.25 px user words, 3 of 6 labels clip (scrollHeight > clientHeight: 'my boss yelled', 'clenched jaw', 'had enough') and overlap the orb by 5 px. The prop label breaks mid-word as 'MOUSTACH / E' (/tmp/rfx/p2_107.png).\n- Credit where due: the props were unplayable before this fix (hit-test 0/5 at 390, 1/5 at 1280) and are now 5/5. The game plays to the reveal in 30 s at 390.\n- Space is available: the game box ends at y=514 and the guide starts at 589 at 390, and the box starts 48 px lower than baseline at 1280.",
+   "fix": "Give the label its own row instead of shrinking cards until it overlaps.\n- Desktop (lines 508-510): use about 76 px orbs and make .gwCard a 2-row grid (orb, then label, label position static), or raise --gw-card-h to about 160 using the 48 px freed above the box.\n- Phone (lines 513-516): raise --gw-card-h to about 136 with 56 px orbs so 2-line 16 px labels sit below the orb (the 75 px free above the guide covers this).\n- Phone dock: add .gwProp>span{overflow-wrap:normal!important;word-break:keep-all!important} and hide the 18 px icon (b) if needed so 'MOUSTACHE' fits on one line.\n- Re-measure overlap = 0 and clip = false at both sizes with readability in the build."
+  },
+  {
+   "severity": "major",
+   "area": "103 SINKING PLATFORM phone: the new 3x2 layout puts the active thought under a dark overlay and clips user words",
+   "file": "src/eos/60_eos_fixes.jsx",
+   "evidence": "/tmp/rfx/px_103.png and /tmp/rfx/p2_103.png, 390x844, with readability.\n- The engine's .arena>.literalProgress (probe: 34,78, 82x514 px, z-index 125, pointer-events none) is a dark translucent column. With the new grid it sits exactly over the first bay, which is the ACTIVE 'my boss / ACTIVE \u00b7 LOWER NOW' bay. The thought the player is acting on therefore looks greyed out and disabled, while the queued bays are bright. The column also darkens the left third of the LOWER PLATFORM button.\n- The .spQueue strip at the top is cut through the middle of the words ('my boss', 'hot face', 'tight fists').\n- 4 of 6 .spThought labels clip at 16.25 px because of max-height:42px (line 566).\n- In baseline (/tmp/rfx/pb_103.png) the same column only covered the left margin. The button there was at y=1083, off screen. The fix solves reachability (button now at 527-573, 5/5 hits) but creates this visual inversion.",
+   "fix": "In the same max-width:560px block:\n- Re-flow .arena.u103>.literalProgress into a small horizontal pill (top:8px; right:12px; left:auto; width:auto; height:auto; max-height:28px) so it never covers the grid.\n- Remove the max-height on .spThought (allow 2 lines, about 44 px).\n- Give .spTop and .spQueue enough height, or overflow:visible, so the queue words are not cut.\n- Re-screenshot and confirm the active bay is the brightest item."
+  },
+  {
+   "severity": "major",
+   "area": "Tool-first games 3/4/9/16 on phone: the gold arm-pulse dock (\u00a711.4) is hidden under the LIVE GUIDE panel",
+   "file": "src/eos/60_eos_fixes.jsx",
+   "evidence": "/tmp/rfx/s8_3_390.png (390x844, integrated build with readability and arrows).\n- The CRACK hammer dock is painted underneath the LIVE GUIDE card. The arrow and hand point into the guide text, and the gold pulse is not visible at all.\n- Measured dock rects vs guide top (589):\n  - 3: y 612-709\n  - 4: y 603-702\n  - 9: y 606-704\n  - 16: y 618-709\n  - 43: scissor picker 559-606, partly covered\n- Cause: the dock's z-index 160 lives inside .arena (its own stacking context, z 2), and .globalPlayGuide is z 48 in the same .releaseGameHost.\n- Taps still reach the dock (guide pointer-events none, hit-test 5/5), so the game can only be played blind by following the arrow. A first-time phone user never sees the tool that step 1 asks for.\n- Desktop 1280 is fine: the dock is visible beside the guide (/tmp/rfx/s8_3_1280c.png). The occlusion comes from the base layout, but it defeats this module's \u00a711.4 deliverable on the phone-first target.",
+   "fix": "Add a max-width:560px rule in EOS_FIXES_CSS that lifts the un-armed docks into the empty mid-arena above the guide. The guide starts about 270 px below the last bubble. For example: .arena :is(.crackToolDock,.stompToolDock,.laserToolDock,.meltToolButton,.cutLoopScissorPicker){position/bottom so the dock bottom \u2264 guide top \u2212 12px}, together with the 'SELECT THE \u2026 TOOL' caption. Verify at 390 that the dock is fully visible above the guide and that the gold pulse shows."
+  },
+  {
+   "severity": "minor",
+   "area": "Hidden-order dimming makes the user's words in waiting objects hard to read",
+   "file": "src/eos/60_eos_fixes.jsx",
+   "evidence": "/tmp/rfx/p_74_start.png, 390. Every un-popped BUBBLE WRAP bubble is set to opacity .45 and saturate .5 (line 485). The user's words in them ('my boss') are barely legible, and the sheet reads as disabled rather than as a juicy pop-everything toy. The same applies to the 14 CRUMPLE corners, 51, 55 and 60. The live element itself works well: gold ring and pulse, matching exactly one element in 14, 17 and 74.",
+   "fix": "Soften the dim to about opacity .72 and saturate .75, or dim only the shell or background and keep text children (.tsExactUserText, .uniqWord) at full opacity. The live element still stands out through the gold ring and pulse."
+  },
+  {
+   "severity": "minor",
+   "area": "109 CLEANSE stuck-at-100% race is not fixed or wired anywhere",
+   "file": "dev/eos_integrate.py",
+   "evidence": "The builder report says the \u00a70.5 109 fix needs an I3 source edit (CleanseEngine.finishHold: released list must never shrink) that is NOT in eos_integrate.py. In my 390 run 109 did reach the reveal (finishGame done, 152 s headless), so the stuck state did not reproduce. However, the known path for fast players (stuck at 100 % with no finale) has no owner, and it will ship unfixed unless the edit is added.",
+   "fix": "Add the I3 edit to dev/eos_integrate.py EDITS (setReleasedIndices(releasedRef.current.slice()) or a never-shrinking functional update). Add a fast-player regression check: rapid hold/release cycles on 109 must reach the reveal."
+  }
+ ]
+}

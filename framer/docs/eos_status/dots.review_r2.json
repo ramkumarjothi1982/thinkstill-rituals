@@ -1,0 +1,38 @@
+{
+ "round": 2,
+ "verdicts": {
+  "code": "ship",
+  "experience": "ship"
+ },
+ "partial": false,
+ "findings": [
+  {
+   "severity": "minor",
+   "area": "performance / animated-node budget during the reveal burst (regression introduced by r1 fix #6)",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/12_eos_dots.jsx",
+   "evidence": "Line 1597 adds `transition:scale .32s \u2026, opacity .32s ease` to every lane dot, and `.eosBurst` sets scale:2 and --eos-dot-o:1. Each burst therefore starts a CSSTransition on all 28 dots (desktop) or 18 dots (phone), on top of the lane animations. Probe /tmp/rev_dots_r2/p1.mjs, integrated build /tmp/eos_rev_dots_code_int, game 1 finished to the reveal, 14 samples 120 ms apart. At 1280\u00d7860 the peak is 75 animated nodes: T:scale 29, T:opacity 28, eosDotsLane 28, X/Y/Fade 14, core 4. At 390\u00d7844 the peak is 55. The same dots also run opacity transitions at every stage change, because --eos-dot-o goes .85 \u2192 .45 \u2192 .7. Steady state is within budget (59 at 1280, 42 at 390 for all five dust styles at level 9). So only these ~0.3 s windows, twice per reveal, exceed the \u226460 budget, and the game arena is already unmounted then. No jank was observed.",
+   "fix": "Remove the per-dot `transition`. At the start of the burst every dot sits in the light at lane scale \u22480.02, so an instant 2\u00d7 step cannot be seen. If the 2\u21921 snap when .eosBurst ends is visible, remove the class while the lanes' own fade-out runs (for example, extend burstT to the end of the fling). Alternatively, record this as an accepted transient (\u22640.35 s, reveal only) in the module header's budget note and in dots.build.md."
+  },
+  {
+   "severity": "minor",
+   "area": "dial micro-feedback: the ring twinkle does not restart on consecutive steps",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/12_eos_dots.jsx",
+   "evidence": "kick() (lines 951-954) restarts the twinkle with `classList.remove('eosTwinkle')` in the event, then `raf(add)`. No style recalc runs between the event and the rAF callback, so the browser never sees the class removed and the animation does not restart. Because twinkT is re-armed on every step, the class is only really removed 700 ms after the last step. Meanwhile the finished `1 both` twinkle holds the ring at opacity 0, which also suppresses its usual eosDotsAbsorb pulse during a drag. Probe /tmp/rev_dots_r2/p9.mjs: five setLevel steps 200 ms apart (5\u21929) produced only 2 eosDotsTwinkle animations (at 584 ms and 1429 ms). The build report's claim that the ring twinkles on every step therefore does not hold for a dial drag. The surge part is correct: lane rate 1.15 \u2192 5.13 within 172 ms, settling to 1.51 by about 665 ms, and drag steps never leave kickK stuck (rate settles to 1.6 = state rate).",
+   "fix": "Make each step start a new animation without a style flush. Option 1: alternate two classes (eosTwinkleA/eosTwinkleB) that point at two identical keyframes (eosDotsTwinkle / eosDotsTwinkle2); a change of animation-name always restarts. Option 2: per step, call `ring.animate([{scale:.78,opacity:1},{scale:1.4,opacity:0}], {duration:600, easing:'cubic-bezier(.2,.7,.3,1)'})`, cancel the previous one, and skip it under calm or reduced motion."
+  },
+  {
+   "severity": "minor",
+   "area": "finish bloom hidden behind a focal centrepiece (side effect of the round-1 one-centre fix)",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/12_eos_dots.jsx",
+   "evidence": "Game 39 BLACK HOLE, 390x844, emotion panic (calm hue gold). Screenshots /tmp/rev_dots_exp/g39_390_g0.jpg, g1.jpg, g2.jpg and /tmp/rev_dots_exp/1280_39_3gather.jpg. During .eosGather the field keeps data-eos-focus-on=1. The core, flash and halo stay centred on the hole at (195,299), behind the arena, because the field has z-index 0 and elementsFromPoint at the centre returns the arcade's thought text and .blackHole. The halo is 383 px and the wave peaks at 291 px, so all the player sees of the finish bloom is a faint rim around the hole. That rim reads white/purple, not gold. In POP (390_1_3gather.jpg) the same bloom is clearly teal for anger, so the round-1 calm-colour fix only works in games without a centrepiece. The game's own finale (rays, characters, the LESS GRIP card) still plays, and the reveal 1-2 s later shows a proper gold aura. So this is a lost supplement, not a broken moment. The same applies to 109 .lotusCore.",
+   "fix": "While .eosGather is set and data-eos-focus-on=1, make the bloom clear the centrepiece. Either size the gather halo and wave from the measured anchor width (write --eos-focus-w in measure() and use about 1.7x it for the halo inset and the wave end scale), or turn the gather wave into a hue-coloured corona ring drawn just outside the anchor's radius. That keeps the calm colour visible at the climax in 39, 109 and any hero game that opts into data-eos-focus."
+  },
+  {
+   "severity": "minor",
+   "area": "focus to reveal handoff: burst fires from two centres for about 0.7 s",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/12_eos_dots.jsx",
+   "evidence": "Line 1610: .eosCore animates left/top over .7s. Line 576: --eos-fx/--eos-fy are cleared when the stage leaves play. In the g39 probe at 390, t=3232 ms, stage=reveal, class eosBurst: the core, halo and wave are centred at (195,296), the old black-hole anchor. Meanwhile state().centre and the lane transform-origins (--eos-cxf) have already jumped to (195,406.8). So the shockwave ring and halo expand around a point about 110 px above the point the dust is flung from, while the core glides down. This breaks the one-centre idea of \u00a75.1 for the burst, the moment it is most visible. Reduced motion and calm visuals snap correctly (line 1700, transition:none). It only affects games with a focal anchor (39, 109, future data-eos-focus hero games).",
+   "fix": "When the focus is released because the stage changed (play to reveal or input), snap the core: for example, set a class such as eosFocusSnap for one frame with .eosCore{transition:scale .7s,opacity .6s} (no left/top), then remove it. Alternatively, delay clearing --eos-fx/--eos-fy and --eos-cxf until S.burstUntil has passed, so the burst, the wave and the dust share the anchor centre and then glide home together. Keep the 0.7 s glide only for entering focus during play."
+  }
+ ]
+}
