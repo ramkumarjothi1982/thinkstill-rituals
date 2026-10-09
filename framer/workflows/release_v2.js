@@ -52,7 +52,7 @@ for (const g of STALL_GROUPS) {
 }
 
 phase('Founder feedback')
-const FB_ITEMS = (args && args.feedback) || ['F1', 'F2', 'F3']
+const FB_ITEMS = (args && args.feedback) || ['F1', 'F2', 'F3', 'F6', 'F4', 'F5']
 for (const item of FB_ITEMS) {
   if (DONE.has(`founder-feedback-${item}`)) continue
   const r = await must(`${CTX}\n\nFOUNDER FEEDBACK ${item} (highest priority). Read ${DOCS}/founder/FEEDBACK_LOG.md and fix item ${item} (only that item; skip it if its status is no longer OPEN). Also follow ${DOCS}/founder/FOUNDER_REQUIREMENTS.md and the founder rules at the end of ${DOCS}/CREATIVE_STANDARDS.md (bubble picture + user text below it INSIDE the bubble, no black masks, true circles, real-looking tools, approved bursts frozen except shared generic ones which get a game-specific burst). Make the fix structural where needed (e.g. measure the real bubble positions so strings attach). Rebuild (python3 build.py) and verify by PLAYING each fixed game to its finale at 390x844 then 1280x860; save before/after screenshots to ${DOCS}/founder/fix_<item>_*.png. Then set each item's status in FEEDBACK_LOG.md to FIXED (<commit>) with a one-line verification note (or NEEDS-APPROVAL with the reason if it would change an approved finale). Commit the source, the rebuilt .txt, the screenshots and the log. ${GIT} Return: what was wrong, what you changed, how you verified.`, { label: `founder-feedback:${item}`, phase: 'Founder feedback' })
