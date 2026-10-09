@@ -49,6 +49,69 @@ out = "\n\n".join(chunks) + "\n"
 if len(re.findall(r"^export default ", out, re.M)) != 1:
     sys.exit("exactly one `export default` line expected")
 
+
+# ---- founder F8 / GAP P5.4-c: no dark masks behind bubble pictures or the user's words, ever again.
+# Static lint over every CSS rule in the sources whose selector names a bubble / picture / word tag: a background
+# with a dark, mostly opaque colour (luminance < .14 and alpha >= .5) fails the package build unless its fingerprint
+# is in dark_mask_whitelist.json (each entry reviewed, with the reason). Isolated --dev-dir builds only warn.
+def dark_mask_lint(parts):
+    sel_re = re.compile(r"(?i)bubble|uniqWord|potato|tsStandard|MaterialImage|ThoughtLabel|tsBubbleText|ts-face|"
+                        r"juggleBall|cleanseStone|ThoughtText|ExactUserText|thoughtToken|wordTag|BubbleFace|AutoEmotionPic")
+    def dark(c):
+        m = re.match(r"rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+%?))?\s*\)", c)
+        if m:
+            r, g, b = (float(m.group(i)) for i in (1, 2, 3))
+            a = m.group(4) or "1"
+            a = float(a[:-1]) / 100 if a.endswith("%") else float(a)
+        else:
+            h = c.lstrip("#")
+            if len(h) in (3, 4):
+                h = "".join(ch * 2 for ch in h)
+            if len(h) not in (6, 8):
+                return False
+            r, g, b = (int(h[i:i + 2], 16) for i in (0, 2, 4))
+            a = int(h[6:8], 16) / 255 if len(h) == 8 else 1
+        return a >= 0.5 and (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.14
+    col_re = re.compile(r"rgba?\([^)]*\)|#[0-9a-fA-F]{3,8}\b")
+    import hashlib, json
+    wl_path = os.path.join(here, "dark_mask_whitelist.json")
+    wl = json.load(open(wl_path)) if os.path.exists(wl_path) else {}
+    hits = []
+    texts = []
+    for p in parts:
+        src = open(p).read()
+        texts.append((p, src))
+        gz = re.search(r"const CSS_GZIP_B64 = \[(.*?)\]", src, re.S)
+        if gz:  # the arcade's compressed stylesheet is linted too
+            import base64, gzip
+            try:
+                texts.append((p + "#CSS_GZIP_B64", gzip.decompress(base64.b64decode("".join(re.findall(r'"([^"]*)"', gz.group(1))))).decode("utf8", "replace")))
+            except Exception as e:
+                print(f"dark-mask lint: could not read CSS_GZIP_B64 ({e})", file=sys.stderr)
+    for p, src in texts:
+        for m in re.finditer(r"([^{}`;]{1,4000})\{([^{}]*)\}", src):
+            sel, body = m.group(1).strip(), m.group(2)
+            if not sel_re.search(sel) or "@keyframes" in sel:
+                continue
+            for d in re.finditer(r"(?:^|;)\s*(background(?:-color|-image)?)\s*:([^;]*)", body):
+                bad = [c for c in col_re.findall(d.group(2)) if dark(c)]
+                if not bad:
+                    continue
+                fp = hashlib.sha1((sel + "|" + d.group(2).strip()).encode()).hexdigest()[:12]
+                if fp not in wl:
+                    line = src.count("\n", 0, m.start()) + 1
+                    hits.append(f"{os.path.relpath(p.split('#')[0], here)}{('#' + p.split('#')[1]) if '#' in p else ''}:{line} [{fp}] {sel[-110:]} {{{d.group(1)}:{d.group(2).strip()[:70]}}}")
+    return hits
+
+
+dark_hits = dark_mask_lint(parts)
+if dark_hits:
+    print(f"DARK-MASK LINT: {len(dark_hits)} dark background(s) behind bubble pictures/words (founder F8):", file=sys.stderr)
+    for h in dark_hits:
+        print("  " + h, file=sys.stderr)
+    if not a.dev_dir:
+        sys.exit("dark-mask lint failed: remove the dark fill (use a soft text glow) or add a reviewed entry to dark_mask_whitelist.json")
+
 dev = os.path.join(here, "dev")
 if a.dev_dir:
     d = os.path.abspath(a.dev_dir)
