@@ -1,0 +1,5 @@
+# v2 fixes close-out progress
+- start: read review r1 (5 major incl. 109 in eos_integrate.py, 5 minor). Plan: 21 BIN suspend, 109 I3-E6, guard miss creep, entries stopwords, BIN MO scope, 107 layout, 103 phone, tool dock lift phone, dim soften.
+- ~30 calls: DONE code: I1-E15 (eosSfxMiss) + I3-E6 (109) + I3-E7 (BIN measureTarget from home) in eos_integrate.py + spec 12.2 (E15,E6; E7 pending); module: entries stopword phrase, miss marks, BIN mirror only while engaged. NEXT: spec E7 line, CSS 107/103/tool docks/dim, build /tmp/v2_fixes, tests.
+- ~45 calls: CSS applied (dim .72/.75, phone dock lift bottom 150, 107 card-h 156/80 orb desktop & 136/56 phone + 2-line labels + column props, 103 pill/queue grid/no max-height). Probe: 107 ov 0 both sizes, docks bottom<=577 @390, 103 btn 531-577. NEXT: visual check, BIN/109/miss/entries tests, commit.
+- ~60 calls: BIN test @390 all 3 paths land at mouth (0,0), @1280 drag+dbl OK, dblAfterDrop once off (25,-213) but debug repro OK -> re-running. 107/103/docks visual OK. NEXT: cleanse 390/1280, miss 64/70, entries unit, finishGame 107/103/3, commit.
