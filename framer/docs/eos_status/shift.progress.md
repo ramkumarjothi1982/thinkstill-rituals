@@ -1,2 +1,5 @@
 # shift progress
 - [call ~20] Read brief, core, integrate E9 mount, reveal markup (00_arcade 22124-22292), rewards/safety APIs (absent in R1 builds → fallbacks). Next: write src/eos/50_eos_shift.jsx, integrated build, tests.
+- [call ~33] 50_eos_shift.jsx written (EosShiftMeter, EosStillMoment, CSS, fly orb, fallbacks). Integrated build OK. Acceptance (1) POP anger sigh + CRUSH cool->112 pass, zero errors. Fixed phone shell width (arcade display:block 256px), tag overlap. Next: visual review phone, (2) timings, (3) retro/skip, (7) safety, (8)(9), reduced, commit.
+- [call ~50] Scenarios A-F pass (sigh pacer in1600/in500/out4400 linear; heart+spark auto 6501ms; retro row; skip after=null; safety Talk->open(info), soft called; orb lands in chip). Refined: top-hold 1.2s, memo next, hooks before early return. Next: G/H results, reduced+calm, all-modules build, smallText+lintCopy, checkin-disabled, commit.
+- [call ~69] All acceptance checks pass (1-10) incl. reduced, calm toggle, check-in disabled, veteran chip, Escape/keyboard, all-modules build zero errors. Small text floor 13px. Committing.

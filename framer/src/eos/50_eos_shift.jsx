@@ -465,11 +465,12 @@ function EosStillMoment({ emotion = null, gameId = 0, band = "mid", variant = "s
         later(() => {
             if (s.phase !== "sip") return
             if (s.down && !s.auto) {
+                // still holding after the sip: a short beat at the top, then the blow starts anyway
                 go("top")
-                eosBreathOwn("hold", 1800)
+                eosBreathOwn("hold", 1200)
                 later(() => {
                     if (s.phase === "top") startOut()
-                }, 1800)
+                }, 1200)
             } else startOut()
         }, EOS_BREATH.sip * 1000)
     }
@@ -588,6 +589,15 @@ function EosStillMoment({ emotion = null, gameId = 0, band = "mid", variant = "s
         s.alive = true
         s.t0 = performance.now()
         eosShiftLog("moment-start", { variant: v, emotion, gameId, band })
+        // keyboard users land on the orb (Space = hold); never steal focus from a text field
+        const ft = setTimeout(() => {
+            if (orbRef.current && !eosShiftTextFocused()) {
+                try {
+                    orbRef.current.focus({ preventScroll: true })
+                } catch {}
+            }
+        }, 80)
+        s.timers.add(ft)
         if (kind === "spark") {
             eosPacerBeat(EOS_SHIFT_SPARK_BPM)
             later(() => finish("auto"), EOS_SHIFT_AUTO_MS)
@@ -639,18 +649,18 @@ function EosStillMoment({ emotion = null, gameId = 0, band = "mid", variant = "s
             finish("skip")
         }
         const onKey = (ev) => {
-            if (ev.key === "Escape" && !S.current.finished) {
+            if (ev.key === "Escape" && !S.current.finished && !eosShiftTextFocused()) {
                 ev.preventDefault()
                 finish("skip")
             }
         }
         scope.addEventListener("pointerdown", onDownCap, true)
         scope.addEventListener("click", onClickCap, true)
-        root.addEventListener("keydown", onKey)
+        document.addEventListener("keydown", onKey)
         return () => {
             scope.removeEventListener("pointerdown", onDownCap, true)
             scope.removeEventListener("click", onClickCap, true)
-            root.removeEventListener("keydown", onKey)
+            document.removeEventListener("keydown", onKey)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [finish])
@@ -1064,8 +1074,6 @@ function EosShiftMeter({ game, sfx, rainSfx, reduced = false, onAgain, onPlay, o
         return () => clearTimeout(t)
     }, [step])
 
-    if (!eos.checkinEnabled) return null
-
     const e = ctx.e
     const emoId = ctx.emotion
     const safety = eos.safety
@@ -1080,7 +1088,7 @@ function EosShiftMeter({ game, sfx, rainSfx, reduced = false, onAgain, onPlay, o
     const Share = eosApi("rewards").EosShareButton
     const sensitive = EOS_SHIFT_SENSITIVE.has(emoId)
     const many = (eos.loops || 0) >= 3 || Date.now() - (eos.sessionStart || Date.now()) >= 10 * 60 * 1000
-    const next = step === "done" ? eosShiftNext(ctx, delta) : null
+    const next = React.useMemo(() => (step === "done" ? eosShiftNext(ctx, delta) : null), [step, delta, ctx, eos.safety])
     const coolLabel = ctx.coolPath && next && Number(next.id) === 112
 
     // character on the meter: scale .85 + .04n, face loud → calm as n falls (rises for GOOD)
@@ -1140,6 +1148,7 @@ function EosShiftMeter({ game, sfx, rainSfx, reduced = false, onAgain, onPlay, o
     const showRate = step === "rate"
     const showStage = step !== "moment"
     const chipVariant = ctx.plan && !ctx.plan.auto && !momentOn ? ctx.plan.variant : null
+    if (!eos.checkinEnabled) return null // after every hook (the Framer control may flip at runtime)
 
     return (
         <div
@@ -1404,6 +1413,7 @@ ${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter){width:min(840px,
 ${EOS_A}.stage-reveal .releaseCompleteCard:has(.eosShiftMeter)>strong{font-size:clamp(17px,2vw,24px)!important}
 @media (max-width:560px){
 ${EOS_A}.stage-reveal .releaseCompleteOverlay:has(.eosShiftMeter){padding:10px 8px!important;grid-template-columns:minmax(0,1fr)!important}
+${EOS_A}.stage-reveal:has(.eosWorldChips) .releaseCompleteOverlay:has(.eosShiftMeter){padding-top:60px!important}
 ${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter){display:grid!important;width:100%!important;max-width:none!important;grid-template-columns:1fr 1fr!important;gap:8px!important;align-self:start}
 ${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter)>.releaseCompleteCard{grid-column:1/-1!important;grid-row:1!important;width:100%!important;max-width:none!important;padding:16px 12px!important}
 ${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter)>.releaseCompleteSideNav{grid-row:2!important;width:100%!important;height:44px!important;font-size:12px!important}
@@ -1415,7 +1425,7 @@ ${EOS_SHIFT_M} :is(p,b,small,span){font-family:var(--eos-font)}
 ${EOS_SHIFT_M} p{margin:0!important;max-width:520px}
 ${EOS_SHIFT_M} button{font-family:var(--eos-font)!important;-webkit-tap-highlight-color:transparent}
 ${EOS_SHIFT_M} button:focus-visible{outline:3px solid var(--eos-gold-1)!important;outline-offset:3px}
-${EOS_SHIFT_M} .eosShiftLink{min-height:44px;padding:0 10px!important;border:0!important;background:none!important;box-shadow:none!important;color:rgba(225,238,255,.88)!important;font:800 var(--eos-fs-sm)/1.1 var(--eos-font)!important;letter-spacing:.03em!important;text-decoration:underline;text-decoration-color:rgba(255,255,255,.35);text-underline-offset:4px;cursor:pointer;text-transform:none!important;width:auto!important;height:auto!important}
+${EOS_SHIFT_M} .eosShiftLink{min-height:44px;padding:0 10px!important;border:0!important;background:none!important;box-shadow:none!important;color:rgba(225,238,255,.88)!important;font:800 13px/1.1 var(--eos-font)!important;letter-spacing:.03em!important;text-decoration:underline;text-decoration-color:rgba(255,255,255,.35);text-underline-offset:4px;cursor:pointer;text-transform:none!important;width:auto!important;height:auto!important}
 ${EOS_SHIFT_M} .eosShiftLink:hover{color:#fff!important;text-decoration-color:var(--eos-gold-1)}
 
 /* character stage: the feeling in the middle, turned down by the dial; at the payoff it steps aside and STILL takes the controls */
@@ -1430,7 +1440,7 @@ ${EOS_SHIFT_M} .eosShiftStill .eosShiftCharIn{--eos-orb:104px}
 ${EOS_SHIFT_M} .eosShiftBall{position:relative}
 ${EOS_SHIFT_M} .eosShiftBall .eosOrbFace{transition:opacity .45s ease}
 ${EOS_SHIFT_M} .eosShiftBall.isGrey .eosShiftFaceLoud{filter:grayscale(1) brightness(.85)}
-${EOS_SHIFT_M} .eosShiftTag{font:900 12px/1 var(--eos-font)!important;letter-spacing:.1em;color:hsl(var(--eos-h),100%,86%);padding:4px 8px;border-radius:999px;background:rgba(8,10,34,.72);white-space:nowrap;transition:opacity .4s ease}
+${EOS_SHIFT_M} .eosShiftTag{font:900 13px/1 var(--eos-font)!important;letter-spacing:.08em;color:hsl(var(--eos-h),100%,86%);padding:4px 8px;border-radius:999px;background:rgba(8,10,34,.72);white-space:nowrap;transition:opacity .4s ease}
 ${EOS_SHIFT_M} .eosShiftTag.isStill{color:var(--eos-gold-1)}
 ${EOS_SHIFT_M}.isHandBack .eosShiftChar{transform:translateX(-118px)}
 ${EOS_SHIFT_M}.isHandBack .eosShiftChar .eosShiftCharIn{transform:scale(.7)}
@@ -1447,7 +1457,7 @@ ${EOS_SHIFT_M} .eosShiftConfetti i{position:absolute;left:-4px;top:-4px;width:8p
 ${EOS_SHIFT_M} .eosShiftRate{width:100%;display:flex;flex-direction:column;align-items:center;gap:8px}
 ${EOS_SHIFT_M} .eosShiftDialWrap{width:min(100%,520px);display:flex;justify-content:center}
 ${EOS_SHIFT_M} .eosShiftDialWrap .eosDial{width:100%}
-${EOS_SHIFT_M} .eosShiftRetro{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;padding:0 12px;border-radius:999px;background:rgba(255,229,138,.1);border:1px solid rgba(255,229,138,.3);font:700 var(--eos-fs-sm)/1.2 var(--eos-font);color:#fff3cf}
+${EOS_SHIFT_M} .eosShiftRetro{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;padding:0 12px;border-radius:999px;background:rgba(255,229,138,.1);border:1px solid rgba(255,229,138,.3);font:700 13px/1.2 var(--eos-font);color:#fff3cf}
 ${EOS_SHIFT_M} .eosShiftRetro b{font:900 var(--eos-fs-num)/1 var(--eos-font);color:var(--eos-gold-1)}
 ${EOS_SHIFT_M} .eosShiftRetroDial{width:min(100%,420px)}
 ${EOS_SHIFT_M} .eosShiftRetroDial .eosDialReadout{min-height:32px}
@@ -1467,7 +1477,7 @@ ${EOS_SHIFT_M} .eosShiftStamp small{font:800 13px/1 var(--eos-font)!important;le
 ${EOS_SHIFT_M} .eosShiftStill2{font:800 var(--eos-fs-md)/1.2 var(--eos-font);color:rgba(230,240,255,.9);letter-spacing:.04em}
 @keyframes eosShiftStamp{0%{opacity:0;transform:rotate(-14deg) scale(2.1)}60%{opacity:1;transform:rotate(-3deg) scale(.92)}100%{opacity:1;transform:rotate(-4deg) scale(1)}}
 ${EOS_SHIFT_M} .eosShiftSub{font:800 var(--eos-fs-md)/1.3 var(--eos-font)!important;color:#fff;animation:eosShiftRise .5s ease .12s both}
-${EOS_SHIFT_M} .eosShiftLine{font:700 var(--eos-fs-sm)/1.3 var(--eos-font)!important;font-style:italic;color:rgba(225,238,255,.85);animation:eosShiftRise .5s ease .3s both}
+${EOS_SHIFT_M} .eosShiftLine{font:700 14px/1.3 var(--eos-font)!important;font-style:italic;color:rgba(225,238,255,.85);animation:eosShiftRise .5s ease .3s both}
 @keyframes eosShiftRise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
 /* done: rewards line, at most 3 buttons, quiet links */
@@ -1478,7 +1488,7 @@ ${EOS_SHIFT_M} .eosShiftActions{display:grid;grid-template-columns:repeat(auto-f
 ${EOS_SHIFT_M} .eosShiftBtn{position:relative;min-height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 14px!important;border-radius:16px!important;cursor:pointer;font:900 var(--eos-fs-md)/1 var(--eos-font)!important;letter-spacing:.06em!important;text-shadow:none!important;transition:transform .12s ease,filter .2s ease!important;width:100%!important;height:auto!important}
 ${EOS_SHIFT_M} .eosShiftBtn:active{transform:translateY(3px)}
 ${EOS_SHIFT_M} .eosShiftBtn:hover{filter:brightness(1.08)}
-${EOS_SHIFT_M} .eosShiftBtn small{font:800 12px/1.1 var(--eos-font)!important;letter-spacing:.05em;opacity:.9;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+${EOS_SHIFT_M} .eosShiftBtn small{font:800 13px/1.1 var(--eos-font)!important;letter-spacing:.05em;opacity:.9;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 ${EOS_SHIFT_M} .eosShiftBtn.isGood{border:0!important;background:linear-gradient(180deg,var(--eos-gold-1),var(--eos-gold-2) 60%,var(--eos-gold-3))!important;color:#2a1600!important;box-shadow:0 5px 0 #a8541a,0 12px 28px rgba(255,160,60,.35)!important}
 ${EOS_SHIFT_M} .eosShiftBtn.isMore{border:2px solid hsla(var(--eos-h),100%,75%,.55)!important;background:linear-gradient(180deg,hsla(var(--eos-h),80%,45%,.55),hsla(var(--eos-h),80%,25%,.55))!important;color:#fff!important;box-shadow:0 5px 0 rgba(6,6,30,.6)!important}
 ${EOS_SHIFT_M} .eosShiftBtn.isMore.isSecondary{background:rgba(255,255,255,.06)!important;border-color:rgba(255,255,255,.25)!important;box-shadow:none!important;min-height:48px}
@@ -1486,12 +1496,12 @@ ${EOS_SHIFT_M} .eosShiftBtn.isTalk{border:2px solid rgba(255,214,110,.7)!importa
 ${EOS_SHIFT_M} .eosShiftShare{display:flex}
 ${EOS_SHIFT_M} .eosShiftShare>*{width:100%;min-height:54px}
 ${EOS_SHIFT_M} .eosShiftLinks{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:2px 10px}
-${EOS_SHIFT_M} .eosShiftShareLink :is(button,a){min-height:44px;padding:0 10px!important;border:0!important;background:none!important;box-shadow:none!important;color:rgba(225,238,255,.88)!important;font:800 var(--eos-fs-sm)/1.1 var(--eos-font)!important;text-decoration:underline;text-underline-offset:4px;width:auto!important}
+${EOS_SHIFT_M} .eosShiftShareLink :is(button,a){min-height:44px;padding:0 10px!important;border:0!important;background:none!important;box-shadow:none!important;color:rgba(225,238,255,.88)!important;font:800 13px/1.1 var(--eos-font)!important;text-decoration:underline;text-underline-offset:4px;width:auto!important}
 ${EOS_SHIFT_M} .eosShiftHelp{width:min(100%,460px);display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 14px;border-radius:16px;background:rgba(255,214,110,.1);border:1px solid rgba(255,214,110,.35);text-align:center}
 ${EOS_SHIFT_M} .eosShiftHelp b{font:900 var(--eos-fs-md)/1.2 var(--eos-font)}
-${EOS_SHIFT_M} .eosShiftHelp ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px;font:700 var(--eos-fs-sm)/1.3 var(--eos-font);color:#fff3cf}
-${EOS_SHIFT_M} .eosShiftHelp a{color:var(--eos-gold-1);font:800 var(--eos-fs-sm)/1.2 var(--eos-font);min-height:44px;display:inline-flex;align-items:center}
-${EOS_SHIFT_M} .eosShiftHelp small{font:700 12px/1.3 var(--eos-font)!important;letter-spacing:.02em!important;color:rgba(230,240,255,.85)}
+${EOS_SHIFT_M} .eosShiftHelp ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px;font:700 13px/1.3 var(--eos-font);color:#fff3cf}
+${EOS_SHIFT_M} .eosShiftHelp a{color:var(--eos-gold-1);font:800 13px/1.2 var(--eos-font);min-height:44px;display:inline-flex;align-items:center}
+${EOS_SHIFT_M} .eosShiftHelp small{font:700 13px/1.3 var(--eos-font)!important;letter-spacing:.02em!important;color:rgba(230,240,255,.85)}
 
 /* ---- the Still Moment */
 ${EOS_SHIFT_SM}{position:relative;width:100%;display:flex;flex-direction:column;align-items:center;gap:6px;user-select:none;-webkit-user-select:none;touch-action:none}
@@ -1532,7 +1542,7 @@ ${EOS_SHIFT_SM} .eosSmSpark{position:absolute;left:50%;top:50%;width:9px;height:
 @keyframes eosShiftSpark{0%{opacity:1;transform:rotate(var(--a)) translateX(50px) scale(.6)}100%{opacity:0;transform:rotate(var(--a)) translateX(118px) scale(1.2)}}
 ${EOS_SHIFT_SM} .eosSmCaption{display:flex;align-items:baseline;justify-content:center;gap:10px;min-height:26px;font:900 var(--eos-fs-md)/1.2 var(--eos-font);letter-spacing:.04em;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.55)}
 ${EOS_SHIFT_SM} .eosSmCount{font:900 var(--eos-fs-num)/1 var(--eos-font);color:var(--eos-gold-1);font-variant-numeric:tabular-nums}
-${EOS_SHIFT_SM} .eosSmSkip{min-height:44px;padding:0 14px!important;border:0!important;background:none!important;box-shadow:none!important;color:rgba(225,238,255,.85)!important;font:800 var(--eos-fs-sm)/1 var(--eos-font)!important;letter-spacing:.06em!important;cursor:pointer;width:auto!important;height:auto!important;text-shadow:none!important}
+${EOS_SHIFT_SM} .eosSmSkip{min-height:44px;padding:0 14px!important;border:0!important;background:none!important;box-shadow:none!important;color:rgba(225,238,255,.85)!important;font:800 13px/1 var(--eos-font)!important;letter-spacing:.06em!important;cursor:pointer;width:auto!important;height:auto!important;text-shadow:none!important}
 ${EOS_SHIFT_SM} .eosSmSkip:hover{color:#fff!important}
 ${EOS_SHIFT_SM}.isCalm .eosSmMover{transition-property:transform,opacity}
 ${EOS_SHIFT_SM}.isCalm .eosSmRingFill{transition-property:stroke-dashoffset}
