@@ -18692,7 +18692,8 @@ function RoutedGameContentLegacy(p) {
         case 4:
             return <StompEngine {...p} />
         case 6:
-            return <ZapEngine {...p} />
+            // founder F4: the real handheld zapper + RUSH helper (src/eos/26_eos_game_zap.jsx); classic kept as fallback
+            return typeof EosZapperEngine === "function" ? <EosZapperEngine {...p} /> : <ZapEngine {...p} />
         case 9:
             return <LaserSliceEngine {...p} />
         case 15:

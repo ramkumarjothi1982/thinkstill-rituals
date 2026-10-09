@@ -307,7 +307,9 @@ function tsApplyBubbleFaces(root, st) {
         }
         const img = face.querySelector("img.tsBubbleFaceImg")
         const label = face.querySelector("ts-face-text")
-        const src = srcs[slot % srcs.length] || ""
+        // a game that drives each bubble's own reaction (ZAP: negative → shocked → softer → happy per hit) names the
+        // picture on the host (data-tsf-src, chosen from the same resolver); everything else follows progress
+        const src = host.dataset.tsfSrc || srcs[slot % srcs.length] || ""
         if (src && img.getAttribute("src") !== src) img.setAttribute("src", src)
         const text = textEl ? String(textEl.textContent || "").replace(/\s+/g, " ").trim() : ""
         if (label.hidden !== !text) label.hidden = !text
