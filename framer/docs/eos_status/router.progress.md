@@ -1,0 +1,4 @@
+# router progress
+- [~22 calls] Read brief, core, arcade anchors (chooser, recommendation, menu markup, profiles, PLAYED_KEY), integrator edits I2-E4/E5/E10/E11, check-in's EosRoutePreview use. Next: write src/eos/45_eos_router.jsx, isolated + integrated builds, unit checks (13), menu screenshots.
+- [~33 calls] Module written (src/eos/45_eos_router.jsx), isolated + integrated builds OK, unit acceptance 1-11,13 pass (late-night and daytime clocks). Next: menu-group visual check + startGame(POP) (acc 12), screenshots, commit.
+- [~50 calls] Acceptance 1-13 all pass (unit: 1728 emotion x band x text x seed picks + 628 safety picks, real catalogue and a modelled 120-id catalogue, day + 23:30 clocks; menu group at 1280 + 390; startGame POP + COOL THE VOLCANO; E2E check-in anger 8 -> 112, sad 6 -> 110, typed panic -> 111, "i want to die" -> 111 gentle with neutral words; reveal TRY = routed). Zero page errors. Next: build.md, commit, push.
