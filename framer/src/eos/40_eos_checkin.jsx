@@ -1250,7 +1250,23 @@ function EosCompanion({ game, hostRef, reduced = false }) {
 
 // ---------------------------------------------------------------- CSS
 const EOS_CHECKIN_CSS = `
-${EOS_A} .releaseStage:has(.eosCheckIn) .releaseIdleStory{display:none!important}
+/* GAP R5: how Release works stays on screen with the check-in — the 4 step titles as a compact strip above the
+   composer (BASE shows the full 4-step story; the check-in keeps its own layout and makes room at its foot) */
+${EOS_A} .releaseStage:has(.eosCheckIn) .releaseIdleStory{display:grid!important;position:absolute!important;left:8px!important;right:8px!important;top:auto!important;bottom:6px!important;width:auto!important;height:auto!important;max-width:760px!important;margin:0 auto!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:5px!important;z-index:40!important;pointer-events:none!important;transform:none!important;opacity:1!important;visibility:visible!important;aspect-ratio:auto!important;padding:0!important;background:none!important;border:0!important;box-shadow:none!important;min-height:0!important;max-height:none!important;overflow:visible!important}
+${EOS_A} .releaseStage:has(.eosCheckIn) .releaseIdleStory>:is(.releaseIdleStoryTrack,.releaseIdleStoryComet,.releaseIdleStoryCaption){display:none!important}
+${EOS_A} .releaseStage:has(.eosCheckIn) .releaseIdleStory .releaseIdleStep{position:relative!important;inset:auto!important;transform:none!important;animation:none!important;opacity:1!important;visibility:visible!important;width:auto!important;min-width:0!important;max-width:none!important;height:auto!important;min-height:0!important;margin:0!important;translate:none!important;scale:none!important}
+${EOS_A} .releaseStage:has(.eosCheckIn) .releaseIdleStory .releaseIdleStepInner{display:flex!important;align-items:center!important;justify-content:center!important;transform:none!important;animation:none!important;opacity:1!important;width:auto!important;height:100%!important;min-height:30px!important;padding:3px 3px!important;border-radius:10px!important;background:rgba(6,22,34,.72)!important;border:1px solid rgba(140,220,255,.2)!important;box-shadow:none!important;text-align:center!important}
+${EOS_A} .releaseStage:has(.eosCheckIn) .releaseIdleStory .releaseIdleStepInner>:is(.releaseIdleStepBubble,small){display:none!important}
+${EOS_A} .releaseStage:has(.eosCheckIn) .releaseIdleStory .releaseIdleStepInner>b{display:block!important;font:800 12px/1.12 var(--eos-font,system-ui)!important;letter-spacing:.02em!important;color:#dffbff!important;white-space:normal!important;opacity:1!important;transform:none!important;animation:none!important;max-width:none!important;overflow:visible!important}
+/* phones: the composer's empty lower band (56 px under its one input row) is lent to the stage while the check-in
+   is up, so the check-in keeps its full size and layout and the strip sits under its foot */
+@media (max-width:560px){
+${EOS_A}.stage-input .shell:has(>.releaseStage .eosCheckIn){grid-template-rows:48px minmax(0,1fr) 58px!important}
+${EOS_A}.stage-input .shell:has(>.releaseStage .eosCheckIn)>.releaseComposer{height:58px!important;min-height:0!important;max-height:58px!important}
+${EOS_A} .releaseStage:has(.eosCheckIn) .releaseIdleStory{grid-template-columns:1fr 1fr!important;gap:3px 5px!important;bottom:4px!important}
+${EOS_A} .releaseStage:has(.eosCheckIn) .releaseIdleStory .releaseIdleStepInner{min-height:0!important;padding:2px 4px!important;border-radius:8px!important}
+${EOS_A} .releaseStage:has(.eosCheckIn) .releaseIdleStory .releaseIdleStepInner>b{white-space:nowrap!important;line-height:1.1!important}
+}
 ${EOS_A}:has(.releaseChoiceMenu) :is(.eosCheckInChip,.eosWorldChips){display:none!important}
 ${EOS_A}:has(.releaseChoiceMenu) .eosCheckIn{opacity:.14;transition:opacity .2s ease}
 @media (max-width:560px){${EOS_A} .releaseStage:has(.eosCheckIn[data-step="2"]) .eosWorldChips{display:none!important}}

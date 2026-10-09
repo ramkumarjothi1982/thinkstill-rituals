@@ -401,6 +401,31 @@ function eosShiftTextFocused() {
 //   spark — tap the orb 3× on a visible 90 bpm pulse.
 // heart / spark finish by themselves at 6.5 s; the sigh plays its blow by itself after 8 s untouched.
 // onDone(reason) — "done" | "skip" | "auto".
+// GAP R3: the Still Moment's own breath — a soft exhale of filtered noise (low-pass sweeping down) under the sigh
+// tone. Gated by the arcade sound toggle (eosAudio). Never the rain buffer.
+function eosStillBreath(ms = 3000) {
+    const ctx = eosAudio()
+    if (!ctx) return
+    try {
+        const dur = Math.max(0.4, ms / 1000)
+        const t0 = ctx.currentTime
+        const src = ctx.createBufferSource()
+        src.buffer = eosDotsNoiseBuffer(ctx)
+        src.loop = true
+        const lp = ctx.createBiquadFilter()
+        lp.type = "lowpass"
+        lp.Q.value = 0.7
+        lp.frequency.setValueAtTime(1100, t0)
+        lp.frequency.exponentialRampToValueAtTime(260, t0 + dur)
+        const g = ctx.createGain()
+        g.gain.setValueAtTime(0.0001, t0)
+        g.gain.exponentialRampToValueAtTime(0.05, t0 + Math.min(0.35, dur / 4))
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur)
+        src.connect(lp).connect(g).connect(ctx.destination)
+        src.start(t0)
+        src.stop(t0 + dur + 0.05)
+    } catch {}
+}
 function EosStillMoment({ emotion = null, gameId = 0, band = "mid", variant = "sigh", onDone, reduced = false, rainSfx }) {
     useEosStore()
     const calm = eosCalm(reduced)
@@ -486,9 +511,9 @@ function EosStillMoment({ emotion = null, gameId = 0, band = "mid", variant = "s
         go("out", EOS_BREATH.sighOut * 1000)
         eosBreathOwn("out", EOS_BREATH.sighOut * 1000)
         setFill({ v: 0, ms: EOS_BREATH.sighOut * 1000, ease: "linear" })
-        try {
-            rainRef.current?.(4)
-        } catch {}
+        // GAP R3: the Still Moment breathes with its own sound (a soft filtered exhale), never the rain buffer —
+        // rain belongs to RAIN OUT's washout. rainRef stays wired for callers but is not played here.
+        eosStillBreath(EOS_BREATH.sighOut * 1000)
         eosHaptic("exhale")
         eosTone(eosNote(7, 262), EOS_BREATH.sighOut * 1000, { type: "sine", gain: 0.022, glide: eosNote(0, 131) })
         later(() => {
@@ -1405,7 +1430,7 @@ function EosShiftMeter({ game, sfx, rainSfx, reduced = false, onAgain, onPlay, o
                 <div className="eosShiftDone">
                     <p className="eosShiftRewards">{eosShiftRewardsLine(pay && pay.grant, ctx)}</p>
                     {many ? <p className="eosShiftMany">{rated >= 3 ? `You've shifted ${rated} times — nice. Take the calm with you?` : "You've given yourself real time — nice. Take the calm with you?"}</p> : null}
-                    <div className={`eosShiftActions${many ? " isMany" : ""} n${safety || (Share && !sensitive && shift) ? 3 : 2}`}>
+                    <div className={`eosShiftActions${many ? " isMany" : ""} n${safety ? 3 : 2}`}>
                         <button type="button" className="eosShiftBtn isGood" ref={setGoodEl} onClick={() => live.current.onDoneForNow?.()}>
                             <span>I'M GOOD ✓</span>
                         </button>
@@ -1417,11 +1442,7 @@ function EosShiftMeter({ game, sfx, rainSfx, reduced = false, onAgain, onPlay, o
                             <button type="button" className="eosShiftBtn isTalk" onClick={openHelp}>
                                 <span>💛 Talk to someone</span>
                             </button>
-                        ) : Share && !sensitive && shift ? (
-                            <span className="eosShiftShare">
-                                <Share shift={shift} />
-                            </span>
-                        ) : null}
+                        ) : null /* GAP R4: SHARE is a quiet link below (≤ 3 primary buttons per reveal step) */}
                     </div>
                     <div className="eosShiftLinks">
                         {coolReplay ? (
@@ -1436,9 +1457,9 @@ function EosShiftMeter({ game, sfx, rainSfx, reduced = false, onAgain, onPlay, o
                                 ↻ cool it down
                             </button>
                         ) : null}
-                        {!safety && Share && sensitive && shift ? (
+                        {!safety && Share && shift ? (
                             <span className="eosShiftShareLink">
-                                <Share shift={shift} variant="link" label="make a card" />
+                                <Share shift={shift} variant="link" label={sensitive ? "make a card" : "share a card ↗"} />
                             </span>
                         ) : null}
                         {!safety ? (
@@ -1498,7 +1519,7 @@ const EOS_SHIFT_CSS = `
 ${EOS_A}.stage-reveal .releaseCompleteCard:has(.eosShiftMeter) .releaseShiftCheck>:is(strong,.releaseShiftChoices){display:none!important}
 ${EOS_A}.stage-reveal .releaseCompleteCard:has(.eosShiftMeter) .releaseShiftCheck{padding:6px!important;background:none!important;border-color:transparent!important;box-shadow:none!important}
 ${EOS_A}.stage-reveal .releaseCompleteCard:has(.eosShiftMeter:not([data-step="done"]))>:is(small,.releasePersistentFinalMessage){display:none!important}
-${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter:not([data-step="done"]))>.releaseCompleteSideNav{visibility:hidden!important;pointer-events:none!important}
+/* GAP R4: ‹ PREVIOUS / NEXT › stay visible and tappable from 0 s on the reveal (the old hide-until-done rule is gone) */
 ${EOS_A}.stage-reveal:has(.eosShiftMeter:not([data-step="done"])) .arcadeCharacterAtmosphere{opacity:.3!important;transition:opacity .5s ease}
 ${EOS_A}.stage-reveal .releaseCompleteCard:has(.eosShiftMeter[data-eos-cool-replay="1"]) .releaseReplaySame{display:none!important}
 ${EOS_A}.stage-reveal .releaseCompleteOverlay:has(.eosShiftMeter){overflow-y:auto!important;overscroll-behavior:contain}
@@ -1519,7 +1540,9 @@ ${EOS_A}.stage-reveal:has(.eosWorldChips) .releaseCompleteOverlay:has(.eosShiftM
 ${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter){display:grid!important;width:100%!important;max-width:none!important;grid-template-columns:1fr 1fr!important;gap:8px!important;align-self:start}
 ${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter)>.releaseCompleteCard{grid-column:1/-1!important;grid-row:1!important;width:100%!important;max-width:none!important;padding:16px 12px!important}
 ${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter)>.releaseCompleteSideNav{grid-row:2!important;width:100%!important;height:44px!important;font-size:12px!important}
-${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter:not([data-step="done"]))>.releaseCompleteSideNav{display:none!important}
+/* GAP R4: on phones the nav row sits ABOVE the card (row 1), so it is on screen at once and never under the composer */
+${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter)>.releaseCompleteSideNav{grid-row:1!important}
+${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter)>.releaseCompleteCard{grid-row:2!important}
 /* the old reveal copy comes back BELOW the meter on phone, so the payoff never jumps down when it returns */
 ${EOS_A}.stage-reveal .releaseCompleteCard:has(.eosShiftMeter)>:is(small,.releasePersistentFinalMessage){order:2}
 ${EOS_A}.stage-reveal .releaseCompleteCard:has(.eosShiftMeter)>.releaseShiftCheck{order:3}

@@ -637,8 +637,91 @@ const EOS_MOOD_DONE_SEL = ".globalPlayGuide.isComplete, .tsRewardSurge.mega"
 // The whole bloom fits inside 2.0 s, the shortest finish hold (GameEngineLegacy: finishHoldMs ≥ 2050 ms after
 // isComplete when an engine calls onDone without reporting 100 first): third word starts at 400 ms + 1.5 s life.
 const EOS_MOOD_STAGGER = 200
+// isComplete with no burst at all for this long (a stuck engine): bloom in place, as before
+const EOS_MOOD_NO_BURST_MS = 4500
 const EOS_MOOD_LIFE_MS = 1500
 const EOS_MOOD_LIFE = EOS_MOOD_LIFE_MS + EOS_MOOD_STAGGER * 2
+
+// GAP R1/R2: the flip bloom after the approved burst. The burst ends in the same tick as the reveal begins, so the
+// play layer is gone by then: a clone of its pre-rendered words (same classes, same CSS, same 1.9 s life) blooms on
+// .releaseStage above the reveal, out of the reveal's Still Point (the memory orb), placed clear of the reveal's
+// pictures and text by the same crown search, with the same sparkle chime — all only after the burst unmounted.
+// Skipped when the person has already left the reveal. Returns cancel().
+const EOS_MOOD_AFTER = { cancel: null }
+function eosMoodAfterBloom(flip, stage) {
+    try {
+        if (EOS_MOOD_AFTER.cancel) EOS_MOOD_AFTER.cancel()
+    } catch {}
+    let alive = true
+    let node = null
+    const timers = []
+    const go = () => {
+        try {
+            if (!alive || !stage || !stage.isConnected || !flip) return
+            const arc = stage.closest(".tsArcade")
+            if (arc && !arc.classList.contains("stage-reveal")) return
+            node = flip.cloneNode(true)
+            node.classList.remove("isBloom", "isPhone")
+            node.classList.add("eosMoodAfter")
+            node.querySelectorAll(".isYield").forEach((el) => el.classList.remove("isYield"))
+            let z = 0
+            stage.querySelectorAll(":scope > .releaseCompleteOverlay, .eosWorldChips").forEach((el) => {
+                const v = Number(getComputedStyle(el).zIndex)
+                if (v > z) z = v
+            })
+            node.style.zIndex = String((z || 160) + 1)
+            stage.appendChild(node)
+            const W = node.clientWidth
+            const H = node.clientHeight
+            if (!(W > 40 && H > 40)) return
+            let x = W / 2
+            let y = H * 0.4
+            let from = "stage"
+            const orb = stage.querySelector(".eosSmOrb")
+            const r = orb ? eosRelRect(orb, node) : null
+            if (r && r.w > 2 && r.h > 2 && r.cx > 0 && r.cx < W && r.cy > 0 && r.cy < H) {
+                x = r.cx
+                y = r.cy
+                from = "orb"
+            }
+            const phone = W < 560
+            const words = Array.from(node.querySelectorAll(".eosMoodWordTx")).map((el) => el.textContent || "")
+            const scope = stage.querySelector(":scope > .releaseCompleteOverlay") || stage
+            const obstacles = eosMoodContent(scope, node, W, H)
+            const place = eosMoodPlace({ W, H, x0: x, y0: y, phone, words, obstacles })
+            const start = words.map((_, i) => {
+                const o = eosMoodSlotOff(i, place.dx, place.lift, place.layout)
+                return [Math.round(x - (place.x + o[0])), Math.round(y - (place.y + o[1]))]
+            })
+            const b = { x: place.x, y: place.y, dx: place.dx, lift: place.lift, fs: place.fs, layout: place.layout, start, phone, words, at: Date.now(), from, yielded: words.map(() => false) }
+            if (!eosMoodPaint(node, b)) return
+            EOS_MOOD_LIVE.after = { at: Date.now(), perf: typeof performance !== "undefined" ? performance.now() : 0, words: words.slice(), from, x: Math.round(place.x), y: Math.round(place.y), clean: !!place.clean }
+            words.forEach((_, i) => {
+                timers.push(
+                    setTimeout(() => {
+                        if (!alive) return
+                        eosTone(eosNote(8 + i * 2, 392), 520, { type: "sine", gain: 0.028 })
+                        eosTone(eosNote(13 + i * 2, 392), 380, { type: "triangle", gain: 0.012, at: 0.03 })
+                    }, i * EOS_MOOD_STAGGER)
+                )
+            })
+            timers.push(setTimeout(cancel, EOS_MOOD_LIFE + 400))
+        } catch {}
+    }
+    const off = eosAfterBurst(go, 160)
+    const cancel = () => {
+        alive = false
+        off()
+        timers.forEach(clearTimeout)
+        try {
+            if (node) node.remove()
+        } catch {}
+        node = null
+        if (EOS_MOOD_AFTER.cancel === cancel) EOS_MOOD_AFTER.cancel = null
+    }
+    EOS_MOOD_AFTER.cancel = cancel
+    return cancel
+}
 
 // Writes the colour script at one script position straight onto the two layers (custom properties only; React
 // never renders these keys, so the two never fight). Driven per frame by the component's tween.
@@ -799,10 +882,22 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
         const dur = calm ? 900 : 600
         const t0 = performance.now()
         const tick = () => {
+            // GAP R1: the burst owns the screen — the layers are hidden by the burst gate and this loop pauses
+            // (no rAF while it is mounted); it lands on its target right after the burst
+            if (eosBurstOn()) {
+                S.raf = 0
+                S.wait = setTimeout(() => {
+                    S.wait = 0
+                    S.raf = requestAnimationFrame(tick)
+                }, 120)
+                return
+            }
             const k = eosClamp((performance.now() - t0) / dur, 0, 1)
             paint(from + (to - from) * (calm ? k * k * (3 - 2 * k) : k))
             S.raf = k < 1 ? requestAnimationFrame(tick) : 0
         }
+        if (S.wait) clearTimeout(S.wait)
+        S.wait = 0
         S.raf = requestAnimationFrame(tick)
     }, [t, emo, late, calm])
     React.useEffect(
@@ -810,6 +905,8 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
             const S = tween.current
             if (S.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(S.raf)
             S.raf = 0
+            if (S.wait) clearTimeout(S.wait)
+            S.wait = 0
         },
         []
     )
@@ -1106,6 +1203,9 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
         let mo = null
         let watched = null
         let fired = false
+        let doneAt = 0
+        let sawBurst = false
+        let pend = null
         const check = () => {
             if (!alive || fired) return
             clearTimeout(timer)
@@ -1124,7 +1224,23 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
                     }
                 }
             } catch {}
-            if (done && fire()) {
+            if (done) {
+                // GAP R1/R2: the flip bloom and its sparkle chime start only AFTER the approved burst has unmounted.
+                // isComplete usually lands 0.7-1.2 s before the burst: wait for it. When the burst ends the stage
+                // turns to the reveal and this layer unmounts, so the cleanup hands the bloom to eosMoodAfterBloom.
+                const nowMs = Date.now()
+                if (!doneAt) doneAt = nowMs
+                if (!pend && flipRef.current) pend = { flip: flipRef.current, stage: flipRef.current.closest(".releaseStage") }
+                if (eosBurstOn()) sawBurst = true
+                else if ((sawBurst || nowMs - doneAt > EOS_MOOD_NO_BURST_MS) && fire()) pend = null
+                else {
+                    timer = setTimeout(check, 100)
+                    return
+                }
+                if (eosBurstOn() || pend) {
+                    timer = setTimeout(check, 100)
+                    return
+                }
                 fired = true
                 if (mo) mo.disconnect()
                 mo = null
@@ -1138,6 +1254,7 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
             alive = false
             clearTimeout(timer)
             if (mo) mo.disconnect()
+            if (!fired && doneAt && pend && pend.flip && pend.stage) eosMoodAfterBloom(pend.flip, pend.stage)
             tones.forEach(clearTimeout)
             if (host0 && host0.removeEventListener) ["pointerdown", "pointerup", "pointermove"].forEach((k) => host0.removeEventListener(k, onPress, true))
         }

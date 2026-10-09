@@ -24768,6 +24768,114 @@ eosExpose("core", {
     cssText: () => Array.from(EOS_CSS_PARTS.values()).join("\n"),
 })
 
+// ===== src/eos/01_eos_burst.jsx =====
+// ThinkStill EOS — burst gate (GAP_AUDIT R1 + R2, plan row 0a). Shared by every EOS layer.
+//
+// The approved dopamine burst (`.tsRewardSurge.mega`, git 485500c) owns the screen while it is mounted:
+//   * every EOS paint layer (mood grade / air / flip words, companion, the thought-flow glow, dots and Still Point
+//     glow, guide arrows) is opacity 0 + visibility hidden — the burst renders exactly as the baseline;
+//   * EOS JS loops ask eosBurstOn() and skip their frame work (the mood tween, the thought-flow tick), and the
+//     thought-flow sound bed ducks;
+//   * nothing EOS blooms or chimes before or during the burst: eosAfterBurst(fn) runs fn only once no burst is
+//     mounted (the mood flip bloom + its sparkle chime are handed to the reveal this way).
+// One MutationObserver (childList only; one querySelector per batch that adds or removes an element) mirrors the
+// mount into EOS_BURST and `html[data-eos-burst]` in the same task as React's commit, so the first burst frame is
+// already clean. Nothing here changes the burst itself.
+
+const EOS_BURST = { on: false, at: 0, endAt: 0, n: 0, subs: new Set(), mo: null }
+function eosBurstFind() {
+    try {
+        return typeof document !== "undefined" ? document.querySelector(".tsRewardSurge.mega") : null
+    } catch {
+        return null
+    }
+}
+function eosBurstSet(on) {
+    if (on === EOS_BURST.on) return
+    EOS_BURST.on = on
+    const t = typeof performance !== "undefined" ? performance.now() : Date.now()
+    if (on) {
+        EOS_BURST.at = t
+        EOS_BURST.n++
+    } else EOS_BURST.endAt = t
+    try {
+        if (on) document.documentElement.setAttribute("data-eos-burst", "1")
+        else document.documentElement.removeAttribute("data-eos-burst")
+    } catch {}
+    EOS_BURST.subs.forEach((f) => {
+        try {
+            f(on)
+        } catch {}
+    })
+}
+function eosBurstHasEl(list) {
+    for (let i = 0; i < list.length; i++) if (list[i].nodeType === 1) return true
+    return false
+}
+function eosBurstWatchStart() {
+    if (EOS_BURST.mo || typeof MutationObserver === "undefined" || typeof document === "undefined" || !document.body) return
+    try {
+        EOS_BURST.mo = new MutationObserver((recs) => {
+            for (const r of recs)
+                if (eosBurstHasEl(r.addedNodes) || eosBurstHasEl(r.removedNodes)) {
+                    eosBurstSet(!!eosBurstFind())
+                    return
+                }
+        })
+        EOS_BURST.mo.observe(document.body, { childList: true, subtree: true })
+    } catch {
+        EOS_BURST.mo = null
+    }
+    eosBurstSet(!!eosBurstFind())
+}
+// is the approved mega burst on screen right now?
+function eosBurstOn() {
+    eosBurstWatchStart()
+    if (!EOS_BURST.mo) return !!eosBurstFind()
+    return EOS_BURST.on
+}
+// subscribe to burst on/off edges; returns unsubscribe
+function eosBurstSub(fn) {
+    eosBurstWatchStart()
+    EOS_BURST.subs.add(fn)
+    return () => EOS_BURST.subs.delete(fn)
+}
+// run fn once no burst is mounted (now, or when the burst unmounts), plus `ms`. Returns cancel().
+function eosAfterBurst(fn, ms = 0) {
+    let done = false
+    let t = 0
+    let off = null
+    const run = () => {
+        if (done) return
+        if (eosBurstOn()) return
+        done = true
+        if (off) off()
+        t = setTimeout(fn, Math.max(0, ms))
+    }
+    off = eosBurstSub((on) => {
+        if (!on) run()
+    })
+    run()
+    return () => {
+        done = true
+        clearTimeout(t)
+        if (off) off()
+    }
+}
+
+// 5 IDs of weight: above EOS_A (3) and EOS_L (4), so no EOS layer rule can paint over the burst.
+const EOS_BURST_G = "html[data-eos-burst]:not(#eosBurst1):not(#eosBurst2):not(#eosBurst3):not(#eosBurst4):not(#eosBurst5)"
+const EOS_BURST_LAYERS = ".eosMoodGrade,.eosMoodAir,.eosMoodFlip,.eosCompanion,.eosThoughtFlow,.eosArrowLayer"
+eosCss(
+    "burst",
+    `${EOS_BURST_G} :is(${EOS_BURST_LAYERS}){opacity:0!important;visibility:hidden!important;transition:none!important}`
+)
+eosExpose("burst", {
+    on: () => eosBurstOn(),
+    state: () => ({ on: EOS_BURST.on, at: EOS_BURST.at, endAt: EOS_BURST.endAt, n: EOS_BURST.n, watching: !!EOS_BURST.mo }),
+    layers: EOS_BURST_LAYERS,
+})
+
 // ===== src/eos/10_eos_readability.jsx =====
 // ===================================================================================
 // EOS · 10 READABILITY — nothing a person must read is tiny (docs/EOS_SPEC.md §4, §0.4 tokens, §12.1).
@@ -25006,13 +25114,13 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
      ("my b…"). On phones the avatar shrinks to a 26 px badge beside the KEY tag, the word gets the card's width
      and the vibe line its own row; the piano keys' 6 px "THOUGHT n" sub-labels (the cards above already pair
      each key with its thought) are dropped — the keys keep their big note letter. */
-  ${EOS_A}.stage-play .u106 .tsndCard{height:auto!important;min-height:92px!important;grid-template-columns:26px minmax(0,1fr)!important;grid-template-rows:auto auto!important;column-gap:5px!important;row-gap:4px!important;padding:6px!important}
-  ${EOS_A}.stage-play .u106 .tsndAvatar{grid-row:1!important;grid-column:1!important;align-self:start!important;width:26px!important;height:26px!important;min-width:26px!important;min-height:26px!important;max-width:26px!important;max-height:26px!important}
+  ${EOS_A}.stage-play .u106 .tsndCard{height:auto!important;min-height:92px!important;grid-template-columns:40px minmax(0,1fr)!important;grid-template-rows:auto auto!important;column-gap:5px!important;row-gap:4px!important;padding:6px!important} /* GAP R7: 40 px avatar column (BASE), was 26 */
+  ${EOS_A}.stage-play .u106 .tsndAvatar{grid-row:1!important;grid-column:1!important;align-self:start!important;width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;max-width:40px!important;max-height:40px!important}
   ${EOS_A}.stage-play .u106 .tsndCopy{grid-row:1!important;grid-column:2!important;align-self:start!important}
   ${EOS_A}.stage-play .u106 .tsndText{overflow:visible!important;line-height:1.02!important}
   /* …and the word itself (it starts below the 26 px badge) also takes the badge's column: 84 px instead of 53, so
      "meeting" reads whole at 15-16 px instead of breaking ("meetin|g") at the 14 px fit minimum */
-  ${EOS_A}.stage-play .u106 .tsndText{margin:2px 0 0 -31px!important;width:calc(100% + 31px)!important;max-width:none!important}
+  ${EOS_A}.stage-play .u106 .tsndText{margin:2px 0 0 -45px!important;width:calc(100% + 45px)!important;max-width:none!important}
   ${EOS_A}.stage-play .u106 .tsndCardBottom{grid-row:2!important;grid-column:1 / -1!important;flex-wrap:wrap!important;justify-content:center!important;gap:3px 6px!important}
   ${EOS_A}.stage-play .u106 .tsndAction{white-space:nowrap!important;letter-spacing:.02em!important}
   ${EOS_A}.stage-play .u106 .tsndKeySub{display:none!important}
@@ -25052,8 +25160,8 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
   ${EOS_A}.stage-play .u102 .ftThoughtPill>b{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:break-word!important;word-break:normal!important;line-height:.98!important}
   /* DRAMA MACHINE (105): the six 85 px take chips left a 36 px column for "TAKE 2 / WAITING" (55 px at 12.5 px):
      on phones the take's face is a 20 px badge and the two lines track tighter, so both read whole */
-  ${EOS_A}.stage-play .u105 .dmTake{grid-template-columns:20px minmax(0,1fr)!important;column-gap:3px!important;padding:3px 2px 3px 3px!important}
-  ${EOS_A}.stage-play .u105 .dmTakeFace{width:20px!important;height:20px!important;max-width:20px!important;min-width:20px!important}
+  ${EOS_A}.stage-play .u105 .dmTake{grid-template-columns:32px minmax(0,1fr)!important;column-gap:3px!important;padding:3px 2px 3px 3px!important}
+  ${EOS_A}.stage-play .u105 .dmTakeFace{width:32px!important;height:32px!important;max-width:32px!important;min-width:32px!important;min-height:32px!important} /* GAP R7: BASE 32 px faces, was 20 */
   ${EOS_A}.stage-play .u105 .dmTakeCopy>*{letter-spacing:.01em!important;white-space:nowrap!important;overflow:visible!important}
   /* …and its control room: the machine clips at its own bottom edge (overflow:hidden keeps its glow rings inside), and
      the room's 132 px minimum pushed the two buttons 17 px past it ("✦ MAKE IT" / "✂ CUT THE"). The room now hugs its
@@ -25073,11 +25181,17 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
   /* …and its 7 px "CHOOSE PROP" / "TAP A THOUGHT" hint cannot fit a 65 px button at any readable size: the LIVE GUIDE
      and the arrow already say it, so phones drop the hint instead of drawing it unreadable (or spilling it) */
   ${EOS_A}.stage-play .u107 .gwProp>em{display:none!important}
-  /* phone header: [×] THINKSTILL ……… [LVL 1 ⚡ 0] [🔊] — the brand sits left, clear of the score pill */
+  /* GAP R8: ZAP's counter is a clear glass tag at the top of its bubble, never a dark plate over the word */
+  ${EOS_A}.stage-play .zapBubbleCount{background:rgba(255,255,255,.13)!important;background-image:none!important;-webkit-backdrop-filter:blur(3px) saturate(1.3)!important;backdrop-filter:blur(3px) saturate(1.3)!important;border:1px solid rgba(255,255,255,.38)!important;box-shadow:0 1px 6px rgba(0,0,0,.16)!important;color:#fff!important;text-shadow:0 1px 3px rgba(0,0,0,.8)!important;top:5%!important;bottom:auto!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;line-height:1.1!important;padding:1px 6px!important}
+  /* phone header: [×] …… THINKSTILL …… [LVL·⚡] [🔊] — GAP R6: the brand is centred on the bar (BASE), never clipped:
+     the long title gives way to the brand, and the score pill stacks its two values (LVL over ⚡) so the right
+     cluster leaves the centre slot free */
   ${EOS_A} :is(.releaseTitleMain,.releaseTitleBy){display:none!important}
-  ${EOS_A} .releaseHeaderCenter{left:52px!important;right:auto!important;transform:translateY(-50%)!important;width:auto!important;max-width:calc(100% - 214px)!important;padding:0 12px!important;justify-content:flex-start!important}
-  ${EOS_A} .releaseConsoleTitle{width:auto!important;overflow:visible!important;justify-content:flex-start!important}
-  ${EOS_A} .releaseTitleBrand{display:inline!important;font:900 15px/1 var(--eos-font)!important;letter-spacing:.08em!important;white-space:nowrap!important}
+  ${EOS_A} .releaseHeaderCenter{left:50%!important;right:auto!important;transform:translate(-50%,-50%)!important;width:auto!important;max-width:calc(100% - 196px)!important;padding:0 8px!important;justify-content:center!important}
+  ${EOS_A} .releaseConsoleTitle{width:auto!important;overflow:visible!important;justify-content:center!important}
+  ${EOS_A} .releaseTitleBrand{display:inline!important;font:900 14px/1 var(--eos-font)!important;letter-spacing:.05em!important;white-space:nowrap!important}
+  ${EOS_A} .releaseScoreBar.releaseScoreBar{display:grid!important;grid-auto-flow:row!important;grid-template-columns:auto!important;justify-items:center!important;align-content:center!important;row-gap:1px!important;column-gap:0!important;height:36px!important;padding:0 8px!important}
+  ${EOS_A} .releaseScoreBar.releaseScoreBar>*{font-size:12px!important;line-height:1!important;margin:0!important;white-space:nowrap!important}
   ${EOS_A} .releaseScoreBar{min-width:0!important;height:32px!important;padding:0 10px!important}
   /* composer game button: a readable 2-line label instead of "CHOOS…" */
   ${EOS_A} .releaseComposer{grid-template-columns:minmax(0,1fr) 36px 148px!important}
@@ -25588,6 +25702,65 @@ function eosReadSizedByContent(b, bcs) {
     }
     return false // a block that fills its container
 }
+// GAP R8: the round bubble an element sits in (≤ 4 levels up: a box 24-260 px, square ±8 %, radius ≥ 45 %), cached
+const EOS_READ_CIRCLE = new WeakMap()
+function eosReadCircleOf(el) {
+    if (EOS_READ_CIRCLE.has(el)) {
+        const c = EOS_READ_CIRCLE.get(el)
+        if (!c || c.isConnected) return c
+    }
+    let found = null
+    let c = el.parentElement
+    for (let d = 0; c && d < 4; d++, c = c.parentElement) {
+        const w = c.offsetWidth
+        const h = c.offsetHeight
+        if (w < 24 || w > 260 || Math.abs(w - h) > Math.max(3, w * 0.08)) continue
+        const r = getComputedStyle(c).borderTopLeftRadius || ""
+        const rv = r.endsWith("%") ? (parseFloat(r) / 100) * w : parseFloat(r) || 0
+        if (rv >= w * 0.45) {
+            found = c
+            break
+        }
+    }
+    EOS_READ_CIRCLE.set(el, found)
+    return found
+}
+// largest size ≤ want (≥ nat) at which the text's widest line fits the circle's chord at the text block's half height
+function eosReadCircleFit(el, cs, nat, want) {
+    try {
+        if (cs.position === "fixed") return want
+        const circ = eosReadCircleOf(el)
+        if (!circ) return want
+        const D = circ.offsetWidth
+        const text = (el.textContent || "").trim().replace(/\s+/g, " ")
+        if (!text || D < 24) return want
+        const R = D / 2 - 2
+        const nowrap = cs.whiteSpace === "nowrap" || cs.whiteSpace === "pre"
+        const at = (px) => {
+            const parts = nowrap ? [text] : text.split(" ")
+            let widest = 0
+            for (const w of parts) widest = Math.max(widest, eosReadTextWidth(cs, w, px))
+            const full = eosReadTextWidth(cs, text, px)
+            const lines = nowrap ? 1 : Math.max(1, Math.ceil(full / Math.max(1, R * 1.4)))
+            const half = Math.min(R - 1, (px * 1.12 * lines) / 2)
+            const chord = 2 * Math.sqrt(Math.max(0, R * R - half * half))
+            return { widest, chord }
+        }
+        let m = at(want)
+        if (m.widest <= m.chord - 2) return want
+        let lo = nat
+        let hi = want
+        for (let k = 0; k < 6; k++) {
+            const mid = (lo + hi) / 2
+            m = at(mid)
+            if (m.widest <= m.chord - 2) lo = mid
+            else hi = mid
+        }
+        return Math.max(nat, lo)
+    } catch {
+        return want
+    }
+}
 // held = the size the floor wrote last time (0 = none). A word the fit stepped DOWN (held < want) that now exactly
 // fills its box keeps that size (hysteresis): no pass re-fits it against a farther box, so it never flips back
 function eosReadWordFit(el, cs, fs, nat, want, ratio, held) {
@@ -25638,7 +25811,9 @@ function eosReadWordFit(el, cs, fs, nat, want, ratio, held) {
         for (const w of text.split(/\s+/)) if (w) widest = Math.max(widest, eosReadTextWidth(cs, w, want))
         if (widest > avail - 1) {
             const fit = (want * (avail - 1)) / widest
-            res = Math.max(nat, Math.min(want, Math.max(fit, EOS_READ_WORD_FIT_MIN / (ratio > 0 ? ratio : 1))))
+            // GAP R8: the fit wins over the 14 px minimum (a word never breaks inside itself), but never below the
+            // element's own size today (nat): the floor never shrinks anything
+            res = Math.max(nat, Math.min(want, fit))
         }
     }
     EOS_READ_FIT_CACHE.set(el, [key, res, box, box.clientWidth])
@@ -25870,6 +26045,9 @@ function eosReadPass(root, opts) {
             // (14 / .78 would otherwise turn the minimum into 17.9 px and push the word back up)
             want = eosReadWordFit(el, cs, fs, nat, want, (scaled || 1) * ctx.k, rec ? rec.px : 0)
         }
+        // GAP R8: inside a round bubble the raised text must stay inside the circle (r - 2): the lift stops at the
+        // largest size whose widest line fits the circle's chord, never below the element's own size
+        if (want > nat + 0.25) want = eosReadCircleFit(el, cs, nat, want)
         // a raised element follows its current target back down — a scale that ended, a canvas zoom, a breakpoint,
         // a smaller Bubble Text, a word that would break — but never below its own natural size (so never below today)
         if (rec && want < rec.px - 0.25) {
@@ -27334,7 +27512,7 @@ function eosDotsController(root, opts = {}) {
         // §5.2: during the check-in (the EOS home screen, not the classic "just let me play" composer) and play;
         // silent in the reveal, while the arcade's music plays, with sound off, or in a background tab
         const where = S.stage === "play" || (S.stage === "input" && st.phase === "checkin" && st.checkinEnabled !== false)
-        return S.alive && S.bed.armed && !hidden && where && !!st.sound && !st.music
+        return S.alive && S.bed.armed && !hidden && where && !!st.sound && !st.music && !eosBurstOn()
     }
     const bedStart = () => {
         const B = S.bed
@@ -27455,6 +27633,12 @@ function eosDotsController(root, opts = {}) {
     }
     const tick = (force) => {
         if (!S.alive || !root.isConnected) return
+        // GAP R1: while the approved burst is mounted the whole flow is hidden by the burst gate — skip the work
+        // (the bed ducks through bedWants) and pick up again on the first tick after it
+        if (eosBurstOn()) {
+            bedUpdate()
+            return
+        }
         const st = EOS_STORE.get()
         const sEl = stageEl()
         let p = 0
@@ -27511,6 +27695,11 @@ function eosDotsController(root, opts = {}) {
     const frame = () => {
         S.raf = 0
         if (!S.alive || !root.isConnected) return
+        if (eosBurstOn()) {
+            // GAP R1: no frame work under the burst; the pending measure / force flags wait for it
+            setTimeout(() => schedule(), 150)
+            return
+        }
         const t0 = now()
         const m = want.measure
         const f = want.force
@@ -28734,8 +28923,91 @@ const EOS_MOOD_DONE_SEL = ".globalPlayGuide.isComplete, .tsRewardSurge.mega"
 // The whole bloom fits inside 2.0 s, the shortest finish hold (GameEngineLegacy: finishHoldMs ≥ 2050 ms after
 // isComplete when an engine calls onDone without reporting 100 first): third word starts at 400 ms + 1.5 s life.
 const EOS_MOOD_STAGGER = 200
+// isComplete with no burst at all for this long (a stuck engine): bloom in place, as before
+const EOS_MOOD_NO_BURST_MS = 4500
 const EOS_MOOD_LIFE_MS = 1500
 const EOS_MOOD_LIFE = EOS_MOOD_LIFE_MS + EOS_MOOD_STAGGER * 2
+
+// GAP R1/R2: the flip bloom after the approved burst. The burst ends in the same tick as the reveal begins, so the
+// play layer is gone by then: a clone of its pre-rendered words (same classes, same CSS, same 1.9 s life) blooms on
+// .releaseStage above the reveal, out of the reveal's Still Point (the memory orb), placed clear of the reveal's
+// pictures and text by the same crown search, with the same sparkle chime — all only after the burst unmounted.
+// Skipped when the person has already left the reveal. Returns cancel().
+const EOS_MOOD_AFTER = { cancel: null }
+function eosMoodAfterBloom(flip, stage) {
+    try {
+        if (EOS_MOOD_AFTER.cancel) EOS_MOOD_AFTER.cancel()
+    } catch {}
+    let alive = true
+    let node = null
+    const timers = []
+    const go = () => {
+        try {
+            if (!alive || !stage || !stage.isConnected || !flip) return
+            const arc = stage.closest(".tsArcade")
+            if (arc && !arc.classList.contains("stage-reveal")) return
+            node = flip.cloneNode(true)
+            node.classList.remove("isBloom", "isPhone")
+            node.classList.add("eosMoodAfter")
+            node.querySelectorAll(".isYield").forEach((el) => el.classList.remove("isYield"))
+            let z = 0
+            stage.querySelectorAll(":scope > .releaseCompleteOverlay, .eosWorldChips").forEach((el) => {
+                const v = Number(getComputedStyle(el).zIndex)
+                if (v > z) z = v
+            })
+            node.style.zIndex = String((z || 160) + 1)
+            stage.appendChild(node)
+            const W = node.clientWidth
+            const H = node.clientHeight
+            if (!(W > 40 && H > 40)) return
+            let x = W / 2
+            let y = H * 0.4
+            let from = "stage"
+            const orb = stage.querySelector(".eosSmOrb")
+            const r = orb ? eosRelRect(orb, node) : null
+            if (r && r.w > 2 && r.h > 2 && r.cx > 0 && r.cx < W && r.cy > 0 && r.cy < H) {
+                x = r.cx
+                y = r.cy
+                from = "orb"
+            }
+            const phone = W < 560
+            const words = Array.from(node.querySelectorAll(".eosMoodWordTx")).map((el) => el.textContent || "")
+            const scope = stage.querySelector(":scope > .releaseCompleteOverlay") || stage
+            const obstacles = eosMoodContent(scope, node, W, H)
+            const place = eosMoodPlace({ W, H, x0: x, y0: y, phone, words, obstacles })
+            const start = words.map((_, i) => {
+                const o = eosMoodSlotOff(i, place.dx, place.lift, place.layout)
+                return [Math.round(x - (place.x + o[0])), Math.round(y - (place.y + o[1]))]
+            })
+            const b = { x: place.x, y: place.y, dx: place.dx, lift: place.lift, fs: place.fs, layout: place.layout, start, phone, words, at: Date.now(), from, yielded: words.map(() => false) }
+            if (!eosMoodPaint(node, b)) return
+            EOS_MOOD_LIVE.after = { at: Date.now(), perf: typeof performance !== "undefined" ? performance.now() : 0, words: words.slice(), from, x: Math.round(place.x), y: Math.round(place.y), clean: !!place.clean }
+            words.forEach((_, i) => {
+                timers.push(
+                    setTimeout(() => {
+                        if (!alive) return
+                        eosTone(eosNote(8 + i * 2, 392), 520, { type: "sine", gain: 0.028 })
+                        eosTone(eosNote(13 + i * 2, 392), 380, { type: "triangle", gain: 0.012, at: 0.03 })
+                    }, i * EOS_MOOD_STAGGER)
+                )
+            })
+            timers.push(setTimeout(cancel, EOS_MOOD_LIFE + 400))
+        } catch {}
+    }
+    const off = eosAfterBurst(go, 160)
+    const cancel = () => {
+        alive = false
+        off()
+        timers.forEach(clearTimeout)
+        try {
+            if (node) node.remove()
+        } catch {}
+        node = null
+        if (EOS_MOOD_AFTER.cancel === cancel) EOS_MOOD_AFTER.cancel = null
+    }
+    EOS_MOOD_AFTER.cancel = cancel
+    return cancel
+}
 
 // Writes the colour script at one script position straight onto the two layers (custom properties only; React
 // never renders these keys, so the two never fight). Driven per frame by the component's tween.
@@ -28896,10 +29168,22 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
         const dur = calm ? 900 : 600
         const t0 = performance.now()
         const tick = () => {
+            // GAP R1: the burst owns the screen — the layers are hidden by the burst gate and this loop pauses
+            // (no rAF while it is mounted); it lands on its target right after the burst
+            if (eosBurstOn()) {
+                S.raf = 0
+                S.wait = setTimeout(() => {
+                    S.wait = 0
+                    S.raf = requestAnimationFrame(tick)
+                }, 120)
+                return
+            }
             const k = eosClamp((performance.now() - t0) / dur, 0, 1)
             paint(from + (to - from) * (calm ? k * k * (3 - 2 * k) : k))
             S.raf = k < 1 ? requestAnimationFrame(tick) : 0
         }
+        if (S.wait) clearTimeout(S.wait)
+        S.wait = 0
         S.raf = requestAnimationFrame(tick)
     }, [t, emo, late, calm])
     React.useEffect(
@@ -28907,6 +29191,8 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
             const S = tween.current
             if (S.raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(S.raf)
             S.raf = 0
+            if (S.wait) clearTimeout(S.wait)
+            S.wait = 0
         },
         []
     )
@@ -29203,6 +29489,9 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
         let mo = null
         let watched = null
         let fired = false
+        let doneAt = 0
+        let sawBurst = false
+        let pend = null
         const check = () => {
             if (!alive || fired) return
             clearTimeout(timer)
@@ -29221,7 +29510,23 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
                     }
                 }
             } catch {}
-            if (done && fire()) {
+            if (done) {
+                // GAP R1/R2: the flip bloom and its sparkle chime start only AFTER the approved burst has unmounted.
+                // isComplete usually lands 0.7-1.2 s before the burst: wait for it. When the burst ends the stage
+                // turns to the reveal and this layer unmounts, so the cleanup hands the bloom to eosMoodAfterBloom.
+                const nowMs = Date.now()
+                if (!doneAt) doneAt = nowMs
+                if (!pend && flipRef.current) pend = { flip: flipRef.current, stage: flipRef.current.closest(".releaseStage") }
+                if (eosBurstOn()) sawBurst = true
+                else if ((sawBurst || nowMs - doneAt > EOS_MOOD_NO_BURST_MS) && fire()) pend = null
+                else {
+                    timer = setTimeout(check, 100)
+                    return
+                }
+                if (eosBurstOn() || pend) {
+                    timer = setTimeout(check, 100)
+                    return
+                }
                 fired = true
                 if (mo) mo.disconnect()
                 mo = null
@@ -29235,6 +29540,7 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
             alive = false
             clearTimeout(timer)
             if (mo) mo.disconnect()
+            if (!fired && doneAt && pend && pend.flip && pend.stage) eosMoodAfterBloom(pend.flip, pend.stage)
             tones.forEach(clearTimeout)
             if (host0 && host0.removeEventListener) ["pointerdown", "pointerup", "pointermove"].forEach((k) => host0.removeEventListener(k, onPress, true))
         }
@@ -39064,7 +39370,23 @@ function EosCompanion({ game, hostRef, reduced = false }) {
 
 // ---------------------------------------------------------------- CSS
 const EOS_CHECKIN_CSS = `
-${EOS_A} .releaseStage:has(.eosCheckIn) .releaseIdleStory{display:none!important}
+/* GAP R5: how Release works stays on screen with the check-in — the 4 step titles as a compact strip above the
+   composer (BASE shows the full 4-step story; the check-in keeps its own layout and makes room at its foot) */
+${EOS_A} .releaseStage:has(.eosCheckIn) .releaseIdleStory{display:grid!important;position:absolute!important;left:8px!important;right:8px!important;top:auto!important;bottom:6px!important;width:auto!important;height:auto!important;max-width:760px!important;margin:0 auto!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:5px!important;z-index:40!important;pointer-events:none!important;transform:none!important;opacity:1!important;visibility:visible!important;aspect-ratio:auto!important;padding:0!important;background:none!important;border:0!important;box-shadow:none!important;min-height:0!important;max-height:none!important;overflow:visible!important}
+${EOS_A} .releaseStage:has(.eosCheckIn) .releaseIdleStory>:is(.releaseIdleStoryTrack,.releaseIdleStoryComet,.releaseIdleStoryCaption){display:none!important}
+${EOS_A} .releaseStage:has(.eosCheckIn) .releaseIdleStory .releaseIdleStep{position:relative!important;inset:auto!important;transform:none!important;animation:none!important;opacity:1!important;visibility:visible!important;width:auto!important;min-width:0!important;max-width:none!important;height:auto!important;min-height:0!important;margin:0!important;translate:none!important;scale:none!important}
+${EOS_A} .releaseStage:has(.eosCheckIn) .releaseIdleStory .releaseIdleStepInner{display:flex!important;align-items:center!important;justify-content:center!important;transform:none!important;animation:none!important;opacity:1!important;width:auto!important;height:100%!important;min-height:30px!important;padding:3px 3px!important;border-radius:10px!important;background:rgba(6,22,34,.72)!important;border:1px solid rgba(140,220,255,.2)!important;box-shadow:none!important;text-align:center!important}
+${EOS_A} .releaseStage:has(.eosCheckIn) .releaseIdleStory .releaseIdleStepInner>:is(.releaseIdleStepBubble,small){display:none!important}
+${EOS_A} .releaseStage:has(.eosCheckIn) .releaseIdleStory .releaseIdleStepInner>b{display:block!important;font:800 12px/1.12 var(--eos-font,system-ui)!important;letter-spacing:.02em!important;color:#dffbff!important;white-space:normal!important;opacity:1!important;transform:none!important;animation:none!important;max-width:none!important;overflow:visible!important}
+/* phones: the composer's empty lower band (56 px under its one input row) is lent to the stage while the check-in
+   is up, so the check-in keeps its full size and layout and the strip sits under its foot */
+@media (max-width:560px){
+${EOS_A}.stage-input .shell:has(>.releaseStage .eosCheckIn){grid-template-rows:48px minmax(0,1fr) 58px!important}
+${EOS_A}.stage-input .shell:has(>.releaseStage .eosCheckIn)>.releaseComposer{height:58px!important;min-height:0!important;max-height:58px!important}
+${EOS_A} .releaseStage:has(.eosCheckIn) .releaseIdleStory{grid-template-columns:1fr 1fr!important;gap:3px 5px!important;bottom:4px!important}
+${EOS_A} .releaseStage:has(.eosCheckIn) .releaseIdleStory .releaseIdleStepInner{min-height:0!important;padding:2px 4px!important;border-radius:8px!important}
+${EOS_A} .releaseStage:has(.eosCheckIn) .releaseIdleStory .releaseIdleStepInner>b{white-space:nowrap!important;line-height:1.1!important}
+}
 ${EOS_A}:has(.releaseChoiceMenu) :is(.eosCheckInChip,.eosWorldChips){display:none!important}
 ${EOS_A}:has(.releaseChoiceMenu) .eosCheckIn{opacity:.14;transition:opacity .2s ease}
 @media (max-width:560px){${EOS_A} .releaseStage:has(.eosCheckIn[data-step="2"]) .eosWorldChips{display:none!important}}
@@ -40667,6 +40989,31 @@ function eosShiftTextFocused() {
 //   spark — tap the orb 3× on a visible 90 bpm pulse.
 // heart / spark finish by themselves at 6.5 s; the sigh plays its blow by itself after 8 s untouched.
 // onDone(reason) — "done" | "skip" | "auto".
+// GAP R3: the Still Moment's own breath — a soft exhale of filtered noise (low-pass sweeping down) under the sigh
+// tone. Gated by the arcade sound toggle (eosAudio). Never the rain buffer.
+function eosStillBreath(ms = 3000) {
+    const ctx = eosAudio()
+    if (!ctx) return
+    try {
+        const dur = Math.max(0.4, ms / 1000)
+        const t0 = ctx.currentTime
+        const src = ctx.createBufferSource()
+        src.buffer = eosDotsNoiseBuffer(ctx)
+        src.loop = true
+        const lp = ctx.createBiquadFilter()
+        lp.type = "lowpass"
+        lp.Q.value = 0.7
+        lp.frequency.setValueAtTime(1100, t0)
+        lp.frequency.exponentialRampToValueAtTime(260, t0 + dur)
+        const g = ctx.createGain()
+        g.gain.setValueAtTime(0.0001, t0)
+        g.gain.exponentialRampToValueAtTime(0.05, t0 + Math.min(0.35, dur / 4))
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur)
+        src.connect(lp).connect(g).connect(ctx.destination)
+        src.start(t0)
+        src.stop(t0 + dur + 0.05)
+    } catch {}
+}
 function EosStillMoment({ emotion = null, gameId = 0, band = "mid", variant = "sigh", onDone, reduced = false, rainSfx }) {
     useEosStore()
     const calm = eosCalm(reduced)
@@ -40752,9 +41099,9 @@ function EosStillMoment({ emotion = null, gameId = 0, band = "mid", variant = "s
         go("out", EOS_BREATH.sighOut * 1000)
         eosBreathOwn("out", EOS_BREATH.sighOut * 1000)
         setFill({ v: 0, ms: EOS_BREATH.sighOut * 1000, ease: "linear" })
-        try {
-            rainRef.current?.(4)
-        } catch {}
+        // GAP R3: the Still Moment breathes with its own sound (a soft filtered exhale), never the rain buffer —
+        // rain belongs to RAIN OUT's washout. rainRef stays wired for callers but is not played here.
+        eosStillBreath(EOS_BREATH.sighOut * 1000)
         eosHaptic("exhale")
         eosTone(eosNote(7, 262), EOS_BREATH.sighOut * 1000, { type: "sine", gain: 0.022, glide: eosNote(0, 131) })
         later(() => {
@@ -41671,7 +42018,7 @@ function EosShiftMeter({ game, sfx, rainSfx, reduced = false, onAgain, onPlay, o
                 <div className="eosShiftDone">
                     <p className="eosShiftRewards">{eosShiftRewardsLine(pay && pay.grant, ctx)}</p>
                     {many ? <p className="eosShiftMany">{rated >= 3 ? `You've shifted ${rated} times — nice. Take the calm with you?` : "You've given yourself real time — nice. Take the calm with you?"}</p> : null}
-                    <div className={`eosShiftActions${many ? " isMany" : ""} n${safety || (Share && !sensitive && shift) ? 3 : 2}`}>
+                    <div className={`eosShiftActions${many ? " isMany" : ""} n${safety ? 3 : 2}`}>
                         <button type="button" className="eosShiftBtn isGood" ref={setGoodEl} onClick={() => live.current.onDoneForNow?.()}>
                             <span>I'M GOOD ✓</span>
                         </button>
@@ -41683,11 +42030,7 @@ function EosShiftMeter({ game, sfx, rainSfx, reduced = false, onAgain, onPlay, o
                             <button type="button" className="eosShiftBtn isTalk" onClick={openHelp}>
                                 <span>💛 Talk to someone</span>
                             </button>
-                        ) : Share && !sensitive && shift ? (
-                            <span className="eosShiftShare">
-                                <Share shift={shift} />
-                            </span>
-                        ) : null}
+                        ) : null /* GAP R4: SHARE is a quiet link below (≤ 3 primary buttons per reveal step) */}
                     </div>
                     <div className="eosShiftLinks">
                         {coolReplay ? (
@@ -41702,9 +42045,9 @@ function EosShiftMeter({ game, sfx, rainSfx, reduced = false, onAgain, onPlay, o
                                 ↻ cool it down
                             </button>
                         ) : null}
-                        {!safety && Share && sensitive && shift ? (
+                        {!safety && Share && shift ? (
                             <span className="eosShiftShareLink">
-                                <Share shift={shift} variant="link" label="make a card" />
+                                <Share shift={shift} variant="link" label={sensitive ? "make a card" : "share a card ↗"} />
                             </span>
                         ) : null}
                         {!safety ? (
@@ -41764,7 +42107,7 @@ const EOS_SHIFT_CSS = `
 ${EOS_A}.stage-reveal .releaseCompleteCard:has(.eosShiftMeter) .releaseShiftCheck>:is(strong,.releaseShiftChoices){display:none!important}
 ${EOS_A}.stage-reveal .releaseCompleteCard:has(.eosShiftMeter) .releaseShiftCheck{padding:6px!important;background:none!important;border-color:transparent!important;box-shadow:none!important}
 ${EOS_A}.stage-reveal .releaseCompleteCard:has(.eosShiftMeter:not([data-step="done"]))>:is(small,.releasePersistentFinalMessage){display:none!important}
-${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter:not([data-step="done"]))>.releaseCompleteSideNav{visibility:hidden!important;pointer-events:none!important}
+/* GAP R4: ‹ PREVIOUS / NEXT › stay visible and tappable from 0 s on the reveal (the old hide-until-done rule is gone) */
 ${EOS_A}.stage-reveal:has(.eosShiftMeter:not([data-step="done"])) .arcadeCharacterAtmosphere{opacity:.3!important;transition:opacity .5s ease}
 ${EOS_A}.stage-reveal .releaseCompleteCard:has(.eosShiftMeter[data-eos-cool-replay="1"]) .releaseReplaySame{display:none!important}
 ${EOS_A}.stage-reveal .releaseCompleteOverlay:has(.eosShiftMeter){overflow-y:auto!important;overscroll-behavior:contain}
@@ -41785,7 +42128,9 @@ ${EOS_A}.stage-reveal:has(.eosWorldChips) .releaseCompleteOverlay:has(.eosShiftM
 ${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter){display:grid!important;width:100%!important;max-width:none!important;grid-template-columns:1fr 1fr!important;gap:8px!important;align-self:start}
 ${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter)>.releaseCompleteCard{grid-column:1/-1!important;grid-row:1!important;width:100%!important;max-width:none!important;padding:16px 12px!important}
 ${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter)>.releaseCompleteSideNav{grid-row:2!important;width:100%!important;height:44px!important;font-size:12px!important}
-${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter:not([data-step="done"]))>.releaseCompleteSideNav{display:none!important}
+/* GAP R4: on phones the nav row sits ABOVE the card (row 1), so it is on screen at once and never under the composer */
+${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter)>.releaseCompleteSideNav{grid-row:1!important}
+${EOS_A}.stage-reveal .releaseCompleteShell:has(.eosShiftMeter)>.releaseCompleteCard{grid-row:2!important}
 /* the old reveal copy comes back BELOW the meter on phone, so the payoff never jumps down when it returns */
 ${EOS_A}.stage-reveal .releaseCompleteCard:has(.eosShiftMeter)>:is(small,.releasePersistentFinalMessage){order:2}
 ${EOS_A}.stage-reveal .releaseCompleteCard:has(.eosShiftMeter)>.releaseShiftCheck{order:3}

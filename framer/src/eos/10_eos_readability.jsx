@@ -235,13 +235,13 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
      ("my b…"). On phones the avatar shrinks to a 26 px badge beside the KEY tag, the word gets the card's width
      and the vibe line its own row; the piano keys' 6 px "THOUGHT n" sub-labels (the cards above already pair
      each key with its thought) are dropped — the keys keep their big note letter. */
-  ${EOS_A}.stage-play .u106 .tsndCard{height:auto!important;min-height:92px!important;grid-template-columns:26px minmax(0,1fr)!important;grid-template-rows:auto auto!important;column-gap:5px!important;row-gap:4px!important;padding:6px!important}
-  ${EOS_A}.stage-play .u106 .tsndAvatar{grid-row:1!important;grid-column:1!important;align-self:start!important;width:26px!important;height:26px!important;min-width:26px!important;min-height:26px!important;max-width:26px!important;max-height:26px!important}
+  ${EOS_A}.stage-play .u106 .tsndCard{height:auto!important;min-height:92px!important;grid-template-columns:40px minmax(0,1fr)!important;grid-template-rows:auto auto!important;column-gap:5px!important;row-gap:4px!important;padding:6px!important} /* GAP R7: 40 px avatar column (BASE), was 26 */
+  ${EOS_A}.stage-play .u106 .tsndAvatar{grid-row:1!important;grid-column:1!important;align-self:start!important;width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;max-width:40px!important;max-height:40px!important}
   ${EOS_A}.stage-play .u106 .tsndCopy{grid-row:1!important;grid-column:2!important;align-self:start!important}
   ${EOS_A}.stage-play .u106 .tsndText{overflow:visible!important;line-height:1.02!important}
   /* …and the word itself (it starts below the 26 px badge) also takes the badge's column: 84 px instead of 53, so
      "meeting" reads whole at 15-16 px instead of breaking ("meetin|g") at the 14 px fit minimum */
-  ${EOS_A}.stage-play .u106 .tsndText{margin:2px 0 0 -31px!important;width:calc(100% + 31px)!important;max-width:none!important}
+  ${EOS_A}.stage-play .u106 .tsndText{margin:2px 0 0 -45px!important;width:calc(100% + 45px)!important;max-width:none!important}
   ${EOS_A}.stage-play .u106 .tsndCardBottom{grid-row:2!important;grid-column:1 / -1!important;flex-wrap:wrap!important;justify-content:center!important;gap:3px 6px!important}
   ${EOS_A}.stage-play .u106 .tsndAction{white-space:nowrap!important;letter-spacing:.02em!important}
   ${EOS_A}.stage-play .u106 .tsndKeySub{display:none!important}
@@ -281,8 +281,8 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
   ${EOS_A}.stage-play .u102 .ftThoughtPill>b{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:break-word!important;word-break:normal!important;line-height:.98!important}
   /* DRAMA MACHINE (105): the six 85 px take chips left a 36 px column for "TAKE 2 / WAITING" (55 px at 12.5 px):
      on phones the take's face is a 20 px badge and the two lines track tighter, so both read whole */
-  ${EOS_A}.stage-play .u105 .dmTake{grid-template-columns:20px minmax(0,1fr)!important;column-gap:3px!important;padding:3px 2px 3px 3px!important}
-  ${EOS_A}.stage-play .u105 .dmTakeFace{width:20px!important;height:20px!important;max-width:20px!important;min-width:20px!important}
+  ${EOS_A}.stage-play .u105 .dmTake{grid-template-columns:32px minmax(0,1fr)!important;column-gap:3px!important;padding:3px 2px 3px 3px!important}
+  ${EOS_A}.stage-play .u105 .dmTakeFace{width:32px!important;height:32px!important;max-width:32px!important;min-width:32px!important;min-height:32px!important} /* GAP R7: BASE 32 px faces, was 20 */
   ${EOS_A}.stage-play .u105 .dmTakeCopy>*{letter-spacing:.01em!important;white-space:nowrap!important;overflow:visible!important}
   /* …and its control room: the machine clips at its own bottom edge (overflow:hidden keeps its glow rings inside), and
      the room's 132 px minimum pushed the two buttons 17 px past it ("✦ MAKE IT" / "✂ CUT THE"). The room now hugs its
@@ -302,11 +302,17 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
   /* …and its 7 px "CHOOSE PROP" / "TAP A THOUGHT" hint cannot fit a 65 px button at any readable size: the LIVE GUIDE
      and the arrow already say it, so phones drop the hint instead of drawing it unreadable (or spilling it) */
   ${EOS_A}.stage-play .u107 .gwProp>em{display:none!important}
-  /* phone header: [×] THINKSTILL ……… [LVL 1 ⚡ 0] [🔊] — the brand sits left, clear of the score pill */
+  /* GAP R8: ZAP's counter is a clear glass tag at the top of its bubble, never a dark plate over the word */
+  ${EOS_A}.stage-play .zapBubbleCount{background:rgba(255,255,255,.13)!important;background-image:none!important;-webkit-backdrop-filter:blur(3px) saturate(1.3)!important;backdrop-filter:blur(3px) saturate(1.3)!important;border:1px solid rgba(255,255,255,.38)!important;box-shadow:0 1px 6px rgba(0,0,0,.16)!important;color:#fff!important;text-shadow:0 1px 3px rgba(0,0,0,.8)!important;top:5%!important;bottom:auto!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;line-height:1.1!important;padding:1px 6px!important}
+  /* phone header: [×] …… THINKSTILL …… [LVL·⚡] [🔊] — GAP R6: the brand is centred on the bar (BASE), never clipped:
+     the long title gives way to the brand, and the score pill stacks its two values (LVL over ⚡) so the right
+     cluster leaves the centre slot free */
   ${EOS_A} :is(.releaseTitleMain,.releaseTitleBy){display:none!important}
-  ${EOS_A} .releaseHeaderCenter{left:52px!important;right:auto!important;transform:translateY(-50%)!important;width:auto!important;max-width:calc(100% - 214px)!important;padding:0 12px!important;justify-content:flex-start!important}
-  ${EOS_A} .releaseConsoleTitle{width:auto!important;overflow:visible!important;justify-content:flex-start!important}
-  ${EOS_A} .releaseTitleBrand{display:inline!important;font:900 15px/1 var(--eos-font)!important;letter-spacing:.08em!important;white-space:nowrap!important}
+  ${EOS_A} .releaseHeaderCenter{left:50%!important;right:auto!important;transform:translate(-50%,-50%)!important;width:auto!important;max-width:calc(100% - 196px)!important;padding:0 8px!important;justify-content:center!important}
+  ${EOS_A} .releaseConsoleTitle{width:auto!important;overflow:visible!important;justify-content:center!important}
+  ${EOS_A} .releaseTitleBrand{display:inline!important;font:900 14px/1 var(--eos-font)!important;letter-spacing:.05em!important;white-space:nowrap!important}
+  ${EOS_A} .releaseScoreBar.releaseScoreBar{display:grid!important;grid-auto-flow:row!important;grid-template-columns:auto!important;justify-items:center!important;align-content:center!important;row-gap:1px!important;column-gap:0!important;height:36px!important;padding:0 8px!important}
+  ${EOS_A} .releaseScoreBar.releaseScoreBar>*{font-size:12px!important;line-height:1!important;margin:0!important;white-space:nowrap!important}
   ${EOS_A} .releaseScoreBar{min-width:0!important;height:32px!important;padding:0 10px!important}
   /* composer game button: a readable 2-line label instead of "CHOOS…" */
   ${EOS_A} .releaseComposer{grid-template-columns:minmax(0,1fr) 36px 148px!important}
@@ -817,6 +823,65 @@ function eosReadSizedByContent(b, bcs) {
     }
     return false // a block that fills its container
 }
+// GAP R8: the round bubble an element sits in (≤ 4 levels up: a box 24-260 px, square ±8 %, radius ≥ 45 %), cached
+const EOS_READ_CIRCLE = new WeakMap()
+function eosReadCircleOf(el) {
+    if (EOS_READ_CIRCLE.has(el)) {
+        const c = EOS_READ_CIRCLE.get(el)
+        if (!c || c.isConnected) return c
+    }
+    let found = null
+    let c = el.parentElement
+    for (let d = 0; c && d < 4; d++, c = c.parentElement) {
+        const w = c.offsetWidth
+        const h = c.offsetHeight
+        if (w < 24 || w > 260 || Math.abs(w - h) > Math.max(3, w * 0.08)) continue
+        const r = getComputedStyle(c).borderTopLeftRadius || ""
+        const rv = r.endsWith("%") ? (parseFloat(r) / 100) * w : parseFloat(r) || 0
+        if (rv >= w * 0.45) {
+            found = c
+            break
+        }
+    }
+    EOS_READ_CIRCLE.set(el, found)
+    return found
+}
+// largest size ≤ want (≥ nat) at which the text's widest line fits the circle's chord at the text block's half height
+function eosReadCircleFit(el, cs, nat, want) {
+    try {
+        if (cs.position === "fixed") return want
+        const circ = eosReadCircleOf(el)
+        if (!circ) return want
+        const D = circ.offsetWidth
+        const text = (el.textContent || "").trim().replace(/\s+/g, " ")
+        if (!text || D < 24) return want
+        const R = D / 2 - 2
+        const nowrap = cs.whiteSpace === "nowrap" || cs.whiteSpace === "pre"
+        const at = (px) => {
+            const parts = nowrap ? [text] : text.split(" ")
+            let widest = 0
+            for (const w of parts) widest = Math.max(widest, eosReadTextWidth(cs, w, px))
+            const full = eosReadTextWidth(cs, text, px)
+            const lines = nowrap ? 1 : Math.max(1, Math.ceil(full / Math.max(1, R * 1.4)))
+            const half = Math.min(R - 1, (px * 1.12 * lines) / 2)
+            const chord = 2 * Math.sqrt(Math.max(0, R * R - half * half))
+            return { widest, chord }
+        }
+        let m = at(want)
+        if (m.widest <= m.chord - 2) return want
+        let lo = nat
+        let hi = want
+        for (let k = 0; k < 6; k++) {
+            const mid = (lo + hi) / 2
+            m = at(mid)
+            if (m.widest <= m.chord - 2) lo = mid
+            else hi = mid
+        }
+        return Math.max(nat, lo)
+    } catch {
+        return want
+    }
+}
 // held = the size the floor wrote last time (0 = none). A word the fit stepped DOWN (held < want) that now exactly
 // fills its box keeps that size (hysteresis): no pass re-fits it against a farther box, so it never flips back
 function eosReadWordFit(el, cs, fs, nat, want, ratio, held) {
@@ -867,7 +932,9 @@ function eosReadWordFit(el, cs, fs, nat, want, ratio, held) {
         for (const w of text.split(/\s+/)) if (w) widest = Math.max(widest, eosReadTextWidth(cs, w, want))
         if (widest > avail - 1) {
             const fit = (want * (avail - 1)) / widest
-            res = Math.max(nat, Math.min(want, Math.max(fit, EOS_READ_WORD_FIT_MIN / (ratio > 0 ? ratio : 1))))
+            // GAP R8: the fit wins over the 14 px minimum (a word never breaks inside itself), but never below the
+            // element's own size today (nat): the floor never shrinks anything
+            res = Math.max(nat, Math.min(want, fit))
         }
     }
     EOS_READ_FIT_CACHE.set(el, [key, res, box, box.clientWidth])
@@ -1099,6 +1166,9 @@ function eosReadPass(root, opts) {
             // (14 / .78 would otherwise turn the minimum into 17.9 px and push the word back up)
             want = eosReadWordFit(el, cs, fs, nat, want, (scaled || 1) * ctx.k, rec ? rec.px : 0)
         }
+        // GAP R8: inside a round bubble the raised text must stay inside the circle (r - 2): the lift stops at the
+        // largest size whose widest line fits the circle's chord, never below the element's own size
+        if (want > nat + 0.25) want = eosReadCircleFit(el, cs, nat, want)
         // a raised element follows its current target back down — a scale that ended, a canvas zoom, a breakpoint,
         // a smaller Bubble Text, a word that would break — but never below its own natural size (so never below today)
         if (rec && want < rec.px - 0.25) {

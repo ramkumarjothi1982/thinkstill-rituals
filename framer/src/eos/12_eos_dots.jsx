@@ -973,7 +973,7 @@ function eosDotsController(root, opts = {}) {
         // §5.2: during the check-in (the EOS home screen, not the classic "just let me play" composer) and play;
         // silent in the reveal, while the arcade's music plays, with sound off, or in a background tab
         const where = S.stage === "play" || (S.stage === "input" && st.phase === "checkin" && st.checkinEnabled !== false)
-        return S.alive && S.bed.armed && !hidden && where && !!st.sound && !st.music
+        return S.alive && S.bed.armed && !hidden && where && !!st.sound && !st.music && !eosBurstOn()
     }
     const bedStart = () => {
         const B = S.bed
@@ -1094,6 +1094,12 @@ function eosDotsController(root, opts = {}) {
     }
     const tick = (force) => {
         if (!S.alive || !root.isConnected) return
+        // GAP R1: while the approved burst is mounted the whole flow is hidden by the burst gate — skip the work
+        // (the bed ducks through bedWants) and pick up again on the first tick after it
+        if (eosBurstOn()) {
+            bedUpdate()
+            return
+        }
         const st = EOS_STORE.get()
         const sEl = stageEl()
         let p = 0
@@ -1150,6 +1156,11 @@ function eosDotsController(root, opts = {}) {
     const frame = () => {
         S.raf = 0
         if (!S.alive || !root.isConnected) return
+        if (eosBurstOn()) {
+            // GAP R1: no frame work under the burst; the pending measure / force flags wait for it
+            setTimeout(() => schedule(), 150)
+            return
+        }
         const t0 = now()
         const m = want.measure
         const f = want.force
