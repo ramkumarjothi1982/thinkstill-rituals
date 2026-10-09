@@ -45,3 +45,16 @@ Caveat recorded honestly: recordings and timings come from a headless cloud brow
 - One workflow at a time (release fixes, then Pilot A); switch only at safe checkpoints.
 - Pilot A needs the owner's personal approval of its creative quality before its design is scaled to other games.
 - Goal: every game worth a ~A$10/week subscription — emotional value, entertainment, surprise and reasons to return.
+
+## Founder master requirements (2026-10-09) — BINDING, highest precedence after the founder's own newer words
+Read docs/founder/FOUNDER_REQUIREMENTS.md before any change. Immediate rules that override anything above where they differ:
+- **Bubble text:** the user's text sits BELOW the picture but INSIDE the same circular bubble; never over the face; no black masks/boxes; full image visible (contain, no cropping of important parts); true circles; ≥5 visible bubbles in multi-bubble games.
+- **Approved dopamine bursts are frozen:** "Don't change dopamine bursts, fix lag only." Optimise without changing look, choreography or impact; no letters or instructional text over the main burst; no black screen. Any change to an approved finale needs founder approval.
+- **Input prompt:** "What emotion are you carrying?" with "Your thoughts are materialised to be released." No lengthy questionnaire before play; the user's actual words/images become the game objects.
+- **Uploads:** + opens a small 6-slot popup above the + control; up to 6 images distributed evenly over 6 positions; no "UPLOADED IMAGE" label.
+- **Console:** centred title; progress/score indicator before the sound toggle (top-right) and it never disappears; lightweight bottom-right feedback bubble for ~1-2 s that never covers game elements; one-screen mobile layout; keep Change Vibe, Vault/save, share, score/XP, sound, navigation, new thought, replay, image + mic.
+- **Music:** Release uses the shared per-Bubble music URLs from Reset (Reset is the source of truth); do not duplicate assets.
+- **Navigation:** "Let ThinkStill choose" + manual pick + switch mid-game cleanly (no leftover audio/animation); end: Again / New thought / contextual Try <game>; outside: previous / next / Try next game.
+- **Vibes:** Jolly, Cheeky, Unfiltered shape reactions, feedback and copy beyond the first line.
+- Game-specific historical corrections in Part 13 (RAIN OUT washout, X-RAY Kill/Burn All, SCRATCH real scratching, JUGGLE 3-click win, KEEP/DROP, VACUUM "Vacuum suck" one column, SHRED alignment, LOWER PLATFORM "Activate tool", HOT POTATO red->blue + user text below image, UNHOOK one hook + three strings, …) are regression requirements.
+- Never claim sound or real-device testing that did not happen.
