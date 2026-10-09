@@ -9,3 +9,9 @@
 - env note: headless + parallel CPU load -> finale frames at 2-5 fps (timeline jumps 200-450 ms); wrapper finish work dominates.
 - next: rebuild, 390 rerun (timed finale shots), 1280 finishGame, pilot=off originals, commit.
 - [x] (call ~56) 1280 finishGame demo 1/109/2: reveal, 0 arrow misses, progress monotonic, 0 errors. pilot=off: POP + CRUSH originals reach reveal; CLEANSE original got STUCK -> cause: global `@property --hold-pct {inherits:false}` (spec S5) broke the original's inherited meter. DEVIATION: registration removed (spec risk 10 accepted). Reduced: pseudo-element quirk loops now stopped too.
+- [x] (call ~67) final drives 390 + 1280 (manual, all 3 kits): reveal + afterglow face, 0 errors, progress 0/33/67/96/100 monotonic, markers cy 514 (390) / 485-499 (1280), words 16px/800, guide dock -> bend at hand-off (phone), off on desktop. Reduced: 0 running loops.
+- DEVIATION: decode policy pre-decodes calm at mount and win from progress >= 34 (spec: 67) — with N=3 and remote faces the calm/win face was not ready at the finale under load.
+- Load note: machine load avg 9-11 on 4 cores (parallel workflow); input->handler latency 60-900 ms is environment, not pilot code.
+- [x] (call ~74) faces now STACK (ready step faces up to the current step stay opaque underneath; z = step) — fixes the "S" fallback flashing at the finale when compositor transitions stall. Verified 390 CRUSH: calm at 96%, win at hand-off.
+- Note for game builders: phone finish toast (~100 px tall) docks at --eos-pilot-toast-top (HUD bottom + 8); keep the finale hero centre >= toastTop + ~120 px. Per-hit bursts cost ~1 running animation per particle (P1 <= 40).
+- DONE: committed 70_pilot_core.jsx, 71_pilot_fx.jsx, 79_pilot_demo.jsx + this note.

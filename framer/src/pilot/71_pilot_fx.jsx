@@ -371,9 +371,11 @@ const EosPilotActor = React.memo(
                 decodeKey("user")
                 return
             }
+            // current + the next TWO step faces (short games jump 0 -> 2 in one input), win from the first step on
             decodeKey(EOS_PILOT_STEP_KEYS[want])
             if (want < 2) decodeKey(EOS_PILOT_STEP_KEYS[want + 1])
-            if ((Number(progress) || 0) >= 67 || want >= 2) decodeKey("win")
+            if (want < 1) decodeKey("calm")
+            if ((Number(progress) || 0) >= 34 || want >= 1) decodeKey("win")
         }, [progress, image, srcs])
         React.useEffect(() => {
             if (image) return undefined
@@ -1409,10 +1411,23 @@ function useEosPilotBox(arenaRef) {
 
 // ================================================================= CSS (S1 rig, S3 kits, S5 hits)
 const EOS_PILOT_AR = `${EOS_A} .eosPilotArena`
-const EOS_PILOT_FACE_CSS = EOS_PILOT_STEP_KEYS.map((k, i) => `${EOS_PILOT_AR} .eosPilotActor[data-step="${i}"]:not([data-react]) .eosPilotActorFace img[data-k="${k}"][data-ready="1"]`).join(",\n") +
-    `,\n${EOS_PILOT_AR} .eosPilotActor[data-user="1"] .eosPilotActorFace img[data-k="user"][data-ready="1"]{opacity:1;z-index:1;transition:opacity .24s ease}\n` +
+// Faces STACK: every ready step face up to the current step stays opaque underneath (z = step), so an
+// incoming face only ever fades in OVER the previous one — never an empty sphere, even when frames stall.
+const EOS_PILOT_FACE_CSS =
+    [0, 1, 2, 3]
+        .map((st) =>
+            EOS_PILOT_STEP_KEYS.slice(0, st + 1)
+                .map((k) => `${EOS_PILOT_AR} .eosPilotActor[data-step="${st}"] .eosPilotActorFace img[data-k="${k}"][data-ready="1"]`)
+                .join(",\n")
+        )
+        .join(",\n") +
+    `,\n${EOS_PILOT_AR} .eosPilotActor[data-user="1"] .eosPilotActorFace img[data-k="user"][data-ready="1"]{opacity:1}\n` +
+    EOS_PILOT_STEP_KEYS.map((k, z) => `${EOS_PILOT_AR} .eosPilotActorFace img[data-k="${k}"]{z-index:${z + 1}}`).join("\n") +
+    `\n${EOS_PILOT_AR} .eosPilotActorFace img[data-k="user"]{z-index:1}\n` +
     EOS_PILOT_REACT_KEYS.map((k) => `${EOS_PILOT_AR} .eosPilotActor[data-react="${k}"] .eosPilotActorFace img[data-k="${k}"][data-ready="1"]`).join(",\n") +
-    `{opacity:1;z-index:2;transition:opacity 90ms ease}\n`
+    `{opacity:1;transition-duration:90ms}\n` +
+    EOS_PILOT_REACT_KEYS.map((k) => `${EOS_PILOT_AR} .eosPilotActorFace img[data-k="${k}"]`).join(",") +
+    `{z-index:6;transition-duration:120ms}\n`
 const EOS_PILOT_FX_CSS = `
 /* No @property --hold-pct: a registration is global, and inherits:false broke the ORIGINAL CLEANSE meter (?pilot=off). The pilot writes the var on the bound hit only. */
 ${EOS_PILOT_AR}{--eos-pilot-word-px:16px}
@@ -1433,9 +1448,8 @@ ${EOS_PILOT_AR} .eosPilotActorBall::after{content:"";position:absolute;inset:0;b
 ${EOS_PILOT_AR} .eosPilotActorHue{position:absolute;inset:0;display:grid;place-items:center;font-style:normal;z-index:0}
 ${EOS_PILOT_AR} .eosPilotActorHue::after{content:attr(data-i);font-weight:900;font-size:calc(var(--a-size)*.36);color:rgba(255,255,255,.9);text-shadow:0 2px 8px hsla(var(--a-hue),80%,30%,.5)}
 ${EOS_PILOT_AR} .eosPilotActorFace{position:absolute;inset:0;z-index:2}
-${EOS_PILOT_AR} .eosPilotActorFace img{position:absolute;left:-4%;top:-4%;width:108%;height:108%;max-width:none;object-fit:cover;border-radius:50%;opacity:0;z-index:0;
-  transition:opacity 0s linear .26s;-webkit-user-drag:none;user-select:none;pointer-events:none}
-${EOS_PILOT_AR} .eosPilotActor[data-react] .eosPilotActorFace img{transition:opacity 0s linear .12s}
+${EOS_PILOT_AR} .eosPilotActorFace img{position:absolute;left:-4%;top:-4%;width:108%;height:108%;max-width:none;object-fit:cover;border-radius:50%;opacity:0;
+  transition:opacity .24s ease;-webkit-user-drag:none;user-select:none;pointer-events:none}
 ${EOS_PILOT_FACE_CSS}
 ${EOS_PILOT_AR} .eosPilotActorBall > i{position:absolute;inset:0;border-radius:50%;font-style:normal}
 ${EOS_PILOT_AR} .eosPilotActorBall > .gloss{z-index:4;background:radial-gradient(circle at var(--eos-pilot-gloss-x,32%) var(--eos-pilot-gloss-y,22%),rgba(255,255,255,.72),rgba(255,255,255,.2) 15%,transparent 34%)}
