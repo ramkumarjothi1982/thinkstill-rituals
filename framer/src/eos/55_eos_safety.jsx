@@ -347,6 +347,12 @@ function eosSafetyHoldsFocus() {
         return false
     }
 }
+// Last pointer / key input anywhere (ms). A card that appears right after the user tapped or typed (menu pick, the
+// shift meter's SET, a keystroke) waits for the next stage change or Tab / F6 instead of taking focus mid-action.
+let EOS_SAFETY_INPUT_AT = 0
+function eosSafetyRecentInput(ms = 1200) {
+    return Date.now() - EOS_SAFETY_INPUT_AT < ms
+}
 function eosSafetyFocus(el) {
     try {
         if (el && el.isConnected) el.focus({ preventScroll: true })
@@ -408,7 +414,7 @@ function eosSafetyTouchFirst() {
 
 // ---------------------------------------------------------------- UI
 // The card. Self-sufficient (reads lines from the store); the layer passes refs + the dismiss handler.
-// compact (phone, while a game / the reveal / the check-in is on screen; set by the layer): title + one-tap line +
+// compact (phone while a game / the reveal is on screen, or the check-in at any width; set by the layer): title + one-tap line +
 // "I'm safe" only; the body, "Text someone I trust", more lines and the emergency text sit behind "more ▾".
 function EosSafetyCard({ variant = "info", reduced = false, onDismiss, primaryRef, cardRef, tz, className = "", compact = false }) {
     const softKind = useEosSafetyUi().softKind
@@ -693,7 +699,8 @@ function EosSafetyLayer({ raw = "", stage = "", reduced = false, tz }) {
     const [compact, setCompact] = React.useState(false)
     const compactRef = React.useRef(false)
     compactRef.current = compact
-    // Phone (stage ≤ 560 px wide) while a game, the reveal or the check-in is on screen: the compact card. Then dock
+    // Phone (stage ≤ 560 px wide) while a game or the reveal is on screen, or the check-in at any width: the compact
+    // card (review r1: the full card hid the game, the PANIC orb and the shift dial). Then dock
     // it where it covers the least of what the user needs right now (the arrow's target, the check-in orbs, the
     // shift dial): top, bottom, or beside them on a wide stage. Direct DOM (data-eos-dock), no re-render.
     const layout = React.useCallback(() => {
@@ -702,7 +709,8 @@ function EosSafetyLayer({ raw = "", stage = "", reduced = false, tz }) {
         if (!host) return
         const v = variantRef.current
         const ck = !!host.querySelector(".eosCheckIn")
-        const want = !!v && v !== "info" && host.clientWidth <= 560 && (stageRef.current === "play" || stageRef.current === "reveal" || ck)
+        // the check-in fills the stage at every width (the compact card then fits beside the emotion ring on desktop)
+        const want = !!v && v !== "info" && (ck || (host.clientWidth <= 560 && (stageRef.current === "play" || stageRef.current === "reveal")))
         if (want !== compactRef.current) {
             compactRef.current = want
             setCompact(want)
@@ -716,32 +724,34 @@ function EosSafetyLayer({ raw = "", stage = "", reduced = false, tz }) {
         return () => clearInterval(iv)
     }, [variant, stage, compact, layout])
     // Another overlay's automatic focus move (the shift meter's orb / rate-dial autofocus) must not pull focus out
-    // of the card: when focus leaves the card for the shift meter with no pointer / key input just before, put it
+    // of the card: when focus leaves the card for the shift meter with no pointer / key input in the last 250 ms (a tap or Tab moves focus at once), put it
     // back. The user's own taps and keys always win.
     React.useEffect(() => {
         if (!variant || typeof document === "undefined") return undefined
-        let userAt = 0
-        const mark = () => {
-            userAt = Date.now()
-        }
         const onFocusIn = (e) => {
             try {
                 const card = cardRef.current
                 const t = e.target
                 const from = e.relatedTarget
-                if (!card || !t || !from || card.contains(t) || !card.contains(from) || Date.now() - userAt < 600) return
+                if (!card || !t || !from || card.contains(t) || !card.contains(from) || eosSafetyRecentInput(250)) return
                 if (t.closest && t.closest('[class*="eosShift"]')) eosSafetyFocus(from)
             } catch {}
         }
+        document.addEventListener("focusin", onFocusIn, true)
+        return () => document.removeEventListener("focusin", onFocusIn, true)
+    }, [variant])
+    React.useEffect(() => {
+        if (typeof document === "undefined") return undefined
+        const mark = () => {
+            EOS_SAFETY_INPUT_AT = Date.now()
+        }
         document.addEventListener("pointerdown", mark, true)
         document.addEventListener("keydown", mark, true)
-        document.addEventListener("focusin", onFocusIn, true)
         return () => {
             document.removeEventListener("pointerdown", mark, true)
             document.removeEventListener("keydown", mark, true)
-            document.removeEventListener("focusin", onFocusIn, true)
         }
-    }, [variant])
+    }, [])
     // Debounced scan while typing (400 ms after the last keystroke).
     React.useEffect(() => {
         if (!raw) return undefined
@@ -788,16 +798,25 @@ function EosSafetyLayer({ raw = "", stage = "", reduced = false, tz }) {
         const ae = document.activeElement
         if (cardRef.current && ae && cardRef.current.contains(ae)) return undefined
         const userAsked = ui.userAt && Date.now() - ui.userAt < 1500
-        if (!userAsked && eosSafetyBusy(ae, stageRef.current)) {
+        if (!userAsked && (eosSafetyBusy(ae, stageRef.current) || eosSafetyRecentInput())) {
             pendRef.current = true
             setAnnounce("")
             const t = setTimeout(() => setAnnounce(EOS_SAFETY_ANNOUNCE), 80)
             return () => clearTimeout(t)
         }
         pendRef.current = false
-        prevRef.current = ae && ae !== document.body && !(ae.closest && ae.closest(".arena")) ? ae : null
         // a tap lands at once; an automatic hand-over waits for other overlays' mount-time autofocus (shift: 80 ms)
-        const t = setTimeout(() => focusCard(!userAsked), userAsked ? 40 : 300)
+        const t = setTimeout(() => {
+            const a2 = document.activeElement
+            // the stage became "play" in the meantime (a card raised by the launch), or the user is mid-action → wait
+            if (!userAsked && (eosSafetyBusy(a2, stageRef.current) || eosSafetyRecentInput())) {
+                pendRef.current = true
+                setAnnounce(EOS_SAFETY_ANNOUNCE)
+                return
+            }
+            prevRef.current = a2 && a2 !== document.body && !(a2.closest && a2.closest(".arena, .eosSafetyCard")) ? a2 : null
+            focusCard(!userAsked)
+        }, userAsked ? 40 : 300)
         return () => clearTimeout(t)
     }, [variant, ui.nonce])
     // Tab / F6 while the card waits → into the card (once).
