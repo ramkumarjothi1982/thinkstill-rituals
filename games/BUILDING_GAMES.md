@@ -108,7 +108,7 @@ Families: GROUND INTERRUPT DISTANCE ORGANISE ACT CHOOSE FEEL CLARIFY CONNECT PLA
 - If `analysis.safety === 'care'` (health, money, housing, legal): no jokes about the concern; point toward proper help.
 
 ## 4. The kit (`K = ctx.kit`)
-- **Canvas:** `const cv = K.canvas(el)` → `{ el, g, w, h, dpr, onResize(fn), clear() }` (DPR-aware, resizes itself). Draw in `K.loop((dt, t) => {...})`.
+- **Canvas:** `const cv = K.canvas(el, { opaque, maxDpr, cls })` → `{ el, g, w, h, dpr, onResize(fn), clear(), setQuality(0.5-1) }` (DPR-aware, follows its parent's size). `opaque: true` for a full-screen background canvas (cheaper); `maxDpr: 1.5` for big soft layers. Draw in `K.loop((dt, t) => {...})`. Cache gradients/glows in offscreen canvases; never build a new gradient per particle per frame.
 - **Particles:** `const P = K.particles(); P.emit('spark'|'ember'|'dust'|'confetti'|'bubble'|'petal'|'snow'|'mote'|'star'|'drop'|'smoke'|'leaf', x, y, n, {colors, angle, spread, speed})`; each frame `P.update(dt); P.draw(g)`.
 - **Input:** `K.press(el, {down(p), move(p), up(p)})` (pointer capture, local coords), `K.drag(el, {start(p), move(p, d), end(p, d)})` (`d.dx, d.dy, d.vx, d.vy`), `K.hold(el, {ms, still, decay, start, progress(k, active), done, cancel})`, `K.tap(el, fn)`, `K.onKey(['Space','ArrowLeft'], fn)`, `K.local(e, el)`, `K.rectIn(el)`.
 - **Rhythm:** `const R = K.rhythm({ bpm, onBeat(t, i, beatInBar) })` → `start(delay)`, `set(bpm)`, `window()`, `pos()`, `judge()` (audio-time accurate).
@@ -118,8 +118,8 @@ Families: GROUND INTERRUPT DISTANCE ORGANISE ACT CHOOSE FEEL CLARIFY CONNECT PLA
   Who's who: Loopie (loops, rumination), Glitch (thinking errors, detective), Patch (relationships), Drop (meaning, feelings), Rush (urgency, action, urges), Still (calm, body, grounding), Sync (emotions, impulses).
 - **UI:** `K.intro({title, sub, how, char, mood})` (title card, tap to skip; always start with it), `K.button(label, fn, {quiet, parent})`, `K.chips(parent, items, onPick, {multi})`,
   `K.slider(parent, {min,max,step,value,label,left,right,format,onInput})`, `K.panel(parent)`, `K.userText(text)`, `K.hint(text)` (bottom pill), `K.pop(text, {x, y, kind:'good'|'great'|'soft'})`, `K.progress(parent, n)`.
-- **Guide:** `K.guide({ g:'tap'|'hold'|'drag'|'sweep'|'circle'|'choose'|'type'|'still', target: element | [elements] | () => ({x, y}), label, dir:'r'|'l', d, r, ms, place:'above'|'below', ox, oy, delay })`; `K.guide(null)` clears.
-- **Sound:** `K.sfx.tap|ok|good|great|soft|no|whoosh|pop|thud|paper|chime(i)|rise|fall|lock|sparkle|win|glitch|heartbeat()`, `K.music('calm'|'lofi'|'noir'|'playful'|'space'|'ocean'|'musicbox'|'arcade')` → `{stop, level, tempo}`, `K.ambience('rain'|'prairie'|'room'|'dawn')`.
+- **Guide:** `K.guide({ g:'tap'|'hold'|'drag'|'sweep'|'circle'|'choose'|'type'|'still', target: element | [elements] | () => ({x, y}), label, dir:'r'|'l'|'u'|'d'|'ur'|'ul'|'dr'|'dl' (or dx, dy in px), d, r, ms, place:'above'|'below', ox, oy, delay })`; `K.guide(null)` clears. Put the label where it covers nothing the player must read (`place`, `ox`/`oy`).
+- **Sound:** `K.sfx.tap|ok|good|great|soft|no|whoosh|pop|thud|paper|chime(i)|rise|fall|lock|sparkle|win|glitch|heartbeat()`, `K.music('calm'|'lofi'|'noir'|'playful'|'space'|'ocean'|'musicbox'|'arcade')` → `{stop, level, tempo, onBeat(fn(time, i, beatInBar)), phase() → {beat, p}}` (sync visuals to the beat you hear), `K.ambience('rain'|'prairie'|'room'|'dawn')`. Raw synths for signature sounds: `A.pluck`, `A.drum(note, t, vol, verb)`, `A.wood`, `A.shaker`, `A.brush`, `A.bleat`, `A.boing`, `A.paper`, `A.click`, `A.typeKey`, `A.pad`, `A.loop`.
 - **Finales:** `await K.finale('constellation'|'lanterns'|'bloom'|'fireworks'|'aurora'|'sunrise'|'confetti'|'ripple'|'bubbles'|'fireflies'|'petals'|'stars'|'rainbow', { from:[{x,y}], colors, count, text, chord:['C4','E4','G4'], ms })`.
 - **Words:** `K.phrases(text, max, maxWords)` short phrases from the player's own words; `K.sentence(s)`; `K.words(s, n)`.
 - **Autoplay helpers:** `K.sim.tap(el)`, `K.sim.hold(el, ms, x, y)`, `K.sim.drag(el, {x,y}, {x,y}, ms, steps)`, `K.sim.press(el, x, y)` → `{move, up}`, `K.wait(ms)`. Coordinates are local to `el`.
@@ -147,9 +147,17 @@ It must finish in under ~120 s. QA uses it on every build.
 
 ## 7. Test before you report
 ```
+node --check games/games-<mode>/<NNN>-<id>.js                                          # syntax, instant
 python3 games/tests/qa.py --mode <mode> --games <id>                                   # phone, dark
 python3 games/tests/qa.py --mode <mode> --games <id> --configs 1280x860:bright        # desktop, bright
+python3 games/tests/qa.py --mode <mode> --games <id> --text ''                         # no words: launched from the library
 ```
+**The machine has 2 CPUs shared by a dozen builders, so frame times measured now are meaningless.** A `p95 frame` FAIL is
+expected under load: do not chase it. Keep the game cheap by design instead (one opaque background canvas, cached glows, no
+per-frame layout reads, no blur filters on moving layers) and report the p95 you saw. Everything else in the verdict (errors,
+did not finish, small text, overflow) must PASS. The game must also play well with no words at all (`ctx.text === ''`,
+`analysis.source === 'local'`): use warm generic content then, never empty labels. Don't loop on QA: at most three full runs
+per game for a functional failure; if it still fails, report what you saw.
 Then **look at the screenshots** in `games/tests/out/qa-<mode>/<id>/` with the Read tool (start, mid, finale, after) and fix what a
 picky art director would flag: overlaps, clipping, empty space, low contrast, small text, flat visuals. Re-run until both
 configs print PASS and the screenshots look premium. Don't edit anything outside your own game files; if the kit or console

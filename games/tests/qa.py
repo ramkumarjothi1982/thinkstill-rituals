@@ -10,7 +10,9 @@ Usage:
   python3 games/tests/qa.py --mode reset --configs 390x844:dark,1280x860:bright --jobs 4
 Outputs games/tests/out/qa-<mode>/<id>/... and games/tests/out/qa-<mode>/summary.json
 """
-import argparse, json, os, re, socket, subprocess, sys, time
+import argparse, json, os, re, socket, subprocess, sys, time, urllib.parse
+
+TEXT = None  # --text: the player's words for the run ('' = no words, as when a game is launched from the library)
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 
@@ -60,7 +62,7 @@ def stats(frames):
 
 
 def run_game(pw, port, mode, gid, w, h, theme, out, autoplay, timeout, video):
-    tag = f'{w}x{h}-{theme}'
+    tag = f'{w}x{h}-{theme}' + ('' if TEXT is None else ('-notext' if TEXT == '' else '-text'))
     gdir = os.path.join(out, gid); os.makedirs(gdir, exist_ok=True)
     rep = {'id': gid, 'config': tag, 'errors': [], 'warnings': []}
     browser = pw.chromium.launch(args=['--autoplay-policy=no-user-gesture-required'])
@@ -76,10 +78,10 @@ def run_game(pw, port, mode, gid, w, h, theme, out, autoplay, timeout, video):
     # a page with only this game, so a half-written file from another builder can never break this run
     sys.path.insert(0, os.path.join(ROOT, 'games', 'tools'))
     import devpages
-    gfile = next((f for f in devpages.game_files(mode) if re.search(r"\bid:\s*'" + re.escape(gid) + "'", open(os.path.join(ROOT, 'games', 'games-' + mode, f), encoding='utf-8').read())), None)
+    gfile = next((f for f in devpages.game_files(mode) if re.sub(r'^\d+-', '', f[:-3]) == gid), None)
     qdir = os.path.join(ROOT, 'games', 'dev', '_qa'); os.makedirs(qdir, exist_ok=True)
     with open(os.path.join(qdir, f'{mode}-{gid}.html'), 'w', encoding='utf-8') as fh: fh.write(devpages.page(mode, [gfile] if gfile else [], '../../'))
-    url = f'http://127.0.0.1:{port}/games/dev/_qa/{mode}-{gid}.html?game={gid}&tsgdev=1&theme={theme}'
+    url = f'http://127.0.0.1:{port}/games/dev/_qa/{mode}-{gid}.html?game={gid}&tsgdev=1&theme={theme}' + ('' if TEXT is None else '&text=' + urllib.parse.quote(TEXT))
     t0 = time.time()
     try:
         page.goto(url, wait_until='load', timeout=30000)
@@ -157,17 +159,15 @@ def main():
     ap.add_argument('--port', type=int, default=0)
     ap.add_argument('--out', default='')
     ap.add_argument('--worker', action='store_true')
+    ap.add_argument('--text', default=None)
     a = ap.parse_args()
+    global TEXT
+    TEXT = a.text
     out = a.out or os.path.join(ROOT, 'games', 'tests', 'out', 'qa-' + a.mode)
     os.makedirs(out, exist_ok=True)
     gdir = os.path.join(ROOT, 'games', 'games-' + a.mode)
-    all_ids = []
-    for f in sorted(os.listdir(gdir)):
-        if f.endswith('.js'):
-            src = open(os.path.join(gdir, f), encoding='utf-8').read()
-            import re
-            m = re.search(r"\bid:\s*'([a-z0-9-]+)'", src)
-            if m: all_ids.append(m.group(1))
+    # game ids come from the file names (NNN-<id>.js); the build checks the module's id matches
+    all_ids = [re.sub(r'^\d+-', '', f[:-3]) for f in sorted(os.listdir(gdir)) if re.match(r'^\d+-[a-z0-9-]+\.js$', f)]
     ids = [g for g in a.games.split(',') if g] or all_ids
     server = None
     port = a.port
@@ -179,7 +179,7 @@ def main():
     try:
         if a.jobs > 1 and not a.worker and len(ids) > 1:
             chunks = [ids[i::a.jobs] for i in range(a.jobs)]
-            procs = [subprocess.Popen([sys.executable, __file__, '--mode', a.mode, '--games', ','.join(c), '--configs', a.configs, '--timeout', str(a.timeout), '--port', str(port), '--out', out, '--worker'] + (['--video'] if a.video else [])) for c in chunks if c]
+            procs = [subprocess.Popen([sys.executable, __file__, '--mode', a.mode, '--games', ','.join(c), '--configs', a.configs, '--timeout', str(a.timeout), '--port', str(port), '--out', out, '--worker'] + (['--video'] if a.video else []) + ([] if a.text is None else ['--text', a.text])) for c in chunks if c]
             for p in procs: p.wait()
         else:
             from playwright.sync_api import sync_playwright
@@ -190,7 +190,8 @@ def main():
                         w, h = map(int, size.split('x'))
                         r = run_game(pw, port, a.mode, gid, w, h, theme, out, True, a.timeout, a.video and i == 0)
                         r['issues'] = verdict(r)
-                        with open(os.path.join(out, gid, f'report-{w}x{h}-{theme}.json'), 'w') as f: json.dump(r, f, indent=1)
+                        tag = '' if a.text is None else ('-notext' if a.text == '' else '-text')
+                        with open(os.path.join(out, gid, f'report-{w}x{h}-{theme}{tag}.json'), 'w') as f: json.dump(r, f, indent=1)
                         print(('PASS ' if not r['issues'] else 'FAIL ') + gid + ' ' + cfg + ' ' + str(r.get('seconds')) + 's ' + '; '.join(r['issues']), flush=True)
     finally:
         if server: server.terminate()
