@@ -1,0 +1,403 @@
+{
+  "batch": 4,
+  "rated": "2026-10-09",
+  "evidence": "sheets/<id>.png (row 1 desktop start/mid/finish/reveal, row 2 phone), native-resolution desktop stage crops and 2x phone zooms (/tmp/quality/b4/*.png), metrics.json, catalog_A rows, CREATIVE_STANDARDS.md",
+  "shared_findings": [
+    "Phone (all 14 games): the header title is clipped to 'MOTIONAL RELEASE CONSO' and the LVL pill sits on top of it. The mic icon covers the end of the input text ('my boss yelled at me an[mic]e').",
+    "Eight of the 14 games (42, 45, 46, 47, 49, 51, 52, 53) are built from one template: a large rounded glass stage panel holding a dark word card of about 120 px. The card has a character sticker of about 25 px inside a dark capsule chip, with the word below. The chip is a dark box around the circular face, which fails the bubble rule. The sticker changes emotion from word to word but never reacts. Three more games (44, 48, 54) use the same panel, empty, with the word as text of about 9 px in the middle.",
+    "Look-alike gestures in the Detach cluster: 44 VELCRO, 45 MAGNETS, 47 UNFOLLOW and 49 UNZIP all finish with the same gesture, dragging one object to the right past a threshold (a patch, an orb, a plug, a zipper pull). 46 is drag up and 48 is drag diagonal. This breaks creative standard 3.",
+    "Every game that finishes ends on the same reveal card ('RELEASE COMPLETE / NAME / STEADIER ✓ … / FEEL A SHIFT?') over an empty backdrop. The tilted 'RELEASED · SHIFT COMPLETE / LESS GRIP. MORE STILL.' card appears in the desktop finish tiles of 45 and 49 and the phone finish of 50. The only impact effect is one white centre-flash blob, identical in every game (42 mid, 43 finish, 46 finish, 50 mid, 53 mid and finish). In the phone mid tiles of 40, 42, 46, 49, 52, 53 and 54, the '+STILL HIT · CHAIN ×N' toast covers the object being played.",
+    "Functional failures: 45 phone stalls at 17% because the orb never respawns after round 1. 47 phone stalls at 0% because dragging selects the image and the text instead of moving a plug about 6 px wide. 48 stalls at 50% on both sizes. 51 stalls at 25% on both sizes. 42 desktop needed 66 s to finish, and its reveal was not captured.",
+    "The HUD contradicts itself. In the 53 and 54 phone finish tiles the counter reads '2/6' and the bar is about 17% filled while the label says 'GAME PROGRESS · 100%'. 40 finishes on '4/6' and 43 on '5/6 CUT' with the label at 100%. The game appears to end before all six words are played.",
+    "Perf: under headless software rendering every game exceeds p95 > 34 ms and max > 120 ms. The batch sits below the fleet medians (phone p95 433 ms, desktop p95 783 ms). Relative outliers: a 1528 ms long task on 50 desktop, 4.25 s of long tasks on 45 desktop (max 764 ms), a 748 ms long task on 49 desktop, and desktop p95 of about 870-900 ms on 40, 52 and 54. Heap growth stays at or below 5.8 MB, and there are no errors."
+  ],
+  "games": [
+    {
+      "id": 40,
+      "name": "PAPER PLANE",
+      "scores": {"A": 4, "B": 3, "C": 4, "D": 1, "E": 3, "F": 6, "G": 4, "H": 5},
+      "functional_ready": true,
+      "visual_ready": false,
+      "premium_ready": false,
+      "work_type": "structural",
+      "bubble_rules_ok": true,
+      "character_role": "None in the world. The only character art is the faint, blurred ambient decals at the stage corners (phone start tile, top-left and right). No character folds the plane, rides it, throws it or watches it go.",
+      "finale": "Phone finish tile: the plane slides off to the right and is cut off by the stage edge, with a 'STILL +1' toast in the centre and the counter on '4/6'. Then the shared reveal card ('PANIC ↓ YOU CREATED DISTANCE'). There is no sky, no flight path and none of the wind drift the catalog promises. Flying off-screen is a game-specific beat, but it is tiny and clipped, and the reveal is generic.",
+      "score_rationale": "A4: the plane is a flat pale-cyan polygon with no paper grain, crease shading or shadow, floating on the shared nebula and ring backdrop (phone start, desktop start crop). B3: the plane is its own prop, but the world is the same nebula as every other game; there is no sky, desk or window. C4: fold ×2 then swipe is a good craft-then-release arc, but the mid tile shows a hard snap from W to triangle with no fold animation, and the toast covers the fold point. D1: decals only. E3: the fly-off exists but is clipped (phone finish), then the shared card. G4: the action button is big and readable, but the word printed on the plane is about 7 px with a grey text-shadow box (phone mid zoom), the plane is clipped at the right edge at finish, and the header is clipped. H5: letting go of a paper plane suits sadness and regret, but with no flight or distance the release is not felt.",
+      "perf_flags": [
+        "desktop p95/max 867 ms (2.5 fps), above the fleet desktop median of 783",
+        "phone p95/max 367 ms, 47 long tasks (max 251 ms); heap +5.7 MB, no errors"
+      ],
+      "strengths": "The clearest two-step instruction in the batch: a large, readable 'THOUGHT MOVE · FOLD LEFT WING' button (phone start) and the 'Fold. Flick. Fly.' guide. The craft-then-release arc fits the theme, and the session is short (about 14 s on phone).",
+      "problems": "Phone start and mid: the user's word on the plane ('my boss') is about 7 px and unreadable. Phone mid: the toast covers the fold. Phone finish: the plane is clipped by the right edge of the stage, the counter reads '4/6' while the label says 100%, and the guide's 'How to play' row is blank. There is no sky, no flight and no character. The reveal is the shared card. The header is clipped.",
+      "improvements": [
+        "Build a real flight finale: on the swipe, the camera pulls back into a warm sunset sky and the plane rides a curved arc with a wind wobble and a contrail. It shrinks to a glinting dot over a horizon, and the sky warms from dusk blue to gold. Keep the plane fully on screen until the camera hands off.",
+        "Make a sad character the pilot: it sits on the paper, slumped. Each fold makes it brace and squash. On the flick it leans forward (anticipation), whoops as the plane launches, and lets go of a little cloud of its sadness, which drifts off separately and fades, while the character waves and then smiles.",
+        "Animate the folds as real paper: a 250 ms crease rotation with a moving highlight along the fold line, a soft shadow under the plane, paper grain, and a crinkle sound on each fold.",
+        "Print the user's word on the wing at 15 px or more in a handwritten style, with no grey box. Move the toast above the plane.",
+        "Use all six words: one plane per word, with the earlier planes visible as dots on the horizon, so the counter and the bar stay in step."
+      ],
+      "looks_like": "53 CARTOONIFY (same full-width gradient 'THOUGHT MOVE · …' pill under a floating prop); shares the nebula and ring stage with the whole batch; catalog pairs it with 25",
+      "effort": "M"
+    },
+    {
+      "id": 42,
+      "name": "UNTANGLE",
+      "scores": {"A": 3, "B": 2, "C": 3, "D": 2, "E": 2, "F": 3, "G": 4, "H": 4},
+      "functional_ready": true,
+      "visual_ready": false,
+      "premium_ready": false,
+      "work_type": "structural",
+      "bubble_rules_ok": false,
+      "character_role": "A sticker of about 25 px in a dark capsule chip inside the word card (phone start zoom: a blue face over 'my boss'). It changes to a different face per word (purple at phone finish) but never strains, flinches or relaxes as the knots come apart. Faint decals at the stage corners.",
+      "finale": "Phone mid: a big white flash blob over the card. Phone finish: the card shows 'I', the bar sits at 67% on '4/6', and the knots are faded discs behind a toast. Phone reveal: the shared card ('STEADIER ✓ THE GRIP LOOSENED'). The desktop reveal was never reached (REVEAL-NONE; 66 s to finish). There is no untangled rope and no unique moment.",
+      "score_rationale": "A3: the 'knots' are three plain gradient discs, with no rope, fibre or tension (phone start zoom). They sit half behind the card like ears. B2: the same panel and word card as 45, 47, 49, 51 and 52. C3: per the catalog any drag distance counts and only one knot is live at a time. The mid tile shows a disc moved and a white flash, with no rope stretch or snap. D2: a static boxed sticker. E2: the shared reveal, and none on desktop. F3: the knots are identical, half hidden by the card, and nothing marks which one is live. G4: the stage fits, but the toast covers a knot at mid, the knots overlap the card, and the header is clipped. H4: untangling suits overwhelm, but with no visible loosening the 'not every knot needs force' message does not land.",
+      "perf_flags": [
+        "phone p95/max 433 ms (fleet median), long task max 440 ms",
+        "desktop p95/max 617 ms; desktop took 66.2 s to finish and the reveal was not captured"
+      ],
+      "strengths": "An overwhelm metaphor with real potential. The large stage panel leaves room for a real rope puzzle.",
+      "problems": "Phone start: the knots are discs overlapping the word card, so the word card and the bubbles collide. Phone mid: the toast covers the dragged knot, and a white blob covers the word. Phone finish: the counter is '4/6' at 67% with an empty guide 'How to play' row. The chip box is around the portrait. No desktop reveal (REVEAL-NONE tile). The header is clipped.",
+      "improvements": [
+        "Rebuild it as a real untangle: draw three soft yarn ropes knotted around the character, using verlet rope physics. The player drags a loop and the rope tightens visibly (colour and thickness), and only a gentle slow drag loosens it. A fast yank makes it cinch, which delivers 'not every knot needs force' through the mechanic itself.",
+        "Make the overwhelmed character the one tied up: at first it is squeezed and its eyes swirl. Each loosened knot lets it breathe out (a scale pulse), and with the last knot it stretches its arms, free.",
+        "Give it its own finale: the freed ropes unwind into a single smooth thread that draws a calm spiral and then a heart around the character, with warm light blooming through.",
+        "Highlight the live knot with a pulsing glow and a drag-direction arrow. Remove the fixed order, or show it plainly.",
+        "Drop the dark capsule chip. Use a circular portrait with the word below it at 15 px or more, and keep the toasts off the ropes."
+      ],
+      "looks_like": "45, 47, 49 (the same glass panel and word card template); catalog pairs it with 17 and 33",
+      "effort": "L"
+    },
+    {
+      "id": 43,
+      "name": "CUT THE LOOP",
+      "scores": {"A": 4, "B": 4, "C": 4, "D": 1, "E": 3, "F": 3, "G": 2, "H": 5},
+      "functional_ready": true,
+      "visual_ready": false,
+      "premium_ready": false,
+      "work_type": "structural",
+      "bubble_rules_ok": false,
+      "character_role": "None in the world. Only faint decals at the panel corners (phone start, upper left and right). The six word orbs are plain gradient circles with no faces.",
+      "finale": "Phone finish: '5/6 CUT' at 100%, with a white flash blob inside the empty loop ring and a toast at the top left. Then the shared card ('STEADIER ✓ YOU SEPARATED FROM IT'). The loop never visibly breaks, opens or falls away.",
+      "score_rationale": "A4: a glowing glass ellipse ring and gradient orbs with some rim light, but the orbs are flat and the words in them are about 9 px (phone start). B4: the loop ring with orbs around it is a distinct composition, though on the shared backdrop and with POP and ERASE-style orbs. C4: arm the scissors, then three taps per word. No snip, no cut gap in the ring and no falling halves are visible (phone mid: one orb gone and a toast). D1: no characters. E3: a single flash inside the ring, then the shared card. F3: the arm step is unexplained, and on phone the 'SELECT THE SCISSORS' heading, the 'SELECT' button text and the instruction paragraph render on top of each other, half under the Live Guide card (phone start zoom). G2: the primary scissors button is clipped under the guide card on phone (start, mid, finish), and the paragraph text overlaps the button. H5: literally cutting a rumination loop is one of the strongest metaphors in the set.",
+      "perf_flags": [
+        "phone p95 267 / max 367 ms, 40 long tasks (max 177 ms)",
+        "desktop p95/max 683 ms; heap +5.1 MB, no errors"
+      ],
+      "strengths": "The most distinctive composition in the batch: the loop is drawn as one continuous glowing ring with the words orbiting it, so the metaphor is legible on desktop (desktop start crop).",
+      "problems": "Phone (all tiles): the scissors button sits under the Live Guide card, and its label overlaps the instruction paragraph, so the text is unreadable. Words inside the orbs are about 9 px. Phone finish: '5/6' while the label says 100%. The ring never breaks. The reveal is generic. The header is clipped.",
+      "improvements": [
+        "Make the cut physical. Drag the scissors across the ring itself (a swipe gesture, replacing the arm-then-tap step). The ring tears at that point with sparks, and the two ends whip back with spring overshoot. The word orb at the cut drops away and dims.",
+        "Put an overthinking character on the ring: it runs around it like a hamster wheel, faster with each word, panting. Each cut slows it, and on the last cut the loop straightens into a path it walks off along, smiling.",
+        "Give it its own finale: the severed ring unrolls into a straight horizon line and dawn light rises behind it. The orbs turn into calm stars.",
+        "On phone, move the scissors control and the instructions above the Live Guide, and put the words below each orb at 15 px or more."
+      ],
+      "looks_like": "41 UNHOOK (catalog cluster, same cut-the-word loop); the gradient orbs match 1 POP and 19 ERASE",
+      "effort": "M"
+    },
+    {
+      "id": 44,
+      "name": "VELCRO",
+      "scores": {"A": 3, "B": 2, "C": 4, "D": 1, "E": 2, "F": 4, "G": 3, "H": 5},
+      "functional_ready": true,
+      "visual_ready": false,
+      "premium_ready": false,
+      "work_type": "structural",
+      "bubble_rules_ok": true,
+      "character_role": "None in the world. Only faint decals around the stage (phone start tile; one is half cut by the right edge at about y 560).",
+      "finale": "Phone finish: the patch sits half off the right edge of the stage, a toast is beside it, the teeth strip is dimmed, and the counter reads 6/6 at 100%. Then the shared card ('STEADIER ✓ YOU UNHOOKED A PIECE'). There is no rip, no fibres and no relief beat.",
+      "score_rationale": "A3: the patch is a teal rectangle with a dashed outline, and the 'hooks' are a row of cyan bars, with no fabric texture or fuzz (desktop start crop). B2: the same empty panel as 48 and 54. C4: the slow peel with the tooth strip fading live (phone mid, dim bars) is real feedback, but the patch does not lift, curl or stretch, and there are no fibre particles or rip sound. D1: no characters. E2: generic. F4: 'Peel it off' is clear, but no direction is shown and the word is about 8 px. G3: the patch is dragged past the stage and cut off by the right edge (phone mid and finish), and the header is clipped. H5: resistance that peaks and then gives way is a sound anxiety metaphor.",
+      "perf_flags": [
+        "phone p95 200 / max 217 ms (best in the batch)",
+        "desktop p95/max 633 ms; heap +3.4 MB, no errors"
+      ],
+      "strengths": "It has the only live 'resistance' readout in the batch (the hook strip dims as you peel), and the phone frame rate is the lowest in the batch.",
+      "problems": "Phone mid and finish: the patch is clipped by the right edge of the stage. The word on the patch is about 8 px. The guide row empties at finish. There is no character. The finale is generic. It plays exactly like 45, 47 and 49 (drag one object to the right).",
+      "improvements": [
+        "Change the gesture so it is not one more drag-right: peel from a corner. The patch curls back as a 3D page-curl, showing hook-and-loop fibres stretching between the layers. Resistance follows a curve: slow at first with a crackling rip sound and haptic ticks, then a sudden give when the player keeps a steady pull.",
+        "Stick a 'stuck' character to the velcro wall by its back: it wriggles and its face strains with each tug. It squashes on release and bounces free with a relieved grin.",
+        "Give it its own finale: the six peeled patches fall away like leaves and the wall underneath shows a warm painted mural, so the stuck surface becomes a view.",
+        "Keep the patch inside the safe stage (no clipping), with the word at 15 px or more and a fibre texture. Show a corner-tab affordance with a curved arrow."
+      ],
+      "looks_like": "48 UNSTICK and 54 FONT CHECK (the same empty panel with a tiny word); same drag-right gesture as 45, 47 and 49; catalog pairs it with 7 and 49",
+      "effort": "M"
+    },
+    {
+      "id": 45,
+      "name": "MAGNETS",
+      "scores": {"A": 4, "B": 3, "C": 3, "D": 2, "E": 2, "F": 3, "G": 2, "H": 4},
+      "functional_ready": false,
+      "visual_ready": false,
+      "premium_ready": false,
+      "work_type": "structural",
+      "bubble_rules_ok": false,
+      "character_role": "A sticker of about 25 px in a dark capsule chip on the word card: red at phone start, a crying blue face on 'yelled at' at phone mid. It is the 'attached' party but does not lean toward or resist the orb, and never calms. Faint decals at the corners.",
+      "finale": "Phone: none. The game stalls at 17% on '2/6' (mid and end tiles) and the reveal is REVEAL-NONE. Desktop: a tilted 'RELEASED · SHIFT COMPLETE' card at the stage edge, then the shared reveal ('CALMER ✓ YOU UNHOOKED A PIECE'). Nothing magnetic happens at the end.",
+      "score_rationale": "A4: a glossy cyan-to-violet sphere and dashed field-line arcs with some sheen (phone start), but no metal, sparks or field glow. B3: the field lines are a distinct prop, but the panel and card are the shared template. C3: the drag-right is unmarked, and on phone the orb is missing after round 1 (mid and end tiles show only the card and empty arcs), so there is nothing to drag. D2: the sticker swaps per word but is static and boxed. E2: no finale on phone and the shared card on desktop. F3: no hint of drag direction, and on phone no target. G2: phone is unplayable after round 1 (stuck, 61 actions with no progress), and the header is clipped. H4: 'pull is not obligation' is a good line for craving, but the visual never shows pull weakening.",
+      "perf_flags": [
+        "desktop: 4.25 s of long tasks, max 764 ms (batch high)",
+        "phone p95 250 / max 383 ms; desktop p95 600 ms; heap +5.1 MB, no errors"
+      ],
+      "strengths": "The field-line arcs between the card and the orb are a readable picture of attraction (phone start, desktop start crop).",
+      "problems": "Phone mid and end: the orb never respawns for word 2, so progress is stuck at 17% and the game cannot be finished on a phone. Desktop mid: the orb sits at the edge of the stage next to the toast. The dark chip box is around the portrait. The reveal is generic. The header is clipped. It plays like 44, 47 and 49 (drag right).",
+      "improvements": [
+        "Fix the phone round transition so a new orb spawns inside the 390 px stage for every word (regression-test all six rounds at 390x844).",
+        "Make the gesture different from the other drag-rights: a tug-of-war hold. The craving magnet pulls the character toward it, and the player holds a thumb on the character to resist. The pull weakens with each held breath (4 s), the field lines thin and the magnet's glow dims.",
+        "Put the character in the field: it slides and leans toward the magnet with its eyes locked on it (craving), and pushes back as the player holds. When the field breaks it relaxes, turns away and smiles.",
+        "Give it its own finale: the magnet demagnetises and clatters to the floor as plain metal, the iron-filing pattern scatters into drifting sparkles, and the character walks freely across the space it was pinned to.",
+        "Replace the dark capsule chip with a circular portrait and the word below it at 15 px or more."
+      ],
+      "looks_like": "42, 47, 49 (the same panel and word card template); same drag-right core as 44, 47 and 49; catalog pairs it with 7 and 47",
+      "effort": "M"
+    },
+    {
+      "id": 46,
+      "name": "UNPIN",
+      "scores": {"A": 4, "B": 4, "C": 3, "D": 2, "E": 2, "F": 5, "G": 5, "H": 4},
+      "functional_ready": true,
+      "visual_ready": false,
+      "premium_ready": false,
+      "work_type": "structural",
+      "bubble_rules_ok": false,
+      "character_role": "A sticker of about 25 px in a dark capsule chip on a dark card pinned to the white note (phone start: a purple face; phone mid: blue; desktop finish: red). It does not react when the pin is pulled and does not drift off with the note. Faint decals at the corners.",
+      "finale": "Phone finish: a white flash blob over the card on the white note, with a toast covering the pin and the counter on 6/6. Then the shared card ('STEADIER ✓ YOU SEPARATED FROM IT'). The note never falls, drifts or flutters away.",
+      "score_rationale": "A4: the pink glossy pin dome reads as an object, but the note is a flat, near-white rectangle with no paper texture, curl or shadow on a board, and it is harshly bright against the dark scene (phone start). B4: the pinned-note concept is distinct, but there is no corkboard or wall, just the shared nebula. C3: drag the pin up past 75 px. The catalog notes no feedback during the drag, and the mid tile shows the pin only, under the toast. D2: a static boxed sticker. E2: a generic flash and the shared card. F5: the pin is an obvious grab target, and 'Pull the pin' is clear. G5: the note fills the phone width well and the pin is a large target, but the toast covers the pin at mid and finish and the header is clipped. H4: 'important-looking isn't important' is weakly embodied because the note stays put.",
+      "perf_flags": [
+        "phone p95 283 / max 383 ms, long task max 243 ms",
+        "desktop p95/max 667 ms; heap +1.6-5.2 MB, no errors"
+      ],
+      "strengths": "The most legible prop in the batch: a big note with an obvious pin, and the grab point is unmistakable on phone.",
+      "problems": "Phone mid and finish: the toast covers the pin being pulled. The white note is visually harsh and flat. The note does not drift away (the catalog weakness is still present). The dark chip box is around the portrait. The reveal is generic. The header is clipped.",
+      "improvements": [
+        "Make the pull tactile: the pin resists, then pops out with a squash-and-stretch on the pin head and a cork-crumb burst. The note sags from one corner, then flutters down with a paper sway and settles in a 'later' tray, so pulling and dropping feels different from tapping.",
+        "Put a stressed character inside the note as the 'urgent' message, waving and red-faced. When the pin comes out it lets go, floats down on the note like a leaf, yawns and curls up calm.",
+        "Give it its own finale: the six unpinned notes drift down and pile softly, and the bare corkboard turns into a sunlit window, so priority pressure becomes open space.",
+        "Add paper grain, a drop shadow and warm desk-lamp light. Tone the note down to cream and put it on a cork wall.",
+        "Dock toasts above the board. Replace the capsule chip with a circular portrait and the word below it at 15 px or more."
+      ],
+      "looks_like": "the word card is the template shared with 42, 45, 47, 49, 51, 52 and 53; catalog pairs it with 26",
+      "effort": "M"
+    },
+    {
+      "id": 47,
+      "name": "UNFOLLOW",
+      "scores": {"A": 3, "B": 2, "C": 2, "D": 2, "E": 2, "F": 3, "G": 2, "H": 4},
+      "functional_ready": false,
+      "visual_ready": false,
+      "premium_ready": false,
+      "work_type": "structural",
+      "bubble_rules_ok": false,
+      "character_role": "A sticker of about 25 px in a dark capsule chip on the word card (desktop: blue, red, then purple per word). On phone mid and end the drag selects it, and it becomes a solid blue selection rectangle. It never reacts to being unplugged from the feed.",
+      "finale": "Phone: none. The game stalls at 0% (mid and end tiles) and the reveal is REVEAL-NONE. Desktop: the plug sits far right of an empty socket, then the shared card ('CALMER ✓ YOU SEPARATED FROM IT'). The duplicate feed cards the catalog promises do not exist.",
+      "score_rationale": "A3: the 'plug' is a flat cyan rectangle and the socket is an outlined square (desktop start crop), with no cable, prongs or spark. B2: the shared panel and card template. C2: on phone a drag selects the text and the image (blue highlights on the portrait and the guide text in the mid and end tiles) instead of moving the plug, which is a cyan sliver about 6 px wide at the card edge. D2: a static boxed sticker. E2: none on phone and generic on desktop. F3: the plug is not recognisable as a plug. G2: the target is too small to hit on phone, text selection bleeds through, and the header is clipped. H4: unplugging from comparison-scrolling is topical, but no feed is ever shown, so there is nothing to escape.",
+      "perf_flags": [
+        "phone p95 183 / max 200 ms",
+        "desktop p95/max 617 ms, long task max 343 ms; heap +3.2-5.3 MB, no errors"
+      ],
+      "strengths": "A timely metaphor (unplugging from the comparison feed) with high relevance for the target audience.",
+      "problems": "Phone mid and end: the drag triggers text and image selection, so the portrait turns into a blue box and the guide text is highlighted; the bar never moves (stalled at 0% after 37 actions). On phone the plug is a sliver of about 6 px. The dark chip box is around the portrait. No feed and no duplicate cards. It plays like 44, 45 and 49.",
+      "improvements": [
+        "Fix the phone gesture: set user-select:none and touch-action:none on the stage, and make the plug a 64 px grab target with a visible cable. Regression-test at 390x844.",
+        "Rebuild the core around the feed: an infinite scrolling feed of glossy comparison cards keeps spawning around the character, faster and louder. The player traces the glowing cable back and yanks it, with sparks and the feed freezing mid-scroll in a screen-off CRT collapse.",
+        "Make a jealous or lonely character the one bathed in the feed's blue glow, eyes glazed. When the feed dies, its pupils come back, it blinks, and it turns toward warm room light and another character waving.",
+        "Give it its own finale: the dead screen turns into a window, the room lamps fade up warm, and the follower counts melt into fireflies.",
+        "Use a different gesture from 44, 45 and 49: trace the cable path, or pinch to pull, instead of a plain drag right."
+      ],
+      "looks_like": "49 UNZIP and 42 UNTANGLE (identical panel, card and a prop to the right); same drag-right core as 44, 45 and 49; catalog pairs it with 7 and 45",
+      "effort": "L"
+    },
+    {
+      "id": 48,
+      "name": "UNSTICK",
+      "scores": {"A": 2, "B": 2, "C": 2, "D": 1, "E": 1, "F": 2, "G": 3, "H": 3},
+      "functional_ready": false,
+      "visual_ready": false,
+      "premium_ready": false,
+      "work_type": "structural",
+      "bubble_rules_ok": true,
+      "character_role": "None in the world. Only faint decals around the stage (phone mid, top right). There is no sticker art: the 'sticker' is just the word as text of about 9 px.",
+      "finale": "None. Both sizes stall at 50% (timeout after 75 s, 3 actions) with REVEAL-NONE on desktop and phone. The phone end tile shows an empty panel with a stray 'I' at the top-right corner.",
+      "score_rationale": "A2: nothing is drawn. The phone start tile is an empty glass panel with 'my boss' at about 9 px in the centre, and there is no sticker, gloss or peel corner. B2: the same empty panel as 44 and 54. C2: the catalog's up-right diagonal is invisible and fails often, and the mid tile shows the word flung outside the panel with no peel animation. D1: no characters. E1: never finishes. F2: 'Find an edge. Peel.', but no edge is drawn. G3: the flung word lands outside the panel at the right edge (phone mid: 'me and' at x of about 960 in the tile), and the header is clipped. H3: the 'there was always an edge' message cannot land when no edge exists.",
+      "perf_flags": [
+        "phone p95 200 / max 217 ms; desktop p95/max 633 ms",
+        "stalls at 50% on both sizes (timeout); heap +3.4-3.5 MB, no errors"
+      ],
+      "strengths": "A gentle, hopeful message ('There was always an edge'). Performance is light.",
+      "problems": "Unfinishable on both sizes. No sticker is rendered, so the word floats as tiny text. The peel corner is invisible. The word ends up outside the panel (phone mid). The panel is empty at the end. The header is clipped.",
+      "improvements": [
+        "Draw real stickers: a die-cut vinyl sticker per word, with gloss, a white border and a lifted, glinting corner that wiggles every 2 s as the affordance.",
+        "Replace the hidden diagonal threshold with a corner-peel gesture in any direction from the glinting corner. The sticker page-curls with a translucent backing and residue strings, and releases at 60% peel with a satisfying thwip.",
+        "Show an overthinking character pressed flat under the sticker (paper-thin, squashed face). As the sticker peels it pops back to full volume with a boing, shakes itself off and grins.",
+        "Give it its own finale: the six peeled stickers flutter into a scrapbook page that closes, and the cleared surface shines with a clean glint sweep.",
+        "Fix completion at both sizes and keep the flung stickers inside the stage."
+      ],
+      "looks_like": "44 VELCRO and 54 FONT CHECK (the same empty panel with a tiny word); catalog pairs it with 31",
+      "effort": "L"
+    },
+    {
+      "id": 49,
+      "name": "UNZIP",
+      "scores": {"A": 3, "B": 2, "C": 4, "D": 2, "E": 2, "F": 5, "G": 4, "H": 4},
+      "functional_ready": true,
+      "visual_ready": false,
+      "premium_ready": false,
+      "work_type": "structural",
+      "bubble_rules_ok": false,
+      "character_role": "A sticker of about 25 px in a dark capsule chip on the word card (red at phone start, magenta at mid, blue at finish). The zipper pull slides over the card, onto the portrait, at desktop mid. The character never splits, reacts or relaxes.",
+      "finale": "Phone finish: the pull is hidden under the toast, the card says 'panic', and the counter is on 6/6. Desktop finish: the tilted 'RELEASED · SHIFT COMPLETE' card overlaps the card. Then the shared reveal ('STEADIER ✓ YOU SEPARATED FROM IT'). The catalog's 'opens into separated keywords' payoff is still not implemented.",
+      "score_rationale": "A3: the zipper is a dotted cyan line and the pull is a plain white rounded square (phone start), with no metal teeth, fabric or light. B2: the shared panel and card template. C4: the track shows exactly where to drag and the pull follows it, but the teeth do not open behind it and there is no click or zip sound. D2: a boxed static sticker that the pull runs across. E2: generic. F5: the pull and its track are the clearest drag affordance among the drag games. G4: the pull is a good thumb size, but the toast covers it at mid and finish and the header is clipped. H4: 'a solid thought is just pieces zipped together' is clever, but nothing comes apart on screen.",
+      "perf_flags": [
+        "desktop long task 748 ms (batch high), p95/max 583 ms",
+        "phone p95/max 367 ms; heap +5.2-5.3 MB, no errors"
+      ],
+      "strengths": "The track makes the gesture self-explanatory on phone (phone start: the pull at the left end of a dotted rail).",
+      "problems": "Phone mid and finish: the toast covers the pull. Desktop mid: the pull overlaps the portrait chip. Desktop finish: the result card overlaps the word card. Unzipping reveals nothing. The dark chip box is around the portrait. It is the same drag-right as 44, 45 and 47.",
+      "improvements": [
+        "Implement the payoff: the zip runs through the middle of the thought card itself. As the pull travels, metal teeth split open in a V with clicking sounds and the card splits into its separate words, which drift apart and shrink, showing the thought was only pieces.",
+        "Put an overthinking character zipped inside a puffy sleeping-bag thought, with only its stressed face showing. As it is unzipped it wriggles out, stretches and floats up light and smiling.",
+        "Differentiate the gesture from 44, 45 and 47: zip downward along a curved path that follows the thought's outline, with a resistance snag halfway that needs a little wiggle.",
+        "Give it its own finale: all six unzipped thought shells hang open like cocoons, and butterflies (one per word) fly out into warm light.",
+        "Draw the metal teeth and a shiny pull with a specular highlight. Dock toasts away from the rail. Use a circular portrait without the chip."
+      ],
+      "looks_like": "47 UNFOLLOW and 42 UNTANGLE (identical panel and card); same drag-right core as 44, 45 and 47; catalog pairs it with 7 and 44",
+      "effort": "M"
+    },
+    {
+      "id": 50,
+      "name": "UNFINISHED SENTENCE",
+      "scores": {"A": 4, "B": 3, "C": 3, "D": 1, "E": 3, "F": 4, "G": 3, "H": 3},
+      "functional_ready": true,
+      "visual_ready": false,
+      "premium_ready": false,
+      "work_type": "structural",
+      "bubble_rules_ok": true,
+      "character_role": "None in the world. Only dim decals around the stage (phone start, top left and right). Nobody listens to the 'and then…' chain or responds to it.",
+      "finale": "Phone mid and finish: the three 'AND THEN…' rows recede into a staircase (each indented and smaller) to show distance, followed by the tilted 'RELEASED · SHIFT COMPLETE / LESS GRIP. MORE STILL.' card over the Live Guide. Then the shared reveal ('STEADIER ✓ YOU SAW WHAT WAS THERE'). The recession is a small game-specific beat; everything else is shared.",
+      "score_rationale": "A4: dark text fields on the nebula. The receding staircase adds a little depth (desktop mid crop), but it reads as a form. B3: the only text-chain layout in the batch, though still the shared backdrop. C3: typing plus one button. The recession is the only feedback, with no motion weight. D1: no characters. E3: the recession plus the shared cards. F4: the first input is readable (about 16 px), but the lower rows shrink to about 12-13 px and the primary button cannot be seen on phone. G3: on phone the 'SHOW ME THE DISTANCE' button is under the Live Guide (absent from the start tile; only a purple '…E' sliver shows at the right edge in mid and finish). The finish card overlaps the guide, and the header is clipped. H3: the catalog warns that 'and then?' prompts make a panicking user type out their catastrophe. That can amplify anxiety, and the game never brings the chain back to fact.",
+      "perf_flags": [
+        "desktop long task 1528 ms (batch worst, near fleet p90), p95/max 650 ms",
+        "phone p95 217 / max 383 ms; heap +5.2-5.4 MB, no errors"
+      ],
+      "strengths": "The receding 'AND THEN…' staircase is a genuinely different visual idea from the rest of the batch, and the top input is large and legible on phone.",
+      "problems": "Phone (all tiles): the primary button is hidden under the Live Guide. Phone finish: the result card overlaps the guide. The lower rows shrink below the 15 px minimum for user words. It asks for typing during a crisis. There are no characters. The reveal is generic. The header is clipped.",
+      "improvements": [
+        "Redesign for safety first: replace free typing with tap-to-pick catastrophe steps (pre-written, mild). The game then visualises the chain as a rope bridge stretching further from the solid ground of 'what actually happened', and the player taps 'walk back' to return step by step, so the arc ends on fact, not fear.",
+        "Have an anxious character walk the chain: it tiptoes further out on each 'and then', the planks get thinner and the character trembles. On the way back it regains footing, puffs out its chest on solid ground and relaxes.",
+        "Give it its own finale: the far-flung 'and then' planks dissolve into mist, and a warm spotlight lands on the single true first sentence, which glows solid while the character sits on it calmly.",
+        "On phone, put the action button above the Live Guide, keep every user-word row at 15 px or more, and do not let the result card overlap the guide."
+      ],
+      "looks_like": "none visually (a unique text-chain layout); it shares the finish card with 45 and 49 and the reveal with all games",
+      "effort": "L"
+    },
+    {
+      "id": 51,
+      "name": "MIRROR FLIP",
+      "scores": {"A": 4, "B": 3, "C": 3, "D": 2, "E": 1, "F": 3, "G": 3, "H": 4},
+      "functional_ready": false,
+      "visual_ready": false,
+      "premium_ready": false,
+      "work_type": "structural",
+      "bubble_rules_ok": false,
+      "character_role": "A sticker of about 25 px in a dark capsule chip on the word card, inside a circular lens ring (blue on phone, red on desktop). The camera shifts, but the character's expression and pose never change, so 'a different place to stand' has nothing to show.",
+      "finale": "None. Both sizes stall at 25% after the first view change (61 actions with no progress), with REVEAL-NONE on both.",
+      "score_rationale": "A4: a glass lens ring around the card, and the stage panel slides to the LEFT view in mid (a real camera move), but it is flat and there is no mirror, reflection or light change. B3: the shared panel, card and three-button row (identical to 52). C3: sequence-taps with no indication of the required order, and the view change is only a translation. D2: a static boxed sticker. E1: it never finishes. F3: the button labels (LEFT, ABOVE, RIGHT) are about 6 px on phone (start tile), and nothing says the order. G3: after the shift the panel frame runs off the left edge of the stage (phone mid and end), and the header is clipped. H4: perspective-taking for shame is well grounded, but it is not delivered.",
+      "perf_flags": [
+        "phone p95 267 / max 283 ms; desktop p95/max 583 ms",
+        "stalls at 25% on both sizes; heap +3.3-3.4 MB, no errors"
+      ],
+      "strengths": "It is the only game in the batch that moves the camera, so a real perspective shift is already half built.",
+      "problems": "Unfinishable at both sizes. The button labels are unreadable on phone. The shifted panel is clipped by the left edge of the stage. The required sequence is hidden. There is no mirror or reflection. The chip box is around the portrait. It looks identical to 52.",
+      "improvements": [
+        "Fix progression: accept any view order (or highlight the next button) and finish after three views at both sizes.",
+        "Replace the button row with a swipe or rotate gesture: drag around the character to orbit a real 3D-feeling camera (parallax layers and a perspective tilt), with a hand-mirror prop that shows a softer reflection from each angle.",
+        "Make the ashamed character visibly change with each view: hunched with face hidden from the front, then seen from above as small and kind, then from the side straightening up. In the mirror, the reflection smiles before the character does, then the character smiles back.",
+        "Give it its own finale: the mirror flips with a glint and the harsh self-critical words on the front become their compassionate reverse on the back, while warm light pours through the glass.",
+        "Labels at 14 px or more, and keep the moved panel inside the stage."
+      ],
+      "looks_like": "52 SUBTITLES (identical panel, card and three gradient buttons); the panel and card template is shared with 42-53; catalog pairs it with 55 and 37",
+      "effort": "L"
+    },
+    {
+      "id": 52,
+      "name": "SUBTITLES",
+      "scores": {"A": 3, "B": 2, "C": 3, "D": 2, "E": 2, "F": 4, "G": 4, "H": 4},
+      "functional_ready": true,
+      "visual_ready": false,
+      "premium_ready": false,
+      "work_type": "structural",
+      "bubble_rules_ok": false,
+      "character_role": "A sticker of about 25 px in a dark capsule chip on the word card (purple, magenta, then blue per word). It does not perform the soap, nature or sport voice-over, and its face never changes with the genre.",
+      "finale": "Phone mid: a grey blob with a ring over the card. Phone finish: 'LOCKED IN' toast over the genre buttons, 6/6. Then the shared reveal ('STEADIER ✓ THE STORY SHIFTED'). No genre is ever visibly applied, so there is no funny payoff.",
+      "score_rationale": "A3: the subtitle is a plain dark strip repeating the word at about 9 px (phone start and mid), and the genre buttons are flat gradients. B2: the panel, card and three-button row are identical to 51 MIRROR FLIP. C3: one tap per word, and no change of style, voice or music is visible after picking (phone mid shows the same plain strip). D2: a static boxed sticker. E2: generic. F4: 'Pick a genre' is clear, but the button labels (SOAP, NATURE, SPORT) are about 6 px on phone. G4: the buttons are a reasonable size, but the toast covers them at mid and finish, and the header is clipped. H4: absurd narration could break rumination, but nothing absurd is ever shown.",
+      "perf_flags": [
+        "desktop p95/max 900 ms (batch worst p95, above the fleet desktop median of 783)",
+        "phone p95 267 / max 383 ms, long task max 343 ms; heap +5.1-5.3 MB, no errors"
+      ],
+      "strengths": "Strong viral and humour potential, and the shortest session in the batch (about 6 s).",
+      "problems": "Phone (all tiles): the genre labels are about 6 px. The subtitle strip only repeats the word. No genre treatment is visible. The toast covers the buttons at mid and finish. The dark chip box is around the portrait. It is visually a clone of 51. The reveal is generic. The header is clipped.",
+      "improvements": [
+        "Render each genre as a mini scene. SOAP: a dramatic zoom, a pink vignette, a violin sting and italic subtitles. NATURE: a savannah grade, the character on a branch, binoculars framing and an Attenborough-style caption. SPORT: a stadium flash, a scoreboard and a commentator caption. Each rewrites the user's thought in that voice.",
+        "Make the angry character the actor: it overacts in the soap, is observed sniffing around in the nature cut and is replayed in slow motion in the sport cut. Each time it gets visibly sillier and less angry, and finally laughs at itself.",
+        "Give it its own finale: a quick blooper reel of all six genre takes, ending with the character taking a bow under a spotlight with a 'THE END' title card.",
+        "Use a different layout from 51: a TV or remote with a big genre dial instead of the three-button row. Labels at 14 px or more. Keep toasts off the controls."
+      ],
+      "looks_like": "51 MIRROR FLIP (identical panel, card and three gradient buttons); catalog pairs it with 32",
+      "effort": "L"
+    },
+    {
+      "id": 53,
+      "name": "CARTOONIFY",
+      "scores": {"A": 4, "B": 2, "C": 4, "D": 2, "E": 2, "F": 5, "G": 4, "H": 5},
+      "functional_ready": true,
+      "visual_ready": false,
+      "premium_ready": false,
+      "work_type": "structural",
+      "bubble_rules_ok": false,
+      "character_role": "A sticker of about 25 px in a dark capsule chip on the word card. Two large googly eyes float beside the card (phone start), not on any character. The sticker does not shrink, squeak or turn silly as absurdity is pumped (the start and mid tiles show the same blue face).",
+      "finale": "Phone finish: a white flash blob, the toast over the button, and the counter on '2/6' with a short bar fill while the label says 'GAME PROGRESS · 100%'. Then the shared reveal ('STEADIER ✓ YOU CHANGED THE ANGLE'). There is no villain-to-cartoon transformation.",
+      "score_rationale": "A4: the googly eyes have some charm and the button glows, but the scene is the flat shared panel. B2: the shared panel and card template. C4: rapid-tap with a white flash per tap (phone mid), and the eyes dim a little, but there is no inflation, squash or squeak. D2: the eyes are detached from the character and the sticker is static. E2: generic, and the game ends at word 2 of 6. F5: the big 'THOUGHT MOVE · PUMP ABSURDITY' button is readable at 15 px or more, but the toast covers its middle at mid and finish, and the HUD contradicts itself (2/6 against 100%). G4: a full-width button that is easy to hit, but covered by the toast, and the header is clipped. H5: humour defusion suits fear and shame, but nothing absurd actually happens.",
+      "perf_flags": [
+        "phone p95/max 283 ms, 35 long tasks (max 222 ms)",
+        "desktop p95/max 567 ms; heap +5.6 MB, no errors"
+      ],
+      "strengths": "The googly eyes are the first hint of character comedy in the batch, and the main button is the most readable control on phone.",
+      "problems": "Phone mid and finish: the toast covers the main button. The googly eyes float in space instead of sitting on the villain. The sticker never changes. The game ends after 2 of 6 words with mismatched HUD values. The chip box is around the portrait. The reveal is generic.",
+      "improvements": [
+        "Make the feared thought a villain character at the centre (about 160 px, menacing and dark-lit). Each pump visibly cartoonifies it: googly eyes pop onto its face, then a clown nose, then a squeaky voice, then it shrinks into a squishy toy, with squash and stretch and a rising-pitch squeak on every tap.",
+        "Swap rapid-tap for a slider or pump handle (as the catalog intends) that inflates a cartoon balloon effect. This sets it apart from 54's tap dial.",
+        "Have the companion emotion character react: hiding behind the panel at first, then peeking, giggling, and finally poking the toy villain, which squeaks.",
+        "Give it its own finale: the shrunken villain is squeezed and squeaks a confetti cloud of rubber ducks, and the stage lights flip from horror-red to Saturday-morning-cartoon yellow.",
+        "Play all six words (or show 1/1), keep the counter and bar in step, and dock toasts above the button."
+      ],
+      "looks_like": "40 PAPER PLANE (the same 'THOUGHT MOVE · …' pill) and the panel and card template of 42-52; catalog pairs it with 2 and 54",
+      "effort": "M"
+    },
+    {
+      "id": 54,
+      "name": "FONT CHECK",
+      "scores": {"A": 3, "B": 2, "C": 3, "D": 1, "E": 2, "F": 3, "G": 4, "H": 4},
+      "functional_ready": true,
+      "visual_ready": false,
+      "premium_ready": false,
+      "work_type": "structural",
+      "bubble_rules_ok": true,
+      "character_role": "None in the world. Only dim decals around the stage (phone start corners). No inner-critic character speaks in a font, and no character reacts as the font loses authority.",
+      "finale": "Phone finish: the toast covers the dial, the word 'yelled at' sits in the same small bold type, and the counter is '2/6' with a short bar fill while the label says 100%. Then the shared reveal ('STEADIER ✓ NEW VIEW UNLOCKED'). There is no authority meter and no typographic transformation.",
+      "score_rationale": "A3: an empty glass panel with a word of about 9 px and a gradient dial (phone start). B2: the same empty panel as 44 and 48. C3: tapping the dial produces no visible font change (the start and mid tiles both show the same small bold 'my boss'). D1: no characters. E2: generic, and it ends at word 2 of 6. F3: in a game about typography the word is the smallest thing on screen, the dial's purpose is unexplained, and the toast covers it. G4: the dial is a large target (about 115 px), but it is covered by the toast at mid and finish, and the header is clipped. H4: exposing an inner critic's 'authority' through fonts is clever, but it is invisible here.",
+      "perf_flags": [
+        "desktop p95/max 883 ms (above the fleet desktop median), 35 long tasks (max 123 ms)",
+        "phone p95/max 383 ms; heap +5.4-5.7 MB, no errors"
+      ],
+      "strengths": "A clever, low-intensity reframe, and the dial is now a big thumb-sized control (no longer the tiny corner widget the catalog describes).",
+      "problems": "The word is about 9 px and its font never visibly changes. The toast covers the dial. There is no authority meter. The HUD contradicts itself (2/6 against 100%). There are no characters. The panel is empty. The reveal is generic. The header is clipped.",
+      "improvements": [
+        "Make the word the hero: render the thought at 40-60 px in a stern serif on a marble plaque. Each dial click re-sets it with a visible morph into Comic Sans, then bubble letters, then wobbly handwriting, then a birthday-cake icing font. An 'AUTHORITY' gauge needle drops on each step.",
+        "Add an inner-critic character in a judge's wig who reads the line aloud. As the font gets sillier, its wig slips, its voice squeaks and it finally bursts out laughing and drops the gavel.",
+        "Give it its own finale: the plaque cracks and the letters tumble down as soft toy blocks that the character stacks into a kind sentence.",
+        "Make the dial a chunky skeuomorphic font-picker knob with detents and click sounds. Keep toasts off it, and play all six words."
+      ],
+      "looks_like": "44 VELCRO and 48 UNSTICK (the same empty panel with a tiny word); catalog pairs it with 53",
+      "effort": "M"
+    }
+  ]
+}

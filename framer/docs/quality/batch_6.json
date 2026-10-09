@@ -1,0 +1,538 @@
+{
+ "batch": 6,
+ "rated": "2026-10-09",
+ "evidence": "sheets/<id>.png (row 1 desktop start/mid/finish/reveal, row 2 phone), 2x phone stage zooms and native desktop stage crops (/tmp/quality/b6/*.png), metrics.json, catalog_B rows, CREATIVE_STANDARDS.md",
+ "shared_findings": [
+  "Phone (all 14 games): the header title is clipped to 'MOTIONAL RELEASE CONSO' and the LVL pill sits on top of it. The mic icon covers the end of the input text ('my boss yelled at me an[mic]e').",
+  "Six games (70, 73, 79, 80, 82, 83) use one word-card template: a dark rounded card holding a face sticker of about 22 px inside a dark capsule chip, with the user's word at about 7 px below. The dark chip around the circular face fails the bubble rule. The face changes emotion from word to word but never reacts. In the desktop mid tile of 80 the chip renders empty.",
+  "Look-alike gameplay: 73 TRAFFIC LIGHT, 79 MISS ON PURPOSE and 83 SORT STATION are the same game, tap one of 3 or 4 cyan-to-magenta gradient tiles placed above the chip word card. This breaks creative standard 3. 70 and 80 share the same glass-panel layout and 'THOUGHT MOVE ·' pill. 72 and 84 share the same flat glass word pill. 78 and 81 share the same small gradient word chips.",
+  "The dark pill toast ('YESSS', 'CLEAN HIT', 'GONE', '+ STILL HIT · CHAIN ×N', with text of about 4 px that can't be read) lands on the control being played in 13 of 14 phone mid or finish tiles: the action pill or tiles in 70, 72, 73, 74, 76, 78, 79, 81, 82 and 83, the card in 84, the drop in 75 and the guide card in 77.",
+  "Finales are all shared. The white centre-flash blob appears in 70, 76, 79 and 82. The ray burst plus the tilted 'RELEASED · SHIFT COMPLETE' card appears in 73, 75 and 80. Every game then shows the same 'RELEASE COMPLETE / FEEL A SHIFT?' card, with beige PREVIOUS and NEXT pills floating outside it. In the desktop reveal tiles of 73, 76, 80, 81, 83 and 84 the card is missing, leaving only the two pills in an empty nebula. 70 and 74 never reached a reveal on either size (timeout).",
+  "None of the 14 games has an in-world character. The six template games have a static chip sticker. The other eight have nothing beyond the blurred ambient decals at the stage edges.",
+  "The HUD contradicts itself. The counter reads '1/6' while the bar shows 100% (70 and 74 finish, 81 finish, 76 mid), and '4/6' at 100% in 79.",
+  "Functional: 77 desktop stalls at 67% because the brake drag selects the input text (the desktop end tile shows the input highlighted). Every other game finishes on both sizes, with no errors.",
+  "Perf: under headless software rendering every game is above p95 > 34 ms and max > 120 ms (fleet medians: phone p95 433 ms, desktop p95 783 ms). Relative outliers: 72 phone p95 1783 ms with a 1776 ms long task; 82 desktop has a 3811 ms long task; 80 desktop 1649 ms; 70 phone 143 long tasks totalling 30 s (max 1358 ms); 74 desktop p95 1383 ms; 73 phone p95 1067 ms with 1141 to 1253 ms long tasks. Heap growth is at most 7.2 MB (83 desktop)."
+ ],
+ "games": [
+  {
+   "id": 70,
+   "name": "METRONOME",
+   "scores": {
+    "A": 3,
+    "B": 3,
+    "C": 3,
+    "D": 2,
+    "E": 2,
+    "F": 4,
+    "G": 4,
+    "H": 5
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "A static sticker of about 22 px inside a dark capsule chip, on a dark word card under the pendulum (phone start and mid zoom). Its emotion changes from word to word (purple in phone start, red-orange in desktop finish), but it never moves, squashes or reacts to a tap or a skipped beat. It does not ride, push or fight the metronome. At finish it is washed out under the white flash blob (phone finish).",
+   "finale": "No reveal was captured on either size (metrics reason 'timeout'; the desktop run needed 71 s). The phone finish tile shows the shared white centre-flash blob over the word card and a '+STILL HIT · CHAIN ×6' toast sitting on the THOUGHT MOVE button. The counter reads '1/6' while the bar says 100%. Nothing is metronome-specific: the pendulum does not slow, stop or chime.",
+   "score_rationale": "A3: the 'metronome' is a single pale-cyan line pivoting above a dark glass card. It has no body, wood, brass or weight, no light source and no shadow (phone start). B3: the pendulum line is the only game-specific element, and it sits on the shared nebula and ring stage inside the same glass-panel word-card template as 80, 73, 79, 82 and 83. C3: a pill tap. The mid tile shows no beat pulse or lamp, and per the catalog an off-beat tap gives only a quiet click and no fail signal, so the inhibition moment has no feedback. D2: a static decal in a dark chip. E2: no reveal, only the generic flash blob. F4: 'TAP EVERY SECOND BEAT' is large and clear (phone start), but nothing marks even versus odd beats except the small 'BEAT 16' number, and in phone mid the toast covers the instruction. G4: the button is big, but the header is clipped, the toast covers the button label (phone mid and finish), and the user's word is about 7 px. H5: beat-skipping as impulse practice suits anger, but without a visible temptation or fail it reads as plain tapping.",
+   "perf_flags": [
+    "phone p95/max 933 ms (fleet phone median 433, p90 867) with 143 long tasks totalling 30 s (max 1358 ms), the heaviest long-task load in this batch",
+    "desktop p95 800 ms (fleet desktop median 783); 71 s to finish and no reveal",
+    "heap +3.7 MB, no errors"
+   ],
+   "strengths": "The concept is a real inhibition exercise. The instruction pill is the largest, clearest text on the screen (phone start), and the pendulum gives a readable rhythm at a glance.",
+   "problems": "Phone start and mid: the face sits in a dark capsule chip, which fails the bubble rule, and the user's word 'my boss' is about 7 px. Phone mid and finish: the toast covers the THOUGHT MOVE button. Phone finish: '1/6' while the bar shows 100%, and the white blob hides the card. No reveal on either size (REVEAL-NONE tiles). There is no metronome body, no beat lamp, no fail feedback and no character participation. The header is clipped and the mic icon covers the input text on phone.",
+   "improvements": [
+    "Build a real metronome: a walnut pyramid body with a brass pendulum and sliding weight, a warm key light from the upper left and a floor shadow. Add a beat lamp that ticks on every beat and glows gold on the even (tap) beats, so 'every second beat' is visible, not counted.",
+    "Put an angry character on the pendulum weight. It rides the swing, squashes on each tick and crouches (anticipation) on odd beats, as if to jump. An odd-beat tap makes it bonk with a red wobble and a muted thunk, a visible fail. Each correct skip cools its face from red to orange to calm, and its swing visibly slows.",
+    "Implement the catalog's bait taps: odd beats shimmer and pulse brighter to tempt the player, so resisting them feels like a choice.",
+    "Finale: the pendulum decelerates and stops, a soft bell chimes, and the character climbs down and sits. The red strobe light of the room fades to amber evening light. Then make sure the reveal fires (it timed out on both sizes).",
+    "Move the toast above the stage so it never sits on the tap button. Print the user's word on the metronome face at 15 px or more, and drop the dark chip for a circular face with the text below it."
+   ],
+   "looks_like": "80 DON'T TAP (identical glass panel + word card + full-width 'THOUGHT MOVE ·' pill); the same word-card-with-chip template as 73, 79, 82, 83; catalog pairs 64, 79",
+   "effort": "M"
+  },
+  {
+   "id": 72,
+   "name": "CATCH & LABEL",
+   "scores": {
+    "A": 3,
+    "B": 2,
+    "C": 3,
+    "D": 1,
+    "E": 2,
+    "F": 3,
+    "G": 3,
+    "H": 5
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": true,
+   "character_role": "None in the world. The cards are plain glass pills holding the word (phone start 'my boss', mid 'yelled at', finish 'panic'). The only character art is the blurred ambient decals at the stage corners (phone start, top left and right). No character catches, reads or reacts to a label.",
+   "finale": "Phone finish: a 'STILL +1' toast sits on the label buttons and the 'panic' card is cut off at the right stage edge. The shared reveal card follows ('RELEASE COMPLETE · +424 STILL / CATCH & LABEL / CALMER ✓ YOU BROKE THE PATTERN / FEEL A SHIFT?'), with beige PREVIOUS and NEXT pills floating outside it (phone reveal). Nothing marks that the thoughts were labelled.",
+   "score_rationale": "A3: flat translucent pills and one gradient button on the shared nebula, with no light source, material or depth (phone start). B2: no environment at all, just the stage rings. C3: per the catalog, 'catch' is a pill tap wherever the card is, so nothing is actually caught. The mid tile shows only a ring pulse behind the toast. D1: no characters. E2: the shared reveal. F3: the key FACT / STORY / MAYBE label buttons are almost completely hidden by the toast in phone mid and finish (only 'FA' and 'E' are visible), so a first-time player cannot read the choice. G3: the card is clipped at the right edge (phone finish), and the toast covers the controls. H5: affect labelling suits anxiety and overthinking, but the label changes nothing on screen.",
+   "perf_flags": [
+    "phone p95/max 1783 ms with a 1776 ms long task (82 long tasks, 17 s total), the worst phone frame in the batch and far above the fleet phone median of 433",
+    "desktop p95 750 ms (994 ms long task); heap +5.4 MB, no errors"
+   ],
+   "strengths": "The start screen is uncluttered, and the large 'THOUGHT MOVE · CATCH CARD' pill (phone start) tells the player what to do first. The two-step catch-then-name loop is a sound therapeutic idea.",
+   "problems": "Phone mid and finish: the toast covers the FACT / STORY / MAYBE buttons. Phone finish: the 'panic' card is clipped by the right stage edge. There are no characters and no scene, the card cannot really be caught (catalog), and the label has no consequence. The reveal is generic, with PREVIOUS and NEXT pills detached from the card. The header is clipped on phone.",
+   "improvements": [
+    "Give the cards flight in a scene, such as thought-moths fluttering over a dusk meadow on a curved path with wing flaps. The player taps the moth itself (a hit test on the card), and a net sweep with squash and a catch puff confirms it.",
+    "Have an anxious character hold three glowing jars labelled FACT, STORY and MAYBE. The caught card drops into the chosen jar and the lid pops shut. The character reads the label aloud (speech bubble below), its shaking stops a little each time, and its face goes from wide-eyed to steady.",
+    "Keep the label buttons always visible and at least 44 px tall with 14 px text: move the toast to the top of the stage and never overlay the choice row.",
+    "Finale: the three jars line up on a shelf and glow like lanterns, lighting the meadow, while the remaining moths settle as fireflies. The character sits back and smiles.",
+    "Keep every card fully inside the stage at 390 px (the 'panic' card is clipped in phone finish)."
+   ],
+   "looks_like": "84 MINE / NOT MINE (the same flat glass word pill on an empty stage); catalog pairs 86, 56, 62",
+   "effort": "L"
+  },
+  {
+   "id": 73,
+   "name": "TRAFFIC LIGHT",
+   "scores": {
+    "A": 4,
+    "B": 3,
+    "C": 3,
+    "D": 2,
+    "E": 3,
+    "F": 6,
+    "G": 5,
+    "H": 4
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "A static face of about 22 px in a dark capsule chip on a dark word card below the lights (phone start: purple 'my boss'; mid: blue 'me and'; finish: red 'panic'). The emotion swaps with each word, but the face never moves, brakes, waits or reacts to STOP, WAIT or GO. There is no driver and no pedestrian.",
+   "finale": "Phone finish: a shared ray burst behind the tiles, plus the tilted 'RELEASED · SHIFT COMPLETE' card dropped on the WAIT tile, then the shared reveal card (phone reveal). In the desktop reveal tile the card is missing: only the PREVIOUS and NEXT pills float in an empty nebula. No light cycles, nothing drives off.",
+   "score_rationale": "A4: the three lights are bright and readable with a soft glow, but they are flat cyan-to-magenta gradient tiles with plain colour discs, not a traffic-light housing with glass lenses, hoods or reflections (phone start zoom). B3: there is no street, lane or vehicle, and it uses the same tiles-above-word-card layout as 79 and 83. C3: a single tap ×6 (catalog). The mid tile shows no lamp-on state or press squash, just the toast. D2: a static decal in a dark chip. E3: the ray burst is the shared effect, and the reveal is generic. F6: the STOP / WAIT / GO labels are large and immediately readable, but the player is not told which one to choose or why. G5: the tiles are big touch targets (about 85×128 px), but the toast covers STOP (phone mid), the tilted card covers WAIT (phone finish), the word is about 7 px and the header is clipped. H4: 'pause before acting' needs an impulse to resist, and with no vehicle or lane the anger has nothing to push against.",
+   "perf_flags": [
+    "phone p95/max 1067 ms (1141 ms long task), above the fleet phone p90 of 867",
+    "desktop p95 867 ms with a 1253 ms long task; heap +7.0 MB desktop, no errors"
+   ],
+   "strengths": "The clearest controls in the batch: three big, high-contrast STOP / WAIT / GO targets that fit the phone width comfortably (phone start). Universal iconography means no tutorial is needed.",
+   "problems": "Phone mid: the toast pill covers the STOP tile. Phone finish: the tilted RELEASED card covers the WAIT tile. The word card's face sits in a dark chip (bubble rule) with the word at about 7 px. The desktop reveal has no card, only floating PREVIOUS and NEXT pills. There is no lane, vehicle or light cycle (catalog: the 'WAIT slows the vehicle' surprise is not implemented). The header is clipped on phone.",
+   "improvements": [
+    "Build a dusk intersection: a metal traffic-light housing with hooded glass lenses whose glow reflects on wet asphalt, street lamps, light rain, and a warm key light from a shop window.",
+    "Seat an angry character in a small car revving at the stop line. It lurches forward on its own (the impulse). The player taps STOP or holds WAIT to brake it, and the car squashes forward on its suspension with a tyre puff. Tapping GO too early gets a honk, a bounce back and a red flush.",
+    "Tie the character's transformation to progress: steam from its ears on round 1, orange cheeks by round 3, and by round 6 it smiles and waves a pedestrian across.",
+    "Finale: the light cycles to a long green, the car cruises off down a sunset road with tail-light trails, and the street lamps warm from red to gold.",
+    "Keep toasts and the tilted card off the lights. Show the user's word at 15 px or more on the car's number plate instead of the 7 px chip card."
+   ],
+   "looks_like": "79 MISS ON PURPOSE and 83 SORT STATION (the same row of cyan-magenta gradient tiles above the same chip word card, with the same tap-one-tile loop); catalog pairs 64, 85, 83",
+   "effort": "L"
+  },
+  {
+   "id": 74,
+   "name": "BUBBLE WRAP",
+   "scores": {
+    "A": 4,
+    "B": 4,
+    "C": 3,
+    "D": 1,
+    "E": 2,
+    "F": 4,
+    "G": 5,
+    "H": 6
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": true,
+   "character_role": "None in the world. The 12 cells are plain gradient discs, and the only character art is the blurred ambient decals at the stage edges (phone start, top left and right). No character lies on, rolls over or reacts to the sheet.",
+   "finale": "No reveal was captured on either size (metrics reason 'timeout'). Phone finish: popped cells have vanished, leaving tiny dim dots in the top row, and a large toast pill covers two cells. The counter reads '1/6' at 100%. There is no last-pop chain and no sheet payoff.",
+   "score_rationale": "A4: the discs have a cyan-to-magenta gradient and a faint highlight, but no translucency, specular dome, plastic sheet or air inside, so they read as UI buttons, not bubble wrap (phone start zoom). B4: the 4×3 grid is a recognisable layout of its own, but it floats on the shared nebula. C3: per the catalog, only the next cell in strict order responds, out-of-order taps are silently ignored and the next cell is unmarked. A popped cell just disappears (phone finish) with no squash, crater or air puff. D1: no characters. E2: no reveal, a toast over the cells, a contradictory counter. F4: 'Pop them' is clear, but the player can't tell which cell is live, and only 4 of the 12 cells carry the word (about 7 px). G5: the cells are good touch targets (about 62 px) and fit 390 px, but the toast covers cells in mid and finish and the header is clipped. H6: free bubble popping is a strong stim for stress, and the theme fits, but the strict order undermines it.",
+   "perf_flags": [
+    "desktop p95/max 1383 ms (1225 ms long task, 87 long tasks), above the fleet desktop p90 of 1067",
+    "phone 138 long tasks (19 s total, max 741 ms)",
+    "heap +3.8 MB phone, no errors; no reveal reached on either size"
+   ],
+   "strengths": "Big round targets that fill the phone width, and an instantly recognisable stim concept. This is the most naturally tactile idea in the batch.",
+   "problems": "Phone mid and finish: the toast covers cells. Phone finish: '1/6' at 100%, and popped cells are just missing. No reveal on either size. Out-of-order pops are ignored (catalog), so the joy of free popping is gone. Only 4 of 12 cells show the word, at about 7 px. There is no plastic material, no characters and no finale. The header is clipped on phone.",
+   "improvements": [
+    "Let the player pop freely, in any order. Each pop is a real deformation: the dome squashes (anticipation), snaps flat into a wrinkled crater, puffs out a little air and gives a crisp pop sound with pitch variation. Allow a drag-across 'rake' that pops a row.",
+    "Render a translucent plastic sheet: glossy domes with specular highlights and refraction of the background, a curling sheet edge, a soft shadow and a warm rim light.",
+    "Have a stressed character lie on the sheet. Pops near it make it jiggle and giggle, its face going from clenched to grinning. Near the end it rolls across the sheet, popping a streak of bubbles itself.",
+    "Finale: the last pop sets off a chain-reaction ripple across any remaining cells. The flattened sheet then lifts into the air like a cape, and the character wears it as the stage warms. Make sure the reveal fires (it timed out on both sizes).",
+    "Print the user's words in all 12 domes at 15 px or more, and keep the toast above the grid."
+   ],
+   "looks_like": "Catalog pairs 1 POP (the same tap-to-pop mechanic); the gradient discs share the cyan-magenta tile styling of 73, 78, 79, 81, 83",
+   "effort": "M"
+  },
+  {
+   "id": 75,
+   "name": "INK BLEED",
+   "scores": {
+    "A": 3,
+    "B": 4,
+    "C": 4,
+    "D": 1,
+    "E": 3,
+    "F": 3,
+    "G": 4,
+    "H": 5
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": true,
+   "character_role": "None in the world. A blank white sheet and a blue teardrop make up the whole scene (phone start). The only character art is the blurred ambient decals around the stage (phone mid, top corners). No character holds the pen or reacts as the words bleed.",
+   "finale": "Phone finish: the shared ray burst behind the paper and the tilted 'RELEASED · SHIFT COMPLETE' card in the middle of the sheet, with the drop parked at the right edge. Then the shared reveal card (phone and desktop reveal). The bled ink never turns into anything.",
+   "score_rationale": "A3: the paper is a stark, flat white rectangle that glares against the dark nebula, with no texture, deckle, lamp light or shadow, and the drop is a flat blue teardrop (phone start). B4: a paper-and-ink sheet is a distinct scene compared with the shared tile templates, though a crude one. C4: per the catalog, the live blur and letter-spacing bleed tied to the drag is satisfying. But the drag is x-only with no cue, and the mid tile shows mainly a faint ring and the toast. D1: no characters. E3: the shared burst and tilted card, then the shared reveal. F3: the user's word on the paper is about 6 px inside a grey outline box (phone start zoom) and unreadable, so the bleed itself can't be seen. Nothing tells the player to drag the drop to the right. G4: the drop is a good size (about 45 px) and the paper fits 390 px, but the toast covers the drop area (phone mid), the word is unreadable and the header is clipped. H5: watching rigid words dissolve is a good defusion fit for shame and overthinking, but only if the words are big enough to see dissolve.",
+   "perf_flags": [
+    "phone p95/max 617 ms with a 1134 ms long task",
+    "desktop p95 417 ms (best in batch); heap +5.2 MB, no errors"
+   ],
+   "strengths": "It has its own look (a sheet of paper and a drop of ink), and per the catalog the live coupling between drag distance and bleed is one of the more satisfying interactions in this batch.",
+   "problems": "Phone start: the word is about 6 px in a grey box on glaring white paper. Phone mid: the toast covers the drop. Phone finish: the tilted card covers the paper. There is no direction cue for the drag, no characters, and no paper material or lighting. The finale and reveal are generic. The header is clipped on phone.",
+   "improvements": [
+    "Restage it on a desk under a warm lamp: textured watercolour paper with a deckled edge and a soft cast shadow on dark wood, colour-graded so the sheet glows warmly instead of glaring white.",
+    "Write the user's sentence in handwritten ink at 20 px or more, so the blur, spread and loosening letter-spacing are clearly visible. Add a dotted guide arrow from the drop to the words, and allow a free 2D drag with the ink trailing behind the drop.",
+    "Seat a sad character on the corner of the page. As the ink bleeds, it peeks over, dips a toe in, then paints with the runoff, its face going from teary to curious to smiling.",
+    "Finale: the bled ink blooms across the page into a watercolour sunrise or flower. The character signs it with a footprint, and the lamp light warms.",
+    "Keep the toast and the tilted card off the paper."
+   ],
+   "looks_like": "No visual twin in this batch; catalog pairs 7, 49, 34",
+   "effort": "M"
+  },
+  {
+   "id": 76,
+   "name": "REVERSE IT",
+   "scores": {
+    "A": 3,
+    "B": 3,
+    "C": 2,
+    "D": 1,
+    "E": 2,
+    "F": 4,
+    "G": 4,
+    "H": 4
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": true,
+   "character_role": "None in the world. Two dashed cyan rings and a 6 px word between them (phone start). The only character art is the blurred ambient decals at the stage edges. No character is caught in the loop or freed by the rewind.",
+   "finale": "Phone finish: the shared white centre-flash blob under the reels and a '+STILL HIT · CHAIN ×6' toast on the REWIND REEL button. The phone reveal is the shared card. The desktop reveal tile has no card at all, only PREVIOUS and NEXT pills in an empty nebula (76_1280_reveal). The tape is never ejected and nothing runs backwards.",
+   "score_rationale": "A3: the 'reels' are two dashed cyan outlines on a dark panel, with no cassette shell, tape or spokes and no lighting (phone start). B3: the reel motif is specific to this game but barely drawn, on the shared stage. C2: per the catalog, a pill tap ×4 (it should be a swipe), and the effect is a scaleX squash of the word, not glyphs reversing. The reels look identical in all three phone tiles. D1: no characters. E2: the shared flash blob and generic reveal, and the desktop reveal is missing its card. F4: 'THOUGHT MOVE · REWIND REEL' is clear, but the thought being rewound is about 6 px (phone start zoom) and shrinks to an 'I' (phone mid). G4: the button is big, but the toast covers its label in mid and finish, the word is unreadable and the header is clipped. H4: rewinding a loop is a nice metaphor for rumination, but nothing visibly reverses.",
+   "perf_flags": [
+    "phone p95/max 867 ms (fleet phone p90 867)",
+    "desktop p95/max 950 ms; heap +5.6 MB, no errors"
+   ],
+   "strengths": "Short (about 6 s on phone), with a large, readable action button. The two-reel silhouette suggests a tape loop at a glance.",
+   "problems": "Phone mid and finish: the toast covers the REWIND REEL label. The word between the reels is about 6 px. The reels don't spin or show tape. The desktop reveal has no card. There are no characters, and the finale is generic. The HUD reads '1/6' at 100% in phone mid. The header is clipped on phone.",
+   "improvements": [
+    "Draw a real cassette: a smoked translucent shell, white spoked hubs, brown tape spanning the reels, a paper label carrying the user's thought at 15 px or more, and warm lamp light with a specular sweep across the plastic.",
+    "Change the gesture to a circular anticlockwise scrub on a reel (or a pencil-in-the-hub twist). The tape visibly winds backwards, the letters of the thought play in reverse order, and the audio warbles backwards.",
+    "Trap a ruminating character in a loop of tape. As the player rewinds, it unspools, tumbles out with squash and stretch and shakes off the dizziness, its face going from spiral-eyed to relieved.",
+    "Finale: the cassette ejects with a satisfying clunk, the loop of tape flutters out as a ribbon and ties a bow around the character, and the room light warms.",
+    "Keep the toast off the button, and make sure the reveal card renders at 1280 px."
+   ],
+   "looks_like": "70 METRONOME, 72 CATCH & LABEL, 80 DON'T TAP (the same full-width 'THOUGHT MOVE ·' gradient pill under a sparse prop); catalog pairs 57, 2",
+   "effort": "M"
+  },
+  {
+   "id": 77,
+   "name": "SLOW MOTION",
+   "scores": {
+    "A": 2,
+    "B": 2,
+    "C": 4,
+    "D": 1,
+    "E": 2,
+    "F": 2,
+    "G": 3,
+    "H": 5
+   },
+   "functional_ready": false,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": true,
+   "character_role": "None in the world. The stage holds an empty outlined rectangle, a pale handle in a dark slot, and a tiny moving phrase ('me and' in phone mid, 'f…' in the desktop end crop). There is no driver, passenger or any character responding to the brake.",
+   "finale": "Phone: the finish tile shows the handle at the bottom of the empty frame and a 'GONE' toast on the guide card, then the shared reveal card (phone reveal). Desktop never finished: it stalled at 67% / '5/6' after 27 actions over 47 s, and the end tile shows the input text highlighted in blue, because the drag selected it. Nothing comes to rest and no gaps open between the words.",
+   "score_rationale": "A2: an empty hairline rectangle and a pale pill handle on the nebula, with no scene, material or light (phone start). B2: nothing distinguishes this world. C4: per the catalog, the live coupling of pull distance to phrase speed is good, but in phone mid the handle is clipped by the bottom of the frame and there is no speed visual (no streaks or blur). D1: no characters. E2: no game-specific finale; desktop never reaches one. F2: the handle is unlabelled, with no arrow or 'PULL' text, and the phrase being slowed is about 7 px (phone mid zoom), so the player can't see what they are slowing. G3: the handle is a reasonable target (about 45×18 px), but it is clipped at the frame bottom (phone mid), the toast covers the guide (phone mid and finish) and the header is clipped. H5: pulling a brake to slow racing words is an excellent metaphor for panic, but nothing visible supports it.",
+   "perf_flags": [
+    "desktop: functional failure, stuck at 67% (no frames past the stall); 203 ms long task",
+    "phone p95/max 550 ms (524 ms long task); heap +5.2 MB, no errors"
+   ],
+   "strengths": "It has one of the best metaphors in the batch for panic (a brake on racing thoughts), and per the catalog the pull-to-speed coupling is live and continuous.",
+   "problems": "Desktop: the drag selects the input text and the game stalls at 67% (desktop end tile shows the input highlighted). Phone mid: the handle is clipped by the bottom of the frame, the phrase is about 7 px and the toast covers the guide card. The brake is unlabelled, the stage is empty, and there are no characters and no finale (the catalog's 'gaps between words' payoff is not implemented). The header is clipped on phone.",
+   "improvements": [
+    "Fix desktop: use pointer capture on the handle and user-select: none on the stage, so the drag never selects the input text and the game can finish at 1280 px.",
+    "Give the phrase a world: the user's words ride as cars of a speeding train through a tunnel with streaking lights and motion blur. Replace the bar with a big red brake lever labelled 'PULL ↓' with a pulsing arrow. As it is pulled, the streaks thin, the blur clears and gaps open between the words.",
+    "Make a panicked character the driver: wide-eyed, with hair streaming at full speed. It braces and squashes as the lever comes down, then exhales, its face going from panic to calm as the train slows.",
+    "Finale: the train glides into a quiet sunrise station and stops with a gentle hiss. The words step out one at a time with space between them, and the character steps onto the platform and stretches.",
+    "Keep the handle fully inside the frame at 390 px, show the phrase at 15 px or more, and move the toast off the guide card."
+   ],
+   "looks_like": "Shares the empty-frame-on-nebula look with no other game here; catalog pairs 29, 36",
+   "effort": "L"
+  },
+  {
+   "id": 78,
+   "name": "ONE WORD",
+   "scores": {
+    "A": 3,
+    "B": 2,
+    "C": 2,
+    "D": 1,
+    "E": 2,
+    "F": 5,
+    "G": 4,
+    "H": 4
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": true,
+   "character_role": "None in the world. The stage holds two small gradient word tiles, 'my' and 'boss' (phone start), and nothing else. The only character art is the blurred ambient decals at the edges. No overwhelmed character is surrounded by the word crowd or calmed by the choice.",
+   "finale": "Phone finish: a lone 'STILL +1' toast pill in an otherwise empty stage, then the shared reveal card ('CALMER ✓ YOU BROKE THE PATTERN'). Nothing narrows, focuses or lights up.",
+   "score_rationale": "A3: two flat gradient tiles of about 55 px in an empty nebula, with no lighting or material (phone start). B2: no environment. C2: per the catalog it splits the current chunk, which is usually one word, so the 'choice' is often a single tile. The mid tile shows only the toast over the tiles. D1: no characters. E2: an empty stage, then the generic reveal. F5: the tiles' text is readable (about 11 px) and 'Pick one word' is clear, but with one or two tiles the decision is trivial. G4: the tiles are adequate targets (about 55×52 px), but the toast covers them (phone mid) and the header is clipped. H4: narrowing attention to one word suits overwhelm, but nothing on screen narrows: no spotlight, no dimming of the rest.",
+   "perf_flags": [
+    "phone p95/max 433 ms (668 ms long task)",
+    "desktop p95 717 ms (734 ms long task); heap +5.4 MB phone, no errors"
+   ],
+   "strengths": "The tile text is among the more readable in the batch (phone start), and the start screen is uncluttered with one obvious action.",
+   "problems": "Phone mid: the toast covers the word tiles. Phone finish: the stage is empty except the toast. The choice usually has only one or two options (catalog: often a single 'I' tile). There are no characters, no scene and no finale, and the reveal is generic. The header is clipped on phone.",
+   "improvements": [
+    "Show the whole sentence as a crowd of word tiles, at 15 px or more, floating and jostling around the stage. Tapping one throws a warm spotlight on it while the others dim, blur and drift back into fog, so attention visibly narrows.",
+    "Put an overwhelmed character in the middle of the word crowd: spinning, hands on head. When the player picks a word, the crowd backs off and the character's breathing slows (chest squash and stretch), its face going from frazzled to focused.",
+    "Split the input by word, not by chunk, so there are always three or more real options per round.",
+    "Finale: the six chosen words link into a single glowing constellation line, and the character lies back under it as the stage dims to a quiet starry night.",
+    "Keep the toast above the stage, never on the tiles."
+   ],
+   "looks_like": "81 STACK IT tray chips (the same small cyan-magenta word tiles); catalog pairs 94, 87",
+   "effort": "M"
+  },
+  {
+   "id": 79,
+   "name": "MISS ON PURPOSE",
+   "scores": {
+    "A": 4,
+    "B": 2,
+    "C": 3,
+    "D": 2,
+    "E": 2,
+    "F": 5,
+    "G": 5,
+    "H": 5
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "A static face of about 22 px in a dark capsule chip on the word card under the tile grid (phone start and mid: purple 'my boss'). At finish it is buried under the white flash blob (phone finish). It never aims, misses, flinches or laughs.",
+   "finale": "Phone finish: the shared white flash blob over the word card, and a '+STILL HIT · CHAIN ×6' toast on the DON'T tile. The counter reads '4/6' while the bar shows 100%. Then the shared reveal card ('CALMER ✓ THE LOOP GOT INTERRUPTED'). The catalog's 'PERFECTLY IMPERFECT' celebration is not implemented.",
+   "score_rationale": "A4: glossy gradient tiles with a soft glow are clean, but they are default UI on the shared nebula (phone start). B2: the same tiles-above-chip-card layout as 73 and 83. C3: tapping a non-target tile. Per the catalog, hitting the target silently resets, and the target doesn't move, so missing takes no skill or restraint. D2: a static chip decal. E2: the shared blob, toast and reveal. F5: the labels are big and readable, but 'DON'T' is ambiguous (don't what?), and three tiles labelled 'MISS' read like 'you missed'. G5: the tiles are good targets (about 77×65 px), but the toast covers the DON'T tile in mid and finish, the counter is wrong, the word is about 7 px and the header is clipped. H5: deliberate imperfection suits perfectionism and shame, but without a target to deliberately miss, the idea doesn't land.",
+   "perf_flags": [
+    "phone 138 long tasks (18 s total) with a 1129 ms max",
+    "desktop p95 867 ms (720 ms long task); heap +5.6 MB phone, no errors"
+   ],
+   "strengths": "It is a playful, counter-intuitive premise with large, readable tap targets (phone start).",
+   "problems": "Phone mid and finish: the toast covers the DON'T tile. Phone finish: the white blob hides the word card, and the counter reads '4/6' at 100%. The face sits in a dark chip (bubble rule) with the word at about 7 px. The labels are ambiguous. It plays like a twin of 73 and 83. The celebration, characters and scene are missing. The header is clipped on phone.",
+   "improvements": [
+    "Turn it into an archery or darts range: a bullseye target swinging gently on a rope, with chalky 'OOPS' patches painted around it. The player flicks a dart deliberately into an OOPS patch, with a satisfying thunk and wobble.",
+    "Put the bow in the hands of a perfectionist character. It squints and over-aims (anticipation). On a deliberate miss it winces, then loosens and giggles. Hitting the bullseye makes it over-celebrate, then catch itself, a visible comic beat instead of a silent reset.",
+    "Implement the 'PERFECTLY IMPERFECT' finale: mismatched confetti, the target cracking into a smiling face, the character laughing and tossing the bow away, and the light warming from clinical white to golden.",
+    "Rebuild the gameplay so it no longer shares the tap-a-gradient-tile loop with 73 and 83.",
+    "Keep the toast off the targets, fix the counter, and replace the dark chip with a circular face with the text below it."
+   ],
+   "looks_like": "73 TRAFFIC LIGHT and 83 SORT STATION (the same gradient tile grid above the same chip word card, with the same tap-one-tile loop); catalog pairs 70, 64",
+   "effort": "L"
+  },
+  {
+   "id": 80,
+   "name": "DON'T TAP",
+   "scores": {
+    "A": 4,
+    "B": 2,
+    "C": 3,
+    "D": 2,
+    "E": 3,
+    "F": 6,
+    "G": 5,
+    "H": 6
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "A static face of about 22 px in a dark capsule chip on the word card above the timer (phone start blue, phone mid magenta, phone finish pale blue). On the desktop mid tile the chip is empty: no face rendered, just a dark capsule. It never reacts to the urge, the wait or a reset tap.",
+   "finale": "Phone finish: the countdown reads '0.0s', the bar is full and the shared tilted 'RELEASED · SHIFT COMPLETE' card hangs above the stage. Then the shared reveal ('CALMER ✓ YOU CUT THE MOMENT SHORT'). The desktop reveal tile has no card, only PREVIOUS and NEXT pills. Nothing about the button or the urge resolves.",
+   "score_rationale": "A4: a clean glass card, a gradient bar and a large cyan countdown are tidy but default UI, and the desktop mid adds the shared concentric ring pulse (phone start, desktop mid). B2: the same glass-panel word-card plus 'THOUGHT MOVE' pill template as 70. C3: waiting is the mechanic and the countdown gives clear progress, but per the catalog it is 30 s of watching a bar, and the needy-button comedy is not implemented. D2: a static chip decal, empty on desktop mid. E3: the shared tilted card and the generic reveal. F6: the huge 'DO NOT TAP' button and the readable '4.4s' countdown make the task obvious (phone start). G5: big and readable at 390 px, but the word is about 7 px, the header is clipped and the tilted card overlaps the top of the stage (phone finish). H6: urge-surfing is a well-chosen exercise for compulsion and anxiety, but it needs a visible urge to surf.",
+   "perf_flags": [
+    "desktop 1649 ms long task (p95 833 ms)",
+    "phone p95 200 ms (best in batch); heap +5.2 MB phone, no errors"
+   ],
+   "strengths": "The clearest single instruction in the batch, with the best phone frame times. The timer and bar make the waiting legible, and the premise of a button you mustn't press is inherently funny.",
+   "problems": "Desktop mid: the face chip renders empty. The face sits in a dark chip (bubble rule) with the word at about 7 px. Phone finish: the tilted card overlaps the top of the stage. The desktop reveal has no card. There is no needy-button comedy, no character and no finale, so it is 30 s of a bar filling. It shares a template with 70. The header is clipped on phone.",
+   "improvements": [
+    "Make the button a needy character: a big, squishy, glossy red button with eyes that wiggles, pleads, bats its lashes, inches closer and swells as the urge peaks. Tapping it resets the timer with a smug boing.",
+    "Seat an anxious character beside it, sitting on its hands. Its fingers twitch and its body leans in at the urge peaks, then it settles as each wave passes, its face going from strained to calm across the six rounds.",
+    "Show the urge as a wave rolling across the stage in time with the countdown: it crests at 2.5 s and breaks by 5 s, and the character surfs it.",
+    "Finale: the button gives up, deflates and falls asleep, snoring bubbles. The character lies back and the scene fades to a warm sunset.",
+    "Fix the empty face chip seen on desktop, and replace the dark chip with a circular face with the text below it."
+   ],
+   "looks_like": "70 METRONOME (the same glass panel + chip word card + full-width 'THOUGHT MOVE ·' pill); catalog pairs 66",
+   "effort": "M"
+  },
+  {
+   "id": 81,
+   "name": "STACK IT",
+   "scores": {
+    "A": 3,
+    "B": 3,
+    "C": 2,
+    "D": 1,
+    "E": 2,
+    "F": 4,
+    "G": 2,
+    "H": 4
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": true,
+   "character_role": "None in the world. The stage holds a tray of six small gradient word chips and a growing tower of identical gradient bars (phone mid and finish). The only character art is the blurred ambient decals at the stage edges. No character carries, balances or stands on the stack.",
+   "finale": "Phone finish: six identical bars stacked perfectly straight, with a 'GONE' toast covering two tray chips. The tray still shows every chip, and the counter reads '1/6' at 100%. Then the shared reveal ('STEADIER ✓ THE WEIGHT EVENED OUT'). The desktop reveal tile has no card, only PREVIOUS and NEXT pills.",
+   "score_rationale": "A3: flat cyan-to-magenta bars with no weight, texture or contact shadow, perfectly aligned like a UI list (phone finish zoom). B3: a tower is a game-specific silhouette, but it floats on the shared nebula. C2: per the catalog, a tap just appends a block. There is no drop, squash, wobble or instability surprise, and the tower never leans. D1: no characters. E2: the tower just stops growing, then the generic reveal. F4: 'Stack the load' is clear, but the chip labels are about 6 px, and the 'I' chip is a sliver. G2: the tray chips are about 52×27 px and the 'I' chip about 25×27 px, well under a 44 px touch target. The toast covers chips in mid and finish, and the header is clipped. H4: prioritising suits overwhelm, but stacking everything into a taller tower adds to the load rather than relieving it.",
+   "perf_flags": [
+    "phone p95 333 ms with an 879 ms long task",
+    "desktop p95/max 917 ms; heap +5.5 MB desktop, no errors"
+   ],
+   "strengths": "Short and immediately understandable. The growing tower makes progress visible at a glance (phone mid to finish).",
+   "problems": "Phone start: the tray chips are tiny (the 'I' chip about 25 px wide) with about 6 px text. Phone mid and finish: the toast covers the tray. Phone finish: the chips are not consumed from the tray, and the counter reads '1/6' at 100%. There is no physics or instability (catalog), no characters, no material and no finale. The desktop reveal has no card. The header is clipped on phone.",
+   "improvements": [
+    "Add weight: each block (a stone, book or crate with real texture and the user's word at 15 px or more) drops with gravity, squashes on landing, wobbles and casts a contact shadow. A badly ordered stack leans and creaks (the catalog's instability surprise), and the player re-orders to steady it.",
+    "Make the tray chips at least 44 px tall with 15 px text, and remove each one from the tray as it is stacked.",
+    "Have a stressed character carry each block to the stack, straining (stretch) under heavy ones and puffing with relief as the stack steadies. Its face goes from overloaded to steady, and it climbs to stand on top at the end.",
+    "Finale: the stable stack becomes a stone cairn on a hill at golden hour. The character places a final small pebble on top, the wind drops and birds circle.",
+    "Make the gameplay different from 91 PRIORITY BLOCKS (the same Balance cluster), for example physics balancing here and slot ranking there."
+   ],
+   "looks_like": "91 PRIORITY BLOCKS and 94 (catalog cluster); the tray chips are the same gradient tiles as 78 ONE WORD",
+   "effort": "L"
+  },
+  {
+   "id": 82,
+   "name": "SEESAW",
+   "scores": {
+    "A": 4,
+    "B": 4,
+    "C": 3,
+    "D": 2,
+    "E": 3,
+    "F": 4,
+    "G": 3,
+    "H": 4
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "A static face of about 22 px in a dark capsule chip on a dark word card pinned over the right arm of the beam (phone start: blue 'my boss'; mid: magenta 'I'; finish: pale blue 'panic'; desktop finish: orange anger face). It does not ride the plank, bounce or react to the tilt. It just hides part of the beam.",
+   "finale": "Phone finish: the beam is level (a real, game-specific state) under the static card, with a ring pulse and a 'GONE · +STILL HIT · CHAIN ×6' toast covering the SHIFT and CHECK buttons. The desktop finish adds the tilted RELEASED card. Then the shared reveal ('STEADIER ✓ YOU BROUGHT IT BACK TOWARD CENTRE'). There is no celebration of balance.",
+   "score_rationale": "A4: the magenta-to-cyan glowing beam is the most attractive prop in the batch, but the fulcrum is a near-invisible dark triangle and there is no ground, light or shadow (phone start zoom). B4: a seesaw is its own recognisable prop, though it sits on the shared nebula. C3: per the catalog, SHIFT ×5 then CHECK, with no drag. It starts fully tilted, needs ±5 precision, and CHECK fails silently. The beam does visibly level by finish. D2: a static chip decal that sits on and hides the beam rather than riding it. E3: the levelled beam is a specific beat, then the white blob (phone mid) and the generic reveal. F4: the purpose is clear, but the button text is about 6 px and the card hides the right arm, so it is hard to read the balance. G3: the buttons are about 54×30 px with about 6 px text, the toast covers them in mid and finish, the card overlaps the beam and the header is clipped. H4: the 'good enough balance' message for perfectionism is contradicted by the ±5 precision requirement (catalog).",
+   "perf_flags": [
+    "desktop 3811 ms long task, the single longest stall in this batch (p95 633 ms)",
+    "phone max 750 ms (p95 317 ms); heap +5.5 MB phone, no errors"
+   ],
+   "strengths": "It has a real game-specific prop whose state is readable: the beam visibly moves from tilted (phone start) to level (phone finish), so progress is legible without the HUD.",
+   "problems": "Phone start to finish: the word card covers the right arm of the beam. The face sits in a dark chip (bubble rule). Phone mid: the white blob, with the toast over CHECK BALANCE. Phone finish: the toast covers all three buttons. The buttons have about 6 px text. CHECK fails silently and precision contradicts the hook (catalog). No characters ride the seesaw. The header is clipped on phone.",
+   "improvements": [
+    "Switch to dragging: the player drags weight stones (labelled with the user's words at 15 px or more) along the plank, and the beam tilts live with spring damping. A wide green 'good enough' zone around level replaces the ±5 precision and the silent CHECK.",
+    "Seat two characters at the ends of the plank, a stressed one and a calm one. They bounce with squash on each tilt, look scared when raised and relieved as it levels, and finally hold hands across the middle.",
+    "Build a park at dusk: a wooden plank with grain, a painted metal fulcrum, grass and long warm shadows. Move the word card off the beam entirely.",
+    "Finale: once level, the seesaw rocks gently, the characters swing their legs and fireflies rise around them while the sky warms.",
+    "Make any remaining buttons at least 44 px tall with 14 px text, and keep the toast off them."
+   ],
+   "looks_like": "The same chip word-card template as 70, 73, 79, 80, 83; catalog pairs 92",
+   "effort": "M"
+  },
+  {
+   "id": 83,
+   "name": "SORT STATION",
+   "scores": {
+    "A": 4,
+    "B": 3,
+    "C": 2,
+    "D": 2,
+    "E": 2,
+    "F": 5,
+    "G": 4,
+    "H": 5
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "A static face of about 22 px in a dark capsule chip on a word card jammed against the top of the stage (phone start: 'my boss'; mid: 'I'; finish: purple 'panic'). It never travels down a chute, gets stamped or reacts to NOW, LATER or NOT MINE.",
+   "finale": "Phone finish: a 'GONE' toast over the NOW tile and the card still parked at the top. Then the shared reveal ('STEADIER ✓ YOU MADE IT CLEARER'). The desktop reveal tile has no card, only PREVIOUS and NEXT pills. No tube travel (catalog) and no cleared desk.",
+   "score_rationale": "A4: big glossy gradient tiles with a soft glow, and an outlined 'chute' panel at the top, all default UI on the nebula (phone start). B3: the outlined chute panel is the only hint of a station, otherwise the same tiles-above-card layout as 73 and 79. C2: per the catalog, one tap ×6 with no tube-travel animation; in the mid tile only a ring pulse plays under the toast. D2: a static chip decal. E2: the generic reveal, missing on desktop. F5: NOW / LATER / NOT MINE are big and readable, but the item being sorted is hidden at the top under the progress bar. G4: the tiles are generous (about 88×77 px), but the word card's top is cut off behind the GAME PROGRESS bar (phone start, and the desktop start crop shows the bar drawn across the card), the toast covers NOW and LATER (phone mid and finish) and the header is clipped. H5: triage into now / later / not mine is a good fit for overwhelm.",
+   "perf_flags": [
+    "desktop 879 ms long task (p95 833 ms); desktop heap +7.2 MB, the largest growth in the batch (still under 25 MB)",
+    "phone p95 567 ms (592 ms long task); no errors"
+   ],
+   "strengths": "Three large, readable, well-spaced choices that fit the phone width (phone start). The triage categories are meaningful for overwhelm.",
+   "problems": "Phone and desktop start: the word card is clipped and overlapped by the GAME PROGRESS bar at the top of the stage. Phone mid and finish: the toast covers NOW and LATER. The face sits in a dark chip (bubble rule) with the word at about 7 px. There is no tube travel (catalog) and no characters, and the desktop reveal has no card. It plays like a twin of 73 and 79. The header is clipped on phone.",
+   "improvements": [
+    "Build a pneumatic sorting room: three brass tubes labelled NOW, LATER and NOT MINE, under warm lamp light with steam. The user's word sits on a glass capsule at 15 px or more. The player flicks the capsule up into a tube, and it whooshes away with a thunk and a puff.",
+    "Make an overwhelmed character the postmaster behind a towering desk pile. It catches each capsule, stamps it with squash and sends it. The pile shrinks visibly and its face goes from swamped to organised, then it leans back with a cup of tea.",
+    "Move the item below the progress bar, fully inside the stage, so nothing overlaps it at 390 or 1280 px.",
+    "Finale: the tubes play a rising pneumatic chord, the NOT MINE capsules burst out of a skylight as birds, and the desk is left clear in golden light.",
+    "Rebuild the gameplay as a flick into tubes so it no longer shares the tap-a-gradient-tile loop with 73 and 79. Keep the toast off the tiles."
+   ],
+   "looks_like": "73 TRAFFIC LIGHT and 79 MISS ON PURPOSE (the same gradient tile row and chip word card, with the same tap-one-tile loop); catalog pairs 32, 84, 85",
+   "effort": "L"
+  },
+  {
+   "id": 84,
+   "name": "MINE / NOT MINE",
+   "scores": {
+    "A": 3,
+    "B": 2,
+    "C": 4,
+    "D": 1,
+    "E": 2,
+    "F": 3,
+    "G": 3,
+    "H": 6
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": true,
+   "character_role": "None in the world. A flat glass pill holding the word floats between faint 'MINE' and 'NOT MINE' labels (phone start). The only character art is the blurred ambient decals at the stage edges. No character carries or sheds the load.",
+   "finale": "Phone finish: the next card slides out past the right stage edge and is clipped, with the '+STILL HIT · CHAIN ×6' toast sitting on it over a white flash blob. Then the shared reveal ('STEADIER ✓ ONE THING FOUND ITS PLACE'). The desktop reveal tile has no card, only PREVIOUS and NEXT pills. NOT MINE cards are never ejected (catalog).",
+   "score_rationale": "A3: a flat translucent pill on the nebula, with no material or light (phone start). B2: no environment. C4: per the catalog, the binary swipe is clean and tactile, and the card does slide (phone mid), but there is no ejection, flight or drop-zone response. D1: no characters. E2: the shared blob and generic reveal, missing on desktop. F3: the MINE and NOT MINE labels are about 7 px, low-contrast grey, with no arrows (phone start zoom), so it is not obvious in 2 seconds that the card should be swiped. G3: the card is clipped by the right stage edge (phone mid and finish), the toast covers it mid-swipe and the header is clipped. H6: a swiped boundary decision fits guilt and over-responsibility well.",
+   "perf_flags": [
+    "phone p95/max 750 ms (722 ms long task)",
+    "desktop p95 700 ms; heap +5.4 MB phone, no errors"
+   ],
+   "strengths": "A clean, natural phone gesture (a binary swipe) with a strong therapeutic fit. The start screen is uncluttered.",
+   "problems": "Phone start: the MINE and NOT MINE labels are about 7 px grey with no direction arrows. Phone mid and finish: the card is clipped at the right edge and the toast covers it. NOT MINE cards are not ejected (catalog). There are no characters, no scene and no finale, and the desktop reveal has no card. The header is clipped on phone.",
+   "improvements": [
+    "Add strong direction affordances: 'MINE ←' and '→ NOT MINE' at 15 px or more with glowing arrows, and real drop zones, a backpack on the left and an open window to the sky on the right.",
+    "Give a guilt-laden character a heavy backpack. A NOT MINE swipe launches the card out of the window with a whoosh, the pack visibly lightens and the character straightens up (stretch, then a relieved sigh). A MINE swipe slides the card into the pack, and the character pats it, accepting.",
+    "Keep the card inside the stage at 390 px during the drag and eject it with a designed exit animation, not a clip at the stage edge. Move the toast off the card.",
+    "Finale: the character shoulders a light pack and walks off toward a sunrise, while the NOT MINE cards drift away outside as paper lanterns.",
+    "Make the card a textured paper tag carrying the user's word at 15 px or more."
+   ],
+   "looks_like": "72 CATCH & LABEL (the same flat glass word pill on an empty stage); catalog pairs 25, 87",
+   "effort": "M"
+  }
+ ]
+}

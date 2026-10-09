@@ -1,0 +1,517 @@
+{
+ "games": [
+  {
+   "id": 26,
+   "name": "SEND TO SPACE",
+   "scores": {
+    "A": 4,
+    "B": 4,
+    "C": 3,
+    "D": 2,
+    "E": 2,
+    "F": 5,
+    "G": 5,
+    "H": 5
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "Decal only. A ~14px character orb sits in a dark capsule inside the oval word badge that overlaps the rocket's nose (phone start/mid/finish tiles). The orb's colour changes per word (red, purple, blue), but it never reacts to the lever, never rides or waves from the rocket and never transforms. The ghost silhouettes in the backdrop are shared ambient decoration.",
+   "finale": "Finish (phone and desktop finish tiles): the rocket is still on the pad, exactly where it started, with concentric rings and an empty 'STILL +1' toast. The promised launch that shrinks it to a pixel never happens. The reveal is the shared text card ('CALMER ✓ MORE SPACE AROUND IT'). Not unique.",
+   "score_rationale": "A4: the chrome rocket has a gradient sheen, and the exhaust bloom (phone mid) is the only lit moment. Otherwise it is flat shapes on the shared nebula, with no launch pad, smoke, sky or planet. B4: the rocket prop is distinctive, but the backdrop is the shared nebula and the right-hand slider is the same control as 29 MUTE. C3: the lever is a cyan pill on a track with no notches or squash. The rocket does not move between the start, mid and finish tiles, so a pull has no visible result. D2: a tiny static orb in a word badge. E2: no launch; the shared reveal card. F5: 'Pull the lever' is clear, and on phone the lever now sits beside the rocket. But nothing shows which way to pull, and the word is about 10px. G5: the lever is a large thumb target, but the toast covers the guide line 'Pull the lever · 42% complete' (phone mid), plus header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). H5: sending a worry into space fits worry and overwhelm, but without the shrink-to-a-pixel distance the player never feels the relief.",
+   "perf_flags": [
+    "p95 750ms phone / 833ms desktop (over the 34ms limit; headless). Phone is about 1.7x the fleet median of 433ms.",
+    "Longest task 1023ms on desktop; 76 long tasks (11.6s total) on phone."
+   ],
+   "strengths": "The rocket is a real object with a sheen, and the exhaust bloom at mid suggests ignition. On phone the lever sits beside the rocket, which partly fixes the catalog's complaint about a far-right lever. The metaphor is understood instantly.",
+   "problems": "Phone start: the oval word badge overlaps the rocket body and the lever track. The character is a ~14px orb in a dark capsule (a black mask). Phone mid: the toast covers the guide text. Phone finish: the rocket sits where it started; nothing launched. Desktop: the rocket and lever are tiny in a mostly empty 1280 stage, and the labels are about 6px. The header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). Both sizes use the shared reveal.",
+   "improvements": [
+    "Make each pull a launch: the rocket crouches (10% squash) as the exhaust builds, lifts off with a smoke plume and a camera tilt, then shrinks to a star-sized pixel that twinkles out. A new rocket rolls onto the pad for the next round.",
+    "Put the emotion character in the cockpit window: anxious on the pad, squashed by g-force at lift-off, waving and smiling as it shrinks. The last rocket's character turns calm before it vanishes.",
+    "Unique finale: the six launched thoughts link up into a small new constellation that glows warm, while Earth rises in the foreground in sunrise light.",
+    "Build a launch-pad environment: a gantry, ground fog, Earth's horizon curve, warm sodium light from below and a parallax star field.",
+    "Make the lever a chunky throttle with notches, a click per notch, a knob that squashes and an arrow showing the pull direction. Raise the word to 15px or more and move it off the rocket body onto a hull or nose-cone label.",
+    "Dock the toast above the stage so it never covers the guide or the controls, and fix the clipped header title."
+   ],
+   "looks_like": "29 MUTE (the same right-hand vertical slider beside a central prop); cluster E (one-axis drag) and cluster G (launch away) with 8, 24 and 46",
+   "effort": "M"
+  },
+  {
+   "id": 27,
+   "name": "DROP ZONE",
+   "scores": {
+    "A": 3,
+    "B": 3,
+    "C": 3,
+    "D": 1,
+    "E": 2,
+    "F": 4,
+    "G": 4,
+    "H": 4
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": true,
+   "character_role": "Absent. There is no character in the game world on phone or desktop, only the shared faint ghost silhouettes in the backdrop corners (phone start tile).",
+   "finale": "Finish (phone finish tile): the last word card sits under the cyan ledge line, with a white glow orb in the centre and a 'STILL HIT · CHAIN ×6' toast. The same glow orb appears in 29, 31, 34, 35, 36 and 39. The reveal is the shared text card ('CALMER ✓ YOU DROPPED SOME WEIGHT'). Not unique.",
+   "score_rationale": "A3: a flat dark rounded card labelled 'WEIGHT' and a cyan line, with no mass, material, shadow or light. B3: the shared nebula plus one line. C3: the card just reappears below the ledge (phone mid). There is no fall arc, thud, dust, bounce or squash, and the glow orb appears at the stage centre rather than where the card lands. D1: no characters. E2: no payoff of its own; the shared reveal card. F4: 'Drop it' has no arrow, and the block reads as a card rather than a weight. The word is about 10px and 'WEIGHT' about 7px. G4: the dropped card runs into the top of the live guide panel (phone finish), the toast covers the 'Mind Bend' text (phone mid and finish), and the header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). H4: putting a weight down fits stress and burden, but nothing on screen looks heavy, so nothing feels lighter when it goes.",
+   "perf_flags": [
+    "p95 633ms phone / 750ms desktop (over the absolute limits; headless). Phone is about 1.5x the fleet median.",
+    "Max frame 750ms on desktop."
+   ],
+   "strengths": "A simple one-gesture concept with a clear metaphor. Heap growth is low (1.8MB on phone).",
+   "problems": "Phone start: a flat dark card with a ~10px word and a ~7px 'WEIGHT' tag; no drag arrow and no drop target below the ledge. Phone mid: the card jumps below the ledge with no fall, and the glow orb is detached from it. Phone finish: the card overlaps the top edge of the live guide panel, and the toast covers the 'Mind Bend' text. No characters anywhere. The header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). Both sizes use the shared reveal. Desktop: the card and ledge are tiny in a large empty stage.",
+   "improvements": [
+    "Make the weight heavy: a stone or iron block with the word carved into it at 15px or more. The drag should resist, the block should fall with acceleration, and the landing should squash it, shake the screen and puff dust.",
+    "Make a character the carrier: it starts stooped and straining under the block. With each drop it straightens, its shoulders lift and its face brightens, and after six drops it walks with a light bounce.",
+    "Unique finale: the dropped blocks sink into soft ground below the ledge and flowers sprout from them, while the now-light character floats up like a balloon into warm light.",
+    "Give the ledge a real setting: a cliff edge or dock above a canyon, with warm late-afternoon rim light and depth fog.",
+    "Add an arrow and a glowing drop zone below the ledge, keep the dropped card clear of the guide panel and dock toasts away from the guide."
+   ],
+   "looks_like": "34 RIVER, 28 ARCHIVE, 38 DRAWER, 21 BIN (cluster H: drag the card into a container). The flat dark word card and centre glow orb also appear in 31 and 35.",
+   "effort": "M"
+  },
+  {
+   "id": 28,
+   "name": "ARCHIVE",
+   "scores": {
+    "A": 3,
+    "B": 3,
+    "C": 2,
+    "D": 1,
+    "E": 2,
+    "F": 4,
+    "G": 5,
+    "H": 4
+   },
+   "functional_ready": false,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": true,
+   "character_role": "Absent. There is no character in the drawer scene on phone or desktop.",
+   "finale": "Phone finish: a 'STILL HIT · CHAIN ×6' toast and a ring over the drawer box, then the shared reveal card ('CALMER ✓ THAT LEFT YOUR HANDS'). Desktop never finished: it stalled at 92% and showed no reveal (desktop reveal-NONE tile). Not unique.",
+   "score_rationale": "A3: a glass rectangle with a dark slot bar and a cyan-to-magenta button, with no cabinet, wood, metal or paper material. B3: the shared nebula, in the same layout as 38 DRAWER. C2: you tap a big button and then drag a pill. No drawer slides and no folder drops in. On desktop the drag selected page text and dropped it into the user's input field (desktop end tile: '…I feel panicTHOUGHT MOVE · PULL DRAWER OPEN 6 / 6 ♥♥♥♥♥ THERE IT IS + STILL HIT · CHAIN ×5'). D1: none. E2: a toast plus the shared reveal on phone; nothing on desktop. F4: the big button label is readable, but nothing shows the second step (drag the pill into the drawer), and the word is about 9px. G5: the button is a big thumb target, but the toast covers the drawer (phone mid and finish) and the header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). H4: archiving without deleting is right for overwhelm, but two chores repeated six times feel like admin.",
+   "perf_flags": [
+    "p95 600ms phone / 950ms desktop (over the absolute limits; headless). Desktop is about 1.2x the fleet median.",
+    "93 long tasks totalling 13.5s on phone."
+   ],
+   "strengths": "The big gradient button text is among the most readable instructions in the batch, and 'de-prioritise without deleting' is a psychologically sound message.",
+   "problems": "Desktop: the game stalled at 92% after 24 actions over 76s and never revealed. The drag became a native text drag-and-drop that pasted UI text into the user's input (desktop end tile). The stage needs user-select:none and draggable=false. Phone reveal tile: the input text shows as selected (blue), the same side effect. Phone start: the word pill is about 9px. Phone mid and finish: the toast sits over the drawer. There are no characters, and the game looks the same as 38 DRAWER. The header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). Phone uses the shared reveal.",
+   "improvements": [
+    "Fix the drag: set user-select:none and draggable=false on the stage and the card, use pointer capture, and make the drop threshold forgiving so desktop can finish.",
+    "Merge the two steps into one tactile gesture: grab the file card and slide it toward a filing-cabinet drawer that opens as the card approaches, then slams shut with a thunk and a dust puff.",
+    "Set it apart from 38 DRAWER: an archive room with tall shelves, labelled boxes and a warm desk lamp, where each archived thought gets a dated label so it reads as kept, not lost.",
+    "Make the characters archivists: a frazzled character holding a messy stack at the start files each card and wipes its brow, and by the end sits back calmly with a cup of tea.",
+    "Unique finale: a brass key turns to lock the cabinet, the lamp warms the room and an 'ARCHIVED · 6' label glows on the drawer front.",
+    "Raise the word to 15px or more and dock toasts outside the stage."
+   ],
+   "looks_like": "38 DRAWER (near-identical: a glass box, a word pill and a full-width gradient 'THOUGHT MOVE' button); cluster H with 21, 27 and 34",
+   "effort": "L"
+  },
+  {
+   "id": 29,
+   "name": "MUTE",
+   "scores": {
+    "A": 5,
+    "B": 4,
+    "C": 5,
+    "D": 3,
+    "E": 2,
+    "F": 6,
+    "G": 5,
+    "H": 6
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "A decal that changes with each word, not with your actions. A ~18px character orb sits in a dark capsule in the word card: a blue face at phone start, a sleepy purple face at phone mid and a distressed red face for 'panic' at phone finish. It never reacts to the fader or quietens down, and it ends the game looking more upset, not calmer.",
+   "finale": "Finish (phone finish tile): the waveform is a flat row of dots under a pale glow orb, with a 'STILL HIT · CHAIN ×6' toast. Desktop finish shows a tilted toast. The reveal is the shared text card. Not unique.",
+   "score_rationale": "A5: the purple-blue waveform bars are the most vivid in-game graphic in the batch, and they collapse to a row of dots as you pull (phone start vs mid). But the glass panel, the white pill knob and the shared glow orb are flat. B4: a glass panel on the shared nebula, with no mixing desk, studio or radio. C5: the shrinking waveform is real live feedback, but the fader has no notches, click, knob squash or visible audio ducking. D3: a small decal whose face changes with the word and is distressed at the finish. E2: flat dots plus the shared reveal. F6: 'Turn it down', a fader and a loud waveform read within 2 seconds, but there is no arrow and the word is about 9px. G5: the fader track hangs below the glass panel and its knob overlaps the panel border (phone mid and finish), the toast covers the guide, and the header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). H6: turning down the inner critic's volume is a strong metaphor for anxiety and overthinking, and watching the wave flatten supports it.",
+   "perf_flags": [
+    "p95 433ms phone / 767ms desktop (over the absolute limits; headless). This is the fleet median."
+   ],
+   "strengths": "The best feedback loop in the batch: the loud waveform visibly flattens as the fader comes down. The message ('quiet is enough; gone is optional') is clear and kind.",
+   "problems": "Phone start, mid and finish: the ~18px character image sits in a dark capsule (a black mask), and the finish character is a distressed red face. The fader track extends outside the glass panel, and the knob overlaps the panel border (phone mid and finish). The toast covers the guide text (phone mid). The word is about 9px. The header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). On desktop everything is small in the middle of an empty stage. Both sizes use the shared reveal.",
+   "improvements": [
+    "Make the character the loud voice: a big shouting character with a megaphone whose mouth and body shrink as the fader drops. At low volume it yawns, whispers and curls up asleep with a soft 'zzz', a visible loud-to-calm change.",
+    "Build a radio or mixing-desk setting: a warm wooden console, a lit VU meter whose needle drops, glowing valves and soft studio light.",
+    "Make the fader tactile: a chunky knob with a click every 20%, slight resistance and overshoot, and audio that actually ducks in sync.",
+    "Unique finale: the ON AIR sign switches to OFF, the waveform settles into a slow breathing sine wave and the room dims to warm lamp light while the sleeping character snores softly.",
+    "Keep the track inside the panel, remove the dark capsule behind the character and raise the word to 15px or more."
+   ],
+   "looks_like": "26 SEND TO SPACE (the same right-hand vertical slider); cluster E (one-axis drag); the catalog pairs it with 37",
+   "effort": "M"
+  },
+  {
+   "id": 30,
+   "name": "ZOOM OUT",
+   "scores": {
+    "A": 3,
+    "B": 3,
+    "C": 3,
+    "D": 2,
+    "E": 2,
+    "F": 5,
+    "G": 5,
+    "H": 4
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "Decal only: a ~20px character orb in a dark capsule inside the word card (phone start) that shrinks to a ~6px chip as you zoom (phone mid and finish). It is passive and never reacts or transforms.",
+   "finale": "Finish: a tilted toast card sits over the button (phone and desktop finish tiles) on the same concentric rings. There is no planet or space overview moment. The reveal is the shared card. Not unique.",
+   "score_rationale": "A3: thin concentric rings over the shared nebula, with the full-width gradient button as the dominant visual. B3: the room, city, planet and space layers at the heart of the catalog idea are not drawn at all. C3: you tap a button 4 to 6 times and the card shrinks, but there is no pinch, camera pull-back, parallax or motion blur. D2: a shrinking decal. E2: a toast plus the shared reveal. F5: the button label says exactly what to do, but the toast covers it at mid and finish ('THOUGHT [toast] OUT ONE'), and the word is about 9px. G5: the big button is within thumb reach, but the toast covers it, and the header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). H4: the overview effect is a strong idea for anxiety, but without a visible change of scale the shift in perspective never lands.",
+   "perf_flags": [
+    "p95 900ms phone (about 2x the fleet median) / 800ms desktop (over the absolute limits; headless)."
+   ],
+   "strengths": "A strong concept (cosmic perspective), and the single big button is easy to hit on a phone.",
+   "problems": "Phone start: the character is a ~20px orb in a dark capsule (a black mask), and the word is about 9px. Phone mid: the card shrinks to an unreadable chip, and the toast covers the middle of the button label. Phone finish: a tilted toast card sits over the button. There are no world layers, only rings. The interaction is button taps rather than the pinch the catalog promises (cluster B). The header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). Both sizes use the shared reveal.",
+   "improvements": [
+    "Replace the button with a real pinch or scroll zoom, keeping the button as an accessible fallback. Draw nested layers: the thought on a desk, the room, the street, the city lights, Earth and finally a pale blue dot, with parallax and depth of field at each level.",
+    "Make the character the observer: a worried character sits at the desk beside the thought at level 1, gets smaller at each level and reappears as an astronaut floating calmly beside Earth, smiling.",
+    "Unique finale: a 'pale blue dot' moment where Earth shrinks to a single warm point of light, then the camera settles on a sunrise over the planet's rim and the thought is no longer visible.",
+    "Move the toast off the button and raise the word to 15px or more."
+   ],
+   "looks_like": "35 TRAIN PLATFORM, 39 BLACK HOLE, 28 and 38 (the same full-width 'THOUGHT MOVE' gradient button as the core input); cluster B (tap one pill N times) with 2, 12, 53 and 54",
+   "effort": "L"
+  },
+  {
+   "id": 31,
+   "name": "BACK SEAT",
+   "scores": {
+    "A": 3,
+    "B": 3,
+    "C": 3,
+    "D": 1,
+    "E": 2,
+    "F": 3,
+    "G": 4,
+    "H": 5
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": true,
+   "character_role": "Absent. There is no character in the car scene on phone or desktop.",
+   "finale": "Finish (phone finish tile): a ring glow in the centre and a toast inside the two boxes, then the shared reveal card ('CALMER ✓ IT MOVED FURTHER AWAY'). Not unique.",
+   "score_rationale": "A3: two flat glass rectangles labelled 'BACK SEAT' and 'DRIVER' and a white glow orb, with no car, seats, windscreen or road. B3: the shared nebula and generic boxes. C3: the diagonal threshold is invisible, and the mid tile shows only the glow orb; the thought never visibly sits in the back seat. D1: none. E2: a ring, a toast and the shared reveal. F3: the target 'BACK SEAT' box is not highlighted, the labels are about 9px, the word pill overlaps the 'DRIVER' label (phone start) and there is no direction arrow. G4: the next word pill sits outside the panel, clipped at the right stage edge under the toast (phone mid 'e and', phone finish 'panic'), and the header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). H5: 'present doesn't mean in charge' is a lovely ACT metaphor for anxiety, but nothing on screen shows you taking the wheel.",
+   "perf_flags": [
+    "p95 483ms phone / 1033ms desktop (over the absolute limits; headless). Desktop is about 1.3x the fleet median.",
+    "Longest task 1422ms on desktop."
+   ],
+   "strengths": "One of the most therapeutic concepts in the set, and the round count and guide text agree.",
+   "problems": "Phone start: the word pill overlaps the 'DRIVER' box and its label; 'BACK SEAT' and 'DRIVER' are about 9px and the target is not highlighted. Phone mid and finish: the next word pill is clipped at the right stage edge and partly hidden behind the toast, and the only feedback is a generic white glow orb. No characters. The header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). Both sizes use the shared reveal. Desktop: the boxes are small with ~6px labels.",
+   "improvements": [
+    "Draw a car interior from the driver's seat: a dashboard, a steering wheel, a windscreen onto a sunset road and the back seat visible in the rear-view mirror.",
+    "Make the thought a character passenger: a loud character in the driver's seat grabbing the wheel. You drag it into the back, where it buckles up, sulks, then relaxes and gazes out of the window, so the mirror shows a calm character by round 6.",
+    "Replace the invisible diagonal with a visible path: a glowing seat outline and an arrow from front to back, a forgiving drop radius and a seat-cushion squash on landing.",
+    "Unique finale: you take the wheel and the car pulls onto an open coastal road at golden hour, with all six passengers calm in the back and one waving.",
+    "Keep the next word inside the stage, and raise the labels to 12px or more and the word to 15px or more."
+   ],
+   "looks_like": "27, 35 and 37 (glass rectangles with tiny word labels and the same centre glow orb); the catalog pairs it with 48 UNSTICK (diagonal drag)",
+   "effort": "M"
+  },
+  {
+   "id": 32,
+   "name": "PARK IT",
+   "scores": {
+    "A": 5,
+    "B": 3,
+    "C": 5,
+    "D": 4,
+    "E": 2,
+    "F": 6,
+    "G": 5,
+    "H": 6
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "Present as confetti, not as actors. A character orb sits in a dark capsule inside the word card (phone start and finish), and tapping a bay sprays about 10 colourful character orbs with faces around the cards (phone mid). They don't respond to which slot you pick, don't park anything and don't transform; the last face (phone finish) is a dark blob.",
+   "finale": "Finish (phone finish tile): a tilted toast covers the TOMORROW card. The desktop reveal tile shows only the PREVIOUS and NEXT pills on an empty dark stage; no card had rendered when the frame was captured. The phone reveal is the shared text card. Not unique.",
+   "score_rationale": "A5: the saturated glossy cyan-to-magenta cards with dashed borders and the orb spray have energy, but they read as UI buttons rather than a lit world. B3: three gradient cards on the shared nebula, with no car park, bays, signs or barrier. C5: each choice gets visible juice (the character orb burst, phone mid), but the thought never drives or slides into the chosen bay. D4: the characters are present and colourful but serve as particles, not participants. E2: a toast plus the shared reveal, and the desktop reveal frame is blank. F6: three big labelled choices (now about 18px, fixing the catalog's 7px) are obvious, but the word is about 9px. G5: the cards fit the width with good targets, but orbs are clipped at the stage edges (phone mid), the toast covers 'LATER TODAY' and 'TOMORROW', and the header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). H6: worry postponement is an evidence-based anxiety technique, and choosing a time slot fits it.",
+   "perf_flags": [
+    "p95 700ms phone / 967ms desktop (over the absolute limits; headless). Phone is about 1.6x the fleet median.",
+    "Longest task 1004ms on phone."
+   ],
+   "strengths": "The clearest choice UI in the batch: three big readable labels with good tap targets, and the only visible burst of character art at the moment of action.",
+   "problems": "Phone mid: character orbs are clipped at the left and right stage edges, and the toast covers the LATER TODAY and TOMORROW cards. Phone start and finish: the word card's character sits in a dark capsule, and the word is about 9px. Phone finish: a tilted toast covers TOMORROW. The desktop reveal tile shows no reveal card, only the PREVIOUS and NEXT pills. The header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). No car-park world, and nothing gets parked.",
+   "improvements": [
+    "Build a tiny car park: three lit bays signed LATER TODAY, TOMORROW and NOT NOW, with painted lines, a ticket barrier and warm sodium lamps.",
+    "Make the thought a little car driven by an anxious character: you pick a bay, the car reverses in with a beep, the barrier lifts, and the character hops out, stretches and walks off relieved.",
+    "Unique finale: the barrier closes, the car-park lights dim to night and a 'FULL · SEE YOU LATER' sign glows, with the six parked worries under a calm starry sky and a time ticket printed for each.",
+    "Keep the orbs inside the stage, remove the dark capsule, dock the toast away from the cards, raise the word to 15px or more and fix the blank desktop reveal frame."
+   ],
+   "looks_like": "52 SUBTITLES (three-choice buttons); the full-width gradient card styling is shared with the 'THOUGHT MOVE' buttons in 30, 35 and 39",
+   "effort": "M"
+  },
+  {
+   "id": 33,
+   "name": "FLOAT AWAY",
+   "scores": {
+    "A": 4,
+    "B": 3,
+    "C": 3,
+    "D": 4,
+    "E": 2,
+    "F": 4,
+    "G": 4,
+    "H": 6
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "The largest character art in the batch: a ~60px character inside the balloon outline that changes with each word (a dark blob, then purple spiral eyes, then a blue crying face). It sits in a dark rounded-square frame and does not react to the cuts. The final character, for 'panic', is crying (phone finish), so there is no calm transformation.",
+   "finale": "Finish (phone finish tile): faded ✂ buttons and an empty 'FLOW' toast. The balloon has not risen; it is where it started. The reveal is the shared card. Not unique.",
+   "score_rationale": "A4: the character renders are crisp, but the balloon is a thin outline circle with no strings or weights, and the scissor buttons are flat gradient discs. B3: no sky, clouds or landscape; the shared nebula. C3: the cut order is hidden, the second and third ✂ buttons overlap each other (phone start), and the balloon does not rise between the start, mid and finish tiles. D4: present and large, but static, and it ends crying. E2: the shared reveal. F4: nothing shows which ✂ to cut first, and the word is about 8px and shrinks to 'I' mid-game. G4: the ✂ buttons overlap (phone start), the toast covers the scene (phone mid), and the header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). H6: a gentle, non-violent release fits sadness and grief.",
+   "perf_flags": [
+    "p95 1300ms phone (3x the fleet median, the worst in the batch) / 1133ms desktop (over the absolute limits; headless).",
+    "123 long tasks totalling 23.6s on phone; longest task 1603ms on desktop."
+   ],
+   "strengths": "A soft, gentle concept that suits grief. The character images are the most readable and expressive art in the batch.",
+   "problems": "Phone start: the middle and right ✂ buttons overlap; the character sits in a dark rounded-square frame (a black-box violation); 'my boss' is about 8px. Phone mid: the toast covers the balloon area, and the word reads only 'I'. Phone finish: the balloon has not floated away and the character is crying. Nothing shows the cut order. The header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). Both sizes use the shared reveal. Heaviest perf in the batch.",
+   "improvements": [
+    "Draw a real balloon: glossy and translucent, with a specular highlight and a string, tethered by three visible ropes to sandbags labelled with the thought. Highlight the next rope with a glow and an arrow so the order is obvious.",
+    "Make the character the passenger: a sad character holding the balloon string rises a step with each cut, bobbing with squash and stretch, its face lifting from teary to peaceful before it waves and drifts up.",
+    "Unique finale: the balloon rises through warm sunset clouds, the camera follows until it is a small dot against a golden sky, and soft light rays bloom.",
+    "Sky setting: layered parallax clouds, a distant horizon and a warm-to-cool gradient.",
+    "Fix the overlapping ✂ buttons, remove the dark frame, raise the word to 15px or more and investigate the 1.3s p95 on phone."
+   ],
+   "looks_like": "14 CRUMPLE and 17 BOSS (cluster F: hidden fixed-order sequence); 37 ELEVATOR uses the same hidden-order sequence",
+   "effort": "M"
+  },
+  {
+   "id": 34,
+   "name": "RIVER",
+   "scores": {
+    "A": 3,
+    "B": 4,
+    "C": 3,
+    "D": 1,
+    "E": 2,
+    "F": 4,
+    "G": 5,
+    "H": 6
+   },
+   "functional_ready": false,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": true,
+   "character_role": "Absent. There is no character on phone or desktop.",
+   "finale": "Phone finish: the leaf sits on the river ellipse with an empty 'GONE' toast and is never carried away. Desktop never finished: it stalled at 67% with no bar movement for 32 actions over 46s (desktop reveal-NONE tile). The phone reveal is the shared card. Not unique.",
+   "score_rationale": "A3: a flat green CSS leaf shape and a translucent teal ellipse, with no water surface, reflections, flow lines or riverbank. B4: the leaf and river props differ from the other games, but they float on the shared nebula. C3: a short downward drag. The ripple ring at mid is a nice touch, but no current carries the leaf off, and on desktop the drag never gets past 67%. D1: none. E2: the shared reveal. F4: 'Drop it in the river' is clear, but the word is about 8px on bright green (low contrast). G5: it fits the width, but the toast sits near the guide and the header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). H6: 'leaves on a stream' is a validated defusion exercise and exactly right for anxiety.",
+   "perf_flags": [
+    "p95 650ms phone / 600ms desktop (over the absolute limits; headless).",
+    "Longest task 2047ms on phone (the worst single task in the batch)."
+   ],
+   "strengths": "The right clinical concept, and the drop ripple at mid is the start of a good feedback loop.",
+   "problems": "Desktop: stalled at 67% (32 actions over 46s with no progress), so there was no reveal. Phone start: a flat green leaf with an ~8px word in low contrast, on a plain teal ellipse with no water. Phone finish: the leaf just sits on the ellipse; the current that should carry it on is not implemented. No characters. The header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). Phone uses the shared reveal.",
+   "improvements": [
+    "Fix the desktop drag so the remaining rounds register (it stalls at 67%).",
+    "Draw a real stream: flowing animated water with caustics, rocks, reeds and a mossy bank, in dappled golden afternoon light through trees.",
+    "After the drop, let the current carry each leaf downstream (the surprise the catalog promises): it bobs, turns, catches on a rock, then slips free and floats out of frame.",
+    "Characters on the bank: a worried character sits by the stream, watches each leaf go and breathes out, and by round 6 lies back with its eyes closed. A small frog or fish reacts to each splash.",
+    "Unique finale: all six leaves drift together around a bend into a sunlit pool, the stream sound swells and fireflies rise.",
+    "Put the word on the leaf at 15px or more, in dark text for contrast."
+   ],
+   "looks_like": "21 BIN and 27 DROP ZONE (cluster H: drag the card into a container); the same centre ring glow appears in 29, 31, 35, 36 and 39",
+   "effort": "M"
+  },
+  {
+   "id": 35,
+   "name": "TRAIN PLATFORM",
+   "scores": {
+    "A": 3,
+    "B": 3,
+    "C": 2,
+    "D": 1,
+    "E": 2,
+    "F": 4,
+    "G": 5,
+    "H": 4
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": true,
+   "character_role": "Absent. There is no character on the platform or the train, on phone or desktop.",
+   "finale": "Finish (phone finish tile): a ring glow in the centre and a toast over the button. The game ended with the counter at 3/6 (phone) or 4/6 (desktop) while progress read 100%. The reveal is the shared card. Not unique.",
+   "score_rationale": "A3: a flat teal rectangle as the 'train' and a bar as the platform, with no train, rails, lights or station. B3: the shared nebula. C2: one button tap per round, then a passive slide. There is no timing (the catalog promises perfect timing), and the whole game ends in 3.3s on phone. D1: none. E2: the shared reveal. F4: the button label is clear, but progress reads 50% at 1/6 (phone mid) and 100% at 3/6 (phone finish) and 4/6 (desktop finish), which contradicts itself. The toast covers the button label, and the word is about 9px. G5: a big button, but the train rectangle runs to the stage edge (phone start), and the header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). H4: letting thought-trains pass fits intrusive thoughts, but you never see a train arrive and leave.",
+   "perf_flags": [
+    "p95 417ms phone / 733ms desktop (over the absolute limits; headless). Near the fleet median."
+   ],
+   "strengths": "A strong ACT metaphor for intrusive thoughts, and lightweight, with few long tasks.",
+   "problems": "Phone mid: the progress label reads 50% while the counter shows 1/6. Phone finish: 100% at 3/6, and the game ends after about 3 seconds. The toast covers the button label (phone mid and finish). The train is a flat teal box with a ~9px word, running to the stage edge at start. No characters, no station. The header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). Both sizes use the shared reveal.",
+   "improvements": [
+    "Build a station: a platform edge with a yellow line, rails, overhead lights, a departure board showing the thought as the next service, and train headlights approaching through fog.",
+    "Make it a test of timing and restraint: each train arrives with the thought on the carriage, and the player must hold still and not tap while the doors open (an urge-surfing beat) until they close and the train leaves. Not boarding is the win.",
+    "Character on the platform: a fidgety character leans toward each train, then steps back and relaxes as trains pass, and finally sits on the bench with a coffee.",
+    "Unique finale: the last train pulls away, the platform empties, dawn light floods the station and the departure board reads 'NO FURTHER SERVICES · YOU STAYED'.",
+    "Sync the progress label with the round counter so 100% means 6/6, and keep the toast off the button."
+   ],
+   "looks_like": "30 ZOOM OUT and 39 BLACK HOLE (the same full-width gradient 'THOUGHT MOVE' button); cluster C (tap then watch) with 5, 10, 22 and 23",
+   "effort": "L"
+  },
+  {
+   "id": 36,
+   "name": "CLOUD PASS",
+   "scores": {
+    "A": 5,
+    "B": 4,
+    "C": 4,
+    "D": 1,
+    "E": 2,
+    "F": 4,
+    "G": 5,
+    "H": 7
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": true,
+   "character_role": "Absent. There is no character in the sky scene on phone or desktop.",
+   "finale": "Finish (phone finish tile): a ring glow in the centre and a toast, after the last cloud has drifted off the right edge. The reveal is the shared card. Not unique.",
+   "score_rationale": "A5: the soft, blurred blue-violet cloud with an inner glow is the most atmospheric object in the batch, but it is a single blurred capsule on the nebula, with no sky, wind streaks or directional light. B4: the dashed lane and 'STEADY WIND →' label differ a little, but the backdrop is shared. C4: the slow-push rule is unique, but nothing shows your speed: there is no tempo meter, and no visible cloud puff on a fast swipe. D1: none. E2: the shared reveal. F4: 'One slow push' is shown, but the speed rule is invisible, and both the word in the cloud and 'STEADY WIND →' are about 8px. G5: it fits; the cloud is clipped as it exits (intended), the toast sits near the cloud, and the header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). H7: 'slower beats frantic' is ideal for panic, the best relief fit in this batch, even though the visuals don't teach it.",
+   "perf_flags": [
+    "p95 200ms phone / 417ms desktop (over the absolute limits; headless). The best in this batch, well under the fleet median."
+   ],
+   "strengths": "The only 'go slower to win' mechanic, which is gold for panic. The cloud is soft and atmospheric, and this is the smoothest game in the batch.",
+   "problems": "Phone start: the word inside the cloud is about 8px, light on light. 'STEADY WIND →' is about 8px, and nothing shows how slow 'slow' is. Phone mid and finish: the generic toast and centre glow ring are the only feedback. No characters. The header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). Both sizes use the shared reveal.",
+   "improvements": [
+    "Add a visible tempo meter, such as a breathing ring or wind gauge, that glows green at a slow pace and flickers red when the swipe is too fast. Let fast swipes visibly puff up and darken the cloud.",
+    "Build a sky: layered cumulus parallax, a sunlit horizon, wind-streak particles that follow the finger and gliding birds.",
+    "Characters in the clouds: each cloud has a stormy, puffed-up face that relaxes into a sleepy smile when pushed gently, and rains briefly if pushed too fast.",
+    "Unique finale: the last cloud parts on a warm sunrise, rays stream through, a rainbow arcs and the sky clears.",
+    "Raise the word to 15px or more, with a darker outline against the light cloud."
+   ],
+   "looks_like": "None mechanically (a unique slow-drag rule); it shares the centre ring glow and nebula backdrop with 27, 29, 31, 34, 35 and 39",
+   "effort": "M"
+  },
+  {
+   "id": 37,
+   "name": "ELEVATOR DOWN",
+   "scores": {
+    "A": 3,
+    "B": 3,
+    "C": 3,
+    "D": 1,
+    "E": 1,
+    "F": 3,
+    "G": 4,
+    "H": 5
+   },
+   "functional_ready": false,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": true,
+   "character_role": "Absent. There is no character in the elevator on phone or desktop.",
+   "finale": "None. On both sizes progress read 100% after the first round, with the counter still at 1/6 (phone finish tile), and the game never revealed (reveal-NONE tiles; it timed out after 83s and 21 actions).",
+   "score_rationale": "A3: a glass panel and four numbered gradient circles, with no elevator car, doors, cables or floor indicator. B3: the shared nebula. C3: you tap 10, 7, 4, 1; the lit circle moves down, but nothing descends. D1: none. E1: no finale and no reveal on either size. F3: 'Pick a lower floor' with numbered buttons is understandable, but the progress label shows 100% at 1/6 and then the game stalls, and the word card overlaps the 10 and 7 buttons. G4: the word card sticks out past the glass panel edge and overlaps the floor buttons (phone start), the toast covers the card (phone mid and finish), and the header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). H5: stepping down from 10 to 1 is a good intensity scale for anger and stress, but there is no 'how intense are you now?' self-rating.",
+   "perf_flags": [
+    "p95 450ms phone / 717ms desktop (over the absolute limits; headless). Near the fleet median."
+   ],
+   "strengths": "It measures intensity directly, and the numbered floors are a good clinical anchor.",
+   "problems": "Both sizes: progress jumps to 100% inside round 1 while the counter stays at 1/6, and no reveal ever appears (functional failure; metrics reason 'timeout', revealed=false). Phone start: the word card protrudes beyond the glass panel and overlaps the '10' button. Phone finish: the toast sits over the word card, and the card overlaps the '7' button. No elevator and no characters. The header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles).",
+   "improvements": [
+    "Fix the progress and round logic: advance progress one step per round (one descent per word), reach 100% only at 6/6 and then trigger the reveal.",
+    "Build an elevator car: brass doors, a floor dial whose needle sweeps from 10 to 1, glimpses of the cable shaft and a warm interior lamp. Each tapped floor drops the car with a soft lurch (a camera dip and a squash) and a ding.",
+    "Make the character the passenger: a red-faced, steaming character at floor 10 cools a shade per floor until the steam stops, and at floor 1 it is calm and smiling as the doors open.",
+    "Unique finale: the doors open on the ground floor into a sunlit garden lobby, the character steps out and the indicator glows '1 · CALM'.",
+    "Add a 'how intense are you now?' tap on the dial at the start and the end, and keep the word card inside the panel and away from the buttons."
+   ],
+   "looks_like": "29 MUTE and 55 HEADLINE (catalog); cluster F (fixed-order sequence) with 14, 17 and 33; the glass-panel look of 29 and 31",
+   "effort": "L"
+  },
+  {
+   "id": 38,
+   "name": "DRAWER",
+   "scores": {
+    "A": 3,
+    "B": 2,
+    "C": 2,
+    "D": 1,
+    "E": 2,
+    "F": 5,
+    "G": 5,
+    "H": 4
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": true,
+   "character_role": "Absent. There is no character on phone or desktop.",
+   "finale": "Finish (phone finish tile): an empty 'STILL +1' toast below the drawer, then the shared reveal card ('PANIC ↓ THAT LEFT YOUR HANDS'). Not unique.",
+   "score_rationale": "A3: the same flat glass box and gradient button as 28. B2: visually near-identical to 28 ARCHIVE (compare the two phone start tiles). C2: three chores per round (open, drag, close) over six rounds makes 18 actions, with no drawer slide and no card dropping in. D1: none. E2: the shared reveal. F5: the button label always names the next action (OPEN DRAWER / CLOSE DRAWER), which is clear, but the word is about 9px. G5: big buttons, but the 'CLOSE DRAWER' button overlaps the drawer box (phone mid and finish), and the header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). H4: choosing when to reopen fits overwhelm, but 18 repeated chores add load instead.",
+   "perf_flags": [
+    "p95 250ms phone (max 350ms) / 583ms desktop (over the absolute limits; headless). Below the fleet median."
+   ],
+   "strengths": "The button always says what to do next, and it runs smoothly (second-best perf in the batch).",
+   "problems": "Phone mid and finish: the full-width 'CLOSE DRAWER' button overlaps the bottom of the drawer box, and the toast is an empty pill. Phone start: the word pill is about 9px. The drawer is a flat glass rectangle, the same as 28 ARCHIVE. No characters. Desktop finished only after 78s of play (reason 'timeout' with a late reveal). The header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). Both sizes use the shared reveal.",
+   "improvements": [
+    "Set it apart from 28 ARCHIVE: a bedside or desk drawer at night that you pull open by its handle in one drag, drop the thought into and push shut with your thumb, one continuous gesture instead of three chores.",
+    "Characters: a restless character in bed can't sleep while the thoughts float around it. Each closed drawer settles it more, until it falls asleep hugging a pillow.",
+    "Unique finale: the drawer locks with a soft click, the desk lamp switches off, moonlight fills the room and a 'reopen when you choose' key glows on the nightstand.",
+    "Warm wood, a brass handle and lamplight with soft shadows, plus a drawer-slide sound and a thunk on closing.",
+    "Keep the button off the drawer, raise the word to 15px or more and use fewer, longer actions."
+   ],
+   "looks_like": "28 ARCHIVE (near-identical layout and gesture); cluster H with 21, 27 and 34",
+   "effort": "L"
+  },
+  {
+   "id": 39,
+   "name": "BLACK HOLE",
+   "scores": {
+    "A": 5,
+    "B": 4,
+    "C": 4,
+    "D": 1,
+    "E": 2,
+    "F": 5,
+    "G": 5,
+    "H": 5
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": true,
+   "character_role": "Absent. There is no character on phone or desktop.",
+   "finale": "Finish (phone finish tile): the black hole becomes a washed-out beige disc with a pale ring and a toast over the button. It reads as a rendering glitch, not a payoff. The reveal is the shared card. Not unique.",
+   "score_rationale": "A5: the black disc with a violet event-horizon rim and the white core flash (phone mid) has some depth, but there is no accretion disk, lensing or warping of the stars, and the finish frame is washed out. B4: a black-hole prop on the shared nebula. C4: you hold a button at the bottom (cluster D) rather than the hole itself. The word stretches into a thin streak (phone mid), a good idea but tiny, and the button shows no charge ring while held. D1: none. E2: the shared reveal. F5: the HOLD label is clear, but the word is about 8px and sits outside the hole by its rim (phone start), and the toast covers the label. G5: a big button, but the toast covers it, and the header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). H5: a giant thought looking tiny beside a bigger frame fits overwhelm, and the stretching gag adds humour, but it is too small to land.",
+   "perf_flags": [
+    "p95 433ms phone / 650ms desktop (over the absolute limits; headless). At the fleet median.",
+    "Longest task 803ms on desktop."
+   ],
+   "strengths": "The most striking central prop in the batch (a black disc with a rim glow), and the stretching ('spaghettify') idea is fun and on-theme.",
+   "problems": "Phone start: 'my boss' is about 8px and sits at the hole's left rim. Phone mid: the stretched word is a tiny unreadable streak, and the toast covers the middle of the button label. Phone finish: the hole turns pale beige, as if washed out. The hold happens on a button below the hole, not on the hole. No characters. The header title clipped to 'MOTIONAL RELEASE CONSO' under the LVL pill and the input text running under the mic icon (all 390 tiles). Both sizes use the shared reveal.",
+   "improvements": [
+    "Move the hold onto the black hole itself (press and hold the hole), with a charge ring around the finger; keep the button as a fallback.",
+    "Render a proper black hole: a swirling accretion disk with a brighter Doppler side, gravitational lensing of the star field and particles spiralling in.",
+    "Characters: a huge, puffed-up character wearing the word stretches comically as gravity rises, eyes wide, then gets sucked in with a pop. In the finale it reappears tiny and relaxed, floating out of a gentle white hole.",
+    "Unique finale: the black hole collapses into a bright quasar flash that settles into a calm, slowly turning galaxy in warm gold.",
+    "Fix the washed-out finish frame, raise the word to 15px or more and draw it large before it stretches, and keep toasts off the button."
+   ],
+   "looks_like": "11 PRESSURE and 13 SQUASH (cluster D: hold to threshold); the same full-width gradient button as 30 and 35",
+   "effort": "M"
+  }
+ ]
+}

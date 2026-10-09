@@ -1,0 +1,517 @@
+{
+ "games": [
+  {
+   "id": 61,
+   "name": "FREEZE",
+   "scores": {
+    "A": 4,
+    "B": 4,
+    "C": 4,
+    "D": 1,
+    "E": 2,
+    "F": 4,
+    "G": 4,
+    "H": 5
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "Absent from the game world. The only character art is a faint ambient decal that sits on the top-right corner of the 'me and' card and is half cut off at the left stage edge (phone start tile). No character reacts to taps, freezes or thaws.",
+   "finale": "Finish (phone and desktop finish tiles): six identical cards each with the same white starburst and ice wave, plus a tilted dark toast with unreadable text. Reveal: the shared text card ('CALMER ✓ THE LOOP GOT INTERRUPTED' on phone, 'PANIC ↓ YOU BROKE THE PATTERN' on desktop) with no character and no game-specific moment. The promised SHATTER never happens. Not unique.",
+   "score_rationale": "A4: flat neon gradient cards with no frost texture, refraction, light or depth; the ice is a white line starburst (phone mid/finish). B4: the 2x3 ice-card grid is its own layout, but it sits on the shared nebula backdrop. C4: tapping the word card is direct and the ice wave rises per tap (phone mid, card '2/3 ICE FILLS'), but there is no crack, shatter, squash or particles, and the toast covers the card being tapped. D1: no in-world characters. E2: the same starburst on every card plus the shared reveal card; no shatter or thaw. F4: the word on each card is about 10px and 'n/3 ICE FILLS' about 6px; the label is truncated to '0 / 6 FRO' by the progress bar (phone start); the instruction paragraph is cut off under the live-guide panel. G4: the cards use the width well as large targets, but the label is truncated, the paragraph is clipped and the header is clipped. H5: freezing a racing thought is a sound metaphor for panic, but there is no slowing or calming visual.",
+   "perf_flags": [
+    "p95 400ms phone / 850ms desktop, max 850ms (above the 34/120ms absolute limits; headless). Relatively about the fleet median (433/783).",
+    "long task max 1054ms on phone (91 long tasks)"
+   ],
+   "strengths": "The only game in this batch where you act on the word itself. The cards are big and thumb-friendly, and per-card ice progress gives readable step feedback. It has a dedicated engine (FreezeLiteralEngine), so it is a good base.",
+   "problems": "Phone start: the '0 / 6 FRO' label is truncated and the instruction paragraph is hidden under the live guide; a character decal overlaps the 'me and' card. Phone mid: a dark toast ('CLEAR +1', ~6px) covers half of the 'my boss' card. Phone finish: a tilted toast with unreadable text sits over the cards. 'n/3 ICE FILLS' is about 6px everywhere. No characters. The shatter is promised but never drawn. The reveal is the generic card (desktop and phone reveal tiles). phone header title clipped to 'MOTIONAL RELEASE CONSO' and overlapped by the LVL pill (all 390 tiles).",
+   "improvements": [
+    "Put an emotion character inside each card as the 'frozen' thought: tap 1 frost on its face, tap 2 it shivers and squashes, tap 3 it is encased in ice with a calm face. Thaw it to a smiling character in the finale.",
+    "Build a real FREEZE finale: all six ice blocks crack in a chain, shatter into refractive shards with a cold blue-to-warm light shift, and the freed characters float up calm.",
+    "Replace the flat gradient cards with frosted glass blocks: noise frost texture, inner refraction highlight, rim light and a cold fog layer with depth.",
+    "Add tap juice: a 0.08s squash on the card, a frost crackle burst at the touch point, and ice-crack lines that build up over the 3 taps.",
+    "Raise the card word to 15px or more and 'n/3' to 12px or more; stop the label truncating; move the paragraph above the live guide or shorten it.",
+    "Keep toasts off the card being tapped (dock them above the grid) and make their text 12px or more."
+   ],
+   "looks_like": "16, 41 (catalog A cluster); the gradient-card grid look recurs in other literal engines",
+   "effort": "M"
+  },
+  {
+   "id": 2,
+   "name": "CRUSH",
+   "scores": {
+    "A": 3,
+    "B": 2,
+    "C": 2,
+    "D": 2,
+    "E": 2,
+    "F": 4,
+    "G": 3,
+    "H": 3
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "About a 30px circular sticker inside a dark rounded-rectangle chip between two teal slabs. The face changes when the word changes (purple 'my boss' in the start tile, orange 'feel' in the finish tile) but never reacts to a crush: no recoil, flattening or relief. The phone reveal shows a huge happy blue character, but it is clipped off the bottom-right of the screen.",
+   "finale": "Finish tile: the slabs are in the same position as at start, with a toast over the button. Phone reveal: the card overflows the right edge ('THE PRESSURE CRACK' cut off) and a giant laughing character bubble is clipped at the bottom and right. Desktop reveal: the plain generic card. Not unique, and broken on phone.",
+   "score_rationale": "A3: flat teal slabs, a dark chip and a gradient pill on the shared nebula, with no materials or light (all tiles). B2: the same backdrop, ring, chip and pill layout as 5, 10, 11, 12, 13 and 20. C2: you tap a pill button, not the object; the jaws do not visibly close between the start, mid and finish phone tiles, and there is no squash or splat, only a ring flash and a toast. D2: a static sticker that only swaps per word. E2: no crush payoff; the phone reveal is clipped and overlapping. F4: the button text is clear ('THOUGHT MOVE · CRUSH 1/4'), but the toast hides it in the mid and finish tiles, and the word is about 9px. G3: the reveal card and character are clipped at 390 (phone reveal), the toast covers the main control, and the header is clipped. H3: rapid force suits anger, but with no visible crush there is no discharge.",
+   "perf_flags": [
+    "desktop p95 1150ms, fps 1.1, long task max 3689ms: worst in the batch and above the fleet desktop q75 (900ms)",
+    "phone p95 517ms, long task max 1292ms (above the absolute limits; headless)"
+   ],
+   "strengths": "A clear single-action affordance and a progress counter on the button. The phone reveal shows the intended negative-to-positive character idea (a big happy character), even though it renders badly.",
+   "problems": "Phone mid/finish: a toast ('+ STILL HIT · CHAIN ×3', ~6px header) covers the CRUSH button label. The jaws never move visibly. Phone reveal: the card runs off the right edge ('THE PRESSURE CRACK' clipped) and the circular character is clipped at the bottom and right, overlapping the card area. Ambient red faces sit over the live-guide panel (phone finish, right side). phone header title clipped to 'MOTIONAL RELEASE CONSO' and overlapped by the LVL pill (all 390 tiles).",
+   "improvements": [
+    "Make the thought blob the touch target: each tap slams the hydraulic jaws (anticipation lift, 0.1s smash, screen shake) and squashes the character-blob flat with a splat of goo particles.",
+    "The character inside reacts per hit: angry face, then squished and dizzy, then flattened into a calm pancake that pops back round and smiling.",
+    "Unique finale: the press crunches the thought into a tiny glowing cube that cracks open into a warm light burst, and the freed character stretches and smiles.",
+    "Fix the reveal layout at 390: centre the card in the viewport and keep the character bubble fully inside the screen, below or above the text with no overlap.",
+    "Give the jaws metal material: brushed steel gradient, rim light, hydraulic pistons and a warm industrial key light, so this is a distinct crusher scene and not the shared nebula."
+   ],
+   "looks_like": "Visually near-identical to 5, 10, 11, 12, 13 and 20 (chip + pill button + nebula); mechanic cluster 12, 30, 53, 54",
+   "effort": "L"
+  },
+  {
+   "id": 5,
+   "name": "HAMMER",
+   "scores": {
+    "A": 3,
+    "B": 2,
+    "C": 1,
+    "D": 2,
+    "E": 2,
+    "F": 3,
+    "G": 3,
+    "H": 2
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "A 30px sticker in a dark chip above a timing lane. In the phone mid and finish tiles the chip is sliced vertically in half: a hard clip cuts away the right side of the character and its word ('me', 'pa'). It changes face per word (orange, then blue, then red) but never reacts to a hammer strike.",
+   "finale": "Finish tile: the lane and marker are unchanged and a toast covers the button. Desktop reveal tile: there is NO card at all, only floating PREVIOUS and NEXT pills on an empty backdrop. Phone reveal: the generic 'STEADIER ✓ YOU BROKE THE HOLD' card. Not unique, and missing on desktop.",
+   "score_rationale": "A3: a thin lane with a white tick and a cyan block; there is no hammer drawn anywhere (all tiles). B2: the shared backdrop and chip layout. C1: per the catalog, any tap advances, so the 'TIME THE HIT' sweet-spot lane is decorative; no swing, impact, shake or particles are visible. D2: a static sticker, and clipped. E2: the desktop reveal is empty; the phone reveal is generic. F3: the guide says 'Time the hit', which is untrue; the guide's 'How to play/Next move' row is blank in the phone mid and finish tiles; the toast hides the button. G3: the character chip is sliced (phone mid/finish), the toast covers the control, and the header is clipped. H2: the precision-over-rush message is undermined by a fake timing mechanic.",
+   "perf_flags": [
+    "phone p95 917ms, max 917ms: about 2x the fleet phone median (433ms) and above q75 (600ms)",
+    "long task max 1461ms on phone; desktop p95 833ms"
+   ],
+   "strengths": "The lane and sweet-spot layout already suggests a timing game that could become a real skill moment, and the button is a large thumb target.",
+   "problems": "Phone mid/finish: the character chip is cut in half by a vertical clip. Desktop reveal: the card is missing (only PREVIOUS/NEXT pills). Phone mid/finish: the toast ('SHIFTED' ~6px) covers the center of the HAMMER button, and the live-guide step row is empty. No hammer art. The timing is fake. phone header title clipped to 'MOTIONAL RELEASE CONSO' and overlapped by the LVL pill (all 390 tiles).",
+   "improvements": [
+    "Make timing real: the marker sweeps the lane and a hit in the sweet spot cracks the thought; a miss gives a soft 'clunk' with no penalty. Show the window glowing.",
+    "Draw a hammer (a toon mallet with wood and metal materials) that winds up with anticipation, then strikes the character-stone with squash, sparks and camera shake.",
+    "The character sits on an anvil as a stone-crusted angry face; each good hit knocks off crust until the calm character inside is revealed. This becomes the arc of the game.",
+    "Unique finale: the last perfect strike rings a bell, the stone shell bursts into gold dust and the freed character bounces with a happy squash-stretch.",
+    "Fix the chip clipping (overflow or mask bug in mid/finish) and the empty desktop reveal card."
+   ],
+   "looks_like": "Visually near-identical to 2, 10, 13 and 20; mechanic cluster 10, 35 (one tap per round)",
+   "effort": "L"
+  },
+  {
+   "id": 7,
+   "name": "PIN POP",
+   "scores": {
+    "A": 4,
+    "B": 3,
+    "C": 3,
+    "D": 3,
+    "E": 2,
+    "F": 4,
+    "G": 3,
+    "H": 4
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "A larger (~60px) character inside the glass balloon: a crying blue character at start, a sleepy calm blue one at mid, a pink one at finish. The faces vary per word but do not respond to the pin: no inflation panic, no flinch, no deflate-to-relief. The image sits inside a dark rounded-square box within the balloon (all tiles).",
+   "finale": "No pop is visible in the finish tile: the balloon is still intact and a toast covers the pin and runs off the right edge. Reveal: the generic card ('CALMER ✓ THAT HIT CLEARED SPACE'). Not unique.",
+   "score_rationale": "A4: the glass sphere with rim light is the best surface in this cluster, but the rest is the flat shared look. B3: a balloon on the shared nebula. C3: a horizontal drag of a small pin slider (phone mid shows the drag line); no stretch, wobble, inflation or pop burst is visible in any tile. D3: the characters are bigger and expressive, but they are not reacting to play and are boxed. E2: no pop and a generic reveal. F4: 'Drag pin → pop' is stated, but the pin is small, its 'PIN' label is about 7px, and nothing shows the direction to drag. G3: the dragged pin is clipped at the right edge at 390 (phone mid) and the toast runs off the right edge (phone finish). H4: 'big feeling, mostly air' is a great reframe for catastrophising, but it is not delivered.",
+   "perf_flags": [
+    "phone p95 567ms; desktop p95 700ms; long task max 1218ms on phone (above the absolute limits; headless; about the fleet median)"
+   ],
+   "strengths": "A good therapeutic metaphor; the character art inside the balloon is the most expressive in the batch, and the glass bubble has some depth.",
+   "problems": "Phone mid: the pin handle is pushed off the right edge of the stage and clipped. Phone finish: a toast overlaps the pin and is cut by the right edge. The character sits in a dark square box inside the balloon. There is no inflation or pop. Ambient red faces overlap the live-guide text row (phone mid, right). phone header title clipped to 'MOTIONAL RELEASE CONSO' and overlapped by the LVL pill (all 390 tiles).",
+   "improvements": [
+    "Let the balloon inflate as the thought grows (the character inside squashed against the walls, panicking), then the player drags the pin freely in 2D to it; contact gives anticipation (the balloon flinches), then a POP with rubber shreds and confetti air.",
+    "On the pop the character deflates comically, flying around the stage like a released balloon, then lands small and relieved with a sigh-puff.",
+    "Show an aim hint: a dotted path or glint from pin to balloon, and a larger 56px pin with a readable label.",
+    "Unique finale: all six balloons pop in a satisfying chain, the 'air' becomes soft bubbles that drift up and spell the reframe word.",
+    "Remove the dark square box behind the character (circular image only) and keep the pin travel inside 390px."
+   ],
+   "looks_like": "Mechanic cluster 44, 45, 47, 49 (one horizontal drag); sphere look similar to 12",
+   "effort": "L"
+  },
+  {
+   "id": 8,
+   "name": "METEOR",
+   "scores": {
+    "A": 3,
+    "B": 2,
+    "C": 1,
+    "D": 1,
+    "E": 1,
+    "F": 2,
+    "G": 3,
+    "H": 3
+   },
+   "functional_ready": false,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "None in the world. Only blurred ambient red faces at the stage edges, one of which overlaps the live-guide panel (phone start, right).",
+   "finale": "Never reached: stuck at 0% on both sizes (18 phone and 7 desktop pull attempts in 46s); REVEAL-NONE tiles.",
+   "score_rationale": "A3: a grey translucent ellipse 'rock' with no rock texture, fire trail or space lighting (all tiles). B2: shared nebula. C1: the pull/flick never registered; there is no slingshot band, aim line or anticipation; and the drag appears to trigger native text drag and selection: the rock label became '1 61 61' and the input became '1/61/6my boss yelled…' (phone mid/end). D1: no character. E1: no finale reached. F2: 'Pull. Flick. Launch.' with no direction cue; the word on the rock is about 9px. G3: the rock is a large target, but the input text is polluted and the header is clipped. H3: flinging a worry into space is a good distancing concept, but it is unplayable here.",
+   "perf_flags": [
+    "did not finish (stuck at 0% on both sizes)",
+    "desktop p95 717ms; phone p95 200ms (low only because nothing animates)"
+   ],
+   "strengths": "A strong distancing concept (launching the thought away into space). The large central target is thumb-friendly.",
+   "problems": "Phone mid/end: the rock label is corrupted to '1 61 61' and the user's text input is overwritten with '1 / 61 / 6my boss yelled…', which suggests the pull drag starts a native text selection or drag-and-drop. Progress 0% in all tiles. No aim affordance. No character. No reveal. phone header title clipped to 'MOTIONAL RELEASE CONSO' and overlapped by the LVL pill (all 390 tiles).",
+   "improvements": [
+    "Fix the gesture: pointer capture on the rock, user-select:none and draggable=false on the stage text, and accept a pull in any direction, launching opposite to it.",
+    "Draw a slingshot: elastic band from two posts, a stretch arc with tension squash on the rock, a dotted trajectory preview, and release recoil.",
+    "Make the rock a characterful meteor: an angry character face in molten rock that worries as it is pulled back, then whooshes away with a fire trail and shrinks to a twinkle.",
+    "Unique finale: all six launched meteors become a gentle meteor shower far away, then a calm constellation forms; the character waves from the distance.",
+    "Space environment with depth: a planet horizon, parallax stars and warm sun rim light, instead of the shared nebula."
+   ],
+   "looks_like": "Mechanic cluster 24, 26 (slingshot); the grey ellipse resembles 12's ball on the same backdrop",
+   "effort": "L"
+  },
+  {
+   "id": 9,
+   "name": "LASER SLICE",
+   "scores": {
+    "A": 4,
+    "B": 3,
+    "C": 3,
+    "D": 1,
+    "E": 2,
+    "F": 3,
+    "G": 3,
+    "H": 4
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "None in the world. The word bubbles are plain gradient circles; ambient red faces overlap the live-guide panel (phone start, bottom right).",
+   "finale": "Finish tile: a soft white glow in the middle, a toast '+ STILL HIT · CHAIN ×6', and a leftover 'me and 0/3' bubble still on stage while progress reads 100% (5/6 destroyed). Desktop reveal tile: the card is missing (only PREVIOUS/NEXT pills). Phone reveal: the generic card. Not unique.",
+   "score_rationale": "A4: glossy gradient bubbles and a laser bolt sprite with glow (phone mid) have some shine, but the scene is flat neon. B3: bubbles on the shared nebula, near-identical to the bubble games 3, 4, 16 and 21. C3: tap to fire, shown as a laser bolt and a 'LASER 2/3' ring (phone mid), but the guide says 'Swipe to slice' and no word is ever cut into fragments. D1: no characters. E2: a generic glow and the shared reveal; the desktop reveal is missing. F3: 'Swipe to slice' contradicts the tap mechanic; the 'ACTIVATE THE LASER' dock is not visible at 390, and its explanation is hidden under the guide panel (phone start). G3: the 'yelled at' and 'feel' bubbles are clipped at the right stage edge (phone start/mid), the dock is missing on phone, and the header is clipped. H4: slicing a sentence into pieces (defusion) is a strong idea, but it is not visualised.",
+   "perf_flags": [
+    "phone p95 733ms (above fleet q75 600ms), long task max 1009ms; desktop p95 783ms"
+   ],
+   "strengths": "A dedicated engine (LaserSliceEngine) with per-bubble hit counters, and the laser bolt sprite gives some feedback. A strong cognitive-defusion concept.",
+   "problems": "Phone start/mid: the right-hand bubbles are clipped by the stage edge. Phone start: the laser dock is invisible and its instruction text is hidden behind the live guide. Phone finish: a bubble is left over at 100%, and the toast overlaps a bubble. Desktop reveal: no card. The guide promises a swipe while the game uses taps. phone header title clipped to 'MOTIONAL RELEASE CONSO' and overlapped by the LVL pill (all 390 tiles).",
+   "improvements": [
+    "Make it a real swipe-to-slice: a finger trail draws a glowing laser line, and bubbles crossed by it split along the cut with the word halves sliding apart and fading (literal defusion).",
+    "Put a character inside each thought bubble that flinches at the laser, then pops out of the halves relieved and floats away.",
+    "Unique finale: the last slice fires a prism beam that refracts through all the fragments into a rainbow, which reforms into the calm reframe word.",
+    "Lay the bubbles out inside the 390 safe area (no clipping), drop the separate 'activate laser' dock step, or make it visible on phone.",
+    "Clear leftover bubbles before 100%, and fix the missing desktop reveal card."
+   ],
+   "looks_like": "Bubble look shared with 3, 4, 16 and 21; catalog cluster 3, 4, 16",
+   "effort": "L"
+  },
+  {
+   "id": 10,
+   "name": "DOMINO DROP",
+   "scores": {
+    "A": 4,
+    "B": 3,
+    "C": 2,
+    "D": 2,
+    "E": 3,
+    "F": 4,
+    "G": 3,
+    "H": 3
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "A 30px sticker in a dark chip below the dominoes. The face changes per word, and a white glow appears on it in the finish tile, but it does not watch, flinch or cheer as the dominoes fall.",
+   "finale": "Per round the domino row tips over at an angle (phone finish tile), which is the closest thing to a moment, but it runs off the right edge of the stage. Desktop reveal: no card. Phone reveal: the generic 'PANIC ↓ YOU BROKE THE HOLD' card. Not unique; the promised reveal of the trigger word is absent.",
+   "score_rationale": "A4: glossy gradient domino slabs with a decent tilt in the finish tile, but no wood or material, shadows or contact light. B3: a domino row is a distinct prop on the shared chip and pill layout. C2: one tap then watch, with no chain timing, clack or weight; you tap a button, not the domino. D2: a static boxed sticker. E3: the topple is a small per-round beat, but the finale is the shared card and the desktop reveal is missing. F4: 'TIP FIRST DOMINO' is clear, but the dominoes have no words, so the 'spiral' message is lost, and the toast hides the button. G3: the fallen dominoes are clipped at the right edge (phone finish), the toast covers the control, and the header is clipped. H3: a passive tap-then-watch loop does little for overthinking.",
+   "perf_flags": [
+    "desktop p95 1100ms, long task max 2395ms (2nd worst in batch, above the fleet q75)",
+    "phone p95 733ms (above the fleet q75)"
+   ],
+   "strengths": "The domino topple is the only per-round physical event among the legacy button games, and it reads at a glance.",
+   "problems": "Phone finish: the toppled dominoes overflow the stage on the right; the toast ('MOMENT SHIFT CAPTURED', ~6px) covers the TIP button. The dominoes carry no words. The character chip is static. Desktop reveal: the card is missing. phone header title clipped to 'MOTIONAL RELEASE CONSO' and overlapped by the LVL pill (all 390 tiles).",
+   "improvements": [
+    "Write each word of the spiral on a domino; the player flicks the first domino directly and the chain falls with accelerating clacks, each piece's word dimming as it lands.",
+    "The chain's end knocks over a final big 'trigger' domino that reveals the root word (the catalog promise), and the character, previously anxious and watching, sighs in relief.",
+    "Add weight: anticipation wobble, squash on impact, dust puffs, a camera follow along the chain, and warm table-top lighting with soft contact shadows.",
+    "Unique finale: the fallen dominoes slide together into a bridge or path that the character happily walks across.",
+    "Keep the domino line within the 390 stage (wrap it into a spiral path), and fix the missing desktop reveal."
+   ],
+   "looks_like": "Visually near-identical to 2 and 5 (chip + pill button); mechanic cluster 22, 23, 35",
+   "effort": "L"
+  },
+  {
+   "id": 11,
+   "name": "PRESSURE POP",
+   "scores": {
+    "A": 3,
+    "B": 3,
+    "C": 3,
+    "D": 2,
+    "E": 2,
+    "F": 3,
+    "G": 4,
+    "H": 5
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "A 30px sticker in a dark chip inside a glass capsule outline. The faces vary per word (blue, purple, dark), but it does not swell, sweat or relax with the pressure. A green 'needle' arc cuts across the chip and its word (phone start).",
+   "finale": "Finish tile: a ring pulse and a toast '+ STILL HIT · CHAIN ×6' over the button. Reveal: the generic 'PANIC ↓ THAT HIT CLEARED SPACE' card. No steam vent or pop. Not unique.",
+   "score_rationale": "A3: a capsule outline with a stray green stroke; the gauge looks unfinished, with no metal, glass or steam (all tiles). B3: a distinct prop on the shared backdrop. C3: the hold-and-release mechanic is good on paper, but no visible meter fills and no sweet zone is drawn at 390 (phone start/mid), so the hold has no visible build-up. D2: a static boxed sticker. E2: generic. F3: the button says 'RELEASE IN SWEET ZONE', but the zone is not shown, and the needle arc reads as a rendering glitch crossing the character card. G4: a big touch target, nothing else clipped, but the toast covers the button label and the header is clipped. H5: hold-then-release is the best regulation mechanic here (like a controlled exhale), but the misses are punishing.",
+   "perf_flags": [
+    "phone p95 433ms (= fleet median); desktop p95 667ms; long task max 797ms: relatively light"
+   ],
+   "strengths": "The strongest self-regulation mechanic in the batch (hold to build, release in a window, like an exhale), and the lightest perf profile.",
+   "problems": "Phone start: the green arc slices through the capsule and the character card. No meter fill or sweet-zone band is visible in any phone tile. Phone mid/finish: toasts cover the button's centre text. The chip is boxed. The reveal is generic. phone header title clipped to 'MOTIONAL RELEASE CONSO' and overlapped by the LVL pill (all 390 tiles).",
+   "improvements": [
+    "Make the capsule itself the press target: the character inside inflates and turns red, with steam wisps and rattling bolts as pressure builds; the gauge needle sweeps on a drawn dial with a glowing green sweet-zone band.",
+    "On a good release: a valve hisses and a steam jet blows, the character deflates with a long relieved exhale and calm face, and a soft breath cue syncs with the sound.",
+    "On a miss, bleed pressure gently instead of resetting to 0, and show 'too early' or 'too late' ghost markers.",
+    "Unique finale: all six vents release together into a warm steam cloud that clears to a sunrise, with the characters lounging.",
+    "Fix the pointer-leave bug (charging continues off-button) and keep toasts off the control."
+   ],
+   "looks_like": "Mechanic cluster 13, 39 (hold-to-threshold); visually the same chip and pill layout as 2 and 5",
+   "effort": "M"
+  },
+  {
+   "id": 12,
+   "name": "BOUNCE OUT",
+   "scores": {
+    "A": 4,
+    "B": 2,
+    "C": 2,
+    "D": 1,
+    "E": 2,
+    "F": 4,
+    "G": 4,
+    "H": 3
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "None in the world. Only ambient red faces, which overlap the live-guide panel (phone finish, confirmed at zoom).",
+   "finale": "Finish tile: the ball is the same size as at start (no energy loss), and a toast covers the paddle button. Reveal: the generic 'PANIC ↓ THE PRESSURE CRACKED' card. Not unique.",
+   "score_rationale": "A4: a glossy blue sphere with a specular highlight is the nicest material in the batch, but the paddle is a flat gradient bar and the stage is empty. B2: the shared backdrop; close to 7 and 8. C2: you tap a 'HIT PADDLE' button; the ball neither moves nor shrinks between the start, mid and finish tiles, and the paddle is static. D1: no characters. E2: generic. F4: the button is clear, but the word on the ball is about 9px grey-on-blue and the guide step row is blank in the phone mid and finish tiles. G4: it fits at 390, but the toast covers the button and the header is clipped. H3: 'repeats lose energy' (rumination fading) is not shown.",
+   "perf_flags": [
+    "phone p95 367ms (below the fleet median); desktop p95 900ms (at the fleet q75)"
+   ],
+   "strengths": "A well-rendered sphere with highlights; a simple, legible layout.",
+   "problems": "The ball never shrinks or bounces in any tile. The paddle is static. The word on the ball is low-contrast and about 9px. The live-guide 'Next move' row is empty in the phone mid and finish tiles. Ambient faces overlap the guide panel. The toast covers the HIT PADDLE label. phone header title clipped to 'MOTIONAL RELEASE CONSO' and overlapped by the LVL pill (all 390 tiles).",
+   "improvements": [
+    "Real bounce physics: the player swipes or taps the paddle under a falling ball; each hit squash-stretches the ball, and it returns lower and smaller each time (energy loss = rumination fading).",
+    "Make the ball a character (the rumination thought) that starts frantic and over-energetic, gets dizzy, then shrinks to a sleepy, calm little ball that rolls away.",
+    "Unique finale: the last tiny bounce settles into a cozy nest or pocket with a soft thud, the light warms, and the character yawns.",
+    "Give the court a world: a glowing arcade court or night playground with floor reflections and a rim-lit paddle with weight.",
+    "Raise the word to 15px or more with a dark outline; fill the guide 'Next move' row."
+   ],
+   "looks_like": "Mechanic cluster 2; the sphere look matches 7 and 8 on the same backdrop",
+   "effort": "L"
+  },
+  {
+   "id": 13,
+   "name": "SQUASH",
+   "scores": {
+    "A": 2,
+    "B": 1,
+    "C": 2,
+    "D": 1,
+    "E": 2,
+    "F": 3,
+    "G": 4,
+    "H": 3
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "None. The stage holds only the tiny word text 'my boss' (about 9px) above a giant button; ambient faces drift over the guide panel (phone start, right).",
+   "finale": "Finish tile: the word is reduced to a near-invisible dash above the button, with a toast on the button. Desktop reveal tile: no card (only PREVIOUS/NEXT pills). Phone reveal: the generic 'PANIC ↓ YOU BROKE THE HOLD' card. Not unique.",
+   "score_rationale": "A2: an empty stage, with nothing to squash rendered except 9px text (phone start/finish). B1: nothing but the shared backdrop. C2: hold a button; only concentric rings pulse (phone mid), and the squash is a 9px word flattening into a dash. D1: no characters. E2: the desktop reveal is missing and the phone reveal is generic. F3: the button is clear, but there is no visible object or meter, and the 'halved on early release' rule is unexplained. G4: one large touch target that fits; the toast covers it and the header is clipped. H3: an isometric hold is apt for anger, but there is no visible tension or release.",
+   "perf_flags": [
+    "phone p95 883ms (about 2x the fleet median), long task max 1322ms; desktop p95 900ms"
+   ],
+   "strengths": "A large, easy press-and-hold target; the concept of tension and then letting go is sound.",
+   "problems": "Phone start/finish: the stage is effectively empty, with only 9px word text. No squash object, no meter, no character. Phone mid/finish: the toast covers the button. Desktop reveal: the card is missing. The live-guide step row is empty in the finish tile. phone header title clipped to 'MOTIONAL RELEASE CONSO' and overlapped by the LVL pill (all 390 tiles).",
+   "improvements": [
+    "Put a big squishy jelly character carrying the thought word on stage; pressing on it (not a button) presses it down with progressive squash, wobble and a visible pressure meter ring.",
+    "Show tension: the character's cheeks puff, it vibrates and goes red at about 80%; on release it springs up with overshoot and lands soft and calm.",
+    "Unique finale: a final full squash compresses the six words into a single gem, which pops out shining and is caught by the relieved character.",
+    "Explain or remove the early-release halving; show the meter so the player knows how long to hold.",
+    "Fix the missing desktop reveal card."
+   ],
+   "looks_like": "Mechanic cluster 39, 11 (hold); the visual layout is the same as 2 and 5 minus the object",
+   "effort": "L"
+  },
+  {
+   "id": 14,
+   "name": "CRUMPLE",
+   "scores": {
+    "A": 4,
+    "B": 4,
+    "C": 2,
+    "D": 1,
+    "E": 1,
+    "F": 2,
+    "G": 3,
+    "H": 4
+   },
+   "functional_ready": false,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "None in the world. Ambient red faces sit over the live-guide 'Next move' row (phone mid) and at the stage corners.",
+   "finale": "Never reached: stuck at 50% on word 1 of 6 on both sizes (61 actions); REVEAL-NONE tiles.",
+   "score_rationale": "A4: a white paper sheet with a perspective skew has some material sense, but it is flat pure white with no texture, folds or shadow (phone mid/end). B4: a paper sheet is a distinct object, though on the shared backdrop. C2: you tap corner dots; the paper only skews and never crumples, and the remaining corner dots slide under the paper (phone mid: bottom corners half hidden), so progress stalls. D1: no characters. E1: never reached. F2: the word on the paper is about 8px with a strike-through look; enabled and disabled corners look identical; the toast covers the top-right corner target (phone mid). G3: corner targets are occluded or overlapped at 390 and the header is clipped. H4: balling up a 'bad draft' suits shame and regret, but it is not delivered.",
+   "perf_flags": [
+    "did not finish (stuck at 50% on both sizes)",
+    "desktop p95 950ms (above the fleet q75)"
+   ],
+   "strengths": "A paper sheet is a recognisable, distinct object with a good therapeutic metaphor, and the corner taps are a start toward tactile folding.",
+   "problems": "Phone mid/end: after two corners, the remaining corner handles are hidden under the skewed paper and the toast covers the top-right corner, so the game cannot be completed. The word is about 8px. No crumple animation. No character. No finale. phone header title clipped to 'MOTIONAL RELEASE CONSO' and overlapped by the LVL pill (all 390 tiles).",
+   "improvements": [
+    "Turn this into a real pinch or drag-inward crumple: the sheet deforms with fold creases and shading as fingers pull the corners in (a mesh or SVG warp), and paper crinkle sound follows the gesture.",
+    "Keep the corner handles on top (z-index above the paper) and highlight only the live corner; or drop the fixed order entirely.",
+    "Add a character as the 'author' at a desk who winces at the bad draft, then grins as it is balled up and tossed.",
+    "Unique finale: the paper ball arcs into a wastebasket (with a swish and rim bounce), and a fresh blank page glows on the desk in warm lamp light.",
+    "Raise the word text to 15px or more and remove the strike-through artifact."
+   ],
+   "looks_like": "Mechanic cluster 17, 33, 37, 51, 55 (fixed-order taps)",
+   "effort": "L"
+  },
+  {
+   "id": 17,
+   "name": "BOSS BATTLE",
+   "scores": {
+    "A": 3,
+    "B": 3,
+    "C": 2,
+    "D": 2,
+    "E": 1,
+    "F": 2,
+    "G": 4,
+    "H": 3
+   },
+   "functional_ready": false,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "A 30px blue character sticker in a dark chip in the middle of a purple blob 'boss'. The same static face appears in the start, mid and end tiles, with no hit recoil or shrinking. The 'boss' itself has no face or creature design.",
+   "finale": "Never reached: stuck at 30% on both sizes (61 or more actions); REVEAL-NONE tiles.",
+   "score_rationale": "A3: a purple blurred oval with gradient dots and an HP bar, with no creature, lighting or arena (all tiles). B3: a purple arena oval on the shared backdrop. C2: sequence taps on identical dots; spent dots only dim (phone mid), and wrong taps are silently ignored, so play stalls. D2: a static sticker. E1: never reached. F2: all weak spots are identical with no 'live' cue, which the catalog confirms and the tiles show. G4: centred 40px dots fit at 390, but the header is clipped. H3: 'scary gets smaller when its pattern is visible' is good, but the boss never shrinks.",
+   "perf_flags": [
+    "did not finish (stuck at 30% on both sizes)",
+    "desktop p95 850ms; phone p95 433ms"
+   ],
+   "strengths": "The HP bar is a clear progress read, and the boss-fight framing is motivating for fear.",
+   "problems": "Phone mid/end: identical cyan or purple dots with no indicator of which is live; progress is frozen at 30%. The boss is a blob with no character. The character chip is static. No reveal. Ambient faces overlap the guide panel. phone header title clipped to 'MOTIONAL RELEASE CONSO' and overlapped by the LVL pill (all 390 tiles).",
+   "improvements": [
+    "Design the boss as a big, goofy fear-monster built from the thought word that telegraphs each attack and glows the next weak spot (an anticipation pose and a pulsing target ring) so the pattern is learnable.",
+    "Every hit: the boss recoils, squashes and shrinks a size step while its scary face becomes more sheepish; a wrong tap gives a soft 'bonk' cue, not silence.",
+    "An emotion character as the player's sidekick in the arena, cheering, dodging and celebrating hits.",
+    "Unique finale: the boss shrinks to a tiny harmless pet that hops into the character's arms, with a confetti and spotlight win moment.",
+    "Fix the stall: accept any lit spot or clearly mark the live one; cut the 30 taps to about 12."
+   ],
+   "looks_like": "Mechanic cluster 14, 33, 42; visually the chip-on-blob of 2 and 20",
+   "effort": "L"
+  },
+  {
+   "id": 20,
+   "name": "GLITCH OUT",
+   "scores": {
+    "A": 3,
+    "B": 2,
+    "C": 2,
+    "D": 2,
+    "E": 2,
+    "F": 2,
+    "G": 4,
+    "H": 3
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "A 30px sticker in a dark chip inside a glass panel above three symbol buttons. The faces change per word (blue, then red in the finish tile), with no glitching, scrambling or relief response.",
+   "finale": "Finish tile: a toast covers the third symbol tile; no glitch effect is visible. Desktop reveal tile: no card (only PREVIOUS/NEXT pills). Phone reveal: the generic 'STEADIER ✓ YOU BROKE THE HOLD' card. Not unique.",
+   "score_rationale": "A3: three flat gradient tiles with outline symbols in a panel; no CRT, RGB-split or scanline treatment (all tiles). B2: a shared backdrop and panel look. C2: you tap abstract symbols; no glitch or scramble feedback appears in the mid or finish tiles. D2: a static boxed sticker. E2: the desktop reveal is missing and the phone reveal is generic. F2: △◇□ with no shown target sequence; 'Tap the glitches', but nothing glitches; the guide step row is blank (phone mid/finish). G4: large tiles fit at 390, but the toast covers the tiles and the header is clipped. H3: pattern interruption is invisible.",
+   "perf_flags": [
+    "phone p95 583ms, long task count 105 (high); desktop p95 783ms"
+   ],
+   "strengths": "Large, well-spaced tap tiles that are thumb-friendly.",
+   "problems": "Phone mid/finish: the toast hides the middle or right symbol tile; the live-guide step row is empty; no glitch visuals. Desktop reveal: the card is missing. Ambient faces overlap the guide panel (confirmed at zoom). phone header title clipped to 'MOTIONAL RELEASE CONSO' and overlapped by the LVL pill (all 390 tiles).",
+   "improvements": [
+    "Show the intrusive thought as a looping glitchy text loop in a retro monitor; a symbol flickers on screen and tapping the matching symbol injects a glitch: RGB split, scanline tear and letters scrambling.",
+    "The character lives inside the monitor: stuck repeating the loop with a robotic face; each correct glitch makes it blink, unstick and finally smile as the screen resets.",
+    "Unique finale: the screen overloads in a cartoon CRT power-down to a white dot, then reboots into a calm pastel desktop with the reframe word.",
+    "Show the target symbol clearly (a big pulsing prompt), and give a gentle wrong-tap cue instead of a silent reset.",
+    "Fix the missing desktop reveal card and fill the guide 'Next move' row."
+   ],
+   "looks_like": "Visually near-identical to 2, 5 and 10 (chip + controls on nebula); mechanic cluster 14, 17",
+   "effort": "L"
+  },
+  {
+   "id": 21,
+   "name": "BIN",
+   "scores": {
+    "A": 4,
+    "B": 4,
+    "C": 2,
+    "D": 1,
+    "E": 1,
+    "F": 3,
+    "G": 3,
+    "H": 5
+   },
+   "functional_ready": false,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "None in the world. Faint character decals sit behind the word bubbles and are clipped at the stage edges (phone start, left of 'my boss' and right of 'feel').",
+   "finale": "Never reached: stuck at 0% on both sizes (27 phone and 11 desktop drags); REVEAL-NONE tiles.",
+   "score_rationale": "A4: the glowing cyan bin with a rim highlight and glossy word bubbles is one of the better props, but it is flat neon with no depth (phone start). B4: a bin and scattered bubbles is a distinct scene, but on the shared backdrop and close to 27 and 34. C2: the drags never registered; the mid and end tiles are identical to start, with no thrown bubble, arc or bin reaction. D1: no characters. E1: never reached. F3: the 'DRAG' hint inside the bubbles is about 7px and low-contrast; the instruction paragraph under the bin is cut off by the live-guide panel (phone start). G3: the 'BIN THEM ALL' button is not visible in any 390 tile (desktop has it), the paragraph is clipped, and the header is clipped. H5: physically throwing clutter away suits overwhelm well.",
+   "perf_flags": [
+    "did not finish (stuck at 0% on both sizes)",
+    "phone p95 200ms and desktop p95 650ms (light, but idle)"
+   ],
+   "strengths": "A direct-manipulation drag concept with a dedicated engine; the bin prop reads instantly; good relief fit.",
+   "problems": "Phone and desktop mid/end: no progress after 27 or 11 drags. Phone start: the 'No scrolling. Grab any circular word bubble…' paragraph is hidden under the live guide; 'BIN THEM ALL' is missing at 390; the 'DRAG' hints are about 7px. No character. No reveal. phone header title clipped to 'MOTIONAL RELEASE CONSO' and overlapped by the LVL pill (all 390 tiles).",
+   "improvements": [
+    "Fix the drag-to-bin hit test, with pointer capture and a generous mouth zone; the bin lid flips open and the bin 'gulps' with a squash when a bubble lands.",
+    "Make the bin a character (a friendly trash-can buddy) that opens its mouth, chomps each worry and burps a tiny sparkle, getting happier with each word.",
+    "Throw physics: a flick arc with spin, a bounce off the rim on near-misses, and a swoosh and thunk sound.",
+    "Unique finale: the full bin's lid slams, it rolls off to a recycling truck, and the cleared stage blooms into a tidy, sunlit room.",
+    "Show 'BIN THEM ALL' at 390, move or shorten the paragraph so the guide does not cover it, and raise the 'DRAG' hint to 12px or more."
+   ],
+   "looks_like": "Mechanic cluster 27, 34; bubble style similar to 9",
+   "effort": "M"
+  }
+ ]
+}

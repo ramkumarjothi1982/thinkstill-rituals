@@ -1,0 +1,463 @@
+{
+ "games": [
+  {
+   "id": 99,
+   "name": "THE ECHO CHAMBER",
+   "scores": {
+    "A": 3,
+    "B": 2,
+    "C": 3,
+    "D": 1,
+    "E": 2,
+    "F": 2,
+    "G": 3,
+    "H": 4
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "There are no characters in the play area. The five hold targets are plain cyan-to-magenta gradient discs with no faces (phone start zoom). The only characters are faint, dim face bubbles drifting in the background starfield (phone start, left and right edges). They never react, and nothing changes as each echo is quieted.",
+   "finale": "Phone finish: the discs are gone except one under a white-bordered dark capsule and a '+STILL HIT - CHAIN x6' toast, with a pink radial glow and a target ring in the centre. Nothing shows an echo collapsing, and there is no sound-wave visual. The reveal on both sizes is the shared 'FEEL A SHIFT?' card on a dark backdrop. Not unique.",
+   "score_rationale": "A3: flat gradient discs with no material, light source or shadow, on the shared nebula (phone start). B2: the shared nebula and concentric-ring stage. Nothing reads as a chamber or cave, and there are no reverberation rings (phone start and mid). C3: a 5-second hold shown only by a '5.0s' label. In phone mid a dark capsule covers the held disc, and no echo ghosts shrink. Per the catalog, letting go resets progress to 0. D1: no characters in play. E2: the shared glow and toast, then the shared reveal card. F2: the user's words inside the discs are about 4 px and unreadable (phone start zoom: 'my boss', 'yelled at'). A down arrow is used for a hold, and the guide says 'Hold source. Collapse the echo.' G3: the targets are large (about 60 px), but the text is unreadable, the toast sits on a disc (phone finish) and the header is clipped ('MOTIONAL RELEASE CONSO'). H4: quieting echoes by holding suits rumination in principle, but without echo visuals it reads as holding a button for 5 s.",
+   "perf_flags": [
+    "phone p95/max 400 ms (fleet phone median 433), 29 long tasks totalling 2.1 s (max 175 ms): average",
+    "desktop p95 750 ms (fleet desktop median 783): average",
+    "heap +1.6 MB phone / +5.3 MB desktop, no errors",
+    "absolute thresholds (p95 > 34 ms, frame > 120 ms) exceeded, as for every game under headless software rendering"
+   ],
+   "strengths": "The hold-to-quiet idea suits rumination, and the targets are big. The phone finish has a soft pink radial glow that hints at a calmer palette.",
+   "problems": "Phone start zoom: words inside the discs are about 4 px. Phone mid: a dark, white-bordered capsule covers the held disc, a box over a circle that fails the bubble rule. Phone finish: the chain toast sits on the last disc. Desktop start and mid show the same unreadable words at an even smaller size. The down-arrow hint 'HOLD EACH BUBBLE FOR 5 SECONDS' is about 6 px. There are no characters, and the reveal is generic.",
+   "looks_like": "109 and 65 (hold-a-bubble mechanic, per the catalog). Visually it is the generic gradient-disc-on-nebula look shared by many bubble games.",
+   "improvements": [
+    "Rebuild the stage as a stone echo chamber or cave: warm key light from an opening, dark rock walls with rim light. Draw each thought as concentric sound ripples that bounce off the walls, with 3-4 fading ghost copies of the word.",
+    "Put an emotion character at the centre as the 'source' that shouts the thought. While the player holds, its mouth closes, it squashes down, its shout ripples shrink and its face softens from loud to calm across the 5 holds.",
+    "Render the user's word at 15 px or larger BELOW each circular source, never inside the gradient. Remove the dark capsule that covers the disc while it is held.",
+    "Replace the down arrow with a pulsing press-and-hold ring that fills around the finger, and keep partial progress on release (decay slowly instead of resetting to 0).",
+    "Finale: the last echo collapses into one clear chime, crystal veins light up the cave walls one after another, and the character sings one soft note while the ripples settle into a calm glowing pool.",
+    "Move the chain toast to the top strip so it never covers a disc."
+   ],
+   "effort": "L"
+  },
+  {
+   "id": 100,
+   "name": "HOT POTATO",
+   "scores": {
+    "A": 5,
+    "B": 3,
+    "C": 4,
+    "D": 5,
+    "E": 3,
+    "F": 5,
+    "G": 4,
+    "H": 6
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "Each potato IS an emotion character inside a glossy orb (phone start zoom: angry dark 'my boss', crying orange 'I', storm-blue 'panic'). The faces do turn positive once cooled (phone finish zoom: 'feel' winks, 'panic' smiles, 'my boss' is calm). However, the word is printed in a dark band across each face, and a square purple backing box sits behind every round orb. No squash, flinch or heat reaction is visible during the drag.",
+   "finale": "Phone finish: an 'ALL COOLED' label and a 'CALMER +18 x6' toast that covers one potato. The orbs are blue, but 'me and' is still red. The shared reveal card follows ('STEADIER - YOU BROUGHT IT INTO VIEW'). There is no game-specific payoff such as steam, ice or a cool-down splash.",
+   "score_rationale": "A5: the orbs have real gloss, rim light and pink haloes (phone start zoom), but the square backing boxes and dark text bands look like a broken mask, and the scene has no light direction. B3: the shared nebula and ring stage with a 3x2 grid, like the other grid games. C4: phone mid shows a potato flying off the right edge and the orbs changing colour. There is no heat shimmer, steam, sizzle or squash, and a drag of only 48 px or more is needed. D5: the characters are the playing pieces and their faces turn positive (phone finish), which is good, but text bands cover the faces and there is no reaction during the drag. E3: an 'ALL COOLED' label and the shared reveal. F5: 'DRAG EACH POTATO AWAY' with a two-way arrow is clear, but the words on the faces are about 9 px. G4: the orbs are big, but the HUD label is clipped ('DOWN - 0%'), the toast covers a potato (phone mid and finish) and the dragged potato leaves the frame on the right (phone mid). H6: cooling a hot thought suits anger.",
+   "perf_flags": [
+    "phone p95/max 600 ms (fleet phone median 433), 52 long tasks totalling 3.9 s (max 456 ms): slightly heavy",
+    "desktop p95 667 ms (fleet median 783); desktop run took 35.7 s to finish versus 15.7 s on phone",
+    "heap +2.2 MB, no errors"
+   ],
+   "strengths": "It is one of the few games where the characters ARE the pieces and visibly turn positive by the end (phone finish: wink, smile). Glossy orbs with warm-to-cool colour change, a fast and direct mechanic, and a literal cool-down metaphor.",
+   "problems": "Phone start zoom: a square purple box sits behind each circular orb, and a dark text band runs across every face (image and text overlap; bubble rule fail). Phone mid: the toast covers the top-right corner of the grid, and the dragged potato is half off-screen. Phone finish: the toast replaces the 'I' potato, and 'me and' is still red after 'ALL COOLED'. The HUD 'SLOW-DOWN' label is clipped at the left. The reveal is generic.",
+   "looks_like": "93 and 21 (catalog cluster). Visually it is the same 3x2 orb grid on the nebula as 107 and 108.",
+   "improvements": [
+    "Fix the bubble rule: remove the square purple box behind each orb and the dark band across the face, and put the word under the orb at 15 px or larger.",
+    "Give the heat a world: a campfire or kitchen stage with warm firelight, heat haze above red potatoes and steam wisps, plus a cool blue pond or snowbank where potatoes are tossed.",
+    "Add in-drag character reactions: the character yelps and squashes when grabbed ('ouch, hot'), stretches along the drag direction, then lands in the cool zone with a splash and a relieved face (anticipation, squash on landing, smile).",
+    "Finale: the six cooled potatoes hop into a row, their steam rises and condenses into a small rain cloud that drifts away, and they share a group sigh with a frosty sparkle. Keep the shared bloom afterwards.",
+    "Move the toast out of the grid, and keep the HUD label unclipped at 390."
+   ],
+   "effort": "M"
+  },
+  {
+   "id": 101,
+   "name": "TUG OF WAR",
+   "scores": {
+    "A": 4,
+    "B": 3,
+    "C": 4,
+    "D": 3,
+    "E": 3,
+    "F": 4,
+    "G": 4,
+    "H": 6
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "One character sits as a static decal in a ring at the centre of the rope (phone start: a blue drop over 'my boss'). 'YOU' and 'COUNTERFORCE' are empty rings. No one pulls, leans or strains. On each release a shower of character bubbles bursts across the screen (phone mid). This is the shared confetti, not characters acting in the tug.",
+   "finale": "Phone finish: the rope is gone, there is faint 'RELEASED' ghost text and a white bloom orb in the centre, and a toast sits over a 'THOUGHT MOVE - 6 RELEASED' button that runs off the right edge. The shared reveal card follows. Dropping the rope is the right idea, but the rope never visibly goes slack, no opponent topples, and there is no sudden calm.",
+   "score_rationale": "A4: the rope is a flat hatched stripe between two rings, with no fibre, weight, sag or shadow (phone start). B3: the shared nebula, with no ground, arena or opposing figure. C4: drag the PULL pill left about 36 px, then tap LET GO. Phone mid shows only the shared character-confetti burst; no rope tension, shake or slack is visible. D3: a static centre decal plus confetti. E3: the rope vanishes and the shared white bloom plays (phone finish). F4: 'PULL TO SOFTEN' is small, inside a dark box. The big 'THOUGHT MOVE - PULL FIRST - THOUGHT 1/6' pill is low-contrast grey, and the guide says x3 when there are 6 rounds. G4: the PULL button is a good thumb target, but in phone mid the burst covers the THOUGHT MOVE label ('OUGHT M..E'), and in phone finish the button runs off the right edge under the toast. H6: ACT's drop-the-rope suits anxiety and control struggles.",
+   "perf_flags": [
+    "phone p95/max 483 ms (fleet median 433), 95 long tasks totalling 9.3 s (max 425 ms): heavier than the fleet median of 5.8 s",
+    "desktop p95 667 ms, 57 long tasks totalling 4.6 s (fleet median 2.7 s); desktop run took 41.7 s",
+    "heap +3.3 MB phone, no errors"
+   ],
+   "strengths": "A strong ACT metaphor with a clear left-pull direction cue and a big PULL thumb target. The finale removing the rope is conceptually right, and the release bursts are colourful.",
+   "problems": "Phone mid: confetti bubbles cover the 'THOUGHT MOVE' button text, and the toast overlaps the centre. Phone finish: the button is pushed off the right edge ('UGHT MOVE - 6 RELEASED') and the toast covers it. Phone start: the hint is in a dark box, and the main status pill is grey on grey. The rope has no physical qualities. The reveal is generic.",
+   "looks_like": "102 (catalog look-alike pair: struggle and release). Its stage is the shared nebula.",
+   "improvements": [
+    "Stage a real tug of war: a woven rope with fibre texture and sag, a chalk line on grass or sand under warm late-afternoon light, and the thought's emotion character as a big opponent at the far end.",
+    "Make the pull physical: the rope tightens and vibrates, the opponent character digs in with a strained face and stretches, and the player's character on the left squashes and leans back. Build the tension over about 1 s (anticipation).",
+    "On LET GO: the rope goes slack with a whip, the opponent topples back with a comic 'oof', sits up looking surprised and then relieved, and waves. The next thought takes its place.",
+    "Finale: the rope coils into a soft spiral on the ground, both characters sit side by side on the grass, and the sky warms to golden hour. Keep the shared bloom afterwards.",
+    "Keep the THOUGHT MOVE button inside the 390 frame, keep bursts off the button label, and raise the hint text to 12 px or larger."
+   ],
+   "effort": "M"
+  },
+  {
+   "id": 102,
+   "name": "FINGER TRAP",
+   "scores": {
+    "A": 6,
+    "B": 5,
+    "C": 5,
+    "D": 4,
+    "E": 3,
+    "F": 6,
+    "G": 5,
+    "H": 7
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "Each trap row holds an emotion character in its centre with a strong face (phone start zoom: sweating red 'my boss', swirl-eyed purple 'yelled at'). While trapped, the character just sits. Once freed, the whole row fades to a ghost with 'FREE +' (phone mid and finish). The characters do not squash as the trap loosens, do not pop free or celebrate, and their faces do not visibly calm.",
+   "finale": "Phone finish: all five rows are dim ghosts with 'FREE +' lines, and a 'SPACE +18 x10' toast covers the last row. The shared reveal card follows. Nothing trap-specific happens, such as the tube springing open or the fingers slipping out.",
+   "score_rationale": "A6: the finger-trap tubes have a woven striped texture and skin-toned finger ends, and the characters glow (phone start zoom). It is the best-crafted object in this batch, but it is still five UI rows with no light source or depth. B5: the object is distinctive, but it sits in stacked glass cards on the shared nebula. C5: a paradoxical push-to-centre drag with inward PUSH arrows and a loosening % cue. Phone mid shows freed rows only fading; the weave does not relax and the fingers do not slip out. D4: the faces are expressive but passive, and freeing fades them out instead of transforming them. E3: ghosts, a toast and the shared reveal. F6: the arrows and 'PRESS AN END - PUSH TO CENTRE' labels are clear, but the circle covers part of each label and the five rows look identical. G5: everything fits at 390 and the end targets are large, but 'feel pa...' is truncated and the toast covers the active row (phone mid). H7: pushing in to escape is a precise acceptance metaphor for anxiety.",
+   "perf_flags": [
+    "phone p95/max 483 ms (fleet median 433), 68 long tasks totalling 4.8 s: average",
+    "desktop p95/max 1183 ms, above the fleet desktop p90 of 1067 ms",
+    "heap +2.1 MB desktop, no errors"
+   ],
+   "strengths": "The most therapeutically precise mechanic in the batch. A real, recognisable object (a woven finger trap with fingers at each end), built-in inward PUSH arrows, and expressive characters at the heart of each trap. Fits 390 width without overflow.",
+   "problems": "Phone start zoom: the word sits to the right of the character instead of below it, and the circle overlaps the 'PRESS AN END' label (bubble rule fail). Phone start: 'feel pa...' is truncated. Phone mid and finish: the toast sits on the row in play. Desktop start: the rows are thin and the words are about 6 px. Freed rows just fade. The reveal is generic.",
+   "looks_like": "101 (catalog look-alike pair). Visually distinct.",
+   "improvements": [
+    "Animate the trap: as the player pushes inward, the woven tube visibly shortens and widens (the weave cells open), and the fingers slide out with a soft pop.",
+    "Character role: the character in the centre is squeezed (horizontal squash, worried face) whenever the player pulls the wrong way. When pushed in, it breathes out, stretches tall, its face relaxes, and it hops out of the tube with a small wave before the row settles, instead of fading.",
+    "Fix the bubble rule: put the word under the character at 15 px or larger, and move 'PRESS AN END - PUSH TO CENTRE' below it with no overlap.",
+    "Finale: the five empty tubes unroll into ribbons that weave into a single woven bracelet or banner held by all five calm characters under a warm spotlight.",
+    "Move the toast off the rows. On phone, show one large active trap at a time instead of five thin rows."
+   ],
+   "effort": "M"
+  },
+  {
+   "id": 103,
+   "name": "SINKING PLATFORM",
+   "scores": {
+    "A": 4,
+    "B": 2,
+    "C": 2,
+    "D": 3,
+    "E": 2,
+    "F": 3,
+    "G": 1,
+    "H": 4
+   },
+   "functional_ready": false,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "Desktop: each bay has a circular emotion face above a word box and a gradient-bar 'platform' (desktop mid crop). After 'LOWERED' the faces stay the same; the pink 'yelled at' is still crying. Phone: two faces are visible in a single column, also unchanged. The characters never ride a platform down, wobble or relax.",
+   "finale": "Desktop finish: the bays look the same as at start, with a 'LOWERING...' bar, followed by the shared reveal card ('WEIGHT DOWN'). Phone: no finish at all. The run stayed at 0%, and the three phone tiles are identical.",
+   "score_rationale": "A4: glass dashboard cards and gradient bars, with no platform, weight or water (desktop mid). B2: a 3x2 card grid that looks like a settings dashboard. C2: tap a button, then watch for 0.74 s. Lowered bars look identical to unlowered ones (desktop mid). D3: static face icons that do not change after lowering. E2: no phone finale; desktop shows only 'LOWERING...' and the shared reveal. F3: on desktop the LOWER PLATFORM button is clear, but on phone no control is visible. G1: the phone layout is broken. The bays collapse into one column with an empty left strip, the top bay is clipped ('QUEUE - 2/6'), no lower button is in view, and the game never progressed (metrics: 0%, 0 actions, timeout). H4: 'stop holding it up' suits burden, but the player never lowers anything.",
+   "perf_flags": [
+    "phone run did not finish (timeout at 0%, 0 actions): functional failure, not a frame-time issue",
+    "desktop p95/max 1233 ms, above the fleet desktop p90 of 1067 ms, one long task of 627 ms",
+    "heap +2.2 MB, no errors"
+   ],
+   "strengths": "The 'put it down, you do not have to hold it up' idea suits burden. The faces are clear and circular, and the word sits below the face (desktop).",
+   "problems": "Phone start, mid and end are identical (0%). The grid collapses into one column with an empty left gutter, the top card is cut off, and the LOWER PLATFORM button is not in view, so the game cannot be played at 390. Desktop mid: the live guide covers bay 4 ('I') and the toast covers the LOWER PLATFORM button. Lowered and active bays look identical. The reveal is generic.",
+   "looks_like": "10, 22 and 90 (catalog cluster). Visually it shares the dashboard card-grid look of 106 and 105.",
+   "improvements": [
+    "Fix the phone layout first: one large platform in a portrait scene, with the lower control reachable in the thumb zone. The run must progress at 390.",
+    "Make the gesture the action: the player drags the platform (or the character holding it up) downward, and it sinks with weight (overshoot, then settle) into calm water or soft sand with ripples.",
+    "Character role: the character starts out straining with the thought block on its head (strained face, knees bent). As the platform lowers, it straightens up, shakes out its arms, and its face turns relieved.",
+    "Finale: all six platforms settle into a calm lake reflecting a sunrise, and the characters float on their backs on the sunken platforms.",
+    "Stop the live guide covering bay 4 on desktop, and move the toast off the main button."
+   ],
+   "effort": "L"
+  },
+  {
+   "id": 104,
+   "name": "VOLUME KNOB",
+   "scores": {
+    "A": 4,
+    "B": 2,
+    "C": 4,
+    "D": 3,
+    "E": 2,
+    "F": 4,
+    "G": 3,
+    "H": 6
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "A small face sits in a rounded-square frame at the start of each list row (phone start zoom). In phone finish the 'I' face changes from a questioning drop to a calmer one, but the rest are unchanged, and none react to the knob turning. At the finish, a shower of character bubbles (the shared confetti) covers the screen.",
+   "finale": "Phone finish: the knobs read '5', the equalizer bars vanish, and the shared character-confetti burst and a 'CALMER +18 x10' toast cover the bottom row. The shared reveal card follows. There is no volume-specific payoff, such as the noise fading to a quiet hum.",
+   "score_rationale": "A4: list rows with a small dark dial and a white needle, and no metal knob or material (phone start zoom). B2: a settings-style list on the shared nebula. C4: drag down or tap; the knob jumps from 100 to 5 and the bars disappear (phone mid). The mapping is vertical rather than rotational, and there are no detents or clicks. D3: framed thumbnails; one face changes, and none react to the turn. E2: the shared confetti, a toast and the shared reveal. F4: there is no arrow on the knob, the words are about 7 px and centred in otherwise empty rows, and the knob is the only control. G3: the sixth row ('panic') is half hidden under the live guide at 390 (phone start), the knob target is about 40 px, and the toast covers a row (phone finish). H6: 'turn it down, don't delete it' suits an inner critic.",
+   "perf_flags": [
+    "phone: 94 long tasks totalling 18.2 s (max 869 ms), above the fleet phone p90 of 17.9 s: the heaviest main-thread load in this batch",
+    "phone p95 350 ms; desktop p95 700 ms with a 756 ms long task",
+    "heap +2.3 MB, no errors"
+   ],
+   "strengths": "The 'turn it down, don't delete it' framing is a good inner-critic metaphor, the knob value and equalizer bars give a readable state change, and the game finishes on its own.",
+   "problems": "Phone start: the square-framed thumbnails put a box around each round face (bubble rule fail), the word sits beside the image rather than below it, and row 6 is under the guide panel. Phone finish: the confetti covers labels and the toast covers row 6. Desktop: the knobs are about 20 px and the words about 6 px.",
+   "looks_like": "29 and 55 (catalog cluster). Visually it is a list dashboard like 103 and 106.",
+   "improvements": [
+    "Make one big tactile knob the hero, such as a brushed-metal or warm wooden radio dial with a highlight and detents, that rotates under a circular drag. Show one thought at a time on phone.",
+    "Character role: the emotion character stands next to a speaker, shouting the thought (big mouth, sound lines). As the knob turns down, the shout shrinks, the character squashes smaller and starts whispering, and at the minimum it hums happily.",
+    "Show the volume as a sound wave or a speaker cone that visibly stops shaking, and tie a click sound to each detent.",
+    "Finale: the radio fades from static to a warm lo-fi tune, the room dims to a cosy lamp, and all six characters sway to the music.",
+    "Bubble rule: circular faces with no square frame and words below at 15 px or larger. Keep row 6 out from under the guide."
+   ],
+   "effort": "M"
+  },
+  {
+   "id": 105,
+   "name": "DRAMA MACHINE",
+   "scores": {
+    "A": 5,
+    "B": 3,
+    "C": 4,
+    "D": 5,
+    "E": 3,
+    "F": 4,
+    "G": 2,
+    "H": 6
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "A large hero character in a neon-rimmed circle is the current take, and it changes per take (phone start: dark, glitchy 'my boss'; phone mid: red with hands over its mouth, 'at me'; phone finish: blue drop). Its expression is just the thought's emotion. It does not visibly overact on MAKE IT DRAMATIC or relax on CUT, and in phone finish a white flash washes out its face. The small faces in the TAKE chips are a static legend.",
+   "finale": "Phone finish: '6/6 - CUT', a white flash over the hero, and a toast over the guide, followed by the shared reveal card ('DRAMA CUT - 6 THOUGHTS - LESS THEATRE'). There is no curtain call, spotlight or applause.",
+   "score_rationale": "A5: the hero character has a glossy rim and glow (phone start), but the set is glass panels with no stage lighting. B3: glass cards on the nebula, with no theatre, curtains, spotlight or film set. C4: tap DRAMATIC, then CUT. Phone mid shows shockwave rings on the hero, and the catalog notes the effects are CSS-only. D5: the hero is central and changes per take, but it does not overact and then calm down. E3: a white flash and the shared reveal. F4: the instruction is in the guide, but the two primary buttons are hidden at 390 (see G). G2: at 390 the MAKE IT DRAMATIC and CUT buttons sit behind the live guide panel, with only their top edges visible (phone start zoom), and the toast covers the guide (phone mid). H6: exaggerate-then-cut humour is a strong reframe for catastrophising.",
+   "perf_flags": [
+    "phone p95 400 ms (fleet median 433), one long task of 706 ms",
+    "desktop p95 650 ms: average",
+    "heap +2.2 MB, no errors"
+   ],
+   "strengths": "It has the strongest humour reframe in the batch, and a large, characterful hero that changes per take. The take chips give a clear 6-step structure ('3 / 6 TAKES CUT').",
+   "problems": "Phone start zoom: the primary buttons are hidden behind the live guide panel. Phone finish: a white flash covers the hero's face and the word 'panic'. The TAKE chips put text beside the faces. Desktop: the controls sit in a side panel away from the hero. The reveal is generic.",
+   "looks_like": "55 and 52 (catalog cluster). Visually it uses the same glass-card dashboard as 103 and 106.",
+   "improvements": [
+    "Build a theatre or film set: red velvet curtains, a warm spotlight cone, footlights, and a clapperboard for CUT. Place the controls directly under the hero in the thumb zone at 390.",
+    "Make the character the actor: MAKE IT DRAMATIC makes the hero overact (huge stretch, swooning, a single giant tear, spotlight zoom) with exaggerated squash and stretch. CUT snaps the clapperboard, and the character freezes mid-pose, blinks and shrugs into a relaxed grin.",
+    "Show the drama meter as a stage barometer that swings to maximum on DRAMATIC and drops to zero on CUT.",
+    "Finale: a curtain call. All six characters bow together, roses land on the stage, applause plays, and the curtain closes on a calm warm light.",
+    "Remove the white flash over the hero's face, and keep the word under the hero at 15 px or larger."
+   ],
+   "effort": "M"
+  },
+  {
+   "id": 106,
+   "name": "TINY SOUNDTRACK",
+   "scores": {
+    "A": 4,
+    "B": 3,
+    "C": 4,
+    "D": 3,
+    "E": 2,
+    "F": 4,
+    "G": 4,
+    "H": 5
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "Each thought card shows an emotion face with a key label (phone start). At phone finish the faces float up and are cut off by the top edges of their cards (phone finish zoom), and they still look distressed ('panic' with hands over its mouth, 'feel' crying). They do not sing, dance or react to the notes being played.",
+   "finale": "Phone finish: '100% QUIETER', ticked keys, and a 'PAUSED +18 x19' toast covering the keys, followed by the shared reveal card ('VOLUME DOWN'). The music never builds into a tune, and nothing plays back.",
+   "score_rationale": "A4: glass cards and gradient key tiles; a dashboard. B3: no stage, instrument or music room; the same glass-card template as 103 and 105. C4: three taps per key fill three dots and tick the key. Phone mid shows one white ring pulse, but there are no note particles, no key press-down and no sound visualisation. D3: the faces are static inside the cards, then clipped, and stay distressed. E2: a toast and the shared reveal. F4: it is a two-step flow (pick a vibe first; the keys stay disabled until then). The thought list appears twice (cards and keys), the key labels are about 6 px, and vertical text is cut off at each card's right edge. G4: it fits the 390 width and the keys are about 45 px wide, but the faces are clipped at the finish, the vertical text is clipped, and the toast covers the keys. H5: playing notes gives a light lift, but it does not feel like scoring a soundtrack.",
+   "perf_flags": [
+    "phone: 102 long tasks totalling 11.8 s (fleet median 5.8 s), p95 550 ms: heavy",
+    "desktop p95 650 ms, 4.3 s of long tasks: average",
+    "heap flat on phone and +2.1 MB on desktop, no errors"
+   ],
+   "strengths": "It plays real per-key notes, has a clear progress bar ('44% QUIETER') and fills each key's three dots in a readable way. All of the content fits the 390 width.",
+   "problems": "Phone finish zoom: the 'feel', 'panic', 'yelled at' and 'me and' faces are clipped by the top edges of their cards (bubble rule fail). The vertical text at each card's right edge is cut off. The toast covers the keys (phone mid and finish). The keys stay disabled until a vibe is picked. The reveal is generic.",
+   "looks_like": "68 (catalog cluster). Visually it is the glass-card dashboard of 103 and 105.",
+   "improvements": [
+    "Turn the screen into a toy instrument: a big glowing xylophone or toy piano with wooden or glass keys that press down, glow and send up floating note particles. Use one row of large keys in the thumb zone.",
+    "Character role: each character stands on its key and bounces up with its note (squash on press, stretch on rise). With each play its face lightens from sad to smiling, and on the third note it sings.",
+    "Merge the duplicate list so the characters ARE the keys, and remove the disabled state by defaulting to a vibe.",
+    "Finale: the six notes replay as a short melody while the characters perform as a band under stage lights, and a vinyl record spins out with the user's words as the track title.",
+    "Keep the faces inside their cards (no clipping), and move the toast above the instrument."
+   ],
+   "effort": "M"
+  },
+  {
+   "id": 107,
+   "name": "GO WEIRD",
+   "scores": {
+    "A": 5,
+    "B": 3,
+    "C": 3,
+    "D": 4,
+    "E": 2,
+    "F": 3,
+    "G": 1,
+    "H": 5
+   },
+   "functional_ready": false,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "Each card holds a glossy emotion character (desktop start). Props land as small square icon chips above the faces (desktop finish crop: a two-dot chip on 'and', a triangle chip on 'I feel'), and 'my boss' gets a crescent moon behind it. The faces do not change: 'I feel' is still angry at the desktop finish, and no one giggles or reacts to a prop.",
+   "finale": "Desktop finish: '100% WEIRD' and a toast covering one card, followed by the shared reveal ('WEIRD WINS'). Phone: no finish (still 0% after 180 actions). Nothing goofy happens, such as a dance or a laugh.",
+   "score_rationale": "A5: vivid gradient cards and glossy characters (desktop start), but the card UI is flat and the props are tiny icon chips. B3: a card grid on the nebula, visually the same template as 108. C3: pick a prop, then tap. The props appear as small square chips instead of googly eyes or moustaches fitted to the face (desktop finish crop). D4: the characters wear props but do not react. E2: a toast and the shared reveal. F3: on phone the prop row is not visible at all. On desktop it is clipped by the stage edge, with only its top 20 px or so showing (desktop start crop). G1: at 390 the 3-column grid overflows (the right column is cut off), the prop row is off-screen, and the game cannot progress (metrics: 0%, 180 actions, timeout). H5: humour defusion suits fear and shame, but the props are barely visible.",
+   "perf_flags": [
+    "phone run did not finish (timeout at 0% after 180 actions): functional failure",
+    "desktop p95 667 ms with an 866 ms long task",
+    "heap +1.9 MB desktop, no errors"
+   ],
+   "strengths": "It has a playful humour-defusion premise, vivid, saturated cards with appealing glossy characters, and on desktop the props visibly land on the cards.",
+   "problems": "Phone start, mid and end: the grid overflows to the right, the cards are clipped, no props are in view, and the run stays at 0%. Desktop start: the prop row (MOUSTACHE, TINY HAT, STAR, WIGGLE) is clipped by the bottom of the stage, and the live guide covers its first chip. Desktop finish: the toast covers the 'and' card. The props are generic square icons.",
+   "looks_like": "53 (catalog cluster). Visually it is near-identical to 108 (the same cyan-magenta gradient card grid with glossy characters).",
+   "improvements": [
+    "Fix the 390 layout: a 2-column grid (or a single hero thought) with the prop tray as a large bottom sheet in the thumb zone. The run must progress on phone.",
+    "Fit the props onto the character: googly eyes replace its eyes, a moustache sits under its nose and a tiny hat tilts on its head, each drawn and sized for that character. Drag-and-drop should snap into place with a bounce.",
+    "Character reaction: with each prop the character does a double-take and giggles (squash), and its face shifts from angry or scared to amused. With all 5 props it is fully silly.",
+    "Finale: a dress-up runway where the decorated characters do a silly dance under disco lights with confetti, and the words wobble in a cartoon font.",
+    "Make it visually distinct from 108 with a different set and card treatment."
+   ],
+   "effort": "M"
+  },
+  {
+   "id": 108,
+   "name": "WORD SALAD",
+   "scores": {
+    "A": 5,
+    "B": 3,
+    "C": 3,
+    "D": 3,
+    "E": 2,
+    "F": 4,
+    "G": 3,
+    "H": 2
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "Each card carries a large glossy emotion character (phone start: swirl-eyed purple 'my boss', crying orange 'yelled at', angry red 'panic'). Shuffling moves the cards (phone mid), but the faces never change: at the phone finish 'panic' is still angry and 'I' is still sobbing.",
+   "finale": "Phone finish: the grid is back in exactly the starting order, and a toast covers 'me and'. The shared reveal follows ('LESS GRIP - MORE ROOM'). The player rebuilds the original negative sentence, so the 'reward' is the starting state.",
+   "score_rationale": "A5: big, vivid, glossy characters on gradient cards (phone start), but the cards are flat and the 'bowl' is a plain rounded outline. B3: the same gradient-card grid as 107, and nothing reads as a salad bowl or kitchen. C3: tap SHAKE, then tap to swap. Phone mid shows one card displaced and a white flash, with no toss or tumble physics. D3: big faces that do not react to being shaken or calm down. E2: the finish tile is identical to the start (the original order rebuilt), plus the shared reveal. F4: 'Shake. Put it back.' appears only in the guide, the SHAKE button is not visible at 390, and the words are about 7 px at the bottom of each card. G3: the curved bowl border clips the bottom cards ('feel' and 'panic' in phone start), the shake button is hidden, and the toast covers a card. H2: the goal restores the negative sentence, so the user ends where they started (the catalog gives it a 1).",
+   "perf_flags": [
+    "phone p95 417 ms, 0.6 s of long tasks: light",
+    "desktop p95/max 1167 ms (above the fleet desktop p90 of 1067 ms), with a 726 ms long task",
+    "heap flat, no errors"
+   ],
+   "strengths": "It has the biggest and most readable character art in the batch, with saturated cards and a very short run (about 4 s).",
+   "problems": "Phone start: the bowl border clips the bottom-row cards, and the SHAKE button is not visible (on desktop it is half hidden behind the guide). Phone mid: a displaced 'panic' card overlaps the 'yelled at' card. Phone finish: the board is identical to the start, and the toast covers 'me and'. The mechanic ends by rebuilding the original negative sentence. The reveal is generic.",
+   "looks_like": "20 (catalog cluster). Visually it is near-identical to 107 (the same gradient card grid).",
+   "improvements": [
+    "Redesign the goal: shake the words into a real bowl (tumble physics, leaves and croutons flying), and let the player build a NEW, kinder or absurd sentence from the scrambled words instead of restoring the original.",
+    "Character role: the characters ride in the bowl and get tossed (stretch in the air, squash on landing, dizzy eyes), then pop up laughing. Each new arrangement gives them a lighter expression.",
+    "Set: a sunny kitchen counter with a wooden bowl, warm window light, and a dressing drizzle as a transition.",
+    "Finale: the new sentence is served on a plate with a chef's-kiss sparkle, the characters toss confetti 'herbs', and the old sentence crumbles into the compost.",
+    "Fix the clipping: the bowl border must not cut the cards at 390, the shake button must be visible in the thumb zone, and the words must be 15 px or larger."
+   ],
+   "effort": "L"
+  },
+  {
+   "id": 109,
+   "name": "CLEANSE",
+   "scores": {
+    "A": 5,
+    "B": 4,
+    "C": 5,
+    "D": 3,
+    "E": 3,
+    "F": 5,
+    "G": 5,
+    "H": 6
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "Phone start: six emotion characters in glass spheres, with the words below and an emotion-aware HOLD TO CALM / SLOW / PAUSE pill under each. Released ones fade to ghosts (phone finish), and a shower of character bubbles (the shared confetti) plays at each release (phone mid). Desktop start: 5 of the 6 spheres are empty dark glass with no character rendered (desktop start crop). There is no squash, breathing or face change while a sphere is held.",
+   "finale": "Phone finish: a lotus labelled 'RELEASED' with a white bloom orb (the shared flash), ghosted spheres and a toast. Desktop finish: concentric rings around a lotus that still reads '0%' while the slow-down bar shows 100%. No reveal was reached on either size (metrics reason 'timeout'; finished=true).",
+   "score_rationale": "A5: the lotus centrepiece, concentric rings and soft glow give some cinematic calm (phone mid and finish), but the empty dark spheres on desktop start look broken. B4: the lotus is specific to this game, but it sits on the shared nebula and ring stage in a bubble-ring layout like 65, 11 and 18. C5: hold-to-charge with labels that read like an exhale. Phone mid shows a burst and a lotus 'RELEASE' pulse, and the catalog notes a 3.2 s lock between releases. D3: the characters sit in spheres and fade, with no squash or breathing while charging, and 5 of 6 are missing on desktop start. E3: a shared white bloom, no reveal, and '0%' on the lotus at the desktop finish. F5: the HOLD pills are readable and emotion-aware (phone start), but they sit apart from their spheres, so which pill belongs to which sphere is unclear. G5: phone start fits and the pills are large, but in phone mid the burst covers 'HOLD TO SLOW', the toast covers spheres, and the HUD is clipped. H6: hold-and-release as an exhale suits panic.",
+   "perf_flags": [
+    "desktop: a 3025 ms long task (10.3 s of long tasks in total), the worst single stall in this batch",
+    "phone p95 350 ms, 3.3 s of long tasks: light",
+    "no reveal within 83 s on either size (timeout) even though finished=true",
+    "heap +2.4 MB, no errors"
+   ],
+   "strengths": "It is the only game in the batch with emotion-aware action labels. The lotus and concentric-ring centrepiece is the calmest image in the batch, and the phone start layout is clean, with circular characters, words below and large pills.",
+   "problems": "Desktop start: 5 of 6 character images failed to render (dark empty spheres). Desktop finish: the lotus reads '0%' while the bar reads 100%. No reveal on either size within 83 s. Phone mid: confetti covers 'HOLD TO SLOW', and the toast covers spheres. Desktop finish: the toast sits under 'my boss'.",
+   "looks_like": "65, 11 and 18 (catalog cluster: hold-and-release bubbles on the ring stage).",
+   "improvements": [
+    "Fix the desktop rendering of the character images and the lotus percentage, and make the reveal fire after the last release.",
+    "Make the hold a breath: while it is held, the sphere and its character inhale (a slow stretch upward, the glow filling like rising water). On release the character exhales (squash, then settle), its face changes from tense to calm, and it floats up as a lantern.",
+    "Put the hold control on the sphere itself (press the character) instead of a separate pill, and cut the 3.2 s lock to about 1 s.",
+    "Give the scene its own world: a moonlit pool with the lotus at the centre, water reflections and mist.",
+    "Finale: the lotus blooms fully, the six lantern characters circle it, and the pool goes still and mirror-like in a soft dawn light."
+   ],
+   "effort": "M"
+  },
+  {
+   "id": 110,
+   "name": "RAIN OUT",
+   "scores": {
+    "A": 6,
+    "B": 4,
+    "C": 4,
+    "D": 6,
+    "E": 3,
+    "F": 4,
+    "G": 2,
+    "H": 7
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "The strongest character use in the batch. Big, expressive characters sit on white clouds (phone start: angry red 'my boss', crying orange 'yelled at', sobbing blue 'me and'), and a pulled one winks with a heart (phone mid). But in phone finish several are still crying ('feel', and 'yelled at' with a '?'), and no rain falls from them.",
+   "finale": "Phone finish: the shared glow ring in the centre and a 'SPACE +18 x6' toast. The desktop finish is the same scene with distressed faces. The catalog describes a full-screen rain catharsis, but no rain is visible on any tile. The shared reveal card follows ('STEADIER - YOU LET SOMETHING MOVE').",
+   "score_rationale": "A6: the characters are large, glossy and expressive with cloud puffs (phone start), and the desktop composition is airy (desktop mid), but the clouds are flat white blobs and there is no sky lighting or rain. B4: a cloud concept on the shared nebula, with no sky gradient, horizon or ground. C4: drag down more than 70 px. Phone mid shows a lowered cloud and a wink, but no rain streaks, puddles or cloud squeeze. D6: the characters are the clouds and some transform (the wink and heart in phone mid), but many still end up crying (phone finish). E3: no rain on any tile, only the shared ring and the shared reveal. F4: the down-arrow 'PULL TO ...' hints are clear on desktop, but at 390 they run together into one line ('PULL TO PA(U)SE PULL TO BREA...'). G2: at 390 the top row of four clouds overlaps itself, the fourth is cut off at the right edge, the labels are truncated ('my bos', 'yelled a') and the hints overlap (phone start and finish). H7: letting the rain out is a fitting crying metaphor for sadness and grief.",
+   "perf_flags": [
+    "desktop: a 1848 ms long task (10.7 s of long tasks in total), and the run took 46 s to finish",
+    "phone p95 333 ms, 3.5 s of long tasks: light",
+    "heap +2.4 to +2.7 MB, no errors"
+   ],
+   "strengths": "It has the most characterful art in the batch, with large, expressive Inside-Out-style faces riding clouds and a visible wink-and-heart reaction after a pull. The desktop composition is airy and has a sky feel, and the down-pull gesture fits the 'let it out' metaphor.",
+   "problems": "Phone start and finish: the top row of four clouds overlaps itself and is cut off at the right edge, the labels are truncated, and the 'PULL TO ...' hints overlap into one unreadable line (bubble and clipping rules fail). Phone and desktop finish: no rain is visible and several faces are still crying. The toast covers a cloud (phone mid and finish, desktop mid). The reveal is generic.",
+   "looks_like": "34 (catalog cluster). Visually distinct within this batch.",
+   "improvements": [
+    "Fix the 390 layout: no more than 2-3 clouds per row (or a vertical sky), with no overlapping clouds, labels or hints.",
+    "Make the pull wring out the cloud: it stretches down with the finger, darkens, then bursts into visible rain streaks that splash on a ground plane. The character inside cries it out, then shakes off and smiles (loud face, then softer, then calm).",
+    "Give it a sky world: a stormy grey-blue sky that brightens with each cloud, over a meadow or city rooftop whose puddles reflect the light.",
+    "Finale: show the promised full-screen downpour, then the clouds clear, a rainbow arcs across the sky, the puddles shine, and the characters float on small white clouds, smiling.",
+    "Make sure every character is happy on the finish tile, with no crying faces after release."
+   ],
+   "effort": "M"
+  }
+ ]
+}

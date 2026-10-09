@@ -1,0 +1,531 @@
+{
+ "games": [
+  {
+   "id": 85,
+   "name": "CONTROL PANEL",
+   "scores": {
+    "A": 4,
+    "B": 3,
+    "C": 2,
+    "D": 3,
+    "E": 2,
+    "F": 4,
+    "G": 3,
+    "H": 4
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "A circular emotion portrait sits on a dark rounded-square plate above the options, and the current word chunk is printed across its face. The angry red 'my boss' (phone start) becomes an orange 'yelled at' (phone mid), then a purple swirl 'panic' (phone finish). It swaps per chunk only. It does not react to ACT NOW, PLAN IT and the other choices, and it ends on panic rather than calm. On desktop it is a 40 px decal.",
+   "finale": "The phone finish tile is identical to the mid tile ('SELECTED: ACT NOW', with a dark toast pill over the ACT NOW card), so nothing marks finishing. Phone reveal: the shared reveal card ('RELEASE COMPLETE +N STILL / <NAME> / STEADIER + a stock line / FEEL A SHIFT? YES / NOT YET / AGAIN' with PREVIOUS/NEXT pills) on the empty nebula, the same layout in every game in this batch ('STEADIER, THE MESS GOT SIMPLER'). The desktop reveal tile renders only the PREVIOUS/NEXT pills with no card at all. It is not unique.",
+   "score_rationale": "A4: the option cards are glossy cyan-magenta gradient slabs with an orb highlight (phone start). They are clean, but they read as default UI, with no console materials or light. B3: a button grid on the shared nebula, with no switchboard, dials or levers. C2: plain taps, and the chosen card is replaced by a dark toast pill whose headline ('YESSS', 'NICE ONE') is about 5 px (phone mid/finish). There is no switch throw or anticipation. D3: a per-chunk portrait decal (see character_role). E2: the finish tile is unchanged from mid, and the reveal card is shared or missing on desktop. F4: the instruction is readable and the labels are large on phone. However, the 5th option RELEASE IT is hidden behind the Live Guide panel (phone start, a sliver at y~585), 'SELECTED: ACT NOW' never changes across 6 rounds, and the desktop labels are about 6-7 px. G3: the hidden 5th option, the clipped header, and toasts covering ACT NOW (phone mid/finish). H4: turning a worry into a next action fits anxiety, but ASK HELP and PLAN IT lead nowhere, so the choice has no follow-through.",
+   "perf_flags": [
+    "p95 frame 516.7 ms phone / 949.9 ms desktop (>34 ms) and max frame 516.7 / 949.9 ms (>120 ms); headless software rendering inflates these numbers, so treat them as relative. Long-task max is 527 ms phone / 401 ms desktop",
+    "heap growth below 7 MB and no errors on either size"
+   ],
+   "strengths": "A clear, therapeutically useful question ('what do you want to do with this thought?'). The phone option cards are big thumb targets with two-line labels. The game finishes on both sizes with no errors.",
+   "problems": "Phone start tile: the RELEASE IT option is cut off behind the Live Guide panel, so only 4 of 5 controls are visible. All phone tiles: the user word sits on the portrait's face, which breaks the bubble rule, and the portrait sits on a dark square plate. Phone mid/finish tiles: the chosen card turns into a dark pill with unreadable micro text, and 'DO IT TODAY' ghosts through underneath. The Live Guide 'How to play' row is blank in the mid tile. phone header title is clipped ('MOTIONAL RELEASE CONSO') and the LVL chip overlaps 'by THINKSTILL' (all phone tiles). Desktop tiles: a small centred panel with about 6 px labels, and an empty reveal (85_1280_reveal shows only PREVIOUS/NEXT).",
+   "improvements": [
+    "Rebuild it as a physical control console: five chunky toggle levers or big illuminated switches on a brushed-metal desk with warm under-glow. Each throw needs anticipation (the lever resists, then snaps with squash) plus a click sound and a bulb lighting up.",
+    "Give each choice a visible consequence. ACT NOW drops a glowing task card into an 'outbox'. PLAN IT pins the card to a calendar strip. PARK IT slides it into a labelled drawer. ASK HELP sends a paper plane to a helper character. RELEASE IT vents it as steam through a chimney.",
+    "Make the emotion character the console operator. It sits at the desk, flinches at the incoming worry and leans over to watch each lever. It visibly loosens from red and clenched to warm and smiling as the outbox fills.",
+    "Finale: the console wires light up board-wide, the outbox prints a tidy 'my next moves' ticket, and the operator spins in the chair and gives a thumbs-up. The shared card follows after it.",
+    "Fix the layout: fit all 5 options above the Live Guide at 390 px (a 3+2 grid or a horizontal lever rail). Move the user word onto a caption strip below the portrait, and drop the dark square plate.",
+    "Keep the toast pills off the controls (anchor them in the top band) and make their headline at least 15 px. Fix the desktop reveal so the card actually renders."
+   ],
+   "effort": "L",
+   "looks_like": "Same portrait-above-option-grid layout as 86 and 88. Its choice mechanic is in the catalog look-alike cluster with 32, 83 and 73."
+  },
+  {
+   "id": 86,
+   "name": "FACT / STORY",
+   "scores": {
+    "A": 4,
+    "B": 3,
+    "C": 3,
+    "D": 3,
+    "E": 2,
+    "F": 2,
+    "G": 3,
+    "H": 4
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "A large glossy circular portrait with a rim glow sits at the top, with the chunk word printed across the face: orange 'my boss' (phone start), blue frowning 'yelled at' (phone mid), dark half-lidded 'panic' (phone finish). It changes per chunk only, does not react to being stamped and ends on a gloomy face rather than calm.",
+   "finale": "Phone finish tile: a tiny tilted card with unreadable micro text flies over the STORY stamp under a white glare. Phone reveal: the shared reveal card ('RELEASE COMPLETE +N STILL / <NAME> / STEADIER + a stock line / FEEL A SHIFT? YES / NOT YET / AGAIN' with PREVIOUS/NEXT pills) on the empty nebula, the same layout in every game in this batch ('STEADIER, YOU MADE IT CLEARER'). On the desktop reveal the card is narrow and squeezed ('FACT /' and 'STORY' wrap). It is not unique.",
+   "score_rationale": "A4: the portrait bubble is the best-rendered asset (glossy rim, glow, phone start), but the stamps are flat gradient slabs with a brown blob handle and a pink pad, with no wood, rubber or ink. B3: no desk, paper or office, only the shared nebula. C3: there is a stamp-press idea, with a ring pulse under the pressed stamp in the phone mid tile, but the toast pill covers the stamp and no ink mark lands on anything. D3: a per-chunk portrait decal that never reacts. E2: the shared card plus a tiny unreadable flying card. F2: on phone the three stamps carry NO visible FACT / STORY / UNSURE labels (phone start/mid/finish tiles), so a first-time player cannot tell which stamp is which. The desktop labels are about 5 px. G3: the stamps are big targets, but they are unlabelled, the toast covers the top stamp (phone mid), and the header is clipped. H4: fact versus story is a strong CBT move, but judging one-word chunks ('is my boss a fact?') makes it meaningless.",
+   "perf_flags": [
+    "p95 frame 583.3 ms phone / 750 ms desktop (>34 ms) and max frame 583.3 / 750 ms (>120 ms); headless software rendering inflates these numbers, so treat them as relative. Long-task max is 448 ms phone / 190 ms desktop",
+    "heap growth below 7 MB and no errors on either size"
+   ],
+   "strengths": "A good therapeutic concept, with the strongest portrait rendering in the batch (phone start). Three large touch targets, and progress (42% to 100%) and the 1/6 to 6/6 round count advance correctly.",
+   "problems": "Phone start/mid/finish tiles: the stamp buttons have no text labels at all, only a handle-and-pad icon. All phone tiles: the chunk word is printed over the character's face, which breaks the bubble rule. Phone mid tile: the 'YESSS + STILL HIT \u00b7 CHAIN x3' toast sits on the FACT stamp. Phone finish tile: a micro-text card floats over STORY. phone header title is clipped ('MOTIONAL RELEASE CONSO') and the LVL chip overlaps 'by THINKSTILL' (all phone tiles). Desktop: a small stage, and the reveal card is cramped with its title wrapping.",
+   "improvements": [
+    "Label every stamp with a large word (FACT / STORY / UNSURE at 16 px or more), give each a distinct ink colour, and put a ghost stamp mark on the paper as a preview.",
+    "Feed whole claims, not single words: split the input into 2-4 short statements such as 'my boss yelled at me' and 'I will be fired', each on a paper slip sliding onto a desk.",
+    "Build a warm-lit wooden desk under a lamp. The press needs anticipation (the stamp lifts), a heavy squash on impact, an ink splat with a paper bounce, and a thump sound. STORY slips curl and float off as paper birds; FACT slips stack neatly.",
+    "Make the character a clerk at the desk. It squints at each slip, nods at FACT, and laughs and relaxes when a STORY slip flies away. Its face should move from tense to amused across the round.",
+    "Finale: the remaining FACT pile is small and squared off, the window behind the desk opens to daylight, and the STORY birds circle out. Then the shared card plays.",
+    "Move the word under the portrait onto a caption ribbon, and keep the toasts off the stamps."
+   ],
+   "effort": "M",
+   "looks_like": "Portrait-plus-option-buttons layout shared with 85 and 88. Catalog look-alikes are 56 and 72."
+  },
+  {
+   "id": 87,
+   "name": "KEEP / DROP",
+   "scores": {
+    "A": 4,
+    "B": 3,
+    "C": 3,
+    "D": 3,
+    "E": 2,
+    "F": 4,
+    "G": 4,
+    "H": 4
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "The draggable centre bubble IS a circular character portrait: angry red (phone start), purple swirl (phone mid) and crying blue (phone finish, 6/6). It is the object being sorted, but the face never reacts to being kept or dropped, and the last one is crying, so there is no calming arc.",
+   "finale": "The phone finish tile shows a tiny tilted micro-text card covering the KEEP arrow while the crying character stays in the centre. Kept tokens never assemble (a catalog gap). Phone reveal: the shared reveal card ('RELEASE COMPLETE +N STILL / <NAME> / STEADIER + a stock line / FEEL A SHIFT? YES / NOT YET / AGAIN' with PREVIOUS/NEXT pills) on the empty nebula, the same layout in every game in this batch ('STEADIER, YOU TOOK BACK A LITTLE CONTROL'). The desktop reveal tile shows only the PREVIOUS/NEXT pills and no card. It is not unique.",
+   "score_rationale": "A4: a tidy composition with a glossy portrait, dashed orbit tracks and circular arrow nodes (phone start), but the stage is dark and empty, with no light source or materials. B3: no keep basket, drop pit or place, only the shared nebula. C3: a real directional drag with up/down guides, which is good, but the mid/finish tiles show only a toast and no fling trail, landing or squash. D3: the character is the sorted token, but its expressions are fixed per chunk. E2: there is no finale beyond the shared card, and the card is missing on desktop. F4: KEEP and DROP with arrows plus 'DRAG THE CENTER BUBBLE UP TO KEEP \u00b7 DOWN TO DROP' make this the clearest instruction in the batch. However, the actual word being judged is hidden: only a sliver ('boss', 'and', 'me') peeks out at the bubble's left edge (phone start/mid/finish), and the hint line is about 8 px. G4: a portrait-first layout that fits 390 well with a big drag target. The word is clipped, the toast covers the KEEP label (phone mid) and the header is clipped. H4: keep/drop fits overwhelm, but sorting word fragments with no visible result weakens the relief.",
+   "perf_flags": [
+    "p95 frame 916.6 ms phone / 600.1 ms desktop (>34 ms) and max frame 916.6 / 600.1 ms (>120 ms); headless software rendering inflates these numbers, so treat them as relative. Long-task max is 918 ms phone / 1084 ms desktop",
+    "Phone p95 of 916.6 ms is above the 90th percentile of all games (866.7 ms), and the desktop long task of 1084 ms is also high",
+    "heap growth below 7 MB and no errors on either size"
+   ],
+   "strengths": "The best-guided gesture in this batch, with up/down arrows, labels and a micro-guide. The drag target is large and thumb-friendly. The 1/6, 3/6 and 6/6 counter and the progress bar advance properly.",
+   "problems": "All phone tiles: the user word is clipped behind the portrait (only 'boss' or 'and' is visible at its left edge), which breaks the bubble rule. Phone mid: the 'YESSS' toast hides the KEEP label. Phone finish: a micro-text card covers the KEEP arrow, and the Live Guide row is blank in the mid tile. Desktop reveal tile: no card renders. phone header title is clipped ('MOTIONAL RELEASE CONSO') and the LVL chip overlaps 'by THINKSTILL' (all phone tiles).",
+   "improvements": [
+    "Show the full thought chunk as a readable caption (15 px or more) under the portrait, and stop it from hiding behind the image.",
+    "Build two places: a warm glowing keepsake jar above, and a misty well or soft cloud bank below. A drop should sink with a ripple, and a keep should pop into the jar with squash and a chime.",
+    "Make the character react. It looks up hopefully on a keep drag, waves goodbye as a drop sinks, and its face softens with every drop.",
+    "Finale: the kept items assemble inside the jar into one small glowing sentence or a lantern (implementing the catalog's 'kept tokens assemble'). The jar lights the scene warm while the well fog clears, and then the shared card plays.",
+    "Move the toasts away from the KEEP/DROP labels, and fix the missing desktop reveal card."
+   ],
+   "effort": "M",
+   "looks_like": "Catalog look-alikes are 84 and 25. Its glossy-portrait-in-ring look matches 92 and 90."
+  },
+  {
+   "id": 88,
+   "name": "TRADE MACHINE",
+   "scores": {
+    "A": 4,
+    "B": 3,
+    "C": 3,
+    "D": 2,
+    "E": 3,
+    "F": 4,
+    "G": 4,
+    "H": 5
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "A crying blue portrait sits in the machine window on phone, with 'my boss' overlapping the bottom of the image. It is identical in the phone start, mid and finish tiles, so it never changes, reacts to the token or cheers up at the prize. On desktop it switches from orange to red angry by the finish.",
+   "finale": "The phone finish tile shows the text 'YOU GOT TIME' in a dark pill under the options, with a toast covering the TIME button. Nothing is dispensed, and there is no prize object or machine payoff. Phone reveal: the shared reveal card ('RELEASE COMPLETE +N STILL / <NAME> / STEADIER + a stock line / FEEL A SHIFT? YES / NOT YET / AGAIN' with PREVIOUS/NEXT pills) on the empty nebula, the same layout in every game in this batch ('STEADIER, ONE NEXT MOVE GOT CLEARER'). It is generic, though the gain-framed ending is a strength.",
+   "score_rationale": "A4: a framed panel with vertical side tubes, a dashed orbit and a glossy portrait (phone start) give slight depth, but it is still a dark glass box with no metal, coin slot or bulbs. B3: a hint of a machine, with the same nebula backdrop as the other games. C3: tap INSERT THOUGHT TOKEN, then pick TIME, SPACE or LAUGH. There is no coin travel, gear spin or dispensing animation, and the toasts cover the options (phone mid/finish). The phone run finished in 2.7 s, which is very thin. D2: the character is a static, unchanging decal on phone (start = finish). E3: the only positive gain in the batch, but it is a text pill plus the shared card. F4: the big INSERT THOUGHT TOKEN call to action is clear, but the round counter stays at '1 / 6' while progress reads 100% (phone finish). G4: fits at 390 with large buttons. Toasts cover TIME and SPACE, and the header is clipped. H5: trading attention for something wanted (time, space, a laugh) is a genuinely positive reframe.",
+   "perf_flags": [
+    "p95 frame 1116.7 ms phone / 966.6 ms desktop (>34 ms) and max frame 1116.7 / 966.6 ms (>120 ms); headless software rendering inflates these numbers, so treat them as relative. Long-task max is 835 ms phone / 1366 ms desktop",
+    "Phone p95 of 1116.7 ms is the worst in this batch and above the 90th percentile of all games",
+    "heap growth below 7 MB and no errors on either size"
+   ],
+   "strengths": "One of the few games that ends on a gain rather than a removal. A single strong call-to-action button. The framed machine panel is a start toward a world.",
+   "problems": "Phone start/mid/finish: the 'my boss' label overlaps the bottom of the circular image, which breaks the bubble rule, and the character never changes. Phone mid/finish: the 'RELEASED + STILL HIT \u00b7 CHAIN' toasts sit on the trade buttons. The round counter is stuck at 1 / 6 at 100% progress. The prize is only text ('YOU GOT TIME'). phone header title is clipped ('MOTIONAL RELEASE CONSO') and the LVL chip overlaps 'by THINKSTILL' (all phone tiles). Desktop: the machine is a small box in a large empty stage.",
+   "improvements": [
+    "Turn it into a chunky retro vending/arcade machine with chrome trim, warm marquee bulbs and a glass dome. The thought becomes a coin the player flicks into the slot, with a coin roll, a clunk and gears whirring.",
+    "Dispense a real prize object for each choice: TIME as an hourglass that pops out and glows, SPACE as an unfolding window to a calm landscape, LAUGH as a bouncing joke card. Give each a capsule-pop squash.",
+    "The character should press its face to the machine glass, flinch as the coin goes in, then catch the prize, hug it and visibly brighten from crying to smiling.",
+    "Finale: the machine's lights cycle into a jackpot, and the collected prizes from all 6 rounds line up on a shelf in a warm pool of light before the shared card.",
+    "Advance the 1/6 counter per round, move the toasts off the buttons, and put the word caption below the portrait."
+   ],
+   "effort": "M",
+   "looks_like": "Portrait-over-buttons layout like 85 and 86. Catalog look-alike is 90."
+  },
+  {
+   "id": 89,
+   "name": "DOOR A / B",
+   "scores": {
+    "A": 5,
+    "B": 4,
+    "C": 3,
+    "D": 3,
+    "E": 2,
+    "F": 4,
+    "G": 4,
+    "H": 3
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "Each door shows a circular portrait on a dark rounded-square plate (dark swirl for A, pale calm blue for B; phone start) with readable captions below ('my boss yelled at me' / 'and I feel panic'). The portraits stay static, do not step through or react when a door is opened, and are partly buried under the popover in the mid/finish tiles.",
+   "finale": "The phone finish tile is the mid state: a popover ('YOUR REACTION / ...s yelled at me / ...ATION, NOT DESTINY') overlaps both doors, a toast sits on it, a white flare plays, and the footer reads '1 / 2 DOORS EXPLORED' while the bar says 100%. Phone reveal: the shared reveal card ('RELEASE COMPLETE +N STILL / <NAME> / STEADIER + a stock line / FEEL A SHIFT? YES / NOT YET / AGAIN' with PREVIOUS/NEXT pills) on the empty nebula, the same layout in every game in this batch ('STEADIER, YOU MADE A CHOICE'). It is not unique, and the 'choice' is never shown.",
+   "score_rationale": "A5: the best-lit layout in this batch, with neon cyan/magenta door frames, brass handles and a soft glow (phone start). The doors are still flat cards, with no perspective or light spilling from inside. B4: doors are a distinct motif, but they float on the same nebula with no hallway or floor. C3: tapping a door shows a popover, with no swing-open, step-in or depth. Two actions finish the game in 2.1 s. D3: static portraits on plates. E2: no door-specific payoff, and the shared card. F4: 'STEP INTO THE DECISION / OPEN EITHER DOOR' is clear and the captions are readable at about 13 px. In mid/finish the popover text is cut off ('anic', 's yelled at me'). G4: the doors fit side by side, but the popover overlaps both doors and is clipped (phone mid/finish), and the header is clipped. H3: previewing both options suits decision anxiety, but with this input the doors are just the two halves of one sentence ('my boss yelled at me' vs 'and I feel panic'), which is not a decision. The catalog confirms it only works when the text contains 'or'/'vs'.",
+   "perf_flags": [
+    "p95 frame 416.6 ms phone / 866.7 ms desktop (>34 ms) and max frame 416.6 / 866.7 ms (>120 ms); headless software rendering inflates these numbers, so treat them as relative. Long-task max is 680 ms phone / 2561 ms desktop",
+    "The desktop long task of 2561 ms is the worst single stall in this batch and above the 90th percentile of all games (1603 ms)",
+    "heap growth below 7 MB and no errors on either size"
+   ],
+   "strengths": "The strongest lighting and art direction in the batch, with neon door frames and handles. Readable captions below the portraits. A clear headline.",
+   "problems": "Phone start: the portraits sit on dark square plates, which breaks the no-boxes bubble rule. Phone mid/finish: the popover overlaps both doors, its text is clipped, and the toast sits on top. The progress bar reads 100% while the footer says 1/2 doors explored, and the round counter is stuck at 1/6. The input split makes the two 'options' nonsensical. phone header title is clipped ('MOTIONAL RELEASE CONSO') and the LVL chip overlaps 'by THINKSTILL' (all phone tiles).",
+   "improvements": [
+    "Detect real alternatives (or, vs, should I, either). Otherwise ask the player to name option A and option B with two quick chips, instead of cutting the sentence in half.",
+    "Build a corridor scene: two doors in perspective on a warm-lit floor. Opening one swings it inward on a hinge and spills its own coloured light, revealing a short vignette room for that option (a calm park, or a busy office) rendered with layered parallax.",
+    "The character walks to the chosen door, peeks in nervously (anticipation squash), steps through, then returns. Its face shifts from scared to curious to calm after seeing both rooms ('information, not destiny').",
+    "Finale: both doors stand open, the light from both rooms merges into a warm corridor glow, and the character stands balanced in the middle with a 'both are survivable' caption before the shared card.",
+    "Remove the dark plates behind the portraits, keep the popover inside its door, and sync the doors-explored count with the progress bar."
+   ],
+   "effort": "L",
+   "looks_like": "No direct visual twin in this batch. Its tap-to-preview pattern overlaps the 85/86 choice games."
+  },
+  {
+   "id": 90,
+   "name": "COIN FLIP REACTION",
+   "scores": {
+    "A": 4,
+    "B": 3,
+    "C": 2,
+    "D": 2,
+    "E": 2,
+    "F": 4,
+    "G": 4,
+    "H": 3
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "A crying blue portrait sits on a dark rounded-square plate inside a ring above the coin, captioned 'my boss' below (phone start/mid). It does not react to the flip. In the phone finish tile the portrait is gone, leaving an empty glow. On desktop it is a 30 px decal.",
+   "finale": "The phone finish tile shows a pink glow behind the coin with a 'SURVIVED + STILL HIT \u00b7 CHAIN x6' toast covering it, and nothing about the result of the flip. Phone reveal: the shared reveal card ('RELEASE COMPLETE +N STILL / <NAME> / STEADIER + a stock line / FEEL A SHIFT? YES / NOT YET / AGAIN' with PREVIOUS/NEXT pills) on the empty nebula, the same layout in every game in this batch ('STEADIER, YOU TOOK BACK A LITTLE CONTROL'). It is generic.",
+   "score_rationale": "A4: a large cyan-magenta gradient disc with a rim ring and a soft halo (phone start). It reads as a button, not a metal coin. There is no embossing or edge, and the 'FLIP COIN' pill sits off-centre. B3: shared nebula, with no table, hand or arena. C2: one tap followed by a passive 2.3 s flip. The toast covers the coin in the mid and finish tiles, and the 'notice your reaction' step does not exist (catalog). D2: a static plate decal that disappears in the finish. E2: no flip outcome is shown, only the shared card. F4: 'FLIP THE COIN TO SEND THE THOUGHT OUT OF YOUR HANDS' is readable and the target is obvious, but the 1/6 counter is stuck at 100%. G4: a big central target in thumb reach. The toast covers it and the header is clipped. H3: passive repeated flips do little for stress or indecision without the reaction step.",
+   "perf_flags": [
+    "p95 frame 416.7 ms phone / 1066.7 ms desktop (>34 ms) and max frame 416.7 / 1066.7 ms (>120 ms); headless software rendering inflates these numbers, so treat them as relative. Long-task max is 570 ms phone / 606 ms desktop",
+    "Desktop p95 of 1066.7 ms is at the 90th percentile of all games",
+    "heap growth below 7 MB and no errors on either size"
+   ],
+   "strengths": "A single obvious action and a large centred tap target.",
+   "problems": "Phone start/mid: the circular portrait sits on a dark square plate, which breaks the bubble rule. Phone mid/finish: toasts cover the coin. The finish loses the character entirely. The round counter shows 1/6 at 100%. There is no reaction step and no outcome display. The Live Guide row is blank in the mid tile. phone header title is clipped ('MOTIONAL RELEASE CONSO') and the LVL chip overlaps 'by THINKSTILL' (all phone tiles).",
+   "improvements": [
+    "Make it a real coin: a thick gold or bronze coin with an embossed face of the emotion and a 'let go' reverse, a rim, specular light and a contact shadow. A flick-up gesture launches it with a spin blur and a ring sound.",
+    "Add the missing reaction step. When the coin lands, ask 'relieved or disappointed?' with two big chips. The answer reveals what the player actually wants, which is the therapeutic point.",
+    "Character: it holds its breath on the toss (squash), peeks at the landing, then reacts to the player's answer with a relieved exhale or a 'huh!' realisation, softening over the rounds.",
+    "Finale: the coins from all rounds stack into a small glowing tower or fountain that spells out what the player wanted, then the shared card.",
+    "Remove the square plate, keep the portrait in the finish, and keep the toasts off the coin."
+   ],
+   "effort": "L",
+   "looks_like": "Catalog look-alikes are 10, 22 and 103. Its ring-and-portrait layout matches 92."
+  },
+  {
+   "id": 91,
+   "name": "PRIORITY BLOCKS",
+   "scores": {
+    "A": 3,
+    "B": 2,
+    "C": 2,
+    "D": 1,
+    "E": 2,
+    "F": 3,
+    "G": 3,
+    "H": 3
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "No emotion characters appear in play on phone or desktop (start/mid tiles). The pieces are plain cyan-violet gradient balls labelled 'my boss', 'yelled at' and so on. The faint ghost faces in the background bokeh are decoration only.",
+   "finale": "Phone finish: a white glowing orb with rays in the centre, a micro-text card tilted over slot 2, and a 'panic' ball hanging over slot 3. Desktop finish: scattered confetti and a 'RELEASED \u00b7 SHIFT COMPLETE / LESS GRIP. MORE STILL.' card, which is the shared burst. Phone reveal: the shared reveal card ('RELEASE COMPLETE +N STILL / <NAME> / STEADIER + a stock line / FEEL A SHIFT? YES / NOT YET / AGAIN' with PREVIOUS/NEXT pills) on the empty nebula, the same layout in every game in this batch. It is not unique.",
+   "score_rationale": "A3: dashed outline slots and flat gradient balls, with no blocks, weight or materials (phone start). B2: a generic grid on the shared nebula. C2: per the catalog, any wiggle counts and slots fill in drag order. The mid tile shows 'feel' and 'my boss' stacked on top of each other in slot 1, so placement is ignored. D1: no characters at all. E2: a generic glow orb, a confetti burst and the shared card. F3: the numbered DROP HERE slots are clear, but the progress reads 100% at the mid tile while the round counter stays at 1/6, and the stacked or floating balls make the state unreadable. G3: an orphan ball is clipped behind the Live Guide panel (phone mid/finish), balls overlap the slots, the LOCKED IN toast covers slots 2-3, and the header is clipped. H3: ranking priorities helps overwhelm in principle, but ranking word fragments ('me and', 'I') is meaningless.",
+   "perf_flags": [
+    "p95 frame 583.3 ms phone / 783.3 ms desktop (>34 ms) and max frame 583.3 / 783.3 ms (>120 ms); headless software rendering inflates these numbers, so treat them as relative. Long-task max is 683 ms phone / 349 ms desktop",
+    "heap growth below 7 MB and no errors on either size"
+   ],
+   "strengths": "Numbered DROP HERE slots communicate the goal immediately. The bubbles are large thumb targets.",
+   "problems": "Phone mid/finish tiles: balls are stacked on slot 1 ('feel' over 'my boss'), 'panic' floats over slot 3, and one ball is clipped at the bottom behind the Live Guide, which breaks the nothing-clipped rule. Progress jumps to 100% by the mid capture. The overflow tray from the catalog is missing. There are no characters. phone header title is clipped ('MOTIONAL RELEASE CONSO') and the LVL chip overlaps 'by THINKSTILL' (all phone tiles).",
+   "improvements": [
+    "Rebuild it as a physical stacking game: the thoughts become weighted wooden or stone blocks with real size by importance. Dragging snaps a block into the chosen numbered shelf with a thud, a dust puff and squash. A wrong drop bounces back, and slot order must follow the drop location.",
+    "Add the overflow tray: a capacity line where the 4th or later blocks tip off into a soft 'later' basket. That shows 'capacity is a real constraint' visually.",
+    "Put the characters in the world. A small worker character carries or inspects each block, and the emotion character on top of the stack wobbles when it is overloaded and steadies once there are three priorities.",
+    "Finale: the top three blocks light up as a tidy podium, the overflow basket closes with a lid, and the character sits calmly on the podium. Replace the shared white orb with this.",
+    "Keep every ball and block inside the stage above the Live Guide, and never stack two items in one slot."
+   ],
+   "effort": "L",
+   "looks_like": "Catalog look-alike is 81. Its plain gradient balls match 94 and 95."
+  },
+  {
+   "id": 92,
+   "name": "SCALE DOWN",
+   "scores": {
+    "A": 3,
+    "B": 2,
+    "C": 2,
+    "D": 3,
+    "E": 2,
+    "F": 4,
+    "G": 3,
+    "H": 3
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "A small circular portrait sits on a dark rounded-square plate inside a large ring: a blue '?' drop (phone start), a red angry face (phone mid), and a calm sleepy blue (phone finish), each with a faint caption of about 9 px below. The change follows the word chunk, not the rating. It does not shrink or calm as the number goes down.",
+   "finale": "Phone finish tile: '10 SELECTED' with a toast covering buttons 10-6. The rating never comes down, and there is no before/after. Phone reveal: the shared reveal card ('RELEASE COMPLETE +N STILL / <NAME> / STEADIER + a stock line / FEEL A SHIFT? YES / NOT YET / AGAIN' with PREVIOUS/NEXT pills) on the empty nebula, the same layout in every game in this batch ('STEADIER, YOU FOUND MORE CENTRE'). It is generic.",
+   "score_rationale": "A3: a row of ten flat gradient tiles under an empty ring (phone start), with no ruler, dial or gauge material. B2: generic nebula. C2: a single tap on a number with no slide, dial turn or response. The mid and finish tiles both read '10 SELECTED'. D3: a per-chunk portrait decal on a plate. It happens to look calmer at the finish, but it does not react. E2: no finale and the shared card. F4: 'TAP THE SIZE YOU WANT' is readable, but the meaning of 10 versus 1 is not labelled, and the caption under the portrait is about 9 px and faint. G3: ten buttons of about 35 px each in one row are below comfortable target size, the toast covers half the ruler (phone mid/finish), and the header is clipped. H3: the only intensity (SUDS) measure in the catalog, which is valuable, but rating 10 six times with no step-down reinforces intensity.",
+   "perf_flags": [
+    "p95 frame 566.6 ms phone / 1066.6 ms desktop (>34 ms) and max frame 566.6 / 1066.6 ms (>120 ms); headless software rendering inflates these numbers, so treat them as relative. Long-task max is 209 ms phone / 333 ms desktop",
+    "Desktop p95 of 1066.6 ms is at the 90th percentile of all games",
+    "heap growth below 7 MB and no errors on either size"
+   ],
+   "strengths": "A unique intensity measure that could become the arcade's before/after wrapper. A simple instruction.",
+   "problems": "Phone start: the portrait sits on a dark square plate, which breaks the bubble rule, and its caption is about 9 px. Phone mid/finish: the toast covers 10-6, '10 SELECTED' never changes, and there is no before/after. The ten targets are cramped at 390 px. phone header title is clipped ('MOTIONAL RELEASE CONSO') and the LVL chip overlaps 'by THINKSTILL' (all phone tiles).",
+   "improvements": [
+    "Replace the button row with a big vertical thermometer or volume-dial slider that the thumb drags down notch by notch. Give it detents, haptic-style ticks and a rising-then-cooling colour from red to blue.",
+    "Make it a before/after: rate first, then do one small grounding action (a breath, or naming the fact), then ask 'one notch lower?'. The game then celebrates each notch down.",
+    "The character physically sits on the gauge. It is large, hot and puffed at 10, and deflates and shrinks with squash at each notch, ending small, cool and smiling.",
+    "Finale: the gauge needle settles into a green 'manageable' zone, the steam above the character turns to a soft breeze, and a before/after badge ('8 to 5') appears before the shared card.",
+    "Remove the plate, raise the caption to 15 px or more, and keep the toast off the control."
+   ],
+   "effort": "M",
+   "looks_like": "Catalog look-alike is 37. Its ring-plus-plated-portrait layout matches 90."
+  },
+  {
+   "id": 93,
+   "name": "SPACE MAKER",
+   "scores": {
+    "A": 4,
+    "B": 4,
+    "C": 4,
+    "D": 3,
+    "E": 2,
+    "F": 5,
+    "G": 3,
+    "H": 5
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "Each of the six tiles holds a circular portrait on a dark plate with a word pill below (phone start). They are the pieces pushed outward, but their faces are fixed. There is no flinch when pushed and no relief as space opens, and the 'feel' tile slides behind the Live Guide panel (phone mid/finish).",
+   "finale": "Phone finish: the dashed NOW circle sits empty in the middle while the tiles are cut off at the left, right and top edges and under the progress bar, with a 'GONE' toast floating at the left. No light floods the freed space. Phone reveal: the shared reveal card ('RELEASE COMPLETE +N STILL / <NAME> / STEADIER + a stock line / FEEL A SHIFT? YES / NOT YET / AGAIN' with PREVIOUS/NEXT pills) on the empty nebula, the same layout in every game in this batch ('STEADIER, THE WEIGHT EVENED OUT'). It is not unique.",
+   "score_rationale": "A4: a decent radial composition with gradient tiles, arrow chips and a dashed NOW ring (phone start), but the stage is flat and dark and the tiles are plain gradient slabs. B4: the radial 'NOW' space is one of the more distinct layouts. C4: a real outward drag with an arrow per tile, and the tiles slide away (mid tile). The feedback is a toast with no momentum trail, squash or space-expanding effect. D3: static portrait decals on plates. E2: an empty circle and the shared card. F5: an arrow on every tile plus the NOW label makes the goal obvious. However, the guide row is blank in the mid/finish tiles and the round counter is stuck at 1/6. G3: the pushed tiles end up clipped at the screen edges and under the HUD and Live Guide (phone mid/finish). The header is clipped. H5: literally pushing thoughts out to open space around NOW is a strong overwhelm metaphor.",
+   "perf_flags": [
+    "p95 frame 500 ms phone / 683.4 ms desktop (>34 ms) and max frame 500 / 683.4 ms (>120 ms); headless software rendering inflates these numbers, so treat them as relative. Long-task max is 444 ms phone / 315 ms desktop",
+    "heap growth below 7 MB and no errors on either size"
+   ],
+   "strengths": "A strong, literal relief metaphor with clear directional affordances on every tile. The radial layout is one of the few distinctive compositions here.",
+   "problems": "Phone start: the portraits sit on dark square plates inside the tiles, which breaks the bubble rule, and the captions are about 10 px. Phone mid/finish: tiles are clipped at the left/right/top edges and slide under the progress bar and Live Guide. The toast floats over the empty field. The round counter shows 1/6 at 100%. The guide row is blank. phone header title is clipped ('MOTIONAL RELEASE CONSO') and the LVL chip overlaps 'by THINKSTILL' (all phone tiles).",
+   "improvements": [
+    "Make the pushed tiles settle into a visible outer orbit inside the safe area, softly docked and dimmed, instead of sliding off-screen under the HUD.",
+    "As each tile leaves, the NOW circle should physically grow and brighten: warm light pools in, grass or a calm floor appears, and ambient sound opens up. The space should feel bigger, not just emptier.",
+    "Put the emotion character in the NOW circle. It starts squeezed and claustrophobic, stretches out more with each push, and ends lying back relaxed in the open space.",
+    "Finale: the NOW circle blooms into a full sunlit clearing with breathing room, the orbiting thoughts drift gently like distant planets, and then the shared card plays.",
+    "Give the push a flick with momentum, a whoosh and a squash on release. Remove the plates under the portraits."
+   ],
+   "effort": "M",
+   "looks_like": "Catalog look-alikes are 21 and 95."
+  },
+  {
+   "id": 94,
+   "name": "JUGGLE",
+   "scores": {
+    "A": 3,
+    "B": 2,
+    "C": 2,
+    "D": 1,
+    "E": 2,
+    "F": 3,
+    "G": 3,
+    "H": 2
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "No emotion characters are present in play (phone start/mid/finish). The six pieces are plain gradient balls with words of about 8 px ('my boss', 'yelled at'...). The faint bokeh faces are background decoration.",
+   "finale": "Phone finish: an empty ring with a 'SURVIVED' toast and five dim ghost balls at the bottom. Desktop finish: a ray burst around the single kept ball, which is the user's own 'my boss', so the player ends holding a negative word. Phone reveal: the shared reveal card ('RELEASE COMPLETE +N STILL / <NAME> / STEADIER + a stock line / FEEL A SHIFT? YES / NOT YET / AGAIN' with PREVIOUS/NEXT pills) on the empty nebula, the same layout in every game in this batch. It is not unique, and it is anti-relief.",
+   "score_rationale": "A3: six flat gradient spheres in a row (phone start) with no lighting variation, shadow or material. B2: generic nebula, with no juggler, stage or spotlight. C2: per the catalog there is no juggling. You tap one ball 3 times, and the others simply dim (phone mid). D1: no characters. E2: the shared card, and the desktop burst celebrates keeping 'my boss'. F3: the guide text explains the task ('tap the selected thought 3x'), but the ball labels are about 8 px and the goal is abstract. G3: six balls span the full width, with the leftmost and rightmost touching the stage edges (phone start). The labels are under the 12 px floor and the toast covers the centre. H2: with negative input the player ends up keeping one of their own distress words, which works against relief.",
+   "perf_flags": [
+    "p95 frame 816.7 ms phone / 733.3 ms desktop (>34 ms) and max frame 816.7 / 733.3 ms (>120 ms); headless software rendering inflates these numbers, so treat them as relative. Long-task max is 660 ms phone / 155 ms desktop",
+    "heap growth below 7 MB and no errors on either size"
+   ],
+   "strengths": "Short and finishes reliably. The guide text spells out the steps.",
+   "problems": "Phone start: the ball labels are about 8 px and the row runs edge to edge. Phone mid/finish: the selected ball is replaced by a toast, and the other balls become barely visible ghosts. The finish centre is empty. The round counter shows 1/6 at 100%. There is no juggling mechanic, and the player keeps a negative word. phone header title is clipped ('MOTIONAL RELEASE CONSO') and the LVL chip overlaps 'by THINKSTILL' (all phone tiles).",
+   "improvements": [
+    "Make it actual juggling. Three to six thought-balls arc over a character's hands with physics, and the player taps to keep them airborne. The pace gets frantic, and the release is choosing to let balls drop one by one into a soft cushion until one gentle ball remains.",
+    "Make the kept item a positive anchor the player picks (or a reframed version of the thought), never the raw distress word.",
+    "Make the emotion character the juggler: sweating and wide-eyed with six balls, visibly relaxing and smiling as each ball is set down, and finally tossing one ball lazily.",
+    "Finale: the dropped balls bounce into a basket that glows, the juggler bows under a warm spotlight, and the single kept ball floats up as a little sun before the shared card.",
+    "Use 15 px labels on fewer, larger balls, and keep them inside the safe area."
+   ],
+   "effort": "L",
+   "looks_like": "Catalog look-alikes are 78 and 81. Its plain gradient balls match 91."
+  },
+  {
+   "id": 95,
+   "name": "SHELF IT",
+   "scores": {
+    "A": 3,
+    "B": 3,
+    "C": 3,
+    "D": 1,
+    "E": 2,
+    "F": 4,
+    "G": 3,
+    "H": 5
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "No emotion characters are present in play. The thoughts are plain gradient capsule cards ('my boss LIFT', and so on) on phone and desktop.",
+   "finale": "Phone finish: the cards are scattered over and between the two planks, and the 'yelled at' card is clipped under the progress bar at the top. A toast floats at the top. Nothing marks the shelves as full or settled. Phone reveal: the shared reveal card ('RELEASE COMPLETE +N STILL / <NAME> / STEADIER + a stock line / FEEL A SHIFT? YES / NOT YET / AGAIN' with PREVIOUS/NEXT pills) on the empty nebula, the same layout in every game in this batch ('STEADIER, YOU FOUND MORE CENTRE'). It is not unique.",
+   "score_rationale": "A3: two flat brown bars as shelves and flat gradient cards (phone start), with no wood grain, wall, lamp or shadow. B3: shelves are a distinct prop, but there is no room around them. C3: drag up works with a LIFT label, but in the mid tile the cards overlap each other and the shelf. The phone run needed 19 actions and 44.8 s, which suggests many drags miss the threshold. D1: no characters. E2: a messy end state and the shared card. F4: 'DRAG EACH THOUGHT UP ONTO A SHELF' with an up arrow and LIFT on every card is clear, though the card text is about 9 px. G3: the cards cover the shelves at the start, the finish card is clipped under the progress bar, and the header is clipped. On desktop, dragging selects the page header text (blue selection highlight in 95_1280_finish and the reveal). H5: containment ('visible but not held') is a well-matched, gentle technique for worry.",
+   "perf_flags": [
+    "p95 frame 766.6 ms phone / 633.3 ms desktop (>34 ms) and max frame 766.6 / 633.3 ms (>120 ms); headless software rendering inflates these numbers, so treat them as relative. Long-task max is 1103 ms phone / 258 ms desktop",
+    "The phone long task of 1103 ms is high. The phone run took 44.8 s and 19 actions for 6 items, which points to unreliable drag detection",
+    "heap growth below 7 MB and no errors on either size"
+   ],
+   "strengths": "A gentle, well-chosen therapeutic idea. A built-in up guide and a LIFT cue on every card.",
+   "problems": "Phone start: the cards sit over the shelf planks, so the shelves are hidden. Phone mid: the cards overlap each other. Phone finish: the 'yelled at' card is clipped under the progress bar, which breaks the nothing-clipped rule, and the cards do not align on the planks. Desktop finish/reveal: the header text is highlighted by drag text-selection (user-select not disabled). There are no characters. phone header title is clipped ('MOTIONAL RELEASE CONSO') and the LVL chip overlaps 'by THINKSTILL' (all phone tiles).",
+   "improvements": [
+    "Build a warm-lit wooden shelf wall with wood grain, brackets, a lamp and labelled jars or boxes. A dragged thought shrinks into a lidded jar that snaps onto a slot with a wobble, a lid click and a soft shadow.",
+    "Lay the cards out in a tray below the shelves, so the shelves are visible and reachable, and make the up-drag threshold forgiving (velocity or a 40 px flick).",
+    "Character: it carries a weight at the start, climbs a little ladder to place each jar, dusts its hands off, and its posture straightens and its face softens as its arms empty.",
+    "Finale: the full shelf glows, the jar labels dim to a calm 'stored' state, and the character sits in an armchair beside the shelf with a cup, then the shared card.",
+    "Set user-select: none on the stage and HUD during drags, and keep the cards inside the safe area."
+   ],
+   "effort": "M",
+   "looks_like": "Catalog look-alikes are 32, 28 and 38. Its flat gradient cards match 91 and 94."
+  },
+  {
+   "id": 96,
+   "name": "SCRATCH REVEAL",
+   "scores": {
+    "A": 3,
+    "B": 3,
+    "C": 2,
+    "D": 2,
+    "E": 2,
+    "F": 3,
+    "G": 2,
+    "H": 1
+   },
+   "functional_ready": false,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "A dark-swirl character portrait appears only when the foil is scratched, inside a dark rectangular hole, half-covered by a 'YESSS' toast (phone mid). It is otherwise absent, and it does not react to being uncovered. The finish shows a blank white card.",
+   "finale": "Phone finish: a blank white card and a 'CLEAR HIT' toast, with the progress label dropped to 17%. Phone reveal: the shared reveal card ('RELEASE COMPLETE +N STILL / <NAME> / STEADIER + a stock line / FEEL A SHIFT? YES / NOT YET / AGAIN' with PREVIOUS/NEXT pills) on the empty nebula, the same layout in every game in this batch ('STEADIER, THE HIDDEN PART GOT SMALLER'). The fact chips from the catalog are not implemented. It is not unique, and it is anti-relief.",
+   "score_rationale": "A3: the silver foil has a believable sheen and grid (phone start), the one real material in the batch. However, a black rectangle sits right of the ACTIVATE SCRATCH TOOL button, and the white card backing breaks out of the stage. B3: a scratch card is a distinct prop on the shared nebula. C2: the player must arm the tool first, and the scratch reveals a dark box (mid). The game finished in 1.7 s on phone despite '6 rounds', so the loop is broken. D2: the character appears only as the thing revealed, under a toast. E2: a blank white card and the shared card. F3: 'ACTIVATE SCRATCH TOOL' and 'SCRATCH TO REVEAL' are clear words, but the progress label reads 100% at mid and 17% at finish, and the round counter is stuck at 1/6. G2: the card and the ACTIVATE button overflow the right edge at 390 px in all phone tiles, with a black rectangular artifact. H1: per the catalog it reveals the user's own distress word repeatedly, which is anti-relief.",
+   "perf_flags": [
+    "p95 frame 683.3 ms phone / 716.6 ms desktop (>34 ms) and max frame 683.3 / 716.6 ms (>120 ms); headless software rendering inflates these numbers, so treat them as relative. Long-task max is 457 ms phone / 641 ms desktop",
+    "heap growth below 7 MB and no errors on either size"
+   ],
+   "strengths": "The silver foil is one of the few textured materials in the arcade. Scratch-to-reveal is an inherently tactile gesture with good potential.",
+   "problems": "Functional: the progress label goes BACKWARDS from 'GAME PROGRESS \u00b7 100%' (phone mid) to '17%' (phone finish), and the desktop guide also reads '17% scratch reveal' at the finish. The 6-round game finished in 1.7 s/2.2 s, so progress bookkeeping is broken. All phone tiles: the card and the ACTIVATE SCRATCH TOOL button are clipped at the right edge, with a black box artifact. Phone mid: the toast overlaps the revealed portrait. Phone finish: a blank white card. The Live Guide row is blank in mid/finish. phone header title is clipped ('MOTIONAL RELEASE CONSO') and the LVL chip overlaps 'by THINKSTILL' (all phone tiles).",
+   "improvements": [
+    "Flip what is revealed. The foil hides a supportive fact, a resource or a calming image (the catalog's fact chips), never the distress word. Each scratched card uncovers one balancing fact.",
+    "Remove the arm-the-tool step. A finger on the foil scratches immediately, with foil flakes particle-spraying off, a scratchy sound and the coverage showing as a shimmering edge.",
+    "Fix progress so it is monotonic and per round (1/6 to 6/6), and scale the card to fit 390 px with no black box.",
+    "Make the character hold the card and peek over it nervously at first, then light up and point at each revealed fact, growing calmer card by card.",
+    "Finale: the six revealed facts fan out into a glowing hand of cards, the foil dust sweeps away as gold sparkles, and the character holds up the winning card before the shared card."
+   ],
+   "effort": "L",
+   "looks_like": "Catalog look-alike is 19."
+  },
+  {
+   "id": 97,
+   "name": "X-RAY",
+   "scores": {
+    "A": 4,
+    "B": 3,
+    "C": 4,
+    "D": 3,
+    "E": 3,
+    "F": 3,
+    "G": 4,
+    "H": 3
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "Small character-faced orbs (green, pink and blue faces) burst out around a heart orb during a scan pass (phone mid). They are scan particles, not participants, and they overlap each other and the 'PASS 2 OF 3' text. A faint ghost 'panic' disc remains in the finish. No character is present at the start, and none reacts or calms.",
+   "finale": "Phone finish: the text 'BURNED AWAY' with three lit dots, a ghost 'panic' disc and a 'CLEAN HIT' toast covering the scanner. The BURN ALL finale from the catalog is not visible in the finish tile. Phone reveal: the shared reveal card ('RELEASE COMPLETE +N STILL / <NAME> / STEADIER + a stock line / FEEL A SHIFT? YES / NOT YET / AGAIN' with PREVIOUS/NEXT pills) on the empty nebula, the same layout in every game in this batch ('STEADIER, YOU BROUGHT IT INTO VIEW'). It is generic.",
+   "score_rationale": "A4: a dark glass scan window with faint vertical light streaks, plus a green glow, concentric rings and particle orbs in the mid tile, give this the most atmosphere of the batch. The start, though, is a near-empty dark panel. B3: no X-ray lightbox, film or lab, only a dark panel on the nebula. C4: dragging the scanner handle across the track with an arrow is tactile, and the mid tile has a real particle and ring burst. The toast then covers the handle. D3: the character faces are only particles. E3: 'BURNED AWAY' text and the shared card, with no visible incineration moment. F3: the start tile shows nothing to scan (an empty window, phone start), so the player cannot see what is being X-rayed, and the '0 / 3 X-R...' counter is clipped by the progress bar. G4: a full-width slider in thumb reach. The counter is clipped, the toast covers the slider (phone mid/finish) and the header is clipped. H3: inspecting a thought fits overthinking, but the subject is invisible, and per the catalog the scans make scary words sharper before they go.",
+   "perf_flags": [
+    "p95 frame 266.6 ms phone / 633.3 ms desktop (>34 ms) and max frame 266.6 / 633.3 ms (>120 ms); headless software rendering inflates these numbers, so treat them as relative. Long-task max is 171 ms phone / 99 ms desktop",
+    "The lightest game in this batch (phone p95 266.6 ms)",
+    "heap growth below 7 MB and no errors on either size"
+   ],
+   "strengths": "The most tactile gesture of the batch, with a clear drag-right guide and a satisfying particle and ring burst mid-scan. Good relative performance.",
+   "problems": "Phone start: the scan window is empty, so the thought is not shown. All phone tiles: the '0 / 3 X-RAY PASSES' counter is truncated by the progress bar. Phone mid: the character orbs overlap each other and the PASS text, which breaks the bubble rule. Phone mid/finish: toasts cover the scanner. Phone finish: there is no visible burn finale. phone header title is clipped ('MOTIONAL RELEASE CONSO') and the LVL chip overlaps 'by THINKSTILL' (all phone tiles).",
+   "improvements": [
+    "Show the thought as a big, slightly menacing silhouette in a backlit X-ray lightbox. Each scan pass reveals that it is hollow or made of small harmless parts (a 'solid-looking thoughts have parts' visual), so it gets less scary per pass, not sharper.",
+    "Make the scanner bar a glowing light blade with a scanline shader, a hum sound and the bones-and-parts view showing only where the bar passes.",
+    "The character stands behind the lightbox. It is frightened at pass 1, curious at pass 2, and laughing at pass 3 when the thought turns out to be a hollow paper shell.",
+    "Finale: the BURN ALL step becomes a big thumb-hold that turns the shell to glowing embers rising like fireflies, warming the lab light from cold blue to amber before the shared card.",
+    "Fix the counter clipping and keep the toasts off the scanner track."
+   ],
+   "effort": "M",
+   "looks_like": "Catalog look-alike is 18."
+  },
+  {
+   "id": 98,
+   "name": "MAGIC TRAPDOOR",
+   "scores": {
+    "A": 4,
+    "B": 3,
+    "C": 3,
+    "D": 3,
+    "E": 2,
+    "F": 3,
+    "G": 4,
+    "H": 3
+   },
+   "functional_ready": true,
+   "visual_ready": false,
+   "premium_ready": false,
+   "work_type": "structural",
+   "bubble_rules_ok": false,
+   "character_role": "Six glossy ringed character portraits form the choice grid, with the chunk word printed across each face (phone start). The picked one dims inside a dark 'UNLOCK / TRAPDOOR OPEN' box (phone mid/finish) and stays put. Nothing falls, and the faces never react.",
+   "finale": "Phone finish: 'TRAPDOOR OPEN' with three lit dots over a dimmed portrait. The other five bubbles stay on screen unchanged, and a 'CLEAN HIT' toast covers the DRAG lever. Phone reveal: the shared reveal card ('RELEASE COMPLETE +N STILL / <NAME> / STEADIER + a stock line / FEEL A SHIFT? YES / NOT YET / AGAIN' with PREVIOUS/NEXT pills) on the empty nebula, the same layout in every game in this batch ('STEADIER, YOU SAW WHAT WAS THERE'). It is not unique, and no trapdoor is ever drawn.",
+   "score_rationale": "A4: the ringed glossy portrait tokens with a coloured glow are attractive (phone start), but the stage is a dark empty panel. B3: no stage floor, trapdoor or magician set. C3: pick a bubble, then pull the lever 3 times. The lever is covered by a toast (phone mid/finish), and there is no drop, fall or hatch animation. D3: the portraits are the tokens, with static faces. E2: a dimmed bubble and the shared card. F3: 'PICK ONE BUBBLE' and the DRAG lever are understandable, but the words printed on the faces are hard to read, the 'CHOOSE' labels are about 5 px, and the '0 / 3 TRA...' counter is clipped by the progress bar. G4: the 3x2 grid of roughly 70 px targets fits 390 well. The selected box overlaps the neighbouring 'feel' bubble, and the header is clipped. H3: isolating the most 'certain' word suits catastrophising, but nothing actually drops away (the catalog notes only 1 of 6 drops).",
+   "perf_flags": [
+    "p95 frame 383.4 ms phone / 933.3 ms desktop (>34 ms) and max frame 383.4 / 933.3 ms (>120 ms); headless software rendering inflates these numbers, so treat them as relative. Long-task max is 95 ms phone / 181 ms desktop",
+    "heap growth below 7 MB and no errors on either size"
+   ],
+   "strengths": "Attractive glossy portrait tokens with a coloured rim. A thumb-friendly grid. A clear pull-lever step.",
+   "problems": "Phone start/mid/finish: the words are printed over the characters' faces, which breaks the bubble rule, and the 'CHOOSE' micro labels are about 5 px. All phone tiles: the '0 / 3 TRAP LOCKS' counter is truncated by the progress bar. Phone mid/finish: the selected box overlaps 'feel', and the toast covers the DRAG lever. There is no trapdoor visual, and the five other bubbles remain. The Live Guide row is blank in mid/finish. phone header title is clipped ('MOTIONAL RELEASE CONSO') and the LVL chip overlaps 'by THINKSTILL' (all phone tiles).",
+   "improvements": [
+    "Build a magician's stage with velvet curtains, a spotlight and a wooden floor with a visible trapdoor hatch. The chosen thought is placed on the X mark.",
+    "Turn the lever pull into a big satisfying lever with three clunks (anticipation and a creak). On the third pull the hatch drops open and the thought falls with a stretch-and-whoosh, a puff of glitter and a distant 'poof'.",
+    "The character is the magician's assistant: nervous while placing the thought, peeking down the hole, then taking a bow. The remaining thoughts visibly shrink and soften once the 'certain' one is gone.",
+    "Finale: the other five thoughts follow down the trapdoor one by one in a cascading drop, the curtain closes and reopens on a calm, empty stage with confetti, then the shared card.",
+    "Move the words to captions below the portraits (15 px or more), fix the counter clipping, and keep the toast off the lever."
+   ],
+   "effort": "M",
+   "looks_like": "Catalog look-alikes are 46 and 26. Its portrait-grid token look matches the 86 and 85 portraits."
+  }
+ ]
+}
