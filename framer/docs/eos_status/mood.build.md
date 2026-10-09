@@ -1,3 +1,54 @@
+# EOS build: mood. FIX ROUND 2 (v2 close-out) FINISHED
+
+Round 2 applied every finding in `docs/eos_status/mood.review_r2.json` (1 major, 4 minors) in `src/eos/14_eos_mood.jsx`, the only file changed. Verified on the isolated integrated build `/tmp/v2_mood` (all 15 `src/eos` modules, 0 stubs); test scripts and results are in `/tmp/v2_mood_t/` (`fin.mjs`, `r*.json`, `equiv.mjs`, `perf3.mjs`, `sheet1.png` and `sheet2.png`). Every run had 0 page errors.
+
+## Round 2 fixes (finding → change → proof)
+
+1. **MAJOR + minor 3: wrong finish-card prediction in 112 on phone.**
+   - **Change:** `probeCard`. A hidden copy of the card is measured where the real card will sit: same classes (`globalFeedbackCopyLayer globalFinishFeedbackCopy` plus flavour and family), same parent (`.cinematicContentShell`), the same body per wrapper, and the arcade's own finish clamp (`--fb-shift-x/y`). It is set to `visibility:hidden`, `animation:none` and `transition:none`, all `!important`. It is laid out, read and removed in the same task, so every per-game override applies, such as 112's `:has(>.eosG112)>.globalFinishFeedbackCopy{top:var(--eosVolcFinY)}`. The old per-wrapper model is kept as the fallback.
+   - **Proof:** the guess now equals the real card's measured box in every run where the card came after the bloom:
+     - 112 at 390: `{10,367,340,130}` (the reviewer measured `{10,371,340,121}`);
+     - 113 and 114 at 390, 111, 113 and 112 at 1280;
+     - legacy 2 at 390 and POP 1 at 1280 (press-anchored), within 1 px.
+
+     The real card covers 0 % of every word.
+   - **Second cause, found while verifying:** with the card fixed, one 112 phone run still yielded two words. Rush hops from the crater to the summit 1.2 s into act c, and that pin moved onto the crown.
+   - **New, `eosMoodPinPath`:** at placement only, each pinned root's running finite CSS animations and transitions are seeked ahead to 25, 50, 75 and 100 % of the bloom life. The root is measured at each step, and then every seek is restored in the same task, so nothing paints and no event fires. The samples become hard `path` obstacles, and `state().place.path` counts them.
+   - **Result:** 112 at 390, twice, gave yields 0, a clean tier-2 stack at 25.2 px beside the landed Rush, and no overlap with "Cooled to zero", the hero, the flowers or the card (`sheet2.png`).
+2. **Minors 2 and 5: placement cost on the finish frame.** `eosMoodPlace` now prunes exactly:
+   - each anchor row tests only the obstacles that cross its vertical band;
+   - a candidate stops scoring once it can be neither clean nor better than the best (or the clean) place found so far, with a 1e-3 margin for float noise;
+   - the reported score uses the full formula's own order.
+
+   Result:
+   - Node equivalence against the round-1 function (`equiv.mjs`): 400 random stages with 0–300 obstacles gave 0 differences. Total time went from 17.0 s to 2.8 s, about 6× less.
+   - In the browser at 4× CPU throttle, on the reviewer's synthetic stage (min of 7 runs, two interleaved runs per build):
+     - 120 obstacles: 19.8 / 10.7 ms → 9.3 / 4.6 ms;
+     - 300 obstacles: 39.8 / 28.4 ms → 11.9 / 9.7 ms.
+
+   The result is identical, so the bloom still starts on the `isComplete` frame (no rAF delay was added).
+3. **Minor 4: 113's emoji anchors were invisible to placement.**
+   - **Standing pictographs (`\p{Extended_Pictographic}`) of 18 px or more** now count as hard `img` content (cap 40). They are skipped when they are inside a particle container (`particle|confetti|spark|burst|ember|floater|trail`) or still in transit, meaning a running finite animation on the glyph or its 3 nearest ancestors. Ambient infinite loops still count.
+   - **New pin** in the stopgap list: `.eosGroundSlot[data-burn="1"] .eosGroundFound`. It counts while the anchor is still popping in.
+   - **Pinned roots in an entrance scale** are now reserved at their full layout size.
+   - **Result:** for 113 anxiety at 390, normal (×2) and reduced, the words do not overlap any glyph or text, and there are 0 yields. The placement is a tier-3 tight crown at 21 px under the sense buttons (`sheet1.png`). For 113 at 1280, it is a clean tier-0 crown.
+
+**Test hook:** `eosExpose("mood")` also publishes `content` (`eosMoodContent`, read-only), which is used to name what lands on a yielding word.
+
+**Regression:**
+- `/tmp/eos_mood_t/unit2.mjs` PASS.
+- The isolated build `build.py --modules 00_eos_core.jsx,14_eos_mood.jsx` passes.
+- Runs with 0 yields, 0 % card cover and 0 page errors:
+  - 112 at 390 (×4) and 1280;
+  - 113 at 390 (normal ×2 and reduced) and 1280;
+  - 114 at 390;
+  - 111 at 1280;
+  - 2 at 390;
+  - 1 at 1280.
+- One parallel 111 at 1280 run timed out with no finish under load average 20. The same run alone passed.
+
+---
+
 # EOS build: mood. FIX ROUND 1 FINISHED
 
 The module is `src/eos/14_eos_mood.jsx` (the only file I own). It covers spec §5.6, §0.2 (grade and flip) and §11.9. Round 1 applied every finding in `docs/eos_status/mood.review_r1.json`: 1 major and 5 minors, all fixed, none skipped.
