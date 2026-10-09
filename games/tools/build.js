@@ -429,6 +429,12 @@ function main() {
     write(`${adir}/index.html`, artifactPage(mode, { catalog, engine, css, gameBase: 'g/', assetBase: 'img/', assetList: faces.list, assetFallback: faces.fallback }));
     const published = games.map(g => `g/${g.bundle.file}`).concat(faces.list.map(k => `img/${k}.webp`));
     write(`${adir}/files.json`, JSON.stringify(published, null, 1) + '\n');
+    // what the live artifact already has (tools/artifact-published.json): only the difference needs uploading
+    const pubPath = rel('tools/artifact-published.json');
+    const pub = fs.existsSync(pubPath) ? JSON.parse(fs.readFileSync(pubPath, 'utf8')) : {};
+    const have = new Set(pub[mode] || []);
+    write(`${adir}/delta.json`, JSON.stringify(published.filter(p => !have.has(p)).map(p => ({ path: p }))) + '\n');
+    if (args.includes('--mark-published')) { pub[mode] = [...new Set([...(pub[mode] || []), ...published])].sort(); fs.writeFileSync(pubPath, JSON.stringify(pub, null, 1) + '\n'); }
     if (faces.missing.length) console.warn(`  note: ${mode} references expressions that do not exist: ${faces.missing.join(', ')}`);
 
     report.push({ mode, games: games.length, engine: kb(engine.length), css: kb(Object.values(css).join('').length), catalog: kb(JSON.stringify(catalog).length),
@@ -442,4 +448,4 @@ function main() {
   console.table(report);
 }
 
-main();
+if (require.main === module) main(); else module.exports = { facesFor, readGame, kitMoods };
