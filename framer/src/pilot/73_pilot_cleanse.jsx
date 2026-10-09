@@ -25,10 +25,10 @@ const EOS_PILOT_CLEANSE = {
     // slot -> [x, y] as fractions of the S5 play box. F = front row, B = back row; FC is the protagonist's seat.
     slots: {
         phone: { F0: [0.18, 0.79], FC: [0.5, 0.79], F2: [0.82, 0.79], B0: [0.18, 0.33], BC: [0.5, 0.33], B2: [0.82, 0.33] },
-        desk: { F0: [0.46, 0.8], FC: [0.64, 0.8], F2: [0.82, 0.8], B0: [0.46, 0.33], BC: [0.64, 0.33], B2: [0.82, 0.33] },
+        desk: { F0: [0.45, 0.84], FC: [0.64, 0.84], F2: [0.83, 0.84], B0: [0.45, 0.28], BC: [0.64, 0.28], B2: [0.83, 0.28] },
     },
-    lotus: { phone: [0.5, 0.6, 122], desk: [0.64, 0.6, 160] },
-    size: { phone: { back: 68, front: 88, hero: 96, still: 58 }, desk: { back: 80, front: 100, hero: 108, still: 76 } },
+    lotus: { phone: [0.5, 0.6, 122], desk: [0.64, 0.64, 176] },
+    size: { phone: { back: 68, front: 88, hero: 96, still: 64 }, desk: { back: 92, front: 114, hero: 122, still: 84 } },
     fill: { 1: ["FC"], 2: ["FC", "BC"], 3: ["F0", "FC", "F2"], 4: ["F0", "FC", "F2", "BC"], 5: ["F0", "FC", "F2", "B0", "B2"], 6: ["F0", "FC", "F2", "B0", "BC", "B2"] },
     order: ["F0", "F2", "B0", "BC", "B2", "FC"], // suggested order: front sides -> back row -> the protagonist last
     // 8 petals: closed (bud) and open angles; DOM order = depth (outer petals behind, inner in front of STILL)
@@ -91,7 +91,6 @@ const EosPilotCleanseInner = React.memo(function EosPilotCleanseInner({ live, wo
     const lotusRef = React.useRef(null)
     const stillRef = React.useRef(null)
     const stillWrapRef = React.useRef(null)
-    const countRef = React.useRef(null)
     const sweepRef = React.useRef(null)
     const pathRef = React.useRef(null)
     const hitsRef = React.useRef({})
@@ -134,7 +133,9 @@ const EosPilotCleanseInner = React.memo(function EosPilotCleanseInner({ live, wo
         } catch (x) {}
         if (!e || !EOS_EMO[e] || !EOS_EMO[e].char || EOS_EMO[e].char === "still") e = EOS_AROUSAL_ORDER.find((id) => EOS_EMO[id] && EOS_EMO[id].char && EOS_EMO[id].char !== "still") || "panic"
         const ch = eosPilotCharOk(EOS_EMO[e] ? EOS_EMO[e].char : "sync")
-        return { emotion: e, char: ch, name: (EOS_CHAR_NAMES && EOS_CHAR_NAMES[ch]) || "SYNC" }
+        // the forehead-touch face: the last win face of each character's list (a closed-eye or open smile, never a fierce one)
+        const wins = (EOS_WIN_FACES && EOS_WIN_FACES[ch]) || [0]
+        return { emotion: e, char: ch, name: (EOS_CHAR_NAMES && EOS_CHAR_NAMES[ch]) || "SYNC", seed: wins.length - 1 }
     }, [])
     const plan = React.useMemo(() => {
         let gi = 0
@@ -215,7 +216,7 @@ const EosPilotCleanseInner = React.memo(function EosPilotCleanseInner({ live, wo
         } catch (e) {}
     }
     const updateCount = (kk) => {
-        const el = countRef.current
+        const el = arenaRef.current
         if (el) el.setAttribute("data-n", `${Math.min(kk, N)} / ${N} CLEAR`)
     }
     const lightPetals = (kk, all) => {
@@ -244,7 +245,7 @@ const EosPilotCleanseInner = React.memo(function EosPilotCleanseInner({ live, wo
         bonus: 340 + N * 25,
         label: `100% ${C.verb}`,
         kit: C.kit,
-        heroFace: () => eosPilotFaceSrc(hero.char, 3, hero.emotion, plan[plan.length - 1].orbs.find((o) => o.isHero).gi + 11),
+        heroFace: () => eosPilotFaceSrc(hero.char, 3, hero.emotion, hero.seed),
         anims: rt.anims,
         timers: rt.timers,
         handoffMs: EOS_PILOT_HANDOFF_MS,
@@ -361,8 +362,8 @@ const EosPilotCleanseInner = React.memo(function EosPilotCleanseInner({ live, wo
                     }
                     if (swr) {
                         swr.setAttribute("data-awake", "1")
-                        swr.style.transform = "translateY(-18px)"
-                        if (!c.reduced && !c.skipped) c.anim(swr, [{ transform: "none" }, { transform: "translateY(-22px)", offset: 0.7 }, { transform: "translateY(-18px)" }], { duration: 520, easing: "cubic-bezier(.3,.7,.3,1)" })
+                        swr.style.transform = c.reduced ? "translateY(-18px)" : "translateY(-18px) scale(1.08)"
+                        if (!c.reduced && !c.skipped) c.anim(swr, [{ transform: "none" }, { transform: "translateY(-23px) scale(1.12)", offset: 0.65 }, { transform: "translateY(-18px) scale(1.08)" }], { duration: 560, easing: "cubic-bezier(.3,.7,.3,1)" })
                     }
                     const ha = actorsRef.current.FC
                     if (ha) ha.setUnder(0.6)
@@ -501,8 +502,9 @@ const EosPilotCleanseInner = React.memo(function EosPilotCleanseInner({ live, wo
         if (s && ball && !red) {
             const c = centreOf(ball)
             const ink = { dist: c.r * 1.05, gravity: c.r * 0.25, s0: 0.55, s1: 1.9, ms: C.exhaleMs, easing: "cubic-bezier(.2,.6,.3,1)", anims: rt.anims }
-            s.burst("ink", { ...ink, x: c.x + c.r * 0.5, y: c.y + c.r * 0.35, n: deep ? 3 : 2, angle: 14, spread: 36, seed: kk * 7 })
-            s.burst("ink", { ...ink, x: c.x - c.r * 0.5, y: c.y + c.r * 0.35, n: deep ? 2 : 1, angle: 166, spread: 36, seed: kk * 7 + 3 })
+            const rich = deep && kk < N // the finale's own budget: the protagonist's exhale keeps 3 puffs
+            s.burst("ink", { ...ink, x: c.x + c.r * 0.5, y: c.y + c.r * 0.35, n: rich ? 3 : 2, angle: 14, spread: 36, seed: kk * 7 })
+            s.burst("ink", { ...ink, x: c.x - c.r * 0.5, y: c.y + c.r * 0.35, n: rich ? 2 : 1, angle: 166, spread: 36, seed: kk * 7 + 3 })
         }
         // the others breathe out with it
         for (const x of (plan[st.wave] || { orbs: [] }).orbs) {
@@ -728,7 +730,7 @@ const EosPilotCleanseInner = React.memo(function EosPilotCleanseInner({ live, wo
         const pos = {}
         for (const s in SL) pos[s] = { x: box.w * SL[s][0], y: T + H * SL[s][1] }
         const hz = T + H * 0.24
-        const moonW = box.w * 0.15
+        const moonW = box.w * (ph ? 0.15 : 0.09)
         return { ph, u, T, H, SZ, pos, hz, moonY: Math.max(4, T + H * 0.09 - moonW / 2), lotus: { x: box.w * Lf[0], y: T + H * Lf[1], s: Math.round(Lf[2] * u) }, labW: ph ? 108 : 132 }
     }, [box])
 
@@ -809,7 +811,7 @@ const EosPilotCleanseInner = React.memo(function EosPilotCleanseInner({ live, wo
                     reacts={["phew"]}
                     word={o.word}
                     sub=" "
-                    seed={o.gi + 11}
+                    seed={o.isHero ? hero.seed : o.gi + 11}
                     eager={o.j === 0}
                     ballChildren={EOS_PILOT_CLEANSE_BALL}
                     style={{ left: "50%", top: `${ball / 2}px` }}
@@ -828,13 +830,13 @@ const EosPilotCleanseInner = React.memo(function EosPilotCleanseInner({ live, wo
             data-eos-pilot-reduced={reduced ? "1" : undefined}
             data-c-desk={lay && !lay.ph ? "1" : undefined}
             data-c-step={eosPilotFaceStep(pct)}
+            data-n={`${Math.min(k, N)} / ${N} CLEAR`}
             onPointerDown={onArenaDown}
             style={arenaVars}
         >
             <EosPilotStage ref={stageRef} kit={C.kit} calm={Math.min(1, k / N)} planeClassName={phase === "play" ? "" : "isLocked"}>
                 <i className="cLayer cMirror" aria-hidden="true" />
                 <i className="cLayer cRip" aria-hidden="true" />
-                <i className="cLayer cGold" aria-hidden="true" />
                 <i className="cLayer cPath" ref={pathRef} aria-hidden="true" />
                 <i className="cLayer cSweep" ref={sweepRef} aria-hidden="true" data-eos-avoid="1" />
                 {back.map(renderOrb)}
@@ -848,7 +850,6 @@ const EosPilotCleanseInner = React.memo(function EosPilotCleanseInner({ live, wo
                 ) : null}
                 {front.map(renderOrb)}
             </EosPilotStage>
-            <i ref={countRef} className="cCount" aria-hidden="true" data-n={`${Math.min(k, N)} / ${N} CLEAR`} />
         </div>
     )
 })
@@ -865,8 +866,8 @@ ${EOS_PILOT_CL} .eosPilotStage{--eos-pilot-horizon:var(--c-hz,24%)}
 ${EOS_PILOT_CL} .eosPilotStage .moon{top:var(--c-moon-y,4%)}
 ${EOS_PILOT_CL} .eosPilotStage .moon{left:54%}
 ${EOS_PILOT_CL} .eosPilotStage .moonRefl{left:56%}
-${EOS_PILOT_CL}[data-c-desk="1"] .eosPilotStage .moon{left:76.5%}
-${EOS_PILOT_CL}[data-c-desk="1"] .eosPilotStage .moonRefl{left:78.5%}
+${EOS_PILOT_CL}[data-c-desk="1"] .eosPilotStage .moon{left:80%;width:9%}
+${EOS_PILOT_CL}[data-c-desk="1"] .eosPilotStage .moonRefl{left:81.5%;width:6%}
 ${EOS_PILOT_CL}[data-c-desk="1"] .eosPilotStage .reeds{width:12%}
 
 /* plane layers: the reflection plate (finale), the ripple texture + water murk, the gold key, the moon path, the sweep ring */
@@ -876,7 +877,7 @@ ${EOS_PILOT_CL} .cMirror{left:0;right:0;top:var(--c-hz,24%);bottom:0;opacity:0;t
   radial-gradient(14% 30% at 61.5% 22%,rgba(207,227,255,.14),rgba(207,227,255,0) 70%),
   linear-gradient(180deg,rgba(24,38,94,.96) 0%,rgba(16,27,74,.9) 34%,rgba(8,14,44,.94) 100%);
   -webkit-mask:linear-gradient(90deg,transparent,#000 13%,#000 87%,transparent);mask:linear-gradient(90deg,transparent,#000 13%,#000 87%,transparent)}
-${EOS_PILOT_CL}[data-c-desk="1"] .cMirror{background:radial-gradient(7% 6% at 84% 5%,rgba(244,248,255,.85),rgba(207,227,255,.32) 52%,rgba(207,227,255,0) 74%),
+${EOS_PILOT_CL}[data-c-desk="1"] .cMirror{background:radial-gradient(5% 5% at 84.5% 5%,rgba(244,248,255,.85),rgba(207,227,255,.32) 52%,rgba(207,227,255,0) 74%),
   linear-gradient(180deg,rgba(24,38,94,.96) 0%,rgba(16,27,74,.9) 34%,rgba(8,14,44,.94) 100%)}
 ${EOS_PILOT_CL}[data-c-fin] .cMirror{opacity:.9}
 ${EOS_PILOT_CL} .cRip{left:0;right:0;top:var(--c-hz,24%);bottom:0;opacity:calc(1 - var(--c-k) * .62);transition:opacity 1s ease;
@@ -886,11 +887,12 @@ ${EOS_PILOT_CL} .cRip::before,${EOS_PILOT_CL} .cRip::after{content:"";position:a
 ${EOS_PILOT_CL} .cRip::before{left:var(--lx,50%);top:calc(var(--lyw,40%) + 4%);width:min(64%,560px);height:11%;translate:-50% -50%}
 ${EOS_PILOT_CL} .cRip::after{left:var(--lx,50%);top:calc(var(--lyw,40%) + 5%);width:min(94%,820px);height:17%;translate:-50% -50%;animation-duration:9s;animation-delay:-3s}
 ${EOS_PILOT_CL}[data-c-fin] .cRip{opacity:0;transition-duration:.7s}
-${EOS_PILOT_CL} .cGold{left:0;right:0;top:var(--c-hz,24%);bottom:0;opacity:0;transition:opacity .45s ease-out;
+${EOS_PILOT_CL}[data-c-fin] .cRip::before,${EOS_PILOT_CL}[data-c-fin] .cRip::after,${EOS_PILOT_CL} .cStill[data-awake] .quirk::before{animation:none}
+${EOS_PILOT_CL} .cMirror::before{content:"";position:absolute;inset:0;opacity:0;transition:opacity .45s ease-out;
   background:radial-gradient(34% 12% at var(--lx,50%) var(--lyw,40%),rgba(255,211,122,.62),rgba(255,211,122,0) 72%),
   radial-gradient(9% 34% at var(--lx,50%) calc(var(--lyw,40%) + 22%),rgba(255,211,122,.32),rgba(255,211,122,0) 72%),
-  radial-gradient(60% 30% at var(--lx,50%) var(--lyw,40%),rgba(255,190,110,.18),rgba(255,190,110,0) 75%)}
-${EOS_PILOT_CL}[data-c-gold="1"] .cGold{opacity:1}
+  radial-gradient(60% 30% at var(--lx,50%) var(--lyw,40%),rgba(255,190,110,.2),rgba(255,190,110,0) 75%)}
+${EOS_PILOT_CL}[data-c-gold="1"] .cMirror::before{opacity:1}
 ${EOS_PILOT_CL} .cPath{left:0;top:0;width:44px;height:10px;margin-left:-22px;transform-origin:50% 0;opacity:0;transition:opacity .5s ease;
   background:repeating-linear-gradient(180deg,rgba(236,243,255,.7) 0 2px,rgba(236,243,255,0) 2px 8px);
   clip-path:polygon(42% 0,58% 0,100% 100%,0 100%);-webkit-mask:linear-gradient(180deg,rgba(0,0,0,.5),#000 40%,#000 80%,transparent);mask:linear-gradient(180deg,rgba(0,0,0,.5),#000 40%,#000 80%,transparent)}
@@ -957,10 +959,10 @@ ${EOS_PILOT_CL} .cLotus::before{content:"";position:absolute;left:50%;top:66%;wi
 ${EOS_PILOT_CL} .cLotus[data-hold="1"]::before{opacity:.5}
 ${EOS_PILOT_CL} .cLotus[data-open="1"]::before{opacity:1;transition-duration:.8s}
 ${EOS_PILOT_CL}[data-c-gold="1"] .cLotus::before{width:96%;height:62%;transition:opacity .4s ease,width .4s ease,height .4s ease}
-${EOS_PILOT_CL} .cPetal{position:absolute;left:50%;bottom:27%;width:36%;height:62%;margin-left:-18%;transform-origin:50% 100%;font-style:normal;opacity:.94;
-  transform:rotate(var(--a0)) scale(.8,.92);transition:transform .56s cubic-bezier(.3,.7,.25,1.06) calc(var(--o) * 34ms),opacity .4s ease}
+${EOS_PILOT_CL} .cPetal{position:absolute;left:50%;bottom:27%;width:36%;height:62%;margin-left:-18%;transform-origin:50% 100%;font-style:normal;opacity:.9;
+  transform:rotate(var(--a0)) scale(.8,.92);transition:transform .56s cubic-bezier(.3,.7,.25,1.06) calc(var(--o) * 34ms)}
 ${EOS_PILOT_CL} .cPetal[data-on="1"]{transform:rotate(calc(var(--a0) * 1.9)) scale(.84,.95)}
-${EOS_PILOT_CL} .cLotus[data-open="1"] .cPetal{transform:rotate(var(--a)) scale(1);opacity:1}
+${EOS_PILOT_CL} .cLotus[data-open="1"] .cPetal{transform:rotate(var(--a)) scale(1)}
 ${EOS_PILOT_CL} .cPetal::before,${EOS_PILOT_CL} .cPetal::after{content:"";position:absolute;inset:0;
   clip-path:polygon(50% 0,62% 6%,76% 18%,88% 35%,96% 54%,94% 73%,83% 89%,64% 99%,36% 99%,17% 89%,6% 73%,4% 54%,12% 35%,24% 18%,38% 6%)}
 ${EOS_PILOT_CL} .cPetal::before{background:radial-gradient(60% 40% at 50% 92%,rgba(120,50,130,.45),rgba(120,50,130,0) 100%),
@@ -992,9 +994,9 @@ ${EOS_PILOT_CL} .eosPilotStage[data-fx-fireflies="1"] [data-pool="fireflies"] > 
 ${EOS_PILOT_CL} [data-kit="pool"] [data-pool="ink"] > i{width:56px;height:36px;margin:-18px 0 0 -28px;background:radial-gradient(closest-side,rgba(48,34,88,.92),rgba(78,58,134,.55) 55%,rgba(120,100,190,0))}
 
 /* the k / N CLEAR pill, top-left in the HUD band */
-${EOS_PILOT_CL} .cCount{position:absolute;left:12px;top:var(--c-count-top,8px);z-index:6;pointer-events:none;font-style:normal;font-size:13px;font-weight:800;letter-spacing:.08em;
+${EOS_PILOT_CL}::after{position:absolute;left:12px;top:var(--c-count-top,8px);z-index:6;pointer-events:none;font-style:normal;font-size:13px;font-weight:800;letter-spacing:.08em;
   color:#eef3ff;padding:4px 10px;border-radius:999px;background:rgba(14,18,52,.5);box-shadow:inset 0 0 0 1px rgba(200,215,255,.3);line-height:1.2}
-${EOS_PILOT_CL} .cCount::after{content:attr(data-n)}
+${EOS_PILOT_CL}::after{content:attr(data-n)}
 
 @keyframes eosPilotCleanseSwirl{to{transform:rotate(360deg)}}
 @keyframes eosPilotCleanseShimmer{from{transform:scale(.86)}to{transform:scale(1.14)}}
