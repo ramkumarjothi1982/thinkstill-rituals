@@ -6302,8 +6302,9 @@ function CleanseEngine({ entries, onDone, sfx, reduced, onProgress }) {
         finishLock.current = true
         stopChargeTimer()
         const t = setTimeout(() => onDone(340 + words.length * 25), 2200)
+        // no per-run cleanup: once the lock is set this hand-off must fire (a dep change used to clear it while the
+        // lock stayed set = 100% and no reveal); unmount / new entries still clear it via finishTimer above
         finishTimer.current.push(t)
-        return () => clearTimeout(t)
     }, [releasedIndices.length, words.length])
     const complete = releasedIndices.length >= words.length
     const cleanseSlots =
@@ -12209,7 +12210,8 @@ function UniqueReleaseEngine({
         setMeter(100)
         setFlash(Date.now())
         setPhase(2)
-        report(1, "SCRATCH REVEALED")
+        // this card only (advance() reports the same share): reporting 1 here put the bar at 100% after card 1
+        report((idx + 1) / Math.max(1, words.length), "SCRATCH REVEALED")
         sfx("soft")
         vibrate(18)
         setTimeout(() => setPhase(3), 900)
@@ -15116,7 +15118,8 @@ function UniqueReleaseEngineLegacy({
         setMeter(100)
         setFlash(Date.now())
         setPhase(2)
-        report(1, "SCRATCH REVEALED")
+        // this card only (advance() reports the same share): reporting 1 here put the bar at 100% after card 1
+        report((idx + 1) / Math.max(1, words.length), "SCRATCH REVEALED")
         sfx("soft")
         vibrate(18)
         setTimeout(() => setPhase(3), 900)
@@ -15815,7 +15818,9 @@ function UniqueReleaseEngineLegacy({
                         <W />
                         {[0, 1, 2].map((i) => (
                             <motion.button
-                                key={i}
+                                // fresh knots per card: keyed by i alone they kept the last card's drag offsets, and a
+                                // parked knot could sit over the next card's glowing one (the press hit the wrong knot)
+                                key={`knot${idx}-${i}`}
                                 className={`knot k${i} ${i < step ? "loose" : ""}`}
                                 drag
                                 dragConstraints={{
@@ -16460,21 +16465,22 @@ function UniqueReleaseEngineLegacy({
                                 ease: "linear",
                             }}
                         />
-                        <W />
+                        {/* W/U are called, not mounted: as <W/>/<U> they remounted on every 620 ms beat, so the
+                            word re-fitted (rig height 330<->381 px), the button jumped 26 px and taps hit the arena */}
+                        {W({})}
                         <b>BEAT {beat + 1}</b>
                     </div>
-                    <U
-                        onClick={() => {
+                    {U({
+                        onClick: () => {
                             if (beat % 2 === 1) {
                                 const n = step + 1
                                 setStep(n)
                                 sfx("soft")
                                 if (n >= 4) setTimeout(() => advance(), 220)
                             } else sfx("tap")
-                        }}
-                    >
-                        TAP EVERY SECOND BEAT
-                    </U>
+                        },
+                        children: "TAP EVERY SECOND BEAT",
+                    })}
                 </>,
                 "Ignore every first beat and tap only the second. Four restrained taps complete the round."
             )

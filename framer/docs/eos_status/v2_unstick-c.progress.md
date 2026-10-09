@@ -1,0 +1,23 @@
+# v2_unstick-c progress
+- started; games 67,68,69,96,42,70,74,109; harness = scratchpad/run.mjs + scratchpad/ub/human.mjs (from unstick-a/b)
+- engines: 42/67/68/69/70/74/96 -> UniqueReleaseEngineLegacy (cases @15811, 16366-16538, 17795); 109 -> CleanseEngine @6147
+- baseline (current build, lite, scratchpad/uc/b*.out): REVEAL 67@390/1280, 68@390/1280, 69@390, 42@390, 70@390 (back=1 is the trailing null at reveal, not a drop); 42@1280 TIMEOUT at 67% after 120 s (20 actions) -> investigate
+- suspect 96: finishLiteralScratch reports 1 (100%) then advance reports (idx+1)/n -> 100 -> 17 drop
+- baseline done: REVEAL 67,68,69,74,96,109 both sizes, 42@390, 70@390; FAIL 42@1280 (timeout 67%), 70@1280 (stuck 12%)
+- 70 ROOT CAUSE: U/W are components created inside render -> every beat (620 ms setBeat) remounts the word + control; word height flips 115<->166 px so the button jumps 26 px; presses land on the arena (probe uc/p70b.out: most pointerdowns target .arena). Fix plan: inline W({})/U({...}) calls in case 70 (no remount)
+- 96 ROOT CAUSE: finishLiteralScratch report(1) on EVERY card -> bar 100% after card 1 (gated monotonic) while 5 cards remain (ungated: 100->17). Fix: report((idx+1)/n)
+- 42 suspect: knots keyed by i keep drag offsets across cards -> k2 parks over the next card's live knot; human probe pre-fix running (uc/h42pre.out)
+- FIXES applied in src: 96 report per card (both engine copies), 70 W({})/U({...}) called inline, 42 knots keyed knot${idx}-${i}; eos_integrate --check anchors ALL OK; rebuilt
+- 42 pre-fix human probe 1280 (on-screen drags +60,-30): reaches 100% in 20 drags (knots park at constraint edge, still grabbable) -> the 1280 baseline "timeout" was my 120 s harness limit (default 150 s); pre-fix 260 s run in uc/b42pre.out
+- running fixed-build: uc/f70.out, uc/f96.out
+- fixed build: 70@1280 REVEAL 79 s (was stuck 12%), 70@390 REVEAL 86 s; 96 both REVEAL, bar now per card 10..17..33..100 (was 100 after card 1)
+- 42 pre-fix 1280 with 260 s limit: REVEAL 220 s, 30 actions (12 failed drags) -> not a hard stall, just slow; knot keying kept as hygiene, compare on fixed build
+- 109: removed the effect cleanup that could clear the done timer while finishLock stayed set (finishTimer still cleared on unmount/new entries); rebuilt
+- FINAL sweep running: uc/F1.out (42,67,68,69), uc/F2.out (109,70,74,96), 300 s limit
+- 96 human real-mouse scratch 390 (uc/h96.mjs, 8 on-screen strokes per card, no synthetic events): every card completes, bar 29/45/62/79/95 (probe time limit hit before the 6th card)
+- final sweep partial: 42@390 REVEAL 90 s, 109@390 REVEAL 61 s, 109@1280 REVEAL 50 s, 70@390 REVEAL 88 s (all errors=0)
+- running human probes: uc/h70_390.out (watching player taps on even BEAT label), uc/h42_390.out
+- human probes fixed build: 70@390 watching player (tap on even BEAT label) REVEAL 34 s, 26/26 pointerdowns on the button; 42@390 on-screen drags: knots back home each card, 18 drags -> REVEAL
+- running: uc/h70_1280.out, mid-play shots uc/mid/*.png
+- 70@1280 watching player REVEAL 38 s, 26/26 pointerdowns on the button. Mid-play sheet (full visuals) uc/mid_sheet.png: 70 rig/pendulum/word/BEAT label/button intact, 42 knots, 96 tool+card, 109 pool all render
+- FINAL sweep (fixed build, lite): all 16 runs REVEAL, bar never drops, errors 0 (uc/F1.out, uc/F2.out). Committing.
