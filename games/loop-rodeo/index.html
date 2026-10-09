@@ -1,0 +1,316 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Loop Rodeo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Rye&display=swap">
+<link rel="stylesheet" href="../shared/ts-ui.css">
+<style>
+/* Layout: one full-screen night prairie; the world is a canvas, every control is a DOM layer above it.
+   Bright = golden hour on the same prairie. */
+:root {
+  --sky-top: #6c8ad3; --sky-mid: #e9b38d; --sky-low: #ffd8a4;
+  --orb: #fff1c2; --orb-glow: rgba(255, 214, 140, 0.55);
+  --mesa-far: #c08c79; --mesa: #8f5d4c; --ground-top: #c39758; --ground-bottom: #7e5a33; --grass: #9d7a3c;
+  --fire: #ffb347; --wood: #7a5236; --wood-dark: #4b3122; --rope: #9a6b38; --star: rgba(255, 250, 235, 0.0);
+  --ui-surface: #fff5e8; --ui-fg: #2b1d12; --ui-muted: #7a6450; --ui-accent: #c4521d; --ui-accent-ink: #fff8f0;
+  --ui-line: rgba(43, 29, 18, 0.16); --ui-scrim: rgba(43, 29, 18, 0.35);
+  --card: rgba(255, 246, 234, 0.9); --card-stitch: rgba(120, 72, 36, 0.35); --hud: rgba(255, 246, 234, 0.72);
+  --sign: #e9c89a; --sign-ink: #3a2414; --judge-good: #2f7d4f; --judge-perfect: #b5531c; --judge-miss: #7a6450;
+  --font-display: "Rye", "Rockwell", "Georgia", serif;
+  --font-ui: "Fredoka", "Nunito", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --sky-top: #070b24; --sky-mid: #151c49; --sky-low: #3b2f62;
+    --orb: #fff4d6; --orb-glow: rgba(190, 200, 255, 0.35);
+    --mesa-far: #2c2550; --mesa: #1f1838; --ground-top: #2b2237; --ground-bottom: #120e19; --grass: #3a304d;
+    --fire: #ffb347; --wood: #6b4a33; --wood-dark: #3a271c; --rope: #d8b679; --star: rgba(255, 250, 235, 0.9);
+    --ui-surface: #1e1931; --ui-fg: #f6eee0; --ui-muted: #b6abc9; --ui-accent: #f2a541; --ui-accent-ink: #1d1206;
+    --ui-line: rgba(246, 238, 224, 0.16); --ui-scrim: rgba(6, 4, 14, 0.6);
+    --card: rgba(24, 19, 40, 0.86); --card-stitch: rgba(242, 165, 65, 0.3); --hud: rgba(18, 14, 32, 0.6);
+    --sign: #d9b27a; --sign-ink: #2a180b; --judge-good: #8fe3b0; --judge-perfect: #ffd27a; --judge-miss: #b6abc9;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"], html:root[data-scene="dark"] {
+  --sky-top: #070b24; --sky-mid: #151c49; --sky-low: #3b2f62;
+  --orb: #fff4d6; --orb-glow: rgba(190, 200, 255, 0.35);
+  --mesa-far: #2c2550; --mesa: #1f1838; --ground-top: #2b2237; --ground-bottom: #120e19; --grass: #3a304d;
+  --fire: #ffb347; --wood: #6b4a33; --wood-dark: #3a271c; --rope: #d8b679; --star: rgba(255, 250, 235, 0.9);
+  --ui-surface: #1e1931; --ui-fg: #f6eee0; --ui-muted: #b6abc9; --ui-accent: #f2a541; --ui-accent-ink: #1d1206;
+  --ui-line: rgba(246, 238, 224, 0.16); --ui-scrim: rgba(6, 4, 14, 0.6);
+  --card: rgba(24, 19, 40, 0.86); --card-stitch: rgba(242, 165, 65, 0.3); --hud: rgba(18, 14, 32, 0.6);
+  --sign: #d9b27a; --sign-ink: #2a180b; --judge-good: #8fe3b0; --judge-perfect: #ffd27a; --judge-miss: #b6abc9;
+  color-scheme: dark;
+}
+html:root[data-scene="bright"] {
+  --sky-top: #6c8ad3; --sky-mid: #e9b38d; --sky-low: #ffd8a4;
+  --orb: #fff1c2; --orb-glow: rgba(255, 214, 140, 0.55);
+  --mesa-far: #c08c79; --mesa: #8f5d4c; --ground-top: #c39758; --ground-bottom: #7e5a33; --grass: #9d7a3c;
+  --fire: #ffb347; --wood: #7a5236; --wood-dark: #4b3122; --rope: #9a6b38; --star: rgba(255, 250, 235, 0.0);
+  --ui-surface: #fff5e8; --ui-fg: #2b1d12; --ui-muted: #7a6450; --ui-accent: #c4521d; --ui-accent-ink: #fff8f0;
+  --ui-line: rgba(43, 29, 18, 0.16); --ui-scrim: rgba(43, 29, 18, 0.35);
+  --card: rgba(255, 246, 234, 0.9); --card-stitch: rgba(120, 72, 36, 0.35); --hud: rgba(255, 246, 234, 0.72);
+  --sign: #e9c89a; --sign-ink: #3a2414; --judge-good: #2f7d4f; --judge-perfect: #b5531c; --judge-miss: #7a6450;
+  color-scheme: light;
+}
+
+html, body { height: 100%; }
+body { margin: 0; background: var(--sky-top); color: var(--ui-fg); font-family: var(--font-ui); overflow: hidden; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+.app { position: relative; height: 100%; width: 100%; overflow: hidden; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+#world { position: absolute; inset: 0; display: block; }
+
+/* Loopie, positioned every frame from the world camera */
+.loopie { position: absolute; left: 0; top: 0; width: 112px; height: 112px; pointer-events: none; will-change: transform; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.35)); z-index: 5; }
+.loopie img { display: block; width: 100%; height: 100%; transform-origin: 50% 85%; }
+.loopie img.pop { animation: loopie-pop 0.42s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes loopie-pop { 0% { transform: scale(1); } 35% { transform: scale(1.08, 0.93); } 70% { transform: scale(0.97, 1.04); } 100% { transform: scale(1); } }
+
+.say {
+  position: absolute; z-index: 30; max-width: min(300px, calc(100% - 32px)); padding: 12px 14px; border-radius: 16px;
+  background: var(--ui-surface); color: var(--ui-fg); font: 500 15px/1.35 var(--font-ui); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
+  pointer-events: none; left: 16px; transform-origin: 18px 100%;
+}
+.say::after { content: ""; position: absolute; left: 22px; bottom: -8px; width: 16px; height: 16px; background: inherit; transform: rotate(45deg); border-radius: 3px; }
+.say.ts-say-in { animation: say-in 0.28s cubic-bezier(.2, 1.4, .4, 1) both; }
+@keyframes say-in { from { opacity: 0; transform: translateY(8px) scale(0.92); } to { opacity: 1; transform: none; } }
+
+/* Active critter's brand sign */
+.banner {
+  position: absolute; left: 0; top: 0; z-index: 12; pointer-events: none; transform: translate(-50%, -100%);
+  background: var(--sign); color: var(--sign-ink); font: 600 12.5px/1.15 var(--font-ui); letter-spacing: 0.06em;
+  padding: 7px 10px 6px; border-radius: 6px; white-space: nowrap; max-width: 250px; overflow: hidden; text-overflow: ellipsis;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.22), 0 8px 18px rgba(0, 0, 0, 0.25); will-change: transform;
+  border: 1px solid rgba(60, 30, 10, 0.25);
+}
+.banner::after { content: ""; position: absolute; left: 50%; bottom: -10px; width: 2px; height: 10px; background: var(--sign-ink); opacity: 0.5; }
+.banner.big { font-size: 14px; padding: 9px 12px 8px; }
+
+/* HUD */
+.hud { position: absolute; z-index: 20; left: 0; right: 0; top: calc(env(safe-area-inset-top, 0px) + 58px); display: flex; justify-content: space-between; padding-inline: 14px; pointer-events: none; }
+.gauge, .tally { background: var(--hud); border: 1px solid var(--ui-line); border-radius: 16px; padding: 8px 12px 9px; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.gauge { display: flex; align-items: center; gap: 10px; }
+.gauge svg { width: 64px; height: 40px; overflow: visible; }
+.gauge-num { font: 600 22px/1 var(--font-ui); font-variant-numeric: tabular-nums; }
+.gauge-unit { font: 600 10px/1 var(--font-ui); letter-spacing: 0.14em; color: var(--ui-muted); display: block; margin-top: 3px; }
+.tally { text-align: right; }
+.tally-num { font: 600 22px/1 var(--font-ui); font-variant-numeric: tabular-nums; }
+.tally-label { font: 600 10px/1 var(--font-ui); letter-spacing: 0.14em; color: var(--ui-muted); display: block; margin-top: 3px; text-transform: uppercase; }
+
+/* Drum */
+.drumzone { position: absolute; z-index: 15; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 26px); width: 176px; height: 176px; transform: translateX(-50%); }
+.drum {
+  position: absolute; inset: 14px; border-radius: 50%; border: 0; cursor: pointer; padding: 0;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0) 56%, rgba(70, 40, 20, 0.28) 57%, rgba(70, 40, 20, 0) 60%),
+    radial-gradient(circle at 38% 32%, #fbecd0 0%, #ecd3a7 38%, #d6b27c 70%, #b98d58 100%);
+  box-shadow: 0 0 0 7px #6b3f22, 0 0 0 9px #3d2414, 0 14px 30px rgba(0, 0, 0, 0.45), inset 0 -10px 22px rgba(120, 72, 30, 0.35);
+  transition: transform 0.08s ease; touch-action: none;
+}
+.drum::before { content: ""; position: absolute; inset: 7px; border-radius: 50%; border: 2px dashed rgba(90, 50, 22, 0.45); }
+.drum::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, rgba(255, 220, 150, 0.65), rgba(255, 220, 150, 0) 65%); opacity: 0; transition: opacity 0.25s ease; }
+.drum.hit { transform: scale(0.94); }
+.drum.flash::after { opacity: 1; transition: opacity 0s; }
+.drum:focus-visible { outline: 3px solid var(--ui-accent); outline-offset: 10px; }
+.drum.holding { transform: scale(0.96); box-shadow: 0 0 0 7px #6b3f22, 0 0 0 9px #3d2414, 0 0 40px 8px rgba(255, 200, 120, 0.45), inset 0 -10px 22px rgba(120, 72, 30, 0.35); }
+.ring { position: absolute; inset: 14px; border-radius: 50%; border: 3px solid var(--fire); pointer-events: none; opacity: 0; will-change: transform, opacity; box-shadow: 0 0 14px rgba(255, 180, 80, 0.6); }
+.hold-arc { position: absolute; inset: 0; pointer-events: none; }
+.judge { position: absolute; left: 50%; top: -28px; transform: translateX(-50%); font: 700 18px/1 var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; pointer-events: none; opacity: 0; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
+.judge.show { animation: judge 0.6s ease-out both; }
+@keyframes judge { 0% { opacity: 0; transform: translate(-50%, 8px) scale(0.8); } 18% { opacity: 1; transform: translate(-50%, 0) scale(1.08); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -10px); } }
+.drumhint { position: absolute; left: 50%; bottom: -24px; transform: translateX(-50%); font: 500 12.5px/1 var(--font-ui); color: var(--ui-fg); white-space: nowrap; pointer-events: none; background: var(--hud); border: 1px solid var(--ui-line); padding: 5px 10px; border-radius: 999px; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+.combo { position: absolute; left: 50%; top: -6px; transform: translateX(-50%); display: flex; gap: 6px; pointer-events: none; }
+.combo i { width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--rope); background: transparent; transition: background 0.15s ease, transform 0.15s ease; }
+.combo i.on { background: var(--rope); transform: scale(1.15); }
+
+/* Overlay scenes */
+.scene { z-index: 25; display: flex; flex-direction: column; pointer-events: none; }
+.scene > * { pointer-events: auto; }
+.title-block { margin-top: calc(env(safe-area-inset-top, 0px) + 74px); text-align: center; padding-inline: 16px; pointer-events: none; }
+.title { font: 400 clamp(44px, 13vw, 76px)/0.92 var(--font-display); margin: 0; color: var(--ui-fg); letter-spacing: 0.02em; text-shadow: 0 3px 0 rgba(0, 0, 0, 0.25), 0 10px 30px rgba(0, 0, 0, 0.35); text-wrap: balance; }
+.subtitle { margin: 10px auto 0; font: 500 16px/1.4 var(--font-ui); max-width: 30ch; opacity: 0.88; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35); }
+.card {
+  margin: auto 12px calc(env(safe-area-inset-bottom, 0px) + 14px); align-self: center; width: min(460px, calc(100% - 24px));
+  background: var(--card); border-radius: 22px; padding: 18px 16px 16px; position: relative;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.4); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  display: flex; flex-direction: column; gap: 12px;
+}
+.card::before { content: ""; position: absolute; inset: 6px; border-radius: 17px; border: 1.5px dashed var(--card-stitch); pointer-events: none; }
+.card h2 { margin: 0; font: 400 22px/1.15 var(--font-display); letter-spacing: 0.02em; text-wrap: balance; }
+.card p { margin: 0; font-size: 14.5px; line-height: 1.45; color: var(--ui-muted); }
+.field-label { font: 600 11px/1 var(--font-ui); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ui-muted); }
+textarea.dump {
+  width: 100%; box-sizing: border-box; resize: none; border-radius: 14px; border: 1px solid var(--ui-line);
+  background: color-mix(in srgb, var(--ui-surface) 85%, transparent); color: var(--ui-fg); font: 400 16px/1.4 var(--font-ui);
+  padding: 12px 14px; min-height: 68px; user-select: text; -webkit-user-select: text;
+}
+textarea.dump:focus { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
+.chips { display: flex; flex-wrap: nowrap; gap: 6px; overflow-x: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 82%, transparent); mask-image: linear-gradient(90deg, #000 82%, transparent); padding: 1px 24px 2px 1px; margin-right: -2px; }
+.chips::-webkit-scrollbar { display: none; }
+.chips .ts-chip { flex: none; white-space: nowrap; }
+.end-sub { margin-top: -6px !important; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.linkish { appearance: none; background: none; border: 0; color: var(--ui-fg); font: 500 14px/1 var(--font-ui); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; padding: 10px 4px; opacity: 0.8; }
+.vibes { display: flex; gap: 6px; }
+.privacy { font-size: 12px !important; }
+
+/* Speed dial */
+.dial { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.dial svg { width: 220px; height: 128px; overflow: visible; }
+.dial-num { font: 600 34px/1 var(--font-ui); font-variant-numeric: tabular-nums; }
+.dial-word { font: 500 14px/1 var(--font-ui); color: var(--ui-muted); min-height: 1em; }
+input[type="range"].speed { width: 100%; accent-color: var(--ui-accent); height: 34px; }
+
+/* End card */
+.end .card { gap: 14px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat { background: color-mix(in srgb, var(--ui-fg) 6%, transparent); border-radius: 14px; padding: 10px 8px; text-align: center; }
+.stat b { display: block; font: 600 20px/1.1 var(--font-ui); font-variant-numeric: tabular-nums; }
+.stat span { font: 600 10px/1.2 var(--font-ui); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ui-muted); }
+.after { display: flex; flex-direction: column; gap: 6px; }
+.after-row { display: flex; align-items: center; gap: 10px; }
+.after-row output { font: 600 20px/1 var(--font-ui); min-width: 2ch; text-align: right; font-variant-numeric: tabular-nums; }
+.verdict { font: 500 14.5px/1.4 var(--font-ui); color: var(--ui-fg) !important; min-height: 1.4em; }
+.alm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.alm canvas { width: 40px; height: 34px; }
+.alm-new { font: 600 12px/1.3 var(--font-ui); color: var(--ui-accent); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.actions .ts-btn { flex: 1 1 auto; }
+
+/* Almanac modal */
+.almanac-list { display: flex; flex-direction: column; gap: 10px; }
+.almanac-item { display: grid; grid-template-columns: 56px 1fr; gap: 10px; align-items: center; }
+.almanac-item canvas { width: 56px; height: 46px; }
+.almanac-item b { font: 600 15px/1.2 var(--font-ui); }
+.almanac-item p { margin: 2px 0 0; font-size: 13px; color: var(--ui-muted); line-height: 1.35; }
+.almanac-item.locked { opacity: 0.45; }
+
+.wait { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 26; background: var(--card); padding: 14px 18px; border-radius: 16px; font: 500 15px/1.3 var(--font-ui); display: flex; flex-direction: column; gap: 10px; align-items: center; text-align: center; box-shadow: 0 12px 30px rgba(0,0,0,0.35); }
+
+.tap-veil { position: absolute; inset: 0; z-index: 14; }
+
+@media (min-width: 760px) {
+  .loopie { width: 140px; height: 140px; }
+  .drumzone { width: 196px; height: 196px; bottom: 30px; }
+  .card { margin-bottom: 28px; }
+  .say { font-size: 16px; }
+}
+@media (max-height: 640px) {
+  .title-block { margin-top: calc(env(safe-area-inset-top, 0px) + 58px); }
+  .title { font-size: 40px; }
+  .subtitle { font-size: 14px; }
+  .drumzone { width: 150px; height: 150px; bottom: 14px; }
+  .loopie { width: 92px; height: 92px; }
+}
+</style>
+
+<div class="app" id="app">
+  <canvas id="world" aria-hidden="true"></canvas>
+  <div id="loopieWrap" class="loopie" aria-hidden="true"><img id="loopie" src="../../bubble-expressions/loopie_E01.webp" alt="" draggable="false"></div>
+  <div id="say" class="say" hidden aria-live="polite"><span class="say-text"></span></div>
+  <div id="banner" class="banner" hidden></div>
+
+  <div id="hud" class="hud" hidden>
+    <div class="gauge" aria-label="Herd speed">
+      <svg viewBox="0 0 64 40" aria-hidden="true">
+        <path d="M6 36 A26 26 0 0 1 58 36" fill="none" stroke="var(--ui-line)" stroke-width="6" stroke-linecap="round"/>
+        <path id="gaugeArc" d="M6 36 A26 26 0 0 1 58 36" fill="none" stroke="var(--fire)" stroke-width="6" stroke-linecap="round" pathLength="100" stroke-dasharray="100" stroke-dashoffset="40"/>
+        <line id="gaugeNeedle" x1="32" y1="36" x2="32" y2="14" stroke="var(--ui-fg)" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="32" cy="36" r="3.5" fill="var(--ui-fg)"/>
+      </svg>
+      <div><span class="gauge-num" id="bpm">120</span><span class="gauge-unit">HERD BPM</span></div>
+    </div>
+    <div class="tally"><span class="tally-num" id="tally">0 / 5</span><span class="tally-label">In the pen</span></div>
+  </div>
+
+  <div id="drumzone" class="drumzone" hidden>
+    <div class="combo" id="combo" aria-hidden="true"></div>
+    <div class="ring" id="ring"></div>
+    <svg class="hold-arc" id="holdArc" viewBox="0 0 176 176" aria-hidden="true" hidden>
+      <circle cx="88" cy="88" r="84" fill="none" stroke="var(--ui-line)" stroke-width="5"/>
+      <circle id="holdProgress" cx="88" cy="88" r="84" fill="none" stroke="var(--fire)" stroke-width="5" stroke-linecap="round" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100" transform="rotate(-90 88 88)"/>
+    </svg>
+    <button id="drum" class="drum" type="button" aria-label="Drum. Tap on the beat. Space bar works too."></button>
+    <div id="judge" class="judge" aria-live="polite"></div>
+    <div id="drumhint" class="drumhint">Tap when the ring meets the rim</div>
+  </div>
+
+  <!-- Scene: camp (intake) -->
+  <section class="scene" id="scene-camp" aria-labelledby="campTitle">
+    <div class="title-block">
+      <h1 class="title" id="campTitle">Loop Rodeo</h1>
+      <p class="subtitle">Your thoughts are stampeding. Grab the drum and round them up.</p>
+    </div>
+    <div class="card">
+      <label class="field-label" for="dump">What&rsquo;s running laps in your head?</label>
+      <textarea id="dump" class="dump" rows="2" maxlength="600" placeholder="e.g. Replaying what I said in the meeting, and what my boss thinks of me&hellip;"></textarea>
+      <div class="chips" id="examples"></div>
+      <div class="row">
+        <div class="vibes" id="vibes" role="group" aria-label="Vibe"></div>
+        <button class="linkish" id="almanacBtn" type="button">Herd Almanac</button>
+      </div>
+      <div class="row">
+        <button class="linkish" id="skip" type="button">Just let me play</button>
+        <button class="ts-btn" id="saddle" type="button">Saddle up</button>
+      </div>
+      <p class="privacy">Your words shape the herd, then stay in this session. Nothing you type is shared.</p>
+    </div>
+  </section>
+
+  <!-- Scene: speed (before measure) -->
+  <section class="scene" id="scene-speed" hidden aria-labelledby="speedTitle">
+    <div class="card">
+      <h2 id="speedTitle">How fast is the herd running right now?</h2>
+      <div class="dial">
+        <svg viewBox="0 0 220 128" aria-hidden="true">
+          <path d="M14 118 A96 96 0 0 1 206 118" fill="none" stroke="var(--ui-line)" stroke-width="14" stroke-linecap="round"/>
+          <path id="dialArc" d="M14 118 A96 96 0 0 1 206 118" fill="none" stroke="var(--ui-accent)" stroke-width="14" stroke-linecap="round" pathLength="100" stroke-dasharray="100" stroke-dashoffset="50"/>
+          <g id="dialNeedle" style="transform-origin: 110px 118px; transition: transform 0.25s cubic-bezier(.2,1.4,.4,1)"><line x1="110" y1="118" x2="110" y2="36" stroke="var(--ui-fg)" stroke-width="4" stroke-linecap="round"/></g>
+          <circle cx="110" cy="118" r="8" fill="var(--ui-fg)"/>
+        </svg>
+        <div class="dial-num" id="speedNum">6</div>
+        <div class="dial-word" id="speedWord">Galloping</div>
+      </div>
+      <input id="speed" class="speed" type="range" min="1" max="10" step="1" value="6" aria-label="Herd speed from 1, grazing, to 10, full stampede">
+      <div class="row">
+        <span class="field-label">1 grazing</span><span class="field-label">10 stampede</span>
+      </div>
+      <button class="ts-btn" id="loose" type="button">Let &rsquo;em loose</button>
+    </div>
+  </section>
+
+  <!-- Scene: end -->
+  <section class="scene end" id="scene-end" hidden aria-labelledby="endTitle">
+    <div class="card">
+      <h2 id="endTitle">The herd is resting</h2>
+      <p class="end-sub">Every thought you rounded up, mapped in the stars.</p>
+      <div class="stats">
+        <div class="stat"><b id="statTempo">126&rarr;60</b><span>Herd BPM</span></div>
+        <div class="stat"><b id="statPen">5 + 1</b><span>Rounded up</span></div>
+        <div class="stat"><b id="statPerfect">12</b><span>Perfect beats</span></div>
+      </div>
+      <div class="after">
+        <label class="field-label" for="after">How fast is the herd running now?</label>
+        <div class="after-row"><input id="after" class="speed" type="range" min="1" max="10" step="1" value="5" aria-label="Herd speed now, 1 to 10"><output id="afterNum" for="after">?</output></div>
+        <p class="verdict" id="verdict">Move the slider if you want to compare. It stays on this device.</p>
+      </div>
+      <div class="alm" id="endAlmanac"></div>
+      <div id="helpSlot"></div>
+      <div class="actions">
+        <button class="ts-btn ts-btn-quiet" id="share" type="button">Share card</button>
+        <button class="ts-btn ts-btn-quiet" id="done" type="button">Done</button>
+        <button class="ts-btn" id="again" type="button">New herd</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="../shared/ts-core.js"></script>
+<script src="../shared/ts-audio.js"></script>
+<script src="../shared/ts-ai.js"></script>
+<script src="../shared/ts-safety.js"></script>
+<script src="../shared/ts-ui.js"></script>
+<script src="rodeo-engine.js"></script>
+<script src="rodeo.js"></script>

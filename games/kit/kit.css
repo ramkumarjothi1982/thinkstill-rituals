@@ -1,0 +1,69 @@
+/* ThinkStill game kit styles. Games live inside the console root (.tsg) and read its tokens:
+   --ui-surface --ui-fg --ui-muted --ui-accent --ui-accent-ink --ui-line --font-ui --font-display. */
+.tsg .gk-game { position: absolute; inset: 0; overflow: hidden; user-select: none; -webkit-user-select: none; touch-action: manipulation; color: var(--ui-fg); font-family: var(--font-ui); }
+.tsg .gk-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+.tsg .gk-finale { z-index: 50; }
+.tsg .gk-finale-out { opacity: 0; transition: opacity 0.5s ease; }
+.tsg .gk-finale-text { position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%); z-index: 51; font: 400 clamp(30px, 9cqw, 56px)/1.05 var(--font-display); text-align: center; color: #fff;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.45); pointer-events: none; animation: gk-big 0.9s cubic-bezier(.2, 1.3, .4, 1) both; width: max-content; max-width: 90%; text-wrap: balance; }
+@keyframes gk-big { from { opacity: 0; transform: translate(-50%, -40%) scale(0.8); } to { opacity: 1; transform: translate(-50%, -50%); } }
+
+/* Characters: circular art shown whole, the bubble always beside it, never on top of it. */
+.tsg .gk-char { position: absolute; z-index: 30; width: var(--sz, 96px); height: var(--sz, 96px); pointer-events: none; }
+.tsg .gk-char-dock { left: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); }
+.tsg .gk-char-img { display: block; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.35)); transform-origin: 50% 85%; }
+.tsg .gk-char-img.gk-pop { animation: gk-pop 0.42s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes gk-pop { 0% { transform: scale(1); } 35% { transform: scale(1.08, 0.93); } 70% { transform: scale(0.97, 1.04); } 100% { transform: scale(1); } }
+.tsg .gk-bubble { position: absolute; z-index: 1; background: var(--ui-surface); color: var(--ui-fg); border: 1px solid var(--ui-line); border-radius: 16px; padding: 11px 13px;
+  font: 500 15px/1.35 var(--font-ui); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3); width: max-content; max-width: min(280px, 62vw); max-width: min(280px, calc(100cqw - var(--sz, 96px) - 44px)); pointer-events: none; text-wrap: pretty; }
+.tsg .gk-bubble.ts-say-in { animation: gk-say 0.28s cubic-bezier(.2, 1.4, .4, 1) both; }
+@keyframes gk-say { from { opacity: 0; transform: translateY(6px) scale(0.94); } to { opacity: 1; transform: none; } }
+.tsg .gk-side-right .gk-bubble { left: calc(100% + 10px); top: 4px; }
+.tsg .gk-side-right .gk-bubble::before { content: ""; position: absolute; left: -7px; top: 18px; width: 13px; height: 13px; background: inherit; border-left: 1px solid var(--ui-line); border-bottom: 1px solid var(--ui-line); transform: rotate(45deg); }
+.tsg .gk-side-left .gk-bubble { right: calc(100% + 10px); top: 4px; }
+.tsg .gk-side-left .gk-bubble::before { content: ""; position: absolute; right: -7px; top: 18px; width: 13px; height: 13px; background: inherit; border-right: 1px solid var(--ui-line); border-top: 1px solid var(--ui-line); transform: rotate(45deg); }
+.tsg .gk-side-above .gk-bubble { left: 0; bottom: calc(100% + 10px); max-width: min(300px, calc(100cqw - 24px)); }
+.tsg .gk-side-below .gk-bubble { left: 0; top: calc(100% + 10px); max-width: min(300px, calc(100cqw - 24px)); }
+.tsg .gk-r-bounce { animation: gk-bounce 0.5s cubic-bezier(.2, 1.5, .4, 1); }
+.tsg .gk-r-shake { animation: gk-shake 0.45s ease; }
+.tsg .gk-r-spin .gk-char-img { animation: gk-spin 0.7s ease; }
+.tsg .gk-r-glitch .gk-char-img { animation: gk-glitch 0.8s steps(2, end); }
+@keyframes gk-bounce { 0% { transform: translateY(0); } 35% { transform: translateY(-14px); } 70% { transform: translateY(2px); } 100% { transform: none; } }
+@keyframes gk-shake { 0%, 100% { transform: none; } 20% { transform: translateX(-6px) rotate(-3deg); } 40% { transform: translateX(5px) rotate(2deg); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
+@keyframes gk-spin { to { transform: rotate(360deg); } }
+@keyframes gk-glitch { 0%, 100% { transform: none; filter: none; } 15% { transform: translate(-4px, 1px) skewX(6deg); filter: drop-shadow(3px 0 0 #3fd0c9) drop-shadow(-3px 0 0 #ff5fa2); } 35% { transform: translate(3px, -2px) skewX(-8deg); } 55% { transform: translate(-2px, 2px); filter: drop-shadow(-3px 0 0 #3fd0c9) drop-shadow(3px 0 0 #ff5fa2); } 75% { transform: translate(3px, 0); } }
+
+/* Words: the player's own words are always at least 15px. */
+.tsg .gk-user { font-size: max(15px, 1em); font-weight: 600; overflow-wrap: anywhere; }
+.tsg .gk-label { font: 600 12px/1.2 var(--font-ui); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ui-muted); }
+.tsg .gk-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.tsg .gk-chip { font-size: 15px; }
+.tsg .gk-panel { position: relative; z-index: 20; background: color-mix(in srgb, var(--ui-surface) 92%, transparent); color: var(--ui-fg); border: 1px solid var(--ui-line); border-radius: 18px; padding: 14px;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.3); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.tsg .gk-hint { position: absolute; z-index: 35; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px); text-align: center;
+  font: 600 14px/1.3 var(--font-ui); color: var(--ui-fg); background: color-mix(in srgb, var(--ui-surface) 88%, transparent); border: 1px solid var(--ui-line); padding: 9px 14px; border-radius: 999px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); pointer-events: none; }
+.tsg .gk-slider-wrap { display: flex; flex-direction: column; gap: 6px; }
+.tsg .gk-slider-row { display: flex; align-items: center; gap: 10px; }
+.tsg .gk-slider { flex: 1; min-width: 0; accent-color: var(--ui-accent); height: 36px; }
+.tsg .gk-slider-out { font: 600 20px/1 var(--font-ui); min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; }
+.tsg .gk-slider-ends { display: flex; justify-content: space-between; font: 500 12px/1.2 var(--font-ui); color: var(--ui-muted); }
+.tsg .gk-steps { display: flex; gap: 6px; justify-content: center; }
+.tsg .gk-steps i { width: 10px; height: 10px; border-radius: 50%; background: var(--ui-line); transition: background 0.2s ease, transform 0.2s ease; }
+.tsg .gk-steps i.on { background: var(--ui-accent); transform: scale(1.15); }
+
+/* Intro title card */
+.tsg .gk-intro { position: absolute; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center;
+  background: radial-gradient(ellipse at 50% 40%, color-mix(in srgb, var(--ui-surface) 55%, transparent), color-mix(in srgb, var(--ui-bg, #000) 82%, transparent)); cursor: pointer;
+  animation: tsg-fade 0.3s ease both; -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+.tsg .gk-intro-out { opacity: 0; transition: opacity 0.3s ease; }
+.tsg .gk-intro-img { width: 112px; height: 112px; object-fit: contain; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.4)); animation: gk-pop 0.6s cubic-bezier(.2, 1.6, .4, 1) both; }
+.tsg .gk-intro-title { font: 400 clamp(36px, 11cqw, 64px)/0.95 var(--font-display); letter-spacing: 0.01em; text-wrap: balance; text-shadow: 0 3px 0 rgba(0, 0, 0, 0.2), 0 10px 30px rgba(0, 0, 0, 0.3); }
+.tsg .gk-intro-sub { font: 500 16px/1.4 var(--font-ui); max-width: 32ch; opacity: 0.92; }
+.tsg .gk-intro-how { font: 600 15px/1.35 var(--font-ui); max-width: 32ch; color: var(--ui-accent); }
+.tsg .gk-intro-tap { font: 600 12px/1 var(--font-ui); letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.7; margin-top: 6px; }
+
+.tsg .gk-pop-text { position: absolute; z-index: 45; transform: translate(-50%, -50%); font: 700 22px/1 var(--font-ui); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ui-fg);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4); pointer-events: none; white-space: nowrap; animation: gk-poptext 0.95s ease-out both; }
+.tsg .gk-pop-text.gk-good { color: #8fe3b0; } .tsg .gk-pop-text.gk-great { color: #ffd27a; } .tsg .gk-pop-text.gk-soft { color: var(--ui-muted); }
+@keyframes gk-poptext { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.8); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -90%); } }
