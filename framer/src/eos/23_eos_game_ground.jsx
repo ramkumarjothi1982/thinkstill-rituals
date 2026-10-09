@@ -11,8 +11,10 @@
 // Each lit beacon plays a rising pentatonic note (one scored step), sweeps its searchlight beam across the fog
 // and burns off one worry word (a glowing icon of what you found takes its place); the rocket steps down.
 // Finale (its own, first-class state): touchdown + dust puff + soft thump, the static clears, the fog's blur
-// melts 8 → 0, GLITCH (E15 worried → E7 curious → happy → E10 confident) hops out onto the nose, the five
+// melts 8 → 0, GLITCH (E15 worried → E49 soft → E07 grin → E58 happy) hops out onto the nose, the five
 // beacons swing their beams up into a salute and the found things join into a gold constellation.
+// Short phones (box < 340 px: 390×664 Safari, 375×667 SE, 360×640) get a compact tier: one row of 5 lamps with one-line
+// pills, a one-line cue, and the worry words packed by their measured size (late words queue for a burnt word's place).
 // Never: a fail state, a reset, a flash, a non-soft sfx from a timer / rAF, user text outside <EosWord>.
 // Public names: EOS_GAME_113, EosGroundControlEngine, EOS_GROUND_CSS. Everything else is EOS_GROUND_* /
 // EosGround* / eosGround*.
@@ -52,22 +54,23 @@ const EOS_GROUND_STEP = 18 //             progress per lit beacon (touchdown = 1
 // ---------------------------------------------------------------- missions (≤ 4 words, a big icon each)
 // t = [before, KEY, after]. The spot pool interleaves the senses, so one "↻ another" from any mission lands on a
 // different sense, and non-visual / non-auditory options (touch, smell/taste, body contact) are always ≤ 2 swaps away.
-// found = the glowing icon the beam reveals where the burnt worry word was.
+// found = the glowing icon the beam reveals where the burnt worry word was (and the lit lamp's icon).
+// c = the compact one-line label (short phones): the KEY word (+ one context word); the icon carries the sense.
 const EOS_GROUND_SPOTS = [
-    { sense: "see", icon: "👀", t: ["something", "BLUE", ""], found: "💎" },
-    { sense: "touch", icon: "✋", t: ["touch a", "SOFT", "thing"], found: "🧸" },
-    { sense: "hear", icon: "👂", t: ["", "farthest", "sound"], found: "🔔" },
-    { sense: "smell", icon: "👃", t: ["one", "smell", "or taste"], found: "🌿" },
-    { sense: "see", icon: "👀", t: ["something", "ROUND", ""], found: "🟡" },
-    { sense: "contact", icon: "🪑", t: ["the", "CHAIR", "under you"], found: "🪑" },
-    { sense: "touch", icon: "✋", t: ["touch a", "COOL", "thing"], found: "❄️" },
-    { sense: "hear", icon: "👂", t: ["the", "quietest", "sound"], found: "🎐" },
-    { sense: "see", icon: "👀", t: ["something", "SHINY", ""], found: "✨" },
-    { sense: "contact", icon: "👣", t: ["the", "FLOOR", "under you"], found: "👣" },
-    { sense: "touch", icon: "✋", t: ["touch a", "SMOOTH", "thing"], found: "🪨" },
-    { sense: "smell", icon: "👅", t: ["", "TASTE", "in your mouth"], found: "🍋" },
-    { sense: "see", icon: "👀", t: ["something", "RED", ""], found: "❤️" },
-    { sense: "contact", icon: "🍃", t: ["", "AIR", "on your skin"], found: "🍃" },
+    { sense: "see", icon: "👀", t: ["something", "BLUE", ""], c: ["", "BLUE", ""], found: "💎" },
+    { sense: "touch", icon: "✋", t: ["touch a", "SOFT", "thing"], c: ["", "SOFT", ""], found: "🧸" },
+    { sense: "hear", icon: "👂", t: ["", "farthest", "sound"], c: ["", "far", "sound"], found: "🔔" },
+    { sense: "smell", icon: "👃", t: ["one", "smell", "or taste"], c: ["a", "smell", ""], found: "🌿" },
+    { sense: "see", icon: "👀", t: ["something", "ROUND", ""], c: ["", "ROUND", ""], found: "🟡" },
+    { sense: "contact", icon: "🪑", t: ["the", "CHAIR", "under you"], c: ["", "CHAIR", ""], found: "🪑" },
+    { sense: "touch", icon: "✋", t: ["touch a", "COOL", "thing"], c: ["", "COOL", ""], found: "❄️" },
+    { sense: "hear", icon: "👂", t: ["the", "quietest", "sound"], c: ["", "quietest", ""], found: "🎐" },
+    { sense: "see", icon: "👀", t: ["something", "SHINY", ""], c: ["", "SHINY", ""], found: "✨" },
+    { sense: "contact", icon: "👣", t: ["the", "FLOOR", "under you"], c: ["", "FLOOR", ""], found: "👣" },
+    { sense: "touch", icon: "✋", t: ["touch a", "SMOOTH", "thing"], c: ["", "SMOOTH", ""], found: "🪨" },
+    { sense: "smell", icon: "👅", t: ["", "TASTE", "in your mouth"], c: ["a", "TASTE", ""], found: "🍋" },
+    { sense: "see", icon: "👀", t: ["something", "RED", ""], c: ["", "RED", ""], found: "❤️" },
+    { sense: "contact", icon: "🍃", t: ["", "AIR", "on your skin"], c: ["", "AIR", ""], found: "🍃" },
 ]
 // Per variant: the starting spot missions (see · touch · hear/smell), in spot-beacon order.
 const EOS_GROUND_SPOT_START = [
@@ -76,11 +79,11 @@ const EOS_GROUND_SPOT_START = [
     [8, 10, 7],
 ]
 // Body beacons: [feet] + [one release]. label = the arrow / LIVE GUIDE label (≤ 18 chars).
-const EOS_GROUND_FEET = { sense: "body", icon: "🦶", t: ["feet", "DOWN", ""], found: "👣", label: "HOLD · FEET DOWN", cue: "press your feet into the floor…" }
+const EOS_GROUND_FEET = { sense: "body", icon: "🦶", t: ["feet", "DOWN", ""], c: ["feet", "DOWN", ""], found: "👣", label: "HOLD · FEET DOWN", cue: "press your feet into the floor…" }
 const EOS_GROUND_RELEASE = [
-    { sense: "body", icon: "🫁", t: ["drop your", "SHOULDERS", ""], found: "🌬️", label: "HOLD · SHOULDERS", cue: "let your shoulders drop…" },
-    { sense: "body", icon: "😌", t: ["soften your", "JAW", ""], found: "🙂", label: "HOLD · SOFT JAW", cue: "let your jaw go soft…" },
-    { sense: "body", icon: "🤲", t: ["loosen your", "HANDS", ""], found: "🖐️", label: "HOLD · LOOSE HANDS", cue: "let your hands go loose…" },
+    { sense: "body", icon: "💆", t: ["drop your", "SHOULDERS", ""], c: ["", "SHOULDERS", ""], found: "🌬️", label: "HOLD · SHOULDERS", cue: "let your shoulders drop…" },
+    { sense: "body", icon: "😌", t: ["soften your", "JAW", ""], c: ["soft", "JAW", ""], found: "🙂", label: "HOLD · SOFT JAW", cue: "let your jaw go soft…" },
+    { sense: "body", icon: "🤲", t: ["loosen your", "HANDS", ""], c: ["loose", "HANDS", ""], found: "🖐️", label: "HOLD · LOOSE HANDS", cue: "let your hands go loose…" },
 ]
 // Beacon slots: 0 front-centre (nearest the thumb → the first, always a spot = gesture "tap"), 1 front-left,
 // 2 front-right, 3 back-left, 4 back-right. Per variant: which kind sits where (3 spot + 2 body).
@@ -102,8 +105,9 @@ const EOS_GROUND_CALM = {
     night: { sky: ["#1c3678", "#3f72c4", "#7fd3ff"], hill: ["#2f7a80", "#123048"], aur: "127,255,214" },
 }
 const EOS_GROUND_ACCENT = [["#ff7d8f", "#b8405a"], ["#ffb547", "#b8701c"], ["#4fd6c4", "#1f8a80"]]
-// GLITCH's faces (the arcade's own cast): worried → curious → happy (seeded) → confident at touchdown.
-const EOS_GROUND_FACE = { start: 15, curious: 7, happy: [57, 60, 61], land: 10 }
+// GLITCH's faces (the arcade's own cast, picked from the art for a readable arc): E15 worried side-glance → E49 soft
+// shy wave (2 beacons) → E07 big grin (4 beacons) → E58 open-mouthed happy at touchdown (the hop-out).
+const EOS_GROUND_FACE = { start: 15, curious: 49, happy: [7], land: 58 }
 const EOS_GROUND_LABEL = { spot: "FOUND IT? TAP", looking: "KEEP LOOKING", holding: "KEEP HOLDING", land: "WATCH IT LAND", done: "TOUCHDOWN" }
 // Cue copy (§2 rules: no clinical words, no "relax" / "calm down" / "just breathe"). [main, sub]
 const EOS_GROUND_CUES = {
@@ -117,6 +121,7 @@ const EOS_GROUND_CUES = {
     last: ["One beacon left · nearly down", ""],
     land: ["Coming in to land…", ""],
     done: ["Touchdown · you're right here", "Your room is real. The what-ifs aren't here yet."],
+    doneC: ["Touchdown · you're right here", "The what-ifs aren't here yet."], // compact: one line, cross-faded
 }
 // Pre-mounted particle pools (no mount/unmount per effect: the wrappers audit every childList mutation).
 const EOS_GROUND_SPARKS = Array.from({ length: 8 }, (_, i) => ({ a: i * 45 + (i % 2) * 12, r: 36 + (i % 3) * 10 }))
@@ -137,6 +142,21 @@ const EOS_GROUND_PUFFS = [
 ]
 
 let eosGroundLive = null // dev/test handle (window.__eos.ground.state(); never words)
+// which side of the lamp the ↻ sits on (standard tier): edge beacons face inwards (never clipped); the front-centre
+// beacon faces its BODY neighbour (bodies carry no ↻ — their HOLD plate is on the lamp), so two ↻ never meet
+function eosGroundSide(geo, i, kinds) {
+    if (!geo || geo.compact) return "r"
+    const p = geo.beacons[i]
+    if (i === 0) {
+        const nb = [1, 2].find((j) => kinds[j] === "body")
+        if (nb != null) return geo.beacons[nb].x < p.x ? "l" : "r"
+    }
+    return p.x > geo.W * 0.6 ? "l" : "r"
+}
+// 3 s press-and-holds: no long-press context menu / callout (Android fires contextmenu ≈ 500 ms in, then cancels)
+function eosGroundNoMenu(e) {
+    e.preventDefault()
+}
 function eosGroundNow() {
     return typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()
 }
@@ -145,10 +165,39 @@ function eosGroundMissionText(m) {
 }
 // The worry words in the fog: the user's words (eosWords; neutral words under a strong safety flag), padded to 5
 // with the feeling's seed phrases (sensations / situations only, §2) so every beacon burns off a word.
+// Chunks are tidied so the fog reads as content, not fragments: dangling function words are trimmed
+// ("tomorrow and" → "tomorrow"), and when there are more than 5 chunks the shortest adjacent pair is merged
+// (later pairs first) so nothing is dropped ("everyone" + "sees" → "everyone sees").
+const EOS_GROUND_TRIM_END = /\s+(and|or|but|so|then|the|to|of|a|an|my|your|because|with|for|in|on|at)$/i
+const EOS_GROUND_TRIM_START = /^(and|or|but|so|then|because)\s+/i
+function eosGroundTidy(list) {
+    const out = []
+    for (const w0 of list) {
+        let w = String(w0 || "").trim()
+        for (let k = 0; k < 3; k++) w = w.replace(EOS_GROUND_TRIM_END, "").replace(EOS_GROUND_TRIM_START, "")
+        if (w && !out.some((x) => x.toLowerCase() === w.toLowerCase())) out.push(w)
+    }
+    while (out.length > 5) {
+        let best = -1
+        let bl = Infinity
+        for (let i = 0; i + 1 < out.length; i++) {
+            const l = out[i].length + out[i + 1].length + 1
+            if (l <= 22 && l <= bl) {
+                bl = l
+                best = i
+            }
+        }
+        if (best < 0) break
+        out.splice(best, 2, `${out[best]} ${out[best + 1]}`)
+    }
+    return out
+}
 function eosGroundWords(entries) {
-    const list = eosWords(entries, 5).filter((w) => w && !/uploaded image/i.test(w))
+    const strong0 = eosSafetyStrong(EOS_STORE.get().safety) || eosSafetyStrong(EosSafetyScan(entries))
+    const raw = eosWords(entries, 8).filter((w) => w && !/uploaded image/i.test(w))
+    const list = strong0 ? raw.slice(0, 5) : eosGroundTidy(raw)
     if (list.length >= 5) return list.slice(0, 5)
-    const strong = eosSafetyStrong(EOS_STORE.get().safety) || eosSafetyStrong(EosSafetyScan(entries))
+    const strong = strong0
     const emo = EOS_EMO[eosCurrentEmotion()]
     const pool = strong ? EOS_NEUTRAL_WORDS : (emo && emo.id !== "good" ? emo.seeds : []).concat(EOS_EMO.anxiety.seeds)
     const seen = new Set(list.map((w) => String(w).toLowerCase()))
@@ -161,49 +210,93 @@ function eosGroundWords(entries) {
     }
     return list.slice(0, 5)
 }
-// Measured layout (box = the safe area: below the HUD, above the LIVE GUIDE). Cue on top → the fog band with the
-// worry words left / right of the rocket's column → the horizon, the landing pad → the beacons on the ground
-// (front row nearest the thumb). Everything in box px.
-function eosGroundLayout(W, H, safeTop, safeBottom, mirror) {
-    const Hb = Math.max(260, H - safeTop - safeBottom)
+// Measured layout (box = the safe area: below the HUD, above the LIVE GUIDE — never stretched past it). Two tiers:
+//  · standard (tall boxes, e.g. 390×844 / desktop): cue (2 lines) → the fog band (worry words left / right of the
+//    rocket's column) → the horizon + landing pad → the beacons on the ground (front row of 3 nearest the thumb, back
+//    row of 2: staggered when the labels cannot collide, else a full row above).
+//  · compact (short phones — 390×664 Safari with toolbars, 375×667 SE, 360×640, 390×740: box 186-330 px): a one-line
+//    cue → the fog band → ONE row of 5 lamps on the hill. Spot beacons (columns 0 · 2 · 4) carry a one-line pill BELOW
+//    with the ↻ inside its right end; body beacons (columns 1 · 3) a pill ABOVE with the HOLD chip inside its left end.
+// Everything in box px. The words' own positions come from eosGroundPack (measured word sizes).
+function eosGroundLayout(W, H, safeTop, safeBottom, mirror, kinds) {
+    const Hb = Math.max(120, H - safeTop - safeBottom)
     const narrow = W < 560
-    const L = Math.round(narrow ? eosClamp(Hb * 0.15, 54, 62) : eosClamp(Hb * 0.18, 64, 86))
-    const labH = narrow ? 40 : 44
-    const block = L + 6 + labH
-    const cue = narrow ? 46 : 52
-    const mw = Math.round(narrow ? Math.min(120, (W - 6) / 3) : Math.min(180, W * 0.16))
-    const fxs = narrow ? [0.5, 0.17, 0.83] : [0.5, 0.18, 0.82]
-    const bxs = narrow ? [0.27, 0.73] : [0.34, 0.66]
-    const yF = Math.round(Hb - block + L / 2 - 2)
-    let minDx = Infinity
-    for (const b of bxs) for (const f of fxs) minDx = Math.min(minDx, Math.abs(b - f) * W)
-    // back row: staggered when the labels cannot collide sideways, else a full row above the front row
-    const yB = Math.round(minDx >= mw + 12 ? yF - L * 0.98 : yF - block - 6)
-    const hz = Math.round(yB - L / 2 - (narrow ? 12 : 16))
-    const padY = Math.round(hz + (narrow ? 12 : 16))
-    const top = cue + 4
-    const RH = Math.round(eosClamp((padY - top) * (narrow ? 0.74 : 0.72), 60, 176))
+    const compact = Hb < (narrow ? 340 : 250)
+    const mx = (f) => Math.round((mirror ? 1 - f : f) * W)
+    let L, cue, mw, beacons, hz, padY, top, bandBot, RH, labH
+    if (compact) {
+        const sp = Math.min(W / 5, narrow ? 999 : 170)
+        L = Math.round(eosClamp(sp - 18, 46, 56))
+        labH = 26
+        cue = 24
+        const yL = Math.floor(Hb - labH - 3 - L / 2 - 2)
+        bandBot = Math.round(yL - L / 2 - 3 - labH - 4)
+        top = cue + 2
+        const colX = (c) => Math.round(W / 2 + (c - 2) * sp)
+        const pwB = Math.floor(Math.min(2 * sp - 12, (W - 20) / 3, 150)) // below pills (3 across)
+        const pwA = Math.floor(Math.min(W / 2 - 14, narrow ? 170 : 2 * sp + 10)) //   above pills (2 across)
+        // a column per beacon: spots → 2 (the first one, nearest the thumb), 0, 4 · bodies → 1, 3 (mirror swaps sides)
+        const spotCols = mirror ? [2, 4, 0] : [2, 0, 4]
+        const bodyCols = mirror ? [3, 1] : [1, 3]
+        let si = 0
+        let bi = 0
+        beacons = (kinds || []).map((k) => {
+            const up = k === "body"
+            const c = up ? bodyCols[bi++ % 2] : spotCols[si++ % 3]
+            const x = colX(c)
+            const p = up ? pwA : pwB
+            // pills stay inside the box: above pills lean away from the centre, edge pills shift inwards
+            let lo = 0
+            if (up) lo = c < 2 ? Math.min(0, W / 2 - 6 - p / 2 - x) : Math.max(0, W / 2 + 6 + p / 2 - x)
+            const left = x + lo - p / 2
+            if (left < 4) lo += 4 - left
+            const right = x + lo + p / 2
+            if (right > W - 4) lo -= right - (W - 4)
+            return { x, y: yL, up, lo: Math.round(lo), pw: p }
+        })
+        mw = Math.max(pwA, pwB)
+        hz = bandBot - 6
+        padY = bandBot - 8
+        RH = Math.round(eosClamp((bandBot - top) * 0.92, 40, 150))
+    } else {
+        L = Math.round(narrow ? eosClamp(Hb * 0.15, 54, 62) : eosClamp(Hb * 0.16, 64, 78))
+        mw = Math.round(narrow ? Math.min(120, (W - 6) / 3) : Math.min(180, W * 0.16))
+        labH = narrow ? 40 : mw >= 176 ? 30 : 46
+        cue = narrow ? 46 : 52
+        const block = L + 6 + labH
+        const fxs = narrow ? [0.5, 0.17, 0.83] : [0.5, 0.18, 0.82]
+        const bxs = narrow ? [0.27, 0.73] : [0.34, 0.66]
+        const yF = Math.round(Hb - block + L / 2 - 2)
+        let minDx = Infinity
+        for (const b of bxs) for (const f of fxs) minDx = Math.min(minDx, Math.abs(b - f) * W)
+        // back row: staggered when the labels cannot collide sideways, else a full row above the front row
+        const yB = Math.round(minDx >= mw + 12 ? yF - L * 1.05 : yF - block - 6)
+        hz = Math.round(yB - L / 2 - (narrow ? 12 : 16))
+        padY = Math.round(hz + (narrow ? 12 : 16))
+        top = cue + 4
+        bandBot = hz - 4
+        beacons = [
+            { x: mx(fxs[0]), y: yF },
+            { x: mx(fxs[1]), y: yF },
+            { x: mx(fxs[2]), y: yF },
+            { x: mx(bxs[0]), y: yB },
+            { x: mx(bxs[1]), y: yB },
+        ]
+        RH = Math.round(eosClamp((padY - top) * (narrow ? 0.74 : 0.8), 60, narrow ? 176 : Math.min(240, Hb * 0.3)))
+    }
     const RW = Math.round(RH * 0.74)
     const y0 = Math.round(top + RH * 0.43)
     const y5 = Math.round(padY - RH / 2 + 4)
-    const mx = (f) => Math.round((mirror ? 1 - f : f) * W)
-    const beacons = [
-        { x: mx(fxs[0]), y: yF },
-        { x: mx(fxs[1]), y: yF },
-        { x: mx(fxs[2]), y: yF },
-        { x: mx(bxs[0]), y: yB },
-        { x: mx(bxs[1]), y: yB },
-    ]
-    const wl = narrow ? 0.21 : 0.28
-    const wTop = top + 2
-    const wBot = hz - 4
-    const words = Array.from({ length: 5 }, (_, i) => ({ x: (i % 2 === 0) !== !!mirror ? Math.round(W * wl) : Math.round(W * (1 - wl)), y: Math.round(wTop + ((i + 0.5) * (wBot - wTop)) / 5) }))
-    const half = Math.min(W * wl - 6, W / 2 - RW / 2 - 10 - W * wl)
-    const wordMax = Math.round(eosClamp(half * 2, 96, narrow ? 150 : 320))
-    const hs = Math.round(RH * 0.6)
-    const hy = Math.round(y5 - RH / 2 - hs * 0.4)
+    // the fog band for the words: left / right of the rocket's column (fins included), cue → horizon
+    const ex = Math.round(RW * 0.68 + 10)
+    const wb = { top: top + 2, bot: bandBot, xl0: narrow ? 6 : Math.round(W * 0.06), xl1: Math.round(W / 2 - ex), xr0: Math.round(W / 2 + ex), xr1: narrow ? Math.round(W - 6) : Math.round(W * 0.94) }
+    const wordMax = Math.round(Math.max(60, Math.min(wb.xl1 - wb.xl0, narrow ? 160 : 320)))
+    // GLITCH's hop-out: above the landed rocket, never up into the cue (hop peak ≈ .33·hs + the 5 px happy bob)
+    const hs = Math.round(RH * (compact ? 0.7 : 0.6))
+    const hy = Math.round(Math.max(y5 - RH / 2 - hs * 0.4, (compact ? cue : cue - 4) + 10 + hs * 0.83 + 5))
     return {
         narrow,
+        compact,
         W: Math.round(W),
         H: Math.round(H),
         Hb: Math.round(Hb),
@@ -216,12 +309,13 @@ function eosGroundLayout(W, H, safeTop, safeBottom, mirror) {
         hz,
         padY,
         beacons,
-        words,
+        wb,
         wordMax,
         vars: {
             "--aw": `${Math.round(W)}px`,
             "--lamp": `${L}px`,
             "--mw": `${mw}px`,
+            "--labh": `${labH}px`,
             "--cue": `${cue}px`,
             "--hz": `${hz}px`,
             "--padx": `${Math.round(W / 2)}px`,
@@ -230,10 +324,79 @@ function eosGroundLayout(W, H, safeTop, safeBottom, mirror) {
             "--rw": `${RW}px`,
             "--hy": `${hy}px`,
             "--hs": `${hs}px`,
-            "--mfs": narrow ? "14.6px" : "16px",
-            "--cfs": narrow ? "17px" : "20px",
+            "--mfs": compact ? "14px" : narrow ? "14.6px" : "16px",
+            "--cfs": compact ? "16px" : narrow ? "17px" : "20px",
         },
     }
+}
+// The worry words' places from their MEASURED sizes (box px). Words alternate sides (mirror flips); one word per row
+// while the band allows, else rows flow (several words per row); rows spread evenly, the right side half a step
+// lower so the columns interleave. A word that still does not fit waits in the queue and takes the place of an
+// earlier word on its side once that one has burned (reuse = its index; the host's found icon then stays hidden).
+function eosGroundPack(sizes, wb, mirror) {
+    const H = Math.max(1, wb.bot - wb.top)
+    const gx = 14
+    const gy = 6
+    const pos = sizes.map(() => ({ x: 0, y: 0, reuse: -1, host: false }))
+    let pitch = Infinity
+    const sides = [
+        { x0: wb.xl0, x1: wb.xl1, ids: [] },
+        { x0: wb.xr0, x1: wb.xr1, ids: [] },
+    ]
+    sizes.forEach((_, k) => sides[(k % 2 === 0) !== !!mirror ? 0 : 1].ids.push(k))
+    sides.forEach((sd, si) => {
+        const RWd = Math.max(1, sd.x1 - sd.x0)
+        const flow = (join) => {
+            const rows = []
+            const q = []
+            let used = 0
+            for (const k of sd.ids) {
+                const s = sizes[k]
+                const last = rows[rows.length - 1]
+                if (join && last && last.w + gx + s.w <= RWd && used - last.h + Math.max(last.h, s.h) <= H) {
+                    used += Math.max(last.h, s.h) - last.h
+                    last.h = Math.max(last.h, s.h)
+                    last.w += gx + s.w
+                    last.ids.push(k)
+                    continue
+                }
+                const need = used + s.h + (rows.length ? gy : 0)
+                if (need <= H || !rows.length) {
+                    rows.push({ ids: [k], w: s.w, h: s.h })
+                    used = need
+                } else q.push(k)
+            }
+            return { rows, q, used }
+        }
+        let f = flow(false)
+        if (f.q.length) {
+            const f2 = flow(true)
+            if (f2.q.length < f.q.length) f = f2
+        }
+        const n = f.rows.length
+        const sp = Math.max(0, H - f.used) / (n + 1)
+        let y = wb.top + (si === 1 ? 1.25 : 0.75) * sp
+        f.rows.forEach((r, ri) => {
+            let x = (sd.x0 + sd.x1) / 2 - r.w / 2
+            for (const k of r.ids) {
+                pos[k].x = Math.round(x + sizes[k].w / 2)
+                pos[k].y = Math.round(y + r.h / 2)
+                x += sizes[k].w + gx
+            }
+            if (ri > 0) pitch = Math.min(pitch, pos[r.ids[0]].y - pos[f.rows[ri - 1].ids[0]].y)
+            y += r.h + gy + sp
+        })
+        const placed = f.rows.flatMap((r) => r.ids)
+        for (const k of f.q) {
+            const cands = placed.filter((j) => j < k && !pos[j].host)
+            const j = cands.find((c) => sizes[c].w >= sizes[k].w - 8) ?? cands[0] ?? placed[placed.length - 1]
+            if (j == null) continue
+            pos[j].host = true
+            pos[k] = { x: pos[j].x, y: pos[j].y, reuse: j, host: false }
+            placed.push(k)
+        }
+    })
+    return { pos, fi: Math.round(eosClamp((pitch === Infinity ? 60 : pitch) - 2, 24, 44)) }
 }
 
 function EosGroundControlEngine({ game, entries = [], onProgress, onDone, sfx, rainSfx, reduced, imageSources, hasUserImages, variationSeed }) {
@@ -299,6 +462,11 @@ function EosGroundControlEngine({ game, entries = [], onProgress, onDone, sfx, r
     const [geo, setGeo] = React.useState(null)
     const geoRef = React.useRef(null)
     geoRef.current = geo
+    // the worry words' places (eosGroundPack from their measured sizes; re-packed when the layout changes)
+    const slotRefs = React.useRef([])
+    const [wp, setWp] = React.useState(null)
+    const wpRef = React.useRef(null)
+    wpRef.current = wp
 
     // ---- the beacon machine (refs; one rAF loop)
     const S = React.useRef(null)
@@ -467,6 +635,8 @@ function EosGroundControlEngine({ game, entries = [], onProgress, onDone, sfx, r
         const b = s.b[i]
         if (b.state !== "hold" || b.auto) return
         b.acc = Math.min(EOS_GROUND_HOLD_MS, b.acc + (eosGroundNow() - b.hs))
+        // held long enough but let go before the next frame noticed → it counts (never "paused" at a full ring)
+        if (b.acc >= (s.assist ? EOS_GROUND_ASSIST_HOLD : EOS_GROUND_HOLD_MS) - 1) return light(i)
         b.state = "paused"
         s.pauses += 1
         eosTone(220, 160, { type: "sine", gain: 0.022, glide: 196 })
@@ -489,13 +659,15 @@ function EosGroundControlEngine({ game, entries = [], onProgress, onDone, sfx, r
         let beam = { a: -90, l: 120 }
         if (g) {
             const from = g.beacons[i]
-            const to = g.words[k]
+            const to = (wpRef.current && wpRef.current.pos[k]) || { x: g.W / 2, y: g.wb.top + 20 }
             const dx = to.x - from.x
             const dy = to.y - from.y
             beam = { a: Math.round((Math.atan2(dy, dx) * 180) / Math.PI), l: Math.round(Math.hypot(dx, dy) + 12) }
         }
         // exactly ONE scored step per lit beacon (the consequence of the player's own find / hold)
-        fx.sfx(`tskey:clean:${Math.min(5, k)}`)
+        // the 5th lit beacon's step is the "win" (still the consequence of the player's own action, same frame);
+        // the touchdown that follows from a timer plays eosTone only (never a non-soft sfx from a timer / rAF of its own)
+        fx.sfx(k >= 4 ? "win" : `tskey:clean:${k}`)
         eosHaptic("hit")
         eosTone(eosNote(5 + k * 2, 262), 520, { type: "triangle", gain: 0.045 })
         eosTone(eosNote(7 + k * 2, 262), 420, { type: "sine", gain: 0.025, at: 0.42 })
@@ -544,7 +716,6 @@ function EosGroundControlEngine({ game, entries = [], onProgress, onDone, sfx, r
         s.target = -1
         setUi((u) => ({ ...u, phase: "done", face: EOS_GROUND_FACE.land, pop: toggle(s.ab, "pop"), cue: "done", target: -1, lean: 0 }))
         fx.report(96, EOS_GROUND_LABEL.done)
-        fx.sfx("win")
         eosHaptic("finish")
         eosTone(84, 420, { type: "sine", gain: 0.09, glide: 44 }) // the soft landing thump
         ;[5, 7, 9, 10, 12].forEach((nn, k) => eosTone(eosNote(nn, 262), 520, { type: "triangle", gain: 0.032, at: 0.3 + k * 0.12 }))
@@ -656,9 +827,9 @@ function EosGroundControlEngine({ game, entries = [], onProgress, onDone, sfx, r
                 const cs = getComputedStyle(root)
                 const st = parseFloat(cs.getPropertyValue("--eos-safe-top")) || 48
                 const sb = parseFloat(cs.getPropertyValue("--eos-safe-bottom")) || 200
-                const L = eosGroundLayout(r.width / k, r.height / k, st, sb, setup.mirror)
+                const L = eosGroundLayout(r.width / k, r.height / k, st, sb, setup.mirror, setup.kinds)
                 for (const key in L.vars) root.style.setProperty(key, L.vars[key])
-                setGeo((g) => (g && g.W === L.W && g.H === L.H && g.st === L.st ? g : L))
+                setGeo((g) => (g && g.W === L.W && g.H === L.H && g.st === L.st && g.Hb === L.Hb ? g : L))
             } catch {}
         }
         measure()
@@ -668,6 +839,18 @@ function EosGroundControlEngine({ game, entries = [], onProgress, onDone, sfx, r
             if (ro) ro.disconnect()
         }
     }, [])
+    // the words: measure their real sizes (wrapped at --wm), then pack them into the fog band (before paint)
+    eosLayoutEffect(() => {
+        if (!geo) return
+        try {
+            const sizes = words.map((_, k) => {
+                const el = slotRefs.current[k]
+                const w = el && el.querySelector(".eosGroundWordWrap")
+                return { w: w ? Math.max(20, w.offsetWidth) : 80, h: w ? Math.max(12, w.offsetHeight) : 20 }
+            })
+            setWp(eosGroundPack(sizes, geo.wb, setup.mirror))
+        } catch {}
+    }, [geo, words.join("|")])
     // the arrow re-aims once the real beacon positions are known
     React.useEffect(() => {
         if (geo && S.current.phase === "play") sync()
@@ -688,8 +871,10 @@ function EosGroundControlEngine({ game, entries = [], onProgress, onDone, sfx, r
         }
         let raf = 0
         const tick = () => {
-            raf = requestAnimationFrame(tick)
+            raf = 0
+            if (!s.alive || s.phase === "done") return
             step()
+            raf = requestAnimationFrame(tick)
         }
         raf = requestAnimationFrame(tick)
         const isKey = (e) => e.key === " " || e.key === "Spacebar" || e.key === "Enter"
@@ -721,7 +906,7 @@ function EosGroundControlEngine({ game, entries = [], onProgress, onDone, sfx, r
         window.addEventListener("keyup", ku)
         return () => {
             s.alive = false
-            cancelAnimationFrame(raf)
+            if (raf) cancelAnimationFrame(raf)
             s.timers.forEach(clearTimeout)
             s.timers = []
             window.removeEventListener("keydown", kd)
@@ -850,10 +1035,12 @@ function EosGroundControlEngine({ game, entries = [], onProgress, onDone, sfx, r
         "--acc2": accent[1],
         "--lean": `${ui.lean}deg`,
         "--tilt": `${ui.tilt}deg`,
+        "--fi": `${wp ? wp.fi : 44}px`,
     }
-    const cueKey = ui.cue === "hold" ? null : ui.cue
+    const compact = !!(geo && geo.compact)
+    const cueKey = ui.cue === "hold" ? null : ui.cue === "done" && compact ? "doneC" : ui.cue
     const cue = cueKey ? EOS_GROUND_CUES[cueKey] || EOS_GROUND_CUES.start : [ui.holdI >= 0 ? (setup.body[ui.holdI] || EOS_GROUND_FEET).cue : "keep holding…", "keep holding · 3 seconds"]
-    const mapPts = geo ? geo.words.map((w) => `${w.x},${w.y}`).join(" ") : ""
+    const mapPts = wp ? wp.pos.map((w) => `${w.x},${w.y}`).join(" ") : ""
     return (
         <div
             ref={rootRef}
@@ -863,6 +1050,7 @@ function EosGroundControlEngine({ game, entries = [], onProgress, onDone, sfx, r
             data-calm={red ? "1" : "0"}
             data-day={setup.day}
             data-narrow={geo && geo.narrow ? "1" : "0"}
+            data-compact={compact ? "1" : "0"}
             data-v={setup.v}
             data-lit={ui.lit}
             style={rootStyle}
@@ -924,7 +1112,7 @@ function EosGroundControlEngine({ game, entries = [], onProgress, onDone, sfx, r
                     })}
                 </div>
                 {/* the finale's constellation: the five things you found, joined in gold */}
-                {geo ? (
+                {geo && wp ? (
                     <svg className="eosGroundMap" width={geo.W} height={geo.Hb} viewBox={`0 0 ${geo.W} ${geo.Hb}`} aria-hidden="true">
                         <polyline points={mapPts} pathLength="100" />
                     </svg>
@@ -933,10 +1121,20 @@ function EosGroundControlEngine({ game, entries = [], onProgress, onDone, sfx, r
                 <div className="eosGroundWords">
                     {geo
                         ? words.map((w, k) => {
-                              const p = geo.words[k]
+                              const p = (wp && wp.pos[k]) || { x: geo.W / 2, y: geo.wb.top + 20, reuse: -1, host: false }
                               const th = thumbs[k]
+                              // queued words wait (hidden) until the word whose place they take has burned
+                              const q = !wp ? "1" : p.reuse >= 0 ? (ui.lit > p.reuse ? "2" : "1") : "0"
                               return (
-                                  <div key={k} className="eosGroundSlot" data-burn={ui.lit > k ? "1" : "0"} style={{ "--wx": `${p.x}px`, "--wy": `${p.y}px`, "--wm": `${geo.wordMax}px`, "--fd": `${(k * 0.12).toFixed(2)}s` }}>
+                                  <div
+                                      key={k}
+                                      ref={(el) => (slotRefs.current[k] = el)}
+                                      className="eosGroundSlot"
+                                      data-burn={ui.lit > k ? "1" : "0"}
+                                      data-q={q}
+                                      data-fi={p.host ? "0" : "1"}
+                                      style={{ "--wx": `${p.x}px`, "--wy": `${p.y}px`, "--wm": `${geo.wordMax}px`, "--fd": `${(k * 0.12).toFixed(2)}s` }}
+                                  >
                                       <i className="eosGroundSlotFog" aria-hidden="true" />
                                       <span className="eosGroundWordWrap">
                                           {th ? <img className="eosGroundThumb" src={th} alt="" draggable={false} /> : null}
@@ -994,9 +1192,14 @@ function EosGroundControlEngine({ game, entries = [], onProgress, onDone, sfx, r
                         const m = kind === "spot" ? EOS_GROUND_SPOTS[ui.mi[i]] || EOS_GROUND_SPOTS[0] : setup.body[i] || EOS_GROUND_FEET
                         const st = ui.st[i]
                         const text = eosGroundMissionText(m)
+                        const tt = compact && m.c ? m.c : m.t
+                        // hold marker: the arrow ring follows the beacon's own ring (--f, which pauses and never
+                        // resets) and its ms is the time still needed (assist-aware)
+                        const hb = S.current.b[i]
+                        const need = S.current.assist ? EOS_GROUND_ASSIST_HOLD : EOS_GROUND_HOLD_MS
                         const mk =
                             ui.target === i && ph === "play"
-                                ? eosTarget(kind === "spot" ? { g: "tap", label: EOS_GROUND_LABEL.spot } : { g: "hold", ms: EOS_GROUND_HOLD_MS, label: m.label })
+                                ? eosTarget(kind === "spot" ? { g: "tap", label: EOS_GROUND_LABEL.spot } : { g: "hold", ms: Math.max(200, Math.round(need - (hb ? hb.acc : 0))), mvar: "--f", label: m.label })
                                 : {}
                         const aria =
                             st === "lit"
@@ -1005,7 +1208,7 @@ function EosGroundControlEngine({ game, entries = [], onProgress, onDone, sfx, r
                                   ? `Beacon: ${text}. Find it around you, then tap.`
                                   : `Beacon: ${text}. Press and hold for 3 seconds while you do it.`
                         return (
-                            <div key={i} ref={(el) => (beaconRefs.current[i] = el)} className="eosGroundBeacon" data-k={kind} data-st={st} data-sense={m.sense} data-side={geo && p.x > geo.W * 0.6 ? "l" : "r"} style={{ "--bx": `${p.x}px`, "--by": `${p.y}px` }}>
+                            <div key={i} ref={(el) => (beaconRefs.current[i] = el)} className="eosGroundBeacon" data-k={kind} data-st={st} data-sense={m.sense} data-side={eosGroundSide(geo, i, setup.kinds)} data-up={p.up ? "1" : "0"} style={{ "--bx": `${p.x}px`, "--by": `${p.y}px`, ...(p.pw ? { "--pw": `${p.pw}px`, "--lo": `${p.lo}px` } : {}) }}>
                                 <button
                                     type="button"
                                     className="eosGroundLampBtn"
@@ -1018,13 +1221,14 @@ function EosGroundControlEngine({ game, entries = [], onProgress, onDone, sfx, r
                                     onKeyDown={bKeyDown(i)}
                                     onKeyUp={bKeyUp(i)}
                                     onClick={bClick(i)}
+                                    onContextMenu={eosGroundNoMenu}
                                 >
                                     <span className="eosGroundLamp">
                                         <i className="eosGroundShadow" />
                                         <span className="eosGroundSquash">
                                             <i className="eosGroundHalo" />
                                             <span className="eosGroundGlass">
-                                                <span className="eosGroundIcon">{m.icon}</span>
+                                                <span className="eosGroundIcon">{st === "lit" ? m.found : m.icon}</span>
                                             </span>
                                             <svg className="eosGroundRing" viewBox="0 0 100 100" aria-hidden="true">
                                                 <circle className="eosGroundRingTrack" cx="50" cy="50" r="45" />
@@ -1038,9 +1242,14 @@ function EosGroundControlEngine({ game, entries = [], onProgress, onDone, sfx, r
                                         </span>
                                     </span>
                                     <span className="eosGroundMission" data-sw={ui.sw[i]}>
-                                        {m.t[0] ? `${m.t[0]} ` : ""}
-                                        <b>{m.t[1]}</b>
-                                        {m.t[2] ? ` ${m.t[2]}` : ""}
+                                        {kind === "body" ? (
+                                            <i className="eosGroundHoldChip" aria-hidden="true">
+                                                HOLD
+                                            </i>
+                                        ) : null}
+                                        {tt[0] ? `${tt[0]} ` : ""}
+                                        <b>{tt[1]}</b>
+                                        {tt[2] ? ` ${tt[2]}` : ""}
                                     </span>
                                 </button>
                                 {kind === "spot" ? (
@@ -1052,24 +1261,21 @@ function EosGroundControlEngine({ game, entries = [], onProgress, onDone, sfx, r
                                         onPointerDown={swDown(i)}
                                         onKeyDown={swKey(i)}
                                         onClick={swClick(i)}
+                                        onContextMenu={eosGroundNoMenu}
                                     >
                                         <span>
                                             <b aria-hidden="true">↻</b>
-                                            {geo && !geo.narrow ? <em>another</em> : null}
+                                            {geo && !geo.narrow && !compact ? <em>another</em> : null}
                                         </span>
                                     </button>
-                                ) : (
-                                    <span className="eosGroundHoldTag" aria-hidden="true">
-                                        <span>HOLD</span>
-                                    </span>
-                                )}
+                                ) : null}
                             </div>
                         )
                     })}
                 </div>
                 <div className="eosGroundCue" aria-live="polite">
                     <b>{cue[0]}</b>
-                    {cue[1] ? <small>{cue[1]}</small> : null}
+                    {cue[1] && (!compact || cueKey === "doneC") ? <small>{cue[1]}</small> : null}
                     <span className="eosSrOnly">{`${ui.lit} of 5 beacons lit.`}</span>
                 </div>
             </div>
@@ -1081,7 +1287,7 @@ function EosGroundControlEngine({ game, entries = [], onProgress, onDone, sfx, r
 // ---------------------------------------------------------------- CSS (every rule under ${EOS_A} .eosG113)
 const EOS_GROUND_R = `${EOS_A} .eosG113`
 const EOS_GROUND_CSS = `
-${EOS_GROUND_R}{--clr:0;--hold:0;--lamp:70px;--mw:170px;--cue:52px;--hz:240px;--padx:50%;--pady:256px;--rh:120px;--rw:82px;--hy:120px;--hs:72px;--mfs:16px;--cfs:20px;--fog:176,150,255;background:var(--l1);color:#fff;font-family:var(--eos-font);cursor:default;isolation:isolate;filter:none!important}
+${EOS_GROUND_R}{--clr:0;--hold:0;--lamp:70px;--mw:170px;--labh:40px;--fi:44px;--cue:52px;--hz:240px;--padx:50%;--pady:256px;--rh:120px;--rw:82px;--hy:120px;--hs:72px;--mfs:16px;--cfs:20px;--fog:176,150,255;background:var(--l1);color:#fff;font-family:var(--eos-font);cursor:default;isolation:isolate;filter:none!important}
 ${EOS_GROUND_R} .eosGroundSky,${EOS_GROUND_R} .eosGroundSky>i{position:absolute;inset:0;display:block;pointer-events:none}
 ${EOS_GROUND_R} .eosGroundSkyLoud{background:radial-gradient(90% 55% at 50% 8%,rgba(var(--glow),.32),rgba(var(--glow),0) 70%),linear-gradient(180deg,var(--l1) 0%,var(--l2) 48%,var(--l3) 82%)}
 ${EOS_GROUND_R} .eosGroundSkyCalm{background:linear-gradient(180deg,var(--c1) 0%,var(--c2) 52%,var(--c3) 84%);opacity:var(--clr);transition:opacity 1.4s ease}
@@ -1105,17 +1311,17 @@ ${EOS_GROUND_R}[data-phase="done"] .eosGroundStatic,${EOS_GROUND_R}[data-phase="
 ${EOS_GROUND_R} .eosGroundStatic>b{position:absolute;left:0;right:0;height:14px;top:20%;display:block;background:linear-gradient(90deg,rgba(190,160,255,0),rgba(190,160,255,.16) 30%,rgba(140,220,255,.14) 70%,rgba(190,160,255,0));animation:eosGroundBar 9s linear infinite}
 ${EOS_GROUND_R} .eosGroundStatic>b:nth-child(2){top:55%;height:8px;animation-duration:13s;animation-delay:-5s}
 ${EOS_GROUND_R} .eosGroundStatic>b:nth-child(3){top:80%;height:10px;animation-duration:11s;animation-delay:-8s}
-${EOS_GROUND_R}[data-calm="1"] .eosGroundStatic>b{animation:none}
+${EOS_GROUND_R}[data-calm="1"] .eosGroundStatic>b,${EOS_GROUND_R}[data-lit="4"] .eosGroundStatic>b,${EOS_GROUND_R}[data-phase="landing"] .eosGroundStatic>b,${EOS_GROUND_R}[data-phase="done"] .eosGroundStatic>b{animation:none}
 ${EOS_GROUND_R} .eosGroundFog{position:absolute;left:0;right:0;top:calc(var(--cue) - 8px);height:calc(var(--hz) - var(--cue) + 34px)}
 ${EOS_GROUND_R} .eosGroundVeil{position:absolute;inset:0;display:block;-webkit-backdrop-filter:blur(calc((1 - var(--clr)) * 8px));backdrop-filter:blur(calc((1 - var(--clr)) * 8px));background:linear-gradient(180deg,rgba(var(--fog),0),rgba(var(--fog),.2) 22%,rgba(var(--fog),.24) 78%,rgba(var(--fog),0));opacity:calc(1 - var(--clr) * .7);transition:opacity 1.2s ease,backdrop-filter 1.2s ease,-webkit-backdrop-filter 1.2s ease;-webkit-mask-image:linear-gradient(180deg,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(180deg,transparent,#000 14%,#000 86%,transparent)}
 ${EOS_GROUND_R}[data-phase="done"] .eosGroundVeil{-webkit-backdrop-filter:blur(0px);backdrop-filter:blur(0px);opacity:0;transition-duration:1.6s}
 ${EOS_GROUND_R} .eosGroundPuff{position:absolute;left:var(--px);top:var(--py);width:var(--pw);height:var(--ph);transform:translate(-50%,-50%);border-radius:50%;display:block;background:radial-gradient(closest-side,rgba(var(--fog),.5),rgba(var(--fog),.2) 58%,rgba(var(--fog),0));opacity:calc(1 - var(--clr) * .8);transition:opacity 1.4s ease;animation:eosGroundDrift var(--pd) ease-in-out infinite alternate}
 ${EOS_GROUND_R}[data-phase="done"] .eosGroundPuff{opacity:0}
-${EOS_GROUND_R}[data-calm="1"] .eosGroundPuff{animation:none}
+${EOS_GROUND_R}[data-calm="1"] .eosGroundPuff,${EOS_GROUND_R}[data-phase="done"] .eosGroundPuff{animation:none}
 ${EOS_GROUND_R} .eosGroundFogFront{position:absolute;left:0;right:0;top:0;bottom:0;z-index:5;pointer-events:none}
 ${EOS_GROUND_R} .eosGroundFogFront>i{position:absolute;left:calc(var(--padx) - var(--rw) * 1.4);top:calc(var(--cue) + var(--rh) * .55);width:calc(var(--rw) * 1.5);height:calc(var(--rh) * .34);border-radius:50%;display:block;background:radial-gradient(closest-side,rgba(var(--fog),.4),rgba(var(--fog),0));opacity:calc((1 - var(--clr)) * .9);transition:opacity 1.2s;animation:eosGroundDrift 10s ease-in-out infinite alternate}
 ${EOS_GROUND_R} .eosGroundFogFront>i:nth-child(2){left:calc(var(--padx) + var(--rw) * .1);top:calc(var(--cue) + var(--rh) * .95);animation-duration:12s;--pk:-1}
-${EOS_GROUND_R}[data-calm="1"] .eosGroundFogFront>i{animation:none}
+${EOS_GROUND_R}[data-calm="1"] .eosGroundFogFront>i,${EOS_GROUND_R}[data-phase="landing"] .eosGroundFogFront>i,${EOS_GROUND_R}[data-phase="done"] .eosGroundFogFront>i{animation:none}
 ${EOS_GROUND_R}[data-phase="done"] .eosGroundFogFront>i,${EOS_GROUND_R}[data-phase="landing"] .eosGroundFogFront>i{opacity:0}
 ${EOS_GROUND_R} .eosGroundBeams{position:absolute;inset:0;z-index:2}
 ${EOS_GROUND_R} .eosGroundBeam{position:absolute;left:var(--lx);top:var(--ly);width:var(--bl);height:54px;margin-top:-27px;display:block;transform-origin:0 50%;transform:rotate(var(--ba));opacity:0;background:linear-gradient(90deg,rgba(255,236,170,.95),rgba(255,214,120,.5) 60%,rgba(255,214,120,.08));clip-path:polygon(0 44%,100% 0,100% 100%,0 56%);filter:blur(1px)}
@@ -1131,6 +1337,9 @@ ${EOS_GROUND_R} .eosGroundWords{position:absolute;inset:0;z-index:3}
 ${EOS_GROUND_R} .eosGroundSlot{position:absolute;left:var(--wx);top:var(--wy);width:max-content;max-width:var(--wm);transform:translate(-50%,-50%);text-align:center;display:flex;flex-direction:column;align-items:center}
 ${EOS_GROUND_R} .eosGroundSlotFog{position:absolute;left:50%;top:50%;width:calc(100% + 56px);height:calc(100% + 34px);transform:translate(-50%,-50%);border-radius:50%;display:block;background:radial-gradient(closest-side,rgba(28,14,70,.62),rgba(60,36,130,.34) 55%,rgba(var(--fog),0));transition:opacity 1s ease .5s}
 ${EOS_GROUND_R} .eosGroundSlot[data-burn="1"] .eosGroundSlotFog{opacity:0}
+${EOS_GROUND_R} .eosGroundSlot[data-q="1"]{visibility:hidden;opacity:0}
+${EOS_GROUND_R} .eosGroundSlot[data-q="2"]{animation:eosGroundFadeIn .7s ease 1.7s both}
+${EOS_GROUND_R} .eosGroundSlot[data-fi="0"] .eosGroundFound{display:none}
 ${EOS_GROUND_R} .eosGroundWordWrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;max-width:100%}
 ${EOS_GROUND_R} .eosGroundWordWrap .eosWord,${EOS_GROUND_R} .eosGroundWordWrap .tsExactUserText{max-width:100%!important;width:auto!important;text-align:center!important;transition:color .35s ease .45s,text-shadow .35s ease .45s}
 ${EOS_GROUND_R} .eosGroundSlot[data-burn="1"] .eosGroundWordWrap .eosWord{color:#ffe7a0!important;text-shadow:0 0 10px rgba(255,190,80,.95),0 0 22px rgba(255,150,60,.7)!important}
@@ -1141,9 +1350,9 @@ ${EOS_GROUND_R} .eosGroundEmbers{position:absolute;left:50%;top:50%;width:0;heig
 ${EOS_GROUND_R} .eosGroundEmbers>i{position:absolute;left:-3px;top:-3px;width:6px;height:6px;border-radius:50%;display:block;background:#ffd36b;box-shadow:0 0 8px 2px rgba(255,170,60,.85);opacity:0}
 ${EOS_GROUND_R} .eosGroundSlot[data-burn="1"] .eosGroundEmbers>i{animation:eosGroundEmber 1.2s ease-out calc(.7s + var(--ed)) forwards}
 ${EOS_GROUND_R}[data-calm="1"] .eosGroundSlot[data-burn="1"] .eosGroundEmbers>i{animation:none}
-${EOS_GROUND_R} .eosGroundFound{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;display:grid;place-items:center;opacity:0;transform:scale(.3)}
+${EOS_GROUND_R} .eosGroundFound{position:absolute;left:50%;top:50%;width:var(--fi);height:var(--fi);margin:calc(var(--fi) / -2) 0 0 calc(var(--fi) / -2);display:grid;place-items:center;opacity:0;transform:scale(.3)}
 ${EOS_GROUND_R} .eosGroundFound>i{position:absolute;inset:-6px;border-radius:50%;display:block;background:radial-gradient(closest-side,rgba(255,236,160,.85),rgba(255,200,90,.35) 55%,rgba(255,200,90,0))}
-${EOS_GROUND_R} .eosGroundFound>b{position:relative;font:400 26px/1 var(--eos-font);filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+${EOS_GROUND_R} .eosGroundFound>b{position:relative;font:400 calc(var(--fi) * .6)/1 var(--eos-font);filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
 ${EOS_GROUND_R} .eosGroundSlot[data-burn="1"] .eosGroundFound{animation:eosGroundFoundIn .8s cubic-bezier(.3,1.6,.5,1) 1.3s forwards}
 ${EOS_GROUND_R}[data-calm="1"] .eosGroundSlot[data-burn="1"] .eosGroundFound{animation:eosGroundFadeIn .8s ease 1.3s forwards;transform:none}
 ${EOS_GROUND_R}[data-phase="done"] .eosGroundSlot .eosGroundFound>i{animation:eosGroundTwinkle 1.4s ease-in-out calc(.5s + var(--fd)) infinite alternate}
@@ -1160,12 +1369,16 @@ ${EOS_GROUND_R}[data-calm="1"] .eosGroundNod{animation:none!important}
 ${EOS_GROUND_R}[data-phase="done"] .eosGroundNod{animation:eosGroundLand .8s cubic-bezier(.3,1.5,.5,1)!important}
 ${EOS_GROUND_R}[data-phase="done"][data-calm="1"] .eosGroundNod{animation:none!important}
 ${EOS_GROUND_R} .eosGroundHull{position:absolute;left:0;top:0;width:100%;height:84%;border-radius:50% 50% 44% 44%/64% 64% 36% 36%;background:radial-gradient(circle at 30% 22%,#ffffff 0,#f4efff 26%,#d3c9f5 58%,#9a8ed6 86%,#7a6fb8 100%);box-shadow:inset calc(var(--rw) * -.09) 0 calc(var(--rw) * .12) rgba(110,220,255,.6),inset calc(var(--rw) * .06) calc(var(--rw) * .08) calc(var(--rw) * .12) rgba(255,240,215,.75),0 calc(var(--rw) * .1) calc(var(--rw) * .28) rgba(0,0,0,.38);display:block}
+${EOS_GROUND_R}[data-phase="play"][data-lit="0"] .eosGroundHull,${EOS_GROUND_R}[data-phase="play"][data-lit="1"] .eosGroundHull{animation:eosGroundShiver .26s steps(2,jump-none) infinite}
+${EOS_GROUND_R}[data-phase="play"][data-lit="3"] .eosGroundHull,${EOS_GROUND_R}[data-phase="play"][data-lit="4"] .eosGroundHull{animation:eosGroundBounce 1.3s cubic-bezier(.3,1.4,.5,1) infinite}
+${EOS_GROUND_R}[data-calm="1"] .eosGroundHull{animation:none!important}
 ${EOS_GROUND_R} .eosGroundBand{position:absolute;left:0;right:0;top:66%;height:12%;display:block;background:linear-gradient(180deg,var(--acc),var(--acc2));clip-path:ellipse(50% 120% at 50% 0%);opacity:.95}
 ${EOS_GROUND_R} .eosGroundAntenna{position:absolute;left:50%;top:-14%;width:3px;height:16%;margin-left:-1.5px;display:block;background:#cfc6f2;border-radius:2px}
 ${EOS_GROUND_R} .eosGroundAntenna::after{content:"";position:absolute;left:50%;top:-6px;width:9px;height:9px;margin-left:-4.5px;border-radius:50%;background:var(--acc);box-shadow:0 0 10px 2px var(--acc);animation:eosGroundBlink 2.4s ease-in-out infinite alternate}
 ${EOS_GROUND_R}[data-calm="1"] .eosGroundAntenna::after{animation:none}
-${EOS_GROUND_R} .eosGroundDome{position:absolute;left:9%;right:9%;top:15%;aspect-ratio:1;border-radius:50%;overflow:hidden;display:block;background:radial-gradient(circle at 50% 38%,#d8f1ff 0,#9fc8ff 34%,#6a78d8 70%,#4a4aa6 100%);box-shadow:0 0 0 calc(var(--rw) * .05) #e8e1ff,0 0 0 calc(var(--rw) * .075) #8f84c9,inset 0 calc(var(--rw) * -.04) calc(var(--rw) * .1) rgba(0,0,0,.5)}
-${EOS_GROUND_R} .eosGroundFace{position:absolute;left:4%;top:6%;width:92%;height:92%;object-fit:contain;transform-origin:50% 80%;filter:drop-shadow(calc((1 - var(--clr)) * 2px) 0 0 rgba(255,70,150,.6)) drop-shadow(calc((1 - var(--clr)) * -2px) 0 0 rgba(70,210,255,.6)) drop-shadow(-1px -2px 0 rgba(255,232,190,.5));transition:opacity .5s ease .4s}
+${EOS_GROUND_R} .eosGroundDome{position:absolute;left:9%;right:9%;top:15%;aspect-ratio:1;border-radius:50%;overflow:hidden;display:block;background:radial-gradient(circle at 50% 56%,rgba(255,240,205,.98) 0,rgba(255,214,160,.78) 30%,rgba(255,200,150,0) 58%),radial-gradient(circle at 50% 38%,#e6f6ff 0,#a8d0ff 34%,#7484dc 70%,#5252ae 100%);box-shadow:0 0 0 calc(var(--rw) * .05) #e8e1ff,0 0 0 calc(var(--rw) * .075) #8f84c9,inset 0 calc(var(--rw) * -.04) calc(var(--rw) * .1) rgba(0,0,0,.5)}
+${EOS_GROUND_R}[data-narrow="1"] .eosGroundDome{left:4%;right:4%;top:11%}
+${EOS_GROUND_R} .eosGroundFace{position:absolute;left:4%;top:6%;width:92%;height:92%;object-fit:contain;transform-origin:50% 80%;filter:brightness(1.28) saturate(1.1) drop-shadow(calc((1 - var(--clr)) * 2px) 0 0 rgba(255,70,150,.6)) drop-shadow(calc((1 - var(--clr)) * -2px) 0 0 rgba(70,210,255,.6)) drop-shadow(-1px -2px 0 rgba(255,232,190,.5));transition:opacity .5s ease .4s}
 ${EOS_GROUND_R} .eosGroundRocket[data-pop="a"] .eosGroundFace{animation:eosGroundPopA .6s cubic-bezier(.3,1.5,.5,1)}
 ${EOS_GROUND_R} .eosGroundRocket[data-pop="b"] .eosGroundFace{animation:eosGroundPopB .6s cubic-bezier(.3,1.5,.5,1)}
 ${EOS_GROUND_R}[data-calm="1"] .eosGroundFace{animation:none!important}
@@ -1183,7 +1396,7 @@ ${EOS_GROUND_R} .eosGroundFlame,${EOS_GROUND_R} .eosGroundFlame>b{border-radius:
 ${EOS_GROUND_R} .eosGroundFlame{background:radial-gradient(ellipse at 50% 25%,#fff6d0 0,#ffc65a 35%,#ff7a3a 65%,rgba(255,90,60,0) 78%)}
 ${EOS_GROUND_R} .eosGroundFlame>b{position:absolute;left:22%;right:22%;top:0;height:60%;display:block;background:radial-gradient(ellipse at 50% 20%,#ffffff,rgba(255,240,200,0) 75%)}
 ${EOS_GROUND_R}[data-calm="1"] .eosGroundFlame{animation:none}
-${EOS_GROUND_R}[data-phase="done"] .eosGroundFlame{opacity:0}
+${EOS_GROUND_R}[data-phase="done"] .eosGroundFlame{opacity:0;animation:none}
 ${EOS_GROUND_R} .eosGroundHero{position:absolute;left:var(--padx);top:var(--hy);width:var(--hs);height:var(--hs);margin:calc(var(--hs) / -2) 0 0 calc(var(--hs) / -2);z-index:4;opacity:0;transform:translateY(calc(var(--hs) * .5)) scale(.3);pointer-events:none}
 ${EOS_GROUND_R} .eosGroundHero>img{position:relative;width:100%;height:100%;object-fit:contain;filter:drop-shadow(-3px -3px 0 rgba(255,228,180,.55)) drop-shadow(3px 0 0 rgba(130,220,255,.75)) drop-shadow(0 6px 8px rgba(0,0,0,.35))}
 ${EOS_GROUND_R} .eosGroundHeroGlow{position:absolute;inset:-35%;border-radius:50%;display:block;background:radial-gradient(closest-side,rgba(255,230,150,.75),rgba(255,200,100,.25) 55%,rgba(255,200,100,0))}
@@ -1191,7 +1404,7 @@ ${EOS_GROUND_R}[data-phase="done"] .eosGroundHero{animation:eosGroundHop 1.1s cu
 ${EOS_GROUND_R}[data-phase="done"][data-calm="1"] .eosGroundHero{animation:eosGroundFadeIn .8s ease .2s forwards;transform:none}
 ${EOS_GROUND_R} .eosGroundBeacons{position:absolute;inset:0;z-index:6}
 ${EOS_GROUND_R} .eosGroundBeacon{position:absolute;left:var(--bx);top:var(--by);width:var(--mw);margin:calc(var(--lamp) / -2) 0 0 calc(var(--mw) / -2);pointer-events:none;--f:0}
-${EOS_GROUND_R} .eosGroundLampBtn{pointer-events:none;border-radius:20px;display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;min-height:72px;touch-action:none;position:relative}
+${EOS_GROUND_R} .eosGroundLampBtn{pointer-events:none;border-radius:20px;display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;min-height:72px;touch-action:none;position:relative;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 ${EOS_GROUND_R} .eosGroundLamp{position:relative;width:var(--lamp);height:var(--lamp);display:block;flex:none}
 ${EOS_GROUND_R} .eosGroundLamp,${EOS_GROUND_R} .eosGroundMission{pointer-events:auto}
 ${EOS_GROUND_R} .eosGroundLamp::before{content:"";position:absolute;inset:-8px;border-radius:50%}
@@ -1227,16 +1440,27 @@ ${EOS_GROUND_R} .eosGroundMission>b{color:#ffd76a;font-weight:900;letter-spacing
 ${EOS_GROUND_R} .eosGroundBeacon[data-st="lit"] .eosGroundMission{background:rgba(120,70,10,.55);color:#fff6dc}
 ${EOS_GROUND_R} .eosGroundMission[data-sw="a"]{animation:eosGroundSwapA .45s ease}
 ${EOS_GROUND_R} .eosGroundMission[data-sw="b"]{animation:eosGroundSwapB .45s ease}
-${EOS_GROUND_R} .eosGroundSwap,${EOS_GROUND_R} .eosGroundHoldTag{position:absolute;left:calc(50% + var(--lamp) * .3);top:calc(var(--lamp) * .5 - 34px);min-width:42px;height:42px;pointer-events:auto;display:flex;align-items:center;justify-content:flex-start;touch-action:none}
+${EOS_GROUND_R} .eosGroundSwap{position:absolute;left:calc(50% + var(--lamp) * .5 + 9px);top:calc(var(--lamp) * .5 + 4px);min-width:38px;height:34px;pointer-events:auto;display:flex;align-items:center;justify-content:flex-start;touch-action:none;-webkit-touch-callout:none}
 ${EOS_GROUND_R} .eosGroundSwap>span{display:flex;align-items:center;gap:4px;height:30px;min-width:30px;padding:0 8px;border-radius:16px;background:linear-gradient(180deg,rgba(80,60,170,.95),rgba(40,26,110,.95));box-shadow:0 0 0 1.5px rgba(210,195,255,.7),0 3px 8px rgba(0,0,0,.4);color:#fff;font:800 14.6px/1 var(--eos-font);white-space:nowrap}
 ${EOS_GROUND_R} .eosGroundSwap>span>b{font-size:17px;line-height:1;color:#ffd76a}
 ${EOS_GROUND_R} .eosGroundSwap>span>em{font-style:normal}
-${EOS_GROUND_R} .eosGroundBeacon[data-side="l"] .eosGroundSwap,${EOS_GROUND_R} .eosGroundBeacon[data-side="l"] .eosGroundHoldTag{left:auto;right:calc(50% + var(--lamp) * .3);justify-content:flex-end}
-${EOS_GROUND_R} .eosGroundHoldTag{pointer-events:none;min-width:0}
-${EOS_GROUND_R} .eosGroundHoldTag>span{display:flex;align-items:center;height:24px;padding:0 7px;border-radius:12px;background:linear-gradient(180deg,rgba(40,120,170,.95),rgba(16,60,110,.95));box-shadow:0 0 0 1.5px rgba(170,235,255,.75),0 3px 8px rgba(0,0,0,.4);color:#fff;font:800 14.6px/1 var(--eos-font);letter-spacing:.04em}
-${EOS_GROUND_R} .eosGroundBeacon[data-st="lit"] .eosGroundHoldTag{opacity:0;visibility:hidden}
+${EOS_GROUND_R}[data-narrow="1"] .eosGroundSwap{top:calc(var(--lamp) * .5 - 19px);height:38px}
+${EOS_GROUND_R} .eosGroundBeacon[data-side="l"] .eosGroundSwap{left:auto;right:calc(50% + var(--lamp) * .5 + 9px);justify-content:flex-end}
+${EOS_GROUND_R}[data-compact="0"] .eosGroundHoldChip{position:absolute;left:50%;top:calc(var(--lamp) - 17px);transform:translateX(-50%);margin:0!important;z-index:2}
+${EOS_GROUND_R} .eosGroundHoldChip{display:inline-block;vertical-align:1px;margin:0 5px 0 0;padding:0 6px;height:20px;border-radius:10px;background:linear-gradient(180deg,rgba(40,120,170,.95),rgba(16,60,110,.95));box-shadow:0 0 0 1.5px rgba(170,235,255,.75);color:#fff;font:800 13.5px/20px var(--eos-font);font-style:normal;letter-spacing:.04em}
+${EOS_GROUND_R} .eosGroundBeacon[data-st="lit"] .eosGroundHoldChip{display:none}
 ${EOS_GROUND_R}[data-narrow="1"] .eosGroundSwap>span{padding:0;justify-content:center;width:30px}
 ${EOS_GROUND_R} .eosGroundBeacon:not([data-st="idle"]) .eosGroundSwap{visibility:hidden;opacity:0;pointer-events:none}
+${EOS_GROUND_R}[data-compact="1"] .eosGroundBeacon .eosGroundLampBtn{gap:3px;min-height:0}
+${EOS_GROUND_R}[data-compact="1"] .eosGroundBeacon[data-up="1"]{margin-top:calc(var(--lamp) / -2 - var(--labh) - 3px)}
+${EOS_GROUND_R}[data-compact="1"] .eosGroundBeacon[data-up="1"] .eosGroundLampBtn{flex-direction:column-reverse}
+${EOS_GROUND_R}[data-compact="1"] .eosGroundBeacon .eosGroundMission{flex:none;box-sizing:border-box;width:var(--pw);max-width:none;height:var(--labh);padding:0 6px;line-height:var(--labh);white-space:nowrap;translate:var(--lo) 0;border-radius:13px}
+${EOS_GROUND_R}[data-compact="1"] .eosGroundBeacon[data-k="spot"] .eosGroundMission{padding-right:34px}
+${EOS_GROUND_R}[data-compact="1"] .eosGroundBeacon .eosGroundSwap{left:calc(50% + var(--lo) + var(--pw) / 2 - 37px);right:auto;top:calc(var(--lamp) + 3px + var(--labh) / 2 - 18px);width:36px;min-width:36px;height:36px;justify-content:center}
+${EOS_GROUND_R}[data-compact="1"] .eosGroundBeacon .eosGroundSwap>span{width:26px;min-width:0;height:26px;padding:0;border-radius:50%;justify-content:center}
+${EOS_GROUND_R}[data-compact="1"] .eosGroundCue>small{position:absolute;left:0;right:0;top:0;margin:0;font:800 var(--cfs)/1.15 var(--eos-font);color:#fff;opacity:0}
+${EOS_GROUND_R}[data-compact="1"][data-phase="done"] .eosGroundCue>b{animation:eosGroundCueOut .45s ease 1.1s forwards}
+${EOS_GROUND_R}[data-compact="1"][data-phase="done"] .eosGroundCue>small{animation:eosGroundFadeIn .5s ease 1.4s forwards}
 ${EOS_GROUND_R} .eosGroundCue{position:absolute;left:50%;top:0;width:min(94%,620px);transform:translateX(-50%);text-align:center;z-index:7;pointer-events:none}
 ${EOS_GROUND_R} .eosGroundCue>b{display:block;font:800 var(--cfs)/1.15 var(--eos-font);color:#fff;text-shadow:0 2px 10px rgba(10,0,40,.85),0 0 2px rgba(0,0,0,.6)}
 ${EOS_GROUND_R} .eosGroundCue>small{display:block;margin-top:2px;font:700 14.6px/1.2 var(--eos-font);color:rgba(255,255,255,.92);text-shadow:0 1px 6px rgba(10,0,40,.9)}
@@ -1270,7 +1494,10 @@ ${EOS_GROUND_R}[data-calm="1"] .eosGroundPing[data-p]{animation-name:eosGroundPi
 @keyframes eosGroundTwinkle{from{opacity:.6;transform:scale(.92)}to{opacity:1;transform:scale(1.12)}}
 @keyframes eosGroundDust{0%{opacity:0;transform:translate(0,0) scale(.4)}15%{opacity:.95}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(var(--ds))}}
 @keyframes eosGroundDustCalm{0%{opacity:0}30%{opacity:.6}100%{opacity:0}}
-@keyframes eosGroundHop{0%{opacity:0;transform:translateY(calc(var(--hs) * .5)) scale(.3)}30%{opacity:1;transform:translateY(calc(var(--hs) * -.45)) scale(.95,1.1)}55%{transform:translateY(calc(var(--hs) * .06)) scale(1.14,.86)}75%{transform:translateY(calc(var(--hs) * -.08)) scale(.96,1.05)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes eosGroundHop{0%{opacity:0;transform:translateY(calc(var(--hs) * .5)) scale(.3)}30%{opacity:1;transform:translateY(calc(var(--hs) * -.28)) scale(.95,1.05)}55%{transform:translateY(calc(var(--hs) * .06)) scale(1.14,.86)}75%{transform:translateY(calc(var(--hs) * -.08)) scale(.96,1.05)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes eosGroundShiver{0%{translate:-.8px .4px}50%{translate:.9px -.5px}100%{translate:-.4px -.3px}}
+@keyframes eosGroundBounce{0%,100%{translate:0 0;scale:1 1}18%{translate:0 1px;scale:1.04 .96}40%{translate:0 -4px;scale:.97 1.03}62%{translate:0 0;scale:1 1}}
+@keyframes eosGroundCueOut{to{opacity:0}}
 @keyframes eosGroundHappy{from{transform:translateY(0) rotate(-3deg)}to{transform:translateY(-5px) rotate(3deg)}}
 @keyframes eosGroundGlow{from{transform:scale(.94)}to{transform:scale(1.06)}}
 @keyframes eosGroundPaused{from{opacity:.55}to{opacity:1}}
