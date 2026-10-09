@@ -125,7 +125,8 @@ function EosEntries(raw) {
         }
     }
     if (lead.length && phrases.length) phrases[phrases.length - 1] += " " + lead.join(" ")
-    const chunks = phrases.length ? phrases : tokens
+    // only stopwords ("i am", "i i i") → the whole input is one phrase, never "i" / "am" bubbles
+    const chunks = phrases.length ? phrases : [lead.join(" ")]
     const out = []
     const seen = new Set()
     const add = (s) => {
@@ -161,6 +162,20 @@ const EOS_FIXES_ALMOST = {
     70: "every other beat ♪",
     66: "almost — hands off for a moment",
     80: "almost — hands off for a moment",
+}
+// I1-E15: a miss the guard detected (same rule as the game's own miss branch) keeps its sound but must not
+// also show the wrapper's step reward / add a creep step. One-shot, consumed by the very next sfx of that game.
+const EOS_FIXES_MISS = { id: 0, t: 0 }
+function eosFixesMarkMiss(id) {
+    EOS_FIXES_MISS.id = id
+    EOS_FIXES_MISS.t = Date.now()
+}
+function eosSfxMiss(game, kind) {
+    const m = EOS_FIXES_MISS
+    if (!m.id) return false
+    const hit = m.id === Number(game && game.id) && Date.now() - m.t <= 400
+    m.id = 0
+    return hit && (kind === "soft" || kind === "tap")
 }
 // Legacy `U` hold buttons (onPointerUp only): meter readers from the committed DOM (= the handler's closure)
 const EOS_FIXES_NUM = (s, re) => {
@@ -317,7 +332,11 @@ function EosLegacyGuards({ game, hostRef }) {
             }
             if (id === 21 && t.closest) {
                 const b = t.closest(".binWordBubble")
-                if (b && !b.disabled) S.bin = { el: b, pointerId: e.pointerId }
+                if (b && !b.disabled) {
+                    S.bin = { el: b, pointerId: e.pointerId }
+                    engaged.add(b)
+                }
+                binWake(0) // mirror while the finger is down (a press on BIN IT ALL wakes it too)
             }
         }
         const onUp = (e) => {
@@ -330,6 +349,8 @@ function EosLegacyGuards({ game, hostRef }) {
                 const m = meterOf(rule)
                 const held = Date.now() - h.t
                 const ok = Number.isFinite(m) ? rule.ok(m) : rule.ms ? held >= rule.ms : true
+                // the game's onPointerUp (it runs after this capture listener) takes its miss branch → no reward pill
+                if (!ok && Number.isFinite(m)) eosFixesMarkMiss(id)
                 const onCtl = e.type === "pointerup" && ctlOf(e.target)
                 if (!onCtl) {
                     // slid off (mouse) or cancelled (touch): the button never hears its onPointerUp → keep
@@ -370,7 +391,9 @@ function EosLegacyGuards({ game, hostRef }) {
                 if (dx > 110 && dt <= 450) say(EOS_FIXES_ALMOST[36], e.clientX, e.clientY)
             }
             // ---- 21 BIN: dropped over the mouth but not binned → bin it (the game's own double-click path)
+            if (id === 21 && (mo || within(e.target))) binWake(1600) // drop / snap / 0.58 s flight (+ BIN IT ALL stagger), then idle
             if (id === 21 && S.bin && (e.pointerId === S.bin.pointerId || e.pointerId == null)) {
+                binWake(1600)
                 const b = S.bin.el
                 S.bin = null
                 const a = arena()
@@ -393,6 +416,7 @@ function EosLegacyGuards({ game, hostRef }) {
             }
         }
         const onClick = (e) => {
+            if (id === 21 && within(e.target)) binWake(1600) // BIN IT ALL / double-click
             if (synthetic.has(e) || !within(e.target) || !ctlOf(e.target)) return
             const now = Date.now()
             const x = e.clientX,
@@ -400,11 +424,15 @@ function EosLegacyGuards({ game, hostRef }) {
             const a = arena()
             if (id === 64) {
                 const lamp = a && a.querySelector(".trafficLamp")
-                if (lamp && !lamp.classList.contains("p0")) say(EOS_FIXES_ALMOST[64], x, y)
+                if (lamp && !lamp.classList.contains("p0")) {
+                    eosFixesMarkMiss(id)
+                    say(EOS_FIXES_ALMOST[64], x, y)
+                }
             } else if (id === 69) {
                 const early = now - S.lastTap <= 650
                 S.lastTap = now
                 if (early) {
+                    eosFixesMarkMiss(id)
                     say(EOS_FIXES_ALMOST[69], x, y)
                     // a ring flash on the next pulse a tap would count on
                     const tgt = a && a.querySelector(".pulseTarget")
@@ -418,8 +446,12 @@ function EosLegacyGuards({ game, hostRef }) {
             } else if (id === 70) {
                 const b = a && a.querySelector(".metronomeRig b")
                 const n = EOS_FIXES_NUM(b && b.textContent, /(\d+)/)
-                if (Number.isFinite(n) && n % 2 === 1) say(EOS_FIXES_ALMOST[70], x, y)
+                if (Number.isFinite(n) && n % 2 === 1) {
+                    eosFixesMarkMiss(id)
+                    say(EOS_FIXES_ALMOST[70], x, y)
+                }
             } else if (EOS_FIXES_ROUND_MS[id]) {
+                eosFixesMarkMiss(id) // every press of DON'T PRESS / DO NOT TAP restarts the round
                 S.restarts = now - S.lastRestart < EOS_FIXES_ROUND_MS[id] + 600 ? S.restarts + 1 : 1
                 S.lastRestart = now
                 if (S.restarts >= 2) {
@@ -428,31 +460,57 @@ function EosLegacyGuards({ game, hostRef }) {
                 }
             }
         }
-        // 21 BIN: mirror framer-motion's inline transform (cancelled by the arcade's transform:none!important)
+        // 21 BIN: mirror framer-motion's inline transform (cancelled by the arcade's transform:none!important).
+        // Only while it matters: from a press in the arena until the drop / "gone" flight settles, and only for the
+        // bubble in hand + binned bubbles (the idle y-bob stays hidden, as in the base game). I3-E7 aims the flight
+        // from the home slot, so the binned word lands in the mouth.
         let mo = null
-        if (id === 21 && typeof MutationObserver !== "undefined") {
-            const sync = (el) => {
-                if (!el || !el.style) return
-                const tf = el.style.transform || "none"
-                if (el.style.getPropertyValue("--eos-bin-t") !== tf) el.style.setProperty("--eos-bin-t", tf)
+        let binIdle = null
+        const engaged = new WeakSet()
+        const binSync = (el) => {
+            if (!el || !el.style) return
+            const tf = el.style.transform || "none"
+            if (el.style.getPropertyValue("--eos-bin-t") !== tf) el.style.setProperty("--eos-bin-t", tf)
+        }
+        const binWanted = (el) => !!(el && el.classList && el.classList.contains("binWordBubble") && (engaged.has(el) || el.classList.contains("binned")))
+        const binSyncAll = () => {
+            const h = host()
+            if (h) h.querySelectorAll(".binWordBubble").forEach((el) => binWanted(el) && binSync(el))
+        }
+        const binWake = (settleMs) => {
+            if (id !== 21 || typeof MutationObserver === "undefined") return
+            if (binIdle) {
+                clearTimeout(binIdle)
+                timers.delete(binIdle)
+                binIdle = null
             }
-            mo = new MutationObserver((list) => {
-                for (const r of list) if (r.target && r.target.classList && r.target.classList.contains("binWordBubble")) sync(r.target)
-            })
-            const attach = () => {
+            if (!mo) {
                 const h = host()
                 if (!h) return
+                mo = new MutationObserver((list) => {
+                    for (const r of list) if (binWanted(r.target)) binSync(r.target)
+                })
                 try {
-                    mo.observe(h, { subtree: true, attributes: true, attributeFilter: ["style"] })
-                    h.querySelectorAll(".binWordBubble").forEach(sync)
-                } catch {}
+                    mo.observe(h, { subtree: true, attributes: true, attributeFilter: ["style", "class"] })
+                } catch {
+                    mo = null
+                    return
+                }
             }
-            attach()
+            binSyncAll()
+            if (settleMs)
+                binIdle = later(() => {
+                    binIdle = null
+                    binSyncAll()
+                    if (mo) mo.disconnect()
+                    mo = null
+                }, settleMs)
         }
         window.addEventListener("pointerdown", onDown, true)
         window.addEventListener("pointerup", onUp, true)
         window.addEventListener("pointercancel", onUp, true)
         window.addEventListener("click", onClick, true)
+        if (id === 21) window.addEventListener("dblclick", onClick, true)
         return () => {
             alive = false
             timers.forEach((t) => clearTimeout(t))
@@ -462,6 +520,7 @@ function EosLegacyGuards({ game, hostRef }) {
             window.removeEventListener("pointerup", onUp, true)
             window.removeEventListener("pointercancel", onUp, true)
             window.removeEventListener("click", onClick, true)
+            window.removeEventListener("dblclick", onClick, true)
         }
     }, [id, active, hostRef])
 
@@ -482,7 +541,7 @@ function EosLegacyGuards({ game, hostRef }) {
 const EOS_FIXES_CSS = `
 /* §11.3 the live element of every hidden-order game: gold ring + pulse; the rest dim */
 ${EOS_A} .arena :is(${EOS_FIXES_LIVE}){box-shadow:0 0 0 3px var(--eos-gold-1),0 0 22px rgba(255,190,80,.75)!important;animation:eosFixesLivePulse 1.2s ease-in-out infinite!important;opacity:1!important;filter:none!important}
-${EOS_A} .arena :is(${EOS_FIXES_DIM}){opacity:.45!important;filter:saturate(.5)!important}
+${EOS_A} .arena :is(${EOS_FIXES_DIM}){opacity:.72!important;filter:saturate(.75)!important}
 @keyframes eosFixesLivePulse{0%,100%{scale:1}50%{scale:1.08}}
 /* §11.4 tool-first games: the un-armed tool dock pulses gold until it is in hand */
 ${EOS_A} .arena ${EOS_FIXES_TOOL_IDLE}{animation:eosFixesArmPulse 1.4s ease-in-out infinite!important;box-shadow:0 0 0 3px var(--eos-gold-1),0 0 26px rgba(255,200,90,.7)!important}
@@ -493,6 +552,15 @@ ${EOS_A} .arena ${EOS_FIXES_TOOL_IDLE}{animation:none!important}
 }
 ${EOS_FIXES_CALM} .arena :is(${EOS_FIXES_LIVE}){animation:none!important}
 ${EOS_FIXES_CALM} .arena ${EOS_FIXES_TOOL_IDLE}{animation:none!important}
+/* phone: the un-armed dock sat under the LIVE GUIDE panel (the arena's bottom ~132 px) → lift it into the free band
+   above the guide until the tool is in hand (then it returns to its own spot and the words are free again).
+   3 / 4 / 16 have room for the caption above it; 9 / 43 keep their caption and the dock moves where no word sits. */
+@media (max-width:560px){
+${EOS_A} .arena > ${EOS_FIXES_TOOL_IDLE}{top:auto!important;bottom:150px!important;z-index:160!important}
+${EOS_A} .arena:is(.literalCrackArena,.literalStompArena,.literalMeltArena):has(> ${EOS_FIXES_TOOL_IDLE}) > .literalStatus{top:auto!important;bottom:256px!important}
+${EOS_A} .arena.laserSliceArena > ${EOS_FIXES_TOOL_IDLE}{left:14px!important;right:auto!important;translate:50% 0!important}
+${EOS_A} .arena.cutLoopLiteralArena > ${EOS_FIXES_TOOL_IDLE}{bottom:144px!important}
+}
 
 /* §11.6 occlusion / collapse */
 ${EOS_A} .arena .orbitArc{pointer-events:none!important}
@@ -505,24 +573,28 @@ ${EOS_A} .arena.u107 .gwDock{margin-top:0!important}
 ${EOS_A} .arena.u107 .gwProp{height:50px!important}
 ${EOS_A} .arena.u107 .gwGame{overflow:clip!important;overflow-clip-margin:72px!important}
 /* measured: the 189 px cards pushed the dock under the LIVE GUIDE (1280) and out of the box (390) → compact cards */
-${EOS_A} .arena.u107 :is(.gwGame,.gwGrid){--gw-card-h:142px!important}
-${EOS_A} .arena.u107 .gwCard:is(.weirdWordBubble)>:is(.weirdBubblePhoto,img,.tsAutoEmotionPic,.uniqWordMaterialImage){width:90px!important;height:90px!important;min-width:90px!important;min-height:90px!important;max-width:90px!important;max-height:90px!important}
-${EOS_A} .arena.u107 .gwCard.weirdWordBubble::before{width:98px!important;height:98px!important}
+/* the label pill (bottom 10, 42-46 px) must sit BELOW the character, never over its face (Creative Standard 4) */
+${EOS_A} .arena.u107 :is(.gwGame,.gwGrid){--gw-card-h:156px!important}
+${EOS_A} .arena.u107 .gwCard:is(.weirdWordBubble)>:is(.weirdBubblePhoto,img,.tsAutoEmotionPic,.uniqWordMaterialImage){top:14px!important;width:80px!important;height:80px!important;min-width:80px!important;min-height:80px!important;max-width:80px!important;max-height:80px!important}
+${EOS_A} .arena.u107 .gwCard.weirdWordBubble::before{top:10px!important;width:88px!important;height:88px!important}
 @media (max-width:560px){
 ${EOS_A} .arena.u107 .gwGame{width:100%!important;max-width:100%!important;margin:0!important;padding:10px 8px 8px!important;gap:8px!important}
-${EOS_A} .arena.u107 :is(.gwGame,.gwGrid){--gw-card-h:116px!important}
+${EOS_A} .arena.u107 :is(.gwGame,.gwGrid){--gw-card-h:136px!important}
 ${EOS_A} .arena.u107 .gwGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important}
-${EOS_A} .arena.u107 .gwCard:is(.weirdWordBubble)>:is(.weirdBubblePhoto,img,.tsAutoEmotionPic,.uniqWordMaterialImage){width:62px!important;height:62px!important;min-width:62px!important;min-height:62px!important;max-width:62px!important;max-height:62px!important}
-${EOS_A} .arena.u107 .gwCard.weirdWordBubble::before{width:68px!important;height:68px!important}
+${EOS_A} .arena.u107 .gwCard:is(.weirdWordBubble)>:is(.weirdBubblePhoto,img,.tsAutoEmotionPic,.uniqWordMaterialImage){top:12px!important;width:56px!important;height:56px!important;min-width:56px!important;min-height:56px!important;max-width:56px!important;max-height:56px!important}
+${EOS_A} .arena.u107 .gwCard.weirdWordBubble::before{top:9px!important;width:62px!important;height:62px!important}
+/* two-line user words below the orb, never clipped */
+${EOS_A} .arena.u107 .gwCard>.gwThought{max-height:none!important;overflow:visible!important;bottom:7px!important;width:94%!important;max-width:94%!important;padding:4px 5px!important}
 /* 5 props as 3 + 2 (labels stay readable at the 12 px phone floor) */
 ${EOS_A} .arena.u107 .gwDock{grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:6px!important}
 ${EOS_A} .arena.u107 .gwDock>.gwProp{grid-column:span 2!important}
 ${EOS_A} .arena.u107 .gwDock>.gwProp:nth-child(4){grid-column:2/4!important}
 ${EOS_A} .arena.u107 .gwDock>.gwProp:nth-child(5){grid-column:4/6!important}
-${EOS_A} .arena.u107 .gwProp{height:46px!important;padding:5px 4px!important;display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:center!important;gap:4px!important}
-${EOS_A} .arena.u107 .gwProp>b{width:18px!important;height:18px!important;flex:0 0 18px!important;font-size:13px!important;background:none!important}
+/* icon above the word: the label gets the full width, so MOUSTACHE stays one unbroken word */
+${EOS_A} .arena.u107 .gwProp{height:46px!important;padding:3px 3px!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:1px!important}
+${EOS_A} .arena.u107 .gwProp>b{width:18px!important;height:16px!important;flex:0 0 16px!important;font-size:13px!important;background:none!important}
 ${EOS_A} .arena.u107 .gwProp>em{display:none!important}
-${EOS_A} .arena.u107 .gwProp>span{max-width:100%!important;font-size:12px!important;letter-spacing:0!important;text-overflow:clip!important}
+${EOS_A} .arena.u107 .gwProp>span{max-width:100%!important;font-size:12px!important;line-height:1.1!important;letter-spacing:0!important;text-overflow:clip!important;white-space:nowrap!important;overflow-wrap:normal!important;word-break:keep-all!important}
 }
 /* 11 PRESSURE POP: the release window (55-92, I3-E3) drawn ON the needle's track — striped, not colour alone;
    it brightens while the needle is inside it. Angles follow the needle: rotate(var(--p)*2.2deg - 110deg). */
@@ -559,14 +631,20 @@ ${EOS_A} .arena.literalDefuseArena .defuseZone>button{grid-column:1!important;gr
 /* 103 SINKING PLATFORM: one 1284 px column pushed LOWER IT below the screen → a compact 3 × 2 machine */
 ${EOS_A} .arena.u103{padding-top:8px!important}
 ${EOS_A} .arena.u103 .spMachine{margin:0 auto!important;padding:10px 10px 12px!important;width:min(900px,96%)!important}
-${EOS_A} .arena.u103 .spTop{margin-bottom:8px!important}
+${EOS_A} .arena.u103 .spTop{margin-bottom:6px!important;overflow:visible!important}
+/* the engine's dark .literalProgress column sat right over the ACTIVE bay → a small pill in the top corner */
+${EOS_A} .arena.u103>.literalProgress{top:8px!important;right:12px!important;left:auto!important;bottom:auto!important;width:auto!important;height:auto!important;min-height:0!important;max-height:28px!important}
+/* queue words were cut through the middle (6 × 47 px chips) → 3 per row, whole words */
+${EOS_A} .arena.u103 .spQueue{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:4px!important;height:auto!important;max-height:none!important;overflow:visible!important}
+${EOS_A} .arena.u103 .spQueueItem{height:auto!important;min-height:24px!important;max-height:none!important;overflow:visible!important;min-width:0!important}
+${EOS_A} .arena.u103 .spQueueItem>.tsExactUserText{white-space:normal!important;overflow:visible!important;overflow-wrap:normal!important;word-break:keep-all!important}
 ${EOS_A} .arena.u103 .spGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important}
-${EOS_A} .arena.u103 .spBay{min-height:0!important;padding:8px 5px 9px!important;border-radius:16px!important}
-${EOS_A} .arena.u103 .spOrb{width:50px!important;height:50px!important;min-width:50px!important;min-height:50px!important}
-${EOS_A} .arena.u103 .spThought{min-height:30px!important;max-height:42px!important;margin-top:6px!important;padding:4px 5px!important}
-${EOS_A} .arena.u103 .spPlatform{width:86%!important;margin-top:8px!important}
-${EOS_A} .arena.u103 .spStatus{margin-top:12px!important}
-${EOS_A} .arena.u103 .spControls{margin-top:10px!important}
+${EOS_A} .arena.u103 .spBay{min-height:0!important;padding:6px 5px 6px!important;border-radius:16px!important}
+${EOS_A} .arena.u103 .spOrb{width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important}
+${EOS_A} .arena.u103 .spThought{min-height:30px!important;max-height:none!important;overflow:visible!important;margin-top:5px!important;padding:3px 5px!important}
+${EOS_A} .arena.u103 .spPlatform{width:86%!important;margin-top:5px!important}
+${EOS_A} .arena.u103 .spStatus{margin-top:5px!important}
+${EOS_A} .arena.u103 .spControls{margin-top:6px!important}
 }
 
 /* §11.7 "almost!" lines (EosLegacyGuards) */
