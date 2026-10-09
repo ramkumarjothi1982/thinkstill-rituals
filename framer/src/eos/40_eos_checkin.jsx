@@ -88,6 +88,14 @@ function eosCheckinPreview(emotion, n) {
     return "≈30 s · Still picks your game"
 }
 
+function eosCheckinMenuOpen() {
+    try {
+        return !!document.querySelector(".releaseChoiceMenu")
+    } catch {
+        return false
+    }
+}
+
 // ---------------------------------------------------------------- deep link (?eos=anger&t=41), read once per page
 let eosCheckinDeepDone = false
 function eosCheckinReadDeepLink() {
@@ -142,16 +150,23 @@ function useEosCheckinSize(ref) {
 // Positions (ball centres, root px) for every slot of step 1, and the step-2 rails.
 // Desktop: the 8 orbs on an ellipse (rx 34 %, ry ≤ 30 % of the stage) sized to fit between the measured header
 // and bottom bar; "more feelings" slot SCARED / JEALOUS / NUMB into the ring's three gaps (left, bottom, right).
-// Phone: a 3 × 3 grid (NOT SURE in the middle cell) + a 4th row for "more feelings"; the root scrolls if needed.
+// Phone: a 3 × 3 grid (NOT SURE in the middle cell) + a compact 4th row (68 px balls, name + label only) for
+// "more feelings"; with "more" open the primary sub-lines fold away so grid, chips and footer fit without scrolling.
+// laneY = the centre of the first-timer label lane (TAP HOW YOU FEEL) under the ring / grid.
+// bigSize = the chosen orb's base size on step 2 (180 desktop, 140 phone); it scales up to 1.25× on the dial.
+function eosCheckinBigSize(h, phone) {
+    return phone ? 140 : Math.round(eosClamp(h * 0.24, 120, 180))
+}
 function eosCheckinLayout({ w, h, phone, more, labH, labRows, lane = 0, headH, footH, step, sel, spot }) {
     const pos = {}
     const ids = EOS_CHECKIN_RING.concat(["auto"], EOS_CHECKIN_MORE)
     if (!w || !h) {
         ids.forEach((id) => (pos[id] = { x: 0, y: 0, size: 88, show: false }))
-        return { pos, canvasH: h, chipsY: 0, phone, ring: null }
+        return { pos, canvasH: h, chipsY: 0, laneY: 0, phone, ring: null }
     }
     let canvasH = h
     let chipsY = 0
+    let laneY = 0
     let ring = null
     const lab = labH
     if (!phone) {
@@ -175,11 +190,12 @@ function eosCheckinLayout({ w, h, phone, more, labH, labRows, lane = 0, headH, f
         pos.jealous = { x: w / 2, y: cy + Math.max(ry, C / 2 + lab + 12 + M / 2), size: M, show: !!more }
         pos.numb = { x: w / 2 + side, y: cy - 6, size: M, show: !!more }
         chipsY = bottom
+        laneY = bottom + lane / 2
         ring = { cx: w / 2, cy, rx, ry }
     } else {
         const S = 84
         const C = 92
-        const M = 72
+        const M = 68
         const cellW = Math.min(132, (w - 16) / 3)
         const top = headH
         const grid = [
@@ -202,8 +218,10 @@ function eosCheckinLayout({ w, h, phone, more, labH, labRows, lane = 0, headH, f
         EOS_CHECKIN_MORE.forEach((id, j) => {
             pos[id] = { x: w / 2 + (j - 1) * cellW, y: moreTop + M / 2 + 2, size: M, show: !!more }
         })
-        chipsY = moreTop + (more ? M + lab + 14 : 0) + lane
-        canvasH = Math.max(h, chipsY + footH - 10)
+        const moreLab = labRows && labRows[3] ? labRows[3] : Math.min(lab, 30)
+        chipsY = moreTop + (more ? M + moreLab + 8 : 0) + lane
+        laneY = chipsY - lane / 2
+        canvasH = Math.max(h, chipsY + footH - 12) // footH = the bottom block + 12 → the canvas ends exactly at the footer
     }
     if (step === 2) {
         // the chosen orb flies to the measured spot; the crew steps to the sidelines (desktop) or out (phone)
@@ -212,7 +230,7 @@ function eosCheckinLayout({ w, h, phone, more, labH, labRows, lane = 0, headH, f
             const p = pos[id]
             if (!p) return
             if (id === sel) {
-                pos[id] = { x: spot ? spot.x : w / 2, y: spot ? spot.y : h * 0.3, size: phone ? 140 : Math.round(eosClamp(h * 0.24, 120, 180)), show: true, big: true }
+                pos[id] = { x: spot ? spot.x : w / 2, y: spot ? spot.y : h * 0.3, size: eosCheckinBigSize(h, phone), show: true, big: true }
                 return
             }
             if (!phone && others.includes(id)) {
@@ -231,7 +249,7 @@ function eosCheckinLayout({ w, h, phone, more, labH, labRows, lane = 0, headH, f
             pos[id] = { ...p, x: cx + (p.x - cx) * 1.6, y: cyy + (p.y - cyy) * 1.4, show: false, gone: true }
         })
     }
-    return { pos, canvasH, chipsY, phone, ring }
+    return { pos, canvasH, chipsY, laneY, phone, ring }
 }
 
 // ---------------------------------------------------------------- EosCheckIn
@@ -242,6 +260,7 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
     const spotRef = React.useRef(null)
     const dialRef = React.useRef(null)
     const ctaRef = React.useRef(null)
+    const ctaTapRef = React.useRef(null)
     const size = useEosCheckinSize(rootRef)
     const phone = size.w > 0 && size.w <= 560
     const [step, setStep] = React.useState(1)
@@ -276,6 +295,8 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
     const starterRef = React.useRef(null)
     const pressRef = React.useRef({ t: 0, fired: false, id: null })
     const launchedRef = React.useRef(false)
+    const menuCommitRef = React.useRef(false) // "pick a game myself" committed; reverted if the menu closes without a launch
+    const focusRef = React.useRef(null) //      keyboard focus to restore after a step change: "dial" | an orb id
     const timers = React.useRef(new Set())
     const live = React.useRef({})
     live.current = { raw: String(raw || ""), setRaw, onLaunch, onPlay, toggleMic, openMenu, sfx }
@@ -293,14 +314,19 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
             timers.current.forEach(clearTimeout)
             timers.current.clear()
             clearTimeout(pressRef.current.t)
-            if (!launchedRef.current) eosApi("dots").setLevel?.(null)
+            // unmounted by a launch (ours, or a game picked from the menu after "pick a game myself") → keep the level
+            if (!launchedRef.current && !menuCommitRef.current) eosApi("dots").setLevel?.(null)
         },
         []
     )
 
     const HandHint = eosApi("arrows").EosHandHint
-    // first-timers get the arrows module's "TAP HOW YOU FEEL" hint: its label sits just under the ring, so keep a lane free there
-    const lane = first && HandHint && step === 1 ? 44 : 0
+    // first-timers get the "pick one" hint (halos hop across every ball, the hand rests on NOT SURE): its
+    // "TAP HOW YOU FEEL" label sits in a lane of its own under the ring / grid, never over a feeling or the title
+    // The lane folds only after the first CLICK lands (never on pointerdown: the chips would jump out from under the finger).
+    const hintOn = first && step === 1 && !touched && !dive
+    const [clicked, setClicked] = React.useState(false)
+    const lane = first && step === 1 && !clicked && !dive ? 44 : 0
     const layout = eosCheckinLayout({ w: size.w, h: size.h, phone, more, labH, labRows, lane, headH: bands.head, footH: bands.foot, step, sel, spot })
     const layoutSig = EOS_CHECKIN_RING.map((id) => {
         const q = layout.pos[id]
@@ -309,6 +335,15 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
     const slots = EOS_CHECKIN_RING.concat(["auto"], EOS_CHECKIN_MORE)
     if (sel && !slots.includes(sel)) slots.push(sel)
     const focusable = EOS_CHECKIN_RING.concat(["auto"], more ? EOS_CHECKIN_MORE : [])
+    // step 2: the spot (an empty flex item in the panel) holds the chosen orb at its full 1.25× (dial 10) with its gold
+    // ring (4 px) and its 6 px bob (×1.25) ≥ 12 px under the question, and its name tag clear of the dial track below
+    const spotGeo = (() => {
+        const big = eosCheckinBigSize(size.h, phone)
+        const gap = phone ? 8 : 10
+        const above = Math.ceil(big * 0.625 + 4 + 8 + 12 - gap)
+        const below = Math.ceil((big * 0.5 + 6) * 1.25 + 6 - gap)
+        return { above, h: above + below }
+    })()
 
     // measure the real label height under the balls (sub-lines may wrap on a phone) → rows never overlap
     eosLayoutEffect(() => {
@@ -327,7 +362,7 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
         if (m > 0 && Math.abs(m - labH) > 1) setLabH(Math.min(80, Math.max(30, Math.ceil(m))))
         const rowOf = (ids) => Math.min(80, Math.max(26, Math.ceil(Math.max(0, ...ids.map((k) => per[k] || 0)))))
         if (per.panic != null) {
-            const rows = [rowOf(["panic", "anger", "anxiety"]), rowOf(["overthinking", "auto", "overwhelm"]), rowOf(["sad", "lonely", "shame"])]
+            const rows = [rowOf(["panic", "anger", "anxiety"]), rowOf(["overthinking", "auto", "overwhelm"]), rowOf(["sad", "lonely", "shame"]), more && per.fear != null ? rowOf(EOS_CHECKIN_MORE) : 0]
             if (!labRows || rows.some((v, i) => Math.abs(v - labRows[i]) > 1)) setLabRows(rows)
         }
         const hd = headRef.current
@@ -360,7 +395,7 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
         if (!root || !el) return
         const r = eosRelRect(el, root.querySelector(".eosCkCanvas") || root)
         if (!r) return
-        const next = { x: Math.round(r.cx), y: Math.round(r.cy) }
+        const next = { x: Math.round(r.cx), y: Math.round(r.y + spotGeo.above) }
         setSpot((s) => (s && Math.abs(s.x - next.x) < 1 && Math.abs(s.y - next.y) < 1 ? s : next))
     })
 
@@ -369,13 +404,16 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
         const dl = eosCheckinReadDeepLink()
         if (dl) {
             setBanner(dl)
-            enterStep2(dl.emo, { quiet: true })
+            enterStep2(dl.emo, { quiet: true, banner: true })
             return
         }
         if (!eosPrefs().coldOpen) {
             eosSetPref("coldOpen", true)
-            later(() => setCold(true), red ? 0 : 450)
-            later(() => setCold(false), red ? 3000 : 3450)
+            // the 3 s run is timed from when STILL actually appears (a busy first load can delay the show timer)
+            later(() => {
+                setCold(true)
+                later(() => setCold(false), 3000)
+            }, red ? 0 : 450)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
@@ -396,12 +434,14 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
         }
         setIdleCta(false)
         const root = rootRef.current
-        let t = setTimeout(() => setIdleCta(true), 3000)
+        // never while the arcade's game menu is open over the check-in ("pick a game myself")
+        const tick = () => (eosCheckinMenuOpen() ? (t = setTimeout(tick, 1000)) : setIdleCta(true))
+        let t = setTimeout(tick, 3000)
         const poke = () => {
             setIdleCta(false)
             setDialHint(false)
             clearTimeout(t)
-            t = setTimeout(() => setIdleCta(true), 3000)
+            t = setTimeout(tick, 3000)
         }
         root?.addEventListener("pointerdown", poke, true)
         root?.addEventListener("keydown", poke, true)
@@ -411,6 +451,61 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
             root?.removeEventListener("keydown", poke, true)
         }
     }, [step, sel, !!dive])
+
+    // ---- "pick a game myself": the commit stands only if a game really starts from the menu. A launch unmounts the
+    // check-in in the same commit that closes the menu, so "menu gone and still mounted" = abandoned → revert it.
+    const revertMenuCommit = () => {
+        if (!menuCommitRef.current) return
+        menuCommitRef.current = false
+        EosCommitCheckin({ emotion: null, before: null })
+    }
+    const [menuWatch, setMenuWatch] = React.useState(0)
+    React.useEffect(() => {
+        if (!menuWatch) return
+        let seen = false
+        let gone = 0
+        const t = setInterval(() => {
+            if (eosCheckinMenuOpen()) {
+                seen = true
+                gone = 0
+                return
+            }
+            gone += 1
+            if ((seen && gone >= 2) || (!seen && gone >= 8)) {
+                clearInterval(t)
+                revertMenuCommit()
+            }
+        }, 200)
+        return () => clearInterval(t)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [menuWatch])
+
+    // ---- keyboard focus follows the step: into the dial on step 2, back to the same orb on step 1
+    eosLayoutEffect(() => {
+        const want = focusRef.current
+        const root = rootRef.current
+        if (!want || !root) return
+        if (want === "dial" && step === 2) {
+            const el = root.querySelector(".eosCkDialWrap [role=slider]")
+            if (!el) return
+            focusRef.current = null
+            const a = document.activeElement
+            if (!a || a === document.body || root.contains(a)) {
+                try {
+                    el.focus({ preventScroll: true })
+                } catch {}
+            }
+        } else if (want !== "dial" && step === 1) {
+            const i = focusable.indexOf(want)
+            const el = i >= 0 ? root.querySelector(`[data-eos-ck-idx="${i}"]`) : null
+            if (!el) return
+            focusRef.current = null
+            setFocusIdx(i)
+            try {
+                el.focus({ preventScroll: true })
+            } catch {}
+        }
+    })
 
     // ---- live text hint: typing in the composer while the ring is up → "sounds like ANGER?"
     React.useEffect(() => {
@@ -483,6 +578,7 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
     const express = (id) => {
         if (dive) return
         setTouched(true)
+        menuCommitRef.current = false
         EosCommitCheckin({ emotion: id === "auto" ? null : id, before: null, express: true })
         ensureText(id)
         eosCheckinChord(id)
@@ -509,12 +605,15 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
         } catch {}
         n0 = eosClamp(Math.round(n0), 1, 10)
         const prefs = eosPrefs()
-        if (id !== "auto") {
+        // a phone deep link already shows the friend banner: keep the once-only lines for the next visit, so the
+        // whole step (banner → question → orb → dial → CTA → footer) still fits one screen
+        const tight = !!opts.banner && (rootRef.current ? rootRef.current.offsetWidth : 999) <= 560
+        if (id !== "auto" && !tight) {
             setMeet(!prefs.metOnce)
             if (!prefs.metOnce) eosSetPref("metOnce", true)
         } else setMeet(false)
-        setNamed(!prefs.namedOnce)
-        if (!prefs.namedOnce) eosSetPref("namedOnce", true)
+        setNamed(!prefs.namedOnce && !tight)
+        if (!prefs.namedOnce && !tight) eosSetPref("namedOnce", true)
         setDialHint(!prefs.namedOnce || first)
         setSel(id)
         setN(n0)
@@ -525,6 +624,7 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
         setHintId(null)
         setPop(null)
         eosApi("dots").setLevel?.(n0)
+        if (!opts.quiet) focusRef.current = "dial"
         if (!opts.quiet) {
             eosCheckinChord(id)
             eosHaptic("touch")
@@ -542,10 +642,12 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
     }
     const back = () => {
         const L = live.current
+        revertMenuCommit()
         if (starterRef.current && L.raw === starterRef.current) {
             starterRef.current = null
             L.setRaw?.("")
         }
+        if (sel) focusRef.current = sel
         setStep(1)
         setSel(null)
         setBanner(null)
@@ -554,6 +656,7 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
     }
     const go = () => {
         if (dive || !sel) return
+        menuCommitRef.current = false
         EosCommitCheckin({ emotion: sel === "auto" ? null : sel, before: n })
         ensureText(sel)
         const r = spotRef.current && rootRef.current ? eosRelRect(spotRef.current, rootRef.current) : null
@@ -563,14 +666,21 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
         if (dive) return
         EosCommitCheckin({ emotion: sel === "auto" ? null : sel, before: sel ? n : null })
         ensureText(sel || "auto")
-        launchedRef.current = true
+        menuCommitRef.current = true
+        setMenuWatch((k) => k + 1)
+        setIdleCta(false)
         try {
             live.current.openMenu?.()
         } catch {}
     }
+    const skip = () => {
+        revertMenuCommit()
+        EosSkipCheckin()
+    }
     const goodDay = (ev) => {
         if (dive) return
         setTouched(true)
+        menuCommitRef.current = false
         EosCommitCheckin({ emotion: "good", before: null, express: true })
         ensureText("good")
         eosCheckinChord("good")
@@ -688,8 +798,12 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
         const visible = p.show && size.w > 0
         const fi = focusable.indexOf(id)
         const label = id === "auto" ? EOS_GUIDE_CHAR.label : e.label
+        // phone + "more feelings": names and labels only (PANIC keeps "tap = start now") so everything fits one screen
+        const compact = phone && more
         const sub =
-            id === "panic" ? (
+            isMore && phone ? undefined : id === "panic" && compact ? (
+                <span className="eosCkSubPart">tap = start now</span>
+            ) : compact ? undefined : id === "panic" ? (
                 <>
                     {eosCheckinSub(e.sub)}
                     <br />
@@ -730,9 +844,9 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
                         reduced={red}
                         onClick={() => pick(id)}
                         ariaLabel={`${id === "auto" ? "Not sure" : e.label.charAt(0) + e.label.slice(1).toLowerCase()} — ${id === "auto" ? EOS_GUIDE_CHAR.sub : e.sub} (${nm})${id === "panic" ? " — tap to start now" : ""}`}
-                        tabIndex={visible && fi >= 0 && step === 1 ? (fi === focusIdx ? 0 : -1) : visible && step === 2 && !phone ? 0 : -1}
+                        tabIndex={visible && fi >= 0 && step === 1 ? (fi === focusIdx ? 0 : -1) : -1}
                         data-eos-ck-idx={fi >= 0 ? fi : undefined}
-                        onPointerDown={pressStart(id)}
+                        onPointerDown={step === 2 && id === sel ? undefined : pressStart(id)}
                         onPointerUp={pressEnd}
                         onPointerCancel={pressEnd}
                         onPointerLeave={pressEnd}
@@ -748,11 +862,6 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
                         sounds like {String(e.noun || e.label).toUpperCase()}?
                     </button>
                 ) : null}
-                {cold && id === "auto" && step === 1 ? (
-                    <div className="eosCkBubble isCold" role="status">
-                        {EOS_CHECKIN_COLD_LINE}
-                    </div>
-                ) : null}
             </motion.div>
         )
     }
@@ -760,14 +869,14 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
     const HH = HandHint
     const ringEls = () => {
         const root = rootRef.current
-        return root ? Array.from(root.querySelectorAll(".eosCkSlot[data-eos-ring='1'] button.eosOrb")) : []
+        return root ? Array.from(root.querySelectorAll(".eosCkSlot[data-eos-ring='1'] button.eosOrb .eosOrbBall")) : []
     }
     const [hintEls, setHintEls] = React.useState(null)
     React.useEffect(() => {
         if (!HH || step !== 1 || !first || touched) return setHintEls(null)
         const t = setTimeout(() => {
             const els = ringEls()
-            const rest = rootRef.current?.querySelector(".eosCkSlot[data-eos-slot='auto'] button.eosOrb") || null
+            const rest = rootRef.current?.querySelector(".eosCkSlot[data-eos-slot='auto'] button.eosOrb .eosOrbBall") || null
             if (els.length) setHintEls({ els, rest })
         }, red ? 300 : 1100) // after the staggered pop-in has settled, so the halos are measured on the final ring
         return () => clearTimeout(t)
@@ -793,6 +902,7 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
                 if (!e.target.closest?.(".eosCkPop, [data-eos-pop]")) setPop(null)
                 if (e.target.closest?.("button, [role=slider]")) setTouched(true)
             }}
+            onClickCapture={() => clicked || setClicked(true)}
             onKeyDown={onRootKey}
             style={{ "--eos-h": selE ? selE.hue : 190 }}
         >
@@ -803,15 +913,27 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
                 ) : null}
 
                 {step === 1 ? (
-                    <header className="eosCkHead" ref={headRef}>
+                    <header className={`eosCkHead ${cold ? "isCold" : ""}`} ref={headRef}>
                         <h2 className="eosCkTitle">Who's at the controls?</h2>
                         <p className="eosCkSub">Tap the feeling that's loudest right now.</p>
+                        {/* the once-per-device cold open: STILL speaks from the head band (never over an orb's label) */}
+                        {cold ? (
+                            <div className="eosCkHeadCold" role="status">
+                                <EosCharacterOrb emotion="auto" size={phone ? 40 : 52} bob={false} reduced={red} />
+                                <span>{EOS_CHECKIN_COLD_LINE}</span>
+                            </div>
+                        ) : null}
                     </header>
                 ) : null}
 
                 <div className="eosCkRing" role="group" aria-label="Feelings" onKeyDown={step === 1 ? onRingKey : undefined}>
                     {size.w > 0 ? slots.map((id, i) => orbSlot(id, i)) : null}
                 </div>
+                {hintOn && !pop && (HH ? !!hintEls : size.w > 0) ? (
+                    <div className="eosCkPill isLane" aria-hidden="true" style={{ top: `${Math.round(layout.laneY)}px` }}>
+                        TAP HOW YOU FEEL
+                    </div>
+                ) : null}
 
                 {step === 2 && sel ? (
                     <div className="eosCkPanel" key={`p-${sel}`}>
@@ -828,14 +950,21 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
                             ) : null}
                             {question}
                         </h2>
-                        <div className="eosCkSpot" ref={spotRef} aria-hidden="true" />
+                        <div className="eosCkSpot" ref={spotRef} aria-hidden="true" style={{ height: `${spotGeo.h}px` }} />
                         <div className="eosCkDialWrap" ref={dialRef}>
                             <EosIntensityDial value={n} onChange={onSlider} emotion={sel === "auto" ? null : sel} min={1} max={10} label="" id="eosCkDial" reduced={red} />
-                            {!HH && dialHint && !idleCta && !dive ? (
-                                <div className="eosCkCue isDial" aria-hidden="true">
-                                    <span className="eosCkCueHand">☝</span>
-                                    <b>SLIDE IT</b>
-                                </div>
+                            {dialHint && !idleCta && !dive && !pop ? (
+                                <>
+                                    {/* the label sits beside the orb, above the track's right end — never on the name tag */}
+                                    <div className="eosCkPill isSlide" aria-hidden="true">
+                                        SLIDE IT
+                                    </div>
+                                    {!HH ? (
+                                        <div className="eosCkCue isDial" aria-hidden="true">
+                                            <span className="eosCkCueHand">☝</span>
+                                        </div>
+                                    ) : null}
+                                </>
                             ) : null}
                         </div>
                         {named ? <p className="eosCkNamed">Naming it is the first move.</p> : null}
@@ -860,14 +989,15 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
                             {micNote ? <p className="eosCkNote">Voice typing uses your browser's speech service.</p> : null}
                         </div>
                         <div className="eosCkCtaWrap">
-                            <button type="button" ref={ctaRef} className={`eosCkCta ${!HH && idleCta && !dive ? "isNudge" : ""}`} data-eos-cta="1" onClick={go}>
+                            <button type="button" ref={ctaRef} className={`eosCkCta ${idleCta && !dive ? "isNudge" : ""}`} data-eos-cta="1" onClick={go}>
                                 <span className="eosCkCtaMain">LET'S SHIFT IT ▶</span>
                                 <span className="eosCkCtaSub">{ctaSub}</span>
+                                {/* tap point for the idle hand: the CTA's right end, so the routed game's name stays readable */}
+                                <span className="eosCkCtaTap" ref={ctaTapRef} aria-hidden="true" />
                             </button>
-                            {!HH && idleCta && !dive ? (
+                            {!HH && idleCta && !dive && !pop ? (
                                 <div className="eosCkCue isCta" aria-hidden="true">
                                     <span className="eosCkCueTap">☝</span>
-                                    <b>LET'S GO</b>
                                 </div>
                             ) : null}
                         </div>
@@ -893,8 +1023,28 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
                             </button>
                         </div>
                     ) : null}
+                    {pop ? (
+                        <div className="eosCkPop" role="dialog" aria-label={pop === "about" ? "About ThinkStill" : "Support lines"}>
+                            <button type="button" className="eosCkPopX" aria-label="Close" onClick={() => setPop(null)}>
+                                ✕
+                            </button>
+                            {pop === "about" ? (
+                                <p className="eosCkPopText">{EOS_DISCLAIMER}</p>
+                            ) : (
+                                <div className="eosCkPopText">
+                                    <b>You deserve someone to talk to.</b>
+                                    <ul className="eosCkLines">
+                                        {supportLines.map((l) => (
+                                            <li key={l}>{l}</li>
+                                        ))}
+                                    </ul>
+                                    <small>{st.emergencyText || EOS_PROP_DEFAULTS.emergencyText}</small>
+                                </div>
+                            )}
+                        </div>
+                    ) : null}
                     <nav className="eosCkFoot" aria-label="Check-in options">
-                        <button type="button" className="eosCkLink" data-eos-skip="1" onClick={() => EosSkipCheckin()}>
+                        <button type="button" className="eosCkLink" data-eos-skip="1" onClick={skip}>
                             just let me play →
                         </button>
                         <button type="button" className="eosCkLink isSupport" data-eos-support="1" data-eos-pop="1" onClick={support}>
@@ -911,32 +1061,24 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
                 </div>
             </div>
 
-            {pop ? (
-                <div className="eosCkPop" role="dialog" aria-label={pop === "about" ? "About ThinkStill" : "Support lines"}>
-                    <button type="button" className="eosCkPopX" aria-label="Close" onClick={() => setPop(null)}>
-                        ✕
-                    </button>
-                    {pop === "about" ? (
-                        <p className="eosCkPopText">{EOS_DISCLAIMER}</p>
-                    ) : (
-                        <div className="eosCkPopText">
-                            <b>You deserve someone to talk to.</b>
-                            <ul className="eosCkLines">
-                                {supportLines.map((l) => (
-                                    <li key={l}>{l}</li>
-                                ))}
-                            </ul>
-                            <small>{st.emergencyText || EOS_PROP_DEFAULTS.emergencyText}</small>
-                        </div>
-                    )}
+
+            {/* arrows-module hints. Their labels are ours (the pills above), placed where they cover nothing; the wrapper
+                hides the arrows chevron where it would point at ONE feeling (choose) or sit on the seed chips (cta) */}
+            {HH && hintOn && !pop && hintEls ? (
+                <div className="eosCkHint" data-eos-hint="choose" aria-hidden="true">
+                    <HH key={layoutSig} target={hintEls.els} rest={hintEls.rest} root={rootRef.current} g="choose" label="" reduced={red} />
                 </div>
             ) : null}
-
-            {HH && step === 1 && hintEls && !touched && !dive ? <HH key={layoutSig} target={hintEls.els} rest={hintEls.rest} root={rootRef.current} g="choose" label="TAP HOW YOU FEEL" reduced={red} /> : null}
-            {HH && step === 2 && !dive && dialHint && !idleCta && dialRef.current ? (
-                <HH target={dialRef.current.querySelector(".eosDialTrack") || dialRef.current} root={rootRef.current} g="drag" dir="lr" d={120} label="SLIDE IT" reduced={red} />
+            {HH && step === 2 && !dive && !pop && dialHint && !idleCta && dialRef.current ? (
+                <div className="eosCkHint" data-eos-hint="slide" aria-hidden="true">
+                    <HH target={dialRef.current.querySelector(".eosDialTrack") || dialRef.current} root={rootRef.current} g="drag" dir="lr" d={120} label="" reduced={red} />
+                </div>
             ) : null}
-            {HH && step === 2 && !dive && idleCta && ctaRef.current ? <HH target={ctaRef.current} root={rootRef.current} g="tap" label="LET'S GO" reduced={red} showAfterMs={0} /> : null}
+            {HH && step === 2 && !dive && !pop && idleCta && ctaTapRef.current ? (
+                <div className="eosCkHint" data-eos-hint="cta" aria-hidden="true">
+                    <HH target={ctaTapRef.current} root={rootRef.current} g="tap" label="" reduced={red} showAfterMs={0} />
+                </div>
+            ) : null}
 
             {dive ? (
                 <motion.div
@@ -999,9 +1141,13 @@ function EosCompanion({ game, hostRef, reduced = false }) {
             const phone = (stage.offsetWidth || 0) <= 560
             let top = null
             if (phone) {
+                // absolute `top` lives in the containing block's SCROLLED content coordinates (the stage may be
+                // scrolled by code), while eosRelRect is the visual offset → add the container's scrollTop
                 const hud = stage.querySelector(".engineProgressHud")
-                const r = hud ? eosRelRect(hud, stage) : null
-                if (r && r.h > 0) top = Math.round(r.y + r.h + 8)
+                const self = selfRef.current
+                const op = (self && self.offsetParent) || stage
+                const r = hud ? eosRelRect(hud, op) : null
+                if (r && r.h > 0) top = Math.round(r.y + (op.scrollTop || 0) - (op.clientTop || 0) + r.h + 8)
             }
             setGeo((g) => (g.phone === phone && g.top === top ? g : { phone, top }))
             if (stage.querySelector(".globalPlayGuide.isComplete")) setDone(true)
@@ -1092,6 +1238,7 @@ function EosCompanion({ game, hostRef, reduced = false }) {
 const EOS_CHECKIN_CSS = `
 ${EOS_A} .releaseStage:has(.eosCheckIn) .releaseIdleStory{display:none!important}
 ${EOS_A}:has(.releaseChoiceMenu) :is(.eosCheckInChip,.eosWorldChips){display:none!important}
+${EOS_A}:has(.releaseChoiceMenu) .eosCheckIn{opacity:.14;transition:opacity .2s ease}
 @media (max-width:560px){${EOS_A} .releaseStage:has(.eosCheckIn[data-step="2"]) .eosWorldChips{display:none!important}}
 ${EOS_A} .eosCheckIn{position:absolute;inset:0;z-index:30;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;font-family:var(--eos-font);color:#fff;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
 background:radial-gradient(ellipse 46% 42% at 50% 50%,rgba(10,14,40,0) 0,rgba(10,12,36,.18) 55%,rgba(4,5,18,.62) 100%)}
@@ -1107,6 +1254,11 @@ ${EOS_A} .eosCkTrack::after{content:"";position:absolute;inset:-2px;border-radiu
 -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:eosCheckinSpin 14s linear infinite}
 ${EOS_A} .eosCkHead{position:absolute;left:0;right:0;top:14px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:0 16px;text-align:center;pointer-events:none;animation:eosCheckinRise .5s cubic-bezier(.2,.8,.2,1) both}
 ${EOS_A} .eosCkTitle{margin:0;font:900 clamp(30px,3.4vw,44px)/1.02 var(--eos-font);letter-spacing:.01em;background:linear-gradient(180deg,#fffbe6 0,#ffe58a 45%,#ffb23e 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 3px 0 rgba(90,40,0,.55)) drop-shadow(0 0 22px rgba(255,190,80,.25))}
+${EOS_A} .eosCkHead.isCold > :is(.eosCkTitle,.eosCkSub){visibility:hidden}
+${EOS_A} .eosCkHeadCold{position:absolute;left:12px;right:12px;top:-2px;bottom:-2px;display:flex;align-items:center;gap:8px;padding:4px 14px 4px 5px;border-radius:22px;text-align:left;
+font:800 14px/1.2 var(--eos-font);color:#1b1235;background:linear-gradient(180deg,#fffdf2,#ffe9b0);box-shadow:0 5px 0 rgba(90,50,0,.35),0 12px 26px rgba(0,0,0,.4);animation:eosCheckinHeadIn .35s cubic-bezier(.2,.8,.2,1) both}
+${EOS_A} .eosCkHeadCold .eosOrb{flex:0 0 auto;gap:0}
+${EOS_A} .eosCheckIn.isWide .eosCkHeadCold{left:50%;right:auto;width:min(640px,calc(100% - 32px));translate:-50% 0;justify-content:center;font-size:17px;border-radius:999px;padding-right:22px}
 ${EOS_A} .eosCkSub{margin:0;font:700 15px/1.25 var(--eos-font);color:rgba(232,240,255,.9);text-shadow:0 2px 8px rgba(0,0,0,.6)}
 ${EOS_A} .eosCkRing{position:absolute;inset:0;pointer-events:none}
 ${EOS_A} .eosCkSlot{position:absolute;left:0;top:0;width:0;height:0;will-change:transform}
@@ -1133,8 +1285,7 @@ font:800 14px/1.25 var(--eos-font)!important;color:#1b1235!important;background:
 ${EOS_A} .eosCkBubble::after{content:"";position:absolute;left:50%;bottom:-8px;width:16px;height:16px;translate:-50% 0;rotate:45deg;background:#ffe9b0;border-radius:3px}
 ${EOS_A} button.eosCkBubble{cursor:pointer;pointer-events:auto;min-height:44px}
 ${EOS_A} .eosCkSlot[data-eos-slot="auto"] .eosCkBubble{bottom:calc(var(--eos-orb,110px) * .5 + 18px)}
-${EOS_A} .eosCkBubble.isCold{pointer-events:none;max-width:260px}
-${EOS_A} .eosCkBottom{position:absolute;left:0;right:0;bottom:4px;display:flex;flex-direction:column;align-items:center;gap:4px;z-index:3}
+${EOS_A} .eosCkBottom{position:absolute;left:0;right:0;bottom:4px;display:flex;flex-direction:column;align-items:center;gap:4px;z-index:7}
 ${EOS_A} .eosCkChips{position:relative;display:flex;justify-content:center;gap:10px;flex-wrap:wrap;padding:0 12px;animation:eosCheckinRise .5s .25s cubic-bezier(.2,.8,.2,1) both}
 ${EOS_A} .eosCkChip{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 16px;border-radius:999px;border:1.5px solid rgba(255,255,255,.22);background:rgba(14,16,48,.72);color:#eaf2ff;font:800 14px/1 var(--eos-font);letter-spacing:.02em;cursor:pointer;box-shadow:0 4px 0 rgba(4,4,20,.55),0 10px 22px rgba(0,0,0,.3);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 ${EOS_A} .eosCkChip:hover,${EOS_A} .eosCkChip:focus-visible{border-color:rgba(255,229,138,.7);outline:none}
@@ -1151,15 +1302,15 @@ ${EOS_A} .eosCkPanel{position:absolute;left:50%;top:0;bottom:62px;width:min(560p
 ${EOS_A} .eosCkBanner{padding:8px 14px;border-radius:999px;background:linear-gradient(90deg,rgba(255,229,138,.18),rgba(125,227,255,.16));border:1px solid rgba(255,229,138,.5);font:800 14px/1.2 var(--eos-font);color:#fff3c4;text-align:center}
 ${EOS_A} .eosCkQ{margin:0;font:900 clamp(24px,2.6vw,34px)/1.1 var(--eos-font);text-align:center;color:#fff;text-shadow:0 3px 0 rgba(10,6,40,.6),0 0 24px hsla(var(--eos-h),100%,60%,.45)}
 ${EOS_A} .eosCkMeet{display:block;font-size:.62em;letter-spacing:.03em;color:hsl(var(--eos-h),100%,84%);margin-bottom:2px}
-${EOS_A} .eosCkSpot{flex:0 0 auto;width:10px;height:clamp(120px,24vh,190px)}
+${EOS_A} .eosCkSpot{flex:0 0 auto;width:10px}
 ${EOS_A} .eosCkDialWrap{position:relative;width:100%;display:flex;justify-content:center}
 ${EOS_A} .eosCkDialWrap .eosDial{width:min(100%,520px);flex-direction:column-reverse;gap:4px}
-/* the track sits right under the orb with room above it for the SLIDE IT hand label; the big number + word read below it */
-${EOS_A} .eosCkDialWrap{margin-top:26px}
+/* the track sits right under the orb's name tag (the spot reserves the 1.25× orb); the big number + word read below it */
+${EOS_A} .eosCkDialWrap{margin-top:2px}
 ${EOS_A} .eosCkDialWrap .eosDialReadout{min-height:40px}
 ${EOS_A} .eosCkNamed{margin:-2px 0 0;font:italic 700 14px/1.2 var(--eos-font);color:rgba(255,233,176,.95)}
 ${EOS_A} .eosCkWords{display:flex;flex-direction:column;align-items:center;gap:2px}
-${EOS_A} .eosCkWordsQ{display:inline-flex;align-items:center;gap:6px;min-height:36px!important;padding:0 8px;border:0;background:none;cursor:pointer;font:800 13px/1 var(--eos-font);letter-spacing:.04em;color:rgba(222,234,255,.88)}
+${EOS_A} .eosCkWordsQ{display:inline-flex;align-items:center;gap:6px;min-height:44px!important;padding:0 8px;border:0;background:none;cursor:pointer;font:800 13px/1 var(--eos-font);letter-spacing:.04em;color:rgba(222,234,255,.88)}
 ${EOS_A} .eosCkWordsQ .eosCkChevron{color:var(--eos-gold-1);font-size:22px;text-shadow:0 0 10px rgba(255,200,80,.8)}
 ${EOS_A} .eosCheckIn.isPhone .eosCkMicWord:not(.isOn){display:none}
 ${EOS_A} .eosCheckIn.isPhone .eosCkSeed{padding:0 11px;font-size:13.5px}
@@ -1170,7 +1321,7 @@ ${EOS_A} .eosCkSeed.isMic.isOn{background:#ff6f91;color:#fff;animation:eosChecki
 ${EOS_A} .eosCkChevron{display:inline-block;font-size:18px;line-height:0;translate:0 -3px;animation:eosCheckinNudge 1.4s ease-in-out infinite}
 ${EOS_A} .eosCkNote{margin:0;font:700 12px/1.2 var(--eos-font);color:rgba(222,234,255,.8)}
 ${EOS_A} .eosCkCtaWrap{position:relative;display:flex;justify-content:center;margin-top:4px}
-${EOS_A} .eosCkCta{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:58px;min-width:240px;padding:8px 28px 9px;border:0;border-radius:999px;cursor:pointer;color:#2a1600;
+${EOS_A} .eosCkCta{position:relative;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:58px;min-width:240px;padding:8px 28px 9px;border:0;border-radius:999px;cursor:pointer;color:#2a1600;
 background:linear-gradient(180deg,#fff7cf 0,#ffe58a 30%,#ffb23e 78%,#ff8a2e 100%);box-shadow:inset 0 2px 0 rgba(255,255,255,.8),inset 0 -4px 0 rgba(170,80,0,.35),0 6px 0 #a85a0c,0 16px 30px rgba(255,160,40,.35);transition:translate .12s ease,box-shadow .12s ease}
 ${EOS_A} .eosCkCta:active{translate:0 4px;box-shadow:inset 0 2px 0 rgba(255,255,255,.8),inset 0 -3px 0 rgba(170,80,0,.35),0 2px 0 #a85a0c,0 8px 18px rgba(255,160,40,.3)}
 ${EOS_A} .eosCkCta:focus-visible{outline:3px solid #fff;outline-offset:3px}
@@ -1178,14 +1329,22 @@ ${EOS_A} .eosCkCtaMain{font:900 18px/1 var(--eos-font);letter-spacing:.06em}
 ${EOS_A} .eosCkCtaSub{font:800 13px/1 var(--eos-font);letter-spacing:.03em;color:rgba(60,28,0,.85)}
 ${EOS_A} .eosCkLinks{display:flex;gap:14px;justify-content:center}
 ${EOS_A} .eosCkCue{position:absolute;pointer-events:none;display:flex;align-items:center;gap:6px;font:900 14px/1 var(--eos-font);letter-spacing:.08em;color:#2a1600;z-index:4}
-${EOS_A} .eosCkCue b{white-space:nowrap;padding:6px 10px;border-radius:999px;background:var(--eos-gold-1);box-shadow:0 3px 0 #b86a12,0 0 18px rgba(255,210,90,.6)}
-${EOS_A} .eosCkCue.isDial{left:50%;top:-32px;translate:-50% 0;flex-direction:column-reverse;gap:6px}
+${EOS_A} .eosCkCtaTap{position:absolute;right:4px;top:30%;width:16px;height:16px;margin-top:-8px;pointer-events:none}
+/* guidance labels — the same gold-rimmed pill as the arrows module's labels, placed where they cover nothing */
+${EOS_A} .eosCkPill{position:absolute;z-index:9;pointer-events:none;white-space:nowrap;font:900 15px/1.12 var(--eos-font);text-transform:uppercase;letter-spacing:.06em;color:#fff;background:rgba(16,14,48,.92);border:2px solid #FFD36B;border-radius:999px;padding:8px 14px;
+box-shadow:0 4px 0 rgba(8,6,30,.7),0 10px 26px rgba(0,0,0,.38),0 0 18px rgba(255,200,90,.28);animation:eosCheckinBubble .3s .6s cubic-bezier(.3,1.6,.4,1) both}
+${EOS_A} .eosCheckIn.isPhone .eosCkPill{font-size:14px;padding:6px 11px}
+${EOS_A} .eosCkPill.isLane{left:50%;translate:-50% -50%}
+${EOS_A} .eosCkPill.isSlide{right:max(4px,calc((100% - 520px) / 2 + 4px));bottom:calc(100% + 8px);animation-delay:.2s}
+${EOS_A} .eosCkHint{position:absolute;inset:0;pointer-events:none;z-index:9}
+${EOS_A} .eosCkHint[data-eos-hint="choose"] :is(.eosHalo,.eosHaloBase){border-radius:50%!important}
+${EOS_A} .eosCkHint:is([data-eos-hint="choose"],[data-eos-hint="cta"]) .eosChevPos{display:none!important}
+${EOS_A} .eosCkCue.isDial{left:50%;top:6px;translate:-50% 0}
 ${EOS_A} .eosCkCueHand{font-size:30px;line-height:1;filter:drop-shadow(0 3px 4px rgba(0,0,0,.5));animation:eosCheckinSlide 1.6s ease-in-out infinite}
-${EOS_A} .eosCkCue.isCta{left:calc(100% - 26px);top:calc(100% - 22px);flex-direction:row;gap:4px;animation:eosCheckinBubble .35s cubic-bezier(.3,1.6,.4,1) both}
-${EOS_A} .eosCkCue.isCta b{font-size:13px;padding:5px 9px}
+${EOS_A} .eosCkCue.isCta{left:calc(100% - 25px);top:calc(30% - 10px);animation:eosCheckinBubble .35s cubic-bezier(.3,1.6,.4,1) both}
 ${EOS_A} .eosCkCueTap{font-size:30px;line-height:1;rotate:-24deg;filter:drop-shadow(0 3px 4px rgba(0,0,0,.55));animation:eosCheckinTap 1.1s ease-in-out infinite}
 ${EOS_A} .eosCkCta.isNudge{animation:eosCheckinRing 1.1s ease-out infinite}
-${EOS_A} .eosCkPop{position:absolute;left:50%;bottom:60px;translate:-50% 0;z-index:12;width:min(420px,calc(100% - 32px));padding:16px 48px 16px 18px;border-radius:20px;background:rgba(12,14,44,.96);border:1.5px solid rgba(255,229,138,.45);box-shadow:0 18px 40px rgba(0,0,0,.55);animation:eosCheckinBubble .3s cubic-bezier(.3,1.5,.4,1) both}
+${EOS_A} .eosCkPop{position:absolute;left:50%;bottom:calc(100% + 6px);translate:-50% 0;z-index:12;width:min(420px,calc(100% - 32px));padding:16px 48px 16px 18px;border-radius:20px;background:rgba(12,14,44,.96);border:1.5px solid rgba(255,229,138,.45);box-shadow:0 18px 40px rgba(0,0,0,.55);animation:eosCheckinBubble .3s cubic-bezier(.3,1.5,.4,1) both}
 ${EOS_A} .eosCkPopText{margin:0;font:700 15px/1.4 var(--eos-font);color:#f2f6ff}
 ${EOS_A} .eosCkPopText b{display:block;margin-bottom:6px;color:#ffe9b0}
 ${EOS_A} .eosCkPopText small{display:block;margin-top:8px;font:700 13px/1.3 var(--eos-font);color:rgba(222,234,255,.85)}
@@ -1200,13 +1359,13 @@ ${EOS_A} .eosCheckIn.isPhone .eosCkSlot .eosOrbLabel{margin-top:6px}
 ${EOS_A} .eosCheckIn.isPhone .eosCkSlot .eosOrbSub{white-space:normal;max-width:132px;font-size:12.5px;letter-spacing:0;line-height:1.12}
 ${EOS_A} .eosCheckIn.isPhone .eosCkSlot[data-eos-slot="overthinking"] .eosOrbLabel{font-size:13px;letter-spacing:.02em}
 ${EOS_A} .eosCheckIn.isPhone .eosCkPanel{width:calc(100% - 24px);gap:8px}
-${EOS_A} .eosCheckIn.isPhone .eosCkSpot{height:142px}
 ${EOS_A} .eosCheckIn.isPhone .eosCkQ{font-size:24px}
+${EOS_A} .eosCheckIn.isPhone .eosCkBanner{padding:6px 12px;font-size:13.5px}
+${EOS_A} .eosCheckIn.isPhone[data-step="2"] .eosCkPanel:has(.eosCkBanner){padding-top:2px}
 ${EOS_A} .eosCheckIn.isPhone .eosCkFoot{gap:0 4px}
 ${EOS_A} .eosCheckIn.isPhone[data-step="1"] .eosCkBottom{gap:0}
-${EOS_A} .eosCheckIn.isPhone[data-step="2"] .eosCkPanel{position:relative;left:auto;top:auto;bottom:auto;translate:none;margin:0 auto;min-height:0;padding:12px 0 4px}
-${EOS_A} .eosCheckIn.isPhone[data-step="2"] .eosCkBottom{position:relative;bottom:auto;margin:4px 0 8px}
-${EOS_A} .eosCheckIn.isPhone .eosCkPop{bottom:auto;top:90px}
+${EOS_A} .eosCheckIn.isPhone[data-step="2"] .eosCkPanel{position:relative;left:auto;top:auto;bottom:auto;translate:none;margin:0 auto;min-height:0;padding:6px 0 4px}
+${EOS_A} .eosCheckIn.isPhone[data-step="2"] .eosCkBottom{position:relative;bottom:auto;margin:2px 0 4px}
 ${EOS_A} .eosCheckInChip{position:absolute;left:12px;top:12px;z-index:32;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:4px 16px 4px 6px;border-radius:999px;cursor:pointer;
 border:1.5px solid rgba(125,227,255,.45);background:rgba(10,12,40,.82);color:#f2f6ff;font:800 13px/1 var(--eos-font);box-shadow:0 4px 0 rgba(4,4,20,.6),0 0 24px rgba(125,227,255,.25);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:eosCheckinBubble .45s cubic-bezier(.3,1.5,.4,1) both}
 ${EOS_A} .eosCheckInChip:hover,${EOS_A} .eosCheckInChip:focus-visible{border-color:var(--eos-gold-1);outline:none}
@@ -1224,6 +1383,7 @@ ${EOS_A} .eosCompBubble{max-width:200px;padding:8px 12px;border-radius:14px;back
 ${EOS_A} .eosCompBubble.isFinish{background:linear-gradient(180deg,#e9fffb,#9ff0e6);color:#062a2a}
 @keyframes eosCheckinBreath{0%,100%{scale:.92;opacity:.75}40%{scale:1.06;opacity:1}}
 @keyframes eosCheckinSpin{to{rotate:360deg}}
+@keyframes eosCheckinHeadIn{0%{scale:.94;opacity:0}100%{scale:1;opacity:1}}
 @keyframes eosCheckinPop{0%{scale:.6;opacity:0}100%{scale:1;opacity:1}}
 @keyframes eosCheckinRise{0%{translate:0 14px;opacity:0}100%{translate:0 0;opacity:1}}
 @keyframes eosCheckinFade{0%{opacity:0}100%{opacity:1}}
@@ -1236,7 +1396,7 @@ ${EOS_A} .eosCompBubble.isFinish{background:linear-gradient(180deg,#e9fffb,#9ff0
 @keyframes eosCheckinRing{0%{box-shadow:inset 0 2px 0 rgba(255,255,255,.8),inset 0 -4px 0 rgba(170,80,0,.35),0 6px 0 #a85a0c,0 0 0 0 rgba(255,229,138,.85)}100%{box-shadow:inset 0 2px 0 rgba(255,255,255,.8),inset 0 -4px 0 rgba(170,80,0,.35),0 6px 0 #a85a0c,0 0 0 18px rgba(255,229,138,0)}}
 @keyframes eosCheckinSlide{0%,100%{translate:-70px 0}50%{translate:70px 0}}
 @keyframes eosCheckinBounce{0%{translate:0 0}30%{translate:0 -18px;scale:1.08 .94}55%{translate:0 0;scale:.94 1.06}75%{translate:0 -6px}100%{translate:0 0;scale:1}}
-${EOS_A} :is(.eosCheckIn,.eosCheckInChip,.eosCompanion)[data-eos-calm="1"] :is(.eosCkGlow,.eosCkTrack,.eosCkTrack::after,.eosCkHead,.eosCkChips,.eosCkPanel,.eosCkBubble,.eosCkCue,.eosCkCueHand,.eosCkCueTap,.eosCkCta,.eosCkChevron,.eosCkScale,.eosOrbBall,.eosCompBody,.eosCompBubble,.eosCompStar,.eosCkPop,.eosCkSeed){animation:none!important}
+${EOS_A} :is(.eosCheckIn,.eosCheckInChip,.eosCompanion)[data-eos-calm="1"] :is(.eosCkGlow,.eosCkTrack,.eosCkTrack::after,.eosCkHead,.eosCkChips,.eosCkPanel,.eosCkBubble,.eosCkCue,.eosCkCueHand,.eosCkCueTap,.eosCkCta,.eosCkPill,.eosCkHeadCold,.eosCkChevron,.eosCkScale,.eosOrbBall,.eosCompBody,.eosCompBubble,.eosCompStar,.eosCkPop,.eosCkSeed){animation:none!important}
 ${EOS_A} :is(.eosCheckInChip,.eosCompanion)[data-eos-calm="1"]{animation:eosCheckinFade .2s ease both}
 ${EOS_A} .eosCheckIn[data-eos-calm="1"] .eosCkTrack::after{display:none}
 ${EOS_A} .eosCompanion[data-eos-calm="1"] .eosCompCur{animation:eosCheckinFade .3s ease both!important}
