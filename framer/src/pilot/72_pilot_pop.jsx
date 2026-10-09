@@ -14,6 +14,9 @@ const EOS_PILOT_POP = {
     verb: "POPPED",
     marker: { g: "tap", label: "POP IT!" },
     reacts: ["brace", "wow", "phew", "giggle"],
+    // the win face POP's celebration calls for: a closed-eye (or happiest) smile per character, picked on the
+    // EOS_WIN_FACES contact strip (spec S1 step 3: "preferring a closed-eye smile where the celebration calls for one")
+    winFace: { sync: 63, rush: 35, glitch: 49, loopie: 61, drop: 28, patch: 43, still: 62 },
     // layout fractions of the S5 play box (px minimums applied in eosPilotPopGeom)
     lay: {
         phone: { heroX: 0.5, heroY: 0.84, rows: [0.61, 0.43], imgRows: [0.56, 0.36], x0: 0.2, x1: 0.8, hero: 112, d0: 84, d1: 100, outer: 92, calm: 176, swayPx: 10 },
@@ -111,10 +114,12 @@ function eosPilotPopGeom(b, words, layout, imgMode, raised, seed) {
         if (s.f <= 0.01 || s.f >= 0.99) d = Math.min(d, L.outer * dk)
         d = Math.round(d)
         const x = left + W * (L.x0 + (L.x1 - L.x0) * s.f)
-        const jit = (eosPilotRand(seed + i * 7) - 0.5) * 0.04 * H
-        const yLow = Math.min(top + H * rowsF[0], heroTop - 20 - d / 2 - labelH)
-        let y = s.row === 0 ? yLow : Math.min(top + H * rowsF[1], yLow - d * 0.94 - labelH)
-        y = Math.max(top + d / 2 + 8, y + jit)
+        const jit = (eosPilotRand(seed + i * 7) - 0.5) * 0.024 * H
+        const dLow = L.d1 * dk
+        const yLow = Math.min(top + H * rowsF[0], heroTop - 20 - dLow / 2 - labelH)
+        // the upper row clears the lower row (no overlapping films), whatever the jitter
+        let y = s.row === 0 ? yLow + Math.max(0, jit) : Math.min(top + H * rowsF[1], yLow - dLow / 2 - d / 2 - 14 - labelH) + Math.min(0, jit)
+        y = Math.max(top + d / 2 + 8, y)
         const side = x < hx - 2 ? -1 : x > hx + 2 ? 1 : i % 2 ? 1 : -1
         const hp = hand(side)
         const dx = x - hp.x
@@ -175,6 +180,11 @@ const EosPilotPopInner = React.memo(function EosPilotPopInner({ live, gameId, wo
     const emotion = React.useMemo(() => (typeof eosCurrentEmotion === "function" && eosCurrentEmotion()) || "auto", [])
     const heroChar = EOS_EMO[emotion] ? EOS_EMO[emotion].char : "still"
     const seed = React.useMemo(() => Math.floor(Math.random() * 1000), [])
+    const heroSeed = React.useMemo(() => {
+        const list = (typeof EOS_WIN_FACES !== "undefined" && EOS_WIN_FACES[heroChar]) || []
+        const j = list.indexOf(C.winFace[heroChar])
+        return j >= 0 ? j : seed
+    }, [heroChar])
     const raised = React.useMemo(() => !eosPilotIsReduced(null, live), [])
 
     const [k, setK] = React.useState(0)
@@ -209,7 +219,7 @@ const EosPilotPopInner = React.memo(function EosPilotPopInner({ live, gameId, wo
         bonus: 260 + st.chainMax * 18,
         label: `100% ${C.verb}`,
         kit: "sky",
-        heroFace: () => eosPilotFaceSrc(heroChar, 3, emotion, seed),
+        heroFace: () => eosPilotFaceSrc(heroChar, 3, emotion, heroSeed),
         anims: rt.anims,
         timers: rt.timers,
         handoffMs: EOS_PILOT_HANDOFF_MS,
@@ -320,12 +330,12 @@ const EosPilotPopInner = React.memo(function EosPilotPopInner({ live, gameId, wo
                     if (!G || !calm) return
                     calm.setAttribute("data-on", "1")
                     if (s) s.particles("rainbow", true)
-                    const prism = fxNodes("popPrism")[0]
+                    const arch = fxNodes("popArch")[0]
                     const beam = fxNodes("popBeam")[0]
-                    if (prism) prism.setAttribute("data-on", "1")
+                    if (arch) arch.setAttribute("data-on", "1")
                     if (beam) beam.setAttribute("data-on", "1")
                     if (c.reduced) {
-                        if (prism) c.anim(prism, [{ opacity: 0 }, { opacity: 0.9 }], { duration: 500 })
+                        if (arch) c.anim(arch, [{ opacity: 0 }, { opacity: 0.9 }], { duration: 500 })
                         return
                     }
                     const flash = calm.querySelector(".flash")
@@ -334,8 +344,8 @@ const EosPilotPopInner = React.memo(function EosPilotPopInner({ live, gameId, wo
                     if (flash) c.anim(flash, [{ opacity: 0 }, { opacity: 0.95, offset: 0.18 }, { opacity: 0 }], { duration: 560, easing: "ease-out" })
                     if (caus) c.anim(caus, [{ transform: "translateX(-75%) rotate(14deg)", opacity: 0 }, { opacity: 1, offset: 0.2 }, { transform: "translateX(40%) rotate(14deg)", opacity: 0.85, offset: 0.8 }, { transform: "translateX(55%) rotate(14deg)", opacity: 0 }], { duration: 620, easing: "cubic-bezier(.4,0,.3,1)" })
                     if (rim) c.anim(rim, [{ transform: "rotate(0deg)" }, { transform: "rotate(540deg)" }], { duration: 1100, easing: "cubic-bezier(.2,.7,.3,1)" })
-                    if (beam) c.anim(beam, [{ transform: "rotate(var(--ba)) scaleX(0)", opacity: 0 }, { transform: "rotate(var(--ba)) scaleX(1)", opacity: 1, offset: 0.35 }, { transform: "rotate(var(--ba)) scaleX(1)", opacity: 0.55 }], { duration: 900, easing: "cubic-bezier(.2,.8,.3,1)" })
-                    if (prism) c.anim(prism, [{ transform: "scale(.35)", opacity: 0 }, { transform: "scale(1.04)", opacity: 1, offset: 0.4 }, { transform: "scale(1)", opacity: 0.9 }], { duration: 900, easing: "cubic-bezier(.2,.8,.3,1)" })
+                    if (beam) c.anim(beam, [{ transform: "rotate(var(--ba)) scaleX(0)", opacity: 0 }, { transform: "rotate(var(--ba)) scaleX(1)", opacity: 1, offset: 0.35 }, { transform: "rotate(var(--ba)) scaleX(1)", opacity: 0.7 }], { duration: 900, easing: "cubic-bezier(.2,.8,.3,1)" })
+                    if (arch) c.anim(arch, [{ transform: "translateY(18%) scale(.55)", opacity: 0 }, { transform: "translateY(-2%) scale(1.04)", opacity: 1, offset: 0.45 }, { transform: "none", opacity: 1 }], { duration: 900, easing: "cubic-bezier(.2,.8,.3,1)" })
                     const sun = s && s.layer("l1") ? s.layer("l1").querySelector(".sun") : null
                     if (sun) anim(sun, [{ transform: "scale(1)" }, { transform: "scale(1.3)", offset: 0.3 }, { transform: "scale(1)" }], { duration: 1200, easing: "ease-out" })
                     if (s) s.burst("droplets", { x: G.hx, y: G.cy - G.calmD * 0.42, n: 8, dist: G.calmD * 0.5, spread: 160, angle: -90, ms: 900, gravity: 30, hue: 50, anims: rt.anims })
@@ -447,6 +457,16 @@ const EosPilotPopInner = React.memo(function EosPilotPopInner({ live, gameId, wo
         setLayout((prev) => eosPilotPopRebalance(prev, (j) => !goneRef.current[wr.off + j], wr.words.length) || prev)
     }
     const pop = (i, e) => {
+        const tIn = performance.now()
+        try {
+            requestAnimationFrame(() => {
+                st.perf = (st.perf || []).concat([[Math.round(performance.now() - tIn), st.handlerMs || 0]]).slice(-12)
+            })
+        } catch (x) {}
+        popInner(i, e)
+        st.handlerMs = Math.round(performance.now() - tIn)
+    }
+    const popInner = (i, e) => {
         const G = geomRef.current
         const wr = waveRef.current
         const g = G && G.bubbles[i]
@@ -682,6 +702,11 @@ const EosPilotPopInner = React.memo(function EosPilotPopInner({ live, gameId, wo
             pop(i, e)
         },
     })
+    React.useEffect(() => {
+        try {
+            eosExpose("pilotPop", { state: () => ({ k: st.k, N, wave: waveRef.current.wave, phase: phaseRef.current, chainMax: st.chainMax, hang: st.hang.length, perf: st.perf || [] }) })
+        } catch (e) {}
+    }, [])
     const near = useEosPilotNearHit(arenaRef, () => hitsRef.current.filter((el, i) => el && !goneRef.current[waveRef.current.off + i]), 28)
     const onArenaDown = (e) => {
         snd.warm()
@@ -815,7 +840,7 @@ const EosPilotPopInner = React.memo(function EosPilotPopInner({ live, gameId, wo
                             reacts={C.reacts}
                             label={EOS_CHAR_NAMES[heroChar]}
                             showLabel={true}
-                            seed={seed}
+                            seed={heroSeed}
                             className="popHero"
                             style={{ left: "50%", top: `${(G.G / 2 - G.px * 0.08).toFixed(1)}px` }}
                         />
@@ -837,15 +862,7 @@ const EosPilotPopInner = React.memo(function EosPilotPopInner({ live, gameId, wo
                                 "--ba": `${((Math.atan2(G.cy - G.sun.y, G.hx - G.sun.x) * 180) / Math.PI).toFixed(1)}deg`,
                             }}
                         />
-                        <i
-                            className="popPrism"
-                            style={{
-                                "--ps": `${Math.round(G.calmD * 2.7)}px`,
-                                left: `${G.hx.toFixed(1)}px`,
-                                top: `${G.cy.toFixed(1)}px`,
-                                "--pa": `${((Math.atan2(G.hx - G.sun.x, -(G.cy - G.sun.y)) * 180) / Math.PI - 22).toFixed(1)}deg`,
-                            }}
-                        />
+                        <i className="popArch" style={{ "--ps": `${Math.round(Math.min(G.calmD * 1.9, G.w - 16))}px`, left: `${G.hx.toFixed(1)}px`, top: `${G.cy.toFixed(1)}px` }} />
                         <i className="popRing" />
                         <i className="popRing" />
                         {[0, 1, 2, 3, 4, 5, 6, 7].map((j) => (
@@ -959,13 +976,14 @@ ${EOS_PILOT_POP_AR} .popGlint{width:18px;height:18px;margin:-9px 0 0 -9px;
   background:radial-gradient(circle,#fff 0 14%,rgba(255,255,255,0) 26%),
     linear-gradient(90deg,transparent 44%,hsla(var(--gh,40),100%,88%,.95) 50%,transparent 56%),linear-gradient(0deg,transparent 44%,hsla(var(--gh,40),100%,88%,.95) 50%,transparent 56%)}
 ${EOS_PILOT_POP_AR} .popBeam{height:30px;margin-top:-15px;transform-origin:0 50%;transform:rotate(var(--ba));
-  background:linear-gradient(90deg,rgba(255,250,232,0),rgba(255,250,232,.35) 45%,rgba(255,255,255,.85));
+  background:linear-gradient(90deg,rgba(255,246,214,0),rgba(255,244,210,.55) 40%,rgba(255,255,248,.95));
   -webkit-mask:linear-gradient(180deg,transparent,#000 40%,#000 60%,transparent);mask:linear-gradient(180deg,transparent,#000 40%,#000 60%,transparent)}
-${EOS_PILOT_POP_AR} .popFx > .popBeam[data-on="1"]{opacity:.55;transition:opacity .6s ease}
-${EOS_PILOT_POP_AR} .popPrism{width:var(--ps);height:var(--ps);margin:calc(var(--ps) / -2) 0 0 calc(var(--ps) / -2);border-radius:50%;
-  background:conic-gradient(from var(--pa,120deg) at 50% 50%,rgba(255,90,130,0) 0deg,rgba(255,90,130,.55) 5deg,rgba(255,170,90,.55) 12deg,rgba(255,236,120,.55) 19deg,rgba(130,230,150,.55) 26deg,rgba(110,190,255,.55) 33deg,rgba(170,130,255,.55) 40deg,rgba(170,130,255,0) 46deg,transparent 46deg);
-  -webkit-mask:radial-gradient(closest-side,transparent 36%,#000 44%,rgba(0,0,0,.7) 70%,transparent 100%);mask:radial-gradient(closest-side,transparent 36%,#000 44%,rgba(0,0,0,.7) 70%,transparent 100%)}
-${EOS_PILOT_POP_AR} .popFx > .popPrism[data-on="1"]{opacity:.9}
+${EOS_PILOT_POP_AR} .popFx > .popBeam[data-on="1"]{opacity:.7;transition:opacity .6s ease}
+/* the sunlight refracted by the calm bubble: a small rainbow arching over the hero's bubble (upper half only) */
+${EOS_PILOT_POP_AR} .popArch{width:var(--ps);height:var(--ps);margin:calc(var(--ps) / -2) 0 0 calc(var(--ps) / -2);border-radius:50%;transform-origin:50% 50%;
+  background:radial-gradient(closest-side,transparent 70%,rgba(255,96,128,.75) 73%,rgba(255,160,80,.75) 77%,rgba(255,232,110,.75) 81%,rgba(120,226,140,.72) 85%,rgba(100,180,255,.72) 89%,rgba(160,120,255,.7) 93%,transparent 97%);
+  -webkit-mask:linear-gradient(180deg,#000 40%,rgba(0,0,0,.5) 50%,transparent 58%);mask:linear-gradient(180deg,#000 40%,rgba(0,0,0,.5) 50%,transparent 58%)}
+${EOS_PILOT_POP_AR} .popFx > .popArch[data-on="1"]{opacity:1}
 
 /* ---- the counter pill (text as an attribute: no characterData mutation per hit) */
 ${EOS_PILOT_POP_AR} .popCount{position:absolute;left:10px;z-index:6;padding:5px 9px;border-radius:999px;pointer-events:none;
