@@ -6824,14 +6824,9 @@ function expandUploadImageSlots(images = [], slots = IMAGE_ONLY_BUBBLE_SLOTS) {
         MIN_VISIBLE_WORD_BUBBLES,
         MAX_VISIBLE_WORD_BUBBLES
     )
-    const base = Math.floor(totalSlots / src.length)
-    const extra = totalSlots % src.length
-    const out = []
-    src.forEach((image, index) => {
-        const copies = base + (index < extra ? 1 : 0)
-        for (let i = 0; i < copies; i++) out.push(image)
-    })
-    return out.slice(0, totalSlots)
+    // F8 six-image rule, spread (never all copies of one image together): 2 -> A B A B A B, 3 -> A B C A B C,
+    // 4 -> A B C D A B, 5 -> A B C D E A, 6 -> one each (same as the shared tsSpreadUploads)
+    return Array.from({ length: totalSlots }, (_, i) => src[i % src.length])
 }
 function uploadImageAt(images = [], index = 0) {
     if (!images.length) return null
@@ -18675,6 +18670,14 @@ function GameEngineLegacy(p) {
         onProgress: reportProgress,
     }
     const content = <RoutedGameContentLegacy {...ep} />
+    // F8: shared bubble face (default emotional pictures / uploads, text below inside the bubble)
+    useTsBubbleFaces(collisionHostRef, {
+        game: p.game,
+        entries: p.entries,
+        uploads: p.hasUserImages ? p.imageSources || [] : [],
+        progress,
+        seed: Number(p.variationSeed || 0),
+    })
     React.useLayoutEffect(() => {
         const host = collisionHostRef.current
         if (!host) return
@@ -19947,6 +19950,14 @@ function GameEngine(p) {
         onProgress: reportProgress,
     }
     const content = <RoutedGameContent {...ep} />
+    // F8: the same shared bubble face fills every emotional object the standard 100+ face does not serve
+    useTsBubbleFaces(collisionHostRef, {
+        game: p.game,
+        entries: p.entries,
+        uploads: p.hasUserImages ? p.imageSources || [] : [],
+        progress,
+        seed: Number(p.variationSeed || 0),
+    })
     React.useLayoutEffect(() => {
         const host = collisionHostRef.current
         if (!host) return

@@ -1,0 +1,3605 @@
+{
+ "1": {
+  "hosts": [
+   {
+    "cls": "wordBubble.premiumBubble.allCircularBubble",
+    "w": 85,
+    "h": 93,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "wordBubble.premiumBubble.allCircularBubble",
+    "w": 85,
+    "h": 93,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "wordBubble.premiumBubble.allCircularBubble",
+    "w": 85,
+    "h": 93,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "wordBubble.premiumBubble.allCircularBubble",
+    "w": 85,
+    "h": 93,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "wordBubble.premiumBubble.allCircularBubble",
+    "w": 85,
+    "h": 93,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "wordBubble.premiumBubble.allCircularBubble",
+    "w": 85,
+    "h": 93,
+    "problems": [
+     "noPic"
+    ]
+   }
+  ],
+  "violations": {
+   "noPic": 6,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 6,
+  "name": "POP"
+ },
+ "2": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 134,
+    "h": 82,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "le-expressions/sync_E44.webp",
+    "phase": "neg"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "CRUSH"
+ },
+ "3": {
+  "hosts": [
+   {
+    "cls": "eggShell.multiEgg.allCircularBubble",
+    "w": 86,
+    "h": 86,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "eggShell.multiEgg.allCircularBubble",
+    "w": 86,
+    "h": 86,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "eggShell.multiEgg.allCircularBubble",
+    "w": 86,
+    "h": 86,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "eggShell.multiEgg.allCircularBubble",
+    "w": 86,
+    "h": 86,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "eggShell.multiEgg.allCircularBubble",
+    "w": 86,
+    "h": 86,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "eggShell.multiEgg.allCircularBubble",
+    "w": 86,
+    "h": 86,
+    "problems": [
+     "noPic"
+    ]
+   }
+  ],
+  "violations": {
+   "noPic": 6,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 6,
+  "name": "CRACK"
+ },
+ "4": {
+  "hosts": [
+   {
+    "cls": "stompWordBubble.allCircularBubble.stompDamage0",
+    "w": 79,
+    "h": 79,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "stompWordBubble.allCircularBubble.stompDamage0",
+    "w": 79,
+    "h": 79,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "stompWordBubble.allCircularBubble.stompDamage0",
+    "w": 79,
+    "h": 79,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "stompWordBubble.allCircularBubble.stompDamage0",
+    "w": 79,
+    "h": 79,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "stompWordBubble.allCircularBubble.stompDamage0",
+    "w": 79,
+    "h": 79,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "stompWordBubble.allCircularBubble.stompDamage0",
+    "w": 79,
+    "h": 79,
+    "problems": [
+     "noPic"
+    ]
+   }
+  ],
+  "violations": {
+   "noPic": 6,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 6,
+  "name": "STOMP"
+ },
+ "5": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 143,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "e-expressions/patch_E73.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "HAMMER"
+ },
+ "6": {
+  "hosts": [
+   {
+    "cls": "zapMultiBubble.allCircularBubble.",
+    "w": 72,
+    "h": 72,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "zapMultiBubble.allCircularBubble.",
+    "w": 72,
+    "h": 72,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "zapMultiBubble.allCircularBubble.",
+    "w": 72,
+    "h": 72,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "zapMultiBubble.allCircularBubble.",
+    "w": 72,
+    "h": 72,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "zapMultiBubble.allCircularBubble.",
+    "w": 72,
+    "h": 72,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "zapMultiBubble.allCircularBubble.",
+    "w": 72,
+    "h": 72,
+    "problems": [
+     "noPic"
+    ]
+   }
+  ],
+  "violations": {
+   "noPic": 6,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 6,
+  "name": "ZAP"
+ },
+ "7": {
+  "hosts": [
+   {
+    "cls": "uniqWord.balloonWord.hasDirectThoughtImage",
+    "w": 190,
+    "h": 190,
+    "problems": [],
+    "src": "-expressions/loopie_E34.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "PIN POP"
+ },
+ "8": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "METEOR"
+ },
+ "9": {
+  "hosts": [
+   {
+    "cls": "laserTargetBubble.allCircularBubble.laserDamage0",
+    "w": 78,
+    "h": 78,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "laserTargetBubble.allCircularBubble.laserDamage0",
+    "w": 78,
+    "h": 78,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "laserTargetBubble.allCircularBubble.laserDamage0",
+    "w": 78,
+    "h": 78,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "laserTargetBubble.allCircularBubble.laserDamage0",
+    "w": 78,
+    "h": 78,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "laserTargetBubble.allCircularBubble.laserDamage0",
+    "w": 78,
+    "h": 78,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "laserTargetBubble.allCircularBubble.laserDamage0",
+    "w": 78,
+    "h": 78,
+    "problems": [
+     "noPic"
+    ]
+   }
+  ],
+  "violations": {
+   "noPic": 6,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 6,
+  "name": "LASER SLICE"
+ },
+ "10": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 143,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "e-expressions/still_E41.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "DOMINO DROP"
+ },
+ "11": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 148,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "-expressions/glitch_E63.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "PRESSURE POP"
+ },
+ "12": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 1
+  },
+  "orphanText": 1,
+  "orphans": [
+   "plainUserThoughtText tsGlobalThoughtText tsExactUserText:deadline panic"
+  ],
+  "count": 0,
+  "name": "BOUNCE OUT"
+ },
+ "13": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "SQUASH"
+ },
+ "14": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "CRUMPLE"
+ },
+ "15": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "SHRED"
+ },
+ "16": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "MELT"
+ },
+ "17": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 143,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "e-expressions/still_E63.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "BOSS BATTLE"
+ },
+ "18": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 1
+  },
+  "orphanText": 1,
+  "orphans": [
+   "tsExactUserText:deadline panic"
+  ],
+  "count": 0,
+  "name": "BURN"
+ },
+ "19": {
+  "hosts": [
+   {
+    "cls": "eraseWordBubble.allCircularBubble.pass0",
+    "w": 60,
+    "h": 60,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "eraseWordBubble.allCircularBubble.pass0",
+    "w": 60,
+    "h": 60,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "eraseWordBubble.allCircularBubble.pass0",
+    "w": 60,
+    "h": 60,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "eraseWordBubble.allCircularBubble.pass0",
+    "w": 60,
+    "h": 60,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "eraseWordBubble.allCircularBubble.pass0",
+    "w": 60,
+    "h": 60,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "eraseWordBubble.allCircularBubble.pass0",
+    "w": 60,
+    "h": 60,
+    "problems": [
+     "noPic"
+    ]
+   }
+  ],
+  "violations": {
+   "noPic": 6,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 6,
+  "name": "ERASE"
+ },
+ "20": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 212,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "le-expressions/drop_E70.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "GLITCH OUT"
+ },
+ "21": {
+  "hosts": [
+   {
+    "cls": "binWordBubble.allCircularBubble.",
+    "w": 58,
+    "h": 58,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "binWordBubble.allCircularBubble.",
+    "w": 58,
+    "h": 58,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "binWordBubble.allCircularBubble.",
+    "w": 58,
+    "h": 58,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "binWordBubble.allCircularBubble.",
+    "w": 58,
+    "h": 58,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "binWordBubble.allCircularBubble.",
+    "w": 58,
+    "h": 58,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "binWordBubble.allCircularBubble.",
+    "w": 58,
+    "h": 58,
+    "problems": [
+     "noPic"
+    ]
+   }
+  ],
+  "violations": {
+   "noPic": 6,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 6,
+  "name": "BIN"
+ },
+ "22": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 1
+  },
+  "orphanText": 1,
+  "orphans": [
+   "plainUserThoughtText tsGlobalThoughtText tsExactUserText:deadline panic"
+  ],
+  "count": 0,
+  "name": "FLUSH"
+ },
+ "23": {
+  "hosts": [
+   {
+    "cls": "vacuumCircleBubble.active.",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "vacuumCircleBubble",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "vacuumCircleBubble",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "vacuumCircleBubble",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "vacuumCircleBubble",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "vacuumCircleBubble",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "noPic"
+    ]
+   }
+  ],
+  "violations": {
+   "noPic": 6,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 6,
+  "name": "VACUUM"
+ },
+ "24": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 1
+  },
+  "orphanText": 1,
+  "orphans": [
+   "plainUserThoughtText tsGlobalThoughtText tsExactUserText:deadline panic"
+  ],
+  "count": 0,
+  "name": "SLINGSHOT"
+ },
+ "25": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "SWIPE AWAY"
+ },
+ "26": {
+  "hosts": [
+   {
+    "cls": "uniqWord.rocketWindow.hasDirectThoughtImage",
+    "w": 110,
+    "h": 70,
+    "problems": [
+     "noPic"
+    ]
+   }
+  ],
+  "violations": {
+   "noPic": 1,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "SEND TO SPACE"
+ },
+ "27": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "DROP ZONE"
+ },
+ "28": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "ARCHIVE"
+ },
+ "29": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 143,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "e-expressions/patch_E73.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "MUTE"
+ },
+ "30": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 126,
+    "h": 120,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "e-expressions/still_E41.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "ZOOM OUT"
+ },
+ "31": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "BACK SEAT"
+ },
+ "32": {
+  "hosts": [
+   {
+    "cls": "uniqWord.miniVehicle.hasDirectThoughtImage",
+    "w": 143,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "-expressions/glitch_E15.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "PARK IT"
+ },
+ "33": {
+  "hosts": [
+   {
+    "cls": "uniqWord.heliumBalloon.hasDirectThoughtImage",
+    "w": 160,
+    "h": 160,
+    "problems": [],
+    "src": "e-expressions/patch_E73.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "FLOAT AWAY"
+ },
+ "34": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 1
+  },
+  "orphanText": 1,
+  "orphans": [
+   "plainUserThoughtText tsGlobalThoughtText tsExactUserText:deadline panic"
+  ],
+  "count": 0,
+  "name": "RIVER"
+ },
+ "35": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 1
+  },
+  "orphanText": 1,
+  "orphans": [
+   "plainUserThoughtText tsGlobalThoughtText tsExactUserText:deadline panic"
+  ],
+  "count": 0,
+  "name": "TRAIN PLATFORM"
+ },
+ "36": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 1
+  },
+  "orphanText": 1,
+  "orphans": [
+   "plainUserThoughtText tsGlobalThoughtText tsExactUserText:deadline panic"
+  ],
+  "count": 0,
+  "name": "CLOUD PASS"
+ },
+ "37": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "ELEVATOR DOWN"
+ },
+ "38": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 1
+  },
+  "orphanText": 1,
+  "orphans": [
+   "plainUserThoughtText tsGlobalThoughtText tsExactUserText:deadline panic"
+  ],
+  "count": 0,
+  "name": "DRAWER"
+ },
+ "39": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "BLACK HOLE"
+ },
+ "40": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "PAPER PLANE"
+ },
+ "41": {
+  "hosts": [
+   {
+    "cls": "unhookWordBubble.",
+    "w": 31,
+    "h": 31,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "unhookWordBubble.",
+    "w": 31,
+    "h": 31,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "unhookWordBubble.",
+    "w": 31,
+    "h": 31,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "unhookWordBubble.",
+    "w": 31,
+    "h": 31,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "unhookWordBubble.",
+    "w": 31,
+    "h": 31,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "unhookWordBubble.",
+    "w": 31,
+    "h": 31,
+    "problems": [
+     "noPic"
+    ]
+   }
+  ],
+  "violations": {
+   "noPic": 6,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 6,
+  "name": "UNHOOK"
+ },
+ "42": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 143,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "e-expressions/still_E41.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "UNTANGLE"
+ },
+ "43": {
+  "hosts": [
+   {
+    "cls": "cutLoopWord.allCircularBubble.cut0",
+    "w": 60,
+    "h": 60,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "cutLoopWord.allCircularBubble.cut0",
+    "w": 60,
+    "h": 60,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "cutLoopWord.allCircularBubble.cut0",
+    "w": 60,
+    "h": 60,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "cutLoopWord.allCircularBubble.cut0",
+    "w": 60,
+    "h": 60,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "cutLoopWord.allCircularBubble.cut0",
+    "w": 60,
+    "h": 60,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "cutLoopWord.allCircularBubble.cut0",
+    "w": 60,
+    "h": 60,
+    "problems": [
+     "noPic"
+    ]
+   }
+  ],
+  "violations": {
+   "noPic": 6,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 6,
+  "name": "CUT THE LOOP"
+ },
+ "44": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "VELCRO"
+ },
+ "45": {
+  "hosts": [
+   {
+    "cls": "uniqWord.magnetWord.hasDirectThoughtImage",
+    "w": 143,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "-expressions/glitch_E11.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "MAGNETS"
+ },
+ "46": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 143,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "e-expressions/still_E41.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "UNPIN"
+ },
+ "47": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 144,
+    "h": 104,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "e-expressions/still_E63.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "UNFOLLOW"
+ },
+ "48": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "UNSTICK"
+ },
+ "49": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 143,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "-expressions/glitch_E56.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "UNZIP"
+ },
+ "50": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "UNFINISHED SENTENCE"
+ },
+ "51": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 145,
+    "h": 104,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "le-expressions/rush_E63.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "MIRROR FLIP"
+ },
+ "52": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 144,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "e-expressions/patch_E73.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "SUBTITLES"
+ },
+ "53": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 143,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "e-expressions/patch_E73.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "CARTOONIFY"
+ },
+ "54": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "FONT CHECK"
+ },
+ "55": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 143,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "e-expressions/still_E63.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "HEADLINE"
+ },
+ "56": {
+  "hosts": [
+   {
+    "cls": "uniqWord.evidenceCard.hasDirectThoughtImage",
+    "w": 143,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "e-expressions/still_E41.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "COURTROOM"
+ },
+ "57": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 143,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "le-expressions/sync_E48.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "CAMERA ANGLE"
+ },
+ "58": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "MICROSCOPE"
+ },
+ "59": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 145,
+    "h": 104,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "-expressions/glitch_E56.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "SPOTLIGHT"
+ },
+ "60": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 143,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "le-expressions/sync_E44.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "CROP TOOL"
+ },
+ "61": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "FREEZE"
+ },
+ "62": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "NET IT"
+ },
+ "63": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 144,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "le-expressions/rush_E80.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "PATTERN POP"
+ },
+ "64": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "RED LIGHT"
+ },
+ "65": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 145,
+    "h": 104,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "-expressions/loopie_E58.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "PAUSE BUTTON"
+ },
+ "66": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 134,
+    "h": 68,
+    "problems": [
+     "noPic"
+    ]
+   }
+  ],
+  "violations": {
+   "noPic": 1,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "BUFFERING"
+ },
+ "67": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 143,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "le-expressions/drop_E58.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "TAP OUT"
+ },
+ "68": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 143,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "le-expressions/drop_E70.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "DRUM IT"
+ },
+ "69": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 144,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "-expressions/glitch_E56.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "PULSE"
+ },
+ "70": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 144,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "le-expressions/sync_E44.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "METRONOME"
+ },
+ "71": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 1
+  },
+  "orphanText": 1,
+  "orphans": [
+   "plainUserThoughtText tsGlobalThoughtText tsExactUserText:deadline panic"
+  ],
+  "count": 0,
+  "name": "DEFUSE"
+ },
+ "72": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "CATCH & LABEL"
+ },
+ "73": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 145,
+    "h": 104,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "-expressions/loopie_E58.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "TRAFFIC LIGHT"
+ },
+ "74": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "BUBBLE WRAP"
+ },
+ "75": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "INK BLEED"
+ },
+ "76": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "REVERSE IT"
+ },
+ "77": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "SLOW MOTION"
+ },
+ "78": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "ONE WORD"
+ },
+ "79": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 145,
+    "h": 105,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "le-expressions/rush_E58.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "MISS ON PURPOSE"
+ },
+ "80": {
+  "hosts": [
+   {
+    "cls": "uniqWord.hasDirectThoughtImage",
+    "w": 143,
+    "h": 103,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "e-expressions/still_E41.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "DON'T TAP"
+ },
+ "81": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "STACK IT"
+ },
+ "82": {
+  "hosts": [
+   {
+    "cls": "uniqWord.seesawWeight.hasDirectThoughtImage",
+    "w": 145,
+    "h": 105,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "-expressions/glitch_E15.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "SEESAW"
+ },
+ "83": {
+  "hosts": [
+   {
+    "cls": "uniqWord.conveyorCard.hasDirectThoughtImage",
+    "w": 145,
+    "h": 104,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "-expressions/glitch_E70.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "SORT STATION"
+ },
+ "84": {
+  "hosts": [
+   {
+    "cls": "ownershipCard",
+    "w": 180,
+    "h": 55,
+    "problems": [
+     "noPic"
+    ]
+   }
+  ],
+  "violations": {
+   "noPic": 1,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "MINE / NOT MINE"
+ },
+ "85": {
+  "hosts": [
+   {
+    "cls": "uniqWord.controlThoughtToken.hasDirectThoughtImage",
+    "w": 112,
+    "h": 112,
+    "problems": [
+     "notCircle",
+     "textOverPic"
+    ],
+    "src": "le-expressions/drop_E80.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 1,
+   "cropped": 0,
+   "textOverPic": 1,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "CONTROL PANEL"
+ },
+ "86": {
+  "hosts": [
+   {
+    "cls": "uniqWord.stamped.hasDirectThoughtImage",
+    "w": 162,
+    "h": 162,
+    "problems": [
+     "textOverPic"
+    ],
+    "src": "le-expressions/rush_E63.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 1,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "FACT / STORY"
+ },
+ "87": {
+  "hosts": [
+   {
+    "cls": "keepDropCard.keepDropCenterBubble",
+    "w": 126,
+    "h": 126,
+    "problems": [
+     "textOverPic",
+     "textOutside"
+    ],
+    "src": "le-expressions/sync_E48.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 1,
+   "textOutside": 1,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "KEEP / DROP"
+ },
+ "88": {
+  "hosts": [
+   {
+    "cls": "uniqWord.tradeToken.hasDirectThoughtImage",
+    "w": 113,
+    "h": 113,
+    "problems": [
+     "textOverPic"
+    ],
+    "src": "e-expressions/still_E41.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 1,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "TRADE MACHINE"
+ },
+ "89": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "DOOR A / B"
+ },
+ "90": {
+  "hosts": [
+   {
+    "cls": "coinReleaseBubble.",
+    "w": 128,
+    "h": 128,
+    "problems": [
+     "darkMask"
+    ],
+    "src": "xpressions/glitch_E11.webp\")",
+    "phase": "none",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 1,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "COIN FLIP REACTION"
+ },
+ "91": {
+  "hosts": [
+   {
+    "cls": "",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "",
+    "w": 72,
+    "h": 72,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "noPic"
+    ]
+   }
+  ],
+  "violations": {
+   "noPic": 6,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 6,
+  "name": "PRIORITY BLOCKS"
+ },
+ "92": {
+  "hosts": [
+   {
+    "cls": "uniqWord.scaleDownThought.hasDirectThoughtImage",
+    "w": 154,
+    "h": 154,
+    "problems": [],
+    "src": "-expressions/loopie_E54.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "SCALE DOWN"
+ },
+ "93": {
+  "hosts": [
+   {
+    "cls": "spaceTile.t1.hasSpaceImage",
+    "w": 108,
+    "h": 92,
+    "problems": [
+     "notCircle",
+     "darkMask"
+    ],
+    "src": "-expressions/glitch_E15.webp",
+    "phase": "neg",
+    "text": "angry"
+   },
+   {
+    "cls": "spaceTile.t2.hasSpaceImage",
+    "w": 108,
+    "h": 92,
+    "problems": [
+     "notCircle",
+     "darkMask"
+    ],
+    "src": "le-expressions/sync_E48.webp",
+    "phase": "neg",
+    "text": "at"
+   },
+   {
+    "cls": "spaceTile.t3.hasSpaceImage",
+    "w": 107,
+    "h": 91,
+    "problems": [
+     "notCircle",
+     "darkMask"
+    ],
+    "src": "e-expressions/patch_E73.webp",
+    "phase": "neg",
+    "text": "boss"
+   },
+   {
+    "cls": "spaceTile.t4.hasSpaceImage",
+    "w": 107,
+    "h": 91,
+    "problems": [
+     "notCircle",
+     "darkMask"
+    ],
+    "src": "le-expressions/drop_E80.webp",
+    "phase": "neg",
+    "text": "cannot"
+   },
+   {
+    "cls": "spaceTile.t5.hasSpaceImage",
+    "w": 107,
+    "h": 91,
+    "problems": [
+     "notCircle",
+     "darkMask"
+    ],
+    "src": "le-expressions/rush_E80.webp",
+    "phase": "neg",
+    "text": "sleep"
+   },
+   {
+    "cls": "spaceTile.t0.hasSpaceImage",
+    "w": 108,
+    "h": 92,
+    "problems": [
+     "notCircle"
+    ],
+    "src": "-expressions/loopie_E58.webp",
+    "phase": "neg"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 6,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 5,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 6,
+  "name": "SPACE MAKER"
+ },
+ "94": {
+  "hosts": [
+   {
+    "cls": "juggleBall.",
+    "w": 54,
+    "h": 56,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "juggleBall.",
+    "w": 54,
+    "h": 56,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "juggleBall.",
+    "w": 54,
+    "h": 56,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "juggleBall.",
+    "w": 54,
+    "h": 56,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "juggleBall.",
+    "w": 54,
+    "h": 56,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "juggleBall.",
+    "w": 54,
+    "h": 56,
+    "problems": [
+     "noPic"
+    ]
+   }
+  ],
+  "violations": {
+   "noPic": 6,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 6,
+  "name": "JUGGLE"
+ },
+ "95": {
+  "hosts": [
+   {
+    "cls": "shelfThoughtBubble.",
+    "w": 98,
+    "h": 118,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "shelfThoughtBubble.",
+    "w": 98,
+    "h": 101,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "shelfThoughtBubble.",
+    "w": 98,
+    "h": 101,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "shelfThoughtBubble.",
+    "w": 98,
+    "h": 101,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "shelfThoughtBubble.",
+    "w": 98,
+    "h": 101,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "shelfThoughtBubble.",
+    "w": 98,
+    "h": 101,
+    "problems": [
+     "noPic"
+    ]
+   }
+  ],
+  "violations": {
+   "noPic": 6,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 6,
+  "name": "SHELF IT"
+ },
+ "96": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "SCRATCH REVEAL"
+ },
+ "97": {
+  "hosts": [
+   {
+    "cls": "xrayThoughtBubble",
+    "w": 90,
+    "h": 93,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "xrayThoughtBubble",
+    "w": 90,
+    "h": 93,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "xrayThoughtBubble",
+    "w": 90,
+    "h": 93,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "xrayThoughtBubble",
+    "w": 90,
+    "h": 93,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "xrayThoughtBubble",
+    "w": 90,
+    "h": 93,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "xrayThoughtBubble",
+    "w": 90,
+    "h": 93,
+    "problems": [
+     "noPic"
+    ]
+   }
+  ],
+  "violations": {
+   "noPic": 6,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 6,
+  "name": "X-RAY"
+ },
+ "98": {
+  "hosts": [
+   {
+    "cls": "magicTrapBubble.allCircularBubble.hasTrapImage",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "magicTrapBubble.allCircularBubble.hasTrapImage",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "magicTrapBubble.allCircularBubble.hasTrapImage",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "magicTrapBubble.allCircularBubble.hasTrapImage",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "magicTrapBubble.allCircularBubble.hasTrapImage",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "magicTrapBubble.allCircularBubble.hasTrapImage",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "noPic"
+    ]
+   }
+  ],
+  "violations": {
+   "noPic": 6,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 6,
+  "name": "MAGIC TRAPDOOR"
+ },
+ "99": {
+  "hosts": [
+   {
+    "cls": "echoHoldBubble.allCircularBubble.",
+    "w": 95,
+    "h": 95,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "echoHoldBubble.allCircularBubble.",
+    "w": 95,
+    "h": 95,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "echoHoldBubble.allCircularBubble.",
+    "w": 95,
+    "h": 95,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "echoHoldBubble.allCircularBubble.",
+    "w": 94,
+    "h": 94,
+    "problems": [
+     "noPic"
+    ]
+   },
+   {
+    "cls": "echoHoldBubble.allCircularBubble.",
+    "w": 94,
+    "h": 94,
+    "problems": [
+     "noPic"
+    ]
+   }
+  ],
+  "violations": {
+   "noPic": 5,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 5,
+  "name": "THE ECHO CHAMBER"
+ },
+ "100": {
+  "hosts": [
+   {
+    "cls": "thoughtPotato.potato0.hot",
+    "w": 98,
+    "h": 88,
+    "problems": [
+     "notCircle",
+     "textOverPic",
+     "darkMask"
+    ],
+    "src": "le-expressions/drop_E58.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   },
+   {
+    "cls": "thoughtPotato.potato1.hot",
+    "w": 98,
+    "h": 88,
+    "problems": [
+     "notCircle",
+     "textOverPic",
+     "darkMask"
+    ],
+    "src": "e-expressions/patch_E80.webp",
+    "phase": "neg",
+    "text": "angry"
+   },
+   {
+    "cls": "thoughtPotato.potato2.hot",
+    "w": 98,
+    "h": 88,
+    "problems": [
+     "notCircle",
+     "textOverPic",
+     "darkMask"
+    ],
+    "src": "le-expressions/sync_E44.webp",
+    "phase": "neg",
+    "text": "at"
+   },
+   {
+    "cls": "thoughtPotato.potato3.hot",
+    "w": 98,
+    "h": 88,
+    "problems": [
+     "notCircle",
+     "textOverPic",
+     "darkMask"
+    ],
+    "src": "-expressions/glitch_E70.webp",
+    "phase": "neg",
+    "text": "boss"
+   },
+   {
+    "cls": "thoughtPotato.potato4.hot",
+    "w": 97,
+    "h": 87,
+    "problems": [
+     "notCircle",
+     "textOverPic",
+     "darkMask"
+    ],
+    "src": "le-expressions/rush_E52.webp",
+    "phase": "neg",
+    "text": "cannot"
+   },
+   {
+    "cls": "thoughtPotato.potato5.hot",
+    "w": 97,
+    "h": 87,
+    "problems": [
+     "notCircle",
+     "textOverPic",
+     "darkMask"
+    ],
+    "src": "e-expressions/still_E41.webp",
+    "phase": "neg",
+    "text": "sleep"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 6,
+   "cropped": 0,
+   "textOverPic": 6,
+   "textOutside": 0,
+   "darkMask": 6,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 6,
+  "name": "HOT POTATO"
+ },
+ "101": {
+  "hosts": [
+   {
+    "cls": "tugThoughtBubble.activePart.tugRopeThoughtBubble",
+    "w": 58,
+    "h": 58,
+    "problems": [
+     "textOutside"
+    ],
+    "src": "-expressions/loopie_E29.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 1,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 1,
+  "name": "TUG OF WAR"
+ },
+ "102": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "FINGER TRAP"
+ },
+ "103": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "SINKING PLATFORM"
+ },
+ "104": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "VOLUME KNOB"
+ },
+ "105": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "DRAMA MACHINE"
+ },
+ "106": {
+  "hosts": [
+   {
+    "cls": "tinySoundBubble.allCircularBubble.tsndAvatar",
+    "w": 26,
+    "h": 26,
+    "problems": [
+     "textOutside"
+    ],
+    "src": "e-expressions/patch_E73.webp",
+    "phase": "neg",
+    "text": "tap to pause"
+   },
+   {
+    "cls": "tinySoundBubble.allCircularBubble.tsndAvatar",
+    "w": 26,
+    "h": 26,
+    "problems": [
+     "textOutside"
+    ],
+    "src": "le-expressions/sync_E44.webp",
+    "phase": "neg",
+    "text": "tap to breathe"
+   },
+   {
+    "cls": "tinySoundBubble.allCircularBubble.tsndAvatar",
+    "w": 26,
+    "h": 26,
+    "problems": [
+     "textOutside"
+    ],
+    "src": "le-expressions/rush_E29.webp",
+    "phase": "neg",
+    "text": "tap to steady"
+   },
+   {
+    "cls": "tinySoundBubble.allCircularBubble.tsndAvatar",
+    "w": 26,
+    "h": 26,
+    "problems": [
+     "textOutside"
+    ],
+    "src": "e-expressions/still_E41.webp",
+    "phase": "neg",
+    "text": "tap to soften"
+   },
+   {
+    "cls": "tinySoundBubble.allCircularBubble.tsndAvatar",
+    "w": 26,
+    "h": 26,
+    "problems": [
+     "textOutside"
+    ],
+    "src": "le-expressions/drop_E70.webp",
+    "phase": "neg",
+    "text": "tap to calm"
+   },
+   {
+    "cls": "tinySoundBubble.allCircularBubble.tsndAvatar",
+    "w": 26,
+    "h": 26,
+    "problems": [
+     "textOutside"
+    ],
+    "src": "-expressions/loopie_E34.webp",
+    "phase": "neg",
+    "text": "tap to slow"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 6,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 6,
+  "name": "TINY SOUNDTRACK"
+ },
+ "107": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "GO WEIRD"
+ },
+ "108": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "WORD SALAD"
+ },
+ "109": {
+  "hosts": [
+   {
+    "cls": "cleanseStone.allCircularBubble.tsStandardBubble",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "textOutside"
+    ],
+    "src": "le-expressions/drop_E58.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   },
+   {
+    "cls": "cleanseStone.allCircularBubble.tsStandardBubble",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "textOutside"
+    ],
+    "src": "e-expressions/still_E41.webp",
+    "phase": "neg",
+    "text": "angry"
+   },
+   {
+    "cls": "cleanseStone.allCircularBubble.tsStandardBubble",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "textOutside"
+    ],
+    "src": "le-expressions/rush_E52.webp",
+    "phase": "neg",
+    "text": "at"
+   },
+   {
+    "cls": "cleanseStone.allCircularBubble.tsStandardBubble",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "textOutside"
+    ],
+    "src": "e-expressions/patch_E80.webp",
+    "phase": "neg",
+    "text": "boss"
+   },
+   {
+    "cls": "cleanseStone.allCircularBubble.tsStandardBubble",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "textOutside"
+    ],
+    "src": "-expressions/glitch_E11.webp",
+    "phase": "neg",
+    "text": "cannot"
+   },
+   {
+    "cls": "cleanseStone.allCircularBubble.tsStandardBubble",
+    "w": 70,
+    "h": 70,
+    "problems": [
+     "textOutside"
+    ],
+    "src": "-expressions/loopie_E34.webp",
+    "phase": "neg",
+    "text": "sleep"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 6,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 6,
+  "name": "CLEANSE"
+ },
+ "110": {
+  "hosts": [
+   {
+    "cls": "rainCloudUnit.withImage.tsEmotionNegative",
+    "w": 172,
+    "h": 184,
+    "problems": [],
+    "src": "-expressions/loopie_E58.webp",
+    "phase": "neg",
+    "text": "deadline panic"
+   },
+   {
+    "cls": "rainCloudUnit.withImage.tsEmotionNegative",
+    "w": 172,
+    "h": 184,
+    "problems": [],
+    "src": "le-expressions/drop_E70.webp",
+    "phase": "neg",
+    "text": "angry"
+   },
+   {
+    "cls": "rainCloudUnit.withImage.tsEmotionNegative",
+    "w": 172,
+    "h": 184,
+    "problems": [],
+    "src": "le-expressions/sync_E48.webp",
+    "phase": "neg",
+    "text": "at"
+   },
+   {
+    "cls": "rainCloudUnit.withImage.tsEmotionNegative",
+    "w": 172,
+    "h": 184,
+    "problems": [],
+    "src": "le-expressions/rush_E52.webp",
+    "phase": "neg",
+    "text": "boss"
+   },
+   {
+    "cls": "rainCloudUnit.withImage.tsEmotionNegative",
+    "w": 172,
+    "h": 184,
+    "problems": [],
+    "src": "-expressions/glitch_E63.webp",
+    "phase": "neg",
+    "text": "cannot"
+   },
+   {
+    "cls": "rainCloudUnit.withImage.tsEmotionNegative",
+    "w": 172,
+    "h": 184,
+    "problems": [],
+    "src": "e-expressions/still_E41.webp",
+    "phase": "neg",
+    "text": "sleep"
+   }
+  ],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 6,
+  "name": "RAIN OUT"
+ },
+ "111": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 5
+  },
+  "orphanText": 5,
+  "orphans": [
+   "eosWord eosSighWord tsExactUserText:cannot",
+   "eosWord eosSighWord tsExactUserText:angry",
+   "eosWord eosSighWord tsExactUserText:sleep",
+   "eosWord eosSighWord tsExactUserText:boss"
+  ],
+  "count": 0,
+  "name": "BIG SIGH"
+ },
+ "112": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "COOL THE VOLCANO"
+ },
+ "113": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "GROUND CONTROL"
+ },
+ "114": {
+  "hosts": [],
+  "violations": {
+   "noPic": 0,
+   "notCircle": 0,
+   "cropped": 0,
+   "textOverPic": 0,
+   "textOutside": 0,
+   "darkMask": 0,
+   "phasePositiveAtStart": 0,
+   "emptyObject": 0
+  },
+  "orphanText": 0,
+  "orphans": [],
+  "count": 0,
+  "name": "SKY LANTERNS"
+ },
+ "__errors": []
+}
