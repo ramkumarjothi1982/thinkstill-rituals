@@ -1,4 +1,4 @@
-# readability — FINISHED, fix rounds 1 and 2 applied (task `readability`, docs/EOS_SPEC.md §4, §0.4 tokens, §12.1)
+# readability — FINISHED, fix rounds 1, 2 and 3 applied (task `readability`, docs/EOS_SPEC.md §4, §0.4 tokens, §12.1)
 
 ## What I built
 `src/eos/10_eos_readability.jsx` (one file, no imports/exports, every top-level name `EOS_READ_*` / `eosRead*`, the public names excepted). It has three layers, and none of them ever shrinks text:
@@ -20,12 +20,54 @@
    - A time-boxed sweep runs every 900 ms, 250 ms after a pointerup, after a resize and on a stage change.
    - It re-checks elements it raised and removes its inline size once the game's own size is larger.
    - Held scales (round 2 rules): boxes born scaled or inside a static container (`.ftTrap`) are compensated to their full target; a box the game shrank itself (a parked / shelved card) only up to the plain 12.5 px floor; the shrink mechanics (`.u26 .u29 .u30 .u53 .u58 .u104`) and HUD chrome never. While the game shrinks a box the floor has sized, its size never rises.
-   - It fits a word to its box (≥ 14 px, rendered only where the floor compensates the scale) so it never breaks mid-word; a box that hugs its text is not treated as a constraint.
+   - It fits a word to its box (≥ 14 px, rendered only where the floor compensates the scale) so it never breaks mid-word. It climbs past a parent only when that parent is sized by its content (round 3). A word it stepped down keeps that size while it exactly fills its box (hysteresis).
    - It skips the listed EOS overlay roots (or `[data-eos-overlay]`), `.tsRewardSurge`, `svg` and aria-hidden decoration. Exception: aria-hidden copies of the user's words (`.tsBubbleTextContainer` name tags) are floored.
    - It never writes inside a scaled SVG viewBox; those cases are reported by `scan()`.
    - Test hook: `eosApi("readability")` / `window.__eos.readability` = `{scan, targets, pass, stats, reset, log, settle, targetOf, targetsOf}`.
 
 **Exports:** `EOS_READ_CSS`, `EOS_READ_TARGETS`, `EosTextFloor`.
+
+## Fix round 3 (docs/eos_status/readability.review_r3.json) — what changed
+I changed only `src/eos/10_eos_readability.jsx`. Verified in the isolated integrated build `/tmp/v2_readability` (all `src/eos` modules, 0 stubs). Scripts are in `/tmp/v2_readability_t`.
+
+1. **The user's words flipped between two sizes on every pass (major).** Cause: the round-2 "hug" climb also climbed past boxes that really constrain the word (a block that fills its parent, a box with a set width).
+   - New `eosReadSizedByContent(box)`. The fit climbs past a parent only when that parent is sized by its content:
+     - width `auto` (Typed OM; an inline width when Typed OM is missing) or `fit-content` / `max-content`
+     - or `inline-*` / `table` display, a float, an absolute / fixed box that is not stretched, a flex row item that does not grow, or a flex column / grid item that is not stretched
+     - A block that fills its parent, or any box with a set width, is the constraint.
+   - Hysteresis: the pass passes in `rec.px`. A word the fit stepped down that now exactly fills its box keeps that size. No pass re-fits it against a farther box.
+   - The fit cache also checks the width of the box the answer was measured against.
+   - Unit test (`unit.mjs`, the reviewer's 115 px 'overwhelmingly' case): block, flex item, inline-block and grid cell all hold 15.08 on all 8 passes, with or without hysteresis. Words that hug their text inside a wide inline-block, absolute or flex-column parent still get the full 16.25.
+   - Floor-reversal sweep (`osc.mjs`, ids 1-110, 'my boss yelled at me in the meeting today'):
+     - 390: 0 elements with ≥ 2 reversals, 0 page errors
+     - 1280: 0 elements, 549 floored elements tracked, 0 page errors
+   - MICROSCOPE 58 (`micro.mjs`, focus knob every 1.5 / 1.8 s):
+     - upsScaled 0, fsUpScaled 0
+     - one font size per word at full scale (15.25 at 390, 16.25 at 1280), so the birth creep stays gone
+   - Full plays (`fin2.mjs`): VACUUM 23, RED LIGHT 64 and TINY SOUNDTRACK 106 finish at 390 and at 1280, with 0 errors.
+2. **TINY SOUNDTRACK 106 at 390: "meetin|g" broke in a 53 px column.** I found this while verifying. At the 14 px fit minimum the word did not fit.
+   - The phone guard lets `.tsndText` also use the 26 px badge's column (`margin:2px 0 0 -31px; width:calc(100% + 31px)`). The word starts below the badge.
+   - The word fit now counts a negative margin as extra line width.
+   - `t106.mjs` at 390: every word holds 16.25 px in an 84 px line, with no font-size change in the 8 s after the first sample. "my boss", "yelled at" and "meeting" each read on one line. 1280 is unchanged.
+3. **The narrowed-meter pop was dead CSS (minor).** The `(max-width:560px) and (prefers-reduced-motion:no-preference)` rules now use `.tsShiftRewardHud.tsShiftRewardHud`, so they win over the plain 560 rules further down.
+   - `hud.mjs` at 390: on DRAMA 105 and RAIN OUT 110, spark, token and chain run `eosReadTick, tsRewardPillHit`.
+   - With reduced motion they run `eosReadTick` only.
+4. **The band faded out before the TOKENS / CHAIN pills (minor).** The band has its own keyframes. It fades in first, holds until the pills are gone, then fades out:
+   - `eosReadBand`, 1.75 s, full-width meter (holds to 1.60 s)
+   - `eosReadBand2`, 2.75 s, narrowed meter (holds to 2.60 s)
+   - `hud.mjs` (np and rm): every sample where a pill is visible (opacity .42-1) has the band at opacity 1. The band reaches 0 only after the pills.
+5. **TOKENS and CHAIN overlapped during the pop (minor).** `transform-origin` is now right centre on `.token` and left centre on `.chain`, so each pill grows away from the 4 px gap.
+   - FINGER TRAP 102 during the pop: token 132-210 and chain 214-275.
+   - DRAMA 105 mid-pop: token 166-276 and chain 280-365. The gap stays 4 px.
+6. **The feedback headline read 7.7-8.9 px (minor): no change, confirmed to be a frame-starvation artifact.**
+   - The headline runs the arcade's `tsCursorWordPunch`: 780 ms, scale .48 → 1.18 in the first 11 % (86 ms), with blur(3px) and brightness 2.4.
+   - It is under 12 px only for about 20-30 ms (1-2 frames at 60 fps), as a blurred flash.
+   - The rAF trace (`card_raf.mjs`, 102 at 1280) got only 29 frames in about 35 s on this loaded machine. Each "episode" is the same 2 sampled frames, so headless runs see the flash as held.
+   - The arcade's entrance animation stays as it is (owner policy: never remove or alter animations).
+7. **Progressive flooring at play start under load (optional minor): not changed.**
+   - It was not reproduced on phone, and the reviewer ties it to machine load.
+   - Re-ordering the sweep would change the core pass loop for an effect that only shows in a starved headless run.
+   - The per-pass time box stays within the perf budget.
 
 ## Fix round 2 (docs/eos_status/readability.review_r2.json) — what changed
 I applied all 6 findings (1 major, 5 minors) and changed only `src/eos/10_eos_readability.jsx`.

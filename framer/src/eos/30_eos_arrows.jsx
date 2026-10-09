@@ -326,6 +326,70 @@ function eosArrowsUnit(dir, from, centre) {
     }
     return EOS_ARROWS_DIRV[dir] || EOS_ARROWS_DIRV.r
 }
+// summed intersection area of box b with every rect in list (pad widens the list rects)
+function eosArrowsArea(list, b, pad = 0) {
+    let sum = 0
+    if (!b || !list) return 0
+    for (const a of list) {
+        const ix = Math.min(b.x + b.w, a.x + a.w + pad) - Math.max(b.x, a.x - pad)
+        const iy = Math.min(b.y + b.h, a.y + a.h + pad) - Math.max(b.y, a.y - pad)
+        if (ix > 0 && iy > 0) sum += ix * iy
+    }
+    return sum
+}
+// ---------------------------------------------------------------- glove poses (the glove never sits on the copy)
+// The fingertip is the hotspot. "d" = the body hangs below-right (the drawn pose), "dl" below-left (mirrored),
+// "u" above (pointing down), "l" body on the left (pointing right), "r" body on the right (pointing left).
+// The pose wraps the svg only, so the tap press / drag travel animations keep their layer-space direction.
+const EOS_ARROWS_POSES = ["d", "dl", "u", "l", "r"]
+function eosArrowsHandBoxes(tx, ty, pose, s) {
+    const base = [
+        [-0.12 * s, -0.04 * s, 0.22 * s, 0.42 * s], // index finger
+        [-0.12 * s, 0.28 * s, 0.78 * s, 0.98 * s], // palm, thumb, cuff
+    ]
+    const map = (x, y) => (pose === "dl" ? [-x, y] : pose === "u" ? [-x, -y] : pose === "l" ? [-y, x] : pose === "r" ? [y, -x] : [x, y])
+    const lift = (14 * s) / 64 // the tap press lifts the whole glove this far (layer space)
+    return base.map(([x0, y0, x1, y1]) => {
+        const a = map(x0, y0)
+        const b = map(x1, y1)
+        const y = ty + Math.min(a[1], b[1]) - lift
+        return { x: tx + Math.min(a[0], b[0]), y, w: Math.abs(b[0] - a[0]), h: Math.abs(b[1] - a[1]) + lift }
+    })
+}
+// Rank (hotspot, pose) pairs: covered copy (soft) + covered HUD / guide (hard ×4) + off-layer + small preferences.
+// cands: [{x, y, pref, bad}] (layer px); returns [{c, pose, sc}] sorted best first (sc ≥ 1e9 = unusable).
+function eosArrowsRankSpots(cands, s, W, H, soft, hard, moving) {
+    const pp = moving ? { d: 0, dl: 0.3, u: 0.5, l: 0.5, r: 0.5 } : { d: 0, dl: 0.03, u: 0.06, l: 0.08, r: 0.08 }
+    const A0 = s * s
+    const out = []
+    for (const c of cands) {
+        for (const pose of EOS_ARROWS_POSES) {
+            let sc = c.bad ? 1e9 : ((c.pref || 0) + pp[pose]) * A0
+            for (const b of eosArrowsHandBoxes(c.x, c.y, pose, s)) {
+                sc += eosArrowsArea(soft, b) + eosArrowsArea(hard, b) * 4
+                const ox = Math.max(0, 4 - b.x) + Math.max(0, b.x + b.w - (W - 4))
+                const oy = Math.max(0, 4 - b.y) + Math.max(0, b.y + b.h - (H - 4))
+                sc += (Math.min(ox, b.w) * b.h + Math.min(oy, b.h) * b.w) * 3
+            }
+            out.push({ c, pose, sc })
+        }
+    }
+    out.sort((a, b) => a.sc - b.sc)
+    return out
+}
+// Images / characters (CREATIVE_STANDARDS #1/#4): the label and chevron steer around them like copy, weighted ×2.
+const EOS_ARROWS_MEDIA = 'img, canvas, svg[role="img"], [class*="Orb"], [class*="haracter"], .eosCharacterOrb, [data-eos-char]'
+// SVG ids must be unique per instance (url(#id) resolves to the first match in the document).
+let EOS_ARROWS_UID = 0
+function eosArrowsUseRefUid() {
+    const r = React.useRef(null)
+    if (r.current == null) {
+        EOS_ARROWS_UID += 1
+        r.current = `eosA${EOS_ARROWS_UID}`
+    }
+    return r.current
+}
+const eosArrowsUseUid = typeof React.useId === "function" ? () => `eosA${String(React.useId()).replace(/[^A-Za-z0-9_-]/g, "")}` : eosArrowsUseRefUid
 
 // ---------------------------------------------------------------- geometry model (shared by overlay, cue, hint)
 // o: {g, label, L2, n, count, dir, d, ms, bpm, win, maxSpeed, tx, ty, rect, halos, to, alt, W, H, phone, narrow,
@@ -342,7 +406,9 @@ function eosArrowsModel(o) {
     const tx = Number(o.tx) || 0
     const ty = Number(o.ty) || 0
     const rect = o.rect || { x: tx - 22, y: ty - 22, w: 44, h: 44 }
-    const v = { g, W, H, phone, narrow, tx, ty, rect, label: o.label || "", L2: o.L2 || null, holdMs: 0, win: null, path: null, chev: null, chev2: null, halos: null, zone: null, caret: null, sling: null }
+    const pose = EOS_ARROWS_POSES.includes(o.pose) ? o.pose : "d"
+    const hideHand = !!o.hideHand
+    const v = { g, W, H, phone, narrow, tx, ty, rect, pose, hideHand, label: o.label || "", L2: o.L2 || null, holdMs: 0, win: null, path: null, chev: null, chev2: null, halos: null, zone: null, caret: null, sling: null }
     // the part of the target around the aim point (big surfaces: point at the finger, not the far edge)
     const ab = { x: Math.max(rect.x, tx - 70), y: Math.max(rect.y, ty - 60) }
     ab.w = Math.max(8, Math.min(rect.x + rect.w, tx + 70) - ab.x)
@@ -354,14 +420,30 @@ function eosArrowsModel(o) {
     let mdx = 0
     let mdy = 0
     let U = { ...ab }
-    U = eosArrowsUnion(U, { x: tx - handS * 0.32, y: ty - 6, w: handS * 1.05, h: handS + 6 }) // the glove hangs below-right
+    const handBx = hideHand ? [] : eosArrowsHandBoxes(tx, ty, pose, handS)
+    for (const b of handBx) U = eosArrowsUnion(U, b) // the glove, in its pose
     const chevAt = (cx, cy, rot) => ({ x: cx, y: cy, rot })
-    const chevBox = (c) => (c ? { x: c.x - chevS / 2 - 4, y: c.y - chevS / 2 - 8, w: chevS + 8, h: chevS + 16 } : null)
-    const pointAtBox = (box) => {
-        // above (pointing down) → left (pointing right) → right (pointing left)
-        if (box.y - 6 - chevS >= 6) return chevAt(tx, box.y - 6 - chevS / 2, 0)
-        if (box.x - 6 - chevS >= 6) return chevAt(box.x - 6 - chevS / 2, ty, -90)
-        return chevAt(Math.min(W - chevS / 2 - 4, box.x + box.w + 6 + chevS / 2), ty, 90)
+    const chevBox = (c) => (c ? { x: c.x - chevS / 2 - 8, y: c.y - chevS / 2 - 8, w: chevS + 16, h: chevS + 16 } : null)
+    const soft = o.soft || []
+    const media = o.media || []
+    const hard = o.avoid || []
+    const pointAtBox = (box, cx = tx, cy = ty) => {
+        // above (pointing down) is preferred; below / left / right (pointing at the box) when that spot would cover
+        // the game's copy, the user's words, a character, the HUD / guide or the glove itself
+        const cs = [
+            [chevAt(cx, box.y - 6 - chevS / 2, 0), 0],
+            [chevAt(box.x - 6 - chevS / 2, cy, -90), 0.05],
+            [chevAt(box.x + box.w + 6 + chevS / 2, cy, 90), 0.05],
+            [chevAt(cx, box.y + box.h + 6 + chevS / 2, 180), 0.08],
+        ]
+        let best = null
+        for (const [c, pref] of cs) {
+            const b = chevBox(c)
+            if (b.x + 8 < 2 || b.y + 4 < 2 || b.x + b.w - 8 > W - 2 || b.y + b.h - 4 > H - 2) continue
+            const sc = pref * chevS * chevS + eosArrowsArea(soft, b) + eosArrowsArea(media, b) * 2 + eosArrowsArea(hard, b) * 4 + eosArrowsArea(handBx, b) * 3
+            if (!best || sc < best.sc) best = { c, sc }
+        }
+        return best ? best.c : chevAt(Math.min(W - chevS / 2 - 4, box.x + box.w + 6 + chevS / 2), cy, 90)
     }
     if (EOS_ARROWS_DRAGS[g]) {
         const u = eosArrowsUnit(o.dir, { x: tx, y: ty }, o.arenaC)
@@ -426,8 +508,12 @@ function eosArrowsModel(o) {
         const L = Math.hypot(ux, uy) || 1
         ux /= L
         uy /= L
-        const back = Math.min(z.w, z.h) / 2 + chevS / 2 + 6
-        v.chev = chevAt(x1 - ux * back, y1 - uy * back, (Math.atan2(uy, ux) * 180) / Math.PI - 90)
+        let back = Math.min(z.w, z.h) / 2 + chevS / 2 + 6
+        // never on the DROP HERE tag (centred above the zone: top -14 px, ~26 px tall, ~118 px wide)
+        const tag = { x: x1 - 62, y: z.y - 6 - 14 - 28, w: 124, h: 28 }
+        const at = () => chevAt(x1 - ux * back, y1 - uy * back, (Math.atan2(uy, ux) * 180) / Math.PI - 90)
+        for (let i = 0; i < 12 && eosArrowsHit(chevBox(at()), tag, -6); i++) back += 8
+        v.chev = at()
         anim = "drag"
         period = 2200
         U = eosArrowsUnion(U, v.zone)
@@ -437,8 +523,7 @@ function eosArrowsModel(o) {
         let grp = null
         for (const h of v.halos) grp = eosArrowsUnion(grp, h)
         v.group = grp
-        v.chev = chevAt(grp.x + grp.w / 2, grp.y - 6 - chevS / 2, 0)
-        if (grp.y - 6 - chevS < 6) v.chev = chevAt(grp.x + grp.w / 2, grp.y + grp.h + 6 + chevS / 2, 180)
+        v.chev = hideHand ? null : pointAtBox(grp, grp.x + grp.w / 2, grp.y + grp.h / 2)
         anim = "rest"
         period = Math.max(760, v.halos.length * 380)
         U = eosArrowsUnion(U, grp)
@@ -473,8 +558,8 @@ function eosArrowsModel(o) {
         } else if (g === "type") {
             v.caret = { x: rect.x + Math.min(18, rect.w / 3), y: rect.y + rect.h / 2, h: Math.max(14, Math.min(26, rect.h - 10)) }
         }
-        v.chev = pointAtBox(ab)
-        U = eosArrowsUnion(U, chevBox(v.chev))
+        v.chev = hideHand ? null : pointAtBox(ab)
+        if (v.chev) U = eosArrowsUnion(U, chevBox(v.chev))
     }
     // count badge pinned to the target's top-right corner
     if (o.count) v.count = { ...o.count, x: eosClamp(rect.x + rect.w - 6, 16, W - 16), y: eosClamp(rect.y + 6, 16, H - 16) }
@@ -501,15 +586,10 @@ function eosArrowsModel(o) {
                   { x: cxl(ax), y: U.y - 22 - lh * 1.5 },
                   { x: cxl(ax), y: U.y + U.h + 22 + lh * 1.5 },
               ]
-    const avoid = (o.avoid || []).concat(g === "wait" ? [] : [rect])
-    const area = (list, b) =>
-        list.reduce((sum, a) => {
-            const ix = Math.min(b.x + b.w, a.x + a.w + 4) - Math.max(b.x, a.x - 4)
-            const iy = Math.min(b.y + b.h, a.y + a.h + 4) - Math.max(b.y, a.y - 4)
-            return sum + (ix > 0 && iy > 0 ? ix * iy : 0)
-        }, 0)
-    // HUD / guide / companion / target are hard; the game's own copy is soft (covered only when nothing is clean)
-    const overlap = (b) => area(avoid, b) * 4 + area(o.soft || [], b)
+    const avoid = hard.concat(g === "wait" ? [] : [rect])
+    // HUD / guide / companion / target are hard; the game's own copy is soft and characters / images count double
+    // (covered only when nothing is clean)
+    const overlap = (b) => eosArrowsArea(avoid, b, 4) * 4 + eosArrowsArea(soft, b, 4) + eosArrowsArea(media, b, 4) * 2
     let pick = null
     let least = null
     for (const c of cands) {
@@ -552,16 +632,17 @@ function EosArrowsHandSvg() {
     )
 }
 function EosArrowsChevronSvg() {
+    const gid = `${eosArrowsUseUid()}Gold`
     return (
         <svg className="eosChevron" viewBox="0 0 44 44" aria-hidden="true" focusable="false">
             <defs>
-                <linearGradient id="eosArrowsGold" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0" stopColor="#FFF4B8" />
                     <stop offset=".42" stopColor="#FFC94A" />
                     <stop offset="1" stopColor="#FF8A2E" />
                 </linearGradient>
             </defs>
-            <path d="M22 41.5 4.2 22.6H14V3.5h16v19.1h9.8Z" fill="url(#eosArrowsGold)" stroke="#fff" strokeWidth="3" strokeLinejoin="round" />
+            <path d="M22 41.5 4.2 22.6H14V3.5h16v19.1h9.8Z" fill={`url(#${gid})`} stroke="#fff" strokeWidth="3" strokeLinejoin="round" />
             <path d="M18 7.5v15.5" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" opacity=".65" />
         </svg>
     )
@@ -594,10 +675,10 @@ function EosArrowsTurtleSvg() {
         </svg>
     )
 }
-function EosArrowsStripes() {
+function EosArrowsStripes({ id }) {
     return (
     <defs>
-        <pattern id="eosArrowsStripes" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <pattern id={id} width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
             <rect width="3.5" height="7" fill="#2FD86F" />
             <rect x="3.5" width="3.5" height="7" fill="#C6FFD8" />
         </pattern>
@@ -610,7 +691,23 @@ function eosArrowsPx(n) {
     return `${Math.round((Number(n) || 0) * 10) / 10}px`
 }
 function EosArrowsCueView({ v }) {
+    const sid = `${eosArrowsUseUid()}Stripes`
     if (!v) return null
+    if (v.hideHand) {
+        // the target sits under the LIVE GUIDE / HUD (phone): no hand, chevron or halo on the reading panel —
+        // the label alone says what to do
+        const lv = v.level || 2
+        return (
+            <div key={`cue${v.token}`} className={`eosCue g-${v.g} isNoHand${v.shown ? " isOn" : ""}`} aria-hidden="true">
+                {lv >= 2 && v.label ? (
+                    <div className="eosLabel eosPop" style={{ left: v.lab.x, top: v.lab.y }} data-eos-arrows="label">
+                        <span className="eosLabelText">{v.text || v.label}</span>
+                        {v.L2 ? <small className="eosLabelL2">{v.L2}</small> : null}
+                    </div>
+                ) : null}
+            </div>
+        )
+    }
     const on = !!v.shown
     const lvl = v.level || 2
     const tapLike = v.anim === "tap" || v.anim === "taps" || v.anim === "rest"
@@ -664,9 +761,9 @@ function EosArrowsCueView({ v }) {
                 {v.holdMs && v.g !== "wait" ? (
                     <div className="eosHoldDemo" style={{ left: v.tx, top: v.ty }}>
                         <svg viewBox="0 0 100 100" aria-hidden="true">
-                            <EosArrowsStripes />
+                            <EosArrowsStripes id={sid} />
                             <circle className="hdTrack" cx="50" cy="50" r="40" pathLength="100" />
-                            {v.win ? <circle className="hdWin" cx="50" cy="50" r="40" pathLength="100" strokeDasharray={`${v.win[1] - v.win[0]} ${100 - (v.win[1] - v.win[0])}`} strokeDashoffset={-v.win[0]} /> : null}
+                            {v.win ? <circle className="hdWin" style={{ stroke: `url(#${sid})` }} cx="50" cy="50" r="40" pathLength="100" strokeDasharray={`${v.win[1] - v.win[0]} ${100 - (v.win[1] - v.win[0])}`} strokeDashoffset={-v.win[0]} /> : null}
                             <circle className="hdFill" cx="50" cy="50" r="40" pathLength="100" style={{ animationDuration: `${v.period}ms` }} />
                         </svg>
                     </div>
@@ -685,12 +782,16 @@ function EosArrowsCueView({ v }) {
                     <div className="eosHandPos eosPop" style={{ left: v.tx, top: v.ty }}>
                         {ghosts.map((k) => (
                             <div key={`g${k}`} className={`eosHandAnim a-${v.anim} isGhost`} style={{ ...handVars, animationDelay: `${-k * 45}ms`, opacity: 0.34 - k * 0.08 }}>
-                                <EosArrowsHandSvg />
+                                <div className={`eosHandO o-${v.pose || "d"}`}>
+                                    <EosArrowsHandSvg />
+                                </div>
                             </div>
                         ))}
                         <div className={`eosHandAnim a-${v.anim}`} style={handVars}>
                             <div key={`wg${v.wiggle || 0}`} className={`eosWig${v.wiggle ? " isWig" : ""}`}>
-                                <EosArrowsHandSvg />
+                                <div className={`eosHandO o-${v.pose || "d"}`}>
+                                    <EosArrowsHandSvg />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -732,13 +833,14 @@ function EosArrowsCueView({ v }) {
 
 // ---------------------------------------------------------------- live feedback while pressing
 function EosArrowsLiveHold({ live, refs }) {
+    const sid = `${eosArrowsUseUid()}Stripes`
     const w = live.win
     return (
         <div className={`eosHoldLive${live.release ? " isRelease" : ""}`} style={{ left: live.x, top: live.y }} aria-hidden="true">
             <svg viewBox="0 0 100 100" aria-hidden="true">
-                <EosArrowsStripes />
+                <EosArrowsStripes id={sid} />
                 <circle className="hlTrack" cx="50" cy="50" r="40" pathLength="100" />
-                {w ? <circle className="hlWin" cx="50" cy="50" r="40" pathLength="100" strokeDasharray={`${w[1] - w[0]} ${100 - (w[1] - w[0])}`} strokeDashoffset={-w[0]} /> : null}
+                {w ? <circle className="hlWin" style={{ stroke: `url(#${sid})` }} cx="50" cy="50" r="40" pathLength="100" strokeDasharray={`${w[1] - w[0]} ${100 - (w[1] - w[0])}`} strokeDashoffset={-w[0]} /> : null}
                 <circle ref={refs.fill} className="hlFill" cx="50" cy="50" r="40" pathLength="100" strokeDasharray="100 100" strokeDashoffset="100" />
             </svg>
             <b ref={refs.text} className="hlText">
@@ -1637,6 +1739,13 @@ ${EOS_ARROWS_R} .eosHandAnim.a-alt{animation-name:eosArrowsAlt}
 ${EOS_ARROWS_R} .eosHandAnim.isGhost{filter:saturate(0) brightness(1.6)}
 ${EOS_ARROWS_R} svg.eosHand{position:absolute;left:-20px;top:-3px;width:64px;height:64px;overflow:visible;transform:rotate(-15deg);transform-origin:20px 3px;filter:drop-shadow(0 7px 5px rgba(12,8,44,.5)) drop-shadow(0 0 10px rgba(255,255,255,.35))}
 ${EOS_ARROWS_R}.isNarrow svg.eosHand{left:-16.25px;top:-2.4px;width:52px;height:52px;transform-origin:16.25px 2.4px}
+${EOS_ARROWS_R} .eosHandO{position:absolute;left:0;top:0;width:0;height:0}
+${EOS_ARROWS_R} .eosHandO.o-dl{transform:scaleX(-1)}
+${EOS_ARROWS_R} .eosHandO.o-u{transform:rotate(180deg)}
+${EOS_ARROWS_R} .eosHandO.o-l{transform:rotate(90deg)}
+${EOS_ARROWS_R} .eosHandO.o-r{transform:rotate(-90deg)}
+${EOS_ARROWS_R}.eosHintLayer .eosHandPos,${EOS_ARROWS_R}.eosHintLayer .eosHalo,${EOS_ARROWS_R}.eosHintLayer .eosHaloBase{transition:left .1s linear,top .1s linear}
+${EOS_ARROWS_R}.eosHintLayer.isCalm .eosHandPos,${EOS_ARROWS_R}.eosHintLayer.isCalm .eosHalo,${EOS_ARROWS_R}.eosHintLayer.isCalm .eosHaloBase{transition:none}
 ${EOS_ARROWS_R} .eosWig.isWig{animation:eosArrowsWiggle .62s ease-in-out 1;transform-origin:0 0}
 ${EOS_ARROWS_R} .eosChevPos{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;transform:rotate(var(--rot,0deg))}
 ${EOS_ARROWS_R}.isPhone .eosChevPos{width:36px;height:36px;margin:-18px 0 0 -18px}
@@ -1667,7 +1776,7 @@ ${EOS_ARROWS_R} .eosCaret{position:absolute;width:3px;border-radius:2px;backgrou
 ${EOS_ARROWS_R} .eosHoldDemo{position:absolute;width:84px;height:84px;margin:-42px 0 0 -42px}
 ${EOS_ARROWS_R} .eosHoldDemo svg,${EOS_ARROWS_R} .eosHoldLive svg{width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
 ${EOS_ARROWS_R} .hdTrack,${EOS_ARROWS_R} .hlTrack{fill:none;stroke:rgba(16,14,48,.6);stroke-width:9}
-${EOS_ARROWS_R} .hdWin,${EOS_ARROWS_R} .hlWin{fill:none;stroke:url(#eosArrowsStripes);stroke-width:9}
+${EOS_ARROWS_R} .hdWin,${EOS_ARROWS_R} .hlWin{fill:none;stroke:#2FD86F;stroke-width:9}
 ${EOS_ARROWS_R} .hdFill{fill:none;stroke:#FFD36B;stroke-width:6;stroke-linecap:round;stroke-dasharray:100 100;stroke-dashoffset:100;animation:eosArrowsHoldFill 2s linear infinite;filter:drop-shadow(0 0 4px rgba(255,190,80,.9))}
 ${EOS_ARROWS_R} .eosHoldLive{position:absolute;width:104px;height:104px;margin:-52px 0 0 -52px;animation:eosArrowsPopIn .2s ease-out both}
 ${EOS_ARROWS_R} .hlFill{fill:none;stroke:#FFD36B;stroke-width:7;stroke-linecap:round;filter:drop-shadow(0 0 5px rgba(255,190,80,.95))}
