@@ -1,0 +1,15 @@
+# v2_unstick-b progress
+- started; games 45,48,51,71,77,103,37,63; harness = scratchpad/run.mjs (from unstick-a)
+- engine map: ids<100 -> UniqueReleaseEngineLegacy (cases ~15696+; 71 = DefuseLiteralEngine hero @9319); 103 -> UniqueReleaseEngine case 103 @12902
+- baseline (current build, lite, scratchpad/ub/run.mjs): PASS 45@390,45@1280, 77@390, 103@390 (fixes module CSS already covers 45/71/77/103 layout); others running
+- suspects: 45 .attentionOrb, 48 .stickerWord, 77 .brakeHandle not keyed per idx -> parked at constraint edge for later cards (47 pattern); human on phone cannot drag 160px past right edge
+- HUMAN probe (ub/human.mjs, pointer clamped to viewport): 45@390 STUCK 17% (orb parked x~320, needs +160 off-screen); 48@390 STUCK 17% (sticker parked at constraint corner); 77@390 human PASS
+- FIX1: key orb${idx} on .attentionOrb (45) + sticker${idx} on .stickerWord (48); rebuilt; human 390: 45 PASS, 48 PASS, 37 PASS (tap), 51 PASS (tap)
+- auto baseline: ALL 16 runs reached reveal on current build except 63@1280 pending (auto-player moves pointer off-screen, hid 45/48)
+- FIX2: key brake${idx} on .brakeHandle (77, parked brake below gate); 63 wrong portal no longer wipes the streak (setStep(0) removed, soft sfx kept). touch(CDP) 390: 45/48/77 PASS; human 1280: 45/48/77 PASS; human 390 tap: 37/51/63/71/103 PASS
+- next: 63 miss probe, full auto sweep 8x2 on fixed build, contact sheet, commit
+- 63 miss probe 390: misses keep hot portal, back=0, reveal. Final auto sweep running -> scratchpad/ub/f{1,2,3}.out
+- FIX3: regrip state in UniqueReleaseEngineLegacy; 45/48 short pull remounts piece at start (pre-fix: 45 one 140px pull at 390 = permanent stall). Killed sweep, rebuilt, re-sweeping
+- under-pull probes on fixed build 390: 45 & 48 short pull -> piece back at start, next pull scores, reach 100
+- card-2 screenshots 390 (ub/mid_sheet.png): orb/sticker/brake back at start, on screen. Waiting on final sweep (task bjmbqamfw)
+- FINAL sweep (fixed build, lite, scratchpad/ub/f*.out): all 16 runs reveal, back=0, errors=0. Reveal sheet ub/final_sheet.png. Committing.

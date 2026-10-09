@@ -14605,6 +14605,9 @@ function UniqueReleaseEngineLegacy({
     const timer = React.useRef(null)
     const busy = React.useRef(false)
     const dragStart = React.useRef({ x: 0, y: 0, t: 0 })
+    // bumped when a pull falls short: the piece remounts back at its start, so the
+    // next pull always has a full screen of room (a phone has no space past the edge)
+    const [regrip, setRegrip] = React.useState(0)
     const [selectedWeirdProp, setSelectedWeirdProp] = React.useState(null)
     const [weirdAssignments, setWeirdAssignments] = React.useState([
         -1, -1, -1, -1, -1,
@@ -15889,6 +15892,7 @@ function UniqueReleaseEngineLegacy({
                     <div className="magnetField">
                         <W className="magnetWord" />
                         <motion.div
+                            key={`orb${idx}-${regrip}`}
                             className="attentionOrb"
                             drag="x"
                             dragConstraints={{ left: 0, right: 220 }}
@@ -15897,7 +15901,11 @@ function UniqueReleaseEngineLegacy({
                             }
                             onDragEnd={(_, info) => {
                                 if (info.offset.x > 160) advance()
-                                else sfx("soft")
+                                else {
+                                    sfx("soft")
+                                    setMeter(0)
+                                    setRegrip((r) => r + 1)
+                                }
                             }}
                         />
                         <div
@@ -15951,6 +15959,7 @@ function UniqueReleaseEngineLegacy({
                 <>
                     <div className="glassPane">
                         <motion.div
+                            key={`sticker${idx}-${regrip}`}
                             className="stickerWord"
                             drag
                             dragConstraints={{
@@ -15962,6 +15971,7 @@ function UniqueReleaseEngineLegacy({
                             onDragEnd={(_, info) => {
                                 if (info.offset.x > 85 && info.offset.y < -45)
                                     advance()
+                                else setRegrip((r) => r + 1)
                             }}
                         >
                             <ExactWords text={current} max={24} min={8} />
@@ -16267,7 +16277,8 @@ function UniqueReleaseEngineLegacy({
                                         if (n === 5)
                                             setTimeout(() => advance(), 220)
                                     } else {
-                                        setStep(0)
+                                        // a miss keeps the reads already made (it used to wipe them
+                                        // silently, so the bar stalled while the player redid them)
                                         sfx("soft")
                                     }
                                 }}
@@ -16626,6 +16637,7 @@ function UniqueReleaseEngineLegacy({
                             <ExactWords text={current} max={22} min={8} />
                         </motion.div>
                         <motion.div
+                            key={`brake${idx}`}
                             className="brakeHandle"
                             drag="y"
                             dragConstraints={{ top: 0, bottom: 150 }}
