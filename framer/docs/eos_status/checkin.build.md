@@ -129,6 +129,14 @@ In `/home/user/thinkstill-rituals/framer/dev/shots/eos/` (`_m` = 390×844, `_d` 
 - `checkin_deeplink_{m,d}.png`
 - `checkin_companion_anger_{m,d}.png` (+ `_start`), `checkin_companion_numb_d.png` (+ `_start`)
 
+Round 1 screenshots and contact sheets are in `/tmp/ck_r1/`:
+- `sheet1.png` (step 1, step 2 and idle at both sizes)
+- `sheet2.png` (phone: cold, more, about, deep link, dial 10, menu, and the no-arrows fallback)
+- `sheet3.png` (desktop: step 1, step 2, idle, more, keyboard sad 10)
+- `sheet5.png` (cold-open head band)
+
+The dev/shots/eos files are untracked and were not part of the commit.
+
 ## Known limitations
 - The first-time SLIDE IT demo hand sweeps over the dial readout ("8 really loud") while it shows. That is the drag gesture itself, and it goes away on the first touch.
 - On desktop the idle hand's svg bounding box touches the CTA sub-line by about 40 px². That is the transparent corner of the 64 px hand box; the screenshot shows the sub-line fully readable.
