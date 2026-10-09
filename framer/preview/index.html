@@ -1,0 +1,105 @@
+<title>ThinkStill Release Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap">
+<style>
+  /* Layout: full-bleed console app; a one-time splash card states the build and its known issues, then hands the whole screen to the game. Single deliberate dark look (the arcade's own night-sky world). */
+  :root {
+    --night: #0b0f1e;
+    --panel: #141a33;
+    --ink: #eef1ff;
+    --muted: #a9b1d6;
+    --glow: #7fe3ff;
+    --warm: #ffc86b;
+    --line: rgba(127, 227, 255, 0.22);
+    --display: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+    --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--night); color: var(--ink); font-family: var(--body); overflow: hidden; }
+  #root { position: fixed; inset: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px) 0; }
+  #splash {
+    position: fixed; inset: 0; z-index: 10; display: grid; place-items: center;
+    padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(16px, env(safe-area-inset-bottom, 0px));
+    background: radial-gradient(120% 80% at 50% 0%, #1d2550 0%, var(--night) 60%);
+    overflow-y: auto;
+  }
+  .card {
+    width: 100%; max-width: 30rem; display: grid; gap: 1rem;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 1.25rem;
+    padding: 1.4rem 1.25rem; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  }
+  .eyebrow { font: 700 0.75rem/1 var(--body); letter-spacing: 0.14em; text-transform: uppercase; color: var(--glow); margin: 0; }
+  h1 { font: 800 2rem/1.05 var(--display); margin: 0; text-wrap: balance; }
+  p { margin: 0; color: var(--muted); line-height: 1.5; }
+  h2 { font: 700 1rem/1.2 var(--display); margin: 0; color: var(--warm); letter-spacing: 0.02em; }
+  ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.45rem; color: var(--muted); line-height: 1.45; font-size: 0.92rem; }
+  li strong { color: var(--ink); font-weight: 600; }
+  button {
+    font: 800 1.15rem/1 var(--display); color: #1a1030; background: linear-gradient(180deg, #ffe08f, var(--warm));
+    border: 0; border-radius: 999px; padding: 1rem 1.4rem; cursor: pointer; min-height: 52px;
+    box-shadow: 0 8px 24px rgba(255, 200, 107, 0.35);
+  }
+  button:disabled { opacity: 0.55; cursor: progress; }
+  button:focus-visible { outline: 3px solid var(--glow); outline-offset: 3px; }
+  .status { font-size: 0.85rem; color: var(--muted); text-align: center; min-height: 1.2em; font-variant-numeric: tabular-nums; }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div id="splash" role="dialog" aria-labelledby="pv-title">
+  <div class="card">
+    <p class="eyebrow">Preview build · 9 Oct 2026</p>
+    <h1 id="pv-title">ThinkStill Release Console</h1>
+    <p>The integrated Release with the new check-in, game matching, guide arrows, readable text, gathering dots, calm colour shift, shift meter, rewards, safety card and the four new hero games: BIG SIGH (panic), COOL THE VOLCANO (anger), GROUND CONTROL (anxiety) and SKY LANTERNS (sad / lonely). Best on your phone in portrait.</p>
+    <h2>Known issues in this preview</h2>
+    <ul>
+      <li><strong>Some original games still get stuck.</strong> UNFOLLOW stalls at about 17% on phone; the audit found up to 24 games that freeze or never show their ending. Fixing all of them is the next task.</li>
+      <li><strong>Final review fixes are still landing</strong> for the arrows, shift meter, rewards, safety card and existing-game fixes, so you may see overlaps or rough edges there.</li>
+      <li><strong>The original 110 games are not premium yet.</strong> Pilot A (POP, CLEANSE, CRUSH) is not in this preview; it comes for your approval separately.</li>
+      <li><strong>Character images are compressed</strong> for this hosted page (256 px instead of 512 px). In Framer they load at full size.</li>
+      <li><strong>Sound starts after your first tap.</strong> Use the speaker button in the app to toggle it.</li>
+    </ul>
+    <button id="start" type="button" disabled>Loading characters…</button>
+    <p class="status" id="status" aria-live="polite">Loading 0%</p>
+  </div>
+</div>
+<div id="root"></div>
+
+<script>
+(() => {
+  const btn = document.getElementById("start");
+  const status = document.getElementById("status");
+  window.__TS_IMG = {};
+  let loaded = 0, total = 1;
+  function b64ToBlobUrl(b64) {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return URL.createObjectURL(new Blob([bytes], { type: "image/webp" }));
+  }
+  async function loadImages() {
+    const idx = await (await fetch("img/index.json")).json();
+    total = idx.packs.length;
+    await Promise.all(idx.packs.map(async (p) => {
+      const pack = await (await fetch(p)).json();
+      for (const [name, b64] of Object.entries(pack)) window.__TS_IMG[name] = b64ToBlobUrl(b64);
+      loaded += 1;
+      status.textContent = `Loading ${Math.round((loaded / total) * 100)}%`;
+    }));
+  }
+  function startApp() {
+    btn.disabled = true;
+    btn.textContent = "Starting…";
+    const s = document.createElement("script");
+    s.src = "app.js";
+    s.onload = () => { document.getElementById("splash").remove(); };
+    s.onerror = () => { status.textContent = "The game bundle did not load. Reload the page to try again."; btn.disabled = false; btn.textContent = "Try again"; };
+    document.body.appendChild(s);
+  }
+  loadImages()
+    .then(() => { btn.disabled = false; btn.textContent = "Enter the Release Console"; status.textContent = `${Object.keys(window.__TS_IMG).length} character expressions ready`; })
+    .catch(() => { btn.disabled = false; btn.textContent = "Enter anyway"; status.textContent = "Characters could not load; the games still work."; });
+  btn.addEventListener("click", startApp);
+})();
+</script>
