@@ -767,8 +767,8 @@ function EosArrowsCueView({ v }) {
                 {v.halos
                     ? v.halos.map((h, i) => (
                           <React.Fragment key={`h${i}`}>
-                              <div className="eosHaloBase" style={{ left: h.x - 5, top: h.y - 5, width: h.w + 10, height: h.h + 10 }} />
-                              <div className="eosHalo" style={{ left: h.x - 7, top: h.y - 7, width: h.w + 14, height: h.h + 14, "--hp": `${v.period}ms`, "--hd": `${i * 380}ms` }} />
+                              <div className="eosHaloBase" style={{ left: h.x - Math.min(5, h.p || 7), top: h.y - Math.min(5, h.p || 7), width: h.w + 2 * Math.min(5, h.p || 7), height: h.h + 2 * Math.min(5, h.p || 7) }} />
+                              <div className="eosHalo" style={{ left: h.x - (h.p || 7), top: h.y - (h.p || 7), width: h.w + 2 * (h.p || 7), height: h.h + 2 * (h.p || 7), "--hp": `${v.period}ms`, "--hd": `${i * 380}ms` }} />
                           </React.Fragment>
                       ))
                     : null}
@@ -1046,7 +1046,12 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
                 S.tableEver = true
                 // seq: the next glowing target is a new key (its index among every match), so the stage-advance rule
                 // moves the hand on to it 350 ms after pointerup instead of waiting for the idle re-show
-                const kk = s.g === "choose" ? "*" : s.g === "seq" ? `q${Math.max(0, all.indexOf(chosen[0]))}` : ord
+                let kk = s.g === "choose" ? "*" : ord
+                if (s.g === "seq") {
+                    // (the seq selector often matches only the glowing tile, so its place on screen is part of the key)
+                    const rc = chosen[0].getBoundingClientRect()
+                    kk = `q${Math.max(0, all.indexOf(chosen[0]))}@${Math.round((rc.left + rc.width / 2) / 24)},${Math.round((rc.top + rc.height / 2) / 24)}`
+                }
                 return { kind: "stage", i, spec: s, g: s.g, els: chosen, stageKey: `s:${i}`, key: `s:${i}:${kk}`, ident: `${i}|${s.t}|${ord}`, label, sel: s.t }
             }
             // 3. fallback — only for ids without a table, or a table that never resolved for 2.5 s (stale selector)
@@ -1077,7 +1082,7 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             let hideHand = false
             const k = eosStageScale(L)
             const Rl = L.getBoundingClientRect()
-            if (now - S.avoidAt > 600) {
+            const refresh = () => {
                 S.avoidAt = now
                 const st = stageOf(L)
                 const rel = (sel, root) =>
@@ -1094,6 +1099,7 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
                     .filter((r) => r && r.w >= 16 && r.h >= 16 && r.w * r.h < W * H * 0.3)
                     .slice(0, 40)
             }
+            if (now - S.avoidAt > 600) refresh()
             const G = S.guide || []
             const inG = (x, y) => G.some((q) => x > q.x && x < q.x + q.w && y > q.y && y < q.y + q.h)
             if (g === "wait") {
@@ -1117,7 +1123,18 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
                 const restIdx = g === "choose" ? Math.floor((rects.length - 1) / 2) : 0
                 const el = els[restIdx]
                 rect = rects[restIdx]
-                if (g === "choose" && !hideHand) halos = rects
+                if (g === "choose" && !hideHand) {
+                    // a halo never reaches onto the guide panel: its padding shrinks to the gap (p, default 7)
+                    halos = rects.map((r) => {
+                        let p = 7
+                        for (const q of G) {
+                            const gx = Math.max(q.x - (r.x + r.w), r.x - (q.x + q.w))
+                            const gy = Math.max(q.y - (r.y + r.h), r.y - (q.y + q.h))
+                            if (gx < 8 && gy < 8) p = Math.min(p, Math.max(1, Math.max(gx, gy) - 1))
+                        }
+                        return p < 7 ? { ...r, p } : r
+                    })
+                }
                 // hotspot + glove pose: the glove body lands on empty space, never on the copy (instruction text,
                 // the options, the user's own words) and never on the guide panel. Re-scored every 600 ms (or on a
                 // new target / size); in between the hotspot rides along as a fraction of the target's rect.
@@ -1130,6 +1147,8 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
                     occluded = C.occ
                     hideHand = hideHand || C.hide
                 } else {
+                    // a new / resized target (popping in, growing): score against fresh copy rects
+                    if (now - S.avoidAt > 150) refresh()
                     const fixed = s.ox != null || s.oy != null
                     const moving = !!(EOS_ARROWS_DRAGS[g] || g === "dragTo" || g === "alt" || g === "scrub")
                     const cands = []
@@ -1343,6 +1362,8 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             if (S.advanceAt && now >= S.advanceAt) {
                 S.advanceAt = 0
                 if (res && res.key !== S.downKey && !S.shown && !S.down) show(now)
+                // seq: the next tile may light up a beat later; keep looking for it for 1.5 s after the touch
+                else if (res && res.g === "seq" && !S.shown && !S.down && now - S.lastTouchAt < 1500) S.advanceAt = now + 120
             }
             if (S.missAt && now - S.missAt >= 1200) {
                 const at = S.missAt
@@ -1394,7 +1415,7 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
                 const inVp = cp.x >= 0 && cp.y >= 0 && cp.x <= innerWidth && cp.y <= innerHeight
                 publish({
                     visible: !!S.shown, g: res.g, label: res.label, text: v.text, stage: res.kind === "stage" ? res.i : res.kind, targetSelector: res.sel, x: Math.round(cp.x), y: Math.round(cp.y),
-                    inViewport: inVp, count: v.count ? v.count.left : null, level: S.level, kind: res.kind, occluded: !!v.occluded, id,
+                    inViewport: inVp, count: v.count ? v.count.left : null, level: S.level, kind: res.kind, occluded: !!v.occluded, id, pose: v.hideHand ? null : v.pose, soft: (S.soft || []).length,
                 })
                 const srText = `${v.text}${v.count && v.count.left > 0 ? ` · ${v.count.left} left` : ""}`
                 if (srText !== S.srText) {
