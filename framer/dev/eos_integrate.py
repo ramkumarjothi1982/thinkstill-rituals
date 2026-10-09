@@ -257,13 +257,20 @@ edit("I3", "E6", A,  # 109 CLEANSE: a stale delayed write must never shrink the 
      '                                : releasedRef.current.slice()\n'
      '                        )\n                    },')
 
+# F2 (docs/founder/FEEDBACK_LOG.md): shared layout guard — docks the LIVE GUIDE in a reserved band, folds long
+# paragraphs, places feedback copy off the controls (src/eos/62_eos_layout.jsx)
+edit("I3", "E8", A,  # anchor created by I2-E13
+     '                            <EosCompanion game={selected} hostRef={gameHostRef} reduced={!!reduced} />',
+     '                            <EosCompanion game={selected} hostRef={gameHostRef} reduced={!!reduced} />\n'
+     '                            <EosLayoutGuard game={selected} entries={renderedEntries} hostRef={gameHostRef} />')
+
 # Symbols the edits reference that must be defined by src/eos/* (core defines the rest).
 REFERENCED = {
     "I1": {"components": ["EosThoughtFlow", "EosMoodGrade", "EosGuideArrows", "EosLegacyGuards", "EosTextFloor"],
            "functions": ["eosGlyph", "eosGateProgress", "eosSfxMiss"]},
     "I2": {"components": ["EosCheckIn", "EosCheckInChip", "EosWorldChips", "EosSafetyLayer", "EosShiftMeter", "EosMenuGroup", "EosCompanion"],
            "functions": ["EosRouteGame", "EosProfileOverride", "EosEntries"]},
-    "I3": {"components": [], "functions": []},
+    "I3": {"components": ["EosLayoutGuard"], "functions": []},
 }
 STUB_BODIES = {
     "eosGlyph": 'function eosGlyph() {\n    return "☝"\n}',

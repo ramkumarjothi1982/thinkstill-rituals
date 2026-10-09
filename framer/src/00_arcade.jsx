@@ -22234,6 +22234,7 @@ function ThinkStillReleaseArcade(props) {
                             <EosGuideArrows game={selected} entries={renderedEntries} hostRef={gameHostRef} reduced={!!reduced} />
                             <EosLegacyGuards game={selected} hostRef={gameHostRef} />
                             <EosCompanion game={selected} hostRef={gameHostRef} reduced={!!reduced} />
+                            <EosLayoutGuard game={selected} entries={renderedEntries} hostRef={gameHostRef} />
                         </React.Fragment>
                     ) : null}
                     <EosTextFloor stage={stage} />
