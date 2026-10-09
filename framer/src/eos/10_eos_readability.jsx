@@ -241,7 +241,7 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
   ${EOS_A}.stage-play .u106 .tsndText{overflow:visible!important;line-height:1.02!important}
   /* …and the word itself (it starts below the 26 px badge) also takes the badge's column: 84 px instead of 53, so
      "meeting" reads whole at 15-16 px instead of breaking ("meetin|g") at the 14 px fit minimum */
-  ${EOS_A}.stage-play .u106 .tsndText{margin-left:-31px!important;width:calc(100% + 31px)!important;max-width:none!important}
+  ${EOS_A}.stage-play .u106 .tsndText{margin:2px 0 0 -31px!important;width:calc(100% + 31px)!important;max-width:none!important}
   ${EOS_A}.stage-play .u106 .tsndCardBottom{grid-row:2!important;grid-column:1 / -1!important;flex-wrap:wrap!important;justify-content:center!important;gap:3px 6px!important}
   ${EOS_A}.stage-play .u106 .tsndAction{white-space:nowrap!important;letter-spacing:.02em!important}
   ${EOS_A}.stage-play .u106 .tsndKeySub{display:none!important}
