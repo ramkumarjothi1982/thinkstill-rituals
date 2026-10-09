@@ -239,6 +239,9 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
   ${EOS_A}.stage-play .u106 .tsndAvatar{grid-row:1!important;grid-column:1!important;align-self:start!important;width:26px!important;height:26px!important;min-width:26px!important;min-height:26px!important;max-width:26px!important;max-height:26px!important}
   ${EOS_A}.stage-play .u106 .tsndCopy{grid-row:1!important;grid-column:2!important;align-self:start!important}
   ${EOS_A}.stage-play .u106 .tsndText{overflow:visible!important;line-height:1.02!important}
+  /* …and the word itself (it starts below the 26 px badge) also takes the badge's column: 84 px instead of 53, so
+     "meeting" reads whole at 15-16 px instead of breaking ("meetin|g") at the 14 px fit minimum */
+  ${EOS_A}.stage-play .u106 .tsndText{margin-left:-31px!important;width:calc(100% + 31px)!important;max-width:none!important}
   ${EOS_A}.stage-play .u106 .tsndCardBottom{grid-row:2!important;grid-column:1 / -1!important;flex-wrap:wrap!important;justify-content:center!important;gap:3px 6px!important}
   ${EOS_A}.stage-play .u106 .tsndAction{white-space:nowrap!important;letter-spacing:.02em!important}
   ${EOS_A}.stage-play .u106 .tsndKeySub{display:none!important}
@@ -858,7 +861,7 @@ function eosReadWordFit(el, cs, fs, nat, want, ratio, held) {
     let avail = box.clientWidth - num(pcs.paddingLeft) - num(pcs.paddingRight)
     const mw = cs.maxWidth
     if (mw && mw !== "none") avail = Math.min(avail, mw.endsWith("%") ? (avail * parseFloat(mw)) / 100 : num(mw))
-    if (cs.display !== "inline") avail -= num(cs.paddingLeft) + num(cs.paddingRight) + num(cs.borderLeftWidth) + num(cs.borderRightWidth) + Math.max(0, num(cs.marginLeft)) + Math.max(0, num(cs.marginRight))
+    if (cs.display !== "inline") avail -= num(cs.paddingLeft) + num(cs.paddingRight) + num(cs.borderLeftWidth) + num(cs.borderRightWidth) + num(cs.marginLeft) + num(cs.marginRight) // a negative margin widens the line
     if (avail > 0 && avail <= 220) {
         let widest = 0
         for (const w of text.split(/\s+/)) if (w) widest = Math.max(widest, eosReadTextWidth(cs, w, want))

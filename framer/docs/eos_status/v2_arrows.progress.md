@@ -1,0 +1,2 @@
+# v2 arrows close-out — progress
+- [~9 calls] Read review r1 (2 major, 10 minor), build.md, arrows file (model l.333, resolve l.860, layout l.935, tick l.1044, onDown l.1288, EosHandHint l.1499). Plan: hand orientation+hotspot scoring vs text (major 1), guide-panel occlusion (major 2), chevron/label avoid text+media, dragTo tag, seq key, S.down robustness, resolve cache 250 ms, HandHint 10 Hz + remount-safe idle, SVG uids, marker idle override. #7 (check-in delays) is in 40_eos_checkin.jsx = other piece → out of scope (remount part mitigated in EosHandHint).
