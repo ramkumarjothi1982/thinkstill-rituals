@@ -37,3 +37,11 @@ For every pilot game, before any rollout:
 6. **A distinctiveness explainer:** what makes the mechanic, environment, character role and finale unique, and how it differs from its look-alike siblings.
 AI reviewer scores are supporting evidence only. Rollout to the remaining games starts only after the owner has played the pilot and approved it.
 Caveat recorded honestly: recordings and timings come from a headless cloud browser without a GPU, so they understate real-device smoothness; the playable build is the owner's ground truth.
+
+## Delivery policy (owner, 2026-10-09)
+- Ship playable builds early and often; the owner's own gameplay feedback outranks AI reviewer scores.
+- Lean review: after a piece's first two-reviewer review, fixes are verified by targeted gameplay tests (and at most one targeted re-check), not repeated full review rounds.
+- Critical first: every game must complete without freezing, crashing or getting stuck (UNFOLLOW first) on phone and desktop, keeping existing functionality, animations and finales unless an improvement is required.
+- One workflow at a time (release fixes, then Pilot A); switch only at safe checkpoints.
+- Pilot A needs the owner's personal approval of its creative quality before its design is scaled to other games.
+- Goal: every game worth a ~A$10/week subscription — emotional value, entertainment, surprise and reasons to return.
