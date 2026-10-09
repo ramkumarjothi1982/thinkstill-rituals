@@ -1,54 +1,63 @@
-I finished and fixed the draft of `src/eos/12_eos_dots.jsx` and tested it. All nine acceptance checks pass at 1280×860 and 390×844 with zero page errors. Nothing is committed and no other source file was edited.
+I fixed all 10 round-1 review findings in `src/eos/12_eos_dots.jsx`: 1 major and 9 minors, none skipped. The acceptance checks pass at 1280×860 and 390×844 with zero page errors. Only the dots files are committed ("EOS fix: dots round 1").
 
-**What it does (spec §5.1–5.5, §0.4, §2.1, §9.2)**
-- **Still Point:** a glowing core of `min(36vmin,280px)` at the stage centre. It breathes from the shared pacer: 10 s autonomous cycle, synced to `performance.now()` within about 20 ms. When a game owns the breath it follows that game's in / hold / out timing (linear on the out-breath).
-- **One measured centre:** every dot layer flows into the same point. That covers 30/18/10 spiral lanes, the 14 Pixar motes, every game's `.cinemaDust i`, 109's star tiles, and the bokeh, which drifts 25% of the way in over 60 s. The centre is re-measured once a second, on resize and on stage change.
-- **Speed follows intensity:** dot speed is `0.7 + 0.09 × level × (1 − progress)`, plus a small wobble at level 7 or above. Speed falls as the game progresses.
-- **Finish and reveal:** at the finish the dots rush in and the core blooms. In the reveal they burst out once, then drift home on roughly 30 s lanes, and a calm-coloured glow sits behind the result card.
-- **Spark mode** (numb, good): faster warm dust and a 72 bpm pulse instead of breathing.
-- **Panic or fear at high intensity:** dots drift straight in, with no spiral.
-- **Calm visuals and reduced motion:** a static field, no running dot animations, and `data-eos-calm` set on `.tsArcade` and `.tsPixarRoot`.
-- **Dust styles:** default, fireflies, aurora, snow, gold, read from `eosPrefs().dust`.
-- **Audio bed:** quiet low-passed noise (peak gain 0.024) that follows the pacer during check-in and play. It is silent while music plays, with sound off, in the reveal, or in a background tab.
+**Round-1 fixes (docs/eos_status/dots.review_r1.json)**
 
-**Changes in this session**
-- **Performance:** the 4 Hz controller now runs right after each frame is painted. Its once-a-second measure used to force a 10–14 ms style recalculation inside the frame callback; each controller call is now about 0.5 ms.
-- **Hand-over between autonomous and game-owned breathing:** the core's size is now calculated rather than read back from the page, so a game's `eosBreathOwn()` call costs nothing and the light never jumps. Measured maximum change is 0.65 scale/s over a 0.9 s hand-back. A repeated `"in"` (111's "one more sip") swells the core slightly further.
-- **Colour (a deliberate spec reading — please confirm):** the core moves from the feeling's own hue to the hue of its calm grade (anger red → teal, panic → dawn gold, sad → peach), following §0.2, instead of always ending on cyan 190 as §5.2 says. It takes the way round the colour wheel that avoids yellow-green. Numb starts grey and regains colour as progress rises.
-- **Look:** a stronger core during play, a visible calm glow in the reveal, a livelier spark mode, faster `pulse()` response, and a smaller noise buffer.
+1. **Animated-node budget (major).** Dots used to run 91 animated elements in play at 1280 and level 9, and 60 at 390.
+   - No dot runs an animation of its own any more.
+   - The intensity wobble is now a second animation on the lane element itself. It is ±2 px, and ±3.5 px at levels 9–10.
+   - The fireflies blink, aurora shimmer and gold glints are built into each lane's own keyframes (`eosDotsLaneFf/Au/Gd`), using opacity and filter stops.
+   - Desktop drops from 30 lanes to 28.
+   - **Measured in play at level 9, for each of the five dust styles:** 59 animated elements at 1280 and 42 at 390.
+2. **Compositor layers (minor).** Each lane is now a 0×0 box placed on its starting point. Its `transform-origin` is the measured centre in px (`calc((cxf − xf) × 100cqw)`, with a px-variable fallback for browsers without container units). Each lane layer is now dot-sized instead of covering the whole stage. The centre checks still pass at both sizes, and the lane boxes measure 0×0. This has not been profiled on a real iPhone.
+3. **Audio unlock on touch (minor).** The bed now arms on pointerdown, pointerup, touchstart, touchend, click and keydown. It stays armed until the shared audio context reports `running`. `bedUpdate` retries `resume()` while the context is suspended.
+4. **§0.5 `useEosProgress` (minor).** I kept polling progress inside the controller's own 4 Hz pass, which the pacer, rates and audio need anyway, and it avoids React re-renders. This is a deliberate deviation, recorded in the module header.
+5. **Single API target (minor).** Live controllers are now kept in a Set. `pulse`, `setLevel` and `gather` reach every mounted instance, and `state()` reads the most recently mounted one. Unmounting removes only that instance.
+6. **Reveal burst invisible on phone (minor).**
+   - During `.eosBurst` every dot goes to opacity 1 and twice its size (a 0.32 s transition), with a trail pointing back at the light.
+   - The shockwave ring grows to 3.4× on desktop and 4.3× on phone, so it clears the result card.
+   - On phone, the reveal halo is a ring that frames the card instead of a glow hidden behind it.
+   - Measured at 390: mean dot distance from the centre 143 px, max 231 px.
+7. **One centre vs the game's own centrepiece (minor).** During play, a focal anchor now wins: `[data-eos-focus]` (any game can opt in) or the legacy `.blackHole` (39) and `.lotusCore` (109). The Still Point glides there over 0.7 s and every dust layer follows it. The white spark hides and the glow dims behind the centrepiece; with calm visuals or reduced motion this happens instantly.
+   - **Measured:** 39 core at (640,335) vs hole (640,336) at 1280, and (195,299) vs (195,299) at 390. 109 matches the lotus at both sizes.
+8. **Calm colour washed out at the in-game bloom (minor).** While the dust gathers, the flash and halo use saturated stops at 58–66% lightness, and the wave becomes a 3 px coloured corona. On screen at 390: sad blooms peach and anger blooms teal. At 1280, panic blooms a pinkish dawn tone.
+9. **Muddy reveal haze on desktop (minor).** The reveal overlay now has a soft clear well around the Still Point (8% → 52% darkening). The desktop halo is tighter (inset −62% instead of −80%) and brighter, at 64–70% lightness. Panic now shows a warm gold aura around the card instead of a brown wash.
+10. **Intensity change barely visible (minor).** Each `setLevel()` step now gets an immediate answer:
+    - Turning the dial up: a surge of `1 + 0.6×step` (capped at 3.4×) for 0.42 s.
+    - Turning it down: a brief hush (down to 0.35×).
+    - Either way: the core's ring twinkles (`eosDotsTwinkle`).
+    - The surge settles exactly on time, without waiting for the next frame. Measured: 5.13 during the surge, then back to 1.51.
+11. **Field freezes when the reveal never comes (minor).** If the dust has been gathered for over 6 s while still in play, it flows again at the calm finishing rate. A latch stops it re-gathering until a new finish happens. **Tested by faking the finish flag:** gathered at +1 s, flowing again at +7 s, still flowing at +9 s, gathered again on a new finish.
 
-**Exports:** `EosThoughtFlow`, `EOS_DOTS_CSS` (registered with `eosCss("dots")`). API via `eosExpose("dots")`: `pulse(kind)`, `breath(phase, ms)`, `phase()`, `beat(bpm)`, `setLevel(n)`, `gather()`, plus `state()` for tests.
+**Exports and API (unchanged):** `EosThoughtFlow`, `EOS_DOTS_CSS` (registered with `eosCss("dots")`). API via `eosApi("dots")`: `pulse(kind)`, `breath(phase, ms)`, `phase()`, `beat(bpm)`, `setLevel(n)`, `gather()`, `state()`. `state()` now also reports `kick` and `focus`.
 
-**What the integrator must wire**
-- **Arcade/Pixar edits:** none beyond what `dev/eos_integrate.py` already applies:
-  - I1-E1: `<EosGlobalStyle />`.
-  - I1-E2: first child of `section.releaseStage` is `<EosThoughtFlow stage={stage} reduced={!!reduced} />`.
-  - I1-P1: Pixar dust spawns over the full height.
-  - I1-E14: store mirror of `sound` and `music: !!(musicOn && sound)`; the audio bed depends on it.
-- **Check-in:** call `eosApi("dots").setLevel?.(n)` on every dial change. The shift meter's after-dial should do the same. The override clears itself when the store phase or the stage changes.
-- **Games 111/112 and the Still Moment:** call `eosBreathOwn(phase, ms)` and finish with `eosBreathOwn(null)`. Beat games use `eosPacerBeat(bpm)`. Optional: `eosApi("dots").pulse?.("in"|"out")` and `gather?.()`; a `gather` re-flows after 1.7 s unless the game has finished.
-- **Rewards:** `eosSetPref("dust", style)`; the change shows within about 250 ms.
-- **Mood:** the flip words can rise from the measured `.eosCore` centre.
-- **My CSS also changes arcade surfaces** (no effect on interaction):
-  - `.releaseIdleStage` loses its opaque base layer, and the idle `.ts-abyss-*` centre is opened.
-  - `.releaseCompleteOverlay` is lighter: 52% black and a 2 px blur instead of 82% and 15 px, so the bloom and glow show in the reveal. This changes the look of the classic reveal.
+**What the integrator must wire (unchanged apart from one new option)**
+- Integration edits I1-E1, E2, P1 and E14 (already in `dev/eos_integrate.py`).
+- The check-in and shift dial call `eosApi("dots").setLevel?.(n)` on every change. This now also triggers the surge or hush and the ring twinkle.
+- Games 111/112 and the Still Moment call `eosBreathOwn` / `eosPacerBeat`. Rewards call `eosSetPref("dust", style)`.
+- **New, optional:** a hero game can put `data-eos-focus` on its centrepiece (a volcano crater, a lantern…). The Still Point and all dust then converge there during play.
+- **Arcade surfaces my CSS changes** (look only, no effect on interaction):
+  - `.releaseIdleStage` loses its opaque base layer.
+  - `.releaseCompleteOverlay` is lighter and has a soft clear well around the centre.
   - `.infinityField` is hidden.
 
-**Tests**
-- Builds: the isolated build, the integrated build at `/tmp/eos_dots`, and a build together with the readability module all compile. There are no name clashes.
-- In the integrated build at both sizes: acceptance checks 1–9 pass, plus pulse in/out, rate following progress, gather, beat, dust styles, colour script and a live resize to phone width.
-- No long tasks were recorded in the input, play or reveal windows.
-- Test scripts are in `/tmp/eos_dots_t` (`accept.mjs`, `extra.mjs`, `pacer.mjs`); results are in `final_*.txt`.
-
-**Screenshots** (in `/home/user/thinkstill-rituals/framer/dev/shots/eos/`, both sizes)
-- Home and check-in: `dots_input_*`, `dots_emotion_*`, `dots_core_colour_script_1280.png`.
-- Play: `dots_play_{pop,crush,burn,rain_out,hot_potato,black_hole,send_to_space,cleanse,p0,p85}_*`.
-- Finish and reveal: `dots_finish_sequence_390.png`, `dots_reveal_*`, `dots_reveal_burst_*`.
-- Modes: `dots_spark_*`, `dots_numb_grey_to_colour_1280.png`, `dots_reduce_*`, `dots_calm_*`.
-- Dust styles: `dots_style_*`.
+**Tests (round 1)**
+- **Builds:** the isolated build (`--modules 00_eos_core.jsx,12_eos_dots.jsx`), an isolated build together with the readability module, and the integrated build at `/tmp/eos_dots_int` all compile.
+- **Acceptance suite** (`/tmp/eos_dots_t/accept.mjs`), every check passes at both sizes and the only remaining failures were load flakes, not regressions:
+  - Covers lanes visible, one centre on the home screen, in play and in the reveal, rate mirroring, pacer sync, spark mode, audio bed, dust visible in 7 games, the cleanse tiles, gather on finish, reduced motion, calm visuals, perf, and zero errors.
+  - **Calm visuals:** `8_calm` first flagged the new glow cross-fade under calm visuals. I made it instant there and in reduced motion; `8_calm` passed on the 390 run, and `8_calm_off_restores` passed at both sizes.
+  - **Flakes:** pacer and spark failed once while three browser runs shared the CPU. They passed when re-run alone.
+- **Round-1 probes:**
+  - `r1_probe.mjs`: element budget per style, lane box size, the field-freeze release, and focus for 39, 109 and 2.
+  - `r1_kick.mjs`: the dial surge.
+  - `r1_burst.mjs`: burst numbers.
+  - `r1_sc.mjs`: the burst scale transition.
+  - `r1_seq.mjs` / `r1_cast.mjs`: gather and reveal frames.
+  - Results are in `/tmp/eos_dots_t/r1/`.
+- **Screenshots reviewed:** `/tmp/eos_dots_t/r1/sheet1.png` (gather, reveal and focus at both sizes), `sheet2.png` and `sheet3.png` (gather bloom colours, phone reveal halo).
 
 **Known limitations**
-- **Main-thread dust:** the Pixar motes and cinema dust move by `left/top`, as §5.3 specifies (about 21–28 small dots, updated on the main thread every frame). A transform-based version is possible if low-end phones need it.
-- **Long tasks during a full game:** headless software rendering is slow and noisy here (another builder's browsers share the 4 cores). Over a full POP run, the dots build showed more long tasks than a no-dots build. The dots' own work averages about 3 ms, with one forced style read of 20–35 ms when the dust gathers at the finish.
-- **Core colour in play:** each game's own cyan centre glows wash out the core's colour during play. It reads clearly on the home screen, at the finish bloom and in the reveal.
-- **Games 111 and 114 not tested:** their files don't exist yet, so dust visibility there (listed in §5.4) still needs checking at integration.
+- **Reveal burst not seen in motion:** headless rendering stalls for about 0.85 s while the reveal mounts, so no screenshot caught the burst in flight. The numbers above confirm it plays, and the dots grow to 2× once frames resume. It should be looked at on a device.
+- **Layer memory unprofiled on WebKit:** the dot-sized lanes are measured as 0×0 boxes in Chromium only.
+- **Main-thread dust:** the Pixar motes and cinema dust still move by `left/top`, as spec §5.3 prescribes.
+- **Arcade glows still tint the bloom:** they are not mine to change. A gold bloom over the game's cyan glows mixes toward a warm dawn tone rather than pure gold.
+- **Games 111–114 not tested:** their files don't exist yet. They can opt into `data-eos-focus` at integration.

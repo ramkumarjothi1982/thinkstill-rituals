@@ -26,6 +26,18 @@
 // jump. Only the centre measure (1 Hz, and at idle moments after a stage change / resize) reads layout.
 // state().perf reports the controller's own cost (avg ≈ 0.5-2 ms per pass in headless).
 // Every timer, frame request, message port, observer, listener and audio node is released on unmount.
+//
+// Animated-node budget (≤ 60 steady-state targets at 1280 in play): 28 lanes (18 on phone, 10 calm) + the dust layers
+// (14 Pixar motes + ≤ 14 cinema dots) + 2-3 core layers. Every per-dot effect is folded into the LANE's own animation
+// list (intensity wobble = a 2nd animation on the lane; fireflies blink / aurora shimmer / gold glints = lane keyframe
+// variants), so no dot ever runs an animation of its own. Lanes are 0×0 boxes placed on their spawn point whose
+// transform-origin is the measured centre in px (cqw/cqh, px-var fallback): each lane's compositor layer is dot-sized
+// instead of a full-stage layer (WebKit/iOS memory).
+// Deliberate deviation from §0.5 (useEosProgress): progress is polled inside this controller's own 4 Hz after-paint
+// pass (eosProgressOf on the stage) instead of the shared hook — the pass is needed anyway for the pacer, the rates
+// and the audio bed, and keeping it here avoids a React re-render of the field on every progress change.
+// Focal anchor: a game may mark its centrepiece with [data-eos-focus] (legacy: 39 .blackHole, 109 .lotusCore); during
+// play the Still Point glides there and every dust layer converges on it instead of the stage centre.
 // ===================================================================================
 
 const EOS_DOTS_HUES = [195, 265, 42, 320] //       default palette (cyan, violet, gold, pink)
@@ -33,7 +45,18 @@ const EOS_DOTS_STYLES = ["default", "fireflies", "aurora", "snow", "gold"] // §
 const EOS_DOTS_CX = 50 //                           nominal Still Point (% of the stage) — the measured one wins
 const EOS_DOTS_CY = 52
 const EOS_DOTS_CALM_HUE = 190 //                    fallback calm hue (STILL's cyan)
-const EOS_DOTS_LIVE = { ctl: null } //              the mounted controller (one stage at a time)
+const EOS_DOTS_LIVE = { ctls: new Set() } //       every mounted controller (several component instances can coexist)
+const EOS_DOTS_FOCUS_SEL = "[data-eos-focus], .blackHole, .lotusCore" // play-time focal anchors (opt-in + legacy 39 / 109)
+// the API fans out to every live controller; the value returned (and state()) is the most recently mounted one's
+function eosDotsEach(f) {
+    let out
+    EOS_DOTS_LIVE.ctls.forEach((c) => {
+        try {
+            out = f(c)
+        } catch {}
+    })
+    return out
+}
 const EOS_DOTS_BED_MAX = 0.024 //                   audio bed peak gain (spec: ≤ .03)
 
 const EOS_DOTS_CYCLE = (EOS_BREATH.coreIn + EOS_BREATH.coreOut) * 1000 // the shared 10 s autonomous breath
@@ -187,6 +210,11 @@ function eosDotsController(root, opts = {}) {
         levelStage: null,
         pulseK: 1,
         pulseT: 0,
+        kickK: 1, //        setLevel micro-feedback: a short surge (louder) / settle (quieter) …
+        kickT: 0, //        … that relaxes back to the mirrored rate
+        twinkT: 0,
+        gatherAt: 0,
+        gatherLatch: false, // an auto gather released because the reveal never came: wait for a new finish edge
         gathered: false,
         gatherBoostUntil: 0,
         burstUntil: 0,
@@ -211,6 +239,8 @@ function eosDotsController(root, opts = {}) {
         vars: new Map(),
         narrow: null,
         aspect: 0,
+        laneKey: "",
+        focus: false,
         calmHosts: [],
         measureTs: [],
         ticks: 0,
@@ -334,7 +364,7 @@ function eosDotsController(root, opts = {}) {
     // boost) is a plain property write on the cached objects. A cached CSS animation that the cascade cancelled
     // (gather, calm visuals, a game unmounting) reads currentTime null → dropped; its replacement fires a new
     // animationstart.
-    const DOT_ANIM = /^eosDots(Lane|X|Y|Fade)$/
+    const DOT_ANIM = /^eosDots(Lane(?:Ff|Au|Gd)?|X|Y|Fade)$/ // (the lane's 2nd animation, eosDotsJitter*, is never rated)
     const BODY_ANIM = /^eosDots(Breathe|Beat)$/
     const AN = { map: new Map(), empty: new WeakSet(), dirty: new Set(), body: null, bodyDirty: true, host: null }
     const entryOf = (a) => {
@@ -350,7 +380,7 @@ function eosDotsController(root, opts = {}) {
         // started: the animation has left its pending state. Writing currentTime / a direct playbackRate to a
         // play-pending composited animation can leave it pending for good (measured: frozen lanes in the reveal), so
         // those writes wait for `ready`; updatePlaybackRate() is safe either way.
-        const x = { a, lane: n === "eosDotsLane", D, dl, req: null, started: false }
+        const x = { a, lane: n.startsWith("eosDotsLane"), D, dl, req: null, started: false }
         try {
             a.ready.then(
                 () => {
@@ -474,7 +504,7 @@ function eosDotsController(root, opts = {}) {
         if (force) scan("full")
         else if (S.ticks % 16 === 0) scan("safety") // every 4 s
         else if (AN.dirty.size || AN.bodyDirty) scan("")
-        const r = base * S.pulseK
+        const r = base * S.pulseK * S.kickK
         const rd = r * (t < S.gatherBoostUntil ? 2.6 : 1)
         const lanesOn = t >= S.burstUntil && !S.gathered
         for (const list of AN.map.values())
@@ -504,20 +534,53 @@ function eosDotsController(root, opts = {}) {
         const st = stageEl()
         const dusts = st ? Array.from(st.querySelectorAll(".cinemaDust")) : []
         const spaces = st ? Array.from(st.querySelectorAll(".cleanseSpace")) : []
+        // a game's centrepiece (play only): [data-eos-focus] (opt-in), or a legacy one (39 .blackHole, 109 .lotusCore)
+        let focus = null
+        if (st && S.stage === "play")
+            try {
+                focus = st.querySelector(EOS_DOTS_FOCUS_SEL)
+            } catch {
+                focus = null
+            }
         // a .cinemaDust is static: its dots are placed in its parent's box (.cinematicStageFX, verified in every game)
         const boxOf = (d) => d.parentElement || d
-        return { c, rig, dusts, spaces, boxOf, all: [c, root, rig, ...dusts.map(boxOf), ...spaces].filter(Boolean) }
+        return { c, rig, dusts, spaces, boxOf, focus, all: [root, rig, focus, ...dusts.map(boxOf), ...spaces].filter(Boolean) }
     }
     // rect(el) → {left, top, width, height} in viewport px
     const applyMeasure = (T, rect) => {
         if (!S.alive || !root.isConnected) return
-        const cr = rect(T.c)
-        if (!cr || cr.width < 1) return
-        const cx = cr.left + cr.width / 2
-        const cy = cr.top + cr.height / 2
-        S.centre = { x: Math.round(cx * 10) / 10, y: Math.round(cy * 10) / 10 }
         const rb = rect(root)
-        const writes = [[root, pctIn(rb, cx, cy)]]
+        if (!rb || rb.width < 1 || rb.height < 1) return
+        // the Still Point: the core's own CSS spot (50 % / 52 % of the field) — or, during play, the centre of the
+        // game's focal anchor when it is a real on-stage element (the core glides there; every layer follows)
+        let cx = rb.left + (rb.width * EOS_DOTS_CX) / 100
+        let cy = rb.top + (rb.height * EOS_DOTS_CY) / 100
+        let focused = false
+        const fr = T.focus && S.stage === "play" ? rect(T.focus) : null
+        if (fr && fr.width >= 24 && fr.height >= 24) {
+            const fx = fr.left + fr.width / 2
+            const fy = fr.top + fr.height / 2
+            if (fx > rb.left + 8 && fx < rb.left + rb.width - 8 && fy > rb.top + 8 && fy < rb.top + rb.height - 8) {
+                cx = fx
+                cy = fy
+                focused = true
+            }
+        }
+        S.centre = { x: Math.round(cx * 10) / 10, y: Math.round(cy * 10) / 10 }
+        const own = pctIn(rb, cx, cy)
+        if (focused !== S.focus) {
+            S.focus = focused
+            if (focused) root.setAttribute("data-eos-focus-on", "1")
+            else root.removeAttribute("data-eos-focus-on")
+        }
+        setVar(root, "--eos-fx", focused ? `${own[0].toFixed(2)}%` : "")
+        setVar(root, "--eos-fy", focused ? `${own[1].toFixed(2)}%` : "")
+        // the lanes' px origin: fractions of the field + its px size (fallback for browsers without cqw / cqh)
+        setVar(root, "--eos-cxf", (own[0] / 100).toFixed(4))
+        setVar(root, "--eos-cyf", (own[1] / 100).toFixed(4))
+        setVar(root, "--eos-wpx", `${Math.round(rb.width)}px`)
+        setVar(root, "--eos-hpx", `${Math.round(rb.height)}px`)
+        const writes = [[root, own]]
         let rigPct = null
         if (T.rig) {
             rigPct = pctIn(rect(T.rig), cx, cy)
@@ -530,15 +593,17 @@ function eosDotsController(root, opts = {}) {
             setVarAny(el, "--eos-cx", `${p[0].toFixed(2)}%`)
             setVarAny(el, "--eos-cy", `${p[1].toFixed(2)}%`)
         }
-        // lane tails point away from the centre (needs the stage's px aspect)
-        const aspect = rb && rb.height ? +(rb.width / rb.height).toFixed(3) : 0
-        if (aspect && aspect !== S.aspect) {
+        // lane tails point away from the centre (needs the stage's px aspect and the centre in use)
+        const aspect = +(rb.width / rb.height).toFixed(3)
+        const key = `${aspect}|${own[0].toFixed(1)}|${own[1].toFixed(1)}`
+        if (key !== S.laneKey || !S.aspect) {
+            S.laneKey = key
             S.aspect = aspect
             lanes().forEach((lane) => {
                 const x = parseFloat(lane.style.getPropertyValue("--x"))
                 const y = parseFloat(lane.style.getPropertyValue("--y"))
                 if (!Number.isFinite(x) || !Number.isFinite(y)) return
-                const ang = (Math.atan2((y - EOS_DOTS_CY) * rb.height, (x - EOS_DOTS_CX) * rb.width) * 180) / Math.PI
+                const ang = (Math.atan2((y - own[1]) * rb.height, (x - own[0]) * rb.width) * 180) / Math.PI
                 lane.style.setProperty("--ta", `${ang.toFixed(1)}deg`)
             })
         }
@@ -759,6 +824,7 @@ function eosDotsController(root, opts = {}) {
         if (!S.alive || S.gathered) return
         S.gathered = true
         S.gatherSrc = src
+        S.gatherAt = now()
         clearTimeout(S.gatherT)
         // an API gather (a game's big moment) is one-shot: the dust re-flows unless the game has just finished
         if (src === "api") S.gatherT = setTimeout(() => S.gathered && S.gatherSrc === "api" && ungather(true), 1700)
@@ -869,6 +935,37 @@ function eosDotsController(root, opts = {}) {
         }, 1200)
     }
 
+    // ---------------------------------------------------------------- dial micro-feedback (setLevel)
+    // The mirrored rate alone moves a dot ≈ 15 px/s even at 9, too little to answer a dial tap. Each step therefore
+    // gets an instant, short answer that settles back to the mirrored rate: a surge scaled by the step when the feeling
+    // gets louder, a brief hush when it gets quieter, and a twinkle of the Still Point's ring either way.
+    const KICK_MS = 420
+    const kick = (dl) => {
+        if (!S.alive || S.calm || !dl) return
+        S.kickK = dl > 0 ? 1 + Math.min(2.4, 0.6 * dl) : Math.max(0.35, 1 + 0.16 * dl)
+        if (canAnim && S.kickK > 1) {
+            // answer in this frame on the cached animations (no style read); the next pass re-asserts every rate
+            const r = rate() * S.pulseK * S.kickK
+            for (const x of laneAnims()) if (x.a.playbackRate > 0 && t0ok()) setRate(x, r)
+        }
+        root.classList.remove("eosTwinkle")
+        raf(() => S.alive && root.classList.add("eosTwinkle")) // re-add next frame = restart, no reflow
+        clearTimeout(S.twinkT)
+        S.twinkT = setTimeout(() => root.classList.remove("eosTwinkle"), 700)
+        clearTimeout(S.kickT)
+        S.kickT = setTimeout(() => {
+            S.kickK = 1
+            // settle right on time (a slow frame must not stretch the surge); the next pass re-asserts every rate
+            if (canAnim && S.alive && !S.calm && t0ok()) {
+                const r = rate() * S.pulseK
+                for (const x of laneAnims()) if (x.a.playbackRate > 0) setRate(x, r)
+            }
+            schedule()
+        }, KICK_MS)
+        schedule()
+    }
+    const t0ok = () => now() >= S.burstUntil && !S.gathered
+
     // ---------------------------------------------------------------- audio bed (F8, P2)
     const bedWant = () => {
         const st = EOS_STORE.get()
@@ -934,6 +1031,12 @@ function eosDotsController(root, opts = {}) {
         bedStart()
         const B = S.bed
         if (!B.on) return
+        // a context created before the first activating gesture stays suspended: keep asking (only a gesture can
+        // actually resume it — see arm(); elsewhere this is a harmless no-op)
+        if (B.ctx && B.ctx.state === "suspended")
+            try {
+                B.ctx.resume().catch(() => {})
+            } catch {}
         const ph = eosBreathPhase()
         const p = eosClamp(ph.p, 0, 1)
         const shape = ph.phase === "in" ? 0.5 - 0.5 * Math.cos(Math.PI * p) : ph.phase === "hold" ? 1 : ph.phase === "out" ? 1 - p : ph.phase === "beat" ? 0.55 : 0.5
@@ -943,22 +1046,30 @@ function eosDotsController(root, opts = {}) {
             B.gain.gain.setTargetAtTime(target, B.ctx.currentTime, 0.12)
         } catch {}
     }
+    // Unlock: on touch devices only pointerup / touchend / click (and keydown) are user-activation events — pointerdown
+    // and touchstart are not — so the bed listens to all of them and stays armed until the shared context RUNS.
+    const ARM_EVENTS = ["pointerdown", "pointerup", "touchstart", "touchend", "click", "keydown"]
     const arm = () => {
+        if (!S.alive) return
         S.bed.armed = true
-        unarm()
+        let ctx = null
+        try {
+            ctx = eosAudio() // creates / resumes the shared context inside the gesture (null while sound is off)
+        } catch {}
+        if (ctx && ctx.state === "running") unarm()
+        else if (ctx)
+            try {
+                ctx.resume()
+                    .then(() => S.alive && ctx.state === "running" && unarm())
+                    .catch(() => {})
+            } catch {}
         bedUpdate()
     }
     const unarm = () => {
         if (typeof window === "undefined") return
-        window.removeEventListener("pointerdown", arm, true)
-        window.removeEventListener("keydown", arm, true)
-        window.removeEventListener("touchstart", arm, true)
+        ARM_EVENTS.forEach((ev) => window.removeEventListener(ev, arm, true))
     }
-    if (typeof window !== "undefined") {
-        window.addEventListener("pointerdown", arm, true)
-        window.addEventListener("keydown", arm, true)
-        window.addEventListener("touchstart", arm, { capture: true, passive: true })
-    }
+    if (typeof window !== "undefined") ARM_EVENTS.forEach((ev) => window.addEventListener(ev, arm, { capture: true, passive: true }))
     const onVis = () => bedUpdate()
     if (typeof document !== "undefined") document.addEventListener("visibilitychange", onVis)
     // sound / music / phase toggles answer at once (the 4 Hz pass keeps following the breath)
@@ -990,15 +1101,26 @@ function eosDotsController(root, opts = {}) {
             const v = sEl ? eosProgressOf(sEl) : null
             p = v == null ? 0 : eosClamp(v, 0, 100)
             const done = !!(sEl && sEl.querySelector(".globalPlayGuide.isComplete"))
-            if (done && !S.gathered) gather("auto")
-            else if (done && S.gatherSrc === "api") S.gatherSrc = "auto" // the finish arrived during a one-shot
-            else if (!done && S.gathered && S.gatherSrc === "auto" && p < 100) ungather(true) // a new round began
+            if (!done) S.gatherLatch = false // (a new finish edge may gather again)
+            if (done && !S.gathered && !S.gatherLatch) gather("auto")
+            else if (done && S.gatherSrc === "api") {
+                S.gatherSrc = "auto" // the finish arrived during a one-shot
+                S.gatherAt = now()
+            } else if (!done && S.gathered && S.gatherSrc === "auto" && p < 100) ungather(true) // a new round began
+            else if (S.gathered && S.gatherSrc === "auto" && now() - S.gatherAt > 6000) {
+                // finished but the reveal never came (a game hanging on its finish): never leave a frozen field —
+                // the dust re-flows at the calm finishing rate; the next finish edge gathers it again
+                S.gatherLatch = true
+                ungather(true)
+            }
         } else if (S.stage === "reveal") p = 100
         S.progress = p
         paintVars()
         const L = level()
         const jitter = !S.calm && L >= 7 && S.stage !== "reveal" && !S.gathered && S.progress < 50
         if (root.classList.contains("eosJitter") !== jitter) root.classList.toggle("eosJitter", jitter)
+        const hi = jitter && L >= 9 // 9-10: a bigger wobble (±3.5 px instead of ±2)
+        if (root.classList.contains("eosJitterHi") !== hi) root.classList.toggle("eosJitterHi", hi)
         let dust = "default"
         try {
             const d = eosPrefs().dust
@@ -1079,7 +1201,8 @@ function eosDotsController(root, opts = {}) {
         S.calmHosts = hosts
         if (S.calm) {
             S.pulseK = 1
-            root.classList.remove("eosJitter", "eosPulseIn", "eosPulseOut", "eosFlowIn", "eosBurst")
+            S.kickK = 1
+            root.classList.remove("eosJitter", "eosJitterHi", "eosPulseIn", "eosPulseOut", "eosFlowIn", "eosBurst", "eosTwinkle")
         }
         if (S.gathered) {
             root.classList.remove("eosGather", "eosGatherCalm")
@@ -1103,6 +1226,7 @@ function eosDotsController(root, opts = {}) {
             S.burstBy = now() + 1500
         }
         if (S.stage === "play" && prev !== "play") S.progress = 0
+        if (S.stage !== "play") S.gatherLatch = false
         S.needSync = 3
         if (!S.ready) return schedule() // mount: the first idle pass measures and reads everything
         measureSoon() // (new cinema dust reports in through animationstart; no full re-read needed)
@@ -1184,6 +1308,8 @@ function eosDotsController(root, opts = {}) {
         clearInterval(intMeasure)
         S.measureTs.forEach(clearTimeout)
         clearTimeout(S.pulseT)
+        clearTimeout(S.kickT)
+        clearTimeout(S.twinkT)
         clearTimeout(S.burstT)
         clearTimeout(S.burstEndT)
         clearTimeout(S.boostT)
@@ -1221,6 +1347,8 @@ function eosDotsController(root, opts = {}) {
             levelOverride: S.levelOv,
             rate: +rate().toFixed(3),
             pulse: S.pulseK,
+            kick: S.kickK,
+            focus: S.focus,
             progress: S.progress,
             mode: root.getAttribute("data-eos-mode") || "breathe",
             calm: S.calm,
@@ -1251,18 +1379,21 @@ function eosDotsController(root, opts = {}) {
         destroy,
         refresh() {
             S.aspect = 0 // lanes re-rendered / straightened: re-aim their tails at the next measure
+            S.laneKey = ""
             S.needSync = 3
             measureSoon()
             schedule()
         },
         setLevel(n) {
             const st = EOS_STORE.get()
+            const before = S.alive ? level() : 0
             if (n == null || n === "" || !Number.isFinite(Number(n))) S.levelOv = null
             else {
                 S.levelOv = eosClamp(Number(n), 0, 10)
                 S.levelPhase = st.phase
                 S.levelStage = S.stage
             }
+            if (S.alive && S.levelOv != null) kick(S.levelOv - before)
             schedule() // coalesced: a dial dragged at pointer rate costs one pass per frame
             return +rate().toFixed(3)
         },
@@ -1288,7 +1419,7 @@ function EosThoughtFlow({ stage = "input", reduced = false }) {
     const lvl0 = eos.before != null ? eos.before : eos.intensityGuess != null ? eos.intensityGuess : 5
     // panic / fear in the high band: straight-in drift (spirals add vection)
     const straight = !!(E && (emo === "panic" || emo === "fear") && (eos.express || eosBand(Number(lvl0)) === "high"))
-    const n = calm ? 10 : narrow ? 18 : 30
+    const n = calm ? 10 : narrow ? 18 : 28 // (28 on desktop keeps the steady-state animated-node budget ≤ 60)
     const lanes = React.useMemo(
         () =>
             eosDotsLaneSpecs(n).map((p, i) => (
@@ -1299,6 +1430,8 @@ function EosThoughtFlow({ stage = "input", reduced = false }) {
                     style={{
                         "--x": `${p.x.toFixed(2)}%`,
                         "--y": `${p.y.toFixed(2)}%`,
+                        "--xf": (p.x / 100).toFixed(4),
+                        "--yf": (p.y / 100).toFixed(4),
                         "--s": `${p.s.toFixed(2)}px`,
                         "--d": `${p.d.toFixed(2)}s`,
                         "--dl": `${p.dl.toFixed(2)}s`,
@@ -1318,10 +1451,10 @@ function EosThoughtFlow({ stage = "input", reduced = false }) {
         if (!el) return undefined
         const ctl = eosDotsController(el, { onNarrow: (v) => setNarrow((prev) => (prev === v ? prev : v)) })
         ctlRef.current = ctl
-        EOS_DOTS_LIVE.ctl = ctl
+        EOS_DOTS_LIVE.ctls.add(ctl)
         return () => {
             ctl.destroy()
-            if (EOS_DOTS_LIVE.ctl === ctl) EOS_DOTS_LIVE.ctl = null
+            EOS_DOTS_LIVE.ctls.delete(ctl) // only this instance's entry: any other mounted field keeps answering
             ctlRef.current = null
         }
     }, [])
@@ -1342,6 +1475,7 @@ function EosThoughtFlow({ stage = "input", reduced = false }) {
             data-eos-mode={spark ? "spark" : "breathe"}
             data-eos-calm={calm ? "1" : undefined}
             data-eos-straight={straight ? "1" : undefined}
+            data-eos-narrow={narrow ? "1" : undefined}
             aria-hidden="true"
         >
             <i className="eosCore">
@@ -1363,27 +1497,72 @@ function EosThoughtFlow({ stage = "input", reduced = false }) {
 }
 
 // ---------------------------------------------------------------- CSS
+// The lane run (scale 1 → 0 + rotate around the measured centre) and its cosmetic variants. Per-dot effects live IN the
+// lane's own keyframes (opacity / filter stops that touch neither scale nor rotate), so a dust style never adds an
+// animated node: fireflies blink (opacity), aurora shimmer (hue-rotate), gold glints (brightness flashes).
+function eosDotsLaneKeyframes(name, stops) {
+    const at = new Map([
+        [0, ["scale:1", "rotate:0deg", "opacity:0", "animation-timing-function:cubic-bezier(.33,0,.8,.45)"]],
+        [9, ["opacity:1"]],
+        [84, ["scale:.028", "rotate:calc(var(--sw,30deg) * .96)", "opacity:1", "animation-timing-function:linear"]],
+        [100, ["scale:0", "rotate:var(--sw,30deg)", "opacity:0"]],
+    ])
+    for (const [o, decl] of stops || []) at.set(o, (at.get(o) || []).concat(decl))
+    const body = Array.from(at.keys())
+        .sort((a, b) => a - b)
+        .map((o) => `${o}%{${at.get(o).join(";")}}`)
+        .join("")
+    return `@keyframes ${name}{${body}}`
+}
+const EOS_DOTS_LANE_KF = [
+    eosDotsLaneKeyframes("eosDotsLane"),
+    // fireflies: a slow blink (≈ 1.7-2.6 s at the base rate) between 9 % and 84 % of the run
+    eosDotsLaneKeyframes(
+        "eosDotsLaneFf",
+        [15, 21, 27, 33, 39, 45, 51, 57, 63, 69, 75, 81].map((o, i) => [o, [`opacity:${i % 2 ? 1 : 0.3}`, "animation-timing-function:ease-in-out"]])
+    ),
+    // aurora: the streak's hue drifts ±64° (≈ 3-4 s per swing)
+    eosDotsLaneKeyframes(
+        "eosDotsLaneAu",
+        [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((o, i) => [o, [`filter:hue-rotate(${i % 2 ? 64 : 0}deg)`]])
+    ),
+    // gold (every 3rd lane): two short glints per run
+    eosDotsLaneKeyframes(
+        "eosDotsLaneGd",
+        [
+            [0, 1],
+            [28, 1],
+            [32, 2.4],
+            [37, 1],
+            [60, 1],
+            [64, 2.4],
+            [69, 1],
+            [100, 1],
+        ].map(([o, b]) => [o, [`filter:brightness(${b})`]])
+    ),
+].join("\n")
 const EOS_DOTS_FIELD = `${EOS_A} .eosThoughtFlow`
 const EOS_DOTS_CSS = `
 @keyframes eosDotsX{84%,100%{left:var(--eos-cx,50%)}}
 @keyframes eosDotsY{84%,100%{top:var(--eos-cy,50%)}}
 @keyframes eosDotsFade{0%{opacity:0;scale:.6}12%{opacity:.85;scale:1}74%{opacity:.9;scale:1}86%{opacity:.55;scale:.45}93%{opacity:0;scale:.12}100%{opacity:0;scale:.1}}
 @keyframes eosDotsTileIn{0%{scale:1.5;opacity:0}20%{opacity:.45}100%{scale:.6;opacity:0}}
-@keyframes eosDotsLane{0%{scale:1;rotate:0deg;opacity:0;animation-timing-function:cubic-bezier(.33,0,.8,.45)}9%{opacity:1}84%{scale:.028;rotate:calc(var(--sw,30deg) * .96);opacity:1;animation-timing-function:linear}100%{scale:0;rotate:var(--sw,30deg);opacity:0}}
+${EOS_DOTS_LANE_KF}
 @keyframes eosDotsBreathe{0%{scale:.86;opacity:.8;animation-timing-function:cubic-bezier(.37,0,.32,1)}40%{scale:1.1;opacity:1;animation-timing-function:linear}100%{scale:.86;opacity:.8}}
 @keyframes eosDotsBeat{0%{scale:.95;opacity:.86;animation-timing-function:cubic-bezier(.2,.9,.3,1)}13%{scale:1.1;opacity:1;animation-timing-function:cubic-bezier(.5,0,.5,1)}32%{scale:.98;opacity:.9;animation-timing-function:cubic-bezier(.2,.9,.3,1)}44%{scale:1.04;opacity:.96;animation-timing-function:ease-in-out}100%{scale:.95;opacity:.86}}
 @keyframes eosDotsAbsorb{0%{scale:.6;opacity:.5}100%{scale:1.1;opacity:0}}
 @keyframes eosDotsBloom{0%{scale:1}30%{scale:.2}69%{scale:1.25}100%{scale:1}}
 @keyframes eosDotsFlash{0%{opacity:0}30%{opacity:.2}66%{opacity:1}100%{opacity:.4}}
 @keyframes eosDotsBurst{0%{scale:.3;opacity:.95}100%{scale:2.5;opacity:0}}
+@keyframes eosDotsBurstWide{0%{scale:.3;opacity:1}55%{opacity:.8}100%{scale:3.4;opacity:0}}
+@keyframes eosDotsBurstWideN{0%{scale:.3;opacity:1}55%{opacity:.8}100%{scale:4.3;opacity:0}}
+@keyframes eosDotsTwinkle{0%{scale:.78;opacity:1}100%{scale:1.4;opacity:0}}
 @keyframes eosDotsPulse{0%{opacity:0}25%{opacity:.75}100%{opacity:0}}
 @keyframes eosDotsSpin{0%{rotate:0deg}100%{rotate:360deg}}
 @keyframes eosDotsHue{0%{filter:hue-rotate(-38deg)}100%{filter:hue-rotate(38deg)}}
 @keyframes eosDotsAppear{0%{opacity:0}100%{opacity:var(--eos-dot-o,.85)}}
 @keyframes eosDotsJitter{0%{translate:-2px 1px}50%{translate:1.5px -2px}100%{translate:2px 1.5px}}
-@keyframes eosDotsBlink{0%,100%{opacity:calc(var(--eos-dot-o,.85) * .2)}28%,72%{opacity:var(--eos-dot-o,.85)}}
-@keyframes eosDotsAurora{0%{opacity:0}100%{opacity:1}}
-@keyframes eosDotsGlint{0%,62%,100%{opacity:0;scale:.4}78%{opacity:1;scale:1}}
+@keyframes eosDotsJitterHi{0%{translate:-3.5px 2px}50%{translate:3px -3.5px}100%{translate:3.5px 3px}}
 
 /* ---------------- the field (first child of .releaseStage; z 0 inside the stage's stacking context) */
 ${EOS_DOTS_FIELD}{position:absolute;inset:0;z-index:0;display:block;pointer-events:none;overflow:hidden;contain:strict;--eos-cx:50%;--eos-cy:52%;--eos-p:0;--eos-h:190;--eos-sat:100%;--eos-dot-o:.85;--eos-core-size:min(36vmin,280px)}
@@ -1397,36 +1576,55 @@ ${EOS_A} .releaseStage > .releaseIdleStage .ts-abyss-field::before{background:ra
 ${EOS_A} .releaseStage > .releaseIdleStage .ts-abyss-core{background:radial-gradient(circle at 36% 30%,rgba(255,255,255,.1) 0 4%,transparent 8%)!important;border-color:rgba(150,238,255,.3)!important;box-shadow:9px 0 0 -7px rgba(0,229,255,.96),15px 0 14px -8px rgba(0,229,255,.82),21px 0 34px -9px rgba(138,92,255,.48),-13px 5px 30px -13px rgba(192,0,255,.34),0 12px 34px -17px rgba(255,241,138,.2),0 0 100px rgba(138,92,255,.07)!important}
 ${EOS_A} .releaseStage > .releaseIdleStage .ts-abyss-core::after{display:none!important}
 /* reveal: the arcade's overlay was 82 % black + a 15 px backdrop blur, which hid the field entirely (no burst, no
-   halo). Lighter and barely blurred, the Still Point glows around the card and the dust visibly drifts home. */
-${EOS_A} .releaseStage > .releaseCompleteOverlay{background:radial-gradient(circle at 50% 42%,rgba(0,218,255,.1),transparent 25%),radial-gradient(circle at 50% 42%,rgba(154,59,255,.06),transparent 43%),rgba(0,3,8,.52)!important;-webkit-backdrop-filter:blur(2px) saturate(1.1)!important;backdrop-filter:blur(2px) saturate(1.1)!important}
+   halo). Lighter and barely blurred — with a soft clear well around the Still Point so its light reads as an aura
+   around the card, not as a brown wash under 52 % black — the dust visibly drifts home. */
+${EOS_A} .releaseStage > .releaseCompleteOverlay{background:radial-gradient(circle at 50% 42%,rgba(0,218,255,.1),transparent 25%),radial-gradient(circle at 50% 42%,rgba(154,59,255,.06),transparent 43%),radial-gradient(circle farthest-corner at 50% 52%,rgba(0,3,8,.08) 0 15%,rgba(0,3,8,.3) 29%,rgba(0,3,8,.52) 48%)!important;-webkit-backdrop-filter:blur(2px) saturate(1.1)!important;backdrop-filter:blur(2px) saturate(1.1)!important}
 ${EOS_DOTS_FIELD}[data-stage="play"]{--eos-dot-o:.45}
 ${EOS_DOTS_FIELD}[data-stage="reveal"]{--eos-dot-o:.7}
 
 /* ---------------- lanes: scale 1 → 0 around the measured centre = a straight line home; + rotate = a spiral */
-${EOS_DOTS_FIELD} .eosLane{position:absolute;inset:0;transform-origin:var(--eos-cx,50%) var(--eos-cy,52%);animation:eosDotsLane var(--d,18s) linear var(--dl,0s) infinite;opacity:0}
+/* a lane is a 0×0 box on its spawn point; its origin is the measured centre in px, so its compositor layer is
+   dot-sized (not a full-stage layer). cqw/cqh = the field's own size; the px vars are the fallback. */
+${EOS_DOTS_FIELD} .eosLane{position:absolute;left:var(--x);top:var(--y);width:0;height:0;transform-origin:calc((var(--eos-cxf,.5) - var(--xf,.5)) * var(--eos-wpx,100vw)) calc((var(--eos-cyf,.52) - var(--yf,.52)) * var(--eos-hpx,100vh));animation:var(--eos-lane-kf,eosDotsLane) var(--d,18s) linear var(--dl,0s) infinite;opacity:0}
+@supports (width:1cqw){
+  ${EOS_DOTS_FIELD}{container-type:size}
+  ${EOS_DOTS_FIELD} .eosLane{transform-origin:calc((var(--eos-cxf,.5) - var(--xf,.5)) * 100cqw) calc((var(--eos-cyf,.52) - var(--yf,.52)) * 100cqh)}
+}
+/* intensity wobble (level ≥ 7, first half of play): a 2nd animation on the SAME lane node (screen-space translate) */
+${EOS_DOTS_FIELD}.eosJitter .eosLane{animation:var(--eos-lane-kf,eosDotsLane) var(--d,18s) linear var(--dl,0s) infinite,eosDotsJitter calc(var(--bk,2s) * .3) ease-in-out infinite alternate}
+${EOS_DOTS_FIELD}.eosJitter.eosJitterHi .eosLane{animation:var(--eos-lane-kf,eosDotsLane) var(--d,18s) linear var(--dl,0s) infinite,eosDotsJitterHi calc(var(--bk,2s) * .27) ease-in-out infinite alternate}
 ${EOS_DOTS_FIELD}[data-eos-straight="1"] .eosLane{--sw:0deg!important}
-${EOS_DOTS_FIELD} .eosLane>[data-eos-dot]{position:absolute;left:var(--x);top:var(--y);width:var(--s);height:var(--s);margin:calc(var(--s) * -.5) 0 0 calc(var(--s) * -.5);border-radius:50%;opacity:var(--eos-dot-o,.85);
+${EOS_DOTS_FIELD} .eosLane>[data-eos-dot]{position:absolute;left:0;top:0;width:var(--s);height:var(--s);margin:calc(var(--s) * -.5) 0 0 calc(var(--s) * -.5);border-radius:50%;opacity:var(--eos-dot-o,.85);transition:scale .32s cubic-bezier(.2,.8,.3,1),opacity .32s ease;
 background:radial-gradient(circle,#fff 0 30%,hsla(var(--h),100%,80%,.95) 52%,hsla(var(--h),100%,70%,0) 100%);
 box-shadow:0 0 calc(var(--s) * 1.4 + 2px) hsla(var(--h),100%,72%,.75),0 0 calc(var(--s) * 4 + 5px) hsla(var(--h),100%,62%,.28)}
 ${EOS_DOTS_FIELD} .eosLane>[data-eos-dot]::after{content:"";position:absolute;left:50%;top:50%;width:calc(var(--s) * 4.5 + 7px);height:max(1px,calc(var(--s) * .55));transform-origin:0 50%;translate:0 -50%;rotate:var(--ta,0deg);border-radius:999px;background:linear-gradient(90deg,hsla(var(--h),100%,84%,.5),hsla(var(--h),100%,70%,0));pointer-events:none}
-${EOS_DOTS_FIELD}.eosJitter .eosLane>[data-eos-dot]{animation:eosDotsJitter calc(var(--bk,2s) * .3) ease-in-out infinite alternate}
 ${EOS_DOTS_FIELD}.eosFlowIn .eosLane>[data-eos-dot]{animation:eosDotsAppear 1.2s ease-out both}
+/* reveal burst: the flung dust reads OUTSIDE the result card — every dot at full opacity, twice the size, with a trail
+   pointing back at the light it came from (the tail flips from "behind an inward dot" to "behind an outward dot") */
+${EOS_DOTS_FIELD}.eosBurst{--eos-dot-o:1}
+${EOS_DOTS_FIELD}.eosBurst .eosLane>[data-eos-dot]{scale:2}
+${EOS_DOTS_FIELD}.eosBurst .eosLane>[data-eos-dot]::after{rotate:calc(var(--ta,0deg) + 180deg);width:calc(var(--s) * 5 + 10px);background:linear-gradient(90deg,hsla(var(--h),100%,90%,.9),hsla(var(--h),100%,72%,0))}
 /* finish (.eosGather): JS rushes every lane home on its own animation (see gather()); the core anticipates, then blooms */
 
 /* ---------------- the Still Point */
-${EOS_DOTS_FIELD} .eosCore{position:absolute;left:50%;top:52%;width:var(--eos-core-size);height:var(--eos-core-size);translate:-50% -50%;scale:1;opacity:1;transition:scale .7s cubic-bezier(.3,1.25,.45,1),opacity .6s ease}
+${EOS_DOTS_FIELD} .eosCore{position:absolute;left:var(--eos-fx,50%);top:var(--eos-fy,52%);width:var(--eos-core-size);height:var(--eos-core-size);translate:-50% -50%;scale:1;opacity:1;transition:scale .7s cubic-bezier(.3,1.25,.45,1),opacity .6s ease,left .7s cubic-bezier(.4,0,.2,1),top .7s cubic-bezier(.4,0,.2,1)}
+/* the light sits behind a game's own centrepiece (black hole, lotus …): no stray white spark under it, a softer glow */
+${EOS_DOTS_FIELD}[data-eos-focus-on="1"] .eosCoreSpark{opacity:0}
+${EOS_DOTS_FIELD}[data-eos-focus-on="1"] .eosCoreGlow{opacity:.72}
 ${EOS_DOTS_FIELD}[data-stage="play"] .eosCore{scale:calc(.8 + .5 * var(--eos-p,0));opacity:.74}
 ${EOS_DOTS_FIELD}[data-stage="reveal"] .eosCore{scale:1.4;opacity:1}
 /* reveal: the calm light glows around the result card like an aura */
-${EOS_DOTS_FIELD}[data-stage="reveal"] .eosCoreHalo{inset:-80%;background:radial-gradient(closest-side,hsla(var(--eos-h),var(--eos-sat,100%),74%,.9),hsla(var(--eos-h),var(--eos-sat,100%),68%,.56) 26%,hsla(var(--eos-h),var(--eos-sat,100%),62%,.24) 50%,hsla(var(--eos-h),var(--eos-sat,100%),58%,.07) 74%,hsla(var(--eos-h),var(--eos-sat,100%),55%,0) 100%)}
+${EOS_DOTS_FIELD}[data-stage="reveal"] .eosCoreHalo{inset:-62%;background:radial-gradient(closest-side,hsla(var(--eos-h),var(--eos-sat,100%),70%,.95),hsla(var(--eos-h),var(--eos-sat,100%),64%,.74) 24%,hsla(var(--eos-h),var(--eos-sat,100%),59%,.36) 48%,hsla(var(--eos-h),var(--eos-sat,100%),56%,.11) 72%,hsla(var(--eos-h),var(--eos-sat,100%),55%,0) 100%)}
+/* phone: the card covers the centre, so the light is an annulus that FRAMES the card instead of sitting under it */
+${EOS_DOTS_FIELD}[data-eos-narrow="1"][data-stage="reveal"] .eosCoreHalo{inset:-135%;background:radial-gradient(closest-side,hsla(var(--eos-h),var(--eos-sat,100%),66%,0) 0 24%,hsla(var(--eos-h),var(--eos-sat,100%),66%,.42) 36%,hsla(var(--eos-h),var(--eos-sat,100%),63%,.74) 48%,hsla(var(--eos-h),var(--eos-sat,100%),60%,.4) 64%,hsla(var(--eos-h),var(--eos-sat,100%),57%,.12) 80%,hsla(var(--eos-h),var(--eos-sat,100%),55%,0) 94%)}
 ${EOS_DOTS_FIELD}.eosGather .eosCore{opacity:1}
 ${EOS_DOTS_FIELD} .eosCore>i,${EOS_DOTS_FIELD} .eosCoreBody>i,${EOS_DOTS_FIELD} .eosCoreHand>i{position:absolute;border-radius:50%}
 ${EOS_DOTS_FIELD} .eosCoreHand{inset:0}
 ${EOS_DOTS_FIELD} .eosCoreHalo{inset:-55%;background:radial-gradient(closest-side,hsla(var(--eos-h),var(--eos-sat,100%),74%,.26),hsla(var(--eos-h),var(--eos-sat,100%),64%,.1) 44%,hsla(var(--eos-h),var(--eos-sat,100%),55%,.03) 70%,hsla(var(--eos-h),var(--eos-sat,100%),55%,0) 100%)}
 ${EOS_DOTS_FIELD} .eosCoreRays{inset:-18%;background:repeating-conic-gradient(from 8deg,hsla(var(--eos-h),var(--eos-sat,100%),86%,0) 0deg 9deg,hsla(var(--eos-h),var(--eos-sat,100%),88%,.13) 13deg,hsla(var(--eos-h),var(--eos-sat,100%),86%,0) 17deg 31deg,rgba(255,244,214,.09) 35deg,hsla(var(--eos-h),var(--eos-sat,100%),86%,0) 39deg 52deg);-webkit-mask-image:radial-gradient(closest-side,transparent 9%,#000 24%,rgba(0,0,0,.5) 55%,transparent 92%);mask-image:radial-gradient(closest-side,transparent 9%,#000 24%,rgba(0,0,0,.5) 55%,transparent 92%);animation:eosDotsSpin 90s linear infinite}
 ${EOS_DOTS_FIELD} .eosCoreBody{inset:0;animation:eosDotsBreathe 10s linear infinite}
-${EOS_DOTS_FIELD} .eosCoreGlow{inset:0;background:radial-gradient(closest-side,#fffdf4 0 4%,rgba(255,250,232,.94) 7%,hsla(var(--eos-h),var(--eos-sat,100%),85%,.74) 14%,hsla(var(--eos-h),var(--eos-sat,100%),71%,.42) 28%,hsla(var(--eos-h),calc(var(--eos-sat,100%) * .96),61%,.18) 50%,hsla(var(--eos-h),calc(var(--eos-sat,100%) * .92),53%,.05) 74%,hsla(var(--eos-h),calc(var(--eos-sat,100%) * .90),50%,0) 100%)}
-${EOS_DOTS_FIELD} .eosCoreSpark{left:50%;top:50%;width:9%;height:9%;translate:-50% -50%;background:radial-gradient(closest-side,#fff,rgba(255,255,255,.6) 45%,rgba(255,255,255,0));box-shadow:0 0 18px 6px rgba(255,250,235,.55),0 0 46px 14px hsla(var(--eos-h),var(--eos-sat,100%),76%,.35)}
+${EOS_DOTS_FIELD} .eosCoreGlow{inset:0;transition:opacity .6s ease;background:radial-gradient(closest-side,#fffdf4 0 4%,rgba(255,250,232,.94) 7%,hsla(var(--eos-h),var(--eos-sat,100%),85%,.74) 14%,hsla(var(--eos-h),var(--eos-sat,100%),71%,.42) 28%,hsla(var(--eos-h),calc(var(--eos-sat,100%) * .96),61%,.18) 50%,hsla(var(--eos-h),calc(var(--eos-sat,100%) * .92),53%,.05) 74%,hsla(var(--eos-h),calc(var(--eos-sat,100%) * .90),50%,0) 100%)}
+${EOS_DOTS_FIELD} .eosCoreSpark{left:50%;top:50%;width:9%;height:9%;translate:-50% -50%;transition:opacity .6s ease;background:radial-gradient(closest-side,#fff,rgba(255,255,255,.6) 45%,rgba(255,255,255,0));box-shadow:0 0 18px 6px rgba(255,250,235,.55),0 0 46px 14px hsla(var(--eos-h),var(--eos-sat,100%),76%,.35)}
 ${EOS_DOTS_FIELD} .eosCoreRing{inset:31%;border:1.5px solid hsla(var(--eos-h),var(--eos-sat,100%),88%,.62);box-shadow:0 0 14px hsla(var(--eos-h),var(--eos-sat,100%),72%,.45),inset 0 0 12px hsla(var(--eos-h),var(--eos-sat,100%),72%,.3);opacity:0;animation:eosDotsAbsorb 2.8s cubic-bezier(.2,.7,.3,1) infinite}
 ${EOS_DOTS_FIELD} .eosCoreFlash{inset:-4%;background:radial-gradient(closest-side,#fff 0 12%,rgba(255,250,232,.85) 26%,hsla(var(--eos-h),var(--eos-sat,100%),80%,.42) 50%,hsla(var(--eos-h),var(--eos-sat,100%),72%,.12) 74%,hsla(var(--eos-h),var(--eos-sat,100%),70%,0) 100%);opacity:0}
 ${EOS_DOTS_FIELD} .eosCoreWave{inset:18%;border:2px solid hsla(var(--eos-h),var(--eos-sat,100%),90%,.9);box-shadow:0 0 22px hsla(var(--eos-h),var(--eos-sat,100%),74%,.6);opacity:0}
@@ -1436,16 +1634,25 @@ ${EOS_DOTS_FIELD} .eosCore[data-pacer="own"][data-phase="in"] .eosCoreBody{scale
 ${EOS_DOTS_FIELD} .eosCore[data-pacer="own"][data-phase="hold"] .eosCoreBody,${EOS_DOTS_FIELD} .eosCore[data-pacer="own"][data-sip="1"] .eosCoreBody{scale:1.17;opacity:1}
 ${EOS_DOTS_FIELD} .eosCore[data-pacer="own"][data-sip="1"] .eosCoreBody{scale:1.19}
 ${EOS_DOTS_FIELD} .eosCore[data-pacer="own"][data-phase="out"] .eosCoreBody{scale:.84;opacity:.82;transition-timing-function:linear}
-${EOS_DOTS_FIELD} .eosCore[data-pacer="beat"] .eosCoreBody,${EOS_DOTS_FIELD}[data-eos-mode="spark"] .eosCore[data-pacer="auto"] .eosCoreBody{animation:eosDotsBeat var(--eos-beat-ms,833ms) linear infinite}
+${EOS_DOTS_FIELD} .eosCore[data-pacer="beat"] .eosCoreBody{animation:eosDotsBeat var(--eos-beat-ms,833ms) linear infinite}
+${EOS_DOTS_FIELD}[data-eos-mode="spark"] .eosCore:is([data-pacer="auto"],[data-pacer="beat"]) .eosCoreBody{animation:eosDotsBeat var(--eos-beat-ms,833ms) linear infinite,eosDotsHue 5s ease-in-out infinite alternate}
 ${EOS_DOTS_FIELD}.eosGather .eosCore .eosCoreBody{animation:eosDotsBloom 1.3s cubic-bezier(.3,.9,.4,1) forwards!important;transition:none}
 ${EOS_DOTS_FIELD}.eosGather .eosCoreFlash{animation:eosDotsFlash 1.3s ease-out forwards}
 ${EOS_DOTS_FIELD}.eosGather .eosCoreWave{animation:eosDotsBurst .9s cubic-bezier(.15,.7,.3,1) .82s 1 both}
-${EOS_DOTS_FIELD}.eosBurst .eosCoreWave{animation:eosDotsBurst .9s cubic-bezier(.15,.7,.3,1) 1 both}
+/* the bloom keeps the CALM colour legible over a game's own cyan glows: saturated mid-lightness stops + a corona */
+${EOS_DOTS_FIELD}.eosGather .eosCoreFlash{background:radial-gradient(closest-side,#fff 0 6%,hsla(var(--eos-h),var(--eos-sat,100%),80%,.92) 14%,hsla(var(--eos-h),var(--eos-sat,100%),64%,.82) 30%,hsla(var(--eos-h),var(--eos-sat,100%),60%,.46) 54%,hsla(var(--eos-h),var(--eos-sat,100%),58%,.13) 78%,hsla(var(--eos-h),var(--eos-sat,100%),56%,0) 100%)}
+${EOS_DOTS_FIELD}.eosGather .eosCoreHalo{background:radial-gradient(closest-side,hsla(var(--eos-h),var(--eos-sat,100%),64%,.64),hsla(var(--eos-h),var(--eos-sat,100%),60%,.38) 40%,hsla(var(--eos-h),var(--eos-sat,100%),56%,.13) 70%,hsla(var(--eos-h),var(--eos-sat,100%),55%,0) 100%)}
+${EOS_DOTS_FIELD}.eosGather .eosCoreWave{border-width:3px;border-color:hsla(var(--eos-h),var(--eos-sat,100%),66%,.95);box-shadow:0 0 26px hsla(var(--eos-h),var(--eos-sat,100%),60%,.78),inset 0 0 18px hsla(var(--eos-h),var(--eos-sat,100%),60%,.42)}
+/* reveal shockwave: wide enough to clear the result card's edges (≈ 3.4× desktop, 4.3× phone) */
+${EOS_DOTS_FIELD}.eosBurst .eosCoreWave{border-width:3px;border-color:hsla(var(--eos-h),var(--eos-sat,100%),70%,.95);box-shadow:0 0 30px hsla(var(--eos-h),var(--eos-sat,100%),62%,.8),inset 0 0 20px hsla(var(--eos-h),var(--eos-sat,100%),62%,.4);animation:eosDotsBurstWide 1.05s cubic-bezier(.15,.7,.3,1) 1 both}
+${EOS_DOTS_FIELD}[data-eos-narrow="1"].eosBurst .eosCoreWave{animation-name:eosDotsBurstWideN}
+/* dial step (setLevel): the ring twinkles while the dust surges / hushes for ≈ .4 s */
+${EOS_DOTS_FIELD}.eosTwinkle .eosCoreRing{animation:eosDotsTwinkle .6s cubic-bezier(.2,.7,.3,1) 1 both}
 ${EOS_DOTS_FIELD}.eosPulseIn .eosCoreFlash{animation:eosDotsPulse 1.2s ease-out 1}
 ${EOS_DOTS_FIELD}.eosPulseIn .eosCoreRing{animation-duration:.9s}
 ${EOS_DOTS_FIELD}.eosPulseOut .eosCoreWave{animation:eosDotsBurst 1.2s cubic-bezier(.2,.6,.3,1) 1 both}
 /* spark states (numb, good): warm, vivid, alive — the core pulses at 72 bpm instead of breathing */
-${EOS_DOTS_FIELD}[data-eos-mode="spark"] :is(.eosCoreHalo,.eosCoreGlow,.eosCoreRays){animation:eosDotsHue 5s ease-in-out infinite alternate}
+/* (spark hue shimmer rides on nodes that already animate: the body's 2nd animation + the rays' spin) */
 ${EOS_DOTS_FIELD}[data-eos-mode="spark"] .eosCoreRays{animation:eosDotsSpin 40s linear infinite,eosDotsHue 5s ease-in-out infinite alternate}
 ${EOS_DOTS_FIELD}[data-eos-mode="spark"] .eosLane[data-k="0"]{--h:330!important}
 ${EOS_DOTS_FIELD}[data-eos-mode="spark"] .eosLane[data-k="1"]{--h:42!important}
@@ -1453,16 +1660,18 @@ ${EOS_DOTS_FIELD}[data-eos-mode="spark"] .eosLane[data-k="2"]{--h:16!important}
 ${EOS_DOTS_FIELD}[data-eos-mode="spark"] .eosLane[data-k="3"]{--h:175!important}
 
 /* ---------------- cosmetic dust styles (§9.2; never change the pacer or the mirror rules) */
-${EOS_DOTS_FIELD}[data-eos-dust="fireflies"] .eosLane>[data-eos-dot]{--fh:calc(50 + var(--h) * .07);background:radial-gradient(circle,#fffde6 0 28%,hsla(var(--fh),100%,64%,.95) 54%,hsla(var(--fh),100%,55%,0) 100%);box-shadow:0 0 calc(var(--s) * 2.4 + 4px) hsla(var(--fh),100%,58%,.8),0 0 calc(var(--s) * 6 + 8px) hsla(var(--fh),100%,50%,.25);animation:eosDotsBlink var(--bk,2.4s) ease-in-out var(--dl,0s) infinite}
-${EOS_DOTS_FIELD}[data-eos-dust="fireflies"].eosJitter .eosLane>[data-eos-dot]{animation:eosDotsBlink var(--bk,2.4s) ease-in-out var(--dl,0s) infinite,eosDotsJitter calc(var(--bk,2s) * .3) ease-in-out infinite alternate}
+${EOS_DOTS_FIELD}[data-eos-dust="fireflies"]{--eos-lane-kf:eosDotsLaneFf}
+${EOS_DOTS_FIELD}[data-eos-dust="fireflies"] .eosLane>[data-eos-dot]{--fh:calc(50 + var(--h) * .07);background:radial-gradient(circle,#fffde6 0 28%,hsla(var(--fh),100%,64%,.95) 54%,hsla(var(--fh),100%,55%,0) 100%);box-shadow:0 0 calc(var(--s) * 2.4 + 4px) hsla(var(--fh),100%,58%,.8),0 0 calc(var(--s) * 6 + 8px) hsla(var(--fh),100%,50%,.25)}
 ${EOS_DOTS_FIELD}[data-eos-dust="fireflies"] .eosLane>[data-eos-dot]::after{display:none}
+${EOS_DOTS_FIELD}[data-eos-dust="aurora"]{--eos-lane-kf:eosDotsLaneAu}
 ${EOS_DOTS_FIELD}[data-eos-dust="aurora"] .eosLane>[data-eos-dot]{--ah:calc(120 + var(--h) * .3);--aw:calc(var(--s) * 3.4 + 5px);--ahh:calc(var(--s) * .8 + 1px);width:var(--aw);height:var(--ahh);margin:calc(var(--ahh) * -.5) 0 0 calc(var(--aw) * -.5);rotate:calc(var(--ta,0deg) + 90deg);border-radius:999px;background:linear-gradient(90deg,hsla(var(--ah),95%,70%,0),hsla(var(--ah),95%,74%,.95),hsla(var(--ah),95%,70%,0));box-shadow:0 0 12px hsla(var(--ah),95%,62%,.45)}
-${EOS_DOTS_FIELD}[data-eos-dust="aurora"] .eosLane>[data-eos-dot]::after{left:0;top:0;width:100%;height:100%;translate:none;rotate:none;background:linear-gradient(90deg,hsla(calc(var(--ah) + 80),95%,72%,0),hsla(calc(var(--ah) + 80),95%,76%,.95),hsla(calc(var(--ah) + 80),95%,72%,0));animation:eosDotsAurora calc(var(--bk,2.4s) * 2.6) ease-in-out var(--dl,0s) infinite alternate}
+${EOS_DOTS_FIELD}[data-eos-dust="aurora"] .eosLane>[data-eos-dot]::after{left:0;top:0;width:100%;height:100%;translate:none;rotate:none;background:linear-gradient(90deg,hsla(calc(var(--ah) + 80),95%,72%,0),hsla(calc(var(--ah) + 80),95%,76%,.95),hsla(calc(var(--ah) + 80),95%,72%,0));opacity:.45}
 ${EOS_DOTS_FIELD}[data-eos-dust="snow"] .eosLane>[data-eos-dot]{--s2:calc(var(--s) * 1.25 + .5px);width:var(--s2);height:var(--s2);margin:calc(var(--s2) * -.5) 0 0 calc(var(--s2) * -.5);background:radial-gradient(circle,#fff 0 40%,rgba(236,246,255,.85) 62%,rgba(220,238,255,0) 100%);box-shadow:0 0 calc(var(--s) * 1.6 + 3px) rgba(226,242,255,.7)}
 ${EOS_DOTS_FIELD}[data-eos-dust="snow"] .eosLane>[data-eos-dot]::after{display:none}
 ${EOS_DOTS_FIELD}[data-eos-dust="gold"] .eosLane>[data-eos-dot]{background:radial-gradient(circle,#fffbe6 0 26%,#ffd04a 52%,rgba(255,154,46,0) 100%);box-shadow:0 0 calc(var(--s) * 1.6 + 3px) rgba(255,200,80,.85),0 0 calc(var(--s) * 4 + 6px) rgba(255,150,40,.3)}
 ${EOS_DOTS_FIELD}[data-eos-dust="gold"] .eosLane>[data-eos-dot]::after{left:50%;top:50%;width:calc(var(--s) * 4 + 6px);height:calc(var(--s) * 4 + 6px);translate:-50% -50%;rotate:none;transform-origin:50% 50%;background:linear-gradient(90deg,rgba(255,240,190,0) 0 42%,rgba(255,246,210,.95) 50%,rgba(255,240,190,0) 58% 100%),linear-gradient(0deg,rgba(255,240,190,0) 0 42%,rgba(255,246,210,.95) 50%,rgba(255,240,190,0) 58% 100%);opacity:0}
-${EOS_DOTS_FIELD}[data-eos-dust="gold"] .eosLane:nth-child(3n) >[data-eos-dot]::after{animation:eosDotsGlint calc(var(--bk,2.4s) * 1.2) ease-in-out infinite}
+${EOS_DOTS_FIELD}[data-eos-dust="gold"] .eosLane:nth-child(3n){--eos-lane-kf:eosDotsLaneGd}
+${EOS_DOTS_FIELD}[data-eos-dust="gold"] .eosLane:nth-child(3n) >[data-eos-dot]::after{opacity:.5;scale:.8}
 
 /* ---------------- every other dust layer joins the same centre */
 /* Pixar motes: left/top animate FROM the inline spawn values to the measured centre; two easings = curved, odd/even swap = both spin directions */
@@ -1489,6 +1698,8 @@ ${EOS_A} .infinityField{display:none!important}
   ${EOS_DOTS_FIELD} .eosCore,${EOS_DOTS_FIELD} .eosCore *{animation:none!important;transition:opacity .8s ease!important}
   ${EOS_DOTS_FIELD} .eosCore .eosCoreBody,${EOS_DOTS_FIELD} .eosCore{scale:1!important}
   ${EOS_DOTS_FIELD} .eosCore{transition:none!important}
+  ${EOS_DOTS_FIELD} :is(.eosCoreSpark,.eosCoreGlow){transition:none!important}
+  ${EOS_DOTS_FIELD} .eosLane>[data-eos-dot]{transition:none!important}
 }
 /* in-app calm visuals: the same quiet field without the OS setting */
 ${EOS_PX}[data-eos-calm="1"] .tsPxDust{animation:none!important;opacity:0!important}
@@ -1500,6 +1711,8 @@ ${EOS_DOTS_FIELD}[data-eos-calm="1"] .eosLane>[data-eos-dot]{animation:none!impo
 ${EOS_DOTS_FIELD}[data-eos-calm="1"] .eosCore,${EOS_DOTS_FIELD}[data-eos-calm="1"] .eosCore *{animation:none!important;transition:opacity .8s ease!important}
 ${EOS_DOTS_FIELD}[data-eos-calm="1"] .eosCore .eosCoreBody{scale:1!important}
 ${EOS_DOTS_FIELD}[data-eos-calm="1"] .eosCore{scale:1!important;transition:none!important}
+/* (a focal anchor's dim is instant in calm visuals: no cross-fade at all) */
+${EOS_DOTS_FIELD}[data-eos-calm="1"] :is(.eosCoreSpark,.eosCoreGlow){transition:none!important}
 ${EOS_DOTS_FIELD}.eosGatherCalm .eosCoreFlash{opacity:.55}
 ${EOS_DOTS_FIELD}[data-eos-calm="1"] .eosCore[data-pacer="own"][data-phase="out"] .eosCoreBody{opacity:.78}
 `
@@ -1507,11 +1720,15 @@ eosCss("dots", EOS_DOTS_CSS)
 
 // ---------------------------------------------------------------- public API (optional-chained by callers)
 eosExpose("dots", {
-    pulse: (kind = "in") => EOS_DOTS_LIVE.ctl?.pulse(kind),
+    pulse: (kind = "in") => eosDotsEach((c) => c.pulse(kind)),
     breath: (phase, ms) => eosBreathOwn(phase, ms),
     phase: () => eosBreathPhase(),
     beat: (bpm) => eosPacerBeat(bpm),
-    setLevel: (n) => EOS_DOTS_LIVE.ctl?.setLevel(n),
-    gather: () => EOS_DOTS_LIVE.ctl?.gather(),
-    state: () => (EOS_DOTS_LIVE.ctl ? EOS_DOTS_LIVE.ctl.state() : null),
+    setLevel: (n) => eosDotsEach((c) => c.setLevel(n)),
+    gather: () => eosDotsEach((c) => c.gather()),
+    state: () => {
+        let last = null
+        EOS_DOTS_LIVE.ctls.forEach((c) => (last = c))
+        return last ? last.state() : null
+    },
 })
