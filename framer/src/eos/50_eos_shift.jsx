@@ -1613,7 +1613,7 @@ ${EOS_SHIFT_SM} .eosSmRingFill{fill:none;stroke:var(--eos-gold-1);stroke-width:7
 ${EOS_SHIFT_SM}.is-cool .eosSmRingFill{stroke:var(--eos-c1);filter:drop-shadow(0 0 6px var(--eos-c1))}
 ${EOS_SHIFT_SM}.is-heart .eosSmRingFill{stroke:#ffb59a;filter:drop-shadow(0 0 8px rgba(255,170,140,.9))}
 ${EOS_SHIFT_SM} .eosSmOrb{position:relative;display:grid;place-items:center;width:var(--eos-orb);height:var(--eos-orb);min-width:44px;min-height:44px;padding:0!important;margin:0;border:0!important;border-radius:50%!important;background:none!important;box-shadow:none!important;cursor:pointer;touch-action:none;-webkit-touch-callout:none}
-${EOS_SHIFT_SM} .eosSmHintAt{position:absolute;left:86%;top:86%;width:34px;height:34px;translate:-50% -50%;pointer-events:none;z-index:-1}
+${EOS_SHIFT_SM} .eosSmHintAt{position:absolute;left:72%;top:72%;width:30px;height:30px;translate:-50% -50%;pointer-events:none;z-index:-1}
 ${EOS_SHIFT_SM} .eosSmOrb:focus-visible{outline:3px solid var(--eos-gold-1)!important;outline-offset:6px}
 ${EOS_SHIFT_SM} .eosSmThump{display:block;border-radius:50%}
 ${EOS_SHIFT_SM} .eosSmFaceWrap{--eos-orb:inherit;width:var(--eos-orb);height:var(--eos-orb)}
