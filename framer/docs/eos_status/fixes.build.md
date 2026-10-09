@@ -1,5 +1,7 @@
 # EOS build: fixes — FINISHED
 
+Committed on `claude/jolly-hopper-ognrxj` as "EOS build: fixes" and pushed.
+
 **What I built:** `src/eos/60_eos_fixes.jsx`, which covers spec §11 (all of it), §0.2 (`eosTextSafety` / `EOS_NEUTRAL_WORDS` in `EosEntries`), the §3.10 66/80 copy, and the §0.5 foundation-sweep game bugs that CSS or a guard can fix. It is one module: no imports, `Eos`/`EOS_FIXES_`/`eosFixes` namespace, `eosCss("fixes", …)`, no regex lookbehind, every listener and timer is cleaned up.
 
 ## Exports
@@ -74,7 +76,7 @@ Also verified:
 - **Phone fixes:** 71 DEFUSE — all 3 zone buttons hittable at 390 (before: STEP 3 clipped). 103 SINKING PLATFORM — LOWER button bottom at 539 (before: 1105, below the screen). 45 orb on screen. 21 BIN drag-to-bin works (progress 0 → 17).
 
 ## Screenshots
-`/home/user/thinkstill-rituals/framer/dev/shots/eos/`:
+These are local only, not committed: `framer/dev/shots` is gitignored. Folder: `/home/user/thinkstill-rituals/framer/dev/shots/eos/`:
 - `fixes_11_window_{390,1280}.png`
 - `fixes_14_crumple_390.png`
 - `fixes_64_almost_390.png`
