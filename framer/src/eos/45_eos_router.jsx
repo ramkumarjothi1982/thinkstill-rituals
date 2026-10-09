@@ -22,8 +22,15 @@
 // Release 1 (owner decision): games 115-120 are deferred and their modules do not exist. Every id that is
 // not registered in GAMES at call time is skipped, so each route falls through to the next best EXISTING
 // game of the same list (e.g. shame.mid 115 → 104 VOLUME KNOB, overwhelm.mid 120 → 93 SPACE MAKER,
-// fear.mid 118 → 31 BACK SEAT, numb 117 → 68 DRUM IT, jealous 119 → 47 UNFOLLOW). Nothing ever returns an
-// unregistered id, nothing throws (every entry point is try/catch → null = the arcade's own chooser).
+// fear.mid 118 → 31 BACK SEAT, numb 117 → 68 DRUM IT, jealous 119 → 47 UNFOLLOW on desktop / 45 MAGNETS on a
+// phone, good 117/119 → 106 TINY SOUNDTRACK). Nothing ever returns an unregistered id, nothing throws (every
+// entry point is try/catch → null = the arcade's own chooser).
+//
+// Round-1 review decisions (v1.2.1): act 2 takes its band from the episode's ENTRY level (st.before, §7.3), so a
+// panic peak that dropped 8 → 3 gets CLEANSE, never DRAMA MACHINE; games that stall at phone width are demoted
+// there (EOS_ROUTER_PHONE_FRAGILE); GOOD never gets a "nope" / trade-away / villain gesture; a SOFT flag keeps
+// the anger hero 112 (slow breath cool-down) for anger only, strong flags stay gentle-only; the variety swap
+// never picks a penalised #2 (late-night loud, recency, path, phone, negative history).
 // ============================================================================================
 
 // ---------------------------------------------------------------- §7.2 tables (paste-ready, ids best-first)
@@ -86,11 +93,24 @@ const EOS_ROUTER_NEVER = {
     sad: { high: EOS_ROUTER_SMASH }, //                              no destruction for sadness at its peak
     lonely: { high: EOS_ROUTER_SMASH },
     fear: { high: new Set([118]) }, //                                no looming exposure at the peak
-    good: { all: EOS_ROUTER_SMASH }, //                               GOOD is savoured, never smashed
+    // GOOD is savoured: never smashed, never the "nope" swipe (25), never traded away as currency (88), never
+    // framed as a villain that squeaks and shrinks (53). 1 POP stays (a confetti pop with the savouring copy).
+    good: { all: new Set([...EOS_ROUTER_SMASH, 25, 88, 53]) },
 }
+// A "soft" flag (hopeless / "hate my life" venting) keeps these on top of EOS_GENTLE_IDS for that feeling:
+// 112 COOL THE VOLCANO is a slow breath cool-down (EOS_SLOW_IDS), not a discharge game. Strong flags
+// (threat / abuse / selfharm) stay strictly on the gentle list.
+const EOS_ROUTER_SOFT_OK = { anger: new Set([112]) }
+// Games that cannot be finished at phone width (stage ≤ 560 px) in release 1 → score penalty there, never
+// removed (still a fallback, still in the menu). 47 UNFOLLOW: the dragged .plug stays clipped at the stage edge
+// after the first pull (review r1, 3/3 runs stuck at 17 % at 390). Drop the entry once 60_eos_fixes verifies
+// finishGame(47) at 390.
+const EOS_ROUTER_PHONE_FRAGILE = new Map([[47, 0.5]])
+const EOS_ROUTER_PHONE_MAX = 560
 // Fallback order after the band's own list: nearest band first (mid falls back to the body games first).
 const EOS_ROUTER_BAND_ORDER = { high: ["high", "mid", "low"], mid: ["mid", "high", "low"], low: ["low", "mid", "high"] }
-const EOS_ROUTER_BAND_LEVEL = { high: 8, mid: 5, low: 2 }
+// Default level when only the band is known (crisis with no dial → high; unknown → mid).
+const EOS_ROUTER_BAND_LEVEL = { high: 8, mid: 6, low: 2 }
 
 // ---------------------------------------------------------------- small pure helpers
 // Test clock (dev harness: window.__eos.router.setNow("2026-10-09T23:30:00")); null = the real clock.
@@ -105,6 +125,20 @@ function eosRouterStronger(a, b) {
     const ra = EOS_SAFETY_RANK[a] || 0
     const rb = EOS_SAFETY_RANK[b] || 0
     return rb > ra ? b : ra ? a : null
+}
+// Is the arcade stage phone-sized? opts.width (tests) → else the mounted arcade root → else the window.
+function eosRouterNarrow(opts) {
+    try {
+        let w = opts && opts.width != null ? Number(opts.width) : 0
+        if (!w && typeof document !== "undefined") {
+            const el = document.querySelector(".tsArcade")
+            w = el ? el.getBoundingClientRect().width : 0
+        }
+        if (!w && typeof window !== "undefined") w = Number(window.innerWidth) || 0
+        return w > 0 && w <= EOS_ROUTER_PHONE_MAX
+    } catch {
+        return false
+    }
 }
 // Registered games (id → GAMES entry). Rebuilt when GAMES grows (eosRegisterGame pushes new games).
 // opts.ids (unit tests only) models another catalogue, e.g. release 2 with 115-120 registered.
@@ -223,7 +257,7 @@ function eosRouterContext(text, played, excludeId, opts = {}) {
             // A crisis phrase with no detected feeling never falls through to the arcade's chooser:
             // general, body first (high band) unless a NOT SURE check-in gave a level.
             key = "general"
-            if (!express && before == null) lvl = 8
+            if (!express && before == null) lvl = EOS_ROUTER_BAND_LEVEL.high
         } else if (before != null || express) key = "general" // NOT SURE check-in / express orb
         else return null
     }
@@ -240,6 +274,7 @@ function eosRouterContext(text, played, excludeId, opts = {}) {
         excludeId: Number(excludeId) || null,
         path: Array.isArray(st.path) ? st.path.map(Number) : [],
         late: eosLateNight(eosRouterNow(opts)),
+        narrow: eosRouterNarrow(opts),
         seed: (Number(st.sessionSeed) || 0) + (Number(st.loops) || 0),
     }
 }
@@ -250,7 +285,7 @@ function eosRouterEligible(id, ctx, games, gentleOnly) {
     const never = EOS_ROUTER_NEVER[ctx.key]
     if (never && ((never.all && never.all.has(id)) || (never[ctx.band] && never[ctx.band].has(id)))) return false
     if (ctx.late && id === 117 && ctx.key !== "numb") return false
-    if (gentleOnly && !EOS_GENTLE_IDS.includes(id)) return false
+    if (gentleOnly && !EOS_GENTLE_IDS.includes(id) && !(ctx.flag === "soft" && EOS_ROUTER_SOFT_OK[ctx.key] && EOS_ROUTER_SOFT_OK[ctx.key].has(id))) return false
     return true
 }
 // Band list, then the other two bands (deduped), filtered; ranked and scored (§7.3 steps 3-4).
@@ -285,18 +320,25 @@ function eosRouterRank(ctx, opts = {}) {
             const delta = eosRouterPersonalDelta(ctx.key, id, hist)
             const history = eosClamp(0.05 * delta, -0.15, 0.15)
             const loud = ctx.late && EOS_LOUD_IDS.has(id) ? 0.2 : 0
-            const score = 1 - rank * 0.1 - inPath - recency + history - loud
-            return { id, game: games.get(id), rank, score: Math.round(score * 1000) / 1000, parts: { inPath, recency, delta, history, loud } }
+            const phone = ctx.narrow ? EOS_ROUTER_PHONE_FRAGILE.get(id) || 0 : 0
+            const score = 1 - rank * 0.1 - inPath - recency + history - loud - phone
+            return { id, game: games.get(id), rank, score: Math.round(score * 1000) / 1000, parts: { inPath, recency, delta, history, loud, phone } }
         })
         .sort((a, b) => b.score - a.score || a.rank - b.rank)
 }
-// High band → the top score. Mid / low → deterministic variety: #2 when eosNoise(seed + loops, top) < .2
-// (only if #2 is not heavily penalised: never a game from this feeling's path or one just played).
+// High band → the top score. Mid / low → deterministic variety: #2 when eosNoise(seed + loops, top) < .2,
+// only if #2 is close (within 0.3) and carries NO penalty: not in this feeling's path, not recent, not a loud
+// game late at night, not phone-fragile on a phone, no negative personal history (a demotion is never undone).
+function eosRouterPenalised(r) {
+    const p = (r && r.parts) || {}
+    return p.inPath > 0 || p.recency > 0 || p.loud > 0 || p.phone > 0 || p.history < 0
+}
 function eosRouterChoose(ranked, ctx) {
     if (!ranked || !ranked.length) return null
     const top = ranked[0]
     if (ctx.band === "high" || ranked.length < 2) return top
     const second = ranked[1]
+    if (eosRouterPenalised(second)) return top
     let n = 1
     try {
         n = eosNoise(ctx.seed, top.id)
@@ -318,8 +360,10 @@ function EosRouteGame(text, played = [], excludeId = null, opts = {}) {
     }
 }
 // Act 2 ("ONE MORE ▶"): anger after a discharge game → 112 COOL THE VOLCANO whatever the delta (under a
-// safety flag the first gentle id); little shift (delta null or < 2) → EOS_SECOND_ACT[emo]; it worked →
-// the next routed pick excluding the last game. Same filters as EosRouteGame. text is optional.
+// strong safety flag the first gentle id; a soft flag keeps 112); little shift (delta null or < 2) →
+// EOS_SECOND_ACT[emo]; it worked → the next routed pick excluding the last game, banded like EosRouteGame from
+// the episode's ENTRY level (express → 10, else st.before, never the after-rating: a panic peak that fell
+// 8 → 3 is still body-first, so act 2 is CLEANSE, not an "exaggerate it" game). Same filters. text is optional.
 function EosSecondAct(emotion, lastId, delta, text = "", opts = {}) {
     try {
         const st = EOS_STORE.get()
@@ -328,7 +372,7 @@ function EosSecondAct(emotion, lastId, delta, text = "", opts = {}) {
         const key = emo || "general"
         const t = eosNormText(text)
         const flag = eosRouterStronger(eosRouterStronger(st.safety, EOS_TEXT_SAFETY.last), t ? EosSafetyScan(t) : null)
-        const lvl = st.after ?? st.before ?? (emo ? EOS_EMO[emo].dial : 6)
+        const lvl = st.express ? 10 : st.before ?? st.intensityGuess ?? (emo ? EOS_EMO[emo].dial : null) ?? EOS_ROUTER_BAND_LEVEL.mid
         const ctx = {
             key,
             emo,
@@ -341,12 +385,13 @@ function EosSecondAct(emotion, lastId, delta, text = "", opts = {}) {
             excludeId: last,
             path: Array.isArray(st.path) ? st.path.map(Number) : [],
             late: eosLateNight(eosRouterNow(opts)),
+            narrow: eosRouterNarrow(opts),
             seed: (Number(st.sessionSeed) || 0) + (Number(st.loops) || 0) + 1,
         }
         const games = eosRouterGames(opts)
         const ok = (id) => eosRouterEligible(id, ctx, games, !!flag)
         if (key === "anger" && EOS_DISCHARGE_IDS.has(last) && last !== 112) {
-            const id = flag ? EOS_GENTLE_IDS.find(ok) : ok(112) ? 112 : null
+            const id = ok(112) ? 112 : flag ? EOS_GENTLE_IDS.find(ok) : null
             if (id) return games.get(id)
         }
         const d = delta == null || delta === "" ? null : Number(delta)
@@ -369,7 +414,7 @@ function EosRoutePreview(emotion, before, opts = {}) {
         const emo = EOS_EMO[emotion] ? emotion : null
         const b = before == null || before === "" || !Number.isFinite(Number(before)) ? null : eosClamp(Math.round(Number(before)), 0, 10)
         const flag = eosRouterStronger(st.safety, EOS_TEXT_SAFETY.last)
-        const ctx = eosRouterContext("", opts.played, null, { ...opts, emotion: emo, before: b ?? (emo ? EOS_EMO[emo].dial : flag ? 8 : 6), express: false, textFlag: flag })
+        const ctx = eosRouterContext("", opts.played, null, { ...opts, emotion: emo, before: b ?? (emo ? EOS_EMO[emo].dial : flag ? EOS_ROUTER_BAND_LEVEL.high : EOS_ROUTER_BAND_LEVEL.mid), express: false, textFlag: flag })
         if (!ctx) return null
         const pick = eosRouterChoose(eosRouterRank(ctx, opts), ctx)
         if (!pick || !pick.game) return null
@@ -492,12 +537,15 @@ function eosRouterMenuImg(g, emo) {
     }
 }
 function EosMenuGroup({ played = [], gameChoice = null, onPick }) {
+    // The ranking reads emotion, before, express, safety, path, intensityGuess, detected, loops, seed …: key the
+    // memo on the store snapshot itself (a ranking costs ~0.03 ms, so every store change may recompute).
     const st = useEosStore()
     const playedKey = Array.isArray(played) ? played.join("|") : ""
     let gamesLen = 0
     try {
         gamesLen = GAMES.length
     } catch {}
+    const narrow = eosRouterNarrow()
     const group = React.useMemo(() => {
         try {
             return eosRouterMenuItems(st, Array.isArray(played) ? played : [])
@@ -505,14 +553,15 @@ function EosMenuGroup({ played = [], gameChoice = null, onPick }) {
             return null
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [st.emotion, st.before, st.express, st.safety, st.loops, st.sessionSeed, playedKey, gamesLen])
+    }, [st, playedKey, gamesLen, narrow])
     if (!group || !group.games.length) return null
     const hue = group.emo ? eosHue(group.emo) : 46
     return (
         <React.Fragment>
             <div
-                className="releaseChoiceGroupLabel eosMenuGroupLabel"
-                data-eos-menu-group={group.emo || "new"}
+                className="releaseChoiceGroupLabel eosMenuGroupLabel fs-mask"
+                {...EOS_PRIVATE_ATTRS}
+                data-eos-menu-group={group.emo ? "feeling" : "new"}
                 style={{ "--eos-h": hue }}
             >
                 {group.label}
@@ -595,6 +644,8 @@ function eosRouterValidate() {
         for (const id of EOS_SECOND_ACT[k] || []) if (EOS_VAULT.has(id) || EOS_BENCH.has(id)) out.push(`second act ${k}: ${id} is vault/bench`)
     }
     for (const id of EOS_GENTLE_IDS) if (EOS_VAULT.has(id) || EOS_BENCH.has(id) || EOS_ROUTER_SMASH.has(id)) out.push(`gentle ${id} is vault/bench/smash`)
+    for (const k of Object.keys(EOS_ROUTER_SOFT_OK))
+        for (const id of EOS_ROUTER_SOFT_OK[k]) if (EOS_VAULT.has(id) || EOS_BENCH.has(id) || EOS_ROUTER_SMASH.has(id) || !EOS_SLOW_IDS.has(id)) out.push(`soft-ok ${k} ${id} is not a slow, non-smash game`)
     for (let id = 1; id <= 120; id++) if (eosRouterVerdict(id).verdict === "unlisted") out.push(`id ${id} unclassified`)
     return out
 }
