@@ -24,3 +24,9 @@ Design decisions (deviations from spec, recorded per spec header):
 progress 0/33/67/96/100). Desktop rescaled (back 92 / front 114 / hero 122 / lotus 176, rows at 28% / 84%) after the first desktop
 sheet looked sparse. Hero win face = last entry of EOS_WIN_FACES[char] (SYNC 63, closed-eye smile; 53 read as fierce).
 Checkpoint commit of 73_pilot_cleanse.jsx.
+
+## Step 4 (calls ~58-74): checks + final shots. finishGame passes at 390, 1280 and 390 reduced-motion (reveal, arrows checked,
+0 misses, 0 label mismatches, smallText none, 0 errors, progress monotonic, 100 only at hand-off). ?pilot=off renders the
+original CLEANSE (progressed 0 -> 67 before my 120 s budget ran out; the original has a 3.2 s lock per release).
+Desktop: back row 33%, lotus 70.5% (176 px), front 85%; moon 6.5% wide at x~91% so it no longer touches the back-right orb;
+the risen STILL's top now meets (does not cross) the back-centre label bottom. Sheets saved as game-cleanse.after_*.png.

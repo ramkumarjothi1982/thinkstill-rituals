@@ -25,9 +25,9 @@ const EOS_PILOT_CLEANSE = {
     // slot -> [x, y] as fractions of the S5 play box. F = front row, B = back row; FC is the protagonist's seat.
     slots: {
         phone: { F0: [0.18, 0.79], FC: [0.5, 0.79], F2: [0.82, 0.79], B0: [0.18, 0.33], BC: [0.5, 0.33], B2: [0.82, 0.33] },
-        desk: { F0: [0.45, 0.84], FC: [0.64, 0.84], F2: [0.83, 0.84], B0: [0.45, 0.28], BC: [0.64, 0.28], B2: [0.83, 0.28] },
+        desk: { F0: [0.45, 0.85], FC: [0.64, 0.85], F2: [0.83, 0.85], B0: [0.45, 0.33], BC: [0.64, 0.33], B2: [0.83, 0.33] },
     },
-    lotus: { phone: [0.5, 0.6, 122], desk: [0.64, 0.64, 176] },
+    lotus: { phone: [0.5, 0.6, 122], desk: [0.64, 0.705, 176] },
     size: { phone: { back: 68, front: 88, hero: 96, still: 64 }, desk: { back: 92, front: 114, hero: 122, still: 84 } },
     fill: { 1: ["FC"], 2: ["FC", "BC"], 3: ["F0", "FC", "F2"], 4: ["F0", "FC", "F2", "BC"], 5: ["F0", "FC", "F2", "B0", "B2"], 6: ["F0", "FC", "F2", "B0", "BC", "B2"] },
     order: ["F0", "F2", "B0", "BC", "B2", "FC"], // suggested order: front sides -> back row -> the protagonist last
@@ -730,7 +730,7 @@ const EosPilotCleanseInner = React.memo(function EosPilotCleanseInner({ live, wo
         const pos = {}
         for (const s in SL) pos[s] = { x: box.w * SL[s][0], y: T + H * SL[s][1] }
         const hz = T + H * 0.24
-        const moonW = box.w * (ph ? 0.15 : 0.09)
+        const moonW = box.w * (ph ? 0.15 : 0.065)
         return { ph, u, T, H, SZ, pos, hz, moonY: Math.max(4, T + H * 0.09 - moonW / 2), lotus: { x: box.w * Lf[0], y: T + H * Lf[1], s: Math.round(Lf[2] * u) }, labW: ph ? 108 : 132 }
     }, [box])
 
@@ -866,8 +866,8 @@ ${EOS_PILOT_CL} .eosPilotStage{--eos-pilot-horizon:var(--c-hz,24%)}
 ${EOS_PILOT_CL} .eosPilotStage .moon{top:var(--c-moon-y,4%)}
 ${EOS_PILOT_CL} .eosPilotStage .moon{left:54%}
 ${EOS_PILOT_CL} .eosPilotStage .moonRefl{left:56%}
-${EOS_PILOT_CL}[data-c-desk="1"] .eosPilotStage .moon{left:80%;width:9%}
-${EOS_PILOT_CL}[data-c-desk="1"] .eosPilotStage .moonRefl{left:81.5%;width:6%}
+${EOS_PILOT_CL}[data-c-desk="1"] .eosPilotStage .moon{left:88%;width:6.5%}
+${EOS_PILOT_CL}[data-c-desk="1"] .eosPilotStage .moonRefl{left:88.5%;width:5%}
 ${EOS_PILOT_CL}[data-c-desk="1"] .eosPilotStage .reeds{width:12%}
 
 /* plane layers: the reflection plate (finale), the ripple texture + water murk, the gold key, the moon path, the sweep ring */
@@ -877,7 +877,7 @@ ${EOS_PILOT_CL} .cMirror{left:0;right:0;top:var(--c-hz,24%);bottom:0;opacity:0;t
   radial-gradient(14% 30% at 61.5% 22%,rgba(207,227,255,.14),rgba(207,227,255,0) 70%),
   linear-gradient(180deg,rgba(24,38,94,.96) 0%,rgba(16,27,74,.9) 34%,rgba(8,14,44,.94) 100%);
   -webkit-mask:linear-gradient(90deg,transparent,#000 13%,#000 87%,transparent);mask:linear-gradient(90deg,transparent,#000 13%,#000 87%,transparent)}
-${EOS_PILOT_CL}[data-c-desk="1"] .cMirror{background:radial-gradient(5% 5% at 84.5% 5%,rgba(244,248,255,.85),rgba(207,227,255,.32) 52%,rgba(207,227,255,0) 74%),
+${EOS_PILOT_CL}[data-c-desk="1"] .cMirror{background:radial-gradient(4% 5% at 91% 5%,rgba(244,248,255,.85),rgba(207,227,255,.32) 52%,rgba(207,227,255,0) 74%),
   linear-gradient(180deg,rgba(24,38,94,.96) 0%,rgba(16,27,74,.9) 34%,rgba(8,14,44,.94) 100%)}
 ${EOS_PILOT_CL}[data-c-fin] .cMirror{opacity:.9}
 ${EOS_PILOT_CL} .cRip{left:0;right:0;top:var(--c-hz,24%);bottom:0;opacity:calc(1 - var(--c-k) * .62);transition:opacity 1s ease;
