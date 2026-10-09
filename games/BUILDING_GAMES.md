@@ -163,6 +163,7 @@ python3 games/tests/qa.py --mode <mode> --games <id>                            
 python3 games/tests/qa.py --mode <mode> --games <id> --configs 1280x860:bright        # desktop, bright
 python3 games/tests/qa.py --mode <mode> --games <id> --text ''                         # no words: launched from the library
 ```
+QA runs queue for one of three browser slots shared by every builder (you may see "waited Ns for a QA slot"); that's normal.
 **The machine has 2 CPUs shared by a dozen builders, so frame times measured now are meaningless.** A `p95 frame` FAIL is
 expected under load: do not chase it. Keep the game cheap by design instead (one opaque background canvas, cached glows, no
 per-frame layout reads, no blur filters on moving layers) and report the p95 you saw. Everything else in the verdict (errors,

@@ -62,7 +62,41 @@ def stats(frames):
     return {'frames': len(fr), 'p50': pct(0.5), 'p95': pct(0.95), 'max': round(fr[-1], 1), 'over33': sum(1 for x in fr if x > 33.4), 'over50': sum(1 for x in fr if x > 50), 'fps': round(1000 / (sum(fr) / len(fr)), 1)}
 
 
+class qa_slot:
+    """At most TSG_QA_SLOTS browser runs at once across every builder on the machine (file locks), so a dozen parallel
+    builders queue for the CPU instead of thrashing it. Waits are short; frame times are still only meaningful alone."""
+    def __init__(self):
+        self.fh = None
+    def __enter__(self):
+        import fcntl
+        slots = max(1, int(os.environ.get('TSG_QA_SLOTS', '3')))
+        d = '/tmp/tsg-qa-slots'; os.makedirs(d, exist_ok=True)
+        waited = 0
+        while True:
+            for i in range(slots):
+                fh = open(os.path.join(d, f'slot{i}.lock'), 'w')
+                try:
+                    fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    self.fh = fh
+                    if waited: print(f'(waited {waited}s for a QA slot)', flush=True)
+                    return self
+                except OSError:
+                    fh.close()
+            time.sleep(2); waited += 2
+    def __exit__(self, *a):
+        try:
+            import fcntl
+            fcntl.flock(self.fh, fcntl.LOCK_UN); self.fh.close()
+        except Exception:
+            pass
+
+
 def run_game(pw, port, mode, gid, w, h, theme, out, autoplay, timeout, video):
+    with qa_slot():
+        return _run_game(pw, port, mode, gid, w, h, theme, out, autoplay, timeout, video)
+
+
+def _run_game(pw, port, mode, gid, w, h, theme, out, autoplay, timeout, video):
     tag = f'{w}x{h}-{theme}' + ('' if TEXT is None else ('-notext' if TEXT == '' else '-text'))
     gdir = os.path.join(out, gid); os.makedirs(gdir, exist_ok=True)
     rep = {'id': gid, 'config': tag, 'errors': [], 'warnings': []}
