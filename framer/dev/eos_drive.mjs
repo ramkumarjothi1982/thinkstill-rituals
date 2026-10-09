@@ -51,7 +51,8 @@
 //       every 3rd failure first drags back the other way (a lever parked at its end stop); table games wait
 //       2.5 s in transitions before the fallback; stops as "stuck" after 45 s with no reaction. Before each
 //       new stage it waits for the arrow (window.__eos.arrows.state(): 2.2 s for the first stage, 1.5 s
-//       after) and records visibility + label; assertArrows: "auto" (check when the arrows module is in the
+//       after) and records visibility + label + aim (aimMisses: hand > 18 px off the element it acts on;
+//       arrowsOnFallback:true also checks stages only the generic fallback resolves, F6); assertArrows: "auto" (check when the arrows module is in the
 //       build) | true (a missing API is a miss) | false. alt:"keyboard" plays marker games with
 //       Space/Enter/arrow keys (the §8.0 single-pointer / keyboard alternative).
 //       → {id, name, done, ms, reason, finalProgress, progressLog:[{t, v}], stages:[{key, g, label, arrow…}],
@@ -1273,30 +1274,54 @@ async function performKeyboard(page, r, st, ctx) {
     }
     return `kb:${g}`
 }
-async function arrowCheck(page, expected, waitMs) {
+async function arrowCheck(page, expected, waitMs, picks, sel) {
     const t0 = Date.now()
     let last = null
     while (Date.now() - t0 < waitMs) {
-        last = await page.evaluate(() => {
+        last = await page.evaluate(([picks, sel]) => {
             try {
-                return window.__eos && window.__eos.arrows && window.__eos.arrows.state ? window.__eos.arrows.state() : undefined
+                const st = window.__eos && window.__eos.arrows && window.__eos.arrows.state ? window.__eos.arrows.state() : undefined
+                if (!st || !st.visible || !picks || !picks.length) return st
+                // F6: does the hand point at the element the driver is about to act on (the next thing that advances)?
+                // aim = the arrow's client point lies on (or within 18 px of) one of the picked targets; for drags /
+                // holds the arrow's point is the grab point, so the same test holds.
+                let best = 1e9
+                const A = document.querySelector(".releaseGameHost .cinematicContentShell > .arena") || document
+                let alts = []
+                try {
+                    // any live element of the same stage is a valid aim (pick:"near" stages, several bubbles)
+                    alts = sel ? [...A.querySelectorAll(sel)].slice(0, 40) : []
+                } catch {}
+                const cand = picks.map((k) => document.querySelector(`[data-eos-drive-pick="${k}"]`)).concat(alts)
+                for (const el of cand) {
+                    if (!el) continue
+                    const r = el.getBoundingClientRect()
+                    const dx = Math.max(r.left - st.x, 0, st.x - r.right)
+                    const dy = Math.max(r.top - st.y, 0, st.y - r.bottom)
+                    best = Math.min(best, Math.hypot(dx, dy))
+                }
+                const handEl = document.querySelector(".eosCue.isOn .eosHand, .eosCue.isOn .eosChevron, .eosCue.isOn .eosLabel")
+                const hr = handEl && handEl.getBoundingClientRect()
+                const painted = !!(hr && hr.width > 0 && hr.bottom > 0 && hr.right > 0 && hr.left < innerWidth && hr.top < innerHeight)
+                return { ...st, aimPx: best >= 1e9 ? null : Math.round(best), painted }
             } catch (e) {
                 return { error: String(e) }
             }
-        })
+        }, [picks || null, sel || null])
         if (last === undefined) return { checked: false }
         if (last && last.visible && (!expected || norm(last.label) === norm(expected))) break
         await sleep(100)
     }
     const visible = !!(last && last.visible)
-    return { checked: true, visible, label: last ? last.label || null : null, expected, labelOk: !!(visible && (!expected || norm(last.label) === norm(expected))), waitedMs: Date.now() - t0 }
+    const aimPx = last && last.aimPx != null ? last.aimPx : null
+    return { checked: true, visible, label: last ? last.label || null : null, expected, labelOk: !!(visible && (!expected || norm(last.label) === norm(expected))), waitedMs: Date.now() - t0, aimPx, aimOk: !visible || aimPx == null || aimPx <= 18, painted: last ? last.painted : null, kind: last ? last.kind : null, g: last ? last.g : null }
 }
 const norm = (s) => String(s || "").toUpperCase().replace(/\s+/g, " ").trim()
 
 export async function finishGame(page, idOrOpts, maybeOpts) {
     let id = typeof idOrOpts === "number" || typeof idOrOpts === "string" ? Number(idOrOpts) : null
     const opts = { ...(idOrOpts && typeof idOrOpts === "object" ? idOrOpts : {}), ...(maybeOpts || {}) }
-    const { timeoutMs = 150000, stuckMs = 45000, perStage = true, assertArrows = "auto", alt = "pointer", settleMs = 220, cooldownMs = 700, finishWaitMs = 9000, log = false } = opts
+    const { timeoutMs = 150000, stuckMs = 45000, perStage = true, assertArrows = "auto", arrowsOnFallback = false, alt = "pointer", settleMs = 220, cooldownMs = 700, finishWaitMs = 9000, log = false } = opts
     await ensureLib(page)
     if (!id) id = await currentGameId(page)
     const name = id ? await gameNameById(page, id) : null
@@ -1378,13 +1403,15 @@ export async function finishGame(page, idOrOpts, maybeOpts) {
             const expected = r.kind === "fallback" ? null : r.label || defaultLabel(r.spec || { g: r.g })
             const entry = { key: r.key, kind: r.kind, index: r.i ?? null, g: r.g, selector: (r.spec && r.spec.t) || null, label: expected, at: Date.now() - t0, target: r.targets[0] ? { x: r.targets[0].x, y: r.targets[0].y, cls: r.targets[0].cls, occluded: r.targets[0].occluded } : null }
             if (r.targets[0] && r.targets[0].occluded) out.occluded++
-            if (perStage && assertArrows !== false && r.kind !== "fallback") {
-                const a = await arrowCheck(page, expected, out.stages.length ? 1500 : 2200)
+            if (perStage && assertArrows !== false && (r.kind !== "fallback" || arrowsOnFallback)) {
+                const picks = r.g === "wait" ? null : (r.targets || []).map((t) => t.pick).filter(Boolean)
+                const a = await arrowCheck(page, expected, out.stages.length ? (r.kind === "fallback" ? 3200 : 1500) : 2200, picks, r.kind === "marker" ? '[data-eos-target="1"]' : r.spec && r.spec.pick === "near" ? r.spec.t : null)
                 entry.arrow = a.checked ? a : "n/a"
                 if (a.checked) {
                     out.arrowsChecked = true
                     if (!a.visible) out.arrowMisses.push(`${r.key} (${expected || r.g})`)
                     else if (!a.labelOk) out.labelMismatches.push(`${r.key}: expected "${expected}", arrow "${a.label}"`)
+                    if (a.visible && !a.aimOk) (out.aimMisses = out.aimMisses || []).push(`${r.key}: hand ${a.aimPx} px off the target`)
                 } else if (assertArrows === true) out.arrowMisses.push(`${r.key}: no arrows API in this build`)
             }
             out.stages.push(entry)

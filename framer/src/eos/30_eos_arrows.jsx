@@ -922,7 +922,7 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
         const S = {
             alive: true, t0: now0, delay: id === 111 ? 500 : 700, complete: false, missPushed: false,
             shown: false, firstShown: false, level: 2, base: null, reshows: 0, shownAt: 0, hiddenAt: now0, autoHideAt: 0, spotUntil: 0,
-            lastProgress: null, lastProgressAt: 0, lastTouchAt: 0, down: false, downKey: null, advanceAt: 0, missAt: 0,
+            lastProgress: null, lastProgressAt: 0, lastTouchAt: 0, lastDownAt: 0, down: false, downKey: null, advanceAt: 0, missAt: 0,
             lastPt: null, cur: null, lastStageKey: null, tableEver: false, arenaAt: 0,
             touched: new Set(), onceDone: new Set(), count: null, token: 0, wiggle: 0, shake: 0,
             near: null, avoid: [], soft: [], avoidAt: 0, sig: "", srText: "", srAt: 0, srTimer: 0,
@@ -943,7 +943,7 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             const k = eosStageScale(L)
             return { x: (cx - R.left) / k, y: (cy - R.top) / k }
         }
-        const veteran = () => S.base === 1
+        // veteran = S.base === 1 (level-1, label-free cue; F6: still shown at every stage and re-shown after idle)
         const show = (now, opts = {}) => {
             if (S.complete) return
             if (S.base == null) S.base = 2
@@ -960,7 +960,9 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             S.shownAt = now
             S.token += 1
             if (opts.wiggle) S.wiggle += 1
-            S.autoHideAt = !opts.idle && !opts.wiggle && S.base === 1 && S.token === 1 ? now + 2500 : 0
+            // F6 (founder): every stage keeps a visible guide until the player acts — a veteran's cue is only quieter
+            // (level 1: hand + halo, no label), it no longer auto-hides after 2.5 s (players read that as "no arrow")
+            S.autoHideAt = 0
         }
         const hide = (now) => {
             if (S.cur && S.cur.g === "wait") return
@@ -1385,10 +1387,16 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
                 S.missAt = 0
                 if (res && S.lastProgressAt < at && !S.shown && !S.down) show(now, { wiggle: true })
             }
-            let idleMs = veteran() ? 6000 : 4000
+            // F6: the same idle re-show for veterans (was 6 s); after a step that WORKED (the bar moved after the last
+            // touch) and the same ask is still live, the guide comes back sooner (2.2 s) so a player who pauses to
+            // wonder "what now?" never faces a stage without an arrow
+            let idleMs = S.lastProgressAt && S.lastProgressAt >= (S.lastDownAt || 0) ? 2200 : 4000
             if (res && res.spec && res.spec.idle > 0) idleMs = res.spec.idle
             else if (res && res.kind === "marker" && res.g === "tap" && S.keyAtProgress === res.stageKey) idleMs = Math.max(idleMs, 8000) // same ask again (113 finds): don't nag
-            if (res && !S.shown && !S.down && now - Math.max(S.lastTouchAt, S.lastProgressAt, S.hiddenAt) >= idleMs) show(now, { idle: true })
+            // (F6) a bar that keeps creeping long after the touch (VACUUM's suction, sfx-driven fills) no longer
+            // postpones the guide forever: progress more than 1.2 s after the last touch does not count as activity
+            const lastPr = S.lastTouchAt ? Math.min(S.lastProgressAt, S.lastTouchAt + 1200) : S.lastProgressAt
+            if (res && !S.shown && !S.down && now - Math.max(S.lastTouchAt, lastPr, S.hiddenAt) >= idleMs) show(now, { idle: true })
             if (S.autoHideAt && now >= S.autoHideAt) hide(now)
             if (S.spotUntil && now >= S.spotUntil) {
                 S.spotUntil = 0
@@ -1575,6 +1583,7 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             const p = toLayer(e.clientX, e.clientY)
             S.lastPt = p
             S.lastTouchAt = now
+            S.lastDownAt = now
             S.down = true
             S.downMoveAt = now
             S.downKey = S.cur ? S.cur.key : null
