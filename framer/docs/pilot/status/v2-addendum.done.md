@@ -1,0 +1,12 @@
+I wrote and pushed `PILOT_A_ADDENDUM.md` (commit 6d29564 on claude/jolly-hopper-ognrxj); nothing was built or played, so all of it is still untested.
+The burst is painted over today: POP and CLEANSE afterglow beats and the shared "slow / right here / safe" words play over the approved burst (POP and CRUSH hold it 3.0 s, CLEANSE 4.0 s).
+New finale rule for all three games: the climax starts at the final action, ends 150 ms before onDone, the scene then freezes and pilot sound stops, and only then onDone mounts the burst unchanged.
+Hand-off times are POP 2150 ms, CLEANSE 2350 ms and CRUSH 2250 ms (900 ms with reduced motion), giving 5.15 s, 6.35 s and 5.25 s from the last input to the end screen.
+Any p.sfx call that is not "soft" mounts a step burst, so the last word and the climax must make none; in the baseline that last step burst was replaced at once by the big burst, so the founder never saw it.
+None of the three games uses the shared picture resolver, and removing uploads never restores the default faces.
+The shared pass also gives out faces by visible order, so pictures shift when a bubble pops; pilot objects therefore pin a slot, use tsBubbleFaceSources and the shared face markup, and swap in a smiling face at their release moment.
+Shared additions: per-emotion Mirror presets (panic, anger, sad, anxious), a breath clock that slows as progress rises, a continuous world-shift driver, an arrow marker for every stage, and checks A1–A8; POP's builder lands these in 71_pilot_fx.jsx first.
+POP keeps the tethered hero but gets press-stretch-burst pops, freed faces that rise smiling, a surprise per run (sneeze, dodger, bird, rare golden bubble), and a climax where the hero blows its own calm bubble under a rainbow.
+CLEANSE gets 112 px orbs with picture and word inside, and each breath-out turns the murk into that thought's own stars; the climax sends the stars into the lotus, STILL meets the hero, and the scene ends perfectly mirrored in the water.
+CRUSH is finished from the draft: blobs push the jaw back, slams freeze for a moment on impact, slam tempo follows the emotion, and a charged final slam cracks a cube open into a warm core the hero fumbles, then holds.
+Each game section has verdicts per beat, a 0 s-to-burst storyboard, what changes on replay, picture placement, arrow targets per stage and §14 answers; files are /home/user/thinkstill-rituals/framer/docs/pilot/PILOT_A_ADDENDUM.md and /home/user/thinkstill-rituals/framer/docs/pilot/status/A_addendum.progress.md.
