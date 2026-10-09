@@ -181,3 +181,24 @@ In `framer/dev/shots/eos/`:
 - With `keepHistory` off, orbs, bonds and skills last only for the page visit. That is intended. Day marks are still written by core's `eosMarkDay` (spec: days are not history rows).
 - Rows are never written for deferred games 115-120, and skills that list them only name registered games. Nothing in this module needs them.
 - I did not run a full 114-game sweep (that is the Regression task). Rewards only add surfaces in `input`, `reveal` and the shelf, and never touch gameplay.
+
+## v2 close-out (review r1 findings) — all fixes in `src/eos/52_eos_rewards.jsx`
+Verified in an isolated integrated build of all 15 `src/eos` modules (`/tmp/v2_rewards`) at 390x844 then 1280x860, zero page errors.
+
+| finding | fix | verified |
+|---|---|---|
+| MAJOR shelf support link unreachable by keyboard / AT | `openHelp` closes the shelf, puts focus back on the ◉ chip, then calls `eosApi("safety").open("info")`; the trap's keydown/focusin handlers ignore `.eosSafetyCard` and any mounted card; inline list kept as the no-safety fallback | card open, shelf gone, focus inside the card, 4 Tabs stay in the card, Escape closes the card and focus returns to the chip (both sizes) |
+| share activation can expire | cards pre-render in idle time ~1.2 s after the button mounts, cached per loop/format/naming (`EOS_REWARDS_CARDS`, max 6); a tap with a ready blob calls `navigator.share` synchronously; a failed face image stays cached as missing for 60 s | `share()` called 12 ms (390) / 3 ms (1280) after the tap with `userActivation.isActive` true, `lastShareReady` true |
+| iOS share robustness / NotAllowedError | same pre-render path; NotAllowedError (like every non-Abort error) saves the card with the "card saved" toast | as above |
+| alive ref never re-armed | effect sets `alive.current = true` on mount | code |
+| composer focus stolen on phone | focus that lands outside `.releaseStage` closes the shelf without restoring focus | tap on the composer: shelf closes, focus stays in `.releaseThoughtInput` (both sizes) |
+| no-key grant repeats | per-visit fallback key `EOS_REWARDS_MEM.nokey` | `grantForShift(null)` twice before any launch: 1 orb, same result object |
+| chip count pops twice | fallback timer kept in a ref and cleared on landing; pop only when the count grew | real loop: exactly 1 pop (both sizes) |
+| cap: chip bump on unchanged count (52 part) | `eos:orb-landed` on an unchanged count does nothing | 6th loop: count stays 5, 0 pops. The flying orb + "+1" pill on a capped loop come from `50_eos_shift.jsx` (shift piece, not changed here) |
+| chip reveals the new face before landing | chip shows a `{n, last}` snapshot; face, gold rim and count switch together | samples: face and count change in the same 60 ms sample at landing (both sizes) |
+| locked face = grey disc; settings-list feel | locked face is the real face blurred/dimmed with a "?" sparkle; characters with no orbs and no bond collapse into one "crew you'll meet" row of dim portraits; glowing ledge + inner hue glow on owned orbs | shelf: 2 shelves + crew row of 5 (screenshot checked at 390) |
+| stat tile grammar | singular/plural on every tile | "day you showed up", "memory orbs" |
+| zero state / folded chip on the cold-open bubble | both counts 0 → glyph-only chips at 0.6 opacity (no "0"s); the empty chip is hidden while the phone cold-open bubble is up | zero: numbers hidden; during the cold open the chip is hidden, then visible |
+| share card legibility + dust | gold copy sits on a translucent dark pill with a darker stroke; dust is 3 spiral arms with trails that land on the calm orb's rim, gold and brighter near it | anger story + week story cards rendered and viewed |
+| dust unlock has no moment | the grant announces a newly unlocked style ("new Thought Dust: aurora ✦") once (`eos_dust_seen_v1`), badges the ◉ chip until the shelf opens, marks the swatch "new ✦"; every swatch previews its own motion (twinkle/blink/shimmer/fall/glint; off in reduced motion / calm) | line + badge + "new ✦" + badge cleared on open (both sizes) |
+| arrows hint over the rewards line | cross-module (`30_eos_arrows.jsx`), not changed here | — |

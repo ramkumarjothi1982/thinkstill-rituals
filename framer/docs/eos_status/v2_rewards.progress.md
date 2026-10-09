@@ -1,0 +1,9 @@
+# v2 rewards close-out progress
+
+- start: read review r1 (1 major + 14 minor). Plan: fix in 52_eos_rewards.jsx: help->close shelf then open safety; share prerender+cache; alive ref; focus-out closes; nokey sentinel; chip pop/face timing; locked face teaser; plurals; zero chip state; card stroke+spiral; dust unlock line+badge+swatch anim. Cross-module (50 shift orb fly on cap, 30 arrows hint) not in my file -> note only.
+- ~call 25: all code edits applied to 52_eos_rewards.jsx (grant nokey, dust announce+badge, image fail cache 60s, card prerender cache + sync share, alive re-arm, chips {n,last} snapshot + pop-only-on-growth + zero state, shelf close-then-safety, focus outside stage closes, plurals, crew row, locked teaser, swatch anims, card pill + spiral). Next: integrated build /tmp/v2_rewards and tests at 390 then 1280.
+- ~call 40: t1 (zero/nokey/dust/shelf/help/composer) passes at 390; first-close latency flake seen in BASE build too (env CPU contention, not a regression). Running t4 real loop + cap + share at 390.
+- ~call 47: t4 390 passed (chip 0->1 once, face swaps with count at landing, 1 pop; cap loop: count 5 stays, 0 pops; share() called 12 ms after tap with activation; zero errors). Cards + shelf look checked. Tweaked locked-face brightness. Waiting for 1280 runs.
+- ~call 53: cold-open: empty chip hidden while .eosCkHeadCold up at 390 (verified), visible after. Rebuilt /tmp/v2_rewards. Waiting t4 1280.
+- ~call 60: 1280 t1 pass; t4b 1280 pass (game 112: chip 0->1 + face at landing, 1 pop; share 3 ms in gesture; cap verified in first 1280 run: 5 stays, 0 pops). Game 110 finishGame timed out at 120 s at 1280 (classic game; checking with 280 s, lite).
+- ~call 68: reduced motion: 0 swatch/? animations; copy lint clean; no small text in shelf; game 110 completes at 1280 (229 s headless lite) — earlier miss was the 120 s driver budget. build.md close-out table written. Committing.

@@ -77,7 +77,8 @@ const EOS_REWARDS_FONT = `"Baloo 2","Nunito",system-ui,sans-serif`
 
 // ---------------------------------------------------------------- memory + change bus
 // keepHistory off ⇒ orbs / bonds / ledger live here for this app session only (never in localStorage).
-const EOS_REWARDS_MEM = { orbs: [], bonds: {}, ledger: null, results: new Map(), moment: null, lastGrantAt: 0, capIdx: -1 }
+const EOS_REWARDS_MEM = { orbs: [], bonds: {}, ledger: null, results: new Map(), moment: null, lastGrantAt: 0, capIdx: -1, nokey: 0, dust: null }
+const EOS_REWARDS_DUST_KEY = "eos_dust_seen_v1" // {seen: [dust ids already announced], badge: id | null} (ids only)
 const EOS_REWARDS_DEV = { grants: [], lastCard: null, lastCaption: null, errors: [] }
 const EOS_REWARDS_BUS = (() => {
     let rev = 0
@@ -361,6 +362,38 @@ function eosRewardsDustState() {
     const cur = eosPrefs().dust || "default"
     return EOS_REWARDS_DUST.map((d) => ({ ...d, unlocked: score >= d.at, selected: cur === d.id, need: Math.max(0, d.at - score) }))
 }
+// Unlock announcements: which styles were already announced + the ◉-chip badge (cleared when the shelf opens).
+function eosRewardsDustSeen() {
+    const v = eosRewardsKeep() ? eosGet(EOS_REWARDS_DUST_KEY, null) : EOS_REWARDS_MEM.dust
+    const seen = v && Array.isArray(v.seen) ? v.seen.filter((id) => EOS_REWARDS_DUST.some((d) => d.id === id)) : []
+    const badge = v && EOS_REWARDS_DUST.some((d) => d.id === v.badge) ? v.badge : null
+    return { seen, badge }
+}
+function eosRewardsDustSeenWrite(v) {
+    if (eosRewardsKeep()) eosSet(EOS_REWARDS_DUST_KEY, v)
+    else EOS_REWARDS_MEM.dust = v
+}
+// Called once per paid loop (after the meter's +25 ⚡): a style whose ⚡ threshold is now met and that was never
+// announced → {id, label} of the newest one (the line says "new Thought Dust: aurora ✦"), else null.
+function eosRewardsDustAnnounce() {
+    try {
+        const fresh = eosRewardsDustState().filter((d) => d.unlocked && d.at > 0)
+        const cur = eosRewardsDustSeen()
+        const add = fresh.filter((d) => !cur.seen.includes(d.id))
+        if (!add.length) return null
+        const top = add[add.length - 1]
+        eosRewardsDustSeenWrite({ seen: cur.seen.concat(add.map((d) => d.id)), badge: top.id })
+        return { id: top.id, label: top.label }
+    } catch {
+        return null
+    }
+}
+function eosRewardsDustBadgeClear() {
+    const cur = eosRewardsDustSeen()
+    if (!cur.badge) return
+    eosRewardsDustSeenWrite({ seen: cur.seen, badge: null })
+    EOS_REWARDS_BUS.bump()
+}
 
 // ---------------------------------------------------------------- faces
 function eosRewardsOwned(orbs) {
@@ -401,7 +434,10 @@ function eosGrantForShift(shift) {
 function eosRewardsGrant(shiftIn) {
     const st = EOS_STORE.get()
     const shift = shiftIn && typeof shiftIn === "object" ? shiftIn : null
-    const key = Number(shift && shift.t) || Number(st.launchAt) || 0
+    // no shift.t and no launch yet (EosRecordShift failed before any launch): one per-visit fallback key, so a
+    // repeated call still pays once; the next launch gives every later loop its own key again
+    if (!EOS_REWARDS_MEM.nokey) EOS_REWARDS_MEM.nokey = Date.now()
+    const key = Number(shift && shift.t) || Number(st.launchAt) || EOS_REWARDS_MEM.nokey
     if (key && EOS_REWARDS_MEM.results.has(key)) return EOS_REWARDS_MEM.results.get(key)
     // a completed loop always counts as a day you showed up (core also marks it in EosMarkFinish; idempotent)
     eosMarkDay()
@@ -479,12 +515,13 @@ function eosRewardsGrant(shiftIn) {
         if (milestone) l.miles = l.miles.concat([milestone.days])
         return l
     })
+    const dustNew = eosRewardsDustAnnounce()
     const reasons = []
     if (firstOfDay) reasons.push("first of the day")
     if (newGame) reasons.push("new game")
     if (newEmo) reasons.push("new feeling")
     if (ups.length) reasons.push("bond level")
-    const res = eosRewardsResult({ orb, emo, gameId, chars, ups, skillIds, skillBefore, milestone, capped, reasons, companion })
+    const res = eosRewardsResult({ orb, emo, gameId, chars, ups, skillIds, skillBefore, milestone, capped, reasons, companion, dustNew })
     if (key) EOS_REWARDS_MEM.results.set(key, res)
     EOS_REWARDS_MEM.lastGrantAt = Date.now()
     eosRewardsLog("grant", { key, tier: orb ? orb.tier : null, capped, chars, skillIds, reasons })
@@ -495,7 +532,7 @@ function eosRewardsMomentSkill(v) {
     const hit = EOS_REWARDS_SKILLS.find((s) => s.moment && s.moment === v)
     return hit ? hit.id : null
 }
-function eosRewardsResult({ orb, emo, gameId, chars, ups, skillIds, skillBefore = {}, milestone, capped, reasons = [], companion, again = false }) {
+function eosRewardsResult({ orb, emo, gameId, chars, ups, skillIds, skillBefore = {}, milestone, capped, reasons = [], companion, again = false, dustNew = null }) {
     const comp = companion || (EOS_EMO[emo] || EOS_GUIDE_CHAR).char || "still"
     const bonds = (chars.length ? chars : [comp]).map((c) => {
         const b = eosBondFor(c)
@@ -515,12 +552,13 @@ function eosRewardsResult({ orb, emo, gameId, chars, ups, skillIds, skillBefore 
     if (milestone) parts.push(`${milestone.days} days you showed up ✦`)
     if (orb) parts.push(orb.tier === "gold" ? "✦ CORE MEMORY" : "+1 memory orb")
     else if (capped && !again) parts.push("today's 5 orbs are on your shelf")
+    if (dustNew) parts.push(`new Thought Dust: ${dustNew.label} ✦`)
     const skUp = skills.find((s) => s.up)
     if (bond && bond.up) parts.push(`${bond.name} bond ${bond.level} ✦`)
     else if (skUp) parts.push(`${skUp.label} ✦`)
     else if (bond && bond.level > 0) parts.push(`${bond.name} bond ${bond.level}`)
     parts.push(week.label)
-    return { orb, bond, bonds, skill, skills, week, milestone, capped, gold: !!(orb && orb.tier === "gold"), reasons, again, line: parts.slice(0, 3).join(" · ") }
+    return { orb, bond, bonds, skill, skills, week, milestone, capped, gold: !!(orb && orb.tier === "gold"), reasons, again, dustNew, line: parts.slice(0, 3).join(" · ") }
 }
 
 // ---------------------------------------------------------------- reset / history
@@ -540,6 +578,7 @@ function eosRewardsReset() {
     EOS_REWARDS_MEM.ledger = null
     EOS_REWARDS_MEM.results = new Map()
     EOS_REWARDS_MEM.moment = null
+    EOS_REWARDS_MEM.dust = null
     eosRewardsLog("reset")
     EOS_REWARDS_BUS.bump()
 }
@@ -602,7 +641,8 @@ function eosRewardsLoadImg(src, ms = 2600) {
     const p = eosRewardsLoadImgOnce(src, ms)
     EOS_REWARDS_IMG.set(src, p)
     p.then((img) => {
-        if (!img) EOS_REWARDS_IMG.delete(src) // retry next time (network may come back)
+        // a failed face stays "missing" for a minute so the next cards don't each wait out the timeout again
+        if (!img) setTimeout(() => EOS_REWARDS_IMG.get(src) === p && EOS_REWARDS_IMG.delete(src), 60000)
     })
     return p
 }
@@ -681,34 +721,54 @@ function eosRewardsPaintFinish(ctx, W, H) {
 }
 // 60 dots of Thought Dust spiralling into (cx, cy)
 function eosRewardsPaintDust(ctx, cx, cy, R, rIn, count = 60) {
-    const hues = [195, 265, 42, 320]
-    for (let i = 0; i < count; i++) {
-        const f = i / (count - 1)
-        const ang = i * 0.47 + 0.6
-        const rad = rIn + (R - rIn) * Math.pow(1 - f, 1.15)
-        const x = cx + Math.cos(ang) * rad
-        const y = cy + Math.sin(ang) * rad * 0.92
-        const size = 3 + (1 - f) * 7 * (0.6 + eosRewardsRand(i, 21) * 0.6)
-        const hue = f > 0.72 ? 44 : hues[i % 4]
-        const a = 0.35 + 0.6 * f
-        // a short tail pointing back along the spiral (motion toward the centre)
-        const ta = ang - 0.16
-        const tr = rad + 28 + (1 - f) * 40
-        ctx.strokeStyle = `hsla(${hue},100%,80%,${a * 0.35})`
-        ctx.lineWidth = Math.max(1.5, size * 0.6)
-        ctx.lineCap = "round"
-        ctx.beginPath()
-        ctx.moveTo(cx + Math.cos(ta) * tr, cy + Math.sin(ta) * tr * 0.92)
-        ctx.lineTo(x, y)
-        ctx.stroke()
+    // Thought Dust converging on the calm character: 3 spiral arms (count / 3 dots each) that sweep about
+    // 1.4 turns from the card's edge and land on the orb's rim; a faint trail draws each arm, the dots grow
+    // brighter and gold as they reach the orb.
+    const hues = [195, 265, 320]
+    const arms = 3
+    const per = Math.max(4, Math.round(count / arms))
+    const sweep = Math.PI * 2.8
+    const pt = (a0, f) => {
+        const ang = a0 + f * sweep
+        const rad = rIn + (R - rIn) * Math.pow(1 - f, 1.35)
+        return { x: cx + Math.cos(ang) * rad, y: cy + Math.sin(ang) * rad * 0.92 }
+    }
+    for (let arm = 0; arm < arms; arm++) {
+        const a0 = -0.5 + (arm / arms) * Math.PI * 2
+        const hue0 = hues[arm % hues.length]
+        // the arm's trail
         ctx.save()
-        ctx.shadowColor = `hsla(${hue},100%,70%,.9)`
-        ctx.shadowBlur = size * 2.4
-        ctx.fillStyle = `hsla(${hue},100%,${82 + f * 12}%,${a})`
-        ctx.beginPath()
-        ctx.arc(x, y, size, 0, Math.PI * 2)
-        ctx.fill()
+        ctx.lineCap = "round"
+        ctx.lineJoin = "round"
+        for (let j = 1; j <= 48; j++) {
+            const f0 = (j - 1) / 48
+            const f1 = j / 48
+            const p0 = pt(a0, f0)
+            const p1 = pt(a0, f1)
+            ctx.strokeStyle = `hsla(${f1 > 0.72 ? 44 : hue0},100%,82%,${0.05 + 0.3 * f1})`
+            ctx.lineWidth = 2 + f1 * 5
+            ctx.beginPath()
+            ctx.moveTo(p0.x, p0.y)
+            ctx.lineTo(p1.x, p1.y)
+            ctx.stroke()
+        }
         ctx.restore()
+        // the dots along it
+        for (let i = 0; i < per; i++) {
+            const f = Math.min(1, (i + eosRewardsRand(arm * 97 + i, 21) * 0.4) / (per - 1))
+            const p = pt(a0, f)
+            const size = 3 + f * 8 * (0.7 + eosRewardsRand(arm * 31 + i, 22) * 0.5)
+            const hue = f > 0.72 ? 44 : hue0
+            const a = 0.3 + 0.7 * f
+            ctx.save()
+            ctx.shadowColor = `hsla(${hue},100%,70%,.95)`
+            ctx.shadowBlur = size * (2 + f * 1.6)
+            ctx.fillStyle = `hsla(${hue},100%,${80 + f * 16}%,${a})`
+            ctx.beginPath()
+            ctx.arc(p.x, p.y, size, 0, Math.PI * 2)
+            ctx.fill()
+            ctx.restore()
+        }
     }
 }
 function eosRewardsPaintOrb(ctx, x, y, r, hue, img, letter, rim) {
@@ -827,11 +887,26 @@ function eosRewardsPaintText(ctx, texts, s, x, y, o = {}) {
         g.addColorStop(1, "#ff9a2e")
         ctx.fillStyle = g
     } else ctx.fillStyle = o.fill || "#fff"
+    if (o.fill === "gold" && o.pill !== false) {
+        // a translucent dark pill under gold copy: readable on the peach / orange end even at thumbnail size
+        ctx.save()
+        ctx.shadowColor = "transparent"
+        const tw = ctx.measureText(str).width
+        const ph = px * 1.28
+        const pw = tw + px * 1.1
+        const left = (o.align || "center") === "center" ? x - pw / 2 : (o.align === "right" ? x - pw + px * 0.55 : x - px * 0.55)
+        ctx.fillStyle = "rgba(48,14,40,.42)"
+        ctx.beginPath()
+        if (ctx.roundRect) ctx.roundRect(left, y - px * 0.98, pw, ph, ph / 2)
+        else ctx.rect(left, y - px * 0.98, pw, ph)
+        ctx.fill()
+        ctx.restore()
+    }
     if (o.fill === "gold" || o.stroke) {
         // a soft dark outline keeps gold copy readable on the warm end of the gradient
         ctx.lineJoin = "round"
         ctx.lineWidth = Math.max(4, px * 0.16)
-        ctx.strokeStyle = o.stroke || "rgba(92,26,10,.62)"
+        ctx.strokeStyle = o.stroke || "rgba(70,25,0,.7)"
         ctx.strokeText(str, x, y)
     }
     ctx.fillText(str, x, y)
@@ -1003,6 +1078,41 @@ async function eosRewardsPaintWeek(ctx, texts, W, H, k) {
 // {shift} → "SHARE ✦" button · {shift, variant:"link", label} → a text link (the meter's quiet "make a card")
 // {week:true} → "Share my week". Hidden while ANY safety flag is set. Phone: story PNG; share sheet when the
 // browser can share files, else download + copy the caption (toast). Errors fall back silently to download.
+// Cards are pre-rendered while the button sits on screen (idle time) and cached per loop + format + naming,
+// so a tap calls navigator.share() straight away inside the user gesture (iOS / Chrome activation windows).
+const EOS_REWARDS_CARDS = new Map() // key → {blob} | {p: Promise<blob|null>}
+function eosRewardsCardKey(sh, { week, format, showFeeling }) {
+    const f = format || "story"
+    if (week) {
+        const w = eosWeek()
+        return `week:${w.days}:${eosRewardsOrbs().length}:${f}`
+    }
+    return `shift:${(sh && (sh.t || sh.launchAt)) || 0}:${sh && sh.after != null ? sh.after : "-"}:${f}:${showFeeling ? 1 : 0}`
+}
+function eosRewardsCardFor(sh, opts) {
+    const key = eosRewardsCardKey(sh, opts)
+    const hit = EOS_REWARDS_CARDS.get(key)
+    if (hit) return hit
+    const entry = {}
+    entry.p = eosMakeShareCard(sh, { format: opts.format || "story", showFeeling: opts.showFeeling, week: opts.week })
+        .then((blob) => {
+            entry.blob = blob || null
+            return entry.blob
+        })
+        .catch(() => {
+            EOS_REWARDS_CARDS.delete(key)
+            return null
+        })
+    EOS_REWARDS_CARDS.set(key, entry)
+    while (EOS_REWARDS_CARDS.size > 6) EOS_REWARDS_CARDS.delete(EOS_REWARDS_CARDS.keys().next().value)
+    return entry
+}
+
+// ---------------------------------------------------------------- EosShareButton
+// {shift} → "SHARE ✦" button · {shift, variant:"link", label} → a text link (the meter's quiet "make a card")
+// {week:true} → "Share my week". Hidden while ANY safety flag is set. Phone: story PNG; share sheet when the
+// browser can share files, else download + copy the caption (toast). Errors (NotAllowedError included) fall
+// back to a download with a "card saved" toast.
 function EosShareButton({ shift = null, variant = "button", label, week = false, format, className = "" }) {
     const st = useEosStore()
     const [busy, setBusy] = React.useState(false)
@@ -1010,34 +1120,46 @@ function EosShareButton({ shift = null, variant = "button", label, week = false,
     const [named, setNamed] = React.useState(false)
     const alive = React.useRef(true)
     const timer = React.useRef(0)
-    React.useEffect(
-        () => () => {
+    React.useEffect(() => {
+        alive.current = true
+        return () => {
             alive.current = false
             clearTimeout(timer.current)
-        },
-        []
-    )
+        }
+    }, [])
     const sh = shift || (week ? null : st.lastShift)
     const emo = sh && sh.emo
     const sensitive = !week && EOS_REWARDS_SENSITIVE.has(emo)
-    if (st.safety) return null
-    if (!week && !sh) return null
+    const showFeeling = sensitive ? named : true
+    const hidden = !!st.safety || (!week && !sh)
+    const cardOpts = { week, format: format || "story", showFeeling }
+    const cardKey = hidden ? "" : eosRewardsCardKey(sh, cardOpts)
+    // warm-up: render this card in idle time ~1.2 s after the button appears (after the reveal's own motion)
+    React.useEffect(() => {
+        if (!cardKey || typeof window === "undefined") return
+        let idle = 0
+        const t = setTimeout(() => {
+            const run = () => {
+                if (alive.current) eosRewardsCardFor(sh, cardOpts)
+            }
+            if (typeof window.requestIdleCallback === "function") idle = window.requestIdleCallback(run, { timeout: 2500 })
+            else run()
+        }, 1200)
+        return () => {
+            clearTimeout(t)
+            if (idle && typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idle)
+        }
+    }, [cardKey]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (hidden) return null
     const say = (msg) => {
         setToast(msg)
         clearTimeout(timer.current)
         timer.current = setTimeout(() => alive.current && setToast(""), 2600)
     }
-    const go = async () => {
-        if (busy) return
-        setBusy(true)
-        const showFeeling = sensitive ? named : true
-        const caption = eosRewardsCaption(sh, { week, showFeeling })
-        let blob = null
-        try {
-            blob = await eosMakeShareCard(sh, { format: format || "story", showFeeling, week })
-        } catch {}
-        if (!alive.current) return
-        const fname = week ? "thinkstill-week.png" : "thinkstill-shift.png"
+    const fname = week ? "thinkstill-week.png" : "thinkstill-shift.png"
+    // deliver(): navigator.share() is the FIRST thing it does (no await before it), so with a pre-rendered blob
+    // the call happens inside the tap's user activation
+    const deliver = async (blob, caption) => {
         let shared = false
         try {
             if (blob && typeof File !== "undefined" && typeof navigator !== "undefined" && navigator.canShare) {
@@ -1049,6 +1171,7 @@ function EosShareButton({ shift = null, variant = "button", label, week = false,
             }
         } catch (err) {
             if (err && err.name === "AbortError") shared = true // the person closed the share sheet: fine
+            // NotAllowedError (activation expired) and every other error: save the card instead (below)
         }
         if (!shared) {
             try {
@@ -1076,6 +1199,20 @@ function EosShareButton({ shift = null, variant = "button", label, week = false,
         }
         if (alive.current) setBusy(false)
     }
+    const go = () => {
+        if (busy) return
+        const caption = eosRewardsCaption(sh, { week, showFeeling })
+        const entry = eosRewardsCardFor(sh, cardOpts)
+        setBusy(true)
+        if (eosIsDev()) EOS_REWARDS_DEV.lastShareReady = !!entry.blob
+        if (entry.blob) {
+            deliver(entry.blob, caption)
+            return
+        }
+        entry.p.then((blob) => {
+            if (alive.current) deliver(blob, caption)
+        })
+    }
     const text = busy ? "making your card…" : label || (week ? "Share my week ✦" : "SHARE ✦")
     return (
         <span className={`eosRwShareWrap ${variant === "link" ? "isLink" : ""} ${className}`}>
@@ -1102,72 +1239,100 @@ function EosWorldChips({ stage, reduced = false }) {
     const rev = React.useSyncExternalStore(EOS_REWARDS_BUS.subscribe, EOS_REWARDS_BUS.get, EOS_REWARDS_BUS.get)
     const red = eosCalm(reduced)
     const [open, setOpen] = React.useState(false)
+    // what the ◉ chip shows: {n, last} — the count AND the newest orb's face / gold rim switch together when
+    // the orb's flight lands (eos:orb-landed) or after the 2.6 s fallback, never before
     const [shown, setShown] = React.useState(null)
     const [pop, setPop] = React.useState(0)
     const rootRef = React.useRef(null)
     const orbBtn = React.useRef(null)
     const opener = React.useRef(null)
-    const realRef = React.useRef(0)
+    const realRef = React.useRef({ n: 0, last: null })
+    const shownRef = React.useRef(null)
+    const fallback = React.useRef(0)
     const visible = stage === "input" || stage === "reveal"
     const data = React.useMemo(() => {
         const orbs = eosRewardsOrbs()
         const last = orbs.length ? orbs[orbs.length - 1] : null
-        return { orbs: orbs.length, last, days: eosWeek().days }
+        return { orbs: orbs.length, last, days: eosWeek().days, badge: eosRewardsDustSeen().badge }
     }, [rev, stage, st.recordedFor, st.phase])
-    realRef.current = data.orbs
-    // the count waits for the orb's flight to land (eos:orb-landed) — or 2.6 s — before it rolls up
+    realRef.current = { n: data.orbs, last: data.last }
+    shownRef.current = shown
+    // roll the chip up to the real count; pop only when the count actually grew (a capped loop's flight lands
+    // on an unchanged count: no bounce)
+    const land = React.useCallback(() => {
+        clearTimeout(fallback.current)
+        fallback.current = 0
+        const real = realRef.current
+        const cur = shownRef.current
+        if (cur && real.n === cur.n && real.last === cur.last) return
+        const grew = !cur || real.n > cur.n
+        shownRef.current = real
+        setShown(real)
+        if (grew && cur) setPop((p) => p + 1)
+    }, [])
     React.useEffect(() => {
         const fresh = Date.now() - EOS_REWARDS_MEM.lastGrantAt < 2500
-        if (shown == null || !fresh || stage !== "reveal" || data.orbs <= shown) {
-            setShown(data.orbs)
+        const cur = shownRef.current
+        if (!cur || !fresh || stage !== "reveal" || data.orbs <= cur.n) {
+            clearTimeout(fallback.current)
+            fallback.current = 0
+            shownRef.current = realRef.current
+            setShown(realRef.current)
             return
         }
-        const t = setTimeout(() => {
-            setShown(realRef.current)
-            setPop((p) => p + 1)
-        }, 2600)
-        return () => clearTimeout(t)
-    }, [data.orbs, stage])
+        clearTimeout(fallback.current)
+        fallback.current = setTimeout(land, 2600)
+    }, [data.orbs, data.last, stage]) // eslint-disable-line react-hooks/exhaustive-deps
+    React.useEffect(() => () => clearTimeout(fallback.current), [])
     React.useEffect(() => {
         const el = rootRef.current
         if (!el) return
-        const on = () => {
-            setShown(realRef.current)
-            setPop((p) => p + 1)
-        }
-        el.addEventListener("eos:orb-landed", on)
-        return () => el.removeEventListener("eos:orb-landed", on)
-    }, [visible])
+        el.addEventListener("eos:orb-landed", land)
+        return () => el.removeEventListener("eos:orb-landed", land)
+    }, [visible, land])
     React.useEffect(() => {
         if (!visible) setOpen(false)
     }, [visible])
     if (!visible) return null
-    const count = shown == null ? data.orbs : shown
+    const view = shown || realRef.current
+    const count = view.n
+    const zero = count === 0 && data.days === 0
     const openShelf = (ev) => {
         opener.current = ev && ev.currentTarget ? ev.currentTarget : orbBtn.current
         setOpen(true)
     }
-    const close = () => {
+    // close({restore:false}) when focus already went somewhere on purpose (the composer); close({then}) runs
+    // `then` after the opener has focus back (the shelf's support link opens the safety card this way)
+    const close = (opts) => {
+        const o = opts && typeof opts === "object" ? opts : {}
         setOpen(false)
         const back = opener.current
         setTimeout(() => {
-            try {
-                back && back.focus && back.focus()
-            } catch {}
+            if (o.restore !== false) {
+                try {
+                    back && back.isConnected && back.focus && back.focus()
+                } catch {}
+            }
+            if (typeof o.then === "function") {
+                try {
+                    o.then()
+                } catch {}
+            }
         }, 0)
     }
-    const lastFace = data.last && data.last.char ? eosFace(data.last.char, data.last.face) : null
+    const last = view.last
+    const lastFace = last && last.char ? eosFace(last.char, last.face) : null
     return (
         <>
-            <div ref={rootRef} className={`eosWorldChips ${red ? "isCalm" : ""}`} data-stage={stage} data-eos-calm={red ? "1" : undefined}>
+            <div ref={rootRef} className={`eosWorldChips ${red ? "isCalm" : ""} ${zero ? "isZero" : ""}`} data-stage={stage} data-eos-calm={red ? "1" : undefined} data-eos-zero={zero ? "1" : undefined}>
                 <button
                     ref={orbBtn}
                     type="button"
-                    className={`eosRwChip isOrbs ${data.last && data.last.tier === "gold" ? "isGold" : ""}`}
+                    className={`eosRwChip isOrbs ${last && last.tier === "gold" ? "isGold" : ""}`}
                     data-eos-chip="orbs"
                     aria-haspopup="dialog"
                     aria-expanded={open ? "true" : "false"}
-                    aria-label={`${count} memory ${count === 1 ? "orb" : "orbs"} — open your shelf`}
+                    aria-label={`${count} memory ${count === 1 ? "orb" : "orbs"}${data.badge ? " · new Thought Dust" : ""} — open your shelf`}
                     onClick={openShelf}
                 >
                     <span className="eosRwChipOrb" aria-hidden="true">
@@ -1177,6 +1342,7 @@ function EosWorldChips({ stage, reduced = false }) {
                     <b key={pop} className={`eosRwChipNum ${pop ? "isPop" : ""}`}>
                         {count}
                     </b>
+                    {data.badge ? <span className="eosRwChipBadge" aria-hidden="true" data-eos-dust-badge={data.badge} /> : null}
                 </button>
                 <button type="button" className="eosRwChip isDays" data-eos-chip="days" aria-haspopup="dialog" aria-label={`${data.days} ${data.days === 1 ? "day" : "days"} you showed up this week — open your shelf`} onClick={openShelf}>
                     <span className="eosRwSun" aria-hidden="true" />
@@ -1252,12 +1418,23 @@ function EosOrbShelf({ onClose, reduced = false }) {
         timers.current.push(id)
         return id
     }
-    const close = React.useCallback(() => {
-        if (closing) return
-        setClosing(true)
-        setInside(false)
-        T(() => onCloseRef.current && onCloseRef.current(), red ? 160 : 240)
-    }, [closing, red])
+    const closingRef = React.useRef(false)
+    // opts: {restore:false} (focus already moved on purpose) · {then} (run after the shelf is gone)
+    const close = React.useCallback(
+        (opts) => {
+            if (closingRef.current) return
+            closingRef.current = true
+            setClosing(true)
+            setInside(false)
+            T(() => onCloseRef.current && onCloseRef.current(opts && typeof opts === "object" && !opts.nativeEvent ? opts : undefined), red ? 160 : 240)
+        },
+        [red]
+    )
+    // the newly unlocked Thought Dust style (badge on the ◉ chip) is "seen" once the shelf opens
+    const [dustNew] = React.useState(() => eosRewardsDustSeen().badge)
+    React.useEffect(() => {
+        if (dustNew) eosRewardsDustBadgeClear()
+    }, [dustNew])
     React.useEffect(() => {
         const el = rootRef.current
         const stage = el && el.closest ? el.closest(".releaseStage") : null
@@ -1279,9 +1456,12 @@ function EosOrbShelf({ onClose, reduced = false }) {
     }, [])
     // focus trap: Tab / Shift+Tab cycle inside, Escape closes, focus that escapes is pulled back
     React.useEffect(() => {
+        const inSafety = (el) => !!(el && el.closest && el.closest(".eosSafetyCard"))
+        const safetyUp = () => typeof document !== "undefined" && !!document.querySelector(".eosSafetyCard")
         const onKey = (e) => {
             const panel = panelRef.current
-            if (!panel) return
+            if (!panel || closingRef.current) return
+            if (inSafety(document.activeElement) || inSafety(e.target) || safetyUp()) return // the card owns the keys
             if (e.key === "Escape") {
                 e.preventDefault()
                 e.stopPropagation()
@@ -1307,10 +1487,18 @@ function EosOrbShelf({ onClose, reduced = false }) {
         }
         const onFocusIn = (e) => {
             const panel = panelRef.current
-            if (panel && !panel.contains(e.target) && !closing) {
-                const f = eosRewardsFocusables(panel)
-                if (f.length) f[0].focus()
+            if (!panel || panel.contains(e.target) || closingRef.current) return
+            if (inSafety(e.target) || safetyUp()) return // a support card above the shelf keeps its focus
+            const root = rootRef.current
+            const stage = root && root.closest ? root.closest(".releaseStage") : null
+            if (stage && e.target && e.target.nodeType === 1 && !stage.contains(e.target)) {
+                // focus went outside the stage (the composer, the header): the person moved on — close, and
+                // leave their focus where they put it (no soft-keyboard flash on phones)
+                close({ restore: false })
+                return
             }
+            const f = eosRewardsFocusables(panel)
+            if (f.length) f[0].focus()
         }
         document.addEventListener("keydown", onKey, true)
         document.addEventListener("focusin", onFocusIn)
@@ -1318,7 +1506,7 @@ function EosOrbShelf({ onClose, reduced = false }) {
             document.removeEventListener("keydown", onKey, true)
             document.removeEventListener("focusin", onFocusIn)
         }
-    }, [close, closing])
+    }, [close])
     const pickDust = (d) => {
         if (!d.unlocked) return
         eosRewardsSetPref("dust", d.id)
@@ -1337,16 +1525,25 @@ function EosOrbShelf({ onClose, reduced = false }) {
         setSel(null)
         eosRewardsReset()
     }
+    // The support card is a dialog of its own (safety module, z 230): close the shelf first so the card gets
+    // focus, Tab and Escape (and is not hidden behind an aria-modal shelf), then open it once the opener chip
+    // has focus back (the card returns focus there when it closes). No safety module → the inline list.
     const openHelp = () => {
-        let used = false
+        let fn = null
         try {
-            const fn = eosApi("safety").open
-            if (typeof fn === "function") {
-                fn("info")
-                used = true
-            }
+            fn = eosApi("safety").open
         } catch {}
-        if (!used) setHelp((v) => !v)
+        if (typeof fn !== "function") {
+            setHelp((v) => !v)
+            return
+        }
+        close({
+            then: () => {
+                try {
+                    fn("info")
+                } catch {}
+            },
+        })
     }
     const lines = String(st.crisisLines || EOS_PROP_DEFAULTS.crisisLines)
         .split("|")
@@ -1363,6 +1560,12 @@ function EosOrbShelf({ onClose, reduced = false }) {
         if (byChar[o.char]) byChar[o.char].push(o)
     })
     const s = data.stats
+    // characters you have met (orbs or bond points) get their own shelf; the rest share one "crew" row
+    const shelfRows = (() => {
+        const rows = data.bonds.map((b, i) => ({ b, i, n: byChar[b.char].length })).sort((x, y) => (y.n > 0) - (x.n > 0) || y.b.count - x.b.count || x.i - y.i)
+        const met = rows.filter((r) => r.n > 0 || r.b.count > 0)
+        return { met, crew: rows.filter((r) => !(r.n > 0 || r.b.count > 0)) }
+    })()
     return (
         <div
             ref={rootRef}
@@ -1393,25 +1596,22 @@ function EosOrbShelf({ onClose, reduced = false }) {
                     </div>
                     <div className="eosRwStat">
                         <b>{data.week.lifetime}</b>
-                        <small>days you showed up</small>
+                        <small>{data.week.lifetime === 1 ? "day you showed up" : "days you showed up"}</small>
                     </div>
                     <div className="eosRwStat">
                         <b>{s.points}</b>
-                        <small>points shifted</small>
+                        <small>{s.points === 1 ? "point shifted" : "points shifted"}</small>
                     </div>
                     <div className="eosRwStat">
                         <b>{data.orbs.length}</b>
-                        <small>memory orbs</small>
+                        <small>{data.orbs.length === 1 ? "memory orb" : "memory orbs"}</small>
                     </div>
                 </section>
                 {s.helps ? <p className="eosRwHelps">{s.helps.label}</p> : null}
                 {data.week.next ? <p className="eosRwNote">a gold orb waits at {data.week.next} days you showed up · no streaks, nothing to lose</p> : null}
 
                 <section className="eosRwShelves" aria-label="Character shelves">
-                    {data.bonds
-                        .map((b, i) => ({ b, i, n: byChar[b.char].length }))
-                        .sort((x, y) => (y.n > 0) - (x.n > 0) || y.b.count - x.b.count || x.i - y.i)
-                        .map(({ b }) => {
+                    {shelfRows.met.map(({ b }) => {
                         const list = byChar[b.char].slice().reverse()
                         const shownList = list.slice(0, 18)
                         const hue = EOS_REWARDS_CHAR_HUE[b.char]
@@ -1451,6 +1651,9 @@ function EosOrbShelf({ onClose, reduced = false }) {
                                             <span className="eosRwOrbBall">
                                                 <img src={eosFace(b.char, b.locked)} alt="" draggable={false} loading="lazy" onError={(e) => (e.currentTarget.style.visibility = "hidden")} />
                                             </span>
+                                            <span className="eosRwOrbQ" aria-hidden="true">
+                                                ?
+                                            </span>
                                             <small>bond {b.level + 1}</small>
                                         </span>
                                     ) : null}
@@ -1463,6 +1666,28 @@ function EosOrbShelf({ onClose, reduced = false }) {
                             </div>
                         )
                         })}
+                    {shelfRows.crew.length ? (
+                        <div className="eosRwShelf isCrew" style={{ "--eos-h": 230 }} data-eos-crew={shelfRows.crew.length}>
+                            <div className="eosRwShelfHead">
+                                <b className="eosRwShelfName">crew you'll meet</b>
+                                <small className="eosRwShelfLine">play a game with them to start a shelf</small>
+                            </div>
+                            <div className="eosRwCrewRow">
+                                {shelfRows.crew.map(({ b }) => {
+                                    const pool = eosFacePool(b.char, "win")
+                                    const f = b.locked != null ? b.locked : pool[0]
+                                    return (
+                                        <span key={b.char} className="eosRwCrew" style={{ "--eos-h": EOS_REWARDS_CHAR_HUE[b.char] }} data-eos-crew-char={b.char}>
+                                            <span className="eosRwCrewBall" aria-hidden="true">
+                                                {f != null ? <img src={eosFace(b.char, f)} alt="" draggable={false} loading="lazy" onError={(e) => (e.currentTarget.style.visibility = "hidden")} /> : null}
+                                            </span>
+                                            <small>{b.name}</small>
+                                        </span>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    ) : null}
                 </section>
 
                 <section className="eosRwSkills" aria-label="Skills">
@@ -1494,17 +1719,17 @@ function EosOrbShelf({ onClose, reduced = false }) {
                                 role="radio"
                                 aria-checked={d.selected ? "true" : "false"}
                                 aria-disabled={d.unlocked ? "false" : "true"}
-                                className={`eosRwDustOpt ${d.selected ? "isSel" : ""} ${d.unlocked ? "" : "isLocked"}`}
+                                className={`eosRwDustOpt ${d.selected ? "isSel" : ""} ${d.unlocked ? "" : "isLocked"} ${dustNew === d.id ? "isNew" : ""}`}
                                 onClick={() => pickDust(d)}
                                 data-eos-dust-opt={d.id}
                             >
-                                <span className="eosRwDustSwatch" aria-hidden="true">
+                                <span className="eosRwDustSwatch" aria-hidden="true" data-dust={d.id}>
                                     {d.dots.map((c, i) => (
                                         <i key={i} style={{ background: c, boxShadow: `0 0 8px ${c}` }} />
                                     ))}
                                 </span>
                                 <b>{d.label}</b>
-                                <small>{d.unlocked ? (d.selected ? "on" : "tap") : `⚡ ${d.at}`}</small>
+                                <small>{d.unlocked ? (d.selected ? "on" : dustNew === d.id ? "new ✦" : "tap") : `⚡ ${d.at}`}</small>
                             </button>
                         ))}
                     </div>
@@ -1575,6 +1800,11 @@ ${EOS_RW} .eosWorldChips .eosRwChip:active{transform:scale(.94)}
 ${EOS_RW} .eosWorldChips .eosRwChip:focus-visible{outline:3px solid var(--eos-gold-1)!important;outline-offset:3px}
 ${EOS_RW} .eosRwChipNum{display:inline-block;min-width:12px;font:900 15px/1 var(--eos-font)!important;font-variant-numeric:tabular-nums;color:#fff;letter-spacing:.02em}
 ${EOS_RW} .eosRwChipNum.isPop{animation:eosRewardsPop .6s cubic-bezier(.3,1.6,.4,1) both}
+${EOS_RW} .eosRwChipBadge{position:absolute;top:2px;left:30px;width:11px;height:11px;border-radius:50%;background:var(--eos-gold-1);border:2px solid #1b1550;box-shadow:0 0 8px rgba(255,210,100,.9);pointer-events:none}
+/* day one (nothing yet): a quiet glyph-only pair — no "0"s */
+${EOS_RW} .eosWorldChips.isZero{opacity:.6}
+${EOS_RW} .eosWorldChips.isZero .eosRwChipNum{display:none!important}
+${EOS_RW} .eosWorldChips.isZero .eosRwChip{padding-right:6px!important}${EOS_RW} .eosWorldChips.isZero .eosRwChip.isDays{padding-right:9px!important}
 ${EOS_RW} .eosRwChipOrb{position:relative;display:block;width:32px;height:32px;border-radius:50%;overflow:hidden;flex:none;
 background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.6),rgba(255,255,255,0) 30%),radial-gradient(circle at 50% 62%,#c9d6ff,#7f8fd6 62%,#3b3f86);box-shadow:inset 0 -3px 6px rgba(20,8,48,.45),0 0 10px rgba(160,190,255,.5)}
 ${EOS_RW} .eosRwChip.isGold .eosRwChipOrb{background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.7),rgba(255,255,255,0) 30%),radial-gradient(circle at 50% 62%,#ffe58a,#ffb23e 62%,#c25a12);box-shadow:inset 0 -3px 6px rgba(90,30,0,.4),0 0 12px rgba(255,200,90,.75)}
@@ -1585,6 +1815,7 @@ background:radial-gradient(circle,#fff6c4 0 22%,#ffd04a 23% 36%,rgba(255,178,62,
 -webkit-mask:radial-gradient(circle,#000 0 62%,transparent 63%);mask:radial-gradient(circle,#000 0 62%,transparent 63%);filter:drop-shadow(0 0 6px rgba(255,200,90,.8));animation:eosRewardsSpin 24s linear infinite}
 ${EOS_RW} .eosRwSun.isSmall{width:22px;height:22px;vertical-align:-3px}
 ${EOS_RW} [data-eos-calm="1"] .eosRwSun,${EOS_RW} .isCalm .eosRwSun{animation:none}
+${EOS_RW} .eosOrbShelf.isCalm .eosRwDustSwatch i,${EOS_RW} .eosOrbShelf.isCalm .eosRwOrbQ::after{animation:none!important}
 
 ${EOS_RW} .eosOrbShelf{position:absolute;inset:0;z-index:220;display:flex;align-items:center;justify-content:center;font-family:var(--eos-font);color:#fff;pointer-events:auto}
 ${EOS_RW} .eosRwBackdrop{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,rgba(52,30,110,.55),rgba(6,4,22,.86));-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:0;transition:opacity .24s ease}
@@ -1635,7 +1866,21 @@ ${EOS_RW} .eosRwOrb:hover .eosRwOrbBall,${EOS_RW} .eosRwOrb.isSel .eosRwOrbBall{
 ${EOS_RW} .eosRwOrb.isSel .eosRwOrbBall{box-shadow:inset 0 -4px 8px rgba(20,8,48,.45),0 0 0 3px #fff,0 0 22px hsla(var(--eos-h),100%,70%,.9)}
 ${EOS_RW} .eosRwOrb.isLocked{cursor:default;width:auto;height:auto}
 ${EOS_RW} .eosRwOrb.isLocked .eosRwOrbBall{background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 2px rgba(255,255,255,.22)}
-${EOS_RW} .eosRwOrb.isLocked img{filter:brightness(0) invert(1) opacity(.26)}
+${EOS_RW} .eosRwOrb.isLocked .eosRwOrbBall{background:radial-gradient(circle at 50% 62%,hsla(var(--eos-h),70%,45%,.55),hsla(var(--eos-h),60%,20%,.7) 72%)}
+${EOS_RW} .eosRwOrb.isLocked img{filter:blur(3px) grayscale(.5) brightness(.85);opacity:.95}
+${EOS_RW} .eosRwOrbQ{position:absolute;left:50%;top:22px;translate:-50% -50%;z-index:2;font:900 20px/1 var(--eos-font);color:#fff;text-shadow:0 0 8px hsla(var(--eos-h),100%,75%,.95),0 1px 2px rgba(0,0,0,.6);pointer-events:none}
+${EOS_RW} .eosRwOrbQ::after{content:"✦";position:absolute;left:14px;top:-9px;font-size:11px;color:var(--eos-gold-1);animation:eosRewardsTwinkle 2.4s ease-in-out infinite}
+${EOS_RW} .eosRwOrbRow::before{content:"";position:absolute;left:-4px;right:-4px;bottom:2px;height:26px;border-radius:50%/0 0 100% 100%;background:radial-gradient(ellipse at 50% 0%,hsla(var(--eos-h),100%,70%,.28),hsla(var(--eos-h),100%,60%,0) 70%);pointer-events:none;z-index:-1}
+${EOS_RW} .eosRwOrb:not(.isLocked) .eosRwOrbBall::after{content:"";position:absolute;inset:0;border-radius:50%;box-shadow:inset 0 0 12px hsla(var(--eos-h),100%,75%,.55);pointer-events:none}
+${EOS_RW} .eosRwShelf.isCrew{background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border-style:dashed;border-color:rgba(255,255,255,.18)}
+${EOS_RW} .eosRwShelf.isCrew::after{display:none}
+${EOS_RW} .eosRwShelf.isCrew .eosRwShelfName{color:rgba(230,236,255,.92)}
+${EOS_RW} .eosRwCrewRow{display:flex;flex-wrap:wrap;gap:8px 12px;padding-top:2px}
+${EOS_RW} .eosRwCrew{display:inline-flex;flex-direction:column;align-items:center;gap:3px;min-width:44px}
+${EOS_RW} .eosRwCrewBall{position:relative;display:block;width:36px;height:36px;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 50% 62%,hsla(var(--eos-h),70%,48%,.5),hsla(var(--eos-h),60%,22%,.65) 72%);box-shadow:inset 0 0 0 1.5px hsla(var(--eos-h),90%,75%,.35)}
+${EOS_RW} .eosRwCrewBall img{position:absolute;inset:3px;width:30px;height:30px;object-fit:contain;filter:grayscale(.5) brightness(.75);opacity:.85}
+${EOS_RW} .eosRwCrew small{font:800 13px/1 var(--eos-font);letter-spacing:.06em;color:hsl(var(--eos-h),80%,84%)}
+@keyframes eosRewardsTwinkle{0%,100%{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
 ${EOS_RW} .eosRwOrb.isLocked small{font:800 13px/1 var(--eos-font);color:rgba(230,236,255,.85);white-space:nowrap}
 ${EOS_RW} .eosRwMore{align-self:center;font:900 13px/1 var(--eos-font);color:rgba(255,255,255,.85);padding:0 4px}
 ${EOS_RW} .eosRwDetail{position:relative;z-index:1;margin:6px 0 2px;padding:8px 12px;border-radius:14px;background:rgba(8,8,30,.6);font:900 15px/1.2 var(--eos-font);letter-spacing:.03em;color:#fff;animation:eosRewardsRise .3s ease-out both}
@@ -1659,6 +1904,20 @@ ${EOS_RW} .eosRwDustOpt small{font:800 13px/1 var(--eos-font);color:rgba(230,236
 ${EOS_RW} .eosRwDustSwatch{display:flex;gap:5px;height:14px;align-items:center}
 ${EOS_RW} .eosRwDustSwatch i{display:block;width:7px;height:7px;border-radius:50%}
 ${EOS_RW} .eosRwDustSwatch i:nth-child(2n){width:5px;height:5px}
+/* each style previews its own motion: starlight twinkle · fireflies blink · aurora shimmer · snow falls · gold glints */
+${EOS_RW} .eosRwDustSwatch i{animation:eosRewardsTwinkle 2.2s ease-in-out infinite}
+${EOS_RW} .eosRwDustSwatch i:nth-child(2){animation-delay:-.6s}${EOS_RW} .eosRwDustSwatch i:nth-child(3){animation-delay:-1.2s}${EOS_RW} .eosRwDustSwatch i:nth-child(4){animation-delay:-1.7s}
+${EOS_RW} .eosRwDustSwatch[data-dust="fireflies"] i{animation-name:eosRewardsBlink;animation-duration:1.6s}
+${EOS_RW} .eosRwDustSwatch[data-dust="aurora"] i{animation-name:eosRewardsShimmer;animation-duration:2.6s}
+${EOS_RW} .eosRwDustSwatch[data-dust="snow"] i{animation-name:eosRewardsFall;animation-duration:2.4s;animation-timing-function:linear}
+${EOS_RW} .eosRwDustSwatch[data-dust="gold"] i{animation-name:eosRewardsGlint;animation-duration:1.9s}
+${EOS_RW} .eosRwDustOpt.isLocked .eosRwDustSwatch i{animation:none}
+${EOS_RW} .eosRwDustOpt.isNew{border-color:var(--eos-gold-1)!important;box-shadow:0 0 0 2px rgba(255,215,110,.35),0 0 16px rgba(255,200,90,.45)}
+${EOS_RW} .eosRwDustOpt.isNew small{color:var(--eos-gold-1)}
+@keyframes eosRewardsBlink{0%,100%{opacity:.15}45%,60%{opacity:1}}
+@keyframes eosRewardsShimmer{0%,100%{transform:translateY(0);filter:hue-rotate(0deg)}50%{transform:translateY(-3px);filter:hue-rotate(40deg)}}
+@keyframes eosRewardsFall{0%{transform:translateY(-5px);opacity:0}20%{opacity:1}100%{transform:translateY(6px);opacity:0}}
+@keyframes eosRewardsGlint{0%,70%,100%{filter:brightness(1)}80%{filter:brightness(1.9)}}
 ${EOS_RW} .eosRwControls{display:flex;flex-direction:column;gap:6px;margin-top:14px}
 ${EOS_RW} .eosRwSwitch{display:flex!important;align-items:center;gap:12px;min-height:44px;padding:6px 12px!important;border-radius:14px!important;border:1px solid rgba(255,255,255,.12)!important;background:rgba(255,255,255,.05)!important;color:#fff!important;font:800 15px/1.1 var(--eos-font)!important;text-align:left;cursor:pointer}
 ${EOS_RW} .eosRwSwitch>i{position:relative;flex:none;width:44px;height:26px;border-radius:999px;background:rgba(255,255,255,.2);transition:background .2s ease}
@@ -1691,12 +1950,16 @@ ${EOS_RW} .eosRwToast{position:absolute;left:50%;bottom:calc(100% + 6px);transla
 /* phone check-in (step 1): the title spans the stage width, so the chips fold into ONE 44 px orb button in the
    corner with a count badge (days live in the shelf); step 2 hides them (check-in rule, repeated above) */
 ${EOS_RW} .releaseStage:has(.eosCheckIn.isPhone[data-step="1"]) .eosWorldChips{top:2px;right:2px}
+/* the once-per-device cold open (STILL's 3 s line) fills the phone head band: the empty day-one chip steps
+   aside until it ends instead of sitting on the bubble's corner (it has nothing to show yet) */
+${EOS_RW} .releaseStage:has(.eosCheckIn.isPhone[data-step="1"] .eosCkHeadCold) .eosWorldChips.isZero{visibility:hidden;opacity:0}
+${EOS_RW} .eosWorldChips.isZero{transition:opacity .3s ease}
 ${EOS_RW} .releaseStage:has(.eosCheckIn.isPhone[data-step="1"]) .eosWorldChips .eosRwChip.isDays{display:none!important}
 ${EOS_RW} .releaseStage:has(.eosCheckIn.isPhone[data-step="1"]) .eosWorldChips .eosRwChip.isOrbs{width:44px!important;padding:0!important;justify-content:center;background:none!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none;backdrop-filter:none}
 ${EOS_RW} .releaseStage:has(.eosCheckIn.isPhone[data-step="1"]) .eosWorldChips .eosRwChipOrb{width:38px;height:38px}
 ${EOS_RW} .releaseStage:has(.eosCheckIn.isPhone[data-step="1"]) .eosWorldChips .eosRwChipOrb img{inset:3px;width:32px;height:32px}
 ${EOS_RW} .releaseStage:has(.eosCheckIn.isPhone[data-step="1"]) .eosWorldChips .isOrbs .eosRwChipNum{position:absolute;right:-4px;bottom:-4px;min-width:24px;height:24px;padding:0 6px;box-sizing:border-box;border-radius:999px;display:grid;place-items:center;background:#1b1550;border:1.5px solid rgba(255,255,255,.4);font-size:15px!important}
-@media (prefers-reduced-motion:reduce){${EOS_RW} .eosRwSun{animation:none}${EOS_RW} .eosRwChipNum.isPop,${EOS_RW} .eosRwDetail,${EOS_RW} .eosRwToast{animation:none}${EOS_RW} .eosRwPanel{transform:none!important;transition:opacity .16s linear}}
+@media (prefers-reduced-motion:reduce){${EOS_RW} .eosRwSun{animation:none}${EOS_RW} .eosRwDustSwatch i,${EOS_RW} .eosRwOrbQ::after{animation:none!important}${EOS_RW} .eosRwChipNum.isPop,${EOS_RW} .eosRwDetail,${EOS_RW} .eosRwToast{animation:none}${EOS_RW} .eosRwPanel{transform:none!important;transition:opacity .16s linear}}
 `
 eosCss("rewards", EOS_REWARDS_CSS)
 
