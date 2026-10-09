@@ -1,0 +1,14 @@
+# Pilot A spec — progress (lead designer)
+- [x] read CREATIVE_STANDARDS, QUALITY_REPORT §0,1,6-9; viewed sheets 1,109,2 (3 images)
+- [x] rater JSON + catalog rows for 1/2/109
+- facts: hook = pilot_build.py injects EosPilotEngineFor(p.game) at top of RoutedGameContentLegacy + RoutedGameContent; p = wrapper ep (sfx/onDone/onProgress wrapped)
+- facts: wrappedSfx adds implicit progress (+gameProgressStep) for NON-explicit games (CRUSH id2, E02 => +15/sfx); reportProgress NOT monotonic; explicit list incl 1,109
+- facts: wrappedDone -> p.onDone after finishHoldMs=3000 (root passes 3000); step toast .globalStepFeedbackCopy anchored at pointer (--fx-x/--fx-y inline)
+- facts: eosTone gated by EOS_STORE.sound (mirrors arcade toggle via I1-E14)
+- next: arrows target resolution (30_eos_arrows EOS_GESTURES), mood/dots hooks, BurstEngine/CleanseEngine details, then write spec
+- [x] (call ~40) arrows: [data-eos-target="1"] markers resolve FIRST for every id (also 1-110) via eosTarget(spec); arena must be `.cinematicContentShell > .arena`; fallback = `.arena button:not(:disabled)` when no marker; dead-class regex (popped/gone/released/isGone...)
+- [x] eosGateProgress (I1): sfx creep min(cur+15, own+12, 96) for non-explicit games -> CRUSH: one p.sfx per word only, then onProgress(k/6)
+- [x] mood bloom fires on .globalPlayGuide.isComplete (progress>=100); avoids [data-eos-avoid]/[data-eos-char]
+- [x] look-alike conflicts: 114 SKY LANTERNS (hold lantern -> sky) and 111 BIG SIGH (breath, dawn) => CLEANSE pilot stays ON THE WATER (clear-the-murk, lily pads, mirror dawn), not sky lanterns
+- next: write docs/pilot/PILOT_A_SPEC.md, commit + push
+- [x] spec written: framer/docs/pilot/PILOT_A_SPEC.md; committing + pushing
