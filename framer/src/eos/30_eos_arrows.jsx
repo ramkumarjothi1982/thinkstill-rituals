@@ -275,6 +275,32 @@ function eosArrowsUnion(a, b) {
 function eosArrowsHit(a, b, pad = 0) {
     return !!a && !!b && a.x < b.x + b.w + pad && a.x + a.w + pad > b.x && a.y < b.y + b.h + pad && a.y + a.h + pad > b.y
 }
+// Rects (layer px) of the game's own visible copy inside the arena — the label tries not to cover it (prompts,
+// safety lines such as 111's "Dizzy or tingly? Breathe normally"). Text nodes only; capped; refreshed every 600 ms.
+function eosArrowsTextRects(A, L, k, max = 80) {
+    const out = []
+    try {
+        if (!A || !L || typeof document === "undefined" || !document.createTreeWalker) return out
+        const R = L.getBoundingClientRect()
+        const kk = k || 1
+        const w = document.createTreeWalker(A, 4 /* NodeFilter.SHOW_TEXT */)
+        const rg = document.createRange()
+        let n
+        let seen = 0
+        while ((n = w.nextNode()) && seen < 500 && out.length < max) {
+            seen += 1
+            const t = n.nodeValue
+            if (!t || t.trim().length < 2) continue
+            const pe = n.parentElement
+            if (!pe || (pe.closest && pe.closest(".eosArrowLayer, [aria-hidden='true'] svg"))) continue
+            rg.selectNodeContents(n)
+            const r = rg.getBoundingClientRect()
+            if (r.width < 6 || r.height < 6 || r.right < R.left || r.left > R.right || r.bottom < R.top || r.top > R.bottom) continue
+            out.push({ x: (r.left - R.left) / kk, y: (r.top - R.top) / kk, w: r.width / kk, h: r.height / kk })
+        }
+    } catch {}
+    return out
+}
 // how far (px) one can travel from (x, y) along unit u before leaving [m, W-m] × [m, H-m]
 function eosArrowsRoom(x, y, u, W, H, m = 14) {
     let t = 1e6
@@ -472,14 +498,18 @@ function eosArrowsModel(o) {
                   { x: cxl(ax), y: U.y + U.h + 12 + lh / 2 },
                   { x: U.x + U.w + 14 + labW / 2, y: cyl(ty) },
                   { x: U.x - 14 - labW / 2, y: cyl(ty) },
+                  { x: cxl(ax), y: U.y - 22 - lh * 1.5 },
+                  { x: cxl(ax), y: U.y + U.h + 22 + lh * 1.5 },
               ]
     const avoid = (o.avoid || []).concat(g === "wait" ? [] : [rect])
-    const overlap = (b) =>
-        avoid.reduce((sum, a) => {
+    const area = (list, b) =>
+        list.reduce((sum, a) => {
             const ix = Math.min(b.x + b.w, a.x + a.w + 4) - Math.max(b.x, a.x - 4)
             const iy = Math.min(b.y + b.h, a.y + a.h + 4) - Math.max(b.y, a.y - 4)
             return sum + (ix > 0 && iy > 0 ? ix * iy : 0)
         }, 0)
+    // HUD / guide / companion / target are hard; the game's own copy is soft (covered only when nothing is clean)
+    const overlap = (b) => area(avoid, b) * 4 + area(o.soft || [], b)
     let pick = null
     let least = null
     for (const c of cands) {
@@ -772,7 +802,7 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             lastProgress: null, lastProgressAt: 0, lastTouchAt: 0, down: false, downKey: null, advanceAt: 0, missAt: 0,
             lastPt: null, cur: null, lastStageKey: null, tableEver: false, arenaAt: 0,
             touched: new Set(), onceDone: new Set(), count: null, token: 0, wiggle: 0, shake: 0,
-            near: null, avoid: [], avoidAt: 0, sig: "", srText: "", srAt: 0, srTimer: 0,
+            near: null, avoid: [], soft: [], avoidAt: 0, sig: "", srText: "", srAt: 0, srTimer: 0,
             frame: 0, raf: 0, timer: 0, press: null, labW: {}, seqDone: 0,
             completeAt: 0, completeKey: null, ignoreDone: false, forceShow: false,
         }
@@ -836,8 +866,10 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             if (marks.length) {
                 const spec = eosArrowsMarkerSpec(marks[0])
                 const list = spec.g === "choose" ? marks.filter((m) => (m.dataset.eosG || "") === "choose").slice(0, 6) : [marks[0]]
-                const ident = eosArrowsMarkerIdent(marks[0])
-                const sk = `m:${spec.g}:${ident}:${list.length}`
+                // identity = gesture + base class + label: engines toggle state classes every frame (breathing, glow),
+                // and a flapping key would re-pop the cue each tick (the hand never finishes its spring-in)
+                const ident = eosArrowsMarkerIdent(marks[0]).split(".")[0]
+                const sk = `m:${spec.g}:${ident}:${spec.L || ""}:${list.length}`
                 if (S.base == null) S.base = spec.own ? (learned < 1 ? 2 : 1) : learned < 2 ? 2 : 1
                 return { kind: "marker", i: -1, spec, g: spec.g, els: list, stageKey: sk, key: sk, ident: sk, label: spec.L || eosArrowsDefaultLabel(spec), sel: '[data-eos-target="1"]' }
             }
@@ -962,6 +994,7 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
                 S.avoid = eosArrowsQsa(stageOf(L), EOS_ARROWS_AVOID)
                     .map((e) => eosRelRect(e, L))
                     .filter((r) => r && r.w > 4 && r.h > 4)
+                S.soft = eosArrowsTextRects(A, L, eosStageScale(L))
             }
             // count badge (taps): markers carry their live n; table stages count our own pointerdowns
             let count = null
@@ -979,7 +1012,7 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             if (g === "timing" && s.lit) text = eosArrowsQ(A, s.lit) ? "NOW!" : res.label
             const v = eosArrowsModel({
                 g, label: text, L2: s.L2, n: s.n, count, seqNum: g === "seq" ? S.seqDone + 1 : 0, dir: s.dir, d: s.d, ms: s.ms, bpm: s.bpm, win: s.win, maxSpeed: s.maxSpeed,
-                tx, ty, rect, halos, to, alt, W, H, phone, narrow, arenaC, avoid: S.avoid, labW: S.labW[text],
+                tx, ty, rect, halos, to, alt, W, H, phone, narrow, arenaC, avoid: S.avoid, soft: S.soft, labW: S.labW[text],
             })
             v.text = text
             v.occluded = occluded
@@ -1352,11 +1385,18 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
                 publish({ gauge: null })
             }
         }
-        const onKey = () => {
+        const onKey = (e) => {
             const now = performance.now()
             S.lastTouchAt = now
-            if (S.cur && S.cur.g !== "wait" && S.shown) hide(now)
             S.advanceAt = now + 350
+            const t = e && e.target
+            const typing = !!t && (t.tagName === "TEXTAREA" || (t.tagName === "INPUT" && !/^(button|submit|checkbox|radio|range)$/i.test(t.type || "")) || t.isContentEditable)
+            if (typing) {
+                // typing covers nothing: keep the cue up, and let the next stage (50's SHOW ME) take over at once
+                S.downKey = null
+                return
+            }
+            if (S.cur && S.cur.g !== "wait" && S.shown) hide(now)
             S.downKey = S.cur ? S.cur.key : null
         }
         let boundHost = null
