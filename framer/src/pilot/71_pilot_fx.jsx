@@ -263,7 +263,7 @@ function eosPilotPrefetch(src) {
 //   showLabel sub avoid className style seed eager ballChildren /> — placement: left/top = ball centre.
 // Imperative handle: emit(type, o) · react(key, ms) · look(target) · pose(name) · setTug(t) · setStance(w)
 // · setCompression(c) · setHeat(h) · setUnder(v) · celebrate(steps) · anchor(name) · el() · part(name)
-// · setStep(n) · prepare(key) · flash().
+// · setStep(n) · prepare(key) · flash().  faceIds={calm: id, …} overrides a step face for a kit (sky: SYNC's sleeping calm).
 const EosPilotActor = React.memo(
     React.forwardRef(function EosPilotActor(props, ref) {
         const {
@@ -285,6 +285,7 @@ const EosPilotActor = React.memo(
             seed = 0,
             eager = true,
             ballChildren = null,
+            faceIds = null,
         } = props
         const emo = emotion || (typeof eosCurrentEmotion === "function" && eosCurrentEmotion()) || "auto"
         const ch = eosPilotCharOk(char || (EOS_EMO[emo] ? EOS_EMO[emo].char : "still"))
@@ -296,9 +297,9 @@ const EosPilotActor = React.memo(
         const srcs = React.useMemo(() => {
             const m = {}
             if (image) m.user = String(image)
-            else for (const k of keys) m[k] = eosPilotFaceSrc(ch, k, emo, seed)
+            else for (const k of keys) m[k] = faceIds && faceIds[k] != null ? eosFace(ch, faceIds[k]) : eosPilotFaceSrc(ch, k, emo, seed)
             return m
-        }, [keys, ch, emo, seed, image])
+        }, [keys, ch, emo, seed, image, faceIds ? JSON.stringify(faceIds) : ""])
         const rt = React.useRef(null)
         if (!rt.current) {
             const P = {}
@@ -701,18 +702,125 @@ const EosPilotActor = React.memo(
 )
 
 // ================================================================= S2 · useEosPilotFinale
-// const fin = useEosPilotFinale({arenaRef, live, bonus, label, kit, heroFace, anims, timers, handoffMs,
-//   beats:[{id, at, run(ctx)}], onFinaleTap(ev, ctx), onHandoff(ctx)})
-// fin.start(ev) · fin.tap(ev) · fin.handoff() · fin.phase.current ("play" | "finale" | "done") · fin.t0()
+// const fin = useEosPilotFinale({arenaRef, live, gameId, bonus, label, kit, heroFace, anims, timers, handoffMs,
+//   settle, beats:[{id, at, dur, reducedAt, run(ctx)}], onFinaleTap(ev, ctx), onSettle(ctx), onHandoff(ctx)})
+// fin.start(ev) · fin.tap(ev) · fin.handoff() · fin.phase.current ("play" | "finale" | "done") · fin.t0() · fin.settleAt()
+// S2' (addendum, cfg.settle = true): the game's OWN climax runs T0 -> settleAt (= handoffMs - 150). At settleAt the
+// scene is committed and frozen (data-eos-pilot-hold: a still painting), the game's timers and timed sound are cut;
+// at handoffMs onDone hands the frame to the wrapper's approved mega burst. Nothing the pilot owns animates or
+// sounds while that burst is mounted. Without cfg.settle the pre-addendum behaviour is kept (CLEANSE/CRUSH drafts).
 const EOS_PILOT_REDUCED_AT = { climax: 0, transform: 200, peak: 800, afterglow: 800, tableau: 1600 }
+const EOS_PILOT_FINALE = { game: null, log: [], stepLog: [], inputT: null, climaxT: null, settleAt: null, settleT: null, handoffMs: null, handoffT: null, megaMountT: null, megaUnmountT: null, stepAfterT0: 0, frozen: 0, warn: [] }
+eosExpose("pilot", { finaleLog: () => ({ ...EOS_PILOT_FINALE, log: EOS_PILOT_FINALE.log.slice(), warn: EOS_PILOT_FINALE.warn.slice() }) })
+function eosPilotHandoffMs(gameId, reduced, own) {
+    if (reduced) return typeof EOS_PILOT_HANDOFF_SETTLE_REDUCED_MS !== "undefined" ? EOS_PILOT_HANDOFF_SETTLE_REDUCED_MS : 900
+    if (own) return own
+    return (typeof EOS_PILOT_HANDOFF !== "undefined" && EOS_PILOT_HANDOFF[gameId]) || EOS_PILOT_HANDOFF_MS
+}
+// The still painting: every finite animation in the arena is committed to its end state (finish(): a slow frame
+// never leaves a half-burst bubble behind the burst), every infinite loop is paused, and CSS pauses the rest.
+function eosPilotFreeze(arena) {
+    if (!arena) return 0
+    let n = 0
+    try {
+        arena.setAttribute("data-eos-pilot-hold", "1")
+        if (typeof arena.getAnimations === "function")
+            arena.getAnimations({ subtree: true }).forEach((a) => {
+                try {
+                    if (a.playState !== "running" && !a.pending) return
+                    const t = a.effect && a.effect.getComputedTiming ? a.effect.getComputedTiming() : null
+                    if (t && t.endTime !== Infinity) a.finish()
+                    else a.pause()
+                    n++
+                } catch (x) {
+                    try {
+                        a.pause()
+                    } catch (y) {}
+                }
+            })
+    } catch (e) {}
+    return n
+}
+// Watches the arcade from T0 to the reveal: step bursts that mount after T0, the mega burst's mount/unmount,
+// and owns data-eos-pilot-burst on .tsArcade (set at the hand-off, removed at reveal / mega unmount / unmount).
+const EOS_PILOT_BURST = { root: null, mo: null, t: 0 }
+function eosPilotBurstClear() {
+    const b = EOS_PILOT_BURST
+    try {
+        if (b.mo) b.mo.disconnect()
+    } catch (e) {}
+    b.mo = null
+    if (b.t) clearTimeout(b.t)
+    b.t = 0
+    try {
+        if (b.root) b.root.removeAttribute("data-eos-pilot-burst")
+        if (typeof document !== "undefined") document.querySelectorAll("[data-eos-pilot-burst]").forEach((r) => r.removeAttribute("data-eos-pilot-burst"))
+    } catch (e) {}
+    b.root = null
+}
+function eosPilotFinaleWatch(arena) {
+    eosPilotBurstClear()
+    const b = EOS_PILOT_BURST
+    const F = EOS_PILOT_FINALE
+    let root = null
+    try {
+        root = arena && arena.closest ? arena.closest(".tsArcade") : null
+    } catch (e) {}
+    if (!root || typeof MutationObserver === "undefined") return
+    b.root = root
+    const seen = new WeakSet()
+    try {
+        root.querySelectorAll(".tsRewardSurge").forEach((n) => seen.add(n))
+    } catch (e) {}
+    const check = () => {
+        try {
+            root.querySelectorAll(".tsRewardSurge").forEach((n) => {
+                if (seen.has(n)) return
+                seen.add(n)
+                if (n.classList.contains("mega")) {
+                    if (F.megaMountT == null) F.megaMountT = performance.now()
+                } else if (n.classList.contains("step")) {
+                    F.stepAfterT0++
+                    F.stepLog.push(Math.round(performance.now() - (F.inputT || 0)))
+                }
+            })
+            if (F.megaMountT != null && F.megaUnmountT == null && !root.querySelector(".tsRewardSurge.mega")) {
+                F.megaUnmountT = performance.now()
+                eosPilotBurstClear()
+                return
+            }
+            if (/(^|\s)stage-reveal(\s|$)/.test(root.className || "")) eosPilotBurstClear()
+        } catch (e) {}
+    }
+    try {
+        b.mo = new MutationObserver(check)
+        b.mo.observe(root, { attributes: true, attributeFilter: ["class"], childList: true, subtree: true })
+    } catch (e) {}
+    b.t = setTimeout(eosPilotBurstClear, 15000)
+}
 function useEosPilotFinale(cfg) {
     const cfgRef = React.useRef(cfg)
     cfgRef.current = cfg
     const phase = React.useRef("play")
     const api = React.useRef(null)
     if (!api.current) {
-        const st = { t0: 0, lastTap: 0, done: false, hand: EOS_PILOT_HANDOFF_MS, reduced: false, beatAnims: new Set(), ran: {} }
+        const st = { t0: 0, lastTap: 0, done: false, hand: EOS_PILOT_HANDOFF_MS, settleAt: EOS_PILOT_HANDOFF_MS, settled: false, reduced: false, beatAnims: new Set(), ran: {}, own: new Set(), climaxSeen: false }
+        const F = EOS_PILOT_FINALE
         const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now())
+        const mode = () => !!cfgRef.current.settle
+        const ownLater = (fn, ms) => {
+            const id = setTimeout(() => {
+                st.own.delete(id)
+                try {
+                    fn()
+                } catch (e) {
+                    eosPilotWarn(e)
+                }
+            }, Math.max(0, Number(ms) || 0))
+            st.own.add(id)
+            return id
+        }
+        st.ownLater = ownLater
         const ctxOf = (extra) => {
             const c = cfgRef.current
             const arena = c.arenaRef && c.arenaRef.current
@@ -721,6 +829,8 @@ function useEosPilotFinale(cfg) {
                 reduced: st.reduced,
                 arena,
                 skipped: false,
+                settleAt: st.settleAt,
+                handoffMs: st.hand,
                 anim: (el, kf, opts) => {
                     const a = eosPilotAnim(c.anims, el, kf, opts)
                     if (a) {
@@ -740,6 +850,7 @@ function useEosPilotFinale(cfg) {
             st.ran[b.id] = true
             const c = cfgRef.current
             const arena = c.arenaRef && c.arenaRef.current
+            F.log.push({ beat: b.id, t: Math.round(now() - st.t0), skipped: !!(extra && extra.skipped) })
             try {
                 if (arena) arena.setAttribute("data-eos-pilot-beat", b.id)
             } catch (e) {}
@@ -748,14 +859,50 @@ function useEosPilotFinale(cfg) {
             } catch (e) {
                 eosPilotWarn(e)
             }
+            if (!st.climaxSeen) {
+                st.climaxSeen = true
+                try {
+                    requestAnimationFrame(() => {
+                        if (F.climaxT == null) F.climaxT = now()
+                    })
+                } catch (e) {}
+            }
         }
         const at = (b) => (st.reduced ? (b.reducedAt != null ? b.reducedAt : EOS_PILOT_REDUCED_AT[b.id] != null ? EOS_PILOT_REDUCED_AT[b.id] : Math.min(b.at || 0, 1600)) : b.at || 0)
+        const settle = () => {
+            if (st.settled || !mode()) return
+            st.settled = true
+            const c = cfgRef.current
+            const arena = c.arenaRef && c.arenaRef.current
+            F.settleT = now()
+            F.log.push({ beat: "settle", t: Math.round(F.settleT - st.t0) })
+            eosPilotAnimSkip(st.beatAnims)
+            EOS_PILOT_SOUND.hold = true
+            try {
+                if (typeof c.onSettle === "function") c.onSettle(ctxOf())
+            } catch (e) {
+                eosPilotWarn(e)
+            }
+            try {
+                if (c.timers && typeof c.timers.clearAll === "function") c.timers.clearAll()
+            } catch (e) {}
+            F.frozen = eosPilotFreeze(arena)
+        }
         const handoff = () => {
             if (st.done) return
+            if (mode()) settle()
             st.done = true // the lock is set inside the call that fires onDone
             phase.current = "done"
             const c = cfgRef.current
             const live = c.live && c.live.current
+            const arena = c.arenaRef && c.arenaRef.current
+            if (mode() && EOS_PILOT_BURST.root) {
+                try {
+                    EOS_PILOT_BURST.root.setAttribute("data-eos-pilot-burst", "1")
+                } catch (e) {}
+            }
+            F.handoffT = now()
+            F.log.push({ beat: "handoff", t: Math.round(F.handoffT - st.t0) })
             try {
                 if (live && typeof live.onDone === "function") live.onDone(c.bonus == null ? 0 : c.bonus)
             } catch (e) {
@@ -766,7 +913,6 @@ function useEosPilotFinale(cfg) {
             } catch (e) {
                 eosPilotWarn(e)
             }
-            const arena = c.arenaRef && c.arenaRef.current
             try {
                 if (typeof c.onHandoff === "function") c.onHandoff(ctxOf())
             } catch (e) {
@@ -775,14 +921,18 @@ function useEosPilotFinale(cfg) {
             try {
                 if (c.kit) eosPilotAfterglow(c.kit, typeof c.heroFace === "function" ? c.heroFace() : c.heroFace, arena)
                 const sh = eosPilotShell(arena)
-                if (sh && sh.getAttribute("data-eos-pilot-guide") !== "off") eosPilotShellAttrs(arena, { guide: "bend" })
+                // S2': the guide strip does not change during the burst (MIND BEND switches at the reveal)
+                if (!mode() && sh && sh.getAttribute("data-eos-pilot-guide") !== "off") eosPilotShellAttrs(arena, { guide: "bend" })
             } catch (e) {
                 eosPilotWarn(e)
             }
+            if (mode()) eosPilotFreeze(arena)
         }
         api.current = {
             phase,
+            st,
             t0: () => st.t0,
+            settleAt: () => st.settleAt,
             start(ev) {
                 if (phase.current !== "play") return false
                 phase.current = "finale"
@@ -791,16 +941,39 @@ function useEosPilotFinale(cfg) {
                 st.t0 = eosPilotEvT(ev).t
                 st.lastTap = st.t0
                 st.reduced = eosPilotIsReduced(arena, c.live)
-                st.hand = st.reduced ? EOS_PILOT_HANDOFF_REDUCED_MS : c.handoffMs || EOS_PILOT_HANDOFF_MS
+                EOS_PILOT_SOUND.hold = false
+                if (mode()) {
+                    st.hand = eosPilotHandoffMs(c.gameId, st.reduced, st.reduced ? null : c.handoffMs)
+                    st.settleAt = st.hand - 150
+                } else {
+                    st.hand = st.reduced ? EOS_PILOT_HANDOFF_REDUCED_MS : c.handoffMs || EOS_PILOT_HANDOFF_MS
+                    st.settleAt = st.hand
+                }
+                Object.assign(F, { game: c.gameId || null, log: [], inputT: st.t0, climaxT: null, settleAt: st.settleAt, settleT: null, handoffMs: st.hand, handoffT: null, megaMountT: null, megaUnmountT: null, stepAfterT0: 0, stepLog: [], frozen: 0, warn: [] })
+                eosPilotFinaleWatch(arena)
                 const later = (fn, ms) => (c.timers ? c.timers.later(fn, ms) : setTimeout(fn, ms))
+                const sched = mode() ? ownLater : later
                 const el = now() - st.t0
                 for (const b of c.beats || []) {
-                    const d = at(b) - el
+                    const a = at(b)
+                    if (mode()) {
+                        if (a >= st.settleAt) {
+                            F.warn.push(`${b.id}: at ${a} >= settleAt ${st.settleAt}: dropped`)
+                            eosPilotWarn(`beat ${b.id} starts after settleAt`)
+                            continue
+                        }
+                        if (!st.reduced && a + (Number(b.dur) || 0) > st.settleAt) {
+                            F.warn.push(`${b.id}: ends ${a + (Number(b.dur) || 0)} > settleAt ${st.settleAt}: clamped`)
+                            eosPilotWarn(`beat ${b.id} ends after settleAt (clamped by the settle)`)
+                        }
+                    }
+                    const d = a - el
                     if (d <= 0) runBeat(b)
-                    else later(() => runBeat(b), d)
+                    else sched(() => runBeat(b), d)
                 }
-                later(handoff, st.hand - el)
-                later(handoff, st.hand + 800 - el) // watchdog (idempotent)
+                if (mode()) ownLater(settle, st.settleAt - el)
+                sched(handoff, st.hand - el)
+                sched(handoff, st.hand + 800 - el) // watchdog (idempotent)
                 return true
             },
             // the arena's pointerdown while phase === "finale" (no skip button: G7)
@@ -822,7 +995,8 @@ function useEosPilotFinale(cfg) {
                 }
                 if (gap < 400) return
                 // skip: commit every pre-hand-off end state, then hand off now
-                for (const b of c.beats || []) if (at(b) <= st.hand) runBeat(b, { skipped: true })
+                const lim = mode() ? st.settleAt : st.hand
+                for (const b of c.beats || []) if (at(b) < lim || (!mode() && at(b) <= lim)) runBeat(b, { skipped: true })
                 eosPilotAnimSkip(st.beatAnims)
                 eosPilotSoundRow({ t, action: "finale-skip", cue: "finale-skip", via: "none", inputT: t, game: c.gameId || null })
                 handoff()
@@ -830,6 +1004,17 @@ function useEosPilotFinale(cfg) {
             handoff,
         }
     }
+    React.useEffect(
+        () => () => {
+            const st = api.current && api.current.st
+            if (st) st.own.forEach((id) => clearTimeout(id))
+            if (st && st.t0) {
+                EOS_PILOT_SOUND.hold = false
+                eosPilotBurstClear()
+            }
+        },
+        []
+    )
     return api.current
 }
 
@@ -868,7 +1053,7 @@ function EosPilotParticles({ name, n }) {
 // handle: grade(to, ms) · camera({y, scale, ms}) · particles(name, on) · burst(pool, o) · el() · layer(name)
 const EosPilotStage = React.memo(
     React.forwardRef(function EosPilotStage(props, ref) {
-        const { kit = "sky", calm = 0, hide, className = "", children, planeClassName = "" } = props
+        const { kit = "sky", calm = 0, hide, className = "", children, planeClassName = "", mirror = null } = props
         const K = EOS_PILOT_KITS[kit] || EOS_PILOT_KITS.sky
         const rt = React.useRef(null)
         if (!rt.current) {
@@ -876,7 +1061,7 @@ const EosPilotStage = React.memo(
             const mk = (k) => (n) => {
                 L[k] = n
             }
-            rt.current = { L, r: { root: mk("root"), l0: mk("l0"), l0c: mk("l0c"), l1: mk("l1"), l2: mk("l2"), plane: mk("plane"), fx: mk("fx"), l4: mk("l4") }, anims: new Set(), cam: [], graded: false, rr: {}, pools: null, gradeT: 0 }
+            rt.current = { L, r: { root: mk("root"), l0: mk("l0"), l0m: mk("l0m"), l0c: mk("l0c"), l1: mk("l1"), l2: mk("l2"), plane: mk("plane"), fx: mk("fx"), l4: mk("l4") }, anims: new Set(), cam: [], graded: false, rr: {}, pools: null, gradeT: 0 }
         }
         const R = rt.current
         const hidden = (c) => !!(hide && hide.indexOf(String(c).split(" ")[0]) >= 0)
@@ -900,6 +1085,15 @@ const EosPilotStage = React.memo(
             () => ({
                 el: () => R.L.root,
                 layer: (n) => R.L[n] || null,
+                // S9 transform driver: progress 0..100 -> the world (mirror set at 1 - s, calm set at s), tweened per input
+                shift(p, ms = 600) {
+                    const root = R.L.root
+                    if (!root) return
+                    R.graded = true
+                    root.style.setProperty("--calm-ms", `${Math.max(0, ms | 0)}ms`)
+                    root.style.setProperty("--calm-k", "1")
+                    root.style.setProperty("--calm", eosClamp((Number(p) || 0) / 100, 0, 1).toFixed(3))
+                },
                 // supporting move only (S2 grade rule): the calm layer -> `to` (<= 1), props follow by CSS transition
                 grade(to, ms = 1200) {
                     const root = R.L.root
@@ -929,7 +1123,7 @@ const EosPilotStage = React.memo(
                     const y = Number(c.y) || 0
                     const s = c.scale == null ? 1 : Number(c.scale)
                     const ms = c.ms || 900
-                    const depth = { l0: 0.1, l0c: 0.1, l1: 0.3, l2: 0.6, plane: 1, fx: 1, l4: 1.3 }
+                    const depth = { l0: 0.1, l0m: 0.1, l0c: 0.1, l1: 0.3, l2: 0.6, plane: 1, fx: 1, l4: 1.3 }
                     for (const k in depth) {
                         const f = depth[k]
                         const el = R.L[k]
@@ -992,8 +1186,9 @@ const EosPilotStage = React.memo(
         )
         const prop = (c, i) => (hidden(c) ? null : <i key={c + i} className={`eosPilotProp ${c}`} aria-hidden="true" />)
         return (
-            <div ref={R.r.root} className={`eosPilotStage ${className}`} data-kit={kit}>
+            <div ref={R.r.root} className={`eosPilotStage ${className}`} data-kit={kit} data-mirror={mirror ? mirror.key : undefined} data-mirror-variant={mirror && mirror.variant ? mirror.variant : undefined} style={mirror ? { "--calm-k": 1 } : undefined}>
                 <div ref={R.r.l0} className="eosPilotL0" aria-hidden="true" />
+                {mirror ? <div ref={R.r.l0m} className="eosPilotL0m" aria-hidden="true" style={eosPilotMirrorStyle(mirror)} /> : null}
                 <div ref={R.r.l0c} className="eosPilotL0c" aria-hidden="true" />
                 <div ref={R.r.l1} className="eosPilotL1" aria-hidden="true">
                     {K.l1.map(prop)}
@@ -1019,7 +1214,7 @@ const EosPilotStage = React.memo(
 
 // ================================================================= S4 · useEosPilotSound
 const EOS_PILOT_SOUND_LOG = []
-const EOS_PILOT_SOUND = { ev: 0 }
+const EOS_PILOT_SOUND = { ev: 0, hold: false, noise: null }
 function eosPilotSoundRow(row) {
     EOS_PILOT_SOUND_LOG.push(row)
     if (EOS_PILOT_SOUND_LOG.length > 400) EOS_PILOT_SOUND_LOG.splice(0, EOS_PILOT_SOUND_LOG.length - 400)
@@ -1113,6 +1308,21 @@ function useEosPilotSound(cfg) {
                             }
                         }
                     }
+                    if (L.noise || L.swell) {
+                        const kind = L.noise ? "noise" : "swell"
+                        const src = L.noise || L.swell
+                        const args = typeof src === "function" ? src(opt) : src
+                        if (args && args.length) {
+                            const to = (L.noise ? args[3] : args[2]) || {}
+                            const at = Math.max(0, Number(to.at) || 0)
+                            const ctx = eosAudio()
+                            if (ctx) {
+                                if (L.noise) eosPilotNoise(args[0], args[1], args[2], to)
+                                else eosPilotSwell(args[0], args[1], to)
+                            }
+                            rows.push(eosPilotSoundRow({ ...base, layer: i, via: kind, at, ...eosPilotToneTiming(ctx, at, inputT), impact: !!L.impact, impactT: L.impact ? impactT() : null, muted: !ctx }))
+                        }
+                    }
                     if (L.haptic) eosHaptic(L.haptic)
                 } catch (x) {
                     eosPilotWarn(x)
@@ -1127,7 +1337,8 @@ function useEosPilotSound(cfg) {
                 const c = cfgRef.current
                 const t0 = Number(T0) || performance.now()
                 const d = Math.max(0, t0 + ms - performance.now())
-                const run = () => fire(name, null, { ...(o || {}), inputT: t0 }, true)
+                // S2' sound cut: timed cues never fire once the scene has settled (the approved burst owns the sound)
+                const run = () => (EOS_PILOT_SOUND.hold ? [] : fire(name, null, { ...(o || {}), inputT: t0 }, true))
                 if (d <= 0) {
                     run()
                     return 0
@@ -1407,6 +1618,335 @@ function useEosPilotBox(arenaRef) {
         }
     }, [arenaRef])
     return box
+}
+
+// ================================================================= S7 · Mirror presets (addendum §Shared S7)
+// One per emotion family, read by every kit: the scene opens already in the emotion's weather.
+// sky = [top, mid, low] for the .eosPilotL0m tint layer; bed = the S4 sound bed the game plays.
+const EOS_PILOT_MIRROR = {
+    panic: { key: "panic", word: "jittery", hue: 250, sat: 0.55, light: 0.55, tight: 14, fog: 0, motion: "tremble", breath0: 1400, bed: "heart", pearl: 190, grad: [-22, -44, -62] },
+    anger: { key: "anger", word: "stormy", hue: 12, sat: 0.8, light: 0.45, tight: 10, fog: 0, motion: "shove", breath0: 2000, bed: "rumble", pearl: 38 },
+    sad: { key: "sad", word: "foggy", hue: 215, sat: 0.25, light: 0.35, tight: 6, fog: 0.7, motion: "sag", breath0: 3800, bed: "rain", pearl: 46 },
+    anxious: { key: "anxious", word: "buzzing", hue: 285, sat: 0.5, light: 0.5, tight: 8, fog: 0, motion: "drift", breath0: 1800, bed: "shimmer", pearl: 275, grad: [4, 12, 26] },
+}
+const EOS_PILOT_MIRROR_OF = { panic: "panic", overwhelm: "panic", fear: "panic", anger: "anger", jealous: "anger", anxiety: "anxious", overthinking: "anxious", sad: "sad", lonely: "sad" }
+const EOS_PILOT_MIRROR_CHAR = { sync: "panic", rush: "anger", glitch: "anxious", loopie: "anxious", drop: "sad" }
+// -> preset + {emotion, variant: "crowded" | "tangled" | "lite" | null}
+function eosPilotMirror(emotion) {
+    const e = emotion || (typeof eosCurrentEmotion === "function" && eosCurrentEmotion()) || "auto"
+    let key = EOS_PILOT_MIRROR_OF[e]
+    let variant = e === "overwhelm" ? "crowded" : e === "overthinking" ? "tangled" : null
+    if (!key) {
+        const ch = EOS_EMO[e] ? EOS_EMO[e].char : null
+        key = (ch && EOS_PILOT_MIRROR_CHAR[ch] && e !== "good" && e !== "auto" && e !== "numb" ? EOS_PILOT_MIRROR_CHAR[ch] : null) || "sad"
+        if (!EOS_PILOT_MIRROR_OF[e] && key === "sad") variant = "lite"
+    }
+    return { ...EOS_PILOT_MIRROR[key], emotion: e, variant }
+}
+function eosPilotHsl(h, s, l, a) {
+    const S = Math.round(eosClamp(s, 0, 1) * 100)
+    const L = Math.round(eosClamp(l, 0, 1) * 100)
+    return a == null ? `hsl(${Math.round(h)} ${S}% ${L}%)` : `hsl(${Math.round(h)} ${S}% ${L}% / ${a})`
+}
+// The tint layer's paint (inline style: values per preset; opacity follows --calm in CSS).
+function eosPilotMirrorStyle(m) {
+    if (!m) return null
+    const lite = m.variant === "lite" ? 0.65 : 1
+    const s = m.sat * lite
+    // grad = hue offsets top / mid / low (panic runs cold lilac -> cyan; the others stay in their own hue)
+    const gd = m.grad || [0, 6, 18]
+    const top = eosPilotHsl(m.hue + gd[0], s, m.light * 0.5)
+    const mid = eosPilotHsl(m.hue + gd[1], s * 0.92, m.light * 0.86)
+    const low = eosPilotHsl(m.hue + gd[2], s * 0.7, Math.min(0.82, m.light * 1.3))
+    const vig = eosPilotHsl(m.hue, s, m.light * 0.22, 0.62)
+    const inner = Math.max(30, 70 - m.tight)
+    return {
+        "--m-h": m.hue,
+        "--m-tight": `${m.tight}%`,
+        background: `radial-gradient(130% 95% at 50% 40%,transparent ${inner}%,${vig}),linear-gradient(180deg,${top} 0%,${mid} 58%,${low} 100%)`,
+    }
+}
+
+// ================================================================= S8 · Breath clock (useEosPilotBreath)
+// const breath = useEosPilotBreath(mirror, progress)
+// breath.phase() in [0,1) (exhale = phase >= .45) · breath.exhale() · breath.period() · breath.root(el) writes --eos-breath-ms
+// breath.loop(el, keyframes, {offset}) -> a WAAPI loop where ONE iteration = one breath, phase-locked to the clock.
+// The period is lerp(mirror.breath0, 4000, p). Retiming uses updatePlaybackRate (currentTime is kept), so loops never jump.
+const EOS_PILOT_BREATH_BASE = 4000
+function useEosPilotBreath(mirror, progress) {
+    const R = React.useRef(null)
+    const b0 = (mirror && mirror.breath0) || 4000
+    if (!R.current) {
+        const st = { t0: typeof performance !== "undefined" ? performance.now() : 0, ph0: 0, period: b0, anims: new Set(), root: null }
+        const now = () => performance.now()
+        const phase = (t) => {
+            const v = st.ph0 + ((t == null ? now() : t) - st.t0) / st.period
+            return v - Math.floor(v)
+        }
+        const api = {
+            st,
+            phase,
+            exhale: () => phase() >= 0.45,
+            period: () => st.period,
+            root(el) {
+                st.root = el
+                if (el) el.style.setProperty("--eos-breath-ms", `${Math.round(st.period)}ms`)
+            },
+            retime(period) {
+                const p = Math.max(400, Number(period) || 4000)
+                if (Math.abs(p - st.period) < 15) return
+                const t = now()
+                st.ph0 = phase(t)
+                st.t0 = t
+                st.period = p
+                const rate = EOS_PILOT_BREATH_BASE / p
+                st.anims.forEach((a) => {
+                    try {
+                        if (typeof a.updatePlaybackRate === "function") a.updatePlaybackRate(rate)
+                        else a.playbackRate = rate
+                    } catch (e) {}
+                })
+                if (st.root) st.root.style.setProperty("--eos-breath-ms", `${Math.round(p)}ms`)
+            },
+            loop(el, keyframes, o) {
+                if (!el || typeof el.animate !== "function") return null
+                const opt = o || {}
+                let a = null
+                try {
+                    a = el.animate(keyframes, { duration: EOS_PILOT_BREATH_BASE, iterations: Infinity, easing: opt.easing || "linear", fill: "both" })
+                    a.playbackRate = EOS_PILOT_BREATH_BASE / st.period
+                    const off = Number(opt.offset) || 0
+                    a.currentTime = ((phase() + off + 1) % 1) * EOS_PILOT_BREATH_BASE
+                } catch (e) {
+                    eosPilotWarn(e)
+                    return null
+                }
+                st.anims.add(a)
+                const drop = () => st.anims.delete(a)
+                a.addEventListener("cancel", drop)
+                return a
+            },
+            stop(a) {
+                if (!a) return
+                try {
+                    a.cancel()
+                } catch (e) {}
+                st.anims.delete(a)
+            },
+        }
+        R.current = api
+    }
+    const api = R.current
+    React.useEffect(() => {
+        const p = eosClamp(Number(progress) || 0, 0, 100) / 100
+        api.retime(b0 + (4000 - b0) * p)
+    }, [progress, b0])
+    React.useEffect(
+        () => () => {
+            api.st.anims.forEach((a) => {
+                try {
+                    a.cancel()
+                } catch (e) {}
+            })
+            api.st.anims.clear()
+        },
+        []
+    )
+    return api
+}
+
+// ================================================================= S10 · F8 faces for pilot objects
+// React 18 sets `class` (not className) on custom elements, so the shared ts-face classes use `class`.
+// Host = the emotional object: className "… tsFaceObject tsNoBubbleFace" + {...eosPilotFaceHost(slot)}; inside it
+// <EosPilotFace src word D pos upload />. Pictures come ONLY from the shared resolver (eosPilotFacePics), read on
+// every render (uploads added or removed mid-run restore the defaults), with the slot PINNED to the object.
+function eosPilotFaceVars(D, word) {
+    const d = Math.max(40, Number(D) || 100)
+    const fs = eosClamp(Math.round(d * 0.13), 9, 15)
+    const tw = Math.round(d * 0.8)
+    const n = String(word || "").length
+    const lines = !word ? 0 : n * fs * 0.6 > tw ? 2 : 1
+    const pic = Math.round(d * (lines === 2 ? 0.5 : lines ? 0.54 : 0.6))
+    return { "--tsf-fs": `${fs}px`, "--tsf-pic": `${Math.min(pic, Math.round(d * 0.56))}px`, "--tsf-tw": `${tw}px`, "--tsf-gap": `${Math.max(2, Math.round(d * 0.03))}px` }
+}
+function eosPilotFaceHost(slot) {
+    return { "data-eos-pilot-face": "1", "data-ts-bubble-index": String(slot) }
+}
+// -> {pics[count], relief[count] (each slot's positive variant), upload, pos(slot, progress)}
+function eosPilotFacePics(p, progress, count = 6, seed = 0) {
+    const q = p || {}
+    const uploads = q.hasUserImages ? (Array.isArray(q.imageSources) && q.imageSources.length ? q.imageSources : [q.imageSrc]).filter(Boolean) : []
+    const base = { game: q.game, entries: q.entries || [], uploads, count, seed }
+    let pics = []
+    let relief = []
+    try {
+        if (typeof tsBubbleFaceSources === "function") {
+            pics = tsBubbleFaceSources({ ...base, progress: eosClamp(Number(progress) || 0, 0, 100) }) || []
+            relief = tsBubbleFaceSources({ ...base, progress: 100 }) || []
+        }
+    } catch (e) {
+        eosPilotWarn(e)
+    }
+    const pv = eosClamp(Number(progress) || 0, 0, 100)
+    return {
+        pics,
+        relief,
+        upload: uploads.length > 0,
+        // the resolver's own rule: slot i turns positive once progress passes its share
+        pos: (i) => pv >= 100 || (pv > 0 && pv >= ((i + 1) / (count + 1)) * 100),
+    }
+}
+const EosPilotFace = React.memo(function EosPilotFace({ src, word, D, pos, upload, className = "", picRef, privateText = true }) {
+    React.useEffect(() => {
+        try {
+            if (typeof tsFaceEnsureStyle === "function") tsFaceEnsureStyle()
+        } catch (e) {}
+    }, [])
+    const cls = upload ? "tsFaceUpload" : pos ? "tsFacePos" : "tsFaceNeg"
+    return (
+        <ts-face class={`${cls} ${className}`.trim()} style={eosPilotFaceVars(D, word)} aria-hidden="true">
+            <ts-face-pic ref={picRef}>
+                {src ? (
+                    <img
+                        key={src}
+                        className="tsBubbleFaceImg"
+                        src={src}
+                        alt=""
+                        draggable={false}
+                        decoding="async"
+                        onLoad={(e) => {
+                            try {
+                                if (typeof tsFaceInscribe === "function") tsFaceInscribe(e.currentTarget)
+                            } catch (x) {}
+                        }}
+                    />
+                ) : null}
+            </ts-face-pic>
+            {word ? (
+                <ts-face-text class="tsBubbleFaceText" {...(privateText ? EOS_PRIVATE_ATTRS : {})}>
+                    {word}
+                </ts-face-text>
+            ) : null}
+        </ts-face>
+    )
+})
+
+// ================================================================= S11 · replay variation
+function eosPilotHash(s) {
+    let h = 2166136261
+    const str = String(s || "")
+    for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i)
+        h = Math.imul(h, 16777619)
+    }
+    return h >>> 0
+}
+// seed = hash(entries) ^ runIndex; runIndex from localStorage eos_pilot_runs_<id> (an empty store is run 0)
+function eosPilotRunSeed(gameId, entries) {
+    let run = 0
+    try {
+        run = Number(localStorage.getItem(`eos_pilot_runs_${gameId}`)) || 0
+        localStorage.setItem(`eos_pilot_runs_${gameId}`, String(run + 1))
+    } catch (e) {}
+    const seed = ((eosPilotHash((entries || []).join("|")) ^ Math.imul(run + 1, 2654435761)) >>> 0) % 1000003
+    return { seed, run }
+}
+function eosPilotLastGet(gameId, k) {
+    try {
+        const o = JSON.parse(localStorage.getItem(`eos_pilot_last_${gameId}`) || "{}")
+        return o && o[k] != null ? o[k] : null
+    } catch (e) {
+        return null
+    }
+}
+function eosPilotLastSet(gameId, k, v) {
+    try {
+        const o = JSON.parse(localStorage.getItem(`eos_pilot_last_${gameId}`) || "{}") || {}
+        o[k] = v
+        localStorage.setItem(`eos_pilot_last_${gameId}`, JSON.stringify(o))
+    } catch (e) {}
+}
+// one pick from a pool by seed, never the same as last run's
+function eosPilotPickRun(gameId, k, pool, seed) {
+    const last = eosPilotLastGet(gameId, k)
+    const list = pool.filter((x) => x !== last)
+    const pick = (list.length ? list : pool)[Math.floor(eosPilotRand(seed) * (list.length || pool.length)) % (list.length || pool.length)]
+    eosPilotLastSet(gameId, k, pick)
+    return pick
+}
+
+// ================================================================= S4+ · noise and swell layers
+// eosPilotNoise(f0, f1, ms, {gain, q, attack, at}): band-passed noise with a frequency glide (rain hiss, "fwoomp").
+// eosPilotSwell(f, ms, {gain, attack, rate, depth, type, glide, at}): a pad with a slow attack and optional tremolo.
+function eosPilotNoise(f0, f1, ms, o) {
+    const ctx = typeof eosAudio === "function" ? eosAudio() : null
+    if (!ctx) return
+    const opt = o || {}
+    try {
+        const at = ctx.currentTime + (Number(opt.at) || 0)
+        const dur = Math.max(0.05, ms / 1000)
+        if (!EOS_PILOT_SOUND.noise || EOS_PILOT_SOUND.noise.sampleRate !== ctx.sampleRate) {
+            const len = Math.floor(ctx.sampleRate * 1.2)
+            const buf = ctx.createBuffer(1, len, ctx.sampleRate)
+            const d = buf.getChannelData(0)
+            for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1
+            EOS_PILOT_SOUND.noise = buf
+        }
+        const src = ctx.createBufferSource()
+        src.buffer = EOS_PILOT_SOUND.noise
+        src.loop = true
+        const bp = ctx.createBiquadFilter()
+        bp.type = "bandpass"
+        bp.Q.value = opt.q || 1.4
+        bp.frequency.setValueAtTime(Math.max(20, f0), at)
+        if (f1 && f1 !== f0) bp.frequency.exponentialRampToValueAtTime(Math.max(20, f1), at + dur)
+        const g = ctx.createGain()
+        const peak = Math.min(0.2, opt.gain == null ? 0.04 : opt.gain)
+        const atk = Math.min(dur * 0.6, Math.max(0.005, (opt.attack == null ? 30 : opt.attack) / 1000))
+        g.gain.setValueAtTime(0.0001, at)
+        g.gain.exponentialRampToValueAtTime(peak, at + atk)
+        g.gain.exponentialRampToValueAtTime(0.0001, at + dur)
+        src.connect(bp).connect(g).connect(ctx.destination)
+        src.start(at)
+        src.stop(at + dur + 0.03)
+    } catch (e) {}
+}
+function eosPilotSwell(f, ms, o) {
+    const ctx = typeof eosAudio === "function" ? eosAudio() : null
+    if (!ctx) return
+    const opt = o || {}
+    try {
+        const at = ctx.currentTime + (Number(opt.at) || 0)
+        const dur = Math.max(0.05, ms / 1000)
+        const osc = ctx.createOscillator()
+        osc.type = opt.type || "sine"
+        osc.frequency.setValueAtTime(f, at)
+        if (opt.glide) osc.frequency.exponentialRampToValueAtTime(Math.max(20, opt.glide), at + dur)
+        const env = ctx.createGain()
+        const peak = Math.min(0.2, opt.gain == null ? 0.02 : opt.gain)
+        const atk = Math.min(dur * 0.8, Math.max(0.005, (opt.attack == null ? 200 : opt.attack) / 1000))
+        env.gain.setValueAtTime(0.0001, at)
+        env.gain.exponentialRampToValueAtTime(peak, at + atk)
+        env.gain.exponentialRampToValueAtTime(0.0001, at + dur)
+        let out = env
+        if (opt.rate) {
+            const trem = ctx.createGain()
+            trem.gain.value = 1 - (opt.depth == null ? 0.5 : opt.depth) / 2
+            const lfo = ctx.createOscillator()
+            lfo.frequency.value = opt.rate
+            const lg = ctx.createGain()
+            lg.gain.value = (opt.depth == null ? 0.5 : opt.depth) / 2
+            lfo.connect(lg).connect(trem.gain)
+            lfo.start(at)
+            lfo.stop(at + dur + 0.03)
+            env.connect(trem)
+            out = trem
+        }
+        osc.connect(env)
+        out.connect(ctx.destination)
+        osc.start(at)
+        osc.stop(at + dur + 0.03)
+    } catch (e) {}
 }
 
 // ================================================================= CSS (S1 rig, S3 kits, S5 hits)
@@ -1691,3 +2231,13 @@ ${EOS_A}[data-eos-calm="1"] .eosPilotArena *,${EOS_A}[data-eos-calm="1"] .eosPil
 ${EOS_A} .eosPilotArena[data-eos-pilot-reduced="1"] *,${EOS_A} .eosPilotArena[data-eos-pilot-reduced="1"] *::before,${EOS_A} .eosPilotArena[data-eos-pilot-reduced="1"] *::after{animation:none!important}
 `
 eosCss("pilot-fx", EOS_PILOT_FX_CSS)
+
+// ---------------------------------------------------------------- CSS v2 (addendum: S2' hold, S7 mirror layer)
+const EOS_PILOT_FX2_CSS = `
+/* S2' the still painting behind the approved burst: every descendant animation paused, no transitions */
+${EOS_PILOT_AR}[data-eos-pilot-hold="1"] *,${EOS_PILOT_AR}[data-eos-pilot-hold="1"] *::before,${EOS_PILOT_AR}[data-eos-pilot-hold="1"] *::after{animation-play-state:paused!important;transition:none!important}
+/* S7 the emotion's weather: the mirror set at opacity 1 - s (S9) */
+${EOS_PILOT_AR} .eosPilotStage > .eosPilotL0m{opacity:calc(1 - var(--calm));transition:opacity var(--calm-ms) ease}
+${EOS_PILOT_AR} .eosPilotStage[data-mirror] > .eosPilotL0c{opacity:var(--calm)}
+`
+eosCss("pilot-fx-v2", EOS_PILOT_FX2_CSS)

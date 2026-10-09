@@ -6,11 +6,14 @@
 // This is the ONLY file that defines EosPilotEngineFor (the router hook calls it on every render).
 // ===================================================================================
 
-const EOS_PILOT_VERSION = "0.2.0"
+const EOS_PILOT_VERSION = "0.3.0"
 const EOS_PILOT_IDS = [1, 2, 109]
 const EOS_PILOT_FINAL_PCT = 96 // the last input reports this; exactly 100 arrives only at the S2 hand-off
 const EOS_PILOT_HANDOFF_MS = 1300 // last input -> hand-off (reduced: EOS_PILOT_HANDOFF_REDUCED_MS)
 const EOS_PILOT_HANDOFF_REDUCED_MS = 800
+// S2' (addendum): per-game hand-off for games that run the settle sequencer (cfg.settle); reduced motion 900 for all
+const EOS_PILOT_HANDOFF = { 1: 2150, 109: 2350, 2: 2250 }
+const EOS_PILOT_HANDOFF_SETTLE_REDUCED_MS = 900
 const EOS_PILOT_HINTS = { 1: "Tap a bubble to pop it", 2: "Tap the blob: 4 slams each", 109: "Hold an orb, breathe in… then let go" }
 const EOS_PILOT_VERBS = { 1: "POPPED", 2: "CRUSHED", 109: "CLEANSED" }
 
@@ -318,6 +321,8 @@ ${EOS_A} .eosPilotArena{position:relative;width:100%;height:100%;min-height:100%
   box-shadow:none!important;background:#0c1022;border-radius:inherit;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;
   font-family:inherit;color:#fff}
 ${EOS_A} .eosPilotArena *{box-sizing:border-box}
+/* S2' over-burst suppression: nothing paints over the approved mega burst while the pilot hands off */
+${EOS_A}[data-eos-pilot-burst] .eosMoodFlip{visibility:hidden!important}
 
 /* S6.2 toast dock: both toasts under the HUD band, centred (G6). */
 ${EOS_PILOT_SHELL}[data-eos-pilot] .globalStepFeedbackCopy,
