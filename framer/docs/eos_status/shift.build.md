@@ -101,3 +101,26 @@ The reduced-motion and calm runs flagged two 12 px texts (the personal line and 
 - At 1280 the orb was sometimes still in flight when measured (headless runs at about 3 fps), so a landing was counted there only in the CRUSH run.
 - Share, bond and rarity visuals depend on the rewards module, and the real safety card on the safety module. Both were exercised only with test stand-ins.
 - No companion hook: the companion module does not exist yet. It can follow `eosBreathPhase()`, which the Still Moment owns while it runs.
+
+## Close-out of review r1 (all in `src/eos/50_eos_shift.jsx`)
+The checks ran in the isolated integrated build `/tmp/v2_shift` (every src/eos module) at 390x844 and 1280x860. Every run had zero page errors and zero warnings.
+- **Retro before (major).** The "you came in at about N · change" chip now sits above the after-dial. A pointerdown on the chip or the retro dial pauses the auto-commit, and so does an open retro dial; "done" re-arms it. While the chip is offered the settle is 1.6 s (900 ms otherwise).
+  - Setting after = 3 and then tapping "change" right away keeps the rate step open for more than 2.6 s. After "done" the row is {before:9, after:3, retro:1} with the headline "ANGER 9 → 3".
+  - In chip-first order the row is {before:6, after:2, retro:1}.
+- **STILL as the feeling's character (major).** The root gets `.isSolo`, which every hand-back rule now excludes, including the reduced-motion and calm opacity rules. The gold rim is applied by `.isSolo.isWon`.
+  - GOOD 4 → 8 at 390: the ball centre equals the stage centre (195), the tag is visible and the rim is gold.
+  - Reduced motion at 1280: the character is centred at 640 with opacity 1.
+- **Centring at 1280 (major).** While the meter is present the shell is a grid (84px / 1fr / 84px) and the card has margin-inline:auto. The card centre is 640 in the moment, rate and done steps, with PREVIOUS and NEXT beside it.
+- **Minor fixes:**
+  - The veteran chip clears the pending settle. With the dial set, then the chip tapped within milliseconds, the step is still "moment" 1.8 s later; the value is kept and ✓ SET works.
+  - "You've shifted N times" counts only rated loops in this app session. After 3 skips it does not appear.
+  - The chip bump is no longer cancelled by the orb's cleanup.
+  - `touch-action:none` is set only on the orb.
+  - Dial digits in the meter are 13.5 px. smallText(12) is clean in the rate and done steps at 390.
+  - The idle before the auto-start is 2.5 s for cool and 4 s for sigh. An untouched sigh takes 12.3 s and an untouched cool 16.7 s at 1280 (headless at about 3 fps).
+  - On phone the restored reveal copy is ordered below the meter, so the headline stays at y=293 from the payoff through done. I'M GOOD sits at y=487.
+  - On phone the overlay fades out its top 60 px under the world chips.
+  - RUSH's calm face for anger is 59 (eyes closed), set locally in shift.
+  - A face image that fails is retried once after 800 ms with a cache-buster. Only after that does it fall back to a calm SVG face in the character's own hue (STILL is 190).
+  - The game name in ONE MORE wraps instead of being cut short with an ellipsis.
+  - The Still Moment hand hint rests on the orb's lower-right through `rest`, so the hold demo is centred about 25 px off the face centre.
