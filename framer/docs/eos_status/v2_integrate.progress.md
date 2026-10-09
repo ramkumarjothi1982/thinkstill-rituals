@@ -1,0 +1,15 @@
+# v2 integrate — progress
+- [x] eos_integrate --check: all OK (41 anchors)
+- [x] I1, I2, I3 applied in place: all OK; re-check = 41 SKIP
+- [x] build.py OK (2685 KB, 17 parts)
+- [x] smoke tests 390x844 / 1280x860 (scratchpad smoke.mjs)
+- [x] no integration fixes needed; src + EOS_FULL.txt already in 7b3df77 (workflow checkpoint); this note committed separately
+- [x] home phase 390: check-in renders (12 orbs), sound/upload/mic/manual menu (119 items)/LET THINKSTILL CHOOSE (→113) all OK, 0 errors
+- [x] games 390 + 1280 ran in background (scratchpad/smoke.mjs)
+- NOTE: integration edits were already committed+pushed by workflow WIP checkpoint 7b3df77
+- [x] games 390: 1,2,100,111-114 reveal + shift meter, 0 errors; 109 CLEANSE timeout at 83% (investigating)
+- [x] games 1280: all 8 reveal + shift meter, 0 errors
+- [x] 109 @390 rerun alone: reveal + meter (86 s). Earlier timeout = CPU starvation (3 browsers): CLEANSE charge is setInterval tick-based (+3.2/34ms, needs 72%); headless ticks slip to ~80-120 ms. Integrated build ~1.3x slower per tick than pre-integration baseline (2 s hold: 73.6% vs 100%); profile = original label-collision audit (getBoundingClientRect, 00_arcade.jsx ~20465-20730) firing per characterData tick in both builds. Not an integration breakage; not changed.
+- [x] checkin 390+1280: panic→111, anger→112, anxiety→111, sad→110, all reach play, 0 errors
+- [x] home 1280: check-in renders (12 orbs), sound/upload/mic/manual menu (119)/LET THINKSTILL CHOOSE (→113) OK, 0 errors
+- [x] contact sheet reviewed: check-in ring, menu (NEW · RELIEF GAMES group + 15 signature), routed games, shift meter / still moment after reveal
