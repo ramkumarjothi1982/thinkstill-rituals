@@ -231,5 +231,308 @@
   "why": "For anger or frustration: slow, steady release settles it; blowing up keeps it hot.",
   "n": 10,
   "file": "let-off-steam.81db31ea37.js"
+ },
+ {
+  "id": "slow-drum",
+  "mode": "reset",
+  "name": "Slow Drum",
+  "verb": "drum",
+  "family": "GROUND",
+  "minutes": 2,
+  "parents": [
+   "Panic / Body Alarm",
+   "Emotion",
+   "Sleep / Winding Down"
+  ],
+  "cast": [
+   "still",
+   "sync",
+   "patch"
+  ],
+  "poster": {
+   "char": "still",
+   "mood": "music"
+  },
+  "tagline": "Drum left, right, on the beat, and follow the circle down to 60.",
+  "why": "For a racing body: alternate taps on a beat that slows from 96 to 60, and you slow with it.",
+  "n": 11,
+  "file": "slow-drum.1230fef4b1.js"
+ },
+ {
+  "id": "urge-surf",
+  "mode": "reset",
+  "name": "Urge Surf",
+  "verb": "balance",
+  "family": "CHOOSE",
+  "minutes": 2,
+  "parents": [
+   "Urges / Habit Loops",
+   "Emotion",
+   "Panic / Body Alarm"
+  ],
+  "cast": [
+   "rush",
+   "drop"
+  ],
+  "poster": {
+   "char": "rush",
+   "mood": "determined"
+  },
+  "tagline": "Ride the urge like a wave: it builds, it peaks, it passes.",
+  "why": "For an urge that pulls hard: ride it out on the wave until it passes. No acting required.",
+  "n": 12,
+  "file": "urge-surf.532606fadf.js"
+ },
+ {
+  "id": "domino-start",
+  "mode": "reset",
+  "name": "Domino Start",
+  "verb": "topple",
+  "family": "ACT",
+  "minutes": 2,
+  "parents": [
+   "Getting Started",
+   "Performance / Confidence",
+   "Mental Overload / Working Memory"
+  ],
+  "cast": [
+   "rush",
+   "patch"
+  ],
+  "poster": {
+   "char": "rush",
+   "mood": "celebrate"
+  },
+  "tagline": "Line up tiny steps, flick the smallest, watch the big thing fall.",
+  "why": "For a task you keep putting off: one tiny first move can topple the big thing.",
+  "n": 13,
+  "file": "domino-start.ef45063965.js"
+ },
+ {
+  "id": "sense-hunt",
+  "mode": "reset",
+  "name": "Sense Hunt",
+  "verb": "notice",
+  "family": "GROUND",
+  "minutes": 2,
+  "parents": [
+   "Attention / Grounding / Mental Quiet",
+   "Panic / Body Alarm",
+   "Overthinking / Thought Fusion"
+  ],
+  "cast": [
+   "still",
+   "loopie"
+  ],
+  "poster": {
+   "char": "still",
+   "mood": "calm"
+  },
+  "tagline": "Five things you see, four you hear… notice your way back to now.",
+  "why": "For a racing or foggy head: the 5-4-3-2-1 senses walk that brings you back to right here.",
+  "n": 14,
+  "file": "sense-hunt.484fb4826e.js"
+ },
+ {
+  "id": "squish",
+  "mode": "reset",
+  "name": "Squish",
+  "verb": "squeeze",
+  "family": "QUIET",
+  "minutes": 2,
+  "parents": [
+   "Panic / Body Alarm",
+   "Sleep / Winding Down",
+   "Emotion"
+  ],
+  "cast": [
+   "sync",
+   "still"
+  ],
+  "poster": {
+   "char": "sync",
+   "mood": "calm"
+  },
+  "tagline": "Squeeze a wobbly jelly with your whole body, then melt with it.",
+  "why": "For a tense, buzzing body: tense gently, let go, and feel the difference.",
+  "n": 15,
+  "file": "squish.3527a14006.js"
+ },
+ {
+  "id": "gut-coin",
+  "mode": "reset",
+  "name": "Gut Coin",
+  "verb": "flip",
+  "family": "CHOOSE",
+  "minutes": 2,
+  "parents": [
+   "Decision Pressure",
+   "Uncertainty / Future Worry / Reassurance",
+   "Overthinking / Thought Fusion"
+  ],
+  "cast": [
+   "glitch",
+   "patch"
+  ],
+  "poster": {
+   "char": "glitch",
+   "mood": "idea"
+  },
+  "tagline": "Flip a heavy coin and catch what your gut was hoping for.",
+  "why": "For a choice you keep going round on: the coin doesn’t decide, your reaction does.",
+  "n": 16,
+  "file": "gut-coin.ea28122a74.js"
+ },
+ {
+  "id": "joy-fireworks",
+  "mode": "reset",
+  "name": "Joy Fireworks",
+  "verb": "launch",
+  "family": "AMPLIFY",
+  "minutes": 2,
+  "parents": [
+   "Positive State",
+   "Emotion",
+   "Values / Meaning / Grief"
+  ],
+  "cast": [
+   "sync",
+   "loopie",
+   "drop"
+  ],
+  "poster": {
+   "char": "sync",
+   "mood": "celebrate"
+  },
+  "tagline": "Turn one good moment into a fireworks show, detail by detail.",
+  "why": "For a good moment worth more than a second: savour it until it fills the sky.",
+  "n": 17,
+  "file": "joy-fireworks.d8281ec936.js"
+ },
+ {
+  "id": "cloud-shapes",
+  "mode": "reset",
+  "name": "Cloud Shapes",
+  "verb": "trace",
+  "family": "PLAY",
+  "minutes": 2,
+  "parents": [
+   "Creativity / Mind Play",
+   "Overthinking / Thought Fusion",
+   "Attention / Grounding / Mental Quiet"
+  ],
+  "cast": [
+   "loopie",
+   "sync"
+  ],
+  "poster": {
+   "char": "loopie",
+   "mood": "silly"
+  },
+  "tagline": "Lie back, loop a cloud, and watch it become what you saw.",
+  "why": "For a stuck, looping head: easy imagining that turns worries into silly sky creatures.",
+  "n": 18,
+  "file": "cloud-shapes.5288e6f2ab.js"
+ },
+ {
+  "id": "pass-the-glow",
+  "mode": "reset",
+  "name": "Pass the Glow",
+  "verb": "hold",
+  "family": "CONNECT",
+  "minutes": 2,
+  "parents": [
+   "Social / Team / Perspective",
+   "Communication / Boundaries",
+   "Values / Meaning / Grief"
+  ],
+  "cast": [
+   "patch",
+   "drop",
+   "still"
+  ],
+  "poster": {
+   "char": "patch",
+   "mood": "love"
+  },
+  "tagline": "Hold a small kind wish, then pass it on until the whole hill glows.",
+  "why": "For heavy people stuff: warm wishes, passed house to house, starting with you.",
+  "n": 19,
+  "file": "pass-the-glow.dc5e5da233.js"
+ },
+ {
+  "id": "north-star",
+  "mode": "reset",
+  "name": "North Star",
+  "verb": "steer",
+  "family": "CLARIFY",
+  "minutes": 2,
+  "parents": [
+   "Values / Meaning / Grief",
+   "Identity / Self",
+   "Decision Pressure"
+  ],
+  "cast": [
+   "drop",
+   "still"
+  ],
+  "poster": {
+   "char": "drop",
+   "mood": "idea"
+  },
+  "tagline": "Pick a value as your star and steer back to it whenever you drift.",
+  "why": "For feeling lost or pulled about: a value is a direction you can always turn back toward.",
+  "n": 20,
+  "file": "north-star.448b95fc1e.js"
+ },
+ {
+  "id": "dream-deck",
+  "mode": "reset",
+  "name": "Dream Deck",
+  "verb": "turn",
+  "family": "QUIET",
+  "minutes": 2,
+  "parents": [
+   "Sleep / Winding Down",
+   "Overthinking / Thought Fusion",
+   "Mental Overload / Working Memory"
+  ],
+  "cast": [
+   "still",
+   "loopie"
+  ],
+  "poster": {
+   "char": "still",
+   "mood": "sleepy"
+  },
+  "tagline": "Turn slow picture cards and let quiet images carry you toward sleep.",
+  "why": "For a head that won’t switch off at bedtime: gentle, random pictures crowd out the worry.",
+  "n": 21,
+  "file": "dream-deck.f7d70507ee.js"
+ },
+ {
+  "id": "pop-therapy",
+  "mode": "reset",
+  "name": "Pop Therapy",
+  "verb": "pop",
+  "family": "FEEL",
+  "minutes": 2,
+  "parents": [
+   "Emotion",
+   "Mental Overload / Working Memory",
+   "Overthinking / Thought Fusion"
+  ],
+  "cast": [
+   "sync",
+   "loopie"
+  ],
+  "poster": {
+   "char": "sync",
+   "mood": "laugh"
+  },
+  "tagline": "Pop a sheet, ratatat a row, squeeze the giant one, then pop slowly.",
+  "why": "For a wound-up head: a burst of satisfying pops that slows down into calm breathing.",
+  "n": 22,
+  "file": "pop-therapy.4519fb2d79.js"
  }
 ]

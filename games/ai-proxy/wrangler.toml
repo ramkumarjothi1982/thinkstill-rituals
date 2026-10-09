@@ -1,0 +1,31 @@
+# ThinkStill AI proxy (Cloudflare Worker). Deploy from this folder with `wrangler deploy`; see README.md.
+name = "thinkstill-ai"
+main = "worker.js"
+compatibility_date = "2026-06-01"
+
+# By default the proxy answers at https://thinkstill-ai.<your-subdomain>.workers.dev.
+# To put Cloudflare WAF rules in front of it, serve it from a hostname on your own zone and switch off
+# workers.dev so nobody can go around the rules (uncomment both lines; they must stay above [vars]):
+# workers_dev = false
+# routes = [{ pattern = "ai.example.com", custom_domain = true }]
+
+[vars]
+# Who may call the proxy from a browser: comma-separated origins (scheme://host[:port], no path).
+# "https://*.framer.app" matches any subdomain (my-site.framer.app) but not framer.app itself.
+# Add your published custom domain exactly, for example: ...,https://thinkstill.com,https://www.thinkstill.com
+# For local testing add http://localhost:<port>. An empty list refuses every request.
+ALLOWED_ORIGINS = "https://*.framer.app,https://*.framer.website,https://*.framercanvas.com"
+MODEL_QUICK = "claude-haiku-5-5"     # tier "quick"   (max_tokens 700)
+MODEL_DEFAULT = "claude-sonnet-5-5"  # tier "default" (max_tokens 1200)
+# Requests per minute per IP for the built-in fallback limiter (used only without RATE_LIMITER below).
+# RATE_LIMIT_PER_MINUTE = "20"
+
+# The API key is a secret, never a var: wrangler secret put ANTHROPIC_API_KEY
+
+# Recommended: Cloudflare's Workers Rate Limiting binding. When it is present the Worker uses it instead of
+# the best-effort in-memory limiter. namespace_id is any number you choose, unique within your account;
+# period must be 10 or 60 (seconds).
+# [[ratelimits]]
+# name = "RATE_LIMITER"
+# namespace_id = "1001"
+# simple = { limit = 20, period = 60 }

@@ -240,5 +240,313 @@
   "why": "For self-blame: list every factor that played a part, then size your share honestly.",
   "n": 10,
   "file": "responsibility-pie.7154bbd271.js"
+ },
+ {
+  "id": "objection",
+  "mode": "reframe",
+  "name": "Objection!",
+  "verb": "object",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Beliefs / Evidence",
+   "Inner Speech / Mental Text",
+   "Social / Team / Perspective"
+  ],
+  "cast": [
+   "glitch",
+   "patch",
+   "still"
+  ],
+  "poster": {
+   "char": "glitch",
+   "mood": "determined"
+  },
+  "tagline": "Your inner critic is prosecuting. Shout OBJECTION! at every trap.",
+  "why": "For a harsh inner voice: catch each thinking trap as it’s said, name it, then say it fairly.",
+  "n": 11,
+  "file": "objection.82a55f3712.js"
+ },
+ {
+  "id": "worst-case-plinko",
+  "mode": "reframe",
+  "name": "Worst-Case Plinko",
+  "verb": "drop",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Uncertainty / Future Worry / Reassurance",
+   "Decision Pressure",
+   "Panic / Body Alarm"
+  ],
+  "cast": [
+   "rush",
+   "glitch"
+  ],
+  "poster": {
+   "char": "rush",
+   "mood": "surprised"
+  },
+  "tagline": "Your worst case needs a chain of bad luck. Drop 100 balls and see.",
+  "why": "For a worst case that feels certain: multiply the honest odds, then plan how you’d cope.",
+  "n": 12,
+  "file": "worst-case-plinko.4bdea21929.js"
+ },
+ {
+  "id": "sticker-shock",
+  "mode": "reframe",
+  "name": "Sticker Shock",
+  "verb": "peel",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Identity / Self",
+   "Performance / Confidence",
+   "Inner Speech / Mental Text"
+  ],
+  "cast": [
+   "patch",
+   "sync",
+   "drop"
+  ],
+  "poster": {
+   "char": "patch",
+   "mood": "determined"
+  },
+  "tagline": "Peel the harsh labels off, slowly. See what’s really underneath.",
+  "why": "For a harsh label on yourself: swap it for something specific and fair.",
+  "n": 13,
+  "file": "sticker-shock.862ee9ea93.js"
+ },
+ {
+  "id": "should-forge",
+  "mode": "reframe",
+  "name": "Should Forge",
+  "verb": "forge",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Inner Speech / Mental Text",
+   "Performance / Confidence",
+   "Communication / Boundaries"
+  ],
+  "cast": [
+   "rush",
+   "still"
+  ],
+  "poster": {
+   "char": "rush",
+   "mood": "determined"
+  },
+  "tagline": "Heat your “should”, hammer it on the beat, bend it into a preference.",
+  "why": "For rigid shoulds and musts: keep what you value, lose the command.",
+  "n": 14,
+  "file": "should-forge.14224b0417.js"
+ },
+ {
+  "id": "spotlight",
+  "mode": "reframe",
+  "name": "Spotlight",
+  "verb": "sweep",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Social / Team / Perspective",
+   "Performance / Confidence",
+   "Memory / Replay / Rumination"
+  ],
+  "cast": [
+   "patch",
+   "rush",
+   "sync",
+   "glitch"
+  ],
+  "poster": {
+   "char": "patch",
+   "mood": "shy"
+  },
+  "tagline": "Sweep the spotlight over the audience and read their minds.",
+  "why": "For “everyone noticed”: see what the audience is really thinking about (mostly lunch).",
+  "n": 15,
+  "file": "spotlight.e99863e168.js"
+ },
+ {
+  "id": "gold-pan",
+  "mode": "reframe",
+  "name": "Gold Pan",
+  "verb": "swirl",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Emotion",
+   "Positive State",
+   "Beliefs / Evidence"
+  ],
+  "cast": [
+   "drop",
+   "rush"
+  ],
+  "poster": {
+   "char": "drop",
+   "mood": "happy"
+  },
+  "tagline": "Swirl your day like a prospector. Keep the gold, toss the fool’s gold.",
+  "why": "For a low mood that keeps only the bad bits: pan for the true facts it washed out.",
+  "n": 16,
+  "file": "gold-pan.09b3bf7b38.js"
+ },
+ {
+  "id": "body-radio",
+  "mode": "reframe",
+  "name": "Body Radio",
+  "verb": "tune",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Panic / Body Alarm",
+   "Uncertainty / Future Worry / Reassurance",
+   "Emotion"
+  ],
+  "cast": [
+   "still",
+   "sync"
+  ],
+  "poster": {
+   "char": "still",
+   "mood": "music"
+  },
+  "tagline": "Tune your body from Station Danger to the station that explains it.",
+  "why": "For a racing heart or a dizzy, buzzing body: hear it as revving up, not danger.",
+  "n": 17,
+  "file": "body-radio.01a5d18740.js"
+ },
+ {
+  "id": "claw-machine",
+  "mode": "reframe",
+  "name": "Claw Machine",
+  "verb": "grab",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Overthinking / Thought Fusion",
+   "Decision Pressure",
+   "Mental Overload / Working Memory"
+  ],
+  "cast": [
+   "loopie",
+   "glitch",
+   "rush"
+  ],
+  "poster": {
+   "char": "loopie",
+   "mood": "wow"
+  },
+  "tagline": "Grab the thoughts you keep gripping. Weigh them. Let go of one.",
+  "why": "For a head full of thoughts you can’t put down: weigh what each costs, then loosen your grip.",
+  "n": 18,
+  "file": "claw-machine.062e7b9211.js"
+ },
+ {
+  "id": "night-shift",
+  "mode": "reframe",
+  "name": "Night Shift",
+  "verb": "scrub",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Sleep / Winding Down",
+   "Uncertainty / Future Worry / Reassurance",
+   "Overthinking / Thought Fusion"
+  ],
+  "cast": [
+   "still",
+   "loopie",
+   "drop"
+  ],
+  "poster": {
+   "char": "still",
+   "mood": "sleepy"
+  },
+  "tagline": "At 3 a.m. it’s a monster on the wall. Drag the sun up and look again.",
+  "why": "For a 3 a.m. worry: see it in daylight, then give it an appointment and sleep.",
+  "n": 19,
+  "file": "night-shift.e5f1ce8cd5.js"
+ },
+ {
+  "id": "thought-train",
+  "mode": "reframe",
+  "name": "Thought Train",
+  "verb": "switch",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Overthinking / Thought Fusion",
+   "Inner Speech / Mental Text",
+   "Beliefs / Evidence"
+  ],
+  "cast": [
+   "loopie",
+   "glitch"
+  ],
+  "poster": {
+   "char": "loopie",
+   "mood": "think"
+  },
+  "tagline": "Facts to the main line, stories to the Maybe siding. On the beat.",
+  "why": "For a story on repeat: sort what a camera could film from what your mind added.",
+  "n": 20,
+  "file": "thought-train.ba9f6ea9dc.js"
+ },
+ {
+  "id": "psychic-refund",
+  "mode": "reframe",
+  "name": "Psychic Refund",
+  "verb": "rub",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Social / Team / Perspective",
+   "Uncertainty / Future Worry / Reassurance",
+   "Beliefs / Evidence"
+  ],
+  "cast": [
+   "glitch",
+   "sync",
+   "patch"
+  ],
+  "poster": {
+   "char": "glitch",
+   "mood": "scan"
+  },
+  "tagline": "A fake psychic says she knows what they think. Demand a refund.",
+  "why": "For “I know what they think”: check what was said, what else it means, how to find out.",
+  "n": 21,
+  "file": "psychic-refund.1eaf2d5230.js"
+ },
+ {
+  "id": "good-enough-bakery",
+  "mode": "reframe",
+  "name": "Good Enough Bakery",
+  "verb": "pipe",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Getting Started",
+   "Performance / Confidence",
+   "Mental Overload / Working Memory"
+  ],
+  "cast": [
+   "rush",
+   "patch",
+   "drop"
+  ],
+  "poster": {
+   "char": "rush",
+   "mood": "happy"
+  },
+  "tagline": "Pipe glossy icing, serve when it’s good enough, watch them love it.",
+  "why": "For perfectionism: test whether 80% delights people just as much as 100% does.",
+  "n": 22,
+  "file": "good-enough-bakery.548931449c.js"
  }
 ]
