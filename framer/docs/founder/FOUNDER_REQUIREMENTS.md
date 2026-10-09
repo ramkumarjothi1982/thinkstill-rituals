@@ -1610,3 +1610,4 @@ Begin with a requirements-to-implementation gap audit, then continue the existin
 ## Addendum (founder, 2026-10-09)
 - Dopamine bursts must be different for different games so the user doesn't get bored.
 - The stomping boot should look like a boot when the user activates it. Likewise all tools should feel real.
+- Hide all release-selection options from users; ThinkStill's logic picks the next best release automatically. No release may repeat until every release in its group has been played. (Supersedes Part 9's manual selection for end users; keep the menu only as an owner/test property control.)
