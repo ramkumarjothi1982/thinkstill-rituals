@@ -180,14 +180,20 @@
     target.textContent = '';
     const chars = Array.from(text);
     const speed = o.speed || 18;
+    const shown = document.createTextNode('');
+    const rest = document.createElement('span');
+    rest.className = 'ts-say-rest'; rest.setAttribute('aria-hidden', 'true'); rest.textContent = text;
+    target.append(shown, rest);
     return new Promise((resolve) => {
       let i = 0;
       const step = () => {
         if (target.__tsgSay !== token) { resolve(); return; }
         i = Math.min(chars.length, i + 2);
-        target.textContent = chars.slice(0, i).join('');
+        if (i >= chars.length) { target.textContent = text; resolve(); return; }
+        shown.data = chars.slice(0, i).join('');
+        rest.textContent = chars.slice(i).join('');
         if (o.tick && i % 6 === 0) o.tick();
-        if (i < chars.length) TS.later(step, speed); else resolve();
+        TS.later(step, speed);
       };
       step();
     });
@@ -240,8 +246,12 @@
         const list = t.filter(el => el && el.isConnected && el.getClientRects().length);
         if (!list.length) return null;
         const rects = list.map(rel);
-        const mid = rects[Math.floor((rects.length - 1) / 2)];
-        return { x: mid.x + mid.w / 2, y: mid.y + mid.h / 2, rects };
+        // point at the top row (or the bottom row with place:'below') so the label sits outside the set, not over an option
+        const below = spec.place === 'below';
+        const edge = below ? Math.max(...rects.map(r => r.y + r.h)) : Math.min(...rects.map(r => r.y));
+        const row = rects.filter(r => (below ? Math.abs(r.y + r.h - edge) : Math.abs(r.y - edge)) < 6);
+        const a = row[Math.floor((row.length - 1) / 2)] || rects[0];
+        return { x: a.x + a.w * (spec.ox ?? 0.5), y: a.y + a.h * (spec.oy ?? (below ? 0.62 : 0.38)), rects };
       }
       if (t.nodeType === 1) {
         if (!t.isConnected || !t.getClientRects().length) return null;
@@ -315,13 +325,20 @@
       showTimer = TS.later(() => { if (!visible) layer.hidden = true; }, 180);
       TS.emit('guide', { visible: false, label: spec && spec.label, g: spec && spec.g, id: spec && spec.id });
     }
+    const downs = new Map(); // pointers currently pressed in the game
+    const pressing = () => { const now = performance.now(); downs.forEach((t, id) => { if (now - t > 30000) downs.delete(id); }); return downs.size > 0; };
+    const lift = (e) => { downs.delete(e.pointerId); };
+    TS.listen(window, 'pointerup', lift, { capture: true, passive: true });
+    TS.listen(window, 'pointercancel', lift, { capture: true, passive: true });
     function armIdle() {
       TS.cancel(idleTimer);
       if (!spec || spec.once) return;
-      idleTimer = TS.later(() => { if (spec && !visible) show(); }, idleMs());
+      const wake = () => { if (!spec || visible) return; if (pressing()) { idleTimer = TS.later(wake, 700); return; } show(); };
+      idleTimer = TS.later(wake, idleMs());
     }
-    /* Pointer down anywhere in the game hides the hand; idle brings it back. */
+    /* Pointer down anywhere in the game hides the hand; idle brings it back (never mid-drag). */
     TS.listen(TS.root, 'pointerdown', (e) => {
+      downs.set(e.pointerId, performance.now());
       if (!spec) return;
       if (e.target && e.target.closest && e.target.closest('.ts-sheet-wrap, .ts-support')) return;
       hide(); armIdle();

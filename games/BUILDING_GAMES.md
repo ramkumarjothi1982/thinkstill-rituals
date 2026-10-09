@@ -99,6 +99,8 @@ Families: GROUND INTERRUPT DISTANCE ORGANISE ACT CHOOSE FEEL CLARIFY CONNECT PLA
 `{ safety, parent, parents2[], patternName, intensity 1-10, feeling, strands:[{label, loop}], core:{label, loop}, body:[], urge, task, tinyStep, kind, host:{intro,outro}, source }`
 - `strands`: 3-6 short UPPERCASE labels of their looping thoughts in their own terms (e.g. "WHAT IF I FAIL"); `core` is the heaviest.
 - `loop` ∈ replay, whatif, shouldhave, mindread, todo, worstcase, body, urge, other. `urge`/`task` may be ''.
+- A strand (or the core) with `generic: true` was not written by the player (no words, or padding): present it as an example
+  ("a thought like..."), never as their own words.
 
 ### Reframe analysis (`mode: 'reframe'`)
 `{ safety, parent, patternName, intensity, feeling, case_title, situation, thought, conclusion, distortions:[{type,label,quote}], spans:[{quote, kind}], exhibits:[{id,kind,text,why}], witness_id, unknowns:[{id,text,about}], alternatives:[{id,name,theory,needs,plausibility,fear,line,fits}], fear_support, support_reason, balanced, friend, future, evidence_for[], evidence_against[], probability:{fear,basis}, leads:[{kind,text,for}], source }`
@@ -112,15 +114,18 @@ Families: GROUND INTERRUPT DISTANCE ORGANISE ACT CHOOSE FEEL CLARIFY CONNECT PLA
 - **Particles:** `const P = K.particles(); P.emit('spark'|'ember'|'dust'|'confetti'|'bubble'|'petal'|'snow'|'mote'|'star'|'drop'|'smoke'|'leaf', x, y, n, {colors, angle, spread, speed})`; each frame `P.update(dt); P.draw(g)`.
 - **Input:** `K.press(el, {down(p), move(p), up(p)})` (pointer capture, local coords), `K.drag(el, {start(p), move(p, d), end(p, d)})` (`d.dx, d.dy, d.vx, d.vy`), `K.hold(el, {ms, still, decay, start, progress(k, active), done, cancel})`, `K.tap(el, fn)`, `K.onKey(['Space','ArrowLeft'], fn)`, `K.local(e, el)`, `K.rectIn(el)`.
 - **Rhythm:** `const R = K.rhythm({ bpm, onBeat(t, i, beatInBar) })` → `start(delay)`, `set(bpm)`, `window()`, `pos()`, `judge()` (audio-time accurate).
-- **Characters:** `const c = K.character('loopie'|'glitch'|'patch'|'drop'|'rush'|'still'|'sync', { side:'right'|'left'|'above'|'below', mood, x, y, size })`
-  → `c.say(text, {mood, ms})`, `c.face(mood, ms)`, `c.base(mood)`, `c.react('bounce'|'shake'|'glitch'|'spin')`, `c.place(x, y, ms)`, `c.hush()`.
+- **Characters:** `const c = K.character('loopie'|'glitch'|'patch'|'drop'|'rush'|'still'|'sync', { side:'right'|'left'|'above'|'below', mood, x, y, size, shadow, fit })`
+  → `c.say(text, {mood, moodMs, ms})`, `c.face(mood, ms)`, `c.base(mood)`, `c.react('bounce'|'shake'|'glitch'|'spin')`, `c.place(x, y, ms)`, `c.side(s)`, `c.hush()`.
+  `say` with a `mood` also makes it the resting mood unless you pass `moodMs`. The bubble keeps itself inside the frame (it
+  flips to the character's other side, then nudges in; `fit: false` turns that off). `shadow: false` drops the art's drop
+  shadow (cheaper for a character that moves every frame).
   Moods: neutral happy laugh love wow surprised worried sad cry angry cool wink think calm sleepy celebrate shy determined silly confused idea (+ a few per character, see `TS.MOODS`).
   Who's who: Loopie (loops, rumination), Glitch (thinking errors, detective), Patch (relationships), Drop (meaning, feelings), Rush (urgency, action, urges), Still (calm, body, grounding), Sync (emotions, impulses).
 - **UI:** `K.intro({title, sub, how, char, mood})` (title card, tap to skip; always start with it), `K.button(label, fn, {quiet, parent})`, `K.chips(parent, items, onPick, {multi})`,
   `K.slider(parent, {min,max,step,value,label,left,right,format,onInput})`, `K.panel(parent)`, `K.userText(text)`, `K.hint(text)` (bottom pill), `K.pop(text, {x, y, kind:'good'|'great'|'soft'})`, `K.progress(parent, n)`.
 - **Guide:** `K.guide({ g:'tap'|'hold'|'drag'|'sweep'|'circle'|'choose'|'type'|'still', target: element | [elements] | () => ({x, y}), label, dir:'r'|'l'|'u'|'d'|'ur'|'ul'|'dr'|'dl' (or dx, dy in px), d, r, ms, place:'above'|'below', ox, oy, delay })`; `K.guide(null)` clears. Put the label where it covers nothing the player must read (`place`, `ox`/`oy`).
-- **Sound:** `K.sfx.tap|ok|good|great|soft|no|whoosh|pop|thud|paper|chime(i)|rise|fall|lock|sparkle|win|glitch|heartbeat()`, `K.music('calm'|'lofi'|'noir'|'playful'|'space'|'ocean'|'musicbox'|'arcade')` → `{stop, level, tempo, onBeat(fn(time, i, beatInBar)), phase() → {beat, p}}` (sync visuals to the beat you hear), `K.ambience('rain'|'prairie'|'room'|'dawn')`. Raw synths for signature sounds: `A.pluck`, `A.drum(note, t, vol, verb)`, `A.wood`, `A.shaker`, `A.brush`, `A.bleat`, `A.boing`, `A.paper`, `A.click`, `A.typeKey`, `A.pad`, `A.loop`.
-- **Finales:** `await K.finale('constellation'|'lanterns'|'bloom'|'fireworks'|'aurora'|'sunrise'|'confetti'|'ripple'|'bubbles'|'fireflies'|'petals'|'stars'|'rainbow', { from:[{x,y}], colors, count, text, chord:['C4','E4','G4'], ms })`.
+- **Sound:** `K.sfx.tap|ok|good|great|soft|no|whoosh|pop|thud|paper|chime(i)|rise|fall|lock|sparkle|win|glitch|heartbeat()`, `K.music('calm'|'lofi'|'noir'|'playful'|'space'|'ocean'|'musicbox'|'arcade')` → `{stop, level, tempo, onBeat(fn(time, i, beatInBar)), phase() → {beat, p}}` (sync visuals to the beat you hear), `K.ambience('rain'|'prairie'|'room'|'dawn')`. Raw synths for signature sounds: `A.pluck`, `A.drum(when, vol, pitch, verb)`, `A.wood`, `A.shaker`, `A.brush`, `A.bleat`, `A.boing`, `A.paper`, `A.click`, `A.typeKey`, `A.pad`, `A.loop`.
+- **Finales:** (the effects layer sits above characters at z-index 50; pass `z` to put it elsewhere) `await K.finale('constellation'|'lanterns'|'bloom'|'fireworks'|'aurora'|'sunrise'|'confetti'|'ripple'|'bubbles'|'fireflies'|'petals'|'stars'|'rainbow', { from:[{x,y}], colors, count, text, chord:['C4','E4','G4'], ms })`.
 - **Words:** `K.phrases(text, max, maxWords)` short phrases from the player's own words; `K.sentence(s)`; `K.words(s, n)`.
 - **Autoplay helpers:** `K.sim.tap(el)`, `K.sim.hold(el, ms, x, y)`, `K.sim.drag(el, {x,y}, {x,y}, ms, steps)`, `K.sim.press(el, x, y)` → `{move, up}`, `K.wait(ms)`. Coordinates are local to `el`.
 
@@ -136,7 +141,13 @@ Families: GROUND INTERRUPT DISTANCE ORGANISE ACT CHOOSE FEEL CLARIFY CONNECT PLA
   (`ctx.TS.scene()` tells you which, and `ctx.TS.on('theme', fn)` fires when it changes).
 - The console's top bar sits at the top 56px (left: game name + leave button; right: sound + settings). Keep your HUD below
   `calc(env(safe-area-inset-top, 0px) + 60px)` and keep the bottom 16px clear for the home indicator.
-- Reduced motion (`K.reduced()`): no shakes or flashes, shorter tweens; the game must still be completable.
+- Reduced motion (`K.reduced()`): no shakes or flashes, shorter tweens; the game must still be completable. `K.sleep(ms)` is
+  shortened under reduced motion (use it for animation beats); use `K.wait(ms)` for dialogue and pacing. The global
+  reduced-motion rule jumps CSS animations to their last keyframe, so don't fade labels out with a CSS animation.
+- Timing: the frame loop's `dt` is capped at 50 ms (so physics never explodes after a stall), which means dt-driven timers
+  run slow on a struggling device. Use `performance.now()` for anything measured in real seconds (holds, phases, timeouts).
+  `K.hold` already uses real time. `K.canvas(...).onResize(fn)` calls `fn` immediately, so define what it uses first.
+- `ctx.finish({ lines })`: the after card shows the first three lines only; put the most important first.
 - Keep sessions 60-150 seconds. Gentle = slower and more forgiving; Full = tighter, more objects, more spectacle.
 - Sound: give every action an immediate sound (`K.sfx.*` already logs action→sound sync). Keep music under the action.
 

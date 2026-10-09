@@ -12,6 +12,7 @@ Outputs games/tests/out/qa-<mode>/<id>/... and games/tests/out/qa-<mode>/summary
 """
 import argparse, json, os, re, socket, subprocess, sys, time, urllib.parse
 
+RUN_START = time.time()
 TEXT = None  # --text: the player's words for the run ('' = no words, as when a game is launched from the library)
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -196,12 +197,12 @@ def main():
     finally:
         if server: server.terminate()
     if not a.worker:
-        summary = []
+        summary = []  # only this run's reports (older ones stay on disk for reference)
         for gid in ids:
             d = os.path.join(out, gid)
             if not os.path.isdir(d): continue
             for f in sorted(os.listdir(d)):
-                if f.startswith('report-'):
+                if f.startswith('report-') and os.path.getmtime(os.path.join(d, f)) >= RUN_START - 1:
                     r = json.load(open(os.path.join(d, f)))
                     summary.append({'id': gid, 'config': r['config'], 'finished': r.get('finished'), 'issues': r.get('issues', []), 'seconds': r.get('seconds'), 'frame': r.get('frameStats'), 'errors': r['errors'][:3]})
         with open(os.path.join(out, 'summary.json'), 'w') as f: json.dump(summary, f, indent=1)

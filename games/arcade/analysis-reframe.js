@@ -14,9 +14,9 @@
     mind_reading: { label: 'Mind-reading', re: /\b(thinks? (i'?m|i am|of me|i was|im)|hates? me|annoyed (at|with) me|mad at me|judg\w* me|doesn'?t (like|care about|want) me|(they|he|she|everyone|people) (must )?(think|thinks)|laughing at me|sick of me)\b/i },
     fortune_telling: { label: 'Fortune-telling', re: /\b(going to|gonna|will|'ll|won'?t)\b[^.]{0,40}\b(fail|fired|sacked|lose|leave|never|hate|ruin\w*|end|dump\w*|freeze|mess|reject\w*)\b|\b(definitely|for sure|obviously) (going to|gonna|getting)\b/i },
     catastrophising: { label: 'Catastrophising', re: /\b(ruin\w*|disaster|catastroph\w*|end of the world|over for me|nightmare|doomed|everything is (over|ruined)|never recover|lose everything)\b/i },
-    all_or_nothing: { label: 'All-or-nothing', re: /\b(always|never|completely|totally|everyone|nobody|no one|nothing|everything|perfect\w*|total failure)\b/i },
-    labelling: { label: 'Labelling', re: /\bi'?m (a|an|such a|so|the) ?(failure|idiot|loser|mess|disaster|joke|fraud|burden|stupid|useless|pathetic|worthless|incompetent)\b/i },
-    should: { label: 'Should-statements', re: /\b(should(n'?t)?|must|have to|ought to|supposed to)\b/i },
+    all_or_nothing: { label: 'All-or-nothing', re: /\b(always|never|completely|totally|everyone|everybody|nobody|no one|perfect\w*|total failure|nothing (?:ever|works|goes right|i do|good)|everything (?:is|goes|i do|always)|ruin\w* everything)\b/i },
+    labelling: { label: 'Labelling', re: /\b(i'?m|i am|you'?re|you are) (a|an|such a|so|the) ?(failure|idiot|loser|mess|disaster|joke|fraud|burden|stupid|useless|pathetic|worthless|incompetent)\b|\b(i'?m|i am|you'?re|you are) (a|an|such a|the) (terrible|awful|bad|horrible|useless|hopeless|crap|shit) (friend|person|parent|partner|mum|mom|dad|mother|father|son|daughter|sister|brother|employee|student|boss|teacher|human)\b/i },
+    should: { label: 'Should-statements', re: /\b(should(n'?t)?|must(?!\s+(?:think|thinks|be|have|hate|hates|know|knows|mean|means|feel|feels|see|wonder|notice|assume))|have to|ought to|supposed to)\b/i },
     emotional_reasoning: { label: 'Feelings as facts', re: /\b(i feel|it feels)\b[^.]{0,50}\b(so|must|means|proves?|that means)\b|\bfeels? (true|real|obvious)\b|\bi just know\b/i },
     personalising: { label: 'Taking it personally', re: /\b(my fault|because of me|i caused|i ruined|it'?s on me|blame myself)\b/i },
     overgeneralising: { label: 'Overgeneralising', re: /\b(every time|always happens|this always|never works|all the time|every single)\b/i },
@@ -119,7 +119,12 @@
       return { id: 'e' + (i + 1), kind, text: TS.words(toSecond(c.quote), 16) + '.', why: kind === 'camera' ? 'Something a camera or microphone could have recorded.' : 'An interpretation or prediction. A camera can’t see it.', quote: c.quote };
     });
     if (!exhibits.length) exhibits = [{ id: 'e1', kind: 'camera', text: 'Something happened that you keep thinking about.', why: 'An event, on record.', quote: '' }];
-    if (!exhibits.some(e => e.kind === 'camera')) { exhibits[0].kind = 'camera'; exhibits[0].why = 'The event itself, before the meaning got added.'; }
+    const VERDICT = /\b(i'?m|i am|you'?re|you are|they'?re|he'?s|she'?s)\s+(a |an |such a |so |the )?(terrible|awful|bad|horrible|useless|stupid|idiot|failure|loser|fraud|worthless|pathetic|incompetent|mess|joke|burden)\b|\b(always|never|everyone|nobody|definitely|hates?|ruined)\b/i;
+    if (!exhibits.some(e => e.kind === 'camera')) {
+      const plain = exhibits.find(e => e.quote && !VERDICT.test(e.quote));
+      if (plain) { plain.kind = 'camera'; plain.why = 'The event itself, before the meaning got added.'; }
+      else exhibits.unshift({ id: 'e0', kind: 'camera', text: 'Something happened that you keep thinking about.', why: 'An event, on record.', quote: '' });
+    }
     const score = (t) => (/\b(definitely|going to|gonna|must|means|thinks?|hates?|fired|sacked|over|losing|leaving|dumped|ruined|incompetent)\b|\w+['’]ll\b/i.test(t) ? 2 : 0) + (/\b(everyone|everybody|nobody|never|always)\b/i.test(t) ? 1 : 0);
     let witness = null;
     exhibits.filter(e => e.kind === 'brain').forEach(e => { if (!witness || score(e.text) > score(witness.text) || (score(e.text) === score(witness.text) && score(e.text) > 0 && CONCLUDE.test(e.text))) witness = e; });
@@ -128,14 +133,16 @@
     const camIds = exhibits.filter(e => e.kind === 'camera').map(e => e.id);
     const domScore = (d) => (raw.match(new RegExp(d.re.source, 'gi')) || []).length * (d.key === 'reply' ? 0.8 : 1) + (d.key === 'money' ? 0.5 : 0);
     const dom = DOMAINS.map(d => [d, domScore(d)]).filter(x => x[1] > 0.5).sort((a, b) => b[1] - a[1]).map(x => x[0])[0] || GENERIC;
-    const first = witness.text.replace(/[.!?…]+$/, '').split(/,\s+|\s+(?:and|but|so)\s+/i)[0];
+    const wt = witness.text.replace(/[.!?…]+$/, '');
+    let first = wt.split(/,\s+(?=(?:and|but|so|then|now|which)\b)|\s+(?:and|but|so)\s+(?=(?:i|you|you're|you’re|they|he|she|it|we|everyone|nobody|now)\b)/i)[0];
+    if (first.split(/\s+/).length < 3) first = wt;
     const cw = first.split(/\s+/);
     const conclusion = (cw.length > 10 ? cw.slice(0, 10).join(' ') : first) + '.';
     const alternatives = dom.alts.map((p, i) => ({ id: 's' + (i + 1), name: p[0], theory: p[1], needs: p[2], plausibility: p[3], line: p[4], fear: false, fits: camIds.slice() }));
     alternatives.push({ id: 's4', name: 'THE FEAR', theory: conclusion, needs: 'Facts you haven’t got yet.', plausibility: 'possible', fear: true, line: 'I’m the story you came in with. Let’s see how I hold up.', fits: camIds.slice() });
     const unknowns = dom.unknowns.map((q, i) => ({ id: 'u' + (i + 1), text: q, about: camIds[i % camIds.length] || '' }));
     const leads = dom.leads.map(([kind, t], i) => ({ kind, text: t, for: i < unknowns.length ? unknowns[i].id : '' }));
-    const strong = /\b(said|told|wrote|emailed|texted)\b[^.]*\b(fired|over|leaving|breaking up|end(ing)? it|let you go|redundan\w*)\b/i.test(raw);
+    const strong = /\b(he|she|they|boss|manager|partner|landlord|teacher|hr|doctor|bank)\b[^.]{0,40}\b(said|told (me|us)|wrote|emailed|texted|confirmed)\b[^.]{0,80}\b(fired|let (me|you) go|redundan\w*|breaking up|break up|it'?s over|end(ing)? (it|things|us)|leaving (me|you)|evict\w*|terminat\w*|failed)\b/i.test(raw);
     const some = !strong && /\b(rent|landlord|lease|evict\w*|debt|selling|redundan\w*|warning|complain\w*)\b/i.test(raw);
     const distortions = [];
     DTYPES.forEach(k => { const m = DIST[k].re.exec(raw); if (m && distortions.length < 4) distortions.push({ type: k, label: DIST[k].label, quote: m[0] }); });
@@ -156,7 +163,7 @@
       support_reason: strong ? 'Something on record points toward this, so it deserves a plan.' : some ? 'There is a real basis for concern here, but it isn’t decided yet.' : 'The facts on record don’t point to this more than to the other explanations.',
       balanced: (cams[0] && cams[0].text.split(/\s+/).length <= 12 ? cams[0].text.replace(/\.$/, '') + '. ' : '') + (strong ? 'This is a real concern and worth a plan.' : some ? 'There’s a real basis for concern, but it isn’t decided yet.' : 'That fits several explanations, and the facts don’t settle it yet.'),
       friend: dom.friend, future: dom.future,
-      evidence_for: cams.slice(0, 2).map(e => e.text), evidence_against: alternatives.filter(a => !a.fear).slice(0, 2).map(a => a.theory),
+      evidence_for: cams.slice(0, 2).map(e => e.text), evidence_against: alternatives.filter(a => !a.fear).slice(0, 2).map(a => 'It could also be this: ' + a.theory.charAt(0).toLowerCase() + a.theory.slice(1)),
       probability: { fear: strong ? 70 : some ? 40 : 20, basis: strong ? 'Something on record points this way.' : 'Several ordinary explanations fit the same facts.' },
       leads, host: {}, source: 'local'
     };

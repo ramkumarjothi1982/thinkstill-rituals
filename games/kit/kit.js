@@ -78,7 +78,7 @@
     /* ---------------- time ---------------- */
     K.loop = (fn) => S.loop(fn);
     K.later = (fn, ms) => S.later(fn, ms);
-    K.sleep = (ms) => S.sleep(TS.reduced() ? Math.min(ms, 400) : ms);
+    K.sleep = (ms) => S.sleep(TS.reduced() ? Math.min(ms, Math.max(400, ms * 0.6)) : ms); // reduced motion: shorter, never collapsed
     K.wait = (ms) => S.sleep(ms);
     K.anim = (ms, fn, ease) => new Promise(res => {
       if (TS.reduced()) ms = Math.min(ms, 160);
@@ -220,10 +220,12 @@
       });
       S.listen(el, 'keydown', (e) => { if ((e.code === 'Space' || e.code === 'Enter') && !e.repeat) { e.preventDefault(); holding = true; moved = false; o.start && o.start(null); } });
       S.listen(el, 'keyup', (e) => { if ((e.code === 'Space' || e.code === 'Enter') && holding) { holding = false; if (!done) o.cancel && o.cancel(t / ms); } });
-      S.loop((dt) => {
+      let last = performance.now();
+      S.loop(() => {
+        const now = performance.now(), rdt = Math.min(250, now - last); last = now; // real time, not the capped frame dt
         if (done) return;
-        if (holding && !moved) t = Math.min(ms, t + dt * 1000);
-        else if (!holding && o.decay) t = Math.max(0, t - dt * 1000 * o.decay);
+        if (holding && !moved) t = Math.min(ms, t + rdt);
+        else if (!holding && o.decay) t = Math.max(0, t - rdt * o.decay);
         o.progress && o.progress(t / ms, holding && !moved);
         if (t >= ms) { done = true; holding = false; o.done && o.done(); }
       });
@@ -251,7 +253,10 @@
       R.set = (bpm) => { R.target = bpm; };
       S.loop(() => {
         if (!R.running) return;
-        const horizon = A.now() + 0.16;
+        const now = A.now();
+        // the clock switches from page time to audio time when sound starts, and stalls in background tabs: resync
+        if (R.next - now > 60 / Math.max(10, Math.min(R.bpm, R.target)) + 0.5 || now - R.next > 1) { R.next = now + 0.05; R.beats.length = 0; }
+        const horizon = now + 0.16;
         while (R.next < horizon) {
           const t = R.next, i = R.index;
           R.beats.push({ t, i, hit: false });
@@ -290,7 +295,7 @@
     K.character = (slug, o) => {
       o = o || {};
       const size = o.size || (K.phone() ? 84 : 104);
-      const wrap = h('div', { class: 'gk-char gk-side-' + (o.side || 'right'), style: { '--sz': size + 'px' }, 'aria-hidden': o.decor ? 'true' : null });
+      const wrap = h('div', { class: 'gk-char gk-side-' + (o.side || 'right') + (o.shadow === false ? ' gk-noshadow' : ''), style: { '--sz': size + 'px' }, 'aria-hidden': o.decor ? 'true' : null });
       const img = h('img', { class: 'gk-char-img', alt: '', draggable: 'false' });
       const bubble = h('div', { class: 'gk-bubble', hidden: true, role: 'status', 'aria-live': 'polite' }, h('span'));
       const text = bubble.firstChild;
@@ -300,6 +305,39 @@
       img.src = faceUrl(slug, base);
       if (!TS.opts.staticRender) Object.values(MOODS[slug] || {}).slice(0, 12).forEach(e => { const i = new Image(); i.src = TS.face(slug, e); });
       const C = { el: wrap, img, bubble, slug };
+      let sideNow = o.side || 'right';
+      const OPP = { right: 'left', left: 'right', above: 'below', below: 'above' };
+      const setSide = (sd) => { wrap.classList.remove('gk-side-right', 'gk-side-left', 'gk-side-above', 'gk-side-below'); wrap.classList.add('gk-side-' + sd); };
+      /* Keep the speech bubble inside the frame: try the character's other side, then nudge it in (never over the top bar). */
+      const fitBubble = () => {
+        bubble.style.translate = '';
+        setSide(sideNow);
+        if (bubble.hidden || o.fit === false) return;
+        const W = root.clientWidth, H = root.clientHeight;
+        const rr = root.getBoundingClientRect();
+        if (!W || !H || !rr.width) return;
+        const sc = rr.width / (root.offsetWidth || rr.width) || 1, m = 8, top = 58;
+        const over = () => { // layout boxes, so the bubble's pop-in animation doesn't skew the measurement
+          const wr = wrap.getBoundingClientRect();
+          const l = (wr.left - rr.left) / sc + bubble.offsetLeft, t = (wr.top - rr.top) / sc + bubble.offsetTop;
+          const b = { l, t, r: l + bubble.offsetWidth, b: t + bubble.offsetHeight };
+          return { b, n: Math.max(0, b.r - (W - m)) + Math.max(0, m - b.l) + Math.max(0, b.b - (H - m)) + Math.max(0, top - b.t) };
+        };
+        let cur = over();
+        if (!cur.n) return;
+        setSide(OPP[sideNow] || 'left');
+        const alt = over();
+        if (alt.n < cur.n) cur = alt; else setSide(sideNow);
+        if (!cur.n) return;
+        const b = cur.b;
+        let dx = 0, dy = 0;
+        if (b.r > W - m) dx = W - m - b.r;
+        if (b.l + dx < m) dx = m - b.l;
+        if (b.b > H - m) dy = H - m - b.b;
+        if (b.t + dy < top) dy = top - b.t;
+        bubble.style.translate = dx.toFixed(1) + 'px ' + dy.toFixed(1) + 'px';
+      };
+      C.fit = fitBubble;
       C.face = (mood, ms) => {
         S.cancel(ft);
         const src = faceUrl(slug, mood);
@@ -315,13 +353,15 @@
         if (!line) { bubble.hidden = true; return Promise.resolve(); }
         if (so.mood) C.face(so.mood, so.moodMs || 0);
         const p = TS.ui.say(bubble, line, { target: text, tick: () => { if (A.ctx && TS.settings.sound && Math.random() < 0.6) A.tone({ type: 'sine', freq: (o.voice || 520) + Math.random() * 120, dur: 0.035, vol: 0.022 }); } });
+        try { fitBubble(); } catch (e) { /* layout not ready */ }
         if (so.ms !== 0) st = S.later(() => { bubble.hidden = true; }, so.ms || Math.max(2600, line.length * 60));
         return p;
       };
       C.hush = () => { S.cancel(st); bubble.hidden = true; };
       C.react = (kind) => { wrap.classList.remove('gk-r-bounce', 'gk-r-shake', 'gk-r-glitch', 'gk-r-spin'); void wrap.offsetWidth; if (!TS.reduced()) wrap.classList.add('gk-r-' + (kind || 'bounce')); };
-      C.place = (x, y, ms) => { wrap.style.transition = ms && !TS.reduced() ? `left ${ms}ms cubic-bezier(.2,.9,.3,1), top ${ms}ms cubic-bezier(.2,.9,.3,1)` : 'none'; wrap.style.left = x + 'px'; wrap.style.top = y + 'px'; return C; };
-      C.side = (side) => { wrap.classList.remove('gk-side-right', 'gk-side-left', 'gk-side-above', 'gk-side-below'); wrap.classList.add('gk-side-' + side); return C; };
+      // only left/top are animated here; other transitions (an opacity fade) keep working
+      C.place = (x, y, ms) => { wrap.style.transition = ms && !TS.reduced() ? `left ${ms}ms cubic-bezier(.2,.9,.3,1), top ${ms}ms cubic-bezier(.2,.9,.3,1), opacity .4s ease` : 'left 0s, top 0s, opacity .4s ease'; wrap.style.left = x + 'px'; wrap.style.top = y + 'px'; return C; };
+      C.side = (side) => { sideNow = side; setSide(side); return C; };
       C.show = (v) => { wrap.hidden = v === false; return C; };
       if (o.x != null) C.place(o.x, o.y); else wrap.classList.add('gk-char-dock');
       return C;
@@ -514,7 +554,7 @@
     K.finale = (kind, o) => {
       o = o || {};
       const dur = (o.ms || 3600) * (TS.reduced() ? 0.5 : 1);
-      const cv = K.canvas(root, { cls: 'gk-finale', maxDpr: 1.5 });
+      const cv = K.canvas(root, { cls: 'gk-finale', maxDpr: 1.5, z: o.z });
       const P = K.particles({ max: 900 });
       const W = () => cv.w, H = () => cv.h;
       const cols = o.colors || ['#ffd36b', '#ff8fb1', '#7fd8ff', '#b79bff', '#9ff0c0'];
@@ -670,7 +710,11 @@
     K.visits = () => TS.store.get('guide-learned:' + gameId(), 0) || 0;
     /* Today's variant: the same all day, different tomorrow (weather, time of day, props, palette). */
     K.daily = () => { const d = new Date(); return d.getFullYear() * 1000 + Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000); };
-    K.dailyPick = (arr, salt) => arr[(K.daily() * 7 + (salt || 0) * 13 + gameId().length) % arr.length];
+    K.dailyPick = (arr, salt) => {
+      let x = (K.daily() * 2654435761 + (salt || 0) * 40503 + Array.from(gameId()).reduce((a, c) => a * 31 + c.charCodeAt(0), 7)) >>> 0;
+      x ^= x >>> 15; x = Math.imul(x, 2246822507) >>> 0; x ^= x >>> 13;
+      return arr[(x >>> 0) % arr.length];
+    };
     /* Mastery tier for calm skill (never for time spent). thresholds: [bronze, silver, gold] on a 0-1 score. */
     K.tier = (score, th) => { th = th || [0.35, 0.65, 0.85]; return score >= th[2] ? 'Gold' : score >= th[1] ? 'Silver' : score >= th[0] ? 'Bronze' : ''; };
 

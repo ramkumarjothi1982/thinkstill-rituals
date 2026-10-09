@@ -95,7 +95,8 @@
     const parent = ranked[0] || (raw ? 'Overthinking / Thought Fusion' : 'Attention / Grounding / Mental Quiet');
     let strands = [], core;
     const words = raw.split(/\s+/).filter(Boolean).length;
-    if (words < 2) { strands = GENERIC.map(x => Object.assign({}, x)); core = { label: 'EVERYTHING AT ONCE', loop: 'other' }; }
+    // generic: true marks a strand the player didn't write (no words, or padding): show it as a gentle example, never as their thought
+    if (words < 2) { strands = GENERIC.map(x => Object.assign({ generic: true }, x)); core = { label: 'EVERYTHING AT ONCE', loop: 'other', generic: true }; }
     else {
       let segs = raw.split(/[.!?;\n]+|\s+-\s+/).map(s => s.trim()).filter(Boolean);
       segs = segs.flatMap(s => s.split(/\s*,\s*|\s+(?:and|but|also|plus)\s+(?=(?:i|i'm|what|they|she|he|my|the|everyone|people|now)\b)/i)).map(s => s.trim()).filter(s => s.split(/\s+/).length >= 2);
@@ -105,7 +106,7 @@
       core = items.shift() || { label: 'THE BIG WORRY', loop: 'other' };
       core = { label: core.label, loop: core.loop };
       strands = items.slice(0, 6).map(({ label, loop }) => ({ label, loop }));
-      for (const g of GENERIC) { if (strands.length >= 4) break; if (!strands.some(c => c.loop === g.loop) && g.label !== core.label) strands.push(Object.assign({}, g)); }
+      for (const g of GENERIC) { if (strands.length >= 4) break; if (!strands.some(c => c.loop === g.loop) && g.label !== core.label) strands.push(Object.assign({ generic: true }, g)); }
     }
     const body = [];
     const bodyRe = /\b(tight|heavy|racing|pounding|knotted|shaky|tense|sore|churning|clenched)\s+(chest|heart|stomach|jaw|shoulders|hands|head|breath\w*)\b|\b(chest|heart|stomach|jaw|shoulders|breath\w*)\s+(is |feels )?(tight|heavy|racing|pounding|knotted|shaky|tense|churning)\b/gi;

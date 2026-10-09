@@ -66,4 +66,7 @@
 .tsg .gk-pop-text { position: absolute; z-index: 45; transform: translate(-50%, -50%); font: 700 22px/1 var(--font-ui); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ui-fg);
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4); pointer-events: none; white-space: nowrap; animation: gk-poptext 0.95s ease-out both; }
 .tsg .gk-pop-text.gk-good { color: #8fe3b0; } .tsg .gk-pop-text.gk-great { color: #ffd27a; } .tsg .gk-pop-text.gk-soft { color: var(--ui-muted); }
+.tsg[data-scene="bright"] .gk-pop-text { text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7), 0 2px 10px rgba(30, 40, 60, 0.22); }
+.tsg[data-scene="bright"] .gk-pop-text.gk-good { color: #13804a; } .tsg[data-scene="bright"] .gk-pop-text.gk-great { color: #9a5b00; }
+.tsg .gk-noshadow .gk-char-img { filter: none; }
 @keyframes gk-poptext { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.8); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -90%); } }

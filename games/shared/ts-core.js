@@ -216,7 +216,17 @@
     inOutCubic: t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
     outBack: t => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); },
     outElastic: t => (t === 0 || t === 1 ? t : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * (2 * Math.PI) / 3) + 1),
-    inOutSine: t => -(Math.cos(Math.PI * t) - 1) / 2
+    inOutSine: t => -(Math.cos(Math.PI * t) - 1) / 2,
+    linear: t => t,
+    inQuad: t => t * t,
+    outQuad: t => 1 - (1 - t) * (1 - t),
+    inOutQuad: t => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2),
+    inCubic: t => t * t * t,
+    outQuint: t => 1 - Math.pow(1 - t, 5),
+    inSine: t => 1 - Math.cos((t * Math.PI) / 2),
+    outSine: t => Math.sin((t * Math.PI) / 2),
+    outExpo: t => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t)),
+    inOutBack: t => { const c2 = 1.70158 * 1.525; return t < 0.5 ? (Math.pow(2 * t, 2) * ((c2 + 1) * 2 * t - c2)) / 2 : (Math.pow(2 * t - 2, 2) * ((c2 + 1) * (t * 2 - 2) + c2) + 2) / 2; }
   };
   TS.rng = (seed) => {
     let s = typeof seed === 'string' ? Array.from(seed).reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 2166136261) : (seed >>> 0) || 1;

@@ -181,3 +181,4 @@
 @keyframes tsg-sink { to { transform: translateY(40px); opacity: 0; } }
 
 .tsg.reduced-motion *, .tsg.reduced-motion *::before, .tsg.reduced-motion *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+.tsg .ts-say-rest { visibility: hidden; }
