@@ -1,0 +1,295 @@
+{
+ "ui390": {
+  "width": 390,
+  "height": 844,
+  "steps": [],
+  "checkin": {
+   "menuButton": 0,
+   "menu": 0,
+   "pickMyself": 0,
+   "prevNext": 0,
+   "sideNext": 0,
+   "namedButtons": [],
+   "goButton": 1,
+   "cta": "LET'S SHIFT IT \u25b6 ThinkStill picks your best release"
+  },
+  "input": {
+   "menuButton": 0,
+   "menu": 0,
+   "pickMyself": 0,
+   "prevNext": 0,
+   "sideNext": 0,
+   "namedButtons": [],
+   "goButton": 1
+  },
+  "first": {
+   "expected": 112,
+   "group": "anger",
+   "started": 112,
+   "stage": "play"
+  },
+  "play": {
+   "menuButton": 0,
+   "menu": 0,
+   "pickMyself": 0,
+   "prevNext": 0,
+   "sideNext": 0,
+   "namedButtons": [],
+   "goButton": 1,
+   "composerButton": "\u2726 NEXT \u25b6"
+  },
+  "finish1": {
+   "id": 112,
+   "name": "COOL THE VOLCANO",
+   "done": true,
+   "reason": "reveal",
+   "ms": 34965
+  },
+  "reveal": {
+   "menuButton": 0,
+   "menu": 0,
+   "pickMyself": 0,
+   "prevNext": 0,
+   "sideNext": 0,
+   "namedButtons": [],
+   "goButton": 1,
+   "step": "done"
+  },
+  "next": {
+   "expected": 109,
+   "started": 109,
+   "differs": true
+  },
+  "finish2": {
+   "id": 109,
+   "name": "CLEANSE",
+   "done": true,
+   "reason": "reveal",
+   "ms": 45728
+  },
+  "again": {
+   "id": 109,
+   "stage": "play"
+  },
+  "newThought": {
+   "stage": "input"
+  },
+  "rotation": {
+   "v": 1,
+   "seq": 2,
+   "at": {
+    "109": 2,
+    "112": 1
+   },
+   "cyc": {},
+   "last": 109
+  },
+  "ownerMenu": {
+   "menuButton": 1,
+   "items": 120
+  },
+  "errors": [],
+  "fail": []
+ },
+ "go390": {
+  "width": 390,
+  "height": 844,
+  "emotion": "panic",
+  "level": 8,
+  "games": [
+   {
+    "id": 111,
+    "expected": 111,
+    "via": "check-in GO",
+    "done": true
+   },
+   {
+    "id": 109,
+    "expected": 109,
+    "via": "Next",
+    "done": true
+   },
+   {
+    "id": 102,
+    "expected": 102,
+    "via": "reload + RELEASE IT",
+    "key": "panic",
+    "done": true
+   },
+   {
+    "id": 36,
+    "expected": 36,
+    "via": "Next"
+   }
+  ],
+  "group": [
+   111,
+   109,
+   102,
+   36,
+   65,
+   69,
+   66,
+   44,
+   77,
+   113,
+   55,
+   11,
+   105,
+   104,
+   1
+  ],
+  "errors": [],
+  "fail": []
+ },
+ "ui1280": {
+  "width": 1280,
+  "height": 860,
+  "steps": [],
+  "checkin": {
+   "menuButton": 0,
+   "menu": 0,
+   "pickMyself": 0,
+   "prevNext": 0,
+   "sideNext": 0,
+   "namedButtons": [],
+   "goButton": 1,
+   "cta": "LET'S SHIFT IT \u25b6 ThinkStill picks your best release"
+  },
+  "input": {
+   "menuButton": 0,
+   "menu": 0,
+   "pickMyself": 0,
+   "prevNext": 0,
+   "sideNext": 0,
+   "namedButtons": [],
+   "goButton": 1
+  },
+  "first": {
+   "expected": 112,
+   "group": "anger",
+   "started": 112,
+   "stage": "play"
+  },
+  "play": {
+   "menuButton": 0,
+   "menu": 0,
+   "pickMyself": 0,
+   "prevNext": 0,
+   "sideNext": 0,
+   "namedButtons": [],
+   "goButton": 1,
+   "composerButton": "\u2726 NEXT \u25b6"
+  },
+  "finish1": {
+   "id": 112,
+   "name": "COOL THE VOLCANO",
+   "done": true,
+   "reason": "reveal",
+   "ms": 33605
+  },
+  "reveal": {
+   "menuButton": 0,
+   "menu": 0,
+   "pickMyself": 0,
+   "prevNext": 0,
+   "sideNext": 0,
+   "namedButtons": [],
+   "goButton": 1,
+   "step": "done"
+  },
+  "next": {
+   "expected": 109,
+   "started": 109,
+   "differs": true
+  },
+  "finish2": {
+   "id": 109,
+   "name": "CLEANSE",
+   "done": true,
+   "reason": "reveal",
+   "ms": 47017
+  },
+  "again": {
+   "id": 109,
+   "stage": "play"
+  },
+  "newThought": {
+   "stage": "input"
+  },
+  "rotation": {
+   "v": 1,
+   "seq": 2,
+   "at": {
+    "109": 2,
+    "112": 1
+   },
+   "cyc": {},
+   "last": 109
+  },
+  "ownerMenu": {
+   "menuButton": 1,
+   "items": 120
+  },
+  "errors": [],
+  "fail": []
+ },
+ "go1280": {
+  "width": 1280,
+  "height": 860,
+  "emotion": "anger",
+  "level": 6,
+  "games": [
+   {
+    "id": 112,
+    "expected": 112,
+    "via": "check-in GO",
+    "done": true
+   },
+   {
+    "id": 100,
+    "expected": 100,
+    "via": "Next",
+    "done": true
+   },
+   {
+    "id": 111,
+    "expected": 111,
+    "via": "reload + RELEASE IT",
+    "key": "panic",
+    "done": true
+   },
+   {
+    "id": 109,
+    "expected": 109,
+    "via": "Next"
+   }
+  ],
+  "group": [
+   112,
+   100,
+   4,
+   15,
+   2,
+   18,
+   61,
+   68,
+   101,
+   8,
+   13,
+   14,
+   109,
+   65,
+   111,
+   52,
+   107,
+   71,
+   64,
+   11,
+   37,
+   53
+  ],
+  "errors": [],
+  "fail": []
+ }
+}

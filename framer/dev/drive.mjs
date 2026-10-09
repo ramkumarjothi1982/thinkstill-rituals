@@ -2,7 +2,7 @@
 // Usage from another script:
 //   import { launch, startGame, listGames } from "./drive.mjs"
 //   const { browser, page, errors } = await launch({ width: 1280, height: 860, dir: "/tmp/eos_x" /* isolated build dir, default framer/dev */ })
-//   await startGame(page, "POP", "my boss yelled at me")
+//   await startGame(page, "POP", "my boss yelled at me")   (menu hidden → dev hook window.__eos.pick.start)
 // CLI: node drive.mjs "POP" [out.png] [width] [height]
 import { chromium } from "playwright-core"
 import path from "path"
@@ -18,7 +18,14 @@ export async function launch({ width = 1280, height = 860, dir = here, reducedMo
     await page.waitForTimeout(1200)
     return { browser, page, errors }
 }
+// F3: the game menu is hidden for users (Framer property "Show game menu" / ?menu=1 in dev brings it back).
+// Without it these helpers use the dev hook window.__eos.pick.start(id) and window.__eos.core.GAMES.
+const MENU_BTN = "button.releaseChoiceButton:not(.eosPickGo)"
+async function hasMenu(page) {
+    return page.evaluate((sel) => !!document.querySelector(sel), MENU_BTN)
+}
 export async function listGames(page) {
+    if (!(await hasMenu(page))) return page.evaluate(() => window.__eos.core.GAMES.map((g) => g.name))
     await page.locator("button.releaseChoiceButton").click()
     await page.waitForTimeout(400)
     const names = await page.$$eval("button.releaseChoiceItem", (els) => els.map((e) => e.innerText.trim()))
@@ -28,6 +35,14 @@ export async function listGames(page) {
 export async function startGame(page, name, text = "my boss yelled at me") {
     const inp = page.locator("input.releaseThoughtInput")
     if (await inp.count()) await inp.fill(text)
+    if (!(await hasMenu(page))) {
+        await page.evaluate((n) => {
+            const g = window.__eos.core.GAMES.find((x) => x.name === n)
+            return g ? window.__eos.pick.start(g.id) : false
+        }, name)
+        await page.waitForTimeout(2200)
+        return
+    }
     await page.locator("button.releaseChoiceButton").click()
     await page.waitForTimeout(400)
     const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")

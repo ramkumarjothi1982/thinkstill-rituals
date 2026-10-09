@@ -142,8 +142,26 @@ function eosShiftContext(game) {
         launchAt: Number(st.launchAt) || 0,
     }
 }
+// F3: is the owner-only game menu on? (pick module absent → the old behaviour)
+function eosShiftPickerOn() {
+    try {
+        const f = eosApi("pick").menuOn
+        return typeof f === "function" ? !!f() : true
+    } catch {
+        return true
+    }
+}
 // The follow-up game (ONE MORE ▶). Only ids registered right now are ever returned.
+// F3: without the owner menu it is ThinkStill's next pick from the no-repeat rotation (never named).
 function eosShiftNext(ctx, delta) {
+    if (!eosShiftPickerOn()) {
+        try {
+            const g = eosApi("pick").EosPickPeek?.("", null, ctx.gameId)
+            const v = g ? eosShiftGame(g.id) : null
+            if (v && Number(v.id) !== ctx.gameId) return v
+        } catch {}
+        return null
+    }
     if (ctx.coolPath) {
         const v = eosShiftGame(112)
         if (v) return v
@@ -1202,13 +1220,15 @@ function EosShiftMeter({ game, sfx, rainSfx, reduced = false, onAgain, onPlay, o
         } catch {}
         setHelpOpen((x) => !x)
     }
+    const picker = eosShiftPickerOn()
     const playNext = () => {
         try {
+            if (!picker) return void live.current.onNext?.() // F3: the arcade serves the rotation's next pick
             if (next) live.current.onPlay?.(next)
             else live.current.onNext?.()
         } catch {}
     }
-    const coolReplay = ctx.coolReplay && !!eosShiftGame(112)
+    const coolReplay = picker && ctx.coolReplay && !!eosShiftGame(112)
     const showRate = step === "rate"
     const showStage = step !== "moment"
     const chipVariant = ctx.plan && !ctx.plan.auto && !momentOn ? ctx.plan.variant : null
@@ -1391,7 +1411,7 @@ function EosShiftMeter({ game, sfx, rainSfx, reduced = false, onAgain, onPlay, o
                         </button>
                         <button type="button" className={`eosShiftBtn isMore${many ? " isSecondary" : ""}`} onClick={playNext} data-eos-next={next ? next.id : ""}>
                             <span>{coolLabel ? "COOL IT DOWN ▶" : "ONE MORE ▶"}</span>
-                            {next ? <small>{next.name}</small> : null}
+                            {next && picker ? <small>{next.name}</small> : null}
                         </button>
                         {safety ? (
                             <button type="button" className="eosShiftBtn isTalk" onClick={openHelp}>

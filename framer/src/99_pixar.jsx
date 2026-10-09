@@ -317,6 +317,7 @@ export default function ThinkStillReleaseArcadePixar(props) {
         >
             <style>{PIXAR_CSS}</style>
             <EosConfigSync checkin={eosCheckin} crisisLines={eosCrisisLines} crisisUrl={eosCrisisUrl} emergencyText={eosEmergencyText} shareUrl={eosShareUrl} />
+            <EosPickConfigSync showMenu={!!props.eosShowGameMenu} />
             <ThinkStillReleaseArcade {...arcadeProps} />
             {pixarIntensity > 0 ? (
                 <PixarLightRig
@@ -329,6 +330,8 @@ export default function ThinkStillReleaseArcadePixar(props) {
 }
 
 addPropertyControls(ThinkStillReleaseArcadePixar, {
+    // F3: users never pick games (ThinkStill decides); owner / testing only
+    eosShowGameMenu: { type: ControlType.Boolean, title: "Show game menu", defaultValue: false },
     ...(ThinkStillReleaseArcade.propertyControls || {}),
     pixarIntensity: {
         type: ControlType.Number,

@@ -264,6 +264,200 @@ edit("I3", "E8", A,  # anchor created by I2-E13
      '                            <EosCompanion game={selected} hostRef={gameHostRef} reduced={!!reduced} />\n'
      '                            <EosLayoutGuard game={selected} entries={renderedEntries} hostRef={gameHostRef} />')
 
+# ---------------------------------------------------------------- F3 (founder feedback F3: ThinkStill picks, no game menu)
+# Users never choose or browse games: the composer's CHOOSE TO RELEASE menu becomes one RELEASE IT button
+# (EosPickGoButton) unless the owner turns on the Framer property "Show game menu" (or ?menu=1 in dev);
+# every ThinkStill pick and every "next" comes from the no-repeat rotation (src/eos/46_eos_pick.jsx).
+edit("F3", "E1", A,
+     '    const eos = useEosStore()\n',
+     '    const eos = useEosStore()\n    const eosMenuOn = useEosPickMenu()\n')
+edit("F3", "E2", A,
+     '        return EosRouteGame(sourceThought, played, selected.id) || chooseRelevantGame(sourceThought, selected.id, selected)\n'
+     '    }, [selected?.id, raw, entries.join("|"), chooseRelevantGame])',
+     '        if (!eosMenuOn) {\n'
+     '            const rotated = EosPickPeek(sourceThought, played, selected.id)\n'
+     '            if (rotated) return rotated\n'
+     '        }\n'
+     '        return EosRouteGame(sourceThought, played, selected.id) || chooseRelevantGame(sourceThought, selected.id, selected)\n'
+     '    }, [selected?.id, raw, entries.join("|"), chooseRelevantGame, eosMenuOn, stage])')
+edit("F3", "E3", A,  # before I2-E6's block, so its replacement text stays intact
+     '            setSelected(g)\n            setEntries(e)\n',
+     '            setSelected(g)\n            setEntries(e)\n            EosPickNote(g)\n')
+edit("F3", "E4", A,
+     '    const tryRecommendedRelease = React.useCallback(() => {\n'
+     '        if (!recommendedReleaseGame) return\n'
+     '        showStatus(`THINKSTILL RECOMMENDS ${recommendedReleaseGame.name}`, 1400)\n'
+     '        startChosenGame(recommendedReleaseGame)\n'
+     '    }, [recommendedReleaseGame?.id, startChosenGame, showStatus])',
+     '    const tryRecommendedRelease = React.useCallback(() => {\n'
+     '        if (!eosMenuOn) {\n'
+     '            const sourceThought = raw.trim() || entries.join(" ")\n'
+     '            const rotated = EosPickNext(sourceThought, played, selected?.id) || recommendedReleaseGame\n'
+     '            if (rotated) startChosenGame(rotated)\n'
+     '            return\n'
+     '        }\n'
+     '        if (!recommendedReleaseGame) return\n'
+     '        showStatus(`THINKSTILL RECOMMENDS ${recommendedReleaseGame.name}`, 1400)\n'
+     '        startChosenGame(recommendedReleaseGame)\n'
+     '    }, [recommendedReleaseGame?.id, startChosenGame, showStatus, eosMenuOn, raw, entries.join("|"), played.join("|"), selected?.id])')
+edit("F3", "E5", A,  # after I2-E4's line (kept intact): the rotation decides, the router stays the fallback
+     '        showStatus(`THINKSTILL CHOSE ${best.name}`, 1800)\n'
+     '        startChosenGame(best)\n',
+     '        const eosPicked = EosPickNext(sourceThought, played) || best\n'
+     '        if (eosMenuOn) showStatus(`THINKSTILL CHOSE ${eosPicked.name}`, 1800)\n'
+     '        startChosenGame(eosPicked)\n')
+edit("F3", "E6", A,
+     '    const launchRelease = React.useCallback(() => {\n'
+     '        if (!gameChoice) {\n',
+     '    const launchRelease = React.useCallback(() => {\n'
+     '        if (!eosMenuOn) {\n'
+     '            // F3: no game menu for users — ThinkStill picks from the no-repeat rotation;\n'
+     '            // Enter while a game runs keeps that game with the new words (as before)\n'
+     '            if (stage !== "input" && selected) startChosenGame(selected)\n'
+     '            else startThinkStillChoice()\n'
+     '            return\n'
+     '        }\n'
+     '        if (!gameChoice) {\n')
+edit("F3", "E7", A,
+     '    }, [\n'
+     '        gameChoice,\n'
+     '        resolveChosenGame,\n'
+     '        showStatus,\n'
+     '        startChosenGame,\n'
+     '        startThinkStillChoice,\n'
+     '    ])',
+     '    }, [\n'
+     '        gameChoice,\n'
+     '        resolveChosenGame,\n'
+     '        showStatus,\n'
+     '        startChosenGame,\n'
+     '        startThinkStillChoice,\n'
+     '        eosMenuOn,\n'
+     '        stage,\n'
+     '        selected,\n'
+     '    ])')
+edit("F3", "E8", A,
+     '        chooseRelevantGame,\n'
+     '        startChosenGame,\n'
+     '        showStatus,\n'
+     '    ])\n',
+     '        chooseRelevantGame,\n'
+     '        startChosenGame,\n'
+     '        showStatus,\n'
+     '        eosMenuOn,\n'
+     '        played.join("|"),\n'
+     '    ])\n')
+edit("F3", "E9", A,
+     '                    <EosTextFloor stage={stage} />\n',
+     '                    <EosPickBridge onPlay={startChosenGame} onLaunch={launchRelease} />\n'
+     '                    <EosTextFloor stage={stage} />\n')
+edit("F3", "E10", A,
+     '                                <button\n'
+     '                                    className="releaseCompleteSideNav releaseCompletePrev"\n'
+     '                                    onClick={() => openAdjacentRelease(-1)}\n'
+     '                                    aria-label="Open previous release game"\n'
+     '                                >\n'
+     '                                    ‹ PREVIOUS\n'
+     '                                </button>\n',
+     '                                {eosMenuOn /* F3: catalogue browsing is owner-only */ ? (\n'
+     '                                <button\n'
+     '                                    className="releaseCompleteSideNav releaseCompletePrev"\n'
+     '                                    onClick={() => openAdjacentRelease(-1)}\n'
+     '                                    aria-label="Open previous release game"\n'
+     '                                >\n'
+     '                                    ‹ PREVIOUS\n'
+     '                                </button>\n'
+     '                                ) : null}\n')
+edit("F3", "E11", A,
+     '                                <button\n'
+     '                                    className="releaseCompleteSideNav releaseCompleteNext"\n'
+     '                                    onClick={() => openAdjacentRelease(1)}\n'
+     '                                    aria-label="Open next release game"\n'
+     '                                >\n'
+     '                                    NEXT ›\n'
+     '                                </button>\n',
+     '                                {eosMenuOn || !eos.checkinEnabled ? (\n'
+     '                                <button\n'
+     '                                    className="releaseCompleteSideNav releaseCompleteNext"\n'
+     '                                    onClick={() => (eosMenuOn ? openAdjacentRelease(1) : tryRecommendedRelease())}\n'
+     '                                    aria-label={eosMenuOn ? "Open next release game" : "Next release — ThinkStill picks it"}\n'
+     '                                >\n'
+     '                                    NEXT ›\n'
+     '                                </button>\n'
+     '                                ) : null}\n')
+edit("F3", "E12", A,
+     '                                                    TRY{" "}\n'
+     '                                                    {recommendedReleaseGame?.name ||\n'
+     '                                                        "THINKSTILL PICK"}\n',
+     '                                                    {eosMenuOn ? (\n'
+     '                                                        <>\n'
+     '                                                    TRY{" "}\n'
+     '                                                    {recommendedReleaseGame?.name ||\n'
+     '                                                        "THINKSTILL PICK"}\n'
+     '                                                        </>\n'
+     '                                                    ) : "NEXT ▶" /* F3: never a game name as a choice */}\n')
+edit("F3", "E13", A,
+     '                                                aria-label={`Animated preview of ${recommendedReleaseGame?.name || "recommended release"}`}\n',
+     '                                                aria-label={eosMenuOn ? `Animated preview of ${recommendedReleaseGame?.name || "recommended release"}` : "Animated preview of your next release"}\n')
+edit("F3", "E14", A,
+     '                                                <strong>\n'
+     '                                                    {recommendedReleaseGame?.name ||\n'
+     '                                                        "NEXT RELEASE"}\n'
+     '                                                </strong>\n',
+     '                                                <strong>\n'
+     '                                                    {(eosMenuOn && recommendedReleaseGame?.name) ||\n'
+     '                                                        "NEXT RELEASE"}\n'
+     '                                                </strong>\n')
+edit("F3", "E15", A,
+     '                                                        TRY{" "}\n'
+     '                                                        {recommendedReleaseGame?.name ||\n'
+     '                                                            "THIS RELEASE"}\n',
+     '                                                        {eosMenuOn ? (\n'
+     '                                                            <>\n'
+     '                                                        TRY{" "}\n'
+     '                                                        {recommendedReleaseGame?.name ||\n'
+     '                                                            "THIS RELEASE"}\n'
+     '                                                            </>\n'
+     '                                                        ) : "NEXT ▶" /* F3: ThinkStill picks the next release */}\n')
+edit("F3", "E16", A,
+     '                                if (\n'
+     '                                    gameChoice &&\n'
+     '                                    stage === "input" &&\n',
+     '                                if (\n'
+     '                                    eosMenuOn && // F3: a selected game is named only with the owner menu\n'
+     '                                    gameChoice &&\n'
+     '                                    stage === "input" &&\n')
+edit("F3", "E17", A,
+     '                    <div className="releaseChoiceWrap" ref={gameMenuRef}>\n',
+     '                    {eosMenuOn /* F3: the game menu is owner-only ("Show game menu" property) */ ? (\n'
+     '                    <div className="releaseChoiceWrap" ref={gameMenuRef}>\n')
+edit("F3", "E18", A,
+     '                        ) : null}\n'
+     '                    </div>\n'
+     '\n'
+     '                    {statusText ? (\n',
+     '                        ) : null}\n'
+     '                    </div>\n'
+     '                    ) : (\n'
+     '                        <EosPickGoButton\n'
+     '                            ready={stage === "input" && (!!raw.trim() || uploadedImages.length > 0)}\n'
+     '                            next={stage !== "input" && !!selected}\n'
+     '                            onGo={stage !== "input" && selected ? tryRecommendedRelease : launchRelease}\n'
+     '                        />\n'
+     '                    )}\n'
+     '\n'
+     '                    {statusText ? (\n')
+edit("F3", "E19", A,
+     '{RELEASE_IDLE_GUIDE.map((step, i) => (',
+     '{eosPickIdleGuide(RELEASE_IDLE_GUIDE, eosMenuOn).map((step, i) => (', 2)
+edit("F3", "P1", P,  # read from props (I1-P3's destructuring block stays intact); arcadeProps ignores it
+     '            <ThinkStillReleaseArcade {...arcadeProps} />\n',
+     '            <EosPickConfigSync showMenu={!!props.eosShowGameMenu} />\n            <ThinkStillReleaseArcade {...arcadeProps} />\n')
+edit("F3", "P3", P,  # first control (I1-P5's tail block stays intact)
+     'addPropertyControls(ThinkStillReleaseArcadePixar, {\n',
+     'addPropertyControls(ThinkStillReleaseArcadePixar, {\n'
+     '    // F3: users never pick games (ThinkStill decides); owner / testing only\n'
+     '    eosShowGameMenu: { type: ControlType.Boolean, title: "Show game menu", defaultValue: false },\n')
 # Symbols the edits reference that must be defined by src/eos/* (core defines the rest).
 REFERENCED = {
     "I1": {"components": ["EosThoughtFlow", "EosMoodGrade", "EosGuideArrows", "EosLegacyGuards", "EosTextFloor"],
@@ -271,6 +465,8 @@ REFERENCED = {
     "I2": {"components": ["EosCheckIn", "EosCheckInChip", "EosWorldChips", "EosSafetyLayer", "EosShiftMeter", "EosMenuGroup", "EosCompanion"],
            "functions": ["EosRouteGame", "EosProfileOverride", "EosEntries"]},
     "I3": {"components": ["EosLayoutGuard"], "functions": []},
+    "F3": {"components": ["EosPickBridge", "EosPickGoButton", "EosPickConfigSync"],
+           "functions": ["useEosPickMenu", "EosPickPeek", "EosPickNext", "EosPickNote", "eosPickIdleGuide"]},
 }
 STUB_BODIES = {
     "eosGlyph": 'function eosGlyph() {\n    return "☝"\n}',
@@ -278,6 +474,12 @@ STUB_BODIES = {
     "EosProfileOverride": "function EosProfileOverride() {\n    return null\n}",
     "EosEntries": "function EosEntries() {\n    return null\n}",
     "eosSfxMiss": "function eosSfxMiss() {\n    return false\n}",
+    # no pick module in a scratch build → the old menu stays (useEosPickMenu() true), rotation falls through
+    "useEosPickMenu": "function useEosPickMenu() {\n    return true\n}",
+    "EosPickPeek": "function EosPickPeek() {\n    return null\n}",
+    "EosPickNext": "function EosPickNext() {\n    return null\n}",
+    "EosPickNote": "function EosPickNote() {}",
+    "eosPickIdleGuide": "function eosPickIdleGuide(steps) {\n    return steps\n}",
     # same algorithm as docs/EOS_SPEC.md §11.2 so scratch builds behave like the final build
     "eosGateProgress": ("const EOS_STUB_PROGRESS_OWN = new WeakMap()\n"
                         "function eosGateProgress(ref, value, fromSfx) {\n"
@@ -298,8 +500,8 @@ STUB_BODIES = {
 
 
 def groups_arg(s):
-    gs = [g.strip().upper() for g in (s or "I1,I2,I3").split(",") if g.strip()]
-    bad = [g for g in gs if g not in ("I1", "I2", "I3")]
+    gs = [g.strip().upper() for g in (s or "I1,I2,I3,F3").split(",") if g.strip()]
+    bad = [g for g in gs if g not in ("I1", "I2", "I3", "F3")]
     if bad:
         sys.exit(f"unknown groups: {bad}")
     return gs

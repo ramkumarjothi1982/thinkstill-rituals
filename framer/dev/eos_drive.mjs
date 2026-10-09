@@ -27,6 +27,8 @@
 //         for a frame; lite:true hides the decoration-only layers (EOS_LITE_CSS: ambient glows, Pixar bokeh +
 //         rig incl. .tsPxDust) for ~2× speed in GAMEPLAY sweeps — never for visual, dots or readability checks.
 //   listGames(page, {withIds})        de-duplicated menu names (EosMenuGroup repeats some); withIds → [{id, name}]
+//                                     (F3: the menu is hidden unless query "menu=1" / the "Show game menu" property →
+//                                     GAMES order; startGameById then uses the dev hook window.__eos.pick.start(id))
 //   gameIdByName(page, name) / gameNameById(page, id)
 //   startGameById(page, id, text, {waitMs, skipCheckin})   → {ok, id, name, stage}  (falls back to the name)
 //   startGameByName(page, name, text, opts)                → same; robust replacement for drive.startGame
@@ -619,7 +621,14 @@ export async function launchEos({ width = 1280, height = 860, dir = HERE, reduce
 async function menuOpen(page) {
     return page.evaluate(() => !!document.querySelector(".releaseChoiceMenu"))
 }
+// F3: users never see the game menu (the composer shows one RELEASE IT button, .eosPickGo). It is rendered only
+// with the Framer property "Show game menu" or launchEos({query: "menu=1"}); otherwise startGameById uses the
+// dev hook window.__eos.pick.start(id) (same startChosenGame path the menu used) and listGames reads GAMES.
+export async function hasGameMenu(page) {
+    return page.evaluate(() => !!document.querySelector("button.releaseChoiceButton:not(.eosPickGo)"))
+}
 export async function openMenu(page) {
+    if (!(await hasGameMenu(page))) return false
     if (!(await menuOpen(page))) {
         await page.locator("button.releaseChoiceButton").click()
         await page.waitForTimeout(350)
@@ -632,6 +641,10 @@ export async function closeMenu(page) {
     }
 }
 export async function listGames(page, { withIds = false } = {}) {
+    if (!(await hasGameMenu(page))) {
+        const games = await allGames(page)
+        return withIds ? games.map((g) => ({ id: g.id, name: g.name })) : games.map((g) => g.name)
+    }
     await openMenu(page)
     const names = await page.$$eval("button.releaseChoiceItem", (els) => els.map((e) => e.innerText.replace(/\s+/g, " ").trim()))
     await closeMenu(page)
@@ -670,6 +683,15 @@ export async function gameIdByName(page, name) {
 export async function startGameByName(page, name, text = "my boss yelled at me", { waitMs = 2200 } = {}) {
     const inp = page.locator("input.releaseThoughtInput")
     if (text != null && (await inp.count())) await inp.fill(text)
+    if (!(await hasGameMenu(page))) {
+        await ensureLib(page)
+        const id = await gameIdByName(page, name)
+        const ok = id != null && (await page.evaluate((i) => !!(window.__eos && window.__eos.pick && window.__eos.pick.start(i)), id))
+        if (!ok) return { ok: false, name, stage: await page.evaluate(() => (document.querySelector(".tsArcade")?.className.match(/stage-(\w+)/) || [])[1] || null), why: "dev hook window.__eos.pick.start unavailable" }
+        await page.waitForTimeout(waitMs)
+        const s = await page.evaluate(() => window.__eosDrive.lib.state())
+        return { ok: s.stage === "play", name, stage: s.stage, guide: s.name, via: "hook" }
+    }
     await openMenu(page)
     const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     const item = page.locator("button.releaseChoiceItem", { hasText: new RegExp("^\\s*" + esc + "\\s*$") }).first()

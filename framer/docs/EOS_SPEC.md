@@ -1624,6 +1624,19 @@ Every anchor below was verified with exact-string counts on the baseline md5 (`p
 - E7 (×1) 21 BIN `measureTarget(i)`: subtract the bubble's visible translation (`DOMMatrixReadOnly(getComputedStyle(el).transform)` m41/m42, screen px ÷ stage scale) so the "gone" flight is aimed from the home slot — needed once the fixes CSS makes the drag transform visible (else the binned word flies back out to its slot).
 - **Acceptance:** TAP OUT: exactly one `.tapOutPads .eosNext` alternating on each correct tap and the arrow follows it; PRESSURE POP finishes with ~0.9 s holds and a miss keeps the needle partly charged; BIN accepts a drop 60 px beside the mouth; ECHO keeps a bubble's fill after a release; then a **full smoke**: input stage, POP, CRUSH, HOT POTATO, every 111-120 game, the check-in flow (incl. PANIC express), the reveal (meter, orb flight, share card), the safety card — zero page errors.
 
+**F3 — ThinkStill picks, no game menu for users** (founder feedback F3, 2026-10-09; module `src/eos/46_eos_pick.jsx`; exact strings in `dev/eos_integrate.py`)
+- E1 `const eosMenuOn = useEosPickMenu()` after `const eos = useEosStore()` (owner property "Show game menu", default off; `?menu=1` / `window.__eos.pick.setMenu(true)` in dev).
+- E2 `recommendedReleaseGame` = `EosPickPeek(text, played, selected.id)` while the menu is off (same game Next will serve). E3 `EosPickNote(g)` after `setEntries(e)` in `startChosenGame` (every launch feeds the rotation).
+- E4 `tryRecommendedRelease` = `EosPickNext(text, played, selected.id)` while the menu is off. E5 `startThinkStillChoice` starts `EosPickNext(…) || best` (I2-E4's router line stays the fallback; the "THINKSTILL CHOSE <name>" status only with the menu).
+- E6/E7 `launchRelease` (RELEASE IT / Enter / check-in GO) → `startThinkStillChoice()` while the menu is off (Enter while a game runs restarts that game with the new words, as before). E8 deps of `startThinkStillChoice`.
+- E9 `<EosPickBridge onPlay={startChosenGame} onLaunch={launchRelease} />` before `<EosTextFloor stage={stage} />` (dev hook `window.__eos.pick.start(id)` for automated tests).
+- E10 reveal `‹ PREVIOUS` only with the menu; E11 `NEXT ›` only with the menu or without the check-in / shift meter, and then it serves the rotation; E12-E15 no game name on the TRY / recommendation buttons ("NEXT ▶", "NEXT RELEASE"); E16 the "<GAME> READY" composer status only with the menu.
+- E17/E18 the composer's `.releaseChoiceWrap` menu only with the menu, else `<EosPickGoButton ready onGo={launchRelease} />` (same classes; RELEASE IT on the input stage, NEXT ▶ = the rotation's next pick while a game runs or at its end — the old button opened the menu there).
+- E19 (×2) the idle orbit's step 2 "CHOOSE A RELEASE · Pick one or let ThinkStill choose." reads "THINKSTILL PICKS · The best release for how you feel." without the menu (`eosPickIdleGuide`).
+- P1, P3 `99_pixar.jsx`: `<EosPickConfigSync showMenu={!!props.eosShowGameMenu} />` + property control "Show game menu" (default false, first in the list).
+- Module-side (no integration edit): the check-in hides "pick a game myself", its CTA sub-line names no game and the good-day orb routes through the rotation; the shift meter's ONE MORE ▶ calls `onNext` (rotation), shows no game name, and "↻ cool it down" appears only with the menu.
+
+
 ### 12.3 Test tooling
 **Already in the repo (lead): `dev/eos_integrate.py` — the executable copy of §12.2.**
 - `python3 dev/eos_integrate.py --check` → every I1-I3 edit reported OK / SKIP (already applied) / BAD, applying groups in order in memory (I2-E13 depends on I1-E3). **This is the only anchor check** (the old stand-alone script covered 31 of 36 edits and is gone).

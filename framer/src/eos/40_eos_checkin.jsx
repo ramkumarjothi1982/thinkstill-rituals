@@ -74,8 +74,19 @@ function eosCheckinSupportLines(raw) {
         .filter(Boolean)
         .slice(0, 8)
 }
+// F3: is the owner-only game menu on? (pick module absent → the old behaviour, menu on)
+function eosCheckinPickerOn() {
+    try {
+        const f = eosApi("pick").menuOn
+        return typeof f === "function" ? !!f() : true
+    } catch {
+        return true
+    }
+}
 // The CTA sub-line: the router's preview when present (and the game is really registered), else a calm default.
+// F3: users never see a game named as a choice — while the menu is hidden ThinkStill just says it picks.
 function eosCheckinPreview(emotion, n) {
+    if (!eosCheckinPickerOn()) return "ThinkStill picks your best release"
     try {
         const p = eosApi("router").EosRoutePreview?.(emotion, n)
         const id = p && Number(p.id)
@@ -537,7 +548,8 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
         const L = live.current
         launchedRef.current = true
         try {
-            if (p.kind === "game") {
+            // F3: without the owner menu every launch goes through ThinkStill's no-repeat rotation
+            if (p.kind === "game" && eosCheckinPickerOn()) {
                 const g = GAMES.find((x) => x.id === p.id)
                 if (g && typeof L.onPlay === "function") return L.onPlay(g)
             }
@@ -1005,9 +1017,11 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
                             <button type="button" className="eosCkLink" data-eos-back="1" onClick={back}>
                                 ← back
                             </button>
-                            <button type="button" className="eosCkLink" data-eos-pick="1" onClick={pickMyself}>
-                                pick a game myself
-                            </button>
+                            {eosCheckinPickerOn() ? (
+                                <button type="button" className="eosCkLink" data-eos-pick="1" onClick={pickMyself}>
+                                    pick a game myself
+                                </button>
+                            ) : null}
                         </div>
                     </div>
                 ) : null}

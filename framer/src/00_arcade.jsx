@@ -21497,6 +21497,7 @@ function ThinkStillReleaseArcade(props) {
     const [lastGain, setLastGain] = React.useState(0)
     const [releaseCheck, setReleaseCheck] = React.useState(null)
     const eos = useEosStore()
+    const eosMenuOn = useEosPickMenu()
     React.useEffect(() => {
         EOS_STORE.set({ sound: !!sound, haptics: !!hapticsOn, music: !!(musicOn && sound) })
     }, [sound, hapticsOn, musicOn])
@@ -21785,8 +21786,12 @@ function ThinkStillReleaseArcade(props) {
     const recommendedReleaseGame = React.useMemo(() => {
         if (!selected || !GAMES.length) return null
         const sourceThought = raw.trim() || entries.join(" ")
+        if (!eosMenuOn) {
+            const rotated = EosPickPeek(sourceThought, played, selected.id)
+            if (rotated) return rotated
+        }
         return EosRouteGame(sourceThought, played, selected.id) || chooseRelevantGame(sourceThought, selected.id, selected)
-    }, [selected?.id, raw, entries.join("|"), chooseRelevantGame])
+    }, [selected?.id, raw, entries.join("|"), chooseRelevantGame, eosMenuOn, stage])
     const recommendedReleaseGesture = React.useMemo(() => {
         if (!recommendedReleaseGame) return null
         const sourceEntries = entries.length ? entries : cleanEntries(raw)
@@ -21844,6 +21849,7 @@ function ThinkStillReleaseArcade(props) {
             setReleaseCheck(null)
             setSelected(g)
             setEntries(e)
+            EosPickNote(g)
             setVariationSeed((v) => v + 1)
             EosMarkLaunch(g, e)
             setStage("play")
@@ -21875,10 +21881,16 @@ function ThinkStillReleaseArcade(props) {
         [selected?.id, startChosenGame]
     )
     const tryRecommendedRelease = React.useCallback(() => {
+        if (!eosMenuOn) {
+            const sourceThought = raw.trim() || entries.join(" ")
+            const rotated = EosPickNext(sourceThought, played, selected?.id) || recommendedReleaseGame
+            if (rotated) startChosenGame(rotated)
+            return
+        }
         if (!recommendedReleaseGame) return
         showStatus(`THINKSTILL RECOMMENDS ${recommendedReleaseGame.name}`, 1400)
         startChosenGame(recommendedReleaseGame)
-    }, [recommendedReleaseGame?.id, startChosenGame, showStatus])
+    }, [recommendedReleaseGame?.id, startChosenGame, showStatus, eosMenuOn, raw, entries.join("|"), played.join("|"), selected?.id])
     const startThinkStillChoice = React.useCallback(() => {
         let e = cleanEntries(raw)
         if (!e.length && uploadedImages.length)
@@ -21895,8 +21907,9 @@ function ThinkStillReleaseArcade(props) {
         }
         const sourceThought = raw.trim() || e.join(" ")
         const best = EosRouteGame(sourceThought, played) || chooseRelevantGame(sourceThought)
-        showStatus(`THINKSTILL CHOSE ${best.name}`, 1800)
-        startChosenGame(best)
+        const eosPicked = EosPickNext(sourceThought, played) || best
+        if (eosMenuOn) showStatus(`THINKSTILL CHOSE ${eosPicked.name}`, 1800)
+        startChosenGame(eosPicked)
     }, [
         raw,
         entries.join("|"),
@@ -21904,6 +21917,8 @@ function ThinkStillReleaseArcade(props) {
         chooseRelevantGame,
         startChosenGame,
         showStatus,
+        eosMenuOn,
+        played.join("|"),
     ])
     React.useEffect(() => {
         if (!gameMenuOpen) return
@@ -21922,6 +21937,13 @@ function ThinkStillReleaseArcade(props) {
         }
     }, [gameMenuOpen])
     const launchRelease = React.useCallback(() => {
+        if (!eosMenuOn) {
+            // F3: no game menu for users — ThinkStill picks from the no-repeat rotation;
+            // Enter while a game runs keeps that game with the new words (as before)
+            if (stage !== "input" && selected) startChosenGame(selected)
+            else startThinkStillChoice()
+            return
+        }
         if (!gameChoice) {
             showStatus("CHOOSE A RELEASE GAME")
             setGameMenuOpen(true)
@@ -21940,6 +21962,9 @@ function ThinkStillReleaseArcade(props) {
         showStatus,
         startChosenGame,
         startThinkStillChoice,
+        eosMenuOn,
+        stage,
+        selected,
     ])
     const done = React.useCallback(
         (bonus = 0) => {
@@ -22485,7 +22510,7 @@ function ThinkStillReleaseArcade(props) {
                                         />
                                     </span>
                                 </div>
-                                {RELEASE_IDLE_GUIDE.map((step, i) => (
+                                {eosPickIdleGuide(RELEASE_IDLE_GUIDE, eosMenuOn).map((step, i) => (
                                     <div
                                         key={`idle-guide-${i}`}
                                         className={`releaseIdleStep step-${i}`}
@@ -22513,7 +22538,7 @@ function ThinkStillReleaseArcade(props) {
                                     </div>
                                 ))}
                                 <div className="releaseIdleStoryCaption">
-                                    {RELEASE_IDLE_GUIDE.map((step, i) => (
+                                    {eosPickIdleGuide(RELEASE_IDLE_GUIDE, eosMenuOn).map((step, i) => (
                                         <span
                                             key={`idle-caption-${i}`}
                                             style={{
@@ -22566,10 +22591,12 @@ function ThinkStillReleaseArcade(props) {
                             <EosLayoutGuard game={selected} entries={renderedEntries} hostRef={gameHostRef} />
                         </React.Fragment>
                     ) : null}
+                    <EosPickBridge onPlay={startChosenGame} onLaunch={launchRelease} />
                     <EosTextFloor stage={stage} />
                     {stage === "reveal" && selected ? (
                         <div className="releaseCompleteOverlay">
                             <div className="releaseCompleteShell">
+                                {eosMenuOn /* F3: catalogue browsing is owner-only */ ? (
                                 <button
                                     className="releaseCompleteSideNav releaseCompletePrev"
                                     onClick={() => openAdjacentRelease(-1)}
@@ -22577,6 +22604,7 @@ function ThinkStillReleaseArcade(props) {
                                 >
                                     ‹ PREVIOUS
                                 </button>
+                                ) : null}
                                 <div className="releaseCompleteCard">
                                     <small>
                                         RELEASE COMPLETE · +{lastGain} STILL
@@ -22677,9 +22705,13 @@ function ThinkStillReleaseArcade(props) {
                                                     }
                                                     title="ThinkStill recommendation based on your thought and recent release choices"
                                                 >
+                                                    {eosMenuOn ? (
+                                                        <>
                                                     TRY{" "}
                                                     {recommendedReleaseGame?.name ||
                                                         "THINKSTILL PICK"}
+                                                        </>
+                                                    ) : "NEXT ▶" /* F3: never a game name as a choice */}
                                                 </button>
                                             </div>
                                         </>
@@ -22690,7 +22722,7 @@ function ThinkStillReleaseArcade(props) {
                                                     recommendedReleaseGesture?.verb ||
                                                         "tap"
                                                 ).toLowerCase()}`}
-                                                aria-label={`Animated preview of ${recommendedReleaseGame?.name || "recommended release"}`}
+                                                aria-label={eosMenuOn ? `Animated preview of ${recommendedReleaseGame?.name || "recommended release"}` : "Animated preview of your next release"}
                                             >
                                                 {recommendedReleasePreviewImage ? (
                                                     <img
@@ -22718,7 +22750,7 @@ function ThinkStillReleaseArcade(props) {
                                                     THINKSTILL RECOMMENDS NEXT
                                                 </small>
                                                 <strong>
-                                                    {recommendedReleaseGame?.name ||
+                                                    {(eosMenuOn && recommendedReleaseGame?.name) ||
                                                         "NEXT RELEASE"}
                                                 </strong>
                                                 <p>
@@ -22733,9 +22765,13 @@ function ThinkStillReleaseArcade(props) {
                                                             tryRecommendedRelease
                                                         }
                                                     >
+                                                        {eosMenuOn ? (
+                                                            <>
                                                         TRY{" "}
                                                         {recommendedReleaseGame?.name ||
                                                             "THIS RELEASE"}
+                                                            </>
+                                                        ) : "NEXT ▶" /* F3: ThinkStill picks the next release */}
                                                     </button>
                                                     <button
                                                         onClick={clearForNext}
@@ -22747,13 +22783,15 @@ function ThinkStillReleaseArcade(props) {
                                         </div>
                                     ) : null}
                                 </div>
+                                {eosMenuOn || !eos.checkinEnabled ? (
                                 <button
                                     className="releaseCompleteSideNav releaseCompleteNext"
-                                    onClick={() => openAdjacentRelease(1)}
-                                    aria-label="Open next release game"
+                                    onClick={() => (eosMenuOn ? openAdjacentRelease(1) : tryRecommendedRelease())}
+                                    aria-label={eosMenuOn ? "Open next release game" : "Next release — ThinkStill picks it"}
                                 >
                                     NEXT ›
                                 </button>
+                                ) : null}
                             </div>
                         </div>
                     ) : null}
@@ -22781,6 +22819,7 @@ function ThinkStillReleaseArcade(props) {
                                 const nextRaw = e.target.value.slice(0, 2000)
                                 setRaw(nextRaw)
                                 if (
+                                    eosMenuOn && // F3: a selected game is named only with the owner menu
                                     gameChoice &&
                                     stage === "input" &&
                                     nextRaw.trim()
@@ -22976,6 +23015,7 @@ function ThinkStillReleaseArcade(props) {
                         </div>
                     ) : null}
 
+                    {eosMenuOn /* F3: the game menu is owner-only ("Show game menu" property) */ ? (
                     <div className="releaseChoiceWrap" ref={gameMenuRef}>
                         <button
                             className={`releaseChoiceButton ${gameMenuOpen ? "open" : ""} ${releaseReadyToStart ? "ready" : ""}`}
@@ -23140,6 +23180,13 @@ function ThinkStillReleaseArcade(props) {
                             </div>
                         ) : null}
                     </div>
+                    ) : (
+                        <EosPickGoButton
+                            ready={stage === "input" && (!!raw.trim() || uploadedImages.length > 0)}
+                            next={stage !== "input" && !!selected}
+                            onGo={stage !== "input" && selected ? tryRecommendedRelease : launchRelease}
+                        />
+                    )}
 
                     {statusText ? (
                         <div className="releaseComposerStatus">
