@@ -1,0 +1,11 @@
+# Pilot A systems builder (70_pilot_core + 71_pilot_fx + demo) — progress
+- [x] (call ~6) read spec §0-2, §3.0, §4; build script. Plan: 70 core, 71 fx, 79_pilot_demo.jsx (?pilotdemo=1 → demo engine on ids 1/109/2 with sky/pool/workshop kits).
+- next: grep core globals, write files, build, test 390/1280, pilot=off, commit.
+- [x] (call ~16) face picks from contact strips (scratchpad faces_a/b.png, E01-E64): recorded in 71_pilot_fx.jsx EOS_PILOT_SOFT_FACE / EOS_PILOT_REACT_FACE.
+- [x] (call ~24) wrote src/pilot/70_pilot_core.jsx (switch+demo flag, registry, hints, words merge, charFor, marker, shell attrs + useEosPilotShell guide dock, afterglow + MO clear, S6 CSS).
+- next: 71_pilot_fx.jsx (S0-S5), 79_pilot_demo.jsx, build, drive.
+- [x] (call ~42) wrote 71_pilot_fx.jsx + 79_pilot_demo.jsx; build OK; 390 demo run: markers/arrows, guide dock+bend, toast dock, afterglow attrs, progress 0/33/67/96/100 OK.
+- fixed: face cross-fade gap when frames stall in the finale (outgoing face now hides after a delay; incoming fades in on top), running-anim budget (group motes/dust, gone objects stop loops, glitch jitter per actor), tones before arcade sfx, due timed cues fire sync, afterglow ::before !important (arcade already styles it).
+- env note: headless + parallel CPU load -> finale frames at 2-5 fps (timeline jumps 200-450 ms); wrapper finish work dominates.
+- next: rebuild, 390 rerun (timed finale shots), 1280 finishGame, pilot=off originals, commit.
+- [x] (call ~56) 1280 finishGame demo 1/109/2: reveal, 0 arrow misses, progress monotonic, 0 errors. pilot=off: POP + CRUSH originals reach reveal; CLEANSE original got STUCK -> cause: global `@property --hold-pct {inherits:false}` (spec S5) broke the original's inherited meter. DEVIATION: registration removed (spec risk 10 accepted). Reduced: pseudo-element quirk loops now stopped too.
