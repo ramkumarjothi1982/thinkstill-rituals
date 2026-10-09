@@ -491,7 +491,45 @@ function eosMoodGlyphOk(node, chrome) {
     }
     return true
 }
-function eosMoodContent(scope, root, W, H) {
+// Samples a pinned root's position over the next EOS_MOOD_LIFE ms of its finite CSS animations / transitions (on the
+// root and its ancestors inside the scope): each one is seeked ahead, the root measured (measure()), and every seek
+// restored, all in the same task, so nothing is ever painted, no animation event fires and the game never sees it.
+// Ambient loops (infinite) are left alone. → 1 when the root is moving, else 0.
+const EOS_MOOD_PATH_STEPS = [0.25, 0.5, 0.75, 1]
+function eosMoodPinPath(el, scope, measure) {
+    const anims = []
+    for (let e = el; e && anims.length < 8; e = e.parentElement) {
+        if (typeof e.getAnimations !== "function") break
+        for (const a of e.getAnimations()) {
+            if (a.playState !== "running" || !a.effect || Number(a.playbackRate) !== 1) continue
+            let end = Infinity
+            try {
+                end = a.effect.getComputedTiming().endTime
+            } catch {}
+            const cur = Number(a.currentTime)
+            if (end === Infinity || !isFinite(cur) || cur >= end) continue
+            anims.push({ a, cur, left: end - cur })
+        }
+        if (e === scope) break
+    }
+    if (!anims.length) return 0
+    const span = Math.min(EOS_MOOD_LIFE, Math.max(...anims.map((q) => q.left)))
+    try {
+        for (const f of EOS_MOOD_PATH_STEPS) {
+            for (const q of anims) q.a.currentTime = q.cur + Math.min(q.left, span * f)
+            measure()
+        }
+    } catch {
+    } finally {
+        for (const q of anims) {
+            try {
+                q.a.currentTime = q.cur
+            } catch {}
+        }
+    }
+    return 1
+}
+function eosMoodContent(scope, root, W, H, paths = false) {
     const out = []
     if (!scope || !root || typeof document === "undefined" || !scope.querySelectorAll) return out
     let R = null
@@ -514,13 +552,21 @@ function eosMoodContent(scope, root, W, H) {
     }
     const chrome = (el) => !!(el && el.closest && el.closest(EOS_MOOD_CHROME))
     try {
-        scope.querySelectorAll(EOS_MOOD_PIN).forEach((el) => {
-            if (chrome(el) || !eosMoodShown(el, false)) return
-            // a root still in its entrance scale (113's found anchors pop in from .3) is reserved at its full size
+        // a root still in its entrance scale (113's found anchors pop in from .3) is reserved at its full size
+        const pinAt = (el, kind) => {
             const r = el.getBoundingClientRect()
             const w = Math.max(r.width, (el.offsetWidth || 0) * k)
             const h = Math.max(r.height, (el.offsetHeight || 0) * k)
-            add({ left: r.left + r.width / 2 - w / 2, top: r.top + r.height / 2 - h / 2, width: w, height: h }, 6, "pin")
+            add({ left: r.left + r.width / 2 - w / 2, top: r.top + r.height / 2 - h / 2, width: w, height: h }, 6, kind)
+        }
+        // (only at placement: the follow loop checks what really lands on a word, not where things may go)
+        let moving = paths ? 0 : 12
+        scope.querySelectorAll(EOS_MOOD_PIN).forEach((el) => {
+            if (chrome(el) || !eosMoodShown(el, false)) return
+            pinAt(el, "pin")
+            // …and where it is GOING during the bloom: a character still in a finite move (112's Rush hops from the
+            // crater to the summit 1.2 s into its finale) is reserved along its way (EOS_MOOD_PATH_STEPS)
+            if (moving < 12) moving += eosMoodPinPath(el, scope, () => pinAt(el, "path"))
         })
         let n = 0
         scope.querySelectorAll('img, [style*="background-image"]').forEach((el) => {
@@ -946,7 +992,7 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
             const m = measure()
             if (!m) return false
             const { root, stage, W, H } = m
-            const content = eosMoodContent(scopeOf(m.host), root, W, H)
+            const content = eosMoodContent(scopeOf(m.host), root, W, H, true)
             const real = m.obstacles.concat(content)
             const obstacles = real.slice()
             let predicted = false
@@ -988,6 +1034,7 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
                 core: [Math.round(x), Math.round(y)],
                 obstacles: obstacles.length,
                 hard: content.length,
+                path: content.filter((o) => o.kind === "path").length,
                 predicted,
                 guess: predicted ? rr(guess) : null,
                 card: rr(m.card),
