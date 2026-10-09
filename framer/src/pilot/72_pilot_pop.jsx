@@ -346,9 +346,9 @@ const EosPilotPopInner = React.memo(function EosPilotPopInner({ live, wordsKey, 
                 run: (c) => {
                     const G = geomRef.current
                     const h = hero()
-                    setFaceP(100)
                     if (!G) return
                     if (c.reduced) {
+                        setFaceP(100)
                         st.hang.forEach((n) => n && c.anim(n.el, [{ opacity: 0.95 }, { opacity: 0 }], { duration: 300, fill: "forwards" }))
                         return
                     }
@@ -395,6 +395,7 @@ const EosPilotPopInner = React.memo(function EosPilotPopInner({ live, wordsKey, 
                     const G = geomRef.current
                     const pearl = pearlRef.current
                     const h = hero()
+                    setFaceP(100) // every face positive at the climax (deferred off the T0 frame: nothing is left to flip)
                     if (!G || !pearl) return
                     pearl.style.opacity = "1"
                     if (c.reduced) {
@@ -1504,7 +1505,7 @@ const EosPilotPopInner = React.memo(function EosPilotPopInner({ live, wordsKey, 
                                     <i className="popBlush" style={{ "--bs": `${Math.round(G.px * 0.2)}px`, left: "50%", top: `${(G.G / 2 - G.px * 0.08 + G.px * 0.12).toFixed(1)}px`, "--bx": `${Math.round(G.px * 0.26)}px` }} />
                                 </div>
                             </div>
-                            <i className="popPearl" ref={pearlRef} style={{ "--pd": `${Math.round(26 * G.K)}px`, "--ph": mirror.pearl, left: "50%", top: `${(G.G / 2 - G.px * 0.08 + G.px * 0.2).toFixed(1)}px` }} />
+                            <i className="popPearl" ref={pearlRef} style={{ "--pd": `${Math.round(34 * G.K)}px`, "--ph": mirror.pearl, left: "50%", top: `${(G.G / 2 - G.px * 0.08 + G.px * 0.2).toFixed(1)}px` }} />
                             <div
                                 className="popCalm"
                                 ref={calmRef}
@@ -1666,7 +1667,7 @@ ${EOS_PILOT_POP_AR} .popBlush::after{content:"";position:absolute;inset:0;border
 ${EOS_PILOT_POP_AR} .popLift[data-blush="1"] .popBlush{opacity:.7}
 ${EOS_PILOT_POP_AR} .popPearl{position:absolute;z-index:3;width:var(--pd);height:var(--pd);margin:calc(var(--pd) / -2) 0 0 calc(var(--pd) / -2);border-radius:50%;opacity:0;font-style:normal;
   background:radial-gradient(circle at 36% 30%,#fff 0 12%,hsla(var(--ph,200),95%,85%,.95) 34%,hsla(var(--ph,200),90%,66%,.85) 72%,hsla(var(--ph,200),90%,60%,.4));
-  box-shadow:0 0 14px 4px hsla(var(--ph,200),100%,80%,.85),0 0 34px 8px rgba(255,250,230,.55)}
+  box-shadow:0 0 16px 6px hsla(var(--ph,200),100%,80%,.9),0 0 44px 14px rgba(255,250,230,.6)}
 ${EOS_PILOT_POP_AR} .popCalm{position:absolute;z-index:2;border-radius:50%;overflow:hidden;opacity:0;isolation:isolate;
   box-shadow:0 0 0 1.5px rgba(255,255,255,.75),0 0 26px 4px rgba(200,236,255,.55),0 0 60px 10px rgba(255,244,214,.35)}
 ${EOS_PILOT_POP_AR} .popCalm[data-on="1"]{opacity:1}
