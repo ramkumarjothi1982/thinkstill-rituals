@@ -116,6 +116,9 @@ edit("I1", "E12", A,  # M2: no contradictory regex arrow in the LIVE GUIDE copy 
 edit("I1", "E13", A,  # asks E10: legacy wrapper narrates the feeling ("SLOW-DOWN · 33%"), like the new wrapper
      '                        GAME PROGRESS · {progress}%',
      '                        {eosMeterWord(p.game)} · {progress}%')
+edit("I1", "E15", A,  # fixes review: a guard-detected miss ("almost!") keeps its sound but no step reward / creep
+     '        p.sfx(kind)\n        const explicit = usesExplicitProgress(p.game)',
+     '        p.sfx(kind)\n        if (eosSfxMiss(p.game, kind)) return\n        const explicit = usesExplicitProgress(p.game)', 2)
 edit("I1", "E14", A,  # was I2-E1 (L5): store subscription + sound / haptics / music mirror, needed by new games in I1
      '    const [releaseCheck, setReleaseCheck] = React.useState(null)',
      '    const [releaseCheck, setReleaseCheck] = React.useState(null)\n'
@@ -215,11 +218,49 @@ _echo = ('                                        onPointerUp={() => stopEchoHol
          '                                            stopEchoHold(true)\n'
          '                                        }')
 edit("I3", "E5", A, _echo, _echo.replace("stopEchoHold(true)", "stopEchoHold(false)"))
+_bin_measure = ('    const measureTarget = (i) => {\n'
+                '        const b = bubbleRefs.current[i]?.getBoundingClientRect(),\n'
+                '            m = binMouthRef.current?.getBoundingClientRect()\n'
+                '        if (!b || !m) return { x: 0, y: 150 }\n'
+                '        return {\n'
+                '            x: m.left + m.width / 2 - (b.left + b.width / 2),\n'
+                '            y: m.top + m.height / 2 - (b.top + b.height / 2),\n'
+                '        }\n'
+                '    }\n')
+edit("I3", "E7", A, _bin_measure,  # 21 BIN: once the drag transform is visible (fixes CSS), aim the "gone" flight from the HOME slot
+     '    const measureTarget = (i) => {\n'
+     '        const el = bubbleRefs.current[i],\n'
+     '            b = el?.getBoundingClientRect(),\n'
+     '            m = binMouthRef.current?.getBoundingClientRect()\n'
+     '        if (!b || !m) return { x: 0, y: 150 }\n'
+     '        // EOS I3-E7: x/y animate from the home slot → subtract the visible drag translation (screen px → CSS px)\n'
+     '        let tx = 0,\n'
+     '            ty = 0,\n'
+     '            k = 1\n'
+     '        try {\n'
+     '            const t = new DOMMatrixReadOnly(getComputedStyle(el).transform)\n'
+     '            tx = t.m41 || 0\n'
+     '            ty = t.m42 || 0\n'
+     '            const kk = b.width / (el.offsetWidth * Math.hypot(t.a, t.b))\n'
+     '            if (Number.isFinite(kk) && kk > 0.05) k = kk\n'
+     '        } catch {}\n'
+     '        return {\n'
+     '            x: (m.left + m.width / 2 - (b.left + b.width / 2)) / k + tx,\n'
+     '            y: (m.top + m.height / 2 - (b.top + b.height / 2)) / k + ty,\n'
+     '        }\n'
+     '    }\n')
+edit("I3", "E6", A,  # 109 CLEANSE: a stale delayed write must never shrink the released list (stuck at 100 %)
+     '                    () => {\n                        setReleasedIndices(nextReleased)\n                    },',
+     '                    () => {\n                        setReleasedIndices((prev) =>\n'
+     '                            prev.length >= releasedRef.current.length\n'
+     '                                ? prev\n'
+     '                                : releasedRef.current.slice()\n'
+     '                        )\n                    },')
 
 # Symbols the edits reference that must be defined by src/eos/* (core defines the rest).
 REFERENCED = {
     "I1": {"components": ["EosThoughtFlow", "EosMoodGrade", "EosGuideArrows", "EosLegacyGuards", "EosTextFloor"],
-           "functions": ["eosGlyph", "eosGateProgress"]},
+           "functions": ["eosGlyph", "eosGateProgress", "eosSfxMiss"]},
     "I2": {"components": ["EosCheckIn", "EosCheckInChip", "EosWorldChips", "EosSafetyLayer", "EosShiftMeter", "EosMenuGroup", "EosCompanion"],
            "functions": ["EosRouteGame", "EosProfileOverride", "EosEntries"]},
     "I3": {"components": [], "functions": []},
@@ -229,6 +270,7 @@ STUB_BODIES = {
     "EosRouteGame": "function EosRouteGame() {\n    return null\n}",
     "EosProfileOverride": "function EosProfileOverride() {\n    return null\n}",
     "EosEntries": "function EosEntries() {\n    return null\n}",
+    "eosSfxMiss": "function eosSfxMiss() {\n    return false\n}",
     # same algorithm as docs/EOS_SPEC.md §11.2 so scratch builds behave like the final build
     "eosGateProgress": ("const EOS_STUB_PROGRESS_OWN = new WeakMap()\n"
                         "function eosGateProgress(ref, value, fromSfx) {\n"
