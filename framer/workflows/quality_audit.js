@@ -16,13 +16,9 @@ const CTX = `PROJECT: ThinkStill Release Arcade — a Framer code component (Rea
 Tooling: ${ROOT}/dev/drive.mjs (launch({width,height,dir}), listGames(page), startGame(page,NAME,text)); ${ROOT}/dev/eos_drive.mjs (launchEos, startGameById, finishGame, readProgress, ... usage at top of file); ${ROOT}/dev/contact_sheet.py OUT.png <pngs|globs> --cols N (tiles screenshots into one labelled image). Chromium at /opt/pw-browsers/chromium. Game catalog with mechanics/weaknesses: ${ROOT}/docs/catalog_A.md (ids 1-55) and catalog_B.md (56-110). Ignore "agent-proxy connect_rejected" noise. Keep throwaway scripts under /tmp/quality/.`
 
 phase('Capture')
-const cap = await agent(`${CTX}\n\nCAPTURE (scripted, unattended). 1) Build an isolated BASELINE (core only, no in-progress modules): cd ${ROOT} && python3 build.py --dev-dir /tmp/quality_base --modules 00_eos_core.jsx . 2) Write ONE node script /tmp/quality/sweep.mjs that, for every game in listGames order (all 110), at 1280x860 AND 390x844, using text "my boss yelled at me and I feel panic": starts the game; waits 2.5 s and saves START screenshot; then plays it with eos_drive's finishGame-style interaction but captures a MID screenshot at the first moment progress >= 40% (or after 12 s of play if progress cannot be read), then continues to the finish and saves FINISH (the moment the finish/reward fires) and REVEAL (2.5 s into the reveal) screenshots; caps each game at 75 s. During play, sample animation smoothness for 3 s with requestAnimationFrame (frame interval p50/p95/max ms, count of frames > 50 ms) and record long tasks via PerformanceObserver; record performance.memory.usedJSHeapSize at start and end (MB) and DOM node count; record page errors. Save PNGs to ${SHOTS}/<id>_<w>_<moment>.png (id = the game's GAMES id; resolve it from the name via window GAMES if exposed or from the source GAMES array), and metrics to ${QDIR}/metrics.json (array of {id,name,size,progressMax,finished,secondsToFinish,frame:{p50,p95,max,over50},longTasks,heapStartMB,heapEndMB,domNodes,errors}). Run two browser workers in parallel (split the list) to halve wall time; restart the browser every 20 games to avoid leaks; continue on per-game failure. 3) Then for every game build one contact sheet ${SHOTS}/sheets/<id>.png with the 8 shots (desktop start/mid/finish/reveal on row 1, phone on row 2): python3 ${ROOT}/dev/contact_sheet.py <out> <8 pngs> --cols 4 --width 2000. 4) Sanity-check by viewing 2 sheets yourself. 5) Commit ${QDIR}/metrics.json and the sheets directory only (not the raw PNGs). ${GIT}\nReturn: count of games captured per size, games that failed/never finished, top 10 worst p95 frame times and heap growth, and the ordered list of game ids with their names as JSON at the end of your answer (format: IDS_JSON=[{"id":1,"name":"POP"},...]).`, { label: 'capture:sweep', phase: 'Capture' })
-if (!cap) throw new Error('capture failed (likely usage limit) - resume later')
-const m = cap.match(/IDS_JSON=(\[[\s\S]*?\])/)
-let games = []
-try { games = m ? JSON.parse(m[1]) : [] } catch (e) { games = [] }
-if (games.length < 100) { games = Array.from({ length: 110 }, (_, i) => ({ id: i + 1, name: '' })) ; log('Could not parse game list; falling back to ids 1-110') }
-log(`Captured ${games.length} games`)
+let games = (args && args.games) || []
+if (!games.length) throw new Error('pass args.games (capture already completed on disk)')
+log(`Capture already complete on disk: ${games.length} games, contact sheets in ${SHOTS}/sheets, metrics in ${QDIR}/metrics.json`)
 
 phase('Rate')
 const RUBRIC = `RUBRIC (score 1-10 each, 10 = genuinely premium Pixar / Netflix level; 6 = decent web game; <=4 = looks cheap / broken):
@@ -35,7 +31,13 @@ F clarity & readability (would a first-time player know what to do in 2 seconds;
 G mobile layout (390 px: nothing cut off, overlapping, cramped; touch targets big)
 H relief fit (does the mechanic + look actually help the intended emotion)
 PERF: flag if p95 frame > 34 ms, any frame > 120 ms, heap growth > 25 MB, or errors (from metrics.json; note headless software rendering exaggerates costs — judge relatively).
-PREMIUM_READY = true only if every axis >= 8 and no perf flag.`
+BINDING STANDARDS: read ${ROOT}/docs/CREATIVE_STANDARDS.md once before rating. Judge PHONE (row 2) FIRST, desktop second. Characters must be ACTIVE PARTICIPANTS in the game world (reacting, transforming) — a static decal or corner companion scores D <= 4. Each game needs its OWN spectacular finale — a generic shared burst scores E <= 4. Bubble image rules: circular images, no black masks/boxes, readable text BELOW the image, no image/text overlap, nothing clipped — any violation fails visual readiness.
+READINESS (all three required for 'complete'):
+- functional_ready: finished on both sizes per metrics (finished=true), no errors, progress observed.
+- visual_ready: text readable, bubble rules pass, nothing clipped/overlapping at 390 and 1280, coherent environment.
+- premium_ready: every axis >= 8 and no perf flag.
+WORK TYPE: 'structural' if the mechanic / feedback loop / finale / character role must change (incl. look-alike games whose core interaction duplicates another game), 'polish' if only visual/animation/lighting work is needed, 'none' if premium-ready.
+Never inflate: cite the tile (e.g. "phone mid tile") for every problem and explain each low score.`
 const RATE_SCHEMA = {
   type: 'object',
   properties: {
@@ -46,7 +48,14 @@ const RATE_SCHEMA = {
         properties: {
           id: { type: 'number' }, name: { type: 'string' },
           scores: { type: 'object', properties: { A: { type: 'number' }, B: { type: 'number' }, C: { type: 'number' }, D: { type: 'number' }, E: { type: 'number' }, F: { type: 'number' }, G: { type: 'number' }, H: { type: 'number' } }, required: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] },
+          functional_ready: { type: 'boolean' },
+          visual_ready: { type: 'boolean' },
           premium_ready: { type: 'boolean' },
+          work_type: { type: 'string', enum: ['structural', 'polish', 'none'] },
+          bubble_rules_ok: { type: 'boolean' },
+          character_role: { type: 'string', description: 'how the emotion characters appear and behave in this game today (evidence)' },
+          finale: { type: 'string', description: 'what the finish/reveal actually shows today and whether it is unique (evidence)' },
+          score_rationale: { type: 'string', description: 'why each low score (<=6) was given, citing tiles' },
           perf_flags: { type: 'array', items: { type: 'string' } },
           looks_like: { type: 'string', description: 'which other games it is visually near-identical to (ids), if any' },
           strengths: { type: 'string' },
@@ -54,7 +63,7 @@ const RATE_SCHEMA = {
           improvements: { type: 'array', items: { type: 'string' }, description: 'concrete, implementable changes (what to draw/animate/change), most impactful first' },
           effort: { type: 'string', enum: ['S', 'M', 'L'] },
         },
-        required: ['id', 'name', 'scores', 'premium_ready', 'perf_flags', 'strengths', 'problems', 'improvements', 'effort'],
+        required: ['id', 'name', 'scores', 'functional_ready', 'visual_ready', 'premium_ready', 'work_type', 'bubble_rules_ok', 'character_role', 'finale', 'score_rationale', 'perf_flags', 'strengths', 'problems', 'improvements', 'effort'],
       },
     },
   },
@@ -69,5 +78,5 @@ if (ok.length < batches.length) throw new Error(`Only ${ok.length}/${batches.len
 
 phase('Report')
 const all = ok.flatMap(r => r.games)
-const report = await agent(`${CTX}\n\nREPORT. You have ${all.length} rated games in ${QDIR}/batch_*.json and metrics in ${QDIR}/metrics.json; contact sheets in ${SHOTS}/sheets/. Also read ${ROOT}/docs/briefs/router.md (section 7.2 EOS_EMOTION_ROUTES) to know which existing games users will meet first for each emotion. Write ${ROOT}/docs/QUALITY_REPORT.md for the owner (clear, non-technical where possible, but specific):\n1. Headline verdict: how many of 110 are premium-ready today, average score per rubric axis, the 3 biggest cross-cutting gaps (e.g. shared backdrop reused across N games, characters static/absent in N games, generic shared finale burst in N games, phone layout issues in N games).\n2. Ranked table of all games (id, name, overall = mean of A-H, weakest axis, premium_ready, perf flags).\n3. Top 10 strongest with why.\n4. Bottom 20 weakest with the specific improvements required (from the raters, sharpened), effort S/M/L.\n5. Visual-duplicate clusters (games that look the same) and how to differentiate each (distinct environment / finale per game).\n6. Character integration audit: where the existing emotion characters appear, where they are static, concrete reaction animations to add (face changes on progress, squash on hits, celebration on finish).\n7. Performance outliers with the metric and likely cause.\n8. POLISH PLAN prioritised by user impact: first the games most-routed for each emotion in EOS_EMOTION_ROUTES (users meet these first), then the weakest; group into reusable polish components where possible (e.g. one premium finale system with per-family variants, a character-reaction layer, environment kits) so improvements scale across games without making them identical; give an effort/token estimate per item and recommend what goes into Release 1 vs Release 2.\nThen commit docs/QUALITY_REPORT.md, ${QDIR}/batch_*.json. ${GIT}\nReturn a 15-line summary for the owner.`, { label: 'report:synthesize', phase: 'Report' })
+const report = await agent(`${CTX}\n\nREPORT. You have ${all.length} rated games in ${QDIR}/batch_*.json and metrics in ${QDIR}/metrics.json; contact sheets in ${SHOTS}/sheets/. Also read ${ROOT}/docs/briefs/router.md (section 7.2 EOS_EMOTION_ROUTES) to know which existing games users will meet first for each emotion. Write ${ROOT}/docs/QUALITY_REPORT.md for the owner (clear, non-technical where possible, but specific):\n1. Headline verdict: how many of 110 are premium-ready today, average score per rubric axis, the 3 biggest cross-cutting gaps (e.g. shared backdrop reused across N games, characters static/absent in N games, generic shared finale burst in N games, phone layout issues in N games).\n2. Ranked table of all games (id, name, overall = mean of A-H, weakest axis, premium_ready, perf flags).\n3. Top 10 strongest with why.\n4. Bottom 20 weakest with the specific improvements required (from the raters, sharpened), effort S/M/L.\n5. Visual-duplicate clusters (games that look the same) and how to differentiate each (distinct environment / finale per game).\n6. Character integration audit: where the existing emotion characters appear, where they are static, concrete reaction animations to add (face changes on progress, squash on hits, celebration on finish).\n7. Performance outliers with the metric and likely cause.\n0. READINESS TABLE: counts of functional-ready / visual-ready / premium-ready / complete (all three) out of 110, and structural vs polish vs none. Note that games 111-114 are new and are reviewed separately in the build pipeline.\n8. PILOT PROPOSAL: pick 6-8 representative pilot games (one per look-alike cluster, the most-routed per emotion, a few of the weakest) with, for each, what structural + visual changes the pilot would make, which reusable systems it would exercise (character reaction layer, finale toolkit, lighting rig, sound cues), and why it is representative.\n9. POLISH PLAN prioritised by user impact: first the games most-routed for each emotion in EOS_EMOTION_ROUTES (users meet these first), then the weakest; group into reusable polish components where possible (e.g. one premium finale system with per-family variants, a character-reaction layer, environment kits) so improvements scale across games without making them identical; give an effort/token estimate per item and recommend what goes into Release 1 vs Release 2.\nThen commit docs/QUALITY_REPORT.md, ${QDIR}/batch_*.json. ${GIT}\nReturn a 15-line summary for the owner.`, { label: 'report:synthesize', phase: 'Report' })
 return { captured: games.length, rated: all.length, summary: report }
