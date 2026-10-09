@@ -20,12 +20,20 @@
 //       on the calm pair.
 //   (b) FLIP BLOOM. The moment `.globalPlayGuide.isComplete` or `.tsRewardSurge.mega` first appears, the
 //       feeling's three `flip` words (core data: panic safe · slow · right here, sad lighter · warm · held …)
-//       bloom out of the Still Point (the measured `.eosCore` centre, else the stage centre), 250 ms apart, and
-//       float up 60 px as they fade (1.8 s). Negative words went in; positive words come out. The words are
-//       pre-rendered (hidden) and painted by the finish observer itself, so they start in the frame that shows the
-//       finish. They settle in a "crown" that avoids the finish card (predicted from the last press, then tracked),
-//       the LIVE GUIDE, the HUD and the companion, and always stays inside the stage.
+//       bloom out of the Still Point (the measured `.eosCore` centre, else the stage centre), 200 ms apart, and
+//       float up 60 px as they fade (1.5 s each): the whole bloom ends by 1.9 s, inside the shortest finish hold
+//       (2.05 s), so it never depends on how an engine times onDone. Negative words went in; positive words come out.
+//       The words are pre-rendered (hidden) and painted by the finish observer itself, so they start in the frame
+//       that shows the finish. Placement: the GAME'S OWN FINALE is a hard obstacle (CREATIVE_STANDARDS 2 + 4) —
+//       [data-eos-avoid] (contract: engines tag their character bubble and finale headline), [data-eos-char], the
+//       known 111-114 hero roots, and in every game each visible picture ≥ 20 px and text of ≥ 2 letters at ≥ 14 px;
+//       the arcade chrome (finish card — predicted, it is centred —, LIVE GUIDE, HUD, companion) is soft.
+//       The search widens in tiers until a clean place is found (crown near the Still Point → anywhere on the stage
+//       → tight / stacked crown → smaller words, never below 20 px). The crown never travels sideways: a word that
+//       something new lands on during its life fades away instead (yield).
 //       Reduced / calm: they fade in place (no transforms at all, not even for centring).
+//   The grade and air layers carve the chrome out (a feathered SVG mask over the HUD, the shift-sparks HUD and the
+//   LIVE GUIDE), so the small score / sparks text keeps its full contrast.
 //
 // Mount (integration I1-E3, inside the play fragment, both wrappers, every game):
 //   <EosMoodGrade game={selected} hostRef={gameHostRef} reduced={!!reduced} />
@@ -245,22 +253,31 @@ function eosMoodFlipWords(emo) {
 }
 
 // ---------------------------------------------------------------- flip crown layout (pure geometry)
-// The crown: left word low, centre word high, right word low — read left → right as they bloom.
+// Layouts: "crown" (left word low, centre word high, right word low — read left → right as they bloom),
+// "tight" (the same crown pulled in until the side words only clear each other) and "stack" (three lines, read top →
+// bottom). → [dx, dy] offset of word i from the anchor. dx = [left, right] spread; for "stack", lift = the line pitch.
 const EOS_MOOD_SLOTS = [
     [-1, 0.28],
     [0, 1],
     [1, 0.28],
 ]
-const EOS_MOOD_RISE = 60
-// Offset of word i from the crown anchor. dx = [left, right] spread (each side sized to its neighbour's width).
-function eosMoodSlotOff(i, dx, lift) {
+// The float: each word rises 44 px as it fades. Only the first 30 px count for placement (the rest is crossed at
+// under half opacity), so the crown fits the narrow bands a busy phone finale leaves.
+const EOS_MOOD_RISE = 44
+const EOS_MOOD_RISE_BOX = 30
+function eosMoodSlotOff(i, dx, lift, layout) {
+    if (layout === "stack") return [0, (i - 1) * (Number(lift) || 0)]
     const s = EOS_MOOD_SLOTS[i] || [0, 0]
     const d = Array.isArray(dx) ? (s[0] < 0 ? dx[0] : dx[1]) : Number(dx) || 0
     return [s[0] * d, -s[1] * lift]
 }
-// Things the words must not land on (stage-relative): the arcade's finish card (it sits where the last tap
-// was), the LIVE GUIDE panel, the HUD, the companion.
+// SOFT obstacles (stage-relative), the arcade chrome: the finish card (it sits where the last tap was), the LIVE GUIDE
+// panel, the HUD, the companion. HARD obstacles are the game's own finale (eosMoodContent): the words supplement a
+// game's finale and never cover it (CREATIVE_STANDARDS 2 + 4).
 const EOS_MOOD_AVOID = ".globalFinishFeedbackCopy, .globalPlayGuide, .engineProgressHud, .tsShiftRewardHud, .eosCompanion"
+// Weights per px² of overlap (dist: per px of anchor travel from the Still Point). Hard content weighs 12× the chrome;
+// the finish card (its "SHIFTED ✓" is the finish message) weighs 2.5× the rest of the chrome.
+const EOS_MOOD_COST = { dist: 22, out: 6, soft: 4, card: 10, hard: 48 }
 let eosMoodCanvas = null
 function eosMoodTextWidth(text, px) {
     try {
@@ -268,33 +285,34 @@ function eosMoodTextWidth(text, px) {
             eosMoodCanvas = eosMoodCanvas || document.createElement("canvas")
             const ctx = eosMoodCanvas.getContext("2d")
             if (ctx) {
-                ctx.font = `800 ${px}px "Baloo 2", Nunito, system-ui, sans-serif`
+                // the words render in Baloo 2 900 (.eosMoodWordTx): measure at the same weight
+                ctx.font = `900 ${px}px "Baloo 2", Nunito, system-ui, sans-serif`
                 const w = ctx.measureText(String(text)).width
                 if (w > 0) return w * 1.03
             }
         }
     } catch {}
-    return String(text).length * px * 0.56
-}
-// Obstacle-set signature on an 8 px grid (re-place only when something really moved / appeared).
-function eosMoodSig(list) {
-    return list.map((o) => `${Math.round(o.x / 8)},${Math.round(o.y / 8)},${Math.round(o.w / 8)},${Math.round(o.h / 8)}`).join("|")
+    return String(text).length * px * 0.58
 }
 function eosMoodOverlap(a, b) {
     const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)
     const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y)
     return w > 0 && h > 0 ? w * h : 0
 }
-// → {x, y, dx:[left, right], lift, fs, boxes, score} — the anchor nearest the Still Point (x0, y0) whose word
-// boxes (including their 60 px rise) stay inside the stage and off every obstacle. The centre word sits at least
-// one line above the side words (lift × .72 ≥ 1.15 em), so the words never touch, whatever their length; each
-// side also spreads out to clear its neighbour (two-word flips such as "right here" / "not alone").
-function eosMoodPlace({ W, H, x0, y0, phone, words, obstacles = [] }) {
-    const fs = phone ? eosClamp(W * 0.07, 22, 30) : eosClamp(W * 0.044, 22, 42)
-    const base = phone ? eosClamp(W * 0.27, 78, 118) : eosClamp(W * 0.17, 120, 210)
-    const lift = Math.max(phone ? 54 : 66, fs * 1.6)
+// The crown's measurements for one font size + layout: {fs, widths, dx:[left, right], lift, layout}.
+function eosMoodGeom(W, phone, words, fs, layout) {
     const widths = words.map((w) => eosMoodTextWidth(w, fs) + 12)
     const gap = phone ? 6 : 16
+    if (layout === "stack") return { fs, widths, dx: [0, 0], lift: Math.round(fs * 1.24), layout }
+    if (layout === "tight") {
+        // the side words sit one line below the centre word, so they only have to clear EACH OTHER
+        const d = Math.max(((widths[0] || 0) + (widths[2] || 0)) / 4 + gap / 2, fs * 0.8)
+        return { fs, widths, dx: [d, d], lift: fs * 1.6, layout }
+    }
+    // the centre word sits at least one line above the side words (lift × .72 ≥ 1.15 em), so the words never touch,
+    // whatever their length; each side also spreads out to clear its neighbour (two-word flips: "right here").
+    const base = phone ? eosClamp(W * 0.27, 78, 118) : eosClamp(W * 0.17, 120, 210)
+    const lift = Math.max(phone ? 54 : 66, fs * 1.6)
     const cap = Math.max(base, W * 0.42)
     const spread = (a, b) => eosClamp((a + b) / 2 + gap, base, cap)
     const dx = [spread(widths[0] || 0, widths[1] || 0), spread(widths[1] || 0, widths[2] || 0)]
@@ -306,54 +324,191 @@ function eosMoodPlace({ W, H, x0, y0, phone, words, obstacles = [] }) {
         dx[0] *= k
         dx[1] *= k
     }
-    const boxesAt = (x, y) =>
-        words.map((_, i) => {
-            const o = eosMoodSlotOff(i, dx, lift)
-            const cx = x + o[0]
-            const cy = y + o[1]
-            const h = fs * 1.2
-            return { x: cx - widths[i] / 2, y: cy - h / 2 - EOS_MOOD_RISE, w: widths[i], h: h + EOS_MOOD_RISE, cx, cy }
-        })
+    return { fs, widths, dx, lift, layout: "crown" }
+}
+// Word boxes of geometry g anchored at (x, y), each including the counted part of its rise.
+function eosMoodBoxes(g, x, y) {
+    return g.widths.map((w, i) => {
+        const o = eosMoodSlotOff(i, g.dx, g.lift, g.layout)
+        const cx = x + o[0]
+        const cy = y + o[1]
+        const h = g.fs * 1.2
+        return { x: cx - w / 2, y: cy - h / 2 - EOS_MOOD_RISE_BOX, w, h: h + EOS_MOOD_RISE_BOX, cx, cy }
+    })
+}
+// Overlap of a set of word boxes: {out (px² outside the stage), soft, hard}.
+function eosMoodHits(boxes, obstacles, inside) {
+    let out = 0
+    let soft = 0
+    let hard = 0
+    for (const b of boxes) {
+        out += b.w * b.h - eosMoodOverlap(b, inside)
+        for (const o of obstacles) {
+            const v = eosMoodOverlap(b, o)
+            if (v) o.hard ? (hard += v) : (soft += o.card ? (v * EOS_MOOD_COST.card) / EOS_MOOD_COST.soft : v)
+        }
+    }
+    return { out, soft, hard }
+}
+// → {x, y, dx, lift, fs, layout, boxes, score, clean, tier, hard, soft, out}. Finds the anchor nearest the Still Point
+// (x0, y0) whose word boxes (including their rise) stay inside the stage and off every obstacle, searching in tiers and
+// stopping at the first tier with a CLEAN place (no overlap at all):
+//   0 the crown within ±240 px of the Still Point · 1 the crown anywhere on the stage (the clearest band above or below
+//   the game's character) · 2 a tight crown, then a stacked one · 3 smaller words (×.84, ×.7, never below 20 px).
+// When nothing is clean, the least-covering place wins (hard content weighs 12× the chrome).
+function eosMoodPlace({ W, H, x0, y0, phone, words, obstacles = [] }) {
+    const fs0 = phone ? eosClamp(W * 0.07, 22, 30) : eosClamp(W * 0.044, 22, 42)
     const m = 8
     const inside = { x: m, y: m, w: Math.max(1, W - 2 * m), h: Math.max(1, H - 2 * m) }
-    let best = null
-    const xs = [0, -0.14, 0.14, -0.26, 0.26, -0.36, 0.36].map((f) => f * W)
-    const ys = [0, -60, 60, -120, 120, -180, 180, -240, 240]
-    for (const oy of ys)
-        for (const ox of xs) {
-            const x = x0 + ox
-            const y = y0 + oy
-            const boxes = boxesAt(x, y)
-            let score = (Math.abs(ox) + Math.abs(oy)) * 22
-            for (const b of boxes) {
-                score += (b.w * b.h - eosMoodOverlap(b, inside)) * 6
-                for (const o of obstacles) score += eosMoodOverlap(b, o) * 4
-            }
-            if (!best || score < best.score) best = { x, y, dx, lift, fs, boxes, score }
-        }
-    // final nudge: slide the chosen crown sideways into the stage when it pokes out (kept only if it scores better)
-    const lo = Math.min(...best.boxes.map((b) => b.x))
-    const hi = Math.max(...best.boxes.map((b) => b.x + b.w))
-    const shift = lo < m ? Math.min(m - lo, Math.max(0, W - m - hi)) : hi > W - m ? -Math.min(hi - (W - m), Math.max(0, lo - m)) : 0
-    if (shift) {
-        const x = best.x + shift
-        const boxes = boxesAt(x, best.y)
-        let score = (Math.abs(x - x0) + Math.abs(best.y - y0)) * 22
-        for (const b of boxes) {
-            score += (b.w * b.h - eosMoodOverlap(b, inside)) * 6
-            for (const o of obstacles) score += eosMoodOverlap(b, o) * 4
-        }
-        if (score < best.score) best = { ...best, x, boxes, score }
+    const C = EOS_MOOD_COST
+    const near = { xs: [0, -0.14, 0.14, -0.26, 0.26, -0.36, 0.36].map((f) => f * W), ys: [0, -60, 60, -120, 120, -180, 180, -240, 240] }
+    const wide = (fs) => {
+        const ys = []
+        for (let y = m + EOS_MOOD_RISE_BOX + fs * 1.4; y <= H - m - fs * 0.6; y += 24) ys.push(y - y0)
+        return { xs: [0, -0.12, 0.12, -0.24, 0.24, -0.34, 0.34, -0.42, 0.42].map((f) => f * W), ys }
     }
-    return best
+    const fsList = [fs0]
+    for (const k of [0.84, 0.7]) {
+        const f = Math.max(20, Math.round(fs0 * k))
+        if (f < fsList[fsList.length - 1] - 1) fsList.push(f)
+    }
+    const tiers = [[{ fs: fs0, layout: "crown", grid: near }], [{ fs: fs0, layout: "crown", grid: wide(fs0) }], [{ fs: fs0, layout: "tight", grid: wide(fs0) }, { fs: fs0, layout: "stack", grid: wide(fs0) }], []]
+    for (const f of fsList.slice(1)) for (const layout of ["crown", "tight", "stack"]) tiers[3].push({ fs: f, layout, grid: wide(f) })
+    const LAYOUT_COST = { crown: 0, tight: 600, stack: 1400 }
+    const evalAt = (g, x0c, y, tier) => {
+        // slide the crown sideways into the stage when it pokes out and fits (a long right word, an edge anchor)
+        let x = x0c
+        let boxes = eosMoodBoxes(g, x, y)
+        const lo = Math.min(...boxes.map((q) => q.x))
+        const hi = Math.max(...boxes.map((q) => q.x + q.w))
+        const shift = lo < m ? Math.min(m - lo, Math.max(0, W - m - hi)) : hi > W - m ? -Math.min(hi - (W - m), Math.max(0, lo - m)) : 0
+        if (shift) {
+            x += shift
+            boxes = eosMoodBoxes(g, x, y)
+        }
+        const h = eosMoodHits(boxes, obstacles, inside)
+        const score = (Math.abs(x - x0) + Math.abs(y - y0)) * C.dist + h.out * C.out + h.soft * C.soft + h.hard * C.hard + LAYOUT_COST[g.layout] + (fs0 - g.fs) * 140
+        return { x, y, dx: g.dx, lift: g.lift, fs: g.fs, layout: g.layout, widths: g.widths, boxes, score, clean: h.out < 1 && h.soft < 1 && h.hard < 1, tier, ...h }
+    }
+    let best = null
+    let found = null
+    for (let t = 0; t < tiers.length && !found; t++) {
+        for (const v of tiers[t]) {
+            const g = eosMoodGeom(W, phone, words, v.fs, v.layout)
+            for (const oy of v.grid.ys)
+                for (const ox of v.grid.xs) {
+                    const c = evalAt(g, x0 + ox, y0 + oy, t)
+                    if (!best || c.score < best.score) best = c
+                    if (c.clean && (!found || c.score < found.score)) found = c
+                }
+        }
+    }
+    return found || best
+}
+// The game's own finale + characters as HARD obstacles (root px), read from the game host:
+//   · pinned roots, counted even while they are still fading in: [data-eos-avoid] (the contract: engines tag their
+//     character bubble and finale headline), [data-eos-finale], [data-eos-char] (EosCharacterOrb) and the known
+//     roots of 111-114 until they carry the tag;
+//   · every visible picture ≥ 20 px (<img> icons and bubbles, circular background-image bubbles);
+//   · every visible text of ≥ 2 letters at ≥ 14 px (the user's words, the finale headline, in-world labels).
+// Skips the arcade chrome (soft obstacles), anything larger than 45 % of the stage (a backdrop, a container) and
+// sub-word glyphs (emoji particles, "+10"). Capped (80 pictures, 220 text lines) so a busy finale stays cheap.
+const EOS_MOOD_CHROME = ".globalPlayGuide, .engineProgressHud, .tsShiftRewardHud, .globalFeedbackCopyLayer, .eosCompanion, .eosMoodFlip"
+const EOS_MOOD_PIN = "[data-eos-avoid], [data-eos-finale], [data-eos-char], .eosOrbFace, .eosVolcHero, .eosVolcCloudFace, .eosGroundHero, .eosGroundFace, .eosGroundFin, .eosSighOrbWrap, .eosSighMoonFace, .eosSighSyncFace"
+function eosMoodShown(el, opacity) {
+    try {
+        if (typeof el.checkVisibility === "function") return el.checkVisibility({ opacityProperty: opacity, checkOpacity: opacity, visibilityProperty: true, checkVisibilityCSS: true })
+        const cs = getComputedStyle(el)
+        return cs.display !== "none" && cs.visibility !== "hidden" && (!opacity || Number(cs.opacity) > 0.02)
+    } catch {
+        return true
+    }
+}
+function eosMoodContent(scope, root, W, H) {
+    const out = []
+    if (!scope || !root || typeof document === "undefined" || !scope.querySelectorAll) return out
+    let R = null
+    let k = 1
+    try {
+        R = root.getBoundingClientRect()
+        k = eosStageScale(root) || 1
+    } catch {
+        return out
+    }
+    const maxA = W * H * 0.45
+    const add = (r, pad, kind) => {
+        if (!r || r.width < 2 || r.height < 2) return
+        const x = (r.left - R.left) / k - pad
+        const y = (r.top - R.top) / k - pad
+        const w = r.width / k + 2 * pad
+        const h = r.height / k + 2 * pad
+        if (w * h > maxA || x + w < 0 || y + h < 0 || x > W || y > H) return
+        out.push({ x, y, w, h, hard: true, kind })
+    }
+    const chrome = (el) => !!(el && el.closest && el.closest(EOS_MOOD_CHROME))
+    try {
+        scope.querySelectorAll(EOS_MOOD_PIN).forEach((el) => {
+            if (!chrome(el) && eosMoodShown(el, false)) add(el.getBoundingClientRect(), 6, "pin")
+        })
+        let n = 0
+        scope.querySelectorAll('img, [style*="background-image"]').forEach((el) => {
+            if (n >= 80 || chrome(el)) return
+            const r = el.getBoundingClientRect()
+            if (r.width / k < 20 || r.height / k < 20) return
+            if (el.tagName !== "IMG") {
+                const cs = getComputedStyle(el)
+                if (!/url\(/.test(cs.backgroundImage || "")) return
+                if ((parseFloat(cs.borderTopLeftRadius) || 0) < (Math.min(r.width, r.height) / k) * 0.3) return
+            }
+            if (!eosMoodShown(el, true)) return
+            n++
+            add(r, 6, "img")
+        })
+        const tw = document.createTreeWalker(scope, typeof NodeFilter !== "undefined" ? NodeFilter.SHOW_TEXT : 4)
+        const rg = document.createRange()
+        const okOf = new Map()
+        let lines = 0
+        for (let node = tw.nextNode(); node && lines < 220; node = tw.nextNode()) {
+            const s = node.nodeValue
+            if (!s || s.length < 2 || !/\S/.test(s)) continue
+            const letters = s.match(/\p{L}/gu)
+            if (!letters || letters.length < 2) continue
+            const el = node.parentElement
+            if (!el) continue
+            let ok = okOf.get(el)
+            if (ok === undefined) {
+                ok = false
+                try {
+                    ok = !chrome(el) && parseFloat(getComputedStyle(el).fontSize) >= 14 && eosMoodShown(el, true)
+                } catch {}
+                okOf.set(el, ok)
+            }
+            if (!ok) continue
+            rg.selectNodeContents(node)
+            for (const r of Array.from(rg.getClientRects())) {
+                add(r, 4, "text")
+                lines++
+            }
+        }
+    } catch {}
+    return out
 }
 
 // ---------------------------------------------------------------- live state for tests (dev handle)
-const EOS_MOOD_LIVE = { emo: null, p: null, t: 0, shown: 0, step: 0, calm: false, late: false, done: false, bloomAt: 0, bloomPerf: 0, painted: false, words: [], bloomFrom: null, place: null }
+const EOS_MOOD_LIVE = { emo: null, p: null, t: 0, shown: 0, step: 0, calm: false, late: false, done: false, bloomAt: 0, bloomPerf: 0, painted: false, words: [], bloomFrom: null, place: null, carve: 0 }
 
 // ---------------------------------------------------------------- component
+// The arcade's finish card size (px, layout) per wrapper, at phone (viewport ≤ 700) and desktop: width = min(w, shell − inset).
+const EOS_MOOD_CARD = {
+    centre: { phone: { w: 320, inset: 36, h: 108 }, desk: { w: 440, inset: 80, h: 124 } },
+    press: { phone: { w: 300, inset: 72, h: 120 }, desk: { w: 430, inset: 112, h: 132 } },
+}
 const EOS_MOOD_DONE_SEL = ".globalPlayGuide.isComplete, .tsRewardSurge.mega"
-const EOS_MOOD_STAGGER = 250
+// The whole bloom fits inside 2.0 s, the shortest finish hold (GameEngineLegacy: finishHoldMs ≥ 2050 ms after
+// isComplete when an engine calls onDone without reporting 100 first): third word starts at 400 ms + 1.5 s life.
+const EOS_MOOD_STAGGER = 200
+const EOS_MOOD_LIFE_MS = 1500
+const EOS_MOOD_LIFE = EOS_MOOD_LIFE_MS + EOS_MOOD_STAGGER * 2
 
 // Writes the colour script at one script position straight onto the two layers (custom properties only; React
 // never renders these keys, so the two never fight). Driven per frame by the component's tween.
@@ -380,15 +535,50 @@ function eosMoodWrite(grade, air, col) {
 }
 const eosMoodUseLayout = typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect
 
-// The per-bloom style of word i: its place in the crown + where it is born (the Still Point), as an offset.
+// ---- chrome carve-out: the grade and the air layer sit above the game host (z 54 vs 2), so without a mask their
+// screen-blended edge grip lifts the dark HUD / LIVE GUIDE pills and costs the small "SHIFT SPARKS" / "TOKENS" text
+// about a third of its contrast. A feathered SVG mask (rounded holes, 6 px blur) keeps the chrome un-graded.
+const EOS_MOOD_CARVE = ".engineProgressHud, .tsShiftRewardHud, .globalPlayGuide, .releaseScoreBar"
+function eosMoodCarveUrl(W, H, rects) {
+    if (!rects.length || !W || !H) return ""
+    const holes = rects
+        .map((r) => {
+            const pad = 8
+            const w = Math.round(r.w + pad * 2)
+            const h = Math.round(r.h + pad * 2)
+            return `<rect x="${Math.round(r.x - pad)}" y="${Math.round(r.y - pad)}" width="${w}" height="${h}" rx="${Math.round(Math.min(h / 2, 22))}"/>`
+        })
+        .join("")
+    const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">` +
+        `<defs><filter id="b" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>` +
+        `<mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="#fff"/><g fill="#000" filter="url(#b)">${holes}</g></mask></defs>` +
+        `<rect width="${W}" height="${H}" fill="#000" mask="url(#m)"/></svg>`
+    return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
+}
+function eosMoodSetMask(el, url) {
+    if (!el) return
+    try {
+        const st = el.style
+        const keys = ["mask-image", "-webkit-mask-image"]
+        if (url) {
+            keys.forEach((k) => st.setProperty(k, url))
+            ;["mask-size", "-webkit-mask-size"].forEach((k) => st.setProperty(k, "100% 100%"))
+            ;["mask-repeat", "-webkit-mask-repeat"].forEach((k) => st.setProperty(k, "no-repeat"))
+        } else ["mask-image", "-webkit-mask-image", "mask-size", "-webkit-mask-size", "mask-repeat", "-webkit-mask-repeat"].forEach((k) => st.removeProperty(k))
+    } catch {}
+}
+
+// The per-bloom style of word i: its place in the crown, its size and where it is born (the Still Point), as an offset.
 function eosMoodWordStyle(b, i) {
     const o = (b.start && b.start[i]) || [0, 0]
-    const at = eosMoodSlotOff(i, b.dx, b.lift)
+    const at = eosMoodSlotOff(i, b.dx, b.lift, b.layout)
     return {
         left: `${Math.round(b.x + at[0])}px`,
         top: `${Math.round(b.y + at[1])}px`,
         "--eos-mood-dx": `${o[0]}px`,
         "--eos-mood-dy": `${o[1]}px`,
+        "--eos-mood-fs": `${Math.round(b.fs || 26)}px`,
     }
 }
 // The words are pre-rendered (hidden) from mount, so the bloom can start in the SAME frame that paints
@@ -408,6 +598,7 @@ function eosMoodPaint(root, b) {
             for (const k in st) el.style.setProperty(k, st[k])
         })
         root.setAttribute("data-eos-from", b.from)
+        root.setAttribute("data-eos-layout", b.layout)
         if (b.phone) root.classList.add("isPhone")
         root.classList.add("isBloom")
         return true
@@ -427,6 +618,8 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
     const airRef = React.useRef(null)
     const tween = React.useRef({ shown: null, key: "", raf: 0 })
     const [bloom, setBloom] = React.useState(null)
+    const gameIdRef = React.useRef(0)
+    gameIdRef.current = Number(game && game.id) || 0
 
     // The finish always lands on the calm pair, even when a game completes below 95 % on its bar.
     const done = !!bloom
@@ -489,18 +682,58 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
         []
     )
 
+    // ---- chrome carve-out (see EOS_MOOD_CARVE): re-measured twice a second and on resize; the mask is rewritten only
+    // when a chrome rect really moved (6 px grid).
+    React.useEffect(() => {
+        let alive = true
+        let sig = ""
+        const run = () => {
+            if (!alive) return
+            const g = gradeRef.current
+            if (!g) return
+            try {
+                const stage = g.closest ? g.closest(".releaseStage") : null
+                const W = g.offsetWidth
+                const H = g.offsetHeight
+                const rects = []
+                if (stage && W && H)
+                    stage.querySelectorAll(EOS_MOOD_CARVE).forEach((el) => {
+                        const q = eosRelRect(el, g)
+                        if (!q || q.w < 4 || q.h < 4 || q.x > W || q.y > H || q.x + q.w < 0 || q.y + q.h < 0) return
+                        if (!eosMoodShown(el, true)) return
+                        rects.push(q)
+                    })
+                const next = `${W}x${H}|` + rects.map((r) => [r.x, r.y, r.w, r.h].map((v) => Math.round(v / 6)).join(",")).join("|")
+                if (next === sig) return
+                sig = next
+                const url = eosMoodCarveUrl(W, H, rects)
+                eosMoodSetMask(g, url)
+                eosMoodSetMask(airRef.current, url)
+                EOS_MOOD_LIVE.carve = url ? rects.length : 0
+            } catch {}
+        }
+        run()
+        const iv = setInterval(run, 500)
+        if (typeof window !== "undefined") window.addEventListener("resize", run)
+        return () => {
+            alive = false
+            clearInterval(iv)
+            if (typeof window !== "undefined") window.removeEventListener("resize", run)
+        }
+    }, [])
+
     // ---- finish watch: the first `.globalPlayGuide.isComplete` / `.tsRewardSurge.mega` → bloom once per mount.
-    // The arcade's finish card (`.globalFinishFeedbackCopy`, placed where the last tap was) can arrive up to a few
-    // seconds AFTER isComplete (POP ≈ 0.9 s, HOT POTATO ≈ 2.5 s): for the life of the words the crown keeps
-    // re-checking its obstacles and glides out of the way (0.5 s) instead of landing on the card.
+    // Placement uses the chrome (soft), the game's own finale + characters (hard) and the arcade's finish card, which
+    // can arrive up to ~1 s AFTER isComplete: its place (centred in the game window) is reserved before it shows. The crown never travels sideways: when something new lands on a word
+    // during its life (a finale headline sliding in, a card the prediction missed), that word yields (fades in .26 s).
     React.useEffect(() => {
         let alive = true
         let timer = 0
-        let sig = ""
         let geo = null
         let guess = null
         let firedAt = 0
         const tones = []
+        const scopeOf = (host) => host || null
         const measure = () => {
             const root = flipRef.current
             const host = hostRef && hostRef.current
@@ -509,8 +742,9 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
             const W = root.offsetWidth || (stage && stage.offsetWidth) || 0
             const H = root.offsetHeight || (stage && stage.offsetHeight) || 0
             if (!W || !H) return null
-            // Obstacles in root px. An element still in its entrance scale is measured at its layout size.
+            // Chrome obstacles in root px. An element still in its entrance scale is measured at its layout size.
             const obstacles = []
+            let card = null
             try {
                 const scope = stage || host
                 if (scope)
@@ -521,14 +755,23 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
                         if (cs.display === "none" || cs.visibility === "hidden" || Number(cs.opacity) === 0) return
                         const w = Math.max(q.w, el.offsetWidth || 0) + 20
                         const h = Math.max(q.h, el.offsetHeight || 0) + 20
-                        obstacles.push({ x: q.cx - w / 2, y: q.cy - h / 2, w, h })
+                        const o = { x: q.cx - w / 2, y: q.cy - h / 2, w, h }
+                        if (el.classList && el.classList.contains("globalFinishFeedbackCopy")) {
+                            o.card = true
+                            card = o
+                        }
+                        obstacles.push(o)
                     })
             } catch {}
-            return { root, stage, W, H, obstacles }
+            return { root, stage, host, W, H, obstacles, card }
         }
-        // The arcade centres its finish card on the last press inside `.cinematicContentShell` (default 74 % / 14 %),
-        // clamped into the window (fitFeedbackInsideGameWindow). Track that press so the crown can leave room for the
-        // card BEFORE it arrives; the follow-up check corrects any miss.
+        // The arcade's finish card can land up to ~1 s after isComplete, so its place is reserved BEFORE it shows
+        // (a miss is caught by the yield check). Measured, both sizes:
+        //   · GameEngine (ids 100+): the final !important rule (GLOBAL_FINAL_MESSAGE_GUARANTEE_CSS) centres it in
+        //     `.cinematicContentShell` (390 → 320 × 101), whatever the last press was;
+        //   · GameEngineLegacy (ids 1-99): it is centred on the last press (default 74 % / 14 %) and clamped into the
+        //     shell (fitFeedbackInsideGameWindow: 42 px sides, 58 px top, 28 px bottom; 390 → 288 × 114). The press is
+        //     tracked the same way the arcade does (down / up / a move with a button held).
         let press = null
         const host0 = hostRef && hostRef.current
         const onPress = (e) => {
@@ -537,40 +780,43 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
             if (t && t.closest && t.closest(".cinematicContentShell")) press = { x: e.clientX, y: e.clientY }
         }
         if (host0 && host0.addEventListener) ["pointerdown", "pointerup", "pointermove"].forEach((k) => host0.addEventListener(k, onPress, true))
-        const predictCard = (root, W) => {
+        const predictCard = (root) => {
             const host = hostRef && hostRef.current
             const shell = host && host.querySelector(".cinematicContentShell")
-            if (!shell || !root) return null
-            const R = shell.getBoundingClientRect()
-            const k = eosStageScale(shell) || 1
-            const sr = eosRelRect(shell, root)
-            if (!R.width || !R.height || !sr) return null
-            const sw = R.width / k
-            const sh = R.height / k
-            const fx = press ? eosClamp((press.x - R.left) / R.width, 0, 1) : 0.74
-            const fy = press ? eosClamp((press.y - R.top) / R.height, 0, 1) : 0.14
-            const narrow = W <= 700
-            const w = Math.min(narrow ? 300 : 450, sw - (narrow ? 72 : 112))
-            const h = narrow ? 128 : 150
-            const left = eosClamp(fx * sw - w / 2, 42, Math.max(42, sw - 42 - w))
-            const top = eosClamp(fy * sh - h / 2, 58, Math.max(58, sh - 28 - h))
-            return { x: sr.x + left - 10, y: sr.y + top - 10, w: w + 20, h: h + 20, predicted: true }
+            const sr = shell ? eosRelRect(shell, root) : null
+            if (!sr || !sr.w || !sr.h) return null
+            const vw = typeof window !== "undefined" ? window.innerWidth : 1280
+            const C = EOS_MOOD_CARD[gameIdRef.current >= 100 ? "centre" : "press"][vw <= 700 ? "phone" : "desk"]
+            const w = Math.max(160, Math.min(C.w, sr.w - C.inset))
+            const h = C.h
+            let cx = sr.cx
+            let cy = sr.cy
+            if (gameIdRef.current < 100) {
+                const R = shell.getBoundingClientRect()
+                const fx = press && R.width ? eosClamp((press.x - R.left) / R.width, 0, 1) : 0.74
+                const fy = press && R.height ? eosClamp((press.y - R.top) / R.height, 0, 1) : 0.14
+                cx = sr.x + eosClamp(fx * sr.w - w / 2, 42, Math.max(42, sr.w - 42 - w)) + w / 2
+                cy = sr.y + eosClamp(fy * sr.h - h / 2, 58, Math.max(58, sr.h - 28 - h)) + h / 2
+            }
+            return { x: cx - w / 2 - 10, y: cy - h / 2 - 10, w: w + 20, h: h + 20, predicted: true, card: true }
         }
         const fire = () => {
             const m = measure()
             if (!m) return false
             const { root, stage, W, H } = m
-            const obstacles = m.obstacles.slice()
+            const content = eosMoodContent(scopeOf(m.host), root, W, H)
+            const real = m.obstacles.concat(content)
+            const obstacles = real.slice()
             let predicted = false
-            try {
-                if (!(stage || root).querySelector(".globalFinishFeedbackCopy")) {
-                    guess = predictCard(root, W)
-                    if (guess) {
-                        obstacles.push(guess)
-                        predicted = true
-                    }
+            if (!m.card) {
+                try {
+                    guess = predictCard(root)
+                } catch {}
+                if (guess) {
+                    obstacles.push(guess)
+                    predicted = true
                 }
-            } catch {}
+            }
             let x = W / 2
             let y = H * 0.5
             let from = "stage"
@@ -586,19 +832,38 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
             const place = eosMoodPlace({ W, H, x0: x, y0: y, phone, words, obstacles })
             const at = Date.now()
             firedAt = at
-            geo = { W, H, x0: x, y0: y, phone, words, x: place.x, y: place.y }
-            sig = eosMoodSig(obstacles)
+            // per-word baseline: what each word already overlaps (unavoidable) — only NEW cover makes a word yield
+            const base = place.boxes.map((bx) => real.reduce((acc, o) => acc + eosMoodOverlap(bx, o), 0))
+            geo = { boxes: place.boxes, base, areas: place.boxes.map((bx) => bx.w * (bx.h - EOS_MOOD_RISE_BOX)), yielded: words.map(() => false) }
             EOS_MOOD_LIVE.bloomAt = at
             EOS_MOOD_LIVE.bloomPerf = typeof performance !== "undefined" ? performance.now() : 0
             EOS_MOOD_LIVE.words = words.slice()
             EOS_MOOD_LIVE.bloomFrom = from
-            EOS_MOOD_LIVE.place = { x: Math.round(place.x), y: Math.round(place.y), core: [Math.round(x), Math.round(y)], obstacles: obstacles.length, predicted, score: Math.round(place.score), moves: 0 }
-            // start offsets: every word is born in the Still Point (fixed for the word's life, even if the crown moves)
+            const rr = (o) => (o ? { x: Math.round(o.x), y: Math.round(o.y), w: Math.round(o.w), h: Math.round(o.h) } : null)
+            EOS_MOOD_LIVE.place = {
+                x: Math.round(place.x),
+                y: Math.round(place.y),
+                core: [Math.round(x), Math.round(y)],
+                obstacles: obstacles.length,
+                hard: content.length,
+                predicted,
+                guess: predicted ? rr(guess) : null,
+                card: rr(m.card),
+                score: Math.round(place.score),
+                clean: !!place.clean,
+                tier: place.tier,
+                layout: place.layout,
+                fs: Math.round(place.fs * 10) / 10,
+                cover: { hard: Math.round(place.hard), soft: Math.round(place.soft), out: Math.round(place.out) },
+                moves: 0,
+                yields: 0,
+            }
+            // start offsets: every word is born in the Still Point
             const start = words.map((_, i) => {
-                const o = eosMoodSlotOff(i, place.dx, place.lift)
+                const o = eosMoodSlotOff(i, place.dx, place.lift, place.layout)
                 return [Math.round(x - (place.x + o[0])), Math.round(y - (place.y + o[1]))]
             })
-            const b = { x: place.x, y: place.y, dx: place.dx, lift: place.lift, start, phone, words, at, from }
+            const b = { x: place.x, y: place.y, dx: place.dx, lift: place.lift, fs: place.fs, layout: place.layout, start, phone, words, at, from, yielded: geo.yielded.slice() }
             EOS_MOOD_LIVE.painted = eosMoodPaint(root, b)
             setBloom(b)
             // a soft rising sparkle under each word (gated by the arcade's sound toggle inside eosTone)
@@ -613,37 +878,39 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
             })
             return true
         }
-        // after the bloom: make room for anything that lands later (the finish card)
-        const LIFE = 1800 + EOS_MOOD_STAGGER * 2
+        // after the bloom: anything that lands on a word later (the real card, a finale headline) makes it yield
         const follow = () => {
             if (!alive || !geo) return
-            if (Date.now() - firedAt > LIFE) return
+            if (Date.now() - firedAt > EOS_MOOD_LIFE) return
             const m = measure()
             if (m) {
-                // until the real card shows up, keep its predicted place reserved
-                let real = false
-                try {
-                    real = !!(m.stage || m.root).querySelector(".globalFinishFeedbackCopy")
-                } catch {}
-                const obstacles = !real && guess ? m.obstacles.concat([guess]) : m.obstacles
-                const next = eosMoodSig(obstacles)
-                if (next !== sig) {
-                    sig = next
-                    const place = eosMoodPlace({ W: m.W, H: m.H, x0: geo.x0, y0: geo.y0, phone: geo.phone, words: geo.words, obstacles })
-                    if (Math.abs(place.x - geo.x) > 4 || Math.abs(place.y - geo.y) > 4) {
-                        geo.x = place.x
-                        geo.y = place.y
-                        if (EOS_MOOD_LIVE.place) {
-                            EOS_MOOD_LIVE.place.x = Math.round(place.x)
-                            EOS_MOOD_LIVE.place.y = Math.round(place.y)
-                            EOS_MOOD_LIVE.place.moves += 1
-                            EOS_MOOD_LIVE.place.obstacles = obstacles.length
-                        }
-                        setBloom((b) => (b ? { ...b, x: place.x, y: place.y } : b))
+                if (m.card && EOS_MOOD_LIVE.place && !EOS_MOOD_LIVE.place.card) {
+                    const c = m.card
+                    EOS_MOOD_LIVE.place.card = { x: Math.round(c.x), y: Math.round(c.y), w: Math.round(c.w), h: Math.round(c.h) }
+                }
+                const obs = m.obstacles.concat(eosMoodContent(scopeOf(m.host), m.root, m.W, m.H))
+                let changed = false
+                geo.boxes.forEach((bx, i) => {
+                    if (geo.yielded[i]) return
+                    let cur = 0
+                    for (const o of obs) cur += eosMoodOverlap(bx, o)
+                    if (cur > geo.base[i] + 0.15 * geo.areas[i]) {
+                        geo.yielded[i] = true
+                        changed = true
                     }
+                })
+                if (changed) {
+                    const y = geo.yielded.slice()
+                    try {
+                        Array.from(m.root.children)
+                            .filter((el) => el.classList && el.classList.contains("eosMoodWord"))
+                            .forEach((el, i) => y[i] && el.classList.add("isYield"))
+                    } catch {}
+                    if (EOS_MOOD_LIVE.place) EOS_MOOD_LIVE.place.yields = y.filter(Boolean).length
+                    setBloom((b) => (b ? { ...b, yielded: y } : b))
                 }
             }
-            timer = setTimeout(follow, 100)
+            timer = setTimeout(follow, 120)
         }
         // Finish detection: a class observer on the guide panel (no subtree: cheap) fires the same tick the guide
         // turns `isComplete`; the 100 ms poll covers `.tsRewardSurge.mega` and a re-mounted guide.
@@ -672,7 +939,7 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
                 fired = true
                 if (mo) mo.disconnect()
                 mo = null
-                timer = setTimeout(follow, 100)
+                timer = setTimeout(follow, 120)
                 return
             }
             timer = setTimeout(check, 100)
@@ -715,15 +982,16 @@ function EosMoodGrade({ game, hostRef, reduced = false }) {
     const glowB = eosMoodRgba(eosMoodHexRgb(pal.calm[1]) || [255, 190, 110], 0.65)
     // Pre-rendered and hidden until the bloom; each word is born in the Still Point and blooms out to its crown place.
     const words = bloom ? bloom.words : eosMoodFlipWords(emo)
+    const yielded = (bloom && bloom.yielded) || []
     return (
         <>
             <div ref={gradeRef} className="eosMoodGrade" {...common} data-eos-step={step} data-eos-done={done ? "1" : "0"} data-eos-late={late ? "1" : "0"} data-eos-grey={grey && t < 1 ? "1" : "0"} />
             <div ref={airRef} className="eosMoodAir" {...common} />
-            <div ref={flipRef} className={`eosMoodFlip fs-mask${bloom ? " isBloom" : ""}${bloom && bloom.phone ? " isPhone" : ""}`} {...common} {...EOS_PRIVATE_ATTRS} data-eos-from={bloom ? bloom.from : ""}>
+            <div ref={flipRef} className={`eosMoodFlip fs-mask${bloom ? " isBloom" : ""}${bloom && bloom.phone ? " isPhone" : ""}`} {...common} {...EOS_PRIVATE_ATTRS} data-eos-from={bloom ? bloom.from : ""} data-eos-layout={bloom ? bloom.layout : ""}>
                 {words.map((w, i) => (
                     <span
                         key={i}
-                        className="eosMoodWord"
+                        className={`eosMoodWord${yielded[i] ? " isYield" : ""}`}
                         data-eos-flip={i}
                         style={{ "--eos-mood-i": String(i), "--eos-mood-glow-a": glowA, "--eos-mood-glow-b": glowB, ...(bloom ? eosMoodWordStyle(bloom, i) : null) }}
                     >
@@ -757,27 +1025,28 @@ radial-gradient(var(--eos-mood-hshape,ellipse 100% 60% at 50% 112%),var(--eos-mo
 radial-gradient(ellipse 76% 70% at 50% 52%,rgba(0,0,0,0) var(--eos-mood-grip,46%),var(--eos-mood-edge,rgba(0,0,0,0)) 100%)}
 ${EOS_A} .eosMoodFlip{overflow:hidden;container-type:size}
 ${EOS_A} .eosMoodFlip:not(.isBloom){visibility:hidden}
-${EOS_A} .eosMoodWord{position:absolute;display:flex;width:0;height:0;align-items:center;justify-content:center;white-space:nowrap;line-height:1;transition:left .5s cubic-bezier(.3,.7,.3,1),top .5s cubic-bezier(.3,.7,.3,1)}
-${EOS_A} .eosMoodFlip[data-eos-calm="1"] .eosMoodWord{transition:none}
+${EOS_A} .eosMoodWord{position:absolute;display:flex;width:0;height:0;align-items:center;justify-content:center;white-space:nowrap;line-height:1;opacity:1;transition:opacity .26s ease-out}
+/* something new landed on this word (the game's finale headline, the finish card): it steps aside by fading, never by travelling */
+${EOS_A} .eosMoodWord.isYield{opacity:0}
 ${EOS_A} .eosMoodWordIn{position:relative;display:block;flex:none;opacity:0;translate:var(--eos-mood-dx,0px) var(--eos-mood-dy,0px);scale:.4}
-${EOS_A} .eosMoodFlip.isBloom .eosMoodWordIn{animation:eosMoodRise 1.8s linear calc(var(--eos-mood-i) * ${EOS_MOOD_STAGGER}ms) 1 both}
+${EOS_A} .eosMoodFlip.isBloom .eosMoodWordIn{animation:eosMoodRise ${EOS_MOOD_LIFE_MS}ms linear calc(var(--eos-mood-i) * ${EOS_MOOD_STAGGER}ms) 1 both}
 /* a soft dusk cloud behind each word: keeps the cream letters readable on the Still Point's white bloom and the finish rays */
 ${EOS_A} .eosMoodWordIn::before{content:"";position:absolute;inset:-42% -20%;z-index:-1;border-radius:50%;background:radial-gradient(closest-side,rgba(14,8,30,.74),rgba(14,8,30,.44) 52%,rgba(14,8,30,0))}
 /* solid cream + a warm-brown hairline and bevel + the calm glow (not a background-clip:text gradient: iOS Safari drops
    clip-text inside animated layers). The hairline keeps the words legible on white blooms; the glow on dark scenes. */
-${EOS_A} .eosMoodWordTx{display:block;font:900 26px/1.06 var(--eos-font,"Baloo 2","Nunito",system-ui,sans-serif)!important;font-size:clamp(22px,4.4cqi,42px)!important;letter-spacing:.015em!important;
+${EOS_A} .eosMoodWordTx{display:block;font:900 26px/1.06 var(--eos-font,"Baloo 2","Nunito",system-ui,sans-serif)!important;font-size:var(--eos-mood-fs,clamp(22px,4.4cqi,42px))!important;letter-spacing:.015em!important;
 color:#fff2cf!important;-webkit-text-fill-color:#fff2cf!important;background:none!important;
 text-shadow:none!important;-webkit-text-stroke:0!important;text-transform:none!important;opacity:1!important;
 filter:drop-shadow(0 0 1.2px rgba(66,26,0,.95)) drop-shadow(0 2px 0 rgba(128,58,0,.75)) drop-shadow(0 0 9px var(--eos-mood-glow-a)) drop-shadow(0 0 22px var(--eos-mood-glow-b))}
 ${EOS_A} .eosMoodSparks{position:absolute;left:50%;top:50%;width:0;height:0;z-index:-1}
 ${EOS_A} .eosMoodSparks>i{position:absolute;left:-3px;top:-3px;width:6px;height:6px;border-radius:50%;background:#fff7d6;box-shadow:0 0 8px 2px var(--eos-mood-glow-a);opacity:0}
-${EOS_A} .eosMoodFlip.isBloom .eosMoodSparks>i{animation:eosMoodSpark .9s cubic-bezier(.15,.7,.3,1) calc(var(--eos-mood-i) * ${EOS_MOOD_STAGGER}ms + .18s) 1 both}
+${EOS_A} .eosMoodFlip.isBloom .eosMoodSparks>i{animation:eosMoodSpark .85s cubic-bezier(.15,.7,.3,1) calc(var(--eos-mood-i) * ${EOS_MOOD_STAGGER}ms + .16s) 1 both}
 ${EOS_A} .eosMoodSparks>i:nth-child(1){--eos-mood-sx:-74px;--eos-mood-sy:-26px}
 ${EOS_A} .eosMoodSparks>i:nth-child(2){--eos-mood-sx:70px;--eos-mood-sy:-30px}
 ${EOS_A} .eosMoodSparks>i:nth-child(3){--eos-mood-sx:-52px;--eos-mood-sy:30px}
 ${EOS_A} .eosMoodSparks>i:nth-child(4){--eos-mood-sx:58px;--eos-mood-sy:26px}
-${EOS_A} .eosMoodFlip.isPhone .eosMoodWordTx{font-size:clamp(22px,7cqi,30px)!important}
-@media (max-width:560px){${EOS_A} .eosMoodWordTx{font-size:clamp(22px,7cqi,30px)!important}}
+${EOS_A} .eosMoodFlip.isPhone .eosMoodWordTx{font-size:var(--eos-mood-fs,clamp(22px,7cqi,30px))!important}
+@media (max-width:560px){${EOS_A} .eosMoodWordTx{font-size:var(--eos-mood-fs,clamp(22px,7cqi,30px))!important}}
 @keyframes eosMoodRise{
 0%{opacity:0;scale:.3;animation-timing-function:cubic-bezier(.15,.8,.3,1)}
 15%{opacity:1;translate:0 0;scale:1.16;animation-timing-function:cubic-bezier(.35,0,.35,1)}
@@ -789,12 +1058,12 @@ ${EOS_A} .eosMoodFlip.isPhone .eosMoodWordTx{font-size:clamp(22px,7cqi,30px)!imp
 @keyframes eosMoodFade{0%{opacity:0;animation-timing-function:ease-out}16%{opacity:1}74%{opacity:1;animation-timing-function:ease-in}100%{opacity:0}}
 @keyframes eosMoodSpark{0%{opacity:0;translate:0 0;scale:.4}22%{opacity:1;scale:1.2}100%{opacity:0;translate:var(--eos-mood-sx) var(--eos-mood-sy);scale:.3}}
 ${EOS_A} .eosMoodFlip[data-eos-calm="1"] .eosMoodWordIn{translate:none;scale:none}
-${EOS_A} .eosMoodFlip.isBloom[data-eos-calm="1"] .eosMoodWordIn{animation:eosMoodFade 2.2s ease-in-out calc(var(--eos-mood-i) * ${EOS_MOOD_STAGGER}ms) 1 both}
+${EOS_A} .eosMoodFlip.isBloom[data-eos-calm="1"] .eosMoodWordIn{animation:eosMoodFade ${EOS_MOOD_LIFE_MS}ms ease-in-out calc(var(--eos-mood-i) * ${EOS_MOOD_STAGGER}ms) 1 both}
 @media (prefers-reduced-motion:reduce){
   ${EOS_A} .eosMoodWordIn{translate:none!important;scale:none!important}
-  ${EOS_A} .eosMoodFlip.isBloom .eosMoodWordIn{animation:eosMoodFade 2.2s ease-in-out calc(var(--eos-mood-i) * ${EOS_MOOD_STAGGER}ms) 1 both!important}
+  ${EOS_A} .eosMoodFlip.isBloom .eosMoodWordIn{animation:eosMoodFade ${EOS_MOOD_LIFE_MS}ms ease-in-out calc(var(--eos-mood-i) * ${EOS_MOOD_STAGGER}ms) 1 both!important}
   ${EOS_A} .eosMoodSparks{display:none!important}
-  ${EOS_A} .eosMoodWord{transition:none!important}
+  ${EOS_A} .eosMoodWord{transition:opacity .26s linear!important}
 }
 `
 eosCss("mood", EOS_MOOD_CSS)
@@ -807,6 +1076,8 @@ eosExpose("mood", {
     t: eosMoodT,
     step: eosMoodStepOf,
     flipWords: eosMoodFlipWords,
+    place: eosMoodPlace,
+    carveUrl: eosMoodCarveUrl,
     mix: eosMoodMix,
     warm: eosMoodWarm,
 })
