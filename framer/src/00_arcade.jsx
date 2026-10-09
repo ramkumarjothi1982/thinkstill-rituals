@@ -2556,6 +2556,10 @@ function tokeniseWords(raw) {
         .filter(Boolean)
 }
 function cleanEntries(raw) {
+    {
+        const eosEntries = EosEntries(raw)
+        if (eosEntries) return eosEntries
+    }
     const tokens = tokeniseWords(raw)
     if (!tokens.length) return []
     if (tokens.length < MIN_VISIBLE_WORD_BUBBLES) {
@@ -6271,7 +6275,11 @@ function CleanseEngine({ entries, onDone, sfx, reduced, onProgress }) {
             finishTimer.current.push(
                 setTimeout(
                     () => {
-                        setReleasedIndices(nextReleased)
+                        setReleasedIndices((prev) =>
+                            prev.length >= releasedRef.current.length
+                                ? prev
+                                : releasedRef.current.slice()
+                        )
                     },
                     isLast ? 170 : cleanseStepVisualHoldMs
                 )
@@ -10443,12 +10451,24 @@ function BinLiteralEngine({ entries, onDone, sfx, reduced, onProgress }) {
         [words.length]
     )
     const measureTarget = (i) => {
-        const b = bubbleRefs.current[i]?.getBoundingClientRect(),
+        const el = bubbleRefs.current[i],
+            b = el?.getBoundingClientRect(),
             m = binMouthRef.current?.getBoundingClientRect()
         if (!b || !m) return { x: 0, y: 150 }
+        // EOS I3-E7: x/y animate from the home slot → subtract the visible drag translation (screen px → CSS px)
+        let tx = 0,
+            ty = 0,
+            k = 1
+        try {
+            const t = new DOMMatrixReadOnly(getComputedStyle(el).transform)
+            tx = t.m41 || 0
+            ty = t.m42 || 0
+            const kk = b.width / (el.offsetWidth * Math.hypot(t.a, t.b))
+            if (Number.isFinite(kk) && kk > 0.05) k = kk
+        } catch {}
         return {
-            x: m.left + m.width / 2 - (b.left + b.width / 2),
-            y: m.top + m.height / 2 - (b.top + b.height / 2),
+            x: (m.left + m.width / 2 - (b.left + b.width / 2)) / k + tx,
+            y: (m.top + m.height / 2 - (b.top + b.height / 2)) / k + ty,
         }
     }
     const finishIf = (next) => {
@@ -10464,10 +10484,10 @@ function BinLiteralEngine({ entries, onDone, sfx, reduced, onProgress }) {
             const cx = b.left + b.width / 2,
                 cy = b.top + b.height / 2
             const hit =
-                cx >= m.left - 32 &&
-                cx <= m.right + 32 &&
-                cy >= m.top - 34 &&
-                cy <= m.bottom + 46
+                cx >= m.left - 70 &&
+                cx <= m.right + 70 &&
+                cy >= m.top - 80 &&
+                cy <= m.bottom + 90
             if (!hit) {
                 sfx("soft")
                 vibrate(4)
@@ -10880,6 +10900,10 @@ const RELEASE_DEFAULT_EMOTION_PROFILE = {
     finish: ["HEAVY → LIGHTER", "YOU MOVED THE FEELING ✓", "YOU MADE SPACE ✓"],
 }
 function releaseEmotionProfile(input) {
+    {
+        const eosProfile = EosProfileOverride(input)
+        if (eosProfile) return eosProfile
+    }
     const raw = Array.isArray(input) ? input.join(" ") : String(input || "")
     return (
         RELEASE_INPUT_EMOTION_PROFILES.find((p) => p.test.test(raw)) ||
@@ -10888,6 +10912,7 @@ function releaseEmotionProfile(input) {
 }
 function releaseGestureForGame(game) {
     const a = `${game?.action || ""} ${game?.hook || ""}`.toLowerCase()
+    if (Number(game?.id) >= 111) return { arrow: "", verb: ({ hold: "HOLD", holdRelease: "HOLD", drag: "DRAG", dragTo: "DRAG", slow: "DRAG", swipe: "SWIPE", sling: "PULL" })[EOS_GAME_META[Number(game.id)]?.gesture] || "TAP" }
     if (
         game?.id === 97 ||
         /drag[^.]*right|move[^.]*right|swipe[^.]*right|\bright\b/.test(a)
@@ -11596,7 +11621,7 @@ function UniqueReleaseEngine({
     const current =
         words[Math.min(idx, Math.max(0, words.length - 1))] || game.name
     const engineBubbleTextPx = Math.max(
-        1,
+        15,
         Math.min(18, Number(bubbleTextPx) || 4)
     )
     const imageOnlyMode = isImageOnlyEntries(words)
@@ -14571,7 +14596,7 @@ function UniqueReleaseEngineLegacy({
     const current =
         words[Math.min(idx, Math.max(0, words.length - 1))] || game.name
     const engineBubbleTextPx = Math.max(
-        1,
+        15,
         Math.min(18, Number(bubbleTextPx) || 4)
     )
     const imageOnlyMode = isImageOnlyEntries(words)
@@ -15193,9 +15218,9 @@ function UniqueReleaseEngineLegacy({
                         onPointerDown={() => startHold(2.4)}
                         onPointerUp={() => {
                             clearInterval(timer.current)
-                            if (meter >= 62 && meter <= 88) advance()
+                            if (meter >= 55 && meter <= 92) advance()
                             else {
-                                setMeter(0)
+                                setMeter((m) => Math.min(m, 40))
                                 sfx("soft")
                             }
                         }}
@@ -16305,6 +16330,7 @@ function UniqueReleaseEngineLegacy({
                     <W />
                     <div className="tapOutPads">
                         <button
+                            className={step % 2 === 0 ? "eosNext" : ""}
                             onClick={() => {
                                 if (step % 2 === 0) tapStep(8)
                                 else sfx("soft")
@@ -16313,6 +16339,7 @@ function UniqueReleaseEngineLegacy({
                             LEFT
                         </button>
                         <button
+                            className={step % 2 === 1 ? "eosNext" : ""}
                             onClick={() => {
                                 if (step % 2 === 1) tapStep(8)
                                 else sfx("soft")
@@ -18175,12 +18202,12 @@ function UniqueReleaseEngineLegacy({
                                         className={`echoHoldBubble allCircularBubble ${gone ? "gone" : ""} ${echoHoldingIndex === i ? "holding" : ""}`}
                                         disabled={gone}
                                         onPointerDown={() => startEchoHold(i)}
-                                        onPointerUp={() => stopEchoHold(true)}
+                                        onPointerUp={() => stopEchoHold(false)}
                                         onPointerCancel={() =>
-                                            stopEchoHold(true)
+                                            stopEchoHold(false)
                                         }
                                         onPointerLeave={() =>
-                                            stopEchoHold(true)
+                                            stopEchoHold(false)
                                         }
                                         animate={
                                             gone
@@ -18535,8 +18562,8 @@ function GameEngineLegacy(p) {
         }, stepRewardDurationMs)
         vibrate(12)
     }
-    const reportProgress = (value, nextLabel) => {
-        const v = pct(value),
+    const reportProgress = (value, nextLabel, eosFromSfx) => {
+        const v = eosGateProgress(progressRef, value, eosFromSfx),
             previous = progressRef.current
         progressRef.current = v
         const resolvedLabel = nextLabel || progressLabel(p.game, v)
@@ -18553,11 +18580,12 @@ function GameEngineLegacy(p) {
     }
     const wrappedSfx = (kind) => {
         p.sfx(kind)
+        if (eosSfxMiss(p.game, kind)) return
         const explicit = usesExplicitProgress(p.game)
         if (!explicit || kind !== "soft") triggerStepReward()
         if (!explicit) {
             const next = pct(progressRef.current + gameProgressStep(p.game))
-            reportProgress(next, progressLabel(p.game, next))
+            reportProgress(next, progressLabel(p.game, next), true)
         }
     }
     const wrappedDone = (bonus = 0) => {
@@ -18801,7 +18829,7 @@ function GameEngineLegacy(p) {
                 >
                     <i style={{ width: progress + "%" }} />
                     <span className="engineProgressText">
-                        GAME PROGRESS · {progress}%
+                        {eosMeterWord(p.game)} · {progress}%
                     </span>
                 </div>
             </div>
@@ -18836,6 +18864,7 @@ function GameEngineLegacy(p) {
                         key={`guide-${p.game.id}-${guideText}`}
                         className="guideStepCard"
                     >
+                        <i className="guideActionArrow" aria-hidden="true">{eosGlyph(p.game)}</i>
                         <small>{guideParts.label}</small>
                         <span>{guideParts.copy}</span>
                     </div>
@@ -18909,6 +18938,10 @@ function GameEngineLegacy(p) {
     )
 }
 function RoutedGameContent(p) {
+    {
+        const EosE = EosEngineFor(p.game)
+        if (EosE) return <EosE {...p} />
+    }
     if (!UNIQUE_HERO_IDS.has(p.game.id)) return <UniqueReleaseEngine {...p} />
     switch (p.game.id) {
         case 109:
@@ -19667,8 +19700,8 @@ function GameEngine(p) {
         }, stepRewardDurationMs)
         vibrate(12)
     }
-    const reportProgress = (value, nextLabel) => {
-        const v = pct(value),
+    const reportProgress = (value, nextLabel, eosFromSfx) => {
+        const v = eosGateProgress(progressRef, value, eosFromSfx),
             previous = progressRef.current
         progressRef.current = v
         const resolvedLabel = nextLabel || progressLabel(p.game, v)
@@ -19717,12 +19750,13 @@ function GameEngine(p) {
     }
     const wrappedSfx = (kind) => {
         p.sfx(kind)
+        if (eosSfxMiss(p.game, kind)) return
         const explicit = usesExplicitProgress(p.game)
         if (!explicit || kind !== "soft")
             triggerStepReward(lastBubbleIndexRef.current)
         if (!explicit) {
             const next = pct(progressRef.current + gameProgressStep(p.game))
-            reportProgress(next, progressLabel(p.game, next))
+            reportProgress(next, progressLabel(p.game, next), true)
         }
     }
     const wrappedDone = (bonus = 0) => {
@@ -20832,9 +20866,9 @@ function GameEngine(p) {
                         key={`guide-${p.game.id}-${guideText}`}
                         className="guideStepCard"
                     >
-                        {Number(p.game?.id || 0) < 100 ? (
+                        {true ? (
                             <i className="guideActionArrow" aria-hidden="true">
-                                {guideGesture.arrow || "↑"}
+                                {eosGlyph(p.game) || guideGesture.arrow || "↑"}
                             </i>
                         ) : null}
                         <small>{guideParts.label}</small>
@@ -21023,7 +21057,7 @@ function ThinkStillReleaseArcade(props) {
         musicOnDefault = false,
         musicVolume = 0.35,
         tapOutBpm = 92,
-        bubbleTextPx = 4,
+        bubbleTextPx = 16,
         maxWidth = 1180,
     } = props
     const displayTitle = String(title || "EMOTIONAL RELEASE CONSOLE")
@@ -21035,8 +21069,8 @@ function ThinkStillReleaseArcade(props) {
     const bubbleTextSize = Math.max(
         1,
         Math.min(
-            18,
-            Number.isFinite(parsedBubbleTextPx) ? parsedBubbleTextPx : 4
+            28,
+            Number.isFinite(parsedBubbleTextPx) ? parsedBubbleTextPx : 16
         )
     )
     const idleEmotionTick = useEmotionSecond()
@@ -21076,6 +21110,10 @@ function ThinkStillReleaseArcade(props) {
     const [played, setPlayed] = React.useState(() => lsJson(PLAYED_KEY, []))
     const [lastGain, setLastGain] = React.useState(0)
     const [releaseCheck, setReleaseCheck] = React.useState(null)
+    const eos = useEosStore()
+    React.useEffect(() => {
+        EOS_STORE.set({ sound: !!sound, haptics: !!hapticsOn, music: !!(musicOn && sound) })
+    }, [sound, hapticsOn, musicOn])
     const [variationSeed, setVariationSeed] = React.useState(() =>
         Math.floor(Date.now() % 1000003)
     )
@@ -21361,7 +21399,7 @@ function ThinkStillReleaseArcade(props) {
     const recommendedReleaseGame = React.useMemo(() => {
         if (!selected || !GAMES.length) return null
         const sourceThought = raw.trim() || entries.join(" ")
-        return chooseRelevantGame(sourceThought, selected.id, selected)
+        return EosRouteGame(sourceThought, played, selected.id) || chooseRelevantGame(sourceThought, selected.id, selected)
     }, [selected?.id, raw, entries.join("|"), chooseRelevantGame])
     const recommendedReleaseGesture = React.useMemo(() => {
         if (!recommendedReleaseGame) return null
@@ -21421,6 +21459,7 @@ function ThinkStillReleaseArcade(props) {
             setSelected(g)
             setEntries(e)
             setVariationSeed((v) => v + 1)
+            EosMarkLaunch(g, e)
             setStage("play")
             if (isSwitching) showStatus(`SWITCHED TO ${g.name}`, 1500)
             sfx(isSwitching ? "soft" : "win")
@@ -21469,7 +21508,7 @@ function ThinkStillReleaseArcade(props) {
             return
         }
         const sourceThought = raw.trim() || e.join(" ")
-        const best = chooseRelevantGame(sourceThought)
+        const best = EosRouteGame(sourceThought, played) || chooseRelevantGame(sourceThought)
         showStatus(`THINKSTILL CHOSE ${best.name}`, 1800)
         startChosenGame(best)
     }, [
@@ -21536,6 +21575,7 @@ function ThinkStillReleaseArcade(props) {
             try {
                 localStorage.setItem(PLAYED_KEY, JSON.stringify(p))
             } catch {}
+            EosMarkFinish(selected, bonus)
             setReleaseCheck(null)
             setStage("reveal")
             if (hapticsOn) vibrate(35)
@@ -21547,10 +21587,12 @@ function ThinkStillReleaseArcade(props) {
         donePendingRef.current = false
         setReleaseCheck(null)
         setVariationSeed((v) => v + 101)
+        EosMarkLaunch(selected, entries)
         setStage("play")
         sfx("soft")
     }, [selected, entries.join("|"), sfx])
     const clearForNext = React.useCallback(() => {
+        EosResetFeeling()
         donePendingRef.current = false
         setReleaseCheck(null)
         setStage("input")
@@ -21947,6 +21989,7 @@ function ThinkStillReleaseArcade(props) {
                       GLOBAL_VIRAL_HYPNOTIC_ALL_GAMES_CSS +
                       GLOBAL_PIXAR_CINEMATIC_ALL_GAMES_CSS}
             </style>
+            <EosGlobalStyle />
 
             <div className="ambient a1" />
             <div className="ambient a2" />
@@ -22009,6 +22052,13 @@ function ThinkStillReleaseArcade(props) {
                 </header>
 
                 <section className="releaseStage">
+                    <EosThoughtFlow stage={stage} reduced={!!reduced} />
+                    {stage === "input" && !selected && eos.phase === "checkin" && eos.checkinEnabled ? (
+                        <EosCheckIn raw={raw} setRaw={setRaw} onLaunch={startThinkStillChoice} onPlay={startChosenGame} toggleMic={toggleMic} listening={listening} openMenu={() => setGameMenuOpen(true)} sfx={sfx} reduced={!!reduced} />
+                    ) : null}
+                    {stage === "input" && !selected && eos.phase !== "checkin" && eos.checkinEnabled ? <EosCheckInChip reduced={!!reduced} /> : null}
+                    <EosWorldChips stage={stage} reduced={!!reduced} />
+                    <EosSafetyLayer raw={raw} stage={stage} reduced={!!reduced} />
                     {stage === "input" && !selected ? (
                         <div className="releaseIdleStage" aria-hidden="true">
                             <div className="ts-abyss-field">
@@ -22121,6 +22171,15 @@ function ThinkStillReleaseArcade(props) {
                         </>
                     ) : null}
 
+                    {stage === "play" && selected ? (
+                        <React.Fragment key={`eos-play-${selected.id}-${variationSeed}-${materialRevision}`}>
+                            <EosMoodGrade game={selected} hostRef={gameHostRef} reduced={!!reduced} />
+                            <EosGuideArrows game={selected} entries={renderedEntries} hostRef={gameHostRef} reduced={!!reduced} />
+                            <EosLegacyGuards game={selected} hostRef={gameHostRef} />
+                            <EosCompanion game={selected} hostRef={gameHostRef} reduced={!!reduced} />
+                        </React.Fragment>
+                    ) : null}
+                    <EosTextFloor stage={stage} />
                     {stage === "reveal" && selected ? (
                         <div className="releaseCompleteOverlay">
                             <div className="releaseCompleteShell">
@@ -22154,6 +22213,27 @@ function ThinkStillReleaseArcade(props) {
                                         </div>
                                     ) : null}
 
+                                    <EosShiftMeter
+                                        game={selected}
+                                        sfx={sfx}
+                                        rainSfx={rainSfx}
+                                        reduced={!!reduced}
+                                        onAgain={replay}
+                                        onPlay={startChosenGame}
+                                        onNext={tryRecommendedRelease}
+                                        onDoneForNow={clearForNext}
+                                        addScore={(n) => {
+                                            const add = Math.max(0, Math.round(Number(n) || 0))
+                                            if (!add) return
+                                            setScore((s) => {
+                                                const v = s + add
+                                                try {
+                                                    localStorage.setItem(SCORE_KEY, String(v))
+                                                } catch {}
+                                                return v
+                                            })
+                                        }}
+                                    />
                                     <div className="releaseShiftCheck">
                                         <strong>FEEL A SHIFT?</strong>
                                         <div className="releaseShiftChoices">
@@ -22605,6 +22685,7 @@ function ThinkStillReleaseArcade(props) {
                                         <b>LET THINKSTILL CHOOSE</b>
                                     </span>
                                 </button>
+                                <EosMenuGroup played={played} gameChoice={gameChoice} onPick={startChosenGame} />
                                 <div className="releaseChoiceGroupLabel">
                                     15 SIGNATURE RELEASES
                                 </div>
@@ -22768,9 +22849,9 @@ addPropertyControls(ThinkStillReleaseArcade, {
         type: ControlType.Number,
         title: "Bubble Text",
         min: 1,
-        max: 18,
+        max: 28,
         step: 0.5,
-        defaultValue: 4,
+        defaultValue: 16,
         unit: "px",
         displayStepper: true,
     },

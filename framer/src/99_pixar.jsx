@@ -31,6 +31,7 @@ const PX_SQUASH_TARGETS = [
     ".universalToolObject",
     ".throwCard",
     ".sortCard",
+    ".eosObj",
 ].join(",")
 
 const PX_PRESS_TARGETS = [
@@ -215,7 +216,7 @@ function PixarLightRig({ bokeh, dust }) {
                     style={
                         {
                             left: `${pxNoise(i, 21) * 100}%`,
-                            top: `${40 + pxNoise(i, 23) * 60}%`,
+                            top: `${pxNoise(i, 23) * 100}%`,
                             "--d": `${8 + pxNoise(i, 25) * 8}s`,
                             "--dl": `${-pxNoise(i, 27) * 16}s`,
                             "--bx": `${(pxNoise(i, 29) - 0.5) * 80}px`,
@@ -236,6 +237,11 @@ export default function ThinkStillReleaseArcadePixar(props) {
         pixarSquash = true,
         pixarBokeh = 9,
         pixarDust = 14,
+        eosCheckin = EOS_PROP_DEFAULTS.checkin,
+        eosCrisisLines = EOS_PROP_DEFAULTS.crisisLines,
+        eosCrisisUrl = EOS_PROP_DEFAULTS.crisisUrl,
+        eosEmergencyText = EOS_PROP_DEFAULTS.emergencyText,
+        eosShareUrl = EOS_PROP_DEFAULTS.shareUrl,
         ...arcadeProps
     } = props
     const rootRef = React.useRef(null)
@@ -310,6 +316,7 @@ export default function ThinkStillReleaseArcadePixar(props) {
             }
         >
             <style>{PIXAR_CSS}</style>
+            <EosConfigSync checkin={eosCheckin} crisisLines={eosCrisisLines} crisisUrl={eosCrisisUrl} emergencyText={eosEmergencyText} shareUrl={eosShareUrl} />
             <ThinkStillReleaseArcade {...arcadeProps} />
             {pixarIntensity > 0 ? (
                 <PixarLightRig
@@ -365,4 +372,9 @@ addPropertyControls(ThinkStillReleaseArcadePixar, {
         step: 1,
         defaultValue: 14,
     },
+    eosCheckin: { type: ControlType.Boolean, title: "Emotion Check-in", defaultValue: true },
+    eosCrisisLines: { type: ControlType.String, title: "Support Lines", displayTextArea: true, defaultValue: EOS_PROP_DEFAULTS.crisisLines },
+    eosCrisisUrl: { type: ControlType.String, title: "Support Link", defaultValue: EOS_PROP_DEFAULTS.crisisUrl },
+    eosEmergencyText: { type: ControlType.String, title: "Emergency Line", defaultValue: EOS_PROP_DEFAULTS.emergencyText },
+    eosShareUrl: { type: ControlType.String, title: "Share Link", defaultValue: "" },
 })
