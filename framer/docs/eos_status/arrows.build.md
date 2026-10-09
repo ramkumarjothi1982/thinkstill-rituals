@@ -111,3 +111,12 @@ All changes are in `src/eos/30_eos_arrows.jsx`; no other piece's file was touche
 - **SVG ids**: the gradient and stripe ids come from `React.useId()`, with a ref counter as fallback, so they are unique per instance. The stripe stroke is set inline.
 - **Idle in paced phases**: markers may carry `data-eos-idle` (ms) and `data-eos-level` (1 = no label). The same marker ask repeated after a success (113 finds) waits 8 s before the idle re-show, instead of 4 s.
 - **Not fixed here (other piece)**: the check-in's own 1100 ms `hintEls` delay plus `key={layoutSig}` are in `40_eos_checkin.jsx`. The remount half is neutralised by the hint's input memory above. The first-show delay (`showAfterMs={0}`) is for the check-in owner.
+- **Later additions**:
+  - A new target is re-scored every 200 ms for its first 1.2 s.
+  - Halos next to the guide get an opacity-only pulse (`isTight`), and an option that dips under the panel has its halo clipped at the panel edge.
+  - `state()` also reports `pose` and `soft` (the number of copy rects). Both are dev-only.
+- **Verification** (scratch integrated build of every src/eos module):
+  - Full 114-id sweeps at 390 and 1280 measured how much copy the hand and chevron cover and whether any cue touches the LIVE GUIDE. Every id is visible, there are 0 cue/guide intersections and 0 page errors.
+  - The reviewer's ids dropped from 38-91 % covered to 0 %.
+  - `finishGame` (assertArrows) at 390 on 2, 14, 41, 85, 113, 11, 36 and 111: all reach the reveal, with 0 arrow misses and 0 label mismatches.
+  - Residual: 41 @1280, where the fingertip rests on the bubble's tiny "3 STRINGS HOLDING" sub-label (the user's word is clear).
