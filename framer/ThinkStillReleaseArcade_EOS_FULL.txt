@@ -12096,6 +12096,9 @@ function UniqueReleaseEngine({
     const shell = (body, hint, extraClass = "") => (
         <div
             className={`arena uniqArena premiumArena u${game.id} ${extraClass}`}
+            style={TS_STAGE_NO_SELECT}
+            onPointerDownCapture={tsClearStageSelection}
+            onDragStartCapture={tsBlockNativeDrag}
         >
             <div className="uniqGlow" />
             {body}
@@ -14546,6 +14549,23 @@ function globalReleaseMindBendTextLegacy(game) {
         return `This move helps loosen the thought by helping you ${mechanism.toLowerCase()}.`
     return "The thought can be present without needing to stay in control."
 }
+// Stage drags (8, 28, 34, 47 …): a press that started just off a dragged object selected its word, and the next
+// grab then began a native text drag (dragstart → pointercancel), so the object froze for good. The game stage
+// never needs selectable text or native drag-and-drop: block both, and drop any stray selection on press.
+const TS_STAGE_NO_SELECT = {
+    userSelect: "none",
+    WebkitUserSelect: "none",
+    WebkitTouchCallout: "none",
+}
+function tsClearStageSelection() {
+    try {
+        const sel = window.getSelection && window.getSelection()
+        if (sel && sel.rangeCount && !sel.isCollapsed) sel.removeAllRanges()
+    } catch (e) {}
+}
+function tsBlockNativeDrag(e) {
+    e.preventDefault()
+}
 function UniqueReleaseEngineLegacy({
     game,
     entries,
@@ -14982,6 +15002,9 @@ function UniqueReleaseEngineLegacy({
     const shell = (body, hint, extraClass = "") => (
         <div
             className={`arena uniqArena premiumArena u${game.id} ${extraClass}`}
+            style={TS_STAGE_NO_SELECT}
+            onPointerDownCapture={tsClearStageSelection}
+            onDragStartCapture={tsBlockNativeDrag}
         >
             <div className="uniqGlow" />
             {body}
@@ -15161,6 +15184,7 @@ function UniqueReleaseEngineLegacy({
             return shell(
                 <>
                     <motion.div
+                        key={`meteor${idx}`}
                         className="meteorRock"
                         drag
                         dragConstraints={{
@@ -15424,6 +15448,7 @@ function UniqueReleaseEngineLegacy({
                         <b>ARCHIVE</b>
                     </div>
                     <motion.div
+                        key={`file${idx}`}
                         className="fileCard"
                         drag={step ? "y" : false}
                         dragConstraints={{ top: 0, bottom: 120 }}
@@ -15587,6 +15612,7 @@ function UniqueReleaseEngineLegacy({
                         <i />
                     </div>
                     <motion.div
+                        key={`leaf${idx}`}
                         className="leafWord"
                         drag
                         dragConstraints={{
@@ -15596,6 +15622,7 @@ function UniqueReleaseEngineLegacy({
                             bottom: 90,
                         }}
                         onDragEnd={(_, info) => {
+                            if (phase) return
                             if (info.offset.y > 35) {
                                 setPhase(1)
                                 setTimeout(() => advance(), 650)
@@ -15907,6 +15934,7 @@ function UniqueReleaseEngineLegacy({
                         <W />
                         <div className="socket" />
                         <motion.div
+                            key={`plug${idx}`}
                             className="plug"
                             drag="x"
                             dragConstraints={{ left: 0, right: 190 }}
@@ -38579,11 +38607,10 @@ const EOS_ROUTER_NEVER = {
 // 112 COOL THE VOLCANO is a slow breath cool-down (EOS_SLOW_IDS), not a discharge game. Strong flags
 // (threat / abuse / selfharm) stay strictly on the gentle list.
 const EOS_ROUTER_SOFT_OK = { anger: new Set([112]) }
-// Games that cannot be finished at phone width (stage ≤ 560 px) in release 1 → score penalty there, never
-// removed (still a fallback, still in the menu). 47 UNFOLLOW: the dragged .plug stays clipped at the stage edge
-// after the first pull (review r1, 3/3 runs stuck at 17 % at 390). Drop the entry once 60_eos_fixes verifies
-// finishGame(47) at 390.
-const EOS_ROUTER_PHONE_FRAGILE = new Map([[47, 0.5]])
+// Games that cannot be finished at phone width (stage ≤ 560 px) → score penalty there, never removed (still a
+// fallback, still in the menu). Empty since the v2 unstick pass: 47 UNFOLLOW's plug now returns to its socket for
+// every card (it used to stay clipped at the stage edge after the first pull) and finishGame(47) passes at 390.
+const EOS_ROUTER_PHONE_FRAGILE = new Map()
 const EOS_ROUTER_PHONE_MAX = 560
 // Fallback order after the band's own list: nearest band first (mid falls back to the body games first).
 const EOS_ROUTER_BAND_ORDER = { high: ["high", "mid", "low"], mid: ["mid", "high", "low"], low: ["low", "mid", "high"] }

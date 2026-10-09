@@ -101,11 +101,10 @@ const EOS_ROUTER_NEVER = {
 // 112 COOL THE VOLCANO is a slow breath cool-down (EOS_SLOW_IDS), not a discharge game. Strong flags
 // (threat / abuse / selfharm) stay strictly on the gentle list.
 const EOS_ROUTER_SOFT_OK = { anger: new Set([112]) }
-// Games that cannot be finished at phone width (stage ≤ 560 px) in release 1 → score penalty there, never
-// removed (still a fallback, still in the menu). 47 UNFOLLOW: the dragged .plug stays clipped at the stage edge
-// after the first pull (review r1, 3/3 runs stuck at 17 % at 390). Drop the entry once 60_eos_fixes verifies
-// finishGame(47) at 390.
-const EOS_ROUTER_PHONE_FRAGILE = new Map([[47, 0.5]])
+// Games that cannot be finished at phone width (stage ≤ 560 px) → score penalty there, never removed (still a
+// fallback, still in the menu). Empty since the v2 unstick pass: 47 UNFOLLOW's plug now returns to its socket for
+// every card (it used to stay clipped at the stage edge after the first pull) and finishGame(47) passes at 390.
+const EOS_ROUTER_PHONE_FRAGILE = new Map()
 const EOS_ROUTER_PHONE_MAX = 560
 // Fallback order after the band's own list: nearest band first (mid falls back to the body games first).
 const EOS_ROUTER_BAND_ORDER = { high: ["high", "mid", "low"], mid: ["mid", "high", "low"], low: ["low", "mid", "high"] }

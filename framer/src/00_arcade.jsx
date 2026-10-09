@@ -12096,6 +12096,9 @@ function UniqueReleaseEngine({
     const shell = (body, hint, extraClass = "") => (
         <div
             className={`arena uniqArena premiumArena u${game.id} ${extraClass}`}
+            style={TS_STAGE_NO_SELECT}
+            onPointerDownCapture={tsClearStageSelection}
+            onDragStartCapture={tsBlockNativeDrag}
         >
             <div className="uniqGlow" />
             {body}
@@ -14546,6 +14549,23 @@ function globalReleaseMindBendTextLegacy(game) {
         return `This move helps loosen the thought by helping you ${mechanism.toLowerCase()}.`
     return "The thought can be present without needing to stay in control."
 }
+// Stage drags (8, 28, 34, 47 …): a press that started just off a dragged object selected its word, and the next
+// grab then began a native text drag (dragstart → pointercancel), so the object froze for good. The game stage
+// never needs selectable text or native drag-and-drop: block both, and drop any stray selection on press.
+const TS_STAGE_NO_SELECT = {
+    userSelect: "none",
+    WebkitUserSelect: "none",
+    WebkitTouchCallout: "none",
+}
+function tsClearStageSelection() {
+    try {
+        const sel = window.getSelection && window.getSelection()
+        if (sel && sel.rangeCount && !sel.isCollapsed) sel.removeAllRanges()
+    } catch (e) {}
+}
+function tsBlockNativeDrag(e) {
+    e.preventDefault()
+}
 function UniqueReleaseEngineLegacy({
     game,
     entries,
@@ -14982,6 +15002,9 @@ function UniqueReleaseEngineLegacy({
     const shell = (body, hint, extraClass = "") => (
         <div
             className={`arena uniqArena premiumArena u${game.id} ${extraClass}`}
+            style={TS_STAGE_NO_SELECT}
+            onPointerDownCapture={tsClearStageSelection}
+            onDragStartCapture={tsBlockNativeDrag}
         >
             <div className="uniqGlow" />
             {body}
@@ -15161,6 +15184,7 @@ function UniqueReleaseEngineLegacy({
             return shell(
                 <>
                     <motion.div
+                        key={`meteor${idx}`}
                         className="meteorRock"
                         drag
                         dragConstraints={{
@@ -15424,6 +15448,7 @@ function UniqueReleaseEngineLegacy({
                         <b>ARCHIVE</b>
                     </div>
                     <motion.div
+                        key={`file${idx}`}
                         className="fileCard"
                         drag={step ? "y" : false}
                         dragConstraints={{ top: 0, bottom: 120 }}
@@ -15587,6 +15612,7 @@ function UniqueReleaseEngineLegacy({
                         <i />
                     </div>
                     <motion.div
+                        key={`leaf${idx}`}
                         className="leafWord"
                         drag
                         dragConstraints={{
@@ -15596,6 +15622,7 @@ function UniqueReleaseEngineLegacy({
                             bottom: 90,
                         }}
                         onDragEnd={(_, info) => {
+                            if (phase) return
                             if (info.offset.y > 35) {
                                 setPhase(1)
                                 setTimeout(() => advance(), 650)
@@ -15907,6 +15934,7 @@ function UniqueReleaseEngineLegacy({
                         <W />
                         <div className="socket" />
                         <motion.div
+                            key={`plug${idx}`}
                             className="plug"
                             drag="x"
                             dragConstraints={{ left: 0, right: 190 }}
