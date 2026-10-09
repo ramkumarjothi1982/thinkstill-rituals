@@ -226,3 +226,20 @@ The rules for every batch:
 - **C14 "KNOB":** VOLUME KNOB (104).
 - **C15 "Activate tool" (103):** a tool button that lowers the platform with down arrows.
 - **C17 X-RAY label:** exactly "KILL / BURN ALL".
+
+---------------------------------------------------------------------------------------------------
+
+## Fixed: batch "regressions" (plan row 0), commit c4f9a87
+
+All fixes are shared EOS code (`src/eos/*`); `00_arcade.jsx` is untouched, so the burst is the 485500c burst.
+
+| # | fix | verification |
+|---|---|---|
+| R1 | New `01_eos_burst.jsx`: one MutationObserver mirrors `.tsRewardSurge.mega` into `html[data-eos-burst]`; while it is set `.eosMoodGrade/.eosMoodAir/.eosMoodFlip/.eosCompanion/.eosThoughtFlow/.eosArrowLayer` are opacity 0 + hidden (5-ID weight), the mood tween and thought-flow tick/frame pause, the dots bed ducks. | Frozen frame at mega +0.6 s, all-EOS diff in the burst rect ≤ 0.17 % (V1) and ≤ 0.07 % (V2) on 1, 18, 100, 109, 110 (was 3.07-6.18 %), core 0 %. 0 EOS text nodes in the core from mount to +1.8 s. |
+| R2 | The flip bloom and its sparkle chime wait for the burst to unmount (isComplete alone no longer fires it); the play layer unmounts with the burst, so `eosMoodAfterBloom` blooms a clone of the words on the reveal (from the memory orb, crown search clear of the reveal content) with the same chime. | Sound log: 0 EOS cues between progress 100 and mega unmount (V1: 1, 18, 100, 109, 110; V2: 1, 18); chime +178-303 ms after unmount. Sound-capable device check still to do. |
+| R3 | Still Moment plays `eosStillBreath` (low-passed noise exhale) + its sigh tone; the rain buffer is not called. | Code path; headless = scheduling only. |
+| R4 | Hide-until-done nav rules removed; on phones the nav row sits above the card; SHARE moved to the quiet links row. | Done step at V1: 3 primaries (I'M GOOD, ONE MORE, AGAIN); composer NEXT ▶ from 0 s. |
+| R5 | Check-in no longer hides `.releaseIdleStory`: the 4 step titles show as a compact strip; on phones the composer lends its empty lower band so the check-in keeps its size. | V1: 4 steps visible, 12 px, ≤ 4 words, strip below the check-in foot. |
+| R6 | Phone header brand centred (14 px), score pill stacks LVL over sparks to free the centre slot. | V1 centre offset 0 px at input and play, no clipping. |
+| R7 | 105 take faces back to 32 px, 106 avatar to 40 px. | V1: 32x32 and 41x41. |
+| R8 | ZAP counter is glass at the top of the bubble; the word fit wins over the 14 px minimum (never below the element's own size); new circle fit caps raised text to the circle's chord. | ZAP overlap 0 px, glass bg; 0 mid-word breaks in the probe set. Letters-outside probe (POP-family bubbles "tight fists", "had enough") is identical before/after, i.e. not new; P5.5-e kept PARTIAL until the H7 upload sweep re-runs. |

@@ -945,7 +945,7 @@
   {
    "id": "P5.3-a",
    "requirement": "Full image visible, nothing important cropped",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "scope": "shared framing CSS (00_arcade.jsx L13, L28) + game 105",
    "evidence": "Geometric H5: 4 edge-midpoint bands (20%x8%) mapped through object-fit/position, transform and every clip (own clip-path circle(49%), border-radius, overflow ancestors). Uploads, square fixture: band visibility 0.75 (109), 0.25 (100), 0 (110 cloud). 6 uploads incl. 4:3 and 3:4 fixtures: min band 0 in 100,103,107,109,110 at INT 390/1280 and BASE 390 (object-fit:cover + scale(1.06/1.04) + clip-path circle(49%) at L13; ids<100 scale(1.18) at L28). Library faces: crop <0.5 in 15,105,110 (INT 390). EOS regression: 105 DRAMA MACHINE take-chip faces band 1.0 -> 0 and 32 -> 20 px at 390 (BASE vs INT). Pixel H5 not run (geometric only). Sheet framer/dev/shots/verify_bubbles/upload_sheet.png (bands cut on 109/110 tiles).",
    "severity": "P0",
@@ -954,12 +954,16 @@
    "test": "node /tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/bub/run.mjs --dir /tmp/ga_int_bub|/tmp/ga_base_bub --w 390|1280 --h 844|860 --ids <ids> --upload 0|1|6 --out X.json --tag T ; python3 /tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/bub/summary.py",
    "slice": "bubbles-characters",
    "group": "C",
-   "report_tier": "P1"
+   "report_tier": "P1",
+   "status_before": "REGRESSION",
+   "fixed_by": "R7",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "390: 105 take faces 32x32 (was 20), 106 avatar 41x41 (was 26)"
   },
   {
    "id": "P5.3-b",
    "requirement": "Images large enough (>=50% of bubble diameter, >=40 px at V1)",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "scope": "shared + games 105,106 (EOS) + 32 sticker games",
    "evidence": "INT 390: image <40 px in 32 games (faces 14-30 px in capsules: 2,5,10,11,17,20,29,30,32,42,45,46,47,49,51,53,55,56,57,60,63,65,67,68,69,70,79,82,83,101,105,106); ratio <0.5 in 7 (0.28), 33 (0.34), 90 (0.44), 92 (0.32), 105 (0.45). EOS made two smaller: 106 TINY SOUNDTRACK avatar 40 -> 24 px (src/eos/10_eos_readability.jsx L238-239 .u106 .tsndAvatar 26px), 105 DRAMA MACHINE 32 -> 20 px, ratio 0.73 -> 0.45 (BASE vs INT 390). 107 GO WEIRD 78 -> 62 px by design (60_eos_fixes.jsx L515) but still >=40.",
    "severity": "P1",
@@ -968,12 +972,16 @@
    "test": "node /tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/bub/run.mjs --dir /tmp/ga_int_bub|/tmp/ga_base_bub --w 390|1280 --h 844|860 --ids <ids> --upload 0|1|6 --out X.json --tag T ; python3 /tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/bub/summary.py",
    "slice": "bubbles-characters",
    "group": "C",
-   "report_tier": "P1"
+   "report_tier": "P1",
+   "status_before": "REGRESSION",
+   "fixed_by": "R7",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "390: 105 take faces 32x32 (was 20), 106 avatar 41x41 (was 26)"
   },
   {
    "id": "P5.4-a",
    "requirement": "No black mask/background/rectangle around bubble pictures",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "scope": "shared + game 6 (EOS)",
    "evidence": "DOM H6 (any element/pseudo inside the object with bg lum<0.15 & alpha>0.35 intersecting image or text): INT 390 45 games, e.g. 2 CRUSH div.uniqWord.hasDirectThoughtImage linear-gradient(160deg,rgba(16,49,65,.88),rgba(4,14,24,.97)); 100 span.potatoBubblePicShell rgba(17,0,8,.76); 103 .spQueueItem rgba(4,18,31,.72); 109 .tsBubbleTextContainer rgba(5,18,30,.94); 110 label rgba(4,18,31,.97). Same set in BASE for the overlap. New in INT: 6 ZAP - b.zapBubbleCount rgba(4,10,22,.72) now intersects the user word in all 6 bubbles (BASE 0) after the word floor grew the text. Pixel pass not run.",
    "severity": "P0",
@@ -982,7 +990,11 @@
    "test": "node /tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/bub/run.mjs --dir /tmp/ga_int_bub|/tmp/ga_base_bub --w 390|1280 --h 844|860 --ids <ids> --upload 0|1|6 --out X.json --tag T ; python3 /tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/bub/summary.py",
    "slice": "bubbles-characters",
    "group": "C",
-   "report_tier": "P1"
+   "report_tier": "P1",
+   "status_before": "REGRESSION",
+   "fixed_by": "R8",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "ZAP 6 at 390: counter background rgba(255,255,255,.13) glass at the bubble top, overlap with the word 0 px (BASE-of-INT dark plate rgba(4,10,22,.72)); word fit no longer clamps up to 14 px (no mid-word breaks: 0 in 6,19,21,43,88,94,105,106 probe); circle fit caps raised text to the chord of r-2"
   },
   {
    "id": "P5.4-b",
@@ -1043,7 +1055,7 @@
   {
    "id": "P5.5-c",
    "requirement": "Text centred and properly wrapped (<=3 lines, no mid-word breaks)",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "scope": "EOS word floor (10_eos_readability.jsx) + games 87,88,102,103,1",
    "evidence": "Off-centre >3 px or >3 lines: INT 390 87,88,102,103 (BASE 87,102). POP with 6 uploads at INT 390 breaks words inside the word (\"zebr|a\", \"kettl|e\", \"tues|day\", \"walr|us\" - framer/dev/shots/verify_bubbles/upload_sheet.png tile INT390_U6_001) after the floor raised them 8 -> 15 px in an unchanged bubble; BASE (8 px) did not break.",
    "severity": "P1",
@@ -1052,7 +1064,11 @@
    "test": "node /tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/bub/run.mjs --dir /tmp/ga_int_bub|/tmp/ga_base_bub --w 390|1280 --h 844|860 --ids <ids> --upload 0|1|6 --out X.json --tag T ; python3 /tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/bub/summary.py",
    "slice": "bubbles-characters",
    "group": "C",
-   "report_tier": "P1"
+   "report_tier": "P1",
+   "status_before": "REGRESSION",
+   "fixed_by": "R8",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "ZAP 6 at 390: counter background rgba(255,255,255,.13) glass at the bubble top, overlap with the word 0 px (BASE-of-INT dark plate rgba(4,10,22,.72)); word fit no longer clamps up to 14 px (no mid-word breaks: 0 in 6,19,21,43,88,94,105,106 probe); circle fit caps raised text to the chord of r-2"
   },
   {
    "id": "P5.5-d",
@@ -1071,7 +1087,7 @@
   {
    "id": "P5.5-e",
    "requirement": "No letter sticks out of the circle",
-   "status": "REGRESSION",
+   "status": "PARTIAL",
    "scope": "EOS word floor + fixed --tsb bubble size",
    "evidence": "Line-box corners outside circle r-2: INT 390 19,21,43,87,88,94,102,103,109 vs BASE 390 87,94,102,109 (new in INT: 19 ERASE, 21 BIN, 43 CUT THE LOOP, 88 TRADE MACHINE; 94 JUGGLE grew 2 -> 6 bubbles; POP with uploads 0 -> 3). scrollWidth>clientWidth: INT 0 vs BASE 4 (19,21,43,102) - the floor removed clipping but the larger words now protrude.",
    "severity": "P1",
@@ -1080,7 +1096,11 @@
    "test": "node /tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/bub/run.mjs --dir /tmp/ga_int_bub|/tmp/ga_base_bub --w 390|1280 --h 844|860 --ids <ids> --upload 0|1|6 --out X.json --tag T ; python3 /tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/bub/summary.py",
    "slice": "bubbles-characters",
    "group": "C",
-   "report_tier": "P1"
+   "report_tier": "P1",
+   "status_before": "REGRESSION",
+   "fixed_by": "R8",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "ZAP 6 at 390: counter background rgba(255,255,255,.13) glass at the bubble top, overlap with the word 0 px (BASE-of-INT dark plate rgba(4,10,22,.72)); word fit no longer clamps up to 14 px (no mid-word breaks: 0 in 6,19,21,43,88,94,105,106 probe); circle fit caps raised text to the chord of r-2 | letters-outside probe unchanged vs pre-fix build on the probed set: kept PARTIAL until the H7 0/1/6-upload sweep re-runs"
   },
   {
    "id": "P5.5-f",
@@ -1127,7 +1147,7 @@
   {
    "id": "P5.6-c",
    "requirement": "Games do not each invent their own picture-and-text layout (override count must not grow)",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "scope": "src/eos/60_eos_fixes.jsx, src/eos/10_eos_readability.jsx",
    "evidence": "/tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/bub/override.py: per-game .u<ID> rules touching bubble image/text layout = 12 rules / 8 games (85,86,88,92,102,103,106,107) in 00_arcade.jsx at HEAD and at 485500c. EOS adds more: 60_eos_fixes.jsx L509,L515 (.u107 card picture 90/62 px) and 10_eos_readability.jsx L238-246 (.u106 avatar 26 px, text margins). Reasons are commented, but the count grew and 106's override shrinks the picture (P5.3-b).",
    "severity": "P2",
@@ -1136,7 +1156,11 @@
    "test": "python3 /tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/bub/override.py",
    "slice": "bubbles-characters",
    "group": "C",
-   "report_tier": "P2"
+   "report_tier": "P2",
+   "status_before": "REGRESSION",
+   "fixed_by": "R7",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "390: 105 take faces 32x32 (was 20), 106 avatar 41x41 (was 26)"
   },
   {
    "id": "P5.6-d",
@@ -1267,7 +1291,7 @@
   {
    "id": "P7.3-b",
    "requirement": "Characters never cut off, too small or covered by text",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "scope": "games 105,106 (EOS) + sticker games",
    "evidence": "<48 px pictures at INT 390 in 36 games (sticker faces 14-30 px); text over faces in 86,87,88,98,100; crop in 15,105,110. EOS shrank 106 (40 -> 24 px, 10_eos_readability.jsx L238-239) and 105 (32 -> 20 px, band 1 -> 0) at 390 vs BASE.",
    "severity": "P1",
@@ -1276,7 +1300,11 @@
    "test": "node /tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/bub/run.mjs --dir /tmp/ga_int_bub|/tmp/ga_base_bub --w 390|1280 --h 844|860 --ids <ids> --upload 0|1|6 --out X.json --tag T ; python3 /tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/bub/summary.py",
    "slice": "bubbles-characters",
    "group": "C",
-   "report_tier": "P1"
+   "report_tier": "P1",
+   "status_before": "REGRESSION",
+   "fixed_by": "R7",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "390: 105 take faces 32x32 (was 20), 106 avatar 41x41 (was 26)"
   },
   {
    "id": "P7.3-c",
@@ -1581,7 +1609,7 @@
   {
    "id": "P3.2-a",
    "requirement": "Game title centred in the header",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "scope": "shared header (src/eos/10_eos_readability.jsx)",
    "evidence": "V2 INT: '.releaseConsoleTitle' centre offset 0 px, not clipped (/tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/ci/out_int_v2a.json input.header). V1 INT: EOS hides .releaseTitleMain/.releaseTitleBy and left-aligns the brand (10_eos_readability.jsx L305-308 inside @media(max-width:560px) from L211): offset -84 px at input and reveal, -68 px in play (/tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/ci/out_int_v1a.json, /tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/ci/out_int_v1c.json headerPlay). B-BASE V1: centred (offset 0) but clipped to 7-10 px text (/tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/ci/out_base_v1.json). The header never shows the game name: displayTitle is the 'title' prop 'EMOTIONAL RELEASE CONSOLE' (framer/src/00_arcade.jsx L21029).",
    "severity": "P1",
@@ -1592,7 +1620,11 @@
    "required": "Centred title at every size, no clipping",
    "slice": "console-input",
    "group": "A",
-   "report_tier": "P1"
+   "report_tier": "P1",
+   "status_before": "REGRESSION",
+   "fixed_by": "R6",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "390: brand centre offset 0 px at input and play (was -84/-68), scrollWidth == clientWidth (no clipping); score pill stacks LVL over spark count"
   },
   {
    "id": "P3.2-b",
@@ -1885,7 +1917,7 @@
   {
    "id": "P3.4-j",
    "requirement": "No working control removed",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "scope": "shared reveal (src/eos/50_eos_shift.jsx)",
    "evidence": "Accessible-name diff B-BASE vs B-INT at V1: input none missing; play none missing. Reveal (Still Moment) is missing 'Open previous release game', 'Open next release game', 'YES ✓' and 'NOT YET →'. Reveal (done) is missing YES/NOT YET; these were remapped to the shift meter, which is acceptable under C5. Prev/next exist but are hidden (50_eos_shift.jsx L1447/L1460) until the done step, 2 taps away, and at V1 they sit under the composer (/tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/ci/shots/int_v1e_done_0.png vs /tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/ci/shots/base_v1_reveal.png). B-BASE shows PREVIOUS/NEXT on the reveal immediately.",
    "severity": "P1",
@@ -1896,7 +1928,11 @@
    "required": "Every baseline control within 1 tap",
    "slice": "console-input",
    "group": "A",
-   "report_tier": "P0"
+   "report_tier": "P0",
+   "status_before": "REGRESSION",
+   "fixed_by": "R4",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "hide-until-done rules removed (desktop visibility + phone display); phone nav row above the card; done step at 390: primaries I'M GOOD, ONE MORE, AGAIN (SHARE is a quiet link); composer NEXT reachable from 0 s (1 tap)"
   },
   {
    "id": "P10-a",
@@ -1917,7 +1953,7 @@
   {
    "id": "P10-b",
    "requirement": "Brief, clear explanation of how Release works",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "scope": "EOS check-in (src/eos/40_eos_checkin.jsx)",
    "evidence": "B-BASE input shows .releaseIdleStory (367x367 at V1) with 4 steps (/tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/ci/shots/base_v1_input.png). INT default (check-in on) hides it: display:none from 40_eos_checkin.jsx L1239 '.releaseStage:has(.eosCheckIn) .releaseIdleStory{display:none}' (/tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/ci/out_int_v1a.json input.idleStory disp 'none', V1 and V2). After 'just let me play' the story returns: 4 steps of 8-9 words at 12.5 px (/tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/ci/out2_int.json rmIdle.steps). Only an 'about ThinkStill' link remains on the first screen. Step 2 copy 'Pick one or let ThinkStill choose' conflicts with F3.",
    "severity": "P1",
@@ -1928,7 +1964,11 @@
    "required": "Explanation visible at input",
    "slice": "console-input",
    "group": "A",
-   "report_tier": "P1"
+   "report_tier": "P1",
+   "status_before": "REGRESSION",
+   "fixed_by": "R5",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "390x844 input with check-in: 4 steps visible (PUT IT INTO WORDS / THINKSTILL PICKS / WE MATERIALISE IT / PLAY + RELEASE), 12 px, <= 4 words, strip y 740-781 under the check-in foot (composer lends its empty band), check-in size unchanged"
   },
   {
    "id": "P10-c",
@@ -2077,7 +2117,7 @@
   {
    "id": "P14-f",
    "requirement": "Less clutter (reveal <=3 primary + prev/next)",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "scope": "EOS reveal (src/eos/50_eos_shift.jsx, 52_eos_rewards.jsx)",
    "evidence": "INT V1 done step: 4 primary buttons (I'M GOOD ✓ 346x50, ONE MORE ▶ COOL THE VOLCANO 169x54, SHARE ✦ 123x48, ↻ AGAIN 81x44), plus a 'Need to talk to someone?' link, 2 reward chips and 2 side arrows (/tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/ci/out_int_v1e.json flow[0].done.btns). B-BASE reveal: YES ✓, NOT YET →, ↻ AGAIN (3) plus prev/next (/tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/ci/out_base_v1.json).",
    "severity": "P2",
@@ -2088,7 +2128,11 @@
    "required": "",
    "slice": "console-input",
    "group": "A",
-   "report_tier": "P2"
+   "report_tier": "P2",
+   "status_before": "REGRESSION",
+   "fixed_by": "R4",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "hide-until-done rules removed (desktop visibility + phone display); phone nav row above the card; done step at 390: primaries I'M GOOD, ONE MORE, AGAIN (SHARE is a quiet link); composer NEXT reachable from 0 s (1 tap)"
   },
   {
    "id": "P14-g",
@@ -3117,7 +3161,7 @@
   {
    "id": "P9.3-c",
    "requirement": "Previous/next and 'Try next game' outside the container",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "scope": "EOS reveal CSS (src/eos/50_eos_shift.jsx)",
    "evidence": "B-BASE: ‹ PREVIOUS and NEXT › are visible on the reveal at once (/tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/ci/shots/base_v1_reveal.png). B-INT: display:none / visibility:hidden while the shift meter is not 'done' (50_eos_shift.jsx L1447, L1460), i.e. 2 taps (skip ›, skip). At the V1 done step they render at y=743/785 under the composer (/tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/ci/shots/int_v1e_done_0.png). FEEDBACK_LOG.md F3 (founder 2026-10-09, reiterated: 'don't show any options to select games - just let ThinkStill decide') + FOUNDER_REQUIREMENTS.md addendum L1613 supersedes PREVIOUS (catalogue browsing) but keeps one Next, which is currently not reachable in 1 tap.",
    "severity": "P1",
@@ -3128,12 +3172,16 @@
    "required": "One Next reachable in 1 tap (F3)",
    "slice": "console-input",
    "group": "D",
-   "report_tier": "P0"
+   "report_tier": "P0",
+   "status_before": "REGRESSION",
+   "fixed_by": "R4",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "hide-until-done rules removed (desktop visibility + phone display); phone nav row above the card; done step at 390: primaries I'M GOOD, ONE MORE, AGAIN (SHARE is a quiet link); composer NEXT reachable from 0 s (1 tap)"
   },
   {
    "id": "P9.3-d",
    "requirement": "Finale screen not crowded",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "scope": "EOS reveal",
    "evidence": "INT done step: 4 primary (I'M GOOD, ONE MORE, SHARE, AGAIN) + a link + 2 reward chips + 2 arrows (/tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/ci/out_int_v1e.json flow[0].done.btns). B-BASE: 3 primary (YES, NOT YET, AGAIN) + 2 arrows. Function mapping holds: AGAIN = AGAIN, NEW THOUGHT = I'M GOOD, TRY = ONE MORE.",
    "severity": "P2",
@@ -3144,12 +3192,16 @@
    "required": "",
    "slice": "console-input",
    "group": "D",
-   "report_tier": "P2"
+   "report_tier": "P2",
+   "status_before": "REGRESSION",
+   "fixed_by": "R4",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "hide-until-done rules removed (desktop visibility + phone display); phone nav row above the card; done step at 390: primaries I'M GOOD, ONE MORE, AGAIN (SHARE is a quiet link); composer NEXT reachable from 0 s (1 tap)"
   },
   {
    "id": "P9.3-e",
    "requirement": "Next game without onboarding again",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "scope": "EOS reveal",
    "evidence": "Neither the check-in nor the idle story is forced again (afterNext checkinShown:false, idleShown:false). But reveal → next game takes 3 taps on phone (skip ›, skip, ONE MORE), and the done step is reached ~6-7 s after the first tap (/tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/ci/out_int_v1e.json flow[*].doneMs). B-BASE: NEXT › is 1 tap, visible at once.",
    "severity": "P2",
@@ -3160,7 +3212,11 @@
    "required": "",
    "slice": "console-input",
    "group": "D",
-   "report_tier": "P2"
+   "report_tier": "P2",
+   "status_before": "REGRESSION",
+   "fixed_by": "R4",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "hide-until-done rules removed (desktop visibility + phone display); phone nav row above the card; done step at 390: primaries I'M GOOD, ONE MORE, AGAIN (SHARE is a quiet link); composer NEXT reachable from 0 s (1 tap)"
   },
   {
    "id": "P11.1-a",
@@ -3237,7 +3293,7 @@
   {
    "id": "P11.1-f",
    "requirement": "The finale is in sync with its sound (+-50 ms, scheduled)",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "scope": "shared: wrappedDone sfx('win') x3 + EOS flip-bloom chime (14_eos_mood.jsx)",
    "evidence": "Scheduled/triggered (headless) only. Arcade: wrappedDone calls sfx('win') at 0/170/340 ms in the same handler that shows the mega burst (00_arcade.jsx:18563-18592); observed first 'win' vs mega DOM: base -363..+25 ms, int -391..+30 ms (neither meets +-50 ms headless). B-INT adds the EOS flip-bloom chime (eosTone 1175/2349, 1568/3136, 1976/3951 Hz, 200 ms apart) at progress 100 / isComplete, i.e. BEFORE the burst: POP -1223..-741 ms, 108 -367 ms, 112 -1 ms (/tmp/fp_out/v1/{base,int}_390_vis.json sfxAroundFinale). That is a second finale sound that is not the approved burst's cue, against the founder's 2026-10-09 finale decision ('no double sound', CREATIVE_STANDARDS.md L66).",
    "severity": "P1",
@@ -3246,12 +3302,16 @@
    "test": "H8 log: no non-burst cue between progress 100 and mega unmount; first 'win' within +-50 ms of the first burst frame on a sound-capable device.",
    "slice": "finales-perf",
    "group": "E",
-   "report_tier": "P1"
+   "report_tier": "P1",
+   "status_before": "REGRESSION",
+   "fixed_by": "R2",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "scheduled-sound log (AudioContext tagged by creator) on 1,18,100,109,110 at 390 and 1,18 at 1280: 0 EOS cues between progress 100 and mega unmount; bloom chime starts 178-303 ms after unmount; no bloom during the burst"
   },
   {
    "id": "P11.1-g",
    "requirement": "No letters or instruction text over the main burst (mount -> +1.8 s)",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "scope": "EOS 14_eos_mood.jsx flip bloom (L636, L857); arcade finish card (00_arcade.jsx:18904)",
    "evidence": "In-page text-node scan every 100 ms during mount -> +1.9 s, core = circle r = 0.2*min(w,h) at the burst centre, opacity product > 0.3 (/tmp/fp_out/v1/{base,int}_390_vis.json, txt): B-INT EOS flip words inside the core in 15 (3 samples), 18 (11/15), 24 (5), 41 (5), 104 (5) at V1, POP in the smoke run ('clear' +332..+1681 ms), BURN at 1280 (10 samples, /tmp/fp_out/v2/{base,int}_1280_vis.json); B-BASE has no EOS words. Screenshot: /tmp/fp_out/sheet_A.png int_18_390_f1..f2 ('cool clear strong' on the burst centre); /tmp/fp_out/sheet_B.png int_100/int_110 (words over the potatoes / over the user's clouds during RAIN OUT's own washout). Code: EOS_MOOD_DONE_SEL fires the bloom on '.globalPlayGuide.isComplete, .tsRewardSurge.mega' and .tsRewardSurge is not among the hard obstacles (EOS_MOOD_PIN L459). Pre-existing (also in B-BASE): the arcade finish card 'RELEASED · SHIFT COMPLETE / SHIFT MADE · KEEP YOUR STILL' sits in the core for 100-110 (base 100 11/11, 102 13/13, 108 8/8, 109 7/7 samples). CREATIVE_STANDARDS #2 'bloom may play in addition' is superseded by the newest founder decision (L66): 'Never alter, replace or overlay the approved burst'.",
    "severity": "P0",
@@ -3260,7 +3320,11 @@
    "test": "Text-node scan in fp_run.mjs on ALL114 at V1 and V2: zero visible text in the burst core from mount to +1.8 s.",
    "slice": "finales-perf",
    "group": "E",
-   "report_tier": "P0"
+   "report_tier": "P0",
+   "status_before": "REGRESSION",
+   "fixed_by": "R1",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "fp_freeze2 (frozen frame at mega +0.6 s, in-page all-EOS hide diff) on 1,18,100,109,110: burst rect MAD <= 0.17% at 390x844 and <= 0.07% at 1280x860 (was 3.07-6.18%), core 0.00%; all 5 EOS layers opacity 0 during mega; text scan mount..+1.8 s: 0 EOS text nodes in the core (remaining core text is the games' own BASE finale copy)"
   },
   {
    "id": "P11.1-h",
@@ -3335,7 +3399,7 @@
   {
    "id": "P11.3-a",
    "requirement": "Approved bursts stay exactly as they are",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "scope": "EOS overlays (14_eos_mood, 12_eos_dots, 40_eos_checkin companion) over the unchanged arcade burst",
    "evidence": "The burst code is unchanged: arcade source diff vs 485500c is empty, no I1-I3 edit touches RewardSurgeBurst/wrappedDone (dev/eos_integrate.py EDITS), no EOS CSS selects .tsRewardSurge or surge* (grep). The H10 signature is equal in B-INT and B-BASE for all 10 games finished in both (same variant, class list, 231 descendants, 177 animations; reduced 60/24) (/tmp/fp_out/v1/{base,int}_390_vis.json). But the rendered burst changes in B-INT: teal colour grade and a bright Still-Point glow on the core, flip words on the core, and the companion bubble 'nice hit — now let it cool' during the burst (/tmp/fp_out/sheet_A.png int vs base rows; /tmp/fp_out/sheet_freeze.png int_1_frozenA vs int_1_frozenC). Measured in P11.3-c.",
    "severity": "P0",
@@ -3344,7 +3408,11 @@
    "test": "H10 equal + frozen-frame diff B-INT vs B-BASE <= 3% MAD in the burst rect; founder confirms side-by-side.",
    "slice": "finales-perf",
    "group": "E",
-   "report_tier": "P0"
+   "report_tier": "P0",
+   "status_before": "REGRESSION",
+   "fixed_by": "R1",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "fp_freeze2 (frozen frame at mega +0.6 s, in-page all-EOS hide diff) on 1,18,100,109,110: burst rect MAD <= 0.17% at 390x844 and <= 0.07% at 1280x860 (was 3.07-6.18%), core 0.00%; all 5 EOS layers opacity 0 during mega; text scan mount..+1.8 s: 0 EOS text nodes in the core (remaining core text is the games' own BASE finale copy)"
   },
   {
    "id": "P11.3-b",
@@ -3363,7 +3431,7 @@
   {
    "id": "P11.3-c",
    "requirement": "EOS overlays do not change approved bursts (<= 3% mean abs pixel diff, else opacity 0)",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "scope": "EOS: .eosMoodGrade z54 soft-light, .eosMoodAir z54 screen, .eosMoodFlip z54, .eosCompanion z55, .eosThoughtFlow z0",
    "evidence": "Frozen-frame test /tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/fp_freeze2.mjs: at mega +602..722 ms, CSS animations, setTimeout and rAF callbacks are held; control re-shot diff 0-0.12%; B-BASE control 0-0.07% (/tmp/fp_out/fz2/{base,int}_freeze.json). B-INT, hiding only grade+air: mean abs diff 2.18-2.48% over the burst rect (1, 18, 100, 109, 110). Hiding all EOS layers: 3.07-6.18% over the burst rect and 3.3-13.96% in the core (POP 5.52/13.67, CLEANSE 6.18/13.96, BURN 5.38/7.32, HOT POTATO 5.63/4.02, RAIN OUT 3.07/3.35). All layers had computed opacity 1 during the burst. Sheet: /tmp/fp_out/sheet_freeze.png.",
    "severity": "P0",
@@ -3372,7 +3440,11 @@
    "test": "fp_freeze2.mjs on 1, 18, 100, 109, 110 at V1 and V2: all-EOS diff <= 3% over the burst rect.",
    "slice": "finales-perf",
    "group": "E",
-   "report_tier": "P0"
+   "report_tier": "P0",
+   "status_before": "REGRESSION",
+   "fixed_by": "R1",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "fp_freeze2 (frozen frame at mega +0.6 s, in-page all-EOS hide diff) on 1,18,100,109,110: burst rect MAD <= 0.17% at 390x844 and <= 0.07% at 1280x860 (was 3.07-6.18%), core 0.00%; all 5 EOS layers opacity 0 during mega; text scan mount..+1.8 s: 0 EOS text nodes in the core (remaining core text is the games' own BASE finale copy)"
   },
   {
    "id": "P11.3-d",
@@ -3545,7 +3617,7 @@
   {
    "id": "P12.4-a",
    "requirement": "Rain never plays without the washout",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "scope": "RAIN OUT ok; EOS 50_eos_shift.jsx EosStillMoment",
    "evidence": "RAIN OUT: setPhase(1) (washout) and rainSfx() run in the same setTimeout (00_arcade.jsx:14171-14174); run: rain cue -169 ms (base) / -64 ms (int) vs the first 100 ms-poll detection of .washing (/tmp/fp_out/v1/{base,int}_390_vis.json), i.e. the same tick within poll/render latency. New in B-INT: EosStillMoment calls rainSfx(4) on the reveal (50_eos_shift.jsx:472, 'sigh / cool' exhale) with no rain or washout visual. Logged in 15 SHRED (+4.9 s after reveal) and 104 (+6.3 s after reveal). Scheduled only.",
    "severity": "P1",
@@ -3554,7 +3626,11 @@
    "test": "H8: every rain:* cue has a washout/rain visual within -100 ms, across ALL114 including reveal/Still Moment.",
    "slice": "finales-perf",
    "group": "E",
-   "report_tier": "P1"
+   "report_tier": "P1",
+   "status_before": "REGRESSION",
+   "fixed_by": "R3",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "50_eos_shift: rainRef no longer played by the Still Moment; eosStillBreath (filtered noise exhale) + the existing sigh tone; headless = scheduling only"
   },
   {
    "id": "P12.4-b",
@@ -3939,7 +4015,7 @@
   {
    "id": "P13.1-c",
    "requirement": "POP: pop and finale satisfying; approved finale unchanged",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "scope": "1 POP / shared EOS mood",
    "evidence": "EOS 14_eos_mood.jsx L21-35/L636/L857: on the first .globalPlayGuide.isComplete or .tsRewardSurge.mega it paints a flip-word bloom + colour-grade layer over the stage in EVERY game (mount I1-E3); the arcade finale code itself is byte-identical to 485500c (git diff --stat 485500c -- src/00_arcade.jsx src/99_pixar.jsx is empty). H10 signature vs B-485 not captured in this slice",
    "severity": "P1",
@@ -3948,7 +4024,11 @@
    "test": "H10 burst signature INT vs B-485 for id 1 at +0.2/+0.6/+1.2 s",
    "slice": "game-specific",
    "group": "F",
-   "report_tier": "P1"
+   "report_tier": "P1",
+   "status_before": "REGRESSION",
+   "fixed_by": "R1",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "fp_freeze2 (frozen frame at mega +0.6 s, in-page all-EOS hide diff) on 1,18,100,109,110: burst rect MAD <= 0.17% at 390x844 and <= 0.07% at 1280x860 (was 3.07-6.18%), core 0.00%; all 5 EOS layers opacity 0 during mega; text scan mount..+1.8 s: 0 EOS text nodes in the core (remaining core text is the games' own BASE finale copy)"
   },
   {
    "id": "P13.1-d",
@@ -5215,7 +5295,7 @@
   {
    "id": "P13.19-l",
    "requirement": "HOT POTATO: all other working behaviour kept",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "scope": "100 HOT POTATO / shared EOS mood",
    "evidence": "Drag >=48 px counts (300 px drag -> cooled, 17%); H1 V1 OK 89.8 s, V2 single rerun OK 94.2 s. Finale: EOS 14_eos_mood.jsx L21-35/L636/L857: on the first .globalPlayGuide.isComplete or .tsRewardSurge.mega it paints a flip-word bloom + colour-grade layer over the stage in EVERY game (mount I1-E3); the arcade finale code itself is byte-identical to 485500c (git diff --stat 485500c -- src/00_arcade.jsx src/99_pixar.jsx is empty)",
    "severity": "P1",
@@ -5224,7 +5304,11 @@
    "test": "H10 finale signature vs B-485",
    "slice": "game-specific",
    "group": "F",
-   "report_tier": "P1"
+   "report_tier": "P1",
+   "status_before": "REGRESSION",
+   "fixed_by": "R1",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "fp_freeze2 (frozen frame at mega +0.6 s, in-page all-EOS hide diff) on 1,18,100,109,110: burst rect MAD <= 0.17% at 390x844 and <= 0.07% at 1280x860 (was 3.07-6.18%), core 0.00%; all 5 EOS layers opacity 0 during mega; text scan mount..+1.8 s: 0 EOS text nodes in the core (remaining core text is the games' own BASE finale copy)"
   },
   {
    "id": "P13.20-a",
@@ -5411,7 +5495,7 @@
   {
    "id": "P13.23-b",
    "requirement": "BURN: approved finale intact",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "scope": "18 BURN / shared EOS mood",
    "evidence": "EOS 14_eos_mood.jsx L21-35/L636/L857: on the first .globalPlayGuide.isComplete or .tsRewardSurge.mega it paints a flip-word bloom + colour-grade layer over the stage in EVERY game (mount I1-E3); the arcade finale code itself is byte-identical to 485500c (git diff --stat 485500c -- src/00_arcade.jsx src/99_pixar.jsx is empty). Completion: INT V1 timeout at 93% under load (/tmp/claude-0/-home-user-thinkstill-rituals/b5e1bfa3-ddef-5c62-9291-4d212bc0e4f1/scratchpad/gs/sweep_int_v1_a.json), V2 OK",
    "severity": "P1",
@@ -5421,7 +5505,11 @@
    "slice": "game-specific",
    "group": "F",
    "report_tier": "P1",
-   "merge_note": "Merge confirm run: 18 BURN reached reveal on HEAD INT V1 (71.5 s) and BASE (61.2 s); the 93% timeout was load. Finale overlay regression stands."
+   "merge_note": "Merge confirm run: 18 BURN reached reveal on HEAD INT V1 (71.5 s) and BASE (61.2 s); the 93% timeout was load. Finale overlay regression stands.",
+   "status_before": "REGRESSION",
+   "fixed_by": "R1",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "fp_freeze2 (frozen frame at mega +0.6 s, in-page all-EOS hide diff) on 1,18,100,109,110: burst rect MAD <= 0.17% at 390x844 and <= 0.07% at 1280x860 (was 3.07-6.18%), core 0.00%; all 5 EOS layers opacity 0 during mega; text scan mount..+1.8 s: 0 EOS text nodes in the core (remaining core text is the games' own BASE finale copy)"
   },
   {
    "id": "P13.24-a",
@@ -5962,7 +6050,7 @@
   {
    "id": "P8.3-h",
    "requirement": "Navigation after completion is useful",
-   "status": "REGRESSION",
+   "status": "FIXED",
    "severity": "P1",
    "scope": "shared (50_eos_shift)",
    "evidence": "Same defect as P9.3-c / P9.3-e / P3.4-j (reveal navigation hidden until the shift meter is 'done', 3 taps to the next game on a phone). Not counted twice in section 2.",
@@ -5971,7 +6059,11 @@
    "test": "As P9.3-c",
    "source": "derived in the merge (no verification slice covered this id)",
    "group": "D",
-   "derived": true
+   "derived": true,
+   "status_before": "REGRESSION",
+   "fixed_by": "R4",
+   "fixed_commit": "c4f9a87",
+   "fixed_verification": "hide-until-done rules removed (desktop visibility + phone display); phone nav row above the card; done step at 390: primaries I'M GOOD, ONE MORE, AGAIN (SHARE is a quiet link); composer NEXT reachable from 0 s (1 tap)"
   },
   {
    "id": "P8.3-i",
@@ -6336,6 +6428,13 @@
    "source": "derived in the merge (no verification slice covered this id)",
    "group": "H",
    "derived": true
+  }
+ ],
+ "fix_log": [
+  {
+   "batch": "regressions (plan row 0)",
+   "commit": "c4f9a87",
+   "rows_fixed": 23
   }
  ]
 }
