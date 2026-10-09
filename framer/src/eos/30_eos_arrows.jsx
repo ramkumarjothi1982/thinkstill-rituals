@@ -768,7 +768,7 @@ function EosArrowsCueView({ v }) {
                     ? v.halos.map((h, i) => (
                           <React.Fragment key={`h${i}`}>
                               <div className="eosHaloBase" style={{ left: h.x - Math.min(5, h.p || 7), top: h.y - Math.min(5, h.p || 7), width: h.w + 2 * Math.min(5, h.p || 7), height: h.h + 2 * Math.min(5, h.p || 7) }} />
-                              <div className="eosHalo" style={{ left: h.x - (h.p || 7), top: h.y - (h.p || 7), width: h.w + 2 * (h.p || 7), height: h.h + 2 * (h.p || 7), "--hp": `${v.period}ms`, "--hd": `${i * 380}ms` }} />
+                              <div className={`eosHalo${(h.p || 7) < 7 ? " isTight" : ""}`} style={{ left: h.x - (h.p || 7), top: h.y - (h.p || 7), width: h.w + 2 * (h.p || 7), height: h.h + 2 * (h.p || 7), "--hp": `${v.period}ms`, "--hd": `${i * 380}ms` }} />
                           </React.Fragment>
                       ))
                     : null}
@@ -1140,7 +1140,9 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
                 // new target / size); in between the hotspot rides along as a fraction of the target's rect.
                 const ck = `${res.ident}|${restIdx}|${els.length}`
                 const C = S.aimC
-                if (C && C.key === ck && C.el === el && now - C.at < 600 && Math.abs(C.w - rect.w) < 4 && Math.abs(C.h - rect.h) < 4) {
+                // a target that just appeared is re-scored every 200 ms for 1.2 s (copy / strings still popping in)
+                const born = C && C.key === ck && C.el === el ? C.born : now
+                if (C && C.key === ck && C.el === el && now - C.at < (now - born < 1200 ? 200 : 600) && Math.abs(C.w - rect.w) < 4 && Math.abs(C.h - rect.h) < 4) {
                     tx = rect.x + C.fx * rect.w
                     ty = rect.y + C.fy * rect.h
                     pose = C.pose
@@ -1219,7 +1221,7 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
                         hideHand = true
                         occluded = true
                     }
-                    S.aimC = { key: ck, el, at: now, fx: (tx - rect.x) / Math.max(1, rect.w), fy: (ty - rect.y) / Math.max(1, rect.h), pose, occ: occluded, hide: hideHand && !pick ? true : hideHand, w: rect.w, h: rect.h }
+                    S.aimC = { key: ck, el, at: now, born, fx: (tx - rect.x) / Math.max(1, rect.w), fy: (ty - rect.y) / Math.max(1, rect.h), pose, occ: occluded, hide: hideHand && !pick ? true : hideHand, w: rect.w, h: rect.h }
                 }
                 clientPt = { x: Rl.left + tx * k, y: Rl.top + ty * k }
             }
@@ -1977,6 +1979,7 @@ ${EOS_ARROWS_R} circle.eosPost{fill:#FFD36B;stroke:#1b1650;stroke-width:2.5}
 ${EOS_ARROWS_R} path.eosFly{fill:none;stroke:#fff;stroke-width:3.5;stroke-linecap:round;stroke-dasharray:2 8;opacity:0;animation:eosArrowsFly 2.2s ease-out infinite}
 ${EOS_ARROWS_R} .eosZone{position:absolute;border:3px dashed #FFE58A;border-radius:24px;background:rgba(255,211,107,.10);box-shadow:0 0 22px rgba(255,200,90,.5);animation:eosArrowsZone 1.1s ease-in-out infinite}
 ${EOS_ARROWS_R} .eosZoneTag{position:absolute;left:50%;top:-14px;transform:translate(-50%,-100%);white-space:nowrap;font:900 14px/1 var(--eos-font,"Baloo 2",system-ui,sans-serif);letter-spacing:.06em;color:#1b1650;background:#FFD36B;border:2px solid #fff;border-radius:999px;padding:5px 10px;box-shadow:0 3px 0 rgba(90,30,0,.5)}
+${EOS_ARROWS_R} .eosHalo.isTight{animation-name:eosArrowsHaloFlat}
 ${EOS_ARROWS_R} .eosHaloBase{position:absolute;border-radius:22px;border:2px dashed rgba(255,229,138,.6)}
 ${EOS_ARROWS_R} .eosHalo{position:absolute;border-radius:24px;border:3px solid #FFE58A;box-shadow:0 0 0 4px rgba(255,211,107,.25),0 0 28px rgba(255,190,80,.8),inset 0 0 18px rgba(255,229,138,.35);opacity:0;animation:eosArrowsHalo var(--hp,1.2s) linear infinite;animation-delay:var(--hd,0s)}
 ${EOS_ARROWS_R} .eosCaret{position:absolute;width:3px;border-radius:2px;background:#FFD36B;box-shadow:0 0 8px #FFB23E;animation:eosArrowsCaret 1s steps(1) infinite}
@@ -2051,6 +2054,7 @@ ${EOS_ARROWS_R} .eosWaitCount{display:block}
 @keyframes eosArrowsRippleAlt{0%,11%{transform:scale(.4);opacity:0}12%{transform:scale(.4);opacity:.9}45%{transform:scale(1.6);opacity:0}100%{opacity:0}}
 @keyframes eosArrowsDash{to{stroke-dashoffset:-32}}
 @keyframes eosArrowsZone{0%,100%{transform:scale(1);opacity:.75}50%{transform:scale(1.04);opacity:1}}
+@keyframes eosArrowsHaloFlat{0%{opacity:1}22%{opacity:.9}34%,100%{opacity:0}}
 @keyframes eosArrowsHalo{0%{opacity:1;transform:scale(1.06)}22%{opacity:.9;transform:scale(1)}34%,100%{opacity:0;transform:scale(1)}}
 @keyframes eosArrowsCaret{0%{opacity:1}50%{opacity:0}}
 @keyframes eosArrowsHoldFill{0%,9%{stroke-dashoffset:100}84%{stroke-dashoffset:0;stroke:#FFD36B}90%{stroke-dashoffset:0;stroke:#fff}100%{stroke-dashoffset:100}}

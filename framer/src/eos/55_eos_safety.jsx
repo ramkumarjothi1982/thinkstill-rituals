@@ -30,6 +30,9 @@ const EOS_SAFETY_COPY = {
     abuse: { title: "If someone is hurting you, you deserve to be safe.", body: "It's not your fault. A support line or someone you trust can help." },
     threat: { title: "If someone might hurt you, you deserve to be safe.", body: "A support line or someone you trust can help you make a plan." },
     soft: { title: "Big feelings keep coming back?", body: "Talking to someone can really help — you don't have to wait for it to get worse." },
+    // the soft card raised by WORDS (composer / launch scan), not by the shift-meter loop: "keep coming back" does
+    // not fit a first mention (review r1) — same body, warmer title. data-eos-variant stays "soft".
+    softText: { title: "That sounds like a lot to carry.", body: "Talking to someone can really help — you don't have to wait for it to get worse." },
     numb: { title: "Feeling far away for a while?", body: "Talking to someone you trust can help bring the colour back." },
     info: { title: "Want to talk to someone?", body: "These people are there for exactly this." },
 }
@@ -43,6 +46,10 @@ const EOS_SAFETY_RANKS = { soft: 1, threat: 2, abuse: 3, selfharm: 4 } // mirror
 // Region from the device time zone only (Intl, no network). Spec list + every other Canadian zone id.
 const EOS_SAFETY_CA_TZ =
     /^(?:Canada\/\w+|America\/(?:Toronto|Vancouver|Edmonton|Winnipeg|Halifax|St_Johns|Regina|Montreal|Moncton|Glace_Bay|Goose_Bay|Whitehorse|Dawson|Dawson_Creek|Yellowknife|Iqaluit|Rankin_Inlet|Cambridge_Bay|Inuvik|Swift_Current|Atikokan|Creston|Fort_Nelson|Nipigon|Thunder_Bay|Rainy_River|Pangnirtung|Resolute|Blanc-Sablon|Coral_Harbour))$/
+// US: only zones inside the US (+ Puerto Rico / USVI, where 988 also connects). Other America/* zones (São Paulo,
+// Mexico City, Bogotá …) get no region → the localising helpline finder goes first (review r1: 988 is dead there).
+const EOS_SAFETY_US_TZ =
+    /^(?:US\/[\w-]+|Pacific\/Honolulu|America\/(?:New_York|Chicago|Denver|Los_Angeles|Phoenix|Anchorage|Detroit|Boise|Juneau|Adak|Atka|Nome|Sitka|Yakutat|Metlakatla|Menominee|Louisville|Indianapolis|Fort_Wayne|Knox_IN|Shiprock|Puerto_Rico|St_Thomas|Virgin|(?:Indiana|Kentucky|North_Dakota)\/\w+))$/
 // Which line label belongs to a region (labels only — values are never used to guess the region).
 const EOS_SAFETY_REGION_LABEL = {
     CA: /\b(?:canada|ca)\b/i,
@@ -62,7 +69,7 @@ function eosSafetyRegion(tz) {
     }
     z = String(z || "")
     if (EOS_SAFETY_CA_TZ.test(z)) return "CA"
-    if (/^(?:America\/|US\/)/.test(z) || z === "Pacific/Honolulu") return "US"
+    if (EOS_SAFETY_US_TZ.test(z)) return "US"
     if (/^(?:Europe\/(?:London|Dublin|Belfast|Isle_of_Man|Jersey|Guernsey)|GB|GB-Eire|Eire)$/.test(z)) return "UK"
     if (/^Australia\//.test(z)) return "AU"
     if (/^Asia\/(?:Kolkata|Calcutta)$/.test(z)) return "IN"
@@ -123,7 +130,10 @@ function eosSafetyParseLine(raw, crisisUrl = "") {
     let name = rest
     if (number) name = name.replace(number, " ")
     if (domain) name = name.replace(new RegExp(domain.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), " ")
-    name = name.replace(/\b(?:call|or|text|to)\b/gi, " ").replace(/[·•|,:;()]+/g, " ").replace(/(^|\s)[-–—]+(?=\s|$)/g, " ").replace(/\s+/g, " ").trim()
+    // only the leading / trailing verb phrase ("Call or text 988", "Lifeline: call 13 11 14"); never words inside a
+    // service name ("Need to talk? 1737", "Crisis Text Line")
+    for (let k = 0; k < 2; k++) name = name.replace(/^[\s·•|,:;-]*(?:call(?:\s+or\s+text)?|text|or)\b/i, " ").replace(/\b(?:call(?:\s+or\s+text)?|text|or|on|at)[\s·•|,:;-]*$/i, " ").trim()
+    name = name.replace(/[·•|,:;()]+/g, " ").replace(/(^|\s)[-–—]+(?=\s|$)/g, " ").replace(/\s+/g, " ").trim()
     return { raw: s, label, value, name, number, tel, sms, url, domain, callOrText }
 }
 function eosSafetyParseLines(lines, crisisUrl = "") {
@@ -143,12 +153,20 @@ function eosSafetyOrderLines(lines, opts = {}) {
     const parsed = eosSafetyParseLines(src, url).map((p) => ({ ...p, local: false }))
     const region = eosSafetyRegion(opts.tz)
     const rx = region ? EOS_SAFETY_REGION_LABEL[region] : null
-    if (rx) {
-        const i = parsed.findIndex((p) => rx.test(p.label || p.value))
-        if (i >= 0) {
-            const [hit] = parsed.splice(i, 1)
-            parsed.unshift({ ...hit, local: true })
-        }
+    const i = rx ? parsed.findIndex((p) => rx.test(p.label || p.value)) : -1
+    if (i >= 0) {
+        const [hit] = parsed.splice(i, 1)
+        parsed.unshift({ ...hit, local: true })
+        return parsed
+    }
+    // No line for this device's region (or no region): never lead with another country's number — the first
+    // web line (the "Anywhere · findahelpline.com" finder, which localises) goes first; crisisUrl when none is listed.
+    const j = parsed.findIndex((p) => p.url && !p.tel && !p.sms)
+    if (j > 0) parsed.unshift(parsed.splice(j, 1)[0])
+    else if (j < 0) {
+        const fu = eosSafetySafeUrl(url)
+        const w = fu ? eosSafetyParseLine(`Anywhere · ${fu}`, fu) : null
+        if (w && w.url) parsed.unshift({ ...w, local: false, synthetic: true })
     }
     return parsed
 }
@@ -170,7 +188,7 @@ function eosSafetyLineAction(p) {
 
 // ---------------------------------------------------------------- UI state (memory only: types, never text)
 const EOS_SAFETY_UI = (() => {
-    let s = { seen: {}, forced: null, softKind: "soft", nonce: 0, userAt: 0, softKey: "", softFired: false, softRun: null }
+    let s = { seen: {}, forced: null, softKind: "text", nonce: 0, userAt: 0, softKey: "", softFired: false, softRun: null }
     const subs = new Set()
     return {
         get: () => s,
@@ -214,7 +232,7 @@ function eosSafetySee(types, softKind) {
         if (!EOS_SAFETY_RANKS[t] || seen[t]) continue
         seen = { ...seen, [t]: true }
         patch.seen = seen
-        if (t === "soft") patch.softKind = softKind || "soft"
+        if (t === "soft") patch.softKind = softKind || "text" // "text" (words) · "soft" / "numb" (shift-meter loop)
     }
     if (patch.seen) EOS_SAFETY_UI.set(patch)
 }
@@ -222,7 +240,7 @@ function eosSafetySee(types, softKind) {
 function eosSafetyIngest(text) {
     const types = eosSafetyScanAll(text)
     if (!types.length) return null
-    eosSafetySee(types)
+    eosSafetySee(types, "text")
     EosFlagSafety(types[0])
     return types[0]
 }
@@ -335,27 +353,126 @@ function eosSafetyFocus(el) {
     } catch {}
 }
 
+// Lines after the primary, without repeats: a line whose one-tap action is the primary's (or an earlier row's) is
+// merged into that row's label ("US & Canada · 988") instead of showing the same buttons twice (review r1).
+function eosSafetyOtherLines(lines, first) {
+    const firstHref = (eosSafetyLineAction(first) || {}).href || ""
+    const rows = []
+    const byHref = {}
+    for (const p of lines) {
+        if (p === first) continue
+        const a = eosSafetyLineAction(p)
+        const href = a ? a.href : ""
+        if (href && href === firstHref) continue
+        const label = p.label || p.value
+        if (href && byHref[href]) {
+            const r = byHref[href]
+            if (label && !r.labels.includes(label)) r.labels.push(label)
+            continue
+        }
+        const r = { p, a, labels: label ? [label] : [] }
+        if (href) byHref[href] = r
+        rows.push(r)
+    }
+    return rows
+}
+// Copy text to the clipboard (desktop "Text someone I trust" when there is no share sheet). → Promise<boolean>
+function eosSafetyCopy(text) {
+    const legacy = () => {
+        try {
+            const ta = document.createElement("textarea")
+            ta.value = text
+            ta.setAttribute("readonly", "")
+            ta.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0"
+            document.body.appendChild(ta)
+            ta.select()
+            const ok = document.execCommand && document.execCommand("copy")
+            ta.remove()
+            return !!ok
+        } catch {
+            return false
+        }
+    }
+    try {
+        if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text).then(() => true, () => legacy())
+    } catch {}
+    return Promise.resolve(legacy())
+}
+function eosSafetyTouchFirst() {
+    try {
+        return typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches
+    } catch {
+        return false
+    }
+}
+
 // ---------------------------------------------------------------- UI
 // The card. Self-sufficient (reads lines from the store); the layer passes refs + the dismiss handler.
-function EosSafetyCard({ variant = "info", reduced = false, onDismiss, primaryRef, cardRef, tz, className = "" }) {
+// compact (phone, while a game / the reveal / the check-in is on screen; set by the layer): title + one-tap line +
+// "I'm safe" only; the body, "Text someone I trust", more lines and the emergency text sit behind "more ▾".
+function EosSafetyCard({ variant = "info", reduced = false, onDismiss, primaryRef, cardRef, tz, className = "", compact = false }) {
+    const softKind = useEosSafetyUi().softKind
     const st = useEosStore()
     const calm = eosCalm(reduced)
     const v = EOS_SAFETY_COPY[variant] ? variant : "info"
-    const copy = EOS_SAFETY_COPY[v]
+    const copy = v === "soft" && softKind === "text" ? EOS_SAFETY_COPY.softText : EOS_SAFETY_COPY[v]
     const strong = eosSafetyStrong(st.safety)
     const lines = React.useMemo(() => eosSafetyOrderLines(st.crisisLines, { tz, url: st.crisisUrl || EOS_PROP_DEFAULTS.crisisUrl }), [st.crisisLines, st.crisisUrl, tz])
     const emergency = String(st.emergencyText || EOS_PROP_DEFAULTS.emergencyText || "").trim()
     const [more, setMore] = React.useState(false)
+    const [open, setOpen] = React.useState(false) // compact card expanded by the user ("more ▾")
+    const [copied, setCopied] = React.useState("")
+    const stillRef = React.useRef(null)
+    const timers = React.useRef([])
+    React.useEffect(() => () => timers.current.forEach(clearTimeout), [])
+    const later = (f, ms) => timers.current.push(setTimeout(f, ms))
     const first = lines.find((p) => eosSafetyLineAction(p)) || null
     const act = eosSafetyLineAction(first)
-    const others = lines.filter((p) => p !== first)
+    const others = React.useMemo(() => eosSafetyOtherLines(lines, first), [lines, first])
     const fallbackUrl = eosSafetySafeUrl(st.crisisUrl || EOS_PROP_DEFAULTS.crisisUrl)
     const trustHref = `sms:?&body=${encodeURIComponent(EOS_SAFETY_TRUST_TEXT)}`
+    const isCompact = !!compact && !open
+    // STILL's warm nod when a support action is tapped (motion only; calm / reduced keep the static orb)
+    const nod = () => {
+        const el = stillRef.current
+        if (!el || calm) return
+        try {
+            el.classList.remove("isNod")
+            void el.offsetWidth
+            el.classList.add("isNod")
+            later(() => el.classList.remove("isNod"), 320)
+        } catch {}
+    }
+    const say = (msg, ms) => {
+        setCopied(msg)
+        later(() => setCopied((m) => (m === msg ? "" : m)), ms)
+    }
+    const copyTrust = () =>
+        eosSafetyCopy(EOS_SAFETY_TRUST_TEXT).then((ok) =>
+            say(ok ? "Copied — paste it to someone you trust." : `Send this to someone you trust: “${EOS_SAFETY_TRUST_TEXT}”`, ok ? 3500 : 9000)
+        )
+    const toSms = () => {
+        try {
+            window.location.href = trustHref
+        } catch {}
+    }
+    // share sheet → else sms: on phones → else (desktop, no share sheet) copy the message + say so in the card.
+    // A share sheet that is blocked (iframe without allow="web-share") falls back instead of doing nothing.
     const share = (e) => {
+        nod()
         try {
             if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
                 e.preventDefault()
-                navigator.share({ text: EOS_SAFETY_TRUST_TEXT }).catch(() => {})
+                navigator.share({ text: EOS_SAFETY_TRUST_TEXT }).catch((err) => {
+                    if (err && err.name === "AbortError") return
+                    if (eosSafetyTouchFirst()) toSms()
+                    else copyTrust()
+                })
+                return
+            }
+            if (!eosSafetyTouchFirst()) {
+                e.preventDefault()
+                copyTrust()
             }
         } catch {}
     }
@@ -366,25 +483,35 @@ function EosSafetyCard({ variant = "info", reduced = false, onDismiss, primaryRe
             onDismiss("escape")
         }
     }
+    const ok = () => {
+        if (typeof onDismiss !== "function") return
+        if (calm) return onDismiss("button")
+        nod()
+        later(() => onDismiss("button"), 190) // the nod reads before the card goes
+    }
     const linkProps = (a) => (a && a.external ? { target: "_blank", rel: "noopener noreferrer" } : {})
     return (
         <div
             ref={cardRef}
-            className={`eosSafetyCard fs-mask v-${v}${calm ? " isCalm" : ""} ${className}`}
+            className={`eosSafetyCard fs-mask v-${v}${calm ? " isCalm" : ""}${isCompact ? " isCompact" : ""}${compact ? " isCompactCtx" : ""} ${className}`}
             role="alertdialog"
             aria-modal="false"
             aria-labelledby="eosSafetyTitle"
             aria-describedby="eosSafetyBody"
+            tabIndex={-1}
             data-eos-variant={v}
             data-eos-calm={calm ? "1" : "0"}
+            data-eos-compact={isCompact ? "1" : "0"}
             onKeyDown={onKeyDown}
             {...EOS_PRIVATE_ATTRS}
         >
             <div className="eosSafetyHead">
                 <div className="eosSafetyStill" aria-hidden="true">
                     <i className="eosSafetyHalo" />
-                    <EosCharacterOrb char="still" mood={15} hue={38} size={64} bob={false} reduced />
-                    <i className="eosSafetyHeart">💛</i>
+                    <span ref={stillRef} className="eosSafetyStillBody">
+                        <EosCharacterOrb char="still" mood={15} hue={38} size={64} bob={false} reduced />
+                        <i className="eosSafetyHeart">💛</i>
+                    </span>
                 </div>
                 <div className="eosSafetyText">
                     <div id="eosSafetyTitle" className="eosSafetyTitle" role="heading" aria-level={2}>
@@ -398,7 +525,7 @@ function EosSafetyCard({ variant = "info", reduced = false, onDismiss, primaryRe
             </div>
             <div className="eosSafetyPrimaryRow">
                 {act ? (
-                    <a ref={primaryRef} className="eosSafetyBtn eosSafetyCall" href={act.href} data-eos-primary="1" data-eos-local={first.local ? "1" : "0"} {...linkProps(act)}>
+                    <a ref={primaryRef} className="eosSafetyBtn eosSafetyCall" href={act.href} onClick={nod} data-eos-primary="1" data-eos-local={first.local ? "1" : "0"} {...linkProps(act)}>
                         <span className="eosSafetyIcon" aria-hidden="true">
                             {act.kind === "tel" ? "📞" : act.kind === "sms" ? "💬" : "🌐"}
                         </span>
@@ -408,7 +535,7 @@ function EosSafetyCard({ variant = "info", reduced = false, onDismiss, primaryRe
                         </span>
                     </a>
                 ) : fallbackUrl ? (
-                    <a ref={primaryRef} className="eosSafetyBtn eosSafetyCall" href={fallbackUrl} target="_blank" rel="noopener noreferrer" data-eos-primary="1">
+                    <a ref={primaryRef} className="eosSafetyBtn eosSafetyCall" href={fallbackUrl} onClick={nod} target="_blank" rel="noopener noreferrer" data-eos-primary="1">
                         <span className="eosSafetyIcon" aria-hidden="true">
                             🌐
                         </span>
@@ -418,7 +545,7 @@ function EosSafetyCard({ variant = "info", reduced = false, onDismiss, primaryRe
                     </a>
                 ) : null}
                 {first && first.tel && first.sms ? (
-                    <a className="eosSafetyBtn eosSafetySms" href={eosSafetySmsHref(first.sms)} aria-label={`Text ${first.sms.to}${first.label ? `, ${first.label}` : ""}`}>
+                    <a className="eosSafetyBtn eosSafetySms" href={eosSafetySmsHref(first.sms)} onClick={nod} aria-label={`Text ${first.sms.to}${first.label ? `, ${first.label}` : ""}`}>
                         <span aria-hidden="true">💬</span> Text
                     </a>
                 ) : null}
@@ -427,9 +554,17 @@ function EosSafetyCard({ variant = "info", reduced = false, onDismiss, primaryRe
                 <a className="eosSafetyBtn eosSafetyTrust" href={trustHref} onClick={share} data-eos-trust="1">
                     Text someone I trust
                 </a>
-                <button type="button" className="eosSafetyBtn eosSafetyOk" onClick={() => typeof onDismiss === "function" && onDismiss("button")} data-eos-dismiss="1">
-                    {v === "info" ? "Back to ThinkStill" : "I'm safe — keep playing"}
+                <button type="button" className="eosSafetyBtn eosSafetyOk" onClick={ok} data-eos-dismiss="1">
+                    {v === "info" ? "Back to ThinkStill" : isCompact ? "I'm safe ✓" : "I'm safe — keep playing"}
                 </button>
+                {compact ? (
+                    <button type="button" className="eosSafetyMore eosSafetyExpand" aria-expanded={open ? "true" : "false"} onClick={() => setOpen((o) => !o)} data-eos-expand="1">
+                        {open ? "less ▴" : "more ▾"}
+                    </button>
+                ) : null}
+            </div>
+            <div className="eosSafetyCopied" aria-live="polite" aria-atomic="true">
+                {copied}
             </div>
             {others.length ? (
                 <div className="eosSafetyMoreWrap">
@@ -438,28 +573,25 @@ function EosSafetyCard({ variant = "info", reduced = false, onDismiss, primaryRe
                     </button>
                     {more ? (
                         <ul id="eosSafetyMoreList" className="eosSafetyList">
-                            {others.map((p, i) => {
-                                const a = eosSafetyLineAction(p)
-                                return (
-                                    <li key={`${p.raw}|${i}`} className="eosSafetyLine">
-                                        <span className="eosSafetyLineLabel">{p.label || p.value}</span>
-                                        <span className="eosSafetyLineActs">
-                                            {a ? (
-                                                <a className="eosSafetyLineBtn" href={a.href} {...linkProps(a)}>
-                                                    {a.text}
-                                                </a>
-                                            ) : (
-                                                <span className="eosSafetyLineText">{p.value}</span>
-                                            )}
-                                            {p.tel && p.sms ? (
-                                                <a className="eosSafetyLineBtn" href={eosSafetySmsHref(p.sms)}>
-                                                    Text {p.sms.to}
-                                                </a>
-                                            ) : null}
-                                        </span>
-                                    </li>
-                                )
-                            })}
+                            {others.map(({ p, a, labels }, i) => (
+                                <li key={`${p.raw}|${i}`} className="eosSafetyLine">
+                                    <span className="eosSafetyLineLabel">{labels.join(" & ") || p.value}</span>
+                                    <span className="eosSafetyLineActs">
+                                        {a ? (
+                                            <a className="eosSafetyLineBtn" href={a.href} onClick={nod} {...linkProps(a)}>
+                                                {a.text}
+                                            </a>
+                                        ) : (
+                                            <span className="eosSafetyLineText">{p.value}</span>
+                                        )}
+                                        {p.tel && p.sms ? (
+                                            <a className="eosSafetyLineBtn" href={eosSafetySmsHref(p.sms)} onClick={nod}>
+                                                Text {p.sms.to}
+                                            </a>
+                                        ) : null}
+                                    </span>
+                                </li>
+                            ))}
                         </ul>
                     ) : null}
                 </div>
@@ -535,7 +667,8 @@ function EosSafetyLayer({ raw = "", stage = "", reduced = false, tz }) {
     }, [stage])
     // Mirror the store flag (EosMarkLaunch / router / soft) into the seen set.
     React.useEffect(() => {
-        if (st.safety) eosSafetySee([st.safety])
+        // an unseen store flag came from words (EosMarkLaunch / router scan): soft() marks its own loop kind first
+        if (st.safety) eosSafetySee([st.safety], "text")
     }, [st.safety])
     // A card appeared (or switched variant / was re-opened by a tap).
     React.useEffect(() => {
@@ -706,7 +839,7 @@ eosExpose("safety", {
     // dev / tests only: forget the in-memory UI state (seen types, soft run). Never called by the app.
     _testReset: () => {
         if (!eosIsDev()) return false
-        EOS_SAFETY_UI.set({ seen: {}, forced: null, softKind: "soft", softKey: "", softFired: false, softRun: null })
+        EOS_SAFETY_UI.set({ seen: {}, forced: null, softKind: "text", softKey: "", softFired: false, softRun: null })
         return true
     },
     // types only (never text): what the card would show right now
