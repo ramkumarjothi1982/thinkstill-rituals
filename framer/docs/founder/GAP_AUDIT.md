@@ -216,3 +216,13 @@ The rules for every batch:
 - Each row in `gap_rows.json` names its `test`.
 - A row moves to VERIFIED only when that test's output file or tile is linked.
 - Sound and performance rows stay "scheduled/relative" until a device run exists.
+
+## Founder decisions on the open questions (2026-10-09) — BINDING for all fix agents
+- **C2 approved bursts:** every burst in the original arcade (baseline git 485500c) is approved and stays unchanged; each game's unique climax plays BEFORE it.
+- **C3 check-in vs prompt:** "What emotion are you carrying?" with "Your thoughts are materialised to be released." is the MAIN first screen (composer). The tap-a-feeling check-in is OFF by default and becomes an optional small chip. ThinkStill detects the emotion from the user's words (and voice/images).
+- **C5 end-screen buttons:** Next (ThinkStill picks, F3 rotation), Again, New thought.
+- **C11 UNHOOK:** the user's words become 3 bubbles, each hanging from ONE big hook on its own string; snapping a string frees its bubble.
+- **C12 ≥5 bubbles:** exceptions only for games that show one object at a time (e.g. SINKING PLATFORM 103, FINGER TRAP 102) — use the report's list.
+- **C14 "KNOB":** VOLUME KNOB (104).
+- **C15 "Activate tool" (103):** a tool button that lowers the platform with down arrows.
+- **C17 X-RAY label:** exactly "KILL / BURN ALL".
