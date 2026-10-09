@@ -42,7 +42,7 @@ Screenshot: docs/founder/feedback_unhook_2026-10-09.png
 - **Required:** every game, every stage, both sizes: a visible guide arrow/hand pointing at the real control or object the player must use next (including tool-first games and multi-stage games), re-shown after idle, never covering the user's text or a control (see F2). Fix in the shared arrows module (src/eos/30_eos_arrows.jsx: EOS_GESTURES / target selectors) — not per-game hacks — and add any missing per-game target entries.
 - **Test:** automated sweep of ALL 114 games at 390x844 and 1280x860: at start and at each new stage the arrow element is visible and its target exists, is visible and is the next thing that advances progress (tap it and progress moves). List games fixed.
 
-## F7 · GLOBAL — dopamine bursts repeat across games — PLANNED (after the release fixes, with Pilot A's finale toolkit) · founder 2026-10-09
+## F7 · GLOBAL — dopamine bursts repeat across games — PLANNED (founder chose option a: keep the approved burst as the final beat, add a unique game-specific climax BEFORE it) (after the release fixes, with Pilot A's finale toolkit) · founder 2026-10-09
 - **Founder:** "try to adjust the dopamine burst for all the games — some appear to be very repeating" (see also the addendum: bursts must differ per game).
 - **Plan:** (1) catalogue every game's current finale/burst from the baseline captures and group the identical ones; (2) design a distinct burst per game from its mechanic + world (examples in FOUNDER_REQUIREMENTS Part 11) using Pilot A's finale toolkit so it stays fast and lag-free; (3) unique bursts that are already approved keep their look; (4) show the founder a preview + recordings of the new bursts in batches for approval before shipping them.
 
