@@ -1,0 +1,93 @@
+{
+ "round": 1,
+ "verdicts": {
+  "code": "fix",
+  "experience": "fix"
+ },
+ "findings": [
+  {
+   "severity": "major",
+   "area": "layout / safe area on short phone viewports",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/23_eos_game_ground.jsx",
+   "evidence": "eosGroundLayout line 168 `const Hb = Math.max(260, H - safeTop - safeBottom)` forces a 260 px layout into a smaller safe box. Measured with an integrated scratch build and /tmp/rev_gg/t3.mjs, as the distance the front-row mission labels extend past calc(100% - --eos-safe-bottom), under the LIVE GUIDE: 390x664 (iPhone 12-15 Safari with toolbars, safe box 210 px) +49/+32/+49 px; 375x667 (iPhone SE/8, safe box 213 px) +46/+29/+46 px; 360x640 +73/+56/+89 px. 390x844, 414x736 and 1280x720 are fine (<= 0). Screenshots /tmp/rev_gg/start_390x664.png and /tmp/rev_gg/start_375x667.png show four problems. (1) The labels of the 3 front beacons are hidden behind the LIVE GUIDE panel, including the first arrowed beacon, so its mission ('something ROUND/BLUE') cannot be read. (2) The 5 worry words sit only 31 px below the top of the safe box and stack on each other and on the 2-line cue ('everyone sees' over 'the exam' over 'what if'; 'tomorrow and' over 'I fail'; 'then tap its beacon' runs through both). (3) The HOLD tag sits on top of the shrunken rocket. (4) The HOLD tag and a swap badge collide in the front row. This breaks \u00a78.0 ('every interactive object and every word lies between var(--eos-safe-top) and calc(100% - var(--eos-safe-bottom))') in a mainstream mobile viewport. The builder listed it only as an untested known limitation.",
+   "fix": "Add a compact tier to eosGroundLayout for Hb < ~300 and stop clamping to 260: lay out in the real Hb. (a) Put the 5 lamps in one row (L about 44-48) with 1-line labels and swap badges inside the lamp radius, or keep 2 rows but use labH 34 and L 46. (b) Space the fog words by measured text height, cap them at 3 visible lines per column (the rest appear as earlier words burn), and put the first word's centre below cue + cueHeight + wordHalfHeight. (c) Drop the cue's sub-line in the compact tier. Then re-measure at 390x664, 375x667 and 360x640: overBottom <= 0, no word/cue/tag overlaps, and lamps still >= 64 px including the hit halo."
+  },
+  {
+   "severity": "minor",
+   "area": "arrow contract (hold marker)",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/23_eos_game_ground.jsx",
+   "evidence": "Lines 997-1000 spread eosTarget({g:'hold', ms:EOS_GROUND_HOLD_MS, label}) with no `mvar`. The arrows module (30_eos_arrows.jsx lines 1192-1211, readMeter/updateHold) then draws its hold ring as (now - pressStart)/ms, so the two rings disagree. (1) After a pause, re-pressing restarts the arrow ring at 0 while the beacon's own ring continues from the paused fraction: measured acc 1906 ms, f 0.635 stays paused, and the beacon lights about 1.1 s into the re-press while the arrow ring shows about 37%. That visually contradicts the game's 'release pauses, never resets' promise. (2) After the 26 s assist the hold needs 1.8 s but the marker still says 3000 ms. \u00a78.0 says to use meter/mvar when they apply.",
+   "fix": "Pass `mvar: \"--f\"` on the body marker. --f is set on .eosGroundBeacon and inherits to the button, and readMeter falls back to pr.el's computed style. Also pass ms as the remaining time: `Math.max(200, need - b.acc)`."
+  },
+  {
+   "severity": "minor",
+   "area": "juice grammar / spec conformance (non-soft sfx from a timer)",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/23_eos_game_ground.jsx",
+   "evidence": "touchdown() runs from setTimeout (light() line 509) and calls fx.sfx(\"win\") at line 547. In the wrapper, wrappedSfx (00_arcade.jsx line 18557: `if (!explicit || kind !== \"soft\") triggerStepReward()`) turns this into a 6th step reward (sparks, CHAIN, reward card) 1.3 s after the last touch, with no player action behind it. The sfx log confirms it: soft\u2026, tskey:clean:0-4, win. \u00a78.0 says to 'never call a non-soft sfx from a timer or rAF'. The builder report claims compliance. The beacon notes are also fired from the rAF step() after the fill or hold completes; \u00a78.3 prescribes that, so it is acceptable. 21_sigh and 24_lanterns use the same finale pattern, so this needs a lead-level call.",
+   "fix": "Play the touchdown flourish with eosTone only (the thump and the arpeggio are already there) and drop fx.sfx(\"win\"), or get an explicit lead exemption for a single finale 'win' and apply it consistently to 111/113/114."
+  },
+  {
+   "severity": "minor",
+   "area": "performance (animated nodes / invisible loops / rAF after done)",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/23_eos_game_ground.jsx",
+   "evidence": "Measured with document.getAnimations() inside .eosG113 at 390x844 (non-reduced): 53 animated nodes mid-game, 57 at landing and 51 at done, against the \u00a78.0 limit of 60. About 13 of the infinite loops keep running while invisible. eosGroundBar x3 (lines 1105-1107) runs while .eosGroundStatic is at opacity 0 in landing and done. eosGroundDrift on 7 puffs and 2 fog-front puffs runs at opacity 0 in done. eosGroundFlicker runs while the flame is at opacity 0 in done. The static bars also animate behind the backdrop-filter blur veil, so the 8 px blur is recomputed every frame on phones. The rAF loop (lines 689-694) also keeps running after phase 'done' until unmount. Reduced motion is clean: 0 infinite animations at 1280 reduced.",
+   "fix": "Add `animation:none` for .eosGroundStatic>b, .eosGroundFogFront>i and .eosGroundFlame under [data-phase=\"landing\"] and [data-phase=\"done\"], and for .eosGroundPuff under [data-phase=\"done\"]. Optionally stop the static bars once --clr >= .8. Skip the rAF re-arm when s.phase === 'done'."
+  },
+  {
+   "severity": "minor",
+   "area": "touch input hardening (3 s long-press holds)",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/23_eos_game_ground.jsx",
+   "evidence": "The body beacons are 3 s press-and-holds on <button class=eosGroundLampBtn> (lines 1009-1021). The buttons have no onContextMenu preventDefault and the CSS has no -webkit-touch-callout:none. Core sets user-select:none on .eosArena, which covers text selection only. On Android Chrome a long press fires contextmenu at about 500 ms and can end in pointercancel, which pauses the hold; the hold could then never complete without assist. 24_eos_game_lanterns.jsx line 907 already guards its hold with onContextMenu={e=>e.preventDefault()}. Not reproducible in headless Chromium: CDP touch holds paused and resumed correctly (state paused, acc 1794 ms) and mouse slide-off with pointer capture paused correctly (acc 1906 ms, stays paused).",
+   "fix": "Add onContextMenu={(e) => e.preventDefault()} to .eosGroundLampBtn and .eosGroundSwap, and add -webkit-touch-callout:none to `${EOS_GROUND_R} .eosGroundLampBtn`."
+  },
+  {
+   "severity": "major",
+   "area": "Phone-first layout on real short phone viewports (the user's words, the mission labels and the finale all collide)",
+   "file": "src/eos/23_eos_game_ground.jsx",
+   "evidence": "At 390x844 and 1280x860 the layout is clean: no overlaps, no text under 12 px, words 15 / 17.3 px, finished in about 19-22 s, 0 errors. Shorter viewports break it. I measured these with /tmp/rev_gg/short.mjs and /tmp/rev_gg/play.mjs (375 667 reduced). 390x664 is the visible area of a 390x844 iPhone in Safari with its toolbars; 375x667 is an iPhone SE/8.\n(a) The worry words pile on top of each other. Overlap areas: word0/word2 500 px\u00b2, word2/word4 640 px\u00b2, word1/word3 310 px\u00b2. At 390x740 (Safari minimal UI) it is still word2/word4 768 px\u00b2 and word0/word2 600 px\u00b2. The words also cover the cue line 'then tap its beacon' (up to 693 px\u00b2) and the back-row lamps (word0/lamp3 186 px\u00b2).\n(b) At 664 and 667 the front-row mission labels sit 27-47 px under the LIVE GUIDE panel (guide top y=379 to 382). 'something SHINY', 'feet DOWN' and 'touch a ...' cannot be read, so the player cannot do those missions.\n(c) In the finale at 375x667 the rocket and GLITCH sit on the 'Touchdown \u00b7 you're right here' and 'Your room is real\u2026' lines (rocket/cue overlaps of 880 and 792 px\u00b2).\nScreenshots: /tmp/rev_gg/s_start.png, s_hold.png, s_done1200.png.\nCause:\n- Line 168 `Hb = Math.max(260, H - safeTop - safeBottom)` lets the layout grow past the safe box: the box is 210 px at 664, but the layout uses 260.\n- When the back row cannot stagger, line 181 stacks it as a full row above the front row. That pushes the horizon up, so at Hb=286 the word band wTop..wBot (lines 198-200) is about 10 px tall for 5 words.\n- The rocket keeps its minimum RH of 60 (line 185).\nThe builder listed short phones as untested.",
+   "fix": "Make eosGroundLayout adapt to short boxes instead of overflowing:\n1. Drop the 260 px floor so nothing goes below --eos-safe-bottom.\n2. Below about Hb 340, use a compact beacon arrangement: lamps about 46-50 px, one-line labels, and the back row staggered between the front lamps.\n3. Give the worry words a minimum spacing of 20 px between words on the same side. When the band is too short, put them in an arc around the rocket or in the sky beside the cue, or show 3 words at a time and bring the next one in when one burns.\n4. Scale the rocket and hero RH to whatever space is left, and keep the hero and rocket below the cue at touchdown.\n5. Add 390x664, 375x667 and 390x740 to the acceptance overlap and safe-box check, at start, mid and finale."
+  },
+  {
+   "severity": "minor",
+   "area": "Finale: GLITCH's hop-out image collides with the finale's key line",
+   "file": "src/eos/23_eos_game_ground.jsx",
+   "evidence": "At 390x844 I sampled the hero position every 350 ms during the done phase (/tmp/rev_gg/probe.mjs). Sub-line bottom: 207 px. Hero image top: 191 px at the peak of the hop, so the image covers 'The what-ifs' by 16 px; 204-210 px while it bobs at rest (eosGroundHappy, infinite), so it touches by 0-3 px. The glow top is 172-192 px. At 1280x860, 700 ms into the finale: hero top 158 px, sub-line bottom 163 px. Screenshots p_done1200.png and d_done1200.png show the rainbow ring touching 'aren't here yet.' This breaks Creative Standards rule 4 (image and text never overlap).",
+   "fix": "Clamp --hy (line 204) so the hero's top, including the hop peak, stays at least 8 px below the cue box (cue + hs/2 + hop height). Alternatively lower the hop peak, or move the cue up by one line during the done phase."
+  },
+  {
+   "severity": "minor",
+   "area": "Thumb accuracy: the swap badge's hit area overlaps the lamp rim",
+   "file": "src/eos/23_eos_game_ground.jsx",
+   "evidence": "At 390x844 the front-centre lamp is at [167,452,59,59] and its swap button at [214,447,42,42]. The swap's 42x42 hit box covers the lamp's upper-right rim. elementFromPoint at 85%/15% and 95%/30% of the lamp returns the swap's inner SPAN/B, not the lamp. A slightly off-centre 'found it' tap with the thumb therefore swaps the mission instead. Lamps 1 and 4 have the same geometry ([95,447] and [131,336]).",
+   "fix": "Keep the swap's hit area outside the lamp circle plus its 8 px halo: move the badge out by 6-8 px, or clip its hit area so it does not cover the lamp. Or ignore a swap tap whose point lies inside the lamp radius and treat it as a lamp tap."
+  },
+  {
+   "severity": "minor",
+   "area": "Character: GLITCH's change of face is hard to read",
+   "file": "src/eos/23_eos_game_ground.jsx",
+   "evidence": "Close crops at 390 (/tmp/rev_gg/c_0start.png, c_2lit.png, c_4lit.png) show the dark-navy face at 41-51 px inside a dark violet-tinted dome. The faces do change as specified (E15 \u2192 E07 after 2 beacons \u2192 E60 after 4 \u2192 hero E10). But E07 reads as neutral or slightly sad, E60 as smug or sleepy, and at arm's length the face is mostly a dark blob with eyes. Most of the felt transformation comes from the descent, the colour shift and the hop-out, not from the face. The standard asks for a visible loud \u2192 soft \u2192 happy transformation.",
+   "fix": "Put a warm light behind the face inside the dome (a lighter radial back-glow) so the navy art separates from the glass. Enlarge the dome about 15% on phones. Pick a happy face that clearly smiles. Add body language per stage: the rocket shivers and jitters while GLITCH is worried, then holds steady and does a little bounce once he is calm."
+  },
+  {
+   "severity": "minor",
+   "area": "Icon meaning: shoulders beacon",
+   "file": "src/eos/23_eos_game_ground.jsx",
+   "evidence": "Line 81: 'drop your SHOULDERS' uses \ud83e\udec1 (lungs), which reads as 'breathe', not shoulders (p_start.png, s_start.png). The other release beacons match their icons (\ud83d\ude0c jaw, \ud83e\udd32 hands).",
+   "fix": "Use an icon that shows the body part or action, e.g. \ud83d\udc86 or \ud83d\ude46, or a small custom shoulder glyph."
+  },
+  {
+   "severity": "minor",
+   "area": "Worry words: fragments in the fog",
+   "file": "src/eos/00_eos_core.jsx",
+   "evidence": "For 'what if I fail the exam tomorrow and everyone sees', the fog shows 'tomorrow and' and 'everyone', and drops 'sees' (every run, p_start.png and d_start.png). The chunks come from the core's eosWords, which eosGroundWords (line 149) uses.",
+   "fix": "In eosGroundWords, or centrally in eosWords, trim leading and trailing function words (and, or, but, the, to) from each chunk. Prefer content-word chunks such as 'the exam', 'I fail' and 'everyone sees'."
+  },
+  {
+   "severity": "minor",
+   "area": "Desktop composition: hero scale",
+   "file": "src/eos/23_eos_game_ground.jsx",
+   "evidence": "At 1280x860 the rocket hull is 81x92 px, with GLITCH's face about 60 px, in a 1238x704 arena (d_start.png). The scene is grouped in the upper middle with a lot of empty sky, so the character and the finale feel small on desktop. The wrapper's RELEASED card then covers the landing pad about 2.3 s after touchdown (d_done1200.png).",
+   "fix": "On wide arenas let RH grow (raise the 176 px clamp on line 185, e.g. to about 0.3 \u00d7 Hb up to 240) and spread the fog band. Desktop is the second priority, so polish only."
+  }
+ ]
+}

@@ -142,8 +142,8 @@ const REVIEW_LENSES = [
 const asMap = (v, kind) => Array.isArray(v) ? Object.fromEntries(v.map(id => [id, `The ${kind} report is in ${DOCS}/eos_status/${id}.${kind === 'final' ? 'done' : 'build'}.md — read that file.`])) : (v || {})
 const DONE = asMap(args && args.done, 'final')
 const BUILT = asMap(args && args.built, 'builder')
-const REVIEWS = (args && args.reviews) || {}
-const FIXED = (args && args.fixed) || {}  // {taskId: lastFixRoundDone}  // {taskId: [findings]} saved from an interrupted round-1 review
+const REVIEWS = (args && args.reviews) || {}  // {taskId: {round, serious, minor}} -> findings in docs/eos_status/<task>.review_r<round>.json
+const FIXED = (args && args.fixed) || {}  // {taskId: lastFixRoundDone}
 const INTEGRATED = (args && args.integrated) || []
 const STATUS = DOCS + '/eos_status'
 const record = (file, content) => agent(`Write the text between the markers EXACTLY (no changes) to the file ${file} (create parent dirs; overwrite). Then reply OK.\n<<<BEGIN>>>\n${content}\n<<<END>>>`, { label: 'record:' + file.split('/').pop(), phase: 'Module review', model: 'haiku', effort: 'low' })
@@ -153,10 +153,15 @@ const buildOne = (t) => mustAgent(`${CONTEXT}\n${USER_ASK}\n\n${TOOLING}\n${SCOP
 
 const reviewAndFix = async (buildReport, t) => {
   let report = buildReport
-  let prevFindings = FIXED[t.id] ? (REVIEWS[t.id] || []) : []
-  for (let round = (FIXED[t.id] || 0) + 1; round <= 3; round++) {
+  let prevFindings = []
+  const SR = REVIEWS[t.id]
+  const savedFile = SR ? `${STATUS}/${t.id}.review_r${SR.round}.json` : null
+  const startRound = SR ? SR.round : (FIXED[t.id] || 0) + 1
+  for (let round = startRound; round <= 3; round++) {
     const focus = round > 1 ? `\nTARGETED RE-REVIEW (round ${round}): verify each previous finding below is really fixed, and check ONLY the code the fixer changed for regressions — do not redo the whole review. Previous findings:\n${JSON.stringify(prevFindings, null, 1).slice(0, 8000)}\n` : ''
-    const saved = round === 1 && !FIXED[t.id] && REVIEWS[t.id] ? [{ verdict: 'fix', findings: REVIEWS[t.id] }, { verdict: 'fix', findings: [] }] : null
+    const savedRound = !!(SR && round === SR.round)
+    const mk = (n, sev) => Array.from({ length: n }, () => ({ severity: sev, area: `saved finding (see ${savedFile})`, evidence: `see ${savedFile}`, fix: `see ${savedFile}` }))
+    const saved = savedRound ? [{ verdict: 'fix', findings: [...mk(SR.serious, 'major'), ...mk(SR.minor, 'minor')] }, { verdict: 'fix', findings: [] }] : null
     const reviews = saved || (await parallel(REVIEW_LENSES.map(L => () =>
       agent(`${CONTEXT}\n${USER_ASK}\n\n${TOOLING}\n${SCOPE}\n${LEAN}\nREVIEW task "${t.id}" (${t.title}), round ${round}. Files: ${t.files.join(', ')}. Brief: ${DOCS}/briefs/${t.id}.md (spec sections ${t.spec_sections}). Builder's report:\n${report}\n\nLENS: ${L.text}${focus}\nBuild in isolation yourself (python3 ${ROOT}/build.py --dev-dir /tmp/eos_rev_${t.id}_${L.key} --modules 00_eos_core.jsx,${eosFiles(t)}) and actually run/play it in the browser (budget: at most ~35 tool calls and 6 screenshot views; focus on the highest-risk behaviours). Do NOT edit files. verdict "ship" only if there is no blocker/major finding.`,
         { label: `review:${t.id}:${L.key}:r${round}`, phase: 'Module review', schema: FINDINGS_SCHEMA })))).filter(Boolean)
@@ -167,8 +172,8 @@ const reviewAndFix = async (buildReport, t) => {
       await record(`${STATUS}/${t.id}.done.md`, report + (minor.length ? '\n\nOpen minor notes: ' + JSON.stringify(minor) : ''))
       return { id: t.id, report, rounds: round, open: round > 1 ? minor : [] }
     }
-    prevFindings = [...serious, ...minor]
-    report = await mustAgent(`${CONTEXT}\n${USER_ASK}\n\n${TOOLING}\n${SCOPE}\n${LEAN}\nFIX task "${t.id}" (${t.title}). You own ONLY: ${t.files.join(', ')}. Follow docs/CREATIVE_STANDARDS.md (binding). Apply every finding below (blockers and majors mandatory; minors too unless clearly wrong — say why). Budget: at most ~45 tool calls and 6 screenshot views; append progress notes to ${STATUS}/${t.id}.progress.md every ~15 tool calls. Re-test in isolation (python3 ${ROOT}/build.py --dev-dir /tmp/eos_${t.id} --modules 00_eos_core.jsx,${eosFiles(t)}), re-screenshot and LOOK. Then commit ONLY your own files plus ${STATUS}/${t.id}.* (message "EOS fix: ${t.id} round ${round}"). ${COMMIT_RULE}\nFindings:\n${JSON.stringify([...serious, ...minor], null, 1)}\n\nReturn an updated builder report (same format as before) listing what changed, and ALSO overwrite ${STATUS}/${t.id}.build.md with that updated report.`, { label: `fix:${t.id}:r${round}`, phase: 'Module review' })
+    prevFindings = savedRound ? [{ note: `previous findings are in ${savedFile}` }] : [...serious, ...minor]
+    report = await mustAgent(`${CONTEXT}\n${USER_ASK}\n\n${TOOLING}\n${SCOPE}\n${LEAN}\nFIX task "${t.id}" (${t.title}). You own ONLY: ${t.files.join(', ')}. Follow docs/CREATIVE_STANDARDS.md (binding). Apply every finding below (blockers and majors mandatory; minors too unless clearly wrong — say why). Budget: at most ~45 tool calls and 6 screenshot views; append progress notes to ${STATUS}/${t.id}.progress.md every ~15 tool calls. Re-test in isolation (python3 ${ROOT}/build.py --dev-dir /tmp/eos_${t.id} --modules 00_eos_core.jsx,${eosFiles(t)}), re-screenshot and LOOK. Then commit ONLY your own files plus ${STATUS}/${t.id}.* (message "EOS fix: ${t.id} round ${round}"). ${COMMIT_RULE}\nFindings:\n${savedRound ? `READ ALL FINDINGS FROM ${savedFile} (round ${round}: two independent reviewers, code + experience; fix every major/blocker and every clearly-correct minor).` : JSON.stringify([...serious, ...minor], null, 1)}\n\nReturn an updated builder report (same format as before) listing what changed, and ALSO overwrite ${STATUS}/${t.id}.build.md with that updated report.`, { label: `fix:${t.id}:r${round}`, phase: 'Module review' })
   }
   await record(`${STATUS}/${t.id}.done.md`, report)
   return { id: t.id, report, rounds: 3, open: [] }

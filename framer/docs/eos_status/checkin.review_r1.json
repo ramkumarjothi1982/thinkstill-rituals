@@ -1,0 +1,120 @@
+{
+ "round": 1,
+ "verdicts": {
+  "code": "ship",
+  "experience": "fix"
+ },
+ "findings": [
+  {
+   "severity": "minor",
+   "area": "step 2 idle hint overlaps check-in text (cross-module with arrows)",
+   "file": "src/eos/30_eos_arrows.jsx",
+   "evidence": "Integrated build with arrows, router, 111 and 112 (/tmp/eos_rev_checkin_int2). After 3 s idle on step 2, the overlap probe reports \"LET'S GO x eosCkWordsQ:What's it about? (optional)\" at both 390x844 and 1280x860. The screenshots (/tmp/rev_ck/s2idle_390.png, /tmp/rev_ck/s2idle_1280_int2.png) show three things: the LET'S GO pill sits on 'What's it about? (optional)', the gold arrow covers the 'clenched jaw' seed chip, and the hand covers the CTA sub-line with the routed game name ('\u224830 s \u00b7 COOL THE VOLCANO'). The builder flagged this and it is still open: EOS_ARROWS_AVOID (30_eos_arrows.jsx:147) has no .eosCk* entry, and EosHandHint has no avoid prop. Check-in render site: 40_eos_checkin.jsx:939.",
+   "fix": "Arrows owner: add '.eosCkWords, .eosCkSeedRow, .eosCkLinks, .eosCkChips, .eosCkCtaSub' to EOS_ARROWS_AVOID, or give EosHandHint an `avoid` prop and pass it from 40_eos_checkin.jsx:937-939. Also anchor the CTA tap hand to the CTA's right end so the routed game name stays readable. Check-in alternative: when the idle hint is up, put the LET'S GO label to the right of the CTA instead of above it."
+  },
+  {
+   "severity": "minor",
+   "area": "step 1 first-timer arrow covers the sub-title",
+   "file": "src/eos/40_eos_checkin.jsx",
+   "evidence": "/tmp/rev_ck/crop_s1_390.png and s1_1280_int2.png: the hopping 'choose' arrow sits above the current top-row orb (ANGRY in the capture) and covers part of 'Tap the feeling that's loudest right now.' at both sizes. The module keeps a 44 px lane under the ring for the TAP HOW YOU FEEL label (line 303) but no headroom above it: line 335 sets head = hd.offsetTop + hd.offsetHeight + (phone ? 6 : 18). The arrow also points at one feeling at a time. It hops, but the spec says 'never an arrow on one feeling'.",
+   "fix": "When first && HandHint && step===1, add about 34 px to the head band, the same way `lane` adds space under the ring. Alternatively pass .eosCkHead as an avoid zone. Ask the arrows owner whether the choose glyph should show only halos plus the hand on NOT SURE in this context."
+  },
+  {
+   "severity": "minor",
+   "area": "stale committed feeling after 'pick a game myself' is abandoned",
+   "file": "src/eos/40_eos_checkin.jsx",
+   "evidence": "/tmp/rev_ck/f.mjs at 390: ANGRY, then 'pick a game myself', Esc, '\u2190 back', 'just let me play \u2192'. Store afterwards: {phase:'skip', emo:'anger', before:8}. pickMyself (line 562-570) commits, and nothing reverts it: back() (543-554) and EosSkipCheckin only change the step or phase. EosMarkLaunch then skips detection whenever st.emotion is set. So a later composer launch ('I feel so lonely') is treated as ANGER with before 8, and the reveal, flip words, companion and history row are wrong; this also pollutes the router's 'your best'. pickMyself also sets launchedRef=true, so after this path the unmount cleanup never calls dots.setLevel(null).",
+   "fix": "Track the uncommitted state: committedByMenuRef = true in pickMyself. In back() and in the skip handler, if it is still true and no launch happened, call EosCommitCheckin({emotion:null, before:null}) and set launchedRef.current=false. A simpler option is to commit in pickMyself and revert when the check-in sees the menu close without stage 'play'."
+  },
+  {
+   "severity": "minor",
+   "area": "44 px hit-target rule broken",
+   "file": "src/eos/40_eos_checkin.jsx",
+   "evidence": "Line 1162: `.eosCkWordsQ{min-height:36px!important}` overrides the core rule (\u00a70.4) that every button inside .eosCheckIn is at least 44x44. Measured 211x36 at both 390 and 1280 (/tmp/rev_ck/d.mjs). Every other visible button passes; the small hits in that probe are hidden orbs at opacity 0 with pointer-events:none.",
+   "fix": "Use min-height:44px. If vertical space is tight on phone, take 2-4 px from .eosCkWords' gap or the panel padding instead."
+  },
+  {
+   "severity": "minor",
+   "area": "keyboard focus on step 2 (desktop)",
+   "file": "src/eos/40_eos_checkin.jsx",
+   "evidence": "Line 733 gives the rail orbs tabIndex 0 on step 2 desktop, and they come before the panel in DOM order. Keyboard run at 1280: ArrowRight then Enter on ANGRY opens step 2, but focus stays on the big orb, and the next 6 Tab stops are the dimmed rail orbs ('eosOrb isDim' x6) before the dial or CTA are reached. After back() the focused panel button unmounts and focus drops to <body>.",
+   "fix": "Set tabIndex -1 on the rail orbs (they stay clickable). In enterStep2, focus the dial in a layout effect: rootRef.current.querySelector('#eosCkDial [role=slider], .eosCheckIn [role=slider]').focus(). In back(), restore focus to [data-eos-ck-idx] of the previous selection."
+  },
+  {
+   "severity": "minor",
+   "area": "check-in text shows through the game menu",
+   "file": "src/eos/40_eos_checkin.jsx",
+   "evidence": "/tmp/rev_ck/menu_390.png: after 'pick a game myself' the translucent .releaseChoiceMenu sits over the still-mounted step 2. The check-in's bright copy ('pick a game myself', 'Need to talk to someone?', seed chips) reads as ghost text behind the menu rows, which makes them harder to read. The menu itself stays clickable: elementFromPoint lands inside the menu at both sizes.",
+   "fix": "Add `${EOS_A}:has(.releaseChoiceMenu) .eosCheckIn{opacity:.15;transition:opacity .2s}` to EOS_CHECKIN_CSS (or visibility:hidden at \u2264560 px). Optionally pause the 3 s idle-CTA timer while the menu is open."
+  },
+  {
+   "severity": "minor",
+   "area": "long-press on the selected orb in step 2 discards the dial",
+   "file": "src/eos/40_eos_checkin.jsx",
+   "evidence": "Line 735 attaches onPointerDown={pressStart(id)} to every orb, including the big selected one on step 2. Holding it for 550 ms (for example a user who rests a finger on the character while reading) runs express(sel), which commits before:null, express:true. The dial value the user just set is thrown away and the game launches without the CTA.",
+   "fix": "Skip the long-press when step===2 && id===sel: `onPointerDown={step === 2 && id === sel ? undefined : pressStart(id)}`."
+  },
+  {
+   "severity": "major",
+   "area": "Step 1 first-timer hint: an arrow points at one feeling (ANGRY) and covers the title and sub-line",
+   "evidence": "Integrated build /tmp/eos_rev_checkin_exp_int (core+dots+mood+readability+111-114+arrows+checkin+router+safety). Phone 390x844: .eosCue.g-choose > .eosChevron box [181,72,36,36] sits on .eosCkTitle [46,59,298,30] and .eosCkSub [70,91,249,18] and points down at the ANGRY orb (centre x 195). Screenshots /tmp/rev_ck/s1_m.png and s1_cold_m.png show the gold arrow cutting through 'Who's at th|e controls?' and 'Tap the feeling tha|loudest'. Desktop /tmp/rev_ck/s1_d.png shows the same arrow on the sub-line ('right|now') aimed at ANGRY. While the halo hops between orbs the arrow stays on ANGRY. Spec \u00a72.1/\u00a76.2 says 'never an arrow on one feeling \u2014 that would bias the choice'. Cause: the arrows 'choose' branch (30_eos_arrows.jsx ~435-441) puts v.chev at the top-centre of the union of the first 6 halos, which lands on ANGRY. The builder's 'nothing overlaps' check missed it.",
+   "fix": "Give this hint no single-orb arrow. Option A: the check-in passes an option (for example chev:false / noChevron) and the arrows module honours it for g:'choose'. Option B: when `rest` is given, the arrows module aims the chevron at the rest orb (NOT SURE) from below the grid, not at the group's top edge. Either way the chevron must never land in the head band; reserve or avoid the .eosCkHead box. Re-check s1 at both sizes.",
+   "file": "src/eos/40_eos_checkin.jsx"
+  },
+  {
+   "severity": "major",
+   "area": "Step 2 idle 'LET'S GO' hint covers the words prompt, a seed chip and the routed game name",
+   "evidence": "After 3 s idle on step 2, the phone label 'LET'S GO' [152,412,86,32] overlaps .eosCkWords [32,413,326,82], so the line reads 'What's it|LET'S GO|nal)'. Its down arrow covers the 'clenched jaw' chip, and the hand covers the CTA sub-line 'COOL THE VOLCANO' (/tmp/rev_ck/s2idle_m.png and deep_m.png). Desktop: label [591,499,99,37] overlaps .eosCkWords [450,511,...] and .eosCkNamed 'Naming it is the first move.' [556,484,169,17] (/tmp/rev_ck/s2idle_d.png). Every first-timer who pauses sees this. The builder flagged it but it is still present in the integrated build: EOS_ARROWS_AVOID has no .eosCk* entries and EosHandHint takes no avoid prop.",
+   "fix": "Pick one. (a) When HandHint is present, the check-in drops the idle CTA hand hint and uses its own `isNudge` CTA pulse, which already exists for the no-arrows path. (b) Add an `avoid` prop to EosHandHint, pass `.eosCkWords, .eosCkNamed, .eosCkChips, .eosCkLinks`, and let the placer put the label beside or below the CTA. In both cases the hand must not cover the CTA sub-line that names the routed game."
+  },
+  {
+   "severity": "major",
+   "area": "Phone 'more feelings' hides the safety link and the footer under the composer",
+   "evidence": "390x844 (normal and reduced motion): after tapping [data-eos-more], .eosCheckIn becomes an inner scroller (scrollHeight 833 vs clientHeight 688) because SCARED/JEALOUS/NUMB render as a fourth full-size row. The 'fewer feelings' toggle and the 'good day' chip sit at y 748 and 'Need to talk to someone?' at y 792. The composer's top is at 737, and elementFromPoint at the support link's centre returns .releaseComposer. Nothing shows that the area scrolls (/tmp/rev_ck/more_mr.png: the grid runs to the composer with no footer). Once scrolled, the 'about ThinkStill' popover renders at y=-11, above the stage, so only '...crisis service.' of the disclaimer is visible (/tmp/rev_ck/about_mr.png). Spec \u00a76.2: the extras are 'a small arc (76 px)' and on phone 'everything fits in ~470 px of the ~650 px stage'.",
+   "fix": "On phone (\u2264560), show the three extra feelings as a compact row of 64-76 px balls with name and label only. When `more` is open, hide the primary orbs' sub-lines and tighten row gaps so the grid, chips and footer fit within 688 px without scrolling. Assert that the footer bottom stays at or above the composer's top. Anchor the about popover to its footer link (open upward), not to the top of the scroll content, so the disclaimer is never clipped.",
+   "file": "src/eos/40_eos_checkin.jsx"
+  },
+  {
+   "severity": "minor",
+   "area": "Step 2 hero orb overlaps the question text",
+   "evidence": "Phone deep link: .eosCkQ [39,104,313,45] ends at y 149 and the orb starts at y 146. With the dial at 8 the scale .85+8\u00d7.04 = 1.17 plus the gold ring, the ring crosses 'RUSH right now?' (/tmp/rev_ck/deep_m.png). Without the banner it still grazes the baseline (/tmp/rev_ck/s2_m.png and s2_d.png: the ring touches 'RUSH').",
+   "fix": "In eosCheckinLayout (~line 146), place the step-2 spot so its top is at least the question's bottom + 12 px + (maxScale\u22121)\u00d7size/2 (maxScale 1.25 at n=10), including when the banner is shown.",
+   "file": "src/eos/40_eos_checkin.jsx"
+  },
+  {
+   "severity": "minor",
+   "area": "Companion is placed wrongly when .releaseStage is scrolled",
+   "evidence": "CRUSH (id 2) after anger 8 \u2192 'pick a game myself', phone. .releaseStage is overflow-y hidden but scrolled by code to scrollTop=135 (scrollHeight 793 > 658). The companion's style top was -93px, putting it at viewport y=-165 while the HUD was at y=-66, so it was off-screen for the whole game (/tmp/rev_ck/comp_start_m2.png, comp_mid_m.png). Setting scrollTop=0 put it at y 105 = HUD bottom + 8, which is correct. eosRelRect returns the visual offset, but the absolute top is in scrolled-content coordinates. I triggered the scroll from the test driver, so it may not happen in real use. The face sequence was correct: E29 loud \u2192 E58 spent at 45 %, never calm, with 'HAH!' lines.",
+   "fix": "Around line 1003: top = Math.round(r.y + stage.scrollTop + r.h + 8). Or measure with offsetTop relative to the companion's offsetParent.",
+   "file": "src/eos/40_eos_checkin.jsx"
+  },
+  {
+   "severity": "minor",
+   "area": "Step 2 'SLIDE IT' label covers the character's name tag",
+   "evidence": "/tmp/rev_ck/s2_m.png and s2_d.png: the 'SLIDE IT' pill sits exactly on the RUSH name tag under the hero orb. The tag is visible only after the hint is gone (s2idle).",
+   "fix": "Start the drag hint's label beneath the dial track, or offset it so it clears the .eosOrbName tag, for example by passing the spot's name tag as an avoid rect.",
+   "file": "src/eos/40_eos_checkin.jsx"
+  },
+  {
+   "severity": "minor",
+   "area": "First-timer halos are rectangular dashed boxes around whole cards",
+   "evidence": "/tmp/rev_ck/s1_m.png and s1_d.png: all 9 orbs get gold dashed rounded rectangles around the ball, name, label and sub-line. Next to the round character orbs they look like selection or debug boxes, not the 'gold pick-one halo hopping across the orbs'. The halo targets are the whole button.eosOrb (84\u00d7141 px).",
+   "fix": "Pass the circular ball element inside each button.eosOrb as the halo target, so the halos are round gold rings that hop. Keep the tap target the full button.",
+   "file": "src/eos/40_eos_checkin.jsx"
+  },
+  {
+   "severity": "minor",
+   "area": "Fallback hints (no arrows module) clip off-screen on phone",
+   "evidence": "Check-in-only integrated build /tmp/eos_rev_checkin_exp_solo, step 2 after 4.5 s: the built-in 'LET'S GO' pill is cut off at the right edge of the 390 px viewport, and the \u261d glyph sits on the CTA sub-line 'Still picks your game' (/tmp/rev_ck/solo_s2_m.png). Release 1 ships with the arrows module, so only the degraded path is affected.",
+   "fix": "Clamp the fallback .eosCkCue label inside the stage (max-x = stage width \u2212 label width \u2212 12). On phone, put it under the CTA rather than to its right.",
+   "file": "src/eos/40_eos_checkin.jsx"
+  },
+  {
+   "severity": "minor",
+   "area": "Phone cold-open bubble hides the top row's labels",
+   "evidence": "/tmp/rev_ck/s1_cold_m.png: 'Hi, I'm Still. Your feelings are a crew\u2026' covers the labels and sub-lines of PANIC, ANGRY and ANXIOUS for up to 3 s. Spec: 'STILL slides in beside the ring'.",
+   "fix": "On phone, show the cold-open line in the head band in place of the sub-line, or in the 44 px lane under the grid, so no orb label is hidden.",
+   "file": "src/eos/40_eos_checkin.jsx"
+  }
+ ]
+}

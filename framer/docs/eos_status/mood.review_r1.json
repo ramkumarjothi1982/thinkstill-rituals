@@ -1,0 +1,51 @@
+{
+ "round": 1,
+ "verdicts": {
+  "experience": "fix",
+  "code": "ship"
+ },
+ "findings": [
+  {
+   "severity": "minor",
+   "area": "flip bloom lifetime vs finish hold (legacy wrapper)",
+   "file": "src/eos/14_eos_mood.jsx",
+   "evidence": "GameEngineLegacy (ids 1-99) holds the finish for only finishHoldMs = max(2050, p.finishHoldMs) (src/00_arcade.jsx:18400, :18594). After that onDone -> setStage('reveal') unmounts the play fragment straight away. The builder's report says the hold is 'about 3 s', which is not accurate. The bloom needs 2300 ms: the third word starts at 500 ms and lives 1.8 s (lines 617, 763). In reduced/calm mode it needs 2700 ms (500 ms + the 2.2 s eosMoodFade, lines 792/795). I measured bloom-to-unmount at 3692 ms (POP, 390) and 3395 ms (CRUSH, reduced, 390), but only because those engines report 100 % about 0.4-0.7 s before they call onDone. A legacy engine that calls onDone without reporting 100 first raises isComplete through wrappedDone itself, which leaves about 2050 ms. The third word would then be cut while still visible: at 86 % of its rise, or at full opacity in reduced mode (the eosMoodFade keyframe 74 % is still opacity 1).",
+   "fix": "Fit the whole bloom inside 2.0 s so it never depends on how each engine times onDone. For example: stagger 200 ms with a 1.5 s rise (ends at 1.9 s), and in reduced/calm use a 1.6 s fade with the same stagger. Another option is to have the integrator mount the flip layer outside the stage==='play' fragment for about 2.5 s. Also correct the report's '\u22483 s' claim."
+  },
+  {
+   "severity": "minor",
+   "area": "flip crown placement over the game's own finale",
+   "file": "src/eos/14_eos_mood.jsx",
+   "evidence": "EOS_MOOD_AVOID (line 263) lists only the finish card, LIVE GUIDE, HUD and companion. Screenshot at 1280, game 112 anger, full build with all modules (/tmp/eos_rev_mood_code_t/all_1280_112_anger_0.png): 'cool' sits on the volcano character orb and 'clear' covers the game's finale label chip. CREATIVE_STANDARDS asks for a distinct, spectacular finale per game, and the words cover part of it for about 2 s.",
+   "fix": "Optionally add the finale hero to the soft obstacles at a lower weight than the HUD and card, so the crown slides aside when free space exists and still blooms from the Still Point. Candidates are the arena's character or finale nodes, e.g. '.eosArena [data-eos-finale], .eosObj' or the largest [data-eos-char] in the arena."
+  },
+  {
+   "severity": "minor",
+   "area": "text width measurement",
+   "file": "src/eos/14_eos_mood.jsx",
+   "evidence": "eosMoodTextWidth (line 271) measures with ctx.font '800 \u2026' but the words render at weight 900 (line 768). Baloo 2 900 is roughly 3-5 % wider. The \u00d71.03 factor and 12 px pad mostly hide this, but two-word flips such as 'right here' or 'not alone' at 42 px can be under-measured by a few px when the side spread is squeezed at 390.",
+   "fix": "Measure at weight 900, so the canvas font matches the CSS (Baloo 2 900)."
+  },
+  {
+   "severity": "major",
+   "area": "Flip bloom placement collides with the hero games' own finale (in-world character bubble and finale headline), phone first, desktop too",
+   "file": "src/eos/14_eos_mood.jsx",
+   "evidence": "Scratch integrated build /tmp/eos_rev_mood_exp_int (mood + dots + 111-114). Each word was frozen 700 ms into its own animation (script /tmp/rev_mood_x/run2.mjs), then overlap was measured against visible img and text of at least 14px inside .releaseGameHost. Results:\n(1) 112 COOL THE VOLCANO, anger, 390x844: 'clear' covers 82% of the game's finale headline 'Cooled to zero' (.eosVolcHero .h2). The screenshot reads 'Cooled clear zero' (/tmp/rev_mood_x/F_p112_a.png). In the live run the word 'strong' sits on 'zero' (A_3bloom1100.png).\n(2) 114 SKY LANTERNS, sad, 390: 'warm' covers 98% of the in-world character's face (eosOrbFace @162,286) at the moment it transforms and holds the heart (F_p114_a.png, C_2bloom300.png). This breaks bubble rule 4: image and text never overlap.\n(3) 113 GROUND CONTROL, anxiety, 390: after the crown glides up to dodge the arcade card, 'here' covers 100% of eosGroundHero and 24% of the subtitle 'Your room is real...'. 'steady' and 'okay' sit on the game's own labels and icons ('and my', 'one smell taste', 'soften your JAW', snowflake) (F_p113_a.png, F_p113_b.png).\n(4) 113 at 1280x860: 'here' covers 75% of eosGroundFace, and 52% of eosGroundHero after the move (F_d113_a.png, F_d113_b.png).\n111 BIG SIGH misses the character only narrowly ('slow' sits directly above it, F_p111_a.png).\nIn the legacy game POP (lonely, 390) the crown lands in empty space and looks good (F_p1_a.png).\nRoot cause:\n- EOS_MOOD_AVOID (line 263) lists only arcade chrome (.globalFinishFeedbackCopy, .globalPlayGuide, .engineProgressHud, .tsShiftRewardHud, .eosCompanion).\n- The crown anchors on the Still Point or stage centre (lines 574-583), which is exactly where the hero engines stage their character and finale title.\n- follow() (lines 618-647) re-places the crown using the same blind obstacle list, so the glide can carry the words onto the character.\nCREATIVE_STANDARDS 1, 2 and 4: the shared word bloom must supplement each game's own finale and never cover it.",
+   "fix": "1. Make in-game finale content a hard obstacle in both fire() and follow(). Add a contract selector, [data-eos-avoid], that game engines put on their character bubble and their finale headline. Ask the 111-114 owners to tag it; until then, add their known roots: .eosVolcHero, .eosGroundHero, .eosGroundFace, .eosOrbFace and the equivalents in 111 and 114.\n2. Add a generic pass for legacy games: inside .cinematicContentShell, treat every visible img (or circular background-image bubble) of at least 36px, and every visible text node of at least 16px, as an obstacle. Weight these far above the chrome, for example x12, or reject any candidate that overlaps one.\n3. When no candidate within plus or minus 240px is clean, widen the search: use the clearest horizontal band above or below the character, then a tighter or stacked crown, and only then shrink the words to no less than 20px.\n4. Add an overlap assertion to the acceptance script: 0% word overlap with arena img or text of at least 14px, for 111-114 at 390x844 and 1280x860, both at bloom and after the follow glide."
+  },
+  {
+   "severity": "minor",
+   "area": "Colour-script layers sit above the HUD and LIVE GUIDE and wash out the small score and sparks pills",
+   "file": "src/eos/14_eos_mood.jsx",
+   "evidence": "Stacking inside .releaseStage: releaseGameHost is z 2, and eosMoodGrade, eosMoodAir and eosMoodFlip are all z 54. The host contains .engineProgressHud, .tsShiftRewardHud and .globalPlayGuide.\nMean luminance of each region at progress 0, with the mood layers and without them (display:none):\n- 113 anxiety at 1280: engineProgressHud 67 vs 38, tsShiftRewardHud 74 vs 45.\n- 114 sad at 390: engineProgressHud 58 vs 35, tsShiftRewardHud 62 vs 38.\n- 112 anger at 390: engineProgressHud 50 vs 34.\nMost of the lift comes from the screen-blended edge grip (line 757: radial-gradient pressing the loud colour in from the edges, where the HUD lives). It lifts the dark pill backgrounds behind the 'SHIFT SPARKS' and 'TOKENS' text, which is exactly what the user said is hard to read. It still clears WCAG, but contrast drops by roughly a third.",
+   "fix": "Carve the chrome out of the grade.\n- Measure the HUD's bottom edge and the guide's rect (eosRelRect) once per resize, and apply a mask-image to .eosMoodAir and .eosMoodGrade that is transparent over those rects. Alternatively, weight the grip to the sides and bottom only and drop the top edge.\n- Or raise .engineProgressHud, .tsShiftRewardHud and .globalPlayGuide above EOS_Z.mood with an EOS_A-prefixed rule, if the readability or arrows owners agree."
+  },
+  {
+   "severity": "minor",
+   "area": "The crown visibly re-glides on every finish because the finish-card prediction misses",
+   "file": "src/eos/14_eos_mood.jsx",
+   "evidence": "window.__eos.mood.state().place showed predicted:true and moves:1 in every run: 112 at 390, 111 at 390, 114 at 390 and 113 at 1280. The arcade card arrives 0.4-1.1 s after the bloom. In the 113 phone run, the 0.5 s left/top glide stacked on the 60 px rise lifts the words into the character (F_p113_a.png vs F_p113_b.png). At the money shot, three layers now compete for the centre: the game's own finale, the growing 'SHIFTED \u2713 FEEL IT' card, and the moving words.",
+   "fix": "Fix predictCard (lines 540-558) so it matches the real card. At 390 the card measured about 320x101 at x 35, y 342, while the prediction assumes 300x128 at the last press, and the card's real position follows the press clamp. Alternatively, reserve a band for the card's final rect.\nIf the fix still moves the crown, glide only the side words, or skip the glide and fade the words early, so the words never travel sideways while they rise."
+  }
+ ]
+}

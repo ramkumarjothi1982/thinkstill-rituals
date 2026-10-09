@@ -1,0 +1,107 @@
+{
+ "round": 1,
+ "verdicts": {
+  "code": "fix",
+  "experience": "fix"
+ },
+ "findings": [
+  {
+   "severity": "major",
+   "area": "performance / spec \u00a78.0 limit of 60 animated nodes (past lanterns)",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/24_eos_game_lanterns.jsx",
+   "evidence": "Line 1137: every .eosLanPastDot has `transition: opacity, transform, box-shadow .9s` with staggered delays. Line 1139 changes all three on every dot when the stage leaves play. I seeded eos_sessions_v1 with 130 rows for game 114 (/tmp/revlan/t3.mjs, 390x844), so 120 dots are drawn. Peak inside .eosG114 was 155 animated nodes and 397 running animations at gather/ask (box-shadow, opacity, transform, stroke, ...). 700 ms after ask there were still 126 nodes and 308 animations. Reduced motion is no better: 129 nodes and 249 animations (box-shadow and opacity). With 0 past lanterns the finale peaks at about 39 nodes. So the 60-node limit is broken by every loyal player once they have about 20 lanterns, and it is broken at the finale, the most important moment. Animating box-shadow on 120 nodes repaints every frame.",
+   "fix": "Brighten the past sky as one layer, not per dot. Either give .eosLanPast a pre-rendered glow child (or ::after radial layer) whose opacity transitions once, or change opacity/filter on the .eosLanPast container. Remove the per-dot box-shadow and transform transitions, and the per-dot --d stagger. In calm mode, use a single container opacity cross-fade. Re-measure with 120 dots: 60 animated nodes or fewer in both modes."
+  },
+  {
+   "severity": "major",
+   "area": "DOM churn / wrapper audit storm when a player taps instead of holds",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/24_eos_game_lanterns.jsx",
+   "evidence": "Each press and each early release changes ui.cue. Line 1069 is `<span key={ui.cue}>`, so every cue change unmounts and remounts the span (a childList change). Each press and release also flips DROP's face (computed at lines 841-854, 57 <-> start face), which swaps the orb image src. The arcade wrapper's MutationObserver (00_arcade.jsx:20688, childList + characterData + src, not debounced) re-runs its full audit on every one of these changes. Measured in /tmp/revlan/t5.mjs at 390x844: 12 quick taps on lantern 0 in 3.7 s produced 72 audited mutations (48 childList, 24 src), peaking at 24 per second. That is about 2 commits with changes per tap, well above the spec's ~4 Hz limit, and real thumbs tap faster than headless. state.faces also logged 25 face changes for 12 taps, so DROP strobes between sad and hopeful with a squash pop on each tap. Tapping is the most likely first move on a hold game.",
+   "fix": "Stop remounting the cue on change. Keep one span and restart its CSS animation with a data-a/b attribute toggle, or set the text through a ref. Rate-limit cue and face changes on short presses: switch to cue 'warm' and the warm face only after about 200 ms of holding (a timer, or in the rAF loop when heat > 0.15). Keep the 'early'/'easy' cue for at least 600 ms. Target: 4 or fewer childList/src mutations per second while mashing."
+  },
+  {
+   "severity": "minor",
+   "area": "juice grammar: a non-soft sfx fires from the rAF loop",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/24_eos_game_lanterns.jsx",
+   "evidence": "step() (rAF, line 389) calls lit(i). lit() then runs `if (s.rawDy <= -EOS_LAN.flickPx) rise(i, true)` (line 495), and rise(i, true) runs `fx.sfx(\"chime\")` (line 543). So when the player flicks up before the lantern is fully lit, the scored chime and its wrapper step reward fire from inside requestAnimationFrame. \u00a78.0 forbids that: \"never call a non-soft sfx from a timer or rAF\". In /tmp/revlan/t2.mjs at 1280 the flick arrived at heat 0.83 and the lantern still went straight to rise.",
+   "fix": "In lit(), when the flick happened during warming, launch without the scored sfx (rise(i, false) plus the eosTone ladder). Alternatively mark it pending and give the chime on the next pointermove or pointerup, which are user events."
+  },
+  {
+   "severity": "minor",
+   "area": "reduced-motion path: the arcade burst is not gated",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/24_eos_game_lanterns.jsx",
+   "evidence": "Line 1107 renders <PremiumBurst> on every rise and on the choice whether `red` is true or not. PremiumBurst (00_arcade.jsx:2852) contains impactFlash, lensStreak, 3 shockRings and 20-30 flying particles. `node eos_drive.mjs css --grep premiumBurst` shows no reduced or calm rule for it. Calm visuals (the in-app pref, with no OS media query) therefore always get the flash and the particles.",
+   "fix": "When `red` is true, skip PremiumBurst and use a soft opacity glow at the same point (for example, reuse .eosLanPool or the star fade-in)."
+  },
+  {
+   "severity": "minor",
+   "area": "copy honesty: 'Sent' after a cancelled share",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/24_eos_game_lanterns.jsx",
+   "evidence": "choose('send') sets cue 'sent' (\"Sent with love. \ud83d\udc9b\") and label WARMTH SENT at once (lines 632 and 636), before navigator.share settles. If share rejects with AbortError (the user closed the sheet), nothing is sent or copied (line 616), but the screen still says \"Sent with love\".",
+   "fix": "Use neutral copy until share resolves (\"A little warmth, on its way \ud83d\udc9b\"). On AbortError, switch the cue to the 'kept' line, or say \"Saved for later \u2014 you can send it anytime\". The progress and finish flow stay the same."
+  },
+  {
+   "severity": "minor",
+   "area": "layout outside 390/1280: short arenas (phone landscape)",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/24_eos_game_lanterns.jsx",
+   "evidence": "eosLanLayout line 107: `boxB = Math.max(boxT + 260, H - safeBottom)` forces the box to at least 260 px even when the arena is shorter. At 844x390 the arena is 196 px tall, so every lantern body and tag lies below the arena bottom: bodies top 234-236 and tags bottom 347, against arena bottom 263 (/tmp/revlan/t4.mjs). finishGame stopped as 'stuck (no bar movement for 15 actions / 49 s)'. 768x1024 and 1280x860 passed, with no overlap and 0 arrow misses. The wrapper's guide also covers most of that arena, so this is partly a wrapper limitation.",
+   "fix": "Clamp boxB to the arena height (Math.min(H - 8, ...)). When boxH < 260, switch to a compact layout: smaller lh/dropS, tags on one line, DROP beside the lanterns. At minimum, keep the lanterns inside the arena."
+  },
+  {
+   "severity": "minor",
+   "area": "performance: forced style/layout read on every pointermove",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/24_eos_game_lanterns.jsx",
+   "evidence": "onPointerMove (line 684) calls eosStageScale(rootRef.current), which calls getBoundingClientRect, on every move. fx.paint wrote style.transform and CSS variables on the previous move, so each event forces a synchronous style recalc and layout.",
+   "fix": "Read the scale once in onPointerDown (s.k = eosStageScale(root)) and reuse it during the drag."
+  },
+  {
+   "severity": "minor",
+   "area": "keyboard: page scroll blocked while playing",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/24_eos_game_lanterns.jsx",
+   "evidence": "The window keydown handler (lines 748-753) calls keyDown(), which always calls e.preventDefault() for Space and ArrowUp whenever focus is on body/document, even when there is nothing to hold or raise (ArrowUp with no lit lantern). In a Framer page longer than the component, Space and ArrowUp cannot scroll the page during play.",
+   "fix": "Call preventDefault only when the key actually acts: Space starts a press, or ArrowUp raises a lit and held lantern. Alternatively, attach the listener only while the pointer or focus is inside the arena."
+  },
+  {
+   "severity": "minor",
+   "area": "words on lanterns: filler words win over meaning",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/24_eos_game_lanterns.jsx",
+   "evidence": "eosLanWords (lines 157-169) keeps the FIRST 3 'meaningful' chunks. Its stop list leaves out pronouns and conjunctions (she, he, they, her, him, since, because, about, from, when, what...). \"i feel so lonely since she left me\" produced the tags 'so lonely' / 'since' / 'she' (see /tmp/revlan/g_768x1024.png). The actual hurt, 'left me', was dropped.",
+   "fix": "Extend EOS_LAN_STOP with common function words. Rank chunks by content-word count or length and pick the best 3, rather than the first 3, keeping the display order stable."
+  },
+  {
+   "severity": "major",
+   "area": "finale / own spectacular finale on phone (CREATIVE_STANDARDS #2, #9)",
+   "file": "src/eos/24_eos_game_lanterns.jsx",
+   "evidence": "Phone 390x844, integrated build /tmp/eos_rev_game-lanterns_experience_arr. Overlap sampler /tmp/rev_lan/ov.mjs: choice \u2192 stage fly 16.2 s \u2192 done 17.7 s. From 18.4 s the wrapper finish card (.globalFinishFeedbackCopy, anchored at the last tap, which is the choice card) covers the finale line 'Kept close. This glow is yours.' 59% \u2192 100%, and DROP's heart hug up to 45%, and it stays that way until the reveal. Only about 2 s of the finale is ever seen unobstructed. Screens: /tmp/rev_lan/p_8finish.png ('SHIFTED \u2713 FEEL IT' sits over DROP and the line), /tmp/rev_lan/f_d_2600.png and f_d_3600.png (RELEASED card plus a bright burst over DROP at the moment the heart line peaks), /tmp/rev_lan/f_d_500.png and f_d_1800.png (the step card 'RESET \u2713' hides 'Copied \u2014' in the toast). On desktop (/tmp/rev_lan/d_6finish.png) the card also covers 'Sent with love.'. The heart outline itself stays visible. For a first-time player (past=0, /tmp/rev_lan/p_7fly.png, p_8finish.png) the climax is small: 3 stars and a gold point in a heart about 200 px wide. The 'warm' sky is still dark mauve at warmOp=1, not the peach/amber calm grade.",
+   "fix": "Treat the finale as its own composition that keeps clear of the click point. In the fly and done stages the lantern row is empty, so move DROP (heart hug) and the closing line up under or inside the heart, and move the toast above the cards' row. The wrapper card then lands on empty grass. Hold the 100% report (EOS_LAN.fullMs 1800 \u2192 about 2600-3000) until the constellation line has drawn and DROP's hug has popped, so the peak plays before the finish card appears. Give first-time players more real spectacle without inventing fake strangers: the three risen stars send warm light rays or ember showers, the heart pulses outward, and the warm sky layer reaches a visibly peach/amber horizon at done."
+  },
+  {
+   "severity": "major",
+   "area": "relief fit / the user's words on the lanterns",
+   "file": "src/eos/24_eos_game_lanterns.jsx",
+   "evidence": "eosLanWords (lines 157-169) takes the first 3 'meaningful' 2-word arcade chunks. The stop list lacks pronouns and particles (they, them, she, her, him, you, all, back, out). Runtime tags (/tmp/rev_lan/tag.mjs, phone): input 'nobody texted me back they all left' \u2192 lanterns 'nobody texted' / 'back' / 'they'. Input 'i miss my dad and nobody calls me anymore' \u2192 'i miss' / 'my dad' / 'and nobody' (/tmp/rev_lan/p_1start.png). Input 'i lost my dog last week and the house feels empty' \u2192 'i lost' / 'my dog' / 'last week', and the actual heavy part ('the house feels empty', 'nobody calls me anymore') never reaches a lantern. Sending 'they' or 'back' into the sky reads as nonsense and undercuts the ritual. The builder lists this as a known limitation.",
+   "fix": "Build lantern phrases from consecutive entries joined back into short phrases that fit the 2-line tag (about 18-22 chars), e.g. 'nobody texted me back' / 'they all left'. Score candidates by content words, prefer the later or affective clauses (feels empty, nobody calls, alone), drop leading conjunctions ('and', 'but'), and extend EOS_LAN_STOP with they/them/he/she/him/her/you/we/us/all/back/out/up/off/anymore. Keep the EosWord rendering and the safety path (EOS_NEUTRAL_WORDS) unchanged."
+  },
+  {
+   "severity": "major",
+   "area": "arrow / cue clarity at the two decision points (phone first)",
+   "file": "src/eos/24_eos_game_lanterns.jsx",
+   "evidence": "The markers are spread on the whole .eosLanLantern button (paper + string + tag, lines 1024-1028) and on the whole .eosLanOpt card (line 1089), with no ox/oy. The arrows module therefore puts its hold ring and hand at the paper/tag boundary, over the user's own word on lantern 1: /tmp/rev_lan/f_a_start.png ('i l[hand]' instead of 'i lost') and /tmp/rev_lan/d_1start.png ('i mi'). At the ask stage on phone, /tmp/rev_lan/f_c_ask.png shows the 'YOUR CHOICE' pill over DROP and the golden lantern, the down arrow cutting the question ('Send a lit\u25bcwarmth?'), and the demo hand covering the reach-out card copy ('thinkin[hand]you', 'a little n[hand]om'). The arrow states themselves are correct (hold \u2192 drag u 'LET IT RISE \u2191' \u2192 choose on both, api source, /tmp/rev_lan/desk.mjs).",
+   "fix": "Pass target offsets so the guide points at the object, not the copy. Lantern: eosTarget({..., oy: about -0.25}), or spread the marker on the paper body instead of the whole button, so ring and hand sit on the paper and the tag word stays readable. Options: oy toward the icon or top edge of each card (about -0.3). In the arrows module, place the choose-stage label above the topmost marked option without overlapping a live cue line (.eosLanCue) or the character. Re-shoot phone start and ask to confirm the user's word and the question are fully readable while the arrow is showing."
+  },
+  {
+   "severity": "minor",
+   "area": "juice vs. copy collision during flicks",
+   "file": "src/eos/24_eos_game_lanterns.jsx",
+   "evidence": "The wrapper's step-reward card anchors at the last pointer position (rewardCursorRef, 00_arcade.jsx about line 18527). With the taught 'flick it up' gesture the pointer ends on DROP or the cue line on phone, so the card covers the common-humanity line and DROP: /tmp/rev_lan/p_4rise.png ('SHIFTED \u2713' over 'Missing someone means you loved something.') and /tmp/rev_lan/p_5mid.png ('SPACE \u2713' over DROP). With release-only play there is no overlap (ov.mjs: cue 0, drop 0).",
+   "fix": "Show the rising true-copy line beside the rising lantern in the sky, or delay it about 900 ms until the step card has floated away, so the mechanism line is always readable. Alternatively, have the wrapper or rewards module avoid anchoring step cards over [aria-live] cue nodes."
+  },
+  {
+   "severity": "minor",
+   "area": "tone of wrapper step words in a grief/loneliness game",
+   "file": "src/00_arcade.jsx",
+   "evidence": "The step and finish cards during 114 read 'RESET \u2713', 'SPACE \u2713', 'LIGHTER \u2713', 'RELEASED \u2713 FEEL IT' (/tmp/rev_lan/f_d_500.png, p_5mid.png, f_b_gather.png). 'RESET' right after sending warmth to someone reads cold and mechanical.",
+   "fix": "Rewards or wrapper owner: give 114 (or the sad/lonely emotions) a warm word set such as 'GLOWING \u2713', 'WARMER \u2713', 'LIT \u2713', 'SENT WITH LOVE'. This is not a lanterns-file change."
+  }
+ ]
+}

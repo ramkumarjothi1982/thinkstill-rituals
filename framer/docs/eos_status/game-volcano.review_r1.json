@@ -1,0 +1,114 @@
+{
+ "round": 1,
+ "verdicts": {
+  "code": "fix",
+  "experience": "fix"
+ },
+ "findings": [
+  {
+   "severity": "blocker",
+   "area": "Act B never finishes for an idle player (breaks the 'every game ends in 45 s' rule and the 'minimum cooling rate' promise in \u00a78.2)",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/22_eos_game_volcano.jsx",
+   "evidence": "Lines 492-494: `floor = s.heat / Math.max(2, V.deadline - elapsed)`. Once less than 2 s remain, this turns into exponential decay (heat *= 1 - dt/2), so heat gets close to 0 but never reaches it. The `if (s.heat <= 0) bloom()` check at line 527 therefore never fires. Live test (integrated build at 390x844, before=10, 6 synthetic taps, then no input; script /tmp/rv_volc/idle.mjs): heat 3.6 at 36 s, 0.3 at 41 s, displayed as 0 from 46 s. Progress stays at 94 and done=false at 66 s, while the 5th scored chime fires at ~66 s from rAF with no user action. A node run of the exact formula (60 fps, start 6.5 s) still has heat at 1.0e-123 after 10 minutes and never reaches 0. The bridge line 'Now watch it cool\u2026' invites exactly this passive behaviour. The builder's claim 'idle = deadline floor, finish \u2264 ~44 s' is false: finishGame never measured an idle path.",
+   "fix": "Make the floor a schedule that actually reaches 0, e.g. record coolStartEl at startCool and use `floorHeat = 100 * eosClamp((V.deadline - el) / (V.deadline - coolStartEl), 0, 1); s.heat = Math.max(0, Math.min(s.heat - rate*dt, floorHeat))`. Alternatively keep the current formula with a `Math.max(0.25, \u2026)` denominator, and in both cases snap `if (s.heat < 0.05) s.heat = 0`. Add an idle regression test: 6 taps, then no input, assert onDone is called within 45 s of mount."
+  },
+  {
+   "severity": "minor",
+   "area": "Performance: animated-node budget (<= 60) exceeded at the eruption peak",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/22_eos_game_volcano.jsx",
+   "evidence": "Measured with getAnimations({subtree:true}) on the arena at 390x844. Act A idle: 15 animations. 3 fast real touch taps at before=8 (k=2): 104 running animations on 90 targets (cinemaParticle 30, CSS transitions 20, eosVolcanoShardA 12, Xa/Ya/BodyA 6 each, embers 7\u2026). 6 taps 120 ms apart at before=10 (k=3): 145 running animations. Each pooled rock runs 5 animations (X, Y, body, ::before, ::after), so the 12-rock pool alone is 60 (lines 843-854, 1015-1025), plus a big PremiumBurst (~35 nodes) on each tap at k>=2. The build report calls this 'just above the guideline'; it is roughly 1.5-2.4x over.",
+   "fix": "Cap rocks in flight, for example a pool of 8, or 3 rocks only on alternate taps at k=3. Drop the pseudo shards when k>=2, or keep them on the middle rock only. Pause embers and the plume (data attribute) while rocks are flying. Use big={false} for PremiumBurst on fast consecutive taps."
+  },
+  {
+   "severity": "minor",
+   "area": "Reduced motion: a full particle burst still plays on every eruption",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/22_eos_game_volcano.jsx",
+   "evidence": "Lines 385-388 and 856 mount `<PremiumBurst big={k>=2}>` whatever `red` is. Run with reducedMotion:'reduce' (data-calm=1 confirmed): after the taps these were running: cinemaParticle 30, cinemaFlash 1, lensStreak 1, premiumShock 3. Rocks fading in place and no shake (shakes=0) were correct.",
+   "fix": "When `red` (eosCalm) is true, skip PremiumBurst on the erupt taps, or render big={false} and rely on the crater glow pulse. Keep the bloom burst calm in the same way."
+  },
+  {
+   "severity": "minor",
+   "area": "Keyboard state sticks when focus leaves mid-press",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/22_eos_game_volcano.jsx",
+   "evidence": "Lines 686-696: keyHold and keyDir are cleared only by onKeyUp on the cloud button. Test: hold Space on the cloud, blur it, release Space. The state stays mode 'rain' with holding=false, keyHold is stuck true, and rainSfx re-triggers on every 'out' phase. A stuck ArrowLeft/Right (keyDir) would keep gliding the cloud at 170 px/s.",
+   "fix": "Add onBlur on the cloud button plus a window 'blur' listener in an effect with cleanup. Both should reset s.keyHold=false, s.keyDir=0 and s.keyRainUntil=0."
+  },
+  {
+   "severity": "minor",
+   "area": "BOOM combo floater sometimes does not replay",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/22_eos_game_volcano.jsx",
+   "evidence": "Lines 376-377 use toggleAB(boom, 'data-pop', 'boomAB'): one global toggle shared by 6 different elements. Sequence: tap 1 (combo 1, boom0 set to 'a'), tap 2 within 700 ms (combo 2, boom1 set to 'b'), tap 3 after 700 ms (combo 1, boom0 set to 'a' again). The attribute does not change, so the CSS animation does not restart and tap 3 shows no 'BOOM!'.",
+   "fix": "Toggle per element, as the rocks and puffs already do: `boom.setAttribute('data-pop', boom.getAttribute('data-pop') === 'a' ? 'b' : 'a')`."
+  },
+  {
+   "severity": "minor",
+   "area": "The bridge line is covered by hanging word-rocks",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/22_eos_game_volcano.jsx",
+   "evidence": "Screenshot /tmp/rv_volc/r_a.png (390x844, reduced, fast taps): the user's words 'yelled at', 'everyone' and 'front' sit on top of 'Now watch it cool\u2026' for most of its 1.3 s window. The hero appears on the 6th tap (lines 393-395, 911-914), while the rocks from taps 4-6 still hang at peakY (lines 362, 1088-1091) in the same band. The game's one instruction line overlaps the user's words.",
+   "fix": "Fade the in-flight rocks quickly on the 6th tap (for example data-act='ab' gives rocks an opacity transition of 0.3 s). Otherwise delay the hero by about 700 ms or place it below the rock band, at cy - 40 instead of U0 + uh*0.06."
+  },
+  {
+   "severity": "minor",
+   "area": "Taps during the 1.3 s bridge get no answer",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/22_eos_game_volcano.jsx",
+   "evidence": "Lines 598-620: onPointerDown handles act 'a', 'b' and 'c' but does nothing in 'ab'. erupt() also returns silently once taps>=6. Angry players typically tap more than 6 times, and taps 7+ get no sound, haptic or visual, against \u00a78.0's 'every touch answers within 50 ms'.",
+   "fix": "In act 'ab' (and for extra act-A taps), call fire('soft') with a small eosTone and toggle the crater glow pulse. Do not add progress or a scored sfx."
+  },
+  {
+   "severity": "minor",
+   "area": "Rain audio is not stopped and is synthesized inside rAF",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/22_eos_game_volcano.jsx",
+   "evidence": "Lines 436-441 call rainSfx(6.2) from setPhase inside tick (rAF). The arcade's useRainSfx builds a ~300k-sample brown-noise buffer synchronously on every call. bloom() (lines 549-588) and the unmount cleanup (lines 289-298) never stop it, so rain can keep playing for up to ~6 s into the bloom or reveal, or after leaving the game.",
+   "fix": "On bloom and unmount call P.current.rainSfx?.(0.05). That stops the active source because useRainSfx stops the previous one. Optionally defer the rainSfx call out of the rAF with later(\u2026, 0)."
+  },
+  {
+   "severity": "major",
+   "area": "Act A word rocks: user words overlap and become unreadable at 390 px (worse in reduced/calm mode)",
+   "file": "src/eos/22_eos_game_volcano.jsx",
+   "evidence": "Lines 360-362 put every rock's hang point inside a tiny box. x is clamped to [96, W-96], about 198 px wide at 390. y is peakY + noise*uh*0.16, about 148-240 px on phone, roughly 92 px tall. That box has to hold 2-3 rocks per tap, each 110-217 px wide, and the rocks of the previous 1-2 taps are still hanging there. Measured with the all-modules integrated build at 390x844: intensity 8 (anger's default dial), 700 ms after the 3rd tap, 6 rocks visible with 8 overlapping pairs, 4 of them more than 25 % overlapped. Intensity 9 with reduced motion: 9 rocks, 22 overlapping pairs, 9 more than 25 %. Desktop at intensity 10: 9 rocks, 4 pairs more than 25 %. The BOOM floater also lands on rocks (boomOverRock 1-3). Screenshots: scratchpad/shots/p_2erupt.png shows 'am furi', 'of ev' and 'my boss yel' stacked on top of each other; rq_a_hang.png shows the reduced-motion cluster; q_a_hang.png. Readability is the core promise here (the user's own words become the rocks), and CREATIVE_STANDARDS 8 requires nothing overlapping at 390.",
+   "fix": "Replace the random fan with a hang-slot allocator. Use 2 rows x 3 columns over the sky band U0+40 .. cy-70 on phone (3x2 or 4x2 on desktop). Each launched rock takes the least-recently-used free slot and keeps it until its 1.6 s animation ends, so rocks hanging at the same time never share a slot. Compute the slot width from the measured rock width (or cap rock max-width at slotW). On phone, scale the k=3 tier to 1.0-1.08 instead of 1.28. Put the BOOM floater in a slot that is not in use, or above the band. In calm mode the rocks sit at their slots, so the same allocator fixes that case too. Verify: no two visible .eosVolcRockBody rects intersect by more than 5 % at intensities 5, 8 and 10, at 390 and 1280, with normal and reduced motion."
+  },
+  {
+   "severity": "major",
+   "area": "Hero copy collides with other text: the bridge line 'Now watch it cool\u2026' sits on the last rocks, and 'Cooled to zero' sits under the shared flip words",
+   "file": "src/eos/22_eos_game_volcano.jsx",
+   "evidence": "The hero (.eosVolcHero, line 911) is drawn at U0 + uh*0.06. On phone that is about y 139, which is inside the rock hang band. The bridge lasts only 1300 ms (line 46), but the 6th tap's rocks live for 1.6 s, so the hero line appears on top of them. Measured hero/rock overlaps during the bridge: 3 (phone, intensity 8), 4 (phone reduced, 9), 10 (desktop, 10). Screenshots: p_3bridge.png ('Now watch it cool\u2026' over 'in front', 'am furi', 'my boss yel'), rq_a_bridge.png, d_3bridge.png (with 'BOOM \u00d73!' over the hero). At the finale, h2 'Cooled to zero' stays visible after report(100), when the shared Still Point flip words 'clear', 'cool' and 'strong' rise into the same top band. In q_c_bloom2.png the hero reads 'Cooled to z\u2026o' with the flip words and a bubble over it.",
+   "fix": "Bridge: show .h1 only once the last rocks have shattered. Either wait about 1.65 s after the 6th tap (make bridgeMs about 1.9 s and delay h1 by 500 ms), or move the bridge line below the rock band (just above the crater or over the cone). Finale: fade .h2 out when report(100) fires (for example data-act=\"c2\" or a data-hero=\"off\" attribute), because that is when the shared flip bloom starts. Alternatively, place it under the summit instead of the top band where the flip words appear."
+  },
+  {
+   "severity": "major",
+   "area": "The game's own finale is modest, gets only about 2 s on its own, and is then covered by shared overlays (CREATIVE_STANDARDS 2)",
+   "file": "src/eos/22_eos_game_volcano.jsx",
+   "evidence": "Act C (lines 549-588) is a real first-class state: the meadow fills the cone, the seams glow gold, 8 flowers appear, RUSH switches to the laugh face E44, plus one PremiumBurst and a chord. It works as a story beat (q_c_bloom1.png and dq_c_bloom1.png read clearly as 'volcano became a garden'). As a spectacular dopamine burst it falls short: the flower heads render 20-30 px on phone and 30-49 px on desktop, which is tiny next to the 350-580 px cone; there is no sky or light event; and RUSH only bobs where it already stands. It also gets only bloomMs = 2000 ms unobstructed. At report(100), the wrapper's finish card ('COOLED \u2713 FEEL IT +1 +65') lands on the middle of the hill, and the Still Point orb plus flip words take over (q_c_bloom2.png, d_6bloom.png, where RUSH and most of the garden are hidden). The shared bloom therefore effectively replaces the game's finale rather than adding to it.",
+   "fix": "Make act C a short choreographed sequence of about 3-3.5 s, and only report(100) after its peak. Suggested beats: (1) the last steam column rises and turns into a teal-to-gold aurora or rainbow ribbon across the sky (the 'cooling aurora'); (2) flowers race down each cooled river from the summit, 16-24 blooms of 40-64 px staggered at 60 ms, with squash on landing; (3) the crater turns into a sparkling spring or petal fountain; (4) RUSH hops onto the summit with an anticipation squash, stretch and land, then belly-laughs with a gold burst at its position; (5) the cloud gives a small happy spin and drifts off. Keep the garden's focal point clear of the arena centre where the wrapper's finish card appears, or anchor that card elsewhere for EOS games (see the next finding)."
+  },
+  {
+   "severity": "major",
+   "area": "The wrapper's step-reward pill sits on the crater (act A) and the cloud (act B), hiding the main target and the arrow's hand",
+   "file": "src/00_arcade.jsx",
+   "evidence": "GameEngine renders .globalFeedbackCopyLayer.globalStepFeedbackCopy (src/00_arcade.jsx about line 20874) at stepRewardAnchor, which is the last pointer position. Every crater tap is a scored step and taps come about 0.4 s apart, while the pill stays up for more than 1 s. So for most of act A a glass pill ('PRESSURE \u2193 +18 \u00d76' / 'UNCLENCHED \u2713') covers the crater, the arrow's hand and the crater ring. During act B, each of the 5 chimes puts a 'COOLED \u2713 +18 \u00d710' pill over the cloud the player is holding. Seen in p_2erupt, p_3bridge, p_4cloud, p_5rain, d_2erupt, d_5rain, q_a_hang and rq_a_hang. The builder lists this as a known limitation, but it is the most visually disruptive element in this game on both sizes.",
+   "fix": "Owner is the integration / rewards module (52_eos_rewards.jsx or 60_eos_fixes.jsx). For EOS arenas, re-anchor the step pill away from [data-eos-target], for example ${EOS_A} .cinematicContentShell:has(>.eosArena)>.globalStepFeedbackCopy{--fx-y:16%!important} (a stylesheet !important beats the inline custom property), or offset it at least 120 px above the pointer and clamp it to the safe area. If the module owner cannot do this in time, 112 can scope the same rule in EOS_VOLCANO_CSS with :has(>.eosG112), placing it in a band that the rock-slot allocator keeps free."
+  },
+  {
+   "severity": "minor",
+   "area": "Act B (the 'active ingredient') is shorter than the spec's ~15-20 s when played as intended (slow drag), about one breath cycle",
+   "file": "src/eos/22_eos_game_volcano.jsx",
+   "evidence": "rate is 6 %/s, doubled to 12 %/s for a slow drag during 'out' (line 40). One 4 s + 6 s breath cycle therefore removes about 96 % of the heat. Measured on phone: a slow drag cooled 100 to 0 in about 11.8 s (heat log 86.7 at 1.2 s, 26.6 at 6.8 s, 0 at 11.8 s); press-and-hold only took 15.7-16.3 s; desktop hold took 14.3 s. The whole game takes about 29 s, so there is room to spare under the 45 s cap.",
+   "fix": "Tune so the drag path gets about 1.5 slow exhales. For example, base rate 4.5 %/s with out-phase x2, giving about 14-15 s for a drag and about 22 s for a hold. Or keep 6 %/s and reduce the out bonus to x1.5. Re-check that keyboard-only and idle play still finish within 45 s (the deadline floor is unchanged)."
+  },
+  {
+   "severity": "minor",
+   "area": "Breath guidance and RUSH's role during the cool-down are weak",
+   "file": "src/eos/22_eos_game_volcano.jsx",
+   "evidence": "The only breathing cue is a 16-18 px 'in\u2026' / 'out\u2026' chip above the cloud, which is partly covered by the step pill (p_4cloud, p_5rain); the cloud swells to 1.13. During act B, RUSH only squashes and changes face at the 5 chimes; it does not react to the rain or breathe. CREATIVE_STANDARDS 1 asks for characters that react meaningfully and transform. The face progression does happen (E29 \u2192 simmer \u2192 soft \u2192 E44 laugh in p_5rain and q_c_bloom1), but RUSH stays passive at the side.",
+   "fix": "Have RUSH follow the pacer as a co-regulation model: it swells on 'in' and slumps and softens on 'out', with a steam wisp rising off its head as the heat drops and a tiny drip when the rain reaches it. For the first cycle, show a large soft 'breathe in\u2026 / and out\u2026' in the hero slot, then fall back to the cloud chip."
+  },
+  {
+   "severity": "minor",
+   "area": "The arrow's count badge covers the end of the loaded word on the crater",
+   "file": "src/eos/22_eos_game_volcano.jsx",
+   "evidence": "The .eosVolcLoad word sits at cy-16, right where the arrow points (line 812). The arrows module's \u00d7N badge then clips the word: 'my boss yell[\u00d76]' in p_1start, 'of everyon[\u00d73]' in q_a_hang, 'in front[\u00d73]' in rq_a_hang. This happens on the very first screen of the anger hero game.",
+   "fix": "Move the loaded word clear of the arrow's approach path, for example below the crater ring or offset sideways. Alternatively, pass oy in eosTarget so the arrow aims at the crater ring below the word and the badge sits beside it rather than on it."
+  }
+ ]
+}

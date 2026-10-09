@@ -1,0 +1,93 @@
+{
+ "round": 1,
+ "verdicts": {
+  "code": "fix",
+  "experience": "fix"
+ },
+ "findings": [
+  {
+   "severity": "major",
+   "area": "\u00a76.4 hand-off / safety routing: the reveal's \"TRY \u2026\" pick goes stale when a safety flag is raised after launch",
+   "file": "/home/user/thinkstill-rituals/framer/dev/eos_integrate.py",
+   "evidence": "The I2-E5 edit (eos_integrate.py lines 144-146) wraps EosRouteGame inside `recommendedReleaseGame = React.useMemo(..., [selected?.id, raw, entries.join(\"|\"), chooseRelevantGame])` (00_arcade.jsx line 21361). The deps never include EOS store state. The builder's report (\"Optional \u2026 it isn't required\") assumes every flag is set before setStage(\"play\"). That is false: 55_eos_safety.jsx line 302 raises EosFlagSafety(\"soft\") in the reveal when the after-rating shows no relief (\u22659).\n\nReproduced in /tmp/eos_rev_router_int at 390: committed anger with before 5, played POP, reached the reveal and clicked YES, so the button read \"TRY COOL THE VOLCANO\". Then EosFlagSafety(\"soft\") ran. The store safety became \"soft\" and `__eos.router.EosRouteGame(\u2026)` now returned CLEANSE, but the button still read \"TRY COOL THE VOLCANO\" (112 is not in EOS_GENTLE_IDS). Screenshot: /tmp/rr/reveal_soft_390.png.\n\ntryRecommendedRelease launches the stale game directly. With 112 just played and anger in the mid band, the stale pick would be 100 or 4 (discharge/smash games). That breaks \u00a77.1 \"never \u2026 while any safety flag is on\".",
+   "fix": "Add an I2 edit that makes the memo react to the store. `const eos = useEosStore()` already exists from I1-E14 at line 21079. Change the anchor `    }, [selected?.id, raw, entries.join(\"|\"), chooseRelevantGame])` to `    }, [selected?.id, raw, entries.join(\"|\"), chooseRelevantGame, eos.safety, eos.emotion])`. Alternatively, make tryRecommendedRelease re-route when clicked: `startChosenGame(EosRouteGame(sourceThought, played, selected.id) || recommendedReleaseGame)`. Also correct the \"optional\" note in docs/eos_status/router.build.md."
+  },
+  {
+   "severity": "minor",
+   "area": "EosSecondAct does not follow the spec in the \"it worked\" branch",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/45_eos_router.jsx",
+   "evidence": "Line 331 sets `lvl = st.after ?? st.before ?? dial`, and the express flag is ignored. Spec \u00a77.3 says this branch should be \"the next EosRouteGame pick excluding lastId\", which uses before, or 10 when express is set.\n\nMeasured: store anger, before 8, after 3. `EosSecondAct(\"anger\", 112, 5)` returns 52 SUBTITLES (low band). The spec algorithm would give 109 CLEANSE (high band). Arguably this is better design (top-down when warm), but neither the code comments nor the report document it.",
+   "fix": "Either document the after-based band as an intended v1.2 deviation (in a comment at line 331, in the report and in spec \u00a77.3), or use `st.express ? 10 : st.before ?? \u2026` to match the spec exactly."
+  },
+  {
+   "severity": "minor",
+   "area": "Privacy: the menu group label shows the person's feeling without masking",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/45_eos_router.jsx",
+   "evidence": "The label div at lines 513-519 renders \"FOR YOUR SHAME\", \"FOR YOUR ANGER\" and so on. It has no EOS_PRIVATE_ATTRS (data-private, data-hj-suppress, data-clarity-mask) and no fs-mask class. grep finds no EOS_PRIVATE_ATTRS anywhere in the router file. \u00a70.1 asks for masking on every EOS root that shows feelings, and goal G9 is \"private by default\". Session-replay tools would record the named feeling.",
+   "fix": "Spread `{...EOS_PRIVATE_ATTRS}` on the `.eosMenuGroupLabel` div and add `fs-mask` to its className."
+  },
+  {
+   "severity": "minor",
+   "area": "EosMenuGroup useMemo deps miss store fields the ranking reads",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/45_eos_router.jsx",
+   "evidence": "The deps at line 508 are [emotion, before, express, safety, loops, sessionSeed, playedKey, gamesLen]. But eosRouterContext and eosRouterRank also read st.path (the -1 penalty for games already in the path), st.intensityGuess (the band when before is null) and st.detected. If the menu is opened during act 2+ (path changes at launch, and none of these deps change), the \"FOR YOUR X\" group can list stale picks, including the game currently in the path.",
+   "fix": "Add st.path, st.intensityGuess and st.detected to the deps, or key the memo on `st` itself. A ranking takes about 0.03 ms per call (measured), so recomputing on every store change is cheap."
+  },
+  {
+   "severity": "minor",
+   "area": "Cross-module: the shift meter's cool-down path skips the router's gentle-first rule",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/50_eos_shift.jsx",
+   "evidence": "eosShiftNext (line 126) returns 112 whenever coolPath is true (anger after a discharge game), before it ever calls EosSecondAct. Under a safety flag, spec \u00a77.3 and the router (45_eos_router.jsx line 349) give the first gentle id instead (verified: EosSecondAct(\"anger\", 4, 5) with selfharm returns 113). A discharge game can still be launched from the menu while a flag is set, so ONE MORE \u25b6 would offer 112, which is not in the gentle list. Low harm (112 is a cool-down game), but the contract is inconsistent.",
+   "fix": "In 50_eos_shift.jsx, take the coolPath shortcut only when `!EOS_STORE.get().safety`. Otherwise let EosSecondAct decide (it already returns 112 for anger after discharge when no flag is set)."
+  },
+  {
+   "severity": "minor",
+   "area": "Dead code",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/45_eos_router.jsx",
+   "evidence": "`EOS_ROUTER_BAND_LEVEL` at line 93 is declared and never used (grep finds only the declaration).",
+   "fix": "Remove it, or use it for the crisis and preview default levels (the hard-coded 8 and 6 at lines 226 and 372)."
+  },
+  {
+   "severity": "major",
+   "area": "Act 2 routing (EosSecondAct 'it worked' branch): flagship panic path",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/45_eos_router.jsx",
+   "evidence": "Played in the all-module integrated build (/tmp/eos_rev_router_exp_all, 390x844): check-in panic 8, GO, 111 BIG SIGH finished in 32 s, after-dial set to 3. The meter shows 'PANIC 8 -> 3 \u00b7 CALM' next to 'ONE MORE \u25b6 DRAMA MACHINE'. Tapping it launches 105 (store: act 2, path [111,105]). The game's first instruction is 'MAKE IT DRAMATIC / MAKE THIS TAKE RIDICULOUS', shown over the user's 'panic racing' words with a screaming SYNC face and a '10 DRAMA' gauge (/tmp/rr_exp/act2_meter.png, /tmp/rr_exp/act2_game.png). Cause: line 331 sets `lvl = st.after ?? st.before`, so the band comes from the after-rating (3 = low). Spec \u00a77.3 says the 'worked' case returns 'the next EosRouteGame pick excluding lastId', and EosRouteGame uses st.before (8 = high), which gives 109 CLEANSE. The matrix shows the same deviation elsewhere: anger 8->3 gives GO WEIRD or SUBTITLES instead of CLEANSE, and fear gives 107 GO WEIRD instead of 102 FINGER TRAP. The build report does not mention it.",
+   "fix": "Follow \u00a77.3: in the 'worked' branch, take the band from the episode's entry level (st.before), e.g. `lvl = st.before ?? st.after ?? dial`. At minimum, never drop below the mid band in act 2 for the body-first emotions (panic, fear, anxiety, anger), and never offer an 'exaggerate the thought' game (105) seconds after a panic peak. Add a test: panic 8->3 'ONE MORE' must name a calm game."
+  },
+  {
+   "severity": "major",
+   "area": "Release-1 fallback: every jealous route lands on a game that cannot be finished on a phone",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/60_eos_fixes.jsx",
+   "evidence": "With 115 and 119 deferred, the router sends jealous.high and jealous.mid to 47 UNFOLLOW (matrix: 'jealous 9:47 | 5:47'). Typed 'jealous of my friend, comparing myself' with auto choice also launches 47. At 390x844 (all-module build, real gestures) 47 got stuck at 17% (1/6) in 3 of 3 runs: 'stuck (no bar movement for 14 actions / 36 s)'. At 1280 it finishes in 35 s. Screenshot /tmp/rr_exp/jeal390_reveal.png: after the first pull, the .plug stays dragged and sits clipped at the right edge of the stage, and the 'UNPLUG IT ->' arrow points off-screen. The arcade's `.plug` has drag x with constraints 0..190 and no snap back (00_arcade.jsx ~15884). 60_eos_fixes only removes pointer events from `.uniqWord` for 47; there is no position fix like the one for 45. So the jealous journey is broken on the phone, the main platform. The builder's e2e never tested jealous at 390.",
+   "fix": "Root fix in 60_eos_fixes (or an I3 source edit): reset or keep the plug on-screen after each pull. Options: `dragSnapToOrigin` on `.plug`, or move `.feedCable` left at <=560 px so start + 190 px stays inside the stage (same idea as the 45 MAGNETS rule). Re-run finishGame(47) at 390. Until that is verified, put 45 MAGNETS first for jealous in release 1 (jealous.mid#3; it passes at 390 in 27 s)."
+  },
+  {
+   "severity": "minor",
+   "area": "GOOD gets 'get rid of it' mechanics instead of savouring (release 1)",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/45_eos_router.jsx",
+   "evidence": "With 117 and 119 deferred, 'FOR YOUR GOOD MOOD' lists 106 TINY SOUNDTRACK, 88 TRADE MACHINE, 1 POP and 25 SWIPE AWAY (menuItems at before 6). Mid and low auto picks are 88 TRADE MACHINE. SWIPE AWAY is the 'nope' rejection gesture, and POP and TRADE MACHINE pop or trade away the user's good words ('I got the job!!'). This contradicts \u00a77.1 'GOOD gets savouring' and the router's own 'GOOD is never smashed' filter (line 89), which only blocks discharge games.",
+   "fix": "Add 25 (and consider 1 and 88) to EOS_ROUTER_NEVER.good, or put 106 first in every good band for release 1, so the menu and auto-pick give a savouring game (106 TINY SOUNDTRACK) and never a dismissal gesture."
+  },
+  {
+   "severity": "minor",
+   "area": "Late-night loud demotion undone by the variety swap",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/45_eos_router.jsx",
+   "evidence": "eosRouterChoose (line 304) swaps to #2 when `second.score > top.score - 0.3`. The late-night loud penalty is only 0.2, so a demoted loud game is still picked in about 20% of sessions. Seen: numb mid at 23:30 routed to 68 DRUM IT (loud) although 1 POP outranked it (0.9 vs 0.8). The daytime result was also 68.",
+   "fix": "In the variety swap, skip a #2 whose parts.loud > 0 (or whose parts.recency or inPath > 0). Alternatively make the swap window smaller than the late penalty."
+  },
+  {
+   "severity": "minor",
+   "area": "Soft safety flag removes the anger hero",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/45_eos_router.jsx",
+   "evidence": "'I hate my life and I am so angry' raises a soft flag and routes to 109 CLEANSE. 112 COOL THE VOLCANO is in core EOS_SLOW_IDS (a breath cool-down) but not in EOS_GENTLE_IDS. A very common venting phrase therefore never reaches the anger hero, and 'FOR YOUR ANGER' under a flag shows only 2 items. This follows the spec list.",
+   "fix": "Spec-level suggestion for the lead: allow 112 under a 'soft' flag only (keep strong flags on the gentle list), or document why it is excluded."
+  },
+  {
+   "severity": "minor",
+   "area": "Out of scope, seen during the router e2e (arrows / shift overlay)",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/50_eos_shift.jsx",
+   "evidence": "/tmp/rr_exp/act2_meter.png (390): the arrow label 'ALL DONE?' covers the meter body text ('SYNC handed back the controls', 'Your body found its own brake'). /tmp/rr_exp/boss390_reveal.png: the after-dial arrow reads 'SLIDE TO RIGHT NOW', which is awkward copy.",
+   "fix": "Route to the arrows and shift owners: keep the arrow label clear of body text at 390, and reword the dial label (e.g. 'SLIDE \u00b7 HOW LOUD NOW?')."
+  }
+ ]
+}

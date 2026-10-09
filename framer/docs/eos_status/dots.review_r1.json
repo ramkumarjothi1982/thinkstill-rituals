@@ -1,0 +1,86 @@
+{
+ "round": 1,
+ "verdicts": {
+  "code": "fix",
+  "experience": "ship"
+ },
+ "findings": [
+  {
+   "severity": "major",
+   "area": "performance / animated-node budget (lens: <=60 animated nodes)",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/12_eos_dots.jsx",
+   "evidence": "Integrated build /tmp/eos_rev_dots_code_int, 1280x860, anger before=9, game 1 POP, stage play. document.getAnimations() shows 91 distinct targets running eosDots* animations: eosDotsLane 30, eosDotsJitter 30, eosDotsX/Y/Fade on 28 (14 .tsPxDust + 14 .cinemaDust i), core Breathe/Absorb/Spin 3. At 390x844 (game 2 CRUSH) the same count is 60. Jitter is on whenever level >= 7 and progress < 50. That covers the hero path, because the check-in pre-lights panic and anger at 8. The cause is line 1412 (`.eosJitter .eosLane>[data-eos-dot]{animation:eosDotsJitter\u2026}`), which starts a second animation on every dot child. The cosmetic styles add more always-on per-dot animations: fireflies (line 1456, all 30 dots), aurora (line 1460, all 30 ::after) and gold (line 1465, 10 ::after). The spec's own design is 30 lanes + 28 dust + core, about 61 nodes; jitter adds 50% on top. Headless fps and long tasks showed no measurable regression in a 10 s window at 390 (dots 9.6/6.9 fps vs no-dots 7.4/10 fps; that difference is noise). So this is a budget breach, not an observed jank.",
+   "fix": "Do not start a separate animation on each dot. Option 1: put the wobble on the lane as a second animation (`.eosJitter .eosLane{animation:eosDotsLane var(--d,18s) linear var(--dl,0s) infinite, eosDotsJitter calc(var(--bk,2s)*.3) ease-in-out infinite alternate}`). The lane is already a composited node, eosDotsJitter animates `translate` (the lane animates scale/rotate/opacity), and the rate cache ignores non-DOT_ANIM names. Option 2: limit the wobble to a subset, e.g. `.eosLane:nth-child(3n)>[data-eos-dot]`. Limit the fireflies blink and the aurora ::after animation to a subset too (nth-child(3n)), or fold them into the lane. Then re-count the animated nodes in play at 1280 with level 9 and the fireflies style; the target is <= 60."
+  },
+  {
+   "severity": "minor",
+   "area": "performance / compositor layers (spec-mandated geometry, needs a device check)",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/12_eos_dots.jsx",
+   "evidence": "Each `i.eosLane` is `position:absolute; inset:0` and animates scale/rotate (line 1406, as spec \u00a75.2 prescribes), so every lane becomes a full-stage composited layer. CDP LayerTree at 390x844, DPR 3, input stage: 35 drawing layers of at least 300x600 px with dots vs 17 without. The extra 18 are exactly the 18 lanes, about 176 MB of backing store in theory at DPR 3 (1280: 30 lanes). Chromium skips empty tiles. WebKit, the engine of every iOS browser, may allocate and blend each one, on top of the arcade's existing 17 large layers.",
+   "fix": "Profile once on a real iPhone (Safari Web Inspector, Layers tab). If memory or blending is high, make each lane dot-sized: a 0x0 lane at left:var(--x); top:var(--y) whose transform-origin is a px offset to the centre. The controller already measures the stage rect each second, so it can write `--eos-cxpx/--eos-cypx` and the origin becomes `calc(var(--eos-cxpx) - var(--xpx))`. The scale/rotate path stays the same, but each layer is a few pixels instead of the full stage."
+  },
+  {
+   "severity": "minor",
+   "area": "audio bed unlock on touch devices",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/12_eos_dots.jsx",
+   "evidence": "Lines 946-961: `arm` listens only to pointerdown, keydown and touchstart. It unarms itself after the first event and calls eosAudio(), which creates or resumes the shared context. On touch input, pointerdown and touchstart are not user-activation events (touchend, pointerup and click are). Under a strict autoplay policy (iOS Safari, Android Chrome) the context can therefore stay suspended. bedStart then returns early because B.on is already true, and the bed never retries resume(). It only becomes audible if another module later calls eosAudio() from a click. Headless Chromium's autoplay is permissive, so a touchscreen.tap test showed ctx 'running': not reproducible here.",
+   "fix": "Also arm on pointerup, touchend and click. Unarm only once `eosAudio()?.state === 'running'`. In bedUpdate, when B.ctx.state === 'suspended', call B.ctx.resume() (it is only effective from the arm handler)."
+  },
+  {
+   "severity": "minor",
+   "area": "spec conformance \u00a70.5 (useEosProgress)",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/12_eos_dots.jsx",
+   "evidence": "\u00a70.5 says overlays, explicitly naming dots, should use the shared `useEosProgress(rootRef, hz)` 'instead of a private interval'. tick() (line 990) polls eosProgressOf(stageEl()) from the controller's own 250 ms setInterval (line 1113). Behaviour is correct (rate 1.51\u21921.105\u21920.7 as progress goes 0\u219250\u2192100, verified), and doing it in the controller avoids React re-renders, but it departs from the contract.",
+   "fix": "Record this as a deliberate deviation in the module header and the build report. The controller needs its 4 Hz loop for the pacer, the rates and the audio anyway, so no code change is needed. Alternatively, read progress from useEosProgress and pass it to the controller."
+  },
+  {
+   "severity": "minor",
+   "area": "single global API target",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/12_eos_dots.jsx",
+   "evidence": "Lines 36 and 1321-1324: EOS_DOTS_LIVE.ctl holds one controller. If two EosThoughtFlow instances are mounted (two component instances on a Framer page or canvas), eosApi('dots').pulse/setLevel/gather drive only the last one mounted. When that one unmounts, ctl becomes null and the API turns into a silent no-op for the instance still mounted.",
+   "fix": "Keep a Set of live controllers. The API fans out to all of them; state() reads the most recent. Each unmount deletes only its own entry."
+  },
+  {
+   "severity": "minor",
+   "area": "reveal burst / aura invisible on phone",
+   "file": "src/eos/12_eos_dots.jsx",
+   "evidence": "At 390x844 the Still Point centre is (195,407) and the classic reveal card covers roughly y 270-610, so the core, its .eosCoreWave burst (L1443) and the reveal halo (L1421) all sit behind the opaque card. Frames /tmp/rev_dots_x/e_6_rev+0.png, e_7_rev+399.png and e_8_rev+910.png look the same: dark field, a few specks, no visible burst or glow. Numerically the burst works: in the c.mjs sampler the mean lane distance from the centre goes 1 -> 191 px between 0.5 and 1.36 s after the reveal, then drifts home (191 -> 177 px over 1.4 s). But the dots are only 2-6 px at opacity 0.7, so a person sees nothing happen. At 1280 the halo shows only as a faint rim around the card (pixel above the card rgb 54,81,75).",
+   "fix": "Make the reveal moment read outside the card. While .eosBurst is set, raise the lane dots to opacity 1 and about 2x size, and give the burst a short trail. Have the wave ring end at a scale that clears the card edges (about 3.5-4x at 390). On phone, push the halo outward (a ring or annulus rather than a centre-weighted disc) so the light frames the card instead of sitting under it."
+  },
+  {
+   "severity": "minor",
+   "area": "one centre vs the game's own centrepiece",
+   "file": "src/eos/12_eos_dots.jsx",
+   "evidence": "In BLACK HOLE (39) at 1280x860 the game's hole is a 150 px circle centred at y=336, but the measured Still Point is at (640,437). The thought dust therefore streams past the hole into a white glint about 100 px below it, which contradicts the game's own idea that everything gets pulled into the hole (1280_39_2play0.png, 1280_39_3mid.png). In CLEANSE (109) at 390 the core glow peeks out about 50 px under the lotus (390_109_3mid.png). The measure (L499-510) always uses .eosCore at 50%/52% of the stage.",
+   "fix": "Let a game opt in to a focal anchor, either a [data-eos-focus] element in the arena or a small per-id table (39, 109, and any others with an off-centre centrepiece), that measureTargets() uses as the centre during play. Alternatively, dim .eosCoreSpark/.eosCoreGlow while the core sits under an opaque centrepiece so it does not read as a stray lamp."
+  },
+  {
+   "severity": "minor",
+   "area": "calm colour illegible at the in-game bloom",
+   "file": "src/eos/12_eos_dots.jsx",
+   "evidence": "For sad, --eos-h is correctly 23 (peach) at the gather: f.mjs logs class eosGather with --eos-h 23. Yet the POP finish bloom reads white/cyan (e_1_fin+724.png, e_2_fin+1515.png). The core glow uses 85%/71% lightness (L1428), which washes toward white, and the arcade's own cyan centre glows dominate. The emotional colour payoff of the colour script is not visible at the climax inside a game. The builder already lists the play-time part as a known limitation, but it holds at the finish too.",
+   "fix": "During .eosGather/.eosBurst only, switch the flash and halo to a more saturated, lower-lightness stop (about 60-65%) with higher alpha, or add a coloured outer corona ring in hsl(var(--eos-h)), so the calm hue survives over the game's cyan glows for the 1.3 s bloom."
+  },
+  {
+   "severity": "minor",
+   "area": "reveal haze looks muddy on desktop",
+   "file": "src/eos/12_eos_dots.jsx",
+   "evidence": "At 1280 the reveal combines the 52% overlay (L1401) with the 1.4x-scaled halo at inset -80%, which covers almost the whole stage. The result is a flat brown/olive wash across the screen rather than warm light (panic -> gold: 1280_39_5rev0.png and 1280_39_6rev3.png; neutral teal samples rgb 40,65,64 / 24,36,35). Gold or peach under 52% black reads as brown.",
+   "fix": "Cut a soft transparent hole in the .releaseCompleteOverlay gradient around the core (for example radial-gradient(circle at 50% 52%, transparent 0 22%, rgba(0,3,8,.52) 48%)), and tighten the reveal halo radius while raising its inner alpha. The light then reads as a luminous aura around the card, not a full-screen tint."
+  },
+  {
+   "severity": "minor",
+   "area": "intensity mirroring barely perceptible",
+   "file": "src/eos/12_eos_dots.jsx",
+   "evidence": "Measured rates: 1.51 at level 9 against 0.97 at level 3 (level 5 = 1.15). Even at level 9 a lane takes 9-15 s, so a dot moves about 15 px/s, and .eosJitter is only \u00b12 px. On phone the panic-9 home field (c390_panic.png) looks almost identical to the neutral one (390_1_0home.png). The spec's 'say 9 and the dust churns' moment does not register as feedback for the dial tap. The formula itself matches \u00a75.2 (L293).",
+   "fix": "Keep the spec's base formula and add immediate micro-feedback on setLevel(): a short pulse('in')-style speed-up of about 0.4 s scaled by the level change, plus a ring twinkle. Optionally raise the jitter amplitude to \u00b13-4 px at 9-10. The field then visibly answers each dial step and settles back to the mirrored rate."
+  },
+  {
+   "severity": "minor",
+   "area": "field freezes when a game never reaches the reveal",
+   "file": "src/eos/12_eos_dots.jsx",
+   "evidence": "f.mjs, 109 CLEANSE at 390 with sad: .globalPlayGuide.isComplete appeared and the field gathered at 25.6 s, but the reveal never came (finishGame done=false after 100 s; this is the known 109 timing race in the fixes task). The field stays gathered with every lane at playbackRate 0.02 (L779-787) and the core held in its bloom end-state, so the screen looks frozen for as long as the game hangs.",
+   "fix": "In tick(), if the field has been gathered via 'auto' for more than about 6 s and the stage is still 'play', call ungather(true) so the dust re-flows at the calm finishing rate. The next isComplete edge re-gathers it."
+  }
+ ]
+}

@@ -1,0 +1,107 @@
+{
+ "round": 1,
+ "verdicts": {
+  "code": "ship",
+  "experience": "fix"
+ },
+ "findings": [
+  {
+   "severity": "minor",
+   "area": "layout / readability at 390 and short desktops",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/21_eos_game_sigh.jsx",
+   "evidence": "eosSighLayout (lines 124-153) leaves room for a one-line cue only (cueH = 40 px narrow, 46 px wide). The cue it renders (lines 791-795, CSS 967-973) can be 2-3 lines: main + sub, main + the 2-line first-play tip at 390, or the 2-line 'Breathe however feels easy\u2026' main. Measured with /tmp/rsig/t4.mjs, the .eosSighCue rect covers part of .eosSighSyncFace in every state: 390x844 tip 1705/3135 px\u00b2 (54 % of SYNC's face), 390x844 exhale 275/3080, 1280x720 tip 480/1640, 1280x720 exhale 200/1600. At 1280x860 the sub-line sits over the island sand. Screenshots: /tmp/rsig/sheet1.png (t3_red_start / t3_red_mid) and /tmp/rsig/sheet2.png.",
+   "fix": "In measure(), read the cue's real height (rootRef.current.querySelector('.eosSighCue').offsetHeight, or a ResizeObserver on the cue) and pass it into fit() in place of the constant cueH. The simpler option is to always reserve 2 lines (about 20 px main + 19 px per sub/tip line, plus a 4 px gap). Re-measure when ui.cue or ui.tip changes."
+  },
+  {
+   "severity": "minor",
+   "area": "layout at 1280x720 (a common laptop size)",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/21_eos_game_sigh.jsx",
+   "evidence": "With a short safe box (arena about 530 px tall, so boxH is about 282), the fit loop stops at os = 100. L.sy then comes out near 3 and is clamped to 40 (line 145). SYNC renders at about 40x41 px (face area 1640 px\u00b2), and its top (hz - sy*1.18) lands above centreBottom: a cloud body overlaps SYNC by 105 px\u00b2 in the 'easy' state. The game still plays, but the hero character becomes a small dot squeezed between the clouds and the cue (/tmp/rsig/t4_1280x720_out.png).",
+   "fix": "When boxH is small and W is wide (\u2265 960), put all 6 clouds in one row: row B is only needed on narrow arenas, and centreBottom for the wide layout should then be rowA + cbh. Also shrink cw/cbh before letting sy fall below about 56, and lower the os floor (100) to about 88 on short arenas."
+  },
+  {
+   "severity": "minor",
+   "area": "pacer ownership / cleanup",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/21_eos_game_sigh.jsx",
+   "evidence": "Line 616: the unmount cleanup calls eosBreathOwn(null) every time, even though the finale already released the pacer (line 432) and another owner may hold it by then (50_eos_shift EosStillMoment owns the pacer). Today this is safe only because the engine unmounts in the same commit before the Still Moment mounts. 22_eos_game_volcano guards the same call with `if (s.owned)` (line 295).",
+   "fix": "Track ownership with s.owned = true on each eosBreathOwn(phase, ms) call and false after eosBreathOwn(null). In cleanup call `if (s.owned) eosBreathOwn(null)`."
+  },
+  {
+   "severity": "minor",
+   "area": "reduced-motion orb growth",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/21_eos_game_sigh.jsx",
+   "evidence": "The shared button skin applies a hover transform to button.eosSighOrb: computed matrix(1.02,0,0,1.02,0,-1) in every state after the first press (t4.mjs btnT). In calm mode the orb's breath growth (k = .04) stacks on top of it. Measured .eosSighOrbGrow width is 124 px against a 117 px wrap (about 6 %), above the spec's \u2264 4 % orb scale (\u00a78.1 Reduced) and the builder's claimed \u2264 1.034.",
+   "fix": "Add `${EOS_SIGH_R} .eosSighOrb,${EOS_SIGH_R} .eosSighOrb:hover,${EOS_SIGH_R} .eosSighOrb:active{transform:none!important}`. The squash lives on .eosSighOrbSquash, so nothing is lost."
+  },
+  {
+   "severity": "minor",
+   "area": "keyboard parity",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/21_eos_game_sigh.jsx",
+   "evidence": "A pointer slide made during inhale 1 is remembered and turned into the sip at 72 % (toReady, line 337). ArrowUp pressed during inhale 1 goes to requestSip(), and since the phase is 'in' (lines 466-470) it is dropped with no acknowledgement. A keyboard player who presses \u2191 a little early gets no feedback and has to press again or wait for the 1 s auto top-up.",
+   "fix": "In requestSip(), when s.phase === 'in' set s.earlySip = true (and optionally fx.ack()). In toReady() call sip() when s.earlySip, the same way it handles the early pointer slide. Reset the flag in press()."
+  },
+  {
+   "severity": "minor",
+   "area": "impure state updater",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/21_eos_game_sigh.jsx",
+   "evidence": "Line 377: `wind: fx.toggle('wind')` mutates S.current.ab inside the setUi((u) => \u2026) updater. React may run updaters twice (StrictMode dev, or rebasing in concurrent rendering), which would flip a/b twice. Nothing breaks visibly today, because the gust animation is also gated by data-phase='out'.",
+   "fix": "Hoist it: `const wind = fx.toggle('wind')` before setUi, then use `wind` inside the updater. Keep every updater free of side effects."
+  },
+  {
+   "severity": "major",
+   "area": "character as active participant (CREATIVE_STANDARDS #1 + architecture principle)",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/21_eos_game_sigh.jsx",
+   "evidence": "SYNC does nothing when the player acts. I probed .eosSighSync / .eosSighSyncFace at 390x844 in idle, then 0.9 s into inhale 1, then 1.5 s into exhale 1. All three gave wrapper transform 'none', animation 'eosSighSyncBob' only (the idle bob), and the same face sync_E44.webp. The CSS has no data-phase in/ready/sip/out/puff rule for .eosSighSync (lines ~890-896). It only changes face after a completed sigh (E44 -> E48 -> happy) and at the finale. On phone SYNC is 56 px next to a 117 px orb (layout probe sync [154,306,56,56]), so it reads as a small decal on the island, not the hero of the scene. Screenshots: /tmp/rev_sigh_exp/390_2ready.png, 390_3exhale.png, 1280_3exhale.png.",
+   "fix": "Give SYNC a part in each breath phase, driven by data-phase and --f (CSS only, no new nodes). Inhale: SYNC fills up with the orb (scale tied to --f). Notch at 72 %: a small hop of anticipation. Sip: a squash bounce. Exhale: SYNC blows the clouds out to sea (an O-mouth or blowing face, a wind ribbon from SYNC's mouth toward the clouds that are leaving, the body shrinking linearly with --f). Early lift: a small cough-puff. End of each sigh: a relieved slump, then the existing face pop. Make SYNC bigger on phone (about 72-80 px; the layout can take it if the cue moves, see the overlap finding)."
+  },
+  {
+   "severity": "major",
+   "area": "own finale (CREATIVE_STANDARDS #2) - hidden and modest",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/21_eos_game_sigh.jsx",
+   "evidence": "Phone finale timeline from done (int build): /tmp/rev_sigh_exp/int_fin_150 ... int_fin_3600.png, and the same for the full build in full_fin_*.png. At about 0.9 s the orb is dark and the wrapper's 'STEADIER +14 x4' chip sits on top of it. From about 1.8 s until the reveal, the wrapper's 'CALMER \u2713 FEEL IT' card covers the island, the rising sun and the 'the storm has passed' cue. SYNC's trip from the island to the moon is a cross-fade: island SYNC opacity is 0.13-0.56 at about 1.3 s and 0 at 2.0 s, while the moon SYNC fades in. The moon is about 50 px, at the far right edge. The game's own burst is a ring plus 12 sparks under the wrapper chip. What the player actually sees as the finale is the wrapper's generic card. Cause: sighDone reports 100 and fires onDone 450 ms after 'done' (lines ~429-445), so the finale has under 0.5 s on screen before the card covers it.",
+   "fix": "Make the finale a first-class state that plays BEFORE progress reaches 100. Hold progress at 96-97 for about 2.2-2.6 s. During that time: the sun breaks the horizon with rays and a sea glint, the last clouds turn to dawn shimmer, SYNC visibly floats along a path from the island up to an enlarged moon, yawns and curls up asleep, the stars twinkle, and the orb blooms into the sun. Only then call onProgress(100) and onDone 450 ms later. Total time stays well under 45 s (now about 26-32 s)."
+  },
+  {
+   "severity": "major",
+   "area": "phone first impression - text over the character",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/21_eos_game_sigh.jsx",
+   "evidence": "On the very first play (once-per-device tip shown) at 390x844, the cue block grows upward over SYNC. The cue is anchored at the bottom (.eosSighCue bottom:calc(100% + ...), line ~967), and eosSighLayout reserves only cueH=40 px at narrow widths (line 134). The tip adds a 2-line pill. Measured: cue rect y 329-399 against SYNC face y 306-362, a 33 px overlap, so about 60 % of SYNC's face is under the 'Hold the orb \u00b7 breathe in' text. The arrows pill 'HOLD \u00b7 BREATHE IN' covers the rest. The hero character and the island cannot be seen in the first impression: /tmp/rev_sigh_exp/crop_start.png (left panel) and 390_1start.png. The 2-line cues (ready 'slide up while you hold', out1, and the long 'easy' line) also touch or overlap SYNC's chin (crop_start.png right panel, 390_3exhale.png). This breaks the no-overlap rule for image and text and the mobile-first rule.",
+   "fix": "Lay the tip out somewhere that never collides with SYNC. Either give it its own top-anchored slot, for example between the orb and the safe-bottom line or above the cloud rows, or reserve its height in eosSighLayout while sighTip is showing. Cap the cue so it never rises above the horizon line (measure the cue's real height and feed it back into hz/sy), and shorten the 2-line cues at narrow widths. Check with a rect-intersection test (cue vs .eosSighSyncFace) in every phase at 390x844 with the tip on and off."
+  },
+  {
+   "severity": "major",
+   "area": "clumsy play never finishes (\u226445 s rule in \u00a78.0) + the instruction disappears",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/21_eos_game_sigh.jsx",
+   "evidence": "/tmp/rev_sigh_exp/tap.mjs at 390x844: 24 quick taps (220 ms down, 380 ms gap) over 15 s. Progress stuck at 3 % (aria-valuenow 3), phase 'puff', early=24, easy=true, cycle 0. After 12 s idle it is still 3 %. In easy mode a hold must still last \u2265450 ms (release(), lines ~451-457), so a tapper gets puffs forever. After 2 early lifts the main cue becomes 'Breathe however feels easy \u2014 the slow out is what matters.', which drops the 'hold' instruction. A panicking user tapping with shaky hands, which is common in this tap-heavy arcade, gets no progress and no clear next step.",
+   "fix": "Add auto-assist for tappers. In easy mode, or after 3 early lifts, any touch starts a guided sigh: the orb keeps filling after the finger lifts, the top-up plays, then the exhale and its clouds play as normal. Alternatively, release counts any hold in easy mode. Keep the verb in the cue: main 'Hold the orb a little longer' (or 'Tap \u00b7 I'll breathe with you' in assist mode), with the easy line as the sub. The 3rd tap must start real progress, so clumsy play finishes in \u226445 s."
+  },
+  {
+   "severity": "minor",
+   "area": "user words become meaningless fragments",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/21_eos_game_sigh.jsx",
+   "evidence": "With the input 'my chest is tight and I cant breathe at work', eosSighWords asks eosWords(entries, 6) (line 156). The clouds read 'at', 'and I', 'work', 'my chest', 'is tight', 'cant breathe' (layout probe; 390_1start.png). Two of the six storm clouds the player blows away carry filler words, which weakens the 'your exact words leave' payoff.",
+   "fix": "Ask for fewer chunks (3-4) for short inputs, or drop chunks made only of function words or 2 characters or fewer, and fill the free clouds with the emotion's seeds (or leave them as plain storm clouds)."
+  },
+  {
+   "severity": "minor",
+   "area": "sip cue legibility in the orb",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/21_eos_game_sigh.jsx",
+   "evidence": "In the 'ready' phase on phone, the arrows module's drag-up glyph is drawn through the middle of the orb, right over the orb's own 'SIP \u2191' count, so it reads 'SI P' with a dashed line through it (crop_start.png right panel; 390_2ready.png).",
+   "fix": "Pass ox/oy in the ready marker (eosTarget({g:'drag',dir:'u',d:30,ox,oy,...})) so the drag demo runs beside the label. Or, in the ready phase, move the 'sip \u2191' label to the top of the orb, above the arrow path."
+  },
+  {
+   "severity": "minor",
+   "area": "colour script at night",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/21_eos_game_sigh.jsx",
+   "evidence": "With the 'night' day-part (runs at about 02:50 UTC), the 'dawn' end state stays lavender and blue, with only a warm band at the horizon (int_fin_2000.png compared with 390_1start.png). The loud-to-calm shift is much weaker than the storm-violet to dawn-gold the spec promises.",
+   "fix": "Push the night palette warmer and brighter at clr=1 (a warm moonlit gold horizon taking up more of the sky, a brighter sea glint), so the before/after contrast reads at every hour."
+  },
+  {
+   "severity": "minor",
+   "area": "cross-module (not 21): swarm over the calm moment",
+   "file": "/home/user/thinkstill-rituals/framer/src/eos/14_eos_mood.jsx",
+   "evidence": "Only in the build that includes dots, mood and arrows: just after a sigh completes (/tmp/rev_sigh_exp/390_4after1.png) and at the finale (full_fin_700.png), a swarm of emotion faces, including red and dark angry ones, bursts over the orb. It covers the 'Again \u00b7 hold and breathe in' cue and the arrow. It does not appear in the sigh-only integrated build (int_fin_700.png), so it comes from the mood/dots layer, not this file. For a panic user right after the calming exhale it is jarring.",
+   "fix": "Owner of the mood/dots bursts: for slow/breath games (EOS_SLOW_IDS incl. 111), use calm-tinted motes only, no angry or red faces, and keep them off the primary target and the cue while the next prompt is showing."
+  }
+ ]
+}

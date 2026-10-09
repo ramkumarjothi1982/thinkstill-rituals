@@ -22,9 +22,14 @@ for p in sorted(glob.glob(os.path.join(st, "*.md"))):
         if "IN PROGRESS" in body.splitlines()[0].upper() if body.strip() else True:
             continue  # an interrupted agent's notes, not a final report
         built[name[:-6]] = body
-for p in sorted(glob.glob(os.path.join(st, "*.review_r1.json"))):
-    tid = os.path.basename(p)[: -len(".review_r1.json")]
-    reviews[tid] = json.load(open(p))["findings"]
+import re
+for p in sorted(glob.glob(os.path.join(st, "*.review_r*.json"))):
+    m = re.match(r"(.+)\.review_r(\d+)\.json$", os.path.basename(p))
+    tid, rnd = m.group(1), int(m.group(2))
+    if tid in reviews and reviews[tid]["round"] >= rnd:
+        continue
+    f = json.load(open(p))["findings"]
+    reviews[tid] = {"round": rnd, "serious": sum(1 for x in f if x.get("severity") != "minor"), "minor": sum(1 for x in f if x.get("severity") == "minor")}
 for k in done:
     built.pop(k, None)
 args.update({"built": sorted(built), "done": sorted(done), "integrated": integrated, "reviews": {k: v for k, v in reviews.items() if k not in done}})
