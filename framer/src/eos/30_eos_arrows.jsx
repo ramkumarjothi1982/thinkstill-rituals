@@ -774,6 +774,7 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             touched: new Set(), onceDone: new Set(), count: null, token: 0, wiggle: 0, shake: 0,
             near: null, avoid: [], avoidAt: 0, sig: "", srText: "", srAt: 0, srTimer: 0,
             frame: 0, raf: 0, timer: 0, press: null, labW: {}, seqDone: 0,
+            completeAt: 0, completeKey: null, ignoreDone: false, forceShow: false,
         }
         const layer = () => layerRef.current
         const host = () => (hostRef && hostRef.current) || null
@@ -994,12 +995,17 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             const lp = S.lastView
             if (lp && lp.g !== "wait") setOk({ x: lp.tx, y: lp.ty, k: now })
         }
-        const finish = () => {
+        const finish = (now) => {
             S.complete = true
+            S.completeAt = now
+            S.completeKey = S.lastStageKey
+            S.forceShow = false
             S.shown = false
-            publish({ visible: false, count: null })
+            S.sig = ""
+            publish({ visible: false, count: null, parked: true })
             setView(null)
             setLive(null)
+            schedule(false) // parked: keep watching slowly (400 ms)
         }
         // ---------------- the tick
         const tick = () => {
@@ -1023,7 +1029,30 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             }
             if (!S.arenaAt) S.arenaAt = now
             const stageEl = stageOf(L)
-            if (eosArrowsQ(Hh, ".globalPlayGuide.isComplete") || eosArrowsQ(stageEl, ".tsRewardSurge.mega")) return finish()
+            const mega = !!eosArrowsQ(stageEl, ".tsRewardSurge.mega")
+            const barDone = !!eosArrowsQ(Hh, ".globalPlayGuide.isComplete")
+            if (!barDone) S.ignoreDone = false
+            if (S.complete) {
+                // Some games fill the bar and then keep asking for input (96 SCRATCH deals the next ticket): resume
+                // when the bar drops again, or — still in play 2.5 s later — the player touches or a new stage resolves.
+                const since = now - S.completeAt
+                let resume = !mega && !barDone && since > 600
+                if (!resume && !mega && since >= 2500 && now - S.t0 >= S.delay) {
+                    const r0 = resolve(A, L, now)
+                    resume = !!r0 && (S.lastTouchAt > S.completeAt + 400 || r0.stageKey !== S.completeKey)
+                }
+                if (!resume) return schedule(false)
+                S.complete = false
+                S.ignoreDone = barDone
+                S.forceShow = true
+                publish({ parked: false, resumed: (EOS_ARROWS_VIEW.resumed || 0) + 1 })
+                try {
+                    if (eosIsDev()) {
+                        if (!Array.isArray(window.__eosArrowsResumed)) window.__eosArrowsResumed = []
+                        window.__eosArrowsResumed.push(id)
+                    }
+                } catch {}
+            } else if (mega || (barDone && !S.ignoreDone)) return finish(now)
             const pr = eosProgressOf(stageEl)
             if (pr != null) {
                 if (S.lastProgress != null && pr > S.lastProgress + 0.01) onProgress(now)
@@ -1034,10 +1063,11 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             // lifecycle (§3.5)
             if (res) {
                 const stageChanged = S.lastStageKey != null && res.stageKey !== S.lastStageKey
-                if (!S.firstShown) show(now)
+                if (!S.firstShown || S.forceShow) show(now)
                 else if (stageChanged && !S.shown && (!S.down || res.kind === "marker")) show(now)
                 else if (stageChanged && S.shown) S.token += 1
                 S.lastStageKey = res.stageKey
+                S.forceShow = false
                 if (res.g === "wait" && !S.shown) show(now)
             }
             if (S.advanceAt && now >= S.advanceAt) {
@@ -1115,7 +1145,12 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
         const schedule = (fast) => {
             clearTimeout(S.timer)
             cancelAnimationFrame(S.raf)
-            if (!S.alive || S.complete) return
+            if (!S.alive) return
+            if (S.complete) {
+                // parked: watch slowly for a game that keeps going after its bar filled
+                S.timer = setTimeout(tick, 400)
+                return
+            }
             // ~20 Hz while something is visible / pressed, 4-5 Hz while hidden (timers, so a slow
             // compositor never delays a hide or a stage-advance re-show)
             S.timer = setTimeout(tick, fast ? 50 : 220)
@@ -1221,7 +1256,11 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
             const now = performance.now()
             const L = layer()
             const Hh = host()
-            if (!L || !Hh || S.complete) return
+            if (!L || !Hh) return
+            if (S.complete) {
+                S.lastTouchAt = now
+                return
+            }
             const p = toLayer(e.clientX, e.clientY)
             S.lastPt = p
             S.lastTouchAt = now
@@ -1324,7 +1363,10 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
         const bind = () => {
             const Hh = host()
             if (!Hh || boundHost === Hh) return
-            if (boundHost) boundHost.removeEventListener("pointerdown", onDown, true)
+            if (boundHost) {
+                boundHost.removeEventListener("pointerdown", onDown, true)
+                boundHost.removeEventListener("keydown", onKey, true)
+            }
             boundHost = Hh
             Hh.addEventListener("pointerdown", onDown, true)
             Hh.addEventListener("keydown", onKey, true)
