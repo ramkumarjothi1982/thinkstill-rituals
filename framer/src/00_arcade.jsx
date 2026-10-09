@@ -21624,7 +21624,7 @@ function ThinkStillReleaseArcade(props) {
             const cb = back.offsetParent || back.parentElement
             if (!cb) return
             const vw = window.innerWidth || 390
-            const w = Math.round(Math.min(vw < 700 ? 252 : 400, vw - 16))
+            const w = Math.round(Math.min(vw < 700 ? 244 : 400, vw - 16))
             const t = trig.getBoundingClientRect()
             const c = cb.getBoundingClientRect()
             const left = Math.max(8, Math.min(t.right + 10 - w, vw - 8 - w))
