@@ -1177,6 +1177,8 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
                             [rect.x + ex, rect.cy, 0.03],
                             [rect.x + rect.w - ex, rect.cy, 0.03],
                         ]
+                        // small targets filled with a word: the very rim (4 px in) keeps the lifted finger off the word
+                        if (Math.min(rect.w, rect.h) < 120) edge.push([rect.cx, rect.y + rect.h - 4, 0.035], [rect.x + 4, rect.cy, 0.045], [rect.x + rect.w - 4, rect.cy, 0.045], [rect.cx, rect.y + 4, 0.045])
                         for (const [x, y, pf] of edge) add(x, y, pf + far(x, y), null)
                         // an icon / image / character inside the target is a text-free place to point at
                         const mc = eosArrowsQsa(el, EOS_ARROWS_MEDIA + ", svg, [class*=con], [class*=moji], [class*=Face]").find((m) => {
@@ -1193,7 +1195,7 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
                         if (q.sc >= 1e9) break
                         const c = q.c
                         if (c.ok == null) {
-                            if (tests >= 6) continue
+                            if (tests >= 8) continue
                             tests += 1
                             let hit = null
                             try {
@@ -1872,8 +1874,8 @@ function EosHandHint({ target, root, g = "tap", label, L2, n, ms, dir, d, win, t
                 }
             }
             S.has = !!next
-            // 3 px steps: bobbing orbs must not re-render the hint every frame (the CSS eases the 10 Hz steps)
-            const sig = next ? [next.shown ? 1 : 0, next.token, next.text, next.pose, next.tx, next.ty, next.lab.x, next.lab.y, next.W, next.H].map((q) => (typeof q === "number" ? Math.round(q / 3) : q)).join("|") + (next.halos ? next.halos.map((h) => `${Math.round(h.x / 3)},${Math.round(h.y / 3)}`).join(";") : "") : ""
+            // 5 px steps: bobbing orbs must not re-render the hint every frame (the CSS eases the 10 Hz steps)
+            const sig = next ? [next.shown ? 1 : 0, next.token, next.text, next.pose, next.tx, next.ty, next.lab.x, next.lab.y, next.W, next.H].map((q) => (typeof q === "number" ? Math.round(q / 5) : q)).join("|") + (next.halos ? next.halos.map((h) => `${Math.round(h.x / 5)},${Math.round(h.y / 5)}`).join(";") : "") : ""
             if (sig !== S.sig) {
                 S.sig = sig
                 setV(next)
@@ -1888,7 +1890,9 @@ function EosHandHint({ target, root, g = "tap", label, L2, n, ms, dir, d, win, t
             S.timer = setTimeout(measure, S.shown && S.has ? 100 : 160)
         }
         const onInput = () => {
-            EOS_ARROWS_HINT_INPUT.set(memKey(), performance.now())
+            // remembered only when the hand was really on screen (a touch that hid it), never for clicks that merely
+            // lead to this surface
+            if (S.shown && S.has) EOS_ARROWS_HINT_INPUT.set(memKey(), performance.now())
             if (once) S.done = true
             S.shown = false
             S.showAt = performance.now() + Math.max(400, Number(idleMs) || 3000)
