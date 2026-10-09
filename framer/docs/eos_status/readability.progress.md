@@ -72,3 +72,8 @@ Test scripts: /tmp/eos_readability_work/{noshrink5,states3,acc45b,review13,perf4
   compensated (13.9 → 16.2). CLEANSE @390 did not reach the reveal in 90 s → checking the baseline (fb_s390.json).
 - (s4) 1280 (HOT POTATO, DRAMA, CLEANSE) clean; CLEANSE @390 alone finishes in 36 s (90 s misses were load). Full build OK,
   FULL.txt restored. build.md updated with the fix-round section. Committing.
+- (r2 s5) Started fix round 2 (review_r2.json: 1 major MICROSCOPE word-fit rebound, 5 minors: SHELF IT shelved <12, FINGER TRAP 14 px, RM toast slide, phone toast depth x2).
+- (r2 s5) JS done: STATIC_SEL .ftTrap (full comp), plain-12 comp for game-parked boxes (SHELF IT), never-rise while the game shrinks, word-fit ratio = compensated scale only, hug-climb in word fit (kills MICROSCOPE birth creep). MICROSCOPE trace 1280/390: 0 ups while scaled. Next: phone hit toast -> one-row in-meter ticker (no arena overlap), RM via no-preference blocks.
+- (r2 s5) Phone ticker in-row works (literal 2-phase, non-literal 1.6 s; RM opacity-only). Fixed a stray } that had dropped the whole <=560 block (caught by the probe). Running minw 95 / ft2 102 / micro2 58 / shrink 30 at 390+1280.
+- (r2 s5) Fixed: no-rise cap only for boxes with a rec or seen full (new words entering small are floored at once). ZOOM OUT/MICROSCOPE 390: maxFsGrowth 0, 0 bounces; MICROSCOPE 1280 constant 16.25 (no creep). FT 15.2 @390 / 16.2 @1280. SHELF shelved resting compensated (only <500 ms transients during the shelve motion). smallText empty 1/100/105/108/110 @390.
+- (r2 s5) Done: isolated build OK; DRAMA 390 23 s / HOT POTATO 1280 69 s alone, floor avg <1 ms. build.md updated with the round-2 section + corrected r1 claims. Committing.

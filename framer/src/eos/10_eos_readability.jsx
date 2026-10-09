@@ -158,20 +158,26 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
 @media (max-width:700px){
   /* Phones: one slim full-width meter row (the arcade's own new-game headers — DRAMA MACHINE's "0 / 6 TAKES CUT",
      RAIN OUT's cloud row — start right under it, so a permanent second row would cover them). The reward pills
-     (sparks · tokens · chain · LVL) become a toast that drops in under the meter for each hit — exactly while the
-     wrapper marks the hit (.tsShiftRewardHud.isHit, 3.2 s), with the arcade's tsRewardPillHit pop — and tucks away
-     again. Overlay only: the HUD box never changes height, so nothing measured from its bottom jumps. */
+     (sparks · LVL) stay in that row; TOKENS and CHAIN show in a short hit ticker INSIDE the same row (below). Overlay
+     only: the HUD box never changes height, so nothing measured from its bottom jumps. */
   ${EOS_A}.stage-play .releaseGameHost .engineProgressHud{left:10px!important;right:10px!important;width:auto!important;max-width:none!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:stretch!important;gap:4px!important;padding:2px!important;border-radius:14px!important;overflow:visible!important}
   ${EOS_A}.stage-play .releaseGameHost :is(.engineProgressTrack,.engineProgressHud:has(.tsShiftRewardHud) .engineProgressTrack){width:auto!important;min-width:0!important;flex:1 1 auto!important;height:22px!important;min-height:22px!important}
-  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud{position:relative!important;left:auto!important;right:auto!important;top:auto!important;margin:0!important;width:auto!important;flex:0 0 auto!important;display:flex!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:flex-end!important;gap:4px!important;opacity:1!important;visibility:visible!important;transform:none!important;pointer-events:none!important}
+  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud{position:static!important;left:auto!important;right:auto!important;top:auto!important;margin:0!important;width:auto!important;flex:0 0 auto!important;display:flex!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:flex-end!important;gap:4px!important;opacity:1!important;visibility:visible!important;transform:none!important;pointer-events:none!important}
   /* always on, inside the meter row (same 22 px height: the HUD box keeps its height): sparks + LVL */
   ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud>:is(.spark,.tsShiftLevel){height:22px!important;padding:0 7px!important;box-shadow:none!important}
-  /* the hit toast: TOKENS and CHAIN drop in under the meter's right end (two short rows) while the wrapper marks the
-     hit (.isHit, 3.2 s) and tuck away again. The slide uses translate, so the arcade's tsRewardPillHit pop (transform)
-     still plays on top of it */
-  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud>:is(.token,.chain){position:absolute!important;right:0!important;top:calc(100% + 8px)!important;opacity:0!important;visibility:hidden!important;translate:0 -8px!important;transition:opacity .18s ease,translate .2s ease,visibility 0s linear .2s!important}
-  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud>.chain{top:calc(100% + 40px)!important}
-  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud.isHit>:is(.token,.chain){opacity:1!important;visibility:visible!important;translate:0 0!important;transition:opacity .12s ease,translate .3s cubic-bezier(.2,1.5,.4,1),visibility 0s!important}
+  /* the hit TICKER — one row, INSIDE the meter row, never in the arena under it (the new games keep their own
+     counters and the user's words right there). For each hit (.isHit) a glass band covers the meter row and shows
+     TOKENS and CHAIN as one pair (split at 55 %: the token pill is the wider one) for 1.6 s, then the meter row is back even while .isHit stays on (it plays
+     once per streak of hits; the per-hit "STILL HIT · CHAIN ×n" card at the hit point carries every hit). The pills
+     only fade (opacity / visibility keyframes): reduced motion needs no override, and the arcade's tsRewardPillHit
+     pop is added only under prefers-reduced-motion:no-preference (block below). Their hidden state is set WITHOUT
+     !important, so the keyframes can show them */
+  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud::before{content:""!important;position:absolute!important;inset:0!important;border-radius:14px!important;background:linear-gradient(180deg,rgba(3,20,31,.97),rgba(5,8,22,.97))!important;box-shadow:inset 0 0 0 1px rgba(255,230,115,.24),0 0 16px rgba(255,214,102,.14)!important;z-index:3!important;pointer-events:none!important;opacity:0;visibility:hidden}
+  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud>:is(.token,.chain){position:absolute!important;top:3px!important;bottom:auto!important;height:22px!important;padding:0 7px!important;letter-spacing:.04em!important;box-shadow:none!important;z-index:4!important;opacity:0;visibility:hidden}
+  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud>.token{right:calc(45% + 2px)!important;left:auto!important}
+  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud>.chain{left:calc(55% + 2px)!important;right:auto!important}
+  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud.isHit::before{animation:eosReadTick 1.6s ease both!important}
+  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud.isHit>:is(.token,.chain){animation:eosReadTick 1.6s ease both!important}
   ${EOS_A}.stage-play .releaseGameHost .tsShiftLevel{min-width:56px!important}
   ${EOS_A}.stage-play .tsShiftRewardPill.chain{display:inline-flex!important}
   ${EOS_A}.stage-play :is(.tsShiftRewardPill,.tsShiftLevel){height:28px!important;padding:0 6px!important;box-shadow:0 6px 16px rgba(0,0,0,.42)!important}
@@ -187,10 +193,16 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
      ("HOLD TO / BREATHE") inside the stone's own column, and stay clear of the bottom guide */
   ${EOS_A}.stage-play .releaseGameHost .cleanseBubbleHoldButton{font-size:12.5px!important;letter-spacing:.045em!important;line-height:1.02!important;white-space:normal!important;height:auto!important;min-height:34px!important;min-width:0!important;width:max-content!important;max-width:100px!important;padding:3px 11px!important;display:flex!important;align-items:center!important;justify-content:center!important}
 }
-@media (max-width:700px) and (prefers-reduced-motion:reduce){
-  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud>*{translate:none!important;transition:none!important}
-  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud.tsShiftRewardHud.tsShiftRewardHud>.spark{translate:none!important;transition:none!important}
+@media (max-width:700px) and (prefers-reduced-motion:no-preference){
+  /* the arcade's tsRewardPillHit pop on the ticker pills, as it appears (never under reduced motion) */
+  ${EOS_A}.stage-play .releaseGameHost .tsShiftRewardHud.isHit>:is(.token,.chain){animation:eosReadTick 1.6s ease both,tsRewardPillHit .52s cubic-bezier(.15,.9,.2,1.25) both!important}
 }
+@media (max-width:560px) and (prefers-reduced-motion:no-preference){
+  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud.isHit>.spark{animation:eosReadTick 1.3s ease both,tsRewardPillHit .52s cubic-bezier(.15,.9,.2,1.25) both!important}
+  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud.isHit>:is(.token,.chain){animation:eosReadTick 1.3s ease 1.3s both,tsRewardPillHit .52s cubic-bezier(.15,.9,.2,1.25) 1.3s both!important}
+}
+/* the phone hit ticker: fade in, hold, fade out; ends hidden (fill both) */
+@keyframes eosReadTick{0%{opacity:0;visibility:visible}10%{opacity:1;visibility:visible}84%{opacity:1;visibility:visible}100%{opacity:0;visibility:hidden}}
 @media (max-width:560px){
   ${EOS_A}.stage-play:not(.releaseGlobal99Upgrade) .tsThoughtLabelHost>:is(.tsBubbleTextContainer,.tsExternalThoughtLabel){min-width:56px!important;max-width:min(118px,31vw)!important;padding:4px 7px!important}
   /* feedback cards on phones (every arcade rule ≤ 10-12 px at this width) */
@@ -230,11 +242,13 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
      x 89) and the pill lines up with the meter, wrapping to a second line rather than being cut */
   ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .engineProgressHud{left:156px!important}
   /* …that narrowed meter has no room for the always-on sparks pill as well ("✦ 0 SHIFT SPARKS" is one text node, it
-     cannot be shortened): there LVL stays on and the sparks join the hit toast, first of its three short rows */
-  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud>.spark{position:absolute!important;right:0!important;top:calc(100% + 8px)!important;height:28px!important;padding:0 6px!important;box-shadow:0 6px 16px rgba(0,0,0,.42)!important;opacity:0!important;visibility:hidden!important;translate:0 -8px!important;transition:opacity .18s ease,translate .2s ease,visibility 0s linear .2s!important}
-  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud>.token{top:calc(100% + 40px)!important}
-  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud>.chain{top:calc(100% + 72px)!important}
-  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud.isHit>.spark{opacity:1!important;visibility:visible!important;translate:0 0!important;transition:opacity .12s ease,translate .3s cubic-bezier(.2,1.5,.4,1),visibility 0s!important}
+     cannot be shortened; the game's own counter pill beside it already shows the progress): there LVL stays on and
+     the hit ticker runs in two phases inside the same row — SPARKS centred (0-1.3 s, with its pop), then TOKENS +
+     CHAIN (1.3-2.6 s) — never a stack of pills over the arena */
+  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud>.spark{position:absolute!important;left:50%!important;right:auto!important;top:3px!important;bottom:auto!important;height:22px!important;padding:0 7px!important;letter-spacing:.04em!important;translate:-50% 0!important;box-shadow:none!important;z-index:4!important;opacity:0;visibility:hidden}
+  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud.isHit::before{animation:eosReadTick 2.6s ease both!important}
+  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud.isHit>.spark{animation:eosReadTick 1.3s ease both!important}
+  ${EOS_A}.stage-play .releaseGameHost:has(.arena:not(.u102):not(.u103):not(.u106):not(.u107)>.literalProgress) .tsShiftRewardHud.isHit>:is(.token,.chain){animation:eosReadTick 1.3s ease 1.3s both!important}
   ${EOS_A}.stage-play .releaseGameHost .arena:not(.u103)>.literalProgress{top:8px!important;left:10px!important;max-width:140px!important;white-space:normal!important;text-overflow:clip!important;line-height:1.08!important}
   /* small word bubbles (UNHOOK 78 px, CUT THE LOOP 60 px): the word gets the bubble's width (the floor sizes it so no
      word breaks inside itself); UNHOOK's "3 STRINGS HOLDING" tag reads on two short lines */
@@ -361,6 +375,13 @@ const EOS_READ_OVERLAYS = new Set(["eosCheckIn", "eosCheckInChip", "eosShiftMete
 // "shrink the thought" relief mechanics (legacy ZOOM OUT 30, MICROSCOPE 58 and 26, 29, 53, 104): the thought getting
 // smaller IS the relief, so the floor never compensates a scale there (it would bounce the word back up between taps)
 const EOS_READ_SHRINK_SEL = ".u26, .u29, .u30, .u53, .u58, .u104"
+// static containers: a held scale here is the object's resting state, not a shrink the player caused, so its words
+// are compensated to their full 16 / 15 px target even when they were first drawn at full size during the entrance.
+// FINGER TRAP's tube rests at scaleX(.86) and only OPENS as you push (.86 → 1), so the word grows with it.
+const EOS_READ_STATIC_SEL = ".ftTrap"
+// chrome sized by EOS_READ_CSS (HUD pills, score bar): a scale there is always a pop (tsRewardPillHit starts at .82),
+// never a resting state, so it is never compensated (a slow frame must not turn a pop into a size change)
+const EOS_READ_NO_SCALE_SEL = ".tsShiftRewardHud, .engineProgressHud, .releaseScoreBar"
 const EOS_READ_TEXT = /[\p{L}\p{N}]/u
 
 // Target index: every selector is filed under the class / tag / [class*=…] key of its rightmost compound,
@@ -762,8 +783,26 @@ function eosReadWordFit(el, cs, fs, nat, want, ratio) {
     if (hit && hit[0] === key) return hit[1]
     let res = want
     const num = (v) => parseFloat(v) || 0
-    const pcs = getComputedStyle(p)
-    let avail = p.clientWidth - num(pcs.paddingLeft) - num(pcs.paddingRight)
+    // a box that is sized BY its text (an inline / shrink-to-fit label hugging the word, inside a parent that hugs it
+    // in turn) grows with the font, so it is no constraint: the constraint is the first ancestor that does not hug
+    // its child. Without this, "the word is exactly as wide as its box" read as "does not fit" and every pass shaved
+    // the size again (MICROSCOPE: 16.25 → 15.6 → 15.1 → 14.7 → 14 within a second, before the player acted)
+    let box = p
+    const inner = el.offsetWidth - num(cs.paddingLeft) - num(cs.paddingRight) - num(cs.borderLeftWidth) - num(cs.borderRightWidth)
+    const line = eosReadTextWidth(cs, text.trim().replace(/\s+/g, " "), fs)
+    if (line > 0 && Math.abs(inner - line) <= 2) {
+        // el hugs its one-line text; climb while each box hugs its child (≤ 3 levels)
+        let child = el
+        for (let d = 0; d < 3 && box && box.parentElement; d++) {
+            const bcs = getComputedStyle(box)
+            const content = box.clientWidth - num(bcs.paddingLeft) - num(bcs.paddingRight)
+            if (Math.abs(content - child.offsetWidth) > 1.5) break
+            child = box
+            box = box.parentElement
+        }
+    }
+    const pcs = getComputedStyle(box)
+    let avail = box.clientWidth - num(pcs.paddingLeft) - num(pcs.paddingRight)
     const mw = cs.maxWidth
     if (mw && mw !== "none") avail = Math.min(avail, mw.endsWith("%") ? (avail * parseFloat(mw)) / 100 : num(mw))
     if (cs.display !== "inline") avail -= num(cs.paddingLeft) + num(cs.paddingRight) + num(cs.borderLeftWidth) + num(cs.borderRightWidth) + Math.max(0, num(cs.marginLeft)) + Math.max(0, num(cs.marginRight))
@@ -958,23 +997,33 @@ function eosReadPass(root, opts) {
         }
         if (sc >= 0.97) S.full.add(el) // drawn at full size: any later shrink is the game's own
         let scaled = null
+        // who made the box small? A shrink mechanic (ZOOM OUT / MICROSCOPE…), or the game shrinking a box it first drew
+        // at full size (a card being parked / shelved) — unless it sits in a static container (EOS_READ_STATIC_SEL)
+        const shrinkGame = sc < 0.97 && !!el.closest(EOS_READ_SHRINK_SEL + ", " + EOS_READ_NO_SCALE_SEL)
+        const gameShrunk = sc < 0.97 && (shrinkGame || (S.full.has(el) && !el.closest(EOS_READ_STATIC_SEL)))
         if (sc < 0.97 && rec && rec.scaled && Math.abs(sc - rec.scaled) < 0.02) {
             // still drawn at the scale we compensated: keep it (no flicker while something animates nearby)
             want = Math.max(want, rec.px)
             scaled = rec.scaled
-        } else if (sc < 0.97 && sc >= 0.6 && !S.full.has(el) && !el.closest(EOS_READ_SHRINK_SEL)) {
-            // compensate only a box BORN scaled (a shelved card, FINGER TRAP's .86 tube, VACUUM's machine) whose scale
-            // has held still (EOS_READ_HOLD_MS, two samples). Never a box the game shrank during play (seen at full
-            // size before: ZOOM OUT / MICROSCOPE shrink the thought per tap — compensating that bounced the word back
-            // up ~1 s after each tap), never the shrink mechanics, never a moment of an entrance pop
+        } else if (sc < 0.97 && !shrinkGame && rec && rec.scaled && sc > rec.scaled) {
+            // a compensated box the game has since GROWN (FINGER TRAP's tube opening with every push): keep our size, so
+            // the word grows with its object instead of dropping back 350 ms after each push (lowered once ≥ .97)
+            want = Math.max(want, rec.px)
+            scaled = rec.scaled
+        } else if (sc < 0.97 && sc >= 0.6 && !shrinkGame) {
+            // held-scale compensation, once the scale has held still (EOS_READ_HOLD_MS, two samples — never a moment of
+            // an entrance pop or a shrink-away), never inside the shrink mechanics (the thought getting smaller IS the
+            // relief there). A box BORN scaled (VACUUM's machine) or in a static container (FINGER TRAP's .86 tube):
+            // words up to their own target (they must RENDER at 16 / 15 px), the rest to 12. A box the game shrank
+            // itself (a card parked / shelved after being seen at full size): only up to the plain 12 px floor, so the
+            // parked state stays readable and the shrink still reads as a shrink
             const seen = S.scaleSeen.get(el)
             const same = seen && Math.abs(seen.s - sc) < 0.01
             if (!same) S.scaleSeen.set(el, { s: sc, since: ctx.now })
             const held = same && ctx.now - seen.since >= EOS_READ_HOLD_MS
             if (!held) retry = true // look again once it may have settled
             else {
-                // words are compensated up to their own floor (they must RENDER at 16 / 15 px), the rest to 12
-                let need = (tg.word ? ctx.wordBase + EOS_READ_WORD_PAD : EOS_READ_FLOOR_PX) / (sc * ctx.k)
+                let need = (tg.word && !gameShrunk ? ctx.wordBase + EOS_READ_WORD_PAD : EOS_READ_FLOOR_PX) / (sc * ctx.k)
                 if (tg.short) need += 2 / (sc * ctx.k)
                 if (need > want) {
                     want = need
@@ -982,10 +1031,17 @@ function eosReadPass(root, opts) {
                 }
             }
         }
+        // while the game shrinks a box we already sized or saw at full size (and we do not compensate it), our size never
+        // RISES: the word may only follow the game down — a rendered size that bounces back up between taps reads as the
+        // thought fighting back. A NEW word that enters small (growing in) is still floored at once, before its first
+        // paint, so it never reaches full scale at the game's tiny natural size
+        if (gameShrunk && !scaled && (rec || S.full.has(el))) want = Math.min(want, rec ? rec.px : fs)
         const nat = rec ? rec.natural : fs
         if (tg.word && want > nat + 0.25) {
             if (over()) break // the word fit measures text (a costly step): next pass
-            want = eosReadWordFit(el, cs, fs, nat, want, sc * ctx.k)
+            // the fit's 14 px minimum is in RENDERED px only for a scale we compensate; a scale the game made is its own
+            // (14 / .78 would otherwise turn the minimum into 17.9 px and push the word back up)
+            want = eosReadWordFit(el, cs, fs, nat, want, (scaled || 1) * ctx.k)
         }
         // a raised element follows its current target back down — a scale that ended, a canvas zoom, a breakpoint,
         // a smaller Bubble Text, a word that would break — but never below its own natural size (so never below today)

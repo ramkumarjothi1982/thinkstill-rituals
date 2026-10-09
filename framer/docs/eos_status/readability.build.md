@@ -1,11 +1,11 @@
-# readability — FINISHED, fix round 1 applied (task `readability`, docs/EOS_SPEC.md §4, §0.4 tokens, §12.1)
+# readability — FINISHED, fix rounds 1 and 2 applied (task `readability`, docs/EOS_SPEC.md §4, §0.4 tokens, §12.1)
 
 ## What I built
 `src/eos/10_eos_readability.jsx` (one file, no imports/exports, every top-level name `EOS_READ_*` / `eosRead*`, the public names excepted). It has three layers, and none of them ever shrinks text:
 1. **`EOS_READ_CSS`** (registered at top level with `eosCss("readability", EOS_READ_CSS)`). It sets explicit sizes for the chrome:
    - header: score bar 14/18 px; on phones the header shows "THINKSTILL" at 15 px, left-aligned and clear of the score pill
    - menu: group labels 13 px; game button label on 2 lines
-   - HUD on phones: one slim full-width meter row with an always-visible LVL pill (plus sparks when there is room); TOKENS / CHAIN (and sparks where the meter is narrowed) show as a hit toast
+   - HUD on phones: one slim full-width meter row with an always-visible LVL pill (plus sparks when there is room); TOKENS / CHAIN (and sparks where the meter is narrowed) show in a short hit ticker INSIDE that row (round 2), never over the arena
    - pills: `.tsShiftRewardPill` 14/13 px at 30/28 px height, and it keeps the arcade's `tsRewardPillHit` pop
    - progress text: `.engineProgressText` 14/13 px
    - LIVE GUIDE: kicker tags, and 15-17 px instruction lines
@@ -19,12 +19,73 @@
    - Every pass runs in the frame's ResizeObserver step (after layout, before paint). New text found by the MutationObserver is floored before its first paint, with no forced style or layout flush.
    - A time-boxed sweep runs every 900 ms, 250 ms after a pointerup, after a resize and on a stage change.
    - It re-checks elements it raised and removes its inline size once the game's own size is larger.
-   - It compensates held scales only for boxes born scaled (never a shrink the game made, never in the shrink games), and fits a word to its box (≥ 14 px rendered) so it never breaks mid-word.
+   - Held scales (round 2 rules): boxes born scaled or inside a static container (`.ftTrap`) are compensated to their full target; a box the game shrank itself (a parked / shelved card) only up to the plain 12.5 px floor; the shrink mechanics (`.u26 .u29 .u30 .u53 .u58 .u104`) and HUD chrome never. While the game shrinks a box the floor has sized, its size never rises.
+   - It fits a word to its box (≥ 14 px, rendered only where the floor compensates the scale) so it never breaks mid-word; a box that hugs its text is not treated as a constraint.
    - It skips the listed EOS overlay roots (or `[data-eos-overlay]`), `.tsRewardSurge`, `svg` and aria-hidden decoration. Exception: aria-hidden copies of the user's words (`.tsBubbleTextContainer` name tags) are floored.
    - It never writes inside a scaled SVG viewBox; those cases are reported by `scan()`.
    - Test hook: `eosApi("readability")` / `window.__eos.readability` = `{scan, targets, pass, stats, reset, log, settle, targetOf, targetsOf}`.
 
 **Exports:** `EOS_READ_CSS`, `EOS_READ_TARGETS`, `EosTextFloor`.
+
+## Fix round 2 (docs/eos_status/readability.review_r2.json) — what changed
+I applied all 6 findings (1 major, 5 minors) and changed only `src/eos/10_eos_readability.jsx`.
+
+1. **MICROSCOPE (58): the word grew back while the game shrank it (major).**
+   - Cause: the word fit divided its 14 px minimum by the game's scale (14 / .78 = 17.9), so the font rose to the target again.
+   - The fit now uses the scale only where the floor compensates it: ratio = `(scaled || 1) * k`.
+   - While the game shrinks a box that the floor has sized, or saw at full size, its size never rises (`want ≤ rec.px`).
+   - A NEW word that enters small (growing in) is still floored at once, before its first paint.
+   - Birth creep (16.25 → 15.6 → 15.1 → 14.7 → 14 within about 1 s) is gone.
+     - Cause: the box hugs its one-line text, so "exactly as wide as its box" read as "does not fit", and every pass trimmed a little more.
+     - The fit now climbs past boxes that hug their child (up to 3 levels) and measures against the first real constraint.
+   - Per-frame trace (`/tmp/rev_rd2/micro2.mjs`, focus knob every 1.8 s):
+     - 1280: the font holds at 16.25 on every word, and the rendered size only falls (16 → 13.2 → 9.9 → 6.6) until the next word. `upsWhileScaled` 0.
+     - 390: font constant, `upsWhileScaled` 0.
+   - `shrink.mjs` at 390: MICROSCOPE and ZOOM OUT both give `maxFsGrowth` 0 and 0 bounces. Rendered size at full scale is ≥ 14.8 (MICROSCOPE, 15.25 × .97) and 16 (ZOOM OUT).
+2. **SHELF IT (95): shelved words were 11.9 px.**
+   - A box the game shrank itself (in `S.full`, outside the shrink list and static containers) is now compensated, once its scale has held for 350 ms, up to the plain floor only: 12.5 / (sc·k), i.e. 12.5 px rendered, never the 16 / 15 word target.
+   - `minw.mjs`, full plays:
+     - 390: two isolated samples at 11.2-11.3 px (single 250 ms samples, during the shelving motion before the hold). The resting state is no longer under 12.
+     - 1280: minimum 13.1.
+     - 0 errors, both finished.
+3. **FINGER TRAP (102): words rendered at 13.9-14 px.**
+   - `.ftTrap` is now a static container (`EOS_READ_STATIC_SEL`). Its tube rests at `scaleX(.86)` (the arcade sets `--ft-scale = .86 + progress × .14`), so its words get the full target even though they were first drawn at full size during the entrance.
+   - When the game grows a compensated box (the tube opening with each push), the floor keeps its size. The word grows with the trap instead of dropping back 350 ms after each push. It is lowered once the scale is ≥ .97 (the release flash).
+   - Measured (`ft2.mjs`, 24 s window): 390 goes 13.9 → 15.2 px rendered (font 17.7); 1280 goes 14.0 → 16.2 px (font 18.9).
+4. **Reduced motion: TOKENS / CHAIN still slid.** The slide and its RM overrides are gone.
+   - The new ticker animates only opacity and visibility (`@keyframes eosReadTick`), so reduced motion needs no override.
+   - The arcade's `tsRewardPillHit` pop is added only inside `@media (prefers-reduced-motion:no-preference)` blocks.
+   - Measured with reducedMotion at 390: computed `translate` on token and chain is `none`.
+5. **and 6. Phone hit toast: 2-3 stacked pills covered the arena for 3.2 s.** The toast is replaced by a hit TICKER inside the meter row (y 72-95 at 390). It never reaches the arena.
+   - `.tsShiftRewardHud` is `position:static` on phones, so a glass band (`::before`, opaque HUD glass, gold hairline) and the ticker pills position against the meter row itself. The row box never changes size.
+   - Full-width meter (102, 103, 106, 107 and legacy games without a counter pill): the band covers the row for 1.6 s, with TOKENS and CHAIN as one pair split at 55 % (token 115-210, chain 214-288 at 390). Sparks and LVL stay in the row between hits.
+   - Narrowed meter (games with the `.literalProgress` counter pill, e.g. 100, 101, 104, 105, 108, 109, 110). Two phases in the same row:
+     - SPARKS centred, 0-1.3 s, with its pop (203-333).
+     - then TOKENS + CHAIN, 1.3-2.6 s (180-276 and 280-354).
+     - The game's own counter pill beside the row keeps showing progress during the ticker.
+   - The ticker plays once per hit streak (`.isHit` stays on while hits keep coming) and then hands the row back to the meter.
+   - Verified at 390 on 100, 105, 108 and 110, with screenshots at both phases. DRAMA's "0 / 6 TAKES CUT" counter and TAKE cards, RAIN OUT's word clouds and WORD SALAD's "boss" tile are all clear. Desktop (1280) is unchanged: 4 pills at 14 px, no band.
+7. **HUD chrome is never scale-compensated** (`EOS_READ_NO_SCALE_SEL`: `.tsShiftRewardHud`, `.engineProgressHud`, `.releaseScoreBar`).
+   - The pills' `tsRewardPillHit` pop starts at scale .82. On a slow headless frame that read as a held scale and raised the sparks pill to 15.24 px.
+   - The guard does not depend on frame rate.
+8. **A bug introduced and caught during this round:** a stray `}` (left over from replacing the RM block) dropped the whole `@media (max-width:560px)` block. The HUD probe caught it (the meter was not narrowed), and it was fixed. A brace-balance check of `EOS_READ_CSS` now passes (depth 0, never negative).
+
+## Fix round 2 acceptance (scratch integrated build /tmp/eos_readability_int; isolated build /tmp/eos_readability OK)
+- **Small text and errors:** `smallText(12)` is empty at play start for POP 1, HOT POTATO 100, DRAMA 105, WORD SALAD 108 and RAIN OUT 110 at 390. 0 page errors in every run.
+- **Full plays:**
+  - DRAMA 105 at 390: finished in 23 s, `smallText` 0, floor avg 0.94 ms per pass, flush max 0.1 ms.
+  - HOT POTATO 100 at 1280, run alone: finished in 69 s (the round-1 runs took 39-72 s, the baseline 58.7 s, all headless). Floor avg 0.84 ms per pass, 3 of 160 passes over 2 ms, own total 134 ms, flush max 0.1 ms. It missed a 120 s limit once while sharing the machine with another browser.
+- **Scripts:**
+  - `/tmp/eos_readability_work/r2_tick.mjs` (ticker geometry and timing, `rm` flag)
+  - `r2_phase.mjs` (phase screenshots)
+  - `r2_anim.mjs` (animation trace)
+  - `r2_shrinkx.mjs` (`shrink.mjs` plus growth and low-at-full detail)
+  - `r2_minwx.mjs` (`minw.mjs` plus font and scale)
+  - `r2_ft_long.mjs`
+  - `r2_perf.mjs`
+  - the reviewers' `/tmp/rev_rd2/micro2.mjs` and `/tmp/rev_read_r2/minw.mjs`
+- **Screenshots looked at:** `/tmp/eos_readability_work/r2_sheet390.png` (105 / 110 / 108 ticker phase 1) and `r2p_sheet.png` (105 phase 2 at 390, 102 at 390, 105 desktop).
+- Not re-run this round: the full `python3 build.py` (FULL.txt is not mine to commit) and the 110 × 2 noShrink sweep (left to Regression, as before).
 
 ## Fix round 1 (docs/eos_status/readability.review_r1.json) — what changed
 All 11 findings applied (2 majors, 9 minors). Only `src/eos/10_eos_readability.jsx` changed.
@@ -37,7 +98,7 @@ All 11 findings applied (2 majors, 9 minors). Only `src/eos/10_eos_readability.j
    - Compensation is also skipped inside the shrink mechanics `.u26 .u29 .u30 .u53 .u58 .u104`.
    - One scale measure (the exact transform-chain scale) now drives every decision, including the .6 cut-off and the word-fit ratio.
    - Re-run of the reviewer's `shrink.mjs` at 390: ZOOM OUT renders 16 → 12.6 → 10 → 5.3 → 3.2 per word, and 16.3 → 12.9 → 10.5 → 6.3 → 3.3. MICROSCOPE renders 13.7 → 12 → 9.1 → 6 → 4.6. Within a word the size only goes down; it rises only when the next thought appears (progress steps with it). Same at 1280.
-   - FINGER TRAP's born-scaled .86 tube is still compensated (13.9 → 16.2). SHELF IT words stay at 16.3-16.6.
+   - (Round 1 claimed FINGER TRAP was still compensated and SHELF IT words stayed at 16.3-16.6. The round-2 review showed both claims were wrong. Round 2 fixes both, see below.)
 3. **Memory** (finding 2). The cleanup restores the inline size of every raised element still on the page, then clears `tagged` / `recheckQ` / `list` / `ctx` / `cursor` and drops the root's state. Detached trees are no longer held.
 4. **Several instances** (finding 3). State is now per arcade root: a WeakMap from root to its state, selected with `eosReadUse(root)` by every entry point (pass, MO and RO callbacks, cleanup, scan and test hooks). Each root keeps its own list, breakpoint, canvas scale, cursor and stats.
 5. **Performance** (review findings 4 and 9). Every floor pass now runs in the frame's ResizeObserver step, which comes after layout and before paint. A pass is requested by toggling the width of a 1 px invisible probe span, which replaces the old `hidden` marker span: `aria-hidden`, `visibility:hidden`, `pointer-events:none`, `contain:strict`, `position:absolute`.
@@ -65,7 +126,7 @@ All 11 findings applied (2 majors, 9 minors). Only `src/eos/10_eos_readability.j
    - Always visible in the meter row: the LVL pill, and the sparks pill when the meter has room (13 px, 22 px tall).
    - TOKENS and CHAIN drop in as a hit toast under the meter while `.isHit` is set, with `tsRewardPillHit` still playing.
    - Where a legacy `.literalProgress` pill narrows the meter (for example DRAMA MACHINE's "0 / 6 THOUGHTS"), LVL stays on and the sparks pill joins the toast as its first row ("✦ 0 SHIFT SPARKS" is one text node, so it cannot be shortened). That keeps the meter ("SHIFT · 0%") visible.
-   - Reduced motion: no slide.
+   - (Superseded in round 2: the stacked toast is replaced by an in-row ticker.)
 9. **MIND BEND on phones** (finding 10). At ≤ 560 px the reframe line stays visible as one 13 px line (ellipsis) until the first hit; `.globalPlayGuide.isActive` hides it (spec rule). The "How to play" kicker is back on phones as an inline kicker.
 10. **Legacy reveal on phones** (finding 11). At ≤ 760 px both wrappers use the "card / PREVIOUS | NEXT" grid. The legacy card keeps its own 313 px width and is centred (x 39-351 at 390). PREVIOUS and NEXT sit in one row under it with no overlap (POP and ECHO checked after the card settled).
 11. **Not changed:** GO WEIRD's 7 px prop hint is still hidden on phones. It cannot fit a 65 px button at a readable size, and the LIVE GUIDE plus the arrow carry it. This is a documented exception, not a removal of gameplay.
@@ -76,7 +137,7 @@ All 11 findings applied (2 majors, 9 minors). Only `src/eos/10_eos_readability.j
   - DRAMA buttons as above; HUD pills as above; MIND BEND shown at start
   - the legacy reveal grid is centred
 - **1280** (HOT POTATO, DRAMA MACHINE, CLEANSE): `smallText(12)` empty, 0 errors, all reach the reveal. Pills 14 px; the DRAMA buttons are 14 / 14.
-- **Shrink:** ZOOM OUT / MICROSCOPE are monotonic per word at both sizes; FINGER TRAP is still compensated.
+- **Shrink:** ZOOM OUT is monotonic per word at both sizes. (MICROSCOPE was not monotonic per frame because of the word-fit path, and FINGER TRAP was not compensated. Both are fixed in round 2.)
 - **Builds:** isolated `build.py --dev-dir /tmp/eos_readability --modules 00_eos_core.jsx,10_eos_readability.jsx` OK, integrated scratch OK, full `python3 build.py` OK (FULL.txt restored, not mine to commit).
 - **Screenshots** (looked at): `/tmp/eos_readability_work/fy_105_390_a.png` (DRAMA 390 play), `fy_1_390_c.png` (POP 390 reveal), `fx_*_390_*.png`.
 - **Test scripts:**
@@ -132,4 +193,5 @@ dev/shots/eos/ (git-ignored):
   - In my check, the §11.6 primary rules alone (`gap 10` / `padding-bottom 8` / `margin-top 0`) still clip the dock at 1280. Verify together with the `overflow:clip` fallback.
 - **MELT (16) at 390, pre-existing:** the ACTIVATE button sits partly under the LIVE GUIDE panel.
 - **Word fit:** a single word that cannot fit a tiny object at 15/16 px is fitted down to no less than 14 px rendered (§4.1), rather than broken inside the word. No measured release-1 game needs this any more at 390.
-- **Born-scaled rule:** a word the game itself shrinks during play (seen at full size before) is never compensated, so a card that shrinks when parked or shelved renders its words at font × scale (≥ 12 px in every game measured).
+- **Held-scale rule (round 2):** a word the game itself shrinks during play is never raised while it shrinks. Once a parked or shelved card holds still (350 ms), it is lifted to the plain 12.5 px floor. For the length of the shelving motion (< 0.5 s) the word can read 11.2-11.5 px. A held-scale rule cannot compensate a scale that is still moving.
+- **Phone ticker in a tap streak:** the CSS ticker restarts only when `.isHit` toggles. During one unbroken streak of hits it plays once, and the per-hit "STILL HIT · CHAIN ×n" card at the hit point carries every later hit.
