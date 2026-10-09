@@ -21,7 +21,7 @@ const EOS_HINT_FIX = {
     20: "Tap the glowing shape", 21: "Drag each word into the bin", 28: "Open the drawer, then drag the card down",
     30: "Tap zoom-out 4×", 31: "Drag the card down and to the right", 33: "Snip the glowing string",
     36: "Drag the cloud slowly to the right", 37: "Tap the glowing floor", 38: "Open, drop the card in, close",
-    40: "Fold both wings, then swipe the plane right", 41: "Tap each bubble 3× to cut its strings", 42: "Drag the glowing knot",
+    40: "Fold both wings, then swipe the plane right", 41: "Tap a string to snap its bubble free", 42: "Drag the glowing knot",
     43: "Grab the scissors, then tap each word 3×", 48: "Peel the sticker up and to the right", 51: "Tap the glowing view",
     53: "Tap 4× to make it silly", 54: "Tap the dial 4×", 55: "Tap each glowing switch", 56: "Tap a verdict",
     57: "Tap rotate 3×", 58: "Tap the focus knob 4×", 60: "Tap the glowing corner", 61: "Tap each word 3× to freeze it",

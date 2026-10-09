@@ -1,6 +1,7 @@
 import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
 import { motion } from "framer-motion"
+import * as FramerMotionNS from "framer-motion"
 const TINY_SOUNDTRACK_V2_CSS = String.raw`.tsArcade.stage-play .u106.tinySoundtrackV2Shell{position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:12px 16px!important;box-sizing:border-box!important;overflow:visible!important;}.tsArcade.stage-play .u106.tinySoundtrackV2Shell>.literalProgress{display:none!important}.tsArcade.stage-play .u106 .tsndGame{position:relative!important;width:min(860px,94vw)!important;min-height:500px!important;margin:auto!important;padding:16px 18px 17px!important;box-sizing:border-box!important;border:1px solid rgba(96,230,255,.30)!important;border-radius:26px!important;background:radial-gradient(circle at 18% 12%,rgba(0,224,255,.13),transparent 33%),radial-gradient(circle at 84% 84%,rgba(190,35,255,.14),transparent 38%),linear-gradient(180deg,rgba(5,23,37,.96),rgba(7,9,25,.97))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 24px 54px rgba(0,0,0,.34),0 0 36px rgba(0,217,255,.07)!important;overflow:hidden!important;isolation:isolate!important;}.tsArcade.stage-play .u106 .tsndGame::before{content:""!important;position:absolute!important;inset:-34%!important;border-radius:50%!important;background:conic-gradient(from 20deg,rgba(0,229,255,.05),transparent 18%,rgba(178,50,255,.07) 42%,transparent 62%,rgba(0,229,255,.05))!important;animation:tsndAura 14s linear infinite!important;pointer-events:none!important;z-index:-1!important;}@keyframes tsndAura{to{transform:rotate(360deg)}}.tsArcade.stage-play .u106 .tsndTop{position:relative!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:14px!important;margin-bottom:10px!important;}.tsArcade.stage-play .u106 .tsndTitle{min-width:0!important}.tsArcade.stage-play .u106 .tsndTitle b{display:block!important;color:#f7feff!important;font:1000 clamp(17px,1.65vw,24px)/1 Inter,system-ui,sans-serif!important;letter-spacing:.025em!important;text-shadow:0 0 16px rgba(0,229,255,.22)!important;}.tsArcade.stage-play .u106 .tsndTitle small{display:block!important;margin-top:5px!important;color:rgba(200,245,255,.78)!important;font:850 clamp(9px,.72vw,11px)/1.12 Inter,system-ui,sans-serif!important;letter-spacing:.08em!important;text-transform:uppercase!important;}.tsArcade.stage-play .u106 .tsndVibes{display:flex!important;gap:7px!important;padding:4px!important;border:1px solid rgba(106,228,255,.20)!important;border-radius:999px!important;background:rgba(2,14,26,.72)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)!important;}.tsArcade.stage-play .u106 .tsndVibes button{height:32px!important;min-width:84px!important;padding:0 13px!important;border:0!important;border-radius:999px!important;background:transparent!important;color:rgba(224,246,255,.68)!important;font:950 9.5px/1 Inter,system-ui,sans-serif!important;letter-spacing:.08em!important;cursor:pointer!important;transition:transform .16s ease,filter .16s ease,background .16s ease,color .16s ease!important;}.tsArcade.stage-play .u106 .tsndVibes button:hover{transform:translateY(-1px)!important;filter:brightness(1.12)!important}.tsArcade.stage-play .u106 .tsndVibes button.active{color:#fff!important;background:linear-gradient(90deg,rgba(0,206,255,.82),rgba(173,45,255,.80))!important;box-shadow:0 0 18px rgba(0,219,255,.16)!important;}.tsArcade.stage-play .u106 .tsndMeter{position:relative!important;width:100%!important;height:22px!important;margin:0 0 10px!important;border-radius:999px!important;border:1px solid rgba(91,228,255,.20)!important;background:rgba(2,12,23,.78)!important;overflow:hidden!important;}.tsArcade.stage-play .u106 .tsndMeter>i{position:absolute!important;inset:0 auto 0 0!important;width:var(--tsnd-progress,0%)!important;border-radius:inherit!important;background:linear-gradient(90deg,#00dcff,#7765ff,#d126ff)!important;box-shadow:0 0 18px rgba(0,218,255,.28)!important;transition:width .28s cubic-bezier(.2,.72,.2,1)!important;}.tsArcade.stage-play .u106 .tsndMeter>b{position:absolute!important;inset:0!important;display:flex!important;align-items:center!important;justify-content:center!important;color:#f4fdff!important;font:950 9px/1 Inter,system-ui,sans-serif!important;letter-spacing:.08em!important;text-shadow:0 1px 5px rgba(0,0,0,.9)!important;z-index:2!important;}.tsArcade.stage-play .u106 .tsndGrid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:9px!important;width:100%!important;}.tsArcade.stage-play .u106 .tsndCard{position:relative!important;height:126px!important;min-width:0!important;margin:0!important;padding:8px 9px!important;border:1px solid rgba(113,232,255,.22)!important;border-radius:17px!important;background:radial-gradient(circle at 50% -10%,rgba(255,255,255,.11),transparent 38%),linear-gradient(145deg,rgba(0,188,244,.17),rgba(98,71,255,.17) 54%,rgba(203,34,255,.15))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 8px 20px rgba(0,0,0,.18)!important;color:#fff!important;display:grid!important;grid-template-columns:70px minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr) 18px!important;align-items:center!important;column-gap:9px!important;row-gap:4px!important;overflow:hidden!important;isolation:isolate!important;transition:border-color .18s ease,filter .18s ease,transform .18s ease!important;}.tsArcade.stage-play .u106 .tsndCard.active{border-color:rgba(137,246,255,.62)!important;transform:translateY(-2px)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 0 24px rgba(0,225,255,.13),0 8px 20px rgba(0,0,0,.20)!important;}.tsArcade.stage-play .u106 .tsndCard.waiting{filter:saturate(.72) brightness(.82)!important}.tsArcade.stage-play .u106 .tsndCard.done{border-color:rgba(116,255,202,.40)!important;background:radial-gradient(circle at 50% -10%,rgba(255,255,255,.09),transparent 38%),linear-gradient(145deg,rgba(0,194,193,.15),rgba(70,91,255,.14) 55%,rgba(104,215,169,.15))!important;}.tsArcade.stage-play .u106 .tsndAvatar{grid-row:1 / span 2!important;position:relative!important;width:68px!important;height:68px!important;min-width:68px!important;min-height:68px!important;max-width:68px!important;max-height:68px!important;margin:0!important;padding:0!important;border-radius:50%!important;overflow:hidden!important;isolation:isolate!important;background:radial-gradient(circle at 35% 25%,rgba(255,255,255,.16),rgba(10,20,44,.54) 54%,rgba(4,8,22,.88))!important;box-shadow:0 0 0 1px rgba(163,242,255,.38),0 0 18px rgba(0,229,255,.13)!important;}.tsArcade.stage-play .u106 .tsndAvatar::before,.tsArcade.stage-play .u106 .tsndAvatar::after{display:none!important;content:none!important}.tsArcade.stage-play .u106 .tsndAvatar>.tsAutoEmotionPic,.tsArcade.stage-play .u106 .tsndAvatar>.uniqWordMaterialImage,.tsArcade.stage-play .u106 .tsndAvatar>img:not(.tsNoStandardPic){position:absolute!important;inset:0!important;width:100%!important;height:100%!important;min-width:100%!important;min-height:100%!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:50%!important;object-fit:cover!important;object-position:center!important;transform:none!important;clip-path:circle(50% at 50% 50%)!important;z-index:1!important;}.tsArcade.stage-play .u106 .tsndCopy{min-width:0!important;width:100%!important;align-self:end!important}.tsArcade.stage-play .u106 .tsndNoteBadge{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-width:24px!important;height:18px!important;padding:0 6px!important;margin-bottom:4px!important;border-radius:999px!important;background:rgba(2,17,31,.72)!important;border:1px solid rgba(102,232,255,.22)!important;color:#bff7ff!important;font:1000 8px/1 Inter,system-ui,sans-serif!important;letter-spacing:.08em!important;}.tsArcade.stage-play .u106 .tsndText{width:100%!important;min-width:0!important;max-width:100%!important;margin:0!important;padding:0!important;display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important;overflow:hidden!important;color:#f8feff!important;font:950 clamp(9.5px,.8vw,12px)/1.08 Inter,system-ui,sans-serif!important;text-align:left!important;overflow-wrap:anywhere!important;word-break:break-word!important;text-shadow:0 1px 5px rgba(0,0,0,.86)!important;}.tsArcade.stage-play .u106 .tsndCardBottom{min-width:0!important;width:100%!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:7px!important;}.tsArcade.stage-play .u106 .tsndDots{display:flex!important;align-items:center!important;gap:4px!important}.tsArcade.stage-play .u106 .tsndDots i{width:6px!important;height:6px!important;border-radius:50%!important;border:1px solid rgba(191,242,255,.40)!important;background:rgba(255,255,255,.08)!important;box-shadow:none!important;}.tsArcade.stage-play .u106 .tsndDots i.on{background:#8fffe2!important;border-color:#8fffe2!important;box-shadow:0 0 8px rgba(111,255,220,.56)!important}.tsArcade.stage-play .u106 .tsndAction{color:rgba(209,246,255,.72)!important;font:900 7.8px/1 Inter,system-ui,sans-serif!important;letter-spacing:.06em!important;text-transform:uppercase!important}.tsArcade.stage-play .u106 .tsndCard.done .tsndAction{color:#9fffdc!important}.tsArcade.stage-play .u106 .tsndInstrument{position:relative!important;width:100%!important;margin-top:12px!important;padding:9px 10px 11px!important;box-sizing:border-box!important;border-radius:18px!important;border:1px solid rgba(102,232,255,.20)!important;background:linear-gradient(180deg,rgba(1,10,20,.92),rgba(4,8,18,.98))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -12px 24px rgba(0,0,0,.20),0 10px 26px rgba(0,0,0,.24)!important;}.tsArcade.stage-play .u106 .tsndInstrumentHead{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;margin:0 2px 7px!important;color:rgba(190,239,249,.72)!important;font:900 8px/1 Inter,system-ui,sans-serif!important;letter-spacing:.09em!important;text-transform:uppercase!important;}.tsArcade.stage-play .u106 .tsndInstrumentHead b{color:#fff!important;font-weight:1000!important}.tsArcade.stage-play .u106 .tsndKeys{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:6px!important;width:100%!important;height:88px!important;align-items:stretch!important;}.tsArcade.stage-play .u106 .tsndKey{position:relative!important;min-width:0!important;height:88px!important;margin:0!important;padding:8px 5px 7px!important;border:1px solid rgba(204,244,255,.62)!important;border-bottom:6px solid rgba(77,103,129,.78)!important;border-radius:10px 10px 12px 12px!important;background:linear-gradient(180deg,#f7fcff 0%,#dff5ff 54%,#b6d8ec 100%)!important;color:#07131d!important;box-shadow:inset 0 2px 0 #fff,inset 0 -7px 12px rgba(21,65,94,.16),0 5px 0 rgba(0,0,0,.34),0 9px 16px rgba(0,0,0,.22)!important;cursor:pointer!important;overflow:hidden!important;transform-origin:50% 100%!important;}.tsArcade.stage-play .u106 .tsndKey::before{content:""!important;position:absolute!important;left:8px!important;right:8px!important;top:8px!important;height:1px!important;background:rgba(54,112,144,.16)!important;box-shadow:0 1px 0 rgba(255,255,255,.9)!important;}.tsArcade.stage-play .u106 .tsndKey:not(:disabled):hover{filter:brightness(1.04)!important;box-shadow:inset 0 2px 0 #fff,inset 0 -7px 12px rgba(21,65,94,.16),0 5px 0 rgba(0,0,0,.34),0 9px 16px rgba(0,0,0,.22),0 0 18px rgba(0,220,255,.18)!important}.tsArcade.stage-play .u106 .tsndKey:disabled{cursor:default!important;filter:saturate(.55) brightness(.74)!important;opacity:.66!important}.tsArcade.stage-play .u106 .tsndKey.active{border-color:rgba(132,239,255,.86)!important;background:linear-gradient(180deg,#ffffff 0%,#d9f8ff 50%,#a9dff0 100%)!important;box-shadow:inset 0 2px 0 #fff,inset 0 -7px 12px rgba(21,65,94,.16),0 5px 0 rgba(0,0,0,.34),0 0 22px rgba(0,225,255,.24)!important;}.tsArcade.stage-play .u106 .tsndKeyNote{position:absolute!important;left:50%!important;bottom:21px!important;transform:translateX(-50%)!important;color:#07131d!important;font:1000 18px/1 Inter,system-ui,sans-serif!important;letter-spacing:.02em!important;}.tsArcade.stage-play .u106 .tsndKeySub{position:absolute!important;left:50%!important;bottom:7px!important;transform:translateX(-50%)!important;width:90%!important;color:rgba(16,53,72,.62)!important;font:900 6.8px/1 Inter,system-ui,sans-serif!important;letter-spacing:.07em!important;text-transform:uppercase!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}.tsArcade.stage-play .u106 .tsndKey.done::after{content:"✓"!important;position:absolute!important;right:7px!important;top:7px!important;width:17px!important;height:17px!important;border-radius:50%!important;display:grid!important;place-items:center!important;background:#73ffd7!important;color:#062118!important;font:1000 10px/1 Inter,system-ui,sans-serif!important;box-shadow:0 0 10px rgba(90,255,211,.34)!important;}.tsArcade.stage-play .u106 .tsndFooter{margin-top:8px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:10px!important;color:rgba(198,240,255,.73)!important;font:850 8.5px/1.15 Inter,system-ui,sans-serif!important;letter-spacing:.07em!important;text-align:center!important;text-transform:uppercase!important;}.tsArcade.stage-play .u106 .tsndFooter b{color:#fff!important;font-weight:1000!important}.tsArcade.stage-play .u106 .tsExternalThoughtLabel,.tsArcade.stage-play .u106 .tsDynamicActionCue,.tsArcade.stage-play .u106 .tsBubbleTextContainer{display:none!important}.tsArcade.stage-play .u106 .tsCharacterBond{pointer-events:none!important}@media(max-width:820px){.tsArcade.stage-play .u106 .tsndGame{width:min(760px,95vw)!important;min-height:480px!important;padding:14px!important}.tsArcade.stage-play .u106 .tsndCard{height:118px!important;grid-template-columns:62px minmax(0,1fr)!important}.tsArcade.stage-play .u106 .tsndAvatar{width:60px!important;height:60px!important;min-width:60px!important;min-height:60px!important;max-width:60px!important;max-height:60px!important}.tsArcade.stage-play .u106 .tsndKeys,.tsArcade.stage-play .u106 .tsndKey{height:80px!important}}@media(max-width:620px){.tsArcade.stage-play .u106.tinySoundtrackV2Shell{padding:8px!important;align-items:flex-start!important}.tsArcade.stage-play .u106 .tsndGame{width:97%!important;min-height:0!important;padding:12px!important;border-radius:21px!important}.tsArcade.stage-play .u106 .tsndTop{grid-template-columns:1fr!important;gap:8px!important}.tsArcade.stage-play .u106 .tsndVibes{justify-self:start!important}.tsArcade.stage-play .u106 .tsndGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}.tsArcade.stage-play .u106 .tsndCard{height:100px!important;grid-template-columns:52px minmax(0,1fr)!important;padding:7px!important;border-radius:14px!important}.tsArcade.stage-play .u106 .tsndAvatar{width:50px!important;height:50px!important;min-width:50px!important;min-height:50px!important;max-width:50px!important;max-height:50px!important}.tsArcade.stage-play .u106 .tsndText{font-size:8.8px!important}.tsArcade.stage-play .u106 .tsndKeys{gap:3px!important;height:68px!important}.tsArcade.stage-play .u106 .tsndKey{height:68px!important;padding:5px 2px!important;border-radius:7px 7px 9px 9px!important;border-bottom-width:4px!important}.tsArcade.stage-play .u106 .tsndKeyNote{font-size:14px!important;bottom:17px!important}.tsArcade.stage-play .u106 .tsndKeySub{font-size:5.8px!important;bottom:5px!important}.tsArcade.stage-play .u106 .tsndInstrument{padding:7px!important;margin-top:8px!important}.tsArcade.stage-play .u106 .tsndVibes button{height:30px!important;min-width:72px!important;padding:0 10px!important;font-size:8.5px!important}}@media(prefers-reduced-motion:reduce){.tsArcade.stage-play .u106 .tsndGame::before{animation:none!important}}`
 const TINY_SOUNDTRACK_NO_OVERLAP_CSS = String.raw`.tsArcade.stage-play .cinematicContentShell:has(>.u106)>.globalPlayGuide{left:18px!important;bottom:18px!important;width:min(360px,calc(100% - 36px))!important;max-width:360px!important;z-index:80!important;}.tsArcade.stage-play .u106.tinySoundtrackV2Shell{width:100%!important;height:100%!important;min-height:0!important;display:flex!important;align-items:flex-start!important;justify-content:center!important;padding:12px 16px 176px!important;box-sizing:border-box!important;overflow:hidden!important;}.tsArcade.stage-play .u106 .tsndGame{width:min(820px,94%)!important;min-height:0!important;max-height:none!important;margin:0 auto!important;padding:12px 14px 12px!important;border-radius:22px!important;overflow:hidden!important;}.tsArcade.stage-play .u106 .tsndTop{margin-bottom:7px!important;gap:10px!important;}.tsArcade.stage-play .u106 .tsndTitle b{font-size:clamp(15px,1.35vw,21px)!important;}.tsArcade.stage-play .u106 .tsndTitle small{margin-top:3px!important;font-size:8.5px!important;}.tsArcade.stage-play .u106 .tsndVibes button{height:29px!important;min-width:76px!important;padding:0 11px!important;font-size:8.5px!important;}.tsArcade.stage-play .u106 .tsndMeter{height:18px!important;margin-bottom:7px!important;}.tsArcade.stage-play .u106 .tsndGrid{gap:7px!important;}.tsArcade.stage-play .u106 .tsndCard{height:104px!important;min-height:104px!important;padding:7px 8px!important;grid-template-columns:58px minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr) 16px!important;column-gap:8px!important;row-gap:2px!important;border-radius:15px!important;}.tsArcade.stage-play .u106 .tsndAvatar{width:56px!important;height:56px!important;min-width:56px!important;min-height:56px!important;max-width:56px!important;max-height:56px!important;}.tsArcade.stage-play .u106 .tsndNoteBadge{height:16px!important;margin-bottom:2px!important;font-size:7px!important;}.tsArcade.stage-play .u106 .tsndText{font-size:9px!important;line-height:1.05!important;}.tsArcade.stage-play .u106 .tsndAction{font-size:7px!important;}.tsArcade.stage-play .u106 .tsndInstrument{margin-top:8px!important;padding:7px 8px 8px!important;border-radius:15px!important;}.tsArcade.stage-play .u106 .tsndInstrumentHead{margin:0 2px 5px!important;font-size:7.5px!important;}.tsArcade.stage-play .u106 .tsndKeys{height:70px!important;gap:5px!important;}.tsArcade.stage-play .u106 .tsndKey{height:70px!important;border-bottom-width:5px!important;border-radius:8px 8px 10px 10px!important;}.tsArcade.stage-play .u106 .tsndKeyNote{bottom:17px!important;font-size:16px!important;}.tsArcade.stage-play .u106 .tsndKeySub{bottom:5px!important;font-size:6.2px!important;}.tsArcade.stage-play .u106 .tsndFooter{margin-top:6px!important;font-size:7.6px!important;}.tsArcade.stage-play .u106 .tsndGame,.tsArcade.stage-play .u106 .tsndGrid,.tsArcade.stage-play .u106 .tsndInstrument,.tsArcade.stage-play .u106 .tsndKeys{translate:none!important;}.tsArcade.stage-play .u106 .tsndCard.active{transform:none!important;}@media(max-height:760px) and (min-width:621px){.tsArcade.stage-play .u106.tinySoundtrackV2Shell{padding-top:8px!important;padding-bottom:154px!important;}.tsArcade.stage-play .u106 .tsndGame{width:min(800px,92%)!important;padding:9px 11px!important;}.tsArcade.stage-play .u106 .tsndCard{height:92px!important;min-height:92px!important;grid-template-columns:50px minmax(0,1fr)!important;}.tsArcade.stage-play .u106 .tsndAvatar{width:48px!important;height:48px!important;min-width:48px!important;min-height:48px!important;max-width:48px!important;max-height:48px!important;}.tsArcade.stage-play .u106 .tsndKeys,.tsArcade.stage-play .u106 .tsndKey{height:62px!important}.tsArcade.stage-play .u106 .tsndKeyNote{bottom:15px!important;font-size:14px!important}}@media(max-width:760px){.tsArcade.stage-play .cinematicContentShell:has(>.u106)>.globalPlayGuide{left:12px!important;bottom:12px!important;width:min(300px,calc(100% - 24px))!important;max-width:300px!important;}.tsArcade.stage-play .u106.tinySoundtrackV2Shell{padding:8px 10px 130px!important;}.tsArcade.stage-play .u106 .tsndGame{width:96%!important;padding:9px!important;}.tsArcade.stage-play .u106 .tsndGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:5px!important;}.tsArcade.stage-play .u106 .tsndCard{height:90px!important;min-height:90px!important;grid-template-columns:44px minmax(0,1fr)!important;padding:5px!important;}.tsArcade.stage-play .u106 .tsndAvatar{width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;max-width:42px!important;max-height:42px!important;}.tsArcade.stage-play .u106 .tsndText{font-size:7.8px!important}.tsArcade.stage-play .u106 .tsndKeys{height:58px!important;gap:3px!important}.tsArcade.stage-play .u106 .tsndKey{height:58px!important;border-bottom-width:4px!important}.tsArcade.stage-play .u106 .tsndKeyNote{font-size:13px!important;bottom:14px!important}.tsArcade.stage-play .u106 .tsndKeySub{font-size:5.5px!important;bottom:4px!important}}`
 const GO_WEIRD_OVERLAY_TEXT_CSS = String.raw`.tsArcade.stage-play .u107{--gw-cyan:#27e7ff;--gw-blue:#148dff;--gw-violet:#7356ff;--gw-magenta:#d719ff;--gw-card-h:190px;overflow:visible!important;}.tsArcade.stage-play .u107 .literalProgress{display:none!important}.tsArcade.stage-play .u107 .gwGame{width:min(900px,94vw)!important;margin:0 auto!important;padding:16px 18px 14px!important;box-sizing:border-box!important;border-radius:26px!important;border:1px solid rgba(104,228,255,.32)!important;background:radial-gradient(circle at 50% -8%,rgba(39,231,255,.14),transparent 40%),radial-gradient(circle at 92% 16%,rgba(215,25,255,.10),transparent 32%),linear-gradient(180deg,rgba(7,28,42,.96),rgba(5,10,25,.97))!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 22px 60px rgba(0,0,0,.34),0 0 44px rgba(39,231,255,.06)!important;display:grid!important;grid-template-rows:auto auto auto!important;gap:18px!important;position:relative!important;isolation:isolate!important;overflow:hidden!important;}.tsArcade.stage-play .u107 .gwGame::before{content:""!important;position:absolute!important;inset:-34% 12% auto 12%!important;height:70%!important;border-radius:50%!important;background:radial-gradient(circle,rgba(41,229,255,.10),rgba(107,72,255,.04) 46%,transparent 72%)!important;filter:blur(18px)!important;pointer-events:none!important;z-index:-1!important;}.tsArcade.stage-play .u107 .gwTopbar{width:100%!important;display:grid!important;grid-template-columns:minmax(0,1fr) minmax(220px,360px)!important;align-items:center!important;gap:14px!important;min-height:36px!important;}.tsArcade.stage-play .u107 .gwTopCopy{display:flex!important;align-items:center!important;gap:10px!important;min-width:0!important;color:#eaffff!important;font:950 clamp(10px,.78vw,12px)/1 Inter,system-ui,sans-serif!important;letter-spacing:.08em!important;text-transform:uppercase!important;white-space:nowrap!important;}.tsArcade.stage-play .u107 .gwTopCopy .gwPulseDot{width:8px!important;height:8px!important;flex:0 0 8px!important;border-radius:50%!important;background:var(--gw-cyan)!important;box-shadow:0 0 0 4px rgba(39,231,255,.10),0 0 14px rgba(39,231,255,.72)!important;animation:gwPulseDot 1.8s ease-in-out infinite!important;}.tsArcade.stage-play .u107 .gwTopCopy small{overflow:hidden!important;text-overflow:ellipsis!important;color:rgba(221,247,255,.70)!important;font-size:9px!important;letter-spacing:.055em!important;}.tsArcade.stage-play .u107 .gwMeter{position:relative!important;height:28px!important;border-radius:999px!important;overflow:hidden!important;border:1px solid rgba(89,229,255,.34)!important;background:rgba(1,8,18,.76)!important;box-shadow:inset 0 1px 9px rgba(0,0,0,.55),0 0 16px rgba(39,231,255,.07)!important;}.tsArcade.stage-play .u107 .gwMeter>i{position:absolute!important;inset:0 auto 0 0!important;width:0;border-radius:inherit!important;background:linear-gradient(90deg,var(--gw-cyan),var(--gw-blue) 36%,var(--gw-violet) 68%,var(--gw-magenta))!important;box-shadow:0 0 20px rgba(39,231,255,.30),0 0 26px rgba(223,25,255,.18)!important;transition:width .32s cubic-bezier(.2,.8,.2,1)!important;}.tsArcade.stage-play .u107 .gwMeter>b{position:absolute!important;inset:0!important;display:flex!important;align-items:center!important;justify-content:center!important;z-index:2!important;color:#fff!important;font:1000 10px/1 Inter,system-ui,sans-serif!important;letter-spacing:.11em!important;text-shadow:0 1px 4px rgba(0,0,0,.85)!important;}.tsArcade.stage-play .u107 .gwGrid{width:100%!important;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;grid-auto-rows:var(--gw-card-h)!important;gap:14px!important;align-items:stretch!important;}.tsArcade.stage-play .u107 .gwCard.weirdWordBubble{position:relative!important;width:100%!important;height:var(--gw-card-h)!important;min-width:0!important;min-height:var(--gw-card-h)!important;max-width:none!important;max-height:var(--gw-card-h)!important;margin:0!important;padding:0!important;box-sizing:border-box!important;appearance:none!important;border-radius:20px!important;border:1px solid rgba(255,255,255,.13)!important;background:radial-gradient(circle at 20% 12%,rgba(255,255,255,.17),transparent 28%),linear-gradient(135deg,#20d8ff 0%,#159ffb 34%,#5360ff 64%,#cf1dff 100%)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.13),0 10px 24px rgba(0,0,0,.24)!important;overflow:hidden!important;isolation:isolate!important;cursor:pointer!important;text-align:center!important;transform:translateZ(0)!important;}.tsArcade.stage-play .u107 .gwCard.weirdWordBubble::before{content:""!important;position:absolute!important;left:50%!important;top:14px!important;width:120px!important;height:120px!important;transform:translateX(-50%)!important;border-radius:50%!important;background:radial-gradient(circle at 36% 24%,rgba(255,255,255,.20),rgba(6,14,38,.30) 52%,rgba(2,6,18,.58))!important;border:2px solid rgba(8,16,48,.70)!important;box-shadow:0 0 0 2px rgba(255,255,255,.16),0 8px 20px rgba(0,0,0,.22),0 0 18px rgba(32,216,255,.16)!important;z-index:1!important;pointer-events:none!important;}.tsArcade.stage-play .u107 .gwCard.weirdWordBubble::after{content:""!important;position:absolute!important;inset:0!important;border-radius:inherit!important;background:linear-gradient(180deg,rgba(255,255,255,.035),transparent 25%,rgba(0,0,0,.07) 100%)!important;z-index:4!important;pointer-events:none!important;}.tsArcade.stage-play .u107 .gwCard.readyForProp{border-color:rgba(133,255,231,.72)!important;box-shadow:inset 0 0 0 2px rgba(133,255,231,.18),0 0 0 1px rgba(133,255,231,.20),0 0 24px rgba(39,231,255,.24),0 10px 24px rgba(0,0,0,.24)!important;animation:gwReady 1.15s ease-in-out infinite!important;}.tsArcade.stage-play .u107 .gwCard.hasProp{filter:saturate(1.08) brightness(1.03)!important}.tsArcade.stage-play .u107 .gwCard>.weirdBubblePhoto,.tsArcade.stage-play .u107 .gwCard>img,.tsArcade.stage-play .u107 .gwCard>.tsAutoEmotionPic,.tsArcade.stage-play .u107 .gwCard>.uniqWordMaterialImage{position:absolute!important;inset:auto!important;left:50%!important;top:17px!important;width:114px!important;height:114px!important;min-width:114px!important;min-height:114px!important;max-width:114px!important;max-height:114px!important;margin:0!important;padding:0!important;border:0!important;border-radius:50%!important;object-fit:cover!important;object-position:center center!important;background-size:cover!important;background-position:center center!important;background-repeat:no-repeat!important;transform:translateX(-50%)!important;transform-origin:50% 50%!important;clip-path:circle(50% at 50% 50%)!important;z-index:2!important;opacity:1!important;visibility:visible!important;filter:brightness(1.06) saturate(1.10) contrast(1.03)!important;pointer-events:none!important;}.tsArcade.stage-play .u107 .gwCard>.weirdBubbleShade{display:none!important}.tsArcade.stage-play .u107 .gwCard>.gwThought,.tsArcade.stage-play .u107 .gwCard>.gwThought.tsExactUserText,.tsArcade.stage-play .u107 .gwCard>.gwThought.tsStandardThoughtText,.tsArcade.stage-play .u107 .gwCard>.gwThought.tsBubbleTextSourceHidden{position:absolute!important;inset:auto!important;left:50%!important;bottom:10px!important;transform:translateX(-50%)!important;width:90%!important;max-width:90%!important;min-height:42px!important;max-height:46px!important;margin:0!important;padding:6px 9px!important;box-sizing:border-box!important;display:flex!important;align-items:center!important;justify-content:center!important;text-align:center!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:break-word!important;overflow:hidden!important;opacity:1!important;visibility:visible!important;color:#fff!important;background:linear-gradient(180deg,rgba(5,18,35,.82),rgba(3,8,20,.90))!important;border:1px solid rgba(190,246,255,.24)!important;border-radius:11px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 5px 15px rgba(0,0,0,.24)!important;font:950 clamp(10px,.78vw,13px)/1.08 Inter,system-ui,sans-serif!important;letter-spacing:-.005em!important;text-shadow:0 2px 5px rgba(0,0,0,.92)!important;z-index:7!important;pointer-events:none!important;}.tsArcade.stage-play .u107 .gwCard>.tsBubbleTextContainer,.tsArcade.stage-play .u107 .gwCard>.tsExternalThoughtLabel,.tsArcade.stage-play .u107 .gwCard>.tsDynamicActionCue{display:none!important}.tsArcade.stage-play .u107 .gwPropSticker,.tsArcade.stage-play .u107 .weirdBubbleBadge{position:absolute!important;display:flex!important;align-items:center!important;justify-content:center!important;width:36px!important;height:36px!important;border-radius:12px!important;background:linear-gradient(135deg,rgba(255,255,255,.98),rgba(207,247,255,.92))!important;color:#07152c!important;border:2px solid rgba(255,255,255,.95)!important;box-shadow:0 7px 18px rgba(0,0,0,.32),0 0 18px rgba(39,231,255,.26)!important;font:1000 18px/1 Inter,system-ui,sans-serif!important;z-index:9!important;pointer-events:none!important;}.tsArcade.stage-play .u107 .gwDock{position:relative!important;z-index:6!important;width:100%!important;margin-top:4px!important;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:10px!important;align-items:stretch!important;}.tsArcade.stage-play .u107 .gwProp{position:relative!important;height:54px!important;min-width:0!important;padding:7px 9px!important;box-sizing:border-box!important;border-radius:14px!important;border:1px solid rgba(255,255,255,.18)!important;background:linear-gradient(100deg,#20d8ff 0%,#168efb 36%,#6254ff 66%,#d219ff 100%)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 8px 18px rgba(0,0,0,.20)!important;color:#fff!important;display:grid!important;grid-template-columns:34px minmax(0,1fr)!important;grid-template-rows:1fr 1fr!important;column-gap:6px!important;align-items:center!important;text-align:left!important;overflow:hidden!important;user-select:none!important;touch-action:none!important;cursor:grab!important;}.tsArcade.stage-play .u107 .gwProp:active{cursor:grabbing!important}.tsArcade.stage-play .u107 .gwProp>b{grid-row:1/3!important;grid-column:1!important;display:flex!important;align-items:center!important;justify-content:center!important;width:30px!important;height:30px!important;border-radius:10px!important;background:rgba(0,16,46,.24)!important;font:1000 18px/1 Inter,system-ui,sans-serif!important;text-shadow:0 2px 5px rgba(0,0,0,.38)!important;}.tsArcade.stage-play .u107 .gwProp>span{grid-column:2!important;grid-row:1!important;align-self:end!important;font:1000 clamp(8px,.62vw,10px)/1 Inter,system-ui,sans-serif!important;letter-spacing:.025em!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}.tsArcade.stage-play .u107 .gwProp>em{grid-column:2!important;grid-row:2!important;align-self:start!important;margin-top:2px!important;font:850 7px/1 Inter,system-ui,sans-serif!important;font-style:normal!important;letter-spacing:.07em!important;color:rgba(239,252,255,.72)!important;white-space:nowrap!important;}.tsArcade.stage-play .u107 .gwProp.propSelected{transform:none!important;border-color:rgba(196,255,245,.86)!important;box-shadow:inset 0 0 0 2px rgba(196,255,245,.16),0 0 24px rgba(39,231,255,.30),0 10px 20px rgba(0,0,0,.24)!important;}.tsArcade.stage-play .u107 .gwProp:disabled{cursor:default!important;opacity:.34!important;filter:grayscale(.18) saturate(.65)!important;transform:none!important}.tsArcade.stage-play .cinematicContentShell:has(>.u107)>.globalPlayGuide{width:min(360px,calc(100% - 36px))!important;max-width:360px!important;left:18px!important;bottom:18px!important;}.tsArcade.stage-play .u107 .gwGame{margin-bottom:18px!important;}.tsArcade.stage-play .u107 .gwGrid,.tsArcade.stage-play .u107 .gwDock{isolation:isolate!important;}@media(min-width:1181px){.tsArcade.stage-play .u107{width:100%!important;display:flex!important;justify-content:center!important;align-items:flex-start!important;}.tsArcade.stage-play .u107 .gwGame{width:min(900px,94vw)!important;margin-left:auto!important;margin-right:auto!important;}}@media(max-width:1180px){.tsArcade.stage-play .cinematicContentShell:has(>.u107)>.globalPlayGuide{width:min(330px,calc(100% - 36px))!important;max-width:330px!important;}.tsArcade.stage-play .u107 .gwGame{width:min(820px,94%)!important;margin-left:auto!important;margin-right:auto!important;}}@media(max-width:760px){.tsArcade.stage-play .cinematicContentShell:has(>.u107)>.globalPlayGuide{width:min(300px,calc(100% - 24px))!important;max-width:300px!important;left:12px!important;bottom:12px!important;}.tsArcade.stage-play .u107 .gwGame{margin-bottom:150px!important;}}@keyframes gwReady{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-2px) scale(1.012)}}@keyframes gwPulseDot{0%,100%{opacity:.65;transform:scale(.88)}50%{opacity:1;transform:scale(1.08)}}@media(max-width:900px){.tsArcade.stage-play .u107{--gw-card-h:176px}.tsArcade.stage-play .u107 .gwGame{width:min(830px,96vw)!important;padding:13px 14px!important}.tsArcade.stage-play .u107 .gwCard.weirdWordBubble::before{width:104px!important;height:104px!important;top:12px!important}.tsArcade.stage-play .u107 .gwCard>.weirdBubblePhoto,.tsArcade.stage-play .u107 .gwCard>img,.tsArcade.stage-play .u107 .gwCard>.tsAutoEmotionPic,.tsArcade.stage-play .u107 .gwCard>.uniqWordMaterialImage{width:100px!important;height:100px!important;min-width:100px!important;min-height:100px!important;max-width:100px!important;max-height:100px!important;top:14px!important;}.tsArcade.stage-play .u107 .gwCard>.gwThought,.tsArcade.stage-play .u107 .gwCard>.gwThought.tsExactUserText,.tsArcade.stage-play .u107 .gwCard>.gwThought.tsStandardThoughtText,.tsArcade.stage-play .u107 .gwCard>.gwThought.tsBubbleTextSourceHidden{min-height:38px!important;max-height:42px!important;font-size:10px!important}}@media(max-width:680px){.tsArcade.stage-play .u107{--gw-card-h:158px}.tsArcade.stage-play .u107 .gwTopbar{grid-template-columns:1fr!important;gap:7px!important}.tsArcade.stage-play .u107 .gwTopCopy{display:none!important}.tsArcade.stage-play .u107 .gwGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}.tsArcade.stage-play .u107 .gwCard.weirdWordBubble::before{width:84px!important;height:84px!important;top:9px!important}.tsArcade.stage-play .u107 .gwCard>.weirdBubblePhoto,.tsArcade.stage-play .u107 .gwCard>img,.tsArcade.stage-play .u107 .gwCard>.tsAutoEmotionPic,.tsArcade.stage-play .u107 .gwCard>.uniqWordMaterialImage{width:80px!important;height:80px!important;min-width:80px!important;min-height:80px!important;max-width:80px!important;max-height:80px!important;top:11px!important;}.tsArcade.stage-play .u107 .gwCard>.gwThought,.tsArcade.stage-play .u107 .gwCard>.gwThought.tsExactUserText,.tsArcade.stage-play .u107 .gwCard>.gwThought.tsStandardThoughtText,.tsArcade.stage-play .u107 .gwCard>.gwThought.tsBubbleTextSourceHidden{bottom:8px!important;min-height:34px!important;max-height:38px!important;font-size:9px!important;padding:5px 7px!important}.tsArcade.stage-play .u107 .gwDock{grid-template-columns:repeat(5,minmax(48px,1fr))!important;gap:5px!important}.tsArcade.stage-play .u107 .gwProp{height:48px!important;grid-template-columns:1fr!important;grid-template-rows:24px 1fr!important;padding:4px!important;text-align:center!important}.tsArcade.stage-play .u107 .gwProp>b{grid-column:1!important;grid-row:1!important;width:100%!important;height:24px!important;background:transparent!important;font-size:16px!important}.tsArcade.stage-play .u107 .gwProp>span{grid-column:1!important;grid-row:2!important;align-self:center!important;font-size:6.8px!important;white-space:normal!important;line-height:1!important}.tsArcade.stage-play .u107 .gwProp>em{display:none!important}}@media(prefers-reduced-motion:reduce){.tsArcade.stage-play .u107 .gwCard.readyForProp,.tsArcade.stage-play .u107 .gwTopCopy .gwPulseDot{animation:none!important}}`
@@ -774,12 +775,12 @@ const GAMES = [
         family: "Detach",
         engine: "E05",
         prompt: "What are you hooked onto?",
-        object: "A giant hook on the far left holding each circular word bubble by three full-length strings",
-        action: "Click each circular word bubble to disconnect its three strings from the giant left hook",
+        object: "One big metal hook holding three thought bubbles, each on its own string",
+        action: "Tap a string (or its bubble) to snap it; the bubble floats free",
         mechanism: "Unhook the thought",
         hook: "Find the hooks. Remove them one by one.",
         surprise:
-            "Each hook visibly disappears; after the last one, the word loses support, drops and fades away.",
+            "Each string snaps with a whip and the hook swings; the freed bubble floats up and away.",
         mindBend: "Attached is not the same as permanent.",
         score: "Hooks removed + full detach",
         replay: "Hook another",
@@ -8961,191 +8962,519 @@ function CutLoopLiteralEngine({ entries, onDone, sfx, reduced, onProgress }) {
         </div>
     )
 }
-function UnhookLiteralEngine({ entries, onDone, sfx, reduced, onProgress }) {
-    const words = React.useMemo(() => {
-        const src = (entries.length ? entries : ["THIS"])
-            .map((s) => String(s || "").trim())
-            .filter(Boolean)
-        return src.slice(0, MAX_VISIBLE_WORD_BUBBLES)
-    }, [entries.join("|")])
-    const positions = React.useMemo(
-        () =>
-            [
-                { x: 59, y: 12 },
-                { x: 79, y: 12 },
-                { x: 59, y: 29 },
-                { x: 79, y: 29 },
-                { x: 59, y: 46 },
-                { x: 79, y: 46 },
-                { x: 59, y: 63 },
-                { x: 79, y: 63 },
-                { x: 59, y: 80 },
-                { x: 79, y: 80 },
-            ].slice(0, words.length),
-        [words.length]
-    )
-    const [links, setLinks] = React.useState([])
-    const [dropping, setDropping] = React.useState([])
-    React.useEffect(() => {
-        setLinks(words.map(() => 3))
-        setDropping([])
-        onProgress?.(0, "0% UNHOOKED")
-    }, [entries.join("|"), words.length])
-    const totalLinks = Math.max(1, words.length * 3)
-    const remainingWords = links.filter((v) => v > 0).length
-    const cutLink = (i) => {
-        if (dropping.includes(i) || !links.length || links[i] <= 0) return
-        const next = [...links]
-        next[i] = Math.max(0, next[i] - 1)
-        setLinks(next)
-        const removedNow = next.reduce((n, v) => n + (3 - v), 0)
-        const p = pct((removedNow / totalLinks) * 100)
-        onProgress?.(p, `${p}% UNHOOKED`)
-        const lastCut = next[i] === 0
-        sfx(lastCut ? "win" : "tap")
-        vibrate(lastCut ? 18 : 8)
-        if (lastCut) {
-            setDropping((d) => [...d, i])
-            setTimeout(() => {
-                setDropping((d) => d.filter((x) => x !== i))
-                if (next.every((v) => v === 0))
-                    setTimeout(() => onDone(280), 220)
-            }, 620)
+// UNHOOK (founder F1 + decision C11, 2026-10-09): ONE big, real metal hook; the user's words become THREE
+// bubbles, each hanging from the hook on its OWN string. The strings are drawn in arena pixels from MEASURED
+// positions (the hook's tie points and each bubble's live rim, read every frame), so they stay attached on every
+// size, through resizes, the bubbles' bob and the hook's swing. Tapping a string (its clip above the bubble, the
+// string itself or the bubble) snaps it: the upper half whips back to the hook, the hook recoils and swings, the
+// other bubbles jolt, and the freed bubble floats away trailing its snapped end. The reveal burst is unchanged.
+// Hook drawing: viewBox 0 0 100 140; the bend's lowest stretch carries the three twine wraps.
+const UNHOOK_BEND = "M50 37 L50 88 C50 124 14 124 16 94"
+const UNHOOK_TIES = [
+    { x: 26.1, y: 114.9, a: -24, sx: 24.6, sy: 119.4 },
+    { x: 32.25, y: 116, a: 0, sx: 32.25, sy: 120.6 },
+    { x: 39.9, y: 112.8, a: 22, sx: 41.6, sy: 117.2 },
+]
+const UNHOOK_ONE_HOOK_CSS = String.raw`
+.tsArcade .arena.literalUnhookArena.unhookOneHookArena{position:relative;overflow:hidden}
+.tsArcade .unhookOneHookArena .unhookHookRig{position:absolute;top:0;z-index:4;pointer-events:none;transform-origin:50% 0}
+.tsArcade .unhookOneHookArena .unhookHookSwing{position:absolute;inset:0;transform-origin:50% 0}
+.tsArcade .unhookOneHookArena .unhookHookSvg{display:block;width:100%;height:100%;overflow:visible}
+.tsArcade .unhookOneHookArena .unhookStringLayer{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;z-index:6;pointer-events:none}
+.tsArcade .unhookOneHookArena .uhStr,.tsArcade .unhookOneHookArena .uhStrPiece{fill:none;stroke:#f6ecd4;stroke-width:2.6;stroke-linecap:round}
+.tsArcade .unhookOneHookArena .uhStrShadow{fill:none;stroke:rgba(12,6,34,.42);stroke-width:4.4;stroke-linecap:round;transform:translate(1.6px,2.2px)}
+.tsArcade .unhookOneHookArena .uhStrHit{fill:none;stroke:transparent;stroke-width:26;stroke-linecap:butt;pointer-events:stroke;cursor:pointer}
+.tsArcade .unhookOneHookArena .uhClip .o{fill:none;stroke:#e7c26a;stroke-width:2.4}
+.tsArcade .unhookOneHookArena .uhClip .h{fill:none;stroke:rgba(255,248,214,.9);stroke-width:1}
+.tsArcade .unhookOneHookArena .uhFlash line{stroke:#fff3bf;stroke-width:2.4;stroke-linecap:round}
+.tsArcade .unhookOneHookArena .uhFlash circle{fill:rgba(255,246,206,.85)}
+.tsArcade .arena.literalUnhookArena.unhookOneHookArena button.unhookWordBubble{position:absolute!important;width:var(--uh-d,104px)!important;height:var(--uh-d,104px)!important;min-width:0!important;max-width:none!important;min-height:0!important;aspect-ratio:1/1!important;translate:none!important;margin:0!important;padding:6px!important;border-radius:50%!important;z-index:5;display:flex!important;flex-direction:column;align-items:center;justify-content:center;overflow:visible!important;cursor:pointer;color:#fff;border:2px solid rgba(214,244,255,.74)!important;background:radial-gradient(circle at 32% 24%,rgba(255,255,255,.58),rgba(255,255,255,.14) 20%,rgba(150,226,255,.16) 46%,rgba(140,96,255,.30) 78%,rgba(214,126,255,.46) 100%)!important;box-shadow:inset 0 -10px 22px rgba(120,70,255,.22),inset 0 6px 14px rgba(255,255,255,.18),0 0 0 1px rgba(139,231,255,.24),0 10px 26px rgba(40,10,90,.35),0 0 26px rgba(0,229,255,.18)!important;-webkit-tap-highlight-color:transparent}
+.tsArcade .arena.literalUnhookArena.unhookOneHookArena button.unhookWordBubble>span{display:block;max-width:86%;font:900 13px/1.1 Inter,system-ui,sans-serif;color:#fff;text-align:center;text-shadow:0 1px 3px rgba(40,10,90,.55);overflow-wrap:anywhere}
+.tsArcade .arena.literalUnhookArena.unhookOneHookArena button.unhookWordBubble.gone{visibility:hidden!important;pointer-events:none!important}
+.tsArcade .arena.literalUnhookArena.unhookOneHookArena button.unhookWordBubble:disabled{cursor:default}
+.tsArcade .arena.unhookOneHookArena .unhookStringGrip{position:absolute!important;left:0!important;top:0!important;width:44px!important;height:44px!important;min-width:0!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important;border-radius:50%!important;background:none!important;box-shadow:none!important;filter:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;opacity:1!important;z-index:8;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.tsArcade .arena.unhookOneHookArena .unhookStringGrip::before{content:none!important;display:none!important}
+.tsArcade .arena.unhookOneHookArena .unhookStringGrip::after{content:""!important;display:block!important;position:absolute!important;inset:11px!important;background:none!important;border-radius:50%;border:2px solid rgba(255,232,160,.6);box-shadow:0 0 10px rgba(255,220,130,.35);animation:uhGripPulse 1.7s ease-in-out infinite}
+.tsArcade .unhookOneHookArena .unhookStringGrip:focus-visible{outline:2px solid #ffe7a3;outline-offset:2px}
+@keyframes uhGripPulse{0%,100%{transform:scale(.82);opacity:.55}50%{transform:scale(1.08);opacity:1}}
+@media (prefers-reduced-motion:reduce){.tsArcade .unhookOneHookArena .unhookStringGrip::after{animation:none}}
+`
+function unhookThreeBubbles(entries) {
+    const src = (entries && entries.length ? entries : ["THIS"])
+        .map((s) => String(s || "").trim())
+        .filter(Boolean)
+    if (!src.length) return ["THIS", "THIS", "THIS"]
+    // cleanEntries repeats a short thought up to six chunks: recover the user's own sequence first
+    let k = src.length
+    for (let n = 1; n < src.length; n++) {
+        if (src.every((v, i) => v === src[i % n])) {
+            k = n
+            break
         }
     }
+    const base = src.slice(0, k)
+    if (base.length <= 3)
+        return Array.from({ length: 3 }, (_, i) => base[i % base.length])
+    const per = base.length / 3
+    return [0, 1, 2].map((g) =>
+        base.slice(Math.round(g * per), Math.round((g + 1) * per)).join(" ")
+    )
+}
+function unhookLayout(w, h, statusTop) {
+    const W = Math.max(220, w || 360)
+    const H = Math.max(300, h || 560)
+    const hookW = Math.round(Math.max(96, Math.min(W * 0.4, H * 0.26, 200)))
+    const hookH = Math.round(hookW * 1.4)
+    const hookLeft = Math.round(W / 2 - hookW * 0.3225)
+    const hangY = hookH * (120 / 140)
+    const d = Math.round(Math.max(88, Math.min(W * 0.29, H * 0.21, 150)))
+    // the lowest bubble stays above the status line (measured), never under it
+    const st = Number.isFinite(statusTop) && statusTop > 0 ? statusTop - 10 : H - 150
+    const floor = Math.max(H * 0.55, Math.min(H - 48, st)) - d / 2
+    const sideY = Math.min(floor - d * 0.55, hangY + (H - hangY) * 0.42)
+    const midY = Math.min(floor, hangY + (H - hangY) * 0.62)
+    const spread = Math.min(W * 0.31, d * 1.95)
+    return {
+        hookW,
+        hookH,
+        hookLeft,
+        d,
+        at: [
+            { x: W / 2 - spread, y: sideY },
+            { x: W / 2, y: midY },
+            { x: W / 2 + spread, y: sideY },
+        ],
+    }
+}
+function UnhookLiteralEngine({ entries, onDone, sfx, reduced, onProgress }) {
+    const words = React.useMemo(() => unhookThreeBubbles(entries), [entries.join("|")])
+    const rawUid = typeof React.useId === "function" ? React.useId() : "uh"
+    const uid = "uh" + String(rawUid).replace(/[^A-Za-z0-9_-]/g, "")
+    const arenaRef = React.useRef(null)
+    const tieRefs = React.useRef([])
+    const bubRefs = React.useRef([])
+    const gripRefs = React.useRef([])
+    const strRefs = React.useRef([])
+    const snapRef = React.useRef([null, null, null])
+    const cutRef = React.useRef([false, false, false])
+    const doneRef = React.useRef(false)
+    const timers = React.useRef([])
+    const layoutRef = React.useRef(null)
+    const reducedRef = React.useRef(!!reduced)
+    reducedRef.current = !!reduced
+    const [box, setBox] = React.useState({ w: 360, h: 560 })
+    const [cut, setCut] = React.useState([false, false, false])
+    const [freed, setFreed] = React.useState([false, false, false])
+    const [swing, setSwing] = React.useState({ n: 0, dir: 1, last: false })
+    React.useEffect(() => {
+        cutRef.current = [false, false, false]
+        snapRef.current = [null, null, null]
+        bubRefs.current.forEach((b) => {
+            if (!b) return
+            b.style.removeProperty("translate")
+            b.style.removeProperty("scale")
+        })
+        doneRef.current = false
+        setCut([false, false, false])
+        setFreed([false, false, false])
+        onProgress?.(0, "0% UNHOOKED")
+    }, [entries.join("|")])
+    React.useEffect(() => () => timers.current.forEach((t) => clearTimeout(t)), [])
+    React.useLayoutEffect(() => {
+        const el = arenaRef.current
+        if (!el) return
+        const read = () => {
+            const w = el.offsetWidth
+            const h = el.offsetHeight
+            const stEl = el.querySelector(":scope > .literalStatus")
+            const s = stEl && stEl.offsetParent === el ? stEl.offsetTop : 0
+            if (w > 0 && h > 0)
+                setBox((b) =>
+                    Math.abs(b.w - w) > 1 || Math.abs(b.h - h) > 1 || Math.abs((b.s || 0) - s) > 2
+                        ? { w, h, s }
+                        : b
+                )
+        }
+        read()
+        let ro = null
+        if (typeof ResizeObserver !== "undefined") {
+            ro = new ResizeObserver(read)
+            ro.observe(el)
+        }
+        window.addEventListener("resize", read)
+        // the shared layout guard may re-dock the status line after mount: measure again once it has settled
+        const later = [setTimeout(read, 350), setTimeout(read, 1200)]
+        return () => {
+            if (ro) ro.disconnect()
+            window.removeEventListener("resize", read)
+            later.forEach((t) => clearTimeout(t))
+        }
+    }, [])
+    // per-frame string renderer: every end point is measured from the live DOM (never assumed)
+    React.useEffect(() => {
+        let raf = 0
+        const f = (n) => (Math.round(n * 10) / 10).toString()
+        const unit = (x, y) => {
+            const l = Math.hypot(x, y) || 1
+            return { x: x / l, y: y / l }
+        }
+        const draw = () => {
+            const arena = arenaRef.current
+            if (!arena) return
+            const ar = arena.getBoundingClientRect()
+            const k = ar.width / Math.max(1, arena.offsetWidth) || 1
+            const centre = (el) => {
+                const r = el.getBoundingClientRect()
+                return {
+                    x: (r.left + r.width / 2 - ar.left) / k,
+                    y: (r.top + r.height / 2 - ar.top) / k,
+                    r: Math.min(r.width, r.height) / 2 / k,
+                }
+            }
+            const now = performance.now()
+            const still = reducedRef.current
+            for (let i = 0; i < 3; i++) {
+                const S = strRefs.current[i]
+                const tie = tieRefs.current[i]
+                const bub = bubRefs.current[i]
+                if (!S || !tie || !bub) continue
+                const snap0 = snapRef.current[i]
+                if (snap0) {
+                    // the freed bubble's float is driven HERE, in the same frame callback that draws its string,
+                    // so bubble and trailing string are always painted together (never one ahead of the other)
+                    const q = Math.min(1, (now - snap0.at) / (still ? 700 : 1500))
+                    const lay = layoutRef.current
+                    const rise = still ? 40 : (lay.at[i].y + lay.d * 1.3) * q * q * (3 - 2 * q)
+                    const dx = still ? 0 : (i === 0 ? -1 : 1) * 16 * Math.sin(q * Math.PI)
+                    bub.style.setProperty("translate", `${f(dx)}px ${f(-rise)}px`, "important")
+                    if (!still) bub.style.setProperty("scale", f(1 + 0.08 * Math.min(1, q * 3)), "important")
+                }
+                const Hp = centre(tie)
+                const c = centre(bub)
+                // the string is tied to a brass ring on the bubble's rim, straight above its centre
+                const A = { x: c.x, y: c.y - c.r + 2 }
+                S.clip.setAttribute("transform", `translate(${f(A.x)} ${f(A.y)})`)
+                const snap = snapRef.current[i]
+                if (!snap) {
+                    const sag = 3 + Math.min(10, Math.abs(A.x - Hp.x) * 0.02)
+                    const d = `M${f(Hp.x)} ${f(Hp.y)} Q${f((Hp.x + A.x) / 2)} ${f((Hp.y + A.y) / 2 + sag)} ${f(A.x)} ${f(A.y)}`
+                    S.line.setAttribute("d", d)
+                    S.shadow.setAttribute("d", d)
+                    S.hit.setAttribute("d", d)
+                    S.last = { Hp, A }
+                    const g = gripRefs.current[i]
+                    if (g) {
+                        // the grip sits ON the string a little above the bubble, so the guide hand never covers
+                        // the bubble's picture or the user's words
+                        const u = unit(Hp.x - A.x, Hp.y - A.y)
+                        const reach = Math.min(Math.max(40, c.r * 0.85), Math.hypot(Hp.x - A.x, Hp.y - A.y) * 0.35)
+                        g.style.transform = `translate(${f(A.x + u.x * reach - 22)}px, ${f(A.y + u.y * reach - 22)}px)`
+                    }
+                    continue
+                }
+                if (!snap.B) {
+                    const last = S.last || { Hp, A }
+                    snap.B = {
+                        x: last.Hp.x + (last.A.x - last.Hp.x) * 0.44,
+                        y: last.Hp.y + (last.A.y - last.Hp.y) * 0.44,
+                    }
+                    snap.Lu = Math.hypot(snap.B.x - last.Hp.x, snap.B.y - last.Hp.y)
+                    snap.Ll = Math.hypot(last.A.x - snap.B.x, last.A.y - snap.B.y)
+                    snap.u0 = unit(snap.B.x - last.Hp.x, snap.B.y - last.Hp.y)
+                    snap.l0 = unit(snap.B.x - last.A.x, snap.B.y - last.A.y)
+                    S.line.style.display = "none"
+                    S.shadow.style.display = "none"
+                    S.hit.style.display = "none"
+                    S.upper.style.display = ""
+                    S.lower.style.display = ""
+                }
+                const e = now - snap.at
+                // upper half: whips back to the hook and ends as a short frayed stub hanging from its wrap
+                const t1 = Math.min(1, e / 520)
+                const k1 = 1 - Math.pow(1 - t1, 3)
+                const ud = unit(snap.u0.x + (0 - snap.u0.x) * k1, snap.u0.y + (1 - snap.u0.y) * k1)
+                const lenU = Math.max(9, snap.Lu * (1 - 0.82 * k1))
+                const wU = still ? 0 : 18 * Math.exp(-e / 190) * Math.sin(e / 36)
+                const Ue = { x: Hp.x + ud.x * lenU, y: Hp.y + ud.y * lenU }
+                S.upper.setAttribute(
+                    "d",
+                    `M${f(Hp.x)} ${f(Hp.y)} Q${f((Hp.x + Ue.x) / 2 - ud.y * wU)} ${f((Hp.y + Ue.y) / 2 + ud.x * wU)} ${f(Ue.x)} ${f(Ue.y)}`
+                )
+                // lower half: flops over the rim and drapes OUTSIDE the freed bubble (never across its picture or
+                // words) while it floats away; geometry is relative to the bubble's live centre and radius
+                const t2 = Math.min(1, e / 700)
+                const k2 = 1 - Math.pow(1 - t2, 2)
+                const side = i === 0 ? -1 : 1
+                const rr = c.r
+                if (!snap.rel) snap.rel = { x: snap.B.x - A.x, y: snap.B.y - A.y }
+                const lerp = (p0, p1) => p0 + (p1 - p0) * k2
+                const wL = still ? 0 : 7 * Math.exp(-e / 260) * Math.sin(e / 44)
+                const Le = { x: A.x + lerp(snap.rel.x, side * rr * 1.25), y: A.y + lerp(snap.rel.y, rr * 1.1 + wL) }
+                const Lc = { x: A.x + lerp(snap.rel.x / 2, side * rr * 1.15), y: A.y + lerp(snap.rel.y / 2, -rr * 0.05) }
+                S.lower.setAttribute("d", `M${f(A.x)} ${f(A.y)} Q${f(Lc.x)} ${f(Lc.y)} ${f(Le.x)} ${f(Le.y)}`)
+                // the arena clips the bubble and its string as they float out of the top; fade only at the very end
+                const fade = bub.classList.contains("gone") ? 0 : e < 1350 ? 1 : Math.max(0, 1 - (e - 1350) / 200)
+                S.lower.style.opacity = String(fade)
+                S.clip.style.opacity = String(fade)
+                // the snap itself: a bright flash + shards at the break point
+                const ft = e / 300
+                if (ft < 1) {
+                    S.flash.style.display = ""
+                    S.flash.setAttribute("transform", `translate(${f(snap.B.x)} ${f(snap.B.y)}) scale(${f(0.5 + ft * 1.3)})`)
+                    S.flash.style.opacity = String(1 - ft)
+                } else if (S.flash.style.display !== "none") S.flash.style.display = "none"
+            }
+        }
+        // draw right after framer-motion has written this frame's transforms (postRender), so the strings and
+        // the moving bubbles / swinging hook are always painted from the same frame; plain rAF as a fallback
+        const fm = FramerMotionNS || {}
+        draw()
+        if (fm.frame && typeof fm.frame.postRender === "function" && typeof fm.cancelFrame === "function") {
+            fm.frame.postRender(draw, true)
+            return () => fm.cancelFrame(draw)
+        }
+        const tick = () => {
+            raf = requestAnimationFrame(tick)
+            draw()
+        }
+        raf = requestAnimationFrame(tick)
+        return () => cancelAnimationFrame(raf)
+    }, [])
+    const L = unhookLayout(box.w, box.h, box.s)
+    layoutRef.current = L
+    const released = cut.filter(Boolean).length
+    const snapString = (i) => {
+        if (doneRef.current || cutRef.current[i]) return
+        cutRef.current = cutRef.current.map((v, j) => (j === i ? true : v))
+        snapRef.current[i] = { at: performance.now(), B: null }
+        const n = cutRef.current.filter(Boolean).length
+        setCut(cutRef.current.slice())
+        const p = pct((n / 3) * 100)
+        onProgress?.(p, `${p}% UNHOOKED`)
+        const last = n >= 3
+        sfx(last ? "win" : "pop")
+        vibrate(last ? 22 : 12)
+        // the load on the other strings pulls the hook the other way once this one lets go
+        const left = cutRef.current[0] ? 0 : 1
+        const right = cutRef.current[2] ? 0 : 1
+        const dir = i === 0 ? -1 : i === 2 ? 1 : right >= left ? -1 : 1
+        setSwing((s) => ({ n: s.n + 1, dir, last }))
+        timers.current.push(
+            setTimeout(
+                () => setFreed((fr) => fr.map((v, j) => (j === i ? true : v))),
+                reduced ? 700 : 1550
+            )
+        )
+        if (last) {
+            doneRef.current = true
+            timers.current.push(setTimeout(() => onDone(280), reduced ? 800 : 1300))
+        }
+    }
+    const eps = swing.n * 1e-4
+    const sw = swing.dir * (swing.last ? 1.6 : 1)
+    const hookSwing =
+        reduced || !swing.n
+            ? { rotate: 0, y: 0 }
+            : {
+                  rotate: [0, 10 * sw, -6.5 * sw, 3.5 * sw, -1.2 * sw, eps],
+                  y: swing.last ? [0, -16, 4, -2, 0] : [0, -5, 1, 0],
+              }
+    const jolt = reduced || !swing.n ? 0 : [0, -7 * swing.dir, 4 * swing.dir, -1.5 * swing.dir, eps]
+    const tieWrap = (t, i) => (
+        <g key={`tie-${i}`} transform={`translate(${t.x} ${t.y}) rotate(${t.a})`}>
+            <ellipse rx="2.3" ry="5.6" fill="none" stroke="#5b4a2a" strokeWidth="1.9" opacity=".55" transform="translate(.5 .6)" />
+            <ellipse rx="2.3" ry="5.6" fill="none" stroke="#f6ecd4" strokeWidth="1.5" />
+            <ellipse rx="1.5" ry="5.2" fill="none" stroke="#f6ecd4" strokeWidth="1.1" transform="translate(1.9 0)" opacity=".85" />
+        </g>
+    )
     return (
-        <div className="arena literalUnhookArena premiumArena unhookLeftHookArena">
+        <div
+            ref={arenaRef}
+            className="arena literalUnhookArena premiumArena unhookOneHookArena"
+            style={{ "--uh-d": L.d + "px" }}
+        >
+            <style>{UNHOOK_ONE_HOOK_CSS}</style>
             <div className="unhookOceanGlow" />
-            <svg
-                className="bigHookScene"
-                viewBox="0 0 100 100"
-                preserveAspectRatio="none"
+            <motion.div
+                className="unhookHookRig"
+                style={{ left: L.hookLeft, width: L.hookW, height: L.hookH, originX: 0.5, originY: 0 }}
                 aria-hidden="true"
+                initial={false}
+                animate={reduced ? { rotate: 0 } : { rotate: [-1.4, 1.4] }}
+                transition={
+                    reduced
+                        ? { duration: 0 }
+                        : { duration: 3.4, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }
+                }
             >
-                <path
-                    className="bigHookShadow"
-                    d="M9 0 C10 13 10 24 11 35 C11 47 12 58 17 67 C22 77 33 77 37 68 C40 61 37 53 31 51"
-                />
-                <path className="bigHookLine" d="M9 0 C10 13 10 24 11 35" />
-                <path
-                    className="bigHookMetal"
-                    d="M11 35 C11 47 12 58 17 67 C22 77 33 77 37 68 C40 61 37 53 31 51"
-                />
-                <path className="bigHookTip" d="M31 51 C28 52 25 54 23 57" />
-                <circle className="bigHookEye" cx="9" cy="4" r="3.6" />
-                {words.map((word, i) => {
-                    const v = links[i] || 0
-                    if (v <= 0) return null
-                    const p = positions[i] || { x: 68, y: 50 }
-                    const endX = p.x - 8.4
-                    return (
-                        <g key={`cords-${i}`} className="hookWordCords">
-                            {v >= 1 && (
-                                <motion.line
-                                    className="hookCord c1"
-                                    x1="22"
-                                    y1="43"
-                                    x2={String(endX)}
-                                    y2={String(p.y - 3)}
-                                    initial={false}
-                                    animate={{ opacity: 1 }}
-                                />
-                            )}
-                            {v >= 2 && (
-                                <motion.line
-                                    className="hookCord c2"
-                                    x1="24"
-                                    y1="50"
-                                    x2={String(endX)}
-                                    y2={String(p.y)}
-                                    initial={false}
-                                    animate={{ opacity: 1 }}
-                                />
-                            )}
-                            {v >= 3 && (
-                                <motion.line
-                                    className="hookCord c3"
-                                    x1="22"
-                                    y1="57"
-                                    x2={String(endX)}
-                                    y2={String(p.y + 3)}
-                                    initial={false}
-                                    animate={{ opacity: 1 }}
-                                />
-                            )}
+                <motion.div
+                    className="unhookHookSwing"
+                    style={{ originX: 0.5, originY: 0 }}
+                    initial={false}
+                    animate={hookSwing}
+                    transition={{ duration: swing.last ? 1.3 : 1.05, ease: "easeOut" }}
+                >
+                    <svg className="unhookHookSvg" viewBox="0 0 100 140" preserveAspectRatio="xMidYMin meet">
+                        <defs>
+                            <linearGradient id={`${uid}-steel`} x1="0" y1="0" x2="1" y2=".3">
+                                <stop offset="0" stopColor="#4a5462" />
+                                <stop offset=".17" stopColor="#c9d2dc" />
+                                <stop offset=".31" stopColor="#f7f9fb" />
+                                <stop offset=".5" stopColor="#8c98a7" />
+                                <stop offset=".7" stopColor="#3d4653" />
+                                <stop offset=".86" stopColor="#a9b4c1" />
+                                <stop offset="1" stopColor="#e3e8ee" />
+                            </linearGradient>
+                            <linearGradient id={`${uid}-link`} x1="0" y1="0" x2="1" y2="0">
+                                <stop offset="0" stopColor="#59636f" />
+                                <stop offset=".45" stopColor="#eef2f6" />
+                                <stop offset="1" stopColor="#5d6773" />
+                            </linearGradient>
+                        </defs>
+                        {/* chain from above */}
+                        <ellipse cx="50" cy="5" rx="4.4" ry="7.6" fill="none" stroke={`url(#${uid}-link)`} strokeWidth="2.8" />
+                        <rect x="48.5" y="9" width="3" height="15" rx="1.5" fill={`url(#${uid}-link)`} />
+                        {/* soft cast shadow, then the forged hook: eye, shank, bend, point and barb */}
+                        <g transform="translate(3 4)" opacity=".3">
+                            <circle cx="50" cy="30" r="6.6" fill="none" stroke="#08041a" strokeWidth="4.6" />
+                            <path d={UNHOOK_BEND} fill="none" stroke="#08041a" strokeWidth="9.5" strokeLinecap="round" />
                         </g>
-                    )
-                })}
+                        <circle cx="50" cy="30" r="6.6" fill="none" stroke={`url(#${uid}-steel)`} strokeWidth="4.4" />
+                        <circle cx="50" cy="30" r="6.6" fill="none" stroke="rgba(255,255,255,.7)" strokeWidth=".9" transform="translate(-.9 -.9)" />
+                        <path d={UNHOOK_BEND} fill="none" stroke="#2a313b" strokeWidth="9.6" strokeLinecap="round" />
+                        <path d={UNHOOK_BEND} fill="none" stroke={`url(#${uid}-steel)`} strokeWidth="8.2" strokeLinecap="round" />
+                        <path d={UNHOOK_BEND} fill="none" stroke="rgba(255,255,255,.72)" strokeWidth="1.5" strokeLinecap="round" transform="translate(-2 -1.2)" />
+                        <path d="M12 95.5 L16.6 74 L20.6 95.5 Z" fill={`url(#${uid}-steel)`} stroke="#2a313b" strokeWidth=".9" strokeLinejoin="round" />
+                        <path d="M19.4 84 L26.4 93.6 L19.9 92.2 Z" fill={`url(#${uid}-steel)`} stroke="#2a313b" strokeWidth=".8" strokeLinejoin="round" />
+                        <path d="M15.4 92 L16.7 77" stroke="rgba(255,255,255,.75)" strokeWidth=".8" strokeLinecap="round" />
+                        <circle cx="44" cy="109" r="1.5" fill="#fff" opacity=".85" />
+                        {UNHOOK_TIES.map((t, i) => (cut[i] ? null : tieWrap(t, i)))}
+                        {UNHOOK_TIES.map((t, i) => (
+                            <circle
+                                key={`tie-pt-${i}`}
+                                className="unhookTiePoint"
+                                ref={(el) => (tieRefs.current[i] = el)}
+                                cx={t.sx}
+                                cy={t.sy}
+                                r=".6"
+                                fill="transparent"
+                            />
+                        ))}
+                    </svg>
+                </motion.div>
+            </motion.div>
+            <svg className="unhookStringLayer" aria-hidden="true">
+                {[0, 1, 2].map((i) => (
+                    <g
+                        key={`str-${i}`}
+                        className="uhString"
+                        ref={(el) => {
+                            if (!el) return
+                            strRefs.current[i] = {
+                                shadow: el.querySelector(".uhStrShadow"),
+                                line: el.querySelector(".uhStr"),
+                                hit: el.querySelector(".uhStrHit"),
+                                upper: el.querySelector(".uhUpper"),
+                                lower: el.querySelector(".uhLower"),
+                                clip: el.querySelector(".uhClip"),
+                                flash: el.querySelector(".uhFlash"),
+                                last: strRefs.current[i] && strRefs.current[i].last,
+                            }
+                        }}
+                    >
+                        <path className="uhStrShadow" />
+                        <path className="uhStr" data-unhook-string={i} />
+                        <path className="uhStrHit" onClick={() => snapString(i)} />
+                        <path className="uhStrPiece uhUpper" data-unhook-piece="upper" style={{ display: "none" }} />
+                        <path className="uhStrPiece uhLower" data-unhook-piece="lower" style={{ display: "none" }} />
+                        <g className="uhClip">
+                            <circle className="o" r="4.4" />
+                            <circle className="h" r="4.4" transform="translate(-.8 -.8)" />
+                        </g>
+                        <g className="uhFlash" style={{ display: "none" }}>
+                            <circle r="5" />
+                            {[0, 60, 120, 180, 240, 300].map((a) => (
+                                <line key={a} x1="8" y1="0" x2="17" y2="0" transform={`rotate(${a + 15 * i})`} />
+                            ))}
+                        </g>
+                    </g>
+                ))}
             </svg>
-            <div className="bigHookLabel">BIG HOOK</div>
-            <div className="unhookBubbleField">
-                {words.map((word, i) => {
-                    const v = links[i] || 0
-                    const p = positions[i] || { x: 68, y: 50 }
-                    const gone = v === 0 && !dropping.includes(i)
-                    return (
-                        <motion.button
-                            key={`unhook-word-${i}-${word}`}
-                            className={
-                                "unhookWordBubble " +
-                                (gone ? "gone " : "") +
-                                (dropping.includes(i) ? "dropping" : "")
+            {words.map((word, i) => {
+                const p = L.at[i]
+                const isCut = cut[i]
+                const gone = freed[i]
+                const text = word === "UPLOADED IMAGE" ? "" : displayText(word, 28)
+                return (
+                    <motion.button
+                        key={`unhook-word-${i}`}
+                        ref={(el) => (bubRefs.current[i] = el)}
+                        type="button"
+                        data-unhook-bubble={i}
+                        aria-label={`Snap the string holding ${text || "this bubble"}`}
+                        className={
+                            "unhookWordBubble " +
+                            (gone ? "gone " : "") +
+                            (isCut && !gone ? "floating" : "")
+                        }
+                        style={{ left: p.x - L.d / 2, top: p.y - L.d / 2 }}
+                        onClick={() => snapString(i)}
+                        disabled={isCut}
+                        initial={false}
+                        animate={
+                            isCut
+                                ? { x: 0, y: 0, scale: 1, opacity: reduced ? 0 : 1 }
+                                : {
+                                      x: jolt,
+                                      y: reduced ? 0 : [0, -6, 0],
+                                      scale: 1,
+                                      opacity: 1,
+                                  }
+                        }
+                        transition={
+                            isCut
+                                ? { duration: reduced ? 0.6 : 0.25, ease: "easeOut" }
+                                : {
+                                      x: { duration: 0.9, ease: "easeOut" },
+                                      y: reduced
+                                          ? { duration: 0 }
+                                          : { duration: 2.3 + i * 0.37, repeat: Infinity, ease: "easeInOut" },
+                                      default: { duration: 0.3 },
+                                  }
+                        }
+                    >
+                        <span className="tsExactUserText">{text}</span>
+                    </motion.button>
+                )
+            })}
+            {[0, 1, 2].map((i) =>
+                cut[i] ? null : (
+                    <div
+                        key={`grip-${i}`}
+                        role="button"
+                        tabIndex={0}
+                        ref={(el) => (gripRefs.current[i] = el)}
+                        className="unhookStringGrip"
+                        aria-label={`Snap string ${i + 1}`}
+                        onClick={() => snapString(i)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault()
+                                snapString(i)
                             }
-                            style={{ left: p.x + "%", top: p.y + "%" }}
-                            onClick={() => cutLink(i)}
-                            disabled={gone || dropping.includes(i)}
-                            initial={false}
-                            animate={
-                                dropping.includes(i)
-                                    ? {
-                                          x: [0, 18, 58],
-                                          y: [0, 28, 150],
-                                          rotate: [0, 12, 32],
-                                          opacity: [1, 0.82, 0],
-                                          scale: [1, 0.9, 0.55],
-                                      }
-                                    : gone
-                                      ? { opacity: 0, scale: 0.4 }
-                                      : {
-                                            x: 0,
-                                            y: 0,
-                                            rotate: 0,
-                                            opacity: 1,
-                                            scale: 1,
-                                        }
-                            }
-                            transition={
-                                dropping.includes(i)
-                                    ? { duration: 0.58, ease: "easeIn" }
-                                    : { duration: 0.24, ease: "easeOut" }
-                            }
-                        >
-                            <span>{displayText(word, 24)}</span>
-                            <small>
-                                {v > 0
-                                    ? `${v} STRING${v === 1 ? "" : "S"} HOLDING`
-                                    : "RELEASED"}
-                            </small>
-                        </motion.button>
-                    )
-                })}
-            </div>
+                        }}
+                    />
+                )
+            )}
             <div className="literalStatus">
                 <b>
-                    {remainingWords
-                        ? `${remainingWords} WORD${remainingWords === 1 ? "" : "S"} STILL ON THE HOOK`
-                        : "ALL WORDS DISCONNECTED"}
+                    {released < 3
+                        ? `${3 - released} BUBBLE${3 - released === 1 ? "" : "S"} STILL ON THE HOOK`
+                        : "ALL BUBBLES FREE"}
                 </b>
-                <span>
-                    The giant hook stays on the far left. Every circular word
-                    bubble is held by three full-length strings. Each click
-                    disconnects one string; the third click releases that word
-                    completely.
-                </span>
+                <span>Snap a string and its bubble floats free.</span>
             </div>
-            <div className="literalProgress">
-                {words.length - remainingWords} / {words.length} RELEASED
-            </div>
+            <div className="literalProgress">{released} / 3 FREE</div>
         </div>
     )
 }
@@ -35402,7 +35731,7 @@ const EOS_GESTURES = {
     38: [{ t: "button.uniqControl", g: "tap", L: "@text" }, { t: ".drawerCard", g: "drag", dir: "d", d: 90, L: "DROP IT IN ↓" }],
     39: [{ t: "button.uniqControl", g: "hold", ms: 1200, L: "HOLD — DON'T LET GO" }],
     40: [{ t: "button.uniqControl", g: "tap", L: "@text" }, { t: ".paperPlane", g: "swipe", dir: "r", d: 170, L: "THROW IT →" }],
-    41: [{ t: ".unhookWordBubble", g: "taps", n: 3, pick: "near", L: "UNHOOK ×3" }],
+    41: [{ t: ".unhookStringGrip", g: "tap", pick: "near", L: "SNAP THE STRING" }],
     42: [{ t: ".knot:not(.loose)", g: "drag", dir: "ur", d: 70, L: "WIGGLE THIS KNOT" }],
     43: [{ t: "button.cutLoopScissorPicker", g: "tool", armed: ".active", L: "GRAB THE SCISSORS" }, { t: "button.cutLoopWord:not(:disabled)", g: "taps", n: 3, pick: "near", L: "SNIP ×3" }],
     44: [{ t: ".velcroPatch", g: "slow", dir: "r", d: 170, ms: 1800, L: "PEEL… SLOWLY →" }],
@@ -44265,7 +44594,7 @@ const EOS_HINT_FIX = {
     20: "Tap the glowing shape", 21: "Drag each word into the bin", 28: "Open the drawer, then drag the card down",
     30: "Tap zoom-out 4×", 31: "Drag the card down and to the right", 33: "Snip the glowing string",
     36: "Drag the cloud slowly to the right", 37: "Tap the glowing floor", 38: "Open, drop the card in, close",
-    40: "Fold both wings, then swipe the plane right", 41: "Tap each bubble 3× to cut its strings", 42: "Drag the glowing knot",
+    40: "Fold both wings, then swipe the plane right", 41: "Tap a string to snap its bubble free", 42: "Drag the glowing knot",
     43: "Grab the scissors, then tap each word 3×", 48: "Peel the sticker up and to the right", 51: "Tap the glowing view",
     53: "Tap 4× to make it silly", 54: "Tap the dial 4×", 55: "Tap each glowing switch", 56: "Tap a verdict",
     57: "Tap rotate 3×", 58: "Tap the focus knob 4×", 60: "Tap the glowing corner", 61: "Tap each word 3× to freeze it",

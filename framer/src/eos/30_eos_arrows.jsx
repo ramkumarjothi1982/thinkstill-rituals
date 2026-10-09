@@ -62,7 +62,7 @@ const EOS_GESTURES = {
     38: [{ t: "button.uniqControl", g: "tap", L: "@text" }, { t: ".drawerCard", g: "drag", dir: "d", d: 90, L: "DROP IT IN ↓" }],
     39: [{ t: "button.uniqControl", g: "hold", ms: 1200, L: "HOLD — DON'T LET GO" }],
     40: [{ t: "button.uniqControl", g: "tap", L: "@text" }, { t: ".paperPlane", g: "swipe", dir: "r", d: 170, L: "THROW IT →" }],
-    41: [{ t: ".unhookWordBubble", g: "taps", n: 3, pick: "near", L: "UNHOOK ×3" }],
+    41: [{ t: ".unhookStringGrip", g: "tap", pick: "near", L: "SNAP THE STRING" }],
     42: [{ t: ".knot:not(.loose)", g: "drag", dir: "ur", d: 70, L: "WIGGLE THIS KNOT" }],
     43: [{ t: "button.cutLoopScissorPicker", g: "tool", armed: ".active", L: "GRAB THE SCISSORS" }, { t: "button.cutLoopWord:not(:disabled)", g: "taps", n: 3, pick: "near", L: "SNIP ×3" }],
     44: [{ t: ".velcroPatch", g: "slow", dir: "r", d: 170, ms: 1800, L: "PEEL… SLOWLY →" }],
