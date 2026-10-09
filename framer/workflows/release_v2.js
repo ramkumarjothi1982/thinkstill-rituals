@@ -5,6 +5,7 @@ export const meta = {
     { title: 'Close out', detail: 'one targeted fix pass for pieces with open serious findings' },
     { title: 'Integrate', detail: 'apply I1-I3 in place, smoke test' },
     { title: 'Unstick', detail: 'source fixes so every game completes (UNFOLLOW first), verified by playing them' },
+    { title: 'Founder feedback', detail: 'fix every OPEN item in docs/founder/FEEDBACK_LOG.md, verified by playing' },
     { title: 'Regression', detail: 'scripted sweep of all 114 games at 390 + 1280 and the check-in flows' },
     { title: 'Fix', detail: 'targeted fixes for failures, re-run only failing games' },
     { title: 'Package', detail: 'single .txt + release notes' },
@@ -48,6 +49,12 @@ for (const g of STALL_GROUPS) {
   if (DONE.has(`unstick-${g.key}`)) continue
   const r = await must(`${CTX}\n\nUNSTICK games ${g.ids.join(', ')} (${g.note}). Evidence from the quality audit: ${DOCS}/QUALITY_REPORT.md §0 and §9 W0-3 (grep each id), metrics ${DOCS}/quality/metrics.json (grep "id": N). For EACH game: reproduce with eos_drive finishGame at 390x844 and 1280x860 on the CURRENT build (python3 build.py first); find the root cause in src/00_arcade.jsx (grep the game's branch); make the smallest behaviour-preserving source fix (pointer capture, touch-action, user-select none, keep controls on screen, forgiving hit areas, correct progress/onDone hand-off) — never remove the game's mechanic, animation, sound or finale; rebuild and prove it completes on BOTH sizes (finishGame reaches the reveal, progress never goes backwards, zero errors). Note: a real human must be able to finish it too — if the auto-player needed a trick, make the real gesture easier instead. Commit src/00_arcade.jsx + the rebuilt .txt. ${GIT} Return a table: id | cause | fix | 390 result | 1280 result.`, { label: `unstick:${g.key}`, phase: 'Unstick' })
   await mark(`unstick-${g.key}`, r)
+}
+
+phase('Founder feedback')
+if (!DONE.has('founder-feedback')) {
+  const r = await must(`${CTX}\n\nFOUNDER FEEDBACK (highest priority). Read ${DOCS}/founder/FEEDBACK_LOG.md and fix EVERY item whose status is OPEN, in order. Also follow ${DOCS}/founder/FOUNDER_REQUIREMENTS.md and the founder rules at the end of ${DOCS}/CREATIVE_STANDARDS.md (bubble picture + user text below it INSIDE the bubble, no black masks, true circles, real-looking tools, approved bursts frozen except shared generic ones which get a game-specific burst). Make the fix structural where needed (e.g. measure the real bubble positions so strings attach). Rebuild (python3 build.py) and verify by PLAYING each fixed game to its finale at 390x844 then 1280x860; save before/after screenshots to ${DOCS}/founder/fix_<item>_*.png. Then set each item's status in FEEDBACK_LOG.md to FIXED (<commit>) with a one-line verification note (or NEEDS-APPROVAL with the reason if it would change an approved finale). Commit the source, the rebuilt .txt, the screenshots and the log. ${GIT} Return per item: what was wrong, what you changed, how you verified.`, { label: 'founder-feedback', phase: 'Founder feedback' })
+  await mark('founder-feedback', r)
 }
 
 const SWEEP = (round, extra) => `${CTX}\n\nREGRESSION round ${round}. python3 build.py, then write ONE unattended node sweep (reuse dev/eos_drive.mjs) over ${extra || 'ALL games in the menu (110 + 111-114)'} at 390x844 and 1280x860: start, play to the reveal with finishGame (75 s cap), record finished/stuck, max progress, progress decreasing, page errors, arrow visible at start, and a START + FINISH screenshot (contact sheet per 20 games). Then the FLOWS at 390x844 (and spot-check 1280): check-in for every emotion -> routed game -> finish -> shift meter (after rating) -> reward / orb -> share card; skip check-in -> free typing -> manual pick; LET THINKSTILL CHOOSE; safety card for a self-harm phrase does not block play; sound toggle; mic and + buttons present. Look at the failure contact sheets yourself. Write ${DOCS}/regression_v2_r${round}.json and return: counts, the exact failing games/flows with cause hints. Do NOT edit src files.`
