@@ -16,3 +16,16 @@
   without sway, heartbeat twin, sfx soft/chime×3/win, onDone once). Fixed .tsExactUserText max-width:88% wrapping tag words,
   side layout ≥ 820 px, keyboard focus to the finale option. finishGame lite: 390 35 s, 1280 46 s, keyboard 18 s at load ~13.
 - NEXT: final t4 at 1280 + timing re-run, final screenshots, commit + push, build.md.
+- [round 1 fix, ~20 calls] Read review_r1 (5 major, 9 minor). Measured: wrapper finish card is CENTRED on the stage
+  (not at the tap) → finale = heart swells in the sky above the card band, DROP flies INTO the heart, closing line +
+  toast go below the card (where the choice cards were). Ask stage: heart+DROP+golden lantern above the question, a
+  ~92 px clear band for the guide chevron/label, cards at the bottom. Plan: single-layer past sky, cue scheduler
+  (no remount, warm cue/face after 200 ms, hint ≥600 ms, true line delayed 900 ms + held 2.6 s), pending chime for
+  flick-while-warming, calm soft glow instead of PremiumBurst, honest share copy, compact layout, scale read once,
+  keyboard preventDefault only when acting, phrase builder (clauses, subject/boundary splits, measured 2-line fit,
+  content/affect scoring), marker oy on paper/icon, rays + star embers + lub-dub heart pulse + amber dawn, fullMs 2900.
+- [round 1 fix, ~44 calls] All findings applied. Measured (scratch int build incl. 30_eos_arrows): animated nodes play 40-46 /
+  finale 46-50 with 120 past dots (normal), 9-15 reduced; tap-mash 2 mutations in 8 s, 1 face; ask arrow hand/chevron/label
+  0 % over the question, DROP or the golden lantern; start arrow 0 % over the user's word; finale DROP/heart 0 % under the
+  wrapper cards; share ok → "Sent with love", abort → "Saved for later", reject → copy toast + "Warmth, ready to send".
+  PremiumBurst replaced by this game's own spark bursts (7 / 11 nodes). Committed as "EOS fix: game-lanterns round 1".

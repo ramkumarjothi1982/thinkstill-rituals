@@ -1,90 +1,121 @@
-BUILD game-lanterns: FINISHED. 114 SKY LANTERNS (the sad / lonely hero). File: /home/user/thinkstill-rituals/framer/src/eos/24_eos_game_lanterns.jsx
+BUILD game-lanterns: ROUND 1 FIXES DONE. 114 SKY LANTERNS (sad / lonely hero). File: /home/user/thinkstill-rituals/framer/src/eos/24_eos_game_lanterns.jsx
+All 14 review_r1 findings were handled. The 5 majors and 8 minors are fixed in this file. 1 minor (the wrapper's step words) is outside this file and is handed on below.
 
-WHAT I BUILT
-- The scene has 3 depth layers.
-  - Back: a dusk sky that warms as you play, a starfield, twinkles, a crescent moon, and the user's own past lanterns (rows in eos_sessions_v1 for game 114, drawn up to 120). When there is at least one, a label reads "N lanterns lit here"; with none there is no label and no dots, so no fake strangers.
-  - Middle: two hill ridges with a cool moon rim on the crest, a horizon glow, fireflies, and DROP on the crest. DROP has a warm key light from the lanterns and a cool rim light from the moon.
-  - Front: three paper lanterns with ribs, cap, base and flame. Each carries one of the user's words on a hanging paper tag (EosWord only) and casts a pool of light on the grass.
-- Mechanic
-  - Hold a lantern (or anywhere in the sky; it picks the next lantern) for 1.2 s. The glow fills up from the bottom of the paper as you hold, with a warm hum, a paper rustle and a slowing heartbeat from eosHeartbeat (60 → 57 bpm on lantern 1 down to 52 bpm by lantern 3). Its visual twin is a pulse ring on DROP's chest plus a throb of the held lantern's halo, driven by data-beat="a|b" on the root.
-  - Once lit, the lantern tugs upward. Drag it up 90 px (a flick, measured as CSS px ÷ eosStageScale), or simply let go, and it rises. It sways up for 2.2 s, shrinks, its word softens away, and it becomes a star.
-  - Keyboard: Space/Enter holds the focused lantern (or the next one when focus is on the page), ↑ or releasing the key lets it rise, and focus moves to the next lantern.
-  - No fail state. An early lift keeps the warmth, which cools slowly. After 2 early lifts, or 9 s with nothing lit, the hold drops to 0.7 s and the line "Hold gently — it lights faster now" appears. A lantern that stays lit and held for 6 s rises by itself, with a tone but no scored sfx.
-- One line at a time (aria-live): "Hold a lantern to warm it" → "Warming up… keep holding" → "It's glowing — let it rise ↑". Under each rising lantern a true line follows:
-  - "Missing someone means you loved something."
-  - "Lots of people are looking up at the same sky tonight." ("today" at dawn and during the day)
-  - "Everyone carries something heavy sometimes."
-- Finale, a sequence designed for this game:
-  - The three stars land on the lobes and the tip of a heart. The sky goes fully warm, every past lantern glows, and a dotted heart appears.
-  - A golden 4th lantern descends into DROP's arms and asks "Send a little warmth?".
-  - Two equal cards: Text someone "thinking of you" (navigator.share({text:"Thinking of you 💛"}); if share is missing or fails for any reason other than AbortError, it copies to the clipboard, falling back to execCommand, and shows the toast "Copied — paste it to someone", or `Send them: "…"` if copying is impossible), and Keep it for me. Both finish the game.
-  - After the choice, the golden lantern rises into the heart's cleft, the constellation draws itself, sparkles fall, DROP hugs a heart (E08) with a heart pop, and the line reads "Sent with love. 💛" or "Kept close. This glow is yours."
-- Safety mode (any strong flag in EOS_STORE.safety): the lanterns show EOS_NEUTRAL_WORDS (through core eosWords, reactive to the store), the question becomes "Reach out to someone?", and the card reads "Text someone you trust" with the message "Hey, can you talk? I'm having a hard time." shown on it and sent by share or clipboard. The rising lines switch to "You don't have to carry this alone." / the same-sky line / "Reaching out is a brave, strong thing."
-- DROP's faces (picked from the local bubble-expressions): E80 (sad) or E70 (lonely) → E57 hopeful hands while you warm a lantern → E59 looking up while one rises → E28 / E31 soft smiles → E09 wink with a heart at the ask → E08 hugging a heart. Every change plays a squash pop. DROP also leans toward the lantern being held.
-- Progress
-  - onProgress(0, "HOLD TO LIGHT IT") on mount. Each lantern adds +3 when pressed, +10 when lit, +18 when it rises and +25 when it is a star, then 82 "YOUR CHOICE", 90 "WARMTH SENT" or "KEPT CLOSE", and 100.
-  - It is strictly increasing and never passes a 3rd argument.
-  - onDone(bonus 270-350) fires once, 450 ms after 100. The bonus is the same for both choices: no dark pattern.
-- Juice
-  - Every touch answers in the same handler with sfx("soft") + eosTone + eosHaptic("touch") + a squash set as a DOM attribute.
-  - Scored sounds are exactly sfx("chime") per lantern released by the player, plus a gold PremiumBurst and eosHaptic("hit"), then sfx("win") + eosHaptic("finish") + a big burst at the choice.
-  - No non-soft sfx is ever called from a timer.
-- Replay variety: 3 seeded dusks (variationSeed % 3) change the palettes, ridges, moon side and lantern tilts. Local time adds a tint for dawn, day, dusk or night. The warm horizon uses the sad or lonely calm grade.
-- Layout is measured (eosLanLayout + ResizeObserver before paint) and everything sits in the safe box:
-  - Below 820 px: DROP on the crest above the lanterns.
-  - 820 px and up: DROP on the hill beside the lanterns, which leaves room for a bigger heart.
-  - Tags take at most 2 lines.
-  - The finale cards are equal: 158×130 at 390 and 248×140 at 1280.
-- Performance: one rAF loop runs only while something warms, cools or rises, and writes style and CSS variables only. The transform lives on the inner .eosLanFly span, because the arcade skins button:hover with a transform. There are no blur or backdrop filters, sky contain:strict, about 57 or fewer animated nodes, pre-mounted pools (stars, rain, golden lantern), and the root sets filter:none.
-- Reduced motion or calm visuals: lanterns fade upward with no sway (a 46 px drift and a cross-fade into the star). There is no hover, tug, flame flicker, motes, twinkle, lean or DROP pop, and the heartbeat twin is opacity only.
+ROUND 1: WHAT CHANGED (per finding)
+- [major] Past-lantern performance: the sky now brightens as ONE layer.
+  - .eosLanPast transitions only its own opacity (.64 → 1), and a single .eosLanPastHaze layer fades in.
+  - The per-dot opacity/transform/box-shadow transitions and the --d stagger are gone.
+  - The flicker runs on at most 4 of 120 dots.
+  - Measured with 120 dots at 390: play peak 44-46 animated nodes, finale 46-50, ask 39. Reduced motion: 9-15.
+  - With 0 past lanterns: 40-41 during play and 42-46 at the finale. At 1280: 46 and 48.
+  - Also: the arcade PremiumBurst (25-35 nodes) is replaced by this game's own spark bursts. A released lantern gets a ring + 6 sparks (7 nodes). The golden choice gets a ring + 9 sparks + a bloom (11 nodes).
+  - During fly/done the dusk twinkles and the hill fireflies rest; the embers and rays take over.
+  - Horizon and hill glow now animate opacity (composited) instead of background.
+- [major] DOM churn when the player taps instead of holds:
+  - There is one cue span, which is never remounted. Its fade restarts through a data-cv="a|b" toggle.
+  - A small cue scheduler (setCue) sets minimum display times: hints ("Almost…", "Hold gently…") stay at least 600 ms, and true lines stay at least 2.6 s. A request made during a hold waits its turn.
+  - The "warming" line and DROP's hopeful face (E57) appear only after 200 ms of holding (ui.warming), so quick taps never strobe the line or the face.
+  - Measured: 12 quick taps in 8 s gave 2 mutations (2 characterData, 0 childList, 0 src), at most 1 per second, and 1 face total. Before: 72 mutations and 25 face changes.
+- [minor] Non-soft sfx from rAF: lit() runs inside rAF. When the lantern was already flicked up, it now launches with rise(i, false) and sets pendingChime. The scored sfx("chime") then plays on the next pointermove or pointerup (a user event, valid for 5 s). sfx stays soft + chime ×3 + win.
+- [minor] Reduced / calm visuals: no PremiumBurst and no sparks. A soft opacity-only glow (.eosLanSoftBurst) plays instead. The embers, ray spin and constellation/DROP glides are off: they cross-fade at the new pose. The heart pulse is opacity only.
+- [minor] Honest share copy:
+  - After the choice the line stays blank for 1 s (the step card is floating there).
+  - It then reads "A little warmth, on its way 💛" until the share settles.
+  - When the share resolves: "Sent with love. 💛" and the label WARMTH SENT.
+  - On AbortError: "Saved for later — send it anytime. 💛" and SAVED FOR LATER.
+  - On a reject or no share: the copy fallback, the toast "Copied — paste it to someone" (or "Send them: …"), the line "Warmth, ready to send 💛" and READY TO SEND.
+  - The 90 % label is WARMTH ON ITS WAY.
+  - All 4 paths were verified with navigator.share stubbed to ok, abort and reject, and with share undefined.
+- [minor] Short arenas (phone landscape):
+  - boxT is clamped to ≤ 22 % of H, and boxB to ≤ H − 8.
+  - A compact layout applies when boxH < 300: lanterns 44-70 px, one-line tags (the fitter uses 1 line), DROP beside the lanterns (side) and cards ≤ boxH − 8.
+  - The lanterns always stay inside the arena.
+- [minor] Forced layout on every pointermove: the stage scale is read once on pointerdown (s.k).
+- [minor] Keyboard scroll: preventDefault fires only when the key acts. That means Space starting a press or held for a key-press, and ↑ raising a lit, held lantern. Space and ↑ with nothing to do (or outside play) are left alone.
+- [major + minor] Words on the lanterns (eosLanWords + eosLanFitter):
+  - Phrases are rebuilt from the user's whole sentence (the entries joined back; cycled short inputs are deduplicated).
+  - The sentence is split at punctuation and at joining words (and/but/since/because/when/…, dropped).
+  - A long clause splits where a new subject starts (i/he/she/they/we/nobody/everyone), else before a natural boundary (last/at/for/feels/…), else where both halves fit and still mean something.
+  - Every phrase is MEASURED with canvas measureText in the tag's real font, and must fit the tag's width in ≤ 2 lines (1 in compact).
+  - Phrases are scored by content words ×2 + feeling words ×3 (alone, empty, miss, lost, left, nobody, …), with later clauses winning ties. The best 3 are kept in the user's order.
+  - When there are fewer than 3, the longest phrase splits at a subject or boundary before seeds are used. Seeds never repeat a word that is already on a lantern.
+  - The stop list now includes pronouns, particles and time words (they/them/she/her/him/you/we/us/all/back/out/up/off/anymore/last/week/…).
+  - Words freeze once the first lantern is touched. A strong safety flag still yields EOS_NEUTRAL_WORDS through core eosWords. EosWord rendering is unchanged.
+  - Phone results:
+    - "nobody texted me back they all left" → nobody texted me | they all left
+    - "i miss my dad and nobody calls me anymore" → i miss my dad | nobody calls me
+    - "i lost my dog last week and the house feels empty" → i lost my dog | the house | feels empty
+    - "i feel so lonely since she left me" → i feel so lonely | she left me
+    - "i feel like nobody cares…, and i'm tired of pretending" → nobody cares | i'm tired of pretending
+  - Desktop (wider tags): "nobody texted me back | they all left", "i miss my dad | nobody calls me anymore".
+  - The narrow tag padding is 8 px, and tags are (W−24)/3 wide.
+- [major] Arrows at the two decision points:
+  - The lantern marker carries oy = (0.46·lh − uh/2)/uh (≈ −0.22), so the ring and hand sit on the paper. The word is covered 0 % at start (390 and 1280).
+  - The choice cards carry ox 0.36 / oy −0.34, so the demo hand taps the card's top corner, not its copy.
+  - The ask composition leaves a clear band (92 px phone, 96 desktop) between the question and the cards for the chevron and the "YOUR CHOICE" label. Measured: hand, chevron and label cover 0 % of the question, DROP and the golden lantern.
+- [major] The finale is its own composition, clear of the wrapper cards. Measured: the finish card is CENTRED on the stage (≈101 px tall on phone, 63 on desktop), and the step card sits at the tap.
+  - gather/ask: the constellation group (one transform) glides to the ask pose. DROP flies INTO the heart holding the golden lantern, with the question under it.
+  - fly/done: the heart swells into the sky above the centre band. With 0 past lanterns on phone the heart is ~180 px wide and DROP 85 px.
+  - The golden lantern rises to the cleft, the line draws, DROP hugs (E08) with a heart pop at 1.1 s, and 12 embers shower from the four stars.
+  - A slow ray burst turns behind the heart, an amber dawn layer warms the horizon to peach/amber, and every past lantern glows (one layer).
+  - At 2.4 s the heart beats twice (lub-dub pulses + tones + a haptic).
+  - The closing line + toast sit in the middle band (free while the step card is at the tap). At 2.85 s they glide below where the finish card will land.
+  - Timing: 100 % arrives at 2.9 s (was 1.8 s) and onDone at 3.35 s, so the peak plays before the finish card.
+  - Measured on the timeline (390 and 1280, all 3 share outcomes): DROP 0 %, heart 0 %, line 0 %, toast 0 % under the step or finish card in normal motion. In reduced motion one 0.3 overlap of the line occurs for ~0.3 s while the static step card is up.
+- [minor] The true line under each rise now waits 900 ms (lineDelay) for the step card to float away, then holds for 2.6 s. The next lantern's hints wait their turn, and gather waits until the 3rd line has shown for ~2.4 s.
+- [minor, NOT this file] The wrapper's step words in 114 ('RESET ✓', 'SPACE ✓', 'RELEASED ✓') read cold. This goes to the rewards/wrapper owner: give 114 / sad / lonely a warm set ('GLOWING ✓', 'WARMER ✓', 'LIT ✓', 'SENT WITH LOVE').
 
-EXPORTS (top level, no import/export lines): EOS_GAME_114 (all 15 GAMES fields), EosSkyLanternsEngine, EOS_LANTERNS_CSS.
-- Registered with eosRegisterGame(EOS_GAME_114, EosSkyLanternsEngine, {hint:"Hold a lantern to light it, then flick it up", mindBend, css, gesture:"hold", char:"drop", seconds:25}), which gives EOS_GAME_META[114] = {gesture:"hold", char:"drop", seconds:25}.
-- Dev/test handle eosExpose("lanterns", {state(), EOS_GAME_114, layout}): window.__eos.lanterns.state() returns {stage, lanterns[{st, heat, slot}], held, risen, stars, prog, plog, sfx, beats, early, easy, choice, toast, face, faces, past, done}. It never contains words.
-- Every other top-level name is EOS_LAN_* / EosLan* / eosLan*. Keyframes are eosLan*. The CSS key is game-114.
+WHAT THE GAME IS (unchanged core)
+- The scene:
+  - A dusk hill in 3 depth layers: a sky with the user's own past lanterns (eos_sessions_v1 rows for 114, up to 120 drawn, the "N lanterns lit here" pill, never fake strangers), hills with DROP on the crest (warm key light, cool moon rim), and 3 paper lanterns carrying the user's words.
+- Playing:
+  - Hold 1.2 s (0.7 s after 2 early lifts or 9 s idle) and the glow fills from the fingers, with a warm hum and a slowing heartbeat (60 → 52 bpm) that has a visual twin.
+  - Flick it up, or let go, and it rises (2.2 s sway, or a calm 1.5 s fade) into a star on a heart constellation.
+  - Each rise is followed by a true line (loved / same sky / everyone carries something). No fail state.
+  - Keyboard: Space/Enter hold, ↑ or letting go releases.
+- The finish:
+  - A golden 4th lantern asks "Send a little warmth?" with 2 equal cards (share "Thinking of you 💛" with a copy fallback, or "Keep it for me"). Both finish the game, with the same bonus (270-350).
+  - Safety copy: "Reach out to someone?" / "Text someone you trust", and neutral words on the lanterns.
+- Progress: 0 → 3/10/18/25 per lantern → 82 → 90 → 100. It is strictly increasing, with onDone once.
+- DROP's faces: E80/E70 → E57 (now after 200 ms of holding) → E59 → E28/E31 → E09 → E08.
+
+EXPORTS (no import/export lines)
+- Public names: EOS_GAME_114, EosSkyLanternsEngine, EOS_LANTERNS_CSS. Every other name is EOS_LAN_* / EosLan* / eosLan*.
+- eosExpose("lanterns", {state, EOS_GAME_114, layout, words: eosLanWords, fitter: eosLanFitter}).
+  - layout(W, H, safeTop, safeBottom, pill) now also returns compact, qY, lineY, toastY, lineRise, askH, finH and the --ca*/--cf*/--da*/--df* pose variables.
+- Registration is unchanged: eosRegisterGame(EOS_GAME_114, …, {gesture:"hold", char:"drop", seconds:25}).
 
 INTEGRATOR: NOTHING NEW TO WIRE
-- The game runs through the existing I1-E11 route (EosEngineFor in RoutedGameContent) and works in dev/eos_integrate.py scratch builds.
-- Optional hooks it calls when present: eosApi("dots").pulse?.("in") when a lantern is pressed and pulse?.("out") when it is released. It does not own the breath pacer: there is no breath rhythm, only the heartbeat.
-- Marker contract for the arrows module:
-  - unlit lantern (the next one, or the one being held): {g:"hold", ms:1200 (700 when easy), label:"HOLD TO LIGHT IT"}
-  - lit and held: {g:"drag", dir:"u", d:140, label:"LET IT RISE ↑"}
-  - no marker for 0.55 s after a launch, or during gather and fly
-  - ask stage: both .eosLanOpt carry {g:"choose", label:"YOUR CHOICE"}
-- Router: send sad and lonely to 114. GOOD must never be routed here (its copy is about loss).
-- Do not add .eosLanLantern to PX_SQUASH_TARGETS. The engine already squashes on every touch.
-- Note for readability/arcade: the wrapper's .tsExactUserText rule sets max-width:88% on user words, which squeezed shrink-to-fit tags into 1-letter lines ("lef / t"). This game overrides it locally with max-width:none!important on .eosLanTag .eosWord. Other shrink-to-fit word containers may hit the same issue.
+- The marker contract is unchanged: hold (ms 1200/700) → drag u 140 → choose on both cards. Only the oy/ox target offsets were added.
+- Router: sad and lonely → 114. GOOD never routes here.
+- Do not add .eosLanLantern to PX_SQUASH_TARGETS.
+- Rewards owner: see the step-word note above.
 
-ACCEPTANCE (scratch integrated build: python3 dev/eos_integrate.py --dev-dir /tmp/eos_game-lanterns_int --modules 24_eos_game_lanterns.jsx; scripts /tmp/lan/t4.mjs (acceptance), t5 (finishGame timing), t6 (safe area, copy lint, flash, shots), t7 (tags))
-(1) Meets the criterion. META = {gesture:"hold", char:"drop", seconds:25}, there are no [eos] warnings, and the game starts from the menu as SKY LANTERNS.
-(2) Meets the criterion. The markers go hold (ms 1200, "HOLD TO LIGHT IT") → drag u 140 "LET IT RISE ↑" once lit → choose on BOTH options "YOUR CHOICE". finishGame logged the stages m:hold and m:choose with 0 arrow misses and 0 label mismatches at both sizes.
-(3) Meets the criterion. With no 114 rows (one row for game 2 only) there is no .eosLanCount and there are 0 dots. With 3, 5, 23 and 41 rows the label reads "3 / 5 / 23 / 41 lanterns lit here" with the same number of dots.
-(4) Meets the criterion. The two cards have identical sizes (158×130 at 390, 248×140 at 1280) and both finish (done true, plog …82,90,100). With navigator.share stubbed to reject, the toast reads "Copied — paste it to someone". With navigator.share undefined, the toast is the same. With share stubbed to resolve, KEEP never calls share.
-(5) Meets the criterion. With EOS_STORE.safety = "selfharm" the question reads "Reach out to someone?", the card reads "Text someone you trust / "Hey, can you talk? I'm having a hard time."", and the tags read "this feeling", "a heavy moment", "right now" (all EOS_NEUTRAL_WORDS).
-(6) Meets the criterion.
-  - finishGame (lite:true, load average 8-10 on 4 cores) took 27.5 s at 390×844 (pointer), 39.2 s at 1280×860 (pointer) and 30.1 s at 1280 (keyboard, alt:"keyboard"). The keyboard run at 390 took 18.3 s.
-  - Earlier runs at load average 12-14 took 35 s at 390 and 46 s at 1280. The time is headless overhead (each pointer event waits for a 3 fps frame); the nominal game takes about 13-20 s.
-  - Wrapper aria-valuenow is monotonic at both sizes, and the engine plog is 0,3,10,18,25,28,35,43,50,53,60,68,75,82,90,100. onDone fired once.
-  - sfx = soft, chime, soft, chime, soft, chime, win.
-  - Heartbeat twin present: beats 2-3 per hold, root data-beat toggles a/b, and .eosLanBeat is in the DOM.
-  - Reduced motion: the rise transform is translate3d(0, −5…−46 px) rotate(0) scale(1), so there is no sway.
-  - The tags, lanterns, cue and finale cards do not intersect .globalPlayGuide or .engineProgressHud at 390 or at 1280 (cards bottom 556 vs guide top 559 at 390, and 574 vs 575 at 1280). Nothing is off-screen.
-  - smallText(14) in .eosG114 found nothing. lintCopy found no violations.
-  - flashCheck at 390: 0 flashes per second in reduced mode (reliable, 11.1 fps) and at most 1 per second in normal mode (reliable=false at 5-6 fps because of machine load).
-  - Zero page errors in every run.
-Pixar checklist, all met: 3 depth layers (sky with past lanterns, hills with DROP, lanterns with tags and the golden lantern) · key light (warm, from the lanterns) and rim light (cool, from the moon) on DROP · squash on every touch (lantern paper data-sq, DROP pop on every face change, card :active) · the face changes 5-9 times and ends on E08 hugging a heart · ≤ 1 instruction line · Baloo 2 via var(--eos-font) · no flat rectangles as primary objects · colour script from a cool slate or indigo dusk to warm peach or amber · every touch answered synchronously with visual + sound + haptic · no flashes · safe area respected.
+ACCEPTANCE (round 1)
+- Builds:
+  - Isolated: python3 build.py --dev-dir /tmp/eos_game-lanterns --modules 00_eos_core.jsx,24_eos_game_lanterns.jsx → OK.
+  - Scratch integrated with the real arrows: dev/eos_integrate.py --dev-dir /tmp/eos_game-lanterns_int --modules 24_eos_game_lanterns.jsx,30_eos_arrows.jsx → OK.
+- Scripts: /tmp/lanfix/flow.mjs (journey, nodes, arrows, finale overlap timeline, share stubs), mash.mjs (tap churn), words.mjs (phrases).
+- Every run passed with:
+  - 0 page errors and 0 warnings.
+  - plog 0,3,10,18,25,28,35,43,50,53,60,68,75,82,90,100.
+  - sfx soft,chime,soft,chime,soft,chime,win (including the flick-while-warming lantern, whose chime comes on the next pointer event).
+  - onDone once (done:true).
+  - At 390: normal send-ok, send-reject and send-abort; normal keep with 130 past lanterns; reduced keep with 130 past lanterns.
+  - At 1280: normal send-ok and send-abort.
 
-SCREENSHOTS (/home/user/thinkstill-rituals/framer/dev/shots/eos/, a git-ignored folder)
-- Phone, the journey: game-lanterns_{start,warm,lit,rise,mid,ask,fly,finish}_390.png
-- Desktop: game-lanterns_{start,mid,ask,fly,finish}_1280.png (the earlier layout, kept for comparison) and game-lanterns_{start,mid,ask,finish}_normal_1280.png (final)
-- Phone, final: game-lanterns_{start,mid,ask,finish}_normal_390.png
-- Phone, safety copy: game-lanterns_{start,mid,ask,finish}_safety_390.png
-- Phone, reduced motion: game-lanterns_{start,mid,ask,finish}_reduced_390.png
+SCREENSHOTS (/home/user/thinkstill-rituals/framer/dev/shots/eos/, git-ignored)
+- Round 1: game-lanterns_r1_390_normal_send_0_{1start,3ask,4peak,5finish}, game-lanterns_r1_390_normal_keep_130_2mid, game-lanterns_r1_390_reduced_keep_130_{4peak,5finish}, game-lanterns_r1_1280_normal_send_0_{1start,3ask,4peak}.png.
+- What I checked on them:
+  - The start hand is on the paper, with the word readable.
+  - Ask: heart, DROP, the golden lantern, the question, the "YOUR CHOICE" label and the chevron sit in clean bands above the cards.
+  - Peak: a big heart with rays, DROP hugging, an amber dawn, and the line + toast clear of the cards.
+  - The earlier round's shots are kept.
 
 KNOWN LIMITATIONS
-- Headless timing depends on load (see (6)). Every timer is wall-clock and the hold accumulates real time, not frames, so real devices play at the nominal pace.
-- Tag words come from core eosWords chunking. Chunks made only of little words ("and the") are dropped and padded with the feeling's seeds, but a lone chunk such as "left" can remain.
-- The wrapper's step-reward card and finish card cover the centre of the scene during rises and the finale (wrapper behaviour), and partly hid the toast in some desktop shots.
-- The real navigator.share sheet was not exercised; it was stubbed for resolve and reject, and also tested with share undefined.
-- Image-only input (round thumbnails on the lantern paper, captions from the seeds) is implemented but was not exercised at runtime.
-- I ran only the isolated and scratch-integrated builds, not the full build.py, to avoid clobbering dev/out.js for parallel tasks.
+- The wrapper's step-card words for 114 are cold (wrapper/rewards owner).
+- In reduced motion the wrapper keeps its step card fully opaque until the finish card. While it sits at the tap, the closing line can be partly covered for a moment (measured once at 0.3 for ~0.3 s).
+- On phone with past lanterns (pill shown), the ask-stage DROP inside the heart is ~57 px (the 390 box is 390 px tall, and the cards, the arrow band and the question take ~250 px). It grows to ~73-85 px at the finale.
+- The finish-card band is modelled from measurements (centred, ~101 px phone / 63 px desktop). If the wrapper changes that card, the cardC/cardHalf constants in eosLanLayout need retuning.
+- The real navigator.share sheet was not exercised (it was stubbed ok/abort/reject/undefined). Headless timings depend on load. Image-only input is still not exercised at runtime.
+- Compact (landscape) layout: placement and the 1-line fit are computed in eosLanLayout and checked by reading the code. It was not re-run at 844×390 this round.
