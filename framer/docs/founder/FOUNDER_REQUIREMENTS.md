@@ -1605,3 +1605,8 @@ The ambition is Pixar-level creative craftsmanship, remarkable interactivity, me
 **Protect what we have already established. Fix what is broken. Improve what is mediocre. Do not repeat problems the founder has spent months correcting.**
 
 Begin with a requirements-to-implementation gap audit, then continue the existing development and deliver playable results for founder approval.
+
+---
+## Addendum (founder, 2026-10-09)
+- Dopamine bursts must be different for different games so the user doesn't get bored.
+- The stomping boot should look like a boot when the user activates it. Likewise all tools should feel real.
