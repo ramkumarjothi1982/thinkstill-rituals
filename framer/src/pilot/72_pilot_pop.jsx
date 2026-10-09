@@ -639,6 +639,9 @@ const EosPilotPopInner = React.memo(function EosPilotPopInner({ live, gameId, wo
             setPhase("finale")
             st.chainMax = Math.max(st.chainMax, st.chain)
             fin.start(e)
+            try {
+                if (arenaRef.current) arenaRef.current.setAttribute("data-pop-t0", String(Math.round(performance.timeOrigin + fin.t0())))
+            } catch (x) {}
             return
         }
         if (waveLeft === 0) {
@@ -883,8 +886,10 @@ ${EOS_PILOT_POP_AR} .pbSway,${EOS_PILOT_POP_AR} .pbSwing{position:absolute;inset
 ${EOS_PILOT_POP_AR} .pbSway{--swk:1;animation:eosPilotPopSway var(--sp,2.6s) ease-in-out var(--sd,0s) infinite alternate}
 ${EOS_PILOT_POP_AR} .popBub[data-live="1"] .pbSway{--swk:1.45}
 ${EOS_PILOT_POP_AR} .popBub.isGone .pbSway{animation-play-state:paused}
-${EOS_PILOT_POP_AR} .pbTether{position:absolute;left:var(--ox);top:var(--oy);width:1.6px;height:100px;margin-left:-.8px;transform-origin:50% 0;
-  transform:rotate(var(--tr)) scaleY(var(--tl));transition:transform .6s cubic-bezier(.34,1.3,.5,1);overflow:hidden;
+/* the tether's anchor moves by translate with the SAME transition as the bubble, so during a re-balance glide
+   (bubble P(t) + anchor o(t)) the string's end stays exactly on the hand */
+${EOS_PILOT_POP_AR} .pbTether{position:absolute;left:0;top:0;translate:var(--ox) var(--oy);width:1.6px;height:100px;margin-left:-.8px;transform-origin:50% 0;
+  transform:rotate(var(--tr)) scaleY(var(--tl));transition:transform .6s cubic-bezier(.34,1.3,.5,1),translate .6s cubic-bezier(.34,1.3,.5,1);overflow:hidden;
   background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(255,255,255,.7) 60%,rgba(255,255,255,.55))}
 ${EOS_PILOT_POP_AR} .pbTether > i{position:absolute;left:-1px;right:-1px;top:0;height:30%;opacity:0;font-style:normal;background:linear-gradient(180deg,transparent,#fff 45%,#fffbe0 55%,transparent)}
 ${EOS_PILOT_POP_AR} .pbBody{position:absolute;inset:0;border-radius:50%;overflow:hidden;isolation:isolate;
@@ -922,16 +927,18 @@ ${EOS_PILOT_POP_AR} .popFlare{position:absolute;width:var(--fs);height:var(--fs)
   background:radial-gradient(circle,rgba(255,252,236,.95),rgba(255,244,214,.55) 30%,rgba(255,244,214,0) 68%)}
 ${EOS_PILOT_POP_AR} .popHero{z-index:1}
 ${EOS_PILOT_POP_AR} .popHero .eosPilotActorName{color:#24204a;text-shadow:0 0 6px rgba(255,255,255,.9)}
-${EOS_PILOT_POP_AR} .popCalm{position:absolute;z-index:2;border-radius:50%;overflow:hidden;opacity:0;isolation:isolate}
+${EOS_PILOT_POP_AR} .popCalm{position:absolute;z-index:2;border-radius:50%;overflow:hidden;opacity:0;isolation:isolate;
+  box-shadow:0 0 0 1.5px rgba(255,255,255,.75),0 0 26px 4px rgba(200,236,255,.55),0 0 60px 10px rgba(255,244,214,.35)}
 ${EOS_PILOT_POP_AR} .popCalm[data-on="1"]{opacity:1}
 ${EOS_PILOT_POP_AR} .popCalm > i{position:absolute;inset:0;border-radius:50%;font-style:normal}
 ${EOS_PILOT_POP_AR} .popCalm > .film{background:
     radial-gradient(circle at 30% 22%,rgba(255,255,255,.95) 0 3%,rgba(255,255,255,.5) 6%,rgba(255,255,255,0) 14%),
     radial-gradient(ellipse 24% 8% at 66% 84%,rgba(255,255,255,.5),rgba(255,255,255,0)),
-    radial-gradient(circle at 50% 50%,rgba(220,240,255,.06) 58%,rgba(200,232,255,.22) 80%,rgba(255,255,255,.55) 97%);
+    radial-gradient(circle at 50% 50%,rgba(230,244,255,.1) 50%,rgba(200,232,255,.3) 78%,rgba(255,255,255,.7) 97%),
+    linear-gradient(160deg,rgba(255,214,240,.16),rgba(190,240,255,.16) 50%,rgba(255,244,200,.14));
   box-shadow:inset -8px -2px 16px -6px rgba(159,216,255,.95),inset 6px 6px 18px -8px rgba(255,244,218,.95)}
-${EOS_PILOT_POP_AR} .popCalm > .rim{background:conic-gradient(#9EF0FF,#FFB8E6,#FFF2A8,#B8FFD9,#9EF0FF,#FFB8E6,#FFF2A8,#9EF0FF);opacity:.85;
-  -webkit-mask:radial-gradient(closest-side,transparent 84%,rgba(0,0,0,.6) 92%,#000 98%,transparent 100%);mask:radial-gradient(closest-side,transparent 84%,rgba(0,0,0,.6) 92%,#000 98%,transparent 100%)}
+${EOS_PILOT_POP_AR} .popCalm > .rim{background:conic-gradient(#7FE8FF,#FF9FDB,#FFE98A,#9DFFC8,#7FE8FF,#FF9FDB,#FFE98A,#7FE8FF);opacity:1;
+  -webkit-mask:radial-gradient(closest-side,transparent 74%,rgba(0,0,0,.45) 85%,#000 95%,rgba(0,0,0,.8) 100%);mask:radial-gradient(closest-side,transparent 74%,rgba(0,0,0,.45) 85%,#000 95%,rgba(0,0,0,.8) 100%)}
 ${EOS_PILOT_POP_AR} .popCalm[data-on="1"] > .rim{animation:eosPilotPopRim 8s linear infinite}
 ${EOS_PILOT_POP_AR} .popCalm > .caustic{inset:-30% -60%;border-radius:0;opacity:0;
   background:linear-gradient(90deg,transparent 34%,rgba(255,120,150,.5) 40%,rgba(255,210,120,.55) 45%,rgba(250,250,150,.5) 49%,rgba(140,240,170,.5) 53%,rgba(120,200,255,.55) 57%,rgba(180,140,255,.5) 62%,transparent 68%)}
@@ -961,9 +968,9 @@ ${EOS_PILOT_POP_AR} .popPrism{width:var(--ps);height:var(--ps);margin:calc(var(-
 ${EOS_PILOT_POP_AR} .popFx > .popPrism[data-on="1"]{opacity:.9}
 
 /* ---- the counter pill (text as an attribute: no characterData mutation per hit) */
-${EOS_PILOT_POP_AR} .popCount{position:absolute;right:12px;z-index:6;padding:5px 11px;border-radius:999px;pointer-events:none;
+${EOS_PILOT_POP_AR} .popCount{position:absolute;left:10px;z-index:6;padding:5px 9px;border-radius:999px;pointer-events:none;
   background:rgba(255,255,255,.62);box-shadow:0 2px 10px rgba(40,30,90,.16),inset 0 0 0 1px rgba(255,255,255,.8);
-  color:#24204a;font-size:13px;line-height:16px;font-weight:900;letter-spacing:.08em;white-space:nowrap}
+  color:#24204a;font-size:13px;line-height:16px;font-weight:900;letter-spacing:.04em;white-space:nowrap}
 ${EOS_PILOT_POP_AR} .popCount::after{content:attr(data-n)}
 
 @keyframes eosPilotPopSway{from{rotate:calc(var(--sw) * var(--tugk,1) * var(--swk,1) * -1)}to{rotate:calc(var(--sw) * var(--tugk,1) * var(--swk,1))}}

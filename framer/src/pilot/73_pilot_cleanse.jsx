@@ -27,8 +27,8 @@ const EOS_PILOT_CLEANSE = {
         phone: { F0: [0.18, 0.79], FC: [0.5, 0.79], F2: [0.82, 0.79], B0: [0.18, 0.33], BC: [0.5, 0.33], B2: [0.82, 0.33] },
         desk: { F0: [0.46, 0.8], FC: [0.64, 0.8], F2: [0.82, 0.8], B0: [0.46, 0.33], BC: [0.64, 0.33], B2: [0.82, 0.33] },
     },
-    lotus: { phone: [0.5, 0.6, 104], desk: [0.64, 0.6, 140] },
-    size: { phone: { back: 68, front: 88, hero: 96, still: 62 }, desk: { back: 80, front: 100, hero: 108, still: 80 } },
+    lotus: { phone: [0.5, 0.6, 122], desk: [0.64, 0.6, 160] },
+    size: { phone: { back: 68, front: 88, hero: 96, still: 58 }, desk: { back: 80, front: 100, hero: 108, still: 76 } },
     fill: { 1: ["FC"], 2: ["FC", "BC"], 3: ["F0", "FC", "F2"], 4: ["F0", "FC", "F2", "BC"], 5: ["F0", "FC", "F2", "B0", "B2"], 6: ["F0", "FC", "F2", "B0", "BC", "B2"] },
     order: ["F0", "F2", "B0", "BC", "B2", "FC"], // suggested order: front sides -> back row -> the protagonist last
     // 8 petals: closed (bud) and open angles; DOM order = depth (outer petals behind, inner in front of STILL)
@@ -767,7 +767,7 @@ const EosPilotCleanseInner = React.memo(function EosPilotCleanseInner({ live, wo
         arenaVars["--lyw"] = `${(lay.lotus.y - lay.hz).toFixed(1)}px`
         arenaVars["--sv"] = `${lay.SZ.still}px`
         arenaVars["--sw"] = `${Math.round(Math.min(b.w, 900) * 0.5)}px`
-        arenaVars["--c-count-top"] = `${Math.max(6, lay.T - 34).toFixed(0)}px`
+        arenaVars["--c-count-top"] = `${Math.max(6, lay.T + 2).toFixed(0)}px`
     }
     const renderOrb = (o) => {
         const P = lay.pos[o.slot]
@@ -819,7 +819,7 @@ const EosPilotCleanseInner = React.memo(function EosPilotCleanseInner({ live, wo
     }
     const back = W0 && lay ? W0.orbs.filter((o) => o.slot[0] === "B") : []
     const front = W0 && lay ? W0.orbs.filter((o) => o.slot[0] === "F") : []
-    const petal = (pp, i) => <i key={`p${i}`} className="cPetal" style={{ "--a0": `${pp.a0}deg`, "--a": `${pp.a}deg`, "--o": pp.o }} />
+    const petal = (pp, i) => <i key={`p${i}`} className="cPetal" data-b={pp.front ? undefined : "1"} style={{ "--a0": `${pp.a0}deg`, "--a": `${pp.a}deg`, "--o": pp.o }} />
     return (
         <div
             ref={arenaRef}
@@ -840,11 +840,10 @@ const EosPilotCleanseInner = React.memo(function EosPilotCleanseInner({ live, wo
                 {back.map(renderOrb)}
                 {lay ? (
                     <div ref={lotusRef} className="cLotus" data-eos-avoid="1" data-eos-char="still" style={{ left: `${lay.lotus.x.toFixed(1)}px`, top: `${lay.lotus.y.toFixed(1)}px`, "--L": `${lay.lotus.s}px` }}>
-                        {C.petals.filter((pp) => !pp.front).map(petal)}
                         <div ref={stillWrapRef} className="cStill">
                             <EosPilotActor ref={stillRef} role="breath" char="still" emotion="auto" size={lay.SZ.still} u={1} progress={80} reacts={[]} seed={7} style={{ left: 0, top: 0 }} />
                         </div>
-                        {C.petals.filter((pp) => pp.front).map((pp, i) => petal(pp, i + 6))}
+                        {C.petals.map(petal)}
                     </div>
                 ) : null}
                 {front.map(renderOrb)}
@@ -864,6 +863,8 @@ const EOS_PILOT_CLEANSE_CSS = `
 ${EOS_PILOT_CL}{--c-k:0;background:#16173A}
 ${EOS_PILOT_CL} .eosPilotStage{--eos-pilot-horizon:var(--c-hz,24%)}
 ${EOS_PILOT_CL} .eosPilotStage .moon{top:var(--c-moon-y,4%)}
+${EOS_PILOT_CL} .eosPilotStage .moon{left:54%}
+${EOS_PILOT_CL} .eosPilotStage .moonRefl{left:56%}
 ${EOS_PILOT_CL}[data-c-desk="1"] .eosPilotStage .moon{left:76.5%}
 ${EOS_PILOT_CL}[data-c-desk="1"] .eosPilotStage .moonRefl{left:78.5%}
 ${EOS_PILOT_CL}[data-c-desk="1"] .eosPilotStage .reeds{width:12%}
@@ -871,8 +872,8 @@ ${EOS_PILOT_CL}[data-c-desk="1"] .eosPilotStage .reeds{width:12%}
 /* plane layers: the reflection plate (finale), the ripple texture + water murk, the gold key, the moon path, the sweep ring */
 ${EOS_PILOT_CL} .cLayer{position:absolute;display:block;font-style:normal;pointer-events:none}
 ${EOS_PILOT_CL} .cMirror{left:0;right:0;top:var(--c-hz,24%);bottom:0;opacity:0;transition:opacity 1.1s ease;
-  background:radial-gradient(9% 6% at 81.5% 5%,rgba(244,248,255,.85),rgba(207,227,255,.32) 52%,rgba(207,227,255,0) 74%),
-  radial-gradient(14% 30% at 81.5% 22%,rgba(207,227,255,.14),rgba(207,227,255,0) 70%),
+  background:radial-gradient(9% 6% at 61.5% 5%,rgba(244,248,255,.85),rgba(207,227,255,.32) 52%,rgba(207,227,255,0) 74%),
+  radial-gradient(14% 30% at 61.5% 22%,rgba(207,227,255,.14),rgba(207,227,255,0) 70%),
   linear-gradient(180deg,rgba(24,38,94,.96) 0%,rgba(16,27,74,.9) 34%,rgba(8,14,44,.94) 100%);
   -webkit-mask:linear-gradient(90deg,transparent,#000 13%,#000 87%,transparent);mask:linear-gradient(90deg,transparent,#000 13%,#000 87%,transparent)}
 ${EOS_PILOT_CL}[data-c-desk="1"] .cMirror{background:radial-gradient(7% 6% at 84% 5%,rgba(244,248,255,.85),rgba(207,227,255,.32) 52%,rgba(207,227,255,0) 74%),
@@ -881,9 +882,9 @@ ${EOS_PILOT_CL}[data-c-fin] .cMirror{opacity:.9}
 ${EOS_PILOT_CL} .cRip{left:0;right:0;top:var(--c-hz,24%);bottom:0;opacity:calc(1 - var(--c-k) * .62);transition:opacity 1s ease;
   background:radial-gradient(80% 46% at 50% 58%,rgba(92,66,150,.46),rgba(92,66,150,0) 72%),radial-gradient(60% 30% at 20% 90%,rgba(80,58,130,.35),rgba(80,58,130,0) 70%)}
 ${EOS_PILOT_CL} .cRip::before,${EOS_PILOT_CL} .cRip::after{content:"";position:absolute;border-radius:50%;
-  box-shadow:inset 0 0 0 1px rgba(190,205,255,.2),0 0 0 9px rgba(0,0,0,0),0 0 0 10px rgba(190,205,255,.12);animation:eosPilotCleanseShimmer 7s ease-in-out infinite alternate}
-${EOS_PILOT_CL} .cRip::before{left:6%;top:18%;width:50%;height:9%}
-${EOS_PILOT_CL} .cRip::after{left:44%;top:52%;width:62%;height:10%;animation-duration:9s;animation-delay:-3s}
+  box-shadow:inset 0 0 0 1px rgba(190,205,255,.13),0 0 0 9px rgba(0,0,0,0),0 0 0 10px rgba(190,205,255,.07);animation:eosPilotCleanseShimmer 7s ease-in-out infinite alternate}
+${EOS_PILOT_CL} .cRip::before{left:var(--lx,50%);top:calc(var(--lyw,40%) + 4%);width:min(64%,560px);height:11%;translate:-50% -50%}
+${EOS_PILOT_CL} .cRip::after{left:var(--lx,50%);top:calc(var(--lyw,40%) + 5%);width:min(94%,820px);height:17%;translate:-50% -50%;animation-duration:9s;animation-delay:-3s}
 ${EOS_PILOT_CL}[data-c-fin] .cRip{opacity:0;transition-duration:.7s}
 ${EOS_PILOT_CL} .cGold{left:0;right:0;top:var(--c-hz,24%);bottom:0;opacity:0;transition:opacity .45s ease-out;
   background:radial-gradient(34% 12% at var(--lx,50%) var(--lyw,40%),rgba(255,211,122,.62),rgba(255,211,122,0) 72%),
@@ -924,7 +925,7 @@ ${EOS_PILOT_CL} .cOrb[data-hold="ready"] .eosPilotActorBall{box-shadow:0 0 0 2px
 ${EOS_PILOT_CL} .cOrb[data-hold="full"] .eosPilotActorBall{box-shadow:0 0 0 3px rgba(255,211,122,.95),0 0 calc(var(--a-size) * .42) rgba(255,211,122,.62)}
 /* murk: dark-violet ink that only ever sits INSIDE the circular ball (never a box behind it) */
 ${EOS_PILOT_CL} .cMurk{position:absolute;inset:0;border-radius:50%;z-index:3;pointer-events:none;font-style:normal;
-  background:radial-gradient(circle at 50% 88%,rgba(42,30,80,.86),rgba(58,44,94,.6) 38%,rgba(70,54,118,.3) 64%,rgba(110,96,170,.12) 86%)}
+  background:radial-gradient(circle at 50% 90%,rgba(42,30,80,.8),rgba(58,44,94,.52) 38%,rgba(70,54,118,.24) 64%,rgba(110,96,170,.1) 86%)}
 ${EOS_PILOT_CL} .cMurk::before{content:"";position:absolute;inset:-12%;border-radius:50%;
   background:conic-gradient(from 20deg,rgba(34,24,66,.5),rgba(34,24,66,0) 20%,rgba(46,34,86,.42) 42%,rgba(34,24,66,0) 64%,rgba(40,28,74,.46) 84%,rgba(34,24,66,.5));
   -webkit-mask:radial-gradient(closest-side,#000 55%,transparent);mask:radial-gradient(closest-side,#000 55%,transparent);animation:eosPilotCleanseSwirl 9s linear infinite}
@@ -956,15 +957,33 @@ ${EOS_PILOT_CL} .cLotus::before{content:"";position:absolute;left:50%;top:66%;wi
 ${EOS_PILOT_CL} .cLotus[data-hold="1"]::before{opacity:.5}
 ${EOS_PILOT_CL} .cLotus[data-open="1"]::before{opacity:1;transition-duration:.8s}
 ${EOS_PILOT_CL}[data-c-gold="1"] .cLotus::before{width:96%;height:62%;transition:opacity .4s ease,width .4s ease,height .4s ease}
-${EOS_PILOT_CL} .cPetal{position:absolute;left:50%;bottom:28%;width:30%;height:54%;margin-left:-15%;transform-origin:50% 100%;font-style:normal;
-  transform:rotate(var(--a0)) scale(.8,.9);transition:transform .56s cubic-bezier(.3,.7,.25,1.06) calc(var(--o) * 34ms)}
-${EOS_PILOT_CL} .cLotus[data-open="1"] .cPetal{transform:rotate(var(--a)) scale(1)}
-${EOS_PILOT_CL} .cPetal::before,${EOS_PILOT_CL} .cPetal::after{content:"";position:absolute;inset:0;border-radius:50% 50% 50% 50% / 80% 80% 20% 20%}
-${EOS_PILOT_CL} .cPetal::before{background:linear-gradient(180deg,#fdeef7 0%,#efbddc 38%,#c48ad0 72%,#8a62b8 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.4),inset -3px -2px 6px rgba(90,50,130,.3)}
-${EOS_PILOT_CL} .cPetal::after{opacity:0;transition:opacity .6s ease;background:linear-gradient(180deg,#fff8e0 0%,#ffe0a0 46%,rgba(255,200,110,.55) 100%);box-shadow:0 0 12px rgba(255,211,122,.55)}
-${EOS_PILOT_CL} .cPetal[data-on="1"]::after{opacity:.82}
-${EOS_PILOT_CL} .cStill{position:absolute;left:50%;top:calc(72% - var(--sv,62px) * .46);width:0;height:0;opacity:.38;transition:opacity .45s ease;z-index:0}
+${EOS_PILOT_CL} .cPetal{position:absolute;left:50%;bottom:27%;width:36%;height:62%;margin-left:-18%;transform-origin:50% 100%;font-style:normal;opacity:.94;
+  transform:rotate(var(--a0)) scale(.8,.92);transition:transform .56s cubic-bezier(.3,.7,.25,1.06) calc(var(--o) * 34ms),opacity .4s ease}
+${EOS_PILOT_CL} .cPetal[data-on="1"]{transform:rotate(calc(var(--a0) * 1.9)) scale(.84,.95)}
+${EOS_PILOT_CL} .cLotus[data-open="1"] .cPetal{transform:rotate(var(--a)) scale(1);opacity:1}
+${EOS_PILOT_CL} .cPetal::before,${EOS_PILOT_CL} .cPetal::after{content:"";position:absolute;inset:0;
+  clip-path:polygon(50% 0,62% 6%,76% 18%,88% 35%,96% 54%,94% 73%,83% 89%,64% 99%,36% 99%,17% 89%,6% 73%,4% 54%,12% 35%,24% 18%,38% 6%)}
+${EOS_PILOT_CL} .cPetal::before{background:radial-gradient(60% 40% at 50% 92%,rgba(120,50,130,.45),rgba(120,50,130,0) 100%),
+  linear-gradient(180deg,#fff4fa 0%,#f9cfe4 26%,#ee9cc8 58%,#c06aae 86%,#94509f 100%)}
+${EOS_PILOT_CL} .cPetal[data-b="1"]::before{background:radial-gradient(60% 40% at 50% 92%,rgba(90,40,110,.5),rgba(90,40,110,0) 100%),
+  linear-gradient(180deg,#f6dcec 0%,#e9a9cf 30%,#cf78b4 62%,#9a4f9c 90%,#74407e 100%)}
+${EOS_PILOT_CL} .cPetal::after{opacity:0;transition:opacity .6s ease;background:linear-gradient(180deg,#fffbe6 0%,#ffe6ad 40%,rgba(255,196,110,.4) 100%)}
+${EOS_PILOT_CL} .cPetal[data-on="1"]::after{opacity:.62}
+${EOS_PILOT_CL} .cLotus[data-open="1"] .cPetal::after{opacity:.5}
+${EOS_PILOT_CL}[data-c-gold="1"] .cLotus .cPetal::after{opacity:.78}
+${EOS_PILOT_CL} .cStill{position:absolute;left:50%;top:calc(64% - var(--sv,58px) * .4);width:0;height:0;opacity:.55;transition:opacity .45s ease;z-index:0}
 ${EOS_PILOT_CL} .cStill[data-awake="1"]{opacity:1;z-index:3}
+
+/* far lily pads (depth) on the kit's pad prop, with a moonlit upper rim */
+${EOS_PILOT_CL} [data-kit="pool"] .pads{top:var(--c-hz,24%);bottom:0;height:auto;background:
+  radial-gradient(6% 1.5% at 24% 9%,#3b6f5c 60%,transparent 74%),radial-gradient(6% 1.5% at 24% 9.6%,#21463b 70%,transparent 76%),
+  radial-gradient(4.5% 1.1% at 33% 7%,#22463b 70%,transparent 76%),
+  radial-gradient(7% 1.8% at 80% 15%,#3b6f5c 60%,transparent 74%),radial-gradient(7% 1.8% at 80% 15.7%,#24503f 70%,transparent 76%),
+  radial-gradient(9% 2.3% at 9% 36%,#3f7a62 60%,transparent 74%),radial-gradient(9% 2.3% at 9% 37%,#285a47 70%,transparent 76%),
+  radial-gradient(8% 2% at 92% 42%,#3f7a62 60%,transparent 74%),radial-gradient(8% 2% at 92% 43%,#285a47 70%,transparent 76%),
+  radial-gradient(12% 3% at 6% 88%,#2d6450 70%,transparent 76%),radial-gradient(12% 3% at 95% 94%,#2d6450 70%,transparent 76%)}
+${EOS_PILOT_CL} .cPad{background:radial-gradient(closest-side,rgba(170,190,255,.2),rgba(170,190,255,.05) 66%,rgba(205,220,255,.26) 84%,rgba(205,220,255,0) 100%)}
+${EOS_PILOT_CL} .cOrb.isGone .cPad{background:none}
 
 /* fireflies: only in the afterglow, lifting off the reeds */
 ${EOS_PILOT_CL} [data-kit="pool"] [data-pool="fireflies"] > i{animation:none;opacity:0;left:calc(5% + var(--i) * 3.5%);top:calc(64% + var(--i) * 3%)}
