@@ -613,6 +613,58 @@ function EosSupportPill({ onOpen, reduced = false }) {
     )
 }
 
+// What the card must not cover right now (client rects + weight): the guide arrow's target, the check-in orbs, the
+// shift meter's dial and buttons.
+function eosSafetyProtected(host) {
+    const out = []
+    const add = (r, w) => {
+        if (r && r.width > 0 && r.height > 0) out.push({ l: r.left, t: r.top, r: r.right, b: r.bottom, w })
+    }
+    try {
+        const a = eosApi("arrows").state?.()
+        if (a && a.visible && Number.isFinite(a.x) && Number.isFinite(a.y)) add({ left: a.x - 44, top: a.y - 44, right: a.x + 44, bottom: a.y + 44, width: 88, height: 88 }, 4)
+    } catch {}
+    try {
+        host.querySelectorAll(".eosCheckIn .eosOrb, .eosCheckIn .eosCkPress, [class*='eosShiftDial'], .eosShiftBtn, .eosShiftRate").forEach((el) => add(el.getBoundingClientRect(), 1))
+    } catch {}
+    return out
+}
+function eosSafetyCover(card, prot) {
+    const c = card.getBoundingClientRect()
+    let s = 0
+    for (const p of prot) {
+        const w = Math.min(c.right, p.r) - Math.max(c.left, p.l)
+        const h = Math.min(c.bottom, p.b) - Math.max(c.top, p.t)
+        if (w > 0 && h > 0) s += w * h * p.w
+    }
+    return s
+}
+// Pick the dock (top · bottom · right · left) that covers the least; sticky unless another is clearly better.
+function eosSafetyDock(card, host) {
+    try {
+        const cur = card.getAttribute("data-eos-dock") || "top"
+        const prot = eosSafetyProtected(host)
+        if (!prot.length) {
+            if (cur !== "top") card.setAttribute("data-eos-dock", "top")
+            return "top"
+        }
+        const cands = ["top", "bottom"].concat(host.clientWidth >= 900 ? ["right", "left"] : [])
+        let best = null
+        let curScore = 0
+        for (const d of cands) {
+            card.setAttribute("data-eos-dock", d)
+            const sc = eosSafetyCover(card, prot)
+            if (d === cur) curScore = sc
+            if (!best || sc < best.sc - 1) best = { d, sc }
+        }
+        const pick = curScore > 0 && best.sc < curScore * 0.7 ? best.d : cur
+        card.setAttribute("data-eos-dock", pick)
+        return pick
+    } catch {
+        return null
+    }
+}
+
 // Mounted by I2 inside .releaseStage in every stage: <EosSafetyLayer raw={raw} stage={stage} reduced={!!reduced} />
 function EosSafetyLayer({ raw = "", stage = "", reduced = false, tz }) {
     const st = useEosStore()
@@ -631,10 +683,65 @@ function EosSafetyLayer({ raw = "", stage = "", reduced = false, tz }) {
     const variantRef = React.useRef(variant)
     variantRef.current = variant
 
-    const focusCard = () => {
-        const el = primaryRef.current || (cardRef.current && cardRef.current.querySelector("a,button"))
-        eosSafetyFocus(el)
+    // auto (no tap): the card itself (tabIndex -1, reads the alertdialog title) — never the tel: link, so an Enter
+    // pressed right after a game ends cannot start a call (review r1). A tap / Tab / F6 → the primary line.
+    const focusCard = (auto) => {
+        const card = cardRef.current
+        eosSafetyFocus(auto ? card : primaryRef.current || (card && card.querySelector("a,button")))
     }
+    const liveRef = React.useRef(null)
+    const [compact, setCompact] = React.useState(false)
+    const compactRef = React.useRef(false)
+    compactRef.current = compact
+    // Phone (stage ≤ 560 px wide) while a game, the reveal or the check-in is on screen: the compact card. Then dock
+    // it where it covers the least of what the user needs right now (the arrow's target, the check-in orbs, the
+    // shift dial): top, bottom, or beside them on a wide stage. Direct DOM (data-eos-dock), no re-render.
+    const layout = React.useCallback(() => {
+        const card = cardRef.current
+        const host = (card && card.offsetParent) || (liveRef.current && liveRef.current.closest(".releaseStage"))
+        if (!host) return
+        const v = variantRef.current
+        const ck = !!host.querySelector(".eosCheckIn")
+        const want = !!v && v !== "info" && host.clientWidth <= 560 && (stageRef.current === "play" || stageRef.current === "reveal" || ck)
+        if (want !== compactRef.current) {
+            compactRef.current = want
+            setCompact(want)
+        }
+        if (card) eosSafetyDock(card, host)
+    }, [])
+    React.useLayoutEffect(() => {
+        if (!variant) return undefined
+        layout()
+        const iv = setInterval(layout, 450)
+        return () => clearInterval(iv)
+    }, [variant, stage, compact, layout])
+    // Another overlay's automatic focus move (the shift meter's orb / rate-dial autofocus) must not pull focus out
+    // of the card: when focus leaves the card for the shift meter with no pointer / key input just before, put it
+    // back. The user's own taps and keys always win.
+    React.useEffect(() => {
+        if (!variant || typeof document === "undefined") return undefined
+        let userAt = 0
+        const mark = () => {
+            userAt = Date.now()
+        }
+        const onFocusIn = (e) => {
+            try {
+                const card = cardRef.current
+                const t = e.target
+                const from = e.relatedTarget
+                if (!card || !t || !from || card.contains(t) || !card.contains(from) || Date.now() - userAt < 600) return
+                if (t.closest && t.closest('[class*="eosShift"]')) eosSafetyFocus(from)
+            } catch {}
+        }
+        document.addEventListener("pointerdown", mark, true)
+        document.addEventListener("keydown", mark, true)
+        document.addEventListener("focusin", onFocusIn, true)
+        return () => {
+            document.removeEventListener("pointerdown", mark, true)
+            document.removeEventListener("keydown", mark, true)
+            document.removeEventListener("focusin", onFocusIn, true)
+        }
+    }, [variant])
     // Debounced scan while typing (400 ms after the last keystroke).
     React.useEffect(() => {
         if (!raw) return undefined
@@ -661,7 +768,7 @@ function EosSafetyLayer({ raw = "", stage = "", reduced = false, tz }) {
             if (eosSafetyBusy(ae, stageRef.current)) return // already typing / playing in the new stage → keep waiting
             pendRef.current = false
             prevRef.current = ae && ae !== document.body ? ae : null
-            focusCard()
+            focusCard(true)
         }, 300)
         return () => clearTimeout(t)
     }, [stage])
@@ -690,7 +797,7 @@ function EosSafetyLayer({ raw = "", stage = "", reduced = false, tz }) {
         pendRef.current = false
         prevRef.current = ae && ae !== document.body && !(ae.closest && ae.closest(".arena")) ? ae : null
         // a tap lands at once; an automatic hand-over waits for other overlays' mount-time autofocus (shift: 80 ms)
-        const t = setTimeout(focusCard, userAsked ? 40 : 300)
+        const t = setTimeout(() => focusCard(!userAsked), userAsked ? 40 : 300)
         return () => clearTimeout(t)
     }, [variant, ui.nonce])
     // Tab / F6 while the card waits → into the card (once).
@@ -704,7 +811,7 @@ function EosSafetyLayer({ raw = "", stage = "", reduced = false, tz }) {
             if (card.contains(document.activeElement)) return
             e.preventDefault()
             prevRef.current = document.activeElement !== document.body ? document.activeElement : null
-            focusCard()
+            focusCard(false)
         }
         document.addEventListener("keydown", onKey, true)
         return () => document.removeEventListener("keydown", onKey, true)
@@ -732,10 +839,10 @@ function EosSafetyLayer({ raw = "", stage = "", reduced = false, tz }) {
     const pill = !variant && Object.keys(dismissed).some((k) => dismissed[k])
     return (
         <>
-            <div className="eosSrOnly" aria-live="assertive" aria-atomic="true">
+            <div ref={liveRef} className="eosSrOnly" aria-live="assertive" aria-atomic="true">
                 {announce}
             </div>
-            {variant ? <EosSafetyCard key="eosSafetyCard" variant={variant} reduced={reduced} onDismiss={dismiss} primaryRef={primaryRef} cardRef={cardRef} tz={tz} /> : null}
+            {variant ? <EosSafetyCard key="eosSafetyCard" variant={variant} reduced={reduced} onDismiss={dismiss} primaryRef={primaryRef} cardRef={cardRef} tz={tz} compact={compact} /> : null}
             {pill ? <EosSupportPill reduced={reduced} onOpen={() => eosSafetyOpen("info")} /> : null}
         </>
     )
@@ -743,16 +850,27 @@ function EosSafetyLayer({ raw = "", stage = "", reduced = false, tz }) {
 
 // ---------------------------------------------------------------- CSS (cream card, warm light, Baloo 2)
 const EOS_SAFETY_CSS = `
-${EOS_A} .eosSafetyCard{position:absolute;z-index:230;top:12px;left:50%;translate:-50% 0;width:min(520px,calc(100% - 16px));max-height:calc(100% - 20px);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;
+${EOS_A} .eosSafetyCard{position:absolute;z-index:230;top:12px;left:0;right:0;margin:0 auto;width:min(520px,calc(100% - 16px));max-height:calc(100% - 20px);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;
 padding:18px 18px 14px;border-radius:26px;pointer-events:auto;text-align:left;font-family:var(--eos-font);color:#3a1f45;-webkit-font-smoothing:antialiased;
 background:radial-gradient(120% 80% at 10% 0%,#fffbf3 0%,#fff3e1 52%,#ffe6cb 100%);
 box-shadow:0 0 0 2px rgba(255,206,140,.95),0 0 0 7px rgba(255,186,110,.16),0 22px 50px rgba(18,6,40,.5),0 0 80px rgba(255,180,100,.32);
 animation:eosSafetySlide .3s cubic-bezier(.2,.9,.3,1.12) both}
 ${EOS_A} .eosSafetyCard.isCalm{animation:eosSafetyFade .3s ease both}
+${EOS_A} .eosSafetyCard:focus{outline:none}
+${EOS_A} .eosSafetyCard:focus-visible{outline:3px solid rgba(122,60,255,.55);outline-offset:2px}
+/* docks (set by the layer: least cover of the arrow target / check-in orbs / shift dial) */
+${EOS_A} .eosSafetyCard[data-eos-dock="bottom"]{top:auto;bottom:12px}
+${EOS_A} .eosSafetyCard:is([data-eos-dock="right"],[data-eos-dock="left"]){width:min(372px,calc(100% - 16px))}
+${EOS_A} .eosSafetyCard[data-eos-dock="right"]{left:auto;right:12px;margin:0}
+${EOS_A} .eosSafetyCard[data-eos-dock="left"]{left:12px;right:auto;margin:0}
 ${EOS_A} .eosSafetyCard *{box-sizing:border-box}
 ${EOS_A} .eosSafetyHead{display:flex;align-items:flex-start;gap:14px}
 ${EOS_A} .eosSafetyStill{position:relative;flex:0 0 auto;width:64px;height:64px;margin-top:2px}
 ${EOS_A} .eosSafetyStill .eosOrb{position:relative;z-index:1}
+/* STILL breathes with the halo (co-regulation cue) and nods when a support action is tapped; static when calm */
+${EOS_A} .eosSafetyStillBody{position:relative;z-index:1;display:block;width:100%;height:100%;transform-origin:50% 70%;animation:eosSafetyBreath 6s ease-in-out infinite}
+${EOS_A} .eosSafetyStillBody.isNod{animation:eosSafetyNod .3s cubic-bezier(.3,1.4,.5,1) 1}
+${EOS_A} .eosSafetyCard.isCalm .eosSafetyStillBody{animation:none}
 ${EOS_A} .eosSafetyHalo{position:absolute;inset:-14px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,206,120,.85),rgba(255,170,90,.35) 55%,rgba(255,170,90,0));animation:eosSafetyHalo 6s ease-in-out infinite}
 ${EOS_A} .eosSafetyCard.isCalm .eosSafetyHalo{animation:none;opacity:.75}
 ${EOS_A} .eosSafetyStill .eosOrbBall{background:radial-gradient(circle at 34% 24%,rgba(255,255,255,.95),rgba(255,255,255,0) 32%),radial-gradient(circle at 50% 62%,#fff6e0 0%,#ffdca6 60%,#ffc07c 100%)!important;
@@ -790,6 +908,26 @@ ${EOS_A} .eosSafetyCard .eosSafetyLineBtn{display:inline-flex!important;align-it
 font:800 15px/1.1 var(--eos-font)!important;color:#3a1f45!important;text-decoration:none!important;text-shadow:none!important}
 ${EOS_A} .eosSafetyLineText{font:600 15px/1.2 var(--eos-font);color:#5a3b63}
 ${EOS_A} .eosSafetyEmergency{margin-top:8px;font:600 14px/1.35 var(--eos-font);color:#6a4a70}
+${EOS_A} .eosSafetyCopied{margin-top:6px;font:700 14px/1.35 var(--eos-font);color:#5a2f6e}
+${EOS_A} .eosSafetyCopied:empty{margin:0}
+/* compact: "more ▾" exists only where the layer asks for the compact card (phone · play / reveal / check-in) */
+${EOS_A} .eosSafetyCard .eosSafetyExpand{display:none!important}
+${EOS_A} .eosSafetyCard.isCompactCtx .eosSafetyExpand{display:inline-flex!important;grid-column:1/-1;justify-self:center}
+${EOS_A} .eosSafetyCard.isCompact{top:8px;padding:10px 12px;border-radius:20px}
+${EOS_A} .eosSafetyCard.isCompact[data-eos-dock="bottom"]{top:auto;bottom:8px}
+${EOS_A} .eosSafetyCard.isCompact .eosSafetyHead{align-items:center;gap:10px}
+${EOS_A} .eosSafetyCard.isCompact .eosSafetyStill{width:36px;height:36px;margin:0 2px 0 4px}
+${EOS_A} .eosSafetyCard.isCompact .eosSafetyStill .eosOrb{--eos-orb:36px!important}
+${EOS_A} .eosSafetyCard.isCompact .eosSafetyHalo{inset:-8px}
+${EOS_A} .eosSafetyCard.isCompact .eosSafetyHeart{font-size:13px;right:-5px;bottom:-4px}
+${EOS_A} .eosSafetyCard.isCompact .eosSafetyTitle{margin:0;font-size:18px!important;line-height:1.2!important}
+${EOS_A} .eosSafetyCard.isCompact :is(.eosSafetyBody,.eosSafetyTrust,.eosSafetyMoreWrap,.eosSafetyEmergency){display:none!important}
+${EOS_A} .eosSafetyCard.isCompact .eosSafetyPrimaryRow{margin-top:10px}
+${EOS_A} .eosSafetyCard.isCompact :is(.eosSafetyCall,.eosSafetySms){min-height:52px!important}
+${EOS_A} .eosSafetyCard.isCompact .eosSafetySms{padding:8px 12px!important}
+${EOS_A} .eosSafetyCard.isCompact .eosSafetyIcon{width:32px;height:32px;font-size:17px}
+${EOS_A} .eosSafetyCard.isCompact .eosSafetyRow{grid-template-columns:1fr auto;margin-top:8px}
+${EOS_A} .eosSafetyCard.isCompact .eosSafetyExpand{grid-column:auto;min-height:48px!important;padding:6px 12px!important}
 ${EOS_A} .eosSafetyCard :is(a,button):focus-visible{outline:3px solid #7a3cff!important;outline-offset:3px!important}
 ${EOS_A} .eosSupportPill{position:absolute;z-index:230;left:12px;top:12px;pointer-events:auto;animation:eosSafetyFade .3s ease both}
 ${EOS_A} .releaseStage:has(.eosCheckInChip) .eosSupportPill{top:66px}
@@ -820,7 +958,9 @@ ${EOS_A} .eosSupportPill button:focus-visible{outline:3px solid var(--eos-gold-1
 @keyframes eosSafetySlide{from{opacity:0;transform:translateY(-22px) scale(.97)}to{opacity:1;transform:none}}
 @keyframes eosSafetyFade{from{opacity:0}to{opacity:1}}
 @keyframes eosSafetyHalo{0%,100%{opacity:.55;scale:.92}50%{opacity:1;scale:1.06}}
-@media (prefers-reduced-motion:reduce){${EOS_A} .eosSafetyCard{animation:eosSafetyFade .3s ease both}${EOS_A} .eosSafetyHalo{animation:none;opacity:.75}}
+@keyframes eosSafetyBreath{0%,100%{scale:1}50%{scale:1.04}}
+@keyframes eosSafetyNod{0%{transform:none}35%{transform:translateY(3px) scale(1.07,.92)}70%{transform:translateY(-2px) scale(.97,1.04)}100%{transform:none}}
+@media (prefers-reduced-motion:reduce){${EOS_A} .eosSafetyCard{animation:eosSafetyFade .3s ease both}${EOS_A} .eosSafetyHalo{animation:none;opacity:.75}${EOS_A} .eosSafetyStillBody{animation:none}}
 `
 eosCss("safety", EOS_SAFETY_CSS)
 

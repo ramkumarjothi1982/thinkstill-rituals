@@ -1132,7 +1132,18 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
                             const gy = Math.max(q.y - (r.y + r.h), r.y - (q.y + q.h))
                             if (gx < 8 && gy < 8) p = Math.min(p, Math.max(1, Math.max(gx, gy) - 1))
                         }
-                        return p < 7 ? { ...r, p } : r
+                        if (p >= 7) return r
+                        // an option that itself dips under the panel: its halo stops at the panel's edge
+                        let h = { ...r, p }
+                        for (const q of G) {
+                            if (!eosArrowsHit(h, q, p + 1)) continue
+                            if (q.y >= h.cy) h = { ...h, h: Math.max(8, q.y - 2 - p - h.y) }
+                            else if (q.y + q.h <= h.cy) {
+                                const ny = q.y + q.h + 2 + p
+                                h = { ...h, y: ny, h: Math.max(8, h.y + h.h - ny) }
+                            }
+                        }
+                        return h
                     })
                 }
                 // hotspot + glove pose: the glove body lands on empty space, never on the copy (instruction text,

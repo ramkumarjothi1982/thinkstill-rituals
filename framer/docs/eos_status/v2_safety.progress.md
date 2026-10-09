@@ -1,2 +1,4 @@
 # v2 safety close-out — progress
 - [3 calls] Read review r1 (2 major, 10 minor). Plan: fix in src/eos/55_eos_safety.jsx; shift holdsFocus guard belongs to 50_eos_shift.jsx (not mine) -> check if already present.
+- [~20 calls] Edited 55_eos_safety.jsx: US tz list + Anywhere-first fallback; name parse (leading/trailing verb only); softText copy (softKind text); card: compact mode (phone play/reveal/check-in) + more▾, dock top/bottom/side by least cover (arrow target, check-in orbs, shift dial), auto focus -> card container, focusin guard vs shift autofocus, share fallback + desktop clipboard copy w/ polite note, dedupe/merge lines, STILL breath + nod. Built /tmp/v2_safety (all modules). Next: browser tests 390/1280.
+- [~35 calls] t1 (units/dedupe) + t2 (compact/dock/focus) pass at 390: play 27% arena, check-in docked bottom 3/12 orbs (PANIC free), games 2/7/111 finish with card open, reveal focus=card container, 0 errors.
