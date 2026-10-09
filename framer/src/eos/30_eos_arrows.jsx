@@ -1176,7 +1176,11 @@ function EosGuideArrows({ game, entries, hostRef, reduced }) {
                             add(r.cx, r.cy, pf, true)
                             add(r.cx, r.y + r.h - e, pf + 0.01, true)
                             add(r.cx, r.y + e, pf + 0.02, true)
-                            if (i) add((rects[i - 1].cx + r.cx) / 2, (rects[i - 1].cy + r.cy) / 2, 0.03, true)
+                            // F6: the finger lands ON an option, never in the gap between two (1280 TRADE MACHINE pointed
+                            // 40 px off any prize): rims 4 px in for word-filled options, the midpoint only for touching options
+                            if (Math.min(r.w, r.h) < 120) add(r.cx, r.y + r.h - 4, pf + 0.025, true), add(r.x + 4, r.cy, pf + 0.035, true), add(r.x + r.w - 4, r.cy, pf + 0.035, true)
+                            const q = i ? rects[i - 1] : null
+                            if (q && Math.max(r.x - (q.x + q.w), q.x - (r.x + r.w), r.y - (q.y + q.h), q.y - (r.y + r.h)) <= 12) add((q.cx + r.cx) / 2, (q.cy + r.cy) / 2, 0.03, true)
                         })
                     } else {
                         const aim = eosArrowsAim(el, el.getBoundingClientRect())
