@@ -45,3 +45,16 @@ Screenshot: docs/founder/feedback_unhook_2026-10-09.png
 ## F7 · GLOBAL — dopamine bursts repeat across games — PLANNED (after the release fixes, with Pilot A's finale toolkit) · founder 2026-10-09
 - **Founder:** "try to adjust the dopamine burst for all the games — some appear to be very repeating" (see also the addendum: bursts must differ per game).
 - **Plan:** (1) catalogue every game's current finale/burst from the baseline captures and group the identical ones; (2) design a distinct burst per game from its mechanic + world (examples in FOUNDER_REQUIREMENTS Part 11) using Pilot A's finale toolkit so it stays fast and lag-free; (3) unique bursts that are already approved keep their look; (4) show the founder a preview + recordings of the new bursts in batches for approval before shipping them.
+
+## F8 · GLOBAL MANDATORY — default emotional bubble pictures — OPEN · founder 2026-10-09 (applies to ALL Release games, no exceptions)
+1. No uploads → ThinkStill's existing emotional bubble pictures (bubble-expressions, the seven characters) appear automatically inside every bubble / emotional object, chosen by the user's emotion and the game's progression.
+2. Uploads → the uploaded pictures replace the defaults, distributed by the six-image rule (1 = x6, 2 = x3 each, 3 = x2 each, 4/5 balanced and spread, 6 = one each).
+3. Uploads removed → defaults are restored automatically.
+4. Pictures: clearly visible, circular, appropriately sized, no unwanted cropping (contain the full image).
+5. The user's emotional text is ALWAYS below the picture, inside the same bubble or game object.
+6. No black masks / backgrounds / dark rectangles around picture or text.
+7. Expressions start negative/unsettled before the release interaction and move to positive, calm or relieved after successful completion (driven by progress, never by the last word of the input).
+8. ONE shared implementation (a shared bubble-face component + picture resolver used by every game), not per-game copies.
+A user must never see an empty emotional bubble because they did not upload a picture.
+- **Do not change approved gameplay mechanics or dopamine bursts** while fixing this.
+- **Test:** sweep every Release game that shows bubbles/emotional objects at 390x844 and 1280x860 with (a) no upload, (b) 1, 2, 3, 4, 5, 6 uploads (sample 12 games for 2-5), (c) upload then remove: every bubble shows a picture, circle, full image, text below inside, no dark mask, correct distribution, defaults restored after removal; expression at start negative, at finish positive. Report per game and the count of violations before/after.
