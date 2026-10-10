@@ -13,6 +13,9 @@ const ROOT = '/home/user/thinkstill-rituals/framer'
 const DOCS = ROOT + '/docs'
 const RST = DOCS + '/eos_status'
 const DONE = new Set((args && args.done) || [])
+const MODEL = (args && args.model) || undefined   // e.g. 'fable' = the founder's separate weekly allowance
+const ONLY = (args && args.only) || null           // run only these fix jobs, then stop (quality check before the rest)
+const M = (o) => (MODEL ? { ...o, model: MODEL } : o)
 
 const GIT = `Git: branch claude/jolly-hopper-ognrxj in /home/user/thinkstill-rituals. Another agent works in parallel: git add ONLY the exact paths you changed (never -A/-u/.), on index.lock wait 5 s and retry, message ends with exactly:\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01SaGZSxDbxtpggsq88ET1Ri\nthen git push -u origin claude/jolly-hopper-ognrxj (on rejection: git pull --rebase origin claude/jolly-hopper-ognrxj, then push; retry network errors 4x with 2/4/8/16 s). No PRs, no model names anywhere.`
 
@@ -24,7 +27,7 @@ TESTING: Playwright via dev/drive.mjs launch({dir:'/tmp/v1_<yourkey>', width, he
 REPORTING: write your results table (row/item | cause | fix | 390 result | 1280 result | commit) to ${DOCS}/founder/v1_fix_<yourkey>.md (do NOT edit gap_rows.json — the package step merges); for a founder item (F4/F5/F6/F8) also set its status line in FEEDBACK_LOG.md to FIXED (<commit>) with a one-line verification (Edit tool, only your item's line). Budget: <= 100 tool calls, <= 12 image views; progress notes to ${RST}/v1_<yourkey>.progress.md every ~20 calls and READ IT FIRST if it exists (you may be resuming after a restart).`
 
 const must = async (p, o) => { const r = await agent(p, o); if (r == null) throw new Error(`${o.label} returned nothing (usage limit / restart) - resume later`); return r }
-const mark = (step, text) => agent(`Write the text between the markers EXACTLY to ${RST}/v1_${step}.done.md (overwrite), then git add that one file, commit "Ship v1: ${step} done" and push. ${GIT}\n<<<BEGIN>>>\n${String(text).slice(0, 7000)}\n<<<END>>>`, { label: `mark:${step}`, model: 'haiku', effort: 'low' })
+const mark = (step, text) => agent(`Write the text between the markers EXACTLY to ${RST}/v1_${step}.done.md (overwrite), then git add that one file, commit "Ship v1: ${step} done" and push. ${GIT}\n<<<BEGIN>>>\n${String(text).slice(0, 7000)}\n<<<END>>>`, { label: `mark:${step}`, model: MODEL || 'haiku', effort: 'low' })
 
 // ---------------------------------------------------------------- FIX JOBS (priority order; chains run in order)
 const JOBS = [
@@ -45,13 +48,14 @@ const JOBS = [
 
 const runJob = async (j) => {
   if (DONE.has(j.key)) return { key: j.key, cached: true }
-  const r = await must(`${CTX}\n\nJOB "${j.key}" (your key for /tmp/v1_${j.key}, ${RST}/v1_${j.key}.progress.md and ${DOCS}/founder/v1_fix_${j.key}.md).\n${j.text}\nCommit. ${GIT}\nReturn: a table item | cause | fix | 390 | 1280 | commit, then anything left open.`, { label: `fix:${j.key}`, phase: 'Fixes' })
+  const r = await must(`${CTX}\n\nJOB "${j.key}" (your key for /tmp/v1_${j.key}, ${RST}/v1_${j.key}.progress.md and ${DOCS}/founder/v1_fix_${j.key}.md).\n${j.text}\nCommit. ${GIT}\nReturn: a table item | cause | fix | 390 | 1280 | commit, then anything left open.`, M({ label: `fix:${j.key}`, phase: 'Fixes' }))
   await mark(j.key, r)
   return { key: j.key, report: String(r).slice(0, 2500) }
 }
 // chains: a job with "after" runs right after its parent inside the same pipeline item
-const roots = JOBS.filter(j => !j.after)
-const kids = (k) => JOBS.filter(j => j.after === k)
+const RUN = ONLY ? JOBS.filter(j => ONLY.includes(j.key)) : JOBS
+const roots = RUN.filter(j => !j.after || !RUN.some(p => p.key === j.after))
+const kids = (k) => RUN.filter(j => j.after === k)
 phase('Fixes')
 const fixed = await pipeline(roots, async (j) => {
   const out = [await runJob(j)]
@@ -59,7 +63,8 @@ const fixed = await pipeline(roots, async (j) => {
   return out
 })
 const flat = fixed.filter(Boolean).flat()
-if (flat.length < JOBS.length) throw new Error(`only ${flat.length}/${JOBS.length} fix jobs finished - resume later`)
+if (flat.length < RUN.length) throw new Error(`only ${flat.length}/${RUN.length} fix jobs finished - resume later`)
+if (ONLY) return { only: ONLY, jobs: flat }
 
 // ---------------------------------------------------------------- SWEEP + REPAIR
 const FAILS = { type: 'object', properties: { pass: { type: 'number' }, fail: { type: 'number' }, failing_games: { type: 'array', items: { type: 'number' } }, failures: { type: 'array', items: { type: 'object', properties: { what: { type: 'string' }, game: { type: 'number' }, size: { type: 'string' }, area: { type: 'string', enum: ['game', 'shared', 'flow'] }, evidence: { type: 'string' }, hint: { type: 'string' } }, required: ['what', 'area', 'evidence'] } } }, required: ['pass', 'fail', 'failing_games', 'failures'] }
@@ -73,10 +78,10 @@ for (let round = 1; round <= 3; round++) {
   phase('Sweep')
   const only = failing && failing.length ? `ONLY these previously failing games: ${failing.join(', ')}` : null
   const thunks = [
-    () => must(SWEEP(round, '390x844', only), { label: `sweep:r${round}:390`, phase: 'Sweep', schema: FAILS }),
-    () => must(SWEEP(round, '1280x860', only), { label: `sweep:r${round}:1280`, phase: 'Sweep', schema: FAILS }),
+    () => must(SWEEP(round, '390x844', only), M({ label: `sweep:r${round}:390`, phase: 'Sweep', schema: FAILS })),
+    () => must(SWEEP(round, '1280x860', only), M({ label: `sweep:r${round}:1280`, phase: 'Sweep', schema: FAILS })),
   ]
-  if (round === 1) thunks.push(() => must(`${CTX}\n\nFOUNDER'S-EYE VISUAL REVIEW (key: eye). Build python3 build.py --dev-dir /tmp/v1_eye. At 390x844 capture START, MID (~50%) and FINISH-1s frames of ALL 114 games (eos_drive startGameById + scripted play / finishGame), tile them 20 per sheet and LOOK at every sheet (up to 20 image views allowed for this job). As the founder would on a phone: empty bubbles, black masks/dark boxes, squashed circles, pictures zoomed in / cut off / too small for their bubble, text outside circles, cut by the bubble edge, too small or hard to read, or over faces, overlapping containers hiding controls, missing arrows, fake-looking tools, cut-off characters, unreadable text (< 15 px), anything broken or ugly. Do NOT edit src. Return every issue (area game/shared) with game id + evidence (sheet + tile).`, { label: 'sweep:eye', phase: 'Sweep', schema: FAILS }))
+  if (round === 1) thunks.push(() => must(`${CTX}\n\nFOUNDER'S-EYE VISUAL REVIEW (key: eye). Build python3 build.py --dev-dir /tmp/v1_eye. At 390x844 capture START, MID (~50%) and FINISH-1s frames of ALL 114 games (eos_drive startGameById + scripted play / finishGame), tile them 20 per sheet and LOOK at every sheet (up to 20 image views allowed for this job). As the founder would on a phone: empty bubbles, black masks/dark boxes, squashed circles, pictures zoomed in / cut off / too small for their bubble, text outside circles, cut by the bubble edge, too small or hard to read, or over faces, overlapping containers hiding controls, missing arrows, fake-looking tools, cut-off characters, unreadable text (< 15 px), anything broken or ugly. Do NOT edit src. Return every issue (area game/shared) with game id + evidence (sheet + tile).`, M({ label: 'sweep:eye', phase: 'Sweep', schema: FAILS })))
   const reps = (await parallel(thunks)).filter(Boolean)
   if (reps.length < thunks.length) throw new Error(`sweep r${round} incomplete - resume later`)
   lastSweep = reps
@@ -89,8 +94,8 @@ for (let round = 1; round <= 3; round++) {
   const gameF = all.filter(f => f.area === 'game')
   const sharedF = all.filter(f => f.area !== 'game')
   const fixThunks = []
-  if (gameF.length) fixThunks.push(() => must(`${CTX}\n\nREPAIR round ${round} — GAME failures (key: repair_r${round}_games). Fix each with the smallest behaviour-preserving change in the game's own code, rebuild isolated, and re-run ONLY the failing game at the failing size to prove it passes. A game you cannot fix reliably must be added to the routing exclusion list (EOS_SHIP_BROKEN or equivalent from the safety-routing job) for that width so it is never served broken — say so. Commit. ${GIT}\nFailures:\n${JSON.stringify(gameF, null, 1).slice(0, 14000)}`, { label: `repair:r${round}:games`, phase: 'Repair' }))
-  if (sharedF.length) fixThunks.push(() => must(`${CTX}\n\nREPAIR round ${round} — SHARED + FLOW failures (key: repair_r${round}_shared). Fix each in the owning shared code (prefer src/eos), rebuild isolated, re-run only the failing checks at the failing size. Commit. ${GIT}\nFailures:\n${JSON.stringify(sharedF, null, 1).slice(0, 14000)}`, { label: `repair:r${round}:shared`, phase: 'Repair' }))
+  if (gameF.length) fixThunks.push(() => must(`${CTX}\n\nREPAIR round ${round} — GAME failures (key: repair_r${round}_games). Fix each with the smallest behaviour-preserving change in the game's own code, rebuild isolated, and re-run ONLY the failing game at the failing size to prove it passes. A game you cannot fix reliably must be added to the routing exclusion list (EOS_SHIP_BROKEN or equivalent from the safety-routing job) for that width so it is never served broken — say so. Commit. ${GIT}\nFailures:\n${JSON.stringify(gameF, null, 1).slice(0, 14000)}`, M({ label: `repair:r${round}:games`, phase: 'Repair' })))
+  if (sharedF.length) fixThunks.push(() => must(`${CTX}\n\nREPAIR round ${round} — SHARED + FLOW failures (key: repair_r${round}_shared). Fix each in the owning shared code (prefer src/eos), rebuild isolated, re-run only the failing checks at the failing size. Commit. ${GIT}\nFailures:\n${JSON.stringify(sharedF, null, 1).slice(0, 14000)}`, M({ label: `repair:r${round}:shared`, phase: 'Repair' })))
   const fx = (await parallel(fixThunks)).filter(Boolean)
   if (fx.length < fixThunks.length) throw new Error(`repair r${round} incomplete - resume later`)
   await mark(`repair-r${round}`, fx.join('\n\n'))
@@ -100,7 +105,7 @@ for (let round = 1; round <= 3; round++) {
 phase('Package')
 let pkg = 'already done'
 if (!DONE.has('package')) {
-  pkg = await must(`${CTX}\n\nPACKAGE SHIPPABLE V1 (key: package; you are the ONLY agent now, so plain builds are allowed). cd ${ROOT}; python3 build.py -> ThinkStillReleaseArcade_EOS_FULL.txt; confirm it is ONE self-contained file (imports only at the top, exactly one export default, all original property controls + new ones, compiles with esbuild, no src/pilot code, no dev-only hooks exposed to users except the documented owner/test hooks). Final smoke at 390 and 1280: composer prompt -> type a panic thought -> ThinkStill picks -> play to the reveal -> shift meter -> Next; POP; UNFOLLOW; ZAP; CRACK; zero page errors. Merge every ${DOCS}/founder/v1_fix_*.md into ${DOCS}/founder/gap_rows.json statuses (FIXED + commit, or still PARTIAL with the reason) and append a "Fixed in v1" section to GAP_AUDIT.md. Write ${DOCS}/RELEASE_NOTES_v1.md for the founder (plain language, short): how to paste the .txt into a Framer code component, what is new, what was fixed (frozen games, arrows, ThinkStill picks, bubble pictures, clean bursts, ZAP, CRACK, STOMP, tools, named games, prompt, end screen, safety), property controls, KNOWN ISSUES honestly (remaining sweep failures: ${JSON.stringify(failing)} and any game excluded from routing; real-device touch/performance and audible sound still to be confirmed on the founder's phone; per-game unique climaxes and the from-scratch redesign are not in v1). Then build the hosted preview: python3 dev/preview_build.py /tmp/v1_preview and in /tmp/v1_preview/app.js replace width:"100vw",height:"100vh" with width:"100%",height:"100%"; check it loads (serve with python3 -m http.server and open with ${ROOT}/preview/index.html copied next to it). Commit the .txt, gap_rows.json, GAP_AUDIT.md and RELEASE_NOTES_v1.md. ${GIT} Return: .txt path + size + line count, compile result, smoke results, known issues, preview folder.`, { label: 'package', phase: 'Package' })
+  pkg = await must(`${CTX}\n\nPACKAGE SHIPPABLE V1 (key: package; you are the ONLY agent now, so plain builds are allowed). cd ${ROOT}; python3 build.py -> ThinkStillReleaseArcade_EOS_FULL.txt; confirm it is ONE self-contained file (imports only at the top, exactly one export default, all original property controls + new ones, compiles with esbuild, no src/pilot code, no dev-only hooks exposed to users except the documented owner/test hooks). Final smoke at 390 and 1280: composer prompt -> type a panic thought -> ThinkStill picks -> play to the reveal -> shift meter -> Next; POP; UNFOLLOW; ZAP; CRACK; zero page errors. Merge every ${DOCS}/founder/v1_fix_*.md into ${DOCS}/founder/gap_rows.json statuses (FIXED + commit, or still PARTIAL with the reason) and append a "Fixed in v1" section to GAP_AUDIT.md. Write ${DOCS}/RELEASE_NOTES_v1.md for the founder (plain language, short): how to paste the .txt into a Framer code component, what is new, what was fixed (frozen games, arrows, ThinkStill picks, bubble pictures, clean bursts, ZAP, CRACK, STOMP, tools, named games, prompt, end screen, safety), property controls, KNOWN ISSUES honestly (remaining sweep failures: ${JSON.stringify(failing)} and any game excluded from routing; real-device touch/performance and audible sound still to be confirmed on the founder's phone; per-game unique climaxes and the from-scratch redesign are not in v1). Then build the hosted preview: python3 dev/preview_build.py /tmp/v1_preview and in /tmp/v1_preview/app.js replace width:"100vw",height:"100vh" with width:"100%",height:"100%"; check it loads (serve with python3 -m http.server and open with ${ROOT}/preview/index.html copied next to it). Commit the .txt, gap_rows.json, GAP_AUDIT.md and RELEASE_NOTES_v1.md. ${GIT} Return: .txt path + size + line count, compile result, smoke results, known issues, preview folder.`, M({ label: 'package', phase: 'Package' }))
   await mark('package', pkg)
 }
 return { jobs: flat.map(f => f.key), failing, sweeps: lastSweep.map(r => ({ pass: r.pass, fail: r.fail, failing: r.failing_games })), pkg: String(pkg).slice(0, 4000) }
