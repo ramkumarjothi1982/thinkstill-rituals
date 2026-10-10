@@ -200,8 +200,15 @@
 .g-load-test .lt-sign small { font: 800 12px/1 var(--lt-ui); letter-spacing: .1em; text-transform: uppercase; color: #d6ffe9; display: flex; align-items: center; gap: 6px; }
 .g-load-test .lt-sign small i { font-style: normal; display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 4px; background: #fff; color: var(--lt-green); font-size: 13px; }
 .g-load-test .lt-sign .lt-st { font: 800 16px/1.2 var(--lt-ui); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; text-wrap: balance; }
-.g-load-test .lt-sign.fair .lt-st { -webkit-line-clamp: 4; }
-.g-load-test .lt-sign.far { opacity: .45; transform: translateY(-100%) scale(.8); transform-origin: 100% 100%; filter: saturate(.45); }
+.g-load-test .lt-sign.fair .lt-st { -webkit-line-clamp: 5; }
+.g-load-test .lt-sign.far { opacity: .82; transform: translateY(-100%) scale(.8); transform-origin: 100% 100%; background: #4f5f58; box-shadow: inset 0 0 0 2px #c9d6d0, 0 8px 18px rgba(0, 0, 0, .25); }
+.g-load-test .lt-sign.far small { color: #e4ece8; }
+.g-load-test .lt-sign.start { width: auto; max-width: 128px; padding: 6px 10px 8px; }
+.g-load-test .lt-sign.start .lt-st { font-size: 14px; line-height: 1.15; }
+.g-load-test .lt-sign.start.fog { opacity: .14; }
+.g-load-test .lt-bolt { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff8dc, #c4932f 55%, #6b4a10); box-shadow: 0 1px 1px rgba(0, 0, 0, .45); animation: load-test-bolt .45s cubic-bezier(.2, 1.5, .4, 1) both; pointer-events: none; }
+.g-load-test .lt-bolt::after { content: ""; position: absolute; left: 1.5px; right: 1.5px; top: 3.2px; height: 1.6px; background: #5a3a08; border-radius: 1px; }
+@keyframes load-test-bolt { from { opacity: 0; transform: scale(2.4) rotate(-240deg); } to { opacity: 1; transform: none; } }
 .g-load-test .lt-sign.far.gone { opacity: 0; transform: translate(24px, -40px) translateY(-100%) scale(.6); }
 .g-load-test .lt-sign.fair { background: linear-gradient(180deg, #6a3d1c, #4d2a12); box-shadow: inset 0 0 0 2px #f6dfae, 0 12px 26px rgba(0, 0, 0, .4); transform: translate(-50%, -100%); opacity: 0; }
 .g-load-test .lt-sign.fair small { color: #ffe2a8; font: 400 13px/1 var(--lt-disp); letter-spacing: .06em; }
@@ -386,7 +393,7 @@
       const st = { phase: 'intro', mode: 'A', ready: false, placing: null, drag: null, hot: null, placed: 0, prec: [], wrong: 0, crated: 0, snaps: 0, finished: false, testDone: false, tested: false, fallT: 0,
         shake: 0, slow: 1, slowUntil: 0, fogK: 0, fogDir: 0, mesaK: 1, mesaRising: false, lights: 0, finT: 0, q: 1, fn: 0, slowN: 0, sim: 0, firstFact: false, firstCard: false, said: {}, gaugeV: 0, readKey: '', arrivedAt: 0, stalls: 0 };
       const M = { W: 0, H: 0, phone: true, side: false, xL: 0, xR: 0, xM: 0, mw: 0, yD: 0, yF: 0, L: 60, s: 0.5, ts: 0.5, cableY: 0 };
-      const P = K.particles({ max: 520 });
+      const P = K.particles({ max: 760 });
       const sim = makeSim();
       let T = null, rope = null;
 
@@ -396,6 +403,7 @@
       const gauge = h('div', { class: 'lt-gauge off', 'aria-hidden': 'true', html: '<svg viewBox="0 0 100 56"><path d="M8 50 A42 42 0 0 1 92 50" fill="none" stroke="#33394a" stroke-width="12"/><path d="M8 50 A42 42 0 0 1 50 8" fill="none" stroke="#3ccf8e" stroke-width="10"/><path d="M50 8 A42 42 0 0 1 79.7 20.3" fill="none" stroke="#ffcf5a" stroke-width="10"/><path d="M79.7 20.3 A42 42 0 0 1 92 50" fill="none" stroke="#ff5a3c" stroke-width="10"/><g class="lt-needle" style="transform-origin:50px 50px;transform:rotate(-90deg)"><path d="M48 50 L50 12 L52 50 Z" fill="#fff"/></g><circle cx="50" cy="50" r="5" fill="#fff"/></svg><small>STRAIN</small>' });
       const needle = gauge.querySelector('.lt-needle'), gaugeLbl = gauge.querySelector('small');
       const destSign = h('div', { class: 'lt-sign dest', role: 'note' }, h('small', null, h('i', { text: '→' }), h('span', { text: noWords ? 'Example conclusion' : 'Your conclusion' })), h('div', { class: 'lt-st ' + (conclusion.user ? 'gk-user' : 'lt-gen'), text: conclusion.text }));
+      const startSign = h('div', { class: 'lt-sign start', role: 'note' }, h('small', { text: 'Start' }), h('div', { class: 'lt-st', text: 'What happened' }));
       const fairSign = h('div', { class: 'lt-sign fair', role: 'note' }, h('small', { text: 'Fair thought' }), h('div', { class: 'lt-st', text: fair }));
       if (plan) fairSign.append(h('div', { class: 'lt-plan' }, h('b', { text: care ? 'Next: ' : 'Plan: ' }), document.createTextNode(plan)));
       const read = h('div', { class: 'lt-read off', role: 'status', 'aria-live': 'polite' }, h('span', { class: 'lt-badge fact' }), h('em', { text: '' }), h('div', { class: 'lt-gen', text: '' }));
@@ -403,7 +411,7 @@
       const crate = h('div', { class: 'lt-crate', hidden: true, 'aria-label': 'MAYBE crate: guesses to check later' }, h('i', { text: '0' }), h('b', { text: 'MAYBE' }), h('span', { text: 'check later' }));
       const sendBtn = h('button', { type: 'button', class: 'lt-send', hidden: true, 'aria-label': 'Send the test truck', html: '<svg viewBox="0 0 50 34" aria-hidden="true"><rect x="2" y="10" width="28" height="14" rx="3" fill="#fff"/><path d="M30 13h9l7 7v4H30z" fill="#fff"/><rect x="33" y="15" width="6" height="4" rx="1" fill="#ef4e33"/><circle cx="12" cy="27" r="5" fill="#2a1206" stroke="#fff" stroke-width="2"/><circle cx="38" cy="27" r="5" fill="#2a1206" stroke="#fff" stroke-width="2"/></svg><b>SEND</b>' });
       tray.append(crate);
-      el.append(destSign, fairSign, hud, gauge, read, tray);
+      el.append(startSign, destSign, fairSign, hud, gauge, read, tray);
       const sendWrap = h('div', { class: 'lt-tray' }, sendBtn); el.append(sendWrap);
       const rush = K.character('rush', { side: 'right', mood: 'determined', x: 10, y: 600, size: 64 });
       const glitch = K.character('glitch', { side: 'left', mood: 'scan', x: 300, y: 600, size: 64 });
@@ -463,7 +471,10 @@
         snap() { if (!A.ctx) return; const t = A.now(); A.noise({ when: t, filter: 'highpass', freq: 1400, dur: 0.1, vol: 0.28 }); A.tone({ when: t, type: 'square', freq: 210, to: 60, glide: 0.09, dur: 0.14, vol: 0.12, lp: 1300 }); A.noise({ when: t + 0.03, filter: 'bandpass', freq: 3400, to: 520, q: 1.4, dur: 0.42, vol: 0.14 }); },
         whistle() { if (!A.ctx) return; A.tone({ type: 'sine', freq: 1500, to: 340, glide: 0.95, dur: 1.05, vol: 0.05 }); },
         boing(k) { if (!A.ctx) return; const t = A.now(), f = 150 + k * 40; A.tone({ when: t, type: 'triangle', freq: f, to: f * 0.5, glide: 0.4, dur: 0.5, vol: 0.06 + 0.1 * k }); A.tone({ when: t, type: 'sine', freq: f * 1.5, to: f * 0.8, glide: 0.3, dur: 0.35, vol: 0.04 * k }); },
-        horn() { if (!A.ctx) return; const t = A.now(); [0, 0.3].forEach(d => { A.tone({ when: t + d, type: 'square', freq: 392, dur: 0.22, vol: 0.05, lp: 1800 }); A.tone({ when: t + d, type: 'square', freq: 494, dur: 0.22, vol: 0.045, lp: 1800 }); }); },
+        horn() { if (T) T.honkT = now(); if (!A.ctx) return; const t = A.now(); [0, 0.3].forEach(d => { A.tone({ when: t + d, type: 'square', freq: 392, dur: 0.22, vol: 0.05, lp: 1800 }); A.tone({ when: t + d, type: 'square', freq: 494, dur: 0.22, vol: 0.045, lp: 1800 }); }); },
+        launch() { if (!A.ctx) return; const t = A.now(); A.tone({ when: t, type: 'sine', freq: 480, to: 1650, glide: 0.75, dur: 0.8, vol: 0.02 }); A.noise({ when: t, filter: 'bandpass', freq: 2200, to: 5200, q: 1.4, dur: 0.7, attack: 0.12, vol: 0.026 }); },
+        boom(u, i) { if (!A.ctx) return; const t = A.now(), pan = clamp(u * 1.6 - 0.8, -0.8, 0.8); A.noise({ when: t, filter: 'lowpass', freq: 760, to: 150, dur: 0.75, vol: 0.2, pan }); A.tone({ when: t, type: 'sine', freq: 118, to: 40, glide: 0.25, dur: 0.42, vol: 0.2 }); A.chime(A.note(['E5', 'G#5', 'B5', 'E6', 'G#6', 'B6'][i % 6]), { when: t + 0.02, vol: 0.045, dur: 1.5, pan }); for (let k = 0; k < 12; k++) A.noise({ when: t + 0.32 + Math.random() * 0.8, filter: 'highpass', freq: 5000 + Math.random() * 3000, dur: 0.008 + Math.random() * 0.014, vol: 0.016 + Math.random() * 0.026, pan }); },
+        bolt2(i) { if (!A.ctx) return; const t = A.now() + i * 0.12; for (let k = 0; k < 4; k++) A.click({ when: t + k * 0.035, vol: 0.05 }); A.wood(t + 0.16, 0.12, 1.6); },
         ratchet() { if (!A.ctx || now() - lastRatchet < 70) return; lastRatchet = now(); A.click({ vol: 0.06 }); A.tone({ type: 'square', freq: 900, dur: 0.012, vol: 0.02, lp: 3000 }); },
         rumble() { if (!A.ctx) return; const t = A.now(); A.noise({ when: t, pink: true, filter: 'lowpass', freq: 150, dur: 1.8, attack: 0.35, vol: 0.32 }); for (let i = 0; i < 7; i++) A.wood(t + 0.2 + i * 0.17 + Math.random() * 0.08, 0.07, 0.32 + Math.random() * 0.2); },
         fog() { if (!A.ctx) return; A.noise({ pink: true, filter: 'bandpass', freq: 500, to: 1400, q: 0.6, dur: 1.6, attack: 0.7, vol: 0.12 }); },
@@ -493,12 +504,19 @@
         const W = M.W, H = M.H, top = 60;
         // signs
         const sw = Math.min(M.phone ? 236 : 300, W - 24);
-        Object.assign(destSign.style, { left: Math.max(12, Math.min(W - 12 - sw, M.xR + (M.phone ? -sw + 34 : 30))) + 'px', top: (M.yD - (M.phone ? 82 : 96)) + 'px', width: sw + 'px' });
+        const dl = Math.max(12, Math.min(W - 12 - sw, M.xR + (M.phone ? -sw + 34 : 30)));
+        Object.assign(destSign.style, { left: dl + 'px', top: (M.yD - (M.phone ? 82 : 96)) + 'px', width: sw + 'px' });
+        // the near rim: where the road starts (what happened), above the parked truck
+        const ssW = Math.min(M.phone ? 104 : 128, (M.phone ? Math.min(dl, M.W - Math.min(250, M.W - 24) - 12) : M.xL - 30) - 24);
+        startSign.hidden = ssW < 80;
+        startSign.lastChild.style.fontSize = M.phone ? '13px' : '';
+        Object.assign(startSign.style, { left: (M.phone ? 12 : Math.max(12, M.xL - 30 - ssW)) + 'px', top: (M.yD - (M.phone ? 92 : 104)) + 'px', maxWidth: ssW + 'px' });
         const fw = Math.min(M.phone ? 250 : 330, W - 24), fcx = clamp(M.xM + M.mw / 2, fw / 2 + 12, W - fw / 2 - 12);
         Object.assign(fairSign.style, { left: fcx + 'px', top: (M.yD - (M.phone ? 76 : 92)) + 'px', width: fw + 'px' });
         // readout
-        const rw = Math.min(M.phone ? W - 24 : 520, W - 24);
-        Object.assign(read.style, { left: Math.round((W - rw) / 2) + 'px', top: (M.phone ? top + 86 : top + 6) + 'px', width: rw + 'px' });
+        // phone: under the site badge, beside the strain gauge, clear of the signs; desktop: centred under the bar
+        const rw = M.phone ? W - 24 - 112 : Math.min(520, W - 24);
+        Object.assign(read.style, { left: (M.phone ? 12 : Math.round((W - rw) / 2)) + 'px', top: (M.phone ? top + 58 : top + 6) + 'px', width: rw + 'px' });
         // tray + send
         const csz = M.phone ? 64 : (M.side ? 104 : 84), bottomPad = M.phone ? 14 + csz + 50 : 28;
         const tw = Math.min(M.phone ? W - 24 : 520, W - 24);
@@ -871,10 +889,15 @@
         // trolley
         g.fillStyle = bright() ? '#2b2f3a' : '#d8dde8'; rr(g, ax - 8, ay - 5, 16, 8, 3); g.fill();
         g.fillStyle = '#ffcf5a'; g.beginPath(); g.arc(ax - 4, ay - 5, 2.6, 0, TAU); g.arc(ax + 4, ay - 5, 2.6, 0, TAU); g.fill();
+        // parked on the mesa: the hook lets go and the line reels up into the trolley
+        const uk = st.unhookT ? clamp((now() - st.unhookT) / 520, 0, 1) : 0;
+        if (uk >= 1) return;
+        const ex = hx + (ax - hx) * uk * uk, ey = hy + (ay + 2 - hy) * uk * uk;
         // the line: slack sags, taut is straight
-        const d = Math.hypot(hx - ax, hy - ay), slack = rope.rest > 1e8 ? 18 * M.s + 4 : Math.max(0, rope.rest - d) * 0.6;
+        const d = Math.hypot(ex - ax, ey - ay), slack = (rope.rest > 1e8 ? 18 * M.s + 4 : Math.max(0, rope.rest - d) * 0.6) * (1 - uk);
         g.strokeStyle = rope.taut ? '#ffcf5a' : (bright() ? 'rgba(60,40,20,0.85)' : 'rgba(255,220,170,0.8)'); g.lineWidth = rope.taut ? 2.2 : 1.6;
-        g.beginPath(); g.moveTo(ax, ay + 2); g.quadraticCurveTo((ax + hx) / 2 - slack * 0.3, (ay + hy) / 2 + slack, hx, hy); g.stroke();
+        g.beginPath(); g.moveTo(ax, ay + 2); g.quadraticCurveTo((ax + ex) / 2 - slack * 0.3, (ay + ey) / 2 + slack, ex, ey); g.stroke();
+        if (uk > 0) { g.fillStyle = '#ffcf5a'; g.beginPath(); g.arc(ex, ey, 2.2, 0, TAU); g.fill(); }
       }
       const truckAng = () => (T ? Math.atan2(T.F.y - T.R.y, T.F.x - T.R.x) : 0);
       function drawTruck(g, t) {
@@ -906,6 +929,9 @@
         g.fillStyle = skin.dark; g.fillRect(wb * 0.98, by - r * 1.25, r * 0.22, r * 0.4);
         // exhaust pipe
         g.fillStyle = '#5a5a5a'; g.fillRect(-wb * 0.98, by - r * 1.0, r * 0.6, r * 0.25);
+        // honk: two sound arcs in front of the cab
+        const hk = T.honkT ? (now() - T.honkT) / 720 : 1;
+        if (hk < 1) { g.strokeStyle = bright() ? rgba('#4a2a08', 0.85 * (1 - hk)) : rgba('#fff3c4', 0.9 * (1 - hk)); g.lineWidth = Math.max(1.3, r * 0.2); g.lineCap = 'round'; for (let j = 0; j < 3; j++) { const rad = r * (0.8 + j * 0.75 + hk * 1.5); g.beginPath(); g.arc(wb * 1.06, by - r * 1.55, rad, -0.55, 0.55); g.stroke(); } }
         // wheels
         [-wb / 2, wb / 2].forEach((wx, i) => {
           g.save(); g.translate(wx, 0); g.fillStyle = '#1c1a18'; g.beginPath(); g.arc(0, 0, r, 0, TAU); g.fill();
@@ -933,6 +959,58 @@
       let fogSpr = null;
       function fogSprite() { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); const gr = x.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.6, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 128, 128); return c; }
 
+      /* finale fireworks: launched from the fact planks, drawn into the scene (under the plaque and the cast) */
+      const ROCKETS = [], BLOOMS = [];
+      function launchRocket(x0, y0, x1, y1, col, delayS) { ROCKETS.push({ x0, y0, x1, y1, col, t0: now() / 1000 + delayS, dur: 0.8 + Math.random() * 0.25, tr: [], n: ROCKETS.length }); }
+      function drawRockets(g, br) {
+        const tn = now() / 1000;
+        for (let i = ROCKETS.length - 1; i >= 0; i--) {
+          const r = ROCKETS[i], k = (tn - r.t0) / r.dur;
+          if (k < 0) continue;
+          if (!r.up) { r.up = true; SND.launch(); }
+          if (k >= 1) { ROCKETS.splice(i, 1); burst(r, br); continue; }
+          const e = 1 - Math.pow(1 - k, 2.4), x = r.x0 + (r.x1 - r.x0) * e + Math.sin(k * 11 + r.n) * 1.5, y = r.y0 + (r.y1 - r.y0) * e;
+          r.tr.push(x, y); if (r.tr.length > 20) r.tr.splice(0, 2);
+          g.strokeStyle = br ? rgba('#c2561c', 0.7) : rgba('#fff1c4', 0.75); g.lineWidth = 2; g.lineCap = 'round'; g.beginPath();
+          for (let j = 0; j < r.tr.length; j += 2) { if (j) g.lineTo(r.tr[j], r.tr[j + 1]); else g.moveTo(r.tr[j], r.tr[j + 1]); }
+          g.stroke();
+          g.drawImage(K.glowSprite(r.col), x - 10, y - 10, 20, 20);
+          if (Math.random() < 0.6) P.emit('ember', x, y + 3, 1, { colors: [r.col, '#ffe8b0'] });
+        }
+        for (let i = BLOOMS.length - 1; i >= 0; i--) {
+          const b = BLOOMS[i], k = (tn - b.t) / 0.9; if (k >= 1) { BLOOMS.splice(i, 1); continue; }
+          g.save(); g.globalCompositeOperation = br ? 'source-over' : 'lighter'; g.globalAlpha = (1 - k) * (br ? 0.3 : 0.5);
+          const R0 = b.r * (0.7 + k * 0.6); g.drawImage(K.glowSprite(b.col), b.x - R0, b.y - R0, R0 * 2, R0 * 2); g.restore();
+        }
+      }
+      function burst(r, br) {
+        // a shell of sparks (the drag makes them travel about a fifth of their speed in px), stars at the heart
+        const sc = M.phone ? 0.78 : 1;
+        P.emit('spark', r.x1, r.y1, M.phone ? 52 : 70, { colors: [r.col, r.col, br ? '#ffffff' : '#fff6d0'], speed: [400 * sc, 500 * sc], life: [1.0, 1.6], size: [1.7, 3.1] });
+        P.emit('spark', r.x1, r.y1, 14, { colors: [br ? '#ffffff' : '#fffbe6'], speed: [120, 220], life: [0.5, 0.9], size: [1.2, 2] });
+        P.emit('star', r.x1, r.y1, 8, { colors: ['#fffbe6', r.col], speed: [30, 110] });
+        if (!K.reduced()) BLOOMS.push({ x: r.x1, y: r.y1, r: 70 * sc + 30, col: r.col, t: now() / 1000 });
+        SND.boom(r.x1 / Math.max(1, M.W), r.n);
+      }
+      function fireworks() {
+        const br = bright(), cols = br ? ['#ff5a3c', '#e8458f', '#13a089', '#6a5cff', '#ff9a1f', '#d4a000'] : ['#ffcf5a', '#ff7a4d', '#4fe0a8', '#ff8fc8', '#9fd2ff', '#fff3c4'];
+        const pads = bays.filter(b => b.item && b.item.pk && !b.item.pk.gone).map(b => ({ x: b.cx, y: M.yD - 8 }));
+        pads.push({ x: M.xM + M.mw * 0.5, y: M.yD - 12 });
+        const n = pads.length * 2 + (inten === 2 ? 2 : 0);
+        const yTop = M.phone ? 140 : 128, yBot = Math.max(yTop + 50, M.yD - (M.phone ? 190 : 190));
+        // two volleys sweeping left to right, so the sky keeps blooming for the whole finale
+        for (let i = 0; i < n; i++) {
+          const p = pads[i % pads.length], u = ((i % pads.length) + 0.5) / pads.length, tx = M.W * (0.1 + 0.8 * u) + (i >= pads.length ? 1 : -1) * M.W * 0.06 + (Math.random() - 0.5) * 24, ty = (i + (i >= pads.length ? 1 : 0)) % 2 ? yTop + Math.random() * 24 : yBot - Math.random() * 24;
+          launchRocket(p.x, p.y, tx, ty, cols[i % cols.length], i * (M.phone ? 0.36 : 0.3));
+        }
+      }
+      function boltPlaque() {
+        [['left', 'top'], ['right', 'top'], ['left', 'bottom'], ['right', 'bottom']].forEach(([a, b], i) => {
+          const bolt = h('i', { class: 'lt-bolt', 'aria-hidden': 'true' }); bolt.style[a] = '3px'; bolt.style[b] = '3px'; bolt.style.animationDelay = (i * 0.12) + 's';
+          fairSign.append(bolt); SND.bolt2(i);
+        });
+      }
+
       let tPrev = 0, simAcc = 0;
       const H6 = 1 / 600;
       K.loop((dt0, t) => {
@@ -950,7 +1028,8 @@
       function update(dt, t) {
         // slow motion at the snap, then real time again
         if (st.slow < 1 && now() > st.slowUntil) st.slow = Math.min(1, st.slow + dt * 2.4);
-        simAcc += dt * st.slow; let n = Math.floor(simAcc / H6); simAcc -= n * H6; n = Math.min(n, 60);
+        // up to 0.25 s of physics per frame (the solver is tiny), so a struggling device still sees real-time motion
+        simAcc += dt * st.slow; let n = Math.floor(simAcc / H6); simAcc -= n * H6; n = Math.min(n, 150);
         for (let i = 0; i < n; i++) { preStep(); sim.step(H6); }
         postStep(dt);
         P.update(dt);
@@ -960,6 +1039,8 @@
       function preStep() {
         if (!T) return;
         if (T.kin) return;
+        // parked on the mesa: the handbrake is on
+        if (T.hold) { T.R.vx *= 0.82; T.F.vx *= 0.82; }
         // the trolley rides above the rear wheel until the line locks
         if (rope.rest > 1e8) rope.x = T.R.x;
       }
@@ -1027,6 +1108,7 @@
         if (st.mode === 'B' && !st.mesaRising) { const fx = M.xM + M.mw - 6, fy = M.yD, ph = 30 * M.s + 16; g.strokeStyle = br ? '#5d4a3a' : '#c9b8a8'; g.lineWidth = 2; g.beginPath(); g.moveTo(fx, fy); g.lineTo(fx, fy - ph); g.stroke(); g.fillStyle = fk > 0 ? '#ffcf5a' : '#ff7a4d'; g.beginPath(); g.moveTo(fx, fy - ph); for (let k = 0; k <= 6; k++) { const u = k / 6; g.lineTo(fx - u * (16 * M.s + 10), fy - ph + 2 + Math.sin(t * 6 - u * 3) * 2.2 * u); } for (let k = 6; k >= 0; k--) { const u = k / 6; g.lineTo(fx - u * (16 * M.s + 10), fy - ph + (9 * M.s + 6) * (1 - u * 0.4) + Math.sin(t * 6 - u * 3) * 2.2 * u); } g.closePath(); g.fill(); }
         sim.planks.forEach(pk => { if (!pk.gone) drawPlank(g, pk, t, br); });
         drawTruck(g, t);
+        if (ROCKETS.length || BLOOMS.length) drawRockets(g, br);
         P.draw(g);
         // fog (the twist)
         if (st.fogK > 0.001) {
@@ -1055,7 +1137,7 @@
         const badge = read.children[0], em = read.children[1], txt = read.children[2];
         badge.className = 'lt-badge ' + (it.kind === 'fact' ? 'fact' : 'card'); badge.innerHTML = ICON[k];
         em.className = it.kind === 'fact' ? 'ok' : pk.snapped ? 'bad' : '';
-        em.textContent = 'Plank ' + (pk.bay + 1) + ' · ' + (it.kind === 'fact' ? 'fact · holding' : pk.snapped ? KIND_NAME[k].split(' ·')[0].toLowerCase() + ' · gave way' : KIND_NAME[k].split(' ·')[0].toLowerCase() + ' · under load');
+        em.textContent = (M.phone ? '' : 'Plank ' + (pk.bay + 1) + ' · ') + (it.kind === 'fact' ? 'fact · holding' : KIND_NAME[k].split(' ·')[0].toLowerCase() + (pk.snapped ? ' · gave way' : ' · bending'));
         txt.className = it.user ? 'gk-user' : 'lt-gen'; txt.textContent = it.text;
         read.classList.remove('off');
       }
@@ -1063,7 +1145,14 @@
         if (st.phase !== 'drive' && st.phase !== 'arrive') return;
         const under = T.F.under || T.R.under;
         if (st.phase === 'drive') {
-          if (under) readOut(under);
+          // phone rebuild: the plaque needs the sky, so each plank answers with a pop instead of the readout
+          if (under && !(M.phone && st.mode === 'B')) readOut(under);
+          if (st.mode === 'B' && T.F.under && T.F.under.kind === 'timber' && !T.F.under.popped) {
+            const pk = T.F.under; pk.popped = true; st.holds = (st.holds || 0) + 1;
+            K.pop('HOLDS', { x: clamp(pk.nodes[2].x, 60, M.W - 60), y: M.yD - 26 - 22 * M.s, kind: 'good' });
+            if (A.ctx) { A.wood(undefined, 0.16, 0.55); A.chime(A.note(['E5', 'G#5', 'B5', 'E6', 'G#6', 'B6'][Math.min(5, st.holds - 1)]), { vol: 0.06, dur: 1.1 }); }
+            P.emit('star', pk.nodes[2].x, M.yD - 6, 5, { colors: ['#4fe0a8', '#ffffff'], speed: [30, 90] });
+          }
           // strain: timber barely moves the needle; cardboard pegs it
           let strain = 0, hot = false;
           sim.planks.forEach(pk => { if (pk.gone || !pk.solid) return; const lim = pk.K.sagSnap; const s = pk.kind === 'timber' ? Math.max(0, (pk.nodes[2].y - M.yD)) / lim * 0.9 : pk.snapped ? 1.2 : Math.max(0, pk.sag) / lim; if (T.F.under === pk || T.R.under === pk) { strain = Math.max(strain, s); if (pk.kind !== 'timber') hot = true; } });
@@ -1089,19 +1178,20 @@
             T.target = 0; st.phase = 'arrive'; st.arrivedAt = now();
           }
           // a run that never fails or never arrives: finish it by hand
-          if (now() - st.driveT0 > (st.mode === 'A' ? 16000 : 14000)) { if (st.mode === 'A') { const pk = sim.planks.find(p => p.kind === 'card' && !p.snapped); if (pk) sim.snap(pk, 2); else st.forceEnd = true; } else { T.kin = { t: 0, dur: 1.2, rx0: T.R.x, ry0: T.R.y, rx1: M.xM + 10 * M.s, ry1: M.yD - T.K.r, a0: truckAng(), a1: 0, arc: 20 * M.s, ax0: rope.x, ax1: M.xM + 10 * M.s }; st.phase = 'arrive'; st.arrivedAt = now(); } }
+          if (now() - st.driveT0 > (st.mode === 'A' ? 16000 : 14000)) { if (st.mode === 'A') { const pk = sim.planks.find(p => p.kind === 'card' && !p.snapped); if (pk) sim.snap(pk, 2); else st.forceEnd = true; } else { T.target = 0; T.kin = { t: 0, dur: 1.2, rx0: T.R.x, ry0: T.R.y, rx1: M.xM + 10 * M.s, ry1: M.yD - T.K.r, a0: truckAng(), a1: 0, arc: 20 * M.s, ax0: rope.x, ax1: M.xM + 10 * M.s }; st.phase = 'arrive'; st.arrivedAt = now(); } }
         }
         if (st.phase === 'arrive') {
           // brake to a stop on the mesa
           [T.R, T.F].forEach(w => { w.x = w.px + (w.x - w.px) * 0.86; });
           const over = T.F.x - (M.xM + M.mw - T.K.r * 1.5); if (over > 0) { T.F.x -= over; T.R.x -= over; T.F.px = T.F.x; T.R.px = T.R.x; }
-          if (now() - st.arrivedAt > 900 && !st.testDone) { st.testDone = true; read.classList.add('off'); gaugeTo(0, false); }
+          if (now() - st.arrivedAt > 900 && !st.testDone) { st.testDone = true; T.drive = false; T.target = 0; T.hold = true; st.unhookT = now(); if (A.ctx) { A.click({ vol: 0.08 }); A.tone({ type: 'sine', freq: 900, to: 1400, glide: 0.4, dur: 0.45, vol: 0.02 }); } read.classList.add('off'); gaugeTo(0, false); }
         }
       }
-      function stamp(text, ok, pk) {
-        const x = pk ? (pk.nodes[2].x) : M.W / 2, y = M.yD - 40 - 30 * M.s;
+      function stamp(text, ok, pk, below) {
+        // above the deck, clear of the signs; the rebuild's verdict is stamped on the canyon wall under the bridge
+        const x = pk ? (pk.nodes[2].x) : M.W / 2, y = below ? M.yD + 64 + 30 * M.s : M.yD - 24;
         const s = h('div', { class: 'lt-stamp' + (ok ? ' ok' : ''), text, 'aria-hidden': 'true' });
-        s.style.left = clamp(x, 80, M.W - 80) + 'px'; s.style.top = Math.max(150, y) + 'px';
+        s.style.left = clamp(x, 96, M.W - 96) + 'px'; s.style.top = Math.max(150, y) + 'px';
         el.append(s); K.later(() => { s.style.transition = 'opacity .5s ease'; s.style.opacity = '0'; }, 1700); K.later(() => s.remove(), 2300);
         if (A.ctx) A.thud({ vol: 0.25 });
       }
@@ -1183,7 +1273,7 @@
         say(glitch, L(LINES.twist), { mood: 'idea', ms: 4200 });
         await K.wait(3100);
         // fog rolls in; the site changes behind it
-        SND.fog(); st.fogDir = 1;
+        SND.fog(); st.fogDir = 1; startSign.classList.add('fog');
         await waitFor(() => st.fogK >= 1, 3000);
         destSign.classList.add('far'); destSign.classList.toggle('gone', M.phone || M.W < 900); destSign.querySelector('small span').textContent = serious ? 'Part-way there' : 'Out of reach';
         st.mode = 'B'; MUS.vol = 0.55;
@@ -1193,7 +1283,7 @@
         layoutKey = ''; layout();
         st.mesaRising = true; st.mesaK = 0; renderBg();
         await K.wait(300);
-        st.fogDir = -1;
+        st.fogDir = -1; K.later(() => startSign.classList.remove('fog'), 500);
         SND.rumble();
         if (!K.reduced()) st.shake = 5;
         const t0 = now();
@@ -1217,7 +1307,7 @@
         say(rush, L(LINES.cross), { mood: 'happy', ms: 2000 });
         await waitFor(() => st.testDone, 20000);
         SND.horn(); rush.react('bounce'); gauge.classList.add('off');
-        stamp('IT HOLDS', true, sim.planks.filter(p => !p.gone).slice(-1)[0]);
+        { const tb = sim.planks.filter(p => p.kind === 'timber' && !p.gone); stamp('IT HOLDS', true, tb[Math.floor((tb.length - 1) / 2)] || null, true); }
         say(rush, L(LINES.arrive), { mood: 'celebrate', ms: 2400 });
         if (engine) engine.set(0.0001, 0);
         await K.wait(1500);
@@ -1228,16 +1318,18 @@
         st.phase = 'finale'; st.finT = now(); K.guide(null);
         MUS.win = true; MUS.bpm = 108; MUS.vol = 0.8;
         hud.lastChild.textContent = 'Passed';
-        fairSign.classList.add('brass');
-        if (A.ctx) { const t0 = A.now(); ['E4', 'G#4', 'B4', 'E5', 'G#5', 'B5'].forEach((n, i) => A.pluck(A.note(n), { when: t0 + i * 0.06, vol: 0.12, damp: 0.995, verb: 0.3 })); }
+        // the plaque turns to brass and four bolts ratchet in
+        fairSign.classList.add('brass'); boltPlaque();
+        if (A.ctx) { const t0 = A.now(); ['E4', 'G#4', 'B4', 'E5', 'G#5', 'B5'].forEach((n, i) => A.pluck(A.note(n), { when: t0 + i * 0.06, vol: 0.12, damp: 0.995, verb: 0.3 })); A.sync('finale', now()); }
         // string lights run along the bridge, plank by plank
         for (let i = 0; i <= F; i++) { st.lights = i + 0.6; if (A.ctx) A.chime(A.note(['E5', 'G#5', 'B5', 'E6', 'G#6'][i % 5]), { vol: 0.05, dur: 1 }); await K.wait(K.reduced() ? 60 : 180); }
         SND.horn();
         say(glitch, L(LINES.fin), { mood: 'celebrate', ms: 0 }); glitch.base('celebrate'); rush.base('celebrate'); rush.react('bounce');
         P.emit('confetti', (T.R.x + T.F.x) / 2, M.yD - 20, 40, { colors: ['#ffcf5a', '#ff7a4d', '#4fe0a8', '#fff3d6', skin.body] });
-        const from = [{ x: M.xM + M.mw / 2, y: M.yD }, { x: M.xL + M.L * 0.5, y: M.yD }, { x: (M.xL + M.xM) / 2, y: M.yD }];
-        await K.finale('fireworks', { from, colors: ['#ffcf5a', '#ff7a4d', '#4fe0a8', '#ffe8b8', '#ff5fa2'], count: M.phone ? 6 : 8, ms: 4400, chord: ['E3', 'G#3', 'B3', 'E4'] });
-        await K.wait(K.reduced() ? 300 : 700);
+        // every fact plank fires a rocket over the canyon, then the mesa answers
+        if (A.ctx) A.pad(['E3', 'G#3', 'B3', 'E4'].map(n => A.note(n)), { dur: 5.5, vol: 0.14, attack: 0.6 });
+        fireworks();
+        await K.wait(K.reduced() ? 2600 : 4800);
         finishGame();
       }
       function finishGame() {

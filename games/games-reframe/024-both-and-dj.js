@@ -89,6 +89,9 @@
 .g-both-and-dj .bd-lb { color: #dcfbff; text-shadow: 0 0 10px rgba(34, 227, 255, 0.9); }
 .g-both-and-dj .bd-and { font: 400 26px/1 var(--bd-neon); color: #fff6cf; letter-spacing: 0.08em; text-shadow: 0 0 6px var(--bd-and), 0 0 18px rgba(255, 210, 63, 0.85); }
 .g-both-and-dj .bd-small .bd-la, .g-both-and-dj .bd-small .bd-lb { font-size: 17px; }
+.g-both-and-dj .bd-pair { gap: 3px; }
+.g-both-and-dj .bd-pair .bd-la, .g-both-and-dj .bd-pair .bd-lb { opacity: 0.86; }
+.g-both-and-dj .bd-andq { font-size: 20px; color: rgba(255, 246, 207, 0.45); text-shadow: none; }
 .g-both-and-dj .bd-enc { display: flex; flex-direction: column; gap: 5px; width: 100%; }
 .g-both-and-dj .bd-enc p { margin: 0; font: 800 16px/1.15 var(--bd-disp); color: rgba(247, 241, 255, 0.6); transition: color 0.3s ease, transform 0.3s ease; }
 .g-both-and-dj .bd-enc p.on { color: #ffffff; transform: scale(1.05); text-shadow: 0 0 12px rgba(255, 210, 63, 0.85); }
@@ -209,21 +212,23 @@
       const titleCase = (s) => s.toLowerCase().replace(/(^|[\s-])([a-z])/g, (m, p, c) => p + c.toUpperCase());
       const CW = [];
       const add = (id, tag, line) => { if (!CW.some(c => c.id === id)) CW.push({ id, tag, line, used: false }); };
-      if (!hasText) add('coping', 'STRENGTH', 'I’m coping');
-      if (care) add('help', 'HELP', 'I can get proper advice');
+      const some = an.fear_support === 'some';
+      if (!hasText) { add('coping', 'STRENGTH', 'I’m coping'); add('ending', 'FACT', 'I don’t know the ending yet'); add('help', 'CAN', 'I can ask for help'); add('best', 'STRENGTH', 'I’m doing my best'); }
+      if (care) add('advice', 'HELP', 'I can get proper advice');
       if (strong) { add('plan', 'PLAN', 'I can make a plan'); add('step', 'CAN', 'I can take one step today'); add('support', 'SUPPORT', 'I can ask for support'); }
       else {
-        if (future) add('nothappened', 'FACT', 'it hasn’t happened');
+        // honest about the facts: when the worry has a real basis it is "not decided", never "it hasn't happened"
+        if (future) add('nothappened', 'FACT', some ? 'it isn’t decided yet' : 'it hasn’t happened');
         if (mind) add('mind', 'FACT', 'I can’t see inside their head');
         add('ending', 'FACT', 'I don’t know the ending yet');
         if (hasText && altN && !care) add('alt', 'COULD BE', 'it could be “' + clip(titleCase(altN.name), 28) + '”');
       }
-      if (leads.some(l => l && l.kind === 'ask')) add('ask', 'CAN', 'I can ask about it');
+      if (hasText && leads.some(l => l && l.kind === 'ask')) add('ask', 'CAN', 'I can ask about it');
       add('matters', 'VALUE', 'it matters to me');
       add('handling', 'STRENGTH', 'I’m handling it right now');
       add('before', 'STRENGTH', 'I’ve got through hard days before');
       add('kind', 'CAN', 'I can be kind to myself');
-      if (leads.some(l => l && l.kind === 'prepare')) add('prep', 'CAN', 'I can prepare');
+      if (hasText && leads.some(l => l && l.kind === 'prepare')) add('prep', 'CAN', 'I can prepare');
       /* records in today's styles (more styles unlock with visits) */
       const pool = STYLES.filter(s => !s.unlock || visits >= s.unlock);
       const sOff = Math.floor(K.dailyPick([0, 1, 2, 3, 4, 5, 6, 7], 5)) % pool.length;
@@ -232,7 +237,7 @@
       /* ---------------- lines (every one in three vibes) ---------------- */
       const SY = {
         hello: { Jolly: 'Rooftop’s packed! Start Deck A and let’s hear what’s on it.', Cheeky: 'Big crowd. No pressure. Hit start on Deck A.', Unfiltered: 'Crowd’s here. Start Deck A.' },
-        heavy: strong ? { Jolly: 'That track’s heavy for a real reason. Let’s give it company.', Cheeky: 'Heavy one, and fair enough. It needs a partner.', Unfiltered: 'Real and heavy. Give it company.' }
+        heavy: (strong || care) ? { Jolly: 'That track’s heavy for a real reason. Let’s give it company.', Cheeky: 'Heavy one, and fair enough. It needs a partner.', Unfiltered: 'Real and heavy. Give it company.' }
           : { Jolly: 'That’s the one on repeat. It’s real. It’s not the only track.', Cheeky: 'Moody. Catchy. Extremely on repeat.', Unfiltered: 'Real track. Not the only one.' },
         crate: { Jolly: 'Dig the crate. Pick a record that’s also true.', Cheeky: 'Crate time. Find one that’s true too.', Unfiltered: 'Pick a true one for Deck B.' },
         crate2: { Jolly: 'Another record. What else is true?', Cheeky: 'Next one. Something else that’s true.', Unfiltered: 'Next true one.' },
@@ -285,8 +290,10 @@
       const CROWD = [];
 
       /* ---------------- DOM ---------------- */
-      const cvBg = K.canvas(el, { opaque: true, maxDpr: 1.5 });   // sky, city, billboard, roof, booth hardware: painted on resize/theme only
-      const cv = K.canvas(el, { maxDpr: 1.5 });                    // what moves: beams, crowd, records, lights, confetti
+      // one opaque full-screen canvas; the sky, city, billboard, roof and booth hardware are painted once (on resize/theme)
+      // into an offscreen backdrop that each frame starts from, then what moves goes on top
+      const cv = K.canvas(el, { opaque: true, maxDpr: 1.5 });
+      const bgc = document.createElement('canvas');
       const glowEl = h('div', { class: 'bd-glow', 'aria-hidden': 'true' });
       const meter = h('div', { class: 'bd-meter', 'aria-hidden': 'true' }, ...Array.from({ length: 10 }, (x, i) => h('i', { style: { '--c': i < 4 ? '#ff5fb4' : i < 7 ? '#ffd23f' : '#45e8ff' } })));
       const segs = Array.from(meter.children);
@@ -327,7 +334,7 @@
       }
       const sideKids = (s) => s.q ? [document.createTextNode(s.pre), h('span', { class: 'gk-user', text: '“' + s.q + '”' })] : [document.createTextNode(s.t)];
       const sideText = (s) => s.q ? s.pre + '“' + s.q + '”' : s.t;
-      function boardVenue() { boardSet('venue', [h('span', { class: 'bd-k', text: 'Tonight on the roof' }), h('span', { class: 'bd-big', text: venue.name }), h('span', { class: 'bd-sub', text: 'DJ: you · Deck A + Deck B' })], A_COL); }
+      function boardVenue() { boardSet('venue', [h('span', { class: 'bd-k', text: 'Tonight on the roof' }), h('span', { class: 'bd-big', text: 'Both/And' }), h('span', { class: 'bd-sub', text: 'DJ: you · two decks · one song' })], A_COL); }
       function boardNowA() {
         const words = hot ? h('span', { class: 'bd-q gk-user', text: '“' + hot + '”' }) : h('span', { class: 'bd-q', text: hasText ? 'Part of me is struggling' : 'Part of me is struggling' });
         boardSet('nowa', [h('span', { class: 'bd-k', text: 'Now playing · Deck A' }), words, h('span', { class: 'bd-sub', text: hot ? 'on repeat' : 'a track like this, on repeat' })], A_COL);
@@ -335,6 +342,12 @@
       function boardAnd(line) {
         const long = sideText(line.a).length + line.b.length > 58;
         boardSet('and', [h('span', { class: 'bd-la' }, ...sideKids(line.a)), h('span', { class: 'bd-and', text: 'AND' }), h('span', { class: 'bd-lb', text: line.b })], AND_COL, long);
+      }
+      /* before the lock: both halves of the lyric are cued, the AND between them still dark */
+      let pairSub = null;
+      function boardPair(aSide, bLine, sub) {
+        pairSub = h('span', { class: 'bd-sub', text: sub });
+        boardSet('pair', [h('span', { class: 'bd-la' }, ...sideKids(aSide)), h('span', { class: 'bd-and bd-andq', text: '+' }), h('span', { class: 'bd-lb', text: bLine }), pairSub], B_COL, true);
       }
       function boardReq(which) { boardSet('req', [h('span', { class: 'bd-k', text: 'Request from the floor' }), h('span', { class: 'bd-big' + (which === 'b' ? ' b' : ''), text: 'Only Deck ' + which.toUpperCase() })], which === 'b' ? B_COL : A_COL); }
       function boardMsg(k, big, sub, col) { boardSet('msg', [h('span', { class: 'bd-k', text: k }), h('span', { class: 'bd-big' + (col === B_COL ? ' b' : ''), text: big }), sub ? h('span', { class: 'bd-sub', text: sub }) : null].filter(Boolean), col || AND_COL); }
@@ -789,9 +802,12 @@
         const hg = g.createLinearGradient(0, hz - 60, 0, R.booth.top); hg.addColorStop(0, 'rgba(0,0,0,0)'); hg.addColorStop(1, Pp.bright ? 'rgba(255,170,150,0.18)' : 'rgba(120,60,160,0.22)'); g.fillStyle = hg; g.fillRect(0, hz - 60, W, R.booth.top - hz + 60);
       }
       function ensureBg() {
-        const g = cvBg.g; if (!g || !cvBg.w || !R.booth) return;
-        const key = cvBg.w + 'x' + cvBg.h + ':' + cvBg.dpr + ':' + S.scene() + ':' + M.w; if (bg.key === key) return; bg.key = key;
-        g.setTransform(cvBg.dpr, 0, 0, cvBg.dpr, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+        if (!cv.w || !R.booth) return;
+        const dpr = cv.dpr || 1, pw = Math.max(1, Math.round(cv.w * dpr)), ph = Math.max(1, Math.round(cv.h * dpr));
+        const key = pw + 'x' + ph + ':' + S.scene() + ':' + M.w; if (bg.key === key) return; bg.key = key;
+        if (bgc.width !== pw || bgc.height !== ph) { bgc.width = pw; bgc.height = ph; }
+        const g = bgc.getContext('2d', { alpha: false });
+        g.setTransform(dpr, 0, 0, dpr, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
         paintBg(g); paintBooth(g);
       }
 
@@ -913,6 +929,7 @@
         d.on = true; d.startAt = at; d.motorT = now() + Math.max(0, (at - aNow()) * 1000); d.motor = 0.05;
         ST.drops.push(j.grade); ctx.track('drop', { g: j.grade });
         K.sfx.tap();
+        sync.face(j.grade === 'perfect' ? 'wow' : j.grade === 'good' ? 'happy' : 'wink', 1100);
         const tx = j.grade === 'perfect' ? 'On the one!' : j.grade === 'good' ? 'Nice drop' : 'Caught the next one';
         K.pop(tx, { x: R.dB.cx, y: R.dB.y - 18, kind: j.grade === 'perfect' ? 'great' : j.grade === 'good' ? 'good' : 'soft' });
         if (j.grade === 'perfect') { ST.burst += 0.12; P.emit('star', R.drop.cx, R.drop.cy, 12, { colors: ['#fff6cf', '#ffd23f'] }); }
@@ -989,12 +1006,12 @@
         const t0 = SC.strokeT - (A.ctx ? A.latency() : 0), e8 = (t0 - AU.T0) / (BEAT / 2), off = Math.abs(e8 - Math.round(e8)) * BEAT / 2, on = off <= BEATW;
         if (on) ST.onBeat++;
         ST.burst += 0.035;
-        try { if (navigator.vibrate && !reduced()) navigator.vibrate(8); } catch (e) { /* no vibration */ }
+        if (!reduced()) S.buzz(8);
         const d0 = SC.k === 'a' ? R.dA : R.dB;
         if (ST.phase === 'scratch') {
           ST.scr++; ST.scrOn = (ST.scrOn || 0) + (on ? 1 : 0);
           comboEl.replaceChildren(document.createTextNode('AND × '), h('b', { text: String(ST.scr) }), document.createTextNode(on ? ' · on beat' : ''));
-          K.pop(on ? 'AND!' : 'and', { x: d0.cx + (Math.random() - 0.5) * 30, y: d0.y + 14, kind: on ? 'great' : 'good' });
+          K.pop(on ? 'AND!' : 'and', { x: d0.cx + (Math.random() - 0.5) * d0.r * 0.6, y: d0.cy - d0.r * 0.25, kind: on ? 'great' : 'good' });
           if (ST.scr % 3 === 0) sCheer(0.5);
           if (ST.scr >= STROKES && ST.phase === 'scratch') ST.phase = 'scratched';
         }
@@ -1042,7 +1059,7 @@
         });
         crate.replaceChildren(...sleeves.map(s => s.el)); crate.hidden = false; placeCrate();
         sleeves.forEach((s, i) => S.later(() => s.el.classList.remove('in0'), reduced() ? 0 : 60 + i * 90));
-        board.style.opacity = '0.2';
+        board.style.opacity = '0';
       }
       function closeCrate(chosen) {
         sleeves.forEach(s => { if (s !== chosen) s.el.classList.add('out'); });
@@ -1142,7 +1159,7 @@
       function draw(g, t, bIdx, bph) {
         const W = M.w, H = M.h, Pp = pal(), br = Pp.bright, red = reduced();
         g.setTransform(cv.dpr, 0, 0, cv.dpr, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
-        g.clearRect(0, 0, W, H);
+        g.drawImage(bgc, 0, 0, W, H);
         const la = ST.la, lb = ST.lb, both = ST.both, beat = ST.beatK, hype = ST.hype;
         // the billboard glows in the colour of what's on it (a compositor-only layer)
         const go = Math.round(((br ? 0.35 : 0.55) * (0.5 + 0.5 * beat * (ST.aOn ? 1 : 0)) * (crate.hidden ? 1 : 0.35)) * 20) / 20;
@@ -1386,6 +1403,7 @@
         await until(() => ST.phase === 'cue');
       }
       async function cueStep(r) {
+        if (DK.b.rec) boardPair(A_SIDES[r % A_SIDES.length], DK.b.rec.line, 'cued on Deck B · drop it on the one');
         sync.say(L(r === 0 ? SY.cue : SY.swap), { mood: 'determined', ms: 3000 });
         K.guide({ id: 'cue', g: 'tap', target: dropBtn, label: 'TAP DROP ON THE 1', place: 'above', delay: 500 });
         await until(() => ST.phase === 'blend');
@@ -1395,6 +1413,7 @@
         resetFill();
         await K.wait(reduced() ? 150 : 350);
         if (r === 0) sync.say(L(SY.blend), { mood: 'cool', ms: 3200 });
+        if (pairSub && boardKind === 'pair') pairSub.textContent = 'both true · slide to the middle';
         guideFader('blend', 0.5, 'SLIDE TO THE MIDDLE');
         await until(() => ST.phase === 'locked');
         await K.wait(reduced() ? 2000 : 3100);
@@ -1495,7 +1514,6 @@
       }
 
       cv.onResize(layout);
-      cvBg.onResize(() => { bg.key = ''; });
       S.on('theme', () => { bg.key = ''; spr.key = ''; });
       setKnob();
       (async () => {

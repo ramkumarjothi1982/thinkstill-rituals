@@ -557,13 +557,14 @@
           return;
         }
         if (L0 === 0) { if (b === 0) { A.drum(t, 0.2 * v, 0.46, 0.2); A.drum(t + 0.2, 0.12 * v, 0.44, 0.2); } return; }
+        const lv = L0 === 'fin' ? 3 : L0; // the finale keeps the whole band and adds the crowd's chant
         if (b === 0 || b === 2) A.drum(t, (b === 0 ? 0.34 : 0.26) * v, 0.52, 0.18);
-        if (b === 1 || b === 3) clap(t, 0.07 * v * (L0 >= 2 ? 1.2 : 1), b === 1 ? 0.2 : -0.2);
-        if (L0 >= 2) {
+        if (b === 1 || b === 3) clap(t, 0.07 * v * (lv >= 2 ? 1.2 : 1), b === 1 ? 0.2 : -0.2);
+        if (lv >= 2) {
           if (b === 0) { A.pluck(A.note(bass), { when: t, vol: 0.3 * v, damp: 0.993, lp: 600, bus: 'music' }); ch.forEach((n, k) => A.tone({ when: t + k * 0.008, type: 'triangle', freq: A.note(n), dur: 60 / BPM * 3.6, vol: 0.022 * v, attack: 0.25, lp: 1600, verb: 0.35, bus: 'music' })); }
           if (b === 2) A.pluck(A.note(bass) * 1.5, { when: t, vol: 0.2 * v, damp: 0.992, lp: 600, bus: 'music' });
         }
-        if (L0 >= 3) {
+        if (lv >= 3) {
           const n = RIFF[i % 16]; A.tone({ when: t, type: 'square', freq: A.note(n), dur: 60 / BPM * 0.8, vol: 0.016 * v, attack: 0.01, lp: 2400, bus: 'music', detune: -6 }); A.tone({ when: t, type: 'triangle', freq: A.note(n), dur: 60 / BPM * 0.9, vol: 0.03 * v, lp: 2600, bus: 'music', detune: 6 });
           if (inten > 0) A.shaker(t + 30 / BPM, 0.03 * v);
         }
@@ -587,6 +588,7 @@
         dive() { K.sfx.whoosh(); if (!A.ctx) return; const t = A.now(); A.noise({ when: t, filter: 'lowpass', freq: 4000, to: 180, dur: 2.6, attack: 0.3, vol: 0.15, pink: true }); A.tone({ when: t + 2.2, type: 'sine', freq: 70, to: 40, glide: 0.4, dur: 0.6, vol: 0.2 }); },
         glass(i, pan) { if (!A.ctx) return; A.chime(A.note(PENT[(i * 3) % PENT.length]) * 2, { vol: 0.035, dur: 1.6, pan }); },
         locked() { K.sfx.no(); },
+        hug() { K.sfx.sparkle(); SND.ooh(0.9); if (!A.ctx) return; const t = A.now(); ['D5', 'F#5', 'A5', 'D6'].forEach((n, k) => A.chime(A.note(n), { when: t + 0.12 + k * 0.1, vol: 0.05, dur: 1.8 })); A.pad(['D4', 'F#4', 'A4'].map(n => A.note(n)), { when: t + 0.05, dur: 3, vol: 0.08, attack: 0.4 }); },
         beat() { if (!A.ctx) return; const t = A.now(); ['D5', 'F#5', 'A5'].forEach((n, k) => A.chime(A.note(n), { when: t + k * 0.04, vol: 0.06, dur: 1 })); }
       };
 
@@ -921,16 +923,17 @@
           const x = Q.x, y = Q.y; if (x < -6 || x > W + 6 || y < -6 || y > H + 6) { PV[i] = 0; continue; }
           PV[i] = 1; PX[i] = x; PY[i] = y; PS[i] = clamp(Q.s * 1.1, 0.8, smax) * (1 + w * 0.35);
         }
-        const off = [], buckets = [[], [], [], [], [], []]; // lit, standing in the wave, tifo ground, tifo letter, stripe, just lit
+        const off = [], buckets = [[], [], [], [], [], [], []]; // lit, standing in the wave, tifo ground, tifo letter, stripe, just lit, tifo ground standing
         const TB = [0, 2, 3, 4, 0];
         for (let i = 0; i < NS; i++) {
           if (!PV[i] || i === YOU) continue;
           const lt = LIT[i];
           if (lt === Infinity || lt > tn) { off.push(i); continue; }
-          let b = 0;
+          let b = 0, card = false;
           if (tn - lt < 260) b = 5;
-          else if (st.tifo && FLIP[i] <= tn && TIFO[i]) b = TB[TIFO[i]];
-          if (WV[i] > 0.45 && b !== 3) b = 1;
+          else if (st.tifo && FLIP[i] <= tn && TIFO[i]) { b = TB[TIFO[i]]; card = SIN[CL[i]] > 0.25; }
+          // the wave lifts every seat; over the card stunt it keeps the cards' colours, so the message stays readable
+          if (WV[i] > 0.45) b = card ? (b === 2 ? 6 : b) : (b === 3 ? 3 : 1);
           buckets[b].push(i);
         }
         // unlit seats: short segments along each ring, so the stands read as rows of seats
@@ -949,7 +952,7 @@
           g.stroke();
         });
         g.lineCap = 'butt';
-        const cols = [PA.lit, PA.litHot, PA.tifoBg, PA.tifoTxt, PA.stripe, '#ffffff'];
+        const cols = [PA.lit, PA.litHot, PA.tifoBg, PA.tifoTxt, PA.stripe, '#ffffff', '#ff7fa6'];
         // the card stunt: far-stand seats become cards that tile the stand, each one flipping as the wave passes
         const cardHalf = (i) => {
           const r = RG[i], base = r * NCOL, j = CL[i], jr = base + (j + 1) % NCOL, jl = base + (j + NCOL - 1) % NCOL;
@@ -960,7 +963,7 @@
           return [ax, ay, bx, by];
         };
         const cardsLit = [];
-        [2, 3].forEach(bi => {
+        [2, 3, 6].forEach(bi => {
           const list = buckets[bi]; if (!list.length) return;
           g.fillStyle = cols[bi]; g.beginPath();
           const keep = [];
@@ -986,7 +989,7 @@
         // bloom: the lit seats again at quarter size, upscaled softly
         const bw = bloomCv.width, bh = bloomCv.height, sx = bw / W, sy = bh / H;
         bloomG.setTransform(1, 0, 0, 1, 0, 0); bloomG.globalCompositeOperation = 'source-over'; bloomG.fillStyle = '#000'; bloomG.fillRect(0, 0, bw, bh);
-        const bcols = [cols[0], cols[1], '#3a0a1c', '#ffffff', cols[4], cols[5]];
+        const bcols = [cols[0], cols[1], '#3a0a1c', '#ffffff', cols[4], cols[5], '#5a1030'];
         if (cardsLit.length) { bloomG.fillStyle = '#ffffff'; bloomG.beginPath(); for (const i of cardsLit) { const s = Math.max(1.2, PS[i] * sx * 2.4); bloomG.rect(PX[i] * sx - s / 2, PY[i] * sy - s / 2, s, s); } bloomG.fill(); }
         buckets.forEach((list, bi) => { if (!list.length) return; bloomG.fillStyle = bcols[bi]; bloomG.beginPath(); for (const i of list) { const s = Math.max(1, PS[i] * sx * 1.8); bloomG.rect(PX[i] * sx - s / 2, PY[i] * sy - s / 2, s, s); } bloomG.fill(); });
         g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = bright() ? 0.5 : 0.85; g.imageSmoothingEnabled = true; g.drawImage(bloomCv, 0, 0, W, H); g.restore();
@@ -1012,6 +1015,22 @@
           g.strokeStyle = hexA('#ffffff', 0.5 + pul * 0.4); g.lineWidth = 1.5; g.beginPath(); g.arc(x, y, Math.max(5, s * 2) + pul * 3, 0, TAU); g.stroke();
         }
         if (st.flashSeat != null && PV[st.flashSeat]) { const k = (tn - st.flashT) / 900; if (k < 1) { const x = PX[st.flashSeat], y = PY[st.flashSeat]; g.strokeStyle = hexA('#ffffff', 1 - k); g.lineWidth = 2; g.beginPath(); g.arc(x, y, 6 + k * 26, 0, TAU); g.stroke(); } }
+        // the hug cam: a heart frames your seat on the beat (and stays, softly, to the end)
+        if (st.hugT && PV[YOU]) {
+          // big for the hug, then it settles inside the O of YOU, around your seat, so the message stays readable
+          const k = clamp((tn - st.hugT) / 650, 0, 1), e = RM() ? 1 : K.ease.outBack(k), bp = RM() ? 0 : Math.exp(-Math.max(0, tn - st.beatT) / 220);
+          const seatGap = PV[YOU + 1] && PV[YOU - 1] ? Math.abs(PX[YOU + 1] - PX[YOU - 1]) / 2 : 4, settle = smooth(2400, 3600, tn - st.hugT);
+          const R = lerp((M.wide ? 34 : 26) * e, clamp(seatGap * 1.25, 4, 12), settle) * (1 + bp * 0.1), x = PX[YOU], y = PY[YOU] - R * 0.12;
+          g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.55 - settle * 0.2; g.drawImage(glow('#ff6f91'), x - R * 2.2, y - R * 2.2, R * 4.4, R * 4.4); g.restore();
+          g.beginPath();
+          for (let s = 0; s <= 48; s++) { const a = s / 48 * TAU, sn = Math.sin(a), hx = 16 * sn * sn * sn, hy = -(13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a)); if (s) g.lineTo(x + hx * R / 16, y + hy * R / 16); else g.moveTo(x + hx * R / 16, y + hy * R / 16); }
+          g.closePath(); g.lineJoin = 'round';
+          const lw = clamp(R * 0.2, 1.4, 5);
+          g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = lw; g.stroke();
+          g.strokeStyle = '#ff6f91'; g.lineWidth = lw * 0.52; g.stroke();
+          if (settle > 0.5) { g.fillStyle = hexA('#ff6f91', (settle - 0.5) * 1.2); g.fill(); }
+          g.lineJoin = 'miter';
+        }
       }
       function drawFloodHaze(g) {
         if (st.flood < 0.02) return;
@@ -1375,6 +1394,8 @@
         await waitPull();
         st.phase = 'wave';
         MUS.layer = 'fin'; crowdLevel(0.1);
+        ledSet('STAND UP!', '#ff8fae');
+        setBody([h('span', { class: 'njm-label', text: 'The wave' }), capEl('Every light stands up as it passes. <b>Watch the far stand.</b>')]);
         const laps = inten === 0 ? 2 : 3, lap = RM() ? 1500 : [2400, 2100, 1900][inten];
         st.lap = lap; st.waveT0 = now() + 200; st.waveOn = true;
         say(sync, L(LINES.waveGo), { mood: 'celebrate', ms: 2200 });
@@ -1384,18 +1405,21 @@
         const phi0 = Math.PI / 2 + 0.6;
         for (let i = 0; i < NST; i++) { let d = (phi0 - CL[i] / NCOL * TAU) % TAU; if (d < 0) d += TAU; FLIP[i] = st.waveT0 + lap * (1 + d / TAU); }
         st.tifo = true; st.tifoEnd = st.waveT0 + lap * 2 + 700;
-        S.later(() => { ledSet('NOT JUST YOU', '#fff2d0'); SND.cheer(1.2); K.sfx.great(); }, lap * 1.6);
+        S.later(() => { ledSet('NOT JUST YOU', '#fff2d0'); setBody([h('span', { class: 'njm-label', text: 'The stands spell it out' }), capEl('Made-up fans, a true message: <b>this feeling is human.</b>')]); SND.cheer(1.2); K.sfx.great(); }, lap * 1.6);
         S.later(() => camTo('tifo', RM() ? 400 : 2400), lap * 1.75);
         S.later(() => { say(patch, L(LINES.tifo), { mood: 'love', ms: 3000 }); }, lap * 2.05);
         await K.wait(lap * laps + 300);
-        st.waveOn = false;
+        st.waveOn = false; markDirty(600); // one clean frame: everyone sits down and the message reads
         const tw = st.towerPts.filter(p => p && p.x > 10 && p.x < M.W - 10 && p.y > 60 && p.y < M.H * 0.7);
         K.finale('fireworks', { from: tw.length ? tw : [{ x: M.W * 0.2, y: M.H * 0.4 }, { x: M.W * 0.8, y: M.H * 0.4 }], colors: ['#ffc94d', '#ff6f91', '#fff4d8', VENUE.team], count: RM() ? 3 : [5, 7, 9][inten], chord: ['D4', 'F#4', 'A4', 'D5'], ms: 4200, z: 12 });
         K.sfx.win();
         setBody([h('span', { class: 'njm-label', text: 'Tonight at ' + VENUE.name }), capEl(care ? 'A whole stadium knows this feeling. For the real question, <b>talk to someone qualified.</b>' : support === 'strong' && LEAD ? 'Real, and not just you. <b>One next step:</b> ' + escapeHtml(LEAD) : 'Made-up stadium. Real feeling. <b>Lots of people have felt this too.</b>')]);
         await K.wait(RM() ? 900 : 1400);
+        // the hug cam: the big screen finds your seat, a heart frames it, the crowd goes "aww"
+        ledSet('HUG CAM ♥', '#ff8fae'); st.hugT = now(); SND.hug();
         patch.face('hug'); say(patch, L(LINES.hug), { mood: 'hug', ms: 4200 }); patch.react('bounce');
         await K.wait(RM() ? 1800 : 3200);
+        ledSet('NOT JUST YOU', '#fff2d0');
         say(drop, L(care ? LINES.endCare : support === 'strong' ? LINES.endStrong : LINES.end), { mood: 'love', ms: 0 });
         await K.wait(RM() ? 1200 : 2000);
         finishGame();

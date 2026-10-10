@@ -591,7 +591,7 @@
         const facts = noWords ? [] : cams.slice(1).map(q => clip(q, 90));
         if (!noWords && an.source === 'ai' && Array.isArray(an.evidence_against)) an.evidence_against.forEach(x => { if (typeof x === 'string' && x.trim()) facts.push(clip(x, 90)); });
         W8.facts = facts.slice(0, 2);
-        W8.balanced = noWords ? '' : tidy(an.balanced, 150);
+        W8.balanced = noWords || an.source !== 'ai' ? '' : tidy(an.balanced, 150); // the local reader's line is a template; the player's own chosen caption reads truer
         const ls = (Array.isArray(an.leads) ? an.leads : []).filter(l => l && l.text);
         const lead = (kind) => { const l = ls.find(x => x.kind === kind); return l ? tidy(l.text, 110) : ''; };
         W8.plan = support() !== 'weak' ? (lead('prepare') || lead('ask')) : '';
@@ -691,8 +691,40 @@
       applyTheme(); S.on('theme', applyTheme);
 
       /* ---------------- sound ---------------- */
-      const music = K.music('space'); music.level(0.14);
-      let motor = null, drone = null, musicLv = 0.14;
+      /* The score is a lens that opens. Up close it is one muffled pulse and a heartbeat; every step out lets more of the
+         chord in (the arpeggio widens, the filter opens, a pad arrives, then high bells at the whole week). It shares a key
+         with the zoom notches, so the player's gesture plays along with it. */
+      const BED = { bpm: 72, next: 0, step: 0, t0: 0, open: 0, vol: 1, on: true };
+      const PROG = [
+        ['A2', ['A3', 'C4', 'E4', 'G4', 'A4', 'C5', 'E5', 'G5', 'A5']],
+        ['F2', ['F3', 'A3', 'C4', 'E4', 'F4', 'A4', 'C5', 'E5', 'G5']],
+        ['C3', ['C4', 'E4', 'G4', 'A4', 'C5', 'E5', 'G5', 'A5', 'C6']],
+        ['G2', ['G3', 'D4', 'E4', 'G4', 'A4', 'D5', 'E5', 'G5', 'A5']]
+      ];
+      const ARP = [0, 2, 4, 1, 3, 5, 2, 6];
+      const half = () => 30 / BED.bpm;
+      function beatPulse() { if (!A.ctx || !BED.t0) return 0.5; const p = (((A.now() - A.latency() - BED.t0) / (half() * 2)) % 1 + 1) % 1; return Math.exp(-p * 5); }
+      K.loop(() => {
+        if (!A.ctx || !BED.on) return;
+        const tA = A.now();
+        if (!BED.next || BED.next < tA - 0.3) { BED.next = tA + 0.08; BED.t0 = BED.next - BED.step * half(); }
+        while (BED.next < tA + 0.32) {
+          const t = BED.next, s = BED.step, e = s % 8, [root, tones] = PROG[Math.floor(s / 8) % PROG.length], u = BED.open, v = BED.vol;
+          if (e === 0) A.pluck(A.note(root), { when: t, vol: (0.2 + 0.1 * u) * v, damp: 0.993, lp: 420 + 700 * u, bus: 'music' });
+          if ((e === 0 || e === 4) && tenseK() > 0.6 && (P.phase === 'close' || P.phase === 'zoom') && !reduced()) { // the close-up's heartbeat, on the beat
+            A.tone({ when: t, type: 'sine', freq: 70, to: 50, dur: 0.18, vol: 0.24 * v }); A.tone({ when: t + 0.22, type: 'sine', freq: 62, to: 46, dur: 0.2, vol: 0.16 * v });
+          }
+          if (u > 0.06 || e % 4 === 0) {
+            const span = 2 + Math.round(u * 6), note = tones[ARP[e] % span];
+            A.pluck(A.note(note), { when: t + (e % 2 ? 0.014 : 0), vol: (0.045 + 0.075 * u) * (e % 2 ? 0.7 : 1) * v, damp: 0.995, lp: 650 + 4200 * u * u, verb: 0.2 + 0.25 * u, bus: 'music' });
+          }
+          if (e === 0 && u > 0.3) [1, 2, 3].forEach((k2, k) => A.tone({ when: t + k * 0.015, type: 'triangle', freq: A.note(tones[k2]), dur: half() * 8.4, vol: (0.012 + 0.032 * (u - 0.3)) * v, attack: 0.7, lp: 900 + 1600 * u, verb: 0.5, bus: 'music' }));
+          if (u > 0.82 && e % 2 === 1 && hash01(s * 13.7) < 0.35) A.chime(A.note(tones[6 + (s % 3)]), { when: t, vol: 0.018 * v, dur: 1.4, bus: 'music', verb: 0.5 });
+          BED.next += half(); BED.step++;
+        }
+      });
+      S.onDestroy(() => { BED.on = false; });
+      let motor = null, drone = null;
       function beds() {
         if (!A.ctx) return;
         if (!motor) motor = A.loop({ pink: true, filter: 'bandpass', freq: 600, q: 5, bus: 'sfx' });
@@ -700,7 +732,6 @@
       }
       beds(); S.on('audio-ready', beds);
       S.onDestroy(() => { [motor, drone].forEach(x => { if (x) x.stop(); }); });
-      S.every(() => { if (P.phase === 'close' && Z.u < 0.06 && !reduced()) K.sfx.heartbeat(); }, 1500);
       function notchSound(n) {
         if (!A.ctx) return;
         const f = A.note(SCALE[clamp(n, 0, SCALE.length - 1)]);
@@ -749,6 +780,7 @@
         M.top = M.hudOn === false ? 64 : 112; M.dock = M.phone ? M.CH + 32 : 0;
         M.z0 = Math.max(M.W, M.H) * 1.15; M.L0 = Math.log(M.z0);
         M.Ft = frameTarget(); if (!M.F) M.F = Object.assign({}, M.Ft);
+        hud.style.left = (M.phone ? M.W / 2 : M.Ft.x + M.Ft.w / 2) + 'px'; // the readout belongs to the photo frame
         placeChars();
         if (!M.phone) el.style.setProperty('--zo-cw', (M.side - 40) + 'px');
         buildVignette(); grainPat = null;
@@ -779,7 +811,7 @@
       const stopU = (stop) => (stop === 'week' ? 1 : uOfZ(M.F.w / STOP_TILES[stop]));
       function computeView(u) {
         const F = M.F, z1 = z1Of(), L1 = Math.log(z1);
-        const breathe = !reduced() && !P.recap && !P.revealT0 ? 0.014 * (1 - sstep(0, 0.12, u)) * Math.sin(now() / 1000 * 0.9) : 0; // the close-up leans in, uneasily
+        const breathe = !reduced() && !SOFT && !P.recap && !P.revealT0 ? 0.014 * (1 - sstep(0, 0.12, u)) * Math.sin(now() / 1000 * 0.9) : 0; // the close-up leans in, uneasily
         const z = Math.exp(lerp(M.L0, L1, u) + breathe);
         const pw = COLS * z1, ph = ROWS * z1, px0 = F.x + (F.w - pw) / 2, py0 = F.y + (F.h - ph) / 2;
         const px1 = px0 + (BC + 0.5) * z1, py1 = py0 + (BR + 0.5) * z1;
@@ -945,19 +977,29 @@
         try { finPat.setTransform(new DOMMatrix([z / 128, 0, 0, z / 128, ox, oy])); } catch (e) { finOK = false; return null; }
         return finPat;
       }
+      /* the rough moment, painted once per size and mood (tense, calm) so the close-up costs one image per frame;
+         past the largest size it softens like a photo blown up too far, which is the look we want up close */
+      const sceneCache = new Map();
+      function sceneSprite(px, k) {
+        const want = px > 900 ? (SOFT ? 768 : 1536) : px > 420 ? 768 : px > 180 ? 384 : 160, key = want + ':' + k;
+        let c = sceneCache.get(key); if (c) return c;
+        c = document.createElement('canvas'); c.width = c.height = want; const g = c.getContext('2d');
+        g.scale(want / 100, want / 100);
+        try { SCENES[SCENE](g, k); } catch (e) { g.fillStyle = k ? '#2e3c5c' : '#402030'; g.fillRect(0, 0, 100, 100); }
+        sceneCache.set(key, c); return c;
+      }
       function drawBad(g, t) {
         const z = V.z, x = V.ox + BC * z, y = V.oy + BR * z;
         if (x > M.W || y > M.H || x + z < 0 || y + z < 0) return;
         const pixK = P.recap ? sstep(0.62, 0.98, Z.u) : sstep(0.55, 0.95, Z.u);
         if (z >= 12 && pixK < 0.995) {
-          g.save(); g.beginPath(); g.rect(x, y, z, z); g.clip();
-          g.translate(x, y); g.scale(z / 100, z / 100);
-          try { SCENES[SCENE](g, P.calm); } catch (e) { g.fillStyle = '#402030'; g.fillRect(0, 0, 100, 100); }
-          g.restore();
+          const px = z * (cv.dpr || 1), calm = P.calm;
+          if (calm < 0.996) g.drawImage(sceneSprite(px, 0), x, y, z, z);
+          if (calm > 0.004) { g.globalAlpha = calm >= 0.996 ? 1 : calm; g.drawImage(sceneSprite(px, 1), x, y, z, z); g.globalAlpha = 1; }
         }
         if (pixK > 0.005 || z < 12) { g.globalAlpha = z < 12 ? 1 : pixK; g.fillStyle = mixHex('#c23a3a', '#' + cleanHex(BAD), P.calm); g.fillRect(x, y, z, z); g.globalAlpha = 1; }
-        // the tile's frame: red while it is the whole story, gold once it has its place in the picture
-        const show = z < 1400 ? 1 : 0;
+        // the tile's frame: red while it is the whole story, gold once it has its place in the picture (hidden while it fills the screen)
+        const show = z < Math.min(M.W, M.H) * 0.92 ? 1 : 0;
         if (show && z > 3) {
           const lw = clamp(z * 0.028, 1.4, 4.5), gold = P.revealT0 > 0 || P.recap;
           const a = gold ? 0.95 : 0.55 + 0.4 * sstep(0.05, 0.4, Z.u);
@@ -968,8 +1010,8 @@
           const e = (now() - P.revealT0) / 1000, cx = x + z / 2, cy = y + z / 2;
           g.save(); g.globalCompositeOperation = 'lighter';
           for (let k = 0; k < 3; k++) { const p = ((e * 0.8 + k / 3) % 1), R = z * 0.8 + p * z * 4.5; g.strokeStyle = rgba('#ffd27a', (1 - p) * 0.7); g.lineWidth = 2; g.beginPath(); g.arc(cx, cy, R, 0, TAU); g.stroke(); }
-          g.globalAlpha = 0.65 + 0.35 * Math.sin(t * 4); g.drawImage(K.glowSprite('#ffd27a'), cx - z * 2.6, cy - z * 2.6, z * 5.2, z * 5.2);
-          g.restore();
+          g.globalAlpha = 0.55 + 0.45 * beatPulse(); g.drawImage(K.glowSprite('#ffd27a'), cx - z * 2.6, cy - z * 2.6, z * 5.2, z * 5.2);
+          g.restore(); void t;
         }
       }
       const cleanHexCache = {};
@@ -999,9 +1041,9 @@
         const k = tenseK(); if (k <= 0.01) return;
         const W = M.W, H = M.H;
         if (vig) { g.globalAlpha = 0.95 * k; g.drawImage(vig, 0, 0, W, H); g.globalAlpha = 1; }
-        if (grain && !SOFT) {
+        if (grain) { // film grain: one pattern fill (it only dances where frames are cheap)
           if (!grainPat) { try { grainPat = g.createPattern(grain, 'repeat'); } catch (e) { grainPat = null; } }
-          if (grainPat) { g.save(); const jx = reduced() ? 0 : Math.floor(Math.random() * 128), jy = reduced() ? 0 : Math.floor(Math.random() * 128); g.translate(-jx, -jy); g.globalAlpha = 0.2 * k; g.fillStyle = grainPat; g.fillRect(0, 0, W + 128, H + 128); g.restore(); }
+          if (grainPat) { g.save(); const jx = reduced() ? 0 : Math.floor(Math.random() * 128), jy = reduced() ? 0 : Math.floor(Math.random() * 128); g.translate(-jx, -jy); g.globalAlpha = (SOFT ? 0.16 : 0.2) * k; g.fillStyle = grainPat; g.fillRect(0, 0, W + 128, H + 128); g.restore(); }
         }
         // viewfinder centre mark and REC light
         const F = M.F, cx = F.x + F.w / 2, cy = F.y + F.h / 2;
@@ -1094,7 +1136,10 @@
         const zs = zoomX >= 9.95 ? Math.round(zoomX) : zoomX.toFixed(1);
         const lvl = P.fin ? PIC.name : levelOf(n), meta = '×' + zs + ' · ' + fmtN(n) + (n === 1 ? ' moment' : ' moments') + ' · ' + timeOf(n);
         const key = lvl + '|' + meta;
-        if (key !== hudKey) { hudKey = key; if (hudLvl.textContent !== lvl) hudLvl.textContent = lvl; hudMeta.textContent = meta; }
+        if (key !== hudKey) {
+          hudKey = key; if (hudLvl.textContent !== lvl) hudLvl.textContent = lvl; hudMeta.textContent = meta;
+          if (P.capKick && P.capKick.isConnected && P.phase === 'cap' && !P.fin) P.capKick.textContent = 'In frame · ' + lvl.toLowerCase();
+        }
         P.count = n;
         el.classList.toggle('zo-tense', tenseK() > 0.5);
       }
@@ -1103,8 +1148,8 @@
         Z.speed += (du - Z.speed) * Math.min(1, rdt * 10);
         if (motor) { motor.level(Math.min(0.045, Z.speed * 0.03), 0.06); motor.freq(380 + Math.min(1400, Z.speed * 900), 0.08); }
         if (drone) drone.level(0.06 * tenseK() + 0.0001, 0.4);
-        const lv = 0.14 + 0.36 * clamp(Z.u, 0, 1);
-        if (Math.abs(lv - musicLv) > 0.02) { musicLv = lv; music.level(lv); }
+        const open = P.fin ? 1 : clamp(Z.u, 0, 1) * (P.recap ? 1 : 0.96);
+        BED.open += (open - BED.open) * Math.min(1, rdt * 3);
         const nb = Math.floor(clamp(Z.u, 0, 1) * 18 + 0.0001);
         if (nb !== lastNotch) { const t = now(); if (t - lastNotchT > 40 && P.phase !== 'finale') { lastNotchT = t; notchSound(nb); bumpHud(); } lastNotch = nb; }
       }
@@ -1117,22 +1162,33 @@
         const z = V.z, x = V.ox + (BC + 0.5) * z, y = V.oy + BR * z, pw = P.pinW || 110, ph = 26;
         let px = clamp(x - pw / 2, 8, M.W - pw - 8), py = y - ph - Math.max(10, z * 2.4);
         if (py < M.top) py = y + z + Math.max(10, z * 2.4);
-        pin.style.transform = 'translate(' + px.toFixed(1) + 'px,' + py.toFixed(1) + 'px)';
+        const tf = 'translate(' + px.toFixed(1) + 'px,' + py.toFixed(1) + 'px)';
+        if (tf !== P.pinTf) { P.pinTf = tf; pin.style.transform = tf; }
       }
 
       /* ---------------- the frame loop ---------------- */
+      // the picture is redrawn only when something in it changed; a light tick keeps the REC light and the glow pulses alive
+      let drawnKey = '', lastDrawT = 0;
+      const AMBIENT_MS = SOFT ? 90 : 33;
       K.loop((dt, t) => {
         const g = cv.g; if (!g || !M.W || !M.F) return;
         const tn = now(), rdt = Math.min(0.1, Math.max(0.001, (tn - (P.lastNow || tn - 16)) / 1000)); P.lastNow = tn;
-        if (!qual.done) { qual.n++; qual.acc += rdt; if (qual.n >= 90) { qual.done = true; const avg = qual.acc / qual.n; if ((avg > 0.03 && (cv.dpr || 1) > 1.2) || avg > 0.045) { cv.setQuality(0.7); grainPat = null; } } }
+        if (!qual.done) { qual.n++; qual.acc += rdt; if (qual.n >= 90) { qual.done = true; const avg = qual.acc / qual.n; if ((avg > 0.03 && (cv.dpr || 1) > 1.2) || avg > 0.045) { cv.setQuality(0.7); grainPat = null; drawnKey = ''; } } }
         animFrame(rdt);
         if (P.phase === 'zoom' && P.gate) Z.hi = stopU(P.gate);
+        if (P.inLock) Z.lo = zoomInTarget();
         { const want = !P.fin && (M.hudOn === false ? Z.u < 0.94 : Z.u < 0.975); if (want !== (M.hudOn !== false)) setHud(want); }
         stepZoom(rdt);
         computeView(Z.u);
         P.calm = P.recap ? Math.min(1, P.calm + rdt * 0.8) : Math.max(P.calm, sstep(0.04, 0.62, Z.u));
         if (P.flash > 0) P.flash = Math.max(0, P.flash - rdt * 1.6);
         audioTick(rdt); hudTick(); placePin();
+        const key = V.z.toFixed(3) + '|' + V.ox.toFixed(2) + '|' + V.oy.toFixed(2) + '|' + P.calm.toFixed(3) + '|' + (bright() ? 1 : 0) + '|' + M.W + 'x' + M.H + '|' + (cv.dpr || 1) + '|' + (P.recap ? 1 : 0) + (P.revealT0 ? 1 : 0) + (atlas24 ? 1 : 0) + (M.hudOn === false ? 1 : 0);
+        const busy = key !== drawnKey || FX.count() > 0 || !!P.ring || P.flash > 0 || (P.stopFlash && tn - P.stopFlash < 520) || (P.revealT0 && tn - P.revealT0 < 1700)
+          || (P.fin && tn - P.fin.t0 < (P.fin.wave + P.fin.flip + 3.4) * 1000) || (!SOFT && tenseK() > 0.01);
+        const ambient = tenseK() > 0.01 || P.revealT0 > 0 || !!P.fin;
+        if (!busy && !(ambient && tn - lastDrawT > AMBIENT_MS)) return;
+        drawnKey = key; lastDrawT = tn;
         g.setTransform(cv.dpr, 0, 0, cv.dpr, 0, 0);
         g.imageSmoothingEnabled = true;
         const covers = !P.fin && V.ox <= 0 && V.oy <= 0 && V.ox + COLS * V.z >= M.W && V.oy + ROWS * V.z >= M.H;
@@ -1232,7 +1288,8 @@
       async function captionStep(stop, i) {
         P.phase = 'cap';
         const opts = captionsFor(stop);
-        const nodes = [h('div', { class: 'zo-kick', text: stop === 'week' ? 'In frame · the whole week' : 'In frame · ' + levelOf(P.count || 1).toLowerCase() })];
+        P.capKick = h('div', { class: 'zo-kick', text: stop === 'week' ? 'In frame · the whole week' : 'In frame · ' + levelOf(P.count || 1).toLowerCase() });
+        const nodes = [P.capKick];
         nodes.push(h('div', { class: 'zo-q', text: stop === 'week' ? 'Which caption fits the whole week?' : 'Which caption fits everything in view?' }));
         if (i === 0 && W8.facts.length) nodes.push(h('div', { class: 'zo-facts' }, h('b', { text: 'Also on record' }), userQ(W8.facts.join(' · '))));
         if (i === 0) nodes.push(h('div', { class: 'zo-note', text: 'We can’t see your week, so the other tiles are the ordinary moments most weeks hold.' }));
@@ -1281,21 +1338,22 @@
         P.pinOn = true; pin.classList.add('on'); P.pinW = pin.offsetWidth || 110;
         ctx.track('reveal', {});
         syncSay(L(LN.reveal), { mood: 'wow', ms: 2600 }); sync.react('bounce');
-        await K.wait(reduced() ? 1600 : 2500);
+        await K.wait(reduced() ? 1600 : 2300);
         glitchSay(L(support() === 'strong' ? LN.revealReal : LN.revealG), 'smug', 3600);
-        await K.wait(reduced() ? 2000 : 3000);
+        await K.wait(reduced() ? 2000 : 2800);
       }
+      // back in, the lens stops where the tile sits among its neighbours (never all the way back into the close-up)
+      function zoomInTarget() { return M.F ? uOfZ(Math.min(M.F.w, M.F.h) * (M.phone ? 0.36 : 0.3)) : 0.3; }
       async function zoomInStep() {
-        P.phase = 'zoomin'; Z.lo = 0; Z.hi = 1;
+        P.phase = 'zoomin'; Z.hi = 1; P.inLock = true; Z.lo = zoomInTarget();
         P.pinOn = false; pin.classList.remove('on');
         setCard([h('div', { class: 'zo-kick', text: 'Now, back in' }), h('div', { class: 'zo-q', text: 'Zoom back in to your moment. Same moment, new caption.' })]);
         syncSay(L(LN.zoomIn), { mood: 'idea', ms: 3200 });
         K.guide({ id: 'in', g: 'drag', target: () => ({ x: M.F.x + M.F.w / 2, y: M.F.y + M.F.h * 0.72 }), dir: 'u', d: Math.min(150, M.F.h * 0.34), ms: 1500, label: M.phone ? 'SPREAD OR DRAG UP' : 'SCROLL OR DRAG UP', delay: 900 });
-        const target = () => uOfZ(Math.min(M.F.w, M.F.h) * 0.42);
-        await waitFor(() => Z.u <= target() + 0.004 || (Z.raw <= target() && Z.u <= target() + 0.08));
+        await waitFor(() => Z.u <= zoomInTarget() + 0.012);
         K.guide(null);
         P.phase = 'newcap'; P.recap = true; P.revealT0 = 0;
-        Z.lo = 0; Z.hi = 1;
+        Z.hi = 1; shutter(); P.stopFlash = now();
         if (A.ctx) { const t = A.now(); A.tone({ type: 'sine', freq: 520, to: 780, glide: 0.4, dur: 0.6, vol: 0.06 }); ['E5', 'G5', 'C6'].forEach((n, k) => A.chime(A.note(n), { when: t + 0.12 + k * 0.1, vol: 0.07, dur: 1.6 })); A.sync('recap', now()); }
         const bx = V.ox + (BC + 0.5) * V.z, by = V.oy + (BR + 0.5) * V.z;
         FX.emit('mote', bx, by, 18, { colors: ['#fff4dc', '#ffd38a', '#bfe6ff'] });
@@ -1318,7 +1376,7 @@
         await waitFor(() => Z.u >= uOut() || Z.raw >= uOut() + 0.02 || (!Z.held && Z.vel > 0.5 && Z.u > 0.2));
         K.guide(null);
         await new Promise(res => { Z.held = false; Z.vel = 0; Z.auto = { from: Z.u, to: 1, t0: now(), ms: reduced() ? 500 : 1500, done: res }; });
-        Z.lo = Z.hi = Z.raw = Z.u = 1;
+        P.inLock = false; Z.lo = Z.hi = Z.raw = Z.u = 1;
       }
       async function finale() {
         P.phase = 'finale'; K.guide(null);
@@ -1328,7 +1386,7 @@
         const wave = reduced() ? 0.45 : [1.5, 1.8, 2.1][inten] || 1.8, flip = reduced() ? 0.12 : 0.3;
         for (let i = 0; i < NT; i++) delay[i] = delay[i] / maxD * wave;
         P.fin = { t0: now(), delay, maxD, wave, flip };
-        music.level(0.2);
+        BED.vol = 1.15;
         if (A.ctx) {
           const t0 = A.now(), n = 30;
           for (let k = 0; k < n; k++) { const tt = t0 + (k / n) * wave + 0.05; A.click({ when: tt, vol: 0.05 + 0.03 * Math.sin(k), pan: Math.sin(k * 0.9) * 0.7 }); if (k % 3 === 0) A.pluck(A.note(SCALE[Math.min(SCALE.length - 1, 4 + Math.floor(k / 3))]), { when: tt, vol: 0.1, damp: 0.995, verb: 0.3 }); }
@@ -1340,9 +1398,10 @@
         FX.emit('confetti', cx, cy, [24, 36, 50][inten] || 36, { colors: PIC.pal, angle: -Math.PI / 2, spread: 2.4, speed: [140, 340] });
         S.later(() => { const pr = V.pic; if (!pr || reduced()) return; for (let k = 0; k < 10; k++) S.later(() => FX.emit('star', pr.x + pr.w * Math.random(), pr.y + pr.h * Math.random(), 4, { colors: ['#fffbe6', PIC.glow] }), k * 140); }, (wave + 0.6) * 1000);
         S.later(() => { if (!reduced()) FX.emit('confetti', M.W / 2, M.F.y - 10, [20, 30, 44][inten] || 30, { colors: PIC.pal, angle: Math.PI / 2, spread: 2.6, speed: [60, 220] }); }, (wave + 1.2) * 1000);
+        // the fair thought: the reader's honest balanced line when the AI wrote one, else the week caption the player chose
         const fairLine = W8.balanced || (P.caps.find(c => c.stop === 'week') || {}).text || 'One hard moment, in a week that held far more.';
         const nodes = [h('div', { class: 'zo-kick', text: 'Today’s mosaic · ' + fmtN(NT) + ' moments' }), h('div', { class: 'zo-title', text: PIC.name })];
-        nodes.push(h('div', { class: 'zo-fair' }, W8.balanced ? userQ(fairLine) : fairLine));
+        nodes.push(h('div', { class: 'zo-fair', text: fairLine }));
         nodes.push(h('div', { class: 'zo-note', text: care() ? (S.safety && S.safety.CARE_LINE) || 'Someone qualified can tell you exactly where you stand.' : W8.plan ? 'Next step: ' + W8.plan : 'One tile was rough. It’s still in there, one tile wide.' }));
         S.later(() => setCard(nodes), Math.round(wave * 1000));
         // both of them come out for the curtain call
@@ -1397,42 +1456,49 @@
 
       return {
         async autoplay() {
-          const wait = async (fn, ms) => { const t0 = now(); while (!fn() && now() - t0 < (ms || 30000)) await K.wait(80); };
+          const wait = async (fn, ms) => { const t0 = now(); while (!fn() && now() - t0 < (ms || 30000)) await K.wait(100); return fn(); };
           const cx = () => M.F.x + M.F.w / 2;
-          const dragV = async (px, ms) => { const x = cx(), mid = M.F.y + M.F.h * 0.5, y0 = clamp(mid - px / 2, 70, M.H - 40), y1 = clamp(y0 + px, 70, M.H - 30); await K.sim.drag(lens, { x, y: y0 }, { x, y: y1 }, ms || 650, 14); };
+          // few, larger steps: on a busy CPU every simulated step costs a whole frame
+          const dragV = async (px) => { const x = cx(), mid = M.F.y + M.F.h * 0.5, y0 = clamp(mid - px / 2, 70, M.H - 40), y1 = clamp(y0 + px, 70, M.H - 30); await K.sim.drag(lens, { x, y: y0 }, { x, y: y1 }, 360, 6); };
           const pinch = async (outward) => {
             const x = cx(), y = M.F.y + M.F.h * 0.45, a0 = outward ? 40 : 120, a1 = outward ? 120 : 40;
             const p1 = await K.sim.press(lens, x - a0, y - a0), p2 = await K.sim.press(lens, x + a0, y + a0);
-            for (let k = 1; k <= 12; k++) { const a = lerp(a0, a1, k / 12); p1.move(x - a, y - a); p2.move(x + a, y + a); await K.wait(40); }
-            p1.up(x - a1, y - a1); p2.up(x + a1, y + a1); await K.wait(60);
+            for (let k = 1; k <= 5; k++) { const a = lerp(a0, a1, k / 5); p1.move(x - a, y - a); p2.move(x + a, y + a); await K.wait(45); }
+            p1.up(x - a1, y - a1); p2.up(x + a1, y + a1); await K.wait(40);
           };
-          const wheel = async (dy, n) => { const r = lens.getBoundingClientRect(); for (let k = 0; k < n; k++) { lens.dispatchEvent(new WheelEvent('wheel', { deltaY: dy, bubbles: true, cancelable: true, clientX: r.left + r.width * 0.4, clientY: r.top + r.height * 0.4 })); await K.wait(55); } };
+          const wheel = (dy, n) => { const r = lens.getBoundingClientRect(); for (let k = 0; k < n; k++) lens.dispatchEvent(new WheelEvent('wheel', { deltaY: dy, bubbles: true, cancelable: true, clientX: r.left + r.width * 0.4, clientY: r.top + r.height * 0.4 })); };
+          const keys = (outKey, n) => { for (let k = 0; k < n; k++) window.dispatchEvent(new KeyboardEvent('keydown', { code: outKey ? 'Minus' : 'Equal', key: outKey ? '-' : '=', bubbles: true, cancelable: true })); };
           await wait(() => P.phase === 'close');
-          await K.wait(700);
+          await K.wait(500);
           for (let i = 0; i < STOPS.length; i++) {
-            await wait(() => P.phase === 'zoom' && P.stopIdx === i, 30000);
-            await K.wait(250);
-            let tries = 0;
-            while (P.phase === 'zoom' && P.stopIdx === i && tries++ < 10) {
-              if (i === 0 && M.phone && tries < 4) await pinch(false);
-              else if (i === 1 && !M.phone && tries < 4) await wheel(120, 7);
-              else await dragV(M.H * 0.4);
-              await K.wait(520);
+            const here = () => P.phase === 'zoom' && P.stopIdx === i;
+            await wait(here, 30000);
+            await K.wait(200);
+            for (let tries = 0; here() && tries < 7; tries++) {
+              if (tries > 2) keys(true, 4);
+              else if (i === 0) { if (M.phone) await pinch(false); else wheel(120, 5); }
+              else if (i === STOPS.length - 1 && !M.phone) keys(true, 9);
+              else await dragV(M.H * 0.42);
+              await wait(() => !here(), 2600);
             }
             await wait(() => P.phase === 'cap', 20000);
-            await K.wait(700);
-            if (i === 1 && P.chips.length) { const wrong = P.chips.find(c => c.dataset.kind === 'filtered'); if (wrong) { await K.sim.tap(wrong); await K.wait(900); } }
+            await K.wait(650);
+            if (i === 1 && P.chips.length) { const wrong = P.chips.find(c => c.dataset.kind === 'filtered'); if (wrong) { await K.sim.tap(wrong); await K.wait(800); } }
             const fair = P.chips.find(c => c.dataset.kind === 'fair'); if (fair) await K.sim.tap(fair);
             await wait(() => P.phase !== 'cap', 8000);
           }
           await wait(() => P.phase === 'zoomin', 30000);
-          await K.wait(500);
-          let tries = 0;
-          while (P.phase === 'zoomin' && tries++ < 10) { if (M.phone && tries < 3) await pinch(true); else await dragV(-M.H * 0.42, 700); await K.wait(450); }
-          await wait(() => P.phase === 'outro', 20000);
           await K.wait(400);
-          tries = 0;
-          while (P.phase === 'outro' && tries++ < 8) { await dragV(M.H * 0.48, 600); await K.wait(400); }
+          for (let tries = 0; P.phase === 'zoomin' && tries < 7; tries++) {
+            if (tries > 2) keys(false, 5); else if (M.phone) await pinch(true); else wheel(-120, 7);
+            await wait(() => P.phase !== 'zoomin', 2600);
+          }
+          await wait(() => P.phase === 'outro', 20000);
+          await K.wait(300);
+          for (let tries = 0; P.phase === 'outro' && tries < 6; tries++) {
+            if (tries > 1) keys(true, 6); else await dragV(M.H * 0.48);
+            await wait(() => P.phase !== 'outro', 2600);
+          }
           await wait(() => P.finished, 40000);
         }
       };

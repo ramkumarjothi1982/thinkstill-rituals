@@ -21,7 +21,7 @@
 
   /* Daily rooms: palette, weather in the window, today's to-do objects and their collectable names. */
   const ROOMS = [
-    { key: 'sunday', name: 'Sunday Studio', shell: '#f1e7d8', wall: '#f3e2c4', wall2: '#e8cfa5', pat: 'stripe', ceil: '#ead8b8', side: '#e2c9a0', wood: '#b47c4f', woodL: '#d6a06c', woodD: '#7a4e30', floor: '#c48f62', floorL: '#d8a676',
+    { key: 'sunny', name: 'Sunny Studio', shell: '#f1e7d8', wall: '#f3e2c4', wall2: '#e8cfa5', pat: 'stripe', ceil: '#ead8b8', side: '#e2c9a0', wood: '#b47c4f', woodL: '#d6a06c', woodD: '#7a4e30', floor: '#c48f62', floorL: '#d8a676',
       rug: '#cf6b52', rug2: '#f3d3a2', curtain: '#8eae88', kettle: '#c9784b', cup: '#f6f1e6', tea: '#b5652b', vinyl: '#e2b04a', frameWood: '#8a5a36', can: '#6f9bb3', cat: '#e0904a',
       paint: ['#86c5e8', '#f7e6b5', '#5f9e8f', '#f2c46b'], sky: 'clear', amb: 'dawn', flower: '#ff8a7a', books: ['#3d6e8f', '#d9a441', '#8f4a5a', '#5f8f6a'],
       tasks: ['plant', 'frame', 'tea', 'record', 'books', 'candle'],
@@ -108,7 +108,7 @@
 .g-dont-open-it .do-note.on { opacity: 1; transform: rotate(-1.5deg); }
 .g-dont-open-it .do-note.kept { transform: rotate(-2deg); padding: 9px 14px 11px; box-shadow: 0 0 0 3px #ffd36b, 0 0 26px rgba(255, 214, 140, .55), 0 10px 22px rgba(0, 0, 0, .3); }
 .g-dont-open-it .do-note.kept small, .g-dont-open-it .do-note.kept span { display: none; }
-.g-dont-open-it .do-note.kept b { margin-top: 0; font-size: 20px; }
+.g-dont-open-it .do-note.kept b { margin-top: 0; font-size: 18px; }
 .g-dont-open-it .do-note small { display: block; font: 700 12px/1.1 var(--do-disp); letter-spacing: .08em; text-transform: uppercase; color: #b4472e; }
 .g-dont-open-it .do-note b { display: block; margin-top: 5px; font: 700 22px/1.12 var(--do-disp); text-wrap: balance; }
 .g-dont-open-it .do-note span { display: block; margin-top: 6px; font: 500 15px/1.3 var(--font-ui); color: #5a4632; text-wrap: balance; }
@@ -120,10 +120,15 @@
 .g-dont-open-it .do-step small { display: block; font: 700 12px/1.1 var(--do-disp); letter-spacing: .06em; text-transform: uppercase; color: #95560a; margin-bottom: 4px; }
 .g-dont-open-it .do-step span { display: block; font: 700 15px/1.22 var(--do-hand); }
 .g-dont-open-it .do-step em { display: block; margin-top: 4px; font: 600 13px/1.25 var(--font-ui); font-style: normal; color: #6b4a1a; }
+.g-dont-open-it .do-pop { position: absolute; z-index: 27; left: 0; top: 0; padding: 8px 15px 9px; border-radius: 999px; background: #2b1838; border: 2px solid #ffd36b; color: #fff6dc; font: 700 15px/1 var(--do-disp);
+  letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; pointer-events: none; box-shadow: 0 0 18px rgba(255, 211, 107, .45), 0 8px 18px rgba(0, 0, 0, .3); transform: translate(-50%, -50%);
+  animation: dont-open-it-pop .55s cubic-bezier(.2, 1.6, .4, 1) both; transition: opacity .45s ease, translate 1s ease-out; }
+.g-dont-open-it .do-pop.out { opacity: 0; translate: 0 -22px; }
+@keyframes dont-open-it-pop { from { opacity: 0; scale: .4; } to { opacity: 1; scale: 1; } }
 .g-dont-open-it .gk-char .gk-bubble { max-width: var(--do-bub, 240px); }
 .g-dont-open-it .do-low .gk-bubble { top: auto; bottom: 0; }
 .g-dont-open-it .do-low.gk-side-right .gk-bubble::before, .g-dont-open-it .do-low.gk-side-left .gk-bubble::before { top: auto; bottom: 18px; }
-@container (min-width: 700px) { .g-dont-open-it .do-pill { font-size: 15px; } .g-dont-open-it .do-note b { font-size: 25px; } }
+@container (min-width: 700px) { .g-dont-open-it .do-pill { font-size: 15px; } .g-dont-open-it .do-note b { font-size: 25px; } .g-dont-open-it .do-note.kept b { font-size: 21px; } }
 `,
     mount(ctx) {
       const K = ctx.kit, S = ctx.TS, A = ctx.A, h = ctx.h, el = ctx.el, an = ctx.analysis || {};
@@ -155,7 +160,7 @@
       const NOTE_CARE = care ? 'For the facts, ask someone qualified.' : '';
 
       /* ---------------- today's room, today's to-dos ---------------- */
-      const room = ROOMS[3];
+      const room = K.dailyPick(ROOMS, 33);
       const wrap = WRAPS[visits % WRAPS.length];
       el.style.setProperty('--do-chip', wrap.base);
       const NT = [3, 4, 5][inten] || 4;
@@ -177,16 +182,21 @@
         tryShake: { Jolly: 'Go on, give it one shake. Then notice what happens next.', Cheeky: 'Fine. One shake, for science. Watch what happens after.', Unfiltered: 'Shake it once. Watch what happens.' },
         grew: { Jolly: 'Ooh! It got bigger. And louder!', Cheeky: 'It grew! I love it when it grows.', Unfiltered: 'Bigger. Louder.' },
         explain: serious
-          ? { Jolly: 'This worry has real weight. Checking over and over won’t settle it; one planned step can. Shelf the box for now.', Cheeky: 'This one’s real. Re-checking won’t fix it, a plan might. Shelf the box for now.', Unfiltered: 'It’s real. Checking won’t fix it. A plan might. Shelf it.' }
-          : { Jolly: 'A second of relief, then the box grows. Let’s pop it on the shelf instead.', Cheeky: 'One second of relief, then a bigger box. Classic. Shelf it.', Unfiltered: 'Relief, then bigger. Shelf it.' },
+          ? { Jolly: 'This worry has real weight. Checking over and over won’t settle it; one planned step can. Shelve the box for now.', Cheeky: 'This one’s real. Re-checking won’t fix it, a plan might. Shelve the box for now.', Unfiltered: 'It’s real. Checking won’t fix it. A plan might. Shelve it.' }
+          : { Jolly: 'A second of relief, then the box grows. Let’s pop it on the shelf instead.', Cheeky: 'One second of relief, then a bigger box. Classic. Shelve it.', Unfiltered: 'Relief, then bigger. Shelve it.' },
         skipShake: { Jolly: 'Straight to the shelf? That’s the whole skill, right there.', Cheeky: 'Didn’t even shake it. Show-off.', Unfiltered: 'No shake. That’s the skill.' },
         shelved: { Jolly: 'But… we still don’t KNOW.', Cheeky: 'So we just… leave it? Unopened?', Unfiltered: 'We don’t know. I hate that.' },
         shelved2: { Jolly: 'We don’t. Let’s do something nice while it sits there.', Cheeky: 'Correct. Cosy stuff while it sulks.', Unfiltered: 'Right. Do something else.' },
         tempt: { Jolly: 'Whoops! It hopped down. Here you go!', Cheeky: 'Oops. I may have nudged it. Here.', Unfiltered: 'Box. For you.' },
         temptRush: { Jolly: 'It’s RIGHT THERE. Just check!', Cheeky: 'It’s literally glowing at us!', Unfiltered: 'Check it!' },
-        temptStill: { Jolly: 'Notice the urge. Keep going, or pop it back. Either way, it passes.', Cheeky: 'Urge incoming. Ignore it or shelf it. Both work.', Unfiltered: 'An urge. Let it pass.' },
+        temptStill: { Jolly: 'Notice the urge. Keep going, or pop it back. Either way, it passes.', Cheeky: 'Urge incoming. Ignore it or shelve it. Both work.', Unfiltered: 'An urge. Let it pass.' },
+        temptBig: { Jolly: 'Special delivery! The BIG one!', Cheeky: 'I saved the biggest nudge for last.', Unfiltered: 'Big one. Incoming.' },
+        bigRush: { Jolly: 'It’s HUGE now! One peek, PLEASE!', Cheeky: 'Look at the size of it! We have to look!', Unfiltered: 'Huge. Must check.' },
+        bigStill: { Jolly: 'Biggest urge yet. Watch it crest… and pass. They always do.', Cheeky: 'Big wave. Same rule: it peaks, then it fades.', Unfiltered: 'Big wave. It peaks. It fades.' },
         passShelf: { Jolly: 'Back on the shelf. Nicely done.', Cheeky: 'Shelved. Smooth.', Unfiltered: 'Shelved.' },
+        passBigShelf: { Jolly: 'Even the big one went back on the shelf.', Cheeky: 'Biggest urge, same shelf. Lovely.', Unfiltered: 'Big one. Shelved.' },
         passRide: { Jolly: 'See? The urge rose… and fell on its own.', Cheeky: 'The urge peaked, then wandered off. Like urges do.', Unfiltered: 'Rose. Fell. On its own.' },
+        passBig: { Jolly: 'Even the big one passed. On its own!', Cheeky: 'The big one huffed, puffed… and passed.', Unfiltered: 'Big one passed. Untouched.' },
         passLater: { Jolly: 'And it settled anyway. Urges do.', Cheeky: 'Still settled down in the end. Funny, that.', Unfiltered: 'Settled anyway.' },
         giveUp: { Jolly: 'Fine. Back up you go, box.', Cheeky: 'Nobody wants a shake? Boring.', Unfiltered: 'Fine.' },
         again: { Jolly: 'Again! Again!', Cheeky: 'Yes! Feed the loop!', Unfiltered: 'Again!' },
@@ -211,14 +221,14 @@
 
       /* ---------------- state ---------------- */
       const st = { phase: 'intro', finished: false, temptClean: true, pending: 0, doneOrder: [], whisperI: 0, lastTn: 0, fn: 0, slow: 0, q: 1, nextWig: 0, nextPeek: 0,
-        openT0: 0, paper: null, sunT0: 0, chainT0: 0, notes: [], purrT: 0, catPets: 0, stepOn: 0 };
-      const U = { base: [0.7, 0.78, 0.84][inten] || 0.78, itch: 0.8, wave: null, relief: null, checks: 0, tut: 0, passes: 0, tempts: 0, sat: 0 };
+        openT0: 0, paper: null, sunT0: 0, chainT0: 0, notes: [], purrT: 0, catPets: 0, stepOn: 0, puffs: [], rattleT: 0, rattleK: 0, wl: 0, whUntil: 0, lit: 0, litT: 0, waveT0: 0 };
+      const U = { base: [0.7, 0.78, 0.84][inten] || 0.78, itch: 0.8, wave: null, relief: null, checks: 0, tut: 0, passes: 0, rides: 0, tempts: 0, sat: 0 };
       const WD = { tod: 0, todT: 0, sun: 0 };
+      const BUL = { order: [], lit: 0, on: [], finT0: 0 }; // fairy lights: a scattered lighting order, how many are lit, when each lit
       const B = { x: 0, y: 0, tx: 0, ty: 0, vx: 0, vy: 0, size: 0, held: false, at: 'rug', hop: null, grow: 1, gs: 1, gv: 0, rot: 0, rv: 0, sq: 0, sqv: 0, jy: 0, jv: 0,
         peek: 0, lid: 0, tip: 0, light: 0, orn: 0, labelOn: true, ex: 0, ey: 0, ew: 0, eh: 0 };
       const M = {};
       const P = K.particles({ max: 320 });
-      el.__dbg = { st, U, B, M, WD };
 
       /* ---------------- tasks ---------------- */
       const mkTask = (key, decor) => ({ key, decor: !!decor, n: STEPS[key], d: 0, done: !!decor, busy: false, btn: null, shine: 0, tw: {},
@@ -306,6 +316,15 @@
         M.anc = { plant: { x: M.plant.x + 6 * pk, y: M.plant.y - 100 * pk }, frame: { x: M.frame.x + 34 * fk, y: M.frame.y - 26 * fk }, tea: { x: M.tea.x, y: M.tea.y - 32 * tk }, record: { x: M.record.x, y: M.record.y - 26 * rk },
           books: { x: M.st.x - 10 * sk, y: M.st.top - 52 * sk }, candle: { x: M.candle.x + 10 * ck, y: M.candle.y - 46 * ck }, phone: { x: M.st.x + 22 * sk, y: M.st.low - 14 * sk } };
         M.anc.note = M.anc.phone;
+        // fairy lights strung in three swags across the top of the opening; they light up as the room settles
+        const gy = M.fy0 + 2 * s, nSw = 3, swW = (M.fx1 - M.fx0) / nSw, nb = M.side ? 6 : 5, sag = (M.side ? 21 : 17) * s;
+        M.gar = { y: gy, n: nSw, w: swW, sag };
+        M.bulbs = [];
+        for (let i = 0; i < nSw; i++) for (let k = 0; k < nb; k++) { const v = (k + 0.5) / nb; M.bulbs.push({ x: M.fx0 + (i + v) * swW, y: gy + 4 * v * (1 - v) * sag, tilt: (v - 0.5) * 0.9 }); }
+        if (BUL.order.length !== M.bulbs.length) { // a new layout with a different count keeps how many were lit
+          BUL.order = K.shuffle(M.bulbs.map((b, i) => i), K.rng(17)); BUL.lit = Math.min(BUL.lit, M.bulbs.length);
+          BUL.on = []; for (let j = 0; j < BUL.lit; j++) BUL.on[BUL.order[j]] = 1;
+        }
         TASKS.forEach(T => { const r = M.hits[T.key]; Object.assign(T.btn.style, { left: r.x + 'px', top: r.y + 'px', width: r.w + 'px', height: r.h + 'px' }); });
         if (catBtn) { const r = M.hits.cat; Object.assign(catBtn.style, { left: r.x + 'px', top: r.y + 'px', width: r.w + 'px', height: r.h + 'px' }); }
         // box rests where it was (first layout: on the rug)
@@ -322,6 +341,7 @@
           const sz = 104, y = Math.round(M.y0 + M.rh * 0.46 - sz / 2), bub = Math.round(clamp(M.x0 - 24 - sz - 24, 150, 280));
           [still, rush].forEach(c => { c.el.style.setProperty('--sz', sz + 'px'); c.el.classList.remove('do-low'); c.el.style.setProperty('--do-bub', bub + 'px'); });
           still.place(24, y); still.side('right'); rush.place(W - 24 - sz, y + 50); rush.side('left');
+          M.cy = { still: y + sz / 2, rush: y + 50 + sz / 2 };
         } else {
           const sz = M.phone ? 64 : 84, y = H - 14 - sz, bub = Math.round(clamp(W - 2 * (12 + sz) - 30, 150, 420));
           [still, rush].forEach(c => { c.el.style.setProperty('--sz', sz + 'px'); c.el.classList.add('do-low'); c.el.style.setProperty('--do-bub', bub + 'px'); });
@@ -329,6 +349,11 @@
         }
         if (noteEl.classList.contains('on')) placeNote();
         if (stepEl) placeStep();
+        // the part repainted every frame: the diorama's box, snapped to whole device pixels so the copy from the cached
+        // room is 1:1 and no half-covered edge row is left behind (that showed as a bright seam once quality dropped)
+        const dp = cv.dpr || 1, cw = Math.round(W * dp), ch = Math.round(H * dp);
+        const ax = clamp(Math.floor(M.x0 * dp), 0, cw), ay = clamp(Math.floor(M.y0 * dp), 0, ch), bx = clamp(Math.ceil(M.x1 * dp), 0, cw), by = clamp(Math.ceil(M.yF * dp), 0, ch);
+        M.reg = { sx: ax, sy: ay, sw: Math.max(1, bx - ax), sh: Math.max(1, by - ay), x: ax / dp, y: ay / dp, w: Math.max(1, bx - ax) / dp, h: Math.max(1, by - ay) / dp, dp };
         st.statOK = false;
       }
 
@@ -342,11 +367,22 @@
         const W = M.W, H = M.H, d = cv.dpr || 1, br = bright(), s = M.s, R = room;
         stat.width = Math.max(2, Math.round(W * d)); stat.height = Math.max(2, Math.round(H * d));
         const g = stat.getContext('2d'); g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, W, H);
-        let gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, br ? '#f8efe2' : '#150f1d'); gr.addColorStop(1, br ? '#e8d6be' : '#271b30'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
-        gr = g.createRadialGradient(W / 2, M.y0 + M.rh * 0.42, 20, W / 2, M.y0 + M.rh * 0.42, Math.max(W, H) * 0.75); gr.addColorStop(0, br ? 'rgba(255,238,210,0.95)' : 'rgba(150,90,150,0.3)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+        // the backdrop takes today's room colours, so every day's diorama sits in its own light
+        let gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, br ? mixC(R.wall, '#fff8ee', 0.6) : mixC(R.wall, '#110b19', 0.86)); gr.addColorStop(1, br ? mixC(R.floor, '#f1e2cc', 0.62) : mixC(R.floor, '#140d1c', 0.8)); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+        gr = g.createRadialGradient(W / 2, M.y0 + M.rh * 0.42, 20, W / 2, M.y0 + M.rh * 0.42, Math.max(W, H) * 0.75); gr.addColorStop(0, br ? 'rgba(255,240,214,0.95)' : rgba(mixC(R.curtain, '#9a5a9a', 0.5), 0.3)); gr.addColorStop(1, 'rgba(0,0,0,0)');
         g.fillStyle = gr; g.fillRect(0, 0, W, H);
-        const bk = K.rng(33); // a few soft bokeh lights around the diorama
-        for (let i = 0; i < 18; i++) { const x = bk() * W, y = bk() * H, r = 8 + bk() * 26, c = [R.rug, R.curtain, R.rug2, wrap.base][i % 4], rg = g.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, rgba(c, br ? 0.16 : 0.2)); rg.addColorStop(1, rgba(c, 0)); g.fillStyle = rg; g.fillRect(x - r, y - r, r * 2, r * 2); }
+        const bk = K.rng(33); // soft out-of-focus lights around the diorama, mostly at the sides
+        for (let i = 0; i < (M.side ? 26 : 16); i++) {
+          const sd = i % 2 ? 1 : -1, u = bk(), x = M.side ? W / 2 + sd * (M.rw * 0.5 + u * (W / 2 - M.rw * 0.5 + 40)) : bk() * W, y = bk() * H, r = (M.side ? 18 : 10) + bk() * (M.side ? 56 : 30), c = [R.rug, R.curtain, R.rug2, wrap.base, R.flower][i % 5];
+          g.globalAlpha = (br ? 0.22 : 0.3) * (0.5 + bk() * 0.5); g.drawImage(K.glowSprite(c), x - r, y - r, r * 2, r * 2);
+        }
+        g.globalAlpha = 1;
+        if (M.side) [[24 + 52, M.cy.still], [W - 24 - 52, M.cy.rush]].forEach(([x, y]) => { // a pool of light where each character floats
+          g.globalAlpha = br ? 0.5 : 0.35; g.drawImage(K.glowSprite(br ? '#fff4dc' : mixC(R.curtain, '#c08ad0', 0.5)), x - 120, y - 120, 240, 240); g.globalAlpha = 1;
+          g.fillStyle = br ? 'rgba(110,70,30,0.16)' : 'rgba(0,0,0,0.35)'; g.beginPath(); g.ellipse(x, y + 74, 42, 8, 0, 0, TAU); g.fill();
+        });
+        gr = g.createRadialGradient(W / 2, H * 0.48, Math.min(W, H) * 0.35, W / 2, H * 0.48, Math.hypot(W, H) * 0.62); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, br ? 'rgba(90,60,30,0.16)' : 'rgba(0,0,0,0.42)');
+        g.fillStyle = gr; g.fillRect(0, 0, W, H);
         g.fillStyle = br ? 'rgba(110,70,30,0.22)' : 'rgba(0,0,0,0.5)'; g.beginPath(); g.ellipse(W / 2, M.yF + 5 * s, M.rw * 0.54, 15 * s, 0, 0, TAU); g.fill();
         // shell (the cut walls of the diorama) and the floor slab
         rr(g, M.x0, M.y0, M.rw, M.rh, 12 * s); g.fillStyle = C(R.shell); g.fill();
@@ -449,7 +485,17 @@
         g.fillStyle = C('#e08a5c'); rr(g, pl.x - pw / 2 - 3 * pk, pl.y - ph - 2 * pk, pw + 6 * pk, 8 * pk, 2 * pk); g.fill();
         // the cut edge highlight
         g.strokeStyle = br ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.12)'; g.lineWidth = 1.5; g.strokeRect(M.fx0 - 0.75, M.fy0 - 0.75, M.fw + 1.5, M.fy1 - M.fy0 + 1.5);
-        // vignette sprite for the frame (drawn last each frame)
+        // fairy-light wire (the bulbs are drawn live)
+        const ga = M.gar; g.strokeStyle = C('#3b4636'); g.lineWidth = Math.max(1, 1.3 * s); g.lineCap = 'round';
+        for (let i = 0; i < ga.n; i++) { const xa = M.fx0 + i * ga.w; g.beginPath(); g.moveTo(xa, ga.y); g.quadraticCurveTo(xa + ga.w / 2, ga.y + 2 * ga.sag, xa + ga.w, ga.y); g.stroke(); }
+        g.fillStyle = C('#3b4636'); for (let i = 0; i <= ga.n; i++) { g.beginPath(); g.arc(M.fx0 + i * ga.w, ga.y, 2.2 * s, 0, TAU); g.fill(); }
+        // a little brass plaque on the base: today's room
+        const pf = Math.max(12, Math.round(11 * s)), pcy = (M.fy1 + M.yF) / 2, pcx = (M.x0 + M.x1) / 2, pname = room.name.toUpperCase();
+        g.font = '700 ' + pf + 'px "DynaPuff", "Baloo 2", "Arial Rounded MT Bold", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        const ptw = g.measureText(pname).width + 18 * s, pph = Math.min(M.yF - M.fy1 - 2, pf + 5);
+        gr = g.createLinearGradient(0, pcy - pph / 2, 0, pcy + pph / 2); gr.addColorStop(0, '#f6e2a6'); gr.addColorStop(0.55, '#d6ab5e'); gr.addColorStop(1, '#a5772f');
+        rr(g, pcx - ptw / 2, pcy - pph / 2, ptw, pph, 3 * s); g.fillStyle = gr; g.fill(); g.strokeStyle = 'rgba(90,60,20,0.45)'; g.lineWidth = 1; g.stroke();
+        g.fillStyle = '#3f2a10'; g.fillText(pname, pcx, pcy + 0.5);
         st.statOK = true;
       }
       function wallPattern(g, s) {
@@ -491,7 +537,7 @@
         scribble() { const t0 = A.now(); for (let i = 0; i < 5; i++) A.noise({ when: t0 + i * 0.13, filter: 'bandpass', freq: 3600 + Math.random() * 900, q: 3, dur: 0.09, vol: 0.05 }); },
         purr() { const t0 = A.now(); for (let i = 0; i < 12; i++) A.noise({ when: t0 + i * 0.075, filter: 'lowpass', freq: 170, dur: 0.07, attack: 0.02, vol: 0.14 }); },
         musicBox() { const t0 = A.now(); ['C6', 'A5', 'F5', 'G5', 'A5', 'C6', 'D6', 'C6', 'A5', 'F6'].forEach((n, i) => A.chime(A.note(n), { when: t0 + i * 0.21, vol: 0.05, dur: 1.4 })); },
-        note(i) { A.pluck(A.note(['F5', 'G5', 'A5', 'C6', 'D6', 'F6'][i % 6]), { vol: 0.13, damp: 0.995, verb: 0.3 }); }
+        note(i) { A.pluck(A.note(['F5', 'G5', 'A5', 'C6', 'D6', 'F6'][i % 6]), { vol: 0.13, damp: 0.995, verb: 0.3, when: gridT(2) }); }
       };
 
       /* ---------------- music: a cosy room that fills with instruments as you settle; the box hums against it ---------------- */
@@ -499,6 +545,8 @@
       const PROG = [['F2', ['A3', 'C4', 'E4', 'G4']], ['D2', ['F3', 'A3', 'C4', 'E4']], ['A#1', ['D4', 'F4', 'A4', 'C5']], ['C2', ['E4', 'G4', 'A4', 'D5']]];
       const MEL = [[0, 'C6'], [3, 'A5'], [5, 'G5'], [8, 'F5'], [10, 'A5'], [13, 'C6'], [14, 'D6']];
       function musicOn() { if (!A.ctx || MU.on) return; MU.on = true; MU.next = A.now() + 0.15; }
+      // the next point on the music's grid (div 2 = eighths, 4 = sixteenths): melodic answers land in time with the room
+      function gridT(div) { if (!A.ctx) return 0; const t = A.now() + 0.015; if (!MU.on) return t; const bl = 60 / MU.bpm / (div || 2); let q = MU.next; while (q - bl > t) q -= bl; while (q < t) q += bl; return q; }
       S.on('audio-ready', musicOn);
       K.loop(() => {
         if (!MU.on || !A.ctx) return;
@@ -544,7 +592,7 @@
             const nd = dv > 0 ? 1 : -1;
             if (a.dir && nd !== a.dir) {
               a.rev = tn - a.last < 520 ? a.rev + 1 : 1; a.last = tn;
-              SFX.rattle(Math.min(1, U.itch + 0.2)); B.rv += nd * 3; if (!RM()) P.emit('dust', B.x, B.y - B.size * 0.5, 2, { colors: [rgba(wrap.light, 0.6)] });
+              SFX.rattle(Math.min(1, U.itch + 0.2)); B.rv += nd * 3; st.rattleT = now(); st.rattleK = 1; if (!RM()) P.emit('dust', B.x, B.y - B.size * 0.5, 2, { colors: [rgba(wrap.light, 0.6)] });
               if (a.rev >= 3) { a.rev = 0; check(); }
             }
             a.dir = nd; a.ext = v;
@@ -559,10 +607,10 @@
       });
       const sizeAt = (where) => (where === 'shelf' ? M.bShelf * Math.min(B.gs, 1.2) : M.bRug * B.gs) * (1 - 0.42 * B.orn);
       const shelfX = () => M.shelf.x1 - 5 * M.s - 0.75 * sizeAt('shelf');
-      function boxSizeTarget() { return sizeAt(B.held ? 'rug' : B.at); }
-      function hopTo(to, cb) {
+      function boxSizeTarget() { return sizeAt(B.held ? 'rug' : B.at) * (1 + 0.24 * st.wl); }
+      function hopTo(to, cb, big) {
         const sp = to === 'shelf' ? { x: shelfX(), y: M.spotShelf.y } : M.spotRug, dist = Math.hypot(sp.x - B.x, sp.y - B.y);
-        B.hop = { x0: B.x, y0: B.y, x1: sp.x, y1: sp.y, s0: B.size, s1: sizeAt(to), t0: now(), dur: RM() ? 280 : clamp(380 + dist * 0.9, 420, 820), peak: Math.min(130 * M.s, 26 * M.s + dist * (to === 'shelf' ? 0.1 : 0.3)), to, cb };
+        B.hop = { x0: B.x, y0: B.y, x1: sp.x, y1: sp.y, s0: B.size, s1: sizeAt(to) * (big ? 1.12 : 1), t0: now(), dur: RM() ? 280 : clamp(380 + dist * 0.9, 420, 820) * (big ? 1.15 : 1), peak: Math.min(130 * M.s, 26 * M.s + dist * (to === 'shelf' ? 0.1 : 0.3)) * (big ? 1.4 : 1), to, cb };
         if (to === 'shelf') { B.labelOn = false; hideWhisper(); }
         SFX.hop();
       }
@@ -632,29 +680,41 @@
         if (w.fastAt) return w.fastFrom * Math.max(0, 1 - (tn - w.fastAt) / 700);
         const k = (tn - w.t0) / w.T; return k <= 0 || k >= 1 ? 0 : w.amp * Math.pow(Math.sin(Math.PI * k), 1.2);
       }
-      function startWave(fromTempt) {
+      function startWave(fromTempt, big) {
         if (st.phase !== 'tasks') return;
-        U.wave = { t0: now(), T: [7600, 6600, 6000][inten] || 6600, amp: Math.min(0.55, 0.32 + 0.07 * U.checks), fastAt: 0, fastFrom: 0, tempt: !!fromTempt };
+        const T0 = [7600, 6600, 6000][inten] || 6600;
+        U.wave = { t0: now(), T: big ? T0 * 1.25 : T0, amp: big ? 0.66 : Math.min(0.55, 0.32 + 0.07 * U.checks), fastAt: 0, fastFrom: 0, tempt: !!fromTempt, big: !!big };
         showWhisper(WHISPERS[st.whisperI++ % WHISPERS.length]);
-        K.later(() => { if (U.wave && st.phase === 'tasks') say(rush, L(LINES.temptRush), { mood: 'panic', ms: 2200 }); }, 700);
-        if (U.tempts <= 1) K.later(() => { if (U.wave && st.phase === 'tasks') say(still, L(LINES.temptStill), { mood: 'calm', ms: 3600 }); }, 2900);
+        if (big && A.ctx) { A.tone({ type: 'sine', freq: 55, to: 82, glide: 1.6, dur: 2.2, vol: 0.12, attack: 0.5 }); A.noise({ filter: 'lowpass', freq: 240, dur: 1.6, attack: 0.6, vol: 0.08 }); }
+        K.later(() => { if (U.wave && st.phase === 'tasks') say(rush, L(big ? LINES.bigRush : LINES.temptRush), { mood: 'panic', moodMs: 2600, ms: 2400 }); }, 700);
+        if (big) K.later(() => { if (U.wave && st.phase === 'tasks') say(still, L(LINES.bigStill), { mood: 'calm', ms: 3800 }); }, 3000);
+        else if (U.tempts <= 1) K.later(() => { if (U.wave && st.phase === 'tasks') say(still, L(LINES.temptStill), { mood: 'calm', ms: 3600 }); }, 2900);
         guideNow(1300);
       }
       function endWave(reason) {
         if (!U.wave) return;
-        const fromTempt = U.wave.tempt;
+        const fromTempt = U.wave.tempt, big = U.wave.big;
         U.wave = null; hideWhisper(); st.waveEnd = now();
         const clean = st.temptClean; st.temptClean = true;
-        if (clean) { if (fromTempt) U.passes++; U.base = Math.max(0.05, U.base - 0.05); SFX.pass(); P.emit('star', B.x + B.size * 0.1, B.y - B.size * 0.7, 9, { colors: ['#fff3c4', '#cfe9ff', '#ffffff'] }); }
-        ctx.track('dont_wave', { r: reason === 'rode' ? 1 : 2, clean: clean ? 1 : 0 });
+        if (clean) {
+          if (fromTempt) U.passes++;
+          if (reason === 'rode') U.rides++;
+          U.base = Math.max(0.05, U.base - 0.05); SFX.pass();
+          const px = B.x + B.size * 0.12, py = B.y - B.size * (B.at === 'shelf' ? 1.35 : 1.25) - 18;
+          P.emit('star', B.x + B.size * 0.1, B.y - B.size * 0.7, big ? 18 : 9, { colors: ['#fff3c4', '#cfe9ff', '#ffffff'] });
+          badge(reason === 'rode' ? (big ? 'Big one passed' : 'Urge passed') : 'Shelved', clamp(px, M.fx0 + 90, M.fx1 - 90), Math.max(M.fy0 + 48, py));
+          if (big) lightBulbs(3);
+          rush.base(st.doneOrder.length >= TASKS.length - 1 ? 'happy' : 'calm'); rush.face('wow', 1100);
+        }
+        ctx.track('dont_wave', { r: reason === 'rode' ? 1 : 2, clean: clean ? 1 : 0, big: big ? 1 : 0 });
         if (reason === 'rode') {
-          say(still, L(clean ? LINES.passRide : LINES.passLater), { mood: 'happy', ms: 2800 });
+          say(still, L(clean ? (big ? LINES.passBig : LINES.passRide) : LINES.passLater), { mood: 'happy', ms: 2800 });
           K.later(() => {
             if (st.phase !== 'tasks' || B.at !== 'rug' || B.held || B.hop) return;
             say(loopie, L(LINES.giveUp), { mood: 'sleepy', ms: 2200 });
             hopTo('shelf', () => { guideNow(); K.later(maybeTwist, 300); });
           }, 1000);
-        } else say(still, L(LINES.passShelf), { mood: 'happy', ms: 2200 });
+        } else say(still, L(big && clean ? LINES.passBigShelf : LINES.passShelf), { mood: 'happy', ms: 2400 });
         guideNow(1600);
         K.later(maybeTwist, 1300);
       }
@@ -665,17 +725,24 @@
         if (st.phase !== 'tasks' || st.pending <= 0 || TASKS.every(T => T.done)) { st.pending = 0; return; }
         if (B.at !== 'shelf' || B.held || B.hop || U.wave || U.relief || st.tempting || now() - (st.waveEnd || 0) < 2600) { st.tPoll = K.later(tryTempt, 600); return; }
         st.pending--; st.tempting = true;
-        loopie.react('bounce'); loopie.face('silly', 1800); say(loopie, L(LINES.tempt), { mood: 'determined', moodMs: 1800, ms: 2400 });
+        const big = TEMPTS >= 2 && U.tempts + 1 === TEMPTS; // the last nudge is the big one: the urge escalates, and still passes
+        loopie.react('bounce'); loopie.face('silly', 1800); say(loopie, L(big ? LINES.temptBig : LINES.tempt), { mood: 'determined', moodMs: 1800, ms: 2400 });
         SFX.psst();
         K.later(() => {
           st.tempting = false;
-          if (st.phase === 'tasks' && B.at === 'shelf' && !B.held && !B.hop && !U.wave) { U.tempts++; st.temptClean = true; hopTo('rug', () => startWave(true)); }
+          if (st.phase === 'tasks' && B.at === 'shelf' && !B.held && !B.hop && !U.wave) { U.tempts++; st.temptClean = true; hopTo('rug', () => startWave(true, big), big); }
           else st.pending++;
           if (st.pending > 0 && !st.tPoll) st.tPoll = K.later(tryTempt, 2600);
         }, 380);
       }
-      function showWhisper(text) { whisper.lastChild.textContent = text; st.whW = whisper.offsetWidth; st.whH = whisper.offsetHeight; whisper.classList.add('on'); }
-      function hideWhisper() { whisper.classList.remove('on'); }
+      function badge(text, x, y) { // a little sticker that celebrates letting an urge pass
+        const e = h('div', { class: 'do-pop', text, 'aria-hidden': 'true' });
+        e.style.left = Math.round(x) + 'px'; e.style.top = Math.round(y) + 'px'; el.append(e);
+        K.later(() => e.classList.add('out'), 1400); K.later(() => e.remove(), 2000);
+      }
+      // the urge's voice: it whispers once, then fades (the guide waits for it, so the two never overlap)
+      function showWhisper(text) { whisper.lastChild.textContent = text; st.whW = whisper.offsetWidth; st.whH = whisper.offsetHeight; whisper.classList.add('on'); st.whUntil = now() + 3600; S.cancel(st.whTimer); st.whTimer = K.later(hideWhisper, 3600); }
+      function hideWhisper() { whisper.classList.remove('on'); st.whUntil = 0; }
 
       /* ---------------- tasks: small, absorbing, satisfying ---------------- */
       function tapTask(T) {
@@ -737,6 +804,7 @@
         WD.todT = nd / TASKS.length;
         MU.layers = Math.min(3, MU.layers + 1);
         K.sfx.great(); const a = M.anc[T.key]; P.emit('star', a.x, a.y, 14, { colors: ['#fff6d8', '#ffd27a', '#ffffff'] });
+        lightBulbs(Math.max(1, Math.floor(M.bulbs.length * 0.6 / TASKS.length)));
         ctx.track('dont_done', { k: T.key, n: nd });
         say(nd % 2 ? rush : still, L(LINES['dn_' + T.key]), { mood: nd >= 2 ? 'happy' : 'calm', ms: 2600 });
         rush.base(nd >= TASKS.length - 1 ? 'happy' : 'calm');
@@ -755,6 +823,7 @@
       function nextTask() { return TASKS.find(T => !T.done); }
       function guideNow(delay) {
         if (st.stepUntil && now() < st.stepUntil) delay = Math.max(delay || 0, st.stepUntil - now()); // let the step card be read first
+        if (st.whUntil && now() < st.whUntil) delay = Math.max(delay || 0, st.whUntil - now() + 250); // and the urge's whisper
         if (st.phase === 'shake') { K.guide({ id: 'shake', g: 'sweep', target: boxEl, oy: 0.3, d: Math.round(30 * M.s), label: 'SHAKE IT ONCE', place: 'above', delay: delay ?? 900 }); return; }
         if (st.phase === 'shelve' || (st.phase === 'tasks' && U.wave && !U.wave.fastAt && B.at === 'rug' && !B.hop && !B.held && !U.relief)) {
           const bt = { x: B.ex + B.ew * 0.5, y: B.ey + B.eh * 0.12 }, sp = { x: shelfX() + M.bShelf * 0.12, y: M.spotShelf.y - M.bShelf * 0.7 };
@@ -803,7 +872,7 @@
         K.sfx.paper(); SFX.pass();
       }
       function placeNote() {
-        const nw = Math.round(st.kept ? Math.min(M.side ? 250 : 190, M.fw * 0.56) : Math.min(M.side ? 330 : 270, M.fw - 64));
+        const nw = Math.round(st.kept ? Math.min(M.side ? 250 : 166, M.fw * (M.side ? 0.56 : 0.47)) : Math.min(M.side ? 330 : 270, M.fw - 64));
         noteEl.style.setProperty('--do-nw', nw + 'px');
         const nh = noteEl.offsetHeight || 130;
         noteEl.style.left = Math.round(M.spotRug.x - nw / 2) + 'px';
@@ -827,6 +896,7 @@
         MU.layers = 3; MU.vol = 1.1;
         loopie.base('sleepy'); still.base('happy');
         say(rush, L(LINES.fin), { mood: 'happy', ms: 3200 });
+        K.later(() => { lightBulbs(M.bulbs.length, RM() ? 40 : 75); BUL.finT0 = now() + (RM() ? 300 : 1300); }, 250); // every light in the room comes on
         st.doneOrder.forEach((k, i) => K.later(() => { TK[k].shine = 1; const a = M.anc[k]; P.emit('star', a.x, a.y, 10, { colors: ['#fff6d8', '#ffc98a', '#ffffff'] }); if (A.ctx) A.chime(A.note(['F5', 'A5', 'C6', 'E6', 'G6', 'A6'][i % 6]), { vol: 0.06, dur: 1.8 }); }, 600 + i * 380));
         K.later(() => { say(still, L(LINES.finStill), { mood: 'celebrate', ms: 0 }); rush.base('happy'); }, 3400);
         await K.finale('fireflies', { colors: ['#ffe9a8', '#ffd27a', '#fff3cf', '#ffc4a0'], chord: ['F3', 'A3', 'C4', 'E4', 'G4'], ms: 4800 });
@@ -839,28 +909,33 @@
         const score = tm ? clamp(ps / tm - 0.12 * Math.max(0, ck - (tm - ps)), 0, 1) : clamp(1 - 0.25 * ck, 0, 1);
         const tier = K.tier(score, [0.3, 0.6, 0.95]);
         const sat = Math.round(U.sat), fmt = (x) => Math.floor(x / 60) + ':' + String(x % 60).padStart(2, '0');
-        const badges = [];
+        const badges = [], rides = U.rides, urges = (n) => n + ' urge' + (n === 1 ? '' : 's');
         if (tier) badges.push(tier + ' · let it sit');
-        const b = K.best('sat', sat, 'higher'); if (b.isNew) badges.push('New best: sat with it ' + fmt(sat));
+        // the personal best is the purest version of the skill: urges left completely alone until they passed
+        const b = K.best('ride', rides, 'higher');
+        if (b.isNew) badges.push('New best: ' + urges(rides) + ' ridden out'); else if (b.first && rides) badges.push('Rode out ' + urges(rides));
         const items = st.doneOrder.map(k => room.items[k]).concat(st.catPets ? ['Sleepy cat'] : []).concat([wrap.key]);
         let firstNew = null, count = 0; items.forEach(it => { const c = K.collect(it); count = c.count; if (c.isNew && !firstNew) firstNew = it; });
         if (firstNew) badges.push('Collected: ' + firstNew + ' · ' + count + ' so far');
         const did = st.doneOrder.map(k => DID[k]);
         const lines = [tm ? 'Let ' + ps + ' of ' + tm + ' urge' + (tm === 1 ? '' : 's') + ' rise and fall without checking' : 'Let the question sit on the shelf',
-          'Sat with not knowing for ' + fmt(sat) + (ck ? ' · checked ' + ck + (ck === 1 ? ' time' : ' times') : ' · no checking'),
+          'Sat with not knowing for ' + fmt(sat) + (ck ? ' · peeked ' + (ck === 1 ? 'once' : ck + ' times') + ', then let it be' : ' · no checking'),
           useNote ? 'Your one step: ' + clip(stepText, 72) : 'Instead: ' + clip(did.join(', '), 74)];
         ctx.finish({ title: serious ? 'Let it sit, kept one real step' : 'Let it sit', mood: 'calm', lines, share: 'Didn’t open the worry box. ' + (SHARE[st.doneOrder[0]] || 'Made tea') + ' instead.', badges: badges.slice(0, 4) });
       }
 
       /* ---------------- per-frame update ---------------- */
       function update(dt, tn, t) {
-        const rdt = st.lastTn ? Math.min(0.25, (tn - st.lastTn) / 1000) : 0; st.lastTn = tn;
+        const rdt = st.lastTn ? Math.min(0.25, (tn - st.lastTn) / 1000) : 0; st.lastTn = tn; st.rdt = rdt;
         if (U.wave) {
           const w = U.wave;
           if (w.fastAt) { if (tn - w.fastAt >= 700) endWave('shelved'); }
           else if ((tn - w.t0) / w.T >= 1) endWave('rode');
         }
-        let lvl = U.base + waveLevel(tn);
+        const wl = waveLevel(tn);
+        st.wl += (wl - st.wl) * Math.min(1, rdt * 6); // the box swells with the urge and shrinks as it passes
+        puffStep(rdt);
+        let lvl = U.base + wl;
         if (U.relief) lvl = 0.1;
         if (st.phase === 'twist' || st.phase === 'note' || st.phase === 'finale' || st.phase === 'done') lvl = 0;
         U.itch += (clamp(lvl, 0, 1) - U.itch) * Math.min(1, dt * (U.relief ? 9 : 2.4));
@@ -902,7 +977,7 @@
         if (out && tn > st.nextWig && U.itch > 0.3) {
           st.nextWig = tn + (B.at === 'rug' ? 2400 - U.itch * 1500 : 4200 - U.itch * 1800) * (0.8 + Math.random() * 0.4);
           if (!RM()) { const sg = Math.random() < 0.5 ? -1 : 1; B.rv += sg * (2 + U.itch * 4); B.sqv -= 1.6 + U.itch * 1.4; if (B.at === 'rug' && U.itch > 0.5) B.jv -= 120 + U.itch * 120; }
-          SFX.rattle(U.itch * (B.at === 'rug' ? 1 : 0.5));
+          SFX.rattle(U.itch * (B.at === 'rug' ? 1 : 0.5)); st.rattleT = tn; st.rattleK = U.itch;
         }
         if (out && tn > st.nextPeek && U.itch > 0.42 && !U.relief) {
           st.nextPeek = tn + 3200 + Math.random() * 2400;
@@ -919,7 +994,15 @@
         if (T.key === 'frame') { T.av += ((T.target - T.ang) * 70 - T.av * 4.2) * dt; T.ang += T.av * dt; }
         if (T.key === 'books') for (let i = 0; i < 4; i++) { if (i < T.fixed) { T.bAv[i] += (-T.bAng[i] * 220 - T.bAv[i] * 13) * dt; T.bAng[i] += T.bAv[i] * dt; T.bXv[i] += (-T.bX[i] * 200 - T.bXv[i] * 14) * dt; T.bX[i] += T.bXv[i] * dt; } }
         if (T.key === 'record') { T.rot += dt * 5.5 * T.spin; if (T.playing && tn > T.noteAt && !RM()) { T.noteAt = tn + 900 + Math.random() * 500; st.notes.push({ x: M.record.x - 6 * M.record.k, y: M.record.y - 20 * M.record.k, vx: (Math.random() - 0.3) * 14, vy: -22, age: 0, life: 2.6, c: Math.random() < 0.5 ? 0 : 1 }); } }
-        if (T.key === 'tea') { if ((T.heating && T.heat > 0.45) || T.steamy > 0) { T.steamy = Math.max(0, T.steamy - dt * 0.6); if (!RM() && Math.random() < dt * 6) { const sp = spoutTip(T); P.emit('smoke', sp.x, sp.y, 1, { colors: ['rgba(255,255,255,0.26)'], angle: -Math.PI / 2, spread: 0.5, speed: [10, 22], size: [2.5, 5], life: [0.8, 1.5] }); } } }
+        if (T.key === 'tea') { if ((T.heating && T.heat > 0.45) || T.steamy > 0) { T.steamy = Math.max(0, T.steamy - st.rdt * 0.6); if (!RM() && Math.random() < st.rdt * 7 && st.puffs.length < 18) { const sp = spoutTip(T); st.puffs.push({ x: sp.x, y: sp.y, vx: 4 + Math.random() * 8, vy: -(16 + Math.random() * 14), age: 0, life: 1.1 + Math.random() * 0.7, s: (3 + Math.random() * 2.5) * M.tea.k }); } } }
+      }
+      // steam: soft sprites that rise, drift and swell (real time, so a busy device never piles them into a blob)
+      function puffStep(rdt) { for (let i = st.puffs.length - 1; i >= 0; i--) { const q = st.puffs[i]; q.age += rdt; q.x += q.vx * rdt + Math.sin(q.age * 4 + i) * 6 * rdt; q.y += q.vy * rdt; q.vy *= Math.pow(0.6, rdt); if (q.age >= q.life) st.puffs.splice(i, 1); } }
+      function drawPuffs(g) {
+        if (!st.puffs.length) return;
+        const spr = K.glowSprite('#ffffff'), a0 = bright() ? 0.5 : 0.36;
+        st.puffs.forEach(q => { const k = q.age / q.life, r = q.s * (1.4 + k * 3.2); g.globalAlpha = a0 * Math.sin(Math.PI * Math.min(1, k * 1.15)) * (1 - k * 0.4); g.drawImage(spr, q.x - r, q.y - r, r * 2, r * 2); });
+        g.globalAlpha = 1;
       }
 
       /* ---------------- draw ---------------- */
@@ -940,8 +1023,8 @@
         [[0.18, 0.72, 0.09], [0.3, 0.76, 0.06], [0.86, 0.78, 0.07]].forEach(([u, v, r]) => { g.beginPath(); g.arc(w.x + u * w.w, w.y + v * w.h, r * w.w, 0, TAU); g.fill(); });
         drawWeather(g, t);
         // the room (only the diorama is redrawn each frame; the backdrop around it never changes)
-        const d = stat.width / M.W, rx = Math.max(0, M.x0 - 2), ry = Math.max(0, M.y0 - 2), rw2 = Math.min(M.W - rx, M.rw + 4), rh2 = Math.min(M.H - ry, M.rh + 4);
-        g.drawImage(stat, rx * d, ry * d, rw2 * d, rh2 * d, rx, ry, rw2, rh2);
+        const R = M.reg;
+        g.drawImage(stat, R.sx, R.sy, R.sw, R.sh, R.x, R.y, R.w, R.h);
         // glass sheen
         g.fillStyle = 'rgba(255,255,255,0.07)'; poly(g, [w.x + w.w * 0.08, w.y, w.x + w.w * 0.3, w.y, w.x + w.w * 0.08, w.y + w.h * 0.46, w.x, w.y + w.h * 0.46, w.x, w.y + w.h * 0.18]); g.fill();
         drawBeam(g, warm);
@@ -950,6 +1033,7 @@
         drawCandle(g, S_('candle'), t);
         drawRecord(g, S_('record'), t);
         drawTea(g, S_('tea'), t);
+        drawPuffs(g);
         drawNotes(g);
         if (B.at === 'shelf' && !B.held && !B.hop) drawTheBox(g, t);
         drawBooks(g, S_('books'), t);
@@ -960,8 +1044,10 @@
         if (catOn) drawCat(g, t);
         if (B.held || B.hop) drawTheBox(g, t);
         if (st.paper) drawPaper(g);
-        // lights: pendant, candle, finale warmth
+        drawLights(g, t, false);
+        // lights: pendant, candle, fairy lights, finale warmth
         g.globalCompositeOperation = 'lighter';
+        drawLights(g, t, true);
         const pd = M.pend, lampA = br ? 0.12 + WD.sun * 0.2 : 0.55;
         g.globalAlpha = lampA; g.drawImage(K.glowSprite('#ffd79a'), pd.x - 70 * s, pd.y - 40 * s, 140 * s, 140 * s); g.globalAlpha = 1;
         const cd = S_('candle'); if (cd.lit > 0.02) { const fl = 1 + Math.sin(t * 11) * 0.05 + Math.sin(t * 6.3) * 0.04, r = 52 * M.candle.k * cd.lit * fl; g.globalAlpha = br ? 0.5 : 0.8; g.drawImage(K.glowSprite('#ffc46b'), M.candle.x - r, M.candle.y - 32 * M.candle.k - r, r * 2, r * 2); g.globalAlpha = 1; }
@@ -1010,6 +1096,14 @@
           g.drawImage(K.glowSprite(col), x + Bs * 0.12 - r, y - Bs * 0.5 - r, r * 2, r * 2); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
         }
         drawBox(g, x, y, Bs, { rot: B.rot, sq: B.sq, lift: Bs * (0.07 * B.peek + 0.42 * B.lid), tip: 0.42 * B.tip, light: Math.max(B.peek * (0.4 + it * 0.6), B.light), back: B.at === 'shelf' && !B.held && !B.hop }, t);
+        // cartoon rattle marks when it wiggles or is shaken
+        const age = now() - st.rattleT;
+        if (age < 420 && !RM() && B.orn < 0.5) {
+          const k = 1 - age / 420, a = k * (0.3 + 0.55 * st.rattleK), cx = x + Bs * 0.12, cy = y - Bs * 0.42;
+          g.save(); g.strokeStyle = bright() ? rgba('#4a2c22', a * 0.75) : rgba('#fff1d6', a); g.lineWidth = Math.max(1.6, Bs * 0.024); g.lineCap = 'round';
+          [-1, 1].forEach(sd => { for (let i = 0; i < 2; i++) { const r = Bs * (0.62 + i * 0.14 + (1 - k) * 0.1), a0 = sd > 0 ? -0.36 : Math.PI - 0.36; g.beginPath(); g.arc(cx, cy, r, a0, a0 + 0.72); g.stroke(); } });
+          g.restore();
+        }
       }
       function drawBox(g, x, y, Bs, o, t) {
         const fh = Bs * 0.8, lid = Bs * 0.17, dx = Bs * 0.25, dy = -Bs * 0.18, base = C(wrap.base), rib = C(wrap.ribbon), lb = -fh + lid, top = -fh, ex = Bs * 0.035;
@@ -1252,6 +1346,42 @@
         if (purr && !RM() && Math.random() < 0.05) P.emit('star', x - 14 * k, y - 22 * k, 1, { colors: ['#ffb3c8'] });
       }
 
+      /* ---------------- fairy lights ---------------- */
+      const BULB_COLS = ['#fff1c4', '#ffd27a', '#ffb38a', '#fff6dc', '#ffe08a', '#ffc4d6'];
+      function beatPhase() { // 0..1 through the beat you are hearing right now
+        if (!MU.on || !A.ctx) return 0.5;
+        const bl = 60 / MU.bpm, heard = A.now() - A.latency(); let lb = MU.next - bl; while (lb > heard) lb -= bl;
+        return clamp((heard - lb) / bl, 0, 1);
+      }
+      function drawLights(g, t, glowPass) {
+        const s = M.s, br = bright(), tn = now(), fin = BUL.finT0 && tn > BUL.finT0 ? (tn - BUL.finT0) / 1000 : -1, off = br ? '#cbc2b2' : '#5e5566';
+        const pulse = glowPass ? Math.exp(-beatPhase() * 5) * (fin >= 0 ? 0.4 : 0.12) : 0;
+        M.bulbs.forEach((b, i) => {
+          const on = BUL.on[i] || 0, age = on ? (tn - on) / 1000 : -1, lit = age >= 0 ? Math.min(1, age * 5) : 0;
+          const col = BULB_COLS[i % BULB_COLS.length], swing = Math.sin(t * 1.3 + i * 0.7) * 0.06;
+          if (glowPass) {
+            if (lit <= 0) return;
+            const tw = 0.8 + 0.2 * Math.sin(t * 2.3 + i * 1.9) + pulse + (fin >= 0 ? 0.45 * Math.max(0, Math.sin(fin * 3.2 - b.x / M.W * 6)) : 0) + (age < 0.45 ? (0.45 - age) * 2 : 0);
+            const bx = b.x + Math.sin(b.tilt * 0.35 + swing) * 5.5 * s, by = b.y + Math.cos(b.tilt * 0.35 + swing) * 5.5 * s, r = 14 * s * (0.75 + 0.35 * tw);
+            g.globalAlpha = clamp(lit * (br ? 0.42 : 0.62) * tw, 0, 1); g.drawImage(K.glowSprite(col), bx - r, by - r, r * 2, r * 2);
+            return;
+          }
+          g.save(); g.translate(b.x, b.y); g.rotate(b.tilt * 0.35 + swing);
+          g.fillStyle = C('#3b4636'); g.fillRect(-1.5 * s, -0.4 * s, 3 * s, 3.4 * s);
+          g.fillStyle = lit > 0 ? mixC(off, col, lit) : off; g.beginPath(); g.ellipse(0, 5.8 * s, 2.6 * s, 3.5 * s, 0, 0, TAU); g.fill();
+          if (lit > 0) { g.fillStyle = 'rgba(255,255,255,' + (0.75 * lit).toFixed(2) + ')'; g.beginPath(); g.arc(-0.8 * s, 4.6 * s, 0.95 * s, 0, TAU); g.fill(); }
+          g.restore();
+        });
+        g.globalAlpha = 1;
+      }
+      function lightBulbs(n, gap) {
+        const N = M.bulbs.length;
+        for (let j = 0; j < n && BUL.lit < N; j++) {
+          const idx = BUL.order[BUL.lit++], note = ['C7', 'A6', 'F6', 'G6', 'D7', 'E7'][BUL.lit % 6];
+          K.later(() => { BUL.on[idx] = now(); if (A.ctx) A.chime(A.note(note), { vol: 0.024, dur: 0.9, when: gridT(4) }); }, j * (gap || 130));
+        }
+      }
+
       /* ---------------- DOM that follows the box ---------------- */
       function placeBoxDom() {
         const Bs = B.size, fh = Bs * 0.8, dx = Bs * 0.25, ew = Math.max(64, Bs + dx), eh = Math.max(64, fh - Bs * -0.18 + Bs * 0.16);
@@ -1286,15 +1416,16 @@
       /* ---------------- frame loop ---------------- */
       cv.onResize(() => layout());
       S.on('theme', () => { st.statOK = false; cCache.clear(); });
+      try { if (document.fonts) S.listen(document.fonts, 'loadingdone', () => { st.statOK = false; }); } catch (e) { /* no font events: the plaque keeps its fallback face */ }
       K.loop((dt, t) => {
         const g = cv.g; if (!g || !M.W) return;
         const tn = now();
         st.fn++; if (dt > 0.034) st.slow++;
         if (st.fn >= 120) { if (st.slow > 40 && st.q > 0.7) { st.q = 0.7; cv.setQuality(st.q); st.statOK = false; } st.fn = 0; st.slow = 0; }
         if (!st.statOK) { renderStatic(); st.fullN = 2; }
-        if (st.fullN > 0) { st.fullN--; g.drawImage(stat, 0, 0, M.W, M.H); }
+        if (st.fullN > 0) { st.fullN--; const dp = M.reg.dp; g.drawImage(stat, 0, 0, stat.width, stat.height, 0, 0, stat.width / dp, stat.height / dp); }
         update(dt, tn, t);
-        g.save(); g.beginPath(); g.rect(M.x0 - 2, M.y0 - 2, M.rw + 4, M.rh + 4); g.clip();
+        g.save(); g.beginPath(); g.rect(M.reg.x, M.reg.y, M.reg.w, M.reg.h); g.clip();
         draw(g, t, dt);
         g.restore();
         hudTick();

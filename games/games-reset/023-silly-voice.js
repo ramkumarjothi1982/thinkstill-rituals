@@ -141,10 +141,10 @@
     cast: ['loopie', 'glitch'], poster: { char: 'loopie', mood: 'laugh' },
     tagline: 'Load the critic’s tape, twist the knobs, play it back ridiculous.',
     why: 'For a harsh inner voice: same words in a silly voice, and they lose their grip.',
-    fonts: ['Bungee', 'VT323', 'Permanent+Marker'],
+    fonts: ['Luckiest+Guy', 'VT323', 'Nanum+Pen+Script'],
     css: `
-.g-silly-voice { font-synthesis: none; --sv-disp: "Bungee", "Arial Black", "Segoe UI Black", system-ui, sans-serif; --sv-lcdf: "VT323", "Courier New", ui-monospace, monospace;
-  --sv-hand: "Permanent Marker", "Marker Felt", "Comic Sans MS", "Chalkboard SE", "Segoe Print", system-ui, sans-serif; --sv-acc: #19b8ac; --sv-ink: #5a1534; --sv-key: #19c5b8; --sv-keyink: #062a26;
+.g-silly-voice { font-synthesis: none; --sv-disp: "Luckiest Guy", "Arial Black", "Segoe UI Black", Impact, system-ui, sans-serif; --sv-lcdf: "VT323", "Courier New", ui-monospace, monospace;
+  --sv-hand: "Nanum Pen Script", "Bradley Hand", "Segoe Print", "Comic Sans MS", "Chalkboard SE", cursive; --sv-acc: #19b8ac; --sv-ink: #5a1534; --sv-key: #19c5b8; --sv-keyink: #062a26;
   --sv-lcdbg: #123630; --sv-lcdfg: #7dffc8; }
 .g-silly-voice .sv-vb { position: absolute; z-index: 26; display: grid; place-items: center; padding: 10px 16px; border-radius: 26px; background: #fffaf0; border: 3px solid #241634;
   box-shadow: 0 7px 0 rgba(36, 22, 52, 0.22), 0 16px 34px rgba(10, 4, 30, 0.35); transition: background-color 0.35s ease, border-color 0.35s ease, opacity 0.35s ease; pointer-events: none; }
@@ -224,11 +224,12 @@
 .g-silly-voice .sv-cas.sv-gold .sv-stripe { fill: #c8901a; }
 .g-silly-voice .sv-cas.sv-gold .sv-screw { fill: #fff2b8; }
 .g-silly-voice .sv-clabel { position: absolute; left: 4.8%; top: 7.5%; width: 90.4%; height: 32%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; overflow: hidden; padding: 0 6px; }
-.g-silly-voice .sv-ctext { font: 700 var(--lf, 17px)/1.02 var(--sv-hand); color: #1f2d7a; text-wrap: balance; rotate: -1.2deg; overflow-wrap: anywhere; }
-.g-silly-voice .sv-ctitle { display: none; font: 900 15px/1 var(--sv-disp); color: #7a5200; letter-spacing: 0.04em; }
-.g-silly-voice .sv-cas.sv-gold .sv-clabel { top: 5.5%; height: 45%; gap: 2px; }
-.g-silly-voice .sv-cas.sv-gold .sv-ctitle { display: block; }
-.g-silly-voice .sv-cas.sv-gold .sv-ctext { font-size: 15px; color: #5a3a00; }
+.g-silly-voice .sv-ctext { font: 400 var(--lf, 17px)/1 var(--sv-hand); color: #1f2d7a; text-wrap: balance; rotate: -1.2deg; overflow-wrap: anywhere; }
+.g-silly-voice .sv-ctitle { display: none; font: 900 15px/1 var(--sv-disp); color: #7a5200; letter-spacing: 0.05em; }
+.g-silly-voice .sv-ctrack { display: none; font: 700 12px/1.05 var(--font-ui); color: #7a5200; letter-spacing: 0.02em; white-space: nowrap; }
+.g-silly-voice .sv-cas.sv-gold .sv-clabel { top: 5%; height: 46%; gap: 1px; }
+.g-silly-voice .sv-cas.sv-gold .sv-ctitle, .g-silly-voice .sv-cas.sv-gold .sv-ctrack { display: block; }
+.g-silly-voice .sv-cas.sv-gold .sv-ctext { color: #4a2c00; }
 .g-silly-voice .sv-cside { position: absolute; right: 5.5%; top: 9%; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; background: #241634; color: #fff; font: 900 12px/1 var(--sv-disp); }
 .g-silly-voice .sv-cas.sv-gold .sv-cside { background: #8a5b00; }
 .g-silly-voice .sv-fader { position: absolute; z-index: 25; border-radius: 16px; background: linear-gradient(180deg, #2c2238, #140f1c); border: 2px solid #ffd36b;
@@ -245,14 +246,16 @@
 .g-silly-voice .sv-shards { position: absolute; inset: 0; z-index: 27; pointer-events: none; overflow: hidden; }
 .g-silly-voice .sv-shard { position: absolute; left: 0; top: 0; font-family: var(--sv-disp); font-weight: 900; color: #ffe08a; white-space: pre; will-change: transform; }
 .g-silly-voice .sv-c .gk-bubble { max-width: min(250px, calc(100cqw - 24px)); }
-.g-silly-voice .sv-c.gk-side-below .gk-bubble, .g-silly-voice .sv-c.gk-side-above .gk-bubble { max-width: min(276px, calc(100cqw - 24px)); }
+.g-silly-voice .sv-c.gk-side-below .gk-bubble, .g-silly-voice .sv-c.gk-side-above .gk-bubble { max-width: min(340px, calc(100cqw - 40px)); }
 .g-silly-voice .sv-c-loopie.gk-side-above .gk-bubble, .g-silly-voice .sv-c-glitch.gk-side-below .gk-bubble { left: auto; right: 0; }
 .g-silly-voice .sv-c.gk-side-above .gk-bubble::after, .g-silly-voice .sv-c.gk-side-below .gk-bubble::after { content: ""; position: absolute; width: 13px; height: 13px; background: inherit; transform: rotate(45deg); }
 .g-silly-voice .sv-c.gk-side-below .gk-bubble::after { top: -7px; left: 22px; border-left: 1px solid var(--ui-line); border-top: 1px solid var(--ui-line); }
 .g-silly-voice .sv-c.gk-side-above .gk-bubble::after { bottom: -7px; left: 22px; border-right: 1px solid var(--ui-line); border-bottom: 1px solid var(--ui-line); }
 .g-silly-voice .sv-c-glitch.gk-side-below .gk-bubble::after, .g-silly-voice .sv-c-loopie.gk-side-above .gk-bubble::after { left: auto; right: 22px; }
 .g-silly-voice .gk-pop-text { font-family: var(--sv-disp); font-weight: 900; }
-.g-silly-voice.sv-bright .gk-pop-text.gk-good { color: #0d7a48; }
+.g-silly-voice .gk-pop-text.gk-sv, .g-silly-voice .gk-pop-text.gk-svgrip { font-size: 28px; letter-spacing: 0.04em; color: #ffd36b;
+  text-shadow: 2px 0 0 #241634, -2px 0 0 #241634, 0 2px 0 #241634, 0 -2px 0 #241634, 2px 2px 0 #241634, -2px 2px 0 #241634, 2px -2px 0 #241634, -2px -2px 0 #241634, 0 6px 12px rgba(20, 8, 40, 0.4); }
+.g-silly-voice .gk-pop-text.gk-svgrip { font-size: 22px; color: #8af5c8; }
 `,
     mount(ctx) {
       const K = ctx.kit, S = ctx.TS, A = ctx.A, h = ctx.h, el = ctx.el;
@@ -343,8 +346,8 @@
         '<rect class="sv-paper2" x="10" y="5" width="232" height="49" rx="4"/>' +
         '<path class="sv-trap" d="M66 106L77 91H175L186 106Z"/>' +
         '<circle class="sv-screw" cx="7" cy="7" r="2.6"/><circle class="sv-screw" cx="245" cy="7" r="2.6"/><circle class="sv-screw" cx="7" cy="99" r="2.6"/><circle class="sv-screw" cx="245" cy="99" r="2.6"/><circle class="sv-screw" cx="126" cy="98" r="2.6"/>' +
-        '</svg><div class="sv-clabel"><span class="sv-ctitle">GREATEST HITS</span><span class="sv-ctext gk-user"></span></div>' });
-      const casText = cas.querySelector('.sv-ctext'), casTitle = cas.querySelector('.sv-ctitle');
+        '</svg><div class="sv-clabel"><span class="sv-ctitle">GREATEST HITS</span><span class="sv-ctext gk-user"></span><span class="sv-ctrack"></span></div>' });
+      const casText = cas.querySelector('.sv-ctext'), casTitle = cas.querySelector('.sv-ctitle'), casTrack = cas.querySelector('.sv-ctrack');
       const hubL = cas.querySelector('.sv-hubL'), hubR = cas.querySelector('.sv-hubR'), packL = cas.querySelector('.sv-packL'), packR = cas.querySelector('.sv-packR');
       const fader = h('div', { class: 'sv-fader', role: 'slider', tabindex: '-1', 'aria-label': 'Master fader: push up for the crescendo', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': '0' },
         h('span', { class: 'sv-flab', text: 'MASTER' }), h('i', { class: 'sv-fslot' }), h('i', { class: 'sv-ffill' }), h('i', { class: 'sv-fcap' }));
@@ -401,6 +404,7 @@
         G.cw = 252 * u; G.deck = { x: mx(14), y: my(94), w: 342 * u, h: 120 * u };
         G.casHome = { x: mx(59), y: my(101) };
         cas.style.setProperty('--cw', G.cw + 'px');
+        fitLabel();
         // master fader (twist)
         G.fd = { x: mx(274), y: my(224), w: 82 * u, h: 164 * u };
         Object.assign(fader.style, { left: G.fd.x + 'px', top: G.fd.y + 'px', width: G.fd.w + 'px', height: G.fd.h + 'px' });
@@ -433,21 +437,33 @@
         lineEl.innerHTML = '';
         wordEls = LINE.text.split(/\s+/).filter(Boolean).map((wd, i) => { if (i) lineEl.append(' '); const s = h('span', { class: 'sv-w', text: wd }); lineEl.append(s); return s; });
         casText.textContent = LINE.text;
-        const n = LINE.text.length;
-        cas.style.setProperty('--lf', (n <= 13 ? 18 : n <= 19 ? 16 : 15) + 'px');
         exTag.hidden = LINE.own; vb.classList.toggle('sv-hasex', !LINE.own);
         exTag.textContent = 'An example line';
-        fitLine();
         wordKick = wordEls.map(() => 0);
+        fitLabel();
+        fitLine();
       }
       let wordKick = [];
+      /* The biggest size that really fits (measured once per text or layout change, never per frame). */
       function fitLine() {
-        if (!VB.w) return;
-        const iw = VB.w - 40, ih = VB.h - 26 - (LINE.own ? 0 : 18), n = Math.max(4, LINE.text.length);
-        let f = 46;
-        for (; f > 15; f -= 1) { const lines = Math.ceil((n * 0.86 * f) / iw); if (lines * 1.12 * f <= ih && lines <= 3) break; }
-        fsMax = Math.max(15, f);
+        if (!VB.w || !wordEls.length) return;
+        const iw = VB.w - 40, ih = VB.h - 26 - (LINE.own ? 0 : 18);
+        lineEl.style.transition = 'none';
+        lineEl.style.setProperty('--ls', '0.18em');
+        let lo = 15, hi = 54;
+        while (hi - lo > 1) { const m = (lo + hi) >> 1; lineEl.style.setProperty('--fs', m + 'px'); if (lineEl.scrollWidth <= iw + 1 && lineEl.offsetHeight <= ih) lo = m; else hi = m; }
+        lineEl.style.setProperty('--fs', lo + 'px');
+        void lineEl.offsetHeight;
+        lineEl.style.transition = '';
+        fsMax = lo; styleKey = '';
         styleLine();
+      }
+      function fitLabel() {
+        const box = casText.parentNode;
+        if (!box || !box.clientWidth || cas.classList.contains('sv-gold')) return;
+        let f = 26;
+        cas.style.setProperty('--lf', f + 'px');
+        while (f > 15 && (box.scrollHeight > box.clientHeight + 1 || casText.scrollWidth > box.clientWidth + 1)) { f -= 1; cas.style.setProperty('--lf', f + 'px'); }
       }
       let styleKey = '';
       function styleLine(kind) {
@@ -459,7 +475,8 @@
         const ls = K.lerp(0.18, -0.03, s).toFixed(3) + 'em';
         const ga = e > 0.12 && kind !== 'critic' ? e : 0;
         const gc = kind === 'critic' ? '255,93,108' : hexRgb(tint);
-        const ghost = ga ? (Math.round(5 + e * 9) + 'px ' + Math.round(-1 - e * 3) + 'px 0 rgba(' + gc + ',' + (0.38 * ga).toFixed(2) + '), ' + Math.round(10 + e * 18) + 'px ' + Math.round(-2 - e * 6) + 'px 0 rgba(' + gc + ',' + (0.18 * ga).toFixed(2) + ')') : 'none';
+        const go = (0.05 + e * 0.07).toFixed(3);
+        const ghost = ga ? (go + 'em -' + (go / 2).toFixed(3) + 'em 0 rgba(' + gc + ',' + (0.3 * ga).toFixed(2) + '), ' + (go * 2).toFixed(3) + 'em -' + go + 'em 0 rgba(' + gc + ',' + (0.13 * ga).toFixed(2) + ')') : 'none';
         const key = fs + ls + ghost + tint;
         if (key === styleKey) return;
         styleKey = key;
@@ -937,7 +954,9 @@
         const rank = (v) => (/en[-_]AU/i.test(v.lang) ? 0 : /en[-_]GB/i.test(v.lang) ? 1 : /en[-_]US/i.test(v.lang) ? 2 : 3) - (v.default ? 0.5 : 0);
         plain.sort((a, b) => rank(a) - rank(b));
         TTS.voice = plain[0] || null;
-        TTS.alt = { robot: en.find(v => /^(zarvox|trinoids)\b/i.test(v.name || '')) || null, ghost: en.find(v => /^whisper\b/i.test(v.name || '')) || null };
+        // the device's own novelty voices (still on-device) make some presets sillier still
+        const alt = (re) => en.find(v => re.test(v.name || '')) || null;
+        TTS.alt = { robot: alt(/^(zarvox|trinoids)\b/i), ghost: alt(/^whisper\b/i), opera: alt(/^(cellos|good news|organ)\b/i), alien: alt(/^(wobble|bubbles|trinoids)\b/i) };
       }
       if (SS) { pickVoices(); try { S.listen(SS, 'voiceschanged', pickVoices); } catch (e) { /* old browser */ } }
       const ttsReady = () => !!(SS && TTS.voice && TTS.ok && S.settings.sound);
@@ -950,7 +969,7 @@
           const voice = (TTS.alt[fx] || TTS.voice);
           const pitch = K.clamp(0.1 + v.p * 1.9, 0.1, 2), rate = K.clamp(0.5 + v.s * 1.35, 0.5, 2);
           const chunks = [];
-          if (v.w > 0.45 && words.length > 1 && fx !== 'robot') words.forEach((wd, i) => chunks.push({ text: wd, wi: i, pitch: K.clamp(pitch * (i % 2 ? 1 + v.w * 0.35 : 1 - v.w * 0.25), 0.1, 2), vol: 0.85 }));
+          if (v.w > 0.45 && words.length > 1 && fx !== 'robot' && !TTS.alt[fx]) words.forEach((wd, i) => chunks.push({ text: wd, wi: i, pitch: K.clamp(pitch * (i % 2 ? 1 + v.w * 0.35 : 1 - v.w * 0.25), 0.1, 2), vol: 0.85 }));
           else chunks.push({ text: words.join(' '), wi: 0, whole: true, pitch, vol: 0.85 });
           if (v.e > 0.45 && words.length) { const lw = words[words.length - 1]; chunks.push({ text: lw, wi: -1, pitch, vol: 0.4 }); if (v.e > 0.75) chunks.push({ text: lw, wi: -1, pitch, vol: 0.18 }); }
           const est = words.reduce((a, wd) => a + 0.14 + wd.length * 0.06, 0) / rate + chunks.length * 0.12;
@@ -1003,7 +1022,17 @@
 
       /* ---------------- presets: matching and zones ---------------- */
       const slack = [0.06, 0, -0.015][inten];
-      function inRange(p, k, v, extra) { const r = p.r && p.r[k]; if (!r) return true; return v >= r[0] - slack - (extra || 0) && v <= r[1] + slack + (extra || 0); }
+      /* A knob's target zone: intensity widens or narrows it, a zone touching the end of the dial always includes the end,
+         and no zone is ever narrower than a comfortable twist. */
+      function zoneOf(p, k) {
+        const r = p.r && p.r[k]; if (!r) return null;
+        let lo = r[0] - slack, hi = r[1] + slack;
+        if (r[0] <= 0.001) lo = -1;
+        if (r[1] >= 0.999) hi = 2;
+        if (hi - lo < 0.07) { const c = (lo + hi) / 2; lo = c - 0.035; hi = c + 0.035; }
+        return [lo, hi];
+      }
+      function inRange(p, k, v, extra) { const z = zoneOf(p, k); if (!z) return true; return v >= z[0] - (extra || 0) && v <= z[1] + (extra || 0); }
       function matches(p, extra) { return !!(p && p.r) && Object.keys(p.r).every(k => inRange(p, k, V[k], extra)); }
       function findMatch() {
         const list = unlockedList();
@@ -1082,7 +1111,7 @@
             loopie.face('wow', 900); glitch.face('smug', 1100);
             if (S.buzz) S.buzz(14);
             K.guide({ id: 'play-' + m.id, g: 'tap', target: playKey, label: 'PLAY IT BACK', delay: 400 });
-            K.pop(m.name + '!', { x: lcd.offsetLeft + lcd.offsetWidth / 2, y: lcd.offsetTop - 18, kind: 'great' });
+            K.pop(m.name + '!', { x: G.w / 2, y: G.deck.y + G.deck.h * 0.45, kind: 'sv' });
           } else {
             setPlayReady(ST.target === FREE && dist(V, CRITIC) > 0.3);
             lcdSet(targetTitle(), hintFor(ST.target));
@@ -1135,25 +1164,15 @@
         audioInit(); startBed();
         // the cassette drops into the deck
         ST.casY = -1.6; placeCassette(); cas.style.opacity = '1';
-        const t0 = performance.now(), dur = red() ? 300 : 900;
         if (A.ctx) { A.paper({ vol: 0.12 }); A.whoosh({ vol: 0.06, dur: 0.4 }); }
-        await new Promise(res => {
-          const step = () => {
-            if (S.destroyed) return;
-            const k = Math.min(1, (performance.now() - t0) / dur);
-            ST.casY = -(1 - easeOutBack(k)) * 1.6;
-            placeCassette();
-            if (k < 1) requestAnimationFrame(step); else res();
-          };
-          requestAnimationFrame(step);
-        });
+        await K.anim(900, (k) => { ST.casY = -(1 - easeOutBack(k)) * 1.6; placeCassette(); });
         ST.casY = 0; placeCassette();
         clunk(1.2); if (A.ctx) A.tone({ type: 'sine', freq: 130, to: 90, glide: 0.08, dur: 0.12, vol: 0.12 });
         P.emit('dust', G.deck.x + G.deck.w / 2, G.deck.y + G.deck.h - 6, 10, { colors: ['rgba(255,255,255,0.35)'] });
         vb.classList.remove('sv-hide');
         vb.classList.add('sv-critic'); styleLine('critic');
         lcdSet(!LINE.own ? 'EXAMPLE TAPE' : CARE ? 'TAPE: ON REPEAT' : 'TAPE: CRITIC', 'PRESS PLAY', true);
-        const ld = CARE ? { Jolly: 'This line’s been on repeat. Let’s hear it once, then change only the voice.', Cheeky: 'This one’s been on repeat. One listen, then a new voice.', Unfiltered: 'On repeat lately. Hear it once, then change the voice.' }
+        const ld = CARE ? { Jolly: 'This one’s been on repeat. Let’s hear it once, then change the voice.', Cheeky: 'This one’s been on repeat. One listen, then a new voice.', Unfiltered: 'On repeat lately. Hear it once, then change the voice.' }
           : LINE.own ? { Jolly: 'Your inner critic left a tape. Let’s hear it once, then mess with it.', Cheeky: 'The critic made a mixtape. One song. On repeat.', Unfiltered: 'The critic’s tape. One listen, then we wreck it.' }
             : { Jolly: 'No words today? Here’s a classic line inner critics love.', Cheeky: 'Blank tape? I brought a critic classic.', Unfiltered: 'Example tape. Every critic’s favourite line.' };
         say(loopie, line(ld), 4200, CARE ? 'calm' : 'think');
@@ -1244,7 +1263,7 @@
         glitch.face(CARE ? 'calm' : 'smug', 0);
         await K.wait(500);
         say(glitch, gentle(CARE ? { Jolly: 'That’s how it usually sounds. The words stay. Let’s soften the voice.' }
-          : { Jolly: 'Same old tape, very serious voice. The words can stay. The voice is up for grabs.', Cheeky: 'So dramatic. We keep the words and fix the voice.', Unfiltered: 'That’s the critic. Now we twist knobs.' }), 3600);
+          : { Jolly: 'Same old tape, very serious voice. The words stay. The voice is up for grabs.', Cheeky: 'So dramatic. We keep the words and fix the voice.', Unfiltered: 'That’s the critic. Now we twist knobs.' }), 3600);
         loopie.base(CARE ? 'calm' : 'determined');
         vb.classList.remove('sv-critic');
         await K.wait(1600);
@@ -1279,7 +1298,7 @@
         const g0 = ST.grip;
         ST.grip = Math.max(8, ST.grip - drop);
         gripLab.textContent = 'GRIP ' + Math.round(ST.grip) + '%';
-        K.pop('−' + (g0 - ST.grip) + '% GRIP', { x: K.clamp(mx(311), 100, G.w - 100), y: my(14) - 18, kind: 'good' });
+        K.pop('−' + (g0 - ST.grip) + '% GRIP', { x: K.clamp(mx(300), 90, G.w - 90), y: my(108), kind: 'svgrip' });
         // the crack-up
         if (!CARE) {
           loopie.face('laugh', 0); loopie.react('bounce'); laugh('loopie', 0.05);
@@ -1455,9 +1474,9 @@
         });
         lineEl.style.visibility = 'hidden';
         const list = rects.map((c, i) => {
-          const s = h('span', { class: 'sv-shard gk-user', text: c.ch, style: { fontSize: Math.max(15, fs) + 'px' } });
+          const s = h('span', { class: 'sv-shard gk-user', text: c.ch, style: { fontSize: Math.max(15, fs) + 'px', transform: 'translate(' + c.x.toFixed(1) + 'px,' + c.y.toFixed(1) + 'px) translate(-50%,-50%)' } });
           shards.append(s);
-          return { el: s, x: c.x, y: c.y, vx: (Math.random() - 0.5) * 240, vy: -120 - Math.random() * 220, rot: 0, vr: (Math.random() - 0.5) * 12, d: i * 0.012, half: fs * 0.32 };
+          return { el: s, x: c.x, y: c.y, vx: (Math.random() - 0.5) * 240, vy: -120 - Math.random() * 220, vr: (Math.random() - 0.5) * 12, d: i * 0.012, half: fs * 0.32 };
         });
         if (A.ctx) {
           A.noise({ filter: 'highpass', freq: 3800, dur: 1.2, attack: 0.002, vol: 0.08 });
@@ -1465,30 +1484,20 @@
           if (!CARE) A.kick(A.now(), 0.35);
         }
         if (!red() && !CARE) ST.flash = 1;
-        const t0 = performance.now();
-        await new Promise(res => {
-          const step = () => {
-            if (S.destroyed) return;
-            const tt = (performance.now() - t0) / 1000;
-            let alive = 0;
-            list.forEach(c => {
-              if (!c.el) return;
-              const lt = tt - c.d; if (lt < 0) { alive++; return; }
-              const dt = 1 / 60;
-              c.vy += 620 * dt; c.x += c.vx * dt; c.y += c.vy * dt; c.rot += c.vr * dt;
-              c.x = K.clamp(c.x, c.half + 6, G.w - c.half - 6);
-              const a = Math.max(0, 1 - Math.max(0, lt - 0.45) / 0.4);
-              if (a <= 0 || c.y > G.h - 20) {
-                P.emit('confetti', c.x, Math.min(c.y, G.h - 30), 4, { colors: CARE ? ['#ffd9e6', '#fff', '#c8b6ff'] : ['#ffd36b', '#ff8fb1', '#7fe3c4', skin.acc, '#fff6d0'], speed: [60, 180] });
-                c.el.remove(); c.el = null; return;
-              }
-              alive++;
-              c.el.style.transform = 'translate(' + c.x.toFixed(1) + 'px,' + c.y.toFixed(1) + 'px) translate(-50%,-50%) rotate(' + (c.rot * 57).toFixed(0) + 'deg)';
-              c.el.style.opacity = a.toFixed(2);
-            });
-            if (alive && tt < 3) requestAnimationFrame(step); else { list.forEach(c => { if (c.el) c.el.remove(); }); res(); }
-          };
-          requestAnimationFrame(step);
+        const burst = CARE ? ['#ffd9e6', '#fff', '#c8b6ff'] : ['#ffd36b', '#ff8fb1', '#7fe3c4', skin.acc, '#fff6d0'];
+        const pop = (c, x, y) => { P.emit('confetti', x, Math.min(y, G.h - 30), 4, { colors: burst, speed: [60, 180] }); c.el.remove(); c.el = null; };
+        await K.anim(1400, (k) => {
+          const tt = k * 1.4;
+          list.forEach(c => {
+            if (!c.el) return;
+            const lt = tt - c.d;
+            if (lt < 0 && k < 1) return;
+            const x = K.clamp(c.x + c.vx * lt, c.half + 6, G.w - c.half - 6), y = c.y + c.vy * lt + 310 * lt * lt;
+            const a = Math.max(0, 1 - Math.max(0, lt - 0.45) / 0.4);
+            if (a <= 0 || y > G.h - 20 || k >= 1) { pop(c, x, y); return; }
+            c.el.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px) translate(-50%,-50%) rotate(' + (c.vr * lt * 57).toFixed(0) + 'deg)';
+            c.el.style.opacity = a.toFixed(2);
+          });
         });
         vb.classList.add('sv-hide');
         loopie.face(CARE ? 'happy' : 'laugh', 0); glitch.face(CARE ? 'happy' : 'laugh', 0);
@@ -1520,28 +1529,22 @@
         lcdSet(CARE ? 'QUIET HITS' : 'GREATEST HITS', 'VOL. ' + (visits + 1), true);
         const home = { x: G.casHome.x + G.cw / 2, y: G.casHome.y + G.cw * 106 / 252 / 2 };
         const dest = { x: G.w / 2, y: G.phone ? Math.max(VB.y + VB.h / 2 + 8, M.y - 14 - big * 106 / 252 / 2) : VB.y + VB.h / 2 + 4 };
-        const t0 = performance.now(), dur = red() ? 400 : 1500;
         let flipped = false;
-        await new Promise(res => {
-          const step = () => {
-            if (S.destroyed) return;
-            const k = Math.min(1, (performance.now() - t0) / dur), e = 1 - Math.pow(1 - k, 3);
-            const x = home.x + (dest.x - home.x) * e, y = home.y + (dest.y - home.y) * e - Math.sin(k * Math.PI) * 60;
-            const sc = 1 + (big / G.cw - 1) * e;
-            const flip = red() ? 1 : Math.cos(Math.min(1, k * 1.25) * Math.PI * 2);
-            if (!flipped && (k > 0.32 || red())) { flipped = true; goldLabel(); }
-            cas.style.transform = 'translate(' + (x - G.cw / 2).toFixed(1) + 'px,' + (y - G.cw * 106 / 252 / 2).toFixed(1) + 'px) scale(' + (sc * Math.max(0.04, Math.abs(flip))).toFixed(3) + ',' + sc.toFixed(3) + ') rotate(' + (Math.sin(k * Math.PI) * -6).toFixed(1) + 'deg)';
-            if (Math.random() < 0.5) P.emit('star', x + (Math.random() - 0.5) * 100, y + (Math.random() - 0.5) * 40, 1, { colors: ['#fff6d0', '#ffd36b'], speed: [20, 80] });
-            if (k < 1) requestAnimationFrame(step); else res();
-          };
-          requestAnimationFrame(step);
+        await K.anim(1500, (k) => {
+          const e = 1 - Math.pow(1 - k, 3);
+          const x = home.x + (dest.x - home.x) * e, y = home.y + (dest.y - home.y) * e - Math.sin(k * Math.PI) * 60;
+          const sc = 1 + (big / G.cw - 1) * e;
+          const flip = red() ? 1 : Math.cos(Math.min(1, k * 1.25) * Math.PI * 2);
+          if (!flipped && (k > 0.32 || red())) { flipped = true; goldLabel(); }
+          cas.style.transform = 'translate(' + (x - G.cw / 2).toFixed(1) + 'px,' + (y - G.cw * 106 / 252 / 2).toFixed(1) + 'px) scale(' + (sc * Math.max(0.04, Math.abs(flip))).toFixed(3) + ',' + sc.toFixed(3) + ') rotate(' + (Math.sin(k * Math.PI) * -6).toFixed(1) + 'deg)';
+          if (Math.random() < 0.5) P.emit('star', x + (Math.random() - 0.5) * 100, y + (Math.random() - 0.5) * 40, 1, { colors: ['#fff6d0', '#ffd36b'], speed: [20, 80] });
         });
         ST.goldAt = performance.now(); ST.gold = { x: dest.x, y: dest.y, w: big };
         if (A.ctx) { A.pad(['C4', 'E4', 'G4', 'C5'].map(n => A.note(n)), { dur: 3, vol: 0.12, attack: 0.05 }); ['G5', 'C6', 'E6', 'G6'].forEach((n, i) => A.chime(A.note(n), { when: A.now() + 0.1 + i * 0.1, vol: 0.06, dur: 1.6 })); }
         loopie.base('celebrate'); glitch.base(CARE ? 'happy' : 'celebrate'); loopie.react('bounce'); glitch.react('bounce');
         const nxt = !CARE && PRESETS[3 + visits] ? PRESETS[3 + visits] : null;
         say(glitch, gentle(CARE ? { Jolly: 'Quiet Hits. Same words, softer. For the real facts, a real person can help.' }
-          : { Jolly: 'Gold record! Same words, way less grip.', Cheeky: 'Greatest Hits! The critic is a novelty act now.', Unfiltered: 'Gold tape. Same words. No grip.' }), 0);
+          : { Jolly: 'Gold record! Same words, way less grip.', Cheeky: 'Greatest Hits! The critic is a novelty act now.', Unfiltered: 'Gold tape. Same words. No grip.' }), 6000);
         await K.finale('confetti', { from: [{ x: dest.x - big * 0.3, y: dest.y }, { x: dest.x + big * 0.3, y: dest.y }], colors: CARE ? ['#ffe9a8', '#ffd9e6', '#c8b6ff', '#ffffff'] : ['#ffd36b', '#fff0a8', '#ff8fb1', skin.acc, '#ffffff'], chord: ['C4', 'E4', 'G4', 'C5'], ms: 3200, sound: false });
         // personal bests and the collection
         const badges = [];
@@ -1556,20 +1559,31 @@
         if (nxt) badges.push('Next visit unlocks: ' + titleCase(nxt.name));
         finished = true; ST.finAt = performance.now();
         const firstName = ST.played.length ? titleCase(ST.played[0].name).toLowerCase() : 'helium';
+        const art = /^[aeiou]/.test(firstName) ? 'an ' : 'a ';
         ctx.track('done', { grip: ST.grip, takes: ST.played.length, found: ST.found.length });
         ctx.finish({
           title: CARE ? 'Quiet Hits' : 'Greatest Hits', mood: CARE ? 'happy' : 'laugh',
           lines: ['Same words, ' + ST.played.length + ' new voices' + (CARE ? '' : ' and an opera trio'),
             'Grip-o-meter: 100% → ' + ST.grip + '%',
             'Voices: ' + ST.played.map(p => titleCase(p.name)).join(', ') + ' · Machine: ' + skin.name],
-          share: CARE ? 'Played a heavy thought back in a softer voice. Same words, less grip.' : 'Played my inner critic back in a ' + firstName + ' voice. It lost the argument.',
+          share: CARE ? 'Played a heavy thought back in a softer voice. Same words, less grip.' : 'Played my inner critic back in ' + art + firstName + ' voice. It lost the argument.',
           badges: badges.slice(0, 4)
         });
       }
       function goldLabel() {
         cas.classList.add('sv-gold');
         casTitle.textContent = CARE ? 'QUIET HITS' : 'GREATEST HITS';
-        cas.style.setProperty('--lf', '15px');
+        // the same words, now a novelty single: "feat." every voice that sang them
+        const names = ST.played.map(p => titleCase(p.short || p.name)).filter((x, i, a) => a.indexOf(x) === i).slice(0, 3);
+        const trio = CARE ? 'Harmony' : 'Opera Trio', box = casText.parentNode;
+        casTrack.style.display = '';
+        cas.style.setProperty('--lf', '17px');
+        if (box.scrollHeight > box.clientHeight + 1 || casText.scrollWidth > box.clientWidth + 1) cas.style.setProperty('--lf', '15px');
+        // the longest credits that fit on the label, never smaller than 12px
+        const credits = [names.concat([trio]), names.slice(0, 2).concat([trio]), names.slice(0, 2).concat(['Trio']), names.slice(0, 1).concat([trio]), [trio]];
+        let fits = false;
+        for (const c of credits) { casTrack.textContent = 'feat. ' + c.join(' · '); if (casTrack.scrollWidth <= box.clientWidth - 10 && box.scrollHeight <= box.clientHeight + 1) { fits = true; break; } }
+        if (!fits) casTrack.style.display = 'none';
         K.sfx.sparkle();
       }
 
@@ -1715,10 +1729,10 @@
           kb.kick = Math.max(0, kb.kick - 0.08);
           const R = kb.R, ringR = R + 9 * M.u;
           // target zone arc
-          const zone = (ST.match && ST.match.r && ST.match.r[k]) || (tgt && tgt.r && tgt.r[k]);
+          const zp = (ST.match && ST.match.r && ST.match.r[k]) ? ST.match : (tgt && tgt.r && tgt.r[k]) ? tgt : null, zone = zp && zoneOf(zp, k);
           if (zone && phase === 'tune') {
-            const inZ = V[k] >= zone[0] - slack && V[k] <= zone[1] + slack;
-            const a0 = ang(Math.max(0, zone[0] - slack)), a1 = ang(Math.min(1, zone[1] + slack));
+            const inZ = V[k] >= zone[0] && V[k] <= zone[1];
+            const a0 = ang(K.clamp(zone[0], 0, 1)), a1 = ang(K.clamp(zone[1], 0, 1));
             g.strokeStyle = inZ ? 'rgba(80,230,140,0.95)' : 'rgba(80,230,140,' + (0.35 + 0.25 * Math.sin(t * 5)).toFixed(3) + ')';
             g.lineWidth = 7 * M.u; g.lineCap = 'round';
             g.beginPath(); g.arc(kb.x, kb.y, ringR, a0, Math.max(a0 + 0.05, a1)); g.stroke();
@@ -1743,6 +1757,13 @@
       setLineText();
       cas.style.opacity = '0';
       cv.onResize(() => layout());
+      // the web fonts change text widths: fit again (and repaint the canvas lettering) once they are in
+      try {
+        if (document.fonts && document.fonts.load) {
+          Promise.all(['400 24px "Luckiest Guy"', '400 24px "Nanum Pen Script"', '400 20px "VT323"'].map(f => document.fonts.load(f)))
+            .then(() => { if (S.destroyed) return; dispFont = ''; fitLabel(); fitLine(); paintAll(); }).catch(() => {});
+        }
+      } catch (e) { /* no font loading API */ }
       (async () => {
         lcdSet('SILLY-O-MATIC', SS && TTS.voice ? 'ON-DEVICE VOICE' : 'BABBLE SYNTH');
         await K.intro({ title: 'Silly Voice', sub: 'Your inner critic left a tape. Same words, every time. Let’s change the voice.', how: 'Twist the knobs to find a silly voice, then press PLAY.', char: 'loopie', mood: 'laugh' });

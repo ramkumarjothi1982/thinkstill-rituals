@@ -161,7 +161,7 @@
     function step(T, dtIn) {
       const dt = dtIn * T.slow;
       if (dt <= 0) return;
-      const n = Math.min(64, Math.max(2, Math.ceil(dt * 320))), h = dt / n;
+      const n = Math.min(120, Math.max(2, Math.ceil(dt * 400))), h = dt / n; // <= 2.5 ms substeps: a ball never moves more than ~6 units per substep
       for (let k = 0; k < n; k++) {
         T.t += h;
         for (const f of T.flips) flipMove(f, h);
@@ -207,6 +207,7 @@
       }
       for (const b of T.balls) { // a ball that has gone quiet somewhere odd gets a little nudge (never stuck)
         if (b.mode !== 'play') { b.still = 0; continue; }
+        if (!(b.x > -30 && b.x < TW + 30 && b.y > -40 && b.y < TH + 40)) { b.vx = b.vy = 0; b.x = 378; b.y = 686; T.ev.push({ k: 'replunge', b }); continue; } // never lost: an escaped ball is re-served
         const sp = Math.hypot(b.vx, b.vy);
         if (b.x > 364 && b.y > 600 && sp < 40) { b.lane = (b.lane || 0) + dt; if (b.lane > 0.45) { b.lane = 0; T.ev.push({ k: 'replunge', b }); } continue; } else b.lane = 0;
         const onFlip = T.flips.some(f => Math.hypot(b.x - f.px, b.y - f.py) < f.len + 14);
@@ -349,13 +350,19 @@
 .g-brain-pinball .bp-fly { position: absolute; z-index: 40; left: 0; top: 0; padding: 6px 11px; border-radius: 9px; background: var(--bp-panel); color: var(--bp-ink); border: 1.5px solid #5ff7d2;
   box-shadow: 0 0 16px rgba(95, 247, 210, 0.55); font: 700 15px/1.1 var(--bp-ui); letter-spacing: 0.03em; text-transform: uppercase; white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis;
   pointer-events: none; transition: transform 0.85s cubic-bezier(.5, 0, .2, 1), opacity 0.85s ease; will-change: transform, opacity; }
-.g-brain-pinball .bp-final { position: absolute; z-index: 34; left: 50%; top: 0; transform: translate(-50%, 0); text-align: center; pointer-events: none; opacity: 0; transition: opacity 0.8s ease; width: max-content; max-width: calc(100% - 24px); }
-.g-brain-pinball .bp-final.bp-on { opacity: 1; }
-.g-brain-pinball .bp-final small { display: block; font: 400 15px/1.1 var(--bp-arc); letter-spacing: 0.12em; color: #fff; text-shadow: 0 0 10px var(--bp-b), 0 2px 8px rgba(0, 0, 0, 0.7); }
-.g-brain-pinball .bp-final b { display: block; font: 400 92px/1 var(--bp-neon); color: #fff; margin: 6px 0 4px; text-shadow: 0 0 8px var(--bp-a), 0 0 22px var(--bp-a), 0 0 48px color-mix(in srgb, var(--bp-a) 60%, transparent); }
-.g-brain-pinball .bp-final em { display: inline-block; font: 600 14px/1.2 var(--bp-ui); font-style: normal; letter-spacing: 0.06em; color: var(--bp-ink); background: var(--bp-panel); padding: 7px 13px; border-radius: 999px; border: 1.5px solid color-mix(in srgb, var(--bp-b) 70%, transparent); }
-.g-brain-pinball.bp-bright .bp-final small { color: #1b1236; text-shadow: 0 0 10px rgba(255, 255, 255, 0.9); }
-.g-brain-pinball.bp-bright .bp-final b { color: color-mix(in srgb, var(--bp-a) 88%, #000); text-shadow: 0 0 2px #fff, 0 0 16px rgba(255, 255, 255, 0.95), 0 0 30px color-mix(in srgb, var(--bp-a) 40%, transparent); }
+.g-brain-pinball .bp-final { position: absolute; z-index: 34; left: 50%; top: 0; transform: translate(-50%, 0) scale(0.9); text-align: center; pointer-events: none; opacity: 0; width: max-content; max-width: calc(100% - 24px);
+  transition: opacity 0.6s ease, transform 0.7s cubic-bezier(.2, 1.5, .4, 1); padding: 12px 24px 15px; border-radius: 16px; background-color: #0a0612;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.075) 1px, transparent 1.6px); background-size: 4px 4px;
+  border: 2px solid var(--bp-a); box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.32), 0 0 26px color-mix(in srgb, var(--bp-a) 55%, transparent), 0 18px 40px rgba(0, 0, 0, 0.45); }
+.g-brain-pinball .bp-final.bp-on { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.g-brain-pinball .bp-final small { display: block; font: 400 14px/1.1 var(--bp-arc); letter-spacing: 0.14em; color: #ffd36b; text-shadow: 0 0 10px rgba(255, 190, 80, 0.75); }
+.g-brain-pinball .bp-final b { display: block; font: 400 80px/1 var(--bp-neon); color: #fff; margin: 6px 0 8px; font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 6px #fff, 0 0 16px var(--bp-b), 0 0 36px color-mix(in srgb, var(--bp-b) 70%, transparent); }
+.g-brain-pinball .bp-final em { display: inline-block; font: 600 14px/1.2 var(--bp-ui); font-style: normal; letter-spacing: 0.06em; color: #f7f3ff; background: rgba(255, 255, 255, 0.08); padding: 7px 13px; border-radius: 999px; border: 1.5px solid color-mix(in srgb, var(--bp-b) 70%, transparent); }
+.g-brain-pinball .bp-tables { display: flex; gap: 9px; justify-content: center; align-items: center; margin-top: 14px; font: 400 12px/1 var(--bp-arc); letter-spacing: 0.08em; color: var(--bp-sub); }
+.g-brain-pinball .bp-tables i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--c); opacity: 0.6; box-sizing: border-box; }
+.g-brain-pinball .bp-tables i.bp-got { background: var(--c); opacity: 1; box-shadow: 0 0 9px var(--c); }
+.g-brain-pinball .bp-tables i.bp-today { opacity: 1; outline: 2px solid var(--bp-ink); outline-offset: 3px; }
 .g-brain-pinball .bp-glitch .gk-bubble, .g-brain-pinball .bp-rush .gk-bubble { max-width: min(280px, calc(100cqw - 2 * var(--sz, 64px) - 40px)); }
 .g-brain-pinball.bp-wide .bp-glitch .gk-bubble, .g-brain-pinball.bp-wide .bp-rush .gk-bubble { max-width: 280px; }
 .g-brain-pinball .bp-sr { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -366,14 +373,19 @@
       const G = { phase: 'intro', listFrozen: false };
       if (ctx.analysisReady && ctx.analysisReady.then) ctx.analysisReady.then(a => { if (a && a.strands && !G.listFrozen) an = a; }, () => {});
       const inten = ctx.intensity, line = (o) => ctx.line(o), care = () => an.safety === 'care';
-      const TH0 = K.dailyPick(THEMES, 3), visits = K.visits();
-      const NTH = [3, 4, 5][inten], NMB = [3, 4, 5][inten] + (visits >= 3 ? 1 : 0), NEED = [3, 4, 5][inten];
-      const MAGK = [2900, 2500, 2200][inten], NETS = [12, 9, 7][inten];
+      const TH0 = THEMES[((K.daily() % 7) + 7) % 7], visits = K.visits(); // consecutive days always get a different table
+      const NTH = [3, 3, 4][inten], NMB = [3, 4, 5][inten] + (visits >= 3 ? 1 : 0), NEED = [3, 3, 4][inten];
+      /* Pacing assists (tuned headless against three players: none, laggy, good). A thought in play cools a little every
+         WARM seconds on its own, hits cool it faster. Once ready, PARK IT gets hungrier: its pull widens with time, and after
+         a few seconds a safety net rises under the drain. Good flipping parks a thought in ~6 s; even no flipping in ~11 s. */
+      const WARM = [2.0, 2.2, 2.5][inten], NETS = [12, 9, 7][inten];
+      const MAG = { k: [2700, 2500, 2350][inten], r0: [170, 150, 130][inten], rate: [50, 45, 40][inten] };
+      const MMAG = { k: [2500, 2400, 2300][inten], r0: [110, 95, 85][inten], rate: [9, 8, 7][inten], max: [210, 190, 175][inten] };
       const T = BPX.build({ g: [650, 720, 790][inten], kick: [0.92, 1, 1.06][inten] });
       const LAUNCH = () => (1030 + Math.random() * 90) * Math.sqrt(T.g / 720);
       const RED = () => K.reduced();
       Object.assign(G, { thoughts: [], ti: -1, parked: 0, mParked: 0, mLost: 0, mLaunched: 0, waitLaunch: false, waitSince: 0, ball: null, combo: 0, comboSide: '', comboAt: 0, bestCombo: 0, ramps: 0, direct: 0,
-        drains: 0, lanes: [0, 0, 0], laneFlash: 0, filed: [], netUntil: 0, calmAt: 0, calmBall: null, attract: 0, dim: 0, brainGlow: 0, slowK: 0, tubes: [], pops: [], shake: 0, multiK: 0, readyFlash: 0 });
+        drains: 0, lanes: [0, 0, 0], laneFlash: 0, filed: [], netUntil: 0, multiAt: 0, magVis: 0, calmAt: 0, calmBall: null, attract: 0, dim: 0, brainGlow: 0, slowK: 0, tubes: [], pops: [], shake: 0, multiK: 0, readyFlash: 0 });
 
       /* ---------------- DOM ---------------- */
       const cv = K.canvas(el, { opaque: true, maxDpr: 2 });
@@ -386,7 +398,14 @@
       const drawer = h('i', { class: 'bp-drawer', 'aria-hidden': 'true' });
       const cntTxt = h('b', { text: '0/' + NTH }), list = h('div', { class: 'bp-list' });
       const laterCard = h('div', { class: 'bp-card bp-later' }, drawer, h('span', { class: 'bp-lt' }, h('small', { text: 'PARKED' }), cntTxt), list);
-      const sign = h('div', { class: 'bp-sign', 'aria-hidden': 'true' }, h('b', { text: 'Brain Pinball' }), h('small', { text: 'Today: ' + TH0.name }));
+      const tablesRow = h('div', { class: 'bp-tables' });
+      const sign = h('div', { class: 'bp-sign', 'aria-hidden': 'true' }, h('b', { text: 'Brain Pinball' }), h('small', { text: 'Today: ' + TH0.name }), tablesRow);
+      function renderTables() { // the table collection (one table a day): collected ones lit, today's ringed
+        const got = K.collection().filter(x => String(x).indexOf('table:') === 0);
+        tablesRow.innerHTML = '';
+        tablesRow.append(h('span', { text: 'TABLES ' + got.length + '/7' }));
+        THEMES.forEach(t => { const i = h('i'); i.style.setProperty('--c', PAL && PAL.bright ? t.A : t.a); if (got.includes('table:' + t.id)) i.classList.add('bp-got'); if (t === TH0) i.classList.add('bp-today'); tablesRow.append(i); });
+      }
       const keys = h('div', { class: 'bp-keys', 'aria-hidden': 'true' }, h('span', null, h('kbd', { text: '←' }), h('kbd', { text: 'Z' }), ' left'), h('span', null, h('kbd', { text: '→' }), h('kbd', { text: 'M' }), ' right'));
       const final = h('div', { class: 'bp-final', 'aria-live': 'polite' });
       const sr = h('div', { class: 'bp-sr', 'aria-live': 'polite' });
@@ -406,6 +425,7 @@
         PAL = br ? { bright: true, a: t.A, b: t.B, c: t.C, d: t.D, f0: t.pf0, f1: t.pf1, ink: '#1b1236', room0: '#f6f2ff', room1: '#e4dcf7', wall: '#ffffff', shade: 'rgba(40,20,90,0.16)' }
           : { bright: false, a: t.a, b: t.b, c: t.c, d: t.d, f0: t.bg1, f1: t.bg0, ink: '#f7f3ff', room0: t.bg1, room1: '#020107', wall: '#ffffff', shade: 'rgba(0,0,0,0.5)' };
         el.style.setProperty('--bp-a', PAL.a); el.style.setProperty('--bp-b', PAL.b); el.style.setProperty('--bp-c', PAL.c);
+        renderTables();
       }
       palette();
 
@@ -438,7 +458,7 @@
         }
         L.drawer = (() => { const r = K.rectIn(drawer); return { x: r.cx, y: r.cy }; })();
         L.now = (() => { const r = K.rectIn(nowTxt); return { x: r.x, y: r.y, w: r.w, h: r.h }; })();
-        L.finalY = Math.round(oy + th * (wide ? 0.3 : 0.26));
+        L.finalY = Math.round(oy + 158 * s); // the score display sits over the lobes, clear of PARK IT
         final.style.top = L.finalY + 'px'; final.style.left = Math.round(ox + tw * 0.465) + 'px';
         return true;
       }
@@ -694,7 +714,7 @@
         if (!A.ctx || !MU.on) return;
         const now = A.now();
         if (MU.next < now - 0.3) MU.next = now + 0.06;
-        while (MU.next < now + 0.2) {
+        while (MU.next < now + 0.3) { // a generous look-ahead keeps the groove steady even when frames stall
           const t = MU.next, i = MU.step, st = i % 16, bar = Math.floor(i / 16) % 4, ch = PROG[bar], m = MU.mode, v = MU.vol;
           MU.chord = ch; MU.bar = bar;
           const n = (semi, oct) => A.midi(KEY + semi + 12 * (oct || 0));
@@ -733,6 +753,7 @@
         },
         sling(i) { if (!A.ctx) return; const pan = i ? 0.5 : -0.5; A.tone({ type: 'triangle', freq: 340, to: 110, glide: 0.09, dur: 0.12, vol: 0.16, pan }); A.noise({ filter: 'bandpass', freq: 900, q: 1, dur: 0.05, vol: 0.08, pan }); A.sync('sling', performance.now()); },
         wall(v, x) { if (!A.ctx) return; const now = performance.now(); if (now - lastWall < 70) return; lastWall = now; A.noise({ filter: 'lowpass', freq: 700, dur: 0.05, vol: clamp(v / 2600, 0.02, 0.09), pan: (x - 186) / 220 }); },
+        cool(n) { if (!A.ctx) return; A.tone({ type: 'sine', freq: note([0, 3, 7, 10, 12][n % 5], 1), to: note([0, 3, 7, 10, 12][n % 5], 1) * 1.01, dur: 0.32, vol: 0.04, attack: 0.012, verb: 0.45 }); },
         lane(i) { if (!A.ctx) return; A.chime(note([0, 3, 7][i], 2), { vol: 0.06, dur: 0.8, pan: (i - 1) * 0.4 }); A.sync('lane', performance.now()); },
         lanes() { if (!A.ctx) return; [0, 3, 7, 12, 15].forEach((x, k) => A.tone({ when: A.now() + k * 0.06, type: 'square', freq: note(x, 1), dur: 0.12, vol: 0.04, lp: 3000 })); },
         ramp(i) { if (!A.ctx) return; A.whoosh({ from: 300, to: 2600, dur: 0.6, vol: 0.12, pan: i ? 0.4 : -0.4 }); A.tone({ type: 'sawtooth', freq: 220, to: 880, glide: 0.5, dur: 0.55, vol: 0.035, lp: 2400 }); A.sync('ramp', performance.now()); },
@@ -803,7 +824,7 @@
       /* ---------------- flow ---------------- */
       let finished = false;
       function spawnThought() {
-        G.ti++;
+        G.ti++; T.net.on = false;
         const t = G.thoughts[G.ti];
         showThought(t);
         const b = BPX.addBall(T, 378, 686, { mode: 'wait', th: t, col: LOOP[t.loop].col, hits: 0, ready: false, trail: [] });
@@ -841,7 +862,7 @@
         if (b.ready) return;
         b.ready = true; b.readyAt = performance.now(); b.hits = Math.max(b.hits, NEED);
         G.readyFlash = 1; SFX.ready();
-        nowCard.classList.add('bp-ready'); nowCap.textContent = 'READY TO PARK';
+        nowCard.classList.add('bp-ready'); nowCap.textContent = b.th && b.th.generic ? 'READY · A THOUGHT LIKE…' : 'READY TO PARK';
         addPop('READY!', 186, 330, CALM);
         if (quiet(1200)) talk(glitch, care() ? line({ Jolly: 'It’s ready. Park it, gently.', Cheeky: 'Glowing teal. Park it when you can.', Unfiltered: 'Ready. Park it.' }) : line({ Jolly: ['It’s ready! Sink it in PARK IT.', 'Teal means ready. PARK IT!'], Cheeky: ['Teal. That’s your cue. PARK IT.', 'Ready. The hole’s hungry.'], Unfiltered: ['Ready. PARK IT.', 'Teal. Sink it.'] }), { mood: 'smug' });
         guidePlay(1600);
@@ -855,6 +876,7 @@
         G.tubes.push({ b, t0: now, from, to: L.drawer, col: b.col || CALM });
         S.later(() => SFX.tube(), 220);
         if (G.phase === 'main') {
+          T.net.on = false;
           if (direct) { G.direct++; addPop('CLEAN SHOT!', 186, 486, PAL.c, true); }
           else addPop('PARKED!', 186, 486, CALM, true);
           flyLabel(b.th, b.col);
@@ -863,7 +885,7 @@
             G.parked++; cntTxt.textContent = G.parked + '/' + G.thoughts.length; drawer.classList.remove('bp-clunk'); void drawer.offsetWidth; drawer.classList.add('bp-clunk');
             SFX.filed(G.parked);
             G.filed.push(b.th);
-            const chip = h('span', { class: 'gk-user', text: b.th.label }); chip.style.setProperty('--c', b.col); list.append(chip);
+            const chip = h('span', { class: 'gk-user', text: (b.th.generic ? 'e.g. ' : '') + b.th.label }); chip.style.setProperty('--c', b.col); list.append(chip);
             ctx.track('park', { n: G.parked, direct: direct ? 1 : 0 });
             parkLine(direct);
             if (G.ti + 1 < G.thoughts.length) S.later(() => { if (G.phase === 'main') spawnThought(); }, 650);
@@ -892,7 +914,7 @@
         const x0 = L.now.x, y0 = L.now.y - 4;
         chip.style.transform = 'translate(' + x0 + 'px,' + y0 + 'px)';
         const cw = chip.offsetWidth || 160, ch = chip.offsetHeight || 28;
-        nowTxt.textContent = ' '; nowCap.textContent = 'FILED FOR LATER'; nowCard.classList.remove('bp-ready');
+        nowTxt.textContent = G.ti + 1 < G.thoughts.length ? 'NEXT THOUGHT LOADING…' : 'THAT’S ALL OF THEM…'; nowCap.textContent = 'FILED FOR LATER'; nowCard.classList.remove('bp-ready');
         S.later(() => { chip.style.transform = 'translate(' + (L.drawer.x - cw / 2) + 'px,' + (L.drawer.y - ch / 2) + 'px) scale(0.2)'; chip.style.opacity = '0.1'; }, 40);
         S.later(() => chip.remove(), 1000);
       }
@@ -903,8 +925,8 @@
           S.later(() => {
             if (G.phase !== 'main' || b !== G.ball) return;
             b.mode = 'wait'; SFX.back(); b.x = 378; b.y = 686; b.trail = [];
-            S.later(() => { if (G.phase === 'main' && b.mode === 'wait' && b === G.ball) BPX.plunge(T, b, LAUNCH()); }, 650);
-          }, 750);
+            S.later(() => { if (G.phase === 'main' && b.mode === 'wait' && b === G.ball) BPX.plunge(T, b, LAUNCH()); }, 500);
+          }, 600);
           if (quiet(2000) && (G.drains === 1 || Math.random() < 0.4)) talk(glitch, line({ Jolly: ['Drained? Nope. It comes right back.', 'Down the drain… and back up. No game overs here.'], Cheeky: ['Drain detected. Doesn’t count. Here it comes.', 'Ha, gravity. It’s coming back anyway.'], Unfiltered: ['Drained. It comes back.', 'Back it comes.'] }), { mood: 'wink' });
           ctx.track('drain', { n: G.drains });
         } else if (G.phase === 'multi') {
@@ -921,16 +943,17 @@
       function markDot(b, cls) { if (b.dot) b.dot.classList.add('bp-' + cls); }
       async function twist() {
         if (G.phase !== 'main') return;
-        G.phase = 'multi'; K.guide(null);
+        G.phase = 'multi'; K.guide(null); ctx.track('phase', { p: 'multi' });
         nowCard.classList.remove('bp-ready'); nowCard.style.setProperty('--bp-a', PAL.a);
         nowCap.textContent = 'EVERY LOOP AT ONCE'; nowTxt.hidden = true; dots.hidden = false; dots.innerHTML = '';
         G.loops.forEach(l => { const i = h('i'); i.style.setProperty('--c', LOOP[l].col); dots.append(i); });
         sr.textContent = 'Multiball: every loop at once.';
         MU.mode = 'multi'; MU.bpm = 128; SFX.multi(); G.multiK = 1; G.shake = 6;
         rush.react('shake');
-        talk(rush, care() ? line({ Jolly: 'Whoa, lots at once! Let’s take it slow.', Cheeky: 'All of them at once? Okay. Breathe. Flip.', Unfiltered: 'All at once. Okay.' }) : line({ Jolly: 'Wait. ALL the loops? At once?!', Cheeky: 'MULTIBALL! Every loop you own!', Unfiltered: 'Every loop at once. Go.' }), { mood: 'panic', ms: 2600 });
+        talk(rush, care() ? line({ Jolly: 'Whoa, lots at once! Let’s take it slow.', Cheeky: 'All of them at once? Okay. Breathe. Flip.', Unfiltered: 'All at once. Okay.' }) : line({ Jolly: 'Wait. ALL the loops? At once?!', Cheeky: 'MULTIBALL! Every loop you own!', Unfiltered: 'Every loop at once. Go.' }), { mood: 'panic', moodMs: 2400, ms: 2600 });
+        rush.base('determined');
         S.later(() => { if (G.phase === 'multi') talk(glitch, line({ Jolly: 'Multiball! Park what you can. Some will roll away.', Cheeky: 'Park what you can. The rest can roll off.', Unfiltered: 'Park what you can. Let the rest go.' }), { mood: 'determined', ms: 3000 }); }, 2700);
-        T.net.on = true; G.netUntil = performance.now() + NETS * 1000;
+        T.net.on = true; G.netUntil = performance.now() + NETS * 1000; G.multiAt = performance.now();
         G.mLaunched = 0;
         await K.wait(1300);
         for (let k = 0; k < G.loops.length && G.phase === 'multi'; k++) {
@@ -951,7 +974,8 @@
       /* ---------------- the calm ball ---------------- */
       async function calmBall() {
         if (G.phase !== 'multi') return;
-        G.phase = 'calm'; K.guide(null);
+        G.phase = 'calm'; K.guide(null); ctx.track('phase', { p: 'calm' });
+        rush.base('calm');
         T.balls = T.balls.filter(b => b.mode === 'play' || b.mode === 'rail');
         MU.mode = 'calm'; MU.bpm = 64;
         nowCap.textContent = 'ONE CALM BALL'; dots.hidden = true; nowTxt.hidden = false; nowTxt.textContent = 'JUST WATCH IT ROLL';
@@ -964,7 +988,7 @@
         const b = BPX.addBall(T, 186, 34, { mode: 'play', calm: true, col: CALM, ready: true, trail: [], vx: 70, vy: 20 });
         G.calmBall = b; G.calmAt = performance.now();
         if (A.ctx) A.chime(note(7, 2), { vol: 0.08, dur: 2.4, verb: 0.7 });
-        K.guide({ id: 'still', g: 'still', target: () => (G.calmBall && G.calmBall.mode === 'play' ? W2S(G.calmBall.x, G.calmBall.y) : W2S(186, 414)), label: 'JUST WATCH IT ROLL', delay: 1400 });
+        K.guide({ id: 'still', g: 'still', target: () => W2S(186, 612), label: 'JUST WATCH IT ROLL', delay: 1400, idle: 7000 }); // rests below the action, never on the ball
       }
 
       function calmRest(b) { // the calm ball comes to rest in the middle of the brain, and the show begins
@@ -979,12 +1003,12 @@
       /* ---------------- finale: attract mode ---------------- */
       async function finale() {
         if (G.phase === 'finale' || G.phase === 'done') return;
-        G.phase = 'finale'; K.guide(null);
+        G.phase = 'finale'; K.guide(null); ctx.track('phase', { p: 'finale' });
         MU.mode = 'finale'; MU.bpm = 112; T.slow = 1; T.calm = false; T.net.on = false;
         G.attractAt = performance.now(); G.attract = 1;
         nowCap.textContent = 'ATTRACT MODE'; nowTxt.textContent = 'THE WHOLE BRAIN IS LIT';
-        const total = G.parked;
-        final.innerHTML = ''; final.append(h('small', { text: 'THOUGHTS PARKED' }), h('b', { text: String(total) }), h('em', { text: 'Tomorrow: a new table' }));
+        const total = G.parked, pb = K.best('parked', total, 'higher');
+        final.innerHTML = ''; final.append(h('small', { text: pb.isNew ? 'NEW BEST · THOUGHTS PARKED' : 'THOUGHTS PARKED' }), h('b', { text: String(total) }), h('em', { text: 'Tomorrow: a new table' }));
         S.later(() => final.classList.add('bp-on'), 600);
         glitch.base('celebrate'); rush.base('celebrate'); rush.react('bounce');
         talk(glitch, line({ Jolly: 'Attract mode! The whole brain’s lit up.', Cheeky: 'Look at that light show. All you.', Unfiltered: 'Whole brain lit. Done.' }), { mood: 'celebrate', ms: 3400 });
@@ -996,13 +1020,12 @@
         await K.wait(900);
         // results
         const badges = [];
-        const pb = K.best('parked', total, 'higher');
         if (pb.isNew) badges.push('New best: ' + total + ' parked');
         const frac = G.mParked / Math.max(1, G.loops.length);
         const tier = K.tier(frac, [0.3, 0.6, 0.99]);
         if (tier) badges.push(tier + ': ' + (tier === 'Gold' ? 'every loop parked' : 'multiball'));
         if (G.bestCombo >= 2) { const cb = K.best('combo', G.bestCombo, 'higher'); badges.push((cb.isNew ? 'New best combo: ×' : 'Combo: ×') + G.bestCombo); }
-        const tc = K.collect('table:' + TH0.id);
+        const tc = K.collect('table:' + TH0.id); renderTables();
         const tables = K.collection().filter(x => String(x).indexOf('table:') === 0).length;
         badges.push((tc.isNew ? 'New table: ' : 'Table: ') + TH0.name + ' (' + tables + ' of 7)');
         ctx.track('done', { parked: total, multi: G.mParked, lost: G.mLost, drains: G.drains, ramps: G.ramps, combo: G.bestCombo, direct: G.direct });
@@ -1074,20 +1097,30 @@
       const QG = { ema: 0, fi: 0, n: 0, lvl: 0 };
       K.loop((dt) => {
         if (!L || !BG) return;
-        const now = performance.now(), rdt = clamp((now - (lastNow || now)) / 1000, 0, 0.1); lastNow = now;
+        const now = performance.now(), rdt = clamp((now - (lastNow || now)) / 1000, 0, 0.3); lastNow = now;
         musicTick();
         while (beatQ.length && beatQ[0].at <= now) { const bq = beatQ.shift(); beatK = bq.big ? 1 : 0.6; }
         beatK = Math.max(0, beatK - rdt * 3.2);
-        if (G.phase !== 'intro') BPX.step(T, Math.min(0.2, rdt || dt)); // real time, so a struggling device still plays at full speed (sub-stepped, never tunnels)
+        if (G.phase !== 'intro') BPX.step(T, Math.min(0.3, rdt || dt)); // real time, so a struggling device still plays at full speed (sub-stepped, never tunnels)
         events();
-        // the PARK IT magnet strengthens the longer a ready ball has been waiting (a quiet assist, never a timer)
+        // a thought in play cools on its own too (slowly; hits cool it faster), so nobody is ever stuck
+        const cur0 = G.ball;
+        if (G.phase === 'main' && cur0 && !cur0.ready && (cur0.mode === 'play' || cur0.mode === 'rail')) {
+          cur0.warm = (cur0.warm || 0) + rdt;
+          if (cur0.warm >= WARM) { cur0.warm -= WARM; cur0.hits += 1; SFX.cool(cur0.hits); if (cur0.hits >= NEED) setReady(cur0); }
+        }
+        // the PARK IT magnet gets hungrier the longer a ready ball has been waiting (a quiet assist, never a timer)
         const ready = T.balls.filter(b => b.ready && b.mode === 'play');
         if (ready.length) {
           const oldest = ready.reduce((m, b) => Math.min(m, b.readyAt || now), now), since = (now - oldest) / 1000;
           if (G.phase === 'calm') { const cs = (now - G.calmAt) / 1000; T.magK = cs > 2.5 ? 1100 + (cs - 2.5) * 300 : 0; T.magR = cs > 2.5 ? Math.min(460, 120 + (cs - 2.5) * 90) : 0; }
-          else if (G.phase === 'multi') { T.magK = MAGK * 0.9; T.magR = Math.min(150, 70 + since * 6); }
-          else { T.magK = MAGK * (since > 18 ? 1 + (since - 18) * 0.08 : 1); T.magR = since > 18 ? Math.min(420, 175 + (since - 18) * 40) : Math.min(175, 60 + since * 12); }
+          else if (G.phase === 'multi') { const ms = (now - G.multiAt) / 1000, late = Math.max(0, ms - NETS - 2); T.magK = MMAG.k * (1 + late * 0.12); T.magR = Math.min(440, Math.min(MMAG.max, MMAG.r0 + ms * MMAG.rate) + late * 40); }
+          else {
+            T.magK = MAG.k * (1 + since * 0.15); T.magR = Math.min(440, MAG.r0 + since * MAG.rate);
+            if (since > 4 && G.phase === 'main' && !T.net.on) { T.net.on = true; G.netFlash = 1; SFX.net(); addPop('SAFETY NET', 186, 676, CALM); }
+          }
         } else { T.magK = 0; T.magR = 0; }
+        G.magVis += ((T.magR || 0) - G.magVis) * Math.min(1, rdt * 4);
         if (G.phase === 'multi' && T.net.on && now > G.netUntil) T.net.on = false;
         const cb = G.calmBall;
         if (G.phase === 'calm' && cb && cb.mode === 'play' && (now - G.calmAt) / 1000 > 9.5) { cb.mode = 'glide'; cb.g0 = { x: cb.x, y: cb.y }; cb.gt = now; } // it finds its own way home
@@ -1110,7 +1143,7 @@
         const dd = performance.now() - t0;
         if (G.phase !== 'intro') { // a struggling device trades canvas resolution for frames (twice at most)
           QG.ema = QG.ema ? QG.ema * 0.92 + dd * 0.08 : dd; QG.fi = QG.fi ? QG.fi * 0.92 + rdt * 80 : rdt * 1000; QG.n++;
-          if (QG.n > 40 && QG.lvl < 2 && cv.dpr > 1.2 && (QG.ema > 8 || QG.fi > 45)) { QG.lvl++; QG.n = 0; QG.ema = 0; QG.fi = 0; cv.setQuality(QG.lvl === 1 ? 0.75 : 0.55); }
+          if (QG.n > 40 && QG.lvl < 2 && cv.dpr > 1.2 && (QG.ema > 8 || QG.fi > 45)) { QG.lvl++; QG.n = 0; QG.ema = 0; QG.fi = 0; cv.setQuality(QG.lvl === 1 ? 0.75 : 0.55); if (L && BG) draw(now / 1000, 0); } // redraw at once: a resized canvas is blank until drawn
         }
       });
 
@@ -1158,12 +1191,14 @@
         // the thought's colour glows around the chrome; it cools to teal as it gets ready
         const pulse = b.ready ? 0.8 + 0.2 * Math.sin(now * 7) : 1, haloR = (b.calm ? 34 : 24) * sc;
         g.globalCompositeOperation = p.bright ? 'source-over' : 'lighter';
+        if (b.calm) { const br = 70 + 8 * Math.sin(now * 1.6); g.globalAlpha = p.bright ? 0.6 : 0.5; g.drawImage(K.glowSprite(CALM), x - br, y - br, br * 2, br * 2); }
         if (calmK < 1) { g.globalAlpha = (1 - calmK) * (p.bright ? 0.55 : 0.9); g.drawImage(K.glowSprite(hot), x - haloR, y - haloR, haloR * 2, haloR * 2); }
         if (calmK > 0) { g.globalAlpha = calmK * pulse * (p.bright ? 0.6 : 0.95); g.drawImage(K.glowSprite(CALM), x - haloR, y - haloR, haloR * 2, haloR * 2); }
         g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
         const bs = 12 * sc;
         g.drawImage(SPR.ball, x - bs, y - bs, bs * 2, bs * 2);
         g.lineWidth = 2; g.strokeStyle = hexA(calmK > 0.9 ? CALM : hot, 0.85); g.beginPath(); g.arc(x, y, 9.6 * sc, 0, TAU); g.stroke();
+        if (b.calm) { g.lineWidth = 2.5; g.strokeStyle = hexA(CALM, 0.5 + 0.3 * Math.sin(now * 1.6)); g.beginPath(); g.arc(x, y, 15 + 2 * Math.sin(now * 1.6), 0, TAU); g.stroke(); }
       }
       function draw(t, rdt) {
         const g = cv.g, d = L.dpr, p = PAL, now = performance.now();
@@ -1194,13 +1229,19 @@
         }
         // PARK IT: the readiness ring, the swirl and the sign
         const H = T.hole, cur = G.phase === 'main' ? G.ball : null, need = NEED;
-        const filled = G.phase === 'multi' || G.phase === 'calm' || att >= 0 ? need : cur ? Math.min(need, cur.hits || 0) : 0;
+        const filled = G.phase === 'multi' || G.phase === 'calm' || att >= 0 ? need : cur ? Math.min(need, (cur.hits || 0) + (cur.ready ? 0 : (cur.warm || 0) / WARM)) : 0;
         for (let i = 0; i < need; i++) {
-          const a0 = -Math.PI / 2 + i / need * TAU + 0.08, a1 = -Math.PI / 2 + (i + 1) / need * TAU - 0.08, on = i < filled;
+          const a0 = -Math.PI / 2 + i / need * TAU + 0.08, a1 = -Math.PI / 2 + (i + 1) / need * TAU - 0.08, on = i < Math.floor(filled + 1e-6), part = !on && i < filled ? filled - i : 0;
           g.lineCap = 'round';
           if (on && !p.bright) { g.lineWidth = 11; g.strokeStyle = hexA(CALM, 0.22); g.beginPath(); g.arc(H.x, H.y, 27, a0, a1); g.stroke(); }
           g.lineWidth = 5; g.strokeStyle = on ? CALM : hexA(CALM, 0.18);
           g.beginPath(); g.arc(H.x, H.y, 27, a0, a1); g.stroke();
+          if (part > 0.02) { g.strokeStyle = hexA(CALM, 0.65); g.beginPath(); g.arc(H.x, H.y, 27, a0, a0 + (a1 - a0) * part); g.stroke(); }
+        }
+        if (G.magVis > 40 && (G.phase === 'main' || G.phase === 'multi') && !RED()) { // PARK IT's pull, made visible: rings drawn inwards
+          const R0 = Math.min(G.magVis, 300);
+          g.lineWidth = 1.6;
+          for (let i = 0; i < 3; i++) { const k = (t * 0.55 + i / 3) % 1, r = 32 + (R0 - 32) * (1 - k); g.strokeStyle = hexA(CALM, (p.bright ? 0.3 : 0.22) * Math.sin(k * Math.PI)); g.beginPath(); g.arc(H.x, H.y, r, 0, TAU); g.stroke(); }
         }
         const holeLit = ballReady || G.phase === 'calm' || att >= 0;
         if (holeLit) {
@@ -1233,9 +1274,9 @@
         const pk = G.waitLaunch ? 0.5 + 0.5 * Math.sin(t * 5) : G.plungeK;
         g.fillStyle = p.bright ? '#7d70a8' : '#8d84b8'; g.fillRect(374, 700 + pk * 10, 8, 26);
         // balls on the playfield, then flippers
-        for (const b of T.balls) if (b.mode === 'play' || b.mode === 'wait' || b.mode === 'glide') drawBall(g, b, t);
         T.flips.forEach(f => drawFlipper(g, f));
-        if (dimK > 0.01) { g.fillStyle = p.bright ? 'rgba(255,250,240,' + (dimK * 0.28) + ')' : 'rgba(2,0,10,' + (dimK * 0.4) + ')'; g.fillRect(0, 0, 400, 790); }
+        if (dimK > 0.01) { g.fillStyle = p.bright ? 'rgba(255,250,240,' + (dimK * 0.28) + ')' : 'rgba(2,0,10,' + (dimK * 0.4) + ')'; g.fillRect(0, 0, 400, 790); } // the calm ball shines above the dimmed table
+        for (const b of T.balls) if (b.mode === 'play' || b.mode === 'wait' || b.mode === 'glide') drawBall(g, b, t);
         // the ramps sit above the playfield
         g.setTransform(1, 0, 0, 1, 0, 0); for (const bx of UP.boxes) g.drawImage(UP.c, bx.x, bx.y, bx.w, bx.h, bx.x + Math.round(sx * d), bx.y + Math.round(sy * d), bx.w, bx.h);
         g.setTransform(d * L.s, 0, 0, d * L.s, d * (L.ox + sx), d * (L.oy + sy));

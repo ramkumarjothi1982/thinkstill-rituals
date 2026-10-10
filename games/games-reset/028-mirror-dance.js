@@ -125,13 +125,13 @@
     cast: ['sync', 'patch', 'loopie'], poster: { char: 'sync', mood: 'laugh' },
     tagline: 'Mirror the cast’s moves on the beat, then lead and they copy you.',
     why: 'For feeling apart: moving in time with others lifts mood and brings people closer.',
-    fonts: ['Monoton', 'Righteous', 'Lexend:wght@500;600;700'],
+    fonts: ['Tilt+Neon', 'Righteous', 'Lexend:wght@500;600;700'],
     css: `
-.g-mirror-dance { --md-display: "Righteous", "TeX Gyre Adventor", "Avant Garde", "Poppins", "Futura", system-ui, sans-serif; --md-neon: "Monoton", "Righteous", "TeX Gyre Adventor", "Poppins", sans-serif;
+.g-mirror-dance { --md-display: "Righteous", "TeX Gyre Adventor", "Avant Garde", "Poppins", "Futura", system-ui, sans-serif; --md-neon: "Tilt Neon", "Righteous", "TeX Gyre Adventor", "Poppins", sans-serif;
   --md-ui: "Lexend", "Poppins", "Inter", system-ui, sans-serif; --md-panel: rgba(26, 8, 30, 0.86); --md-ink: #fff5fb; --md-muted: #e0d0ee; --md-line: rgba(255, 255, 255, 0.18); background: #13061a; }
 .g-mirror-dance.md-bright { --md-ink: #2b1236; --md-muted: #5e4470; --md-line: rgba(43, 18, 54, 0.18); background: #ffe2cf; }
 .g-mirror-dance .gk-intro { background: radial-gradient(ellipse at 50% 38%, rgba(128, 30, 112, 0.66), rgba(10, 4, 22, 0.93)); -webkit-backdrop-filter: none; backdrop-filter: none; color: #fff; }
-.g-mirror-dance .gk-intro-title { font-family: var(--md-neon); font-weight: 400; font-size: clamp(38px, 11cqw, 70px); line-height: 1.1; letter-spacing: 0.02em; color: #fff4fb; padding: 0 6px;
+.g-mirror-dance .gk-intro-title { font-family: var(--md-neon); font-weight: 400; font-size: clamp(44px, 13cqw, 78px); line-height: 1.05; letter-spacing: 0.01em; color: #fff4fb; padding: 0 6px;
   text-shadow: 0 0 6px #ff5cb8, 0 0 18px #ff3d9a, 0 0 40px #b84dff; }
 .g-mirror-dance .gk-intro-sub { color: #f6eaff; font-family: var(--md-ui); }
 .g-mirror-dance .gk-intro-how { color: #ffd84a; font-family: var(--md-ui); }
@@ -142,7 +142,7 @@
 .g-mirror-dance .md-dancer { will-change: transform; }
 .g-mirror-dance .md-dancer.gk-side-above .gk-bubble { bottom: calc(100% + 40px); }
 .g-mirror-dance .md-dancer .gk-bubble { font-family: var(--md-ui); }
-.g-mirror-dance .md-hud { position: absolute; z-index: 36; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); width: min(390px, calc(100% - 20px)); height: 128px; box-sizing: border-box;
+.g-mirror-dance .md-hud { position: absolute; z-index: 36; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); width: min(390px, calc(100% - 20px)); height: 128px; box-sizing: border-box;
   padding: 10px 12px 12px; border-radius: 22px; background: var(--md-panel); border: 1px solid var(--md-line); color: var(--md-ink); font-family: var(--md-ui); display: flex; flex-direction: column; gap: 8px;
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.12); pointer-events: none; transform: translateX(-50%); transition: transform 0.7s cubic-bezier(.3, 1.25, .5, 1), opacity 0.5s ease; }
 .g-mirror-dance .md-hud.md-away { transform: translate(-50%, calc(100% + 40px)); opacity: 0; }
@@ -177,12 +177,15 @@
 .g-mirror-dance .md-coat-k { display: block; margin: 8px 0 4px; font: 700 12px/1 var(--md-ui); letter-spacing: 0.12em; text-transform: uppercase; color: #a3561f; }
 .g-mirror-dance .md-coat-v { display: block; font: 600 15px/1.2 var(--md-ui); overflow-wrap: anywhere; }
 @keyframes mirror-dance-swing { 0% { opacity: 0; transform: translateY(-18px) rotate(-14deg); } 30% { opacity: 1; transform: rotate(9deg); } 55% { transform: rotate(-5deg); } 75% { transform: rotate(2.5deg); } 100% { opacity: 1; transform: rotate(0deg); } }
-.g-mirror-dance .md-pop { position: absolute; z-index: 38; left: 0; top: 0; transform: translate(-50%, -50%); font: 400 24px/1 var(--md-display); letter-spacing: 0.04em; color: #fff; white-space: nowrap; pointer-events: none;
+.g-mirror-dance .md-pop { position: absolute; z-index: 38; left: 0; top: 0; transform: translate(-50%, -50%); font: 700 24px/1 var(--md-display); font-synthesis: none; letter-spacing: 0.04em; color: #fff; white-space: nowrap; pointer-events: none;
   text-shadow: 0 0 9px var(--c), 0 0 20px var(--c), 0 2px 3px rgba(0, 0, 0, 0.5); animation: mirror-dance-pop 0.95s ease-out both; }
-.g-mirror-dance .md-pop.md-big { font-size: clamp(28px, 8cqw, 48px); line-height: 1.05; white-space: normal; width: max-content; max-width: calc(100% - 28px); text-align: center; text-wrap: balance;
+.g-mirror-dance .md-pop.md-big { font-family: var(--md-neon); font-size: clamp(30px, 8.6cqw, 52px); line-height: 1.05; white-space: normal; width: max-content; max-width: calc(100% - 28px); text-align: center; text-wrap: balance;
   animation: mirror-dance-big 1.7s cubic-bezier(.2, .9, .3, 1) both; }
-.g-mirror-dance .md-pop.md-count { font-size: 40px; animation-duration: 0.5s; }
+.g-mirror-dance .md-pop.md-count { font-size: 46px; animation-duration: 0.5s; }
 .g-mirror-dance .md-pop.md-small { font: 600 15px/1 var(--md-ui); letter-spacing: 0.08em; text-transform: uppercase; }
+.g-mirror-dance .md-pop.md-out { animation: mirror-dance-out 0.28s ease-in forwards; }
+.g-mirror-dance .md-pop.md-still { animation: none; }
+@keyframes mirror-dance-out { from { opacity: 1; } to { opacity: 0; transform: translate(-50%, -60%) scale(0.92); } }
 .g-mirror-dance.md-bright .md-pop { color: var(--c2, #2b1236); text-shadow: 0 1px 0 #fff, 0 0 10px rgba(255, 255, 255, 0.95), 0 0 22px rgba(255, 255, 255, 0.8); }
 @keyframes mirror-dance-pop { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.7); } 20% { opacity: 1; transform: translate(-50%, -60%) scale(1.1); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -140%) scale(1); } }
 @keyframes mirror-dance-big { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5) rotate(-6deg); } 14% { opacity: 1; transform: translate(-50%, -50%) scale(1.08) rotate(2deg); } 24% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
@@ -317,9 +320,9 @@
       }
       function layout() {
         const w = cv.w, H = cv.h; if (!w || !H) return;
-        G.w = w; G.H = H; G.phone = w < 700;
+        G.w = w; G.H = H; G.phone = w < 700; G.ver = (G.ver || 0) + 1;
         const ph = G.phone;
-        G.hudTop = H - 14 - 128;
+        G.hudTop = H - 16 - 128;
         G.yFar = Math.round(Math.max(ph ? 250 : 268, Math.min(H * (ph ? 0.355 : 0.37), G.hudTop - 330)));
         const yNear = H + (ph ? 40 : 30);
         G.zF = ph ? 2.3 : 2.05;
@@ -777,16 +780,44 @@
       function setEq() { Array.from(eqEl.children).forEach((x, i) => { const on = i < ST.layers; x.classList.toggle('on', on); if (on) { x.style.setProperty('--c', pal().tiles[i]); x.style.setProperty('--h', (8 + i * 2.5) + 'px'); } }); }
       function pop(text, x, y, col, kind) {
         col = col || '#ffd84a';
-        const p = h('div', { class: 'md-pop' + (kind ? ' md-' + kind : ''), text, style: { '--c': col, '--c2': mixHex(col, '#2b1236', 0.55) } });
+        const p = h('div', { class: 'md-pop' + (kind ? ' md-' + kind : '') + (K.reduced() ? ' md-still' : ''), text, style: { '--c': col, '--c2': mixHex(col, '#2b1236', 0.55) } });
         const half = kind === 'big' ? G.w / 2 : Math.min(G.w / 2, text.length * (kind === 'small' ? 5.6 : 8.6) + 14);
         p.style.left = (kind === 'big' ? G.w / 2 : K.clamp(x, half, G.w - half)) + 'px'; p.style.top = y + 'px';
         el.append(p); K.later(() => p.remove(), kind === 'big' ? 1750 : kind === 'count' ? 520 : 1000);
       }
+      /* the big words take turns: each gets its moment, then bows out for the next, so two never print over each other */
+      function bigPop(text, x, y, col) {
+        const now = performance.now(), at = Math.max(now, ST.bigFree || 0);
+        ST.bigFree = at + 1000;
+        const show = () => { el.querySelectorAll('.md-pop.md-big').forEach(o => o.classList.add('md-out')); pop(text, x, y, col, 'big'); };
+        if (at - now > 30) K.later(show, at - now); else show();
+      }
       const midY = () => Math.round(G.yFar + (G.hudTop - G.yFar) * 0.34);
       const say = (who, lines, ms) => { const d = D[who]; if (d && d.on) d.C.say(line(lines), { ms: ms || 3400 }); };
+      /* The guide never sits on a dancer: of a few spots on the open floor, take the first whose label and hand are clear
+         of every dancer on stage (worked out when the guide first shows, then kept, so it never jumps). */
+      function spotFree(cands, label, vec) {
+        const B = order.filter(d => d.on).map(d => { const s = d.size * (d.depth || 1), cx = d.hx + (d.entering ? 0 : d.tx), by = d.hy + (d.entering ? 0 : d.ty); return [cx - s / 2, by - s, cx + s / 2, by]; });
+        const lw = Math.min(G.w - 24, label.length * 10.5 + 34), v = vec || [0, 0];
+        let best = cands[0], bv = Infinity;
+        for (const c of cands) { // label pill, chevron, the hand where it starts and where it ends
+          const rs = [[c.x - lw / 2, c.y - 82, c.x + lw / 2, c.y - 46], [c.x - 20, c.y - 48, c.x + 20, c.y - 8], [c.x - 12, c.y - 4, c.x + 44, c.y + 58], [c.x + v[0] - 12, c.y + v[1] - 4, c.x + v[0] + 44, c.y + v[1] + 58]];
+          let a = 0;
+          for (const r of rs) for (const b of B) { const ww = Math.min(r[2], b[2]) - Math.max(r[0], b[0]), hh = Math.min(r[3], b[3]) - Math.max(r[1], b[1]); if (ww > 0 && hh > 0) a += ww * hh; }
+          if (a < 160) a = 0; // a graze of a round character's corner is fine
+          if (a < bv - 1) { bv = a; best = c; }
+          if (!a) break;
+        }
+        return { x: Math.round(best.x), y: Math.round(best.y) };
+      }
+      const demoCands = () => [{ x: G.demo.x, y: G.demo.y }, { x: G.w * 0.22, y: G.hudTop - 36 }, { x: G.w * 0.78, y: G.hudTop - 36 }, { x: G.w / 2, y: G.hudTop - 16 }];
+      const poseCands = () => { const cp = congaPath(); return [{ x: cp.cx, y: cp.cy + 12 }, { x: cp.cx, y: cp.cy + cp.ry * 0.45 }, { x: cp.cx - cp.rx * 0.42, y: cp.cy + 8 }, { x: cp.cx + cp.rx * 0.42, y: cp.cy + 8 }, { x: G.w / 2, y: G.yFar - 8 }]; };
+      function freeTarget(cands, label, vec) { let s = null, ver = -1; return () => { if (!s || ver !== G.ver) { s = spotFree(cands(), label, vec); ver = G.ver; } return s; }; }
+      const watchTarget = () => ({ x: G.w / 2, y: G.hudTop + 46 });
+      const VEC = { l: [-84, 0], r: [84, 0], u: [0, -84], d: [0, 84], ur: [56, -56] };
       function guideMove(m, delay, extra) {
-        const mv = MOVES[m];
-        const spec = { id: 'md-' + m, g: mv.g, target: () => ({ x: G.demo.x, y: G.demo.y }), label: (extra || '') + mv.label, place: 'above', delay: delay ?? 900 };
+        const mv = MOVES[m], label = (extra || '') + mv.label;
+        const spec = { id: 'md-' + m, g: mv.g, target: freeTarget(demoCands, label, mv.g === 'drag' ? VEC[mv.dir] : null), label, place: 'above', delay: delay ?? 900 };
         if (mv.g === 'drag') { spec.dir = mv.dir; spec.d = 84; spec.ms = 1300; }
         if (mv.g === 'circle') { spec.r = 30; spec.ms = 1500; }
         K.guide(spec);
@@ -794,9 +825,11 @@
 
       /* ---------------- the flow, bar by bar ---------------- */
       const LINES = {
-        hello: care ? { Jolly: 'That sounds like a lot. It can wait at the coat check for two minutes. Tap on the beat with me?', Cheeky: 'That’s real, and it matters. It can sit at the coat check for two minutes. Tap along?', Unfiltered: 'That matters. It can wait two minutes at the coat check. Tap on the beat.' }
-          : coatItem ? { Jolly: 'I’ve hung that at the coat check. It’ll keep. Now tap on the beat with me!', Cheeky: 'Your thought’s at the coat check. It has a ticket, it’s fine. Tap on the beat!', Unfiltered: 'Thought’s at the coat check. Tap on the beat.' }
-            : { Jolly: 'Welcome! Worries can wait at the coat check. Tap on the beat with me!', Cheeky: 'Coat check’s open for worries. Now tap on the beat. Clapping counts as dancing.', Unfiltered: 'Worries at the coat check. Tap on the beat.' },
+        get hello() { // read when spoken, so a late AI reading that asks for care still changes it
+          return care ? { Jolly: 'That sounds like a lot. It can wait at the coat check for two minutes. Tap on the beat with me?', Cheeky: 'That’s real, and it matters. It can sit at the coat check for two minutes. Tap along?', Unfiltered: 'That matters. It can wait two minutes at the coat check. Tap on the beat.' }
+            : coatItem ? { Jolly: 'I’ve hung that at the coat check. It’ll keep. Now tap on the beat with me!', Cheeky: 'Your thought’s at the coat check. It has a ticket. Now tap on the beat!', Unfiltered: 'Thought’s at the coat check. Tap on the beat.' }
+              : { Jolly: 'Welcome! Worries can wait at the coat check. Tap on the beat with me!', Cheeky: 'Coat check’s open for worries. Now tap on the beat. Clapping counts as dancing.', Unfiltered: 'Worries at the coat check. Tap on the beat.' };
+        },
         warmGood: { Jolly: 'Yes! You’ve got the beat.', Cheeky: 'Rhythm detected. Suspicious. I love it.', Unfiltered: 'Good. You’ve got it.' },
         r: [
           { Jolly: 'Watch me, then mirror me. Left, right!', Cheeky: 'I go, you go. Like a mirror, but with better hair.', Unfiltered: 'Watch. Then copy.' },
@@ -804,7 +837,7 @@
           { Jolly: 'Add a clap! Just tap.', Cheeky: 'Clap time. Tap the screen, not your neighbour.', Unfiltered: 'Tap to clap.' },
           { Jolly: 'Spin time! Draw a little circle.', Cheeky: 'Draw a circle to spin. Not a square. This isn’t line dancing.', Unfiltered: 'Circle means spin.' }
         ],
-        again: { Jolly: 'No rush. Same moves again, I’ll go slow in my heart.', Cheeky: 'Take two! Rehearsals are free.', Unfiltered: 'Again. Same moves.' },
+        again: { Jolly: 'No rush! Same moves again. Watch me, then copy.', Cheeky: 'Take two! Rehearsals are free.', Unfiltered: 'Again. Same moves.' },
         great: { Jolly: ['Perfect mirror! Look at the floor glow.', 'Four for four! We’re so in sync.'], Cheeky: ['Okay, show-off. Four for four.', 'Flawless. I’m a bit threatened.'], Unfiltered: ['Perfect.', 'Four for four.'] },
         good: { Jolly: ['So in sync! Hear the band grow?', 'Lovely! We move like one.'], Cheeky: ['The band likes you. It’s added people.', 'Smooth. Very smooth. Suspiciously smooth.'], Unfiltered: ['In sync. Band’s growing.', 'Smooth.'] },
         meh: { Jolly: ['Close! Watch my moves, then copy.', 'Nearly! The beat’s a bit sneaky.'], Cheeky: ['Bit of freestyle in there. I respect it.', 'Interpretive. Let’s try mine though.'], Unfiltered: ['Close. Watch, then copy.', 'Nearly.'] },
@@ -834,8 +867,8 @@
             if (spec.k === 0) {
               hud.classList.remove('md-away'); slotsReset(['C', 'C', 'C', 'C']);
               say('sync', LINES.hello, 4300);
-              K.guide({ id: 'md-warm', g: 'tap', target: () => ({ x: G.demo.x, y: G.demo.y }), label: 'TAP ON THE BEAT', place: 'above', delay: 1500 });
-            } else { slotsReset(['C', 'C', 'C', 'C']); K.guide({ id: 'md-warm2', g: 'tap', target: () => ({ x: G.demo.x, y: G.demo.y }), label: 'TAP ON THE BEAT', place: 'above', delay: SPB * 2 }); }
+              K.guide({ id: 'md-warm', g: 'tap', target: freeTarget(demoCands, 'TAP ON THE BEAT'), label: 'TAP ON THE BEAT', place: 'above', delay: 1500 });
+            } else { slotsReset(['C', 'C', 'C', 'C']); K.guide({ id: 'md-warm2', g: 'tap', target: freeTarget(demoCands, 'TAP ON THE BEAT'), label: 'TAP ON THE BEAT', place: 'above', delay: SPB * 2 }); }
             setPhase(spec.k === 0 ? 'Warm-up · clap along' : '5, 6, 7, 8…');
             break;
           case 'call': {
@@ -851,7 +884,7 @@
             ST.lastResult = null;
             const NEWSET = { 0: 'LR', 1: 'UD', 2: 'C', 3: 'S' }[spec.r], newMove = !spec.again && NEWSET && spec.moves.find(m => NEWSET.includes(m));
             if (newMove) guideMove(newMove, SPB * 1.2, '');
-            else K.guide({ id: 'md-watch', g: 'still', target: () => ({ x: G.w / 2, y: G.hudTop + 72 }), label: 'WATCH, THEN COPY', place: 'above', delay: SPB * 2.5 });
+            else K.guide({ id: 'md-watch', g: 'still', target: watchTarget, label: 'WATCH, THEN COPY', place: 'above', delay: SPB * 2.5 });
             D.sync.C.face(['cool', 'wink', 'happy', 'determined'][spec.r % 4], SPB * 3.6);
             break;
           }
@@ -867,16 +900,16 @@
             if (spec.k === 0) {
               setPhase('Roles swap!'); slotsReset(null);
               say('sync', LINES.swap, 4400);
-              pop('YOU LEAD!', G.w / 2, midY(), '#ffd84a', 'big');
+              bigPop('YOU LEAD!', G.w / 2, midY(), '#ffd84a');
               present().forEach(d => d.C.face('wow', SPB * 6));
               woo(0.7);
-              K.guide({ id: 'md-swap', g: 'drag', dir: 'ur', d: 80, target: () => ({ x: G.demo.x, y: G.demo.y }), label: 'ANY 4 MOVES, ON BEAT', place: 'above', delay: SPB * 2.2, ms: 1400 });
+              K.guide({ id: 'md-swap', g: 'drag', dir: 'ur', d: 80, target: freeTarget(demoCands, 'ANY 4 MOVES, ON BEAT', VEC.ur), label: 'ANY 4 MOVES, ON BEAT', place: 'above', delay: SPB * 2.2, ms: 1400 });
             } else setPhase('5, 6, 7, 8…');
             ST.layers = Math.max(ST.layers, 4); setEq();
             break;
           case 'lead':
             setPhase('You lead · any 4 moves'); slotsReset(null);
-            K.guide({ id: 'md-lead-' + spec.l, g: 'drag', dir: ['ur', 'l', 'u', 'r', 'd'][spec.l % 5], d: 80, target: () => ({ x: G.demo.x, y: G.demo.y }), label: 'ANY 4 MOVES, ON BEAT', place: 'above', delay: SPB * (spec.l ? 2.4 : 1.2), ms: 1400 });
+            { const dir = ['ur', 'l', 'u', 'r', 'd'][spec.l % 5]; K.guide({ id: 'md-lead-' + spec.l, g: 'drag', dir, d: 80, target: freeTarget(demoCands, 'ANY 4 MOVES, ON BEAT', VEC[dir]), label: 'ANY 4 MOVES, ON BEAT', place: 'above', delay: SPB * (spec.l ? 2.4 : 1.2), ms: 1400 }); }
             present().forEach(d => { if (d.slug !== 'sync') d.C.face('think', SPB * 3); });
             break;
           case 'echo': {
@@ -886,7 +919,7 @@
             ST.layers = 5; setEq();
             const cam = CAMEOS[spec.l] || [];
             cam.forEach((slug, k) => { join(slug); const tr = TROUPE.find(x => x.slug === slug); K.later(() => { setPhase(tr.tag); pop(tr.tag.split(':')[0].toUpperCase() + ' JOINS!', D[slug].hx, D[slug].hy - D[slug].size - 18, tr.glow, 'small'); }, 400 + k * 700); });
-            K.guide({ id: 'md-echo-' + spec.l, g: 'still', target: () => ({ x: G.w / 2, y: G.hudTop + 72 }), label: 'WATCH THEM COPY YOU', place: 'above', delay: SPB * 2.5 });
+            K.guide({ id: 'md-echo-' + spec.l, g: 'still', target: watchTarget, label: 'WATCH THEM COPY YOU', place: 'above', delay: SPB * 2.5 });
             break;
           }
           case 'conga':
@@ -898,7 +931,7 @@
               setPhase('Conga · you lead');
               say('sync', LINES.conga, 3600);
               woo(1); applause(1.6, 0.6);
-              K.guide({ id: 'md-conga', g: 'tap', target: () => ({ x: G.w / 2, y: G.yFar - 8 }), label: 'YOU LEAD THE CONGA', place: 'above', delay: SPB * 3 });
+              K.guide({ id: 'md-conga', g: 'tap', target: () => { const cp = congaPath(); return { x: cp.cx, y: cp.cy + 12 }; }, label: 'YOU LEAD THE CONGA', place: 'above', delay: SPB * 3 });
               slotsReset(['h', 'h', 'h', 'K']);
               crowd.forEach(c => { c.armT = Math.random() < 0.6 ? 1 : 0; });
             }
@@ -908,7 +941,7 @@
               setPhase('Strike a pose!'); slotsReset(['P', 'P', 'P', 'P']);
               say('sync', LINES.pose, 3000);
               ST.poseAt = t0;
-              K.guide({ id: 'md-pose', g: 'tap', target: () => ({ x: G.w / 2, y: G.yFar - 8 }), label: 'TAP: STRIKE A POSE', place: 'above', delay: 500 });
+              K.guide({ id: 'md-pose', g: 'tap', target: freeTarget(poseCands, 'TAP: STRIKE A POSE'), label: 'TAP: STRIKE A POSE', place: 'above', delay: 500 });
             }
             break;
         }
@@ -923,7 +956,7 @@
           const any = J.some(x => x.got);
           if (m >= 3 || (any && spec.r % 2 === 1) || (!any && spec.r >= 2 && spec.r % 2 === 1)) layerUp();
           const y = midY();
-          if (m === 4 && hits >= 3) { pop('PERFECT MIRROR!', G.w / 2, y, '#ffd84a', 'big'); burst(); woo(1); cheer(0.5); D.sync.C.face('celebrate', SPB * 3); ST.lastResult = LINES.great; }
+          if (m === 4 && hits >= 3) { bigPop('PERFECT MIRROR!', G.w / 2, y, '#ffd84a'); burst(); woo(1); cheer(0.5); D.sync.C.face('celebrate', SPB * 3); ST.lastResult = LINES.great; }
           else if (m >= 3) { pop('IN SYNC ×' + m, G.w / 2, y, '#4ef59c'); ST.lastResult = LINES.good; }
           else if (any) { pop(m ? 'NEARLY!' : 'FREESTYLE!', G.w / 2, y, '#b897ff'); ST.lastResult = LINES.meh; }
           if (m >= 3 && D.patch.on && spec.r === PATCH_AT) K.later(() => say('patch', { Jolly: 'We’re moving as one! Best feeling.', Cheeky: 'Look at us. A dance crew. Matching energy.', Unfiltered: 'Together. Nice.' }, 2800), 1850);
@@ -983,7 +1016,7 @@
             if (b === 3) {
               const name = routineName(mv), fresh = !K.collection().includes(name) && !ST.routines.includes(name);
               K.later(() => {
-                pop(name.toUpperCase() + '!', G.w / 2, G.hudTop - 34, pal().tiles[(spec.l + 1) % 5], 'big');
+                bigPop(name.toUpperCase() + '!', G.w / 2, G.hudTop - 34, pal().tiles[(spec.l + 1) % 5]);
                 if (name !== 'The Statue') say('sync', LINES.named(name), 3000);
                 if (fresh) K.later(() => pop('NEW MOVE FOR THE BOOK', G.w / 2, G.hudTop - 70, '#ffd84a', 'small'), 600);
                 woo(0.8); cheer(0.45); present().forEach(d => d.C.face(d.slug === 'loopie' ? 'laugh' : 'celebrate', SPB * 2));
@@ -1067,7 +1100,7 @@
           pop(['IN SYNC!', 'MIRRORED!', 'YES!', 'SMOOTH!'][(ST.hits + slot) % 4], G.slotX[slot], py, MOVES[m].c, 'small');
           ladder(ST.streak); P.emit('star', x, y, 12, { colors: [MOVES[m].c, '#ffffff', '#ffd84a'], speed: [70, 210] });
           P.emit('spark', D.sync.hx, D.sync.hy - D.sync.size * 0.55, 6, { colors: [MOVES[m].c, '#ffffff'], speed: [40, 130] });
-          if (ST.streak > 0 && ST.streak % 8 === 0 && slot !== 3) { pop('STREAK ' + ST.streak + '!', G.w / 2, midY(), '#ffd84a', 'big'); woo(0.8); }
+          if (ST.streak > 0 && ST.streak % 8 === 0 && slot !== 3) { bigPop('STREAK ' + ST.streak + '!', G.w / 2, midY(), '#ffd84a'); woo(0.8); }
         } else if (grade === 'ok') { pop(t < beatAt(b0 + slot) ? 'BIT EARLY' : 'BIT LATE', G.slotX[slot], py, MOVES[m].c, 'small'); P.emit('star', x, y, 6, { colors: [MOVES[m].c, '#ffffff'] }); }
         else {
           pop('FREESTYLE!', G.slotX[slot], py, '#b897ff', 'small');
@@ -1378,7 +1411,8 @@
         const dancers = order.filter(x => x.on).length;
         ctx.finish({
           title: 'In sync with the whole cast', mood: 'celebrate',
-          lines: [matched + ' of ' + ST.total + ' moves mirrored, ' + ST.hits + ' right on the beat', 'You led ' + names.length + ' routine' + (names.length === 1 ? '' : 's') + ' and ' + dancers + ' dancers followed', 'Best streak tonight: ' + ST.best + ' · Tomorrow: ' + FL_NEXT.name],
+          lines: [matched + ' of ' + ST.total + ' moves mirrored, ' + ST.hits + ' right on the beat', 'You led ' + names.length + ' routine' + (names.length === 1 ? '' : 's') + ' and ' + dancers + ' dancers followed',
+            care && coatItem ? 'What’s at the coat check deserves proper help, not just a dance' : 'Best streak tonight: ' + ST.best + ' · Tomorrow: ' + FL_NEXT.name],
           share: 'Danced in sync with the whole cast.',
           badges
         });
@@ -1389,11 +1423,12 @@
       S.on('theme', () => { el.classList.toggle('md-bright', !dark()); buildSprites(); paintBg(); slots.forEach((s, i) => { if (s.m) s.el.style.setProperty('--c', colOf(s.m)); void i; }); setEq(); });
       D.sync.on = true; D.sync.C.show(true);
       (async () => {
-        await K.intro({ title: 'Mirror Dance', sub: 'Tonight: ' + FL.name + '. The cast dances, you mirror them. Then you lead and they copy you.', how: 'Swipe, tap and circle on the beat.', char: 'sync', mood: 'laugh' });
+        await K.intro({ title: 'Mirror Dance', sub: 'Tonight: ' + FL.name + (golden ? ', under the gold mirror ball (regulars only)' : '') + '. The cast dances, you mirror them. Then you lead and they copy you.', how: 'Swipe, tap and circle on the beat.', char: 'sync', mood: 'laugh' });
         coat.hidden = false;
         if (!D.sync.enter) { D.sync.enter = { t0: performance.now(), dur: 700, fx: 0, fy: -40 }; D.sync.entering = true; }
         CLK.t0 = performance.now() + 500; CLK.on = true; ST.phase = 'warm';
-        ctx.track('begin', { floor: FL.id, words: coatItem ? 1 : 0 });
+        if (golden) K.later(() => { W.glint = 1; if (A.ctx) K.sfx.sparkle(); }, 700);
+        ctx.track('begin', { floor: FL.id, words: coatItem ? 1 : 0, regular: golden ? 1 : 0 });
       })();
 
       return {

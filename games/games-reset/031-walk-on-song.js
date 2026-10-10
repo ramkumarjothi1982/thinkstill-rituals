@@ -54,11 +54,13 @@
     css: `
 .g-walk-on-song { font-synthesis: none; --wo-disp: "Anton", "Impact", "Haettenschweiler", "Arial Narrow Bold", system-ui, sans-serif; --wo-cond: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
   --wo-acc: #ff5a3c; --wo-accink: #2a0a04; --wo-gold: #ffd36b; --wo-cool: #7fb6ff; }
-.g-walk-on-song .wo-hud { position: absolute; z-index: 32; left: 12px; right: 12px; top: calc(env(safe-area-inset-top, 0px) + 62px); display: flex; justify-content: space-between; align-items: center; gap: 10px; pointer-events: none; }
-.g-walk-on-song .wo-hype, .g-walk-on-song .wo-combo { display: flex; align-items: center; gap: 9px; padding: 8px 12px; border-radius: 14px; background: rgba(8, 6, 16, 0.62); border: 1px solid rgba(255, 255, 255, 0.14);
+.g-walk-on-song .wo-hud { position: absolute; z-index: 32; left: 50%; translate: -50% 0; width: min(560px, calc(100% - 24px)); top: calc(env(safe-area-inset-top, 0px) + 62px); display: flex; justify-content: space-between; align-items: center; gap: 8px; pointer-events: none; transition: opacity 0.4s ease; }
+.g-walk-on-song .wo-hype, .g-walk-on-song .wo-combo { display: flex; align-items: center; gap: 8px; padding: 8px 11px; border-radius: 14px; background: rgba(8, 6, 16, 0.62); border: 1px solid rgba(255, 255, 255, 0.14);
   color: #fff; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3); }
-.g-walk-on-song .wo-hype small, .g-walk-on-song .wo-combo small { font: 700 12px/1 var(--wo-cond); letter-spacing: 0.14em; opacity: 0.85; }
-.g-walk-on-song .wo-hbar { position: relative; width: 112px; height: 12px; border-radius: 6px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+.g-walk-on-song .wo-hype { flex: 1 1 auto; min-width: 0; }
+.g-walk-on-song .wo-combo { flex: none; }
+.g-walk-on-song .wo-hype small, .g-walk-on-song .wo-combo small { font: 700 12px/1 var(--wo-cond); letter-spacing: 0.12em; opacity: 0.85; }
+.g-walk-on-song .wo-hbar { position: relative; flex: 1 1 auto; min-width: 36px; height: 12px; border-radius: 6px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
 .g-walk-on-song .wo-hbar i { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--h, 0) * 100%); border-radius: 6px; background: linear-gradient(90deg, var(--wo-cool), var(--wo-gold) 55%, #ff6a3c); transition: width 0.25s ease; }
 .g-walk-on-song .wo-hype b, .g-walk-on-song .wo-combo b { font: 900 21px/1 var(--wo-disp); letter-spacing: 0.02em; min-width: 2.3ch; text-align: right; font-variant-numeric: tabular-nums; }
 .g-walk-on-song .wo-combo b { color: var(--wo-gold); }
@@ -107,13 +109,13 @@
 .g-walk-on-song .wo-pad.wo-walk b, .g-walk-on-song .wo-pad.wo-walk small { color: #2e1a02; }
 .g-walk-on-song .wo-ring { position: absolute; inset: -12px; width: calc(100% + 24px); height: calc(100% + 24px); transform: rotate(-90deg); pointer-events: none; overflow: visible; }
 .g-walk-on-song .wo-ring circle { fill: none; stroke: #e8f2ff; stroke-width: 6; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: calc(100 - var(--fill, 0) * 100); filter: drop-shadow(0 0 6px rgba(170, 210, 255, 0.9)); }
-.g-walk-on-song .wo-stamp { position: absolute; z-index: 40; left: 0; top: 0; translate: -50% -50%; font: 900 40px/1 var(--wo-disp); letter-spacing: 0.04em; color: var(--wo-gold); white-space: nowrap; pointer-events: none;
+.g-walk-on-song .wo-stamp { position: absolute; z-index: 40; left: 0; top: 0; translate: -50% -50%; font: 900 clamp(26px, 8cqw, 40px)/1 var(--wo-disp); max-width: calc(100cqw - 48px); letter-spacing: 0.04em; color: var(--wo-gold); white-space: nowrap; pointer-events: none;
   padding: 8px 16px 6px; border: 4px solid var(--wo-gold); border-radius: 12px; background: rgba(30, 14, 4, 0.82); text-shadow: 0 0 16px rgba(255, 200, 90, 0.8); rotate: -7deg; opacity: 0; }
 .g-walk-on-song .wo-chant { position: absolute; z-index: 36; left: 0; top: 0; translate: -50% -50%; font: 900 46px/1 var(--wo-disp); letter-spacing: 0.04em; color: #fff; white-space: nowrap; pointer-events: none;
   text-shadow: 0 0 22px rgba(255, 220, 160, 0.9), 0 4px 0 rgba(0, 0, 0, 0.5); opacity: 0; }
 .g-walk-on-song .wo-screen { position: absolute; z-index: 21; left: 0; top: 0; translate: -50% -50%; display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; opacity: 0; transition: opacity 0.6s ease; text-align: center; }
-.g-walk-on-song .wo-screen b { font: 900 34px/1 var(--wo-disp); letter-spacing: 0.05em; color: #fff; text-shadow: 0 0 18px var(--wo-acc), 0 0 2px #fff; white-space: nowrap; }
-.g-walk-on-song .wo-screen span { font: 700 14px/1 var(--wo-cond); letter-spacing: 0.16em; color: #ffe9b0; white-space: nowrap; }
+.g-walk-on-song .wo-screen b { font: 900 38px/1 var(--wo-disp); letter-spacing: 0.05em; color: #fff; text-shadow: 0 0 18px var(--wo-acc), 0 0 2px #fff; white-space: nowrap; }
+.g-walk-on-song .wo-screen span { font: 700 14px/1.15 var(--wo-cond); letter-spacing: 0.1em; color: #ffe9b0; max-width: min(300px, calc(100cqw - 64px)); text-wrap: balance; }
 .g-walk-on-song .wo-screen.wo-on { opacity: 1; }
 .g-walk-on-song .wo-c .gk-bubble { max-width: min(262px, calc(100cqw - var(--sz, 64px) - 40px)); }
 .g-walk-on-song .gk-pop-text { font-family: var(--wo-disp); font-weight: 900; letter-spacing: 0.06em; }
@@ -130,7 +132,7 @@
       const CARE = () => an.safety === 'care';
       const vnow = () => A.now() - A.latency();
       const venueId = K.dailyPick(['stadium', 'club', 'hall', 'roof'], 4), VEN = VENUES[venueId];
-      const NCUE = [2, 2, 3][inten], NBEATS = [12, 16, 16][inten], EVERY = inten === 0 ? 2 : 1;
+      const NCUE = [2, 2, 3][inten], NBEATS = [12, 16, 16][inten], EVERY = inten === 0 ? 2 : 1, TOTAL_MARKS = NCUE * Math.ceil(NBEATS / EVERY);
       let phase = 'intro', finished = false, AN = ANTHEMS[0];
       const ST = { hype: 0, combo: 0, best: 0, hits: 0, judged: 0, perfect: 0, cuesDone: 0, cues: [], cue: null, v: 0, sec: null, pickAt: 0, lights: 1, walk: 0, stage: 0, breath: 0, chant: 0, finAt: 0, said: {} };
 
@@ -208,8 +210,8 @@
         if (phone) {
           const k = K.clamp(H / 844, 0.78, 1.05);
           G.ecg = { x: 14, y: 116, w: w - 28, h: 36 };
-          G.vp = { x: w / 2, y: Math.round(336 * k) };
-          G.op = { w: 150, h: 112 };
+          G.vp = { x: w / 2, y: Math.round(330 * k) };
+          G.op = { w: Math.round(Math.min(178, w * 0.46)), h: Math.round(128 * k) };
           G.pad = { x: w / 2, y: H - 16 - 66 - 6, r: 64 };
           G.fd = { x: 14, y: Math.round(G.pad.y - 66 - 22 - 150), w: w - 28, h: 150 };
           G.cards = { x: 16, y: G.fd.y - 6, w: w - 32, h: 168, cols: 3 };
@@ -219,7 +221,7 @@
         } else {
           G.ecg = { x: w / 2 - 300, y: 116, w: 600, h: 40 };
           G.vp = { x: w / 2, y: Math.round(H * 0.4) };
-          G.op = { w: Math.round(260 * u), h: Math.round(184 * u) };
+          G.op = { w: Math.round(270 * u), h: Math.round(190 * u) };
           G.pad = { x: w / 2, y: H - 16 - 72 - 10, r: 70 };
           G.fd = { x: w / 2 - 270, y: G.pad.y - 72 - 26 - 150, w: 540, h: 150 };
           G.cards = { x: w / 2 - 330, y: G.fd.y - 20, w: 660, h: 184, cols: 3 };
@@ -241,14 +243,25 @@
         stamp.style.left = (G.fd.x + G.fd.w / 2) + 'px'; stamp.style.top = (G.fd.y + G.fd.h / 2) + 'px';
         chant.style.left = G.vp.x + 'px'; chant.style.top = (G.vp.y + (G.phone ? 4 : 0)) + 'px';
         screen.style.left = (w / 2) + 'px';
+        G.crowd = doorCrowd();
         paintAll();
+        if (ST.stage) placeCastStage();
       }
       S.on('theme', () => { el.classList.toggle('wo-bright', !K.dark()); paintAll(); });
 
       /* ---------------- painting (cached per layout and theme) ---------------- */
       function off(w, hh) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w * cv.dpr)); c.height = Math.max(1, Math.round(hh * cv.dpr)); const g = c.getContext('2d'); g.setTransform(cv.dpr, 0, 0, cv.dpr, 0, 0); return { c, g, w, h: hh }; }
       function radial(size, stops) { const s = off(size, size), g = s.g, gr = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2); stops.forEach(([o2, c]) => gr.addColorStop(o2, c)); g.fillStyle = gr; g.fillRect(0, 0, size, size); return s.c; }
-      const rgba = (c, a) => 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')';
+      function rr(g, x, y, w, hh, r) { r = Math.min(r, w / 2, hh / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + hh, r); g.arcTo(x + w, y + hh, x, y + hh, r); g.arcTo(x, y + hh, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+      const rgba = (c, a) => 'rgba(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ',' + a + ')';
+      const rgb = (c) => 'rgb(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ')';
+      const hexRgb = (hx) => { const n = parseInt(String(hx).slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+      const mixc = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+      const mulc = (a, k) => [Math.min(255, a[0] * k), Math.min(255, a[1] * k), Math.min(255, a[2] * k)];
+      /* The tunnel is lit twice: cold (nerves) and warm (excited). The frame loop crossfades them as each cue is renamed. */
+      const LIGHT = { cold: [138, 180, 255], warm: [255, 182, 98] };
+      const DEPTH = [0.2, 0.37, 0.5, 0.61, 0.69, 0.76, 0.815, 0.86, 0.895, 0.925, 0.95];
+      let BGc = null, BGw = null, CROWD = null, STF = null;
       function paintAll() {
         if (!G.w) return;
         const gl = VEN.glow;
@@ -261,9 +274,11 @@
           red: radial(256, [[0, 'rgba(255,40,60,0)'], [0.55, 'rgba(255,40,60,0)'], [1, 'rgba(255,40,80,0.6)']]),
           flame: flameSprite()
         };
-        BG = off(G.w, G.h);
-        paintTunnel(BG.g, K.dark());
-        STG = null;
+        const D = K.dark();
+        BGc = off(G.w, G.h); paintTunnel(BGc.g, D, LIGHT.cold);
+        BGw = off(G.w, G.h); paintTunnel(BGw.g, D, LIGHT.warm);
+        BG = BGc;
+        STG = null; CROWD = null; STF = null;
         el.style.backgroundColor = VEN.tunnel[0];
       }
       function flameSprite() {
@@ -271,54 +286,107 @@
         const gr = g.createLinearGradient(0, 160, 0, 0);
         gr.addColorStop(0, 'rgba(255,255,220,1)'); gr.addColorStop(0.25, 'rgba(255,200,80,0.95)'); gr.addColorStop(0.6, 'rgba(255,90,30,0.7)'); gr.addColorStop(1, 'rgba(255,40,20,0)');
         g.fillStyle = gr; g.beginPath(); g.moveTo(32, 0); g.bezierCurveTo(60, 50, 64, 110, 46, 160); g.lineTo(18, 160); g.bezierCurveTo(0, 110, 4, 50, 32, 0); g.fill();
+        const core = g.createLinearGradient(0, 160, 0, 40);
+        core.addColorStop(0, 'rgba(255,255,255,0.95)'); core.addColorStop(1, 'rgba(255,240,180,0)');
+        g.fillStyle = core; g.beginPath(); g.moveTo(32, 40); g.bezierCurveTo(46, 80, 46, 130, 40, 160); g.lineTo(24, 160); g.bezierCurveTo(18, 130, 18, 80, 32, 40); g.fill();
         return s.c;
       }
       function quad(g, a, b, c, d) { g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.lineTo(c[0], c[1]); g.lineTo(d[0], d[1]); g.closePath(); }
       const lerp2 = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
-      function paintTunnel(g, D) {
-        const w = G.w, H = G.h, o = G.opr, T = VEN.tunnel;
-        const dim = D ? 1 : 1.35;
-        const shade = (hex, k) => { const n = parseInt(hex.slice(1), 16); const r = Math.min(255, ((n >> 16) & 255) * k), gg = Math.min(255, ((n >> 8) & 255) * k), b = Math.min(255, (n & 255) * k); return 'rgb(' + (r | 0) + ',' + (gg | 0) + ',' + (b | 0) + ')'; };
-        g.fillStyle = shade(T[0], dim); g.fillRect(0, 0, w, H);
+      function paintTunnel(g, D, lc) {
+        const w = G.w, H = G.h, o = G.opr;
+        const T0 = hexRgb(VEN.tunnel[0]), T1 = hexRgb(VEN.tunnel[1]);
+        const near = D ? T0 : mixc(T0, [212, 202, 212], 0.68), far = D ? T1 : mixc(T1, [238, 230, 236], 0.74);
+        const tone = (c, k, l) => rgb(mixc(mulc(c, k), lc, l || 0));
+        const lsp = radial(128, [[0, rgba(lc, 0.9)], [0.45, rgba(lc, 0.28)], [1, rgba(lc, 0)]]);
+        const add = D ? 'lighter' : 'source-over';
+        g.fillStyle = tone(near, 0.6); g.fillRect(0, 0, w, H);
         const TL = [0, 0], TR = [w, 0], BL = [0, H], BR = [w, H], oTL = [o.x0, o.y0], oTR = [o.x1, o.y0], oBL = [o.x0, o.y1], oBR = [o.x1, o.y1];
-        // ceiling, walls, floor (lit towards the stage)
-        const face = (pts, c0, c1, ax0, ay0, ax1, ay1) => { const gr = g.createLinearGradient(ax0, ay0, ax1, ay1); gr.addColorStop(0, c0); gr.addColorStop(1, c1); g.fillStyle = gr; quad(g, ...pts); g.fill(); };
-        face([TL, TR, oTR, oTL], shade(T[0], 0.7 * dim), shade(T[1], 1.1 * dim), 0, 0, 0, o.y0);
-        face([TL, oTL, oBL, BL], shade(T[0], 0.9 * dim), shade(T[1], 1.25 * dim), 0, 0, o.x0, 0);
-        face([TR, oTR, oBR, BR], shade(T[0], 0.9 * dim), shade(T[1], 1.25 * dim), w, 0, o.x1, 0);
-        face([BL, oBL, oBR, BR], shade(T[0], 0.55 * dim), shade(T[1], 0.95 * dim), 0, H, 0, o.y1);
-        // depth ribs: door frames receding to the stage
-        g.strokeStyle = D ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.14)'; g.lineWidth = 2;
-        [0.18, 0.38, 0.56, 0.72, 0.85].forEach(k => { const a = lerp2(TL, oTL, k), b = lerp2(TR, oTR, k), c = lerp2(BR, oBR, k), d = lerp2(BL, oBL, k); quad(g, a, b, c, d); g.stroke(); });
-        // ceiling light strips (static part)
-        G.strips = [0.2, 0.42, 0.6, 0.76, 0.88].map(k => { const a = lerp2(TL, oTL, k), b = lerp2(TR, oTR, k), a2 = lerp2(TL, oTL, k + 0.05), b2 = lerp2(TR, oTR, k + 0.05); const m = 0.36; return [lerp2(a, b, m), lerp2(a, b, 1 - m), lerp2(a2, b2, 1 - m), lerp2(a2, b2, m)]; });
-        G.strips.forEach(q => { g.fillStyle = D ? 'rgba(220,235,255,0.22)' : 'rgba(255,255,255,0.45)'; quad(g, ...q); g.fill(); });
-        // flight cases along both walls
-        [[0.3, -1], [0.5, 1], [0.66, -1]].forEach(([k, side]) => {
-          const base = side < 0 ? lerp2(BL, oBL, k) : lerp2(BR, oBR, k), top = side < 0 ? lerp2(TL, oTL, k) : lerp2(TR, oTR, k);
-          const hh = (base[1] - top[1]) * 0.16, ww = hh * 1.5, x = base[0] + (side < 0 ? 4 : -4 - ww), y = base[1] - hh - 2;
-          g.fillStyle = D ? '#0c0c12' : '#2a2a34'; g.fillRect(x, y, ww, hh);
-          g.strokeStyle = D ? 'rgba(200,200,220,0.35)' : 'rgba(255,255,255,0.5)'; g.lineWidth = 1.5; g.strokeRect(x + 1, y + 1, ww - 2, hh - 2);
-          g.fillStyle = 'rgba(200,200,220,0.4)'; [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(([a, b]) => g.fillRect(x + a * (ww - 6), y + b * (hh - 6), 6, 6));
+        const face = (pts, c0, c1, ax0, ay0, ax1, ay1, mid) => { const gr = g.createLinearGradient(ax0, ay0, ax1, ay1); gr.addColorStop(0, c0); if (mid) gr.addColorStop(0.62, mid); gr.addColorStop(1, c1); g.fillStyle = gr; quad(g, ...pts); g.fill(); };
+        // ceiling, walls and floor: dark at your shoulder, lit by the stage at the far end
+        face([TL, TR, oTR, oTL], tone(near, D ? 0.42 : 0.8), tone(far, D ? 1.02 : 1.02, 0.22), 0, 0, 0, o.y0);
+        face([TL, oTL, oBL, BL], tone(near, D ? 0.6 : 0.88, 0.02), tone(far, D ? 1.18 : 1.05, 0.32), 0, 0, o.x0, 0, tone(near, D ? 0.86 : 0.95, 0.1));
+        face([TR, oTR, oBR, BR], tone(near, D ? 0.6 : 0.88, 0.02), tone(far, D ? 1.18 : 1.05, 0.32), w, 0, o.x1, 0, tone(near, D ? 0.86 : 0.95, 0.1));
+        face([BL, oBL, oBR, BR], tone(near, D ? 0.3 : 0.74, 0.03), tone(far, D ? 0.96 : 1.0, 0.28), 0, H, 0, o.y1);
+        // corner lines, panel seams and floor joints (closer together as they recede)
+        g.lineWidth = 1.5; g.strokeStyle = D ? 'rgba(0,0,0,0.38)' : 'rgba(70,50,80,0.2)';
+        [[TL, oTL], [TR, oTR], [BL, oBL], [BR, oBR]].forEach(([a, b]) => { g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); });
+        g.lineWidth = 1;
+        DEPTH.forEach((k, i) => {
+          const a = lerp2(TL, oTL, k), b = lerp2(TR, oTR, k), c = lerp2(BR, oBR, k), d = lerp2(BL, oBL, k);
+          g.strokeStyle = D ? 'rgba(255,255,255,' + (0.03 + k * 0.05).toFixed(3) + ')' : 'rgba(70,50,80,' + (0.06 + k * 0.06).toFixed(3) + ')';
+          g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(d[0], d[1]); g.moveTo(b[0], b[1]); g.lineTo(c[0], c[1]);
+          if (i % 2 === 0) { g.moveTo(d[0], d[1]); g.lineTo(c[0], c[1]); }
+          g.stroke();
         });
-        // cable along the floor edge
-        g.strokeStyle = D ? '#06060a' : '#1a1a22'; g.lineWidth = 4; g.beginPath(); g.moveTo(0, H * 0.86);
-        for (let i = 1; i <= 8; i++) { const k = i / 8, p = lerp2([0, H * 0.86], [o.x0 + 6, o.y1 - 2], k); g.lineTo(p[0] + Math.sin(i * 1.7) * 5, p[1]); } g.stroke();
-        // the floor runway: centre lane towards the pad
+        // a painted rail along both walls, in tonight's venue colour
+        const acc = hexRgb(VEN.accent);
+        const rail = (top0, bot0, top1, bot1, h0, h1) => [lerp2(bot0, top0, h0), lerp2(bot1, top1, h0), lerp2(bot1, top1, h1), lerp2(bot0, top0, h1)];
+        g.fillStyle = rgba(mixc(acc, lc, 0.25), D ? 0.32 : 0.36);
+        quad(g, ...rail(TL, BL, oTL, oBL, 0.28, 0.3)); g.fill();
+        quad(g, ...rail(TR, BR, oTR, oBR, 0.28, 0.3)); g.fill();
+        // ceiling lamps down the middle
+        G.lights = [];
+        DEPTH.forEach((k, i) => {
+          if (i % 2 || k > 0.9) return;
+          const k2 = Math.min(0.99, k + 0.03), a = lerp2(TL, oTL, k), b = lerp2(TR, oTR, k), a2 = lerp2(TL, oTL, k2), b2 = lerp2(TR, oTR, k2), m = 0.39;
+          const q = [lerp2(a, b, m), lerp2(a, b, 1 - m), lerp2(a2, b2, 1 - m), lerp2(a2, b2, m)];
+          g.fillStyle = D ? 'rgba(0,0,0,0.5)' : 'rgba(40,30,50,0.28)'; quad(g, ...q); g.fill();
+          const cx = (q[0][0] + q[1][0]) / 2, cy = (q[0][1] + q[2][1]) / 2, inner = q.map(p => lerp2(p, [cx, cy], 0.2));
+          g.fillStyle = rgba(mixc([255, 255, 255], lc, 0.32), D ? 0.82 : 0.95); quad(g, ...inner); g.fill();
+          G.lights.push({ cx, cy, s: Math.max(8, b[0] - a[0]) });
+        });
+        g.save(); g.globalCompositeOperation = add;
+        G.lights.forEach(L2 => { const r = L2.s * 0.42; g.globalAlpha = D ? 0.3 : 0.2; g.drawImage(lsp, L2.cx - r, L2.cy - r * 0.55, r * 2, r * 1.2); });
+        g.restore();
+        // god rays from the doorway, and its light on a glossy floor
+        g.save(); g.globalCompositeOperation = add;
+        const ray = (p1, p2, a) => { const gr = g.createLinearGradient(G.vp.x, G.vp.y, (p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2); gr.addColorStop(0, rgba(lc, a)); gr.addColorStop(1, rgba(lc, 0)); g.fillStyle = gr; g.beginPath(); g.moveTo(G.vp.x, G.vp.y); g.lineTo(p1[0], p1[1]); g.lineTo(p2[0], p2[1]); g.closePath(); g.fill(); };
+        ray([0, H * 0.5], [0, H * 0.92], D ? 0.13 : 0.08); ray([w, H * 0.5], [w, H * 0.92], D ? 0.13 : 0.08);
+        ray([w * 0.08, 0], [w * 0.34, 0], D ? 0.09 : 0.05); ray([w * 0.66, 0], [w * 0.92, 0], D ? 0.09 : 0.05);
+        const rf = g.createLinearGradient(0, o.y1, 0, H);
+        rf.addColorStop(0, rgba(mixc(hexRgb(VEN.lit), lc, 0.35), D ? 0.45 : 0.3)); rf.addColorStop(0.4, rgba(lc, D ? 0.1 : 0.06)); rf.addColorStop(1, rgba(lc, 0));
+        g.fillStyle = rf; g.beginPath(); g.moveTo(o.x0 + o.w * 0.1, o.y1); g.lineTo(o.x1 - o.w * 0.1, o.y1); g.lineTo(G.vp.x + w * 0.32, H); g.lineTo(G.vp.x - w * 0.32, H); g.closePath(); g.fill();
+        g.restore();
+        // the runway to your pad
         const lane = (k) => { const yy = o.y1 + (G.pad.y - o.y1) * k * k; const half = K.lerp(o.w * 0.12, G.pad.r * 1.3, k * k); return [yy, half]; };
-        g.fillStyle = D ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.12)';
+        g.fillStyle = D ? rgba(lc, 0.06) : 'rgba(255,255,255,0.24)';
         g.beginPath(); { const [y0, h0] = lane(0), [y1, h1] = lane(1.05); g.moveTo(G.vp.x - h0, y0); g.lineTo(G.vp.x + h0, y0); g.lineTo(G.vp.x + h1, y1); g.lineTo(G.vp.x - h1, y1); g.closePath(); } g.fill();
-        g.strokeStyle = D ? 'rgba(255,220,120,0.25)' : 'rgba(255,200,80,0.6)'; g.lineWidth = 2; g.setLineDash([10, 12]);
+        g.strokeStyle = D ? rgba(mixc([255, 220, 120], lc, 0.25), 0.32) : 'rgba(190,130,30,0.6)'; g.lineWidth = 2; g.setLineDash([10, 12]);
         [-1, 1].forEach(s2 => { g.beginPath(); for (let i = 0; i <= 20; i++) { const [yy, hf] = lane(i / 20 * 1.05); const x = G.vp.x + s2 * hf; if (i) g.lineTo(x, yy); else g.moveTo(x, yy); } g.stroke(); });
         g.setLineDash([]);
-        // light spilling in from the stage
-        g.save(); g.globalCompositeOperation = D ? 'lighter' : 'source-over'; g.globalAlpha = D ? 0.5 : 0.35;
-        const R = Math.max(o.w, o.h) * 2.4; g.drawImage(SPR.glow, G.vp.x - R, G.vp.y - R * 0.8, R * 2, R * 1.9); g.restore();
-        // the opening itself: tonight's venue glimpse (static backdrop; the crowd bobs live)
+        // speaker columns either side of the opening (their cones pump with the kick)
+        const column = (side) => {
+          const k = 0.86, top = side < 0 ? lerp2(TL, oTL, k) : lerp2(TR, oTR, k), bot = side < 0 ? lerp2(BL, oBL, k) : lerp2(BR, oBR, k);
+          const hk = bot[1] - top[1], cw = Math.max(16, (lerp2(TR, oTR, k)[0] - lerp2(TL, oTL, k)[0]) * 0.13), ch = hk * 0.5;
+          const x = side < 0 ? bot[0] + 3 : bot[0] - 3 - cw, y = bot[1] - ch - 2;
+          g.fillStyle = 'rgba(0,0,0,0.35)'; g.beginPath(); g.ellipse(x + cw / 2, bot[1] - 1, cw * 0.75, 4, 0, 0, TAU); g.fill();
+          g.fillStyle = D ? '#0c0b11' : '#2e2a36'; rr(g, x, y, cw, ch, 3); g.fill();
+          g.strokeStyle = D ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.32)'; g.lineWidth = 1; rr(g, x + 0.5, y + 0.5, cw - 1, ch - 1, 3); g.stroke();
+          return [[0.24, 0.3], [0.66, 0.38]].map(([fy, fr]) => {
+            const c = { x: x + cw / 2, y: y + ch * fy, r: cw * fr };
+            g.fillStyle = '#040308'; g.beginPath(); g.arc(c.x, c.y, c.r + 1.5, 0, TAU); g.fill();
+            const cg = g.createRadialGradient(c.x - c.r * 0.25, c.y - c.r * 0.25, c.r * 0.1, c.x, c.y, c.r); cg.addColorStop(0, '#3c3846'); cg.addColorStop(1, '#141218');
+            g.fillStyle = cg; g.beginPath(); g.arc(c.x, c.y, c.r, 0, TAU); g.fill();
+            return c;
+          });
+        };
+        G.cones = column(-1).concat(column(1));
+        // light spilling round the opening, then the opening itself: a glimpse of tonight's venue
+        g.save(); g.globalCompositeOperation = add; g.globalAlpha = D ? 0.6 : 0.45;
+        const R = Math.max(o.w, o.h) * 2.1; g.drawImage(lsp, G.vp.x - R, G.vp.y - R * 0.72, R * 2, R * 1.44);
+        g.restore();
         const og = g.createLinearGradient(0, o.y0, 0, o.y1);
-        og.addColorStop(0, VEN.sky[1]); og.addColorStop(0.55, VEN.lit); og.addColorStop(1, VEN.sky[0]);
+        og.addColorStop(0, VEN.sky[1]); og.addColorStop(0.6, VEN.lit); og.addColorStop(1, VEN.sky[0]);
         g.fillStyle = og; g.fillRect(o.x0, o.y0, o.w, o.h);
-        g.strokeStyle = D ? '#05050a' : '#2a2430'; g.lineWidth = 5; g.strokeRect(o.x0 - 2, o.y0 - 2, o.w + 4, o.h + 4);
+        g.strokeStyle = D ? '#050409' : '#2a2430'; g.lineWidth = 6; g.strokeRect(o.x0 - 3, o.y0 - 3, o.w + 6, o.h + 6);
+        g.strokeStyle = rgba(lc, D ? 0.35 : 0.5); g.lineWidth = 1.5; g.strokeRect(o.x0 - 6.5, o.y0 - 6.5, o.w + 13, o.h + 13);
+      }
+      /* The crowd glimpsed through the opening (drawn live so it can bounce on the beat). */
+      function doorCrowd() {
+        const R0 = K.rng(17), out = [];
+        for (let row = 0; row < 2; row++) { const n = row ? 12 : 16; for (let i = 0; i < n; i++) out.push({ x: (i + 0.5 + (R0() - 0.5) * 0.6) / n, row, s: (row ? 1.3 : 0.9) * (0.85 + R0() * 0.3), ph: R0() * TAU, arm: R0() < 0.4 ? (R0() < 0.5 ? -1 : 1) : 0 }); }
+        return out;
       }
 
       /* ---------------- audio: our own instruments into a "tunnel wall" filter that opens as nerves become excitement ---------------- */
@@ -474,6 +542,8 @@
       let lastBeat = null;
       const beatQ = [];
       const R = K.rhythm({ bpm: AN.bpm, ease: 1, onBeat: (t, i) => {
+        if (ST.songOver) return;
+        if (ST.endAt != null && i >= ST.endAt) { beatQ.push({ t, i }); finalHit(t); return; }
         lastBeat = { t, i };
         audioInit();
         if (A.ctx && MUS) anthemBeat(t, i);
@@ -513,10 +583,11 @@
         audioInit();
         R.start(0.4);
         padMode('rest');
-        say(rush, CARE() ? line({ Jolly: 'This one’s for nerves before a big moment. If your body ever feels truly wrong, check with a doctor.', Cheeky: 'Pre-show nerves only, okay? If something feels medically off, see a doctor.', Unfiltered: 'For nerves only. Body feels wrong? See a doctor.' })
+        say(rush, CARE() ? line({ Jolly: 'This one’s just for the nerves. The big thing itself deserves proper help in your corner.', Cheeky: 'Nerves only, okay? The big stuff deserves a real pro in your corner.', Unfiltered: 'Nerves only. Get real help for the big stuff.' })
           : line({ Jolly: 'Big moment coming? Hear that heart? Good. That’s not a problem. That’s a drum.', Cheeky: 'Ooh, that heart’s pounding. Perfect. We’re using it.', Unfiltered: 'Heart’s pounding. Good. That’s your beat.' }), CARE() ? 4400 : 3800, 'determined');
         sync.face('wow', 1200);
-        await K.wait(CARE() ? 3600 : 2600);
+        K.guide({ id: 'feel', g: 'tap', target: pad, label: 'TAP YOUR HEARTBEAT', delay: 900, ms: 1100 });
+        await K.wait(CARE() ? 3800 : 3000);
         pick();
       }
       /* 2 · pick a walk-on anthem */
@@ -589,7 +660,11 @@
       K.drag(fader, {
         start: (p) => { if (phase !== 'cue') return false; const cx = G.tr.x + ST.v * G.tr.w; fv0 = Math.abs(p.x - cx) < 46 ? ST.v : K.clamp((p.x - G.tr.x) / G.tr.w, 0, 1); setV(fv0); if (A.ctx) A.whoosh({ vol: 0.04, dur: 0.25 }); },
         move: (p, d) => { setV(fv0 + d.dx / G.tr.w); },
-        end: () => { if (phase === 'cue' && ST.v < 0.985) K.guide({ id: 'cue-more' + ST.cuesDone, g: 'drag', dir: 'r', d: Math.round(G.tr.w * (1 - ST.v) * 0.8 + 30), target: () => ({ x: G.fd.x + G.tr.x + ST.v * G.tr.w, y: G.fd.y + G.tr.y }), label: 'ALL THE WAY', delay: 700 }); }
+        end: () => {
+          if (phase !== 'cue' || ST.v >= 0.985) return;
+          if (ST.v >= 0.72) { const v0 = ST.v; K.anim(240, (k) => setV(v0 + (1 - v0) * k), K.ease && K.ease.outCubic); return; } // nearly there: it snaps home
+          K.guide({ id: 'cue-more' + ST.cuesDone, g: 'drag', dir: 'r', d: Math.round(G.tr.w * (1 - ST.v) * 0.8 + 30), target: () => ({ x: G.fd.x + G.tr.x + ST.v * G.tr.w, y: G.fd.y + G.tr.y }), label: 'ALL THE WAY', delay: 700 });
+        }
       });
       S.listen(fader, 'keydown', (e) => { if (phase !== 'cue') return; if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); setV(ST.v + 0.1); } if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { e.preventDefault(); setV(ST.v - 0.1); } if (e.key === 'End') { e.preventDefault(); setV(1); } });
       async function cueDone() {
@@ -606,7 +681,7 @@
         stampIt();
         if (A.ctx) { const t = A.now(); A.thud({ vol: 0.45 }); A.tone({ when: t, type: 'sawtooth', freq: 180, to: 720, glide: 0.35, dur: 0.4, vol: 0.05, lp: 2400 }); roar(t + 0.05, 1.6, 0.09); shout(t + 0.1, 'e', 0.35, 0.05); }
         P.emit('confetti', G.fd.x + G.fd.w / 2, G.fd.y + 30, 26, { colors: [AN.col, '#ffd36b', '#fff6d0', '#7fb6ff'], speed: [120, 300], angle: -Math.PI / 2, spread: 1.6 });
-        setHype(ST.hype + 10);
+        setHype(Math.min(97, ST.hype + 30 / NCUE));
         ST.flash = red() ? 0 : 0.7;
         rush.face('celebrate', 1400); rush.react('bounce'); sync.face('celebrate', 1200);
         ctx.track('cue', { n, own: ST.cue && ST.cue.own ? 1 : 0 });
@@ -619,7 +694,9 @@
       }
       function stampIt() {
         stamp.getAnimations().forEach(a => a.cancel());
-        stamp.animate([{ opacity: 0, scale: 2.2 }, { opacity: 1, scale: 0.92, offset: 0.35 }, { opacity: 1, scale: 1, offset: 0.5 }, { opacity: 1, scale: 1, offset: 0.85 }, { opacity: 0, scale: 1.05 }], { duration: red() ? 1200 : 1700, easing: 'cubic-bezier(.2,1.4,.4,1)' });
+        // a rubber stamp slammed down: it drops in big, lands with a squash, holds, then lifts (it never grows past the frame)
+        stamp.animate(red() ? [{ opacity: 0 }, { opacity: 1, offset: 0.2 }, { opacity: 1, offset: 0.85 }, { opacity: 0 }]
+          : [{ opacity: 0, scale: 1.25, transform: 'translateY(-26px)' }, { opacity: 1, scale: 0.94, transform: 'none', offset: 0.3 }, { opacity: 1, scale: 1, offset: 0.45 }, { opacity: 1, scale: 1, offset: 0.85 }, { opacity: 0, scale: 1.04 }], { duration: red() ? 1200 : 1700, easing: 'cubic-bezier(.2,1.4,.4,1)' });
       }
       /* 4 · stomp on the beat to build the crowd (the markers run down the tunnel floor to your pad) */
       function startSection(n) {
@@ -635,7 +712,7 @@
       }
       function secBeat(t, i) {
         const s = ST.sec;
-        if (i === s.first - 4 && A.ctx) { for (let k = 0; k < 4; k++) A.tone({ when: t + k * bl(), type: 'square', freq: k === 3 ? 1320 : 990, dur: 0.05, vol: 0.035, lp: 3000 }); }
+        if (i === s.first - 4 && A.ctx) { for (let k = 0; k < 4; k++) A.wood(t + k * bl(), 0.15, k === 3 ? 1.3 : 1.05); } // the drummer's sticks count the band in
         if (i > s.last + 2 && !s.ending) {
           s.ending = true;
           S.later(() => endSection(), Math.max(0, (t - A.now()) * 1000) + 200);
@@ -673,7 +750,8 @@
           if (r && r.m) {
             ST.sec.hits++; ST.hits++; ST.judged++; if (g === 'perfect') ST.perfect++;
             setCombo(ST.combo + 1);
-            setHype(ST.hype + (g === 'perfect' ? 3.4 : 2.4) * (inten === 0 ? 1.4 : 1) * (1 + Math.min(1, ST.combo / 16) * 0.5));
+            setHype(Math.min(97, ST.hype + (58 / TOTAL_MARKS) * (g === 'perfect' ? 1.15 : 0.9)));
+            W.zoom = 1;
             const t = A.now(); if (A.ctx) { shout(t + 0.01, ST.combo % 4 === 0 ? 'o' : 'e', 0.22, 0.03 + Math.min(0.04, ST.hype / 2500)); }
             P.emit('spark', G.pad.x, G.pad.y - G.pad.r, g === 'perfect' ? 18 : 11, { colors: [AN.col, '#fff3c4', '#ffd36b'], angle: -Math.PI / 2, spread: 1.6, speed: [120, 320] });
             ST.ringHit = { t: performance.now(), g };
@@ -715,6 +793,7 @@
         pad.style.setProperty('--fill', '0');
         K.guide({ id: 'breath', g: 'hold', target: pad, label: 'HOLD: BREATHE IN', delay: 600, ms: 2600 });
       }
+      S.onDestroy(() => { if (inhale) { try { inhale.stop(); } catch (e) { /* gone */ } inhale = null; } });
       const HOLD_MS = [2200, 2600, 3000][inten];
       holdCtl = K.hold(pad, {
         ms: HOLD_MS, decay: 1.6,
@@ -730,11 +809,12 @@
         if (A.ctx) A.noise({ when: A.now() + 0.05, filter: 'bandpass', freq: 1300, to: 500, q: 0.8, dur: 2.6, attack: 0.3, vol: 0.07 });
         padB.textContent = 'AND OUT'; padS.textContent = 'SLOWLY…';
         const t0 = performance.now();
-        await K.anim(2600, (k) => { pad.style.setProperty('--fill', (1 - k).toFixed(3)); ST.breath = 1 - k; });
-        void t0;
+        for (let k = 0; k < 1; k = Math.min(1, (performance.now() - t0) / 2600)) { pad.style.setProperty('--fill', (1 - k).toFixed(3)); ST.breath = 1 - k; await K.wait(40); }
+        pad.style.setProperty('--fill', '0'); ST.breath = 0;
         rush.face('happy', 0);
         // the crowd starts the chant in the dark
         phase = 'chant';
+        padMode('rest'); padS.textContent = 'WITH THEM';
         L.heart = 0.6;
         muffle(2600, 0.3);
         if (A.ctx && MG) MG.gain.setTargetAtTime(1, A.now(), 0.2);
@@ -761,7 +841,8 @@
         const word = AN.chant[k % 4];
         chant.textContent = word;
         chant.getAnimations().forEach(a => a.cancel());
-        chant.animate([{ opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1.08, offset: 0.25 }, { opacity: 1, scale: 1, offset: 0.6 }, { opacity: 0, scale: 1 }], { duration: bl() * 1000 * 1.6, easing: 'ease-out' });
+        chant.animate(red() ? [{ opacity: 0 }, { opacity: 1, offset: 0.25 }, { opacity: 1, offset: 0.6 }, { opacity: 0 }]
+          : [{ opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1.08, offset: 0.25 }, { opacity: 1, scale: 1, offset: 0.6 }, { opacity: 0, scale: 1 }], { duration: bl() * 1000 * 1.6, easing: 'ease-out' });
         ST.chantFlash = 1;
       }
       function lightsOn() {
@@ -773,7 +854,7 @@
         if (A.ctx) { const t = A.now(); A.kick(t, 0.6); A.noise({ when: t, filter: 'highpass', freq: 4500, dur: 1.8, attack: 0.002, vol: 0.12 }); A.thud({ vol: 0.5 }); roar(t, 2.6, 0.14); if (crowdBed) crowdBed.level(0.16, 0.3); }
         P.emit('confetti', G.w * 0.2, G.h * 0.9, 30, { angle: -Math.PI / 2 + 0.35, spread: 0.7, speed: [300, 560], colors: [AN.col, '#ffd36b', '#fff6d0', VEN.accent] });
         P.emit('confetti', G.w * 0.8, G.h * 0.9, 30, { angle: -Math.PI / 2 - 0.35, spread: 0.7, speed: [300, 560], colors: [AN.col, '#ffd36b', '#fff6d0', VEN.accent] });
-        setHype(Math.max(ST.hype, 90));
+        setHype(100);
         rush.face('celebrate', 0); sync.face('celebrate', 0); patch.face('celebrate', 0);
         say(patch, line({ Jolly: 'Lights are back! You’re on!', Cheeky: 'WE’RE BACK! GO GO GO!', Unfiltered: 'Lights. You’re on.' }), 2200, 'celebrate');
         S.later(() => {
@@ -786,8 +867,8 @@
       /* 6 · walk out */
       K.drag(pad, {
         start: () => { if (phase !== 'walk') return false; },
-        move: (p, d) => { if (phase !== 'walk') return; ST.walkPull = K.clamp(-d.dy / 90, 0, 1); if (d.dy < -60) walkOut(); },
-        end: () => { ST.walkPull = 0; }
+        move: (p, d) => { if (phase !== 'walk') return; ST.walkPull = K.clamp(-d.dy / 90, 0, 1); pad.style.translate = '0 ' + (-ST.walkPull * 28).toFixed(1) + 'px'; if (d.dy < -60) walkOut(); },
+        end: (p, d) => { ST.walkPull = 0; pad.style.translate = ''; if (phase === 'walk' && Math.abs(d.dx) < 14 && Math.abs(d.dy) < 14) walkOut(); }
       });
       async function walkOut() {
         if (phase !== 'walk') return;
@@ -796,26 +877,27 @@
         rush.hush(); sync.hush(); patch.hush();
         pad.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-40px) scale(0.8)' }], { duration: 350, fill: 'forwards' });
         if (A.ctx) { A.whoosh({ vol: 0.16, dur: 0.9 }); roar(A.now() + 0.3, 3, 0.16); }
-        const t0 = performance.now(), dur = red() ? 300 : 1100;
-        await new Promise(res => { const step = () => { if (S.destroyed) return; const k = Math.min(1, (performance.now() - t0) / dur); ST.walk = k * k; if (k < 1) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step); });
+        if (A.ctx) [0, 1, 2].forEach(k => A.thud({ when: A.now() + 0.12 + k * 0.3, vol: 0.18 + k * 0.06 })); // footsteps
+        await K.anim(1100, (k) => { ST.walk = k * k; });
         ST.stage = 1; ST.stageAt = performance.now(); ST.flash = red() ? 0 : 1;
         hud.style.opacity = '0';
         placeCastStage();
-        screen.querySelector('span').textContent = (ST.best >= 4 ? 'BEST COMBO ×' + ST.best + ' · ' : '') + AN.name;
+        screen.querySelector('span').textContent = AN.name + (ST.best >= 4 ? ' · COMBO ×' + ST.best : '');
         screen.classList.add('wo-on');
         finale();
       }
       function placeCastStage() {
         const w = G.w, H = G.h, sz = G.phone ? 66 : 104, y = H - 16 - sz - (G.phone ? 18 : 30);
         [[rush, 0.2], [sync, 0.5], [patch, 0.8]].forEach(([c, k]) => { c.show(true); c.el.style.setProperty('--sz', sz + 'px'); c.side('above'); c.place(w * k - sz / 2, y, red() ? 0 : 700); });
-        G.screenY = G.phone ? 200 : 170;
+        G.screenY = G.phone ? 200 : 178;
         screen.style.top = G.screenY + 'px';
       }
       async function finale() {
         phase = 'end';
         ST.pyroFrom = R.index;
         await K.wait(900);
-        say(rush, line({ Jolly: 'Same heartbeat. New song. That’s what excited sounds like.', Cheeky: 'Same heart, way better soundtrack. Told you.', Unfiltered: 'Same heart. Your song.' }), 0, 'celebrate');
+        say(rush, CARE() ? line({ Jolly: 'Same heartbeat, new song. For the real stuff, someone qualified can help.', Cheeky: 'Same heart, better soundtrack. Big stuff? Get a pro on your side.', Unfiltered: 'Same heart. Your song. Get proper help for the rest.' })
+          : line({ Jolly: 'Same heartbeat. New song. That’s what excited sounds like.', Cheeky: 'Same heart, way better soundtrack. Told you.', Unfiltered: 'Same heart. Your song.' }), 0, 'celebrate');
         sync.react('bounce'); patch.react('bounce');
         await K.finale('fireworks', { from: [{ x: G.w * 0.15, y: G.h * 0.7 }, { x: G.w * 0.85, y: G.h * 0.7 }, { x: G.w * 0.5, y: G.h * 0.75 }], colors: [AN.col, '#ffd36b', VEN.accent, '#ffffff', '#ff8fb1'], count: G.phone ? 6 : 9, chord: ['C4', 'E4', 'G4', 'C5'], ms: 3600, sound: false });
         const badges = [];
@@ -838,6 +920,21 @@
           share: 'Turned my nerves into a walk-on song.',
           badges: badges.slice(0, 4)
         });
+        endSong();
+      }
+      /* The band lands one last big hit a couple of bars later, then the song is over (no endless loop under the after card). */
+      function endSong() { ST.endAt = Math.ceil((R.index + 6) / 4) * 4; }
+      function finalHit(t) {
+        ST.songOver = true;
+        R.stop();
+        if (!A.ctx || !MUS) return;
+        const id = AN.id, ch = PROG[id][0];
+        kick(t, 0.6); tom(t, 90, 0.3);
+        nz({ t, dur: 2.6, f: 6800, type: 'highpass', vol: 0.12, att: 0.002 });
+        stab(t, ch.concat([ch[0].replace(/\d/, (m) => String(Number(m) + 1))]), 2.8, 0.16, 'sawtooth', 2600);
+        bass(t, N(BASSN[id][0]), 2.4, 0.2, 600);
+        roar(t + 0.05, 3.4, 0.13);
+        if (crowdBed) S.later(() => { if (crowdBed) crowdBed.level(0.02, 2.5); }, 1800);
       }
       function titleCase(s) { return String(s).toLowerCase().replace(/(^|\s)[a-z]/g, c => c.toUpperCase()); }
 
@@ -845,21 +942,22 @@
       const W = { light: 1, kick: 0, pulse: 0, cool: 1, jump: 0, flash: 0, zoom: 0 };
       let frameN = 0, beatSeen = -1;
       K.loop((dt, t) => {
-        const g = cv.g; if (!g || !BG) return;
+        const g = cv.g; if (!g || !BGc) return;
         frameN++;
         if (phase === 'intro' && frameN > 3) return;
-        if (finished && (frameN % 3 || performance.now() - ST.finAt > 1500)) return;
+        if (finished && (frameN % 3 || performance.now() - ST.finAt > 2500)) return;
         const now = performance.now(), vn = vnow();
         // beats as heard
-        while (beatQ.length && beatQ[0].t <= vn) { const b = beatQ.shift(); W.kick = 1; W.pulse = 1; beatSeen = b.i; if (ST.stage && b.i % 4 === 0) pyro(); }
+        while (beatQ.length && beatQ[0].t <= vn) { const b = beatQ.shift(); W.kick = 1; W.pulse = 1; beatSeen = b.i; if (ST.stage && b.i % 4 === 0 && !ST.songOver) pyro(); }
         W.kick *= Math.exp(-dt * 7); W.pulse *= Math.exp(-dt * 5);
         const lightT = phase === 'dark' || phase === 'breath' || phase === 'exhale' || phase === 'chant' ? 0.06 : 1;
         W.light += (lightT - W.light) * Math.min(1, dt * (lightT < W.light ? 10 : 4));
-        const coolT = 1 - Math.min(1, ST.cuesDone / Math.max(1, NCUE)) * (phase === 'cue' ? 1 : 1) - (phase === 'cue' ? ST.v / Math.max(1, NCUE) : 0);
+        const coolT = 1 - Math.min(1, ST.cuesDone / Math.max(1, NCUE)) - (phase === 'cue' ? ST.v / Math.max(1, NCUE) : 0);
         W.cool += (K.clamp(coolT, 0, 1) - W.cool) * Math.min(1, dt * 3);
         W.jump = Math.max(0, (ST.crowdJump || 0)); ST.crowdJump = Math.max(0, (ST.crowdJump || 0) - dt * 3);
         W.flash = Math.max(0, (ST.flash || 0) - dt * 2.2); ST.flash = W.flash;
         ST.padKick = Math.max(0, (ST.padKick || 0) - dt * 6);
+        W.zoom = Math.max(0, W.zoom - dt * 5);
         draw(g, dt, t, now, vn);
       });
       function draw(g, dt, t, now, vn) {
@@ -868,34 +966,49 @@
         // walking out: the tunnel rushes past
         if (ST.walk > 0) {
           const s = 1 + ST.walk * 5;
-          g.save(); g.translate(G.vp.x, G.vp.y); g.scale(s, s); g.translate(-G.vp.x, -G.vp.y); g.drawImage(BG.c, 0, 0, w, H); g.restore();
+          g.save(); g.translate(G.vp.x, G.vp.y); g.scale(s, s); g.translate(-G.vp.x, -G.vp.y); g.drawImage(BGw.c, 0, 0, w, H); g.restore();
           g.fillStyle = red() ? 'rgba(10,8,16,' + (ST.walk * 0.9).toFixed(3) + ')' : 'rgba(255,250,235,' + (ST.walk * 0.9).toFixed(3) + ')'; g.fillRect(0, 0, w, H);
           P.update(dt); P.draw(g);
           return;
         }
-        g.drawImage(BG.c, 0, 0, w, H);
+        // a good stomp pushes you a step towards the stage
+        const zp = red() ? 0 : W.zoom * 0.013;
+        if (zp > 0.0004) { g.save(); g.translate(G.vp.x, G.vp.y); g.scale(1 + zp, 1 + zp); g.translate(-G.vp.x, -G.vp.y); }
+        // the same tunnel in cold and warm light: it warms up as each feeling is renamed
+        if (W.cool > 0.004) g.drawImage(BGc.c, 0, 0, w, H);
+        if (W.cool < 0.996) { g.globalAlpha = W.cool > 0.004 ? 1 - W.cool : 1; g.drawImage(BGw.c, 0, 0, w, H); g.globalAlpha = 1; }
         const o = G.opr, lt = W.light;
-        // the crowd beyond the doorway bobs on the beat
-        g.save(); g.beginPath(); g.rect(o.x0, o.y0, o.w || (o.x1 - o.x0), o.y1 - o.y0); g.clip();
-        if (VEN.glow && lt > 0.1) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.35 * lt * (0.7 + 0.3 * W.kick); g.drawImage(SPR.glow, G.vp.x - G.op.w, G.vp.y - G.op.h * 1.4, G.op.w * 2, G.op.h * 1.6); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
-        const heads = 26, hy = o.y1 - (o.y1 - o.y0) * 0.16;
-        g.fillStyle = D ? '#07060c' : '#1c1426';
-        for (let i = 0; i < heads; i++) {
-          const x = o.x0 + (i + 0.5) / heads * (o.x1 - o.x0) + Math.sin(i * 7.1) * 3, ph = i * 1.37, bob = (W.kick * 4 + W.jump * 6) * (0.5 + 0.5 * Math.sin(ph)), r = 4.2 + (i % 3) * 0.8;
-          g.beginPath(); g.arc(x, hy - bob - (i % 2) * 4, r, 0, TAU); g.fill(); g.fillRect(x - r * 1.3, hy - bob - (i % 2) * 4 + r * 0.6, r * 2.6, 30);
-          if (W.jump > 0.3 && i % 3 === 0) { g.fillRect(x - 1.2, hy - bob - 14 - (i % 2) * 4, 2.4, 9); }
+        // beyond the opening: a light wash, sweeping beams and the crowd, all on the beat
+        g.save(); g.beginPath(); g.rect(o.x0, o.y0, o.w, o.h); g.clip();
+        if (lt > 0.1) {
+          g.globalCompositeOperation = 'lighter';
+          g.globalAlpha = 0.32 * lt * (0.6 + 0.4 * W.kick); g.drawImage(SPR.glow, G.vp.x - o.w, o.y0 - o.h * 0.5, o.w * 2, o.h * 1.5);
+          for (let i = 0; i < 3; i++) {
+            const a = Math.sin(t * (0.6 + i * 0.21) + i * 2.1) * 0.55, x0 = o.x0 + o.w * (0.2 + i * 0.3);
+            g.globalAlpha = (0.08 + 0.08 * W.kick) * lt; g.fillStyle = i === 1 ? AN.col : VEN.accent;
+            g.beginPath(); g.moveTo(x0 - 2, o.y0); g.lineTo(x0 + 2, o.y0); g.lineTo(x0 + Math.sin(a) * o.h + o.w * 0.13, o.y1); g.lineTo(x0 + Math.sin(a) * o.h - o.w * 0.13, o.y1); g.closePath(); g.fill();
+          }
+          g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
         }
+        drawDoorCrowd(g, o, t, D);
         g.restore();
-        // ceiling lights pulse with every beat
+        // ceiling lamps and speaker cones pulse with every beat
         g.save(); g.globalCompositeOperation = D ? 'lighter' : 'source-over';
-        G.strips.forEach((q, k) => { g.globalAlpha = Math.min(1, (0.18 + 0.5 * W.pulse * (k % 2 ? 0.8 : 1)) * lt) * (D ? 1 : 0.6); g.fillStyle = W.cool > 0.5 ? '#cfe2ff' : '#ffe6b0'; quad(g, ...q); g.fill(); });
-        g.restore();
+        G.lights.forEach((L2, k) => { g.globalAlpha = Math.min(1, (0.08 + 0.34 * W.pulse * (k % 2 ? 0.7 : 1)) * lt) * (D ? 1 : 0.5); const r = L2.s * 0.42; g.drawImage(SPR.white, L2.cx - r, L2.cy - r * 0.4, r * 2, r * 0.8); });
+        g.restore(); g.globalAlpha = 1;
+        if (G.cones && lt > 0.2) {
+          const pump = (L.kick || L.drums || L.heart > 0.05) ? W.kick : 0;
+          g.fillStyle = D ? '#4c4856' : '#5c5866';
+          G.cones.forEach(c => { g.beginPath(); g.arc(c.x, c.y, c.r * (0.3 + 0.16 * pump), 0, TAU); g.fill(); });
+          if (pump > 0.05) { g.strokeStyle = 'rgba(255,255,255,' + (0.3 * pump).toFixed(3) + ')'; g.lineWidth = 1.2; g.beginPath(); G.cones.forEach(c => { g.moveTo(c.x + c.r * (0.62 + 0.3 * pump), c.y); g.arc(c.x, c.y, c.r * (0.62 + 0.3 * pump), 0, TAU); }); g.stroke(); }
+        }
+        if (zp > 0.0004) g.restore();
         drawMarkers(g, now, vn);
         drawPadRing(g, now, vn);
         drawECG(g, t, vn);
         // vignette: the heartbeat you can see
         const vig = Math.min(1, 0.55 + 0.2 * W.pulse * (L.heart > 0.05 ? 1 : 0.4));
-        g.globalAlpha = vig; g.drawImage(SPR.vig, -w * 0.25, -H * 0.15, w * 1.5, H * 1.3);
+        g.globalAlpha = D ? vig : vig * 0.55; g.drawImage(SPR.vig, -w * 0.25, -H * 0.15, w * 1.5, H * 1.3);
         if (L.heart > 0.05 && W.pulse > 0.05) { g.globalAlpha = W.pulse * 0.35 * L.heart * (D ? 1 : 0.6); g.drawImage(SPR.red, -w * 0.25, -H * 0.15, w * 1.5, H * 1.3); }
         g.globalAlpha = 1;
         P.update(dt); P.draw(g);
@@ -906,6 +1019,21 @@
           if (phase === 'breath' || phase === 'exhale') { const k = ST.breath || 0; g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.25 + 0.35 * k; g.drawImage(SPR.white, G.pad.x - G.pad.r * (1.6 + k), G.pad.y - G.pad.r * (1.6 + k), G.pad.r * (3.2 + 2 * k), G.pad.r * (3.2 + 2 * k)); g.restore(); }
         }
         if (W.flash > 0.01) { g.fillStyle = 'rgba(255,248,230,' + (W.flash * 0.6).toFixed(3) + ')'; g.fillRect(0, 0, w, H); }
+      }
+      function drawDoorCrowd(g, o, t, D) {
+        const base = o.y1 + 2, sc = o.h / 120, up = L.crowd > 0 || phase === 'chant' || W.jump > 0.25;
+        const back = D ? 'rgba(18,13,30,0.92)' : 'rgba(52,38,66,0.88)', front = D ? '#06050b' : '#1c1426';
+        g.lineCap = 'round';
+        for (let pass = 0; pass < 2; pass++) {
+          g.fillStyle = pass ? front : back; g.strokeStyle = g.fillStyle;
+          G.crowd.forEach(p => {
+            if (p.row !== pass) return;
+            const s = p.s * sc, x = o.x0 + p.x * o.w, bob = (W.kick * 2.5 + W.jump * 5) * (0.5 + 0.5 * Math.sin(p.ph)) * s, y = base - (pass ? 20 : 34) * sc - bob;
+            g.beginPath(); g.arc(x, y, 4.4 * s, 0, TAU); g.fill();
+            g.beginPath(); g.ellipse(x, y + 10 * s, 8 * s, 6 * s, 0, Math.PI, TAU); g.fill(); g.fillRect(x - 8 * s, y + 10 * s, 16 * s, 44 * s);
+            if (p.arm && up) { const lift = 0.55 + 0.45 * Math.abs(Math.sin(t * 4.5 + p.ph)); g.lineWidth = 2.6 * s; g.beginPath(); g.moveTo(x + p.arm * 6 * s, y + 7 * s); g.lineTo(x + p.arm * 9 * s, y - (4 + 12 * lift) * s); g.stroke(); }
+          });
+        }
       }
       function markerPos(p) {
         const o = G.opr, k = K.clamp(p, 0, 1.15), kk = k * k;
@@ -946,13 +1074,12 @@
       }
       function drawECG(g, t, vn) {
         const e = G.ecg; if (!e) return;
-        const cool = W.cool, col = 'rgb(' + Math.round(K.lerp(255, 127, cool)) + ',' + Math.round(K.lerp(211, 182, cool)) + ',' + Math.round(K.lerp(107, 255, cool)) + ')';
+        const cool = W.cool, col = [K.lerp(255, 127, cool), K.lerp(211, 182, cool), K.lerp(107, 255, cool)];
         const pps = e.w / 2.6, bt = 60 / AN.bpm;
         const ref = lastBeat || { t: vn, i: 0 };
         g.save();
-        g.fillStyle = 'rgba(6,4,14,0.45)'; g.beginPath(); g.roundRect ? g.roundRect(e.x, e.y, e.w, e.h, 10) : g.rect(e.x, e.y, e.w, e.h); g.fill();
+        g.fillStyle = 'rgba(6,4,14,0.5)'; rr(g, e.x, e.y, e.w, e.h, 10); g.fill();
         g.beginPath(); g.rect(e.x + 4, e.y, e.w - 8, e.h); g.clip();
-        g.strokeStyle = col; g.lineWidth = 2.2; g.shadowColor = col; g.shadowBlur = 8;
         g.beginPath();
         const mid = e.y + e.h * 0.62, amp = e.h * 0.5 * (0.6 + 0.4 * W.light);
         for (let x = 0; x <= e.w; x += 3) {
@@ -963,88 +1090,144 @@
           const yy = mid - y * amp;
           if (x) g.lineTo(e.x + x, yy); else g.moveTo(e.x + x, yy);
         }
-        g.stroke(); g.restore();
+        g.lineJoin = 'round';
+        g.strokeStyle = rgba(col, 0.25); g.lineWidth = 6; g.stroke();
+        g.strokeStyle = rgb(col); g.lineWidth = 2.2; g.stroke();
+        g.restore();
       }
       /* ---------------- the venue (finale) ---------------- */
       function paintStage() {
-        const w = G.w, H = G.h, D = K.dark(), s = off(w, H), g = s.g, R2 = K.rng(K.daily() + 3);
+        const w = G.w, H = G.h, s = off(w, H), g = s.g, R2 = K.rng(K.daily() + 3);
         const sk = g.createLinearGradient(0, 0, 0, H * 0.7); sk.addColorStop(0, VEN.sky[0]); sk.addColorStop(1, VEN.sky[1]);
         g.fillStyle = sk; g.fillRect(0, 0, w, H);
         if (venueId === 'stadium') {
-          for (let i = 0; i < 90; i++) { g.fillStyle = 'rgba(255,255,255,' + (0.2 + R2() * 0.5).toFixed(2) + ')'; g.fillRect(R2() * w, R2() * H * 0.3, 1.5, 1.5); }
-          // stands rising behind the crowd
-          for (let r = 0; r < 6; r++) { g.fillStyle = 'rgba(' + (30 + r * 6) + ',' + (38 + r * 7) + ',' + (70 + r * 8) + ',1)'; const y = H * (0.28 + r * 0.055); g.fillRect(0, y, w, H * 0.06); g.fillStyle = 'rgba(255,255,255,0.05)'; for (let x = 0; x < w; x += 9) g.fillRect(x + (r % 2) * 4, y + 3, 3, 3); }
-          [0.12, 0.88].forEach(k => { const x = w * k; g.fillStyle = '#1a2236'; g.fillRect(x - 3, H * 0.08, 6, H * 0.3); g.fillStyle = '#e8f2ff'; for (let i = 0; i < 6; i++) g.fillRect(x - 22 + (i % 3) * 16, H * 0.06 + Math.floor(i / 3) * 12, 12, 8); });
+          for (let i = 0; i < 90; i++) { g.fillStyle = 'rgba(255,255,255,' + (0.2 + R2() * 0.5).toFixed(2) + ')'; g.fillRect(R2() * w, R2() * H * 0.26, 1.5, 1.5); }
+          // tiers of stands, speckled with a crowd of tiny lights
+          for (let r = 0; r < 7; r++) {
+            const y = H * (0.27 + r * 0.047), hh = H * 0.05;
+            g.fillStyle = rgb(mixc([20, 28, 56], [54, 66, 108], r / 6)); g.fillRect(0, y, w, hh);
+            g.fillStyle = 'rgba(255,255,255,0.07)'; g.fillRect(0, y, w, 1.5);
+            for (let x = (r % 2) * 5; x < w; x += 9) { if (R2() < 0.6) { g.fillStyle = R2() < 0.14 ? 'rgba(255,240,200,0.75)' : 'rgba(255,255,255,0.09)'; g.fillRect(x, y + 4 + R2() * (hh - 8), 3, 3); } }
+          }
+          [0.1, 0.9].forEach(k => { const x = w * k; g.fillStyle = '#121a2c'; g.fillRect(x - 3, H * 0.1, 6, H * 0.2); g.fillStyle = '#e8f2ff'; for (let i = 0; i < 6; i++) g.fillRect(x - 22 + (i % 3) * 16, H * 0.085 + Math.floor(i / 3) * 12, 12, 8); });
         } else if (venueId === 'club') {
-          g.fillStyle = 'rgba(255,79,216,0.08)'; for (let i = 0; i < 14; i++) { g.beginPath(); g.moveTo(w / 2, H * 0.05); g.lineTo(R2() * w, H * 0.6); g.lineTo(R2() * w, H * 0.6); g.closePath(); g.fill(); }
-          g.strokeStyle = 'rgba(127,227,255,0.22)'; g.lineWidth = 1; for (let i = 0; i < 18; i++) { g.beginPath(); g.moveTo(0, H * (0.05 + R2() * 0.4)); g.lineTo(w, H * (0.05 + R2() * 0.4)); g.stroke(); }
+          g.fillStyle = 'rgba(255,79,216,0.08)'; for (let i = 0; i < 14; i++) { g.beginPath(); g.moveTo(w / 2, H * 0.05); g.lineTo(R2() * w, H * 0.62); g.lineTo(R2() * w, H * 0.62); g.closePath(); g.fill(); }
+          g.strokeStyle = 'rgba(127,227,255,0.24)'; g.lineWidth = 1; for (let i = 0; i < 18; i++) { const y0 = H * (0.08 + R2() * 0.4); g.beginPath(); g.moveTo(0, y0); g.lineTo(w, y0 + (R2() - 0.5) * 80); g.stroke(); }
+          // a mirror ball
+          const bx = w * 0.5, by = H * 0.33, br = G.phone ? 22 : 30;
+          g.fillStyle = '#c8c8d8'; g.beginPath(); g.arc(bx, by, br, 0, TAU); g.fill();
+          g.fillStyle = 'rgba(40,40,60,0.5)'; for (let yy = -br; yy < br; yy += 6) for (let xx = -br; xx < br; xx += 6) if (xx * xx + yy * yy < br * br && R2() < 0.6) g.fillRect(bx + xx, by + yy, 5, 5);
+          g.strokeStyle = '#888'; g.beginPath(); g.moveTo(bx, 0); g.lineTo(bx, by - br); g.stroke();
         } else if (venueId === 'hall') {
           g.fillStyle = 'rgba(255,240,210,0.08)'; for (let x = 0; x < w; x += 46) g.fillRect(x, 0, 2, H * 0.62);
           const cols = ['#ff6b6b', '#ffd36b', '#69db7c', '#4dabf7', '#b49cff'];
-          for (let row = 0; row < 2; row++) { const y0 = H * (0.08 + row * 0.1); g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, y0); g.quadraticCurveTo(w / 2, y0 + 30, w, y0); g.stroke(); for (let i = 0; i < 16; i++) { const k = (i + 0.5) / 16, x = w * k, y = y0 + 30 * 4 * k * (1 - k) * 0.5 * 2 * 0.5 + 15 * Math.sin(k * Math.PI) ; g.fillStyle = cols[(i + row) % 5]; g.beginPath(); g.moveTo(x - 7, y); g.lineTo(x + 7, y); g.lineTo(x, y + 14); g.closePath(); g.fill(); } }
-          g.strokeStyle = '#d0d0d8'; g.lineWidth = 3; g.strokeRect(w * 0.82, H * 0.2, 40, 28); g.strokeStyle = '#ff6a3c'; g.beginPath(); g.ellipse(w * 0.82 + 20, H * 0.2 + 30, 13, 4, 0, 0, TAU); g.stroke();
+          for (let row = 0; row < 2; row++) {
+            const y0 = H * (0.16 + row * 0.1);
+            g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, y0); g.quadraticCurveTo(w / 2, y0 + 30, w, y0); g.stroke();
+            for (let i = 0; i < 16; i++) { const k = (i + 0.5) / 16, x = w * k, y = y0 + 15 * Math.sin(k * Math.PI); g.fillStyle = cols[(i + row) % 5]; g.beginPath(); g.moveTo(x - 7, y); g.lineTo(x + 7, y); g.lineTo(x, y + 14); g.closePath(); g.fill(); }
+          }
+          g.strokeStyle = '#d0d0d8'; g.lineWidth = 3; g.strokeRect(w * 0.82, H * 0.36, 40, 28); g.strokeStyle = '#ff6a3c'; g.beginPath(); g.ellipse(w * 0.82 + 20, H * 0.36 + 30, 13, 4, 0, 0, TAU); g.stroke();
         } else {
-          g.fillStyle = 'rgba(255,200,140,0.35)'; g.beginPath(); g.arc(w * 0.75, H * 0.32, 40, 0, TAU); g.fill();
-          for (let i = 0; i < 22; i++) { const bw = 20 + R2() * 40, bh = 60 + R2() * 160, x = R2() * w; g.fillStyle = 'rgba(30,20,50,0.92)'; g.fillRect(x, H * 0.55 - bh, bw, bh); g.fillStyle = 'rgba(255,220,150,0.5)'; for (let j = 0; j < 6; j++) g.fillRect(x + 4 + (j % 2) * 9, H * 0.55 - bh + 8 + Math.floor(j / 2) * 14, 4, 6); }
-          g.strokeStyle = 'rgba(255,255,255,0.4)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, H * 0.18); g.quadraticCurveTo(w / 2, H * 0.3, w, H * 0.18); g.stroke();
-          for (let i = 0; i < 20; i++) { const k = (i + 0.5) / 20, x = w * k, y = H * 0.18 + H * 0.12 * 4 * k * (1 - k) * 0.5; g.fillStyle = 'rgba(255,214,140,0.95)'; g.beginPath(); g.arc(x, y + 4, 3, 0, TAU); g.fill(); }
+          g.fillStyle = 'rgba(255,200,140,0.35)'; g.beginPath(); g.arc(w * 0.75, H * 0.36, 40, 0, TAU); g.fill();
+          for (let i = 0; i < 22; i++) { const bw = 20 + R2() * 40, bh = 60 + R2() * 160, x = R2() * w; g.fillStyle = 'rgba(30,20,50,0.92)'; g.fillRect(x, H * 0.6 - bh, bw, bh); g.fillStyle = 'rgba(255,220,150,0.5)'; for (let j = 0; j < 6; j++) if (R2() < 0.7) g.fillRect(x + 4 + (j % 2) * 9, H * 0.6 - bh + 8 + Math.floor(j / 2) * 14, 4, 6); }
+          g.strokeStyle = 'rgba(255,255,255,0.4)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0, H * 0.2); g.quadraticCurveTo(w / 2, H * 0.32, w, H * 0.2); g.stroke();
+          for (let i = 0; i < 20; i++) { const k = (i + 0.5) / 20, x = w * k, y = H * 0.2 + H * 0.12 * 4 * k * (1 - k) * 0.5; g.fillStyle = 'rgba(255,214,140,0.95)'; g.beginPath(); g.arc(x, y + 4, 3, 0, TAU); g.fill(); }
         }
-        // stage lip
-        const sy = H * 0.86;
-        g.fillStyle = D ? '#0a0810' : '#241c2c'; g.fillRect(0, sy, w, H - sy);
-        g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(0, sy, w, 3);
-        for (let x = 20; x < w; x += 46) { g.fillStyle = K.hexA(AN.col, 0.9); g.fillRect(x, sy + 8, 14, 5); }
-        // big screen
-        const sw = Math.min(w * 0.82, 520), sh = G.phone ? 104 : 120, sxx = w / 2 - sw / 2, syy = (G.phone ? 200 : 170) - sh / 2;
+        // a lighting truss across the top
+        const ty = Math.round(Math.max(66, H * 0.085));
+        g.fillStyle = '#121016'; g.fillRect(0, ty - 7, w, 14);
+        g.strokeStyle = 'rgba(210,210,230,0.32)'; g.lineWidth = 1.2; g.beginPath(); for (let x = -7; x < w; x += 14) { g.moveTo(x, ty - 7); g.lineTo(x + 7, ty + 7); g.lineTo(x + 14, ty - 7); } g.stroke();
+        G.cans = [];
+        const nC = G.phone ? 6 : 10;
+        for (let i = 0; i < nC; i++) { const x = w * (i + 0.5) / nC; g.fillStyle = '#0a090e'; rr(g, x - 7, ty + 5, 14, 15, 3); g.fill(); g.fillStyle = 'rgba(255,236,200,0.9)'; g.beginPath(); g.arc(x, ty + 20, 4.5, 0, TAU); g.fill(); G.cans.push({ x, y: ty + 20, c: i % 2 ? AN.col : VEN.accent }); }
+        // the big screen
+        const sw = Math.min(w * 0.84, 540), sh = G.phone ? 112 : 128, sxx = w / 2 - sw / 2, syy = (G.screenY || (G.phone ? 200 : 178)) - sh / 2;
         g.fillStyle = '#05040a'; g.fillRect(sxx - 8, syy - 8, sw + 16, sh + 16);
-        const scr = g.createLinearGradient(0, syy, 0, syy + sh); scr.addColorStop(0, '#1a1030'); scr.addColorStop(1, '#30164a');
+        g.fillStyle = '#1a1622'; g.fillRect(w / 2 - 4, syy + sh + 8, 8, H * 0.05);
+        const scr = g.createLinearGradient(0, syy, 0, syy + sh); scr.addColorStop(0, '#1a1030'); scr.addColorStop(1, '#33164e');
         g.fillStyle = scr; g.fillRect(sxx, syy, sw, sh);
         g.fillStyle = 'rgba(255,255,255,0.05)'; for (let y = syy; y < syy + sh; y += 3) g.fillRect(sxx, y, sw, 1);
         return s;
       }
+      /* The crowd in rows, each row cached in two poses (hands mid, hands high) that swap on the beat. */
+      function stageCrowd() {
+        const w = G.w, H = G.h, D = K.dark(), rows = G.phone ? 4 : 5, out = [], R3 = K.rng(29);
+        for (let r = 0; r < rows; r++) {
+          const s = (G.phone ? 0.95 : 1.15) * (0.8 + r * 0.22), y0 = H * (0.555 + r * 0.068), hh = H * 0.22, top = 40 * s;
+          const people = [], n = Math.max(8, Math.round(w / (17 * s)));
+          for (let i = 0; i < n; i++) people.push({ x: (i + 0.5 + (R3() - 0.5) * 0.6) * (w / n), dy: (R3() - 0.5) * 6 * s, z: s * (0.85 + R3() * 0.3), arm: R3() < 0.45 ? (R3() < 0.5 ? -1 : 1) : 0, both: R3() < 0.14, light: R3() < 0.2 });
+          const col = D ? rgb([8 + r * 5, 6 + r * 4, 16 + r * 6]) : rgb([44 + r * 7, 30 + r * 6, 58 + r * 7]);
+          const rim = rgba(mixc(hexRgb(VEN.accent), [255, 255, 255], 0.4), 0.3 + r * 0.05);
+          const frames = [0, 1].map(f => {
+            const c = off(w, top + hh), g = c.g;
+            g.fillStyle = col; g.strokeStyle = col; g.lineCap = 'round';
+            people.forEach(p => {
+              const x = p.x, y = top + p.dy, z = p.z;
+              (p.both ? [-1, 1] : p.arm ? [p.arm] : []).forEach(sd => { const lift = f ? 1 : 0.5, hx = x + sd * (9 + 5 * f) * z, hy = y - (6 + 18 * lift) * z; g.lineWidth = 3.4 * z; g.beginPath(); g.moveTo(x + sd * 7 * z, y + 9 * z); g.lineTo(hx, hy); g.stroke(); g.beginPath(); g.arc(hx, hy, 2.7 * z, 0, TAU); g.fill(); });
+              g.beginPath(); g.arc(x, y, 5.4 * z, 0, TAU); g.fill();
+              g.beginPath(); g.ellipse(x, y + 13 * z, 10.5 * z, 7.5 * z, 0, Math.PI, TAU); g.fill(); g.fillRect(x - 10.5 * z, y + 13 * z, 21 * z, hh);
+            });
+            g.strokeStyle = rim; g.lineWidth = 1.2;
+            people.forEach(p => { g.beginPath(); g.arc(p.x, top + p.dy, 5.4 * p.z, Math.PI * 1.15, Math.PI * 1.85); g.stroke(); });
+            return c;
+          });
+          out.push({ y: y0 - top, frames, lights: people.filter(p => p.light).map(p => ({ x: p.x + 8 * p.z, y: y0 + p.dy - 12 * p.z, ph: p.x })) });
+        }
+        return out;
+      }
+      function stageFloor() {
+        const w = G.w, H = G.h, D = K.dark(), sy = Math.round(H * 0.84), hh = H - sy + 2, s = off(w, hh), g = s.g;
+        const fg = g.createLinearGradient(0, 0, 0, hh); fg.addColorStop(0, D ? '#1c1824' : '#2e2836'); fg.addColorStop(1, D ? '#08070c' : '#141018');
+        g.fillStyle = fg; g.fillRect(0, 0, w, hh);
+        g.fillStyle = 'rgba(255,255,255,0.16)'; g.fillRect(0, 0, w, 2);
+        for (let x = 14; x < w; x += 40) { g.fillStyle = K.hexA(AN.col, 0.9); g.fillRect(x, 7, 16, 4); }
+        g.strokeStyle = 'rgba(255,255,255,0.05)'; g.lineWidth = 1;
+        for (let y = 20; y < hh; y += 15) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+        return { c: s.c, y: sy, h: hh };
+      }
       const flames = [];
       function pyro() {
-        const H = G.h, xs = G.phone ? [0.08, 0.92] : [0.06, 0.28, 0.72, 0.94];
-        xs.forEach(k => flames.push({ x: G.w * k, y: H * 0.86, t0: performance.now(), h: H * (G.phone ? 0.3 : 0.36) }));
-        if (A.ctx) { A.noise({ filter: 'lowpass', freq: 900, to: 300, dur: 0.6, attack: 0.02, vol: 0.09 }); A.tone({ type: 'sine', freq: 70, to: 40, glide: 0.3, dur: 0.4, vol: 0.12 }); }
-        if (Math.floor(beatSeen / 4) % 2 === 0) { P.emit('confetti', 10, G.h * 0.86, 16, { angle: -Math.PI / 2 + 0.4, spread: 0.6, speed: [280, 520], colors: [AN.col, '#ffd36b', '#fff6d0', VEN.accent, '#ff8fb1'] }); P.emit('confetti', G.w - 10, G.h * 0.86, 16, { angle: -Math.PI / 2 - 0.4, spread: 0.6, speed: [280, 520], colors: [AN.col, '#ffd36b', '#fff6d0', VEN.accent, '#ff8fb1'] }); }
+        const H = G.h, sy = STF ? STF.y : H * 0.84, xs = G.phone ? [0.07, 0.93] : [0.06, 0.27, 0.73, 0.94];
+        xs.forEach(k => flames.push({ x: G.w * k, y: sy, t0: performance.now(), h: H * (G.phone ? 0.34 : 0.4) }));
+        if (A.ctx && !ST.songOver) { A.noise({ filter: 'lowpass', freq: 900, to: 300, dur: 0.6, attack: 0.02, vol: 0.09 }); A.tone({ type: 'sine', freq: 70, to: 40, glide: 0.3, dur: 0.4, vol: 0.12 }); }
+        if (Math.floor(beatSeen / 4) % 2 === 0) {
+          const cc = [AN.col, '#ffd36b', '#fff6d0', VEN.accent, '#ff8fb1'];
+          P.emit('confetti', 10, sy, 18, { angle: -Math.PI / 2 + 0.4, spread: 0.6, speed: [300, 560], colors: cc });
+          P.emit('confetti', G.w - 10, sy, 18, { angle: -Math.PI / 2 - 0.4, spread: 0.6, speed: [300, 560], colors: cc });
+        }
       }
       function drawStage(g, dt, t, now, vn) {
         const w = G.w, H = G.h;
         if (!STG) STG = paintStage();
+        if (!CROWD) CROWD = stageCrowd();
+        if (!STF) STF = stageFloor();
         g.drawImage(STG.c, 0, 0, w, H);
-        // sweeping beams
+        // truss lamps flash on the beat, their beams sweep the crowd
         g.save(); g.globalCompositeOperation = 'lighter';
-        for (let i = 0; i < 4; i++) {
-          const a = Math.sin(t * 0.8 + i * 1.6) * 0.5, x0 = w * (0.15 + i * 0.23);
-          g.globalAlpha = 0.1 + 0.06 * W.kick; g.fillStyle = i % 2 ? VEN.accent : AN.col;
-          g.beginPath(); g.moveTo(x0 - 6, H * 0.86); g.lineTo(x0 + 6, H * 0.86); g.lineTo(x0 + Math.sin(a) * H + 90, -10); g.lineTo(x0 + Math.sin(a) * H - 90, -10); g.closePath(); g.fill();
-        }
+        G.cans.forEach((c, i) => {
+          const a = Math.sin(t * 0.85 + i * 1.3) * 0.5;
+          g.globalAlpha = 0.08 + 0.07 * W.kick; g.fillStyle = c.c;
+          g.beginPath(); g.moveTo(c.x - 4, c.y); g.lineTo(c.x + 4, c.y); g.lineTo(c.x + Math.sin(a) * H * 0.6 + 70, STF.y); g.lineTo(c.x + Math.sin(a) * H * 0.6 - 70, STF.y); g.closePath(); g.fill();
+          g.globalAlpha = 0.45 + 0.55 * W.pulse; g.drawImage(SPR.white, c.x - 18, c.y - 18, 36, 36);
+        });
         g.restore(); g.globalAlpha = 1;
-        // the crowd, hands up on the beat, phone lights twinkling
-        const rows = G.phone ? 4 : 5;
-        for (let r = 0; r < rows; r++) {
-          const y = H * (0.6 + r * 0.06), n = Math.round(w / (G.phone ? 24 - r * 2 : 30 - r * 3)), sz = 6 + r * 2.2;
-          g.fillStyle = 'rgba(' + (6 + r * 3) + ',' + (4 + r * 3) + ',' + (12 + r * 4) + ',1)';
-          for (let i = 0; i < n; i++) {
-            const x = (i + 0.5 + (r % 2) * 0.5) * (w / n), ph = i * 2.3 + r, bob = W.kick * (3 + r) * (0.5 + 0.5 * Math.sin(ph));
-            g.beginPath(); g.arc(x, y - bob, sz, 0, TAU); g.fill(); g.fillRect(x - sz * 1.4, y - bob + sz * 0.7, sz * 2.8, H * 0.1);
-            if ((i + r) % 4 === 0) { const up = 0.5 + 0.5 * Math.sin(t * 6 + ph); g.fillRect(x + sz * 0.8, y - bob - sz * (1.2 + up * 1.4), 2.5 + r * 0.4, sz * (1.4 + up)); }
-          }
-        }
-        for (let i = 0; i < (G.phone ? 34 : 70); i++) {
-          const x = ((i * 97.3) % w), y = H * (0.58 + ((i * 0.37) % 1) * 0.24), a = 0.4 + 0.6 * Math.abs(Math.sin(t * 2.2 + i));
-          g.globalAlpha = a; g.drawImage(SPR.white, x - 5, y - 5, 10, 10);
-        }
+        // the crowd: hands up on the beat, phone lights twinkling
+        g.save(); g.beginPath(); g.rect(0, 0, w, STF.y); g.clip();
+        CROWD.forEach((row, r) => { const f = row.frames[(Math.max(0, beatSeen) + r) % 2]; g.drawImage(f.c, 0, row.y - W.kick * (2 + r * 1.3), w, f.h); });
+        g.restore();
+        CROWD.forEach((row, r) => row.lights.forEach((p) => { g.globalAlpha = 0.45 + 0.55 * Math.abs(Math.sin(t * 2.2 + p.ph)); g.drawImage(SPR.white, p.x - 6, p.y - 6 - W.kick * (2 + r * 1.3), 12, 12); }));
         g.globalAlpha = 1;
+        // the stage you walked out on, with a spotlight for the three of you
+        g.drawImage(STF.c, 0, STF.y, w, STF.h);
+        g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.32 + 0.1 * W.kick; g.drawImage(SPR.warm, w / 2 - w * 0.46, STF.y - 14, w * 0.92, H - STF.y + 30); g.restore(); g.globalAlpha = 1;
         // pyro on every downbeat
         g.save(); g.globalCompositeOperation = 'lighter';
         for (let i = flames.length - 1; i >= 0; i--) {
-          const f = flames[i], k = (now - f.t0) / 700; if (k >= 1) { flames.splice(i, 1); continue; }
-          const hh = f.h * Math.sin(Math.min(1, k * 2.2) * Math.PI / 2) * (1 - k * 0.3), ww = 34 + 10 * Math.sin(k * 20);
+          const f = flames[i], k = (now - f.t0) / 760; if (k >= 1) { flames.splice(i, 1); continue; }
+          const hh = f.h * Math.sin(Math.min(1, k * 2.4) * Math.PI / 2) * (1 - k * 0.35), ww = (G.phone ? 40 : 56) + 12 * Math.sin(k * 22);
           g.globalAlpha = (1 - k) * 0.95; g.drawImage(SPR.flame, f.x - ww / 2, f.y - hh, ww, hh);
-          g.globalAlpha = (1 - k) * 0.5; g.drawImage(SPR.warm, f.x - 80, f.y - 90, 160, 120);
-          if (k < 0.5 && Math.random() < 0.5) P.emit('ember', f.x + (Math.random() - 0.5) * 20, f.y - hh * 0.7, 1, { speed: [40, 120], angle: -Math.PI / 2, spread: 0.8 });
+          g.globalAlpha = (1 - k) * 0.55; g.drawImage(SPR.warm, f.x - 90, f.y - 110, 180, 140);
+          if (k < 0.5 && Math.random() < 0.6) P.emit('ember', f.x + (Math.random() - 0.5) * 20, f.y - hh * 0.7, 1, { speed: [40, 120], angle: -Math.PI / 2, spread: 0.8 });
         }
         g.restore(); g.globalAlpha = 1;
         P.update(dt); P.draw(g);

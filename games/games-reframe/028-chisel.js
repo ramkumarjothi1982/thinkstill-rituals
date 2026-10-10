@@ -171,11 +171,18 @@
 
     /* ---------- the scanner ---------- */
     const W1 = (T, i) => (T[i] ? T[i].lo : '');
+    const POS_NEXT = /^(helps?|helped|helping|supports?|supported|loves?|loved|cares?|cared|kind|nice|lovely|generous|patient|there|listens?|listened|invites?|invited|includes?|included|welcomes?|welcomed|encourages?|encouraged|believes?|believed|forgives?|forgave|thanks?|thanked|backs?|backed|comforts?|comforted|proud|happy|great|good|fine|okay|ok|right|smiles?|smiled)$/;
+    const NEG_ABS = /^(never|nobody|nobody's|no|no-one|noone|nothing|nothing's|none|can't|won't|anything|anyone|anybody)$/;
     function scan(T, mode) {
       const hits = [], used = new Set();
       const SPEECH = /^(said|says|told|tells|asked|asks|texted|wrote|writes|messaged|emailed|replied|yelled|shouted|commented|posted|claimed|claims|called|calls|reckons|reckoned|insists|insisted)$/;
       const push = (h) => { if (h.at.some(k => used.has(T[k].id))) return;
         if (T.slice(0, h.at[0]).some(x => SPEECH.test(x.lo))) return; // their words, as reported: never ours to edit
+        // a kind absolute ("he always helps me", "everyone was lovely") is not ours to shrink; "everyone else is happy" still is
+        const lastK = h.at[h.at.length - 1], rest = T.slice(lastK + 1).map(x => x.lo).join(' ');
+        if (!NEG_ABS.test(T[h.at[0]].lo) && W1(T, lastK + 1) !== 'else' && !/\b(except|apart|other than|than me|but me|not me|without me)\b/.test(rest)) {
+          for (let k = lastK + 1; k < Math.min(T.length, lastK + 4); k++) { if (!isWord(T[k])) break; if (POS_NEXT.test(T[k].lo)) return; }
+        }
         h.at.concat(h.also || []).forEach(k => used.add(T[k].id)); h.ids = h.at.map(k => T[k].id); h.word = h.at.map(k => T[k].w).join(' '); hits.push(h); };
       const negBefore = (i) => { for (let j = i - 1; j >= 0; j--) { const lo = T[j].lo; if (/n't$/.test(lo) || /^(not|never|no|cannot|nobody|nothing)$/.test(lo)) return j; if (/^[,;]$/.test(lo)) return -1; } return -1; };
       for (let i = 0; i < T.length; i++) {
@@ -346,22 +353,22 @@
       if (bo.tense === 'pres' && s && s.sg && s.pro !== 'i' && s.pro !== 'you' && !s.noun) return null; // "he never listen": not our grammar to fix
       const dn = third ? "doesn't" : "don't";
       const f1 = withNpi(E(dn.toUpperCase() + ' ALWAYS', { a: i, b: i + 2, repl: dn + ' always ' + bo.base }), T, i + 2);
-      const f2 = E('SOMETIMES ' + dn.toUpperCase(), { a: i, b: i + 2, repl: 'sometimes ' + dn + ' ' + bo.base });
+      const f2 = withNpi(E('SOMETIMES ' + dn.toUpperCase(), { a: i, b: i + 2, repl: 'sometimes ' + dn + ' ' + bo.base }), T, i + 2, true);
       return { at: [i], also: npiOps(T, i + 2).ids, kind: 'never', load: true, auto: f1, fair: [f1, f2], mirror: withNpi(E('ALWAYS', { a: i, b: i + 1, repl: 'always' }), T, i + 2) };
     }
     function wontEver(T, i) {
       const s = subjectAt(T, i); const v = T[i + 2]; if (!s || !v || !/^[a-z]+$/.test(v.lo)) return null;
       const isW = T[i].lo === "won't";
-      if (!isW) return { at: [i, i + 1], kind: 'never', load: true, auto: E("CAN'T ALWAYS", { a: i, b: i + 2, repl: "can't always" }), fair: [E("CAN'T ALWAYS", { a: i, b: i + 2, repl: "can't always" }), E("CAN'T YET", { a: i, b: i + 2, repl: "can't" }, { tail: 'yet' })], mirror: null };
+      if (!isW) { const f1 = withNpi(E("CAN'T ALWAYS", { a: i, b: i + 2, repl: "can't always" }), T, i + 2); return { at: [i, i + 1], also: npiOps(T, i + 2).ids, kind: 'never', load: true, auto: f1, fair: [f1, withNpi(E("CAN'T YET", { a: i, b: i + 2, repl: "can't" }, { tail: 'yet' }), T, i + 2, true)], mirror: null }; }
       const base = v.lo;
       const f1 = base === 'be' ? E('NOT YET', { a: s.i0, b: i + 3, repl: negBe(s) }, { tail: 'yet' }) : E('NOT YET', { a: s.i0, b: i + 3, repl: subjText(s) + ' ' + (haveOf(s) === 'has' ? "hasn't" : "haven't") + ' ' + participle(base) }, { tail: 'yet' });
       const take = s.pro === 'i' ? 'it might take time to ' + base : 'it might take time for ' + objOf(s).replace(/^(The|My|His|Her|Their|Our|Your)\b/, m => m.toLowerCase()) + ' to ' + base;
       return { at: [i, i + 1], kind: 'never', load: true, auto: f1, fair: [f1, E('MIGHT TAKE TIME', { a: s.i0, b: i + 3, repl: take })], mirror: null };
     }
     const subjText = (s) => s.text;
-    /* "anything" after a negation that becomes "not always": "I never finish anything" -> "I don't always finish everything" */
-    function npiOps(T, from) { const ops = [], ids = []; for (let k = from; k < T.length; k++) { if (!isWord(T[k])) break; const lo = T[k].lo; if (lo === 'anything') { ops.push({ a: k, b: k + 1, repl: 'everything' }); ids.push(k); } else if (lo === 'anyone' || lo === 'anybody') { ops.push({ a: k, b: k + 1, repl: 'everyone' }); ids.push(k); } } return { ops, ids }; }
-    function withNpi(e, T, from) { const n = npiOps(T, from); if (n.ops.length) e.ops = e.ops.concat(n.ops); return e; }
+    /* "anything" after a negation: "I never finish anything" -> "I don't always finish everything" / "I sometimes don't finish things" */
+    function npiOps(T, from, some) { const ops = [], ids = []; for (let k = from; k < T.length; k++) { if (!isWord(T[k])) break; const lo = T[k].lo; if (lo === 'anything') { ops.push({ a: k, b: k + 1, repl: some ? 'things' : 'everything' }); ids.push(k); } else if (lo === 'anyone' || lo === 'anybody') { ops.push({ a: k, b: k + 1, repl: some ? 'people' : 'everyone' }); ids.push(k); } } return { ops, ids }; }
+    function withNpi(e, T, from, some) { const n = npiOps(T, from, some); if (n.ops.length) e.ops = e.ops.concat(n.ops); return e; }
 
     function everyone(T, i) {
       const t = T[i], lo = t.lo, sTok = /'s$/.test(lo);
@@ -421,6 +428,9 @@
       const pl = AG[v.lo] || (isThird(v.lo) ? lemma3(v.lo) : (/ed$|^(will|can|would|could|might)$/.test(v.lo) || PAST2BASE[v.lo] ? v.lo : null));
       if (pl && !sTok) f2 = E('ONLY SOME PEOPLE', { a: i, b: j + 1, repl: ['only some people'].concat(keep).concat([pl]).join(' ') });
       const mirror = E('EVERYONE', { a: i, b: j, repl: ['everyone' + (sTok ? "'s" : '')].concat(keep).join(' ') });
+      // "nobody cares at all" / "nobody is surprised anymore": the negative-polarity tail goes with the "nobody"
+      const tail = []; for (let k = j; k < T.length && isWord(T[k]); k++) { if (T[k].lo === 'anymore' || T[k].lo === 'either') tail.push({ a: k, b: k + 1, repl: '' }); else if (T[k].lo === 'at' && W1(T, k + 1) === 'all') tail.push({ a: k, b: k + 2, repl: '' }); }
+      if (tail.length) [f1, f2, mirror].forEach(e => { if (e) e.ops = e.ops.concat(tail); });
       return { at: two ? [i, i + 1].concat(ever) : [i].concat(ever), kind: 'people', load: true, auto: f1, fair: f2 ? [f1, f2] : [f1], mirror };
     }
     const GOODADJ = /^(fine|okay|ok|great|good|perfect|right|alright|all|amazing|lovely|well|sorted)$/, BADADJ = /^(wrong|bad|broken|amiss|lost|ruined|over|the matter)$/;
@@ -433,6 +443,19 @@
       const ever = rangeIdx(i + 1, j).filter(k => T[k].lo === 'ever');
       const keep = rangeIdx(i + 1, j).filter(k => T[k].lo !== 'ever').map(k => T[k].w);
       if (startLike && (sTok || (v && (AUX.has(v.lo) || isThird(v.lo) || /ed$/.test(v.lo) || PAST2BASE[v.lo] || /^(i|you|he|she|they|we)$/.test(v.lo) || /^(i've|i'd|i'm|you've)$/.test(v.lo))))) {
+        // "nothing will ever change" is a prediction: the fair version stays open ("some things might change") or says what is
+        // true now ("things haven't changed yet")
+        if (!sTok && v && /^(will|would|can|could)$/.test(v.lo)) {
+          let k = j + 1; while (T[k] && (ADV_SKIP.has(T[k].lo) || T[k].lo === 'ever')) k++;
+          const vb = T[k];
+          if (vb && /^[a-z]+$/.test(vb.lo) && !NOT_VERB.has(vb.lo) && !AUX.has(vb.lo) && vb.lo !== 'be') {
+            const evs = rangeIdx(j + 1, k).filter(q => T[q].lo === 'ever').map(q => ({ a: q, b: q + 1, repl: '' }));
+            const g1 = E('MIGHT', [{ a: i, b: j + 1, repl: ['some things'].concat(keep).concat(['might']).join(' ') }].concat(evs));
+            const g2 = E('NOT YET', { a: i, b: k + 1, repl: ['things'].concat(keep).concat(["haven't", participle(vb.lo)]).join(' ') }, { tail: 'yet' });
+            const mir = E('EVERYTHING', [{ a: i, b: j, repl: ['everything'].concat(keep).join(' ') }].concat(evs));
+            return { at: [i].concat(ever), kind: 'things', load: true, auto: g1, fair: [g1, g2], mirror: mir };
+          }
+        }
         const f1 = E('NOT EVERYTHING', { a: i, b: j, repl: ['not everything' + (sTok ? "'s" : '')].concat(keep).join(' ') });
         const AG = { is: 'are', was: 'were', has: 'have', does: 'do', "isn't": "aren't", "doesn't": "don't", "wasn't": "weren't" };
         let f2 = null;
@@ -460,12 +483,12 @@
         const neg = NEG_AUX[base === 's' ? 'has' : base]; if (!neg) return null;
         const subjPart = c ? (c[0] === 'i' ? 'I' : c[0]) + ' ' : '';
         const perfect = /^(have|has|had)$/.test(base);
-        f1 = E('NOT MUCH', [{ a: a0, b: a0 + 1, repl: subjPart + (base === 'will' ? 'might not' : neg) }, { a: i, b: i + 1, repl: much }], perfect && !good ? { tail: 'yet' } : null);
+        f1 = E(good ? 'NOT EVERYTHING' : 'NOT MUCH', [{ a: a0, b: a0 + 1, repl: subjPart + (base === 'will' ? 'might not' : neg) }, { a: i, b: i + 1, repl: much }], perfect && !good ? { tail: 'yet' } : null);
       } else if (s && !s.contracted) { // subject + verb + nothing
         const bo = baseOf(vb.lo); if (!bo) return null;
         const dn = bo.tense === 'past' ? "didn't" : (bo.tense === 'pres3' || (s.sg && s.pro !== 'i' && s.pro !== 'you')) ? "doesn't" : "don't";
         if (bo.tense === 'pres' && s.sg && s.pro !== 'i' && s.pro !== 'you') return null;
-        f1 = E('NOT MUCH', [{ a: k, b: k + 1, repl: dn + ' ' + bo.base }, { a: i, b: i + 1, repl: much }]);
+        f1 = E(good ? 'NOT EVERYTHING' : 'NOT MUCH', [{ a: k, b: k + 1, repl: dn + ' ' + bo.base }, { a: i, b: i + 1, repl: much }]);
       }
       if (!f1) return { at: [i], kind: 'things', load: true, auto: little, fair: [little], mirror: E('EVERYTHING', { a: i, b: i + 1, repl: 'everything' }) };
       return { at: [i], kind: 'things', load: true, auto: f1, fair: [f1, little], mirror: E('EVERYTHING', { a: i, b: i + 1, repl: 'everything' }) };
@@ -542,11 +565,16 @@
         const f2 = E('IMPERFECT', { a: i - 1, b: i + 1, repl: 'an imperfect' });
         return { at: [i - 1, i], kind: 'super', load: true, auto: f2, fair: [f2, f1], mirror: E('THE BEST', { a: i - 1, b: i + 1, repl: 'the best' }) };
       }
-      if (/^[a-z]+$/.test(nx) && !NOT_VERB.has(nx) && !AUX.has(nx) && !/^(thing)$/.test(nx)) {
-        let tailK = 0; // "the worst day of my life" / "the worst day ever": the superlative's frame goes too
-        if (W1(T, i + 2) === 'of' && W1(T, i + 3) === 'my' && W1(T, i + 4) === 'life') tailK = 3; else if (W1(T, i + 2) === 'ever') tailK = 1;
-        const f1 = E('A HARD', [{ a: i - 1, b: i + 1, repl: 'a hard' }].concat(tailK ? [{ a: i + 2, b: i + 2 + tailK, repl: '' }] : []));
-        const f2 = E('A TOUGH', [{ a: i - 1, b: i + 1, repl: 'a tough' }].concat(tailK ? [{ a: i + 2, b: i + 2 + tailK, repl: '' }] : []));
+      if (/^[a-z]+$/.test(nx) && !NOT_VERB.has(nx) && !AUX.has(nx)) {
+        // the superlative's frame goes too: "of my life", "ever", and the "ever" in "that has ever happened" / "I've ever done"
+        const drop = [];
+        if (W1(T, i + 2) === 'of' && W1(T, i + 3) === 'my' && W1(T, i + 4) === 'life') drop.push({ a: i + 2, b: i + 5, repl: '' });
+        else if (W1(T, i + 2) === 'ever') drop.push({ a: i + 2, b: i + 3, repl: '' });
+        else for (let k = i + 2; k < T.length && k < i + 8 && isWord(T[k]); k++) if (T[k].lo === 'ever') { drop.push({ a: k, b: k + 1, repl: '' }); break; }
+        const did = T.slice(i + 2, i + 8).some(x => /^(i|i've|i'd)$/.test(x.lo)) && T.slice(i + 2, i + 9).some(x => /^(did|done|said|made|do|say|make)$/.test(x.lo));
+        const adj = did ? ['a bad', 'a regrettable'] : ['a hard', 'a tough'];
+        const f1 = E(adj[0].toUpperCase(), [{ a: i - 1, b: i + 1, repl: adj[0] }].concat(drop));
+        const f2 = E(adj[1].toUpperCase(), [{ a: i - 1, b: i + 1, repl: adj[1] }].concat(drop));
         return { at: [i - 1, i], kind: 'super', load: true, auto: f1, fair: [f1, f2], mirror: E('THE BEST', { a: i - 1, b: i + 1, repl: 'the best' }) };
       }
       // I'm the worst
@@ -593,8 +621,15 @@
     function pick(text, mode, spans) {
       const raw = String(text || '').replace(/[’‘`´]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, ' ').trim();
       if (!raw) return null;
-      const cams = (Array.isArray(spans) ? spans : []).filter(x => x && x.kind === 'camera' && x.quote).map(x => String(x.quote).replace(/[’‘`´]/g, "'").toLowerCase());
+      const norm = (q) => String(q || '').replace(/[’‘`´]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, ' ').trim();
+      const cams = (Array.isArray(spans) ? spans : []).filter(x => x && x.kind === 'camera' && x.quote).map(x => norm(x.quote).toLowerCase());
       const cands = [];
+      // the reading's own "brain" spans first (exact pieces of their text), then their sentences and clauses
+      (Array.isArray(spans) ? spans : []).forEach(x => {
+        if (!x || x.kind !== 'brain' || !x.quote) return;
+        const q = norm(x.quote).replace(/^(and|but|so|then|plus|also|honestly|basically|like|anyway)\s+/i, '').replace(/^["'(]+|["')]+$/g, '').replace(/[.!?;,:]+$/, '').trim();
+        if (q && raw.toLowerCase().includes(q.toLowerCase()) && q.split(' ').length <= 16) cands.push(q);
+      });
       raw.split(/[.!?;\n]+|\s[-–—]\s/).forEach(sen => {
         sen = sen.trim().replace(/^(and|but|so|then|plus|also|honestly|basically|like|anyway)\s+/i, '').replace(/^["'(]+|["')]+$/g, '').trim();
         if (!sen) return;
@@ -605,7 +640,7 @@
       cands.forEach((c, ci) => {
         const T = tok(c), hits = scan(T, mode); if (!hits.length) return;
         const n = c.split(' ').length;
-        let sc = hits.reduce((a, h) => a + (h.load ? 3 : 2), 0) + (hits.some(h => h.load) ? 1.5 : 0) - Math.max(0, n - 11) * 0.7 - (n < 3 ? 2 : 0) - ci * 0.01;
+        let sc = hits.reduce((a, h) => a + (h.load ? 3 : 2), 0) + (hits.some(h => h.load) ? 1.5 : 0) - Math.max(0, n - 11) * 0.7 - (n < 3 ? 2 : 0) - ci * 0.001;
         if (cams.some(q => q.includes(c.toLowerCase()))) sc -= 4;
         if (LABEL.test(c)) sc -= 3; // a harsh label would stay carved: prefer a clause without one
         const neg = (c.match(NEGW) || []).length, pos = (c.match(POSW) || []).length;
@@ -623,9 +658,9 @@
   const ROMAN = "'Marcellus SC', 'Marcellus', 'TeX Gyre Pagella', 'Palatino Linotype', 'Book Antiqua', Palatino, 'URW Palladio L', Georgia, serif";
   const STONES = [
     { key: 'carrara', name: 'Carrara', base: '#ecebe6', base2: '#d9d7d1', vein: '#8f97a3', cut: '#4c525c', lit: '#ffffff', rock: '#b9b6ae', gloss: '#ffffff' },
-    { key: 'verde', name: 'Verde Alpi', base: '#3f6e5c', base2: '#2b5446', vein: '#d6eadf', cut: '#10291f', lit: '#9fd1ba', rock: '#2f4f43', gloss: '#e9fff4' },
+    { key: 'verde', name: 'Verde Alpi', base: '#3f6e5c', base2: '#2b5446', vein: '#d6eadf', cut: '#d3e8dc', lit: '#16332a', rock: '#2f4f43', gloss: '#e9fff4' },
     { key: 'rosa', name: 'Rosa Portogallo', base: '#ecc9be', base2: '#d9ad9f', vein: '#a87266', cut: '#6e3b33', lit: '#fff1ec', rock: '#b9897c', gloss: '#fff4f0' },
-    { key: 'nero', name: 'Nero Marquina', base: '#2c2c31', base2: '#1d1d21', vein: '#e3e3e8', cut: '#08080a', lit: '#77777f', rock: '#3a3a40', gloss: '#f4f4ff' },
+    { key: 'nero', name: 'Nero Marquina', base: '#2c2c31', base2: '#1d1d21', vein: '#e3e3e8', cut: '#d6d6de', lit: '#0b0b0e', rock: '#3a3a40', gloss: '#f4f4ff' },
     { key: 'calacatta', name: 'Calacatta Gold', base: '#f4efe4', base2: '#e4dccb', vein: '#b8955a', cut: '#5e4c33', lit: '#ffffff', rock: '#c6bba5', gloss: '#fffaf0' },
     { key: 'travertine', name: 'Travertine', base: '#e3d3b5', base2: '#cdb994', vein: '#b49b72', cut: '#6a5538', lit: '#fff6e2', rock: '#b8a27c', gloss: '#fffaf0', bands: true },
     { key: 'bardiglio', name: 'Bardiglio Blue', base: '#a9b3bf', base2: '#8b97a6', vein: '#59657a', cut: '#2b3340', lit: '#e6edf6', rock: '#7d8898', gloss: '#f2f7ff' }
@@ -685,22 +720,22 @@
 .g-chisel .cz-cap { position: absolute; z-index: 22; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px); text-align: center; pointer-events: none;
   font: 400 14px/1.2 ${ROMAN}; letter-spacing: .14em; color: #f6ead6; padding: 6px 14px 5px; border-radius: 999px; background: rgba(26,20,15,.62); transition: opacity .4s ease; }
 .g-chisel[data-br="1"] .cz-cap { color: #fff8ec; background: rgba(70,50,30,.7); }
-.g-chisel .cz-fin { position: absolute; z-index: 26; display: flex; flex-direction: column; gap: 8px; pointer-events: none; text-align: center; padding: 14px 16px 13px; border-radius: 16px;
-  background: linear-gradient(180deg, #221b14, #15110c); border: 1px solid rgba(255,226,170,.22); box-shadow: 0 16px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06); animation: cz-in .6s ease both; }
-.g-chisel .cz-fin-h { font: 400 24px/1.05 ${ROMAN}; letter-spacing: .06em; color: #ffe2a6; text-shadow: 0 2px 14px rgba(255,190,90,.4); animation: cz-in .7s ease .15s both; }
-.g-chisel .cz-was { font: 600 15px/1.35 var(--font-ui); color: #e8dccb; animation: cz-in .7s ease .4s both; }
-.g-chisel .cz-was s { text-decoration-thickness: 2px; text-decoration-color: rgba(255,140,110,.9); }
-.g-chisel .cz-was small, .g-chisel .cz-fair small { display: block; font: 400 12px/1.2 ${ROMAN}; letter-spacing: .16em; color: #cdb48a; margin-bottom: 3px; }
-.g-chisel .cz-fair { font: 600 15px/1.35 var(--font-ui); color: #fff3dc; padding: 9px 12px; border-radius: 12px; background: rgba(255,240,210,.07); border: 1px solid rgba(255,230,180,.2); animation: cz-in .7s ease .65s both; }
-.g-chisel .cz-care { font: 600 13px/1.35 var(--font-ui); color: #f3e6cf; animation: cz-in .7s ease .8s both; }
-.g-chisel .cz-foot { display: flex; justify-content: center; flex-wrap: wrap; gap: 3px 14px; font: 400 13px/1.25 ${ROMAN}; letter-spacing: .1em; color: #e6cf9f; animation: cz-in .7s ease .95s both; }
-.g-chisel[data-br="1"] .cz-fin { background: linear-gradient(180deg, #fffbf4, #f6eddc); border-color: rgba(120,90,50,.25); box-shadow: 0 16px 36px rgba(90,60,30,.22); }
-.g-chisel[data-br="1"] .cz-fin-h { color: #7a4c10; text-shadow: none; }
-.g-chisel[data-br="1"] .cz-was { color: #4a3826; } .g-chisel[data-br="1"] .cz-was small, .g-chisel[data-br="1"] .cz-fair small { color: #8a6838; }
-.g-chisel[data-br="1"] .cz-fair { color: #3a2a18; background: rgba(120,90,50,.07); border-color: rgba(120,90,50,.2); }
-.g-chisel[data-br="1"] .cz-care { color: #4a3826; } .g-chisel[data-br="1"] .cz-foot { color: #7a5a2a; }
+.g-chisel .cz-fin { position: absolute; z-index: 26; display: flex; flex-direction: column; gap: 6px; pointer-events: none; text-align: center; padding: 13px 26px 12px; border-radius: 5px; color: #2b1c07;
+  background: linear-gradient(180deg, #f0d797 0%, #d9b465 30%, #be9240 66%, #cfa553 100%); box-shadow: 0 0 0 1px rgba(70,45,10,.7), inset 0 1px 0 rgba(255,250,228,.8), inset 0 -2px 0 rgba(90,55,12,.35), inset 0 0 0 4px rgba(255,236,180,.22), 0 16px 34px rgba(0,0,0,.45); animation: chisel-in .6s ease both; }
+.g-chisel .cz-fin::before, .g-chisel .cz-fin::after { content: ""; position: absolute; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff2c4, #a37a2c 60%, #5e4012); box-shadow: inset 0 0 0 1px rgba(60,35,5,.5); }
+.g-chisel .cz-fin::before { left: 9px; } .g-chisel .cz-fin::after { right: 9px; }
+.g-chisel .cz-fin-h { font: 400 23px/1.05 ${ROMAN}; letter-spacing: .06em; color: #2b1c07; text-shadow: 0 1px 0 rgba(255,246,214,.7); animation: chisel-in .7s ease .15s both; }
+.g-chisel .cz-was { font: 600 15px/1.35 var(--font-ui); color: #3a2608; animation: chisel-in .7s ease .4s both; }
+.g-chisel .cz-was s { text-decoration-thickness: 2px; text-decoration-color: rgba(150,28,18,.85); }
+.g-chisel .cz-was small, .g-chisel .cz-fair small { display: block; font: 400 12px/1.2 ${ROMAN}; letter-spacing: .16em; color: #5a3c0e; margin-bottom: 3px; }
+.g-chisel .cz-fair { font: 600 15px/1.35 var(--font-ui); color: #2b1c07; padding: 8px 12px; border-radius: 4px; background: rgba(255,244,210,.32); box-shadow: inset 0 1px 2px rgba(90,55,12,.35); animation: chisel-in .7s ease .65s both; }
+.g-chisel .cz-care { font: 600 13px/1.35 var(--font-ui); color: #3a2608; animation: chisel-in .7s ease .8s both; }
+.g-chisel .cz-foot { display: flex; justify-content: center; flex-wrap: wrap; gap: 3px 14px; font: 400 13px/1.25 ${ROMAN}; letter-spacing: .1em; color: #4a300c; animation: chisel-in .7s ease .95s both; }
 .g-chisel .cz-fin.tight { gap: 5px; padding: 10px 14px; } .g-chisel .cz-fin.tight .cz-fin-h { font-size: 20px; }
-@keyframes cz-in { from { opacity: 0; translate: 0 12px; } }
+@keyframes chisel-in { from { opacity: 0; translate: 0 12px; } }
+.g-chisel.gk-game .gk-pop-text, .g-chisel.gk-game .gk-pop-text.gk-good, .g-chisel.gk-game .gk-pop-text.gk-great { font: 400 21px/1 ${ROMAN}; letter-spacing: .12em; color: #ffe29a; text-shadow: 0 0 1px #2a1a06, 0 1px 0 #2a1a06, 0 0 3px rgba(42,26,6,.9), 0 3px 12px rgba(0,0,0,.55); }
+.g-chisel .gk-char.cz-nod .gk-char-img { animation: chisel-nod 1.1s ease-in-out 2; }
+@keyframes chisel-nod { 0%, 100% { translate: 0 0; rotate: 0deg; } 30% { translate: 0 7px; rotate: 3deg; } 55% { translate: 0 -2px; rotate: -1deg; } 75% { translate: 0 3px; rotate: 1deg; } }
 .g-chisel .cz-sr { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .g-chisel .cz-kbd { position: absolute; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .g-chisel .gk-char.gk-side-right .gk-bubble, .g-chisel .gk-char.gk-side-left .gk-bubble { top: auto; bottom: 0; max-width: min(300px, calc(100cqw - 2 * var(--sz, 72px) - 58px)); }
@@ -732,6 +767,8 @@
       else if (ownChain) { stones.push(mkStone(WORDS.chain(COMMON.warm[dom] || COMMON.warm.none, ''), false, true)); stones.push(mkStone(ownChain, true, false)); }
       else { stones.push(mkStone(WORDS.chain(COMMON.warm[dom] || COMMON.warm.none, ''), false, true)); stones.push(mkStone(WORDS.chain(COMMON.main[dom] || COMMON.main.none, ''), false, false)); }
       const main = stones[stones.length - 1];
+      const noneOwn = !noWords && !ownChain; // their words hold no absolutes: say so, then carve two classics
+      const visits = K.visits();
       const absCount = stones.reduce((n, s) => n + s.steps.length, 0);
 
       /* ---------------- state ---------------- */
@@ -760,7 +797,7 @@
       const still = K.character('still', { side: 'left', mood: 'determined', size: csz });
       still.el.classList.add('cz-right');
       const speak = (c, line, o) => { (c === glitch ? still : glitch).hush(); return c.say(line, o); };
-      const setTag = () => { const s = stones[st.si]; stoneTag.lastChild.textContent = (stones.length > 1 ? (st.si + 1) + '/' + stones.length + ' · ' : '') + (s.own ? 'your words' : 'a common one'); };
+      const setTag = () => { const s = stones[st.si]; stoneTag.lastChild.textContent = (stones.length > 1 ? (st.si + 1) + '/' + stones.length + ' · ' : '') + (s.own ? 'yours' : 'a classic'); };
       const setPips = () => { pips.forEach((p, i) => p.classList.toggle('on', i < Math.min(5, st.streak))); };
       el.setAttribute('data-br', bright() ? '1' : '0');
       S.on('theme', () => { el.setAttribute('data-br', bright() ? '1' : '0'); bgKey = ''; slabKey = ''; spr.clear(); stones.forEach(s => s.lumps.forEach(l => { l.built = 0; })); });
@@ -812,7 +849,7 @@
         G.frame = fr; G.field = { x: G.slab.x + fr, y: G.slab.y + fr, w: G.slab.w - fr * 2, h: G.slab.h - fr * 2 };
         G.bench = G.slab.y + G.slab.h; G.floor = G.bench + (G.phone ? 84 : 104) * u;
         // the skylight: high on the right wall; the shaft falls down-left across the block to the floor
-        G.win = G.phone ? { x: W * 0.8, y: 100, w: 76 * u, h: 120 * u } : { x: Math.min(W - 110 * u, G.slab.x + G.slab.w + G.sd + 150 * u), y: 54, w: 128 * u, h: Math.min(320 * u, G.slab.y + G.slab.h * 0.5 - 54) };
+        G.win = G.phone ? { x: W * 0.8, y: 100, w: 76 * u, h: 120 * u } : { x: Math.min(W - 110 * u, G.slab.x + G.slab.w + G.sd + 150 * u), y: 104, w: 128 * u, h: Math.min(320 * u, Math.max(160 * u, G.slab.y + G.slab.h * 0.55 - 104)) }; // below the HUD pills
         G.shaft = { sx: G.win.x, sy: G.win.y + G.win.h * 0.45, sw: G.win.w * 0.9, tx: G.slab.x + G.slab.w * 0.28, ty: G.floor + 26 * u, tw: G.slab.w * 0.42 };
         G.cardsY = G.phone ? G.bench + 40 * u : G.bench + 44 * u;
         cards.style.left = '12px'; cards.style.right = '12px'; cards.style.top = Math.round(G.cardsY) + 'px';
@@ -851,7 +888,8 @@
       function flow(T, px, glue, boss) {
         const U = units(T); meas.font = font(px);
         const sp = meas.measureText(' ').width * 1.15, maxW = G.field.w - fieldPad() * 2;
-        U.forEach(u => { u.w = meas.measureText(u.text).width; u.pad = boss && boss.has(u.id) ? px * 0.32 : 0; });
+        // a boss is wider than its word (rough edges, side faces, its shadow): keep its neighbours clear of it
+        U.forEach(u => { u.w = meas.measureText(u.text).width; u.pad = boss && boss.has(u.id) ? px * 0.34 + u.w * 0.05 + 6 * G.u : 0; });
         const groups = []; U.forEach(u => { const g = groups[groups.length - 1]; if (g && glue && glue.has(g[g.length - 1].id)) g.push(u); else groups.push([u]); });
         const lines = []; let line = [], lw = 0;
         groups.forEach(gr => { const gw = gr.reduce((a, u) => a + u.w + u.pad * 2, 0) + sp * (gr.length - 1); if (line.length && lw + sp + gw > maxW) { lines.push(line); line = []; lw = 0; } lw += (line.length ? sp : 0) + gw; line.push(...gr); });
@@ -864,7 +902,9 @@
         s.steps.forEach(stp => { v.push(stp.before); if (stp.twist && !s.warm) { stp.hit.fair.forEach(e => v.push(WORDS.apply(stp.before, e))); if (stp.hit.mirror) v.push(WORDS.apply(stp.before, stp.hit.mirror)); } else v.push(WORDS.apply(stp.before, stp.hit.auto)); });
         return v;
       }
-      const glueOf = (s) => { const g = new Set(); s.steps.forEach(stp => { const ids = stp.hit.ids; for (let i = 0; i < ids.length - 1; i++) g.add(ids[i]); }); return g; };
+      /* every token from a hit's first word to its last stays on one line ("nobody at work ever" is one boss) */
+      const spanIds = (stp) => { const T = stp.before, ids = stp.hit.ids, a = T.findIndex(t => t.id === ids[0]), b = T.findIndex(t => t.id === ids[ids.length - 1]); return a >= 0 && b >= a ? T.slice(a, b + 1).map(t => t.id) : ids.slice(); };
+      const glueOf = (s) => { const g = new Set(); s.steps.forEach(stp => { const ids = spanIds(stp); for (let i = 0; i < ids.length - 1; i++) g.add(ids[i]); }); return g; };
       const bossOf = (s, all) => { const b = new Set(); s.steps.forEach((stp, k) => { if (all || k >= s.k) { b.add(stp.hit.ids[0]); b.add(stp.hit.ids[stp.hit.ids.length - 1]); } }); return b; };
       function fitStone(s) {
         if (s.px) return;
@@ -918,7 +958,11 @@
           g.fillStyle = rgba(stone.lit, 0.85); g.fillText(textIn, bx + px * 0.035, by + px * 0.045);
           const cutG = g.createLinearGradient(0, by - px * 0.8, 0, by); cutG.addColorStop(0, shade(stone.cut, -0.25)); cutG.addColorStop(1, mix(stone.cut, stone.base, 0.25));
           g.fillStyle = cutG; g.fillText(textIn, bx, by);
-          if (lf) { const lg = g.createLinearGradient(0, by - px * 0.8, 0, by); lg.addColorStop(0, lf[2]); lg.addColorStop(0.42, lf[1]); lg.addColorStop(0.75, lf[0]); lg.addColorStop(1, lf[1]); g.fillStyle = lg; g.fillText(textIn, bx + px * 0.012, by + px * 0.016); }
+          if (lf) {
+            // the shadowed walls of the cut stay dark around the leaf: a crisp rim that reads on pale and dark stone alike
+            g.lineJoin = 'round'; g.strokeStyle = lightStone ? shade(stone.cut, -0.3) : '#0d0904'; g.lineWidth = Math.max(1.2, px * 0.085); g.strokeText(textIn, bx + px * 0.006, by + px * 0.008);
+            const lg = g.createLinearGradient(0, by - px * 0.8, 0, by); lg.addColorStop(0, lf[2]); lg.addColorStop(0.42, lf[1]); lg.addColorStop(0.75, lf[0]); lg.addColorStop(1, lf[1]); g.fillStyle = lg; g.fillText(textIn, bx + px * 0.012, by + px * 0.016);
+          }
           g.globalCompositeOperation = 'source-atop'; g.fillStyle = lf ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.18)'; g.fillRect(0, 0, tw + pad * 2, by - px * 0.42);
         }
         const out = { c, w: tw + pad * 2, h: px * 1.5 + pad * 2, ox: pad + tw / 2, oy: by };
@@ -927,7 +971,7 @@
       }
 
       /* ---------------- bosses: rough unhewn stone around each absolute, faceted so it can fly off in pieces ---------------- */
-      function lumpFor(s, k) { let l = s.lumps[k]; if (!l) { l = s.lumps[k] = { k, ids: s.steps[k].hit.ids, seed: 11 + k * 37 + s.steps.length * 5, facets: null, alive: null, built: 0, hit: 0 }; } return l; }
+      function lumpFor(s, k) { let l = s.lumps[k]; if (!l) { l = s.lumps[k] = { k, ids: spanIds(s.steps[k]), seed: 11 + k * 37 + s.steps.length * 5, facets: null, alive: null, built: 0, hit: 0 }; } return l; }
       function buildLump(s, l) {
         const ws = l.ids.map(id => s.words.get(id)).filter(Boolean); if (!ws.length) return;
         ws.forEach(w => { w.lump = l; });
@@ -935,7 +979,7 @@
         meas.font = font(fpx); const tw = meas.measureText(label).width;
         const bw = tw + px * 0.62, bh = px * 2.1, rr = K.rng(l.seed);
         const out = []; const N = 30;
-        for (let i = 0; i < N; i++) { const a = i / N * TAU, c = Math.cos(a), sn = Math.sin(a), j = 1 + (rr() - 0.5) * 0.2; out.push({ x: Math.sign(c) * Math.pow(Math.abs(c), 0.38) * bw / 2 * j, y: Math.sign(sn) * Math.pow(Math.abs(sn), 0.55) * bh / 2 * j - px * 0.05 }); }
+        for (let i = 0; i < N; i++) { const a = i / N * TAU, c = Math.cos(a), sn = Math.sin(a), j = 1 + (rr() - 0.5) * 0.12; out.push({ x: Math.sign(c) * Math.pow(Math.abs(c), 0.38) * bw / 2 * j, y: Math.sign(sn) * Math.pow(Math.abs(sn), 0.55) * bh / 2 * j - px * 0.05 }); }
         const nf = clamp(Math.round(tw / (px * 0.95)) + (inten - 1), 3, 7);
         const cuts = []; for (let i = 1; i < nf; i++) cuts.push({ x: -bw / 2 + bw * i / nf + (rr() - 0.5) * bw * 0.06, a: (rr() - 0.5) * 0.55 });
         const facets = [];
@@ -1113,7 +1157,7 @@
         }
         cards.hidden = false; cards.classList.remove('lock'); S.later(() => cards.classList.add('in'), 30);
         cap.textContent = 'CHALK IN A FAIR WORD'; cap.style.opacity = '1';
-        K.guide({ id: 'choose', g: 'choose', target: () => opts.filter(o => !o.used).map(o => o.el), label: 'PICK A FAIR WORD', place: 'above', delay: 500 });
+        K.guide({ id: 'choose', g: 'choose', target: () => opts.filter(o => !o.used).map(o => o.el), label: 'PICK A FAIR WORD', place: 'below', delay: 500 });
       }
       function pickOpt(i) {
         const o = opts[i]; if (!o || o.used || (st.phase !== 'choose' && st.phase !== 'chalk')) return;
@@ -1128,7 +1172,10 @@
         s.pendingT = nT; st.carveBudget = 0;
         st.phase = 'chalk'; cap.textContent = o.mirror ? 'CHALKED' : 'NOW CARVE IT IN';
         ctx.track('pick', { m: o.mirror ? 1 : 0 });
-        K.guide({ id: 'carve', g: 'tap', target: () => { const p = carvePt(); return p ? { x: p.x + rootOff.x, y: p.y + rootOff.y } : null; }, label: 'TAP TO CARVE IT IN', place: 'below', delay: 450 });
+        // the label goes where the carving isn't: above when the new words open the text, below otherwise
+        const cw = chalkWords(s), topY = Math.min(...Array.from(s.words.values()).filter(w => w.st !== 'gone' && !w.lump).map(w => w.ty));
+        const firstLine = cw.length && cw[0].ty <= topY + 2 && s.words.size > 1;
+        K.guide({ id: 'carve', g: 'tap', target: () => { const p = carvePt(); return p ? { x: p.x + rootOff.x, y: p.y + rootOff.y } : null; }, label: 'TAP TO CARVE IT IN', place: firstLine ? 'above' : 'below', delay: 450 });
       }
       function chalkWords(s) { const out = []; s.words.forEach(w => { if (w.st === 'chalk' || w.st === 'chalkCarve') out.push(w); }); return out.sort((a, b) => a.order - b.order); }
       function carvePt() { const s = stones[st.si]; if (!s) return null; const ws = chalkWords(s); const w = ws.find(x => x.rev < 1) || ws[0]; return w ? { x: w.x - w.w / 2 + w.w * clamp(w.rev + 0.08, 0, 1), y: w.y - s.px * 0.35 } : null; }
@@ -1163,7 +1210,7 @@
         void stp;
         st.slump = 1; st.unslumpT = 0;
         speak(glitch, L(care ? LINES.mirrorCare : strong ? LINES.mirrorStrong : LINES.mirror, { K: o.e.key }), { mood: care ? 'think' : 'smug', ms: 3600 }); if (!care) glitch.react('bounce');
-        S.later(() => { st.phase = 'choose'; cards.classList.remove('lock'); cap.textContent = 'PICK A FAIR WORD'; K.guide({ id: 'choose2', g: 'choose', target: () => opts.filter(x => !x.used).map(x => x.el), label: 'PICK ANOTHER', place: 'above', delay: 300 }); }, 900);
+        S.later(() => { st.phase = 'choose'; cards.classList.remove('lock'); cap.textContent = 'PICK A FAIR WORD'; K.guide({ id: 'choose2', g: 'choose', target: () => opts.filter(x => !x.used).map(x => x.el), label: 'PICK ANOTHER', place: 'below', delay: 300 }); }, 900);
       }
       function carvedDone() {
         const s = stones[st.si];
@@ -1415,7 +1462,7 @@
       }
 
       /* ---------------- words, bosses, cracks, tools ---------------- */
-      function drawWords(g, s, t, ox, oy, dt) {
+      function drawWords(g, s, t, ox, oy, dt, glintX) {
         const px = s.px, tn = now(), fin = st.leaf;
         let first = null; s.words.forEach(w => { if (w.st === 'carving' && (!first || w.order < first.order)) first = w; });
         const sk = st.unslumpT ? 1 - eBack(clamp((tn - st.unslumpT) / 600, 0, 1)) : st.slump;
@@ -1427,7 +1474,11 @@
           if (w.st === 'chalkCarve' && w.revT != null && w.rev < w.revT) w.rev = Math.min(w.revT, w.rev + dt * 24 / Math.max(3, w.text.length));
           const x = w.x + ox, y = w.y + w.dy + oy, cut = sprite(w.text, px, fin || 'cut');
           g.save(); g.translate(x, y); if (w.rot) g.rotate(w.rot);
-          if (w.st === 'cut') g.drawImage(cut.c, -cut.ox, -cut.oy, cut.w, cut.h);
+          if (w.st === 'cut') {
+            g.drawImage(cut.c, -cut.ox, -cut.oy, cut.w, cut.h);
+            const gd = glintX == null || !fin ? 1 : Math.abs((x - glintX.x) * 0.94 + (y - px * 0.35 - glintX.y) * 0.34) / 70;
+            if (gd < 1) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = (1 - gd) * 0.55; g.drawImage(cut.c, -cut.ox, -cut.oy, cut.w, cut.h); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
+          }
           else {
             if (w.st !== 'carving') { const ch = sprite(w.text, px, 'chalk'); g.drawImage(ch.c, -ch.ox, -ch.oy, ch.w, ch.h); }
             const r = clamp(w.rev, 0, 1);
@@ -1549,7 +1600,8 @@
         st.tier = tier; st.ratio = ratio; st.leaf = tier || null;
         st.item = stone.name + ' plaque'; st.col = K.collect(st.item); bgKey = '';
         if (A.ctx) { A.pad(['D3', 'A3', 'D4', 'F#4', 'A4'].map(n => A.note(n)), { dur: 6, vol: 0.13, attack: 0.9, bus: 'music' }); for (let i = 0; i < 7; i++) S.later(() => litho([5, 7, 8, 9, 7, 8, 10][i], 0.7), 300 + i * 190); }
-        glitch.hush(); still.say(L(LINES.fin), { mood: 'happy', ms: 0 }); still.react('bounce'); glitch.base('love');
+        glitch.hush(); still.say(L(LINES.fin), { mood: 'happy', ms: 0 }); glitch.base('love');
+        S.later(() => { still.el.classList.remove('cz-nod'); void still.el.offsetWidth; still.el.classList.add('cz-nod'); }, 500); // Still nods at the work
         // the leaf goes in: gold dust lifts off every letter, one word after another
         let wi = 0; main.words.forEach(w => { if (w.st !== 'cut') return; const k = wi++; S.later(() => { P.emit('star', w.x, w.y - main.px * 0.35, Math.min(10, 3 + w.text.length), { colors: tier === 'Silver' ? ['#ffffff', '#dfe6f0'] : ['#fff6d6', '#ffd98a'], speed: [20, 90], spread: TAU }); P.emit('mote', w.x, w.y - main.px * 0.4, 3, { colors: ['#ffe9b0'] }); }, 200 + k * 140); });
         S.later(() => { still.hush(); glitch.say(L(LINES.finG), { mood: 'celebrate', ms: 0 }); }, 3400);
@@ -1558,7 +1610,7 @@
         const leafName = tier ? tier + ' leaf' : 'Plain cut';
         const box = h('div', { class: 'cz-fin', role: 'status' },
           h('div', { class: 'cz-fin-h', text: 'Set in stone, fair and true' }),
-          h('div', { class: 'cz-was' }, h('small', { text: main.own ? 'IT WAS' : 'IT WAS (A COMMON ONE)' }), h('s', { class: 'gk-user', text: before })),
+          h('div', { class: 'cz-was' }, h('small', { text: main.own ? 'IT WAS' : 'IT WAS (A CLASSIC THOUGHT)' }), h('s', { class: 'gk-user', text: before })),
           fair ? h('div', { class: 'cz-fair' }, h('small', { text: 'THE FAIR VERSION' }), h('span', { class: 'gk-user', text: fair })) : null,
           care ? h('div', { class: 'cz-care', text: S.safety ? S.safety.CARE_LINE : 'For the practical side, someone qualified can tell you where you stand.' }) : null,
           h('div', { class: 'cz-foot' }, h('span', { text: leafName + ' on ' + stone.name + ' · plaque ' + Math.min(st.col.count, STONES.length) + '/' + STONES.length }), h('span', { text: 'Next studio: ' + nextStudio.name })));
@@ -1571,13 +1623,13 @@
         }, 1600);
       }
       function finishGame(after) {
-        if (st.finished) return; st.finished = true;
+        if (st.finished) return; st.finished = true; st.phase = 'done'; st.doneT = now();
         const pct = Math.round(st.ratio * 100), best = K.best('steady', st.best, 'higher'), badges = [];
         if (best.isNew) badges.push('New best: ' + st.best + ' steady strikes in a row'); else if (best.first && st.best >= 3) badges.push('Steady run: ' + st.best);
         if (st.tier) badges.push(st.tier + ' leaf');
         if (st.col.isNew) badges.push('Collected: ' + stone.name + ' plaque (' + Math.min(st.col.count, STONES.length) + '/' + STONES.length + ')');
         ctx.track('done', { steady: pct, strikes: st.strikes, abs: absCount, mirror: st.mirrorTried ? 1 : 0 });
-        ctx.finish({ title: 'Chiselled fair', mood: 'happy', lines: [(main.own ? 'Now carved: ' : 'Carved (a common one): ') + after, absCount + ' absolute' + (absCount === 1 ? '' : 's') + ' knocked off', 'Steady strikes: ' + pct + '%'],
+        ctx.finish({ title: 'Chiselled fair', mood: 'happy', lines: [(main.own ? 'Now carved: ' : 'Carved (a classic thought): ') + after, absCount + ' absolute' + (absCount === 1 ? '' : 's') + ' knocked off', 'Steady strikes: ' + pct + '%'],
           share: 'Chiselled the “always” out of a thought. It’s a statue now.', badges: badges.slice(0, 4) });
       }
 
@@ -1586,6 +1638,7 @@
       const busy = () => debris.length || chips.length || P.count() || st.tool || st.shake > 0 || st.rubbing || ['collapse', 'slide', 'arrive', 'recarve', 'finale', 'carved', 'reject'].includes(st.phase) || st.beat > 0.02 || Math.abs(st.swing - st.swingTo * 0.4) > 0.01;
       K.loop((dt0, t) => {
         const g = cv.g; if (!g || !G.W) return;
+        if (st.phase === 'done' && now() - st.doneT > 2500 && !P.count() && bgKey && slabKey) return; // the after card is up: hold the finished frame
         dtAcc += dt0;
         const minGap = SOFT ? (busy() ? 0.03 : 0.05) : (busy() ? 0 : 0.04);
         if (t - lastDraw < minGap) return;
@@ -1604,15 +1657,26 @@
         const s = stones[st.si];
         if (st.phase === 'slide') { const k = clamp((now() - st.slideT) / 900, 0, 1); ox += -eInOut(k) * (G.W * 0.95); }
         if (st.phase === 'arrive') { const k = clamp((now() - st.arriveT) / 1100, 0, 1); ox += (1 - eOut(k)) * G.W * 0.95; if (k >= 1) st.phase = 'settled'; }
+        // the finale: a slow push-in on the finished plaque (anchored where it rests on the banker)
+        const zk = fk && !K.reduced() ? 1 + 0.035 * eInOut(clamp((now() - st.finT) / 3400, 0, 1)) : 1;
+        if (zk !== 1) { const ax = G.slab.x + G.slab.w / 2, ay = G.bench; g.save(); g.translate(ax, ay); g.scale(zk, zk); g.translate(-ax, -ay); }
         drawSlab(g, ox, oy, s);
         drawCracks(g, ox, oy);
-        drawWords(g, s, t, ox, oy, dt);
-        drawLumps(g, s, t, ox, oy);
-        if (fk) { g.save(); g.globalCompositeOperation = bright() ? 'source-over' : 'lighter'; paintShaft(g, 0, 0, (bright() ? 0.16 : 0.22) * fk, bright()); g.restore(); }
-        if (fk) { // the finale sheen sweeps across the polished face and its leafed letters
+        // the finale light falls on the stone first, so the leafed letters stay crisp on top of it
+        let glintX = null;
+        if (fk) {
+          g.save(); g.globalCompositeOperation = bright() ? 'source-over' : 'lighter'; paintShaft(g, 0, 0, (bright() ? 0.12 : 0.2) * fk * (lightStone ? 0.7 : 1), bright()); g.restore();
           const f = G.field, k2 = ((now() - st.finT) / 2600) % 1.6 - 0.3;
-          if (k2 > 0 && k2 < 1) { g.save(); g.beginPath(); g.rect(f.x + ox, f.y + oy, f.w, f.h); g.clip(); g.globalCompositeOperation = bright() ? 'source-over' : 'lighter'; const xx = f.x + f.w * k2 + ox; const gr = g.createLinearGradient(xx - 60, 0, xx + 60, 0); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, 'rgba(255,250,235,' + (bright() ? 0.32 : 0.22) + ')'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.translate(xx, f.y + f.h / 2 + oy); g.rotate(0.35); g.fillRect(-60, -f.h, 120, f.h * 2); g.restore(); }
+          if (k2 > 0 && k2 < 1) { // a sheen sweeps across the polished face, and each letter flares as it passes
+            const xx = f.x + f.w * k2 + ox; glintX = { x: xx, y: f.y + f.h / 2 + oy };
+            g.save(); g.beginPath(); g.rect(f.x + ox, f.y + oy, f.w, f.h); g.clip(); g.globalCompositeOperation = bright() ? 'source-over' : 'lighter';
+            const gr = g.createLinearGradient(xx - 60, 0, xx + 60, 0); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, 'rgba(255,250,235,' + ((bright() ? 0.26 : 0.2) * (lightStone ? 0.6 : 1)).toFixed(3) + ')'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+            g.fillStyle = gr; g.translate(xx, f.y + f.h / 2 + oy); g.rotate(0.35); g.fillRect(-60, -f.h, 120, f.h * 2); g.restore();
+          }
         }
+        drawWords(g, s, t, ox, oy, dt, glintX);
+        drawLumps(g, s, t, ox, oy);
+        if (zk !== 1) g.restore();
         stepDebris(g, dt);
         drawTool(g);
         drawPad(g);
@@ -1629,7 +1693,9 @@
         scanWarm: { Jolly: noWords ? 'Here’s a classic thought. See the rough bits sticking out? Absolutes.' : 'First, a warm-up stone. A classic. See “' + firstAbs + '” sticking out?', Cheeky: noWords ? 'A classic, sculpted by a million brains. Spot the lumps.' : 'Warm-up stone first. Spot the lump.', Unfiltered: noWords ? 'A common thought. Absolutes stick out.' : 'Warm-up first.' },
         scanOwn2: { Jolly: 'Now your stone. Same steady taps.', Cheeky: 'Your words this time. Feel that tempo again.', Unfiltered: 'Your stone. Steady.' },
         scanCommon2: { Jolly: 'And another classic. This one’s sneakier.', Cheeky: 'Second classic. This one bites back.', Unfiltered: 'Another one. Trickier.' },
-        how: { Jolly: 'Tap along it like a heartbeat. Steady strikes ring, and take bigger chips.', Cheeky: 'Tap like a heartbeat, not a woodpecker. The steady ones sing.', Unfiltered: 'Even taps. The stone rings when you’re steady.' },
+        scanNone: { Jolly: 'Your words don’t lean on “always” or “never”. Lovely. Let’s carve two classics instead.', Cheeky: 'No absolutes in your words. Show-off. Here’s a classic to practise on.', Unfiltered: 'Your words: no absolutes. Two classics instead.' },
+        how: visits >= 2 ? { Jolly: 'You know the beat. Even taps, bigger chips.', Cheeky: 'Same heartbeat as last time, maestro.', Unfiltered: 'Even taps.' }
+          : { Jolly: 'Tap along it like a heartbeat. Steady strikes ring, and take bigger chips.', Cheeky: 'Tap like a heartbeat, not a woodpecker. The steady ones sing.', Unfiltered: 'Even taps. The stone rings when you’re steady.' },
         rushed: { Jolly: 'Slower. The stone likes an even beat, not a fast one.', Cheeky: 'Easy, woodpecker. Even beats.', Unfiltered: 'Slower. Even.' },
         steady: { Jolly: 'Hear that? The stone sings when you’re steady!', Cheeky: 'Ooh, it’s playing a tune. Show-off.', Unfiltered: 'Steady. It rings.' },
         recarve1: { Jolly: '“{W}” is gone. The stone re-carved itself: “{K}”. Truer, and calmer.', Cheeky: 'Bye, “{W}”. “{K}” fits the facts better.', Unfiltered: '“{W}” out. “{K}” in. Truer.' },
@@ -1659,7 +1725,7 @@
         try { const rt = (S.parent && S.parent.root) || el, a = el.getBoundingClientRect(), b = rt.getBoundingClientRect(), sc0 = rt.offsetWidth ? b.width / rt.offsetWidth : 1; rootOff.x = (a.left - b.left) / sc0; rootOff.y = (a.top - b.top) / sc0; } catch (e) { /* stage at the root origin */ }
         layout();
         padOn = true; S.later(padNext, 400);
-        speak(glitch, L(stones[0].own ? LINES.scanOwn : LINES.scanWarm), { mood: 'scan', ms: 3800 });
+        speak(glitch, L(stones[0].own ? LINES.scanOwn : noneOwn ? LINES.scanNone : LINES.scanWarm), { mood: 'scan', ms: 3800 });
         S.later(() => speak(still, L(LINES.how), { mood: 'determined', ms: 4200 }), 3600);
         st.phase = 'chip'; chipGuide();
         try { if (document.fonts && document.fonts.load) document.fonts.load('400 30px "Marcellus SC"').then(() => { if (S.destroyed) return; spr.clear(); stones.forEach(s => { s.px = 0; s.lumps.forEach(l => { l.built = 0; }); }); const s = stones[st.si]; if (s && st.phase === 'chip') { fitStone(s); setLayout(s, s.T, { snap: true }); } }, () => {}); } catch (e) { /* fonts API missing */ }

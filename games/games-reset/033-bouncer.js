@@ -6,7 +6,9 @@
  * the evening inside stays calm while the rope holds, and the things they actually want get the red carpet.
  * Verb: answer at the rope (hold up a palm for a kind no, drag a "not tonight, but…" or "yes, with limits" card onto the
  * ask, swipe a guest through the door). Twist: the Guilt Trip pushes back; hold steady with a broken-record line while
- * Patch coaches the wording. Finale: closing time: flip the sign, the club glows, the rope sparkles, the evening is yours.
+ * Patch coaches the wording. Finale: closing time: flip the sign, the door swings wide, the marquee (one bulb lit for each
+ * ask answered) fills and chases, the sign reads "Reserved for you", the rain stops, the rope sparkles, and the guest you
+ * chose for your evening sits in the lit window; tonight's best door line goes in the phrasebook.
  */
 (function (env) {
   'use strict';
@@ -120,7 +122,7 @@
       re: { no: v('No worries! We’ll send blurry photos!', 'Understood. We will now discuss you. Lovingly.', 'Fine. Photos later.'), later: v('Next weekend! I’m pinning it!', 'Next weekend? We’ll make a poll. A long poll.', 'Next weekend. Pinned.'), limit: v('One hour! Yay! Proper hugs, then!', 'One hour. We’ll pretend not to count. We will count.', 'One hour. Deal.'), yes: v('Yay!! We’re meeting at nine, then ten, then…', 'Brilliant. It’s an all-nighter. Bring snacks and a spare voice.', 'Great. Late one.') } },
     { id: 'borrow', name: 'Can I Borrow…?', costume: 'wallet', voice: 480, col: '#a8703f',
       ask: v('Could I borrow your car? And your charger? And your whole Saturday?', 'Borrow request: your car, your charger, your soul. Returnable. Probably.', 'Borrowing your weekend.'),
-      scan: v('Scanning… the last thing borrowed is still missing since March.', 'Return history: poor. Charger last seen two years ago.', 'They don’t give things back.'),
+      scan: v('Scanning… your Saturday already has a booking: you.', 'Scan says: one car, one charger, one weekend. All yours.', 'Your weekend’s spoken for.'),
       say: { no: v('I’m not lending it this time.', 'The lending library is closed this week.', 'Not lending it.'), later: v('Not this weekend, but I can help you find another option on Monday.', 'Not this weekend. Monday, I’ll help you hunt for a plan B.', 'Not this weekend. Monday.'), limit: v('You can borrow the charger, but I need it back tomorrow.', 'Charger, yes. Car, no. Soul, absolutely not. Back tomorrow.', 'Charger only. Back tomorrow.'), yes: v('Sure, take it all.', 'Fine, take the car, the charger and Saturday.', 'Okay. Take it.') },
       tag: { later: 'Monday', limit: 'Back tomorrow' },
       re: { no: v('Fair! I’ll ask someone with two cars.', 'A clear no. Honestly refreshing. I’ll bother my cousin.', 'Fine. Cousin.'), later: v('Monday! Very kind. I’ll bring a list.', 'Monday help? Look at you, all boundaried and generous.', 'Monday. Fine.'), limit: v('Back tomorrow! Pinky promise.', 'Back by tomorrow. I’ll set nine alarms. On your phone.', 'Tomorrow. Promise.'), yes: v('Thanks! Back soon! Ish! Maybe!', 'Wonderful. See you in March. Which March? Who knows.', 'Back… sometime.') } },
@@ -167,7 +169,7 @@
     re: { no: v('Okay! Tomorrow you’ll be fresher.', 'Fine. I’ll wait in the inbox. Patiently. Mostly.', 'Tomorrow, then.'), later: v('Tomorrow, properly. I like that.', 'Your best hour? Flattered.', 'Tomorrow. Good.'), limit: v('Twenty minutes. That’s a real start.', 'Twenty minutes. I’ll be efficient. Ish.', 'Twenty. Okay.'), yes: v('Okay! Let’s get going.', 'Right then. Rolling up my envelope sleeves.', 'Let’s go.') } };
 
   /* How each answer lands on the kind–firm balance (both count; neither alone is the goal). */
-  const KF = { no: [0.85, 1], later: [0.95, 0.85], limit: [1, 0.72], yes: [1, 0.15], vip: [1, 1], hold: [0.9, 1] };
+  const KF = { no: [0.85, 1], later: [0.95, 0.85], limit: [1, 0.72], yes: [1, 0.15], vip: [1, 1], hold: [0.9, 1], gentle: [1, 1] };
   const PHRASE_TOTAL = DEMANDS.length * 3 + 1;
 
   /* Tonight's club (a different one each day). */
@@ -206,7 +208,6 @@
     return '#' + ((1 << 24) + (m(16) << 16) + (m(8) << 8) + m(0)).toString(16).slice(1);
   };
   const easeOut = (k) => 1 - Math.pow(1 - k, 3);
-  const easeInOut = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
 
   (env.games = env.games || []).push({
     id: ID, mode: 'reset', name: 'Bouncer', verb: 'answer', family: 'CONNECT', minutes: 2,
@@ -214,7 +215,7 @@
     cast: ['patch', 'rush', 'glitch'], poster: { char: 'patch', mood: 'cool' },
     tagline: 'Work the velvet rope of your own evening: kind no, firm rope.',
     why: 'For a hard time saying no: practise kind, firm answers and keep room for what matters.',
-    fonts: ['Yellowtail', 'DM Serif Display', 'Figtree:wght@500;600;700'],
+    fonts: ['Yellowtail', 'DM+Serif+Display', 'Figtree:wght@500;600;700'],
     css: `
 .g-bouncer { --bn-script: "Yellowtail", "Lora", "Brush Script MT", cursive; --bn-serif: "DM Serif Display", "Lora", Georgia, serif; --bn-ui: "Figtree", "Inter", system-ui, sans-serif;
   --bn-desk: rgba(22, 10, 18, 0.9); --bn-ink: #fff4ec; --bn-muted: #e2c9cf; --bn-line: rgba(255, 228, 210, 0.2); --bn-card: rgba(255, 255, 255, 0.07); --bn-gold: #e8b450; background: #0b0710; }
@@ -246,24 +247,29 @@
 @keyframes bouncer-stamp { from { transform: translateX(-50%) rotate(-4deg) scale(1.8); opacity: 0; } to { transform: translateX(-50%) rotate(-4deg) scale(1); opacity: 1; } }
 .g-bouncer .bn-palm { position: absolute; z-index: 27; left: 0; top: 0; width: 120px; height: 120px; margin: -60px 0 0 -60px; pointer-events: none; opacity: 0; transform-origin: 50% 80%; }
 .g-bouncer .bn-palm svg { width: 100%; height: 100%; fill: rgba(255, 244, 228, 0.92); stroke: #24151f; stroke-width: 1.3; stroke-linejoin: round; filter: drop-shadow(0 0 14px rgba(255, 210, 140, 0.85)); }
-.g-bouncer .bn-door-sign { position: absolute; z-index: 27; left: 0; top: 0; transform: translate(-50%, 0); min-width: 74px; min-height: 44px; padding: 7px 10px 6px; box-sizing: border-box; border-radius: 8px;
-  background: #fff3dc; color: #2b1420; border: 2px solid #24151f; font: 700 13px/1.05 var(--bn-ui); letter-spacing: 0.1em; text-transform: uppercase; text-align: center; cursor: pointer; box-shadow: 0 6px 14px rgba(0, 0, 0, 0.4);
-  transform-origin: 50% -10px; transition: transform 0.5s cubic-bezier(.3, 1.6, .5, 1), background 0.3s; }
+.g-bouncer .bn-door-sign { position: absolute; z-index: 27; left: 0; top: 0; transform: translate(-50%, 0); min-width: 82px; min-height: 46px; padding: 6px 12px 7px; box-sizing: border-box; border-radius: 9px;
+  background: linear-gradient(180deg, #fffaf0, #f2e0bf); color: #a01e36; border: 2px solid #24151f; font: 400 26px/1 var(--bn-script); text-align: center; cursor: pointer;
+  box-shadow: inset 0 0 0 3px rgba(160, 30, 54, 0.16), 0 6px 14px rgba(0, 0, 0, 0.4); transform-origin: 50% -10px; transition: transform 0.5s cubic-bezier(.3, 1.6, .5, 1), background 0.3s; }
 .g-bouncer .bn-door-sign::before { content: ""; position: absolute; left: 50%; top: -15px; width: 30px; height: 14px; margin-left: -15px; border: 2px solid #c9b48a; border-bottom: 0; border-radius: 16px 16px 0 0; }
-.g-bouncer .bn-door-sign small { display: block; margin-top: 2px; font: 600 12px/1 var(--bn-ui); letter-spacing: 0.02em; text-transform: none; color: #8a3a52; }
-.g-bouncer .bn-door-sign.bn-closed { background: #ffd9e4; transform: translate(-50%, 0) rotate(-3deg); }
+.g-bouncer .bn-door-sign small { display: block; margin-top: 4px; font: 700 12px/1 var(--bn-ui); letter-spacing: 0.12em; text-transform: uppercase; color: #6a3a4a; }
+.g-bouncer .bn-door-sign.bn-ready { animation: bouncer-ready 1.3s ease-in-out infinite; }
+@keyframes bouncer-ready { 0%, 100% { box-shadow: inset 0 0 0 3px rgba(160, 30, 54, 0.16), 0 6px 14px rgba(0, 0, 0, 0.4), 0 0 0 0 rgba(255, 210, 122, 0.75); }
+  50% { box-shadow: inset 0 0 0 3px rgba(160, 30, 54, 0.16), 0 6px 14px rgba(0, 0, 0, 0.4), 0 0 0 10px rgba(255, 210, 122, 0); } }
+.g-bouncer .bn-door-sign.bn-closed { background: linear-gradient(180deg, #ffe8ef, #ffc8d8); color: #7a1430; transform: translate(-50%, 0) rotate(-3deg); animation: none; }
+.g-bouncer .bn-sign.bn-lit { text-shadow: 0 0 4px var(--n1), 0 0 14px var(--n1), 0 0 34px var(--n1), 0 0 64px var(--n1), 0 0 2px #fff; }
 .g-bouncer .bn-door-sign:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
-.g-bouncer .bn-desk { position: absolute; z-index: 36; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); width: min(560px, calc(100% - 16px)); height: var(--dh, 196px); box-sizing: border-box; padding: 10px 10px 10px;
+.g-bouncer .bn-desk { position: absolute; z-index: 36; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); width: min(560px, calc(100% - 16px)); height: var(--dh, 196px); box-sizing: border-box; padding: 10px 10px 10px;
   border-radius: 22px; background: var(--bn-desk); border: 1px solid var(--bn-line); color: var(--bn-ink); font-family: var(--bn-ui); display: flex; flex-direction: column; gap: 8px; transform: translateX(-50%);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1); transition: transform 0.7s cubic-bezier(.3, 1.2, .5, 1), opacity 0.5s ease; }
 .g-bouncer .bn-desk.bn-away { transform: translate(-50%, calc(100% + 40px)); opacity: 0; pointer-events: none; }
 .g-bouncer .bn-ticket { position: relative; flex: 1; min-height: 0; padding: 7px 12px 8px; border-radius: 14px; background: var(--bn-card); border: 1px dashed var(--bn-line); overflow: hidden; }
 .g-bouncer .bn-who { display: flex; align-items: center; gap: 8px; min-width: 0; height: 18px; }
-.g-bouncer .bn-who b { font: 400 15px/1 var(--bn-serif); letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--who, var(--bn-gold)); }
+.g-bouncer .bn-who b { min-width: 0; font: 400 15px/1.2 var(--bn-serif); letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--who, var(--bn-gold)); }
 .g-bouncer .bn-who b.gk-user { font-family: var(--bn-ui); font-weight: 700; font-size: 15px; }
 .g-bouncer .bn-who span { flex: none; font: 700 12px/1 var(--bn-ui); letter-spacing: 0.14em; text-transform: uppercase; color: var(--bn-muted); }
 .g-bouncer .bn-line { margin: 5px 0 0; font: 500 15px/1.32 var(--bn-ui); color: var(--bn-ink); text-wrap: pretty; }
 .g-bouncer .bn-line.bn-you { font-weight: 600; }
+.g-bouncer .bn-line.bn-wait { color: var(--bn-muted); letter-spacing: 0.2em; }
 .g-bouncer .bn-line.bn-you::before { content: "You: "; font: 700 12px/1 var(--bn-ui); letter-spacing: 0.12em; text-transform: uppercase; color: var(--bn-gold); }
 .g-bouncer .bn-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; height: 82px; flex: none; }
 .g-bouncer .bn-card { position: relative; appearance: none; margin: 0; min-height: 44px; border-radius: 16px; border: 1.5px solid color-mix(in srgb, var(--c) 70%, transparent); background: color-mix(in srgb, var(--c) 15%, var(--bn-card));
@@ -280,9 +286,7 @@
 .g-bouncer .bn-ghost { position: absolute; z-index: 40; left: 0; top: 0; width: 118px; height: 64px; margin: -32px 0 0 -59px; border-radius: 14px; pointer-events: none; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px;
   box-sizing: border-box; background: color-mix(in srgb, var(--c) 30%, #1a0e16); border: 2px solid var(--c); color: #fff; font: 700 13px/1.1 var(--bn-ui); text-align: center; box-shadow: 0 12px 26px rgba(0, 0, 0, 0.45), 0 0 18px var(--c); will-change: transform; }
 .g-bouncer .bn-ghost svg { width: 22px; height: 22px; flex: none; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.g-bouncer .bn-hint { position: absolute; right: 14px; top: 10px; font: 600 12px/1 var(--bn-ui); color: var(--bn-muted); letter-spacing: 0.04em; display: flex; align-items: center; gap: 5px; }
-.g-bouncer .bn-hint svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-.g-bouncer .bn-chips { position: absolute; z-index: 37; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); width: min(560px, calc(100% - 16px)); box-sizing: border-box; transform: translateX(-50%);
+.g-bouncer .bn-chips { position: absolute; z-index: 37; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); width: min(560px, calc(100% - 16px)); box-sizing: border-box; transform: translateX(-50%);
   padding: 14px 12px 14px; border-radius: 22px; background: var(--bn-desk); border: 1px solid var(--bn-line); color: var(--bn-ink); font-family: var(--bn-ui); text-align: center;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5); animation: bouncer-rise 0.55s cubic-bezier(.3, 1.3, .5, 1) both; }
 .g-bouncer .bn-chips.bn-out { animation: bouncer-sink 0.4s ease both; pointer-events: none; }
@@ -296,19 +300,14 @@
 .g-bouncer .bn-chip:active { transform: scale(0.95); }
 .g-bouncer .bn-chip.bn-picked { background: color-mix(in srgb, var(--c) 55%, var(--bn-card)); transform: scale(1.06); }
 .g-bouncer .bn-chip:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
-.g-bouncer .bn-pop { position: absolute; z-index: 38; left: 0; top: 0; transform: translate(-50%, -50%); font: 400 26px/1 var(--bn-serif); color: #fff; white-space: nowrap; pointer-events: none;
-  text-shadow: 0 0 10px var(--c), 0 0 22px var(--c), 0 2px 3px rgba(0, 0, 0, 0.55); animation: bouncer-pop 1.1s ease-out both; }
-.g-bouncer.bn-bright .bn-pop { color: var(--c2, #2b1420); text-shadow: 0 1px 0 #fff, 0 0 12px rgba(255, 255, 255, 0.95); }
-@keyframes bouncer-pop { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.7); } 18% { opacity: 1; transform: translate(-50%, -60%) scale(1.1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -130%) scale(1); } }
-.g-bouncer .bn-book { position: absolute; z-index: 39; left: 50%; width: min(460px, calc(100% - 24px)); box-sizing: border-box; transform: translateX(-50%); padding: 16px 16px 14px; border-radius: 20px;
-  background: linear-gradient(180deg, #fff8ee, #ffeedd); color: #2b1420; border: 2px solid #24151f; font-family: var(--bn-ui); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55), 0 0 0 6px rgba(232, 180, 80, 0.35);
+.g-bouncer .bn-book { position: absolute; z-index: 39; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); width: min(440px, calc(100% - 24px)); box-sizing: border-box; transform: translateX(-50%); padding: 12px 14px 11px; border-radius: 20px;
+  background: linear-gradient(180deg, #fff8ee, #ffeedd); color: #2b1420; border: 2px solid #24151f; font-family: var(--bn-ui); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55), 0 0 0 5px rgba(232, 180, 80, 0.35);
   animation: bouncer-book 0.7s cubic-bezier(.2, 1.3, .4, 1) both; }
-@keyframes bouncer-book { from { opacity: 0; transform: translate(-50%, 30px) rotate(-2deg) scale(0.94); } to { opacity: 1; transform: translate(-50%, 0) rotate(0deg); } }
-.g-bouncer .bn-book h3 { margin: 0 0 8px; font: 400 23px/1.1 var(--bn-serif); text-align: center; }
-.g-bouncer .bn-book ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; }
-.g-bouncer .bn-book li { font: 600 15px/1.3 var(--bn-ui); padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.75); border: 1px solid rgba(43, 20, 32, 0.12); }
-.g-bouncer .bn-book li small { display: block; font: 700 12px/1 var(--bn-ui); letter-spacing: 0.1em; text-transform: uppercase; color: #9a4a62; margin-bottom: 3px; }
-.g-bouncer .bn-book p { margin: 9px 0 0; font: 600 13px/1.35 var(--bn-ui); color: #6a4a58; text-align: center; }
+@keyframes bouncer-book { from { opacity: 0; transform: translate(-50%, 40px) rotate(-2deg) scale(0.94); } to { opacity: 1; transform: translate(-50%, 0) rotate(0deg); } }
+.g-bouncer .bn-book h3 { margin: 0 0 8px; font: 400 21px/1.1 var(--bn-serif); text-align: center; }
+.g-bouncer .bn-book blockquote { margin: 0; font: 600 15px/1.35 var(--bn-ui); padding: 8px 11px 9px; border-radius: 12px; background: rgba(255, 255, 255, 0.8); border: 1px solid rgba(43, 20, 32, 0.12); text-wrap: pretty; }
+.g-bouncer .bn-book blockquote small { display: block; font: 700 12px/1 var(--bn-ui); letter-spacing: 0.1em; text-transform: uppercase; color: #9a4a62; margin-bottom: 4px; }
+.g-bouncer .bn-book p { margin: 8px 0 0; font: 600 13px/1.35 var(--bn-ui); color: #6a4a58; text-align: center; }
 .g-bouncer .bn-book p.bn-support { color: #2b1420; background: #fff; border-radius: 10px; padding: 8px 10px; border: 1px solid rgba(43, 20, 32, 0.18); }
 .g-bouncer .gk-char .gk-bubble { font-family: var(--bn-ui); }
 `,
@@ -352,7 +351,8 @@
       el.classList.toggle('bn-bright', !dark());
       const cv = K.canvas(el, { opaque: true, maxDpr: SOFT ? 1.25 : 1.5 });
       const P = K.particles({ max: 240 });
-      const sign = h('div', { class: 'bn-sign', 'aria-hidden': 'true' }, document.createTextNode('Your Time'), h('small', { text: CLUB.name }));
+      const signSub = h('small', { text: CLUB.name });
+      const sign = h('div', { class: 'bn-sign', 'aria-hidden': 'true' }, document.createTextNode('Your Time'), signSub);
       const palm = h('div', { class: 'bn-palm', 'aria-hidden': 'true', html: '<svg viewBox="0 0 24 24">' + ICONS.palm + '</svg>' });
       const doorSign = h('button', { type: 'button', class: 'bn-door-sign', 'aria-label': 'Door sign: open. At closing time, tap to flip it to closed.' }, h('span', { text: 'Open' }));
       el.append(sign, palm, doorSign);
@@ -360,8 +360,7 @@
       /* the desk: the ask (ticket) and the three answer cards */
       const whoName = h('b', { text: '' }), whoTag = h('span', { text: '' });
       const lineEl = h('p', { class: 'bn-line', 'aria-live': 'polite' });
-      const hint = h('span', { class: 'bn-hint', 'aria-hidden': 'true', html: '<svg viewBox="0 0 24 24"><path d="M4 12h14M13 6l6 6-6 6"/></svg>' }, h('span', { text: 'or swipe them in' }));
-      const ticket = h('div', { class: 'bn-ticket' }, h('div', { class: 'bn-who' }, whoName, whoTag), lineEl, hint);
+      const ticket = h('div', { class: 'bn-ticket' }, h('div', { class: 'bn-who' }, whoName, whoTag), lineEl);
       const mkCard = (kind, icon, title, sub, c, aria) => { const b = h('button', { type: 'button', class: 'bn-card', 'data-kind': kind, 'aria-label': aria, style: { '--c': c } }, h('span', { html: '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICONS[icon] + '</svg>' }), h('b', { text: title }), h('small', { text: sub })); return b; };
       const cardNo = mkCard('no', 'palm', 'Kind no', 'hold', '#ff7a9c', 'Kind no. Press and hold.');
       const cardLater = mkCard('later', 'later', 'Not tonight, but…', 'drag to them', '#7fc8ff', 'Not tonight, but later. Drag onto the guest, or press.');
@@ -375,11 +374,9 @@
       const rush = K.character('rush', { side: 'right', mood: 'happy', size: 54, x: 0, y: 0, voice: 760 });
       const glitch = K.character('glitch', { side: 'left', mood: 'scan', size: 50, x: 0, y: 0, voice: 900 });
       const crew = { patch, rush, glitch };
-      let talker = null;
       function say(who, lines, ms, mood) {
         const c = crew[who]; if (!c) return;
         Object.keys(crew).forEach(k => { if (k !== who) crew[k].hush(); });
-        talker = who;
         c.say(typeof lines === 'string' ? lines : line(lines), Object.assign({ ms: ms || 3200 }, mood ? { mood, moodMs: ms || 3200 } : {}));
       }
 
@@ -395,7 +392,7 @@
         Object.assign(G, { w, H, phone: ph });
         G.dh = ph ? 192 : 196;
         desk.style.setProperty('--dh', G.dh + 'px');
-        G.deskTop = H - 12 - G.dh;
+        G.deskTop = H - 16 - G.dh;
         const fw = ph ? w : Math.min(780, w - 160), fx0 = (w - fw) / 2;
         G.fx0 = fx0; G.fx1 = fx0 + fw;
         G.street = Math.round(Math.min(G.deskTop - (ph ? 172 : 190), ph ? 470 : 470));
@@ -416,9 +413,34 @@
           : { glitch: [G.fx1 - 46, G.signY + 132, 66], rush: [Math.round((G.win.x0 + G.win.x1) / 2), G.win.y1 + 6, 72], patch: [Math.min(w - 50, G.door.x + dw / 2 + 58), G.street + 10, 82] };
         Object.keys(crewPos).forEach(k => { const [x, y, s] = crewPos[k]; const c = crew[k]; c.el.style.setProperty('--sz', s + 'px'); c.place(x - s / 2, y - s); G[k] = { x, y, s }; });
         sign.style.top = G.signY - G.signFs * 0.5 + 'px'; sign.style.setProperty('--fs', G.signFs + 'px'); sign.style.left = (fx0 + fw / 2) + 'px';
-        doorSign.style.left = G.door.x + 'px'; doorSign.style.top = (G.door.top + (ph ? 70 : 84)) + 'px';
+        const sbw = Math.min(fw - 30, ph ? 320 : 420);
+        G.board = { x: fx0 + fw / 2 - sbw / 2, y: G.signY - G.signFs * 0.62, w: sbw, h: G.signFs * 1.6 };
+        buildBulbs();
+        doorSign.style.left = G.door.x + 'px'; doorSign.style.top = (G.door.top + (ph ? 80 : 96)) + 'px';
         guests.forEach(gu => { gu.el.style.setProperty('--gw', G.gw + 'px'); gu.el.style.setProperty('--gh', G.gh + 'px'); });
         buildSprites(); paintBg();
+      }
+      /* marquee bulbs on the rim of the sign board: they light up as asks get answered, then chase at closing time */
+      function buildBulbs() {
+        const b = G.board, sp = G.phone ? 19 : 22, pts = [];
+        const x0 = b.x + 4, x1 = b.x + b.w - 4, y0 = b.y + 1, y1 = b.y + b.h - 1;
+        const nx = Math.max(2, Math.round((x1 - x0) / sp)), ny = Math.max(1, Math.round((y1 - y0) / sp));
+        for (let i = 0; i < nx; i++) pts.push([x0 + (x1 - x0) * i / nx, y0]);
+        for (let i = 0; i < ny; i++) pts.push([x1, y0 + (y1 - y0) * i / ny]);
+        for (let i = 0; i < nx; i++) pts.push([x1 - (x1 - x0) * i / nx, y1]);
+        for (let i = 0; i < ny; i++) pts.push([x0, y1 - (y1 - y0) * i / ny]);
+        G.bulbs = pts;
+      }
+      /* a guest's costume as an image (its face set to one mood), so a guest let in can be drawn inside the window */
+      const costumeImgs = {};
+      function costumeImage(costume, mood) {
+        const key = costume + ':' + mood;
+        if (costumeImgs[key]) return costumeImgs[key];
+        const css = '.bn-m,.bn-brow{display:none}.bn-m-' + mood + '{display:inline}';
+        const im = new Image();
+        im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="150" viewBox="0 0 120 150"><style>' + css + '</style>' + COSTUME[costume] + '</svg>');
+        costumeImgs[key] = im;
+        return im;
       }
       function buildSprites() {
         const p = pal();
@@ -433,11 +455,17 @@
         const g = L.bg.g;
         let gr = g.createLinearGradient(0, 0, 0, G.street); gr.addColorStop(0, p.sky[0]); gr.addColorStop(1, p.sky[1]);
         g.fillStyle = gr; g.fillRect(0, 0, w, G.street + 2);
-        for (let i = 0; i < 90 * p.stars; i++) { g.globalAlpha = (0.25 + R() * 0.6) * (D ? 1 : 0.6); g.fillStyle = '#fff'; g.fillRect(R() * w, R() * G.street * 0.5, 1.3, 1.3); }
+        const skyH = G.phone ? 92 : G.street * 0.5;
+        for (let i = 0; i < 90 * p.stars; i++) { g.globalAlpha = (0.25 + R() * 0.6) * (D ? 1 : 0.6); g.fillStyle = '#fff'; g.fillRect(R() * w, R() * skyH, 1.3, 1.3); }
         g.globalAlpha = 1;
-        const mx = G.phone ? w * 0.14 : G.fx0 * 0.45, my = G.phone ? 104 : 120;
+        const mx = G.phone ? w * 0.13 : G.fx0 * 0.45, my = G.phone ? 72 : 120, mr = D ? 14 : 18;
+        G.moon = { x: mx, y: my };
         const mg = g.createRadialGradient(mx, my, 4, mx, my, 90); mg.addColorStop(0, K.hexA(D ? '#fff4d6' : '#fff8e8', D ? 0.45 : 0.55)); mg.addColorStop(1, 'rgba(255,255,255,0)');
-        g.fillStyle = mg; g.fillRect(mx - 90, my - 90, 180, 180); g.fillStyle = D ? '#fff3d0' : '#fffaf0'; g.beginPath(); g.arc(mx, my, D ? 14 : 18, 0, TAU); g.fill();
+        g.fillStyle = mg; g.fillRect(mx - 90, my - 90, 180, 180);
+        const mc = off(mr * 2 + 4, mr * 2 + 4); // the moon: a crescent at night, full at dusk
+        mc.g.fillStyle = D ? '#fff3d0' : '#fffaf0'; mc.g.beginPath(); mc.g.arc(mr + 2, mr + 2, mr, 0, TAU); mc.g.fill();
+        if (D) { mc.g.globalCompositeOperation = 'destination-out'; mc.g.beginPath(); mc.g.arc(mr + 2 + mr * 0.5, mr + 2 - mr * 0.28, mr * 0.86, 0, TAU); mc.g.fill(); }
+        g.drawImage(mc.c, mx - mr - 2, my - mr - 2, mr * 2 + 4, mr * 2 + 4);
         // neighbours on the wide screen
         if (!G.phone) {
           const bcol = D ? '#0c0f1c' : '#3a3460';
@@ -447,7 +475,7 @@
           });
         }
         // the club facade
-        const fx0 = G.fx0, fx1 = G.fx1, top = G.phone ? 60 : 64;
+        const fx0 = G.fx0, fx1 = G.fx1, top = G.phone ? 92 : 64; // phone: a band of night sky above the roofline
         g.fillStyle = p.wall; g.fillRect(fx0, top, fx1 - fx0, G.street - top);
         if (CLUB.id === 'cinema') { // velvet stucco panels with gold trim
           for (let x = fx0 + 14; x < fx1 - 20; x += 64) { g.strokeStyle = K.hexA(p.trim, 0.45); g.lineWidth = 2; g.strokeRect(x, top + 90, 50, G.street - top - 110); }
@@ -459,10 +487,10 @@
           g.globalAlpha = 1;
         }
         g.fillStyle = p.trim; g.fillRect(fx0 - 6, top - 6, fx1 - fx0 + 12, 14);
-        // sign backing board
-        const sbw = Math.min(fx1 - fx0 - 30, G.phone ? 320 : 420), sby = G.signY - G.signFs * 0.62;
-        g.fillStyle = D ? 'rgba(10,6,12,0.75)' : 'rgba(40,20,30,0.55)'; roundRect(g, (fx0 + fx1) / 2 - sbw / 2, sby, sbw, G.signFs * 1.6, 12); g.fill();
-        g.strokeStyle = K.hexA(p.brass, 0.7); g.lineWidth = 2; g.stroke();
+        // sign backing board (its marquee bulbs are drawn live)
+        const BD = G.board;
+        g.fillStyle = D ? 'rgba(10,6,12,0.78)' : 'rgba(40,20,30,0.6)'; roundRect(g, BD.x, BD.y, BD.w, BD.h, 12); g.fill();
+        g.strokeStyle = K.hexA(p.brass, 0.75); g.lineWidth = 2; g.stroke();
         // window with the room behind it (the room's life is drawn each frame)
         const W2 = G.win;
         g.fillStyle = p.trim; roundRect(g, W2.x0 - 7, W2.y0 - 7, W2.x1 - W2.x0 + 14, W2.y1 - W2.y0 + 14, 6); g.fill();
@@ -499,7 +527,15 @@
         guests.push(gu);
         K.drag(node, {
           space: el,
-          start: () => { if (!(gu === ST.cur && ST.state === 'decide')) return false; gu.dragging = true; setMood(gu, 'o'); if (A.ctx) { A.pop({ freq: 420, vol: 0.06 }); A.sync('grab', performance.now()); } },
+          start: () => {
+            if (!(gu === ST.cur && ST.state === 'decide')) return false;
+            if (gu.p.twist) { // the guilt trip can't be waved through: a squeak from the violin, a nudge from Patch
+              gu.shake = 0.8; violin(9);
+              if (!ST.saidNoSwipe) { ST.saidNoSwipe = true; say('patch', { Jolly: 'Not this one. Your answer’s no: hold the palm.', Cheeky: 'Nice try, but that’s a yes in disguise. Palm up.', Unfiltered: 'No swipe. Hold the palm.' }, 2600, 'determined'); }
+              return false;
+            }
+            gu.dragging = true; setMood(gu, 'o'); if (A.ctx) { A.pop({ freq: 420, vol: 0.06 }); A.sync('grab', performance.now()); }
+          },
           move: (pt, dd) => { if (!gu.dragging) return; gu.dx = Math.max(-20, dd.dx) * 0.9; if (dd.dx > 30) setHot(null); },
           end: (pt, dd) => { if (!gu.dragging) return; gu.dragging = false; if (dd.dx > 70 || dd.vx > 650) respond('yes'); else { gu.dx = 0; setMood(gu, 'ask'); if (A.ctx) A.boing({ freq: 260, vol: 0.05 }); } }
         });
@@ -527,7 +563,7 @@
 
       /* ---------------- the state of the door ---------------- */
       const ST = { state: 'intro', idx: -1, cur: null, vip: null, answers: [], crowd: 0, limited: [], cosy: 0, door: 0, doorT: 0, rope: 0, ropeT: 0, firsts: {}, finished: false, phrases: [], held: 0, guiltPush: 0, closing: false,
-        rushSaid: 0, glitchSaid: 0, sparkle: 0, calm: 0 };
+        rushSaid: 0, glitchSaid: 0, sparkle: 0, calm: 0, bulbF: 0, bulbShown: 0, bulbAtFinale: 0, finaleAt: 0, vipIn: null, decideAt: 0 };
       const canAct = () => ST.state === 'decide' && ST.cur && !ST.cur.vipChoosing;
 
       /* answer cards: hold (kind no) and two drag-or-press cards */
@@ -590,9 +626,9 @@
       /* ---------------- the ticket ---------------- */
       function showWho(gu, label) {
         const d = gu.p;
-        whoName.textContent = d.own ? d.name : d.name; whoName.className = d.own ? 'gk-user' : '';
+        whoName.textContent = d.name; whoName.className = d.own ? 'gk-user' : '';
         whoName.style.setProperty('--who', gu.vip ? '#ffd27a' : d.twist ? '#ff9ec7' : '');
-        whoTag.textContent = label || (gu.vip ? 'VIP · on the list' : d.own ? 'from your list' : d.twist ? 'pushing back' : 'asks');
+        whoTag.textContent = d.own ? '' : label || (gu.vip ? 'VIP · on the list' : d.twist ? 'pushing back' : 'asks'); // the player's own words get the whole row
       }
       let typeTok = 0;
       function showLine(textIn, you, voice) {
@@ -616,7 +652,7 @@
           S.listen(b, 'pointerdown', () => { if (A.ctx) A.click({ vol: 0.08 }); });
           b.addEventListener('click', () => {
             if (ST.state !== 'list') return;
-            ST.vip = vv; ST.state = 'listed'; b.classList.add('bn-picked'); K.guide(null);
+            ST.vip = vv; ST.state = 'listed'; b.classList.add('bn-picked'); K.guide(null); costumeImage(vv.costume, 'happy');
             K.sfx.great(); P.emit('star', K.rectIn(b, el).cx, K.rectIn(b, el).cy, 12, { colors: ['#fff6d0', '#ffd27a', '#ff9ec7'] });
             say('glitch', { Jolly: 'Added to the list: ' + vv.name + '. Priority: you.', Cheeky: 'Logged. ' + vv.name + ' gets the velvet treatment.', Unfiltered: vv.name + '. On the list.' }, 2600, 'happy');
             ctx.track('vip', { id: vv.id });
@@ -651,7 +687,7 @@
         gu.tx = G.front.x; gu.ty = G.front.y; gu.ts = 1; gu.op = 1; gu.speed = 3.6;
         layoutQueue(false);
         cardsOn(false); HOLD.k = 0; setHot(null);
-        showWho(gu); lineEl.textContent = '';
+        showWho(gu); ++typeTok; lineEl.className = 'bn-line bn-wait'; lineEl.textContent = '…'; // they're about to speak
         if (A.ctx) for (let i = 0; i < 4; i++) A.click({ when: A.now() + i * 0.17, vol: 0.035 });
         K.later(() => arrive(gu), 650);
       }
@@ -659,7 +695,8 @@
         if (ST.finished) return;
         const d = gu.p;
         setMood(gu, 'ask');
-        showLine(line(d.ask), false, d.voice);
+        const regular = d.twist && visits >= 2; // the Guilt Trip has heard about you
+        showLine(line(regular ? v('Oh, it’s you. The one with the steady palm. …After everything I’ve done?', 'You again? I’ve been practising my sad face. After everything I’ve done?', 'You again. After everything I did?') : d.ask), false, d.voice);
         if (d.twist) { gu.el.classList.add('bn-play'); violin(0); }
         const first = ST.idx === 0;
         K.later(() => {
@@ -670,9 +707,8 @@
           else if (first) say('patch', { Jolly: 'First ask. A kind no is short: no reasons owed. Hold the palm.', Cheeky: 'Lesson one: a no doesn’t need a speech. Hold up the palm.', Unfiltered: 'Short no. Hold the palm.' }, 3600);
           else if (!ST.rushSaid && ST.idx >= 1 && !gu.vip) { ST.rushSaid = 1; say('rush', { Jolly: 'Let them in! Saying yes is so fast!', Cheeky: 'Just say yes! Yes is my favourite word! It’s the only one I know!', Unfiltered: 'Yes. Say yes. Quick.' }, 2800, 'speed'); }
           else if (ST.glitchSaid < 4 && Math.random() < 0.85) { ST.glitchSaid++; scanBeam(); say('glitch', d.scan, 3000, 'scan'); }
-          ST.state = 'decide';
+          ST.state = 'decide'; ST.decideAt = performance.now();
           cardsOn(true, d.twist ? ['no'] : null);
-          hint.style.visibility = d.twist ? 'hidden' : '';
           guideFor(gu);
         }, first ? 900 : 700);
       }
@@ -703,7 +739,7 @@
         const you = line(sayLines);
         showLine(you, true);
         ctx.track('answer', { kind, vip: isVip ? 1 : 0, own: d.own ? 1 : 0 });
-        ST.answers.push({ kind: d.gentle ? 'vip' : isVip ? (kind === 'yes' ? 'vip' : kind) : kind, id: d.id, you });
+        ST.answers.push({ kind: d.gentle ? 'gentle' : isVip ? (kind === 'yes' ? 'vip' : kind) : kind, real: kind, id: d.id, you }); // kind: its kind/firm weight; real: what you did
         if (!isVip && !d.own && !d.gentle && kind !== 'yes') { const pid = d.id + ':' + kind; if (!ST.phrases.some(x => x.id === pid)) ST.phrases.push({ id: pid, text: line(d.say[kind]), who: d.name }); }
         const fx = gu.x, fy = gu.y - G.gh * 0.55;
         if (kind === 'no') {
@@ -775,9 +811,9 @@
         K.later(() => {
           gu.gone = true; gu.el.remove();
           ST.doorT = 0; ST.ropeT = 0; music.level(levelNow());
-          if (kind === 'yes' && !gu.vip) ST.crowd = Math.min(1, ST.crowd + 0.24);
+          if (kind === 'yes' && !gu.vip && !gu.p.gentle) ST.crowd = Math.min(1, ST.crowd + 0.24); // a kind invitation accepted doesn't crowd your evening
           if (kind === 'limit') { const lt = { col: gu.p.col || '#ffd27a', until: performance.now() + 9000 }; ST.limited.push(lt); }
-          if (gu.vip) ST.cosy = 1;
+          if (gu.vip) { ST.cosy = 1; ST.vipIn = { costume: gu.p.costume, t: performance.now() }; if (A.ctx) A.chime(A.note('A5'), { vol: 0.05, dur: 1.6 }); }
           if (A.ctx) A.wood(undefined, 0.12, 1.6);
         }, 1900);
       }
@@ -815,7 +851,7 @@
       function guiltDone() {
         const gu = ST.cur, d = gu.p;
         ST.state = 'respond'; K.guide(null); cardsOn(false); gu.el.classList.remove('bn-play');
-        ST.answers.push({ kind: 'hold', id: 'guilt', you: line(d.hold[1]) });
+        ST.answers.push({ kind: 'hold', real: 'hold', id: 'guilt', you: line(d.hold[1]) });
         ST.phrases.push({ id: 'guilt:hold', text: line(d.hold[0]), who: d.name, twist: true });
         palmUp(gu.x, gu.y - G.gh * 0.55);
         if (A.ctx) { ['A4', 'C#5', 'E5', 'A5'].forEach((n, i) => A.chime(A.note(n), { when: A.now() + i * 0.07, vol: 0.06, dur: 1.4 })); A.sync('held', performance.now()); }
@@ -840,7 +876,7 @@
       function closing() {
         if (ST.closing) return;
         ST.closing = true; ST.state = 'closing'; ST.cur = null;
-        cardsOn(false); hint.style.visibility = 'hidden';
+        cardsOn(false);
         whoName.textContent = 'Closing time'; whoName.className = ''; whoName.style.setProperty('--who', '#ffd27a'); whoTag.textContent = 'queue’s empty';
         showLine(line({ Jolly: 'That’s everyone. Flip the sign on the door.', Cheeky: 'Queue cleared. Flip the sign, boss.', Unfiltered: 'Flip the sign.' }), false);
         say('patch', { Jolly: 'Closing time! Flip the sign.', Cheeky: 'That’s the queue done. Flip the sign, boss.', Unfiltered: 'Done. Flip the sign.' }, 3000, 'happy');
@@ -856,27 +892,41 @@
         if (A.ctx) { A.wood(undefined, 0.2, 1.2); ['E5', 'G5', 'B5'].forEach((n, i) => A.chime(A.note(n), { when: A.now() + 0.12 + i * 0.1, vol: 0.06, dur: 1.2 })); A.sync('flip', performance.now()); }
         finale();
       }
-      async function finale() {
+      /* closing time, built from the club itself: the door swings wide and floods the street with warm light, the
+         marquee fills bulb by bulb and starts to chase, the sign now reads "Reserved for you", the rain stops, the moon
+         comes out, the velvet rope sparkles, and the guest you chose for your evening is home in the lit window. */
+      function finale() {
         desk.classList.add('bn-away');
-        sign.classList.add('bn-steady');
-        ST.calm = 1; ST.limited = []; ST.crowd = 0; ST.sparkle = 1; ST.cosy = Math.max(ST.cosy, 0.6);
+        sign.classList.add('bn-steady', 'bn-lit'); signSub.textContent = 'Reserved for you';
+        ST.calm = 1; ST.limited = []; ST.crowd = 0; ST.sparkle = 1; ST.cosy = 1;
+        ST.bulbAtFinale = Math.floor(ST.bulbF * (G.bulbs || []).length); ST.finaleAt = performance.now();
+        ST.doorT = 1; ST.ropeT = 0;
         rain.level(0.0001, 1.2);
         music.level(0.85);
-        K.later(() => say('rush', { Jolly: 'Can I come in? As a guest? With limits?', Cheeky: 'Room for one more? I’ll be quiet. I won’t. But I’ll try.', Unfiltered: 'Can I come in?' }, 3000, 'shy'), 700);
-        K.later(() => say('glitch', { Jolly: 'Door log: every ask answered. No essays. Kind and firm.', Cheeky: 'Door log complete. Zero over-explaining detected.', Unfiltered: 'Log: kind, firm, done.' }, 3200, 'happy'), 3900);
-        K.finale('stars', { z: 24, colors: [pal().neon2, '#ffffff', pal().neon], chord: ['F4', 'A4', 'C5', 'E5'], ms: 4200 });
-        K.later(showBook, 900);
-        K.later(end, 5600);
+        if (A.ctx) {
+          const t = A.now();
+          A.noise({ when: t, filter: 'bandpass', freq: 420, to: 1500, q: 0.8, dur: 0.9, attack: 0.35, vol: 0.05 }); // the door swinging wide
+          ['C5', 'D5', 'E5', 'G5', 'A5', 'C6', 'D6', 'E6'].forEach((n, i) => A.pluck(A.note(n), { when: t + 0.12 + i * 0.15, vol: 0.09, damp: 0.995, verb: 0.3 })); // the marquee filling
+          A.sync('closing', performance.now());
+        }
+        P.emit('spark', G.door.x, G.door.bot - 20, 18, { colors: ['#fff3c4', '#ffd27a', '#ffffff'], angle: -Math.PI / 2, spread: 2.2, speed: [80, 220] });
+        // Rush pops out of the window and round to the open door, suddenly very polite about it
+        K.later(() => { const s = G.rush ? G.rush.s : 54; rush.side('left'); rush.place(G.door.x - s / 2, G.street - s, 650); rush.react('bounce'); if (A.ctx) A.whoosh({ vol: 0.08, dur: 0.4 }); }, 500);
+        K.later(() => say('rush', { Jolly: 'Can I come in? With limits?', Cheeky: 'Room for one more? Ish?', Unfiltered: 'In? Politely?' }, 3000, 'shy'), 1150); // short: the bubble must fit left of the door
+        K.later(() => say('glitch', { Jolly: 'Door log: every ask answered. No essays. Kind and firm.', Cheeky: 'Door log complete. Zero over-explaining detected.', Unfiltered: 'Log: kind, firm, done.' }, 3200, 'happy'), 4000);
+        K.later(() => K.finale('stars', { z: 24, colors: [pal().neon2, '#ffffff', pal().neon], chord: ['F4', 'A4', 'C5', 'E5'], ms: 4200 }), 1300);
+        K.later(showBook, 2300);
+        K.later(end, 6600);
       }
+      /* the phrasebook page for tonight: the line worth keeping (the one that held against the guilt trip, if it came) */
       function showBook() {
-        const lines = ST.phrases.slice(-3).reverse();
-        const list = h('ul');
-        (lines.length ? lines : [{ who: 'Tonight', text: line({ Jolly: 'You kept the door your own.', Cheeky: 'You kept the door your own.', Unfiltered: 'Door kept.' }) }]).forEach(x => list.append(h('li', null, h('small', { text: x.twist ? 'With the Guilt Trip' : 'To ' + x.who }), document.createTextNode('“' + x.text + '”'))));
-        const book = h('div', { class: 'bn-book', role: 'status' }, h('h3', { text: 'Tonight’s door lines' }), list);
-        const count = K.collection().filter(x => /:/.test(x)).length + ST.phrases.filter(x => !K.collection().includes(x.id)).length;
-        book.append(h('p', { text: 'Phrasebook: ' + Math.min(PHRASE_TOTAL, count) + ' of ' + PHRASE_TOTAL + ' lines · Tomorrow: ' + CLUB_NEXT.name }));
+        const feat = ST.phrases.find(x => x.twist) || ST.phrases[ST.phrases.length - 1];
+        const coll = K.collection(), have = coll.filter(x => /:/.test(x)).length, fresh = ST.phrases.filter(x => !coll.includes(x.id)).length;
+        const quote = feat ? h('blockquote', null, h('small', { text: feat.twist ? 'With the Guilt Trip' : 'To ' + feat.who }), document.createTextNode('“' + feat.text + '”'))
+          : h('blockquote', null, h('small', { text: 'Tonight' }), document.createTextNode(line({ Jolly: 'Every ask got an answer. That’s the whole job.', Cheeky: 'Every ask answered. Extremely professional.', Unfiltered: 'Every ask answered.' })));
+        const book = h('div', { class: 'bn-book', role: 'status' }, h('h3', { text: 'Tonight’s door lines' }), quote,
+          h('p', { text: (ST.phrases.length ? ST.phrases.length + (ST.phrases.length === 1 ? ' line' : ' lines') + ' practised · ' : '') + 'Phrasebook ' + Math.min(PHRASE_TOTAL, have + fresh) + ' of ' + PHRASE_TOTAL + (fresh ? ' (+' + fresh + ' new)' : '') }));
         if (gentle) book.append(h('p', { class: 'bn-support', text: 'If someone in your life makes saying no feel unsafe, you deserve support. In Australia: 1800RESPECT, 1800 737 732. Elsewhere, your local support line.' }));
-        book.style.top = Math.round(G.street + (G.phone ? 26 : 30)) + 'px';
         el.append(book);
       }
       function end() {
@@ -890,11 +940,11 @@
         const fresh = []; let count = K.collection().filter(x => /:/.test(x)).length;
         ST.phrases.forEach(x => { const c = K.collect(x.id); if (c.isNew) fresh.push(x.id); count = c.items.filter(y => /:/.test(y)).length; });
         badges.push(fresh.length ? 'Phrasebook: +' + fresh.length + ' line' + (fresh.length > 1 ? 's' : '') + ' (' + count + ' of ' + PHRASE_TOTAL + ')' : 'Phrasebook: ' + count + ' of ' + PHRASE_TOTAL);
-        if (ST.vip && ans.some(a => a.kind === 'vip')) badges.push('Red carpet: ' + ST.vip.name);
-        const n = (k) => ans.filter(a => a.kind === k).length;
-        const kindNos = n('no') + n('later') + (ST.held ? 1 : 0);
-        ctx.track('done', { asks: ans.length, no: n('no'), later: n('later'), limit: n('limit'), yes: n('yes'), vip: n('vip'), held: ST.held, tier: tier || 'none' });
-        const lines = [ans.length + ' asks at the rope: ' + kindNos + ' kind no' + (kindNos === 1 ? '' : 's') + ', ' + n('limit') + ' with limits, ' + (n('yes') + n('vip')) + ' let in'];
+        if (ST.vip && ST.vipIn) badges.push('Red carpet: ' + ST.vip.name);
+        const n = (k) => ans.filter(a => a.real === k).length;
+        const kindNos = n('no') + n('later') + n('hold');
+        ctx.track('done', { asks: ans.length, no: n('no'), later: n('later'), limit: n('limit'), yes: n('yes'), vip: ST.vipIn ? 1 : 0, held: ST.held, tier: tier || 'none' });
+        const lines = [ans.length + ' asks at the rope: ' + kindNos + ' kind no' + (kindNos === 1 ? '' : 's') + ', ' + n('limit') + ' with limits, ' + n('yes') + ' let in'];
         lines.push(ST.held ? 'The Guilt Trip pushed three times; your answer held' : gentle ? 'Every answer was welcome: that’s what a kind ask feels like' : 'Most asks took your answer well');
         lines.push(gentle ? 'Support if no feels unsafe: 1800RESPECT, 1800 737 732' : 'Tomorrow: ' + CLUB_NEXT.name);
         ctx.finish({ title: 'Your evening is yours', mood: 'cool', lines, share: 'Worked the door of my own evening. Kind no, firm rope.', badges });
@@ -920,6 +970,14 @@
         if (CLUB.id === 'jazz') { g.fillStyle = mixHex(p.room[1], '#000', 0.4); g.beginPath(); g.ellipse(W2.x0 + w * 0.58, W2.y0 + hh * 0.3, 12, 18, 0.3, 0, TAU); g.fill(); g.fillRect(W2.x0 + w * 0.6, W2.y0 + hh * 0.3, 3, 26); }
         // the VIP is in: a warm glow in the room
         if (ST.cosy > 0.05) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.35 * ST.cosy + 0.08 * Math.sin(now / 700); g.drawImage(GLOW.neon2, W2.x0 + w * 0.1, W2.y0 + hh * 0.2, w * 0.5, hh * 0.7); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; }
+        // the guest you gave the red carpet, at home in the armchair, behind the glass
+        if (ST.vipIn) {
+          const im = costumeImage(ST.vipIn.costume, 'happy');
+          if (im.complete && im.naturalWidth) {
+            const k = Math.min(1, (now - ST.vipIn.t) / 900), ih = Math.min(hh * 0.52, 84), iw = ih * 0.8, ix = W2.x0 + w * 0.19, iy = W2.y1 - hh * 0.1 + Math.sin(now / 650) * 1.5;
+            g.globalAlpha = k; g.drawImage(im, ix - iw / 2, iy - ih * (0.85 + 0.15 * k), iw, ih); g.globalAlpha = 1;
+          }
+        }
         // the crowd (guests let in without limits, and limited guests until their time is up)
         const n = Math.round(ST.crowd * 8) + ST.limited.length;
         for (let i = 0; i < n; i++) {
@@ -948,8 +1006,15 @@
           g.strokeStyle = K.hexA('#000000', 0.3); g.lineWidth = 2;
           g.strokeRect(x0 + pw * 0.16, top + (bot - top) * 0.3, pw * 0.68, (bot - top) * 0.25); g.strokeRect(x0 + pw * 0.16, top + (bot - top) * 0.62, pw * 0.68, (bot - top) * 0.28);
           g.fillStyle = p.brass; g.beginPath(); g.arc(x0 + pw * 0.86, top + (bot - top) * 0.58, 3.5, 0, TAU); g.fill();
-          // a little window in the door, glowing
-          g.fillStyle = K.hexA(p.light, 0.85); g.beginPath(); g.arc(x0 + pw / 2, top + r * 0.75, Math.min(pw, w) * 0.16, 0, TAU); g.fill();
+          // a porthole in the door: warm glass, a glimpse of the room, a brass ring and a cross bar
+          const wx = x0 + pw / 2, wy = top + r * 0.75, wr = Math.min(pw, w) * 0.16;
+          g.save(); g.beginPath(); g.arc(wx, wy, wr, 0, TAU); g.clip();
+          g.fillStyle = mixHex(p.light, '#ffffff', 0.3); g.fillRect(wx - wr, wy - wr, wr * 2, wr * 2);
+          g.fillStyle = K.hexA(p.room[0], 0.55); g.fillRect(wx - wr, wy + wr * 0.25, wr * 2, wr);
+          g.fillStyle = K.hexA('#ffffff', 0.35); g.beginPath(); g.ellipse(wx - wr * 0.35, wy - wr * 0.4, wr * 0.35, wr * 0.18, -0.6, 0, TAU); g.fill();
+          g.restore();
+          g.strokeStyle = mixHex(p.door, '#000000', 0.35); g.lineWidth = 2; g.beginPath(); g.moveTo(wx - wr, wy); g.lineTo(wx + wr, wy); g.moveTo(wx, wy - wr); g.lineTo(wx, wy + wr); g.stroke();
+          g.strokeStyle = p.brass; g.lineWidth = 3.5; g.beginPath(); g.arc(wx, wy, wr + 1, 0, TAU); g.stroke();
         }
         g.restore();
         // light spilling onto the pavement when the door opens; the wall lamp
@@ -1019,14 +1084,58 @@
         void p;
       }
       const splashes = [];
+      /* the marquee: one bulb lights for every bit of the queue answered; at closing time they fill and chase */
+      function drawBulbs(g, now) {
+        const B = G.bulbs; if (!B || !B.length) return;
+        const n = B.length, ft = ST.finaleAt ? (now - ST.finaleAt) / 1000 : -1, calmChase = K.reduced();
+        const litN = ft >= 0 ? Math.min(n, Math.floor(ST.bulbAtFinale + (n - ST.bulbAtFinale) * Math.min(1, ft / 1.3))) : Math.floor(ST.bulbF * n + 0.001);
+        const step = Math.floor(ft * 9);
+        for (let i = 0; i < n; i++) { const [x, y] = B[i], on = i < litN; g.fillStyle = on ? '#fff6dc' : (dk ? 'rgba(255,235,200,0.24)' : 'rgba(70,30,40,0.35)'); g.beginPath(); g.arc(x, y, on ? 2.7 : 2.2, 0, TAU); g.fill(); }
+        g.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < litN; i++) {
+          const [x, y] = B[i], a = ft > 1.3 && !calmChase ? ((i + step) % 3 === 0 ? 1 : 0.5) : 0.85 + 0.15 * Math.sin(now / 240 + i * 0.7);
+          g.globalAlpha = a * (dk ? 0.9 : 0.65); g.drawImage(GLOW.gold, x - 10, y - 10, 20, 20);
+        }
+        g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+      }
+      /* a soft trail of chevrons on the carpet from the guest at the rope to the door: swiping them in is always an option */
+      function drawCarpetArrows(g, now) {
+        const gu = ST.cur;
+        if (ST.state !== 'decide' || !gu || gu.p.twist || gu.dragging || !G.door) return;
+        const k0 = Math.min(1, (now - (ST.decideAt || now)) / 700);
+        const x0 = gu.x + G.gw * 0.36, y0 = gu.y - 8, x1 = G.door.x - G.door.w * 0.24, y1 = G.street + 12;
+        const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy); if (len < 60) return;
+        const ux = dx / len, uy = dy / len, nx = -uy, ny = ux, s = G.phone ? 7 : 9, ph = (now / 900) % 1, n = 4;
+        g.lineCap = 'round'; g.lineJoin = 'round'; g.lineWidth = G.phone ? 2.6 : 3; g.strokeStyle = dk ? '#ffd27a' : '#fff3c4';
+        g.globalCompositeOperation = dk ? 'lighter' : 'source-over';
+        for (let i = 0; i < n; i++) {
+          const t = (i + 0.5) / n, x = x0 + dx * t, y = y0 + dy * t, dd = (((ph - t) % 1) + 1) % 1, a = (0.22 + 0.78 * Math.max(0, 1 - dd * 3)) * k0;
+          g.globalAlpha = a * 0.9;
+          g.beginPath(); g.moveTo(x - ux * s + nx * s, y - uy * s + ny * s); g.lineTo(x, y); g.lineTo(x - ux * s - nx * s, y - uy * s - ny * s); g.stroke();
+        }
+        g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+      }
+      /* closing time: the moon comes out and the whole front of the club takes on the warm light of the open door */
+      function drawFinaleGlow(g, now) {
+        if (!ST.finaleAt) return;
+        const k = Math.min(1, (now - ST.finaleAt) / 1600), d = G.door;
+        g.globalCompositeOperation = 'lighter';
+        if (G.moon) { g.globalAlpha = 0.55 * k; g.drawImage(GLOW.light, G.moon.x - 75, G.moon.y - 75, 150, 150); }
+        g.globalAlpha = (dk ? 0.3 : 0.2) * k; g.drawImage(GLOW.light, d.x - d.w * 2.2, d.top - d.w * 0.6, d.w * 4.4, (d.bot - d.top) + d.w * 1.4);
+        g.globalAlpha = (dk ? 0.28 : 0.2) * k; g.drawImage(GLOW.light, G.win.x0 - 30, G.win.y0 - 30, G.win.x1 - G.win.x0 + 60, G.win.y1 - G.win.y0 + 60);
+        g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+      }
       function draw(dt, now) {
         const g = cv.g;
         dk = dark();
         g.setTransform(cv.dpr, 0, 0, cv.dpr, 0, 0); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
         g.drawImage(L.bg.c, 0, 0, G.w, G.H);
+        drawBulbs(g, now);
         drawRoom(g, now);
         drawDoor(g, now);
+        drawFinaleGlow(g, now);
         drawStreetLife(g, now, dt);
+        drawCarpetArrows(g, now);
         drawRope(g, now);
         P.update(dt); P.draw(g);
       }
@@ -1046,6 +1155,15 @@
         ST.door += (ST.doorT - ST.door) * Math.min(1, dt * 5); ST.rope += (ST.ropeT - ST.rope) * Math.min(1, dt * 6); ST.sparkle *= ST.calm ? 1 : Math.exp(-dt * 0.8);
         for (let i = ST.limited.length - 1; i >= 0; i--) if (now > ST.limited[i].until) { ST.limited.splice(i, 1); if (A.ctx) A.chime(A.note('C6'), { vol: 0.03, dur: 0.8 }); }
         const cl = 0.0001 + ST.crowd * 0.07 + ST.limited.length * 0.01; if (chatter && Math.abs(cl - (ST.cl || 0)) > 0.002) { chatter.level(cl, 0.4); ST.cl = cl; }
+        // the marquee fills as the queue gets answered, one ticking bulb at a time
+        const nb = (G.bulbs || []).length, want = queue.length ? Math.min(1, ST.answers.length / queue.length) : 0;
+        if (!ST.finaleAt && ST.bulbF < want) {
+          ST.bulbF = Math.min(want, ST.bulbF + dt * 0.55);
+          const shown = Math.floor(ST.bulbF * nb + 0.001);
+          if (shown > ST.bulbShown) { ST.bulbShown = shown; if (A.ctx) A.tone({ type: 'sine', freq: 1900 + (shown % 12) * 70, dur: 0.05, vol: 0.016 }); }
+        }
+        // closing time: sparkles run along the velvet rope
+        if (ST.finaleAt && now - ST.finaleAt < 5200 && Math.random() < dt * 10) { const k = Math.random(), R2 = G.rope; P.emit('mote', R2.x0 + (R2.x1 - R2.x0) * k, R2.y + 4 + Math.sin(Math.PI * k) * 22, 1, { colors: ['#ffe9a8', '#ffd27a', '#ffc4dc'], speed: [6, 26] }); }
         updGuests(dt, now);
         draw(dt, now);
       });

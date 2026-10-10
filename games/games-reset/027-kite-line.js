@@ -49,12 +49,14 @@
     haze: ['#cfe3f4', '#e9dfc8', '#f2caa0', '#e8a08a', '#806084'],
     sun: ['#fffaf0', '#fff0c4', '#ffd890', '#ff9f55', '#ff7a45'],
     seaF: ['#9cc9ea', '#b9cad6', '#e6b991', '#ec9b78', '#8a5f78'],
-    seaN: ['#2f73b3', '#2d68a2', '#2c5687', '#253f6e', '#16244a'],
+    seaN: ['#2f73b3', '#2d68a2', '#33608f', '#384f86', '#22305e'],
     cloud: ['#ffffff', '#fff7e6', '#ffe1bd', '#ffb88f', '#e8908a'],
     shade: ['#c6d6ea', '#c9c6d4', '#c39aa6', '#8e6a8e', '#4a3a62'],
     warm: ['#ffffff', '#fff6e4', '#ffe2bc', '#ffc69a', '#b5a0c8'],
-    light: [1, 0.97, 0.86, 0.68, 0.42]
+    light: [1, 0.98, 0.93, 0.84, 0.5]
   };
+  /* Sunlight colour by time of day, per channel (it can run above 1): golden hour warms the land instead of greying it. */
+  const SUNC = [[1, 1, 1], [1.05, 1, 0.93], [1.13, 0.97, 0.8], [1.2, 0.9, 0.72], [0.66, 0.58, 0.8]];
   /* The reel plays a folk tune in D major pentatonic as you crank (one note every third of a turn). */
   const MEL = ['A4', 'B4', 'D5', 'B4', 'A4', 'F#4', 'E4', 'F#4', 'A4', 'B4', 'D5', 'E5', 'D5', 'B4', 'A4', 'F#4', 'D5', 'E5', 'F#5', 'E5', 'D5', 'B4', 'A4', 'B4', 'A4', 'F#4', 'E4', 'D4', 'E4', 'F#4', 'A4', 'D5'];
   const CHORDS = [['D3', 'A3', 'E4', 'F#4'], ['B2', 'F#3', 'D4', 'A4'], ['G2', 'D3', 'B3', 'F#4'], ['A2', 'E3', 'D4', 'E4']];
@@ -69,11 +71,11 @@
     id: 'kite-line', mode: 'reset', name: 'Kite Line', verb: 'crank', family: 'DISTANCE', minutes: 2,
     parents: ['Uncertainty / Future Worry / Reassurance', 'Mental Imagery', 'Overthinking / Thought Fusion'],
     cast: ['sync', 'drop'], poster: { char: 'sync', mood: 'happy' },
-    fonts: ['Permanent+Marker', 'Comfortaa:wght@600;700'],
+    fonts: ['Shantell+Sans:wght@700;800', 'Comfortaa:wght@600;700'],
     tagline: 'Write the worry on a kite, let out line, and watch it become a dot.',
     why: 'For a worry that feels huge up close: distance shrinks it and widens the view.',
     css: `
-.g-kite-line { --kl-round: "Comfortaa", "Nunito", "Trebuchet MS", system-ui, sans-serif; --kl-marker: "Permanent Marker", "Arial Black", "Trebuchet MS", sans-serif; }
+.g-kite-line { --kl-round: "Comfortaa", "Varela Round", "Nunito", "Trebuchet MS", system-ui, sans-serif; }
 .g-kite-line.kl-duo .gk-char .gk-bubble { max-width: min(280px, calc(100cqw - var(--sz) * 2 - 58px)); }
 .g-kite-line .kl-tug { position: absolute; inset: 0; z-index: 10; touch-action: none; }
 .g-kite-line .kl-reel { position: absolute; z-index: 22; right: 8px; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); width: 168px; height: 168px; border-radius: 50%; touch-action: none; cursor: grab; outline: none; -webkit-tap-highlight-color: transparent; }
@@ -83,7 +85,7 @@
 .g-kite-line .kl-meter b { display: block; font: 700 16px/1 var(--kl-round); letter-spacing: 0.01em; text-shadow: 0 1px 2px rgba(40, 18, 0, 0.6); font-variant-numeric: tabular-nums; }
 .g-kite-line .kl-meter small { display: block; margin-top: 3px; font: 700 12px/1 var(--font-ui); letter-spacing: 0.14em; color: rgba(255, 236, 200, 0.85); }
 .g-kite-line .kl-reel.off .kl-meter { opacity: 0; }
-.g-kite-line .kl-mile { position: absolute; z-index: 26; left: 50%; top: 47%; transform: translate(-50%, 8px); width: max-content; max-width: calc(100% - 40px); box-sizing: border-box; padding: 9px 20px 11px; border-radius: 18px; background: rgba(12, 22, 52, 0.34); text-align: center; pointer-events: none; opacity: 0; transition: opacity 0.7s ease, transform 0.9s cubic-bezier(.2, .9, .3, 1); }
+.g-kite-line .kl-mile { position: absolute; z-index: 26; left: 50%; top: 58%; transform: translate(-50%, 8px); width: max-content; max-width: calc(100% - 40px); box-sizing: border-box; padding: 9px 20px 11px; border-radius: 18px; background: rgba(12, 22, 52, 0.34); text-align: center; pointer-events: none; opacity: 0; transition: opacity 0.7s ease, transform 0.9s cubic-bezier(.2, .9, .3, 1); }
 .g-kite-line .kl-mile.on { opacity: 1; transform: translate(-50%, 0); }
 .g-kite-line .kl-mile small { display: block; font: 700 12px/1.2 var(--font-ui); letter-spacing: 0.22em; text-transform: uppercase; color: rgba(255, 255, 255, 0.92); text-shadow: 0 1px 6px rgba(10, 20, 50, 0.55); }
 .g-kite-line .kl-mile b { display: block; margin-top: 4px; font: 700 28px/1.05 var(--kl-round); color: #fff; letter-spacing: 0.01em; text-shadow: 0 2px 14px rgba(12, 24, 60, 0.55), 0 1px 2px rgba(12, 24, 60, 0.5); }
@@ -127,7 +129,9 @@
       const DAY = K.daily();
       const KITE = K.dailyPick(KITES, 3), SEASON = K.dailyPick(SEASONS, 11), SKY = K.dailyPick(SKYV, 7);
       const LMAX = [260, 320, 400][inten], MPR = [9, 10, 11][inten];
-      const DIPS = [[42, 0.8], [42, 100, 0.82], [40, 96, 150, 0.8, 0.92]][inten].map(v => (v < 1.5 ? Math.round(v * LMAX) : v));
+      // line paid out per turn of the reel: a little at a time low down (the words shrink slowly enough to watch), more up high
+      const mprAt = (L) => MPR * lerp(0.42, 1.28, smooth(clamp((L - 14) / 170, 0, 1)));
+      const DIPS = [[54, 0.8], [54, 104, 0.82], [52, 100, 150, 0.8, 0.88]][inten].map(v => (v < 1.5 ? Math.round(v * LMAX) : v));
       const GUST_L = Math.round(0.6 * LMAX), HOLD_NEED = [3000, 3800, 4600][inten];
       const DARK0 = K.dark(), TOD0 = DARK0 ? 0.42 : 0.04, TOD1 = 0.97;
       el.classList.toggle('kl-bright', !DARK0);
@@ -158,7 +162,10 @@
         PAL.tod = tod;
         ['top', 'mid', 'hor', 'haze', 'sun', 'seaF', 'seaN', 'cloud', 'shade', 'warm', 'light'].forEach(k => { PAL[k] = rampAt(k, tod); });
         PAL.key = Math.round(tod * 300);
+        let i = 0; while (i < TODS.length - 2 && tod > TODS[i + 1]) i++;
+        PAL.sunc = mix3(SUNC[i], SUNC[i + 1], clamp((tod - TODS[i]) / (TODS[i + 1] - TODS[i]), 0, 1));
       }
+      const sunlit = (c, k) => { const s = PAL.sunc, l = PAL.light * (k || 1); return [Math.min(255, c[0] * s[0] * l), Math.min(255, c[1] * s[1] * l), Math.min(255, c[2] * s[2] * l)]; };
       const SEA = { fields: SEASON.fields.map(hexRgb), hedge: hexRgb(SEASON.hedge), wood: hexRgb(SEASON.wood), hill: SEASON.hill.map(hexRgb), town: hexRgb(SEASON.town), tree: SEASON.tree.map(hexRgb), sand: hexRgb('#e8d7a8'), road: hexRgb('#d9cfb8'), land: hexRgb(SEASON.fields[2]) };
       setTod(TOD0);
 
@@ -375,7 +382,7 @@
       const RE = { phi: 0, om: 0, input: 0, held: false, lastIn: 0, teeth: 0, notes: 0, note: 0, slip: 0 };
       const DIP = { active: false, t0: 0, dur: 2400, tugs: 0, cool: 0, n: 0 };
       const GU = { t0: 0, hold: 0, k: 0, ramp: 0, done: false, last: 0 };
-      const G = { phase: 'intro', crank: false, mi: 0, di: 0, saves: 0, tugs: 0, fights: 0, defSum: 0, defT: 0, finished: false, tod: TOD0, minPx: phone ? 30 : 34, shot: 'climb', tween: null, lineSnap: 0, flash: 0, pose: 'hold', poseK: 0, lie: 0, pov: 0, tied: false, drag: null, endT: 0, dusk: 0, firstCrank: false, saidShrink: false, saidFast: 0, birds: 0, starK: 0, capOn: false };
+      const G = { phase: 'intro', crank: false, mi: 0, di: 0, saves: 0, tugs: 0, fights: 0, crankT: 0, slipT: 0, finished: false, tod: TOD0, minPx: phone ? 30 : 34, shot: 'climb', tween: null, lineSnap: 0, flash: 0, pose: 'hold', poseK: 0, lie: 0, pov: 0, tied: false, drag: null, endT: 0, dusk: 0, firstCrank: false, saidShrink: false, saidFast: 0, birds: 0, starK: 0, capOn: false };
 
       /* ---------------- audio: wind, the kite's flutter, the line's hum, a reel that plays a tune ---------------- */
       const AU = { live: false, wind: null, hum: null, next: 0, flapNext: 0, beat: 0, chord: 0, flap: 0, humV: 0, windV: 0.05 };
@@ -478,6 +485,14 @@
         return { c, S2 };
       }
 
+      function reelParts(r) { // the static hub (the line meter sits on it) and the crank knob, painted once per size
+        const dpr = cv.dpr || 1, mk = (sz, fn) => { const c = document.createElement('canvas'); c.width = c.height = Math.ceil(sz * dpr); const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.translate(sz / 2, sz / 2); fn(g); return { c, sz }; };
+        const hr = r * 0.44, kr = r * 0.19;
+        const hub = mk(hr * 2 + 4, (g) => { const hg = g.createRadialGradient(-r * 0.08, -r * 0.1, 2, 0, 0, hr); hg.addColorStop(0, '#6b3a1c'); hg.addColorStop(1, '#3a1d0c'); g.fillStyle = hg; g.beginPath(); g.arc(0, 0, hr, 0, TAU); g.fill(); g.strokeStyle = 'rgba(255,220,170,0.35)'; g.lineWidth = 1.5; g.beginPath(); g.arc(0, 0, hr - 0.75, 0, TAU); g.stroke(); });
+        const knob = mk(kr * 2 + 4, (g) => { const kg = g.createRadialGradient(-r * 0.05, -r * 0.06, 1, 0, 0, kr * 1.05); kg.addColorStop(0, KITE.c[1]); kg.addColorStop(1, css(mix3(hexRgb(KITE.c[1]), [40, 20, 10], 0.5))); g.fillStyle = kg; g.beginPath(); g.arc(0, 0, kr, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,0.55)'; g.beginPath(); g.arc(-r * 0.06, -r * 0.07, r * 0.05, 0, TAU); g.fill(); });
+        return { hub, knob };
+      }
+
       /* ---------------- render: sky, sun, stars, far hills, sea ---------------- */
       const SKYC = document.createElement('canvas'); SKYC.width = 1; SKYC.height = 256;
       const skg = SKYC.getContext('2d');
@@ -499,14 +514,15 @@
       }
       const SUN = { x: 0, y: 0, on: false };
       function drawSun(g) {
-        const el2 = lerp(0.19, -0.014, clamp(PAL.tod, 0, 1.2)), d = 1e5;
+        const el2 = lerp(0.2, 0.004, clamp(PAL.tod / 1.04, 0, 1)) - Math.max(0, PAL.tod - 1.04) * 0.25, d = 1e5;
         proj(CAM.x + Math.sin(SUN_AZ) * Math.cos(el2) * d, CAM.y + Math.sin(el2) * d, CAM.z + Math.cos(SUN_AZ) * Math.cos(el2) * d);
         SUN.on = PO[2] > 0; SUN.x = PO[3]; SUN.y = PO[4];
         if (!SUN.on) return;
         const r = H * 0.022, sc = PAL.sun;
         g.save(); g.globalCompositeOperation = 'lighter';
-        g.globalAlpha = 0.28 + 0.2 * clamp(PAL.tod - 0.5, 0, 1); g.drawImage(K.glowSprite(css(mix3(sc, PAL.hor, 0.2), 0.9)), SUN.x - r * 10, SUN.y - r * 6, r * 20, r * 12);
-        g.globalAlpha = 0.55; g.drawImage(K.glowSprite(css(sc, 1)), SUN.x - r * 3.2, SUN.y - r * 3.2, r * 6.4, r * 6.4);
+        const big = G.phase === 'finale' || G.phase === 'done' ? 1.7 : 1;
+        g.globalAlpha = 0.28 + 0.2 * clamp(PAL.tod - 0.5, 0, 1); g.drawImage(K.glowSprite(css(mix3(sc, PAL.hor, 0.2), 0.9)), SUN.x - r * 10 * big, SUN.y - r * 6 * big, r * 20 * big, r * 12 * big);
+        g.globalAlpha = 0.55; g.drawImage(K.glowSprite(css(sc, 1)), SUN.x - r * 3.2 * big, SUN.y - r * 3.2 * big, r * 6.4 * big, r * 6.4 * big);
         g.restore();
         g.fillStyle = css(mix3(sc, [255, 255, 255], 0.55)); g.beginPath(); g.arc(SUN.x, SUN.y, r, 0, TAU); g.fill();
       }
@@ -544,15 +560,18 @@
           const w = Math.max(1, q.w * PO[5] * 3);
           g.globalAlpha = a; g.fillRect(PO[3] - w / 2, PO[4], w, Math.max(0.8, PO[5] * 1.2));
         }
-        g.globalAlpha = 1;
+        g.globalAlpha = 1;        if (SUN.on && SUN.x > -W * 0.3 && SUN.x < W * 1.3) { // the sun's path on the water
+          const pw = Math.max(70, W * 0.24), ph = Math.max(40, (ce - HOR) * 1.1);
+          g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.16 + 0.3 * clamp((PAL.tod - 0.35) / 0.65, 0, 1);
+          g.drawImage(K.glowSprite(css(mix3(PAL.sun, [255, 255, 255], 0.2), 0.95)), SUN.x - pw / 2, HOR - ph * 0.12, pw, ph); g.restore();
+        }
       }
 
       /* ---------------- render: the land ---------------- */
       const VC = new Float64Array(NV * 3), VS = new Float64Array(NV * 2);
       const COAST = []; for (let x = -9000; x <= 9000; x += 150) COAST.push([x, coastZ(x)]);
       function landColor(base, depth) {
-        const lit = mix3(mul3(base, PAL.light), mul3(PAL.warm, PAL.light * base[1] / 255), 0.12 * clamp(PAL.tod - 0.3, 0, 1));
-        return mix3(lit, PAL.haze, hazeK(depth));
+        return mix3(sunlit(base), PAL.haze, hazeK(depth));
       }
       function drawLand(g, t) {
         // projected lattice
@@ -567,7 +586,7 @@
         for (const c of COAST) { proj(c[0], 0, c[1]); if (!(PO[2] > 1)) continue; const x = clamp(PO[3], -4 * W, 5 * W); if (first) { g.moveTo(x, PO[4]); first = false; } else g.lineTo(x, PO[4]); if (PO[4] < minY) minY = PO[4]; }
         g.lineTo(5 * W, H + 10); g.lineTo(-4 * W, H + 10); g.closePath(); g.fill();
         // fields
-        const tk = PAL.key;
+        const tk = Math.round(PAL.tod * 80);
         for (const c of CELLS) {
           const v = c.v;
           let zmin = 1e9, zsum = 0, xl = 1e9, xr = -1e9, yb = -1e9;
@@ -616,7 +635,7 @@
         for (let i = 0; i < RIVL.length; i++) { proj(RIVL[i][0], 0, RIVL[i][1]); if (!(PO[2] > NEAR)) continue; if (first) { g.moveTo(PO[3], PO[4]); first = false; } else g.lineTo(PO[3], PO[4]); }
         for (let i = RIVR.length - 1; i >= 0; i--) { proj(RIVR[i][0], 0, RIVR[i][1]); if (!(PO[2] > NEAR)) continue; g.lineTo(PO[3], PO[4]); }
         g.closePath();
-        g.fillStyle = css(mix3(mix3(PAL.hor, PAL.seaN, 0.45), PAL.haze, 0.25)); g.fill();
+        g.fillStyle = css(mix3(mix3(PAL.hor, PAL.mid, 0.35), [255, 255, 255], 0.12)); g.fill();
         g.strokeStyle = css(mix3(PAL.hor, [255, 255, 255], 0.5), 0.5); g.lineWidth = 0.8; g.beginPath(); first = true;
         for (let i = 0; i < RIV.length; i++) { proj(RIV[i][0], 0, RIV[i][1]); if (!(PO[2] > NEAR)) continue; if (first) { g.moveTo(PO[3], PO[4]); first = false; } else g.lineTo(PO[3], PO[4]); }
         g.stroke();
@@ -628,39 +647,50 @@
       }
 
       /* ---------------- render: billboards (back to front) ---------------- */
-      const VIS = [];
+      /* Billboards keep their colours (and sort records) between frames, so the frame loop makes almost no garbage. */
+      const VIS = [], VISP = []; let nVisP = 0;
+      const byDepth = (a, c) => c.d - a.d;
+      function addVis(b, d, x, y, s2) { const v = VISP[nVisP] || (VISP[nVisP] = { b: null, d: 0, x: 0, y: 0, s: 0 }); nVisP++; v.b = b; v.d = d; v.x = x; v.y = y; v.s = s2; VIS.push(v); }
+      const DK_TREE = [[20, 30, 20], 0.35];
+      const C_CHURCH = [236, 226, 210], C_SPIRE = [90, 98, 112], C_TURB = [240, 242, 246], C_LH = [246, 242, 236], C_LHR = [200, 70, 60];
+      function bc(b, i, base, hz, dk) { // a billboard's cached colour: rebuilt only when the light or its haze band changes
+        const key = Math.round(PAL.tod * 80) * 64 + Math.round(hz * 48);
+        if (!b.cc) { b.cc = []; b.ck = []; }
+        if (b.ck[i] !== key) { b.ck[i] = key; let c = mix3(sunlit(base), PAL.haze, hz); if (dk) c = mix3(c, dk[0], dk[1]); b.cc[i] = css(c); }
+        return b.cc[i];
+      }
       function drawBillboards(g, t) {
-        VIS.length = 0;
+        VIS.length = 0; nVisP = 0;
         const hfov = (W * 0.62) / FF + 0.2;
         for (const b of BB) {
           proj(b.x, b.y, b.z);
-          if (!(PO[2] > NEAR)) { if (b.k === 'hill') VIS.push({ b, d: PO[2], x: 0, y: 0, s: 0 }); continue; }
+          if (!(PO[2] > NEAR)) { if (b.k === 'hill') addVis(b, PO[2], 0, 0, 0); continue; }
           if (b.k !== 'hill' && Math.abs(PO[0] / PO[2]) > hfov + (b.k === 'cloud' ? 0.5 : 0)) continue;
-          VIS.push({ b, d: PO[2], x: PO[3], y: PO[4], s: PO[5] });
+          addVis(b, PO[2], PO[3], PO[4], PO[5]);
         }
-        VIS.sort((a, c) => c.d - a.d);
+        VIS.sort(byDepth);
         for (const v of VIS) {
           const b = v.b;
           if (b.k === 'hill') { drawHill(g, t); continue; }
           const s = v.s, hz = hazeK(v.d);
           if (b.k === 'tree') {
             const hh = b.h * s; if (hh < 0.7) continue;
-            const col = mix3(mul3(SEA.tree[b.c], PAL.light), PAL.haze, hz);
-            if (hh < 2.2) { g.fillStyle = css(col); g.fillRect(v.x - 0.6, v.y - hh, 1.2, hh); continue; }
-            g.fillStyle = css(mix3(col, [20, 30, 20], 0.35)); g.beginPath(); g.ellipse(v.x, v.y - hh * 0.42, hh * 0.32, hh * 0.4, 0, 0, TAU); g.fill();
-            g.fillStyle = css(col); g.beginPath(); g.ellipse(v.x - hh * 0.05, v.y - hh * 0.55, hh * 0.27, hh * 0.32, 0, 0, TAU); g.fill();
+            const col = bc(b, 0, SEA.tree[b.c], hz);
+            if (hh < 2.2) { g.fillStyle = col; g.fillRect(v.x - 0.6, v.y - hh, 1.2, hh); continue; }
+            g.fillStyle = bc(b, 1, SEA.tree[b.c], hz, DK_TREE); g.beginPath(); g.ellipse(v.x, v.y - hh * 0.42, hh * 0.32, hh * 0.4, 0, 0, TAU); g.fill();
+            g.fillStyle = col; g.beginPath(); g.ellipse(v.x - hh * 0.05, v.y - hh * 0.55, hh * 0.27, hh * 0.32, 0, 0, TAU); g.fill();
           } else if (b.k === 'house') {
             const ww = b.w * s, hh = b.h * s; if (hh < 0.6) continue;
-            g.fillStyle = css(mix3(mul3(b.wall, PAL.light), PAL.haze, hz)); g.fillRect(v.x - ww / 2, v.y - hh, ww, hh);
-            g.fillStyle = css(mix3(mul3(b.roof, PAL.light), PAL.haze, hz)); g.beginPath(); g.moveTo(v.x - ww * 0.58, v.y - hh); g.lineTo(v.x, v.y - hh * 1.6); g.lineTo(v.x + ww * 0.58, v.y - hh); g.closePath(); g.fill();
+            g.fillStyle = bc(b, 0, b.wall, hz); g.fillRect(v.x - ww / 2, v.y - hh, ww, hh);
+            g.fillStyle = bc(b, 1, b.roof, hz); g.beginPath(); g.moveTo(v.x - ww * 0.58, v.y - hh); g.lineTo(v.x, v.y - hh * 1.6); g.lineTo(v.x + ww * 0.58, v.y - hh); g.closePath(); g.fill();
             if (G.dusk > 0.05 && b.lit < 0.7) { g.fillStyle = 'rgba(255,214,140,' + (G.dusk * 0.95).toFixed(3) + ')'; const wz = Math.max(0.8, ww * 0.16); g.fillRect(v.x - ww * 0.22, v.y - hh * 0.62, wz, wz); }
           } else if (b.k === 'church') {
             const ww = b.w * s, hh = b.h * s; if (hh < 1) continue;
-            g.fillStyle = css(mix3(mul3([236, 226, 210], PAL.light), PAL.haze, hz)); g.fillRect(v.x - ww * 0.25, v.y - hh * 0.62, ww * 0.5, hh * 0.62);
-            g.fillStyle = css(mix3(mul3([90, 98, 112], PAL.light), PAL.haze, hz)); g.beginPath(); g.moveTo(v.x - ww * 0.3, v.y - hh * 0.62); g.lineTo(v.x, v.y - hh); g.lineTo(v.x + ww * 0.3, v.y - hh * 0.62); g.closePath(); g.fill();
+            g.fillStyle = bc(b, 0, C_CHURCH, hz); g.fillRect(v.x - ww * 0.25, v.y - hh * 0.62, ww * 0.5, hh * 0.62);
+            g.fillStyle = bc(b, 1, C_SPIRE, hz); g.beginPath(); g.moveTo(v.x - ww * 0.3, v.y - hh * 0.62); g.lineTo(v.x, v.y - hh); g.lineTo(v.x + ww * 0.3, v.y - hh * 0.62); g.closePath(); g.fill();
           } else if (b.k === 'turbine') {
             const hh = b.h * s; if (hh < 2) continue;
-            const col = css(mix3(mul3([240, 242, 246], PAL.light), PAL.haze, hz * 0.9));
+            const col = bc(b, 0, C_TURB, hz * 0.9);
             g.strokeStyle = col; g.lineCap = 'round'; g.lineWidth = Math.max(0.6, hh * 0.035);
             g.beginPath(); g.moveTo(v.x, v.y); g.lineTo(v.x, v.y - hh); g.stroke();
             const a0 = b.ph + RE.turb, bl = hh * 0.48;
@@ -671,8 +701,8 @@
           } else if (b.k === 'lighthouse') {
             const hh = b.h * s; if (hh < 1.5) continue;
             const w2 = hh * 0.13;
-            g.fillStyle = css(mix3(mul3([246, 242, 236], PAL.light), PAL.haze, hz)); g.beginPath(); g.moveTo(v.x - w2, v.y); g.lineTo(v.x + w2, v.y); g.lineTo(v.x + w2 * 0.7, v.y - hh); g.lineTo(v.x - w2 * 0.7, v.y - hh); g.closePath(); g.fill();
-            g.fillStyle = css(mix3(mul3([200, 70, 60], PAL.light), PAL.haze, hz)); g.fillRect(v.x - w2 * 0.9, v.y - hh * 0.55, w2 * 1.8, hh * 0.14); g.fillRect(v.x - w2 * 0.8, v.y - hh * 0.92, w2 * 1.6, hh * 0.1);
+            g.fillStyle = bc(b, 0, C_LH, hz); g.beginPath(); g.moveTo(v.x - w2, v.y); g.lineTo(v.x + w2, v.y); g.lineTo(v.x + w2 * 0.7, v.y - hh); g.lineTo(v.x - w2 * 0.7, v.y - hh); g.closePath(); g.fill();
+            g.fillStyle = bc(b, 1, C_LHR, hz); g.fillRect(v.x - w2 * 0.9, v.y - hh * 0.55, w2 * 1.8, hh * 0.14); g.fillRect(v.x - w2 * 0.8, v.y - hh * 0.92, w2 * 1.6, hh * 0.1);
             if (G.dusk > 0.05) { g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = G.dusk * (0.6 + 0.4 * Math.sin(t * 1.6)); g.drawImage(K.glowSprite('rgba(255,236,170,0.9)'), v.x - hh * 0.6, v.y - hh * 1.6, hh * 1.2, hh * 1.2); g.restore(); }
           } else if (b.k === 'boat') {
             const hh = b.h * s; if (hh < 0.8) continue;
@@ -681,8 +711,8 @@
           } else if (b.k === 'balloon') {
             const hh = b.h * s; if (hh < 1) continue;
             const yy = v.y + Math.sin(t * 0.6) * hh * 0.08;
-            g.fillStyle = css(mix3(mul3(b.c, PAL.light), PAL.haze, hz * 0.8)); g.beginPath(); g.arc(v.x, yy - hh * 0.62, hh * 0.38, Math.PI * 0.85, Math.PI * 2.15); g.lineTo(v.x, yy - hh * 0.12); g.closePath(); g.fill();
-            g.fillStyle = css(mix3(mul3(b.c2, PAL.light), PAL.haze, hz * 0.8)); g.beginPath(); g.ellipse(v.x, yy - hh * 0.62, hh * 0.12, hh * 0.38, 0, 0, TAU); g.fill();
+            g.fillStyle = css(mix3(sunlit(b.c), PAL.haze, hz * 0.8)); g.beginPath(); g.arc(v.x, yy - hh * 0.62, hh * 0.38, Math.PI * 0.85, Math.PI * 2.15); g.lineTo(v.x, yy - hh * 0.12); g.closePath(); g.fill();
+            g.fillStyle = css(mix3(sunlit(b.c2), PAL.haze, hz * 0.8)); g.beginPath(); g.ellipse(v.x, yy - hh * 0.62, hh * 0.12, hh * 0.38, 0, 0, TAU); g.fill();
             g.fillStyle = css(mix3([90, 60, 40], PAL.haze, hz)); g.fillRect(v.x - hh * 0.06, yy - hh * 0.1, hh * 0.12, hh * 0.1);
           } else if (b.k === 'cloud') {
             const ww = b.w * s; if (ww < 4) continue;
@@ -698,20 +728,28 @@
       /* ---------------- the hill, the fence, the flyer ---------------- */
       const HLV = [0, 0.38, 0.64, 0.82, 0.93, 0.983, 0.997].map(f => { const hh = HILL.H * f, r = (2 * HILL.R / Math.PI) * Math.acos(Math.sqrt(f)); return { h: hh, r }; });
       const RING = []; for (let i = 0; i < 40; i++) RING.push([Math.cos(i / 40 * TAU), Math.sin(i / 40 * TAU)]);
+      const HPTS = HLV.map(() => RING.map(() => [0, 0, 0]));
       const sF0 = () => { proj(FEET.x, FEET.y, FEET.z); return PO[5]; };
       function drawHill(g, t) {
         proj(0, 0, 0); const dHill = Math.max(10, PO[2]);
         for (let k = 0; k < HLV.length; k++) {
           const L = HLV[k], tk = k / (HLV.length - 1);
-          const col = landColor(mix3(SEA.hill[0], SEA.hill[1], Math.pow(tk, 0.8)), dHill);
-          const pts = RING.map(([c, s2]) => { proj(c * L.r, L.h, s2 * L.r); return [PO[0], PO[1], PO[2]]; });
-          const cl = pts.every(p => p[2] > NEAR) ? pts : clipNear(pts);
+          const hk = Math.round(PAL.tod * 80) * 64 + Math.round(Math.log(dHill) * 9);
+          if (L.ck !== hk) { L.ck = hk; L.fill = css(landColor(mix3(SEA.hill[0], SEA.hill[1], Math.pow(tk, 0.8)), dHill)); }
+          const pts = HPTS[k]; let allIn = true;
+          for (let i = 0; i < RING.length; i++) { proj(RING[i][0] * L.r, L.h, RING[i][1] * L.r); const q = pts[i]; q[0] = PO[0]; q[1] = PO[1]; q[2] = PO[2]; if (!(PO[2] > NEAR)) allIn = false; }
+          const cl = allIn ? pts : clipNear(pts);
           if (cl.length < 3) continue;
-          g.fillStyle = css(col); g.beginPath(); pathCam(g, cl); g.closePath(); g.fill();
+          g.fillStyle = L.fill; g.beginPath(); pathCam(g, cl); g.closePath(); g.fill();
+        }
+        { // the low sun warms the slope that faces it (seen from a distance)
+          proj(Math.sin(SUN_AZ) * HILL.R * 0.4, HILL.H * 0.6, Math.cos(SUN_AZ) * HILL.R * 0.4);
+          const rr = HILL.R * 0.8 * PO[5];
+          if (PO[2] > NEAR && rr < W * 1.4) { g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.13 + 0.12 * clamp((PAL.tod - 0.4) / 0.6, 0, 1); g.drawImage(K.glowSprite(css(PAL.sun, 0.85)), PO[3] - rr, PO[4] - rr * 0.55, rr * 2, rr * 1.1); g.restore(); }
         }
         // sheep grazing on the slopes
         if (sF0() > 2.2) {
-          const wool = css(mix3(mul3([246, 244, 236], PAL.light), PAL.haze, hazeK(dHill) * 0.6)), face = css(mul3([50, 44, 48], PAL.light));
+          const wool = css(mix3(sunlit([246, 244, 236]), PAL.haze, hazeK(dHill) * 0.6)), face = css(sunlit([50, 44, 48]));
           for (const sh of SHEEP) {
             proj(sh.x, sh.y, sh.z); if (!(PO[2] > NEAR)) continue;
             const s = PO[5], bw = Math.max(1.4, 1.1 * s), x = PO[3] + Math.sin(t * 0.3 + sh.ph) * 0.2 * s, y = PO[4];
@@ -722,7 +760,7 @@
         // grass tufts, fence posts with their wire, the flyer
         proj(FEET.x, FEET.y, FEET.z); const sF = PO[5];
         if (sF > 24) {
-          const gc = css(mix3(mul3(SEA.hill[1], PAL.light * 0.9), [20, 40, 10], 0.25)), gc2 = css(mul3(SEA.hill[0], PAL.light * 0.8));
+          const gc = css(mix3(sunlit(SEA.hill[1], 0.9), [20, 40, 10], 0.25)), gc2 = css(sunlit(SEA.hill[0], 0.8));
           g.lineCap = 'round';
           for (const tf of TUFTS) {
             proj(tf.x, tf.y, tf.z); if (!(PO[2] > NEAR) || PO[4] > H + 40) continue;
@@ -813,12 +851,14 @@
         if (G.pov < 0.01) return;
         const a = smooth(clamp(G.pov, 0, 1)), base = H + 4;
         const dk = mix3([22, 34, 24], [32, 24, 44], clamp(PAL.tod - 0.8, 0, 1)), rim = PAL.sun;
+        const gk = Math.round(PAL.tod * 80), rimS = css(rim, 0.35);
         for (const b of BLADES) {
           const x0 = b.x * W, hh = b.h * H * a, sway = b.lean + Math.sin(t * 1.2 + b.ph) * 0.07 * (K.reduced() ? 0.3 : 1), w0 = b.w * W;
           const tx = x0 + sway * hh, ty = base - hh;
-          g.fillStyle = css(mix3(dk, [0, 0, 0], b.c * 0.3));
+          if (b.ck !== gk) { b.ck = gk; b.fill = css(mix3(dk, [0, 0, 0], b.c * 0.3)); }
+          g.fillStyle = b.fill;
           g.beginPath(); g.moveTo(x0 - w0, base); g.quadraticCurveTo(x0 + sway * hh * 0.35 - w0 * 0.3, base - hh * 0.55, tx, ty); g.quadraticCurveTo(x0 + sway * hh * 0.4 + w0 * 0.4, base - hh * 0.5, x0 + w0, base); g.closePath(); g.fill();
-          if (b.c > 0.55) { g.strokeStyle = css(rim, 0.35); g.lineWidth = 1; g.beginPath(); g.moveTo(x0 + w0 * 0.6, base - hh * 0.2); g.quadraticCurveTo(x0 + sway * hh * 0.4 + w0 * 0.3, base - hh * 0.55, tx, ty); g.stroke(); }
+          if (b.c > 0.55) { g.strokeStyle = rimS; g.lineWidth = 1; g.beginPath(); g.moveTo(x0 + w0 * 0.6, base - hh * 0.2); g.quadraticCurveTo(x0 + sway * hh * 0.4 + w0 * 0.3, base - hh * 0.55, tx, ty); g.stroke(); }
         }
       }
 
@@ -845,7 +885,7 @@
       const KS = { x: 0, y: 0, px: 30, vx: 0, vy: 0, lx: 0, ly: 0, roll: 0, sq: 1, ok: false };
       const kiteScreen = () => ({ x: clamp(KS.x, 30, W - 30), y: clamp(KS.y, 90, H - 120) });
       // the tail: a little verlet rope in screen space, so it trails every swoop
-      const TN = 11, TL = [];
+      const TN = 10, TL = [];
       const tailCount = KITE.tail === 'twin' ? 2 : 1;
       for (let k = 0; k < tailCount; k++) { const arr = []; for (let i = 0; i < TN; i++) arr.push({ x: 0, y: 0, px: 0, py: 0 }); TL.push(arr); }
       let tailInit = false;
@@ -862,8 +902,8 @@
         proj(KPOS.x + WD.x * 40, KPOS.y - 6, KPOS.z + WD.z * 40);
         let wx = 0, wy = 1;
         if (PO[2] > NEAR) { wx = PO[3] - KS.x; wy = PO[4] - KS.y; const wl = Math.hypot(wx, wy) || 1; wx /= wl; wy /= wl; }
-        const px = KS.px, seg = px * 0.2, n = Math.min(6, Math.max(1, Math.ceil(dt / (1 / 60)))), h2 = Math.pow(dt / n, 2);
-        const wa = px * 10, ga = px * 6, fl = px * (16 + 28 * (WND.gs - 1) + 70 * WND.turb);
+        const px = KS.px, seg = px * 0.155, n = Math.min(6, Math.max(1, Math.ceil(dt / (1 / 60)))), h2 = Math.pow(dt / n, 2);
+        const wa = px * 10, ga = px * 7, fl = px * (6 + 14 * (WND.gs - 1) + 42 * WND.turb);
         for (let k = 0; k < TL.length; k++) {
           const T = TL[k], a = tailAnchor(k);
           if (!tailInit) for (let i = 0; i < TN; i++) { T[i].x = T[i].px = a[0] + wx * i * seg; T[i].y = T[i].py = a[1] + wy * i * seg; }
@@ -872,7 +912,7 @@
             for (let i = 1; i < TN; i++) {
               const p = T[i], vx = (p.x - p.px) * 0.9, vy = (p.y - p.py) * 0.9, w = Math.sin(t * 7.2 - i * 0.85 + k * 1.7) * fl * (0.25 + i / TN);
               p.px = p.x; p.py = p.y;
-              p.x += vx + (wx * wa - wy * w + (TL.length > 1 ? (k ? 1 : -1) * px * 3 : 0)) * h2;
+              p.x += vx + (wx * wa - wy * w + (TL.length > 1 ? (k ? 1 : -1) * px * 2.2 : 0)) * h2;
               p.y += vy + (wy * wa + wx * w + ga) * h2;
               const q = T[i - 1], dx = p.x - q.x, dy = p.y - q.y, d = Math.hypot(dx, dy) || 1e-3;
               if (d > seg) { p.x = q.x + dx / d * seg; p.y = q.y + dy / d * seg; }
@@ -897,14 +937,14 @@
         }
         g.globalAlpha = 1;
       }
-      const KFONT = '"Permanent Marker", "Arial Black", "Trebuchet MS", sans-serif';
+      const KFONT = '"Shantell Sans", "Marker Felt", "Chalkboard SE", "Comic Sans MS", "Trebuchet MS", sans-serif';
       const TXT = { lines: [], fs: 0, w: 0, box: null };
-      const BOX = { diamond: [-0.33, -0.3, 0.66, 0.46], delta: [-0.32, -0.06, 0.64, 0.3], rokkaku: [-0.27, -0.24, 0.54, 0.5], sled: [-0.36, -0.26, 0.72, 0.5], star: [-0.24, -0.16, 0.48, 0.32], parafoil: [-0.52, -0.14, 1.04, 0.28], koi: [-0.3, -0.15, 0.66, 0.3], barndoor: [-0.38, -0.3, 0.76, 0.54] };
+      const BOX = { diamond: [-0.33, -0.3, 0.66, 0.46], delta: [-0.34, -0.07, 0.68, 0.31], rokkaku: [-0.29, -0.26, 0.58, 0.54], sled: [-0.36, -0.26, 0.72, 0.5], star: [-0.26, -0.17, 0.52, 0.35], parafoil: [-0.52, -0.14, 1.04, 0.28], koi: [-0.32, -0.16, 0.7, 0.32], barndoor: [-0.38, -0.3, 0.76, 0.54] };
       const mctx = document.createElement('canvas').getContext('2d');
       function fitWords() { // wrap the words to the kite's word panel at a 100 px reference span
         const bx = BOX[KITE.shape], bw = bx[2] * 100, bh = bx[3] * 100, words = WORDS.split(/\s+/).filter(Boolean);
         for (let fs = 24; fs >= 7; fs -= 0.5) {
-          mctx.font = '400 ' + fs + 'px ' + KFONT;
+          mctx.font = '800 ' + fs + 'px ' + KFONT;
           const lines = []; let cur = '';
           for (const wd of words) { const tryL = cur ? cur + ' ' + wd : wd; if (mctx.measureText(tryL).width <= bw) cur = tryL; else { if (cur) lines.push(cur); cur = wd; } }
           if (cur) lines.push(cur);
@@ -913,7 +953,15 @@
         TXT.lines = [WORDS.slice(0, 16)]; TXT.fs = 7; TXT.box = bx;
       }
       fitWords();
-      try { if (document.fonts && document.fonts.load) document.fonts.load('400 20px "Permanent Marker"').then(() => { if (!S.destroyed) fitWords(); }).catch(() => {}); } catch (e) { /* no font API */ }
+      /* How big the kite is drawn while it climbs (px of span), by metres of line: big and readable up close (the words
+         start at 16px or more), then shrinking steadily, so the player watches the words get small. */
+      const PXT = [[14, 172], [24, 140], [40, 104], [60, 78], [90, 58], [130, 45], [190, 35], [260, 28], [400, 22]];
+      function pxFloor(L) {
+        const big = phone ? 1 : 1.18, start = clamp(1650 / Math.max(6, TXT.fs), 172, phone ? 236 : 270);
+        for (let i = 1; i < PXT.length; i++) if (L <= PXT[i][0]) { const a = PXT[i - 1], b = PXT[i], k = smooth(clamp((L - a[0]) / (b[0] - a[0]), 0, 1)); return lerp(i === 1 ? start : a[1] * big, b[1] * big, k); }
+        return PXT[PXT.length - 1][1] * big;
+      }
+      try { if (document.fonts && document.fonts.load) document.fonts.load('800 20px "Shantell Sans"').then(() => { if (!S.destroyed) fitWords(); }).catch(() => {}); } catch (e) { /* no font API */ }
       function kitePath(g, sh) {
         g.beginPath();
         if (sh === 'diamond') { g.moveTo(0, -0.66); g.lineTo(0.5, -0.14); g.lineTo(0, 0.84); g.lineTo(-0.5, -0.14); }
@@ -933,7 +981,7 @@
         g.fillStyle = c[1];
         if (sh === 'diamond') { g.beginPath(); g.moveTo(0, -0.66); g.lineTo(0.5, -0.14); g.lineTo(0, -0.14); g.closePath(); g.moveTo(0, 0.84); g.lineTo(-0.5, -0.14); g.lineTo(0, -0.14); g.closePath(); g.fill(); }
         else if (sh === 'delta') { g.beginPath(); g.moveTo(0, -0.52); g.lineTo(0.62, 0.32); g.lineTo(0, 0.42); g.closePath(); g.fill(); }
-        else if (sh === 'rokkaku') { g.fillStyle = c[3]; g.fillRect(-0.6, -0.8, 1.2, 1.6); g.fillStyle = c[0]; g.beginPath(); g.arc(0, 0.02, 0.34, 0, TAU); g.fill(); g.fillStyle = c[1]; g.fillRect(-0.6, -0.8, 1.2, 0.1); g.fillRect(-0.6, 0.62, 1.2, 0.12); }
+        else if (sh === 'rokkaku') { g.fillStyle = c[3]; g.fillRect(-0.6, -0.8, 1.2, 1.6); g.fillStyle = c[0]; g.beginPath(); g.arc(0, 0.01, 0.4, 0, TAU); g.fill(); g.fillStyle = c[1]; g.fillRect(-0.6, -0.8, 1.2, 0.1); g.fillRect(-0.6, 0.62, 1.2, 0.12); }
         else if (sh === 'sled') { g.fillRect(-0.16, -0.7, 0.32, 1.5); g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.arc(-0.24, 0.34, 0.06, 0, TAU); g.arc(0.24, 0.34, 0.06, 0, TAU); g.fill(); }
         else if (sh === 'star') { g.beginPath(); for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * TAU / 5 + Math.PI / 5; g.lineTo(Math.cos(a) * 0.3, Math.sin(a) * 0.3 + 0.04); } g.closePath(); g.fill(); }
         else if (sh === 'parafoil') { for (let i = -5; i <= 5; i += 2) g.fillRect(i * 0.11 - 0.055, -0.4, 0.11, 0.8); }
@@ -975,7 +1023,7 @@
         if (fs >= 2.6) {
           g.save(); g.translate(x, y); g.rotate(KS.roll); g.scale(1, KS.sq);
           const bx = TXT.box, cyy = (bx[1] + bx[3] / 2) * px, lh = fs * 1.02;
-          g.font = '400 ' + fs.toFixed(2) + 'px ' + KFONT; g.textAlign = 'center'; g.textBaseline = 'middle';
+          g.font = '800 ' + fs.toFixed(2) + 'px ' + KFONT; g.textAlign = 'center'; g.textBaseline = 'middle';
           g.fillStyle = KITE.shape === 'rokkaku' ? '#fffaf0' : '#1d1830';
           const y0 = cyy - (TXT.lines.length - 1) * lh / 2 + (bx[0] + bx[2] / 2) * 0;
           TXT.lines.forEach((ln, i) => g.fillText(ln, (bx[0] + bx[2] / 2) * px, y0 + i * lh + fs * 0.06));
@@ -1029,25 +1077,22 @@
       function drawReel(g, t) {
         if (G.reelA <= 0.01) return;
         const r = RL.r, x = RL.x, y = RL.y + (1 - G.reelA) * 160;
-        if (!SPR.reel || SPR.reelR !== r) { SPR.reel = reelSprite(r); SPR.reelR = r; }
+        if (!SPR.reel || SPR.reelR !== r) { SPR.reel = reelSprite(r); SPR.parts = reelParts(r); SPR.reelR = r; }
         g.save(); g.globalAlpha = G.reelA;
         g.fillStyle = 'rgba(10,6,24,0.35)'; g.beginPath(); g.ellipse(x + 4, y + r * 0.95, r * 0.95, r * 0.22, 0, 0, TAU); g.fill();
         // the wound line: it thins as line pays out
-        const rin = r * 0.34, rout = lerp(r * 0.8, r * 0.4, clamp((KP.L - 14) / (LMAX - 14), 0, 1));
+        const rin = r * 0.44, rout = lerp(r * 0.82, r * 0.5, clamp((KP.L - 14) / (LMAX - 14), 0, 1));
         g.fillStyle = '#f3ead8'; g.beginPath(); g.arc(x, y, rout, 0, TAU); g.fill();
         g.strokeStyle = 'rgba(160,130,100,0.5)'; g.lineWidth = 1;
         g.beginPath(); for (let k = 1; k < 5; k++) { const rk = lerp(rin, rout, k / 5); g.moveTo(x + rk, y); g.arc(x, y, rk, 0, TAU); } g.stroke();
         const sp = SPR.reel, ang = RE.phi * TAU;
         g.save(); g.translate(x, y); g.rotate(ang); g.drawImage(sp.c, -sp.S2 / 2, -sp.S2 / 2, sp.S2, sp.S2); g.restore();
         // the hub (the line meter sits on it) and the crank
-        const hg = g.createRadialGradient(x - r * 0.08, y - r * 0.1, 2, x, y, r * 0.36); hg.addColorStop(0, '#6b3a1c'); hg.addColorStop(1, '#3a1d0c');
-        g.fillStyle = hg; g.beginPath(); g.arc(x, y, r * 0.36, 0, TAU); g.fill();
-        g.strokeStyle = 'rgba(255,220,170,0.35)'; g.lineWidth = 1.5; g.beginPath(); g.arc(x, y, r * 0.36, 0, TAU); g.stroke();
-        const kx = x + Math.cos(ang - Math.PI / 2) * r * 0.86, ky = y + Math.sin(ang - Math.PI / 2) * r * 0.86;
-        g.strokeStyle = '#d9d2c6'; g.lineWidth = r * 0.1; g.lineCap = 'round'; g.beginPath(); g.moveTo(x + Math.cos(ang - Math.PI / 2) * r * 0.4, y + Math.sin(ang - Math.PI / 2) * r * 0.4); g.lineTo(kx, ky); g.stroke();
-        const kg = g.createRadialGradient(kx - r * 0.05, ky - r * 0.06, 1, kx, ky, r * 0.2); kg.addColorStop(0, KITE.c[1]); kg.addColorStop(1, css(mix3(hexRgb(KITE.c[1]), [40, 20, 10], 0.5)));
-        g.fillStyle = kg; g.beginPath(); g.arc(kx, ky, r * 0.19, 0, TAU); g.fill();
-        g.fillStyle = 'rgba(255,255,255,0.55)'; g.beginPath(); g.arc(kx - r * 0.06, ky - r * 0.07, r * 0.05, 0, TAU); g.fill();
+        const hb = SPR.parts.hub, kb = SPR.parts.knob;
+        g.drawImage(hb.c, x - hb.sz / 2, y - hb.sz / 2, hb.sz, hb.sz);
+        const ca = Math.cos(ang - Math.PI / 2), sa = Math.sin(ang - Math.PI / 2), kx = x + ca * r * 0.86, ky = y + sa * r * 0.86;
+        g.strokeStyle = '#d9d2c6'; g.lineWidth = r * 0.1; g.lineCap = 'round'; g.beginPath(); g.moveTo(x + ca * r * 0.47, y + sa * r * 0.47); g.lineTo(kx, ky); g.stroke();
+        g.drawImage(kb.c, kx - kb.sz / 2, ky - kb.sz / 2, kb.sz, kb.sz);
         // hold-still progress in the big gust
         if (G.phase === 'gust' || GU.show > 0.01) {
           g.globalAlpha = G.reelA * (GU.show || 0);
@@ -1127,8 +1172,9 @@
         else { RE.om *= Math.exp(-rdt / 0.45); if (RE.om < 0.02) RE.om = 0; dPhi = RE.om * rdt; }
         if (!G.crank) dPhi = 0;
         if (dPhi > 0) {
+          G.crankT += rdt; if (RE.slip > 0.6) G.slipT += rdt;
           RE.phi += dPhi;
-          const want = dPhi * MPR, capL = Math.min(G.phase === 'climb' ? GUST_L + 1 : LMAX, KP.r + 2.5 + 0.035 * KP.r), before = KP.L;
+          const want = dPhi * mprAt(KP.L), capL = Math.min(G.phase === 'climb' ? GUST_L + 1 : LMAX, KP.r + 2.5 + 0.035 * KP.r), before = KP.L;
           KP.L = Math.min(capL, KP.L + want);
           RE.slip = want > 0 && KP.L - before < want * 0.5 ? Math.min(1, RE.slip + rdt * 3) : Math.max(0, RE.slip - rdt * 2);
           const teeth = Math.floor(RE.phi * 12); if (teeth !== RE.teeth) { const n = Math.min(3, teeth - RE.teeth); for (let i = 0; i < n; i++) sClick(i); RE.teeth = teeth; }
@@ -1144,11 +1190,11 @@
         kiteWorld();
         events(tn, rdt);
         // light: afternoon toward sunset as the line goes out; dusk at the very end
-        const tgt = G.phase === 'finale' ? 1.16 : lerp(TOD0, TOD1, clamp((KP.L - 14) / (LMAX - 14), 0, 1));
+        const tgt = G.phase === 'finale' || G.phase === 'done' ? 1.08 : lerp(TOD0, TOD1, clamp((KP.L - 14) / (LMAX - 14), 0, 1));
         G.tod += (tgt - G.tod) * Math.min(1, rdt * (G.phase === 'finale' ? 0.35 : 0.8));
         setTod(G.tod);
         G.dusk = clamp((G.tod - 0.92) / 0.2, 0, 1);
-        G.starK += ((G.phase === 'finale' ? clamp((G.tod - 1.0) / 0.14, 0, 1) : 0) - G.starK) * Math.min(1, rdt * 1.2);
+        G.starK += ((G.phase === 'finale' || G.phase === 'done' ? clamp((G.tod - 0.99) / 0.08, 0, 1) : 0) - G.starK) * Math.min(1, rdt * 1.2);
         G.birds += ((KP.L > LMAX * 0.42 && KP.L < LMAX * 0.95 && G.phase !== 'finale' ? 1 : 0) - G.birds) * Math.min(1, rdt * 0.6);
         G.lineSnap = Math.max(0, G.lineSnap - rdt * 3); G.flash = Math.max(0, G.flash - rdt * 2.5);
         G.reelA += (((G.phase === 'full' || G.phase === 'tie' || G.phase === 'tied' || G.phase === 'lie' || G.phase === 'finale' || G.phase === 'done') ? 0 : 1) - G.reelA) * Math.min(1, rdt * (G.phase === 'full' ? 1.2 : 4));
@@ -1156,7 +1202,7 @@
         camUpdate(t, rdt);
         camPrep();
         // the kite on screen (its size never drops below a readable minimum until the very end)
-        if (G.phase !== 'finale' && G.phase !== 'done') { const k = clamp((KP.L - 14) / (LMAX - 14), 0, 1); G.minPx = G.shot === 'climb' ? lerp(phone ? 30 : 34, phone ? 18 : 22, k) : (phone ? 14 : 16); }
+        if (G.phase !== 'finale' && G.phase !== 'done') G.minPx = G.shot === 'climb' ? pxFloor(KP.L) : (phone ? 14 : 16);
         proj(KPOS.x, KPOS.y, KPOS.z);
         KS.ok = PO[2] > NEAR;
         if (KS.ok) {
@@ -1194,22 +1240,30 @@
 
       /* ---------------- events: milestones, dips, the big gust, the end of the line ---------------- */
       const MILES = [
-        { L: 26, k: 'Now you can see', t: 'The fields' },
-        { L: 64, k: 'Further out', t: 'A river' },
-        { L: 112, k: 'Down there', t: 'A whole town' },
-        { L: Math.round(LMAX * 0.5), k: 'Up here', t: 'Birds, and clouds below' },
+        { L: 40, k: 'Now you can see', t: 'The fields' },
+        { L: 76, k: 'Further out', t: 'A river' },
+        { L: 122, k: 'Down there', t: 'A whole town' },
+        { L: Math.round(LMAX * 0.5), k: 'Up here', t: 'Birds for company' },
         { L: Math.round(LMAX * 0.74), k: 'All the way to', t: 'The coast' },
         { L: Math.round(LMAX * 0.93), k: 'And beyond that', t: 'The open sea' }
       ];
       let mileT = 0;
       function showMile(m, i) {
         mile.firstChild.textContent = m.k; mile.lastChild.textContent = m.t;
+        mile.style.top = mileTop().toFixed(0) + 'px';
         mile.classList.add('on'); sMile(i);
         S.cancel(mileT); mileT = S.later(() => mile.classList.remove('on'), 2900);
         ctx.track('view', { i });
         if (i === 1 && !G.saidShrink) { G.saidShrink = true; S.later(() => sayFree(sync, care ? { Jolly: 'It’s still there. Look how much sky is around it now.', Cheeky: 'Still there. But look at all that room around it.', Unfiltered: 'Still there. More room around it now.' } : { Jolly: 'Can you still read what it says? I can’t.', Cheeky: 'Quick test: can you still read it? Me neither.', Unfiltered: 'Can’t read it from here.' }, 'think', 3200), 1400); }
         if (i === 2) S.later(() => sayFree(sync, { Jolly: 'A whole town down there, everyone busy with their own day.', Cheeky: 'A whole town. Nobody down there is thinking about your kite.', Unfiltered: 'A whole town. Busy with its own day.' }, 'wow', 3200), 600);
         if (i === 3) S.later(() => sayFree(drop, { Jolly: 'Birds! I think they think it’s one of them.', Cheeky: 'Birds joined. Your kite has fans now.', Unfiltered: 'Birds. Company.' }, 'happy', 2800), 400);
+      }
+      function mileTop() { // under the kite and its tail when there's room, else above it, never over it
+        const ky = KS.ok ? KS.y : H * 0.3, ext = KS.px || 40, hi = H - (phone ? 250 : 262), lo = H * 0.2;
+        const below = ky + ext * 1.7 + 26, above = ky - ext * 0.95 - 86;
+        if (below <= hi) return Math.max(below, H * 0.48);
+        if (above >= lo) return above;
+        return hi;
       }
       function events(tn, rdt) {
         const climbing = G.phase === 'launch' || G.phase === 'climb' || G.phase === 'climb2';
@@ -1219,7 +1273,6 @@
           if (G.phase === 'climb' && !DIP.active && KP.L >= GUST_L) startGust();
           if (G.phase === 'climb2' && !DIP.active && KP.L >= LMAX - 0.5) endOfLine();
           // steadiness: how far below a comfortable height the kite sinks while it flies
-          G.defSum += Math.max(0, 0.66 - KP.th) * rdt; G.defT += rdt;
           if (RE.slip > 0.8 && tn - G.saidFast > 9000 && !DIP.active) { G.saidFast = tn; sayFree(sync, { Jolly: 'Easy, let the wind take the line. It can only go so fast.', Cheeky: 'Whoa, speedy. The kite can’t keep up.', Unfiltered: 'Slower. Let the wind take it.' }, 'surprised', 2600); }
         }
         if (DIP.active) {
@@ -1322,7 +1375,7 @@
       }
       async function gustDone(held) {
         if (G.phase !== 'gust') return;
-        G.phase = 'calm'; WND.gs = 1; WND.turb = 0; GU.done = true; K.guide(null);
+        G.phase = 'calm'; WND.gs = 1; WND.turb = 0; GU.done = true; GU.held = held; K.guide(null);
         sSteady(); G.flash = 0.6;
         drop.base('calm');
         say(sync, held ? { Jolly: 'It steadied itself. You didn’t have to fight it at all.', Cheeky: 'Look at that. It sorted itself out. You just held on.', Unfiltered: 'It settled on its own. You just held on.' } : { Jolly: 'The gust passed. The kite rode it out on its own.', Cheeky: 'Gust’s gone. The kite handled it.', Unfiltered: 'It passed. The kite rode it out.' }, 'calm', 3400);
@@ -1339,10 +1392,10 @@
         cutTo('vista', 3600);
         say(sync, { Jolly: 'That’s all the line. Look how far you can see from up there.', Cheeky: 'Out of line! Look at that view though.', Unfiltered: 'That’s all the line. Look at the view.' }, 'wow', 3600);
         ctx.track('full', { L: Math.round(KP.L) });
-        await K.wait(5200);
+        await K.wait(4300);
         G.phase = 'tie';
-        cutTo('hill', 3000, 30);
-        await K.wait(2700);
+        cutTo('hill', 2800, 30);
+        await K.wait(2400);
         say(drop, { Jolly: 'Tie it to the post. It can fly itself for a while.', Cheeky: 'Tie it off. The kite’s got this.', Unfiltered: 'Tie it to the post.' }, 'happy', 3200);
         hand.hidden = false; placeHand();
         guideTie(200);
@@ -1453,10 +1506,11 @@
         S.later(() => card && card.classList.remove('pre'), 30);
         K.sfx.paper();
       }
-      function steadyPct() {
-        const mean = G.defT ? G.defSum / G.defT : 0;
-        const s = clamp(1 - mean / 0.22, 0, 1) * 0.86 + (GU.done && G.fights < 2 ? 0.14 : G.fights < 5 ? 0.08 : 0.03);
-        return Math.round(clamp(s, 0.2, 1) * 100);
+      function steadyPct() { // the skills the game teaches: save the dips, ride the big gust, let the wind take the line
+        const dipK = G.saves / Math.max(1, DIP.n);
+        const gustK = !GU.done ? 0.5 : GU.held ? (G.fights === 0 ? 1 : G.fights < 3 ? 0.78 : 0.55) : 0.4;
+        const smoothK = 1 - clamp(G.slipT / Math.max(5, G.crankT) * 2.2, 0, 1);
+        return Math.round(clamp(0.4 * dipK + 0.3 * gustK + 0.3 * smoothK, 0.2, 1) * 100);
       }
       function finish() {
         if (G.finished) return;
@@ -1464,14 +1518,14 @@
         const pct = steadyPct(), badges = [];
         const pb = K.best('steady', pct, 'higher');
         if (pb.isNew) badges.push('New best steady flight: ' + pct + '%'); else if (pb.first) badges.push('First flight: ' + pct + '% steady');
-        const tier = K.tier(pct / 100, [0.6, 0.78, 0.9]); if (tier) badges.push(tier + ' flight');
+        const tier = K.tier(pct / 100, [0.55, 0.75, 0.9]); if (tier) badges.push(tier + ' flight');
         const col = K.collect(KITE.id);
         badges.push((col.isNew ? 'New kite: ' : 'Flew the ') + KITE.name + ' (' + Math.min(col.count, KITES.length) + ' of ' + KITES.length + ')');
-        if (GU.done && G.fights < 2) badges.push('Rode out the big gust');
+        if (GU.done && GU.held && G.fights < 2) badges.push('Rode out the big gust');
         ctx.track('done', { pct, saves: G.saves, fights: G.fights, kite: KITE.id, sky: SKY.id });
         ctx.finish({
           title: care ? 'More sky around it' : 'It became a dot', mood: 'calm',
-          lines: [Math.round(KP.L) + ' m of line let out, all the way to the sea', 'Steady flight: ' + pct + '% · ' + G.saves + (G.saves === 1 ? ' dip saved' : ' dips saved'), care ? 'Still real. Just with more sky around it.' : 'Up close it was loud. From the grass, a dot.'],
+          lines: [Math.round(KP.L) + ' m of line let out, all the way to the sea', 'Steady flight: ' + pct + '% · ' + G.saves + ' of ' + DIP.n + (DIP.n === 1 ? ' dip saved' : ' dips saved'), care ? 'Still real. Just with more sky around it.' : 'Up close it was loud. From the grass, a dot.'],
           share: 'Flew my worry so high it became a dot.', badges
         });
       }
@@ -1480,7 +1534,7 @@
       cv.onResize(() => { layout(); ready = true; });
       setTod(TOD0); KP.L = 14; KP.r = 14; kiteWorld(); RN.r = 14; shotClimb(0); CK.forEach(n => { CAM[n] = CT[n]; });
       (async () => {
-        await K.intro({ title: 'Kite Line', sub: 'Your worry is written on a kite. Up close it’s loud. Let’s give it some sky.', how: 'Circle the reel to let out line. Tap to tug when it dips.', char: 'sync', mood: 'happy' });
+        await K.intro({ title: 'Kite Line', sub: EXAMPLE ? 'Any worry can ride a kite. Up close it’s loud. Let’s give it some sky.' : 'Your worry is written on a kite. Up close it’s loud. Let’s give it some sky.', how: 'Circle the reel to let out line. Tap to tug when it dips.', char: 'sync', mood: 'happy' });
         G.phase = 'launch';
         if (visits >= 1) say(sync, { Jolly: 'Back on the hill! Today’s kite: the ' + KITE.name + '.', Cheeky: 'Oh, a regular. Today we fly the ' + KITE.name + '.', Unfiltered: 'Today’s kite: ' + KITE.name + '.' }, 'happy', 2600);
         else say(sync, EXAMPLE ? { Jolly: 'No words needed. This kite carries a “what if”. Any worry flies the same.', Cheeky: 'Borrowed worry on the kite today. Works the same, promise.', Unfiltered: 'Example worry on the kite. Same idea.' } : care ? { Jolly: 'That one’s heavy up close. Let’s give it some room.', Cheeky: 'Big one, right up in your face. Let’s give it space.', Unfiltered: 'Heavy up close. Give it room.' } : { Jolly: 'Up close it’s so loud, isn’t it? Let’s give it some sky.', Cheeky: 'That is a very shouty kite. Let’s send it somewhere quieter.', Unfiltered: 'Too close. Let out some line.' }, care ? 'calm' : 'worried', 3600);
@@ -1500,8 +1554,10 @@
             let a = -Math.PI / 2;
             const pr = await K.sim.press(reel, c + Math.cos(a) * rad, c + Math.sin(a) * rad);
             for (let i = 1; i <= 8; i++) {
-              await K.wait(55);
+              await K.wait(60);
               if ((DIP.active && DIP.tugs === 0 && i > 2) || !G.crank) break;
+              // a skilled flyer lets the wind take the line: pause while the line runs ahead of the kite
+              for (let w = 0; w < 6 && KP.L - KP.r > 1.6 + 0.03 * KP.r; w++) await K.wait(70);
               a += TAU / 8; pr.move(c + Math.cos(a) * rad, c + Math.sin(a) * rad);
             }
             pr.up(c + Math.cos(a) * rad, c + Math.sin(a) * rad);

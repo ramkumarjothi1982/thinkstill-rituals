@@ -278,7 +278,7 @@
       const netTier = clamp(Number(S.store.get('moth-jar:net', 0)) || 0, 0, 3);
       const T = {
         strands: [2, 4, 6][inten], flying: [2, 3, 3][inten], hoop: [46, 40, 35][inten], vCalm: [1000, 780, 640][inten], vMin: 22,
-        spd: [62, 84, 102][inten], wander: [0.6, 0.9, 1.15][inten], dart: [0.25, 0.45, 0.6][inten], tired: [8, 14, 20][inten], ff: [8, 10, 13][inten]
+        spd: [62, 84, 102][inten], wander: [0.6, 0.9, 1.15][inten], dart: [0.25, 0.45, 0.6][inten], tired: [8, 14, 20][inten], ff: [6, 8, 10][inten]
       };
       const pal = () => DK[K.dark() ? 'dark' : 'bright'];
 
@@ -338,9 +338,9 @@
       const SC = { catches: [], best: 0, frantic: 0, jarred: 0, noted: 0, matched: 0, species: [] };
       const SPH = [];
       const moths = [], FF = [], MOTES = [];
-      const J = JARS.map(() => ({ moths: [], lid: 0, lidV: 0, lidT: 0, flash: 0, open: false, freed: false, cx: 0, glow: 0 }));
-      let Q = [], doneCount = 0, total = 0, finished = false, spawnSide = 1, taskMoth = null, noteShown = false;
-      let BG = null, BGN = null, CUR = null, bgId = 0, LAN = null, JARC = null, LIDS = null, SPR = new Map();
+      const J = JARS.map(() => ({ moths: [], lid: 0, lidV: 0, lidT: 0, flash: 0, open: false, freed: false, cx: 0, glow: 0, lan: 0 }));
+      let Q = [], doneCount = 0, total = 0, finished = false, spawnSide = 1, taskMoth = null, noteShown = false, noteRest = false;
+      let BG = null, BGN = null, CUR = null, bgId = 0, LAN = null, JARC = null, JARCN = null, LIDS = null, SPR = new Map();
 
       /* ---------------- layout ---------------- */
       function off(w, hh) { const c = document.createElement('canvas'); const d = cv.dpr || 1; c.width = Math.max(1, Math.round(w * d)); c.height = Math.max(1, Math.round(hh * d)); const g = c.getContext('2d'); g.setTransform(d, 0, 0, d, 0, 0); return { c, g, w, h: hh }; }
@@ -368,6 +368,7 @@
         G.noteW = phone ? 160 : 196;
         G.note = phone ? { x: w - G.noteW - 14, y: Math.round(G.hz - 20 * U) } : { x: G.postR - G.noteW - 40, y: Math.round(G.hz - 40 * U) };
         G.tuck = phone ? { x: w - 140 - 12, y: G.beam + 8 + 56 + 14 } : { x: G.postR - 196 - 40, y: Math.round(G.hz - 40 * U) };
+        G.rest = phone ? { x: w - 140 - 14, y: Math.round(G.hz - 6 * U) } : G.tuck;   // finale: pinned on the fence, clear of the voices above
         if (!NET.init) { NET.init = true; NET.gx = NET.x = G.home.x; NET.gy = NET.y = G.home.y; NET.hx = NET.phx = NET.x; NET.hy = NET.phy = NET.y - G.L; NET.tx = NET.hx; NET.ty = NET.hy + G.r * 1.5; }
         else if (!NET.touching && !NET.moth) { NET.gx = G.home.x; NET.gy = G.home.y; }
         // characters on the porch beam
@@ -377,11 +378,11 @@
         G.loopie = { x: phone ? w - ls - 8 : G.postR - ls - 18, y: G.beam + 8, s: ls };
         still.place(G.still.x, G.still.y); loopie.place(G.loopie.x, G.loopie.y);
         labels.forEach((lb, i) => { lb.style.left = J[i].cx + 'px'; lb.style.top = (G.jarTop + G.jh * 0.6) + 'px'; });
-        const np = SC.noted ? G.tuck : G.note; note.style.left = np.x + 'px'; note.style.top = np.y + 'px';
+        const np = SC.noted ? (noteRest ? G.rest : G.tuck) : G.note; note.style.left = np.x + 'px'; note.style.top = np.y + 'px';
         cap.style.top = Math.round(phone ? H * 0.43 : H * 0.42) + 'px';
         SPR = new Map(); paintAll();
       }
-      function paintAll() { BG = paintBack(false); BGN = paintBack(true); CUR = off(G.w, G.h); CUR.key = ''; bgId++; LAN = paintLantern(); JARC = paintJar(); LIDS = JARS.map((j, i) => paintLid(i)); moths.forEach(m => { m.spr = sprite(m.look, m.S); }); }
+      function paintAll() { BG = paintBack(false); BGN = paintBack(true); CUR = off(G.w, G.h); CUR.key = ''; bgId++; LAN = paintLantern(); JARC = paintJar(false); JARCN = K.dark() ? null : paintJar(true); LIDS = JARS.map((j, i) => paintLid(i)); moths.forEach(m => { m.spr = sprite(m.look, m.S); }); }
 
       /* ---------------- sprites ---------------- */
       function sprite(sp, Sz) {
@@ -416,7 +417,9 @@
       function paintBack(night) {
         const w = G.w, H = G.h, D = K.dark(), C = pal(), U = G.U, hz = G.hz, dim = night ? 1 : 0;
         const o = off(w, H), g = o.g;
-        const top = mix(C.top, '#03040c', dim * (D ? 0.5 : 0.3)), mid = mix(C.mid, D ? '#070818' : '#2f2f63', dim * (D ? 0.55 : 0.42)), low = mix(C.low, C.mid, dim * 0.55), hzc = mix(C.hz, C.low, dim * 0.65);
+        // night: in dark it goes to deep ink; in bright it settles into a rich blue hour (still night, never black)
+        const top = mix(C.top, D ? '#03040c' : '#11133a', dim * (D ? 0.5 : 0.74)), mid = mix(C.mid, D ? '#070818' : '#1f2152', dim * (D ? 0.55 : 0.72));
+        const low = mix(mix(C.low, C.mid, dim * 0.55), D ? C.low : '#2e2b62', D ? 0 : dim * 0.62), hzc = mix(mix(C.hz, C.low, dim * 0.65), D ? C.hz : '#5a4a86', D ? 0 : dim * 0.55);
         const sky = g.createLinearGradient(0, 0, 0, hz + 30 * U);
         sky.addColorStop(0, top); sky.addColorStop(0.5, mid); sky.addColorStop(0.82, low); sky.addColorStop(1, hzc);
         g.fillStyle = sky; g.fillRect(0, 0, w, hz + 30 * U);
@@ -436,8 +439,8 @@
         g.fillStyle = hg; g.fillRect(0, hz - 90 * U, w, 100 * U);
         // garden layers: each drawn on its own layer, then lit by the lamp where it is close
         const dk = D ? '#04050c' : '#2a2e4c';
-        const far = mix(mix(C.low, C.mid, 0.5), dk, (D ? 0.5 : 0.3) + dim * 0.15), midc = mix(C.mid, dk, (D ? 0.62 : 0.42) + dim * 0.12), near = mix(C.top, dk, (D ? 0.55 : 0.45) + dim * 0.1);
-        const fence = mix(midc, '#efe2cc', D ? 0.2 : 0.34), lawn = mix(C.top, D ? '#020306' : '#1d2138', D ? 0.68 : 0.45);
+        const far = mix(mix(C.low, C.mid, 0.5), dk, (D ? 0.5 : 0.3) + dim * (D ? 0.15 : 0.42)), midc = mix(C.mid, dk, (D ? 0.62 : 0.42) + dim * (D ? 0.12 : 0.4)), near = mix(C.top, dk, (D ? 0.55 : 0.45) + dim * (D ? 0.1 : 0.32));
+        const fence = mix(midc, '#efe2cc', (D ? 0.2 : 0.34) - dim * 0.1), lawn = mix(C.top, D ? '#020306' : '#1d2138', (D ? 0.68 : 0.45) + dim * (D ? 0.12 : 0.4));
         const lay = off(w, H), lg = lay.g, litA = night ? 0.1 : (D ? 0.55 : 0.36);
         const light = (a, rad) => { lg.globalCompositeOperation = 'source-atop'; const gr = lg.createRadialGradient(G.lx, G.ly, 10, G.lx, G.ly, rad); gr.addColorStop(0, rgba(C.glow, a)); gr.addColorStop(0.5, rgba(C.glow, a * 0.3)); gr.addColorStop(1, rgba(C.glow, 0)); lg.fillStyle = gr; lg.fillRect(0, 0, w, H); lg.globalCompositeOperation = 'source-over'; };
         const flush = () => { g.drawImage(lay.c, 0, 0, w, H); lg.clearRect(0, 0, w, H); };
@@ -534,7 +537,7 @@
         }
         // a soft vignette keeps the eye on the lamp
         const vg = g.createRadialGradient(w / 2, H * 0.42, Math.min(w, H) * 0.3, w / 2, H * 0.45, Math.max(w, H) * 0.78);
-        vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, D ? 'rgba(4,2,10,0.42)' : 'rgba(30,20,40,0.22)');
+        vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, D ? `rgba(4,2,10,${0.42 + dim * 0.16})` : `rgba(14,12,40,${0.22 + dim * 0.3})`);
         g.fillStyle = vg; g.fillRect(0, 0, w, H);
         return o;
       }
@@ -562,8 +565,9 @@
         g.quadraticCurveTo(x0, y0 + jh, x0 + jw * 0.13, y0 + jh); g.lineTo(x0 + jw * 0.87, y0 + jh); g.quadraticCurveTo(x0 + jw, y0 + jh, x0 + jw, y0 + jh * 0.9); g.lineTo(x0 + jw, y0 + jh * 0.28);
         g.bezierCurveTo(x0 + jw, y0 + jh * 0.17, r + 2, y0 + jh * 0.18, r, y0 + jh * 0.12); g.lineTo(r, y0 + jh * 0.05); g.closePath();
       }
-      function paintJar() {
-        const U = G.U, jw = G.jw, jh = G.jh, D = K.dark(), o = off(jw + 10 * U, jh + 10 * U), g = o.g, x0 = 5 * U, y0 = 5 * U;
+      function paintJar(nightGlass) {
+        // bright theme gets a second, darker glass for the finale night, so the lantern glow reads
+        const U = G.U, jw = G.jw, jh = G.jh, D = K.dark() || !!nightGlass, o = off(jw + 10 * U, jh + 10 * U), g = o.g, x0 = 5 * U, y0 = 5 * U;
         jarPath(g, x0, y0, jw, jh); g.fillStyle = D ? 'rgba(170,210,225,0.1)' : 'rgba(255,255,255,0.2)'; g.fill();
         g.save(); jarPath(g, x0, y0, jw, jh); g.clip();
         const hl = g.createLinearGradient(x0, 0, x0 + jw, 0);
@@ -806,6 +810,7 @@
       }
       function catchMoth(m) {
         m.state = 'net'; NET.moth = m; NET.auto = null; m.caughtAt = W.t;
+        S.cancel(cardT); card.classList.remove('mj-on');   // the last species card gives way to the new catch's tag
         const c = calmScore(); m.calm = c; SC.catches.push(c); SC.best = Math.max(SC.best, c);
         K.sfx.good(undefined, 3 + Math.min(6, SC.catches.length));
         if (A.ctx) { A.noise({ filter: 'lowpass', freq: 900, to: 260, dur: 0.2, attack: 0.01, vol: 0.12 }); flutter(0.06); }
@@ -994,8 +999,11 @@
         J.forEach(j => {
           j.lidV += ((j.lidT - j.lid) * 140 - j.lidV * 11) * dt; j.lid += j.lidV * dt;
           j.flash = Math.max(0, j.flash - dt * 1.6);
-          const want = (j.moths.length ? 0.25 + j.moths.length * 0.12 : 0) * (W.phase === 'play' || W.phase === 'intro' ? 1 : 0) + W.jarGlow * (j.moths.length ? 1 : 0.45);
+          const want = (j.moths.length ? 0.25 + j.moths.length * 0.12 : 0) * (W.phase === 'play' || W.phase === 'intro' ? 1 : 0) + W.jarGlow * (j.moths.length ? (j.freed ? 0.5 : 1) : 0.45);
           j.glow += (want - j.glow) * Math.min(1, dt * 2);
+          // lantern light: full while the named moths wait inside, a warm ember once they have flown
+          const lw = W.jarGlow * (j.moths.length ? (j.freed ? 0.32 : 1) : 0.16);
+          j.lan += (lw - j.lan) * Math.min(1, dt * (lw > j.lan ? 1.4 : 0.8));
         });
       }
       function openJar(i) {
@@ -1004,7 +1012,7 @@
         J.forEach((e, k) => { if (!e.moths.length && !e.open) S.later(() => { e.open = true; e.lidT = 1.9; e.lidV += 5; }, 500 + k * 120); });
         K.sfx.pop(undefined, 300 + i * 60); if (A.ctx) { chimeN(JARS[i].note, 0.07); chimeN(JARS[i].note.replace(/\d/, (n) => String(Number(n) + 1)), 0.04, A.now() + 0.18); A.whoosh({ from: 600, to: 2400, dur: 0.9, vol: 0.05 }); }
         const per = T.ff;
-        j.moths.forEach((mm, k) => { for (let f = 0; f < per; f++) S.later(() => addFirefly(j.cx + (Math.random() - 0.5) * G.jw * 0.4, G.jarTop + G.jh * (0.2 + Math.random() * 0.4), false), k * 140 + f * 60); });
+        j.moths.forEach((mm, k) => { for (let f = 0; f < per; f++) S.later(() => addFirefly(j.cx + (Math.random() - 0.5) * G.jw * 0.36, G.jarTop + G.jh * (0.04 + Math.random() * 0.12), false), k * 140 + f * 70); });
         S.later(() => { j.freed = true; }, 400 + j.moths.length * 140);
         P.emit('mote', j.cx, G.jarTop, 16, { colors: [JARS[i].glow, '#f4ffb0'], speed: [30, 100] });
         ctx.track('release', { jar: JARS[i].id, n: j.moths.length });
@@ -1013,7 +1021,9 @@
       }
       function addFirefly(x, y, ambient) {
         const U = G.U;
-        FF.push({ x, y, vx: (Math.random() - 0.5) * 40 * U, vy: (-60 - Math.random() * 70) * U, tx: G.w * (0.06 + Math.random() * 0.88), ty: G.beam + 70 * U + Math.pow(Math.random(), 0.7) * (G.jarTop - G.beam - 100 * U), ph: Math.random(), w: 0.55 + Math.random() * 0.12, s: 0.7 + Math.random() * 0.7, born: W.t, ambient });
+        // a jar's fireflies leave in a soft fountain so they spread into the garden instead of clumping over the jar
+        const a = -Math.PI / 2 + (Math.random() - 0.5) * (ambient ? 1.2 : 2.3), sp = (ambient ? 30 + Math.random() * 40 : 80 + Math.random() * 130) * U;
+        FF.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, tx: G.w * (0.06 + Math.random() * 0.88), ty: G.beam + 70 * U + Math.pow(Math.random(), 0.7) * (G.jarTop - G.beam - 100 * U), ph: Math.random(), w: 0.55 + Math.random() * 0.12, s: 0.7 + Math.random() * 0.7, born: W.t, ambient });
       }
       function stepFireflies(dt) {
         let cs = 0, sn = 0;
@@ -1122,19 +1132,35 @@
       }
       function drawJars(g, D) {
         const U = G.U, jw = G.jw, jh = G.jh, jt = G.jarTop;
+        // lantern light (finale): a warm halo behind each glowing jar and a pool of light on the shelf in front of it
+        if (W.jarGlow > 0.01) {
+          g.globalCompositeOperation = D ? 'lighter' : 'screen';
+          J.forEach((j, i) => {
+            if (j.lan < 0.02) return;
+            const col = JARS[i].glow, a = j.lan * (0.92 + 0.08 * Math.sin(W.t * 2.1 + i * 1.7) * (K.reduced() ? 0 : 1)), hs = jw * 1.6;
+            g.globalAlpha = Math.min(1, a * (D ? 0.5 : 0.62)); g.drawImage(K.glowSprite(rgba(col, 0.9)), j.cx - hs, jt + jh * 0.56 - hs, hs * 2, hs * 2);
+            g.globalAlpha = Math.min(1, a * (D ? 0.6 : 0.7)); g.drawImage(K.glowSprite(rgba(mix(col, '#fff6dc', 0.3), 0.9)), j.cx - jw * 1.15, G.shelf - 9 * U, jw * 2.3, 20 * U);
+          });
+          g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+        }
+        const nj = JARCN ? clamp((W.night - 0.35) / 0.5, 0, 1) : 0;
+        const fillIn = D ? 'rgba(14,16,30,0.2)' : `rgba(${Math.round(40 - 26 * nj)},${Math.round(40 - 24 * nj)},${Math.round(70 - 40 * nj)},${(0.07 + 0.15 * nj).toFixed(3)})`;
         J.forEach((j, i) => {
           const x = j.x, gl = clamp(j.glow + j.flash * 0.6, 0, 1.6);
-          g.fillStyle = D ? 'rgba(14,16,30,0.2)' : 'rgba(40,40,70,0.07)'; g.save(); jarPath(g, x, jt, jw, jh); g.fill(); g.clip();
+          g.fillStyle = fillIn; g.save(); jarPath(g, x, jt, jw, jh); g.fill(); g.clip();
           if (gl > 0.01) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, gl * (D ? 0.7 : 0.55)); const gs = jw * 1.25; g.drawImage(K.glowSprite(rgba(JARS[i].glow, 0.95)), j.cx - gs, jt + jh * 0.58 - gs, gs * 2, gs * 2); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
+          if (j.lan > 0.02) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = Math.min(1, j.lan * 0.75); const cs = jw * 0.7; g.drawImage(K.glowSprite(rgba(mix(JARS[i].glow, '#ffffff', 0.55), 0.95)), j.cx - cs, jt + jh * 0.6 - cs, cs * 2, cs * 2); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
           const slots = [[0.32, 0.36], [0.68, 0.84], [0.66, 0.35], [0.3, 0.84], [0.5, 0.27], [0.5, 0.88]];
           j.moths.forEach((mm, k) => {
             if (j.freed) return;
             const silk = mm.sp.shape === 'silk', S0 = (silk ? 33 : 20) * U, spr = sprite(mm.sp, S0), sc = (jw * (silk ? 0.3 : 0.23)) / S0;
             const s = slots[k % slots.length], fl = 0.82 + 0.18 * Math.sin(W.t * 0.9 + mm.ph);
-            drawMothSpr(g, spr, x + jw * s[0], jt + jh * s[1], mm.rot + Math.sin(W.t * 0.3 + mm.ph) * 0.05, fl, sc, 0.35 + 0.4 * W.lampK, 1);
+            drawMothSpr(g, spr, x + jw * s[0], jt + jh * s[1], mm.rot + Math.sin(W.t * 0.3 + mm.ph) * 0.05, fl, sc, clamp(0.35 + 0.4 * W.lampK + 0.6 * j.lan, 0, 1), 1);
           });
           g.restore();
-          g.drawImage(JARC.c, x - JARC.ox, jt - JARC.oy, JARC.w, JARC.h);
+          if (nj < 1) { g.globalAlpha = 1 - nj; g.drawImage(JARC.c, x - JARC.ox, jt - JARC.oy, JARC.w, JARC.h); }
+          if (nj > 0) { g.globalAlpha = nj; g.drawImage(JARCN.c, x - JARCN.ox, jt - JARCN.oy, JARCN.w, JARCN.h); }
+          g.globalAlpha = 1;
           // the lid (cloth top tied with twine): it lifts as a moth arrives, and floats away when the jar is opened
           const lk = j.lid, LD = LIDS[i], ly = jt + jh * 0.1 - lk * 18 * U, rot = -lk * 0.3, fade = j.open ? clamp(1 - (lk - 1) / 0.9, 0, 1) : 1;
           if (fade > 0.01) { g.save(); g.globalAlpha = fade; g.translate(j.cx + lk * 8 * U, ly); g.rotate(rot); g.drawImage(LD.c, -LD.ax, -LD.ay, LD.w, LD.h); g.restore(); g.globalAlpha = 1; }
@@ -1180,12 +1206,13 @@
         g.globalAlpha = 1;
       }
       function drawFireflies(g, D) {
-        const U = G.U, spr = K.glowSprite('rgba(220,255,130,0.95)');
+        const U = G.U, spr = K.glowSprite('rgba(220,255,130,0.95)'), RM = K.reduced(), ka = D ? 1 : 0.82;
         g.globalCompositeOperation = 'lighter';
         for (const f of FF) {
-          const a = f.ph * TAU, b = Math.pow(Math.max(0, Math.cos(a)), 6), age = clamp((W.t - f.born) / 0.8, 0, 1);
-          const s = (10 + 18 * b) * f.s * U;
-          g.globalAlpha = (0.32 + 0.68 * b) * age; g.drawImage(spr, f.x - s, f.y - s, s * 2, s * 2);
+          // a firefly's blink is a short bright pulse; with reduced motion it is a slow, shallow swell instead
+          const a = f.ph * TAU, b = RM ? 0.3 + 0.3 * (0.5 + 0.5 * Math.cos(a)) : Math.pow(Math.max(0, Math.cos(a)), 6), age = clamp((W.t - f.born) / 0.8, 0, 1);
+          const s = (9 + 15 * b) * f.s * U;
+          g.globalAlpha = (0.28 + 0.6 * b) * age * ka; g.drawImage(spr, f.x - s, f.y - s, s * 2, s * 2);
           g.globalAlpha = (0.65 + 0.35 * b) * age; g.fillStyle = '#f8ffd8'; g.beginPath(); g.arc(f.x, f.y, (1.3 + b * 1.2) * U, 0, TAU); g.fill();
         }
         g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
@@ -1239,6 +1266,7 @@
       async function finale() {
         if (W.phase !== 'play') return;
         W.phase = 'dim'; K.guide(null); hideTag(); NET.touching = false; NET.gx = G.home.x; NET.gy = G.home.y;
+        if (SC.noted && G.phone) { noteRest = true; note.classList.add('mj-tucked'); note.style.left = G.rest.x + 'px'; note.style.top = G.rest.y + 'px'; }
         talk('still', L.dim, 3000, 'calm'); loopie.base('calm');
         await K.wait(1500);
         if (A.ctx) { A.click({ vol: 0.12 }); A.wood(undefined, 0.08, 0.7); }
@@ -1257,14 +1285,16 @@
         for (let i = 0; i < (G.phone ? 22 : 40); i++) addFirefly(G.w * Math.random(), G.hz + Math.random() * 160 * G.U, true);
         S.later(() => talk('loopie', L.sleepy, 3000, 'sleepy'), 1200);
         still.base('sleepy');
-        await K.anim(4200, (k) => { W.ffK = 1.6 * sm(k); });
         const n = SC.jarred + SC.noted;
         cap.children[0].textContent = 'Named, and let go.';
         cap.children[1].textContent = n + ' thought-moths named · ' + DK.name;
         cap.children[2].textContent = 'Tomorrow evening: ' + TOMORROW.name;
+        S.later(() => cap.classList.add('mj-on'), 2000);
+        await K.anim(4200, (k) => { W.ffK = 1.6 * sm(k); });
+        await K.wait(K.reduced() ? 1800 : 300);
         cap.classList.add('mj-on');
         K.finale('fireflies', { colors: ['#e9ff9a', '#fff3a0', '#d6ff7a'], chord: ['F3', 'A3', 'C4', 'E4', 'G4'], ms: 3800, z: 26 });
-        await K.wait(4200);
+        await K.wait(4600);
         finish();
       }
       function finish() {

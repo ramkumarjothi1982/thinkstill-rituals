@@ -193,7 +193,8 @@
 .g-tiny-garden { --tg-ui: "Nunito", "Poppins", "Segoe UI", system-ui, sans-serif; --tg-hand: "Patrick Hand", "Segoe Print", "Bradley Hand", "Poppins", cursive; --tg-disp: "DynaPuff", "Poppins", "Baloo 2", system-ui, sans-serif;
   --tg-panel: rgba(30, 25, 46, 0.95); --tg-panel2: rgba(50, 40, 70, 0.96); --tg-ink: #fff6ea; --tg-muted: #e6dacb; --tg-line: rgba(255, 232, 205, 0.2); --tg-chip: rgba(255, 255, 255, 0.08); --tg-warm: #ffc46b; background: #182241; }
 .g-tiny-garden.tg-bright { --tg-panel: rgba(255, 251, 244, 0.96); --tg-panel2: rgba(255, 244, 228, 0.97); --tg-ink: #3b2a1b; --tg-muted: #6c573f; --tg-line: rgba(70, 48, 28, 0.16); --tg-chip: rgba(255, 255, 255, 0.96); --tg-warm: #c2611b; background: #a9d6ee; }
-.g-tiny-garden .gk-intro { background: radial-gradient(ellipse at 50% 42%, rgba(255, 200, 140, 0.32), rgba(14, 22, 42, 0.9)); -webkit-backdrop-filter: none; backdrop-filter: none; color: #fff8ee; }
+.g-tiny-garden .gk-intro { background: radial-gradient(ellipse 70% 56% at 50% 46%, rgba(74, 40, 30, 0.8), rgba(32, 20, 30, 0.86) 62%, rgba(14, 16, 32, 0.93)); -webkit-backdrop-filter: none; backdrop-filter: none; color: #fff8ee; }
+.g-tiny-garden .gk-intro-img { width: 124px; height: 124px; }
 .g-tiny-garden .gk-intro-title { font-family: var(--tg-disp); font-weight: 700; font-size: clamp(48px, 13.5cqw, 86px); line-height: 0.98; color: #ffe2a8; text-shadow: 0 3px 0 #b5562a, 0 12px 30px rgba(0, 0, 0, 0.4); }
 .g-tiny-garden .gk-intro-sub { font-family: var(--tg-ui); font-weight: 700; color: #fff3e2; }
 .g-tiny-garden .gk-intro-how { font-family: var(--tg-ui); font-weight: 800; color: #ffd27a; }
@@ -218,6 +219,7 @@
 .g-tiny-garden .tg-can .tg-canart { position: absolute; inset: 7px; transform-origin: 72% 64%; transition: transform 0.3s cubic-bezier(.3, 1.4, .5, 1); }
 .g-tiny-garden .tg-can .tg-canart svg { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.32)); }
 .g-tiny-garden .tg-can.tg-pour .tg-canart { transform: rotate(-34deg) translateY(-4px); }
+.g-tiny-garden .tg-can.tg-gone { opacity: 0; pointer-events: none; }
 .g-tiny-garden .tg-can:focus-visible .tg-canart { outline: 3px solid #fff; outline-offset: 2px; border-radius: 16px; }
 .g-tiny-garden .tg-ring { position: absolute; inset: -3px; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
 .g-tiny-garden .tg-can.tg-ready .tg-ring { opacity: 1; }
@@ -269,10 +271,14 @@
 .g-tiny-garden .tg-flash.tg-on { opacity: 0.5; transition: none; }
 .g-tiny-garden .tg-photo { position: absolute; z-index: 46; left: 50%; top: var(--py, 16%); width: var(--pw, 250px); box-sizing: content-box; padding: 10px 10px 0; background: #fffdf8; border-radius: 4px; pointer-events: none;
   box-shadow: 0 20px 44px rgba(0, 0, 0, 0.42), 0 2px 0 rgba(0, 0, 0, 0.06); transform: translate(-50%, 0) rotate(-3deg); animation: tiny-garden-photo 0.95s cubic-bezier(.2, 1.15, .4, 1) both; }
+.g-tiny-garden .tg-photo::before { content: ""; position: absolute; z-index: 2; left: 50%; top: -12px; width: 96px; height: 25px; margin-left: -48px; transform: rotate(3deg); background: linear-gradient(90deg, rgba(255, 222, 168, 0.86), rgba(255, 200, 150, 0.8));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12); clip-path: polygon(3% 0, 97% 5%, 100% 50%, 96% 100%, 2% 95%, 0 50%); }
+.g-tiny-garden .tg-dim { position: absolute; inset: 0; z-index: 29; pointer-events: none; opacity: 0; transition: opacity 0.9s ease; background: radial-gradient(ellipse 64% 52% at 50% 36%, rgba(70, 30, 10, 0.1), rgba(36, 14, 6, 0.52)); }
+.g-tiny-garden .tg-dim.tg-on { opacity: 1; }
 .g-tiny-garden .tg-photo canvas { display: block; width: 100%; height: auto; border-radius: 2px; }
 .g-tiny-garden .tg-photo .tg-dev { position: absolute; left: 10px; right: 10px; top: 10px; height: var(--ph, 200px); background: #f6efe0; transition: opacity 1.8s ease; }
 .g-tiny-garden .tg-photo.tg-developed .tg-dev { opacity: 0; }
-.g-tiny-garden .tg-photo p { margin: 0; padding: 9px 4px 12px; text-align: center; font: 400 19px/1.15 var(--tg-hand); color: #3b2a1b; text-wrap: balance; }
+.g-tiny-garden .tg-photo p { margin: 0; padding: 8px 4px 12px; text-align: center; font: 400 23px/1.1 var(--tg-hand); color: #3b2a1b; text-wrap: balance; }
 .g-tiny-garden .tg-photo p small { display: block; margin-top: 3px; font: 700 13px/1.3 var(--tg-ui); color: #7a6650; }
 @keyframes tiny-garden-photo { from { opacity: 0; transform: translate(-50%, 50px) rotate(5deg) scale(0.82); } to { opacity: 1; transform: translate(-50%, 0) rotate(-3deg); } }
 `,
@@ -302,8 +308,9 @@
       const save = () => S.store.set(KEY, { v: 1, plants: DATA.plants, n: DATA.n, weeds: DATA.weeds, seen: DATA.seen });
       const OLD = DATA.plants.slice();
       const oldP = OLD.map(d => buildPlant(d.k, d.s, d.h));
-      const OWN = goodPhrases(an, ctx.text);
-      if (ctx.analysisReady && ctx.analysisReady.then) ctx.analysisReady.then(a => { if (a && a.safety !== 'support' && !WEED.on) an = a; }, () => {});
+      let OWN = goodPhrases(an, ctx.text);
+      // a later (AI) reading replaces the local one until it has been used: own good things before the first pick, the weed until it appears
+      if (ctx.analysisReady && ctx.analysisReady.then) ctx.analysisReady.then(a => { if (!a || a.safety === 'support' || WEED.on) return; an = a; if (phase === 'intro' || phase === 'welcome') OWN = goodPhrases(an, ctx.text); }, () => {});
 
       /* ---------------- scene ---------------- */
       el.classList.toggle('tg-bright', !dark());
@@ -855,7 +862,7 @@
         if (!G.w) return;
         placeSun();
         if (!SEED.held) { if (SEED.live || seedEl.hidden) { SEED.x = G.seedHome.x; SEED.y = G.seedHome.y; } placeSeed(); }
-        if (CAN.ready && cur) { const ho = curHole(); CAN.x = Math.min(G.w - 52, ho.x + (G.phone ? 60 : 72)); CAN.y = ho.y - (G.phone ? 98 : 116); } else { CAN.x = G.canHome.x; CAN.y = G.canHome.y; }
+        if (CAN.ready && cur) { const ho = curHole(); CAN.x = Math.min(G.w - 62, ho.x + (G.phone ? 60 : 72)); CAN.y = ho.y - (G.phone ? 98 : 116); } else { CAN.x = G.canHome.x; CAN.y = G.canHome.y; }
         placeCan();
         tags.forEach(t => placeTag(t));
         if (WEED.sign) placeSign();
@@ -1178,7 +1185,8 @@
         shadedCare: 'It’s still there, and that’s okay. It just isn’t the only thing growing.',
         gold: { Jolly: 'Golden hour. And look who came to visit!', Cheeky: 'Golden hour. The bees have heard about this place.', Unfiltered: 'Golden hour. Visitors.' },
         photo: { Jolly: 'Quick, a photo. You grew this.', Cheeky: 'Photo, before the bees ask for royalties.', Unfiltered: 'Take a photo.' },
-        snapped: { Jolly: 'Three good things, growing in the light. They’ll still be here next time.', Cheeky: 'Framed. And they’ll still be blooming next time. Zero watering guilt.', Unfiltered: 'They’ll still be here next time.' }
+        snapped: { Jolly: 'Three good things, growing in the light. They’ll still be here next time.', Cheeky: 'Framed. And they’ll still be blooming next time. Zero watering guilt.', Unfiltered: 'They’ll still be here next time.' },
+        snappedCare: 'Three good things, growing beside a real worry. For the worry itself, someone qualified can help you see where you stand.'
       };
       const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
       function savour(it) {
@@ -1438,6 +1446,7 @@
         phase = 'golden'; K.guide(null);
         GOLD.on = true; GOLD.t0 = performance.now();
         SND.golden(); MUS.vol = 1;
+        if (G.phone) canEl.classList.add('tg-gone'); // the can is put away so Still has the corner to itself
         placeFinaleCast(); still.show(true); still.hush(); still.base('happy'); still.react('bounce');
         speaker(drop).say(line(L.gold), { mood: 'celebrate', moodMs: 2600, ms: 4400 });
         spawnBugs();
@@ -1448,7 +1457,7 @@
         K.guide({ id: 'photo', g: 'tap', target: camEl, label: 'TAKE THE PHOTO', place: 'above', delay: 700 });
         K.later(() => { if (phase === 'photo') snap(); }, 14000);
         await waitFor('snapped');
-        await K.wait(RED ? 1800 : 3200);
+        await K.wait(RED ? 2400 : 4200);
         end();
       }
       K.tap(camEl, () => snap());
@@ -1460,7 +1469,7 @@
         if (!RED) { const f = h('div', { class: 'tg-flash tg-on' }); el.append(f); K.later(() => f.classList.remove('tg-on'), 40); K.later(() => f.remove(), 900); }
         // the photo: today's bed in golden light, bees and all
         const bx = Math.max(0, G.bed.x - 26), bx1 = Math.min(G.w, G.bed.x + G.bed.w + 26), by = Math.max(0, G.bed.soil - G.Hf - 30), by1 = Math.min(G.H, G.bed.bottom + 10);
-        const sw = bx1 - bx, sh = by1 - by, pw = G.phone ? 236 : 300, ph = Math.round(Math.min(pw * 1.05, pw * sh / sw));
+        const sw = bx1 - bx, sh = by1 - by, pw = G.phone ? Math.min(250, G.w - 124) : 330, ph = Math.round(Math.min(pw * 1.05, pw * sh / sw));
         const pc = document.createElement('canvas'); pc.width = Math.round(pw * 2); pc.height = Math.round(ph * 2);
         const pg = pc.getContext('2d');
         try {
@@ -1472,11 +1481,17 @@
         const vg = pg.createRadialGradient(pc.width / 2, pc.height / 2, pc.width * 0.3, pc.width / 2, pc.height / 2, pc.width * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(60,30,10,0.35)');
         pg.fillStyle = vg; pg.fillRect(0, 0, pc.width, pc.height);
         const total = DATA.n;
-        const photo = h('div', { class: 'tg-photo', style: { '--pw': pw + 'px', '--ph': ph + 'px', '--py': (G.phone ? Math.round(G.H * 0.205) : Math.round(G.H * 0.13)) + 'px' } }, pc, h('i', { class: 'tg-dev' }),
-          h('p', null, document.createTextNode('Golden hour · 3 good things'), h('small', { text: 'Your garden: ' + total + (total === 1 ? ' flower' : ' flowers') + ', all blooming' })));
+        // the photo is the hero of the last frame: the garden dims a little behind it, and it never touches Drop or the bubble
+        drop.say(care() ? L.snappedCare : line(L.snapped), { mood: 'love', ms: 0 });
+        let py = Math.round(G.phone ? Math.max(G.H * 0.2, 160) : G.H * 0.14);
+        const pl = G.w / 2 - pw / 2 - 16, avoid = [K.rectIn(drop.el, el)].concat(drop.bubble.hidden ? [] : [K.rectIn(drop.bubble, el)]);
+        avoid.forEach(r => { if (r.x + r.w > pl && r.x < G.w - pl) py = Math.max(py, Math.round(r.y + r.h + 18)); });
+        const dim = h('div', { class: 'tg-dim' }); el.append(dim); K.later(() => dim.classList.add('tg-on'), 40);
+        const photo = h('div', { class: 'tg-photo', role: 'img', 'aria-label': 'A golden-hour photo of your three flowers', style: { '--pw': pw + 'px', '--ph': ph + 'px', '--py': py + 'px' } }, pc, h('i', { class: 'tg-dev' }),
+          h('p', null, document.createTextNode('3 good things'), h('small', { text: 'Your garden: ' + total + (total === 1 ? ' flower' : ' flowers') })));
         el.append(photo);
         K.later(() => photo.classList.add('tg-developed'), 160);
-        drop.say(line(L.snapped), { mood: 'love', ms: 0 });
+        K.later(() => { const r = K.rectIn(photo, el); P.emit('star', r.x + r.w * 0.9, r.y + 8, 10, { colors: ['#fffbe6', '#ffe08a'], speed: [30, 90] }); P.emit('mote', r.cx, r.y + r.h * 0.4, 8, { colors: ['#fff6d8', '#ffd08a'], speed: [10, 40] }); if (A.ctx) K.sfx.sparkle(); }, 1700);
         still.face('love', 2600);
         resolveW('snapped');
       }
@@ -1560,18 +1575,20 @@
       return {
         async autoplay() {
           const until = async (fn, ms) => { const t0 = performance.now(); while (!fn() && performance.now() - t0 < (ms || 60000)) await K.wait(80); };
+          await K.wait(700);
+          { const card = el.querySelector('.gk-intro'); if (card && phase === 'intro') await K.sim.tap(card); }
           for (let r = 0; r < 3; r++) {
             await until(() => (phase === 'pick' && !panel.classList.contains('tg-away') && panel.querySelector('.tg-chip')) || finished, 45000);
-            await K.wait(800);
+            await K.wait(650);
             { const chips = panel.querySelectorAll('.tg-chip'); if (chips.length) await K.sim.tap(chips[(dayN + r) % chips.length]); }
             await until(() => phase === 'plant' && SEED.live, 8000);
-            await K.wait(700);
+            await K.wait(550);
             { const r0 = K.rectIn(seedEl, el), ho = curHole(); await K.sim.drag(seedEl, { x: r0.w / 2, y: r0.h / 2 }, { x: ho.x - r0.x, y: ho.y - 6 - r0.y }, 700, 8); }
             await until(() => phase === 'water' && WAT.on, 8000);
-            await K.wait(1000);
+            await K.wait(700);
             { const r0 = K.rectIn(canEl, el), pr = await K.sim.press(canEl, r0.w / 2, r0.h / 2); await until(() => WAT.m >= (Z.lo + Math.min(1, Z.hi)) / 2 || phase !== 'water', 8000); pr.up(r0.w / 2, r0.h / 2); }
             await until(() => phase === 'grow' && SUN.live, 8000);
-            await K.wait(900);
+            await K.wait(650);
             {
               // a slow, steady pull on the real clock: the finger stays just ahead of the sun however busy the device is
               const r0 = K.rectIn(sunEl, el), pr = await K.sim.press(sunEl, r0.w / 2, r0.h / 2), p0 = SUN.p, span = SUN.p1 - p0, t0 = performance.now();

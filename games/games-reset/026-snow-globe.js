@@ -259,7 +259,7 @@
         G.slots = shelfSlots();
         SMAX = 280 * G.k; TMAX = 110 * G.k;
         hud.style.top = (phone ? 62 : 58) + 'px';
-        capEl.style.top = (phone ? Math.round(G.slots[0].y + G.slots[0].r * 1.17 + 20) : Math.round(G.tableY + R * 0.22 + 46)) + 'px';
+        placeCap();
         // characters: on phone both stand at the bottom with their bubbles above; on desktop they flank the globe on the table
         const sz = phone ? 72 : 100;
         if (phone) { home.still = { x: 8, y: H - 16 - sz }; home.sync = { x: w - 8 - sz, y: H - 16 - sz }; still.side('above'); sync.side('above'); }
@@ -268,6 +268,16 @@
         still.place(home.still.x, home.still.y); if (phase !== 'twist') sync.place(home.sync.x, home.sync.y);
         layoutWords();
         C = null; V = null; MINI = {};
+      }
+      /* The shelf caption: under the top shelf on a phone, under the shelf that holds today's globe on a desktop
+         (beside the after card, never under the bottom edge). */
+      function placeCap() {
+        const sl = G.slots; if (!sl.length) return;
+        if (G.phone) { capEl.style.left = '50%'; capEl.style.top = Math.round(sl[0].y + sl[0].r * 1.17 + 20) + 'px'; return; }
+        const per = Math.ceil(SCENES.length / 2), a = SCN_I < per ? 0 : per, b = Math.min(sl.length - 1, a + per - 1);
+        const half = Math.min(G.w / 2 - 8, (capEl.hidden ? 260 : capEl.offsetWidth || 260) / 2);
+        capEl.style.left = Math.round(clamp((sl[a].x + sl[b].x) / 2, half + 8, G.w - half - 8)) + 'px';
+        capEl.style.top = Math.round(sl[a].y + sl[a].r * 1.17 + 34) + 'px';
       }
       function layoutWords() {
         const R = G.R;
@@ -691,7 +701,12 @@
         if (D) { gr.addColorStop(0, '#081028'); gr.addColorStop(0.6, '#1a2c58'); gr.addColorStop(1, '#3a4d7c'); } else { gr.addColorStop(0, '#9ec2e6'); gr.addColorStop(0.65, '#d4e6f5'); gr.addColorStop(1, '#f2f6fa'); }
         g.fillStyle = gr; g.fillRect(Wn.x0, Wn.y0, Wn.x1 - Wn.x0, Wn.y1 - Wn.y0);
         const rnd = K.rng(13);
-        if (D) { g.fillStyle = '#fffaf0'; for (let i = 0; i < 70; i++) { g.globalAlpha = 0.25 + rnd() * 0.6; g.fillRect(Wn.x0 + rnd() * (Wn.x1 - Wn.x0), Wn.y0 + rnd() * (Wn.y1 - Wn.y0) * 0.6, 1.2, 1.2); } g.globalAlpha = 1; const mx = Wn.x0 + (Wn.x1 - Wn.x0) * 0.8, my = Wn.y0 + r * 0.42; g.globalAlpha = 0.5; g.drawImage(K.glowSprite('rgba(255, 244, 214, 0.9)'), mx - 60, my - 60, 120, 120); g.globalAlpha = 1; g.fillStyle = '#fbf3df'; g.beginPath(); g.arc(mx, my, 13, 0, TAU); g.fill(); }
+        if (D) {
+          g.fillStyle = '#fffaf0'; for (let i = 0; i < 70; i++) { g.globalAlpha = 0.25 + rnd() * 0.6; g.fillRect(Wn.x0 + rnd() * (Wn.x1 - Wn.x0), Wn.y0 + rnd() * (Wn.y1 - Wn.y0) * 0.6, 1.2, 1.2); } g.globalAlpha = 1;
+          // the moon outside only where it can't sit on the rim of the glass (the globe has its own moon)
+          const mx = Wn.x0 + (Wn.x1 - Wn.x0) * 0.8, my = Wn.y0 + r * 0.42;
+          if (Math.hypot(mx - cx, my - cy) > R + 46) { g.globalAlpha = 0.5; g.drawImage(K.glowSprite('rgba(255, 244, 214, 0.9)'), mx - 60, my - 60, 120, 120); g.globalAlpha = 1; g.fillStyle = '#fbf3df'; g.beginPath(); g.arc(mx, my, 13, 0, TAU); g.fill(); }
+        }
         else { g.fillStyle = 'rgba(255, 255, 255, 0.8)'; [[0.22, 0.3, 1], [0.7, 0.18, 0.8]].forEach(([u, v, s]) => { const x = Wn.x0 + u * (Wn.x1 - Wn.x0), y = Wn.y0 + v * (Wn.y1 - Wn.y0); g.beginPath(); g.ellipse(x, y, 46 * s, 13 * s, 0, 0, TAU); g.ellipse(x - 14 * s, y - 8 * s, 20 * s, 14 * s, 0, 0, TAU); g.ellipse(x + 12 * s, y - 9 * s, 24 * s, 16 * s, 0, 0, TAU); g.fill(); }); }
         const roofY = Wn.y1 - (phone ? 90 : 120);
         const houses = []; { let x = Wn.x0 - 10; const rs = K.rng(7); while (x < Wn.x1 + 30) { const bw = 26 + rs() * 40, bh = 16 + rs() * 46; houses.push({ x, bw, top: roofY + 30 - bh, lit: rs() < 0.6 }); x += bw; } }
@@ -716,22 +731,57 @@
         if (!phone) {
           [[G.slots[0].x - G.slots[0].r * 1.6, G.slots[2].x + G.slots[2].r * 1.6], [G.slots[3].x - G.slots[3].r * 1.6, G.slots[5].x + G.slots[5].r * 1.6]].forEach(([a, b]) => paintPlank(g, a, b, G.slots[0].y + G.slots[0].r * 1.17, D));
         }
-        // the table (a deep windowsill)
-        const ty = G.tableY, depth = R * (phone ? 0.46 : 0.26);
-        gr = g.createLinearGradient(0, ty - depth * 0.3, 0, ty + depth);
-        gr.addColorStop(0, D ? '#5b3b28' : '#dcb68c'); gr.addColorStop(1, D ? '#3c2619' : '#c5986b');
-        g.fillStyle = gr; g.fillRect(0, ty - depth * 0.3, w, depth * 1.3);
-        g.strokeStyle = D ? 'rgba(20, 10, 4, 0.25)' : 'rgba(120, 80, 40, 0.18)'; g.lineWidth = 1;
-        const rg = K.rng(3);
-        for (let i = 0; i < 14; i++) { const yy = ty - depth * 0.2 + rg() * depth * 1.1; g.beginPath(); g.moveTo(0, yy); for (let xx = 0; xx <= w; xx += 40) g.lineTo(xx, yy + Math.sin(xx * 0.02 + i) * 1.4); g.stroke(); }
-        const fy = ty + depth;
-        gr = g.createLinearGradient(0, fy, 0, H);
-        gr.addColorStop(0, D ? '#2f1d14' : '#a97b52'); gr.addColorStop(1, D ? '#120a06' : '#7f593b');
-        g.fillStyle = gr; g.fillRect(0, fy, w, H - fy);
-        g.fillStyle = D ? 'rgba(255, 210, 160, 0.22)' : 'rgba(255, 245, 225, 0.6)'; g.fillRect(0, fy, w, 2);
-        g.fillStyle = 'rgba(0, 0, 0, 0.18)'; g.fillRect(0, fy + 2, w, 5);
-        g.strokeStyle = D ? 'rgba(0, 0, 0, 0.3)' : 'rgba(80, 50, 25, 0.22)';
-        for (let xx = (w % 120) / 2; xx < w; xx += 120) { g.beginPath(); g.moveTo(xx, fy + 8); g.lineTo(xx, H); g.stroke(); }
+        const ty = G.tableY;
+        if (phone) {
+          // on a phone the table runs to the bottom of the screen: planks run toward you and the cast stands on it
+          const top = ty - R * 0.14, vy = top - H * 1.5, at = (xb, y) => cx + (xb - cx) * (y - vy) / (H - vy);
+          gr = g.createLinearGradient(0, top, 0, H);
+          gr.addColorStop(0, D ? '#6b4731' : '#e6c49a'); gr.addColorStop(0.3, D ? '#53351f' : '#d8ad7e'); gr.addColorStop(1, D ? '#22140b' : '#a9794b');
+          g.fillStyle = gr; g.fillRect(0, top, w, H - top);
+          const pw = w / 3.6, seams = [];
+          for (let xb = cx - pw * 6.5; xb <= cx + pw * 6.5; xb += pw) seams.push(xb);
+          seams.forEach((xb, i) => {
+            if (i === seams.length - 1) return;
+            const xb2 = seams[i + 1];
+            g.fillStyle = i % 2 ? (D ? 'rgba(255, 220, 180, 0.035)' : 'rgba(255, 250, 240, 0.12)') : (D ? 'rgba(0, 0, 0, 0.07)' : 'rgba(120, 70, 30, 0.05)');
+            g.beginPath(); g.moveTo(at(xb, top), top); g.lineTo(at(xb2, top), top); g.lineTo(xb2, H); g.lineTo(xb, H); g.closePath(); g.fill();
+            g.strokeStyle = D ? 'rgba(20, 8, 2, 0.22)' : 'rgba(120, 76, 40, 0.16)'; g.lineWidth = 0.8;
+            [0.27, 0.55, 0.8].forEach((f, q) => {
+              const xg = xb + (xb2 - xb) * f; g.beginPath();
+              for (let y = top; y <= H + 12; y += 12) { const x = at(xg, y) + Math.sin(y * 0.045 + i * 1.7 + q * 2.3) * 1.3 * (y - vy) / (H - vy); if (y === top) g.moveTo(x, y); else g.lineTo(x, y); }
+              g.stroke();
+            });
+          });
+          g.strokeStyle = D ? 'rgba(10, 4, 0, 0.55)' : 'rgba(96, 60, 30, 0.34)'; g.lineWidth = 1.3;
+          seams.forEach(xb => { g.beginPath(); g.moveTo(at(xb, top), top); g.lineTo(xb, H); g.stroke(); });
+          g.fillStyle = D ? 'rgba(255, 214, 170, 0.2)' : 'rgba(255, 250, 238, 0.75)'; g.fillRect(0, top, w, 1.5);
+          g.fillStyle = 'rgba(0, 0, 0, 0.16)'; g.fillRect(0, top + 1.5, w, 3);
+        } else {
+          // a deep windowsill with the wainscot below
+          const depth = R * 0.26;
+          gr = g.createLinearGradient(0, ty - depth * 0.3, 0, ty + depth);
+          gr.addColorStop(0, D ? '#5b3b28' : '#dcb68c'); gr.addColorStop(1, D ? '#3c2619' : '#c5986b');
+          g.fillStyle = gr; g.fillRect(0, ty - depth * 0.3, w, depth * 1.3);
+          g.strokeStyle = D ? 'rgba(20, 10, 4, 0.25)' : 'rgba(120, 80, 40, 0.18)'; g.lineWidth = 1;
+          const rg = K.rng(3);
+          for (let i = 0; i < 14; i++) { const yy = ty - depth * 0.2 + rg() * depth * 1.1; g.beginPath(); g.moveTo(0, yy); for (let xx = 0; xx <= w + 40; xx += 40) g.lineTo(xx, yy + Math.sin(xx * 0.02 + i) * 1.4); g.stroke(); }
+          const fy = ty + depth;
+          gr = g.createLinearGradient(0, fy, 0, H);
+          gr.addColorStop(0, D ? '#2f1d14' : '#a97b52'); gr.addColorStop(1, D ? '#120a06' : '#7f593b');
+          g.fillStyle = gr; g.fillRect(0, fy, w, H - fy);
+          g.fillStyle = D ? 'rgba(255, 210, 160, 0.22)' : 'rgba(255, 245, 225, 0.6)'; g.fillRect(0, fy, w, 2);
+          g.fillStyle = 'rgba(0, 0, 0, 0.18)'; g.fillRect(0, fy + 2, w, 5);
+          g.strokeStyle = D ? 'rgba(0, 0, 0, 0.3)' : 'rgba(80, 50, 25, 0.22)';
+          for (let xx = (w % 120) / 2; xx < w; xx += 120) { g.beginPath(); g.moveTo(xx, fy + 8); g.lineTo(xx, H); g.stroke(); }
+        }
+        // the lamp's warm pool on the wood around the globe
+        gr = g.createRadialGradient(cx + R * 0.25, ty + R * 0.12, R * 0.1, cx + R * 0.25, ty + R * 0.12, R * (phone ? 1.5 : 1.9));
+        gr.addColorStop(0, D ? 'rgba(255, 190, 120, 0.2)' : 'rgba(255, 246, 222, 0.42)'); gr.addColorStop(1, 'rgba(255, 190, 120, 0)');
+        g.fillStyle = gr; g.fillRect(0, ty - R * 0.3, w, H - ty + R * 0.3);
+        // where the cast stands: soft contact shadows on the wood
+        const sz = phone ? 72 : 100, sh = K.glowSprite('rgba(10, 4, 0, 0.75)');
+        [home.still, home.sync].forEach(p => { g.globalAlpha = D ? 0.75 : 0.42; g.drawImage(sh, p.x + sz * 0.08, p.y + sz * 0.9, sz * 0.84, sz * 0.2); });
+        g.globalAlpha = 1;
         gr = g.createRadialGradient(cx, cy, R * 1.25, cx, cy, Math.max(w, H) * 0.85);
         gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, D ? 'rgba(4, 2, 12, 0.55)' : 'rgba(70, 50, 20, 0.16)');
         g.fillStyle = gr; g.fillRect(0, 0, w, H);
@@ -1082,15 +1132,15 @@
       function onBreathPhase() {
         const st = phase === 'still1' || phase === 'still2';
         if (!st) return;
-        const n = BR.n + 1, need = PR.need;
-        if (BR.phase === 'in') setHud(phase === 'still1' ? 'Breath ' + Math.min(n, need) + ' of ' + need : 'Settle it again', 'Breathe in', 'Keep your finger perfectly still.');
+        const n = BR.n + 1, need = PR.need, kick = phase === 'still1' ? 'Breath ' + Math.min(n, need) + ' of ' + need : 'Settle it again';
+        if (BR.phase === 'in') setHud(kick, 'Breathe in', 'Keep your finger perfectly still.');
         else {
           let gi = -1;
           if (phase === 'still1' && nextGroup < NT) gi = nextGroup;
           if (phase === 'still2' && groupAlive(NT - 1)) gi = NT - 1;
           groupNow = gi;
-          if (gi >= 0) { sinkGroup(gi); setHud(null, 'Breathe out', ['Slowly… let '].concat(thoughtRef(gi), [' sink.'])); }
-          else setHud(null, 'Breathe out', 'Slowly… let it all settle.');
+          if (gi >= 0) { sinkGroup(gi); setHud(kick, 'Breathe out', ['Slowly… let '].concat(thoughtRef(gi), [' sink.'])); }
+          else setHud(kick, 'Breathe out', 'Slowly… let it all settle.');
         }
       }
       function exhaleEnd() {
@@ -1374,7 +1424,7 @@
         g.globalAlpha = 0.55 * (1 - lift * 0.4); g.fillStyle = D ? 'rgba(0, 0, 0, 0.9)' : 'rgba(70, 40, 20, 0.55)';
         g.beginPath(); g.ellipse(cx + GL.ox * 0.5, ty + R * 0.04, R * (0.98 + lift * 0.1), R * 0.1, 0, 0, TAU); g.fill();
         g.globalAlpha = (D ? 0.55 : 0.65) * (1 - lift * 0.5); g.globalCompositeOperation = 'lighter';
-        g.drawImage(K.glowSprite(D ? 'rgba(255, 196, 120, 0.85)' : 'rgba(255, 244, 214, 0.9)'), cx - R * 1.32 + GL.ox * 0.3, ty - R * 0.02, R * 0.62, R * 0.14);
+        g.drawImage(K.glowSprite(D ? 'rgba(255, 196, 120, 0.85)' : 'rgba(255, 244, 214, 0.9)'), Math.max(6, cx - R * 1.24) + GL.ox * 0.3, ty - R * 0.02, R * 0.56, R * 0.14);
         g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
         if (FX.glow > 0.01) { g.globalAlpha = FX.glow * (D ? 0.85 : 0.65); g.drawImage(C.halo.c, gx - R * 2.1, gy - R * 2.05, R * 4.2, R * 4.2); g.globalAlpha = 1; }
         // inside the glass (every layer here is already clipped to the sphere)
@@ -1545,6 +1595,7 @@
         if (G.phone) { hud.classList.remove('sg-swap'); hud.classList.add('sg-off'); }
         capEl.hidden = false; capEl.textContent = '';
         capEl.append(h('b', { text: 'Your shelf: ' + count + ' of ' + SCENES.length + ' globes' }), h('span', { text: count < SCENES.length ? 'A new village joins it next visit' : 'Every village collected. They take turns now.' }));
+        placeCap();
         capEl.classList.remove('sg-in'); void capEl.offsetWidth; capEl.classList.add('sg-in');
         const sl = G.slots[SCN_I]; if (sl) PO.emit('star', sl.x, sl.y, 14, { colors: ['#fff6d8', '#ffe6a8'], speed: [30, 110] });
         await fin;

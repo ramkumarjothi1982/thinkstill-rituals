@@ -82,6 +82,8 @@
 .g-clear-the-desk .cd-count { position: absolute; z-index: 5; right: -2px; top: calc(var(--cd-fh) - 15px); min-width: 24px; height: 24px; padding: 0 7px; border-radius: 12px; font: 700 13px/24px var(--cd-label); text-align: center; color: #fff;
   background: var(--cd-tc); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3); opacity: 0; transform: scale(0.6); transition: opacity 0.2s ease, transform 0.3s cubic-bezier(.2, 1.7, .4, 1); }
 .g-clear-the-desk .cd-count.on { opacity: 1; transform: none; }
+.g-clear-the-desk .cd-tray.cd-shut .cd-count { opacity: 0; transform: scale(0.6); }
+.g-clear-the-desk .cd-note.cd-pinned .cd-nk { padding-left: 18px; }
 .g-clear-the-desk .cd-layer { position: absolute; inset: 0; z-index: 12; pointer-events: none; }
 .g-clear-the-desk .cd-note { position: absolute; left: 0; top: 0; width: var(--cd-ns); height: var(--cd-ns); padding: 18px 6px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center;
   text-align: center; color: var(--cd-ink); border-radius: 2px 2px 8px 3px; background: linear-gradient(170deg, var(--cd-p1, #fff47e) 0%, var(--cd-p2, #ffe24f) 100%);
@@ -125,6 +127,7 @@
 .g-clear-the-desk .cd-pop { position: absolute; z-index: 28; left: 0; top: 0; transform: translate(-50%, -50%); font: 700 21px/1 var(--cd-hand); color: #fff8e4; white-space: nowrap; pointer-events: none;
   text-shadow: 0 2px 0 rgba(70, 36, 8, 0.85), 0 0 14px rgba(0, 0, 0, 0.4); animation: clear-the-desk-pop 1.05s ease-out both; }
 .g-clear-the-desk .cd-pop.cd-gold { color: #ffe08a; font-size: 24px; }
+.g-clear-the-desk .cd-pop.cd-still { animation: none; }
 .g-clear-the-desk .gk-char .gk-bubble { max-width: min(280px, calc(100cqw - var(--sz, 72px) * 2 - 58px)); }
 @keyframes clear-the-desk-bump { 0% { translate: 0 0; } 30% { translate: 0 6px; } 64% { translate: 0 -2px; } 100% { translate: 0 0; } }
 @keyframes clear-the-desk-pop { 0% { opacity: 0; transform: translate(-50%, -30%) scale(0.7); } 18% { opacity: 1; transform: translate(-50%, -50%) scale(1.12); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -120%); } }
@@ -174,7 +177,7 @@
       /* ---------------- state ---------------- */
       const G = { phase: 'intro', started: false, finished: false, sorted: 0, total: NREG + 3, counts: [0, 0, 0], scores: [], clean: 0, bulls: 0, shortSaid: 0, firstTray: [true, true, true],
         pinned: null, lamp: 0, lampT: 0, revealing: false, peelReady: false, dirty: true, grade: 0, last: 0, fxLive: false, buzzAt: 0, tidyIx: 0, said: {} };
-      const setPhase = (p) => { G.phase = p; ctx.track('phase', { p }); };
+      const setPhase = (p) => { G.phase = p; el.setAttribute('data-phase', p); ctx.track('phase', { p }); };
       let W = 390, H = 844, phone = true, U = 1, NS = 112, SS = 126, CH = 72, capY = 230, deskTop = 236, TSC = 0.88;
       const ORG = { l: 0, t: 0, w: 0, r: 0 }, WALL = { l: 4, r: 386, b: 740, t: 70 };
 
@@ -315,6 +318,7 @@
         placeItems();
         if (first) { placeNotes(); G.laid = true; } else rescaleNotes(oW, oH);
         paintBG(); paintSprites();
+        if (G.ink && G.pinned) { const geo = inkPlace(G.pinned); if (geo) Object.assign(G.ink, geo); G.fxLive = true; }
         G.dirty = true;
       }
 
@@ -334,7 +338,7 @@
         cb.s = P(pk(-0.03, 0.02), pk(0.08, 0.0)); cb.e = P(pk(0.44, 0.31), pk(0.3, 0.38));
         const cc = P(pk(0.25, 0.2), pk(0.08, 0.26)); cb.cx = cc.x; cb.cy = cc.y;
         cablePath();
-        Object.assign(IT.bin, ph ? { x: 6 * U, y: deskTop + dh * 0.6 } : P(0.925, 0.6), { r: pk(34, 42) * U });
+        Object.assign(IT.bin, ph ? { x: 14 * U, y: deskTop + dh * 0.6 } : P(0.925, 0.6), { r: pk(34, 42) * U });
         const bl = ph ? [[0.28, 0.78], [0.72, 0.3], [0.54, 0.64]] : [[0.36, 0.84], [0.66, 0.2], [0.6, 0.78]];
         if (!IT.balls.list.length) IT.balls.list = bl.map(([fx, fy], i) => Object.assign(P(fx, fy), { vx: 0, vy: 0, r: (12 + i * 1.5) * U, rot: JIT[5 + i] * 6, w: 0, spr: null, fly: null, inBin: false, fx, fy }));
         else IT.balls.list.forEach(b => { if (!b.inBin) Object.assign(b, P(b.fx, b.fy)); b.r = (12 + IT.balls.list.indexOf(b) * 1.5) * U; });
@@ -353,9 +357,17 @@
         if (!cr.list.length) for (let i = 0; i < 18; i++) cr.list.push({ dx: JIT[20 + i] * 70, dy: JIT[40 + i] * 46, r: 1.6 + Math.abs(JIT[60 + (i % 18)]) * 3, a: JIT[i] * 3 });
         cr.x = cc2.x; cr.y = cc2.y; cr.sx = (ph ? 110 : 150) * U; cr.sy = 40 * U;
         cr.wr = Object.assign(P(pk(0.7, 0.75), pk(0.75, 0.86)), { r: 0.5 });
-        const col = K.collection(), have = TREASURES.filter(t => col.includes(t.name));
+        placeTreasures();
+      }
+      /* Desk treasures keep a fixed spot (the n-th one ever collected always sits in spot n mod 3), so the desk you come back
+         to looks like yours; the newest one drops in during the finale. */
+      function placeTreasures() {
+        const ph = phone, dh = H - deskTop, P = (fx, fy) => ({ x: fx * W, y: deskTop + fy * dh });
+        const col = K.collection(), nw = G.newTre, have = TREASURES.filter(t => col.includes(t.name) || (nw && nw.id === t.id));
         const ts = ph ? [[0.88, 0.19], [0.1, 0.43], [0.9, 0.42]] : [[0.06, 0.36], [0.92, 0.5], [0.26, 0.1]];
-        IT.tre = have.slice(-3).map((t, i) => Object.assign(P(ts[i][0], ts[i][1]), { id: t.id, s: pk(0.9, 1.15) * U, wobT: -9999, wobA: 0 }));
+        const old = new Map((IT.tre || []).map(t => [t.id, t]));
+        IT.tre = have.map((t, k) => ({ t, k })).slice(-3).map(({ t, k }) => Object.assign(P(ts[k % 3][0], ts[k % 3][1]), { id: t.id, name: t.name, s: (ph ? 0.9 : 1.15) * U,
+          wobT: -9999, wobA: 0, drop: nw && nw.id === t.id && !(old.get(t.id) || {}).landed ? nw.t0 : 0, landed: (old.get(t.id) || {}).landed || !(nw && nw.id === t.id) }));
       }
       function cablePath() {
         const c = IT.cable, n = 48, M = [], Co = [];
@@ -399,8 +411,9 @@
         }
         // window light falling across the desk (day), cool street light (night)
         g.save(); g.globalCompositeOperation = D ? 'source-over' : 'lighter';
-        const lx = phone ? -W * 0.2 : -W * 0.05, lw = phone ? W * 0.9 : W * 0.55, ly = deskTop - 40;
-        const lg = g.createLinearGradient(lx, ly, lx + lw, ly + H * 0.7);
+        // the shaft starts above the frame, so it never shows a hard top edge (it used to cut across the desk at 1280 wide)
+        const lx = phone ? -W * 0.2 : -W * 0.05, lw = phone ? W * 0.9 : W * 0.55, ly = -90;
+        const lg = g.createLinearGradient(lx, ly, lx + lw, ly + H * 0.95);
         lg.addColorStop(0, D ? 'rgba(130,160,255,0.08)' : 'rgba(255,236,200,0.15)'); lg.addColorStop(1, 'rgba(255,236,200,0)');
         g.fillStyle = lg; g.beginPath(); g.moveTo(lx, ly); g.lineTo(lx + lw, ly); g.lineTo(lx + lw * 0.6, H); g.lineTo(lx - lw * 0.4, H); g.closePath(); g.fill();
         g.globalCompositeOperation = 'source-over'; g.fillStyle = D ? 'rgba(0,0,10,0.08)' : 'rgba(60,30,0,0.05)';
@@ -660,8 +673,16 @@
         }
       }
       function drawTreasure(g, t, tn) {
-        g.save(); g.translate(t.x, t.y); g.scale(t.s, t.s); g.rotate(wob(t, tn));
-        blob(g, 3, 5, 24, 21, 0.38);
+        let hgt = 0, sq = 0, al = 1;
+        if (t.drop) { // the newest treasure falls onto the desk: it grows as it nears, squashes on landing
+          const q = clamp((tn - t.drop) / 720, 0, 1);
+          if (q <= 0) return;
+          hgt = Math.pow(1 - q, 2); sq = q > 0.78 ? Math.sin((q - 0.78) / 0.22 * Math.PI) * 0.16 : 0; al = Math.min(1, q * 3);
+          if (q >= 1) { t.drop = 0; t.landed = true; landTreasure(t); }
+        }
+        const s = t.s * (1 + hgt * 0.85);
+        blob(g, t.x + (3 + hgt * 26) * t.s, t.y + (5 + hgt * 38) * t.s, 24 * s, 21 * s, 0.38 * (1 - hgt * 0.65) * al);
+        g.save(); g.globalAlpha = al; g.translate(t.x, t.y - hgt * 30 * t.s); g.scale(s * (1 + sq), s * (1 - sq)); g.rotate(wob(t, tn));
         const D = K.dark();
         if (t.id === 'cat') {
           g.fillStyle = '#fbf7ef'; g.beginPath(); g.moveTo(-14, -9); g.lineTo(-11, -21); g.lineTo(-3, -13); g.lineTo(3, -13); g.lineTo(11, -21); g.lineTo(14, -9); g.closePath(); g.fill();
@@ -692,6 +713,16 @@
           g.fillStyle = sg; g.beginPath(); g.ellipse(0, 0, 15, 11, 0.3, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,0.3)'; g.beginPath(); g.ellipse(-1, -1, 6, 4, 0.3, 0, TAU); g.fill();
         }
         g.restore();
+      }
+      function landTreasure(t) {
+        poke(t, 0.2);
+        PF.emit('star', t.x, t.y, 14, { colors: ['#fff6d6', '#ffe08a', '#ffd0a0'], speed: [50, 150] });
+        PF.emit('dust', t.x, t.y + 10 * t.s, 8, { colors: ['rgba(255,245,225,0.75)'], speed: [20, 60] });
+        if (!A.ctx) return;
+        const tt = A.now();
+        A.thud({ vol: 0.16 });
+        ['C6', 'E6', 'G6', 'C7'].forEach((nm, i) => A.chime(A.note(nm), { when: tt + 0.06 + i * 0.09, vol: 0.05, dur: 1.1 }));
+        sync('treasure');
       }
 
       /* ---------------- sticky notes (DOM, so the player's words stay crisp; moved by transform only) ---------------- */
@@ -785,7 +816,11 @@
       }
       function tapNudge(n) {
         if (G.phase !== 'sort' && G.phase !== 'sort2' && G.phase !== 'peel') return;
-        K.guide({ id: 'tap-' + n.id, g: 'drag', target: n.el, dx: clamp((TR[1].cx - n.x) * 0.5, -80, 80), dy: -clamp(n.y - capY - 30, 70, 150), label: 'FLICK INTO A TRAY', ms: 1300, delay: 250 });
+        K.guide(flickGuide(n, 'tap-', 250));
+      }
+      /* The hand starts low on the note and flicks up; the label sits under the note, so it never covers the words. */
+      function flickGuide(n, id, delay) {
+        return { id: id + n.id, g: 'drag', target: n.el, oy: 0.86, place: 'below', dx: clamp((TR[1].cx - n.x) * 0.5, -80, 80), dy: -clamp(n.y + NS * 0.36 - capY - 10, 90, 190), label: 'FLICK INTO A TRAY', ms: 1300, delay };
       }
       function flingTo(n, ti) {
         const T = TR[ti], dx = T.cx - n.x, dy = (capY - 30) - n.y, d = Math.hypot(dx, dy) || 1, v = Math.sqrt(2 * MU * d) * 1.2 + 90;
@@ -859,7 +894,7 @@
         S.later(progress, 380);
       }
       function pop(text, x, y, gold) {
-        const p = h('div', { class: 'cd-pop' + (gold ? ' cd-gold' : ''), 'aria-hidden': 'true', text });
+        const p = h('div', { class: 'cd-pop' + (gold ? ' cd-gold' : '') + (K.reduced() ? ' cd-still' : ''), 'aria-hidden': 'true', text });
         p.style.left = clamp(x, 70, W - 70) + 'px'; p.style.top = clamp(y, deskTop + 12, WALL.b - 20) + 'px';
         el.append(p); S.later(() => p.remove(), 1100);
       }
@@ -1045,7 +1080,7 @@
         const off = rot(0, -SS, STK.a);
         n.x = STK.x + off.x; n.y = STK.y + off.y; n.a = STK.a; n.s = SS / NS; n.state = 'fly';
         const slot = G.slots[i];
-        n.fly = { t0: now(), dur: 560, x0: n.x, y0: n.y, a0: n.a, s0: n.s, x1: slot.x, y1: slot.y, a1: slot.a, s1: 1, arc: 34, state: 'rest', done: () => progress() };
+        n.fly = { t0: now(), dur: 560, x0: n.x, y0: n.y, a0: n.a, s0: n.s, x1: slot.x, y1: slot.y, a1: slot.a, s1: slot.s || 1, arc: 34, state: 'rest', done: () => progress() };
         n.el.style.zIndex = String(++zTop); noteXY(n);
         PF.emit('dust', n.x, n.y, 8, { colors: ['rgba(255,236,210,0.8)'], speed: [20, 70] });
         STK.layers--;
@@ -1126,6 +1161,8 @@
         if (Math.abs(G.grade - tg) > 0.002) { G.grade += (tg - G.grade) * Math.min(1, dt * 1.6); G.animUntil = Math.max(G.animUntil || 0, tn + 30); }
         if (G.lampT) { const q = (tn - G.lampT) / 900; const fl = q < 0.35 ? (Math.sin(q * 60) > 0 ? 0.6 : 0.15) : 1; G.lamp = clamp(q, 0, 1) * fl; if (q >= 1) { G.lamp = 1; G.lampT = 0; } G.animUntil = Math.max(G.animUntil || 0, tn + 40); }
         if (G.pinAnim) pinStep2(tn);
+        // anything still falling keeps the desk redrawing (extended before the redraw check, so a long frame can't strand it)
+        for (const t of IT.tre) if (t.drop) G.animUntil = Math.max(G.animUntil || 0, tn + 60);
         if (G.started && !G.finished && IT.phone.k < 1 && !IT.phone.an && (G.phase === 'sort' || G.phase === 'sort2') && tn > G.buzzAt) {
           if (G.buzzAt) { poke(IT.phone, 0.08); sBuzz(); }
           G.buzzAt = tn + 6500 + Math.random() * 3500;
@@ -1133,7 +1170,8 @@
         if (IT.mug.k >= 1 && tn > (G.steamAt || 0)) { G.steamAt = tn + 300; PF.emit('smoke', IT.mug.x + (Math.random() - 0.5) * IT.mug.R * 0.6, IT.mug.y - IT.mug.R * 0.25, 1, { colors: [K.dark() ? 'rgba(255,240,220,0.16)' : 'rgba(255,255,255,0.22)'], angle: -Math.PI / 2, spread: 0.6, speed: [12, 26], size: [2.5, 5.5], life: [1, 1.8] }); }
         if (G.lamp > 0.9 && Math.random() < dt * 3) PF.emit('mote', IT.pad.x + (Math.random() - 0.5) * IT.pad.w * 0.8, IT.pad.y + (Math.random() - 0.5) * IT.pad.h * 0.6, 1, { colors: ['rgba(255,226,170,0.8)'], speed: [4, 14] });
         if (G.dirty || tn < (G.animUntil || 0)) { drawDesk(tn); G.dirty = false; }
-        if (PF.list.length || G.fxLive) { if (fxc.g) { fxc.clear(); PF.update(dt); PF.draw(fxc.g); } G.fxLive = PF.list.length > 0; }
+        const inkLive = !!G.ink && tn < G.ink.t0 + G.ink.dur + 60;
+        if (PF.list.length || G.fxLive || inkLive) { if (fxc.g) { fxc.clear(); drawInk(fxc.g, tn); PF.update(dt); PF.draw(fxc.g); } G.fxLive = PF.list.length > 0 || inkLive; }
       });
 
       /* ---------------- the pile ---------------- */
@@ -1153,6 +1191,12 @@
         const c = cells[cells.length - 1];
         STK.x = c.x + JIT[70] * NS * 0.15; STK.y = c.y + JIT[71] * NS * 0.1; STK.a = JIT[72] * 0.3; stackXY();
         G.cells = cells;
+      }
+      /* The three small things land in a neat row on the pile's top row (empty by then), clear of the stack below. */
+      function pieceSlots() {
+        const p = IT.pad, row = G.cells && G.cells[0] ? G.cells[0].y : deskTop + NS * 0.75, s = phone ? 0.92 : 1;
+        const gap = phone ? Math.min((W - 8) / 3, NS * 1.14) : NS * 1.2;
+        return [0, 1, 2].map(i => ({ x: p.x + (i - 1) * gap + JIT[74 + i] * 6, y: row + (i === 1 ? -8 : 4) + JIT[77 + i] * 8, a: JIT[60 + i] * 0.2, s }));
       }
       function rescaleNotes(oW, oH) {
         const fx = W / (oW || W), fy = H / (oH || H);
@@ -1192,13 +1236,13 @@
       const beat = (ms) => K.wait(K.reduced() ? Math.round(ms * 0.8) : ms);
       function guideNext(delay) {
         if (G.finished) return;
-        if (G.phase === 'stuck' && STK.el) { K.guide({ id: 'stuck', g: 'drag', target: STK.el, dir: 'u', d: 90, label: 'FLICK THE BIG ONE', ms: 1400, delay: delay ?? 700 }); return; }
-        if (G.phase === 'peel' && G.peelReady && !STK.done) { K.guide({ id: 'peel', g: 'drag', target: STK.el, oy: 0.84, dir: 'u', d: Math.round(SS * 0.9), label: 'PEEL IT UP SLOWLY', ms: 2200, delay: delay ?? 600 }); return; }
+        if (G.phase === 'stuck' && STK.el) { K.guide({ id: 'stuck', g: 'drag', target: STK.el, oy: 0.84, place: 'below', dir: 'u', d: 90, label: 'FLICK THE BIG ONE', ms: 1400, delay: delay ?? 700 }); return; }
+        if (G.phase === 'peel' && G.peelReady && !STK.done) { K.guide({ id: 'peel', g: 'drag', target: STK.el, oy: 0.84, place: 'below', dir: 'u', d: Math.round(SS * 0.9), label: 'PEEL IT UP SLOWLY', ms: 2200, delay: delay ?? 600 }); return; }
         if (G.phase !== 'sort' && G.phase !== 'sort2' && G.phase !== 'peel') return;
         const rest = notes.filter(n => n.state === 'rest' && n.el.parentNode === layer);
         if (!rest.length) return;
         const n = rest.sort((a, b) => b.y - a.y)[0];
-        K.guide({ id: 'flick-' + n.id, g: 'drag', target: n.el, dx: clamp((TR[1].cx - n.x) * 0.5, -80, 80), dy: -clamp(n.y - capY - 30, 70, 150), label: 'FLICK INTO A TRAY', ms: 1300, delay: delay ?? 700 });
+        K.guide(flickGuide(n, 'flick-', delay ?? 700));
       }
       function progress() {
         if (G.finished) return;
@@ -1208,7 +1252,7 @@
       }
       async function twist() {
         setPhase('stuckwait'); K.guide(null);
-        G.slots = (G.cells || pileCells(4)).slice(0, 3).map((c, i) => ({ x: c.x + JIT[74 + i] * NS * 0.2, y: c.y + JIT[77 + i] * NS * 0.16, a: JIT[60 + i] * 0.5 }));
+        G.slots = pieceSlots();
         await beat(450);
         say(patch, line({ Jolly: 'Look at that. Just the big one left.', Cheeky: 'Nearly there. Only the chunky one left.', Unfiltered: 'One left. The big one.' }), { mood: 'happy', ms: 2600 });
         await beat(800);
@@ -1249,7 +1293,7 @@
         if (A.ctx) A.whoosh({ vol: 0.07, dur: 0.4 });
         await beat(650 + k * 90);
         setPhase('pin');
-        K.guide(k > 1 ? { id: 'pin', g: 'choose', target: cands.map(q => q.el), label: 'PIN ONE UP', delay: 500 } : { id: 'pin', g: 'tap', target: cands[0].el, label: 'PIN IT UP', delay: 500 });
+        K.guide(k > 1 ? { id: 'pin', g: 'choose', target: cands.map(q => q.el), oy: 0.02, label: 'PIN ONE UP', delay: 500 } : { id: 'pin', g: 'tap', target: cands[0].el, oy: 0.02, label: 'PIN IT UP', delay: 500 });
       }
       function pinNote(n) {
         if (G.phase !== 'pin' || !n.cand) return;
@@ -1259,7 +1303,7 @@
           q.cand = false; q.state = 'fly'; q.el.setAttribute('tabindex', '-1');
           q.fly = { t0: now() + 120 + i * 80, dur: 460, x0: q.x, y0: q.y, a0: q.a, s0: q.s, x1: T.px + (T.w - 10) / 2 + q.ox, y1: T.py + T.fh / 2 + 3 + q.oy, a1: q.ia, s1: TSC, arc: 24, state: 'fly2', done: backIn };
         });
-        n.cand = false; n.state = 'fly'; n.el.classList.add('cd-hero'); n.el.setAttribute('tabindex', '-1');
+        n.cand = false; n.state = 'fly'; n.el.classList.add('cd-hero', 'cd-pinned'); n.el.setAttribute('tabindex', '-1');
         T.notes = T.notes.filter(q => q !== n); T.count.textContent = String(T.notes.length); if (!T.notes.length) T.count.classList.remove('on');
         n.fly = { t0: now(), dur: 640, x0: n.x, y0: n.y, a0: n.a, s0: n.s, x1: p.x, y1: p.y - NS * 0.05, a1: -0.035, s1: phone ? 1.3 : 1.6, arc: 36, state: 'pinned', done: () => finale() };
         n.el.style.zIndex = String(++zTop);
@@ -1274,7 +1318,9 @@
       }
       function pinStep2(tn) {
         const n = G.pinned, p = clamp((tn - G.pinAnim) / 360, 0, 1), e = E.inCubic(p);
-        const top = rot(0, -NS * n.s * 0.37, n.a), px = n.x + top.x, py = n.y + top.y;
+        // a note with a printed tag (EXAMPLE, PART OF IT) is pinned at its corner, so the tag stays readable
+        const tagged = !!n.el.querySelector('.cd-nk');
+        const top = rot(tagged ? -NS * 0.43 : 0, -NS * (tagged ? 0.43 : 0.37), n.a), px = n.x + top.x * n.s, py = n.y + top.y * n.s;
         pinEl.style.opacity = String(Math.min(1, p * 4));
         pinEl.style.transform = 'translate3d(' + (px - 30 * (1 - e)).toFixed(1) + 'px,' + (py - 80 * (1 - e)).toFixed(1) + 'px,0) scale(' + (2.3 - 1.3 * e).toFixed(3) + ')';
         if (p >= 1) {
@@ -1283,7 +1329,33 @@
           sync('pin'); if (S.buzz) S.buzz([20, 30, 20]);
           PF.emit('dust', px, py + 6, 10, { colors: ['rgba(255,245,225,0.8)'], speed: [20, 70] });
           PF.emit('star', px, py, 12, { colors: ['#fff3c4', '#ffd36b', '#ff8a6a'], speed: [60, 180] });
+          S.later(() => circleIt(n), 380);
         }
+      }
+      /* A loose red marker loop round the one thing: drawn once, it stays on the fx layer. */
+      function inkPlace(n) {
+        const t = n.el.querySelector('.cd-nt'); if (!t) return null;
+        const r = K.rectIn(t, el), mx = NS * n.s * 0.6;
+        return { x: r.cx, y: r.cy + 2, rx: Math.min(mx, r.w / 2 + 16 * U), ry: Math.min(mx * 0.7, r.h / 2 + 13 * U), lw: (phone ? 3.4 : 4.2) };
+      }
+      function circleIt(n) {
+        if (G.ink || !n.el.isConnected || G.finished) return;
+        const geo = inkPlace(n); if (!geo) return;
+        G.ink = Object.assign({ t0: now(), dur: K.reduced() ? 200 : 680, rot: -0.07, a0: -2.5, ph: JIT[3] * 6 }, geo);
+        if (A.ctx) { const t0 = A.now(); A.noise({ filter: 'bandpass', freq: 2300, to: 3900, q: 7, dur: 0.34, attack: 0.04, vol: 0.06 }); A.noise({ when: t0 + 0.36, filter: 'bandpass', freq: 3600, to: 2500, q: 7, dur: 0.3, attack: 0.04, vol: 0.05 }); A.tone({ when: t0 + 0.02, type: 'triangle', freq: 1800, to: 2500, glide: 0.3, dur: 0.32, vol: 0.01 }); }
+        sync('ink');
+      }
+      function drawInk(g, tn) {
+        const k = G.ink; if (!k) return;
+        const p = clamp((tn - k.t0) / k.dur, 0, 1); if (p <= 0) return;
+        const turns = 1.14, steps = 72, n = Math.max(2, Math.round(steps * turns * E.inOutSine(p)));
+        g.save(); g.translate(k.x, k.y); g.rotate(k.rot);
+        g.lineCap = 'round'; g.lineJoin = 'round';
+        const path = (dx, dy) => { g.beginPath(); for (let i = 0; i <= n; i++) { const tt = i / steps, ang = k.a0 + tt * TAU, w = 1 + 0.04 * Math.sin(tt * 11 + k.ph) + tt * 0.07; const x = Math.cos(ang) * k.rx * w + dx, y = Math.sin(ang) * k.ry * w + tt * 5 + dy; if (i) g.lineTo(x, y); else g.moveTo(x, y); } };
+        g.strokeStyle = 'rgba(120,20,10,0.18)'; g.lineWidth = k.lw + 1.5; path(0.8, 1.2); g.stroke();
+        g.strokeStyle = 'rgba(214,46,38,0.9)'; g.lineWidth = k.lw; path(0, 0); g.stroke();
+        g.strokeStyle = 'rgba(255,150,130,0.35)'; g.lineWidth = Math.max(1, k.lw * 0.3); path(-0.6, -0.7); g.stroke();
+        g.restore();
       }
       async function finale() {
         if (G.phase === 'finale' || G.finished) return;
@@ -1307,7 +1379,17 @@
         K.finale('confetti', { from: [{ x: G.pinned.x, y: G.pinned.y - NS * 0.4 }], colors: PAPERS.map(c => c[0]).concat([HOT[0]]), chord: ['F3', 'A3', 'C4', 'E4', 'G4'], ms: 3000 });
         say(rush, line(care ? { Jolly: 'Clear desk. That’s a bit lighter to look at.', Cheeky: 'Clear desk. Quiet desk.', Unfiltered: 'Clear desk.' }
           : { Jolly: 'Look at it! A clear desk and ONE thing. I can breathe!', Cheeky: 'Clean desk. Smug lamp. One note. Perfect.', Unfiltered: 'Clear desk. One note. Done.' }), { mood: 'happy', ms: 3000 });
-        await beat(3000);
+        await beat(1700);
+        // this visit's desk treasure drops onto the desk; it will be there next time (never random, one per finished visit)
+        const nt = TREASURES.find(x => !K.collection().includes(x.name));
+        if (nt) {
+          G.newTre = { id: nt.id, t0: now() }; placeTreasures(); G.dirty = true;
+          if (A.ctx) A.whoosh({ vol: 0.05, dur: 0.5, from: 2600, to: 700 });
+          await beat(900);
+          say(patch, line({ Jolly: 'Oh! A ' + nt.name + ' just moved onto your desk. It’s staying.', Cheeky: 'A ' + nt.name + ' moved in. Rent-free.', Unfiltered: 'New on the desk: ' + nt.name + '.' }), { mood: 'love', moodMs: 1800, ms: 2600 });
+          rush.face('wow', 1400);
+          await beat(2700);
+        } else await beat(1300);
         say(patch, line(care ? { Jolly: 'One note. Someone qualified can help with the rest.', Cheeky: 'One note. A qualified person can help with the rest.', Unfiltered: 'One note. Get proper help with the rest.' }
           : { Jolly: 'One note left. That’s plenty for now.', Cheeky: 'One note left. Your brain can clock off.', Unfiltered: 'One note. Enough for now.' }), { mood: 'cosy', ms: 0 });
         await beat(1500);
@@ -1371,6 +1453,7 @@
       C.notes.forEach((d, i) => makeNote(d, i));
       makeStack();
       cv.onResize((c) => { if (c.w !== W || c.h !== H || !BG) layout(c); });
+      fxc.onResize(() => { G.fxLive = true; });   // a resized canvas comes back blank: redraw the ink and sparks once
       S.on('theme', () => { paintBG(); paintSprites(); G.dirty = true; });
       if (ctx.analysisReady && an.source !== 'ai') ctx.analysisReady.then((a2) => {
         if (!a2 || a2.source !== 'ai' || G.started) return;
