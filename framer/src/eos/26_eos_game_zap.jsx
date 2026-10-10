@@ -34,11 +34,12 @@ const EOS_ZAP_POS = {
     6: [[19, 15], [50, 12], [81, 15], [19, 43], [50, 40], [81, 43]],
 }
 const EOS_ZAP_CHARGE_LINES = ["CHARGING… NOW!", "FULL POWER!", "HIT IT!"]
-const EOS_ZAP_SHAKE = { x: [0, -7, 6, -4, 3, 0], y: [0, 4, -3, 2, -1, 0], rotate: [0, -5, 4, -2, 0] }
+// translation only: a rotated / scaled bubble would make the shared face re-fit its words smaller mid-jolt
+const EOS_ZAP_SHAKE = { x: [0, -7, 6, -4, 3, 0], y: [0, 4, -3, 2, -1, 0], rotate: 0 }
 const EOS_ZAP_BOB = { x: 0, y: [-3, 3, -3], rotate: 0 }
 const EOS_ZAP_FLOAT = { x: 0, y: [-8, -14, -8], rotate: 0 }
 const EOS_ZAP_STILL = { x: 0, y: 0, rotate: 0 }
-const EOS_ZAP_JOY = { x: 0, y: [0, -18, 0, -8, 0], rotate: [0, -4, 4, 0, 0] }
+const EOS_ZAP_JOY = { x: [0, -3, 3, 0, 0], y: [0, -18, 0, -8, 0], rotate: 0 }
 let eosZapLive = null
 
 function eosZapFaces({ game, entries, uploads, n, seed }) {
