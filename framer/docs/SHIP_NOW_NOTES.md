@@ -1,5 +1,21 @@
 # ThinkStill Release — ship-now build (10 Oct 2026)
 
+## Launch 30 (10 Oct 2026): read this first
+
+- **Users can only ever get these 30 games.** ThinkStill's pick, the no-repeat rotation, the check-in, NEXT and ONE MORE, and the owner game menu all use only these: BIG SIGH (111), FINGER TRAP (102), SKY LANTERNS (114), COOL THE VOLCANO (112), POP (1), RAIN OUT (110), HOT POTATO (100), ZAP (6), DRAMA MACHINE (105), UNHOOK (41), MUTE (29), GROUND CONTROL (113), TUG OF WAR (101), CLOUD PASS (36), GO WEIRD (107), SWIPE AWAY (25), FREEZE (61), TINY SOUNDTRACK (106), PARK IT (32), BLACK HOLE (39), PAPER PLANE (40), TRADE MACHINE (88), INK BLEED (75), FLUSH (22), X-RAY (97), KEEP / DROP (87), MISS ON PURPOSE (79), UNFOLLOW (47), SHRED (15) and SUBTITLES (52). `docs/LAUNCH_30.md` explains why each one is in.
+- **The other 84 games are switched off, not deleted.** To bring one back, add its id to `EOS_LAUNCH_IDS` in `src/eos/00_eos_core.jsx`. An empty list brings back all 114. Then rebuild with `python3 build.py && node dev/framer_single.mjs`.
+- **Routing changes for the 30:**
+  - ZAP is now off the bench and is served for anger, overthinking and numb.
+  - INK BLEED is added for shame and UNHOOK for jealousy.
+  - None of jealousy's own ONE MORE games is in the 30, so its ONE MORE uses the general list.
+- **CRACK and STOMP:** neither is in the 30, so the unfinished spanner and boot are switched off and the classic versions are kept. They come back by setting `EOS_TOOLS_LIVE = true` in `src/eos/25_eos_game_tools.jsx`.
+- **File:** `ThinkStillRelease_FRAMER.txt`, 821,661 bytes (802 KB). Framer's limit is 1,048,576 bytes. The paste steps below are unchanged.
+- **Checked before shipping:**
+  - All 30 games play to the end screen on a phone (390×844) and on desktop (1280×860), with 0 page errors.
+  - For each of the 13 feelings, 3 typed phrases plus the check-in served only launch games, and no game repeated before its whole group had been played.
+  - The owner menu shows exactly the 30.
+  - The single file itself plays 10 of the 30 to the end on a phone.
+
 **File:** `framer/ThinkStillReleaseArcade_EOS_FULL.txt`. This is the whole app in one Framer code component: 47,506 lines, 2.9 MB.
 
 It is the current state of the v1 work, built at the founder's request before v1 was finished. Everything listed under "Not in this build yet" below is still to come in v1.

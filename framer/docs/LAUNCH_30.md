@@ -105,6 +105,8 @@ Games are listed best fit first. A peak feeling gets body-first games (breath, g
 
 ## Build notes (for switching the 30 on)
 
+*Applied in the launch build on 10 Oct, including both optional lines. See `docs/SHIP_NOW_NOTES.md` → Launch 30.*
+
 - **ZAP has to be routed.** Today it sits on the router's bench (`EOS_BENCH` in `src/eos/45_eos_router.jsx`), so it is never auto-picked. Take it off the bench and add it to `anger.mid` (after HOT POTATO), `overthinking.mid` and `numb.high`/`numb.mid`. It is already a discharge game, so the existing "never smash at a sad, lonely or shame peak, never for good" rules keep applying.
 - **"ONE MORE" for jealousy:** none of jealousy's act-2 games (119, 115, 117) is in the 30, so it should fall back to general (BIG SIGH, POP, RAIN OUT).
 - **Optional extra variety (one line each):** add 75 INK BLEED to `shame.mid` (it loosens harsh words, which fits shame) and 41 UNHOOK to `jealous.mid` (unhook from comparison).
