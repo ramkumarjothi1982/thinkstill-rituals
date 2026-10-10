@@ -181,9 +181,9 @@ edit("I2", "E9", A,
      '                                    />\n'
      '                                    <div className="releaseShiftCheck">')
 edit("I2", "E10", A,
-     '                                <div className="releaseChoiceGroupLabel">\n                                    15 SIGNATURE RELEASES',
+     '                                <div className="releaseChoiceGroupLabel">\n                                    {signatureQuickPlay.length} SIGNATURE RELEASES',
      '                                <EosMenuGroup played={played} gameChoice={gameChoice} onPick={startChosenGame} />\n'
-     '                                <div className="releaseChoiceGroupLabel">\n                                    15 SIGNATURE RELEASES')
+     '                                <div className="releaseChoiceGroupLabel">\n                                    {signatureQuickPlay.length} SIGNATURE RELEASES')
 edit("I2", "E11", A,
      'function releaseEmotionProfile(input) {',
      'function releaseEmotionProfile(input) {\n    {\n        const eosProfile = EosProfileOverride(input)\n        if (eosProfile) return eosProfile\n    }')

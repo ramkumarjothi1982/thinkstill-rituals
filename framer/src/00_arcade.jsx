@@ -2401,7 +2401,7 @@ function noveltyNoise(id, salt) {
 }
 function infinityChoices(current, history, played, salt, limit = 3) {
     const recent = history.slice(-7)
-    const scored = GAMES.map((g) => {
+    const scored = eosLaunchGames(GAMES).map((g) => {
         let score = noveltyNoise(g.id, salt) * 16
         if (!played.includes(g.id)) score += 72
         if (!recent.includes(g.id)) score += 38
@@ -2423,7 +2423,7 @@ function infinityChoices(current, history, played, salt, limit = 3) {
 }
 function pickInfinityGame(current, history, played, salt) {
     const picks = infinityChoices(current, history, played, salt, 5)
-    if (!picks.length) return GAMES[0]
+    if (!picks.length) return eosLaunchGames(GAMES)[0] || GAMES[0]
     const index = Math.floor(
         noveltyNoise((current?.id || 0) + salt, salt + 91) *
             Math.min(3, picks.length)
@@ -18689,10 +18689,13 @@ function RoutedGameContentLegacy(p) {
             return <BurstEngine {...p} />
         case 3:
             // founder F5: the real forged spanner (src/eos/25_eos_game_tools.jsx); classic kept as fallback
-            return typeof EosCrackEngine === "function" ? <EosCrackEngine {...p} /> : <CrackEngine {...p} />
+            // Launch 30: the spanner is UNFINISHED and CRACK is not a launch game → the classic engine ships until
+            // EOS_TOOLS_LIVE is set to true in src/eos/25_eos_game_tools.jsx
+            return typeof EosCrackEngine === "function" && typeof EOS_TOOLS_LIVE !== "undefined" && EOS_TOOLS_LIVE ? <EosCrackEngine {...p} /> : <CrackEngine {...p} />
         case 4:
             // founder "tools look real": the leather stomping boot (src/eos/25_eos_game_tools.jsx); classic kept as fallback
-            return typeof EosStompEngine === "function" ? <EosStompEngine {...p} /> : <StompEngine {...p} />
+            // Launch 30: the boot is UNFINISHED and STOMP is not a launch game → classic engine (EOS_TOOLS_LIVE)
+            return typeof EosStompEngine === "function" && typeof EOS_TOOLS_LIVE !== "undefined" && EOS_TOOLS_LIVE ? <EosStompEngine {...p} /> : <StompEngine {...p} />
         case 6:
             // founder F4: the real handheld zapper + RUSH helper (src/eos/26_eos_game_zap.jsx); classic kept as fallback
             return typeof EosZapperEngine === "function" ? <EosZapperEngine {...p} /> : <ZapEngine {...p} />
@@ -21553,7 +21556,7 @@ function ThinkStillReleaseArcade(props) {
         () =>
             SIGNATURE_QUICK_PLAY.map((id) =>
                 GAMES.find((g) => g.id === id)
-            ).filter(Boolean),
+            ).filter((g) => g && eosLaunchOk(g.id)),
         []
     )
     const bubble = FAMILY_BUBBLE[selected?.family || "Release"] || "drop"
@@ -21774,10 +21777,11 @@ function ThinkStillReleaseArcade(props) {
                     "can't stop",
                 ],
             }
-            let best = GAMES[0]
+            let best = eosLaunchGames(GAMES)[0] || GAMES[0]
             let bestScore = -999
             GAMES.forEach((g, index) => {
                 if (excludeId != null && g.id === excludeId) return
+                if (!eosLaunchOk(g.id)) return // Launch 30: only launch games
                 const hay = normaliseThought(
                     `${g.name} ${g.family} ${g.prompt} ${g.object} ${g.action} ${g.mechanism} ${g.hook} ${g.mindBend}`
                 )
@@ -21872,6 +21876,13 @@ function ThinkStillReleaseArcade(props) {
             : selectedChoiceGame?.name || "RELEASE"
     const startChosenGame = React.useCallback(
         (g) => {
+            if (g && !eosLaunchOk(g.id)) {
+                // Launch 30: a game outside the launch list never starts (stale menu, old dev link, any future
+                // path) — ThinkStill's next launch pick plays instead
+                const src = raw.trim() || entries.join(" ")
+                g = EosPickNext(src, played, g.id) || chooseRelevantGame(src, g.id)
+            }
+            if (!g) return
             let e = cleanEntries(raw)
             if (!e.length && uploadedImages.length)
                 e = imageOnlyEntriesForUploads(uploadedImages)
@@ -21907,15 +21918,18 @@ function ThinkStillReleaseArcade(props) {
             hapticsOn,
             sfx,
             showStatus,
+            played.join("|"),
+            chooseRelevantGame,
         ]
     )
     const openAdjacentRelease = React.useCallback(
         (direction) => {
-            if (!selected || !GAMES.length) return
-            let index = GAMES.findIndex((g) => g.id === selected.id)
-            if (index < 0) index = 0
+            const list = eosLaunchGames(GAMES) // Launch 30: PREVIOUS / NEXT browse the launch games only
+            if (!selected || !list.length) return
+            let index = list.findIndex((g) => g.id === selected.id)
+            if (index < 0) index = direction > 0 ? -1 : 0
             const target =
-                GAMES[(index + direction + GAMES.length) % GAMES.length]
+                list[(index + direction + list.length) % list.length]
             if (!target || target.id === selected.id) return
             startChosenGame(target)
         },
@@ -23161,7 +23175,7 @@ function ThinkStillReleaseArcade(props) {
                                 </button>
                                 <EosMenuGroup played={played} gameChoice={gameChoice} onPick={startChosenGame} />
                                 <div className="releaseChoiceGroupLabel">
-                                    15 SIGNATURE RELEASES
+                                    {signatureQuickPlay.length} SIGNATURE RELEASES
                                 </div>
                                 {signatureQuickPlay.map((g) => (
                                     <button
@@ -23193,9 +23207,9 @@ function ThinkStillReleaseArcade(props) {
 
                                 <div className="releaseChoiceGroupLabel">
                                     MORE RELEASES ·{" "}
-                                    {GAMES.length - signatureQuickPlay.length}
+                                    {eosLaunchGames(GAMES).length - signatureQuickPlay.length}
                                 </div>
-                                {GAMES.filter(
+                                {eosLaunchGames(GAMES).filter(
                                     (g) => !SIGNATURE_QUICK_PLAY.includes(g.id)
                                 ).map((g) => (
                                     <button

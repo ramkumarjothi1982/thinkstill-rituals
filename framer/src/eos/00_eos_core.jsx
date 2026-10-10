@@ -459,6 +459,23 @@ const EOS_DISCHARGE_IDS = new Set([2, 3, 4, 5, 6, 13, 15, 18, 61, 68, 100, 101])
 // Breath / slow games: the reveal's Still Moment never runs after these (the game already was the breath).
 const EOS_SLOW_IDS = new Set([111, 112, 109, 65, 66, 69, 80, 36, 44])
 
+// ---------------------------------------------------------------- LAUNCH 30 (founder, 2026-10-10, docs/LAUNCH_30.md)
+// The ONLY games a user can ever get. Every chooser applies it: router eligibility (45: routes, act 2, check-in
+// preview, menu group — so the pick rotation in 46 only ever holds these), the arcade's free-text chooser,
+// PREVIOUS / NEXT, the owner game menu, and startChosenGame itself (a last guard that swaps any other id for the
+// next launch pick). Every other game keeps its code and comes back by adding its id here; an EMPTY set = all games.
+const EOS_LAUNCH_IDS = new Set([111, 102, 114, 112, 1, 110, 100, 6, 105, 41, 29, 113, 101, 36, 107, 25, 61, 106, 32, 39, 40, 88, 75, 22, 97, 87, 79, 47, 15, 52])
+// dev / test only: window.__eos.core.launchAll(true) lifts the list in a dev build (e.g. to work on a benched game)
+const EOS_LAUNCH_DEV = { all: false }
+function eosLaunchOk(id) {
+    const n = Number(id && typeof id === "object" ? id.id : id)
+    return !!(n > 0) && (EOS_LAUNCH_DEV.all || !EOS_LAUNCH_IDS.size || EOS_LAUNCH_IDS.has(n))
+}
+// GAMES (or any list of games) cut down to the launch list, order kept.
+function eosLaunchGames(list) {
+    return (Array.isArray(list) ? list : []).filter((g) => g && eosLaunchOk(g.id))
+}
+
 // ---------------------------------------------------------------- session store
 // Tiny external store (React 18 useSyncExternalStore). Plain functions can read/write it from
 // any arcade callback with no dependency-array edits. NEVER call EOS_STORE.set during render.
@@ -1406,6 +1423,12 @@ eosExpose("core", {
     EOS_DISCLAIMER,
     EOS_DISCHARGE_IDS,
     EOS_SLOW_IDS,
+    EOS_LAUNCH_IDS,
+    eosLaunchOk,
+    launchAll(on) {
+        if (eosIsDev()) EOS_LAUNCH_DEV.all = !!on
+        return EOS_LAUNCH_DEV.all
+    },
     EOS_PROP_DEFAULTS,
     EOS_PREF_DEFAULTS,
     EOS_PRIVATE_ATTRS,

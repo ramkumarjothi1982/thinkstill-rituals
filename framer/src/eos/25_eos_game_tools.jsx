@@ -22,6 +22,9 @@
 // Public names: EosCrackEngine, EosStompEngine, EOS_TOOLS_CSS. Everything else is EOS_TOOLS_* / eosTools*.
 // ===================================================================================
 
+// Launch 30 (2026-10-10): this tool work is UNFINISHED (founder F5 open) and neither CRACK nor STOMP is a launch game,
+// so the arcade keeps their classic engines (00_arcade.jsx engine switch). Set true once the founder signs the tools off.
+const EOS_TOOLS_LIVE = false
 const EOS_TOOLS_HITS = 3
 const EOS_TOOLS_FACE = {
     shocked: { glitch: 63, drop: 44, still: 41, patch: 70, loopie: 58, rush: 63, sync: 48 },

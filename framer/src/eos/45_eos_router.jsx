@@ -37,15 +37,15 @@
 const EOS_EMOTION_ROUTES = {
     panic: { high: [111, 109, 102, 36, 65, 69, 66], mid: [111, 102, 36, 44, 77, 113, 65, 55, 11], low: [105, 55, 104, 1, 113] },
     anxiety: { high: [111, 113, 102, 109, 66], mid: [113, 95, 32, 101, 24, 34, 31, 85, 67], low: [1, 104, 86, 30, 105, 72] },
-    anger: { high: [112, 109, 65, 111, 100], mid: [112, 100, 4, 15, 2, 18, 61, 68, 101, 8, 13, 14], low: [52, 107, 71, 64, 11, 37, 53] },
-    overthinking: { high: [111, 61, 116, 34], mid: [116, 34, 61, 104, 43, 41, 22, 29, 99, 19], low: [105, 107, 52, 104, 59, 98] },
+    anger: { high: [112, 109, 65, 111, 100], mid: [112, 100, 6, 4, 15, 2, 18, 61, 68, 101, 8, 13, 14], low: [52, 107, 71, 64, 11, 37, 53] },
+    overthinking: { high: [111, 61, 116, 34], mid: [116, 34, 61, 104, 43, 41, 22, 29, 6, 99, 19], low: [105, 107, 52, 104, 59, 98] },
     overwhelm: { high: [111, 120, 93, 21], mid: [120, 93, 95, 21, 87, 32, 30, 28], low: [120, 85, 30, 39, 81] },
     sad: { high: [110, 114, 109], mid: [110, 114, 33, 40, 75, 106], low: [106, 88, 117, 114] },
     lonely: { high: [114, 110, 115], mid: [114, 106, 88, 115, 110, 117], low: [117, 106, 114, 115, 88] },
-    shame: { high: [115, 109, 110], mid: [115, 104, 84, 110, 109, 79], low: [107, 53, 79, 51] },
+    shame: { high: [115, 109, 110], mid: [115, 104, 84, 110, 109, 79, 75], low: [107, 53, 79, 51] },
     fear: { high: [111, 102, 113], mid: [118, 31, 97, 53, 86, 89], low: [107, 105, 53] },
-    jealous: { high: [119, 115, 47], mid: [119, 47, 45, 25, 115], low: [119, 88, 117] },
-    numb: { high: [117, 68, 1, 100, 74], mid: [117, 68, 1, 106, 107, 25, 100, 74], low: [117, 106, 107, 25, 1] },
+    jealous: { high: [119, 115, 47], mid: [119, 47, 45, 25, 115, 41], low: [119, 88, 117] },
+    numb: { high: [117, 68, 1, 100, 6, 74], mid: [117, 68, 1, 106, 107, 25, 100, 6, 74], low: [117, 106, 107, 25, 1] },
     good: { high: [117, 119, 106, 88], mid: [117, 119, 106, 88, 1, 25, 105, 107], low: [119, 117, 106, 88, 53, 107] },
     general: { high: [111, 1, 102, 109], mid: [1, 102, 100, 110, 25, 93], low: [1, 105, 107, 25] },
 }
@@ -59,7 +59,8 @@ const EOS_ROUTE_RULES = {
 // Never auto-routed (still in the menu, playable, untouched): fake, passive, hidden or anti-relief mechanics.
 const EOS_VAULT = new Set([5, 9, 10, 12, 17, 23, 35, 38, 42, 50, 54, 56, 57, 62, 63, 73, 76, 78, 80, 82, 83, 90, 91, 92, 94, 96, 108])
 // Never auto-routed either: fine games that a better routed game covers (§7.6). Menu, arrows and fixes still apply.
-const EOS_BENCH = new Set([3, 6, 7, 16, 20, 26, 27, 46, 48, 49, 58, 60, 70, 103])
+// Launch 30: 6 ZAP (the founder's real zapper, F4) left the bench and is routed for anger / overthinking / numb.
+const EOS_BENCH = new Set([3, 7, 16, 20, 26, 27, 46, 48, 49, 58, 60, 70, 103])
 // While ANY safety flag is set only these are routed (calm, never destructive, never repeats words, no cutting / beat imagery).
 const EOS_GENTLE_IDS = [113, 111, 109, 110, 102, 95, 114, 115, 106, 40, 120, 119]
 // Act 2 ("ONE MORE ▶") per emotion, best-first (same filters as EosRouteGame).
@@ -279,6 +280,7 @@ function eosRouterContext(text, played, excludeId, opts = {}) {
 }
 function eosRouterEligible(id, ctx, games, gentleOnly) {
     if (!games.has(id) || id === ctx.excludeId) return false
+    if (!eosLaunchOk(id)) return false // Launch 30 (core EOS_LAUNCH_IDS): never serve a game outside the launch list
     if (EOS_VAULT.has(id) || EOS_BENCH.has(id)) return false
     if (!eosRouterRuleOk(id, ctx.text)) return false
     const never = EOS_ROUTER_NEVER[ctx.key]
@@ -396,6 +398,8 @@ function EosSecondAct(emotion, lastId, delta, text = "", opts = {}) {
         const d = delta == null || delta === "" ? null : Number(delta)
         if (d == null || !Number.isFinite(d) || d < 2) {
             let id = (EOS_SECOND_ACT[key] || EOS_SECOND_ACT.general).find(ok)
+            // Launch 30: a feeling with NO act-2 game in the launch list (jealous) uses general's act 2 instead
+            if (!id && !(EOS_SECOND_ACT[key] || []).some((x) => games.has(x) && eosLaunchOk(x))) id = EOS_SECOND_ACT.general.find(ok)
             if (!id && flag) id = EOS_GENTLE_IDS.find(ok)
             if (id) return games.get(id)
         }
@@ -516,7 +520,7 @@ function eosRouterMenuItems(st, played, opts = {}) {
         }
     }
     const fresh = Array.from(games.values())
-        .filter((g) => Number(g.id) >= 111 && !EOS_VAULT.has(Number(g.id)) && !EOS_BENCH.has(Number(g.id)) && (!flag || EOS_GENTLE_IDS.includes(Number(g.id))))
+        .filter((g) => Number(g.id) >= 111 && eosLaunchOk(g.id) && !EOS_VAULT.has(Number(g.id)) && !EOS_BENCH.has(Number(g.id)) && (!flag || EOS_GENTLE_IDS.includes(Number(g.id))))
         .sort((a, b) => Number(a.id) - Number(b.id))
     return { emo: null, label: "NEW · RELIEF GAMES", games: fresh }
 }

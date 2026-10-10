@@ -129,7 +129,10 @@ function eosPickGroup(text, played, opts = {}) {
     try {
         const ctx = eosPickContext(text, played, null, opts)
         if (!ctx) return { key: "general", ids: [], ctx: null }
-        const ranked = eosRouterRank(ctx, opts).map((r) => r.id)
+        // Launch 30: the router's eligibility already keeps only EOS_LAUNCH_IDS; filtered again here (defence in depth)
+        const ranked = eosRouterRank(ctx, opts)
+            .map((r) => r.id)
+            .filter((id) => eosLaunchOk(id))
         const hold = opts.hold || EOS_PICK_HOLD
         const ok = ranked.filter((id) => !hold.has(id) && !(ctx.narrow && EOS_PICK_HOLD_PHONE.has(id)))
         return { key: eosPickGroupKey(ctx), ids: ok.length ? ok : ranked, ctx }
