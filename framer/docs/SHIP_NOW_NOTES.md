@@ -4,6 +4,10 @@
 
 It is the current state of the v1 work, built at the founder's request before v1 was finished. Everything listed under "Not in this build yet" below is still to come in v1.
 
+> **Update (10 Oct): use `framer/ThinkStillReleaseArcade_FRAMER_SAFE.txt` in Framer.** The 2.9 MB source file made Framer's in-browser compiler stop with "RuntimeError: unreachable" (a WebAssembly crash, most likely a size/memory limit). The SAFE file is the same app compiled ahead of time into plain JavaScript (1.7 MB, no JSX, ES2018, imports on top, one default export), close to the size of the original arcade file that already worked in Framer. Checked here: it compiles with esbuild-wasm (0.17 and 0.24) and SWC wasm, and 10 key games (POP, CRUSH, CRACK, ZAP, UNHOOK, UNFOLLOW, HOT POTATO, CLEANSE, RAIN OUT, BIG SIGH) play to the end at 390x844 with 0 page errors. Rebuild it any time with `python3 dev/framer_safe.py`.
+>
+> **Paste steps:** (1) delete the code file that showed the error (and its component on the canvas); (2) **reload the Framer tab** (a crashed WebAssembly compiler can stay broken until reload); (3) Assets -> Code -> + -> New Code File, name it `ThinkStillRelease`; (4) select all, delete, paste the entire SAFE file, save; (5) drag the component onto the page, full width and height.
+
 ## How to put it in Framer
 1. In Framer go to **Assets → Code → "+" → New Code File**. Name it `ThinkStillReleaseArcade`.
 2. Select everything in the new file. Delete it, then paste the **entire** contents of the .txt and save.
