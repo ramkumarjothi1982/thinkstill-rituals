@@ -4,9 +4,17 @@
 
 It is the current state of the v1 work, built at the founder's request before v1 was finished. Everything listed under "Not in this build yet" below is still to come in v1.
 
-> **Update (10 Oct): use `framer/ThinkStillReleaseArcade_FRAMER_SAFE.txt` in Framer.** The 2.9 MB source file made Framer's in-browser compiler stop with "RuntimeError: unreachable" (a WebAssembly crash, most likely a size/memory limit). The SAFE file is the same app compiled ahead of time into plain JavaScript (1.7 MB, no JSX, ES2018, imports on top, one default export), close to the size of the original arcade file that already worked in Framer. Checked here: it compiles with esbuild-wasm (0.17 and 0.24) and SWC wasm, and 10 key games (POP, CRUSH, CRACK, ZAP, UNHOOK, UNFOLLOW, HOT POTATO, CLEANSE, RAIN OUT, BIG SIGH) play to the end at 390x844 with 0 page errors. Rebuild it any time with `python3 dev/framer_safe.py`.
+> **Update (10 Oct): Framer allows at most 1 MB (1,048,576 bytes) per code file**, so the app now ships as **four files** in `framer/framer_files/`:
+> `ThinkStillReleasePart1.txt`, `ThinkStillReleasePart2.txt`, `ThinkStillReleasePart3.txt` (the code, each about 550-650 KB) and `ThinkStillRelease.txt` (the small component file that imports the three parts and carries the property controls). The single-file versions (`_EOS_FULL.txt` 2.9 MB, `_FRAMER_SAFE.txt` 1.7 MB) are over the limit and are kept only as the source of these.
 >
-> **Paste steps:** (1) delete the code file that showed the error (and its component on the canvas); (2) **reload the Framer tab** (a crashed WebAssembly compiler can stay broken until reload); (3) Assets -> Code -> + -> New Code File, name it `ThinkStillRelease`; (4) select all, delete, paste the entire SAFE file, save; (5) drag the component onto the page, full width and height.
+> **Paste steps (file names must match exactly, they are import paths):**
+> 1. Delete the code file that errored (RushbotUI) and its component on the canvas, then **reload the Framer tab**.
+> 2. Assets → Code → **+** → New Code File. Name it **ThinkStillReleasePart1**. Select all, delete, paste the whole contents of `ThinkStillReleasePart1.txt`, save.
+> 3. Repeat for **ThinkStillReleasePart2** and **ThinkStillReleasePart3**. (Framer will list these three as "components" in the panel: they are not, leave them off the page; if one is dragged on by mistake it renders nothing.)
+> 4. New Code File named **ThinkStillRelease**: paste `ThinkStillRelease.txt`, save. This is the component: drag **ThinkStillRelease** onto the page, full width and height, keep *Show game menu* off.
+> 5. If Framer shows a red error after pasting, press reload once more: the import links resolve once all four files are saved.
+>
+> How the split works: the whole app is one program; `dev/framer_split.mjs` compiles it to plain JavaScript, moves every top-level definition onto one shared object and cuts the statements into parts; the main file runs the parts in order, so behaviour is identical. Rebuild with `node dev/framer_split.mjs`. Checked: all three parts compile in the browser compilers (esbuild-wasm, SWC), 10 key games play to the end at 390x844 and 5 at 1280x860 with 0 page errors.
 
 ## How to put it in Framer
 1. In Framer go to **Assets → Code → "+" → New Code File**. Name it `ThinkStillReleaseArcade`.

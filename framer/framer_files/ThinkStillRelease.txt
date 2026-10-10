@@ -1,0 +1,155 @@
+// ThinkStillRelease - the ThinkStill Release Console component (add THIS one to the page). It imports ThinkStillReleasePart1, ThinkStillReleasePart2, ThinkStillReleasePart3.
+import * as React from "react";
+import { addPropertyControls, ControlType } from "framer";
+import { motion } from "framer-motion";
+import * as FramerMotionNS from "framer-motion";
+import { ThinkStillReleasePart1 } from "./ThinkStillReleasePart1"
+import { ThinkStillReleasePart2 } from "./ThinkStillReleasePart2"
+import { ThinkStillReleasePart3 } from "./ThinkStillReleasePart3"
+const S = Object.create(null)
+S.__thinkstill = true
+const __runners = [ThinkStillReleasePart1(S), ThinkStillReleasePart2(S), ThinkStillReleasePart3(S)]
+
+for (const r of __runners) r()
+addPropertyControls(ThinkStillReleaseArcadePixar, {
+  // F3: users never pick games (ThinkStill decides); owner / testing only
+  eosShowGameMenu: { type: ControlType.Boolean, title: "Show game menu", defaultValue: false },
+  ...S.ThinkStillReleaseArcade.propertyControls || {},
+  pixarIntensity: {
+    type: ControlType.Number,
+    title: "Pixar Light",
+    min: 0,
+    max: 2,
+    step: 0.05,
+    defaultValue: 1
+  },
+  pixarWarmth: {
+    type: ControlType.Number,
+    title: "Warmth",
+    min: 0,
+    max: 2,
+    step: 0.05,
+    defaultValue: 1
+  },
+  pixarParallax: {
+    type: ControlType.Boolean,
+    title: "Light Follows",
+    defaultValue: true
+  },
+  pixarSquash: {
+    type: ControlType.Boolean,
+    title: "Squash & Stretch",
+    defaultValue: true
+  },
+  pixarBokeh: {
+    type: ControlType.Number,
+    title: "Bokeh",
+    min: 0,
+    max: 24,
+    step: 1,
+    defaultValue: 9
+  },
+  pixarDust: {
+    type: ControlType.Number,
+    title: "Dust Motes",
+    min: 0,
+    max: 40,
+    step: 1,
+    defaultValue: 14
+  },
+  eosCheckin: { type: ControlType.Boolean, title: "Emotion Check-in", defaultValue: true },
+  eosCrisisLines: { type: ControlType.String, title: "Support Lines", displayTextArea: true, defaultValue: S.EOS_PROP_DEFAULTS.crisisLines },
+  eosCrisisUrl: { type: ControlType.String, title: "Support Link", defaultValue: S.EOS_PROP_DEFAULTS.crisisUrl },
+  eosEmergencyText: { type: ControlType.String, title: "Emergency Line", defaultValue: S.EOS_PROP_DEFAULTS.emergencyText },
+  eosShareUrl: { type: ControlType.String, title: "Share Link", defaultValue: "" }
+});
+export default function ThinkStillReleaseArcadePixar(props) {
+  const {
+    pixarIntensity = 1,
+    pixarWarmth = 1,
+    pixarParallax = true,
+    pixarSquash = true,
+    pixarBokeh = 9,
+    pixarDust = 14,
+    eosCheckin = S.EOS_PROP_DEFAULTS.checkin,
+    eosCrisisLines = S.EOS_PROP_DEFAULTS.crisisLines,
+    eosCrisisUrl = S.EOS_PROP_DEFAULTS.crisisUrl,
+    eosEmergencyText = S.EOS_PROP_DEFAULTS.emergencyText,
+    eosShareUrl = S.EOS_PROP_DEFAULTS.shareUrl,
+    ...arcadeProps
+  } = props;
+  const rootRef = React.useRef(null);
+  const raf = React.useRef(0);
+  React.useEffect(() => {
+    const root = rootRef.current;
+    if (!root || !pixarParallax) return;
+    let tx = 0.3, ty = 0.25, cx = tx, cy = ty;
+    const tick = () => {
+      cx += (tx - cx) * 0.08;
+      cy += (ty - cy) * 0.08;
+      root.style.setProperty("--pxmx", cx.toFixed(3));
+      root.style.setProperty("--pxmy", cy.toFixed(3));
+      if (Math.abs(tx - cx) + Math.abs(ty - cy) > 1e-3)
+        raf.current = requestAnimationFrame(tick);
+      else raf.current = 0;
+    };
+    const onMove = (e) => {
+      const r = root.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      tx = Math.min(0.75, Math.max(0.1, (e.clientX - r.left) / r.width * 0.6 + 0.08));
+      ty = Math.min(0.6, Math.max(0.05, (e.clientY - r.top) / r.height * 0.5 + 0.02));
+      if (!raf.current) raf.current = requestAnimationFrame(tick);
+    };
+    root.addEventListener("pointermove", onMove, { passive: true });
+    return () => {
+      root.removeEventListener("pointermove", onMove);
+      cancelAnimationFrame(raf.current);
+      raf.current = 0;
+    };
+  }, [pixarParallax]);
+  React.useEffect(() => {
+    const root = rootRef.current;
+    if (!root || !pixarSquash) return;
+    const onDown = (e) => {
+      var _a, _b;
+      const el = (_b = (_a = e.target) == null ? void 0 : _a.closest) == null ? void 0 : _b.call(_a, S.PX_SQUASH_TARGETS);
+      if (!el || !root.contains(el)) return;
+      el.classList.remove("tsPxSquash");
+      void el.offsetWidth;
+      el.classList.add("tsPxSquash");
+      const clear = () => {
+        el.classList.remove("tsPxSquash");
+        el.removeEventListener("animationend", onEnd);
+      };
+      const onEnd = (ev) => {
+        if (ev.animationName === "tsPxSquash") clear();
+      };
+      el.addEventListener("animationend", onEnd);
+      window.setTimeout(clear, 700);
+    };
+    root.addEventListener("pointerdown", onDown, true);
+    return () => root.removeEventListener("pointerdown", onDown, true);
+  }, [pixarSquash]);
+  return /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      ref: rootRef,
+      className: "tsPixarRoot",
+      style: {
+        "--px-intensity": Math.max(0, Math.min(2, pixarIntensity)),
+        "--px-warmth": Math.max(0, Math.min(2, pixarWarmth))
+      }
+    },
+    /* @__PURE__ */ React.createElement("style", null, S.PIXAR_CSS),
+    /* @__PURE__ */ React.createElement(S.EosConfigSync, { checkin: eosCheckin, crisisLines: eosCrisisLines, crisisUrl: eosCrisisUrl, emergencyText: eosEmergencyText, shareUrl: eosShareUrl }),
+    /* @__PURE__ */ React.createElement(S.EosPickConfigSync, { showMenu: !!props.eosShowGameMenu }),
+    /* @__PURE__ */ React.createElement(S.ThinkStillReleaseArcade, { ...arcadeProps }),
+    pixarIntensity > 0 ? /* @__PURE__ */ React.createElement(
+      S.PixarLightRig,
+      {
+        bokeh: Math.round(Math.max(0, pixarBokeh)),
+        dust: Math.round(Math.max(0, pixarDust))
+      }
+    ) : null
+  );
+}
