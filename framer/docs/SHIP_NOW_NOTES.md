@@ -1,3 +1,7 @@
+> **LATEST (10 Oct) — paste `framer/ThinkStillRelease_LOADER.txt` (7 KB).** Framer would not keep the 821 KB single file ("Component file does not exist" on the newly created code file), so the code file is now tiny. It registers the **ThinkStillRelease** component and its 23 property controls at once, downloads the 30-game app from this GitHub repository at one fixed commit (`a2612e9`, file `framer/release/thinkstill-app.js`, 1.8 MB, served compressed by jsDelivr with raw.githubusercontent.com as the fallback), checks its SHA-256 fingerprint, then runs it. While it loads it shows "ThinkStill is getting ready…"; if it cannot load it shows a Try again button.
+> Checked here: the loader imports cleanly in Node (Framer's server render) with 23 controls; through the loader 10 launch games play to the end at 390x844 and 3 at 1280x860 with 0 page errors; with jsDelivr blocked the GitHub fallback works; a tampered app file is refused. Rebuild: `node dev/framer_loader.mjs payload`, commit + push, then `node dev/framer_loader.mjs loader <that commit sha>`.
+> **Keep the repository public and do not delete that commit or `framer/release/`**, or the app cannot load (the character pictures already load from this repository too).
+
 # ThinkStill Release — ship-now build (10 Oct 2026)
 
 ## Launch 30 (10 Oct 2026): read this first

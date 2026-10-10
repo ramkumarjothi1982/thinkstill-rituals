@@ -1,0 +1,98 @@
+// ThinkStill Release Console - Framer code component (30-game launch build).
+// Paste ALL of this into ONE Framer code file named ThinkStillRelease, then drag ThinkStillRelease onto the page.
+// The app itself (about 1.7 MB) is too large for a Framer code file, so this small file loads it from the
+// ThinkStill GitHub repository (commit a2612e917412), checks its SHA-256 fingerprint, and runs it.
+import * as React from "react"
+import { addPropertyControls, ControlType } from "framer"
+import { motion } from "framer-motion"
+import * as FramerMotionNS from "framer-motion"
+
+const TS_APP_URLS = [
+    "https://cdn.jsdelivr.net/gh/ramkumarjothi1982/thinkstill-rituals@a2612e91741268546b5bd9722aa7078ee6bb37c1/framer/release/thinkstill-app.js",
+    "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/a2612e91741268546b5bd9722aa7078ee6bb37c1/framer/release/thinkstill-app.js"
+]
+const TS_APP_SHA256 = "82e549b9e4a872d91cf64970e625125c88db79c434a3d602e83cb52bf0c638d0"
+
+let tsApp = null
+let tsError = null
+let tsPromise = null
+const tsControls = new Map()
+function __tsAddControls(component, controls) {
+    try { tsControls.set(component, controls) } catch (e) {}
+    return addPropertyControls(component, controls)
+}
+async function tsSha256(text) {
+    if (typeof crypto === "undefined" || !crypto.subtle || typeof TextEncoder === "undefined") return null
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text))
+    return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("")
+}
+function tsLoadApp() {
+    if (tsPromise) return tsPromise
+    tsPromise = (async () => {
+        let lastError = null
+        for (const url of TS_APP_URLS) {
+            try {
+                const res = await fetch(url, { cache: "force-cache", credentials: "omit" })
+                if (!res.ok) throw new Error("HTTP " + res.status + " from " + url)
+                const code = await res.text()
+                const hash = await tsSha256(code)
+                if (hash && hash !== TS_APP_SHA256) throw new Error("fingerprint mismatch from " + url)
+                const factory = new Function("var __TS_F;" + code + "\n;return __TS_F")()
+                tsApp = factory(React, __tsAddControls, ControlType, motion, FramerMotionNS)
+                return tsApp
+            } catch (e) {
+                lastError = e
+            }
+        }
+        throw lastError || new Error("could not load the app")
+    })()
+    tsPromise.catch((e) => { tsError = e; tsPromise = null })
+    return tsPromise
+}
+if (typeof window !== "undefined") tsLoadApp().catch(() => {})
+
+export default function ThinkStillRelease(props) {
+    const [, setTick] = React.useState(0)
+    React.useEffect(() => {
+        if (tsApp) return
+        let alive = true
+        tsLoadApp().then(() => alive && setTick((n) => n + 1), () => alive && setTick((n) => n + 1))
+        return () => { alive = false }
+    }, [])
+    if (tsApp) return React.createElement(tsApp, props)
+    const box = { width: "100%", height: "100%", minHeight: 320, display: "grid", placeItems: "center", background: "#0b0f1e", color: "#eef1ff", font: "600 15px system-ui, -apple-system, sans-serif", textAlign: "center", padding: 16, boxSizing: "border-box" }
+    if (tsError) {
+        return React.createElement("div", { style: box },
+            React.createElement("div", null,
+                React.createElement("div", { style: { marginBottom: 12 } }, "ThinkStill could not load. Check your connection and try again."),
+                React.createElement("button", { type: "button", onClick: () => { tsError = null; setTick((n) => n + 1); tsLoadApp().then(() => setTick((n) => n + 1), () => setTick((n) => n + 1)) }, style: { font: "700 15px system-ui, sans-serif", padding: "12px 20px", borderRadius: 999, border: 0, background: "#ffc86b", color: "#1a1030", cursor: "pointer" } }, "Try again"),
+                React.createElement("div", { style: { marginTop: 12, opacity: 0.6, fontSize: 12 } }, String((tsError && tsError.message) || tsError))))
+    }
+    return React.createElement("div", { style: box, "aria-busy": "true" }, "ThinkStill is getting ready…")
+}
+
+addPropertyControls(ThinkStillRelease, {
+    "eosShowGameMenu": { "type": ControlType.Boolean, "title": "Show game menu", "defaultValue": false },
+    "title": { "type": ControlType.String, "title": "Title", "defaultValue": "EMOTIONAL RELEASE CONSOLE" },
+    "accent": { "type": ControlType.Color, "title": "Neon 1", "defaultValue": "#00D9FF" },
+    "accent2": { "type": ControlType.Color, "title": "Neon 2", "defaultValue": "#C000FF" },
+    "background": { "type": ControlType.Color, "title": "Background", "defaultValue": "#000000" },
+    "soundOn": { "type": ControlType.Boolean, "title": "SFX On", "defaultValue": true },
+    "hapticsOn": { "type": ControlType.Boolean, "title": "Haptics", "defaultValue": true },
+    "musicOnDefault": { "type": ControlType.Boolean, "title": "Music Default", "defaultValue": false },
+    "musicVolume": { "type": ControlType.Number, "title": "Music Volume", "min": 0, "max": 1, "step": 0.05, "defaultValue": 0.35 },
+    "tapOutBpm": { "type": ControlType.Number, "title": "Tap Out BPM", "min": 40, "max": 180, "step": 1, "defaultValue": 92 },
+    "bubbleTextPx": { "type": ControlType.Number, "title": "Bubble Text", "min": 1, "max": 28, "step": 0.5, "defaultValue": 16, "unit": "px", "displayStepper": true },
+    "maxWidth": { "type": ControlType.Number, "title": "Max Width", "min": 700, "max": 1600, "step": 10, "defaultValue": 1180, "unit": "px" },
+    "pixarIntensity": { "type": ControlType.Number, "title": "Pixar Light", "min": 0, "max": 2, "step": 0.05, "defaultValue": 1 },
+    "pixarWarmth": { "type": ControlType.Number, "title": "Warmth", "min": 0, "max": 2, "step": 0.05, "defaultValue": 1 },
+    "pixarParallax": { "type": ControlType.Boolean, "title": "Light Follows", "defaultValue": true },
+    "pixarSquash": { "type": ControlType.Boolean, "title": "Squash & Stretch", "defaultValue": true },
+    "pixarBokeh": { "type": ControlType.Number, "title": "Bokeh", "min": 0, "max": 24, "step": 1, "defaultValue": 9 },
+    "pixarDust": { "type": ControlType.Number, "title": "Dust Motes", "min": 0, "max": 40, "step": 1, "defaultValue": 14 },
+    "eosCheckin": { "type": ControlType.Boolean, "title": "Emotion Check-in", "defaultValue": true },
+    "eosCrisisLines": { "type": ControlType.String, "title": "Support Lines", "displayTextArea": true, "defaultValue": "US · 988 | Canada · 988 | UK & IE · Samaritans 116 123 | Australia · Lifeline 13 11 14 | India · Tele-MANAS 14416 | Anywhere · findahelpline.com" },
+    "eosCrisisUrl": { "type": ControlType.String, "title": "Support Link", "defaultValue": "https://findahelpline.com" },
+    "eosEmergencyText": { "type": ControlType.String, "title": "Emergency Line", "defaultValue": "In immediate danger? Call your local emergency number." },
+    "eosShareUrl": { "type": ControlType.String, "title": "Share Link", "defaultValue": "" },
+})

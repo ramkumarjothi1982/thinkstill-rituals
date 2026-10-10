@@ -6,6 +6,13 @@ const IDS = (process.argv[3] || "1,2,3,6,41,47,100,109,110,111").split(",").map(
 const [w, h] = (process.argv[2] || "390x844").split("x").map(Number)
 const L = await eos.launchEos({ width: w, height: h, lite: true, dir: process.env.DIR || undefined }) // DIR = another harness dir (default framer/dev)
 await routeExpressions(L.context)
+// PAYLOAD = local copy of release/thinkstill-app.js: serve it for the loader's CDN / raw URLs (no network in tests)
+if (process.env.PAYLOAD) {
+  const fs = await import("node:fs")
+  const body = fs.readFileSync(process.env.PAYLOAD)
+  await L.context.route(/thinkstill-app\.js/, (route) => route.fulfill({ status: 200, contentType: "text/plain; charset=utf-8", headers: { "access-control-allow-origin": "*" }, body }))
+}
+if (process.env.ABORT_CDN) await L.context.route(/cdn\.jsdelivr\.net/, (route) => route.abort()) // test the raw.githubusercontent fallback
 await L.page.reload(); await L.page.waitForTimeout(1500)
 const res = []
 for (const id of IDS) {
