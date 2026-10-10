@@ -1,4 +1,4 @@
-"""Layout check across the required viewports: each pilot's main play screen at 360×780, 375×812, 390×844, 430×932,
+"""Layout check across the required viewports: each ritual's main play screen at 360×780, 375×812, 390×844, 430×932,
 1280×860 and 1440×900. Checks: no horizontal page scroll, every visible control inside the viewport, primary controls at
 least 44 px, nothing clipped by the top bar. Usage: python3 sizes.py <base> <out-dir>"""
 import json, os, sys
@@ -6,11 +6,11 @@ from playwright.sync_api import sync_playwright
 
 SIZES = [(360, 780), (375, 812), (390, 844), (430, 932), (1280, 860), (1440, 900)]
 PILOTS = {
-    'group-think-glitch': {'ready': '!!window.__gtgInv', 'skip': '.gtg-btn', 'controls': ['.gtg-feed', '.gtg-track', '.gtg-play', '.gtg-pinbtn', '.gtg-slot']},
-    'drama-dubbing-booth': {'ready': '!!window.__ddbStudio', 'skip': '.ddb-btn', 'controls': ['.ddb-screen', '.ddb-ruler', '.ddb-track', '.ddb-line', '.ddb-preview', '.ddb-print']},
+    'shadow-monsters': {'ready': '!!window.__smBuilder', 'skip': '.sm-skip', 'controls': ['.sm-canvas', '.sm-tray', '.sm-item', '.sm-tagbtn', '.sm-chain']},
+    'mess-auction': {'ready': '!!window.__maStudio', 'skip': '.ma-skip', 'controls': ['.ma-paper', '.ma-head', '[data-act=blindfold]']},
     'emotional-rollercoaster': {'ready': '!!window.__erBuilder', 'skip': '.er-btn', 'controls': ['.er-card', '.er-canvas', '.er-mod', '.er-lever']},
 }
-PRIMARY = ['.gtg-play', '.gtg-pinbtn', '.ddb-preview', '.ddb-print', '.ddb-line', '.er-mod', '.er-lever', '.rf-ib']
+PRIMARY = ['.sm-item', '.sm-tagbtn', '.sm-chain', '[data-act=blindfold]', '.er-mod', '.er-lever', '.rf-ib']
 
 CHECK = """(sels) => {
   const host = [...document.querySelectorAll('*')].find(e => e.shadowRoot && e.shadowRoot.querySelector('.rf'));
@@ -20,7 +20,15 @@ CHECK = """(sels) => {
   for (const s of sels) {
     const els = [...root.querySelectorAll(s)].filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; });
     if (!els.length) { out.push(s + ': missing'); continue; }
-    for (const e of els) { const r = e.getBoundingClientRect(); if (r.left < -1 || r.top < 47 || r.right > vw + 1 || r.bottom > vh + 1) out.push(s + ' outside: ' + [r.left, r.top, r.right, r.bottom].map(Math.round).join(',')); }
+    for (const e of els) {
+      // items inside a sideways-scrolling strip (the toybox) may sit past the edge: they scroll into view
+      let sc = e.parentElement, scrolls = false;
+      while (sc && sc !== root.host) { const st = getComputedStyle(sc); if (/(auto|scroll)/.test(st.overflowX) && sc.scrollWidth > sc.clientWidth + 1) { scrolls = true; break; } sc = sc.parentElement; }
+      const r = e.getBoundingClientRect();
+      const box = scrolls ? sc.getBoundingClientRect() : null;
+      const out1 = scrolls ? (r.top < 47 || r.bottom > vh + 1 || box.left < -1 || box.right > vw + 1) : (r.left < -1 || r.top < 47 || r.right > vw + 1 || r.bottom > vh + 1);
+      if (out1) out.push(s + ' outside: ' + [r.left, r.top, r.right, r.bottom].map(Math.round).join(','));
+    }
   }
   return { hscroll: document.documentElement.scrollWidth > vw + 1, outside: out };
 }"""
@@ -47,7 +55,7 @@ def main(base, out):
                 page.locator(f'[data-ritual={pid}] [data-act=solo]').click()
                 page.wait_for_timeout(1500)
                 try:
-                    page.locator(cfg['skip'], has_text='Skip').click(timeout=4000)
+                    page.locator(cfg['skip']).filter(has_text='Skip').first.click(timeout=4000)
                 except Exception:
                     pass
                 page.wait_for_function(cfg['ready'], timeout=20000)

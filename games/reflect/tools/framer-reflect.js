@@ -8,7 +8,7 @@ function tsx(js, ref) {
   return `// @ts-nocheck
 /*
  * ThinkStill Reflect — Framer code component.
- * Multiplayer reflection rituals — the three hero pilots: Group Think Glitch (mystery), Drama Dubbing Booth (comedy) and
+ * Multiplayer reflection rituals — three launch rituals: Shadow Monsters (spooky comedy), The Glorious Mess Auction (comedy) and
  * Emotional Rollercoaster (spectacle). One file, nothing else to install: paste it into a Framer code file and drop the
  * component on a page. Solo play works anywhere with labelled Bubble companions; Bubble art loads from Asset Base
  * (default: the public thinkstill-rituals repo); inviting friends needs Room Server (the Reflect Cloudflare Worker,
@@ -92,7 +92,7 @@ export default function ThinkStillReflect(props) {
                 <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "radial-gradient(120% 90% at 50% 0%, #2a2350, #0f0d1f)", color: "#f5f1ff", fontFamily: "Fredoka, system-ui, sans-serif", textAlign: "center", padding: 24 }}>
                     <div>
                         <div style={{ fontSize: 40, fontWeight: 800 }}>Reflect</div>
-                        <div style={{ opacity: 0.8, marginTop: 6 }}>Group Think Glitch · Drama Dubbing Booth · Emotional Rollercoaster</div>
+                        <div style={{ opacity: 0.8, marginTop: 6 }}>Shadow Monsters · The Glorious Mess Auction · Emotional Rollercoaster</div>
                         <div style={{ opacity: 0.6, marginTop: 10, fontSize: 13 }}>Plays in Preview and on your published site</div>
                     </div>
                 </div>

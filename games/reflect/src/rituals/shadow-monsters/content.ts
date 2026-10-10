@@ -56,14 +56,25 @@ export const COMPANION_MONSTERS: Record<Slug, Monster[]> = {
 };
 
 /** What each Bubble says its monster is (shown under it, always with "Bubble companion"). */
+/** What each companion's monster is about (shown while it looms — never what it is made of, so the lights still surprise). */
 export const COMPANION_NOTE: Record<Slug, string> = {
   rush: 'the email it hasn’t opened',
-  loopie: 'the same croissant dragon. Again.',
-  still: 'a duck. Just a duck.',
-  drop: 'a storm in a teacup',
+  loopie: 'the thing it worried about yesterday. Again.',
+  still: 'its tea going slightly cold',
+  drop: 'a tiny problem that feels enormous',
   patch: 'waving back at someone who wasn’t waving at Patch',
   glitch: 'the “quick” software update',
-  sync: 'yours, copied'
+  sync: 'whatever yours was about'
+};
+/** The punchline when the lights come up on a companion's monster. */
+export const COMPANION_PUNCH: Record<Slug, string> = {
+  rush: 'It still hasn’t opened the email.',
+  loopie: 'The same croissant dragon as last time.',
+  still: 'Just a duck. Held very close.',
+  drop: 'A storm in a teacup. Literally.',
+  patch: 'They were waving at someone behind Patch.',
+  glitch: 'Update 1 of 214.',
+  sync: 'Exactly the same as yours.'
 };
 
 /** "a fork", "an umbrella" */

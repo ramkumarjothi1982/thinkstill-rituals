@@ -21,7 +21,7 @@ export function maPreview(sf: Surface, now: number, faces: FaceBank) {
   const cyc = 6, n = Math.floor(now / cyc), k = now % cyc;
   const L = layout(W, H, ROW.length);
   // zoom a little so the frame and the board fill the card
-  g.save(); const z = 1.22; g.translate(W / 2, H * 0.47); g.scale(z, z); g.translate(-W / 2, -H * 0.47);
+  g.save(); const z = 1.05; g.translate(W / 2, H * 0.4); g.scale(z, z); g.translate(-W / 2, -H * 0.4);
   drawHouse(g, W, H, L, { t: now, spot: 1, house: 0.3 });
   const cloth = k < 0.9 ? 1 - Math.min(1, k / 0.9) : 0;
   drawFrame(g, L.frame, art(n), { t: now, cloth, boil: Math.max(0.8, L.frame.w * 0.006), seed: n });

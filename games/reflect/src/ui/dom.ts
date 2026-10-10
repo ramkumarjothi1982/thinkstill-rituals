@@ -130,7 +130,8 @@ export function hold(el: HTMLElement, ms: number, cb: { progress: (k: number) =>
     raf = requestAnimationFrame(tick);
   };
   const start = (e?: Event) => { if (active) return; active = true; t0 = performance.now(); cb.start && cb.start(); raf = requestAnimationFrame(tick); if (e) e.preventDefault(); };
-  const stop = () => { if (!active) return; active = false; cancelAnimationFrame(raf); cb.progress(0); cb.cancel && cb.cancel(); };
+  // released after the full time but before a frame noticed (a busy or slow device): that still counts
+  const stop = () => { if (!active) return; active = false; cancelAnimationFrame(raf); if (performance.now() - t0 >= ms) { cb.progress(1); cb.done(); return; } cb.progress(0); cb.cancel && cb.cancel(); };
   el.addEventListener('pointerdown', (e) => { try { el.setPointerCapture(e.pointerId); } catch (_) { /* ok */ } start(e); });
   el.addEventListener('pointerup', stop); el.addEventListener('pointercancel', stop); el.addEventListener('pointerleave', stop);
   el.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) start(e); });

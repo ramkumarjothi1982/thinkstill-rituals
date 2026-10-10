@@ -15,7 +15,7 @@ import type { Babble } from '../../actor/babble';
 import { PICTS, rrect } from '../../actor/picts';
 import { Music, slideWhistle, thunder, drumroll } from '../../audio/music';
 import { OBJECTS, objSprite, objPict } from './objects';
-import { COMPANION_NOTE, SHOW, TAGS, TagId, lampZFor, pullCurve, listOf } from './content';
+import { COMPANION_NOTE, COMPANION_PUNCH, SHOW, TAGS, TagId, lampZFor, pullCurve, listOf } from './content';
 import { Placed, Light, paintSheet, renderBackstage, renderAudience, sheetCanvasFor, monsterSize, magnification, SHEET, K, ZS } from './world';
 import { SmPub, timetable } from './logic';
 import { SONGS } from './songs';
@@ -448,15 +448,16 @@ export class ShowDirector {
     }
     if (kind === 'watch') {
       if (m.human && m.pid !== v.you) this.over.appendChild(h('div', { class: 'sm-cap' }, m.name + ' holds the lamp', h('small', null, 'They decide when the light pulls back')));
-      else if (!m.human) this.over.appendChild(h('div', { class: 'sm-cap' }, owner + ' monster: ' + (COMPANION_NOTE[m.avatar] || ''), h('small', null, 'Bubble companion')));
+      else if (!m.human) this.over.appendChild(h('div', { class: 'sm-cap' }, owner + ' monster is about ' + (COMPANION_NOTE[m.avatar] || 'something'), h('small', null, 'Bubble companion')));
       if (me) this.over.appendChild(this.reactRow(i));
       return;
     }
     if (kind === 'lights') {
       const tag = m.tag ? (TAGS.find(t => t.id === m.tag) || { label: '' }).label : '';
       const list = listOf(m.objs.map(o => OBJECTS[o.o].name));
-      const what = m.human ? (tag ? owner + ' “' + tag.toLowerCase() + '”' : owner + ' monster') : owner + ' monster, ' + (COMPANION_NOTE[m.avatar] || '').replace(/\.$/, '') + ',';
-      this.over.appendChild(h('div', { class: 'sm-cap' }, what + ' was ' + list + '.', !m.human ? h('small', null, 'Bubble companion') : null));
+      if (!m.human) { this.over.appendChild(h('div', { class: 'sm-cap' }, owner + ' monster was ' + list + '.', h('small', null, (COMPANION_PUNCH[m.avatar] || '') + ' · Bubble companion'))); return; }
+      const what = tag ? owner + ' “' + tag.toLowerCase() + '”' : owner + ' monster';
+      this.over.appendChild(h('div', { class: 'sm-cap' }, what + ' was ' + list + '.'));
     }
   }
   /** The room rate-limits live events per person; space them so a pull right after a reaction is never dropped. */

@@ -60,9 +60,9 @@ def main(base, out):
         rep['checks']['both_mounted_hub_cards'] = cnt('.rf-card')
         rep['checks']['themes'] = page.evaluate("['a','b'].map(id => { const h = document.querySelector('#' + id + ' div div'); return h && h.shadowRoot ? h.shadowRoot.querySelector('.rf').getAttribute('data-theme') : null; })")
         page.screenshot(path=os.path.join(out, 'framer-two-instances.png'))
-        page.locator('#a [data-act=solo]').first.click()   # the first card is Group Think Glitch
+        page.locator('#a [data-act=solo]').first.click()   # the first card is Shadow Monsters
         page.wait_for_timeout(7000)
-        rep['checks']['a_in_ritual_b_on_hub'] = [cnt('.gtg-inv')[0] > 0 or cnt('.gtg-stage')[0] > 0, cnt('.rf-card')[1] > 0]
+        rep['checks']['a_in_ritual_b_on_hub'] = [cnt('[data-ritual=shadow-monsters].sm')[0] > 0, cnt('.rf-card')[1] > 0]
         page.screenshot(path=os.path.join(out, 'framer-a-playing.png'))
         page.evaluate("window.__h.unmount('a')")
         page.wait_for_timeout(300)
@@ -70,11 +70,11 @@ def main(base, out):
         page.evaluate("window.__h.remount('a')")
         page.wait_for_timeout(1200)
         rep['checks']['a_remounted'] = cnt('.rf-card')[0] > 0
-        # the other two pilots start inside the same component (fresh mount each time, so each begins at the hub)
-        for i, rid in [(1, 'drama-dubbing-booth'), (2, 'emotional-rollercoaster')]:
+        # the other two rituals start inside the same component (fresh mount each time, so each begins at the hub)
+        for i, rid in [(1, 'mess-auction'), (2, 'emotional-rollercoaster')]:
             page.locator('#a [data-act=solo]').nth(i).click()
             page.wait_for_timeout(6000)
-            rep['checks'][f'a_plays_{rid}'] = cnt(f'[data-ritual={rid}]')[0] > 0
+            rep['checks'][f'a_plays_{rid}'] = cnt(f':not(.rf-card)[data-ritual={rid}]')[0] > 0
             page.screenshot(path=os.path.join(out, f'framer-a-{rid}.png'))
             page.evaluate("window.__h.unmount('a')"); page.wait_for_timeout(200)
             page.evaluate("window.__h.remount('a')"); page.wait_for_timeout(1500)

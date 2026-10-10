@@ -68,11 +68,12 @@ export class RoomClient {
   pid: string | null = null;
   status: Status = 'connecting';
   clockSkew = 0;                     // serverNow - Date.now(), for synchronised starts
-  /* Every message carries the server's clock at send time, but arrives late by the network delay plus however long this
-   * page's main thread was busy. The delay only ever makes a sample too small, so the best estimate is the largest
-   * sample of the last 45 seconds (a sliding window, so a real clock change is followed within a minute). Pings add
-   * round-trip-corrected samples. */
-  private skews: { at: number; s: number }[] = [];
+  /* Every message carries the server's clock at send time but arrives late (network + however long this page's main
+   * thread was busy), so `serverNow - receivedAt` is a strict LOWER bound on the true offset; a ping's
+   * `serverNow - sentAt` is a strict UPPER bound. The point estimate is the round trip with the smallest delay
+   * (NTP-style midpoint), clamped between the tightest bounds of the last minute. */
+  private lows: { at: number; s: number }[] = [];
+  private pongs: { at: number; rtt: number; mid: number; hi: number }[] = [];
   private pinger: any = 0;
   private subs = new Set<(v: RoomView) => void>();
   private errs = new Set<(code: string) => void>();
@@ -87,12 +88,16 @@ export class RoomClient {
     if (this.t instanceof WsTransport) this.pinger = setInterval(() => { if (this.status === 'open') this.t.send({ t: 'ping', at: Date.now() }); }, 4000);
     return this;
   }
-  private sample(s: number) {
+  private sample(low: number, pong?: { rtt: number; mid: number; hi: number }) {
     const now = Date.now();
-    this.skews.push({ at: now, s });
-    if (this.skews.length > 80 || now - this.skews[0].at > 45000) this.skews = this.skews.filter(x => now - x.at < 45000).slice(-80);
-    let best = -Infinity; for (const x of this.skews) if (x.s > best) best = x.s;
-    this.clockSkew = best;
+    this.lows.push({ at: now, s: low });
+    if (this.lows.length > 80 || now - this.lows[0].at > 60000) this.lows = this.lows.filter(x => now - x.at < 60000).slice(-80);
+    if (pong) { this.pongs.push({ at: now, ...pong }); this.pongs = this.pongs.filter(x => now - x.at < 60000).slice(-30); }
+    let lo = -Infinity; for (const x of this.lows) if (x.s > lo) lo = x.s;
+    if (!this.pongs.length) { this.clockSkew = lo; return; }
+    let best = this.pongs[0], hi = Infinity;
+    for (const x of this.pongs) { if (x.rtt < best.rtt) best = x; if (x.hi < hi) hi = x.hi; }
+    this.clockSkew = hi < lo ? lo : Math.min(hi, Math.max(lo, best.mid));
   }
   private hello(ritual?: RitualId, token?: string) {
     const tok = token || (this.storeKey ? safeGet(this.storeKey) || undefined : undefined);
@@ -103,6 +108,7 @@ export class RoomClient {
   private onMsg(m: ServerMsg) {
     if (m.t === 'welcome') {
       this.pid = m.pid;
+      try { this.t.send({ t: 'ping', at: Date.now() }); } catch (e) { /* the clock then settles on the next ping */ }
       if (this.storeKey) safeSet(this.storeKey, m.token);
       this.setView(m.view);
     } else if (m.t === 'state') this.setView(m.view);
@@ -113,7 +119,7 @@ export class RoomClient {
       const code = act && act.kind === 'live' ? 'live_' + m.code : m.code;
       this.errs.forEach(f => f(code));
     }
-    else if (m.t === 'pong') { const rtt = Date.now() - m.at; if (rtt >= 0 && rtt < 5000) this.sample(m.serverNow + rtt / 2 - Date.now()); }
+    else if (m.t === 'pong') { const recv = Date.now(), rtt = recv - m.at; if (rtt >= 0 && rtt < 10000) this.sample(m.serverNow - recv, { rtt, mid: m.serverNow - (m.at + recv) / 2, hi: m.serverNow - m.at }); }
   }
   private setView(v: RoomView) {
     if (this.view && v.v < this.view.v && v.round === this.view.round) return;   // stale

@@ -32,17 +32,20 @@ def studio(page, out, pre, est_moves=-1, shots=True, wobble=0.0):
     X = lambda u: box["x"] + u * box["width"]; Y = lambda v: box["y"] + v * box["height"]
     w = lambda i: wobble * math.sin(i * 1.7)
     page.locator("[data-act=blindfold]").click(); page.wait_for_timeout(650)
-    stroke(page, [(X(0.5 + 0.3 * math.cos(a / 18 * 2 * math.pi) + w(a) * 0.05), Y(0.46 + 0.33 * math.sin(a / 18 * 2 * math.pi))) for a in range(0, 17)])
+    # what a blindfolded hand does: a head that doesn't close, eyes that drift out of it, a nose and mouth that wander
+    jit = lambda i, a=0.012: (math.sin(i * 2.3) + math.sin(i * 0.7)) * a * (1 + wobble)
+    stroke(page, [(X(0.48 + 0.29 * math.cos(a / 16 * 2 * math.pi) * (1 + 0.08 * math.sin(a)) + jit(a)), Y(0.47 + 0.31 * math.sin(a / 16 * 2 * math.pi) + jit(a + 3))) for a in range(-2, 15)])
     if shots: shot(page, out, pre + "3-blind")
-    stroke(page, [(X(0.37), Y(0.37)), (X(0.41 + w(1) * 0.1), Y(0.4)), (X(0.37), Y(0.42))])
-    stroke(page, [(X(0.64), Y(0.35)), (X(0.69), Y(0.38 + w(2) * 0.1))])
-    stroke(page, [(X(0.38 + 0.28 * t / 8), Y(0.7 + 0.07 * math.sin(t / 8 * math.pi))) for t in range(0, 9)])
+    stroke(page, [(X(0.3), Y(0.3)), (X(0.36), Y(0.27)), (X(0.38), Y(0.33)), (X(0.31), Y(0.35)), (X(0.3), Y(0.3))])
+    stroke(page, [(X(0.63), Y(0.2)), (X(0.69), Y(0.17)), (X(0.71), Y(0.24)), (X(0.64), Y(0.25))])
+    stroke(page, [(X(0.55), Y(0.36)), (X(0.47), Y(0.53)), (X(0.58), Y(0.55))])
+    stroke(page, [(X(0.45 + 0.3 * t / 8), Y(0.66 + 0.08 * math.sin(t / 8 * math.pi) + 0.05 * t / 8)) for t in range(0, 9)])
     wait_for(page, "__maStudio.state().step === 'reveal'", 12000)
     page.wait_for_timeout(2200)
     if shots: shot(page, out, pre + "4-reveal")
     page.locator("[data-act=next]").click(); page.wait_for_timeout(400)
     page.locator("[data-act=blindfold]").click(); page.wait_for_timeout(650)
-    for i in range(5): stroke(page, [(X(0.32 + i * 0.09), Y(0.15)), (X(0.3 + i * 0.1), Y(0.05))])
+    for i in range(6): stroke(page, [(X(0.36 + i * 0.085), Y(0.13 + 0.02 * math.sin(i))), (X(0.31 + i * 0.1), Y(0.02 + 0.03 * (i % 2)))])
     wait_for(page, "__maStudio.state().step === 'reveal'", 12000)
     page.wait_for_timeout(2300)
     if shots: shot(page, out, pre + "5-reveal-hair")
@@ -70,6 +73,9 @@ class Bidder:
         s = pg.evaluate("window.__maAuction ? __maAuction.state() : null")
         if not s: return s
         if s.get("part") == "gap" and not self.mirror and pg.locator(".ma-cap").count(): self.mirror = pg.locator(".ma-cap").first.inner_text()
+        self.extra = getattr(self, 'extra', set())
+        for name, cond in (('x-estimates', s.get('part') == 'gap' and s.get('k', 0) > 0.6), ('x-museum', s.get('part') == 'finale' and 5.0 < s.get('t', 0) < 6.6), ('x-tag', s.get('part') == 'finale' and 12.6 < s.get('t', 0) < 14.2), ('x-alarm', s.get('part') == 'finale' and 14.8 < s.get('t', 0) < 15.8)):
+            if cond and name not in self.extra and self.shots: self.extra.add(name); shot(pg, self.out, self.pre + name)
         now = time.time()
         if self.down and now >= self.down[1]:
             pg.mouse.up(); self.log.append({"lot": self.down[0], "released": round(now, 2)})

@@ -351,7 +351,7 @@ class Studio {
       this.headS.textContent = A.bl.slug.charAt(0).toUpperCase() + A.bl.slug.slice(1) + ' “straightened” your easel while you couldn’t see.';
       A.bl.after(1.0, () => { A.bl.emote('shy', { vol: 0.5 }); A.bl.speak('tape', 1.6); });
     }
-    const next = h('button', { class: 'ma-btn', 'data-act': 'next', onclick: (e: Event) => { this.ctx.sfx.gesture(e); if (this.pass === 0) { this.pass = 1; this.setStep('ready'); } else this.setStep('sign'); } }, this.pass === 0 ? 'Now the hair →' : 'Sign it →');
+    const next = h('button', { class: 'ma-btn', 'data-act': 'next', onclick: (e: Event) => { this.ctx.sfx.gesture(e); if (this.pass === 0) { this.pass = 1; this.setStep('ready'); } else this.setStep('sign'); } }, this.pass === 0 ? 'Now the ' + this.prompt.extra + ' →' : 'Sign it →');
     this.foot.appendChild(h('div', { class: 'ma-row' }, next));
   }
 

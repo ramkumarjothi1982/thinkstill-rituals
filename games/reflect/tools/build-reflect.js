@@ -8,7 +8,7 @@
  *   dev/index.html        dev page (served by dev-server.js)
  *   framer/ThinkStillReflect.tsx   Framer code component with the bundle embedded (--framer)
  *   artifact/             claude.ai artifact page + Bubble art (--artifact)
- *   dev/{render,film,ride,occlusion}.html   visual and sightline test harnesses (--harness)
+ *   dev/{monsters,portraits,ride}.html   visual test harnesses (--harness)
  */
 const path = require('path');
 const fs = require('fs');
@@ -67,13 +67,13 @@ async function main() {
     fs.copyFileSync(path.join(ROOT, 'tests/mock-room.js'), path.join(DIST, 'dev/mock-room.js'));
   }
   if (has('--harness')) {
-    // test pages served by the dev server: world / film / ride renders and the Group Think Glitch sightline test
+    // test pages served by the dev server: the Shadow Monsters cast, the Bubbles' blind portraits, the ride
     const page = (name) => `<!doctype html><meta charset=utf-8><title>${name}</title>\n<style>body{margin:0;background:#111;color:#ccc;font:11px monospace}#grid{display:grid;gap:4px;padding:4px}figure{margin:0}figcaption{padding:2px}</style>\n<div id=grid></div><script src="${name}.js"></script>\n`;
-    for (const [name, entry] of [['render', 'tests/render-world.ts'], ['film', 'tests/render-film.ts'], ['ride', 'tests/render-ride.ts'], ['occlusion', 'tests/occlusion.ts']]) {
+    for (const [name, entry] of [['monsters', 'tests/render-monsters.ts'], ['portraits', 'tests/render-portraits.ts'], ['ride', 'tests/render-ride.ts']]) {
       await esbuild.build({ entryPoints: [path.join(ROOT, entry)], bundle: true, format: 'iife', target: 'es2019', outfile: path.join(DIST, 'dev', name + '.js'), logLevel: 'warning' });
       write('dev/' + name + '.html', page(name));
     }
-    console.log('harness: render, film, ride, occlusion');
+    console.log('harness: monsters, portraits, ride');
   }
 }
 main().catch(e => { console.error(e); process.exit(1); });

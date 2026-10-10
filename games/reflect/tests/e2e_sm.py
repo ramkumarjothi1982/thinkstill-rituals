@@ -41,25 +41,32 @@ class Viewer:
     """Polls one page through the show: pulls its own light back when the lever appears, reacts to others' monsters."""
     def __init__(self, page, out, pre, react=True, shots=True):
         self.page, self.out, self.pre, self.react, self.shots = page, out, pre, react, shots
-        self.pulled, self.reacted, self.n, self.last, self.seen = [], 0, 0, 0, None
+        self.pulled, self.reacted, self.n, self.last, self.seen, self.reacted_on = [], 0, 0, 0, None, set()
 
     def tick(self):
         pg = self.page
-        st = pg.evaluate("(() => { const s = window.__smShow; if (!s) return null; if (s.phase === 'finale') return {part: 'finale', i: -1}; const w = s.where(); const m = s.ms[w.i]; return {part: w.part, i: w.i, slotT: w.slotT, mine: !!(m && m.pid === s.view.you)}; })()")
+        st = pg.evaluate("(() => { const s = window.__smShow; if (!s) return null; if (s.phase === 'finale') return {part: 'finale', i: -1, t: (performance.now() - s.finaleAt) / 1000}; const w = s.where(); const m = s.ms[w.i]; return {part: w.part, i: w.i, k: w.k, slotT: w.slotT, mine: !!(m && m.pid === s.view.you)}; })()")
         if not st: return st
+        # a few moments worth seeing in full (not just the first frame of each part)
+        self.extra = getattr(self, 'extra', set())
+        for name, cond in (('x-evr', st['part'] == 'evr' and st.get('k', 0) > 0.7), ('x-parade', st['part'] == 'finale' and 4.0 < st.get('t', 0) < 7), ('x-birds', st['part'] == 'finale' and 10.2 < st.get('t', 0) < 12.5)):
+            if cond and name not in self.extra and self.shots: self.extra.add(name); shot(pg, self.out, self.pre + name)
         if st.get("mine") and st["part"] in ("react", "loom") and st["i"] not in self.pulled:
             try:
-                pg.wait_for_selector(".sm-pull", timeout=2500)
-                pg.wait_for_timeout(500)
-                b = pg.locator(".sm-pull").bounding_box()
-                pg.mouse.move(b["x"] + b["width"] / 2, b["y"] + b["height"] / 2); pg.mouse.down(); pg.wait_for_timeout(800); pg.mouse.up()
-                self.pulled.append(st["i"]); self.pull_at = st.get("slotT")
-                if self.shots: pg.wait_for_timeout(350); shot(pg, self.out, self.pre + "s-pulling-%d" % st["i"])
+                if pg.locator(".sm-pull").count():
+                    b = pg.locator(".sm-pull").bounding_box(timeout=1200)
+                    pg.mouse.move(b["x"] + b["width"] / 2, b["y"] + b["height"] / 2); pg.mouse.down(); pg.wait_for_timeout(760); pg.mouse.up()
+                    self.pulled.append(st["i"]); self.pull_at = st.get("slotT")
+                    if self.shots: pg.wait_for_timeout(250); shot(pg, self.out, self.pre + "s-pulling-%d" % st["i"])
             except Exception as e:
                 self.pull_err = str(e)[:200]
-        elif self.react and not st.get("mine") and st["part"] in ("loom", "react") and self.reacted < 4 and time.time() - self.last > 1.2 and pg.locator(".sm-react button").count():
-            b = pg.locator(".sm-react button").nth(self.reacted % 3).bounding_box()
-            if b: pg.mouse.click(b["x"] + b["width"] / 2, b["y"] + b["height"] / 2); self.reacted += 1; self.last = time.time()
+        elif self.react and not st.get("mine") and st["part"] in ("rise", "react", "loom", "pull", "beat") and st["i"] not in self.reacted_on:
+            try:
+                if pg.locator(".sm-react button").count():
+                    b = pg.locator(".sm-react button").nth(len(self.reacted_on) % 3).bounding_box(timeout=1000)
+                    pg.mouse.click(b["x"] + b["width"] / 2, b["y"] + b["height"] / 2); self.reacted += 1; self.reacted_on.add(st["i"])
+            except Exception as e:
+                self.react_err = str(e)[:200]
         key = "%s-%s" % (st["part"], st["i"])
         if self.shots and key != self.seen:
             self.seen = key; self.n += 1; shot(pg, self.out, self.pre + "s%03d-%s" % (self.n, key))
@@ -157,7 +164,10 @@ def multi(base, out):
         log["pulls"] = pulls; log["order"] = order; log["you"] = {"host": hp, "guest": gp}
         log["live"] = host.evaluate("window.__reflect.state.view.live.map(e => [e.n, e.pid, e.data && e.data.k, e.data && e.data.i])")
         log["pull_err"] = {"host": getattr(H, "pull_err", None), "guest": getattr(G, "pull_err", None)}
+        log["reacted"] = {"host": sorted(H.reacted_on), "guest": sorted(G.reacted_on), "errs": [getattr(H, "react_err", None), getattr(G, "react_err", None)]}
         log["room_errors"] = {"host": host.evaluate("window.__reflect.errors"), "guest": guest.evaluate("window.__reflect.errors")}
+        PROBE = "(() => { const c = window.__reflect.client, t = c && c.t; return { status: c && c.status, ws: t && t.ws ? t.ws.readyState : null, queued: t && t.queue ? t.queue.length : null, v: c && c.view && c.view.v, skew: c && Math.round(c.clockSkew), connected: c && c.view && c.view.players.map(p => p.name + ':' + p.connected) }; })()"
+        log["clients"] = {"host": host.evaluate(PROBE), "guest": guest.evaluate(PROBE)}
         log["metrics"] = {"host": metrics(host), "guest": metrics(guest)}
         vids = [(host.video.path() if host.video else None, "multi-host-phone.webm"), (guest.video.path() if guest.video else None, "multi-guest-desktop.webm")]
         c1.close(); c2.close(); b1.close(); b2.close()
