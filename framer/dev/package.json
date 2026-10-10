@@ -18,6 +18,7 @@
     "acorn": "^8.14.0",
     "eslint-scope": "^8.2.0",
     "magic-string": "^0.30.17",
-    "framer": "file:./framer_stub"
+    "framer": "file:./framer_stub",
+    "fflate": "0.8.2"
   }
 }
