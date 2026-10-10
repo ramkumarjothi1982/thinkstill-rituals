@@ -45,7 +45,8 @@ canvas runs at about 30 fps here; real devices paint on the GPU. Real-device num
 - [x] Each pilot end to end, solo with Bubble companions, at 390 × 844 and 1280 × 860 (hook → play → seal → reveal → finale)
 - [x] Each pilot with two separate browsers on the room server
 - [x] Artifact live rooms with two tabs over a stand-in for the room capability
-- [x] Framer component: a dark and a bright instance side by side, play in one without touching the other, unmount/remount, static canvas poster, property controls
+- [x] Framer component in a desktop-width window: a dark and a bright phone-sized instance, all three pilots start inside it, play in one without touching the other, unmount/remount, static canvas poster, property controls; the dubbing drag card stays under the pointer inside a transformed wrapper
+- [x] Sizes follow the frame, not the browser window (container units and queries), so a phone-sized component on a desktop page lays out as a phone
 - [x] Six viewport sizes per pilot (360 × 780 to 1440 × 900): no sideways scroll, controls on screen and clear of the top bar, primary targets ≥ 44 px
 - [x] Group Think Glitch sightlines (`tests/occlusion.py`, 181 moments per camera): doorway 0 frames and phone 0 frames with the cat; balcony and DJ booth 181 of 181
 - [x] `tsc --noEmit` clean

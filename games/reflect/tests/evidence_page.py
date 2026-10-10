@@ -141,7 +141,7 @@ details{{margin-top:18px}} summary{{cursor:pointer;color:var(--acc);font-weight:
 </style>
 <div class="wrap">
 <h1>Reflect · three hero pilots</h1>
-<p class="sub">Gate B evidence for Group Think Glitch, Drama Dubbing Booth and Emotional Rollercoaster: phone and desktop screens at four moments, gameplay video, two-browser multiplayer runs with privacy checks, measured timing and layout checks. Everything here comes from automated runs of the build you can play.</p>
+<p class="sub">Gate B evidence for Group Think Glitch, Drama Dubbing Booth and Emotional Rollercoaster: phone and desktop screens at four moments, gameplay video, two-browser multiplayer runs with privacy checks, measured timing and layout checks. Everything here comes from automated runs of the pilot build. The build you can play adds one later fix for Framer (sizes follow the frame, not the browser window), re-checked with the layout, Framer and Dubbing Booth runs.</p>
 <div class="cta"><a href="{html.escape(url)}" target="_blank" rel="noopener">Play the pilots</a></div>
 <nav>{''.join(f'<a href="#{p}">{t}</a>' for p, t, _, _ in PILOTS)}<a href="#layout">Layout checks</a><a href="#builds">Builds</a><a href="#checklist">Test checklist</a></nav>
 {''.join(sec)}
@@ -160,7 +160,7 @@ details{{margin-top:18px}} summary{{cursor:pointer;color:var(--acc);font-weight:
 <li class="ok"><span>✓</span>Each pilot end to end, solo, on phone and desktop (hook → play → seal → reveal → finale)</li>
 <li class="ok"><span>✓</span>Each pilot with two separate browsers on the room server (privacy, same reveal, live events)</li>
 <li class="ok"><span>✓</span>Artifact live rooms (encrypted host-in-browser) with two tabs over a stand-in for the room capability</li>
-<li class="ok"><span>✓</span>Framer component: two instances, independent play, unmount/remount, static canvas poster</li>
+<li class="ok"><span>✓</span>Framer component in a desktop-width window: a dark and a bright phone-sized instance, each pilot starts inside it, independent play, unmount/remount, static canvas poster; the dubbing drag card stays under the pointer inside a transformed wrapper</li>
 <li class="ok"><span>✓</span>Six viewport sizes for all three pilots</li>
 {sight_li}
 <li class="ok"><span>✓</span>Type check (tsc --noEmit) on the whole TypeScript source</li>
