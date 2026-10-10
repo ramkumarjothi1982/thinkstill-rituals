@@ -548,5 +548,417 @@
   "why": "For perfectionism: test whether 80% delights people just as much as 100% does.",
   "n": 22,
   "file": "good-enough-bakery.548931449c.js"
+ },
+ {
+  "id": "zoom-out",
+  "mode": "reframe",
+  "name": "Zoom Out",
+  "verb": "zoom",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Beliefs / Evidence",
+   "Emotion",
+   "Memory / Replay / Rumination"
+  ],
+  "cast": [
+   "sync",
+   "glitch"
+  ],
+  "poster": {
+   "char": "sync",
+   "mood": "wow"
+  },
+  "tagline": "Pinch out from one bad moment until your week becomes a picture.",
+  "why": "For when one bad moment feels like the whole story: zoom out and see what else is in frame.",
+  "n": 23,
+  "file": "zoom-out.98a8e9de7e.js"
+ },
+ {
+  "id": "both-and-dj",
+  "mode": "reframe",
+  "name": "Both/And DJ",
+  "verb": "crossfade",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Emotion",
+   "Identity / Self",
+   "Decision Pressure"
+  ],
+  "cast": [
+   "sync",
+   "rush",
+   "loopie"
+  ],
+  "poster": {
+   "char": "sync",
+   "mood": "cool"
+  },
+  "tagline": "Mix the thought on repeat with what’s also true. Play both decks.",
+  "why": "For either/or thinking: hold two true things at once and hear the whole song.",
+  "n": 24,
+  "file": "both-and-dj.74f3daf677.js"
+ },
+ {
+  "id": "not-just-me",
+  "mode": "reframe",
+  "name": "Not Just Me",
+  "verb": "pull",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Identity / Self",
+   "Social / Team / Perspective",
+   "Emotion"
+  ],
+  "cast": [
+   "patch",
+   "drop",
+   "sync"
+  ],
+  "poster": {
+   "char": "patch",
+   "mood": "hug"
+  },
+  "tagline": "Pull the big lever. Watch a whole stadium light up for your feeling.",
+  "why": "For “something’s wrong with me”: light up everyone who has felt it too.",
+  "n": 25,
+  "file": "not-just-me.cd68d40fa4.js"
+ },
+ {
+  "id": "load-test",
+  "mode": "reframe",
+  "name": "Load Test",
+  "verb": "build",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Beliefs / Evidence",
+   "Uncertainty / Future Worry / Reassurance",
+   "Overthinking / Thought Fusion"
+  ],
+  "cast": [
+   "rush",
+   "glitch"
+  ],
+  "poster": {
+   "char": "rush",
+   "mood": "determined"
+  },
+  "tagline": "Build a bridge to your conclusion, then send the test truck.",
+  "why": "For a conclusion that feels solid: load-test which planks are facts and which are cardboard.",
+  "n": 26,
+  "file": "load-test.1e80297e91.js"
+ },
+ {
+  "id": "coach-swap",
+  "mode": "reframe",
+  "name": "Coach Swap",
+  "verb": "drag",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Inner Speech / Mental Text",
+   "Performance / Confidence",
+   "Identity / Self"
+  ],
+  "cast": [
+   "rush",
+   "patch",
+   "still"
+  ],
+  "poster": {
+   "char": "rush",
+   "mood": "determined"
+  },
+  "tagline": "Rewrite the drill sergeant in your head and watch your athlete fly.",
+  "why": "For a harsh inner voice: kind, specific coaching helps you get up and try again.",
+  "n": 27,
+  "file": "coach-swap.4f0d6bc863.js"
+ },
+ {
+  "id": "chisel",
+  "mode": "reframe",
+  "name": "Chisel",
+  "verb": "chisel",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Inner Speech / Mental Text",
+   "Beliefs / Evidence",
+   "Overthinking / Thought Fusion"
+  ],
+  "cast": [
+   "still",
+   "glitch"
+  ],
+  "poster": {
+   "char": "still",
+   "mood": "determined"
+  },
+  "tagline": "Chip the “always” and “never” out of your thought, then polish it.",
+  "why": "For always/never/everyone thoughts: knock off the absolutes, keep what’s true.",
+  "n": 28,
+  "file": "chisel.a7dc11c3bb.js"
+ },
+ {
+  "id": "bubble-council",
+  "mode": "reframe",
+  "name": "Bubble Council",
+  "verb": "spin",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Social / Team / Perspective",
+   "Decision Pressure",
+   "Beliefs / Evidence"
+  ],
+  "cast": [
+   "glitch",
+   "patch",
+   "drop",
+   "rush",
+   "still",
+   "sync",
+   "loopie"
+  ],
+  "poster": {
+   "char": "glitch",
+   "mood": "think"
+  },
+  "tagline": "Spin the lazy Susan. Seven bubbles, seven takes on the same facts.",
+  "why": "For one scary story on repeat: hear six other fair views, and give the fear one seat.",
+  "n": 29,
+  "file": "bubble-council.bc3069694c.js"
+ },
+ {
+  "id": "what-i-knew-then",
+  "mode": "reframe",
+  "name": "What I Knew Then",
+  "verb": "pull",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Memory / Replay / Rumination",
+   "Identity / Self",
+   "Decision Pressure"
+  ],
+  "cast": [
+   "still",
+   "drop"
+  ],
+  "poster": {
+   "char": "still",
+   "mood": "think"
+  },
+  "tagline": "Pull the memory back to the moment. Fog what you only learned later.",
+  "why": "For judging past-you with today’s hindsight: see the little you could actually see then.",
+  "n": 30,
+  "file": "what-i-knew-then.adad756e46.js"
+ },
+ {
+  "id": "behind-the-post",
+  "mode": "reframe",
+  "name": "Behind the Post",
+  "verb": "flip",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Identity / Self",
+   "Social / Team / Perspective",
+   "Performance / Confidence"
+  ],
+  "cast": [
+   "patch",
+   "sync",
+   "drop"
+  ],
+  "poster": {
+   "char": "patch",
+   "mood": "wink"
+  },
+  "tagline": "Flip the perfect posts to find the outtakes. Then flip your day.",
+  "why": "For comparing your behind-the-scenes with everyone else’s highlight reel.",
+  "n": 31,
+  "file": "behind-the-post.5927e42542.js"
+ },
+ {
+  "id": "headline-desk",
+  "mode": "reframe",
+  "name": "Headline Desk",
+  "verb": "typeset",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Uncertainty / Future Worry / Reassurance",
+   "Beliefs / Evidence",
+   "Communication / Boundaries"
+  ],
+  "cast": [
+   "glitch",
+   "rush"
+  ],
+  "poster": {
+   "char": "glitch",
+   "mood": "coffee"
+  },
+  "tagline": "Tonight’s front page is screaming. Fact-check it and print it calm.",
+  "why": "For catastrophe-shaped worries: check the claims, swap the loud words, print it calm.",
+  "n": 32,
+  "file": "headline-desk.701c5f0d52.js"
+ },
+ {
+  "id": "dont-open-it",
+  "mode": "reframe",
+  "name": "Don’t Open It",
+  "verb": "resist",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Uncertainty / Future Worry / Reassurance",
+   "Urges / Habit Loops",
+   "Overthinking / Thought Fusion"
+  ],
+  "cast": [
+   "rush",
+   "still",
+   "loopie"
+  ],
+  "poster": {
+   "char": "rush",
+   "mood": "worried"
+  },
+  "tagline": "A box holds the answer. Don’t open it. Water a plant instead.",
+  "why": "For checking and reassurance loops: let the question sit and watch the urge rise and fall.",
+  "n": 33,
+  "file": "dont-open-it.6d371c0705.js"
+ },
+ {
+  "id": "circle-of-control",
+  "mode": "reframe",
+  "name": "Circle of Control",
+  "verb": "sort",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Uncertainty / Future Worry / Reassurance",
+   "Mental Overload / Working Memory",
+   "Decision Pressure"
+  ],
+  "cast": [
+   "still",
+   "rush",
+   "patch"
+  ],
+  "poster": {
+   "char": "still",
+   "mood": "calm"
+  },
+  "tagline": "Sort your worry stones: levers to pull, bridges, passing clouds.",
+  "why": "For a head full of worries: find the part that is yours to do and let the rest drift.",
+  "n": 34,
+  "file": "circle-of-control.a521521d12.js"
+ },
+ {
+  "id": "snowball",
+  "mode": "reframe",
+  "name": "Snowball",
+  "verb": "fence",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Overthinking / Thought Fusion",
+   "Uncertainty / Future Worry / Reassurance",
+   "Panic / Body Alarm"
+  ],
+  "cast": [
+   "loopie",
+   "still"
+  ],
+  "poster": {
+   "char": "loopie",
+   "mood": "worried"
+  },
+  "tagline": "A worry rolls downhill and grows. Fence it with questions.",
+  "why": "For an “and then… and then…” spiral: each question knocks a layer off until it’s manageable.",
+  "n": 35,
+  "file": "snowball.a0e1db35ca.js"
+ },
+ {
+  "id": "nature-doc",
+  "mode": "reframe",
+  "name": "Nature Doc",
+  "verb": "pan",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Social / Team / Perspective",
+   "Emotion",
+   "Inner Speech / Mental Text"
+  ],
+  "cast": [
+   "glitch",
+   "drop",
+   "loopie"
+  ],
+  "poster": {
+   "char": "glitch",
+   "mood": "nerd"
+  },
+  "tagline": "Film your day as a calm wildlife documentary. Narrate what you see.",
+  "why": "For a harsh inner commentary: describe it like a nature doc and the verdict steps back.",
+  "n": 36,
+  "file": "nature-doc.44b1a8c31e.js"
+ },
+ {
+  "id": "thought-lab",
+  "mode": "reframe",
+  "name": "Thought Lab",
+  "verb": "pour",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Beliefs / Evidence",
+   "Performance / Confidence",
+   "Social / Team / Perspective"
+  ],
+  "cast": [
+   "glitch",
+   "sync"
+  ],
+  "poster": {
+   "char": "glitch",
+   "mood": "nerd"
+  },
+  "tagline": "Pour a scary thought into a tiny, safe experiment. Then seal it.",
+  "why": "For a belief you could test: plan one small, safe experiment and see what really happens.",
+  "n": 37,
+  "file": "thought-lab.5ab2d68480.js"
+ },
+ {
+  "id": "shaky-tower",
+  "mode": "reframe",
+  "name": "Shaky Tower",
+  "verb": "slide",
+  "family": "REFRAME",
+  "minutes": 2,
+  "parents": [
+   "Beliefs / Evidence",
+   "Identity / Self",
+   "Inner Speech / Mental Text"
+  ],
+  "cast": [
+   "glitch",
+   "loopie"
+  ],
+  "poster": {
+   "char": "glitch",
+   "mood": "scan"
+  },
+  "tagline": "Slide the assumptions out of a shaky tower. See what still stands.",
+  "why": "For a harsh verdict on yourself: test which blocks are facts and which are guesses.",
+  "n": 38,
+  "file": "shaky-tower.80f2d1bdc4.js"
  }
 ]

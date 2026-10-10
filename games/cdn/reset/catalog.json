@@ -534,5 +534,409 @@
   "why": "For a wound-up head: a burst of satisfying pops that slows down into calm breathing.",
   "n": 22,
   "file": "pop-therapy.4519fb2d79.js"
+ },
+ {
+  "id": "silly-voice",
+  "mode": "reset",
+  "name": "Silly Voice",
+  "verb": "twist",
+  "family": "INTERRUPT",
+  "minutes": 2,
+  "parents": [
+   "Inner Speech / Mental Text",
+   "Overthinking / Thought Fusion",
+   "Performance / Confidence"
+  ],
+  "cast": [
+   "loopie",
+   "glitch"
+  ],
+  "poster": {
+   "char": "loopie",
+   "mood": "laugh"
+  },
+  "tagline": "Load the critic’s tape, twist the knobs, play it back ridiculous.",
+  "why": "For a harsh inner voice: same words in a silly voice, and they lose their grip.",
+  "n": 23,
+  "file": "silly-voice.7281bbec06.js"
+ },
+ {
+  "id": "moth-jar",
+  "mode": "reset",
+  "name": "Moth Jar",
+  "verb": "sweep",
+  "family": "ORGANISE",
+  "minutes": 2,
+  "parents": [
+   "Overthinking / Thought Fusion",
+   "Uncertainty / Future Worry / Reassurance",
+   "Sleep / Winding Down"
+  ],
+  "cast": [
+   "still",
+   "loopie"
+  ],
+  "poster": {
+   "char": "still",
+   "mood": "calm"
+  },
+  "tagline": "Catch the thought-moths circling your lamp and name each one.",
+  "why": "For thoughts that keep circling: catch each one gently and name what kind it is.",
+  "n": 24,
+  "file": "moth-jar.da20697658.js"
+ },
+ {
+  "id": "clear-the-desk",
+  "mode": "reset",
+  "name": "Clear the Desk",
+  "verb": "flick",
+  "family": "ORGANISE",
+  "minutes": 2,
+  "parents": [
+   "Mental Overload / Working Memory",
+   "Getting Started",
+   "Decision Pressure"
+  ],
+  "cast": [
+   "patch",
+   "rush"
+  ],
+  "poster": {
+   "char": "patch",
+   "mood": "think"
+  },
+  "tagline": "Flick every sticky note into NOW, LATER or NOT MINE. Pin one up.",
+  "why": "For too many tabs open: sort the jumble into trays and the next step gets obvious.",
+  "n": 25,
+  "file": "clear-the-desk.d1ab8da32d.js"
+ },
+ {
+  "id": "snow-globe",
+  "mode": "reset",
+  "name": "Snow Globe",
+  "verb": "shake",
+  "family": "GROUND",
+  "minutes": 2,
+  "parents": [
+   "Attention / Grounding / Mental Quiet",
+   "Overthinking / Thought Fusion",
+   "Panic / Body Alarm"
+  ],
+  "cast": [
+   "still",
+   "sync"
+  ],
+  "poster": {
+   "char": "still",
+   "mood": "meditate"
+  },
+  "tagline": "Shake up your thoughts, then hold still and watch them settle.",
+  "why": "For a busy, buzzing mind: stillness and slow breaths let it all settle.",
+  "n": 26,
+  "file": "snow-globe.f5536b3a22.js"
+ },
+ {
+  "id": "kite-line",
+  "mode": "reset",
+  "name": "Kite Line",
+  "verb": "crank",
+  "family": "DISTANCE",
+  "minutes": 2,
+  "parents": [
+   "Uncertainty / Future Worry / Reassurance",
+   "Mental Imagery",
+   "Overthinking / Thought Fusion"
+  ],
+  "cast": [
+   "sync",
+   "drop"
+  ],
+  "poster": {
+   "char": "sync",
+   "mood": "happy"
+  },
+  "tagline": "Write the worry on a kite, let out line, and watch it become a dot.",
+  "why": "For a worry that feels huge up close: distance shrinks it and widens the view.",
+  "n": 27,
+  "file": "kite-line.f2eba780ab.js"
+ },
+ {
+  "id": "mirror-dance",
+  "mode": "reset",
+  "name": "Mirror Dance",
+  "verb": "mirror",
+  "family": "CONNECT",
+  "minutes": 2,
+  "parents": [
+   "Social / Team / Perspective",
+   "Positive State",
+   "Emotion"
+  ],
+  "cast": [
+   "sync",
+   "patch",
+   "loopie"
+  ],
+  "poster": {
+   "char": "sync",
+   "mood": "laugh"
+  },
+  "tagline": "Mirror the cast’s moves on the beat, then lead and they copy you.",
+  "why": "For feeling apart: moving in time with others lifts mood and brings people closer.",
+  "n": 28,
+  "file": "mirror-dance.7d916a6deb.js"
+ },
+ {
+  "id": "tiny-garden",
+  "mode": "reset",
+  "name": "Tiny Garden",
+  "verb": "plant",
+  "family": "AMPLIFY",
+  "minutes": 2,
+  "parents": [
+   "Positive State",
+   "Values / Meaning / Grief",
+   "Emotion"
+  ],
+  "cast": [
+   "drop",
+   "still"
+  ],
+  "poster": {
+   "char": "drop",
+   "mood": "grow"
+  },
+  "tagline": "Plant three good things, then pull the sun across until they bloom.",
+  "why": "For a flat or heavy day: three small good things, grown slowly enough to land.",
+  "n": 29,
+  "file": "tiny-garden.fc4eec0a2b.js"
+ },
+ {
+  "id": "let-it-float",
+  "mode": "reset",
+  "name": "Let It Float",
+  "verb": "fold",
+  "family": "DISTANCE",
+  "minutes": 2,
+  "parents": [
+   "Memory / Replay / Rumination",
+   "Emotion",
+   "Values / Meaning / Grief"
+  ],
+  "cast": [
+   "drop",
+   "still"
+  ],
+  "poster": {
+   "char": "drop",
+   "mood": "calm"
+  },
+  "tagline": "Fold each thought into a paper boat and let the stream carry it off.",
+  "why": "For thoughts that replay: fold each one into a boat and watch it drift away.",
+  "n": 30,
+  "file": "let-it-float.9bfc95a65b.js"
+ },
+ {
+  "id": "walk-on-song",
+  "mode": "reset",
+  "name": "Walk-On Song",
+  "verb": "hype",
+  "family": "ACT",
+  "minutes": 2,
+  "parents": [
+   "Performance / Confidence",
+   "Getting Started",
+   "Positive State"
+  ],
+  "cast": [
+   "rush",
+   "sync",
+   "patch"
+  ],
+  "poster": {
+   "char": "rush",
+   "mood": "celebrate"
+  },
+  "tagline": "Turn a pounding heart into your walk-on beat. Then walk out.",
+  "why": "For nerves before a big moment: call it excitement, ride the beat, walk out.",
+  "n": 31,
+  "file": "walk-on-song.9e3ecf5e3b.js"
+ },
+ {
+  "id": "breath-maze",
+  "mode": "reset",
+  "name": "Breath Maze",
+  "verb": "trace",
+  "family": "GROUND",
+  "minutes": 2,
+  "parents": [
+   "Panic / Body Alarm",
+   "Attention / Grounding / Mental Quiet",
+   "Sleep / Winding Down"
+  ],
+  "cast": [
+   "still",
+   "rush"
+  ],
+  "poster": {
+   "char": "still",
+   "mood": "calm"
+  },
+  "tagline": "Trace a glowing marble round a maze: in, hold, out, hold.",
+  "why": "For a racing body or a busy head: four equal counts of box breathing steady both.",
+  "n": 32,
+  "file": "breath-maze.5b2501f9cf.js"
+ },
+ {
+  "id": "bouncer",
+  "mode": "reset",
+  "name": "Bouncer",
+  "verb": "answer",
+  "family": "CONNECT",
+  "minutes": 2,
+  "parents": [
+   "Communication / Boundaries",
+   "Social / Team / Perspective",
+   "Values / Meaning / Grief"
+  ],
+  "cast": [
+   "patch",
+   "rush",
+   "glitch"
+  ],
+  "poster": {
+   "char": "patch",
+   "mood": "cool"
+  },
+  "tagline": "Work the velvet rope of your own evening: kind no, firm rope.",
+  "why": "For a hard time saying no: practise kind, firm answers and keep room for what matters.",
+  "n": 33,
+  "file": "bouncer.95be520fd0.js"
+ },
+ {
+  "id": "brain-pinball",
+  "mode": "reset",
+  "name": "Brain Pinball",
+  "verb": "flip",
+  "family": "INTERRUPT",
+  "minutes": 2,
+  "parents": [
+   "Overthinking / Thought Fusion",
+   "Mental Overload / Working Memory",
+   "Memory / Replay / Rumination"
+  ],
+  "cast": [
+   "glitch",
+   "rush"
+  ],
+  "poster": {
+   "char": "glitch",
+   "mood": "wow"
+  },
+  "tagline": "Flip your looping thoughts around a neon brain and park them.",
+  "why": "For a head stuck on replay: two minutes of real pinball breaks the loop.",
+  "n": 34,
+  "file": "brain-pinball.9a2b76c713.js"
+ },
+ {
+  "id": "kintsugi",
+  "mode": "reset",
+  "name": "Kintsugi",
+  "verb": "mend",
+  "family": "CLARIFY",
+  "minutes": 2,
+  "parents": [
+   "Values / Meaning / Grief",
+   "Identity / Self",
+   "Emotion"
+  ],
+  "cast": [
+   "drop",
+   "still"
+  ],
+  "poster": {
+   "char": "drop",
+   "mood": "calm"
+  },
+  "tagline": "Mend a broken bowl with gold. The cracks become the best part.",
+  "why": "For something that hurts or broke: care for the hard parts instead of hiding them.",
+  "n": 35,
+  "file": "kintsugi.1c1eea3050.js"
+ },
+ {
+  "id": "lily-pads",
+  "mode": "reset",
+  "name": "Lily Pads",
+  "verb": "hop",
+  "family": "ACT",
+  "minutes": 2,
+  "parents": [
+   "Getting Started",
+   "Uncertainty / Future Worry / Reassurance",
+   "Performance / Confidence"
+  ],
+  "cast": [
+   "loopie",
+   "rush"
+  ],
+  "poster": {
+   "char": "loopie",
+   "mood": "determined"
+  },
+  "tagline": "Hop across a misty pond. The next pad only appears once you jump.",
+  "why": "For when you can’t see the whole path: you only ever need the next step.",
+  "n": 36,
+  "file": "lily-pads.6884eb20dc.js"
+ },
+ {
+  "id": "blanket-fort",
+  "mode": "reset",
+  "name": "Blanket Fort",
+  "verb": "drag",
+  "family": "QUIET",
+  "minutes": 2,
+  "parents": [
+   "Emotion",
+   "Sleep / Winding Down",
+   "Social / Team / Perspective"
+  ],
+  "cast": [
+   "patch",
+   "drop",
+   "still"
+  ],
+  "poster": {
+   "char": "patch",
+   "mood": "cosy"
+  },
+  "tagline": "Build a blanket fort on a rainy night, one soothing sense at a time.",
+  "why": "For a heavy or lonely moment: soothe each of your five senses on purpose, with friends.",
+  "n": 37,
+  "file": "blanket-fort.7b95726897.js"
+ },
+ {
+  "id": "doodle-monster",
+  "mode": "reset",
+  "name": "Doodle Monster",
+  "verb": "draw",
+  "family": "PLAY",
+  "minutes": 2,
+  "parents": [
+   "Creativity / Mind Play",
+   "Emotion",
+   "Overthinking / Thought Fusion"
+  ],
+  "cast": [
+   "loopie",
+   "sync"
+  ],
+  "poster": {
+   "char": "loopie",
+   "mood": "silly"
+  },
+  "tagline": "Draw how it feels. It comes alive, wobbles, and gets a tiny hat.",
+  "why": "For a big feeling: give it a shape and a silly life, and it gets smaller.",
+  "n": 38,
+  "file": "doodle-monster.397adf639c.js"
  }
 ]
