@@ -11,6 +11,8 @@ import { h, clear, Surface, prefersReducedMotion } from '../ui/dom';
 import { Metrics, Prefs, Scene, SceneCtx, SceneFactory, RoomLike } from './types';
 import { RF_CSS, RF_FONTS } from './style';
 import { createGtgScene } from '../rituals/group-think-glitch/scene';
+import { createDdbScene } from '../rituals/drama-dubbing-booth/scene';
+import { renderFilm } from '../rituals/drama-dubbing-booth/film';
 import { renderWorld, lens, stateAt, sweepCam } from '../rituals/group-think-glitch/world';
 import { lookAt } from '../gfx/projector';
 
@@ -31,10 +33,10 @@ export interface ReflectOptions {
   onComplete?: (info: { ritual: RitualId; players: number }) => void;
 }
 
-interface RitualCard { id: RitualId; title: string; pitch: string; genre: string; players: string; factory?: SceneFactory; preview?: (sf: Surface, t: number, faces: FaceBank) => void; }
+interface RitualCard { id: RitualId; title: string; pitch: string; genre: string; players: string; factory?: SceneFactory; preview?: (sf: Surface, t: number, faces: FaceBank) => void; companions?: Slug[]; }
 const RITUALS: RitualCard[] = [
-  { id: 'group-think-glitch', title: 'Group Think Glitch', pitch: 'Four cameras. One cake. Who saw what?', genre: 'Mystery', players: '2–4 players', factory: createGtgScene, preview: gtgPreview },
-  { id: 'drama-dubbing-booth', title: 'Drama Dubbing Booth', pitch: 'One silent scene. Your voice decides what it means.', genre: 'Comedy', players: '2–4 players', preview: ddbPreview },
+  { id: 'group-think-glitch', title: 'Group Think Glitch', pitch: 'Four cameras. One cake. Who saw what?', genre: 'Mystery', players: '2–4 players', factory: createGtgScene, preview: gtgPreview, companions: ['glitch', 'loopie', 'sync', 'patch'] },
+  { id: 'drama-dubbing-booth', title: 'Drama Dubbing Booth', pitch: 'One silent scene. Your voice decides what it means.', genre: 'Comedy', players: '2–4 players', factory: createDdbScene, preview: ddbPreview, companions: ['loopie', 'glitch', 'rush', 'sync'] },
   { id: 'emotional-rollercoaster', title: 'Emotional Rollercoaster', pitch: 'Sculpt your ride, then ride everyone’s.', genre: 'Spectacle', players: '2–4 players', preview: erPreview }
 ];
 
@@ -197,7 +199,8 @@ export class ReflectConsole {
     const go = () => {
       const v = c.view; if (!v || !c.isHost) { setTimeout(go, 16); return; }
       const want = Math.max(0, 3 - v.players.filter(p => !p.spectator).length);
-      const picks = (['glitch', 'loopie', 'sync', 'patch'] as Slug[]).filter(s => s !== this.me.avatar).slice(0, want);
+      const card = RITUALS.find(r => r.id === ritual);
+      const picks = ((card && card.companions) || (['glitch', 'loopie', 'sync', 'patch'] as Slug[])).filter(s => s !== this.me.avatar).slice(0, want);
       picks.forEach(a => c.act('add_companion', { avatar: a }));
       setTimeout(() => { c.act('start'); this.soloStarted = true; }, 30);
     };
@@ -341,26 +344,15 @@ export class ReflectConsole {
 }
 
 /* ---------------- helpers ---------------- */
+const PREVIEW_CUE: any[] = [
+  { t: 0.7, who: 'patch', line: 'b0n', tone: 'nervous', face: 'worried', pitch: 0, pace: 0 },
+  { t: 3.5, who: 'patch', line: 'b1s', tone: 'sarcastic', face: 'cool', pitch: 0, pace: 0 },
+  { t: 7.0, who: 'sync', line: 'b2w', tone: 'warm', face: 'love', pitch: 0, pace: 0 },
+  { t: 9.5, who: 'patch', line: 'b3d', tone: 'deadpan', face: 'cool', pitch: 0, pace: 0 }
+];
 function ddbPreview(sf: Surface, now: number, faces: FaceBank) {
-  sf.fit(); const g = sf.g, W = sf.pw, H = sf.ph; if (W < 4) return;
-  const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#2a1810'); bg.addColorStop(1, '#120a08'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
-  // projector beam onto a screen
-  const sx = W * 0.18, sy = H * 0.12, sw = W * 0.64, sh = H * 0.5;
-  g.save(); g.globalCompositeOperation = 'lighter';
-  const beam = g.createLinearGradient(W * 0.5, H, W * 0.5, sy); beam.addColorStop(0, 'rgba(255,220,150,0.25)'); beam.addColorStop(1, 'rgba(255,220,150,0)');
-  g.fillStyle = beam; g.beginPath(); g.moveTo(W * 0.5 - 6, H); g.lineTo(sx, sy + sh); g.lineTo(sx + sw, sy + sh); g.lineTo(W * 0.5 + 6, H); g.fill(); g.restore();
-  const sc = g.createLinearGradient(0, sy, 0, sy + sh); sc.addColorStop(0, '#ffcf8a'); sc.addColorStop(1, '#e8835a');
-  g.fillStyle = sc; g.fillRect(sx, sy, sw, sh);
-  const a = faces.get('patch', 'shy'), b = faces.get('sync', Math.floor(now) % 2 ? 'surprised' : 'laugh');
-  const bob = Math.sin(now * 3) * sh * 0.02;
-  if (a) g.drawImage(a, sx + sw * 0.16, sy + sh * 0.3 + bob, sh * 0.62, sh * 0.62);
-  if (b) g.drawImage(b, sx + sw * 0.56, sy + sh * 0.3 - bob, sh * 0.62, sh * 0.62);
-  for (let i = 0; i < 40; i++) { g.fillStyle = 'rgba(40,20,10,' + (0.05 + 0.1 * Math.random()) + ')'; g.fillRect(sx + Math.random() * sw, sy + Math.random() * sh, 1.5, 1.5); }
-  // waveform
-  g.strokeStyle = '#ffd27a'; g.lineWidth = Math.max(1.5, W * 0.004); g.beginPath();
-  for (let x = 0; x <= W * 0.8; x += 3) { const k = x / (W * 0.8); const y = H * 0.82 + Math.sin(k * 40 + now * 9) * H * 0.05 * Math.sin(k * Math.PI) * (0.6 + 0.4 * Math.sin(now * 2 + k * 6)); if (x) g.lineTo(W * 0.1 + x, y); else g.moveTo(W * 0.1 + x, y); }
-  g.stroke();
-  g.fillStyle = Math.floor(now * 2) % 2 ? '#ff4d5e' : '#7a1c24'; g.beginPath(); g.arc(W * 0.92, H * 0.1, Math.max(3, W * 0.012), 0, Math.PI * 2); g.fill();
+  sf.fit(); const W = sf.pw, H = sf.ph; if (W < 4) return;
+  renderFilm(sf.g, W, H, now % 12, { faces: (s, m) => faces.get(s, m), cues: PREVIEW_CUE });
 }
 function erPreview(sf: Surface, now: number, faces: FaceBank) {
   sf.fit(); const g = sf.g, W = sf.pw, H = sf.ph; if (W < 4) return;

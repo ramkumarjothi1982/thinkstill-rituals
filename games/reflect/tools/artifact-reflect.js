@@ -15,7 +15,7 @@ function moodsFrom(src) {
 }
 
 function page(opts) {
-  return `<title>Reflect</title>
+  return `<title>ThinkStill Reflect</title>
 <style>
   :root { color-scheme: dark; --bg: #0f0d1f; --fg: #f5f1ff; }
   html, body { height: 100%; background: var(--bg); color: var(--fg); margin: 0; overscroll-behavior: none; }
