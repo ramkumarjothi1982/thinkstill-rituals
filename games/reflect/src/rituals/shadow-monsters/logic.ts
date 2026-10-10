@@ -76,7 +76,7 @@ export const smLogic: RitualLogic = {
     if (d.k === 'pull') {
       if (pub.order[i] !== seat.pid || pub.pulls[String(i)] != null) return null;
       const s = timetable(pub).slots[i];
-      if (now < s.start + (SHOW.pullOpen - 0.6) * 1000 || now > s.start + (SHOW.autoPull + 0.3) * 1000) return null;
+      if (now < s.start + (SHOW.pullOpen - 0.6) * 1000 || now > s.start + (SHOW.autoPull + 1.2) * 1000) return null;
       return { k: 'pull', i };
     }
     return null;

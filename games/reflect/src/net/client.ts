@@ -68,6 +68,12 @@ export class RoomClient {
   pid: string | null = null;
   status: Status = 'connecting';
   clockSkew = 0;                     // serverNow - Date.now(), for synchronised starts
+  /* Every message carries the server's clock at send time, but arrives late by the network delay plus however long this
+   * page's main thread was busy. The delay only ever makes a sample too small, so the best estimate is the largest
+   * sample of the last 45 seconds (a sliding window, so a real clock change is followed within a minute). Pings add
+   * round-trip-corrected samples. */
+  private skews: { at: number; s: number }[] = [];
+  private pinger: any = 0;
   private subs = new Set<(v: RoomView) => void>();
   private errs = new Set<(code: string) => void>();
   private statusSubs = new Set<(s: Status) => void>();
@@ -78,7 +84,15 @@ export class RoomClient {
     if (this.t instanceof WsTransport) (this.t as WsTransport).onOpen = () => this.hello(ritual);
     this.t.start((m) => this.onMsg(m), (s) => { this.status = s; this.statusSubs.forEach(f => f(s)); });
     if (!(this.t instanceof WsTransport)) this.hello(ritual, token);
+    if (this.t instanceof WsTransport) this.pinger = setInterval(() => { if (this.status === 'open') this.t.send({ t: 'ping', at: Date.now() }); }, 4000);
     return this;
+  }
+  private sample(s: number) {
+    const now = Date.now();
+    this.skews.push({ at: now, s });
+    if (this.skews.length > 80 || now - this.skews[0].at > 45000) this.skews = this.skews.filter(x => now - x.at < 45000).slice(-80);
+    let best = -Infinity; for (const x of this.skews) if (x.s > best) best = x.s;
+    this.clockSkew = best;
   }
   private hello(ritual?: RitualId, token?: string) {
     const tok = token || (this.storeKey ? safeGet(this.storeKey) || undefined : undefined);
@@ -92,11 +106,18 @@ export class RoomClient {
       if (this.storeKey) safeSet(this.storeKey, m.token);
       this.setView(m.view);
     } else if (m.t === 'state') this.setView(m.view);
-    else if (m.t === 'error') { if (m.actId) this.pending = this.pending.filter(p => p.id !== m.actId); this.errs.forEach(f => f(m.code)); }
+    else if (m.t === 'error') {
+      const act = m.actId ? this.pending.find(p => p.id === m.actId) : null;
+      if (m.actId) this.pending = this.pending.filter(p => p.id !== m.actId);
+      // a reaction or paddle that arrives too late is just ignored by the room; nobody needs a pop-up about it
+      const code = act && act.kind === 'live' ? 'live_' + m.code : m.code;
+      this.errs.forEach(f => f(code));
+    }
+    else if (m.t === 'pong') { const rtt = Date.now() - m.at; if (rtt >= 0 && rtt < 5000) this.sample(m.serverNow + rtt / 2 - Date.now()); }
   }
   private setView(v: RoomView) {
     if (this.view && v.v < this.view.v && v.round === this.view.round) return;   // stale
-    this.clockSkew = v.serverNow - Date.now();
+    if (typeof v.serverNow === 'number') this.sample(v.serverNow - Date.now());
     this.view = v;
     this.pending = this.pending.slice(-8);
     this.subs.forEach(f => f(v));
@@ -114,7 +135,7 @@ export class RoomClient {
   serverNow() { return Date.now() + this.clockSkew; }
   get isHost() { return !!(this.view && this.pid && this.view.hostPid === this.pid); }
   get mePlayer() { return this.view ? this.view.players.find(p => p.pid === this.pid) || null : null; }
-  close() { this.subs.clear(); this.errs.clear(); this.statusSubs.clear(); this.t.stop(); }
+  close() { clearInterval(this.pinger); this.subs.clear(); this.errs.clear(); this.statusSubs.clear(); this.t.stop(); }
 }
 
 /* Rejoin tokens live in sessionStorage: they survive a reload of the same tab (rejoin keeps your seat) but are not

@@ -43,7 +43,7 @@ const DEV_HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8">
   const server = q.get('server') || ((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
   window.__mount = ThinkStillReflect.mount(document.getElementById('app'), {
     roomServer: server, assetBase: q.get('img') || '/img/', room: q.get('reflectRoom') || undefined,
-    autostart: q.get('autostart') || null, theme: q.get('theme') || 'system', sound: q.get('sound') !== '0',
+    autostart: q.get('autostart') || null, ritual: q.get('ritual') || undefined, theme: q.get('theme') || 'system', sound: q.get('sound') !== '0',
     reducedMotion: q.get('rm') || 'system'
   });
 </script></body></html>`;

@@ -5,7 +5,7 @@
 import json, os, sys, time
 from playwright.sync_api import sync_playwright
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from e2e_gtg import PHONE, DESK, EVENT_TIMING, shot, wait_for, metrics
+from e2e_common import PHONE, DESK, EVENT_TIMING, shot, wait_for, metrics
 
 PLAN = [(-0.6, 'drop'), (-0.35, 'tunnel'), (0.75, 'loop'), (-0.5, 'cork'), (0.6, 'smooth')]
 

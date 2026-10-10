@@ -438,7 +438,7 @@ export class ShowDirector {
       hold(btn, 650, {
         start: () => { this.ctx.sfx.unlock(); this.ctx.sfx.tone(200, 0.65, { type: 'triangle', glide: 120, vol: 0.05 }); },
         progress: (kk) => { bar.style.width = (kk * 100) + '%'; },
-        done: () => { this.localPull = { i, at: this.now() }; this.ctx.room.act('live', { k: 'pull', i }); this.setOverlay('watch:' + i); },
+        done: () => { this.localPull = { i, at: this.now() }; this.send({ k: 'pull', i }); this.setOverlay('watch:' + i); },
         cancel: () => { bar.style.width = '0'; }
       });
       this.over.appendChild(h('div', { class: 'sm-cap' }, 'Your monster. When you’re ready…'));
@@ -459,11 +459,18 @@ export class ShowDirector {
       this.over.appendChild(h('div', { class: 'sm-cap' }, what + ' was ' + list + '.', !m.human ? h('small', null, 'Bubble companion') : null));
     }
   }
+  /** The room rate-limits live events per person; space them so a pull right after a reaction is never dropped. */
+  private lastSend = 0;
+  private send(data: any) {
+    const now = performance.now(), wait = Math.max(0, this.lastSend + 260 - now);
+    this.lastSend = now + wait;
+    if (wait) setTimeout(() => this.ctx.room.act('live', data), wait); else this.ctx.room.act('live', data);
+  }
   private reactRow(i: number) {
     const me = this.view!.players.find(p => p.pid === this.view!.you);
     const av = me ? me.avatar : 'loopie';
     const row = h('div', { class: 'sm-react', role: 'group', 'aria-label': 'React' });
-    const mk = (r: string, mood: string, label: string) => h('button', { 'aria-label': label, onclick: (e: Event) => { this.ctx.sfx.unlock(); this.ctx.sfx.gesture(e); this.ctx.metrics.mark(e); const now = performance.now(); if ((this as any)._lr && now - (this as any)._lr < 450) return; (this as any)._lr = now; this.react(this.view!.you!, r, true); this.ctx.room.act('live', { k: 'react', r, i }); } }, h('img', { alt: '', src: this.ctx.faces.url(av as Slug, mood) }));
+    const mk = (r: string, mood: string, label: string) => h('button', { 'aria-label': label, onclick: (e: Event) => { this.ctx.sfx.unlock(); this.ctx.sfx.gesture(e); this.ctx.metrics.mark(e); const now = performance.now(); if ((this as any)._lr && now - (this as any)._lr < 450) return; (this as any)._lr = now; this.react(this.view!.you!, r, true); this.send({ k: 'react', r, i }); } }, h('img', { alt: '', src: this.ctx.faces.url(av as Slug, mood) }));
     row.appendChild(mk('scream', 'surprised', 'Scream'));
     row.appendChild(mk('laugh', 'laugh', 'Laugh'));
     row.appendChild(mk('hug', 'love', 'Hug it'));

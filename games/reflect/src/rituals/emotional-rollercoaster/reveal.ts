@@ -9,10 +9,24 @@ import type { RoomView, Player } from '../../room/protocol';
 import type { SceneCtx } from '../../console/types';
 import { h, clear, Surface, clamp, lerp } from '../../ui/dom';
 import { Projector, DrawList } from '../../gfx/projector';
-import { JUNCTIONS, MODS, Moment, N_SEG, RIDE_LEN, SATURDAY, SWITCH_WINDOW, Seg, divergenceLine, junctionTime } from './content';
+import { JUNCTIONS, MODS, Moment, N_SEG, RIDE_LEN, SATURDAY, SWITCH_WINDOW, Seg, divergenceLine, junctionTime, T_PRE, T_SEG } from './content';
 import { buildTrack, Track } from './track';
-import { renderRide, Rider, RIDER_COLORS, segAt, momentIcon, skyGround, drawTrack, cartSprite, fireworks, cartAt } from './ride';
+import { renderRide, Rider, RIDER_COLORS, segAt, momentIcon, skyGround, drawTrack, cartSprite, fireworks, cartAt, moodOf } from './ride';
 import { renderOverlay, mapFor, segOfX } from './editor';
+import { Babble, Utter } from '../../actor/babble';
+import { PICTS, rrect } from '../../actor/picts';
+import type { Slug } from '../../room/protocol';
+
+/** How each Bubble companion takes each kind of moment (wordless voice + a pictogram over the cart). */
+type Mod = Seg['mod'];
+const REACT: Record<string, Partial<Record<Mod, { u: Utter; pict?: string }>>> = {
+  rush: { drop: { u: 'scream', pict: 'bang' }, loop: { u: 'scream', pict: 'sweat' }, tunnel: { u: 'gasp', pict: 'bang' }, cork: { u: 'scream', pict: 'sweat' }, smooth: { u: 'mutter', pict: 'clock' } },
+  still: { drop: { u: 'hmm', pict: 'tea' }, loop: { u: 'hmm', pict: 'tea' }, tunnel: { u: 'snore', pict: 'zzz' }, cork: { u: 'hmm', pict: 'tea' }, smooth: { u: 'hmm', pict: 'tea' } },
+  drop: { drop: { u: 'sob', pict: 'sweat' }, loop: { u: 'wow', pict: 'heart' }, tunnel: { u: 'sob' }, cork: { u: 'aww', pict: 'heart' }, smooth: { u: 'aww', pict: 'heart' } },
+  loopie: { drop: { u: 'laugh' }, loop: { u: 'laugh', pict: 'again' }, tunnel: { u: 'giggle', pict: 'again' }, cork: { u: 'giggle', pict: 'again' }, smooth: { u: 'hmm', pict: 'again' } },
+  glitch: { drop: { u: 'uhoh', pict: 'bang' }, loop: { u: 'wow', pict: 'stars' }, tunnel: { u: 'huh', pict: 'q' }, cork: { u: 'uhoh', pict: 'stars' }, smooth: { u: 'talk', pict: 'dots' } },
+  patch: { drop: { u: 'uhoh', pict: 'plus' }, loop: { u: 'wow', pict: 'heart' }, tunnel: { u: 'hey', pict: 'bulb' }, cork: { u: 'uhoh', pict: 'tape' }, smooth: { u: 'yay', pict: 'heart' } }
+};
 
 export class RideDirector {
   private sf = new Surface();
@@ -33,7 +47,10 @@ export class RideDirector {
   private P = new Projector();
   private L = new DrawList();
   private loopTrack: Track | null = null;
+  private babble: Babble;
+  private says: Record<number, { pict: string; until: number; t0: number }> = {};
   constructor(private ctx: SceneCtx, parent: HTMLElement) {
+    this.babble = new Babble(ctx.sfx);
     this.faces = (s, m) => ctx.faces.get(s, m);
     this.sf.maxDpr = 1.5;
     this.over = h('div', { class: 'er-over' });
@@ -97,8 +114,10 @@ export class RideDirector {
   /* ---------------- the ride ---------------- */
   private drawRide(g: CanvasRenderingContext2D, W: number, H: number, e: number) {
     const t = Math.min(e + 1.2, RIDE_LEN);
-    const info = renderRide(g, W, H, { riders: this.riders, me: this.meIdx, t, assign: this.assign, faces: this.faces, moments: this.moments });
+    const info = renderRide(g, W, H, { riders: this.riders, me: this.meIdx, t, assign: this.assign, faces: this.faces, moments: this.moments, onRider: (k, x, y, sz, gg) => this.speech(k, x, y, sz, gg) });
     const sfx = this.ctx.sfx;
+    this.companions(t);
+    this.onRideCam(g, W, H, t);
     if (t < 3.6) { const k = Math.floor(t * 5); this.doOnce('ck' + k, () => sfx.tick(0.5)); }
     if (info.seg !== this.lastSeg) {
       this.lastSeg = info.seg;
@@ -127,6 +146,63 @@ export class RideDirector {
       this.ctx.sfx.tone(660, 0.12, { vol: 0.08 });
     } else if (!want && this.overlay.startsWith('switch')) { this.overlay = ''; clear(this.over); }
     if (e > RIDE_LEN) { g.fillStyle = `rgba(7,6,26,${clamp((e - RIDE_LEN) / 1.2, 0, 1)})`; g.fillRect(0, 0, W, H); }
+  }
+
+  /** The Bubble companions ride like themselves: a voice and a pictogram as each moment hits them. */
+  private companions(t: number) {
+    const me = this.riders[this.meIdx];
+    if (t > 1.2) this.doOnce('lift', () => this.riders.forEach((r, k) => { if (r.human) return; const x = r.avatar === 'rush' ? { u: 'uhoh' as Utter, p: 'sweat' } : r.avatar === 'still' ? { u: 'hmm' as Utter, p: 'tea' } : r.avatar === 'loopie' ? { u: 'giggle' as Utter, p: 'again' } : null; if (x) setTimeout(() => this.voice(k, x.u, x.p), k * 350); }));
+    const seg = segAt(t); if (seg < 0 || seg >= N_SEG) return;
+    const into = t - (T_PRE + seg * T_SEG);
+    if (into < 1.0) return;
+    this.doOnce('react' + seg, () => this.riders.forEach((r, k) => {
+      if (r.human) return;
+      const owner = this.riders.find(x => x.pid === this.assign(r.pid, seg)) || r;
+      const mod = owner.track.segs[seg] ? owner.track.segs[seg].mod : 'smooth';
+      let x = (REACT[r.avatar] || {})[mod];
+      if (r.avatar === 'sync' && me) { const mm = (this.riders.find(z => z.pid === this.assign(me.pid, seg)) || me).track.segs[seg].mod; x = { u: mm === 'drop' || mm === 'cork' ? 'gasp' : mm === 'tunnel' ? 'hmm' : 'yay', pict: 'again' }; }
+      if (x) setTimeout(() => this.voice(k, x!.u, x!.pict), 120 + k * 260);
+    }));
+  }
+  /** The on-ride camera: everyone else's face, live, in a strip along the top — the companions in full character. */
+  private onRideCam(g: CanvasRenderingContext2D, W: number, H: number, t: number) {
+    const others = this.riders.map((r, k) => ({ r, k })).filter(x => x.k !== this.meIdx);
+    if (!others.length) return;
+    const port = W / H < 0.8;
+    const rad = Math.min(W * (port ? 0.075 : 0.032), H * 0.042), gap = rad * (port ? 3.0 : 3.4);
+    const y = H * (port ? 0.075 : 0.085);
+    g.save();
+    g.fillStyle = 'rgba(14,10,36,.55)'; rrect(g, W / 2 - (others.length * gap) / 2 - rad * 0.4, y - rad * 1.35, others.length * gap + rad * 0.8, rad * 3.25, rad * 0.6); g.fill();
+    g.fillStyle = '#ff5d5d'; g.beginPath(); g.arc(W / 2 - (others.length * gap) / 2 + rad * 0.15, y - rad * 1.0, rad * 0.12, 0, Math.PI * 2); g.globalAlpha = 0.5 + 0.5 * Math.sin(t * 6); g.fill(); g.globalAlpha = 1;
+    others.forEach(({ r, k }, j) => {
+      const x = W / 2 + (j - (others.length - 1) / 2) * gap;
+      g.save(); g.beginPath(); g.arc(x, y, rad, 0, Math.PI * 2); g.fillStyle = r.color; g.fill(); g.clip();
+      const face = this.faces(r.avatar, moodOf(this.riders, k, t, this.assign));
+      if (face) g.drawImage(face, x - rad * 1.1, y - rad * 1.05, rad * 2.2, rad * 2.2);
+      g.restore();
+      g.strokeStyle = r.color; g.lineWidth = Math.max(2, rad * 0.12); g.beginPath(); g.arc(x, y, rad, 0, Math.PI * 2); g.stroke();
+      g.fillStyle = '#fff4ea'; g.textAlign = 'center'; g.textBaseline = 'top'; g.font = `600 ${Math.max(10, rad * 0.42)}px Fredoka, system-ui, sans-serif`;
+      g.fillText(r.human ? r.name : r.name + ' · Bubble', x, y + rad * 1.12, gap * 0.95);
+      this.speech(k, x + rad * 0.2, y + rad * 0.55, rad * 2.1, g);
+    });
+    g.restore();
+  }
+  private voice(k: number, u: Utter, pict?: string) {
+    const r = this.riders[k]; if (!r) return;
+    this.babble.say(r.avatar as Slug, u, { vol: k === this.meIdx ? 0.8 : 0.55 });
+    if (pict) this.says[k] = { pict, until: performance.now() + 1700, t0: performance.now() };
+  }
+  private speech(k: number, x: number, y: number, sz: number, g: CanvasRenderingContext2D) {
+    const s = this.says[k]; if (!s) return;
+    const now = performance.now(); if (now > s.until) { delete this.says[k]; return; }
+    const kk = Math.min(1, (now - s.t0) / 140), b = Math.max(18, sz * 0.42) * (0.6 + 0.4 * kk);
+    const bx = x + sz * 0.42, by = y - sz * 0.62;
+    g.save(); g.globalAlpha = Math.min(1, (s.until - now) / 250);
+    g.fillStyle = '#fffaf2'; g.strokeStyle = 'rgba(40,30,70,.35)'; g.lineWidth = Math.max(1, b * 0.04);
+    rrect(g, bx - b * 0.6, by - b * 0.5, b * 1.2, b, b * 0.32); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(bx - b * 0.3, by + b * 0.45); g.lineTo(bx - b * 0.55, by + b * 0.8); g.lineTo(bx - b * 0.05, by + b * 0.47); g.fill();
+    g.translate(bx, by); (PICTS[s.pict] || PICTS.dots)(g, b * 0.78);
+    g.restore();
   }
 
   /* ---------------- the station ---------------- */
@@ -204,6 +280,7 @@ export class RideDirector {
     });
     fireworks(g, W, H, k);
     if (k > 0.3) this.doOnce('f' + Math.floor(k * 2), () => this.ctx.sfx.pop(700 + Math.random() * 600));
+    if (k > 1.1) this.doOnce('fin:cheer', () => this.riders.forEach((r, i) => { if (!r.human) setTimeout(() => this.babble.say(r.avatar as Slug, r.avatar === 'still' ? 'hmm' : r.avatar === 'drop' ? 'sob' : 'cheer', { vol: 0.5 }), i * 220); }));
     g.fillStyle = '#ffd27a'; g.textAlign = 'center'; g.textBaseline = 'top'; g.font = `${Math.max(16, W * 0.04)}px Bungee, 'Baloo 2', sans-serif`;
     g.globalAlpha = clamp(k / 0.8, 0, 1) * clamp((8.5 - k) / 0.6, 0, 1);
     g.fillText(n + ' tracks. One loop.', W / 2, H * 0.08); g.globalAlpha = 1;
@@ -232,7 +309,7 @@ export class RideDirector {
     }
     a.appendChild(h('button', { class: 'er-btn ghost', style: { padding: '0 18px' }, onclick: () => this.savePhoto() }, 'Save photo'));
     if (ctx.room.isHost) a.appendChild(h('button', { class: 'er-btn', style: { padding: '0 18px' }, onclick: () => ctx.next('replay') }, 'Ride again'));
-    a.appendChild(h('button', { class: 'er-btn ghost', style: { padding: '0 18px' }, onclick: () => ctx.next('hub') }, 'Rituals'));
+    a.appendChild(h('button', { class: 'er-btn ghost', style: { padding: '0 18px' }, onclick: () => ctx.next('hub') }, 'Try another ritual'));
     this.drawPhoto();
   }
   private drawPhoto() {

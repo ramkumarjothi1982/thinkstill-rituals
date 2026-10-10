@@ -3,7 +3,7 @@
  * The person who opens an invite hosts the room: their browser runs the same RoomHub the Durable Object runs. Guests
  * talk to the host on topic `rf.c`; the host answers each guest on `rf.s`. Everyone in an artifact room hears every
  * message, so every message is end-to-end encrypted between that guest and the host (ECDH P-256 → AES-GCM): other
- * guests cannot read anyone's sealed verdict or private view. The host device holds the room (like a game console
+ * guests cannot read anyone's sealed verdict or private view. The host device holds the room (like a ritual console
  * on the coffee table); for strict server-side privacy use the Reflect room server instead.
  * Messages over the 4 KiB event limit are split into chunks; the host re-sends each guest's view every few seconds so
  * a dropped message heals itself. If the host closes the page, the room ends (nothing persists in artifact rooms). */

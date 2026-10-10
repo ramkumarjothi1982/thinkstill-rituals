@@ -91,5 +91,31 @@ export const PICTS: Record<string, Pict> = {
     g.fillStyle = '#ff8f00'; g.beginPath(); g.moveTo(s * 0.22, -s * 0.14); g.quadraticCurveTo(s * 0.38, -s * 0.15, s * 0.36, -s * 0.07); g.lineTo(s * 0.22, -s * 0.08); g.fill();
     g.fillStyle = '#263238'; g.beginPath(); g.arc(s * 0.14, -s * 0.18, s * 0.028, 0, Math.PI * 2); g.fill();
   },
+  mask: (g, s) => {
+    g.fillStyle = '#3a2a6a'; g.beginPath(); g.moveTo(-s * 0.4, -s * 0.06); g.quadraticCurveTo(-s * 0.36, -s * 0.24, -s * 0.12, -s * 0.2); g.quadraticCurveTo(0, -s * 0.16, s * 0.12, -s * 0.2); g.quadraticCurveTo(s * 0.36, -s * 0.24, s * 0.4, -s * 0.06); g.quadraticCurveTo(s * 0.36, s * 0.16, s * 0.12, s * 0.12); g.quadraticCurveTo(0, s * 0.04, -s * 0.12, s * 0.12); g.quadraticCurveTo(-s * 0.36, s * 0.16, -s * 0.4, -s * 0.06); g.fill();
+    g.strokeStyle = '#ffd166'; g.lineWidth = s * 0.035; g.lineCap = 'round';
+    for (const d of [-1, 1]) { g.beginPath(); g.arc(d * s * 0.17, -s * 0.02, s * 0.09, 0.2, Math.PI - 0.2); g.stroke(); }
+    g.strokeStyle = '#3a2a6a'; g.lineWidth = s * 0.05; g.beginPath(); g.moveTo(-s * 0.4, -s * 0.06); g.lineTo(-s * 0.48, -s * 0.1); g.moveTo(s * 0.4, -s * 0.06); g.lineTo(s * 0.48, -s * 0.1); g.stroke();
+  },
+  gavel: (g, s) => {
+    g.save(); g.rotate(-0.6);
+    g.fillStyle = '#7a4a26'; rrect(g, -s * 0.05, -s * 0.05, s * 0.1, s * 0.48, s * 0.04); g.fill();
+    g.fillStyle = '#9c5f30'; rrect(g, -s * 0.3, -s * 0.24, s * 0.6, s * 0.22, s * 0.06); g.fill();
+    g.fillStyle = '#d9a441'; g.fillRect(-s * 0.2, -s * 0.24, s * 0.05, s * 0.22); g.fillRect(s * 0.15, -s * 0.24, s * 0.05, s * 0.22);
+    g.restore();
+  },
+  tape: (g, s) => {
+    g.fillStyle = '#e9dcb0'; g.beginPath(); g.arc(0, 0, s * 0.3, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#fffaf2'; g.beginPath(); g.arc(0, 0, s * 0.13, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'rgba(233,220,176,.95)'; g.fillRect(s * 0.18, s * 0.1, s * 0.26, s * 0.12);
+  },
+  pencil: (g, s) => {
+    g.save(); g.rotate(0.7);
+    g.fillStyle = '#ffc93c'; g.fillRect(-s * 0.07, -s * 0.36, s * 0.14, s * 0.52);
+    g.fillStyle = '#ff8fb3'; g.fillRect(-s * 0.07, -s * 0.44, s * 0.14, s * 0.08);
+    g.fillStyle = '#f2d2a9'; g.beginPath(); g.moveTo(-s * 0.07, s * 0.16); g.lineTo(s * 0.07, s * 0.16); g.lineTo(0, s * 0.36); g.closePath(); g.fill();
+    g.fillStyle = '#2b2440'; g.beginPath(); g.moveTo(-s * 0.025, s * 0.29); g.lineTo(s * 0.025, s * 0.29); g.lineTo(0, s * 0.36); g.closePath(); g.fill();
+    g.restore();
+  },
   dots: (g, s) => { g.fillStyle = '#5a4bd6'; for (let i = -1; i <= 1; i++) { g.beginPath(); g.arc(i * s * 0.2, 0, s * 0.07, 0, Math.PI * 2); g.fill(); } }
 };

@@ -13,6 +13,8 @@ import { RF_CSS, RF_FONTS } from './style';
 import { createSmScene } from '../rituals/shadow-monsters/scene';
 import { paintSheet, renderAudience, sheetCanvasFor } from '../rituals/shadow-monsters/world';
 import { COMPANION_MONSTERS, lampZFor } from '../rituals/shadow-monsters/content';
+import { createMaScene } from '../rituals/mess-auction/scene';
+import { maPreview } from '../rituals/mess-auction/preview';
 import { createErScene } from '../rituals/emotional-rollercoaster/scene';
 import { renderRide, RIDER_COLORS } from '../rituals/emotional-rollercoaster/ride';
 import { buildTrack } from '../rituals/emotional-rollercoaster/track';
@@ -38,7 +40,7 @@ export interface ReflectOptions {
 interface RitualCard { id: RitualId; title: string; pitch: string; genre: string; people: string; factory?: SceneFactory; preview?: (sf: Surface, t: number, faces: FaceBank) => void; companions?: Slug[]; soloSeats?: number; }
 const RITUALS: RitualCard[] = [
   { id: 'shadow-monsters', title: 'Shadow Monsters', pitch: 'Everything looks bigger in the dark.', genre: 'Spooky comedy', people: '2–4 people', factory: createSmScene, preview: smPreview, companions: ['loopie', 'rush', 'still', 'drop'], soloSeats: 4 },
-  { id: 'mess-auction', title: 'The Glorious Mess Auction', pitch: 'Draw it blind. Watch it sell.', genre: 'Comedy', people: '2–4 people', companions: ['rush', 'drop', 'still', 'loopie'], soloSeats: 4 },
+  { id: 'mess-auction', title: 'The Glorious Mess Auction', pitch: 'Draw it blind. Watch it sell.', genre: 'Comedy', people: '2–4 people', factory: createMaScene, preview: maPreview, companions: ['rush', 'drop', 'still', 'loopie'], soloSeats: 4 },
   { id: 'emotional-rollercoaster', title: 'Emotional Rollercoaster', pitch: 'Same day. Same ride. Totally different drops.', genre: 'Spectacle', people: '2–4 people', factory: createErScene, preview: erPreview, companions: ['rush', 'still', 'drop', 'loopie'] }
 ];
 
@@ -234,8 +236,10 @@ export class ReflectConsole {
     this.unmountScene();
     this.code = '';
   }
+  readonly errors: string[] = [];   // recent room errors (tests read these)
   private onError(code: string) {
-    const msg: Record<string, string> = { room_full: 'That room is full', not_allowed: 'Only the host can do that', need_players: 'Two players needed — add a Bubble companion', invalid: 'That didn’t go through — try again', already_sealed: 'Already sealed', no_host: 'That room isn’t open right now — ask the host to open their invite', no_live_rooms: 'Live rooms aren’t available in this view', host_left: 'The host closed the room', replaced: 'This seat opened in another window' };
+    this.errors.push(code); if (this.errors.length > 30) this.errors.shift();
+    const msg: Record<string, string> = { room_full: 'That room is full', not_allowed: 'Only the host can do that', need_players: 'Two people needed — add a Bubble companion', invalid: 'That didn’t go through — try again', already_sealed: 'Already sealed', no_host: 'That room isn’t open right now — ask the host to open their invite', no_live_rooms: 'Live rooms aren’t available in this view', host_left: 'The host closed the room', replaced: 'This seat opened in another window' };
     if (code === 'room_full' || code === 'no_host' || code === 'no_live_rooms' || code === 'host_left' || code === 'replaced') { this.leave(true); this.showHub(); }
     if (msg[code]) this.toast(msg[code]);
   }

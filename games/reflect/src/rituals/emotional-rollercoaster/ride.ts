@@ -228,7 +228,11 @@ export function drawTrack(P: Projector, L: DrawList, tr: Track, z: number, color
 }
 
 /* ---------------- the ride ---------------- */
-export interface RideFrame { riders: Rider[]; me: number; t: number; assign: (pid: string, seg: number) => string; faces: Faces; moments: Moment[]; night?: number; }
+export interface RideFrame { riders: Rider[]; me: number; t: number; assign: (pid: string, seg: number) => string; faces: Faces; moments: Moment[]; night?: number;
+  /** called for every cart drawn this frame (screen position of the rider's head and the cart size), for speech bubbles */
+  onRider?: (k: number, x: number, y: number, sz: number, g: CanvasRenderingContext2D) => void;
+  /** override a companion's expression for this frame (personality); return null to use the ride's */
+  moodFor?: (k: number, base: string) => string | null; }
 const P = new Projector();
 const L = new DrawList();
 export function rideCamera(f: RideFrame): Cam {
@@ -293,13 +297,15 @@ export function renderRide(g: CanvasRenderingContext2D, W: number, H: number, f:
     const pos: V3 = [p.x + ux * 0.9, p.y + uy * 0.9 + c.hop, c.z];
     const q = P.project(pos[0], pos[1], pos[2]); if (!q) return;
     const sz = Math.min(q.s * 2.1, P.h * 0.3);
-    const face = f.faces(r.avatar, faceFor(p, f.t, r.avatar));
+    const base = r.human ? faceFor(p, f.t, r.avatar) : personaFace(p, f.t, r.avatar);
+    const face = f.faces(r.avatar, (f.moodFor && f.moodFor(k, base)) || base);
     L.add(q.d - 0.3, (gg) => {
-      gg.save(); gg.translate(q.x, q.y); gg.rotate(-(P.cam.roll || 0) * 0 - (p.ang - P.cam.pitch) * 0 + 0);
+      gg.save(); gg.translate(q.x, q.y);
       if (face) gg.drawImage(face, -sz * 0.36, -sz * 0.78, sz * 0.72, sz * 0.72);
       gg.drawImage(cartSprite(r.color), -sz * 0.5, -sz * 0.42, sz, sz * 0.69);
       gg.restore();
       if (k !== f.me) { gg.fillStyle = 'rgba(255,255,255,0.9)'; gg.font = `600 ${Math.max(9, sz * 0.13)}px Fredoka, system-ui, sans-serif`; gg.textAlign = 'center'; gg.textBaseline = 'bottom'; gg.fillText(r.human ? r.name : r.name + ' · companion', q.x, q.y - sz * 0.8); }
+      if (f.onRider) f.onRider(k, q.x, q.y - sz * 0.42, sz, gg);
     });
   });
   L.flush(g);
@@ -321,6 +327,24 @@ export function renderRide(g: CanvasRenderingContext2D, W: number, H: number, f:
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.45)'); g.fillStyle = vg; g.fillRect(0, 0, W, H);
   const gt = grainTile(); g.globalAlpha = 0.35; const ox = (f.t * 977) % 128; for (let y = -ox; y < H; y += 128) for (let x = -ox; x < W; x += 128) g.drawImage(gt, x, y); g.globalAlpha = 1;
   return { seg, speed: spd, tunnel: me.tunnel, inverted: Math.cos(me.ang) < 0 };
+}
+/** A rider's expression right now (companions ride in character; people's faces follow their own track). */
+export function moodOf(riders: Rider[], k: number, t: number, assign: (pid: string, seg: number) => string): string {
+  const r = riders[k], p = cartAt(riders, k, t, assign).smp;
+  return r.human ? faceFor(p, t, r.avatar) : personaFace(p, t, r.avatar);
+}
+/** The Bubble companions ride like themselves: Still is unbothered by everything and naps in tunnels, Rush panics on
+ * the lift hill, Drop weeps in the dark, Loopie goes silly upside down, Glitch gets dizzy. */
+function personaFace(p: { ang: number; seg: number; tunnel: boolean }, t: number, avatar: string): string {
+  const slope = Math.sin(p.ang), inv = Math.cos(p.ang) < 0;
+  switch (avatar) {
+    case 'still': return p.tunnel ? 'sleepy' : inv ? 'cool' : 'calm';
+    case 'rush': return p.tunnel ? 'surprised' : slope > 0.3 ? 'panic' : slope < -0.45 ? 'speed' : inv ? 'surprised' : 'worried';
+    case 'drop': return p.tunnel ? 'cry' : inv ? 'love' : slope < -0.45 ? 'cry' : 'happy';
+    case 'loopie': return inv ? 'silly' : slope < -0.45 ? 'laugh' : faceFor(p, t, avatar);
+    case 'glitch': return inv || p.tunnel ? 'dizzy' : faceFor(p, t, avatar);
+    default: return faceFor(p, t, avatar);
+  }
 }
 function faceFor(p: { ang: number; seg: number; tunnel: boolean }, t: number, avatar: string): string {
   if (p.tunnel) return 'worried';
