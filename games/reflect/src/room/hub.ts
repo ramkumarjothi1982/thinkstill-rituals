@@ -29,6 +29,8 @@ export class RoomHub {
     if (m.t === 'hello') {
       const r = this.core.join(m.name, m.avatar, m.token);
       if ('error' in r) return c.send({ t: 'error', code: r.error });
+      // the newest connection for a seat wins (a reconnect can arrive before the old socket is noticed as closed)
+      this.conns.forEach(o => { if (o !== c && o.pid === r.pid) { o.pid = undefined; o.send({ t: 'error', code: 'replaced' }); } });
       c.pid = r.pid;
       c.send({ t: 'welcome', pid: r.pid, token: r.token, view: this.core.view(r.pid) });
       this.broadcast(c);

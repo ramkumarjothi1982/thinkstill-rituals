@@ -147,27 +147,34 @@ def solo(base, out, form="phone"):
         print(json.dumps({"errors": errs[:10], "input_n": len(m["input"]), "frames_n": len(m["frames"])}))
 
 
-def multi(base, out):
+def multi(base, out, artifact=False):
     os.makedirs(out, exist_ok=True)
+    page_url = base + ("/artifact.html" if artifact else "/index.html")
     with sync_playwright() as p:
         b1 = p.chromium.launch(args=["--autoplay-policy=no-user-gesture-required"])
-        b2 = p.chromium.launch(args=["--autoplay-policy=no-user-gesture-required"])
-        c1 = b1.new_context(**dict(PHONE, record_video_dir=out, record_video_size=PHONE["viewport"]))
-        c2 = b2.new_context(**dict(DESK, record_video_dir=out, record_video_size=DESK["viewport"]))
-        for c in (c1, c2):
+        b2 = b1 if artifact else p.chromium.launch(args=["--autoplay-policy=no-user-gesture-required"])
+        if artifact:
+            # the artifact stand-in talks over a BroadcastChannel, so both players are tabs of one browser
+            c1 = c2 = b1.new_context(**dict(DESK, record_video_dir=out, record_video_size=DESK["viewport"]))
+        else:
+            c1 = b1.new_context(**dict(PHONE, record_video_dir=out, record_video_size=PHONE["viewport"]))
+            c2 = b2.new_context(**dict(DESK, record_video_dir=out, record_video_size=DESK["viewport"]))
+        for c in {id(c1): c1, id(c2): c2}.values():
             c.add_init_script(EVENT_TIMING)
         host, guest = c1.new_page(), c2.new_page()
+        if artifact:
+            host.set_viewport_size(PHONE["viewport"])
         log = {"errors": [], "checks": {}}
         for pg, who in ((host, "host"), (guest, "guest")):
             pg.on("pageerror", lambda e, who=who: log["errors"].append(who + ": " + str(e)))
-        host.goto(base + "/index.html")
+        host.goto(page_url)
         host.wait_for_timeout(1200)
         host.locator("[data-act=invite]").first.click()
         wait_for(host, "!!window.__reflect && !!window.__reflect.state.code && !!window.__reflect.state.view")
         code = host.evaluate("window.__reflect.state.code")
         log["room"] = code
         shot(host, out, "host-0-lobby")
-        guest.goto(base + "/index.html?reflectRoom=" + code)
+        guest.goto(page_url + ("#r-" + code if artifact else "?reflectRoom=" + code))
         wait_for(guest, "!!window.__reflect && !!window.__reflect.state.view && window.__reflect.state.view.players.length >= 2")
         host.wait_for_timeout(600)
         shot(host, out, "host-1-lobby-with-guest")
@@ -229,7 +236,11 @@ def multi(base, out):
         log["checks"]["rejoin_same_pid"] = guest.evaluate("window.__reflect.state.pid") == gpid
         log["metrics"] = {"host": metrics(host), "guest": metrics(guest)}
         vids = [(host.video.path() if host.video else None, "multi-host-phone.webm"), (guest.video.path() if guest.video else None, "multi-guest-desktop.webm")]
-        c1.close(); c2.close(); b1.close(); b2.close()
+        log["mock_emits"] = host.evaluate("window.__mockEmits || 0") if artifact else None
+        c1.close()
+        if c2 is not c1: c2.close()
+        b1.close()
+        if b2 is not b1: b2.close()
         for src, name in vids:
             if src:
                 os.replace(src, os.path.join(out, name))
@@ -242,4 +253,4 @@ if __name__ == "__main__":
     if mode == "solo":
         solo(base, out, sys.argv[4] if len(sys.argv) > 4 else "phone")
     else:
-        multi(base, out)
+        multi(base, out, artifact=(mode == "artifact"))

@@ -117,8 +117,10 @@ export class RoomClient {
   close() { this.subs.clear(); this.errs.clear(); this.statusSubs.clear(); this.t.stop(); }
 }
 
-function safeGet(k: string) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-function safeSet(k: string, v: string) { try { localStorage.setItem(k, v); } catch (e) { /* storage unavailable */ } }
+/* Rejoin tokens live in sessionStorage: they survive a reload of the same tab (rejoin keeps your seat) but are not
+ * shared with other tabs, so two tabs in one browser are two players (handy for testing on one computer). */
+function safeGet(k: string) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+function safeSet(k: string, v: string) { try { sessionStorage.setItem(k, v); } catch (e) { /* storage unavailable */ } }
 export function newRoomCode(): string {
   const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const b = new Uint8Array(5); crypto.getRandomValues(b);

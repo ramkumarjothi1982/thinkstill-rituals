@@ -4,6 +4,7 @@
 import type { RoomView, RitualId, Slug, Player } from '../room/protocol';
 import { SLUGS } from '../room/protocol';
 import { RoomClient, LocalTransport, WsTransport, Transport, newRoomCode } from '../net/client';
+import { ArtifactHost, HostSelfTransport, ArtifactGuestTransport } from '../net/artifact';
 import { FaceBank, DEFAULT_ASSET_BASE } from '../actor/faces';
 import { Synth } from '../audio/synth';
 import { h, clear, Surface, prefersReducedMotion } from '../ui/dom';
@@ -23,7 +24,8 @@ export interface ReflectOptions {
   ritual?: RitualId;                   // open this ritual's card / start it
   autostart?: 'solo' | null;           // start solo play immediately (tests, deep links)
   inviteUrl?: (code: string) => string;
-  transportFor?: (code: string, ritual: RitualId) => Transport | null;   // e.g. the artifact's live room
+  transportFor?: (code: string, ritual: RitualId, role: 'host' | 'guest') => Transport | null;
+  liveRoom?: Promise<any>;             // claude.ai artifact: the `room` capability (claude.use('room'))
   download?: (filename: string, blob: Blob) => Promise<boolean>;
   onExit?: () => void;
   onComplete?: (info: { ritual: RitualId; players: number }) => void;
@@ -203,17 +205,21 @@ export class ReflectConsole {
   }
   private invite(ritual: RitualId) {
     const code = newRoomCode();
-    const t = this.transport(code, ritual);
+    const t = this.transport(code, ritual, 'host');
     if (!t) { this.toast('Inviting needs the Reflect room server (see the setup notes)'); return; }
     this.connect(code, ritual, t, false);
   }
   private join(code: string) {
-    const t = this.transport(code, 'group-think-glitch');
+    const t = this.transport(code, 'group-think-glitch', 'guest');
     if (!t) { this.toast('Joining needs the Reflect room server'); this.showHub(); return; }
     this.connect(code, 'group-think-glitch', t, false);
   }
-  private transport(code: string, ritual: RitualId): Transport | null {
-    if (this.opts.transportFor) { const t = this.opts.transportFor(code, ritual); if (t) return t; }
+  private transport(code: string, ritual: RitualId, role: 'host' | 'guest'): Transport | null {
+    if (this.opts.transportFor) { const t = this.opts.transportFor(code, ritual, role); if (t) return t; }
+    if (!this.opts.roomServer && this.opts.liveRoom) {
+      if (role === 'host') return new HostSelfTransport(new ArtifactHost(this.opts.liveRoom, code, ritual, (st) => { if (st === 'closed' && this.code === code) { this.toast('Live rooms aren’t available in this view — playing with Bubble companions instead'); this.leave(true); this.playSolo(ritual); } }));
+      return new ArtifactGuestTransport(this.opts.liveRoom, code);
+    }
     if (!this.opts.roomServer) return null;
     const base = this.opts.roomServer.replace(/\/+$/, '').replace(/^http/, 'ws');
     return new WsTransport(`${base}/room/${code}?ritual=${encodeURIComponent(ritual)}`);
@@ -224,8 +230,8 @@ export class ReflectConsole {
     this.code = '';
   }
   private onError(code: string) {
-    const msg: Record<string, string> = { room_full: 'That room is full', not_allowed: 'Only the host can do that', need_players: 'Two players needed — add a Bubble companion', invalid: 'That didn’t go through — try again', already_sealed: 'Already sealed' };
-    if (code === 'room_full') { this.leave(true); this.showHub(); }
+    const msg: Record<string, string> = { room_full: 'That room is full', not_allowed: 'Only the host can do that', need_players: 'Two players needed — add a Bubble companion', invalid: 'That didn’t go through — try again', already_sealed: 'Already sealed', no_host: 'That room isn’t open right now — ask the host to open their invite', no_live_rooms: 'Live rooms aren’t available in this view', host_left: 'The host closed the room', replaced: 'This seat opened in another window' };
+    if (code === 'room_full' || code === 'no_host' || code === 'no_live_rooms' || code === 'host_left' || code === 'replaced') { this.leave(true); this.showHub(); }
     if (msg[code]) this.toast(msg[code]);
   }
   private onView(v: RoomView) {

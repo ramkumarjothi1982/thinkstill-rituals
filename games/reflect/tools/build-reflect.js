@@ -58,6 +58,12 @@ async function main() {
   const kb = (n) => (n / 1024).toFixed(1) + ' KB';
   console.log('reflect.js', kb(Buffer.byteLength(js)), 'sha', crypto.createHash('sha256').update(js).digest('hex').slice(0, 10));
   if (has('--framer')) require('./framer-reflect.js').build(js, DIST, args);
-  if (has('--artifact')) require('./artifact-reflect.js').build(js, DIST, REPO, args);
+  if (has('--artifact')) {
+    require('./artifact-reflect.js').build(js, DIST, REPO, args);
+    // local stand-in for the artifact runtime, so the live-room path can be tested with two pages in one browser
+    const frag = fs.readFileSync(path.join(DIST, 'artifact/index.html'), 'utf8');
+    write('dev/artifact.html', '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>\n<script src="mock-room.js"></script>\n' + frag + '\n</body></html>');
+    fs.copyFileSync(path.join(ROOT, 'tests/mock-room.js'), path.join(DIST, 'dev/mock-room.js'));
+  }
 }
 main().catch(e => { console.error(e); process.exit(1); });
