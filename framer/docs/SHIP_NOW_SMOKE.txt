@@ -1,0 +1,26 @@
+Ship-now smoke on the exact file ThinkStillReleaseArcade_EOS_FULL.txt (commit 94fb50a), headless Chromium, dev/ship_smoke.mjs:
+390x844
+  1 POP: REVEAL 14s
+  2 CRUSH: REVEAL 26s
+  3 CRACK: REVEAL 24s
+  6 ZAP: REVEAL 23s
+  41 UNHOOK: REVEAL 10s
+  47 UNFOLLOW: REVEAL 19s
+  100 HOT POTATO: REVEAL 23s
+  109 CLEANSE: REVEAL 50s
+  110 RAIN OUT: REVEAL 24s
+  111 BIG SIGH: REVEAL 38s
+  page errors: 0 
+1280x860
+  1 POP: REVEAL 14s
+  2 CRUSH: REVEAL 28s
+  3 CRACK: REVEAL 24s
+  6 ZAP: REVEAL 25s
+  41 UNHOOK: REVEAL 10s
+  47 UNFOLLOW: REVEAL 30s
+  100 HOT POTATO: REVEAL 33s
+  109 CLEANSE: REVEAL 27s
+  110 RAIN OUT: REVEAL 43s
+  111 BIG SIGH: REVEAL 49s
+  page errors: 0 
+No audio device and no real phone in this test.
