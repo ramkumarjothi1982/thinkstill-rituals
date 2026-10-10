@@ -65,7 +65,7 @@ cat and counts the pixels that change, so the doorway and the phone (which must 
 
 ## Builds
 
-* `node games/reflect/tools/build-reflect.js --framer --artifact [--ref <sha>] [--artifact-url <url>]`
+* `node games/reflect/tools/build-reflect.js --framer --artifact [--harness] [--ref <sha>] [--artifact-url <url>]` (`--harness` adds the render and sightline test pages)
 * **Framer:** `games/framer/ThinkStillReflect.tsx` embeds the whole bundle (no other files). Property controls: Room
   Server (wss URL of the Worker; without it solo play still works), Asset Base, Theme, Sound, Motion, Radius, onExit,
   onComplete. Invite links use `?reflectRoom=CODE`.

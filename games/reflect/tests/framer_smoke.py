@@ -18,7 +18,7 @@ import Reflect from '@framer/ThinkStillReflect.tsx';
 const box = (id, left) => { const d = document.createElement('div'); d.id = id; d.style.cssText = 'position:absolute;top:0;width:390px;height:844px;left:' + left + 'px'; document.body.appendChild(d); return d; };
 const roots = { a: createRoot(box('a', 0)), b: createRoot(box('b', 400)) };
 window.__h = {
-  props: { a: { assetBase: '/img/', onComplete: (i) => { window.__completed = i; } }, b: { assetBase: '/img/', theme: 'bright' } },
+  props: { a: { assetBase: '/img/', theme: 'dark', onComplete: (i) => { window.__completed = i; } }, b: { assetBase: '/img/', theme: 'bright' } },
   render(w) { roots[w].render(React.createElement(Reflect, this.props[w])); },
   set(w, p) { Object.assign(this.props[w], p); this.render(w); },
   unmount(w) { roots[w].unmount(); },
@@ -60,7 +60,7 @@ def main(base, out):
         rep['checks']['both_mounted_hub_cards'] = cnt('.rf-card')
         rep['checks']['themes'] = page.evaluate("['a','b'].map(id => { const h = document.querySelector('#' + id + ' div div'); return h && h.shadowRoot ? h.shadowRoot.querySelector('.rf').getAttribute('data-theme') : null; })")
         page.screenshot(path=os.path.join(out, 'framer-two-instances.png'))
-        page.locator('#a [data-act=solo]').click()
+        page.locator('#a [data-act=solo]').first.click()   # the first card is Group Think Glitch
         page.wait_for_timeout(7000)
         rep['checks']['a_in_ritual_b_on_hub'] = [cnt('.gtg-inv')[0] > 0 or cnt('.gtg-stage')[0] > 0, cnt('.rf-card')[1] > 0]
         page.screenshot(path=os.path.join(out, 'framer-a-playing.png'))
