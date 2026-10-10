@@ -100,12 +100,13 @@
       if (ends.includes(i)) p = 1.05;
       return p;
     });
+    // liquid gold swells gently rather than beading: soften single-point spikes, keep the puddles where seams meet
+    // (random draws stay in their original order, so every saved shelf bowl still renders exactly as it was made)
     const ve = { s1: R() * TAU, s2: R() * TAU, drips: [0, 1, 2, 3].map(() => ({ th: j(-Math.PI, Math.PI), a: j(0.04, 0.09) })) };
     const spk = []; for (let i = 0; i < 70; i++) spk.push({ th: j(-Math.PI, Math.PI), v: j(0.26, 0.97), r: j(0.006, 0.016), a: j(0.4, 1) });
-    return {
-      C1, C2, C3, C4, k1, k2, k3, a1, a2, b1, b2, a4, j: C3[k3], chip, ve, spk,
-      pools: { C1: poolsOf(C1, [k1]), C2: poolsOf(C2, [k2]), C3: poolsOf(C3, [0, k3, C3.length - 1]), C4: poolsOf(C4, [C4.length - 1]) }
-    };
+    const soften = (P, keep) => P.map((p, i) => (keep.includes(i) || i === 0 || i === P.length - 1 ? p : P[i - 1] * 0.22 + p * 0.56 + P[i + 1] * 0.22));
+    const pools = { C1: soften(poolsOf(C1, [k1]), [k1]), C2: soften(poolsOf(C2, [k2]), [k2]), C3: soften(poolsOf(C3, [0, k3, C3.length - 1]), [0, k3, C3.length - 1]), C4: soften(poolsOf(C4, [C4.length - 1]), [C4.length - 1]) };
+    return { C1, C2, C3, C4, k1, k2, k3, a1, a2, b1, b2, a4, j: C3[k3], chip, ve, spk, pools };
   }
   const glazeEdge = (N, th) => { let v = 0.2 + 0.028 * Math.sin(3 * th + N.ve.s1) + 0.016 * Math.sin(7 * th + N.ve.s2); for (const d of N.ve.drips) { const x = wrapA(th - d.th) / 0.06; v -= d.a * Math.exp(-x * x); } return v; };
 
@@ -188,13 +189,22 @@
 .g-kintsugi .ks-chip:active { transform: scale(0.95); }
 .g-kintsugi .ks-chip.ks-on { background: var(--ks-chipon); transform: scale(1.05); border-color: #e2b24a; }
 .g-kintsugi .ks-chip:focus-visible { outline: 3px solid var(--ks-gold); outline-offset: 2px; }
+.g-kintsugi .ks-plate { position: absolute; z-index: 26; left: 50%; top: 0; width: max-content; max-width: min(330px, calc(100% - 40px)); box-sizing: border-box; padding: 11px 20px 13px; text-align: center; pointer-events: none;
+  color: #2c2119; background: linear-gradient(180deg, #faf4e8, #efe5d2); border-radius: 3px; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34), inset 0 0 0 1px rgba(160, 112, 30, 0.32), inset 0 0 0 4px rgba(250, 244, 232, 0.9), inset 0 0 0 5px rgba(160, 112, 30, 0.22);
+  opacity: 0; transform: translate(-50%, 12px); transition: opacity 1.2s ease, transform 1.4s cubic-bezier(.2, .8, .3, 1); }
+.g-kintsugi .ks-plate.ks-on { opacity: 1; transform: translate(-50%, 0); }
+.g-kintsugi .ks-plate small { display: block; font: 700 12px/1.2 var(--ks-ui); letter-spacing: 0.2em; text-transform: uppercase; color: #8a6420; }
+.g-kintsugi .ks-plate b { display: block; margin-top: 5px; font: 800 21px/1.12 var(--ks-disp); letter-spacing: 0.02em; color: #2c2119; }
+.g-kintsugi .ks-plate i { display: block; width: 54px; height: 2px; margin: 8px auto 0; background: linear-gradient(90deg, rgba(214, 164, 50, 0), #d6a432 30%, #f0cf78 50%, #d6a432 70%, rgba(214, 164, 50, 0)); }
+.g-kintsugi .ks-plate span { display: block; margin-top: 7px; font: 500 14px/1.38 var(--ks-ui); color: #5a4632; text-wrap: balance; }
 `,
     mount(ctx) {
       const K = ctx.kit, S = ctx.TS, A = ctx.A, h = ctx.h, el = ctx.el;
       let an = ctx.analysis || {};
       const inten = [0, 1, 2].includes(ctx.intensity) ? ctx.intensity : 1;
       const RED = K.reduced(), dayN = K.daily(), rnd = Math.random;
-      const line = (o) => ctx.line(o);
+      // grief or a 'care' topic: Cheeky's jokes give way to the warm Jolly lines (Unfiltered stays terse, never jokey)
+      const line = (o) => (o && o.Jolly && vibe() === 'Cheeky' && soft() ? o.Jolly : ctx.line(o));
       const vibe = () => (['Jolly', 'Cheeky', 'Unfiltered'].includes(S.settings && S.settings.vibe) ? S.settings.vibe : ctx.vibe) || 'Jolly';
       const dark = () => K.dark();
       const noWords = !String(ctx.text || '').trim();
@@ -243,7 +253,8 @@
       const kindEl = h('div', { class: 'ks-kind ks-off', 'aria-live': 'polite' });
       const moreEl = h('div', { class: 'ks-more', hidden: true });
       const panel = h('div', { class: 'ks-panel ks-away', role: 'group', 'aria-label': 'What matters to you?' });
-      el.append(hit, labelEl, kindEl, moreEl, panel);
+      const plate = h('div', { class: 'ks-plate', role: 'status', 'aria-live': 'polite' }); // the gallery label in the finale
+      el.append(hit, labelEl, kindEl, moreEl, panel, plate);
       const charSize = () => (K.phone() ? 72 : 96);
       const drop = K.character('drop', { side: 'right', mood: 'sad', x: 12, y: 64, size: charSize() });
       const still = K.character('still', { side: 'right', mood: 'calm', x: 12, y: 64, size: charSize() });
@@ -291,6 +302,8 @@
         cool() { if (!A.ctx) return; A.noise({ filter: 'highpass', freq: 3600, to: 1600, dur: 0.9, attack: 0.06, vol: 0.035 }); A.pad([A.note('D4'), A.note('A4'), A.note('E5'), A.note('F#5')], { dur: 3.2, vol: 0.075, attack: 0.5 }); this.sync('cool'); },
         kind() { if (A.ctx) A.chime(A.note('A5'), { vol: 0.03, dur: 1.8, verb: 0.6 }); },
         seep() { if (A.ctx) A.tone({ type: 'sine', freq: 520, to: 880, glide: 0.9, dur: 1.0, vol: 0.03, attack: 0.2, verb: 0.5 }); },
+        pool() { if (!A.ctx) return; A.tone({ type: 'sine', freq: 300, to: 190, glide: 0.18, dur: 0.26, vol: 0.05, attack: 0.02, verb: 0.3 }); A.tone({ type: 'sine', freq: 1180, to: 1480, glide: 0.06, dur: 0.09, vol: 0.014 }); this.sync('pool'); },
+        place() { if (!A.ctx) return; A.wood(undefined, 0.12, 1.2); A.chime(A.note('E6'), { vol: 0.04, dur: 2.2, verb: 0.6 }); this.sync('shelf'); },
         miss() { if (A.ctx) A.tone({ type: 'sine', freq: 392, to: 330, glide: 0.12, dur: 0.18, vol: 0.04 }); },
         value() { if (!A.ctx) return; A.click({ vol: 0.07 }); A.pluck(A.note('A4'), { vol: 0.14, damp: 0.997, verb: 0.35 }); this.sync('value'); },
         fillOn() { if (!A.ctx) return; this.pourOn(); this.sync('fill'); },
@@ -371,9 +384,20 @@
           pc.pts = pts; pc.path = pathOf(pts); pc.cx = cx / (3 * a); pc.cy = cy / (3 * a);
         });
       }
+      function pbox(pc, rot) { // a shard's bounds around its centroid at a given turn
+        const c = Math.cos(rot), s = Math.sin(rot); let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+        for (const q of pc.pts) { const dx = q.x - pc.cx, dy = q.y - pc.cy, X = dx * c - dy * s, Y = dx * s + dy * c; if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y; }
+        return { x0, y0, x1, y1 };
+      }
       function scatter() {
         const B = G.B, R = B.R;
-        const spots = G.phone ? [[G.w * 0.25, G.H * 0.7], [G.w * 0.75, G.H * 0.7], [G.w * 0.5, G.H * 0.818]] : [[B.cx - 2.05 * R, B.Y0 + 0.08 * R], [B.cx + 2.05 * R, B.Y0 + 0.04 * R], [B.cx + 0.12 * R, Math.min(B.footY + 0.98 * R, G.H - 0.5 * R - 20)]];
+        let spots;
+        if (G.phone) { // two shards side by side under the bowl, the long one below them, never touching, all on the cloth
+          const bx = pieces.map(pc => pbox(pc, pc.srot)), yLR = B.footY + 24 - Math.min(bx[0].y0, bx[1].y0);
+          const lx = Math.max(16 - bx[0].x0, G.w * 0.27), rx = Math.min(G.w - 16 - bx[1].x1, G.w * 0.73);
+          const yB = Math.min(yLR + Math.max(bx[0].y1, bx[1].y1) + 14 - bx[2].y0, G.cloth.b - 10 - bx[2].y1);
+          spots = [[lx, yLR], [rx, yLR], [G.w * 0.5, yB]];
+        } else spots = [[B.cx - 2.05 * R, B.Y0 + 0.08 * R], [B.cx + 2.05 * R, B.Y0 + 0.04 * R], [B.cx + 0.12 * R, Math.min(B.footY + 0.98 * R, G.H - 0.5 * R - 20)]];
         pieces.forEach((pc, i) => { pc.sx = spots[i][0]; pc.sy = spots[i][1]; pc.tw = null; if (!pc.placed && pc !== DRAG.pc) { pc.x = pc.sx; pc.y = pc.sy; pc.rot = pc.srot; } if (pc.placed) { pc.x = pc.cx; pc.y = pc.cy; pc.rot = 0; } });
       }
       function placeDom() {
@@ -585,10 +609,11 @@
         // the mended bowls, oldest first
         const rm = phone ? 17 : 24, gap = phone ? 11 : 16, start = vx + vw + gap + rm + 4, cap = Math.max(1, Math.floor((x1 - 10 - start + rm) / (2 * rm + gap)));
         G.cap = cap;
-        const show = OLD.slice(-cap);
+        const room = FIN.shelf && OLD.length >= cap ? cap - 1 : cap; // in the finale a full shelf makes room for today's bowl
+        const show = room > 0 ? OLD.slice(-room) : [];
         show.forEach((b, i) => mini(g, start + i * (2 * rm + gap), y - 1, rm, b));
-        G.slot = { x: start + Math.min(show.length, cap - 1) * (2 * rm + gap), y: y - rm }; // where today's bowl will sit next time
-        moreEl.hidden = OLD.length <= cap; moreEl.textContent = '+' + (OLD.length - cap) + ' more';
+        G.slot = { x: start + Math.min(show.length, cap - 1) * (2 * rm + gap), y: y - rm, rm, fy: y - 1 }; // where today's bowl goes
+        moreEl.hidden = FIN.shelf || OLD.length <= cap; moreEl.textContent = '+' + (OLD.length - cap) + ' more';
       }
       function mini(g, x, footY, rm, b) {
         const B0 = makeBowl(x, 0, rm), B = makeBowl(x, footY - (B0.footY - B0.Y0), rm), N = network(b.s), gz = GLAZES[b.g];
@@ -628,14 +653,28 @@
       /* ---------------- gold ---------------- */
       const goldCol = (k) => mixHex(GOLD.cool, GOLD.hot, clamp01(k));
       const heatAt = (c, i, now) => { const t = c.tp[i]; return t == null || t < 0 ? 0 : clamp01(1 - (now - t) / 1500); };
+      /* A seam of gold: a dark lip for relief, a body that is fuller while hot (still liquid) and settles as it cools,
+         puddles only where the gold gathered (where seams meet, and wherever the hand lingered), then a gloss ridge. */
+      const PUD = 0.62;
       function goldLine(g, pts, heats, pools, w0, glow) {
-        if (pts.length < 2) return;
+        const n = pts.length; if (n < 2) return;
         g.lineCap = 'round'; g.lineJoin = 'round';
-        g.beginPath(); pts.forEach((q, i) => (i ? g.lineTo(q.x + 0.8, q.y + 1.2) : g.moveTo(q.x + 0.8, q.y + 1.2))); g.strokeStyle = GOLD.shade; g.lineWidth = w0 * 1.8; g.stroke();
-        for (let i = 1; i < pts.length; i++) { g.strokeStyle = goldCol((heats[i] + heats[i - 1]) / 2); g.lineWidth = w0 * (1 + 0.42 * (pools[i] + pools[i - 1])); g.beginPath(); g.moveTo(pts[i - 1].x, pts[i - 1].y); g.lineTo(pts[i].x, pts[i].y); g.stroke(); }
-        for (let i = 0; i < pts.length; i++) if (pools[i] > 0.5) { const r = w0 * (0.5 + pools[i] * 0.72); g.fillStyle = goldCol(heats[i]); g.beginPath(); g.ellipse(pts[i].x, pts[i].y, r * 1.18, r, 0.35, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,250,225,0.85)'; g.beginPath(); g.arc(pts[i].x - r * 0.32, pts[i].y - r * 0.36, r * 0.3, 0, TAU); g.fill(); }
-        g.beginPath(); pts.forEach((q, i) => (i ? g.lineTo(q.x - 0.5, q.y - 0.6) : g.moveTo(q.x - 0.5, q.y - 0.6))); g.strokeStyle = GOLD.hi; g.lineWidth = Math.max(0.8, w0 * 0.34); g.stroke();
-        if (glow) { g.save(); g.globalCompositeOperation = 'lighter'; for (let i = 0; i < pts.length; i += 1) if (heats[i] > 0.04) { g.globalAlpha = heats[i] * 0.5; const s = w0 * 7.5; g.drawImage(GLOW, pts[i].x - s / 2, pts[i].y - s / 2, s, s); } g.restore(); }
+        g.beginPath(); pts.forEach((q, i) => (i ? g.lineTo(q.x + 0.8, q.y + 1.2) : g.moveTo(q.x + 0.8, q.y + 1.2))); g.strokeStyle = GOLD.shade; g.lineWidth = w0 * 1.75; g.stroke();
+        for (let i = 1; i < n; i++) {
+          const hk = (heats[i] + heats[i - 1]) / 2;
+          g.strokeStyle = goldCol(hk); g.lineWidth = w0 * (1 + 0.5 * (pools[i] + pools[i - 1]) / 2 + 0.34 * hk);
+          g.beginPath(); g.moveTo(pts[i - 1].x, pts[i - 1].y); g.lineTo(pts[i].x, pts[i].y); g.stroke();
+        }
+        for (let i = 0; i < n; i++) if (pools[i] > PUD) { const r = w0 * (0.42 + pools[i] * 0.62) * (1 + 0.18 * heats[i]); g.fillStyle = goldCol(heats[i]); g.beginPath(); g.ellipse(pts[i].x, pts[i].y, r * 1.16, r, 0.35, 0, TAU); g.fill(); }
+        g.beginPath(); pts.forEach((q, i) => (i ? g.lineTo(q.x - 0.5, q.y - 0.6) : g.moveTo(q.x - 0.5, q.y - 0.6))); g.strokeStyle = GOLD.hi; g.lineWidth = Math.max(0.8, w0 * 0.3); g.stroke();
+        g.fillStyle = 'rgba(255,250,228,0.72)';
+        for (let i = 0; i < n; i++) if (pools[i] > PUD) { const r = w0 * (0.42 + pools[i] * 0.62); g.beginPath(); g.ellipse(pts[i].x - r * 0.3, pts[i].y - r * 0.34, r * 0.36, r * 0.2, -0.5, 0, TAU); g.fill(); }
+        if (glow) {
+          g.save(); g.globalCompositeOperation = 'lighter';
+          for (let i = 1; i < n; i++) { const hk = (heats[i] + heats[i - 1]) / 2; if (hk < 0.05) continue; g.strokeStyle = 'rgba(255,238,196,' + (hk * 0.5).toFixed(3) + ')'; g.lineWidth = w0 * 0.5; g.beginPath(); g.moveTo(pts[i - 1].x, pts[i - 1].y); g.lineTo(pts[i].x, pts[i].y); g.stroke(); }
+          for (let i = 0; i < n; i++) if (heats[i] > 0.04) { g.globalAlpha = heats[i] * 0.5; const s = w0 * 7.5; g.drawImage(GLOW, pts[i].x - s / 2, pts[i].y - s / 2, s, s); }
+          g.restore();
+        }
       }
       const W0 = () => 2.3 * G.scale + 0.9;
       function visible(c, upto, now) {
@@ -648,14 +687,29 @@
         }
         return { pts, heats, pools };
       }
+      function span(c, s0, s1) { const out = [pointAt(c, s0)]; for (let i = 1; i < c.L.length - 1; i++) if (c.L[i] > s0 && c.L[i] < s1) out.push(c.pts[i]); out.push(pointAt(c, s1)); return out; }
+      const headIdx = (c, s) => { let i = 0; while (i + 1 < c.L.length && c.L[i + 1] <= s + 0.5) i++; return i; };
       function drawLive(g, c, t, now) {
-        const V = visible(c, c.prog * c.len, now);
+        const gl = c.prog * c.len, live = !c.done && c === TR.c && phase === 'trace';
+        if (live && TR.down && !TR.off && TR.f - gl > 3) { // the crack warms ahead of the gold, right up to the finger: the gold is on its way
+          const sp = span(c, gl, TR.f);
+          g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round'; g.lineJoin = 'round';
+          g.beginPath(); sp.forEach((q, i) => (i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y)));
+          g.strokeStyle = 'rgba(255,186,90,0.24)'; g.lineWidth = W0() * 2.6; g.stroke();
+          g.strokeStyle = 'rgba(255,236,180,0.5)'; g.lineWidth = Math.max(1, W0() * 0.45); g.stroke();
+          g.restore();
+        }
+        const V = visible(c, gl, now);
         g.save(); g.clip(antiChip, 'evenodd'); goldLine(g, V.pts, V.heats, V.pools, W0(), true); g.restore();
-        if (!c.done && c.prog > 0 && c.prog < 1) { // the molten bead at the front of the flow
-          const hp = V.pts[V.pts.length - 1], r = W0() * (1.25 + 0.08 * Math.sin(t * 11));
+        if (!c.done && c.prog > 0 && c.prog < 1) { // the molten bead at the front of the flow: fuller while it flows, fuller still while it pools
+          const hp = V.pts[V.pts.length - 1], r = W0() * (1.25 + 0.08 * Math.sin(t * 11) + 0.6 * (live ? TR.swell : 0));
           g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.85; g.drawImage(GLOW, hp.x - r * 6, hp.y - r * 6, r * 12, r * 12); g.restore();
-          g.fillStyle = GOLD.hot; g.beginPath(); g.arc(hp.x, hp.y, r, 0, TAU); g.fill();
+          g.fillStyle = GOLD.hot; g.beginPath(); g.ellipse(hp.x, hp.y, r * 1.08, r, 0.35, 0, TAU); g.fill();
           g.fillStyle = '#ffffff'; g.beginPath(); g.arc(hp.x - r * 0.35, hp.y - r * 0.35, r * 0.3, 0, TAU); g.fill();
+        }
+        if (live && TR.down && TR.off) { // lost the crack: a soft ring shows where to pick it up again
+          const hp = pointAt(c, gl), k = 0.5 + 0.5 * Math.sin(t * 5);
+          g.strokeStyle = 'rgba(255,226,150,' + (0.45 + 0.35 * k).toFixed(3) + ')'; g.lineWidth = 2; g.beginPath(); g.arc(hp.x, hp.y, 13 + 6 * k, 0, TAU); g.stroke();
         }
       }
       function bakeCrack(c) { const g = LY.gold.g; g.save(); g.clip(antiChip, 'evenodd'); const V = visible(c, c.len, 1e15); goldLine(g, V.pts, V.heats.map(() => 0), V.pools, W0(), false); g.restore(); c.baked = true; }
@@ -711,8 +765,8 @@
       /* ---------------- state ---------------- */
       let phase = 'intro', finished = false, lastNow = performance.now(), drawn = 0, half = 0, acc = 0, qAcc = 0, qN = 0;
       const DRAG = { pc: null, ox: 0, oy: 0, rot0: 0, lx: 0, ly: 0, rt: 0 };
-      const TR = { c: null, i: -1, down: false, off: false, f: 0, steadyT: 0, totalT: 0, fastT: 0, warned: false, ready: false, notes: 0, spark: 0 };
-      const FIN = { on: false, t0: 0, k: 0, lift: 0, a: 0, off: 0, w: 0, drag: false, lx: 0, turning: false, glintAt: 0, lastG: [], said: false, clay: null };
+      const TR = { c: null, i: -1, down: false, off: false, f: 0, steadyT: 0, totalT: 0, fastT: 0, warned: false, ready: false, notes: 0, spark: 0, dwell: 0, fMark: 0, swell: 0 };
+      const FIN = { on: false, t0: 0, k: 0, lift: 0, a: 0, off: 0, w: 0, drag: false, lx: 0, turning: false, glintAt: 0, lastG: [], said: false, clay: null, shelf: false, placedAt: 0 };
       const steadies = [];
       const waiters = {}, fired = new Set();
       const waitFor = (name) => (fired.has(name) ? (fired.delete(name), Promise.resolve()) : new Promise(res => { waiters[name] = res; }));
@@ -781,6 +835,41 @@
         FIN.bx = Math.floor(B2.cx - B2.R - 16); FIN.by = Math.floor(B2.top + FIN.dy2 - 16); FIN.bw = Math.ceil(2 * B2.R + 32); FIN.bh = Math.ceil(B2.footY - B2.top + 32);
         LY.plain2 = mk(FIN.bw, FIN.bh); LY.plain2.g.translate(-FIN.bx, -FIN.by); paintBowl(LY.plain2.g, B2, GZ, NET, false, 0, FIN.dy2);
         LY.stand2 = standLayer(dark(), B2);
+        todaySprite(); placePlate();
+      }
+      function todaySprite() { // today's mended bowl, small, for its place on the shelf
+        LY.today = null;
+        const sl = G.slot; if (!sl || !sl.rm || PATCH.mi < 0) return;
+        const rm = sl.rm, x0 = Math.floor(sl.x - rm - 6), y0 = Math.floor(sl.fy - rm * 1.45 - 6);
+        const o = mk(Math.ceil(rm * 2 + 12), Math.ceil(rm * 1.7 + 14)); o.g.translate(-x0, -y0);
+        mini(o.g, sl.x, sl.fy, rm, { g: GZI, s: SEED, m: PATCH.mi });
+        o.x = x0; o.y = y0; LY.today = o;
+      }
+      const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      function showPlate() { // a gallery label: this bowl is worth displaying, cracks and all
+        if (!FIN.on) return;
+        const d = new Date();
+        plate.textContent = '';
+        plate.append(h('small', { text: 'No. ' + Math.max(1, DATA.n) + ' · ' + d.getDate() + ' ' + MONTHS[d.getMonth()] }), h('b', { text: GZ.name + ' tea bowl' }), h('i'),
+          h('span', { text: 'Mended with gold. Its missing piece, filled with ' + (PATCH.m ? PATCH.m.label : 'gold') + '.' }));
+        placePlate(); plate.classList.add('ks-on');
+      }
+      function placePlate() {
+        if (!FIN.on || !LY.stand2 || !plate.firstChild) return;
+        const hh = plate.offsetHeight || 110, top = Math.min(LY.stand2.y + LY.stand2.h + (G.phone ? 12 : 18), G.H - hh - 18);
+        plate.style.top = Math.round(top) + 'px';
+      }
+      function shelfMoment() { // today's bowl takes its place on the shelf, beside every bowl mended before it
+        if (!FIN.on || !LY.today || FIN.placedAt) return;
+        FIN.placedAt = performance.now(); SND.place();
+        const s = camPt(G.slot.x, G.slot.y);
+        P.emit('star', s.x, s.y, 9, { colors: ['#fffbe6', '#ffe08a'], speed: [20, 70] });
+        P.emit('dust', s.x, s.y + G.slot.rm * 0.9, 5, { colors: ['rgba(240,220,190,0.5)'], speed: [8, 26] });
+      }
+      function drawToday(g, now) {
+        if (!LY.today || !FIN.placedAt) return;
+        const a = clamp01((now - FIN.placedAt) / 650), e = easeOut(a);
+        g.globalAlpha = a; g.drawImage(LY.today.c, LY.today.x, LY.today.y - (1 - e) * 12, LY.today.w, LY.today.h); g.globalAlpha = 1;
       }
       const camPt = (x, y) => { const z = lerp(1, FIN.Z1, FIN.k); return { x: lerp(FIN.F.x, FIN.F2.x, FIN.k) + (x - FIN.F.x) * z, y: lerp(FIN.F.y, FIN.F2.y, FIN.k) + (y - FIN.F.y) * z }; };
       function drawFinale(g, t, dt, now) {
@@ -788,6 +877,7 @@
         // the room, under a slow camera push-in
         g.setTransform(d * z, 0, 0, d * z, d * (fx - FIN.F.x * z), d * (fy - FIN.F.y * z));
         g.drawImage(LY.bg.c, 0, 0, G.w, G.H);
+        drawToday(g, now);
         g.globalAlpha = k; g.drawImage(LY.mood.c, 0, 0, G.w, G.H); g.globalAlpha = 1;
         if (!FIN.turning) {
           const dy = LIFT() * easeInOut(FIN.lift);
@@ -879,6 +969,15 @@
           if (TR.down) { TR.totalT += rdt; if (!TR.off && ahead <= LEAD) TR.steadyT += rdt; if (ahead > LEAD) TR.fastT += rdt; else TR.fastT = Math.max(0, TR.fastT - rdt * 0.5); }
           if (TR.fastT > 0.5 && !TR.warned) { TR.warned = true; drop.say(line(L.slow), { mood: 'calm', moodMs: 2000, ms: 2600 }); }
           if (ahead > 0.01) advance(c, Math.min(TR.f, gl + vmax * rdt), now);
+          // where the hand lingers, the gold gathers into a small pool (every seam keeps its maker's rhythm)
+          if (TR.down && !TR.off && c.prog > 0.004 && c.prog < 0.995) { if (TR.f - TR.fMark > 1.5) { TR.fMark = TR.f; TR.dwell = 0; } else TR.dwell += rdt; }
+          else { TR.dwell = 0; TR.fMark = TR.f; }
+          if (TR.dwell > 0.35 && ahead <= 2) {
+            const i = headIdx(c, c.prog * c.len), was = c.pools[i];
+            if (i > 0) { c.pools[i] = Math.min(1.4, was + rdt * 0.9); if (c.tp[i] >= 0) c.tp[i] = Math.max(c.tp[i], now - 400); if (was <= PUD && c.pools[i] > PUD) SND.pool(); }
+          }
+          const swellTo = TR.down && !TR.off ? (TR.dwell > 0.35 ? Math.min(1, (TR.dwell - 0.35) / 1.2) : ahead > 2 ? 0.25 : 0) : 0;
+          TR.swell += (swellTo - TR.swell) * Math.min(1, rdt * 6);
           SND.pourLevel(ahead > 0.5 ? 1 : TR.down ? 0.25 : 0, c.prog);
           if (c.prog >= 0.9995) crackDone(c, now);
         }
@@ -944,7 +1043,7 @@
       const KIND = {
         Jolly: ['This happened. It’s part of the bowl now.', 'Held with care, not hidden.', 'It broke here. It holds here too.', 'Gentle with this one.'],
         Cheeky: ['Cracked, not finished.', 'Gold suits it, honestly.', 'Still holds tea. Still counts.', 'Fancy seam. Fair enough.'],
-        Unfiltered: ['It happened. It’s mended.', 'Not hidden. Held.', 'Broke here. Holds here.', 'Hard thing. Handled with care.'],
+        Unfiltered: ['It happened. It’s part of it now.', 'Not hidden. Held.', 'Broke here. Holds here.', 'Hard thing. Handled with care.'],
         soft: ['This happened. It’s part of the bowl now.', 'Held with care, not hidden.', 'Some cracks stay. They can still shine.', 'You don’t have to hide this one.']
       };
       const kindLine = (i) => { const set = soft() ? KIND.soft : (KIND[vibe()] || KIND.Jolly); return set[i % set.length]; };
@@ -1049,6 +1148,7 @@
         const gl = c.prog * c.len, q = nearest(c, p.x, p.y, gl - 40, gl + 100);
         if (q.d > Math.max(TOL + 12, 46)) { SND.miss(); guideTrace(300, 'START AT THE GOLD'); return; }
         TR.down = true; TR.off = false; if (q.s > TR.f) TR.f = Math.min(c.len, q.s);
+        TR.fMark = TR.f; TR.dwell = 0;
         SND.pourOn(); K.guide(null);
       }
       function traceMove(p) {
@@ -1076,7 +1176,7 @@
       const hideKind = () => { kindEl.classList.remove('ks-in'); kindEl.classList.add('ks-off'); };
       async function traceCrack(i) {
         const c = named[i];
-        TR.c = c; TR.i = i; TR.f = 0; TR.steadyT = 0; TR.totalT = 0; TR.fastT = 0; TR.warned = false; TR.notes = 0; TR.down = false;
+        TR.c = c; TR.i = i; TR.f = 0; TR.steadyT = 0; TR.totalT = 0; TR.fastT = 0; TR.warned = false; TR.notes = 0; TR.down = false; TR.dwell = 0; TR.fMark = 0; TR.swell = 0;
         c.active = true; c.prog = 0; c.tp = c.L.map(() => -1);
         showLabel(c.hard);
         const last = i === named.length - 1;
@@ -1179,16 +1279,19 @@
         phase = 'finale'; K.guide(null);
         hideLabel(); hideKind(); panel.classList.add('ks-away');
         if (!PATCH.baked) { bakePatch(); PATCH.baked = true; }
-        finGeom();
-        FIN.on = true; FIN.t0 = performance.now(); FIN.k = 0;
+        FIN.shelf = true; if (OLD.length >= G.cap) paintRoom(LY.bg.g, dark()); // a full shelf makes room for today's bowl
+        FIN.on = true; finGeom();
+        FIN.t0 = performance.now(); FIN.k = 0;
         SND.finale(); MUS.vol = 1; amb.level(0.25, 2);
         placeFinaleCast(); still.show(true); still.hush(); still.base('happy'); still.react('bounce');
         speaker(drop).say(soft() ? L.finaleSoft : line(L.finale), { mood: 'love', moodMs: 0, ms: 0 });
         hit.setAttribute('aria-label', 'The mended bowl turning in the light. Drag to turn it.');
         K.guide({ id: 'turn', g: 'drag', target: () => ({ x: FIN.B2.cx - FIN.B2.R * 0.32, y: FIN.B2.Y0 - FIN.B2.R * 0.25 }), dir: 'r', d: Math.round(FIN.B2.R * 0.66), label: 'TURN IT IN THE LIGHT', place: 'below', delay: 1800, once: true });
         K.later(() => { if (A.ctx) SND.rin('A4', 0.08, 5); }, 1500);
-        // a glint on the shelf: where this bowl will sit next time
-        K.later(() => { const s = G.slot && camPt(G.slot.x, G.slot.y); if (s) P.emit('star', s.x, s.y, 10, { colors: ['#fffbe6', '#ffe08a'], speed: [20, 70] }); }, RED ? 2500 : 7600);
+        // the gallery label settles under the stand, and the hand steps back so the frame is clean
+        K.later(() => { showPlate(); K.guide(null); }, RED ? 1800 : 4300);
+        // today's bowl takes its place on the shelf
+        K.later(shelfMoment, RED ? 2800 : 6900);
         await K.wait(RED ? 4200 : 6200);
         if (care()) still.say(L.careEnd, { mood: 'calm', ms: 0 }); else still.face('love', 2600);
         await K.wait(RED ? 2400 : 4200);
@@ -1226,7 +1329,7 @@
         ctx.track('bowl', { glaze: GZI, shelf: OLD.length });
         await K.wait(OLD.length ? 2800 : 2400);
         phase = 'assemble';
-        drop.say(line(L.assemble), { mood: 'determined', moodMs: 0, ms: 3800 });
+        drop.say(line(L.assemble), { mood: 'happy', moodMs: 0, ms: 3800 });
         guideAssemble(1100);
         await waitFor('assembled');
         phase = 'assembled';
@@ -1256,9 +1359,13 @@
             await until(() => (phase === 'trace' && TR.ready && TR.i === i) || finished, 30000);
             await K.wait(450);
             const c = named[i], v = VMAX * G.scale * 0.9, a = pointAt(c, 0);
-            const pr = await K.sim.press(hit, a.x, a.y), t0 = performance.now();
-            for (;;) { const s = Math.min(c.len, (performance.now() - t0) / 1000 * v + 14), q = pointAt(c, s); pr.move(q.x, q.y); if (c.done || performance.now() - t0 > 20000) break; await K.wait(45); }
-            const e = pointAt(c, c.len); pr.up(e.x, e.y);
+            const pr = await K.sim.press(hit, a.x, a.y);
+            const drive = async (s0, s1) => { const t0 = performance.now(), dur = Math.max(1, (s1 - s0) / v * 1000); for (;;) { const k = Math.min(1, (performance.now() - t0) / dur), q = pointAt(c, s0 + (s1 - s0) * k); pr.move(q.x, q.y); if (k >= 1 || c.done) break; await K.wait(45); } };
+            if (i === 0) { await drive(0, c.len * 0.3); await K.wait(1600); await drive(c.len * 0.3, c.len); } // linger once: the gold pools
+            else await drive(0, c.len);
+            const t1 = performance.now(), e = pointAt(c, c.len);
+            while (!c.done && performance.now() - t1 < 8000) { pr.move(e.x, e.y); await K.wait(60); }
+            pr.up(e.x, e.y);
           }
           await until(() => phase === 'twist' || finished, 30000);
           await K.wait(1000);

@@ -18,6 +18,18 @@
   const rgba = (hx, a) => { const c = hexRgb(hx); return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')'; };
   const lum = (hx) => { const c = hexRgb(hx); return (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255; };
   function poly(g, p) { g.beginPath(); g.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) g.lineTo(p[i], p[i + 1]); g.closePath(); }
+  /* No GPU (VMs, blocklisted devices): every canvas pixel is rasterised on the CPU, so the garden draws at a lower density there. */
+  let softMemo = null;
+  function softwareGfx() {
+    if (softMemo != null) return softMemo;
+    try {
+      const c = document.createElement('canvas'), gl = c.getContext('webgl');
+      if (!gl) return (softMemo = true);
+      const ext = gl.getExtension('WEBGL_debug_renderer_info'), r = ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : '';
+      const lose = gl.getExtension('WEBGL_lose_context'); if (lose) lose.loseContext();
+      return (softMemo = /swiftshader|llvmpipe|softpipe|software|basic render/i.test(r));
+    } catch (e) { return (softMemo = false); }
+  }
 
   /* Daily season: the town's trees, roofs, ground and what drifts through the air. */
   const SEASONS = [
@@ -118,7 +130,7 @@
         c2: { kind: 'control', label: 'How I spend tonight', act: ACT.steady },
         i1: { kind: 'influence', label: 'What happens next' },
         i2: { kind: 'influence', label: 'How well I sleep' },
-        n0: { kind: 'notmine', label: 'Tomorrow’s weather' },
+        n0: { kind: 'notmine', label: 'The weather tomorrow' },
         n1: { kind: 'notmine', label: 'Other people’s moods' },
         n2: { kind: 'notmine', label: 'What already happened' }
       };
@@ -164,14 +176,14 @@
       };
 
       /* ---------------- state ---------------- */
-      const st = { phase: 'intro', finished: false, sorted: 0, sortedGen: 0, misses: 0, drag: null, hot: null, lockTray: false, twistOut: false, statOK: false, gardenOK: false, trayDirty: true,
+      const st = { phase: 'intro', finished: false, sorted: 0, sortedGen: 0, misses: 0, drag: null, hot: null, lockTray: false, twistOut: false, statOK: false, gardenOK: false, trayDirty: true, trayOK: false, trayA: 1,
         ripples: [], orbs: [], cards: [], cardOn: false, shakeT: 0, shakeA: 0, rakeT0: 0, rakeA: 0, firstCloud: false, firstLever: false, firstBridge: false, saidNotYet: false, said: {}, litN: 0, fn: 0, slow: 0, q: 1 };
       const M = { W: 0, H: 0 };
       const P = K.particles({ max: 380 });
       const MU = { on: false, next: 0, i: 0, bpm: 66, layers: 0, vol: 1 };
 
       /* ---------------- DOM ---------------- */
-      const cv = K.canvas(el, { opaque: true, maxDpr: 2 });
+      const cv = K.canvas(el, { opaque: true, maxDpr: softwareGfx() ? 1.25 : 2 });
       const stat = document.createElement('canvas'), gcv = document.createElement('canvas'), scv = document.createElement('canvas');
       const sand = h('div', { class: 'cc-sand', 'aria-hidden': 'true' });
       const layer = h('div');
@@ -270,7 +282,7 @@
           still.place(12, y); patch.place(Math.round(W / 2 - sz / 2), y); rush.place(W - 12 - sz, y);
           rush.el.classList.add('cc-rr'); patch.el.classList.add('cc-mid'); patch.el.style.setProperty('--cc-bh', Math.round(Math.min(150, W / 2 - 14)) + 'px');
         }
-        st.statOK = false; st.gardenOK = false; st.trayDirty = true;
+        st.statOK = false; st.gardenOK = false; st.trayDirty = true; st.trayOK = false;
         stones.forEach(s => { s.sp = null; });
         clouds.forEach(c => { c.sp = null; });
         if (card.classList.contains('on')) placeCard();
@@ -295,10 +307,14 @@
           if (M.paths.some(p => segD(x, y, p.e, { x: p.a.x + (p.a.x - p.e.x) * 0.25, y: p.a.y + (p.a.y - p.e.y) * 0.25 }) < 14 * k + m)) return true;
           return false;
         };
+        // houses gather into one district per lever (each lights up as a whole), with orchards and open meadow between
+        const reach = (M.side ? 175 : 150) * k;
         for (let y = 70; y < H; y += rowH) {
           const off = (Math.round(y / rowH) % 2) * cell * 0.5;
           for (let x = -cell * 0.3 + off; x < W + cell * 0.3; x += cell) {
-            const jx = x + (R() - 0.5) * cell * 0.35, jy = y + (R() - 0.5) * rowH * 0.3, r = R();
+            const jx = x + (R() - 0.5) * cell * 0.35, jy = y + (R() - 0.5) * rowH * 0.3, r0 = R();
+            const da = Math.min(...M.anchors.map(a => Math.hypot(jx - a.x, (jy - a.y) * 1.25))) / reach, pH = clamp(0.92 - da * 0.62, 0.1, 0.86);
+            const r = r0 < pH ? r0 * 0.6 / pH : r0 < pH + (1 - pH) * 0.4 ? 0.6 + (r0 - pH) / ((1 - pH) * 0.4) * 0.24 : r0 < pH + (1 - pH) * 0.46 ? 0.86 : 0.95;
             if (r < 0.6) {
               const w = (25 + R() * 12) * k;
               if (blocked(jx, jy, w * 0.45)) continue;
@@ -340,17 +356,27 @@
           p.lan.forEach(l => drawStoneLantern(g, l.x, l.y, k));
         });
         town.items.forEach(o => { if (o.t === 'house') drawHouse(g, o, k); else if (o.t === 'tree') drawTree(g, o, k); else drawStoneLantern(g, o.x, o.y, k); });
-        // the tray: a little wooden deck at the garden's edge where the stones wait
-        const T = M.tray, dk = 7 * k;
+        // light and mood: moonlit night in dark, late gold in bright (the garden keeps its own light)
+        grade(g, br, 0, 0, W, H);
+        st.statOK = true;
+      }
+      function grade(g, br, x, y, w, hh) {
+        g.globalCompositeOperation = 'multiply'; g.fillStyle = br ? '#fff1dc' : '#56659a'; g.fillRect(x, y, w, hh); g.globalCompositeOperation = 'source-over';
+        const gr = g.createRadialGradient(M.cx, M.cy, M.rx * 0.6, M.cx, M.cy, Math.hypot(M.W, M.H) * 0.62); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, br ? 'rgba(70,50,20,0.18)' : 'rgba(5,8,25,0.5)'); g.fillStyle = gr; g.fillRect(x, y, w, hh);
+      }
+      /* the tray: a little wooden deck at the garden's edge where the stones wait (its own layer, so it can sink away once they're sorted) */
+      const trayC = document.createElement('canvas');
+      function renderTray() {
+        const T = M.tray, k = M.k, dk = 7 * k, pad = Math.ceil(16 * k), dp = cv.dpr || 1, w = T.w + pad * 2, hh = T.h + dk + pad * 2;
+        trayC.width = Math.max(2, Math.ceil(w * dp)); trayC.height = Math.max(2, Math.ceil(hh * dp));
+        const g = trayC.getContext('2d'); g.setTransform(dp, 0, 0, dp, 0, 0); g.clearRect(0, 0, w, hh); g.translate(pad - T.x, pad - T.y);
         g.fillStyle = 'rgba(20,16,10,0.28)'; g.beginPath(); g.ellipse(T.x + T.w / 2, T.y + T.h + dk, T.w * 0.52, 10 * k, 0, 0, TAU); g.fill();
         g.fillStyle = '#5a3d27'; g.beginPath(); g.roundRect(T.x, T.y + dk, T.w, T.h, 10 * k); g.fill();
-        gr = g.createLinearGradient(0, T.y, 0, T.y + T.h); gr.addColorStop(0, '#b98a5c'); gr.addColorStop(1, '#9a6e46'); g.fillStyle = gr; g.beginPath(); g.roundRect(T.x, T.y, T.w, T.h, 10 * k); g.fill();
+        const gr = g.createLinearGradient(0, T.y, 0, T.y + T.h); gr.addColorStop(0, '#b98a5c'); gr.addColorStop(1, '#9a6e46'); g.fillStyle = gr; g.beginPath(); g.roundRect(T.x, T.y, T.w, T.h, 10 * k); g.fill();
         g.strokeStyle = 'rgba(70,45,25,0.35)'; g.lineWidth = 1; for (let y = T.y + 12 * k; y < T.y + T.h - 4; y += 13 * k) { g.beginPath(); g.moveTo(T.x + 6, y); g.lineTo(T.x + T.w - 6, y); g.stroke(); }
         g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(T.x + 8, T.y + 2, T.w - 16, 1.5);
-        // light and mood: moonlit night in dark, late gold in bright (the garden keeps its own light)
-        g.globalCompositeOperation = 'multiply'; g.fillStyle = br ? '#fff1dc' : '#56659a'; g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over';
-        gr = g.createRadialGradient(M.cx, M.cy, M.rx * 0.6, M.cx, M.cy, Math.hypot(W, H) * 0.62); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, br ? 'rgba(70,50,20,0.18)' : 'rgba(5,8,25,0.5)'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
-        st.statOK = true;
+        g.save(); g.beginPath(); g.roundRect(T.x, T.y, T.w, T.h + dk, 10 * k); g.clip(); grade(g, bright(), T.x - 2, T.y - 2, T.w + 4, T.h + dk + 4); g.restore(); // the same grade as the ground, on the deck only
+        M.trayPad = pad; st.trayOK = true;
       }
       function drawHouse(g, o, k) {
         const { x, y, w, d, rh } = o, roof = o.mark === 'pagoda' ? '#7a3a2c' : o.roof, wood = season.wood;
@@ -442,10 +468,15 @@
       function scuff(x0, y0, x1, y1, w) { // dragging a stone across the sand leaves a furrow (the rake smooths it at the end)
         if (!scv.width || !M.gb) return;
         const dp = cv.dpr || 1, g = scv.getContext('2d'); g.setTransform(dp, 0, 0, dp, 0, 0);
-        const ox = M.gb.x, oy = M.gb.y, C = GS();
+        const ox = M.gb.x, oy = M.gb.y, C = GS(), len = Math.hypot(x1 - x0, y1 - y0) || 1, nx = -(y1 - y0) / len, ny = (x1 - x0) / len;
         g.save(); g.beginPath(); g.ellipse(M.cx - ox, M.cy - oy, M.rx * 0.985, M.ry * 0.985, 0, 0, TAU); g.clip();
-        g.lineCap = 'round'; g.lineWidth = w * 0.42; g.strokeStyle = bright() ? 'rgba(150,125,85,0.16)' : 'rgba(20,24,48,0.2)'; g.beginPath(); g.moveTo(x0 - ox, y0 - oy + 1.5); g.lineTo(x1 - ox, y1 - oy + 1.5); g.stroke();
-        g.lineWidth = w * 0.18; g.strokeStyle = C.lt; g.globalAlpha = 0.5; g.beginPath(); g.moveTo(x0 - ox, y0 - oy - 1.5); g.lineTo(x1 - ox, y1 - oy - 1.5); g.stroke();
+        // three fine grooves, as if the stone's underside combed the sand: a shadowed lip and a lit one
+        g.lineCap = 'round';
+        for (let i = -1; i <= 1; i++) {
+          const o = i * w * 0.15, ax = x0 - ox + nx * o, ay = y0 - oy + ny * o, bx = x1 - ox + nx * o, by = y1 - oy + ny * o;
+          g.lineWidth = 1.5; g.strokeStyle = bright() ? 'rgba(120,92,52,0.3)' : 'rgba(22,26,52,0.34)'; g.beginPath(); g.moveTo(ax, ay + 0.8); g.lineTo(bx, by + 0.8); g.stroke();
+          g.lineWidth = 1; g.strokeStyle = C.lt; g.beginPath(); g.moveTo(ax, ay - 0.7); g.lineTo(bx, by - 0.7); g.stroke();
+        }
         g.restore();
       }
 
@@ -689,10 +720,11 @@
         ctx.track('coc_split', {});
       }
       function checkSorted() {
-        if (st.phase !== 'sort') return;
-        const pending = stones.some(s => ['wait', 'deal', 'tray', 'drag', 'refuse', 'placing', 'cracked', 'splitting'].includes(s.state));
-        if (pending || !st.twistOut) return;
-        if (levers().some(s => s.lever && s.lever.pop < 1)) { K.later(checkSorted, 400); return; }
+        if (st.phase !== 'sort' || !st.twistOut) return;
+        // stones still waiting for the player: the next sort (or the split) checks again
+        if (stones.some(s => ['wait', 'tray', 'cracked'].includes(s.state))) return;
+        // stones still settling into the sand: look again in a moment (never strand the round here)
+        if (stones.some(s => ['deal', 'drag', 'refuse', 'placing', 'splitting'].includes(s.state)) || levers().some(s => s.lever && s.lever.pop < 1)) { K.later(checkSorted, 300); return; }
         startPull();
       }
 
@@ -769,7 +801,8 @@
         st.cardOn = true; card.lastChild.textContent = t; placeCard(); card.classList.remove('on'); void card.offsetWidth; card.classList.add('on');
         K.later(() => { card.classList.remove('on'); K.later(nextCard, 380); }, 3400);
       }
-      function placeCard() { const ch = card.offsetHeight || 80; card.style.top = Math.round(M.side ? M.tray.y + 6 : clamp(M.tray.y + 2, 0, M.charTop - ch - 90)) + 'px'; }
+      function placeCard() { const ch = card.offsetHeight || 80, cw = card.offsetWidth || 340, top = Math.round(M.side ? M.tray.y + 6 : clamp(M.tray.y + 2, 0, M.charTop - ch - 90)); card.style.top = top + 'px'; M.cardBox = { x: (M.W - cw) / 2 - 8, y: top - 8, w: cw + 16, h: ch + 24 }; }
+      const cardBoxes = () => [st.cardOn && M.cardBox, st.planOn && M.planBox].filter(Boolean);
 
       /* ---------------- finale: lights, drifting clouds, the rake ---------------- */
       async function finale() {
@@ -780,6 +813,10 @@
         st.rakeT0 = now(); st.rakeDur = RM() ? 900 : 2600; st.rakeA = 0; SFX.rake(st.rakeDur);
         stones.filter(s => s.state === 'lever' || s.state === 'bridge').forEach((s, i) => K.later(() => { rippleAt(s.x, s.y, 'influence'); SFX.tink(5 + i, gridT(4)); }, 500 + i * 260));
         clouds.forEach(c => { c.vx *= 1.6; });
+        // dusk settles over the town so every window you lit glows, and paper lanterns rise from the lit districts
+        st.duskT0 = now(); st.lanterns = []; st.lantQ = [];
+        const perD = [4, 6, 8][inten];
+        town.litDistricts.forEach((d, di) => { for (let i = 0; i < perD; i++) st.lantQ.push({ d, at: now() + 900 + di * 380 + i * (RM() ? 120 : 420) + Math.random() * 200, first: i === 0 }); });
         K.finale('stars', { colors: ['#fff3c4', '#ffd27a', '#ffe9a8', '#cfe0ff'], chord: ['D3', 'A3', 'D4', 'F4', 'A4'], ms: 5200 });
         await K.wait(RM() ? 1000 : 2700);
         showPlan();
@@ -795,10 +832,10 @@
         stones.filter(s => s.state === 'lever').sort((a, b) => (a.lever.dist || 0) - (b.lever.dist || 0)).forEach(s => ol.append(h('li', { html: ICON.lever }, h('span', { text: s.act || s.label }))));
         plan.append(ol);
         if (care) plan.append(h('em', { text: 'For the facts, ask someone qualified.' }));
-        placePlan(); void plan.offsetWidth; plan.classList.add('on');
+        placePlan(); void plan.offsetWidth; plan.classList.add('on'); st.planOn = true;
         if (A.ctx) A.chime(A.note('D5'), { vol: 0.06, dur: 2 });
       }
-      function placePlan() { const ph = plan.offsetHeight || 150; plan.style.top = Math.round(M.side ? M.tray.y - 6 : clamp(M.tray.y - 10, M.cy, M.charTop - ph - 100)) + 'px'; }
+      function placePlan() { const ph = plan.offsetHeight || 150, pw = plan.offsetWidth || 380, top = Math.round(M.side ? M.tray.y - 6 : clamp(M.tray.y - 10, M.cy, M.charTop - ph - 100)); plan.style.top = top + 'px'; M.planBox = { x: (M.W - pw) / 2 - 8, y: top - 8, w: pw + 16, h: ph + 26 }; }
       function finish() {
         if (st.finished) return; st.finished = true; st.phase = 'done';
         const lv = levers(), nL = lv.length, nB = bridges().length, nC = clouds.length;
@@ -896,6 +933,16 @@
         st.orbs = st.orbs.filter(o => !o.done);
         st.ripples = st.ripples.filter(r => tn - r.t0 < 1400);
         if (st.rakeT0) { st.rakeA = clamp((tn - st.rakeT0) / st.rakeDur, 0, 1); }
+        if (st.duskT0) st.duskK = clamp((tn - st.duskT0) / 2400, 0, 1);
+        st.trayA += ((['pull', 'finale', 'done'].includes(st.phase) ? 0 : 1) - st.trayA) * Math.min(1, rdt * 3.5); // the empty deck sinks away once every stone has a place
+        if (st.lantQ && st.lantQ.length) st.lantQ = st.lantQ.filter(q => { // sky lanterns leave their district one by one
+          if (tn < q.at) return true;
+          const a = M.anchors[q.d] || { x: M.W / 2, y: M.H / 2 };
+          st.lanterns.push({ x: a.x + (Math.random() - 0.5) * 80 * M.k, y: a.y + (Math.random() - 0.5) * 26 * M.k, vy: -(18 + Math.random() * 14) * M.k, ph: Math.random() * 6, s: (1.05 + Math.random() * 0.55) * M.k * (M.side ? 1.3 : 1), t0: tn });
+          if (q.first) SFX.tink(7 + q.d, gridT(2));
+          return false;
+        });
+        if (st.lanterns && st.lanterns.length) { st.lanterns.forEach(l => { l.vy -= 5 * M.k * rdt; l.y += l.vy * rdt; l.x += Math.sin(tn / 900 + l.ph) * 8 * M.k * rdt; }); st.lanterns = st.lanterns.filter(l => l.y > -40); }
         // the season drifts through the air
         if (!RM() && Math.random() < rdt * (season.fall === 'firefly' ? 2.2 : 1.6)) {
           if (season.fall === 'firefly') P.emit('mote', Math.random() * M.W, Math.random() * M.H, 1, { colors: season.fallCols });
@@ -908,7 +955,10 @@
       function draw(g, t) {
         const tn = now(), k = M.k, br = bright(), dp = cv.dpr || 1;
         g.drawImage(stat, 0, 0, stat.width, stat.height, 0, 0, stat.width / dp, stat.height / dp);
+        if (st.duskK) { g.fillStyle = 'rgba(16,14,44,' + ((br ? 0.42 : 0.24) * K.ease.inOutSine(st.duskK)).toFixed(3) + ')'; g.fillRect(0, 0, M.W, M.H); } // dusk over the town (the garden stays lit)
         drawTownLights(g, t, tn, br);
+        if (!st.trayOK) renderTray();
+        if (st.trayA > 0.01) { const pad = M.trayPad, slide = (1 - st.trayA) * 26 * k; g.globalAlpha = st.trayA; g.drawImage(trayC, 0, 0, trayC.width, trayC.height, M.tray.x - pad, M.tray.y - pad + slide, trayC.width / dp, trayC.height / dp); g.globalAlpha = 1; }
         // garden + furrows + rake
         if (!st.gardenOK) renderGarden();
         const gb = M.gb;
@@ -936,6 +986,14 @@
         g.globalAlpha = 1;
         clouds.forEach(c => { const sp = cloudSprite(c), sc = 0.4 + 0.6 * (c.grow == null ? 1 : c.grow); g.globalAlpha = clamp((c.grow == null ? 1 : c.grow) * 1.4, 0, 1); g.drawImage(sp.c, c.x - sp.w * sc / 2, c.y - sp.h * sc / 2, sp.w * sc, sp.h * sc); });
         g.globalAlpha = 1;
+        if (st.lanterns && st.lanterns.length) { // paper lanterns: a warm halo, then the paper and its flame
+          const spr = K.glowSprite('#ffb85a');
+          g.save(); g.globalCompositeOperation = 'lighter';
+          st.lanterns.forEach(l => { const r = 24 * l.s; g.globalAlpha = 0.75 * clamp((tn - l.t0) / 500, 0, 1) * (0.85 + 0.15 * Math.sin(tn / 140 + l.ph)); g.drawImage(spr, l.x - r, l.y - r, r * 2, r * 2); });
+          g.restore();
+          st.lanterns.forEach(l => { const s = l.s; g.globalAlpha = clamp((tn - l.t0) / 500, 0, 1); g.fillStyle = '#ffc77c'; g.beginPath(); g.moveTo(l.x - 4.2 * s, l.y - 6.5 * s); g.lineTo(l.x + 4.2 * s, l.y - 6.5 * s); g.lineTo(l.x + 5.4 * s, l.y + 5 * s); g.lineTo(l.x - 5.4 * s, l.y + 5 * s); g.closePath(); g.fill(); g.fillStyle = '#fff3d2'; g.fillRect(l.x - 2.2 * s, l.y + 0.6 * s, 4.4 * s, 3.4 * s); });
+          g.globalAlpha = 1;
+        }
         P.draw(g);
       }
       function drawTownLights(g, t, tn, br) {
@@ -950,7 +1008,8 @@
         g.globalAlpha = 1;
         g.save(); g.globalCompositeOperation = 'lighter';
         const spr = K.glowSprite(br ? '#ffcf6a' : '#ffc46b');
-        lit.forEach(o => { const a = clamp((tn - o.litAt) / 400, 0, 1) * (br ? 0.32 : 0.55) * (0.85 + 0.15 * Math.sin(t * 2.2 + (o.ph || 0))), r = (o.t === 'house' ? 22 : 14) * k * (o.tea ? 1.4 : 1); g.globalAlpha = a; g.drawImage(spr, o.x - r, (o.t === 'house' ? o.y - o.d * 0.6 : o.y - 11 * k) - r, r * 2, r * 2); });
+        const glowA = br ? 0.32 + 0.3 * (st.duskK || 0) : 0.55 + 0.15 * (st.duskK || 0);
+        lit.forEach(o => { const a = clamp((tn - o.litAt) / 400, 0, 1) * glowA * (0.85 + 0.15 * Math.sin(t * 2.2 + (o.ph || 0))), r = (o.t === 'house' ? 22 : 14) * k * (o.tea ? 1.4 : 1); g.globalAlpha = a; g.drawImage(spr, o.x - r, (o.t === 'house' ? o.y - o.d * 0.6 : o.y - 11 * k) - r, r * 2, r * 2); });
         M.paths.forEach(p => p.lan.forEach(l => { if (!l.lit) return; const r = 15 * k; g.globalAlpha = clamp((tn - l.lit) / 300, 0, 1) * (br ? 0.35 : 0.6); g.drawImage(spr, l.x - r, l.y - 11 * k - r, r * 2, r * 2); }));
         g.restore(); g.globalAlpha = 1;
       }
@@ -987,14 +1046,18 @@
         g.fillStyle = gr; g.beginPath(); g.arc(kn.x, kn.y, r, 0, TAU); g.fill();
       }
       function drawBridge(g, s, k, tn) {
-        const ang = Math.atan2(s.gv, s.gu), x0 = s.x - Math.cos(ang) * stoneW(s) * 0.34, y0 = s.y - Math.sin(ang) * stoneH(s) * 0.3, x1e = M.cx + Math.cos(ang) * M.rx * (F1 - 0.03), y1e = M.cy + Math.sin(ang) * M.ry * (F1 - 0.03);
+        // a little arched footbridge from the stone, over the ring line, reaching into the circle of what's yours
+        const ang = Math.atan2(s.gv, s.gu), x0 = s.x - Math.cos(ang) * stoneW(s) * 0.3, y0 = s.y - Math.sin(ang) * stoneH(s) * 0.26, x1e = M.cx + Math.cos(ang) * M.rx * F1 * 0.74, y1e = M.cy + Math.sin(ang) * M.ry * F1 * 0.74;
         const kk = K.ease.outCubic(s.bk), x1 = lerp(x0, x1e, kk), y1 = lerp(y0, y1e, kk), len = Math.hypot(x1 - x0, y1 - y0); if (len < 2) return;
-        const nx = -(y1 - y0) / len, ny = (x1 - x0) / len, wd = 5 * k, arch = 9 * k * kk, mx = (x0 + x1) / 2, my = (y0 + y1) / 2 - arch;
+        const nx = -(y1 - y0) / len, ny = (x1 - x0) / len, wd = 6.5 * k, arch = 13 * k * kk, mx = (x0 + x1) / 2, my = (y0 + y1) / 2 - arch;
         g.fillStyle = 'rgba(10,8,5,0.25)'; g.beginPath(); g.moveTo(x0 + nx * wd, y0 + ny * wd + 3 * k); g.quadraticCurveTo(mx + nx * wd, my + ny * wd + 3 * k + arch, x1 + nx * wd, y1 + ny * wd + 3 * k); g.lineTo(x1 - nx * wd, y1 - ny * wd + 3 * k); g.quadraticCurveTo(mx - nx * wd, my - ny * wd + 3 * k + arch, x0 - nx * wd, y0 - ny * wd + 3 * k); g.closePath(); g.fill();
         g.fillStyle = '#8a5a36'; g.beginPath(); g.moveTo(x0 + nx * wd, y0 + ny * wd); g.quadraticCurveTo(mx + nx * wd, my + ny * wd, x1 + nx * wd, y1 + ny * wd); g.lineTo(x1 - nx * wd, y1 - ny * wd); g.quadraticCurveTo(mx - nx * wd, my - ny * wd, x0 - nx * wd, y0 - ny * wd); g.closePath(); g.fill();
         g.strokeStyle = 'rgba(40,25,12,0.5)'; g.lineWidth = 1; g.beginPath(); for (let i = 1; i < 6; i++) { const u = i / 6, bx = (1 - u) * (1 - u) * x0 + 2 * u * (1 - u) * mx + u * u * x1, by = (1 - u) * (1 - u) * y0 + 2 * u * (1 - u) * my + u * u * y1; g.moveTo(bx + nx * wd, by + ny * wd); g.lineTo(bx - nx * wd, by - ny * wd); } g.stroke();
-        g.strokeStyle = '#c9452f'; g.lineWidth = 2 * k; g.lineCap = 'round';
-        [1, -1].forEach(sd => { g.beginPath(); g.moveTo(x0 + nx * wd * sd, y0 + ny * wd * sd - 3 * k); g.quadraticCurveTo(mx + nx * wd * sd, my + ny * wd * sd - 3 * k, x1 + nx * wd * sd, y1 + ny * wd * sd - 3 * k); g.stroke(); });
+        const bz = (u) => ({ x: (1 - u) * (1 - u) * x0 + 2 * u * (1 - u) * mx + u * u * x1, y: (1 - u) * (1 - u) * y0 + 2 * u * (1 - u) * my + u * u * y1 });
+        g.strokeStyle = '#8f2f20'; g.lineWidth = 1.5 * k; g.lineCap = 'round';
+        [0.05, 0.5, 0.95].forEach(u => { if (u > kk + 0.02) return; const b = bz(u); [1, -1].forEach(sd => { g.beginPath(); g.moveTo(b.x + nx * wd * sd, b.y + ny * wd * sd); g.lineTo(b.x + nx * wd * sd, b.y + ny * wd * sd - 4 * k); g.stroke(); }); });
+        g.strokeStyle = '#c9452f'; g.lineWidth = 2.2 * k;
+        [1, -1].forEach(sd => { g.beginPath(); g.moveTo(x0 + nx * wd * sd, y0 + ny * wd * sd - 4 * k); g.quadraticCurveTo(mx + nx * wd * sd, my + ny * wd * sd - 4 * k, x1 + nx * wd * sd, y1 + ny * wd * sd - 4 * k); g.stroke(); });
         if (st.phase === 'finale' || st.litN >= 2) { const r = 12 * k; g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.5 + 0.2 * Math.sin(tn / 400 + s.seed); g.drawImage(K.glowSprite('#ffc46b'), mx - r, my - 4 * k - r, r * 2, r * 2); g.restore(); g.fillStyle = '#fff1c4'; g.beginPath(); g.arc(mx, my - 4 * k, 1.8 * k, 0, TAU); g.fill(); }
       }
       function drawRake(g, a, k) {
@@ -1020,14 +1083,16 @@
           const key = Math.round(x) + ',' + Math.round(y) + ',' + Math.round(w) + ',' + Math.round(hh);
           if (key !== s.key) { s.key = key; Object.assign(s.el.style, { transform: 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)', width: Math.round(w) + 'px', height: Math.round(hh) + 'px' }); }
           if (inLever && s.lever.el) { const kn = knobPos(s), lw = 54 * M.k, lh = 70 * M.k, lx = s.x - lw / 2, ly = kn.piv.y - 40 * M.k; const lk = Math.round(lx) + ',' + Math.round(ly); if (lk !== s.lk) { s.lk = lk; Object.assign(s.lever.el.style, { transform: 'translate(' + Math.round(lx) + 'px,' + Math.round(ly) + 'px)', width: Math.round(lw) + 'px', height: Math.round(lh) + 'px' }); } }
-          const labOn = ['tray', 'deal', 'drag', 'refuse', 'placing', 'cracked'].includes(s.state) && !(s.pebble && s.state !== 'tray');
+          const labOn = ['tray', 'deal', 'drag', 'refuse', 'placing', 'cracked'].includes(s.state) && !(s.pebble && s.state !== 'tray') && s.x - stoneW(s) / 2 > 2 && s.x + stoneW(s) / 2 < M.W - 2; // a stone sliding in from the edge shows its words once it's inside
           const op = labOn ? '1' : '0'; if (s.lab.style.opacity !== op) s.lab.style.opacity = op;
-          if (labOn) { const lw = stoneW(s) - 12, lx = s.x - lw / 2, ly = s.y - s.lift - stoneH(s) * 0.5 + 2, lk = Math.round(lx) + ',' + Math.round(ly) + ',' + Math.round(lw); if (lk !== s.labk) { s.labk = lk; Object.assign(s.lab.style, { transform: 'translate(' + Math.round(lx) + 'px,' + Math.round(ly) + 'px) rotate(' + (s.rot * 0.6).toFixed(3) + 'rad)', width: Math.round(lw) + 'px', height: Math.round(stoneH(s) - 6) + 'px' }); } }
+          if (labOn) { const lw = stoneW(s) - 8, lx = s.x - lw / 2, ly = s.y - s.lift - stoneH(s) * 0.5 + 2, lk = Math.round(lx) + ',' + Math.round(ly) + ',' + Math.round(lw); if (lk !== s.labk) { s.labk = lk; Object.assign(s.lab.style, { transform: 'translate(' + Math.round(lx) + 'px,' + Math.round(ly) + 'px) rotate(' + (s.rot * 0.6).toFixed(3) + 'rad)', width: Math.round(lw) + 'px', height: Math.round(stoneH(s) - 6) + 'px' }); } }
         });
         clouds.forEach(c => {
           const g0 = c.grow == null ? 1 : c.grow, lw = parseFloat(c.lab.style.width) || 120, x = c.x - lw / 2, y = c.y - 22 - 2 * M.k;
           const key = Math.round(x) + ',' + Math.round(y); if (key !== c.key) { c.key = key; c.lab.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)'; }
-          const op = g0 > 0.85 ? '1' : '0'; if (c.lab.style.opacity !== op) c.lab.style.opacity = op;
+          // the words ride along while the cloud is in view and fade before it slips off an edge (drift speed sets the margin)
+          const m = 14 + Math.abs(c.vx) * (1 + c.boost * 5) * 0.8, hid = cardBoxes().some(b => x < b.x + b.w && x + lw > b.x && y < b.y + b.h && y + 48 > b.y); // never peek out from under a card
+          const op = g0 > 0.85 && x > m && x + lw < M.W - m && !hid ? '1' : '0'; if (c.lab.style.opacity !== op) c.lab.style.opacity = op;
         });
       }
       const HUDC = { s: -1, l: -1, b: -1, c: -1 };
@@ -1045,9 +1110,12 @@
 
       /* ---------------- frame loop ---------------- */
       cv.onResize(() => layout());
-      S.on('theme', () => { st.statOK = false; st.gardenOK = false; stones.forEach(s => { s.sp = null; }); clouds.forEach(c => { c.sp = null; }); });
+      S.on('theme', () => { st.statOK = false; st.gardenOK = false; st.trayOK = false; stones.forEach(s => { s.sp = null; }); clouds.forEach(c => { c.sp = null; }); });
+      const SOFT = softwareGfx();
+      let odd = false;
       K.loop((dt, t) => {
         const g = cv.g; if (!g || !M.W) return;
+        if (SOFT && !st.drag && (odd = !odd)) return; // CPU-only rendering: an even 30 fps (the sim runs on real time), full rate while a stone is in hand
         st.fn++; if (dt > 0.034) st.slow++;
         if (st.fn >= 120) { if (st.slow > 40 && st.q > 0.7) { st.q = 0.7; cv.setQuality(st.q); } st.fn = 0; st.slow = 0; }
         if (!st.statOK) renderStatic();
@@ -1061,6 +1129,7 @@
 
       /* ---------------- start ---------------- */
       (async () => {
+        hudTick(false); // the counters read 0 from the first frame, never blank
         await K.intro({ title: 'Circle of Control', sub: 'Some worries are yours to act on. Some you can only nudge. Some are just weather.', how: 'Drag each stone into a ring. Split the big one. Pull your levers.', char: 'still', mood: 'calm' });
         musicOn();
         st.phase = 'deal';

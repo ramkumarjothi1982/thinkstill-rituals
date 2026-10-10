@@ -307,20 +307,20 @@
       out: { title: 'Just out of shot', stats: ['Plants thriving: 5', 'Plants that didn’t: 4'], note: 'RIP Gerald. You were loved.' }, react: L3('A jungle on the shelf, and a few brave plants below it.', 'Gerald gave his life for this aesthetic.', 'Five alive. Four didn’t make it.') },
     { id: 'cozy', art: 'cozy', kind: 'wide', who: { col: '#f6bd60' }, handle: '@slow.sunday.sol', cap: 'Slow Sunday.', likes: 3975, tag: '#cosy', theme: 'glow', tell: [284, 118, 'a very full chair'],
       out: { title: 'Just out of shot', stats: ['Items on the chair: 41', 'Guitar under it all: 1'], note: 'Every cosy corner has a chair like this.' }, react: L3('Every cosy corner has a chair like that.', 'Slow Sunday, powered by The Chair.', 'Cosy corner. Chaos chair.') },
-    { id: 'keynote', art: 'keynote', kind: 'notes', who: { col: '#7bdff2' }, handle: '@dr.nova.speaks', cap: 'So natural on stage.', likes: 7310, tag: '#keynote', theme: 'big', tell: [104, 141, 'note cards, just in case'],
+    { id: 'keynote', art: 'keynote', kind: 'notes', who: { col: '#7bdff2' }, handle: '@dr.nova.speaks', cap: 'So natural on stage.', likes: 7310, tag: '#bigtalk', theme: 'big', tell: [104, 141, 'note cards, just in case'],
       out: { title: 'The morning of', notes: ['5:02 awake. Alarm was set for 7.', 'Practised to the cat: 14 times.', 'Pep talk in the loo: 3.', '8:59 very sweaty palms.'], note: 'Natural took a lot of practice.' }, react: L3('Fourteen practice runs for “natural”. That’s brave.', 'So natural. The cat heard it fourteen times.', 'Practised 14 times. Nervous. Did it anyway.') },
     { id: 'marathon', art: 'marathon', kind: 'notes', who: { c: 'rush' }, handle: '@rush.runs', cap: 'Felt amazing the whole way.', likes: 9150, tag: '#26point2', theme: 'big', tell: [172, 193, 'a plaster on the knee'],
       out: { title: 'The whole way', notes: ['Training: 6 months.', 'Blisters: 11.', 'Walked some bits. Allowed!', 'Cried at mile 20 (happy?).'], note: 'Amazing at the end. Hard in the middle.' }, react: L3('Blisters, walking bits and happy tears. That’s a real finish.', 'Felt amazing the whole way, except most of it.', 'Hard the whole way. Finished anyway.') },
     { id: 'graduation', art: 'graduation', kind: 'notes', who: { col: '#ffd166', k: 'bun' }, handle: '@ari.at.last', cap: 'Made it look easy.', likes: 11230, tag: '#graduated', theme: 'big', tell: [101, 205, 'an energy drink'],
       out: { title: 'Made it', notes: ['Essay drafts: 12.', 'Library cries: 2.', 'Asked for an extension: once.', 'Kept going: yes.'], note: 'Easy is not the word.' }, react: L3('Twelve drafts and two library cries. Look at that smile.', 'Made it look easy. It was not easy.', '12 drafts. Kept going.') },
-    { id: 'morning', art: 'morning', kind: 'notes', who: { col: '#a0c4ff' }, handle: '@five.am.ash', cap: '5am club. Every day.', likes: 2650, tag: '#morningroutine', theme: 'glow', tell: [274, 170, 'the alarm clock'],
-      out: { title: '5:47, actually', notes: ['Snoozed: 6 times.', '5am mornings this year: 1.', 'Matcha: lukewarm.', 'Back to bed after: yes.'], note: 'One good morning still counts.' }, react: L3('One 5am morning counts. Six snoozes count too.', '5am club. Membership: one morning.', 'Snoozed six times. Posted once.') }
+    { id: 'morning', art: 'morning', kind: 'notes', who: { col: '#a0c4ff' }, handle: '@five.am.ash', cap: 'Up at 5am. Every day.', likes: 2650, tag: '#morningroutine', theme: 'glow', tell: [274, 170, 'the alarm clock'],
+      out: { title: '5:47, actually', notes: ['Snoozed: 6 times.', '5am mornings this year: 1.', 'Green tea: lukewarm.', 'Back to bed after: yes.'], note: 'One good morning still counts.' }, react: L3('One 5am morning counts. Six snoozes count too.', 'Up at 5am every day. Well, one day.', 'Snoozed six times. Posted once.') }
   ];
   const THEMES = [
-    { id: 'food', name: 'Food Feed', glow: ['#ff9a8b', '#ffd1a3', '#ffb6c1'] },
-    { id: 'glow', name: 'Glow-Up Feed', glow: ['#c9b6ff', '#ff9fd1', '#ffd6a5'] },
-    { id: 'big', name: 'Big Moments Feed', glow: ['#7bdff2', '#ffd166', '#ff8fab'] },
-    { id: 'home', name: 'Home Feed', glow: ['#9be3c7', '#ffe29a', '#c9b6ff'] }
+    { id: 'food', name: 'Food', glow: ['#ff9a8b', '#ffd1a3', '#ffb6c1'] },
+    { id: 'glow', name: 'Glow-Up', glow: ['#c9b6ff', '#ff9fd1', '#ffd6a5'] },
+    { id: 'big', name: 'Big Moments', glow: ['#7bdff2', '#ffd166', '#ff8fab'] },
+    { id: 'home', name: 'Home Life', glow: ['#9be3c7', '#ffe29a', '#c9b6ff'] }
   ];
   const WINS = [
     { id: 'showed', t: 'Showed up anyway', i: 'sun' }, { id: 'ate', t: 'Ate something decent', i: 'bowl' }, { id: 'done', t: 'Got one thing done', i: 'check' },
@@ -426,8 +426,14 @@
 .g-behind-the-post .bp-sec .gk-user, .g-behind-the-post .bp-sec p { margin: 0; font: 500 16px/1.3 var(--font-ui); color: #3b2414; }
 .g-behind-the-post .bp-sec.bp-head2 .gk-user, .g-behind-the-post .bp-sec.bp-head2 p { font: 400 21px/1.15 var(--bp-hand); color: #b3122c; }
 .g-behind-the-post .bp-sec p.bp-eg { font-style: italic; opacity: .9; }
+.g-behind-the-post .bp-ydood { flex: none; width: 100%; height: 34px; opacity: .5; }
+.g-behind-the-post .bp-back.bp-tight .bp-ybody { gap: 7px; justify-content: flex-start; }
+.g-behind-the-post .bp-back.bp-tight .bp-ydood { display: none; }
+.g-behind-the-post .bp-back.bp-tighter .bp-otitle { font-size: 24px; }
+.g-behind-the-post .bp-back.bp-tighter .bp-sec .gk-user, .g-behind-the-post .bp-back.bp-tighter .bp-sec p { font-size: 15px; line-height: 1.24; }
+.g-behind-the-post .bp-back.bp-tighter .bp-sec.bp-head2 .gk-user, .g-behind-the-post .bp-back.bp-tighter .bp-sec.bp-head2 p { font-size: 18px; }
 .g-behind-the-post .bp-hl { position: relative; flex: 1; min-height: 0; border-radius: 13px; overflow: hidden; background: linear-gradient(150deg, #ffcf8f 0%, #ff9fb2 45%, #b7a8ff 100%); display: flex; flex-direction: column; justify-content: center; gap: 7px; padding: 12px; }
-.g-behind-the-post .bp-hl::before { content: ""; position: absolute; inset: 0; background: radial-gradient(60% 50% at 80% 10%, rgba(255, 255, 255, .55), transparent 70%); pointer-events: none; }
+.g-behind-the-post .bp-hl::before { content: ""; position: absolute; inset: 0; background: radial-gradient(60% 50% at 80% 10%, rgba(255, 255, 255, .55), transparent 70%), repeating-conic-gradient(from 0deg at 82% 8%, rgba(255, 255, 255, .17) 0deg 7deg, transparent 7deg 21deg); pointer-events: none; }
 .g-behind-the-post .bp-hl > b { position: relative; font: 400 22px/1 var(--bp-disp); color: #fff; text-shadow: 0 2px 8px rgba(120, 30, 80, .35); }
 .g-behind-the-post .bp-stick { position: relative; align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px 7px 9px; border-radius: 999px; background: #fffdfb; color: #3a1f4a; font: 700 15px/1.15 var(--font-ui); box-shadow: 0 4px 10px rgba(80, 20, 60, .25); transform: rotate(var(--r, -2deg)); }
 .g-behind-the-post .bp-stick:nth-child(odd) { align-self: flex-end; }
@@ -475,13 +481,20 @@
 .g-behind-the-post .bp-yours span { font: 700 14px/1.25 var(--font-ui); }
 .g-behind-the-post .bp-yb span { font-weight: 500; }
 .g-behind-the-post .bp-comments { width: 100%; display: flex; flex-direction: column; gap: 8px; }
-.g-behind-the-post .bp-com { display: flex; align-items: center; gap: 10px; padding: 7px 12px 7px 7px; border-radius: 16px; background: var(--ui-surface); border: 1px solid var(--ui-line); color: var(--ui-fg); box-shadow: 0 8px 18px rgba(0, 0, 0, .2); animation: behind-the-post-up .5s cubic-bezier(.2, 1.5, .4, 1) both; }
+.g-behind-the-post .bp-com { display: flex; align-items: center; gap: 10px; padding: 7px 12px 7px 7px; border-radius: 16px; background: var(--ui-surface); border: 1px solid var(--ui-line); color: var(--ui-fg); box-shadow: 0 8px 18px rgba(0, 0, 0, .2); }
+.g-behind-the-post .bp-com.bp-wait { visibility: hidden; }
+.g-behind-the-post .bp-com.bp-show { animation: behind-the-post-up .5s cubic-bezier(.2, 1.5, .4, 1) both; }
+.g-behind-the-post .bp-final.bp-widefin .bp-comments { flex-direction: row; align-items: stretch; gap: 10px; }
+.g-behind-the-post .bp-final.bp-widefin .bp-com { flex: 1 1 0; min-width: 0; align-items: flex-start; padding: 9px 10px 10px 9px; }
+.g-behind-the-post .bp-final.bp-widefin .bp-com > span { display: none; }
+.g-behind-the-post .bp-wall.bp-wall-fin > header { justify-content: center; gap: 14px; }
+.g-behind-the-post .bp-wall.bp-wall-fin .bp-slots { grid-template-columns: repeat(var(--cols, 3), 1fr); }
 .g-behind-the-post .bp-com img { width: 38px; height: 38px; flex: none; object-fit: contain; }
 .g-behind-the-post .bp-com p { margin: 0; font: 500 15px/1.3 var(--font-ui); }
 .g-behind-the-post .bp-com p b { font-weight: 800; margin-right: 4px; }
 .g-behind-the-post .bp-com svg { width: 16px; height: 16px; color: #ffb703; flex: none; margin-left: auto; }
 .g-behind-the-post .bp-album { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.g-behind-the-post .bp-album .bp-mini { position: relative; inset: auto; height: 68px; }
+.g-behind-the-post .bp-album .bp-mini { position: relative; inset: auto; height: 58px; }
 .g-behind-the-post .gk-bubble { max-width: min(270px, calc(100cqw - var(--sz, 96px) - 44px)); }
 @keyframes behind-the-post-glint { 0%, 62% { transform: translateX(-60%); } 80%, 100% { transform: translateX(60%); } }
 @keyframes behind-the-post-twinkle { 0%, 70%, 100% { opacity: 0; transform: scale(.4); } 82% { opacity: 1; transform: scale(1.6); } }
@@ -648,11 +661,11 @@
         if (M.phone) {
           M.cw = Math.min(M.W - 30, 372); M.ch = cardHeight(M.cw);
           const top0 = 112, bottom = M.H - (M.CH + 26), need = M.ch + 18 + 54;
-          M.cx = Math.round((M.W - M.cw) / 2); M.cy = Math.round(top0 + Math.max(0, (bottom - top0 - need) * 0.32));
+          M.cx = Math.round((M.W - M.cw) / 2); M.cy = Math.round(top0 + 22 + Math.max(0, (bottom - top0 - 22 - need) * 0.4));
           if (wall) wall.hidden = true;
         } else {
           M.wallW = Math.min(440, Math.round(M.W * 0.34)); M.wallX = M.W - 28 - M.wallW;
-          M.cw = Math.min(400, M.wallX - 90); M.ch = cardHeight(M.cw);
+          M.cw = Math.min(440, M.wallX - 90); M.ch = cardHeight(M.cw);
           M.cx = Math.round((M.wallX - M.cw) / 2 + 6); M.cy = Math.round(108 + Math.max(0, (M.H - 108 - (M.CH + 30) - M.ch - 76) * 0.3));
           buildWall();
           Object.assign(wall.style, { left: M.wallX + 'px', top: '104px', width: M.wallW + 'px' }); wall.hidden = false;
@@ -715,7 +728,8 @@
       // each face carries its own shade (a shared layer would sit in the same 3D plane as the faces and flicker)
       function addShades(c) { c.shades = [c.front, c.back].map(f => { const s = h('div', { class: 'bp-shade' }); f.append(s); return s; }); }
       function placeCard(c, instant) {
-        const off = [0, 13, 24][c.slot] || 30, sc = [1, 0.955, 0.91][c.slot] || 0.88;
+        // the next posts wait in a deck that peeks out above the one you're holding
+        const off = c.slot < 3 ? [0, -19, -36][c.slot] : -44, sc = c.slot < 3 ? [1, 0.955, 0.91][c.slot] : 0.88;
         if (instant) c.el.classList.add('bp-live');
         c.el.style.transform = 'translate3d(' + M.cx + 'px,' + (M.cy + off + (c.ty || 0)) + 'px,0) scale(' + (sc * (c.sc || 1)) + ')';
         c.el.style.zIndex = String(10 - c.slot);
@@ -913,7 +927,7 @@
         // the caption a kind friend would write under it (their own friend line when the AI read their words; never a joke in care mode)
         const friend = care() ? 'A hard day, and a real one. Worth proper help with the hard bit.' : strong() ? 'A real worry, and still not the whole day.' : an.source === 'ai' && an.friend ? clip(an.friend, 110) : 'One hard moment. Not the whole day, and not the whole you.';
         s += sec('What a friend would caption it', friend, null) + '</div>';
-        return s + '<svg viewBox="0 0 300 60" aria-hidden="true" style="flex:none;opacity:.5;width:100%;height:40px"><circle cx="40" cy="30" r="20" fill="none" stroke="#8a5a2b" stroke-width="3"/><path d="M90 30 q20 -24 40 0 t40 0 t40 0 t40 0" stroke="#5a3a2a" stroke-width="2.4" fill="none"/></svg>';
+        return s + '<svg class="bp-ydood" viewBox="0 0 300 60" aria-hidden="true"><circle cx="40" cy="30" r="20" fill="none" stroke="#8a5a2b" stroke-width="3"/><path d="M90 30 q20 -24 40 0 t40 0 t40 0 t40 0" stroke="#5a3a2a" stroke-width="2.4" fill="none"/></svg>';
       }
       function yoursFrontHTML() {
         const cap = care() ? 'Next: ask someone qualified about the hard bit.' : strong() && G.plan ? 'Next step: ' + G.plan : an.source === 'ai' && an.balanced ? clip(an.balanced, 110) : 'Both sides of a real day.';
@@ -938,7 +952,7 @@
         stage.append(c.el); bindCard(c); G.cards.push(c);
         FL.ang = 180; FL.base = 180; FL.target = 180; FL.vel = 0; FL.rx = 0; FL.lastWrite = ''; wasBack = true;
         c.ty = 90; c.el.style.opacity = '0'; placeCard(c, true); c.ty = 0; c.el.classList.add('bp-onback');
-        G.cur = c;
+        G.cur = c; fitYours(c);
         S.later(() => placeCard(c), 40);
         if (A.ctx) { A.whoosh({ vol: 0.1, dur: 0.5 }); A.pad(['A3', 'C4', 'E4'].map(n => A.note(n)), { dur: 3.2, vol: 0.1, attack: 0.5 }); }
         BED.vol = 0.55;
@@ -957,7 +971,7 @@
           grid.append(b); return b;
         });
         actions.replaceChildren(ask, grid);
-        placeTwist(c, true);
+        placeTwist(c, true); fitYours(c);
         say('patch', L({ Jolly: 'Now the other side. What made today’s highlight reel? Only you know.', Cheeky: 'Now find the highlights. Small ones count. Tiny ones count double.', Unfiltered: 'Find today’s highlights. Small counts.' }), 'happy', 4000);
         K.guide({ id: 'wins', g: 'choose', target: () => G.chips.slice(0, 2), label: 'TAP WHAT’S TRUE', delay: 1400 });
         await waitFor(() => G.picks.length > 0);
@@ -976,11 +990,23 @@
         K.guide(null);
         return c;
       }
-      function placeTwist(c, shrink) {
-        // the card makes room for the wins: smaller on a phone, beside them on a wide screen
-        if (M.phone && shrink) { c.sc = 0.74; c.ty = -M.ch * 0.13; actions.style.top = (M.cy + M.ch * 0.74 + 10) + 'px'; }
-        else { c.sc = 1; c.ty = 0; actions.style.top = (M.cy + M.ch + 22) + 'px'; }
+      function placeTwist(c, lift) {
+        // on a phone the card rises (into the finished feed counter's place) to make room for the wins under it; it
+        // never shrinks, so the player's words stay full size
+        c.sc = 1;
+        if (M.phone && lift) {
+          const need = actions.offsetHeight || 232, top = Math.round(Math.max(62, Math.min(M.cy, M.H - (M.CH + 32) - need - 10 - M.ch)));
+          c.ty = top - M.cy; actions.style.top = (top + M.ch + 10) + 'px';
+          if (top < 100) { hud.style.transition = 'opacity .3s ease'; hud.style.opacity = '0'; }
+        } else { c.ty = 0; actions.style.top = (M.cy + M.ch + 22) + 'px'; }
         placeCard(c);
+      }
+      // the player's own words are never clipped: a long day tightens the spacing, then the type (never below 15px)
+      function fitYours(c) {
+        const body = c.back.querySelector('.bp-ybody'); if (!body) return;
+        c.back.classList.remove('bp-tight', 'bp-tighter');
+        if (body.scrollHeight > body.clientHeight + 1) c.back.classList.add('bp-tight');
+        if (body.scrollHeight > body.clientHeight + 1) c.back.classList.add('bp-tighter');
       }
       function pickWin(wn, b, c) {
         if (G.phase !== 'yours' || G.yoursFlipped) return;
@@ -1016,33 +1042,36 @@
       async function finale(c) {
         G.phase = 'final'; G.cur = null;
         actions.replaceChildren(); G.postBtn = null;
-        hudFeed.textContent = 'The real feed'; hud.style.opacity = '0.0';
-        c.el.style.transition = 'transform .5s cubic-bezier(.5,0,.3,1), opacity .4s ease';
-        c.el.style.opacity = '0'; c.el.style.transform += ' scale(.9)';
-        S.later(() => { c.el.remove(); G.cards = G.cards.filter(x => x !== c); }, 600);
+        hud.style.transition = 'opacity .4s ease'; hud.style.opacity = '0';
+        // your post lifts away first, then the real feed opens up (nothing overlaps on the way)
+        c.el.style.transition = 'transform .45s cubic-bezier(.5,0,.3,1), opacity .35s ease';
+        c.el.style.opacity = '0'; c.el.style.transform += ' translateY(-30px) scale(.88)';
+        S.later(() => { c.el.remove(); G.cards = G.cards.filter(x => x !== c); }, 520);
+        if (A.ctx) A.whoosh({ vol: 0.1, dur: 0.45 });
         BED.vol = 1.15;
-        const fin = h('div', { class: 'bp-final' });
+        if (!M.phone && wall) { wall.style.transition = 'opacity .3s ease'; wall.style.opacity = '0'; }
+        await K.wait(reduced() ? 120 : 260);
+        const fin = h('div', { class: 'bp-final' + (M.phone ? '' : ' bp-widefin') });
         G.final = fin;
-        const banner = h('div', { class: 'bp-banner' }, h('b', { text: 'Everyone’s got outtakes' }), h('small', { text: 'The real feed · every post, both sides' }));
+        const banner = h('div', { class: 'bp-banner' }, h('b', { text: 'Everyone’s got outtakes' }), h('small', { text: 'The real feed · every post has both sides' }));
         const picks = G.picks.slice(0, 3).map(x => x.t);
         const yours = h('div', { class: 'bp-yours' },
           h('div', { class: 'bp-yf' }, h('small', { text: 'Highlights' }), h('b', { text: 'You, today' }), ...['Took a second look'].concat(picks).slice(0, 3).map(t => h('span', { text: '✓ ' + t }))),
           h('div', { class: 'bp-yb' }, h('small', { text: 'Behind the scenes' }), h('b', { text: noWords ? 'A day like this' : 'The messy bit' }), h('span', { text: noWords ? 'Things didn’t go to plan.' : 'The part nobody posts. You did.' })));
         const comments = h('div', { class: 'bp-comments' });
         fin.append(banner, yours, comments);
+        const nAlb = Math.min(6, FEED.length);
         if (M.phone) { // the feed, both sides, turning over in a wave under your post
           const album = h('div', { class: 'bp-album', 'aria-hidden': 'true' });
-          FEED.slice(0, 4).forEach((p, k) => { const m = miniCard(p, !reduced()); m.style.setProperty('--wd', (0.6 + k * 0.14) + 's'); album.append(m); });
+          FEED.slice(0, nAlb).forEach((p, k) => { const m = miniCard(p, !reduced()); m.style.setProperty('--wd', (0.5 + k * 0.13) + 's'); album.append(m); });
           fin.append(album);
-          if (!reduced()) FEED.slice(0, 4).forEach((p, k) => S.later(() => { if (A.ctx) A.pluck(A.note(PENTA[k % PENTA.length]), { vol: 0.1, damp: 0.995, verb: 0.3 }); }, 600 + k * 140));
+          if (!reduced()) FEED.slice(0, nAlb).forEach((p, k) => S.later(() => { if (A.ctx) A.pluck(A.note(PENTA[k % PENTA.length]), { vol: 0.1, damp: 0.995, verb: 0.3 }); }, 500 + k * 130));
         }
-        el.append(fin);
-        placeFinal();
         sync.base('celebrate'); patch.base('love');
         if (A.ctx) { const t = A.now(); A.pad(['C4', 'E4', 'G4', 'B4', 'D5'].map(n => A.note(n)), { dur: 6, vol: 0.18, attack: 0.6 }); ['G5', 'C6', 'E6', 'G6', 'C7'].forEach((n, k) => A.chime(A.note(n), { when: t + 0.3 + k * 0.12, vol: 0.06, dur: 2 })); A.sync('finale', at()); }
         S.later(() => { const yr = K.rectIn(yours); P.emit('star', yr.cx, yr.cy, 24, { colors: ['#fffbe6', '#ffd166', '#ff9fd1'], speed: [80, 260] }); P.emit('confetti', yr.cx, yr.y, [26, 40, 56][inten] || 40, { colors: THEME.glow.concat(['#ffffff', '#ffd166']), angle: -Math.PI / 2, spread: 2.6, speed: [160, 360] }); }, 500);
-        // the wall turns over in a wave: every post, both sides
-        if (!M.phone && !reduced()) slots.forEach((s, k) => S.later(() => { const m = s.querySelector('.bp-mini'); if (m) { m.style.setProperty('--wd', '0s'); m.classList.remove('bp-wave'); void m.offsetWidth; m.classList.add('bp-wave'); if (A.ctx) A.pluck(A.note(PENTA[k % PENTA.length]), { vol: 0.1, damp: 0.995, verb: 0.3 }); } }, 400 + k * 140));
+        // on a wide screen the album becomes the real feed under your post, and turns over in a wave
+        if (!M.phone && !reduced()) slots.forEach((s, k) => S.later(() => { const m = s.querySelector('.bp-mini'); if (m) { m.style.setProperty('--wd', '0s'); m.classList.remove('bp-wave'); void m.offsetWidth; m.classList.add('bp-wave'); if (A.ctx) A.pluck(A.note(PENTA[k % PENTA.length]), { vol: 0.1, damp: 0.995, verb: 0.3 }); } }, 600 + k * 140));
         const COM = [
           { who: 'patch', mood: 'love', line: { Jolly: 'Both sides of the story. Best post in the feed.', Cheeky: 'Unfiltered and still the best post here.', Unfiltered: 'Both sides. That’s the real post.' } },
           { who: 'sync', mood: 'celebrate', line: { Jolly: 'The messy side makes the highlights mean more.', Cheeky: 'Sparkling this twice. Is that allowed?', Unfiltered: 'Messy side, good side. Both real.' } },
@@ -1052,20 +1081,33 @@
                 : { Jolly: 'You’d never judge a friend by their outtakes. Same rule for you.', Cheeky: 'Your behind-the-scenes looks like everyone’s. Welcome to the club.', Unfiltered: 'Everyone’s got outtakes. Including you.' } }
         ];
         const NAMES = { patch: 'Patch', sync: 'Sync', drop: 'Drop' };
-        COM.forEach((cm, k) => S.later(() => {
-          comments.append(h('div', { class: 'bp-com' }, h('img', { alt: '', src: K.face(cm.who, cm.mood) }), h('p', null, h('b', { text: NAMES[cm.who] }), document.createTextNode(L(cm.line))), h('span', { html: SPARK })));
-          sPop(k + 3); placeFinal(); S.later(collectGlows, 60);
-        }, 1100 + k * 900));
+        // the comment slots are laid out up front (hidden), so nothing below them jumps as each one lands
+        const coms = COM.map(cm => { const d = h('div', { class: 'bp-com bp-wait' }, h('img', { alt: '', src: K.face(cm.who, cm.mood) }), h('p', null, h('b', { text: NAMES[cm.who] }), document.createTextNode(L(cm.line))), h('span', { html: SPARK })); comments.append(d); return d; });
+        el.append(fin);
+        placeFinal();
+        if (wall) { wall.style.opacity = '1'; }
+        coms.forEach((d, k) => S.later(() => { d.classList.remove('bp-wait'); d.classList.add('bp-show'); sPop(k + 3); S.later(collectGlows, 80); }, 1000 + k * 850));
         S.later(() => { patch.show(false); sync.show(false); drop.show(false); }, 200);
-        S.later(() => { say('patch', L({ Jolly: 'Same feed. Now you can see all of it.', Cheeky: 'Same feed. Way more honest.', Unfiltered: 'Whole feed. Both sides.' }), 'celebrate', 0); }, 1100 + COM.length * 900 + 300);
+        const tEnd = 1000 + COM.length * 850;
+        S.later(() => { say('patch', L({ Jolly: 'Same feed. Now you can see all of it.', Cheeky: 'Same feed. Way more honest.', Unfiltered: 'Whole feed. Both sides.' }), 'celebrate', 0); }, tEnd + 300);
         S.later(collectGlows, 700);
-        await K.wait(1100 + COM.length * 900 + (reduced() ? 2400 : 4200));
+        await K.wait(tEnd + (reduced() ? 2400 : 4200));
         finish();
       }
       function placeFinal() {
         const fin = G.final; if (!fin) return;
-        if (M.phone) Object.assign(fin.style, { left: '16px', right: '16px', width: 'auto', top: '72px', bottom: (M.CH + 30) + 'px' });
-        else { const w = Math.min(560, M.wallX - 60); Object.assign(fin.style, { left: Math.round((M.wallX - w) / 2) + 'px', right: 'auto', width: w + 'px', top: '84px', bottom: (M.CH + 30) + 'px' }); }
+        if (M.phone) Object.assign(fin.style, { left: '16px', right: '16px', width: 'auto', top: '72px', bottom: 'auto' });
+        else { const w = Math.min(720, M.W - 300); Object.assign(fin.style, { left: Math.round((M.W - w) / 2) + 'px', right: 'auto', width: w + 'px', top: '78px', bottom: 'auto' }); wallFinal(); }
+      }
+      // wide screens: the album slides under your post and becomes the real feed, every post front and back
+      function wallFinal() {
+        if (!wall || !G.final) return;
+        const n = FEED.length, cols = n <= 3 ? n : n <= 6 ? 3 : 4, rows = Math.ceil(n / cols);
+        const width = Math.min(cols * 300, M.W - 260), slotH = ((width - (cols - 1) * 10) / cols) / 2.6, wallH = 32 + rows * slotH + (rows - 1) * 10;
+        const finB = G.final.offsetTop + G.final.offsetHeight, top = Math.round(Math.min(finB + 34, Math.max(finB + 14, M.H - (M.CH + 30) - wallH)));
+        wall.classList.add('bp-wall-fin'); wall.style.setProperty('--cols', String(cols));
+        const hb = wall.querySelector('header b'); if (hb) hb.textContent = 'The real feed';
+        Object.assign(wall.style, { left: Math.round((M.W - width) / 2) + 'px', top: top + 'px', width: width + 'px' });
       }
       function collectGlows() {
         const list = [];

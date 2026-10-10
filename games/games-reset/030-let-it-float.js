@@ -5,8 +5,9 @@
  * current carries it into the distance, smaller and smaller (self-distancing). The heaviest one snags on a rock: touching
  * the boat does nothing, rippling the water beside it frees it, in its own time ("Some take longer. That's fine.").
  * Verb: fold (three crease drags), set down (gently), let go (ripple the water, never the boat).
- * Finale: the stream opens onto a lake at sunset; the boats gather, a little light flickers on in each, and one last ripple
- * sends them drifting toward the horizon until they are out of sight.
+ * Finale: the stream opens onto a lake at sunset; Drop and Still sit on the shore, the boats gather, a little light flickers
+ * on in each, and one last ripple sends them drifting out of sight; as each one slips over the horizon its light rises
+ * into the dusk, until a small constellation (one star per thought) hangs over the still water.
  */
 (function (env) {
   'use strict';
@@ -125,6 +126,7 @@
     last: { Jolly: 'That’s all of them. Let’s see where the stream goes.', Cheeky: 'Fleet complete. Let’s follow them.', Unfiltered: 'All afloat. Follow the water.' },
     lake: { Jolly: 'They found the lake. Every one of them.', Cheeky: 'Look at them, a tiny regatta.', Unfiltered: 'They made it to the lake.' },
     lights: { Jolly: 'A little light in each. Now let them drift.', Cheeky: 'Mood lighting. Now send them off.', Unfiltered: 'Lights on. Let them go.' },
+    stars: { Jolly: 'Look. Its little light is a star now.', Cheeky: 'Show-off. Went and became a star.', Unfiltered: 'Its light’s a star now.' },
     gone: { Jolly: 'Out of sight. Still yours, just not in your hands.', Cheeky: 'Off they go. Bon voyage, thoughts.', Unfiltered: 'Out of sight. That’s enough.' },
     duck: { Jolly: 'Ducklings! They’re in no hurry either.', Cheeky: 'Duck convoy. Excellent formation.', Unfiltered: 'Ducks.' },
     frog: { Jolly: 'A frog’s keeping an eye on the rock today.', Cheeky: 'The frog has opinions about that rock.', Unfiltered: 'Frog on the rock.' },
@@ -207,10 +209,11 @@
       const still = K.character('still', { side: 'left', mood: 'calm', x: 320, y: 64, size: 56 });
       const CH = { drop: { c: drop, until: 0 }, still: { c: still, until: 0 } };
       let finished = false;
-      function talk(who, o, ms, mood, moodMs) {
+      // when: an optional check at speaking time, so a line that waited for the other character is dropped once it's stale
+      function talk(who, o, ms, mood, moodMs, when) {
         if (finished) return;
         const me = CH[who], other = CH[who === 'drop' ? 'still' : 'drop'], txt = say(o), now = performance.now();
-        const go = () => { if (finished) return; other.c.hush(); other.until = 0; me.c.say(txt, { ms: ms || 3200, mood, moodMs }); me.until = performance.now() + (ms || 3200); };
+        const go = () => { if (finished || (when && !when())) return; other.c.hush(); other.until = 0; me.c.say(txt, { ms: ms || 3200, mood, moodMs }); me.until = performance.now() + (ms || 3200); };
         if (other.until > now + 300) { S.later(go, Math.min(2600, other.until - now)); return; }
         go();
       }
@@ -277,11 +280,19 @@
         const cs = phone ? 56 : 84;
         drop.el.style.setProperty('--sz', cs + 'px'); still.el.style.setProperty('--sz', cs + 'px');
         G.dropP = { x: phone ? 8 : 26 * U, y: phone ? 64 : 74, s: cs }; G.stillP = { x: phone ? w - cs - 8 : w - cs - 26 * U, y: phone ? 64 : 74, s: cs };
-        drop.place(G.dropP.x, G.dropP.y); still.place(G.stillP.x, G.stillP.y);
-        cap.style.top = Math.round(H * (phone ? 0.25 : 0.235)) + 'px';
+        // at the lake they come down to the near shore and sit on two mossy stones to watch
+        const shoreY = H - cs - (phone ? 30 : 44);
+        G.dropL = { x: phone ? 12 : 36 * U, y: shoreY, s: cs }; G.stillL = { x: phone ? w - cs - 12 : w - cs - 36 * U, y: shoreY, s: cs };
+        placeChars(0);
+        cap.style.top = Math.round(H * (phone ? 0.205 : 0.16)) + 'px';
         // carry floating things across a resize
         if (prevW && prevH && (prevW !== w || prevH !== H)) { const fx = w / prevW, fy = H / prevH; boats.forEach(b => { b.x *= fx; b.y *= fy; }); debris.forEach(d => { d.x *= fx; d.y *= fy; }); streaks.length = 0; glints.length = 0; }
         rippleInit(); paintAll(); placeWords();
+      }
+      function placeChars(ms) {
+        if (!G.dropP) return;
+        const a = W.lake ? G.dropL : G.dropP, b = W.lake ? G.stillL : G.stillP;
+        drop.place(a.x, a.y, ms); still.place(b.x, b.y, ms);
       }
       function paintAll() { BGB = paintBack(); BGF = paintFront(); ROCKS = G.rocks.map(paintRock); SPRITES = new Map(); CAUS = CAUS || causticTile(); causPat = cv.g ? cv.g.createPattern(CAUS, 'repeat') : null; if (F.item) F.tex = paintPaper(F.item); if (W.lake) LAKE = paintLake(); }
 
@@ -486,8 +497,16 @@
           if (rr() < 0.75) for (let f = 0; f < 5; f++) fern(g, x + side * 4 * k * U, y, -Math.PI / 2 - side * (0.35 + f * 0.28) + (rr() - 0.5) * 0.2, (30 + rr() * 26) * k * U, mix(C.canopy[f % 2], D ? '#000000' : '#ffffff', D ? 0.1 : 0.08), k, rr);
         }
         // the far bend disappears behind a hedge of ferns and shrubs
-        const fx = CL[yF];
-        for (let i = 0; i < 22; i++) { const a = rr() * Math.PI, rad = (14 + rr() * 26) * U; g.fillStyle = mix(C.canopy[i % 3], C.glow, D ? 0.12 : 0.18); g.beginPath(); g.arc(fx + Math.cos(a) * (40 + rr() * 30) * U * (i % 2 ? 1 : -1), yF - 4 * U + Math.sin(a) * 10 * U, rad, 0, TAU); g.fill(); }
+        const fx = CL[yF], clumps = [];
+        // backlit shrubs: each clump is shaded dark below and rimmed with the glade's light on top, back ones first
+        for (let i = 0; i < 18; i++) { const side = i % 2 ? 1 : -1, off = (6 + rr() * 64) * U; clumps.push({ x: fx + side * off, y: yF + (4 - rr() * 14) * U, r: (13 + rr() * 17) * U * (1 - off / (100 * U) * 0.35) }); }
+        clumps.sort((a, b) => a.y - b.y);
+        for (const c of clumps) {
+          const lg = g.createLinearGradient(0, c.y - c.r, 0, c.y + c.r);
+          lg.addColorStop(0, mix(C.canopy[1], C.glow, D ? 0.42 : 0.38)); lg.addColorStop(0.45, mix(C.canopy[1], C.glow, D ? 0.1 : 0)); lg.addColorStop(1, mix(C.canopy[2], '#000000', D ? 0.15 : 0.08));
+          g.fillStyle = lg; g.beginPath(); g.arc(c.x, c.y, c.r, 0, TAU); g.fill();
+          g.strokeStyle = rgba(C.glow, D ? 0.45 : 0.6); g.lineWidth = 1.6 * U; g.beginPath(); g.arc(c.x, c.y, c.r - 0.8 * U, Math.PI * 1.15, Math.PI * 1.85); g.stroke();
+        }
         for (let f = 0; f < 9; f++) fern(g, fx + (f - 4) * 9 * U, yF + 6 * U, -Math.PI / 2 + (f - 4) * 0.26, (26 + rr() * 16) * U, mix(C.canopy[1], C.glow, 0.1), 0.6, rr);
         // big fronds leaning in from the sides
         const fr = G.phone ? [[0, 0.36, -0.2], [w, 0.52, Math.PI + 0.25], [0, 0.66, -0.15]] : [[0, 0.32, -0.25], [w, 0.42, Math.PI + 0.2], [0, 0.6, -0.1], [w, 0.7, Math.PI + 0.12]];
@@ -496,7 +515,7 @@
         const cx = G.sx, rx = G.stoneRx, cy = G.stoneCy, ry = G.stoneRy, th = 14 * U;
         const slab = (inset, dy) => { g.beginPath(); for (let i = 0; i <= 64; i++) { const a = i / 64 * TAU, wob = 1 + 0.045 * Math.sin(a * 3 + 0.6) + 0.022 * Math.sin(a * 7 + 2.1) + 0.01 * Math.sin(a * 17 + 0.4); g.lineTo(cx + Math.cos(a) * (rx - inset) * wob, cy + dy + Math.sin(a) * (ry - inset) * wob); } g.closePath(); };
         g.fillStyle = rgba(D ? '#00100c' : '#0a3a3a', D ? 0.45 : 0.26); slab(-12 * U, th + 8 * U); g.fill();
-        const sc = D ? { top: '#7a8081', mid: '#5d6365', low: '#474d4f', side: '#262b2d' } : { top: '#e2e3da', mid: '#c7cac0', low: '#aab0a7', side: '#6b726d' };
+        const sc = D ? { top: '#7a8081', mid: '#5d6365', low: '#474d4f', side: '#262b2d' } : { top: '#c9cbbf', mid: '#a9aea3', low: '#8b928a', side: '#545b57' };
         g.fillStyle = sc.side; slab(0, th); g.fill();
         const wetG = g.createLinearGradient(0, cy, 0, cy + ry + th); wetG.addColorStop(0, 'rgba(0,0,0,0)'); wetG.addColorStop(1, rgba(D ? '#000000' : '#173c3c', 0.4)); g.fillStyle = wetG; slab(0, th); g.fill();
         const tg = g.createLinearGradient(cx - rx, cy - ry, cx + rx * 0.5, cy + ry); tg.addColorStop(0, sc.top); tg.addColorStop(0.55, sc.mid); tg.addColorStop(1, sc.low);
@@ -532,8 +551,8 @@
       }
       function causticTile() {
         const N = 128, c = document.createElement('canvas'); c.width = c.height = N;
-        const g = c.getContext('2d'), img = g.createImageData(N, N), d = img.data, M = 5, rr = seedRng(77), pts = [];
-        for (let j = 0; j < M; j++) for (let i = 0; i < M; i++) pts.push([(i + 0.15 + rr() * 0.7) / M, (j + 0.15 + rr() * 0.7) / M]);
+        const g = c.getContext('2d'), img = g.createImageData(N, N), d = img.data, M = 6, rr = seedRng(77), pts = [];
+        for (let j = 0; j < M; j++) for (let i = 0; i < M; i++) pts.push([(i + 0.04 + rr() * 0.92) / M, (j + 0.04 + rr() * 0.92) / M]);
         for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
           const u = x / N, v = y / N, ci = Math.floor(u * M), cj = Math.floor(v * M);
           let f1 = 9, f2 = 9;
@@ -925,8 +944,9 @@
         const sn = G.snag, side = b.x > sn.x ? 1 : -1;
         b.pin = { x: sn.x + side * sn.r * 0.32, y: sn.y + sn.r * 0.62 + 6 * G.U }; b.side = side; b.spin = 0.9; b.vx = b.vy = 0;
         tok(0.12); splash(b.pin.x, b.pin.y, 0.8, 12 * G.U);
-        S.later(() => talk('drop', L.stuckIn, 2800, 'worried'), 300);
-        S.later(() => { talk('still', L.stuckTip, 3600, 'calm'); guideStep(); }, 2600);
+        const stillStuck = () => W.stuck === b;
+        S.later(() => talk('drop', L.stuckIn, 2800, 'worried', 2800, stillStuck), 300);
+        S.later(() => { talk('still', L.stuckTip, 3600, 'calm', 0, stillStuck); guideStep(); }, 2600);
         if (W.cameo === 'frog' && !care()) W.frogHop = W.t;
         ctx.track('stuck', {});
       }
@@ -961,7 +981,7 @@
         if (A.ctx) { A.whoosh({ from: 500, to: 1600, dur: 0.6, vol: 0.06 }); ['D5', 'F#5', 'A5', 'D6'].forEach((n, i) => A.chime(nf(n), { when: A.now() + 0.1 + i * 0.09, vol: 0.05, dur: 1.6 })); }
         sync('freed');
         S.later(() => talk('still', self ? L.selfFree : L.freed, 3600, 'happy'), 500);
-        drop.face('happy', 2000);
+        drop.base('happy'); drop.react('bounce');
         ctx.track('freed', { nudges: W.nudges, self: self ? 1 : 0, touched: W.touchedStuck });
         nextAfter(1900);
       }
@@ -1178,7 +1198,7 @@
         const setT = (M, ox, oy) => g.setTransform(dpr * M[0], dpr * M[1], dpr * M[2], dpr * M[3], dpr * (M[4] + (ox || 0)), dpr * (M[5] + (oy || 0)));
         const path = (p) => { g.beginPath(); for (let i = 0; i < p.length; i++) { if (i) g.lineTo(p[i][0], p[i][1]); else g.moveTo(p[i][0], p[i][1]); } g.closePath(); };
         // the paper's soft shadow on the stone
-        g.fillStyle = D ? 'rgba(0,0,0,0.28)' : 'rgba(20,40,30,0.18)';
+        g.fillStyle = D ? 'rgba(0,0,0,0.28)' : 'rgba(20,40,30,0.26)';
         for (const f of fs) { if (f.flap || f.line) continue; setT(mul(T, f.M), 2.5 * G.U, 4 * G.U); path(f.p); g.fill(); }
         // layers bottom to top; each casts a hairline shadow on the paper beneath it, so an edge shows only where paper overlaps
         for (const f of fs) {
@@ -1206,7 +1226,16 @@
         }
         // a gleam runs along the crease you just made
         const gk = clamp((performance.now() - (F.creaseAt || 0)) / 420, 0, 1);
-        if (gk < 1) for (const [a, b] of F.crease) { const x = lerp(a[0], b[0], gk), y = lerp(a[1], b[1], gk), s = 0.13; g.globalCompositeOperation = 'lighter'; g.globalAlpha = 1 - gk; g.drawImage(K.glowSprite('rgba(255,250,220,0.9)'), x - s, y - s, s * 2, s * 2); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
+        if (gk < 1) {
+          g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+          for (const [a, b] of F.crease) {
+            const k0 = Math.max(0, gk - 0.28), x = lerp(a[0], b[0], gk), y = lerp(a[1], b[1], gk), s = 0.045;
+            const lg = g.createLinearGradient(lerp(a[0], b[0], k0), lerp(a[1], b[1], k0), x, y); lg.addColorStop(0, 'rgba(255,250,225,0)'); lg.addColorStop(1, 'rgba(255,250,225,0.95)');
+            g.globalAlpha = 1 - gk * gk; g.strokeStyle = lg; g.lineWidth = 2.6 / Z; g.beginPath(); g.moveTo(lerp(a[0], b[0], k0), lerp(a[1], b[1], k0)); g.lineTo(x, y); g.stroke();
+            g.drawImage(K.glowSprite('rgba(255,250,220,0.9)'), x - s, y - s, s * 2, s * 2);
+          }
+          g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+        }
         g.setTransform(dpr, 0, 0, dpr, 0, 0);
       }
       function drawStoneBoat(g) {
@@ -1228,6 +1257,7 @@
 
       /* ---------------- the lake at sunset ---------------- */
       function lakeY0() { return Math.round(G.h * (G.phone ? 0.46 : 0.44)); }
+      function sendY() { return Math.round(lakeY0() + (G.h - lakeY0()) * 0.72); }
       function paintLake() {
         const w = G.w, H = G.h, D = K.dark(), U = G.U, hy = lakeY0(), rr = seedRng(91), o = off(w, H, false), g = o.g;
         const sky = D ? ['#141b44', '#3d2c62', '#a24f6d', '#f08a5c', '#ffc777'] : ['#5b6bb8', '#9a7ac0', '#ef9a9a', '#ffc58a', '#ffe6a8'];
@@ -1255,6 +1285,18 @@
           for (let i = 0; i < (G.phone ? 14 : 22); i++) { const x = x0 + s * rr() * w * (G.phone ? 0.3 : 0.18), hh = (60 + rr() * 120) * U, by = H + 4; g.strokeStyle = reed; g.lineWidth = (1.5 + rr() * 2) * U; g.beginPath(); g.moveTo(x, by); g.quadraticCurveTo(x + s * 8 * U, by - hh * 0.6, x + s * (6 + rr() * 16) * U, by - hh); g.stroke(); if (rr() < 0.3) { g.fillStyle = D ? '#3a2a1a' : '#5a3f28'; g.beginPath(); g.ellipse(x + s * 10 * U, by - hh * 0.8, 3 * U, 10 * U, 0.1 * s, 0, TAU); g.fill(); } }
         });
         for (let i = 0; i < 7; i++) { const x = w * (i % 2 ? 0.85 : 0.12) + (rr() - 0.5) * 70 * U, y = H * (0.82 + rr() * 0.14), r = (14 + rr() * 12) * U; g.fillStyle = D ? '#24402e' : '#4f8a5a'; g.beginPath(); g.ellipse(x, y, r, r * 0.38, 0, 0.3, TAU - 0.1); g.lineTo(x, y); g.closePath(); g.fill(); }
+        // two mossy stones on the near shore, where Drop and Still sit to watch the boats go
+        [G.dropL, G.stillL].forEach((p, i) => {
+          if (!p) return;
+          const cx = p.x + p.s / 2, cy = p.y + p.s * 0.93, rx = p.s * 0.78, ry = p.s * 0.26;
+          g.strokeStyle = rgba('#ffe6c8', D ? 0.18 : 0.3); g.lineWidth = 1.2 * U;
+          for (let k = 0; k < 2; k++) { g.beginPath(); g.ellipse(cx, cy + ry * 0.6, rx * (1.25 + k * 0.32), ry * (0.9 + k * 0.3), 0, 0, TAU); g.stroke(); }
+          const sg = g.createLinearGradient(0, cy - ry, 0, cy + ry);
+          sg.addColorStop(0, D ? '#4a4652' : '#7d7a86'); sg.addColorStop(1, D ? '#1d1b26' : '#3f3c4a');
+          g.fillStyle = sg; g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, TAU); g.fill();
+          g.fillStyle = D ? '#3d5a3a' : '#5f8f52'; g.beginPath(); g.ellipse(cx - rx * 0.12, cy - ry * 0.52, rx * 0.66, ry * 0.42, i ? 0.05 : -0.05, 0, TAU); g.fill();
+          g.fillStyle = rgba('#ffd9a8', D ? 0.18 : 0.3); g.beginPath(); g.ellipse(cx - rx * 0.3, cy - ry * 0.62, rx * 0.3, ry * 0.16, -0.1, 0, TAU); g.fill();
+        });
         return o;
       }
       function toLake() {
@@ -1265,6 +1307,7 @@
         const n = boats.length, hy = lakeY0();
         W.lake = { boats: boats.map((b, i) => { const a = (i + 0.5) / n, tx = G.w * (0.5 + (a - 0.5) * (G.phone ? 0.62 : 0.4)), ty = hy + (G.h - hy) * (0.36 + 0.1 * Math.sin(i * 2.1)); return { spr: b.spr, x: G.w * (0.3 + 0.4 * a), y: G.h + 40 + i * 26 * G.U, tx, ty, ph: Math.random() * 9, light: 0, lit: false, yaw: (Math.random() - 0.5) * 0.6, delay: i * 0.35 }; }), t0: W.t };
         W.lakeStep = 'arrive';
+        drop.hush(); still.hush(); placeChars(1700); drop.base('calm'); still.base('calm');
         if (A.ctx) { A.whoosh({ from: 300, to: 900, dur: 1.4, vol: 0.05 }); A.pad(['D3', 'A3', 'F#4', 'E5'].map(nf), { dur: 5, vol: 0.1, attack: 1.4 }); }
         sync('lake');
         K.anim(1600, (k) => { W.lakeK = sm(k); }).then(() => {
@@ -1283,7 +1326,8 @@
         S.later(() => {
           talk('still', L.lights, 3600, 'glow');
           W.lakeStep = 'send'; W.sendT = performance.now();
-          K.guide({ id: 'lf-send', g: 'sweep', target: () => ({ x: G.w / 2, y: Math.min(G.h - 90, lakeY0() + (G.h - lakeY0()) * 0.66) }), d: 70 * G.U, label: 'SEND THEM OFF', place: 'below', delay: 700 });
+          // the label sits between the boats and the hand, clear of the characters' bubbles on the shore below
+          K.guide({ id: 'lf-send', g: 'sweep', target: () => ({ x: G.w / 2, y: sendY() }), d: 70 * G.U, label: 'SEND THEM OFF', place: 'above', delay: 700 });
         }, W.lake.boats.length * 520 + 600);
       }
       function lakeTouch(p, down) {
@@ -1297,18 +1341,35 @@
       function sendOff() {
         if (W.lakeStep !== 'send') return;
         W.lakeStep = 'away'; K.guide(null); W.awayT = W.t;
-        const L0 = W.lake;
-        // one last ripple runs out from every boat, and each one sounds its note as it goes
-        L0.boats.forEach((b, i) => S.later(() => { W.lakeRipples.push({ x: b.x, y: b.y + 3, t: W.t, k: b.k || 0.5, big: 1 }); if (A.ctx) A.pluck(nf(SEND[i % SEND.length]), { vol: 0.13, damp: 0.997, verb: 0.45 }); }, i * 170));
-        if (A.ctx) { A.whoosh({ from: 400, to: 1200, dur: 1.2, vol: 0.05 }); A.pad(['D3', 'A3', 'F#4', 'E5'].map(nf), { dur: 7, vol: 0.13, attack: 1.4 }); }
+        const L0 = W.lake, hy = lakeY0();
+        L0.stars = [];
+        // each boat drifts to the horizon in its own time; one last ripple runs out from it and it sounds its note as it goes
+        L0.boats.forEach((b, i) => {
+          b.from = { x: b.x, y: b.y }; b.t0 = W.t + i * 0.45; b.dur = 4.4 + i * 0.25; b.u = 0;
+          b.to = { x: G.w * 0.5 + (b.tx - G.w * 0.5) * 0.3, y: hy + 2 * G.U };
+          S.later(() => { W.lakeRipples.push({ x: b.x, y: b.y + 3, t: W.t, k: b.k || 0.5, big: 1 }); if (A.ctx) A.pluck(nf(SEND[i % SEND.length]), { vol: 0.13, damp: 0.997, verb: 0.45 }); }, i * 170);
+        });
+        if (A.ctx) { A.whoosh({ from: 400, to: 1200, dur: 1.2, vol: 0.05 }); A.pad(['D3', 'A3', 'F#4', 'E5'].map(nf), { dur: 9, vol: 0.13, attack: 1.4 }); }
         K.sfx.rise();
         sync('send-off');
-        S.later(() => talk('drop', L.gone, 4200, 'happy'), 2400);
         cap.children[0].textContent = 'Let it float.';
         cap.children[1].textContent = W.launched + ' paper boats · ' + SEA.name;
         cap.children[2].textContent = TOMORROW.id === SEA.id ? 'The stream will be here tomorrow.' : 'Tomorrow, the ' + TOMORROW.name + '.';
         S.later(() => { cap.classList.add('lf-on'); }, 3000);
-        S.later(finish, 9600);
+        S.later(finish, 17000);   // a safety net: the frame loop normally ends it once the last light has settled
+      }
+      /* As a boat slips over the horizon its little light lifts into the dusk and stays there, one star per thought. */
+      function riseStar(b, i) {
+        const L0 = W.lake, n = L0.boats.length, a = n > 1 ? i / (n - 1) : 0.5, hy = lakeY0(), U = G.U, ph = G.phone;
+        L0.stars.push({ i, x0: b.x, y0: hy - 1.5 * U, tx: G.w * (0.5 + (a - 0.5) * (ph ? 0.56 : 0.34)), ty: hy - (ph ? 66 : 74) * U - Math.sin(a * Math.PI) * (ph ? 34 : 42) * U + (i % 2 ? 5 : -3) * U, t0: W.t, u: 0, ph: Math.random() * 9, x: b.x, y: hy });
+        if (A.ctx) { A.chime(nf(BELLS[i % BELLS.length]), { vol: 0.05, dur: 2.6, verb: 0.6 }); A.tone({ type: 'sine', freq: 520, to: 1040, glide: 1.6, dur: 1.8, vol: 0.025, attack: 0.3, verb: 0.5 }); }
+        sync('star');
+        if (L0.stars.length === 1) talk('still', L.stars, 3400, 'glow');
+        if (L0.stars.length === n) S.later(() => talk('drop', L.gone, 4200, 'happy'), 1600);
+      }
+      function starHome(s) {
+        if (A.ctx) A.tone({ type: 'sine', freq: 1760 + s.i * 120, dur: 0.5, vol: 0.02, verb: 0.6 });
+        P.emit('star', s.tx, s.ty, 3, { colors: ['#fff6dc', '#ffe3a8'], speed: [12, 32], size: [1, 2] });
       }
       function stepLake(dt) {
         const L0 = W.lake; if (!L0) return;
@@ -1317,11 +1378,23 @@
         L0.boats.forEach((b, i) => {
           const lt = W.t - L0.t0 - b.delay; if (lt < 0) return;
           if (W.lakeStep !== 'away') { const e = 1 - Math.exp(-dt * 0.9); b.x += (b.tx - b.x) * e; b.y += (b.ty - b.y) * e; }
-          else { const tx = G.w * 0.5 + (b.tx - G.w * 0.5) * 0.25, ty = hy + 3 * G.U; b.x += (tx - b.x) * dt * 0.19; b.y += (ty - b.y) * dt * (0.15 + i * 0.012); }
+          else if (!b.gone) {
+            const u = b.u = clamp((W.t - b.t0) / b.dur, 0, 1), e = u * (2 - u);   // a push, then a long slow glide
+            b.x = lerp(b.from.x, b.to.x, e); b.y = lerp(b.from.y, b.to.y, e);
+            if (u >= 1) { b.gone = true; riseStar(b, i); }
+          }
           b.k = clamp((b.y - hy) / (G.h - hy), 0.02, 1.2) * 1.05;
           if (b.lit) b.light = Math.min(1, b.light + dt * 2.2);
         });
+        const st = L0.stars;
+        if (st) for (const s of st) {
+          const u = s.u = clamp((W.t - s.t0) / 2.6, 0, 1);
+          s.x = lerp(s.x0, s.tx, sm(u)); s.y = lerp(s.y0, s.ty, 1 - Math.pow(1 - u, 3));
+          if (u < 1 && Math.random() < dt * 2.5) P.emit('mote', s.x, s.y, 1, { colors: ['#fff1cc'], speed: [2, 6], size: [0.7, 1.3], life: [0.8, 1.4] });
+          if (u >= 1 && !s.home) { s.home = true; starHome(s); }
+        }
         if (W.lakeStep === 'send' && performance.now() - W.sendT > 6500) sendOff();
+        if (W.lakeStep === 'away' && !finished && st && st.length === L0.boats.length && st.every(s => s.home) && W.t - st[st.length - 1].t0 > 5.2) finish();
       }
       function drawLake(g) {
         const w = G.w, H = G.h, U = G.U, hy = lakeY0(), D = K.dark(), L0 = W.lake;
@@ -1334,17 +1407,17 @@
         g.restore();
         // a glitter path to the sun: wider and brighter close by, fading as the sun goes down
         g.globalCompositeOperation = 'lighter';
-        const gfade = 1 - W.sunK * 0.85;
+        const moonX = G.phone ? w * 0.82 : w * 0.2, gx0 = lerp(sx, moonX, sm(W.duskK * 1.4)), gfade = Math.max(1 - W.sunK * 0.85, W.duskK * 0.75), warm = W.duskK < 0.45;
         for (let i = 0; i < 80; i++) {
-          const yy = hy + 2 + Math.pow(((i * 0.618) % 1), 1.7) * (H - hy) * 0.85, k = (yy - hy) / (H - hy), xx = sx + Math.sin(i * 12.9 + W.t * 0.5) * (5 + k * 80) * U * (0.6 + 0.4 * ((i * 0.37) % 1)), a = Math.pow(Math.max(0, Math.sin(W.t * (1.1 + (i % 7) * 0.35) + i * 1.7)), 3) * gfade * (1 - k * 0.45);
-          if (a < 0.04) continue; g.globalAlpha = a * 0.8; g.fillStyle = i % 3 ? '#ffd9a0' : '#fff2d0'; g.fillRect(xx - (1.5 + k * 9) * U, yy, (3 + k * 18) * U, Math.max(1, (0.8 + k * 1.6) * U));
+          const yy = hy + 2 + Math.pow(((i * 0.618) % 1), 1.7) * (H - hy) * 0.85, k = (yy - hy) / (H - hy), xx = gx0 + Math.sin(i * 12.9 + W.t * 0.5) * (5 + k * 80) * U * (0.6 + 0.4 * ((i * 0.37) % 1)), a = Math.pow(Math.max(0, Math.sin(W.t * (1.1 + (i % 7) * 0.35) + i * 1.7)), 3) * gfade * (1 - k * 0.45);
+          if (a < 0.04) continue; g.globalAlpha = a * 0.8; g.fillStyle = warm ? (i % 3 ? '#ffd9a0' : '#fff2d0') : (i % 3 ? '#cfd8ff' : '#f2f4ff'); g.fillRect(xx - (1.5 + k * 9) * U, yy, (3 + k * 18) * U, Math.max(1, (0.8 + k * 1.6) * U));
         }
         g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
         // dusk settles in after the send-off: the first stars and a thin moon
         if (W.duskK > 0) {
           g.globalAlpha = W.duskK * 0.55; g.fillStyle = D ? '#0a0c22' : '#1c2350'; g.fillRect(0, 0, w, H); g.globalAlpha = 1; g.fillStyle = '#ffffff';
           const rr = seedRng(5); for (let i = 0; i < 70; i++) { const x = rr() * w, y = rr() * hy * 0.85; g.globalAlpha = W.duskK * (0.3 + 0.6 * rr()) * (0.6 + 0.4 * Math.sin(W.t * 2 + i)); g.fillRect(x, y, 1.5, 1.5); }
-          const mx = G.phone ? w * 0.14 : w * 0.2, my = G.phone ? H * 0.36 : H * 0.17, mr = 9 * U;
+          const mx = G.phone ? w * 0.82 : w * 0.2, my = G.phone ? H * 0.125 : H * 0.17, mr = 9 * U;
           g.globalAlpha = W.duskK; g.globalCompositeOperation = 'lighter'; g.drawImage(K.glowSprite('rgba(255,244,220,0.5)'), mx - mr * 5, my - mr * 5, mr * 10, mr * 10); g.globalCompositeOperation = 'source-over';
           g.fillStyle = '#fff6e0'; g.beginPath(); g.arc(mx, my, mr, -Math.PI * 0.62, Math.PI * 0.62, true); g.arc(mx + mr * 0.42, my, mr * 0.86, Math.PI * 0.68, -Math.PI * 0.68, false); g.closePath(); g.fill();
           // the sky's first stars and the moon, mirrored in the still water
@@ -1366,8 +1439,8 @@
         if (L0) {
           const order = L0.boats.slice().sort((a, b) => a.y - b.y);
           for (const b of order) {
-            const k = b.k || 0.5, bw = G.boatW * k * 0.95, bob = Math.sin(W.t * 1.6 + b.ph) * 1.2 * k * U, fade = W.lakeStep === 'away' ? clamp((k - 0.06) / 0.14, 0, 1) : 1;
-            const lightA = b.light * (W.lakeStep === 'away' ? clamp((k - 0.022) / 0.05, 0, 1) : 1);
+            const k = b.k || 0.5, bw = G.boatW * k * 0.95, bob = Math.sin(W.t * 1.6 + b.ph) * 1.2 * k * U, fade = b.gone ? 0 : 1 - sm(((b.u || 0) - 0.6) / 0.4);
+            const lightA = b.gone ? 0 : b.light;
             if (fade <= 0 && lightA <= 0.01) continue;
             g.save(); g.translate(b.x, b.y + bw * 0.02); g.scale(1, -0.4); drawBoatSpr(g, b.spr, 0, 0, bw, 0, Math.cos(b.yaw), 0.25 * fade); g.restore();
             if (lightA > 0) { // the light's long reflection on the water
@@ -1383,7 +1456,29 @@
               g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
             }
           }
+          if (L0.stars && L0.stars.length) drawStars(g, L0.stars, hy);
         }
+      }
+      /* the boats' lights, risen: a small constellation over the horizon, faintly joined, each mirrored in the lake */
+      function drawStars(g, st, hy) {
+        const U = G.U;
+        g.globalCompositeOperation = 'lighter';
+        g.strokeStyle = 'rgba(255,236,200,1)'; g.lineWidth = 1 * U;
+        for (let i = 1; i < st.length; i++) {
+          const a = st[i - 1], b = st[i], k = clamp(Math.min(a.u, b.u) * 1.6 - 0.6, 0, 1); if (k <= 0) continue;
+          g.globalAlpha = 0.22 * k; g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(lerp(a.x, b.x, k), lerp(a.y, b.y, k)); g.stroke();
+        }
+        for (const s of st) {
+          const e = 1 - Math.pow(1 - s.u, 3), tw = 0.8 + 0.2 * Math.sin(W.t * 2.3 + s.ph) * Math.sin(W.t * 1.2 + s.ph * 2), pulse = s.home ? Math.max(0, 1 - (W.t - s.t0 - 2.6) * 2.5) : 0;
+          const gs = (5 + 9 * e + 10 * pulse) * U * tw;
+          g.globalAlpha = 0.85; g.drawImage(K.glowSprite('rgba(255,214,150,0.9)'), s.x - gs, s.y - gs, gs * 2, gs * 2);
+          g.globalAlpha = 1; g.fillStyle = '#fff8e6'; K.starPath(g, s.x, s.y, (2.2 + 2.6 * e) * U * tw, (0.7 + 0.5 * e) * U, 4, 0); g.fill();
+          // its reflection, a short shimmer below the horizon
+          const ry = hy + 3 * U + (hy - s.y) * 0.45;
+          g.fillStyle = '#ffe6bd';
+          for (let j = 0; j < 3; j++) { const ww = (3 + 3 * e) * U * (1 - j * 0.22), yy = ry + (j - 1) * 3.2 * U, xx = s.x + Math.sin(W.t * 1.6 + s.ph + j * 1.3) * 1.6 * U; g.globalAlpha = (0.34 - j * 0.07) * e * tw; g.fillRect(xx - ww / 2, yy, ww, Math.max(1, 0.9 * U)); }
+        }
+        g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
       }
 
       /* ---------------- frame loop (real time, so a busy device still flows at the right speed) ---------------- */
@@ -1433,7 +1528,8 @@
         const badges = [];
         const pb = K.best('gentle', best, 'higher');
         if (pb.isNew) badges.push('New best: ' + best + '% gentle set-down'); else if (pb.first) badges.push('Gentlest set-down: ' + best + '%');
-        if (tierIdx > design) { S.store.set('let-it-float:design', tierIdx); badges.push('Unlocked: ' + DESIGNS[tierIdx] + ' boats'); } else if (tier) badges.push(tier + ' boatwright');
+        // one new boat design per visit, and only when the gentleness tier reaches it (Bronze: Pennant, Silver: Lantern, Gold: Gilded)
+        if (tierIdx > design) { const nd = design + 1; S.store.set('let-it-float:design', nd); badges.push('Unlocked: ' + DESIGNS[nd] + ' boats'); } else if (tier) badges.push(tier + ' boatwright');
         let newPaper = 0; SC.papers.forEach(id => { if (K.collect('Paper: ' + PAPERS[id].name).isNew) newPaper++; });
         const box = K.collection().filter(x => /^Paper: /.test(x)).length;
         badges.push('Paper box: ' + box + ' of ' + PAPER_COUNT + (newPaper ? ' (' + newPaper + ' new)' : ''));
@@ -1486,7 +1582,7 @@
             await K.wait(120);
           }
           await waitFor(() => W.phase === 'lake' && W.lakeStep === 'send', 30000);
-          if (W.lakeStep === 'send') { const y = Math.min(G.h - 90, lakeY0() + (G.h - lakeY0()) * 0.66); await K.sim.drag(pad, { x: G.w * 0.3, y }, { x: G.w * 0.7, y }, 600, 12); }
+          if (W.lakeStep === 'send') { const y = sendY(); await K.sim.drag(pad, { x: G.w * 0.3, y }, { x: G.w * 0.7, y }, 600, 12); }
           while (!finished) await K.wait(200);
         }
       };

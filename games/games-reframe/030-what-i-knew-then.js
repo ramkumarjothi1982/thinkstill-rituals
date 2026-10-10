@@ -15,11 +15,11 @@
 
   /* Daily paper stock for the reel (first visit: sepia). Each stock is a reel in the collection. */
   const STOCKS = [
-    { key: 'sepia', name: 'Sepia', sky: ['#f6e3c0', '#ecc283'], glow: '#fff1cc', far: '#d4ae80', mid: '#a67b52', near: '#583b26', path: '#f6dfb2', fog: '#fff6e6', trim: '#d0a04a' },
-    { key: 'dusk', name: 'Indigo Dusk', sky: ['#2a2d5e', '#f0a07a'], glow: '#ffd7a4', far: '#5b5a91', mid: '#393a72', near: '#1b1c43', path: '#f6cf94', fog: '#ecebff', trim: '#d6a24c' },
-    { key: 'dawn', name: 'Rose Dawn', sky: ['#ffe1d2', '#ff9d8c'], glow: '#fff0e0', far: '#e9b0a7', mid: '#c17d87', near: '#73465c', path: '#fff0de', fog: '#fff4f0', trim: '#d39a5a' },
-    { key: 'forest', name: 'Forest Green', sky: ['#edf2da', '#ffe7aa'], glow: '#fffbdf', far: '#b0ca9a', mid: '#6e996a', near: '#2d4f3e', path: '#f7edc8', fog: '#f6fbef', trim: '#c9a24a' },
-    { key: 'cyan', name: 'Cyanotype', sky: ['#d9e8f6', '#a6c6e7'], glow: '#f3f9ff', far: '#7ea5ce', mid: '#3f6e9e', near: '#163c62', path: '#e9f2fb', fog: '#f4f8ff', trim: '#c7a35a' }
+    { key: 'sepia', name: 'Sepia', short: 'Sepia', sky: ['#f6e3c0', '#ecc283'], glow: '#fff1cc', far: '#d4ae80', mid: '#a67b52', near: '#583b26', path: '#f6dfb2', fog: '#fff6e6', trim: '#d0a04a' },
+    { key: 'dusk', name: 'Indigo Dusk', short: 'Dusk', sky: ['#2a2d5e', '#f0a07a'], glow: '#ffd7a4', far: '#5b5a91', mid: '#393a72', near: '#1b1c43', path: '#f6cf94', fog: '#ecebff', trim: '#d6a24c' },
+    { key: 'dawn', name: 'Rose Dawn', short: 'Dawn', sky: ['#ffe1d2', '#ff9d8c'], glow: '#fff0e0', far: '#e9b0a7', mid: '#c17d87', near: '#73465c', path: '#fff0de', fog: '#fff4f0', trim: '#d39a5a' },
+    { key: 'forest', name: 'Forest Green', short: 'Forest', sky: ['#edf2da', '#ffe7aa'], glow: '#fffbdf', far: '#b0ca9a', mid: '#6e996a', near: '#2d4f3e', path: '#f7edc8', fog: '#f6fbef', trim: '#c9a24a' },
+    { key: 'cyan', name: 'Cyanotype', short: 'Cyanotype', sky: ['#d9e8f6', '#a6c6e7'], glow: '#f3f9ff', far: '#7ea5ce', mid: '#3f6e9e', near: '#163c62', path: '#e9f2fb', fog: '#f4f8ff', trim: '#c7a35a' }
   ];
   /* Things nobody has at the moment itself: true of any past moment, whatever happened next. */
   const LATER = [
@@ -45,6 +45,19 @@
   const OWN = /\bi (?:yelled|snapped|shouted|screamed|swore|lied|cheated|hit|hurt|broke|ignored|ghosted|blew up|lost my temper|forgot|missed|messed up|screwed up|made a mistake|let (?:\w+ ){0,2}down|was (?:rude|mean|wrong|harsh|unfair|horrible|awful|nasty|cruel|late))\b/i;
   // the hindsight verdict in their words ("you should have known")
   const HINDSIGHT = /\b(should(?:n['’]?t| not)? have|should['’]ve|could have|could['’]ve|knew|known|know better|obvious|saw it coming|see it coming|stupid|idiot|fool|my fault|your fault|regret|if only|why did|never should|mistake)\b/i;
+  /* No GPU (VMs, blocklisted devices): every canvas pixel is rasterised on the CPU, so the canvas runs at 1x and about
+   * 30 fps there; devices with a GPU keep the full picture. */
+  let softMemo = null;
+  function softwareGfx() {
+    if (softMemo != null) return softMemo;
+    try {
+      const c = document.createElement('canvas'), gl = c.getContext('webgl');
+      if (!gl) return (softMemo = true);
+      const ext = gl.getExtension('WEBGL_debug_renderer_info'), r = ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : '';
+      const lose = gl.getExtension('WEBGL_lose_context'); if (lose) lose.loseContext();
+      return (softMemo = /swiftshader|llvmpipe|softpipe|software|basic render/i.test(r));
+    } catch (e) { return (softMemo = false); }
+  }
   const hex3 = (c) => { const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(c || ''); return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : [0, 0, 0]; };
   const rgba = (c, a) => { const x = hex3(c); return 'rgba(' + x[0] + ',' + x[1] + ',' + x[2] + ',' + a + ')'; };
   const mixHex = (a, b, k) => { const x = hex3(a), y = hex3(b), f = (i) => Math.round(x[i] + (y[i] - x[i]) * k).toString(16).padStart(2, '0'); return '#' + f(0) + f(1) + f(2); };
@@ -68,11 +81,12 @@
 .g-what-i-knew-then .wk-drag.off { pointer-events: none; cursor: default; }
 .g-what-i-knew-then .wk-ruler { position: absolute; z-index: 13; height: 48px; touch-action: none; cursor: ew-resize; }
 .g-what-i-knew-then .wk-ruler.off { pointer-events: none; cursor: default; }
-.g-what-i-knew-then .wk-mark { position: absolute; z-index: 14; transform: translateX(-50%); font: 700 12px/1 var(--font-ui); letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; pointer-events: none; color: #e9d8b8; transition: color .4s ease, text-shadow .4s ease; }
+.g-what-i-knew-then .wk-mark { position: absolute; z-index: 14; transform: translateX(-50%); font: 700 12px/1 var(--font-ui); letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; pointer-events: none; color: #e9d8b8; transition: color .4s ease, text-shadow .4s ease, opacity .3s ease; }
+.g-what-i-knew-then .wk-mark.off { opacity: 0; }
 .g-what-i-knew-then .wk-mark.lit { color: #ffd77a; text-shadow: 0 0 10px rgba(255,200,90,.8); }
 .g-what-i-knew-then.wk-bright .wk-mark { color: #2e1a08; text-shadow: 0 1px 0 rgba(255,240,215,.45); }
 .g-what-i-knew-then.wk-bright .wk-mark.lit { color: #fff3cf; text-shadow: 0 0 8px rgba(120,60,0,.8), 0 1px 0 #6a3a08; }
-.g-what-i-knew-then .wk-cap { position: absolute; z-index: 18; box-sizing: border-box; transform: translateX(-50%); padding: 8px 16px 10px; text-align: center; color: var(--wk-ink); pointer-events: none;
+.g-what-i-knew-then .wk-cap { position: absolute; z-index: 18; box-sizing: border-box; width: max-content; transform: translateX(-50%); padding: 8px 16px 10px; text-align: center; color: var(--wk-ink); pointer-events: none;
   background: linear-gradient(180deg, #fffaf0, #f3e3c0); border-radius: 3px; box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 3px 0 rgba(110,80,40,.3), 0 10px 20px rgba(20,10,0,.3); transition: opacity .5s ease, translate .5s ease; }
 .g-what-i-knew-then .wk-cap::before, .g-what-i-knew-then .wk-cap::after { content: ""; position: absolute; top: -11px; width: 6px; height: 14px; background: radial-gradient(circle at 50% 3px, #d0a04a 2.6px, transparent 3px), linear-gradient(90deg, transparent 2.2px, rgba(50,35,20,.6) 2.2px 3.8px, transparent 3.8px); }
 .g-what-i-knew-then .wk-cap::before { left: 20px; } .g-what-i-knew-then .wk-cap::after { right: 20px; }
@@ -118,13 +132,15 @@
 .g-what-i-knew-then.wk-bright .wk-chip b { color: #9a5a1c; }
 .g-what-i-knew-then .wk-chip.pick { box-shadow: 0 0 0 3px #ffd77a, 0 10px 20px rgba(0,0,0,.35); }
 .g-what-i-knew-then .wk-chip.gone { opacity: 0; translate: 0 10px; transition: opacity .3s ease, translate .3s ease; pointer-events: none; }
-.g-what-i-knew-then .wk-letter { position: absolute; z-index: 40; box-sizing: border-box; padding: 16px 20px 14px 22px; color: #2a2238; border-radius: 4px; touch-action: none; transform-origin: 50% 40%;
-  background: repeating-linear-gradient(180deg, transparent 0 27px, rgba(70,110,170,.16) 27px 28px) 0 42px / 100% calc(100% - 42px) no-repeat, linear-gradient(180deg, #fffdf7, #fbf2dc);
+.g-what-i-knew-then .wk-letter { --lh: 28px; --fs: 20px; position: absolute; z-index: 40; box-sizing: border-box; padding: 16px 20px 14px 22px; color: #2a2238; border-radius: 4px; touch-action: none; transform-origin: 50% 40%;
+  background: repeating-linear-gradient(180deg, transparent 0 calc(var(--lh) - 1px), rgba(70,110,170,.16) calc(var(--lh) - 1px) var(--lh)) 0 42px / 100% calc(100% - 42px) no-repeat, linear-gradient(180deg, #fffdf7, #fbf2dc);
   box-shadow: inset 0 2px 0 rgba(255,255,255,.8), 0 0 0 1px rgba(150,110,60,.18), 0 18px 40px rgba(0,0,0,.45); animation: what-i-knew-then-up .6s cubic-bezier(.2,1.2,.4,1) both; transition: transform .55s cubic-bezier(.5,0,.3,1), opacity .5s ease .1s; }
 .g-what-i-knew-then .wk-letter::after { content: ""; position: absolute; left: 12px; top: 40px; bottom: 10px; width: 1.5px; background: rgba(200,80,80,.25); }
 .g-what-i-knew-then .wk-letter h3 { margin: 0 0 8px; font: 700 12px/1 var(--font-ui); letter-spacing: .16em; text-transform: uppercase; color: #8a5a2a; }
-.g-what-i-knew-then .wk-letter p { margin: 0; font: 400 20px/28px var(--wk-hand); clip-path: inset(0 100% 0 0); transition: clip-path var(--d, .9s) linear; }
-.g-what-i-knew-then .wk-letter p.on { clip-path: inset(-4px -6px -4px 0); }
+.g-what-i-knew-then .wk-letter p { margin: 0; font: 400 var(--fs)/var(--lh) var(--wk-hand); }
+.g-what-i-knew-then .wk-letter .wd { opacity: 0; transition: opacity .2s ease; }
+.g-what-i-knew-then .wk-letter .wd.on { opacity: 1; }
+.g-what-i-knew-then .wk-letter.dense { --lh: 24px; --fs: 17px; }
 .g-what-i-knew-then .wk-letter p.sign { text-align: right; margin-top: 6px; }
 .g-what-i-knew-then .wk-letter.fold { transform: scale(.16) rotate(-14deg); opacity: 0; }
 .g-what-i-knew-then .wk-signs { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 10px; }
@@ -146,7 +162,8 @@
   .g-what-i-knew-then .wk-cap span, .g-what-i-knew-then .wk-cap span.gk-user { font-size: 19px; }
   .g-what-i-knew-then .wk-cap.final span { font-size: 23px; }
   .g-what-i-knew-then .wk-tag span, .g-what-i-knew-then .wk-tag span.gk-user { font-size: 16px; }
-  .g-what-i-knew-then .wk-letter p { font-size: 21px; line-height: 29px; }
+  .g-what-i-knew-then .wk-letter { --lh: 29px; --fs: 21px; }
+  .g-what-i-knew-then .wk-letter.dense { --lh: 25px; --fs: 18px; }
   .g-what-i-knew-then .gk-bubble { max-width: 250px; }
 }
 `,
@@ -203,7 +220,7 @@
 
       /* ---------------- state ---------------- */
       const G = { phase: 'intro', sx: 0, vel: 0, drag: false, xP: 0, fog: 0, fogT: 0, warm: 0, warmT: 0, clear: 1, mis: 0, req: 0, req0: 0, fogged: [], holding: false, walk: 0, answer: '', sign: '', done: false, lastMark: null, glide: null, arrived: false, lamp: 1 };
-      const M = { W: 0, H: 0, phone: true, win: { x: 0, y: 0, w: 1, h: 1 }, ruler: { x: 0, y: 0, w: 1 }, panel: { x: 0, y: 0, w: 1, h: 1 }, s: 1, Lw: 1, xF: 0, xN: 0 };
+      const M = { W: 0, H: 0, phone: true, win: { x: 0, y: 0, w: 1, h: 1 }, strip: { x: 0, y: 0, w: 1, h: 1, n: 5 }, panel: { x: 0, y: 0, w: 1, h: 1 }, s: 1, Lw: 1, xF: 0, xN: 0 };
       const P = K.particles({ max: 320 });
       const TAGS = [];
       const puffs = [], lanterns = [];
@@ -211,7 +228,8 @@
 
       /* ---------------- DOM ---------------- */
       el.classList.toggle('wk-bright', isBright());
-      const cv = K.canvas(el, { opaque: true, maxDpr: 1.5 });
+      const SOFT = softwareGfx();
+      const cv = K.canvas(el, { opaque: true, maxDpr: SOFT ? 1 : 1.5 });
       const dragZone = h('div', { class: 'wk-drag', role: 'slider', tabindex: '0', 'aria-label': 'The memory reel. Drag it to the right to go back in time.', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': '100' });
       const rulerZone = h('div', { class: 'wk-ruler', 'aria-hidden': 'true' });
       const markThen = h('div', { class: 'wk-mark', text: 'The moment' }), markNow = h('div', { class: 'wk-mark', text: 'Now' });
@@ -254,6 +272,7 @@
         knock() { if (!A.ctx) return; const t = A.now(); A.wood(t, 0.11, 0.85); A.wood(t + 0.11, 0.08, 0.95); A.tone({ when: t + 0.05, type: 'triangle', freq: 392, to: 349, dur: 0.18, vol: 0.04 }); },
         step() { if (!A.ctx) return; A.noise({ filter: 'lowpass', freq: 420, dur: 0.06, vol: 0.05 }); },
         pen(n, dur) { if (!A.ctx) return; const t = A.now(); for (let i = 0; i < n; i++) A.noise({ when: t + (i / n) * dur + Math.random() * 0.03, filter: 'bandpass', freq: 3800 + Math.random() * 2600, q: 1.6, dur: 0.035, vol: 0.016 + Math.random() * 0.01 }); },
+        scratch(len) { if (!A.ctx) return; const t = A.now(), n = len > 5 ? 2 : 1; for (let i = 0; i < n; i++) A.noise({ when: t + i * 0.045, filter: 'bandpass', freq: 3600 + Math.random() * 2800, q: 1.5, dur: 0.03 + Math.min(len, 8) * 0.004, vol: 0.014 + Math.random() * 0.01 }); },
         flap() { if (!A.ctx) return; A.noise({ filter: 'bandpass', freq: 900 + Math.random() * 300, q: 1.1, dur: 0.07, vol: 0.05 }); },
         arrive() { if (!A.ctx) return; const t = A.now(); ['D5', 'F#5', 'A5', 'D6'].forEach((n, i) => A.chime(A.note(n), { when: t + i * 0.08, vol: 0.07, dur: 2.2 })); A.pad(['D3', 'A3', 'D4', 'F#4', 'A4'].map(n => A.note(n)), { dur: 6, vol: 0.12, attack: 0.8, lp: 1600 }); }
       };
@@ -269,18 +288,20 @@
         const frac = M.Lw > 1 ? G.sx / M.Lw : null, fracP = M.Lw > 1 ? G.xP / M.Lw : null;
         M.W = W; M.H = H; M.phone = W < 760;
         if (M.phone) {
-          // the reel takes the top half; the controls sit in a band under the ruler; Still keeps the bottom-left corner
-          const stillTop = H - 16 - 66, wh = Math.round(clamp(H * 0.52, 320, 460));
+          // the reel box takes the top; the film strip runs under it; the controls take that same band when they're
+          // needed (the strip steps aside); Still keeps the bottom-left corner
+          const stillTop = H - 16 - 66, wh = Math.round(clamp(H * 0.56, 290, 500));
           M.win = { x: 18, y: 76, w: W - 36, h: wh };
-          M.ruler = { x: 36, y: 76 + wh + 50, w: W - 72 };
-          const py = M.ruler.y + 30;
-          M.panel = { x: 12, y: py, w: W - 24, h: Math.max(120, stillTop - 14 - py) };
+          const boxB = M.win.y + wh + 30, sw = W - 44, n = 5;
+          M.strip = { x: 22, y: boxB + 14, w: sw, h: Math.round(clamp(sw / n * 0.62 + 24, 58, 84)), n };
+          M.panel = { x: 12, y: boxB + 12, w: W - 24, h: Math.max(110, stillTop - 10 - (boxB + 12)) };
           M.stillTop = stillTop;
         } else {
           const pw = 360, gap = 34, ww = Math.round(Math.min(860, W - pw - gap - 80)), x0 = Math.round((W - (ww + gap + pw)) / 2);
-          const wh = Math.round(Math.min(H - 84 - 140, ww * 0.64));
+          const wh = Math.round(Math.min(H - 84 - 34 - 150, ww * 0.64));
           M.win = { x: x0, y: 84, w: ww, h: wh };
-          M.ruler = { x: x0 + 18, y: 84 + wh + 56, w: ww - 36 };
+          const boxB = 84 + wh + 34, sw = ww - 24, n = 8;
+          M.strip = { x: x0 + 12, y: boxB + 16, w: sw, h: Math.round(clamp(sw / n * 0.62 + 30, 70, 104)), n };
           M.panel = { x: x0 + ww + gap, y: 84, w: pw, h: H - 84 - 16 };
         }
         M.s = M.win.h / 420;
@@ -289,16 +310,17 @@
         G.xP = fracP != null ? fracP * M.Lw : M.xF;
         const w = M.win;
         Object.assign(dragZone.style, { left: w.x + 'px', top: w.y + 'px', width: w.w + 'px', height: w.h + 'px' });
-        Object.assign(rulerZone.style, { left: (M.ruler.x - 10) + 'px', top: (M.ruler.y - 24) + 'px', width: (M.ruler.w + 20) + 'px' });
-        markThen.style.left = rulerX(M.xF) + 'px'; markThen.style.top = (M.ruler.y + 12) + 'px';
-        markNow.style.left = rulerX(M.xN) + 'px'; markNow.style.top = (M.ruler.y + 12) + 'px';
+        const st0 = M.strip;
+        Object.assign(rulerZone.style, { left: (st0.x - 8) + 'px', top: (st0.y - 12) + 'px', width: (st0.w + 16) + 'px', height: (st0.h + 24) + 'px' });
+        markThen.style.left = stripX(M.xF) + 'px'; markThen.style.top = (st0.y + st0.h + 8) + 'px';
+        markNow.style.left = stripX(M.xN) + 'px'; markNow.style.top = (st0.y + st0.h + 8) + 'px';
         const ss = M.phone ? 66 : 92; still.el.style.setProperty('--sz', ss + 'px');
         if (M.phone) still.place(12, M.stillTop); else still.place(M.panel.x, M.panel.y);
         const ds = Math.round((M.phone ? 66 : 86) * clamp(M.s, 0.85, 1.15)); drop.el.style.setProperty('--sz', ds + 'px'); M.ds = ds;
         placeCap(); relayoutTags(); placeControls();
         artKey = '';
       }
-      const rulerX = (x) => M.ruler.x + clamp(x / M.Lw, 0, 1) * M.ruler.w;
+      const stripX = (x) => M.strip.x + clamp(x / M.Lw, 0, 1) * M.strip.w;
       const focus = () => G.sx - M.off; // the world point under past-you's spot (27% across the window)
       function placeCap() { const w = M.win, mw = Math.min(w.w - 28, M.phone ? 340 : 560); cap.style.maxWidth = mw + 'px'; cap.style.left = (w.x + w.w / 2) + 'px'; cap.style.top = (w.y + 16) + 'px'; }
 
@@ -316,7 +338,33 @@
       function buildArt() {
         const key = M.W + 'x' + M.H + ':' + (cv.dpr || 1) + ':' + (isBright() ? 'b' : 'd');
         artKey = key;
-        buildRoom(); buildSky(); buildFar(); buildMid(); buildNear(); buildGrain();
+        buildRoom(); buildSky(); buildFar(); buildMid(); buildNear(); buildGrain(); buildStrip();
+      }
+      /* The film strip: the whole memory as frames, each a crop of the paper world where the camera would have been. */
+      function buildStrip() {
+        const sp = M.strip, n = sp.n, R = mkc(sp.w, sp.h, 2), g = R.g, w = M.win.w, wh = M.win.h, cw = sp.w / n, sb = Math.round(sp.h * 0.17), span = M.Lw / n;
+        rr(g, 0, 0, sp.w, sp.h, 6); g.fillStyle = '#1d130b'; g.fill();
+        g.fillStyle = 'rgba(255,236,200,0.07)'; g.fillRect(4, 1, sp.w - 8, 1.5);
+        const hw = Math.max(4, sb * 0.56), hh = Math.max(3, sb * 0.42), step = Math.max(9, sb * 1.3);
+        g.fillStyle = 'rgba(236,222,192,0.82)';
+        for (let x = 7; x < sp.w - 9; x += step) { rr(g, x, (sb - hh) / 2, hw, hh, 1.3); g.fill(); rr(g, x, sp.h - sb + (sb - hh) / 2, hw, hh, 1.3); g.fill(); }
+        const blit = (L, sx, sy, sw, sh, dx, dy, dw, dh) => {
+          const d = L.d; let x0 = sx, x1 = sx + sw; const k = dw / sw;
+          if (x0 < 0) { dx -= x0 * k; dw += x0 * k; x0 = 0; } if (x1 > L.w) { dw -= (x1 - L.w) * k; x1 = L.w; }
+          if (x1 - x0 > 0.5 && dw > 0.5) g.drawImage(L.c, x0 * d, sy * d, (x1 - x0) * d, sh * d, dx, dy, dw, dh);
+        };
+        for (let j = 0; j < n; j++) {
+          const fx = j * cw + 3, fy = sb, fw = cw - 6, fh = sp.h - 2 * sb, cx = (j + 0.5) * span;
+          const band = Math.min(wh, span * fh / fw), sy0 = clamp(wh * 0.94 - band, 0, wh - band);
+          g.save(); g.beginPath(); g.rect(fx, fy, fw, fh); g.clip();
+          blit(ART.sky, w / 2 - span / 2, sy0, span, band, fx, fy, fw, fh);
+          [[ART.far, 0.35], [ART.mid, 0.65], [ART.near, 1]].forEach(([L, p]) => { const ox = clamp((cx - w / 2) * p, 0, Math.max(0, L.w - w)); blit(L, ox + w / 2 - span / 2, sy0, span, band, fx, fy, fw, fh); });
+          // a touch of age: warm vignette inside each frame
+          g.globalCompositeOperation = 'multiply'; g.fillStyle = 'rgba(150,110,70,0.18)'; g.fillRect(fx, fy, fw, fh); g.globalCompositeOperation = 'source-over';
+          g.restore();
+          g.strokeStyle = 'rgba(0,0,0,0.6)'; g.lineWidth = 1; g.strokeRect(fx + 0.5, fy + 0.5, fw - 1, fh - 1);
+        }
+        ART.strip = R; ART.stripSB = sb;
       }
       function buildRoom() {
         const W = M.W, H = M.H, br = isBright(), R = mkc(W, H), g = R.g, w = M.win;
@@ -356,10 +404,12 @@
         try { g.letterSpacing = '2px'; } catch (e) { /* older canvas */ }
         g.fillText('WHAT I KNEW THEN', w.x + w.w / 2, py + phh / 2 + 1);
         try { g.letterSpacing = '0px'; } catch (e) { /* older canvas */ }
-        // the reel collection: one spool per paper stock either side of the plaque (collected in colour, the rest waiting)
+        // the reel collection: on a phone, one spool per paper stock either side of the plaque (collected in colour, the
+        // rest waiting); on a wide screen, a row of film tins on the table beside the box
         const got = K.collection().filter(x => x.indexOf('reel:') === 0).map(x => x.slice(5));
+        if (!M.phone) drawTins(g, br, got);
         const sr = M.phone ? 7.5 : 9, cyS = py + phh / 2, slotsL = [0, 1, 2].map(i => px - 18 - i * (sr * 2 + 8)), slotsR = [0, 1].map(i => px + pw + 18 + i * (sr * 2 + 8));
-        STOCKS.forEach((s0, i) => {
+        if (M.phone) STOCKS.forEach((s0, i) => {
           const cx = i < 3 ? slotsL[i] : slotsR[i - 3], have = got.includes(s0.key) || s0.key === STOCK.key;
           if (cx - sr < X + 6 || cx + sr > X + BW - 6) return;
           if (s0.key === STOCK.key) { g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.6; g.drawImage(K.glowSprite('#ffd77a'), cx - sr * 2.6, cyS - sr * 2.6, sr * 5.2, sr * 5.2); g.restore(); }
@@ -370,12 +420,39 @@
           g.fillStyle = '#2a1a0e'; g.beginPath(); g.arc(cx, cyS, sr * 0.18, 0, TAU); g.fill();
           g.globalAlpha = 1;
         });
-        // the ruler rail
-        const ru = M.ruler;
-        g.strokeStyle = br ? 'rgba(80,50,20,.55)' : 'rgba(240,215,170,.4)'; g.lineWidth = 2; g.beginPath(); g.moveTo(ru.x, ru.y); g.lineTo(ru.x + ru.w, ru.y); g.stroke();
-        g.fillStyle = br ? 'rgba(80,50,20,.5)' : 'rgba(240,215,170,.35)';
-        for (let i = 0; i <= 32; i++) { const x = ru.x + ru.w * i / 32, tall = i % 4 === 0; g.fillRect(x - 0.75, ru.y - (tall ? 7 : 4), 1.5, tall ? 14 : 8); }
         ART.room = R;
+      }
+      function drawTins(g, br, got) {
+        const P0 = M.panel, sp = M.strip, n = STOCKS.length, slot = (P0.w - 16) / n, r = Math.min(27, slot / 2 - 6), cy = sp.y + sp.h * 0.42;
+        const have = (s0) => got.includes(s0.key) || s0.key === STOCK.key, count = STOCKS.filter(have).length;
+        g.font = '700 12px ' + (K.token('--font-ui') || 'system-ui, sans-serif'); g.textBaseline = 'middle'; g.textAlign = 'left';
+        try { g.letterSpacing = '1.6px'; } catch (e) { /* older canvas */ }
+        g.fillStyle = br ? '#4a2a0e' : '#e9d8b8'; g.fillText('YOUR REELS · ' + count + ' OF ' + n, P0.x + 8, sp.y - 16);
+        try { g.letterSpacing = '0px'; } catch (e) { /* older canvas */ }
+        STOCKS.forEach((s0, i) => {
+          const cx = P0.x + 8 + slot * (i + 0.5), ok = have(s0), today = s0.key === STOCK.key;
+          g.fillStyle = 'rgba(0,0,0,' + (br ? 0.22 : 0.4) + ')'; g.beginPath(); g.ellipse(cx, cy + r + 4, r * 0.95, 5, 0, 0, TAU); g.fill();
+          if (today) { g.save(); g.globalCompositeOperation = br ? 'source-over' : 'lighter'; g.globalAlpha = br ? 0.5 : 0.55; g.drawImage(K.glowSprite('#ffd77a'), cx - r * 2.2, cy - r * 2.2, r * 4.4, r * 4.4); g.restore(); }
+          let rg2 = g.createRadialGradient(cx - r * 0.3, cy - r * 0.4, r * 0.2, cx, cy, r);
+          rg2.addColorStop(0, ok ? '#f6e3b0' : (br ? '#cdb898' : '#4a3a2a')); rg2.addColorStop(1, ok ? '#8a6630' : (br ? '#9c8463' : '#2a1e14'));
+          g.fillStyle = rg2; g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.fill();
+          const ri = r * 0.78;
+          g.save(); g.beginPath(); g.arc(cx, cy, ri, 0, TAU); g.clip();
+          if (ok) { // a tiny paper landscape in that stock
+            const sg = g.createLinearGradient(0, cy - ri, 0, cy + ri); sg.addColorStop(0, s0.sky[0]); sg.addColorStop(1, s0.sky[1]); g.fillStyle = sg; g.fillRect(cx - ri, cy - ri, ri * 2, ri * 2);
+            g.fillStyle = s0.far; g.beginPath(); g.ellipse(cx - ri * 0.3, cy + ri * 0.35, ri * 0.9, ri * 0.45, 0, 0, TAU); g.fill();
+            g.fillStyle = s0.mid; g.beginPath(); g.ellipse(cx + ri * 0.45, cy + ri * 0.55, ri * 0.85, ri * 0.42, 0, 0, TAU); g.fill();
+            g.fillStyle = s0.near; g.fillRect(cx - ri, cy + ri * 0.62, ri * 2, ri);
+            g.fillStyle = mixHex(s0.glow, '#ffffff', 0.3); g.beginPath(); g.arc(cx + ri * 0.35, cy - ri * 0.35, ri * 0.2, 0, TAU); g.fill();
+          } else { g.fillStyle = br ? '#7c6448' : '#1a120b'; g.fillRect(cx - ri, cy - ri, ri * 2, ri * 2); }
+          g.restore();
+          g.strokeStyle = ok ? 'rgba(70,40,10,0.55)' : 'rgba(240,215,170,0.25)'; g.lineWidth = 1.2; g.beginPath(); g.arc(cx, cy, ri, 0, TAU); g.stroke();
+          g.fillStyle = ok ? '#3a2408' : 'rgba(240,215,170,0.4)'; g.beginPath(); g.arc(cx, cy, r * 0.13, 0, TAU); g.fill();
+          if (!ok) { g.fillStyle = br ? 'rgba(255,245,225,0.75)' : 'rgba(240,215,170,0.55)'; g.font = '700 14px ' + (K.token('--font-ui') || 'system-ui, sans-serif'); g.textAlign = 'center'; g.fillText('?', cx, cy - r * 0.42); }
+          g.font = '600 12px ' + (K.token('--font-ui') || 'system-ui, sans-serif'); g.textAlign = 'center';
+          g.fillStyle = br ? (ok ? '#3a2208' : 'rgba(58,34,8,0.5)') : (ok ? '#f3e2c2' : 'rgba(243,226,194,0.42)');
+          g.fillText(s0.short, cx, cy + r + 17);
+        });
       }
       function buildSky() {
         const w = M.win.w, hh = M.win.h, s = M.s, R = mkc(w, hh), g = R.g;
@@ -466,12 +543,29 @@
         g.strokeStyle = 'rgba(120,90,50,0.4)'; g.lineWidth = 0.6; for (let i = 0; i < 26; i++) { const x = Rn() * 140, y = Rn() * 140, a = Rn() * TAU, l = 6 + Rn() * 14; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke(); }
         ART.grain = R; ART.grainPat = null;
       }
-      const fogCv = document.createElement('canvas'); let fogG = null;
+      let shadowC = null;
+      function shadowSprite() {
+        if (shadowC) return shadowC;
+        shadowC = document.createElement('canvas'); shadowC.width = shadowC.height = 64;
+        const sg = shadowC.getContext('2d'), rg = sg.createRadialGradient(32, 32, 0, 32, 32, 32);
+        rg.addColorStop(0, 'rgba(20,10,4,1)'); rg.addColorStop(1, 'rgba(20,10,4,0)'); sg.fillStyle = rg; sg.fillRect(0, 0, 64, 64);
+        return shadowC;
+      }
+      const fogCv = document.createElement('canvas'); let fogG = null, holeC = null;
+      // the clearing in the fog round past-you: one soft radial cut, rendered once and reused every frame
+      function holeSprite() {
+        if (holeC) return holeC;
+        holeC = document.createElement('canvas'); holeC.width = holeC.height = 128;
+        const hg = holeC.getContext('2d'), rg = hg.createRadialGradient(64, 64, 16, 64, 64, 64);
+        rg.addColorStop(0, 'rgba(0,0,0,0.92)'); rg.addColorStop(1, 'rgba(0,0,0,0)'); hg.fillStyle = rg; hg.fillRect(0, 0, 128, 128);
+        return holeC;
+      }
       const MIST = []; { const Rn = K.rng(77); for (let i = 0; i < 18; i++) MIST.push({ x: Rn(), y: 0.2 + Rn() * 0.85, r: 0.22 + Rn() * 0.26, v: 0.006 + Rn() * 0.014, a: 0.55 + Rn() * 0.45, ph: Rn() * TAU }); }
 
       /* ---------------- frame ---------------- */
       K.loop((dt0, t) => {
         const g = cv.g; if (!g || !M.W) return;
+        if (SOFT) { const tq = now(); if (tq - (G.lastDraw || 0) < 30) return; G.lastDraw = tq; } // CPU-only: every other frame
         const key = M.W + 'x' + M.H + ':' + (cv.dpr || 1) + ':' + (isBright() ? 'b' : 'd');
         if (artKey !== key) buildArt();
         const tn = now(), dt = clamp((tn - (G.lastT || tn)) / 1000, 0, 0.1); G.lastT = tn;
@@ -497,14 +591,14 @@
         if (G.warm > 0.05) drawWarmth(g, t, dt, px, py);
         drawFog(g, t, dt, px - x, py - y - 30 * M.s);
         drawLanterns(g, dt, t);
-        if (bird) drawBird(g, dt, t);
         if (!ART.grainPat) ART.grainPat = g.createPattern(ART.grain.c, 'repeat');
         g.globalAlpha = 0.06; g.fillStyle = ART.grainPat; g.fillRect(x, y, w, wh); g.globalAlpha = 1;
         // vignette at the paper's edges, where it winds round the spools
         g.fillStyle = 'rgba(30,15,5,0.22)'; g.fillRect(x, y, 3, wh); g.fillRect(x + w - 3, y, 3, wh);
         g.restore();
         drawSpools(g, t);
-        drawPlayhead(g, t);
+        drawStrip(g, t, dt);
+        if (bird) drawBird(g, dt, t); // over the box frame: it flies in from outside the window
         P.update(dt); P.draw(g);
         placeActors();
       });
@@ -518,7 +612,7 @@
         // the path lights up from past-you onwards: kindness travelling from then to now
         const x0 = px, x1 = px + (x + w + 20 - px) * G.pathT, spr = K.glowSprite('#ffd88a');
         for (let xx = x0; xx < x1; xx += 9 * s) { const wx = G.sx - w / 2 + (xx - x), yy = y + gy(wx) + 11 * s; g.globalAlpha = 0.55 * k * (0.75 + 0.25 * Math.sin(t * 3 - xx * 0.03)); g.drawImage(spr, xx - 13 * s, yy - 13 * s, 26 * s, 26 * s); }
-        if (G.pathT < 1 && Math.random() < 0.6) { const wx = G.sx - w / 2 + (x1 - x); P.emit('spark', x1, y + gy(wx) + 10 * s, 2, { colors: ['#fff3c4', '#ffd36b'], speed: [20, 70] }); }
+        if (G.pathT < 1 && x1 < x + w - 12 && Math.random() < 0.6) { const wx = G.sx - w / 2 + (x1 - x); P.emit('spark', x1, y + gy(wx) + 10 * s, 2, { colors: ['#fff3c4', '#ffd36b'], speed: [20, 60] }); }
         g.restore();
       }
       function layer(g, L, p) {
@@ -547,9 +641,7 @@
         // the lantern's clearing round past-you: the little that could be seen
         if (G.arrived && F > 0.01) {
           const R0 = (M.phone ? 0.36 : 0.3) * w * fs * G.clear, gx = lx * fs, gyy = ly * fs;
-          const rg = fg.createRadialGradient(gx, gyy, R0 * 0.25, gx, gyy, R0);
-          rg.addColorStop(0, 'rgba(0,0,0,0.92)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
-          fg.globalCompositeOperation = 'destination-out'; fg.globalAlpha = 1; fg.fillStyle = rg; fg.fillRect(0, 0, fw, fh);
+          fg.globalCompositeOperation = 'destination-out'; fg.globalAlpha = 1; fg.drawImage(holeSprite(), gx - R0, gyy - R0, R0 * 2, R0 * 2);
         }
         fg.globalCompositeOperation = 'source-over'; fg.globalAlpha = 1;
         g.drawImage(fogCv, M.win.x, M.win.y, w, wh);
@@ -565,17 +657,51 @@
         });
         void t;
       }
-      function drawPlayhead(g, t) {
-        const ru = M.ruler, px = rulerX(focus()), br = isBright();
-        const lit = G.arrived ? 1 : 0;
-        g.fillStyle = br ? '#7a4a14' : '#ffd77a';
-        g.save(); g.globalCompositeOperation = br ? 'source-over' : 'lighter'; g.globalAlpha = 0.5 + 0.2 * Math.sin(t * 3) + lit * 0.2; g.drawImage(K.glowSprite(br ? '#ffcf70' : '#ffd77a'), px - 16, ru.y - 16, 32, 32); g.restore();
-        g.beginPath(); g.moveTo(px, ru.y + 1); g.lineTo(px - 7, ru.y - 10); g.lineTo(px + 7, ru.y - 10); g.closePath(); g.fill();
-        g.fillRect(px - 1, ru.y - 2, 2, 9);
-        // the stretch of the reel already seen glows
-        const xf = rulerX(M.xF), xn = rulerX(M.xN);
-        g.fillStyle = br ? 'rgba(160,98,12,0.5)' : 'rgba(255,215,122,0.5)'; g.fillRect(Math.min(px, xn), ru.y - 1.5, Math.abs(xn - px), 3);
-        g.beginPath(); g.arc(xf, ru.y, lit ? 5.5 : 4, 0, TAU); g.fill(); g.beginPath(); g.arc(xn, ru.y, 4, 0, TAU); g.fill();
+      // the strip under the box: the whole memory as frames, a viewfinder for the window, fog over what came after the
+      // moment, and in the finale every frame from the moment to now warming in turn
+      function drawStrip(g, t, dt) {
+        // on a phone the strip steps aside while a control needs its band (keep, hold, the answers, the paper bird)
+        const on = !M.phone || G.finaleOn || !(keepBtn || holdBtn || G.chipBox || birdEl || (G.allFogged && G.phase === 'fog'));
+        G.stripVis = clamp((G.stripVis == null ? 1 : G.stripVis) + (on ? 1 : -1) * dt * 3.2, 0, 1);
+        const v = G.stripVis, sp = M.strip;
+        if ((v > 0.5) !== G.marksOn) { G.marksOn = v > 0.5; markThen.classList.toggle('off', !G.marksOn); markNow.classList.toggle('off', !G.marksOn); }
+        if (v < 0.01 || !ART.strip) return;
+        const br = isBright(), sb = ART.stripSB, fy = sp.y + sb, fh = sp.h - 2 * sb, cw = sp.w / sp.n, xm = stripX(M.xF);
+        g.save(); g.globalAlpha = v * (br ? 0.32 : 0.55); g.drawImage(shadowSprite(), sp.x - 24, sp.y + sp.h * 0.2, sp.w + 48, sp.h * 1.3); g.restore();
+        g.globalAlpha = v; g.drawImage(ART.strip.c, sp.x, sp.y, sp.w, sp.h);
+        // what came after the moment fogs over, just as it does in the view
+        if (G.fog > 0.01) {
+          const x0 = xm + 4, x1 = sp.x + sp.w - 3, fa = Math.min(0.9, G.fog * 0.92) * (1 - G.warm * 0.75);
+          const gr = g.createLinearGradient(x0, 0, x0 + 26, 0); gr.addColorStop(0, rgba(STOCK.fog, 0)); gr.addColorStop(1, rgba(STOCK.fog, fa));
+          g.fillStyle = gr; g.fillRect(x0, fy, 26, fh); g.fillStyle = rgba(STOCK.fog, fa); g.fillRect(x0 + 26, fy, x1 - x0 - 26, fh);
+        }
+        // finale: the reel glows warm, frame by frame, from the moment to now
+        if (G.warm > 0.02) {
+          const reach = xm + (sp.x + sp.w - xm) * (G.pathT || 0), spr = K.glowSprite('#ffcf7a');
+          g.save(); g.globalCompositeOperation = 'lighter';
+          for (let j = 0; j < sp.n; j++) {
+            const fx = sp.x + j * cw + 3, fw = cw - 6, mid = fx + fw / 2, lit = mid < xm ? 0.45 : clamp((reach - fx) / fw, 0, 1);
+            if (lit <= 0) continue;
+            const a = lit * G.warm * (0.8 + 0.2 * Math.sin(t * 2.4 + j));
+            g.globalAlpha = a * 0.5; g.drawImage(spr, fx - fw * 0.35, fy - fh * 0.8, fw * 1.7, fh * 2.6);
+            g.globalAlpha = a * 0.28; g.fillStyle = '#ffd890'; g.fillRect(fx, fy, fw, fh);
+          }
+          g.restore();
+          g.globalAlpha = v * G.warm; g.strokeStyle = '#ffd77a'; g.lineWidth = 1.5;
+          for (let j = 0; j < sp.n; j++) { const fx = sp.x + j * cw + 3, fw = cw - 6; if (fx < reach && fx + fw / 2 >= xm) g.strokeRect(fx + 0.5, fy + 0.5, fw - 1, fh - 1); }
+          g.globalAlpha = v;
+        }
+        // the moment: a brass pin on the frame it happened in
+        g.fillStyle = '#ffd77a'; g.beginPath(); g.arc(xm, sp.y + sb / 2, Math.max(2.6, sb * 0.3), 0, TAU); g.fill();
+        g.strokeStyle = 'rgba(255,215,122,0.55)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(xm, sp.y + sb - 1); g.lineTo(xm, sp.y + sp.h - sb + 1); g.stroke();
+        // the viewfinder: the stretch of reel in the window right now
+        const vx0 = stripX(G.sx - M.win.w / 2), vx1 = stripX(G.sx + M.win.w / 2), pulse = G.phase === 'pull' || G.phase === 'now' ? 0.25 + 0.15 * Math.sin(t * 4) : 0.15;
+        g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = v * pulse; g.drawImage(K.glowSprite('#ffd77a'), vx0 - 14, sp.y - 16, vx1 - vx0 + 28, sp.h + 32); g.restore();
+        g.globalAlpha = v; g.strokeStyle = '#ffd77a'; g.lineWidth = 2.5; rr(g, vx0, sp.y - 3, vx1 - vx0, sp.h + 6, 6); g.stroke();
+        // past-you's spot inside it
+        const px = stripX(focus());
+        g.fillStyle = br ? '#5a3008' : '#ffd77a'; g.beginPath(); g.moveTo(px, sp.y - 4); g.lineTo(px - 6.5, sp.y - 13); g.lineTo(px + 6.5, sp.y - 13); g.closePath(); g.fill();
+        g.globalAlpha = 1;
       }
 
       /* ---------------- pull the reel ---------------- */
@@ -613,8 +739,8 @@
       };
       const pullEnd = () => { if (!G.drag) return; G.drag = false; dragZone.classList.remove('grab'); G.vel = clamp(G.vel, -2600 * M.s, 2600 * M.s); if (G.phase === 'pull' && Math.abs(G.sx - M.xT) > 160 * M.s) pullGuide(true); };
       K.drag(dragZone, { start: pullStart, move: (p) => pullMove(p, 1), end: pullEnd });
-      // the little ruler under the box scrubs too (dragging its playhead left goes back)
-      K.drag(rulerZone, { start: pullStart, move: (p) => pullMove(p, -M.Lw / M.ruler.w), end: pullEnd });
+      // the film strip under the box scrubs too (drag its viewfinder left to go back)
+      K.drag(rulerZone, { start: pullStart, move: (p) => pullMove(p, -M.Lw / M.strip.w), end: pullEnd });
       K.onKey(['ArrowLeft', 'ArrowRight'], (e) => { if (G.phase !== 'pull' && G.phase !== 'now') return; e.preventDefault(); if (G.phase === 'now') toPull(); G.vel += (e.key === 'ArrowLeft' || e.code === 'ArrowLeft' ? -1 : 1) * 520 * M.s; });
       function pullGuide(again) {
         K.guide({ id: 'pull' + (again ? '2' : ''), g: 'drag', target: dragZone, dir: 'r', d: M.phone ? 150 : 230, ox: 0.28, oy: 0.62, label: again ? 'KEEP PULLING BACK' : 'PULL THE REEL BACK', delay: again ? 1400 : 700 });
@@ -834,17 +960,13 @@
         G.phase = 'letter';
         sayS(LINES.write, 'calm', 3200);
         const lines = letterLines();
-        const ps = lines.map(t => h('p', { text: t }));
-        letterEl = h('section', { class: 'wk-letter', 'aria-label': 'A letter to past-you', 'aria-live': 'polite' }, h('h3', { text: 'A letter back down the reel' }), ...ps);
+        const ps = lines.map(t => inkLine(t));
+        letterEl = h('section', { class: 'wk-letter', 'aria-label': 'A letter to past-you' }, h('h3', { text: 'A letter back down the reel' }), ...ps);
         el.append(letterEl); placeControls();
         if (M.phone) { drop.el.style.opacity = '0'; TAGS.forEach(x => { if (x.el.isConnected) x.el.style.visibility = 'hidden'; }); cap.classList.add('off'); }
         if (A.ctx) A.paper({ vol: 0.1 });
         await K.wait(reduced() ? 200 : 500);
-        for (const p of ps) {
-          const dur = reduced() ? 0.05 : clamp(p.textContent.length * 0.022, 0.5, 1.3);
-          p.style.setProperty('--d', dur + 's'); p.classList.add('on'); SFX.pen(Math.round(dur * 14), dur);
-          await K.wait(dur * 1000 + (reduced() ? 120 : 260));
-        }
+        for (const p of ps) { await writeLine(p); await K.wait(reduced() ? 80 : 240); }
         G.phase = 'sign';
         sayS(LINES.sign, 'happy', 0);
         const row = h('div', { class: 'wk-signs', role: 'group', 'aria-label': 'Sign it' });
@@ -855,11 +977,22 @@
       async function signIt(sg, row) {
         if (G.phase !== 'sign') return;
         G.phase = 'signed'; G.sign = sg; K.guide(null); row.remove();
-        const p = h('p', { class: 'sign', text: sg }); letterEl.append(p); placeControls();
-        void p.offsetWidth; const dur = reduced() ? 0.05 : 0.8; p.style.setProperty('--d', dur + 's'); p.classList.add('on'); SFX.pen(12, dur);
+        const p = inkLine(sg, 'sign'); letterEl.append(p); placeControls();
         ctx.track('sign', { i: SIGNS.indexOf(sg) });
-        await K.wait(dur * 1000 + (reduced() ? 300 : 700));
+        await writeLine(p);
+        await K.wait(reduced() ? 300 : 700);
         fold();
+      }
+      // the letter writes itself a word at a time, in reading order, each word with its own scratch of the pen
+      function inkLine(t, cls) {
+        const p = h('p', cls ? { class: cls } : null);
+        String(t).split(/(\s+)/).forEach(w => { if (!w) return; if (/^\s+$/.test(w)) p.append(document.createTextNode(w)); else p.append(h('span', { class: 'wd', text: w })); });
+        return p;
+      }
+      async function writeLine(p) {
+        const ws = Array.from(p.querySelectorAll('.wd'));
+        if (reduced()) { ws.forEach(w => w.classList.add('on')); SFX.pen(4, 0.2); return; }
+        for (const w of ws) { if (!w.isConnected) return; w.classList.add('on'); SFX.scratch(w.textContent.length); await K.wait(clamp(w.textContent.length * 24, 60, 160)); }
       }
       let birdEl = null;
       async function fold() {
@@ -901,7 +1034,8 @@
         G.phase = 'flying'; K.guide(null);
         if (birdEl) { birdEl.remove(); birdEl = null; }
         const tp = dropPoint();
-        bird = { x0: x, y0: y, x1: tp.x + M.ds * 0.42, y1: tp.y - M.ds * 0.25, t: 0, dur: reduced() ? 0.6 : 1.25, flapT: 0, x, y, ang: 0 };
+        // it lands beside past-you, exactly where the envelope then appears (never over the character art)
+        bird = { x0: x, y0: y, x1: tp.x - M.ds / 2 - 25, y1: tp.y + M.ds * 0.55 - 16, t: 0, dur: reduced() ? 0.6 : 1.25, flapT: 0, x, y, ang: 0 };
         if (A.ctx) A.whoosh({ vol: 0.1, dur: 0.6, from: 600, to: 2400 });
         ctx.track('send', {});
       }
@@ -947,10 +1081,10 @@
       }
       let envEl = null;
       async function landed() {
-        G.phase = 'finale';
+        G.phase = 'finale'; G.finaleOn = true;
         SFX.arrive(); S.buzz([16, 40, 16]);
-        const tp = dropPoint();
-        P.emit('spark', tp.x, tp.y, 26, { colors: ['#fff3c4', '#ffd36b', '#ffffff'], speed: [60, 200] });
+        const tp = dropPoint(), lx = tp.x - M.ds / 2 - 25, ly = tp.y + M.ds * 0.55 - 16;
+        P.emit('spark', lx, ly, 26, { colors: ['#fff3c4', '#ffd36b', '#ffffff'], speed: [60, 200] });
         P.emit('mote', tp.x, tp.y, 18, { colors: ['#fff3c4', '#ffe08a'], speed: [10, 60] });
         drop.say(L(LINES.got), { mood: 'love', ms: 2600 }); drop.react('bounce');
         envEl = h('div', { class: 'wk-env', html: ENVELOPE }); el.append(envEl); placeActors();
@@ -997,7 +1131,7 @@
           drop.el.style.left = (xs - ds / 2) + 'px'; drop.el.style.top = (feet - ds) + 'px';
           if (!(M.phone && (G.phase === 'letter' || G.phase === 'sign' || G.phase === 'signed' || G.phase === 'folding'))) drop.el.style.opacity = vis && xs > w.x + 12 && xs < w.x + w.w - 12 ? '1' : '0';
         }
-        if (envEl) { envEl.style.left = (xs + ds / 2 + 4) + 'px'; envEl.style.top = (feet - ds * 0.62) + 'px'; }
+        if (envEl) { envEl.style.left = (xs - ds / 2 - 44) + 'px'; envEl.style.top = (feet - 34) + 'px'; } // held out on the left, clear of the speech bubble
       }
       function placeControls() {
         const P0 = M.panel, ph = M.phone, midY = P0.y + P0.h / 2;
@@ -1006,7 +1140,9 @@
         if (G.chipBox) { Object.assign(G.chipBox.style, { left: (P0.x + (ph ? 4 : 0)) + 'px', width: (P0.w - (ph ? 8 : 0)) + 'px', top: 'auto', bottom: (ph ? M.H - (P0.y + P0.h) : M.H - (P0.y + 440)) + 'px' }); }
         if (letterEl) {
           if (ph) Object.assign(letterEl.style, { left: (M.win.x - 4) + 'px', top: (M.win.y - 4) + 'px', width: (M.win.w + 8) + 'px', maxHeight: (M.stillTop - 6 - M.win.y) + 'px' });
-          else Object.assign(letterEl.style, { left: P0.x + 'px', top: (P0.y + 150) + 'px', width: P0.w + 'px', maxHeight: (P0.h - 160) + 'px' });
+          else Object.assign(letterEl.style, { left: P0.x + 'px', top: (P0.y + 150) + 'px', width: P0.w + 'px', maxHeight: Math.max(200, M.strip.y - 40 - (P0.y + 150)) + 'px' });
+          // a long letter writes a little smaller rather than spill past the paper
+          letterEl.classList.remove('dense'); if (letterEl.scrollHeight > letterEl.clientHeight + 1) letterEl.classList.add('dense');
         }
       }
 

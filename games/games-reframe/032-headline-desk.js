@@ -15,7 +15,6 @@
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const lerp = (a, b, t) => a + (b - a) * t;
   const eOut = (t) => 1 - Math.pow(1 - t, 3);
-  const eInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
   function hexRgb(hx) { const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hx || '') || [0, '80', '80', '80']; return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)]; }
   function rgba(hx, a) { const c = hexRgb(hx); return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')'; }
   function mix(a, b, k) { const A = hexRgb(a), B = hexRgb(b); k = clamp(k, 0, 1); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * k).toString(16).padStart(2, '0')).join(''); }
@@ -134,11 +133,7 @@
       ];
       return { event, slots, punct: '!!!', claims, practice, care, serious, strong, some, hardFact };
     }
-    const headline = (st, pick) => { // pick: { kick, vp, tail } chosen strings (or loud ones); returns the sober sentence-case headline
-      const s = cap(st.event) + ' ' + pick.vp + '; ' + pick.tail;
-      return s;
-    };
-    return { build, headline, eventOf, clip, cap, VERDICT, HARD };
+    return { build, eventOf, clip, cap, VERDICT, HARD };
   })();
 
   /* ---------------- the newsroom: invented papers, daily props ---------------- */
@@ -168,6 +163,7 @@
 .g-headline-desk .hd-pill b { font: 700 14px/1 ${TAB}; letter-spacing: .06em; text-transform: uppercase; color: #ff8f86; }
 .g-headline-desk .hd-pill.calm b { font: 400 17px/1 ${MAST}; letter-spacing: .01em; text-transform: none; color: #f8eed8; }
 .g-headline-desk .hd-pill em { font: 700 12px/1 ${TYPE}; font-style: normal; letter-spacing: .03em; color: #d8cbb2; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+@container (max-width: 560px) { .g-headline-desk .hd-hud:not(.solo) .hd-ed { display: none; } }
 .g-headline-desk .hd-vol { flex: none; font: 700 12px/1 ${TYPE}; letter-spacing: .06em; text-transform: uppercase; }
 .g-headline-desk .hd-vol i { position: relative; width: 58px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #4fbf86, #e8c34a 55%, #e2403f); box-shadow: inset 0 1px 2px rgba(0,0,0,.5); }
 .g-headline-desk .hd-vol i::after { content: ""; position: absolute; top: -4px; left: calc(var(--vol, 1) * 100% - 2px); width: 4px; height: 16px; border-radius: 2px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.45), 0 0 8px rgba(255,255,255,.55); transition: left .7s cubic-bezier(.2,1.4,.4,1); }
@@ -190,7 +186,8 @@
 .g-headline-desk .hd-kick { display: flex; align-items: center; gap: 8px; min-height: 30px; margin-bottom: 4px; }
 .g-headline-desk .hd-kick .hd-slot { font: 700 18px/1.25 ${TAB}; letter-spacing: .06em; text-transform: uppercase; }
 .g-headline-desk .hd-page.calm .hd-kick .hd-slot { font: 600 15px/1.2 ${NEWS}; font-variant: small-caps; letter-spacing: .08em; text-transform: lowercase; color: var(--hd-navy); }
-.g-headline-desk .hd-head { margin: 0; font: 700 calc(42px * var(--hs, 1))/1.02 ${TAB}; text-transform: uppercase; letter-spacing: .004em; color: var(--hd-ink); text-wrap: balance; transition: opacity .18s ease; }
+.g-headline-desk .hd-head { margin: 0; font: 700 calc(42px * var(--hs, 1))/1.08 ${TAB}; text-transform: uppercase; letter-spacing: .004em; color: var(--hd-ink); text-wrap: balance; transition: opacity .18s ease; }
+.g-headline-desk .hd-slot.loud + .hd-semi { padding-left: .1em; }
 .g-headline-desk .hd-page.calm .hd-head { font: 700 calc(31px * var(--hs, 1))/1.14 ${NEWS}; text-transform: none; letter-spacing: -.004em; }
 .g-headline-desk .hd-head.retype { opacity: .12; }
 .g-headline-desk .hd-slot { display: inline; position: relative; border-radius: 3px; -webkit-box-decoration-break: clone; box-decoration-break: clone; transition: color .35s ease, background-color .35s ease, box-shadow .35s ease; }
@@ -249,8 +246,9 @@
 .g-headline-desk .hd-spike.hover .hd-needle { filter: drop-shadow(0 0 6px #fff1b8) drop-shadow(0 0 2px #fff); }
 .g-headline-desk .hd-base { position: absolute; z-index: 1; left: 6px; right: 6px; bottom: 4px; height: 24px; border-radius: 50%; background: radial-gradient(ellipse at 50% 32%, #f0d28a, #a8823c 58%, #6a4e1f); box-shadow: 0 7px 12px rgba(0,0,0,.5); }
 .g-headline-desk .hd-spike > b { position: absolute; z-index: 4; left: 50%; bottom: -16px; transform: translateX(-50%); font: 700 12px/1 ${TYPE}; letter-spacing: .12em; color: #f6e9cc; text-shadow: 0 1px 3px rgba(0,0,0,.85); white-space: nowrap; }
-.g-headline-desk .hd-imp { position: absolute; z-index: 2; left: 50%; padding: 4px 7px 3px; font: 700 12px/1 ${TAB}; letter-spacing: .04em; text-transform: uppercase; color: #fff; white-space: nowrap; border-radius: 2px; background: #c3141c; box-shadow: 0 2px 5px rgba(0,0,0,.35); transform: translateX(-50%) rotate(var(--r, 0deg)); animation: headline-desk-imp .25s cubic-bezier(.2,1.6,.4,1) both; }
-@keyframes headline-desk-imp { from { transform: translateX(-50%) translateY(-16px) rotate(var(--r, 0deg)); } to { transform: translateX(-50%) rotate(var(--r, 0deg)); } }
+.g-headline-desk .hd-imp { position: absolute; z-index: 2; left: 50%; width: max-content; max-width: 80px; box-sizing: border-box; padding: 4px 6px 3px; font: 700 12px/1.05 ${TAB}; letter-spacing: .03em; text-transform: uppercase; text-align: center; color: #fff; border-radius: 2px;
+  background: linear-gradient(180deg, #d42a2f, #b3121a); box-shadow: 0 2px 5px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,255,255,.18); transform: translateX(calc(-50% + var(--ox, 0px))) rotate(var(--r, 0deg)); animation: headline-desk-imp .28s cubic-bezier(.2,1.6,.4,1) both; }
+@keyframes headline-desk-imp { from { transform: translateX(calc(-50% + var(--ox, 0px))) translateY(-22px) rotate(var(--r, 0deg)) scale(1.15); } to { transform: translateX(calc(-50% + var(--ox, 0px))) rotate(var(--r, 0deg)); } }
 
 .g-headline-desk .hd-press { position: absolute; z-index: 14; display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none; transition: opacity .4s ease, transform .4s ease; }
 .g-headline-desk .hd-press.off { opacity: 0; transform: translateY(16px); }
@@ -270,7 +268,17 @@
 .g-headline-desk .hd-final { position: absolute; z-index: 26; box-sizing: border-box; padding: 12px 16px 12px; text-align: center; color: var(--hd-ink); pointer-events: none;
   background: radial-gradient(rgba(70,48,14,.06) 1px, transparent 1.4px) 0 0 / 4px 4px, linear-gradient(176deg, #fbf6ea, #efe7d4 70%, #e7dec8); box-shadow: 0 1px 0 rgba(0,0,0,.1), 0 26px 46px rgba(0,0,0,.5), inset 0 0 30px rgba(130,96,40,.12);
   transform: rotate(-2deg); animation: headline-desk-land .8s cubic-bezier(.2,1.25,.4,1) both; }
+.g-headline-desk .hd-final.wait { visibility: hidden; animation: none; }
 @keyframes headline-desk-land { from { opacity: 0; transform: translateY(-140px) rotate(-16deg) scale(1.3); } 70% { opacity: 1; transform: translateY(5px) rotate(-1.2deg) scale(.99); } to { opacity: 1; transform: rotate(-2deg); } }
+.g-headline-desk .hd-spin { position: absolute; z-index: 27; left: 50%; top: 50%; width: min(330px, calc(100% - 44px)); box-sizing: border-box; padding: 10px 14px 12px; text-align: center; color: var(--hd-ink); pointer-events: none;
+  background: radial-gradient(rgba(70,48,14,.06) 1px, transparent 1.4px) 0 0 / 4px 4px, linear-gradient(176deg, #fbf6ea, #efe7d4 70%, #e7dec8); box-shadow: 0 0 0 1px rgba(0,0,0,.12), 0 30px 60px rgba(0,0,0,.6), 0 0 80px rgba(255,214,140,.35);
+  transform: translate(-50%, -50%) rotate(-3deg); animation: headline-desk-spin 1.25s cubic-bezier(.16,.8,.3,1) both; transition: scale .45s ease; }
+.g-headline-desk .hd-spinwrap { position: absolute; z-index: 27; inset: 0; pointer-events: none; transition: opacity .45s ease; }
+.g-headline-desk .hd-spinwrap.out { opacity: 0; }
+.g-headline-desk .hd-spinwrap.out .hd-spin { scale: 1.12; }
+.g-headline-desk .hd-spin .hd-fm { font-size: 27px; }
+.g-headline-desk .hd-spin .hd-fh { font-size: 22px; }
+@keyframes headline-desk-spin { 0% { opacity: 0; transform: translate(-50%, -50%) rotate(-1260deg) scale(.03); } 12% { opacity: 1; } 78% { transform: translate(-50%, -50%) rotate(-10deg) scale(1.08); } 100% { opacity: 1; transform: translate(-50%, -50%) rotate(-3deg) scale(1); } }
 .g-headline-desk .hd-fm { font: 400 30px/1.05 ${MAST}; }
 .g-headline-desk .hd-ff { display: flex; justify-content: space-between; gap: 8px; margin: 5px 0 6px; padding: 3px 0 2px; border-top: 2px solid var(--hd-ink); border-bottom: 1px solid var(--hd-ink); font: 700 12px/1.25 ${TYPE}; }
 .g-headline-desk .hd-fh { font: 700 25px/1.14 ${NEWS}; text-wrap: balance; }
@@ -288,7 +296,8 @@
   .g-headline-desk .hd-page { padding: 14px 20px 16px; } .g-headline-desk .hd-mast { height: 48px; } .g-headline-desk .hd-mast-tab { font-size: 32px; } .g-headline-desk .hd-mast-sob { font-size: 38px; }
   .g-headline-desk .hd-q { font-size: 17px; } .g-headline-desk .hd-kick .hd-slot { font-size: 21px; } .g-headline-desk .hd-page.calm .hd-kick .hd-slot { font-size: 17px; } .g-headline-desk .hd-deck { font-size: 16px; }
   .g-headline-desk .hd-claim { grid-template-columns: minmax(0, 1fr) 124px; } .g-headline-desk .hd-sbox { height: 52px; } .g-headline-desk .hd-tile { font-size: 19px; min-height: 56px; }
-  .g-headline-desk .hd-final { padding: 16px 22px 16px; } .g-headline-desk .hd-fm { font-size: 36px; } .g-headline-desk .hd-fh { font-size: 29px; } .g-headline-desk .hd-fd { font-size: 16px; } }
+  .g-headline-desk .hd-final { padding: 16px 22px 16px; } .g-headline-desk .hd-fm { font-size: 36px; } .g-headline-desk .hd-fh { font-size: 29px; } .g-headline-desk .hd-fd { font-size: 16px; }
+  .g-headline-desk .hd-spin { width: 450px; padding: 14px 20px 16px; } .g-headline-desk .hd-spin .hd-fm { font-size: 34px; } .g-headline-desk .hd-spin .hd-fh { font-size: 28px; } }
 `,
     mount(ctx) {
       const K = ctx.kit, S = ctx.TS, A = ctx.A, h = ctx.h, el = ctx.el, an = ctx.analysis || {};
@@ -315,7 +324,7 @@
       const cv = K.canvas(el, { opaque: true, maxDpr: SOFT ? 1.25 : 2 });
 
       /* ---------------- DOM: the front page, the type tray, the spike, the press lever ---------------- */
-      const hudName = h('b', { text: 'The Daily Spiral' }), hudIssue = h('em', { text: 'No. ' + issue + ' · late edition' });
+      const hudEd = h('span', { class: 'hd-ed', text: ' · late edition' }), hudName = h('b', { text: 'The Daily Spiral' }), hudIssue = h('em', null, 'No. ' + issue, hudEd);
       const pill = h('span', { class: 'hd-pill' }, hudName, hudIssue);
       const volEl = h('span', { class: 'hd-vol', role: 'meter', 'aria-label': 'How loud the front page is', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': '100' }, h('span', { text: 'Volume' }), h('i'));
       const hud = h('div', { class: 'hd-hud' }, pill, volEl);
@@ -331,7 +340,7 @@
       const mkSlot = (sl) => (sl.el = h('span', { class: 'hd-slot loud', 'data-k': sl.key, text: sl.loud }));
       kickRow.append(mkSlot(slots[0]));
       const punct = { done: false, el: h('span', { class: 'hd-slot loud', role: 'button', tabindex: '-1', 'aria-label': 'Three exclamation marks: drag them onto the spike', text: story.punct }) };
-      head.append(h('span', { class: 'hd-fix', text: STORY.cap(story.event) }), ' ', mkSlot(slots[1]), h('span', { class: 'hd-fix', text: ';' }), ' ', mkSlot(slots[2]), punct.el);
+      head.append(h('span', { class: 'hd-fix', text: STORY.cap(story.event) }), ' ', mkSlot(slots[1]), h('span', { class: 'hd-fix hd-semi', text: ';' }), ' ', mkSlot(slots[2]), punct.el);
       if (story.practice) claimsEl.append(h('div', { class: 'hd-q', style: { fontStyle: 'normal', font: '700 12px/1.2 ' + TYPE, letterSpacing: '.06em' }, text: 'PRACTICE PAGE · AN EXAMPLE STORY' }));
       const claims = story.claims.map((c, i) => {
         const q = h('div', { class: 'hd-q' + (c.own ? ' gk-user' : ''), text: c.own ? '“' + c.text + '”' : c.text });
@@ -402,7 +411,7 @@
           const ph = page.offsetHeight, sw = 78, ty = top + ph + 22;
           G.page = { x: 12, y: top, w: pw, h: ph };
           Object.assign(tray.style, { left: '12px', top: ty + 'px', width: (W - 24 - sw - 10) + 'px' });
-          Object.assign(spike.style, { left: (W - 12 - sw) + 'px', top: (ty - 56) + 'px' });
+          Object.assign(spike.style, { left: (W - 17 - sw) + 'px', top: (ty - 56) + 'px' });
           Object.assign(press.style, { left: Math.round(W / 2 - 80) + 'px', width: '160px', top: Math.round(Math.min(ty + 4, H - chars - 176)) + 'px' });
         } else {
           const pw = Math.min(760, Math.round(W * 0.58)), px = Math.round((W - pw) / 2);
@@ -428,9 +437,12 @@
           space: el,
           start: (p) => {
             if (st.drag || !o.can()) return false;
-            const r = K.rectIn(src), cs = getComputedStyle(src);
+            // the ghost takes the type's own layout size, centred where it sits (a tilted tile's bounding box is bigger than the tile)
+            const b = K.rectIn(src), cs = getComputedStyle(src), ow = src.offsetWidth || b.w, oh = src.offsetHeight || b.h;
+            const r = { x: b.cx - ow / 2, y: b.cy - oh / 2, w: ow, h: oh, cx: b.cx, cy: b.cy };
             const ghost = src.cloneNode(true); ghost.classList.add('hd-ghost'); ghost.classList.remove('target', 'lift', 'set'); ['tabindex', 'role', 'aria-label'].forEach(a => ghost.removeAttribute(a));
-            Object.assign(ghost.style, { left: r.x + 'px', top: r.y + 'px', width: r.w + 'px', height: r.h + 'px', font: cs.font, textTransform: cs.textTransform, letterSpacing: cs.letterSpacing, lineHeight: (r.h) + 'px', padding: cs.padding, display: 'block', whiteSpace: 'nowrap', textAlign: 'center' });
+            Object.assign(ghost.style, { left: r.x + 'px', top: r.y + 'px', width: r.w + 'px', height: r.h + 'px', font: cs.font, textTransform: cs.textTransform, letterSpacing: cs.letterSpacing, lineHeight: cs.lineHeight, padding: cs.padding,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', whiteSpace: cs.whiteSpace === 'nowrap' ? 'nowrap' : 'normal', textAlign: 'center' });
             el.append(ghost); src.classList.add('lift');
             st.drag = { src, ghost, o, ox: p.x - r.x, oy: p.y - r.y, r, hot: null, tg: o.targets().map(t => Object.assign({ rr: K.rectIn(t.el) }, t)) };
             sPick(); K.guide(null);
@@ -461,17 +473,21 @@
       }
       /* a loud word leaves the page and lands on the spike */
       function flyToSpike(src, label, cls) {
+        // the word peels off the page as one line of type, centred where it was, and shrinks onto the spike
         const r = K.rectIn(src), sp = K.rectIn(spike), cs = getComputedStyle(src);
         const f = h('span', { class: (cls || 'hd-slot loud') + ' hd-fly', text: src.textContent });
-        Object.assign(f.style, { left: r.x + 'px', top: r.y + 'px', width: r.w + 'px', height: r.h + 'px', font: cs.font, textTransform: cs.textTransform, letterSpacing: cs.letterSpacing, lineHeight: r.h + 'px', textAlign: 'center', whiteSpace: 'nowrap', animation: 'none', display: 'block', padding: '0' });
+        Object.assign(f.style, { left: r.cx + 'px', top: r.cy + 'px', font: cs.font, textTransform: cs.textTransform, letterSpacing: cs.letterSpacing, lineHeight: '1.1', textAlign: 'center', whiteSpace: 'nowrap', animation: 'none', display: 'block', padding: cls ? cs.padding : '.04em .14em', transform: 'translate(-50%, -50%)', transition: 'none' });
         el.append(f);
-        S.later(() => Object.assign(f.style, { left: (sp.cx - r.w / 2) + 'px', top: (sp.y + 34 - r.h / 2) + 'px', transform: 'scale(.42) rotate(' + (Math.random() * 50 - 25).toFixed(1) + 'deg)', opacity: '.85' }), 24);
+        const fit = Math.min(1, (G.W - 24) / Math.max(1, f.offsetWidth)); // a long phrase never pokes out of the frame
+        if (fit < 1) f.style.transform = 'translate(-50%, -50%) scale(' + fit.toFixed(3) + ')';
+        S.later(() => Object.assign(f.style, { transition: '', left: sp.cx + 'px', top: (sp.y + 46) + 'px', transform: 'translate(-50%, -50%) scale(.3) rotate(' + (Math.random() * 50 - 25).toFixed(1) + 'deg)', opacity: '.85' }), 24);
         S.later(() => { f.remove(); impale(label); }, 470);
       }
       function impale(label) {
         st.spiked++;
+        // slips stack up the needle, each pierced a little higher and at its own angle
         const n = spike.querySelectorAll('.hd-imp').length;
-        const t = h('span', { class: 'hd-imp', text: label.length > 16 ? label.slice(0, 15) + '…' : label, style: { '--r': (Math.random() * 44 - 22).toFixed(1) + 'deg', bottom: (24 + Math.min(n, 9) * 9) + 'px' } });
+        const t = h('span', { class: 'hd-imp', text: label.length > 24 ? label.slice(0, 23) + '…' : label, style: { '--r': ((n % 2 ? 1 : -1) * (5 + Math.random() * 11)).toFixed(1) + 'deg', '--ox': ((n % 3) - 1) * 5 + 'px', bottom: (22 + Math.min(n, 9) * 10) + 'px' } });
         spike.append(t);
         sSpike(); if (!K.reduced()) st.shake = Math.max(st.shake, 0.35);
         const sp = K.rectIn(spike); P.emit('spark', sp.cx, sp.y + 46, 7, { colors: ['#fff6d0', '#ffd27a'], speed: [60, 170] });
@@ -536,7 +552,7 @@
       function swapGuide(sl, quick) {
         const t = sl.tiles && sl.tiles[0]; if (!t || sl.done) return;
         const a = K.rectIn(t.el), b = K.rectIn(sl.el);
-        K.guide({ id: 'swap', g: 'drag', target: t.el, dx: b.cx - a.cx, dy: b.cy - a.cy, label: st.slotI ? 'DRAG IN THE SOBER WORD' : 'DRAG ONTO THE LOUD WORD', place: 'below', delay: quick ? 700 : 1100, ms: 1700 });
+        K.guide({ id: 'swap', g: 'drag', target: t.el, dx: b.cx - a.cx, dy: b.cy - a.cy, label: st.slotI ? 'DRAG IN THE SOBER WORD' : 'DRAG ONTO THE RED WORD', place: 'below', delay: quick ? 700 : 1100, ms: 1700 });
       }
       function place(sl, tile, pr) {
         if (sl.done) return; sl.done = true; sl.chosen = tile.word; st.regs.push(pr);
@@ -629,7 +645,7 @@
         st.phase = 'flip';
         head.classList.add('retype'); sTypeburst(12);
         S.later(() => {
-          page.classList.add('calm'); head.classList.remove('retype'); pill.classList.add('calm'); hudName.textContent = mast; hudIssue.textContent = 'No. ' + issue + ' · first edition';
+          page.classList.add('calm'); head.classList.remove('retype'); pill.classList.add('calm'); hudName.textContent = mast; hudEd.textContent = ' · first edition';
           deck.textContent = 'Fact-checked: ' + nTrue + ' on record · ' + nUnv + ' unverified';
           setVol(0); K.sfx.great();
           layout();
@@ -671,18 +687,44 @@
         K.finale('confetti', { from: [{ x: G.W / 2, y: G.H * 0.36 }], colors: ['#f6f1e3', '#e9e2cf', '#d8d0bb', '#1b1813', '#d1262d', '#1d3758'], chord: ['D4', 'F#4', 'A4', 'D5'], ms: 2200 });
         speak(rush, L(LINES.slam), { mood: 'celebrate', ms: 2800 });
         ctx.track('print', { reg: Math.round(regScore() * 100) });
-        S.later(dawn, [3600, 3800, 4200][inten]);
+        const dawnAt = [4700, 4900, 5300][inten];
+        S.later(spinPaper, 1500);
+        S.later(spinOut, dawnAt - 420); // the copy lifts away just before the cut to morning
+        S.later(dawn, dawnAt);
+      }
+      function spinOut() { if (!spinEl) return; const e = spinEl; spinEl = null; e.classList.add('out'); S.later(() => e.remove(), 520); }
+      /* the old newsreel shot: a fresh copy spins up out of the presses and stops, facing you */
+      let spinEl = null;
+      function spinPaper() {
+        if (st.scene !== 'press') return;
+        spinEl = h('div', { class: 'hd-spinwrap', 'aria-hidden': 'true' }, h('div', { class: 'hd-spin' }, // the wrapper fades; the paper spins
+          h('div', { class: 'hd-fm', text: mast }),
+          h('div', { class: 'hd-ff' }, h('span', { text: 'No. ' + issue + ' · First ed.' }), h('span', { text: 'Fact-checked' })),
+          h('div', { class: 'hd-fh' }, h('span', { class: 'hd-fk', text: slots[0].chosen || slots[0].sober[0] }), soberLine())));
+        el.append(spinEl);
+        const land = K.reduced() ? 60 : 1000;
+        if (A.ctx && !K.reduced()) { const t = A.now(); A.noise({ when: t, filter: 'bandpass', freq: 260, to: 2400, q: 0.8, dur: 1.0, attack: 0.85, vol: 0.2 }); for (let i = 0; i < 7; i++) A.paper({ when: t + 0.1 + i * 0.12, vol: 0.04 + i * 0.012, freq: 1800 + i * 260 }); }
+        S.later(() => {
+          if (!spinEl) return;
+          if (A.ctx) { const t = A.now(); A.thud({ when: t, vol: 0.5 }); A.noise({ when: t, filter: 'lowpass', freq: 900, dur: 0.12, vol: 0.3 }); ['D5', 'F#5', 'A5', 'D6'].forEach((n, i) => A.chime(A.note(n), { when: t + 0.05 + i * 0.07, vol: 0.07, dur: 1.6 })); }
+          st.flash = Math.max(st.flash, 0.3); if (!K.reduced()) st.shake = Math.max(st.shake, 1.1);
+          P.emit('spark', G.W / 2, G.H / 2, 22, { colors: ['#fff6d6', '#ffd98a', '#ffffff'], speed: [120, 300] });
+          sr.textContent = 'Hot off the press: ' + mast + '. ' + soberLine() + '.';
+        }, land);
       }
       function dawn() {
         st.scene = 'dawn'; st.dawnT = now(); counter.hidden = true; R.set(76);
+        spinOut();
         if (motor && A.ctx) motor.level(0.0001, 0.8);
         amb.level(0.04, 1.2); dawnAmb = K.ambience('dawn'); dawnAmb.level(0.7, 2.5);
-        hud.classList.remove('out'); pill.classList.add('calm'); volEl.style.display = 'none'; // the volume meter has nothing left to say; the masthead gets the room
+        hud.classList.remove('out'); hud.classList.add('solo'); pill.classList.add('calm'); volEl.style.display = 'none'; hudEd.textContent = ' · dawn edition'; // the volume meter has nothing left to say; the masthead gets the room
+        buildFinal(); // laid out now (hidden) so the porch it lands on is drawn from the first frame of the morning
         speak(glitch, L(care ? LINES.dawnCare : serious ? LINES.dawnSerious : LINES.dawn), { mood: 'happy', ms: 0 });
         S.later(showFinal, 2300);
         S.later(() => { glitch.hush(); speak(rush, L(LINES.rushEnd), { mood: 'laugh', ms: 0 }); }, 4600);
         S.later(finishGame, 7600);
       }
+      const soberLine = () => STORY.cap(story.event) + ' ' + (slots[1].chosen || slots[1].sober[0]) + '; ' + (slots[2].chosen || slots[2].sober[0]);
       const regScore = () => (st.regs.length ? st.regs.reduce((a, b) => a + b, 0) / st.regs.length : 0.75);
       let res = null;
       function results() {
@@ -692,10 +734,10 @@
         return res;
       }
       let finalEl = null;
-      function showFinal() {
-        const r0 = results();
-        const sober = STORY.cap(story.event) + ' ' + (slots[1].chosen || slots[1].sober[0]) + '; ' + (slots[2].chosen || slots[2].sober[0]);
-        finalEl = h('div', { class: 'hd-final', role: 'img', 'aria-label': mast + ': ' + sober },
+      function buildFinal() {
+        if (finalEl) return;
+        const r0 = results(), sober = soberLine();
+        finalEl = h('div', { class: 'hd-final wait', role: 'img', 'aria-label': mast + ': ' + sober },
           h('div', { class: 'hd-fm', text: mast }),
           h('div', { class: 'hd-ff' }, h('span', { text: 'No. ' + issue + ' · Dawn ed.' }), h('span', { text: 'Price: one deep breath' })),
           h('div', { class: 'hd-fh' }, h('span', { class: 'hd-fk', text: slots[0].chosen || slots[0].sober[0] }), sober),
@@ -703,10 +745,14 @@
           care ? h('div', { class: 'hd-fc', text: S.safety ? S.safety.CARE_LINE : 'Someone qualified can tell you exactly where you stand.' }) : null,
           h('div', { class: 'hd-fb' }, h('span', { text: (r0.tier ? r0.tier + ' press run' : 'Press run') + ' · ' + r0.pct + '% clean type' }), h('span', { text: 'Masthead ' + Math.min(r0.col.count, MASTHEADS.length) + '/' + MASTHEADS.length }), h('span', { text: 'Tomorrow: ' + nextMast })));
         el.append(finalEl); placeFinal();
+      }
+      function showFinal() {
+        buildFinal();
+        finalEl.classList.remove('wait'); // the last copy lands at your feet
         if (A.ctx) { const t = A.now(); A.noise({ when: t + 0.42, filter: 'lowpass', freq: 600, dur: 0.16, vol: 0.34 }); A.paper({ when: t + 0.44, vol: 0.16 }); }
         K.sfx.whoosh();
         S.later(() => { if (!G.final) return; P.emit('dust', G.final.x + G.final.w / 2, G.final.y + G.final.h, 16, { colors: ['rgba(255,240,215,.6)'], speed: [30, 110] }); }, 520);
-        sr.textContent = 'On the doorstep: ' + mast + '. ' + sober + '.';
+        sr.textContent = 'On the doorstep: ' + mast + '. ' + soberLine() + '.';
       }
       function placeFinal() {
         const W = G.W, H = G.H, fw = G.phone ? W - 32 : Math.min(560, W * 0.46), chars = G.phone ? 104 : 128;
@@ -721,7 +767,7 @@
         if (r0.best.isNew) badges.push('New best: ' + r0.pct + '% clean type'); else if (r0.best.first) badges.push('Clean type: ' + r0.pct + '%');
         if (r0.tier) badges.push(r0.tier + ' press run');
         if (r0.col.isNew) badges.push('Collected: ' + mast + ' (' + Math.min(r0.col.count, MASTHEADS.length) + '/' + MASTHEADS.length + ')');
-        const sober = STORY.cap(story.event) + ' ' + (slots[1].chosen || slots[1].sober[0]) + '; ' + (slots[2].chosen || slots[2].sober[0]);
+        const sober = soberLine();
         ctx.track('done', { reg: r0.pct, spiked: st.spiked, t: nTrue, u: nUnv });
         ctx.finish({ title: serious ? 'Real news, told straight' : 'Printed calm and true', mood: 'happy',
           lines: ['Front page: “' + sober + '”', 'Fact-checked: ' + nTrue + ' true, ' + nUnv + ' unverified', 'Spiked ' + st.spiked + ' loud words'],
@@ -818,7 +864,7 @@
           g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(-w / 2 + 5, -hh / 2 + 7, w, hh);
           g.fillStyle = i ? mix('#ece4d0', '#c8bea6', 0.15 + (i % 2) * 0.1) : '#f1ebdc'; g.fillRect(-w / 2, -hh / 2, w, hh);
           if (!i) { // the top sheet: a past front page in miniature
-            g.fillStyle = '#1b1813'; g.font = '400 ' + Math.round(w * 0.12) + 'px ' + MAST; g.textAlign = 'center'; g.fillText(n ? 'Archive' : 'First issue', 0, -hh / 2 + w * 0.16);
+            g.fillStyle = '#1b1813'; g.font = '400 ' + Math.max(13, Math.round(w * 0.12)) + 'px ' + MAST; g.textAlign = 'center'; g.fillText(n ? 'Archive' : 'First issue', 0, -hh / 2 + w * 0.16);
             g.fillRect(-w * 0.42, -hh / 2 + w * 0.2, w * 0.84, 1.5);
             for (let k = 0; k < 3; k++) g.fillRect(-w * 0.42, -hh / 2 + w * (0.28 + k * 0.08), w * (0.84 - k * 0.12), w * 0.045);
             g.fillStyle = 'rgba(27,24,19,.35)'; for (let k = 0; k < 9; k++) g.fillRect(-w * 0.42 + (k % 2) * w * 0.44, -hh / 2 + w * (0.6 + Math.floor(k / 2) * 0.07), w * 0.4, 2);
@@ -826,7 +872,7 @@
           g.restore();
         }
         g.textAlign = 'center'; g.fillStyle = br ? 'rgba(50,30,12,.85)' : 'rgba(255,236,206,.78)'; g.font = '700 ' + Math.max(12, Math.round(12 * G.u)) + 'px ' + TYPE;
-        g.fillText('ARCHIVE · ' + visits + ' FRONT PAGE' + (visits === 1 ? '' : 'S'), x + w / 2, y + hh + 26); g.textAlign = 'start';
+        g.fillText(visits ? 'ARCHIVE · ' + visits + ' FRONT PAGE' + (visits === 1 ? '' : 'S') : 'ARCHIVE · STARTS TONIGHT', x + w / 2, y + hh + 26); g.textAlign = 'start';
       }
 
       /* the press hall: a four-high printing tower, the reel feeding the web, the folder spitting out copies */
@@ -1031,14 +1077,12 @@
           g.save(); g.translate(x, y); g.rotate(kk < 1 ? kk * 10 : q.rot); if (kk >= 1) { g.fillStyle = 'rgba(0,0,0,.32)'; g.fillRect(-9, 2, 21, 4); } g.fillStyle = '#f4ecd8'; g.fillRect(-11, -4, 22, 8); g.fillStyle = '#c9b48a'; g.fillRect(-11, 1, 22, 1.2); g.fillStyle = '#1b1813'; g.fillRect(-8, -2.6, 13, 1.8); g.restore();
         });
         if (bt < 3.7) drawBike(g, bx, by, t);
-        // the foreground doorstep, where the last copy lands
-        const fr = G.final;
-        if (fr) {
-          const y = fr.y + fr.h - 20, x0 = Math.max(0, fr.x - 50), x1 = Math.min(W, fr.x + fr.w + 50);
-          g.fillStyle = 'rgba(0,0,0,.4)'; g.fillRect(x0 + 12, y + 14, x1 - x0, 34);
-          const sg = g.createLinearGradient(0, y, 0, y + 46); sg.addColorStop(0, '#a89d8b'); sg.addColorStop(1, '#5d564b'); g.fillStyle = sg; g.fillRect(x0, y, x1 - x0, 46);
-          g.fillStyle = 'rgba(255,230,190,' + (0.18 + 0.2 * k).toFixed(3) + ')'; g.fillRect(x0, y, x1 - x0, 3);
-          g.fillStyle = '#6e4226'; g.fillRect(fr.x + fr.w * 0.1, y + 7, fr.w * 0.8, 24); g.strokeStyle = 'rgba(255,220,170,.25)'; g.lineWidth = 1; for (let mx = fr.x + fr.w * 0.1 + 4; mx < fr.x + fr.w * 0.9; mx += 5) { g.beginPath(); g.moveTo(mx, y + 9); g.lineTo(mx, y + 29); g.stroke(); }
+        // your own front porch in the foreground, where the last copy lands
+        if (G.final) {
+          const key = W + 'x' + H + ':' + Math.round(G.final.y) + ':' + Math.round(G.final.h) + ':' + Math.round(G.final.w) + ':' + d;
+          if (key !== porchKey) renderPorch(key);
+          g.drawImage(porchC, 0, G.porchY, W, H - G.porchY);
+          g.fillStyle = 'rgba(255,186,120,' + (0.1 * k).toFixed(3) + ')'; g.fillRect(0, G.porchY, W, H - G.porchY); // the boards warm as the sun climbs
         }
         if (Math.random() < 0.3) P.emit('mote', Math.random() * W, D.hz * 0.5 + Math.random() * (H - D.hz * 0.5), 1, { colors: ['#fff1d0'] });
         if (!st.bell && bt > 0.45) { st.bell = 1; if (A.ctx) [0, 0.16].forEach(o => A.chime(1900, { when: A.now() + o, vol: 0.05, dur: 0.6 })); }
@@ -1052,6 +1096,47 @@
         g.fillStyle = '#c0262d'; g.fillRect(-12, -30, 9, 10); g.fillStyle = '#f2ead6'; g.fillRect(-11, -33, 7, 4);
         g.restore();
       }
+      /* the porch: floorboards that widen toward you, a sunlit front edge, the doormat the paper lands on, a plant and the milk */
+      const porchC = document.createElement('canvas'); let porchKey = '';
+      function renderPorch(key) {
+        const W = G.W, H = G.H, fr = G.final, ph = G.phone, dpr = Math.min(cv.dpr || 1, 1.5), rr = K.rng(808);
+        const py = G.porchY = Math.round(fr.y + fr.h * (ph ? 0.62 : 0.55)), ht = Math.max(20, H - py), g = ctx2(porchC, W, ht, dpr);
+        let gr = g.createLinearGradient(0, 0, 0, ht); gr.addColorStop(0, '#8d6342'); gr.addColorStop(0.45, '#6c472d'); gr.addColorStop(1, '#3a2416'); g.fillStyle = gr; g.fillRect(0, 0, W, ht);
+        for (let y0 = 9, bh = 8; y0 < ht; y0 += bh, bh *= 1.17) { // boards (perspective: each a little deeper than the last)
+          const y1 = y0 + bh;
+          for (let i = 0; i < 3; i++) { const gy = y0 + bh * (0.25 + rr() * 0.5); g.strokeStyle = 'rgba(40,20,8,' + (0.07 + rr() * 0.08).toFixed(3) + ')'; g.lineWidth = 0.8; g.beginPath(); for (let x = 0; x <= W + 24; x += 24) { const yy = gy + Math.sin(x * 0.012 + i * 2.3 + y0) * Math.min(2, bh * 0.08); if (x) g.lineTo(x, yy); else g.moveTo(x, yy); } g.stroke(); }
+          const n = Math.max(2, Math.round(W / (150 + bh * 5))); for (let i = 0; i < n; i++) { g.fillStyle = 'rgba(28,14,6,.42)'; g.fillRect(((i + rr() * 0.8) / n) * W, y0 + 1, 1.4, bh - 1); }
+          g.fillStyle = 'rgba(26,12,4,.55)'; g.fillRect(0, y1 - 1.6, W, 1.6); g.fillStyle = 'rgba(255,214,160,.09)'; g.fillRect(0, y1, W, 1);
+        }
+        // the sun rises in front of you, over the houses: the boards glow from the far edge
+        gr = g.createRadialGradient(W * 0.74, 0, 10, W * 0.74, 0, Math.max(W, ht) * 0.95); gr.addColorStop(0, 'rgba(255,196,130,.32)'); gr.addColorStop(1, 'rgba(255,196,130,0)');
+        g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = gr; g.fillRect(0, 0, W, ht); g.restore();
+        g.fillStyle = '#b8875a'; g.fillRect(0, 0, W, 7); g.fillStyle = 'rgba(255,232,190,.6)'; g.fillRect(0, 0, W, 1.6); g.fillStyle = 'rgba(20,10,4,.5)'; g.fillRect(0, 7, W, 3);
+        // the doormat, a little wider than the paper
+        const mp = ph ? 6 : 34, mx = fr.x - mp, mw = fr.w + mp * 2, my = Math.max(12, fr.y + fr.h - py - 46), mh = ph ? 68 : 78;
+        g.fillStyle = 'rgba(0,0,0,.38)'; g.fillRect(mx + 3, my + 8, mw, mh);
+        g.fillStyle = '#7d5128'; g.fillRect(mx, my, mw, mh); g.strokeStyle = '#4c2e14'; g.lineWidth = 5; g.strokeRect(mx + 5, my + 5, mw - 10, mh - 10);
+        g.fillStyle = 'rgba(214,166,104,.24)'; for (let i = 0, nf = Math.round(mw * mh / 34); i < nf; i++) g.fillRect(mx + 4 + rr() * (mw - 8), my + 4 + rr() * (mh - 8), 1, 2.5 + rr() * 3);
+        if (!ph) {
+          // a potted plant to the left, two milk bottles to the right (shadows fall toward you: the sun is ahead)
+          const px = Math.max(150, fr.x - 150), pb = Math.max(92, Math.min(ht - 30, my + 70)), pw = 50;
+          g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(px, pb + 7, pw * 0.62, 10, 0, 0, TAU); g.fill();
+          const leaf = ['#3f6b3a', '#4f8048', '#2f5a30'];
+          for (let i = 0; i < 9; i++) { const a = -Math.PI / 2 + (i - 4) * 0.3 + (rr() - 0.5) * 0.15, ln = 34 + rr() * 26; g.save(); g.translate(px, pb - 52); g.rotate(a + Math.PI / 2); g.fillStyle = leaf[i % 3]; g.beginPath(); g.ellipse(0, -ln / 2, 9, ln / 2, 0, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,220,160,.18)'; g.beginPath(); g.ellipse(2, -ln / 2, 3, ln / 2.4, 0, 0, TAU); g.fill(); g.restore(); }
+          gr = g.createLinearGradient(px - pw / 2, 0, px + pw / 2, 0); gr.addColorStop(0, '#8e4a2c'); gr.addColorStop(0.6, '#c06a3e'); gr.addColorStop(1, '#e09062'); g.fillStyle = gr;
+          g.beginPath(); g.moveTo(px - pw / 2, pb - 50); g.lineTo(px + pw / 2, pb - 50); g.lineTo(px + pw * 0.38, pb); g.lineTo(px - pw * 0.38, pb); g.closePath(); g.fill();
+          g.fillStyle = '#a8572f'; g.fillRect(px - pw / 2 - 3, pb - 56, pw + 6, 10); g.fillStyle = 'rgba(255,220,180,.35)'; g.fillRect(px - pw / 2 - 3, pb - 56, pw + 6, 2);
+          const bx = Math.min(W - 150, fr.x + fr.w + 110), bb = pb;
+          [[-12, 0], [12, 4]].forEach(([ox, oy]) => {
+            const x = bx + ox, y = bb + oy;
+            g.fillStyle = 'rgba(0,0,0,.28)'; g.beginPath(); g.ellipse(x, y + 4, 12, 5, 0, 0, TAU); g.fill();
+            gr = g.createLinearGradient(x - 10, 0, x + 10, 0); gr.addColorStop(0, '#d9dcdf'); gr.addColorStop(0.55, '#ffffff'); gr.addColorStop(1, '#c4c8cc'); g.fillStyle = gr;
+            g.beginPath(); g.moveTo(x - 10, y); g.lineTo(x - 10, y - 30); g.quadraticCurveTo(x - 10, y - 38, x - 5, y - 42); g.lineTo(x - 5, y - 50); g.lineTo(x + 5, y - 50); g.lineTo(x + 5, y - 42); g.quadraticCurveTo(x + 10, y - 38, x + 10, y - 30); g.lineTo(x + 10, y); g.closePath(); g.fill();
+            g.fillStyle = '#c9a35a'; g.fillRect(x - 6, y - 54, 12, 5); g.fillStyle = 'rgba(29,55,88,.75)'; g.fillRect(x - 10, y - 24, 20, 6);
+          });
+        }
+        porchKey = key;
+      }
 
       /* ---------------- render loop: one opaque canvas, idle frames throttled ---------------- */
       let lastDraw = -1, dtAcc = 0;
@@ -1063,6 +1148,7 @@
         if (t - lastDraw < (busy() ? (SOFT ? 0.03 : 0) : (SOFT ? 0.07 : 0.034))) return;
         const dt = Math.min(0.06, dtAcc); dtAcc = 0; lastDraw = t;
         st.shake = Math.max(0, st.shake - dt * 5);
+        if (st.scene === 'press' && !K.reduced()) st.shake = Math.max(st.shake, 0.24); // the floor hums while the press runs
         const sx = st.shake ? (Math.random() - 0.5) * 4 * st.shake : 0, sy = st.shake ? (Math.random() - 0.5) * 3 * st.shake : 0;
         if (st.scene === 'desk') {
           if (!deskKey || deskKey !== G.W + 'x' + G.H + (bright() ? 'b' : 'd') + Math.min(cv.dpr || 1, 1.5) + ':' + (G.page ? G.page.h : 0)) renderDesk();
@@ -1161,7 +1247,8 @@
           await wait(() => st.phase === 'rush', 20000);
           for (let n = 0; n < 8 && st.phase === 'rush'; n++) { const rt = st.rush.find(x => !x.done); if (!rt) break; await K.wait(600); await dragTo(rt.el, spike, 'spike'); await wait(() => rt.done, 2000); }
           await wait(() => st.phase === 'press', 20000); await K.wait(900);
-          await K.sim.hold(lever, HOLD + 500);
+          // the hold counts real time but skips long stalls (a loaded test machine can freeze frames mid-hold): hold again if needed
+          for (let n = 0; n < 5 && st.phase === 'press'; n++) { await K.sim.hold(lever, HOLD + 1200); await K.wait(250); }
           await wait(() => st.finished, 30000);
         }
       };

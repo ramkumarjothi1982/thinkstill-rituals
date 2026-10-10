@@ -76,12 +76,12 @@
   font: 400 19px/1.15 var(--lp-disp); letter-spacing: 0.04em; color: #5a4a78; text-shadow: 0 0 14px rgba(255, 255, 255, 0.95), 0 0 4px rgba(255, 255, 255, 0.9); opacity: 0; transition: opacity 0.9s ease, transform 1.2s ease; }
 .g-lily-pads .lp-wisp.on { opacity: 0.9; }
 .g-lily-pads .lp-wisp.gone { opacity: 0; transform: translate(-50%, -50%) scale(1.3); }
-.g-lily-pads .lp-cap { position: absolute; z-index: 27; left: 50%; top: 21%; transform: translate(-50%, 10px); width: max-content; max-width: calc(100% - 36px); text-align: center; pointer-events: none; opacity: 0;
-  font: 400 34px/1.05 var(--lp-disp); letter-spacing: 0.02em; color: #fffaf0; text-shadow: 0 3px 0 rgba(60, 40, 90, 0.25), 0 6px 26px rgba(50, 30, 90, 0.5); text-wrap: balance; transition: opacity 1s ease, transform 1.2s cubic-bezier(.2, .9, .3, 1); }
-.g-lily-pads .lp-cap small { display: table; margin: 12px auto 0; padding: 6px 14px 7px; border-radius: 999px; background: rgba(40, 28, 74, 0.5); font: 700 15px/1.3 var(--lp-hand); color: #fff8ec; text-shadow: none; letter-spacing: 0.01em; }
+.g-lily-pads .lp-cap { position: absolute; z-index: 27; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 34px); transform: translate(-50%, 10px); width: max-content; max-width: calc(100% - 36px); text-align: center; pointer-events: none; opacity: 0;
+  font: 400 31px/1.08 var(--lp-disp); letter-spacing: 0.02em; color: #fffaf0; text-shadow: 0 3px 0 rgba(40, 30, 20, 0.3), 0 6px 26px rgba(30, 24, 40, 0.55); text-wrap: balance; transition: opacity 1s ease, transform 1.2s cubic-bezier(.2, .9, .3, 1); }
+.g-lily-pads .lp-cap small { display: table; margin: 12px auto 0; padding: 6px 14px 7px; border-radius: 999px; background: rgba(36, 30, 56, 0.58); font: 700 15px/1.3 var(--lp-hand); color: #fff8ec; text-shadow: none; letter-spacing: 0.01em; text-wrap: balance; }
 .g-lily-pads .lp-cap.on { opacity: 1; transform: translate(-50%, 0); }
 .g-lily-pads .lp-card { position: absolute; z-index: 40; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); width: min(350px, calc(100% - 28px)); box-sizing: border-box; padding: 14px 16px 15px; border-radius: 22px; text-align: center; transform: translateX(-50%);
-  background: rgba(30, 30, 64, 0.88); border: 1px solid rgba(255, 220, 160, 0.4); color: #fff6ea; box-shadow: 0 18px 44px rgba(10, 6, 40, 0.45); transition: opacity 0.6s ease, transform 0.7s cubic-bezier(.2, 1.2, .4, 1); }
+  background: rgba(30, 30, 64, 0.95); border: 1px solid rgba(255, 220, 160, 0.4); color: #fff6ea; box-shadow: 0 18px 44px rgba(10, 6, 40, 0.45); transition: opacity 0.6s ease, transform 0.7s cubic-bezier(.2, 1.2, .4, 1); }
 .g-lily-pads .lp-card.pre { opacity: 0; transform: translate(-50%, 22px); }
 .g-lily-pads .lp-card-k { font: 700 12px/1.2 var(--font-ui); letter-spacing: 0.18em; text-transform: uppercase; color: #ffd391; }
 .g-lily-pads .lp-card-t { margin-top: 6px; font: 400 24px/1.1 var(--lp-disp); letter-spacing: 0.02em; }
@@ -89,12 +89,12 @@
 .g-lily-pads .lp-row { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
 .g-lily-pads .lp-row canvas { width: 34px; height: 34px; border-radius: 11px; background: rgba(255, 255, 255, 0.08); }
 .g-lily-pads .lp-row canvas.on { box-shadow: 0 0 0 2px #ffd391, 0 0 12px rgba(255, 211, 145, 0.6); }
-.g-lily-pads.lp-bright .lp-card { background: rgba(255, 252, 246, 0.95); border-color: rgba(160, 100, 60, 0.3); color: #2a2036; box-shadow: 0 18px 40px rgba(60, 40, 90, 0.22); }
+.g-lily-pads.lp-bright .lp-card { background: rgba(255, 252, 246, 0.97); border-color: rgba(160, 100, 60, 0.3); color: #2a2036; box-shadow: 0 18px 40px rgba(60, 40, 90, 0.22); }
 .g-lily-pads.lp-bright .lp-card-k { color: #a2561a; }
 .g-lily-pads.lp-bright .lp-card-s { color: #4a3d58; }
 .g-lily-pads.lp-bright .lp-row canvas { background: rgba(60, 40, 90, 0.06); }
 @container (min-width: 700px) {
-  .g-lily-pads .lp-cap { font-size: 46px; top: 19%; }
+  .g-lily-pads .lp-cap { font-size: 44px; bottom: calc(env(safe-area-inset-bottom, 0px) + 40px); }
   .g-lily-pads .lp-goal b { font-size: 18px; }
   .g-lily-pads .lp-card { width: 400px; }
 }
@@ -105,7 +105,8 @@
       const inten = ctx.intensity, care = an.safety === 'care', visits = K.visits();
       const now = () => performance.now(), clamp = K.clamp, lerp = (a, b, t) => a + (b - a) * t;
       const line = (o) => ctx.line(o);
-      const SEASON = (S.isDev() && /lpseason=(\w+)/.test(location.search) && SEASONS.find(x => x.id === /lpseason=(\w+)/.exec(location.search)[1])) || K.dailyPick(SEASONS, 5); // TEMP-DEBUG
+      const devSeason = (() => { try { const m = S.isDev() && /lpseason=(\w+)/.exec(location.search); return m ? SEASONS.find(x => x.id === m[1]) : null; } catch (e) { return null; } })();
+      const SEASON = devSeason || K.dailyPick(SEASONS, 5); // dev builds can preview a season with ?lpseason=winter
       const SC = { sky: SEASON.sky.map(hexRgb), water: SEASON.water.map(hexRgb), mist: hexRgb(SEASON.mist), pad: SEASON.pad.map(hexRgb), rim: hexRgb(SEASON.rim), flower: SEASON.flower.map(hexRgb), reed: hexRgb(SEASON.reed), bank: SEASON.bank.map(hexRgb), trees: hexRgb(SEASON.trees) };
       const DARK0 = K.dark();
       el.classList.toggle('lp-bright', !DARK0);
@@ -155,7 +156,6 @@
       const FR = { x: 0, y: 0.1, z: 0, sq: 1, sqv: 0, wob: 0, wobv: 0, face: 1, legs: 0, crouch: 0, blink: 0, nb: now() + 1800, throat: 0, dangle: 0, arms: 0, air: null, front: 0, quiver: 0, look: 0 };
       const G = { phase: 'intro', at: 0, charge: 0, t0: 0, hops: 0, judged: 0, clean: 0, wobbles: 0, finished: false, zF: 1.2, zFt: 1.2, mist: 1, sunK: 0, dawn: DARK0 ? 0.5 : 0.78, shake: 0, lastTick: 0, inClean: false, saidWob: false, saidClean: false, saidTap: false, crane: 0, flies: 0, held: false, keyHold: false, pathGlow: -1 };
       const RIP = [], P = K.particles({ max: 320 });
-      if (S.isDev()) window.__lpDbg = { G, FR, PADS }; // TEMP-DEBUG
 
       /* ---------------- DOM ---------------- */
       const cv = K.canvas(el, { opaque: true, maxDpr: 1.5 });
@@ -267,7 +267,7 @@
         return c;
       }
       const FC = { body: [86, 182, 72], light: [168, 230, 112], dark: [40, 112, 56], belly: [246, 240, 196], spot: [44, 120, 52] };
-      const RC = { body: css(FC.body), dark: css(FC.dark), light: css(FC.light), foot: css(mix3(FC.body, [255, 255, 200], 0.15)), padShadow: css(mix3(SC.water[0], [0, 0, 0], 0.25), 0.3), reed: css(SC.reed), reedDk: css(mix3(SC.reed, [0, 0, 0], 0.3)), grass: css(mix3(SC.bank[0], [255, 255, 210], 0.12)), grassDk: css(mix3(mix3(SC.bank[0], [255, 255, 210], 0.12), [0, 0, 0], 0.3)), farBank: css(mix3(SC.bank[1], SC.trees, 0.3)), farEdge: css(mix3(SC.bank[0], [255, 240, 210], 0.25), 0.6), nearBank: css(SC.bank[1]), nearEdge: css(SC.bank[0], 0.9) };
+      const RC = { body: css(FC.body), dark: css(FC.dark), light: css(FC.light), foot: css(mix3(FC.body, [255, 255, 200], 0.15)), padShadow: css(mix3(SC.water[0], [0, 0, 0], 0.25), 0.3), reed: css(SC.reed), reedDk: css(mix3(SC.reed, [0, 0, 0], 0.3)), grass: css(mix3(SC.bank[0], [255, 255, 210], 0.12)), grassDk: css(mix3(mix3(SC.bank[0], [255, 255, 210], 0.12), [0, 0, 0], 0.3)), farBank: css(mix3(SC.bank[1], SC.trees, 0.3)), farEdge: css(mix3(SC.bank[0], [255, 240, 210], 0.25), 0.6), nearBank: css(SC.bank[1]), nearEdge: css(SC.bank[0], 0.9), wild: css(mix3(SC.flower[0], [255, 255, 255], 0.15)) };
       function frogSprite(front) {
         const SS = 2, U = 150, Wd = 220, Ht = 200, c = document.createElement('canvas'); c.width = Wd * SS; c.height = Ht * SS;
         const g = c.getContext('2d'); g.scale(SS, SS); g.translate(Wd / 2, Ht - 22); g.scale(U, U);
@@ -495,6 +495,8 @@
         await K.wait(260);
         // walk up the bank a little
         await scoot({ x: FR.x * 0.5, z: ZEND() + 0.4 });
+        // a little meadow round the frog's feet for its moment on the bank (some of it in flower)
+        for (let i = 0; i < 10; i++) { const sd = i % 2 ? 1 : -1; REEDS.push({ x: FR.x + sd * rw(0.3, 1.0), z: FR.z + rw(-0.4, 0.55), h: rw(0.08, 0.17), n: 4 + (i % 2), ph: rw(0, TAU), grass: true, fl: i % 3 === 0 }); }
         FR.throat = 1; sCroak(); FR.happy = 1;
         say(loopie, { Jolly: 'We made it! And I never saw the whole path once.', Cheeky: 'Made it. Never saw the path. Not once.', Unfiltered: 'Across.' }, 'celebrate', 3200);
         if (A.ctx) A.noise({ pink: true, filter: 'bandpass', freq: 400, to: 2600, q: 0.6, dur: 3.2, attack: 1.2, vol: 0.1 });
@@ -526,13 +528,14 @@
         FR.front = 1; FR.throat = 1; sCroak();
         if (G.dressed) { P.emit('star', FRS.x, FRS.y - FRS.bw * 1.1, 14, { colors: ['#fff6c8', '#ffd36b', '#ffffff'], speed: [50, 150] }); K.sfx.sparkle(); say(rush, { Jolly: 'Look at you! The ' + G.dressed.name.toLowerCase() + ' suits you.', Cheeky: 'Fancy. The ' + G.dressed.name.toLowerCase() + ' is very you.', Unfiltered: G.dressed.name + '. Earned.' }, 'wow', 2600); }
         await K.wait(900);
-        cap.innerHTML = ''; cap.append(document.createTextNode('Couldn’t see the path.'), h('br'), document.createTextNode('Hopped anyway.'), h('small', { text: G.hops + ' hops into the mist · ' + G.clean + ' clean · every one landed' }));
+        cap.innerHTML = ''; cap.append(document.createTextNode('Couldn’t see the path.'), h('br'), document.createTextNode('Hopped anyway.'), h('small', { text: G.hops + ' hops · ' + G.clean + ' clean · every one landed' }));
         cap.classList.add('on');
         loopie.base('love'); rush.base('happy');
         await K.wait(3200);
         cap.classList.remove('on');
+        await K.wait(K.reduced() ? 60 : 700); // let the caption clear before the card takes its place
         showCard();
-        await K.wait(3000);
+        await K.wait(2700);
         finish();
       }
       function outfitIcon(id, on) {
@@ -605,7 +608,7 @@
         if (!SUN.ok) return;
         const r = SUN.r;
         g.save(); g.globalCompositeOperation = 'lighter';
-        g.globalAlpha = 0.35 + 0.35 * G.sunK; g.drawImage(K.glowSprite('rgba(255,226,180,0.9)'), SUN.x - r * 12, SUN.y - r * 7, r * 24, r * 14);
+        g.globalAlpha = 0.32 + 0.2 * G.sunK; g.drawImage(K.glowSprite('rgba(255,226,180,0.9)'), SUN.x - r * 12, SUN.y - r * 7, r * 24, r * 14);
         g.globalAlpha = 0.6; g.drawImage(K.glowSprite('rgba(255,244,214,1)'), SUN.x - r * 3.5, SUN.y - r * 3.5, r * 7, r * 7);
         if (G.sunK > 0.05 && !K.reduced()) { // soft rays
           g.globalAlpha = 0.07 * G.sunK; g.fillStyle = '#fff1d0';
@@ -644,16 +647,35 @@
         const zE = ZEND() - 0.62; if (BANK.key === zE) return;
         BANK.key = zE;
         BANK.farEdge = []; for (let x = -26; x <= 26; x += 2) BANK.farEdge.push([x, 0.06, zE + Math.sin(x * 0.7) * 0.18 + (Math.abs(x) > 4 ? -0.3 : 0)]);
-        BANK.far = BANK.farEdge.concat([[26, 0.06, zE + 16], [-26, 0.06, zE + 16]]);
+        // the land runs on to the horizon (the crane shot in the finale sees right over the far trees)
+        BANK.far = BANK.farEdge.concat([[260, 0.06, zE + 420], [-260, 0.06, zE + 420]]);
         BANK.nearEdge = []; for (let x = -26; x <= 26; x += 2) BANK.nearEdge.push([x, 0.08, -1.15 + Math.sin(x * 0.9 + 1) * 0.14 + (Math.abs(x) > 2.5 ? 0.35 : 0)]);
-        BANK.near = BANK.nearEdge.slice().reverse().concat([[-26, 0.08, -24], [26, 0.08, -24]]);
+        BANK.near = BANK.nearEdge.slice().reverse().concat([[-260, 0.08, -420], [260, 0.08, -420]]);
       }
+      const FBC = mix3(SC.bank[1], SC.trees, 0.3);
+      const hazeCol = () => warm(mix3(SC.sky[2], [255, 248, 236], 0.3 + G.sunK * 0.2), G.sunK * 0.4);
       function drawBanks(g) {
         bankShapes();
-        if (fillWorld(g, BANK.far)) { g.fillStyle = RC.farBank; g.fill(); }
+        if (fillWorld(g, BANK.far)) { // distant land fades into the haze (aerial perspective), so the horizon is soft from any height
+          const hy = horizonY(); proj(0, 0.06, BANK.key); const ye = PO.ok ? PO.y : H;
+          if (ye > hy + 2) { const hc = hazeCol(), gr = g.createLinearGradient(0, hy, 0, ye); gr.addColorStop(0, css(hc)); gr.addColorStop(0.5, css(mix3(hc, FBC, 0.6))); gr.addColorStop(1, css(FBC)); g.fillStyle = gr; }
+          else g.fillStyle = RC.farBank;
+          g.fill();
+        }
         g.strokeStyle = RC.farEdge; g.lineWidth = 2; strokeWorld(g, BANK.farEdge);
         if (fillWorld(g, BANK.near)) { g.fillStyle = RC.nearBank; g.fill(); }
         g.strokeStyle = RC.nearEdge; g.lineWidth = 3; strokeWorld(g, BANK.nearEdge);
+      }
+      function drawHaze(g) { // morning haze where land and water meet the sky (and the sun's glow carries on over the horizon)
+        const hy = horizonY(); if (hy < -40 || hy > H + 40) return;
+        const hh = Math.max(26, H * 0.075), sk = G.sunK, col = hazeCol();
+        const gr = g.createLinearGradient(0, hy - hh * 0.6, 0, hy + hh);
+        gr.addColorStop(0, css(col, 0)); gr.addColorStop(0.36, css(col, 0.8)); gr.addColorStop(1, css(col, 0));
+        g.fillStyle = gr; g.fillRect(0, hy - hh * 0.6, W, hh * 1.6);
+        if (SUN.ok && SUN.x > -W * 0.5 && SUN.x < W * 1.5) {
+          g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.18 + 0.3 * sk;
+          g.drawImage(K.glowSprite('rgba(255,228,190,0.9)'), SUN.x - W * 0.55, hy - hh * 1.3, W * 1.1, hh * 2.6); g.restore();
+        }
       }
       function drawSign(g) { // the signpost on the far bank
         SIGN.ok = false;
@@ -787,12 +809,18 @@
         proj(rd.x, 0, rd.z); if (!PO.ok || PO.x < -60 || PO.x > W + 60) return;
         const k = PO.k, x = PO.x, y = PO.y, hh = rd.h * k; if (hh < 2) return;
         const col = rd.grass ? RC.grass : RC.reed, dk = rd.grass ? RC.grassDk : RC.reedDk, sway = Math.sin(t * 0.9 + rd.ph) * (rd.grass ? 0.12 : 0.06) * hh;
-        g.lineCap = 'round';
-        for (let i = 0; i < rd.n; i++) {
-          const o = (i - (rd.n - 1) / 2) * 0.06 * k, lean = (i - (rd.n - 1) / 2) * 0.1 * hh, hi = hh * (0.7 + 0.3 * ((i * 7 + 3) % 5) / 4);
-          g.strokeStyle = i % 2 ? dk : col; g.lineWidth = Math.max(1, (rd.grass ? 0.02 : 0.028) * k);
-          g.beginPath(); g.moveTo(x + o, y); g.quadraticCurveTo(x + o + lean * 0.3, y - hi * 0.6, x + o + lean + sway, y - hi); g.stroke();
-          if (rd.cat && i === 1) { g.strokeStyle = '#6b4226'; g.lineWidth = Math.max(2, 0.07 * k); g.beginPath(); g.moveTo(x + o + lean * 0.8 + sway * 0.8, y - hi * 0.82); g.lineTo(x + o + lean * 0.95 + sway * 0.95, y - hi * 0.98); g.stroke(); }
+        const n = rd.n, mid = (n - 1) / 2, blade = (i) => { const o = (i - mid) * 0.06 * k, lean = (i - mid) * 0.1 * hh; return { o, lean, hi: hh * (0.7 + 0.3 * ((i * 7 + 3) % 5) / 4) }; };
+        g.lineCap = 'round'; g.lineWidth = Math.max(1, (rd.grass ? 0.02 : 0.028) * k);
+        for (let pass = 0; pass < 2; pass++) { // one stroke per shade, not one per blade
+          g.beginPath();
+          for (let i = pass; i < n; i += 2) { const b = blade(i); g.moveTo(x + b.o, y); g.quadraticCurveTo(x + b.o + b.lean * 0.3, y - b.hi * 0.6, x + b.o + b.lean + sway, y - b.hi); }
+          g.strokeStyle = pass ? dk : col; g.stroke();
+        }
+        if (rd.cat && n > 1) { const b = blade(1); g.strokeStyle = '#6b4226'; g.lineWidth = Math.max(2, 0.07 * k); g.beginPath(); g.moveTo(x + b.o + b.lean * 0.8 + sway * 0.8, y - b.hi * 0.82); g.lineTo(x + b.o + b.lean * 0.95 + sway * 0.95, y - b.hi * 0.98); g.stroke(); }
+        if (rd.fl && n > 1) { // a small wildflower in the season's colour
+          const b = blade(1), fx = x + b.o + b.lean + sway, fy = y - b.hi, s = Math.max(1.5, 0.022 * k);
+          g.fillStyle = RC.wild; g.beginPath(); for (let q = 0; q < 5; q++) { const a = q * TAU / 5 + rd.ph, px = fx + Math.cos(a) * s, py = fy + Math.sin(a) * s; g.moveTo(px + s * 0.85, py); g.arc(px, py, s * 0.85, 0, TAU); } g.fill();
+          g.fillStyle = '#ffd86b'; g.beginPath(); g.arc(fx, fy, s * 0.6, 0, TAU); g.fill();
         }
       }
       function drawFrog(g) {
@@ -944,6 +972,7 @@
       function addDraw(d, o, k) { const r = DP[nDP] || (DP[nDP] = { d: 0, o: null, k: 0 }); nDP++; r.d = d; r.o = o; r.k = k; DRAW.push(r); }
       K.loop((cdt, t) => {
         const g = cv.g; if (!g || !ready) return;
+        if (el.dataset.phase !== G.phase) el.dataset.phase = G.phase;
         const tn = now(), rdt = clamp(lastT ? (tn - lastT) / 1000 : cdt, 0.001, 0.1); lastT = tn;
         // charge
         if (G.phase === 'charge') {
@@ -997,6 +1026,7 @@
         drawSky(g); drawSun(g, t);
         drawWater(g, t);
         drawBanks(g);
+        drawHaze(g);
         drawTreeLine(g, TREES_FAR, mix3(SC.trees, SC.sky[2], 0.25));
         drawTreeLine(g, TREES_NEAR, mix3(SC.trees, [40, 50, 60], 0.3));
         drawSign(g);
@@ -1004,8 +1034,16 @@
         DRAW.length = 0; nDP = 0;
         for (const rd of REEDS) { proj(rd.x, 0, rd.z); if (PO.ok) addDraw(PO.z, rd, 0); }
         for (const p of PADS) { if (p.a <= 0.005 || p.kind === 'bank') continue; proj(p.x, 0, p.z); if (PO.ok) addDraw(PO.z, p, 1); }
-        let fz0 = FR.z; if (FR.air) fz0 = lerp(FR.air.z0, FR.air.z1, clamp((tn - FR.air.t0) / FR.air.T, 0, 1));
-        proj(FR.x, 0, fz0 - 0.05); addDraw(PO.z, null, 2);
+        let fz0 = FR.z, fx0 = FR.x;
+        if (FR.air) { const k = clamp((tn - FR.air.t0) / FR.air.T, 0, 1); fz0 = lerp(FR.air.z0, FR.air.z1, k); fx0 = lerp(FR.air.x0, FR.air.x1, k); }
+        proj(fx0, 0, fz0 - 0.05); let frogD = PO.z;
+        // the frog is always above whatever it stands on or drops onto, so it draws after that pad (or the log)
+        for (let j = Math.max(0, G.at - 1); j <= Math.min(PADS.length - 2, G.at + 1); j++) {
+          const p = PADS[j]; if (p.a <= 0.005 || (p.kind !== 'pad' && p.kind !== 'log' && p.kind !== 'start')) continue;
+          const over = p.kind === 'log' ? Math.abs(fx0 - p.x) < p.r + 0.15 && Math.abs(fz0 - p.z) < 0.4 : Math.hypot(fx0 - p.x, fz0 - p.z) < p.r * 1.08;
+          if (over) { proj(p.x, 0, p.z); if (PO.ok) frogD = Math.min(frogD, PO.z - 0.02); }
+        }
+        addDraw(frogD, null, 2);
         DRAW.sort(byDepth);
         const zfront = G.zF;
         drawFloaters(g, t); drawRipples(g, tn);
@@ -1024,7 +1062,7 @@
         // the light: a cool dawn that warms as you go, golden when the sun is up
         const grade = 1 - G.dawn;
         if (grade > 0.01) { g.globalCompositeOperation = 'multiply'; g.fillStyle = css(mix3([255, 255, 255], [150, 150, 216], grade * 0.85)); g.fillRect(0, 0, W, H); g.globalCompositeOperation = 'source-over'; }
-        if (SUN.ok && G.sunK > 0.02) { g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.25 * G.sunK; g.drawImage(K.glowSprite('rgba(255,220,170,0.8)'), SUN.x - H * 0.5, SUN.y - H * 0.35, H, H * 0.7); g.restore(); }
+        if (SUN.ok && G.sunK > 0.02) { g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.15 * G.sunK; g.drawImage(K.glowSprite('rgba(255,220,170,0.8)'), SUN.x - H * 0.5, SUN.y - H * 0.35, H, H * 0.7); g.restore(); }
         if (!SPR.vig) SPR.vig = vignette();
         g.drawImage(SPR.vig, 0, 0, W, H);
         // DOM that follows the world
@@ -1056,16 +1094,16 @@
           const until = async (fn, ms) => { const t0 = now(); while (!fn() && now() - t0 < (ms || 20000)) await K.wait(50); };
           await until(() => !!el.querySelector('.gk-intro') || G.phase !== 'intro', 5000);
           const intro = el.querySelector('.gk-intro'); if (intro) await K.sim.tap(intro);
-          let n = 0;
+          let n = 0, wobbled = false;
           while (!G.finished) {
             await until(() => G.phase === 'ready' || G.phase === 'gapready' || G.phase === 'finale' || G.finished, 30000);
             if (G.phase === 'finale' || G.finished) break;
             await K.wait(220);
             const { to, dd } = aim();
-            // a skilled frog aims for the middle; once it hops a little short, to show the wobble
+            // a skilled frog aims for the middle; once (on a long gap) it hops clearly short, to show the pad still catches it
             let target = clamp((dd - MINH) / (MAXH - MINH), 0, 1);
             if (to.kind === 'log') target = 0.97;
-            else if (n === 2 && to.kind === 'pad') target = clamp((dd - to.r * 1.05 - MINH) / (MAXH - MINH), 0.05, 1);
+            else if (!wobbled && n >= 1 && to.kind === 'pad' && dd >= 2.3) { wobbled = true; target = clamp((dd - to.r * 0.8 - 0.32 - MINH) / (MAXH - MINH), 0.2, 1); }
             const p = frogScreen(), r = K.rectIn(zone, el);
             const pr = await K.sim.press(zone, p.x - r.x, p.y - r.y);
             await until(() => G.phase === 'charge', 1500);

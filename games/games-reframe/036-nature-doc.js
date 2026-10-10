@@ -22,7 +22,12 @@
   const vgrad = (g, y0, y1, stops) => { const gr = g.createLinearGradient(0, y0, 0, y1); stops.forEach((c, i) => gr.addColorStop(i / Math.max(1, stops.length - 1), c)); return gr; };
   const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const HOT = /\b(definitely|going to|gonna|must|never|always|everyone|nobody|ruined|fired|over|losing|hates?|can'?t|won'?t|clearly|obviously|\w+['’]ll)\b/i;
-  const JUDGE_POOL = ['The human has clearly messed everything up. As usual.', 'Everyone is definitely judging the human. Obviously.', 'This always happens to the human. Typical.', 'This means the worst. Clearly.', 'The human should be over this by now.'];
+  /* the inner critic's script: verdicts read out as if the camera had filmed them, each tagged with its thinking pattern */
+  const JUDGE_POOL = [{ t: 'Everyone is definitely judging the human. Obviously.', p: 'mind' }, { t: 'The human has clearly messed everything up. As usual.', p: 'always' },
+    { t: 'And this can only end badly. Clearly.', p: 'future' }, { t: 'This always happens to the human. Typical.', p: 'always' }, { t: 'The human should be over this by now. Honestly.', p: 'should' }];
+  const PATTERN = { verdict: ['a verdict', 'verdicts'], mind: ['mind-reading', 'minds'], future: ['fortune-telling', 'the future'], always: ['all-or-nothing', '“always”'], should: ['a should', '“shoulds”'] };
+  const patOf = (q) => /\b(thinks?|annoyed|hates?|judg\w*|mad at|sick of|doesn'?t (like|care)|laughing)\b/i.test(q) ? 'mind'
+    : /\b(going to|gonna|will|won'?t|\w+['’]ll|never going)\b/i.test(q) ? 'future' : /\b(always|never|everyone|nobody|everything|completely)\b/i.test(q) ? 'always' : /\b(should|must|supposed to)\b/i.test(q) ? 'should' : 'verdict';
 
   /* ---------------- painting helpers (offscreen layers, painted once per size and theme) ---------------- */
   function ridge(g, w, base, amp, col, R, f, bottom) {
@@ -60,10 +65,10 @@
       day: { sky: ['#9eeef5', '#4cc4dc', '#1e93b5', '#0f6f93'], sun: '#e8fdff', far: ['#3aa6bd', '#2a8aa6'], tree: '#ff8a7a', mound: '#b78cff', ground: ['#f0dba2', '#d9bc7c', '#b8955a'], fg: '#1d6e5a', rim: '#ffffff', water: '#bff6ff', haze: '#9fdbe6', warm: '#c8fbff' },
       dusk: { sky: ['#041a32', '#08345c', '#0e527c', '#1a7398'], sun: '#c8f4ff', far: ['#11496a', '#0c3b58'], tree: '#e06a82', mound: '#8a64d4', ground: ['#3f7c88', '#2b5e6c', '#123642'], fg: '#031a26', rim: '#9ff3ff', water: '#5fd0e8', haze: '#22678a', warm: '#7ff0ff' } },
     { key: 'tundra', name: 'Kitchen Tundra', species: 'Homo sapiens nocturnus', amb: 'wind', particle: 'snow', pcols: ['#ffffff', '#e8f4ff'], critter: 'owl', finale: 'stars',
-      day: { sky: ['#8fb8e0', '#bcd6ee', '#e3eef8', '#f7fbff'], sun: '#ffffff', far: ['#e6eef8', '#c3d3e6'], tree: '#2f4a52', mound: '#eef4fb', ground: ['#ffffff', '#e4edf7', '#c9d8ea'], fg: '#dfe9f5', rim: '#ffffff', water: '#cfe6ff', haze: '#d4e2ef', warm: '#ffe6b8' },
+      day: { sky: ['#6fa2d8', '#a9cbee', '#dbe9f7', '#f4f9ff'], sun: '#ffffff', far: ['#dce8f6', '#a9bfdc'], tree: '#2f4a52', mound: '#eef4fb', ground: ['#f8fbff', '#dbe7f4', '#b4c8e0'], fg: '#58739a', rim: '#ffffff', water: '#cfe6ff', haze: '#d4e2ef', warm: '#ffe6b8' },
       dusk: { sky: ['#040a1e', '#0a1b40', '#13325e', '#285684'], sun: '#eef4ff', far: ['#b4c6e0', '#7c94b8'], tree: '#0d1f2e', mound: '#d6e2f2', ground: ['#c2d2ea', '#94a8cc', '#4e6290'], fg: '#2a3a5e', rim: '#b8ffe0', water: '#7fb7e8', haze: '#3a5684', warm: '#9effd0' } },
     { key: 'rainforest', name: 'Inbox Rainforest', species: 'Homo sapiens inboxii', amb: 'forest', particle: 'leaf', pcols: ['#9ccf6b', '#e0b84f', '#7fbf5a'], critter: 'butterfly', finale: 'petals',
-      day: { sky: ['#cdeeb4', '#94d38a', '#5aa865', '#2f7a45'], sun: '#fff8d0', far: ['#4f9a5a', '#3a8048'], tree: '#2d5a32', mound: '#7a5a3a', ground: ['#6f8a3a', '#536b2c', '#36481d'], fg: '#1f4a24', rim: '#fff8c0', water: '#8fd8c8', haze: '#a6cf9a', warm: '#fff1a6' },
+      day: { sky: ['#f6f2cf', '#d2e9a8', '#86c27a', '#3b8a52'], sun: '#fffbe0', far: ['#4b9458', '#2f7548'], tree: '#24502c', mound: '#7a5a3a', ground: ['#86a03e', '#5c7c2c', '#34501e'], fg: '#163a1c', rim: '#fff6b8', water: '#7fd0c0', haze: '#bcd8a4', warm: '#ffe68a' },
       dusk: { sky: ['#05201a', '#0d3a2c', '#1d5a3e', '#3f7e4a'], sun: '#f6ffd8', far: ['#1e5236', '#15432c'], tree: '#0a2418', mound: '#4a3420', ground: ['#557a32', '#3a5a22', '#16260c'], fg: '#04140a', rim: '#d8ff9a', water: '#3f8f7a', haze: '#3a6a48', warm: '#e8ff9a' } }
   ];
   const TORTOISE = '<svg viewBox="0 0 40 32" aria-hidden="true"><ellipse cx="18" cy="27" rx="15" ry="3" fill="rgba(0,0,0,.35)"/><path d="M5 24c0-9 6-15 14-15s14 6 14 15z" fill="#7aa35a"/><path d="M10 23c1-6 4-10 9-10s8 4 9 10" fill="none" stroke="#4f7a3a" stroke-width="1.6"/><path d="M19 13v10M13 16l3 7M25 16l-3 7" stroke="#4f7a3a" stroke-width="1.4"/><path d="M33 22c2-1 5-1 6 1 1 2-1 4-4 3" fill="#c9b27a"/><circle cx="36.5" cy="22.6" r=".9" fill="#2a2016"/><rect x="2" y="13" width="3" height="8" rx="1.5" fill="#3a3a44"/><circle cx="3.5" cy="12" r="2.6" fill="#1f1f26"/><path d="M8 24v4M15 24v4M23 24v4M29 24v4" stroke="#c9b27a" stroke-width="3" stroke-linecap="round"/></svg>';
@@ -92,7 +97,7 @@
 .g-nature-doc .nd-pips u.on { background: var(--nd-gold); box-shadow: 0 0 6px rgba(255, 210, 122, 0.8); }
 @keyframes nature-doc-blink { 0% { opacity: 1; } 100% { opacity: 0.25; } }
 .g-nature-doc .nd-ep.gold b { color: #ffd27a; }
-.g-nature-doc .nd-sub { position: absolute; z-index: 33; left: 50%; width: min(700px, calc(100% - 24px)); box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 9px 13px 11px 10px; border-radius: 12px;
+.g-nature-doc .nd-sub { position: absolute; z-index: 33; left: 50%; width: min(700px, calc(100% - 48px)); box-sizing: border-box; display: flex; gap: 10px; align-items: flex-start; padding: 9px 13px 11px 10px; border-radius: 12px;
   background: rgba(4, 7, 11, 0.76); border: 1px solid rgba(255, 255, 255, 0.1); color: #fffaf0; pointer-events: none; opacity: 0; transform: translate(-50%, 8px); transition: opacity 0.3s ease, transform 0.35s ease, border-color 0.3s ease; }
 .g-nature-doc .nd-sub.on { opacity: 1; transform: translate(-50%, 0); }
 .g-nature-doc .nd-sub svg { flex: none; width: 38px; height: 30px; margin-top: 2px; }
@@ -132,6 +137,10 @@
 .g-nature-doc .nd-card.bad .nd-stamp { color: #c0262d; }
 .g-nature-doc .nd-card.bad .nd-cl { text-decoration: line-through; text-decoration-color: rgba(192, 38, 45, 0.7); text-decoration-thickness: 2px; }
 .g-nature-doc .nd-card.in0 { opacity: 0; transform: translateY(22px) scale(0.97); }
+.g-nature-doc .nd-tray.tight { gap: 7px; }
+.g-nature-doc .nd-tray.tight .nd-card { padding: 8px 11px 9px; gap: 4px; min-height: 0; }
+.g-nature-doc .nd-tray.tight .nd-cl { font-size: 15px; line-height: 1.26; }
+.g-nature-doc .nd-tray.notitle > b { display: none; }
 .g-nature-doc .nd-card.out { opacity: 0; transform: translateY(18px) scale(0.94); pointer-events: none; }
 .g-nature-doc .nd-title { position: absolute; z-index: 40; left: 0; right: 0; padding: 16px 12px 18px; text-align: center; color: #fffaf0; pointer-events: none; text-shadow: 0 2px 18px rgba(0, 0, 0, 0.6); opacity: 0; transform: translateY(10px); transition: opacity 1s ease, transform 1.2s ease;
   background: linear-gradient(90deg, rgba(4, 7, 11, 0) 0%, rgba(4, 7, 11, 0.58) 14%, rgba(4, 7, 11, 0.58) 86%, rgba(4, 7, 11, 0) 100%); }
@@ -139,14 +148,15 @@
 .g-nature-doc .nd-title small { display: block; font: 700 12px/1 var(--nd-mono); letter-spacing: 0.34em; color: var(--nd-gold); text-transform: uppercase; }
 .g-nature-doc .nd-title b { display: block; margin: 9px 0 7px; font: 800 clamp(30px, 8.4cqw, 64px)/0.98 var(--nd-serif); letter-spacing: -0.01em; }
 .g-nature-doc .nd-title span { display: block; font: italic 500 17px/1.3 var(--nd-serif); color: #f5ead2; }
-.g-nature-doc .nd-cred { position: absolute; z-index: 40; overflow: hidden; pointer-events: none; opacity: 0; transition: opacity 0.8s ease; border-radius: 16px;
-  background: linear-gradient(90deg, rgba(4, 7, 11, 0) 0%, rgba(4, 7, 11, 0.5) 18%, rgba(4, 7, 11, 0.5) 82%, rgba(4, 7, 11, 0) 100%);
+.g-nature-doc .nd-cred { position: absolute; z-index: 40; overflow: hidden; pointer-events: none; opacity: 0; transition: opacity 0.6s ease;
   -webkit-mask-image: linear-gradient(transparent, #000 16%, #000 84%, transparent); mask-image: linear-gradient(transparent, #000 16%, #000 84%, transparent); }
 .g-nature-doc .nd-cred.on { opacity: 1; }
-.g-nature-doc .nd-credi { display: flex; flex-direction: column; align-items: center; gap: 13px; text-align: center; color: #f6efe0; will-change: transform; }
-.g-nature-doc .nd-credi p { margin: 0; font: 400 15px/1.3 var(--nd-sans); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7); }
-.g-nature-doc .nd-credi p small { display: block; font: 700 12px/1.2 var(--nd-mono); letter-spacing: 0.2em; color: var(--nd-gold); text-transform: uppercase; margin-bottom: 4px; }
-.g-nature-doc .nd-credi p.big { font: italic 600 19px/1.3 var(--nd-serif); color: #fff6dc; }
+.g-nature-doc .nd-credi { display: flex; flex-direction: column; align-items: center; gap: 15px; padding: 0 16px; text-align: center; color: #f6efe0; will-change: transform; }
+.g-nature-doc .nd-credi p { margin: 0; font: 400 15px/1.3 var(--nd-sans); }
+.g-nature-doc .nd-credi p small { display: block; font: 700 12px/1.2 var(--nd-mono); letter-spacing: 0.2em; color: var(--nd-gold); text-transform: uppercase; margin-bottom: 3px; }
+.g-nature-doc .nd-credi p.end { margin-top: 52px; }
+.g-nature-doc .nd-credi p.end b { display: block; margin: 3px 0 6px; font: italic 600 26px/1.05 var(--nd-serif); color: #fff6dc; }
+.g-nature-doc .nd-credi p.end span { display: block; font: 400 13px/1.3 var(--nd-sans); color: #d9cfbd; }
 .g-nature-doc .gk-char { transition: opacity 0.4s ease; }
 .g-nature-doc .nd-off { opacity: 0; }
 @container (min-width: 700px) {
@@ -154,18 +164,20 @@
   .g-nature-doc .nd-cl { font-size: 17px; }
   .g-nature-doc .nd-chip b { font-size: 18px; }
   .g-nature-doc .nd-credi p { font-size: 17px; }
-  .g-nature-doc .nd-credi p.big { font-size: 22px; }
+  .g-nature-doc .nd-credi p.end b { font-size: 28px; }
   .g-nature-doc .nd-title span { font-size: 20px; }
 }
 `,
     mount(ctx) {
       const K = ctx.kit, S = ctx.TS, A = ctx.A, h = ctx.h, el = ctx.el, an = ctx.analysis || {};
       const clamp = K.clamp, lerp = K.lerp, ease = K.ease, now = () => performance.now(), reduced = () => K.reduced();
-      const inten = ctx.intensity, L = (o) => ctx.line(o) || '';
+      const inten = ctx.intensity, L = (o, sub) => { let s = ctx.line(o) || ''; if (sub) Object.keys(sub).forEach(k => { s = s.split('{' + k + '}').join(sub[k]); }); return s; };
       const text = String(ctx.text || '').trim(), hasText = text.length > 0;
       const care = an.safety === 'care', strong = an.fear_support === 'strong';
       const visits = K.visits();
-      const hab = K.dailyPick(HABITATS, 11);
+      // one habitat a day, in rotation, so tomorrow's episode is always a different one (and can be teased in the credits)
+      const habIdx = ((K.daily() % HABITATS.length) + HABITATS.length) % HABITATS.length;
+      const hab = HABITATS[habIdx], nextHab = HABITATS[(habIdx + 1) % HABITATS.length];
       const weekday = WEEKDAYS[new Date().getDay()];
       const episode = visits + 1;
       const ZONE = [0.22, 0.17, 0.135][inten], FOCUS_S = [0.6, 0.8, 0.95][inten], TRACK_S = [2.2, 2.8, 3.2][inten], WALK = [0.075, 0.1, 0.14][inten];
@@ -174,7 +186,7 @@
       const clip = (s, n) => { s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim(); if (s.length <= n) return s; const c = s.slice(0, n - 1), sp = c.lastIndexOf(' '); return (sp > n * 0.5 ? c.slice(0, sp) : c).replace(/[\s,;:–-]+$/, '') + '…'; };
       const tidy = (s) => String(s || '').replace(/^[\s,;:–-]+|[\s,;:.!?–-]+$/g, '');
       const exact = (q) => { const i = text.toLowerCase().indexOf(String(q).toLowerCase()); return i < 0 ? '' : text.slice(i, i + String(q).length); };
-      const lowFirst = (s) => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s);
+      const lowFirst = (s) => (s && !/^(I\b|I['’]|[A-Z]{2})/.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s);
       const spans = (Array.isArray(an.spans) ? an.spans : []).filter(s => s && typeof s.quote === 'string' && s.quote.trim());
       const twoWords = (q) => q && q.split(/\s+/).length >= 2;
       const cams = hasText ? spans.filter(s => s.kind === 'camera').map(s => tidy(exact(s.quote.trim()))).filter(twoWords) : [];
@@ -182,37 +194,41 @@
       let hotB = '';
       if (brains.length) { let bs = -1; brains.forEach((q, i) => { const sc = (HOT.test(q) ? 2 : 0) + (q.length <= 70 ? 1 : 0) + i * 0.01; if (sc > bs) { bs = sc; hotB = q; } }); }
       const otherB = brains.find(q => q !== hotB) || '';
-      const feeling = (typeof an.feeling === 'string' && /^[a-z][a-z' -]{1,16}$/i.test(an.feeling.trim())) ? an.feeling.trim().toLowerCase() : '';
-      const Q = (q) => ({ t: '“' + clip(q, 92) + '”', user: true });
+      const feeling = hasText && typeof an.feeling === 'string' && /^[a-z][a-z' -]{1,16}$/i.test(an.feeling.trim()) && !/^(uneasy|unknown|none|neutral)$/i.test(an.feeling.trim()) ? an.feeling.trim().toLowerCase() : '';
+      // the player's words, exactly as given: quoted in curly quotes, or left bare (still marked as theirs) when they hold quotes already
+      const Q = (q) => { const s = clip(q, 92); return { t: /["“”]/.test(s) ? s : '“' + s + '”', user: true }; };
+      const firstPerson = (s) => /^(I|I['’](m|ve|d|ll)|My|Me)\b/.test(String(s || '').trim());
       const leadOf = (k) => { const l = (Array.isArray(an.leads) ? an.leads : []).find(x => x && x.kind === k && x.text); return l ? tidy(clip(l.text, 90)) : ''; };
-      const unknown = (Array.isArray(an.unknowns) ? an.unknowns : []).map(u => u && u.text).filter(Boolean)[0] || '';
-      const balanced = typeof an.balanced === 'string' && an.balanced.trim() ? clip(an.balanced.trim(), 112) : '';
-      const friend = typeof an.friend === 'string' && an.friend.trim() ? clip(an.friend.trim(), 104) : '';
+      const unknown = hasText ? (Array.isArray(an.unknowns) ? an.unknowns : []).map(u => u && u.text).filter(Boolean)[0] || '' : '';
+      const balanced = hasText && typeof an.balanced === 'string' && an.balanced.trim() ? clip(an.balanced.trim(), 112) : '';
+      const friend = hasText && typeof an.friend === 'string' && an.friend.trim() ? clip(an.friend.trim(), 104) : '';
+      const summary = (fallback) => { const b = balanced || fallback; return firstPerson(b) ? 'The human’s own fair summary, for now: “' + tidy(b) + '.”' : 'A fair summary, for now: ' + lowFirst(b); };
       let jpool = JUDGE_POOL.slice();
-      const judgeGeneric = () => jpool.shift() || JUDGE_POOL[0];
-      const D = (segs) => ({ kind: 'desc', segs }), J = (segs) => ({ kind: 'judge', segs });
+      const judgeGeneric = () => { const j = jpool.shift() || JUDGE_POOL[0]; return { segs: [{ t: j.t }], p: j.p }; };
+      const D = (segs) => ({ kind: 'desc', segs }), J = (segs, p) => ({ kind: 'judge', segs, p: p || 'verdict' }), JG = () => { const j = judgeGeneric(); return J(j.segs, j.p); };
       function script(i, kind) {
         const cards = [];
         if (kind === 'final') {
-          if (care) { cards.push(D([{ t: 'Next, the human seeks proper advice from someone who knows this territory. A sensible creature.' }])); cards.push(D([{ t: 'A fair summary, for now: ' + lowFirst(balanced || 'it’s a real concern, and the facts are still coming in.') }])); }
-          else if (strong) { const p = leadOf('prepare'); cards.push(D([{ t: 'This is a real challenge, and the human is taking it seriously. Its next move: ' + (p ? lowFirst(p) : 'one small, practical step') + '.' }])); if (friend) cards.push(D([{ t: 'If another human were here, it might say: “' + friend + '”' }])); }
-          else { cards.push(D([{ t: 'A fair summary, for now: ' + lowFirst(balanced || 'this fits more than one story, and the facts don’t settle it yet.') }])); if (friend && hasText) cards.push(D([{ t: 'If another human were here, it might say: “' + friend + '”' }])); else cards.push(D([{ t: 'The human has had a hard moment, and it is still here, doing its best. A resilient creature.' }])); }
-          cards.push(J([{ t: 'The human should be over this by now. Honestly.' }]));
+          if (care) { cards.push(D([{ t: 'Next, the human seeks proper advice from someone who knows this territory. A sensible creature.' }])); cards.push(D([{ t: summary('it’s a real concern, and the facts are still coming in.') }])); }
+          else if (strong) { const p = leadOf('prepare') || leadOf('ask'); cards.push(D([{ t: 'This is a real challenge, and the human is taking it seriously. Its next move: ' + (p ? lowFirst(p).replace(/[.!]+$/, '') : 'one small, practical step') + '.' }])); if (friend) cards.push(D([{ t: 'If another human were here, it might say: “' + friend + '”' }])); }
+          else if (!hasText) { cards.push(D([{ t: 'A fair summary, for now: something happened, the human felt it, and the story isn’t finished yet.' }])); cards.push(D([{ t: 'The human has had a hard moment, and it is still here, doing its best. A resilient creature.' }])); }
+          else { cards.push(D([{ t: summary('this fits more than one story, and the facts don’t settle it yet.') }])); cards.push(D(friend ? [{ t: 'If another human were here, it might say: “' + friend + '”' }] : unknown ? [{ t: 'Not yet filmed: ' + lowFirst(tidy(clip(unknown, 80))) + '? The camera keeps an open mind.' }] : [{ t: 'The human has had a hard moment, and it is still here, doing its best. A resilient creature.' }])); }
+          cards.push(J([{ t: 'The human should be over this by now. Honestly.' }], 'should'));
           if (inten === 0) cards.splice(1, cards.length - 2);
           return cards;
         }
         if (i === 0) {
-          cards.push(D(cams[0] ? [{ t: 'Here we see the human. On record: ' }, Q(cams[0]), { t: '.' }] : [{ t: 'Here we see the human, sitting quietly with something on its mind.' }]));
-          cards.push(J(hotB ? [{ t: 'The human has decided: ' }, Q(hotB), { t: '. Case closed.' }] : [{ t: judgeGeneric() }]));
-        } else if (i === 1) {
-          cards.push(D(cams[1] ? [{ t: 'The footage shows: ' }, Q(cams[1]), { t: '. That is all the camera saw.' }]
-            : feeling ? [{ t: 'The human is feeling ' + feeling + '. A very common weather system in this species.' }] : [{ t: 'The human moves to a new spot, carrying a feeling. It lets the feeling come along.' }]));
-          cards.push(J(otherB ? [{ t: 'Obviously, ' }, Q(otherB), { t: '. Everyone can tell.' }] : [{ t: hotB ? 'Everyone is definitely judging the human. Obviously.' : judgeGeneric() }]));
+          // the moment as footage, against the hot thought read out as a closed verdict
+          cards.push(D(cams[0] ? [{ t: 'Here we see the human. On record: ' }, Q(cams[0]), { t: '.' }] : [{ t: 'Here we see the human, sitting very still, with something on its mind.' }]));
+          cards.push(hotB ? J([{ t: 'The verdict is in: ' }, Q(hotB), { t: '. Case closed.' }], patOf(hotB)) : JG());
         } else {
-          cards.push(D(unknown ? [{ t: 'Still unfilmed: ' + lowFirst(tidy(clip(unknown, 80))) + '? The camera keeps an open mind.' }] : [{ t: 'The human pauses. Nothing new has happened. Only the volume of the thought has changed.' }]));
-          cards.push(J([{ t: judgeGeneric() }]));
+          // the same hot words, described as a thought the human is having (observe and describe), against a leap
+          cards.push(D(hotB ? [{ t: 'The human notices a thought passing through: ' }, Q(hotB), { t: '. A thought, filmed as a thought.' }]
+            : cams[1] ? [{ t: 'The footage shows: ' }, Q(cams[1]), { t: '. That is all the camera saw.' }]
+              : feeling ? [{ t: 'The human is feeling ' + feeling + '. A very common weather system in this species.' }] : [{ t: 'The human moves to a new spot, carrying a heavy feeling. It lets the feeling come along, like weather.' }]));
+          cards.push(otherB ? J([{ t: 'And ' }, Q(otherB), { t: ' can only mean one thing: the worst.' }], patOf(otherB) === 'verdict' ? 'mind' : patOf(otherB)) : JG());
         }
-        if (inten === 2) cards.push(J([{ t: judgeGeneric() }]));
+        if (inten === 2) cards.push(JG());
         return cards;
       }
       const plain = (segs) => segs.map(s => s.t).join('');
@@ -236,7 +252,8 @@
         hello: { Jolly: 'We’re rolling! Frame the human for me, nice and steady.', Cheeky: 'Rolling. Find the human. Try not to film your thumb.', Unfiltered: 'Rolling. Frame the human.' },
         steady: { Jolly: 'Lovely. Hold it there and let the focus find them.', Cheeky: 'Hold still. The focus is shy.', Unfiltered: 'Hold. Let it focus.' },
         rule: { Jolly: 'One house rule: our narrator only says what the camera can actually film.', Cheeky: 'House rule: if the camera can’t film it, the narrator can’t say it.', Unfiltered: 'Narrate only what the camera can film.' },
-        cut: { Jolly: 'CUT! Lovely voice. But that’s a verdict, and cameras can’t film verdicts.', Cheeky: 'CUT! That’s the inner critic’s script. Wrong department.', Unfiltered: 'Cut. That’s not footage.' },
+        cut: { Jolly: 'CUT! Lovely voice, but that’s {pat}. Cameras can’t film {what}.', Cheeky: 'CUT! That’s {pat}. Inner critic’s script. Wrong department.', Unfiltered: 'Cut. That’s {pat}. Not footage.' },
+        cutReal: { Jolly: 'CUT. That worry might be real, and it deserves a plan. But it isn’t footage yet.', Cheeky: 'Cut. Real worry, fair enough. Still not footage. Not yet.', Unfiltered: 'Cut. Real worry. Not footage yet.' },
         take2: { Jolly: 'Take two. Read what the camera saw.', Cheeky: 'Take two. Facts, please. The critic can wait outside.', Unfiltered: 'Take two.' },
         good: [{ Jolly: 'Beautiful. Look at that light.', Cheeky: 'Award season, here we come.', Unfiltered: 'Good. That’s footage.' },
           { Jolly: 'Gorgeous. Same moment, gentler story.', Cheeky: 'Somebody frame this. Oh wait, I did.', Unfiltered: 'Clean take.' },
@@ -399,6 +416,8 @@
       }
       let narTok = 0;
       function hideCaption(tok) { if (tok != null && tok !== narTok) return; subEl.className = 'nd-sub'; }
+      /* the narrator stops (a soft fade) when the script opens, so captions never sit under the cards */
+      function hushNarrator() { narTok++; hideCaption(); if (narGain && A.ctx) { try { narGain.gain.setTargetAtTime(0.0001, A.ctx.currentTime, 0.06); } catch (e) { /* closed */ } } }
       /* speak a line: babble + captions lighting word by word; resolves { how, tok } when said, glitched or superseded */
       function narrate(segs, o) {
         o = o || {};
@@ -407,7 +426,9 @@
         const words = capWords.slice(), pl = plan(words.map(w => w.textContent)), cut = o.glitch ? Math.max(1, Math.floor(words.length * 0.5)) : null;
         voice(pl, { cutAt: cut });
         const t0 = now();
-        return new Promise(res => {
+        ST.speakTok = tok;
+        return new Promise(res0 => {
+          const res = (v) => { if (ST.speakTok === tok) ST.speakTok = 0; res0(v); };
           let i = 0;
           const step = () => {
             if (S.destroyed) return;
@@ -437,20 +458,30 @@
         M.below = M.fy + (M.phone ? 24 : 32);
         const csz = M.phone ? 74 : 96, dsz = M.phone ? 66 : 88;
         M.csz = csz; M.dsz = dsz; M.dropX = W - dsz - (M.phone ? 12 : 24); M.dropY = M.phone ? 116 : 118;
-        glitch.place(M.phone ? 10 : 24, H - csz - (M.phone ? 18 : 26));
+        // the finale's letterbox: a top bar behind the HUD, and a bottom bar that carries the closing words and the credits
+        M.barT = M.phone ? 112 : 100; M.barB = M.phone ? 134 : 128;
+        M.glitchY = H - csz - (M.phone ? 18 : 26);
+        const fin = ST.phase === 'finale' || ST.phase === 'end';
+        glitch.place(M.phone ? 10 : 24, fin ? H - M.barB - csz - 12 : M.glitchY);
         drop.place(M.dropX, M.dropY);
+        // subtitles sit low in the frame, as in a documentary: inside the viewfinder, just above the camera operator
+        M.vfBot = H - csz - (M.phone ? 30 : 40);
+        M.subB = M.vfBot - (M.phone ? 10 : 14);
         const tw = M.phone ? W - 24 : Math.min(960, W - 2 * (csz + 48));
         Object.assign(tray.style, { left: Math.round((W - tw) / 2) + 'px', width: tw + 'px', top: M.below + 'px' });
-        Object.assign(titleEl.style, { top: (M.phone ? M.dropY + dsz + 10 : Math.round(H * 0.15)) + 'px' });
-        const cw = Math.min(M.phone ? W - 40 : 560, W - 40), ct = M.below, cb = H - (M.phone ? 112 : 36);
-        Object.assign(credEl.style, { left: Math.round((W - cw) / 2) + 'px', width: cw + 'px', top: ct + 'px', height: Math.max(80, cb - ct) + 'px' });
+        Object.assign(titleEl.style, { top: (M.phone ? M.dropY + dsz + 10 : Math.round(Math.max(M.barT + 14, H * 0.15))) + 'px' });
+        Object.assign(credEl.style, { left: '0px', width: W + 'px', top: (H - M.barB) + 'px', height: M.barB + 'px' });
         layoutCards(); placeSub();
         if (first) { SUBJ.x = M.spots[0]; CAM.x = CAM.tx = clampCam(SUBJ.x - (W - M.sz / 2 - 14)); }
         else { SUBJ.x = clamp(SUBJ.x, 0, M.ww); CAM.tx = clampCam(CAM.tx); CAM.x = clampCam(CAM.x); }
         buildHerd(); buildCritters();
         LAY.key = ''; SPR.key = '';
       }
-      function placeSub() { subEl.style.top = M.below + 'px'; }
+      function placeSub() {
+        const fin = ST.phase === 'finale' || ST.phase === 'end';
+        subEl.style.top = 'auto';
+        subEl.style.bottom = (fin ? Math.max(8, Math.round((M.barB - (subEl.offsetHeight || 96)) / 2)) : Math.round(M.h - M.subB)) + 'px';
+      }
       function layoutCards() {
         if (!cards.length) return;
         const live = cards.filter(c => !c.gone);
@@ -486,13 +517,17 @@
       /* ---------------- the herd and the critters ---------------- */
       function buildHerd() {
         HERDS.length = 0; if (!M.w) return;
-        const Rg = K.rng(77 + hab.key.length), n = M.phone ? 30 : 46, cols = ['#ff9ec4', '#9fd8ff', '#ffd27a', '#b7a4ff', '#9ff0c0', '#ffb38a'];
-        for (let i = 0; i < n; i++) {
-          let x = 0, tries = 0;
-          do { x = M.w * 0.12 + Rg() * (M.ww - M.w * 0.24); tries++; } while (tries < 12 && M.spots.some(s => Math.abs(s - x) < M.sz * 0.85));
-          const depth = Rg(), y = lerp(M.hz + 10, M.fy - 12, depth);
-          HERDS.push({ x, y, s: lerp(0.34, 0.66, depth) * M.sz, c: Math.floor(Rg() * cols.length), v: Rg() < 0.5 ? 0 : 1, ph: Rg() * 6, seen: false, popT: 0, cols });
-        }
+        const Rg = K.rng(77 + hab.key.length), cols = ['#ff9ec4', '#9fd8ff', '#ffd27a', '#b7a4ff', '#9ff0c0', '#ffb38a'];
+        // rows from the far meadow to the front, spread evenly along the whole valley (a herd, not a cluster)
+        const rows = (M.phone ? [17, 15, 12] : [24, 21, 17]).map(n => Math.round(n * (inten === 0 ? 0.8 : inten === 2 ? 1.15 : 1)));
+        rows.forEach((n, r) => {
+          for (let k = 0; k < n; k++) {
+            const x = M.ww * (k + 0.5 + (Rg() - 0.5) * 0.75) / n, dp = clamp((r + 0.2 + Rg() * 0.6) / rows.length, 0, 1);
+            // the near rows leave the human's perches clear; the far ones may peek out from behind it
+            if (dp > 0.45 && M.spots.some(s => Math.abs(s - x) < M.sz * (0.5 + dp * 0.3))) continue;
+            HERDS.push({ x, y: lerp(M.hz + 12, M.fy - 14, dp), s: lerp(0.3, 0.62, dp) * M.sz, c: Math.floor(Rg() * cols.length), v: Rg() < 0.5 ? 0 : 1, ph: Rg() * 6, seen: false, popT: 0, cols });
+          }
+        });
         HERDS.sort((a, b) => a.y - b.y);
         if (CAMEO && HERDS.length > 4) { const m = HERDS[HERDS.length - 3]; m.cameo = true; m.s = M.sz * 0.62; }
         ST.herdN = HERDS.filter(x => x.seen).length;
@@ -518,6 +553,7 @@
         const lw = (f) => Math.ceil(W + f * (M.ww - W)) + 2;
         // sky: a screen-sized backdrop (no parallax)
         LAY.sky = layer(W, H, ldFar, (g) => paintSky(g, W, H, Pp, dark), 0, 0);
+        LAY.gold = null; // golden hour's sky is painted the first time it's needed
         const farTop = M.hz - Math.round(H * 0.2), midTop = M.hz - Math.round(H * (M.phone ? 0.24 : 0.3));
         LAY.far = layer(lw(0.18), M.hz + 24 - farTop, ldFar, (g, w, hh) => paintFar(g, w, hh, Pp, dark), farTop, 0.18);
         LAY.mid = layer(lw(0.5), M.hz + 40 - midTop, ld, (g, w, hh) => paintMid(g, w, hh, Pp, dark), midTop, 0.5);
@@ -543,6 +579,24 @@
         if (dark && hab.key !== 'savannah') { g.fillStyle = Pp.sky[1]; g.beginPath(); g.arc(sx + sr * 0.42, sy - sr * 0.22, sr * 0.88, 0, TAU); g.fill(); }
         if (hab.key === 'savannah' || hab.key === 'rainforest' || !dark) for (let i = 0; i < 5; i++) cloud(g, R() * W, 40 + R() * hz * 0.45, 16 + R() * 26, rgba(dark ? '#ffd7c0' : '#ffffff', dark ? 0.1 + R() * 0.08 : 0.35 + R() * 0.25));
       }
+      /* golden hour: the same habitat under a low sun (a sunset sky, or for the reef, shafts of gold through the water) */
+      const goldSun = () => ({ x: M.w * 0.72, y: M.hz - (M.phone ? 92 : 120), r: M.phone ? 30 : 42 });
+      function paintGoldSky(g, W, H, Pp, dark) {
+        const hz = M.hz, R = K.rng(9 + hab.key.length), sun = goldSun();
+        const stops = hab.key === 'reef' ? (dark ? ['#06233e', '#0f4a6a', '#2f7f8a', '#d89a52', '#ffcf80'] : ['#2a8fb0', '#5ab8c4', '#9fd6c4', '#ffd38a', '#ffe9b8'])
+          : dark ? ['#140f30', '#3f2358', '#9a3a62', '#e8704e', '#ffb45e', '#ffd88a'] : ['#4f6fc0', '#9a86c4', '#f0a0a0', '#ffb877', '#ffd59a', '#fff0c8'];
+        g.fillStyle = vgrad(g, 0, hz + 30, stops); g.fillRect(0, 0, W, H);
+        if (hab.key === 'reef') {
+          for (let i = 0; i < 8; i++) { const x = W * (0.05 + i * 0.13) + (R() - 0.5) * 30, w0 = 20 + R() * 34; const gr = g.createLinearGradient(0, 0, 0, hz + 80); gr.addColorStop(0, 'rgba(255,214,140,' + (dark ? 0.3 : 0.45) + ')'); gr.addColorStop(1, 'rgba(255,214,140,0)'); g.fillStyle = gr; g.beginPath(); g.moveTo(x - w0 / 2, 0); g.lineTo(x + w0 / 2, 0); g.lineTo(x + w0 * 1.8 + 50, hz + 80); g.lineTo(x - w0 * 0.3 + 50, hz + 80); g.closePath(); g.fill(); }
+          return;
+        }
+        const glow = g.createRadialGradient(sun.x, sun.y, sun.r * 0.5, sun.x, sun.y, sun.r * 9); glow.addColorStop(0, 'rgba(255,236,190,0.95)'); glow.addColorStop(0.18, 'rgba(255,190,110,0.5)'); glow.addColorStop(1, 'rgba(255,150,90,0)'); g.fillStyle = glow; g.fillRect(0, 0, W, H);
+        // long thin clouds, lit from underneath
+        for (let i = 0; i < 6; i++) { const cx = R() * W, cy = hz * (0.18 + R() * 0.5), cw = 60 + R() * 120; g.fillStyle = dark ? 'rgba(255,150,120,0.28)' : 'rgba(255,230,220,0.55)'; g.beginPath(); g.ellipse(cx, cy, cw, 4 + R() * 4, 0, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,214,140,0.5)'; g.beginPath(); g.ellipse(cx + 6, cy + 3, cw * 0.8, 1.6, 0, 0, TAU); g.fill(); }
+        g.fillStyle = '#fff3d2'; g.beginPath(); g.arc(sun.x, sun.y, sun.r, 0, TAU); g.fill();
+        if (dark) { g.fillStyle = 'rgba(255,255,255,0.7)'; for (let i = 0; i < 26; i++) g.fillRect(R() * W, R() * hz * 0.32, 1.2, 1.2); }
+        void Pp;
+      }
       function paintFar(g, w, hh, Pp, dark) {
         const R = K.rng(11 + hab.key.length), base = hh - 24;
         if (hab.key === 'savannah') {
@@ -558,7 +612,7 @@
         } else {
           for (let row = 0; row < 2; row++) { g.fillStyle = Pp.far[row]; for (let x = -20; x < w + 40; x += 22 + R() * 26) { const r = 24 + R() * 30; g.beginPath(); g.arc(x, base - hh * (0.45 - row * 0.2) + R() * 16, r, 0, TAU); g.fill(); } g.fillRect(0, base - hh * (0.45 - row * 0.2), w, hh); }
         }
-        if (!dark) { g.fillStyle = rgba(Pp.haze, 0.25); g.fillRect(0, 0, w, hh); }
+        if (!dark) { g.fillStyle = rgba(Pp.haze, 0.14); g.fillRect(0, 0, w, hh); }
       }
       function paintMid(g, w, hh, Pp, dark) {
         const R = K.rng(23 + hab.key.length), base = hh - 40, rim = rgba(Pp.rim, dark ? 0.35 : 0.5);
@@ -602,13 +656,13 @@
           }
           blades(g, w, base + 10, hh * 0.15, hh * 0.32, dark ? '#143a20' : '#3f8a46', R, Math.round(w / 40), { frond: true, lean: 0.6 });
         }
-              const fog = g.createLinearGradient(0, base - hh * 0.35, 0, hh); fog.addColorStop(0, rgba(Pp.haze, 0)); fog.addColorStop(0.75, rgba(Pp.haze, dark ? 0.42 : 0.38)); fog.addColorStop(1, rgba(Pp.haze, dark ? 0.6 : 0.5)); g.fillStyle = fog; g.fillRect(0, base - hh * 0.35, w, hh);
+        const fog = g.createLinearGradient(0, base - hh * 0.35, 0, hh); fog.addColorStop(0, rgba(Pp.haze, 0)); fog.addColorStop(0.75, rgba(Pp.haze, dark ? 0.42 : 0.18)); fog.addColorStop(1, rgba(Pp.haze, dark ? 0.6 : 0.26)); g.fillStyle = fog; g.fillRect(0, base - hh * 0.35, w, hh);
       }
       function paintGround(g, w, hh, Pp, dark) {
         const R = K.rng(37 + hab.key.length), key = hab.key;
         g.fillStyle = vgrad(g, 0, hh, [mixHex(Pp.ground[0], Pp.haze, 0.5), Pp.ground[0], Pp.ground[1], Pp.ground[2]]); g.fillRect(0, 0, w, hh);
         // dappled light pools (sun through leaves, caustics, moonlight), flattened by perspective
-        const pool = sprite(128, [[0, rgba(Pp.warm, dark ? 0.3 : 0.36)], [0.55, rgba(Pp.warm, dark ? 0.1 : 0.12)], [1, rgba(Pp.warm, 0)]]);
+        const pool = sprite(128, [[0, rgba(Pp.warm, dark ? 0.3 : 0.22)], [0.55, rgba(Pp.warm, dark ? 0.1 : 0.07)], [1, rgba(Pp.warm, 0)]]);
         g.globalCompositeOperation = 'lighter';
         for (let i = 0, n = Math.round(w / 120); i < n; i++) { const y = (0.12 + R() * 0.5) * hh, rx = (50 + R() * 110) * (0.6 + y / hh), x = R() * w; g.globalAlpha = 0.5 + R() * 0.5; g.drawImage(pool, x - rx, y - rx * 0.2, rx * 2, rx * 0.4); }
         g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
@@ -630,7 +684,9 @@
           else { g.fillStyle = rgba('#ffffff', dark ? 0.55 : 0.9); g.beginPath(); g.ellipse(x, y, 10 * s, 3.4 * s, 0, Math.PI, 0); g.fill(); g.fillStyle = rgba(Pp.haze, 0.35); g.beginPath(); g.ellipse(x + 2 * s, y + 0.5, 9 * s, 1.6 * s, 0, 0, TAU); g.fill(); }
         }
         // haze where the ground meets the backdrop
-        const fog = g.createLinearGradient(0, 0, 0, hh * 0.22); fog.addColorStop(0, rgba(Pp.haze, dark ? 0.6 : 0.5)); fog.addColorStop(1, rgba(Pp.haze, 0)); g.fillStyle = fog; g.fillRect(0, 0, w, hh * 0.22);
+        const fog = g.createLinearGradient(0, 0, 0, hh * 0.22); fog.addColorStop(0, rgba(Pp.haze, dark ? 0.6 : 0.32)); fog.addColorStop(1, rgba(Pp.haze, 0)); g.fillStyle = fog; g.fillRect(0, 0, w, hh * 0.22);
+        // the far end of the meadow sinks into shade towards the lens, so the human's patch of ground reads as lit
+        const shade = g.createLinearGradient(0, hh * 0.45, 0, hh); shade.addColorStop(0, rgba(Pp.ground[2], 0)); shade.addColorStop(1, rgba(mixHex(Pp.ground[2], '#000000', dark ? 0.35 : 0.2), dark ? 0.55 : 0.4)); g.fillStyle = shade; g.fillRect(0, hh * 0.45, w, hh * 0.55);
         // the perches where the human settles: a boulder, a coral rock, a snow mound, a mossy log
         const ny = M.fy - (M.hz - 2);
         M.spots.forEach((sx) => {
@@ -693,6 +749,10 @@
         SPR.warm = sprite(256, [[0, rgba(Pp.warm, 0.55)], [0.4, rgba(Pp.warm, 0.18)], [1, rgba(Pp.warm, 0)]]);
         SPR.amber = sprite(256, [[0, 'rgba(255,190,90,0.6)'], [0.45, 'rgba(255,150,60,0.2)'], [1, 'rgba(255,140,60,0)']]);
         SPR.gold = sprite(128, [[0, 'rgba(255,226,150,0.95)'], [0.4, 'rgba(255,200,110,0.3)'], [1, 'rgba(255,200,110,0)']]);
+        { // golden hour's grade: warm towards the sun, ember-dark at the far corners (blended with soft-light, so it keeps contrast)
+          const c = mk(96, 96), x = c.getContext('2d'), su = goldSun(), gx = su.x / M.w * 96, gy = Math.max(0, su.y) / M.h * 96, gr = x.createRadialGradient(gx, gy, 2, gx, gy, 120);
+          gr.addColorStop(0, '#ffd98a'); gr.addColorStop(0.35, '#ffad5c'); gr.addColorStop(0.75, '#c8643a'); gr.addColorStop(1, '#7a3424'); x.fillStyle = gr; x.fillRect(0, 0, 96, 96); SPR.goldWash = c;
+        }
         const vg = mk(256, 256), vx = vg.getContext('2d'), vr = vx.createRadialGradient(128, 128, 70, 128, 128, 182); vr.addColorStop(0, 'rgba(0,0,0,0)'); vr.addColorStop(1, dark ? 'rgba(0,0,0,0.62)' : 'rgba(20,10,0,0.35)'); vx.fillStyle = vr; vx.fillRect(0, 0, 256, 256); SPR.vig = vg;
         const nz = mk(256, 256), nx = nz.getContext('2d'), id = nx.createImageData(256, 256); for (let i = 0; i < id.data.length; i += 4) { const v = Math.random() * 255; id.data[i] = id.data[i + 1] = id.data[i + 2] = v; id.data[i + 3] = Math.random() < 0.5 ? 26 : 0; } nx.putImageData(id, 0, 0); SPR.noise = nz;
         const mic = mk(120, 48), mx = mic.getContext('2d'); mx.translate(60, 24); mx.fillStyle = dark ? '#8d8a96' : '#a8a4b2'; rr(mx, -46, -12, 92, 24, 12); mx.fill();
@@ -721,7 +781,11 @@
         P.update(dt);
         draw(g, tn / 1000, dt);
         placeTag();
-        if (ST.credOn) { ST.credY -= dt * (M.phone ? 30 : 34); credIn.style.transform = 'translateY(' + ST.credY.toFixed(1) + 'px)'; }
+        if (ST.credOn) { // a steady roll that eases to a stop on the end card (real time, not the capped frame dt)
+          const k = clamp((tn - ST.credT0) / ST.credMs, 0, 1), p = k < 0.75 ? 1.142857 * k : 1 - 2.285714 * (1 - k) * (1 - k);
+          credIn.style.transform = 'translateY(' + lerp(ST.credY0, ST.credY1, p).toFixed(1) + 'px)';
+          if (k >= 1) { ST.credOn = false; ST.credDone = true; }
+        }
       });
       let ambAt = 0;
       function ambTick(t) {
@@ -771,7 +835,9 @@
           if (ST.track >= 1 && !SUBJ.path) lockShot();
         }
         if (ph === 'herd') {
-          HERDS.forEach(m => { if (m.seen) return; const sx = m.x - CAM.x; if (sx > -10 && sx < M.w + 10) { m.seen = true; m.popT = now(); ST.herdN++; herdPop(ST.herdN); if (m.cameo) { K.pop('Rare sighting: ' + CAMEO[1] + '!', { x: clamp(sx, 110, M.w - 110), y: m.y - m.s - 22, kind: 'great' }); K.sfx.sparkle(); } } });
+          // each member pops up as it comes into frame; several at once ripple in as a rising arpeggio
+          let k = 0;
+          HERDS.forEach(m => { if (m.seen) return; const sx = m.x - CAM.x; if (sx > -10 && sx < M.w + 10) { m.seen = true; m.popT = tn + k * 70; ST.herdN++; herdPop(ST.herdN, Math.min(1.4, k * 0.07)); k++; if (m.cameo) { K.pop('Rare sighting: ' + CAMEO[1] + '!', { x: clamp(sx, 110, M.w - 110), y: m.y - m.s - 22, kind: 'great' }); K.sfx.sparkle(); } } });
         }
       }
       function walkNext() { // the human wanders between its two perches in short hops, pausing now and then
@@ -792,8 +858,8 @@
         glitch.face('nerd', 900);
         Array.from(pipsEl.children).forEach((p, i) => p.classList.toggle('on', i <= ST.shot));
       }
-      function herdPop(n) {
-        if (A.ctx) { const pen = ['C5', 'D5', 'E5', 'G5', 'A5', 'C6', 'D6', 'E6', 'G6']; A.pluck(A.note(pen[n % pen.length]), { vol: 0.09, damp: 0.996, verb: 0.3 }); if (n % 4 === 0) A.pop({ vol: 0.05, freq: 700 + (n % 7) * 60 }); }
+      function herdPop(n, delay) {
+        if (A.ctx) { const pen = ['D5', 'E5', 'F#5', 'A5', 'B5', 'D6', 'E6', 'F#6', 'A6'], w = A.now() + (delay || 0); A.pluck(A.note(pen[n % pen.length]), { when: w, vol: 0.085, damp: 0.996, verb: 0.3 }); if (n % 4 === 0) A.pop({ when: w, vol: 0.045, freq: 700 + (n % 7) * 60 }); }
         epS.textContent = 'Herd count'; epB.textContent = n + ' sighted'; epB.parentNode.classList.add('gold');
       }
 
@@ -803,21 +869,31 @@
         const W = M.w, H = M.h, Pp = pal(), dark = S.scene() !== 'bright', red = reduced();
         g.setTransform(cv.dpr, 0, 0, cv.dpr, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
         g.drawImage(LAY.sky.c, 0, 0, W, H);
+        if (ST.golden > 0.01) { if (!LAY.gold) LAY.gold = layer(W, H, Math.min(M.dpr, 1), (gg) => paintGoldSky(gg, W, H, Pp, dark), 0, 0); g.globalAlpha = Math.min(1, ST.golden * 1.15); g.drawImage(LAY.gold.c, 0, 0, W, H); g.globalAlpha = 1; }
         // light: sun rays sway with the beauty of the footage
-        if (SPR.ray && (hab.key !== 'tundra' || !dark)) { g.globalCompositeOperation = 'lighter'; const n = M.phone ? 3 : 5; for (let i = 0; i < n; i++) { const a = (0.08 + 0.22 * ST.beauty + 0.3 * ST.golden) * (0.7 + 0.3 * Math.sin(t * 0.5 + i * 2)); g.globalAlpha = a * (dark ? 0.6 : 0.8); g.save(); g.translate(W * (0.55 + i * 0.12) - CAM.x * 0.08, -20); g.rotate(0.35 + Math.sin(t * 0.2 + i) * 0.04 * (red ? 0 : 1)); g.drawImage(SPR.ray, -60, 0, 120 + i * 20, M.fy + 60); g.restore(); } g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
+        if (SPR.ray && (hab.key !== 'tundra' || !dark)) { g.globalCompositeOperation = 'lighter'; const n = M.phone ? 3 : 5; for (let i = 0; i < n; i++) { const a = (0.08 + 0.22 * ST.beauty + 0.3 * ST.golden) * (0.7 + 0.3 * Math.sin(t * 0.5 + i * 2)); g.globalAlpha = a * (dark ? 0.6 : 0.5); g.save(); g.translate(W * (0.55 + i * 0.12) - CAM.x * 0.08, -20); g.rotate(0.35 + Math.sin(t * 0.2 + i) * 0.04 * (red ? 0 : 1)); g.drawImage(SPR.ray, -60, 0, 120 + i * 20, M.fy + 60); g.restore(); } g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
         if (hab.key === 'tundra' && dark) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.25 + 0.2 * Math.sin(t * 0.6); g.drawImage(LAY.sky.c, 0, 0, LAY.sky.c.width, LAY.sky.c.height * 0.4, (Math.sin(t * 0.15) * 12), 0, W, H * 0.4); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
         blit(g, LAY.far);
         drawCritters(g, t, 0.5, dt);
         blit(g, LAY.mid);
         blit(g, LAY.ground);
-        // the grade works on the world only (never on the characters): raw footage is flat and hazy, described footage blooms
-        g.globalAlpha = 0.26 * (1 - ST.beauty) * (1 - ST.golden); g.fillStyle = Pp.haze; g.fillRect(0, 0, W, H);
-        g.globalCompositeOperation = 'lighter'; g.globalAlpha = (0.1 + 0.36 * ST.beauty) * (dark ? 0.85 : 0.6) * (1 - 0.5 * ST.golden);
+        // the grade works on the world only (never on the characters): raw footage is flat and hazy, described footage blooms,
+        // and golden hour washes the whole habitat in a low sun
+        const raw = (1 - ST.beauty) * (1 - ST.golden);
+        if (raw > 0.01) { g.globalAlpha = (dark ? 0.26 : 0.16) * raw; g.fillStyle = Pp.haze; g.fillRect(0, 0, W, H); }
+        g.globalCompositeOperation = dark ? 'lighter' : 'soft-light'; g.globalAlpha = (0.1 + 0.36 * ST.beauty) * (dark ? 0.85 : 0.8) * (1 - 0.5 * ST.golden);
         const ss = subjScreen(), wr = Math.max(W, H) * 0.9; g.drawImage(SPR.warm, W * 0.66 - wr, M.hz - 40 - wr, wr * 2, wr * 2);
-        if (ST.golden > 0.02) { g.globalAlpha = ST.golden * (dark ? 0.55 : 0.4); g.drawImage(SPR.amber, W * 0.78 - wr, -wr * 0.55, wr * 2, wr * 2); g.globalAlpha = ST.golden * 0.6; g.drawImage(SPR.gold, ss.x - M.sz * 1.5, ss.y - M.sz * 1.5, M.sz * 3, M.sz * 3); }
+        if (ST.golden > 0.02) {
+          const su = goldSun();
+          g.globalCompositeOperation = 'soft-light'; g.globalAlpha = ST.golden * (dark ? 0.75 : 0.9); g.drawImage(SPR.goldWash, 0, 0, W, H);
+          g.globalCompositeOperation = 'lighter'; g.globalAlpha = ST.golden * (dark ? 0.6 : 0.34); g.drawImage(SPR.amber, su.x - wr * 0.8, su.y - wr * 0.8, wr * 1.6, wr * 1.6);
+          g.globalAlpha = ST.golden * 0.6; g.drawImage(SPR.gold, ss.x - M.sz * 1.5, ss.y - M.sz * 1.5, M.sz * 3, M.sz * 3);
+        }
         g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
         g.drawImage(SPR.vig, -W * 0.1, -H * 0.08, W * 1.2, H * 1.16);
-        if (!red) { g.globalAlpha = 0.5; const ox = Math.floor(Math.random() * 256), oy = Math.floor(Math.random() * 256); for (let y = -oy; y < H; y += 256) for (let x = -ox; x < W; x += 256) g.drawImage(SPR.noise, x, y, 256, 256); g.globalAlpha = 1; }
+        // film grain: heavy on the raw footage, almost gone once the narration is kind (and cheaper then too)
+        const grain = red ? 0 : 0.16 + 0.34 * (1 - ST.beauty);
+        if (grain > 0.05) { g.globalAlpha = grain; const ox = Math.floor(Math.random() * 256), oy = Math.floor(Math.random() * 256); for (let y = -oy; y < H; y += 256) for (let x = -ox; x < W; x += 256) g.drawImage(SPR.noise, x, y, 256, 256); g.globalAlpha = 1; }
         // what lives in the shot, in front of the grade: drifting motes, the herd, our human, then the foliage by the lens
         P.draw(g);
         if (ST.herdOn) drawHerd(g, t);
@@ -826,7 +902,7 @@
         drawBoom(g, t);
         drawGlitch(g, t);
         drawViewfinder(g, t);
-        if (ST.letter > 0.001) { const lb = ST.letter * (M.phone ? 54 : 70); g.fillStyle = '#05070a'; g.fillRect(0, 0, W, lb); g.fillRect(0, H - lb, W, lb); }
+        if (ST.letter > 0.001) { const k = ST.letter; g.fillStyle = '#05070a'; g.fillRect(0, 0, W, M.barT * k); g.fillRect(0, H - M.barB * k, W, M.barB * k); g.fillStyle = 'rgba(255,214,140,0.22)'; g.fillRect(0, M.barT * k, W, 1); g.fillRect(0, H - M.barB * k - 1, W, 1); }
         if (ST.flash > 0.01 && !red) { g.globalAlpha = ST.flash * 0.6; g.fillStyle = '#fff8e8'; g.fillRect(0, 0, W, H); g.globalAlpha = 1; ST.flash = Math.max(0, ST.flash - dt * 2.5); }
       }
       function drawCritters(g, t, f, dt) {
@@ -861,7 +937,8 @@
         const r = sz / 2, edge = Math.min(s.x - r, M.w - r - s.x), alpha = clamp((edge + 24) / 28, 0, 1); SUBJ.alpha = alpha;
         if (alpha <= 0.01) return;
         const x = s.x - r, y = M.fy - sz - SUBJ.hop + SUBJ.bob;
-        g.globalAlpha = alpha * 0.32; g.fillStyle = '#000'; g.beginPath(); g.ellipse(s.x, M.fy + 2, r * 0.78 * (1 - SUBJ.hop / 40), r * 0.16, 0, 0, TAU); g.fill();
+        const gl = ST.golden; // at golden hour the shadow stretches long, away from the low sun
+        g.globalAlpha = alpha * (0.32 + 0.08 * gl); g.fillStyle = '#000'; g.beginPath(); g.ellipse(s.x - r * 0.6 * gl, M.fy + 2, r * (0.78 + 0.75 * gl) * (1 - SUBJ.hop / 40), r * 0.16, 0, 0, TAU); g.fill();
         if (f.ok) {
           const sh = clamp(SUBJ.sharp, 0, 1), b = blurOf(f);
           if (sh < 0.98 && b) { g.globalAlpha = alpha * (1 - sh); g.drawImage(b, x - 3, y - 3, sz + 6, sz + 6); }
@@ -872,7 +949,7 @@
       }
       function drawViewfinder(g, t) {
         const W = M.w, H = M.h, ph = ST.phase, live = ph === 'pan' || ph === 'track' || ph === 'golden' || ph === 'herd';
-        const top = (M.phone ? 112 : 108), bot = (ph === 'narrate' ? M.fy + 16 : H - M.csz - (M.phone ? 30 : 40)), inset = 12, L = 22;
+        const top = (M.phone ? 112 : 108), bot = (ph === 'narrate' ? M.fy + 16 : M.vfBot), inset = 12, L = 22;
         const pinch = CAM.drag ? Math.min(1, (now() - (ST.grabT || 0)) / 140) * 6 : 0;
         g.strokeStyle = CAM.drag ? 'rgba(255,226,160,0.95)' : 'rgba(255,255,255,0.78)'; g.lineWidth = CAM.drag ? 2.6 : 2;
         [[inset, top, 1, 1], [W - inset, top, -1, 1], [inset, bot, 1, -1], [W - inset, bot, -1, -1]].forEach(([x, y, sx, sy]) => { x += sx * pinch; y += sy * pinch; g.beginPath(); g.moveTo(x, y + sy * L); g.lineTo(x, y); g.lineTo(x + sx * L, y); g.stroke(); });
@@ -939,9 +1016,20 @@
           return card;
         });
         tray.replaceChildren(h('b', { text: take > 1 ? 'Take ' + take + ' · read what the camera saw' : 'The narrator’s script · pick a line' }), ...cards.map(c => c.el));
-        tray.hidden = false; layoutCards(); crewAside(true);
-        cards.forEach((c, i) => S.later(() => c.el.classList.remove('in0'), reduced() ? 0 : 60 + i * 90));
+        tray.hidden = false; layoutCards(); crewAside(true); fitTray();
+        cards.filter(c => !c.gone).forEach((c, i) => S.later(() => c.el.classList.remove('in0'), reduced() ? 0 : 60 + i * 90));
         ST.canPick = true;
+      }
+      /* a phone script never runs off the bottom: tighter cards, then no title, then the extra verdict steps out */
+      function fitTray() {
+        tray.classList.remove('tight', 'notitle');
+        if (!M.phone) return;
+        const over = () => M.below + tray.offsetHeight > M.h - 18;
+        if (!over()) return;
+        tray.classList.add('tight'); if (!over()) return;
+        tray.classList.add('notitle'); if (!over()) return;
+        const js = cards.filter(c => c.kind === 'judge' && !c.gone);
+        if (js.length > 1) { const c = js[js.length - 1]; c.gone = true; c.el.remove(); }
       }
       function closeScript() { cards.forEach(c => c.el.classList.add('out')); S.later(() => { tray.hidden = true; tray.replaceChildren(); crewAside(false); }, reduced() ? 40 : 320); }
       function pick(card) {
@@ -966,7 +1054,7 @@
         // once the human is in the frame zone, the hand shows "hold still" until the focus locks
         const t0 = now();
         while (!ST.locked && !S.destroyed) {
-          if (inZone() && !ST.holdShown && now() - t0 > 500) { ST.holdShown = true; K.guide({ id: 'hold', g: 'still', target: () => { const q = subjScreen(); return { x: q.x, y: M.fy - M.sz - 6 }; }, label: 'HOLD STEADY', place: 'above', delay: 300 }); if (ST.shot === 0) gSay(L(GL.steady), { mood: 'nerd', ms: 2600 }); }
+          if (inZone() && !ST.holdShown && now() - t0 > 500) { ST.holdShown = true; if (ST.phase !== 'track') K.guide({ id: 'hold', g: 'still', target: () => { const q = subjScreen(); return { x: q.x, y: M.fy - M.sz - 6 }; }, label: 'HOLD STEADY', place: 'above', delay: 300 }); else K.guide(null); if (ST.shot === 0) gSay(L(GL.steady), { mood: 'nerd', ms: 2600 }); }
           if (!inZone() && ST.holdShown) { ST.holdShown = false; guidePan(ST.phase === 'track' ? 'FOLLOW THE HUMAN' : 'PAN TO FRAME THE HUMAN', 'pan2'); }
           await K.wait(120);
         }
@@ -984,7 +1072,10 @@
       async function narrateStep(i, kind) {
         ST.phase = 'narrate'; ST.firstPick = true; SUBJ.path = null;
         let list = script(i, kind), take = 1;
-        if (i === 0) { gSay(L(GL.rule), { mood: 'nerd', ms: 3800 }); if (M.phone) await K.wait(reduced() ? 1400 : 2600); }
+        if (i === 0) { gSay(L(GL.rule), { mood: 'nerd', ms: 3800 }); await K.wait(reduced() ? 1400 : M.phone ? 2600 : 1800); }
+        // let the narrator finish the line it's on (briefly), then the script opens on a quiet frame
+        await until(() => !ST.speakTok, 3800);
+        hushNarrator();
         for (;;) {
           openScript(list, take);
           K.guide({ id: 'script' + i + take, g: 'choose', target: () => cards.filter(c => !c.gone).map(c => c.el), label: take > 1 ? 'TAKE 2: PICK AGAIN' : 'NARRATE WHAT IT SEES', place: 'above', delay: 900 });
@@ -1012,7 +1103,9 @@
           ST.glitchT = now(); sTapeStop(); AU.duck = 1; setMood('confused');
           if (!reduced()) glitch.react('shake');
           await K.wait(reduced() ? 200 : 450);
-          sClapper(); gSay(L(GL.cut), { mood: 'facepalm', ms: 3600 });
+          // a prediction the facts may well support gets an honest cut (and a plan later); mind-reading and "always" get named
+          const real = (card.p === 'verdict' || card.p === 'future') && (strong || care) && card.segs.some(s => s.user), pat = PATTERN[card.p] || PATTERN.verdict;
+          sClapper(); gSay(real ? L(GL.cutReal) : L(GL.cut, { pat: pat[0], what: pat[1] }), { mood: real ? 'think' : 'facepalm', ms: 3800 });
           await K.wait(reduced() ? 1600 : 2900);
           hideCaption(); setMood(i === 0 ? 'worried' : 'think');
           list = list.filter(x => x !== cardSrc(card, list));
@@ -1040,24 +1133,27 @@
         await until(() => ST.herdN >= target || (now() - ST.herdStart > 9000 && ST.herdN >= 4));
         K.guide(null);
         dropSay(DR.herdWow, 'wow', 2800); setMood('surprised');
-        epS.textContent = ST.herdN + ' sighted · worldwide'; epB.textContent = 'Billions';
         ST.phase = 'herdTalk'; CAM.fling = 0;
-        // swing to where the herd is thickest, and let every member in the valley show itself
-        let bestX = CAM.x, bestN = -1; for (let x = 0; x <= M.ww - M.w; x += M.w * 0.1) { const n = HERDS.filter(m => m.x > x + 20 && m.x < x + M.w - 20).length; if (n > bestN) { bestN = n; bestX = x; } }
-        glideCam(bestX, reduced() ? 300 : 900);
-        HERDS.forEach((m, i) => { if (!m.seen) { m.seen = true; m.popT = now() + 300 + i * 40; } });
-        await K.wait(reduced() ? 600 : 1200);
+        // swing back to our human, and the rest of the valley rises around it in a wave: it was never a rare sighting
+        glideCam(SUBJ.x - M.w / 2, reduced() ? 300 : 1000);
+        let wave = 0;
+        HERDS.forEach(m => { if (!m.seen) { m.seen = true; m.popT = now() + 380 + Math.abs(m.x - SUBJ.x) * 0.9; wave++; } });
+        if (A.ctx && wave) { const t0 = A.now() + 0.38, pen = ['D5', 'F#5', 'A5', 'B5', 'D6', 'E6', 'F#6', 'A6']; for (let i = 0; i < Math.min(12, wave); i++) A.pluck(A.note(pen[i % pen.length]), { when: t0 + i * 0.09, vol: 0.07, damp: 0.996, verb: 0.35 }); }
+        ST.herdN += wave;
+        epS.textContent = 'Herd count'; epB.textContent = ST.herdN + ' here · countless more';
+        await K.wait(reduced() ? 600 : 1300);
+        ST.keep = true;
         const said = narrate([{ t: L(HERD) }], { label: 'Narrator' });
         ST.beautyT = Math.min(1, ST.beautyT + 0.2); sHarp(true);
+        await K.wait(900); setMood('happy');
         const r = await said; hideCaption(r.tok);
-        gSay(L(GL.herdFact), { mood: 'nerd', ms: 3000 }); setMood('happy');
+        gSay(L(GL.herdFact), { mood: 'nerd', ms: 3000 });
         await K.wait(reduced() ? 900 : 2200);
         epS.textContent = 'Planet You · Ep ' + episode; epB.textContent = hab.name; epB.parentNode.classList.remove('gold');
-        // the human has wandered off towards the light; the camera swings back to find it at the edge of frame
-        SUBJ.path = null; SUBJ.x = M.spots[2]; ST.glide = null;
-        glideCam(M.spots[2] - (M.w - M.sz / 2 - 18), reduced() ? 300 : 1100);
-        await K.wait(reduced() ? 350 : 1150);
-        ST.keep = true;
+        // the human wanders off towards the light, and the camera has to find it again for the last shot
+        const far = M.spots.reduce((a, s) => (Math.abs(s - SUBJ.x) > Math.abs(a - SUBJ.x) ? s : a), M.spots[2]), dist = Math.abs(far - SUBJ.x);
+        SUBJ.path = { from: SUBJ.x, to: far, t0: now() + 150, ms: reduced() ? 600 : Math.max(1100, dist / (M.w * 0.32) * 1000), hops: Math.max(3, Math.round(dist / 30)) };
+        await until(() => !SUBJ.path, 6000);
       }
       function finaleFx(dt) { // the habitat's own celebration, drawn behind the human
         const W = M.w, r = Math.random(), k = hab.finale;
@@ -1068,26 +1164,34 @@
       }
       async function finaleStep() {
         ST.phase = 'finale'; K.guide(null); hideTag(); hideCaption();
-        sClapper(); gSay(L(GL.wrap), { mood: 'celebrate', ms: 4200 }); drop.base('love');
+        sClapper(); gSay(L(GL.wrap), { mood: 'celebrate', ms: 3400 }); drop.base('love');
         setMood('love'); ST.goldenT = 1; ST.beautyT = 1; ST.fx = true;
+        // the letterbox closes in; the camera operator steps up out of the bottom bar to watch the end
         const tw = { t0: now() }; const lb = () => { const k = clamp((now() - tw.t0) / 900, 0, 1); ST.letter = ease.inOutCubic(k); if (k < 1 && !S.destroyed) S.later(lb, 30); }; lb();
+        glitch.place(M.phone ? 10 : 24, M.h - M.barB - M.csz - 12, 700);
         sTimpani();
         await K.wait(reduced() ? 300 : 900);
         titleEl.replaceChildren(h('small', { text: 'Planet You · Episode ' + episode }), h('b', { text: 'The ' + hab.name }), h('span', { text: 'Narrated by Basil Fennimore, a very calm tortoise' }));
         titleEl.classList.add('on'); ST.flash = 0.4;
         if (A.ctx) A.pad(['D3', 'A3', 'D4', 'F#4', 'A4'].map(n => A.note(n)), { dur: 7, vol: 0.16, attack: 0.8 });
         const s0 = subjScreen(); P.emit('star', s0.x, s0.y + M.sz * 0.3, 22, { colors: ['#fff6cf', '#ffd27a', '#ffffff'], speed: [80, 220] });
-        await K.wait(reduced() ? 400 : 1100);
+        await K.wait(reduced() ? 400 : 1000);
         const r = await narrate([{ t: L(CLOSE) }], { label: 'Narrator' });
-        await K.wait(reduced() ? 200 : 500);
+        await K.wait(reduced() ? 200 : 400);
         hideCaption(r.tok);
+        // the credits roll through the bottom bar and come to rest on the end card
         const steady = Math.round((ST.scores.length ? ST.scores.reduce((a, b) => a + b, 0) / ST.scores.length : 0.8) * 100);
         const credits = [['Starring', 'The Human (you)'], ['Played by', 'Loopie, a very good sport'], ['Narration', 'Basil Fennimore, a very calm tortoise'], ['Camera', 'Glitch · steady hands ' + steady + '%'], ['Sound', 'Drop'],
-          ['Extras', 'The herd · ' + Math.max(ST.herdN, 1) + ' sighted, billions more'], ['Habitat', hab.name], ['Filmed on location in', 'your ' + weekday], [null, 'No humans were judged in the making of this film.']];
-        credIn.replaceChildren(...credits.map(c => h('p', { class: c[0] ? null : 'big' }, c[0] ? h('small', { text: c[0] }) : null, document.createTextNode(c[1]))));
-        ST.credY = reduced() ? 0 : (parseFloat(credEl.style.height) || 300) * 0.85; credIn.style.transform = 'translateY(' + ST.credY + 'px)';
-        credEl.classList.add('on'); ST.credOn = !reduced();
-        await K.wait(reduced() ? 3200 : 6600);
+          ['Extras', 'The herd · ' + Math.max(ST.herdN, 1) + ' here, countless more'], ['Next time on Planet You', 'The ' + nextHab.name]];
+        const end = h('p', { class: 'end' }, h('small', { text: 'Filmed on location in' }), h('b', { text: 'your ' + weekday }), h('span', { text: 'No humans were judged in the making of this film.' }));
+        credIn.replaceChildren(...credits.map(c => h('p', null, h('small', { text: c[0] }), document.createTextNode(c[1]))), end);
+        const boxH = M.barB, y1 = Math.round(boxH / 2 - (end.offsetTop + end.offsetHeight / 2));
+        Object.assign(ST, { credY0: reduced() ? y1 : boxH, credY1: y1, credT0: now(), credMs: reduced() ? 1 : 6800, credOn: true, credDone: false });
+        credIn.style.transform = 'translateY(' + ST.credY0 + 'px)';
+        credEl.classList.add('on');
+        await until(() => ST.credDone, 9000);
+        if (A.ctx) ['A5', 'D6', 'F#6'].forEach((n, i) => A.chime(A.note(n), { when: A.now() + i * 0.12, vol: 0.06, dur: 2.2 }));
+        await K.wait(reduced() ? 2200 : 2600);
         finishGame(steady);
       }
       function finishGame(steady) {
@@ -1100,14 +1204,17 @@
         if (tier) badges.push(tier + ' cinematographer');
         badges.push((col.isNew ? 'New episode: ' : 'Episode: ') + hab.name + ' (' + Math.min(have, HABITATS.length) + '/' + HABITATS.length + ')');
         if (CAMEO && HERDS.some(m => m.cameo && m.seen)) { const c2 = K.collect('cameo:' + CAMEO[0]); badges.push((c2.isNew ? 'Rare sighting: ' : 'Spotted again: ') + CAMEO[1]); }
-        const lines = [ST.finalText ? 'Closing narration: ' + clip(ST.finalText.replace(/^A fair summary, for now: /, ''), 96) : 'Narrated what the camera could see', 'Footage, not verdicts: ' + ST.takes + '/' + ST.choices + ' first takes', care ? 'Next step: proper advice from someone qualified.' : 'Herd sighted: ' + Math.max(ST.herdN, 1) + ' in the ' + hab.name + ' (not a rare behaviour)'];
+        const closing = ST.finalText ? ST.finalText.replace(/^(A fair summary, for now: |The human’s own fair summary, for now: )/, '') : '';
+        const lines = [closing ? 'Closing narration: ' + clip(closing.charAt(0).toUpperCase() + closing.slice(1), 110) : 'Narrated what the camera could see',
+          'Footage, not verdicts: ' + ST.choices + ' shots narrated, ' + (ST.takes === ST.choices ? 'all' : ST.takes) + ' on the first take',
+          care ? 'Next step: proper advice from someone qualified.' : strong ? 'Not alone: many humans have faced this, one step at a time' : 'Not a rare species: ' + Math.max(ST.herdN, 1) + ' humans in the herd doing the same'];
         ctx.track('finish', { steady, takes: ST.takes, choices: ST.choices, herd: ST.herdN });
         ctx.finish({ title: 'Filmed on location in your ' + weekday, mood: 'celebrate', lines, share: 'My ' + weekday + ', narrated as a nature documentary. Fascinating species.', badges: badges.slice(0, 4) });
       }
 
       cv.onResize(layout);
       S.on('theme', () => { LAY.key = ''; SPR.key = ''; });
-      pipsEl.replaceChildren(...Array.from({ length: [2, 3, 4][inten] }, () => h('u')));
+      pipsEl.replaceChildren(...Array.from({ length: [2, 3, 3][inten] }, () => h('u')));
       const SHOTS = [['pan', 'first'], ['track', 'mid']].slice(0, inten === 0 ? 1 : 2);
       (async () => {
         await K.intro({ title: 'Nature Doc', sub: 'Today’s episode: your day, filmed like a calm wildlife documentary.', how: 'Drag to pan the camera and frame the human. Then pick the line the camera can actually film.', char: 'glitch', mood: 'nerd' });
@@ -1121,8 +1228,7 @@
           if (i === 0 && SHOTS.length > 1) S.later(() => { if (ST.phase === 'track' && !ST.locked) narrate([{ t: L(NAR.aside) }], { label: 'Narrator' }).then(r => hideCaption(r.tok)); }, reduced() ? 600 : 1800);
         }
         await herdStep();
-        if (inten === 2) { await shotStep(2, 'track'); await narrateStep(2, 'extra'); }
-        await shotStep(SHOTS.length + (inten === 2 ? 1 : 0), 'golden');
+        await shotStep(SHOTS.length, 'golden');
         await narrateStep(9, 'final');
         await finaleStep();
       })();
