@@ -1235,7 +1235,8 @@
           await until(() => st.phase === 'date' && !dates.classList.contains('off'), 40000); await K.wait(900);
           const db = dates.querySelectorAll('.tl-date')[1]; if (db) await K.sim.tap(db);
           await until(() => st.phase === 'seal' && !capHit.hidden, 15000); await K.wait(700);
-          await K.sim.hold(capHit, 1500);
+          // the hold counts real time but clamps each frame to 250 ms, so under a stalling machine one hold can fall short: hold longer, and retry
+          for (let i = 0; i < 5 && !st.sealed; i++) { await K.sim.hold(capHit, 1900 + i * 500); await K.wait(400); }
           await until(() => st.finished, 30000);
         }
       };

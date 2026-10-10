@@ -420,6 +420,7 @@
 .g-behind-the-post .bp-card.bp-shown .bp-note { animation: behind-the-post-slap .38s cubic-bezier(.2, 1.5, .4, 1) both; }
 .g-behind-the-post .bp-card.bp-shown .bp-note:nth-child(2) { animation-delay: .22s; } .g-behind-the-post .bp-card.bp-shown .bp-note:nth-child(3) { animation-delay: .44s; } .g-behind-the-post .bp-card.bp-shown .bp-note:nth-child(4) { animation-delay: .66s; }
 .g-behind-the-post .bp-card.bp-shown .bp-out.bp-wide > svg { animation: behind-the-post-wide .7s cubic-bezier(.2, .9, .3, 1) both; transform-origin: 50% 40%; }
+.g-behind-the-post .bp-ybody { position: relative; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 12px; overflow: hidden; }
 .g-behind-the-post .bp-sec { position: relative; display: flex; flex-direction: column; gap: 3px; }
 .g-behind-the-post .bp-sec small { font: 800 12px/1 var(--font-ui); letter-spacing: .12em; text-transform: uppercase; color: #7a5534; }
 .g-behind-the-post .bp-sec .gk-user, .g-behind-the-post .bp-sec p { margin: 0; font: 500 16px/1.3 var(--font-ui); color: #3b2414; }
@@ -479,9 +480,8 @@
 .g-behind-the-post .bp-com p { margin: 0; font: 500 15px/1.3 var(--font-ui); }
 .g-behind-the-post .bp-com p b { font-weight: 800; margin-right: 4px; }
 .g-behind-the-post .bp-com svg { width: 16px; height: 16px; color: #ffb703; flex: none; margin-left: auto; }
-.g-behind-the-post .bp-marquee { width: 100%; overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); }
-.g-behind-the-post .bp-track { display: flex; gap: 10px; width: max-content; animation: behind-the-post-scroll var(--mq, 26s) linear infinite; }
-.g-behind-the-post .bp-track .bp-mini { position: relative; inset: auto; width: 190px; height: 74px; flex: none; animation: none; }
+.g-behind-the-post .bp-album { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.g-behind-the-post .bp-album .bp-mini { position: relative; inset: auto; height: 68px; }
 .g-behind-the-post .gk-bubble { max-width: min(270px, calc(100cqw - var(--sz, 96px) - 44px)); }
 @keyframes behind-the-post-glint { 0%, 62% { transform: translateX(-60%); } 80%, 100% { transform: translateX(60%); } }
 @keyframes behind-the-post-twinkle { 0%, 70%, 100% { opacity: 0; transform: scale(.4); } 82% { opacity: 1; transform: scale(1.6); } }
@@ -496,7 +496,6 @@
 @keyframes behind-the-post-bump { 0% { transform: scale(1); } 40% { transform: scale(1.25); } 100% { transform: scale(1); } }
 @keyframes behind-the-post-wave { 0% { transform: perspective(600px) rotateY(0); } 50% { transform: perspective(600px) rotateY(180deg) scale(1.04); } 100% { transform: perspective(600px) rotateY(360deg); } }
 @keyframes behind-the-post-open { from { opacity: 0; transform: scaleX(.5); } to { opacity: 1; transform: none; } }
-@keyframes behind-the-post-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @container (min-width: 700px) {
   .g-behind-the-post .bp-cap { font-size: 21px; }
   .g-behind-the-post .bp-otitle { font-size: 31px; }
@@ -557,7 +556,8 @@
       function say(who, line, mood, ms) {
         if (!line) return;
         const c = CAST[who] || patch;
-        if (speaker !== who) { Object.keys(CAST).forEach(k => { if (k !== who) { CAST[k].hush(); CAST[k].show(false); } }); c.show(true); c.react('bounce'); speaker = who; }
+        if (speaker !== who) { Object.keys(CAST).forEach(k => { if (k !== who) { CAST[k].hush(); CAST[k].show(false); } }); c.react('bounce'); speaker = who; }
+        c.show(true);
         S.cancel(sayT);
         c.say(line, { mood: mood || undefined, ms: ms == null ? Math.max(2800, line.length * 62) : ms });
       }
@@ -903,14 +903,17 @@
       }
       function yoursBackHTML(w) {
         const sec = (lab, txt, user, cls) => '<div class="bp-sec' + (cls ? ' ' + cls : '') + '"><small>' + lab + '</small>' + (user ? '<span class="gk-user">' + esc(txt) + '</span>' : '<p' + (user === false ? ' class="bp-eg"' : '') + '>' + esc(txt) + '</p>') + '</div>';
-        let s = '<div class="bp-tape">Behind the scenes</div><div class="bp-otitle">' + (noWords ? 'A day like this' : 'You, today') + '</div>';
+        let s = '<div class="bp-tape">Behind the scenes</div><div class="bp-otitle">' + (noWords ? 'A day like this' : 'You, today') + '</div><div class="bp-ybody">';
         if (noWords) s += sec('What happened', 'Things didn’t go to plan.', false) + sec('In your head', 'A thought like “everyone else has it together.”', false, 'bp-head2');
         else {
           s += w.cam ? sec('What happened', w.cam, true) : w.camAlt ? sec('What happened', w.camAlt, null) : '';
           s += w.hot ? sec('In your head', w.hot, true, 'bp-head2') : w.hotAlt ? sec('In your head', w.hotAlt, null, 'bp-head2') : '';
           if (!w.cam && !w.camAlt && !w.hot && !w.hotAlt) s += sec('In your head', 'A thought like “everyone else has it together.”', false, 'bp-head2');
         }
-        return s + '<svg viewBox="0 0 300 60" aria-hidden="true" style="margin-top:auto;opacity:.5;width:100%;height:46px"><circle cx="40" cy="30" r="20" fill="none" stroke="#8a5a2b" stroke-width="3"/><path d="M90 30 q20 -24 40 0 t40 0 t40 0 t40 0" stroke="#5a3a2a" stroke-width="2.4" fill="none"/></svg>';
+        // the caption a kind friend would write under it (their own friend line when the AI read their words; never a joke in care mode)
+        const friend = care() ? 'A hard day, and a real one. Worth proper help with the hard bit.' : strong() ? 'A real worry, and still not the whole day.' : an.source === 'ai' && an.friend ? clip(an.friend, 110) : 'One hard moment. Not the whole day, and not the whole you.';
+        s += sec('What a friend would caption it', friend, null) + '</div>';
+        return s + '<svg viewBox="0 0 300 60" aria-hidden="true" style="flex:none;opacity:.5;width:100%;height:40px"><circle cx="40" cy="30" r="20" fill="none" stroke="#8a5a2b" stroke-width="3"/><path d="M90 30 q20 -24 40 0 t40 0 t40 0 t40 0" stroke="#5a3a2a" stroke-width="2.4" fill="none"/></svg>';
       }
       function yoursFrontHTML() {
         const cap = care() ? 'Next: ask someone qualified about the hard bit.' : strong() && G.plan ? 'Next step: ' + G.plan : an.source === 'ai' && an.balanced ? clip(an.balanced, 110) : 'Both sides of a real day.';
@@ -1027,12 +1030,11 @@
           h('div', { class: 'bp-yb' }, h('small', { text: 'Behind the scenes' }), h('b', { text: noWords ? 'A day like this' : 'The messy bit' }), h('span', { text: noWords ? 'Things didn’t go to plan.' : 'The part nobody posts. You did.' })));
         const comments = h('div', { class: 'bp-comments' });
         fin.append(banner, yours, comments);
-        let marquee = null;
-        if (M.phone) {
-          marquee = h('div', { class: 'bp-marquee', 'aria-hidden': 'true' });
-          const track = h('div', { class: 'bp-track', style: { '--mq': (FEED.length * 4.5) + 's' } });
-          FEED.concat(FEED).forEach(p => track.append(miniCard(p, false)));
-          marquee.append(track); fin.append(marquee);
+        if (M.phone) { // the feed, both sides, turning over in a wave under your post
+          const album = h('div', { class: 'bp-album', 'aria-hidden': 'true' });
+          FEED.slice(0, 4).forEach((p, k) => { const m = miniCard(p, !reduced()); m.style.setProperty('--wd', (0.6 + k * 0.14) + 's'); album.append(m); });
+          fin.append(album);
+          if (!reduced()) FEED.slice(0, 4).forEach((p, k) => S.later(() => { if (A.ctx) A.pluck(A.note(PENTA[k % PENTA.length]), { vol: 0.1, damp: 0.995, verb: 0.3 }); }, 600 + k * 140));
         }
         el.append(fin);
         placeFinal();
@@ -1070,6 +1072,7 @@
         const add = (node, c) => { if (!node || !node.isConnected) return; const r = K.rectIn(node); if (r.w > 4) list.push({ x: r.x, y: r.y, w: r.w, h: r.h, c }); };
         if (G.final) add(G.final.querySelector('.bp-yours'), '#ffd166');
         slots.forEach((s, k) => add(s.querySelector('.bp-mini'), THEME.glow[k % 3]));
+        if (G.final) Array.from(G.final.querySelectorAll('.bp-album .bp-mini')).forEach((m, k) => add(m, THEME.glow[k % 3]));
         G.glows = list;
       }
       function finish() {

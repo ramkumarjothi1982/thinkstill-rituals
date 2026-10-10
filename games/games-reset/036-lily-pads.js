@@ -46,6 +46,11 @@
     why: 'For when you can’t see the whole path: you only ever need the next step.',
     css: `
 .g-lily-pads { --lp-disp: "Lilita One", "Chalkboard SE", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif; --lp-hand: "Grandstander", "Chalkboard SE", "Comic Sans MS", "Trebuchet MS", system-ui, sans-serif; }
+.g-lily-pads .gk-intro { background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(70, 56, 120, 0.82), rgba(28, 26, 64, 0.92) 70%, rgba(14, 12, 40, 0.96)); color: #fff6ea; }
+.g-lily-pads .gk-intro-title { font-family: var(--lp-disp); font-weight: 400; font-size: clamp(50px, 14cqw, 88px); letter-spacing: 0.03em; color: #b9f08a; text-shadow: 0 3px 0 #2d6a3a, 0 10px 30px rgba(0, 0, 0, 0.5); }
+.g-lily-pads .gk-intro-sub { font-family: var(--lp-hand); font-weight: 600; color: #f6ecff; }
+.g-lily-pads .gk-intro-how { font-family: var(--lp-hand); font-weight: 800; color: #ffd36b; }
+.g-lily-pads .gk-intro-tap { color: #d9d2f2; }
 .g-lily-pads .lp-zone { position: absolute; inset: 0; z-index: 10; touch-action: none; cursor: pointer; outline: none; -webkit-tap-highlight-color: transparent; }
 .g-lily-pads .lp-zone:focus-visible { box-shadow: inset 0 0 0 3px rgba(255, 214, 120, 0.85); }
 .g-lily-pads.lp-duo .gk-char .gk-bubble { max-width: min(270px, calc(100cqw - var(--sz) * 2 - 58px)); }
@@ -469,11 +474,18 @@
       function frogScreen() { proj(FR.x, FR.y + 0.2, FR.z); return { x: PO.x, y: PO.y }; }
       function showTag(p) {
         tag.lastChild.textContent = p.step;
-        proj(p.x, 0.5, p.z); tag.style.left = clamp(PO.x, 90, W - 90).toFixed(0) + 'px'; tag.style.top = clamp(PO.y - 70, topSafe() + 60, H - 140).toFixed(0) + 'px';
+        TAGP.p = p; placeTag();
         tag.classList.add('on'); p.bloomT = now();
         if (A.ctx) { A.chime(A.note('C6'), { vol: 0.05, dur: 1.2 }); A.paper({ vol: 0.06 }); }
-        S.later(() => tag.classList.remove('on'), 2300);
+        S.later(() => { tag.classList.remove('on'); TAGP.p = null; }, 2300);
         ctx.track('step', {});
+      }
+      const TAGP = { p: null };
+      function placeTag() { // the tiny-step tag floats just above its pad and follows the camera
+        const p = TAGP.p; if (!p) return;
+        proj(p.x, 0.55, p.z); if (!PO.ok) return;
+        const x = clamp(PO.x, 92, W - 92), y = clamp(PO.y - 36, topSafe() + 118, H - 150);
+        tag.style.left = x.toFixed(0) + 'px'; tag.style.top = y.toFixed(0) + 'px';
       }
 
       /* ---------------- the finale: the far bank, the mist lifts, the path lights up behind you ---------------- */
@@ -1017,6 +1029,7 @@
         g.drawImage(SPR.vig, 0, 0, W, H);
         // DOM that follows the world
         const dim = G.phase === 'charge' || G.phase === 'air'; if (dim !== G.gdim) { G.gdim = dim; goal.classList.toggle('dim', dim); }
+        if (TAGP.p) placeTag();
         if (SIGN.ok && G.phase !== 'finale' && G.phase !== 'done') { goal.style.left = clamp(SIGN.x, 120, W - 120).toFixed(1) + 'px'; goal.style.top = clamp(SIGN.y, topSafe() + 54, H - 200).toFixed(1) + 'px'; }
         if (WISP && (G.phase === 'gapready' || G.phase === 'charge' || G.phase === 'air') && PADS[G.at + 1] && PADS[G.at + 1].kind === 'log') { proj(PADS[G.at + 1].x * 0.5, 0.75, PADS[G.at].z + 3.2); if (PO.ok) wisp.style.top = clamp(PO.y, topSafe() + 40, H - 280).toFixed(1) + 'px'; }
       });

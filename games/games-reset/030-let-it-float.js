@@ -1307,17 +1307,17 @@
         cap.children[0].textContent = 'Let it float.';
         cap.children[1].textContent = W.launched + ' paper boats · ' + SEA.name;
         cap.children[2].textContent = TOMORROW.id === SEA.id ? 'The stream will be here tomorrow.' : 'Tomorrow, the ' + TOMORROW.name + '.';
-        S.later(() => { cap.classList.add('lf-on'); }, 3600);
-        S.later(finish, 9200);
+        S.later(() => { cap.classList.add('lf-on'); }, 3000);
+        S.later(finish, 9600);
       }
       function stepLake(dt) {
         const L0 = W.lake; if (!L0) return;
         const hy = lakeY0(), away = W.lakeStep === 'away' ? W.t - W.awayT : 0;
-        W.sunK = clamp(away / 7, 0, 1); W.duskK = clamp((away - 1.5) / 6, 0, 1);
+        W.sunK = clamp(away / 8, 0, 1); W.duskK = clamp((away - 1.5) / 7, 0, 1);
         L0.boats.forEach((b, i) => {
           const lt = W.t - L0.t0 - b.delay; if (lt < 0) return;
           if (W.lakeStep !== 'away') { const e = 1 - Math.exp(-dt * 0.9); b.x += (b.tx - b.x) * e; b.y += (b.ty - b.y) * e; }
-          else { const tx = G.w * 0.5 + (b.tx - G.w * 0.5) * 0.25, ty = hy + 3 * G.U; b.x += (tx - b.x) * dt * 0.28; b.y += (ty - b.y) * dt * (0.22 + i * 0.015); }
+          else { const tx = G.w * 0.5 + (b.tx - G.w * 0.5) * 0.25, ty = hy + 3 * G.U; b.x += (tx - b.x) * dt * 0.19; b.y += (ty - b.y) * dt * (0.15 + i * 0.012); }
           b.k = clamp((b.y - hy) / (G.h - hy), 0.02, 1.2) * 1.05;
           if (b.lit) b.light = Math.min(1, b.light + dt * 2.2);
         });
@@ -1347,7 +1347,12 @@
           const mx = G.phone ? w * 0.14 : w * 0.2, my = G.phone ? H * 0.36 : H * 0.17, mr = 9 * U;
           g.globalAlpha = W.duskK; g.globalCompositeOperation = 'lighter'; g.drawImage(K.glowSprite('rgba(255,244,220,0.5)'), mx - mr * 5, my - mr * 5, mr * 10, mr * 10); g.globalCompositeOperation = 'source-over';
           g.fillStyle = '#fff6e0'; g.beginPath(); g.arc(mx, my, mr, -Math.PI * 0.62, Math.PI * 0.62, true); g.arc(mx + mr * 0.42, my, mr * 0.86, Math.PI * 0.68, -Math.PI * 0.68, false); g.closePath(); g.fill();
-          g.globalAlpha = 1;
+          // the sky's first stars and the moon, mirrored in the still water
+          g.globalCompositeOperation = 'lighter';
+          g.globalAlpha = W.duskK * 0.5; g.drawImage(K.glowSprite('rgba(255,236,200,0.6)'), mx - 40 * U, hy - 4 * U, 80 * U, (H - hy) * 0.9);
+          g.fillStyle = '#fff2d8';
+          for (let i = 0; i < 48; i++) { const x = rr() * w, y = hy + 6 * U + Math.pow(rr(), 1.4) * (H - hy) * 0.8, tw = 0.5 + 0.5 * Math.sin(W.t * (1.2 + (i % 5) * 0.4) + i * 2.1), ln = (6 + rr() * 16) * U * (0.3 + (y - hy) / (H - hy)); g.globalAlpha = W.duskK * tw * 0.35; g.fillRect(x - ln / 2 + Math.sin(W.t * 0.7 + i) * 3 * U, y, ln, Math.max(1, 1.2 * U)); }
+          g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
         }
         // touches (and the send-off) leave rings that spread across the lake
         W.lakeRipples = W.lakeRipples.filter(r => W.t - r.t < (r.big ? 3.4 : 2.2));
@@ -1434,7 +1439,7 @@
         badges.push('Paper box: ' + box + ' of ' + PAPER_COUNT + (newPaper ? ' (' + newPaper + ' new)' : ''));
         if (handsOff && !SC.stuckSelf) badges.push('Hands off: freed by ripples alone');
         ctx.track('done', { n, gentle: best, tier: tierIdx, touched: W.touchedStuck, self: SC.stuckSelf ? 1 : 0, splashy: SC.splashy });
-        const lines = [n + ' thoughts folded and set afloat', 'Gentlest set-down: ' + best + '%', SC.stuckSelf ? 'The sticky one floated on in its own time' : 'The sticky one floated on with a few ripples'];
+        const lines = [n + ' thoughts folded and set afloat', 'Set down gently: ' + Math.round(avg * 100) + '% on average', SC.stuckSelf ? 'The sticky one floated on in its own time' : 'The sticky one floated on with a few ripples'];
         if (care()) lines[2] = 'For the heavy stuff, talking to someone can help too';
         ctx.finish({ title: 'Every boat afloat', mood: 'calm', lines, share: 'Folded ' + n + ' paper boats and let them float.', badges });
       }

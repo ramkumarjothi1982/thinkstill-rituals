@@ -109,8 +109,8 @@
 .g-what-i-knew-then .wk-hold circle { fill: none; stroke-width: 6; stroke-linecap: round; }
 .g-what-i-knew-then .wk-hold .trk { stroke: rgba(255,240,210,.22); }
 .g-what-i-knew-then .wk-hold .bar { stroke: #fff4d6; }
-.g-what-i-knew-then .wk-chips { position: absolute; z-index: 26; display: flex; flex-direction: column; gap: 8px; }
-.g-what-i-knew-then .wk-chip { appearance: none; text-align: left; cursor: pointer; min-height: 48px; padding: 10px 14px 11px; border-radius: 12px; border: 1px solid rgba(255,235,200,.28); color: #fbefd9;
+.g-what-i-knew-then .wk-chips { position: absolute; z-index: 26; display: flex; flex-direction: column; gap: 7px; }
+.g-what-i-knew-then .wk-chip { appearance: none; text-align: left; cursor: pointer; min-height: 46px; padding: 9px 14px 10px; border-radius: 12px; border: 1px solid rgba(255,235,200,.28); color: #fbefd9;
   background: linear-gradient(180deg, rgba(64,42,26,.95), rgba(40,26,16,.96)); box-shadow: 0 8px 18px rgba(0,0,0,.3); font: 600 15px/1.3 var(--font-ui); animation: what-i-knew-then-in .45s cubic-bezier(.2,1.3,.4,1) both; }
 .g-what-i-knew-then .wk-chip b { color: #ffd77a; font-weight: 800; }
 .g-what-i-knew-then .wk-chip:nth-child(2) { animation-delay: .08s; } .g-what-i-knew-then .wk-chip:nth-child(3) { animation-delay: .16s; }
@@ -269,10 +269,13 @@
         const frac = M.Lw > 1 ? G.sx / M.Lw : null, fracP = M.Lw > 1 ? G.xP / M.Lw : null;
         M.W = W; M.H = H; M.phone = W < 760;
         if (M.phone) {
-          const wh = Math.round(clamp(H * 0.5, 320, 470));
+          // the reel takes the top half; the controls sit in a band under the ruler; Still keeps the bottom-left corner
+          const stillTop = H - 16 - 66, wh = Math.round(clamp(H * 0.52, 320, 460));
           M.win = { x: 18, y: 76, w: W - 36, h: wh };
           M.ruler = { x: 36, y: 76 + wh + 50, w: W - 72 };
-          M.panel = { x: 12, y: M.ruler.y + 30, w: W - 24, h: H - 14 - (M.ruler.y + 30) };
+          const py = M.ruler.y + 30;
+          M.panel = { x: 12, y: py, w: W - 24, h: Math.max(120, stillTop - 14 - py) };
+          M.stillTop = stillTop;
         } else {
           const pw = 360, gap = 34, ww = Math.round(Math.min(860, W - pw - gap - 80)), x0 = Math.round((W - (ww + gap + pw)) / 2);
           const wh = Math.round(Math.min(H - 84 - 140, ww * 0.64));
@@ -290,7 +293,7 @@
         markThen.style.left = rulerX(M.xF) + 'px'; markThen.style.top = (M.ruler.y + 12) + 'px';
         markNow.style.left = rulerX(M.xN) + 'px'; markNow.style.top = (M.ruler.y + 12) + 'px';
         const ss = M.phone ? 66 : 92; still.el.style.setProperty('--sz', ss + 'px');
-        still.place(M.panel.x + (M.phone ? 2 : 0), M.panel.y + (M.phone ? 4 : 0));
+        if (M.phone) still.place(12, M.stillTop); else still.place(M.panel.x, M.panel.y);
         const ds = Math.round((M.phone ? 66 : 86) * clamp(M.s, 0.85, 1.15)); drop.el.style.setProperty('--sz', ds + 'px'); M.ds = ds;
         placeCap(); relayoutTags(); placeControls();
         artKey = '';
@@ -868,7 +871,7 @@
         letterEl.remove(); letterEl = null;
         if (M.phone) { drop.el.style.opacity = '1'; TAGS.forEach(x => { if (x.el.isConnected) x.el.style.visibility = ''; }); }
         birdEl = h('div', { class: 'wk-bird', role: 'button', tabindex: '0', 'aria-label': 'Your letter, folded into a paper bird. Drag it to past-you.' }, h('i', { html: BIRD }));
-        const bx = M.phone ? M.W / 2 : r.cx, by = M.phone ? M.panel.y + Math.min(M.panel.h * 0.62, M.panel.h - 50) : clamp(r.cy, M.panel.y + 200, M.H - 80);
+        const bx = M.phone ? M.W / 2 : r.cx, by = M.phone ? M.panel.y + M.panel.h / 2 : clamp(r.cy, M.panel.y + 200, M.H - 80);
         Object.assign(birdEl.style, { left: bx + 'px', top: by + 'px' });
         el.append(birdEl); G.birdHome = { x: bx, y: by };
         G.phase = 'send';
@@ -997,13 +1000,12 @@
         if (envEl) { envEl.style.left = (xs + ds / 2 + 4) + 'px'; envEl.style.top = (feet - ds * 0.62) + 'px'; }
       }
       function placeControls() {
-        const P0 = M.panel, ph = M.phone;
-        const actY = ph ? P0.y + P0.h - 4 : P0.y + 230;
-        if (keepBtn) { keepBtn.style.left = (P0.x + P0.w / 2) + 'px'; keepBtn.style.top = (ph ? P0.y + P0.h - 66 : P0.y + 260) + 'px'; }
-        if (holdBtn) { holdBtn.style.left = (P0.x + P0.w / 2 + (ph ? 60 : 0)) + 'px'; holdBtn.style.top = (ph ? P0.y + P0.h - 70 : P0.y + 300) + 'px'; }
-        if (G.chipBox) { Object.assign(G.chipBox.style, { left: (P0.x + (ph ? 4 : 0)) + 'px', width: (P0.w - (ph ? 8 : 0)) + 'px', top: 'auto', bottom: (ph ? M.H - actY : M.H - (P0.y + 440)) + 'px' }); }
+        const P0 = M.panel, ph = M.phone, midY = P0.y + P0.h / 2;
+        if (keepBtn) { keepBtn.style.left = (P0.x + P0.w / 2) + 'px'; keepBtn.style.top = (ph ? midY - 27 : P0.y + 260) + 'px'; }
+        if (holdBtn) { holdBtn.style.left = (P0.x + P0.w / 2) + 'px'; holdBtn.style.top = (ph ? midY : P0.y + 300) + 'px'; }
+        if (G.chipBox) { Object.assign(G.chipBox.style, { left: (P0.x + (ph ? 4 : 0)) + 'px', width: (P0.w - (ph ? 8 : 0)) + 'px', top: 'auto', bottom: (ph ? M.H - (P0.y + P0.h) : M.H - (P0.y + 440)) + 'px' }); }
         if (letterEl) {
-          if (ph) Object.assign(letterEl.style, { left: (M.win.x - 4) + 'px', top: (M.win.y - 4) + 'px', width: (M.win.w + 8) + 'px', maxHeight: (M.H - M.win.y - 110) + 'px' });
+          if (ph) Object.assign(letterEl.style, { left: (M.win.x - 4) + 'px', top: (M.win.y - 4) + 'px', width: (M.win.w + 8) + 'px', maxHeight: (M.stillTop - 6 - M.win.y) + 'px' });
           else Object.assign(letterEl.style, { left: P0.x + 'px', top: (P0.y + 150) + 'px', width: P0.w + 'px', maxHeight: (P0.h - 160) + 'px' });
         }
       }

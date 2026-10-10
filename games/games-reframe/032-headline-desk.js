@@ -226,7 +226,7 @@
 .g-headline-desk .hd-stamper::after { content: ""; position: absolute; left: 0; right: 0; top: 30px; height: 26px; border-radius: 4px; background: linear-gradient(180deg, #3a3a3e, #1d1d20); box-shadow: inset 0 -6px 0 var(--ink, #c62a2f), 0 8px 14px rgba(0,0,0,.45); }
 .g-headline-desk .hd-rt { position: absolute; z-index: 32; touch-action: none; cursor: grab; padding: 7px 12px 6px; font: 700 20px/1 ${TAB}; letter-spacing: .04em; text-transform: uppercase; color: #fff; white-space: nowrap; border-radius: 3px;
   background: linear-gradient(180deg, #ff4b3e, #c3141c); box-shadow: 0 0 0 2px #fff3c4, 0 0 0 4px #c3141c, 0 10px 18px rgba(0,0,0,.45); transform: rotate(var(--r, -6deg)); animation: headline-desk-throw .42s cubic-bezier(.2,1.5,.4,1) both; }
-.g-headline-desk .hd-rt.lift { opacity: .2; }
+.g-headline-desk .hd-rt.lift { opacity: .2; animation: none; }
 .g-headline-desk .hd-rt:focus-visible { outline: 3px solid #fff; outline-offset: 4px; }
 @keyframes headline-desk-throw { from { opacity: 0; transform: translate(60px, -40px) rotate(24deg) scale(1.6); } to { opacity: 1; transform: rotate(var(--r, -6deg)); } }
 .g-headline-desk .hd-ghost { position: absolute; z-index: 60; pointer-events: none; margin: 0; box-sizing: border-box; transform: rotate(-3deg) scale(1.06); box-shadow: 0 18px 30px rgba(0,0,0,.5); animation: none; }
@@ -240,7 +240,7 @@
   background: linear-gradient(180deg, #faecd0, #e5c690); box-shadow: 0 3px 0 #b08445, 0 8px 14px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.75); text-align: center; animation: headline-desk-tile .4s cubic-bezier(.2,1.4,.4,1) both; }
 .g-headline-desk .hd-tile:nth-child(2) { animation-delay: .08s; }
 .g-headline-desk .hd-tile:focus-visible { outline: 3px solid #fff3c0; outline-offset: 2px; }
-.g-headline-desk .hd-tile.lift { opacity: .25; }
+.g-headline-desk .hd-tile.lift { opacity: .25; animation: none; }
 @keyframes headline-desk-tile { from { opacity: 0; transform: translateY(12px) scale(.94); } to { opacity: 1; transform: none; } }
 
 .g-headline-desk .hd-spike { position: absolute; z-index: 11; width: 78px; height: 150px; pointer-events: none; transition: opacity .4s ease; }
@@ -284,7 +284,11 @@
 .g-headline-desk .gk-char.gk-side-right .gk-bubble::before, .g-headline-desk .gk-char.gk-side-left .gk-bubble::before { top: auto; bottom: 20px; }
 .g-headline-desk .gk-char.hd-right.gk-char-dock { left: auto; right: 12px; }
 .g-headline-desk .gk-char { transition: opacity .4s ease; }
-@container (min-width: 700px) { .g-headline-desk .gk-char.gk-side-right .gk-bubble, .g-headline-desk .gk-char.gk-side-left .gk-bubble { max-width: 340px; } }
+@container (min-width: 700px) { .g-headline-desk .gk-char.gk-side-right .gk-bubble, .g-headline-desk .gk-char.gk-side-left .gk-bubble { max-width: 340px; }
+  .g-headline-desk .hd-page { padding: 14px 20px 16px; } .g-headline-desk .hd-mast { height: 48px; } .g-headline-desk .hd-mast-tab { font-size: 32px; } .g-headline-desk .hd-mast-sob { font-size: 38px; }
+  .g-headline-desk .hd-q { font-size: 17px; } .g-headline-desk .hd-kick .hd-slot { font-size: 21px; } .g-headline-desk .hd-page.calm .hd-kick .hd-slot { font-size: 17px; } .g-headline-desk .hd-deck { font-size: 16px; }
+  .g-headline-desk .hd-claim { grid-template-columns: minmax(0, 1fr) 124px; } .g-headline-desk .hd-sbox { height: 52px; } .g-headline-desk .hd-tile { font-size: 19px; min-height: 56px; }
+  .g-headline-desk .hd-final { padding: 16px 22px 16px; } .g-headline-desk .hd-fm { font-size: 36px; } .g-headline-desk .hd-fh { font-size: 29px; } .g-headline-desk .hd-fd { font-size: 16px; } }
 `,
     mount(ctx) {
       const K = ctx.kit, S = ctx.TS, A = ctx.A, h = ctx.h, el = ctx.el, an = ctx.analysis || {};
@@ -401,9 +405,9 @@
           Object.assign(spike.style, { left: (W - 12 - sw) + 'px', top: (ty - 56) + 'px' });
           Object.assign(press.style, { left: Math.round(W / 2 - 80) + 'px', width: '160px', top: Math.round(Math.min(ty + 4, H - chars - 176)) + 'px' });
         } else {
-          const pw = Math.min(640, Math.round(W * 0.5)), px = Math.round((W - pw) / 2);
+          const pw = Math.min(760, Math.round(W * 0.58)), px = Math.round((W - pw) / 2);
           Object.assign(page.style, { left: px + 'px', top: top + 'px', width: pw + 'px' });
-          fitHead(H - top - chars - 110);
+          fitHead(H - top - chars - 110, 1.3);
           const ph = page.offsetHeight, tw = Math.min(500, pw - 60), ty = top + ph + 26;
           G.page = { x: px, y: top, w: pw, h: ph };
           Object.assign(tray.style, { left: Math.round((W - tw) / 2) + 'px', top: ty + 'px', width: tw + 'px' });
@@ -413,9 +417,9 @@
         deskKey = ''; hallKey = ''; skyKey = '';
         if (finalEl) placeFinal();
       }
-      function fitHead(maxH) {
-        let hs = 1; page.style.setProperty('--hs', '1');
-        for (let i = 0; i < 6 && page.offsetHeight > maxH; i++) { hs -= 0.07; page.style.setProperty('--hs', hs.toFixed(2)); }
+      function fitHead(maxH, base) {
+        let hs = base || 1; page.style.setProperty('--hs', hs.toFixed(2));
+        for (let i = 0; i < 8 && page.offsetHeight > maxH; i++) { hs -= 0.07; page.style.setProperty('--hs', hs.toFixed(2)); }
       }
 
       /* ---------------- drag: a ghost of the type follows the finger ---------------- */
@@ -673,7 +677,7 @@
         st.scene = 'dawn'; st.dawnT = now(); counter.hidden = true; R.set(76);
         if (motor && A.ctx) motor.level(0.0001, 0.8);
         amb.level(0.04, 1.2); dawnAmb = K.ambience('dawn'); dawnAmb.level(0.7, 2.5);
-        hud.classList.remove('out'); pill.classList.add('calm');
+        hud.classList.remove('out'); pill.classList.add('calm'); volEl.style.display = 'none'; // the volume meter has nothing left to say; the masthead gets the room
         speak(glitch, L(care ? LINES.dawnCare : serious ? LINES.dawnSerious : LINES.dawn), { mood: 'happy', ms: 0 });
         S.later(showFinal, 2300);
         S.later(() => { glitch.hush(); speak(rush, L(LINES.rushEnd), { mood: 'laugh', ms: 0 }); }, 4600);
@@ -764,6 +768,10 @@
           props.push(() => drawPencil(g, pg.x - 200 * u, pg.y + pg.h + 40 * u, 150 * u, -0.35, br));
           props.push(() => drawInkPad(g, pg.x - 170 * u, Math.max(pg.y + 340 * u, pg.y + pg.h - 90 * u), u, br));
           props.push(() => drawClip(g, pg.x + pg.w + 70 * u, pg.y + pg.h * 0.32, u));
+          // the lower desk: a coffee ring, a stray paperclip and a second pencil, so the wood isn't bare
+          props.push(() => drawRing(g, pg.x + pg.w + 120 * u, H - 150 * u, 34 * u, br));
+          props.push(() => drawClip(g, pg.x - 90 * u, H - 120 * u, u * 1.2));
+          props.push(() => drawPencil(g, pg.x + pg.w + 20 * u, H - 210 * u, 150 * u, 0.22, br));
         } else {
           props.push(() => drawPencil(g, W * 0.32, H - 128 * u, 120 * u, -0.18, br));
           props.push(() => drawClip(g, W * 0.72, H - 132 * u, u));
@@ -1116,6 +1124,9 @@
       /* ---------------- start ---------------- */
       cv.onResize(() => layout());
       S.on('theme', () => { deskKey = ''; });
+      // the page changes height as the headline rewraps (loud → sober words, the calm flip): keep the tray, the spike and the desk shadow in step
+      let roPend = false;
+      try { const ro = new ResizeObserver(() => { if (roPend || st.scene !== 'desk') return; roPend = true; S.later(() => { roPend = false; if (G.page && Math.abs(page.offsetHeight - G.page.h) > 2) layout(); }, 60); }); ro.observe(page); S.onDestroy(() => ro.disconnect()); } catch (e) { /* no ResizeObserver: layout runs on resize and flip only */ }
       (async () => {
         await K.intro({ title: 'Headline Desk', sub: 'Tonight’s front page screams your worry. You’re the editor.', how: 'Fact-check the claims. Swap the loud words. Hold the press.', char: 'glitch', mood: 'coffee' });
         layout();

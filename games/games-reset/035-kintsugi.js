@@ -328,7 +328,7 @@
         Object.assign(G, { w, H, phone });
         G.wallY = Math.round(H * (phone ? 0.42 : 0.445));
         G.shelfY = Math.round(phone ? Math.max(H * 0.27, 200) : H * 0.27);
-        const R = Math.round(phone ? Math.min(w * 0.4, 162, H * 0.19) : Math.min(w * 0.15, H * 0.23, 200));
+        const R = Math.round(phone ? Math.min(w * 0.4, 162, H * 0.19) : Math.min(w * 0.17, H * 0.25, 220));
         const rimTop = phone ? Math.max(G.shelfY + 72, H * 0.355) : Math.max(G.shelfY + 90, H * 0.37);
         G.B = makeBowl(Math.round(w / 2), Math.round(rimTop + R * HB * CPH + R * SPH), R);
         G.scale = R / 128;
@@ -373,7 +373,7 @@
       }
       function scatter() {
         const B = G.B, R = B.R;
-        const spots = G.phone ? [[G.w * 0.25, G.H * 0.7], [G.w * 0.75, G.H * 0.7], [G.w * 0.5, G.H * 0.818]] : [[B.cx - 2.05 * R, B.Y0 + 0.08 * R], [B.cx + 2.05 * R, B.Y0 + 0.04 * R], [B.cx + 0.12 * R, B.footY + 0.98 * R]];
+        const spots = G.phone ? [[G.w * 0.25, G.H * 0.7], [G.w * 0.75, G.H * 0.7], [G.w * 0.5, G.H * 0.818]] : [[B.cx - 2.05 * R, B.Y0 + 0.08 * R], [B.cx + 2.05 * R, B.Y0 + 0.04 * R], [B.cx + 0.12 * R, Math.min(B.footY + 0.98 * R, G.H - 0.5 * R - 20)]];
         pieces.forEach((pc, i) => { pc.sx = spots[i][0]; pc.sy = spots[i][1]; pc.tw = null; if (!pc.placed && pc !== DRAG.pc) { pc.x = pc.sx; pc.y = pc.sy; pc.rot = pc.srot; } if (pc.placed) { pc.x = pc.cx; pc.y = pc.cy; pc.rot = 0; } });
       }
       function placeDom() {

@@ -133,12 +133,14 @@
 .g-nature-doc .nd-card.bad .nd-cl { text-decoration: line-through; text-decoration-color: rgba(192, 38, 45, 0.7); text-decoration-thickness: 2px; }
 .g-nature-doc .nd-card.in0 { opacity: 0; transform: translateY(22px) scale(0.97); }
 .g-nature-doc .nd-card.out { opacity: 0; transform: translateY(18px) scale(0.94); pointer-events: none; }
-.g-nature-doc .nd-title { position: absolute; z-index: 40; left: 12px; right: 12px; text-align: center; color: #fffaf0; pointer-events: none; text-shadow: 0 2px 18px rgba(0, 0, 0, 0.6); opacity: 0; transform: translateY(10px); transition: opacity 1s ease, transform 1.2s ease; }
+.g-nature-doc .nd-title { position: absolute; z-index: 40; left: 0; right: 0; padding: 16px 12px 18px; text-align: center; color: #fffaf0; pointer-events: none; text-shadow: 0 2px 18px rgba(0, 0, 0, 0.6); opacity: 0; transform: translateY(10px); transition: opacity 1s ease, transform 1.2s ease;
+  background: linear-gradient(90deg, rgba(4, 7, 11, 0) 0%, rgba(4, 7, 11, 0.58) 14%, rgba(4, 7, 11, 0.58) 86%, rgba(4, 7, 11, 0) 100%); }
 .g-nature-doc .nd-title.on { opacity: 1; transform: none; }
 .g-nature-doc .nd-title small { display: block; font: 700 12px/1 var(--nd-mono); letter-spacing: 0.34em; color: var(--nd-gold); text-transform: uppercase; }
 .g-nature-doc .nd-title b { display: block; margin: 9px 0 7px; font: 800 clamp(30px, 8.4cqw, 64px)/0.98 var(--nd-serif); letter-spacing: -0.01em; }
 .g-nature-doc .nd-title span { display: block; font: italic 500 17px/1.3 var(--nd-serif); color: #f5ead2; }
-.g-nature-doc .nd-cred { position: absolute; z-index: 40; overflow: hidden; pointer-events: none; opacity: 0; transition: opacity 0.8s ease;
+.g-nature-doc .nd-cred { position: absolute; z-index: 40; overflow: hidden; pointer-events: none; opacity: 0; transition: opacity 0.8s ease; border-radius: 16px;
+  background: linear-gradient(90deg, rgba(4, 7, 11, 0) 0%, rgba(4, 7, 11, 0.5) 18%, rgba(4, 7, 11, 0.5) 82%, rgba(4, 7, 11, 0) 100%);
   -webkit-mask-image: linear-gradient(transparent, #000 16%, #000 84%, transparent); mask-image: linear-gradient(transparent, #000 16%, #000 84%, transparent); }
 .g-nature-doc .nd-cred.on { opacity: 1; }
 .g-nature-doc .nd-credi { display: flex; flex-direction: column; align-items: center; gap: 13px; text-align: center; color: #f6efe0; will-change: transform; }
@@ -894,7 +896,7 @@
         if (!lock && k > 0) { g.strokeStyle = 'rgba(255,210,122,0.9)'; g.lineWidth = 3; g.beginPath(); g.arc(s.x, s.y, R0 + 8, -Math.PI / 2, -Math.PI / 2 + TAU * k); g.stroke(); }
       }
       function drawBoom(g, t) { // Drop's boom mic dips into the top of the frame, as boom mics do
-        if (!M.dropX || ST.phase === 'intro' || !SPR.mic) return;
+        if (!M.dropX || ST.phase === 'intro' || ST.phase === 'finale' || ST.phase === 'end' || !SPR.mic) return; // the boom lifts out for the title card
         const hx = M.dropX + M.dsz * 0.2, hy = M.dropY + M.dsz * 0.8, sw = reduced() ? 0 : 1;
         const tx = M.w * (M.phone ? 0.6 : 0.64) + Math.sin(t * 0.9) * 4 * sw, ty = M.fy - M.sz - (M.phone ? 72 : 90) + Math.sin(t * 1.3) * 2 * sw;
         g.lineCap = 'round'; g.strokeStyle = '#17161d'; g.lineWidth = 4.5; g.beginPath(); g.moveTo(hx, hy); g.lineTo(tx + 20, ty - 2); g.stroke();
@@ -1098,7 +1100,7 @@
         if (tier) badges.push(tier + ' cinematographer');
         badges.push((col.isNew ? 'New episode: ' : 'Episode: ') + hab.name + ' (' + Math.min(have, HABITATS.length) + '/' + HABITATS.length + ')');
         if (CAMEO && HERDS.some(m => m.cameo && m.seen)) { const c2 = K.collect('cameo:' + CAMEO[0]); badges.push((c2.isNew ? 'Rare sighting: ' : 'Spotted again: ') + CAMEO[1]); }
-        const lines = [ST.finalText ? 'Closing narration: ' + clip(ST.finalText, 88) : 'Narrated what the camera could see', 'Footage, not verdicts: ' + ST.takes + '/' + ST.choices + ' first takes', care ? 'Next step: proper advice from someone qualified.' : 'Filmed on location in your ' + weekday];
+        const lines = [ST.finalText ? 'Closing narration: ' + clip(ST.finalText.replace(/^A fair summary, for now: /, ''), 96) : 'Narrated what the camera could see', 'Footage, not verdicts: ' + ST.takes + '/' + ST.choices + ' first takes', care ? 'Next step: proper advice from someone qualified.' : 'Herd sighted: ' + Math.max(ST.herdN, 1) + ' in the ' + hab.name + ' (not a rare behaviour)'];
         ctx.track('finish', { steady, takes: ST.takes, choices: ST.choices, herd: ST.herdN });
         ctx.finish({ title: 'Filmed on location in your ' + weekday, mood: 'celebrate', lines, share: 'My ' + weekday + ', narrated as a nature documentary. Fascinating species.', badges: badges.slice(0, 4) });
       }
