@@ -4,7 +4,7 @@ import * as eos from "./eos_drive.mjs"
 import { routeExpressions } from "./f8_probe.mjs"
 const IDS = (process.argv[3] || "1,2,3,6,41,47,100,109,110,111").split(",").map(Number)
 const [w, h] = (process.argv[2] || "390x844").split("x").map(Number)
-const L = await eos.launchEos({ width: w, height: h, lite: true })
+const L = await eos.launchEos({ width: w, height: h, lite: true, dir: process.env.DIR || undefined }) // DIR = another harness dir (default framer/dev)
 await routeExpressions(L.context)
 await L.page.reload(); await L.page.waitForTimeout(1500)
 const res = []
