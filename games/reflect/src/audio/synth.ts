@@ -42,8 +42,9 @@ export class Synth {
   private note() {
     if (!this.lastGesture || !this.ctx) return;
     const out = ((this.ctx as any).outputLatency || 0) * 1000 + ((this.ctx as any).baseLatency || 0) * 1000;
-    const dt = performance.now() - this.lastGesture + out;
-    if (dt < 1000) { this.metrics.samples.push(Math.round(dt * 10) / 10); if (this.metrics.samples.length > 200) this.metrics.samples.shift(); }
+    const since = performance.now() - this.lastGesture;
+    // only sounds that answer the gesture directly count (a later, animation-driven sound is not a response time)
+    if (since < 250) { this.metrics.samples.push(Math.round((since + out) * 10) / 10); if (this.metrics.samples.length > 200) this.metrics.samples.shift(); }
     this.lastGesture = 0;
   }
   setEnabled(on: boolean) {

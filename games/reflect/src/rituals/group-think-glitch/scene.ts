@@ -220,7 +220,7 @@ class Investigation {
   private t = 2.0;
   private playing = false;
   private lastNow = 0;
-  private loupe = { x: 0.5, y: 0.55 };     // fraction of the feed
+  private loupe = { x: 0.36, y: 0.5 };     // fraction of the feed
   private R = 70;                          // loupe radius, CSS px
   private mag = 2.1;
   private hit: Hotspot | null = null;
@@ -365,7 +365,7 @@ class Investigation {
     const dt = this.lastNow ? Math.min(0.05, (now - this.lastNow) / 1000) : 0;
     this.lastNow = now;
     if (this.playing) { this.t += dt; if (this.t >= DURATION) this.t = 0; this.dirty = true; }
-    if (!this.guided && now > 900) { const k = (now / 1000) % 4; this.loupe.x = 0.5 + Math.sin(k * 1.6) * 0.22; this.loupe.y = 0.55 + Math.cos(k * 1.1) * 0.12; this.dirty = true; }
+    if (!this.guided && now > 900) { const k = now / 1000; this.loupe.x = 0.5 + Math.sin(k * 0.9) * 0.28; this.loupe.y = 0.5 + Math.sin(k * 0.6 + 1) * 0.16; this.dirty = true; }
     if (this.glintT > 0) this.dirty = true;
     if (!this.dirty) { this.ctx.metrics.idle(); return; }
     this.dirty = false;

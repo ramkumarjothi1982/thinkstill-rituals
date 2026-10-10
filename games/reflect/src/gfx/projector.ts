@@ -89,7 +89,9 @@ export type Fill = string | ((g: CanvasRenderingContext2D, sp: P2[]) => string |
 
 /** Add a shaded world-space polygon (all points must be in front of the camera, otherwise it is skipped). `fill` may
  * be a function of the projected points (for gradients that follow the face). */
-export function poly(P: Projector, L: DrawList, pts: V3[], fill: Fill, stroke?: string, depthBias = 0) {
+/** `stroke`: an outline colour, or `true` to seal the polygon with its own fill (a hairline that closes the anti-aliasing
+ * seams between neighbouring faces, so nothing behind a solid object glints through its edges). */
+export function poly(P: Projector, L: DrawList, pts: V3[], fill: Fill, stroke?: string | true, depthBias = 0) {
   const sp: P2[] = [];
   let d = 0;
   for (const p of pts) { const q = P.project(p[0], p[1], p[2]); if (!q) return; sp.push(q); d += q.d; }
@@ -97,8 +99,9 @@ export function poly(P: Projector, L: DrawList, pts: V3[], fill: Fill, stroke?: 
   L.add(d, (g) => {
     g.beginPath(); g.moveTo(sp[0].x, sp[0].y);
     for (let i = 1; i < sp.length; i++) g.lineTo(sp[i].x, sp[i].y);
-    g.closePath(); g.fillStyle = typeof fill === 'function' ? fill(g, sp) : fill; g.fill();
-    if (stroke) { g.strokeStyle = stroke; g.lineWidth = 1; g.stroke(); }
+    g.closePath(); const fs = typeof fill === 'function' ? fill(g, sp) : fill; g.fillStyle = fs; g.fill();
+    if (stroke === true) { const lj = g.lineJoin; g.lineJoin = 'round'; g.strokeStyle = fs; g.lineWidth = 1; g.stroke(); g.lineJoin = lj; }
+    else if (stroke) { g.strokeStyle = stroke; g.lineWidth = 1; g.stroke(); }
   });
 }
 
@@ -114,7 +117,7 @@ export function box(P: Projector, L: DrawList, c: V3, size: V3, rgb: [number, nu
   if (cam.x < x0) faces.push([[[x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]], 0.62]);
   if (cam.x > x1) faces.push([[[x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0]], 0.66]);
   if (cam.y < y0) faces.push([[[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]], 0.4]);
-  for (const [pts, k] of faces) poly(P, L, pts, shade(rgb, k * light, tint, tk));
+  for (const [pts, k] of faces) poly(P, L, pts, shade(rgb, k * light, tint, tk), true);
 }
 
 /** Vertical cylinder (cake tiers, stools) approximated with n sides; draws the visible side band and the top. */
@@ -128,9 +131,9 @@ export function cylinder(P: Projector, L: DrawList, c: V3, r: number, h: number,
     const facing = mx * (cam.x - c[0]) + mz * (cam.z - c[2]);
     if (facing <= 0) continue;
     const k = 0.8 + 0.28 * Math.max(0, (mx * -0.41 + mz * -0.91) / r);
-    poly(P, L, [lo[i], lo[j], hi[j], hi[i]], shade(rgb, k * light, tint, tk), undefined, -0.001);
+    poly(P, L, [lo[i], lo[j], hi[j], hi[i]], shade(rgb, k * light, tint, tk), true, -0.001);
   }
-  if (cam.y > c[1] + h) poly(P, L, hi, shade(top || rgb, 1.12 * light, tint, tk), undefined, -0.002);
+  if (cam.y > c[1] + h) poly(P, L, hi, shade(top || rgb, 1.12 * light, tint, tk), true, -0.002);
 }
 
 /** A camera-facing image (Bubble characters, props). `hgt` is the world height of the sprite. */

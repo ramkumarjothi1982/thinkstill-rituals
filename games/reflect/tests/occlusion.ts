@@ -30,6 +30,25 @@ async function main() {
   const want: [string, string][] = [];
   for (let t = 0; t <= 9; t += 0.5) { const m = stateAt(t).mood as Record<string, string>; Object.keys(m).forEach(k => want.push([k, m[k]])); }
   await faces.preload(want);
+  if (q.get('bench')) {
+    // time the world renderer: 120 frames of one rig
+    const r = q.get('bench') as any; const c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d')!;
+    const run = () => { const t0 = performance.now(); for (let i = 0; i < 120; i++) { const t = (i % 180) * 0.05; renderWorld(g, W, H, rigCam(r, t), stateAt(t), { look: r, faces: (sl, m) => faces.get(sl, m) }); } return (performance.now() - t0) / 120; };
+    run(); (window as any).__bench = [run(), run(), run()]; document.body.dataset.done = '1'; return;
+  }
+  if (q.get('dump')) {
+    // list the pixels the cat changes (x, y, with cat, without cat) — for diagnosing seams and sightlines
+    const [r, ts] = q.get('dump')!.split('@'); const t = Number(ts);
+    const a = document.createElement('canvas'), b = document.createElement('canvas'); a.width = b.width = W; a.height = b.height = H;
+    const ga = a.getContext('2d', { willReadFrequently: true } as any)!, gb = b.getContext('2d', { willReadFrequently: true } as any)!;
+    const s = stateAt(t), cam = rigCam(r as any, t);
+    const same = q.get('same');   // 'cat' | 'nocat': render the same thing twice (checks the renderer is deterministic)
+    renderWorld(ga, W, H, cam, s, { look: r as any, faces: (sl, m) => faces.get(sl, m), debugHide: same === 'nocat' ? ['cat'] : [] });
+    renderWorld(gb, W, H, cam, s, { look: r as any, faces: (sl, m) => faces.get(sl, m), debugHide: same === 'cat' ? [] : ['cat'] });
+    const da = px(a), db = px(b), rows: number[][] = [];
+    for (let k = 0, i = 0; k < da.length; k += 4, i++) { const d = Math.abs(da[k] - db[k]) + Math.abs(da[k + 1] - db[k + 1]) + Math.abs(da[k + 2] - db[k + 2]); if (d > 40) rows.push([i % W, (i / W) | 0, da[k], da[k + 1], da[k + 2], db[k], db[k + 1], db[k + 2]]); }
+    (window as any).__dump = { cat: s.cat, pose: s.catPose, rows }; document.body.dataset.done = '1'; return;
+  }
   if (q.get('diff')) { for (const spec of q.get('diff')!.split(';')) { const [r, t] = spec.split('@'); await diffView(r, Number(t)); } document.body.dataset.done = '1'; return; }
   const a = document.createElement('canvas'), b = document.createElement('canvas');
   a.width = b.width = W; a.height = b.height = H;

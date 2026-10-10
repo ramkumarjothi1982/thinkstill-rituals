@@ -362,14 +362,14 @@ export function renderWorld(g: CanvasRenderingContext2D, w: number, h: number, c
   }
   // table: cloth to the floor, a runner, a scalloped hem
   const wob = s.wobble;
-  const cloth: [number, number, number] = [246, 236, 232];
+  const cloth: [number, number, number] = [232, 220, 226];
   const tx0 = -0.9 + wob, tx1 = 0.9 + wob, tz0 = 1.7, tz1 = 2.7, ty = 0.76;
-  poly(P, L, [[tx0, ty, tz0], [tx1, ty, tz0], [tx1, ty, tz1], [tx0, ty, tz1]], shade(cloth, 1.06, [255, 190, 150], 0.1));
+  poly(P, L, [[tx0, ty, tz0], [tx1, ty, tz0], [tx1, ty, tz1], [tx0, ty, tz1]], shade(cloth, 1.06, [255, 190, 150], 0.1), true);
   const sideFill = (k: number) => (gg: CanvasRenderingContext2D, sp: { x: number; y: number }[]) => { const top = Math.min(...sp.map(p => p.y)), bot = Math.max(...sp.map(p => p.y)); const gr = gg.createLinearGradient(0, top, 0, bot); gr.addColorStop(0, shade(cloth, k, [255, 180, 140], 0.1)); gr.addColorStop(1, shade(cloth, k * 0.72, [120, 80, 140], 0.2)); return gr; };
-  if (cam.z < tz0) poly(P, L, [[tx0, 0.01, tz0], [tx1, 0.01, tz0], [tx1, ty, tz0], [tx0, ty, tz0]], sideFill(0.9));
-  if (cam.z > tz1) poly(P, L, [[tx0, 0.01, tz1], [tx1, 0.01, tz1], [tx1, ty, tz1], [tx0, ty, tz1]], sideFill(0.82));
-  if (cam.x < tx0) poly(P, L, [[tx0, 0.01, tz0], [tx0, 0.01, tz1], [tx0, ty, tz1], [tx0, ty, tz0]], sideFill(0.76));
-  if (cam.x > tx1) poly(P, L, [[tx1, 0.01, tz0], [tx1, 0.01, tz1], [tx1, ty, tz1], [tx1, ty, tz0]], sideFill(0.8));
+  if (cam.z < tz0) poly(P, L, [[tx0, 0.01, tz0], [tx1, 0.01, tz0], [tx1, ty, tz0], [tx0, ty, tz0]], sideFill(0.9), true);
+  if (cam.z > tz1) poly(P, L, [[tx0, 0.01, tz1], [tx1, 0.01, tz1], [tx1, ty, tz1], [tx0, ty, tz1]], sideFill(0.82), true);
+  if (cam.x < tx0) poly(P, L, [[tx0, 0.01, tz0], [tx0, 0.01, tz1], [tx0, ty, tz1], [tx0, ty, tz0]], sideFill(0.76), true);
+  if (cam.x > tx1) poly(P, L, [[tx1, 0.01, tz0], [tx1, 0.01, tz1], [tx1, ty, tz1], [tx1, ty, tz0]], sideFill(0.8), true);
   poly(P, L, [[tx0, ty + 0.002, 2.08], [tx1, ty + 0.002, 2.08], [tx1, ty + 0.002, 2.32], [tx0, ty + 0.002, 2.32]], '#ff8fb3', undefined, -0.01);
   if (cam.z < tz0) poly(P, L, [[tx0, 0.62, tz0 - 0.002], [tx1, 0.62, tz0 - 0.002], [tx1, 0.7, tz0 - 0.002], [tx0, 0.7, tz0 - 0.002]], '#ff8fb3', undefined, -0.01);
   // the stool (the cat's perch) — no back, so the booth can see who sits on it
@@ -478,7 +478,7 @@ function drawCast(s: WorldState, faces: Faces, t: number, hide: string[]) {
   sprite(P, L, catSprite(s.catPose), [s.cat[0], s.cat[1] + s.catHop, s.cat[2]], 0.46, { ay: 0.96 });
   if (s.pawK > 0) {
     const a = P.project(-0.68, 0.8, 2.8), b = P.project(lerp(-0.68, -0.84, s.pawK), lerp(0.8, 0.92, s.pawK), lerp(2.8, 2.42, s.pawK));
-    if (a && b) L.add(Math.min(a.d, b.d) - 0.01, (gg) => { const wdt = Math.max(2, a.s * 0.05); gg.strokeStyle = '#e58a3a'; gg.lineCap = 'round'; gg.lineWidth = wdt; gg.beginPath(); gg.moveTo(a.x, a.y); gg.lineTo(b.x, b.y); gg.stroke(); gg.fillStyle = '#fff3e3'; gg.beginPath(); gg.arc(b.x, b.y, wdt * 0.75, 0, Math.PI * 2); gg.fill(); });
+    if (a && b) L.add(Math.min(a.d, b.d) - 0.01, (gg) => { gg.save(); const wdt = Math.max(2, a.s * 0.05); gg.strokeStyle = '#e58a3a'; gg.lineCap = 'round'; gg.lineWidth = wdt; gg.beginPath(); gg.moveTo(a.x, a.y); gg.lineTo(b.x, b.y); gg.stroke(); gg.fillStyle = '#fff3e3'; gg.beginPath(); gg.arc(b.x, b.y, wdt * 0.75, 0, Math.PI * 2); gg.fill(); gg.restore(); });
   }
 }
 

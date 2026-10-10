@@ -43,10 +43,11 @@ export const DDB_CSS = `
 .ddb-beatbar b{flex:1;min-width:0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ddb-arrow{width:40px;height:40px;border-radius:10px;border:0;background:rgba(255,255,255,.08);font-size:18px}
 .ddb-lines{display:grid;grid-template-columns:1fr 1fr;gap:8px;min-height:0;overflow:auto}
-.ddb-line{position:relative;text-align:left;min-height:52px;padding:7px 9px 7px 12px;border-radius:8px;border:0;background:#f3e7cf;color:#22180c;box-shadow:0 2px 6px rgba(0,0,0,.35);font:700 12.5px/1.2 'Courier Prime','Courier New',monospace;touch-action:none}
+.ddb-line{position:relative;text-align:left;min-height:48px;padding:6px 8px 6px 12px;border-radius:8px;border:0;background:#f3e7cf;color:#22180c;box-shadow:0 2px 6px rgba(0,0,0,.35);font:700 clamp(11px,3.1vw,12.5px)/1.18 'Courier Prime','Courier New',monospace;touch-action:none}
 .ddb-line::before{content:'';position:absolute;left:0;top:0;bottom:0;width:6px;border-radius:8px 0 0 8px;background:var(--tone)}
 .ddb-line small{display:block;margin-top:3px;font:600 10px var(--rf-ui);color:#6b5a40;text-transform:uppercase;letter-spacing:.08em}
-.ddb-line.own{background:#2f261d;color:#f7ecd9;border:1.5px dashed rgba(255,236,200,.4);box-shadow:none}
+.ddb-line.own{grid-column:1/-1;min-height:44px;display:flex;align-items:center;gap:10px;background:#2f261d;color:#f7ecd9;border:1.5px dashed rgba(255,236,200,.4);box-shadow:none}
+.ddb-line.own small{margin:0}
 .ddb-ghost{position:fixed;z-index:60;pointer-events:none;max-width:200px;padding:7px 10px;border-radius:8px;background:#f3e7cf;color:#22180c;font:700 12px 'Courier Prime',monospace;box-shadow:0 10px 24px rgba(0,0,0,.5);transform:rotate(-3deg)}
 .ddb-perf{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;min-height:0}
 .ddb-perf h4{grid-column:1/3;margin:0;font-size:13px;font-weight:600;display:flex;gap:8px;align-items:center}
