@@ -13,7 +13,9 @@ export interface RitualLogic {
   setup(seed: number, seats: Seat[], startData?: any): any;
   validateSeal(pub: any, seat: Seat, data: any): any | null;
   companionSeal(pub: any, seat: Seat, rng: Rng): any;
-  validateLive?(pub: any, seat: Seat, data: any, phase: Phase): any | null;
+  validateLive?(pub: any, seat: Seat, data: any, phase: Phase, now: number): any | null;
+  /** after a live event is accepted: may return an updated pub (state that must survive the capped event log) */
+  onLive?(pub: any, ev: { pid: string; at: number; data: any }, seat: Seat): any | void;
   onReveal?(pub: any, now: number, sealed: Record<string, any>): any;   // may return an updated pub
 }
 

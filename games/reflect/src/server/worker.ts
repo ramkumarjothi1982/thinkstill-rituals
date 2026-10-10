@@ -41,7 +41,7 @@ export class ReflectRoom {
   private async load(code: string, ritual: RitualId) {
     if (this.hub) return this.hub;
     const snap = await this.state.storage.get('snap');
-    const hub = new RoomHub(REGISTRY, code, REGISTRY[ritual] ? ritual : 'group-think-glitch', snap || undefined);
+    const hub = new RoomHub(REGISTRY, code, REGISTRY[ritual] ? ritual : 'shadow-monsters', snap || undefined);
     hub.onPersist = (s) => { this.state.storage.put('snap', s); };
     // re-attach hibernated sockets
     for (const ws of this.state.getWebSockets()) {
@@ -62,7 +62,7 @@ export class ReflectRoom {
   async fetch(req: Request): Promise<Response> {
     const url = new URL(req.url);
     const code = (url.pathname.match(/([A-Z2-9]{5})$/) || [])[1] || 'XXXXX';
-    const ritual = (url.searchParams.get('ritual') || 'group-think-glitch') as RitualId;
+    const ritual = (url.searchParams.get('ritual') || 'shadow-monsters') as RitualId;
     await this.state.storage.put('meta', { code, ritual });
     const hub = await this.load(code, ritual);
     const pair = new (globalThis as any).WebSocketPair();
@@ -72,7 +72,7 @@ export class ReflectRoom {
     return new Response(null, { status: 101, webSocket: client } as any);
   }
   async webSocketMessage(ws: any, msg: string | ArrayBuffer) {
-    const meta = (await this.state.storage.get('meta')) || { code: 'XXXXX', ritual: 'group-think-glitch' };
+    const meta = (await this.state.storage.get('meta')) || { code: 'XXXXX', ritual: 'shadow-monsters' };
     const hub = await this.load(meta.code, meta.ritual);
     const c = this.conn(ws);
     const raw = typeof msg === 'string' ? msg : new TextDecoder().decode(msg);
@@ -82,7 +82,7 @@ export class ReflectRoom {
     if (c.pid && c.pid !== before) ws.serializeAttachment({ pid: c.pid });
   }
   async webSocketClose(ws: any) {
-    const meta = (await this.state.storage.get('meta')) || { code: 'XXXXX', ritual: 'group-think-glitch' };
+    const meta = (await this.state.storage.get('meta')) || { code: 'XXXXX', ritual: 'shadow-monsters' };
     const hub = await this.load(meta.code, meta.ritual);
     hub.close(this.conn(ws));
   }

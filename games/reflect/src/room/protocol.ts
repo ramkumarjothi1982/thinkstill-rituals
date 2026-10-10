@@ -4,7 +4,7 @@
 
 export type Slug = 'loopie' | 'glitch' | 'patch' | 'drop' | 'rush' | 'still' | 'sync';
 export const SLUGS: Slug[] = ['loopie', 'glitch', 'patch', 'drop', 'rush', 'still', 'sync'];
-export type RitualId = 'group-think-glitch' | 'drama-dubbing-booth' | 'emotional-rollercoaster';
+export type RitualId = 'shadow-monsters' | 'mess-auction' | 'emotional-rollercoaster';
 export type Phase = 'lobby' | 'play' | 'reveal' | 'finale';
 
 export interface Player {

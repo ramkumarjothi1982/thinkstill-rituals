@@ -53,9 +53,9 @@ server.on('upgrade', (req: any, socket: any, head: any) => {
 wss.on('connection', (ws: any, req: any) => {
   const url = new URL(req.url, 'http://x');
   const code = url.pathname.slice(6);
-  const ritual = (url.searchParams.get('ritual') || 'group-think-glitch') as RitualId;
+  const ritual = (url.searchParams.get('ritual') || 'shadow-monsters') as RitualId;
   let hub = rooms.get(code);
-  if (!hub) { hub = new RoomHub(REGISTRY, code, REGISTRY[ritual] ? ritual : 'group-think-glitch'); rooms.set(code, hub); }
+  if (!hub) { hub = new RoomHub(REGISTRY, code, REGISTRY[ritual] ? ritual : 'shadow-monsters'); rooms.set(code, hub); }
   const conn = { send: (msg: any) => { if (ws.readyState === 1) ws.send(JSON.stringify(msg)); }, pid: undefined as string | undefined };
   hub.open(conn);
   ws.on('message', (data: any) => hub!.message(conn, String(data)));

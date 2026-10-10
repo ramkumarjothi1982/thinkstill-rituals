@@ -159,11 +159,12 @@ export class RoomCore {
         const t = this.now();
         if (t - (this.lastLive[pid] || 0) < 220) return { ok: false, code: 'rate_limited' };
         const seat: Seat = { pid, seat: p.seat, avatar: p.avatar, human: p.human, name: p.name };
-        const clean = L.validateLive(v.pub, seat, data, v.phase);
+        const clean = L.validateLive(v.pub, seat, data, v.phase, t);
         if (clean == null) return { ok: false, code: 'invalid' };
         this.lastLive[pid] = t;
         const ev: LiveEvent = { n: ++this.s.liveN, pid, at: t, data: clean };
         v.live.push(ev); if (v.live.length > LIMITS.maxLive) v.live.splice(0, v.live.length - LIMITS.maxLive);
+        if (L.onLive) { const np = L.onLive(v.pub, ev, seat); if (np) v.pub = np; }
         this.bump(); return { ok: true };
       }
       case 'consent': { v.consent[pid] = !!(data && data.share); this.bump(); return { ok: true }; }

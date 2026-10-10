@@ -9,7 +9,7 @@ export class Synth {
   private master: GainNode | null = null;
   sfxBus: GainNode | null = null;
   musicBus: GainNode | null = null;
-  private noiseBuf: AudioBuffer | null = null;
+  noiseBuf: AudioBuffer | null = null;
   enabled = true;
   private bedNodes: { stop: () => void } | null = null;
   private musicEl: HTMLAudioElement | null = null;

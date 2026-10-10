@@ -10,15 +10,13 @@ import { Synth } from '../audio/synth';
 import { h, clear, Surface, prefersReducedMotion } from '../ui/dom';
 import { Metrics, Prefs, Scene, SceneCtx, SceneFactory, RoomLike } from './types';
 import { RF_CSS, RF_FONTS } from './style';
-import { createGtgScene } from '../rituals/group-think-glitch/scene';
-import { createDdbScene } from '../rituals/drama-dubbing-booth/scene';
-import { renderFilm } from '../rituals/drama-dubbing-booth/film';
+import { createSmScene } from '../rituals/shadow-monsters/scene';
+import { paintSheet, renderAudience, sheetCanvasFor } from '../rituals/shadow-monsters/world';
+import { COMPANION_MONSTERS, lampZFor } from '../rituals/shadow-monsters/content';
 import { createErScene } from '../rituals/emotional-rollercoaster/scene';
 import { renderRide, RIDER_COLORS } from '../rituals/emotional-rollercoaster/ride';
 import { buildTrack } from '../rituals/emotional-rollercoaster/track';
 import { SATURDAY } from '../rituals/emotional-rollercoaster/content';
-import { renderWorld, lens, stateAt, sweepCam } from '../rituals/group-think-glitch/world';
-import { lookAt } from '../gfx/projector';
 
 export interface ReflectOptions {
   roomServer?: string;                 // ws(s)://host — enables Invite / Join across devices
@@ -37,11 +35,11 @@ export interface ReflectOptions {
   onComplete?: (info: { ritual: RitualId; players: number }) => void;
 }
 
-interface RitualCard { id: RitualId; title: string; pitch: string; genre: string; players: string; factory?: SceneFactory; preview?: (sf: Surface, t: number, faces: FaceBank) => void; companions?: Slug[]; }
+interface RitualCard { id: RitualId; title: string; pitch: string; genre: string; people: string; factory?: SceneFactory; preview?: (sf: Surface, t: number, faces: FaceBank) => void; companions?: Slug[]; soloSeats?: number; }
 const RITUALS: RitualCard[] = [
-  { id: 'group-think-glitch', title: 'Group Think Glitch', pitch: 'Four cameras. One cake. Who saw what?', genre: 'Mystery', players: '2–4 players', factory: createGtgScene, preview: gtgPreview, companions: ['glitch', 'loopie', 'sync', 'patch'] },
-  { id: 'drama-dubbing-booth', title: 'Drama Dubbing Booth', pitch: 'One silent scene. Your voice decides what it means.', genre: 'Comedy', players: '2–4 players', factory: createDdbScene, preview: ddbPreview, companions: ['loopie', 'glitch', 'rush', 'sync'] },
-  { id: 'emotional-rollercoaster', title: 'Emotional Rollercoaster', pitch: 'Same day. Same ride. Totally different drops.', genre: 'Spectacle', players: '2–4 players', factory: createErScene, preview: erPreview, companions: ['rush', 'still', 'drop', 'loopie'] }
+  { id: 'shadow-monsters', title: 'Shadow Monsters', pitch: 'Everything looks bigger in the dark.', genre: 'Spooky comedy', people: '2–4 people', factory: createSmScene, preview: smPreview, companions: ['loopie', 'rush', 'still', 'drop'], soloSeats: 4 },
+  { id: 'mess-auction', title: 'The Glorious Mess Auction', pitch: 'Draw it blind. Watch it sell.', genre: 'Comedy', people: '2–4 people', companions: ['rush', 'drop', 'still', 'loopie'], soloSeats: 4 },
+  { id: 'emotional-rollercoaster', title: 'Emotional Rollercoaster', pitch: 'Same day. Same ride. Totally different drops.', genre: 'Spectacle', people: '2–4 people', factory: createErScene, preview: erPreview, companions: ['rush', 'still', 'drop', 'loopie'] }
 ];
 
 const ME_KEY = '__rf_me_v1', SOUND_KEY = '__rf_sound_v1', THEME_KEY = '__ts_chat_theme_v181', MEDIA_KEY = '__ts_reset_shared_media_v1';
@@ -100,7 +98,7 @@ export class ReflectConsole {
     this.unsub.push(() => window.removeEventListener('storage', onStorage));
     (window as any).__reflect = this;    // test hook: metrics + state
     if (opts.room) this.join(opts.room);
-    else if (opts.autostart === 'solo') this.playSolo(opts.ritual || 'group-think-glitch');
+    else if (opts.autostart === 'solo') this.playSolo(opts.ritual || 'shadow-monsters');
     else this.showHub();
   }
   destroy() {
@@ -155,9 +153,9 @@ export class ReflectConsole {
         h('div', { class: 'pv' }, sf.canvas, h('span', { class: 'tag' }, r.genre)),
         h('div', { class: 'bd' },
           h('h2', null, r.title), h('p', null, r.pitch),
-          h('div', { class: 'meta' }, h('span', null, r.players), h('span', null, 'Bubble companions fill empty seats')),
+          h('div', { class: 'meta' }, h('span', null, r.people), h('span', null, 'Bubble companions fill empty seats')),
           h('div', { class: 'act' },
-            built ? h('button', { class: 'rf-btn', 'data-act': 'solo', onclick: (e: Event) => { this.sfx.unlock(); this.sfx.gesture(e); this.playSolo(r.id); } }, 'Play now') : h('button', { class: 'rf-btn', disabled: '' }, 'Pilot in progress'),
+            built ? h('button', { class: 'rf-btn', 'data-act': 'solo', onclick: (e: Event) => { this.sfx.unlock(); this.sfx.gesture(e); this.playSolo(r.id); } }, 'Start ritual') : h('button', { class: 'rf-btn', disabled: '' }, 'Coming soon'),
             built ? h('button', { class: 'rf-btn sec', 'data-act': 'invite', onclick: () => this.invite(r.id) }, 'Invite friends') : null)));
       cards.appendChild(card);
       const p = { sf, card: r, vis: true } as any;
@@ -169,7 +167,7 @@ export class ReflectConsole {
     code.addEventListener('keydown', (e) => { if (e.key === 'Enter') joinBtn.click(); });
     const hub = h('div', { class: 'rf-hub' },
       h('div', { class: 'rf-brand' }, h('h1', null, 'Reflect'), h('div', { class: 'sp' }), this.themeBtn(), this.soundBtn(), this.opts.onExit ? h('button', { class: 'rf-ib', 'aria-label': 'Close', onclick: () => this.opts.onExit && this.opts.onExit() }, this.icon('close')) : null),
-      h('p', { class: 'rf-sub' }, 'Rituals for seeing the same moment differently, together. Play now with Bubble companions, or bring your people.'),
+      h('p', { class: 'rf-sub' }, 'Choose a ritual. Start one now with the Bubbles, or bring your people.'),
       cards,
       h('div', { class: 'rf-join' }, h('span', { class: 'rf-note' }, 'Got a code?'), code, joinBtn));
     this.view.appendChild(h('div', { class: 'rf-scroll' }, hub));
@@ -202,8 +200,8 @@ export class ReflectConsole {
     const c = this.client!;
     const go = () => {
       const v = c.view; if (!v || !c.isHost) { setTimeout(go, 16); return; }
-      const want = Math.max(0, 3 - v.players.filter(p => !p.spectator).length);
       const card = RITUALS.find(r => r.id === ritual);
+      const want = Math.max(0, ((card && card.soloSeats) || 3) - v.players.filter(p => !p.spectator).length);
       const picks = ((card && card.companions) || (['glitch', 'loopie', 'sync', 'patch'] as Slug[])).filter(s => s !== this.me.avatar).slice(0, want);
       picks.forEach(a => c.act('add_companion', { avatar: a }));
       setTimeout(() => { c.act('start'); this.soloStarted = true; }, 30);
@@ -217,9 +215,9 @@ export class ReflectConsole {
     this.connect(code, ritual, t, false);
   }
   private join(code: string) {
-    const t = this.transport(code, 'group-think-glitch', 'guest');
+    const t = this.transport(code, 'shadow-monsters', 'guest');
     if (!t) { this.toast('Joining needs the Reflect room server'); this.showHub(); return; }
-    this.connect(code, 'group-think-glitch', t, false);
+    this.connect(code, 'shadow-monsters', t, false);
   }
   private transport(code: string, ritual: RitualId, role: 'host' | 'guest'): Transport | null {
     if (this.opts.transportFor) { const t = this.opts.transportFor(code, ritual, role); if (t) return t; }
@@ -348,16 +346,6 @@ export class ReflectConsole {
 }
 
 /* ---------------- helpers ---------------- */
-const PREVIEW_CUE: any[] = [
-  { t: 0.7, who: 'patch', line: 'b0n', tone: 'nervous', face: 'worried', pitch: 0, pace: 0 },
-  { t: 3.5, who: 'patch', line: 'b1s', tone: 'sarcastic', face: 'cool', pitch: 0, pace: 0 },
-  { t: 7.0, who: 'sync', line: 'b2w', tone: 'warm', face: 'love', pitch: 0, pace: 0 },
-  { t: 9.5, who: 'patch', line: 'b3d', tone: 'deadpan', face: 'cool', pitch: 0, pace: 0 }
-];
-function ddbPreview(sf: Surface, now: number, faces: FaceBank) {
-  sf.fit(); const W = sf.pw, H = sf.ph; if (W < 4) return;
-  renderFilm(sf.g, W, H, now % 12, { faces: (s, m) => faces.get(s, m), cues: PREVIEW_CUE });
-}
 let PREVIEW_RIDERS: any[] | null = null;
 function erPreview(sf: Surface, now: number, faces: FaceBank) {
   sf.fit(); const W = sf.pw, H = sf.ph; if (W < 4) return;
@@ -367,15 +355,15 @@ function erPreview(sf: Surface, now: number, faces: FaceBank) {
   ];
   renderRide(sf.g, W, H, { riders: PREVIEW_RIDERS, me: 0, t: 2.5 + (now * 0.9) % 33, assign: (p: string) => p, faces: (s: string, m: string) => faces.get(s, m), moments: SATURDAY });
 }
-function gtgPreview(sf: Surface, now: number, faces: FaceBank) {
-  sf.fit();
-  const W = sf.pw, H = sf.ph; if (W < 4) return;
-  const t = (now * 0.9) % 9;
-  const s = stateAt(t);
-  const a = now * 0.05;
-  const cam = lookAt([Math.sin(a) * 3.6 - 0.4, 2.1, 2.2 - Math.cos(a) * 3.6], [-0.4, 0.7, 2.2], 0.9);
-  renderWorld(sf.g, W, H, cam, s, { look: 'sweep', faces: (sl, m) => faces.get(sl, m) });
-  lens(sf.g, W, H, 'hero', s, false);
+/** Shadow Monsters on the hub: Loopie's croissant dragon looms up the sheet, then shrinks back to a croissant. */
+const PREVIEW_SHEET = typeof document !== 'undefined' ? document.createElement('canvas') : (null as any);
+function smPreview(sf: Surface, now: number, _faces: FaceBank) {
+  sf.fit(); const W = sf.pw, H = sf.ph; if (W < 4) return;
+  const k = (now % 7) / 7, loom = k < 0.45 ? 0 : k < 0.75 ? (k - 0.45) / 0.3 : 1 - (k - 0.75) / 0.25;
+  const p = Math.max(0, Math.min(1, 1 - (loom < 0.5 ? 2 * loom * loom : 1 - Math.pow(-2 * loom + 2, 2) / 2)));
+  sheetCanvasFor(PREVIEW_SHEET, W);
+  paintSheet(PREVIEW_SHEET, COMPANION_MONSTERS.loopie[0].objs, { lampZ: lampZFor(p), lamp: 1, house: 0, t: now }, true);
+  renderAudience(sf.g, W, H, { sheetCanvas: PREVIEW_SHEET, house: 0.05, t: now, zoom: 1.12 });
 }
 let fontsDone = false;
 function addFonts() {
@@ -396,4 +384,3 @@ function inviteLink(code: string) {
   try { const u = new URL(location.href); u.searchParams.set('reflectRoom', code); u.hash = ''; return u.toString(); } catch (e) { return code; }
 }
 function sel(el: HTMLElement) { try { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); if (s) { s.removeAllRanges(); s.addRange(r); } } catch (e) { /* ignore */ } }
-export { sweepCam };
