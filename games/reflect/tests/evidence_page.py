@@ -85,8 +85,8 @@ RITUALS = [
 ]
 
 SHOTS = {
-    'sm': [('phone-1-hook-monster', 'The first three seconds'), ('phone-3-monster', 'Building a monster backstage'), (r'phone-s\d+-loom-\d', 'It looms over the audience'), (r'phone-s-pulling-\d', 'Its maker pulls the light back'), (r'phone-s\d+-lights-\d', 'Lights up: what it was made of'), (r'phone-s\d+-evr--1', 'Same stuff. More distance.'), (r'phone-s\d+-finale--1', 'The parade'), ('phone-z-end', 'Ritual complete · share card')],
-    'ma': [('phone-1-hook-bang', 'The first three seconds'), ('phone-3-blind', 'Drawing blind — they can see it'), ('phone-4-reveal', 'Blindfold off'), ('phone-6-price', 'A secret price'), (r'phone-b-holding-\d', 'Holding the paddle up'), (r'phone-a\d+-sold-\d', 'SOLD'), (r'phone-a\d+-gap--1', 'The estimates are in'), ('phone-z-end', 'Ritual complete · share card')],
+    'sm': [('phone-1-hook-monster', 'The first three seconds'), ('phone-3-monster', 'Building a monster backstage'), (r'phone-s\d+-loom-\d', 'It looms over the audience'), (r'phone-s-pulling-\d', 'Its maker pulls the light back'), (r'phone-s\d+-lights-\d', 'Lights up: what it was made of'), ('phone-x-evr', 'Same stuff. More distance.'), ('phone-x-parade', 'The parade'), ('phone-x-birds', 'A duck quacks; the monsters fly into the sunrise'), ('phone-z-end', 'Ritual complete · share card')],
+    'ma': [('phone-1-hook-bang', 'The first three seconds'), ('phone-3-blind', 'Drawing blind — they can see it'), ('phone-4-reveal', 'Blindfold off'), ('phone-6-price', 'A secret price'), (r'phone-b-holding-\d', 'Holding the paddle up'), (r'phone-a\d+-sold-\d', 'SOLD'), ('phone-x-estimates', 'The estimates are in'), ('phone-x-museum', 'The Museum of Glorious Messes'), ('phone-x-tag', 'Your own price tag, under glass'), ('phone-z-end', 'Ritual complete · share card')],
     'er': [('phone-1-hook', 'The first three seconds'), ('phone-3-shaping', 'Shaping the day'), ('phone-5-ride-lift', 'On-ride camera: the Bubbles in character'), ('phone-6-ride-drop', 'The first drop'), ('phone-7-switch-lever', 'Jump onto a friend’s track'), ('phone-10-station', 'Where you diverged'), ('phone-11-one-loop', 'One loop together'), ('phone-12-photo', 'On-ride photo')],
 }
 DESK = {
@@ -190,7 +190,7 @@ if SCORE:
 {f'<h3>From an independent review <small>a separate agent that did not build these, looking only at the captures and the brief</small></h3><ul class="gaps">{review}</ul>' if review else ''}
 </section>'''
 
-doc = f'''<title>Reflect Rituals Review</title>
+doc = f'''<meta charset="utf-8"><title>Reflect Rituals Review</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Fredoka:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,800&display=swap">
 <style>
@@ -205,8 +205,9 @@ h1{{font:800 clamp(32px,6.4vw,54px)/1.02 "Baloo 2",Fredoka,system-ui,sans-serif;
 .cta a.sec{{background:transparent;color:var(--fg);border:1.5px solid var(--line)}}
 .changes{{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px 18px;max-width:86ch;margin:0 0 26px}}
 .changes h3{{margin:0 0 8px;font-size:16px}} .changes ul{{margin:0;padding-left:18px;display:grid;gap:6px;color:var(--mut)}} .changes b{{color:var(--fg)}}
-nav{{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);padding-block:10px;z-index:3}}
-nav a{{color:var(--fg);text-decoration:none;padding:7px 14px;border-radius:999px;border:1px solid var(--line);font-size:14px}}
+nav{{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:8px;margin:0 0 8px;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);padding-block:10px;z-index:3;scrollbar-width:none}}
+nav::-webkit-scrollbar{{display:none}}
+nav a{{flex:none;color:var(--fg);text-decoration:none;padding:7px 14px;border-radius:999px;border:1px solid var(--line);font-size:14px;white-space:nowrap}}
 section{{border-top:1px solid var(--line);padding-block:34px 10px;scroll-margin-top:60px}}
 .rh .eyebrow{{margin:0;color:var(--acc);font-size:13px;letter-spacing:.06em;text-transform:uppercase}}
 #sm .eyebrow{{color:var(--sm)}} #ma .eyebrow{{color:var(--ma)}} #er .eyebrow{{color:var(--er)}}
