@@ -1,0 +1,19 @@
+{
+ "sha256": "82e549b9e4a872d91cf64970e625125c88db79c434a3d602e83cb52bf0c638d0",
+ "bytes": 1799397,
+ "imports": [
+  "import * as React from \"react\"",
+  "import { addPropertyControls, ControlType } from \"framer\"",
+  "import { motion } from \"framer-motion\"",
+  "import * as FramerMotionNS from \"framer-motion\""
+ ],
+ "params": [
+  "React",
+  "addPropertyControls",
+  "ControlType",
+  "motion",
+  "FramerMotionNS"
+ ],
+ "controlsCount": 23,
+ "controlsSrc": "{\n    \"eosShowGameMenu\": { \"type\": ControlType.Boolean, \"title\": \"Show game menu\", \"defaultValue\": false },\n    \"title\": { \"type\": ControlType.String, \"title\": \"Title\", \"defaultValue\": \"EMOTIONAL RELEASE CONSOLE\" },\n    \"accent\": { \"type\": ControlType.Color, \"title\": \"Neon 1\", \"defaultValue\": \"#00D9FF\" },\n    \"accent2\": { \"type\": ControlType.Color, \"title\": \"Neon 2\", \"defaultValue\": \"#C000FF\" },\n    \"background\": { \"type\": ControlType.Color, \"title\": \"Background\", \"defaultValue\": \"#000000\" },\n    \"soundOn\": { \"type\": ControlType.Boolean, \"title\": \"SFX On\", \"defaultValue\": true },\n    \"hapticsOn\": { \"type\": ControlType.Boolean, \"title\": \"Haptics\", \"defaultValue\": true },\n    \"musicOnDefault\": { \"type\": ControlType.Boolean, \"title\": \"Music Default\", \"defaultValue\": false },\n    \"musicVolume\": { \"type\": ControlType.Number, \"title\": \"Music Volume\", \"min\": 0, \"max\": 1, \"step\": 0.05, \"defaultValue\": 0.35 },\n    \"tapOutBpm\": { \"type\": ControlType.Number, \"title\": \"Tap Out BPM\", \"min\": 40, \"max\": 180, \"step\": 1, \"defaultValue\": 92 },\n    \"bubbleTextPx\": { \"type\": ControlType.Number, \"title\": \"Bubble Text\", \"min\": 1, \"max\": 28, \"step\": 0.5, \"defaultValue\": 16, \"unit\": \"px\", \"displayStepper\": true },\n    \"maxWidth\": { \"type\": ControlType.Number, \"title\": \"Max Width\", \"min\": 700, \"max\": 1600, \"step\": 10, \"defaultValue\": 1180, \"unit\": \"px\" },\n    \"pixarIntensity\": { \"type\": ControlType.Number, \"title\": \"Pixar Light\", \"min\": 0, \"max\": 2, \"step\": 0.05, \"defaultValue\": 1 },\n    \"pixarWarmth\": { \"type\": ControlType.Number, \"title\": \"Warmth\", \"min\": 0, \"max\": 2, \"step\": 0.05, \"defaultValue\": 1 },\n    \"pixarParallax\": { \"type\": ControlType.Boolean, \"title\": \"Light Follows\", \"defaultValue\": true },\n    \"pixarSquash\": { \"type\": ControlType.Boolean, \"title\": \"Squash & Stretch\", \"defaultValue\": true },\n    \"pixarBokeh\": { \"type\": ControlType.Number, \"title\": \"Bokeh\", \"min\": 0, \"max\": 24, \"step\": 1, \"defaultValue\": 9 },\n    \"pixarDust\": { \"type\": ControlType.Number, \"title\": \"Dust Motes\", \"min\": 0, \"max\": 40, \"step\": 1, \"defaultValue\": 14 },\n    \"eosCheckin\": { \"type\": ControlType.Boolean, \"title\": \"Emotion Check-in\", \"defaultValue\": true },\n    \"eosCrisisLines\": { \"type\": ControlType.String, \"title\": \"Support Lines\", \"displayTextArea\": true, \"defaultValue\": \"US · 988 | Canada · 988 | UK & IE · Samaritans 116 123 | Australia · Lifeline 13 11 14 | India · Tele-MANAS 14416 | Anywhere · findahelpline.com\" },\n    \"eosCrisisUrl\": { \"type\": ControlType.String, \"title\": \"Support Link\", \"defaultValue\": \"https://findahelpline.com\" },\n    \"eosEmergencyText\": { \"type\": ControlType.String, \"title\": \"Emergency Line\", \"defaultValue\": \"In immediate danger? Call your local emergency number.\" },\n    \"eosShareUrl\": { \"type\": ControlType.String, \"title\": \"Share Link\", \"defaultValue\": \"\" },\n}"
+}
