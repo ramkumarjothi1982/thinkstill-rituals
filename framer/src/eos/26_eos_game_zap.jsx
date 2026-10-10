@@ -25,6 +25,7 @@ const EOS_ZAP_FACE = {
     softer: { glitch: 10, drop: 52, still: 61, patch: 75, loopie: 63, rush: 20, sync: 70 },
     happy: { glitch: 7, drop: 6, still: 70, patch: 20, loopie: 20, rush: 44, sync: 63 },
 }
+const EOS_ZAP_SHOCK_ALT = { glitch: [56], drop: [80], still: [63], patch: [73], loopie: [54], rush: [52], sync: [44] }
 const EOS_ZAP_RUSH = { angry: 29, yell: 80, cheer: 70, laugh: 44 }
 const EOS_ZAP_POS = {
     3: [[27, 22], [73, 22], [50, 47]],
@@ -55,7 +56,9 @@ function eosZapFaces({ game, entries, uploads, n, seed }) {
         if (!m) return { neg: src, shocked: src, softer: src, happy: src, upload: true }
         const b = m[1]
         const pick = (k) => (EOS_ZAP_FACE[k][b] ? emotionSrc(b, EOS_ZAP_FACE[k][b]) : src)
-        return { neg: src, shocked: pick("shocked"), softer: pick("softer"), happy: pick("happy"), upload: false, char: b }
+        // the shocked face must differ from the starting face (PATCH E70 / SYNC E48 can be both)
+        const shocked = [EOS_ZAP_FACE.shocked[b], ...(EOS_ZAP_SHOCK_ALT[b] || [])].filter(Boolean).map((e) => emotionSrc(b, e)).find((s) => s !== src) || src
+        return { neg: src, shocked, softer: pick("softer"), happy: pick("happy"), upload: false, char: b }
     })
 }
 
@@ -333,7 +336,7 @@ function EosZapperEngine({ game, entries = [], onDone, sfx, reduced, onProgress,
                 s.busy = false
                 if (doneHits >= total) finish()
                 else if (s.queue.length) fire(s.queue.shift())
-            }, reduced ? 320 : 430)
+            }, reduced ? 340 : 480)
         }, reduced ? 60 : 170)
     }
     const onTool = () => {
@@ -363,7 +366,16 @@ function EosZapperEngine({ game, entries = [], onDone, sfx, reduced, onProgress,
     let bolt = null
     if (shot && arenaRef.current && tipRef.current && bubbleRefs.current[shot.i]) {
         const a = arenaRef.current
-        const t = eosZapPt(a, tipRef.current, 0.5, 0.5)
+        // the prong tips where the zapper is AIMED (pivot + rotated length): exact even while the swing / recoil
+        // animation is still running or the main thread is busy (a live measure could lag a frame behind)
+        const piv = eosZapPt(a, dockRef.current, 0.5, 0.94)
+        const len = (dockRef.current.offsetHeight || 0) * 0.895
+        const rad = (aim * Math.PI) / 180
+        // the live tip is used whenever it is near the aimed one (it then also follows the recoil); while the swing
+        // is still catching up on a busy main thread the bolt starts at the live tip too, so it never floats free
+        const aimed = piv && len ? { x: piv.x + Math.sin(rad) * len, y: piv.y - Math.cos(rad) * len } : null
+        const live = eosZapPt(a, tipRef.current, 0.5, 0.5)
+        const t = live || aimed
         const el = bubbleRefs.current[shot.i]
         const c = eosZapPt(a, el, 0.5, 0.5)
         if (t && c) {
@@ -490,7 +502,7 @@ function eosZapPt(arena, el, fx = 0.5, fy = 0.5) {
 }
 
 const EOS_ZAP_CSS = String.raw`
-.eosZapArena{--zd:min(27%,150px);--zw:min(25%,104px);--rw:min(27%,124px);position:relative;overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.eosZapArena{--zd:min(27%,150px);--zw:min(25cqw,104px);--rw:min(27%,124px);container-type:inline-size;position:relative;overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .eosZapArena .eosZapFloor{position:absolute;left:0;right:0;bottom:0;height:30%;background:radial-gradient(ellipse at 50% 100%,rgba(120,220,255,.16),rgba(120,220,255,0) 70%);pointer-events:none}
 .eosZapArena .eosZapFx{position:absolute;left:0;top:0;pointer-events:none;overflow:visible;z-index:6}
 .eosZapArena .eosZapCable{fill:none;stroke:#2a2f37;stroke-width:5;stroke-linecap:round}
@@ -526,12 +538,13 @@ const EOS_ZAP_CSS = String.raw`
 .eosZapArena .eosZapBubble.h1 .eosZapPip.p1,.eosZapArena .eosZapBubble.h2 .eosZapPip{background:#7ff3ff;box-shadow:0 0 6px #3de0ff}
 .eosZapArena .eosZapBubble.relieved .eosZapPip{background:#ffe27a;border-color:#fff3c4;box-shadow:0 0 6px #ffcf4a}
 .eosZapArena .eosZapDock{position:absolute;left:50%;bottom:2.5%;width:var(--zw);height:auto;aspect-ratio:1/2;margin:0 0 0 calc(var(--zw) / -2);padding:0;border:0;background:transparent;cursor:pointer;z-index:7;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-.tsArcade .eosZapArena button.eosZapDock,.tsArcade .eosZapArena button.eosZapDock:hover,.tsArcade .eosZapArena button.eosZapDock:focus{background:none!important;background-image:none!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0!important;min-width:0!important;min-height:0!important;outline:none!important;filter:none!important;transform:none!important}
-.tsArcade .eosZapArena button.eosZapDock::before,.tsArcade .eosZapArena button.eosZapDock::after{display:none!important}
+${EOS_A} .eosZapArena button.zapperTool.eosZapDock,${EOS_A} .eosZapArena button.zapperTool.eosZapDock:hover,${EOS_A} .eosZapArena button.zapperTool.eosZapDock:focus,${EOS_A} .eosZapArena button.zapperTool.eosZapDock.selected{background:none!important;background-image:none!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0!important;min-width:0!important;min-height:0!important;width:var(--zw)!important;height:calc(var(--zw) * 2)!important;max-width:none!important;max-height:none!important;aspect-ratio:auto!important;outline:none!important;filter:none!important;transform:none!important}
+${EOS_A} .eosZapArena button.zapperTool.eosZapDock::before,${EOS_A} .eosZapArena button.zapperTool.eosZapDock::after{display:none!important}
 .eosZapArena .eosZapCradle{position:absolute;left:-14%;right:-14%;bottom:-2%;height:17%;border-radius:10px 10px 14px 14px;background:linear-gradient(180deg,#a7b2bf,#5d6876 55%,#3a424d);box-shadow:inset 0 2px 0 rgba(255,255,255,.45),0 6px 14px rgba(0,0,0,.35);transition:opacity .4s,transform .4s}
 .eosZapArena .eosZapCradle::after{content:"";position:absolute;left:22%;right:22%;top:-14%;height:34%;border-radius:6px;background:linear-gradient(180deg,#2c333d,#4b5563)}
 .eosZapArena .eosZapDock.selected .eosZapCradle{opacity:.55;transform:translateY(6%)}
-.eosZapArena .eosZapAim{position:absolute;inset:0;transform-origin:50% 94%;transition:transform .16s cubic-bezier(.2,.9,.3,1.1)}
+.eosZapArena .eosZapAim{position:absolute;inset:0;transform-origin:50% 94%;transition:transform .1s cubic-bezier(.2,.9,.3,1.1)}
+.eosZapArena.reduced .eosZapAim{transition:none}
 .eosZapArena .eosZapDock:not(.selected) .eosZapAim{filter:drop-shadow(0 0 10px rgba(120,235,255,.35));animation:eosZapWake 1.6s ease-in-out infinite}
 @keyframes eosZapWake{0%,100%{filter:drop-shadow(0 0 6px rgba(120,235,255,.25))}50%{filter:drop-shadow(0 0 16px rgba(120,235,255,.7))}}
 .eosZapArena .eosZapKick{position:absolute;inset:0;transform-origin:50% 94%}
@@ -560,7 +573,7 @@ const EOS_ZAP_CSS = String.raw`
 @keyframes eosZapRushIn{0%{transform:scale(.9)}100%{transform:scale(1)}}
 @keyframes eosZapRushPush{0%{transform:translateY(0)}40%{transform:translateY(12%) scale(1.04,.94)}100%{transform:translateY(6%)}}
 @keyframes eosZapRushHop{0%{transform:translateY(6%)}40%{transform:translateY(-16%) rotate(-5deg)}100%{transform:translateY(0)}}
-.eosZapArena .eosZapSay{position:absolute;left:0;bottom:calc(100% + 6px);width:max-content;max-width:132px;padding:6px 10px;border-radius:12px;background:#fff3ef;color:#a30f24;font:900 13px/1.15 Inter,system-ui,sans-serif;letter-spacing:.02em;box-shadow:0 4px 12px rgba(0,0,0,.25);animation:eosZapSay .32s cubic-bezier(.2,1.4,.4,1) both}
+.eosZapArena .eosZapSay{position:absolute;left:0;bottom:calc(100% + 6px);width:max-content;max-width:120px;padding:6px 10px;border-radius:12px;background:#fff3ef;color:#a30f24;font:900 13px/1.15 Inter,system-ui,sans-serif;letter-spacing:.02em;box-shadow:0 4px 12px rgba(0,0,0,.25);animation:eosZapSay .32s cubic-bezier(.2,1.4,.4,1) both}
 .eosZapArena .eosZapSay::after{content:"";position:absolute;left:22px;bottom:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#fff3ef}
 @keyframes eosZapSay{0%{opacity:0;transform:translateY(6px) scale(.9)}100%{opacity:1;transform:none}}
 .eosZapArena .eosZapPlunger{position:relative;width:70%;height:calc(var(--rw) * .34);margin-top:-6%}
@@ -574,7 +587,7 @@ const EOS_ZAP_CSS = String.raw`
 .eosZapArena .eosZapCount b{font:1000 18px/1 Inter,system-ui,sans-serif}
 .eosZapArena .eosZapCount span{font:900 11px/1 Inter,system-ui,sans-serif;letter-spacing:.08em}
 .eosZapArena.zapPhase-done .eosZapAim{filter:drop-shadow(0 0 14px rgba(255,214,110,.75))}
-@media (min-width:701px){.eosZapArena{--zd:min(22%,150px);--zw:min(13%,112px);--rw:min(17%,140px)}.eosZapArena .eosZapImpact b{font-size:20px}.eosZapArena .eosZapSay{font-size:15px;max-width:240px}}
+@media (min-width:701px){.eosZapArena{--zd:min(22%,150px);--zw:min(13cqw,112px);--rw:min(17%,140px)}.eosZapArena .eosZapImpact b{font-size:20px}.eosZapArena .eosZapSay{font-size:15px;max-width:240px}}
 @media (prefers-reduced-motion:reduce){.eosZapArena *{animation-duration:.01ms!important;animation-iteration-count:1!important}}
 `
 
