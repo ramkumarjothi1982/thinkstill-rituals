@@ -18688,9 +18688,11 @@ function RoutedGameContentLegacy(p) {
         case 1:
             return <BurstEngine {...p} />
         case 3:
-            return <CrackEngine {...p} />
+            // founder F5: the real forged spanner (src/eos/25_eos_game_tools.jsx); classic kept as fallback
+            return typeof EosCrackEngine === "function" ? <EosCrackEngine {...p} /> : <CrackEngine {...p} />
         case 4:
-            return <StompEngine {...p} />
+            // founder "tools look real": the leather stomping boot (src/eos/25_eos_game_tools.jsx); classic kept as fallback
+            return typeof EosStompEngine === "function" ? <EosStompEngine {...p} /> : <StompEngine {...p} />
         case 6:
             // founder F4: the real handheld zapper + RUSH helper (src/eos/26_eos_game_zap.jsx); classic kept as fallback
             return typeof EosZapperEngine === "function" ? <EosZapperEngine {...p} /> : <ZapEngine {...p} />

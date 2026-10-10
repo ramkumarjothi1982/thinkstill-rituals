@@ -24,8 +24,8 @@
 const EOS_GESTURES = {
     1: [{ t: "button.popBubbleV2", g: "tap", pick: "near", L: "POP IT!" }],
     2: [{ t: "button.uniqControl", g: "taps", n: 4, L: "CRUSH ×4" }],
-    3: [{ t: "button.crackToolDock", g: "tool", armed: ".selected", L: "GRAB THE HAMMER" }, { t: ".crackBubbleSlot", g: "taps", n: 3, pick: "near", L: "CRACK ×3" }],
-    4: [{ t: "button.stompToolDock", g: "tool", armed: ".selected", L: "GRAB THE BOOT" }, { t: ".stompBubbleSlot", g: "taps", n: 3, pick: "near", L: "STOMP ×3" }],
+    3: [{ t: "button.crackToolDock", g: "tool", armed: ".selected", L: "GRAB THE SPANNER" }, { t: ".crackBubbleSlot:not(.spent)", g: "taps", n: 3, pick: "near", L: "CRACK ×3" }],
+    4: [{ t: "button.stompToolDock", g: "tool", armed: ".selected", L: "GRAB THE BOOT" }, { t: ".stompBubbleSlot:not(.spent)", g: "taps", n: 3, pick: "near", L: "STOMP ×3" }],
     5: [{ t: "button.uniqControl", g: "tap", L: "SWING!" }],
     6: [{ t: "button.zapperTool", g: "tool", armed: ".selected", L: "GRAB THE ZAPPER" }, { t: ".eosZapBubble:not(.zapSpent)", g: "taps", n: 2, pick: "near", L: "ZAP ×2" }],
     7: [{ t: ".pinTool", g: "drag", dir: "r", d: 130, L: "SLIDE THE PIN →" }],

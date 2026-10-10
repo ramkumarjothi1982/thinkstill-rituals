@@ -14,7 +14,7 @@
 
 // ---------------------------------------------------------------- §11.1 wrong guide texts
 const EOS_HINT_FIX = {
-    3: "Grab the hammer, then tap each egg 3×", 4: "Grab the boot, then stomp each bubble 3×", 5: "Tap to swing",
+    3: "Grab the spanner, then hit each bubble 3×", 4: "Grab the boot, then stomp each bubble 3×", 5: "Tap to swing",
     6: "Grab the zapper, then zap each bubble 2×", 8: "Pull the rock down, then let go", 9: "Grab the laser, then tap each bubble 3×",
     11: "Hold, then let go when the needle is in the green", 12: "Tap the paddle 3×", 14: "Tap the glowing corner",
     16: "Light the torch, then tap each ice cube 3×", 17: "Tap the glowing weak spot", 19: "Grab the eraser, then rub each word",
