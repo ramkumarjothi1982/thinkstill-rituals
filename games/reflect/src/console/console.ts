@@ -13,6 +13,10 @@ import { RF_CSS, RF_FONTS } from './style';
 import { createGtgScene } from '../rituals/group-think-glitch/scene';
 import { createDdbScene } from '../rituals/drama-dubbing-booth/scene';
 import { renderFilm } from '../rituals/drama-dubbing-booth/film';
+import { createErScene } from '../rituals/emotional-rollercoaster/scene';
+import { renderRide, RIDER_COLORS } from '../rituals/emotional-rollercoaster/ride';
+import { buildTrack } from '../rituals/emotional-rollercoaster/track';
+import { SATURDAY } from '../rituals/emotional-rollercoaster/content';
 import { renderWorld, lens, stateAt, sweepCam } from '../rituals/group-think-glitch/world';
 import { lookAt } from '../gfx/projector';
 
@@ -37,7 +41,7 @@ interface RitualCard { id: RitualId; title: string; pitch: string; genre: string
 const RITUALS: RitualCard[] = [
   { id: 'group-think-glitch', title: 'Group Think Glitch', pitch: 'Four cameras. One cake. Who saw what?', genre: 'Mystery', players: '2–4 players', factory: createGtgScene, preview: gtgPreview, companions: ['glitch', 'loopie', 'sync', 'patch'] },
   { id: 'drama-dubbing-booth', title: 'Drama Dubbing Booth', pitch: 'One silent scene. Your voice decides what it means.', genre: 'Comedy', players: '2–4 players', factory: createDdbScene, preview: ddbPreview, companions: ['loopie', 'glitch', 'rush', 'sync'] },
-  { id: 'emotional-rollercoaster', title: 'Emotional Rollercoaster', pitch: 'Sculpt your ride, then ride everyone’s.', genre: 'Spectacle', players: '2–4 players', preview: erPreview }
+  { id: 'emotional-rollercoaster', title: 'Emotional Rollercoaster', pitch: 'Same day. Same ride. Totally different drops.', genre: 'Spectacle', players: '2–4 players', factory: createErScene, preview: erPreview, companions: ['rush', 'still', 'drop', 'loopie'] }
 ];
 
 const ME_KEY = '__rf_me_v1', SOUND_KEY = '__rf_sound_v1', THEME_KEY = '__ts_chat_theme_v181', MEDIA_KEY = '__ts_reset_shared_media_v1';
@@ -354,18 +358,14 @@ function ddbPreview(sf: Surface, now: number, faces: FaceBank) {
   sf.fit(); const W = sf.pw, H = sf.ph; if (W < 4) return;
   renderFilm(sf.g, W, H, now % 12, { faces: (s, m) => faces.get(s, m), cues: PREVIEW_CUE });
 }
+let PREVIEW_RIDERS: any[] | null = null;
 function erPreview(sf: Surface, now: number, faces: FaceBank) {
-  sf.fit(); const g = sf.g, W = sf.pw, H = sf.ph; if (W < 4) return;
-  const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#0b1240'); bg.addColorStop(1, '#3a1450'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
-  for (let i = 0; i < 50; i++) { const x = (i * 97.3) % W, y = (i * 53.1) % (H * 0.6); g.fillStyle = 'rgba(255,255,255,' + (0.3 + 0.3 * Math.sin(now * 2 + i)) + ')'; g.fillRect(x, y, 1.5, 1.5); }
-  const pt = (k: number) => { const x = W * (0.06 + 0.88 * k); const y = H * (0.62 - 0.3 * Math.sin(k * Math.PI * 2.2) * Math.sin(k * Math.PI) - 0.12 * Math.sin(k * 13)); return [x, y]; };
-  for (const [col, wd] of [['rgba(255,80,200,0.25)', 10], ['#ff5ec8', 3], ['#7fd8ff', 1.2]] as [string, number][]) {
-    g.strokeStyle = col; g.lineWidth = wd * (W / 400); g.beginPath();
-    for (let i = 0; i <= 160; i++) { const [x, y] = pt(i / 160); if (i) g.lineTo(x, y); else g.moveTo(x, y); }
-    g.stroke();
-  }
-  const k = (now * 0.12) % 1; const [cx, cy] = pt(k); const img = faces.get('rush', 'wow');
-  const r = H * 0.12; if (img) g.drawImage(img, cx - r, cy - r * 1.7, r * 2, r * 2);
+  sf.fit(); const W = sf.pw, H = sf.ph; if (W < 4) return;
+  if (!PREVIEW_RIDERS) PREVIEW_RIDERS = [
+    { pid: 'a', avatar: 'sync', name: 'You', human: true, track: buildTrack([{ h: -0.5, mod: 'drop' }, { h: -0.2, mod: 'tunnel' }, { h: 0.7, mod: 'loop' }, { h: -0.4, mod: 'cork' }, { h: 0.6, mod: 'smooth' }]), color: RIDER_COLORS[0] },
+    { pid: 'b', avatar: 'rush', name: 'Rush', human: false, track: buildTrack([{ h: -0.9, mod: 'drop' }, { h: 0.8, mod: 'loop' }, { h: 0.9, mod: 'loop' }, { h: -0.8, mod: 'drop' }, { h: 1, mod: 'loop' }]), color: RIDER_COLORS[1] }
+  ];
+  renderRide(sf.g, W, H, { riders: PREVIEW_RIDERS, me: 0, t: 2.5 + (now * 0.9) % 33, assign: (p: string) => p, faces: (s: string, m: string) => faces.get(s, m), moments: SATURDAY });
 }
 function gtgPreview(sf: Surface, now: number, faces: FaceBank) {
   sf.fit();

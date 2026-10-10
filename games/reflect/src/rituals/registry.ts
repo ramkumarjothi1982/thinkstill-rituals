@@ -2,8 +2,10 @@
 import type { RitualLogic } from '../room/ritual';
 import { gtgLogic } from './group-think-glitch/logic';
 import { ddbLogic } from './drama-dubbing-booth/logic';
+import { erLogic } from './emotional-rollercoaster/logic';
 
 export const REGISTRY: Record<string, RitualLogic> = {
   [gtgLogic.id]: gtgLogic,
-  [ddbLogic.id]: ddbLogic
+  [ddbLogic.id]: ddbLogic,
+  [erLogic.id]: erLogic
 };
