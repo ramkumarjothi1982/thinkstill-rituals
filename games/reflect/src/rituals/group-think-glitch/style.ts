@@ -1,8 +1,9 @@
+import { cq } from '../../ui/dom';
 /* Group Think Glitch — its own visual world: a dusk rooftop seen through camera feeds, then a detective's corkboard.
  * Typewriter labels (Special Elite), handwritten polaroids (Caveat), console UI in Fredoka. */
 export const GTG_FONTS = 'https://fonts.googleapis.com/css2?family=Special+Elite&family=Caveat:wght@600;700&display=swap';
 
-export const GTG_CSS = `
+export const GTG_CSS = cq(`
 .gtg{position:absolute;inset:0;display:flex;flex-direction:column;color:#f6efe6;background:radial-gradient(120% 90% at 50% 0%,#2a2350 0%,#120f26 55%,#0a0918 100%);font-family:var(--rf-ui);overflow:hidden;-webkit-user-select:none;user-select:none;touch-action:none}
 .gtg *{box-sizing:border-box}
 .gtg .tw{font-family:'Special Elite',ui-monospace,Menlo,monospace;letter-spacing:.02em}
@@ -136,4 +137,4 @@ export const GTG_CSS = `
   .gtg-hint{font-size:14px}
 }
 @media (prefers-reduced-motion:reduce){.gtg *{animation-duration:.01ms!important;transition-duration:.01ms!important}}
-`;
+`);

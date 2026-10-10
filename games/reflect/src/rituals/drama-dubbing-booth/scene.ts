@@ -66,10 +66,11 @@ class DdbScene implements Scene {
     const ctx = this.ctx;
     const proj = new Projector(ctx.sfx);
     const sf = new Surface(); sf.maxDpr = 1.5;
-    const title = h('div', { class: 'deco', style: { position: 'absolute', left: '0', right: '0', top: '62%', textAlign: 'center', fontSize: 'clamp(26px,7.5vw,48px)', color: '#ffd27a', textShadow: '0 4px 24px rgba(0,0,0,.9)', opacity: '0', transition: 'opacity .4s' } }, 'Your voice decides');
-    const sub = h('div', { style: { position: 'absolute', left: '0', right: '0', top: 'calc(62% + 54px)', textAlign: 'center', fontSize: '14px', opacity: '0', transition: 'opacity .4s' } }, 'One silent scene. You dub it. Nobody hears your cut until the premiere.');
+    const title = h('div', { class: 'deco', style: { fontSize: 'clamp(26px,7.5vw,48px)', lineHeight: '1.1', color: '#ffd27a', textShadow: '0 4px 24px rgba(0,0,0,.9)', opacity: '0', transition: 'opacity .4s' } }, 'Your voice decides');
+    const sub = h('div', { style: { fontSize: '14px', marginTop: '10px', opacity: '0', transition: 'opacity .4s' } }, 'One silent scene. You dub it. Nobody hears your cut until the premiere.');
+    const words = h('div', { style: { position: 'absolute', left: '16px', right: '16px', top: '62%', textAlign: 'center', pointerEvents: 'none' } }, title, sub);
     const skip = h('button', { class: 'ddb-btn ghost', style: { position: 'absolute', right: '14px', bottom: 'calc(14px + var(--rf-safe-b,0px))', minHeight: '44px' } }, 'Skip');
-    const wrap = h('div', { class: 'ddb-cin' }, sf.canvas, title, sub, skip);
+    const wrap = h('div', { class: 'ddb-cin' }, sf.canvas, words, skip);
     this.el.appendChild(wrap);
     const faces = (s: string, m: string) => ctx.faces.get(s, m);
     const T0 = performance.now();
@@ -364,14 +365,19 @@ class Studio {
   }
   private bindLineCard(card: HTMLElement, L: Line) {
     const ctx = this.ctx;
-    let ghost: HTMLElement | null = null, sx = 0, sy = 0, marker: HTMLElement | null = null;
+    let ghost: HTMLElement | null = null, ghostOrigin = { x: 0, y: 0 }, sx = 0, sy = 0, marker: HTMLElement | null = null;
     const cleanup = () => { if (ghost) ghost.remove(); ghost = null; if (marker) marker.remove(); marker = null; (['patch', 'sync'] as Who[]).forEach(w => this.tracks[w].classList.remove('over')); };
     drag(card, {
       down: (_x, _y, e) => { ctx.sfx.unlock(); sx = e.clientX; sy = e.clientY; },
       move: (_x, _y, e) => {
         if (!ghost && Math.hypot(e.clientX - sx, e.clientY - sy) < 8) return;
-        if (!ghost) { ghost = h('div', { class: 'ddb-ghost' }, '“' + L.text + '”'); (this.el.getRootNode() as any).appendChild ? (this.el.getRootNode() as ShadowRoot).appendChild(ghost) : document.body.appendChild(ghost); ctx.sfx.pop(700); }
-        ghost.style.left = (e.clientX - 40) + 'px'; ghost.style.top = (e.clientY - 46) + 'px';
+        if (!ghost) {
+          ghost = h('div', { class: 'ddb-ghost', style: { left: '0px', top: '0px' } }, '“' + L.text + '”');
+          (this.el.getRootNode() as any).appendChild ? (this.el.getRootNode() as ShadowRoot).appendChild(ghost) : document.body.appendChild(ghost);
+          const o = ghost.getBoundingClientRect(); ghostOrigin = { x: o.left, y: o.top };
+          ctx.sfx.pop(700);
+        }
+        ghost.style.left = (e.clientX - 40 - ghostOrigin.x) + 'px'; ghost.style.top = (e.clientY - 46 - ghostOrigin.y) + 'px';
         const w = this.laneAt(e.clientX, e.clientY);
         (['patch', 'sync'] as Who[]).forEach(x => this.tracks[x].classList.toggle('over', x === w));
         if (w) {

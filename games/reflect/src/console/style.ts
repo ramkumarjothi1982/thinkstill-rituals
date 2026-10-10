@@ -2,12 +2,15 @@
  * dark / bright theme; each ritual brings its own world inside the stage. */
 export const RF_FONTS = 'https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Fredoka:wght@400;500;600;700&display=swap';
 
-export const RF_CSS = `
+import { cq } from '../ui/dom';
+
+export const RF_CSS = cq(`
 :host{all:initial;display:block;position:relative;width:100%;height:100%}
 .rf{--rf-ui:'Fredoka',ui-rounded,system-ui,-apple-system,'Segoe UI',sans-serif;--rf-display:'Baloo 2','Fredoka',ui-rounded,system-ui,sans-serif;
   --bg:#0f0d1f;--bg2:#1a1733;--card:#221e40;--line:rgba(255,255,255,.12);--fg:#f5f1ff;--mut:rgba(245,241,255,.7);--acc:#ffd27a;--acc2:#7fd8ff;--danger:#ff6b6b;
   position:absolute;inset:0;overflow:hidden;background:var(--bg);color:var(--fg);font-family:var(--rf-ui);font-size:15px;line-height:1.35;-webkit-font-smoothing:antialiased;
-  --rf-safe-b:env(safe-area-inset-bottom,0px);--rf-safe-t:env(safe-area-inset-top,0px)}
+  --rf-safe-b:env(safe-area-inset-bottom,0px);--rf-safe-t:env(safe-area-inset-top,0px);
+  container-type:size;container-name:rf}
 .rf[data-theme=bright]{--bg:#f6f2ff;--bg2:#ece6ff;--card:#ffffff;--line:rgba(30,20,70,.12);--fg:#1d1838;--mut:rgba(29,24,56,.68);--acc:#e8a33a;--acc2:#2b8fd6}
 .rf *{box-sizing:border-box}
 :where(.rf) button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -63,4 +66,4 @@ export const RF_CSS = `
 .rf-toast.on{opacity:1;transform:translate(-50%,0)}
 .rf-status{position:absolute;right:10px;top:calc(56px + var(--rf-safe-t));z-index:45;padding:4px 10px;border-radius:999px;background:rgba(255,107,107,.9);color:#fff;font-size:12px}
 @media (prefers-reduced-motion:reduce){.rf *{animation-duration:.01ms!important;transition-duration:.01ms!important}}
-`;
+`);

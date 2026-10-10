@@ -50,7 +50,7 @@ def main(base, out):
     rep = {'errors': [], 'checks': {}}
     with sync_playwright() as p:
         b = p.chromium.launch()
-        ctx = b.new_context(viewport={'width': 800, 'height': 860})
+        ctx = b.new_context(viewport={'width': 1440, 'height': 900})   # a desktop window: each 390-wide frame must still lay out as a phone
         page = ctx.new_page()
         page.on('pageerror', lambda e: rep['errors'].append(str(e)[:300]))
         page.on('console', lambda m: rep['errors'].append(m.text[:300]) if m.type == 'error' and 'net::ERR_' not in m.text else None)
@@ -70,6 +70,14 @@ def main(base, out):
         page.evaluate("window.__h.remount('a')")
         page.wait_for_timeout(1200)
         rep['checks']['a_remounted'] = cnt('.rf-card')[0] > 0
+        # the other two pilots start inside the same component (fresh mount each time, so each begins at the hub)
+        for i, rid in [(1, 'drama-dubbing-booth'), (2, 'emotional-rollercoaster')]:
+            page.locator('#a [data-act=solo]').nth(i).click()
+            page.wait_for_timeout(6000)
+            rep['checks'][f'a_plays_{rid}'] = cnt(f'[data-ritual={rid}]')[0] > 0
+            page.screenshot(path=os.path.join(out, f'framer-a-{rid}.png'))
+            page.evaluate("window.__h.unmount('a')"); page.wait_for_timeout(200)
+            page.evaluate("window.__h.remount('a')"); page.wait_for_timeout(1500)
         page.evaluate("window.__renderTarget = 'CANVAS'; window.__h.set('b', { radius: 24 })")
         page.wait_for_timeout(800)
         rep['checks']['b_static_poster_no_engine'] = page.evaluate("(() => { const h = document.querySelector('#b div div'); return !!h && !h.shadowRoot || (h.shadowRoot && h.shadowRoot.childNodes.length === 0); })()")

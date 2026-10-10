@@ -8,7 +8,7 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs?: Record<
     const v = attrs[k];
     if (v == null || v === false) continue;
     if (k === 'class') el.className = v;
-    else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+    else if (k === 'style' && typeof v === 'object') for (const p of Object.keys(v)) setStyle(el, p, v[p]);
     else if (k === 'text') el.textContent = String(v);
     else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);
     else if (k === 'html') el.innerHTML = v;
@@ -21,6 +21,41 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs?: Record<
   };
   kids.forEach(add);
   return el;
+}
+
+/* Reflect often lives inside a frame (a Framer component on a wider page), so sizes must follow the frame, not the browser
+ * window. The console root is a size container named `rf`: cqw/cqh and @container queries measure the frame. Browsers
+ * without container queries keep the viewport-unit / @media version written first. */
+export const toCq = (v: string) => v.replace(/(\d)vw\b/g, '$1cqw').replace(/(\d)vh\b/g, '$1cqh');
+const VIEWPORT_UNIT = /\d(?:vw|vh)\b/;
+
+/** Set one inline style; a value in vw/vh is set again in cqw/cqh (ignored by browsers that cannot parse it). */
+export function setStyle(el: HTMLElement, prop: string, val: any) {
+  (el.style as any)[prop] = val;
+  if (typeof val === 'string' && VIEWPORT_UNIT.test(val)) (el.style as any)[prop] = toCq(val);
+}
+
+/** Rewrite a stylesheet for the `rf` container: every declaration using vw/vh gets a cqw/cqh twin after it, and each
+ * `@media (min|max-width:Npx){…}` block becomes `@container rf (…){…}` plus the original media block for browsers
+ * without container queries. */
+export function cq(css: string): string {
+  css = css.replace(/([{;]\s*)([a-z-]+)\s*:\s*([^;{}]*\d(?:vw|vh)\b[^;{}]*)(?=[;}])/g, (_m, pre, prop, val) => `${pre}${prop}:${val};${prop}:${toCq(val)}`);
+  const re = /@media\s*\((min|max)-width:\s*(\d+)px\)\s*\{/g;
+  let out = '', i = 0, m: RegExpExecArray | null;
+  while ((m = re.exec(css))) {
+    let depth = 1, j = re.lastIndex;
+    while (j < css.length && depth > 0) { if (css[j] === '{') depth++; else if (css[j] === '}') depth--; j++; }
+    const inner = css.slice(re.lastIndex, j - 1), q = `(${m[1]}-width:${m[2]}px)`;
+    out += css.slice(i, m.index) + `@container rf ${q}{${inner}}@supports not (container-type:size){@media ${q}{${inner}}}`;
+    i = j; re.lastIndex = j;
+  }
+  return out + css.slice(i);
+}
+
+/** Width of the Reflect frame an element sits in (the `rf` container), falling back to the window. */
+export function frameWidth(el: Element): number {
+  const root = el.closest('.rf');
+  return root ? root.getBoundingClientRect().width : innerWidth;
 }
 
 export function clear(el: Element) { while (el.firstChild) el.removeChild(el.firstChild); }

@@ -4,7 +4,7 @@
  * Everything private stays on this device until the seal; the seal goes to the room authority. */
 import type { RoomView, Player } from '../../room/protocol';
 import type { Scene, SceneCtx } from '../../console/types';
-import { h, clear, Surface, drag, hold, clamp, lerp, ease, sleep } from '../../ui/dom';
+import { h, clear, Surface, drag, hold, clamp, lerp, ease, sleep, frameWidth } from '../../ui/dom';
 import { Projector } from '../../gfx/projector';
 import { CAM_INFO, CamId, HOTSPOTS, Hotspot, hotspotsFor, SUSPECTS, Suspect, SURE, DURATION } from './content';
 import { renderWorld, drawBackground, lens, rigCam, sweepCam, stateAt, hotspotAnchor, worldToUV, closeup, RIGS } from './world';
@@ -280,7 +280,7 @@ class Investigation {
   layout() {
     const r = this.wrap.getBoundingClientRect();
     if (r.width < 10 || r.height < 10) return;
-    const desk = r.width >= 560 && innerWidth >= 900;
+    const desk = r.width >= 560 && frameWidth(this.wrap) >= 900;
     let w = r.width, hh = r.height;
     const asp = w / hh;
     if (asp > 1.7) w = hh * 1.7; else if (asp < 0.66) hh = w / 0.66;

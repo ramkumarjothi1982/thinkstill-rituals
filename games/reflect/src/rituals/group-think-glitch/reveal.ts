@@ -6,7 +6,7 @@
  *   share card (cameras and verdict icons; names only if everyone agrees). */
 import type { RoomView, Player } from '../../room/protocol';
 import type { SceneCtx } from '../../console/types';
-import { h, clear, Surface, clamp, lerp, ease } from '../../ui/dom';
+import { h, clear, Surface, clamp, lerp, ease, setStyle } from '../../ui/dom';
 import { CAM_INFO, CamId, HOTSPOTS, SUSPECTS, Suspect, SURE, TRUTH } from './content';
 import { renderWorld, lens, rigCam, stateAt, hotspotAnchor, closeup, drawPose, uvToWorld, projectLast, RIGS, Look } from './world';
 import { lookAt, V3 } from '../../gfx/projector';
@@ -429,7 +429,7 @@ export class RevealDirector {
     const c = this.over.querySelector('.gtg-card canvas') as HTMLCanvasElement;
     if (!c) return;
     const card = c.parentElement as HTMLElement;
-    card.style.maxHeight = '52vh'; c.style.maxHeight = '52vh'; c.style.width = 'auto'; c.style.margin = '0 auto';
+    setStyle(card, 'maxHeight', '52vh'); setStyle(c, 'maxHeight', '52vh'); c.style.width = 'auto'; c.style.margin = '0 auto';
     const g = c.getContext('2d')!, W = 1080, H = 1350;
     const v = this.view!;
     const humans = this.seats.filter(s => s.p.human);

@@ -54,10 +54,11 @@ class ErScene implements Scene {
     this.mode = 'hook';
     const ctx = this.ctx, me = this.me!;
     const sf = new Surface(); sf.maxDpr = 1.5;
-    const title = h('div', { class: 'sign', style: { position: 'absolute', left: '0', right: '0', top: '40%', textAlign: 'center', fontSize: 'clamp(24px,7vw,46px)', color: '#ffd27a', textShadow: '0 4px 24px rgba(0,0,0,.8)', opacity: '0', transition: 'opacity .4s' } }, 'Same day. Different drops.');
-    const sub = h('div', { style: { position: 'absolute', left: '0', right: '0', top: 'calc(40% + 56px)', textAlign: 'center', fontSize: '14px', opacity: '0', transition: 'opacity .4s' } }, 'One Saturday, five moments. Build the ride of how it felt to you.');
+    const title = h('div', { class: 'sign', style: { fontSize: 'clamp(24px,7vw,46px)', lineHeight: '1.1', color: '#ffd27a', textShadow: '0 4px 24px rgba(0,0,0,.8)', opacity: '0', transition: 'opacity .4s' } }, 'Same day. Different drops.');
+    const sub = h('div', { style: { fontSize: '14px', marginTop: '10px', opacity: '0', transition: 'opacity .4s' } }, 'One Saturday, five moments. Build the ride of how it felt to you.');
+    const words = h('div', { style: { position: 'absolute', left: '16px', right: '16px', top: '40%', textAlign: 'center', pointerEvents: 'none' } }, title, sub);
     const skip = h('button', { class: 'er-btn ghost', style: { position: 'absolute', right: '14px', bottom: 'calc(14px + var(--rf-safe-b,0px))', minHeight: '44px', padding: '0 18px', width: 'auto' } }, 'Skip');
-    const wrap = h('div', { class: 'er-stage' }, sf.canvas, title, sub, skip);
+    const wrap = h('div', { class: 'er-stage' }, sf.canvas, words, skip);
     this.el.appendChild(wrap);
     const demo = [buildTrack([{ h: -0.5, mod: 'drop' }, { h: -0.2, mod: 'tunnel' }, { h: 0.7, mod: 'loop' }, { h: -0.4, mod: 'cork' }, { h: 0.6, mod: 'smooth' }]), buildTrack([{ h: -0.9, mod: 'drop' }, { h: 0.8, mod: 'loop' }, { h: 0.9, mod: 'loop' }, { h: -0.8, mod: 'drop' }, { h: 1, mod: 'loop' }]), buildTrack([{ h: -0.1, mod: 'smooth' }, { h: 0.1, mod: 'smooth' }, { h: 0.3, mod: 'smooth' }, { h: 0, mod: 'cork' }, { h: 0.3, mod: 'smooth' }])];
     const riders = [{ pid: 'me', avatar: me.avatar, name: 'You', human: true, track: demo[0], color: RIDER_COLORS[0] }, { pid: 'r', avatar: 'rush', name: 'Rush', human: false, track: demo[1], color: RIDER_COLORS[1] }, { pid: 's', avatar: 'still', name: 'Still', human: false, track: demo[2], color: RIDER_COLORS[2] }];

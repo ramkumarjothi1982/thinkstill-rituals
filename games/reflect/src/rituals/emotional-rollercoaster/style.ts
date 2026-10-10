@@ -1,7 +1,8 @@
+import { cq } from '../../ui/dom';
 /* Emotional Rollercoaster — a theme park at sunset: ride signage (Bungee), neon edges, a coaster lever to lock in. */
 export const ER_FONTS = 'https://fonts.googleapis.com/css2?family=Bungee&display=swap';
 
-export const ER_CSS = `
+export const ER_CSS = cq(`
 .er{position:absolute;inset:0;overflow:hidden;color:#fff4ea;font-family:var(--rf-ui);-webkit-user-select:none;user-select:none;background:linear-gradient(180deg,#1b1640 0%,#4a2f7a 45%,#c65d8a 80%,#ff9a76 100%)}
 .er *{box-sizing:border-box}
 :where(.er) button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -73,4 +74,4 @@ export const ER_CSS = `
   .er-hint{grid-column:2}
 }
 @media (prefers-reduced-motion:reduce){.er *{animation-duration:.01ms!important;transition-duration:.01ms!important}}
-`;
+`);

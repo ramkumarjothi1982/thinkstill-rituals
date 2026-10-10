@@ -1,9 +1,10 @@
+import { cq } from '../../ui/dom';
 /* Drama Dubbing Booth — a 1950s dubbing studio: walnut panels, a booth window onto the projector screen, a green
  * enamel mixing desk with paper-tape lanes, script cards, brass faders, VU meters and tape reels. Limelight for the
  * marquee, Courier Prime for the script. */
 export const DDB_FONTS = 'https://fonts.googleapis.com/css2?family=Limelight&family=Courier+Prime:wght@400;700&display=swap';
 
-export const DDB_CSS = `
+export const DDB_CSS = cq(`
 .ddb{position:absolute;inset:0;overflow:hidden;color:#f7ecd9;font-family:var(--rf-ui);-webkit-user-select:none;user-select:none;
   background:radial-gradient(90% 60% at 50% -10%,rgba(255,196,120,.35),transparent 70%),repeating-linear-gradient(90deg,#3a2316 0 46px,#2f1c11 46px 48px,#432a1a 48px 94px,#2f1c11 94px 96px);}
 .ddb *{box-sizing:border-box}
@@ -118,4 +119,4 @@ export const DDB_CSS = `
   .ddb-lines{grid-template-columns:1fr}
 }
 @media (prefers-reduced-motion:reduce){.ddb *{animation-duration:.01ms!important;transition-duration:.01ms!important}}
-`;
+`);
