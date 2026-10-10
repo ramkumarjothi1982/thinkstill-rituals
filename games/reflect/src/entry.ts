@@ -2,7 +2,7 @@
  * rituals) into the element's shadow root. Used by the Framer component, the artifact page and the dev page. */
 import { ReflectConsole, ReflectOptions } from './console/console';
 
-export const VERSION = '0.1.0-pilot1';
+export const VERSION = '0.3.0-pilots';
 export function mount(el: HTMLElement, opts?: ReflectOptions) {
   const c = new ReflectConsole(el, opts || {});
   return { destroy: () => c.destroy(), console: c };
