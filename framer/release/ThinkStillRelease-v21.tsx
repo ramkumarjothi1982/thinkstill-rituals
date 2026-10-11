@@ -2357,6 +2357,7 @@ function RitualSwipe(props: RitualProps) {
         const s = st.current
         if (s.fly) {
             s.x.x += s.fvx * dt; s.y.x += s.fvy * dt
+            if (!props.reduced) fx.burst(w / 2 + s.x.x, h / 2 + s.y.x + rand(-chh * 0.4, chh * 0.4), { kind: "streak", n: 1, size: 2, speed: 0, vx: s.fvx * 0.5, vy: 0, color: hsl(props.emo.calmHue, 80, dark ? 75 : 60, 0.5), life: 0.35 })
             if (Math.abs(s.x.x) > w + cw) {
                 s.fly = false
                 s.x = { x: 0, v: 0 }; s.y = { x: 0, v: 0 }
@@ -2370,7 +2371,7 @@ function RitualSwipe(props: RitualProps) {
             springTo(s.x, 0, dt, 300, 22)
             springTo(s.y, 0, dt, 300, 22)
         }
-        if (cardRef.current) cardRef.current.style.transform = `translate3d(${s.x.x}px, ${s.y.x}px, 0) rotate(${s.x.x * 0.05}deg)`
+        if (cardRef.current) cardRef.current.style.transform = `perspective(900px) translate3d(${s.x.x}px, ${s.y.x}px, 0) rotateY(${clamp(s.x.x * 0.05, -25, 25)}deg) rotate(${s.x.x * 0.04}deg)`
     })
 
     return (
@@ -2447,6 +2448,10 @@ function RitualMute(props: RitualProps) {
                     <span key={i} ref={(el) => { bars.current[i] = el }} style={{ flex: 1, height: "100%", borderRadius: 99, background: mixHsl(emo.calmHue, emo.hue, L, 20 + L * 55, dark ? 55 : 60, 0.25 + L * 0.35), transform: "scaleY(.5)", transition: reduced ? "transform .3s" : undefined }} />
                 ))}
             </div>
+            <div style={{ position: "absolute", left: 18, right: 82, top: 0, bottom: 0, pointerEvents: "none", display: "grid", placeItems: "center" }} aria-hidden="true">
+                {[0, 1, 2].map((k) => <span key={k} style={{ position: "absolute", width: Math.min(w * 0.5, 220), height: Math.min(w * 0.5, 220), borderRadius: "50%", border: `2px solid ${mixHsl(emo.calmHue, emo.hue, L, 70, dark ? 65 : 55, 0.6)}`, opacity: Math.max(0, L - 0.15), animation: reduced ? undefined : `tsrRipple ${3.4 - L * 1.8}s ease-out ${k * (1.1 - L * 0.5)}s infinite` }} />)}
+                <style>{"@keyframes tsrRipple{from{transform:scale(.7);opacity:.9}to{transform:scale(2.1);opacity:0}}"}</style>
+            </div>
             <div style={{ position: "absolute", left: 18, right: 82, top: 0, bottom: 0, display: "grid", placeItems: "center", textAlign: "center", pointerEvents: "none" }}>
                 <div style={{ fontSize: stageFont(w, 1.1 + L * 0.7), fontWeight: Math.round(420 + L * 380), letterSpacing: `${-0.02 + (1 - L) * 0.04}em`, opacity: 0.55 + L * 0.45, color: "var(--stage-ink)", transition: "font-size .35s cubic-bezier(.22,1,.36,1), opacity .35s, letter-spacing .35s", lineHeight: 1.15, maxWidth: "100%", overflowWrap: "anywhere" }}>
                     {items[0].text}
@@ -2518,6 +2523,7 @@ function RitualParkIt(props: RitualProps) {
                 setParked(next)
                 setTicket({ bay, key: Date.now() })
                 fx.sound("stamp")
+                { const sl = slotFor(bay, i); fx.burst(sl.x, sl.y, { kind: "spark", n: 16, size: 2, speed: 170, color: [hsl(emo.calmHue, 85, 70), "#FFFFFF"], life: 0.6 }); fx.burst(sl.x, sl.y, { kind: "ring", n: 1, size: 40, color: hsl(emo.calmHue, 80, 65, 0.7), life: 0.5 }) }
                 fx.haptic("medium")
                 const n = next.filter((b) => b != null).length
                 props.progress(n / items.length)
@@ -2617,6 +2623,7 @@ function RitualCloudPass(props: RitualProps) {
         const p = clamp(Math.abs(s.x - w / 2) / (w / 2 + cw * 0.45), 0, 1)
         props.progress(p)
         if (cloud.current) cloud.current.style.transform = `translate3d(${s.x}px, ${s.y + (reduced ? 0 : Math.sin(t * 0.8) * 4)}px, 0) translate(-50%, -50%) scale(${1 + s.puff})`
+        if (!reduced && Math.hypot(s.vx, s.vy) > 0.6 && Math.random() < 0.6) fx.burst(s.x - Math.sign(s.vx || 1) * cw * 0.6, s.y + rand(-chh * 0.5, chh * 0.5), { kind: "streak", n: 1, size: 1.5, speed: 0, vx: s.vx * 160, vy: s.vy * 60, color: dark ? "rgba(220,230,255,.45)" : "rgba(255,255,255,.9)", life: 0.5 })
         if (streaks.current) streaks.current.style.opacity = String(Math.min(0.9, Math.hypot(s.vx, s.vy) * 0.25))
         if (sun.current) sun.current.style.opacity = String(p)
         if (out && !s.gone) {
@@ -2710,6 +2717,7 @@ function RitualPaperPlane(props: RitualProps) {
             s.x.x += s.vx * dt; s.y.x += s.vy * dt
             s.rot = Math.atan2(s.vy, s.vx)
             s.s = Math.max(0.45, s.s - dt * 0.25)
+            if (!reduced) fx.burst(s.x.x - Math.cos(s.rot) * pw * 0.35 * s.s, s.y.x - Math.sin(s.rot) * pw * 0.35 * s.s, { kind: "glow", n: 1, size: 3, speed: 5, color: dark ? "rgba(230,235,255,.55)" : "rgba(255,255,255,.95)", life: 0.9 })
             if (s.x.x < -pw || s.x.x > w + pw || s.y.x < -ph || s.y.x > h + ph) {
                 s.sent += 1
                 props.progress(s.sent / items.length)
@@ -2791,6 +2799,8 @@ function RitualUnhook(props: RitualProps) {
         st.current.cut += 1
         fx.sound("snap")
         fx.haptic("medium")
+        fx.burst(b.x, b.y - r, { kind: "spark", n: 14, size: 1.8, speed: 160, color: ["#FFFFFF", hsl(emo.calmHue, 85, 72)], life: 0.5 })
+        fx.burst(b.x, b.y, { kind: "glow", n: 1, size: r * 0.6, color: hsl(emo.calmHue, 85, 75, 0.5), life: 0.8 })
         props.progress(st.current.cut / items.length)
         if (st.current.cut >= items.length && !st.current.done) { st.current.done = true; timers.after(1600, () => { fx.haptic("success"); props.done() }) }
     }
@@ -2902,6 +2912,7 @@ function RitualUnfollow(props: RitualProps) {
             s.px = restX + (dx / L) * eff; s.py = restY + (dy / L) * eff
             s.tension = eff / threshold
             s.loop?.set(180 + s.tension * 260, 0.6 + s.tension)
+            if (!props.reduced && s.tension > 0.55 && Math.random() < s.tension * 0.6) fx.burst(portX + 4, portY, { kind: "spark", n: 2, size: 1.5, speed: 120, color: ["#FFFFFF", "#B9B4FF"], life: 0.3 })
             const step = Math.floor(s.tension * 6)
             if (step > s.tick) { fx.haptic("tick"); fx.sound("tick", 0.7 + s.tension * 0.5) }
             s.tick = step
@@ -2912,6 +2923,8 @@ function RitualUnfollow(props: RitualProps) {
                 s.pvx = d.vx * 0.5 + (dx / L) * 500; s.pvy = d.vy * 0.5 - 200
                 s.loop?.stop(); s.loop = null
                 fx.sound("snap"); fx.sound("thud", 0.7)
+                fx.burst(s.px, s.py, { kind: "spark", n: 26, size: 2.2, speed: 260, color: ["#FFFFFF", "#B9B4FF", "#8F86FF"], life: 0.7 })
+                fx.burst(portX, portY, { kind: "ring", n: 1, size: 50, color: "rgba(160,150,255,.8)", life: 0.6 })
                 fx.haptic("heavy")
                 props.hint(null)
             }
