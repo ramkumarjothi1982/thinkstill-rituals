@@ -550,6 +550,44 @@ const DEFAULT_PREDICTION_PROMPTS = [
 
 const REPLY_NOTE = 'These are only possibilities. Real people can say anything — including things that aren’t on this list.';
 
+// Future Lens: the predictions people in each situation often make, written
+// the way a worried brain says them. Shown only as pieces the person sorts
+// ("known" or "predicted") when their own words don't contain a prediction.
+const FUTURE_PREDICTIONS = {
+  'unanswered-message': ['They’re never going to reply', 'This friendship is going to fizzle out'],
+  'work-criticism': ['I’m going to get fired', 'They’ll never trust me with anything big again'],
+  'left-out': ['They’ll never invite me again', 'I’m going to end up with no friends'],
+  'partner-distant': ['They’re going to leave me', 'It’s never going to feel close again'],
+  'mistake-judged': ['Everyone will remember this for ever', 'This is going to follow me around'],
+  'job-rejection': ['I’ll never get a good job', 'Every interview is going to go like this'],
+  'plans-cancelled': ['They’ll keep cancelling on me', 'We’re going to drift apart'],
+  'social-comparison': ['I’ll always be behind', 'I’m never going to have what they have'],
+  'family-argument': ['They’ll never forgive me', 'We’ll never get on'],
+  'group-chat-ignored': ['Nobody’s ever going to reply to me', 'They’ll start a new chat without me'],
+  'seemed-annoyed': ['It’s going to be awkward from now on', 'They’ll be off with me tomorrow too'],
+  'performance-review': ['I’ll never get promoted', 'This review is going to hold me back for years'],
+  'bad-grade': ['I’m going to fail the whole course', 'I’ll never be good at this subject'],
+  'no-text-back': ['They’re never going to text', 'I’ll be on my own for ever'],
+  'family-criticism': ['They’ll never be proud of me', 'It’ll always be like this with them'],
+  'money-setback': ['I’m never going to get on top of money', 'It’s all going to fall apart'],
+  'appearance-comment': ['Everyone will notice now', 'I’ll always feel like this about how I look'],
+  'future-worry': ['It’s going to go wrong', 'I won’t be able to cope'],
+  'past-regret': ['I’ll regret this for ever', 'It’s too late to change anything'],
+  'awkward-moment': ['They’ll think I’m weird from now on', 'Everyone will be talking about it'],
+  'credit-promotion': ['I’ll never get the recognition I deserve', 'It’ll keep happening'],
+  'not-listened': ['They’re never going to listen to me', 'It’ll always be like this'],
+  general: ['It’s going to go badly', 'It’ll always be this way'],
+};
+
+// How the Future Lens frames each step. `{n}` is the person's own 0–100.
+const FUTURE_LENS_COPY = {
+  knownLabel: 'Known — true right now',
+  predictedLabel: 'Predicted — hasn’t happened yet',
+  unsureLabel: 'Not sure',
+  sureQuestion: 'How sure does the prediction feel, from 0 to 100?',
+  sealQuestion: 'When could you check whether it came true?',
+};
+
 function cards(prefix, texts) {
   return texts.map((text, i) => ({ id: `${prefix}${i + 1}`, text }));
 }
@@ -598,6 +636,8 @@ function mk(d) {
       predictionPrompts: [d.predict, ...DEFAULT_PREDICTION_PROMPTS],
       knowns: d.knowns,
       unknowns: d.unknowns,
+      predictions: FUTURE_PREDICTIONS[d.id] || FUTURE_PREDICTIONS.general,
+      copy: FUTURE_LENS_COPY,
     },
     nextSteps: kinded(`${c}-n`, d.nextSteps),
     conversation: d.conversation ? convo(c, d.conversation) : null,

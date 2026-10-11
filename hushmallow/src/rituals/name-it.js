@@ -428,13 +428,14 @@ export async function run(ctx) {
   }
 
   relayout = () => placeMallow('centre');
+  const named = untilClick(nameDone);
   renderTray();
   renderWords();
   await wait(60);
   relayout();
   const fam0 = new Set(sel.map((e) => e.family));
   say(!sel.length ? OPEN_NONE : fam0.size > 1 ? OPEN_MIXED : OPENERS[sel[0].family] || OPEN_NONE, 3400);
-  await untilClick(nameDone);
+  await named;
   if (aborted()) return result;
   result.names = sel.map((e) => e.id);
   const NAME = sel.map((e) => e.name).join(' + ');
@@ -602,6 +603,7 @@ export async function run(ctx) {
     onclick: () => { texture = t; renderTx(); audio.fx?.('sort', { intensity: 0.5 }); haptic('light'); world.react(t[0] === 'spiky' ? 'flick' : 'tap'); say(t[2], 2200); },
   }, t[1])));
   renderSw(); renderTx();
+  const shaped = untilClick(shapeDone);
   dock.replaceChildren(swRow, txRow, h('div', { style: { display: 'flex', gap: '8px' } }, squeezeB, stretchB, shapeDone));
   requestAnimationFrame(() => swRow.querySelector('[aria-checked="true"]')?.scrollIntoView?.({ inline: 'center', block: 'nearest' }));
 
@@ -691,7 +693,7 @@ export async function run(ctx) {
   squeezeB.onclick = () => { humSound = humSound || audio.hold?.('hum', { intensity: 0 }) || null; nudge(0.68); };
   stretchB.onclick = () => { humSound = humSound || audio.hold?.('hum', { intensity: 0 }) || null; nudge(1.55); };
   say(`So it’s ${sizeWord(size)}-sized, in ${REGION_TXT === 'everywhere' ? 'all of you' : REGION_TXT === 'nowhere in particular' ? 'no place in particular' : REGION_TXT}. What does it look like?`, 3200);
-  await untilClick(shapeDone);
+  await shaped;
   if (aborted()) return result;
   offs.splice(0).forEach((off) => off());
   world.fx.classList.remove('live');
@@ -728,6 +730,8 @@ export async function run(ctx) {
   // drag a little light of the need into the shape
   setMove(3, { eyebrow: 'Move 4 of 4', title: 'Hand it over', prompt: `Drag the little light of “${NEED_LABEL.toLowerCase()}” into your shape.` });
   const giveB = h('button', { class: 'btn primary block' }, 'Give it');
+  let giveEarly = false;
+  giveB.addEventListener('click', () => { giveEarly = true; }, { once: true });
   dock.replaceChildren(h('p', { class: 'muted', style: { margin: '0', textAlign: 'center' } }, 'Or tap the button. Same light.'), giveB);
   await wait(30);
   relayout();
@@ -748,7 +752,9 @@ export async function run(ctx) {
     g.fillStyle = gr; g.beginPath(); g.arc(orb.x, orb.y, r * 2.4, 0, Math.PI * 2); g.fill();
     if (!orb.given) {
       g.font = '700 13px ui-rounded, "SF Pro Rounded", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'top';
-      g.fillStyle = 'rgba(255,255,255,0.9)'; g.fillText(NEED_LABEL, orb.x, orb.y + r + 10);
+      g.shadowColor = 'rgba(0,0,30,0.7)'; g.shadowBlur = 6;
+      g.fillStyle = 'rgba(255,255,255,0.95)'; g.fillText(NEED_LABEL, orb.x, orb.y + r + 10);
+      g.shadowBlur = 0; g.shadowColor = 'transparent';
     }
   };
   await new Promise((resolve) => {
@@ -773,7 +779,7 @@ export async function run(ctx) {
     listen(world.fx, 'pointermove', oMove);
     listen(world.fx, 'pointerup', oUp);
     listen(world.fx, 'pointercancel', oUp);
-    giveB.addEventListener('click', give, { once: true });
+    if (giveEarly) give(); else giveB.addEventListener('click', give, { once: true });
     signal.addEventListener('abort', () => resolve(), { once: true });
   });
   if (aborted()) return result;
@@ -856,10 +862,10 @@ export async function run(ctx) {
   audio.fx?.('star', { intensity: 0.6 });
   haptic('success');
   world.react('celebrate');
+  const kept = untilClick(keep);
   keep.disabled = false;
-  await say('There. Named, placed, shaped. A stone you know now. Nice. Very nice.', 3600);
-  if (aborted()) return result;
-  await untilClick(keep);
+  say('There. Named, placed, shaped. A stone you know now. Nice. Very nice.', 3600);
+  await kept;
   if (aborted()) return result;
   world.setEmotion({ calm: 0.8, happy: 0.2 }, 0.6);
   world.react('tap');

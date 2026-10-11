@@ -53,7 +53,7 @@ export default function create({ ctx }) {
   const cf = {
     on: new Uint8Array(NC), x: new Float32Array(NC), y: new Float32Array(NC), vx: new Float32Array(NC), vy: new Float32Array(NC),
     rot: new Float32Array(NC), spin: new Float32Array(NC), fl: new Float32Array(NC), fls: new Float32Array(NC),
-    w: new Float32Array(NC), h: new Float32Array(NC), fall: new Float32Array(NC), age: new Float32Array(NC), c: new Uint8Array(NC), ph: new Float32Array(NC),
+    w: new Float32Array(NC), h: new Float32Array(NC), fall: new Float32Array(NC), age: new Float32Array(NC), c: new Uint8Array(NC), ph: new Float32Array(NC), bz: new Uint8Array(NC),
   };
   const lifts = [];
   for (let i = 0; i < NSKY; i++) lifts.push({ on: false, x: 0, y: 0, z: 0, vy: 0, ph: 0, size: 0, age: 0, wob: 0 });
@@ -189,6 +189,11 @@ export default function create({ ctx }) {
       g.fillStyle = k % 2 ? colB : colA;
       g.beginPath(); g.moveTo(cx, peakY - 2); g.lineTo(x0, eaveY + 4); g.lineTo(x1, eaveY + 4); g.closePath(); g.fill();
     }
+    const sh = g.createLinearGradient(cx - hw, 0, cx + hw, 0);
+    sh.addColorStop(0, 'rgba(20,0,20,0.5)'); sh.addColorStop(0.35, 'rgba(20,0,20,0)'); sh.addColorStop(0.7, 'rgba(20,0,20,0.05)'); sh.addColorStop(1, 'rgba(20,0,20,0.55)');
+    g.fillStyle = sh; g.fillRect(cx - hw, peakY - 4, hw * 2, eaveY - peakY + 8);
+    g.fillStyle = vgrad(g, peakY, eaveY, [[0, 'rgba(30,0,30,0.45)'], [1, 'rgba(30,0,30,0)']]);
+    g.fillRect(cx - hw, peakY - 4, hw * 2, eaveY - peakY + 8);
     g.restore();
   }
   function scallops(g, x0, x1, y, n, r, cols) {
@@ -216,6 +221,7 @@ export default function create({ ctx }) {
 
   function paintMid(g, st, lit) {
     const { W, H, M } = st;
+    const u = unit(st);
     const r = rng(311);
     // mid hill under the tents
     const hillY = (x) => H * (0.712 + 0.01 * Math.sin(x * 0.009 + 0.6)) + (Math.abs(x / W - 0.5) < 0.3 ? H * 0.012 : 0) * Math.cos((x / W - 0.5) * 5.2);
@@ -226,10 +232,12 @@ export default function create({ ctx }) {
     g.strokeStyle = lit ? 'rgba(255,120,150,0.35)' : 'rgba(255,120,150,0.12)'; g.lineWidth = 1;
     g.beginPath(); for (let x = -M; x <= W + M; x += 8) (x === -M ? g.moveTo(x, hillY(x)) : g.lineTo(x, hillY(x))); g.stroke();
 
-    // ---- big top (right)
-    {
-      const cx = W * 0.885, base = H * 0.728, hw = W * 0.165, eave = base - H * 0.046, peak = H * 0.578;
-      if (lit) softBlob(g, cx, base - H * 0.05, W * 0.3, '#ff7a4a', 0.32, 1, 0.75);
+    const span = Math.min(W / 2 - Math.max(10, W * 0.04), u * 1.15);
+    const topX = Math.min(W - u * 0.115, W / 2 + span + u * 0.05);
+    // ---- big top (right); a smaller one joins it on wide screens
+    const bigTop = (cx, sc, base, flagLine) => {
+      const hw = u * 0.165 * sc, eave = base - u * 0.1 * sc, peak = base - u * 0.34 * sc;
+      if (lit) softBlob(g, cx, base - u * 0.1 * sc, u * 0.3 * sc, '#ff7a4a', 0.32, 1, 0.75);
       // wall
       g.save();
       g.beginPath(); g.rect(cx - hw * 0.94, eave, hw * 1.88, base - eave); g.clip();
@@ -248,15 +256,6 @@ export default function create({ ctx }) {
       g.restore();
       // roof
       stripedRoof(g, cx, peak, eave + 1, hw * 1.04, 12, lit ? '#e3264a' : '#4a0e2c', lit ? '#ffe2c4' : '#33122e', 0.32);
-      // roof shading (cylindrical, top darker)
-      g.save();
-      g.globalCompositeOperation = 'source-atop';
-      const sh = g.createLinearGradient(cx - hw, 0, cx + hw, 0);
-      sh.addColorStop(0, 'rgba(20,0,20,0.5)'); sh.addColorStop(0.35, 'rgba(20,0,20,0)'); sh.addColorStop(0.7, 'rgba(20,0,20,0.05)'); sh.addColorStop(1, 'rgba(20,0,20,0.55)');
-      g.fillStyle = sh; g.fillRect(cx - hw * 1.1, peak - 4, hw * 2.2, base - peak + 4);
-      g.fillStyle = vgrad(g, peak, eave, [[0, 'rgba(30,0,30,0.45)'], [1, 'rgba(30,0,30,0)']]);
-      g.fillRect(cx - hw * 1.1, peak - 4, hw * 2.2, eave - peak + 4);
-      g.restore();
       scallops(g, cx - hw * 1.04, cx + hw * 1.04, eave, 12, 0, lit ? ['#ffe2c4', '#e3264a'] : ['#33122e', '#4a0e2c']);
       // flag
       g.strokeStyle = lit ? '#e8c890' : '#2a1020'; g.lineWidth = 1;
@@ -267,13 +266,18 @@ export default function create({ ctx }) {
         for (let k = 0; k <= 12; k++) lightDot(g, cx - hw * 1.04 + (hw * 2.08 * k) / 12, eave + 0.5, 1, k % 2 ? '#ffcf4a' : '#ff5a9a', 0.85);
         lightDot(g, cx, peak - 1, 1.6, '#ffcf4a', 0.9);
       }
-      bunting(g, cx, peak - 1, W + M + 10, H * 0.6, 10, 7, lit ? BUNT_LIT : BUNT_DARK, lit);
+      if (flagLine) bunting(g, cx, peak - 1, W + M + 10, H * 0.6, 10, 7, lit ? BUNT_LIT : BUNT_DARK, lit);
+    };
+    if (W > u * 1.6) {
+      bigTop(W / 2 + span * 0.62, 0.62, H * 0.716, false);
+      bigTop(W / 2 - span * 0.42, 0.5, H * 0.714, false);
     }
+    bigTop(topX, 1, H * 0.728, true);
 
     // ---- carousel (left)
     {
-      const cx = W * 0.055, base = H * 0.733, hw = W * 0.14, eave = base - H * 0.072, peak = eave - H * 0.058;
-      if (lit) softBlob(g, cx, base - H * 0.05, W * 0.26, '#ff9a4a', 0.32, 1, 0.8);
+      const cx = Math.max(u * 0.055, W / 2 - span - u * 0.05), base = H * 0.733, hw = u * 0.14, eave = base - u * 0.155, peak = eave - u * 0.125;
+      if (lit) softBlob(g, cx, base - u * 0.1, u * 0.26, '#ff9a4a', 0.32, 1, 0.8);
       // interior glow
       g.fillStyle = lit ? vgrad(g, eave, base, [[0, 'rgba(255,170,90,0.75)'], [1, 'rgba(255,110,90,0.4)']]) : 'rgba(26,6,30,0.9)';
       g.fillRect(cx - hw * 0.9, eave, hw * 1.8, base - eave);
@@ -299,9 +303,6 @@ export default function create({ ctx }) {
       // valance band + roof
       g.fillStyle = lit ? '#ffe2c4' : '#33122e'; g.fillRect(cx - hw * 1.02, eave - 7, hw * 2.04, 7);
       stripedRoof(g, cx, peak, eave - 7, hw * 1.05, 10, lit ? '#e3264a' : '#4a0e2c', lit ? '#ffcf4a' : '#3a2028', 0.45);
-      g.save(); g.globalCompositeOperation = 'source-atop';
-      g.fillStyle = vgrad(g, peak, eave, [[0, 'rgba(30,0,30,0.4)'], [1, 'rgba(30,0,30,0)']]); g.fillRect(cx - hw * 1.2, peak - 6, hw * 2.4, eave - peak + 6);
-      g.restore();
       scallops(g, cx - hw * 1.02, cx + hw * 1.02, eave, 9, 0, lit ? ['#e3264a', '#ffcf4a'] : ['#4a0e2c', '#3a2028']);
       g.fillStyle = lit ? '#ffcf4a' : '#3a2a20';
       g.beginPath(); g.arc(cx, peak - 2, 2.6, 0, TAU); g.fill();
@@ -310,11 +311,11 @@ export default function create({ ctx }) {
         for (let k = 0; k <= 8; k++) lightDot(g, cx - hw + (hw * 2 * k) / 8, base + 1, 0.8, '#ffcf4a', 0.7);
       }
       bunting(g, cx, peak - 2, -M - 10, H * 0.62, 6, 4, lit ? BUNT_LIT : BUNT_DARK, lit);
-      bunting(g, cx + hw * 0.9, eave - 6, W * 0.27, H * 0.705, 6, 4, lit ? BUNT_LIT : BUNT_DARK, lit);
+      bunting(g, cx + hw * 0.9, eave - 6, cx + u * 0.215, H * 0.705, 6, 4, lit ? BUNT_LIT : BUNT_DARK, lit);
     }
     // a little booth by the big top (dark wood, lit hatch)
     {
-      const bx = W * 0.745, base = H * 0.725, bw = W * 0.06, bh = H * 0.03;
+      const bx = topX - u * 0.14, base = H * 0.725, bw = u * 0.06, bh = u * 0.065;
       g.fillStyle = lit ? '#4a1830' : '#1e0820'; g.fillRect(bx - bw / 2, base - bh, bw, bh);
       g.fillStyle = lit ? '#ffd27a' : '#14040f'; g.fillRect(bx - bw * 0.36, base - bh * 0.8, bw * 0.72, bh * 0.42);
       stripedRoof(g, bx, base - bh - 8, base - bh, bw * 0.62, 6, lit ? '#ff5a9a' : '#3a0e2e', lit ? '#fff1d6' : '#2a1028', 0.6);
@@ -323,9 +324,11 @@ export default function create({ ctx }) {
   }
 
   // ---------------------------------------------------------------- build --
+  function unit(st) { return Math.min(st.W, st.H * 0.55); }
+
   function build(st) {
-    globalThis.__sfDbg = { fw, lanterns: () => lanterns };
     const { W, H, M, dpr } = st;
+    const u = unit(st);
     const gy = H * st.groundY, hy = H * 0.6;
     const r = rng(2024);
 
@@ -345,7 +348,7 @@ export default function create({ ctx }) {
       softBlob(g, W * 0.5, H * 0.62, W * 0.95, '#ff4f7a', 0.3, 1.3, 0.3);
       softBlob(g, W * 0.5, H * 0.63, W * 0.55, '#ff9a5a', 0.28, 1.5, 0.22);
       // moon
-      const mx = W * 0.8, my = H * 0.125, mr = Math.max(10, W * 0.034);
+      const mx = W * 0.8, my = H * 0.125, mr = clamp(u * 0.034, 10, 17);
       softBlob(g, mx, my, mr * 6, '#ffd9b8', 0.16);
       const mg = g.createRadialGradient(mx - mr * 0.3, my - mr * 0.3, 0, mx, my, mr);
       mg.addColorStop(0, '#fff4dc'); mg.addColorStop(0.65, '#ffdcb0'); mg.addColorStop(1, '#ffc392');
@@ -391,9 +394,11 @@ export default function create({ ctx }) {
           crown: '#6e2c78', crownA: 0.3, under: '#ff6a8a', underA: 0.25, shade: '#1a0628', shadeA: 0.25,
         });
       };
-      wisp(W * 0.14, H * 0.228, W * 0.44, H * 0.034);
-      wisp(W * 0.88, H * 0.315, W * 0.38, H * 0.028);
-      wisp(W * 0.5, H * 0.085, W * 0.24, H * 0.02);
+      const ch = Math.min(H * 0.034, u * 0.075);
+      wisp(W * 0.14, H * 0.228, u * 0.44, ch);
+      wisp(W * 0.88, H * 0.315, u * 0.38, ch * 0.82);
+      wisp(W * 0.5, H * 0.085, u * 0.24, ch * 0.6);
+      if (W > u * 1.6) { wisp(W * 0.36, H * 0.17, u * 0.32, ch * 0.7); wisp(W * 0.68, H * 0.24, u * 0.36, ch * 0.75); }
       sky.g.globalAlpha = 0.85;
       sky.g.drawImage(wl.c, wl.ox, wl.oy, wl.w, wl.h);
       sky.g.globalAlpha = 1;
@@ -463,7 +468,7 @@ export default function create({ ctx }) {
     // ------------------------------------------------------------ ground
     const ground = sceneLayer(st, H * 0.72, H + M);
     const crest = (x) => H * (0.772 + 0.013 * Math.cos((x / W - 0.5) * TAU * 0.85)) + Math.sin(x * 0.021) * 2;
-    const daisRx = W * 0.34, daisRy = Math.max(16, H * 0.03), daisY = gy + 2;
+    const daisRx = Math.min(W * 0.34, u * 0.32), daisRy = clamp(daisRx * 0.2, 14, 30), daisY = gy + 2;
     {
       const g = ground.g;
       g.fillStyle = vgrad(g, H * 0.75, H + M, [[0, '#3e1446'], [0.18, '#2a0a32'], [0.6, '#1a0522'], [1, '#0e0216']]);
@@ -471,8 +476,8 @@ export default function create({ ctx }) {
       g.strokeStyle = 'rgba(255,140,160,0.4)'; g.lineWidth = 1.2;
       g.beginPath(); for (let x = -M; x <= W + M; x += 6) (x === -M ? g.moveTo(x, crest(x)) : g.lineTo(x, crest(x))); g.stroke();
       // warm pool of light around the stage
-      softBlob(g, W * 0.5, gy, W * 0.62, '#ff4f7a', 0.22, 1, 0.3);
-      softBlob(g, W * 0.5, gy, W * 0.46, '#ffa65a', 0.3, 1, 0.26);
+      softBlob(g, W * 0.5, gy, daisRx * 1.85, '#ff4f7a', 0.22, 1, 0.3);
+      softBlob(g, W * 0.5, gy, daisRx * 1.35, '#ffa65a', 0.3, 1, 0.26);
       // grass silhouettes along the crest
       g.strokeStyle = '#1a0520'; g.lineWidth = 1;
       for (let i = 0; i < 160; i++) {
@@ -511,8 +516,8 @@ export default function create({ ctx }) {
       softBlob(g, W / 2, daisY, daisRx * 0.55, '#3a0c24', 0.55, 1, 0.22);
       // short lamp posts
       lamps = [];
-      for (const sx of [0.115, 0.885]) {
-        const x = W * sx, b = H * 0.9, top2 = b - H * 0.085;
+      for (const sx of [-1, 1]) {
+        const x = W / 2 + sx * (daisRx + u * 0.07), b = H * 0.9, top2 = b - Math.min(H * 0.085, u * 0.19);
         g.fillStyle = '#12030f'; g.fillRect(x - 1.6, top2, 3.2, b - top2);
         g.fillStyle = 'rgba(255,150,170,0.25)'; g.fillRect(x + 0.6, top2, 1, b - top2);
         g.fillStyle = '#12030f'; g.beginPath(); g.ellipse(x, b, 6, 2, 0, 0, TAU); g.fill();
@@ -532,9 +537,10 @@ export default function create({ ctx }) {
 
     // -------------------------------------------------- festoon poles
     const poleTop = H * 0.42;
-    const nearL = sceneLayer(st, poleTop - 30, H + M, -M, W * 0.1);
-    const nearR = sceneLayer(st, poleTop - 30, H + M, W * 0.9, W + M);
-    const poleX = [Math.max(10, W * 0.04), W - Math.max(10, W * 0.04)];
+    const span = Math.min(W / 2 - Math.max(10, W * 0.04), u * 1.15);
+    const poleX = [W / 2 - span, W / 2 + span];
+    const nearL = sceneLayer(st, poleTop - 30, H + M, poleX[0] - 30, poleX[0] + 30);
+    const nearR = sceneLayer(st, poleTop - 30, H + M, poleX[1] - 30, poleX[1] + 30);
     for (const [Ln, x, s] of [[nearL, poleX[0], 1], [nearR, poleX[1], -1]]) {
       const g = Ln.g;
       g.fillStyle = vgrad(g, poleTop, H + M, [[0, '#1e0820'], [1, '#0c0210']]);
@@ -557,8 +563,8 @@ export default function create({ ctx }) {
 
     // -------------------------------------------------- festoon strings
     strings = [
-      { x0: -W * 0.08, y0: H * 0.315, x1: poleX[1], y1: poleTop + 2, sag: H * 0.07, back: true, ph: 1.7 },
-      { x0: poleX[0], y0: poleTop + 2, x1: W * 1.08, y1: H * 0.305, sag: H * 0.07, back: true, ph: 3.9 },
+      { x0: W / 2 - span * 1.2, y0: H * 0.315, x1: poleX[1], y1: poleTop + 2, sag: H * 0.07, back: true, ph: 1.7 },
+      { x0: poleX[0], y0: poleTop + 2, x1: W / 2 + span * 1.2, y1: H * 0.305, sag: H * 0.07, back: true, ph: 3.9 },
       { x0: poleX[0], y0: poleTop + 2, x1: poleX[1], y1: poleTop + 2, sag: H * 0.1, back: false, ph: 0.3 },
     ];
     const lr = rng(808);
@@ -628,7 +634,9 @@ export default function create({ ctx }) {
     const z = R.range(0.5, 1);
     cf.on[i] = 1; cf.x[i] = x; cf.y[i] = y; cf.vx[i] = vx; cf.vy[i] = vy;
     cf.rot[i] = R() * TAU; cf.spin[i] = R.range(-2.5, 2.5); cf.fl[i] = R() * TAU; cf.fls[i] = R.range(2, 5);
-    cf.w[i] = R.range(2.2, 3.4) * z; cf.h[i] = R.range(4.5, 6.5) * z; cf.fall[i] = R.range(14, 28) * z; cf.age[i] = 0;
+    const big = burst ? 1.6 : 1;
+    cf.bz[i] = burst ? 1 : 0;
+    cf.w[i] = R.range(2.2, 3.4) * z * big; cf.h[i] = R.range(4.5, 6.5) * z * big; cf.fall[i] = R.range(14, 28) * z; cf.age[i] = burst ? 0.6 : 0;
     cf.c[i] = Math.floor(R() * CONF.length); cf.ph[i] = R() * TAU;
     return i;
   }
@@ -670,6 +678,7 @@ export default function create({ ctx }) {
 
   // ---------------------------------------------------------------- frame --
   function frame(g, st) {
+    const SK = globalThis.__sk || {};
     const { W, H, m, p, dt, rdt, dpr, density } = st;
     const camX = st.camX, camY = st.camY;
     const ag = m.agitation, cl = m.clarity, wm = m.warmth;
@@ -680,9 +689,9 @@ export default function create({ ctx }) {
     const excite = clamp(wm * 0.55 + ag * 0.45 + p * 0.5 - hv * 1.2);
 
     // 1 sky, stars, moon
-    drawLayer(g, L.sky, st, 0.05);
+    if(!SK.sky) drawLayer(g, L.sky, st, 0.05);
     const starA = (0.15 + 0.85 * smoothstep(0.25, 0.9, cl)) * (1 - hv * 0.45);
-    drawLayer(g, L.starL, st, 0.07, starA);
+    if(!SK.stars) drawLayer(g, L.starL, st, 0.07, starA);
     g.globalCompositeOperation = 'lighter';
     if (cl > 0.35) {
       const ga = smoothstep(0.35, 0.95, cl) * (1 - hv * 0.6);
@@ -699,18 +708,18 @@ export default function create({ ctx }) {
 
     // 2 fireworks (far away, soft and slow)
     updateFireworks(st, excite, hv);
-    drawFireworks(g, st, hv);
+    if(!SK.fw) drawFireworks(g, st, hv);
 
     // 3 sky lanterns
-    drawSkyLanterns(g, st, hv);
+    if(!SK.skyl) drawSkyLanterns(g, st, hv);
 
     // 4 far hills, wheel
-    drawLayer(g, L.far, st, 0.3);
+    if(!SK.far) drawLayer(g, L.far, st, 0.3);
     festLit += (clamp(0.12 + 0.88 * litAvg) - festLit) * (1 - Math.exp(-rdt / 0.8));
-    drawWheel(g, st, hv, ag);
+    if(!SK.wheel) drawWheel(g, st, hv, ag);
 
     // 5 mid: tents + carousel (dark silhouettes, lit from inside)
-    if (festLit < 0.985) drawLayer(g, L.midDark, st, 0.5);
+    if (!SK.mid && festLit < 0.985) drawLayer(g, L.midDark, st, 0.5);
     if (festLit > 0.015) drawLayer(g, L.midLit, st, 0.5, Math.min(1, festLit));
 
     // 6 haze over everything distant (low clarity)
@@ -718,14 +727,14 @@ export default function create({ ctx }) {
     if (haze > 0.01) { g.globalAlpha = haze; g.fillStyle = grads.haze; g.fillRect(0, 0, W, H); g.globalAlpha = 1; }
 
     // 7 ground + dais + lamps
-    drawLayer(g, L.ground, st, 0.75);
+    if(!SK.ground) drawLayer(g, L.ground, st, 0.75);
     g.globalCompositeOperation = 'lighter';
     const gx = camX * 0.75, gyo = camY * 0.75;
     g.globalAlpha = (0.18 + 0.22 * wm + 0.15 * p) * (0.4 + 0.6 * festLit);
-    blit(g, S.soft.ember, W * 0.5 + gx, L.daisY + gyo, H * 0.06, W * 0.5);
+    blit(g, S.soft.ember, W * 0.5 + gx, L.daisY + gyo, L.daisRy * 2.2, L.daisRx * 1.5);
     // stage halo lifts the Mallow off the night
     g.globalAlpha = 0.16 + 0.1 * wm + 0.04 * Math.sin(st.t * 0.5);
-    blit(g, S.soft.rose, W * 0.5, L.gy - H * 0.15, W * 0.46, W * 0.58);
+    blit(g, S.soft.rose, W * 0.5, L.gy - H * 0.15, L.daisRx * 1.4, L.daisRx * 1.75);
     rippleAge += rdt;
     for (let i = 0; i < daisBulbs.length; i++) {
       const b = daisBulbs[i];
@@ -748,20 +757,20 @@ export default function create({ ctx }) {
 
     // 8 festoon strings + lanterns
     updateLanterns(st, lf, ag);
-    drawStrings(g, st, cl, wm);
+    if(!SK.strings) drawStrings(g, st, cl, wm);
 
     // 9 poles
     drawLayer(g, L.nearL, st, 0.75);
     drawLayer(g, L.nearR, st, 0.75);
 
     // 10 confetti + fizzing sparks
-    drawConfetti(g, st, ag, hv);
-    drawFizz(g, st, ag, hv);
+    if(!SK.conf) drawConfetti(g, st, ag, hv);
+    if(!SK.fizz) drawFizz(g, st, ag, hv);
 
     // 11 mood grading
     if (ag > 0.4 && cl < 0.6) { g.globalAlpha = Math.min(1, (ag - 0.4) * (0.6 - cl) * 7); g.fillStyle = grads.cool; g.fillRect(0, 0, W, H); g.globalAlpha = 1; }
     const gold = clamp((wm - 0.5) * 1.6 + p * 0.7);
-    if (gold > 0.01) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = gold * 0.75; g.fillStyle = grads.golden; g.fillRect(0, 0, W, H); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
+    if (!SK.gold && gold > 0.01) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = gold * 0.75; g.fillStyle = grads.golden; g.fillRect(0, 0, W, H); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
     if (hv > 0.03) {
       g.globalCompositeOperation = 'saturation';
       g.globalAlpha = Math.min(0.85, hv * 0.85);
@@ -869,11 +878,12 @@ export default function create({ ctx }) {
     if (st.reduced && st.p > 0.6) {
       const k = smoothstep(0.6, 1, st.p) * (1 - hv);
       const x = W * 0.5 + cx, y = H * 0.35 + cy, rr = Math.min(W * 0.3, H * 0.17);
-      g.globalAlpha = k * 0.18; blit(g, S.fwSoft[0], x, y, rr * 1.4);
-      for (let i = 0; i < 20; i++) {
-        const a = (i / 20) * TAU, d = rr * (i % 2 ? 0.62 : 1);
-        g.globalAlpha = k * (0.55 + 0.25 * Math.sin(st.t * 0.6 + i));
-        const s = i % 2 ? 5 : 7;
+      g.globalAlpha = k * 0.24; blit(g, S.fwSoft[0], x, y, rr * 1.4);
+      g.globalAlpha = k * 0.3; blit(g, S.fwSoft[1], x, y, rr * 0.5);
+      for (let i = 0; i < 24; i++) {
+        const a = (i / 24) * TAU, d = rr * (i % 2 ? 0.6 : 1);
+        g.globalAlpha = k * (0.7 + 0.25 * Math.sin(st.t * 0.6 + i));
+        const s = i % 2 ? 8 : 11;
         g.drawImage(i % 2 ? S.glintP : S.glint, x + Math.cos(a) * d - s, y + Math.sin(a) * d - s, s * 2, s * 2);
       }
       g.globalAlpha = 1;
@@ -1058,8 +1068,9 @@ export default function create({ ctx }) {
       const x = cf.x[i], y = cf.y[i];
       const tvx = Math.sin(t * 0.3 + cf.ph[i]) * 7 + Math.cos(y * 0.012 + t * 0.9 + cf.ph[i]) * swirl;
       const tvy = cf.fall[i] * fallK + Math.sin(x * 0.014 - t * 0.7) * swirl * 0.55;
-      cf.vx[i] += (tvx - cf.vx[i]) * relax;
-      cf.vy[i] += (tvy - cf.vy[i]) * relax;
+      const rl = cf.bz[i] && cf.age[i] < 1.8 ? relax * 0.35 : relax;
+      cf.vx[i] += (tvx - cf.vx[i]) * rl;
+      cf.vy[i] += (tvy - cf.vy[i]) * rl;
       cf.x[i] += cf.vx[i] * dt; cf.y[i] += cf.vy[i] * dt;
       cf.rot[i] += cf.spin[i] * dt * (1 + ag * 1.5);
       cf.fl[i] += cf.fls[i] * dt * (1 + ag);
@@ -1069,7 +1080,7 @@ export default function create({ ctx }) {
     for (let i = 0; i < NC; i++) {
       if (!cf.on[i]) continue;
       const x = cf.x[i] + st.camX * 0.8, y = cf.y[i] + st.camY * 0.8;
-      const fade = stageFade(x, y, W, H, st.groundY, 0.25) * smoothstep(0, 0.6, cf.age[i]) * (1 - smoothstep(H * 0.9, H * 0.97, y));
+      const fade = stageFade(x, y, W, H, st.groundY, cf.bz[i] ? 0.75 : 0.25) * smoothstep(0, 0.6, cf.age[i]) * (1 - smoothstep(H * 0.9, H * 0.97, y));
       if (fade < 0.02) continue;
       const f = Math.cos(cf.fl[i]);
       const ca = Math.cos(cf.rot[i]), sa = Math.sin(cf.rot[i]);
@@ -1143,7 +1154,7 @@ export default function create({ ctx }) {
       // confetti popper
       const n = Math.round(34 * k * st.density) + 4;
       for (let i = 0; i < n; i++) {
-        const a = -Math.PI / 2 + R.range(-1.25, 1.25), v = R.range(90, 260);
+        const a = -Math.PI / 2 + R.range(-1.25, 1.25), v = R.range(260, 520) * (gentle ? 0.7 : 1);
         spawnConfetti(st, x, y, Math.cos(a) * v, Math.sin(a) * v, true);
       }
       rings.add(x, y, 6, 90, 1.2, 1, '#ff7aa6', 0.6 * k, 2);

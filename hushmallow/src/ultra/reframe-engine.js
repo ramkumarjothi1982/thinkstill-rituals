@@ -15,6 +15,10 @@ import {
   THOUGHT_PATTERNS, SCENARIOS, GENERAL, ALL_FRAMEWORKS, HARM_LEXICON, HARM_COPY,
   GUIDE_LINES, CAMEO_STAGES, ANGLE_KINDS, getScenario, getPattern,
 } from './frameworks.js';
+import {
+  LENSES, LENS_IDS, LENS_REASONS, LENS_RULES, LENS_CAMEOS, FUTURE_CUES, MIXER_LEXICON, AGREE_PLURAL,
+  HEAT_BANDS, CERTAINTY_BANDS, ZOOM_STOPS, ZOOM_FAMILY, ZOOM_LINES, SEAL_WHEN,
+} from './lenses.js';
 
 // ---------------------------------------------------------------------------
 // Text helpers
@@ -464,6 +468,11 @@ const LABELS = {
   against: 'What doesn’t quite fit',
   missing: 'What I don’t know yet',
   angle: 'Another angle',
+  zoom: 'Zooming out',
+  known: 'What I know',
+  predicted: 'What I’m predicting',
+  sealed: 'Sealed to check',
+  words: 'The words that fit best',
   next: 'My next move',
 };
 
@@ -479,7 +488,7 @@ const lowerFirst = (s) => (/^[A-Z][a-z’']/.test(s) && !/^I\b/.test(s) ? s[0].t
  * Only tidies capitalisation and end punctuation; never rewrites wording.
  * → { lines: [{ key, label, text }], summary, text }
  */
-export function composeAngle({ fact = '', interpretation = '', evidence = {}, keptAngles = [], nextStep = '' } = {}) {
+export function composeAngle({ fact = '', interpretation = '', evidence = {}, keptAngles = [], nextStep = '', lenses = null } = {}) {
   const lines = [];
   const f = tidySentence(asText(fact));
   const i = stripEndPunct(tidyPhrase(asText(interpretation)));
@@ -491,6 +500,8 @@ export function composeAngle({ fact = '', interpretation = '', evidence = {}, ke
   }
   const angles = (keptAngles || []).map((a) => tidySentence(asText(a))).filter(Boolean);
   for (const a of angles) lines.push({ key: 'angle', label: LABELS.angle, text: a });
+  const lensOut = lensLines(lenses);
+  lines.push(...lensOut.lines);
   const step = tidySentence(asText(nextStep));
   if (step) lines.push({ key: 'next', label: LABELS.next, text: step });
 
@@ -500,6 +511,7 @@ export function composeAngle({ fact = '', interpretation = '', evidence = {}, ke
   const missing = (evidence?.missing || []).map((x) => stripEndPunct(tidyPhrase(asText(x)))).filter(Boolean);
   if (missing.length) parts.push(`What I don’t know yet: ${lowerFirst(missing[0])}.`);
   if (angles.length) parts.push(`Another way to see it: ${angles[0]}`);
+  parts.push(...lensOut.summary);
   if (i && angles.length) parts.push('My first thought might still be right — it just isn’t the only possibility.');
   if (step) parts.push(`My next move: ${lowerFirst(step)}`);
   const summary = parts.length ? parts.join(' ') : 'Nothing here yet. Start with what happened.';
