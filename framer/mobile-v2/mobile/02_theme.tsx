@@ -82,17 +82,17 @@ function themeVars(name: ThemeName): React.CSSProperties {
 
 /** Global stylesheet. Everything is scoped under .tsm so nothing leaks into the host page. */
 const TSM_CSS = String.raw`
-.tsm{position:relative;width:100%;height:100%;overflow:hidden;font-family:${FONT};color:var(--ink);background:var(--bg0);
-  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;isolation:isolate;
-  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;contain:layout paint;}
-.tsm *,.tsm *::before,.tsm *::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-.tsm button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;touch-action:manipulation}
-.tsm button:disabled{cursor:default}
-.tsm :focus{outline:none}
-.tsm :focus-visible{outline:2px solid var(--accent2);outline-offset:3px;border-radius:12px}
-.tsm input,.tsm textarea{font:inherit;color:inherit;-webkit-user-select:text;user-select:text}
-.tsm img{-webkit-user-drag:none;user-select:none}
-.tsm .tsmStage{touch-action:none;-webkit-user-select:none;user-select:none}
+.tsm{position:relative;width:100%;height:100%;overflow:hidden;background:var(--bg0);isolation:isolate;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+.tsm .tsmScene{position:absolute;inset:0;z-index:1}
+.tsmUi{font-family:${FONT};color:var(--ink);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;text-rendering:optimizeLegibility}
+.tsmUi,.tsmUi *,.tsmUi *::before,.tsmUi *::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+.tsmUi :where(header,div,section,span,p,h1,h2,h3,ol,ul,li,b,strong,em,i,small,label,svg){border:0;box-shadow:none;text-shadow:none;filter:none;outline:0}
+.tsmUi :where(button){font:inherit;color:inherit;background:none;border:0;box-shadow:none;text-shadow:none;filter:none;min-width:0;min-height:0;letter-spacing:normal;text-transform:none;line-height:normal;padding:0;margin:0;cursor:pointer;touch-action:manipulation;-webkit-appearance:none;appearance:none}
+.tsmUi :where(button:disabled){cursor:default}
+.tsmUi :focus{outline:none}
+.tsmUi :focus-visible{outline:2px solid var(--accent2);outline-offset:3px;border-radius:12px}
+.tsmUi :where(input,textarea){font:inherit;color:inherit;-webkit-user-select:text;user-select:text}
+.tsmUi :where(img){-webkit-user-drag:none;user-select:none}
 
 /* ---------- app backdrop (living night / airy dawn) ---------- */
 .tsm .tsmBackdrop{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;
@@ -113,31 +113,31 @@ const TSM_CSS = String.raw`
 @keyframes tsmDrift{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(var(--nx,20px),var(--ny,-16px),0) scale(1.08)}}
 
 /* ---------- typography ---------- */
-.tsm .tLarge{font-size:30px;line-height:1.08;font-weight:700;letter-spacing:-.022em}
-.tsm .tTitle{font-size:22px;line-height:1.15;font-weight:650;letter-spacing:-.018em}
-.tsm .tHead{font-size:17px;line-height:1.25;font-weight:600;letter-spacing:-.012em}
-.tsm .tBody{font-size:16px;line-height:1.38;font-weight:400;letter-spacing:-.008em}
-.tsm .tSub{font-size:14px;line-height:1.35;font-weight:400;color:var(--ink2)}
-.tsm .tCap{font-size:12px;line-height:1.25;font-weight:500;letter-spacing:.01em;color:var(--ink3)}
-.tsm .tEyebrow{font-size:11px;line-height:1;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+.tsmUi .tLarge{font-size:30px;line-height:1.08;font-weight:700;letter-spacing:-.022em}
+.tsmUi .tTitle{font-size:22px;line-height:1.15;font-weight:650;letter-spacing:-.018em}
+.tsmUi .tHead{font-size:17px;line-height:1.25;font-weight:600;letter-spacing:-.012em}
+.tsmUi .tBody{font-size:16px;line-height:1.38;font-weight:400;letter-spacing:-.008em}
+.tsmUi .tSub{font-size:14px;line-height:1.35;font-weight:400;color:var(--ink2)}
+.tsmUi .tCap{font-size:12px;line-height:1.25;font-weight:500;letter-spacing:.01em;color:var(--ink3)}
+.tsmUi .tEyebrow{font-size:11px;line-height:1;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
 
 /* ---------- controls ---------- */
-.tsm .tsmPrimary{height:54px;border-radius:27px;padding:0 26px;display:inline-flex;align-items:center;justify-content:center;gap:10px;
+.tsmUi .tsmPrimary{height:54px;border-radius:27px;padding:0 26px;display:inline-flex;align-items:center;justify-content:center;gap:10px;
   font-size:17px;font-weight:600;letter-spacing:-.01em;color:var(--accentInk);
   background:linear-gradient(180deg, var(--accentHi), var(--accent));
   box-shadow:0 10px 30px var(--accentGlow), inset 0 1px 0 rgba(255,255,255,.45);
   transition:transform .18s cubic-bezier(.2,.8,.2,1), opacity .2s}
-.tsm .tsmPrimary:active{transform:scale(.965)}
-.tsm .tsmPrimary:disabled{opacity:.42}
-.tsm .tsmSecondary{height:50px;border-radius:25px;padding:0 22px;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+.tsmUi .tsmPrimary:active{transform:scale(.965)}
+.tsmUi .tsmPrimary:disabled{opacity:.42}
+.tsmUi .tsmSecondary{height:50px;border-radius:25px;padding:0 22px;display:inline-flex;align-items:center;justify-content:center;gap:8px;
   font-size:16px;font-weight:550;color:var(--ink);background:var(--fill);box-shadow:inset 0 0 0 1px var(--hair);transition:transform .18s}
-.tsm .tsmSecondary:active{transform:scale(.965)}
-.tsm .tsmGhost{min-height:44px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:15px;font-weight:500;color:var(--ink2);border-radius:22px}
-.tsm .tsmGhost:active{opacity:.6}
-.tsm .tsmIconBtn{width:44px;height:44px;border-radius:22px;display:grid;place-items:center;color:var(--ink);transition:transform .15s, background .2s}
-.tsm .tsmIconBtn:active{transform:scale(.9);background:var(--fill)}
-.tsm .tsmIconBtn[aria-disabled=true]{opacity:.32}
-.tsm .tsmPill{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px;border-radius:17px;font-size:14px;font-weight:500;
+.tsmUi .tsmSecondary:active{transform:scale(.965)}
+.tsmUi .tsmGhost{min-height:44px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:15px;font-weight:500;color:var(--ink2);border-radius:22px}
+.tsmUi .tsmGhost:active{opacity:.6}
+.tsmUi .tsmIconBtn{width:44px;height:44px;border-radius:22px;display:grid;place-items:center;color:var(--ink);transition:transform .15s, background .2s}
+.tsmUi .tsmIconBtn:active{transform:scale(.9);background:var(--fill)}
+.tsmUi .tsmIconBtn[aria-disabled=true]{opacity:.32}
+.tsmUi .tsmPill{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px;border-radius:17px;font-size:14px;font-weight:500;
   color:var(--ink);background:var(--fill);box-shadow:inset 0 0 0 1px var(--hair2);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 
 /* ---------- character idle performances (applied to the inner face layer) ---------- */
@@ -163,3 +163,64 @@ const TSM_CSS = String.raw`
 .tsm[data-calm=true] .tsmMote{display:none}
 .tsm[data-calm=true] .tsmNebula{animation:none!important}
 `
+
+/**
+ * Scopes a stylesheet to the mobile root and makes it win over the desktop console's !important rules:
+ * every selector gets the triple-ID root prefix and every declaration (except transform / opacity /
+ * transition, which inline animation code drives) gets !important. @keyframes are left untouched.
+ */
+function tsmScopeCss(css: string): string {
+    const ROOT = "#tsmRoot#tsmRoot#tsmRoot"
+    const scopeSel = (sel: string) =>
+        sel
+            .split(",")
+            .map((x) => {
+                const t = x.trim()
+                if (!t) return t
+                if (t.startsWith(ROOT)) return t
+                if (/^\.tsm(?=[\s.[:]|$)/.test(t)) return ROOT + t
+                return `${ROOT} ${t}`
+            })
+            .join(",")
+    const imp = (body: string) =>
+        body
+            .split(";")
+            .map((d) => {
+                const t = d.trim()
+                if (!t || t.indexOf(":") < 0) return t
+                if (/!important\s*$/.test(t)) return t
+                const prop = t.slice(0, t.indexOf(":")).trim().toLowerCase()
+                if (prop.startsWith("--") || prop === "transform" || prop === "opacity" || prop === "transition" || prop === "animation-delay") return t
+                return t + "!important"
+            })
+            .filter(Boolean)
+            .join(";")
+    css = css.replace(/\/\*[\s\S]*?\*\//g, "")
+    let out = ""
+    let i = 0
+    const n = css.length
+    const readBlock = (start: number): number => {
+        // returns index after the matching close brace of the block opening at css[start] === "{"
+        let depth = 0
+        for (let k = start; k < n; k++) {
+            if (css[k] === "{") depth++
+            else if (css[k] === "}") {
+                depth--
+                if (depth === 0) return k + 1
+            }
+        }
+        return n
+    }
+    while (i < n) {
+        const open = css.indexOf("{", i)
+        if (open < 0) break
+        const head = css.slice(i, open).trim()
+        const end = readBlock(open)
+        const inner = css.slice(open + 1, end - 1)
+        if (/^@(-webkit-)?keyframes/.test(head) || /^@font-face/.test(head)) out += `${head}{${inner}}\n`
+        else if (/^@(media|supports)/.test(head)) out += `${head}{${tsmScopeCss(inner)}}\n`
+        else if (head) out += `${scopeSel(head)}{${imp(inner)}}\n`
+        i = end
+    }
+    return out
+}

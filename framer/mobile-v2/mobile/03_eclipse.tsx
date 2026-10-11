@@ -46,10 +46,10 @@ const ECLIPSE_CSS = String.raw`
 /* ---------- transition curtain ---------- */
 .tsm .eclCurtain{position:absolute;inset:0;z-index:80;pointer-events:none;overflow:hidden}
 .tsm .eclCurtain.on{pointer-events:auto}
-.tsm .eclRingLayer{position:absolute;inset:0;z-index:90;pointer-events:none;overflow:hidden}
-.tsm .eclCurtain .ecCore{position:absolute;left:0;top:0;border-radius:50%;will-change:transform,opacity;
+.tsm .eclRingLayer{position:absolute;inset:0;z-index:90;pointer-events:none;overflow:hidden;font-family:${FONT};-webkit-font-smoothing:antialiased}
+.tsm .eclCurtain .ecCore{position:absolute;border-radius:50%;will-change:transform,opacity;
   background:radial-gradient(circle at 40% 34%, var(--coreLift) 0%, var(--core) 48%, #020108 100%)}
-.tsm .eclRingLayer .ecRing{position:absolute;left:0;top:0;border-radius:50%;will-change:transform,opacity;
+.tsm .eclRingLayer .ecRing{position:absolute;border-radius:50%;will-change:transform,opacity;
   background:radial-gradient(circle, transparent 47%, rgba(255,248,236,.95) 49.6%, rgba(var(--corona),.7) 51.5%, rgba(var(--corona),.25) 56%, rgba(var(--coronaCool),.08) 63%, transparent 70%)}
 .tsm .eclRingLayer .ecCaption{position:absolute;left:24px;right:24px;top:50%;transform:translateY(-50%);text-align:center;color:#fff;opacity:0;
   transition:opacity .35s ease, transform .6s cubic-bezier(.2,.8,.2,1)}
@@ -124,6 +124,8 @@ interface EclipseRun {
     long?: boolean
     /** Origin of the eclipse in container px (defaults to centre). */
     origin?: { x: number; y: number }
+    /** The screen is already covered (e.g. the check-in's dive wipe): start at the hold. */
+    covered?: boolean
     onDone?: () => void
 }
 
@@ -138,7 +140,7 @@ const EclipseContext = React.createContext<EclipseCtl>({ run: (r) => r.apply(), 
  * Full-screen curtain. Phases: cover (core grows from the origin with its corona at the edge) →
  * hold (title card / one breath) → reveal (the next scene emerges through an opening ring of light).
  */
-function EclipseCurtain({ sceneRef, reduced, children }: { sceneRef: React.RefObject<HTMLDivElement>; reduced: boolean; children: React.ReactNode }) {
+function EclipseCurtain({ sceneRef, reduced, children, ctlRef }: { sceneRef: React.RefObject<HTMLDivElement>; reduced: boolean; children: React.ReactNode; ctlRef?: React.MutableRefObject<EclipseCtl | null> }) {
     const rootRef = React.useRef<HTMLDivElement>(null)
     const coreRef = React.useRef<HTMLDivElement>(null)
     const ringRef = React.useRef<HTMLDivElement>(null)
@@ -146,7 +148,7 @@ function EclipseCurtain({ sceneRef, reduced, children }: { sceneRef: React.RefOb
     const [showCaption, setShowCaption] = React.useState(false)
     const [on, setOn] = React.useState(false)
     const [skippable, setSkippable] = React.useState(false)
-    const job = React.useRef<{ run: EclipseRun; raf: number; timers: any[]; skip: (() => void) | null } | null>(null)
+    const job = React.useRef<{ run: EclipseRun; raf: number; timers: any[]; skip: (() => void) | null; applied: boolean } | null>(null)
     const reducedRef = useLatest(reduced)
 
     const cleanupScene = () => {
@@ -178,8 +180,14 @@ function EclipseCurtain({ sceneRef, reduced, children }: { sceneRef: React.RefOb
     }, [])
 
     const run = React.useCallback((r: EclipseRun) => {
-        // a transition already running: apply immediately (never queue a second cinematic)
+        // a transition already running: never start a second cinematic. If its scene swap has not happened
+        // yet, the newest change replaces the pending one (double launches apply once); otherwise apply now.
         if (job.current) {
+            const jr = job.current
+            if (!jr.applied) {
+                jr.run = { ...jr.run, apply: r.apply, caption: jr.run.caption || r.caption }
+                return
+            }
             try {
                 r.apply()
             } catch (e) {}
@@ -209,7 +217,7 @@ function EclipseCurtain({ sceneRef, reduced, children }: { sceneRef: React.RefOb
         }
         place(core, D)
         place(ring, D * 1.08)
-        const j = { run: r, raf: 0, timers: [] as any[], skip: null as (() => void) | null }
+        const j = { run: r, raf: 0, timers: [] as any[], skip: null as (() => void) | null, applied: false }
         job.current = j
         setOn(true)
         setCaption(r.caption || null)
@@ -222,8 +230,9 @@ function EclipseCurtain({ sceneRef, reduced, children }: { sceneRef: React.RefOb
             core.style.opacity = "1"
             j.timers.push(
                 setTimeout(() => {
+                    j.applied = true
                     try {
-                        r.apply()
+                        j.run.apply()
                     } catch (e) {}
                     core.style.transition = "opacity .22s linear"
                     j.timers.push(setTimeout(() => (core.style.opacity = "0"), 40))
@@ -238,7 +247,7 @@ function EclipseCurtain({ sceneRef, reduced, children }: { sceneRef: React.RefOb
         const coverMs = r.long ? 620 : 430
         const holdMs = r.long ? (r.caption ? 1250 : 700) : r.caption ? 520 : 70
         const revealMs = r.long ? 760 : 540
-        const t0 = performance.now()
+        const t0 = performance.now() - (r.covered ? coverMs : 0)
         let phase: "cover" | "hold" | "reveal" = "cover"
         let applied = false
         let holdStart = 0
@@ -247,8 +256,9 @@ function EclipseCurtain({ sceneRef, reduced, children }: { sceneRef: React.RefOb
         const doApply = () => {
             if (applied) return
             applied = true
+            j.applied = true
             try {
-                r.apply()
+                j.run.apply()
             } catch (e) {
                 if (typeof console !== "undefined") console.warn("[ThinkStill] transition apply", e)
             }
@@ -279,7 +289,10 @@ function EclipseCurtain({ sceneRef, reduced, children }: { sceneRef: React.RefOb
                         scene.style.opacity = ""
                     }
                     doApply()
-                    if (r.caption) setShowCaption(true)
+                    if (j.run.caption) {
+                        setCaption(j.run.caption)
+                        setShowCaption(true)
+                    }
                     if (r.long) setSkippable(true)
                 }
             } else if (phase === "hold") {
@@ -338,6 +351,7 @@ function EclipseCurtain({ sceneRef, reduced, children }: { sceneRef: React.RefOb
     )
 
     const ctl = React.useMemo<EclipseCtl>(() => ({ run, busy: () => !!job.current }), [run])
+    if (ctlRef) ctlRef.current = ctl
 
     return (
         <EclipseContext.Provider value={ctl}>

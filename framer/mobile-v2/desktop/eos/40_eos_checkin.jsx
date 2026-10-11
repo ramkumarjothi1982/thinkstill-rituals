@@ -204,9 +204,12 @@ function eosCheckinLayout({ w, h, phone, more, labH, labRows, lane = 0, headH, f
         laneY = bottom + lane / 2
         ring = { cx: w / 2, cy, rx, ry }
     } else {
-        const S = 84
-        const C = 92
-        const M = 68
+        // mobile v2: orbs shrink a little on short phones so the whole crew + footer fit without overlap
+        const labGuess = [0, 1, 2].reduce((a, r) => a + (labRows && labRows[r] ? labRows[r] : lab), 0)
+        const fitRoom = h - headH - (footH || 0) - lane - labGuess - 3 * 8 - (more ? 68 + 30 : 0)
+        const S = Math.round(eosClamp((fitRoom - 8) / 3, 62, 84))
+        const C = Math.round(S * 1.1)
+        const M = Math.round(Math.min(68, S * 0.82))
         const cellW = Math.min(132, (w - 16) / 3)
         const top = headH
         const grid = [
@@ -216,14 +219,18 @@ function eosCheckinLayout({ w, h, phone, more, labH, labRows, lane = 0, headH, f
         ]
         // each row is as tall as ITS tallest label (PANIC's two-line sub only grows the first row);
         // the middle row also makes room for the bigger NOT SURE ball
-        let y = top
+        // mobile v2: rows breathe with the available height (5 px minimum, 22 px at most)
+        const labSum = [0, 1, 2].reduce((a, r) => a + (labRows && labRows[r] ? labRows[r] : lab), 0)
+        const spare = h - top - (footH || 0) - lane - (3 * S + (C - S) + labSum) - (more ? M + 30 : 0)
+        const rowGap = Math.max(5, Math.min(22, spare / 4))
+        let y = top + Math.max(0, Math.min(18, spare / 6))
         grid.forEach((row, r) => {
             const lr = labRows && labRows[r] ? labRows[r] : lab
             const extra = r === 1 ? (C - S) / 2 : 0
             row.forEach((id, c) => {
                 pos[id] = { x: w / 2 + (c - 1) * cellW, y: y + extra + S / 2 + 2, size: id === "auto" ? C : S, show: true }
             })
-            y += S + 2 * extra + lr + 5
+            y += S + 2 * extra + lr + rowGap
         })
         const moreTop = y
         EOS_CHECKIN_MORE.forEach((id, j) => {
@@ -771,7 +778,7 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
         } catch {}
     }
     React.useEffect(() => {
-        if (tsPageBridge) tsPageBridge.current = { step, back, next: go, choose: pick, sel, level: n }
+        if (tsPageBridge) tsPageBridge.current = { step, back, next: go, choose: (id) => enterStep2(id), sel, level: n }
         if (typeof tsReportStep === "function") tsReportStep(step)
         return () => {
             if (tsPageBridge) tsPageBridge.current = null

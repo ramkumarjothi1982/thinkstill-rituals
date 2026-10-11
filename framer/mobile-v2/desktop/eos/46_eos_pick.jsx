@@ -176,6 +176,9 @@ function eosPickDecide(group, s, excludeId) {
     // NEVER repeat a ritual because just one emotion/route was exhausted.
     // If no unplayed ritual is suitable for this feeling, return no pick.
     let unplayed = freshCycle ? pool.slice() : pool.filter((id) => pending.includes(id))
+    // fix (v19 bug): with a safety flag only the 7 gentle rituals qualify, so the 30-ritual cycle could never
+    // finish and every request dead-ended. Once every gentle ritual was played, the gentle list cycles again.
+    if (!unplayed.length && ctx && ctx.flag) unplayed = pool.filter((id) => id !== s.last)
     if (!unplayed.length) return null
     const excluded = Number(excludeId) || null
     const other = unplayed.filter((id) => id !== excluded && id !== s.last)

@@ -159,38 +159,38 @@ const MOOD_ANIM: Record<Mood, string> = {
 }
 
 const ORB_CSS = String.raw`
-.tsm .orb{position:absolute;width:var(--d);height:var(--d);will-change:transform}
-.tsm .orb .orbShadow{position:absolute;left:12%;right:12%;bottom:-9%;height:16%;border-radius:50%;
+.tsm .tsmOrb{position:absolute;width:var(--d);height:var(--d);will-change:transform}
+.tsm .tsmOrb .orbShadow{position:absolute;left:12%;right:12%;bottom:-9%;height:16%;border-radius:50%;
   background:radial-gradient(closest-side, rgba(0,0,0,.42), transparent);opacity:var(--shadowA,.8);pointer-events:none}
-.tsm[data-theme=bright] .orb .orbShadow{background:radial-gradient(closest-side, rgba(60,40,120,.26), transparent)}
-.tsm .orb .orbPerf{position:absolute;inset:0;transform-origin:50% 85%}
-.tsm .orb .orbBody{position:absolute;inset:0;border-radius:50%;overflow:hidden;
+.tsm[data-theme=bright] .tsmOrb .orbShadow{background:radial-gradient(closest-side, rgba(60,40,120,.26), transparent)}
+.tsm .tsmOrb .orbPerf{position:absolute;inset:0;transform-origin:50% 85%}
+.tsm .tsmOrb .orbBody{position:absolute;inset:0;border-radius:50%;overflow:hidden;
   background:
     radial-gradient(120% 90% at 50% 112%, hsla(var(--h),70%,var(--lowL,16%),var(--lowA,.62)) 0%, transparent 62%),
     radial-gradient(circle at 50% 42%, hsla(var(--h),90%,62%,.10) 0%, hsla(var(--h),80%,40%,.26) 62%, hsla(var(--h),95%,72%,.55) 100%);
   box-shadow:inset 0 0 0 1.25px var(--orbRim), inset 0 calc(var(--d)*-.06) calc(var(--d)*.12) hsla(var(--h),95%,70%,.35), 0 calc(var(--d)*.07) calc(var(--d)*.22) hsla(var(--h),90%,35%,var(--glowA,.32));
   -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:box-shadow .6s ease}
-.tsm[data-theme=bright] .orb .orbBody{--lowL:98%;--lowA:.80;box-shadow:inset 0 0 0 1.5px var(--orbRim), inset 0 calc(var(--d)*-.06) calc(var(--d)*.12) hsla(var(--h),95%,70%,.30), 0 calc(var(--d)*.07) calc(var(--d)*.2) hsla(var(--h),70%,40%,.22)}
-.tsm .orb.lifted .orbBody{box-shadow:inset 0 0 0 1.5px var(--orbRim), inset 0 calc(var(--d)*-.06) calc(var(--d)*.12) hsla(var(--h),95%,70%,.45), 0 calc(var(--d)*.14) calc(var(--d)*.32) hsla(var(--h),90%,35%,.45)}
-.tsm .orb .orbAura{position:absolute;inset:-22%;border-radius:50%;pointer-events:none;opacity:var(--aura,0);transition:opacity .8s ease;
+.tsm[data-theme=bright] .tsmOrb .orbBody{--lowL:98%;--lowA:.80;box-shadow:inset 0 0 0 1.5px var(--orbRim), inset 0 calc(var(--d)*-.06) calc(var(--d)*.12) hsla(var(--h),95%,70%,.30), 0 calc(var(--d)*.07) calc(var(--d)*.2) hsla(var(--h),70%,40%,.22)}
+.tsm .tsmOrb.lifted .orbBody{box-shadow:inset 0 0 0 1.5px var(--orbRim), inset 0 calc(var(--d)*-.06) calc(var(--d)*.12) hsla(var(--h),95%,70%,.45), 0 calc(var(--d)*.14) calc(var(--d)*.32) hsla(var(--h),90%,35%,.45)}
+.tsm .tsmOrb .orbAura{position:absolute;inset:-22%;border-radius:50%;pointer-events:none;opacity:var(--aura,0);transition:opacity .8s ease;
   background:radial-gradient(circle, hsla(var(--h2,var(--h)),100%,72%,.55) 0%, hsla(var(--h2,var(--h)),100%,65%,.18) 45%, transparent 68%)}
-.tsm .orb .orbPortrait{position:absolute;left:50%;border-radius:50%;overflow:hidden;transform:translateX(-50%);
+.tsm .tsmOrb .orbPortrait{position:absolute;left:50%;border-radius:50%;overflow:hidden;transform:translateX(-50%);
   box-shadow:0 2px 10px rgba(0,0,0,.18), 0 0 0 1px rgba(255,255,255,.18)}
-.tsm .orb .orbPortrait img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;transform:scale(var(--imgZ,1.14));transform-origin:50% 48%}
-.tsm .orb .orbPortrait img.up{object-position:50% 35%}
-.tsm .orb .orbPortrait img.prev{animation:orbOut .42s ease forwards}
-.tsm .orb .orbPortrait img.next{animation:orbIn .62s cubic-bezier(.3,1.6,.45,1) both}
-.tsm .orb .orbFlash{position:absolute;inset:0;border-radius:50%;pointer-events:none;opacity:0;
+.tsm .tsmOrb .orbPortrait img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;transform:scale(var(--imgZ,1.14));transform-origin:50% 48%}
+.tsm .tsmOrb .orbPortrait img.up{object-position:50% 35%}
+.tsm .tsmOrb .orbPortrait img.prev{animation:orbOut .42s ease forwards}
+.tsm .tsmOrb .orbPortrait img.next{animation:orbIn .62s cubic-bezier(.3,1.6,.45,1) both}
+.tsm .tsmOrb .orbFlash{position:absolute;inset:0;border-radius:50%;pointer-events:none;opacity:0;
   background:radial-gradient(circle, rgba(255,255,255,.9) 0%, rgba(255,240,210,.35) 35%, transparent 65%)}
-.tsm .orb .orbFlash.go{animation:orbFlash .7s ease-out}
-.tsm .orb .orbRingFx{position:absolute;inset:-4%;border-radius:50%;border:2px solid hsla(var(--h2,var(--h)),100%,80%,.9);opacity:0;pointer-events:none}
-.tsm .orb .orbRingFx.go{animation:tsmRing .8s cubic-bezier(.2,.8,.2,1)}
-.tsm .orb .orbText{position:absolute;left:13%;right:13%;text-align:center;color:var(--orbText);text-shadow:var(--orbTextShadow);
+.tsm .tsmOrb .orbFlash.go{animation:orbFlash .7s ease-out}
+.tsm .tsmOrb .orbRingFx{position:absolute;inset:-4%;border-radius:50%;border:2px solid hsla(var(--h2,var(--h)),100%,80%,.9);opacity:0;pointer-events:none}
+.tsm .tsmOrb .orbRingFx.go{animation:tsmRing .8s cubic-bezier(.2,.8,.2,1)}
+.tsm .tsmOrb .orbText{position:absolute;left:13%;right:13%;text-align:center;color:var(--orbText);text-shadow:var(--orbTextShadow);
   font-weight:500;line-height:1.14;letter-spacing:-.005em;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;hyphens:auto}
-.tsm .orb .orbSpec{position:absolute;left:14%;top:7%;width:46%;height:30%;border-radius:50%;pointer-events:none;
+.tsm .tsmOrb .orbSpec{position:absolute;left:14%;top:7%;width:46%;height:30%;border-radius:50%;pointer-events:none;
   background:radial-gradient(ellipse at 40% 40%, rgba(255,255,255,.62), rgba(255,255,255,.08) 55%, transparent 70%);transform:rotate(-24deg);mix-blend-mode:screen}
-.tsm .orb .orbGlint{position:absolute;right:17%;top:17%;width:7%;height:7%;border-radius:50%;background:rgba(255,255,255,.9);filter:blur(.4px);pointer-events:none}
-.tsm .orb .orbRim{position:absolute;inset:0;border-radius:50%;pointer-events:none;
+.tsm .tsmOrb .orbGlint{position:absolute;right:17%;top:17%;width:7%;height:7%;border-radius:50%;background:rgba(255,255,255,.9);filter:blur(.4px);pointer-events:none}
+.tsm .tsmOrb .orbRim{position:absolute;inset:0;border-radius:50%;pointer-events:none;
   background:conic-gradient(from 200deg, transparent 0deg, hsla(var(--h2,var(--h)),100%,82%,.55) 50deg, transparent 110deg, transparent 250deg, rgba(255,255,255,.35) 300deg, transparent 340deg);
   -webkit-mask-image:radial-gradient(circle, transparent 64%, #000 70%);mask-image:radial-gradient(circle, transparent 64%, #000 70%)}
 @keyframes orbOut{to{opacity:0;transform:scale(.7) rotate(-8deg)}}
@@ -276,7 +276,7 @@ const Orb = React.memo(function Orb(p: OrbProps) {
     return (
         <div
             ref={p.innerRef}
-            className={cx("orb", p.lifted && "lifted", p.className)}
+            className={cx("tsmOrb", p.lifted && "lifted", p.className)}
             style={{ ["--d" as any]: `${d}px`, ["--h" as any]: hue, ["--h2" as any]: p.hue2 ?? hue, ["--aura" as any]: p.aura ?? 0, ["--shadowA" as any]: p.shadow ?? 0.8, ...p.style }}
             onPointerDown={p.onPointerDown}
             {...(p.bind || {})}

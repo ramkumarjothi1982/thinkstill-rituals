@@ -1,0 +1,145 @@
+{
+ "payload": "release/thinkstill-mobile-app.js",
+ "bytes": 1910062,
+ "sha256": "b49bc44d4355ec33c5fa2fa9847ec3bd002f07e2ad632067d8fcb902c5291587",
+ "controls": {
+  "theme": {
+   "type": "__CT__Enum",
+   "title": "Appearance",
+   "options": [
+    "auto",
+    "dark",
+    "bright"
+   ],
+   "optionTitles": [
+    "Auto",
+    "Dark",
+    "Bright"
+   ],
+   "defaultValue": "auto"
+  },
+  "title": {
+   "type": "__CT__String",
+   "title": "Title",
+   "defaultValue": "Emotional Release Console"
+  },
+  "onClose": {
+   "type": "__CT__EventHandler",
+   "title": "On Close"
+  },
+  "eosShowGameMenu": {
+   "type": "__CT__Boolean",
+   "title": "Show ritual library",
+   "defaultValue": false
+  },
+  "soundOn": {
+   "type": "__CT__Boolean",
+   "title": "SFX On",
+   "defaultValue": true
+  },
+  "hapticsOn": {
+   "type": "__CT__Boolean",
+   "title": "Haptics",
+   "defaultValue": true
+  },
+  "musicOnDefault": {
+   "type": "__CT__Boolean",
+   "title": "Music Default",
+   "defaultValue": false
+  },
+  "musicVolume": {
+   "type": "__CT__Number",
+   "title": "Music Volume",
+   "min": 0,
+   "max": 1,
+   "step": 0.05,
+   "defaultValue": 0.35
+  },
+  "tapOutBpm": {
+   "type": "__CT__Number",
+   "title": "Tap Out BPM",
+   "min": 40,
+   "max": 180,
+   "step": 1,
+   "defaultValue": 92
+  },
+  "bubbleTextPx": {
+   "type": "__CT__Number",
+   "title": "Bubble Text",
+   "min": 1,
+   "max": 28,
+   "step": 0.5,
+   "defaultValue": 16,
+   "unit": "px",
+   "displayStepper": true
+  },
+  "pixarIntensity": {
+   "type": "__CT__Number",
+   "title": "Pixar Light",
+   "min": 0,
+   "max": 2,
+   "step": 0.05,
+   "defaultValue": 0.75
+  },
+  "pixarWarmth": {
+   "type": "__CT__Number",
+   "title": "Warmth",
+   "min": 0,
+   "max": 2,
+   "step": 0.05,
+   "defaultValue": 1
+  },
+  "pixarParallax": {
+   "type": "__CT__Boolean",
+   "title": "Light Follows",
+   "defaultValue": true
+  },
+  "pixarSquash": {
+   "type": "__CT__Boolean",
+   "title": "Squash & Stretch",
+   "defaultValue": true
+  },
+  "pixarBokeh": {
+   "type": "__CT__Number",
+   "title": "Bokeh",
+   "min": 0,
+   "max": 24,
+   "step": 1,
+   "defaultValue": 6
+  },
+  "pixarDust": {
+   "type": "__CT__Number",
+   "title": "Dust Motes",
+   "min": 0,
+   "max": 40,
+   "step": 1,
+   "defaultValue": 8
+  },
+  "eosCheckin": {
+   "type": "__CT__Boolean",
+   "title": "Emotion Check-in",
+   "defaultValue": true
+  },
+  "eosCrisisLines": {
+   "type": "__CT__String",
+   "title": "Support Lines",
+   "displayTextArea": true,
+   "defaultValue": "US · 988 | Canada · 988 | UK & IE · Samaritans 116 123 | Australia · Lifeline 13 11 14 | India · Tele-MANAS 14416 | Anywhere · findahelpline.com"
+  },
+  "eosCrisisUrl": {
+   "type": "__CT__String",
+   "title": "Support Link",
+   "defaultValue": "https://findahelpline.com"
+  },
+  "eosEmergencyText": {
+   "type": "__CT__String",
+   "title": "Emergency Line",
+   "defaultValue": "In immediate danger? Call your local emergency number."
+  },
+  "eosShareUrl": {
+   "type": "__CT__String",
+   "title": "Share Link",
+   "defaultValue": ""
+  }
+ }
+}

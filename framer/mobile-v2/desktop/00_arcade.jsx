@@ -2614,6 +2614,8 @@ function compactGamePreviewText(s, maxWords = 3, maxChars = 24) {
 }
 function vibrate(ms = 18) {
     try {
+        // fix: every ritual's vibration honours the Haptics setting (EOS store mirrors it; on by default)
+        if (typeof EOS_STORE !== "undefined" && EOS_STORE.get && EOS_STORE.get().haptics === false) return
         if (typeof navigator !== "undefined" && "vibrate" in navigator)
             navigator.vibrate(ms)
     } catch {}
@@ -21501,7 +21503,22 @@ function ThinkStillReleaseArcade(props) {
         maxWidth = 1180,
         onClose: tsCloseConsole,
         mobileUI: MobileUI = null,
+        tsTransition = null,
     } = props
+    // Mobile V2: the shell may choreograph a scene change (Eclipse transition) around a stage change.
+    // `fn` is the unchanged desktop state change; without a shell it runs immediately.
+    const tsSwapRef = React.useRef(tsTransition)
+    tsSwapRef.current = tsTransition
+    const tsSwap = (kind, info, fn) => {
+        const t = tsSwapRef.current
+        if (typeof t === "function") {
+            try {
+                t(kind, info || {}, fn)
+                return
+            } catch {}
+        }
+        fn()
+    }
     const displayTitle = String(title || "EMOTIONAL RELEASE CONSOLE")
         .replace(/\bARCADE\b/gi, "CONSOLE")
         .replace(/^\s*THINKSTILL\s+/i, "")
@@ -21636,7 +21653,9 @@ function ThinkStillReleaseArcade(props) {
         []
     )
     const bubble = FAMILY_BUBBLE[selected?.family || "Release"] || "drop"
-    useSharedMusic(musicOn && sound, tsVolume, bubble)
+    // Mobile V2: the music button is its own control (independent of sound effects); the shell plays a generative
+    // score when no shared ThinkStill music source exists
+    const tsHasSharedMusic = useSharedMusic(musicOn && (sound || !!MobileUI), tsVolume, bubble)
     const fileInputRef = React.useRef(null)
     const uploadPopupRef = React.useRef(null)
     const uploadTriggerRef = React.useRef(null)
@@ -21971,19 +21990,22 @@ function ThinkStillReleaseArcade(props) {
             setGameMenuOpen(false)
             setUploadPopupOpen(false)
             donePendingRef.current = false
-            setReleaseCheck(null)
-            setSelected(g)
-            setEntries(e)
-            EosPickNote(g)
-            if (tsCompletedRitual.current !== g.id && selected?.id !== g.id) tsCompletedRitual.current = null
-            tsResumeRitual.current = null
-            tsPreviousInput.current = null
-            setVariationSeed((v) => v + 1)
-            EosMarkLaunch(g, e)
-            setStage("play")
-            if (isSwitching) showStatus(`SWITCHED TO ${g.name}`, 1500)
-            sfx(isSwitching ? "soft" : "win")
-            if (hapticsOn) vibrate(isSwitching ? 12 : 20)
+            const fromStage = stage
+            tsSwap(isSwitching ? "switch" : fromStage === "reveal" ? "next" : "launch", { game: g, entries: e, raw, from: fromStage }, () => {
+                setReleaseCheck(null)
+                setSelected(g)
+                setEntries(e)
+                EosPickNote(g)
+                if (tsCompletedRitual.current !== g.id && selected?.id !== g.id) tsCompletedRitual.current = null
+                tsResumeRitual.current = null
+                tsPreviousInput.current = null
+                setVariationSeed((v) => v + 1)
+                EosMarkLaunch(g, e)
+                setStage("play")
+                if (isSwitching) showStatus(`SWITCHED TO ${g.name}`, 1500)
+                sfx(isSwitching ? "soft" : "win")
+                if (tsHaptics) vibrate(isSwitching ? 12 : 20)
+            })
         },
         [
             raw,
@@ -21991,7 +22013,7 @@ function ThinkStillReleaseArcade(props) {
             uploadedImages.join("|"),
             selected?.id,
             stage,
-            hapticsOn,
+            tsHaptics,
             sfx,
             showStatus,
             played.join("|"),
@@ -22149,7 +22171,11 @@ function ThinkStillReleaseArcade(props) {
         }
         if (!selected) return
         if (dir < 0 && stage === "reveal") {
-            setStage("play")
+            donePendingRef.current = false // fix (v19 bug): finishing the revisited ritual reaches the reveal again
+            tsSwap("back", { game: selected }, () => {
+                setReleaseCheck(null)
+                setStage("play")
+            })
             return
         }
         if (dir > 0 && stage === "reveal") {
@@ -22159,18 +22185,20 @@ function ThinkStillReleaseArcade(props) {
         if (dir < 0 && stage === "play") {
             // keep the ritual identity and the user's words while revisiting check-in
             const check = EOS_STORE.get()
-            const wasCheckin = !!check.checkinEnabled
+            const wasCheckin = !!check.checkinEnabled && !check.skipSticky // fix (v19 bug): honour "skip check-in"
             tsResumeRitual.current = selected
             tsPreviousInput.current = wasCheckin ? { step: 2, emotion: check.emotion || "auto", intensity: check.before || 6 } : null
-            tsSetCheckinStep(wasCheckin ? 2 : 1)
-            EOS_STORE.set({ phase: wasCheckin ? "checkin" : "skip", skipSticky: !wasCheckin })
-            setStage("input")
-            setSelected(null)
+            tsSwap("back", { game: selected }, () => {
+                tsSetCheckinStep(wasCheckin ? 2 : 1)
+                EOS_STORE.set({ phase: wasCheckin ? "checkin" : "skip", skipSticky: !wasCheckin })
+                setStage("input")
+                setSelected(null)
+            })
             return
         }
         if (dir > 0 && stage === "play") {
             if (tsCompletedRitual.current === selected.id) {
-                setStage("reveal")
+                tsSwap("forward", { game: selected }, () => setStage("reveal"))
                 return
             }
             showStatus("FINISH THIS RITUAL TO SEE THE NEXT SCREEN", 3000)
@@ -22198,35 +22226,42 @@ function ThinkStillReleaseArcade(props) {
                 localStorage.setItem(PLAYED_KEY, JSON.stringify(p))
             } catch {}
             EosMarkFinish(selected, bonus)
-            setReleaseCheck(null)
-            setStage("reveal")
-            if (hapticsOn) vibrate(35)
+            tsSwap("reveal", { game: selected, entries }, () => {
+                setReleaseCheck(null)
+                setStage("reveal")
+                if (tsHaptics) vibrate(35)
+            })
         },
-        [selected, entries.join("|"), score, played.join("|"), hapticsOn]
+        [selected, entries.join("|"), score, played.join("|"), tsHaptics]
     )
     const replay = React.useCallback(() => {
         if (!selected || !entries.length) return
         donePendingRef.current = false
-        setReleaseCheck(null)
-        setVariationSeed((v) => v + 101)
-        EosMarkLaunch(selected, entries)
-        setStage("play")
-        sfx("soft")
+        tsCompletedRitual.current = null // fix (v19 bug): after REPEAT the forward arrow must not skip to the old end screen
+        tsSwap("replay", { game: selected, entries }, () => {
+            setReleaseCheck(null)
+            setVariationSeed((v) => v + 101)
+            EosMarkLaunch(selected, entries)
+            setStage("play")
+            sfx("soft")
+        })
     }, [selected, entries.join("|"), sfx])
     const clearForNext = React.useCallback(() => {
-        EosResetFeeling()
         donePendingRef.current = false
-        setReleaseCheck(null)
-        setStage("input")
-        setSelected(null)
-        setEntries([])
-        setRaw("")
-        setUploadedImages([])
-        setUploadPopupOpen(false)
-        setGameChoice("")
-        setGameMenuOpen(false)
-        setVariationSeed((v) => v + 7)
-        if (fileInputRef.current) fileInputRef.current.value = ""
+        tsSwap("home", {}, () => {
+            EosResetFeeling()
+            setReleaseCheck(null)
+            setStage("input")
+            setSelected(null)
+            setEntries([])
+            setRaw("")
+            setUploadedImages([])
+            setUploadPopupOpen(false)
+            setGameChoice("")
+            setGameMenuOpen(false)
+            setVariationSeed((v) => v + 7)
+            if (fileInputRef.current) fileInputRef.current.value = ""
+        })
     }, [])
     const toggleMic = React.useCallback(() => {
         if (typeof window === "undefined") return
@@ -22602,12 +22637,19 @@ function ThinkStillReleaseArcade(props) {
                                         }}
                                     />
     )
+    // dev / test only (eosIsDev: localhost, file://, ?eosdev=1): finish the running ritual, read the stage
+    React.useEffect(() => {
+        try {
+            if (typeof window === "undefined" || !eosIsDev()) return
+            window.__tsmDev = { done: (bonus = 0) => done(bonus), stage, selectedId: selected ? selected.id : null }
+        } catch {}
+    })
     // ---- Mobile V2 shell API: state + actions of this console (logic stays here, presentation moves to the shell)
     const tsMobileApi = () => ({
         stage, selected, raw, setRaw, entries, renderedEntries, uploadedImages, uploadSlots, visibleSlots, visibleImage,
         chooseUploadFiles, removeUploadedImage, fileInputRef, maxUploads: MAX_UPLOAD_IMAGES,
         listening, toggleMic, statusText, showStatus,
-        sound, setSound, musicOn, setMusicOn, musicOnDefault: !!musicOnDefault,
+        sound, setSound, musicOn, setMusicOn, musicOnDefault: !!musicOnDefault, hasSharedMusic: !!tsHasSharedMusic, musicBubble: bubble,
         haptics: tsHaptics, setHaptics: (v) => {
             tsSetHaptics(!!v)
             try {
@@ -23001,7 +23043,7 @@ function ThinkStillReleaseArcade(props) {
                                                 onClick={() => {
                                                     setReleaseCheck("yes")
                                                     sfx("win")
-                                                    if (hapticsOn) vibrate(18)
+                                                    if (tsHaptics) vibrate(18)
                                                 }}
                                             >
                                                 YES ✓
@@ -23015,7 +23057,7 @@ function ThinkStillReleaseArcade(props) {
                                                 onClick={() => {
                                                     setReleaseCheck("no")
                                                     sfx("soft")
-                                                    if (hapticsOn) vibrate(12)
+                                                    if (tsHaptics) vibrate(12)
                                                 }}
                                             >
                                                 NOT YET →
