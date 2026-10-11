@@ -4067,7 +4067,33 @@ function meltOrganizedRandomPattern(n, seedText) {
     const variant = variants[seed % variants.length]
     return variant.map((p) => ({ ...p })).slice(0, n)
 }
-function BurstEngine({ game, entries, onDone, sfx, reduced, onProgress }) {
+// mobile v2: g1 per-object faces (POP 1 · SHRED 15 · FLUSH 22 · SWIPE AWAY 25). The same resolver as the shared face
+// layer (tsBubbleFaceSources, same uploads + seed), but every object keeps ITS OWN character for the whole ritual (no
+// re-numbering when objects leave the stage) and the engine decides when that object's face turns positive.
+// relieved = calm, eyes-closed or soft-smile expressions (all inside RELEASE_PHASE_EMOTIONS.positive).
+const MV2_G1_RELIEVED = { glitch: 7, drop: 52, still: 34, patch: 75, loopie: 15, rush: 20, sync: 70 }
+function mv2G1FaceSet(game, entries, hasUserImages, imageSources, variationSeed) {
+    const uploads = hasUserImages ? (imageSources || []).filter(Boolean) : []
+    const args = { game, entries, uploads, count: 10, seed: Number(variationSeed || 0) }
+    let neg = []
+    let pos = []
+    try {
+        if (typeof tsBubbleFaceSources === "function") {
+            neg = tsBubbleFaceSources({ ...args, progress: 0 })
+            pos = tsBubbleFaceSources({ ...args, progress: 100 })
+        }
+    } catch {}
+    const relieved = neg.map((s, i) => {
+        const m = String(s || "").match(/\/([a-z]+)_E\d+\.webp/)
+        return m && MV2_G1_RELIEVED[m[1]] ? emotionSrc(m[1], MV2_G1_RELIEVED[m[1]]) : pos[i] || s
+    })
+    try {
+        if (typeof tsFacePreload === "function") tsFacePreload([...neg, ...pos, ...relieved])
+    } catch {}
+    const at = (list, i) => (list.length ? list[i % list.length] : undefined)
+    return { upload: uploads.length > 0, neg: (i) => at(neg, i), pos: (i) => at(pos, i), relieved: (i) => at(relieved, i) }
+}
+function BurstEngine({ game, entries, onDone, sfx, reduced, onProgress, hasUserImages, imageSources, variationSeed }) {
     const sourceWords = React.useMemo(
         () => directWords(entries, MAX_WORD_QUEUE),
         [entries.join("|")]
@@ -4093,6 +4119,11 @@ function BurstEngine({ game, entries, onDone, sfx, reduced, onProgress }) {
     const [combo, setCombo] = React.useState(0)
     const [fx, setFx] = React.useState([])
     const [cleared, setCleared] = React.useState(0)
+    // mobile v2: POP keeps one character per bubble (see mv2G1FaceSet)
+    const g1Faces = React.useMemo(
+        () => (game.id === 1 ? mv2G1FaceSet(game, entries, hasUserImages, imageSources, variationSeed) : null),
+        [game.id, entries.join("|"), hasUserImages, (imageSources || []).join("|").length, variationSeed]
+    )
     React.useEffect(() => {
         setBatchStart(0)
         setBursting([])
@@ -4111,20 +4142,30 @@ function BurstEngine({ game, entries, onDone, sfx, reduced, onProgress }) {
                 `${pct((cleared / Math.max(1, sourceWords.length)) * 100)}% POPPED`
             )
     }, [cleared, sourceWords.length, game.id])
-    const pop = (i) => {
+    const pop = (i, el) => {
         if (!alive.includes(i) || bursting.includes(i)) return
         setBursting((a) => [...a, i])
         const f = { id: Date.now() + i, x: pos[i]?.x || 50, y: pos[i]?.y || 50 }
+        // mobile v2: the splash starts where the bubble really is (the phone layout moves the bubbles)
+        try {
+            const ar = el && el.parentElement && el.parentElement.getBoundingClientRect()
+            const r = el && el.getBoundingClientRect()
+            if (ar && r && ar.width && ar.height) {
+                f.x = ((r.left + r.width / 2 - ar.left) / ar.width) * 100
+                f.y = ((r.top + r.height / 2 - ar.top) / ar.height) * 100
+            }
+        } catch {}
         setFx((a) => [...a.slice(-7), f])
         sfx("pop")
         vibrate(16)
         const nextCombo = combo + 1
         setCombo(nextCombo)
         setTimeout(() => {
+            // mobile v2: functional update outside the alive updater (two pops inside one 260 ms window no longer
+            // under-count the counter / progress)
+            setCleared((c) => c + 1)
             setAlive((a) => {
                 const nx = a.filter((x) => x !== i)
-                const totalCleared = cleared + 1
-                setCleared(totalCleared)
                 if (!nx.length) {
                     setTimeout(() => {
                         if (
@@ -4147,17 +4188,30 @@ function BurstEngine({ game, entries, onDone, sfx, reduced, onProgress }) {
                 "arena burstArena premiumArena " +
                 (game.id === 1
                     ? "popArenaV2 cinematicPopArena"
-                    : "cinematicBurstArena")
+                    : "cinematicBurstArena") +
+                // mobile v2: the last bubble has burst → POP's own climax (CSS, ≤ 1.5 s, before the approved burst)
+                (game.id === 1 && sourceWords.length && cleared >= sourceWords.length ? " mv2Cleared" : "")
             }
         >
             <div className="depthHalo" />
             {game.id === 1 && <div className="popFieldGlow" />}
             <div className="bubbleDepthLayer far" />
             <div className="bubbleDepthLayer near" />
-            {words.map((w, i) =>
-                alive.includes(i) ? (
+            {words.map((w, i) => {
+                // mobile v2: stable slot (phone layout) + this bubble's own face. The k-th remaining bubble smiles
+                // once progress passes (k+1)/11 (the shared rule), without swapping characters between bubbles.
+                let g1Src
+                if (g1Faces && alive.includes(i)) {
+                    const rank = alive.filter((a) => a < i).length
+                    const p = (cleared / Math.max(1, sourceWords.length)) * 100
+                    const slot = batchStart + i
+                    g1Src = g1Faces.upload || !(cleared > 0 && p >= ((rank + 1) / 11) * 100) ? g1Faces.neg(slot) : g1Faces.pos(slot)
+                }
+                return alive.includes(i) ? (
                     <motion.button
                         key={batchStart + "-" + i}
+                        data-pop-slot={game.id === 1 ? i : undefined}
+                        data-tsf-src={g1Src || undefined}
                         className={
                             "wordBubble premiumBubble allCircularBubble " +
                             (game.id === 1 ? "popBubbleV2 " : "") +
@@ -4165,7 +4219,7 @@ function BurstEngine({ game, entries, onDone, sfx, reduced, onProgress }) {
                         }
                         onPointerDown={(e) => {
                             e.preventDefault()
-                            pop(i)
+                            pop(i, game.id === 1 ? e.currentTarget : null)
                         }}
                         style={{
                             left: (pos[i]?.x || 50) + "%",
@@ -4237,13 +4291,18 @@ function BurstEngine({ game, entries, onDone, sfx, reduced, onProgress }) {
                         }
                         whileTap={{ scale: 0.82 }}
                     >
-                        <ExactWords text={w} max={12} min={7} />
+                        {game.id === 1 ? (
+                            // mobile v2: the whole chunk the user wrote (the shared face fits it under the picture)
+                            <span className="plainUserThoughtText tsGlobalThoughtText tsExactUserText">{w}</span>
+                        ) : (
+                            <ExactWords text={w} max={12} min={7} />
+                        )}
                         <i className="bubbleSheen" />
                         {game.id === 1 && <i className="bubbleRim" />}
                         <i className="bubbleCaustic" />
                     </motion.button>
                 ) : null
-            )}
+            })}
             {fx.map((f) =>
                 game.id === 1 ? (
                     <React.Fragment key={f.id}>
@@ -4665,6 +4724,9 @@ function ShredEngine({
     sfx,
     reduced,
     onProgress,
+    game,
+    hasUserImages,
+    variationSeed,
 }) {
     const words = React.useMemo(
         () => exactInputWords(entries, MAX_WORD_QUEUE),
@@ -4675,6 +4737,14 @@ function ShredEngine({
     const [gone, setGone] = React.useState(false)
     const [bite, setBite] = React.useState(0)
     const current = words[Math.min(idx, words.length - 1)] || "THIS"
+    // mobile v2 (founder: "Text printed on objects to be shredded"; LAUNCH_30: the face fed into the blades should
+    // look relieved, not crying): each paper prints its own character ABOVE the user's exact words, with a relieved
+    // face (glad to let it go); uploads keep the user's own pictures (six-image spread, one per paper).
+    const g1Faces = React.useMemo(
+        () => mv2G1FaceSet(game, entries, hasUserImages, imageSources, variationSeed),
+        [game && game.id, entries.join("|"), hasUserImages, (imageSources || []).join("|").length, variationSeed]
+    )
+    const paperPic = (g1Faces.upload ? g1Faces.neg(idx) : g1Faces.relieved(idx)) || imageSrc
     React.useEffect(() => {
         setIdx(0)
         setFeed(0)
@@ -4705,30 +4775,44 @@ function ShredEngine({
         }
     }
     return (
-        <div className="arena literalShredArena premiumArena cinematicShredArena">
+        <div
+            className={
+                "arena literalShredArena premiumArena cinematicShredArena" +
+                // mobile v2: state hooks for the phone world (motor light, last-paper disintegration climax)
+                (feed > 0 && !gone ? " mv2Fed" : "") +
+                (gone && idx >= words.length - 1 ? " mv2Final" : "")
+            }
+        >
             <div className="shredRoomGlow" />
             <div className="shredFloorShadow" />
 
-            <div className="shredPaperAnchor">
+            <div
+                className="shredPaperAnchor"
+                // mobile v2: touch-first — the paper itself is a feed target too (same 5 bites per paper)
+                onPointerDown={(e) => {
+                    if (e.pointerType === "mouse" && e.button !== 0) return
+                    shred()
+                }}
+            >
                 <motion.div
                     key={idx + "-" + bite}
-                    className="shredPaper premiumShredPaper"
+                    className="shredPaper premiumShredPaper tsNoBubbleFace"
+                    // mobile v2: the paper is pulled DOWN into the slot (clipped by the mouth) instead of being
+                    // squashed, so the picture and the words stay undistorted until the blades take them
+                    initial={{ y: Math.max(0, feed - 20) * 0.9 + "%" }}
                     animate={
                         gone
                             ? {
-                                  y: [feed * 0.92, 112, 142],
-                                  scaleY: [0.48, 0.18, 0.04],
-                                  scaleX: [1, 0.96, 0.88],
-                                  opacity: [1, 0.55, 0],
+                                  y: ["90%", "104%", "112%"],
+                                  opacity: [1, 0.6, 0],
                                   filter: [
                                       "blur(0px)",
                                       "blur(1px)",
-                                      "blur(6px)",
+                                      "blur(4px)",
                                   ],
                               }
                             : {
-                                  y: feed * 0.92,
-                                  scaleY: 1 - feed / 185,
+                                  y: feed * 0.9 + "%",
                                   x: feed > 0 ? [0, -2, 2, -1, 0] : 0,
                                   rotate: feed > 0 ? [0, -0.5, 0.5, 0] : 0,
                                   opacity: 1,
@@ -4737,19 +4821,18 @@ function ShredEngine({
                     transition={
                         gone
                             ? { duration: 0.58, ease: [0.2, 0.8, 0.25, 1] }
-                            : { duration: 0.2, ease: "easeOut" }
+                            : { duration: reduced ? 0 : 0.22, ease: [0.3, 0.9, 0.3, 1] }
                     }
                     style={{ transformOrigin: "50% 100%" }}
                 >
                     <div className="paperTopCurl" />
-                    <div className="shredPaperText">
-                        {imageSrc ? (
-                            <div className="uploadedPaperFace">
-                                <img src={imageSrc} alt="Uploaded thought" />
-                            </div>
-                        ) : (
-                            <ExactWords text={current} max={42} min={11} />
-                        )}
+                    <div className="shredPaperText mv2PaperPrint">
+                        {paperPic ? (
+                            <span className="mv2PaperPic">
+                                <img src={paperPic} alt="" draggable={false} />
+                            </span>
+                        ) : null}
+                        <span className="mv2PaperWords plainUserThoughtText">{current}</span>
                     </div>
                     <div
                         className="paperFeedMarks"
@@ -4806,6 +4889,23 @@ function ShredEngine({
                 </div>
                 <div className="shredderBinWindow">
                     <div className="shredBinGlow" />
+                    {/* mobile v2: what has passed the blades comes out below as cut strips of THE SAME print
+                        (picture + the user's words), bottom edge first — the words are visibly destroyed */}
+                    <div
+                        key={"out" + idx}
+                        className={"mv2ShredOut tsNoBubbleFace" + (gone ? " isGone" : "")}
+                        style={{ ["--feed"]: feed }}
+                        aria-hidden="true"
+                    >
+                        <div className="mv2ShredOutPrint">
+                            {paperPic ? (
+                                <span className="mv2PaperPic">
+                                    <img src={paperPic} alt="" draggable={false} />
+                                </span>
+                            ) : null}
+                            <span className="mv2PaperWords">{current}</span>
+                        </div>
+                    </div>
                     {Array.from({ length: 26 }, (_, i) => (
                         <motion.i
                             key={i}
@@ -7563,7 +7663,7 @@ function BurnEngine({ entries, onDone, sfx, reduced, onProgress }) {
         </div>
     )
 }
-function FlushEngine({ entries, onDone, sfx, reduced, onProgress }) {
+function FlushEngine({ entries, onDone, sfx, reduced, onProgress, game, hasUserImages, imageSources, variationSeed }) {
     const words = React.useMemo(
         () => exactInputWords(entries, MAX_WORD_QUEUE),
         [entries.join("|")]
@@ -7572,6 +7672,13 @@ function FlushEngine({ entries, onDone, sfx, reduced, onProgress }) {
         [flushing, setFlushing] = React.useState(false),
         [phase, setPhase] = React.useState(0)
     const current = words[Math.min(idx, words.length - 1)] || "THIS"
+    // mobile v2: every paper has its own character: uneasy while it waits, relieved once the water carries it
+    // (phase ≥ 2). Uploads: each paper shows its own upload (six-image spread) instead of upload #1 on all six.
+    const g1Faces = React.useMemo(
+        () => mv2G1FaceSet(game, entries, hasUserImages, imageSources, variationSeed),
+        [game && game.id, entries.join("|"), hasUserImages, (imageSources || []).join("|").length, variationSeed]
+    )
+    const paperPic = g1Faces.upload ? g1Faces.neg(idx) : phase >= 2 ? g1Faces.relieved(idx) : g1Faces.neg(idx)
     React.useEffect(() => {
         setIdx(0)
         setFlushing(false)
@@ -7616,7 +7723,14 @@ function FlushEngine({ entries, onDone, sfx, reduced, onProgress }) {
         }, 1580)
     }
     return (
-        <div className="arena literalFlushArena sinkFlushArena premiumArena">
+        <div
+            className={
+                "arena literalFlushArena sinkFlushArena premiumArena mv2Phase" +
+                phase +
+                // mobile v2: the last paper went through → FLUSH's own whirlpool climax (CSS)
+                (phase === 4 && idx >= words.length - 1 ? " mv2Final" : "")
+            }
+        >
             <div className="sinkSceneGlow" />
             <div className="sinkBacksplash">
                 <i />
@@ -7651,7 +7765,8 @@ function FlushEngine({ entries, onDone, sfx, reduced, onProgress }) {
                 <div className="sinkPaperAnchor">
                     <motion.div
                         className={
-                            "sinkPaperWord " + (flushing ? "active" : "")
+                            // mobile v2: the paper prints its own picture + words (tsNoBubbleFace: no shared overlay)
+                            "sinkPaperWord tsNoBubbleFace " + (flushing ? "active" : "")
                         }
                         initial={false}
                         animate={
@@ -7714,7 +7829,12 @@ function FlushEngine({ entries, onDone, sfx, reduced, onProgress }) {
                             ease: [0.18, 0.8, 0.24, 1],
                         }}
                     >
-                        <ExactWords text={current} max={26} min={11} />
+                        {paperPic ? (
+                            <span className="mv2PaperPic">
+                                <img src={paperPic} alt="" draggable={false} />
+                            </span>
+                        ) : null}
+                        <span className="mv2PaperWords plainUserThoughtText">{current}</span>
                         <i className="wetPaperSheen" />
                     </motion.div>
                 </div>
@@ -7766,7 +7886,7 @@ function FlushEngine({ entries, onDone, sfx, reduced, onProgress }) {
         </div>
     )
 }
-function SwipeAwayEngine({ entries, onDone, sfx, reduced, onProgress }) {
+function SwipeAwayEngine({ entries, onDone, sfx, reduced, onProgress, game, hasUserImages, imageSources, variationSeed }) {
     const words = React.useMemo(
         () => directWords(entries, MAX_WORD_QUEUE),
         [entries.join("|")]
@@ -7777,10 +7897,25 @@ function SwipeAwayEngine({ entries, onDone, sfx, reduced, onProgress }) {
         [swiped, setSwiped] = React.useState(false)
     const startX = React.useRef(0),
         threshold = 140
+    // mobile v2 (founder 13.25 / P13.25-a, prompt "hard LEFT swipe" vs a right-only drag): the card follows the
+    // finger in 2D, either direction commits, a fast committed flick also breaks free, and the card leaves along
+    // the swipe vector, faster for a faster flick. A weak swipe springs back (spring physics) and moves nothing.
+    const [y, setY] = React.useState(0)
+    const [exit, setExit] = React.useState(null)
+    const startY = React.useRef(0)
+    const track = React.useRef([])
+    const g1Faces = React.useMemo(
+        () => mv2G1FaceSet(game, entries, hasUserImages, imageSources, variationSeed),
+        [game && game.id, entries.join("|"), hasUserImages, (imageSources || []).join("|").length, variationSeed]
+    )
+    const committedNow = Math.abs(x) > threshold
+    const cardPic = g1Faces.upload ? g1Faces.neg(idx) : committedNow || swiped ? g1Faces.relieved(idx) : g1Faces.neg(idx)
     const current = words[Math.min(idx, words.length - 1)] || "THIS"
     React.useEffect(() => {
         setIdx(0)
         setX(0)
+        setY(0)
+        setExit(null)
         setDragging(false)
         setSwiped(false)
         onProgress?.(0, "0% SWIPED")
@@ -7788,18 +7923,21 @@ function SwipeAwayEngine({ entries, onDone, sfx, reduced, onProgress }) {
     const onDown = (e) => {
         if (swiped) return
         startX.current = e.clientX - x
+        startY.current = e.clientY - y
+        track.current = [[e.clientX, e.timeStamp || Date.now()]]
         setDragging(true)
         e.currentTarget.setPointerCapture?.(e.pointerId)
     }
     const onMove = (e) => {
         if (!dragging || swiped) return
-        const nx = Math.max(0, Math.min(260, e.clientX - startX.current))
+        const nx = Math.max(-260, Math.min(260, e.clientX - startX.current))
+        const ny = Math.max(-90, Math.min(90, (e.clientY - startY.current) * 0.45))
         setX(nx)
-        const p = pct(
-            ((idx + Math.min(1, nx / threshold)) / Math.max(1, words.length)) *
-                100
-        )
-        onProgress?.(p, `${p}% SWIPED`)
+        setY(ny)
+        const now = e.timeStamp || Date.now()
+        track.current = [...track.current.filter((s) => now - s[1] < 110), [e.clientX, now]]
+        // mobile v2: no in-drag progress report — the shared bar can never go back down (eosGateProgress), so a
+        // weak swipe must not raise it; the card's own commit meter shows the pull and drops back with the card
     }
     const finish = () => {
         setSwiped(true)
@@ -7812,50 +7950,101 @@ function SwipeAwayEngine({ entries, onDone, sfx, reduced, onProgress }) {
             else {
                 setIdx((i) => i + 1)
                 setX(0)
+                setY(0)
+                setExit(null)
                 setSwiped(false)
             }
         }, 520)
     }
-    const onUp = () => {
+    const onUp = (e) => {
         if (!dragging) return
         setDragging(false)
-        if (x > threshold) finish()
-        else {
+        // mobile v2: release velocity (px/ms) over the last ~110 ms of the drag
+        const now = (e && e.timeStamp) || Date.now()
+        const pts = track.current.filter((s) => now - s[1] < 110)
+        const vx = pts.length > 1 ? (pts[pts.length - 1][0] - pts[0][0]) / Math.max(16, pts[pts.length - 1][1] - pts[0][1]) : 0
+        const flick = Math.abs(x) > 80 && Math.abs(vx) > 0.9 && Math.sign(vx) === Math.sign(x)
+        if (Math.abs(x) > threshold || flick) {
+            const dir = x < 0 ? -1 : 1
+            const speed = Math.max(0.6, Math.abs(vx))
+            setExit({
+                x: dir * 560,
+                y: Math.max(-260, Math.min(260, (y * 560) / Math.max(80, Math.abs(x)))),
+                r: dir * (18 + Math.min(14, speed * 6)),
+                d: reduced ? 0.2 : Math.max(0.22, Math.min(0.46, 0.52 - speed * 0.12)),
+            })
+            finish()
+        } else {
             setX(0)
+            setY(0)
             const p = pct((idx / Math.max(1, words.length)) * 100)
             onProgress?.(p, `${p}% SWIPED`)
             sfx("soft")
         }
     }
+    const commit = Math.min(1, Math.abs(x) / threshold)
     return (
-        <div className="arena literalSwipeArena premiumArena">
+        <div
+            className={
+                "arena literalSwipeArena premiumArena" +
+                (dragging ? " mv2Dragging" : "") +
+                (committedNow ? " mv2Committed" : "") +
+                (x < -4 ? " mv2Left" : x > 4 ? " mv2Right" : "") +
+                // mobile v2: the last card broke free → SWIPE AWAY's own climax (CSS)
+                (swiped && idx >= words.length - 1 ? " mv2Final" : "")
+            }
+            style={{ ["--commit"]: commit.toFixed(3) }}
+        >
             <div className="swipeTrack" />
             <div className="swipeHintLane">
                 <i />
                 <i />
                 <i />
             </div>
+            {/* mobile v2: the thoughts still waiting, stacked under the live card */}
+            <div className="mv2SwipeDeck" aria-hidden="true" data-left={Math.max(0, words.length - idx - 1)}>
+                {Array.from({ length: Math.min(3, Math.max(0, words.length - idx - 1)) }, (_, k) => (
+                    <i key={k} style={{ ["--k"]: k + 1 }} />
+                ))}
+            </div>
             <motion.div
+                key={"card" + idx}
                 className={
-                    "swipeCard physical " +
+                    "swipeCard physical tsNoBubbleFace " +
                     (dragging ? "dragging" : "") +
                     " " +
                     (swiped ? "done" : "")
                 }
-                style={{ x }}
+                initial={reduced ? false : { x: 0, y: 18, rotate: 0, opacity: 0, scale: 0.94 }}
                 animate={
-                    swiped
-                        ? { x: 520, rotate: 20, opacity: 0, scale: 0.88 }
-                        : { x, rotate: x / 16, opacity: 1, scale: 1 }
+                    swiped && exit
+                        ? { x: exit.x, y: exit.y, rotate: exit.r, opacity: 0, scale: 0.9 }
+                        : { x, y, rotate: x / 16, opacity: 1, scale: dragging ? 1.03 : 1 }
                 }
-                transition={{ duration: swiped ? 0.42 : 0.16, ease: "easeOut" }}
+                transition={
+                    swiped && exit
+                        ? { duration: exit.d, ease: [0.25, 0.7, 0.35, 1] }
+                        : dragging
+                          ? { duration: 0.05, ease: "linear" }
+                          : reduced
+                            ? { duration: 0.16, ease: "easeOut" }
+                            : { type: "spring", stiffness: 420, damping: 19, mass: 0.9 }
+                }
                 onPointerDown={onDown}
                 onPointerMove={onMove}
                 onPointerUp={onUp}
                 onPointerCancel={onUp}
             >
-                <ExactWords text={current} max={42} min={12} />
-                <b>SWIPE RIGHT</b>
+                {cardPic ? (
+                    <span className="mv2PaperPic">
+                        <img src={cardPic} alt="" draggable={false} />
+                    </span>
+                ) : null}
+                <span className="mv2PaperWords plainUserThoughtText">{current}</span>
+                <b>SWIPE AWAY</b>
+                <i className="mv2CommitMeter" aria-hidden="true">
+                    <i />
+                </i>
             </motion.div>
             <div className="literalStatus">
                 <b>
