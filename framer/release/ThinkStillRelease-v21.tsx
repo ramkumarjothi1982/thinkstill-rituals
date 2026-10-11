@@ -1380,6 +1380,19 @@ type ParticleKind = "spark" | "ember" | "drop" | "dust" | "shard" | "petal" | "r
 interface BurstOptions { kind?: ParticleKind; n?: number; color?: string | string[]; speed?: number; spread?: number; angle?: number; size?: number; life?: number; gravity?: number; vx?: number; vy?: number }
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; size: number; color: string; kind: ParticleKind; g: number; rot: number; spin: number; seed: number }
 
+const clearCache = new Map<string, string>()
+/** The same colour at zero alpha, so glows fade into light rather than through black. */
+function clearOf(c: string): string {
+    let out = clearCache.get(c)
+    if (out) return out
+    const m = c.match(/^(hsla?|rgba?)\(([^)]*)\)$/i)
+    if (m) { const parts = m[2].split(",").slice(0, 3).map((x) => x.trim()); out = `${m[1].toLowerCase().startsWith("hsl") ? "hsla" : "rgba"}(${parts.join(", ")}, 0)` }
+    else if (/^#([0-9a-f]{6})$/i.test(c)) { const n = parseInt(c.slice(1), 16); out = `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, 0)` }
+    else out = "rgba(255,255,255,0)"
+    clearCache.set(c, out)
+    return out
+}
+
 function createParticles(canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext("2d")
     const list: Particle[] = []
@@ -1425,7 +1438,7 @@ function createParticles(canvas: HTMLCanvasElement) {
                 case "ember": {
                     const r = p.size * (p.kind === "glow" ? 1 + t : 1 - t * 0.4)
                     const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 2.4)
-                    g.addColorStop(0, p.color); g.addColorStop(0.35, p.color); g.addColorStop(1, "rgba(0,0,0,0)")
+                    g.addColorStop(0, p.color); g.addColorStop(0.35, p.color); g.addColorStop(1, clearOf(p.color))
                     ctx.fillStyle = g
                     ctx.beginPath(); ctx.arc(p.x, p.y, r * 2.4, 0, Math.PI * 2); ctx.fill()
                     break
@@ -1648,6 +1661,51 @@ function AmbientLayer({ hue, calmHue, progress, dark, reduced }: { hue: number; 
 /** Pentatonic steps so progress sounds like a melody rising, never a beep. */
 const PENTA = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.51]
 
+/** Branching ice crystals that grow in from the edges as `level` rises (0..1). */
+function FrostCanvas({ w, h, level, dark }: { w: number; h: number; level: number; dark: boolean }) {
+    const ref = React.useRef<HTMLCanvasElement>(null)
+    const segs = React.useMemo(() => {
+        const out: { x1: number; y1: number; x2: number; y2: number; at: number; wdt: number }[] = []
+        const grow = (x: number, y: number, ang: number, len: number, depth: number, at: number, seed: number) => {
+            if (depth > 5 || len < 4) return
+            const x2 = x + Math.cos(ang) * len, y2 = y + Math.sin(ang) * len
+            out.push({ x1: x, y1: y, x2, y2, at, wdt: Math.max(0.5, 2.4 - depth * 0.4) })
+            const n = depth < 2 ? 3 : 2
+            for (let k = 0; k < n; k++) {
+                const r = hashNoise(seed, k + depth * 7)
+                grow(x2, y2, ang + (k - (n - 1) / 2) * (0.5 + r * 0.4), len * (0.55 + r * 0.2), depth + 1, at + 0.12, seed * 3 + k + 1)
+            }
+        }
+        const seeds = 14
+        for (let i = 0; i < seeds; i++) {
+            const edge = i % 4, u = hashNoise(i, 51)
+            const x = edge === 0 ? u * w : edge === 1 ? w : edge === 2 ? u * w : 0
+            const y = edge === 0 ? 0 : edge === 1 ? u * h : edge === 2 ? h : u * h
+            const ang = Math.atan2(h / 2 - y, w / 2 - x) + (hashNoise(i, 52) - 0.5) * 0.8
+            grow(x, y, ang, Math.min(w, h) * (0.12 + hashNoise(i, 53) * 0.08), 0, hashNoise(i, 54) * 0.35, i + 1)
+        }
+        return out
+    }, [w, h])
+    React.useEffect(() => {
+        const c = ref.current, g = c?.getContext("2d")
+        if (!c || !g) return
+        const dpr = Math.min(2, window.devicePixelRatio || 1)
+        c.width = Math.round(w * dpr); c.height = Math.round(h * dpr)
+        g.setTransform(dpr, 0, 0, dpr, 0, 0)
+        g.clearRect(0, 0, w, h)
+        g.lineCap = "round"
+        g.shadowColor = "rgba(190,225,255,.9)"; g.shadowBlur = 6
+        for (const s of segs) {
+            const k = clamp((level * 1.1 - s.at) / 0.25, 0, 1)
+            if (k <= 0) continue
+            g.strokeStyle = dark ? `rgba(210,235,255,${0.55 * k})` : `rgba(120,170,215,${0.6 * k})`
+            g.lineWidth = s.wdt
+            g.beginPath(); g.moveTo(s.x1, s.y1); g.lineTo(s.x1 + (s.x2 - s.x1) * k, s.y1 + (s.y2 - s.y1) * k); g.stroke()
+        }
+    }, [segs, level, dark, w, h])
+    return <canvas ref={ref} aria-hidden="true" style={{ position: "absolute", inset: 0, width: w, height: h, pointerEvents: "none" }} />
+}
+
 /* ================================================================== */
 /* 5. RITUALS                                                          */
 /* ================================================================== */
@@ -1675,7 +1733,7 @@ function scatter(n: number, w: number, h: number, r: number, top = 0, bottom = 0
 /* ---------- 6 · ZAP — lightning only exists while you hold it ---------- */
 
 function RitualZap(props: RitualProps) {
-    const { items, w, h, fx, reduced } = props
+    const { items, w, h, fx, reduced, dark } = props
     const shellW = Math.min(w * 0.6, 300), shellH = Math.min(118, h * 0.2)
     const cx = w / 2, cy = h * 0.44
     const leftX = Math.max(26, cx - shellW / 2 - 64), rightX = Math.min(w - 26, cx + shellW / 2 + 64)
@@ -1684,6 +1742,8 @@ function RitualZap(props: RitualProps) {
     const [hits, setHits] = React.useState(0)
     const [broken, setBroken] = React.useState(false)
     const boltA = React.useRef<SVGPolylineElement>(null), boltB = React.useRef<SVGPolylineElement>(null)
+    const forks = React.useRef<(SVGPolylineElement | null)[]>([])
+    const flash = React.useRef<HTMLDivElement>(null)
     const wordRef = React.useRef<HTMLDivElement>(null)
     const c = React.useRef({ charge: 0, hits: 0, next: 0, loop: null as Loop | null })
     const timers = useTimers()
@@ -1719,10 +1779,23 @@ function RitualZap(props: RitualProps) {
                     }
                     return pts.join(" ")
                 }
-                boltA.current?.setAttribute("points", make(28))
-                boltB.current?.setAttribute("points", make(16))
+                const main = make(28)
+                boltA.current?.setAttribute("points", main)
+                boltB.current?.setAttribute("points", main)
+                // Forks split off the main bolt and crawl over the shell.
+                const pts = main.split(" ").map((q) => q.split(",").map(Number))
+                forks.current.forEach((f, k) => {
+                    if (!f) return
+                    const [x0, y0] = pts[2 + ((k * 3 + Math.floor(Math.random() * 3)) % (pts.length - 3))]
+                    let x = x0, y = y0, out = `${x},${y}`
+                    const dir = Math.random() < 0.5 ? -1 : 1
+                    for (let j = 0; j < 4; j++) { x += rand(-14, 14); y += dir * rand(6, 14); out += ` ${x.toFixed(1)},${y.toFixed(1)}` }
+                    f.setAttribute("points", out)
+                })
+                if (flash.current) flash.current.style.opacity = String(0.05 + Math.random() * 0.12 * s.charge)
             }
             const hit = Math.floor(s.charge * HITS + 1e-6)
+            if (hit > s.hits && flash.current) { flash.current.style.transition = "none"; flash.current.style.opacity = "0.55"; requestAnimationFrame(() => { if (flash.current) { flash.current.style.transition = "opacity .35s ease-out"; flash.current.style.opacity = "0" } }) }
             if (hit > s.hits) {
                 s.hits = hit
                 setHits(hit)
@@ -1750,15 +1823,17 @@ function RitualZap(props: RitualProps) {
     const cracks = ["M30,10 L44,34 L38,52 L52,74", "M70,8 L62,30 L72,50", "M18,60 L34,72 L30,92", "M84,40 L72,62 L82,88"]
     return (
         <div style={{ position: "absolute", inset: 0 }} {...hold} role="button" tabIndex={0} aria-label="Hold to charge the current">
-            <div style={{ position: "absolute", inset: 0, background: props.dark ? "radial-gradient(70% 50% at 50% 44%, hsla(215,60%,30%,.35), transparent 70%)" : "radial-gradient(70% 50% at 50% 44%, hsla(215,80%,88%,.8), transparent 70%)" }} />
+            <div style={{ position: "absolute", inset: 0, background: dark ? "radial-gradient(80% 60% at 50% 44%, #16203A, #0A0C14 75%)" : "radial-gradient(80% 60% at 50% 44%, #E4EEFF, #EEF0F4 75%)" }} />
             {[leftX, rightX].map((x, i) => (
                 <div key={i} style={{ position: "absolute", left: x - 9, top: cy - shellH * 0.36 - 12, width: 18, height: h - (cy - shellH * 0.36) + 12, borderRadius: "9px 9px 0 0", background: props.dark ? "linear-gradient(90deg,#2A2C36,#3A3D4A,#2A2C36)" : "linear-gradient(90deg,#C9CCD6,#E9EBF1,#C9CCD6)", boxShadow: holding ? "0 0 22px rgba(150,200,255,.7)" : "none", transition: "box-shadow .2s" }}>
                     <div style={{ position: "absolute", left: 3, top: 3, width: 12, height: 12, borderRadius: "50%", background: holding ? "#E8F3FF" : props.dark ? "#555A6A" : "#A9AEBB", boxShadow: holding ? "0 0 14px #9EC8FF" : "none" }} />
                 </div>
             ))}
+            <div ref={flash} style={{ position: "absolute", inset: 0, background: "radial-gradient(70% 50% at 50% 44%, rgba(200,225,255,1), rgba(160,200,255,.3) 60%, transparent)", opacity: 0, pointerEvents: "none", mixBlendMode: dark ? "screen" : "normal" }} />
             <svg width={w} height={h} style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: holding && !broken ? 1 : 0, transition: "opacity .06s" }}>
                 <polyline ref={boltB} fill="none" stroke="rgba(160,200,255,.55)" strokeWidth="5" strokeLinejoin="round" style={{ filter: "blur(3px)" }} />
-                <polyline ref={boltA} fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinejoin="round" style={{ filter: "drop-shadow(0 0 6px #9EC8FF)" }} />
+                <polyline ref={boltA} fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinejoin="round" style={{ filter: "drop-shadow(0 0 6px #9EC8FF) drop-shadow(0 0 14px #6FA8FF)" }} />
+                {[0, 1, 2, 3].map((k) => <polyline key={k} ref={(el) => { forks.current[k] = el }} fill="none" stroke="rgba(220,235,255,.85)" strokeWidth="1.1" strokeLinejoin="round" style={{ filter: "drop-shadow(0 0 4px #9EC8FF)" }} />)}
             </svg>
             <div style={{
                 position: "absolute", left: cx - shellW / 2, top: cy - shellH / 2, width: shellW, height: shellH, borderRadius: shellH / 2,
@@ -3003,6 +3078,7 @@ function RitualFreeze(props: RitualProps) {
         <div ref={stage} style={{ position: "absolute", inset: 0, cursor: "pointer" }} role="button" tabIndex={0} aria-label={frost >= 1 ? "Shatter it" : "Add frost"} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tap() } }}>
             <div style={{ position: "absolute", inset: 0, background: dark ? `linear-gradient(180deg, #121620, #0F1116)` : `linear-gradient(180deg, #EAF2FA, #F4F2EE)` }} />
             <div style={{ position: "absolute", inset: 0, background: "radial-gradient(70% 60% at 50% 50%, rgba(170,210,255,.35), transparent 70%)", opacity: frost, transition: "opacity .6s" }} />
+            <FrostCanvas w={w} h={h} level={frost} dark={dark} />
             <div ref={obj} className="rk-abs" style={{ width: ow, height: oh, borderRadius: oh / 2, opacity: broken ? 0 : 1, transition: "opacity .12s", pointerEvents: "none" }}>
                 <div style={{ position: "absolute", inset: 0, borderRadius: oh / 2, background: hsl(lerp(emo.hue, 205, frost), 60 - frost * 20, dark ? 46 + frost * 20 : 64 + frost * 18), boxShadow: `0 10px 26px rgba(0,0,0,.2), inset 0 0 0 ${1 + frost * 2}px rgba(255,255,255,${0.2 + frost * 0.6})`, transition: "background-color .5s" }} />
                 <svg viewBox="0 0 100 40" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: frost, transition: "opacity .5s" }}>
@@ -4036,6 +4112,7 @@ function RitualCleanse(props: RitualProps) {
                 setLifting(i)
                 fx.sound("chime", 1 + i * 0.1)
                 fx.haptic("success")
+                if (!reduced) for (let k = 0; k < 8; k++) timers.after(k * 70, () => fx.burst(cx + Math.cos(k) * lotus * 0.5, cy + Math.sin(k) * lotus * 0.3, { kind: "glow", n: 1, size: 4, speed: 90, angle: -Math.PI / 2, spread: 0.6, color: hsl(emo.calmHue + k * 8, 85, 78, 0.85), life: 2.2, gravity: -40 }))
                 const a = (i / items.length) * Math.PI * 2 - Math.PI / 2
                 if (!reduced) fx.burst(cx + Math.cos(a) * R, cy + Math.sin(a) * R, { kind: "glow", n: 6, size: 5, speed: 60, angle: -Math.PI / 2, spread: 1.4, color: [hsl(emo.calmHue, 80, 80, 0.9), "rgba(255,255,255,.9)"], life: 1.8, gravity: -30 })
                 timers.after(900, () => {
@@ -4067,12 +4144,18 @@ function RitualCleanse(props: RitualProps) {
                 const gone = i < released
                 const up = lifting === i
                 return (
-                    <div key={it.key} style={{ position: "absolute", left: cx + Math.cos(a) * R, top: cy + Math.sin(a) * R * 0.86, transform: `translate(-50%, -50%) ${up ? `translate(${-Math.cos(a) * R * 0.6}px, ${-Math.sin(a) * R * 0.5 - 50}px) scale(.6)` : ""}`, opacity: gone || up ? 0 : 1, filter: up && !reduced ? "blur(6px)" : "none", transition: "transform .9s cubic-bezier(.22,1,.36,1), opacity .9s ease, filter .9s", padding: "8px 13px", borderRadius: 999, background: dark ? "rgba(255,255,255,.08)" : "rgba(255,255,255,.85)", boxShadow: "var(--shadow-1)", maxWidth: Math.min(150, w * 0.36), whiteSpace: "nowrap", pointerEvents: "none" }}>
+                    <div key={it.key} style={{ position: "absolute", left: clamp(cx + Math.cos(a) * R, Math.min(75, w * 0.2), w - Math.min(75, w * 0.2)), top: cy + Math.sin(a) * R * 0.86, transform: `translate(-50%, -50%) ${up ? `translate(${-Math.cos(a) * R * 0.6}px, ${-Math.sin(a) * R * 0.5 - 50}px) scale(.6)` : ""}`, opacity: gone || up ? 0 : 1, filter: up && !reduced ? "blur(6px)" : "none", transition: "transform .9s cubic-bezier(.22,1,.36,1), opacity .9s ease, filter .9s", padding: "8px 13px", borderRadius: 999, background: dark ? "rgba(255,255,255,.08)" : "rgba(255,255,255,.85)", boxShadow: "var(--shadow-1)", maxWidth: Math.min(150, w * 0.38), whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", pointerEvents: "none" }}>
                         <WordBody item={{ ...it, img: null }} size={clamp(w / 26, 12, 15)} style={{ whiteSpace: "nowrap" }} />
                     </div>
                 )
             })}
-            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: dark ? "rgba(80,80,90,.9)" : "rgba(170,170,165,.9)", opacity: haze, mixBlendMode: dark ? "normal" : "multiply", filter: "blur(30px)", transition: "opacity 1.2s ease" }} />
+            <div style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: haze, transition: "opacity 1.4s ease" }}>
+                {[0, 1, 2, 3].map((k) => <span key={k} style={{ position: "absolute", left: `${-20 + k * 28}%`, top: `${10 + (k % 2) * 40}%`, width: "70%", height: "55%", borderRadius: "50%", background: dark ? "rgba(110,110,125,.55)" : "rgba(175,172,165,.6)", filter: "blur(40px)", animation: reduced ? undefined : `tsrFloat ${7 + k * 2}s ease-in-out ${k * 0.8}s infinite` }} />)}
+            </div>
+            {[0, 1, 2].map((k) => (
+                <span key={"ring" + k} style={{ position: "absolute", left: cx - lotus, top: cy - lotus, width: lotus * 2, height: lotus * 2, borderRadius: "50%", border: `1.5px solid ${hsl(emo.calmHue, 80, dark ? 70 : 55, 0.5)}`, pointerEvents: "none", opacity: 0.25 + charge * 0.75, animation: reduced ? undefined : `tsrRipple ${3.6 - charge * 1.6}s ease-out ${k * 1.2}s infinite` }} />
+            ))}
+            <style>{"@keyframes tsrRipple{from{transform:scale(.7);opacity:.9}to{transform:scale(2.1);opacity:0}}"}</style>
             <div {...hold} role="button" tabIndex={0} aria-label="Hold the lotus until it glows, then let go to release one word"
                 style={{ position: "absolute", left: cx - lotus, top: cy - lotus, width: lotus * 2, height: lotus * 2, borderRadius: "50%", cursor: "pointer", touchAction: "none", display: "grid", placeItems: "center" }}>
                 <svg width={lotus * 2} height={lotus * 2} viewBox={`${-lotus} ${-lotus} ${lotus * 2} ${lotus * 2}`} style={{ overflow: "visible" }}>
@@ -4154,8 +4237,10 @@ function RitualRainOut(props: RitualProps) {
                 const r = rainedRef.current[i]
                 el.style.transform = `translate3d(${homes[i].x}px, ${homes[i].y + p.x - (r ? 30 : 0)}px, 0) translate(-50%, -50%) scale(${r ? 0.86 : 1 + p.x / 600})`
             }
+            if (s.rainUntil[i] > t && !reduced && Math.random() < 0.35) fx.burst(homes[i].x + rand(-cw * 0.4, cw * 0.4), h * 0.9 + rand(0, h * 0.06), { kind: "ring", n: 1, size: 8, color: dark ? "rgba(170,200,255,.5)" : "rgba(80,120,170,.4)", life: 0.5 })
             if (s.rainUntil[i] > t && !reduced && Math.random() < 0.9) fx.burst(homes[i].x + rand(-cw * 0.35, cw * 0.35), homes[i].y + ch * 0.3, { kind: "rain", n: 2, size: 1.4, speed: 520, angle: Math.PI / 2, spread: 0.08, color: dark ? "rgba(170,200,255,.6)" : "rgba(80,120,170,.55)", life: 0.9, gravity: 400 })
         })
+        if (s.storm > t && !reduced && Math.random() < 0.5) fx.burst(rand(0, w), h * 0.9 + rand(0, h * 0.08), { kind: "ring", n: 1, size: 10, color: dark ? "rgba(170,200,255,.5)" : "rgba(80,120,170,.4)", life: 0.5 })
         if (s.storm > t && !reduced) fx.burst(w / 2, -10, { kind: "rain", n: 6, size: 1.3, speed: 640, angle: Math.PI / 2 + 0.08, spread: 0.06, color: dark ? "rgba(170,200,255,.5)" : "rgba(80,120,170,.45)", life: 1.1, gravity: 500 })
     })
 
@@ -4165,6 +4250,7 @@ function RitualRainOut(props: RitualProps) {
             <div style={{ position: "absolute", inset: 0, background: dark ? "linear-gradient(180deg, #1A1F2B, #121419)" : "linear-gradient(180deg, #C9D1DA, #ECEDEB)" }} />
             <div style={{ position: "absolute", inset: 0, background: dark ? "radial-gradient(80% 60% at 50% 20%, rgba(255,200,140,.18), transparent 70%)" : "radial-gradient(80% 60% at 50% 20%, rgba(255,230,180,.9), transparent 70%)", opacity: storm ? 0 : clear, transition: "opacity 1.6s" }} />
             <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: h * 0.16, background: dark ? "linear-gradient(180deg, transparent, rgba(90,120,160,.18))" : "linear-gradient(180deg, transparent, rgba(110,140,170,.18))" }} />
+            <div style={{ position: "absolute", left: "50%", top: h * 0.62, width: w * 1.3, height: w * 1.3, marginLeft: -w * 0.65, borderRadius: "50%", pointerEvents: "none", background: "radial-gradient(closest-side, transparent 78%, rgba(255,90,90,.35) 80%, rgba(255,200,80,.35) 83%, rgba(120,220,120,.35) 86%, rgba(90,160,255,.35) 89%, rgba(160,110,255,.3) 92%, transparent 94%)", opacity: !storm && clear >= 1 ? 1 : 0, transition: "opacity 2.4s ease 0.4s" }} />
             {items.map((it, i) => (
                 <div key={it.key} ref={(el) => { els.current[i] = el }} className="rk-abs" style={{ width: cw, height: ch, cursor: rained[i] ? "default" : "grab", pointerEvents: "none" }}>
                     {[[0.28, 0.6, 0.5], [0.5, 0.42, 0.62], [0.74, 0.58, 0.48]].map(([x, y, r], k) => (
@@ -4187,6 +4273,7 @@ function RitualBigSigh(props: RitualProps) {
     const stage = React.useRef<HTMLDivElement>(null)
     const orb = React.useRef<HTMLDivElement>(null)
     const label = React.useRef<HTMLDivElement>(null)
+    const rings = React.useRef<HTMLDivElement>(null)
     const cloudsN = SIGHS * 2
     const clouds = React.useMemo(() => Array.from({ length: cloudsN }, (_, i) => ({ x: w * (i % 2 ? 0.72 : 0.28) + (hashNoise(i, 31) - 0.5) * w * 0.06, y: h * 0.07 + 22 + Math.floor(i / 2) * Math.min(58, h * 0.1), s: 0.9 + hashNoise(i, 33) * 0.15, text: items[i % items.length]?.text || "" })), [w, h, cloudsN])
     const [blown, setBlown] = React.useState(0)
@@ -4243,6 +4330,9 @@ function RitualBigSigh(props: RitualProps) {
             }
         }
         s.scale += (target - s.scale) * Math.min(1, dt * (s.phase === "out" ? 2.2 : 6))
+        if (s.phase === "out" && !reduced && Math.random() < 0.5) fx.burst(rand(-20, w * 0.5), rand(h * 0.08, h * 0.5), { kind: "streak", n: 1, size: 1.4, speed: 0, vx: 520, vy: 0, color: dark ? "rgba(220,235,255,.5)" : "rgba(255,255,255,.8)", life: 0.6 })
+        if (!reduced && !s.done && Math.random() < 0.6 * (1 - s.sighs / SIGHS)) fx.burst(rand(w * 0.1, w * 0.9), h * 0.3, { kind: "rain", n: 1, size: 1.1, speed: 420, angle: Math.PI / 2 + 0.1, spread: 0.05, color: dark ? "rgba(170,200,255,.35)" : "rgba(70,90,120,.3)", life: 0.7, gravity: 300 })
+        if (rings.current) rings.current.style.transform = `translate(-50%, -50%) scale(${s.scale})`
         if (orb.current) orb.current.style.transform = `translate(-50%, -50%) scale(${reduced ? Math.min(1.3, s.scale) : s.scale})`
         if (label.current && label.current.textContent !== text) label.current.textContent = text
     })
@@ -4264,6 +4354,9 @@ function RitualBigSigh(props: RitualProps) {
                     </div>
                 )
             })}
+            <div ref={rings} style={{ position: "absolute", left: "50%", top: orbY, width: 92, height: 92, transform: "translate(-50%, -50%)", pointerEvents: "none" }}>
+                {[0, 1, 2].map((k) => <span key={k} style={{ position: "absolute", inset: -k * 22 - 14, borderRadius: "50%", border: `1.5px solid ${hsl(emo.calmHue, 80, dark ? 75 : 95, 0.5 - k * 0.13)}` }} />)}
+            </div>
             <div ref={orb} style={{ position: "absolute", left: "50%", top: orbY, width: 92, height: 92, borderRadius: "50%", transform: "translate(-50%, -50%)", cursor: "pointer", touchAction: "none", background: `radial-gradient(circle at 38% 32%, #FFFFFF, ${hsl(emo.calmHue, 75, 78)} 55%, ${hsl(emo.calmHue, 60, 62)})`, boxShadow: `0 0 40px ${hsl(emo.calmHue, 80, 70, 0.55)}` }} />
             <div ref={label} style={{ position: "absolute", left: 0, right: 0, top: orbY + 84, textAlign: "center", fontSize: 15, fontWeight: 600, color: dark ? "rgba(255,255,255,.85)" : "rgba(20,30,40,.75)", pointerEvents: "none" }} aria-live="polite" />
             <div style={{ position: "absolute", right: 14, top: 12, display: "flex", gap: 6 }}>{Array.from({ length: SIGHS }, (_, i) => <i key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: i < sighs ? "#fff" : "rgba(255,255,255,.35)", boxShadow: "0 0 0 1px rgba(0,0,0,.08)" }} />)}</div>
@@ -4514,6 +4607,7 @@ function RitualSkyLanterns(props: RitualProps) {
                 l.y += l.vy * dt
                 l.x += Math.sin(t * 1.2 + i * 2) * 14 * dt
                 l.s = clamp(0.25 + (l.y / h) * 0.9, 0.12, 1)
+                if (!reduced && Math.random() < 0.3) fx.burst(l.x + rand(-6, 6), l.y + lh * 0.4 * l.s, { kind: "ember", n: 1, size: 1.6, speed: 20, angle: Math.PI / 2, spread: 1, color: warmEmbers, life: 1.4, gravity: 20 })
                 if (l.y < h * 0.06 + i * 12) {
                     l.gone = true
                     s.sent += 1
@@ -4540,14 +4634,16 @@ function RitualSkyLanterns(props: RitualProps) {
     return (
         <div ref={stage} style={{ position: "absolute", inset: 0 }}>
             <div style={{ position: "absolute", inset: 0, background: dark ? "linear-gradient(180deg, #121633 0%, #2B2347 55%, #4A2F45 100%)" : "linear-gradient(180deg, #4C5A8E 0%, #B88AA6 55%, #F2B58C 100%)" }} />
-            {stars.map((s, i) => <i key={i} style={{ position: "absolute", left: `${s.x}%`, top: `${s.y}%`, width: s.s, height: s.s, borderRadius: "50%", background: "#FFE7B8", boxShadow: "0 0 6px #FFD38A", opacity: i >= past ? 1 : 0.55 }} />)}
+            {stars.map((s, i) => <i key={i} style={{ position: "absolute", left: `${s.x}%`, top: `${s.y}%`, width: s.s, height: s.s, borderRadius: "50%", background: "#FFE7B8", boxShadow: "0 0 6px #FFD38A", opacity: i >= past ? 1 : 0.55, animation: reduced ? undefined : `tsrPulse ${2 + (i % 5) * 0.6}s ease-in-out ${(i % 7) * 0.3}s infinite` }} />)}
             <svg width={w} height={h} style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
                 <path d={`M 0 ${groundY} Q ${w * 0.3} ${groundY - 34} ${w * 0.6} ${groundY - 6} T ${w} ${groundY - 18} L ${w} ${h} L 0 ${h} Z`} fill={dark ? "#191826" : "#3E3550"} />
             </svg>
+            <style>{"@keyframes tsrFlicker{0%,100%{opacity:.85;transform:scale(1)}30%{opacity:1;transform:scale(1.08)}60%{opacity:.75;transform:scale(.95)}}"}</style>
             {items.map((it, i) => (
                 <div key={it.key} ref={(el) => { els.current[i] = el }} className="rk-abs" style={{ width: lw, height: lh, cursor: "grab", pointerEvents: "none" }}>
                     <div ref={(el) => { glows.current[i] = el }} style={{ position: "absolute", inset: -lw * 0.4, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,190,110,.75), transparent 62%)", opacity: 0.15 }} />
-                    <div style={{ position: "absolute", inset: 0, borderRadius: `${lw * 0.3}px ${lw * 0.3}px ${lw * 0.16}px ${lw * 0.16}px`, background: "linear-gradient(180deg, #FFE9C4, #F6B36E)", boxShadow: "inset 0 -10px 18px rgba(200,100,40,.35)", display: "grid", placeItems: "center", padding: 8, textAlign: "center" }}>
+                    <div style={{ position: "absolute", inset: 0, borderRadius: `${lw * 0.3}px ${lw * 0.3}px ${lw * 0.16}px ${lw * 0.16}px`, background: "linear-gradient(180deg, #FFE9C4, #F6B36E)", boxShadow: "inset 0 -10px 18px rgba(200,100,40,.35)", display: "grid", placeItems: "center", padding: 8, textAlign: "center", overflow: "hidden" }}>
+                        <span style={{ position: "absolute", left: "50%", bottom: "8%", width: lw * 0.5, height: lw * 0.5, marginLeft: -lw * 0.25, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,245,200,.95), rgba(255,170,70,.5) 45%, transparent 70%)", animation: reduced ? undefined : "tsrFlicker 1.3s ease-in-out infinite", pointerEvents: "none" }} />
                         <span style={{ fontSize: clamp(lw / 7.6, 11, 14), fontWeight: 650, color: "#5A3214", lineHeight: 1.15, overflowWrap: "anywhere" }}>{it.text}</span>
                     </div>
                     <div style={{ position: "absolute", left: "30%", right: "30%", bottom: -6, height: 6, borderRadius: 3, background: "#8A5A30" }} />
