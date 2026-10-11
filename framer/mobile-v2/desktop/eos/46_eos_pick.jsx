@@ -33,7 +33,11 @@
 //         <EosPickGoButton ready onGo/> (the composer's one start button while the menu is hidden)
 // ============================================================================================
 
-const EOS_PICK_KEY = "eos_rotation_v1"
+// v11 (ported from the v19 build): strict GLOBAL no-repeat rotation over all 30 launch rituals, own storage key
+// (eos_rotation_v1 is migrated once). A ritual is never repeated while any launch ritual is still unplayed in the
+// current global cycle, whatever the feeling; a feeling with no unplayed suitable ritual returns no pick.
+const EOS_PICK_KEY = "eos_rotation_strict_v2"
+const EOS_PICK_KEY_OLD = "eos_rotation_v1"
 const EOS_PICK_RECENT = 4
 // Never auto-served (still in the owner menu, still playable from there): a routed game that cannot be
 // finished goes here until it is fixed. For F3 every routed game the F2 sweep flagged was re-played at
@@ -91,18 +95,29 @@ function eosPickBlank() {
     return { v: 1, seq: 0, at: {}, cyc: {}, last: null }
 }
 function eosPickLoad() {
+    const blank = eosPickBlank()
     try {
-        if (typeof localStorage === "undefined") return eosPickBlank()
-        const v = JSON.parse(localStorage.getItem(EOS_PICK_KEY) || "null")
-        if (!v || typeof v !== "object" || v.v !== 1) return eosPickBlank()
-        const s = eosPickBlank()
-        s.seq = Math.max(0, Number(v.seq) || 0)
-        for (const k in v.at || {}) if (Number(k) > 0 && Number.isFinite(Number(v.at[k]))) s.at[Number(k)] = Number(v.at[k])
-        for (const k in v.cyc || {}) if (/^[a-z]+(:[a-z]+)?$/.test(k) && Number.isFinite(Number(v.cyc[k]))) s.cyc[k] = Number(v.cyc[k])
-        s.last = Number(v.last) > 0 ? Number(v.last) : null
-        return s
-    } catch {
-        return eosPickBlank()
+        if (typeof localStorage === "undefined") return blank
+        const raw = localStorage.getItem(EOS_PICK_KEY)
+        let data = raw ? JSON.parse(raw) : null
+        if (!data || typeof data !== "object" || data.v !== 1) {
+            // one-time migration from the per-feeling rotation (keeps the play history, starts the global cycle at 0)
+            const oldRaw = localStorage.getItem(EOS_PICK_KEY_OLD)
+            const old = oldRaw ? JSON.parse(oldRaw) : null
+            if (!old || typeof old !== "object") return blank
+            data = { v: 1, seq: old.seq || 0, at: old.at || {}, cyc: { global: 0 }, last: old.last || null }
+            eosPickSave(data)
+        }
+        const result = eosPickBlank()
+        result.seq = Math.max(0, Number(data.seq) || 0)
+        for (const id in data.at || {}) {
+            if (Number(id) > 0 && Number.isFinite(Number(data.at[id]))) result.at[Number(id)] = Number(data.at[id])
+        }
+        result.cyc.global = Math.max(0, Number(data.cyc && data.cyc.global) || 0)
+        result.last = Number(data.last) > 0 ? Number(data.last) : null
+        return result
+    } catch (error) {
+        return blank
     }
 }
 function eosPickSave(s) {
@@ -142,32 +157,44 @@ function eosPickGroup(text, played, opts = {}) {
     }
 }
 // Pure decision on a state snapshot → {id, key, newCycle, served, pool, group}
+// v11 strict global rotation (ported from v19): the universe is the 30 launch rituals; the feeling's ranked
+// group only orders the choice (top 4, seeded), it never makes a played ritual eligible again before the
+// global cycle is complete.
 function eosPickDecide(group, s, excludeId) {
-    const ids = group.ids
-    if (!ids.length) return null
-    const ex = Number(excludeId) || null
-    const start = s.cyc[group.key] || 0
-    // start 0 = the group never ran: every game played before (under any feeling) counts as served
-    const servedIn = (cycStart) => ids.filter((id) => s.at[id] != null && s.at[id] >= cycStart)
-    let newCycle = false
-    let served = servedIn(start)
-    let pool = ids.filter((id) => !served.includes(id))
-    if (!pool.length) {
-        // group finished → new cycle; never the same game twice in a row across the boundary
-        newCycle = true
-        served = []
-        pool = ids.filter((id) => id !== s.last && id !== ex)
-        if (!pool.length) pool = ids.filter((id) => id !== ex)
-        if (!pool.length) pool = ids.slice()
+    const ctx = (group && group.ctx) || null
+    const all = eosRouterGames()
+    const prior = group && Array.isArray(group.ids) ? group.ids : []
+    // The complete published set is the 30 curated launch rituals, never merely the emotion shortlist.
+    const universe = Array.from(EOS_LAUNCH_IDS).filter((id) => eosLaunchOk(id) && all.has(id))
+    if (!universe.length) return null
+    let pool = universe.filter((id) => !ctx || eosRouterRuleOk(id, ctx.text))
+    if (ctx && ctx.flag) pool = pool.filter((id) => eosRouterEligible(id, ctx, all, true))
+    if (!pool.length) return null
+    const marker = Math.max(0, Number(s.cyc && s.cyc.global) || 0)
+    const pending = universe.filter((id) => s.at[id] == null || Number(s.at[id]) < marker)
+    const freshCycle = pending.length === 0
+    // NEVER repeat a ritual because just one emotion/route was exhausted.
+    // If no unplayed ritual is suitable for this feeling, return no pick.
+    let unplayed = freshCycle ? pool.slice() : pool.filter((id) => pending.includes(id))
+    if (!unplayed.length) return null
+    const excluded = Number(excludeId) || null
+    const other = unplayed.filter((id) => id !== excluded && id !== s.last)
+    if (other.length) unplayed = other
+    const priority = new Map(prior.map((id, n) => [Number(id), n]))
+    let likely = unplayed.filter((id) => priority.has(id))
+    if (!likely.length) likely = unplayed.slice()
+    likely.sort((a, b) => (priority.has(a) ? priority.get(a) : 999) - (priority.has(b) ? priority.get(b) : 999))
+    const top = priority.has(likely[0]) ? likely.slice(0, Math.min(4, likely.length)) : likely
+    const seed = (Number(s.seq) || 0) + Math.max(0, marker) * 17 + (freshCycle ? 104729 : 0)
+    top.sort((a, b) => eosNoise(seed, a) - eosNoise(seed, b) || a - b)
+    return {
+        id: top[0],
+        key: "global",
+        newCycle: freshCycle,
+        served: universe.filter((id) => s.at[id] != null && Number(s.at[id]) >= marker),
+        pool: unplayed,
+        group: pool,
     }
-    // never the game that is running / just finished, never back-to-back
-    const noEx = pool.filter((id) => id !== ex && id !== s.last)
-    if (noEx.length) pool = noEx
-    // recent launches under any feeling are avoided while the group still has something else
-    const recentFloor = s.seq - EOS_PICK_RECENT + 1
-    const fresh = pool.filter((id) => !(s.at[id] != null && s.at[id] >= recentFloor))
-    if (fresh.length) pool = fresh
-    return { id: pool[0], key: group.key, newCycle, served, pool, group: ids }
 }
 function eosPickGame(id) {
     try {
@@ -204,6 +231,7 @@ function EosPickNote(game) {
         const id = Number(game && typeof game === "object" ? game.id : game)
         if (!(id > 0)) return
         const s = eosPickLoad()
+        if (s.last === id) return // v11: re-noting the same launch (replay / re-render) never advances the rotation
         s.seq += 1
         s.at[id] = s.seq
         s.last = id
@@ -232,13 +260,13 @@ function EosPickBridge({ onPlay, onLaunch }) {
 // Step 2 of the arcade's idle guide said "CHOOSE A RELEASE · Pick one or let ThinkStill choose." — without the
 // owner menu nobody picks, so the same step (same bubble, same timing) says what really happens.
 const EOS_PICK_IDLE_STEP = {
-    title: "THINKSTILL PICKS",
-    detail: "The best release for how you feel.",
-    caption: "THINKSTILL PICKS THE BEST RELEASE FOR HOW YOU FEEL.",
+    title: "A RITUAL FOR THIS FEELING",
+    detail: "A guided action matched to what you feel.",
+    caption: "NAME IT. GIVE IT A FORM. ACT. NOTICE THE SHIFT.",
 }
 function eosPickIdleGuide(steps, menuOn) {
     if (menuOn || !Array.isArray(steps)) return steps
-    return steps.map((st) => (st && /CHOOSE A RELEASE/i.test(String(st.title || "")) ? { ...st, ...EOS_PICK_IDLE_STEP } : st))
+    return steps.map((st) => (st && /CHOOSE A RITUAL/i.test(String(st.title || "")) ? { ...st, ...EOS_PICK_IDLE_STEP } : st))
 }
 
 // ---------------------------------------------------------------- the composer's one start button
@@ -257,12 +285,12 @@ function EosPickGoButton({ ready = false, next = false, onGo }) {
                         onGo && onGo()
                     } catch {}
                 }}
-                aria-label={next ? "Next release. ThinkStill picks it." : "Release it. ThinkStill picks the best release for what you wrote."}
+                aria-label={next ? "Next ritual. ThinkStill chooses it." : "Begin a ritual chosen for the feeling you described."}
             >
                 <span className="releaseChoiceAutoIcon" aria-hidden="true">
                     ✦
                 </span>
-                <span className="choiceCopy">{next ? "NEXT" : "RELEASE IT"}</span>
+                <span className="choiceCopy">{next ? "NEXT RITUAL" : "BEGIN RITUAL"}</span>
                 <span className="eosPickGoArrow" aria-hidden="true">
                     ▶
                 </span>
@@ -300,6 +328,7 @@ eosExpose("pick", {
     reset() {
         try {
             localStorage.removeItem(EOS_PICK_KEY)
+            localStorage.removeItem(EOS_PICK_KEY_OLD)
         } catch {}
     },
     group: (text, opts) => {

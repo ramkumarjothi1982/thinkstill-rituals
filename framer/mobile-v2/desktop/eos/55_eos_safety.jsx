@@ -26,7 +26,7 @@
 
 // ---------------------------------------------------------------- copy (exempt from the clinical-word lint)
 const EOS_SAFETY_COPY = {
-    selfharm: { title: "That sounds really heavy. You deserve real support right now.", body: "You don't have to carry this alone — talking to a person can help more than any game." },
+    selfharm: { title: "That sounds really heavy. You deserve real support right now.", body: "You don't have to carry this alone — talking to a person can help more than any self-guided ritual." },
     abuse: { title: "If someone is hurting you, you deserve to be safe.", body: "It's not your fault. A support line or someone you trust can help." },
     threat: { title: "If someone might hurt you, you deserve to be safe.", body: "A support line or someone you trust can help you make a plan." },
     soft: { title: "Big feelings keep coming back?", body: "Talking to someone can really help — you don't have to wait for it to get worse." },
@@ -37,7 +37,7 @@ const EOS_SAFETY_COPY = {
     info: { title: "Want to talk to someone?", body: "These people are there for exactly this." },
 }
 const EOS_SAFETY_VARIANTS = ["selfharm", "abuse", "threat", "soft", "numb", "info"]
-const EOS_SAFETY_NOTE = "We've kept your words off the game for now."
+const EOS_SAFETY_NOTE = "We've kept your words out of the ritual for now."
 const EOS_SAFETY_ANNOUNCE = "Support options are open at the top of the screen."
 const EOS_SAFETY_TRUST_TEXT = "Hey, can you talk? I'm having a hard time."
 const EOS_SAFETY_RANKS = { soft: 1, threat: 2, abuse: 3, selfharm: 4 } // mirrors core's EOS_SAFETY_RANK

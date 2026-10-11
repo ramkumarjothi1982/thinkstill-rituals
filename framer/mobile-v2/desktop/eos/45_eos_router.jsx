@@ -522,7 +522,7 @@ function eosRouterMenuItems(st, played, opts = {}) {
     const fresh = Array.from(games.values())
         .filter((g) => Number(g.id) >= 111 && eosLaunchOk(g.id) && !EOS_VAULT.has(Number(g.id)) && !EOS_BENCH.has(Number(g.id)) && (!flag || EOS_GENTLE_IDS.includes(Number(g.id))))
         .sort((a, b) => Number(a.id) - Number(b.id))
-    return { emo: null, label: "NEW · RELIEF GAMES", games: fresh }
+    return { emo: null, label: "NEW · RELEASE RITUALS", games: fresh }
 }
 function eosRouterMenuImg(g, emo) {
     try {

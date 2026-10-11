@@ -79,7 +79,7 @@ ${EOS_A} .globalPlayGuide .guideHeaderRow b{font-size:14px!important}
 ${EOS_A} .globalPlayGuide :is(.guideStepCard small,.globalMindBend strong){font-size:12.5px!important;letter-spacing:.1em!important}
 ${EOS_A} .globalPlayGuide .guideStepCard span{font:800 17px/1.2 var(--eos-font)!important}
 ${EOS_A} .globalPlayGuide .globalMindBend em{font-size:14px!important;line-height:1.25!important}
-/* the tags ("How to play" / "Next move", "MIND BEND") become kickers in front of their text instead of lines of
+/* the tags ("Ritual step" / "Next move", "MIND BEND") become kickers in front of their text instead of lines of
    their own, so the bigger, readable text costs the panel no height: it must not grow over the controls the
    games keep just above it (CLEANSE's lower hold pills, the arrows module's gesture disc sits at the card's left) */
 ${EOS_A} .globalPlayGuide .guideStepCard>small{display:inline!important;margin:0 .6em 0 0!important}
@@ -219,7 +219,7 @@ ${EOS_A} .releaseIdleStep small{font-size:clamp(12.5px,.9vw,13px)!important}
   ${EOS_A}.stage-play .rainPullHint{gap:3px!important}
   ${EOS_A}.stage-play .rainPullHint>span:last-child{white-space:normal!important;max-width:56px!important;line-height:1.02!important;letter-spacing:.02em!important}
   /* the LIVE GUIDE's text is 2-3 px larger now, so its box gives back some padding: it covers less of the arena.
-     The card's "How to play" / "Next move" tag stays an inline kicker in front of the instruction */
+     The card's "Ritual step" / "Next move" tag stays an inline kicker in front of the instruction */
   /* …and the MIND BEND reframe line is shown until the first hit (spec rule; .isActive hides it, ≤ 700 px block) as
      ONE 13 px line, so the panel grows by one short row only while the player looks for the first move */
   ${EOS_A} .globalPlayGuide .globalMindBend{display:block!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}

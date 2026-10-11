@@ -264,7 +264,7 @@ function eosCheckinLayout({ w, h, phone, more, labH, labRows, lane = 0, headH, f
 }
 
 // ---------------------------------------------------------------- EosCheckIn
-function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening = false, openMenu, sfx, reduced = false }) {
+function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening = false, openMenu, sfx, reduced = false, initialScreen: tsInitial = null, screenBridge: tsPageBridge = null, onScreenStep: tsReportStep = null }) {
     const st = useEosStore()
     const red = eosCalm(reduced)
     const rootRef = React.useRef(null)
@@ -274,9 +274,10 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
     const ctaTapRef = React.useRef(null)
     const size = useEosCheckinSize(rootRef)
     const phone = size.w > 0 && size.w <= 560
-    const [step, setStep] = React.useState(1)
-    const [sel, setSel] = React.useState(null)
-    const [n, setN] = React.useState(6)
+    // v18/v19: the console's previous/next SCREEN arrows can reopen step 2 with the same feeling + level
+    const [step, setStep] = React.useState(() => (tsInitial?.step === 2 ? 2 : 1))
+    const [sel, setSel] = React.useState(() => (tsInitial?.step === 2 ? tsInitial.emotion || "auto" : null))
+    const [n, setN] = React.useState(() => tsInitial?.intensity || 6)
     const [more, setMore] = React.useState(false)
     const [labH, setLabH] = React.useState(44)
     const [labRows, setLabRows] = React.useState(null)
@@ -769,6 +770,13 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
             live.current.toggleMic?.()
         } catch {}
     }
+    React.useEffect(() => {
+        if (tsPageBridge) tsPageBridge.current = { step, back, next: go, choose: pick, sel, level: n }
+        if (typeof tsReportStep === "function") tsReportStep(step)
+        return () => {
+            if (tsPageBridge) tsPageBridge.current = null
+        }
+    })
     const focusComposer = () => {
         try {
             const el = document.querySelector("input.releaseThoughtInput")
@@ -1019,7 +1027,7 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
                             </button>
                             {eosCheckinPickerOn() ? (
                                 <button type="button" className="eosCkLink" data-eos-pick="1" onClick={pickMyself}>
-                                    pick a game myself
+                                    choose my own ritual
                                 </button>
                             ) : null}
                         </div>
@@ -1032,7 +1040,7 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
                             <button type="button" className={`eosCkChip ${more ? "isOn" : ""}`} data-eos-more="1" aria-expanded={more} onClick={() => setMore((m) => !m)}>
                                 {more ? "fewer feelings ▴" : "more feelings ▾"}
                             </button>
-                            <button type="button" className="eosCkChip isGood" data-eos-good="1" onClick={goodDay} aria-label="Good day? Bank it — play a joy game">
+                            <button type="button" className="eosCkChip isGood" data-eos-good="1" onClick={goodDay} aria-label="Good day? Capture the moment with a joy ritual">
                                 <span aria-hidden="true">☀</span> good day? bank it
                             </button>
                         </div>
@@ -1059,7 +1067,7 @@ function EosCheckIn({ raw = "", setRaw, onLaunch, onPlay, toggleMic, listening =
                     ) : null}
                     <nav className="eosCkFoot" aria-label="Check-in options">
                         <button type="button" className="eosCkLink" data-eos-skip="1" onClick={skip}>
-                            just let me play →
+                            skip check-in →
                         </button>
                         <button type="button" className="eosCkLink isSupport" data-eos-support="1" data-eos-pop="1" onClick={support}>
                             Need to talk to someone?

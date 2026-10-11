@@ -1702,7 +1702,7 @@ function EosOrbShelf({ onClose, reduced = false }) {
                                 <i className="eosRwBar">
                                     <i />
                                 </i>
-                                <small>{k.count ? k.can : k.games.length ? `try ${k.games[0].name}` : "any game can start it"}</small>
+                                <small>{k.count ? k.can : k.games.length ? `try ${k.games[0].name}` : "any ritual can begin it"}</small>
                             </div>
                         ))}
                     </div>

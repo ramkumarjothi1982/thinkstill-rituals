@@ -154,22 +154,10 @@ function eosShiftPickerOn() {
 // The follow-up game (ONE MORE ▶). Only ids registered right now are ever returned.
 // F3: without the owner menu it is ThinkStill's next pick from the no-repeat rotation (never named).
 function eosShiftNext(ctx, delta) {
-    if (!eosShiftPickerOn()) {
-        try {
-            const g = eosApi("pick").EosPickPeek?.("", null, ctx.gameId)
-            const v = g ? eosShiftGame(g.id) : null
-            if (v && Number(v.id) !== ctx.gameId) return v
-        } catch {}
-        return null
-    }
-    if (ctx.coolPath) {
-        const v = eosShiftGame(112)
-        if (v) return v
-    }
+    // v11 (ported from v19): the next ritual always comes from the strict global rotation
     try {
-        const g = eosApi("router").EosSecondAct?.(ctx.emotion, ctx.gameId, delta)
-        const v = g ? eosShiftGame(g.id) : null
-        if (v && Number(v.id) !== ctx.gameId) return v
+        const g = eosApi("pick").EosPickPeek?.("", [], ctx && ctx.gameId)
+        if (g && Number(g.id) !== Number(ctx && ctx.gameId)) return eosShiftGame(g.id) || g
     } catch {}
     return null
 }

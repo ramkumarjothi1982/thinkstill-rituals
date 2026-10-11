@@ -1268,7 +1268,7 @@ const GAMES = [
         family: "Rhythm",
         engine: "E06",
         prompt: "What feels urgent?",
-        object: "The exact phrase pulsing to the GAME'S fast tempo",
+        object: "The exact phrase pulsing to the RITUAL'S fast tempo",
         action: "Tap a slower target pulse",
         mechanism: "Lead the pace",
         hook: "Don’t match the rush—lead the game slower.",
@@ -1277,7 +1277,7 @@ const GAMES = [
         mindBend: "Urgent-looking can slow down.",
         score: "Stability meter + slow streak",
         replay: "New phrase",
-        sound: "Game pulse + soft synth",
+        sound: "Ritual pulse + soft synth",
         notes: "Renamed from HEARTBEAT. Explicitly game tempo—not the user's physiology.",
     },
     {
@@ -2001,7 +2001,7 @@ const GAMES = [
         score: "Rainfall completion",
         replay: "New cloud bank",
         sound: "Rain + low synth",
-        notes: "Quiet finale game.",
+        notes: "Quiet closing ritual.",
     },
 ]
 const FEATURED = [1, 2, 21, 67, 109]
@@ -2206,13 +2206,13 @@ function globalReleaseGuideText(game, value = 0, status = "", entries = []) {
         if (v >= 100) return "Complete · Drama cut ✓"
         if (cleanStatus && !/^\d+%\s/.test(cleanStatus))
             return `Next move · ${cleanStatus}`
-        return "How to play · Tap MAKE IT DRAMATIC · Then CUT THE DRAMA"
+        return "Ritual step · Tap MAKE IT DRAMATIC · Then CUT THE DRAMA"
     }
     const cue = dynamicReleaseActionCue(game, entries, Math.floor(v / 16))
     const emotionalTarget = guideSentenceCase(cue.target)
     const directional = cue.arrow ? `${cue.arrow} ` : ""
     if (v <= 0)
-        return `How to play · ${directional}${action} · ${emotionalTarget}`
+        return `Ritual step · ${directional}${action} · ${emotionalTarget}`
     if (v >= 100)
         return `Complete · ${releaseEmotionProfile(entries).finish[0]}`
     if (cleanStatus && !/^\d+%\s/.test(cleanStatus))
@@ -2292,7 +2292,7 @@ const RELEASE_MIND_BEND = {
     "70": "Set the rhythm. The emotion does not.",
     "71": "Defuse the feeling. Lower the alarm.",
     "72": "Catch the emotion. Name it. Make it clear.",
-    "73": "Stop the feeling. Notice it. Choose next.",
+    "73": "Notice the feeling. Give it form. Observe what changes.",
     "74": "Pop the tension. Give the feeling a release.",
     "75": "Let the thought blur. Soften its edges.",
     "76": "Reverse the thought pattern. It is not fixed.",
@@ -6139,7 +6139,7 @@ function ChoiceEngine({ game, entries, onDone, sfx, reduced }) {
             <div className="hint">
                 {noTap
                     ? "DO NOTHING FOR 5 SECONDS"
-                    : "Explore. This game does not choose for you."}{" "}
+                    : "Explore the options. You decide what matters."}{" "}
                 · {idx + 1}/{words.length}
             </div>
         </div>
@@ -14439,16 +14439,17 @@ function UniqueReleaseEngine({
                             overflow: "hidden",
                         }}
                     >
-                        {words
+                        {/* v10: once the storm starts the clouds are gone for good (clear sky ending) */}
+                        {!phase && words
                             .slice(0, MAX_VISIBLE_WORD_BUBBLES)
                             .map((w, i) => {
                                 const rainOutSpread = [
-                                    { x: 10, y: 14 },
-                                    { x: 36, y: 14 },
-                                    { x: 63, y: 14 },
-                                    { x: 90, y: 14 },
-                                    { x: 22, y: 57 },
-                                    { x: 76, y: 57 },
+                                    { x: 10, y: 25 },
+                                    { x: 36, y: 25 },
+                                    { x: 63, y: 25 },
+                                    { x: 90, y: 25 },
+                                    { x: 22, y: 67 },
+                                    { x: 76, y: 67 },
                                 ]
                                 const p =
                                     rainOutSpread[i % rainOutSpread.length]
@@ -14480,15 +14481,15 @@ function UniqueReleaseEngine({
                                         animate={
                                             phase
                                                 ? {
-                                                      y: 132,
-                                                      opacity: 0.82,
-                                                      scale: 0.96,
+                                                      y: 460,
+                                                      opacity: 0,
+                                                      scale: 0.4,
                                                   }
                                                 : pulled
                                                   ? {
-                                                        y: 94,
-                                                        scale: 0.92,
-                                                        opacity: 0.86,
+                                                        y: 400,
+                                                        scale: 0.48,
+                                                        opacity: 0,
                                                     }
                                                   : {
                                                         y: 0,
@@ -14532,11 +14533,12 @@ function UniqueReleaseEngine({
                                                         setPhase(1)
                                                         rainSfx?.()
                                                         vibrate(18)
-                                                    }, 2200)
+                                                    }, 650)
+                                                    setTimeout(() => setPhase(2), 2450)
                                                     setTimeout(
                                                         () =>
                                                             completeAll(420, 0),
-                                                        3000
+                                                        4700
                                                     )
                                                 }
                                             } else sfx("soft")
@@ -14729,7 +14731,7 @@ function UniqueReleaseEngine({
                                     </motion.div>
                                 )
                             })}
-                        {phase ? (
+                        {phase === 1 ? (
                             <div className="rainFullScreen" aria-hidden="true">
                                 <div className="rainDepth back">
                                     {Array.from({ length: 34 }, (_, i) => (
@@ -14847,6 +14849,46 @@ function UniqueReleaseEngine({
                                     WASH IT ALL THE WAY OUT
                                 </div>
                             </div>
+                        ) : phase >= 2 ? (
+                            <div
+                                className="rainClearSky"
+                                style={{
+                                    position: "absolute",
+                                    inset: 0,
+                                    zIndex: 35,
+                                    pointerEvents: "none",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: 12,
+                                    textAlign: "center",
+                                    background:
+                                        "radial-gradient(ellipse at 50% 18%,rgba(216,248,255,.72),transparent 42%),linear-gradient(180deg,#155d9d 0%,#42b4e8 57%,#a5eaff 100%)",
+                                    color: "#0b3c66",
+                                    fontFamily: "Inter, system-ui, sans-serif",
+                                }}
+                            >
+                                <strong
+                                    style={{
+                                        fontSize: "clamp(28px,5vw,54px)",
+                                        fontWeight: 950,
+                                        letterSpacing: ".17em",
+                                        textShadow: "0 2px 16px rgba(255,255,255,.65)",
+                                    }}
+                                >
+                                    CLEAR SKY
+                                </strong>
+                                <span
+                                    style={{
+                                        fontSize: "clamp(13px,1.5vw,18px)",
+                                        fontWeight: 800,
+                                        letterSpacing: ".12em",
+                                    }}
+                                >
+                                    YOU MADE SPACE
+                                </span>
+                            </div>
                         ) : null}
                     </div>
                 </>,
@@ -14867,7 +14909,7 @@ function globalReleaseGuideTextLegacy(game, value = 0, status = "") {
     const v = pct(value)
     const action = guideSentenceCase(shortHint(game, game.action))
     const cleanStatus = guideSentenceCase(String(status || "").trim())
-    if (v <= 0) return `How to play · ${action}`
+    if (v <= 0) return `Ritual step · ${action}`
     if (v >= 100) return "Complete · Released"
     if (cleanStatus && !/^\d+%\s/.test(cleanStatus))
         return `Next move · ${cleanStatus}`
@@ -21229,7 +21271,7 @@ function GameEngine(p) {
                     </span>
                     <span className="tsShiftLevel">
                         <i style={{ width: `${shiftLevelPct}%` }} />
-                        <b>LVL {shiftLevel}</b>
+                        <b>FLOW {shiftLevel}</b>
                     </span>
                 </div>
             </div>
@@ -21400,7 +21442,7 @@ function GameCard({ g, onPick, featured = false }) {
             <div className="gameName">{g.name}</div>
             <div className="gameFamily">{familyLabel(g.family)}</div>
             <div className="gameAction">{shortAction(g)}</div>
-            <span className="playTag">STILL A THOUGHT</span>
+            <span className="playTag">READY TO TRANSFORM</span>
         </button>
     )
 }
@@ -21408,30 +21450,30 @@ const RELEASE_IDLE_GUIDE = [
     {
         bubble: "drop",
         mood: 80,
-        title: "PUT IT INTO WORDS",
-        detail: "Type it or use the mic.",
-        caption: "TYPE OR SAY WHAT YOU’RE CARRYING.",
+        title: "NAME THE FEELING",
+        detail: "Use your words or your voice.",
+        caption: "NAME WHAT YOU’RE CARRYING.",
     },
     {
         bubble: "sync",
         mood: 44,
-        title: "CHOOSE A RELEASE",
-        detail: "Pick one or let ThinkStill choose.",
-        caption: "PICK A RELEASE — OR LET THINKSTILL CHOOSE.",
+        title: "CHOOSE A RITUAL",
+        detail: "Choose your method or let ThinkStill decide.",
+        caption: "CHOOSE A RITUAL — OR LET THINKSTILL CHOOSE.",
     },
     {
         bubble: "patch",
         mood: 70,
-        title: "WE MATERIALISE IT",
-        detail: "Your words or image enter the game.",
-        caption: "YOUR WORDS OR IMAGE BECOME PART OF THE GAME.",
+        title: "GIVE IT A FORM",
+        detail: "See your feeling take shape.",
+        caption: "SEE YOUR FEELING TAKE SHAPE OUTSIDE YOUR HEAD.",
     },
     {
         bubble: "glitch",
         mood: 11,
-        title: "PLAY + RELEASE",
-        detail: "Tap, drag, hold or swipe.",
-        caption: "TAP, DRAG, HOLD OR SWIPE TO RELEASE IT.",
+        title: "ACT + NOTICE",
+        detail: "Use a simple action to change its form.",
+        caption: "ACT ON THE FEELING. NOTICE WHAT CHANGES.",
     },
 ]
 const RELEASE_IDLE_COMET_SEQUENCE = [
@@ -21457,6 +21499,8 @@ function ThinkStillReleaseArcade(props) {
         tapOutBpm = 92,
         bubbleTextPx = 16,
         maxWidth = 1180,
+        onClose: tsCloseConsole,
+        mobileUI: MobileUI = null,
     } = props
     const displayTitle = String(title || "EMOTIONAL RELEASE CONSOLE")
         .replace(/\bARCADE\b/gi, "CONSOLE")
@@ -21491,6 +21535,32 @@ function ThinkStillReleaseArcade(props) {
     const [sound, setSound] = React.useState(!!soundOn)
     const sfx = useSfx(sound)
     const rainSfx = useRainSfx(sound)
+    // v12 native settings (ported from v19): haptics, music volume and calm visuals persist per device
+    const [tsPanel, tsSetPanel] = React.useState(false)
+    const [tsHaptics, tsSetHaptics] = React.useState(() => {
+        try {
+            const v = localStorage.getItem("ts_release_haptics")
+            return v === null ? !!hapticsOn : v === "true"
+        } catch {
+            return !!hapticsOn
+        }
+    })
+    const [tsVolume, tsSetVolume] = React.useState(() => {
+        try {
+            const stored = localStorage.getItem("ts_release_music_volume")
+            const v = stored === null ? NaN : Number(stored)
+            return Number.isFinite(v) && v >= 0 && v <= 1 ? v : Math.max(0, Math.min(1, Number(musicVolume) || 0.35))
+        } catch {
+            return Math.max(0, Math.min(1, Number(musicVolume) || 0.35))
+        }
+    })
+    const [tsCalm, tsSetCalm] = React.useState(() => {
+        try {
+            return !!eosPrefs().calmVisuals
+        } catch {
+            return false
+        }
+    })
     const [musicOn, setMusicOn] = React.useState(!!musicOnDefault)
     const [selected, setSelected] = React.useState(null)
     const [stage, setStage] = React.useState("input")
@@ -21510,9 +21580,15 @@ function ThinkStillReleaseArcade(props) {
     const [releaseCheck, setReleaseCheck] = React.useState(null)
     const eos = useEosStore()
     const eosMenuOn = useEosPickMenu()
+    // v18/v19 screen navigation: header arrows move between SCREENS of one ritual, never between rituals
+    const tsPageBridge = React.useRef(null)
+    const tsPreviousInput = React.useRef(null)
+    const tsResumeRitual = React.useRef(null)
+    const tsCompletedRitual = React.useRef(null)
+    const [tsCheckinStep, tsSetCheckinStep] = React.useState(1)
     React.useEffect(() => {
-        EOS_STORE.set({ sound: !!sound, haptics: !!hapticsOn, music: !!(musicOn && sound) })
-    }, [sound, hapticsOn, musicOn])
+        EOS_STORE.set({ sound: !!sound, haptics: !!tsHaptics, music: !!(musicOn && sound) })
+    }, [sound, tsHaptics, musicOn])
     const [variationSeed, setVariationSeed] = React.useState(() =>
         Math.floor(Date.now() % 1000003)
     )
@@ -21560,7 +21636,7 @@ function ThinkStillReleaseArcade(props) {
         []
     )
     const bubble = FAMILY_BUBBLE[selected?.family || "Release"] || "drop"
-    useSharedMusic(musicOn && sound, musicVolume, bubble)
+    useSharedMusic(musicOn && sound, tsVolume, bubble)
     const fileInputRef = React.useRef(null)
     const uploadPopupRef = React.useRef(null)
     const uploadTriggerRef = React.useRef(null)
@@ -21831,11 +21907,8 @@ function ThinkStillReleaseArcade(props) {
     const recommendedReleaseGame = React.useMemo(() => {
         if (!selected || !GAMES.length) return null
         const sourceThought = raw.trim() || entries.join(" ")
-        if (!eosMenuOn) {
-            const rotated = EosPickPeek(sourceThought, played, selected.id)
-            if (rotated) return rotated
-        }
-        return EosRouteGame(sourceThought, played, selected.id) || chooseRelevantGame(sourceThought, selected.id, selected)
+        // v11: the recommendation is always the strict global rotation's next ritual (never a repeat)
+        return EosPickPeek(sourceThought, played, selected.id)
     }, [selected?.id, raw, entries.join("|"), chooseRelevantGame, eosMenuOn, stage])
     const recommendedReleaseGesture = React.useMemo(() => {
         if (!recommendedReleaseGame) return null
@@ -21880,7 +21953,7 @@ function ThinkStillReleaseArcade(props) {
                 // Launch 30: a game outside the launch list never starts (stale menu, old dev link, any future
                 // path) — ThinkStill's next launch pick plays instead
                 const src = raw.trim() || entries.join(" ")
-                g = EosPickNext(src, played, g.id) || chooseRelevantGame(src, g.id)
+                g = EosPickNext(src, played, g.id)
             }
             if (!g) return
             let e = cleanEntries(raw)
@@ -21902,6 +21975,9 @@ function ThinkStillReleaseArcade(props) {
             setSelected(g)
             setEntries(e)
             EosPickNote(g)
+            if (tsCompletedRitual.current !== g.id && selected?.id !== g.id) tsCompletedRitual.current = null
+            tsResumeRitual.current = null
+            tsPreviousInput.current = null
             setVariationSeed((v) => v + 1)
             EosMarkLaunch(g, e)
             setStage("play")
@@ -21924,28 +22000,50 @@ function ThinkStillReleaseArcade(props) {
     )
     const openAdjacentRelease = React.useCallback(
         (direction) => {
-            const list = eosLaunchGames(GAMES) // Launch 30: PREVIOUS / NEXT browse the launch games only
+            // v11 (ported from v19): owner-menu PREVIOUS / NEXT walks the launch list but only lands on rituals
+            // that are unplayed in the current global cycle and suitable for this feeling (never a repeat)
+            const list = eosLaunchGames(GAMES)
             if (!selected || !list.length) return
-            let index = list.findIndex((g) => g.id === selected.id)
-            if (index < 0) index = direction > 0 ? -1 : 0
-            const target =
-                list[(index + direction + list.length) % list.length]
-            if (!target || target.id === selected.id) return
-            startChosenGame(target)
+            const phrase = raw.trim() || entries.join(" ")
+            const ctx = eosPickContext(phrase, played, selected.id)
+            const state = eosPickLoad()
+            const marker = Math.max(0, Number(state.cyc && state.cyc.global) || 0)
+            const pending = list.filter((g) => state.at[g.id] == null || Number(state.at[g.id]) < marker)
+            if (!pending.length) {
+                const next = EosPickNext(phrase, played, selected.id)
+                if (next) startChosenGame(next)
+                else showStatus("NO SUITABLE RITUAL IS AVAILABLE FOR THIS FEELING", 4200)
+                return
+            }
+            let eligible = list.filter((g) => (!ctx || eosRouterRuleOk(g.id, ctx.text)) && pending.some((p) => p.id === g.id))
+            if (ctx && ctx.flag) eligible = eligible.filter((g) => eosRouterEligible(g.id, ctx, eosRouterGames(), true))
+            if (!eligible.length) {
+                showStatus("NO UNPLAYED RITUAL FITS THIS FEELING YET — TRY A DIFFERENT EMOTION", 4200)
+                return
+            }
+            const avail = new Set(eligible.map((g) => g.id))
+            const sign = direction < 0 ? -1 : 1
+            const start = Math.max(0, list.findIndex((g) => g.id === selected.id))
+            for (let offset = 1; offset <= list.length; offset++) {
+                const next = list[(start + sign * offset + list.length * 2) % list.length]
+                if (next && avail.has(next.id)) {
+                    startChosenGame(next)
+                    return
+                }
+            }
         },
-        [selected?.id, startChosenGame]
+        [selected?.id, startChosenGame, showStatus, raw, entries.join("|"), played.join("|")]
     )
     const tryRecommendedRelease = React.useCallback(() => {
-        if (!eosMenuOn) {
-            const sourceThought = raw.trim() || entries.join(" ")
-            const rotated = EosPickNext(sourceThought, played, selected?.id) || recommendedReleaseGame
-            if (rotated) startChosenGame(rotated)
+        const sourceThought = raw.trim() || entries.join(" ")
+        const next = EosPickNext(sourceThought, played, selected?.id)
+        if (!next) {
+            showStatus("NO UNPLAYED RITUAL FITS THIS FEELING YET — TRY A DIFFERENT EMOTION", 4200)
             return
         }
-        if (!recommendedReleaseGame) return
-        showStatus(`THINKSTILL RECOMMENDS ${recommendedReleaseGame.name}`, 1400)
-        startChosenGame(recommendedReleaseGame)
-    }, [recommendedReleaseGame?.id, startChosenGame, showStatus, eosMenuOn, raw, entries.join("|"), played.join("|"), selected?.id])
+        if (eosMenuOn) showStatus(`THINKSTILL RECOMMENDS ${next.name}`, 1400)
+        startChosenGame(next)
+    }, [startChosenGame, showStatus, eosMenuOn, raw, entries.join("|"), played.join("|"), selected?.id])
     const startThinkStillChoice = React.useCallback(() => {
         let e = cleanEntries(raw)
         if (!e.length && uploadedImages.length)
@@ -21961,8 +22059,11 @@ function ThinkStillReleaseArcade(props) {
             return
         }
         const sourceThought = raw.trim() || e.join(" ")
-        const best = EosRouteGame(sourceThought, played) || chooseRelevantGame(sourceThought)
-        const eosPicked = EosPickNext(sourceThought, played) || best
+        const eosPicked = EosPickNext(sourceThought, played)
+        if (!eosPicked) {
+            showStatus("NO UNPLAYED RITUAL FITS THIS FEELING YET — TRY A DIFFERENT EMOTION", 4200)
+            return
+        }
         if (eosMenuOn) showStatus(`THINKSTILL CHOSE ${eosPicked.name}`, 1800)
         startChosenGame(eosPicked)
     }, [
@@ -22000,7 +22101,7 @@ function ThinkStillReleaseArcade(props) {
             return
         }
         if (!gameChoice) {
-            showStatus("CHOOSE A RELEASE GAME")
+            showStatus("CHOOSE A RITUAL")
             setGameMenuOpen(true)
             return
         }
@@ -22021,10 +22122,65 @@ function ThinkStillReleaseArcade(props) {
         stage,
         selected,
     ])
+    // v18/v19 (ported): previous / next SCREEN of one ritual, never previous / next ritual
+    const tsMoveScreen = (dir) => {
+        if (stage === "input") {
+            if (eos.phase === "checkin" && eos.checkinEnabled) {
+                const ck = tsPageBridge.current
+                if (dir < 0) {
+                    if (ck?.step === 2) ck.back()
+                    return
+                }
+                if (ck?.step === 1) {
+                    ck.choose("auto")
+                    return
+                }
+                if (tsResumeRitual.current) {
+                    startChosenGame(tsResumeRitual.current)
+                    return
+                }
+                if (ck?.step === 2) {
+                    ck.next()
+                    return
+                }
+            }
+            if (dir > 0) launchRelease()
+            return
+        }
+        if (!selected) return
+        if (dir < 0 && stage === "reveal") {
+            setStage("play")
+            return
+        }
+        if (dir > 0 && stage === "reveal") {
+            showStatus("YOU'RE ON THE FINAL SCREEN — CHOOSE NEW THOUGHT OR NEXT RITUAL BELOW", 3000)
+            return
+        }
+        if (dir < 0 && stage === "play") {
+            // keep the ritual identity and the user's words while revisiting check-in
+            const check = EOS_STORE.get()
+            const wasCheckin = !!check.checkinEnabled
+            tsResumeRitual.current = selected
+            tsPreviousInput.current = wasCheckin ? { step: 2, emotion: check.emotion || "auto", intensity: check.before || 6 } : null
+            tsSetCheckinStep(wasCheckin ? 2 : 1)
+            EOS_STORE.set({ phase: wasCheckin ? "checkin" : "skip", skipSticky: !wasCheckin })
+            setStage("input")
+            setSelected(null)
+            return
+        }
+        if (dir > 0 && stage === "play") {
+            if (tsCompletedRitual.current === selected.id) {
+                setStage("reveal")
+                return
+            }
+            showStatus("FINISH THIS RITUAL TO SEE THE NEXT SCREEN", 3000)
+        }
+    }
     const done = React.useCallback(
         (bonus = 0) => {
             if (!selected || donePendingRef.current) return
             donePendingRef.current = true
+            tsCompletedRitual.current = selected.id
             const gain = Math.round(
                 100 + bonus + Math.min(180, entries.join(" ").length * 2)
             )
@@ -22321,6 +22477,188 @@ function ThinkStillReleaseArcade(props) {
             ),
         }
     }, [selected?.id, entries.join("|"), variationSeed])
+
+    // ---- shared nodes: the desktop shell and the mobile shell render exactly the same game / EOS elements
+    const tsFileInputNode = (
+                    <input
+                        ref={fileInputRef}
+                        className="releaseHiddenFile"
+                        type="file"
+                        accept="image/jpeg,image/png,image/gif"
+                        multiple
+                        onChange={async (e) => {
+                            const remaining = Math.max(
+                                0,
+                                MAX_UPLOAD_IMAGES - uploadedImages.length
+                            )
+                            const selectedFiles = Array.from(
+                                e.target.files || []
+                            )
+                            const files = selectedFiles.slice(0, remaining)
+                            const allowed = files.filter(isAllowedUploadImage)
+                            if (!allowed.length) {
+                                if (selectedFiles.length)
+                                    showStatus(
+                                        remaining
+                                            ? "JPG, PNG OR GIF ONLY"
+                                            : `MAX ${MAX_UPLOAD_IMAGES} IMAGES`
+                                    )
+                                e.target.value = ""
+                                return
+                            }
+                            try {
+                                const added = (
+                                    await Promise.all(
+                                        allowed.map(fileToDataUrl)
+                                    )
+                                ).filter(Boolean)
+                                const nextCount = Math.min(
+                                    MAX_UPLOAD_IMAGES,
+                                    uploadedImages.length + added.length
+                                )
+                                setUploadedImages((current) =>
+                                    [...current, ...added].slice(
+                                        0,
+                                        MAX_UPLOAD_IMAGES
+                                    )
+                                )
+                                // P6.2-a: files over the limit are never dropped silently; P6.1-e: the 6th image closes the popup
+                                const dropped = Math.max(0, selectedFiles.length - files.length)
+                                showStatus(
+                                    dropped
+                                        ? `MAX ${MAX_UPLOAD_IMAGES} IMAGES · ${dropped} NOT ADDED`
+                                        : `${nextCount} / ${MAX_UPLOAD_IMAGES} IMAGES READY`,
+                                    dropped ? 2600 : 1800
+                                )
+                                if (nextCount >= MAX_UPLOAD_IMAGES) setUploadPopupOpen(false)
+                                e.target.value = ""
+                            } catch {
+                                e.target.value = ""
+                                showStatus("IMAGE COULDN'T BE MATERIALISED")
+                            }
+                        }}
+                    />
+    )
+    const tsGameNode = stage === "play" && selected ? (
+                        <>
+                            <div className="releaseGameHost" ref={gameHostRef}>
+                                <ReleaseGameEngine
+                                    key={`${selected.id}-${variationSeed}-${materialRevision}`}
+                                    game={selected}
+                                    entries={renderedEntries}
+                                    imageSrc={visibleImage}
+                                    imageSources={visibleSlots}
+                                    hasUserImages={uploadedImages.length > 0}
+                                    onDone={done}
+                                    sfx={sfx}
+                                    rainSfx={rainSfx}
+                                    reduced={reduced}
+                                    tapOutBpm={tapOutBpm}
+                                    bubbleTextPx={bubbleTextSize}
+                                    variationSeed={variationSeed}
+                                    finishHoldMs={
+                                        selected.id === 110
+                                            ? 1600
+                                            : selected.id === 108
+                                              ? 3400
+                                              : 3000
+                                    }
+                                />
+                            </div>
+                        </>
+                    ) : null
+    const tsEosPlayNode = stage === "play" && selected ? (
+                        <React.Fragment key={`eos-play-${selected.id}-${variationSeed}-${materialRevision}`}>
+                            <EosMoodGrade game={selected} hostRef={gameHostRef} reduced={!!reduced} />
+                            <EosGuideArrows game={selected} entries={renderedEntries} hostRef={gameHostRef} reduced={!!reduced} />
+                            <EosLegacyGuards game={selected} hostRef={gameHostRef} />
+                            <EosCompanion game={selected} hostRef={gameHostRef} reduced={!!reduced} />
+                            <EosLayoutGuard game={selected} entries={renderedEntries} hostRef={gameHostRef} />
+                        </React.Fragment>
+                    ) : null
+    const tsCheckInNode = (
+        <EosCheckIn raw={raw} setRaw={setRaw} onLaunch={startThinkStillChoice} onPlay={startChosenGame} toggleMic={toggleMic} listening={listening} openMenu={() => setGameMenuOpen(true)} sfx={sfx} reduced={!!reduced} initialScreen={tsPreviousInput.current} screenBridge={tsPageBridge} onScreenStep={tsSetCheckinStep} />
+    )
+    const tsShiftMeterNode = (
+                                    <EosShiftMeter
+                                        game={selected}
+                                        sfx={sfx}
+                                        rainSfx={rainSfx}
+                                        reduced={!!reduced}
+                                        onAgain={replay}
+                                        onPlay={startChosenGame}
+                                        onNext={tryRecommendedRelease}
+                                        onDoneForNow={clearForNext}
+                                        addScore={(n) => {
+                                            const add = Math.max(0, Math.round(Number(n) || 0))
+                                            if (!add) return
+                                            setScore((s) => {
+                                                const v = s + add
+                                                try {
+                                                    localStorage.setItem(SCORE_KEY, String(v))
+                                                } catch {}
+                                                return v
+                                            })
+                                        }}
+                                    />
+    )
+    // ---- Mobile V2 shell API: state + actions of this console (logic stays here, presentation moves to the shell)
+    const tsMobileApi = () => ({
+        stage, selected, raw, setRaw, entries, renderedEntries, uploadedImages, uploadSlots, visibleSlots, visibleImage,
+        chooseUploadFiles, removeUploadedImage, fileInputRef, maxUploads: MAX_UPLOAD_IMAGES,
+        listening, toggleMic, statusText, showStatus,
+        sound, setSound, musicOn, setMusicOn, musicOnDefault: !!musicOnDefault,
+        haptics: tsHaptics, setHaptics: (v) => {
+            tsSetHaptics(!!v)
+            try {
+                localStorage.setItem("ts_release_haptics", String(!!v))
+            } catch {}
+        },
+        volume: tsVolume, setVolume: (v) => {
+            const n = Math.max(0, Math.min(1, Number(v) || 0))
+            tsSetVolume(n)
+            try {
+                localStorage.setItem("ts_release_music_volume", String(n))
+            } catch {}
+        },
+        calm: tsCalm, setCalm: (v) => {
+            tsSetCalm(!!v)
+            try {
+                eosSetPref("calmVisuals", !!v)
+            } catch {}
+        },
+        score, played, lastGain, scoreLevel, scoreProgress,
+        releaseCheck, setReleaseCheck: (v) => {
+            setReleaseCheck(v)
+            if (v === "yes") sfx("win")
+            else if (v === "no") sfx("soft")
+            if (tsHaptics) vibrate(v === "yes" ? 18 : 12)
+        },
+        persistentFinalFeedback, recommendedReleaseGame, recommendedReleaseGesture, recommendedReleasePreviewImage,
+        startChosenGame, startThinkStillChoice, launchRelease, tryRecommendedRelease, openAdjacentRelease, replay, clearForNext,
+        moveScreen: tsMoveScreen, checkinStep: tsCheckinStep, completedRitual: tsCompletedRitual.current,
+        close: () => {
+            if (typeof tsCloseConsole === "function") tsCloseConsole()
+            else clearForNext()
+        },
+        hasCloseHandler: typeof tsCloseConsole === "function",
+        eos, eosMenuOn, gameChoice, setGameChoice, gameMenuOpen, setGameMenuOpen, signatureQuickPlay,
+        sfx, rainSfx, reduced: !!reduced, hapticsOn: !!tsHaptics, displayTitle, variationSeed, materialRevision,
+        gameHostRef,
+        nodes: {
+            fileInput: tsFileInputNode,
+            game: tsGameNode,
+            eosPlay: tsEosPlayNode,
+            checkIn: stage === "input" && !selected && eos.phase === "checkin" && eos.checkinEnabled ? tsCheckInNode : null,
+            checkInChip: stage === "input" && !selected && eos.phase !== "checkin" && eos.checkinEnabled ? <EosCheckInChip reduced={!!reduced} /> : null,
+            thoughtFlow: <EosThoughtFlow stage={stage} reduced={!!reduced} />,
+            worldChips: <EosWorldChips stage={stage} reduced={!!reduced} />,
+            safety: <EosSafetyLayer raw={raw} stage={stage} reduced={!!reduced} />,
+            pickBridge: <EosPickBridge onPlay={startChosenGame} onLaunch={launchRelease} />,
+            textFloor: <EosTextFloor stage={stage} />,
+            shiftMeter: stage === "reveal" && selected ? tsShiftMeterNode : null,
+        },
+    })
     if (!cssText)
         return (
             <div
@@ -22471,6 +22809,9 @@ function ThinkStillReleaseArcade(props) {
                 reduced={!!reduced}
             />
 
+            {MobileUI ? (
+                <MobileUI api={tsMobileApi()} />
+            ) : (
             <div className="shell">
                 <header className="releaseConsoleHeader">
                     <button
@@ -22520,7 +22861,7 @@ function ThinkStillReleaseArcade(props) {
                 <section className="releaseStage">
                     <EosThoughtFlow stage={stage} reduced={!!reduced} />
                     {stage === "input" && !selected && eos.phase === "checkin" && eos.checkinEnabled ? (
-                        <EosCheckIn raw={raw} setRaw={setRaw} onLaunch={startThinkStillChoice} onPlay={startChosenGame} toggleMic={toggleMic} listening={listening} openMenu={() => setGameMenuOpen(true)} sfx={sfx} reduced={!!reduced} />
+                        tsCheckInNode
                     ) : null}
                     {stage === "input" && !selected && eos.phase !== "checkin" && eos.checkinEnabled ? <EosCheckInChip reduced={!!reduced} /> : null}
                     <EosWorldChips stage={stage} reduced={!!reduced} />
@@ -22608,44 +22949,8 @@ function ThinkStillReleaseArcade(props) {
                         </div>
                     ) : null}
 
-                    {stage === "play" && selected ? (
-                        <>
-                            <div className="releaseGameHost" ref={gameHostRef}>
-                                <ReleaseGameEngine
-                                    key={`${selected.id}-${variationSeed}-${materialRevision}`}
-                                    game={selected}
-                                    entries={renderedEntries}
-                                    imageSrc={visibleImage}
-                                    imageSources={visibleSlots}
-                                    hasUserImages={uploadedImages.length > 0}
-                                    onDone={done}
-                                    sfx={sfx}
-                                    rainSfx={rainSfx}
-                                    reduced={reduced}
-                                    tapOutBpm={tapOutBpm}
-                                    bubbleTextPx={bubbleTextSize}
-                                    variationSeed={variationSeed}
-                                    finishHoldMs={
-                                        selected.id === 110
-                                            ? 1600
-                                            : selected.id === 108
-                                              ? 3400
-                                              : 3000
-                                    }
-                                />
-                            </div>
-                        </>
-                    ) : null}
-
-                    {stage === "play" && selected ? (
-                        <React.Fragment key={`eos-play-${selected.id}-${variationSeed}-${materialRevision}`}>
-                            <EosMoodGrade game={selected} hostRef={gameHostRef} reduced={!!reduced} />
-                            <EosGuideArrows game={selected} entries={renderedEntries} hostRef={gameHostRef} reduced={!!reduced} />
-                            <EosLegacyGuards game={selected} hostRef={gameHostRef} />
-                            <EosCompanion game={selected} hostRef={gameHostRef} reduced={!!reduced} />
-                            <EosLayoutGuard game={selected} entries={renderedEntries} hostRef={gameHostRef} />
-                        </React.Fragment>
-                    ) : null}
+                    {tsGameNode}
+                    {tsEosPlayNode}
                     <EosPickBridge onPlay={startChosenGame} onLaunch={launchRelease} />
                     <EosTextFloor stage={stage} />
                     {stage === "reveal" && selected ? (
@@ -22662,7 +22967,7 @@ function ThinkStillReleaseArcade(props) {
                                 ) : null}
                                 <div className="releaseCompleteCard">
                                     <small>
-                                        RELEASE COMPLETE · +{lastGain} STILL
+                                        RITUAL COMPLETE · +{lastGain} STILL
                                     </small>
                                     <strong>{selected.name}</strong>
 
@@ -22683,27 +22988,7 @@ function ThinkStillReleaseArcade(props) {
                                         </div>
                                     ) : null}
 
-                                    <EosShiftMeter
-                                        game={selected}
-                                        sfx={sfx}
-                                        rainSfx={rainSfx}
-                                        reduced={!!reduced}
-                                        onAgain={replay}
-                                        onPlay={startChosenGame}
-                                        onNext={tryRecommendedRelease}
-                                        onDoneForNow={clearForNext}
-                                        addScore={(n) => {
-                                            const add = Math.max(0, Math.round(Number(n) || 0))
-                                            if (!add) return
-                                            setScore((s) => {
-                                                const v = s + add
-                                                try {
-                                                    localStorage.setItem(SCORE_KEY, String(v))
-                                                } catch {}
-                                                return v
-                                            })
-                                        }}
-                                    />
+                                    {tsShiftMeterNode}
                                     <div className="releaseShiftCheck">
                                         <strong>FEEL A SHIFT?</strong>
                                         <div className="releaseShiftChoices">
@@ -22742,7 +23027,7 @@ function ThinkStillReleaseArcade(props) {
                                             title={`Try ${selected.name} again with the same thought`}
                                             aria-label={`Try ${selected.name} again`}
                                         >
-                                            ↻ AGAIN
+                                            ↻ REPEAT
                                         </button>
                                     </div>
 
@@ -22909,64 +23194,7 @@ function ThinkStillReleaseArcade(props) {
                         </button>
                     </div>
 
-                    <input
-                        ref={fileInputRef}
-                        className="releaseHiddenFile"
-                        type="file"
-                        accept="image/jpeg,image/png,image/gif"
-                        multiple
-                        onChange={async (e) => {
-                            const remaining = Math.max(
-                                0,
-                                MAX_UPLOAD_IMAGES - uploadedImages.length
-                            )
-                            const selectedFiles = Array.from(
-                                e.target.files || []
-                            )
-                            const files = selectedFiles.slice(0, remaining)
-                            const allowed = files.filter(isAllowedUploadImage)
-                            if (!allowed.length) {
-                                if (selectedFiles.length)
-                                    showStatus(
-                                        remaining
-                                            ? "JPG, PNG OR GIF ONLY"
-                                            : `MAX ${MAX_UPLOAD_IMAGES} IMAGES`
-                                    )
-                                e.target.value = ""
-                                return
-                            }
-                            try {
-                                const added = (
-                                    await Promise.all(
-                                        allowed.map(fileToDataUrl)
-                                    )
-                                ).filter(Boolean)
-                                const nextCount = Math.min(
-                                    MAX_UPLOAD_IMAGES,
-                                    uploadedImages.length + added.length
-                                )
-                                setUploadedImages((current) =>
-                                    [...current, ...added].slice(
-                                        0,
-                                        MAX_UPLOAD_IMAGES
-                                    )
-                                )
-                                // P6.2-a: files over the limit are never dropped silently; P6.1-e: the 6th image closes the popup
-                                const dropped = Math.max(0, selectedFiles.length - files.length)
-                                showStatus(
-                                    dropped
-                                        ? `MAX ${MAX_UPLOAD_IMAGES} IMAGES · ${dropped} NOT ADDED`
-                                        : `${nextCount} / ${MAX_UPLOAD_IMAGES} IMAGES READY`,
-                                    dropped ? 2600 : 1800
-                                )
-                                if (nextCount >= MAX_UPLOAD_IMAGES) setUploadPopupOpen(false)
-                                e.target.value = ""
-                            } catch {
-                                e.target.value = ""
-                                showStatus("IMAGE COULDN'T BE MATERIALISED")
-                            }
-                        }}
-                    />
+                    {tsFileInputNode}
 
                     <button
                         ref={uploadTriggerRef}
@@ -23256,6 +23484,7 @@ function ThinkStillReleaseArcade(props) {
                     ) : null}
                 </div>
             </div>
+            )}
         </div>
     )
 }
