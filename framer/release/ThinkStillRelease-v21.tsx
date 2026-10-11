@@ -1323,7 +1323,8 @@ function useDrag(target: React.RefObject<HTMLElement | SVGElement | null>, frame
         const up = (e: PointerEvent) => {
             if (!active || e.pointerId !== active.id) return
             // Velocity decays if the finger rested before lifting.
-            if (performance.now() - lastT > 90) { active.vx *= 0.2; active.vy *= 0.2 }
+            const rest = performance.now() - lastT
+            if (rest > 220) { active.vx *= 0.2; active.vy *= 0.2 } else if (rest > 120) { active.vx *= 0.6; active.vy *= 0.6 }
             const done = active
             active = null
             try { el.releasePointerCapture(e.pointerId) } catch { /* ignore */ }
@@ -1375,14 +1376,14 @@ function useHold(onDown: () => void, onUp: () => void) {
 
 /* ---------- Particles: one canvas per stage, only animates while something is alive ---------- */
 
-type ParticleKind = "spark" | "ember" | "drop" | "dust" | "shard" | "petal" | "ring" | "glow" | "rain" | "steam" | "bubble"
+type ParticleKind = "spark" | "ember" | "drop" | "dust" | "shard" | "petal" | "ring" | "glow" | "rain" | "steam" | "bubble" | "flame" | "streak"
 interface BurstOptions { kind?: ParticleKind; n?: number; color?: string | string[]; speed?: number; spread?: number; angle?: number; size?: number; life?: number; gravity?: number; vx?: number; vy?: number }
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; size: number; color: string; kind: ParticleKind; g: number; rot: number; spin: number; seed: number }
 
 function createParticles(canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext("2d")
     const list: Particle[] = []
-    let raf = 0, w = 0, h = 0, dpr = 1, last = 0
+    let raf = 0, w = 0, h = 0, dpr = 1, last = 0, additive = false
     const resize = () => {
         const r = canvas.getBoundingClientRect()
         dpr = Math.min(2, (typeof window !== "undefined" && window.devicePixelRatio) || 1)
@@ -1408,8 +1409,10 @@ function createParticles(canvas: HTMLCanvasElement) {
             p.vx *= drag; p.vy *= drag
             p.x += p.vx * dt; p.y += p.vy * dt
             p.rot += p.spin * dt
-            const a = p.kind === "ember" ? (1 - t) * (0.7 + 0.3 * Math.sin(p.seed * 7 + p.life * 18)) : 1 - t * t
+            if (p.kind === "flame") { p.vx *= 0.96; p.vy -= 60 * dt }
+            const a = p.kind === "ember" ? (1 - t) * (0.7 + 0.3 * Math.sin(p.seed * 7 + p.life * 18)) : p.kind === "flame" ? Math.sin(Math.PI * Math.min(1, t * 1.4)) * 0.9 : 1 - t * t
             ctx.globalAlpha = Math.max(0, Math.min(1, a))
+            ctx.globalCompositeOperation = additive && (p.kind === "glow" || p.kind === "ember" || p.kind === "spark" || p.kind === "flame" || p.kind === "streak") ? "lighter" : "source-over"
             ctx.fillStyle = p.color
             ctx.strokeStyle = p.color
             switch (p.kind) {
@@ -1425,6 +1428,19 @@ function createParticles(canvas: HTMLCanvasElement) {
                     g.addColorStop(0, p.color); g.addColorStop(0.35, p.color); g.addColorStop(1, "rgba(0,0,0,0)")
                     ctx.fillStyle = g
                     ctx.beginPath(); ctx.arc(p.x, p.y, r * 2.4, 0, Math.PI * 2); ctx.fill()
+                    break
+                }
+                case "flame": {
+                    const r = p.size * (1.2 - t * 0.8)
+                    const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 2)
+                    g.addColorStop(0, "rgba(255,245,200,1)"); g.addColorStop(0.3, p.color); g.addColorStop(1, "rgba(255,60,0,0)")
+                    ctx.fillStyle = g
+                    ctx.beginPath(); ctx.ellipse(p.x, p.y, r * 1.2, r * 2, 0, 0, Math.PI * 2); ctx.fill()
+                    break
+                }
+                case "streak": {
+                    ctx.lineWidth = p.size * (1 - t); ctx.lineCap = "round"
+                    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 0.06, p.y - p.vy * 0.06); ctx.stroke()
                     break
                 }
                 case "drop": {
@@ -1459,6 +1475,7 @@ function createParticles(canvas: HTMLCanvasElement) {
             }
         }
         ctx.globalAlpha = 1
+        ctx.globalCompositeOperation = "source-over"
         if (list.length) raf = requestAnimationFrame(frame)
         else { raf = 0; ctx.clearRect(0, 0, w, h) }
     }
@@ -1466,6 +1483,7 @@ function createParticles(canvas: HTMLCanvasElement) {
     resize()
     return {
         resize,
+        setAdditive(v: boolean) { additive = v },
         burst(x: number, y: number, o: BurstOptions = {}) {
             const kind = o.kind || "spark"
             const n = Math.min(80, o.n ?? 10)
@@ -1569,6 +1587,67 @@ function useProgress(props: RitualProps, total: number) {
 /** Text size that fits nicely for a stage of this width. */
 const stageFont = (w: number, k = 1) => Math.round(clamp(w / 21, 15, 21) * k)
 
+/* ---------- Atmosphere: slow light and floating motes that ease from the feeling toward calm ---------- */
+
+function AmbientLayer({ hue, calmHue, progress, dark, reduced }: { hue: number; calmHue: number; progress: number; dark: boolean; reduced: boolean }) {
+    const ref = React.useRef<HTMLCanvasElement>(null)
+    const prog = useLatest(progress)
+    React.useEffect(() => {
+        const cv = ref.current
+        if (!cv) return
+        const ctx = cv.getContext("2d")
+        if (!ctx) return
+        let raf = 0, alive = true, last = 0
+        const motes = Array.from({ length: reduced ? 0 : 26 }, (_, i) => ({ x: Math.random(), y: Math.random(), s: 0.6 + Math.random() * 1.8, v: 0.006 + Math.random() * 0.014, ph: Math.random() * 6 }))
+        const draw = (now: number) => {
+            if (!alive) return
+            if (now - last < 33) { raf = requestAnimationFrame(draw); return } // ~30fps is plenty for ambience
+            last = now
+            const r = cv.getBoundingClientRect()
+            const dpr = Math.min(1.5, window.devicePixelRatio || 1)
+            const W = Math.max(1, Math.round(r.width * dpr)), H = Math.max(1, Math.round(r.height * dpr))
+            if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H }
+            const t = now / 1000
+            const p = smooth(clamp(prog.current, 0, 1))
+            const hh = lerp(hue, calmHue + (calmHue - hue > 180 ? -360 : hue - calmHue > 180 ? 360 : 0), p)
+            ctx.clearRect(0, 0, W, H)
+            ctx.globalCompositeOperation = dark ? "lighter" : "source-over"
+            // Two palettes cross-fade (never a muddy hue in between): the feeling's light, then calm light.
+            for (const [hueX, weight] of [[hue, 1 - p], [calmHue, p]] as [number, number][]) {
+                if (weight < 0.02) continue
+                for (let i = 0; i < 3; i++) {
+                    const cx = W * (0.5 + 0.38 * Math.sin(t * (0.07 + i * 0.023) + i * 2.1))
+                    const cy = H * (0.45 + 0.36 * Math.cos(t * (0.05 + i * 0.019) + i * 1.3))
+                    const rad = Math.max(W, H) * (0.42 + 0.08 * Math.sin(t * 0.2 + i))
+                    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad)
+                    const a = (dark ? 0.11 : 0.16) * weight
+                    g.addColorStop(0, `hsla(${hueX + i * 14}, ${dark ? 75 : 85}%, ${dark ? 58 : 76}%, ${a})`)
+                    g.addColorStop(1, `hsla(${hueX + i * 14}, 80%, 60%, 0)`)
+                    ctx.fillStyle = g
+                    ctx.fillRect(0, 0, W, H)
+                }
+            }
+            for (const m of motes) {
+                m.y -= m.v * 0.033 * (1 + p)
+                if (m.y < -0.02) { m.y = 1.02; m.x = Math.random() }
+                const tw = 0.35 + 0.35 * Math.sin(t * 1.6 + m.ph)
+                ctx.fillStyle = dark ? `hsla(${hh}, 90%, 85%, ${tw})` : `hsla(${hh}, 70%, 55%, ${tw * 0.45})`
+                ctx.beginPath(); ctx.arc((m.x + Math.sin(t * 0.3 + m.ph) * 0.01) * W, m.y * H, m.s * dpr, 0, Math.PI * 2); ctx.fill()
+            }
+            ctx.globalCompositeOperation = "source-over"
+            if (!reduced) raf = requestAnimationFrame(draw)
+        }
+        raf = requestAnimationFrame(draw)
+        const onVis = () => { if (!document.hidden && !reduced) { cancelAnimationFrame(raf); raf = requestAnimationFrame(draw) } else cancelAnimationFrame(raf) }
+        document.addEventListener("visibilitychange", onVis)
+        return () => { alive = false; cancelAnimationFrame(raf); document.removeEventListener("visibilitychange", onVis) }
+    }, [hue, calmHue, dark, reduced])
+    return <canvas ref={ref} aria-hidden="true" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 35, mixBlendMode: dark ? "screen" : "soft-light" }} />
+}
+
+/** Pentatonic steps so progress sounds like a melody rising, never a beep. */
+const PENTA = [523.25, 587.33, 659.25, 783.99, 880, 1046.5, 1174.66, 1318.51]
+
 /* ================================================================== */
 /* 5. RITUALS                                                          */
 /* ================================================================== */
@@ -1591,82 +1670,6 @@ function scatter(n: number, w: number, h: number, r: number, top = 0, bottom = 0
         out.push({ x: clamp(offset + cw * (col + 0.5) + jx, r + 6, w - r - 6), y: clamp(top + ch * (row + 0.5) + jy, top + r + 6, h - bottom - r - 6) })
     }
     return out
-}
-
-/* ---------- 1 · POP — soft bubbles with real tension, a small snap, then nothing ---------- */
-
-function RitualPop(props: RitualProps) {
-    const { items, w, h, fx, reduced, emo } = props
-    const n = items.length
-    const cols = n <= 2 ? n : n <= 4 ? 2 : 3
-    const rows = Math.ceil(n / cols)
-    const r = Math.round(clamp(Math.min(w / cols / 2 - 12, (h - 24) / rows / 2 - 12), 44, 92))
-    const homes = React.useMemo(() => scatter(n, w, h, r, 8, 8), [n, w, h, r])
-    const [popped, setPopped] = React.useState<boolean[]>(() => items.map(() => false))
-    const [pressed, setPressed] = React.useState<number | null>(null)
-    const nodes = React.useRef<(HTMLDivElement | null)[]>([])
-    const poppedRef = useLatest(popped)
-    const timers = useTimers()
-    const count = popped.filter(Boolean).length
-
-    React.useEffect(() => {
-        props.progress(count / n)
-        if (count === n) timers.after(650, props.done)
-    }, [count])
-
-    useFrame((_, t) => {
-        nodes.current.forEach((el, i) => {
-            if (!el || poppedRef.current[i]) return
-            const p = homes[i]
-            const ox = reduced ? 0 : Math.sin(t * 0.55 + i * 1.7) * 7
-            const oy = reduced ? 0 : Math.cos(t * 0.45 + i * 2.3) * 9
-            el.style.transform = `translate3d(${p.x + ox - r}px, ${p.y + oy - r}px, 0)`
-        })
-    })
-
-    const pop = (i: number) => {
-        if (popped[i]) return
-        const p = homes[i]
-        setPopped((prev) => prev.map((v, j) => (j === i ? true : v)))
-        setPressed(null)
-        fx.sound("pop", rand(0.85, 1.2))
-        fx.haptic("medium")
-        fx.burst(p.x, p.y, { kind: "ring", n: 1, size: r * 1.1, color: hsl(emo.hue, 70, 70, 0.9), life: 0.55 })
-        fx.burst(p.x, p.y, { kind: "drop", n: 12, size: 2.6, speed: 260, color: [hsl(emo.hue, 75, 72), hsl(emo.calmHue, 75, 75), "rgba(255,255,255,.9)"], life: 0.7, gravity: 380 })
-    }
-
-    return (
-        <div style={{ position: "absolute", inset: 0 }}>
-            <div style={{ position: "absolute", inset: 0, background: props.dark ? "radial-gradient(90% 70% at 50% 0%, hsla(var(--h),40%,22%,.55), transparent 70%)" : "radial-gradient(90% 70% at 50% 0%, hsla(var(--h),70%,90%,.9), transparent 70%)" }} />
-            {items.map((it, i) => (
-                <div key={it.key} ref={(el) => { nodes.current[i] = el }} className="rk-abs" style={{ width: r * 2, height: r * 2, transform: `translate3d(${homes[i].x - r}px, ${homes[i].y - r}px, 0)`, pointerEvents: popped[i] ? "none" : "auto" }}>
-                    <button
-                        type="button"
-                        aria-label={`Pop “${it.text}”`}
-                        onPointerDown={(e) => { e.preventDefault(); setPressed(i); fx.haptic("tick"); try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId) } catch { /* ignore */ } }}
-                        onPointerUp={() => { if (pressed === i) pop(i) }}
-                        onPointerLeave={() => { if (pressed === i) setPressed(null) }}
-                        onPointerCancel={() => setPressed(null)}
-                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pop(i) } }}
-                        style={{
-                            position: "absolute", inset: 0, border: 0, padding: 0, margin: 0, borderRadius: "50%", cursor: "pointer", font: "inherit",
-                            display: "grid", placeItems: "center", touchAction: "none",
-                            background: props.dark
-                                ? `radial-gradient(circle at 33% 28%, rgba(255,255,255,.55) 0 5%, rgba(255,255,255,0) 18%), radial-gradient(circle at 50% 55%, hsla(${emo.hue},60%,60%,.08) 50%, hsla(${emo.hue},70%,65%,.28) 100%)`
-                                : `radial-gradient(circle at 33% 28%, rgba(255,255,255,1) 0 6%, rgba(255,255,255,0) 20%), radial-gradient(circle at 50% 55%, hsla(${emo.hue},80%,92%,.35) 50%, hsla(${emo.hue},70%,72%,.45) 100%)`,
-                            boxShadow: `inset 0 0 0 1px rgba(255,255,255,${props.dark ? 0.18 : 0.7}), inset -10px -14px 26px hsla(${emo.calmHue},80%,70%,.22), inset 8px 10px 22px hsla(${emo.hue},80%,75%,.18), 0 12px 28px rgba(0,0,0,${props.dark ? 0.35 : 0.08})`,
-                            transform: popped[i] ? "scale(1.28)" : pressed === i ? "scale(1.06, .9)" : "scale(1)",
-                            opacity: popped[i] ? 0 : 1,
-                            transition: popped[i] ? "transform .14s ease-out, opacity .14s ease-out" : "transform .45s cubic-bezier(.34,1.7,.5,1)",
-                            color: "var(--stage-ink)",
-                        }}
-                    >
-                        <WordBody item={it} size={clamp(r / 4.3, 13, 18)} layout="col" imgSize={Math.round(r * 0.62)} style={{ maxWidth: r * 1.5, pointerEvents: "none" }} />
-                    </button>
-                </div>
-            ))}
-        </div>
-    )
 }
 
 /* ---------- 6 · ZAP — lightning only exists while you hold it ---------- */
@@ -2054,6 +2057,15 @@ function RitualBurn(props: RitualProps) {
             g.stroke(); g.shadowBlur = 0
         }
         g.globalCompositeOperation = "source-over"
+        // Flame tongues and smoke ride the burning edge.
+        if (holding && !s.done && !reduced) {
+            for (let k = 0; k < 3; k++) {
+                const y = rand(py + 4, py + ph - 4)
+                const x = frontAt(y, base, t)
+                if (x > px - 4 && x < px + pw + 4) fx.burst(x + rand(-4, 6), y, { kind: "flame", n: 1, size: rand(5, 10), speed: 60, angle: -Math.PI / 2, spread: 0.5, color: Math.random() < 0.5 ? "rgba(255,150,40,.9)" : "rgba(255,95,30,.85)", life: rand(0.35, 0.7), gravity: -40 })
+            }
+            if (Math.random() < 0.25) { const y = rand(py, py + ph); fx.burst(frontAt(y, base, t), y - 10, { kind: "steam", n: 1, size: 9, speed: 30, angle: -Math.PI / 2, spread: 0.6, color: dark ? "rgba(140,130,125,.4)" : "rgba(90,80,75,.3)", life: 2, gravity: -25 }) }
+        }
         // Embers lift off the edge while it burns.
         if (holding && !s.done && !reduced && t - s.last > 0.05) {
             s.last = t
@@ -2082,102 +2094,6 @@ function RitualBurn(props: RitualProps) {
             <div style={{ position: "absolute", inset: 0, background: dark ? "radial-gradient(80% 60% at 50% 55%, #221A16, #111013 70%)" : "radial-gradient(80% 60% at 50% 55%, #FFF4E8, #F1E9DF 75%)" }} />
             <div style={{ position: "absolute", inset: 0, background: "radial-gradient(60% 45% at 50% 55%, rgba(255,140,60,.22), transparent 70%)", opacity: holding ? 1 : 0, transition: "opacity .5s" }} />
             <canvas ref={canvasRef} style={{ position: "absolute", inset: 0, width: w, height: h }} />
-        </div>
-    )
-}
-
-/* ---------- 22 · FLUSH — stir the water; the papers spiral away for good ---------- */
-
-function RitualFlush(props: RitualProps) {
-    const { items, w, h, fx, reduced, dark } = props
-    const stage = React.useRef<HTMLDivElement>(null)
-    const D = Math.min(w * 0.88, h * 0.7, 460)
-    const cx = w / 2, cy = h * 0.47
-    const R = D / 2
-    const papers = React.useRef(items.map((_, i) => ({ a: (i / items.length) * Math.PI * 2 + 0.4, r: R * (0.5 + hashNoise(i, 7) * 0.32), gone: false, s: 1 })))
-    const els = React.useRef<(HTMLDivElement | null)[]>([])
-    const water = React.useRef<HTMLDivElement>(null)
-    const st = React.useRef({ omega: 0, theta: 0, lastAng: null as number | null, lastT: 0, gone: 0, done: false, loop: null as Loop | null, clear: 0 })
-    const [gone, setGone] = React.useState(0)
-    const timers = useTimers()
-
-    useDrag(stage, stage, {
-        onStart: (d) => { st.current.lastAng = Math.atan2(d.y - cy, d.x - cx); st.current.lastT = performance.now(); fx.haptic("light") },
-        onMove: (d) => {
-            const s = st.current
-            const a = Math.atan2(d.y - cy, d.x - cx)
-            if (s.lastAng == null) { s.lastAng = a; return }
-            let da = a - s.lastAng
-            if (da > Math.PI) da -= Math.PI * 2
-            if (da < -Math.PI) da += Math.PI * 2
-            s.lastAng = a
-            const now = performance.now()
-            const dtm = Math.max(8, now - s.lastT) / 1000
-            s.lastT = now
-            if (dist(d.x, d.y, cx, cy) < R * 1.15) s.omega = clamp(s.omega + (da / dtm) * 0.06, -5.5, 5.5)
-        },
-        onEnd: () => { st.current.lastAng = null },
-    }, !st.current.done)
-
-    useFrame((dt, t) => {
-        const s = st.current
-        s.omega *= Math.pow(s.done ? 0.35 : 0.72, dt)
-        s.theta += s.omega * dt
-        const speed = Math.abs(s.omega)
-        if (speed > 0.6 && !s.loop) s.loop = fx.loop("wind")
-        if (s.loop) { s.loop.set(300 + speed * 120, Math.min(1.4, speed / 3)); if (speed < 0.3) { s.loop.stop(); s.loop = null } }
-        if (water.current) water.current.style.transform = `rotate(${s.theta}rad)`
-        papers.current.forEach((p, i) => {
-            const el = els.current[i]
-            if (!el) return
-            if (!p.gone) {
-                p.a += (s.omega * (1 + 40 / Math.max(30, p.r)) * 0.55 + (reduced ? 0 : 0.05)) * dt
-                const pull = Math.max(0, speed - 1.1)
-                p.r = Math.max(0, p.r - pull * dt * (14 + (R - p.r) * 0.12))
-                p.s = clamp(p.r / (R * 0.6), 0.12, 1)
-                if (p.r < 16) {
-                    p.gone = true
-                    s.gone += 1
-                    setGone(s.gone)
-                    fx.sound("drip", 0.7)
-                    fx.haptic("medium")
-                    props.progress(s.gone / items.length)
-                    fx.burst(cx, cy, { kind: "ring", n: 1, size: 24, color: "rgba(255,255,255,.7)", life: 0.6 })
-                }
-            } else p.s = Math.max(0, p.s - dt * 4)
-            const x = cx + Math.cos(p.a) * p.r, y = cy + Math.sin(p.a) * p.r * 0.92
-            el.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) rotate(${p.a + Math.PI / 2}rad) scale(${p.s})`
-            el.style.opacity = String(p.gone ? p.s : 1)
-        })
-        if (!s.done && s.gone >= items.length) {
-            s.done = true
-            fx.sound("water")
-            fx.haptic("success")
-            timers.after(1300, props.done)
-        }
-        if (s.done) s.clear = Math.min(1, s.clear + dt * 0.7)
-        return true
-    })
-
-    const waterTone = dark ? [205, 45, 26] : [200, 70, 80]
-    return (
-        <div ref={stage} style={{ position: "absolute", inset: 0, cursor: "grab" }}>
-            <div style={{ position: "absolute", inset: 0, background: dark ? "linear-gradient(180deg, #15161B, #101115)" : "linear-gradient(180deg, #F6F3EE, #ECE8E1)" }} />
-            <div style={{ position: "absolute", left: cx - R - 14, top: cy - R - 14, width: D + 28, height: D + 28, borderRadius: "50%", background: dark ? "linear-gradient(160deg,#2C2E36,#1C1D23)" : "linear-gradient(160deg,#FFFFFF,#E4E1DB)", boxShadow: `0 20px 50px rgba(0,0,0,${dark ? 0.5 : 0.14}), inset 0 2px 0 rgba(255,255,255,${dark ? 0.06 : 1})` }} />
-            <div style={{ position: "absolute", left: cx - R, top: cy - R, width: D, height: D, borderRadius: "50%", overflow: "hidden", background: `radial-gradient(circle at 50% 50%, hsl(${waterTone[0]},${waterTone[1]}%,${waterTone[2] - 14}%) 0 6%, hsl(${waterTone[0]},${waterTone[1]}%,${waterTone[2]}%) 40%, hsl(${waterTone[0] + 8},${waterTone[1] - 10}%,${waterTone[2] + 6}%) 100%)`, boxShadow: "inset 0 8px 24px rgba(0,0,0,.18)" }}>
-                <div ref={water} style={{ position: "absolute", inset: "-10%", borderRadius: "50%", background: `repeating-conic-gradient(from 0deg, rgba(255,255,255,${dark ? 0.05 : 0.22}) 0deg 8deg, transparent 8deg 30deg)`, WebkitMaskImage: "radial-gradient(circle, transparent 0 8%, #000 9%, #000 60%, transparent 72%)", maskImage: "radial-gradient(circle, transparent 0 8%, #000 9%, #000 60%, transparent 72%)", opacity: 0.9 }} />
-                <div style={{ position: "absolute", left: "50%", top: "50%", width: 30, height: 30, margin: -15, borderRadius: "50%", background: dark ? "#07080A" : "#334452", boxShadow: "0 0 0 6px rgba(0,0,0,.12), inset 0 2px 6px rgba(0,0,0,.6)" }} />
-                <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 35% 25%, rgba(255,255,255,.35), transparent 40%)", opacity: 0.3 + st.current.clear * 0.7, transition: "opacity 1s" }} />
-            </div>
-            {items.map((it, i) => (
-                <div key={it.key} ref={(el) => { els.current[i] = el }} className="rk-abs" style={{ padding: "8px 12px", borderRadius: 6, background: "var(--paper)", color: "var(--paper-ink)", boxShadow: "0 4px 12px rgba(0,0,0,.18)", fontFamily: "var(--serif)", fontSize: clamp(w / 26, 13, 17), fontWeight: 500, maxWidth: Math.min(170, R * 0.9), textAlign: "center", lineHeight: 1.2, pointerEvents: "none" }}>
-                    {it.text}
-                </div>
-            ))}
-            <button type="button" className="rk-btn soft" style={{ right: 14, bottom: 14, minHeight: 44, padding: "0 16px" }} disabled={gone >= items.length}
-                onClick={() => { st.current.omega = clamp(st.current.omega + (st.current.omega >= 0 ? 2.4 : -2.4), -5.5, 5.5); fx.sound("water"); fx.haptic("medium") }}>
-                Flush
-            </button>
         </div>
     )
 }
@@ -2286,142 +2202,6 @@ function RitualVacuum(props: RitualProps) {
             <div ref={nozzle} className="rk-abs" style={{ width: 70, height: 46, pointerEvents: "none" }}>
                 <div style={{ position: "absolute", inset: 0, borderRadius: "22px 22px 14px 14px", background: dark ? "linear-gradient(180deg,#4A4D5A,#30323B)" : "linear-gradient(180deg,#FFFFFF,#D8D5CF)", boxShadow: "0 8px 20px rgba(0,0,0,.25)" }} />
                 <div style={{ position: "absolute", left: 10, right: 10, top: 6, height: 8, borderRadius: 6, background: "#15161A", boxShadow: "inset 0 1px 3px rgba(0,0,0,.8)" }} />
-            </div>
-        </div>
-    )
-}
-
-/* ---------- 24 · SLINGSHOT — tension in the bands, a clean release, real distance ---------- */
-
-function RitualSlingshot(props: RitualProps) {
-    const { items, w, h, fx, reduced, dark, emo } = props
-    const stage = React.useRef<HTMLDivElement>(null)
-    const cx = w / 2, tipY = h * 0.64, half = Math.min(74, w * 0.19)
-    const restX = cx, restY = tipY + 8
-    const maxL = Math.min(h * 0.24, 160)
-    const horizon = h * 0.12
-    const [idx, setIdx] = React.useState(0)
-    const [phase, setPhase] = React.useState<"ready" | "pull" | "fly" | "done">("ready")
-    const chip = React.useRef<HTMLDivElement>(null)
-    const bandL = React.useRef<SVGLineElement>(null), bandR = React.useRef<SVGLineElement>(null)
-    const sky = React.useRef<HTMLDivElement>(null)
-    const st = React.useRef({ x: restX, y: restY, vx: 0, vy: 0, X: 0, Y: 0, Z: 0, VX: 0, VY: 0, VZ: 0, tension: 0, lastTick: 0, loop: null as Loop | null, sent: 0, appear: 0 })
-    const timers = useTimers()
-    const phaseRef = useLatest(phase)
-
-    useDrag(stage, stage, {
-        onStart: (d) => {
-            if (phaseRef.current !== "ready" || dist(d.x, d.y, st.current.x, st.current.y) > 80) return false
-            setPhase("pull")
-            st.current.loop = fx.loop("hum")
-            fx.haptic("light")
-        },
-        onMove: (d) => {
-            const s = st.current
-            const vx = d.x - restX, vy = d.y - restY
-            const L = Math.hypot(vx, vy) || 1
-            const soft = maxL * (1 - Math.exp((-L / maxL) * 1.25))
-            s.x = restX + (vx / L) * soft
-            s.y = restY + (vy / L) * soft
-            s.tension = soft / maxL
-            s.loop?.set(140 + s.tension * 220, 0.4 + s.tension)
-            const step = Math.floor(s.tension * 8)
-            if (step > s.lastTick) { fx.sound("tick", 0.8 + s.tension); fx.haptic("tick") }
-            s.lastTick = step
-        },
-        onEnd: () => {
-            const s = st.current
-            s.loop?.stop(); s.loop = null
-            s.lastTick = 0
-            if (phaseRef.current !== "pull") return
-            if (s.tension < 0.32) {
-                setPhase("ready")
-                props.hint("Pull a little farther, then let go")
-                fx.sound("boing", 0.7)
-                return
-            }
-            const dx = restX - s.x, dy = restY - s.y
-            const L = Math.hypot(dx, dy) || 1
-            const power = s.tension
-            s.X = s.x; s.Y = s.y; s.Z = 0
-            s.VX = (dx / L) * 420 * power
-            s.VY = (dy / L) * 900 * power - 260 * power
-            s.VZ = 2.4 + power * 4.4
-            setPhase("fly")
-            props.hint(null)
-            fx.sound("snap")
-            fx.sound("whoosh", 0.8 + power * 0.4)
-            fx.haptic("heavy")
-        },
-    }, phase === "ready" || phase === "pull")
-
-    useFrame((dt) => {
-        const s = st.current
-        const ph = phaseRef.current
-        let sx = s.x, sy = s.y, scale = 1, op = 1
-        if (ph === "ready") {
-            const xx = { x: s.x, v: s.vx }, yy = { x: s.y, v: s.vy }
-            springTo(xx, restX, dt, 260, 16)
-            springTo(yy, restY, dt, 260, 16)
-            s.x = xx.x; s.vx = xx.v; s.y = yy.x; s.vy = yy.v
-            s.appear = Math.min(1, s.appear + dt * 3)
-            sx = s.x; sy = s.y
-            scale = 0.7 + 0.3 * smooth(s.appear)
-        } else if (ph === "fly") {
-            s.VY += 240 * dt
-            s.X += s.VX * dt; s.Y += s.VY * dt; s.Z += s.VZ * dt
-            const k = 1 / (1 + s.Z)
-            sx = cx + (s.X - cx) * k
-            sy = horizon + (s.Y - horizon) * k
-            scale = k
-            op = clamp((k - 0.08) * 7, 0, 1)
-            if (k < 0.09 || sy < -40 || sx < -60 || sx > w + 60) {
-                if (!reduced) fx.burst(clamp(sx, 10, w - 10), clamp(sy, 10, h), { kind: "glow", n: 1, size: 3, color: hsl(emo.calmHue, 80, 80), life: 1.4 })
-                s.sent += 1
-                props.progress(s.sent / items.length)
-                fx.sound("chime", 1 + s.sent * 0.12)
-                if (s.sent >= items.length) {
-                    setPhase("done")
-                    fx.haptic("success")
-                    timers.after(700, props.done)
-                } else {
-                    s.x = restX; s.y = restY + 30; s.vx = 0; s.vy = 0; s.appear = 0
-                    setIdx(s.sent)
-                    setPhase("ready")
-                }
-                op = 0
-            }
-        }
-        if (chip.current) {
-            chip.current.style.transform = `translate3d(${sx}px, ${sy}px, 0) translate(-50%, -50%) scale(${scale})`
-            chip.current.style.opacity = String(ph === "done" ? 0 : op)
-        }
-        const bx = ph === "fly" || ph === "done" ? restX : sx, by = ph === "fly" || ph === "done" ? restY : sy
-        const tension = ph === "pull" ? s.tension : 0
-        for (const [el, x] of [[bandL.current, cx - half], [bandR.current, cx + half]] as const) {
-            if (!el) continue
-            el.setAttribute("x1", String(x)); el.setAttribute("y1", String(tipY))
-            el.setAttribute("x2", String(bx)); el.setAttribute("y2", String(by))
-            el.setAttribute("stroke-width", String(6 - tension * 3))
-        }
-        if (sky.current) sky.current.style.opacity = String(0.2 + (s.sent / items.length) * 0.8)
-    })
-
-    const item = items[Math.min(idx, items.length - 1)]
-    const wood = dark ? "#5B5F6E" : "#8A8F9C"
-    return (
-        <div ref={stage} style={{ position: "absolute", inset: 0 }}>
-            <div style={{ position: "absolute", inset: 0, background: dark ? "linear-gradient(180deg, #121827 0%, #1A1D2A 55%, #16171C 100%)" : "linear-gradient(180deg, #DCE9F7 0%, #EEF2F6 55%, #F3EFE8 100%)" }} />
-            <div ref={sky} style={{ position: "absolute", left: 0, right: 0, top: 0, height: h * 0.5, background: `radial-gradient(60% 70% at 50% 0%, ${hsl(emo.calmHue, 80, dark ? 60 : 85, dark ? 0.35 : 0.8)}, transparent 70%)`, opacity: 0.2, transition: "opacity 1.2s" }} />
-            <div style={{ position: "absolute", left: 0, right: 0, top: horizon, height: 1, background: "var(--line)" }} />
-            <svg width={w} height={h} style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-                <line ref={bandL} stroke={hsl(emo.hue, 55, dark ? 62 : 48)} strokeLinecap="round" />
-                <path d={`M ${cx - half} ${tipY} Q ${cx - half * 0.7} ${tipY + 70} ${cx} ${tipY + 92} Q ${cx + half * 0.7} ${tipY + 70} ${cx + half} ${tipY}`} fill="none" stroke={wood} strokeWidth="14" strokeLinecap="round" />
-                <line x1={cx} y1={tipY + 90} x2={cx} y2={h + 10} stroke={wood} strokeWidth="18" strokeLinecap="round" />
-                <line ref={bandR} stroke={hsl(emo.hue, 55, dark ? 62 : 48)} strokeLinecap="round" />
-            </svg>
-            <div ref={chip} className="rk-abs" style={{ padding: "10px 16px", borderRadius: 999, background: "var(--surface)", boxShadow: "var(--shadow-2)", cursor: phase === "ready" ? "grab" : "default", maxWidth: Math.min(240, w * 0.6), whiteSpace: "nowrap" }}>
-                <WordBody item={item} size={stageFont(w, 0.92)} imgSize={30} style={{ whiteSpace: "nowrap" }} />
             </div>
         </div>
     )
@@ -2769,79 +2549,6 @@ function RitualCloudPass(props: RitualProps) {
     )
 }
 
-/* ---------- 39 · BLACK HOLE — gravity wins, eventually ---------- */
-
-function RitualBlackHole(props: RitualProps) {
-    const { items, w, h, fx, reduced, dark } = props
-    const cx = w / 2, cy = h * 0.46
-    const base = Math.min(w, h)
-    const orbits = React.useRef(items.map((_, i) => ({ r: base * (0.2 + i * 0.075), a: (i / items.length) * Math.PI * 2, gone: false, s: 1 })))
-    const els = React.useRef<(HTMLDivElement | null)[]>([])
-    const ring = React.useRef<HTMLDivElement>(null)
-    const stars = React.useRef<HTMLDivElement>(null)
-    const [holding, setHolding] = React.useState(false)
-    const st = React.useRef({ G: 0, spin: 0, gone: 0, done: false, loop: null as Loop | null, calm: 0 })
-    const timers = useTimers()
-    const hold = useHold(() => { if (!st.current.done) { setHolding(true); st.current.loop = fx.loop("hum"); fx.haptic("light") } }, () => { setHolding(false); st.current.loop?.stop(); st.current.loop = null })
-
-    useFrame((dt) => {
-        const s = st.current
-        s.G += ((holding ? 1 : 0) - s.G) * Math.min(1, dt * (holding ? 1.2 : 2))
-        s.loop?.set(90 + s.G * 120, 0.5 + s.G)
-        s.spin += dt * (0.6 + s.G * 2.4) * (1 - s.calm * 0.8)
-        if (ring.current) ring.current.style.transform = `translate(-50%, -50%) rotate(${s.spin}rad) scale(${1 + s.G * 0.12})`
-        orbits.current.forEach((o, i) => {
-            const el = els.current[i]
-            if (!el) return
-            if (!o.gone) {
-                o.a += dt * 0.55 * Math.pow((base * 0.2) / Math.max(20, o.r), 1.5) * (1 + s.G * 1.5)
-                if (s.G > 0.05) o.r -= s.G * dt * (16 + 1400 / Math.max(30, o.r))
-                if (o.r < 30) {
-                    o.gone = true
-                    s.gone += 1
-                    fx.sound("pop", 0.6)
-                    fx.haptic("medium")
-                    if (!reduced) fx.burst(cx, cy, { kind: "ring", n: 1, size: 30, color: "rgba(255,210,160,.9)", life: 0.6 })
-                    props.progress(s.gone / items.length)
-                }
-            } else o.s = Math.max(0, o.s - dt * 5)
-            const x = cx + Math.cos(o.a) * o.r, y = cy + Math.sin(o.a) * o.r * 0.8
-            const stretch = o.gone ? 1 : 1 + s.G * clamp(90 / o.r, 0, 2.4)
-            const tangent = o.a + Math.PI / 2
-            const shrink = clamp(o.r / (base * 0.18), 0.25, 1) * o.s
-            el.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) rotate(${tangent}rad) scale(${stretch * shrink}, ${shrink / Math.sqrt(stretch)}) rotate(${-tangent}rad)`
-            el.style.opacity = String(o.gone ? o.s : clamp(o.r / 60, 0, 1))
-        })
-        if (!s.done && s.gone >= items.length) {
-            s.done = true
-            setHolding(false)
-            s.loop?.stop(); s.loop = null
-            fx.haptic("success")
-            timers.after(1500, props.done)
-        }
-        if (s.done) s.calm = Math.min(1, s.calm + dt * 0.6)
-        if (stars.current) stars.current.style.opacity = String(0.25 + s.calm * 0.75)
-    })
-
-    const starDots = React.useMemo(() => Array.from({ length: 46 }, (_, i) => ({ x: hashNoise(i, 21) * 100, y: hashNoise(i, 22) * 100, s: 1 + hashNoise(i, 23) * 2 })), [])
-    const coreR = clamp(base * 0.07, 22, 34)
-    return (
-        <div style={{ position: "absolute", inset: 0, cursor: "pointer" }} {...hold} role="button" tabIndex={0} aria-label="Hold to deepen the gravity">
-            <div style={{ position: "absolute", inset: 0, background: dark ? "radial-gradient(70% 60% at 50% 46%, #1A1626, #0B0A10 75%)" : "radial-gradient(70% 60% at 50% 46%, #ECE6F7, #D9D2E6 80%)" }} />
-            <div ref={stars} style={{ position: "absolute", inset: 0, opacity: 0.25 }}>
-                {starDots.map((d, i) => <i key={i} style={{ position: "absolute", left: `${d.x}%`, top: `${d.y}%`, width: d.s, height: d.s, borderRadius: "50%", background: dark ? "#fff" : "#6B5F86", opacity: 0.6 }} />)}
-            </div>
-            <div ref={ring} style={{ position: "absolute", left: cx, top: cy, width: coreR * 4.2, height: coreR * 4.2 * 0.8, borderRadius: "50%", background: "conic-gradient(from 0deg, rgba(255,190,120,.0), rgba(255,190,120,.9), rgba(255,240,220,.95), rgba(160,140,255,.7), rgba(255,190,120,0))", WebkitMaskImage: "radial-gradient(closest-side, transparent 52%, #000 56%, #000 80%, transparent 100%)", maskImage: "radial-gradient(closest-side, transparent 52%, #000 56%, #000 80%, transparent 100%)", filter: "blur(1.5px)" }} />
-            <div style={{ position: "absolute", left: cx - coreR, top: cy - coreR, width: coreR * 2, height: coreR * 2, borderRadius: "50%", background: "#050507", boxShadow: `0 0 ${holding ? 40 : 24}px ${holding ? 14 : 6}px rgba(255,190,130,${dark ? 0.35 : 0.5})`, transition: "box-shadow .5s" }} />
-            {items.map((it, i) => (
-                <div key={it.key} ref={(el) => { els.current[i] = el }} className="rk-abs" style={{ padding: "7px 12px", borderRadius: 999, background: dark ? "rgba(255,255,255,.1)" : "rgba(255,255,255,.85)", boxShadow: "0 4px 14px rgba(0,0,0,.15)", whiteSpace: "nowrap", pointerEvents: "none" }}>
-                    <WordBody item={{ ...it, img: null }} size={stageFont(w, 0.86)} style={{ whiteSpace: "nowrap" }} />
-                </div>
-            ))}
-        </div>
-    )
-}
-
 /* ---------- 40 · PAPER PLANE — fold it, then let the wind finish the job ---------- */
 
 function RitualPaperPlane(props: RitualProps) {
@@ -2869,7 +2576,10 @@ function RitualPaperPlane(props: RitualProps) {
         onEnd: (d) => {
             const s = st.current
             s.drag = false
-            const sp = Math.hypot(d.vx, d.vy)
+            let sp = Math.hypot(d.vx, d.vy)
+            const travel = Math.hypot(d.dx, d.dy)
+            // A long deliberate throw counts too, even if the finger slowed at the end.
+            if (sp <= 350 && travel > 110) { d.vx = (d.dx / travel) * 700; d.vy = (d.dy / travel) * 700; sp = 700 }
             if (sp > 350) {
                 s.vx = d.vx * 0.9; s.vy = d.vy * 0.9 - 80; s.t = 0
                 setPhase("fly")
@@ -4859,6 +4569,509 @@ const RITUAL_COMPONENTS: Record<number, React.ComponentType<RitualProps>> = {
 }
 
 /* ================================================================== */
+/* Showcase rituals: physical, lit, layered worlds                     */
+/* ================================================================== */
+
+/* ---------- 1 · POP — iridescent film, jelly physics, chain pops ---------- */
+
+function RitualPop(props: RitualProps) {
+    const { items, w, h, fx, reduced, emo, dark } = props
+    const n = items.length
+    const cols = n <= 2 ? n : n <= 4 ? 2 : 3
+    const rows = Math.ceil(n / cols)
+    const r = Math.round(clamp(Math.min(w / cols / 2 - 14, (h - 24) / rows / 2 - 14), 44, 92))
+    const homes = React.useMemo(() => scatter(n, w, h, r, 10, 10), [n, w, h, r])
+    const B = React.useRef(items.map((_, i) => ({ x: homes[i].x, y: homes[i].y, vx: 0, vy: 0, wob: { x: 0, v: 0 }, tension: 0, held: false, popped: false })))
+    const nodes = React.useRef<(HTMLDivElement | null)[]>([])
+    const films = React.useRef<(HTMLDivElement | null)[]>([])
+    const ghosts = React.useRef<(HTMLDivElement | null)[]>([])
+    const [popped, setPopped] = React.useState(0)
+    const chain = React.useRef({ last: 0, k: 0 })
+    const timers = useTimers()
+
+    const pop = (i: number) => {
+        const b = B.current[i]
+        if (b.popped) return
+        b.popped = true
+        b.held = false
+        const now = performance.now()
+        chain.current.k = now - chain.current.last < 1400 ? chain.current.k + 1 : 0
+        chain.current.last = now
+        const k = chain.current.k
+        const power = 0.6 + b.tension * 0.6 + Math.min(4, k) * 0.12
+        Sound.note(PENTA[Math.min(7, k + 1)], "sine", 0.6, 0.04)
+        fx.sound("pop", 0.9 + k * 0.08 + b.tension * 0.2)
+        fx.haptic(b.tension > 0.6 ? "heavy" : "medium")
+        fx.burst(b.x, b.y, { kind: "ring", n: 1, size: r * (1.2 + power * 0.4), color: hsl(emo.calmHue, 80, dark ? 78 : 60, 0.85), life: 0.6 })
+        fx.burst(b.x, b.y, { kind: "glow", n: 1, size: r * 0.5, color: "rgba(255,255,255,.55)", life: 0.35 })
+        fx.burst(b.x, b.y, { kind: "shard", n: Math.round(14 * power), size: 4, speed: 280 * power, color: [hsl(emo.hue + 40, 90, 75, 0.8), hsl(emo.calmHue, 90, 75, 0.8), hsl(emo.calmHue + 120, 90, 80, 0.8)], life: 0.9 })
+        fx.burst(b.x, b.y, { kind: "drop", n: Math.round(16 * power), size: 2.2, speed: 320 * power, color: [hsl(emo.calmHue, 80, 80), "rgba(255,255,255,.9)"], life: 0.8, gravity: 420 })
+        // Shockwave nudges the neighbours and sets them wobbling.
+        B.current.forEach((o, j) => {
+            if (j === i || o.popped) return
+            const dx = o.x - b.x, dy = o.y - b.y, d = Math.max(30, Math.hypot(dx, dy))
+            const f = (9000 * power) / d
+            o.vx += (dx / d) * f * 0.02; o.vy += (dy / d) * f * 0.02
+            o.wob.v += f * 0.004
+        })
+        const g = ghosts.current[i]
+        if (g) { g.style.transition = "transform 1.2s cubic-bezier(.22,1,.36,1), opacity 1.2s ease, filter 1.2s"; g.style.transform = `translate(-50%, -50%) translateY(-${r * 0.9}px) scale(1.05)`; g.style.opacity = "0"; g.style.filter = "blur(6px)" }
+        const next = B.current.filter((o) => o.popped).length
+        setPopped(next)
+        props.progress(next / n)
+        if (next === n) timers.after(700, props.done)
+    }
+
+    useFrame((dt, t) => {
+        B.current.forEach((b, i) => {
+            const el = nodes.current[i]
+            if (!el) return
+            if (b.popped) { el.style.opacity = "0"; el.style.transform += " scale(1.3)"; return }
+            // Float: spring toward a slowly wandering home, avoid neighbours.
+            const hx = homes[i].x + (reduced ? 0 : Math.sin(t * 0.45 + i * 1.7) * 9)
+            const hy = homes[i].y + (reduced ? 0 : Math.cos(t * 0.38 + i * 2.3) * 11)
+            b.vx += (hx - b.x) * 6 * dt; b.vy += (hy - b.y) * 6 * dt
+            B.current.forEach((o, j) => {
+                if (j === i || o.popped) return
+                const dx = b.x - o.x, dy = b.y - o.y, d = Math.hypot(dx, dy) || 1, min = r * 2.05
+                if (d < min) { const f = (min - d) * 18 * dt; b.vx += (dx / d) * f; b.vy += (dy / d) * f }
+            })
+            b.vx *= Math.pow(0.12, dt); b.vy *= Math.pow(0.12, dt)
+            b.x = clamp(b.x + b.vx * dt, r, w - r); b.y = clamp(b.y + b.vy * dt, r, h - r)
+            b.tension = b.held ? Math.min(1, b.tension + dt * 1.6) : Math.max(0, b.tension - dt * 4)
+            springTo(b.wob, 0, dt, 140 + b.tension * 200, 4)
+            if (b.held && !reduced) b.wob.v += Math.sin(t * 40) * b.tension * 30 * dt
+            const wv = clamp(b.wob.x, -0.18, 0.18)
+            const breath = reduced ? 0 : Math.sin(t * 1.3 + i) * 0.015
+            const sx = 1 + wv + breath + b.tension * 0.08, sy = 1 - wv + breath - b.tension * 0.12
+            el.style.transform = `translate3d(${b.x - r}px, ${b.y - r}px, 0) scale(${sx}, ${sy})`
+            const f = films.current[i]
+            if (f) { f.style.transform = `rotate(${(t * 22 + i * 60) % 360}deg)`; f.style.opacity = String((dark ? 0.75 : 0.6) + b.tension * 0.35) }
+            const g = ghosts.current[i]
+            if (g && !b.popped) g.style.left = `${b.x}px`, g.style.top = `${b.y}px`
+        })
+    })
+
+    return (
+        <div style={{ position: "absolute", inset: 0 }}>
+            <div style={{ position: "absolute", inset: 0, background: dark ? `radial-gradient(120% 80% at 50% 0%, hsl(${emo.hue},35%,16%), #0B0B10 70%)` : `radial-gradient(120% 80% at 50% 0%, hsl(${emo.hue},70%,93%), #F4F1EC 75%)` }} />
+            {items.map((it, i) => (
+                <div key={"g" + it.key} ref={(el) => { ghosts.current[i] = el }} style={{ position: "absolute", left: homes[i].x, top: homes[i].y, transform: "translate(-50%, -50%)", pointerEvents: "none", zIndex: 1, maxWidth: r * 1.6, textAlign: "center", opacity: 0, color: "var(--stage-ink)", fontWeight: 650, fontSize: clamp(r / 4.3, 13, 18) }}>{it.text}</div>
+            ))}
+            {items.map((it, i) => (
+                <div key={it.key} ref={(el) => { nodes.current[i] = el }} className="rk-abs" style={{ width: r * 2, height: r * 2, zIndex: 2, transition: "opacity .14s" }}>
+                    <button type="button" aria-label={`Pop “${it.text}”`}
+                        onPointerDown={(e) => { e.preventDefault(); B.current[i].held = true; fx.haptic("tick"); fx.sound("tick", 0.6); try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId) } catch { /* ignore */ } }}
+                        onPointerUp={() => { if (B.current[i].held) pop(i) }}
+                        onPointerLeave={() => { B.current[i].held = false }}
+                        onPointerCancel={() => { B.current[i].held = false }}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pop(i) } }}
+                        style={{ position: "absolute", inset: 0, border: 0, padding: 0, margin: 0, borderRadius: "50%", cursor: "pointer", font: "inherit", display: "grid", placeItems: "center", touchAction: "none", overflow: "hidden", color: "var(--stage-ink)",
+                            background: dark ? `radial-gradient(circle at 50% 55%, hsla(${emo.hue},60%,40%,.05) 55%, hsla(${emo.calmHue},70%,60%,.22) 100%)` : `radial-gradient(circle at 50% 55%, rgba(255,255,255,.25) 55%, hsla(${emo.calmHue},70%,75%,.35) 100%)`,
+                            boxShadow: `inset 0 0 0 1px rgba(255,255,255,${dark ? 0.22 : 0.8}), 0 18px 40px rgba(0,0,0,${dark ? 0.45 : 0.1})` }}>
+                        {/* thin-film iridescence */}
+                        <div ref={(el) => { films.current[i] = el }} style={{ position: "absolute", inset: -2, borderRadius: "50%", background: `conic-gradient(from 0deg, hsla(${emo.hue},90%,70%,.55), hsla(${emo.calmHue},90%,70%,.55), hsla(${emo.calmHue + 120},90%,75%,.5), hsla(${emo.hue + 200},90%,75%,.5), hsla(${emo.hue},90%,70%,.55))`, WebkitMaskImage: "radial-gradient(circle, transparent 0 58%, rgba(0,0,0,.6) 72%, #000 100%)", maskImage: "radial-gradient(circle, transparent 0 58%, rgba(0,0,0,.6) 72%, #000 100%)", mixBlendMode: dark ? "screen" : "normal", pointerEvents: "none" }} />
+                        <span style={{ position: "absolute", left: "20%", top: "14%", width: "30%", height: "18%", borderRadius: "50%", background: "radial-gradient(closest-side, rgba(255,255,255,.95), rgba(255,255,255,0))", transform: "rotate(-30deg)", pointerEvents: "none" }} />
+                        <span style={{ position: "absolute", right: "22%", bottom: "16%", width: "12%", height: "8%", borderRadius: "50%", background: "radial-gradient(closest-side, rgba(255,255,255,.7), rgba(255,255,255,0))", pointerEvents: "none" }} />
+                        <WordBody item={it} size={clamp(r / 4.3, 13, 18)} layout="col" imgSize={Math.round(r * 0.6)} style={{ maxWidth: r * 1.5, pointerEvents: "none", position: "relative" }} />
+                    </button>
+                </div>
+            ))}
+            {popped > 0 && popped < n ? <div style={{ position: "absolute", right: 14, bottom: 12, fontSize: 13, fontWeight: 600, color: "var(--ink-2)", pointerEvents: "none" }}>{n - popped} left</div> : null}
+        </div>
+    )
+}
+
+/* ---------- 22 · FLUSH — a real vortex: stir it and everything spirals away ---------- */
+
+function RitualFlush(props: RitualProps) {
+    const { items, w, h, fx, reduced, dark } = props
+    const stage = React.useRef<HTMLDivElement>(null)
+    const cv = React.useRef<HTMLCanvasElement>(null)
+    const D = Math.min(w * 0.9, h * 0.72, 480)
+    const cx = w / 2, cy = h * 0.47, R = D / 2
+    const papers = React.useRef(items.map((_, i) => ({ a: (i / items.length) * Math.PI * 2 + 0.4, r: R * (0.5 + hashNoise(i, 7) * 0.3), gone: false, s: 1, wet: 0 })))
+    const foam = React.useRef(Array.from({ length: reduced ? 0 : 70 }, () => ({ a: Math.random() * 6.28, r: R * (0.15 + Math.random() * 0.82), s: 0.6 + Math.random() * 1.6 })))
+    const els = React.useRef<(HTMLDivElement | null)[]>([])
+    const st = React.useRef({ omega: 0.15, theta: 0, lastAng: null as number | null, lastT: 0, gone: 0, done: false, loop: null as Loop | null, clear: 0 })
+    const [gone, setGone] = React.useState(0)
+    const timers = useTimers()
+
+    useDrag(stage, stage, {
+        onStart: (d) => { st.current.lastAng = Math.atan2(d.y - cy, d.x - cx); st.current.lastT = performance.now(); fx.haptic("light") },
+        onMove: (d) => {
+            const s = st.current
+            const a = Math.atan2(d.y - cy, d.x - cx)
+            if (s.lastAng == null) { s.lastAng = a; return }
+            let da = a - s.lastAng
+            if (da > Math.PI) da -= Math.PI * 2
+            if (da < -Math.PI) da += Math.PI * 2
+            s.lastAng = a
+            const now = performance.now(), dtm = Math.max(8, now - s.lastT) / 1000
+            s.lastT = now
+            if (dist(d.x, d.y, cx, cy) < R * 1.15) s.omega = clamp(s.omega + (da / dtm) * 0.06, -6, 6)
+        },
+        onEnd: () => { st.current.lastAng = null },
+    })
+
+    useFrame((dt, t) => {
+        const s = st.current
+        s.omega *= Math.pow(s.done ? 0.3 : 0.75, dt)
+        if (!s.done && Math.abs(s.omega) < 0.15) s.omega = 0.15 * Math.sign(s.omega || 1)
+        s.theta += s.omega * dt
+        const speed = Math.abs(s.omega)
+        if (speed > 0.8 && !s.loop) s.loop = fx.loop("wind")
+        if (s.loop) { s.loop.set(220 + speed * 110, Math.min(1.5, speed / 2.6)); if (speed < 0.5) { s.loop.stop(); s.loop = null } }
+        if (s.done) s.clear = Math.min(1, s.clear + dt * 0.6)
+
+        // Water
+        const c = cv.current, g = c?.getContext("2d")
+        if (c && g) {
+            const dpr = Math.min(2, window.devicePixelRatio || 1)
+            if (c.width !== Math.round(D * dpr)) { c.width = Math.round(D * dpr); c.height = Math.round(D * dpr) }
+            g.setTransform(dpr, 0, 0, dpr, 0, 0)
+            g.clearRect(0, 0, D, D)
+            g.save(); g.beginPath(); g.arc(R, R, R, 0, Math.PI * 2); g.clip()
+            const deep = g.createRadialGradient(R, R, 0, R, R, R)
+            const lc = s.clear
+            deep.addColorStop(0, dark ? "#03070C" : "#1D3A52")
+            deep.addColorStop(0.18, dark ? `hsl(205,55%,${14 + lc * 6}%)` : `hsl(200,60%,${40 + lc * 14}%)`)
+            deep.addColorStop(1, dark ? `hsl(200,45%,${26 + lc * 8}%)` : `hsl(195,65%,${74 + lc * 10}%)`)
+            g.fillStyle = deep; g.fillRect(0, 0, D, D)
+            // Spiral arms tighten as the swirl builds.
+            const twist = 1.4 + speed * 0.9
+            const arms = 7
+            g.lineCap = "round"
+            for (let k = 0; k < arms; k++) {
+                g.beginPath()
+                for (let rr = R; rr > 8; rr -= 4) {
+                    const ang = s.theta * (1 + 30 / rr) + (k / arms) * Math.PI * 2 + Math.log(rr / R) * twist * Math.sign(s.omega || 1)
+                    const x = R + Math.cos(ang) * rr, y = R + Math.sin(ang) * rr
+                    rr === R ? g.moveTo(x, y) : g.lineTo(x, y)
+                }
+                g.strokeStyle = `rgba(255,255,255,${(dark ? 0.04 : 0.1) + Math.min(1, speed / 4) * (dark ? 0.12 : 0.22)})`
+                g.lineWidth = 2 + Math.min(1, speed / 4) * 3
+                g.stroke()
+            }
+            // Foam
+            for (const f of foam.current) {
+                f.a += s.omega * dt * (1 + 40 / Math.max(20, f.r))
+                if (speed > 1.2) f.r -= (speed - 1.2) * dt * 22
+                if (f.r < 10) { f.r = R * (0.75 + Math.random() * 0.22); f.a = Math.random() * 6.28 }
+                g.fillStyle = `rgba(255,255,255,${0.25 + Math.min(0.5, speed * 0.1)})`
+                g.beginPath(); g.arc(R + Math.cos(f.a) * f.r, R + Math.sin(f.a) * f.r, f.s, 0, Math.PI * 2); g.fill()
+            }
+            // Caustic light, stronger as the water clears.
+            if (!reduced) for (let k = 0; k < 4; k++) {
+                const x = R + Math.sin(t * 0.4 + k * 2) * R * 0.5, y = R + Math.cos(t * 0.33 + k * 1.4) * R * 0.5
+                const lg = g.createRadialGradient(x, y, 0, x, y, R * 0.5)
+                lg.addColorStop(0, `rgba(255,255,255,${0.05 + lc * 0.12})`); lg.addColorStop(1, "rgba(255,255,255,0)")
+                g.fillStyle = lg; g.fillRect(0, 0, D, D)
+            }
+            // Drain depth
+            const dg = g.createRadialGradient(R, R, 0, R, R, 26 + speed * 6)
+            dg.addColorStop(0, "rgba(0,0,0,.95)"); dg.addColorStop(1, "rgba(0,0,0,0)")
+            g.fillStyle = dg; g.beginPath(); g.arc(R, R, 26 + speed * 6, 0, Math.PI * 2); g.fill()
+            g.restore()
+        }
+        // Papers
+        papers.current.forEach((p, i) => {
+            const el = els.current[i]
+            if (!el) return
+            if (!p.gone) {
+                p.a += (s.omega * (1 + 40 / Math.max(30, p.r)) * 0.55) * dt
+                const pull = Math.max(0, speed - 1.1)
+                p.r = Math.max(0, p.r - pull * dt * (14 + (R - p.r) * 0.14))
+                p.s = clamp(p.r / (R * 0.6), 0.12, 1)
+                p.wet = 1 - clamp(p.r / (R * 0.8), 0, 1)
+                if (p.r < 16) {
+                    p.gone = true
+                    s.gone += 1
+                    setGone(s.gone)
+                    fx.sound("drip", 0.6)
+                    Sound.note(PENTA[Math.min(7, s.gone * 2)], "sine", 0.9, 0.035)
+                    fx.haptic("medium")
+                    props.progress(s.gone / items.length)
+                    fx.burst(cx, cy, { kind: "ring", n: 1, size: 34, color: "rgba(255,255,255,.75)", life: 0.7 })
+                    if (!reduced) fx.burst(cx, cy, { kind: "bubble", n: 8, size: 3, speed: 60, angle: -Math.PI / 2, spread: 1.5, color: "rgba(255,255,255,.8)", life: 1.2, gravity: -60 })
+                }
+            } else p.s = Math.max(0, p.s - dt * 4)
+            const x = cx + Math.cos(p.a) * p.r, y = cy + Math.sin(p.a) * p.r
+            el.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) rotate(${p.a + Math.PI / 2}rad) scale(${p.s}, ${p.s * (1 - p.wet * 0.25)})`
+            el.style.opacity = String(p.gone ? p.s : 1 - p.wet * 0.25)
+            el.style.filter = p.wet > 0.3 ? `brightness(${1 - p.wet * 0.3})` : ""
+        })
+        if (!s.done && s.gone >= items.length) {
+            s.done = true
+            fx.sound("water")
+            fx.haptic("success")
+            timers.after(1500, props.done)
+        }
+    })
+
+    return (
+        <div ref={stage} style={{ position: "absolute", inset: 0, cursor: "grab" }}>
+            <div style={{ position: "absolute", inset: 0, background: dark ? "radial-gradient(90% 70% at 50% 47%, #18202B, #0C0D11 75%)" : "radial-gradient(90% 70% at 50% 47%, #FFFFFF, #E9E5DE 80%)" }} />
+            <div style={{ position: "absolute", left: cx - R - 16, top: cy - R - 16, width: D + 32, height: D + 32, borderRadius: "50%", background: dark ? "linear-gradient(160deg,#30333D,#1A1B21)" : "linear-gradient(160deg,#FFFFFF,#DCD8D1)", boxShadow: `0 24px 60px rgba(0,0,0,${dark ? 0.55 : 0.16}), inset 0 2px 0 rgba(255,255,255,${dark ? 0.07 : 1}), inset 0 -6px 14px rgba(0,0,0,.12)` }} />
+            <canvas ref={cv} style={{ position: "absolute", left: cx - R, top: cy - R, width: D, height: D, borderRadius: "50%", boxShadow: "inset 0 10px 30px rgba(0,0,0,.3)" }} />
+            <div style={{ position: "absolute", left: cx - R, top: cy - R, width: D, height: D, borderRadius: "50%", pointerEvents: "none", boxShadow: "inset 0 14px 30px rgba(0,0,0,.28), inset 0 -2px 0 rgba(255,255,255,.15)" }} />
+            {items.map((it, i) => (
+                <div key={it.key} ref={(el) => { els.current[i] = el }} className="rk-abs" style={{ padding: "8px 12px", borderRadius: 6, background: "var(--paper)", color: "var(--paper-ink)", boxShadow: "0 6px 14px rgba(0,0,0,.25)", fontFamily: "var(--serif)", fontSize: clamp(w / 26, 13, 17), fontWeight: 500, maxWidth: Math.min(170, R * 0.9), textAlign: "center", lineHeight: 1.2, pointerEvents: "none" }}>
+                    {it.text}
+                </div>
+            ))}
+            <button type="button" className="rk-btn soft" style={{ right: 14, bottom: 14, minHeight: 44, padding: "0 16px" }} disabled={gone >= items.length}
+                onClick={() => { st.current.omega = clamp(st.current.omega + (st.current.omega >= 0 ? 2.4 : -2.4), -6, 6); fx.sound("water"); fx.haptic("medium") }}>
+                Flush
+            </button>
+        </div>
+    )
+}
+
+/* ---------- 39 · BLACK HOLE — an accretion disk you can't look away from ---------- */
+
+function RitualBlackHole(props: RitualProps) {
+    const { items, w, h, fx, reduced, dark } = props
+    const cx = w / 2, cy = h * 0.46
+    const base = Math.min(w, h)
+    const cv = React.useRef<HTMLCanvasElement>(null)
+    const orbits = React.useRef(items.map((_, i) => ({ r: base * (0.24 + i * 0.07), a: (i / items.length) * Math.PI * 2, gone: false, s: 1 })))
+    const els = React.useRef<(HTMLDivElement | null)[]>([])
+    const disk = React.useRef(Array.from({ length: reduced ? 120 : 420 }, () => { const r = base * (0.07 + Math.pow(Math.random(), 1.6) * 0.2); return { r, a: Math.random() * 6.28, s: 0.5 + Math.random() * 1.4 } }))
+    const stars = React.useRef(Array.from({ length: 140 }, () => ({ x: Math.random() * w, y: Math.random() * h, s: 0.4 + Math.random() * 1.3 })))
+    const [holding, setHolding] = React.useState(false)
+    const st = React.useRef({ G: 0, gone: 0, done: false, loop: null as Loop | null, calm: 0 })
+    const timers = useTimers()
+    const hold = useHold(() => { if (!st.current.done) { setHolding(true); st.current.loop = fx.loop("hum"); fx.haptic("light") } }, () => { setHolding(false); st.current.loop?.stop(); st.current.loop = null })
+    const core = clamp(base * 0.065, 20, 32)
+
+    useFrame((dt, t) => {
+        const s = st.current
+        s.G += ((holding ? 1 : 0) - s.G) * Math.min(1, dt * (holding ? 1.2 : 2))
+        s.loop?.set(70 + s.G * 140, 0.5 + s.G)
+        if (s.done) s.calm = Math.min(1, s.calm + dt * 0.5)
+        const c = cv.current, g = c?.getContext("2d")
+        if (c && g) {
+            const dpr = Math.min(2, window.devicePixelRatio || 1)
+            if (c.width !== Math.round(w * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr) }
+            g.setTransform(dpr, 0, 0, dpr, 0, 0)
+            g.fillStyle = dark ? "#06060A" : "#1B1830"
+            g.fillRect(0, 0, w, h)
+            // Stars fall inward and stretch while gravity is high.
+            for (const p of stars.current) {
+                const dx = p.x - cx, dy = p.y - cy, d = Math.hypot(dx, dy) || 1
+                const pull = (s.G * 140 + 6) * dt * (1 + 60 / d)
+                p.x -= (dx / d) * pull; p.y -= (dy / d) * pull
+                if (d < core * 1.4) { const a = Math.random() * 6.28, rr = Math.max(w, h) * 0.6; p.x = cx + Math.cos(a) * rr; p.y = cy + Math.sin(a) * rr }
+                const len = 1 + s.G * 18 * (60 / d)
+                g.strokeStyle = `rgba(255,255,255,${0.35 + 0.4 * Math.sin(t * 2 + p.s * 9)})`
+                g.lineWidth = p.s
+                g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(p.x + (dx / d) * len, p.y + (dy / d) * len); g.stroke()
+            }
+            // Accretion disk (tilted), additive glow.
+            g.globalCompositeOperation = "lighter"
+            const tilt = 0.32
+            for (const p of disk.current) {
+                p.a += dt * (0.9 + s.G * 2.2) * (1 - s.calm * 0.6) * Math.pow((base * 0.08) / p.r, 1.5) * 2.2
+                const x = cx + Math.cos(p.a) * p.r, y = cy + Math.sin(p.a) * p.r * tilt
+                const heat = 1 - (p.r - base * 0.07) / (base * 0.2)
+                const behind = Math.sin(p.a) < 0 && Math.abs(Math.cos(p.a) * p.r) < core
+                if (behind) continue
+                g.fillStyle = `hsla(${lerp(270, 38, heat)}, 95%, ${lerp(55, 85, heat)}%, ${0.35 + heat * 0.4})`
+                g.beginPath(); g.arc(x, y, p.s * (1 + s.G * 0.4), 0, Math.PI * 2); g.fill()
+            }
+            // Photon ring
+            const pr = g.createRadialGradient(cx, cy, core * 0.9, cx, cy, core * 2.2)
+            pr.addColorStop(0, `rgba(255,220,170,${0.75 + s.G * 0.25})`); pr.addColorStop(0.35, "rgba(255,150,90,.25)"); pr.addColorStop(1, "rgba(120,80,255,0)")
+            g.fillStyle = pr; g.beginPath(); g.arc(cx, cy, core * 2.2, 0, Math.PI * 2); g.fill()
+            g.globalCompositeOperation = "source-over"
+            g.fillStyle = "#000"; g.beginPath(); g.arc(cx, cy, core, 0, Math.PI * 2); g.fill()
+        }
+        orbits.current.forEach((o, i) => {
+            const el = els.current[i]
+            if (!el) return
+            if (!o.gone) {
+                o.a += dt * 0.55 * Math.pow((base * 0.2) / Math.max(20, o.r), 1.5) * (1 + s.G * 1.5)
+                if (s.G > 0.05) o.r -= s.G * dt * (16 + 1400 / Math.max(30, o.r))
+                if (o.r < core + 6) {
+                    o.gone = true
+                    s.gone += 1
+                    fx.sound("pop", 0.5)
+                    Sound.note(PENTA[Math.min(7, s.gone * 2 - 1)], "sine", 1.2, 0.035)
+                    fx.haptic("medium")
+                    fx.burst(cx, cy, { kind: "ring", n: 1, size: core * 1.8, color: "rgba(255,210,160,.9)", life: 0.7 })
+                    fx.burst(cx, cy, { kind: "spark", n: 18, size: 2, speed: 160, color: ["#FFD9A8", "#FFFFFF", "#B8A4FF"], life: 0.7 })
+                    props.progress(s.gone / items.length)
+                }
+            } else o.s = Math.max(0, o.s - dt * 5)
+            const x = cx + Math.cos(o.a) * o.r, y = cy + Math.sin(o.a) * o.r * 0.78
+            const stretch = o.gone ? 1 : 1 + s.G * clamp(90 / o.r, 0, 2.6)
+            const tangent = o.a + Math.PI / 2
+            const shrink = clamp(o.r / (base * 0.18), 0.25, 1) * o.s
+            el.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) rotate(${tangent}rad) scale(${stretch * shrink}, ${shrink / Math.sqrt(stretch)}) rotate(${-tangent}rad)`
+            el.style.opacity = String(o.gone ? o.s : clamp((o.r - core) / 40, 0, 1))
+        })
+        if (!s.done && s.gone >= items.length) {
+            s.done = true
+            setHolding(false)
+            s.loop?.stop(); s.loop = null
+            fx.haptic("success")
+            timers.after(1600, props.done)
+        }
+    })
+
+    return (
+        <div style={{ position: "absolute", inset: 0, cursor: "pointer" }} {...hold} role="button" tabIndex={0} aria-label="Hold to deepen the gravity">
+            <canvas ref={cv} style={{ position: "absolute", inset: 0, width: w, height: h }} />
+            {items.map((it, i) => (
+                <div key={it.key} ref={(el) => { els.current[i] = el }} className="rk-abs" style={{ padding: "7px 13px", borderRadius: 999, background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.18)", color: "#F4F0FF", whiteSpace: "nowrap", pointerEvents: "none", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", fontWeight: 600, fontSize: stageFont(w, 0.86) }}>
+                    {it.text}
+                </div>
+            ))}
+            <div style={{ position: "absolute", left: 0, right: 0, bottom: 14, textAlign: "center", fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,.7)", pointerEvents: "none", opacity: holding ? 1 : 0.8 }}>{holding ? "Gravity rising…" : "Hold anywhere"}</div>
+        </div>
+    )
+}
+
+/* ---------- 24 · SLINGSHOT — tension, release, and a word that becomes a far star ---------- */
+
+function RitualSlingshot(props: RitualProps) {
+    const { items, w, h, fx, reduced, dark, emo } = props
+    const stage = React.useRef<HTMLDivElement>(null)
+    const cx = w / 2, tipY = h * 0.64, half = Math.min(74, w * 0.19)
+    const restX = cx, restY = tipY + 8
+    const maxL = Math.min(h * 0.24, 160)
+    const horizon = h * 0.16
+    const [idx, setIdx] = React.useState(0)
+    const [phase, setPhase] = React.useState<"ready" | "pull" | "fly" | "done">("ready")
+    const [stars, setStars] = React.useState<{ x: number; y: number; k: number }[]>([])
+    const chip = React.useRef<HTMLDivElement>(null)
+    const bandL = React.useRef<SVGPathElement>(null), bandR = React.useRef<SVGPathElement>(null)
+    const vignette = React.useRef<HTMLDivElement>(null)
+    const clouds = React.useRef<HTMLDivElement>(null)
+    const st = React.useRef({ x: restX, y: restY, vx: 0, vy: 0, X: 0, Y: 0, Z: 0, VX: 0, VY: 0, VZ: 0, tension: 0, lastTick: 0, loop: null as Loop | null, sent: 0, appear: 0, beat: 0, trail: 0 })
+    const timers = useTimers()
+    const phaseRef = useLatest(phase)
+
+    useDrag(stage, stage, {
+        onStart: (d) => {
+            if (phaseRef.current !== "ready" || dist(d.x, d.y, st.current.x, st.current.y) > 80) return false
+            setPhase("pull")
+            st.current.loop = fx.loop("hum")
+            fx.haptic("light")
+        },
+        onMove: (d) => {
+            const s = st.current
+            const vx = d.x - restX, vy = d.y - restY
+            const L = Math.hypot(vx, vy) || 1
+            const soft = maxL * (1 - Math.exp((-L / maxL) * 1.25))
+            s.x = restX + (vx / L) * soft
+            s.y = restY + (vy / L) * soft
+            s.tension = soft / maxL
+            s.loop?.set(110 + s.tension * 260, 0.4 + s.tension)
+            const step = Math.floor(s.tension * 8)
+            if (step > s.lastTick) { fx.sound("tick", 0.8 + s.tension); fx.haptic("tick") }
+            s.lastTick = step
+        },
+        onEnd: () => {
+            const s = st.current
+            s.loop?.stop(); s.loop = null
+            s.lastTick = 0
+            if (phaseRef.current !== "pull") return
+            if (s.tension < 0.32) { setPhase("ready"); props.hint("Pull a little farther, then let go"); fx.sound("boing", 0.7); return }
+            const dx = restX - s.x, dy = restY - s.y
+            const L = Math.hypot(dx, dy) || 1
+            const power = s.tension
+            s.X = s.x; s.Y = s.y; s.Z = 0
+            s.VX = (dx / L) * 420 * power
+            s.VY = (dy / L) * 900 * power - 260 * power
+            s.VZ = 2.4 + power * 4.4
+            setPhase("fly")
+            props.hint(null)
+            fx.sound("snap"); fx.sound("whoosh", 0.8 + power * 0.4)
+            fx.haptic("heavy")
+            fx.burst(restX, restY, { kind: "ring", n: 1, size: 60 * power, color: hsl(emo.calmHue, 80, dark ? 80 : 60, 0.8), life: 0.5 })
+        },
+    }, phase === "ready" || phase === "pull")
+
+    useFrame((dt, t) => {
+        const s = st.current
+        const ph = phaseRef.current
+        let sx = s.x, sy = s.y, scale = 1, op = 1
+        if (ph === "ready") {
+            const xx = { x: s.x, v: s.vx }, yy = { x: s.y, v: s.vy }
+            springTo(xx, restX, dt, 260, 16); springTo(yy, restY, dt, 260, 16)
+            s.x = xx.x; s.vx = xx.v; s.y = yy.x; s.vy = yy.v
+            s.appear = Math.min(1, s.appear + dt * 3)
+            sx = s.x; sy = s.y
+            scale = 0.7 + 0.3 * smooth(s.appear)
+        } else if (ph === "pull") {
+            // A slow heartbeat while the bands are at full stretch.
+            if (s.tension > 0.6) { s.beat -= dt; if (s.beat <= 0) { s.beat = 0.85; fx.sound("thud", 0.6); fx.haptic("light") } }
+        } else if (ph === "fly") {
+            s.VY += 240 * dt
+            s.X += s.VX * dt; s.Y += s.VY * dt; s.Z += s.VZ * dt
+            const k = 1 / (1 + s.Z)
+            sx = cx + (s.X - cx) * k
+            sy = horizon + (s.Y - horizon) * k
+            scale = k
+            op = clamp((k - 0.08) * 7, 0, 1)
+            if (!reduced && t - s.trail > 0.016) { s.trail = t; fx.burst(sx, sy, { kind: "glow", n: 1, size: 6 * k + 2, speed: 4, color: hsl(emo.calmHue, 90, dark ? 75 : 60, 0.6), life: 0.7 }) }
+            if (k < 0.09 || sy < -40 || sx < -60 || sx > w + 60) {
+                const fxX = clamp(sx, 14, w - 14), fxY = clamp(sy, 14, horizon + 20)
+                fx.burst(fxX, fxY, { kind: "spark", n: 14, size: 1.8, speed: 70, color: [hsl(emo.calmHue, 90, 85), "#FFFFFF"], life: 0.8 })
+                setStars((list) => [...list, { x: fxX, y: fxY, k: Date.now() }])
+                s.sent += 1
+                props.progress(s.sent / items.length)
+                fx.sound("bell", 1 + s.sent * 0.15)
+                if (s.sent >= items.length) { setPhase("done"); fx.haptic("success"); timers.after(900, props.done) }
+                else { s.x = restX; s.y = restY + 30; s.vx = 0; s.vy = 0; s.appear = 0; setIdx(s.sent); setPhase("ready") }
+                op = 0
+            }
+        }
+        if (chip.current) {
+            chip.current.style.transform = `translate3d(${sx}px, ${sy}px, 0) translate(-50%, -50%) scale(${scale})`
+            chip.current.style.opacity = String(ph === "done" ? 0 : op)
+        }
+        const bx = ph === "fly" || ph === "done" ? restX : sx, by = ph === "fly" || ph === "done" ? restY : sy
+        const tension = ph === "pull" ? s.tension : 0
+        for (const [el, x] of [[bandL.current, cx - half], [bandR.current, cx + half]] as const) {
+            if (!el) continue
+            const sag = (1 - tension) * 6
+            el.setAttribute("d", `M ${x} ${tipY} Q ${(x + bx) / 2} ${(tipY + by) / 2 + sag} ${bx} ${by}`)
+            el.setAttribute("stroke-width", String(7 - tension * 3.5))
+        }
+        if (vignette.current) vignette.current.style.opacity = String(tension * 0.85)
+        if (clouds.current && !reduced) clouds.current.style.transform = `translateX(${((t * 6) % (w + 200)) - 100}px)`
+    })
+
+    const item = items[Math.min(idx, items.length - 1)]
+    const wood = dark ? "#565B6C" : "#7D8494"
+    const calm = stars.length / items.length
+    return (
+        <div ref={stage} style={{ position: "absolute", inset: 0 }}>
+            <div style={{ position: "absolute", inset: 0, background: dark ? `linear-gradient(180deg, hsl(230,40%,${8 + calm * 6}%) 0%, hsl(${emo.calmHue},30%,${14 + calm * 6}%) 60%, #121318 100%)` : `linear-gradient(180deg, hsl(212,60%,${78 + calm * 8}%) 0%, hsl(${emo.calmHue},60%,${88 + calm * 4}%) 62%, #F2EEE7 100%)`, transition: "background 1.5s" }} />
+            <div ref={clouds} style={{ position: "absolute", left: 0, top: horizon * 0.4, width: w, height: 60, opacity: dark ? 0.15 : 0.7, pointerEvents: "none" }}>
+                {[0.1, 0.45, 0.8].map((x, i) => <span key={i} style={{ position: "absolute", left: `${x * 100}%`, top: i * 12, width: 90 + i * 30, height: 24, borderRadius: 99, background: "#fff", filter: "blur(4px)" }} />)}
+            </div>
+            {stars.map((s) => <i key={s.k} style={{ position: "absolute", left: s.x - 3, top: s.y - 3, width: 6, height: 6, borderRadius: "50%", background: "#fff", boxShadow: `0 0 12px 3px ${hsl(emo.calmHue, 90, 75, 0.8)}`, animation: reduced ? undefined : "tsrPulse 2.4s ease-in-out infinite" }} />)}
+            <svg width={w} height={h} style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+                <path d={`M 0 ${h * 0.86} Q ${w * 0.3} ${h * 0.78} ${w * 0.6} ${h * 0.84} T ${w} ${h * 0.8} L ${w} ${h} L 0 ${h} Z`} fill={dark ? "#15161D" : "#DCD6CB"} />
+                <path ref={bandL} fill="none" stroke={hsl(emo.hue, 60, dark ? 60 : 46)} strokeLinecap="round" />
+                <path d={`M ${cx - half} ${tipY} Q ${cx - half * 0.7} ${tipY + 70} ${cx} ${tipY + 92} Q ${cx + half * 0.7} ${tipY + 70} ${cx + half} ${tipY}`} fill="none" stroke={wood} strokeWidth="15" strokeLinecap="round" />
+                <path d={`M ${cx - half} ${tipY} Q ${cx - half * 0.7} ${tipY + 70} ${cx} ${tipY + 92}`} fill="none" stroke="rgba(255,255,255,.25)" strokeWidth="3" strokeLinecap="round" />
+                <line x1={cx} y1={tipY + 90} x2={cx} y2={h + 10} stroke={wood} strokeWidth="19" strokeLinecap="round" />
+                <path ref={bandR} fill="none" stroke={hsl(emo.hue, 60, dark ? 60 : 46)} strokeLinecap="round" />
+            </svg>
+            <div ref={vignette} style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: 0, background: "radial-gradient(70% 60% at 50% 60%, transparent 40%, rgba(0,0,0,.35))" }} />
+            <div ref={chip} className="rk-abs" style={{ padding: "10px 16px", borderRadius: 999, background: "var(--surface)", boxShadow: `var(--shadow-2), 0 0 24px ${hsl(emo.calmHue, 80, 70, 0.35)}`, cursor: phase === "ready" ? "grab" : "default", maxWidth: Math.min(240, w * 0.6), whiteSpace: "nowrap" }}>
+                <WordBody item={item} size={stageFont(w, 0.92)} imgSize={30} style={{ whiteSpace: "nowrap" }} />
+            </div>
+        </div>
+    )
+}
+
+/* ================================================================== */
 /* 6. APP                                                              */
 /* ================================================================== */
 
@@ -5001,7 +5214,28 @@ function RitualHost(props: {
         return () => particles.current?.destroy()
     }, [])
     React.useEffect(() => { particles.current?.resize() }, [size.w, size.h])
-    React.useEffect(() => { setProgress(completed ? 1 : 0); setHint(null); setShowContinue(completed); startRef.current = Date.now() }, [props.runKey])
+    React.useEffect(() => { particles.current?.setAdditive(props.dark) }, [props.dark])
+    // Touch is always answered: a soft ring where you press, a faint light trail where you move.
+    React.useEffect(() => {
+        const el = stageRef.current
+        if (!el || reduced) return
+        let lastTrail = 0
+        const pos = (e: PointerEvent) => { const r = el.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top } }
+        const down = (e: PointerEvent) => { const p = pos(e); particles.current?.burst(p.x, p.y, { kind: "ring", n: 1, size: 26, color: hsl(emo.calmHue, 80, props.dark ? 80 : 55, 0.6), life: 0.5 }) }
+        const move = (e: PointerEvent) => {
+            if (!e.buttons && e.pointerType === "mouse") return
+            const now = performance.now()
+            if (now - lastTrail < 34) return
+            lastTrail = now
+            const p = pos(e)
+            particles.current?.burst(p.x, p.y, { kind: "glow", n: 1, size: 3.5, speed: 6, color: hsl(emo.calmHue, 90, props.dark ? 75 : 60, 0.5), life: 0.6 })
+        }
+        el.addEventListener("pointerdown", down, { passive: true })
+        el.addEventListener("pointermove", move, { passive: true })
+        return () => { el.removeEventListener("pointerdown", down); el.removeEventListener("pointermove", move) }
+    }, [reduced, emo.calmHue, props.dark])
+    const noteStep = React.useRef(0)
+    React.useEffect(() => { setProgress(completed ? 1 : 0); setHint(null); setShowContinue(completed); startRef.current = Date.now(); noteStep.current = 0 }, [props.runKey])
     React.useEffect(() => () => window.clearTimeout(hintTimer.current), [])
 
     const fx: FX = React.useMemo(() => ({
@@ -5012,14 +5246,27 @@ function RitualHost(props: {
         reduced,
     }), [reduced])
 
-    const onProgress = React.useCallback((p: number) => { const v = clamp(p, 0, 1); setProgress(v); props.onProgress(v) }, [props.onProgress])
+    const onProgress = React.useCallback((p: number) => {
+        const v = clamp(p, 0, 1)
+        setProgress(v)
+        props.onProgress(v)
+        // Every eighth of the way, a soft note in a rising scale.
+        const s = Math.floor(v * 8 + 1e-6)
+        if (s > noteStep.current && v < 1) { noteStep.current = s; Sound.note(PENTA[Math.min(7, s - 1)], "sine", 1.1, 0.03) }
+        if (v === 0) noteStep.current = 0
+    }, [props.onProgress])
     const onDone = React.useCallback(() => {
         setProgress(1)
         props.onComplete()
         Sound.play("complete")
         Haptics.fire("success")
         const s = stageRef.current
-        if (s && !reduced) particles.current?.burst(s.clientWidth / 2, s.clientHeight * 0.42, { kind: "glow", n: 1, size: 60, color: hsl(emo.calmHue, 80, 75, 0.55), life: 1.2 })
+        if (s && !reduced) {
+            const cx = s.clientWidth / 2, cy = s.clientHeight * 0.42
+            particles.current?.burst(cx, cy, { kind: "glow", n: 1, size: 70, color: hsl(emo.calmHue, 80, 75, 0.55), life: 1.4 })
+            particles.current?.burst(cx, cy, { kind: "ring", n: 1, size: Math.min(s.clientWidth, s.clientHeight) * 0.35, color: hsl(emo.calmHue, 80, 75, 0.7), life: 1.1 })
+            particles.current?.burst(cx, cy, { kind: "spark", n: 36, size: 2.4, speed: 260, color: [hsl(emo.calmHue, 90, 80), "#FFFFFF", hsl(emo.calmHue + 30, 90, 75)], life: 1.3 })
+        }
         window.setTimeout(() => setShowContinue(true), reduced ? 200 : 900)
     }, [props.onComplete, reduced, emo.calmHue])
     const onHint = React.useCallback((t: string | null, sticky = false) => {
@@ -5047,6 +5294,7 @@ function RitualHost(props: {
                         <Comp key={props.runKey} items={props.items} phrase={props.phrase} emo={emo} char={props.char} faces={faces} w={size.w} h={size.h} dark={props.dark} reduced={reduced} fx={fx}
                             intensity={props.intensity} progress={onProgress} done={onDone} hint={onHint} />
                     ) : null}
+                    {!completed ? <AmbientLayer hue={emo.hue} calmHue={emo.calmHue} progress={progress} dark={props.dark} reduced={reduced} /> : null}
                     <canvas ref={canvasRef} className="fx" aria-hidden="true" />
                     <AnimatePresence>
                         {progress >= 1 && (showContinue || completed) ? (
