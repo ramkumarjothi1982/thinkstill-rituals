@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hushmallow Sound Lab</title>
+<link rel="stylesheet" href="src/ui/tokens.css">
+<style>
+  body { margin: 0; background: var(--ink-0); color: var(--text-1); font: 15px/1.45 var(--font-ui); }
+  header { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px;
+    padding: 12px 16px; background: var(--glass-strong); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+  header h1 { font: 700 18px/1 var(--font-display); margin: 0; }
+  header .ctl { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); }
+  header input[type=range] { width: 120px; }
+  #debug { margin-left: auto; font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-3); }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 22px; }
+  section { background: var(--ink-1); border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px 16px; min-width: 0; }
+  h2 { font: 700 12px var(--font-ui); text-transform: uppercase; letter-spacing: .1em; color: var(--text-3); margin: 0 0 10px; }
+  .hint { color: var(--text-3); font-size: 13px; margin: -4px 0 10px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; }
+  button.s { border: 1px solid var(--line); background: var(--ink-2); color: var(--text-1); border-radius: var(--r-pill);
+    padding: 7px 12px; font: 600 13px var(--font-ui); cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+  button.s:hover { border-color: var(--line-strong); }
+  button.s:active, button.s.on { background: var(--accent); color: var(--text-on-accent); border-color: transparent; }
+  .mallow { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 0; border-top: 1px solid var(--line); }
+  .mallow:first-of-type { border-top: 0; }
+  .mallow .who { display: flex; flex-direction: column; gap: 2px; }
+  .mallow .who b { font: 700 15px var(--font-display); color: var(--c, var(--text-1)); }
+  .mallow .who span { font-size: 12px; color: var(--text-3); }
+  @media (max-width: 600px) { .mallow { grid-template-columns: 1fr; } }
+  .sliders { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px 18px; margin-bottom: 10px; }
+  .sliders label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); }
+  .sliders label span { flex: 0 0 74px; }
+  .sliders input { flex: 1; min-width: 0; accent-color: var(--accent); }
+  .sliders output { flex: 0 0 34px; text-align: right; font: 12px ui-monospace, monospace; color: var(--text-3); }
+  .hold { position: relative; overflow: hidden; }
+  .hold .bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--calm); }
+  #start { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(10, 8, 24, .82); }
+  #start button { font: 700 18px var(--font-display); padding: 16px 28px; border-radius: var(--r-pill); border: 0;
+    background: var(--accent); color: var(--text-on-accent); cursor: pointer; }
+  #start p { color: var(--text-2); text-align: center; margin: 12px 0 0; font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; font: 12px ui-monospace, monospace; }
+  th, td { text-align: right; padding: 3px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  td.warn { color: var(--danger); }
+  .tablewrap { overflow-x: auto; max-height: 420px; overflow-y: auto; }
+</style>
+</head>
+<body>
+<div id="start"><div><button id="startBtn" class="s-start">Tap to start sound</button>
+  <p>Browsers only allow sound after a tap.</p></div></div>
+
+<header>
+  <h1>Sound Lab</h1>
+  <label class="ctl"><input type="checkbox" id="enabled"> Sound on</label>
+  <label class="ctl">Volume <input type="range" id="volume" min="0" max="1" step="0.01"></label>
+  <label class="ctl"><input type="checkbox" id="hapticsOn"> Haptics</label>
+  <span id="debug">—</span>
+</header>
+
+<main>
+  <section>
+    <h2>Play options</h2>
+    <div class="sliders">
+      <label><span>Intensity</span><input type="range" id="intensity" min="0" max="1" step="0.01" value="0.6"><output></output></label>
+      <label><span>Pan</span><input type="range" id="pan" min="-1" max="1" step="0.01" value="0"><output></output></label>
+      <label><span>Pitch (fx)</span><input type="range" id="pitch" min="0.5" max="2" step="0.01" value="1"><output></output></label>
+    </div>
+  </section>
+
+  <section id="mallows"><h2>Mallow voices</h2></section>
+
+  <section><h2>Interface</h2><div class="btns" id="ui"></div></section>
+
+  <section><h2>Ritual sounds</h2><div class="btns" id="fx"></div></section>
+
+  <section>
+    <h2>Hold sounds</h2>
+    <p class="hint">Press and hold. Intensity rises while you hold; release to fade out.</p>
+    <div class="btns" id="holds"></div>
+  </section>
+
+  <section>
+    <h2>Ambience</h2>
+    <div class="sliders" id="mood"></div>
+    <div class="btns" id="realms"></div>
+  </section>
+
+  <section>
+    <h2>Haptics</h2>
+    <p class="hint" id="hapticsInfo"></p>
+    <div class="btns" id="haptics"></div>
+  </section>
+
+  <section>
+    <h2>Render check</h2>
+    <p class="hint">Renders every sound offline and measures it: peak and RMS level (dBFS, at volume 0.6), brightness (energy-weighted frequency) and the level left at the very end (should be ~0).</p>
+    <div class="btns"><button class="s" id="qa">Run render check</button></div>
+    <div class="tablewrap"><table id="qaTable"></table></div>
+  </section>
+</main>
+
+<script type="module">
+import { audio } from './src/engine/audio.js';
+import { haptic, setHapticsEnabled, hapticsEnabled, hapticsChannel, HAPTIC_PATTERNS } from './src/engine/haptics.js';
+import { MALLOWS } from './src/mallows/registry.js';
+
+const $ = (s) => document.querySelector(s);
+const cat = audio.catalog;
+const btn = (label, data) => {
+  const b = document.createElement('button');
+  b.className = 's'; b.type = 'button'; b.textContent = label;
+  Object.assign(b.dataset, data);
+  return b;
+};
+const opts = () => ({ intensity: +$('#intensity').value, pan: +$('#pan').value, pitch: +$('#pitch').value });
+
+// every interaction unlocks first (safe to call repeatedly)
+document.addEventListener('pointerdown', () => audio.unlock(), { capture: true });
+document.addEventListener('keydown', () => audio.unlock(), { capture: true });
+$('#startBtn').addEventListener('click', async () => { await audio.unlock(); $('#start').remove(); audio.ui('open'); });
+
+// header controls
+$('#enabled').checked = audio.isEnabled();
+$('#enabled').addEventListener('change', (e) => audio.setEnabled(e.target.checked));
+$('#volume').value = audio.getVolume();
+$('#volume').addEventListener('input', (e) => audio.setVolume(+e.target.value));
+$('#hapticsOn').checked = hapticsEnabled();
+$('#hapticsOn').addEventListener('change', (e) => setHapticsEnabled(e.target.checked));
+for (const input of document.querySelectorAll('.sliders input')) {
+  const out = input.nextElementSibling; const show = () => { if (out) out.textContent = (+input.value).toFixed(2); };
+  input.addEventListener('input', show); show();
+}
+
+// Mallows
+for (const id of cat.mallows) {
+  const m = MALLOWS[id];
+  const row = document.createElement('div'); row.className = 'mallow';
+  row.innerHTML = `<div class="who"><b style="--c:${m?.colours?.glow || '#fff'}">${m?.name || id}</b><span>${m?.title || ''}</span></div><div class="btns"></div>`;
+  for (const n of cat.mallowSounds) row.querySelector('.btns').append(btn(n, { kind: 'play', mallow: id, name: n }));
+  $('#mallows').append(row);
+}
+{ // neutral fallback voice
+  const row = document.createElement('div'); row.className = 'mallow';
+  row.innerHTML = `<div class="who"><b>Unknown id</b><span>neutral soft voice</span></div><div class="btns"></div>`;
+  for (const n of cat.mallowSounds) row.querySelector('.btns').append(btn(n, { kind: 'play', mallow: 'nobody', name: n }));
+  $('#mallows').append(row);
+}
+for (const n of cat.ui) $('#ui').append(btn(n, { kind: 'ui', name: n }));
+for (const n of cat.fx) $('#fx').append(btn(n, { kind: 'fx', name: n }));
+for (const k of Object.keys(HAPTIC_PATTERNS)) $('#haptics').append(btn(k, { kind: 'haptic', name: k }));
+$('#hapticsInfo').textContent = {
+  'native-bridge': 'Delivering through the native app bridge.',
+  'webkit-bridge': 'Delivering through the iOS app bridge.',
+  vibrate: 'Using navigator.vibrate (Android). iPhone needs the native app wrapper.',
+  none: 'No haptics here: this browser has no vibration API (iOS Safari never does — the native app wrapper provides haptics).',
+}[hapticsChannel()];
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-kind]');
+  if (!b) return;
+  const { kind, name, mallow } = b.dataset;
+  if (kind === 'play') audio.play(mallow, name, opts());
+  else if (kind === 'ui') audio.ui(name);
+  else if (kind === 'fx') audio.fx(name, opts());
+  else if (kind === 'haptic') haptic(name);
+  else if (kind === 'realm') { audio.ambience(name, { mood: mood() }); markRealm(name); }
+  else if (kind === 'stop-amb') { audio.stopAmbience(); markRealm(null); }
+});
+
+// holds: intensity rises over ~3 s while pressed
+for (const n of cat.holds) {
+  const b = btn(`hold: ${n}`, { hold: n }); b.classList.add('hold');
+  const bar = document.createElement('i'); bar.className = 'bar'; b.append(bar);
+  let h = null, raf = 0, t0 = 0;
+  const end = () => {
+    if (!h) return;
+    h.stop(); h = null; cancelAnimationFrame(raf); b.classList.remove('on'); bar.style.width = '0';
+  };
+  b.addEventListener('pointerdown', async (e) => {
+    e.preventDefault();
+    try { b.setPointerCapture(e.pointerId); } catch {}
+    await audio.unlock();
+    end();
+    t0 = performance.now();
+    h = audio.hold(n, { intensity: 0.1, pitch: +$('#pitch').value, pan: +$('#pan').value });
+    b.classList.add('on');
+    const step = () => {
+      if (!h) return;
+      const i = Math.min(1, 0.1 + (performance.now() - t0) / 3000);
+      h.update({ intensity: i });
+      bar.style.width = `${i * 100}%`;
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) b.addEventListener(ev, end);
+  b.addEventListener('contextmenu', (e) => e.preventDefault());
+  $('#holds').append(b);
+}
+
+// ambience
+const MOODS = ['agitation', 'heaviness', 'clarity', 'warmth'];
+const DEFAULTS = { agitation: 0.3, heaviness: 0.3, clarity: 0.5, warmth: 0.5 };
+for (const k of MOODS) {
+  const l = document.createElement('label');
+  l.innerHTML = `<span>${k}</span><input type="range" min="0" max="1" step="0.01" value="${DEFAULTS[k]}" data-mood="${k}"><output>${DEFAULTS[k].toFixed(2)}</output>`;
+  const input = l.querySelector('input');
+  input.addEventListener('input', () => { l.querySelector('output').textContent = (+input.value).toFixed(2); audio.setAmbienceMood(mood()); });
+  $('#mood').append(l);
+}
+function mood() { const m = {}; for (const i of document.querySelectorAll('[data-mood]')) m[i.dataset.mood] = +i.value; return m; }
+for (const r of cat.realms) $('#realms').append(btn(r, { kind: 'realm', name: r }));
+$('#realms').append(btn('stop ambience', { kind: 'stop-amb' }));
+function markRealm(r) { for (const b of document.querySelectorAll('[data-kind=realm]')) b.classList.toggle('on', b.dataset.name === r); }
+
+// debug readout
+setInterval(() => {
+  const d = audio._debug();
+  $('#debug').textContent = `${d.state} · voices ${d.activeVoices} · holds ${d.holds} · beds ${d.ambienceLayers} · played ${d.played} · rate-limited ${d.dropped}`;
+}, 400);
+
+// offline render check
+$('#qa').addEventListener('click', async () => {
+  const jobs = [];
+  for (const m of [...cat.mallows, 'nobody']) for (const n of cat.mallowSounds) jobs.push({ label: `${m}.${n}`, spec: { kind: 'play', args: [m, n, { intensity: 1 }], duration: 4 } });
+  for (const n of cat.ui) jobs.push({ label: `ui.${n}`, spec: { kind: 'ui', args: [n], duration: 2 } });
+  for (const n of cat.fx) jobs.push({ label: `fx.${n}`, spec: { kind: 'fx', args: [n, { intensity: 1 }], duration: n.startsWith('breathe') ? 8 : 5 } });
+  for (const n of cat.holds) jobs.push({ label: `hold.${n}`, spec: { kind: 'hold', args: [n, { intensity: 0.2 }], script: [{ at: 0.5, intensity: 0.6 }, { at: 1.2, intensity: 1 }], stopAt: 2.2, duration: 3.5 } });
+  for (const r of cat.realms) jobs.push({ label: `amb.${r}`, spec: { kind: 'ambience', args: [r], duration: 8 } });
+  const t = $('#qaTable');
+  t.innerHTML = '<tr><th>sound</th><th>peak dB</th><th>rms dB</th><th>bright Hz</th><th>end</th><th>left</th></tr>';
+  for (const j of jobs) {
+    const r = await audio._renderOffline(j.spec);
+    const tr = document.createElement('tr');
+    const cell = (v, warn) => `<td class="${warn ? 'warn' : ''}">${v}</td>`;
+    tr.innerHTML = `<td>${j.label}</td>${cell(r.peakDb.toFixed(1), r.peakDb > -6)}${cell(r.rmsDb.toFixed(1))}${cell(r.brightnessHz.toFixed(0), r.brightnessHz > 4000)}${cell(r.tail.toExponential(1), r.tail > 1e-3)}${cell(r.leftoverNodes, r.leftoverNodes > 0)}`;
+    t.append(tr);
+  }
+});
+</script>
+</body>
+</html>
