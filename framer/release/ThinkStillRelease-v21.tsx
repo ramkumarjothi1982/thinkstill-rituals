@@ -3031,6 +3031,7 @@ function RitualSubtitles(props: RitualProps) {
         setActive(id)
         fx.haptic("light")
         fx.sound("pluck", 1 + chosen.length * 0.12)
+        fx.burst(w / 2, Math.max(12, (h - frameH) * 0.28) + frameH * 0.5, { kind: "glow", n: 1, size: frameW * 0.25, color: "rgba(255,240,210,.35)", life: 0.6 })
         const next = chosen.includes(id) ? chosen : [...chosen, id]
         setChosen(next)
         props.progress(Math.min(1, next.length / needed))
@@ -3043,6 +3044,8 @@ function RitualSubtitles(props: RitualProps) {
             <div style={{ position: "absolute", inset: 0, background: dark ? "#0F0F13" : "#ECE8E1" }} />
             <div style={{ position: "absolute", left: (w - frameW) / 2, top: Math.max(12, (h - frameH) * 0.28), width: frameW, height: frameH, borderRadius: 18, overflow: "hidden", background: "#0B0B0E", boxShadow: "var(--shadow-2)" }}>
                 <div style={{ position: "absolute", inset: 0, background: `radial-gradient(80% 70% at 40% 40%, ${N ? N.tint : "rgba(120,120,140,.25)"}, transparent 75%), linear-gradient(180deg, #1A1A20, #0B0B0E)`, filter: N ? N.grade : "none", transition: "background .8s" }} />
+                <div style={{ position: "absolute", left: "-20%", right: "-20%", top: "-30%", height: "90%", background: "radial-gradient(50% 60% at 50% 0%, rgba(255,245,220,.16), transparent 70%)", animation: reduced ? undefined : "tsrFlick 3.2s steps(12) infinite", pointerEvents: "none" }} />
+                <style>{"@keyframes tsrFlick{0%,100%{opacity:1}23%{opacity:.82}47%{opacity:.95}61%{opacity:.78}88%{opacity:.92}}"}</style>
                 <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: "11%", background: "#000" }} />
                 <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "11%", background: "#000" }} />
                 {N ? <div style={{ position: "absolute", left: 14, top: "14%", fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: "rgba(255,255,255,.6)", textTransform: "uppercase" }}>{N.label}</div> : null}
@@ -3291,6 +3294,7 @@ function RitualMissOnPurpose(props: RitualProps) {
             s.lastBeat = bIndex
             setBeatIdx(bIndex)
             const isHi = bIndex % 4 === 3
+            if (!reduced) { const dotW = Math.min(64, (w - 80) / 4), x0 = w / 2 - (4 * dotW + 42) / 2 + dotW / 2; fx.burst(x0 + (bIndex % 4) * (dotW + 14), h * 0.46 + dotW / 2, { kind: "ring", n: 1, size: dotW * (isHi ? 1.1 : 0.8), color: isHi ? hsl(emo.calmHue, 85, dark ? 72 : 58, 0.8) : (dark ? "rgba(255,255,255,.35)" : "rgba(0,0,0,.18)"), life: 0.6 }) }
             fx.sound("tick", isHi ? 0.6 : 1.1)
         }
     })
@@ -3379,7 +3383,7 @@ function RitualKeepDrop(props: RitualProps) {
             if (s.fly < 0) s.fy += 600 * dt
             if (Math.abs(s.x.x) > w) {
                 const cur = items[iRef.current]
-                if (s.fly > 0 && cur) setKept((k) => [...k, cur])
+                if (s.fly > 0 && cur) { setKept((k) => [...k, cur]); fx.burst(w / 2, h - 60, { kind: "glow", n: 1, size: 40, color: hsl(emo.calmHue, 80, 72, 0.6), life: 0.7 }); fx.burst(w / 2, h - 60, { kind: "spark", n: 12, size: 1.8, speed: 140, color: [hsl(emo.calmHue, 85, 72), "#FFFFFF"], life: 0.5 }) }
                 if (s.fly < 0 && cur) fx.burst(s.x.x < 0 ? 30 : w - 30, cy, { kind: "dust", n: 14, size: 3, speed: 90, color: dark ? "rgba(255,255,255,.4)" : "rgba(80,70,60,.35)", life: 1.1 })
                 s.fly = 0; s.x = { x: 0, v: 0 }; s.fy = 0
                 const next = iRef.current + 1
@@ -3441,6 +3445,7 @@ function RitualTradeMachine(props: RitualProps) {
         setPhase("whirr")
         fx.sound("coin")
         fx.haptic("medium")
+        fx.burst(slot.x, slot.y, { kind: "spark", n: 18, size: 2, speed: 160, color: ["#FFE7A3", "#FFFFFF", "#E9B949"], life: 0.6 })
         props.progress(0.4)
         const loop = fx.loop("motor")
         timers.after(1100, () => { loop.stop(); setPhase("choose"); fx.sound("chime"); props.progress(0.6); props.hint("Choose what you'd like back") })
@@ -3468,6 +3473,7 @@ function RitualTradeMachine(props: RitualProps) {
         props.hint(null)
         fx.sound("thud", 1.2)
         fx.haptic("success")
+        fx.burst(w / 2, my + mh - 50, { kind: "petal", n: 22, size: 4, speed: 200, angle: -Math.PI / 2, spread: 1.6, color: [hsl(emo.calmHue, 75, 72), "#FFE7A3", "#FFFFFF"], life: 1.4, gravity: 260 })
         props.progress(1)
         timers.after(2600, props.done)
     }
@@ -3536,6 +3542,7 @@ function RitualXRay(props: RitualProps) {
                 s.passes += 1
                 s.dir = (s.dir * -1) as 1 | -1
                 setPasses(s.passes)
+                fx.burst(pad + s.x, 10 + chh / 2, { kind: "glow", n: 1, size: chh * 0.35, color: "rgba(140,220,255,.4)", life: 0.6 })
                 fx.sound("chime", 0.9 + s.passes * 0.15)
                 fx.haptic("medium")
                 props.progress(s.passes / 3 * 0.75)
@@ -3709,6 +3716,8 @@ function RitualTugOfWar(props: RitualProps) {
         if (s.tension >= 0.85 && !s.letting) {
             s.letting = true
             s.slack = 0
+            fx.burst(w * 0.58, y0, { kind: "dust", n: 16, size: 3, speed: 120, color: dark ? "rgba(255,255,255,.35)" : "rgba(120,100,80,.35)", life: 1.1, gravity: 160 })
+            fx.burst(w * 0.58, y0, { kind: "glow", n: 1, size: 50, color: hsl(emo.calmHue, 80, 72, 0.45), life: 1 })
             fx.sound("thud", 0.7)
             fx.sound("whoosh", 0.6)
             fx.haptic("heavy")
@@ -3900,6 +3909,7 @@ function RitualDramaMachine(props: RitualProps) {
     const doCut = () => {
         setCut(true)
         props.hint(null)
+        fx.burst(w / 2, (h - 132) / 2, { kind: "ring", n: 1, size: Math.min(w, h) * 0.3, color: dark ? "rgba(255,255,255,.6)" : "rgba(0,0,0,.25)", life: 0.5 })
         fx.sound("snap")
         fx.haptic("heavy")
         props.progress(1)
@@ -3974,6 +3984,7 @@ function RitualTinySoundtrack(props: RitualProps) {
         fx.sound(pad.s, pad.p)
         fx.haptic("light")
         setBop((b) => b + 1)
+        { const px = 16 + ((w - 32) / 2) * ((k % 2) + 0.5), py = h - 16 - Math.min(76, h * 0.13) * (k < 2 ? 1.5 : 0.5) - (k < 2 ? 10 : 0); fx.burst(px, py, { kind: "ring", n: 1, size: 50, color: hsl(emo.calmHue + k * 30, 70, dark ? 70 : 55, 0.7), life: 0.5 }) }
         const idx = items.length - left
         const x = w / 2 + (idx - (items.length - 1) / 2) * (bw + 6)
         if (!reduced) fx.burst(x, stageY, { kind: tone === "silly" ? "petal" : "glow", n: tone === "silly" ? 10 : 3, size: tone === "silly" ? 4 : 6, speed: 90, angle: -Math.PI / 2, spread: 1.4, color: [hsl(emo.calmHue, 70, 72), hsl(emo.hue, 70, 75), "#FFFFFF"], life: 1.4, gravity: tone === "silly" ? 120 : -10 })
@@ -4062,6 +4073,7 @@ function RitualGoWeird(props: RitualProps) {
         const next = { ...placedRef.current, [k]: true }
         setPlaced(next)
         fx.sound("boing", 0.9 + Object.keys(next).length * 0.1)
+        fx.burst(anchors[k].x, anchors[k].y, { kind: "spark", n: 14, size: 2, speed: 150, color: ["#FFD25E", "#FFFFFF", hsl(emo.calmHue, 80, 70)], life: 0.6 })
         fx.haptic("light")
         const n = Object.keys(next).length
         props.progress(n / order.length)
@@ -4535,6 +4547,8 @@ function RitualGroundControl(props: RitualProps) {
         const n = next.filter(Boolean).length
         fx.sound("bell", 0.8 + n * 0.12)
         fx.haptic("success")
+        fx.burst(w / 2, rocketY, { kind: "glow", n: 1, size: 60, color: hsl(emo.calmHue, 85, 72, 0.5), life: 1 })
+        fx.burst(w / 2, rocketY, { kind: "spark", n: 16, size: 1.8, speed: 130, color: [hsl(emo.calmHue, 85, 75), "#FFFFFF"], life: 0.7 })
         props.progress(n / missions.length)
         if (n === missions.length) timers.after(1600, () => { fx.sound("thud", 0.6); fx.haptic("medium"); timers.after(900, props.done) })
     }
