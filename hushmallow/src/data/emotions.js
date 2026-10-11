@@ -6,7 +6,7 @@ export const FACE_PRESETS = [
   'neutral', 'happy', 'excited', 'playful', 'loved', 'proud', 'hopeful', 'calm', 'relieved',
   'curious', 'surprised', 'awe', 'confused', 'anxious', 'scared', 'sad', 'lonely', 'guilty',
   'embarrassed', 'jealous', 'disgusted', 'angry', 'frustrated', 'exhausted', 'bored',
-  'determined', 'comforted',
+  'determined', 'comforted', 'disappointed',
 ];
 
 export const FAMILIES = [
@@ -229,7 +229,7 @@ taken-advantage-of|~Taken advantage of|anger|loneliness|-.65|.55|angry:.5,sad:.3
 sadness||sadness||-.7|.25|sad:1|.55|sad;unhappy;upset;feeling down;feeling low;low mood;down in the dumps|A heavy, slowed-down feeling when something hurts or is missing.
 sorrow||sadness||-.75|.2|sad:1|.65|sorrowful;woeful|A deep, quiet sadness that sits with you.
 grief||sadness|loneliness|-.85|.35|sad:.8,lonely:.2|.8|grieving;bereaved;bereavement|The ache of losing someone or something you loved.
-disappointment||sadness|anger|-.55|.3|sad:.7,frustrated:.3|.5|disappointed;disappointing;let down;gutted;bummed|When what happened falls short of what you hoped for.
+disappointment||sadness|anger|-.55|.3|disappointed:.75,sad:.25|.5|disappointed;disappointing;let down;gutted;bummed|When what happened falls short of what you hoped for.
 hurt||sadness|anger|-.65|.45|sad:.8,angry:.2|.6|hurting;wounded;stung;hurt feelings|Pain from something said or done, often by someone who matters.
 heartache||sadness|love|-.7|.35|sad:.7,lonely:.3|.65|aching heart;heartsore|A deep ache in the chest about someone or something you love.
 despair||sadness|fear|-.95|.4|sad:.8,exhausted:.2|.85|despairing;despondent;in despair|Feeling there's no way through, and hope has gone quiet.

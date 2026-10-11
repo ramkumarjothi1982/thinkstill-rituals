@@ -93,7 +93,7 @@ export class MallowRig {
     this.container = container;
     this.canvas = document.createElement('canvas');
     this.canvas.className = 'mallow-canvas';
-    this.canvas.setAttribute('role', 'img');
+    this.canvas.setAttribute('role', this.opts.interactive ? 'button' : 'img');
     this.canvas.style.cssText = 'display:block;width:100%;height:100%;background:transparent;';
     if (this.opts.interactive) {
       this.canvas.style.touchAction = 'none';
@@ -150,6 +150,7 @@ export class MallowRig {
     this._label();
 
     this.loaded = loadMallowAssets(this.id).then((assets) => {
+      if (this.destroyed) return this;
       this.assets = assets;
       this.ready = true;
       this._resize();
@@ -168,7 +169,7 @@ export class MallowRig {
   setEmotion(emotion, intensity = 0.7, opts = {}) {
     const mix = typeof emotion === 'string' ? { [emotion]: 1 } : { ...emotion };
     this.mix = mix;
-    this.intensity = clamp(intensity, 0, 1);
+    this.intensity = Number.isFinite(+intensity) ? clamp(+intensity, 0, 1) : 0.7;
     this.stage = opts.stage || null;
     this.target = resolveExpression(this.mallow, mix, this.intensity, opts.extra || null);
     if (opts.instant) { Object.assign(this.val, this.target); }
@@ -247,7 +248,9 @@ export class MallowRig {
     const [bx0, by0, bx1, by1] = m.bodyBox;
     const bw = bx1 - bx0, bh = by1 - by0;
     // consistent framing: every Mallow's body occupies the same width share
-    this.S = Math.min(W * this.opts.fit / bw, H * (this.opts.fit + 0.06) / bh);
+    // consistent framing: every Mallow gets the same body *area* on screen
+    const ref = Math.sqrt(bw * bh);
+    this.S = Math.min(W * this.opts.fit / ref, H * (this.opts.fit + 0.06) / ref);
     this.CX = W / 2;
     this.BASE = H * this.opts.baseline;
     // skin resolution follows on-screen size (cheap for thumbnails)
@@ -261,7 +264,8 @@ export class MallowRig {
   }
 
   _label() {
-    this.canvas.setAttribute('aria-label', this.describe ? this.describe() : this.mallow.name);
+    const d = this.describe ? this.describe() : this.mallow.name;
+    this.canvas.setAttribute('aria-label', this.opts.interactive ? `${d}. Tap, double tap, hold to squeeze, or drag.` : d);
   }
 
   _shouldRun() {
@@ -316,7 +320,8 @@ export class MallowRig {
       c.style.cursor = 'grab';
       const held = this.time - pr.t0;
       const dist = Math.hypot(pr.x - pr.x0, pr.y - pr.y0);
-      const speed = Math.hypot(pr.vx, pr.vy);
+      // a pause before letting go means no fling, whatever the last velocity was
+      const speed = this.time - pr.lastT > 0.08 ? 0 : Math.hypot(pr.vx, pr.vy);
       // elastic recovery: release the stored squash / stretch as velocity
       this.body.squashV -= this.body.press * 7;
       this.body.shearV += clamp(-(pr.x - pr.x0) / this.W, -0.5, 0.5) * 6;
@@ -326,7 +331,7 @@ export class MallowRig {
       } else if (pr.squeezed) {
         this.react('release');
       } else if (held < 0.35 && dist < 14) {
-        if (this.time - this.lastTap < 0.33) { this.lastTap = 0; this.react('doubleTap'); }
+        if (this.time - this.lastTap < 0.33) { this.lastTap = 0; this._pendingTap = 0; this.react('doubleTap'); }
         else { this.lastTap = this.time; this._pendingTap = this.time; }
       } else {
         this.opts.audio?.play?.(this.id, 'release');
@@ -372,13 +377,17 @@ export class MallowRig {
     const goal = this._composeTargets(dt);
     // spring every parameter toward its goal
     const G = rm ? GROUPS_CALM : GROUPS;
+    this._dt = dt;
+    // fixed small substeps keep stiff springs (gaze) stable on slow frames
+    const n = Math.max(1, Math.ceil(dt / (1 / 120)));
+    const h = dt / n;
     for (const k of PARAM_NAMES) {
       const [kS, kD] = G[PARAMS[k][1]];
-      const x = this.val[k], v = this.vel[k];
-      const a = kS * (goal[k] - x) - kD * v;
-      const nv = v + a * dt;
-      this.vel[k] = nv;
-      this.val[k] = x + nv * dt;
+      let x = this.val[k], v = this.vel[k];
+      const g = goal[k];
+      for (let i = 0; i < n; i++) { v += (kS * (g - x) - kD * v) * h; x += v * h; }
+      this.vel[k] = v;
+      this.val[k] = x;
     }
     this._updateBody(dt, goal);
     this._updateCycles(dt);
@@ -667,7 +676,12 @@ export class MallowRig {
     const blinkAmt = this._blinkAmount();
     const animated = this.id === 'zuzu' || this.id === 'glitzi' || v.tears > 0.01 || v.sweat > 0.01 ||
       v.mouthTremble > 0.01 || v.heartEyes > 0.01 || v.sparkle > 1.05 || v.wet > 0.05;
-    const sig = this._faceSignature(blinkAmt);
+    // rest state for the approved-art cross-fade
+    const blinking = blinkAmt > 0.01 && v.eyeOpen > 0.05;
+    const atRest = !blinking && this._deviation(v) < 0.03;
+    const prevRest = this.restMix ?? 1;
+    this.restMix = atRest ? Math.min(1, prevRest + (this._dt || 0.016) * 7) : 0;
+    const sig = this._faceSignature(blinkAmt) + '|' + this.restMix.toFixed(2);
     if (!animated && !this.skinDirty && sig === this._lastSig) return;
     this._lastSig = sig;
     this.skinDirty = false;
@@ -684,20 +698,23 @@ export class MallowRig {
     const f = m.face;
     const P = { ...v };
     P.blink = blinkAmt;
+    // Glitzi's energised/dimmed glitch lines sit on the body, under the eyes
+    if (this.id === 'glitzi') drawGlitchLines(ctx, this, P);
     for (const side of ['L', 'R']) drawEye(ctx, this, f, side, P);
     for (const side of ['L', 'R']) drawBrow(ctx, f, side, P);
     drawMouth(ctx, f, P, this.time);
 
-    // the untouched approved artwork, whenever the face is at rest
-    if (this.opts.pristine) {
-      const nb = 1 - smoothstep(0.02, 0.1, this._deviation(P));
-      if (nb > 0.004) {
-        ctx.globalAlpha = nb;
-        ctx.drawImage(A.original, 0, 0);
-        ctx.globalAlpha = 1;
-      }
+    // the untouched approved artwork, whenever the face is at rest. Gaze and
+    // blinks don't count as "not at rest"; leaving rest is a hard cut and
+    // returning only fades in once the face has converged, so the two faces
+    // never overlap visibly.
+    if (this.opts.pristine && this.restMix > 0.004) {
+      ctx.globalAlpha = this.restMix;
+      ctx.globalCompositeOperation = 'source-atop';   // keep the approved alpha, no edge build-up
+      ctx.drawImage(A.original, 0, 0);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
     }
-    if (this.id === 'glitzi') drawGlitchLines(ctx, this, P);
     drawCheeks(ctx, f, P, this.time);
     drawTearsAndSweat(ctx, this, f, P);
     ctx.globalCompositeOperation = 'source-over';
@@ -715,8 +732,8 @@ export class MallowRig {
 
   _deviation(P) {
     const b = this.base;
-    let d = P.blink * 0.5;
-    const W = { eyeOpen: 1, closedCurve: 0.25, lidTop: 1, lidBot: 1, lidSlant: 0.6, wink: 1, lookX: 0.35, lookY: 0.35,
+    let d = 0;
+    const W = { eyeOpen: 1, closedCurve: 0.25, lidTop: 1, lidBot: 1, lidSlant: 0.6, wink: 1,
       irisScale: 1, eyeScale: 1.2, heartEyes: 1, browAlpha: 0.8, browY: 0.5, browTilt: 0.5, browAsym: 0.5,
       mouthSmile: 0.6, mouthOpen: 0.7, mouthWidth: 1, mouthRound: 0.8, mouthWave: 0.8, mouthSkew: 0.6, mouthPout: 0.8,
       tongue: 1, cheekPuff: 0.5, wet: 0.5, tears: 0.5, sweat: 0.5, blushLines: 0.5 };
@@ -897,7 +914,10 @@ function drawEye(ctx, rig, f, side, P) {
       ctx.ellipse(g.ex, g.ey, g.rx * 0.985, g.ry * 0.985, 0, 0, Math.PI * 2);
       ctx.stroke();
     }
-    // lid occlusion shadow under the upper lid
+    // lid occlusion shadow under the upper lid (on the eyeball only)
+    ctx.beginPath();
+    ctx.ellipse(g.ex, g.ey, g.rx, g.ry, 0, 0, Math.PI * 2);
+    ctx.clip();
     ctx.lineCap = 'round';
     for (const [w, a] of [[g.ry * 0.55, 0.08], [g.ry * 0.32, 0.1], [g.ry * 0.14, 0.14]]) {
       ctx.strokeStyle = hexA(f.line, a);
@@ -956,8 +976,9 @@ function drawMouth(ctx, f, P, time) {
   const r = clamp(P.mouthRound, 0, 1);
   const pout = clamp(P.mouthPout, 0, 1);
   const W = M.w * clamp(P.mouthWidth, 0.3, 1.5) * (1 - 0.5 * r) * (1 - 0.45 * pout);
-  const sagBase = M.sag || M.w * 0.2;
-  const sagS = sagBase * s * (1 - 0.6 * r);
+  const oc0 = clamp(o, 0, 1);
+  const sagBase = M.sag ?? M.w * 0.2;
+  const sagS = (M.sag === 0 ? M.w * 0.18 * (1 - oc0) : sagBase) * s * (1 - 0.6 * r);
   const tremble = P.mouthTremble * 1.6 * Math.sin(time * 31) * (1 + Math.sin(time * 7));
   const skewY = P.mouthSkew * M.w * 0.1;
   const x0 = M.x - W / 2 + P.mouthSkew * M.w * 0.04, x1 = M.x + W / 2 + P.mouthSkew * M.w * 0.04;
@@ -1034,8 +1055,8 @@ function drawMouth(ctx, f, P, time) {
     ctx.strokeStyle = M.style === 'line' || M.style === 'crease' ? f.line : shade(M.inside, -0.3);
     ctx.lineWidth = Math.max(2, M.lw * 0.45);
     region(); ctx.stroke();
-    // lit lower lip
-    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    // lit lower lip (only on a properly open mouth)
+    ctx.strokeStyle = Lo - U > 10 ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0)';
     ctx.lineWidth = Math.max(1.5, M.lw * 0.25);
     ctx.beginPath();
     ctx.moveTo(lerp(x0, x1, 0.25), cy + Lo * 0.98 + M.lw * 0.45);

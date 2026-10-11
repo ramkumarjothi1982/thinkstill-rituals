@@ -37,16 +37,18 @@ def erase_mask(name, shape):
             cv2.circle(m, (int(cx), int(cy)), int(f['r'] + 14), 1, -1)
         elif k == 'mouth':
             mm = masks[key].astype(np.uint8)
-            m |= cv2.dilate(mm, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (17, 17)))
+            m |= cv2.dilate(mm, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (27, 27)))
     if name == 'pipzi':
-        cv2.ellipse(m, (218, 328), (40, 22), 0, 0, 360, 1, -1)
+        cv2.ellipse(m, (218, 330), (52, 30), 0, 0, 360, 1, -1)
     if name == 'zuzu':
-        cv2.ellipse(m, (188, 300), (40, 20), 0, 0, 360, 1, -1)
+        cv2.ellipse(m, (188, 302), (52, 28), 0, 0, 360, 1, -1)
     if name == 'boppo':
         cv2.ellipse(m, (190, 268), (52, 26), 0, 0, 360, 1, -1)
     if name == 'glitzi':
         for (cx, cy, rx, ry) in GLITZI_EYES.values():
             cv2.ellipse(m, (cx, cy), (rx + 8, ry + 8), 0, 0, 360, 1, -1)
+            # heavy-lid outline above the sclera
+            cv2.ellipse(m, (cx, cy - ry + 2), (rx + 4, 16), 0, 180, 360, 1, -1)
         # carved frown crease
         pts = np.array([[112, 290], [118, 272], [160, 262], [198, 258], [238, 262],
                         [282, 271], [286, 292], [240, 288], [198, 284], [158, 288]], np.int32)
@@ -75,39 +77,77 @@ def inpaint(name, img, mask):
     body = cv2.erode(body, np.ones((15, 15), np.uint8))
     forbidden = cv2.dilate(mask, np.ones((9, 9), np.uint8))
     horiz_only = name == 'glitzi'   # keep glitch lines on their rows
-    B, STEP = 40, 20
-    win = np.outer(np.hanning(B + 2)[1:-1], np.hanning(B + 2)[1:-1]).astype(np.float32)
-    acc = np.zeros_like(high)
-    wsum = np.zeros((H, W), np.float32)
-    cands = []
-    for dx in range(-220, 221, 4):
-        for dy in range(-120, 121, 4):
-            if dx or dy:
-                cands.append((abs(dx) + abs(dy) * (6.0 if horiz_only else 1.4), dx, dy))
-    cands.sort()
     ok = body.astype(bool) & ~forbidden.astype(bool)
-    for y in range(0, H - B + 1, STEP):
-        for x in range(0, W - B + 1, STEP):
-            if not grow[y:y + B, x:x + B].any():
+    # One continuous donor offset per horizontal band of the mask (split into
+    # column chunks only when a band has no valid donor). A translated copy has
+    # no repeats and needs no window averaging, so texture contrast survives.
+    cands = []
+    for dx in range(-240, 241, 2):
+        for dy in range(-140, 141, 2):
+            if dx or dy:
+                cands.append((abs(dx) + abs(dy) * (8.0 if horiz_only else 1.3), dx, dy))
+    cands.sort()
+    hf = np.zeros_like(high)
+    wsum = np.zeros((H, W), np.float32)
+    BAND, OVER = 34, 10
+    gm = grow.astype(bool)
+    ys_all = np.nonzero(gm.any(1))[0]
+
+    def find(ys, xs):
+        for _, dx, dy in cands:
+            sy, sx = ys + dy, xs + dx
+            if sy.min() < 0 or sx.min() < 0 or sy.max() >= H or sx.max() >= W:
                 continue
-            found = None
-            for _, dx, dy in cands:
-                sy, sx = y + dy, x + dx
-                if sy < 0 or sx < 0 or sy + B > H or sx + B > W:
-                    continue
-                if ok[sy:sy + B, sx:sx + B].all():
-                    found = (sy, sx)
-                    break
-            if found is None:
-                continue
-            sy, sx = found
-            acc[y:y + B, x:x + B] += high[sy:sy + B, sx:sx + B] * win[..., None]
-            wsum[y:y + B, x:x + B] += win
-    hf = np.where(wsum[..., None] > 1e-3, acc / np.maximum(wsum, 1e-3)[..., None], 0)
-    # overlapping blending averages texture down; restore its contrast
-    ref = high[ok].std(0) + 1e-3
-    got = hf[grow.astype(bool)].std(0) + 1e-3
-    hf = hf * np.clip(ref / got, 1.0, 1.6)
+            if ok[sy, sx].all():
+                return dx, dy
+        return None
+
+    def place(y0, y1, x0, x1, depth=0):
+        sub = np.zeros_like(gm)
+        sub[y0:y1, x0:x1] = gm[y0:y1, x0:x1]
+        ys, xs = np.nonzero(sub)
+        if not len(ys):
+            return
+        off = find(ys, xs)
+        if off is None:
+            if x1 - x0 > 28 and depth < 6:
+                xm = (x0 + x1) // 2
+                place(y0, y1, x0, xm + 6, depth + 1)
+                place(y0, y1, xm - 6, x1, depth + 1)
+            return
+        dx, dy = off
+        # vertical feather inside the band overlap, horizontal at chunk edges
+        wy = np.ones(y1 - y0, np.float32)
+        r = min(OVER, (y1 - y0) // 2)
+        if r > 0:
+            ramp = np.linspace(0.05, 1, r)
+            wy[:r] = ramp
+            wy[-r:] = ramp[::-1]
+        wx = np.ones(x1 - x0, np.float32)
+        if depth > 0:
+            rx = min(6, (x1 - x0) // 2)
+            rampx = np.linspace(0.05, 1, rx)
+            wx[:rx] = rampx
+            wx[-rx:] = rampx[::-1]
+        w = (wy[:, None] * wx[None, :])[ys - y0, xs - x0]
+        hf[ys, xs] += high[ys + dy, xs + dx] * w[:, None]
+        wsum[ys, xs] += w
+
+    if len(ys_all):
+        y = ys_all.min()
+        while y <= ys_all.max():
+            y1 = min(H, y + BAND)
+            place(max(0, y - OVER), y1, 0, W)
+            y = y1 - OVER + OVER  # next band starts where this one ended
+    hf = np.where(wsum[..., None] > 1e-3, hf / np.maximum(wsum, 1e-3)[..., None], 0)
+    # match texture contrast to the ring of untouched body around the face
+    ring = cv2.dilate(mask, np.ones((41, 41), np.uint8)).astype(bool) & ~cv2.dilate(mask, np.ones((11, 11), np.uint8)).astype(bool) & (al > 0.98)
+    if ring.any():
+        k = np.clip(high[ring].std() / max(hf[gm].std(), 1e-3), 1.0, 1.3)
+        hf *= k
+    missing = gm & (wsum < 1e-3)
+    if missing.any():
+        print('  unfilled texture px', name, int(missing.sum()))
     filled = lowfill + hf
     # feathered blend back into the untouched artwork
     feather = cv2.GaussianBlur(grow.astype(np.float32), (0, 0), 1.6)

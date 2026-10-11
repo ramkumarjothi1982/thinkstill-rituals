@@ -54,7 +54,7 @@ export const MALLOWS = {
       mouth: { x: 198, y: 281, w: 148, sag: 15, lw: 7, style: 'crease',
         inside: '#140820', tongue: '#d4406f' },
       cheeks: { L: [92, 252, 28], R: [292, 248, 28], colour: '#ff3df2', base: 0 },
-      neutral: { eyeOpen: 1, lidTop: 0.4, lidSlant: -0.12, lookX: 0.55, lookY: -0.35, mouthSmile: -0.75, glitch: 0.6 },
+      neutral: { eyeOpen: 1, lidTop: 0.4, lidSlant: -0.12, lookX: 0.55, lookY: -0.35, mouthSmile: -0.75, glitch: 0.6, blush: 0 },
     },
   },
   blubi: {

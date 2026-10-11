@@ -76,12 +76,15 @@ export const PRESETS = {
     mouthSkew: -0.5, tiltBias: -10, fxQuestion: 0.7, spin: 0.6, spinJitter: 0.6 },
   anxious: { mouthOpen: 0.1, eyeOpen: 1.1, irisScale: 0.8, browY: 0.35, browTilt: 0.8, browAlpha: 0.8, mouthSmile: -0.35, mouthWave: 0.8,
     mouthWidth: 0.75, sweat: 0.8, tremble: 0.4, gazeDart: 1, blinkRate: 2.4, squashBias: 0.03, spinJitter: 0.8, glitch: 0.9 },
-  scared: { eyeOpen: 1.3, eyeScale: 1.15, irisScale: 0.62, browY: 0.8, browTilt: 0.9, browAlpha: 1, mouthRound: 0.7,
+  scared: { mouthSmile: -0.35, eyeOpen: 1.3, eyeScale: 1.15, irisScale: 0.62, browY: 0.8, browTilt: 0.9, browAlpha: 1, mouthRound: 0.7,
     mouthOpen: 0.45, mouthWidth: 0.6, mouthTremble: 0.6, sweat: 0.6, tremble: 0.8, squashBias: 0.1, leanBias: -0.4,
     fxExclaim: 0.3, glitch: 1.1 },
   sad: { eyeOpen: 0.6, lidTop: 0.35, lidSlant: -0.75, lookY: 0.45, wet: 1, tears: 0.6, browTilt: 0.9, browAlpha: 0.9,
     browY: -0.1, mouthSmile: -0.8, mouthOpen: 0.06, mouthTremble: 0.4, mouthWidth: 0.8, blush: 0.7, droop: 0.7,
     breath: 0.8, breathRate: 0.15, squashBias: 0.06, fxRain: 0.3, sparkle: 0.6, glitch: 0.15 },
+  disappointed: { eyeOpen: 0.58, lidTop: 0.42, lookY: 0.55, lidSlant: -0.35, browTilt: 0.6, browAlpha: 0.6, browY: -0.12,
+    mouthSmile: -0.55, mouthOpen: 0, mouthWidth: 0.85, mouthSkew: 0.15, droop: 0.55, sighCycle: 0.7, blush: 0.8,
+    sparkle: 0.6, glitch: 0.3, spin: 0.08 },
   lonely: { mouthOpen: 0, eyeOpen: 0.55, lidTop: 0.3, lidSlant: -0.4, lookX: -0.6, lookY: 0.3, wet: 0.55, browTilt: 0.6, browAlpha: 0.6,
     mouthSmile: -0.45, mouthWidth: 0.7, droop: 0.5, shrink: 0.35, breath: 0.7, sparkle: 0.6 },
   guilty: { mouthOpen: 0, eyeOpen: 0.5, lidTop: 0.4, lookY: 0.85, lookX: 0.3, browTilt: 0.7, browAlpha: 0.7, browY: -0.2, mouthSmile: -0.4,
@@ -142,6 +145,10 @@ export const PERSONALITY = {
       loved: { blush: 2.3, fxHeart: 0.9 },
       lonely: { tears: 0.5, shrink: 0.45 },
       comforted: { blush: 1.9, glow: 0.8 },
+      // beautifully dramatic: hurt-angry, wobbly and teary rather than fierce
+      angry: { browTilt: -1.4, browY: -0.7, browAlpha: 1, mouthPout: 0.75, mouthTremble: 0.5, wet: 0.7, cheekPuff: 1, blush: 1.6, glitch: 0 },
+      jealous: { lookX: -0.8, mouthPout: 1, wet: 0.5, browTilt: 0.3, cheekPuff: 0.7 },
+      frustrated: { browTilt: -1.2, browAlpha: 1, mouthWave: 0.8, cheekPuff: 1, mouthTremble: 0.3 },
     },
   },
   zuzu: {
@@ -189,6 +196,10 @@ export const PERSONALITY = {
       scared: { eyeOpen: 0.9, tremble: 0.3 },
       happy: { bounce: 0.22, closedCurve: -1, mouthOpen: 0.25, eyeOpen: 0 },
       excited: { bounce: 0.5 },
+      // unbothered, even when bothered: a flat slit and a sideways mouth
+      angry: { eyeOpen: 0.42, lidTop: 0.55, lidSlant: 0.6, browTilt: -1.3, browY: -0.5, browAlpha: 1, mouthSmile: -0.4, mouthSkew: 0.7, cheekPuff: 0.3, tremble: 0, fxSteam: 0.2 },
+      jealous: { eyeOpen: 0.45, lidTop: 0.6, lookX: 0.9, mouthSkew: 0.8, browAsym: 0.8, mouthPout: 0.4 },
+      frustrated: { eyeOpen: 0.4, lidTop: 0.55, browTilt: -1, browAlpha: 1, sighCycle: 1.4, mouthSkew: 0.5, fxSigh: 0.6 },
     },
   },
   noomi: {
@@ -201,6 +212,10 @@ export const PERSONALITY = {
       calm: { float: 0.5, fxZzz: 0.15 },
       happy: { closedCurve: -1, float: 0.25, eyeOpen: 0 },
       bored: { yawnCycle: 0.6 },
+      // grumpy-sleepy: woken up cross
+      angry: { eyeOpen: 0.5, lidTop: 0.6, lidSlant: 0.8, browTilt: -1.4, browY: -0.6, browAlpha: 1, mouthPout: 0.9, cheekPuff: 0.8, fxZzz: 0, fxSteam: 0.3 },
+      jealous: { eyeOpen: 0.45, lidTop: 0.6, lookX: 0.85, mouthPout: 0.9, browTilt: -0.4, browAlpha: 0.8 },
+      frustrated: { eyeOpen: 0.3, lidTop: 0.7, browTilt: -1.1, browAlpha: 1, yawnCycle: 0, sighCycle: 1.2, mouthPout: 0.6, cheekPuff: 0.9 },
     },
   },
 };
@@ -247,7 +262,8 @@ export function resolveExpression(mallow, mix, intensity = 0.7, extra = null) {
     const wi = w / totalW;
     for (const [k, v] of Object.entries(target)) {
       if (!(k in base)) continue;
-      let amt = intensity;
+      // ease-out: a mild feeling already reads clearly (no lingering grin)
+      let amt = 1 - (1 - intensity) * (1 - intensity);
       if (GATES[k]) amt *= smooth(GATES[k][0], GATES[k][1], intensity * (w / totalW > 0.3 ? 1 : 0.8));
       if (k === 'eyeOpen' && pers.eyeGate && v > base.eyeOpen) {
         // closed-eyed Mallows keep their eyes shut for soft feelings and only
