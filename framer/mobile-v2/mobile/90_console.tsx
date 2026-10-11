@@ -493,6 +493,7 @@ function TsmWordsReleased({ api }: { api: any }) {
         <div className="tsmReleasedWords" aria-label={`Your words, released: ${words}`}>
             <span className="tsmRWLabel">Your words</span>
             <p aria-hidden="true">
+                <span className="tsmWordsGhost">{thoughtLine(words, 90)}</span>
                 {letters.map((ch, i) => (
                     <i key={i} style={{ ["--d" as any]: `${0.35 + (i % 23) * 0.035 + Math.floor(i / 23) * 0.12}s`, ["--x" as any]: `${((i * 37) % 31) - 15}px`, ["--r" as any]: `${((i * 53) % 60) - 30}deg` }}>
                         {ch === " " ? " " : ch}

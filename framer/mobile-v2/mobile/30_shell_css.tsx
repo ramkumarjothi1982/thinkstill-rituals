@@ -159,7 +159,9 @@ const TSM_SHELL_CSS = String.raw`
 .tsmHeadline span{font-size:14px;color:var(--ink2);letter-spacing:.02em}
 .tsmReleasedWords{width:100%;max-width:360px;margin:20px 0 6px;padding:14px 16px;border-radius:18px;background:var(--fill);box-shadow:inset 0 0 0 1px var(--hair2);text-align:center}
 .tsmRWLabel{display:block;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
-.tsmReleasedWords p{margin:8px 0 6px;font-size:17px;line-height:1.35;color:var(--ink);min-height:23px}
+.tsmReleasedWords p{position:relative;margin:8px 0 6px;font-size:17px;line-height:1.35;color:var(--ink);min-height:23px}
+.tsmReleasedWords p .tsmWordsGhost{position:absolute;inset:0;font-style:normal;color:var(--ink3);opacity:0;filter:blur(.6px);letter-spacing:.01em;animation:tsmGhostIn 1.4s ease 3.2s forwards;pointer-events:none}
+@keyframes tsmGhostIn{to{opacity:.38}}
 .tsmReleasedWords p i{display:inline-block;font-style:normal;animation:tsmLetterGo 1.7s cubic-bezier(.5,0,.6,1) forwards;animation-delay:calc(var(--d) + 1.3s)}
 @keyframes tsmLetterGo{0%{opacity:1;transform:none;filter:blur(0)}55%{opacity:.85;color:var(--accent)}100%{opacity:0;transform:translate(var(--x),-46px) rotate(var(--r)) scale(.6);filter:blur(2px)}}
 .tsmRWLine{display:block;font-size:13.5px;color:var(--accent);font-weight:550;animation:tsmFadeUp .8s ease 2.9s both}
@@ -231,6 +233,13 @@ ${TSM_BR} .eosShiftMeter :is(.eosSmSkip,.eosShiftLink,.eosShiftShareLink){color:
 ${TSM_BR} .eosShiftMeter .eosShiftHalo{opacity:.45!important}
 ${TSM_BR} .eosDialLabel,${TSM_BR} .eosDialLabel *{color:var(--ink)!important;text-shadow:none!important;-webkit-text-fill-color:currentColor!important}
 ${TSM_BR} .eosShiftMeter .eosShiftSet:disabled{opacity:.55!important}
+/* end screen buttons: one Apple-style capsule system */
+${TSM_B} .eosShiftMeter .eosShiftBtn{min-height:54px!important;border-radius:27px!important;font:600 17px/1.15 ${FONT}!important;letter-spacing:-.01em!important;text-transform:none!important;box-shadow:none!important;border:0!important}
+${TSM_B} .eosShiftMeter .eosShiftBtn.isGood{background:linear-gradient(180deg,var(--accentHi),var(--accent))!important;color:var(--accentInk)!important;box-shadow:0 10px 28px var(--accentGlow), inset 0 1px 0 rgba(255,255,255,.45)!important}
+${TSM_B} .eosShiftMeter .eosShiftBtn.isMore{background:var(--fill)!important;color:var(--ink)!important;box-shadow:inset 0 0 0 1px var(--hair)!important}
+${TSM_B} .eosShiftMeter .eosShiftBtn.isTalk{background:transparent!important;color:var(--accent)!important;box-shadow:inset 0 0 0 1.5px var(--accent)!important}
+${TSM_B} .eosShiftMeter .eosShiftBtn small{font:500 12.5px/1.2 ${FONT}!important;opacity:.75!important;text-transform:none!important;letter-spacing:0!important}
+${TSM_B} .eosShiftMeter .eosShiftBtn:active{transform:scale(.97)!important}
 /* full-bleed ritual worlds: no card frame around the arena on a phone */
 ${TSM_B} .tsmShell .releaseGameHost .arena{border:0!important;border-radius:0!important;box-shadow:none!important}
 ${TSM_B} .tsmShell .releaseGameHost{border:0!important;border-radius:0!important;box-shadow:none!important;background:transparent!important}

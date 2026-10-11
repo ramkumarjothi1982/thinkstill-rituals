@@ -54,6 +54,7 @@ const ECLIPSE_CSS = String.raw`
 .tsm .eclRingLayer .ecCaption{position:absolute;left:24px;right:24px;top:50%;transform:translateY(-50%);text-align:center;color:#fff;opacity:0;
   transition:opacity .35s ease, transform .6s cubic-bezier(.2,.8,.2,1)}
 .tsm .eclRingLayer .ecCaption.show{opacity:1}
+.tsm .eclRingLayer .ecCapEcl{display:flex;justify-content:center;margin:0 0 30px}
 .tsm .eclRingLayer .ecCaption small{display:block;font-size:11px;font-weight:600;letter-spacing:.32em;text-transform:uppercase;color:rgba(255,226,190,.85);margin-bottom:12px}
 .tsm .eclRingLayer .ecCaption b{display:block;font-size:34px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
   background:linear-gradient(180deg,#fff, #ffe2bd);-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -371,6 +372,9 @@ function EclipseCurtain({ sceneRef, reduced, children, ctlRef }: { sceneRef: Rea
                 <div ref={ringRef} className="ecRing" style={{ opacity: 0 }} />
                 {caption ? (
                     <div className={cx("ecCaption", showCaption && "show")} style={{ transform: showCaption ? "translateY(-50%) scale(1)" : "translateY(-46%) scale(.96)" }}>
+                        <div className="ecCapEcl">
+                            <Eclipse size={58} breathSeconds={6} motes={false} />
+                        </div>
                         {caption.eyebrow ? <small>{caption.eyebrow}</small> : null}
                         {caption.title ? <b>{caption.title}</b> : null}
                         {caption.line ? <em>{caption.line}</em> : null}
