@@ -8,6 +8,7 @@ import greenGlitchCompass from './green-glitch-compass.js';
 import raindropKeeper from './raindrop-keeper.js';
 import moonmilkWindDown from './moonmilk-wind-down.js';
 import driftAndDock from './drift-and-dock.js';
+import sunpopSavour from './sunpop-savour.js';
 
 export const LIBRARY = [
   softLanding,
@@ -16,4 +17,5 @@ export const LIBRARY = [
   raindropKeeper,
   moonmilkWindDown,
   driftAndDock,
+  sunpopSavour,
 ];

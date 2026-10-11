@@ -126,6 +126,8 @@ export async function run(ctx) {
     world.place({ x: (cx / W) * 100, y: (cy / H) * 100, scale: s, calm: rm });
   }
   const note = (text) => h('p', { style: { textAlign: 'center', margin: '0 auto', padding: '6px 14px', borderRadius: '999px', background: 'rgba(20,16,48,.62)', color: 'var(--text-1)', font: '650 14px/1.3 var(--font-ui)', width: 'fit-content', maxWidth: '100%' } }, text);
+  const gridStyle = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' };
+  const chipStyle = { minHeight: '44px', whiteSpace: 'normal', lineHeight: '1.15', padding: '6px 10px', fontSize: '14px', justifyContent: 'center', textAlign: 'center' };
   const glassGhost = { background: 'rgba(20,16,48,.5)', color: 'var(--text-1)' };
   const setDock = (...kids) => { dock.replaceChildren(...kids); requestAnimationFrame(() => { if (!signal.aborted) fit(); }); };
   resize();
@@ -389,7 +391,7 @@ export async function run(ctx) {
     const n = rm || low ? 1 : 2;
     for (let i = 0; i < n; i++) {
       drops.push({ x: x + (Math.random() - 0.5) * 6, y, vx: 40 + Math.random() * 50, vy: 40 + Math.random() * 40, c: colour,
-        stop: st.by - st.S * (0.55 + Math.random() * 0.35) });
+        stop: st.by - (st.trunkH + st.S * 0.4 * st.m) * (0.6 + Math.random() * 0.5) });
     }
   }
   function confettiBurst(x, y) {
@@ -461,18 +463,19 @@ export async function run(ctx) {
   realm()?.setMood?.({ warmth: 0.6, clarity: 0.45, heaviness: 0.1, agitation: fam === 'calm' ? 0.1 : 0.3 });
   realm()?.transform?.(0.05);
   later(() => world.react(rm ? 'nod' : 'hop'), 250);
-  say(OPENERS[fam] || OPENERS.other, 3400);
-  if ((ctx.input.intensity ?? 0.6) < 0.3) later(() => say('Even a little glow counts. Small sunshine is still sunshine.', 2800), 3600);
+  // wait for Boppo to settle into place so the bubble sits above him
+  later(() => say(OPENERS[fam] || OPENERS.other, 3400), rm ? 200 : 800);
+  if ((ctx.input.intensity ?? 0.6) < 0.3) later(() => say('Even a little glow counts. Small sunshine is still sunshine.', 2800), 4400);
 
   let picked = null;
-  const chipRow = h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }, role: 'group', 'aria-label': 'What the good thing is' });
+  const chipRow = h('div', { style: gridStyle, role: 'group', 'aria-label': 'What the good thing is' });
   const ownInput = h('input', { class: 'feel', type: 'text', maxlength: '80', placeholder: 'In your own words (optional)', 'aria-label': 'The good thing, in your own words (optional)',
     style: { minHeight: '46px', height: '46px', padding: '0 14px', fontSize: '16px', display: 'none', width: '100%', boxSizing: 'border-box', borderRadius: '14px', border: '1px solid var(--line-strong)', background: 'rgba(255,255,255,.07)', color: 'var(--text-1)' } });
   if (ctx.input.text) ownInput.value = String(ctx.input.text).trim().slice(0, 80);
-  const ownBtn = h('button', { class: 'chip', style: { minHeight: '44px', borderStyle: 'dashed' }, 'aria-expanded': 'false' }, '+ My own words');
+  const ownBtn = h('button', { class: 'chip', style: { ...chipStyle, borderStyle: 'dashed' }, 'aria-expanded': 'false' }, '+ My own words');
   const seedBtn = h('button', { class: 'btn primary block', disabled: true }, 'Make it a seed');
   for (const [id, label] of GOOD) {
-    const c = h('button', { class: 'chip', 'aria-pressed': 'false', style: { minHeight: '44px' } }, label);
+    const c = h('button', { class: 'chip', 'aria-pressed': 'false', style: chipStyle }, label);
     listen(c, 'click', () => {
       chipRow.querySelectorAll('[aria-pressed]').forEach((x) => x.setAttribute('aria-pressed', 'false'));
       c.setAttribute('aria-pressed', 'true');
@@ -575,12 +578,12 @@ export async function run(ctx) {
     const sense = SENSES[si];
     setMove(1, { eyebrow: `Move 2 of 4 · ${sense.short} (${si + 1} of 4)`, title: 'Grow it', prompt: sense.q });
     world.setEmotion({ curious: 0.5, happy: 0.5 }, 0.75, { quiet: true });
-    const row = h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }, role: 'group', 'aria-label': sense.q });
+    const row = h('div', { style: gridStyle, role: 'group', 'aria-label': sense.q });
     const skip = h('button', { class: 'btn ghost block', style: glassGhost }, 'Skip this one');
     let choice = null;
     const chosen = new Promise((r) => {
       for (const label of sense.chips) {
-        const c = h('button', { class: 'chip', style: { minHeight: '44px' } }, h('span', { class: 'hue', style: { background: sense.colour, boxShadow: `0 0 8px ${sense.colour}` } }), label);
+        const c = h('button', { class: 'chip', style: chipStyle }, h('span', { class: 'hue', style: { background: sense.colour, boxShadow: `0 0 8px ${sense.colour}` } }), label);
         listen(c, 'click', () => { choice = label; audio.ui?.('select'); haptic('light'); r(); });
         row.append(c);
       }
@@ -606,7 +609,10 @@ export async function run(ctx) {
     setDock(note(`${sense.short}: ${choice}`), meter, pourBtn);
     await pause(60);
     if (signal.aborted) return result;
-    const canHome = () => ({ x: Math.max(48, Math.min(W * 0.3, st.bx - st.S * 0.7)), y: Math.max(titleBottom() + 40, st.by - st.S * 1.0) });
+    const canHome = () => {
+      const m = world.mallowRect();
+      return { x: Math.max(48, Math.min(W * 0.3, st.bx - st.S * 0.7)), y: Math.max(titleBottom() + 40, Math.min(st.by - st.S * 1.0, m.top + m.height * 0.12 - 44)) };
+    };
     const c0 = canHome();
     if (!can.isConnected) token(can, c0); else glide(can, c0.x, c0.y, 400);
     water().setAttribute('fill', sense.colour);

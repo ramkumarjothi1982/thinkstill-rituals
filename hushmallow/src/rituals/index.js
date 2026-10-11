@@ -9,6 +9,7 @@ export const PAID_MODULES = {
   'raindrop-keeper': () => import('./raindrop-keeper.js'),
   'moonmilk-wind-down': () => import('./moonmilk-wind-down.js'),
   'drift-and-dock': () => import('./drift-and-dock.js'),
+  'sunpop-savour': () => import('./sunpop-savour.js'),
 };
 export const ULTRA_MODULES = new Set(['another-angle']);
 export const AVAILABLE = new Set([...Object.keys(PAID_MODULES), ...ULTRA_MODULES]);

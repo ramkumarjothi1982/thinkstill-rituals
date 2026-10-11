@@ -46,7 +46,9 @@ export default function settings(app) {
       h('div', { class: 'eyebrow', style: { marginTop: '18px' } }, 'About'),
       h('p', { class: 'muted' }, 'Hushmallow uses no AI and no chatbots. Feelings are matched with fixed word lists you confirm yourself, and every ritual and line is written in advance — nothing is generated while you use it. It’s a wellbeing app, not a medical service.'),
       h('button', { class: 'btn ghost block', onclick: () => openSupport(app) }, 'Support lines'),
-      h('a', { class: 'btn ghost block', href: './studio.html', style: { textDecoration: 'none' } }, 'Mallow Emotion Studio')));
+      // developer tool: not part of the published site
+      ['localhost', '127.0.0.1'].includes(location.hostname)
+        ? h('a', { class: 'btn ghost block', href: './studio.html', style: { textDecoration: 'none' } }, 'Mallow Emotion Studio') : null));
 
   function confirmClear() {
     const s = openSheet({ title: 'Delete everything?', body: h('p', { style: { margin: 0, color: 'var(--text-2)' } }, 'This removes your favourites, history, saved angles and settings from this phone. Your subscription isn’t affected.'),

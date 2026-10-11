@@ -8,6 +8,10 @@ import { playTrick } from '../trick-launch.js';
 const CHECK = [
   ['lighter', 'A bit lighter'], ['same', 'About the same'], ['heavier', 'Heavier'],
 ];
+// same meanings (helped / no change / didn't help), worded for good feelings
+const CHECK_GLOW = [
+  ['lighter', 'Glowing more'], ['same', 'About the same'], ['heavier', 'It’s faded a bit'],
+];
 
 export default function landing(app) {
   const { world, rec } = app;
@@ -18,8 +22,10 @@ export default function landing(app) {
   let fav = rec.isFavourite(ritual.id);
   const isTrick = ritual.module === 'quick-trick';
 
+  // a good feeling isn't 'lighter' or 'heavier'; it glows more or less
+  const options = ritual.family === 'celebration' ? CHECK_GLOW : CHECK;
   const checkRow = h('div', { class: 'chips', role: 'group', 'aria-label': ritual.checkIn, style: { justifyContent: 'center' } },
-    ...CHECK.map(([id, label]) => h('button', { class: 'chip', 'aria-pressed': 'false', onclick: (e) => check(id, e.currentTarget) }, label)));
+    ...options.map(([id, label]) => h('button', { class: 'chip', 'aria-pressed': 'false', onclick: (e) => check(id, e.currentTarget) }, label)));
   const favBtn = h('button', { class: 'btn', 'aria-pressed': String(fav), onclick: () => toggleFav() }, icon('star'), fav ? 'Saved' : 'Save');
   const summary = h('div', { class: 'summary-card' }, ...(res.summary || []).flatMap((l) => [h('div', { class: 'k' }, l.label), h('div', { class: 'v' }, l.text)]));
 
@@ -52,6 +58,9 @@ export default function landing(app) {
     } else if (id === 'same') {
       world.setStage('comforting');
       say(world, 'That’s okay. Feelings don’t always move on cue. You still did something kind for yourself.', { who: lead.name, ms: 4200 });
+    } else if (ritual.family === 'celebration') {
+      world.setStage('comforting');
+      say(world, 'Good feelings drift — that’s allowed. You can grow another one any time.', { who: lead.name, ms: 4200 });
     } else {
       world.setStage('concerned');
       world.react('comfort');
