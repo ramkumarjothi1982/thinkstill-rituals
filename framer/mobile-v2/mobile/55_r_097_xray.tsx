@@ -263,7 +263,7 @@ function RitualXray({ ctx }: { ctx: RitualCtx }) {
                 </div>
             ) : null}
             <div className="xrClean" style={{ left: w / 2, top: chY + chH * 0.45, ["--cd" as any]: `${Math.ceil(Math.hypot(w, h) * 2.1)}px` }} />
-            <div className="xrCap" style={{ top: chY + chH * 0.45 - 16 }} aria-live="polite">
+            <div className="xrCap" style={{ top: chY + chH * 0.8 }} aria-live="polite">
                 {phase === "clean" ? "Seen through. Gone." : ""}
             </div>
         </div>
