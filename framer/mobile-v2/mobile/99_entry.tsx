@@ -34,7 +34,7 @@ const TSM_THEME_KEY = "ts_release_theme"
 
 let tsmCssCache = ""
 function tsmAllCss(): string {
-    if (!tsmCssCache) tsmCssCache = tsmScopeCss(TSM_CSS + ECLIPSE_CSS + ORB_CSS + TSM_SHELL_CSS) + TSM_DESKTOP_CSS
+    if (!tsmCssCache) tsmCssCache = tsmScopeCss(TSM_CSS + ECLIPSE_CSS + ORB_CSS + TSM_SHELL_CSS) + TSM_DESKTOP_CSS + TSM_RITUAL_CSS_G1 + TSM_RITUAL_CSS_G2 + TSM_RITUAL_CSS_G3 + TSM_RITUAL_CSS_G4 + TSM_RITUAL_CSS_G5 + TSM_RITUAL_CSS_G6
     return tsmCssCache
 }
 
