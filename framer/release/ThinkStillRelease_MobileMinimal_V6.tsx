@@ -3911,7 +3911,6 @@ html body .tsCineHost .tsReleaseSupportModal { max-height:calc(100% - 16px) !imp
 }
 @media (max-height:520px) {
     html body .tsCineHost .tsReleaseSupportModal { width:min(640px,100%) !important; }
-    html body .tsCineHost .tsReleaseSupportContacts { display:grid !important; grid-template-columns:1fr 1fr !important; }
 }
 
 /* =============================================================
@@ -4167,6 +4166,13 @@ html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsArcade:not(#tsV6
         #2a201b !important;
 }
 
+/* Bright: the engine's thought-flow layer paints an opaque night gradient over the stage. */
+html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsArcade:not(#tsV6a):not(#tsV6b):not(#tsV6c):not(#tsV6d) .eosThoughtFlow {
+    background:transparent !important;
+}
+/* Nothing drifts across a crisis dialog. */
+.tsCineHost:has(.eosSafetyCard) .tsPxRig, .tsCineHost:has(.tsReleaseSupportOverlay) .tsPxRig { display:none !important; }
+
 /* ----- H. Wrapper support dialog: dark, tap-to-call, opens at the top ----- */
 html body .tsCineHost .tsReleaseSupportOverlay { background:rgba(0,0,0,.72) !important; }
 html body .tsCineHost .tsReleaseSupportModal {
@@ -4180,8 +4186,8 @@ html body .tsCineHost .tsReleaseSupportContact {
     background:rgba(255,255,255,.06) !important; display:grid !important; grid-template-columns:minmax(0,1fr) auto auto !important;
     align-items:center !important; gap:8px !important;
 }
-html body .tsCineHost .tsReleaseSupportWho strong { color:#fff !important; font-family:var(--ts-sf) !important; }
-html body .tsCineHost .tsReleaseSupportWho span { color:rgba(235,235,245,.62) !important; font-family:var(--ts-sf) !important; }
+html body .tsCineHost .tsReleaseSupportWho strong { color:#fff !important; font:600 15px/1.25 var(--ts-sf) !important; }
+html body .tsCineHost .tsReleaseSupportWho span { color:rgba(235,235,245,.62) !important; font:400 13px/1.35 var(--ts-sf) !important; }
 html body .tsCineHost .tsReleaseSupportPhone {
     display:inline-flex !important; align-items:center !important; min-height:44px !important; padding:0 12px !important;
     border-radius:22px !important; background:rgba(48,209,88,.16) !important; color:#30d158 !important;
@@ -4214,6 +4220,9 @@ html body .tsCineHost .tsReleaseSupportBack {
 @media (orientation:landscape) and (max-height:500px) {
     ${P} .eosSafetyCard .eosSafetyHead { display:flex !important; }
     ${P} .eosSafetyCard .eosSafetyStill { position:relative !important; flex:0 0 40px !important; margin:0 !important; inset:auto !important; }
+    ${P} .eosSafetyCard .eosSafetyStill .eosOrb, ${P} .eosSafetyCard .eosSafetyStill .eosOrbBall {
+        --eos-orb:40px !important; width:40px !important; height:40px !important; min-width:0 !important;
+    }
 }
 /* Header: a dead "previous" control is noise; emoji glyphs go monochrome. */
 ${P} .tsReleaseNativeArrow:disabled { visibility:hidden !important; }
