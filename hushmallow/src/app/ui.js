@@ -91,7 +91,20 @@ export function say(world, text, { who, ms = 3600, above = true } = {}) {
   document.body.append(b);
   const bw = Math.min(b.offsetWidth, innerWidth - 24);
   const x = Math.max(12, Math.min(innerWidth - bw - 12, rect.cx - bw / 2));
-  const y = above ? rect.top + rect.height * 0.12 - b.offsetHeight - 6 : rect.bottom + 12;
+  // never cover a ritual's instructions: above the Mallow if it fits under the
+  // title block, else below the Mallow (above the controls), else over the Mallow
+  const bh = b.offsetHeight;
+  const titles = [...document.querySelectorAll('#scene .move-title')].map((e) => e.getBoundingClientRect()).filter((r) => r.height > 0);
+  const minTop = titles.length ? Math.max(...titles.map((r) => r.bottom)) + 8 : 12;
+  const dock = document.querySelector('#scene .dock');
+  const maxBottom = dock && dock.children.length ? dock.getBoundingClientRect().top - 8 : innerHeight - 12;
+  let y = rect.top + rect.height * 0.12 - bh - 6;
+  let below = false;
+  if (!above || y < minTop) {
+    const yb = rect.bottom + 12;
+    if (yb + bh <= maxBottom) { y = yb; below = true; } else y = Math.max(minTop, Math.min(y, maxBottom - bh));
+  }
+  b.classList.toggle('below', below);
   b.style.left = `${x}px`;
   b.style.top = `${Math.max(12, y)}px`;
   b.style.setProperty('--tail', `${Math.max(20, Math.min(bw - 20, rect.cx - x))}px`);

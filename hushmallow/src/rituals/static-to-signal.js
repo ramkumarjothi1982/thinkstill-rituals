@@ -264,7 +264,7 @@ export async function run(ctx) {
     const rect = () => stone.getBoundingClientRect();
     groundSound = audio.hold?.('ground', { intensity: 0 }) || null;
     const step = (now) => {
-      const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
+      const dt = Math.max(0, Math.min(1, (now - prev) / 1000)); prev = now; // real time: breaths keep their length on slow frames
       const active = holding || toggled;
       if (active) {
         t += dt;
