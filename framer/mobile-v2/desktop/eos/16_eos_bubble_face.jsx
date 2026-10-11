@@ -310,7 +310,25 @@ function tsApplyBubbleFaces(root, st) {
         // a game that drives each bubble's own reaction (ZAP: negative → shocked → softer → happy per hit) names the
         // picture on the host (data-tsf-src, chosen from the same resolver); everything else follows progress
         const src = host.dataset.tsfSrc || srcs[slot % srcs.length] || ""
-        if (src && img.getAttribute("src") !== src) img.setAttribute("src", src)
+        if (src && img.getAttribute("src") !== src) {
+            // mobile v2: never flash an empty circle — keep the current face until the next one has loaded
+            const pre = TS_FACE_PRELOAD.get(src)
+            if (!pre || pre.complete || !img.getAttribute("src")) {
+                img.__tsWait = null
+                img.setAttribute("src", src)
+            } else if (img.__tsWait !== src) {
+                img.__tsWait = src
+                const swap = () => {
+                    if (img.__tsWait === src) {
+                        img.__tsWait = null
+                        img.setAttribute("src", src)
+                    }
+                }
+                pre.addEventListener("load", swap, { once: true })
+                pre.addEventListener("error", swap, { once: true })
+                setTimeout(swap, 2500)
+            }
+        }
         const text = textEl ? String(textEl.textContent || "").replace(/\s+/g, " ").trim() : ""
         if (label.hidden !== !text) label.hidden = !text
         if (textEl && !textEl.classList.contains("tsBubbleFaceSrcHidden")) textEl.classList.add("tsBubbleFaceSrcHidden")
