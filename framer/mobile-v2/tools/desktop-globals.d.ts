@@ -14,3 +14,13 @@ declare function eosSetPref(key: string, value: any): void
 declare function eosApi(name: string): any
 declare function vibrate(pattern: number | number[]): void
 declare const EOS_EMO: any
+// hero rituals 112-114 (native): the desktop word pickers, sessions and safety, from the shared scope
+declare function eosWords(entries: string[], n?: number): string[]
+declare function eosVolcanoWords(list: string[]): string[]
+declare function eosGroundWords(entries: string[]): string[]
+declare function eosLanWords(entries: string[], fit?: (phrase: string) => boolean): string[]
+declare function eosLanFitter(font: string, maxW: number, maxLines: number): (phrase: string) => boolean
+declare function eosSessions(): any[]
+declare function eosSafetyStrong(type: any): boolean
+declare function EosSafetyScan(text: any): any
+declare function eosDayPart(d?: Date): string
