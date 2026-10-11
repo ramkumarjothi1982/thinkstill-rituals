@@ -34,7 +34,7 @@ const TSM_THEME_KEY = "ts_release_theme"
 
 let tsmCssCache = ""
 function tsmAllCss(): string {
-    if (!tsmCssCache) tsmCssCache = tsmScopeCss(TSM_CSS + ECLIPSE_CSS + ORB_CSS + TSM_SHELL_CSS) + TSM_DESKTOP_CSS + TSM_RITUAL_CSS_G1 + TSM_RITUAL_CSS_G2 + TSM_RITUAL_CSS_G3 + TSM_RITUAL_CSS_G4 + TSM_RITUAL_CSS_G5 + TSM_RITUAL_CSS_G6
+    if (!tsmCssCache) tsmCssCache = tsmScopeCss(TSM_CSS + ECLIPSE_CSS + ORB_CSS + TSM_SHELL_CSS + RITUAL_HOST_CSS + TSM_RITUAL_CSS.join("\n")) + TSM_DESKTOP_CSS + TSM_RITUAL_CSS_G1 + TSM_RITUAL_CSS_G2 + TSM_RITUAL_CSS_G3 + TSM_RITUAL_CSS_G4 + TSM_RITUAL_CSS_G5 + TSM_RITUAL_CSS_G6
     return tsmCssCache
 }
 
@@ -116,10 +116,11 @@ function ThinkStillReleaseMobile(props: any) {
 
     const shell = React.useMemo<TsmShell>(() => ({ theme, themePref, setThemePref, eclipse, reduced, titleText, showLibrary: !!eosShowGameMenu }), [theme, themePref, reduced, titleText, eosShowGameMenu])
 
+    const nativePlay = !!useTsmPlay()
     if (tsmDesktopShellRequested()) return <ThinkStillReleaseArcadePixar {...props} />
 
     return (
-        <div id="tsmRoot" className="tsm" data-theme={theme} data-calm={calm ? "true" : "false"} style={themeVars(theme)}>
+        <div id="tsmRoot" className="tsm" data-theme={theme} data-calm={calm ? "true" : "false"} data-native={nativePlay ? "true" : "false"} style={themeVars(theme)}>
             <style>{tsmAllCss()}</style>
             <TsmBackdrop calm={reduced} />
             <TsmContext.Provider value={shell}>
@@ -136,6 +137,7 @@ function ThinkStillReleaseMobile(props: any) {
                             mobileUI={MobileConsole}
                             tsTransition={transition}
                         />
+                        <RitualLayer />
                     </div>
                 </EclipseCurtain>
             </TsmContext.Provider>

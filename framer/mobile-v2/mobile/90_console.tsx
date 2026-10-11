@@ -618,7 +618,11 @@ function MobileConsole({ api }: { api: any }) {
     const n = api.nodes
     const stage: string = api.stage
     const playKey = api.selected ? `${api.selected.id}-${api.variationSeed}-${api.materialRevision}` : "none"
-    const pct = useRitualProgress(api.gameHostRef, stage === "play", playKey)
+    const native = stage === "play" && !!api.selected && !!TSM_RITUALS[Number(api.selected.id)]
+    const domPct = useRitualProgress(api.gameHostRef, stage === "play" && !native, playKey)
+    const [nativePct, setNativePct] = React.useState(0)
+    React.useEffect(() => setNativePct(0), [playKey])
+    const pct = native ? nativePct : domPct
     const rootRef = React.useRef<HTMLDivElement>(null)
 
     // music: the shared ThinkStill source when present, otherwise the Eclipse score
@@ -630,6 +634,16 @@ function MobileConsole({ api }: { api: any }) {
     }, [stage])
 
     const showComposer = stage === "input" || (stage === "play" && editing)
+    // native rituals render in the root's ritual layer (outside this DOM); publish what they need
+    const apiRef = useLatest(api)
+    React.useLayoutEffect(() => {
+        if (!native) {
+            if (tsmPlay.get()) tsmPlay.set(null)
+            return
+        }
+        tsmPlay.set({ api: apiRef.current, key: playKey, onProgress: (p: number) => setNativePct(p), bottomInset: editing ? 96 + kb : 0 })
+    }, [native, playKey, editing, kb])
+    React.useEffect(() => () => tsmPlay.set(null), [])
     const checkinUp = !!n.checkIn
 
     return (
@@ -642,8 +656,8 @@ function MobileConsole({ api }: { api: any }) {
                 {n.checkIn}
                 {n.worldChips}
                 {n.safety}
-                {n.game}
-                {n.eosPlay}
+                {native ? null : n.game}
+                {native ? null : n.eosPlay}
                 {n.pickBridge}
                 {n.textFloor}
                 {stage === "reveal" ? <TsmReveal api={api} /> : null}

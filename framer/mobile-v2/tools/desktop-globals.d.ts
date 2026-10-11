@@ -13,3 +13,4 @@ declare function eosPrefs(): any
 declare function eosSetPref(key: string, value: any): void
 declare function eosApi(name: string): any
 declare function vibrate(pattern: number | number[]): void
+declare const EOS_EMO: any

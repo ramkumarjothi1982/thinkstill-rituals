@@ -22866,7 +22866,7 @@ function ThinkStillReleaseArcade(props) {
             if (tsHaptics) vibrate(v === "yes" ? 18 : 12)
         },
         persistentFinalFeedback, recommendedReleaseGame, recommendedReleaseGesture, recommendedReleasePreviewImage,
-        startChosenGame, startThinkStillChoice, launchRelease, tryRecommendedRelease, openAdjacentRelease, replay, clearForNext,
+        startChosenGame, startThinkStillChoice, launchRelease, tryRecommendedRelease, openAdjacentRelease, replay, clearForNext, done,
         moveScreen: tsMoveScreen, checkinStep: tsCheckinStep, completedRitual: tsCompletedRitual.current,
         close: () => {
             if (typeof tsCloseConsole === "function") tsCloseConsole()

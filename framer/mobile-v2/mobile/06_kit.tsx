@@ -169,7 +169,7 @@ const ORB_CSS = String.raw`
     radial-gradient(120% 90% at 50% 112%, hsla(var(--h),70%,var(--lowL,16%),var(--lowA,.62)) 0%, transparent 62%),
     radial-gradient(circle at 50% 42%, hsla(var(--h),90%,62%,.10) 0%, hsla(var(--h),80%,40%,.26) 62%, hsla(var(--h),95%,72%,.55) 100%);
   box-shadow:inset 0 0 0 1.25px var(--orbRim), inset 0 calc(var(--d)*-.06) calc(var(--d)*.12) hsla(var(--h),95%,70%,.35), 0 calc(var(--d)*.07) calc(var(--d)*.22) hsla(var(--h),90%,35%,var(--glowA,.32));
-  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:box-shadow .6s ease}
+  transition:box-shadow .6s ease}
 .tsm[data-theme=bright] .tsmOrb .orbBody{--lowL:98%;--lowA:.80;box-shadow:inset 0 0 0 1.5px var(--orbRim), inset 0 calc(var(--d)*-.06) calc(var(--d)*.12) hsla(var(--h),95%,70%,.30), 0 calc(var(--d)*.07) calc(var(--d)*.2) hsla(var(--h),70%,40%,.22)}
 .tsm .tsmOrb.lifted .orbBody{box-shadow:inset 0 0 0 1.5px var(--orbRim), inset 0 calc(var(--d)*-.06) calc(var(--d)*.12) hsla(var(--h),95%,70%,.45), 0 calc(var(--d)*.14) calc(var(--d)*.32) hsla(var(--h),90%,35%,.45)}
 .tsm .tsmOrb .orbAura{position:absolute;inset:-22%;border-radius:50%;pointer-events:none;opacity:var(--aura,0);transition:opacity .8s ease;

@@ -240,6 +240,14 @@ ${TSM_B} .eosShiftMeter .eosShiftBtn.isMore{background:var(--fill)!important;col
 ${TSM_B} .eosShiftMeter .eosShiftBtn.isTalk{background:transparent!important;color:var(--accent)!important;box-shadow:inset 0 0 0 1.5px var(--accent)!important}
 ${TSM_B} .eosShiftMeter .eosShiftBtn small{font:500 12.5px/1.2 ${FONT}!important;opacity:.75!important;text-transform:none!important;letter-spacing:0!important}
 ${TSM_B} .eosShiftMeter .eosShiftBtn:active{transform:scale(.97)!important}
+/* native ritual play: the ritual layer lives under the console; the console's transparent full-screen
+   containers let touches through and only the chrome (header buttons, story strip, composer, popovers,
+   sheets, the safety card) stays interactive. Desktop decoration over the stage is switched off. */
+${TSM_B}[data-native=true] .tsPixarRoot,${TSM_B}[data-native=true] .tsArcade,${TSM_B}[data-native=true] .tsmShell,${TSM_B}[data-native=true] .tsmShell>.releaseStage,${TSM_B}[data-native=true] .tsmShell>.releaseStage>*{pointer-events:none!important}
+${TSM_B}[data-native=true] .tsmShell>.releaseStage>:not(.eosSafetyCard):not(:has(.eosSafetyCard)){visibility:hidden!important}
+${TSM_B}[data-native=true] .tsmShell>.releaseStage::before,${TSM_B}[data-native=true] .tsmShell>.releaseStage::after,${TSM_B}[data-native=true] .tsPxRig{display:none!important}
+${TSM_B}[data-native=true] .tsmShell .eosSafetyCard,${TSM_B}[data-native=true] .tsmShell .eosSafetyCard *{pointer-events:auto!important;visibility:visible!important}
+${TSM_B}[data-native=true] .tsmShell>:is(.tsmStory,.tsmComposer,.tsmSettings,.tsmSheetWrap,.tsmToast),${TSM_B}[data-native=true] .tsmShell .tsmHeadSide{pointer-events:auto!important}
 /* full-bleed ritual worlds: no card frame around the arena on a phone */
 ${TSM_B} .tsmShell .releaseGameHost .arena{border:0!important;border-radius:0!important;box-shadow:none!important}
 ${TSM_B} .tsmShell .releaseGameHost{border:0!important;border-radius:0!important;box-shadow:none!important;background:transparent!important}
