@@ -1733,11 +1733,14 @@ function ReleaseSupportModal({ onClose }: { onClose: () => void }) {
         index: number
         ok: boolean
     } | null>(null)
-    const backRef = React.useRef<HTMLButtonElement>(null)
+    const titleRef = React.useRef<HTMLHeadingElement>(null)
     const modalRef = React.useRef<HTMLDivElement>(null)
 
     React.useEffect(() => {
-        backRef.current?.focus()
+        // Open at the top: the title and the emergency line come first, so focus
+        // the title without letting the browser scroll to a lower control.
+        titleRef.current?.focus({ preventScroll: true })
+        if (modalRef.current) modalRef.current.scrollTop = 0
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.key === "Escape") {
                 event.stopPropagation()
@@ -1745,8 +1748,8 @@ function ReleaseSupportModal({ onClose }: { onClose: () => void }) {
             }
             if (event.key !== "Tab" || !modalRef.current) return
             const elements = Array.from(
-                modalRef.current.querySelectorAll<HTMLButtonElement>(
-                    "button:not([disabled])"
+                modalRef.current.querySelectorAll<HTMLElement>(
+                    "a[href], button:not([disabled])"
                 )
             )
             if (!elements.length) return
@@ -1774,11 +1777,12 @@ function ReleaseSupportModal({ onClose }: { onClose: () => void }) {
                 aria-describedby="tsReleaseSupportIntro"
                 ref={modalRef}
             >
-                <h2 id="tsReleaseSupportTitle">Let’s pause the ritual.</h2>
+                <h2 id="tsReleaseSupportTitle" tabIndex={-1} ref={titleRef}>
+                    Talk to someone now
+                </h2>
                 <p id="tsReleaseSupportIntro">
-                    What you wrote sounds heavier than a ritual should carry.
-                    You deserve to talk to a real person about it, and you can
-                    reach someone right now.
+                    These lines are free, confidential and open right now. Tap a
+                    number to call.
                 </p>
                 <div className="tsReleaseSupportContacts">
                     {RELEASE_SUPPORT_CONTACTS.map((contact, index) => (
@@ -1790,9 +1794,13 @@ function ReleaseSupportModal({ onClose }: { onClose: () => void }) {
                                 <strong>{contact.name}</strong>
                                 <span>{contact.detail}</span>
                             </div>
-                            <strong className="tsReleaseSupportPhone">
+                            <a
+                                className="tsReleaseSupportPhone"
+                                href={`tel:${contact.phone.replace(/\s+/g, "")}`}
+                                aria-label={`Call ${contact.name} on ${contact.phone}`}
+                            >
                                 {contact.phone}
-                            </strong>
+                            </a>
                             <button
                                 className="tsReleaseSupportCopy"
                                 type="button"
@@ -1820,10 +1828,9 @@ function ReleaseSupportModal({ onClose }: { onClose: () => void }) {
                     <button
                         type="button"
                         className="tsReleaseSupportBack"
-                        ref={backRef}
                         onClick={onClose}
                     >
-                        Back to the console
+                        Back to ThinkStill
                     </button>
                 </div>
             </div>
@@ -3018,31 +3025,6 @@ html body .tsCineHost .tsReleaseSupportBack { background:#1c1c24 !important; col
     box-shadow:0 10px 40px rgba(255,170,100,.35) !important;
 }
 
-/* ---------- Bright theme: warm daylight set ---------- */
-.tsCineHost:has(.tsReleaseHost[data-ts-theme="Bright"]) {
-    --ts-ink:#f5f2ef; --ts-stage:#fbf8f5; --ts-surface:#fff; --ts-text:#1c1c1e; --ts-text2:rgba(60,60,67,.6);
-    --ts-line:rgba(60,60,67,.12); color-scheme:light;
-}
-html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsArcade .releaseConsoleHeader,
-html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsArcade .releaseComposer { background:rgba(251,248,245,.8) !important; }
-html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsArcade .releaseHeaderCenter .releaseTitleBrand { color:#1c1c1e !important; text-shadow:none !important; }
-html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsArcade .releaseHeaderCenter .releaseTitleMain {
-    background-image:linear-gradient(100deg,#1c1c1e 0%,#1c1c1e 38%,var(--ts-ember) 50%,#1c1c1e 62%,#1c1c1e 100%);
-}
-html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsArcade .tsReleaseNativeArrow,
-html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsArcade .tsReleaseSettingsButton,
-html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsArcade .tsReleaseCloseButton,
-html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsArcade .releaseHeaderSound {
-    background:rgba(118,118,128,.12) !important; color:#1c1c1e !important;
-}
-html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsArcade.stage-input .releaseComposer .releaseThoughtInput { background:#fff !important; color:#1c1c1e !important; border-color:rgba(60,60,67,.18) !important; }
-html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsArcade.stage-input .releaseComposer .releaseThoughtInput::placeholder { color:rgba(60,60,67,.5) !important; }
-html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsSsPanel { background:rgba(242,242,247,.9) !important; color:#1c1c1e !important; }
-html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsSsHeader,
-html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsSsRow { color:#1c1c1e !important; }
-html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsSsRows { background:#fff !important; }
-html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsSsRow { border-bottom-color:rgba(60,60,67,.12) !important; }
-html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsSsDone { background:#1c1c1e !important; color:#fff !important; }
 
 /* =============================================================
    PREMIUM LAYER — episode ribbon, value recap sheet
@@ -3199,19 +3181,11 @@ const IPHONE_CINEMA_CSS = `
     --ts-stage-text2: rgba(235,235,245,.62);
     --ts-stage-fill: rgba(118,118,128,.28);
 }
-.tsCineHost:has(.tsReleaseHost[data-ts-theme="Bright"]) {
-    --ts-fill: rgba(118,118,128,.12);
-    --ts-fill2: rgba(118,118,128,.2);
-    --ts-bubble: #e9e9eb;
-    --ts-material: rgba(250,248,246,.8);
-}
 
 /* ===== Stage: full-bleed black set, one warm key light ===== */
 /* The stage gradient carries the falloff; a vignette here would grey the controls. */
 .tsCineHost .tsCineVignette { display:none !important; }
 .tsCineHost .tsCineAmbient { opacity:.28 !important; }
-/* Light bars would show the key light through them as a grey smudge. */
-.tsCineHost:has(.tsReleaseHost[data-ts-theme="Bright"]) .tsCineAmbient { display:none !important; }
 ${P} { padding:0 !important; background:#0a0a0f !important; }
 ${P} > .scan, ${P} > .ambient { display:none !important; }
 ${P} > .shell {
@@ -3550,12 +3524,6 @@ ${P} .releaseChoiceItem:hover {
     box-shadow:0 14px 30px rgba(0,0,0,.55), 0 0 0 2px rgba(255,255,255,.6) !important;
 }
 
-/* ===== Bright theme: same layout, daylight materials ===== */
-html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsArcade:not(#tsV5a):not(#tsV5b):not(#tsV5c):not(#tsV5d) .releaseComposer .releaseThoughtInput { border-color:rgba(60,60,67,.22) !important; background:#fff !important; }
-html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsArcade:not(#tsV5a):not(#tsV5b):not(#tsV5c):not(#tsV5d) .releaseComposer .releaseThoughtInput::placeholder { color:rgba(60,60,67,.45) !important; }
-html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsArcade:not(#tsV5a):not(#tsV5b):not(#tsV5c):not(#tsV5d) .releaseChoiceButton.eosPickGo { background:#1c1c1e !important; }
-html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsArcade:not(#tsV5a):not(#tsV5b):not(#tsV5c):not(#tsV5d) .releaseChoiceButton.eosPickGo::before { border-left-color:#fff !important; }
-html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsArcade:not(#tsV5a):not(#tsV5b):not(#tsV5c):not(#tsV5d) .releaseChoiceButton.eosPickGo .choiceCopy { color:#fff !important; }
 
 @media (prefers-reduced-motion: reduce) {
     ${P} .eosCkHeadCold > span, ${P} .releaseCompleteCard { animation:none !important; }
@@ -3945,6 +3913,403 @@ html body .tsCineHost .tsReleaseSupportModal { max-height:calc(100% - 16px) !imp
     html body .tsCineHost .tsReleaseSupportModal { width:min(640px,100%) !important; }
     html body .tsCineHost .tsReleaseSupportContacts { display:grid !important; grid-template-columns:1fr 1fr !important; }
 }
+
+/* =============================================================
+   V6 ROUND 2 — fixes confirmed by the device verification pass
+   ============================================================= */
+
+/* ----- A. Crisis support, engine card: legible on the dark sheet, calm buttons ----- */
+${P} .eosSafetyCard .eosSafetyTitle { color:#fff !important; font-size:19px !important; line-height:1.25 !important; }
+${P} .eosSafetyCard .eosSafetyBody { color:rgba(235,235,245,.78) !important; font-size:15px !important; line-height:1.4 !important; }
+${P} .eosSafetyCard .eosSafetyEmergency { color:rgba(235,235,245,.9) !important; font-weight:600 !important; font-size:14px !important; }
+${P} .eosSafetyCard .eosSafetyCopied { color:rgba(235,235,245,.78) !important; }
+${P} .eosSafetyCard .eosSafetyMore { color:#64d2ff !important; text-decoration:none !important; min-height:44px !important; font-weight:600 !important; }
+${P} .eosSafetyCard .eosSafetyHalo, ${P} .eosSafetyCard .eosSafetyHeart { display:none !important; }
+${P} .eosSafetyCard .eosSafetyStill .eosOrbBall { box-shadow:0 0 0 1px rgba(255,255,255,.14) !important; }
+${P} .eosSafetyCard .eosSafetyBtn {
+    min-height:50px !important; border:0 !important; border-radius:14px !important; box-shadow:none !important;
+    font-weight:600 !important; text-shadow:none !important; text-decoration:none !important;
+}
+${P} .eosSafetyCard .eosSafetyCall { background:#fff !important; color:#1c1c24 !important; }
+${P} .eosSafetyCard .eosSafetyCall * { color:#1c1c24 !important; }
+${P} .eosSafetyCard .eosSafetyCall small { color:rgba(28,28,36,.6) !important; }
+${P} .eosSafetyCard .eosSafetyIcon { background:rgba(0,0,0,.06) !important; }
+${P} .eosSafetyCard .eosSafetyTrust, ${P} .eosSafetyCard .eosSafetyOk { background:var(--ts-stage-fill) !important; color:#f5f5f7 !important; }
+${P} .eosSafetyCard .eosSafetyLine { background:rgba(255,255,255,.06) !important; border:0 !important; }
+${P} .eosSafetyCard .eosSafetyLineLabel { color:rgba(235,235,245,.7) !important; }
+${P} .eosSafetyCard .eosSafetyLineBtn {
+    background:rgba(48,209,88,.16) !important; color:#30d158 !important; border:0 !important; box-shadow:none !important;
+    min-height:44px !important; display:inline-flex !important; align-items:center !important; border-radius:22px !important; font-weight:700 !important;
+}
+${P} .releaseStage:has(.eosSafetyCard)::before {
+    content:""; position:absolute; inset:0; background:rgba(0,0,0,.55); z-index:229; pointer-events:none;
+}
+@media (orientation:landscape) and (max-height:500px) {
+    ${P} .eosSafetyCard { top:6px !important; max-height:calc(100% - 12px) !important; padding:12px 16px !important; width:min(620px, calc(100% - 24px)) !important; }
+    ${P} .eosSafetyCard .eosSafetyStill, ${P} .eosSafetyCard .eosSafetyStillBody { width:40px !important; height:40px !important; }
+    ${P} .eosSafetyCard .eosSafetyHead { gap:10px !important; align-items:center !important; }
+    ${P} .eosSafetyCard .eosSafetyTitle { font-size:17px !important; }
+    ${P} .eosSafetyCard .eosSafetyBody { font-size:14px !important; }
+    ${P} .eosSafetyCard .eosSafetyPrimaryRow, ${P} .eosSafetyCard .eosSafetyRow { margin-top:8px !important; }
+    ${P} .eosSafetyCard .eosSafetyMoreWrap { display:flex !important; align-items:center !important; justify-content:space-between !important; gap:12px !important; }
+    ${P} .eosSafetyCard .eosSafetyEmergency { margin:0 !important; font-size:13px !important; }
+}
+
+/* ----- B. Check-in ----- */
+/* 320px: both chips stay on one line so "more feelings" never pushes support under the composer. */
+@media (max-width:340px) {
+    ${P} .eosCheckIn[data-step="1"] .eosCkChips { flex-wrap:nowrap !important; gap:6px !important; padding:0 !important; }
+    ${P} .eosCheckIn[data-step="1"] .eosCkChip { padding:0 10px !important; font-size:13px !important; }
+}
+${P} .eosCheckIn[data-eos-fit="tight"]:has([data-eos-more][aria-expanded="true"]) .eosCkSub { display:none !important; }
+${P} .eosCheckIn[data-eos-fit="tight"] .eosCkHeadCold > span {
+    font-size:14px !important; line-height:1.3 !important; max-width:calc(100% - 44px) !important; padding:7px 11px !important;
+}
+/* "sounds like PANIC?" — dark, inside the screen, above the title. */
+${P} .eosCheckIn .eosCkBubble.isHint {
+    max-width:108px !important; width:max-content !important; white-space:normal !important; text-align:center !important;
+    font:600 13px/1.2 var(--ts-sf) !important; padding:5px 12px !important; min-height:44px !important;
+    background:rgba(44,44,52,.96) !important; color:#fff !important; border:.5px solid rgba(255,255,255,.18) !important;
+    border-radius:16px !important; box-shadow:0 8px 24px rgba(0,0,0,.45) !important; text-transform:none !important;
+}
+${P} .eosCheckIn .eosCkBubble.isHint::after { background:rgb(44,44,52) !important; }
+${P} .eosCheckIn .eosCkSlot:has(.eosCkBubble.isHint) { z-index:21 !important; }
+${P} .eosCheckIn:has(.eosCkBubble.isHint) .eosCkSub { visibility:hidden !important; }
+/* Landscape with "more feelings": twelve characters, labels on two short lines. */
+${P} .eosCheckIn[data-eos-layout="strip"].isMore .eosOrbLabel {
+    font-size:9.5px !important; letter-spacing:0 !important; max-width:52px !important; white-space:normal !important;
+    line-height:1.05 !important; text-align:center !important; overflow-wrap:anywhere !important;
+}
+${P} .eosCheckIn[data-eos-layout="strip"] .eosCkPill.isSlide { display:none !important; }
+/* Tablets with "more feelings": give the three extra characters room in the ring. */
+${P} .eosCheckIn[data-eos-layout="ring"].isMore .eosOrbSub { display:none !important; }
+${P} .eosCheckIn[data-eos-layout="ring"].isMore .eosCkSlot[data-eos-slot="sad"] { translate:-40px -14px !important; }
+${P} .eosCheckIn[data-eos-layout="ring"].isMore .eosCkSlot[data-eos-slot="overwhelm"] { translate:40px -14px !important; }
+${P} .eosCheckIn[data-eos-layout="ring"].isMore .eosCkSlot[data-eos-slot="jealous"] { translate:0 24px !important; }
+${P} .eosCheckIn[data-eos-layout="ring"].isMore .eosCkSlot[data-eos-slot="fear"] { translate:20px 0 !important; }
+${P} .eosCheckIn[data-eos-layout="ring"].isMore .eosCkSlot[data-eos-slot="numb"] { translate:-20px 0 !important; }
+
+/* ----- C. Composer: the play button keeps only its glyph on every phone ----- */
+@media (max-width:420px) {
+    ${P} .releaseComposer .releaseChoiceButton.eosPickGo { width:44px !important; padding:0 !important; border-radius:999px !important; }
+    ${P} .releaseComposer .releaseChoiceButton.eosPickGo .choiceCopy { display:none !important; }
+    ${P} .releaseComposer .releaseChoiceButton.eosPickGo::before { margin-left:3px !important; }
+}
+
+/* ----- D. Ritual complete: no stray padding, landscape as two columns ----- */
+@media (orientation:landscape) and (max-height:520px) {
+    ${P} .releaseCompleteOverlay { padding-top:8px !important; padding-bottom:10px !important; }
+    ${P} .releaseCompleteShell { max-width:760px !important; }
+    ${P} .releaseCompleteCard { padding:12px 16px !important; }
+    ${P} .releaseCompleteCard > small { display:none !important; }
+    ${P} .eosShiftMeter {
+        display:grid !important; grid-template-columns:180px minmax(0,1fr) !important; column-gap:18px !important;
+        grid-template-areas:"stage rate" "stage pay" "stage done" !important; align-items:center !important;
+    }
+    ${P} .eosShiftMeter > .eosShiftStage { grid-area:stage !important; height:auto !important; margin:0 !important; transform:none !important; }
+    ${P} .eosShiftMeter > .eosShiftRate { grid-area:rate !important; }
+    ${P} .eosShiftMeter > .eosShiftPay { grid-area:pay !important; }
+    ${P} .eosShiftMeter > .eosShiftDone { grid-area:done !important; }
+    ${P} .eosShiftRewards { display:none !important; }
+    ${P} .releaseCompleteOverlay .releaseShiftCheck { display:none !important; }
+}
+/* Phones in portrait: the counters sit above the card, so the card starts below them. */
+@media (orientation:portrait) {
+    ${P}:has(.eosWorldChips) .releaseCompleteOverlay { padding-top:60px !important; }
+}
+@media (orientation:landscape) {
+    ${P} .releaseCompleteOverlay { padding-top:8px !important; }
+    ${P}:has(.releaseCompleteOverlay) .eosWorldChips { opacity:.0 !important; pointer-events:none !important; }
+}
+
+/* ----- E. Ritual games ----- */
+/* Scrolling arenas centre with auto margins, so a tall game overflows downward (reachable)
+   instead of above the scroll origin (unreachable). */
+${P}.stage-play .cinematicContentShell > .arena { justify-content:flex-start !important; }
+${P}.stage-play .cinematicContentShell > .arena > :is(.tsndGame, .ftGame, .rainOutScene) { margin-block:auto !important; }
+${P}.stage-play .u102 { justify-content:flex-start !important; }
+${P}.stage-play .u102 > .ftGame { margin-block:auto !important; }
+/* The SLOW-DOWN meter already shows progress; the per-game counter printed under it was a ghost. */
+${P}.stage-play .releaseGameHost .arena > .literalProgress { display:none !important; }
+/* One instruction source: the guide banner. Arcade stickers become glass; the hand stays. */
+${P}.stage-play .eosLabel {
+    background:rgba(28,28,34,.9) !important; border:.5px solid rgba(255,255,255,.14) !important;
+    box-shadow:0 8px 24px rgba(0,0,0,.4) !important; border-radius:999px !important;
+}
+${P}.stage-play .eosLabelText {
+    font:600 13px/1 var(--ts-sf) !important; letter-spacing:0 !important; text-transform:none !important; color:#fff !important; text-shadow:none !important;
+}
+${P}.stage-play .eosCount { background:rgba(255,255,255,.9) !important; color:#000 !important; box-shadow:none !important; }
+${P}.stage-play .eosChevron { filter:grayscale(1) brightness(1.8) !important; opacity:.75 !important; }
+${P}.stage-play .eosTrailSvg circle { fill:rgba(255,255,255,.55) !important; }
+@media (max-width:560px), (max-height:520px) {
+    ${P}.stage-play .eosArrowsRoot :is(.eosLabel, .eosCount) { display:none !important; }
+}
+${P}.stage-play .eosZapSay {
+    background:rgba(28,28,34,.92) !important; color:#fff !important; font:600 13px/1.2 var(--ts-sf) !important;
+    text-transform:none !important; border:0 !important; box-shadow:none !important;
+}
+${P}.stage-play .windLane { color:rgba(235,235,245,.45) !important; font:500 12px/1 var(--ts-sf) !important; letter-spacing:0 !important; text-shadow:none !important; }
+${P}.stage-play .globalPlayGuide .guideStepCard small { font-family:var(--ts-sf) !important; color:rgba(235,235,245,.6) !important; letter-spacing:0 !important; }
+${P}.stage-play .guideActionArrow { background:rgba(255,255,255,.12) !important; color:#fff !important; box-shadow:none !important; }
+/* Never collapse the guide to a lone icon: clamp it to one line instead. */
+${P}.stage-play[data-eos-dock="chip"] .cinematicContentShell > .globalPlayGuide { width:calc(100% - 16px) !important; }
+${P}.stage-play[data-eos-dock="chip"] .globalPlayGuide .guideStepCard > span {
+    display:block !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
+}
+/* Neon game buttons join the system: quiet glass controls, white primary actions. */
+${P}.stage-play .cinematicContentShell > .arena button:not(.wordBubble):not(.eosGroundLampBtn):not(.eosSighOrb):not(.eosGroundSwap):not(.tsBubbleFaceHost):not(.eosZapBubble) {
+    background:rgba(118,118,128,.24) !important; background-image:none !important; border:1px solid rgba(255,255,255,.12) !important;
+    box-shadow:none !important; color:#fff !important; text-shadow:none !important;
+}
+${P}.stage-play :is(.bigAction, .shredAction, .primaryBottomControl) { background:#f2f2f7 !important; background-image:none !important; color:#000 !important; }
+${P}.stage-play :is(.dmTake.active, .gwProp.active, .genreKeys button[aria-pressed="true"]) { background:rgba(255,255,255,.9) !important; color:#000 !important; }
+${P}.stage-play .cinematicContentShell > .arena .coinSlot {
+    background:rgba(255,255,255,.92) !important; color:#000 !important; border:0 !important; box-shadow:none !important;
+    font:700 15px/1 var(--ts-sf) !important; letter-spacing:0 !important; text-transform:none !important; border-radius:999px !important;
+}
+${P}.stage-play .cinematicContentShell > .arena :is(.parkBay, .tugPullHandle) {
+    border-radius:18px !important; font:600 15px/1.2 var(--ts-sf) !important; letter-spacing:0 !important;
+}
+${P}.stage-play .arena .tsBubbleFaceHost { border-color:rgba(255,255,255,.18) !important; }
+${P}.stage-play .u102 .ftCue { color:rgba(235,235,245,.6) !important; }
+${P}.stage-play .tsndVibes button { min-height:44px !important; min-width:64px !important; }
+/* Per-game legibility fixes. */
+${P}.stage-play .keepDropBubbleText > .tsBubbleFaceSrcHidden { display:none !important; }
+${P}.stage-play .inkPaper {
+    background:rgba(28,28,36,.92) !important; background-image:none !important; border:1px solid rgba(255,255,255,.12) !important;
+    box-shadow:0 18px 40px rgba(0,0,0,.45) !important;
+}
+${P}.stage-play .inkPhrase .tsExactUserText { color:#fff !important; text-shadow:none !important; font-weight:600 !important; }
+${P}.stage-play .thoughtPotato .potatoWord {
+    font-size:12.5px !important; line-height:1.15 !important; height:auto !important; max-height:none !important; overflow:visible !important;
+    padding:2px 6px !important; border-radius:8px !important; background:rgba(0,0,0,.55) !important; text-shadow:none !important;
+    width:auto !important; max-width:84px !important;
+}
+${P}.stage-play .releaseStage:has(.eosSighCue) .eosArrowsRoot .eosLabel { display:none !important; }
+${P}.stage-play .eosSighCue { position:relative !important; z-index:70 !important; }
+${P}.stage-play .eosSighCloud { max-width:calc(33% - 6px) !important; }
+@media (max-width:480px) {
+    ${P}.stage-play .popArenaV2 .popBubbleV2 { translate:-50% 0 !important; width:84px !important; height:84px !important; min-height:84px !important; max-height:84px !important; }
+    ${P}.stage-play .popArenaV2 .popBubbleV2:nth-of-type(1) { left:20% !important; top:24% !important; }
+    ${P}.stage-play .popArenaV2 .popBubbleV2:nth-of-type(2) { left:50% !important; top:20% !important; }
+    ${P}.stage-play .popArenaV2 .popBubbleV2:nth-of-type(3) { left:80% !important; top:24% !important; }
+    ${P}.stage-play .popArenaV2 .popBubbleV2:nth-of-type(4) { left:20% !important; top:50% !important; }
+    ${P}.stage-play .popArenaV2 .popBubbleV2:nth-of-type(5) { left:50% !important; top:46% !important; }
+    ${P}.stage-play .popArenaV2 .popBubbleV2:nth-of-type(6) { left:80% !important; top:50% !important; }
+}
+/* Short phones in portrait (SE class): the tallest games compress instead of clipping. */
+@media (max-width:560px) and (max-height:720px) {
+    ${P}.stage-play .eosArena { --eos-safe-top:76px !important; --eos-safe-bottom:92px !important; }
+    ${P}.stage-play .u107.uniqArena { overflow-y:auto !important; align-items:flex-start !important; padding-top:40px !important; padding-bottom:56px !important; }
+    ${P}.stage-play .u107 .gwCard { height:100px !important; min-height:0 !important; }
+    ${P}.stage-play .u107 .weirdBubblePhoto { width:44px !important; height:44px !important; }
+    ${P}.stage-play .u107 .gwDock { grid-template-columns:repeat(5, minmax(0,1fr)) !important; gap:4px !important; }
+    ${P}.stage-play .u107 .gwProp { min-height:48px !important; padding:2px !important; font-size:11px !important; }
+    ${P}.stage-play .u102 .ftRows { grid-auto-rows:64px !important; gap:5px !important; }
+    ${P}.stage-play .u102 .ftRow { height:64px !important; min-height:64px !important; max-height:64px !important; padding-bottom:0 !important; }
+    ${P}.stage-play .u102 .ftRow:not(:first-child) .ftCue { display:none !important; }
+    ${P}.stage-play .rainOutScene { zoom:.56; }
+}
+@media (max-width:560px) and (min-height:721px) {
+    ${P}.stage-play .rainOutScene { zoom:.8; }
+}
+@media (max-height:720px) {
+    ${P}.stage-play .cinematicShredArena .shredPaperAnchor { bottom:auto !important; top:38px !important; transform:translateX(-50%) scale(.72) !important; transform-origin:50% 0 !important; }
+    ${P}.stage-play .cinematicShredArena .shredderBody { bottom:112px !important; transform:translateX(-50%) scale(.8) !important; transform-origin:50% 100% !important; }
+    ${P}.stage-play .cinematicShredArena .shredStatus { bottom:84px !important; }
+}
+@media (max-width:760px) and (max-height:760px) {
+    ${P}.stage-play .u105.uniqArena { padding:38px 8px 8px !important; align-items:safe center !important; overflow-y:auto !important; }
+    ${P}.stage-play .u105 .dmStageMachine { min-height:0 !important; padding:8px !important; }
+    ${P}.stage-play .u105 .dmStageHeader { display:none !important; }
+    ${P}.stage-play .u105 .dmFilmstrip { grid-template-columns:repeat(6, 1fr) !important; gap:4px !important; }
+    ${P}.stage-play .u105 .dmTakeCopy { display:none !important; }
+    ${P}.stage-play .u105 .dmTake { min-width:44px !important; min-height:44px !important; padding:0 !important; justify-content:center !important; }
+    ${P}.stage-play .u105 .dmHeroWrap { width:92px !important; height:92px !important; }
+}
+/* Landscape phones: every game lays out for 300px+, so scale the arena to the 220px it gets,
+   and fold the HUD into a thin progress line. */
+@media (orientation:landscape) and (max-height:520px) {
+    ${P}.stage-play .cinematicContentShell > .arena { zoom:.72; top:14px !important; height:calc(100% - 14px) !important; bottom:auto !important; }
+    ${P}.stage-play .engineProgressHud { top:6px !important; height:4px !important; }
+    ${P}.stage-play .engineProgressTrack { height:4px !important; flex:1 1 auto !important; }
+    ${P}.stage-play .engineProgressText, ${P}.stage-play .tsShiftRewardHud { display:none !important; }
+    ${P}.stage-play .rainOutScene { zoom:.56; }
+    ${P}.stage-play .eosZapArena .eosZapBubble { width:72px !important; height:72px !important; margin:-36px 0 0 -36px !important; top:36% !important; }
+    ${P}.stage-play .eosZapArena .eosZapBubble .tsBubbleFaceImg { width:40px !important; height:40px !important; }
+    ${P}.stage-play .eosZapArena .eosZapBubble:nth-child(1 of .eosZapBubble) { left:8% !important; }
+    ${P}.stage-play .eosZapArena .eosZapBubble:nth-child(2 of .eosZapBubble) { left:22% !important; }
+    ${P}.stage-play .eosZapArena .eosZapBubble:nth-child(3 of .eosZapBubble) { left:36% !important; }
+    ${P}.stage-play .eosZapArena .eosZapBubble:nth-child(4 of .eosZapBubble) { left:64% !important; }
+    ${P}.stage-play .eosZapArena .eosZapBubble:nth-child(5 of .eosZapBubble) { left:78% !important; }
+    ${P}.stage-play .eosZapArena .eosZapBubble:nth-child(6 of .eosZapBubble) { left:92% !important; }
+    ${P}.stage-play .eosZapDock { transform:scale(.7) !important; transform-origin:50% 100% !important; }
+    ${P}.stage-play .eosZapSay, ${P}.stage-play .keepDropMicroGuide, ${P}.stage-play .tugReleaseActionWrap { display:none !important; }
+    ${P}.stage-play .parkBay { height:88px !important; }
+    ${P}.stage-play .eosGroundBox.eosGroundMid .eosGroundCue, ${P}.stage-play .eosGroundBox.eosGroundBack .eosGroundPad { display:none !important; }
+}
+
+/* ----- F. Intro in landscape: no letterbox bars, smaller hero ----- */
+@media (orientation:landscape) and (max-height:500px) {
+    .tsCineHost .tsCineBar { height:0 !important; }
+    .tsCineHost .tsCineOrbWrap { width:84px !important; height:84px !important; margin-bottom:6px !important; zoom:.6; }
+    .tsCineHost .tsCineWord { font-size:48px !important; line-height:1.05 !important; }
+}
+
+/* ----- G. Bright = golden hour: the same dark system, warmer and lighter ----- */
+.tsCineHost:has(.tsReleaseHost[data-ts-theme="Bright"]) { --ts-material: rgba(46,35,29,.8); --ts-bubble:#3a2f29; }
+html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsArcade:not(#tsV6a):not(#tsV6b):not(#tsV6c):not(#tsV6d) > .shell,
+html body .tsCineHost .tsReleaseHost[data-ts-theme="Bright"] .tsArcade:not(#tsV6a):not(#tsV6b):not(#tsV6c):not(#tsV6d) {
+    background:
+        radial-gradient(100% 55% at 50% -10%, rgba(255,196,128,.42), transparent 64%),
+        radial-gradient(80% 50% at 50% 110%, rgba(255,120,90,.18), transparent 70%),
+        #2a201b !important;
+}
+
+/* ----- H. Wrapper support dialog: dark, tap-to-call, opens at the top ----- */
+html body .tsCineHost .tsReleaseSupportOverlay { background:rgba(0,0,0,.72) !important; }
+html body .tsCineHost .tsReleaseSupportModal {
+    background:#1c1c24 !important; color:#f5f5f7 !important; border:.5px solid rgba(255,255,255,.12) !important;
+    box-shadow:0 24px 60px rgba(0,0,0,.6) !important; border-radius:22px !important; scroll-padding-bottom:80px;
+}
+html body .tsCineHost .tsReleaseSupportModal h2 { color:#fff !important; outline:none !important; font-family:var(--ts-sf) !important; }
+html body .tsCineHost .tsReleaseSupportModal #tsReleaseSupportIntro,
+html body .tsCineHost .tsReleaseSupportOutside { color:rgba(235,235,245,.72) !important; font-family:var(--ts-sf) !important; }
+html body .tsCineHost .tsReleaseSupportContact {
+    background:rgba(255,255,255,.06) !important; display:grid !important; grid-template-columns:minmax(0,1fr) auto auto !important;
+    align-items:center !important; gap:8px !important;
+}
+html body .tsCineHost .tsReleaseSupportWho strong { color:#fff !important; font-family:var(--ts-sf) !important; }
+html body .tsCineHost .tsReleaseSupportWho span { color:rgba(235,235,245,.62) !important; font-family:var(--ts-sf) !important; }
+html body .tsCineHost .tsReleaseSupportPhone {
+    display:inline-flex !important; align-items:center !important; min-height:44px !important; padding:0 12px !important;
+    border-radius:22px !important; background:rgba(48,209,88,.16) !important; color:#30d158 !important;
+    font:700 15px/1 var(--ts-sf) !important; text-decoration:none !important; white-space:nowrap !important; font-variant-numeric:tabular-nums;
+}
+html body .tsCineHost .tsReleaseSupportCopy {
+    min-width:56px !important; min-height:44px !important; height:44px !important; border-radius:22px !important;
+    border:0 !important; background:rgba(118,118,128,.24) !important; color:#fff !important; font:600 13px/1 var(--ts-sf) !important;
+}
+html body .tsCineHost .tsReleaseSupportBottom {
+    position:sticky !important; bottom:-24px !important; margin:12px -20px -24px !important; padding:10px 20px 16px !important;
+    background:#1c1c24 !important; border-top:.5px solid rgba(255,255,255,.08) !important;
+}
+html body .tsCineHost .tsReleaseSupportBack {
+    background:#fff !important; color:#000 !important; min-height:50px !important; border-radius:14px !important; width:100% !important;
+    font:700 16px/1 var(--ts-sf) !important;
+}
+@media (max-width:400px) {
+    html body .tsCineHost .tsReleaseSupportContact { grid-template-columns:minmax(0,1fr) auto !important; grid-template-areas:"who who" "phone copy" !important; row-gap:6px !important; }
+    html body .tsCineHost .tsReleaseSupportWho { grid-area:who !important; grid-row:auto !important; }
+    html body .tsCineHost .tsReleaseSupportPhone { grid-area:phone !important; justify-self:start !important; grid-column:auto !important; }
+    html body .tsCineHost .tsReleaseSupportCopy { grid-area:copy !important; grid-column:auto !important; }
+    html body .tsCineHost .tsReleaseSupportBottom { margin:12px -14px -16px !important; bottom:-16px !important; padding:10px 14px 14px !important; }
+}
+
+/* =============================================================
+   V6 ROUND 3 — polish from the verification minors
+   ============================================================= */
+/* Support card avatar sits beside the title, never over it. */
+@media (orientation:landscape) and (max-height:500px) {
+    ${P} .eosSafetyCard .eosSafetyHead { display:flex !important; }
+    ${P} .eosSafetyCard .eosSafetyStill { position:relative !important; flex:0 0 40px !important; margin:0 !important; inset:auto !important; }
+}
+/* Header: a dead "previous" control is noise; emoji glyphs go monochrome. */
+${P} .tsReleaseNativeArrow:disabled { visibility:hidden !important; }
+${P} .releaseConsoleHeader > .releaseHeaderSound { font-size:0 !important; color:var(--ts-text) !important; filter:none !important; }
+${P} .releaseConsoleHeader > .releaseHeaderSound::before {
+    content:""; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    display:block; width:20px; height:20px; background:currentColor;
+    -webkit-mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M3.5 9.2v5.6h3.9l5.1 4.2V5L7.4 9.2z' fill='black'/><path d='M15.8 8.6a4.8 4.8 0 0 1 0 6.8M18.4 6.1a8.4 8.4 0 0 1 0 11.8' stroke='black' stroke-width='1.9' fill='none' stroke-linecap='round'/></svg>") center / contain no-repeat; mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M3.5 9.2v5.6h3.9l5.1 4.2V5L7.4 9.2z' fill='black'/><path d='M15.8 8.6a4.8 4.8 0 0 1 0 6.8M18.4 6.1a8.4 8.4 0 0 1 0 11.8' stroke='black' stroke-width='1.9' fill='none' stroke-linecap='round'/></svg>") center / contain no-repeat;
+}
+${P} .releaseConsoleHeader > .releaseHeaderSound:not(.active)::before {
+    -webkit-mask-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M3.5 9.2v5.6h3.9l5.1 4.2V5L7.4 9.2z' fill='black'/><path d='M16 9.5l5 5M21 9.5l-5 5' stroke='black' stroke-width='1.9' fill='none' stroke-linecap='round'/></svg>"); mask-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M3.5 9.2v5.6h3.9l5.1 4.2V5L7.4 9.2z' fill='black'/><path d='M16 9.5l5 5M21 9.5l-5 5' stroke='black' stroke-width='1.9' fill='none' stroke-linecap='round'/></svg>");
+}
+/* Secondary links live in Settings on every size (Settings mirrors them). */
+${P} .eosCheckIn [data-eos-about], ${P} .eosCheckIn [data-eos-calmtoggle] { display:none !important; }
+/* Check-in: one caption rhythm, one loud control at a time. */
+${P} .eosCkSlot[data-eos-slot="panic"] .eosOrbSub .eosCkSubPart:last-child:not(:first-child) { display:none !important; }
+${P} .eosCheckIn.isMore .eosOrbSub { display:none !important; }
+${P} .eosCkChip.isGood { background:var(--ts-stage-fill) !important; color:#fff !important; }
+${P} .eosCkChip.isGood span { color:var(--ts-gold) !important; }
+@media (max-width:360px) {
+    ${P} .eosCheckIn[data-step="1"] .eosCkChips { flex-wrap:nowrap !important; gap:6px !important; padding:0 !important; }
+    ${P} .eosCheckIn[data-step="1"] .eosCkChip { padding:0 12px !important; font-size:13.5px !important; }
+}
+${P} .eosCkTitle, ${P} .eosCkQ, ${P} .eosShiftHeadline, ${P} .eosCkSub::after { text-wrap:balance; }
+.tsSpotTitle, .tsSpotLead { text-wrap:balance; }
+${P} .eosThoughtFlow .eosCore { opacity:.6 !important; }
+/* Step 2: the dial explains itself; one primary action. */
+${P} .eosCkPill.isSlide { display:none !important; }
+${P} .eosCkPanel { justify-content:safe center !important; }
+${P} .eosCkCta .eosCkCtaMain, ${P} .eosShiftSet { text-transform:lowercase !important; }
+${P} .eosCkCta .eosCkCtaMain::first-letter, ${P} .eosShiftSet::first-letter { text-transform:uppercase !important; }
+${P}:has(.eosCheckIn[data-step="2"]) .releaseComposer .releaseChoiceButton.eosPickGo {
+    background:var(--ts-fill) !important; color:#fff !important; box-shadow:none !important;
+}
+${P}:has(.eosCheckIn[data-step="2"]) .releaseComposer .releaseChoiceButton.eosPickGo::before { border-left-color:#fff !important; }
+${P}:has(.eosCheckIn[data-step="2"]) .releaseComposer .releaseChoiceButton.eosPickGo .choiceCopy { color:#fff !important; }
+${P} .eosDialTrack span { color:#fff !important; text-shadow:0 1px 2px rgba(0,0,0,.55) !important; font-weight:700 !important; }
+@media (min-width:700px) and (min-height:700px) {
+    ${P} .eosCkSlot.isRail .eosOrbLabel { display:none !important; }
+}
+/* Ritual complete: one reward voice (counters + reward line), sentence-case title. */
+${P} .releaseCompleteCard > small { display:none !important; }
+${P} .releaseCompleteCard > strong { text-transform:lowercase !important; }
+${P} .releaseCompleteCard > strong::first-letter { text-transform:uppercase !important; }
+${P} .releaseCompleteOverlay [class*="eosSm"] { font-family:var(--ts-round) !important; letter-spacing:0 !important; }
+${P} .eosRwChip {
+    background:rgba(28,28,34,.85) !important; background-image:none !important; border:.5px solid rgba(255,255,255,.14) !important;
+    box-shadow:none !important;
+}
+/* In-ritual chrome: neutral guide bar, compact reward row on phones, roomier small controls. */
+${P}.stage-play .globalPlayGuide { background:transparent !important; border:0 !important; box-shadow:none !important; }
+${P}.stage-play .globalPlayGuide .guideStepCard small, ${P}.stage-play .globalPlayGuide b { color:rgba(235,235,245,.6) !important; }
+@media (max-width:420px) { ${P}.stage-play .tsShiftLevel { display:none !important; } }
+${P}.stage-play .genreKeys button { min-height:44px !important; }
+${P}.stage-play .eosGroundSwap { width:44px !important; height:44px !important; min-width:44px !important; }
+${P}.stage-play .xrayScannerHandle { min-height:44px !important; }
+@media (max-width:430px) {
+    ${P}.stage-play .u105 .dmTakeCopy { display:none !important; }
+    ${P}.stage-play .u105 .dmTake { min-width:44px !important; min-height:44px !important; padding:0 !important; justify-content:center !important; }
+}
+@media (orientation:landscape) and (max-height:520px) {
+    ${P}.stage-play .eosCompanion { display:none !important; }
+}
+/* Settings: opaque, consistent tiles; a near-full-width sheet on phones. */
+html body .tsCineHost .tsSsPanel { background:rgba(28,28,36,.97) !important; }
+html body .tsCineHost .tsSsIcon--calm { background:#8e8e93 !important; color:#fff !important; }
+html body .tsCineHost .tsSsIcon--about { background:#0a84ff !important; color:#fff !important; font-style:italic !important; font-family:Georgia, serif !important; }
+@media (max-width:560px) {
+    html body .tsCineHost .tsSsPanel { left:8px !important; right:8px !important; width:auto !important; }
+}
+/* Premium sheet: 44pt close, fits 568px phones and landscape, blurred backdrop on tablets. */
+.tsSpotClose { width:44px; height:44px; right:8px; top:8px; }
+.tsSpotClose::after { display:none; }
+@media (max-height:600px) {
+    .tsSpotHeroOrb, .tsSpotLead { display:none; }
+    .tsSpotTitle { font-size:22px; margin:6px 0 10px; }
+    .tsSpotStats { margin-bottom:12px; }
+    .tsSpotStat { padding:8px 4px; }
+    .tsSpotStat strong { font-size:20px; }
+    .tsSpotPerks { display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; margin-bottom:12px; }
+    .tsSpotPerks li { font-size:13px; }
+}
+@media (orientation:landscape) and (max-height:500px) {
+    .tsSpotSheet { max-width:560px; }
+    .tsSpotPerks { display:none; }
+    .tsSpotSheet .tsSpotCta, .tsSpotSheet .tsSpotLater { min-height:46px; }
+}
+@media (min-width:700px) and (min-height:700px) {
+    .tsSpotSheetScrim { backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+    .tsSpotGrabber { display:none; }
+}
+/* Intro and ribbon on phones: no letterbox bars, no seam; the ribbon fits 320px. */
+@media (max-width:560px) { .tsCineHost .tsCineBar { height:0 !important; } }
+.tsCineHost .tsCineBegin:focus-visible { outline:2px solid rgba(255,255,255,.6) !important; outline-offset:3px !important; }
+.tsSpotRibbon { max-width:calc(100% - 24px); }
+@media (max-width:360px) { .tsSpotRibbon span { display:none; } }
 `
 
 function MobileFitStyles() {
@@ -4363,6 +4728,63 @@ export default function ThinkStillReleaseCinematic(props: any) {
             setSheetOpen(false)
         }
     )
+
+    // Each ritual-complete step re-renders inside one scrolling overlay, and the
+    // engine focuses a control further down, which scrolls the card past its
+    // title. Keep every step at the top until the person scrolls themselves.
+    React.useEffect(() => {
+        const host = hostRef.current
+        if (!host || isCanvas) return
+        let watched: HTMLElement | null = null
+        let userScrolled = false
+        let lastStep = ""
+        const markUser = () => {
+            userScrolled = true
+        }
+        const onScroll = () => {
+            if (watched && !userScrolled && watched.scrollTop !== 0)
+                watched.scrollTop = 0
+        }
+        const sync = () => {
+            const overlay = host.querySelector<HTMLElement>(
+                ".releaseCompleteOverlay"
+            )
+            if (overlay !== watched) {
+                if (watched) {
+                    watched.removeEventListener("scroll", onScroll)
+                    watched.removeEventListener("touchstart", markUser)
+                    watched.removeEventListener("wheel", markUser)
+                    watched.removeEventListener("keydown", markUser)
+                }
+                watched = overlay
+                userScrolled = false
+                lastStep = ""
+                if (overlay) {
+                    overlay.addEventListener("scroll", onScroll, { passive: true })
+                    overlay.addEventListener("touchstart", markUser, { passive: true })
+                    overlay.addEventListener("wheel", markUser, { passive: true })
+                    overlay.addEventListener("keydown", markUser)
+                }
+            }
+            if (!overlay) return
+            const step = Array.from(
+                overlay.querySelectorAll(".eosSmSkip, .eosShiftRate, .eosShiftDone")
+            )
+                .map((el) => el.className)
+                .join("|")
+            if (step !== lastStep) {
+                lastStep = step
+                userScrolled = false
+                overlay.scrollTop = 0
+            }
+        }
+        const observer = new MutationObserver(sync)
+        observer.observe(host, { childList: true, subtree: true })
+        return () => {
+            observer.disconnect()
+            if (watched) watched.removeEventListener("scroll", onScroll)
+        }
+    }, [isCanvas])
 
     const finishIntro = React.useCallback(() => {
         markIntroSeen()
