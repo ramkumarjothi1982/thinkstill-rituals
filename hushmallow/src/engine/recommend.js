@@ -101,7 +101,8 @@ export function createRecommender({ rituals, store, rng = Math.random, modules =
       const scored = eligible(req).filter(fits).map((r) => ({ ritual: r, ...score(r, req, state) })).sort((a, b) => b.s - a.s);
       if (!scored.length) return [];
       const best = scored[0].s;
-      const pool = scored.filter((x) => x.s >= best - 1.2 && x.s > 0.4);
+      // rotate only among close fits, so a strong match isn't swapped for a loose one
+      const pool = scored.filter((x) => x.s >= best - 0.6 && x.s > 0.4);
       const poolIds = pool.map((x) => x.ritual.id).sort();
       const key = hash(poolIds.join('|'));
       let bag = state.bags[key];

@@ -45,6 +45,8 @@ export const PLANS = {
   },
 };
 
+import { testPurchasesAllowed } from './config.js';
+
 const RANK = { none: 0, paid: 1, ultra: 2 };
 
 function nativeBridge() {
@@ -68,6 +70,9 @@ export function createEntitlements({ store }) {
   const native = nativeBridge();
   const listeners = new Set();
   let state = store.get('entitlement', { tier: 'none', source: null, since: null });
+  const testOk = testPurchasesAllowed();
+  // a test plan saved on a dev host means nothing on the public site
+  if (state.source === 'test' && !testOk && !native) state = { tier: 'none', source: null, since: null };
 
   const set = (tier, source) => {
     state = { tier, source, since: Date.now() };
@@ -77,6 +82,8 @@ export function createEntitlements({ store }) {
 
   const api = {
     get isNative() { return !!native; },
+    /** Can this build sell (or test-grant) a plan right now? */
+    get canPurchase() { return !!native || testOk; },
     tier: () => state.tier,
     source: () => state.source,
     has: (need) => RANK[state.tier] >= RANK[need],
@@ -96,7 +103,8 @@ export function createEntitlements({ store }) {
         if (r?.tier) set(r.tier, 'app-store');
         return { ok: !!r?.tier, test: false };
       }
-      // development/test provider: grants locally, never charges
+      // development/test provider: grants locally, never charges — dev/preview hosts only
+      if (!testOk) return { ok: false, test: false, unavailable: true };
       set(planId, 'test');
       return { ok: true, test: true };
     },

@@ -93,6 +93,16 @@ export function createWorld({ prefs, audio }) {
       layer.style.setProperty('--my', y);
       layer.style.setProperty('--ms', scale);
     },
+    /** Size and place the Mallow so its whole body fits between two viewport y's (px). */
+    fitBetween(topPx, bottomPx, { maxScale = 1, x = 50 } = {}) {
+      const H = layer.offsetHeight || 470;
+      const avail = Math.max(60, bottomPx - topPx);
+      // the rig draws the body from ~22% to ~88% of the layer's height
+      const scale = Math.max(0.35, Math.min(maxScale, avail / (0.66 * H)));
+      const bodyCentre = (topPx + bottomPx) / 2;
+      const layerCentre = bodyCentre - 0.05 * H * scale;
+      api.place({ x, y: (layerCentre / innerHeight) * 100, scale });
+    },
     showMallow(b) { layer.classList.toggle('hidden', !b); },
     dim(b) { worldEl.classList.toggle('dim', !!b); },
     mallowRect() {

@@ -83,9 +83,18 @@ function env(p, t, { a = 0.005, h = 0, r = 0.2, peak = 0.2, shape = 'pluck' } = 
   a = Math.max(a, 0.003);
   r = Math.max(r, 0.02);
   if (shape === 'swell') {
-    p.setValueCurveAtTime(scaled(COS_UP, peak), t, a);
+    // Chrome throws if a curve overlaps automation already on this param
+    // (e.g. two sounds sharing a node); fall back to plain ramps then.
+    const curve = (vals, start, dur) => {
+      try { p.setValueCurveAtTime(vals, start, dur); } catch {
+        try { p.cancelScheduledValues(start); } catch { /* nothing scheduled */ }
+        p.setValueAtTime(vals[0], start);
+        p.linearRampToValueAtTime(vals[vals.length - 1], start + dur);
+      }
+    };
+    curve(scaled(COS_UP, peak), t, a);
     const rs = t + a + Math.max(h, 0) + 0.002;
-    p.setValueCurveAtTime(scaled(COS_DOWN, peak), rs, r);
+    curve(scaled(COS_DOWN, peak), rs, r);
     return rs + r + 0.005;
   }
   p.setValueAtTime(0, t);

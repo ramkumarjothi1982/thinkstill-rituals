@@ -198,3 +198,18 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
   #scene { max-width: 520px; margin: 0 auto; left: 0; right: 0; }
   .sheet { max-width: 560px; margin: 0 auto; }
 }
+
+/* short phones (e.g. 320×568): keep the express card's button on screen */
+@media (max-height: 640px) {
+  .express .spacer { min-height: 4dvh !important; }
+  .express .tip { display: none; }
+  .express .card { padding: 12px !important; }
+  .express textarea.feel { min-height: 76px; }
+}
+@media (max-height: 640px) {
+  .enc-card { padding: 14px !important; }
+  .enc-card h3 { font-size: 21px !important; margin-top: 4px !important; }
+  .enc-card > p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 14.5px; }
+  .enc-card .reasons span:nth-child(n+3) { display: none; }
+  .enc-card .btn { min-height: 46px; }
+}

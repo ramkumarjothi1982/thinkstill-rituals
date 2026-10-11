@@ -770,6 +770,8 @@ export async function run(ctx) {
   haptic('success');
   world.setEmotion({ calm: 0.65, happy: 0.2, comforted: 0.15 }, 0.7);
   world.react('celebrate');
+  await pause(rm ? 300 : 900);
+  if (signal.aborted) return result;
   await say('Mirror-still. Look at that. Quietly impressed over here.', 3000);
   if (signal.aborted) return result;
   await say('The boats are still there, by the way. They’re just parked.', 2800);

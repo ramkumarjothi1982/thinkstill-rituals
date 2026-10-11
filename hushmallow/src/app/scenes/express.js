@@ -27,14 +27,14 @@ export default function express(app, params = {}) {
   const levelLabel = h('span', { class: 'muted' }, 'Medium');
   const go = h('button', { class: 'btn primary block', disabled: true }, 'Meet a Mallow');
 
-  const el = h('div', { style: { display: 'flex', flexDirection: 'column', height: '100%' } },
+  const el = h('div', { class: 'express', style: { display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' } },
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' }),
       h('button', { class: 'btn ghost', style: { minHeight: '40px' }, onclick: () => openSupport(app) }, 'Need support now?')),
     h('div', { class: 'spacer', style: { minHeight: '22dvh' } }),
     h('div', { class: 'card', style: { padding: '16px' } },
       h('h1', { class: 'title', style: { fontSize: '24px', marginBottom: '10px' } }, 'What’s happening in your head?'),
       ta,
-      h('p', { class: 'muted', style: { margin: '6px 2px 0' } }, 'Tip: tap the mic on your keyboard to talk instead. Your words stay on this phone.'),
+      h('p', { class: 'muted tip', style: { margin: '6px 2px 0' } }, 'Tip: tap the mic on your keyboard to talk instead. Your words stay on this phone.'),
       ack, sugg,
       h('button', { class: 'btn ghost', style: { padding: '0 4px', minHeight: '40px' }, onclick: () => openExplorer() }, 'Browse every feeling A–Z →'),
       h('div', { style: { marginTop: '6px' } }, chosen),

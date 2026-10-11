@@ -19,7 +19,13 @@ const ent = createEntitlements({ store });
 const silent = { play() {}, ui() {}, fx() {}, hold() { return { update() {}, stop() {} }; }, ambience() {}, setAmbienceMood() {}, stopAmbience() {}, unlock() {}, setEnabled() {}, setVolume() {} };
 let audio = silent;
 let hapticFn = () => {};
-const audioProxy = new Proxy({}, { get: (_, k) => (...a) => (prefs.get('sound') || k === 'unlock' ? audio[k]?.(...a) : (k === 'hold' ? silent.hold() : undefined)) });
+// Sound is decoration: an audio error must never stop a ritual.
+const audioProxy = new Proxy({}, { get: (_, k) => (...a) => {
+  try {
+    if (prefs.get('sound') || k === 'unlock') return audio[k]?.(...a) ?? (k === 'hold' ? silent.hold() : undefined);
+  } catch (e) { console.warn('[audio]', k, e); }
+  return k === 'hold' ? silent.hold() : undefined;
+} });
 
 const app = {
   store, prefs, ent,

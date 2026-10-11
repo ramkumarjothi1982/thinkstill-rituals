@@ -4,8 +4,16 @@
 // list it below and in src/rituals/index.js. No app code changes.
 import softLanding from './soft-landing.js';
 import sparkToLantern from './spark-to-lantern.js';
+import greenGlitchCompass from './green-glitch-compass.js';
+import raindropKeeper from './raindrop-keeper.js';
+import moonmilkWindDown from './moonmilk-wind-down.js';
+import driftAndDock from './drift-and-dock.js';
 
 export const LIBRARY = [
   softLanding,
   sparkToLantern,
+  greenGlitchCompass,
+  raindropKeeper,
+  moonmilkWindDown,
+  driftAndDock,
 ];

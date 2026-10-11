@@ -78,7 +78,7 @@ export async function run(ctx) {
     }
     if (signal.aborted) return;
     const r = world.mallowRect();
-    const above = r.top + r.height * 0.12 - 96 > titleBottom();
+    const above = r.top + r.height * 0.12 - (text.length > 60 ? 128 : 100) > titleBottom();
     return ctx.say(text, { who: 'Blubi', ms, above });
   };
   // face: an emotion mix plus how much Blubi is crying (tears slow as things are held)

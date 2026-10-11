@@ -13,7 +13,9 @@ export default function plans(app, params = {}) {
     h('ul', {}, ...p.includes.map((x) => h('li', {}, x))),
     tier === p.id || (p.id === 'paid' && tier === 'ultra')
       ? h('div', { class: 'btn block', 'aria-disabled': 'true' }, 'Included in your plan')
-      : h('button', { class: `btn block ${p.id === 'ultra' ? 'ultra' : 'primary'}`, onclick: () => buy(p.id) }, `Choose ${p.name}`));
+      : ent.canPurchase
+        ? h('button', { class: `btn block ${p.id === 'ultra' ? 'ultra' : 'primary'}`, onclick: () => buy(p.id) }, `Choose ${p.name}`)
+        : h('div', { class: 'btn block', 'aria-disabled': 'true' }, 'Available in the app soon'));
 
   async function buy(id) {
     const r = await ent.purchase(id, 'monthly');
@@ -36,7 +38,9 @@ export default function plans(app, params = {}) {
     h('div', { style: { display: 'grid', gap: '6px', marginTop: '12px' } },
       h('button', { class: 'btn ghost block', onclick: async () => { await ent.restore(); toast(ent.has('paid') ? 'Purchases restored' : 'Nothing to restore yet'); } }, 'Restore purchases'),
       h('button', { class: 'btn ghost block', onclick: () => openSupport(app) }, 'Need support right now? It’s free →')),
-    ent.isNative ? null : h('p', { class: 'test-note' }, 'Development build: purchases here are test purchases. Nothing is charged. In the App Store version, Apple handles payment and receipts.'));
+    ent.isNative ? null : h('p', { class: 'test-note' }, ent.canPurchase
+      ? 'Development build: purchases here are test purchases. Nothing is charged. In the App Store version, Apple handles payment and receipts.'
+      : 'Subscriptions aren’t on sale on the web yet. The App Store app handles payment and receipts.'));
 
   return {
     el, title: 'Plans',

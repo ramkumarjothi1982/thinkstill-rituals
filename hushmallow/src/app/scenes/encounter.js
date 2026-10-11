@@ -19,7 +19,7 @@ export default function encounter(app) {
   let options = rec.recommend(req, { limit: 4 });
   let idx = 0;
 
-  const card = h('div', { class: 'card' });
+  const card = h('div', { class: 'card enc-card' });
   const ultraRow = h('div');
   const el = h('div', { style: { display: 'flex', flexDirection: 'column', height: '100%' } },
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' }),
@@ -59,6 +59,7 @@ export default function encounter(app) {
     await Promise.all([world.setRealm(lead.realm, { emotion: Object.keys(faceMix(input.emotions))[0], intensity: input.intensity }), world.setMallow(leadId)]);
     world.setEmotion(faceMix(input.emotions), Math.min(1, input.intensity * 1.05));
     render();
+    fit();
     await wait(450);
     say(world, encounterLine(leadId, family), { who: lead.name, ms: 3600 });
   }
@@ -67,6 +68,15 @@ export default function encounter(app) {
   function quickBtn() {
     return h('button', { class: 'btn ghost block', onclick: () => { clearBubble(); app.audio.ui('open'); playTrick(app, { tier: ent.has('ultra') ? null : 'paid' }); } },
       'Only got a minute? Quick trick');
+  }
+
+  // keep the Mallow's face in view: fit it into the space above the card
+  function fit() {
+    requestAnimationFrame(() => {
+      const top = el.querySelector('.topbar')?.getBoundingClientRect().bottom ?? 60;
+      const cardTop = card.getBoundingClientRect().top;
+      if (cardTop > top + 60) world.fitBetween(top + 6, cardTop - 4, { maxScale: 0.92 });
+    });
   }
 
   function begin(o) {

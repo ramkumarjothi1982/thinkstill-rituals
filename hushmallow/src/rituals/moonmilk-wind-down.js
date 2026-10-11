@@ -23,7 +23,7 @@ export const meta = { id: 'moonmilk-wind-down' };
 
 const LANTERNS = [
   ['emails', 'emails', 'Mmm. The emails can’t find us here.'],
-  ['messages', 'messages', 'Messages are very patient. They’ll wait till morning.'],
+  ['messages', 'messages', 'Messages are excellent at waiting. They’ll keep till morning.'],
   ['conversation', 'that conversation', 'That conversation can have the night off too.'],
   ['list', 'tomorrow’s list', 'Tomorrow’s list belongs to tomorrow. It’s in the name.'],
   ['chores', 'chores', 'Shh. The chores are asleep. Don’t wake them.'],
@@ -41,14 +41,14 @@ const CYCLE = [5.2, 5.8, 6.4, 7.0, 7.6, 8.0, 8.4]; // seconds per blink, gently 
 
 function rests(day) {
   return [
-    ['lights', 'Lights down, phone away', 'Face-down and out of reach. It’ll keep, promise.'],
+    ['lights', 'Lights low, phone away', 'Face-down and out of reach. It’ll keep, promise.'],
     ['drink', 'A warm drink', 'Something warm and sleepy. Hold the mug with both hands.'],
-    ['nothing', 'Five more minutes of nothing', 'Officially scheduled nothing. Very important work.'],
+    ['nothing', 'Five minutes of nothing', 'Officially scheduled nothing. Very important work.'],
     ['stretch', 'A slow stretch', 'Reach up… then let everything flop. Noomi recommends the flop.'],
-    ['sound', 'A soft sound to drift to', 'Rain, waves, or something you’ve heard a hundred times. Nothing new.'],
+    ['sound', 'A soft sound', 'Rain, waves, or something you’ve heard a hundred times. Nothing new.'],
     day
       ? ['outside', 'A short break outside', 'Five minutes of sky. No destination needed.']
-      : ['lie', 'Lie down, no pressure to sleep', 'Resting counts even if sleep doesn’t turn up.'],
+      : ['lie', 'Just lie down', 'No pressure to sleep. Resting counts even if sleep doesn’t turn up.'],
   ];
 }
 
@@ -151,7 +151,7 @@ export async function run(ctx) {
   };
   // sleepy face helper: eyes half-lidded, heavier as `heavy` rises 0..1
   const sleepyFace = (heavy, mix = { exhausted: 0.55, calm: 0.45 }, extra = {}) => {
-    world.setEmotion(mix, startI, { quiet: true, extra: { eyeOpen: clamp(0.5 - heavy * 0.48, 0, 1), lidTop: 0.2 + heavy * 0.4, lookY: 0.3, mouthSmile: 0.15 + heavy * 0.25, mouthWidth: 0.85, mouthRound: heavy > 0.5 ? 0.3 : 0, mouthOpen: heavy > 0.5 ? 0.06 : 0, yawnCycle: 0, fxZzz: heavy > 0.8 ? 0.3 : 0, ...extra } });
+    world.setEmotion(mix, startI, { quiet: true, extra: { eyeOpen: clamp(0.5 - heavy * 0.48, 0, 1), lidTop: 0.2 + heavy * 0.4, lookY: 0.3, mouthSmile: 0.05 + heavy * 0.3, mouthWidth: 0.85, mouthRound: heavy > 0.5 ? 0.3 : 0, mouthOpen: heavy > 0.5 ? 0.06 : 0, yawnCycle: 0, fxZzz: heavy > 0.8 ? 0.3 : 0, ...extra } });
   };
   const ok = () => !signal.aborted;
   // reactions also trigger Mallow voice sounds; a sound-engine hiccup must never stop the ritual
@@ -572,7 +572,7 @@ export async function run(ctx) {
 
   // ========================================================= FINALE ==
   dock.replaceChildren();
-  setMove(4, { eyebrow: 'The Moonmilk Cove', title: day ? 'Day, put down' : 'Day, put down. Goodnight.', prompt: '' });
+  setMove(4, { eyebrow: 'The Moonmilk Cove', title: day ? 'Day, put down' : 'Goodnight, day', prompt: '' });
   await wait(30);
   {
     const top = titleBottom() + 20, bottom = H - 60;
