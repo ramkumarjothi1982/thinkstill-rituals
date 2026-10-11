@@ -43,7 +43,7 @@ as the desktop audit, redesigned so one focal world fits a phone with nothing fi
 ## Rituals (30 launch rituals, rebuilt natively for phones)
 
 Every ritual completes by real touch gestures (scripted pointer events, not API calls) to the reveal screen with no page
-errors: all 30 at 390×844 dark in one regression pass on the merged build, and per ritual at 360×740, 430×932,
+errors: all 30 in full regression passes on the merged build at 390×844 dark, 360×740 dark and 390×844 bright, and per ritual at 360×740, 430×932,
 390×844 bright, a 2-word and a ~25-word thought by the agent that built it. Evidence screenshots: `qa/native/`.
 
 | # | Ritual | Status | Mobile gesture / notes |
