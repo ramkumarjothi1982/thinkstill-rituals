@@ -37,7 +37,8 @@ interface DragOpts {
  */
 function useDrag(opts: DragOpts) {
     const o = useLatest(opts)
-    const st = React.useRef<{ id: number; sx: number; sy: number; t0: number; samples: { x: number; y: number; t: number }[]; el: HTMLElement; moved: boolean } | null>(null)
+    type DragState = { id: number; sx: number; sy: number; t0: number; samples: { x: number; y: number; t: number }[]; el: HTMLElement; moved: boolean; off?: () => void }
+    const st = React.useRef<DragState | null>(null)
     const info = (e: React.PointerEvent | PointerEvent, s: NonNullable<typeof st.current>): DragInfo => {
         const rel = o.current.relativeTo && o.current.relativeTo.current ? o.current.relativeTo.current : s.el
         const p = localPoint(e, rel)
@@ -54,11 +55,12 @@ function useDrag(opts: DragOpts) {
         }
         return { x: p.x, y: p.y, dx: e.clientX - s.sx, dy: e.clientY - s.sy, vx, vy, ms: now - s.t0, startX: s.sx, startY: s.sy, clientX: e.clientX, clientY: e.clientY, pointerId: e.pointerId, target: s.el }
     }
-    const end = (e: React.PointerEvent, cancelled: boolean) => {
+    const end = (e: React.PointerEvent | PointerEvent, cancelled: boolean) => {
         const s = st.current
         if (!s || s.id !== e.pointerId) return
         const i = info(e, s)
         st.current = null
+        if (s.off) s.off()
         try {
             s.el.releasePointerCapture(e.pointerId)
         } catch (err) {}
@@ -66,12 +68,29 @@ function useDrag(opts: DragOpts) {
         if (!cancelled && !s.moved && i.ms < (o.current.tapMs ?? 450) && Math.hypot(i.dx, i.dy) < slop && o.current.onTap) o.current.onTap(i)
         o.current.onEnd && o.current.onEnd(i, cancelled)
     }
+    const move = (e: React.PointerEvent | PointerEvent) => {
+        const s = st.current
+        if (!s || s.id !== e.pointerId) return
+        const now = performance.now()
+        s.samples.push({ x: e.clientX, y: e.clientY, t: now })
+        while (s.samples.length > 2 && now - s.samples[0].t > 90) s.samples.shift()
+        if (!s.moved && Math.hypot(e.clientX - s.sx, e.clientY - s.sy) > (o.current.tapSlop ?? 10)) s.moved = true
+        o.current.onMove && o.current.onMove(info(e, s))
+    }
+    React.useEffect(() => () => {
+        if (st.current && st.current.off) st.current.off()
+    }, [])
     return {
         onPointerDown: (e: React.PointerEvent) => {
+            // a drag whose element was replaced mid-gesture never gets its pointerup: drop it instead of blocking forever
+            if (st.current && !st.current.el.isConnected) {
+                if (st.current.off) st.current.off()
+                st.current = null
+            }
             if (o.current.disabled || st.current) return
             if (e.pointerType === "mouse" && e.button !== 0) return
             const el = e.currentTarget as HTMLElement
-            const s = { id: e.pointerId, sx: e.clientX, sy: e.clientY, t0: performance.now(), samples: [{ x: e.clientX, y: e.clientY, t: performance.now() }], el, moved: false }
+            const s: DragState = { id: e.pointerId, sx: e.clientX, sy: e.clientY, t0: performance.now(), samples: [{ x: e.clientX, y: e.clientY, t: performance.now() }], el, moved: false }
             st.current = s
             const r = o.current.onStart ? o.current.onStart(info(e, s)) : undefined
             if (r === false) {
@@ -81,17 +100,24 @@ function useDrag(opts: DragOpts) {
             try {
                 el.setPointerCapture(e.pointerId)
             } catch (err) {}
+            // window backstop: finishes the gesture even if React re-mounts the touched element
+            const wMove = (ev: PointerEvent) => {
+                if (st.current === s && !s.el.isConnected) move(ev)
+            }
+            const wUp = (ev: PointerEvent) => {
+                if (st.current === s) end(ev, ev.type === "pointercancel")
+            }
+            window.addEventListener("pointermove", wMove)
+            window.addEventListener("pointerup", wUp)
+            window.addEventListener("pointercancel", wUp)
+            s.off = () => {
+                window.removeEventListener("pointermove", wMove)
+                window.removeEventListener("pointerup", wUp)
+                window.removeEventListener("pointercancel", wUp)
+            }
             e.stopPropagation()
         },
-        onPointerMove: (e: React.PointerEvent) => {
-            const s = st.current
-            if (!s || s.id !== e.pointerId) return
-            const now = performance.now()
-            s.samples.push({ x: e.clientX, y: e.clientY, t: now })
-            while (s.samples.length > 2 && now - s.samples[0].t > 90) s.samples.shift()
-            if (!s.moved && Math.hypot(e.clientX - s.sx, e.clientY - s.sy) > (o.current.tapSlop ?? 10)) s.moved = true
-            o.current.onMove && o.current.onMove(info(e, s))
-        },
+        onPointerMove: (e: React.PointerEvent) => move(e),
         onPointerUp: (e: React.PointerEvent) => end(e, false),
         onPointerCancel: (e: React.PointerEvent) => end(e, true),
         onLostPointerCapture: (e: React.PointerEvent) => {
