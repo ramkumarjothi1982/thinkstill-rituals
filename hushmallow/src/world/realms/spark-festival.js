@@ -17,7 +17,7 @@
 
 import {
   clamp, lerp, smoothstep, rng, TAU, vgrad, rgba, glowSprite, glintSprite, blit, softBlob,
-  Pool, Rings, flashEnv, stageFade, makeCanvas, sceneLayer, drawLayer, billowCloud, bankBillows, mixHex,
+  Pool, Rings, flashEnv, stageFade, makeCanvas, sceneLayer, drawLayer, billowCloud, mixHex,
 } from '../util.js';
 
 const C = {
@@ -222,7 +222,6 @@ export default function create({ ctx }) {
   function paintMid(g, st, lit) {
     const { W, H, M } = st;
     const u = unit(st);
-    const r = rng(311);
     // mid hill under the tents
     const hillY = (x) => H * (0.712 + 0.01 * Math.sin(x * 0.009 + 0.6)) + (Math.abs(x / W - 0.5) < 0.3 ? H * 0.012 : 0) * Math.cos((x / W - 0.5) * 5.2);
     g.fillStyle = vgrad(g, H * 0.69, H * 0.8, [[0, lit ? '#3a1040' : '#2a0a32'], [1, '#170520']]);
@@ -320,7 +319,6 @@ export default function create({ ctx }) {
       g.fillStyle = lit ? '#ffd27a' : '#14040f'; g.fillRect(bx - bw * 0.36, base - bh * 0.8, bw * 0.72, bh * 0.42);
       stripedRoof(g, bx, base - bh - 8, base - bh, bw * 0.62, 6, lit ? '#ff5a9a' : '#3a0e2e', lit ? '#fff1d6' : '#2a1028', 0.6);
     }
-    void r;
   }
 
   // ---------------------------------------------------------------- build --
@@ -579,7 +577,7 @@ export default function create({ ctx }) {
         lanterns.push({
           s: si, u, kind: globe ? 0 : 1, size, hue: Math.floor(lr() * HUES.length), lit: 1, ang: 0, angV: 0,
           ph: lr() * TAU, ph2: lr() * TAU, fph: lr() * TAU, boost: 0, delay: -1, boostDur: 0, kick: -1, kickA: 0,
-          rankM: lr(), rankS: 0, ax: 0, ay: 0, gx: 0, gy: 0, xs: lerp(s.x0, s.x1, u),
+          rankM: lr(), rankS: 0, ax: 0, ay: 0, gx: 0, gy: 0, fade: 1, xs: lerp(s.x0, s.x1, u),
         });
       }
     });
@@ -678,7 +676,6 @@ export default function create({ ctx }) {
 
   // ---------------------------------------------------------------- frame --
   function frame(g, st) {
-    const SK = globalThis.__sk || {};
     const { W, H, m, p, dt, rdt, dpr, density } = st;
     const camX = st.camX, camY = st.camY;
     const ag = m.agitation, cl = m.clarity, wm = m.warmth;
@@ -689,9 +686,9 @@ export default function create({ ctx }) {
     const excite = clamp(wm * 0.55 + ag * 0.45 + p * 0.5 - hv * 1.2);
 
     // 1 sky, stars, moon
-    if(!SK.sky) drawLayer(g, L.sky, st, 0.05);
+    drawLayer(g, L.sky, st, 0.05);
     const starA = (0.15 + 0.85 * smoothstep(0.25, 0.9, cl)) * (1 - hv * 0.45);
-    if(!SK.stars) drawLayer(g, L.starL, st, 0.07, starA);
+    drawLayer(g, L.starL, st, 0.07, starA);
     g.globalCompositeOperation = 'lighter';
     if (cl > 0.35) {
       const ga = smoothstep(0.35, 0.95, cl) * (1 - hv * 0.6);
@@ -708,18 +705,18 @@ export default function create({ ctx }) {
 
     // 2 fireworks (far away, soft and slow)
     updateFireworks(st, excite, hv);
-    if(!SK.fw) drawFireworks(g, st, hv);
+    drawFireworks(g, st, hv);
 
     // 3 sky lanterns
-    if(!SK.skyl) drawSkyLanterns(g, st, hv);
+    drawSkyLanterns(g, st, hv);
 
     // 4 far hills, wheel
-    if(!SK.far) drawLayer(g, L.far, st, 0.3);
+    drawLayer(g, L.far, st, 0.3);
     festLit += (clamp(0.12 + 0.88 * litAvg) - festLit) * (1 - Math.exp(-rdt / 0.8));
-    if(!SK.wheel) drawWheel(g, st, hv, ag);
+    drawWheel(g, st, hv, ag);
 
     // 5 mid: tents + carousel (dark silhouettes, lit from inside)
-    if (!SK.mid && festLit < 0.985) drawLayer(g, L.midDark, st, 0.5);
+    if (festLit < 0.985) drawLayer(g, L.midDark, st, 0.5);
     if (festLit > 0.015) drawLayer(g, L.midLit, st, 0.5, Math.min(1, festLit));
 
     // 6 haze over everything distant (low clarity)
@@ -727,7 +724,7 @@ export default function create({ ctx }) {
     if (haze > 0.01) { g.globalAlpha = haze; g.fillStyle = grads.haze; g.fillRect(0, 0, W, H); g.globalAlpha = 1; }
 
     // 7 ground + dais + lamps
-    if(!SK.ground) drawLayer(g, L.ground, st, 0.75);
+    drawLayer(g, L.ground, st, 0.75);
     g.globalCompositeOperation = 'lighter';
     const gx = camX * 0.75, gyo = camY * 0.75;
     g.globalAlpha = (0.18 + 0.22 * wm + 0.15 * p) * (0.4 + 0.6 * festLit);
@@ -757,20 +754,20 @@ export default function create({ ctx }) {
 
     // 8 festoon strings + lanterns
     updateLanterns(st, lf, ag);
-    if(!SK.strings) drawStrings(g, st, cl, wm);
+    drawStrings(g, st, cl, wm);
 
     // 9 poles
     drawLayer(g, L.nearL, st, 0.75);
     drawLayer(g, L.nearR, st, 0.75);
 
     // 10 confetti + fizzing sparks
-    if(!SK.conf) drawConfetti(g, st, ag, hv);
-    if(!SK.fizz) drawFizz(g, st, ag, hv);
+    drawConfetti(g, st, ag, hv);
+    drawFizz(g, st, ag, hv);
 
     // 11 mood grading
     if (ag > 0.4 && cl < 0.6) { g.globalAlpha = Math.min(1, (ag - 0.4) * (0.6 - cl) * 7); g.fillStyle = grads.cool; g.fillRect(0, 0, W, H); g.globalAlpha = 1; }
     const gold = clamp((wm - 0.5) * 1.6 + p * 0.7);
-    if (!SK.gold && gold > 0.01) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = gold * 0.75; g.fillStyle = grads.golden; g.fillRect(0, 0, W, H); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
+    if (gold > 0.01) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = gold * 0.75; g.fillStyle = grads.golden; g.fillRect(0, H * 0.28, W, H * 0.72); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
     if (hv > 0.03) {
       g.globalCompositeOperation = 'saturation';
       g.globalAlpha = Math.min(0.85, hv * 0.85);
@@ -823,7 +820,7 @@ export default function create({ ctx }) {
     launch(st, W * 0.5, H * 0.35, Math.min(W * 0.34, H * 0.19) * k, { big: true, n: 68, rise: 1.7, ttl: 4.6, pair: [0, 1], a: 1, x0: W * 0.5, y0: H * 0.6 });
   }
   function drawFireworks(g, st, hv) {
-    const { W, H, rdt, dpr } = st;
+    const { W, H, rdt } = st;
     const cx = st.camX * 0.1, cy = st.camY * 0.1;
     const lowK = st.low ? 0.65 : 1;
     g.globalCompositeOperation = 'lighter';
@@ -889,7 +886,6 @@ export default function create({ ctx }) {
       g.globalAlpha = 1;
     }
     g.globalCompositeOperation = 'source-over';
-    void dpr;
   }
 
   // --------------------------------------------------------- sky lanterns --
@@ -951,8 +947,8 @@ export default function create({ ctx }) {
     for (let i = 0; i < 8; i++) {
       const a = wheelRot + (i / 8) * TAU;
       const px = x + Math.cos(a) * Rw, py = y + Math.sin(a) * Rw;
-      g.globalAlpha = 1; g.drawImage(S.gondolaOff, px - 5, py - 0.5, 10, 11.7);
-      if (festLit > 0.02) { g.globalAlpha = festLit; g.drawImage(S.gondolaOn, px - 5, py - 0.5, 10, 11.7); }
+      if (festLit < 0.97) { g.globalAlpha = 1; g.drawImage(S.gondolaOff, px - 5, py - 0.5, 10, 11.7); }
+      if (festLit > 0.02) { g.globalAlpha = festLit < 0.97 ? festLit : 1; g.drawImage(S.gondolaOn, px - 5, py - 0.5, 10, 11.7); }
     }
     g.globalAlpha = 1;
     drawLayer(g, L.wheelFront, st, 0.3);
@@ -1021,14 +1017,17 @@ export default function create({ ctx }) {
           const off = (l.kind ? 8.6 : 25) * k;
           l.ax = ax; l.ay = ay; l.gx = ax - sa * off; l.gy = ay + ca * off;
           const fade = stageFade(l.gx, l.gy, W, H, st.groundY, 0.55);
-          g.setTransform(dpr * ca * k, dpr * sa * k, -dpr * sa * k, dpr * ca * k, dpr * ax, dpr * ay);
+          l.fade = fade;
           const b = l.lit;
           if (l.kind) {
-            if (b < 0.99) { g.globalAlpha = fade; g.drawImage(S.bulbOff[l.hue], -5, 0, 10, 14); }
-            if (b > 0.01) { g.globalAlpha = fade * b; g.drawImage(S.bulbOn[l.hue], -5, 0, 10, 14); }
+            const bx = l.gx - 5 * k, by = l.gy - 8.6 * k, bw = 10 * k, bh = 14 * k;
+            if (b < 0.99) { g.globalAlpha = fade; g.drawImage(S.bulbOff[l.hue], bx, by, bw, bh); }
+            if (b > 0.01) { g.globalAlpha = fade * b; g.drawImage(S.bulbOn[l.hue], bx, by, bw, bh); }
           } else {
+            g.setTransform(dpr * ca * k, dpr * sa * k, -dpr * sa * k, dpr * ca * k, dpr * ax, dpr * ay);
             if (b < 0.99) { g.globalAlpha = fade; g.drawImage(S.globeOff[l.hue], -20, 0, 40, 52); }
             if (b > 0.01) { g.globalAlpha = fade * b; g.drawImage(S.globeOn[l.hue], -20, 0, 40, 52); }
+            g.setTransform(dpr, 0, 0, dpr, 0, 0);
           }
         }
         g.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1036,7 +1035,7 @@ export default function create({ ctx }) {
         g.globalCompositeOperation = 'lighter';
         for (const l of lanterns) {
           if (l.s !== si || l.lit < 0.01) continue;
-          const fade = stageFade(l.gx, l.gy, W, H, st.groundY, 0.55);
+          const fade = l.fade;
           const flick = 0.93 + 0.07 * Math.sin(t * 1.6 + l.fph) * Math.sin(t * 0.7 + l.ph);
           const a = l.lit * fade * flick;
           if (l.kind) {
