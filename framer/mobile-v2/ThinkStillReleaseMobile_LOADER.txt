@@ -1,17 +1,17 @@
 // ThinkStill Release Console Mobile V2 - Framer code component.
 // Paste ALL of this into ONE Framer code file named ThinkStillReleaseMobile, then drag ThinkStillReleaseMobile onto the page.
-// The app (about 1865 KB) is too large for a Framer code file, so this small file loads it from the
-// ThinkStill GitHub repository (commit f003f73438b6), checks its SHA-256 fingerprint, and runs it.
+// The app (about 2373 KB) is too large for a Framer code file, so this small file loads it from the
+// ThinkStill GitHub repository (commit a1954b418631), checks its SHA-256 fingerprint, and runs it.
 import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
 import { motion } from "framer-motion"
 import * as FramerMotionNS from "framer-motion"
 
 const TSM_APP_URLS = [
-    "https://cdn.jsdelivr.net/gh/ramkumarjothi1982/thinkstill-rituals@f003f73438b633ef7f1b80cb8110c0feb73a1596/framer/mobile-v2/release/thinkstill-mobile-app.js",
-    "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/f003f73438b633ef7f1b80cb8110c0feb73a1596/framer/mobile-v2/release/thinkstill-mobile-app.js"
+    "https://cdn.jsdelivr.net/gh/ramkumarjothi1982/thinkstill-rituals@a1954b4186316349552921e0dd5e844a5376d877/framer/mobile-v2/release/thinkstill-mobile-app.js",
+    "https://raw.githubusercontent.com/ramkumarjothi1982/thinkstill-rituals/a1954b4186316349552921e0dd5e844a5376d877/framer/mobile-v2/release/thinkstill-mobile-app.js"
 ]
-const TSM_APP_SHA256 = "b49bc44d4355ec33c5fa2fa9847ec3bd002f07e2ad632067d8fcb902c5291587"
+const TSM_APP_SHA256 = "2b37b6728d388b25623e3dea1de30c0c81c4adca23f85b694985ac13bea7c039"
 
 let tsmApp = null
 let tsmError = null
