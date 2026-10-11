@@ -23,7 +23,8 @@ export default function home(app, params = {}) {
   const m = MALLOWS[id];
   const subscribed = ent.has('paid');
 
-  const nameEl = h('div', { class: 'eyebrow', style: { textAlign: 'center', marginTop: '4px' } }, `${m.name} · ${m.title}`);
+  const nameEl = h('div', { class: 'eyebrow', style: { textAlign: 'center', marginTop: '4px', padding: '6px 12px', borderRadius: '999px',
+    background: 'rgba(14,10,40,.5)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', color: 'var(--text-1)' } }, `${m.name} · ${m.title}`);
   const ask = h('button', { class: 'ask', 'data-focus': '', onclick: () => start() },
     h('span', {}, subscribed ? 'What’s on your mind?' : 'Start Hushmallow'), h('span', { class: 'go', 'aria-hidden': 'true' }, icon('arrow')));
   const quick = h('div', { class: 'chips scroll', role: 'group', 'aria-label': 'Quick feelings' },

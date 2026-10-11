@@ -9,6 +9,7 @@ import raindropKeeper from './raindrop-keeper.js';
 import moonmilkWindDown from './moonmilk-wind-down.js';
 import driftAndDock from './drift-and-dock.js';
 import sunpopSavour from './sunpop-savour.js';
+import untangle from './untangle.js';
 
 export const LIBRARY = [
   softLanding,
@@ -18,4 +19,5 @@ export const LIBRARY = [
   moonmilkWindDown,
   driftAndDock,
   sunpopSavour,
+  untangle,
 ];

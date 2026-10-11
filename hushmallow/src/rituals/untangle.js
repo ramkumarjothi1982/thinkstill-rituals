@@ -52,7 +52,7 @@ const STEPS = [
   ['ask', 'Ask one question', 'Just work out the one question. Who or what could answer it can wait.'],
   ['deadline', 'Pick a deadline', 'A “by when” makes a thread easier to hold. Kind deadlines only.'],
   ['sleep', 'Sleep on it', 'Choosing to wait is still choosing. The thread will keep.'],
-  ['coin', 'Flip a coin to see how I feel', 'Give each option a side first. The coin doesn’t decide. Your flicker of feeling does the talking.'],
+  ['coin', 'Flip a coin to see how I feel', 'Give each option a side. The coin doesn’t decide; notice how you feel when it lands.'],
 ];
 
 export async function run(ctx) {
@@ -135,7 +135,9 @@ export async function run(ctx) {
     } else {
       gy = top + ah * 0.5; gr = Math.max(40, Math.min(W * 0.44, ah * 0.5 - 6));
     }
+    kr = Math.max(14, kr); gr = Math.max(0, gr);
     K.x += (kx - K.x) * k; K.y += (ky - K.y) * k; K.r += (kr - K.r) * k;
+    K.r = Math.max(4, K.r);
     RG.x += (gx - RG.x) * k; RG.y += (gy - RG.y) * k; RG.r += (gr - RG.r) * k;
     slotLayout = { top: sTop, h: sH ? sH / n : 40 };
     // DOM threads follow their slots
@@ -291,7 +293,7 @@ export async function run(ctx) {
     const inKnot = strands.filter((s) => s.shape === 'knot');
     if (!inKnot.length && fuzzAlpha <= 0.01) return;
     const loose = total ? freed / total : 0;
-    const R = K.r * (1 + loose * 0.28);
+    const R = Math.max(4, K.r * (1 + loose * 0.28));
     // halo
     const glowA = (0.25 + inKnot.length * 0.06) * (inKnot.length ? 1 : fuzzAlpha);
     const hg = g.createRadialGradient(K.x, K.y, R * 0.1, K.x, K.y, R * 2.1);
@@ -461,7 +463,8 @@ export async function run(ctx) {
 
   let raf = 0, last = performance.now();
   const loop = (now) => {
-    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    raf = requestAnimationFrame(loop);
+    const dt = clamp((now - last) / 1000, 0, 0.05); last = now;
     time += dt;
     const loose = total ? freed / total : 0;
     rot.y += dt * (rm ? 0.12 : 0.55) * (1 - loose * 0.5) + (drag ? dt * drag.s.p * 1.6 : 0);
@@ -483,7 +486,6 @@ export async function run(ctx) {
     drawKnot(dt);
     drawThreads(dt);
     drawMotes(dt);
-    raf = requestAnimationFrame(loop);
   };
   raf = requestAnimationFrame(loop);
 
@@ -623,7 +625,11 @@ export async function run(ctx) {
     strands.forEach((s, i) => { s.alpha = -Math.PI / 2 + 0.35 + (i / Math.max(1, n)) * TAU; });
   }
 
-  const chipWrap = h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' } });
+  // short screens: one scrolling row of strands so the knot keeps its room
+  const tight = H < 700;
+  const chipWrap = h('div', { class: tight ? 'fam-chips' : '', role: 'group', 'aria-label': 'Strands in the knot',
+    style: tight ? { display: 'flex', gap: '8px', overflowX: 'auto', padding: '2px 0', margin: '0 calc(-1 * var(--gutter, 16px))', paddingInline: 'var(--gutter, 16px)' }
+      : { display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' } });
   const pickBtn = h('button', { class: 'btn primary block', disabled: true }, 'That’s the knot');
   const ownInput = h('input', { class: 'text', type: 'text', maxlength: '32', placeholder: 'Or add your own strand…', 'aria-label': 'Add a strand in your own words', style: { flex: '1', minWidth: '0' } });
   const ownBtn = h('button', { class: 'btn', style: { minHeight: '48px', padding: '0 16px', flex: '0 0 auto' }, 'aria-label': 'Add your own strand' }, 'Add');
@@ -917,8 +923,7 @@ export async function run(ctx) {
   const grid = h('div', { class: compact ? '' : 'choice-grid', style: compact ? { display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' } : {} });
   const detail = h('div', { 'aria-live': 'polite' });
   const readyBtn = h('button', { class: 'btn primary block', disabled: true }, 'Ready to tug');
-  const stepHead = h('p', { class: 'muted', style: { textAlign: 'center', margin: '0' } });
-  const setHead = () => { stepHead.textContent = `A tiny next step for “${short(chosen.label, 24)}”`; };
+  const setHead = () => { setMove(3, { eyebrow: 'Move 4 of 4', title: 'First tug', prompt: `A tiny next step for “${short(chosen.label, 26)}”?` }); };
   setHead();
   for (const [id, text, note] of STEPS) {
     const b = h('button', { class: cls, 'aria-pressed': 'false', style: compact ? { minHeight: '44px' } : {} }, text);
@@ -937,7 +942,7 @@ export async function run(ctx) {
   }
   // re-choosing a thread on the canvas still works during this step
   chooseDone = () => { setHead(); };
-  dock.replaceChildren(stepHead, grid, detail, readyBtn);
+  dock.replaceChildren(grid, detail, readyBtn);
   await until((done) => { readyBtn.onclick = done; });
   if (signal.aborted) return result;
   chooseDone = null;
@@ -1060,7 +1065,7 @@ export async function run(ctx) {
       haptic('tick');
       setTimeout(() => {
         coin.textContent = heads ? 'H' : 'T';
-        out.textContent = `${heads ? 'Heads' : 'Tails'}! Quick: relief, or a tiny “oh no”? That flicker is the useful bit.`;
+        out.textContent = `${heads ? 'Heads' : 'Tails'}! Relief, or a tiny “oh no”? That flicker’s the useful bit.`;
         audio.fx?.('star', { intensity: 0.4 });
         result.coin = heads ? 'heads' : 'tails';
       }, rm ? 0 : 520);

@@ -60,6 +60,7 @@ export default function create({ ctx }) {
   function build(st) {
     const { W, H, M, dpr } = st;
     const hy = Math.round(H * 0.57), gy = H * st.groundY, Hw = H - hy;
+    const U = Math.min(W, H * 0.52); // size unit: keeps props in scale on landscape screens
     const sunX = W * 0.72, sunY = H * 0.25;
     const r = rng(808);
 
@@ -69,7 +70,8 @@ export default function create({ ctx }) {
       const g = sky.g;
       g.fillStyle = vgrad(g, -M, hy, [[0, C.zenith], [0.3, C.upper], [0.58, C.mid], [0.8, C.low], [0.93, C.haze], [1, C.horizon]]);
       g.fillRect(-M, -M, W + 2 * M, hy + M + 2);
-      softBlob(g, sunX, sunY, W * 0.8, '#d9f6ff', 0.3);
+      softBlob(g, sunX, sunY, U * 0.8, '#d9f6ff', 0.3);
+      softBlob(g, sunX, sunY, U * 0.5, '#fffbea', 0.4);
       softBlob(g, W * 0.5, hy, W * 1.05, '#ffffff', 0.7, 1.35, 0.2);
       // high brushed cirrus (static)
       g.globalCompositeOperation = 'lighter';
@@ -122,9 +124,7 @@ export default function create({ ctx }) {
       for (let i = 0; i < 7; i++) softBlob(g, r() * W, hy + r.range(-18, 8), W * r.range(0.2, 0.35), '#f4fbfe', 0.5, 1.6, 0.25);
     }
     // ------------------------------------------------------ water body
-    const waterBase = sceneLayer(st, hy - 1, H + M);
-    waterBase.g.fillStyle = vgrad(waterBase.g, hy, H, [[0, '#d8f3fb'], [0.25, '#9ad6f2'], [0.6, '#5bb3e4'], [1, '#2e8ccf']]);
-    waterBase.g.fillRect(-M, hy - 1, W + 2 * M, Hw + M + 1);
+    grads.body = vgrad(ctx, hy, H, [[0, '#d8f3fb'], [0.25, '#9ad6f2'], [0.6, '#5bb3e4'], [1, '#2e8ccf']]);
     const tint = sceneLayer(st, hy - 1, H + M);
     {
       const g = tint.g;
@@ -199,7 +199,7 @@ export default function create({ ctx }) {
     sprites.fluff = fluffSprite(40);
     sprites.list = [sprites.mote, sprites.moteBlue, sprites.dot, sprites.fluff];
     sprites.beam = beamSprite();
-    sprites.stone = stoneSprite(W * 0.74, dpr);
+    sprites.stone = stoneSprite(U * 0.74, dpr);
 
     // --------------------------------------------------------- clouds
     const cr = rng(64);
@@ -225,7 +225,7 @@ export default function create({ ctx }) {
     const prev = islands;
     islands = defs.map((d, i) => {
       const s = 0.2 + 2.3 * d.wz;
-      const w = W * 0.4 * s;
+      const w = U * 0.4 * s;
       const haze = clamp(0.5 - d.wz * 3.2);
       const spr = islandSprite(w, d.kind, rng(300 + i), haze, dpr);
       const o = prev[i];
@@ -243,7 +243,7 @@ export default function create({ ctx }) {
     for (let i = 0; i < FN; i++) resetFluff(st, i, true);
     for (let i = 0; i < KN; i++) { kx[i] = R() * W; kz[i] = R.range(0.15, 0.9); kph[i] = R() * TAU; }
 
-    L = { sky, overcast, fog, waterBase, tint, sheen, chopA, chopB, refl, hy, gy, Hw, Wl, sunX, sunY };
+    L = { U, sky, overcast, fog, tint, sheen, chopA, chopB, refl, hy, gy, Hw, Wl, sunX, sunY };
   }
 
   function resetFluff(st, i, initial) {
@@ -302,7 +302,7 @@ export default function create({ ctx }) {
 
   // long soft lenticular streak: soft lobes for wispy edges + a defined core
   function streakSprite(w, h, r, dpr) {
-    const pad = h * 2;
+    const pad = Math.max(h * 2.2, w * 0.24);
     const cw = w + pad * 2, ch = h * 4;
     const c = makeCanvas(cw * dpr, ch * dpr);
     const g = c.getContext('2d');
@@ -551,11 +551,10 @@ export default function create({ ctx }) {
   }
 
   function drawSun(g, st, sx, sy, sunA, warmK, p, cl, hv) {
-    const W = st.W;
-    g.globalAlpha = (0.2 + 0.06 * p) * sunA; blit(g, sprites.sunSoft, sx, sy, W * 0.5, W * 0.5);
-    g.globalAlpha = 0.55 * sunA; blit(g, sprites.sunSoft, sx, sy, W * 0.13, W * 0.13);
-    g.globalAlpha = (0.8 + 0.2 * cl) * sunA; blit(g, sprites.sunCore, sx, sy, W * 0.052, W * 0.052);
-    if (warmK > 0.01) { g.globalAlpha = warmK * 0.3 * (0.4 + 0.6 * sunA); blit(g, sprites.gold, sx, sy, W * 0.26, W * 0.26); }
+    const U = L.U;
+    g.globalAlpha = 0.55 * sunA; blit(g, sprites.sunSoft, sx, sy, U * 0.13, U * 0.13);
+    g.globalAlpha = (0.8 + 0.2 * cl) * sunA; blit(g, sprites.sunCore, sx, sy, U * 0.052, U * 0.052);
+    if (warmK > 0.01) { g.globalAlpha = warmK * 0.3 * (0.4 + 0.6 * sunA); blit(g, sprites.gold, sx, sy, U * 0.26, U * 0.26); }
   }
 
   function frame(g, st) {
@@ -569,24 +568,26 @@ export default function create({ ctx }) {
     else clearBoost *= Math.exp(-rdt / 3.5);
     const clearCalm = clearBoost * clamp(clearPos);
     const sunA = clamp(1 - hv * 0.78);
-    const warmK = clamp(smoothstep(0.48, 1, wm) * 0.95 + p * 0.25) * (1 - hv * 0.6);
+    const warmK = clamp(smoothstep(0.56, 1, wm) * 1.05 + p * 0.22) * (1 - hv * 0.6);
+    const ovK = smoothstep(0.12, 0.78, hv) * 0.9;   // overcast deck
+    const hvK = smoothstep(0.14, 0.9, hv) * 0.68;   // grey-blue haze
     const fogK = clamp((1 - cl) * 0.6 + hv * 0.4 - 0.12) * (1 - p * 0.9);
     const sx = L.sunX + st.camX * SKY_D, sy = L.sunY + st.camY * SKY_D;
 
     updateIslands(st);
     for (const c of clouds) {
       c.x += (c.v * (1 + wind * 7) * (1 - p * 0.85) * dt) / W;
-      const lim = 0.5 + c.w * 0.5 + 0.1;
+      const lim = 0.55 + c.w * 0.75; // sprite half-width incl. its soft tails
       if (c.x > 0.5 + lim) c.x -= lim * 2;
     }
 
     // 1 sky ---------------------------------------------------------
     drawLayer(g, L.sky, st, SKY_D);
-    if (hv > 0.02) drawLayer(g, L.overcast, st, SKY_D, clamp(hv * 1.15) * 0.88);
+    if (ovK > 0.02) drawLayer(g, L.overcast, st, SKY_D, ovK);
     g.globalCompositeOperation = 'lighter';
     drawSun(g, st, sx, sy, sunA, warmK, p, cl, hv);
     const haloA = (0.04 + 0.08 * smoothstep(0.55, 1, cl) + 0.13 * p) * sunA;
-    if (haloA > 0.01) { g.globalAlpha = haloA; blit(g, sprites.halo, sx, sy, W * 0.3, W * 0.3); }
+    if (haloA > 0.01) { g.globalAlpha = haloA; blit(g, sprites.halo, sx, sy, L.U * 0.3, L.U * 0.3); }
     g.globalAlpha = 1;
     g.globalCompositeOperation = 'source-over';
     const cloudA = 0.92 - hv * 0.35;
@@ -604,7 +605,7 @@ export default function create({ ctx }) {
     rg.globalCompositeOperation = 'source-over';
     rg.globalAlpha = 1;
     drawLayer(rg, L.sky, st, SKY_D);
-    if (hv > 0.02) drawLayer(rg, L.overcast, st, SKY_D, clamp(hv * 1.15) * 0.88);
+    if (ovK > 0.02) drawLayer(rg, L.overcast, st, SKY_D, ovK);
     rg.globalCompositeOperation = 'lighter';
     drawSun(rg, st, sx, sy, sunA, warmK, p, cl, hv);
     rg.globalAlpha = 1;
@@ -621,14 +622,38 @@ export default function create({ ctx }) {
       rg.setTransform(rs, 0, 0, -rs, rs * M, rs * (2 * isl.yw - hy));
       rg.save(); drawIsland(rg, isl); rg.restore();
     }
+    // water-surface layers go into the buffer too (lower res, and they ride
+    // the same wave slices): body colour, Fresnel tint, sheen, chop, gusts
+    rg.setTransform(rs, 0, 0, rs, rs * M, -rs * hy);
+    const reflA = clamp(0.94 - wind * 0.4 - hv * 0.22 + cl * 0.06 + p * 0.2, 0.35, 1);
+    if (reflA < 0.995) { rg.globalAlpha = 1 - reflA; rg.fillStyle = grads.body; rg.fillRect(-M, hy, Wl, Hw + M); rg.globalAlpha = 1; }
+    drawLayer(rg, L.tint, st, 0);
+    const sheenA = (1 - wind) * (1 - wind) * (0.3 + 0.6 * cl) * (1 - hv * 0.5);
+    if (sheenA > 0.01) drawLayer(rg, L.sheen, st, 0.3, sheenA);
+    const chopK = smoothstep(0.06, 0.8, wind) * (1 - clearCalm * 0.9) * (1 - p);
+    if (chopK > 0.01) {
+      const a = (windPh * 34) % Wl, b = (windPh * 21 + 120) % Wl;
+      const ox = st.camX * 0.3, oy = hy + st.camY * 0.2;
+      rg.globalAlpha = chopK * (0.85 - hv * 0.25);
+      rg.drawImage(L.chopA.c, -M - a + ox, oy, Wl, L.chopA.h); rg.drawImage(L.chopA.c, -M - a + Wl + ox, oy, Wl, L.chopA.h);
+      rg.globalAlpha = chopK * 0.7;
+      rg.drawImage(L.chopB.c, -M + b - Wl + ox, oy + 1, Wl, L.chopB.h); rg.drawImage(L.chopB.c, -M + b + ox, oy + 1, Wl, L.chopB.h);
+      // cat's-paw gusts darkening patches of water
+      for (let i = 0; i < KN; i++) {
+        kx[i] += (24 + wind * 70) * (0.5 + kz[i]) * rdt * st.motion;
+        const rx = 50 + kz[i] * 170, ry = 3 + kz[i] * 22;
+        if (kx[i] - rx > W) { kx[i] = -rx; kz[i] = R.range(0.12, 0.9); }
+        const yy = hy + kz[i] * Hw * 0.9 + Math.sin(t * 0.3 + kph[i]) * 4;
+        rg.globalAlpha = chopK * 0.26 * stageFade(kx[i], yy, W, H, st.groundY, 0.35);
+        blit(rg, sprites.gust, kx[i], yy, ry, rx);
+      }
+      rg.globalAlpha = 1;
+    }
     rg.setTransform(1, 0, 0, 1, 0, 0);
 
-    // 3 water -------------------------------------------------------
-    drawLayer(g, L.waterBase, st, 0);
-    const reflA = clamp(0.94 - wind * 0.4 - hv * 0.22 + cl * 0.06 + p * 0.2, 0.35, 1);
+    // 3 water: the buffer, copied in perspective-spaced wave slices ---
     const A = (0.3 + wind * 9) * (1 - p);
     const bw = Wl * rs;
-    g.globalAlpha = reflA;
     if (A < 0.12) {
       g.drawImage(refl, 0, 0, bw, refl.bh * rs, -M, hy, Wl, refl.bh);
     } else {
@@ -648,31 +673,6 @@ export default function create({ ctx }) {
         g.drawImage(refl, 0, sy0 * rs, bw, hs * rs, -M + off, hy + yb, Wl, hs + 0.6);
         yb += hs;
       }
-    }
-    g.globalAlpha = 1;
-    drawLayer(g, L.tint, st, 0);
-
-    // calm sheen vs. wind chop
-    const sheenA = (1 - wind) * (1 - wind) * (0.3 + 0.6 * cl) * (1 - hv * 0.5);
-    if (sheenA > 0.01) drawLayer(g, L.sheen, st, 0.3, sheenA);
-    const chopK = smoothstep(0.06, 0.8, wind) * (1 - clearCalm * 0.9) * (1 - p);
-    if (chopK > 0.01) {
-      const a = (windPh * 34) % Wl, b = (windPh * 21 + 120) % Wl;
-      const ox = st.camX * 0.3, oy = hy + st.camY * 0.2;
-      g.globalAlpha = chopK * (0.85 - hv * 0.25);
-      g.drawImage(L.chopA.c, -M - a + ox, oy, Wl, L.chopA.h); g.drawImage(L.chopA.c, -M - a + Wl + ox, oy, Wl, L.chopA.h);
-      g.globalAlpha = chopK * 0.7;
-      g.drawImage(L.chopB.c, -M + b - Wl + ox, oy + 1, Wl, L.chopB.h); g.drawImage(L.chopB.c, -M + b + ox, oy + 1, Wl, L.chopB.h);
-      // cat's-paw gusts darkening patches of water
-      for (let i = 0; i < KN; i++) {
-        kx[i] += (24 + wind * 70) * (0.5 + kz[i]) * rdt * st.motion;
-        const rx = 50 + kz[i] * 170, ry = 3 + kz[i] * 22;
-        if (kx[i] - rx > W) { kx[i] = -rx; kz[i] = R.range(0.12, 0.9); }
-        const yy = hy + kz[i] * Hw * 0.9 + Math.sin(t * 0.3 + kph[i]) * 4;
-        g.globalAlpha = chopK * 0.26 * stageFade(kx[i], yy, W, H, st.groundY, 0.35);
-        blit(g, sprites.gust, kx[i], yy, ry, rx);
-      }
-      g.globalAlpha = 1;
     }
 
     // sun glitter
@@ -747,13 +747,13 @@ export default function create({ ctx }) {
     drawDrops(g, st);
 
     // 8 atmosphere ----------------------------------------------------
-    if (hv > 0.02) { g.globalAlpha = hv * 0.62; g.fillStyle = grads.heavy; g.fillRect(0, 0, W, H); }
-    if (warmK > 0.01) { g.globalAlpha = warmK * 0.8; g.fillStyle = grads.warm; g.fillRect(0, 0, W, H); }
+    if (hvK > 0.02) { g.globalAlpha = hvK; g.fillStyle = grads.heavy; g.fillRect(0, 0, W, H); }
+    if (warmK > 0.03) { g.globalAlpha = warmK * 0.8; g.fillStyle = grads.warm; g.fillRect(0, 0, W, H); }
     g.globalAlpha = 1;
     g.globalCompositeOperation = 'lighter';
     if (p > 0.01) {
       g.globalAlpha = p * 0.28; blit(g, sprites.white, W * 0.5, hy, H * 0.05, W * 0.8);
-      g.globalAlpha = p * 0.05; blit(g, sprites.gold, sx, sy, W * 0.5, W * 0.5);
+      g.globalAlpha = p * 0.05; blit(g, sprites.gold, sx, sy, L.U * 0.5, L.U * 0.5);
     }
     drawBlooms(g, st);
     // light motes (transform + success)
@@ -871,7 +871,7 @@ export default function create({ ctx }) {
     const d = ringsDark.add(st.W * 0.5, y + 2, spr.rx * 1.03, spr.rx * spread * 1.03, ttl, spr.ry / spr.rx, '#3d8fc8', a * 0.35, 1.4);
     d.age = -delay;
   }
-  function inStage(st, x, y) { return Math.abs(x - st.W * 0.5) < st.W * 0.3 && y > st.H * 0.56 && y < st.H * (st.groundY + 0.05); }
+  function inStage(st, x, y) { return Math.abs(x - st.W * 0.5) < L.U * 0.3 && y > st.H * 0.56 && y < st.H * (st.groundY + 0.05); }
 
   function spawnAmbient(st) {
     const { W, rdt, p } = st;
@@ -885,7 +885,7 @@ export default function create({ ctx }) {
       nextDrop = R.range(1.4, 3.2);
       const u = Math.pow(R(), 0.8), y = L.hy + 4 + u * L.Hw * 0.9;
       let x = R() * W;
-      if (inStage(st, x, y)) x = x < W / 2 ? x - W * 0.3 : x + W * 0.3;
+      if (inStage(st, x, y)) x = x < W / 2 ? x - L.U * 0.3 : x + L.U * 0.3;
       if (wind > 0.35) addRing(st, x, y, 6, 70 + wind * 60, 2.8, 0.38 * wind);
       else addRing(st, x, y, 2, 26, 2.6, 0.45);
     }
