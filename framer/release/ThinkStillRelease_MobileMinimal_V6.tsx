@@ -4024,9 +4024,9 @@ ${P} .eosCheckIn[data-eos-layout="ring"].isMore .eosCkSlot[data-eos-slot="numb"]
 /* ----- E. Ritual games ----- */
 /* Scrolling arenas centre with auto margins, so a tall game overflows downward (reachable)
    instead of above the scroll origin (unreachable). */
-${P}.stage-play .cinematicContentShell > .arena { justify-content:flex-start !important; }
+${P}.stage-play .cinematicContentShell > .arena { justify-content:safe center !important; }
 ${P}.stage-play .cinematicContentShell > .arena > :is(.tsndGame, .ftGame, .rainOutScene) { margin-block:auto !important; }
-${P}.stage-play .u102 { justify-content:flex-start !important; }
+${P}.stage-play .u102 { justify-content:safe center !important; }
 ${P}.stage-play .u102 > .ftGame { margin-block:auto !important; }
 /* The SLOW-DOWN meter already shows progress; the per-game counter printed under it was a ghost. */
 ${P}.stage-play .releaseGameHost .arena > .literalProgress { display:none !important; }
@@ -4057,7 +4057,7 @@ ${P}.stage-play[data-eos-dock="chip"] .globalPlayGuide .guideStepCard > span {
     display:block !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;
 }
 /* Neon game buttons join the system: quiet glass controls, white primary actions. */
-${P}.stage-play .cinematicContentShell > .arena button:not(.wordBubble):not(.eosGroundLampBtn):not(.eosSighOrb):not(.eosGroundSwap):not(.tsBubbleFaceHost):not(.eosZapBubble) {
+${P}.stage-play .cinematicContentShell > .arena button:not(.wordBubble):not(.eosGroundLampBtn):not(.eosSighOrb):not(.eosGroundSwap):not(.tsBubbleFaceHost):not(.eosZapBubble):not(.zapperTool):not(.eosZapDock) {
     background:rgba(118,118,128,.24) !important; background-image:none !important; border:1px solid rgba(255,255,255,.12) !important;
     box-shadow:none !important; color:#fff !important; text-shadow:none !important;
 }
@@ -4319,6 +4319,86 @@ html body .tsCineHost .tsSsIcon--about { background:#0a84ff !important; color:#f
 .tsCineHost .tsCineBegin:focus-visible { outline:2px solid rgba(255,255,255,.6) !important; outline-offset:3px !important; }
 .tsSpotRibbon { max-width:calc(100% - 24px); }
 @media (max-width:360px) { .tsSpotRibbon span { display:none; } }
+
+/* =============================================================
+   V6 ROUND 4 — fixes from the targeted re-check
+   ============================================================= */
+/* Games: tall screens keep the HUD clear; one instruction source on every size. */
+@media (min-height:721px) { ${P}.stage-play .cinematicContentShell > .arena { padding-top:48px !important; } }
+${P}.stage-play :is(.eosZapSay, .keepDropMicroGuide, .tugReleaseActionWrap, .tugDirectionArrow) { display:none !important; }
+${P}.stage-play .eosArrowsRoot .eosLabel { display:none !important; }
+@media (max-width:560px), (max-height:520px) {
+    ${P}.stage-play .eosArrowsRoot :is(.eosChevPos, .eosChevron, .eosTrailSvg) { display:none !important; }
+}
+/* Guide banner: never hidden, never a stray icon on top of its own text. */
+${P}.stage-play[data-eos-dock="aside"] .cinematicContentShell > .globalPlayGuide { visibility:visible !important; }
+${P}.stage-play[data-eos-dock="chip"] .cinematicContentShell > .globalPlayGuide {
+    left:8px !important; right:8px !important; width:auto !important; transform:none !important;
+}
+${P}.stage-play[data-eos-dock="chip"] .globalPlayGuide .guideActionArrow { left:0 !important; }
+${P}.stage-play[data-eos-dock="chip"] .globalPlayGuide .guideStepCard > span { padding-left:36px !important; text-align:left !important; }
+${P}.stage-play .u102.uniqArena { padding-bottom:48px !important; }
+/* Drama machine on SE: the hero row yields so the big button stays on screen. */
+@media (max-height:600px) {
+    ${P}.stage-play .u105 .dmMachineBody { grid-template-rows:minmax(0,150px) 92px !important; }
+    ${P}.stage-play .u105 .dmMachineBody > :first-child { min-height:0 !important; overflow:hidden !important; }
+    ${P}.stage-play .u105 .dmStageMachine { padding:4px !important; }
+    ${P}.stage-play .u105 .dmFilmstrip { gap:2px !important; padding-inline:0 !important; }
+    ${P}.stage-play .u105 :is(.dmDramaButton, .dmCutButton) { min-height:44px !important; }
+}
+/* Props: the dock is one row, so every prop is visible without scrolling. */
+${P}.stage-play .u107 .gwProp { grid-column:auto !important; min-width:0 !important; width:auto !important; }
+${P}.stage-play .u107 .gwGrid { row-gap:6px !important; }
+/* Finger traps: quiet tubes instead of neon stripes. */
+${P}.stage-play .u102 .ftTube { background:rgba(118,118,128,.24) !important; background-image:none !important; border:1px solid rgba(255,255,255,.14) !important; box-shadow:none !important; }
+${P}.stage-play .u102 .ftRow { background:rgba(255,255,255,.04) !important; background-image:none !important; box-shadow:none !important; }
+/* Unhook: the status line becomes calm secondary text below the bubbles. */
+${P}.stage-play .literalUnhookArena .literalStatus { top:auto !important; bottom:6px !important; }
+${P}.stage-play .literalUnhookArena .literalStatus b { color:rgba(235,235,245,.6) !important; font:600 13px/1.2 var(--ts-sf) !important; letter-spacing:0 !important; text-shadow:none !important; }
+/* Landscape phones: controls sized for the .72 arena zoom (62px x .72 = 44pt), thin HUD line that wins. */
+@media (orientation:landscape) and (max-height:520px) {
+    ${P}.stage-play .engineProgressHud > .engineProgressTrack { height:4px !important; min-height:0 !important; max-height:4px !important; padding:0 !important; border-radius:2px !important; }
+    ${P}.stage-play .tsndVibes button { min-height:62px !important; min-width:72px !important; }
+    ${P}.stage-play .cinematicContentShell > .arena:has(> .tsndGame) { padding-bottom:64px !important; }
+    ${P}.stage-play .arena .tugPullHandle { min-width:62px !important; min-height:62px !important; }
+    ${P}.stage-play .arena .coinSlot { min-height:62px !important; }
+    ${P}.stage-play .arena :is(.unhookStringGrip, .eosGroundSwap) { width:62px !important; height:62px !important; margin:-15px 0 0 -15px !important; }
+    ${P}.stage-play .rainOutScene .rainCloudText { font-size:26px !important; line-height:1.15 !important; height:auto !important; overflow:visible !important; }
+    ${P}.stage-play .rainOutScene .rainPullHint { font-size:18px !important; }
+}
+/* Check-in. */
+@media (max-width:430px) { ${P} .eosCheckIn .eosCkBubble.isHint { bottom:10.5px !important; } }
+${P} .eosCheckIn[data-eos-layout="strip"].isMore .eosOrbLabel {
+    overflow-wrap:normal !important; word-break:normal !important; width:52px !important; margin-inline:-4px !important;
+    -webkit-hyphens:auto !important; hyphens:auto !important;
+}
+@media (orientation:landscape) {
+    ${P} .eosCheckIn[data-eos-layout="ring"].isMore .eosCkSlot[data-eos-slot="jealous"] { translate:0 0 !important; }
+}
+@media (orientation:landscape) and (min-width:1024px) and (max-height:860px) {
+    ${P} .eosCheckIn[data-eos-layout="ring"] .eosOrbSub { display:none !important; }
+}
+${P} .eosCkWordsQ { padding-right:16px !important; }
+${P} .eosCkChevron { display:inline-flex !important; align-items:center !important; height:1em !important; line-height:1 !important; margin-left:6px !important; transform:translateY(-2px) !important; }
+@media (max-width:360px) { ${P} .eosCkSeed.isMic { display:none !important; } }
+/* Ritual complete. */
+@media (orientation:landscape) and (max-height:520px) {
+    ${P} .eosShiftMeter > .eosShiftStage { height:150px !important; align-self:center !important; }
+    ${P} .eosShiftMeter > .eosShiftStage .eosShiftChar { transform:translateX(-36px) !important; }
+    ${P} .releaseCompleteCard > strong { padding-left:198px !important; }
+    ${P} .eosShiftPlus { display:none !important; }
+}
+${P} .eosShiftSub, ${P} .eosShiftRewards { text-wrap:balance; }
+@media (orientation:portrait) {
+    ${P}:has(.eosWorldChips) .releaseCompleteOverlay {
+        -webkit-mask-image:linear-gradient(transparent 0, #000 64px); mask-image:linear-gradient(transparent 0, #000 64px);
+    }
+}
+/* Crisis support: scrim that actually paints; "more lines" fades instead of hiding the emergency line. */
+${P} .releaseStage:has(.eosSafetyCard)::before {
+    content:"" !important; position:absolute !important; inset:0 !important; background:rgba(0,0,0,.55) !important;
+    z-index:229 !important; pointer-events:none !important; display:block !important;
+}
 `
 
 function MobileFitStyles() {
