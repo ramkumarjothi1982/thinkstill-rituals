@@ -1711,6 +1711,17 @@ function FrostCanvas({ w, h, level, dark }: { w: number; h: number; level: numbe
 /* ================================================================== */
 
 const hsl = (h: number, s: number, l: number, a = 1) => `hsla(${Math.round(h)}, ${s}%, ${l}%, ${a})`
+function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+    h = ((h % 360) + 360) % 360; s /= 100; l /= 100
+    const k = (n: number) => (n + h / 30) % 12, a = s * Math.min(l, 1 - l)
+    const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)))
+    return [f(0) * 255, f(8) * 255, f(4) * 255]
+}
+/** Blends two hues in RGB, so a warm-to-cool change never passes through a muddy green. */
+function mixHsl(h1: number, h2: number, t: number, s: number, l: number, a = 1) {
+    const x = hslToRgb(h1, s, l), y = hslToRgb(h2, s, l), k = clamp(t, 0, 1)
+    return `rgba(${Math.round(lerp(x[0], y[0], k))}, ${Math.round(lerp(x[1], y[1], k))}, ${Math.round(lerp(x[2], y[2], k))}, ${a})`
+}
 const warmEmbers = ["#FFB36B", "#FF8A3D", "#FFD39A", "#FF6A3D"]
 
 /** Even, slightly organic positions for n round objects of radius r inside a box. */
@@ -1858,6 +1869,7 @@ function RitualShred(props: RitualProps) {
     const { items, w, h, fx, reduced } = props
     const stage = React.useRef<HTMLDivElement>(null)
     const paperRef = React.useRef<HTMLDivElement>(null)
+    const bodyRef = React.useRef<HTMLButtonElement>(null)
     const pw = Math.min(w * 0.64, 300), ph = Math.min(h * 0.36, pw * 1.05)
     const bodyW = Math.min(w * 0.82, pw + 70), bodyH = 62
     const slotY = Math.max(ph + 18, h * 0.44)
@@ -1891,10 +1903,15 @@ function RitualShred(props: RitualProps) {
         st.fed += (st.target - st.fed) * Math.min(1, dt * 7)
         const moving = st.target - st.fed > 0.003
         if (moving && !st.loop) st.loop = fx.loop("motor")
-        if (!moving && st.loop) { st.loop.stop(); st.loop = null }
+        if (!moving && st.loop) { st.loop.stop(); st.loop = null; if (bodyRef.current) bodyRef.current.style.transform = "" }
         if (moving) {
             st.loop?.set(160 + (st.target - st.fed) * 900, 1)
             if (t - st.lastSound > 0.11) { st.lastSound = t; fx.sound("tear"); fx.haptic("tick") }
+            if (!reduced) {
+                fx.burst(w / 2 + rand(-pw / 2, pw / 2), outTop + 4, { kind: "petal", n: 1, size: 3.5, speed: 90, angle: Math.PI / 2, spread: 1.6, color: props.dark ? "#EDE6DA" : "#FFFDF8", life: 1.3, gravity: 380 })
+                if (Math.random() < 0.3) fx.burst(w / 2 + rand(-pw / 2, pw / 2), slotY - 4, { kind: "spark", n: 2, size: 1.4, speed: 120, angle: -Math.PI / 2, spread: 1.4, color: ["#FFE2A8", "#FFFFFF"], life: 0.35 })
+                if (bodyRef.current) bodyRef.current.style.transform = `translate(${rand(-1.2, 1.2)}px, ${rand(-0.8, 0.8)}px)`
+            } else if (bodyRef.current) bodyRef.current.style.transform = ""
             if (!reduced && Math.random() < 0.5) fx.burst(w / 2 + rand(-pw / 2, pw / 2), outTop + 6, { kind: "dust", n: 1, size: 1.6, speed: 40, angle: Math.PI / 2, spread: 1, color: props.dark ? "rgba(255,255,255,.5)" : "rgba(80,70,60,.4)", life: 0.8, gravity: 120 })
         }
         if (Math.abs(st.fed - before) > 0.0005) {
@@ -1947,7 +1964,7 @@ function RitualShred(props: RitualProps) {
                 })}
             </div>
             {/* The shredder */}
-            <button type="button" onClick={() => { feed(0.13); fx.haptic("medium") }} disabled={finished} aria-label="Feed one bite into the shredder"
+            <button ref={bodyRef} type="button" onClick={() => { feed(0.13); fx.haptic("medium") }} disabled={finished} aria-label="Feed one bite into the shredder"
                 style={{ position: "absolute", left: (w - bodyW) / 2, top: slotY - 8, width: bodyW, height: bodyH, border: 0, padding: 0, cursor: finished ? "default" : "pointer", borderRadius: 18,
                     background: props.dark ? "linear-gradient(180deg,#2B2C34,#202128)" : "linear-gradient(180deg,#FFFFFF,#E9E6E0)",
                     boxShadow: `0 14px 30px rgba(0,0,0,${props.dark ? 0.45 : 0.13}), inset 0 1px 0 rgba(255,255,255,${props.dark ? 0.06 : 0.9}), inset 0 0 0 1px ${props.dark ? "rgba(255,255,255,.06)" : "rgba(0,0,0,.06)"}` }}>
@@ -1993,7 +2010,7 @@ function RitualMelt(props: RitualProps) {
             if (el) {
                 const wob = reduced ? 0 : Math.sin(t * 2 + i) * v * 4
                 el.style.transform = `translateY(${v * fs * 0.32}px) scaleY(${1 - v * 0.78}) scaleX(${1 + v * 0.35}) skewX(${wob}deg)`
-                el.style.color = hsl(lerp(emo.hue, emo.calmHue, v), dark ? 70 : 62, dark ? 66 - v * 6 : 56 + v * 8)
+                el.style.color = mixHsl(emo.hue, emo.calmHue, v, dark ? 70 : 62, dark ? 66 - v * 6 : 56 + v * 8)
                 el.style.opacity = String(1 - Math.max(0, v - 0.85) * 4)
             }
             const d = drips.current[i]
@@ -2006,7 +2023,16 @@ function RitualMelt(props: RitualProps) {
             puddle.current.style.transform = `translateX(-50%) scaleX(${0.25 + avg * 0.85}) scaleY(${0.2 + avg})`
             puddle.current.style.opacity = String(Math.min(1, avg * 2))
         }
-        if (heat && t - s.lastDrip > 0.7 && avg > 0.1 && !s.done) { s.lastDrip = t; fx.sound("drip", rand(0.8, 1.2)) }
+        if (heat && t - s.lastDrip > 0.7 && avg > 0.1 && !s.done) {
+            s.lastDrip = t
+            fx.sound("drip", rand(0.8, 1.2))
+            if (!reduced) {
+                const i = Math.floor(Math.random() * letters.length), el = els.current[i]
+                const host = el?.closest("[data-melt]") as HTMLElement | null
+                if (el && host) { const r = el.getBoundingClientRect(), hr = host.getBoundingClientRect(); fx.burst(r.left - hr.left + r.width / 2, r.bottom - hr.top + fs * 0.3, { kind: "drop", n: 1, size: Math.max(2.5, fs * 0.07), speed: 30, angle: Math.PI / 2, spread: 0.2, color: mixHsl(emo.hue, emo.calmHue, avg, 62, dark ? 62 : 60), life: 0.7, gravity: 500 }) }
+            }
+        }
+        if (heat && !reduced && Math.random() < 0.15) fx.burst(rand(w * 0.2, w * 0.8), baseY - fs * 0.4, { kind: "steam", n: 1, size: 10, speed: 30, angle: -Math.PI / 2, spread: 0.6, color: dark ? "rgba(255,200,160,.25)" : "rgba(255,170,110,.25)", life: 1.8, gravity: -30 })
         if (Math.abs(avg - s.total) > 0.004) { s.total = avg; props.progress(avg) }
         if (!s.done && avg >= 0.985) {
             s.done = true
@@ -2019,7 +2045,7 @@ function RitualMelt(props: RitualProps) {
 
     const baseY = h * 0.5
     return (
-        <div style={{ position: "absolute", inset: 0, cursor: "pointer" }} {...hold} role="button" tabIndex={0} aria-label="Hold to warm the wax letters">
+        <div data-melt="1" style={{ position: "absolute", inset: 0, cursor: "pointer" }} {...hold} role="button" tabIndex={0} aria-label="Hold to warm the wax letters">
             <div style={{ position: "absolute", inset: 0, background: dark ? "linear-gradient(180deg, #16151A, #121116)" : "linear-gradient(180deg, #FBF7F1, #F1EBE2)" }} />
             <div style={{ position: "absolute", left: "50%", top: -h * 0.25, width: w * 1.2, height: h * 0.8, transform: "translateX(-50%)", background: `radial-gradient(closest-side, ${dark ? "rgba(255,150,80,.28)" : "rgba(255,170,90,.38)"}, transparent)`, opacity: heat ? 1 : 0, transition: "opacity .6s", pointerEvents: "none" }} />
             {!reduced ? (
@@ -2027,12 +2053,12 @@ function RitualMelt(props: RitualProps) {
                     <filter id={filterId}><feGaussianBlur in="SourceGraphic" stdDeviation="4" result="b" /><feColorMatrix in="b" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 22 -10" result="g" /><feComposite in="SourceGraphic" in2="g" operator="atop" /></filter>
                 </svg>
             ) : null}
-            <div ref={puddle} style={{ position: "absolute", left: "50%", top: baseY + fs * 0.62, width: Math.min(w * 0.86, lineChars * fs * 0.62), height: fs * 0.42, borderRadius: "50%", transformOrigin: "50% 50%", background: `radial-gradient(ellipse at 50% 35%, ${hsl(emo.calmHue, 70, dark ? 72 : 78, 0.95)}, ${hsl(lerp(emo.hue, emo.calmHue, 0.6), 60, dark ? 52 : 62, 0.9)} 70%, transparent 72%)`, opacity: 0 }} />
+            <div ref={puddle} style={{ position: "absolute", left: "50%", top: baseY + fs * 0.62, width: Math.min(w * 0.86, lineChars * fs * 0.62), height: fs * 0.42, borderRadius: "50%", transformOrigin: "50% 50%", background: `radial-gradient(ellipse at 50% 35%, ${hsl(emo.calmHue, 70, dark ? 72 : 78, 0.95)}, ${mixHsl(emo.hue, emo.calmHue, 0.6, 60, dark ? 52 : 62, 0.9)} 70%, transparent 72%)`, opacity: 0 }} />
             <div style={{ position: "absolute", left: 0, right: 0, top: baseY - fs * 0.62, display: "flex", flexWrap: "wrap", justifyContent: "center", padding: "0 16px" }} ref={wax}>
                 {groups.map((g, k) => <span key={k} style={{ display: "inline-block", whiteSpace: "nowrap" }}>{g.map((i) => { const ch = letters[i]; return (
                     <span key={i} style={{ position: "relative", display: "inline-block" }}>
                         <span ref={(el) => { els.current[i] = el }} style={{ display: "inline-block", fontFamily: "var(--round)", fontWeight: 800, fontSize: fs, lineHeight: 1.05, transformOrigin: "50% 100%", whiteSpace: "pre", color: hsl(emo.hue, 62, 56) }}>{ch}</span>
-                        {ch.trim() ? <span ref={(el) => { drips.current[i] = el }} style={{ position: "absolute", left: `${30 + hashNoise(i, 4) * 40}%`, top: fs * 0.95, width: Math.max(5, fs * 0.13), height: fs * (0.5 + hashNoise(i, 6) * 0.7), borderRadius: 99, transformOrigin: "50% 0", transform: "scaleY(0)", background: hsl(lerp(emo.hue, emo.calmHue, 0.5), 62, dark ? 62 : 60) }} /> : null}
+                        {ch.trim() ? <span ref={(el) => { drips.current[i] = el }} style={{ position: "absolute", left: `${30 + hashNoise(i, 4) * 40}%`, top: fs * 0.95, width: Math.max(5, fs * 0.13), height: fs * (0.5 + hashNoise(i, 6) * 0.7), borderRadius: 99, transformOrigin: "50% 0", transform: "scaleY(0)", background: mixHsl(emo.hue, emo.calmHue, 0.5, 62, dark ? 62 : 60) }} /> : null}
                     </span>
                 ) })}</span>)}
             </div>
@@ -2217,6 +2243,12 @@ function RitualVacuum(props: RitualProps) {
         if (nozzle.current) nozzle.current.style.transform = `translate3d(${s.nx}px, ${s.ny}px, 0) translate(-50%, -20%) scale(${s.on ? 1.05 : 1})`
         if (hose.current) hose.current.setAttribute("d", `M ${s.nx} ${s.ny + 18} C ${s.nx} ${h + 30}, ${w * 0.5} ${h - 10}, ${w * 0.5} ${h + 40}`)
         s.loop?.set(500 + Math.random() * 40, 1.2)
+        if (s.on && !reduced && Math.random() < 0.8) {
+            const a = Math.random() * Math.PI * 2, rr = rand(60, 160)
+            const x = s.nx + Math.cos(a) * rr, y = s.ny + Math.sin(a) * rr
+            const sp = 380 + Math.random() * 200
+            fx.burst(x, y, { kind: "streak", n: 1, size: 1.4, speed: 0, vx: (-Math.cos(a) + Math.sin(a) * 0.6) * sp, vy: (-Math.sin(a) - Math.cos(a) * 0.6) * sp, color: dark ? "rgba(220,230,255,.5)" : "rgba(90,100,120,.35)", life: rr / sp })
+        }
         const reach = Math.max(120, Math.min(w, h) * 0.32)
         things.current.forEach((t, i) => {
             const el = thingEls.current[i]
@@ -2412,7 +2444,7 @@ function RitualMute(props: RitualProps) {
             <div style={{ position: "absolute", inset: 0, background: dark ? "#131318" : "#F7F4EF" }} />
             <div style={{ position: "absolute", left: 18, right: 82, top: h * 0.22, height: h * 0.56, display: "flex", alignItems: "center", gap: 4, pointerEvents: "none" }} aria-hidden="true">
                 {Array.from({ length: N }, (_, i) => (
-                    <span key={i} ref={(el) => { bars.current[i] = el }} style={{ flex: 1, height: "100%", borderRadius: 99, background: hsl(lerp(emo.calmHue, emo.hue, L), 20 + L * 55, dark ? 55 : 60, 0.25 + L * 0.35), transform: "scaleY(.5)", transition: reduced ? "transform .3s" : undefined }} />
+                    <span key={i} ref={(el) => { bars.current[i] = el }} style={{ flex: 1, height: "100%", borderRadius: 99, background: mixHsl(emo.calmHue, emo.hue, L, 20 + L * 55, dark ? 55 : 60, 0.25 + L * 0.35), transform: "scaleY(.5)", transition: reduced ? "transform .3s" : undefined }} />
                 ))}
             </div>
             <div style={{ position: "absolute", left: 18, right: 82, top: 0, bottom: 0, display: "grid", placeItems: "center", textAlign: "center", pointerEvents: "none" }}>
@@ -2428,7 +2460,7 @@ function RitualMute(props: RitualProps) {
                 }}
                 style={{ position: "absolute", left: tX - 30, width: 60, top: tTop - 24, height: tH + 48, cursor: "ns-resize", touchAction: "none" }}>
                 <div style={{ position: "absolute", left: 27, width: 6, top: 24, height: tH, borderRadius: 99, background: "var(--fill-2)" }} />
-                <div style={{ position: "absolute", left: 27, width: 6, top: knobY - tTop + 24, bottom: 24, borderRadius: 99, background: hsl(lerp(emo.calmHue, emo.hue, L), 60, 58) }} />
+                <div style={{ position: "absolute", left: 27, width: 6, top: knobY - tTop + 24, bottom: 24, borderRadius: 99, background: mixHsl(emo.calmHue, emo.hue, L, 60, 58) }} />
                 <div style={{ position: "absolute", left: 12, top: knobY - tTop + 24 - 18, width: 36, height: 36, borderRadius: "50%", background: "#fff", boxShadow: "0 3px 12px rgba(0,0,0,.25)", transform: dragging ? "scale(1.12)" : "scale(1)", transition: "transform .3s cubic-bezier(.34,1.56,.64,1)", display: "grid", placeItems: "center", fontSize: 12, fontWeight: 700, color: "#333", fontVariantNumeric: "tabular-nums" }}>{level}</div>
             </div>
         </div>
@@ -3080,7 +3112,7 @@ function RitualFreeze(props: RitualProps) {
             <div style={{ position: "absolute", inset: 0, background: "radial-gradient(70% 60% at 50% 50%, rgba(170,210,255,.35), transparent 70%)", opacity: frost, transition: "opacity .6s" }} />
             <FrostCanvas w={w} h={h} level={frost} dark={dark} />
             <div ref={obj} className="rk-abs" style={{ width: ow, height: oh, borderRadius: oh / 2, opacity: broken ? 0 : 1, transition: "opacity .12s", pointerEvents: "none" }}>
-                <div style={{ position: "absolute", inset: 0, borderRadius: oh / 2, background: hsl(lerp(emo.hue, 205, frost), 60 - frost * 20, dark ? 46 + frost * 20 : 64 + frost * 18), boxShadow: `0 10px 26px rgba(0,0,0,.2), inset 0 0 0 ${1 + frost * 2}px rgba(255,255,255,${0.2 + frost * 0.6})`, transition: "background-color .5s" }} />
+                <div style={{ position: "absolute", inset: 0, borderRadius: oh / 2, background: mixHsl(emo.hue, 205, frost, 60 - frost * 20, dark ? 46 + frost * 20 : 64 + frost * 18), boxShadow: `0 10px 26px rgba(0,0,0,.2), inset 0 0 0 ${1 + frost * 2}px rgba(255,255,255,${0.2 + frost * 0.6})`, transition: "background-color .5s" }} />
                 <svg viewBox="0 0 100 40" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: frost, transition: "opacity .5s" }}>
                     {[["M8,20 L22,8 M22,8 L30,14 M15,14 L12,6", 0.2], ["M70,30 L84,18 L92,24 M78,24 L80,34", 0.4], ["M40,6 L48,16 L58,8 M48,16 L46,26", 0.6], ["M26,32 L36,24 L44,32", 0.8], ["M60,12 L66,4 M88,10 L94,4", 1]].map(([d, at], i) => (
                         <path key={i} d={String(d)} fill="none" stroke="rgba(255,255,255,.9)" strokeWidth=".9" style={{ opacity: frost >= Number(at) ? 1 : 0, transition: "opacity .4s" }} />
@@ -3133,6 +3165,7 @@ function RitualInkBleed(props: RitualProps) {
 
     useFrame((dt, t) => {
         const s = st.current
+        if (s.drag && !reduced) fx.burst(s.x, s.y, { kind: "glow", n: 1, size: 5, speed: 8, color: hsl(emo.calmHue, 85, dark ? 70 : 62, 0.55), life: 1.1 })
         if (dropRef.current) dropRef.current.style.transform = `translate3d(${s.x}px, ${s.y}px, 0) translate(-50%, -50%) scale(${s.drag ? 1.15 : 1 + (reduced ? 0 : Math.sin(t * 2) * 0.04)})`
         let bled = 0
         letters.forEach((ch, i) => {
@@ -3150,7 +3183,7 @@ function RitualInkBleed(props: RitualProps) {
                         if (!reduced && Math.random() < k * 2 && blooms.current) {
                             const b = document.createElement("span")
                             const size = fs * rand(0.5, 1.1)
-                            b.style.cssText = `position:absolute;left:${c.x - size / 2 + L.dx}px;top:${c.y - size / 2 + L.dy}px;width:${size}px;height:${size}px;border-radius:50%;background:${hsl(lerp(emo.hue, emo.calmHue, L.b), 70, dark ? 60 : 62, 0.22)};filter:blur(${size * 0.18}px);transition:opacity 2.4s ease;pointer-events:none`
+                            b.style.cssText = `position:absolute;left:${c.x - size / 2 + L.dx}px;top:${c.y - size / 2 + L.dy}px;width:${size}px;height:${size}px;border-radius:50%;background:${mixHsl(emo.hue, emo.calmHue, L.b, 70, dark ? 60 : 62, 0.22)};filter:blur(${size * 0.18}px);transition:opacity 2.4s ease;pointer-events:none`
                             blooms.current.appendChild(b)
                             if (blooms.current.childElementCount > 70) blooms.current.firstElementChild?.remove()
                         }
@@ -3164,7 +3197,7 @@ function RitualInkBleed(props: RitualProps) {
                 el.style.transform = `translate(${L.dx}px, ${L.dy}px) scale(${1 + L.b * 0.12}, ${1 + L.b * 0.7})`
                 el.style.filter = reduced ? "" : `blur(${L.b * 2.4}px)`
                 el.style.opacity = String(1 - L.b * 0.55)
-                el.style.color = L.b > 0 ? hsl(lerp(emo.hue, emo.calmHue, L.b), 40 + L.b * 30, dark ? 75 - L.b * 10 : 22 + L.b * 30) : ""
+                el.style.color = L.b > 0 ? mixHsl(emo.hue, emo.calmHue, L.b, 40 + L.b * 30, dark ? 75 - L.b * 10 : 22 + L.b * 30) : ""
             }
         })
         const p = solid ? bled / solid : 1
@@ -3618,6 +3651,7 @@ function RitualHotPotato(props: RitualProps) {
             const el = els.current[i]
             const jig = p.cool || reduced ? 0 : (p.drag ? 3 : 1.2)
             if (el) el.style.transform = `translate3d(${p.x.x + Math.sin(t * 40 + i) * jig}px, ${p.y.x + Math.cos(t * 37 + i) * jig}px, 0) translate(-50%, -50%)`
+            if (!p.cool && !reduced && Math.random() < (p.drag ? 0.5 : 0.08)) fx.burst(p.x.x + rand(-size * 0.3, size * 0.3), p.y.x - size * 0.3, { kind: "ember", n: 1, size: 1.8, speed: 40, angle: -Math.PI / 2, spread: 1, color: warmEmbers, life: 1.2, gravity: -30 })
             if (!p.cool && !reduced && t - s.lastSteam > 0.18) {
                 s.lastSteam = t
                 fx.burst(p.x.x + rand(-size * 0.2, size * 0.2), p.y.x - size * 0.4, { kind: "steam", n: 1, size: 7, speed: 30, angle: -Math.PI / 2, spread: 0.6, color: dark ? "rgba(255,255,255,.5)" : "rgba(120,110,100,.45)", life: 1.4, gravity: -20 })
@@ -3719,7 +3753,7 @@ function RitualTugOfWar(props: RitualProps) {
         if (!s.letting) s.slackV = 0
         if (rope.current) {
             rope.current.setAttribute("d", d)
-            rope.current.setAttribute("stroke", s.letting ? (dark ? "#5A5D69" : "#B9B4AA") : hsl(lerp(38, emo.hue, s.tension), 40 + s.tension * 40, dark ? 55 + s.tension * 15 : 50))
+            rope.current.setAttribute("stroke", s.letting ? (dark ? "#5A5D69" : "#B9B4AA") : mixHsl(38, emo.hue, s.tension, 40 + s.tension * 40, dark ? 55 + s.tension * 15 : 50))
             rope.current.setAttribute("stroke-width", String(7 - s.tension * 2))
         }
         if (knot.current) knot.current.style.transform = `translate3d(${kx}px, ${y0 + (s.letting ? s.slack * 0.8 : 0)}px, 0) translate(-50%, -50%) rotate(${s.letting ? s.slack * 0.1 : 0}deg)`
@@ -3809,7 +3843,7 @@ function RitualFingerTrap(props: RitualProps) {
                 const bulge = 1 + s.loose * 0.35 - s.tight * 0.28
                 const angle = 62 - s.loose * 26 + s.tight * 14
                 const th = (rowH - 22) * 0.62 * bulge
-                const weave = hsl(lerp(emo.hue, emo.calmHue, s.loose), 45, dark ? 52 : 62, 0.9)
+                const weave = mixHsl(emo.hue, emo.calmHue, s.loose, 45, dark ? 52 : 62, 0.9)
                 return (
                     <div key={it.key} style={{ position: "absolute", left: (w - tw) / 2, width: tw, top: top0 + rowH * i, height: rowH, display: "grid", placeItems: "center" }}>
                         <div style={{ position: "relative", width: s.free ? tw * 1.08 : tw, height: th, borderRadius: th / 2, opacity: s.free ? 0 : 1, transition: "height .25s cubic-bezier(.34,1.56,.64,1), width .5s, opacity .5s ease .2s",
@@ -4340,7 +4374,7 @@ function RitualBigSigh(props: RitualProps) {
     const calm = sighs / SIGHS
     return (
         <div ref={stage} style={{ position: "absolute", inset: 0 }} onKeyDown={keys.onKeyDown} onKeyUp={keys.onKeyUp} tabIndex={0} role="application" aria-label="Hold the breath orb to breathe in, slide up for one more sip, then let go for a long breath out. Space also works.">
-            <div style={{ position: "absolute", inset: 0, background: dark ? `linear-gradient(180deg, ${hsl(222, 30, lerp(14, 22, calm))}, ${hsl(lerp(222, 30, calm), 30, lerp(12, 20, calm))})` : `linear-gradient(180deg, ${hsl(lerp(215, 205, calm), lerp(20, 60, calm), lerp(70, 88, calm))}, ${hsl(lerp(210, 35, calm), lerp(15, 70, calm), lerp(80, 90, calm))})`, transition: "background 2s" }} />
+            <div style={{ position: "absolute", inset: 0, background: dark ? `linear-gradient(180deg, ${hsl(222, 30, lerp(14, 22, calm))}, ${mixHsl(222, 30, calm, 30, lerp(12, 20, calm))})` : `linear-gradient(180deg, ${hsl(lerp(215, 205, calm), lerp(20, 60, calm), lerp(70, 88, calm))}, ${mixHsl(210, 35, calm, lerp(15, 70, calm), lerp(80, 90, calm))})`, transition: "background 2s" }} />
             <div style={{ position: "absolute", left: "50%", top: h * 0.78, width: w * 0.9, height: w * 0.9, marginLeft: -w * 0.45, borderRadius: "50%", background: `radial-gradient(circle, ${hsl(40, 95, 70, dark ? 0.5 : 0.9)}, transparent 60%)`, opacity: calm, transform: `translateY(${(1 - calm) * 80}px)`, transition: "opacity 2s, transform 2s" }} />
             <div style={{ position: "absolute", left: 0, right: 0, top: h * 0.82, bottom: 0, background: dark ? "#16202A" : "#9DB7C9", opacity: 0.8 }} />
             <div style={{ position: "absolute", left: "50%", top: h * 0.8, width: Math.min(220, w * 0.5), height: 40, marginLeft: -Math.min(220, w * 0.5) / 2, borderRadius: "50% 50% 0 0", background: dark ? "#25303A" : "#7F9A6E" }} />
@@ -4388,6 +4422,7 @@ function RitualVolcano(props: RitualProps) {
         fx.sound("thud", 0.7)
         fx.haptic("heavy")
         fx.burst(cx, craterY + 6, { kind: "spark", n: 26, size: 3.2, speed: 380, angle: -Math.PI / 2, spread: 1.2, color: ["#FFB347", "#FF6A3D", "#FFD58A"], life: 1.1, gravity: 520 })
+        if (!reduced) fx.burst(cx, craterY + 4, { kind: "flame", n: 10, size: 9, speed: 160, angle: -Math.PI / 2, spread: 0.7, color: "rgba(255,120,40,.9)", life: 0.7, gravity: -60 })
         if (!reduced) fx.burst(cx, craterY - 10, { kind: "steam", n: 4, size: 12, speed: 50, angle: -Math.PI / 2, spread: 1, color: dark ? "rgba(200,200,200,.5)" : "rgba(110,100,95,.45)", life: 1.8, gravity: -20 })
         props.progress((n / TAPS) * 0.3)
         if (n === TAPS) timers.after(500, () => props.hint("Drag the rain cloud slowly over the lava", true))
@@ -4405,6 +4440,7 @@ function RitualVolcano(props: RitualProps) {
 
     useFrame((dt, t) => {
         const s = st.current
+        if (!reduced && s.heat > 0.25 && Math.random() < 0.25 * s.heat) fx.burst(cx + rand(-vw * 0.12, vw * 0.12), craterY + 4, { kind: "ember", n: 1, size: 2, speed: 50, angle: -Math.PI / 2, spread: 0.8, color: warmEmbers, life: 1.8, gravity: -20 })
         if (phase !== "cool") return
         const px = s.cx, py = s.cy
         s.cx += (s.tx - s.cx) * Math.min(1, dt * 5)
@@ -4424,11 +4460,11 @@ function RitualVolcano(props: RitualProps) {
         }
     })
 
-    const lava = (k: number) => heat > 0.5 ? `hsl(${lerp(18, 28, k)}, 95%, ${lerp(48, 58, heat)}%)` : `hsl(${lerp(210, 20, heat * 2)}, ${lerp(12, 80, heat * 2)}%, ${dark ? 40 : 48}%)`
+    const lava = (k: number) => heat > 0.5 ? `hsl(${lerp(18, 28, k)}, 95%, ${lerp(48, 58, heat)}%)` : mixHsl(210, 20, heat * 2, lerp(12, 80, heat * 2), dark ? 40 : 48)
     const rocks = items.slice(0, 3)
     return (
         <div ref={stage} style={{ position: "absolute", inset: 0, cursor: phase === "erupt" ? "pointer" : "grab" }}>
-            <div style={{ position: "absolute", inset: 0, background: dark ? `linear-gradient(180deg, ${hsl(lerp(210, 12, heat), 25, 14)}, #121114)` : `linear-gradient(180deg, ${hsl(lerp(205, 18, heat), lerp(50, 60, heat), lerp(88, 86, heat))}, #F1ECE4)`, transition: "background 1s" }} />
+            <div style={{ position: "absolute", inset: 0, background: dark ? `linear-gradient(180deg, ${mixHsl(210, 12, heat, 25, 14)}, #121114)` : `linear-gradient(180deg, ${mixHsl(205, 18, heat, lerp(50, 60, heat), lerp(88, 86, heat))}, #F1ECE4)`, transition: "background 1s" }} />
             <div key={shake} style={{ position: "absolute", inset: 0, animation: shake && !reduced ? "tsrShake .35s ease-out" : undefined }}>
                 <svg width={w} height={h} style={{ position: "absolute", inset: 0 }}>
                     <path d={`M ${cx - vw / 2} ${baseY} L ${cx - vw * 0.16} ${craterY} L ${cx + vw * 0.16} ${craterY} L ${cx + vw / 2} ${baseY} Z`} fill={dark ? "#2E2A2C" : "#6F625C"} />
