@@ -57,7 +57,7 @@ const IB_CSS = String.raw`
 .tsm .tsmRitualLayer[data-rid="75"] .ibDrop.idle i{animation:ibDrip 2.2s ease-in-out infinite}
 @keyframes ibDrip{0%,100%{transform:rotate(-45deg) scale(1)}50%{transform:rotate(-45deg) scale(1.06,.95)}}
 .tsm .tsmRitualLayer[data-rid="75"] .ibDrop.hide{opacity:0;pointer-events:none;transition:opacity .4s}
-.tsm .tsmRitualLayer[data-rid="75"] .ibCap{position:absolute;left:0;right:0;text-align:center;font-size:28px;font-weight:600;color:#fff1dc;opacity:0;transform:translateY(10px);transition:opacity 1s ease .8s, transform 1.2s ease .8s;pointer-events:none;text-shadow:0 2px 16px rgba(0,0,0,.4)}
+.tsm .tsmRitualLayer[data-rid="75"] .ibCap{position:absolute;left:0;right:0;text-align:center;font-size:28px;font-weight:600;color:#fff1dc;opacity:0;transform:translateY(10px);transition:opacity .6s ease .2s, transform .8s ease .2s;pointer-events:none;text-shadow:0 2px 16px rgba(0,0,0,.55)}
 .tsm[data-theme=bright] .tsmRitualLayer[data-rid="75"] .ibCap{color:#4a3622;text-shadow:0 1px 10px rgba(255,255,255,.9)}
 .tsm .tsmRitualLayer[data-rid="75"] .ibRoot.fin .ibCap{opacity:1;transform:none}
 @media (prefers-reduced-motion: reduce){.tsm .tsmRitualLayer[data-rid="75"] .ibDrop.idle i,.tsm .tsmRitualLayer[data-rid="75"] .ibW{animation:none}}
@@ -323,7 +323,7 @@ function RitualInkBleed({ ctx }: { ctx: RitualCtx }) {
             >
                 <i />
             </div>
-            <div className="ibCap" style={{ top: phTop + phH * 0.3 }} aria-live="polite">
+            <div className="ibCap" style={{ top: phTop + phH * 0.62 }} aria-live="polite">
                 {fin ? "Soft now." : ""}
             </div>
         </div>
