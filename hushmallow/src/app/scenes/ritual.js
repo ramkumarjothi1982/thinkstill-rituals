@@ -38,7 +38,11 @@ export default function ritualScene(app, params) {
   async function run() {
     let mod;
     try {
-      if ((ritual.tier || 'paid') === 'ultra') {
+      if (ritual.module === 'quick-trick') {
+        // one player for both tiers; the trick's own tier is enforced here
+        requireEntitlement(app.ent, ritual.tier || 'paid');
+        mod = await import('../../rituals/quick-trick.js');
+      } else if ((ritual.tier || 'paid') === 'ultra') {
         const ultra = await loadUltra(app.ent);   // throws without Ultra
         mod = { run: (c) => ultra.angle.run(c, ultra) };
       } else {

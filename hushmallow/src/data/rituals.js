@@ -7,9 +7,11 @@
 // review.status is "draft" until a human editor signs off; the recommender
 // can be told to require "approved" for production builds.
 
+import { LIBRARY } from './library/index.js';
+
 const base = { version: '1.0.0', review: { status: 'draft', by: 'Pending editorial review' } };
 
-export const RITUALS = [
+const CORE = [
   {
     ...base,
     id: 'static-to-signal',
@@ -75,3 +77,5 @@ export const RITUALS = [
     params: { frameworks: 'src/ultra/frameworks.js' },
   },
 ];
+
+export const RITUALS = [CORE[0], ...LIBRARY, ...CORE.slice(1)];

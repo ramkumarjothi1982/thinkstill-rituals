@@ -29,7 +29,7 @@ export default function plans(app, params = {}) {
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' })),
     h('div', { style: { minHeight: '18dvh' } }),
     h('h1', { class: 'title' }, params.reason === 'ultra' ? 'Another Angle is part of Ultra' : 'Choose how you Hushmallow'),
-    h('p', { class: 'lede' }, 'Two plans. Both are fully paid products with no ads, and no AI anywhere: every ritual is crafted by people.'),
+    h('p', { class: 'lede' }, 'Two plans. Both are fully paid, with no ads and no AI: every ritual is written in advance, and nothing is generated while you use it.'),
     h('div', { style: { display: 'grid', gap: '12px', marginTop: '16px' } },
       params.focus === 'ultra' ? plan(PLANS.ultra, 'ultra') : plan(PLANS.paid),
       params.focus === 'ultra' ? plan(PLANS.paid) : plan(PLANS.ultra, 'ultra')),

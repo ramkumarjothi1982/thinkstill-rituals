@@ -16,6 +16,10 @@ export default function settings(app) {
     ...[['system', 'Match my phone'], ['reduced', 'Reduced'], ['full', 'Full']].map(([v, l]) => h('option', { value: v }, l)));
   motionSel.value = prefs.get('motion');
   motionSel.addEventListener('change', () => prefs.set('motion', motionSel.value));
+  const voiceSel = h('select', { class: 'search', style: { width: 'auto', minHeight: '40px' }, 'aria-label': 'Trick voice' },
+    ...[['jolly', 'Jolly'], ['cheeky', 'Cheeky'], ['unfiltered', 'Unfiltered (swears)']].map(([v, l]) => h('option', { value: v }, l)));
+  voiceSel.value = prefs.get('trickVoice') || 'jolly';
+  voiceSel.addEventListener('change', () => { prefs.set('trickVoice', voiceSel.value); app.haptic('light'); });
   const vol = h('input', { type: 'range', class: 'range', min: 0, max: 1, step: 0.05, value: prefs.get('volume'), 'aria-label': 'Volume', style: { maxWidth: '140px' } });
   vol.addEventListener('change', () => prefs.set('volume', Number(vol.value)));
 
@@ -31,6 +35,7 @@ export default function settings(app) {
       sw('haptics', 'Haptics', 'Gentle taps and buzzes. On iPhone this needs the App Store app.'),
       h('div', { class: 'setting' }, h('div', { class: 'grow' }, 'Motion', h('small', {}, 'Reduced keeps every ritual, with calmer movement')), motionSel),
       sw('lowStim', 'Low stimulation', 'Softer visuals and fewer sparkles'),
+      h('div', { class: 'setting' }, h('div', { class: 'grow' }, 'Trick voice', h('small', {}, 'How cheeky the Mallows get in quick tricks')), voiceSel),
       h('div', { class: 'eyebrow', style: { marginTop: '18px' } }, 'Privacy'),
       sw('saveHistory', 'Remember which rituals I did', 'Ritual names and how it felt. Never your words.'),
       sw('saveWords', 'Keep my saved angles', 'Ultra only. Stored on this phone, never uploaded.'),
@@ -39,7 +44,7 @@ export default function settings(app) {
       h('div', { class: 'setting' }, h('div', { class: 'grow' }, tierName), h('button', { class: 'btn', style: { minHeight: '40px' }, onclick: () => app.go('plans') }, 'View plans')),
       ent.source() === 'test' ? h('button', { class: 'btn ghost block', onclick: () => { ent.cancelTest(); toast('Test plan removed'); app.go('home'); } }, 'Remove test plan') : null,
       h('div', { class: 'eyebrow', style: { marginTop: '18px' } }, 'About'),
-      h('p', { class: 'muted' }, 'Hushmallow uses no AI and no chatbots. Feelings are matched with hand-written word lists, and every ritual and line is written by people. It’s a wellbeing app, not a medical service.'),
+      h('p', { class: 'muted' }, 'Hushmallow uses no AI and no chatbots. Feelings are matched with fixed word lists you confirm yourself, and every ritual and line is written in advance — nothing is generated while you use it. It’s a wellbeing app, not a medical service.'),
       h('button', { class: 'btn ghost block', onclick: () => openSupport(app) }, 'Support lines'),
       h('a', { class: 'btn ghost block', href: './studio.html', style: { textDecoration: 'none' } }, 'Mallow Emotion Studio')));
 

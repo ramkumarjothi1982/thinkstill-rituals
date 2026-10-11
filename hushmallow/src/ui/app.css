@@ -61,7 +61,16 @@ a { color: var(--accent); }
 .btn.block { width: 100%; }
 .btn[disabled] { opacity: .45; pointer-events: none; }
 .row-btns { display: flex; gap: 10px; }
-.row-btns > * { flex: 1; }
+.row-btns > * { flex: 1; min-width: 0; }
+.row-btns .btn { padding: 0 12px; }
+.btn svg { width: 20px; height: 20px; flex: 0 0 auto; }
+.btn.ghost { text-shadow: 0 1px 10px rgba(5,3,20,.85); }
+
+/* ------------------------------------------------------- quick trick -- */
+.qt-note { display: table; margin: 0 auto 10px; padding: 6px 12px; border-radius: 12px; text-align: center; color: var(--text-1); font-size: 14.5px;
+  background: rgba(14,10,40,.55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.qt-call { display: table; margin: 0 auto 10px; padding: 6px 12px; border-radius: 999px; background: rgba(14,10,40,.72);
+  border: 1px solid var(--qt-accent, rgba(255,217,138,.5)); font: 600 13px var(--font-ui); color: var(--text-1); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 
 /* ------------------------------------------------------------ input -- */
 .ask { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 62px; padding: 0 10px 0 20px; border-radius: 22px; cursor: text;
@@ -141,10 +150,13 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .ritual-ui { display: flex; flex-direction: column; height: 100%; pointer-events: none !important; }
 .ritual-ui > .topbar, .ritual-ui > .dock { pointer-events: auto; }
 .ritual-ui > .move-title { pointer-events: none; }
-.move-title { text-align: center; margin-top: 6px; }
+.move-title { text-align: center; margin-top: 6px; position: relative; isolation: isolate; }
+/* soft scrim so prompts stay readable over bright realms (Sunpop, Blue Drift) */
+.move-title::before { content: ''; position: absolute; inset: -14px -18px -18px; z-index: -1; pointer-events: none; border-radius: 32px;
+  background: radial-gradient(closest-side, rgba(12,8,34,.58), rgba(12,8,34,.32) 62%, rgba(12,8,34,0)); }
 .move-title .eyebrow { display: block; margin-bottom: 6px; color: var(--accent); }
 .move-title h2 { margin: 0; font: 700 26px/1.12 var(--font-display); text-wrap: balance; text-shadow: 0 2px 16px rgba(5,3,20,.6); }
-.move-title p { margin: 6px auto 0; color: var(--text-2); max-width: 30ch; text-shadow: 0 1px 10px rgba(5,3,20,.7); }
+.move-title p { margin: 6px auto 0; color: rgba(247,243,255,.92); max-width: 30ch; text-shadow: 0 1px 10px rgba(5,3,20,.85), 0 0 2px rgba(5,3,20,.6); }
 .meter { height: 8px; border-radius: 6px; background: rgba(255,255,255,.12); overflow: hidden; }
 .meter > i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #3ee8ff, #ff3df2); border-radius: inherit; transition: width 120ms linear; }
 .choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

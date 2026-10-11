@@ -5,6 +5,7 @@ import { faceMix } from '../../engine/interpret.js';
 import { getEmotion, getFamily } from '../../data/emotions.js';
 import { MALLOWS } from '../../mallows/registry.js';
 import { encounterLine } from '../../mallows/voices.js';
+import { playTrick } from '../trick-launch.js';
 
 const REFRAME_FAMILIES = new Set(['shame', 'fear', 'loneliness', 'anger', 'sadness', 'envy', 'confusion']);
 
@@ -34,7 +35,7 @@ export default function encounter(app) {
         h('p', {}, 'Rather than give you something that doesn’t fit, here’s what you can do: pick a different feeling, or just stay here with the Mallows for a moment.'),
         h('div', { class: 'row-btns', style: { marginTop: '14px' } },
           h('button', { class: 'btn', onclick: () => app.go('express', { keep: true }) }, 'Change feelings'),
-          h('button', { class: 'btn', onclick: () => app.go('home') }, 'Home')));
+          h('button', { class: 'btn', onclick: () => app.go('home') }, 'Home')), quickBtn());
       return;
     }
     const r = o.ritual;
@@ -47,7 +48,8 @@ export default function encounter(app) {
       h('div', { class: 'reasons' }, ...o.reasons.map((x) => h('span', {}, x)), h('span', {}, `About ${mins} min`)),
       h('div', { style: { display: 'grid', gap: '8px', marginTop: '16px' } },
         h('button', { class: 'btn primary block', onclick: () => begin(o) }, 'Let’s do it'),
-        options.length > 1 ? h('button', { class: 'btn ghost block', onclick: () => { idx = (idx + 1) % options.length; app.audio.ui('toggle'); show(); } }, 'Something else') : null));
+        options.length > 1 ? h('button', { class: 'btn ghost block', onclick: () => { idx = (idx + 1) % options.length; app.audio.ui('toggle'); show(); } }, 'Something else') : null,
+        quickBtn()));
   }
 
   async function show() {
@@ -59,6 +61,12 @@ export default function encounter(app) {
     render();
     await wait(450);
     say(world, encounterLine(leadId, family), { who: lead.name, ms: 3600 });
+  }
+
+  // a one-minute trick instead of a full ritual (Paid tricks; Ultra adds plot twists)
+  function quickBtn() {
+    return h('button', { class: 'btn ghost block', onclick: () => { clearBubble(); app.audio.ui('open'); playTrick(app, { tier: ent.has('ultra') ? null : 'paid' }); } },
+      'Only got a minute? Quick trick');
   }
 
   function begin(o) {
