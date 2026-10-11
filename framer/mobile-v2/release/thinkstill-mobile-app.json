@@ -1,7 +1,7 @@
 {
  "payload": "release/thinkstill-mobile-app.js",
- "bytes": 1910062,
- "sha256": "b49bc44d4355ec33c5fa2fa9847ec3bd002f07e2ad632067d8fcb902c5291587",
+ "bytes": 2429815,
+ "sha256": "2b37b6728d388b25623e3dea1de30c0c81c4adca23f85b694985ac13bea7c039",
  "controls": {
   "theme": {
    "type": "__CT__Enum",
