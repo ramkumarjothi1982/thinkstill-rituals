@@ -999,6 +999,7 @@ const STYLES = `
   width: 100%; min-height: 4.2em; max-height: 9em; resize: none; border: 0; outline: 0; background: transparent; padding: 0; margin: 0;
   font: inherit; font-size: 1.06em; line-height: 1.4; color: var(--ink); letter-spacing: -.012em;
 }
+.tsr-compose textarea:focus-visible { outline: none; }
 .tsr-compose textarea::placeholder { color: var(--ink-3); }
 .tsr-compose .tools { display: flex; align-items: center; gap: 4px; margin-top: 6px; }
 .tsr-compose .tools .grow { flex: 1; }
@@ -1220,7 +1221,7 @@ interface RitualProps {
     intensity: number | null
     progress: (p: number) => void
     done: () => void
-    hint: (text: string | null) => void
+    hint: (text: string | null, sticky?: boolean) => void
 }
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a)
@@ -1887,7 +1888,9 @@ function RitualMelt(props: RitualProps) {
     const text = items[0].text.slice(0, 26)
     const letters = React.useMemo(() => Array.from(text), [text])
     const lineChars = Math.max(6, Math.min(letters.length, 14))
-    const fs = Math.round(clamp((w * 0.86) / (lineChars * 0.6), 30, 72))
+    const longest = Math.max(4, ...text.split(/\s+/).map((x) => x.length))
+    const fs = Math.round(clamp(Math.min((w * 0.86) / (lineChars * 0.6), (w - 40) / (longest * 0.66)), 26, 72))
+    const groups = React.useMemo(() => { const out: number[][] = [[]]; letters.forEach((ch, i) => { out[out.length - 1].push(i); if (ch === " ") out.push([]) }); return out }, [letters])
     const [heat, setHeat] = React.useState(false)
     const m = React.useRef(letters.map(() => 0))
     const speeds = React.useMemo(() => letters.map((_, i) => 0.1 + hashNoise(i, 11) * 0.09), [letters.length])
@@ -1897,6 +1900,7 @@ function RitualMelt(props: RitualProps) {
     const st = React.useRef({ loop: null as Loop | null, total: 0, done: false, lastDrip: 0, heat: 0 })
     const timers = useTimers()
     const filterId = React.useMemo(() => "tsrGoo" + Math.round(Math.random() * 1e6), [])
+    const wax = React.useRef<HTMLDivElement>(null)
     const hold = useHold(() => { if (!st.current.done) { setHeat(true); st.current.loop = fx.loop("fire"); fx.haptic("light") } }, () => { setHeat(false); st.current.loop?.stop(); st.current.loop = null })
 
     useFrame((dt, t) => {
@@ -1918,6 +1922,7 @@ function RitualMelt(props: RitualProps) {
             if (d) d.style.transform = `scaleY(${v < 0.15 ? 0 : Math.min(1, (v - 0.15) * 1.6) * (1 - Math.max(0, v - 0.9) * 8)})`
         })
         const avg = total / letters.length
+        if (wax.current && !reduced) wax.current.style.filter = avg > 0.04 ? `url(#${filterId})` : "none"
         s.loop?.set(1600 + avg * 600, 0.6 + s.heat * 0.6)
         if (puddle.current) {
             puddle.current.style.transform = `translateX(-50%) scaleX(${0.25 + avg * 0.85}) scaleY(${0.2 + avg})`
@@ -1945,13 +1950,13 @@ function RitualMelt(props: RitualProps) {
                 </svg>
             ) : null}
             <div ref={puddle} style={{ position: "absolute", left: "50%", top: baseY + fs * 0.62, width: Math.min(w * 0.86, lineChars * fs * 0.62), height: fs * 0.42, borderRadius: "50%", transformOrigin: "50% 50%", background: `radial-gradient(ellipse at 50% 35%, ${hsl(emo.calmHue, 70, dark ? 72 : 78, 0.95)}, ${hsl(lerp(emo.hue, emo.calmHue, 0.6), 60, dark ? 52 : 62, 0.9)} 70%, transparent 72%)`, opacity: 0 }} />
-            <div style={{ position: "absolute", left: 0, right: 0, top: baseY - fs * 0.62, display: "flex", flexWrap: "wrap", justifyContent: "center", padding: "0 16px", filter: reduced ? undefined : `url(#${filterId})` }}>
-                {letters.map((ch, i) => (
+            <div style={{ position: "absolute", left: 0, right: 0, top: baseY - fs * 0.62, display: "flex", flexWrap: "wrap", justifyContent: "center", padding: "0 16px" }} ref={wax}>
+                {groups.map((g, k) => <span key={k} style={{ display: "inline-block", whiteSpace: "nowrap" }}>{g.map((i) => { const ch = letters[i]; return (
                     <span key={i} style={{ position: "relative", display: "inline-block" }}>
                         <span ref={(el) => { els.current[i] = el }} style={{ display: "inline-block", fontFamily: "var(--round)", fontWeight: 800, fontSize: fs, lineHeight: 1.05, transformOrigin: "50% 100%", whiteSpace: "pre", color: hsl(emo.hue, 62, 56) }}>{ch}</span>
                         {ch.trim() ? <span ref={(el) => { drips.current[i] = el }} style={{ position: "absolute", left: `${30 + hashNoise(i, 4) * 40}%`, top: fs * 0.95, width: Math.max(5, fs * 0.13), height: fs * (0.5 + hashNoise(i, 6) * 0.7), borderRadius: 99, transformOrigin: "50% 0", transform: "scaleY(0)", background: hsl(lerp(emo.hue, emo.calmHue, 0.5), 62, dark ? 62 : 60) }} /> : null}
                     </span>
-                ))}
+                ) })}</span>)}
             </div>
         </div>
     )
@@ -2856,7 +2861,7 @@ function RitualPaperPlane(props: RitualProps) {
         fx.sound("tear", 0.6)
         fx.haptic("light")
         timers.after(reduced ? 50 : 520, () => { fx.sound("tick"); fx.haptic("tick") })
-        timers.after(reduced ? 80 : 950, () => { setPhase("plane"); props.hint("Swipe to launch it") })
+        timers.after(reduced ? 80 : 950, () => { setPhase("plane"); props.hint("Swipe to launch it", true) })
     }
     useDrag(plane, stage, {
         onStart: () => { if (phaseRef.current === "sheet") { fold(); return false } if (phaseRef.current !== "plane") return false; st.current.drag = true },
@@ -3260,7 +3265,7 @@ function RitualFreeze(props: RitualProps) {
         fx.sound("ice", 0.9 + s.frost * 0.4)
         fx.haptic("light")
         fx.burst(s.x, s.y, { kind: "spark", n: 10, size: 2, speed: 140, color: ["#FFFFFF", "#CFE6FF"], life: 0.6 })
-        if (s.frost >= 1) { s.vx = 0; s.vy = 0; props.hint("Frozen solid. Tap to shatter it.") }
+        if (s.frost >= 1) { s.vx = 0; s.vy = 0; props.hint("Frozen solid. Tap to shatter it.", true) }
     }
     React.useEffect(() => {
         const el = stage.current
@@ -3312,7 +3317,9 @@ function RitualInkBleed(props: RitualProps) {
     const textBox = React.useRef<HTMLDivElement>(null)
     const text = items[0].text.slice(0, 40)
     const letters = React.useMemo(() => Array.from(text), [text])
-    const fs = Math.round(clamp((w * 0.84) / (Math.min(letters.length, 16) * 0.52), 28, 60))
+    const longest = Math.max(4, ...text.split(/\s+/).map((x) => x.length))
+    const fs = Math.round(clamp(Math.min((w * 0.84) / (Math.min(letters.length, 16) * 0.52), (w - 48) / (longest * 0.6)), 22, 60))
+    const words = React.useMemo(() => { const out: { ch: string; i: number }[][] = [[]]; letters.forEach((ch, i) => { out[out.length - 1].push({ ch, i }); if (ch === " ") out.push([]) }); return out }, [letters])
     const els = React.useRef<(HTMLSpanElement | null)[]>([])
     const centers = React.useRef<{ x: number; y: number }[]>([])
     const bleed = React.useRef(letters.map(() => ({ b: 0, dx: 0, dy: 0 })))
@@ -3347,9 +3354,9 @@ function RitualInkBleed(props: RitualProps) {
             const L = bleed.current[i]
             if (c && s.drag && !s.done) {
                 const d = dist(c.x, c.y, s.x, s.y)
-                const reach = fs * 0.95
+                const reach = fs * 1.35
                 if (d < reach) {
-                    const k = (1 - d / reach) * dt * 3.2
+                    const k = (1 - d / reach) * dt * 7
                     if (L.b < 1) {
                         L.b = Math.min(1, L.b + k)
                         L.dx += clamp(s.lvx * 0.004, -3, 3) * k * 10
@@ -3375,8 +3382,8 @@ function RitualInkBleed(props: RitualProps) {
             }
         })
         const p = solid ? bled / solid : 1
-        if (Math.abs(p - s.lastP) > 0.02) { s.lastP = p; props.progress(Math.min(1, p / 0.85)) }
-        if (!s.done && p >= 0.85) {
+        if (Math.abs(p - s.lastP) > 0.02) { s.lastP = p; props.progress(Math.min(1, p / 0.75)) }
+        if (!s.done && p >= 0.75) {
             s.done = true
             bleed.current.forEach((L) => { L.b = 1; L.dy += 8 })
             fx.haptic("success")
@@ -3390,8 +3397,12 @@ function RitualInkBleed(props: RitualProps) {
             <div style={{ position: "absolute", inset: 0, background: dark ? "#141317" : "#FBF8F2" }} />
             <div ref={blooms} style={{ position: "absolute", inset: 0, pointerEvents: "none" }} />
             <div ref={textBox} style={{ position: "absolute", left: 18, right: 18, top: 0, bottom: 0, display: "flex", flexWrap: "wrap", alignContent: "center", justifyContent: "center", pointerEvents: "none" }}>
-                {letters.map((ch, i) => (
-                    <span key={i} ref={(el) => { els.current[i] = el }} style={{ display: "inline-block", whiteSpace: "pre", fontFamily: "var(--serif)", fontWeight: 600, fontSize: fs, lineHeight: 1.15, color: dark ? "#F1ECE3" : "#1D1A22", transformOrigin: "50% 0" }}>{ch}</span>
+                {words.map((wd, k) => (
+                    <span key={k} style={{ display: "inline-block", whiteSpace: "nowrap" }}>
+                        {wd.map(({ ch, i }) => (
+                            <span key={i} ref={(el) => { els.current[i] = el }} style={{ display: "inline-block", whiteSpace: "pre", fontFamily: "var(--serif)", fontWeight: 600, fontSize: fs, lineHeight: 1.15, color: dark ? "#F1ECE3" : "#1D1A22", transformOrigin: "50% 0" }}>{ch}</span>
+                        ))}
+                    </span>
                 ))}
             </div>
             <div ref={dropRef} className="rk-abs" role="img" aria-label="Ink drop. Drag it through the words." style={{ width: 40, height: 40, borderRadius: "50% 50% 50% 50% / 60% 60% 40% 40%", cursor: "grab", touchAction: "none", background: `radial-gradient(circle at 35% 30%, #fff, ${hsl(emo.calmHue, 80, 66)} 45%, ${hsl(emo.hue, 70, 50)})`, boxShadow: `0 0 24px ${hsl(emo.calmHue, 90, 65, 0.7)}` }} />
@@ -3696,7 +3707,7 @@ function RitualXRay(props: RitualProps) {
                 fx.sound("chime", 0.9 + s.passes * 0.15)
                 fx.haptic("medium")
                 props.progress(s.passes / 3 * 0.75)
-                if (s.passes >= 3) props.hint("Press Burn all when you're ready")
+                if (s.passes >= 3) props.hint("Press Burn all when you're ready", true)
             }
         },
     })
@@ -3759,11 +3770,11 @@ function RitualHotPotato(props: RitualProps) {
     const { items, w, h, fx, reduced, dark } = props
     const stage = React.useRef<HTMLDivElement>(null)
     const cx = w / 2, cy = h * 0.5
-    const size = clamp(Math.min(w, h) * 0.24, 84, 124)
+    const size = clamp(Math.min(w, h) * 0.23, 80, 120)
     const outR = Math.min(w, h) * 0.32
     const homes = items.map((_, i) => {
         const a = (i / items.length) * Math.PI * 2 - Math.PI / 2 + 0.4
-        return { x: cx + Math.cos(a) * size * 0.42, y: cy + Math.sin(a) * size * 0.42 }
+        return { x: cx + Math.cos(a) * size * 0.82, y: cy + Math.sin(a) * size * 0.72 }
     })
     const pos = React.useRef(items.map((_, i) => ({ x: { x: homes[i].x, v: 0 }, y: { x: homes[i].y, v: 0 }, drag: false, cool: false, rest: null as null | { x: number; y: number } })))
     const els = React.useRef<(HTMLDivElement | null)[]>([])
@@ -4467,7 +4478,7 @@ function RitualBigSigh(props: RitualProps) {
     const orb = React.useRef<HTMLDivElement>(null)
     const label = React.useRef<HTMLDivElement>(null)
     const cloudsN = SIGHS * 2
-    const clouds = React.useMemo(() => Array.from({ length: cloudsN }, (_, i) => ({ x: w * (0.15 + 0.7 * hashNoise(i, 31)), y: h * (0.08 + 0.32 * hashNoise(i, 32)), s: 0.7 + hashNoise(i, 33) * 0.6, text: items[i % items.length]?.text || "" })), [w, h, cloudsN])
+    const clouds = React.useMemo(() => Array.from({ length: cloudsN }, (_, i) => ({ x: w * (i % 2 ? 0.72 : 0.28) + (hashNoise(i, 31) - 0.5) * w * 0.06, y: h * 0.07 + 22 + Math.floor(i / 2) * Math.min(58, h * 0.1), s: 0.9 + hashNoise(i, 33) * 0.15, text: items[i % items.length]?.text || "" })), [w, h, cloudsN])
     const [blown, setBlown] = React.useState(0)
     const [sighs, setSighs] = React.useState(0)
     const st = React.useRef({ phase: "idle" as "idle" | "in" | "sip" | "out", t: 0, scale: 1, sipped: false, startY: 0, loop: null as Loop | null, sighs: 0, done: false })
@@ -4537,7 +4548,7 @@ function RitualBigSigh(props: RitualProps) {
                 const gone = i < blown
                 return (
                     <div key={i} style={{ position: "absolute", left: c.x, top: c.y, transform: `translate(-50%, -50%) translateX(${gone ? w : 0}px) scale(${c.s})`, opacity: gone ? 0 : 1, transition: "transform 3.6s cubic-bezier(.3,0,.3,1), opacity 3s ease", pointerEvents: "none" }}>
-                        <div style={{ position: "relative", padding: "12px 20px", borderRadius: 999, background: dark ? "#4A5263" : "#8995A3", color: "#fff", fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", boxShadow: "0 8px 20px rgba(0,0,0,.15)" }}>
+                        <div style={{ position: "relative", padding: "12px 20px", borderRadius: 999, background: dark ? "#4A5263" : "#8995A3", color: "#fff", fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", maxWidth: w * 0.42 / c.s, overflow: "hidden", textOverflow: "ellipsis", boxShadow: "0 8px 20px rgba(0,0,0,.15)" }}>
                             {i < items.length ? c.text : "      "}
                         </div>
                     </div>
@@ -4576,7 +4587,7 @@ function RitualVolcano(props: RitualProps) {
         fx.burst(cx, craterY + 6, { kind: "spark", n: 26, size: 3.2, speed: 380, angle: -Math.PI / 2, spread: 1.2, color: ["#FFB347", "#FF6A3D", "#FFD58A"], life: 1.1, gravity: 520 })
         if (!reduced) fx.burst(cx, craterY - 10, { kind: "steam", n: 4, size: 12, speed: 50, angle: -Math.PI / 2, spread: 1, color: dark ? "rgba(200,200,200,.5)" : "rgba(110,100,95,.45)", life: 1.8, gravity: -20 })
         props.progress((n / TAPS) * 0.3)
-        if (n === TAPS) timers.after(500, () => props.hint("Now drag the rain cloud slowly over the lava"))
+        if (n === TAPS) timers.after(500, () => props.hint("Drag the rain cloud slowly over the lava", true))
     }
     useDrag(stage, stage, {
         onStart: (d) => {
@@ -4597,12 +4608,12 @@ function RitualVolcano(props: RitualProps) {
         s.cy += (s.ty - s.cy) * Math.min(1, dt * 5)
         const speed = Math.hypot(s.cx - px, s.cy - py) / Math.max(dt, 0.001)
         const tooFast = speed > 420
-        if (tooFast) { s.fast += dt; if (s.fast > 0.35) { props.hint("Slower — let the rain land"); s.fast = 0 } }
+        if (tooFast) { s.fast += dt; if (s.fast > 0.35) { props.hint("Slower — let the rain land"); s.fast = 0; timers.after(2500, () => props.hint("Drag the rain cloud slowly over the lava", true)) } }
         const raining = s.drag && !tooFast
         if (cloudRef.current) cloudRef.current.style.transform = `translate3d(${s.cx}px, ${s.cy}px, 0) translate(-50%, -50%)`
         if (raining && !reduced) fx.burst(s.cx + rand(-40, 40), s.cy + 22, { kind: "rain", n: 2, size: 1.4, speed: 420, angle: Math.PI / 2, spread: 0.05, color: "rgba(120,170,230,.7)", life: 0.7, gravity: 300 })
         if (raining && Math.abs(s.cx - cx) < vw * 0.36 && !s.done) {
-            s.heat = Math.max(0, s.heat - dt * 0.085)
+            s.heat = Math.max(0, s.heat - dt * 0.125)
             if (!reduced && t - s.last > 0.12) { s.last = t; fx.burst(s.cx + rand(-20, 20), craterY + 10, { kind: "steam", n: 1, size: 9, speed: 40, angle: -Math.PI / 2, spread: 0.8, color: "rgba(255,255,255,.55)", life: 1.4, gravity: -30 }) }
             setHeat(s.heat)
             props.progress(0.3 + (1 - s.heat) * 0.7)
@@ -4700,7 +4711,7 @@ function RitualGroundControl(props: RitualProps) {
                 const a = (i / missions.length) * Math.PI * 2
                 const gone = i < count
                 return (
-                    <div key={it.key} style={{ position: "absolute", left: w / 2 + Math.cos(a) * Math.min(w * 0.32, 160), top: skyH * 0.4 + Math.sin(a) * skyH * 0.24, transform: "translate(-50%,-50%)", padding: "8px 14px", borderRadius: 999, background: dark ? "rgba(160,170,190,.18)" : "rgba(120,130,150,.18)", color: "var(--ink)", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", filter: gone ? "blur(10px)" : reduced ? "none" : "blur(.4px)", opacity: gone ? 0 : 0.9, transition: "opacity 1.2s ease, filter 1.2s ease", pointerEvents: "none" }}>
+                    <div key={it.key} style={{ position: "absolute", left: i % 2 ? w * 0.76 : w * 0.24, top: skyH * (0.18 + Math.floor(i / 2) * 0.24) + (i % 2) * 14, transform: "translate(-50%,-50%)", maxWidth: w * 0.4, overflow: "hidden", textOverflow: "ellipsis", padding: "8px 14px", borderRadius: 999, background: dark ? "rgba(160,170,190,.18)" : "rgba(120,130,150,.18)", color: "var(--ink)", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", filter: gone ? "blur(10px)" : reduced ? "none" : "blur(.4px)", opacity: gone ? 0 : 0.9, transition: "opacity 1.2s ease, filter 1.2s ease", pointerEvents: "none" }}>
                         {it.text}
                     </div>
                 )
@@ -5011,10 +5022,10 @@ function RitualHost(props: {
         if (s && !reduced) particles.current?.burst(s.clientWidth / 2, s.clientHeight * 0.42, { kind: "glow", n: 1, size: 60, color: hsl(emo.calmHue, 80, 75, 0.55), life: 1.2 })
         window.setTimeout(() => setShowContinue(true), reduced ? 200 : 900)
     }, [props.onComplete, reduced, emo.calmHue])
-    const onHint = React.useCallback((t: string | null) => {
+    const onHint = React.useCallback((t: string | null, sticky = false) => {
         window.clearTimeout(hintTimer.current)
         setHint(t)
-        if (t) hintTimer.current = window.setTimeout(() => setHint(null), 4200)
+        if (t && !sticky) hintTimer.current = window.setTimeout(() => setHint(null), 4200)
     }, [])
 
     const Comp = RITUAL_COMPONENTS[ritual.id]
@@ -5074,7 +5085,7 @@ const greeting = () => {
 
 const screenMotion = (reduced: boolean) => reduced
     ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0.18 } }
-    : { initial: { opacity: 0, y: 14, scale: 0.99 }, animate: { opacity: 1, y: 0, scale: 1 }, exit: { opacity: 0, y: -10, scale: 0.99 }, transition: { type: "spring", stiffness: 300, damping: 32 } }
+    : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 420, damping: 36 } }, exit: { opacity: 0, y: -6, transition: { duration: 0.12, ease: "easeIn" } } }
 
 interface Prefs { theme: ThemePref; sfx: boolean; music: boolean; volume: number; haptics: boolean; motion: MotionPref; checkin: boolean; keepHistory: boolean }
 
@@ -5155,6 +5166,7 @@ export default function ThinkStillRelease(props: any) {
     const [tuneValue, setTuneValue] = React.useState(6)
     const [after, setAfter] = React.useState(6)
     const [ritualId, setRitualId] = React.useState<number | null>(null)
+    const [doneIds, setDoneIds] = React.useState<number[]>([])
     const [runKey, setRunKey] = React.useState(0)
     const [completedId, setCompletedId] = React.useState<string | null>(null)
     const [progress, setProgress] = React.useState(0)
@@ -5174,6 +5186,7 @@ export default function ThinkStillRelease(props: any) {
         try { return !sessionStorage.getItem("ts_release_splash_v21") } catch { return true }
     })
     const skip = React.useRef<Set<number>>(new Set())
+    const carryBefore = React.useRef<number | null | undefined>(undefined)
     const startedAt = React.useRef(0)
     const toastTimer = React.useRef(0)
     const recog = React.useRef<any>(null)
@@ -5273,8 +5286,9 @@ export default function ThinkStillRelease(props: any) {
     }
     const resetFlow = () => {
         setText(""); setEmotion(null); setImages([]); setBefore(null); setTuneValue(6); setAfter(6)
-        setRitualId(null); setCompletedId(null); setProgress(0); setShift(null); setRecorded(false); setFlag(null); setPath([]); setAct(1)
+        setRitualId(null); setDoneIds([]); setCompletedId(null); setProgress(0); setShift(null); setRecorded(false); setFlag(null); setPath([]); setAct(1)
         skip.current = new Set()
+        carryBefore.current = undefined
         setPast([]); setFuture([]); setScreen("home")
     }
     const doClose = () => {
@@ -5388,6 +5402,11 @@ export default function ThinkStillRelease(props: any) {
     const begin = () => {
         if (ritualId == null) return
         Sound.unlock()
+        if (carryBefore.current !== undefined) {
+            if (carryBefore.current != null) setBefore(carryBefore.current)
+            setAct((a) => a + 1)
+            carryBefore.current = undefined
+        }
         setRunKey((k) => k + 1)
         setCompletedId(null)
         setProgress(0)
@@ -5402,6 +5421,7 @@ export default function ThinkStillRelease(props: any) {
         setProgress(1)
         noteRitualPlayed(ritualId)
         setPath((p) => [...p, ritualId].slice(-8))
+        setDoneIds((d) => [...d, ritualId])
         skip.current.delete(ritualId)
     }
     const restartRitual = () => { setRunKey((k) => k + 1); setCompletedId(null); setProgress(0); startedAt.current = Date.now(); Haptics.fire("light") }
@@ -5425,10 +5445,9 @@ export default function ThinkStillRelease(props: any) {
         if (ritualId == null) return
         const ctx = context(before != null ? after : null)
         const id = pickFollowUp(ctx, universe, ritualId, mode, skip.current) ?? chooseRitual({ exclude: ritualId })
-        if (before != null) setBefore(after)
+        // The check-in stays intact (Back returns to it) until the next ritual actually begins.
+        carryBefore.current = before != null ? after : null
         setRitualId(id)
-        setAct((a) => a + 1)
-        setShift(null)
         go("match")
     }
     const finish = () => { recordIfNeeded(); go("rest") }
@@ -5622,7 +5641,7 @@ export default function ThinkStillRelease(props: any) {
                     ) : null}
 
                     {screen === "ritual" && ritual ? (
-                        <motion.section key={"ritual"} className="tsr-screen" style={{ overflow: "hidden" }} {...(reduced ? sm : { initial: { opacity: 0, scale: 0.97 }, animate: { opacity: 1, scale: 1 }, exit: { opacity: 0, scale: 1.02 }, transition: { type: "spring", stiffness: 260, damping: 30 } }) as any} aria-label={`${ritual.name} ritual`}>
+                        <motion.section key={"ritual"} className="tsr-screen" style={{ overflow: "hidden" }} {...(reduced ? sm : { initial: { opacity: 0, scale: 0.97 }, animate: { opacity: 1, scale: 1 }, exit: { opacity: 0, transition: { duration: 0.12 } }, transition: { type: "spring", stiffness: 380, damping: 34 } }) as any} aria-label={`${ritual.name} ritual`}>
                             <RitualHost ritual={ritual} items={items} phrase={text || items.map((i) => i.text).join(" ")} emo={feelEmo} faces={faces} char={char} dark={dark} reduced={reduced}
                                 intensity={before} runKey={runKey} completed={completed} onComplete={onRitualComplete} onContinue={toReflect} onRestart={restartRitual} onProgress={setProgress} />
                         </motion.section>
@@ -5701,9 +5720,9 @@ export default function ThinkStillRelease(props: any) {
                                 <div className="tsr-spacer" />
                                 <Companion faces={faces} step={3} size={120} breathe={!reduced} label={CHAR_NAMES[char]} />
                                 <h1 className="t-large" style={{ marginTop: 24 }}>Go gently.</h1>
-                                {ritual ? (
+                                {doneIds.length ? (
                                     <p className="t-sub" style={{ marginTop: 8 }}>
-                                        {path.length > 1 ? `${path.length} rituals` : ritual.name}
+                                        {doneIds.length > 1 ? `${doneIds.length} rituals` : RITUAL_BY_ID[doneIds[0]]?.name}
                                         {before != null && shift ? ` · ${before} → ${after}` : ""}
                                     </p>
                                 ) : null}
