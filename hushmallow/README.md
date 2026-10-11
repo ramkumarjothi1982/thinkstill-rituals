@@ -27,22 +27,42 @@ Then open on your computer or phone (same Wi-Fi, use your computer's IP):
 | `http://localhost:8000/hushmallow/realms.html` | The seven Hushfold realms with mood controls |
 | `http://localhost:8000/hushmallow/sound-lab.html` | Every Mallow sound, ritual sound and realm ambience |
 
-A browser can't take real payments, so the Plans screen shows **test
-purchases**. "Choose Hushmallow" unlocks Paid and "Choose Hushmallow Ultra"
-unlocks Ultra, without charging anything. Settings → "Remove test plan"
-resets this. The App Store build swaps in StoreKit (see
-`src/app/entitlements.js`).
+A browser can't take real payments, so on `localhost` the Plans screen
+shows **test purchases**. "Choose Hushmallow" unlocks Paid and "Choose
+Hushmallow Ultra" unlocks Ultra, without charging anything. Settings →
+"Remove test plan" resets this. Test purchases only work on the hosts listed
+in `src/app/config.js`, so a public site can't give plans away. The App
+Store build swaps in StoreKit (see `src/app/entitlements.js`).
+
+Putting it on your Framer site: see `docs/FRAMER.md`.
 
 ### Try the two flagship experiences
 - **Experience A (Paid):** Home → *What's on your mind?* → type "I'm
   furious about what happened at work." → *Meet a Mallow* → *Let's do it*.
-- **Experience B (Ultra):** Home → *Another Angle* → "My boss criticised my
-  work. I think I'm terrible at my job."
+- **Experience B (Ultra):** Home → *Another Angle* → *Look at a real
+  situation* → "My boss criticised my work. I think I'm terrible at my job."
+- **Quick tricks:** Meet a Mallow → *Only got a minute? Quick trick*, or the
+  Ultra door → *Ready for the plot twist?*
 
 ### Tests
 ```bash
 node --test hushmallow/tests/*.test.mjs
 ```
+
+### Updating the 1,000 tricks
+The tricks come from the locked ThinkStill workbook in `content/`. After
+changing the workbook, regenerate the content modules (needs `openpyxl`):
+```bash
+python3 -I hushmallow/tools/import_tricks.py hushmallow/content/ThinkStill_MASTER_1000_PRODUCTION_LOCKED_FINAL.xlsx
+```
+Attention and getting-started tricks go to Paid; tricks about thoughts,
+meaning and relationships (reframing) go to Ultra only.
+
+### Adding a ritual
+Two files and two list entries, no app changes: the content in
+`src/data/library/<id>.js`, the interaction in `src/rituals/<id>.js`, then
+list it in `src/data/library/index.js` and `src/rituals/index.js`. The tests
+check that every library file is listed and every module exists.
 
 ## Map of the code
 
@@ -55,13 +75,16 @@ node --test hushmallow/tests/*.test.mjs
 | `src/mallows/` | Living Mallow engine: registry, expressions, rig renderer, reactions, particles, voices |
 | `src/world/` | Hushfold realm engine (seven procedural realms) |
 | `src/engine/` | Feeling finder (rule-based), recommender + rotation, storage, audio, haptics |
-| `src/data/` | A–Z emotion taxonomy (334 terms), ritual schema, ritual library |
-| `src/rituals/` | Paid ritual modules (interactive experiences) |
-| `src/ultra/` | Ultra only: Another Angle, 22 authored Reframe frameworks, rule engine |
+| `src/data/` | A–Z emotion taxonomy (334 terms), ritual schema, ritual library (`library/`, one file per ritual), Paid quick tricks (`tricks/`) |
+| `src/rituals/` | Paid ritual modules (interactive experiences) and the quick-trick player |
+| `src/ultra/` | Ultra only: Another Angle, authored Reframe frameworks, rule engine, the 709 plot twists |
+| `content/` | The locked ThinkStill master workbook (source of the 1,000 tricks) |
+| `framer/` | `HushmallowEmbed.tsx`, the Framer code component |
 | `src/app/` | App shell: scenes, world stage, entitlements, preferences, UI helpers |
 | `src/ui/` | Design system tokens and app styles |
 | `docs/` | Audit of the old app, status and roadmap |
 
 The old ThinkStill Framer app (repository root: `framer/`,
-`bubble-expressions/`, `rituals.json` …) is untouched. Its 1,000 rituals
-are the source for Ultra's quick-trick library.
+`bubble-expressions/`, `rituals.json` …) is untouched. The 1,000 tricks in
+Hushmallow come from the newer locked workbook in `content/`, not from the
+old `rituals.json`.
