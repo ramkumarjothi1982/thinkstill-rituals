@@ -78,7 +78,10 @@ export function haptic(kind = 'light') {
     const h = w?.webkit?.messageHandlers?.haptic;
     if (h && typeof h.postMessage === 'function') { h.postMessage(k); return true; }
     const nav = globalThis.navigator;
-    if (typeof nav?.vibrate === 'function') return nav.vibrate(HAPTIC_PATTERNS[k]) !== false;
+    if (typeof nav?.vibrate === 'function') {
+      if (nav.userActivation && !nav.userActivation.hasBeenActive) return false;   // browsers require a tap first
+      return nav.vibrate(HAPTIC_PATTERNS[k]) !== false;
+    }
   } catch { /* a broken bridge must never break the app */ }
   return false;
 }
