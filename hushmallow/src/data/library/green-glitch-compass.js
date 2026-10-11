@@ -1,0 +1,33 @@
+// Green Glitch Compass — Glitzi treats envy as a glitchy compass: notice the
+// sting, find the want it points at, turn the comparison down, take a step.
+export default {
+  version: '1.0.0',
+  review: { status: 'draft', by: 'Pending editorial review' },
+  id: 'green-glitch-compass',
+  name: 'Green Glitch Compass',
+  purpose: 'Notice the sting of envy without beating yourself up, find what it’s pointing at that you want, and take one small step toward it.',
+  family: 'reflection',
+  tier: 'paid',
+  emotions: ['family:envy', 'envy', 'jealousy', 'possessiveness', 'coveting', 'competitiveness', 'comparison', 'begrudging', 'inferiority', 'overshadowed', 'fear-of-missing-out', 'resentment', 'petty'],
+  intensity: { min: 0.2, max: 0.9 },
+  contexts: ['social', 'friends', 'work', 'school', 'partner', 'relationship', 'self-image', 'money', 'body', 'creativity', 'future'],
+  durationSec: 180,
+  mallows: ['glitzi'],
+  module: 'green-glitch-compass',
+  tone: 'playful',
+  moves: [
+    { id: 'glitch', prompt: 'Name what’s on the highlight reel, then tap, rub or shake it until it glitches apart.', kind: 'tap-shake' },
+    { id: 'needle', prompt: 'Drag or spin the compass needle until it settles on what the envy points to.', kind: 'spin-settle' },
+    { id: 'mute', prompt: 'Turn the comparison feed’s volume dial down, and choose ways to keep it low.', kind: 'rotary-dial' },
+    { id: 'step', prompt: 'Pick one small step toward what you want.', kind: 'choice' },
+  ],
+  mechanic: 'A glossy highlight-reel screen shows what you picked; taps, rubs and phone shakes slice, pixelate and finally shatter it into pixels while Glitzi zaps it too. A glitchy compass needle spins wildly until you drag or flick it and it springs to rest on a want. A volume dial quietens the scrolling comparison feed, Glitzi’s static and the storm as you turn it.',
+  animation: { lead: ['jealous (side-eye at the reel)', 'jealous → mischievous as the reel breaks', 'confused/curious while the needle spins', 'hopeful nod when it settles', 'static calming to calm as the volume drops', 'determined', 'sarcastic-proud celebration with pixel hearts'] },
+  world: { realm: 'static-storm', transform: 'The storm agitation drops as the reel breaks and the feed quietens; the sky clears and settles as the compass glows true.' },
+  sensory: { sound: 'Crackles as the reel glitches, a snap when it shatters, rotate ticks as the needle and dial turn, a chime when the needle settles, a hum that fades with the volume, a bloom at the finale.', haptics: 'Ticks on every glitch and notch, a pop when the needle settles, a soft success at the end.' },
+  finale: 'The compass glows true on your want; Glitzi does a sarcastic-proud celebration with pixel hearts and the storm clears.',
+  checkIn: 'How loud is the envy now?',
+  accessibility: 'A “Glitch it” button replaces tapping and shaking; the needle moves with arrow buttons, a Spin button or arrow keys; the dial has Quieter/Louder buttons and arrow keys. Reduced motion removes shaking and slicing; everything is screen-reader labelled.',
+  safety: 'Envy is a normal feeling, not a flaw. If comparison is tangled up with bullying, harassment or someone controlling you, the support button is always available. This ritual never asks you to send a message.',
+  rationale: 'Draws on common, widely taught ideas: envy often signals something we want; noticing a feeling without self-criticism, naming the underlying want, reducing exposure to comparison triggers, and taking a small action toward what matters are all widely used approaches. It doesn’t argue about whether the comparison is fair, and it doesn’t promise the envy will vanish.',
+};
