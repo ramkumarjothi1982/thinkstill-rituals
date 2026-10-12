@@ -356,6 +356,33 @@ test('createStage: before the layer loads, `thoughts` is an empty stand-in that 
   } finally { B.restore(); }
 });
 
+test('createStage: with no bounds() the thoughts keep under the shell\'s top bar and subtitle band and over its dock; a shell\'s own bounds win', async () => {
+  const B = browser();
+  try {
+    const pill = (top, hidden = false, cls = '') => ({ hidden, classList: { contains: (c) => cls === c }, getBoundingClientRect: () => ({ top, height: 48 }) });
+    const dock = { children: [pill(700, true), pill(760, false, 'is-hidden'), pill(778)] };
+    const top = { getBoundingClientRect: () => ({ bottom: 58 }) };
+    const tagRoot = { querySelector: (s) => (s === '.hf-top' ? top : s === '.hf-dock' ? dock : null) };
+    const stage = createStage({ fx: B.fx, tagRoot });
+    const L = await stage.whenThoughts();
+    const b = L.bounds();
+    assert.equal(Math.round(b.top), Math.round(58 + 844 * 0.17), 'under the top bar and its subtitle band (0.17 H)');
+    assert.equal(b.bottom, 768, 'over the visible dock pill, 10 px clear (hidden pills do not count)');
+    assert.equal(b.left, undefined, 'the sides stay the layer\'s own');
+    assert.equal(L.bounds(), b, 'read at most four times a second');
+    stage.destroy();
+    // nothing to read: the layer's own default
+    const s2 = createStage({ fx: B.fx });
+    assert.equal((await s2.whenThoughts()).bounds(), null);
+    s2.destroy();
+    // the shell's own bounds
+    const mine = () => ({ left: 10, top: 100, right: 300, bottom: 500 });
+    const s3 = createStage({ fx: B.fx, tagRoot, bounds: mine });
+    assert.equal((await s3.whenThoughts()).bounds, mine);
+    s3.destroy();
+  } finally { B.restore(); }
+});
+
 test('createStage: every stage and stage.thoughts call in the Hushfold scene exists (the current shell works as it is)', async () => {
   const shell = read('src/app/scenes/hushfold.js');
   const B = browser();

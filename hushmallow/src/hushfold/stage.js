@@ -223,7 +223,8 @@ const NO_THOUGHTS = Object.freeze([]);
  * start() puts the stage on the shared loop (a ripple, a thought or a world ticker does too).
  *
  * keepOut() → the hero's rect (client px; thoughts and their words keep off it); bounds() → where the
- * thoughts may float; onReadThought(th) → a tap on the words; textScale() → the person's text size
+ * thoughts may float (default: under tagRoot's .hf-top, over its .hf-dock pills); onReadThought(th) → a
+ * tap on the words; textScale() → the person's text size
  * (default: --type-scale on <html>, as Settings sets it); haptic(kind), audio {fx(name, opts)}.
  */
 export function createStage({ fx, tagRoot = null, reducedMotion = () => prefersReducedMotion(), lowStim = () => false, onReadThought = null, onRead = null,
@@ -249,10 +250,32 @@ export function createStage({ fx, tagRoot = null, reducedMotion = () => prefersR
   }
   // the person's text size as Settings sets it on <html> (ui/type.js setTextScale): the words grow with it
   const textK = textScale ?? (() => { try { return parseFloat(document.documentElement.style.getPropertyValue('--type-scale')) || 1; } catch { return 1; } });
+  // no bounds from the shell: the room its own controls leave — under its top bar and subtitle band, over
+  // its dock — read at most four times a second (never every frame); a shell that passes bounds() decides
+  let shellB = null, shellAt = -1e9;
+  function shellBounds() {
+    const now = performance.now();
+    if (now - shellAt < 250) return shellB;
+    shellAt = now;
+    const q = (s) => (typeof tagRoot?.querySelector === 'function' ? tagRoot.querySelector(s) : null);
+    const top = q('.hf-top'), dock = q('.hf-dock');
+    if (!top && !dock) return (shellB = null);
+    const vh = typeof innerHeight === 'number' ? innerHeight : H;
+    let dockTop = vh - 24;
+    for (const el of dock?.children || []) {
+      if (el.hidden || el.classList?.contains('is-hidden')) continue;
+      const r = el.getBoundingClientRect();
+      if (r.height) dockTop = Math.min(dockTop, r.top);
+    }
+    // (under the top bar and the subtitle band the shell keeps below it: clamp(0.17 H, 118, 156) px)
+    const tb = top?.getBoundingClientRect(), band = top ? Math.min(156, Math.max(118, vh * 0.17)) : 0;
+    shellB = { top: Math.max(Math.min(96, vh * 0.12), (tb?.bottom || 0) + band), bottom: dockTop - 10 };
+    return shellB;
+  }
 
   const ready = import('../mallows/thought/index.js').then(({ ThoughtLayer }) => {
     if (destroyed) return null;
-    const L = new ThoughtLayer({ ctx2d: g, tagRoot, keepOut, bounds, onRead: onReadThought || onRead, reducedMotion, lowStim, haptic, audio, textScale: textK });
+    const L = new ThoughtLayer({ ctx2d: g, tagRoot, keepOut, bounds: bounds || shellBounds, onRead: onReadThought || onRead, reducedMotion, lowStim, haptic, audio, textScale: textK });
     L.onChange = kick;
     layer = L;
     if (hide != null) L.hideTags(hide);
