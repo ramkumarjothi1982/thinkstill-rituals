@@ -235,8 +235,10 @@ export function create(E) {
     let n = 0;
     for (let i = 0; i <= nA; i++) { const a = lerp(a0, a1, i / nA); railX[n] = cx + Math.cos(a) * ar; railY[n] = ac + Math.sin(a) * ary; n++; }
     for (let i = 1; i <= nL; i++) { railX[n] = cx + side * ar; railY[n] = lerp(ac, yEnd, i / nL); n++; }
+    // the dome arc counts a little shorter than the drop to the shore, so most of the travel
+    // (and the notches) sit on the long pull down towards the sand
     railN = n; railC[0] = 0;
-    for (let i = 1; i < n; i++) railC[i] = railC[i - 1] + Math.hypot(railX[i] - railX[i - 1], railY[i] - railY[i - 1]);
+    for (let i = 1; i < n; i++) railC[i] = railC[i - 1] + Math.hypot(railX[i] - railX[i - 1], railY[i] - railY[i - 1]) * (i <= nA ? 0.65 : 1);
     railL = railC[n - 1] || 1;
   }
   /** point on the rail at lever position p (0..1), with the outward normal */
@@ -297,7 +299,7 @@ export function create(E) {
       sl.size = base * lerp(0.86, 1.12, invLerp(0.2, 0.74, sl.v));
       const { w, h } = sl.ph >= 0 ? photos.size(sl.ph, 'circle', sl.size) : { w: sl.size, h: sl.size };
       sl.w = w; sl.h = h * 0.94;    // a touch of perspective on the water
-      sl.slices = clamp(Math.round(h / 2.6), 16, 48);
+      sl.slices = clamp(Math.round(h / 2), 18, 56);
       const pw = Math.max(8, Math.ceil(w * DPR)), phh = Math.max(8, Math.ceil(h * DPR));
       if (sl.cClear && sl.pw === pw) continue;
       sl.pw = pw;
@@ -306,8 +308,13 @@ export function create(E) {
       a.setTransform(DPR, 0, 0, DPR, 0, 0); b.setTransform(DPR, 0, 0, DPR, 0, 0);
       if (sl.ph >= 0) {
         photos.draw(a, sl.ph, w / 2, h / 2, sl.size, { shape: 'circle', shadow: false });
-        photos.draw(b, sl.ph, w / 2, h / 2, sl.size, { shape: 'circle', shadow: false, blur: 1 });
-        photos.draw(b, sl.ph, w / 2, h / 2, sl.size, { shape: 'circle', shadow: false, tone: 'rain', toneMix: 1, alpha: 0.72 });
+        // the restless reflection: rain-toned and softened by a few offset passes (smooth on every browser)
+        const rr = Math.max(1.4, sl.size * 0.024);
+        photos.draw(b, sl.ph, w / 2, h / 2, sl.size, { shape: 'circle', shadow: false, tone: 'rain', toneMix: 1, alpha: 0.6 });
+        for (let k = 0; k < 6; k++) {
+          const an = (k / 6) * TAU + 0.3;
+          photos.draw(b, sl.ph, w / 2 + Math.cos(an) * rr, h / 2 + Math.sin(an) * rr * 0.6, sl.size * 0.985, { shape: 'circle', shadow: false, tone: 'rain', toneMix: 1, alpha: 0.24 });
+        }
       } else { paintStar(a, w, false); paintStar(b, w, true); }
       for (const c of [a, b]) {
         c.globalCompositeOperation = 'destination-out';
@@ -648,15 +655,17 @@ export function create(E) {
     if (la < 0.02) {
       g.globalAlpha = alpha; g.drawImage(sl.cClear, x - w / 2, top, w, h); g.globalAlpha = 1;
     } else {
-      const n = sl.slices, sh = h / n, sH = chh / n, shift = (6 * s + w * 0.05) * (heavy ? 0.8 : 1);
+      // thin slices with a smooth, slow displacement: water wavering, never a jagged mosaic
+      const n = sl.slices, sh = h / n, sH = chh / n, shift = (4.5 * s + w * 0.045) * (heavy ? 0.8 : 1);
       const m = clamp(la * 1.25);
       for (let i = 0; i < n; i++) {
         const yy = top + i * sh, a = clamp(ampAt(yy + sh / 2) * 1.1);
         const yn = i / n;
-        const off = a * shift * (Math.sin(yn * 5.4 + t * 2.0 * speedK + sl.ph0) + 0.3 * Math.sin(yn * 12 - t * 2.9 * speedK + sl.ph0 * 2));
-        const sx = x - w / 2 + off, sw = w * (1 + a * 0.03 * Math.sin(i * 1.7 + t * 1.3));
-        g.globalAlpha = alpha; g.drawImage(sl.cClear, 0, i * sH, cw, sH, sx, yy, sw, sh + 0.7);
-        if (m > 0.02) { g.globalAlpha = alpha * Math.min(1, m * (0.7 + 0.6 * a)); g.drawImage(sl.cStorm, 0, i * sH, cw, sH, sx, yy, sw, sh + 0.7); }
+        const off = a * shift * (Math.sin(yn * 3.3 + t * 1.7 * speedK + sl.ph0) + 0.22 * Math.sin(yn * 8 - t * 2.4 * speedK + sl.ph0 * 2));
+        const sw = w * (1 + a * 0.035 * Math.sin(yn * 2.6 + t * 1.1 + sl.ph0)), sx = x - sw / 2 + off;
+        const sa = m > 0.02 ? Math.min(1, m * (0.7 + 0.6 * a)) : 0;
+        if (sa < 0.97) { g.globalAlpha = alpha; g.drawImage(sl.cClear, 0, i * sH, cw, sH, sx, yy, sw, sh + 0.7); }
+        if (sa > 0) { g.globalAlpha = alpha * sa; g.drawImage(sl.cStorm, 0, i * sH, cw, sH, sx, yy, sw, sh + 0.7); }
       }
       g.globalAlpha = 1;
     }

@@ -602,21 +602,30 @@ export function create(E) {
       orb(g, c.x, c.y, rr, mix(mix(seedCol, '#ffffff', 0.15), '#ff8a3a', ember));
     }
   }
+  // how far a ray from (x, y) along (dx, dy) can run before leaving the stage
+  function room(x, y, dx, dy) {
+    let k = 1e4;
+    if (dx < -1e-4) k = Math.min(k, (x - X0) / -dx); else if (dx > 1e-4) k = Math.min(k, (X0 + W - x) / dx);
+    if (dy < -1e-4) k = Math.min(k, (y - Y0) / -dy); else if (dy > 1e-4) k = Math.min(k, (Y0 + H - y) / dy);
+    return Math.max(0, k);
+  }
   function drawMeteor(t, x, y, heat, lk) {
     const r = mz * 0.5 * lerp(1, 0.8, lk), hot = heat, fade = 1 - lk;
     const headCol = mix(coolSoft, HOT, hot), midCol = mix(coolCol, EMBER, hot), deepCol = mix(coolCol, RED, hot);
-    // tail: two tapered additive ribbons, length from heat and speed
-    const L = (r * (1.4 + 2.4 * hot) + Math.min(r * 3, spd * 0.3)) * fade;
+    // tail: three tapered additive ribbons; long and ember-hot at first, shorter and
+    // palette-cool as it glides (speed stretches it); never leaves the stage
+    const L = Math.min((r * (1.7 + 2.5 * hot) + Math.min(r * 3, spd * 0.35)) * fade, room(x, y, -tdx, -tdy) * 0.96);
     if (L > 2) {
       const pxn = -tdy, pyn = tdx;
-      const wig = reduced ? 0 : Math.sin(t * 3.1) * r * 0.22 * (0.4 + hot);
+      const wig = reduced ? 0 : Math.sin(t * 3.1) * r * 0.2 * (0.4 + hot);
       g.save(); g.globalCompositeOperation = 'lighter';
-      for (let layer = 0; layer < 2; layer++) {
-        const wd = r * (layer ? 0.5 : 0.92), LL = L * (layer ? 0.62 : 1);
+      for (let layer = 0; layer < 3; layer++) {
+        const wd = r * (layer === 0 ? 0.95 : layer === 1 ? 0.55 : 0.2), LL = L * (layer === 0 ? 1 : layer === 1 ? 0.66 : 0.42);
         const ex = x - tdx * LL + pxn * wig, ey = y - tdy * LL + pyn * wig;
         const lg = g.createLinearGradient(x, y, ex, ey);
-        lg.addColorStop(0, rgba(layer ? headCol : midCol, (layer ? 0.85 : 0.5) * fade));
-        lg.addColorStop(0.45, rgba(layer ? midCol : deepCol, (layer ? 0.3 : 0.16) * fade));
+        if (layer === 0) { lg.addColorStop(0, rgba(midCol, 0.6 * fade)); lg.addColorStop(0.45, rgba(deepCol, 0.2 * fade)); }
+        else if (layer === 1) { lg.addColorStop(0, rgba(headCol, 0.9 * fade)); lg.addColorStop(0.45, rgba(midCol, 0.34 * fade)); }
+        else { lg.addColorStop(0, rgba('#ffffff', (0.4 + 0.4 * hot) * fade)); lg.addColorStop(0.5, rgba(headCol, 0.2 * fade)); }
         lg.addColorStop(1, rgba(deepCol, 0));
         g.fillStyle = lg; g.beginPath();
         g.moveTo(x + pxn * wd, y + pyn * wd);
@@ -635,8 +644,10 @@ export function create(E) {
     // body
     const alpha = 1 - lk;
     if (hero >= 0) {
-      photos.draw(g, hero, x, y, r * 2, { shape: 'circle', tone: 'ember', toneMix: hot * 0.85, glow: 0.3 + 0.45 * hot, glowColour: midCol, rot: Math.sin(t * 0.6) * 0.06, alpha, shadow: false });
-      glow(g, x + tdx * r * 0.3, y + tdy * r * 0.3, r * 1.05, '#ff6a2a', 0.3 * hot * alpha);
+      // the photo is the core, inside an ember crust that cools and flakes back as it glides
+      photos.draw(g, hero, x, y, r * 1.86, { shape: 'circle', tone: 'ember', toneMix: hot * 0.85, glow: 0.25 + 0.4 * hot, glowColour: midCol, rot: Math.sin(t * 0.6) * 0.05, alpha, shadow: false });
+      drawCrust(x, y, r, hot, alpha);
+      glow(g, x + tdx * r * 0.3, y + tdy * r * 0.3, r * 1.05, '#ff6a2a', 0.26 * hot * alpha);
     } else {
       g.save(); g.globalAlpha = alpha;
       const lx = x + tdx * r * 0.35, ly = y + tdy * r * 0.35;
@@ -656,6 +667,29 @@ export function create(E) {
     const fa = Math.atan2(tdy, tdx);
     g.strokeStyle = rgba(headCol, 0.5); g.lineWidth = Math.max(1.5, r * 0.08); g.beginPath(); g.arc(x, y, r * 0.97, fa - 1.1, fa + 1.1); g.stroke();
     g.fillStyle = 'rgba(255,255,255,0.14)'; g.beginPath(); g.ellipse(x - r * 0.32, y - r * 0.42, r * 0.34, r * 0.15, -0.5, 0, TAU); g.fill();
+    g.restore();
+  }
+  // a ring of smouldering crust around the photo core: craggy and seamed with
+  // ember light while hot, a thin cool stone rim (the seed's shell) once cooled
+  function drawCrust(x, y, r, hot, alpha) {
+    const ck = 0.18 + 0.82 * hot;
+    for (let i = 0; i < JAG; i++) { const ri = 0.9 - (0.03 + 0.13 * jag[i]) * ck; jx[i] = jc[i] * ri; jy[i] = js[i] * ri; }
+    g.save(); g.globalAlpha = alpha; g.translate(x, y); g.rotate(spin * 0.5); g.scale(r, r);
+    g.beginPath(); g.arc(0, 0, 1, 0, TAU);
+    g.moveTo(jx[0], jy[0]); for (let i = JAG - 1; i > 0; i--) g.lineTo(jx[i], jy[i]); g.closePath();
+    g.fillStyle = gCrust; g.fill('evenodd');
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    g.globalCompositeOperation = 'lighter';
+    // seams: the glowing inner edge where crust meets the core, and cracks across the ring
+    g.beginPath(); g.moveTo(jx[0], jy[0]); for (let i = 1; i < JAG; i++) g.lineTo(jx[i], jy[i]); g.closePath();
+    g.strokeStyle = rgba(mix(coolSoft, '#ffb050', hot), 0.2 + 0.6 * hot); g.lineWidth = 2.2 / r; g.stroke();
+    if (hot > 0.04) {
+      g.beginPath();
+      for (let i = 1; i < JAG; i += 4) { g.moveTo(jx[i], jy[i]); g.lineTo(jc[i] * 0.97 + js[i] * 0.05, js[i] * 0.97 - jc[i] * 0.05); }
+      g.strokeStyle = rgba('#ffb45a', 0.7 * hot); g.lineWidth = 1.6 / r; g.stroke();
+    }
+    g.strokeStyle = rgba('#ffffff', 0.22); g.lineWidth = 1.2 / r;
+    g.beginPath(); g.arc(0, 0, 0.985, Math.PI * 1.05 - spin * 0.5, Math.PI * 1.6 - spin * 0.5); g.stroke();
     g.restore();
   }
   function seedGeom() { sg.sh = mz * 0.86; sg.sw = sg.sh * 0.8; sg.sx = padX; sg.sy = padY - sg.sh * 0.36; return sg; }

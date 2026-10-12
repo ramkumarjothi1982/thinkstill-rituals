@@ -17,9 +17,14 @@
 // finger lifted, that cell settles and stays relaxed.
 //
 // Photos are silk-screen prints on the fabric (warped with it through
-// horizontal slices). They start creased and storm- or mist-toned; each print
-// smooths out and softens back to its own colours as the woven line relaxes
-// the silk near it. The person's words are embroidered on a satin label woven
+// horizontal slices): one photo is framed by a U-shaped route; several sit as
+// quilt squares on whole grid cells and the route runs down a seam and along
+// the hem between them, so the thread never crosses a print. They start
+// creased and storm- or mist-toned; each print smooths out and softens back
+// to its own colours as the woven line relaxes the silk near it. With no
+// photos (and no Mallow cards) the silk carries a printed moon instead.
+// Every round's thread stays faintly embroidered in the silk for later
+// Keep-playing rounds, so the tapestry grows the longer you play. The person's words are embroidered on a satin label woven
 // into the silk — rippled while the silk is tense, lying smooth as it relaxes.
 
 import { TAU, clamp, lerp, invLerp, smooth, ease, rgba, mix, hex, glow, orb, roundRect, wrap, FONT, canvas as makeCanvas, motes, noise2 } from '../fx.js';
@@ -36,9 +41,9 @@ export const meta = {
   tapAlt: 'each press weaves the thread one soft step along the silk',
   words: 'Your words are embroidered on a satin label woven into the silk — rippled at first, lying smooth and clear as the silk relaxes.',
   photos: {
-    where: 'Your photos are printed on the silk itself.',
+    where: 'Your photos are printed on the silk itself, like the squares of a soft quilt.',
     becomes: 'soft silk-screen prints',
-    touch: 'Your woven line relaxes the fabric around them as it passes;',
+    touch: 'Your woven thread runs around and between them — never across them — relaxing the fabric as it passes;',
     change: 'each print smooths out, its creases settle and its own colours softly return.',
     payoff: 'At the end the whole silk lies smooth and glowing, your prints calm and clear.',
   },
@@ -192,9 +197,18 @@ export function create(E) {
   }
 
   let printBox = [0.36, 0.34, C - 0.36, 6];  // where the prints sit (grid units), set with the route
+  let quilt = null;                           // several photos: blocks of whole cells, seams on grid lines
+  function quiltLayout(Rw) {
+    if (n < 2 || Rw < 5) return null;
+    const [bc, br] = n === 2 ? [2, 1] : n <= 4 ? [2, 2] : n <= 6 ? [3, 2] : [3, 3];
+    const bh = Math.floor((Rw - 1) / br);
+    if (bh < 2) return null;
+    return { bc, br, bw: C / bc, bh, Hb: bh * br };
+  }
   function buildPath() {
     const Rw = R - 1;                    // the bottom row carries the woven label
     let k1, k2, k3, way = [], s0, F;
+    quilt = null;
     const mir = (q) => { if (pv.m) q[0] = C - q[0]; return q; };
     if (!n && Rw >= 5) {
       // no photos: a zigzag right across the printed moon
@@ -203,8 +217,20 @@ export function create(E) {
       const y2 = clamp(Math.round((y1 + y3) / 2 + (pv.j < 0.33 ? -0.6 : pv.j > 0.66 ? 0.6 : 0)), y1 + 1, y3 - 1);
       k1 = mir([x1, y1]); k2 = mir([x2, y2]); k3 = mir([x3, y3]);
       printBox = [0.36, 0.34, C - 0.36, Rw - 0.18];
+    } else if ((quilt = quiltLayout(Rw))) {
+      // several photos: quilt squares on the grid; the thread runs down a seam between them,
+      // through the intersections where the squares meet, then along the hem (never across a print)
+      const Q = quilt, gxs = Q.bc === 2 ? [3] : [2, 4];
+      let gx = gxs[Math.floor(pv.b * gxs.length) % gxs.length];
+      let dir = gx < C / 2 ? 1 : gx > C / 2 ? -1 : pv.c < 0.5 ? 1 : -1;
+      if (pv.m) { gx = C - gx; dir = -dir; }
+      const Hb = Q.Hb, y1 = Q.br >= 2 ? Hb - Q.bh : Math.round(Hb / 2), x3 = clamp(gx + dir * 2, 1, C - 1);
+      k1 = [gx, y1]; k2 = [gx, Hb]; k3 = [x3, Hb];
+      s0 = [gx, 0.38];
+      way = [[gx, (0.38 + y1) / 2], [gx, Hb - 0.42], [gx + dir * 0.42, Hb]];
+      F = [x3 + dir * 0.5, Hb + 0.5];
     } else if (Rw >= 5) {
-      // photos: the thread frames the prints — down one side, along the foot, up the other — never across a face
+      // one photo: the thread frames the print — down one side, along the foot, up the other — never across a face
       const ya = clamp(pv.a < 0.5 ? 2 : pv.a < 0.8 ? 3 : 1, 1, Rw - 3), yb = clamp(pv.c < 0.6 ? 2 : pv.c < 0.85 ? 1 : 3, 1, Rw - 3);
       const xm = pv.b < 0.34 ? 3 : pv.b < 0.67 ? 2 : 4, yf = Rw - 1;
       k1 = mir([1, ya]); k2 = mir([xm, yf]); k3 = mir([C - 1, yb]);
@@ -232,7 +258,7 @@ export function create(E) {
     }
     if (!F) { const fxs = Math.sign(k3[0] - k2[0]) || 1, fys = Math.sign(k3[1] - k2[1]) || 1; F = [k3[0] + fxs * 0.5, k3[1] + fys * 0.5]; }
     fcx = clamp(Math.floor(F[0]), 0, C - 1); fcy = clamp(Math.floor(F[1]), 0, Rw - 1);
-    const ctrl = way.length ? [s0, k1, way[0], k2, way[1], k3, F] : [s0, k1, k2, k3, F];
+    const ctrl = quilt ? [s0, way[0], k1, way[1], k2, way[2], k3, F] : way.length ? [s0, k1, way[0], k2, way[1], k3, F] : [s0, k1, k2, k3, F];
     routeCtrl = ctrl.map((q) => [q[0], q[1]]);
     const P = ctrl.map(([x, y]) => [sx0 + x * cell, sy0 + y * cell]);
     const dense = catmull(P, 30);
@@ -276,11 +302,19 @@ export function create(E) {
   function buildPrints(old) {
     prints = [];
     if (!n) return;
+    if (quilt) {
+      const { bc, br, bw, bh } = quilt, inset = 0.2, keep = n;
+      let k = 0;
+      for (let bj = 0; bj < br; bj++) for (let bi = 0; bi < bc; bi++) {
+        if (k >= keep) continue;                    // spare squares stay plain silk
+        const bx = pv.m ? bc - 1 - bi : bi;
+        const x = sx0 + (bx + 0.5) * bw * cell, y = sy0 + (bj + 0.5) * bh * cell;
+        prints.push(mkPrint(old, k++, x, y, (bw - inset * 2) * cell, (bh - inset * 2) * cell, 'card'));
+      }
+      return;
+    }
     const ax = sx0 + printBox[0] * cell, ay = sy0 + printBox[1] * cell, aw = (printBox[2] - printBox[0]) * cell, ah = (printBox[3] - printBox[1]) * cell;
-    const mk = (k, x, y, bw, bh, shape) => {
-      const ph = (k + E.round - 1) % n, a = photos.size(ph, shape, 100);
-      return { ph, x, y, size: 100 * Math.min(bw / a.w, bh / a.h), shape, s: nearestS(x, y), relax: old?.[k]?.relax ?? E.calm * 0.6, painted: -1, cp: old?.[k]?.cp ?? false };
-    };
+    const mk = (k, x, y, bw, bh, shape) => mkPrint(old, k, x, y, bw, bh, shape);
     if (n === 1) { prints.push(mk(0, ax + aw / 2, ay + ah / 2, aw * 0.98, ah * 0.98, 'natural')); return; }
     let best = null;
     for (let cols = 1; cols <= n; cols++) {
@@ -294,6 +328,10 @@ export function create(E) {
     }
   }
 
+  function mkPrint(old, k, x, y, bw, bh, shape) {
+    const ph = (k + E.round - 1) % n, a = photos.size(ph, shape, 100), size = 100 * Math.min(bw / a.w, bh / a.h);
+    return { ph, x, y, size, w: (a.w * size) / 100, h: (a.h * size) / 100, shape, s: nearestS(x, y), relax: old?.[k]?.relax ?? E.calm * 0.6, painted: -1, cp: old?.[k]?.cp ?? false };
+  }
   function buildMaps() {
     SWm = 64; SHm = Math.max(12, Math.round(SWm * sh / sw));
     if (!sheenC || sheenC.width !== SWm || sheenC.height !== SHm) {
@@ -1220,7 +1258,7 @@ export function create(E) {
         const x = sx0 + (i + 0.5) * cell, y = sy0 + (j + 0.5) * cell;
         let d = Math.hypot(x - (sx0 + (fcx + 0.5) * cell), y - (sy0 + (fcy + 0.5) * cell));
         for (let k = 0; k < NS; k += 4) d = Math.min(d, Math.hypot(x - pts[k][0], y - pts[k][1]));
-        const inPrint = n && i + 0.5 > printBox[0] && i + 0.5 < printBox[2] && j + 0.5 > printBox[1] && j + 0.5 < printBox[3];
+        const inPrint = prints.some((pr) => Math.abs(x - pr.x) < pr.w / 2 + cell * 0.25 && Math.abs(y - pr.y) < pr.h / 2 + cell * 0.25);
         const sc = d - (inPrint ? cell * 3 : 0);
         if (sc > bd) { bd = sc; twistCX = x; twistCY = y; }
       }
