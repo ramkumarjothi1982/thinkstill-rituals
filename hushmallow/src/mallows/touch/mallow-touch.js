@@ -407,7 +407,10 @@ export class MallowTouch {
       set(vis);
     };
     const blur = () => set(false);
-    const key = (e) => { if (!this._focusVisible && e.key !== 'Shift' && document.activeElement === this.root) set(true); };
+    // only the keys the Mallow answers to (Tab focus is :focus-visible above); a
+    // modifier held for a trackpad pinch or a shortcut is not keyboard use
+    const KEYS = ['Enter', ' ', 'Spacebar', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
+    const key = (e) => { if (!this._focusVisible && KEYS.includes(e.key) && !e.ctrlKey && !e.metaKey && document.activeElement === this.root) set(true); };
     const press = () => { this._pointerT = nowMs(); if (this._focusVisible) set(false); };
     const R = this.root;
     R.addEventListener('focus', focus);

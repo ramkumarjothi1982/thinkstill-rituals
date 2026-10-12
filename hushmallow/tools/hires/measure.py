@@ -74,6 +74,49 @@ def lum(rgb):
     return rgb[..., 0] * 0.299 + rgb[..., 1] * 0.587 + rgb[..., 2] * 0.114
 
 
+def hexc(c):
+    return '#%02x%02x%02x' % tuple(int(round(float(v))) for v in np.clip(c, 0, 255))
+
+
+def stroke_paint(A, mask, p0, c, p1):
+    """A painted stroke's visible width (full width at half depth of the
+    darkness profile across its middle 60%, which the dark-core threshold of
+    measure_stroke under-reads by ~2-3 px) and its ink (median colour of
+    the stroke's core)."""
+    p0, c, p1 = map(np.asarray, (p0, c, p1))
+    t = np.linspace(0, 1, 200)[:, None]
+    pts = (1 - t) ** 2 * p0 + 2 * (1 - t) * t * c + t * t * p1
+    widths = []
+    ss = np.arange(-40, 40, 0.5)
+    for k in range(60, 140, 8):
+        p = pts[k]
+        d = pts[k + 1] - pts[k - 1]
+        nrm = np.array([-d[1], d[0]]) / np.hypot(*d)
+        xs = (p[0] + ss * nrm[0]).astype(np.float32)
+        ys = (p[1] + ss * nrm[1]).astype(np.float32)
+        prof = cv2.remap(A.L.astype(np.float32), xs[None], ys[None], cv2.INTER_LINEAR)[0]
+        body = np.median(np.r_[prof[:10], prof[-10:]])
+        widths.append((prof < (prof.min() + body) / 2).sum() * 0.5)
+    core = cv2.erode(mask.astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool)
+    return float(np.median(widths)), hexc(np.median(A.rgb[core], axis=0))
+
+
+def mouth_paint(A, lm):
+    """Painted open-mouth colours, sampled where the rig paints the same
+    thing: the interior's lit centre above the tongue (the rig's gradient
+    ends there in `inside`), and the tongue's centre without its highlight
+    (the rig's tongue gradient is +18% at the centre, +9% on average)."""
+    xc, W, Hm = (lm['xl'] + lm['xr']) / 2, lm['xr'] - lm['xl'], lm['bottom'] - lm['lip']
+    yy, xx = np.mgrid[0:A.shape[0], 0:A.shape[1]]
+    ins = np.zeros(A.shape, bool)
+    for cx, cy, r in ((xc - 0.24 * W, lm['lip'] + 0.22 * Hm, 0.045 * W), (xc + 0.24 * W, lm['lip'] + 0.22 * Hm, 0.045 * W),
+                      (xc, lm['lip'] + 0.16 * Hm, 0.04 * W)):
+        ins |= np.hypot(xx - cx, yy - cy) < r
+    ton = (np.hypot(xx - xc, yy - (lm['bottom'] - 0.25 * Hm)) < 0.07 * W) & (A.L < 225)
+    tc = np.median(A.rgb[ton], axis=0)
+    return {'inside': hexc(np.median(A.rgb[ins], axis=0)), 'tongue': hexc((tc - 0.09 * 255) / 0.91)}
+
+
 def bbox(mask):
     ys, xs = np.nonzero(mask)
     return [int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1]
@@ -686,7 +729,8 @@ def measure(name):
         e_old, e_new = f['eyes'][s], feats['eye' + s]
         if b['alpha'] > 0 and name != 'loomi':
             st = measure_stroke(A, [b['p0'], b['c'], b['p1']], margin=0.04 * W)
-            feats['brow' + s] = dict(b, p0=st['p0'], c=st['ctrl'], p1=st['p1'], lw=st['width'])
+            fwhm, ink = stroke_paint(A, st['mask'], st['p0'], st['ctrl'], st['p1'])
+            feats['brow' + s] = dict(b, p0=st['p0'], c=st['ctrl'], p1=st['p1'], lw=st['width'], lw_paint=fwhm, ink_paint=ink)
             masks['brow' + s] = st['mask']
         else:
             # no painted brow: keep the old placement relative to the eye
@@ -716,6 +760,7 @@ def measure(name):
         out['scores']['mouth_iou_fit'] = sc
         out['mouth_iou_fit'] = rnd(M1, 2)
         if name in MOUTH_LANDMARKS:
+            out['mouthPaint'] = mouth_paint(A, MOUTH_LANDMARKS[name])
             M1 = mouth_from_landmarks(M1, P, MOUTH_LANDMARKS[name])
             g = G.mouth_geom(M1, P)
             sc = iou(poly_mask(A.shape, np.vstack([g['upper'], g['lower']])), target)

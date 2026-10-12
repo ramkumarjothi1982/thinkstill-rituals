@@ -10,7 +10,7 @@
   --ink-1: #141130;
   --ink-2: #1e1a44;
   --ink-3: #2a2560;
-  --glass: rgba(20, 16, 48, 0.58);
+  --glass: rgba(20, 16, 48, 0.64);   /* ≥4.5:1 for 15px chip text over the brightest realm (Sunpop) */
   --glass-strong: rgba(16, 12, 40, 0.82);
   --line: rgba(255, 255, 255, 0.09);
   --line-strong: rgba(255, 255, 255, 0.18);

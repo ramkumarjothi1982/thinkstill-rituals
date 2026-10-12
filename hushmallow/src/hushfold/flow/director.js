@@ -19,6 +19,7 @@
 
 import { createCompositor } from './compositor.js';
 import { createVelocity } from './velocity.js';
+import { addTicker, removeTicker } from '../../mallows/rig.js';
 import { registry as defaultRegistry, fitScore, hash01 } from './registry.js';
 import { saveProgress, loadProgress, clearProgress, favouriteWorlds, toggleFavouriteWorld } from '../../engine/flow-store.js';
 
@@ -52,9 +53,12 @@ function memoryStore() { const m = new Map(); return { get: (k, d = null) => (m.
 export function createHushflow(opts = {}) {
   const {
     app = null, worldEl, fxEl, mallow = null, subtitles = null, photos = null, words = null, prefs = null,
-    registry = defaultRegistry, ticker = null, safeRect = null, quality = 'auto', debug = false,
+    registry = defaultRegistry, safeRect = null, quality = 'auto', debug = false,
   } = opts;
-  let thought = opts.thought ?? opts.thoughts?.primary ?? null;
+  // one frame loop: the Mallow rig's shared loop (rigs first, then the world sees this frame's face);
+  // { ticker: false } runs the director's own requestAnimationFrame instead (standalone pages)
+  const ticker = opts.ticker === false ? null : (opts.ticker?.add ? opts.ticker : { add: addTicker, remove: removeTicker });
+  let thought = opts.thought ?? null;
   const kv = opts.store && typeof opts.store.get === 'function' ? opts.store : memoryStore();
   const audio = opts.audio ?? app?.audio ?? null;
   const hapticFn = opts.haptic ?? app?.haptic ?? null;

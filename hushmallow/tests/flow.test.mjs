@@ -11,6 +11,7 @@ import { WORLDS, REQUIRED_FIELDS, STATUS, createRegistry, selectNext, fitScore, 
 import { createSlowingDetector, createStillnessDetector, createSettleDetector, createPace, slowness, PACE } from '../src/hushfold/flow/discovery.js';
 import { ChargeField, FIELD, gridFor } from '../src/hushfold/flow/worlds/storm-field.js';
 import { createRealmCore, REALM_HORIZON, REALMS, resolveRealmId } from '../src/world/realm.js';
+import { createVelocity, VELOCITY } from '../src/hushfold/flow/velocity.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const DT = 1 / 60;
@@ -225,6 +226,122 @@ test('pace: slowness bands, stillness after 0.6 s, calibration only ever lowers 
   assert.equal(r.still, true);
   assert.equal(still.update(DT, true, 2000).band, 'fast');
   assert.ok(PACE.mouse.fastU > PACE.touch.fastU, 'mice have their own constants');
+});
+
+// ------------------------------------------------------- pointer speed --
+// paths: distance travelled d (px) → position
+const zigPath = (A) => (d) => { const k = Math.floor(d / (2 * A)), u = (d % (2 * A)) / (2 * A); return [200 + (k % 2 ? A - u * 2 * A : -A + u * 2 * A), 400]; };
+const circlePath = (R) => (d) => [200 + Math.cos(d / R) * R, 400 + Math.sin(d / R) * R];
+const linePath = (d) => [20 + d, 400];
+/** Median smoothed speed over the last 1.5 s of a 2 s gesture at a true speed. */
+function seen(path, speed, hz) {
+  const v = createVelocity();
+  v.reset(...path(0), 0);
+  const out = [];
+  for (let i = 1; i <= 2 * hz; i++) { const t = i / hz; out.push(v.sample(...path(t * speed), t)); }
+  const tail = out.slice(Math.floor(hz / 2)).sort((a, b) => a - b);
+  return tail[tail.length >> 1];
+}
+
+test('speed: scribbles, zigzags and circles read at their true speed (path length, scalar EMA), 60 and 120 Hz', () => {
+  const U = 390, fast = PACE.touch.fastU * U;
+  const cases = [['scribble ±60 px', zigPath(60), 1500], ['scribble ±40 px', zigPath(40), 1200], ['zigzag ±105 px', zigPath(105), 1400],
+    ['circles r 60', circlePath(60), 1400], ['circles r 120', circlePath(120), 1400], ['straight line', linePath, 1400]];
+  for (const hz of [60, 120]) {
+    for (const [name, path, v] of cases) {
+      const s = seen(path, v, hz);
+      assert.ok(s >= 0.85 * v && s <= 1.05 * v, `${name} at ${hz} Hz: true ${v} px/s, seen ${Math.round(s)}`);
+      assert.ok(s > fast, `${name} at ${hz} Hz counts as fast (${Math.round(s)} > ${Math.round(fast)})`);
+    }
+    for (const v of [50, 130, 220]) {
+      const s = seen(linePath, v, hz);
+      assert.ok(Math.abs(s - v) < 0.05 * v, `a slow stroke at ${v} px/s reads ${Math.round(s)}`);
+      assert.ok(slowness(s, U) > 0.05, `${v} px/s is in the slow band`);
+    }
+  }
+});
+
+test('speed: touch jitter on a resting finger is not movement; the direction vector is separate from speed', () => {
+  const v = createVelocity();
+  v.reset(100, 100, 0);
+  let r = 7;
+  const jit = () => { r = (r * 16807) % 2147483647; return (r / 2147483647 - 0.5) * 1.6; };
+  for (let i = 1; i <= 240; i++) v.sample(100 + jit(), 100 + jit(), i / 120);
+  assert.ok(v.speed < PACE.touch.stillU * 390, `±0.8 px jitter reads ${v.speed.toFixed(1)} px/s`);
+  // a scribble: big path speed, small net velocity (it goes nowhere)
+  const w = createVelocity(); const path = zigPath(60);
+  w.reset(...path(0), 0);
+  for (let i = 1; i <= 240; i++) w.sample(...path((i / 120) * 1500), i / 120);
+  assert.ok(w.speed > 1200 && Math.hypot(w.vx, w.vy) < 0.4 * w.speed, `speed ${Math.round(w.speed)}, |v| ${Math.round(Math.hypot(w.vx, w.vy))}`);
+  // a straight stroke: the vector points along it
+  const l = createVelocity(); l.reset(0, 0, 0);
+  for (let i = 1; i <= 60; i++) l.sample(i * 10, 0, i / 120);
+  assert.ok(l.vx > 1100 && Math.abs(l.vy) < 1, 'direction of travel');
+});
+
+test('speed: a finger that stops sending events slows to still (stale after its usual gap, τ 0.12 s)', () => {
+  const U = 390;
+  const v = createVelocity();
+  v.reset(40, 400, 0);
+  for (let i = 1; i <= 24; i++) v.sample(40 + i * 12.5, 400, i / 120);     // 0.2 s at 1500 px/s
+  assert.ok(v.speed > 1000);
+  assert.equal(v.idle(1 / 60, 0.03), false, 'a normal gap between events is not a stop');
+  let quiet = 0;
+  for (let f = 0; f < 60; f++) { quiet += 1 / 60; v.idle(1 / 60, quiet); }
+  assert.ok(v.speed < PACE.touch.stillU * U, `1 s without events → ${v.speed.toFixed(2)} px/s`);
+  // a slow event stream (8 Hz) is not mistaken for stopping between its events
+  const slow = createVelocity(); slow.reset(0, 0, 0);
+  for (let i = 1; i <= 16; i++) slow.sample(i * 40, 0, i / 8);
+  assert.ok(slow.staleSec > 0.15 && slow.staleSec <= VELOCITY.STALE_MAX_SEC, `stale after ${slow.staleSec.toFixed(3)} s at 8 Hz`);
+  assert.equal(slow.idle(1 / 60, 0.1), false);
+});
+
+/**
+ * The pure pipeline the director and the storm run each frame: 120 Hz events → speed →
+ * pace band → 'slowing' detector. phases: { sec, path?(d), speed?, down? (default true), drain? }.
+ */
+function play(phases, U = 390) {
+  const v = createVelocity(), pace = createPace({ U }), det = createSlowingDetector({ drainScale: 8 });
+  let light = 0, ev = null, t = 0, quiet = 0, wasDown = false, d = 0, last = null;
+  const bands = [];
+  for (const ph of phases) {
+    const down = ph.down ?? true;
+    d = 0;
+    for (let s = 0; s < ph.sec - 1e-9; s += DT) {
+      if (down && !wasDown) { const p0 = (ph.path || linePath)(0); v.reset(p0[0], p0[1], t); quiet = 0; }
+      if (down && ph.path) {
+        for (const h of [0.5, 1]) { d += ph.speed * DT / 2; const p = ph.path(d); v.sample(p[0], p[1], t + h * DT); }
+        quiet = 0;
+      } else quiet += DT;
+      v.idle(DT, quiet);
+      wasDown = down;
+      t += DT;
+      const b = pace.update(DT, down, down ? v.speed : 0);
+      light += (ph.drain || 0) * DT;
+      last = b.band; bands.push(b.band);
+      const e = det.update(DT, { down, fast: b.fast, s: b.s, Q: 0.9, light });
+      if (e && !ev) ev = { ...e, t };
+    }
+  }
+  return { ev, det, last, bands, v };
+}
+
+test('slowing: a real fast scribble arms it and a slow stroke afterwards fires it', () => {
+  const r = play([{ sec: 1.6, path: zigPath(60), speed: 1500 }, { sec: 2.6, path: linePath, speed: 100, drain: 5 }]);
+  assert.ok(r.ev, 'fires');
+  assert.ok(r.ev.evidence.fastMs >= 1000 && r.ev.evidence.slowMs >= 1800, JSON.stringify(r.ev.evidence));
+  assert.ok(r.bands.slice(10, 90).filter((b) => b === 'fast').length > 70, 'the scribble is fast nearly all the time');
+});
+
+test('slowing: time spent resting after a short fast moment never arms it (no events while resting)', () => {
+  // 0.2 s fast, then the finger rests with no events for 3 s, then a long slow stroke that drains
+  const r = play([{ sec: 0.2, path: linePath, speed: 1500 }, { sec: 3 }, { sec: 3, path: linePath, speed: 100, drain: 5 }]);
+  assert.equal(r.ev, null, 'the line would not be true');
+  assert.equal(r.det.state, 'idle');
+  // and the resting finger reads as still
+  const rest = play([{ sec: 0.4, path: zigPath(60), speed: 1500 }, { sec: 1.2 }]);
+  assert.equal(rest.last, 'still', 'a stopped finger is still');
+  assert.ok(rest.v.speed < PACE.touch.stillU * 390);
 });
 
 // --------------------------------------------------------- charge field --
