@@ -9,11 +9,11 @@ import { BUILT } from './engines/index.js';
 const GROUP_FAMILY = {
   'Arousal downshift': 'regulation', 'Gentle paced breathing': 'breath', 'Tension release': 'regulation', 'Muscle relaxation': 'regulation',
   'Sensory grounding': 'grounding', 'Multisensory orientation': 'grounding', 'Selective attention': 'attention-shift',
-  'Affect labeling': 'reflection', 'Mixed-affect labeling': 'reflection', 'Interoceptive noticing': 'sensory', 'Urge surfing': 'regulation',
+  'Affect labelling': 'reflection', 'Mixed-affect labelling': 'reflection', 'Interoceptive noticing': 'sensory', 'Urge surfing': 'regulation',
   'Response pause': 'regulation', Defusion: 'acceptance', Decentring: 'acceptance', Acceptance: 'acceptance', 'Dialectical acceptance': 'acceptance',
   'Values-guided action': 'problem-solving', 'Control focus': 'problem-solving', 'Problem solving': 'problem-solving',
   'Behavioural activation': 'confidence', 'Worry postponement': 'regulation', 'Externalising concerns': 'release',
-  'Brief expressive labeling': 'release', 'Self-compassion': 'self-compassion', 'Compassionate self-talk': 'self-compassion',
+  'Brief expressive labelling': 'release', 'Self-compassion': 'self-compassion', 'Compassionate self-talk': 'self-compassion',
   'Gentle mindful movement': 'grounding', 'Single-task attention': 'attention-shift', 'Present orientation': 'grounding',
   'Auditory mindfulness': 'sensory', 'Tactile mindfulness': 'sensory', 'Mindful movement': 'grounding',
   'Emotional needs identification': 'reflection', 'Assertive communication': 'boundaries', 'Repair after misstep': 'relationship',

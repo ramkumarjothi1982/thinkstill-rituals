@@ -103,7 +103,7 @@ export default function home(app, params = {}) {
         say(world, m.voice.hello[Math.floor(Math.random() * m.voice.hello.length)], { who: m.name, ms: 3000 });
       }
     },
-    leave() { clearBubble(); },
+    leave() { clearBubble(); panel?.destroy?.(); },
   };
 }
 

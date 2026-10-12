@@ -28,13 +28,15 @@ export const meta = {
   finaleSec: 4,
 };
 
-const START = -Math.PI / 6;          // the notch starts at two o'clock
 const TURN = TAU * 1.25;             // anticlockwise travel to the win
 const ARC_W = 0.34;                  // half-width of the quiet blue arc (rad)
 
 export function create(E) {
   const { g, stage, photos, words } = E;
   const nz = noise2(E.seed + 11);
+  // round 1: the notch starts at two o'clock; loop rounds start it somewhere new
+  const START = E.round === 1 ? -Math.PI / 6 : -Math.PI / 6 + (Math.floor(E.rand() * 8) - 3.5) * (TAU / 12);
+  const warm0 = E.calm;               // later loop rounds start cooler
   const reduced = E.reduced;
   let R, cx, cy;
   const fit = () => { R = Math.min(stage.w * 0.43, stage.h * 0.4); cx = stage.cx; cy = stage.cy + stage.h * 0.02; };
@@ -55,11 +57,12 @@ export function create(E) {
   const tracker = new AngleTracker();
   const arcCentre = START - TURN;    // where the notch ends (fixed in space)
 
-  const sparks = Array.from({ length: reduced ? 16 : 34 }, (_, i) => ({ a: (i / 34) * TAU + E.rand() * 0.3, m: 0.7 + E.rand() * 0.6, r: 0.92 + E.rand() * 0.07 }));
+  const sparks = Array.from({ length: Math.round((reduced ? 16 : 34) * (1 - E.calm * 0.5)) }, (_, i) => ({ a: (i / 34) * TAU + E.rand() * 0.3, m: 0.7 + E.rand() * 0.6, r: 0.92 + E.rand() * 0.07 }));
   // medallion slots: photos evenly spread, embers in between
   const n = photos.n, K = Math.max(6, n);
   const slot = Array.from({ length: K }, () => -1);
-  if (n) for (let j = 0; j < n; j++) slot[Math.round((j * K) / n) % K] = j;
+  const shift = E.round > 1 ? Math.floor(E.rand() * K) : 0;
+  if (n) for (let j = 0; j < n; j++) slot[(Math.round((j * K) / n) + shift) % K] = (j + E.round - 1) % n;
   const meds = slot.map((ph, i) => ({ ph, base: (i / K) * TAU - Math.PI / 2, cool: 0, cooling: false, done: false, lift: 0 }));
 
   const progress = () => clamp(rot / TURN);
@@ -83,7 +86,7 @@ export function create(E) {
     if (wanted > rot + 0.18) wanted = rot + 0.18;
     shownRot = lerp(shownRot, rot, 1 - Math.exp(-dt * 14));
     if (!drag) rush = Math.max(0, rush - dt * 1.5);
-    const prog = clamp(shownRot / TURN), calm = smooth(prog);
+    const prog = clamp(shownRot / TURN), calm = Math.max(warm0, smooth(prog));
     // tick sound + haptic every ~12° of real rotation
     if (Math.abs(rot - lastTick) > 0.21) { lastTick = rot; E.sound('rotate-tick', { pitch: lerp(1.25, 0.8, calm), intensity: 0.35 }); }
     if (!doneFlag && rot >= TURN * 0.998 && !drag && assistTo == null) { doneFlag = true; E.sound('settle', { intensity: 0.5 }); }
@@ -208,7 +211,7 @@ export function create(E) {
     g.strokeStyle = rgba('#ffd9a8', 0.25); g.lineWidth = 1.2; g.stroke();
     // flickering ember ink that steadies as the turn slows
     const flick = reduced ? 0 : (1 - calm) * (0.25 * Math.sin(t * 17) + 0.15 * Math.sin(t * 29 + 1));
-    words.draw(g, cx, cy, { style: calm > 0.6 || fin ? 'light' : 'ember', size: Math.max(12, hr * 0.2), maxWidth: hr * 1.6, lines: 3, alpha: 0.85 + flick * 0.5,
+    if (E.phase !== 'law') words.draw(g, cx, cy, { style: calm > 0.6 || fin ? 'light' : 'ember', size: Math.max(12, hr * 0.2), maxWidth: hr * 1.6, lines: 3, alpha: 0.85 + flick * 0.5,
       glowColour: mix('#ff8a3d', '#ffd9a0', calm) });
     // glass highlight
     g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = 'rgba(255,255,255,0.07)';

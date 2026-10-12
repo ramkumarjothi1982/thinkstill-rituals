@@ -6,6 +6,7 @@ import { BUILD } from './config.js';
 import { planItems, playItem } from './play-item.js';
 import { interpret } from '../engine/interpret.js';
 import { MALLOWS } from '../mallows/registry.js';
+import { photoTray } from '../v3/tray.js';
 
 export function testPanel(app) {
   const { world, ent } = app;
@@ -20,12 +21,14 @@ export function testPanel(app) {
   const name = h('div', { style: { font: '700 15px var(--font-ui)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, 'Press NEXT ▶ for #1');
   const big = (label, aria, fn) => h('button', { class: 'btn', 'aria-label': aria, style: { minHeight: '48px', padding: '0 14px', flex: '0 0 auto' }, onclick: fn }, label);
   const play = h('button', { class: 'btn primary block', disabled: true, onclick: () => go() }, '▶ Play this one');
+  const tray = photoTray({ note: false });
 
   const el = h('div', { 'data-test-panel': '', style: { marginTop: '10px', padding: '10px', borderRadius: '20px', display: 'grid', gap: '8px',
     background: 'rgba(14,10,40,.78)', border: '1.5px dashed rgba(255,217,138,.75)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' } },
   h('div', { style: { display: 'flex', justifyContent: 'space-between', font: '800 11px var(--font-ui)', letterSpacing: '.1em', color: '#ffd98a' } },
     h('span', {}, 'TEST MODE'), h('span', { style: { opacity: 0.8 } }, BUILD)),
   issue,
+  tray.el,
   h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
     big('◀ PREV', 'Test: previous ritual', () => step(-1)),
     h('div', { style: { flex: '1', minWidth: '0', textAlign: 'center' } }, num, name),
@@ -39,7 +42,7 @@ export function testPanel(app) {
   async function paint() {
     items ||= ent.has('paid') ? await planItems(app) : [];
     const n = app.store.get(key(), 0);
-    num.textContent = `#${n} / ${items.length || 1011}`;
+    num.textContent = `#${n} / ${items.length || '…'}`;
     name.textContent = n && items[n - 1] ? nameOf(items[n - 1]) : 'Press NEXT ▶ for #1';
     play.disabled = !(n && items[n - 1]);
   }
@@ -65,5 +68,5 @@ export function testPanel(app) {
     playItem(app, it, input);
   }
   paint();
-  return { el, step };
+  return { el, step, destroy: tray.destroy };
 }

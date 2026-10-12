@@ -15,6 +15,7 @@ const FAMILY_LABEL = {
   rest: 'Tired & low', reframing: 'Another Angle (Reframe)',
 };
 const PAGE = 80;
+const cap = (x) => (x ? x[0].toUpperCase() + x.slice(1) : x);
 
 export default function library(app, params = {}) {
   const { world, ent } = app;
@@ -42,8 +43,12 @@ export default function library(app, params = {}) {
       h('div', { style: { marginTop: '8px', display: 'grid', gap: '6px' } }, catRow, mallowRow),
       h('div', { style: { overflowY: 'auto', flex: '1', minHeight: '0', marginTop: '6px' } }, list, more)));
 
-  const ritualItems = () => rituals.map((r) => ({ id: r.id, kind: 'ritual', name: r.name, mallow: r.mallows[0], cat: r.family, catLabel: FAMILY_LABEL[r.family] || r.family,
-    sub: r.purpose, mins: Math.max(1, Math.round(r.durationSec / 60)), ultra: (r.tier || 'paid') === 'ultra', ref: r }));
+  // the 1,000 rituals are grouped by the feeling they were made for; the ten
+  // signature rituals and Another Angle keep their own groups
+  const catOf = (r) => (r.params?.v3 ? [`feel:${r.params.v3.primary}`, cap(r.params.v3.primary)] : r.family === 'reframing' ? ['reframing', FAMILY_LABEL.reframing] : ['signature', 'Signature rituals']);
+  const ritualItems = () => rituals.map((r) => { const [c, label] = catOf(r); return { id: r.id, kind: 'ritual', name: r.name, mallow: r.mallows[0], cat: c, catLabel: label,
+    sub: r.purpose, mins: Math.max(1, Math.round(r.durationSec / 60)), ultra: (r.tier || 'paid') === 'ultra', ref: r,
+    extra: r.params?.v3 ? `${r.code} ${r.params.v3.secondary} ${r.family}` : '' }; });
   const savedIds = () => app.rec.favourites();
   const savedItems = () => { const ids = savedIds(); const all = ritualItems(); return ids.map((id) => all.find((x) => x.id === id)).filter(Boolean); };
   const items = () => (tab === 'saved' ? savedItems() : ritualItems());
@@ -67,7 +72,9 @@ export default function library(app, params = {}) {
   }
 
   function renderFilters() {
-    const cats = [...new Map(items().map((x) => [x.cat, x.catLabel])).entries()];
+    const counts = new Map();
+    for (const x of items()) counts.set(x.cat, (counts.get(x.cat) || 0) + 1);
+    const cats = [...new Map(items().map((x) => [x.cat, x.catLabel])).entries()].sort((a, b) => counts.get(b[0]) - counts.get(a[0]));
     catRow.replaceChildren(chip('All', cat === 'all', () => { cat = 'all'; refresh(); }),
       ...cats.map(([id, label]) => chip(label, cat === id, () => { cat = id; refresh(); })));
     const ms = MALLOW_IDS.filter((m) => items().some((x) => x.mallow === m));

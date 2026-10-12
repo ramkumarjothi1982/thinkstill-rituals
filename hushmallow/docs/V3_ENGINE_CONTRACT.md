@@ -64,7 +64,9 @@ export function create(E) {
 | `heavy` | the feeling is heavy (sadness, hurt, shame…): finales must be gentle — no bursts or confetti |
 | `reduced`, `lowStim` | reduced motion / low stimulation: no shake or jitter, fewer particles |
 | `rand()` | deterministic random (seeded per ritual) |
-| `seed` | ritual number |
+| `seed` | per-round seed (ritual number + round) |
+| `round` | 1 for the ritual itself; 2, 3… when the person taps **Keep playing** and the game loops. The host re-creates your engine for every round, so no reset logic is needed |
+| `calm` | 0 on round 1, rising to 0.6 over loop rounds: let later rounds start a little calmer (less agitation, softer colours) so each loop feels more relieving |
 | `words.token` | the short excerpt of the person's own words (≤ 42 chars). **Must be visible in the scene**, legible (≥ 12 px), part of an object. `words.draw(g, x, y, {style, size, maxWidth, lines, alpha, rot, glowColour})` with styles `plate · light · ember · frost · etched · ink`. `words.full` is the full sentence (shown by the host's reading overlay; don't render long text in the scene) |
 | `photos` | the person's photos (0–7) — see below |
 | `particles` | shared additive particle pool: `emit({x,y,vx,vy,life,size,colour,drag,gravity,kind})`, `burst(x,y,n,{speed,colour,life,size,kind,dir,spread})`; kinds `glow` (default), `glint`, `dot` |
@@ -79,6 +81,7 @@ export function create(E) {
 | `haptic(kind)` | `tick, light, soft, pop, success` |
 | `hint(text)` | replace the prompt line under the title (sparingly, for stage changes) |
 | `now()` | host clock in seconds (stops while paused) |
+| `phase` | `'play'` → `'law'` (closing move: keep drawing your resting scene but **don't draw the words token** — the law shows it) → `'finale'` → `'end'` |
 | `onResize(fn)` | re-fit geometry when the stage changes |
 
 Sounds (`E.sound`): `pluck, glass, drip, bubble` (pentatonic — pass `note: 0…9` so a sequence of touches plays a small melody), `paper, wind, settle, swish, shimmer, thrum, click, unlock, rotate-tick, lens-focus, chime, star, bloom, snap, sort, drop-in, clear, portal, separate, crackle, charge, ground, breathe-in, breathe-out`.
@@ -100,6 +103,15 @@ Sounds (`E.sound`): `pluck, glass, drip, bubble` (pentatonic — pass `note: 0�
 3. **Safety** — never strike, burn, cut, pierce, shoot, smash, crush or explode a photo (especially of a person). Allowed transformations: dissolve, wash away, cool down, unhook, shrink, soften, fade, scatter into light, detach, melt softly, seal away, untangle, release, drift into the distance, transform into a harmless form.
 4. Show them clearly: no black masks, no hard borders, recognisable, not tiny (≥ 44 px on a 390-wide phone unless deliberately in the distance).
 5. Never store or send them. They only exist in this ritual.
+
+## Loop rounds (Keep playing)
+
+After the first win the person can keep playing: the same engine loops in
+fresh light, round after round, until they tap Finish. Use `E.round` and
+`E.rand()` (re-seeded per round) to make every round feel new — rearrange
+objects, change which photo is the hero, vary colours within the palette,
+alternate the twist surprise — and `E.calm` so later rounds start calmer.
+Never add scores, streaks, timers or anything that punishes stopping.
 
 ## Behaviour rules (the build contract)
 

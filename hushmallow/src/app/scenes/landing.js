@@ -6,11 +6,11 @@ import { openSupport } from './support.js';
 import { setFelt } from '../../engine/journey.js';
 
 const CHECK = [
-  ['lighter', 'A bit lighter'], ['same', 'About the same'], ['heavier', 'Heavier'],
+  ['lighter', 'A bit lighter'], ['same', 'About the same'], ['heavier', 'Heavier'], ['unsure', 'Not sure'],
 ];
 // same meanings (helped / no change / didn't help), worded for good feelings
 const CHECK_GLOW = [
-  ['lighter', 'Glowing more'], ['same', 'About the same'], ['heavier', 'It’s faded a bit'],
+  ['lighter', 'Glowing more'], ['same', 'About the same'], ['heavier', 'It’s faded a bit'], ['unsure', 'Not sure'],
 ];
 
 export default function landing(app) {
@@ -54,6 +54,9 @@ export default function landing(app) {
       world.setStage('celebrating');
       world.react('success');
       say(world, lead.voice.cheer[0], { who: lead.name, ms: 3000 });
+    } else if (id === 'unsure') {
+      world.setStage('comforting');
+      say(world, 'Not sure is a real answer too. Sometimes it takes a little while to notice.', { who: lead.name, ms: 4200 });
     } else if (id === 'same') {
       world.setStage('comforting');
       say(world, 'That’s okay. Feelings don’t always move on cue. You still did something kind for yourself.', { who: lead.name, ms: 4200 });

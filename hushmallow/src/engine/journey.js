@@ -12,7 +12,7 @@ export function logFinish(store, entry) {
   store.set(KEY, xs.slice(-MAX));
 }
 
-/** Attach the check-in answer ('lighter' | 'same' | 'heavier') to the latest entry for this id. */
+/** Attach the check-in answer ('lighter' | 'same' | 'heavier' | 'unsure') to the latest entry for this id. */
 export function setFelt(store, id, felt) {
   const xs = journeyEntries(store);
   for (let i = xs.length - 1; i >= 0; i--) if (xs[i].id === id) { xs[i].felt = felt; break; }
@@ -25,7 +25,7 @@ export function summarise(entries, now = Date.now()) {
   const startOfDay = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
   const today = startOfDay(now);
   const week = entries.filter((e) => e.at >= today - 6 * DAY);
-  const felt = { lighter: 0, same: 0, heavier: 0 };
+  const felt = { lighter: 0, same: 0, heavier: 0, unsure: 0 };
   for (const e of entries) if (e.felt && felt[e.felt] != null) felt[e.felt]++;
   const count = (key) => { const m = new Map(); for (const e of entries) for (const k of [].concat(e[key] || [])) m.set(k, (m.get(k) || 0) + 1); return [...m.entries()].sort((a, b) => b[1] - a[1]); };
   const helped = new Map();
@@ -38,7 +38,7 @@ export function summarise(entries, now = Date.now()) {
     total: entries.length,
     week: week.length,
     minutes: Math.round(entries.reduce((s, e) => s + (e.seconds || 0), 0) / 60),
-    felt, checkIns: felt.lighter + felt.same + felt.heavier,
+    felt, checkIns: felt.lighter + felt.same + felt.heavier + felt.unsure,
     families: count('families'),
     mallows: count('mallow'),
     helped: [...helped.values()].sort((a, b) => b.n - a.n).slice(0, 3),

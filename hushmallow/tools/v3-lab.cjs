@@ -5,6 +5,7 @@
 // real gestures the ritual's ghost hints describe (paths, swipes and taps).
 // Writes <outPrefix>-N-<phase>.png screenshots and prints one JSON line:
 // {final:{phase,p,lp}, seconds, fps, errors}. phase 'end' = completed.
+// V3_LOOP=1 also plays one 'Keep playing' round (ends with phase 'closed', round 3).
 const { createRequire } = require('module');
 const req = createRequire('/opt/node-tools/node_modules/');
 const { chromium } = req('playwright');
@@ -19,9 +20,9 @@ const { chromium } = req('playwright');
   await page.waitForFunction(() => globalThis.__hm3 && globalThis.__hm3.phase === 'play', null, { timeout: 15000 });
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${out}-0-start.png` });
-  const st = () => page.evaluate(() => ({ phase: __hm3.phase, p: __hm3.progress, lp: __hm3.lawProgress, locked: __hm3.locked }));
+  const st = () => page.evaluate(() => ({ phase: __hm3.phase, p: __hm3.progress, lp: __hm3.lawProgress, locked: __hm3.locked, round: __hm3.round }));
   const t0 = Date.now();
-  let shots = 1, last = '';
+  let shots = 1, last = '', looped = false;
   async function dragPath(pts) {
     if (!pts || pts.length < 2) return;
     await page.mouse.move(pts[0][0], pts[0][1]); await page.mouse.down();
@@ -31,6 +32,8 @@ const { chromium } = req('playwright');
   const LIMIT = Number(process.env.V3_LIMIT_MS || 150000);
   while (Date.now() - t0 < LIMIT) {
     const s = await st();
+    if (s.phase === 'end' && process.env.V3_LOOP && !looped) { looped = true; await page.screenshot({ path: `${out}-8-endcard.png` }); await page.evaluate(() => __hm3.keepPlaying()); await page.waitForTimeout(800); continue; }
+    if (looped && s.round >= 3) { await page.screenshot({ path: `${out}-8-round3.png` }); await page.evaluate(() => __hm3.finishNow()); break; }
     if (s.phase === 'end' || s.phase === 'closed') break;
     if (s.phase === 'finale') { await page.waitForTimeout(400); continue; }
     if (mode === 'drag') {

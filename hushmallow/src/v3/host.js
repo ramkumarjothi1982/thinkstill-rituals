@@ -50,6 +50,10 @@ export async function run(ctx) {
   const reduced = !!ctx.reducedMotion, lowStim = !!ctx.lowStim;
   const words = createWords(ctx.input);
   const location = (/ in the ([^:]+):/i.exec(copy.scene || '') || [])[1] || realmDef.name;
+  const twistPool = [...new Set(Object.values(copyAll).map((c) => c.twist).filter((x) => x && x !== copy.twist))];
+  const twistText = () => (round === 1 || !twistPool.length ? copy.twist : twistPool[(round - 2 + v.num) % twistPool.length]);
+  const LOOP_LINES = ['Same move, new light.', 'No score, no rush. Just this.', 'Look how it settles now.', 'Still here with you.',
+    'You can stop whenever you like — or keep going.', 'Your words, your pace.', 'Softer every time.'];
 
   // ------------------------------------------------------------ DOM --
   const titleBox = document.querySelector('#scene .move-title');
@@ -61,7 +65,9 @@ export async function run(ctx) {
   const tapBtn = h('button', { class: 'btn v3-tap' }, icon('sparkle'), 'Tap instead');
   const howBtn = h('button', { class: 'btn icon-only', 'aria-label': 'How to play', title: 'How to play' }, '?');
   const helpBtn = h('button', { class: 'btn icon-only', 'aria-label': 'Need support now?', title: 'Need support now?' }, icon('support'));
-  const ctrl = h('div', { class: 'v3-ctrl' }, wordsBtn, h('div', { class: 'v3-row' }, tapBtn, howBtn, helpBtn));
+  const doneBtn = h('button', { class: 'btn v3-done', onclick: () => finish(true) }, 'Finish');
+  const row = h('div', { class: 'v3-row' }, tapBtn, howBtn, helpBtn);
+  const ctrl = h('div', { class: 'v3-ctrl' }, wordsBtn, row);
   dock.classList.add('v3-dock');
   dock.replaceChildren(spot, ctrl, live);
   const renderWordsBtn = () => wordsBtn.replaceChildren(h('span', { class: 'q' }, '“'), h('span', { class: 't' }, words.token), h('span', { class: 'q' }, '”'), icon('search'));
@@ -120,7 +126,9 @@ export async function run(ctx) {
   const photos = photoApi({ particles, dpr: Math.min(2, devicePixelRatio || 1), seed: v.num });
   let clock = 0;                            // seconds; stops while paused
   const now = () => clock;
-  const rand = fx.rng(v.num * 7 + 3);
+  let randFn = fx.rng(v.num * 7 + 3);
+  const rand = () => randFn();
+  let round = 1, roundsDone = 0;
   const lastSound = new Map();
   const sound = (name, o = {}) => { const tt = performance.now(); if (tt - (lastSound.get(name) || 0) < 40) return; lastSound.set(name, tt); app.audio.fx(name, { intensity: 0.5, ...o }); };
   const hold = (name, o) => app.audio.hold(name, o);
@@ -138,7 +146,7 @@ export async function run(ctx) {
   const setPrompt = (text) => { promptOverride = text; const p = titleBox?.querySelector('p'); if (p) p.textContent = text; live.textContent = text; };
 
   // phase state
-  let phaseName = 'play', engine = null, law = null, finaleAt = 0, endAt = 0, endShown = false, twistAt = -1, twistShown = false;
+  let phaseName = 'play', engine = null, law = null, finaleAt = 0, endAt = 0, lawAt = 0, endShown = false, twistAt = -1, twistShown = false;
   let lastInput = 0, firstTouch = false, lastP = 0, halfSaid = false, lockToastAt = -9, lockMsg = '';
   const route = [];
   const finaleState = {};
@@ -162,8 +170,11 @@ export async function run(ctx) {
     },
     react: (k) => react(k), emote, look: (x, y) => world.rig?.lookAt?.((x / view.w) * 2 - 1, (y / view.h) * 2 - 1),
     sound, hold, haptic,
+    get phase() { return phaseName; },
     hint: setPrompt, now, onResize: (fn) => { resizeFns.add(fn); return () => resizeFns.delete(fn); },
-    seed: v.num,
+    get seed() { return v.num + (round - 1) * 1013; },
+    get round() { return round; },
+    get calm() { return clamp((round - 1) * 0.15, 0, 0.6); },
   };
   const L = {
     g, get stage() { return stage; }, view, pal, now, particles, ripples, words: E.words, photos, sound, haptic, react: (k) => react(k, true), say, setPrompt,
@@ -262,8 +273,11 @@ export async function run(ctx) {
   function showLock() { if (!law || law.kind !== 'gate') return; lockMsg = law.lockText || LAW_LOCK_TEXT[v.law] || ''; if (now() - lockToastAt > 2.4) { lockToastAt = now(); live.textContent = lockMsg; } }
 
   // ---------------------------------------------------------- start --
-  function begin() {
+  function begin({ loop = false } = {}) {
     engine?.destroy?.(); resizeFns.clear();
+    if (!loop) { round = 1; roundsDone = 0; }
+    randFn = fx.rng(v.num * 7 + 3 + (round - 1) * 101);
+    row.replaceChildren(tapBtn, round > 1 ? doneBtn : howBtn, helpBtn);
     clock = 0; phaseName = 'play'; finaleAt = 0; endShown = false; twistAt = -1; twistShown = false; firstTouch = false; lastP = 0; halfSaid = false;
     route.length = 0; particles.clear(); trail.clear(); for (const k in finaleState) delete finaleState[k];
     promptOverride = null;
@@ -271,19 +285,24 @@ export async function run(ctx) {
     dock.classList.remove('v3-ending');
     cvs.style.transition = 'opacity 400ms ease'; cvs.style.opacity = '1';
     const gate = [1, 2, 5, 6, 10].includes(v.law);
-    lawChip.replaceChildren(h('b', {}, `✦ ${LAW.name}`), ' · ', gate ? GATE_HOW[v.law] : 'then one closing move');
-    ctx.setMove(0, { eyebrow: location, title: ENG.name, prompt: engMod.meta?.howTo || ENG.motion });
+    if (round > 1) lawChip.replaceChildren(h('b', {}, `↻ Round ${round}`), ' · ', gate ? `${LAW.name}: ${GATE_HOW[v.law]}` : 'keep going as long as it helps');
+    else lawChip.replaceChildren(h('b', {}, `✦ ${LAW.name}`), ' · ', gate ? GATE_HOW[v.law] : 'then one closing move');
+    ctx.setMove(0, { eyebrow: round > 1 ? `${location} · Round ${round}` : location, title: ENG.name, prompt: engMod.meta?.howTo || ENG.motion });
     layout();
     engine = engMod.create(E);
     engine.pointAt ??= () => ({ x: stage.cx, y: stage.cy });
-    law = createLaw(v.law, L);
+    // loop rounds keep the world law's feel (gate laws) but skip the closing move, so the loop stays tight
+    law = round > 1 && !gate ? passLaw() : createLaw(v.law, L);
     placeMallow('play');
-    emote(0);
-    world.realm?.transform?.(0);
+    emote(Math.min(0.5, (round - 1) * 0.12));
+    world.realm?.transform?.(Math.min(0.4, (round - 1) * 0.1));
     world.realm?.setEmotion?.(Object.keys(userMix)[0] || 'neutral', ctx.input.intensity ?? 0.6);
     lastInput = 0;
-    setTimeout(() => { if (!signal.aborted && phaseName === 'play') say(copy.open[0], 3800); }, 650);
+    const r0 = round;
+    if (round === 1) setTimeout(() => { if (!signal.aborted && phaseName === 'play') say(copy.open[0], 3800); }, 650);
+    else if (round % 3 === 0) setTimeout(() => { if (!signal.aborted && round === r0) say(round % 5 === 0 ? 'We can keep going as long as it helps. Or rest here — that counts too.' : LOOP_LINES[(round + v.num) % LOOP_LINES.length], 3000); }, 900);
   }
+  function passLaw() { return { kind: 'none', gate: (r) => r, allow: () => true, gateReady: () => true, locked: false, frame() {}, onDown() {}, onUp() {} }; }
 
   // ---------------------------------------------------------- frame --
   let raf = 0, tPrev = performance.now(), resolveRun;
@@ -303,7 +322,7 @@ export async function run(ctx) {
     } catch (err) { console.error('[v3 engine]', err); }
     g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; g.setLineDash([]);
     if (phaseName === 'play') { law.frame?.(g, t, dt); updatePlay(); }
-    else if (phaseName === 'law') { veil(0.18); law.frame(g, t, dt); if (law.done) startFinale(); }
+    else if (phaseName === 'law') { veil(0.44 * smooth(clamp((now() - lawAt) / 0.7))); lawWipe(); law.frame(g, t, dt); if (law.done) startFinale(); }
     particles.update(dt); particles.draw(g);
     ripples.update(dt); ripples.draw(g, 0.9);
     trail.update(dt); if (pointers.size && phaseName !== 'finale' && phaseName !== 'end' && engMod.meta?.trail !== false) trail.draw(g, pal.glow, 9);
@@ -322,7 +341,7 @@ export async function run(ctx) {
       world.realm?.transform?.(p * 0.55);
       lastP = p;
     }
-    if (!halfSaid && p >= 0.5) { halfSaid = true; say(copy.during[0], 3600); react('nod', true); }
+    if (!halfSaid && p >= 0.5) { halfSaid = true; if (round === 1) say(copy.during[0], 3600); react('nod', true); }
     if (!twistShown && p >= 0.62) { twistShown = true; twistAt = now(); engine.twist?.(); world.realm?.pulse?.('burst', { x: stage.cx, y: stage.cy }); sound('shimmer', { intensity: 0.5 }); react('gasp', true); }
     if (law.locked && pointers.size) showLock();
     if (engine.done && law.gateReady()) {
@@ -330,8 +349,18 @@ export async function run(ctx) {
     }
   }
 
+  function lawWipe() {
+    // a soft ring of light sweeps outward as the world law takes over
+    const k = (now() - lawAt) / 0.9;
+    if (k >= 1) return;
+    const r = Math.max(view.w, view.h) * ease.outCubic(k);
+    g.save(); g.globalCompositeOperation = 'lighter';
+    g.strokeStyle = rgba(pal.glow, 0.5 * (1 - k)); g.lineWidth = 24 * (1 - k) + 2;
+    g.beginPath(); g.arc(stage.cx, stage.cy, r, 0, Math.PI * 2); g.stroke(); g.restore();
+  }
+
   function startLaw() {
-    phaseName = 'law';
+    phaseName = 'law'; lawAt = now();
     law.begin?.();
     sound('unlock', { intensity: 0.45 }); haptic('success'); react('success', true);
     ctx.setMove(1, { eyebrow: `${location} · World law`, title: LAW.name, prompt: law.howTo });
@@ -355,7 +384,8 @@ export async function run(ctx) {
     if (heavy) { world.setStage?.('comforting'); react('comfort', true); } else { world.setStage?.('celebrating'); react('celebrate', true); }
     ctx.setMove(law.kind === 'phase' ? 2 : 1, { eyebrow: location, title: ENG.name, prompt: cap(ENG.win) + '.' });
     lawChip.replaceChildren(h('b', {}, `✦ ${LAW.name}`), ' · ', cap(LAW.payoff) + '.');
-    setTimeout(() => say(copy.exit[0], 4200), 500);
+    if (round === 1) setTimeout(() => say(copy.exit[0], 4200), 500);
+    roundsDone++;
   }
 
   function drawFinale(t) {
@@ -363,8 +393,17 @@ export async function run(ctx) {
     const lk = clamp(k / 3.6);
     drawLightFinale(v.law, g, lk, L, finaleState);
     law.payoff?.(g, ease.outCubic(clamp(k / 1.2)));
-    if (!endShown && k > Math.max(3.8, engMod.meta?.finaleSec || 0)) showEnd();
+    if (!endShown && k > Math.max(3.8, engMod.meta?.finaleSec || 0)) {
+      if (round === 1) showEnd();
+      else { endShown = true; nextRound(); }
+    }
     void t;
+  }
+
+  function nextRound() {
+    round++;
+    sound('unlock', { intensity: 0.35 });
+    begin({ loop: true });
   }
 
   function showEnd() {
@@ -382,8 +421,9 @@ export async function run(ctx) {
       h('div', { class: 'v3-skill' }, h('b', {}, SKILL.name), ` · ${SKILL.does}`),
       photos.n ? h('label', { class: 'v3-keep' }, keepBox, ' Keep my photos for the next ritual (otherwise they’re cleared now)') : null,
       h('div', { class: 'row-btns', style: { marginTop: '12px' } },
-        h('button', { class: 'btn', onclick: () => { app.audio.ui('tap'); begin(); } }, icon('refresh'), 'Play again'),
-        h('button', { class: 'btn primary', onclick: () => finish(true) }, 'Continue')));
+        h('button', { class: 'btn', onclick: () => finish(true) }, 'I’m done'),
+        h('button', { class: 'btn primary', onclick: () => { app.audio.ui('tap'); nextRound(); } }, icon('refresh'), 'Keep playing')),
+      h('p', { class: 'muted v3-loop-note' }, 'Keep playing loops the same game in fresh light, a little calmer each round. Stop any time.'));
     dock.classList.add('v3-ending');
     dock.replaceChildren(card, live);
     live.textContent = `Mind bend: ${bend}`;
@@ -396,7 +436,8 @@ export async function run(ctx) {
 
   // twist banner
   function drawTwist(t) {
-    if (twistAt < 0 || !copy.twist) return;
+    const tw = twistText();
+    if (twistAt < 0 || !tw) return;
     const k = now() - twistAt, dur = 5.2;
     if (k > dur) return;
     const a = smooth(clamp(k / 0.5)) * (1 - smooth(clamp((k - dur + 0.7) / 0.7)));
@@ -404,7 +445,7 @@ export async function run(ctx) {
     const y = stage.y + 6 + (1 - ease.outCubic(clamp(k / 0.6))) * -24;
     g.save(); g.globalAlpha = a;
     g.font = `600 ${13 * s + 1}px ${fx.FONT}`;
-    const lines = fx.wrap(g, copy.twist, w - 28, 3);
+    const lines = fx.wrap(g, tw, w - 28, 3);
     const hgt = 30 + lines.length * (16 * s + 3);
     fx.roundRect(g, stage.cx - w / 2, y, w, hgt, 18); g.fillStyle = 'rgba(16,10,40,0.78)'; g.fill();
     g.strokeStyle = rgba(pal.accent, 0.5); g.lineWidth = 1.2; g.stroke();
@@ -417,7 +458,7 @@ export async function run(ctx) {
     g.fillStyle = '#fffaf0'; g.font = `600 ${13 * s + 1}px ${fx.FONT}`;
     lines.forEach((l, i) => g.fillText(l, stage.cx, y + 32 + i * (16 * s + 3)));
     g.restore();
-    if (k < 0.1) live.textContent = `Plot twist: ${copy.twist}`;
+    if (k < 0.1) live.textContent = `Plot twist: ${tw}`;
     void t;
   }
   function drawLock(t) {
@@ -458,7 +499,8 @@ export async function run(ctx) {
   function expose() {
     if (!globalThis.__hm3) globalThis.__hm3 = {};
     Object.assign(globalThis.__hm3, {
-      id: ritual.id, engine: ENG.id, law: v.law, phase: phaseName,
+      id: ritual.id, engine: ENG.id, law: v.law, phase: phaseName, round,
+      keepPlaying: () => { if (phaseName === 'end') nextRound(); }, finishNow: () => finish(true),
       progress: engine ? clamp(engine.progress || 0) : 0, lawProgress: law?.kind === 'phase' ? clamp(law.progress || 0) : null,
       locked: !!law?.locked, photos: photos.n, token: words.token, stage: { ...stage },
       hint: () => (phaseName === 'play' ? engine.hint?.() : law?.hint?.()) || null,
@@ -484,12 +526,13 @@ export async function run(ctx) {
     cleanup();
     photoSession.release();
     resolveRun({
-      completed,
+      completed, rounds: roundsDone,
       summary: [
         { label: 'Touch engine', text: `${ENG.name} — ${cap(ENG.win)}.` },
         { label: 'World law', text: `${LAW.name} — ${cap(LAW.payoff)}.` },
         { label: 'Skill practised', text: `${SKILL.name}: ${SKILL.does}` },
         ...(copy.bend ? [{ label: 'Mind bend', text: copy.bend }] : []),
+        ...(roundsDone > 1 ? [{ label: 'Calm rounds', text: `You played ${roundsDone} rounds.` }] : []),
       ],
       share: { title: ritual.name.split(' — ')[0], subtitle: `A Hushmallow ritual with ${lead.name}` },
     });
