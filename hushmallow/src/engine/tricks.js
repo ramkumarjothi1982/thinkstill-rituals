@@ -87,6 +87,7 @@ export function createTrickDeck({ store, tricks, rng = Math.random }) {
       return tricks.find((t) => t.id === id) || null;
     },
     get(id) { return tricks.find((t) => t.id === id) || null; },
+    all() { return tricks; },
   };
 }
 

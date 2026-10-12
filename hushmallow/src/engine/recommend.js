@@ -77,7 +77,6 @@ export function createRecommender({ rituals, store, rng = Math.random, modules =
     }
     const fb = state.feedback[r.id];
     if (fb) s += (fb.helped - fb.notHelped) * 0.25;
-    if (state.favourites.includes(r.id)) { s += 0.5; reasons.push('One of your favourites'); }
     const prefs = req.prefs || {};
     const heavy = emos.some((e) => HEAVY.has(getEmotion(e.id)?.family) && (e.intensity ?? I) > 0.6);
     if ((prefs.lowStimulation || heavy) && r.tone === 'energetic') s -= 1.2;
@@ -100,7 +99,8 @@ export function createRecommender({ rituals, store, rng = Math.random, modules =
       const state = load();
       // a ritual must genuinely fit at least one confirmed feeling
       const fits = (r) => !(req.emotions || []).length || (req.emotions || []).some((e) => emotionMatch(r, e) >= (req.minFit ?? 0.5));
-      const scored = eligible(req).filter(fits).map((r) => ({ ritual: r, ...score(r, req, state) })).sort((a, b) => b.s - a.s);
+      const notYet = (r) => !(req.exclude && req.exclude.has && req.exclude.has(r.id));
+      const scored = eligible(req).filter(fits).filter(notYet).map((r) => ({ ritual: r, ...score(r, req, state) })).sort((a, b) => b.s - a.s);
       if (!scored.length) return [];
       const best = scored[0].s;
       // rotate only among close fits, so a strong match isn't swapped for a loose one
@@ -116,11 +116,11 @@ export function createRecommender({ rituals, store, rng = Math.random, modules =
         if (ids.length > 1 && ids[0] === last) ids.push(ids.shift());
         bag = { left: ids, last };
       }
-      // rank: favourites first, then the bag's order weighted by score
+      // rank by the bag's order weighted by score. Saved rituals are not pushed
+      // here: they have their own place (Saved), and offers never repeat.
       const order = new Map(bag.left.map((id, i) => [id, i]));
-      const ranked = pool.filter((x) => order.has(x.ritual.id) || state.favourites.includes(x.ritual.id))
-        .sort((a, b) => (state.favourites.includes(b.ritual.id) - state.favourites.includes(a.ritual.id)) ||
-          ((order.get(a.ritual.id) ?? 99) - (order.get(b.ritual.id) ?? 99)) * 0.6 + (b.s - a.s) * 0.4);
+      const ranked = pool.filter((x) => order.has(x.ritual.id) || !!req.exclude)
+        .sort((a, b) => ((order.get(a.ritual.id) ?? 99) - (order.get(b.ritual.id) ?? 99)) * 0.6 + (b.s - a.s) * 0.4);
       state.bags[key] = bag;
       save(state);
       return ranked.slice(0, limit).map((x) => ({

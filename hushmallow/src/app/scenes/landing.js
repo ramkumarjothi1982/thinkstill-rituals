@@ -73,7 +73,7 @@ export default function landing(app) {
     fav = rec.toggleFavourite(ritual.id);
     favBtn.replaceChildren(icon('star'), fav ? 'Saved' : 'Save');
     favBtn.setAttribute('aria-pressed', String(fav));
-    toast(fav ? 'Saved to your favourites' : 'Removed from favourites');
+    toast(fav ? 'Saved. Find it any time under ★ on the home screen.' : 'Removed from Saved');
     app.haptic('light');
   }
   function finish() { app.state.result = null; app.go('home'); }

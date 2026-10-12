@@ -4,6 +4,8 @@ import { h, iconBtn, openSheet, say, clearBubble, toast } from '../ui.js';
 import { PAID_MODULES } from '../../rituals/index.js';
 import { requireEntitlement, EntitlementError, loadUltra } from '../entitlements.js';
 import { MALLOWS } from '../../mallows/registry.js';
+import { markPlayed } from '../../engine/played.js';
+import { createRound } from '../../engine/round.js';
 
 export default function ritualScene(app, params) {
   const { world } = app;
@@ -61,10 +63,13 @@ export default function ritualScene(app, params) {
     const lead = ritual.mallows[0];
     await Promise.all([world.setRealm(ritual.world.realm), world.setMallow(lead)]);
     if (ac.signal.aborted) return;
+    // started = done for this round, wherever it was started from
+    createRound(app.store, app.ent.tier()).mark(ritual.id);
     const t0 = Date.now();
     const result = await mod.run(ctx);
     if (ac.signal.aborted) return;
     app.state.result = { ...result, ritualId: ritual.id, seconds: Math.round((Date.now() - t0) / 1000) };
+    if (result?.completed && app.prefs.get('saveHistory')) markPlayed(app.store, ritual.id);
     app.go('landing', {}, { replace: true });
   }
 

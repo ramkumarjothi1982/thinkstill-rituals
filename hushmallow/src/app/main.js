@@ -80,6 +80,7 @@ const SCENES = {
   mallows: () => import('./scenes/mallows.js'),
   settings: () => import('./scenes/settings.js'),
   angle: () => import('./scenes/angle.js'),
+  library: () => import('./scenes/library.js'),
 };
 
 async function boot() {
