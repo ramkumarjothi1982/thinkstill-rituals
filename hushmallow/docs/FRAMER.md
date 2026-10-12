@@ -17,12 +17,12 @@ the `HushmallowEmbed` component.
 4. Your app is at `https://ramkumarjothi1982.github.io/thinkstill-rituals/`.
 
 The published site contains only the app (`index.html`, `src/`, the Mallow
-art, the rig layers and the font). The Studio, the realm gallery, the sound
+art, the rig layers, the logo and the fonts). The Studio, the realm gallery, the sound
 lab, the source workbook and the Python tools are not published.
 
 Prefer Netlify or Vercel? Publish the same files: `index.html`,
 `manifest.webmanifest`, `src/`, `assets/mallows/`, `assets/rig/`,
-`assets/fonts/`.
+`assets/fonts/` and `assets/brand/` (the logo; without it the logo 404s).
 
 ## 2. Add it to Framer
 
@@ -61,9 +61,11 @@ any paid web launch should confirm the plan on a server.
 
 ## 4. Privacy
 
-Nothing typed into hushmallow leaves the phone, with one exception the person
-opts into: Another Angle in hushmallow Beyond, which asks first and sends only
-the words they choose to share to our own server. Otherwise the app only loads
+Nothing typed into hushmallow leaves the phone. In this version that includes
+Another Angle in hushmallow Beyond: its angles are written in advance and run
+on the phone. (If a server version of Another Angle is switched on later, it
+will ask first, and this section, the plans screen and its consent screen will
+say who processes the words and that nothing is kept.) The app only loads
 its own files from wherever it's hosted: no analytics, no font service (HM
 Nunito Sans, HM Manrope and HM Fraunces are bundled in `assets/fonts/`, and
 they load inside the frame from the app's own origin, so Framer never needs

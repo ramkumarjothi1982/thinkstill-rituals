@@ -1,4 +1,4 @@
-# Hushmallow — status
+# hushmallow — status
 
 What is built and verified, what is known to be imperfect, and what needs
 you. "Verified" means driven end to end in a real browser (Chromium via
@@ -10,9 +10,9 @@ tried on a physical phone yet; see §4.
 ## 1. Built
 
 ### The two paid experiences
-| | Hushmallow (Paid) | Hushmallow Ultra |
+| | hushmallow Flow (plan id `paid`) | hushmallow Beyond (plan id `ultra`) |
 |---|---|---|
-| Rituals | 10 interactive rituals (below) | Everything in Paid |
+| Rituals | 10 interactive rituals (below) | Everything in Flow |
 | Quick tricks | 291 one-minute attention and getting-started tricks | All 1,000 ThinkStill tricks (the extra 709 are plot twists for thoughts) |
 | Reframe | — | **Another Angle**: Fact or Fiction split, Thought X-Ray, Evidence Orbit, Perspective Portal, Possibility Machine and conversation practice, plus optional lenses (see §1.4) |
 
@@ -22,7 +22,7 @@ Ultra code and content (Another Angle, the 709 plot twists) are only ever
 loaded through `loadUltra()` / `loadUltraTricks()`, which check the plan.
 There are no Reset / Release / Reflect / Reframe consoles anywhere.
 
-### 1.1 Paid ritual library
+### 1.1 Flow ritual library
 Every emotion family in the A–Z taxonomy has at least one made-for-it ritual
 (a test checks this).
 
@@ -62,7 +62,7 @@ Static Storm, Raindrop Lagoon, Spiral Observatory, Sunpop Orchard,
 **Spark Festival**, **Blue Drift** and **Moonmilk Cove** (the last three are
 new; they were grey placeholders).
 
-### 1.4 Another Angle lenses (Ultra)
+### 1.4 Another Angle lenses (Beyond)
 After the Perspective Portal, "Want another lens?" offers up to two lenses,
 picked by rule from what the person wrote (`recommendLenses()` in
 `src/ultra/reframe-engine.js`):
