@@ -11,7 +11,9 @@ Reads <work_dir>/<id>.png (prepare.py), measure-<id>.json and masks_<id>.npz
   glitzi-iris-L|R      Glitzi's own fiery iris, cut from its art; the part the
                        heavy lid hides is rebuilt by mirroring the visible
                        half across the iris centre line (never invented).
-  zuzu-spiral-L|R      Zuzu's spirals with their dark rim (drawn at native px).
+  zuzu-spiral-L|R      Zuzu's spirals with their dark rim, rounded so the rim
+                       sits on one radius and cut just inside it (drawn at
+                       native px; ~300 px across at the 1024 px art scale).
   boppo-/pipzi-iris-L|R  irises cut from the art.
   iris-navy            Boppo's iris recoloured for the closed-eyed Mallows.
 and <work_dir>/erase_<id>.png (the removal mask) for review.
@@ -71,15 +73,13 @@ def erase_mask(name, meas, masks, shape, img=None):
         if style == 'closed':
             m |= dil(loose_stroke(masks['eye' + s], img, u), 12 * u)
         elif style == 'open':
-            # sclera, its dark outline ring and the light rim halo around it;
-            # inside the blush only a thin margin: the blush (and the eye's
-            # glow over it) belongs to the approved face, and the harmonic
-            # fill then lights the opening from it, as the current bodies do
-            em = dil(masks['eye' + s], 12 * u)
-            cxx, cyy, cr = f['cheeks'][s]
-            yy, xx = np.mgrid[0:shape[0], 0:shape[1]]
-            blush = np.hypot(xx - cxx, yy - cyy) < cr * 1.05
-            m |= em & ~(blush & ~dil(masks['eye' + s], 4 * u))
+            # sclera, its dark outline ring and the light rim halo around it,
+            # also where it overlaps the blush: the eye's pink glow over the
+            # blush would float as a smear once the eye closes. The bitten
+            # blush is rebuilt by restore_cheeks (its own radial profile and
+            # glitter), and the shading fill never takes its colour from the
+            # blush (blush_discs -> inpaint lf_exclude)
+            m |= dil(masks['eye' + s], 12 * u)
         elif style == 'spiral':
             sp = f['spiral' + s]
             c = np.zeros(shape, np.uint8)
@@ -131,12 +131,16 @@ def restore_cheeks(body, img, erase, meas):
     out = body.astype(np.float64)
     sig = 3.0 * u
     orig_lf = cv2.GaussianBlur(img[..., :3].astype(np.float64), (0, 0), sig)
-    intact = (~dil(erase, 1.5 * u)) & (img[..., 3] > 250)
+    # inpaint() rewrites the erased area plus a 2u grow and its feather: all
+    # of it gets the blush back, or a thin ring of body colour is left along
+    # the erase edge
+    touched = dil(erase, 3 * u)
+    intact = (~dil(erase, 4 * u)) & (img[..., 3] > 250)
     yy, xx = np.mgrid[0:H, 0:W]
     for s in 'LR':
         cx, cy, r = ch[s]
         d = np.hypot(xx - cx, yy - cy)
-        reg = erase & (d < 1.3 * r)
+        reg = touched & (d < 1.3 * r)
         if not reg.any():
             continue
         bins = np.arange(0, 1.5 * r + 3, 1.5)
@@ -269,13 +273,28 @@ def quilt(high, hole, src_ok, P, O, K=700, seed=1):
     return np.where(hole[..., None], out, 0)
 
 
-def inpaint(name, img, mask, unit, protect=None):
+def blush_discs(meas, shape, k=1.15):
+    """The blush circles (cheeks), grown by k: kept out of the shading fill
+    and the texture donors, so neither the blush colour nor its glitter is
+    smeared into the erased eyes."""
+    ch = meas['feats']['cheeks']
+    yy, xx = np.mgrid[0:shape[0], 0:shape[1]]
+    out = np.zeros(shape, bool)
+    for s in 'LR':
+        cx, cy, r = ch[s]
+        out |= np.hypot(xx - cx, yy - cy) < r * k
+    return out
+
+
+def inpaint(name, img, mask, unit, protect=None, lf_exclude=None):
     rgb = img[..., :3].astype(np.float64)
     al = img[..., 3].astype(np.float64) / 255
     H, W = mask.shape
     glitzi = name == 'glitzi'
     grow = dil(mask, 2 * unit)
     known = (~grow) & (al > 0.5)
+    if lf_exclude is not None:
+        known &= ~lf_exclude
     hsv = cv2.cvtColor(img[..., :3], cv2.COLOR_RGB2HSV).astype(np.float64)
     if glitzi:
         # Glitzi's shading is the dark body under the neon: leave the glitch
@@ -331,23 +350,156 @@ def cut_circle(img, cx, cy, r, soft=1.5):
     return crop
 
 
+def rim_edges(L, cx, cy, r_lo, r_hi, n=180):
+    """Per angle, the radius where a disc's dark rim ends: the luminance
+    minimum in [r_lo, r_hi], then the first radius at which the profile has
+    recovered half way back to the body outside it. Smoothed over angle."""
+    th = np.arange(n) * 2 * np.pi / n
+    rs = np.arange(r_lo - 12, r_hi + 14, 0.5)
+    xs = (cx + rs[None, :] * np.cos(th)[:, None]).astype(np.float32)
+    ys = (cy + rs[None, :] * np.sin(th)[:, None]).astype(np.float32)
+    prof = cv2.remap(L.astype(np.float32), xs, ys, cv2.INTER_LINEAR)
+    prof = ndimage.uniform_filter1d(prof, 3, axis=1)
+    win = (rs > r_lo) & (rs < r_hi)
+    edge = np.empty(n)
+    ring = np.empty(n)
+    for i in range(n):
+        p = prof[i]
+        j = np.argmin(np.where(win, p, np.inf))
+        body = np.median(p[-10:])
+        after = np.nonzero((rs > rs[j]) & (p > (p[j] + body) / 2))[0]
+        edge[i] = rs[after[0]] if len(after) else rs[j] + 3
+        ring[i] = rs[j]
+    # circular smoothing: the painted rim is a smooth curve, single rays are noisy
+    k = 4
+    pad = lambda a: np.concatenate([a[-k * 3:], a, a[:k * 3]])
+    edge = ndimage.gaussian_filter1d(pad(edge), k)[k * 3:-k * 3]
+    ring = ndimage.gaussian_filter1d(pad(ring), k)[k * 3:-k * 3]
+    return th, edge, ring
+
+
+def round_disc(img, cx, cy, th, edge, R, inset=1.5, soft=1.2):
+    """A painted disc that is not quite round (Zuzu's spirals: their dark rim
+    sits 145-156 px from the centre) would show a crescent of body inside the
+    eye once it rotates. Resample it radially so the rim's outer edge lands on
+    one radius R everywhere (a <= 4% radial stretch, never repainted), then
+    cut `inset` px inside that edge: no body pixel is left in the sprite."""
+    Rc = R - inset
+    S = int(np.ceil(Rc + 2))
+    yy, xx = np.mgrid[0:2 * S, 0:2 * S].astype(np.float64) + 0.5
+    dx, dy = xx - S, yy - S
+    d = np.hypot(dx, dy)
+    a = np.mod(np.arctan2(dy, dx), 2 * np.pi)
+    e = np.interp(a, np.concatenate([th, [2 * np.pi]]), np.concatenate([edge, edge[:1]]))
+    sr = d * e / R
+    mx = (cx + sr * np.cos(a)).astype(np.float32)
+    my = (cy + sr * np.sin(a)).astype(np.float32)
+    # resample premultiplied so the cut edge gets no fringe
+    src = img.astype(np.float32)
+    pm = src.copy()
+    pm[..., :3] *= src[..., 3:4] / 255
+    out = cv2.remap(pm, mx, my, cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+    al = np.clip(out[..., 3], 0, 255)
+    cut = np.clip((Rc - d) / soft + 0.5, 0, 1)
+    rgb = np.where(al[..., None] > 0, out[..., :3] / np.maximum(al[..., None], 1e-3) * 255, 0)
+    res = np.zeros((2 * S, 2 * S, 4), np.uint8)
+    res[..., :3] = np.clip(np.round(rgb), 0, 255).astype(np.uint8)
+    res[..., 3] = np.clip(np.round(al * cut), 0, 255).astype(np.uint8)
+    res[..., :3][res[..., 3] == 0] = 0
+    return res
+
+
+def even_rim(sprite, rim_rgb, width, strength=0.7):
+    """Deepen the outermost `width` px of a round sprite toward the painted
+    rim's own darkest colour, so the rim reads evenly all the way round while
+    the sprite rotates (its painted lighting would otherwise orbit too)."""
+    S = sprite.shape[0] / 2
+    yy, xx = np.mgrid[0:sprite.shape[0], 0:sprite.shape[1]] + 0.5
+    d = np.hypot(xx - S, yy - S)
+    Rc = S - 2
+    t = np.clip((d - (Rc - width)) / width, 0, 1)
+    w = (t * t * (3 - 2 * t) * strength)[..., None]
+    out = sprite.copy()
+    rgb = sprite[..., :3].astype(np.float64)
+    # never lighten: only pixels brighter than the rim colour move toward it
+    tgt = np.minimum(rgb, np.asarray(rim_rgb, np.float64)[None, None, :]) * 0.5 + np.asarray(rim_rgb)[None, None, :] * 0.5
+    out[..., :3] = np.clip(np.round(rgb * (1 - w) + tgt * w), 0, 255).astype(np.uint8)
+    out[..., :3][out[..., 3] == 0] = 0
+    return out
+
+
+def rim_colour(img, cx, cy, th, ring):
+    """Median colour of the darkest quarter of the rim's luminance minimum."""
+    cols = np.array([img[int(round(cy + r * np.sin(t))), int(round(cx + r * np.cos(t))), :3] for t, r in zip(th, ring)], np.float64)
+    Lc = cols @ [0.299, 0.587, 0.114]
+    return np.median(cols[Lc <= np.percentile(Lc, 25)], axis=0)
+
+
 def glitzi_iris(img, opening, cx, cy, r, unit):
-    """Glitzi's iris: the lid hides its top. Hidden pixels are rebuilt from
-    their mirror image across the iris's horizontal centre line (always in
-    the visible lower half), with a short feather at the seam."""
+    """Glitzi's iris: the lid hides its top, and a painted catchlight sits
+    against the lid edge (cut flat by it).
+      1. the painted catchlight is lifted out (inpainted from the dark pupil
+         around it) so it is never mirrored or left as a flat-topped cut,
+      2. hidden pixels are rebuilt from the visible lower half: right at the
+         lid seam by mirroring across the iris's centre line (continuous
+         seam), further up by the point reflection through the centre, so the
+         fiery ring keeps its radius but its stars do not repeat as a
+         Rorschach mirror image,
+      3. the catchlight is put back whole: an oval whose lower half is the
+         painted one, so at rest (lid down) it looks as painted, and an eye
+         opened wider shows a complete highlight instead of a cut one."""
     R = int(np.ceil(r + 2))
     x0, y0 = int(round(cx)) - R, int(round(cy)) - R
     sl = (slice(y0, y0 + 2 * R), slice(x0, x0 + 2 * R))
     src = img[sl].astype(np.float64)
-    vis = cv2.erode(opening[sl].astype(np.uint8), disk(1.2 * unit)).astype(np.float64)
-    vis = cv2.GaussianBlur(vis, (0, 0), 1.0 * unit)
+    ccx, ccy = cx - x0, cy - y0
     yy, xx = np.mgrid[0:2 * R, 0:2 * R]
-    my = np.clip(np.round(2 * (cy - y0) - yy - 1).astype(int), 0, 2 * R - 1)
+    d = np.hypot(xx + 0.5 - ccx, yy + 0.5 - ccy)
+    vis_b = cv2.erode(opening[sl].astype(np.uint8), disk(1.2 * unit)).astype(bool) & (d < r)
+    # 1. the catchlight: bright, pale, inside the visible iris
+    rgb8 = img[sl][..., :3]
+    hsv = cv2.cvtColor(rgb8, cv2.COLOR_RGB2HSV).astype(np.float64)
+    pale = (hsv[..., 2] > 185) & (hsv[..., 1] < 90) & (d < r - 2 * unit)
+    lab, n = ndimage.label(pale & dil(vis_b, 2 * unit))
+    catch = None
+    if n:
+        area = ndimage.sum(np.ones_like(lab), lab, range(1, n + 1))
+        k = int(np.argmax(area)) + 1
+        if area[k - 1] > (2.5 * unit) ** 2 * np.pi:
+            catch = lab == k
+    spec = None
+    if catch is not None:
+        ys, xs = np.nonzero(catch)
+        cc = rgb8[catch].astype(np.float64)
+        spec = dict(x=(xs.min() + xs.max() + 1) / 2, a=(xs.max() - xs.min() + 1) / 2,
+                    top=float(ys.min()), b=float(ys.max() - ys.min() + 1),
+                    col=np.percentile(cc, 75, axis=0))
+        hole = dil(catch, 2 * unit).astype(np.uint8)
+        filled = cv2.inpaint(rgb8.copy(), hole, int(round(4 * unit)), cv2.INPAINT_TELEA)
+        src[..., :3] = np.where(hole[..., None] > 0, filled.astype(np.float64), src[..., :3])
+    # 2. rebuild the hidden top
+    vis = cv2.GaussianBlur(vis_b.astype(np.float64), (0, 0), 1.0 * unit)
+    my = np.clip(np.round(2 * ccy - yy - 1).astype(int), 0, 2 * R - 1)
+    px = np.clip(np.round(2 * ccx - xx - 1).astype(int), 0, 2 * R - 1)
     mirror = src[my, xx]
-    out = src * vis[..., None] + mirror * (1 - vis[..., None])
+    point = src[my, px]
+    dist = ndimage.distance_transform_edt(~vis_b)
+    wm = np.clip(1 - (dist - 5 * unit) / (8 * unit), 0, 1)[..., None]
+    hidden = mirror * wm + point * (1 - wm)
+    out = src * vis[..., None] + hidden * (1 - vis[..., None])
+    # 3. the whole catchlight: below its flat top (the lid's cut) exactly the
+    # painted width and depth, above it a shorter dome (a lying oval, as a
+    # highlight is drawn), with a soft edge and a slightly brighter core
+    if spec is not None:
+        dy = yy + 0.5 - spec['top']
+        ex = (xx + 0.5 - spec['x']) / spec['a']
+        ey = np.where(dy > 0, dy / spec['b'], dy / (0.55 * spec['b']))
+        q = np.hypot(ex, ey)
+        soft = 1.2 * unit / min(spec['a'], spec['b'])
+        a = np.clip((1 - q) / soft + 0.5, 0, 1) * (0.92 + 0.08 * np.clip(1 - q * q, 0, 1))
+        out[..., :3] = out[..., :3] * (1 - a[..., None]) + spec['col'][None, None, :] * a[..., None]
     out[..., 3] = 255
-    res = np.round(out).astype(np.uint8)
-    d = np.hypot(xx + 0.5 - (cx - x0), yy + 0.5 - (cy - y0))
+    res = np.clip(np.round(out), 0, 255).astype(np.uint8)
     res[..., 3] = np.round(255 * np.clip((r - d) / 1.5 + 0.5, 0, 1)).astype(np.uint8)
     res[..., :3][res[..., 3] == 0] = 0
     return res
@@ -387,13 +539,18 @@ if __name__ == '__main__':
                 ys_, xs_ = np.nonzero(masks['eye' + s_])
                 top = ys_.min()
                 protect[max(0, int(top - 70 * u)):top, max(0, int(xs_.min() - 30 * u)):int(xs_.max() + 30 * u)] = True
-        body = inpaint(name, img, m, u, protect=protect)
+        lf_ex = None
+        if meas['mapped']['eyeStyle'] == 'open':
+            lf_ex = blush_discs(meas, m.shape)
+            protect = lf_ex if protect is None else (protect | lf_ex)
+        body = inpaint(name, img, m, u, protect=protect, lf_exclude=lf_ex)
         body = restore_cheeks(body, img, m, meas)
         assert (body[..., 3] == img[..., 3]).all()
         Image.fromarray(body, 'RGBA').save(f'{WORK}/{name}-body.png')
         save(body, f'{OUT}/{name}-body.webp')
         f = meas['feats']
         spr = {}
+        rims = {}
         if name == 'glitzi':
             for s in 'LR':
                 ir = f['iris' + s]
@@ -408,12 +565,21 @@ if __name__ == '__main__':
         if name == 'zuzu':
             for s in 'LR':
                 sp = f['spiral' + s]
-                # just outside the dark rim: no body texture that would orbit
-                spr['zuzu-spiral-' + s] = cut_circle(img, sp['cx'], sp['cy'], sp['r_out'] + 4, soft=2.5)
+                # the painted disc is slightly oval: round it so its dark rim
+                # sits on one radius (the median rim edge), then cut just
+                # inside the rim, so no body pixel orbits inside the eye
+                L = img[..., :3].astype(np.float64) @ [0.299, 0.587, 0.114]
+                th, edge, ring = rim_edges(L, sp['cx'], sp['cy'], sp['r_cyan'] * 0.93, sp['r_cyan'] * 1.12)
+                R = float(np.median(edge))
+                disc = round_disc(img, sp['cx'], sp['cy'], th, edge, R)
+                spr['zuzu-spiral-' + s] = even_rim(disc, rim_colour(img, sp['cx'], sp['cy'], th, ring), width=5 * u / 2.645)
+                rims[s] = {'R': round(R, 2), 'edge_min': round(float(edge.min()), 2), 'edge_max': round(float(edge.max()), 2),
+                           'ring_min': round(float(ring.min()), 2), 'ring_max': round(float(ring.max()), 2)}
         for k, a in spr.items():
             save(a, f'{OUT}/{k}.webp', lossless=True)
             Image.fromarray(a, 'RGBA').save(f'{WORK}/{k}.png')
         report[name] = {'erase_px': int(m.sum()), 'sprites': {k: [a.shape[1], a.shape[0]] for k, a in spr.items()},
+                        **({'spiral_rims': rims} if rims else {}),
                         'body_kb': round(os.path.getsize(f'{OUT}/{name}-body.webp') / 1024, 1)}
         print(name, report[name])
     prev = {}

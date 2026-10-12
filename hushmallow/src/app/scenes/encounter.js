@@ -64,7 +64,8 @@ export default function encounter(app) {
   const ultraRow = h('div');
   const el = h('div', { style: { display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', scrollbarWidth: 'none' } },
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' }),
-      h('span', { class: 'eyebrow' }, input.emotions.map((e) => getEmotion(e.id)?.name).filter(Boolean).slice(0, 3).join(' · '))),
+      // on its own dark pill: readable over the brightest realm
+      h('span', { class: 'eyebrow scrim-pill enc-feelings' }, input.emotions.map((e) => getEmotion(e.id)?.name).filter(Boolean).slice(0, 3).join(' · '))),
     h('div', { class: 'spacer' }),
     card, picker, h('div', { style: { height: '10px' } }), ultraRow);
 

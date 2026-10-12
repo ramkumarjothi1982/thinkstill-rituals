@@ -18,6 +18,7 @@
 // their position and physics; it forwards to thought.pointer itself).
 
 import { createCompositor } from './compositor.js';
+import { createVelocity } from './velocity.js';
 import { registry as defaultRegistry, fitScore, hash01 } from './registry.js';
 import { saveProgress, loadProgress, clearProgress, favouriteWorlds, toggleFavouriteWorld } from '../../engine/flow-store.js';
 
@@ -436,47 +437,53 @@ export function createHushflow(opts = {}) {
     let p = pointers.get(id);
     if (!p) {
       if (pointers.size >= MAX_POINTERS) return null;
-      p = pool.pop() || { id: 0, owner: null, n: 0, hx: new Float64Array(8), hy: new Float64Array(8), ht: new Float64Array(8), vx: 0, vy: 0, lastT: 0, s: { type: 'down', id: 0, x: 0, y: 0, t: 0, vx: 0, vy: 0, speed: 0, speedU: 0, pointerType: 'touch', count: 0 } };
-      p.id = id; p.n = 0; p.vx = 0; p.vy = 0; p.owner = null;
+      p = pool.pop() || { id: 0, owner: null, vel: createVelocity(), quiet: 0, x: 0, y: 0, t: 0, pointerType: 'touch', s: { type: 'down', id: 0, x: 0, y: 0, t: 0, vx: 0, vy: 0, speed: 0, speedU: 0, pointerType: 'touch', count: 0, idle: false } };
+      p.id = id; p.owner = null; p.quiet = 0;
       pointers.set(id, p);
     }
     return p;
   }
 
-  /** A routed pointer event: { type: 'down'|'move'|'up'|'cancel', id, x, y, t (ms), pointerType }. */
+  /** Fill the pointer's shared event object and hand it to the world that owns it. */
+  function deliver(p, type, idleEv) {
+    const s = p.s;
+    s.type = type; s.id = p.id; s.x = p.x; s.y = p.y; s.t = p.t; s.vx = p.vel.vx; s.vy = p.vel.vy;
+    s.speed = p.vel.speed; s.speedU = U ? s.speed / U : 0; s.pointerType = p.pointerType; s.count = pointers.size; s.idle = idleEv;
+    const owner = p.owner;
+    if (owner?.world && !paused && owner.entered) { try { owner.world.pointer?.(s); } catch (err) { console.warn('[hushflow] pointer', err); } }
+  }
+
+  /**
+   * A routed pointer event: { type: 'down'|'move'|'up'|'cancel', id, x, y, t (ms), pointerType }.
+   * Worlds receive { type, id, x, y, t, vx, vy, speed, speedU, pointerType, count, idle }:
+   * speed is the smoothed PATH speed (velocity.js — a scribble reads as fast), vx/vy the
+   * net direction of travel. While a finger rests without events, the director sends the
+   * world an `idle: true` 'move' every frame (same x, y; speed decaying to 0), so a stopped
+   * finger becomes still in every world.
+   */
   function pointer(e) {
     if (destroyed || !e) return false;
     const type = e.type === 'pointerdown' ? 'down' : e.type === 'pointermove' ? 'move' : e.type === 'pointerup' ? 'up' : e.type === 'pointercancel' ? 'cancel' : e.type;
     const id = e.id ?? e.pointerId ?? 1;
     const x = e.x ?? e.clientX, y = e.y ?? e.clientY;
-    const tm = (e.t ?? e.timeStamp ?? nowMs()) / 1000;
+    const tms = e.t ?? e.timeStamp ?? nowMs();
     let p = pointers.get(id);
     if (type === 'down') { if (p) release(id); p = pointerState(id); if (!p) return false; p.owner = (melt && melt.e >= INPUT_SWITCH_K) ? melt.to : cur; }
     if (!p) return false;
-    // velocity over a ~60 ms window, then an EMA (τ 0.12 s)
-    const k = p.n % 8;
-    p.hx[k] = x; p.hy[k] = y; p.ht[k] = tm; p.n++;
-    let oldest = k;
-    for (let m = 1, n = Math.min(8, p.n); m < n; m++) {
-      oldest = (p.n - 1 - m) % 8;
-      if (tm - p.ht[oldest] >= 0.06) break;
-    }
-    const dtw = tm - p.ht[oldest];
-    if (type !== 'down' && dtw > 1e-3) {
-      const ivx = (x - p.hx[oldest]) / dtw, ivy = (y - p.hy[oldest]) / dtw;
-      const a = 1 - Math.exp(-Math.max(0.001, tm - p.lastT) / 0.12);
-      p.vx += (ivx - p.vx) * a; p.vy += (ivy - p.vy) * a;
-    }
-    if (type === 'down') { p.vx = 0; p.vy = 0; }
-    p.lastT = tm;
-    const s = p.s;
-    s.type = type; s.id = id; s.x = x; s.y = y; s.t = tm * 1000; s.vx = p.vx; s.vy = p.vy;
-    s.speed = Math.hypot(p.vx, p.vy); s.speedU = U ? s.speed / U : 0; s.pointerType = e.pointerType || 'touch'; s.count = pointers.size;
+    if (type === 'down') p.vel.reset(x, y, tms / 1000);
+    else p.vel.sample(x, y, tms / 1000);
+    p.x = x; p.y = y; p.t = tms; p.quiet = 0; p.pointerType = e.pointerType || 'touch';
     lastInputAt = t;
-    const owner = p.owner;
-    if (owner?.world && !paused && owner.entered) { try { owner.world.pointer?.(s); } catch (err) { console.warn('[hushflow] pointer', err); } }
+    deliver(p, type, false);
     if (type === 'up' || type === 'cancel') release(id);
     return true;
+  }
+  /** Every frame: pointers that have gone quiet slow to a stop (and the world hears it). */
+  function idlePointers(dt) {
+    for (const p of pointers.values()) {
+      p.quiet += dt;
+      if (p.vel.idle(dt, p.quiet)) { p.t += dt * 1000; deliver(p, 'move', true); }
+    }
   }
   function release(id) { const p = pointers.get(id); if (p) { pointers.delete(id); p.owner = null; pool.push(p); } }
 
@@ -534,6 +541,7 @@ export function createHushflow(opts = {}) {
     t += dt;
     if (phase === 'loading' || !cur) { comp.drawFallback(); return; }
     if (phase === 'finished') return;
+    if (pointers.size) idlePointers(dt);
     try { cur.world.frame(dt, t); } catch (e) { console.warn('[hushflow] frame', e); }
     if (melt) {
       try { melt.to.world.frame(dt, t); } catch (e) { console.warn('[hushflow] frame (incoming)', e); }

@@ -114,7 +114,8 @@ export class MallowTouch {
     this.visible = true;
     this.time = 0;
     this.tier = null;
-    this.stats = { tier: '', fps: 0, frameMs: 0, solverMs: 0, skinMs: 0, uploadMs: 0, drawMs: 0, uploadPx: 0, substeps: 0, frames: 0, skipped: 0, idle: false };
+    this.stats = { tier: '', fps: 0, frameMs: 0, solverMs: 0, skinMs: 0, uploadMs: 0, drawMs: 0, uploadPx: 0, substeps: 0, frames: 0, skipped: 0, idle: false,
+      last: { frame: 0, physics: 0, solver: 0, skin: 0, upload: 0, draw: 0, uploadPx: 0, drawn: false } };
 
     // stage transform (springs), in container CSS px
     this.view = { w: 1, h: 1, left: 0, top: 0, dpr: 1 };
@@ -283,7 +284,21 @@ export class MallowTouch {
     const r = this.renderer;
     if (!r) return;
     r.removeBody('hero');
-    r.addBody('hero', { source: this.rig.skin, indices: this.sb.indices, uvs: this.sb.uvs, faceW: this.sb.faceW, n: this.sb.n });
+    r.addBody('hero', { source: this.rig.skin, indices: this.sb.indices, uvs: this.sb.uvs, faceW: this.sb.faceW, n: this.sb.n, base: this._bareBody() });
+  }
+
+  // Glitzi only: its face-cleaned body at skin size, so the shader can keep
+  // glitch lines under the face (drawn once; uploaded once per Mallow)
+  _bareBody() {
+    const rig = this.rig, body = rig.assets?.body;
+    if (this.id !== 'glitzi' || !body) return null;
+    const c = document.createElement('canvas');
+    c.width = rig.skin.width; c.height = rig.skin.height;
+    const g = c.getContext('2d');
+    g.setTransform(rig.q, 0, 0, rig.q, 0, 0);
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(body, 0, 0);
+    return c;
   }
 
   _applyTier(tier) {
@@ -842,12 +857,15 @@ export class MallowTouch {
     if (!this.ready || this.destroyed) return;
     if (!this.visible || (typeof document !== 'undefined' && document.hidden)) return;
     const t0 = nowMs();
-    const st = this.stats;
+    const st = this.stats, last = st.last;
     st.fps = st.fps ? st.fps + (1 / Math.max(dt, 1e-3) - st.fps) * 0.08 : 1 / Math.max(dt, 1e-3);
+    last.skin = last.upload = last.draw = last.uploadPx = 0; last.drawn = false;
     this._physics(dt, t0 / 1000);   // same clock as the pointer events
+    last.physics = nowMs() - t0;
     this._render(dt);
     this._focusRing();
     const cost = nowMs() - t0;
+    last.frame = cost;
     st.frameMs = lerp(st.frameMs, cost, 0.1);
     st.frames++;
     this._autoTier(cost);
@@ -864,7 +882,8 @@ export class MallowTouch {
     this._rest();
     const a = nowMs();
     st.substeps = this.sb.step(dt);
-    st.solverMs = lerp(st.solverMs, nowMs() - a, 0.1);
+    st.last.solver = nowMs() - a;
+    st.solverMs = lerp(st.solverMs, st.last.solver, 0.1);
     if (this.sb.lastSlip) this._noteSlip(this.sb.lastSlip);
     if (this._slipQ && this.time >= this._slipQ.at) {
       const q = this._slipQ;
@@ -999,15 +1018,20 @@ export class MallowTouch {
   _render(dt) {
     const st = this.stats, rig = this.rig, sb = this.sb, T = this.touch;
     let a = nowMs();
-    // while a finger is down the face redraws at most every other frame
-    // (the body still moves every frame): half the raster and upload cost
+    // the face redraws at most ~30 times a second in tier A (each redraw is a
+    // texture upload) and every other frame in the 2D tiers while a finger is
+    // down; the body still moves every frame, and the first change after a
+    // quiet spell (a blink, a touch) is drawn at once
     const touching = this.reader.ptrs.size > 0;
     let changed = false;
-    if (!touching || st.frames - this._lastSkinFrame > 1) {
+    const gl = this.tier === 'gl';
+    const due = gl ? this.time - (this._lastSkinT ?? -1) >= 0.03 || st.frames - this._lastSkinFrame > 1 : !touching || st.frames - this._lastSkinFrame > 1;
+    if (due || this._lastSkinFrame < st.frames - 1) {
       changed = rig.renderSkin();
-      if (changed) this._lastSkinFrame = st.frames;
+      if (changed) { this._lastSkinFrame = st.frames; this._lastSkinT = this.time; }
     }
-    st.skinMs = lerp(st.skinMs, nowMs() - a, 0.1);
+    st.last.skin = nowMs() - a;
+    st.skinMs = lerp(st.skinMs, st.last.skin, 0.1);
     // idle (only breathing, blinks drawn when they happen): draw every other
     // frame — breathing is slow, the battery is not. Anything else (a finger,
     // a wobble, a face change, particles, a glide, a hop) draws every frame.
@@ -1018,6 +1042,7 @@ export class MallowTouch {
     this._idleFrames = idle ? (this._idleFrames || 0) + 1 : 0;
     st.idle = idle;
     if (idle && this._idleFrames % 2 === 0) { st.skipped++; return; }
+    st.last.drawn = true;
     // rim light rises with the squeeze, the stretch and a jiggle
     const rimGoal = clamp(0.5 * T.depth + 0.9 * Math.max(0, T.stretch - 1) + 0.3 * T.jiggle, 0, 0.75) * (this.opts.lowStim ? 0.5 : 1);
     this._rim += (rimGoal - this._rim) * Math.min(1, dt * (rimGoal > this._rim ? 10 : 3));
@@ -1025,7 +1050,8 @@ export class MallowTouch {
     if (this.tier === 'gl' && this.renderer && !this.renderer.lost) {
       a = nowMs();
       st.uploadPx = changed ? this.renderer.updateTexture('hero', rig.skin, rig.skinRects || rig.skinRect) : 0;
-      st.uploadMs = lerp(st.uploadMs, nowMs() - a, 0.1);
+      st.last.upload = nowMs() - a; st.last.uploadPx = st.uploadPx;
+      st.uploadMs = lerp(st.uploadMs, st.last.upload, 0.1);
       a = nowMs();
       sb.computeShading();
       const it = this._item;
@@ -1035,20 +1061,22 @@ export class MallowTouch {
       it.burst = this._burstUniforms();
       this.renderer.draw([it], this._blobsFor());
       this._draw2d(false);
-      st.drawMs = lerp(st.drawMs, nowMs() - a, 0.1);
+      st.last.draw = nowMs() - a;
+      st.drawMs = lerp(st.drawMs, st.last.draw, 0.1);
     } else {
       st.uploadMs = 0; st.uploadPx = 0;
       a = nowMs();
       this._draw2d(true);
-      st.drawMs = lerp(st.drawMs, nowMs() - a, 0.1);
+      st.last.draw = nowMs() - a;
+      st.drawMs = lerp(st.drawMs, st.last.draw, 0.1);
     }
   }
 
   _glitchUniforms() {
     if (this.id !== 'glitzi') return null;
-    const g = this.rig.glitchLines(this._glitch);
+    const g = this.rig.glitchLines(this._glitch, { dim: true });
     if (!g) return null;
-    this._glitch.thick = g.thick;
+    this._item.glitchMode = g.mode;
     return this._glitch;
   }
 
@@ -1123,7 +1151,13 @@ export class MallowTouch {
       drawSoftBlob(ctx, s.cx, s.cy, s.sw, s.sw * 0.22, 'rgba(10,6,30,1)', s.sa);
       const v = rig.val;
       if (v.glow > 0.02) drawSoftBlob(ctx, g.cx, g.mid, g.w * 0.75, g.w * 0.75, this.mallow.colours.glow, 0.32 * clamp(v.glow, 0, 1.5), 0.2);
-      if (this.tier === 'strip') {
+      if (!this.sb.awake && this.sb.restFlat) {
+        // asleep on the undeformed lattice: the warp is one affine image
+        const M = this.M, uv = this.uvRect, SW = rig.skin.width, SH = rig.skin.height;
+        ctx.setTransform(M[0] * dpr, M[1] * dpr, M[2] * dpr, M[3] * dpr, M[4] * dpr, M[5] * dpr);
+        ctx.drawImage(rig.skin, uv[0] * SW, uv[1] * SH, (uv[2] - uv[0]) * SW, (uv[3] - uv[1]) * SH, 0, 0, this.aspect, 1);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      } else if (this.tier === 'strip') {
         const burst = this.id === 'glitzi' && rig.body.glitchBurst > 0 ? (this._burstFn || (this._burstFn = (vm) => burstShift(this.rig.body, vm) * (7 / this._Pnow))) : null;
         drawStripWarp(ctx, rig.skin, this.sb, this.M, dpr, this.uvRect, 44, burst);
       } else {

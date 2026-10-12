@@ -62,7 +62,8 @@ export async function run(ctx, { frameworks: F, engine: E }) {
 
   // ================================================================ TELL ==
   setMove(0, { eyebrow: 'Another Angle', title: 'There’s more than one way to see it.', prompt: '' });
-  world.place({ x: 50, y: 25, scale: 0.6 });
+  // short phones: a smaller Zuzu leaves room above it for its lines
+  world.place({ x: 50, y: 25, scale: innerHeight < 640 ? 0.44 : 0.6 });
   const ta = h('textarea', { class: 'feel', 'aria-label': 'What happened, and what did your brain decide it means?', placeholder: 'e.g. “My boss criticised my work. I think I’m terrible at my job.”' });
   ta.value = ctx.input.text || '';
   const go = h('button', { class: 'btn ultra block' }, 'Ready for the plot twist?');

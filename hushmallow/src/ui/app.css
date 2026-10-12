@@ -121,6 +121,7 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { .ultra-card .spiral { animation: none; } }
 
 /* a line of text over a living scene: its own dark pill, ≥4.5:1 over the brightest realm */
+.eyebrow.scrim-pill { color: var(--text-1); padding: 6px 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .scrim-pill { display: inline-block; max-width: 100%; vertical-align: top; padding: 4px 12px; border-radius: 999px; background: rgba(12,8,34,.66); color: var(--text-1);
   text-shadow: var(--type-shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-sizing: border-box; }
 
@@ -178,7 +179,7 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .ritual-ui > .move-title { pointer-events: none; }
 .move-title { text-align: center; margin-top: 6px; position: relative; isolation: isolate; }
 /* soft scrim so prompts stay readable over bright realms (Sunpop, Blue Drift) */
-.move-title::before { content: ''; position: absolute; inset: -14px -18px -18px; z-index: -1; pointer-events: none; border-radius: 32px;
+.move-title::before { content: ''; position: absolute; inset: -14px 0 -18px; z-index: -1; pointer-events: none; border-radius: 32px;
   background: radial-gradient(closest-side, rgba(12,8,34,.58), rgba(12,8,34,.32) 62%, rgba(12,8,34,0)); }
 .move-title .eyebrow { display: block; margin-bottom: 6px; color: var(--accent); }
 .move-title h2 { margin: 0; font: var(--type-world); letter-spacing: var(--type-world-ls); font-optical-sizing: auto; text-wrap: balance; text-shadow: 0 2px 16px rgba(5,3,20,.6); }
@@ -244,10 +245,11 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .invite-beyond.is-focus { box-shadow: var(--shadow-2), 0 0 0 1px rgba(186,140,255,.3), 0 18px 60px rgba(150,60,255,.22); }
 /* one slow sheen across the card as it arrives */
 .invite::after { content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
-  background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.07) 48%, transparent 60%); transform: translateX(-100%); animation: inviteSheen 1600ms 380ms var(--ease-in-out) both; }
+  background: linear-gradient(105deg, transparent 42%, rgba(255,255,255,.07) 50%, transparent 58%) no-repeat; background-size: 300% 100%; background-position: 100% 0;
+  animation: inviteSheen 1600ms 380ms var(--ease-in-out) both; }
 .invite + .invite::after { animation-delay: 520ms; }
 @keyframes inviteIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-@keyframes inviteSheen { to { transform: translateX(100%); } }
+@keyframes inviteSheen { from { background-position: 100% 0; } to { background-position: 0 0; } }
 .invite-head { display: flex; gap: 14px; align-items: flex-start; }
 .invite-sigil { width: 46px; height: 46px; flex: 0 0 auto; margin-top: 2px; color: var(--accent); }
 .invite-beyond .invite-sigil.spiral { width: 46px; height: 46px; border-radius: 50%; background: conic-gradient(from 0deg, #39f0ff, #c414e6, #7a3cff, #39f0ff);

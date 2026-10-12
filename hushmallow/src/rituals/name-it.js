@@ -325,7 +325,7 @@ export async function run(ctx) {
   const nameDone = h('button', { class: 'btn primary block', disabled: !sel.length }, 'That’s its name');
   const said = String(ctx.input?.text || '').trim();
   // over bright skies (Blue Drift) the echo sits on its own dark pill so it stays readable
-  const echo = said && H >= 640 ? h('p', { style: { margin: '0', textAlign: 'center', lineHeight: '0' } },
+  const echo = said && H >= 640 ? h('p', { style: { margin: '0', textAlign: 'center', lineHeight: '0', minWidth: '0', overflow: 'hidden' } },
     h('span', { class: 'scrim-pill t-caption', style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, `You said: “${said.length > 60 ? `${said.slice(0, 58)}…` : said}”`)) : null;
   dock.replaceChildren(...[echo, tray, words, nameDone].filter(Boolean));
 

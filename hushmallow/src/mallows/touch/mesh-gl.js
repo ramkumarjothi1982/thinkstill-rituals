@@ -10,8 +10,10 @@
 //           the shader so its skin no longer redraws every frame.
 //           Context loss → onLost (the stage drops to tier B) → restore.
 //   Tier B  drawTriangleWarp — Canvas 2D affine triangles on a coarse grid
-//           (every other solver vertex), each clipped and grown a hair to
-//           hide seams.
+//           (every other solver vertex), each clipped and grown 1.2 device px
+//           so neighbours overlap: anti-aliased clip edges of two triangles
+//           never leave a half-covered seam (0.4–0.7 px still showed faint
+//           lines in zoomed screenshots; 1.2 px shows none, same cost).
 //   Tier C  drawStripWarp — the old strip warp, with each strip's width and
 //           offset from the solver's row extents. No seams, cheapest.
 
@@ -34,6 +36,8 @@ void main() {
 const FS = `
 precision mediump float;
 uniform sampler2D uTex;
+uniform sampler2D uBase;
+uniform float uBaseOn;
 uniform vec2 uTexel;
 uniform vec2 uSrc;
 uniform vec3 uRimCol;
@@ -55,7 +59,23 @@ void main() {
   vec4 c = texture2D(uTex, uv);
   if (c.a < 0.003) discard;
   vec3 rgb = c.rgb;
-  if (uGlOn > 0.5) {
+  // glitch lines sit on the body, under the face: wherever the live skin
+  // differs from the bare (face-cleaned) body a feature is drawn, so no line
+  float under = 1.0;
+  if (uGlOn > 0.5 && uBaseOn > 0.5) {
+    vec4 bb = texture2D(uBase, uv);
+    vec3 d = abs(c.rgb - bb.rgb);
+    under = 1.0 - smoothstep(0.04, 0.14, max(max(d.r, d.g), d.b) + abs(c.a - bb.a));
+  }
+  if (uGlOn > 1.5) {
+    // a calm Glitzi: its static quiets under dark bands (the 2D rig's look)
+    vec2 sp = uv * uSrc;
+    for (int i = 0; i < 9; i++) {
+      vec4 g = uGl[i];
+      float band = 1.0 - smoothstep(uGlThick * 0.5 - 0.6, uGlThick * 0.5 + 0.6, abs(sp.y - g.x));
+      rgb = mix(rgb, vec3(0.106, 0.078, 0.322) * c.a, clamp(g.w * band * under, 0.0, 1.0));
+    }
+  } else if (uGlOn > 0.5) {
     vec2 sp = uv * uSrc;
     for (int i = 0; i < 9; i++) {
       vec4 g = uGl[i];
@@ -63,7 +83,7 @@ void main() {
       float t = (sp.x - g.y) / g.z;
       if (band > 0.0 && t > 0.0 && t < 1.0) {
         vec3 col = mix(mix(vec3(0.243, 0.91, 1.0), vec3(1.0), smoothstep(0.3, 0.55, t)), vec3(1.0, 0.239, 0.949), smoothstep(0.55, 0.8, t));
-        float a = g.w * band * smoothstep(0.0, 0.3, t) * (1.0 - smoothstep(0.8, 1.0, t));
+        float a = g.w * band * under * smoothstep(0.0, 0.3, t) * (1.0 - smoothstep(0.8, 1.0, t));
         rgb = rgb * (1.0 - a) + col * a * c.a;
       }
     }
@@ -167,7 +187,7 @@ export class MeshRenderer {
     const P = this.prog, B = this.bprog;
     this.a = { pos: gl.getAttribLocation(P, 'aPos'), uv: gl.getAttribLocation(P, 'aUv'), shade: gl.getAttribLocation(P, 'aShade'), face: gl.getAttribLocation(P, 'aFace') };
     this.u = {};
-    for (const n of ['uM', 'uLag', 'uTex', 'uTexel', 'uSrc', 'uRimCol', 'uRim', 'uLight', 'uSpec', 'uGl', 'uGlOn', 'uGlThick', 'uBurst']) this.u[n] = gl.getUniformLocation(P, n);
+    for (const n of ['uM', 'uLag', 'uTex', 'uBase', 'uBaseOn', 'uTexel', 'uSrc', 'uRimCol', 'uRim', 'uLight', 'uSpec', 'uGl', 'uGlOn', 'uGlThick', 'uBurst']) this.u[n] = gl.getUniformLocation(P, n);
     this.ba = gl.getAttribLocation(B, 'aQ');
     this.bu = { rect: gl.getUniformLocation(B, 'uRect'), col: gl.getUniformLocation(B, 'uCol'), inner: gl.getUniformLocation(B, 'uInner') };
     this.quad = gl.createBuffer();
@@ -180,7 +200,8 @@ export class MeshRenderer {
     return true;
   }
 
-  /** Register a mesh: {source canvas, indices, uvs, faceW, n}. */
+  /** Register a mesh: {source canvas, indices, uvs, faceW, n, base?} — base:
+   *  the same-size bare body under the face (glitch lines are drawn only on it). */
   addBody(key, spec) {
     const b = { ...spec, tex: null, w: 0, h: 0 };
     this.bodies.set(key, b);
@@ -190,7 +211,7 @@ export class MeshRenderer {
 
   removeBody(key) {
     const b = this.bodies.get(key), gl = this.gl;
-    if (b && gl && !this.lost) { gl.deleteTexture(b.tex); for (const k of ['pos', 'uvBuf', 'shadeBuf', 'faceBuf', 'idx']) if (b[k]) gl.deleteBuffer(b[k]); }
+    if (b && gl && !this.lost) { gl.deleteTexture(b.tex); if (b.baseTex) gl.deleteTexture(b.baseTex); for (const k of ['pos', 'uvBuf', 'shadeBuf', 'faceBuf', 'idx']) if (b[k]) gl.deleteBuffer(b[k]); }
     this.bodies.delete(key);
   }
 
@@ -214,6 +235,13 @@ export class MeshRenderer {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     b.w = 0; b.h = 0;
     if (b.source) this.updateTexture(key, b.source, null);
+    b.baseTex = null;
+    if (b.base) {
+      b.baseTex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, b.baseTex);
+      for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, b.base);
+    }
   }
 
   /** Upload the skin: the whole canvas, or only rect {x,y,w,h} — or a list of
@@ -264,7 +292,7 @@ export class MeshRenderer {
    * Draw one frame.
    * blobs: [{x, y, rx, ry, rgba:[r,g,b,a], inner}] in CSS px (drawn first)
    * items: [{key, positions, shade, m:[a,b,c,d,e,f] body→CSS px, lag:[u,v], rim, rimCol:[r,g,b], light,
-   *          glitch: Float32Array(36)|null, glitchThick, burst: Float32Array(18)|null, src:[w,h]}]
+   *          glitch: Float32Array(36)|null, glitchThick, glitchMode:'lit'|'dim', burst: Float32Array(18)|null, src:[w,h]}]
    */
   draw(items, blobs = []) {
     const gl = this.gl;
@@ -290,7 +318,7 @@ export class MeshRenderer {
     gl.useProgram(this.prog);
     const u = this.u, a = this.a, M = this._mat;
     gl.uniform1i(u.uTex, 0);
-    gl.activeTexture(gl.TEXTURE0);
+    gl.uniform1i(u.uBase, 1);
     for (const it of items) {
       const b = this.bodies.get(it.key);
       if (!b || !b.tex) continue;
@@ -308,10 +336,14 @@ export class MeshRenderer {
       gl.uniform1f(u.uRim, it.rim || 0);
       gl.uniform1f(u.uLight, it.light ?? 1);
       gl.uniform1f(u.uSpec, it.spec ?? 1);
-      gl.uniform1f(u.uGlOn, it.glitch ? 1 : 0);
+      gl.uniform1f(u.uGlOn, it.glitch ? (it.glitchMode === 'dim' ? 2 : 1) : 0);
       gl.uniform4fv(u.uGl, it.glitch || this._noGlitch);
       gl.uniform1f(u.uGlThick, it.glitchThick || 3);
       gl.uniform3fv(u.uBurst, it.burst || this._noBurst);
+      gl.uniform1f(u.uBaseOn, b.baseTex && it.glitch ? 1 : 0);
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, b.baseTex || b.tex);
+      gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, b.tex);
       gl.bindBuffer(gl.ARRAY_BUFFER, b.pos);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, it.positions);
@@ -386,7 +418,7 @@ export function coarseGrid(sb, step = 2) {
  * Draw the skin through a triangle list with affine-mapped, clipped triangles.
  * m: body units → CSS px affine [a,b,c,d,e,f]; dpr: device px per CSS px.
  */
-export function drawTriangleWarp(ctx, skin, sb, tris, m, dpr, grow = 0.7) {
+export function drawTriangleWarp(ctx, skin, sb, tris, m, dpr, grow = 1.2) {
   const P = sb.positions, UV = sb.uvs;
   const SW = skin.width, SH = skin.height;
   const [ma, mb, mc, md, me, mf] = m;
@@ -405,9 +437,13 @@ export function drawTriangleWarp(ctx, skin, sb, tris, m, dpr, grow = 0.7) {
     const C = ((y1 - y0) * (v2 - v0) - (y2 - y0) * (v1 - v0)) / den;
     const D = ((y2 - y0) * (u1 - u0) - (y1 - y0) * (u2 - u0)) / den;
     const cx = (x0 + x1 + x2) / 3, cy = (y0 + y1 + y2) / 3;
-    // grow the clip a hair (in device px) so neighbours overlap: no seams
-    const g = (x, y) => { const dx = x - cx, dy = y - cy, l = Math.hypot(dx, dy) || 1; return [x + (dx / l) * grow, y + (dy / l) * grow]; };
-    const [gx0, gy0] = g(x0, y0), [gx1, gy1] = g(x1, y1), [gx2, gy2] = g(x2, y2);
+    // grow the clip (device px) so neighbours overlap: no seams
+    let l = Math.hypot(x0 - cx, y0 - cy) || 1;
+    const gx0 = x0 + ((x0 - cx) / l) * grow, gy0 = y0 + ((y0 - cy) / l) * grow;
+    l = Math.hypot(x1 - cx, y1 - cy) || 1;
+    const gx1 = x1 + ((x1 - cx) / l) * grow, gy1 = y1 + ((y1 - cy) / l) * grow;
+    l = Math.hypot(x2 - cx, y2 - cy) || 1;
+    const gx2 = x2 + ((x2 - cx) / l) * grow, gy2 = y2 + ((y2 - cy) / l) * grow;
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.beginPath();

@@ -243,6 +243,10 @@ export class SoftBody {
       rest[2 * k] = cx + u * sxB * (1 + bulge) + lean * (1 - vm) * (1 - vm);
       rest[2 * k + 1] = fl + (vm - fl) * ys;
     }
+    // flat: the rest shape is the undeformed lattice (renderers may draw it as one image)
+    let dev = 0;
+    for (let k = 0; k < 2 * n; k++) { const d = Math.abs(rest[k] - q0[k]); if (d > dev) dev = d; }
+    this.restFlat = dev < 2e-4;
     this._prepRest();
     return this;
   }

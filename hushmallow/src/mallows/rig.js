@@ -850,10 +850,20 @@ export class MallowRig {
   }
 
   /** Glitzi's energised glitch lines for a shader (opts.shaderGlitch): per row
-   *  [y, x0, len, alpha] in source px, plus thickness; null when calm. */
-  glitchLines(out = new Float32Array(GLITCH_ROWS.length * 4)) {
+   *  [y, x0, len, alpha] in source px, plus out.thick and out.mode ('lit');
+   *  null when calm. With {dim:true} a calm Glitzi returns its quieted rows
+   *  instead (out.mode 'dim': dark bands over the approved lines). */
+  glitchLines(out = new Float32Array(GLITCH_ROWS.length * 4), opts = {}) {
     const g = clamp(this.val.glitch, 0, 2);
-    if (this.id !== 'glitzi' || g < 0.55) return null;
+    if (this.id !== 'glitzi') return null;
+    if (g < 0.55) {
+      const a = (0.55 - g) * 1.2;
+      if (!opts.dim || a < 0.003) return null;
+      for (let i = 0; i < GLITCH_ROWS.length; i++) { out[4 * i] = GLITCH_ROWS[i]; out[4 * i + 1] = 0; out[4 * i + 2] = this.mallow.size[0]; out[4 * i + 3] = a; }
+      out.thick = 6; out.mode = 'dim';
+      return out;
+    }
+    out.mode = 'lit';
     const W = this.mallow.size[0], k = (g - 0.55) / 1.45;
     for (let i = 0; i < GLITCH_ROWS.length; i++) {
       const ph = this.time * (0.6 + i * 0.13) + i * 1.7;
@@ -877,7 +887,8 @@ export class MallowRig {
     const atRest = !blinking && this._deviation(v) < 0.03;
     const prevRest = this.restMix ?? 1;
     this.restMix = atRest ? Math.min(1, prevRest + (this._dt || 0.016) * 7) : 0;
-    const glitchSig = this.id === 'glitzi' ? '|' + (shaderGlitch ? Math.min(0.55, v.glitch).toFixed(3) : v.glitch.toFixed(3)) : '';
+    // with a shader drawing every glitch line (MallowTouch tier A) the skin never changes with glitch
+    const glitchSig = this.id === 'glitzi' && !shaderGlitch ? '|' + v.glitch.toFixed(3) : '';
     const sig = this._faceSignature(blinkAmt) + '|' + this.restMix.toFixed(2) + glitchSig;
     if (!animated && !this.skinDirty && sig === this._lastSig) return false;
     this._lastSig = sig;
@@ -885,7 +896,7 @@ export class MallowRig {
     // redraw just that — outside it the body and the approved art are the same
     // pixels. Glitzi's glitch lines span the body, so they force a full redraw
     // unless a shader draws them.
-    const fullKey = this.q + (this.id === 'glitzi' ? (shaderGlitch ? Math.min(0.55, v.glitch).toFixed(3) : String(this.time)) : '');
+    const fullKey = this.q + (this.id === 'glitzi' && !shaderGlitch ? String(this.time) : '');
     const partial = this.headless && !this.skinDirty && this.skinVersion > 0 && fullKey === this._fullKey;
     this._fullKey = fullKey;
     this.skinDirty = false;
@@ -921,7 +932,7 @@ export class MallowRig {
     const f = m.face;
     const P = P0;
     // Glitzi's energised/dimmed glitch lines sit on the body, under the eyes
-    if (this.id === 'glitzi' && (!shaderGlitch || P.glitch < 0.55)) drawGlitchLines(ctx, this, P);
+    if (this.id === 'glitzi' && !shaderGlitch) drawGlitchLines(ctx, this, P);
     for (const side of ['L', 'R']) drawEye(ctx, this, f, side, P);
     for (const side of ['L', 'R']) drawBrow(ctx, f, side, P);
     drawMouth(ctx, f, P, this.time);

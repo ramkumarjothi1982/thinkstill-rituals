@@ -374,3 +374,28 @@ test('type floor: no old family stacks or Fredoka left in the migrated JS', () =
   }
   assert.deepEqual(bad, []);
 });
+
+test('toasts and bubbles: centred toasts, dialogue never below 19px, calm under reduced motion', () => {
+  const css = read('src/ui/app.css');
+  // the toast's entrance keeps its translateX(-50%) centring (bubbleIn ends at transform:none)
+  assert.match(css, /\.toast \{[^}]*animation: toastIn /);
+  assert.match(css, /@keyframes toastIn \{ from \{[^}]*translate\(-50%, [^}]*\} to \{[^}]*translate\(-50%, 0\)/);
+  // compact bubbles save room with padding and width, never a smaller font
+  const compact = css.match(/\.bubble\.compact \{([^}]*)\}/)[1];
+  assert.doesNotMatch(compact, /font(-size)?:/);
+  // reduced motion: a plain fade for both
+  const rm = [...css.matchAll(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/g)].map((m) => m[1]).join('\n');
+  assert.match(rm, /\.toast \{ animation: softFade 120ms/);
+  assert.match(rm, /\.bubble \{ animation: softFade 120ms/);
+  // no speech is ever hidden from sighted people (the old sr-only fallback)
+  assert.doesNotMatch(read('src/app/ui.js'), /classList\.add\('sr-only'\)/);
+});
+
+test('privacy copy matches what ships: Another Angle runs on the phone in this build', () => {
+  // no customer string in the plans screen or Another Angle claims a server
+  // until the Beyond server client is switched on (W8 changes this test with it)
+  for (const p of ['src/app/scenes/plans.js', 'src/ultra/another-angle.js']) {
+    for (const { text } of lexJs(read(p)).strings) assert.doesNotMatch(text, /\bserver\b|secure server|beyond your phone/i, `${p}: "${text.slice(0, 80)}"`);
+  }
+  assert.match(read('src/app/scenes/plans.js'), /Another Angle works on this phone: what you type stays here\./);
+});

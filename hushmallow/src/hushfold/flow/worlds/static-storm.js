@@ -59,7 +59,7 @@ export function create(ctx) {
   // fingers (two at most)
   const fingers = [0, 1].map(() => ({
     on: false, id: -1, x: 0, y: 0, px: 0, py: 0, speed: 0, s: 0, k: 0, t0: 0, still: 0, fastFor: 0, slowGap: 0, slowFor: 0,
-    line: null, onThought: false, pulse: { on: false, age: 0, drained: 0 }, wait: 0, tracker: new AngleTracker(), circling: 0,
+    line: null, lastEv: 0, onThought: false, pulse: { on: false, age: 0, drained: 0 }, wait: 0, tracker: new AngleTracker(), circling: 0,
     trail: { x: new Float32Array(28), y: new Float32Array(28), t: new Float32Array(28), j: new Float32Array(28), n: 0, head: 0 },
     pointerType: 'touch', grounding: 0,
   }));
@@ -288,7 +288,7 @@ export function create(ctx) {
     if (s.type === 'down') {
       const f = fingers.find((q) => !q.on);
       if (!f) return;
-      f.on = true; f.id = s.id; f.x = f.px = s.x; f.y = f.py = s.y; f.speed = 0; f.s = 0; f.k = 0; f.t0 = elapsed; f.still = 0; f.fastFor = 0; f.slowGap = 0; f.slowFor = 0;
+      f.on = true; f.id = s.id; f.x = f.px = s.x; f.y = f.py = s.y; f.speed = 0; f.lastEv = elapsed; f.s = 0; f.k = 0; f.t0 = elapsed; f.still = 0; f.fastFor = 0; f.slowGap = 0; f.slowFor = 0;
       f.line = null; f.pulse.on = false; f.pulse.age = 0; f.pulse.drained = 0; f.wait = 0; f.circling = 0; f.grounding = 0; f.pointerType = s.pointerType || 'touch';
       f.trail.n = 0; f.trail.head = 0;
       f.onThought = hitThought(s.x, s.y);
@@ -305,11 +305,14 @@ export function create(ctx) {
     const f = fingerFor(s.id);
     if (!f) return;
     if (s.type === 'move') {
+      f.lastEv = elapsed;
+      // a resting finger (no events): the director reports its speed slowing to 0, nothing moved
+      if (s.idle) { f.speed = s.speed; f.k = clamp((s.speed - pace.fastPx) / pace.fastPx, 0, 2); return; }
       const x0 = f.x, y0 = f.y;
       f.x = s.x; f.y = s.y; f.speed = s.speed;
-      // charge starts gathering from a brisk pace (U/s) and is in full flow at twice 'fast'
+      // charge gathers above the 'fast' threshold (spec: 0.9 · clamp((v − fast) / fast, 0, 2) per cell-length of path)
       const fastPx = pace.fastPx;
-      const k = clamp((s.speed - U) / Math.max(1, 2 * fastPx - U), 0, 2);
+      const k = clamp((s.speed - fastPx) / fastPx, 0, 2);
       f.k = k;
       // crackle trail sample
       const tr = f.trail, i = (tr.head + tr.n) % 28;
@@ -468,6 +471,8 @@ export function create(ctx) {
 
     for (const f of fingers) {
       if (!f.on) continue;
+      // driven without the director's idle events: a finger with no news for 0.25 s is slowing to a stop
+      if (elapsed - f.lastEv > 0.25 && f.speed > 0) { f.speed *= Math.exp(-dt / 0.12); if (f.speed < 0.05) f.speed = 0; f.k = clamp((f.speed - pace.fastPx) / pace.fastPx, 0, 2); }
       f.s = slowness(f.speed, U, PACE[f.pointerType] || PACE.touch);
       const stillPx = (PACE[f.pointerType] || PACE.touch).stillU * U;
       const isStill = f.speed < stillPx;
@@ -543,11 +548,12 @@ export function create(ctx) {
     // first big surge: Glitzi notices, and it's allowed
     if (!firstSurge && Q > 1.05 && everTouched) {
       firstSurge = true;
-      mallow?.react?.('glitchBurst');
+      // reduced motion: a calm 'oh!' instead of glitch bars across the face
+      mallow?.react?.(rm ? 'gasp' : 'glitchBurst');
       const lines2 = ctx.entry.dialogue?.charge;
       if (lines2) ctx.say(lines2, { who: 'glitzi', kind: 'dialogue' });
     }
-    if (f0 && f0.k > 0.6 && Q > 0.9 && now - glitchAt > 6) { glitchAt = now; mallow?.react?.('glitchBurst'); }
+    if (f0 && f0.k > 0.6 && Q > 0.9 && now - glitchAt > (rm ? 12 : 6)) { glitchAt = now; mallow?.react?.(rm ? 'gasp' : 'glitchBurst'); }
 
     updateThought(dt, now);
     updateCards(dt, now);
