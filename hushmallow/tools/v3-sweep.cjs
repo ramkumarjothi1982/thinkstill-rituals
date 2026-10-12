@@ -1,5 +1,5 @@
 // V3 completion sweep (dev only): plays rituals to the end in a real browser.
-//   node hushmallow/tools/v3-sweep.cjs [--from HM-0001] [--to HM-1000] [--only GE-07] [--workers 3] [--speed 3] [--drag] [--out report.json]
+//   node hushmallow/tools/v3-sweep.cjs [--from HM-0001] [--to HM-1000] [--only GE-07] [--workers 3] [--speed 3] [--drag] [--photos N] [--out report.json]
 // Needs the repo served on :8000. Each ritual runs with a random photo count
 // (0–6; 0 means the seven Mallow cards stand in) and is finished with the Tap instead button (or, with --drag, with the
 // gestures its ghost hints show). Writes a JSON report and prints a summary.
@@ -23,7 +23,7 @@ const has = (k) => process.argv.includes(`--${k}`);
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    const photos = Math.floor(Math.random() * 7);
+    const photos = arg('photos', null) != null ? Number(arg('photos')) : Math.floor(Math.random() * 7);
     const t0 = Date.now();
     let phase = 'load', p = 0;
     try {
