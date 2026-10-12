@@ -11,6 +11,14 @@
 //
 // All rig coordinates are in the approved PNG's own pixel space, measured by
 // tools/detect.py (see tools/features.json).
+//
+// High-res art (hires.js, decision D13): the Mallows on HIRES_VERIFIED switch
+// at import, before any rig loads, to the owner's 1024 px cut-out (`art`,
+// rig only), a 384 px thumbnail (`file`, every other picture), new bodies and
+// sprites, and a face measured in the rig's logical space (art px / `res`).
+// `?hires=0` in the page URL keeps every Mallow on its original drawing.
+
+import { applyHires } from './hires.js';
 
 export const MALLOW_IDS = ['glitzi', 'blubi', 'zuzu', 'boppo', 'pipzi', 'loomi', 'noomi'];
 
@@ -265,6 +273,10 @@ export const SPRITES = {
   'zuzu-spiral-L': A('rig/zuzu-spiral-L.png'), 'zuzu-spiral-R': A('rig/zuzu-spiral-R.png'),
 };
 
+/** The Mallows switched to their high-res rigs (hires.js HIRES_VERIFIED), in
+ *  place, once, at import; [] with ?hires=0 (the escape hatch). */
+export const HIRES_ON = (typeof location !== 'undefined' && new URLSearchParams(location.search).get('hires') === '0') ? [] : applyHires(MALLOWS, SPRITES);
+
 export function getMallow(id) {
   const key = LEGACY_BUBBLE_TO_MALLOW[String(id).toLowerCase()] || String(id).toLowerCase();
   return MALLOWS[key] || null;
@@ -293,7 +305,7 @@ export async function loadMallowAssets(id) {
     if (e.sprite) keys.add(e.sprite);
   }
   const [original, body, ...sprites] = await Promise.all([
-    loadImage(m.file), loadImage(m.body), ...[...keys].map((k) => loadImage(SPRITES[k])),
+    loadImage(m.art || m.file), loadImage(m.body), ...[...keys].map((k) => loadImage(SPRITES[k])),
   ]);
   const map = {};
   [...keys].forEach((k, i) => { map[k] = sprites[i]; });

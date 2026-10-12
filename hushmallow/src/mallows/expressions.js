@@ -258,7 +258,8 @@ export function resolveExpression(mallow, mix, intensity = 0.7, extra = null) {
   const acc = {};
   const wsum = {};
   for (const [id, w] of entries) {
-    const target = { ...PRESETS[id], ...(pers.overrides?.[id] || {}) };
+    // mallow.presetOverrides: a re-rigged face's own targets (high-res Glitzi's lids)
+    const target = { ...PRESETS[id], ...(pers.overrides?.[id] || {}), ...(mallow.presetOverrides?.[id] || {}) };
     const wi = w / totalW;
     for (const [k, v] of Object.entries(target)) {
       if (!(k in base)) continue;

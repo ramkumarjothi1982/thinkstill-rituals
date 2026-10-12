@@ -327,7 +327,7 @@ export class MallowTouch {
     const g = c.getContext('2d');
     g.setTransform(rig.q, 0, 0, rig.q, 0, 0);
     g.imageSmoothingQuality = 'high';
-    g.drawImage(img, 0, 0);
+    g.drawImage(img, 0, 0, rig.mallow.size[0], rig.mallow.size[1]);   // at the logical size (high-res art: res px per unit)
     return c;
   }
 
@@ -616,8 +616,18 @@ export class MallowTouch {
     const ms = Number.isFinite(e.t) ? e.t : nowMs();
     this._noteLag(ms);
     const t = ms / 1000;
-    if (e.type === 'move' && !this.reader.ptrs.has(e.id)) { this._gaze(e.x, e.y); return false; }
+    // a Shift-drag's moves belong to its two virtual fingers (as in _bindPointer)
+    if (e.type === 'move' && !this.reader.ptrs.has(e.id) && !(this.reader._shift && this.reader._shift.src === e.id)) { this._gaze(e.x, e.y); return false; }
     return this.reader.pointer({ type: e.type, id: e.id, x: e.x, y: e.y, t, shift: !!e.shift, mouse: !!e.mouse });
+  }
+
+  /** Routed ctrl+wheel (a desktop trackpad pinch): {x, y, deltaY, t?(ms, performance.now() clock)}.
+   *  Returns true when it is the Mallow's (the caller then calls preventDefault). */
+  wheel(e) {
+    if (!this.ready || !e || !this.reader?.wheel) return false;
+    const ms = Number.isFinite(e.t) ? e.t : nowMs();
+    this._noteLag(ms);
+    return this.reader.wheel({ x: e.x, y: e.y, deltaY: e.deltaY, t: ms / 1000 });
   }
 
   /** Is a finger (or mouse / key) on the Mallow right now? */
