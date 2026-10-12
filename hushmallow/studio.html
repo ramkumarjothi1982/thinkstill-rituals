@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mallow Emotion Studio</title>
+<link rel="stylesheet" href="src/ui/tokens.css">
+<style>
+  body { margin: 0; background: var(--ink-0); color: var(--text-1); font: 15px/1.45 var(--font-ui); }
+  .studio { display: grid; grid-template-columns: minmax(0, 1fr) 340px; min-height: 100vh; }
+  @media (max-width: 860px) { .studio { grid-template-columns: 1fr; } }
+  header.top { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+  header.top h1 { font: 700 18px/1 var(--font-display); margin: 0; letter-spacing: .01em; }
+  header.top .sub { color: var(--text-3); font-size: 13px; }
+  header.top a { margin-left: auto; color: var(--text-2); font-size: 13px; }
+  .stagewrap { padding: 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .stage { position: relative; border-radius: 22px; overflow: hidden; height: min(62vh, 560px); background: var(--bg, #0d0b22); transition: background .4s; }
+  .stage.bg-white { --bg: #ffffff; }
+  .stage.bg-dark { --bg: #0b0a17; }
+  .stage.bg-check { --bg: repeating-conic-gradient(#d9d9e3 0 25%, #ffffff 0 50%) 0 0 / 24px 24px; }
+  .stage .realm { position: absolute; inset: 0; }
+  .stage .rig { position: absolute; inset: 0; }
+  .stage .readout { position: absolute; left: 14px; bottom: 12px; font-size: 13px; padding: 6px 10px; border-radius: 999px;
+    background: rgba(10,8,30,.55); color: #fff; backdrop-filter: blur(8px); }
+  .stage .hint { position: absolute; right: 14px; bottom: 12px; font-size: 12px; color: rgba(255,255,255,.75);
+    background: rgba(10,8,30,.4); padding: 6px 10px; border-radius: 999px; }
+  .stage.bg-white .hint, .stage.bg-check .hint { color: #333; background: rgba(255,255,255,.7); }
+  .roster { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .roster::-webkit-scrollbar { display: none; }
+  .roster button { flex: 0 0 auto; width: 84px; height: 96px; border-radius: 16px; border: 1px solid var(--line); background: var(--ink-1);
+    color: var(--text-2); font: 600 12px var(--font-ui); padding: 4px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; cursor: pointer; }
+  .roster button img { width: 58px; height: 58px; object-fit: contain; }
+  .roster button[aria-pressed="true"] { border-color: var(--accent); color: var(--text-1); background: var(--ink-2); }
+  .sizes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .sizes .cell { border-radius: 14px; border: 1px solid var(--line); position: relative; overflow: hidden; }
+  .sizes .cell span { position: absolute; left: 8px; top: 6px; font-size: 11px; color: var(--text-3); }
+  .sizes .cell.white { background: #fff; } .sizes .cell.dark { background: #0b0a17; } .sizes .cell.check { background: repeating-conic-gradient(#d9d9e3 0 25%, #fff 0 50%) 0 0/16px 16px; }
+  .sizes .cell.small { height: 120px; } .sizes .cell.large { height: 120px; }
+  aside { border-left: 1px solid var(--line); padding: 16px; display: flex; flex-direction: column; gap: 18px; overflow-y: auto; max-height: calc(100vh - 50px); }
+  @media (max-width: 860px) { aside { border-left: 0; border-top: 1px solid var(--line); max-height: none; } }
+  h2 { font: 700 12px var(--font-ui); text-transform: uppercase; letter-spacing: .1em; color: var(--text-3); margin: 0 0 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { border: 1px solid var(--line); background: var(--ink-1); color: var(--text-2); border-radius: 999px; padding: 6px 11px; font: 600 13px var(--font-ui); cursor: pointer; }
+  .chip[aria-pressed="true"] { background: var(--accent); color: #140b2e; border-color: transparent; }
+  .row { display: flex; align-items: center; gap: 10px; }
+  .row label { flex: 0 0 92px; color: var(--text-2); font-size: 13px; }
+  input[type=range] { flex: 1; accent-color: var(--accent); }
+  select { flex: 1; background: var(--ink-1); color: var(--text-1); border: 1px solid var(--line); border-radius: 10px; padding: 7px; font: inherit; }
+  .tests { display: grid; gap: 6px; }
+  .tests button, .acts button { text-align: left; border: 1px solid var(--line); background: var(--ink-1); color: var(--text-1); border-radius: 12px; padding: 9px 12px; font: 600 13px var(--font-ui); cursor: pointer; }
+  .tests button:hover, .acts button:hover { border-color: var(--accent); }
+  .acts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .toggles { display: grid; gap: 8px; }
+  .toggles label { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--text-2); }
+  .sheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; padding: 16px; }
+  .sheet .cell { height: 170px; border-radius: 14px; background: var(--sheet-bg, #14112e); position: relative; overflow: hidden; }
+  .sheet .cell b { position: absolute; left: 10px; top: 8px; font-size: 12px; color: var(--text-2); z-index: 2; }
+  .sheet .cell.orig b { color: #ffd84a; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module" src="src/studio/studio.js"></script>
+</body>
+</html>

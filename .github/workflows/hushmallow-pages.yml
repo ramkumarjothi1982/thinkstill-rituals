@@ -1,0 +1,52 @@
+# Publishes the Hushmallow web app (the hushmallow/ folder) to GitHub Pages.
+# One-time setup: repository Settings → Pages → Build and deployment →
+# Source: "GitHub Actions". Then run this workflow (Actions tab → "Publish
+# Hushmallow" → Run workflow), or push to main.
+name: Publish Hushmallow
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['hushmallow/**', '.github/workflows/hushmallow-pages.yml']
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: hushmallow-pages
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test hushmallow/tests/*.test.mjs
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      # the app only: no dev tools, source workbook or Python helpers
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          mkdir -p _site/assets && cp -r hushmallow/assets/mallows hushmallow/assets/rig hushmallow/assets/fonts _site/assets/
+          cp -r hushmallow/index.html hushmallow/manifest.webmanifest hushmallow/src _site/
+          touch _site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

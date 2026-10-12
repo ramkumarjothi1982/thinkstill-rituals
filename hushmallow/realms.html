@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hushfold Realms</title>
+<link rel="stylesheet" href="src/ui/tokens.css">
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ink-0, #0a0818); color: var(--text-1, #f7f3ff); font: 14px/1.45 var(--font-ui, system-ui, sans-serif); }
+  header { display: flex; align-items: baseline; gap: 14px; padding: 16px 20px 6px; flex-wrap: wrap; }
+  header h1 { margin: 0; font: 700 20px/1.1 var(--font-display, system-ui); letter-spacing: .01em; }
+  header p { margin: 0; color: var(--text-3, #918ab6); font-size: 13px; }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 0; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  .grid { display: flex; flex-wrap: wrap; gap: 18px; padding: 14px 20px 28px; align-content: flex-start; }
+  figure { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+  figure figcaption { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; color: var(--text-2, #cdc6ea); }
+  figure figcaption b { color: var(--text-1, #fff); font-weight: 700; }
+  figure[aria-current="true"] .phone { outline: 2px solid var(--accent, #ffd98a); outline-offset: 3px; }
+  .phone { position: relative; width: calc(390px * var(--s)); height: calc(844px * var(--s)); border-radius: calc(46px * var(--s)); overflow: hidden;
+    box-shadow: 0 18px 50px rgba(4,2,16,.55), 0 0 0 1px rgba(255,255,255,.08); background: #000; cursor: crosshair; }
+  .screen { position: absolute; left: 0; top: 0; width: 390px; height: 844px; transform: scale(var(--s)); transform-origin: 0 0; overflow: hidden; }
+  .mallow { position: absolute; left: 20%; width: 60%; bottom: 14%; pointer-events: none; filter: drop-shadow(0 10px 14px rgba(0,0,0,.28)); }
+  .guides::before, .guides::after { content: ''; position: absolute; left: 0; right: 0; pointer-events: none; border: 1px dashed rgba(255,255,255,.35); }
+  .guides::before { top: 0; height: 30%; border-top: 0; }
+  .guides::after { bottom: 0; height: 12%; border-bottom: 0; }
+  .fakeui { position: absolute; inset: 0; pointer-events: none; display: none; }
+  .fakeui.on { display: block; }
+  .fakeui h2 { position: absolute; top: 9%; left: 0; right: 0; text-align: center; margin: 0; font: 700 30px/1.15 var(--font-display, system-ui); color: #fff; text-shadow: 0 2px 16px rgba(0,0,0,.35); }
+  .fakeui p { position: absolute; top: 16.5%; left: 12%; right: 12%; text-align: center; margin: 0; font: 500 16px/1.4 var(--font-ui, system-ui); color: rgba(255,255,255,.86); }
+  .fakeui i { position: absolute; bottom: 4.2%; left: 8%; right: 8%; height: 54px; border-radius: 999px; background: rgba(255,255,255,.16); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.22); }
+  aside { border-left: 1px solid var(--line, rgba(255,255,255,.09)); padding: 16px 18px 40px; display: flex; flex-direction: column; gap: 18px; position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto; }
+  @media (max-width: 900px) { aside { border-left: 0; border-top: 1px solid var(--line); position: static; max-height: none; } }
+  h3 { font: 700 11.5px var(--font-ui); text-transform: uppercase; letter-spacing: .1em; color: var(--text-3, #918ab6); margin: 0 0 8px; }
+  .row { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+  .row label { flex: 0 0 84px; color: var(--text-2); font-size: 13px; }
+  .row output { flex: 0 0 34px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-3); font-size: 12px; }
+  input[type=range] { flex: 1; accent-color: var(--accent, #ffd98a); min-width: 0; }
+  select { flex: 1; min-width: 0; background: var(--ink-1, #141130); color: var(--text-1); border: 1px solid var(--line-strong, rgba(255,255,255,.18)); border-radius: 10px; padding: 7px 8px; font: inherit; }
+  .btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  button { border: 1px solid var(--line-strong, rgba(255,255,255,.18)); background: var(--ink-1, #141130); color: var(--text-1); border-radius: 12px; padding: 8px 10px; font: 600 13px var(--font-ui); cursor: pointer; }
+  button:hover { border-color: var(--accent, #ffd98a); }
+  button[aria-pressed="true"] { background: var(--accent, #ffd98a); color: #23140a; border-color: transparent; }
+  .toggles label { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--text-2); padding: 3px 0; }
+  .note { color: var(--text-3); font-size: 12px; }
+  body.solo { background: #000; overflow: hidden; }
+  body.solo header, body.solo aside { display: none; }
+  body.solo .layout { display: block; }
+  body.solo .grid { padding: 0; gap: 0; }
+  body.solo figure figcaption { display: none; }
+  body.solo .phone { border-radius: 0; box-shadow: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>The Hushfold</h1>
+  <p>Seven realms, one per Mallow. Click a phone to send the selected pulse there; move over it to steer parallax.</p>
+</header>
+<div class="layout">
+  <main class="grid" id="grid"></main>
+  <aside id="panel">
+    <section>
+      <h3>Target</h3>
+      <div class="row"><label for="target">Apply to</label><select id="target"><option value="all">All realms</option></select></div>
+    </section>
+    <section>
+      <h3>Emotion</h3>
+      <div class="row"><label for="emotion">Preset</label><select id="emotion"></select></div>
+      <div class="row"><label for="intensity">Intensity</label><input id="intensity" type="range" min="0" max="1" step="0.01" value="0.7"><output></output></div>
+    </section>
+    <section>
+      <h3>Mood</h3>
+      <div class="row"><label for="agitation">Agitation</label><input id="agitation" type="range" min="0" max="1" step="0.01"><output></output></div>
+      <div class="row"><label for="heaviness">Heaviness</label><input id="heaviness" type="range" min="0" max="1" step="0.01"><output></output></div>
+      <div class="row"><label for="clarity">Clarity</label><input id="clarity" type="range" min="0" max="1" step="0.01"><output></output></div>
+      <div class="row"><label for="warmth">Warmth</label><input id="warmth" type="range" min="0" max="1" step="0.01"><output></output></div>
+    </section>
+    <section>
+      <h3>Ritual transform</h3>
+      <div class="row"><label for="transform">Progress</label><input id="transform" type="range" min="0" max="1" step="0.01" value="0"><output></output></div>
+    </section>
+    <section>
+      <h3>Pulse</h3>
+      <div class="btns" id="pulses"></div>
+      <p class="note">Buttons fire at the stage; clicking a phone fires the highlighted kind at that spot.</p>
+    </section>
+    <section class="toggles">
+      <h3>Display</h3>
+      <label>Reduced motion <input type="checkbox" id="reduced"></label>
+      <label>Low stimulation <input type="checkbox" id="low"></label>
+      <label>Show Mallow <input type="checkbox" id="showMallow" checked></label>
+      <label>Show text/button zones <input type="checkbox" id="guides"></label>
+      <label>Mock UI text <input type="checkbox" id="fakeui"></label>
+      <div class="row"><label for="quality">Quality</label><select id="quality"><option>auto</option><option>high</option><option>low</option></select></div>
+      <div class="row"><label for="scale">Phone scale</label><input id="scale" type="range" min="0.3" max="1" step="0.01" value="0.46"><output></output></div>
+    </section>
+  </aside>
+</div>
+<script type="module">
+import { REALMS, REALM_IDS, EMOTION_MOODS, mountRealm, moodForEmotion } from './src/world/realm.js';
+
+const qs = new URLSearchParams(location.search);
+const solo = qs.get('solo');
+const $ = (id) => document.getElementById(id);
+const grid = $('grid');
+const handles = {};
+const figures = {};
+let pulseKind = 'tap';
+
+if (solo) document.body.classList.add('solo');
+const scale = solo ? 1 : Number($('scale').value);
+document.documentElement.style.setProperty('--s', scale);
+
+const ids = solo ? [solo] : REALM_IDS;
+for (const id of ids) {
+  const def = REALMS[id];
+  const fig = document.createElement('figure');
+  fig.innerHTML = `<div class="phone"><div class="screen"><div class="realm" style="position:absolute;inset:0"></div>
+    <img class="mallow" alt="" src="assets/mallows/${def.mallow}.png">
+    <div class="fakeui"><h2>${def.name.replace('The ', '')}</h2><p>${def.tagline}</p><i></i></div></div></div>
+    <figcaption><b>${def.name}</b><span>${def.mallow}</span></figcaption>`;
+  grid.append(fig);
+  figures[id] = fig;
+  const realmEl = fig.querySelector('.realm');
+  handles[id] = mountRealm(realmEl, id, {
+    emotion: qs.get('emotion') || 'neutral', intensity: Number(qs.get('i') || 0.7),
+    reducedMotion: qs.get('rm') === '1', lowStimulation: qs.get('low') === '1', quality: qs.get('q') || 'auto',
+  });
+  const phone = fig.querySelector('.phone');
+  phone.addEventListener('pointerdown', (e) => { handles[id].pulse(pulseKind, { x: e.clientX, y: e.clientY }); });
+  phone.addEventListener('pointermove', (e) => {
+    const r = phone.getBoundingClientRect();
+    handles[id].setFocus(((e.clientX - r.left) / r.width) * 2 - 1, ((e.clientY - r.top) / r.height) * 2 - 1);
+  });
+  phone.addEventListener('pointerleave', () => handles[id].setFocus(0, 0));
+  const opt = document.createElement('option'); opt.value = id; opt.textContent = def.name; $('target').append(opt);
+}
+if (qs.get('mallow') === '0') { $('showMallow').checked = false; }
+if (qs.get('ui') === '1') { $('fakeui').checked = true; }
+
+const targets = () => ($('target').value === 'all' ? Object.values(handles) : [handles[$('target').value]]);
+
+// emotion select
+for (const e of Object.keys(EMOTION_MOODS)) { const o = document.createElement('option'); o.value = o.textContent = e; $('emotion').append(o); }
+const moodKeys = ['agitation', 'heaviness', 'clarity', 'warmth'];
+function showOutputs() { for (const el of document.querySelectorAll('input[type=range]')) { const out = el.nextElementSibling; if (out?.tagName === 'OUTPUT') out.textContent = Number(el.value).toFixed(2); } }
+function syncSliders(m) { for (const k of moodKeys) $(k).value = m[k]; showOutputs(); }
+function applyEmotion() { const m = moodForEmotion($('emotion').value, Number($('intensity').value)); syncSliders(m); targets().forEach((h) => h.setEmotion($('emotion').value, Number($('intensity').value))); }
+$('emotion').addEventListener('change', applyEmotion);
+$('intensity').addEventListener('input', applyEmotion);
+for (const k of moodKeys) $(k).addEventListener('input', () => { showOutputs(); targets().forEach((h) => h.setMood({ [k]: Number($(k).value) })); });
+$('transform').addEventListener('input', () => { showOutputs(); targets().forEach((h) => h.transform(Number($('transform').value))); });
+syncSliders(moodForEmotion('neutral', 0.7));
+
+for (const k of ['tap', 'success', 'burst', 'ripple', 'strike', 'clear']) {
+  const b = document.createElement('button'); b.textContent = k; b.setAttribute('aria-pressed', String(k === pulseKind));
+  b.addEventListener('click', () => {
+    pulseKind = k;
+    for (const x of $('pulses').children) x.setAttribute('aria-pressed', String(x === b));
+    targets().forEach((h) => h.pulse(k));
+  });
+  $('pulses').append(b);
+}
+$('reduced').addEventListener('change', () => targets().forEach((h) => h.setReducedMotion($('reduced').checked)));
+$('low').addEventListener('change', () => targets().forEach((h) => h.setLowStimulation($('low').checked)));
+$('quality').addEventListener('change', () => targets().forEach((h) => h.setQuality($('quality').value)));
+const applyMallow = () => document.querySelectorAll('.mallow').forEach((m) => { m.style.display = $('showMallow').checked ? '' : 'none'; });
+$('showMallow').addEventListener('change', applyMallow); applyMallow();
+const applyGuides = () => document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('guides', $('guides').checked));
+$('guides').addEventListener('change', applyGuides);
+const applyUi = () => document.querySelectorAll('.fakeui').forEach((s) => s.classList.toggle('on', $('fakeui').checked));
+$('fakeui').addEventListener('change', applyUi); applyUi();
+$('scale').addEventListener('input', () => { document.documentElement.style.setProperty('--s', $('scale').value); showOutputs(); });
+$('target').addEventListener('change', () => { for (const [id, f] of Object.entries(figures)) f.setAttribute('aria-current', String($('target').value === id)); });
+showOutputs();
+
+// QA hooks
+window.hush = {
+  handles, REALMS,
+  /** Average ms per synchronous draw over n frames (flushes the GPU queue at the end). */
+  bench(id, n = 120) {
+    const h = handles[id]; const g = h.canvas.getContext('2d');
+    for (let i = 0; i < 10; i++) h.debug.frame(16.7);
+    g.getImageData(0, 0, 1, 1);
+    const t0 = performance.now();
+    for (let i = 0; i < n; i++) h.debug.frame(16.7);
+    const cpu = (performance.now() - t0) / n;
+    g.getImageData(0, 0, 1, 1);
+    const flushed = (performance.now() - t0) / n;
+    // per-frame flushed timing (forces each frame to finish)
+    const t1 = performance.now();
+    for (let i = 0; i < 30; i++) { h.debug.frame(16.7); g.getImageData(0, 0, 1, 1); }
+    const strict = (performance.now() - t1) / 30;
+    return { cpu, flushed, strict, dpr: h.debug.state.dpr };
+  },
+};
+window.__realmsReady = true;
+</script>
+</body>
+</html>

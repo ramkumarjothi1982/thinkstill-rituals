@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#0a0818">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="Hushmallow — your second brain for feelings. Seven living Mallows, one magical world.">
+<title>Hushmallow</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/mallows/pipzi.png">
+<link rel="apple-touch-icon" href="assets/mallows/pipzi.png">
+<link rel="preload" href="assets/fonts/fredoka-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="src/ui/tokens.css">
+<link rel="stylesheet" href="src/ui/app.css">
+</head>
+<body>
+  <div id="world" aria-hidden="true"></div>
+  <div id="mallow-layer"></div>
+  <div id="fx-layer"></div>
+  <main id="scene" aria-live="off"></main>
+  <div id="sheet-root"></div>
+  <noscript>Hushmallow needs JavaScript to bring the Mallows to life.</noscript>
+  <script type="module" src="src/app/main.js"></script>
+</body>
+</html>
