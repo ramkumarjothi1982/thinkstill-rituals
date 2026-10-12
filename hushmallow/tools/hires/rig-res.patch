@@ -1,0 +1,81 @@
+--- hushmallow/src/mallows/rig.js	2026-10-12 11:50:39.654240600 +0000
++++ hushmallow/src/mallows/rig.js	2026-10-12 12:20:21.532780960 +0000
+@@ -315,7 +315,7 @@
+     this.CX = W / 2;
+     this.BASE = H * this.opts.baseline;
+     // skin resolution follows on-screen size (cheap for thumbnails)
+-    const q = this.opts.skinSize ? this.opts.skinSize / Math.max(...m.size) : clamp(this.S * dpr * 1.05, 0.28, 1.25);
++    const q = this.opts.skinSize ? this.opts.skinSize / Math.max(...m.size) : clamp(this.S * dpr * 1.05, 0.28, 1.25 * (m.res || 1));
+     if (q !== this.q) {
+       this.q = q;
+       this.skin.width = Math.ceil(m.size[0] * q);
+@@ -822,13 +822,14 @@
+ 
+   /** Glitzi's energised glitch lines for a shader (opts.shaderGlitch): per row
+    *  [y, x0, len, alpha] in source px, plus thickness; null when calm. */
+-  glitchLines(out = new Float32Array(GLITCH_ROWS.length * 4)) {
++  glitchLines(out = new Float32Array((this.mallow.glitchRows || GLITCH_ROWS).length * 4)) {
++    const rows = this.mallow.glitchRows || GLITCH_ROWS;
+     const g = clamp(this.val.glitch, 0, 2);
+     if (this.id !== 'glitzi' || g < 0.55) return null;
+     const W = this.mallow.size[0], k = (g - 0.55) / 1.45;
+-    for (let i = 0; i < GLITCH_ROWS.length; i++) {
++    for (let i = 0; i < rows.length; i++) {
+       const ph = this.time * (0.6 + i * 0.13) + i * 1.7;
+-      out[4 * i] = GLITCH_ROWS[i];
++      out[4 * i] = rows[i];
+       out[4 * i + 1] = (Math.sin(ph) * 0.5 + 0.5) * W * 0.4;
+       out[4 * i + 2] = W * (0.35 + 0.5 * k);
+       out[4 * i + 3] = (0.25 + 0.55 * k) * (0.65 + 0.35 * Math.sin(ph * 2.1));
+@@ -883,7 +884,8 @@
+     }
+     ctx.setTransform(q, 0, 0, q, 0, 0);
+     ctx.imageSmoothingQuality = 'high';
+-    ctx.drawImage(A.body, 0, 0);
++    // art is drawn at the rig's logical size (high-res art: res image px per logical px)
++    ctx.drawImage(A.body, 0, 0, m.size[0], m.size[1]);
+ 
+     const f = m.face;
+     const P = P0;
+@@ -900,7 +902,7 @@
+     if (this.opts.pristine && this.restMix > 0.004) {
+       ctx.globalAlpha = this.restMix;
+       ctx.globalCompositeOperation = 'source-atop';   // keep the approved alpha, no edge build-up
+-      ctx.drawImage(A.original, 0, 0);
++      ctx.drawImage(A.original, 0, 0, m.size[0], m.size[1]);
+       ctx.globalCompositeOperation = 'source-over';
+       ctx.globalAlpha = 1;
+     }
+@@ -1084,7 +1086,7 @@
+     ctx.clip();
+     if (style === 'spiral') {
+       const img = A[spec.sprite];
+-      const r = (img.width / 2) * P.eyeScale;
++      const r = (img.width / 2 / (rig.mallow.res || 1)) * P.eyeScale;
+       ctx.save();
+       ctx.translate(g.ex, g.ey);
+       ctx.rotate(rig.spinAngle * (side === 'L' ? 1 : -1));
+@@ -1434,6 +1436,7 @@
+ }
+ 
+ function drawGlitchLines(ctx, rig, P) {
++  const rows = rig.mallow.glitchRows || GLITCH_ROWS;
+   const g = clamp(P.glitch, 0, 2);
+   const W = rig.mallow.size[0];
+   ctx.save();
+@@ -1442,12 +1445,12 @@
+     // calm / sad Glitzi: its static quiets down
+     ctx.globalAlpha = (0.55 - g) * 1.2;
+     ctx.fillStyle = '#1b1452';
+-    for (const y of GLITCH_ROWS) ctx.fillRect(0, y - 3, W, 6);
++    for (const y of rows) ctx.fillRect(0, y - 3, W, 6);
+   } else {
+     // energised: lines brighten, drift and stretch, never strobing
+     const k = (g - 0.55) / 1.45;
+-    for (let i = 0; i < GLITCH_ROWS.length; i++) {
+-      const y = GLITCH_ROWS[i];
++    for (let i = 0; i < rows.length; i++) {
++      const y = rows[i];
+       const ph = rig.time * (0.6 + i * 0.13) + i * 1.7;
+       const a = (0.25 + 0.55 * k) * (0.65 + 0.35 * Math.sin(ph * 2.1));
+       const x0 = (Math.sin(ph) * 0.5 + 0.5) * W * 0.4;

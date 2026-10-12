@@ -1,6 +1,7 @@
 // The Another Angle pipeline, independent of HTTP, auth and quotas so the
 // Worker, the Node tests and tools/angle-eval.mjs all run the same code.
 //
+//   0. no letters or digits (emoji only)  → "unclear" fallback, no model call
 //   1. safety pre-check (shared lexicon)  crisis/care → support, no model call
 //   2. model call (structured JSON)       refusal/timeout/error → fallback signal
 //   3. strict schema validation           invalid → regenerate
@@ -14,7 +15,7 @@ import { checkSafety, supportPayload, outputIsSafe } from './safety/index.js';
 import { buildUserMessage, looksLikeInjection, PROMPT_VERSION } from './prompt.js';
 import { SCENE_SCHEMA, validateScene, normaliseScene } from './schema.js';
 import { qualityGate, VISIBLE_FIELDS } from './gate.js';
-import { SCHEMA_VERSION } from './vocab.js';
+import { SCHEMA_VERSION, PATTERN_TO_AUTHORED } from './vocab.js';
 
 /**
  * @typedef {import('./prompt.js').PreviousAngle} PreviousAngle
@@ -27,21 +28,31 @@ import { SCHEMA_VERSION } from './vocab.js';
  * @typedef {{
  *   status: 'ok' | 'care' | 'crisis' | 'fallback',
  *   scene: Scene | null, support: Support | null,
- *   fallback: { reason: FallbackReason, hint: { reasoning_pattern: string, interaction_type: string, mallow_character: string } | null } | null,
+ *   fallback: { reason: FallbackReason, hint: { reasoning_pattern: string, interaction_type: string, mallow_character: string, authored_pattern: string | null } | null } | null,
  *   keep_support_close: boolean,
  *   meta: {
  *     attempts: number, gate: 'pass' | 'regen_pass' | 'fail' | 'skipped', gate_codes: string[], safety_level: string,
  *     safety_category: string | null, safety_source: 'lexicon' | 'model' | null, injection: boolean, normalised: string[],
  *     provider_error: string | null, refusal_category: string | null, model: string | null, fallback_model: string | null,
- *     usage: UsagePart[], model_ms: number,
+ *     usage: UsagePart[], model_ms: number, lexicon_level: string, drafts?: Draft[],
  *   }
  * }} AngleResult
+ * @typedef {{ attempt: number, lines: [string, string] | null, failures: { code: string, field: string, text: string | null }[] }} Draft
+ *   A rejected attempt (only with deps.recordDrafts, for tools/angle-eval.mjs;
+ *   never logged or returned by the Worker).
  */
+
+/** True when the text has something to work with (not only emoji or punctuation). @param {string} text */
+export const hasWords = (text) => /[\p{L}\p{N}]/u.test(text);
 
 /**
  * @param {AngleInput} input
  * @param {{ provider: Provider, systemPrompt: string, maxTokens: number, attemptTimeoutMs: number,
- *   deadlineMs: number, minRetryBudgetMs?: number, userTag?: string, now?: () => number }} deps
+ *   deadlineMs: number, minRetryBudgetMs?: number, userTag?: string, now?: () => number,
+ *   skipLexicon?: boolean, recordDrafts?: boolean }} deps
+ *   skipLexicon and recordDrafts are for the eval only: skipLexicon sends
+ *   lexicon-flagged text to the model anyway (to measure the model's own
+ *   safety judgement); recordDrafts keeps rejected drafts in meta.drafts.
  * @returns {Promise<AngleResult>}
  */
 export async function runAngle(input, deps) {
@@ -51,17 +62,24 @@ export async function runAngle(input, deps) {
   const meta = {
     attempts: 0, gate: 'skipped', gate_codes: [], safety_level: 'none', safety_category: null, safety_source: null,
     injection: false, normalised: [], provider_error: null, refusal_category: null, model: null, fallback_model: null,
-    usage: [], model_ms: 0,
+    usage: [], model_ms: 0, lexicon_level: 'none',
   };
+  /** @type {Draft[] | null} */
+  const drafts = deps.recordDrafts ? [] : null;
+  if (drafts) meta.drafts = drafts;
   const done = (/** @type {Partial<AngleResult>} */ r) => ({
     status: 'fallback', scene: null, support: null, fallback: null, keep_support_close: false, ...r, meta,
   });
+
+  // 0. Only emoji or punctuation: nothing to look at from another angle.
+  if (!hasWords(input.text)) return /** @type {AngleResult} */ (done({ fallback: { reason: 'unclear', hint: null } }));
 
   // 1. Safety pre-check: no model call for crisis or care.
   const safety = checkSafety(input.text);
   meta.safety_level = safety.level;
   meta.safety_category = safety.category;
-  if (safety.level === 'crisis' || safety.level === 'care') {
+  meta.lexicon_level = safety.level;
+  if ((safety.level === 'crisis' || safety.level === 'care') && !deps.skipLexicon) {
     meta.safety_source = 'lexicon';
     return /** @type {AngleResult} */ (done({ status: safety.level, support: supportPayload(safety.level, safety.category, 'lexicon'), keep_support_close: true }));
   }
@@ -120,6 +138,7 @@ export async function runAngle(input, deps) {
     if (!parsed.ok) {
       meta.gate_codes.push('schema');
       rejected = { lines: null, reasons: parsed.errors.slice(0, 6) };
+      drafts?.push({ attempt, lines: null, failures: parsed.errors.slice(0, 6).map((e) => ({ code: 'schema', field: '', text: e })) });
       continue;
     }
     const { scene, changed } = normaliseScene(parsed.scene);
@@ -128,6 +147,7 @@ export async function runAngle(input, deps) {
     // 4. The model's own safety judgement is honoured.
     if (scene.safety_status === 'crisis' || scene.safety_status === 'care') {
       meta.safety_source = 'model';
+      meta.safety_category = null;
       meta.safety_level = scene.safety_status;
       return /** @type {AngleResult} */ (done({ status: scene.safety_status, support: supportPayload(scene.safety_status, null, 'model'), keep_support_close: true }));
     }
@@ -140,6 +160,7 @@ export async function runAngle(input, deps) {
     if (!outputIsSafe(scene, VISIBLE_FIELDS)) {
       meta.gate_codes.push('unsafe_output');
       rejected = { lines: [scene.subtitle_line_1, scene.subtitle_line_2], reasons: ['The draft used harm or crisis language; write a calm, safe angle instead.'] };
+      drafts?.push({ attempt, lines: rejected.lines, failures: [{ code: 'unsafe_output', field: '', text: null }] });
       continue;
     }
     // 7. Quality gate.
@@ -150,6 +171,10 @@ export async function runAngle(input, deps) {
     }
     meta.gate_codes.push(...gate.failures.map((f) => f.code));
     rejected = { lines: [scene.subtitle_line_1, scene.subtitle_line_2], reasons: gate.failures.map((f) => f.message) };
+    drafts?.push({
+      attempt, lines: rejected.lines,
+      failures: gate.failures.map((f) => ({ code: f.code, field: f.field, text: f.field in scene ? /** @type {Record<string, string>} */ (scene)[f.field] : null })),
+    });
   }
 
   // 8. Two attempts and still not good enough: let the client use its
@@ -161,7 +186,10 @@ export async function runAngle(input, deps) {
 
 /** @param {Scene} s */
 function hintOf(s) {
-  return { reasoning_pattern: s.reasoning_pattern, interaction_type: s.interaction_type, mallow_character: s.mallow_character };
+  return {
+    reasoning_pattern: s.reasoning_pattern, interaction_type: s.interaction_type, mallow_character: s.mallow_character,
+    authored_pattern: /** @type {Record<string, string | null>} */ (PATTERN_TO_AUTHORED)[s.reasoning_pattern] ?? null,
+  };
 }
 
 export { PROMPT_VERSION, SCHEMA_VERSION };

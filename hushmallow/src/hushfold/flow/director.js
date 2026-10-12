@@ -728,5 +728,7 @@ export function createHushflow(opts = {}) {
   };
   measure();
   applySize();
+  // QA only: the latest director, on localhost (never on a deployed host)
+  try { if (['localhost', '127.0.0.1'].includes(location.hostname)) globalThis.__hushflowLast = api; } catch { /* no location */ }
   return api;
 }

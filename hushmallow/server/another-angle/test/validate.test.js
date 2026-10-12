@@ -12,10 +12,11 @@ test('a minimal request is valid and the text is kept exactly (bar whitespace)',
   assert.deepEqual(r.value.previous, []);
 });
 
-test('text must be 1–600 characters with some letters', () => {
+test('text must be 1–600 characters; emoji or punctuation alone is accepted (the server answers "unclear")', () => {
   assert.equal(ok({ text: '' }).code, 'empty_text');
   assert.equal(ok({ text: '   \n  ' }).code, 'empty_text');
-  assert.equal(ok({ text: '!!! ???' }).code, 'empty_text');
+  assert.ok(ok({ text: '!!! ???' }).ok);
+  assert.ok(ok({ text: '😭😭😭' }).ok);
   assert.equal(ok({ text: 42 }).code, 'invalid_text');
   assert.ok(ok({ text: 'a'.repeat(TEXT_MAX) }).ok);
   assert.equal(ok({ text: 'a'.repeat(TEXT_MAX + 1) }).code, 'text_too_long');
@@ -62,6 +63,10 @@ test('previous angles: at most four, both lines required, known patterns only', 
   assert.equal(ok({ text: 'x y', previous_angles: [{ ...p, extra: 1 }] }).code, 'unknown_field');
   assert.equal(ok({ text: 'x y', previous_angles: [{ ...p, subtitle_line_1: 'x'.repeat(201) }] }).code, 'invalid_previous');
   assert.equal(ok({ text: 'x y', previous_angles: 'nope' }).code, 'invalid_previous');
+  // interaction_type: a known mechanic that matches the pattern; on its own it stands for its pattern.
+  assert.equal(ok({ text: 'x y', previous_angles: [{ ...p, interaction_type: 'teleport' }] }).code, 'invalid_previous');
+  assert.equal(ok({ text: 'x y', previous_angles: [{ ...p, reasoning_pattern: 'rumination', interaction_type: 'pull_apart' }] }).code, 'invalid_previous');
+  assert.deepEqual(ok({ text: 'x y', previous_angles: [{ ...p, interaction_type: 'let_loop_drift' }] }).value.previous, [{ ...p, reasoning_pattern: 'rumination' }]);
 });
 
 test('session requests', () => {

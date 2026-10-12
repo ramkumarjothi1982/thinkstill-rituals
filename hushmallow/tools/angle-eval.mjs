@@ -16,6 +16,13 @@
 //
 // Options: --yes  --mock  --no-judge  --only id1,id2  --concurrency 2
 //          --model claude-opus-5-5  --effort low  --judge-model claude-opus-5-5  --out <dir>
+//          --attempt-timeout <ms>  --deadline <ms>   (default: the Worker's production
+//                                                     MODEL_TIMEOUT_MS / REQUEST_DEADLINE_MS)
+//
+// The three safety probes skip the word-list pre-check so the model's own
+// safety judgement is measured (the report shows both). The report also lists
+// every draft the quality gate rejected, with the reasons, so false
+// rejections are visible; drafts are kept only in this local report.
 
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -47,6 +54,7 @@ try {
     ...(await load('src/providers/mock.js')),
     ...(await load('src/prompt.js')),
     ...(await load('src/validate.js')),
+    ...(await load('src/config.js')),
     CASES: (await load('eval/cases.js')).CASES,
     anthropic: MOCK ? null : await load('src/providers/anthropic.js'),
   };
@@ -55,7 +63,14 @@ try {
   console.error(String(e?.message || e));
   process.exit(1);
 }
-const { runAngle, checkSafety, costMicros, roughTokens, rateFor, createMockProvider, escapeData, validateAngleRequest, CASES } = deps;
+const { runAngle, checkSafety, costMicros, roughTokens, rateFor, createMockProvider, escapeData, validateAngleRequest, readConfig, CASES } = deps;
+
+// Production settings (wrangler.toml defaults), so latency and timeouts in the
+// report are what people would get.
+const PROD = readConfig({});
+const ATTEMPT_TIMEOUT = Number(opt('attempt-timeout', String(PROD.attemptTimeoutMs))) || PROD.attemptTimeoutMs;
+const DEADLINE = Number(opt('deadline', String(PROD.deadlineMs))) || PROD.deadlineMs;
+const isProbe = (c) => c.category === 'safety';
 
 const SYSTEM_PROMPT = readFileSync(new URL('prompts/angle-v1.md', SERVER), 'utf8');
 const JUDGE_PROMPT = readFileSync(new URL('eval/judge-v1.md', SERVER), 'utf8');
@@ -64,7 +79,8 @@ const cases = CASES.filter((c) => !ONLY.length || ONLY.includes(c.id));
 // --- cost estimate ----------------------------------------------------------
 
 function estimate() {
-  const modelCases = cases.filter((c) => !['crisis', 'care'].includes(checkSafety(c.text).level));
+  // Safety probes skip the lexicon, so they reach the model too.
+  const modelCases = cases.filter((c) => isProbe(c) || !['crisis', 'care'].includes(checkSafety(c.text).level));
   const followUps = modelCases.filter((c) => c.followUp).length;
   const angleCalls = modelCases.length + followUps;
   const sys = roughTokens(SYSTEM_PROMPT);
@@ -84,7 +100,7 @@ function estimate() {
 }
 
 const est = estimate();
-console.log(`Another Angle eval — ${est.cases} cases (${est.modelCases} reach the model, ${est.followUps} with "another angle"), model ${MODEL} (effort ${EFFORT}), judge ${JUDGE ? JUDGE_MODEL : 'off'}`);
+console.log(`Another Angle eval — ${est.cases} cases (${est.modelCases} reach the model, ${est.followUps} with "another angle"), model ${MODEL} (effort ${EFFORT}), judge ${JUDGE ? JUDGE_MODEL : 'off'}, timeouts ${ATTEMPT_TIMEOUT / 1000} s per attempt / ${DEADLINE / 1000} s per answer`);
 if (!MOCK) {
   console.log(`Estimated cost: about $${est.typical.toFixed(2)} (worst case $${est.worst.toFixed(2)}).`);
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -101,7 +117,7 @@ if (!MOCK) {
 
 const provider = MOCK
   ? createMockProvider({ mode: 'heuristic', model: MODEL })
-  : deps.anthropic.createAnthropicProvider({ apiKey: process.env.ANTHROPIC_API_KEY, model: MODEL, effort: EFFORT, maxRetries: 2, fallbacks: true });
+  : deps.anthropic.createAnthropicProvider({ apiKey: process.env.ANTHROPIC_API_KEY, model: MODEL, effort: EFFORT, maxRetries: PROD.maxRetries, fallbacks: PROD.refusalFallback });
 const judgeProvider = JUDGE
   ? deps.anthropic.createAnthropicProvider({ apiKey: process.env.ANTHROPIC_API_KEY, model: JUDGE_MODEL, effort: 'medium', maxRetries: 2, fallbacks: true })
   : null;
@@ -139,7 +155,10 @@ async function judge(c, scene, previous) {
 async function runCase(c) {
   const v = validateAngleRequest({ consent: true, text: c.text, emotion: c.emotion, intention: c.intention });
   if (!v.ok) return { case: c, error: `invalid case: ${v.code}` };
-  const deps1 = { provider, systemPrompt: SYSTEM_PROMPT, maxTokens: MAX_TOKENS, attemptTimeoutMs: 30000, deadlineMs: 60000 };
+  const deps1 = {
+    provider, systemPrompt: SYSTEM_PROMPT, maxTokens: MAX_TOKENS, attemptTimeoutMs: ATTEMPT_TIMEOUT, deadlineMs: DEADLINE,
+    recordDrafts: true, skipLexicon: isProbe(c),
+  };
   const t0 = Date.now();
   const first = await runAngle(v.value, deps1);
   const rounds = [{ result: first, ms: Date.now() - t0 }];
@@ -160,7 +179,7 @@ async function runCase(c) {
   const expected = Array.isArray(c.expect) ? c.expect : [c.expect];
   const json = JSON.stringify(rounds.map((r) => r.result));
   const leaked = (c.mustNot || []).filter((s) => json.toLowerCase().includes(s.toLowerCase()));
-  return { case: c, rounds, statusOk: expected.includes(first.status), leaked };
+  return { case: c, rounds, statusOk: expected.includes(first.status), leaked, lexicon: checkSafety(c.text).level };
 }
 
 async function pool(items, n, fn) {
@@ -204,6 +223,8 @@ lines.push(`| Gate: passed first time | ${count((r) => r.result.meta.gate === 'p
 lines.push(`| Gate: passed after one regeneration | ${count((r) => r.result.meta.gate === 'regen_pass')} |`);
 lines.push(`| Gate: fallback to authored engine | ${count((r) => r.result.meta.gate === 'fail')} |`);
 lines.push(`| Support instead of a reframe | ${count((r) => ['crisis', 'care'].includes(r.result.status))} (lexicon ${count((r) => r.result.meta.safety_source === 'lexicon')}, model ${count((r) => r.result.meta.safety_source === 'model')}) |`);
+const probes = results.filter((r) => isProbe(r.case));
+if (probes.length) lines.push(`| Safety probes flagged by the model alone (word list skipped) | ${probes.filter((r) => ['crisis', 'care'].includes(r.rounds?.[0]?.result.status)).length}/${probes.length} |`);
 lines.push(`| Injection leaks | ${results.reduce((a, r) => a + (r.leaked?.length || 0), 0)} |`);
 if (judged.length) {
   for (const d of dims) lines.push(`| Judge ${d} (1–5) | ${avg(d).toFixed(2)} |`);
@@ -211,10 +232,21 @@ if (judged.length) {
   lines.push(`| Verdicts | strong ${judged.filter((r) => r.judge.verdict === 'strong').length}, acceptable ${judged.filter((r) => r.judge.verdict === 'acceptable').length}, weak ${judged.filter((r) => r.judge.verdict === 'weak').length} |`);
 }
 lines.push(`| Latency p50 / p95 | ${(pct(0.5) / 1000).toFixed(1)} s / ${(pct(0.95) / 1000).toFixed(1)} s |`);
+lines.push(`| Answers over ${ATTEMPT_TIMEOUT / 1000} s / over ${DEADLINE / 1000} s / timed out | ${lat.filter((ms) => ms > ATTEMPT_TIMEOUT).length} / ${lat.filter((ms) => ms > DEADLINE).length} / ${count((r) => r.result.fallback?.reason === 'timeout')} |`);
 lines.push(`| Cost | $${cost.toFixed(3)} |`, '');
 const codeCounts = {};
 for (const r of allRounds) for (const c of r.result.meta.gate_codes) codeCounts[c] = (codeCounts[c] || 0) + 1;
 if (Object.keys(codeCounts).length) lines.push(`Gate failure codes seen (before regeneration): ${Object.entries(codeCounts).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ×${v}`).join(', ')}.`, '');
+// Every draft the gate rejected, with its reasons: read these for false
+// rejections (a good line refused) as well as real ones.
+const rejections = allRounds.flatMap((r) => (r.result.meta.drafts || []).map((d) => ({ ...d, case: r.case, again: Boolean(r.previous) })));
+lines.push('## Gate rejections', '');
+if (!rejections.length) lines.push('None: every answer passed the gate first time.', '');
+for (const d of rejections) {
+  lines.push(`- **${d.case.id}**${d.again ? ' (another angle)' : ''}, attempt ${d.attempt}: ${d.lines ? `“${d.lines[0]}” / “${d.lines[1]}”` : '(no lines)'}`);
+  for (const f of d.failures) lines.push(`  - \`${f.code}\`${f.field ? ` on ${f.field}` : ''}${f.text ? `: “${f.text}”` : ''}`);
+}
+if (rejections.length) lines.push('');
 if (weak.length) {
   lines.push('## Fix before expanding', '');
   for (const r of weak) lines.push(`- **${r.case.id}** (${r.case.category}): ${r.judge.notes}`);
@@ -225,6 +257,7 @@ for (const r of results) {
   const c = r.case;
   lines.push(`### ${c.id} — ${c.category}${r.statusOk ? '' : ' ⚠ unexpected status'}${r.leaked?.length ? ` ⚠ leaked: ${r.leaked.join(', ')}` : ''}`, '');
   lines.push(`> ${c.text}`, '');
+  if (isProbe(c)) lines.push(`Word list: **${r.lexicon}** (skipped for this probe, so the model decided).`, '');
   if (r.error) { lines.push(`Error: ${r.error}`, ''); continue; }
   r.rounds.forEach((x, i) => {
     const res = x.result;
@@ -247,6 +280,6 @@ mkdirSync(OUT, { recursive: true });
 const stamp = started.toISOString().replace(/[:T]/g, '-').slice(0, 16);
 const base = `${OUT.replace(/\/$/, '')}/angle-eval-${stamp}${MOCK ? '-mock' : ''}`;
 writeFileSync(`${base}.md`, `${lines.join('\n')}\n`);
-writeFileSync(`${base}.json`, JSON.stringify({ started, model: MODEL, effort: EFFORT, judge: JUDGE ? JUDGE_MODEL : null, mock: MOCK, cost, results: results.map((r) => ({ id: r.case.id, statusOk: r.statusOk, leaked: r.leaked, rounds: (r.rounds || []).map((x) => ({ status: x.result.status, scene: x.result.scene, fallback: x.result.fallback, support: x.result.support && { level: x.result.support.level, category: x.result.support.category, source: x.result.support.source }, meta: { ...x.result.meta, usage: undefined }, ms: x.ms, judge: x.judge })) })) }, null, 2));
+writeFileSync(`${base}.json`, JSON.stringify({ started, model: MODEL, effort: EFFORT, judge: JUDGE ? JUDGE_MODEL : null, mock: MOCK, cost, results: results.map((r) => ({ id: r.case.id, statusOk: r.statusOk, leaked: r.leaked, rounds: (r.rounds || []).map((x) => ({ status: x.result.status, scene: x.result.scene, fallback: x.result.fallback, support: x.result.support && { level: x.result.support.level, category: x.result.support.category, source: x.result.support.source }, meta: { ...x.result.meta, usage: undefined }, ms: x.ms, judge: x.judge })) })), timeouts: { attemptMs: ATTEMPT_TIMEOUT, deadlineMs: DEADLINE } }, null, 2));
 console.log(`\nReport: ${base}.md`);
 console.log(`Expected status ${results.filter((r) => r.statusOk).length}/${results.length}; cost $${cost.toFixed(3)}.`);

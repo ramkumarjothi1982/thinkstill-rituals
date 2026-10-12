@@ -3,21 +3,24 @@
 //   GET  /v1/health   liveness + versions (no secrets)
 //   POST /v1/session  entitlement check → signed session token
 //   POST /v1/angle    one Another Angle scene (or support, or a fallback signal)
+//   POST /v1/feedback which of the four feedback buttons was pressed (metadata only)
 //
-// Order of checks on /v1/angle: HTTPS → CORS allowlist → per-IP rate limit →
-// bearer token → body size/type → strict validation → safety pre-check (no
-// quota used for crisis/care) → per-device daily quota → global daily spend
-// reservation → pipeline → spend settled → metadata log.
+// Order of checks on /v1/angle: HTTPS → CORS allowlist → per-network rate
+// limit (IPv4 address or IPv6 /64, hashed) → bearer token → body size/type →
+// strict validation → safety pre-check (no quota used for crisis/care) →
+// emoji-only text ("unclear", no quota) → per-device daily quota → global
+// daily spend reservation → pipeline → spend settled → metadata log.
 
 import { readConfig } from './config.js';
 import { json, error, corsHeaders, preflight, readJson, nextUtcMidnight, utcDay } from './http.js';
 import { validateAngleRequest, validateSessionRequest, validateFeedbackRequest, ANGLE_BODY_MAX_BYTES, SESSION_BODY_MAX_BYTES } from './validate.js';
 import { checkSafety, supportPayload } from './safety/index.js';
-import { runAngle, PROMPT_VERSION, SCHEMA_VERSION } from './pipeline.js';
+import { runAngle, hasWords, PROMPT_VERSION, SCHEMA_VERSION } from './pipeline.js';
 import { signToken, verifyToken, keyedHash } from './auth/tokens.js';
 import { checkEntitlement } from './auth/entitlement.js';
 import { ledgerClient, memoryLedgerNamespace } from './limits/ledger.js';
 import { allow, memoryRateLimiter } from './limits/ratelimit.js';
+import { networkKey } from './limits/netkey.js';
 import { createLogger, lengthBucket } from './log.js';
 import { costMicros, worstCaseMicros } from './cost.js';
 import { createAnthropicProvider } from './providers/anthropic.js';
@@ -46,6 +49,7 @@ export function createApp(options) {
   const fallbackNs = memoryLedgerNamespace();
   const fallbackAngleLimiter = memoryRateLimiter({ limit: 6, periodMs: 60000, now });
   const fallbackSessionLimiter = memoryRateLimiter({ limit: 3, periodMs: 60000, now });
+  const fallbackFeedbackLimiter = memoryRateLimiter({ limit: 20, periodMs: 60000, now });
 
   /** @param {Record<string, any>} env */
   const configFor = (env) => {
@@ -105,10 +109,12 @@ export function createApp(options) {
     return error(404, 'not_found', 'Not found.', cors);
   }
 
-  /** @param {Request} request @param {import('./config.js').Config} cfg */
+  /**
+   * Keyed hash of the client's network (IPv4 address or IPv6 /64), never the raw address.
+   * @param {Request} request @param {import('./config.js').Config} cfg
+   */
   async function ipKey(request, cfg) {
-    const ip = request.headers.get('cf-connecting-ip') || 'local';
-    return keyedHash(cfg.hashKey || 'unset', `ip:${ip}`, 12);
+    return keyedHash(cfg.hashKey || 'unset', `ip:${networkKey(request.headers.get('cf-connecting-ip'))}`, 12);
   }
 
   /** @param {Record<string, any>} env */
@@ -142,7 +148,10 @@ export function createApp(options) {
       const perIp = await ledger.take(`ip:${ip}`, 'sessions', day, cfg.sessionsPerIpDaily);
       if (!perIp.ok) return error(429, 'session_limit', 'Too many new sessions from this network today.', { ...cors, 'retry-after': '3600' });
       const global = await ledger.take('global', 'sessions', day, cfg.sessionDailyCap);
-      if (!global.ok) return error(429, 'session_limit', 'No new testing sessions today.', { ...cors, 'retry-after': '3600' });
+      if (!global.ok) {
+        await ledger.give(`ip:${ip}`, 'sessions', day); // no session was issued, so this network's count goes back
+        return error(429, 'session_limit', 'No new testing sessions today.', { ...cors, 'retry-after': '3600' });
+      }
     }
     const iat = Math.floor(now() / 1000) * 1000;
     const token = await signToken({ sub: ent.subject, ent: 'beyond', src: ent.source, iat, exp: ent.expiresAt }, cfg.signingKeys[0]);
@@ -194,13 +203,25 @@ export function createApp(options) {
     // Crisis and care never reach the model and never use quota.
     const safety = checkSafety(input.text);
     if (safety.level === 'crisis' || safety.level === 'care') {
-      logEvt({ ...common, status: safety.level, http: 200, safety_level: safety.level, safety_category: safety.category, safety_source: 'lexicon' });
+      logEvt({ ...common, status: safety.level, http: 200, safety_level: safety.level, safety_source: 'lexicon' });
       return json(200, { ...base, status: safety.level, scene: null, support: supportPayload(safety.level, safety.category, 'lexicon'), fallback: null, keep_support_close: true }, cors);
     }
 
     const day = utcDay(now());
     const ledger = ledgerFor(env);
     const devName = `dev:${subject}`;
+
+    // Only emoji or punctuation: ask for a little more (the "unclear"
+    // fallback) without calling the model or using quota.
+    if (!hasWords(input.text)) {
+      const used = await ledger.peek(devName, 'angles', day);
+      logEvt({ ...common, status: 'fallback', fallback_reason: 'unclear', err: 'no_words', http: 200 });
+      return json(200, {
+        ...base, status: 'fallback', scene: null, support: null, fallback: { reason: 'unclear', hint: null }, keep_support_close: false,
+        quota: { daily: cfg.deviceDailyLimit, remaining: Math.max(0, cfg.deviceDailyLimit - used.used), resets_at: nextUtcMidnight(now()) },
+      }, cors);
+    }
+
     const quota = await ledger.take(devName, 'angles', day, cfg.deviceDailyLimit);
     const quotaOut = { daily: cfg.deviceDailyLimit, remaining: quota.remaining ?? 0, resets_at: nextUtcMidnight(now()) };
     if (!quota.ok) {
@@ -232,13 +253,17 @@ export function createApp(options) {
     } catch (e) {
       await defer(ctx, ledger.settle('global', 'spend', day, reserve, 0));
       await ledger.give(devName, 'angles', day);
+      quotaOut.remaining += 1;
       logEvt({ ...common, status: 'fallback', fallback_reason: 'provider', err: 'exception', http: 200 });
-      return json(200, { ...base, status: 'fallback', scene: null, support: null, fallback: { reason: 'provider', hint: null }, keep_support_close: false, quota: quotaOut }, cors);
+      return json(200, { ...base, status: 'fallback', scene: null, support: null, fallback: { reason: 'provider', hint: null }, keep_support_close: safety.level === 'concern', quota: quotaOut }, cors);
     }
 
     const actual = costMicros(result.meta.usage);
     await defer(ctx, ledger.settle('global', 'spend', day, reserve, actual));
-    // The person got nothing from the model: give the quota unit back.
+    // Nothing came back from the model (timeout, refusal, provider error):
+    // give the quota unit back. A model answer held back by the quality gate,
+    // or an "unclear" reading, used a model call and still counts, so a
+    // device cannot spend the model budget for free (README "Costs").
     const undelivered = result.status === 'fallback' && ['provider', 'timeout', 'refusal'].includes(result.fallback?.reason || '');
     if (undelivered) { await ledger.give(devName, 'angles', day); quotaOut.remaining += 1; }
 
@@ -248,7 +273,7 @@ export function createApp(options) {
       ...common, status: result.status, http: 200, attempts: meta.attempts, gate: meta.gate, gate_codes: meta.gate_codes,
       pattern: result.scene?.reasoning_pattern, interaction: result.scene?.interaction_type, mallow: result.scene?.mallow_character,
       emotion: result.scene?.emotion, situation: result.scene?.situation_type, safety_level: meta.safety_level,
-      safety_category: meta.safety_category, safety_source: meta.safety_source, injection: meta.injection, normalised: meta.normalised,
+      safety_source: meta.safety_source, injection: meta.injection, normalised: meta.normalised,
       provider_error: meta.provider_error, refusal_category: meta.refusal_category, model: meta.model, fallback_model: meta.fallback_model,
       fallback_reason: result.fallback?.reason, model_ms: meta.model_ms, tokens_in: usageSum.i, tokens_out: usageSum.o,
       cache_read: usageSum.r, cache_write: usageSum.w, cost_micros: actual, quota_left: quotaOut.remaining,
@@ -268,7 +293,7 @@ export function createApp(options) {
    */
   async function feedback(request, env, cfg, cors) {
     if (!cfg.signingKeys.length) return error(503, 'not_configured', 'TOKEN_SIGNING_KEY is not set.', cors);
-    if (!(await allow(env.ANGLE_IP_LIMITER, fallbackAngleLimiter, await ipKey(request, cfg)))) return error(429, 'rate_limited', 'Too many requests. Try again in a minute.', { ...cors, 'retry-after': '60' });
+    if (!(await allow(env.FEEDBACK_IP_LIMITER, fallbackFeedbackLimiter, await ipKey(request, cfg)))) return error(429, 'rate_limited', 'Too many requests. Try again in a minute.', { ...cors, 'retry-after': '60' });
     const m = /^Bearer ([A-Za-z0-9._-]{10,2048})$/.exec(request.headers.get('authorization') || '');
     if (!m || !(await verifyToken(m[1], cfg.signingKeys, now())).ok) return error(401, 'unauthorised', 'A valid session token is required.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
     const body = await readJson(request, 2048);
@@ -282,11 +307,16 @@ export function createApp(options) {
   return {
     /** @param {Request} request @param {Record<string, any>} env @param {Ctx} [ctx] */
     async fetch(request, env, ctx) {
+      // CORS is decided first, so even a 500 reaches the browser as a
+      // readable response rather than an opaque network error.
+      /** @type {Record<string, string>} */
+      let cors = {};
+      try { cors = corsHeaders(request, configFor(env)) || {}; } catch { /* keep {} */ }
       try {
         return await handle(request, env, ctx);
       } catch {
-        logger.event({ evt: 'unhandled_error' });
-        return error(500, 'internal', 'Something went wrong.');
+        logger.event({ evt: 'unhandled_error', http: 500 });
+        return error(500, 'internal', 'Something went wrong.', cors);
       }
     },
   };

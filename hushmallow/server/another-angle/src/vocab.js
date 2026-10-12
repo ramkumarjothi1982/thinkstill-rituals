@@ -35,6 +35,30 @@ export const PATTERN_INTERACTION = /** @type {const} */ ({
 
 export const INTERACTIONS = /** @type {string[]} */ (Object.values(PATTERN_INTERACTION));
 
+/** interaction_type → reasoning_pattern (the pairing is one-to-one). */
+export const INTERACTION_PATTERN = /** @type {Record<string, string>} */ (Object.fromEntries(Object.entries(PATTERN_INTERACTION).map(([p, i]) => [i, p])));
+
+/**
+ * reasoning_pattern → the closest THOUGHT_PATTERNS id in the app's authored
+ * engine (src/ultra/frameworks.js), so the offline/fallback path can start
+ * from the same idea (fallback.hint.authored_pattern). practical_problem and
+ * valid_anger are not thinking traps, so they have no counterpart: the
+ * authored engine's next steps cover them. test/schema.test.js checks every
+ * id exists in the app.
+ */
+export const PATTERN_TO_AUTHORED = /** @type {const} */ ({
+  fact_vs_assumption: 'feelings-as-proof',
+  catastrophising: 'worst-case-jump',
+  personalisation: 'spotlight-on-me',
+  all_or_nothing: 'all-or-nothing',
+  mind_reading: 'mind-reading',
+  overgeneralisation: 'always-never',
+  rumination: 'what-if-loop',
+  practical_problem: null,
+  self_criticism: 'big-label',
+  valid_anger: null,
+});
+
 /**
  * Which Mallows suit each pattern (first = default). Zuzu is always allowed.
  * Roles from brief 2 §7: Glitzi anger/boundaries, Noomi rumination/rest,
@@ -115,7 +139,7 @@ export const EMOTION_ALIASES = {
 
 /**
  * Snapshot of ALL_EMOTION_IDS from the app's taxonomy (src/data/emotions.js),
- * so the A–Z picker's choices are accepted. tests/vocab.test.js checks this
+ * so the A–Z picker’s choices are accepted. test/schema.test.js checks this
  * stays identical to the app's list.
  */
 export const TAXONOMY_EMOTIONS = Object.freeze(`love affection tenderness fondness adoration devotion compassion empathy warmth intimacy trust longing attachment attraction admiration protective nurturing lovesick touched belonging connected cherished seen sympathy infatuation forgiveness appreciated sentimental kinship happy-for-someone joy delight pleasure amusement contentment cheerfulness bliss elation euphoria gratitude relief satisfaction triumph optimism hope excitement giddy playful silly mischievous cheeky glee exhilaration zest enthusiasm carefree savouring celebratory lucky energised schadenfreude freedom uplifted calm serenity peace stillness relaxation ease comfort safety groundedness acceptance centeredness refreshed patience composure unbothered sleepy dreamy clarity in-the-moment reassured rested equanimity pensive curiosity interest wonder fascination intrigue engagement anticipation alertness inspiration motivation eagerness focused openness challenged suspense adventurous surprise amazement awe astonishment wonderstruck shock startle disbelief dumbfounded flabbergasted moved realisation humbled reverence dismay fear anxiety worry nervousness dread panic terror insecurity apprehension unease overwhelm vulnerability on-edge jittery stress angst nervous-excitement fear-of-missing-out sunday-dread imposter-feelings tense spooked threatened powerless helpless trapped pressured overstimulated frazzled rattled suspicion shyness fear-of-failure guarded anger irritation annoyance frustration resentment rage fury bitterness outrage hostility impatience indignation irritable grumpy cranky hangry sulky petty spiteful vindictive scorned defensive provoked aggravation disrespected wronged insulted quarrelsome rebellious taken-advantage-of sadness sorrow grief disappointment hurt heartache despair hopelessness emptiness gloom regret mourning heartbreak melancholy wistful nostalgia saudade bittersweetness disillusionment betrayal dejection discouraged defeated tearful self-pity misery anguish heavy-hearted anticipatory-grief discontent bereft resigned sensitive disgust revulsion contempt distaste aversion repulsion disapproval loathing squeamish the-ick moral-disgust cynicism shame guilt embarrassment humiliation remorse self-consciousness awkwardness sheepish exposed self-critical perfectionistic inadequate worthless foolish secondhand-embarrassment self-loathing qualms apologetic obligated flustered pride confidence self-respect courage empowerment boldness assurance determination proud-of-someone smug accomplished capable vindicated resilient worthy invincible independent respected envy jealousy possessiveness coveting competitiveness comparison begrudging inferiority overshadowed loneliness rejection alienation abandonment exclusion isolation homesickness invisible unappreciated misunderstood judged ghosted unloved disconnected forgotten confusion doubt uncertainty indecision conflicted disorientation hesitation ambivalence lost stuck foggy scattered overthinking bewildered skepticism reluctance boredom apathy indifference dullness restlessness disinterest numbness fatigue burnout flat ennui unmotivated lethargic zoned-out depleted uninspired desire craving yearning lust hunger ambition drive wanting wanderlust temptation urge neediness passion burdened`.split(' '));

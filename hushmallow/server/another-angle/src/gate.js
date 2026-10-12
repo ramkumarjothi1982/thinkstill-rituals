@@ -7,7 +7,7 @@
 // after one failed regeneration the client falls back to the authored engine.
 
 import { HEAVY_EMOTIONS } from './vocab.js';
-import { tidy, words, wordCount, sentences, contentStems, jaccard, numbersIn } from './text.js';
+import { tidy, words, wordCount, sentences, contentStems, jaccard, numbersIn, stem } from './text.js';
 
 export const LINE_FIELDS = /** @type {const} */ (['subtitle_line_1', 'subtitle_line_2']);
 export const EXPLORE_FIELDS = /** @type {const} */ (['known_fact', 'possible_assumption', 'alternative_angle', 'practical_next_step']);
@@ -16,7 +16,7 @@ export const VISIBLE_FIELDS = /** @type {const} */ ([...LINE_FIELDS, ...EXPLORE_
 export const LIMITS = Object.freeze({
   totalMin: 15, totalMax: 35, lineMax: 22, lineMin: 3,
   field: { known_fact: 20, possible_assumption: 20, alternative_angle: 24, practical_next_step: 20 },
-  repeatSimilarity: 0.5, repeatLineSimilarity: 0.6, samePatternSimilarity: 0.34,
+  repeatSimilarity: 0.5, repeatLineSimilarity: 0.6, samePatternSimilarity: 0.2,
 });
 
 const LABEL = {
@@ -38,7 +38,7 @@ const RULES = [
       R`you(?:'re| are) (?:so |truly |really )?(?:worthy|enough|amazing|awesome|incredible|wonderful|brilliant|strong|stronger than you think|valued|loved|not alone|a good person|doing (?:great|amazing|so well|your best))`,
       R`believe in yourself`, R`you(?:'ve| have)? got this`, R`love yourself`, R`self-?love`, R`be proud of yourself`, R`you should be proud`,
       R`be kind to yourself`, R`be gentle (?:with|on) yourself`, R`treat yourself`, R`you deserve (?:happiness|better|the best|love|to be happy)`,
-      R`you matter`, R`keep going`, R`never give up`, R`you can do anything`, R`remember (?:that )?you(?:'re| are)`, R`worthy and valuable`,
+      R`(?<!(?:how much|whether|if|how|why|what|feel like|feeling that) )you (?:really |truly |still |do )?matter`, R`keep going`, R`never give up`, R`you can do anything`, R`remember (?:that )?you(?:'re| are)`, R`worthy and valuable`,
       R`practi[sc]e self`, R`you(?:'re| are) only human`, R`everyone makes mistakes`, R`nobody(?:'s| is) perfect`, R`it(?:'s| is) okay not to be okay`,
     ]),
   },
@@ -85,8 +85,13 @@ const RULES = [
   },
   {
     code: 'condescending',
-    message: 'Avoid condescending or dismissive words ("obviously", "simply", "calm down", "no big deal").',
-    re: any([R`obviously`, R`clearly`, R`simply`, R`of course`, R`silly`, R`not that deep`, R`calm down`, R`just relax`, R`chill out`, R`no big deal`, R`not a big deal`, R`not that big a deal`, R`it doesn'?t matter`, R`who cares`, R`you(?:'re| are) fine`, R`first[- ]world problem`]),
+    message: 'Avoid condescending or dismissive words ("obviously", "just move on", "clearly overreacting", "calm down", "no big deal").',
+    re: any([
+      R`obviously`, R`of course`,
+      // "simply"/"clearly" only where they dismiss ("simply move on"), not in "simply note what happened".
+      R`(?:simply|just) (?:move on|get over (?:it|this|that|him|her|them)|forget (?:about )?(?:it|this|that)|stop (?:worrying|thinking about (?:it|this|that)|caring|overthinking)|relax|calm down|cheer up|accept (?:it|this|that)|deal with (?:it|this|that)|toughen up|snap out of it|ignore (?:it|this|that))`,
+      R`(?:simply|clearly) (?:overreacting|overthinking|exaggerating|being (?:silly|dramatic|irrational|paranoid|unreasonable|too)|wrong|irrational|paranoid|nothing|fine|silly|not (?:a big deal|that bad|worth))`,
+      R`it(?:'s| is) (?:simply|clearly) (?:not|nothing)`, R`silly`, R`not that deep`, R`calm down`, R`just relax`, R`chill out`, R`no big deal`, R`not a big deal`, R`not that big a deal`, R`it doesn'?t matter`, R`who cares`, R`you(?:'re| are) fine`, R`first[- ]world problem`]),
   },
   {
     code: 'forgive_pressure',
@@ -126,17 +131,96 @@ const RULES = [
 ];
 
 // Third parties whose minds must never be described as fact.
-const OTHERS = R`(?:he|she|they|(?:your|their|his|her) (?:boss|manager|partner|boyfriend|girlfriend|husband|wife|friends?|colleagues?|co-?workers?|mum|mom|dad|mother|father|sister|brother|family|teacher|tutor|ex|team|flatmate|housemate|date|crush|son|daughter|parents|classmates?|mates?|landlord|client|customer)|everyone|everybody|nobody|no one|no-one|people)`;
-const ADVS = R`(?: (?:definitely|really|just|probably|certainly|surely|actually|only|still|totally|secretly|likely|simply|honestly|genuinely))*`;
+const OTHER_NOUNS = ['boss', 'manager', 'partner', 'boyfriend', 'girlfriend', 'husband', 'wife', 'friends?', 'colleagues?', 'co-?workers?', 'mum', 'mom', 'dad', 'mother', 'father', 'sister', 'brother', 'family', 'teacher', 'tutor', 'ex', 'team', 'flatmate', 'housemate', 'date', 'crush', 'son', 'daughter', 'parents', 'classmates?', 'mates?', 'landlord', 'client', 'customer'];
+const OTHERS = R`(?:he|she|they|(?:your|their|his|her) (?:${OTHER_NOUNS.join('|')})|everyone|everybody|nobody|no one|no-one|people)`;
+const ADVS = R`(?: (?:definitely|really|just|probably|certainly|surely|actually|only|still|totally|secretly|likely|simply|honestly|genuinely|clearly|obviously|even|already|always|never))*`;
 // Mental verbs: "he loves you", "she must hate me", "they don't care".
-const MIND_VERB = R`(?:loves?|liked?|likes|cares?|cared|hates?|hated|resents?|respects?|values?|admires?|misses|missed|wants?|wanted|meant|means (?:it|to|well)|intended|intends|feels?|felt|thinks?|thought|knows?|knew|forgot|forgets|noticed|notices|notice|remembers?|remembered|judges?|judged|blames?|blamed|trusts?|trusted|tried to|ignored|minds?|minded|regrets?|appreciates?|appreciated)`;
+const MIND_VERB = R`(?:loves?|liked?|likes|cares?|cared|hates?|hated|resents?|respects?|values?|admires?|misses|missed|wants?|wanted|meant|means (?:it|to|well)|intended|intends|feels?|felt|thinks?|thought|knows?|knew|forgot|forgets|noticed|notices|notice|remembers?|remembered|judges?|judged|blames?|blamed|trusts?|trusted|tried to|ignored|ignores?|minds?|minded|regrets?|appreciates?|appreciated)`;
 // Mental states need a linking verb: "she is annoyed", "he was just busy".
 const MIND_STATE = R`(?:annoyed|angry|upset|mad|disappointed|proud|jealous|threatened|insecure|busy|stressed|distracted|overwhelmed|happy|fine|okay|interested|bored|embarrassed|hurt|sorry|over it|ignoring|avoiding|judging|thinking|trying to|testing|punishing|annoyed with|fed up)`;
-const CLAIM_RE = new RegExp(R`\b${OTHERS}(?: does| did| do| will| would| must| has| have| had| can)?(?: not| never)?${ADVS} ${MIND_VERB}\b`, 'iu');
-const STATE_RE = new RegExp(R`\b${OTHERS}(?: is| are| was| were| will be| would be| must be| has been| have been| had been| seems to be)(?: not| never)?${ADVS} ${MIND_STATE}\b`, 'iu');
+// A short phrase may sit between the person and the verb: "everyone at that dinner was judging you".
+const PP = R`(?: (?:at|in|on|from|around|across|with) (?:the|that|this|your|their|his|her|a|an) [\p{L}'-]+(?: [\p{L}'-]+)?)?`;
+// Groups: 1 the person, 2 auxiliaries and negation, 3 the mind word.
+const CLAIM_G = new RegExp(R`\b(${OTHERS})${PP}${ADVS}((?: does| did| do| will| would| must| has| have| had| can)?(?: not| never)?)${ADVS} (${MIND_VERB})\b`, 'giu');
+const STATE_G = new RegExp(R`\b(${OTHERS})${PP}((?: is| are| was| were| will be| would be| must be| has been| have been| had been| seems to be)(?: not| never)?)${ADVS} (${MIND_STATE})\b`, 'giu');
 const OTHERS_RE = new RegExp(R`\b${OTHERS}\b`, 'iu');
+const THIRD_PARTY_RE = new RegExp(R`\b(?:he|she|they|him|her|them|his|their|${OTHER_NOUNS.join('|')}|everyone|everybody|nobody|no one|no-one|people)\b`, 'iu');
 const NOT_PERSONAL_RE = /\b(?:it|this|that) (?:was|is|was not|is not|wasn't|isn't) (?:not )?(?:personal|about you)\b|\b(?:they|he|she) did not mean (?:it|to)\b/iu;
-const HEDGE_RE = /\b(?:may|might|could|perhaps|possibly|maybe|if|whether|unless|whatever|not sure|do not know|don't know|can't know|cannot know|can not know|can't tell|cannot tell|no way to know|unclear|unknown|guess(?:ing)?|wonder|question|possibilit(?:y|ies)|possible|seems?|seemed|as if|does not prove|doesn't prove|is not proof|isn't proof|not proof|does not mean|doesn't mean|does not tell|doesn't tell|without knowing|has not said|hasn't said|have not said|haven't said|one reading|one explanation|explanations|interpretations?|story|stories|assum\w*|guesses)\b/iu;
+const HEDGE_SRC = String.raw`\b(?:may|might|could|can(?! not)|perhaps|possibly|maybe|if|whether|unless|whatever|not sure|do not know|don't know|can't know|cannot know|can not know|can't tell|cannot tell|no way to know|unclear|unknown|guess(?:ing)?|wonder|question|possibilit(?:y|ies)|possible|seems?|seemed|as if|does not prove|doesn't prove|is not proof|isn't proof|not proof|does not mean|doesn't mean|does not tell|doesn't tell|without knowing|has not said|hasn't said|have not said|haven't said|one reading|one explanation|explanations|interpretations?|story|stories|assum\w*|guesses|some people|many people|plenty of people|lots of people|sometimes)\b`;
+const HEDGE_RE = new RegExp(HEDGE_SRC, 'iu');
+const HEDGE_G = new RegExp(HEDGE_SRC, 'giu');
+// Attribution frames: the person's own account or feeling, not a claim about
+// anyone's mind ("You said your boss ignored you", "It feels like nobody likes you").
+const ATTRIB_G = /\b(?:you(?: have| had| are| were| keep| kept)?(?: just| really| still| already| also| even)? (?:said|say|saying|wrote|write|writing|told (?:me|us)|mentioned|mention|described|describe|noticed|notice|noticing|felt|feel|feeling|fear|feared|worry|worried|suspect|suspected|think|thought|thinking|believe|believed|sense|sensed|imagine|imagined|picture|pictured|afraid|scared|convinced|sure|guessing|hearing|telling yourself|tell yourself|told yourself)|it (?:can |may |might |could )?(?:feels?|felt|seems?|seemed|looks?|looked|sounds?|sounded) (?:like|as if|as though|that)|in your (?:head|mind|telling|version))\b/giu;
+// Negated reports: "your dad has not told you he is proud" reports a silence,
+// it does not claim to know his mind.
+const NEG_REPORT_G = /\b(?:not|never|no longer)(?: \w+){0,2}? (?:told|tell|tells|telling|said|say|says|saying|shown|show|shows|showed|mentioned|mention|mentions|written|write|writes|wrote|admitted|admit|admits|expressed|express|expresses|explained|explain|explains|texted|messaged)\b/giu;
+// Positive reports ("she said she was busy"): a restatement only when the person reported speech too.
+const REPORT_G = /\b(?:said|says|told you|tells you|texted|messaged|wrote|explained|admitted|mentioned)\b/giu;
+const REPORT_IN_INPUT = /\b(?:said|says|say|told|tells|tell|texted|text|messaged|wrote|writes|explained|admitted|mentioned)\b/iu;
+// An embedded question names a topic, it does not assert: "how people feel
+// about you is mixed", "what he thinks is still unknown".
+const WH_BEFORE = /\b(?:how|what|why|when|where)(?: much| far| often| exactly)?\s*$/iu;
+// A frame covers a claim after it, unless a new clause starts in between.
+const BOUNDARY = /\b(?:so|because|since|then|which|until)\b|\band\b(?! that\b)/iu;
+const NEG_INPUT = /\b(?:not|never|no|nobody|none|nothing)\b|n't\b/iu;
+
+const IRREGULAR = new Map(Object.entries({
+  forgot: 'forget', forgotten: 'forget', forgetting: 'forget', thought: 'think', knew: 'know', known: 'know',
+  felt: 'feel', meant: 'mean', tried: 'try', trying: 'try', liked: 'like', loved: 'love',
+}));
+/** Rough lemma for comparing a mind word with the person's own words. @param {string} w */
+function root(w) {
+  const x = w.toLowerCase().replace(/’/g, "'");
+  const irr = IRREGULAR.get(x);
+  if (irr) return irr;
+  return x.replace(/(?:ing|ed|es|(?<!s)s)$/u, '').replace(/e$/u, '');
+}
+
+/**
+ * @typedef {{ text: string, roots: Set<string>, stems: Set<string>, neg: boolean, third: boolean, report: boolean }} InputInfo
+ * @param {string} input
+ * @returns {InputInfo}
+ */
+function inputInfo(input) {
+  const ex = expand(input);
+  const ws = words(ex).map((w) => w.toLowerCase());
+  return {
+    text: ex, roots: new Set(ws.map(root)), stems: new Set(ws.map(stem)),
+    neg: NEG_INPUT.test(ex), third: THIRD_PARTY_RE.test(ex), report: REPORT_IN_INPUT.test(ex),
+  };
+}
+
+// Mind words that describe something that happened (an event the person
+// reported), so restating them is not mind-reading. Attitudes ("hates",
+// "doesn't care", "is angry") and claims about everyone or nobody stay the
+// person's reading: they are restated with a frame ("It feels like…").
+const EVENT_WORDS = new Set(['forgot', 'forgets', 'ignored', 'noticed', 'remembered', 'missed', 'blamed', 'judged']);
+
+/**
+ * Is this claim a faithful restatement of an event the person wrote about?
+ * Same event word, same polarity, and the same person (or, for "he"/"she"/
+ * "they", someone the person mentioned).
+ * @param {{ subject: string, neg: boolean, word: string }} c @param {InputInfo} info
+ */
+function echoes(c, info) {
+  const w = c.word.toLowerCase();
+  if (!EVENT_WORDS.has(w) || !info.roots.has(root(w))) return false;
+  if (c.neg && !info.neg) return false;
+  const s = c.subject.toLowerCase();
+  if (/^(?:he|she|they)$/.test(s)) return info.third;
+  if (!/^(?:your|their|his|her) /.test(s)) return false;
+  return info.stems.has(stem(s.split(' ').pop() || ''));
+}
+
+/** @param {RegExp} re @param {string} s */
+const spans = (re, s) => [...s.matchAll(re)].map((m) => ({ start: m.index ?? 0, end: (m.index ?? 0) + m[0].length }));
+
+/**
+ * Is a claim at `at` covered by a frame that ends before it, with no new clause in between?
+ * @param {{ start: number, end: number }[]} frames @param {string} clause @param {number} at
+ */
+const covered = (frames, clause, at) => frames.some((f) => f.end <= at && !BOUNDARY.test(clause.slice(f.end, at)));
 
 /**
  * Does a (contraction-expanded) sentence state another person's mind as
@@ -145,16 +229,41 @@ const HEDGE_RE = /\b(?:may|might|could|perhaps|possibly|maybe|if|whether|unless|
  * day, he is tired") also covers the clauses after it. "but", ";" and dashes
  * start a fresh claim. "He might not have seen it, and he's probably busy"
  * fails on its second clause.
+ *
+ * Not claims: the person's own account or feeling ("You said…", "It feels
+ * like…", "You've noticed…"), negated reports ("he has never said he is
+ * proud"), and — where `echo` is given (known_fact and line 1) — a faithful
+ * restatement of what the person wrote ("Your girlfriend forgot your
+ * anniversary" for "My girlfriend forgot our anniversary"). New guesses
+ * about anyone's mind stay claims everywhere.
  * @param {string} sentence
+ * @param {InputInfo | null} echo
  */
-function claimsOthersMinds(sentence) {
+function claimsOthersMinds(sentence, echo) {
   for (const seg of sentence.split(/;|—|–|\s-\s|\bbut\b|\bhowever\b|\bthough\b/)) {
     let leadIn = false;
     for (const clause of seg.split(/[,:]/)) {
-      const claim = CLAIM_RE.test(clause) || STATE_RE.test(clause) || NOT_PERSONAL_RE.test(clause);
       const hedged = HEDGE_RE.test(clause);
-      if (claim && !hedged && !leadIn) return true;
-      if (hedged && !claim && !OTHERS_RE.test(clause)) leadIn = true;
+      const claims = [...clause.matchAll(CLAIM_G), ...clause.matchAll(STATE_G)].map((m) => ({
+        at: m.index ?? 0, end: (m.index ?? 0) + m[0].length, subject: m[1], neg: /not|never/.test(m[2] || ''), word: m[3],
+      }));
+      const notPersonal = NOT_PERSONAL_RE.test(clause);
+      if ((claims.length || notPersonal) && !leadIn) {
+        if (notPersonal && !hedged) return true;
+        // A hedge counts for a claim only when it comes first or inside it
+        // ("If he is busy…"), not after it ("He is proud, even if…").
+        const hedges = spans(HEDGE_G, clause);
+        const attrib = spans(ATTRIB_G, clause);
+        const negReport = spans(NEG_REPORT_G, clause);
+        const report = echo && echo.report ? spans(REPORT_G, clause) : [];
+        for (const c of claims) {
+          if (hedges.some((h) => h.start < c.end) || WH_BEFORE.test(clause.slice(0, c.at))) continue;
+          if (covered(attrib, clause, c.at) || covered(negReport, clause, c.at)) continue;
+          if (echo && (echoes(c, echo) || covered(report, clause, c.at))) continue;
+          return true;
+        }
+      }
+      if (hedged && !claims.length && !notPersonal && !OTHERS_RE.test(clause)) leadIn = true;
     }
   }
   return false;
@@ -188,6 +297,20 @@ const SENTENCE_START_OK = new Set(['i', "i'm", "i'd", "i'll", "i've", 'zuzu', 'g
   'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'january', 'february', 'march', 'april', 'may', 'june',
   'july', 'august', 'september', 'october', 'november', 'december', 'english', 'british', 'uk', 'hr', 'ok', 'christmas', 'easter', 'eid', 'diwali', 'hanukkah', 'ramadan', 'new', 'year']);
 
+const ECHO_FIELDS = new Set(['known_fact', 'subtitle_line_1']);
+const TIME_BOX_FIELDS = new Set(['practical_next_step', 'subtitle_line_2']);
+const NUM_WORD = R`(?:\d{1,3}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|twenty-five|thirty|forty|forty-five|fifty|sixty|ninety)`;
+const TIME_BOX = new RegExp(R`\b(?:in|for|within|after|over|take|give it|spend|set a timer for|wait|just|only|about|around)(?: the next| the first| just| only| about| around)? ${NUM_WORD}(?:-| )(?:minutes?|mins?|seconds?)\b|\b(?:the next|the first) ${NUM_WORD} hours?\b`, 'giu');
+const VAGUE_QUANTITY = /\b(?:a|one) (?:hundred|thousand|million)\b(?= (?:\w+ )?(?:things|reasons|ways|times|explanations|possibilities|thoughts|details|moments|ordinary|other|little|small|different|tiny)\b)|\b(?:hundreds|thousands|millions|dozens) of\b/giu;
+
+/** @param {keyof typeof LABEL} field */
+function mindsMessage(field) {
+  if (field === 'known_fact') {
+    return 'known_fact adds a guess about what someone else thinks, feels or intends. Restate what the person told you, plainly and in their own terms ("Your girlfriend forgot your anniversary"); where it is their reading of someone\'s feelings, say it as theirs ("You said your mum is angry with you", "It feels like nobody likes you"). Add no motives, and never cast doubt on what they said happened.';
+  }
+  return `${LABEL[field]} states what someone else thinks, feels or intends as fact. Restating what the person told you is fine (as theirs: "You said…", "It feels like…"); a new guess about anyone's mind must be one possibility among others ("might", "could") or a question. Never cast doubt on what the person said happened.`;
+}
+
 const ABSOLUTES = new Set(['nobody', 'everyone', 'everybody', 'always', 'never', 'nothing', 'everything', 'anyone', 'noone']);
 
 /**
@@ -212,6 +335,7 @@ export function qualityGate(scene, ctx) {
   const input = tidy(ctx.text);
   const inputLower = input.toLowerCase();
   const inputWords = new Set(words(input).map((w) => w.toLowerCase().replace(/’/g, "'")));
+  const info = inputInfo(input);
   const heavy = HEAVY_EMOTIONS.has(scene.emotion) || HEAVY_EMOTIONS.has(ctx.emotion || '') || scene.situation_type === 'loss';
 
   // 1. Shape of the two subtitle lines.
@@ -255,12 +379,12 @@ export function qualityGate(scene, ctx) {
     // A hedge covers its own clause and what follows it, until "but", a
     // semicolon or a dash starts a new claim.
     // Quoting the person's own words is not a claim, so quoted spans are skipped.
+    // known_fact and line 1 may restate what the person said happened.
+    const echo = ECHO_FIELDS.has(field) ? info : null;
     for (const s of sentences(t)) {
       if (/\?["')\]]*$/.test(s)) continue;
       const unquoted = s.replace(/"[^"]*"|“[^”]*”|‘[^’]*’/g, ' … ');
-      if (claimsOthersMinds(expand(unquoted))) {
-        fail('claims_others_minds', field, `${LABEL[field]} states what someone else thinks, feels or intends as fact; only offer that as a possibility ("might", "could") or ask.`);
-      }
+      if (claimsOthersMinds(expand(unquoted), echo)) fail('claims_others_minds', field, mindsMessage(field));
     }
     // The harsh label, repeated or flatly denied.
     const lab = LABEL_RE.exec(t);
@@ -277,9 +401,13 @@ export function qualityGate(scene, ctx) {
       if (american) { fail('american_spelling', field, `Use British spelling ("${raw}" is American spelling).`); break; }
     }
     if (PRACTICE_VERB.test(t) && !/practice/i.test(inputLower)) fail('american_spelling', field, 'Use British spelling: "practise" is the verb.');
-    // Invented details: numbers and names the person never gave.
+    // Invented details: numbers and names the person never gave. Vague
+    // idioms ("a hundred ordinary things") and, in an action, a time box
+    // ("in the next twenty minutes") are not details about their situation.
     const inputNums = numbersIn(input);
-    for (const num of numbersIn(t)) {
+    let forNumbers = t.replace(VAGUE_QUANTITY, ' ');
+    if (TIME_BOX_FIELDS.has(field)) forNumbers = forNumbers.replace(TIME_BOX, ' ');
+    for (const num of numbersIn(forNumbers)) {
       if (num === 'one' || num === 'two' || inputNums.has(num)) continue;
       fail('invented_detail', field, `Do not add details the person did not give (the number "${num}").`);
       break;
@@ -324,9 +452,14 @@ export function qualityGate(scene, ctx) {
     const lineSim = Math.max(
       ...[l1, l2].flatMap((a) => [p.subtitle_line_1, p.subtitle_line_2].map((b) => jaccard(contentStems(a), contentStems(b)))),
     );
-    const samePattern = p.reasoning_pattern && p.reasoning_pattern === scene.reasoning_pattern && i === previous.length - 1;
-    if (sim >= LIMITS.repeatSimilarity || lineSim >= LIMITS.repeatLineSimilarity || tidy(p.subtitle_line_1).toLowerCase() === tidy(l1).toLowerCase()
-      || (samePattern && sim >= LIMITS.samePatternSimilarity)) {
+    // The mechanic follows the pattern, so the same pattern replays the same
+    // scene. The angle just shown never repeats its pattern (word overlap
+    // cannot see a paraphrase); an older one only with a clearly different
+    // take (few shared words).
+    const samePattern = Boolean(p.reasoning_pattern) && p.reasoning_pattern === scene.reasoning_pattern;
+    if (samePattern && (i === previous.length - 1 || sim >= LIMITS.samePatternSimilarity)) {
+      fail('repeats_previous', 'lines', `This angle uses the same reasoning_pattern (${scene.reasoning_pattern}) as angle ${i + 1}, which the person has already seen, so the app would replay the same scene. Choose a different reasoning_pattern that genuinely fits; only if none does, look at a clearly different part of the situation in new words.`);
+    } else if (sim >= LIMITS.repeatSimilarity || lineSim >= LIMITS.repeatLineSimilarity || tidy(p.subtitle_line_1).toLowerCase() === tidy(l1).toLowerCase()) {
       fail('repeats_previous', 'lines', 'This angle repeats one the person has already seen; offer a genuinely different, still-accurate perspective (a different pattern, part of the situation, question or action).');
     }
   });

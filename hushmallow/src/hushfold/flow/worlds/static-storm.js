@@ -16,7 +16,7 @@
 // Spec and constants: docs/audit/worlds.md proposals 5 and 7.
 
 import { createRealmCore } from '../../../world/realm.js';
-import { glowSprite, glintSprite, Pool, Rings, flashEnv, clamp, lerp, smoothstep, TAU, makeCanvas, mixHex } from '../../../world/util.js';
+import { glowSprite, glintSprite, Pool, Rings, flashEnv, clamp, lerp, smoothstep, TAU, makeCanvas } from '../../../world/util.js';
 import { Rope, Spring2 } from '../../../v3/fx.js';
 import { AngleTracker, Wobble, waitRing } from '../../../v3/kit.js';
 import { ChargeField, FIELD } from './storm-field.js';
@@ -963,7 +963,7 @@ export function create(ctx) {
       g.restore();
     }
     if (thought?.draw) {
-      try { thought.draw(g, x, y, tScale, { tension: tTension, charge: qLocal, calm: thoughtSettle.settled ? 1 : 1 - qLocal, fizz: tFizz, reduced: rm, radius: tR, now, minX: 20, maxX: W - 20, labelWidth: Math.min(300, W - 76) }); } catch (e) { /* placeholder only */ }
+      try { thought.draw(g, x, y, tScale, { tension: tTension, charge: qLocal, calm: thoughtSettle.settled ? 1 : 1 - qLocal, fizz: tFizz, reduced: rm, radius: tR, now, minX: 20, maxX: W - 20, labelWidth: Math.min(300, W - 64) }); } catch (e) { /* placeholder only */ }
     }
   }
 
@@ -1129,9 +1129,20 @@ export function create(ctx) {
     resume() { paused = false; },
     setEmotion() {},
     setThought(h) { thought = h; },
+    /** Client rects to keep subtitles off: the thought with its words plate and fingers (hard), the postcard mobile (soft). */
     avoid() {
-      const out = thought ? [{ x: tSpring.x - tR * 1.6, y: tSpring.y - tR * 1.4, w: tR * 3.2, h: tR * 3.6, kind: 'thought' }] : [];
+      const out = [];
+      if (thought) {
+        const lw = Math.min(W - 40, Math.min(300, W - 64) + 24);
+        const x0 = clamp(tSpring.x - lw / 2, 20, W - 20 - lw);
+        out.push({ x: Math.min(x0, tSpring.x - tR * 1.3), y: tSpring.y - tR * 1.4, w: Math.max(lw, tR * 2.6), h: tR * 2.4 + 64, kind: 'thought' });
+      }
       for (const f of fingers) if (f.on) out.push({ x: f.x - 60, y: f.y - 60, w: 120, h: 120, kind: 'finger' });
+      if (cards.length) {
+        let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+        for (const c of cards) { x0 = Math.min(x0, c.x - c.w / 2); y0 = Math.min(y0, c.y - c.h / 2); x1 = Math.max(x1, c.x + c.w / 2); y1 = Math.max(y1, c.y + c.h / 2); }
+        out.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0, kind: 'cards', soft: true });
+      }
       return out;
     },
     serialize() {

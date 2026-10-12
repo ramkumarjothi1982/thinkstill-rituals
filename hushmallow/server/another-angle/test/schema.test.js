@@ -4,11 +4,12 @@ import { existsSync } from 'node:fs';
 import { SCENE_SCHEMA, SCENE_FIELDS, validateScene, normaliseScene } from '../src/schema.js';
 import {
   PATTERNS, PATTERN_INTERACTION, INTERACTIONS, MALLOWS, SCENE_EMOTIONS, TAXONOMY_EMOTIONS, PATTERN_MALLOWS,
-  normaliseEmotion, normaliseIntention,
+  PATTERN_TO_AUTHORED, INTERACTION_PATTERN, normaliseEmotion, normaliseIntention,
 } from '../src/vocab.js';
 import { anchor } from './helpers.js';
 
 const APP_EMOTIONS = new URL('../../../src/data/emotions.js', import.meta.url);
+const APP_FRAMEWORKS = new URL('../../../src/ultra/frameworks.js', import.meta.url);
 
 test('scene fields are exactly the twelve the client contract names', () => {
   assert.deepEqual([...SCENE_FIELDS], [
@@ -42,6 +43,15 @@ test('scene emotions are ids in the app taxonomy, and the taxonomy snapshot matc
   for (const e of SCENE_EMOTIONS) assert.ok(TAXONOMY_EMOTIONS.includes(e), e);
   const app = await import(APP_EMOTIONS.href);
   assert.deepEqual([...TAXONOMY_EMOTIONS], [...app.ALL_EMOTION_IDS]);
+});
+
+test('every reasoning pattern maps to an authored-engine thought pattern id (or none), and mechanics map back', { skip: !existsSync(APP_FRAMEWORKS) && 'app not in this checkout' }, async () => {
+  const { THOUGHT_PATTERNS } = await import(APP_FRAMEWORKS.href);
+  const ids = new Set(THOUGHT_PATTERNS.map((p) => p.id));
+  assert.deepEqual(Object.keys(PATTERN_TO_AUTHORED).sort(), [...PATTERNS].sort());
+  for (const [p, id] of Object.entries(PATTERN_TO_AUTHORED)) if (id !== null) assert.ok(ids.has(id), `${p} → ${id}`);
+  assert.equal(PATTERN_TO_AUTHORED.practical_problem, null);
+  for (const p of PATTERNS) assert.equal(INTERACTION_PATTERN[PATTERN_INTERACTION[p]], p);
 });
 
 test('input emotion and intention spellings normalise', () => {

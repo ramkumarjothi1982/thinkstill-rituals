@@ -86,3 +86,26 @@ test('lexicon entries are valid regular expressions', () => {
     for (const src of list) assert.doesNotThrow(() => new RegExp(src, 'i'), src);
   }
 });
+
+test('server-only additions catch the review\'s missed crisis wordings (sent to W3 for the shared lexicon)', () => {
+  for (const s of [
+    "I've been stockpiling my pills.", "I've been saving up my tablets.", "I'm so done with life.", "I don't see a way out anymore.",
+    'There is no way out.', 'I just want to sleep forever.', 'I want to go to sleep and not wake up.',
+    "I don't think anyone would notice if I wasn't around.", 'Nobody would care if I wasn\'t here any more.',
+    'Life is pointless.', "I'm a burden.",
+  ]) assert.deepEqual(checkSafety(s), { level: 'crisis', category: 'self-harm' }, s);
+  for (const s of ['My friend is cutting herself again.', "My friend told me she's been cutting herself again.", 'My brother has been starving himself.', 'She cut herself again last night.']) {
+    assert.deepEqual(checkSafety(s), { level: 'crisis', category: 'someone-in-danger' }, s);
+  }
+  assert.deepEqual(checkSafety('My partner checks my phone every night.'), { level: 'care', category: 'abuse' });
+  assert.deepEqual(checkSafety('Someone at school keeps calling me names.'), { level: 'care', category: 'harassment' });
+  assert.deepEqual(checkSafety('My boss keeps touching my shoulder and I hate it.'), { level: 'care', category: 'harassment' });
+});
+
+test('the additions leave everyday wording alone', () => {
+  for (const s of [
+    "I'm so tired I could sleep forever.", "There's no way out of this contract until March.", "I can't see a way out of this car park.",
+    "I'm done with this job.", "I've been saving up for a holiday.", 'Collecting my pills from the pharmacy stressed me out.',
+    'She cut herself a slice of cake.', 'He cut himself shaving.', 'I feel like a burden on the team this week.', 'My boss keeps checking my work.',
+  ]) assert.equal(checkSafety(s).level, 'none', s);
+});

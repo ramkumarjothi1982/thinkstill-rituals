@@ -222,7 +222,7 @@ test('quality gate: two weak drafts → fallback signal for the authored engine,
   const j = await (await app.fetch(angleReq(token, { text: ANCHORS[1].text }), env)).json();
   assert.equal(j.status, 'fallback');
   assert.equal(j.scene, null);
-  assert.deepEqual(j.fallback, { reason: 'quality', hint: { reasoning_pattern: 'fact_vs_assumption', interaction_type: 'pull_apart', mallow_character: 'zuzu' } });
+  assert.deepEqual(j.fallback, { reason: 'quality', hint: { reasoning_pattern: 'fact_vs_assumption', interaction_type: 'pull_apart', mallow_character: 'zuzu', authored_pattern: 'feelings-as-proof' } });
   assert.equal(provider.calls.length, 2, 'only one regeneration');
   assert.equal(j.quota.remaining, 4, 'a model answer was produced, so it counts');
 });
@@ -355,7 +355,7 @@ test('another angle: previous angles reach the model and repeats are regenerated
   assert.equal(j.status, 'ok');
   assert.equal(j.scene.reasoning_pattern, 'rumination');
   assert.match(provider.calls[0].user, /<previous_angles>[\s\S]*pattern="fact_vs_assumption"/);
-  assert.match(provider.calls[1].user, /repeats one the person has already seen/);
+  assert.match(provider.calls[1].user, /same reasoning_pattern \(fact_vs_assumption\)[\s\S]*replay the same scene/);
 });
 
 test('prompt injection: instructions in the text stay data; hijacked output never reaches the person', async () => {
@@ -396,14 +396,70 @@ test('the heuristic mock (local development) produces gate-passing scenes', asyn
   }
 });
 
-test('unhandled errors return a generic 500 without details', async () => {
+test('a provider that throws gives a fallback without details, and the quota shown is the real one', async () => {
   const { app } = makeApp({ provider: { name: 'boom', model: 'x', generate() { throw new Error('secret stack detail'); } } });
   const env = makeEnv();
   const token = await getToken(app, env);
   const res = await app.fetch(angleReq(token, { text: ANCHORS[1].text }), env);
   const j = await res.json();
   assert.equal(j.status, 'fallback');
+  assert.equal(j.fallback.reason, 'provider');
   assert.ok(!JSON.stringify(j).includes('secret stack detail'));
+  assert.equal(j.quota.remaining, 5, 'refunded, and reported as refunded');
+  const s = await (await app.fetch(req('/v1/session', { body: {} }), env)).json();
+  assert.equal(s.quota.remaining, 5);
+});
+
+test('an error outside the pipeline returns a generic 500 that the browser can still read (CORS)', async () => {
+  const { app, logs } = makeApp({ script: [anchor(1)] });
+  const broken = { idFromName() { throw new Error('ledger down: secret detail'); }, get() { throw new Error('x'); } };
+  const env = makeEnv();
+  const token = await getToken(app, env);
+  const res = await app.fetch(angleReq(token, { text: ANCHORS[1].text }), { ...env, LEDGER: broken });
+  assert.equal(res.status, 500);
+  assert.equal(res.headers.get('access-control-allow-origin'), ORIGIN);
+  const j = await res.json();
+  assert.deepEqual(j, { status: 'error', error: { code: 'internal', message: 'Something went wrong.' } });
+  assert.ok(logs.some((l) => l.includes('"evt":"unhandled_error"')));
+  assertNoContent(logs, 'ledger down: secret detail');
+});
+
+test('emoji or punctuation only → "unclear" fallback, no model call, no quota', async () => {
+  const { app, provider } = makeApp({ script: [anchor(1)] });
+  const env = makeEnv();
+  const token = await getToken(app, env);
+  const j = await (await app.fetch(angleReq(token, { text: '😭😭😭' }), env)).json();
+  assert.deepEqual([j.status, j.fallback.reason, j.scene], ['fallback', 'unclear', null]);
+  assert.equal(j.quota.remaining, 5);
+  assert.equal(provider.calls.length, 0);
+});
+
+test('session: when the global cap refuses, the network\'s session count is given back', async () => {
+  const { app } = makeApp();
+  const env = makeEnv({ SESSION_DAILY_CAP: '1', SESSIONS_PER_IP_DAILY: '2' });
+  const other = { headers: { 'cf-connecting-ip': '198.51.100.20' } };
+  assert.equal((await app.fetch(req('/v1/session', { body: {}, ...other }), env)).status, 200);
+  // Global cap now full: these two are refused, and must not use up 203.0.113.7's own allowance.
+  assert.equal((await app.fetch(req('/v1/session', { body: {} }), env)).status, 429);
+  assert.equal((await app.fetch(req('/v1/session', { body: {} }), env)).status, 429);
+  const day = new Date().toISOString().slice(0, 10);
+  const ipNames = [...env.LEDGER.instances.keys()].filter((k) => k.startsWith('ip:'));
+  for (const name of ipNames) {
+    const used = await env.LEDGER.get(name).fetch('https://ledger/peek', { method: 'POST', body: JSON.stringify({ key: 'sessions', day }) }).then((r) => r.json());
+    assert.ok(used.used <= 1, `${name}: ${used.used}`);
+  }
+});
+
+test('limits: IPv6 clients are limited per /64, IPv4 per address', async () => {
+  const { app } = makeApp();
+  const env = makeEnv({ SESSIONS_PER_IP_DAILY: '2' });
+  const from = (ip) => app.fetch(req('/v1/session', { body: {}, headers: { 'cf-connecting-ip': ip } }), env);
+  assert.equal((await from('2001:db8:aa:1::1')).status, 200);
+  assert.equal((await from('2001:db8:aa:1:ffff:2:3:4')).status, 200);
+  assert.equal((await from('2001:db8:aa:1::abcd')).status, 429, 'a third address in the same /64 shares the cap');
+  assert.equal((await from('2001:db8:aa:2::1')).status, 200, 'another /64 is another network');
+  assert.equal((await from('198.51.100.1')).status, 200);
+  assert.equal((await from('198.51.100.2')).status, 200, 'IPv4 neighbours are separate (mobile CGNAT)');
 });
 
 test('feedback: the four buttons are recorded as metadata only', async () => {
@@ -421,4 +477,28 @@ test('feedback: the four buttons are recorded as metadata only', async () => {
   assert.equal((await send({ rating: 'helped', mallow_character: 'clippy' })).status, 400);
   assert.equal((await send({ rating: 'helped' }, null)).status, 401);
   assertNoContent(logs, 'my boss is awful');
+});
+
+test('feedback has its own burst limit, so it never uses up the angle limit', async () => {
+  const { app } = makeApp();
+  const env = makeEnv();
+  const token = await getToken(app, env);
+  const fb = (e) => app.fetch(req('/v1/feedback', { body: { rating: 'another_angle' }, headers: { authorization: `Bearer ${token}` } }), e);
+  const angleLimiter = { calls: 0, async limit() { this.calls++; return { success: true }; } };
+  assert.equal((await fb({ ...env, ANGLE_IP_LIMITER: angleLimiter })).status, 202);
+  assert.equal(angleLimiter.calls, 0, 'the angle limiter was not touched');
+  assert.equal((await fb({ ...env, ANGLE_IP_LIMITER: denyAll() })).status, 202);
+  assert.equal((await fb({ ...env, FEEDBACK_IP_LIMITER: denyAll() })).status, 429);
+});
+
+test('logs carry the safety level only, never the category', async () => {
+  const { app, logs } = makeApp({ script: [] });
+  const env = makeEnv();
+  const token = await getToken(app, env);
+  await app.fetch(angleReq(token, { text: 'Honestly nobody would miss me if I was gone.' }), env);
+  await app.fetch(angleReq(token, { text: 'My partner threatens me when I go out with friends.' }), env);
+  const evts = logs.map((l) => JSON.parse(l)).filter((e) => e.evt === 'angle');
+  assert.deepEqual(evts.map((e) => e.safety_level), ['crisis', 'care']);
+  for (const e of evts) assert.ok(!('safety_category' in e));
+  assert.ok(!logs.join('\n').includes('self-harm'));
 });

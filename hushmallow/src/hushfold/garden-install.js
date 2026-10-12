@@ -54,8 +54,13 @@ const CSS = `
 .hm-install-card.is-out { opacity: 0; transform: translate(-50%, 8px) scale(.985); pointer-events: none; transition-duration: .32s; }
 .hm-install.is-reduced .hm-install-card { transform: translate(-50%, 0); transition: opacity .45s ease, visibility 0s linear .45s; }
 .hm-install.is-reduced .hm-install-card.is-in { transition-delay: 0s; }
-.hm-install-charm { display: block; margin: -52px auto 0; width: 104px; height: 104px; }
-.hm-install-card.is-compact .hm-install-charm { width: 80px; height: 80px; margin-top: -40px; }
+.hm-install-charm { display: block; margin: -60px auto -4px; width: 120px; height: 120px; }
+.hm-install-card.is-compact { padding: 0 16px 14px; border-radius: 24px; }
+.hm-install-card.is-compact .hm-install-charm { width: 88px; height: 88px; margin-top: -44px; margin-bottom: -6px; }
+.hm-install-card.is-compact .hm-install-title { margin-top: 6px; }
+.hm-install-card.is-compact .hm-install-line { margin-top: 6px; }
+.hm-install-card.is-compact .hm-actions { margin-top: 12px; }
+
 .hm-install-over { margin: 2px 0 0; font: var(--type-overline, 750 calc(13px * var(--hm-k))/1.25 var(--hm-ff-ui)); letter-spacing: var(--type-overline-ls, .12em); text-transform: uppercase; color: #ffd98a; text-shadow: 0 0 18px rgba(255,217,138,.35); }
 .hm-install-title { margin: 8px 0 0; font: var(--type-reward, 600 calc(clamp(24px, 7.273vw - 1.273px, 30px) * var(--hm-k))/1.12 var(--hm-ff-story)); letter-spacing: var(--type-reward-ls, -.01em); font-optical-sizing: auto; text-wrap: balance; color: #fff6e6; }
 @supports ((-webkit-background-clip: text) or (background-clip: text)) {
@@ -66,8 +71,8 @@ const CSS = `
 }
 @keyframes hmTitleLight { from { background-position: 100% 0; } to { background-position: 0% 0; } }
 .hm-install-line { margin: 8px auto 0; max-width: 30ch; font: var(--type-body, 500 calc(17px * var(--hm-k))/1.5 var(--hm-ff-voice)); letter-spacing: var(--type-body-ls, 0); color: #d9d2f2; }
-.hm-actions { display: flex; gap: 10px; margin-top: 16px; }
-.hm-actions button { flex: 1 1 0; min-width: 0; min-height: 48px; padding: 0 12px; border-radius: 999px; cursor: pointer; font: var(--type-button, 700 calc(16px * var(--hm-k))/1.15 var(--hm-ff-ui)); letter-spacing: var(--type-button-ls, .005em);
+.hm-actions { display: flex; flex-wrap: wrap; gap: 8px 10px; margin-top: 16px; }
+.hm-actions button { flex: 1 1 auto; white-space: nowrap; min-height: 48px; padding: 0 12px; border-radius: 999px; cursor: pointer; font: var(--type-button, 700 calc(16px * var(--hm-k))/1.15 var(--hm-ff-ui)); letter-spacing: var(--type-button-ls, .005em);
   transition: transform .14s cubic-bezier(.22,1,.36,1), background .14s; }
 .hm-actions button:active { transform: scale(.97); }
 .hm-actions .hm-primary { border: 0; color: #23140a; background: linear-gradient(180deg, #ffe2a3, #ffd98a 55%, #ffb86b); box-shadow: 0 10px 28px rgba(255,190,90,.28), inset 0 1px 0 rgba(255,255,255,.6); }
@@ -152,6 +157,12 @@ function wellSprite(deep, glow) {
 const GOLD = [255, 217, 138], WHITE = [255, 255, 255];
 
 let openCard = null, openOffer = null;
+// move focus to the card only for people using a keyboard (touch play is never interrupted)
+let keyboardUser = false;
+if (typeof addEventListener === 'function') {
+  addEventListener('keydown', (e) => { if (e.key === 'Tab' || e.key === 'Enter' || e.key === ' ') keyboardUser = true; }, true);
+  addEventListener('pointerdown', () => { keyboardUser = false; }, true);
+}
 /** Rects of the offer / card on screen now (for subtitle avoidance). */
 export function installAvoidRects() {
   return [openOffer, openCard].filter((e) => e?.isConnected).map((e) => e.getBoundingClientRect()).filter((r) => r.width > 0);
@@ -273,7 +284,7 @@ export function playInstall(opts = {}) {
   card.setAttribute('role', 'dialog'); card.setAttribute('aria-modal', 'false');
   card.style.setProperty('--glow', C.glow.join(','));
   const cid = `hm-install-${Math.random().toString(36).slice(2, 8)}`;
-  const charm = charmCanvas({ skillId, mallow: m.id, box: 104, reducedMotion: reduced, animate: false });
+  const charm = charmCanvas({ skillId, mallow: m.id, box: 120, reducedMotion: reduced, animate: false });
   charm.el.classList.add('hm-install-charm');
   const over = document.createElement('p'); over.className = 'hm-install-over'; over.textContent = 'New tool saved';
   const h = document.createElement('h2'); h.className = 'hm-install-title'; h.id = cid;
@@ -311,13 +322,14 @@ export function playInstall(opts = {}) {
     placeCard();
   }
   function placeCard() {
+    card.classList.toggle('is-compact', H < 700 || W < 360);
     const ch = card.offsetHeight || 260;
+    const lift = card.classList.contains('is-compact') ? 44 : 60;     // the charm rises above the card's edge
     const safeTop = 64, safeBottom = Math.max(H - dockTop(), 24);
     const avoid = opts.origin && Number.isFinite(opts.origin.top) ? opts.origin : null;
-    let y = clamp(Pp.y - 40, safeTop + 54, H - safeBottom - ch - 12);
-    // keep the Mallow's face clear if there is room above it
-    if (avoid && y + ch > avoid.top + avoid.height * 0.28) y = Math.max(safeTop + 54, Math.min(y, avoid.top - ch - 8));
-    card.classList.toggle('is-compact', H < 640);
+    let y = clamp(Pp.y - 40, safeTop + lift, Math.max(safeTop + lift, H - safeBottom - ch - 12));
+    // keep the Mallow's face clear when there is room above it; else sit as high as possible
+    if (avoid && y + ch > avoid.top + avoid.height * 0.28) y = Math.max(safeTop + lift, Math.min(y, avoid.top - ch - 8));
     card.style.top = `${Math.round(y)}px`;
   }
 
@@ -345,10 +357,12 @@ export function playInstall(opts = {}) {
     for (let i = 0; i < 3; i++) {
       const k = k01(t, 0.04 + i * 0.17, 0.82 + i * 0.17);
       if (k <= 0 || k >= 1) continue;
-      g.globalAlpha = Math.sin(Math.PI * k) * 0.55;
+      const a = Math.sin(Math.PI * k), rx = (12 + 78 * eOut(k)) * U, ry = (6 + 30 * eOut(k)) * U;
       g.strokeStyle = rgbaOf(i === 1 ? C.accent : C.glow, 1);
-      g.lineWidth = (2.4 - 1.4 * k) * U;
-      g.beginPath(); g.ellipse(F.x, F.y, (12 + 78 * eOut(k)) * U, (6 + 30 * eOut(k)) * U, 0, 0, Math.PI * 2); g.stroke();
+      g.globalAlpha = a * 0.16; g.lineWidth = (9 - 4 * k) * U;
+      g.beginPath(); g.ellipse(F.x, F.y, rx, ry, 0, 0, Math.PI * 2); g.stroke();
+      g.globalAlpha = a * 0.6; g.lineWidth = (2.2 - 1.2 * k) * U;
+      g.beginPath(); g.ellipse(F.x, F.y, rx, ry, 0, 0, Math.PI * 2); g.stroke();
     }
     for (let i = 0; i < N; i++) {
       const k = k01(t, motes[i * 4 + 2], motes[i * 4 + 2] + 0.56);
@@ -360,21 +374,54 @@ export function playInstall(opts = {}) {
     // 2. the portal: opens, breathes (≈1.1/s, shallow), takes the charm, closes
     const open = eOut(k01(t, T.portalOpen, T.portalOpen + 0.55)) * (1 - eIn(k01(t, T.close, T.close + 0.6)));
     if (open > 0.002) {
-      const r = Rp * open, breath = 0.86 + 0.14 * Math.sin(Math.PI * 2 * 1.1 * t);
-      sprite(glowS, Pp.x, Pp.y, r * 2.3, 0.42 * open * breath);
+      // one calm breath a second, shallow: light, never flicker
+      const r = Rp * open, breath = 0.88 + 0.12 * Math.sin(Math.PI * 2 * t);
+      sprite(glowS, Pp.x, Pp.y, r * 2.7, 0.36 * open * breath);
+      sprite(accentS, Pp.x, Pp.y, r * 1.8, 0.14 * open);
+      // a corona of slow rays round the rim
+      g.lineCap = 'round';
+      for (let i = 0; i < 24; i++) {
+        const a = i * (Math.PI / 12) + t * 0.16;
+        const w = 0.5 + 0.5 * Math.sin(t * 1.2 + i * 2.1);
+        const r0 = r * 1.08, r1 = r * (1.16 + 0.22 * w);
+        g.strokeStyle = rgbaOf(i % 4 === 0 ? GOLD : i % 4 === 2 ? C.accent : C.glow, 1);
+        g.globalAlpha = (0.08 + 0.16 * w) * open;
+        g.lineWidth = (1 + 0.9 * w) * U;
+        g.beginPath(); g.moveTo(Pp.x + Math.cos(a) * r0, Pp.y + Math.sin(a) * r0); g.lineTo(Pp.x + Math.cos(a) * r1, Pp.y + Math.sin(a) * r1); g.stroke();
+      }
       g.globalCompositeOperation = 'source-over';
       g.globalAlpha = Math.min(1, open * 1.4);
       g.drawImage(well, Pp.x - r * 1.08, Pp.y - r * 1.08, r * 2.16, r * 2.16);
       g.globalCompositeOperation = 'lighter';
-      const spin = 1 + 1.6 * env(t, T.enter - 0.25, 0.3, 0.1, 0.5);
-      const cols = [C.glow, C.accent, GOLD];
-      for (let j = 0; j < 3; j++) {
-        const rr = r * (0.58 + 0.19 * j), rot = t * (0.9 + 0.45 * j) * spin * (j % 2 ? -1 : 1) + j;
-        g.strokeStyle = rgbaOf(cols[j], 1); g.globalAlpha = (0.75 - 0.15 * j) * open * breath; g.lineWidth = (2.8 - 0.7 * j) * U;
-        for (let s = 0; s < 3; s++) { const a = rot + s * (Math.PI * 2 / 3); g.beginPath(); g.arc(Pp.x, Pp.y, rr, a, a + 1.2 - 0.2 * j); g.stroke(); }
+      // spiral arms of light turning slowly inwards, into the depth
+      const spin = 1 + 1.4 * env(t, T.enter - 0.25, 0.3, 0.1, 0.5);
+      g.save();
+      g.beginPath(); g.arc(Pp.x, Pp.y, r * 0.99, 0, Math.PI * 2); g.clip();
+      for (let arm = 0; arm < 4; arm++) {
+        const base = -t * 1.05 * spin + arm * (Math.PI / 2);
+        g.strokeStyle = rgbaOf(arm % 2 ? C.accent : C.glow, 1);
+        for (let pass = 0; pass < 2; pass++) {
+          g.lineWidth = (pass ? 1.5 : 6) * U;
+          g.globalAlpha = (pass ? 0.6 : 0.13) * open * breath;
+          g.beginPath();
+          for (let q = 0; q <= 24; q++) {
+            const u = q / 24, th = base + u * 3.3, rr = r * 0.97 * Math.exp(-u * 2.4);
+            const x = Pp.x + Math.cos(th) * rr, y = Pp.y + Math.sin(th) * rr;
+            if (q) g.lineTo(x, y); else g.moveTo(x, y);
+          }
+          g.stroke();
+        }
       }
-      g.strokeStyle = 'rgba(255,255,255,1)'; g.globalAlpha = 0.5 * open; g.lineWidth = 1.2 * U;
-      g.beginPath(); g.arc(Pp.x, Pp.y, r * 1.02, 0, Math.PI * 2); g.stroke();
+      g.restore();
+      // the rim: a soft glow under a fine bright line, and one slow ripple breathing out
+      g.strokeStyle = rgbaOf(C.glow, 1); g.globalAlpha = 0.24 * open; g.lineWidth = 8 * U;
+      g.beginPath(); g.arc(Pp.x, Pp.y, r, 0, Math.PI * 2); g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,1)'; g.globalAlpha = 0.7 * open; g.lineWidth = 1.4 * U;
+      g.beginPath(); g.arc(Pp.x, Pp.y, r, 0, Math.PI * 2); g.stroke();
+      const rk = (t * 0.6) % 1;
+      g.strokeStyle = rgbaOf(C.glow, 1); g.globalAlpha = (1 - rk) * 0.3 * open; g.lineWidth = 1.3 * U;
+      g.beginPath(); g.arc(Pp.x, Pp.y, r * (1.04 + 0.5 * rk), 0, Math.PI * 2); g.stroke();
+      g.lineCap = 'butt';
       // specks drawn into the depth
       for (let i = 0; i < 10; i++) {
         const k = ((t * 0.9 + i / 10) % 1), e = eIn(k), a = i * 2.39 + e * 2.4;
@@ -395,10 +442,19 @@ export function playInstall(opts = {}) {
       const al = Math.min(1, formK * 2.2) * (1 - k01(travelK, 0.82, 1));
       // trail
       if (travelK > 0 && travelK < 1) {
-        for (let j = 1; j <= 12; j++) {
-          const q = bez(Math.max(0, e - j * 0.022), c);
-          sprite(j % 2 ? glowS : goldS, q.x, q.y, sc * (0.36 - j * 0.022), (0.5 - j * 0.038) * al);
+        // a comet's tail of light along the path it came
+        g.lineCap = 'round';
+        let q0 = p;
+        for (let j = 1; j <= 14; j++) {
+          const q = bez(Math.max(0, e - j * 0.024), c);
+          const f = 1 - j / 15;
+          g.strokeStyle = rgbaOf(j < 5 ? GOLD : C.glow, 1);
+          g.globalAlpha = 0.5 * f * al; g.lineWidth = Math.max(1, sc * 0.2 * f);
+          g.beginPath(); g.moveTo(q0.x, q0.y); g.lineTo(q.x, q.y); g.stroke();
+          q0 = q;
         }
+        g.lineCap = 'butt';
+        for (let j = 1; j <= 6; j++) { const q = bez(Math.max(0, e - j * 0.05), c); sprite(glowS, q.x, q.y, sc * (0.34 - j * 0.035), (0.34 - j * 0.04) * al); }
       }
       sprite(goldS, p.x, p.y, sc * 1.1, 0.5 * env(t, T.form, 0.32, 0.12, 0.6) * al);
       g.globalCompositeOperation = 'source-over';
@@ -453,12 +509,12 @@ export function playInstall(opts = {}) {
     if (!reduced) setTimeout(() => { if (!finished) charmLive(); }, 50);
     if (reduced || skipped) audio('chime');
     // keyboard users land on the main choice; touch play is never interrupted
-    if (!document.activeElement || document.activeElement === document.body) visit.focus({ preventScroll: true });
+    if (keyboardUser && (!document.activeElement || document.activeElement === document.body)) visit.focus({ preventScroll: true });
   }
   let liveCharm = null;
   function charmLive() {
     // swap the still charm for a live one once the card is in
-    liveCharm = charmCanvas({ skillId, mallow: m.id, box: card.classList.contains('is-compact') ? 80 : 104, reducedMotion: reduced });
+    liveCharm = charmCanvas({ skillId, mallow: m.id, box: card.classList.contains('is-compact') ? 88 : 120, reducedMotion: reduced });
     liveCharm.el.classList.add('hm-install-charm');
     charm.el.replaceWith(liveCharm.el);
   }

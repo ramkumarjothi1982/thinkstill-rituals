@@ -41,7 +41,33 @@ OLD_ART = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '
 # rest (lidTop .4, lidSlant -.12) and 0.93 at lidTop .55, lidSlant .2. Both
 # stay inside Glitzi's expression range (angry/calm narrower, happy/excited
 # wider), so the presets keep their meaning.
-NEUTRAL = {'glitzi': {'lidTop': 0.55, 'lidSlant': 0.2}}
+NEUTRAL = {'glitzi': {'lidTop': 0.55, 'lidSlant': 0.2},
+           # the redrawn Boppo rests with a wider-open grin; at the old 0.45
+           # the painted depth would make a full-open (surprised) mouth twice
+           # as tall as the current rig's
+           'boppo': {'mouthOpen': 0.7}}
+
+# Open mouths, painted landmarks in cut-out px: corner tips (x left, x right,
+# y), the upper-lip dip at the centre, and the bottom of the opening (tongue
+# bottom, above the pale lip rim) read from the centre-column colour profile.
+# The rig's two-cubic mouth is solved through these points: an IoU fit prefers
+# a flat-topped "D" that loses the painted grin's dipping upper lip.
+MOUTH_LANDMARKS = {
+    'zuzu': dict(xl=356, xr=666, y=627.5, lip=659, bottom=797),
+    'boppo': dict(xl=388, xr=635, y=641, lip=679, bottom=782),
+    'pipzi': dict(xl=378, xr=657, y=636.5, lip=666, bottom=801),
+}
+
+
+def mouth_from_landmarks(M0, P, lm):
+    s, o, r = P['mouthSmile'], P['mouthOpen'], P['mouthRound']
+    w = lm['xr'] - lm['xl']
+    sag = M0.get('sag')
+    sagS = (w * 0.18 * (1 - min(o, 1)) if sag == 0 else sag) * s * (1 - 0.6 * r)
+    U, Lo = lm['lip'] - lm['y'], lm['bottom'] - lm['y']
+    upper = (U - (1 - o) * sagS) / (o * (0.4 + 0.6 * max(0, s)))
+    depth = (Lo - sagS) / o
+    return dict(M0, x=(lm['xl'] + lm['xr']) / 2, y=lm['y'], w=w, upper=upper, depth=depth)
 
 
 def lum(rgb):
@@ -600,8 +626,9 @@ def measure(name):
             st = measure_stroke(A, g['upper'], margin=0.08 * W)
             e1 = dict(e, **stroke_to_closed_eye(st, s))
             e1, sc = fit_closed_eye(A, e1, s, st, P)
-            # open-eye geometry keeps the old proportions to the lid line
-            k = e1['hw'] / e['hw']
+            # open-eye geometry keeps the old proportions to the visible lid
+            # line; the old hw included the round caps, the new one does not
+            k = (e1['hw'] + e1['lw'] / 2) / (e['hw'])
             for kk in ('rx', 'ry', 'irisR'):
                 e1[kk] = e[kk] * k
             e1['irisOff'] = [v * k for v in e['irisOff']]
@@ -681,6 +708,12 @@ def measure(name):
         M1, sc, reg = fit_open_mouth(A, M, P, target)
         k = M1['w'] / M['w']
         M1['lw'] = M['lw'] * k
+        out['scores']['mouth_iou_fit'] = sc
+        out['mouth_iou_fit'] = rnd(M1, 2)
+        if name in MOUTH_LANDMARKS:
+            M1 = mouth_from_landmarks(M1, P, MOUTH_LANDMARKS[name])
+            g = G.mouth_geom(M1, P)
+            sc = iou(poly_mask(A.shape, np.vstack([g['upper'], g['lower']])), target)
         feats['mouth'] = M1
         out['scores']['mouth'] = sc
         masks['mouth'] = target

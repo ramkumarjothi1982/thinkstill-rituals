@@ -2,7 +2,7 @@
 // probing show up immediately. The person's text is normalised only for
 // transport safety (NFC, control characters, whitespace) and never reworded.
 
-import { normaliseEmotion, normaliseIntention, PATTERNS, INTERACTIONS, MALLOWS } from './vocab.js';
+import { normaliseEmotion, normaliseIntention, PATTERNS, INTERACTIONS, MALLOWS, PATTERN_INTERACTION, INTERACTION_PATTERN } from './vocab.js';
 
 export const TEXT_MAX = 600;
 export const PREVIOUS_MAX = 4;
@@ -42,7 +42,9 @@ export function validateAngleRequest(body) {
   if (typeof b.text !== 'string') return bad('invalid_text', 'text', 'text must be a string.');
   const text = cleanText(b.text);
   const len = [...text].length;
-  if (len < 1 || !/[\p{L}\p{N}]/u.test(text)) return bad('empty_text', 'text', 'text is empty.');
+  // Emoji or punctuation only ("😭😭😭") is valid: the server answers with an
+  // "unclear" fallback without calling the model. Only blank text is refused.
+  if (len < 1) return bad('empty_text', 'text', 'text is empty.');
   if (len > TEXT_MAX) return bad('text_too_long', 'text', `text must be at most ${TEXT_MAX} characters (it has ${len}).`);
 
   let emotion = null;
@@ -76,6 +78,16 @@ export function validateAngleRequest(body) {
       if (o.reasoning_pattern !== undefined) {
         if (typeof o.reasoning_pattern !== 'string' || !PATTERNS.includes(/** @type {any} */ (o.reasoning_pattern))) return bad('invalid_previous', `previous_angles[${i}].reasoning_pattern`, 'Unknown reasoning_pattern.');
         item.reasoning_pattern = o.reasoning_pattern;
+      }
+      // interaction_type is optional; it must be a known mechanic and match
+      // the pattern. On its own it stands for its pattern (the novelty check
+      // compares patterns, because the mechanic follows the pattern).
+      if (o.interaction_type !== undefined) {
+        if (typeof o.interaction_type !== 'string' || !INTERACTIONS.includes(o.interaction_type)) return bad('invalid_previous', `previous_angles[${i}].interaction_type`, 'Unknown interaction_type.');
+        if (item.reasoning_pattern && /** @type {Record<string, string>} */ (PATTERN_INTERACTION)[item.reasoning_pattern] !== o.interaction_type) {
+          return bad('invalid_previous', `previous_angles[${i}].interaction_type`, 'interaction_type does not match reasoning_pattern.');
+        }
+        item.reasoning_pattern = INTERACTION_PATTERN[o.interaction_type];
       }
       previous.push(item);
     }

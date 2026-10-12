@@ -175,3 +175,130 @@ test('every failure carries a code, a field and a plain instruction for the rege
     assert.ok(f.message.length > 15);
   }
 });
+
+// --- Regressions from the W6 review (12 Oct 2026) ---------------------------
+
+/** A full, rule-following scene for an input, so only the field under test can fail. */
+const sceneFor = (over) => ({
+  emotion: 'hurt', situation_type: 'relationship', reasoning_pattern: 'valid_anger', possible_assumption: '',
+  interaction_type: 'find_boundary', mallow_character: 'blubi', safety_status: 'ok', ...over,
+});
+
+test('a faithful known_fact passes; doubting the person\'s account is not required (eval rel-anniversary)', () => {
+  const text = 'My girlfriend forgot our anniversary and just said sorry like it was nothing.';
+  const base = sceneFor({
+    alternative_angle: 'Being hurt by a brushed-off apology is a reasonable response.',
+    practical_next_step: 'Tell your girlfriend plainly what the anniversary meant to you.',
+    subtitle_line_1: 'A forgotten anniversary and a quick sorry can land harder than the date itself.',
+    subtitle_line_2: 'What would a real apology from your girlfriend need to include for you?',
+  });
+  for (const kf of [
+    'Your girlfriend forgot your anniversary and said sorry quickly.',
+    'You said your girlfriend forgot your anniversary.',
+    'Your girlfriend forgot your anniversary.',
+  ]) assert.deepEqual(codes(qualityGate({ ...base, known_fact: kf }, { text })), [], kf);
+  // Line 1 may restate it too.
+  for (const l1 of ['Your girlfriend forgot your anniversary, and that sorry sounded like a shrug.', 'She forgot your anniversary, and the quick sorry stung more than the date.']) {
+    assert.deepEqual(codes(qualityGate({ ...base, known_fact: 'Your girlfriend forgot your anniversary.', subtitle_line_1: l1 }, { text })), [], l1);
+  }
+  // A new motive is still a claim, even in known_fact and line 1.
+  expectFail(qualityGate({ ...base, known_fact: 'Your girlfriend forgot your anniversary because she does not care.' }, { text }), 'claims_others_minds');
+  expectFail(qualityGate({ ...base, subtitle_line_1: 'Your girlfriend forgot your anniversary, and she clearly doesn\'t care.' }, { text }), 'claims_others_minds');
+  // The regeneration message no longer steers towards doubt ("may have forgotten").
+  const msg = qualityGate({ ...base, known_fact: 'Your girlfriend forgot because she does not care.' }, { text }).failures.find((f) => f.code === 'claims_others_minds').message;
+  assert.match(msg, /never cast doubt on what they said happened/);
+  assert.doesNotMatch(msg, /only offer that as a possibility/);
+});
+
+test('"Nobody likes me.": the person\'s feeling restated as theirs passes; stated as fact it does not', () => {
+  const text = 'Nobody likes me.';
+  const base = sceneFor({
+    emotion: 'loneliness', situation_type: 'social', reasoning_pattern: 'overgeneralisation', interaction_type: 'separate_one', mallow_character: 'zuzu',
+    possible_assumption: 'You might be turning a few painful moments into a rule about everyone.',
+    alternative_angle: 'How people feel about you is usually mixed and harder to read than it seems.',
+    practical_next_step: 'Send one low-stakes message to someone you have enjoyed talking to.',
+    subtitle_line_1: '"Nobody" is a very big word for one quiet evening.',
+    subtitle_line_2: 'Who did you actually hear from this week?',
+  });
+  for (const kf of ['You feel like nobody likes you.', 'You feel that nobody likes you.', 'Right now it feels like nobody likes you.']) {
+    assert.deepEqual(codes(qualityGate({ ...base, known_fact: kf }, { text })), [], kf);
+  }
+  assert.deepEqual(codes(qualityGate({ ...base, known_fact: 'You feel like nobody likes you.', subtitle_line_1: 'When it feels like nobody likes you, every quiet moment can look like proof.' }, { text })), []);
+  // Agreeing with the overgeneralisation is not a restatement.
+  expectFail(qualityGate({ ...base, known_fact: 'Nobody likes you.' }, { text }), 'claims_others_minds');
+  expectFail(qualityGate({ ...base, subtitle_line_1: 'Nobody likes you, and that is heavy to carry.' }, { text }), 'claims_others_minds');
+  // The gate's own earlier test scene now passes as a whole.
+  assert.deepEqual(codes(qualityGate(anchor(1, { subtitle_line_1: '"Nobody" is a very big word for one quiet evening.', subtitle_line_2: 'Who did you actually hear from this week?', known_fact: 'You feel like nobody likes you.' }), { text })), []);
+});
+
+test('"My dad never says he\'s proud of me": a negated report is not mind-reading', () => {
+  const text = "My dad never says he's proud of me.";
+  const base = sceneFor({
+    reasoning_pattern: 'fact_vs_assumption', interaction_type: 'pull_apart', mallow_character: 'zuzu',
+    possible_assumption: "You might be assuming that silence means he isn't proud.",
+    alternative_angle: 'Some people find it hard to say things they still feel.',
+    practical_next_step: 'Decide whether you want to tell your dad what hearing it would mean to you.',
+    subtitle_line_1: 'Not hearing it from your dad can hurt for years.',
+    subtitle_line_2: 'Whether he feels it and whether he says it may be two different things.',
+  });
+  for (const kf of ["Your dad hasn't told you he's proud of you.", "Your dad never says he's proud of you."]) {
+    assert.deepEqual(codes(qualityGate({ ...base, known_fact: kf }, { text })), [], kf);
+  }
+  // Asserting what he feels is still a claim, even with "even if" after it.
+  expectFail(qualityGate({ ...base, alternative_angle: 'Your dad is proud of you even if he never says it.' }, { text }), 'claims_others_minds');
+  expectFail(qualityGate({ ...base, subtitle_line_2: 'Your dad is proud of you, he just struggles to say it.' }, { text }), 'claims_others_minds');
+});
+
+test('"My boss ignored me": the event restated passes; a denial or a motive does not', () => {
+  const text = 'My boss ignored me in the meeting.';
+  const base = sceneFor({
+    emotion: 'hurt', situation_type: 'work', reasoning_pattern: 'mind_reading', interaction_type: 'open_interpretations', mallow_character: 'pipzi',
+    possible_assumption: 'You might be reading the silence as a judgement of you.',
+    alternative_angle: 'Your boss could have been distracted, rushed or focused on something else entirely.',
+    practical_next_step: 'If it keeps bothering you, ask your boss a short, neutral question about your point.',
+    subtitle_line_1: 'Being passed over in a meeting can sting for the rest of the day.',
+    subtitle_line_2: 'There are several reasons your boss might not have responded, and only some are about you.',
+  });
+  assert.deepEqual(codes(qualityGate({ ...base, known_fact: 'Your boss ignored you in the meeting.' }, { text })), []);
+  expectFail(qualityGate({ ...base, known_fact: "Your boss didn't ignore you in the meeting." }, { text }), 'claims_others_minds');
+  expectFail(qualityGate({ ...base, known_fact: 'Your boss ignored you because he resents you.' }, { text }), 'claims_others_minds');
+  expectFail(qualityGate({ ...base, subtitle_line_2: 'Your boss ignored you because he was busy.' }, { text }), 'claims_others_minds');
+  // Attitudes the person reported are restated as theirs, never as fact.
+  expectFail(qualityGate({ ...base, known_fact: 'Your boss hates you.' }, { text: 'My boss hates me.' }), 'claims_others_minds');
+  assert.ok(!codes(qualityGate({ ...base, known_fact: 'You feel that your boss hates you.' }, { text: 'My boss hates me.' })).includes('claims_others_minds'));
+});
+
+test('fewer needless regenerations: "how much you matter to them", "simply note", "can mean", "some people", time boxes', () => {
+  // "how much you matter" is not the affirmation "you matter".
+  assert.ok(!codes(gate(1, { possible_assumption: 'You might be reading it as a sign of how much you matter to him.' })).includes('generic_affirmation'));
+  expectFail(gate(1, { subtitle_line_2: 'Remember that you matter, whatever the message says.' }), 'generic_affirmation');
+  // "simply"/"clearly" only when dismissive.
+  assert.ok(!codes(gate(0, { practical_next_step: 'Simply note what was said and when, then decide.' })).includes('condescending'));
+  expectFail(gate(0, { subtitle_line_2: 'You could simply move on from what your boss said in front of everyone.' }), 'condescending');
+  expectFail(gate(1, { subtitle_line_2: "You're clearly overreacting to five hours without a reply." }), 'condescending');
+  // "can" and "some people" hedge a general statement.
+  const dinner = 'I said something stupid at dinner and everyone went quiet.';
+  assert.ok(!codes(qualityGate(anchor(4, { alternative_angle: 'A pause at a dinner table can mean people are thinking, not judging.' }), { text: dinner })).includes('claims_others_minds'));
+  expectFail(qualityGate(anchor(4, { alternative_angle: 'Everyone at that dinner was judging you.' }), { text: dinner }), 'claims_others_minds');
+  // Time boxes in an action, and vague idioms, are not invented details; a new number in a fact still is.
+  assert.ok(!codes(gate(2, { practical_next_step: 'Spend the next twenty minutes on the first question you lost marks on.' })).includes('invented_detail'));
+  assert.ok(!codes(gate(1, { alternative_angle: 'Silence can come from a dead phone, a busy shift or a hundred ordinary things.' })).includes('invented_detail'));
+  expectFail(gate(1, { subtitle_line_1: 'Six hours without a reply is a fact.' }), 'invented_detail');
+  expectFail(gate(1, { known_fact: 'Your message has gone twenty minutes without a reply.' }), 'invented_detail');
+});
+
+test('another angle with the same pattern as the angle just shown is rejected, even when paraphrased', () => {
+  const prev = [{ subtitle_line_1: ANCHORS[1].scene.subtitle_line_1, subtitle_line_2: ANCHORS[1].scene.subtitle_line_2, reasoning_pattern: 'fact_vs_assumption' }];
+  for (const [l1, l2] of [
+    ['Five hours of silence from him is real.', 'What that silence means has not been decided yet.'],
+    ['The five hours are the only solid part of this.', 'Everything the silence seems to say is still a guess.'],
+  ]) {
+    const g = gate(1, { subtitle_line_1: l1, subtitle_line_2: l2 }, { previous: prev });
+    expectFail(g, 'repeats_previous');
+    assert.match(g.failures.find((f) => f.code === 'repeats_previous').message, /different reasoning_pattern/);
+  }
+  // An older angle with the same pattern only blocks a close repeat.
+  const older = [prev[0], { subtitle_line_1: 'Checking again will not make the message arrive.', subtitle_line_2: 'What could the next hour hold that has nothing to do with him?', reasoning_pattern: 'rumination' }];
+  const distinct = gate(1, { subtitle_line_1: 'Your message is sitting unanswered, and that part is real.', subtitle_line_2: 'Could you decide now when you will check again?' }, { previous: older });
+  assert.ok(!codes(distinct).includes('repeats_previous'), JSON.stringify(codes(distinct)));
+});

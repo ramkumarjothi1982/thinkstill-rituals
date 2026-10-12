@@ -1,8 +1,11 @@
 """Write src/mallows/hires.js, the high-res rig patch table (W7, step 4 of 4).
 
-    python3 tools/hires/build_table.py <work_dir> <old_registry.json> <out.js> [verified ids...]
+    python3 tools/hires/build_table.py tools/hires/data tools/hires/data/old-registry.json \
+        src/mallows/hires.js [verified ids...]
 
-Takes measure-<id>.json (measure.py) and the sprite sizes (derive.py), keeps
+Takes measure-<id>.json (measure.py) and optional fit-<id>.json (the lab's
+render-fit pass) from the data dir, the sprite sizes from assets/rig-hires
+(derive.py), keeps
 everything the art does not define (ink colours, mouth style, tongue colour,
 cheek colour/base) from the current registry, and converts all geometry to
 the rig's *logical* space: new-art pixels / res, where res is the old->new
@@ -20,7 +23,7 @@ VERIFIED = sys.argv[4:]
 IDS = ['glitzi', 'zuzu', 'boppo', 'pipzi', 'blubi', 'loomi', 'noomi']
 OLD_REG = json.load(open(OLD))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-NEUTRAL = {'glitzi': {'lidTop': 0.55, 'lidSlant': 0.2}}
+NEUTRAL = {'glitzi': {'lidTop': 0.55, 'lidSlant': 0.2}, 'boppo': {'mouthOpen': 0.7}}
 # Hand decisions after the lab check, applied last (logical px):
 #   Glitzi's lid line doubles as its blink line: the painted lid has no hard
 #   edge (a fit drives it to a hairline), a blink needs one. 6 sits between.
@@ -31,8 +34,11 @@ def r1(v):
     return round(float(v), 1)
 
 
+RIG_HIRES = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'assets', 'rig-hires')
+
+
 def sprite_size(key):
-    return Image.open(f'{WORK}/{key}.png').size[0]
+    return Image.open(f'{RIG_HIRES}/{key}.webp').size[0]
 
 
 def build(name):
@@ -89,18 +95,26 @@ def build(name):
     # art on the real rig renderer), already in logical px
     fit_path = f'{WORK}/fit-{name}.json'
     if os.path.exists(fit_path):
-        fit = json.load(open(fit_path))['face']
+        fitj = json.load(open(fit_path))
+        rep = fitj.get('report', {})
+        fit = fitj['face']
+        # only the numbers the fit actually tuned (its report), never the rest
+        # of the face snapshot it was run on
+        def take(dst, src, keys):
+            for k in keys:
+                base = k.split('.')[0]
+                if base in src and base in dst:
+                    v = src[base]
+                    dst[base] = [r1(x) for x in v] if isinstance(v, list) else r1(v)
         for s in 'LR':
-            for k in ('x', 'y', 'rx', 'ry', 'sag', 'lw', 'irisR', 'irisOff', 'hw', 'tilt'):
-                if k in fit['eyes'][s]:
-                    face['eyes'][s][k] = [r1(v) for v in fit['eyes'][s][k]] if isinstance(fit['eyes'][s][k], list) else r1(fit['eyes'][s][k])
-            if face['brows'][s].get('alpha', 0) > 0:
-                for k in ('p0', 'c', 'p1', 'lw'):
-                    v = fit['brows'][s][k]
-                    face['brows'][s][k] = [r1(x) for x in v] if isinstance(v, list) else r1(v)
-        for k in ('x', 'y', 'w', 'sag', 'lw', 'upper', 'depth'):
-            if k in fit['mouth'] and k in face['mouth']:
-                face['mouth'][k] = r1(fit['mouth'][k])
+            if 'eye' + s in rep:
+                take(face['eyes'][s], fit['eyes'][s], rep['eye' + s]['values'])
+            if 'brow' + s in rep and face['brows'][s].get('alpha', 0) > 0:
+                take(face['brows'][s], fit['brows'][s], rep['brow' + s]['values'])
+        # open mouths keep their painted landmarks (measure.py); the pixel fit
+        # only tunes line / crease mouths
+        if 'mouth' in rep and face['mouth']['style'] != 'open':
+            take(face['mouth'], fit['mouth'], rep['mouth']['values'])
     for path, v in TWEAKS.get(name, {}).items():
         o = face
         for k in path[:-1]:

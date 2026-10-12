@@ -4,7 +4,8 @@
 #   ANTHROPIC_API_KEY   the Claude API key
 #   TOKEN_SIGNING_KEY   ≥32 random characters; signs device/session tokens
 #   IP_HASH_KEY         ≥16 random characters; keys the IP hashes used for limits
-#   TESTER_INVITE_CODES optional, comma-separated invite codes for testers
+#   TESTER_INVITE_CODES comma-separated invite codes for testers (recommended
+#                       for the testing phase; without it anyone can get a session)
 name = "hushmallow-another-angle"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
@@ -60,8 +61,29 @@ name = "SESSION_IP_LIMITER"
 namespace_id = "41002"
 simple = { limit = 3, period = 60 }
 
+# Feedback has its own budget, so "Show me another angle" (feedback + a new
+# angle) never uses up the angle burst limit.
+[[ratelimits]]
+name = "FEEDBACK_IP_LIMITER"
+namespace_id = "41003"
+simple = { limit = 20, period = 60 }
+
+# Workers Logs keep only the server's own metadata lines (src/log.js).
+# Invocation logs are OFF: they would store each request's headers and
+# Cloudflare's geolocation (city, postcode, coordinates, network) next to
+# those lines. Traces are off for the same reason. After the first deploy,
+# check in the dashboard (Workers & Pages → this Worker → Logs) that no IP
+# address, location or header appears. See README "What is logged".
 [observability]
 enabled = true
+redact_query_string = true
+
+[observability.logs]
+enabled = true
+invocation_logs = false
+
+[observability.traces]
+enabled = false
 
 # Local development: `npm run dev` (wrangler dev --env dev) uses the mock
 # provider and allows localhost origins. Put secrets in .dev.vars.
@@ -104,3 +126,19 @@ simple = { limit = 30, period = 60 }
 name = "SESSION_IP_LIMITER"
 namespace_id = "41102"
 simple = { limit = 10, period = 60 }
+
+[[env.dev.ratelimits]]
+name = "FEEDBACK_IP_LIMITER"
+namespace_id = "41103"
+simple = { limit = 60, period = 60 }
+
+[env.dev.observability]
+enabled = true
+redact_query_string = true
+
+[env.dev.observability.logs]
+enabled = true
+invocation_logs = false
+
+[env.dev.observability.traces]
+enabled = false

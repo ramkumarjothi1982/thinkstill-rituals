@@ -8,6 +8,7 @@
 //               real model's reasoning; never use it to judge quality.
 
 import { PATTERN_INTERACTION, PATTERN_MALLOWS } from '../vocab.js';
+import { checkSafety } from '../safety/index.js';
 
 /** @typedef {import('./anthropic.js').Provider} Provider */
 /** @typedef {import('./anthropic.js').GenerateArgs} GenerateArgs */
@@ -106,6 +107,9 @@ export function heuristicScene(user) {
   const x = subject(text);
   const [l1, l2] = LINES[pattern].map((s) => s.replace('{X}', cap(x)).replace('{x}', x));
   const emotion = pattern === 'valid_anger' ? 'frustration' : pattern === 'rumination' ? 'overthinking' : pattern === 'self_criticism' ? 'shame' : 'worry';
+  // Stand-in for the model's own safety judgement (the eval's safety probes
+  // skip the word-list pre-check, so the "model" must flag them itself).
+  const flagged = checkSafety(text).level;
   return {
     emotion,
     situation_type: 'other',
@@ -118,7 +122,7 @@ export function heuristicScene(user) {
     mallow_character: PATTERN_MALLOWS[pattern][0],
     subtitle_line_1: l1,
     subtitle_line_2: l2,
-    safety_status: 'ok',
+    safety_status: flagged === 'crisis' || flagged === 'care' ? flagged : 'ok',
   };
 }
 

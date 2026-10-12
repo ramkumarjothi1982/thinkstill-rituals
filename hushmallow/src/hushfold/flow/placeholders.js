@@ -192,7 +192,7 @@ export function createPlaceholderThought({ words, emotion = 'other', font = (px,
     if (line && ls.length < 2) ls.push(line);
     if (ls.length === 2 && ls.join(' ') !== ws.join(' ')) ls[1] = ls[1].replace(/\s*\S*$/, '') + '…';
     let tw = 0; for (const l of ls) tw = Math.max(tw, m.measureText(l).width);
-    const lh = px * 1.25, padX = 14, padY = 8;
+    const lh = px * 1.25, padX = 12, padY = 8;
     const w = Math.ceil(tw + padX * 2), h = Math.ceil(ls.length * lh + padY * 2);
     c.width = Math.ceil((w + 24) * dpr); c.height = Math.ceil((h + 24) * dpr);
     const g = c.getContext('2d');
@@ -241,10 +241,11 @@ function injectStyle() {
   background:radial-gradient(closest-side,rgba(10,7,32,.5),rgba(10,7,32,0));opacity:0;transform:translateY(6px);transition:opacity .45s ease,transform .6s cubic-bezier(.2,.7,.2,1);text-wrap:balance}
 .hf-line.on{opacity:1;transform:none}
 .hf-line.discovery{font:500 24px/1.18 var(--ff-story,"HM Fraunces",Georgia,serif);letter-spacing:-.005em;color:#fff6e4;text-shadow:0 1px 2px rgba(6,4,22,.9),0 0 26px rgba(255,190,110,.35),0 0 18px rgba(6,4,22,.8)}
-.hf-line.hold{pointer-events:auto;cursor:pointer}
-.hf-hint{display:block;margin-top:6px;font:600 13px/1.2 var(--ff-ui,"HM Manrope",system-ui,sans-serif);color:rgba(255,255,255,.72);letter-spacing:.01em;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.hf-go{pointer-events:auto;display:block;margin:8px auto 0;min-height:44px;min-width:44px;padding:0 18px;border-radius:999px;border:1px solid rgba(255,255,255,.24);
+  background:rgba(16,12,44,.5);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);color:rgba(255,255,255,.9);font:650 14px/1 var(--ff-ui,"HM Manrope",system-ui,sans-serif);cursor:pointer}
 .hf-chips{display:flex;gap:10px;margin-top:12px;opacity:0;transition:opacity .45s ease}
 .hf-chips.on{opacity:1}
+.hf-chips.bottom{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);justify-content:center;margin:0}
 .hf-chip{pointer-events:auto;min-height:44px;padding:0 20px;border-radius:999px;border:1px solid rgba(255,255,255,.28);background:rgba(20,14,52,.55);
   -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:#fff;font:700 15px/1 var(--ff-ui,"HM Manrope",system-ui,sans-serif);cursor:pointer}
 .hf-chip.primary{background:linear-gradient(180deg,#ffe8b8,#ffcf7a);color:#2a1a08;border-color:transparent}
@@ -252,6 +253,7 @@ function injectStyle() {
   padding:0 16px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(14,10,40,.55);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
   color:rgba(255,255,255,.9);font:600 14px/1.2 var(--ff-ui,"HM Manrope",system-ui,sans-serif);opacity:0;transition:opacity .4s ease;cursor:pointer}
 .hf-dock.on{opacity:1}
+@media (max-width: 359px){.hf-line{font-size:18px;padding:6px 12px}.hf-line.discovery{font-size:22px}.hf-chips{margin-top:8px}}
 @media (prefers-reduced-motion: reduce){.hf-line,.hf-chips,.hf-dock{transition:opacity .2s linear}.hf-line{transform:none}}
 `;
   document.head.append(st);
@@ -261,7 +263,7 @@ function injectStyle() {
  * Lab subtitles: one short line at a time, soft fade, readable timing
  * (clamp(1400 + 55·chars, 2400, 7000) / speed), aria-live polite, the last
  * line of a held sequence stays until tapped or after holdMs it docks as a
- * replayable chip. Placed at slotY() unless a finger (avoid rects) is there, then at altY().
+ * replayable chip. Placed in the lowest free band between altY() and slotY() (avoid rects: hard, then soft).
  */
 export function createLabSubtitles({ root = document.body, avoid = () => [], speed = 1, holdMs = 8000, slotY = () => 92, altY = () => innerHeight * 0.52 } = {}) {
   injectStyle();
@@ -276,14 +278,28 @@ export function createLabSubtitles({ root = document.body, avoid = () => [], spe
   root.append(box, dock);
   let queue = Promise.resolve(), busy = 0, paused = false, skipFn = null;
   const wait = (ms) => new Promise((r) => { const t0 = performance.now(); const tick = () => { if (skipFn?.skipped) return r(); if (paused) { setTimeout(tick, 120); return; } if (performance.now() - t0 >= ms) r(); else setTimeout(tick, 60); }; tick(); });
+  // Find a band for the box between the top slot and the bottom slot (just above the Mallow):
+  // clear of hard rects (the thought and its words, fingers) and, if possible, soft ones
+  // (the postcards). Lowest band that fits wins, bottom-aligned; else the roomiest.
   function place() {
     const rects = avoid() || [];
-    // the default slot is anchored by its bottom edge (just above the Mallow), so taller
-    // content (two lines, a choice) grows upwards and never covers the Mallow
-    const bottom = slotY(), band = { y: bottom - 96, h: 96 };
-    const hit = rects.some((r) => r.kind === 'finger' && r.y < band.y + band.h && r.y + r.h > band.y);
-    if (hit) { box.style.bottom = 'auto'; box.style.top = `${altY()}px`; }
-    else { box.style.top = 'auto'; box.style.bottom = `${Math.max(0, innerHeight - bottom)}px`; }
+    const need = box.offsetHeight || 60;
+    const top = altY(), bottom = slotY();
+    const bands = (useSoft) => {
+      const cuts = rects.filter((r) => !r.soft || useSoft).map((r) => [Math.max(top, r.y - 6), Math.min(bottom, r.y + r.h + 6)]).filter(([a, b]) => b > a).sort((p1, p2) => p1[0] - p2[0]);
+      const out = []; let y = top;
+      for (const [a, b] of cuts) { if (a > y) out.push([y, a]); y = Math.max(y, b); }
+      if (y < bottom) out.push([y, bottom]);
+      return out;
+    };
+    let pick = null;
+    for (const soft of [true, false]) {
+      const fit = bands(soft).filter(([a, b]) => b - a >= need);
+      if (fit.length) { pick = fit[fit.length - 1]; break; }
+    }
+    if (!pick) pick = bands(false).sort((p1, p2) => (p2[1] - p2[0]) - (p1[1] - p1[0]))[0] || [top, bottom];
+    box.style.top = 'auto';
+    box.style.bottom = `${Math.max(0, innerHeight - pick[1])}px`;
   }
   // a discovery waits only for the line on screen (cut short), not for the dialogue queued behind it
   function queueFront(run) { const prev = current?.done || Promise.resolve(); return prev.then(run); }
@@ -292,16 +308,18 @@ export function createLabSubtitles({ root = document.body, avoid = () => [], spe
     const me = { kind, cut: () => cutNow?.(), done: null };
     current = me;
     let resolveDone; me.done = new Promise((r) => { resolveDone = r; });
-    place();
     p.className = `hf-line ${kind === 'discovery' ? 'discovery' : ''}`;
     p.textContent = text;
-    if (hold) { const h = document.createElement('span'); h.className = 'hf-hint'; h.textContent = 'Tap to continue'; p.append(h); p.classList.add('hold'); }
+    // the line never takes a touch (play goes on underneath); a small button acknowledges a held line
+    let go = null;
+    if (hold) { go = document.createElement('button'); go.type = 'button'; go.className = 'hf-go'; go.textContent = 'Continue'; p.append(go); }
+    place();
     requestAnimationFrame(() => p.classList.add('on'));
     if (hold) {
       await new Promise((res) => {
-        const done = () => { p.removeEventListener('click', done); clearTimeout(tm); res(); };
+        const done = () => { go?.removeEventListener('click', done); clearTimeout(tm); res(); };
         const tm = setTimeout(() => { docked(text); done(); }, holdMs);
-        p.addEventListener('click', done);
+        go?.addEventListener('click', done);
       });
     } else {
       await Promise.race([wait(Math.min(7000, Math.max(2400, 1400 + 55 * text.length)) / speed), new Promise((r) => { cutNow = r; })]);
@@ -342,13 +360,16 @@ export function createLabSubtitles({ root = document.body, avoid = () => [], spe
       busy++;
       const job = queue.then(() => new Promise((res) => {
         pendingChoice = (v) => { pendingChoice = null; p.classList.remove('on'); chips.classList.remove('on'); setTimeout(() => chips.replaceChildren(), 450); res(v); };
-        place();
         p.className = 'hf-line'; p.textContent = prompt;
         chips.replaceChildren(...options.map((o, i) => {
           const b = document.createElement('button'); b.type = 'button'; b.className = `hf-chip${i === options.length - 1 ? ' primary' : ''}`; b.textContent = o.label;
           b.onclick = () => pendingChoice?.(o.value);
           return b;
         }));
+        chips.classList.remove('bottom');
+        place();
+        // too tall for any free band (small phones): the chips move to a row below the Mallow
+        if (box.getBoundingClientRect().top < altY() - 4) { chips.classList.add('bottom'); dock.classList.remove('on'); place(); }
         requestAnimationFrame(() => { p.classList.add('on'); chips.classList.add('on'); });
       })).finally(() => { busy--; });
       queue = job.catch(() => {});

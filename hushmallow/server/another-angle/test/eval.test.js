@@ -26,10 +26,9 @@ test('eval inputs: 30+ realistic cases across the brief\'s categories, plus safe
   for (const c of CASES) assert.ok(validateAngleRequest({ consent: true, text: c.text, emotion: c.emotion, intention: c.intention }).ok, c.id);
 });
 
-test('eval safety probes: the lexicon catches the explicit one; the subtle ones are left for the model to flag', () => {
-  assert.equal(checkSafety(CASES.find((c) => c.id === 'safe-flatmate').text).level, 'care');
-  // These are deliberately ones the word lists miss, to measure the model's safety_status.
-  assert.notEqual(checkSafety(CASES.find((c) => c.id === 'safe-subtle').text).level, 'crisis');
+test('eval cases: no ordinary case trips the word list (the safety probes skip it in the eval)', () => {
+  // The probes are measured against the model with the word list skipped, so
+  // improving the shared lexicon never turns this test red.
   for (const c of CASES.filter((x) => x.category !== 'safety')) assert.ok(!['crisis', 'care'].includes(checkSafety(c.text).level), c.id);
 });
 
@@ -51,5 +50,9 @@ test('the eval dry run (--mock) runs every case through the pipeline and writes 
   assert.match(text, /MOCK PROVIDER/);
   assert.match(text, /\| Injection leaks \| 0 \|/);
   assert.match(text, /\| Cost \| \$0\.000 \|/);
+  assert.match(text, /\| Answers over 15 s \/ over 28 s \/ timed out \| \d+ \/ \d+ \/ \d+ \|/, 'production timeouts');
+  assert.match(text, /\| Safety probes flagged by the model alone \(word list skipped\) \| 3\/3 \|/);
+  assert.match(text, /## Gate rejections/);
+  assert.match(text, /Word list: \*\*(?:crisis|care|none|concern)\*\* \(skipped for this probe/);
   for (const c of CASES) assert.ok(text.includes(`### ${c.id} `), c.id);
 });

@@ -4,9 +4,12 @@
 # Every push/PR touching the server: type-check, tests, bundle check.
 # Pushes to main also deploy — but only when the CLOUDFLARE_API_TOKEN and
 # CLOUDFLARE_ACCOUNT_ID repository secrets exist; otherwise the deploy job
-# skips cleanly with a notice. ANTHROPIC_API_KEY (repository secret) is set on
-# the Worker as a secret; TOKEN_SIGNING_KEY and IP_HASH_KEY are generated on
-# the first deploy and kept afterwards. Setup: hushmallow/server/another-angle/README.md
+# skips cleanly with a notice. ANTHROPIC_API_KEY (repository secret) and, if
+# present, TESTER_INVITE_CODES are set on the Worker as secrets;
+# TOKEN_SIGNING_KEY and IP_HASH_KEY are generated on the first deploy only
+# (when Cloudflare says the Worker does not exist) and kept afterwards. Any
+# other failure to list the secrets stops the deploy instead of rotating them.
+# Setup: hushmallow/server/another-angle/README.md
 name: Another Angle server
 
 on:
@@ -90,13 +93,15 @@ jobs:
         if: steps.gate.outputs.ready == 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TESTER_INVITE_CODES: ${{ secrets.TESTER_INVITE_CODES }}
         run: |
           umask 077
           if npx wrangler secret list > "$RUNNER_TEMP/existing-secrets.json" 2> "$RUNNER_TEMP/secret-list.err"; then
             node scripts/ci-secrets.mjs "$RUNNER_TEMP/existing-secrets.json" "$RUNNER_TEMP/angle-secrets.json" --list-ok
           else
-            echo "No existing Worker yet (first deploy)."
-            node scripts/ci-secrets.mjs - "$RUNNER_TEMP/angle-secrets.json"
+            cat "$RUNNER_TEMP/secret-list.err" >&2
+            # Only "Worker not found" means a first deploy; anything else fails here.
+            node scripts/ci-secrets.mjs --list-error "$RUNNER_TEMP/secret-list.err" "$RUNNER_TEMP/angle-secrets.json"
           fi
 
       - name: Deploy
@@ -106,7 +111,7 @@ jobs:
 
       - name: Remove secrets file
         if: always() && steps.gate.outputs.ready == 'true'
-        run: rm -f "$RUNNER_TEMP/angle-secrets.json" "$RUNNER_TEMP/existing-secrets.json"
+        run: rm -f "$RUNNER_TEMP/angle-secrets.json" "$RUNNER_TEMP/existing-secrets.json" "$RUNNER_TEMP/secret-list.err"
 
       - name: Smoke test
         if: steps.gate.outputs.ready == 'true'

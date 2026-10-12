@@ -1,10 +1,13 @@
 // Metadata-only logging. The person's text, the model's lines, tokens, IPs
 // and device ids are never logged: only whitelisted keys with short,
 // code-like values (numbers, booleans, enums, error codes) get through.
+// Safety is logged as a level only (none / concern / care / crisis), never
+// the category ("self-harm", "abuse"…). Cloudflare's own invocation logs
+// (request headers, location) are switched off in wrangler.toml.
 
 const KEYS = new Set([
   'evt', 'route', 'http', 'status', 'latency_ms', 'model_ms', 'attempts', 'gate', 'gate_codes', 'pattern',
-  'interaction', 'mallow', 'emotion', 'situation', 'safety_level', 'safety_category', 'safety_source', 'injection',
+  'interaction', 'mallow', 'emotion', 'situation', 'safety_level', 'safety_source', 'injection',
   'normalised', 'provider', 'provider_error', 'refusal_category', 'model', 'fallback_model', 'fallback_reason',
   'tokens_in', 'tokens_out', 'cache_read', 'cache_write', 'cost_micros', 'quota_left', 'source', 'err', 'prompt_version',
   'previous', 'intention', 'chosen_emotion', 'text_len_bucket', 'cap_left_micros', 'rating',
