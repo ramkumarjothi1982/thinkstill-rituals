@@ -28,4 +28,4 @@ export const ANGLE_ENDPOINT = '';
 export const ANGLE_ALLOWED_HOSTS = [];
 
 /** Shown at the bottom of Settings so a tester can tell which version has loaded. */
-export const BUILD = '2026-10-12 · V3 batch 2 (240 rituals)';
+export const BUILD = '2026-10-12 · the Hushfold slice (high-res Mallows, MallowTouch)';
