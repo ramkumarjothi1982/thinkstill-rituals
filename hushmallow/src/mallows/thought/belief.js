@@ -73,6 +73,8 @@ export class BeliefMallow extends ThoughtMallow {
   /** Ease exploration toward k (no argument: a step). The prop gets lighter and looser. */
   explore(k) { if (this._verb('explore', k, 0.25)) this._emit('verb', { verb: 'explore', level: this.levels.explore.goal }); return this; }
   _explore(k) { if (k > 0) this.earnedExplore = clamp(this.earnedExplore + k * 0.9); }
+  // explored, it is lighter to carry: its face eases (heavy lids lift, eyes soften) — never a grin
+  _calmFrom() { return 0.6 * this.explored; }
 
   /** The prop's weight now (0..1 of its full mechanics). */
   get weight() {

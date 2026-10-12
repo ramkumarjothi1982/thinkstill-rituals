@@ -439,6 +439,8 @@ export class ThoughtMallow {
     if (this.parent) this.parent._soothe(k * 0.25, 'sibling');
   }
   _explore() { /* beliefs loosen here (belief.js) */ }
+  // calm that comes from elsewhere (a belief explored feels a little lighter: belief.js)
+  _calmFrom() { return 0; }
 
   _haptic(kind) { try { this.haptic?.(kind); } catch { /* ignore */ } }
 
@@ -471,7 +473,7 @@ export class ThoughtMallow {
     // state: written values win; otherwise it follows its feeling, its touch and the verbs
     if (clk - ext.tension >= 0.5) sv.tension = this.base.tension;
     if (clk - ext.charge >= 0.5) sv.charge = this.base.charge;
-    if (clk - ext.calm >= 0.5) sv.calm = clamp(Math.max(this.earned.calm, L.transform.cur, 0.5 * L.settle.cur, this.parent ? this.parent.state.calm * 0.8 : 0));
+    if (clk - ext.calm >= 0.5) sv.calm = clamp(Math.max(this.earned.calm, L.transform.cur, 0.5 * L.settle.cur, this.parent ? this.parent.state.calm * 0.8 : 0, this._calmFrom()));
     // depth: eased to its goal (or the layer's floor when the stage is full), unless a world writes z
     if (clk - ext.distance >= 0.5) sv.distance = this._z;
     // (a sibling is as near or far as its thought, and as big)

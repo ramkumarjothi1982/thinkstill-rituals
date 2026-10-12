@@ -589,8 +589,9 @@ export class ThoughtLayer {
     let best = null, fixedFit = 5;
     const consider = (lv, repack) => {
       const bare = this._stageBare(lv, env);
+      // (moving one that has not arrived yet costs nothing anyone sees: it simply flies somewhere else)
       let mv = 0;
-      for (let i = 0; i < list.length && i < snap.n; i++) { const o = list[i]; if (o !== nc) mv += Math.hypot(o.home.x - snap.hx[i], o.home.y - snap.hy[i]); }
+      for (let i = 0; i < list.length && i < snap.n; i++) { const o = list[i]; if (o !== nc && !this._travelling(o)) mv += Math.hypot(o.home.x - snap.hx[i], o.home.y - snap.hy[i]); }
       const cost = (bare > FIT ? 1e5 + bare : 0) + lv + mv / TUNE.moveCost + (repack ? 0.2 : 0);
       if (!best || cost < best.cost) best = { cost, lv, s: this._snap(), bare };
       return bare <= FIT;
