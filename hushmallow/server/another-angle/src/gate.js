@@ -756,10 +756,14 @@ const TALK_REF = /\b(?:the|that|this|a|your|their|his|her) (?:conversation|chat|
 // Idioms built on words the synonym groups hold: generic whatever the situation.
 const IDIOMS = /\bwork(?:s|ed|ing)? (?:it |this |that |things )?(?:out|through)\b|\b(?:your|my|their|his|her|the|a|an) (?:own |big |tough |hard |judgement |judgment |close )?call\b(?! (?:with|from|to|him|her|them|back))|\bcall (?:it|that) (?:a day|quits)\b|\bthe answers? (?:you (?:need|want|seek|are looking for)|may|might|is|lies|isn't|to (?:this|that|it|everything|life))\b|\bof course\b|\bin other words\b|\b(?:tell|telling|tells|told|talk|talking|talks|talked|say|saying|said) (?:to )?yourself\b|\bthat said\b|\bneedless to say\b|\bsay so\b|\bto say the least\b|\bas a result\b|\bresults? in\b|\bmake plans\b|\btalk(?:ing|ed|s)? (?:it |things |this |that )?(?:through|over)\b/giu;
 // Everyday words that, even when the person used them, say little about
-// their situation on their own ("What would help you rest tonight?").
-const WEAK_STEMS = new Set(`tonight today tomorrow morning evening night week weekend month year last first second third choice part people person life head mind
+// their situation on their own ("What would help you rest tonight?",
+// "something left to do"). Matched as words with their inflections, not as
+// stems ("come" and "comment" share a stem).
+const WEAK_BASE = `tonight today tomorrow morning evening night week weekend month year last first second third choice part people person life head mind
 wrong right new old whole big small little good bad lot end start real true
-give take make get go come see put try let find look keep leave help use stop turn show hold bring run move`.split(/\s+/).map(plainStem));
+give take make get go come see put try let find look keep leave help use stop turn show hold bring run move`.split(/\s+/);
+const WEAK_WORDS = new Set(WEAK_BASE.flatMap((b) => [b, `${b}s`, `${b}es`, `${b}ed`, `${b}d`, `${b}ing`, `${b.replace(/e$/u, '')}ing`, `${b}${b.at(-1)}ing`, `${b}${b.at(-1)}ed`]));
+for (const [form, base] of TEXT_IRREGULAR) if (WEAK_BASE.includes(base)) WEAK_WORDS.add(form);
 const GENERIC_LINE = /\b(?:every|any|all|always|life|whatever|everyone|everybody|anything)\b/iu;
 const STOP_SHORT = new Set(['a', 'i', 'an', 'am', 'as', 'at', 'be', 'by', 'do', 'go', 'he', 'if', 'in', 'is', 'it', 'me', 'my', 'no', 'of', 'oh', 'ok', 'on', 'or', 'so', 'to', 'up', 'us', 'we']);
 const ABSOLUTES = new Set(['nobody', 'everyone', 'everybody', 'always', 'never', 'nothing', 'everything', 'anyone', 'noone']);
@@ -1006,8 +1010,8 @@ export function qualityGate(scene, ctx) {
   const weak = new Set();
   for (const w of wordsAndParts(`${l1} ${l2}`.replace(IDIOMS, ' '))) {
     if (w.length < 3 || /^[\d.,]+$/.test(w) || !inputStems.has(stem(w))) continue;
+    if (WEAK_WORDS.has(w)) continue;
     const p = plainStem(w);
-    if (WEAK_STEMS.has(p)) continue;
     // A stop word in the line ("like you", "see them") meets their word only weakly.
     if (STOPWORDS.has(w) || (!inputPlain.has(p) && BROAD_SYNONYMS.has(p))) weak.add(p);
     else strong++;

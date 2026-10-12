@@ -12,7 +12,8 @@
 // render.js   the 2D drawing (vector jelly, simple face, effects, props, rope)
 // layer.js    ThoughtLayer: drawing many, the word tags (DOM, textContent only), routing
 
-export { ThoughtMallow, createThought, THOUGHT_MATERIAL, PT } from './thought.js';
+export { ThoughtMallow, createThought, THOUGHT_MATERIAL, PT, FX_GEOM } from './thought.js';
 export { BeliefMallow, createBelief, PROPS, PROP_WEIGHT, beliefStyle } from './belief.js';
 export { ThoughtLayer } from './layer.js';
-export { THOUGHT_STYLES, THOUGHT_KINDS, CALM_TINT, BELIEF_TINTS, SHAPE, TAG_MIN_PX, normaliseEmotion, styleFor, deriveLook, tagBudget } from './styles.js';
+export { mouthGeom } from './render.js';
+export { THOUGHT_STYLES, THOUGHT_KINDS, CALM_TINT, BELIEF_TINTS, SHAPE, TAG_MIN_PX, normaliseEmotion, styleFor, deriveLook, tagBudget, tagLines, wordsOf, firstWords, mixOk } from './styles.js';

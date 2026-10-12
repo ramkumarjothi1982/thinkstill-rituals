@@ -5,3 +5,4 @@
 2026-10-12 retry: secrets trimmed
 2026-10-12 retry: first-deploy detection
 2026-10-12 retry: wait for the new workers.dev address
+2026-10-12 redeploy with angle-v4

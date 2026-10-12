@@ -57,7 +57,7 @@ test('the request wording follows deps.promptVersion (a true v1 baseline in the 
   assert.match(p1.calls[0].user, /<\/request>\nWrite the JSON for a genuinely different angle on this situation\.$/);
   const p3 = createMockProvider({ script: [anchor(1)] });
   await runAngle(input(ANCHORS[1].text, previous), deps(p3));
-  assert.match(p3.calls[0].user, /lens: one that no previous angle used/);
+  assert.match(p3.calls[0].user, /lens: not one named above/);
 });
 
 test('a quality fallback hints the closest authored-engine pattern', async () => {

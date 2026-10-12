@@ -8,20 +8,41 @@
 
 import { INTENTIONS, PATTERNS } from './vocab.js';
 
-// angle-v3 (12 Oct 2026, after eval run 2): shorter lines (8–14 words each),
-// line 2 in varied forms, a new angle must reach a new point, and the quality
-// anchors agree with the rules. angle-v2 (after run 1: line 2 carries the
-// step, the six lenses) and angle-v1 are kept beside it for comparison
-// (tools/angle-eval.mjs --prompt angle-v2).
-export const PROMPT_VERSION = 'angle-v3';
+// angle-v4 (12 Oct 2026, after the review of v3, before any real-model run of
+// v3): every anchor line within the 8–14-word budget and free of the banned
+// words, the choice of two as a real question, no invented counts of people,
+// and a follow-up names each earlier angle's lens. angle-v3 (after eval run 2:
+// shorter lines, line 2 in varied forms, a new point), angle-v2 (after run 1:
+// line 2 carries the step, the six lenses) and angle-v1 are kept beside it for
+// comparison (tools/angle-eval.mjs --prompt angle-v2).
+export const PROMPT_VERSION = 'angle-v4';
 /** Every prompt file in prompts/, oldest first. */
-export const PROMPT_VERSIONS = Object.freeze(['angle-v1', 'angle-v2', 'angle-v3']);
+export const PROMPT_VERSIONS = Object.freeze(['angle-v1', 'angle-v2', 'angle-v3', 'angle-v4']);
 
 /** The six lenses an angle can look through (prompts/angle-v2.md and later). */
 export const LENSES = Object.freeze([
   "what you know versus what you're assuming", "what's in your control", "what you'd tell a friend",
   'one small step', 'distance or time', 'compassion for yourself',
 ]);
+
+/**
+ * The lens each reasoning pattern usually looks through (its "Line 2 usually"
+ * in the prompt's pattern table). From angle-v4 the follow-up request names it
+ * beside each earlier angle's pattern, so the model leaves out named lenses
+ * instead of guessing which one an angle used. "What you'd tell a friend" is a
+ * voice any pattern can take, so no pattern claims it.
+ * @type {Readonly<Record<string, string>>}
+ */
+export const PATTERN_LENS = Object.freeze({
+  fact_vs_assumption: LENSES[0], mind_reading: LENSES[0], overgeneralisation: LENSES[0],
+  personalisation: LENSES[1], rumination: LENSES[1], valid_anger: LENSES[1],
+  practical_problem: LENSES[3], all_or_nothing: LENSES[3],
+  catastrophising: LENSES[4],
+  self_criticism: LENSES[5],
+});
+
+/** @param {string} version @param {string} than */
+const atLeast = (version, than) => PROMPT_VERSIONS.indexOf(/** @type {any} */ (version)) >= PROMPT_VERSIONS.indexOf(/** @type {any} */ (than));
 
 /** Escape text for inclusion inside a data tag. @param {string} text */
 export function escapeData(text) {
@@ -73,14 +94,32 @@ export function buildUserMessage(input) {
     parts.push('Write the JSON for a genuinely different angle on this situation.');
   } else if (input.previous.length) {
     // Only values from the fixed pattern list are named outside the data block.
-    const used = [...new Set(input.previous.map((p) => p.reasoning_pattern).filter((p) => p && PATTERNS.includes(/** @type {any} */ (p))))];
+    const listed = (/** @type {string | undefined} */ p) => (p && PATTERNS.includes(/** @type {any} */ (p)) ? p : null);
+    const used = [...new Set(input.previous.map((p) => listed(p.reasoning_pattern)).filter(Boolean))];
     const n = input.previous.length;
-    parts.push(
-      `Write the JSON for a genuinely different angle on this situation. The person has already seen the ${n === 1 ? 'angle' : `${n} angles`} in <previous_angles> and asked for another.`,
-      `- reasoning_pattern: one that no previous angle used${used.length ? ` (not ${used.join(', ')})` : ''}.`,
-      `- lens: one that no previous angle used (${LENSES.join('; ')}).`,
-      '- a different question and a different action from theirs, in new words, still true to every fact they gave.',
-    );
+    parts.push(`Write the JSON for a genuinely different angle on this situation. The person has already seen the ${n === 1 ? 'angle' : `${n} angles`} in <previous_angles> and asked for another.`);
+    if (atLeast(version, 'angle-v4')) {
+      // Each earlier angle's pattern and the lens it usually looks through,
+      // from the fixed lists only (never text from the data block).
+      const named = input.previous.map((p, i) => {
+        const pattern = listed(p.reasoning_pattern);
+        return pattern ? `angle ${i + 1}: ${pattern}, lens "${PATTERN_LENS[pattern]}"` : `angle ${i + 1}: pattern not given`;
+      });
+      const usedLenses = new Set(used.map((p) => PATTERN_LENS[/** @type {string} */ (p)]));
+      const free = LENSES.filter((l) => !usedLenses.has(l));
+      parts.push(
+        `- earlier angles: ${named.join('; ')}.`,
+        `- reasoning_pattern: one that no previous angle used${used.length ? ` (not ${used.join(', ')})` : ''}.`,
+        `- lens: not one named above, nor any other an earlier angle plainly used; choose from ${free.map((l) => `"${l}"`).join(', ')}.`,
+        '- a different question and a different action from theirs, in new words, still true to every fact they gave.',
+      );
+    } else {
+      parts.push(
+        `- reasoning_pattern: one that no previous angle used${used.length ? ` (not ${used.join(', ')})` : ''}.`,
+        `- lens: one that no previous angle used (${LENSES.join('; ')}).`,
+        '- a different question and a different action from theirs, in new words, still true to every fact they gave.',
+      );
+    }
     if (version !== 'angle-v2') {
       parts.push(
         `- a different point, not the same conclusion through a new lens: the earlier ${n === 1 ? "angle's" : "angles'"} point said in a friend's voice is a repeat.`,

@@ -53,9 +53,11 @@ test('run 2 self-driving: the next attempt, looked at ahead, is not a miscount; 
   const t = text('self-driving');
   const inv = (l2, tt = t) => codes(qualityGate(scene({ subtitle_line_1: 'A b c d.', subtitle_line_2: l2 }), { text: tt })).includes('invented_detail');
   assert.ok(!inv('What would you actually tell that friend to do before booking test number four?'));
-  assert.ok(!inv('If she cancels a fourth time, what would you want to say?', text('ho-cancelled')));
+  // Not an eval input: the held-out cases stay out of the gate's tests where they can.
+  const lunch = 'My sister has cancelled our lunch for the third time this month.';
+  assert.ok(!inv('If she cancels a fourth time, what would you want to say?', lunch));
   for (const l2 of ["You've failed a fourth time.", 'After a fourth test, which fault keeps turning up?', 'Before booking test number five, which fault would you fix?']) assert.ok(inv(l2), l2);
-  assert.ok(inv('She has cancelled a fourth time now.', text('ho-cancelled')));
+  assert.ok(inv('She has cancelled a fourth time now.', lunch));
 });
 
 // --- each run-2 false positive on its own ---------------------------------------

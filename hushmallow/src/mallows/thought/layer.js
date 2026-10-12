@@ -93,7 +93,11 @@ const OB_BODY = 0, OB_FACE = 1, OB_SIB = 2, OB_SIBFACE = 3, OB_FX = 4, OB_PROP =
 const W_OWN = [8, 40, 6, 30, 10, 10];
 const W_OTHER = [8, 40, 6, 30, 12, 10];
 const SIDE_NAMES = ['below', 'above', 'right', 'left', 'below', 'below', 'above', 'above'];
-// how far a crowded stage holds its thoughts (by crowd level 0 room … 3 packed)
+// layout tuning (measured in the lab: tools are in /tmp/claude-0/hf/W2b): repack all when a newcomer's
+// fit is worse than addRepack; in a repack, wish = weight of the distance to where each wanted to be,
+// hug = weight of hugging a wall; biasRepack = repack when a measured overlap steps the stage fuller
+export const TUNE = { addRepack: 0.5, wish: 0.8, hug: 3, biasRepack: true };
+// how far a crowded stage holds its thoughts (by crowd level 0 room … 4 packed)
 const CROWD_Z = [0, 0.2, 0.45, 0.62, 0.78];
 
 export class ThoughtLayer {
@@ -194,7 +198,7 @@ export class ThoughtLayer {
     // no room for it at all: everyone is placed again now (largest first, hugging the walls so the free
     // room stays in one piece) — a rearrangement because a thought arrived, never a drift seconds later.
     // A smaller overlap is left to the gentle push (the others make room).
-    if (!place.exact && this._placeOver > 0.5 && this.thoughts.length > 1) this._repack(env);
+    if (!place.exact && this._placeOver > TUNE.addRepack && this.thoughts.length > 1) this._repack(env);
     th.react('appear');
     this._changed();
     return th;
@@ -605,7 +609,7 @@ export class ThoughtLayer {
           }
           // (repacking a full stage: near its wish matters less than hugging a wall, which keeps the
           // free room in one piece for the others)
-          const sc = over + tbest + (fresh ? Math.hypot(x - want.x, y - want.y) * 0.8 + 3 * (Math.min(x - minX, maxX - x) + 0.5 * Math.min(y - minY, maxY - y)) : Math.hypot(x - want.x, y - want.y) * 4);
+          const sc = over + tbest + (fresh ? Math.hypot(x - want.x, y - want.y) * TUNE.wish + TUNE.hug * (Math.min(x - minX, maxX - x) + 0.5 * Math.min(y - minY, maxY - y)) : Math.hypot(x - want.x, y - want.y) * 4);
           if (sc < bs) { bs = sc; bx = x; by = y; bside = tside; bover = over + tover; bbare = bare + tbare; }
         }
       }
@@ -673,7 +677,8 @@ export class ThoughtLayer {
         const A = list[i], C = list[j];
         const fa = this._foot(A), fc = this._foot(C);
         const ox = Math.min(fa.r, fc.r) - Math.max(fa.l, fc.l), oy = Math.min(fa.b, fc.b) - Math.max(fa.t, fc.t);
-        if (ox <= 0 || oy <= 0) continue;
+        // (margins touching by a few px is not an overlap: nothing moves for it)
+        if (ox <= 6 || oy <= 6) continue;
         A._ov += ox * oy; C._ov += ox * oy;
         const ma = this._free(A) ? 1 : 0, mc = this._free(C) ? 1 : 0;
         if (!ma && !mc) continue;
@@ -684,11 +689,21 @@ export class ThoughtLayer {
         const roomX = aLeft ? (A.home.x - la.minX) * ma + (lc.maxX - C.home.x) * mc : (la.maxX - A.home.x) * ma + (C.home.x - lc.minX) * mc;
         const roomY = aUp ? (A.home.y - la.minY) * ma + (lc.maxY - C.home.y) * mc : (la.maxY - A.home.y) * ma + (C.home.y - lc.minY) * mc;
         let horiz = ox < oy;
+        const short = horiz;
         if (horiz && roomX < ox * 0.5 && roomY > roomX) horiz = false;
         else if (!horiz && roomY < oy * 0.5 && roomX > roomY) horiz = true;
-        if (horiz) { const d = (aLeft ? -1 : 1) * ox * kk; A.home.x += d * sa; C.home.x -= d * sc; }
-        else { const d = (aUp ? -1 : 1) * oy * kk; A.home.y += d * sa; C.home.y -= d * sc; }
+        // the short way apart at the gentle rate; the long way round (the short way is blocked) slowly,
+        // at most 40 px a second, so nothing ever sweeps across the stage
+        const cap = horiz === short ? Infinity : 40 * dt;
+        if (horiz) { const d = (aLeft ? -1 : 1) * Math.min(ox * kk, cap); A.home.x += d * sa; C.home.x -= d * sc; }
+        else { const d = (aUp ? -1 : 1) * Math.min(oy * kk, cap); A.home.y += d * sa; C.home.y -= d * sc; }
       }
+    }
+    // a drifting (lonely) thought drifts only into free room: it pauses where its footprint would
+    // touch another's or the bounds hold it
+    for (const th of list) {
+      const L = th._lim, h = th.home;
+      th._driftBlocked = th._ov > 0 || h.x <= L.minX + 2 || h.x >= L.maxX - 2 || h.y <= L.minY + 2 || h.y >= L.maxY - 2;
     }
     // still overlapping once everyone has come to rest: the estimate was hopeful — the whole stage
     // steps one level fuller (smaller thoughts, shorter plates) rather than piling up
@@ -700,10 +715,9 @@ export class ThoughtLayer {
       this._ovT = 0; this._biasT = 0; this._crowdBias = (this._crowdBias || 0) + 1; this._biasKeep = true;
       this._crowdLevel(env, true);
       // one fresh arrangement at the fuller level (rather than a slow shuffle into it)
-      this._repack(env);
+      if (TUNE.biasRepack) this._repack(env);
     }
-    // boxed in for a while: a short glide to free room nearby (never across the stage); when there is
-    // none, it is held a step farther away (smaller) instead of overlapping
+    // boxed in for a while: a short glide to free room nearby (never across the stage)
     for (const th of list) {
       // only at rest: arriving thoughts cross each other's paths on their way home
       const resting = th.ov.appear >= 1 && Math.hypot(th.x - th.home.x, th.y - th.home.y) < 0.3 * th.render.P;
@@ -711,11 +725,8 @@ export class ThoughtLayer {
       // (a sliver of padding is not being boxed in: a real overlap is a good part of its footprint)
       const f = this._foot(th), big = Math.max(500, 0.07 * (f.r - f.l) * (f.b - f.t));
       th._stuck = th._ov > big ? (th._stuck || 0) + dt : Math.min(0, (th._stuck || 0) + dt);
-      if (th._stuck > 1.2) {
-        const moved = this._nudge(th, K, env);
-        if (!moved) th.zFloor = Math.min(0.85, th.zFloor + 0.15);
-        th._stuck = -3;
-      }
+      // (no room nearby: it waits; a real overlap at rest steps the whole stage fuller, below)
+      if (th._stuck > 1.2) { this._nudge(th, K, env); th._stuck = -3; }
     }
     // hard limits last: the bounds, then never on the hero (out by the nearest way that stays in bounds)
     for (const th of list) {
@@ -828,11 +839,14 @@ export class ThoughtLayer {
   _crowdLevel(env, force) {
     const B = env.bounds, n = this.thoughts.length, K = this._keep(), c = this._crowdK;
     const v0 = n, v1 = env.view.W, v2 = env.view.H, v3 = B.left | 0, v4 = B.top | 0, v5 = B.right | 0, v6 = B.bottom | 0, v7 = K ? ((K.right - K.left) * (K.bottom - K.top)) | 0 : 0;
-    if (!force && c[0] === v0 && c[1] === v1 && c[2] === v2 && c[3] === v3 && c[4] === v4 && c[5] === v5 && c[6] === v6 && Math.abs(c[7] - v7) < 2000) return this.crowd;
+    // (the hero's area in coarse steps: squeezing or breathing never re-plans the stage)
+    const kq = Math.round(Math.log2(v7 + 1) * 3);
+    const same = c[0] === v0 && c[1] === v1 && c[2] === v2 && c[3] === v3 && c[4] === v4 && c[5] === v5 && c[6] === v6;
+    if (!force && same && c[7] === kq) return this.crowd;
     // (a changed stage starts again from the estimate; a measured correction is kept while it stays the same)
-    if (!this._biasKeep) { this._crowdBias = 0; this._biasT = 0; }
+    if (!this._biasKeep && !same) { this._crowdBias = 0; this._biasT = 0; }
     this._biasKeep = false;
-    c[0] = v0; c[1] = v1; c[2] = v2; c[3] = v3; c[4] = v4; c[5] = v5; c[6] = v6; c[7] = v7;
+    c[0] = v0; c[1] = v1; c[2] = v2; c[3] = v3; c[4] = v4; c[5] = v5; c[6] = v6; c[7] = kq;
     const area = Math.max(1, (B.right - B.left) * (B.bottom - B.top) - v7 * 0.8);
     // what each level needs: every thought's footprint as it would be there — its body, siblings, effects
     // and prop at that level's depth (as placement predicts them) with its words below it on a plate of

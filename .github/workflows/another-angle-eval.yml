@@ -1,8 +1,9 @@
 # Real-model quality check for Another Angle (hushmallow Beyond).
 # Runs hushmallow/tools/angle-eval.mjs against Claude with the
-# ANTHROPIC_API_KEY repository secret: 39 realistic inputs, graded by the
-# deterministic quality gate and a judge rubric. Costs about $1.90 a run
-# (worst case about $12, 49 cases), so it only runs when asked:
+# ANTHROPIC_API_KEY repository secret: 49 inputs (the 39 of runs 1 and 2
+# plus 10 held out), graded by the deterministic quality gate and a judge
+# rubric. Costs about $0.85 a run (runs 1 and 2, 39 cases, cost $0.59 each;
+# worst case about $12), so it only runs when asked:
 #   * edit hushmallow/server/another-angle/eval/RUN on a work branch, or
 #   * Actions tab → "Another Angle eval" → Run workflow (once this file is on main).
 # The markdown report is printed in the log and kept as a run artifact. The

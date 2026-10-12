@@ -647,7 +647,8 @@ export class ThoughtMallow {
     // loneliness drifts away from the others (slowly; soothing or carrying it close stops it). It is
     // its resting place that drifts, so the layer sees where it is going (and keeps the room it needs)
     const D = this._drift;
-    if (m.drift > 0.02 && !carry && !this._glide && !this.driven && env.away && !rm) {
+    // (the layer pauses the drift while it would push into another thought: _driftBlocked)
+    if (m.drift > 0.02 && !carry && !this._glide && !this.driven && env.away && !rm && !this._driftBlocked) {
       const dx = pos.x - env.away.x, dy = pos.y - env.away.y, l = Math.hypot(dx, dy) || 1;
       const lim = 0.12 * Math.min(env.view?.W || 400, env.view?.H || 800) * m.drift;
       const cur = Math.hypot(D.x, D.y);
@@ -872,7 +873,7 @@ function stepFx(th, dt, look, env, rm, low) {
       a.seed = (seed + i * 7) >>> 0; a.side = rnd(seed, i + 3) < 0.5 ? -1 : 1;
     }
   }
-  for (const a of F.arcs) if (a.life > 0) a.life -= dt / a.dur;
+  for (let q = 0; q < F.arcs.length; q++) { const a = F.arcs[q]; if (a.life > 0) a.life -= dt / a.dur; }
   // frustration: a huff every few seconds — the body squashes and steam puffs from two vents
   F.steamOn += ((th.style.fx.steam > 0 && fx.steam > 0.03 ? 1 : 0) - F.steamOn) * Math.min(1, dt * 0.8);
   F.steamT += dt * fx.steam * k;
@@ -892,7 +893,7 @@ function stepFx(th, dt, look, env, rm, low) {
     }
   }
   F.huff = Math.max(0, F.huff - dt / 0.6);
-  for (const p of F.puffs) if (p.life > 0) { p.life -= dt / p.dur; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= Math.exp(-dt * 0.9); const e = 1 - p.life; p.r = p.r0 + (p.r1 - p.r0) * (1 - (1 - e) * (1 - e)); }
+  for (let q = 0; q < F.puffs.length; q++) { const p = F.puffs[q]; if (!(p.life > 0)) continue; p.life -= dt / p.dur; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= Math.exp(-dt * 0.9); const e = 1 - p.life; p.r = p.r0 + (p.r1 - p.r0) * (1 - (1 - e) * (1 - e)); }
   // sadness: its own soft cloud and a light rain (6–10 drops a second at full feeling) that splashes on its head
   F.cloud += ((fx.rain > 0.3 ? 1 : 0) * clamp(fx.rain / 3) - F.cloud) * Math.min(1, dt * 0.8);
   F.rainT += dt * fx.rain * k * (rm ? 0.5 : 1) * clamp(F.cloud * 1.5);
@@ -905,7 +906,8 @@ function stepFx(th, dt, look, env, rm, low) {
       d.life = 1; d.dur = 2; d.splash = 0; d.sy = 0;
     }
   }
-  for (const d of F.drops) {
+  for (let q = 0; q < F.drops.length; q++) {
+    const d = F.drops[q];
     if (d.life <= 0) continue;
     if (d.splash > 0) { d.splash += dt / 0.24; if (d.splash >= 1) d.life = 0; continue; }
     d.y += d.vy * dt; d.life -= dt / d.dur;
@@ -924,7 +926,7 @@ function stepFx(th, dt, look, env, rm, low) {
       if (m) { const mc = PT.mouthC; m.side = rnd(seed, Math.floor(t * 11)) < 0.5 ? -1 : 1; m.x = R.pts[2 * mc] + m.side * R.W * 0.4; m.y = R.pts[2 * mc + 1] - P * 0.06; m.r = P * 0.24; m.life = 1; m.dur = 0.6; }
     }
     F.talkWas = th.talk;
-    for (const m of F.marks) if (m.life > 0) { m.life -= dt / m.dur; m.x += m.side * dt * P * 0.4; m.y -= dt * P * 0.22; }
+    for (let q = 0; q < F.marks.length; q++) { const m = F.marks[q]; if (!(m.life > 0)) continue; m.life -= dt / m.dur; m.x += m.side * dt * P * 0.4; m.y -= dt * P * 0.22; }
   }
   void env;
 }

@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { CASES } from '../eval/cases.js';
 import { validateAngleRequest } from '../src/validate.js';
 import { checkSafety } from '../src/safety/index.js';
+import { PROMPT_VERSION } from '../src/prompt.js';
 
 const run = promisify(execFile);
 const TOOL = fileURLToPath(new URL('../../../tools/angle-eval.mjs', import.meta.url));
@@ -34,7 +35,7 @@ test('eval cases: held-out inputs cover what angle-v2/v3 changed and runs 1–2 
   assert.ok(held.some((c) => c.followUp === 2), 'one case asks for a third angle');
   // None is a prompt example (the model would have seen its answer).
   const { readFileSync: rf } = await import('node:fs');
-  const prompt = rf(new URL('../prompts/angle-v3.md', import.meta.url), 'utf8');
+  const prompt = rf(new URL(`../prompts/${PROMPT_VERSION}.md`, import.meta.url), 'utf8');
   for (const c of held) assert.ok(!prompt.includes(c.text), c.id);
 });
 
@@ -68,8 +69,12 @@ test('the eval dry run (--mock) runs every case through the pipeline and writes 
   assert.match(text, /Word list: \*\*(?:crisis|care|none|concern)\*\* \(skipped for this probe/);
   for (const c of CASES) assert.ok(text.includes(`### ${c.id} `), c.id);
   // The held-out cases are reported on their own, and a third angle is asked for and shown.
-  assert.match(text, /### Held-out cases\n\n10 cases added after run 2/);
+  // The earlier column has run 1 and 2's 39 inputs, so a new run reads like for like against them.
+  assert.match(text, /### Held-out and earlier cases\n\n10 cases added after run 2 beside the 39 earlier ones/);
+  assert.match(text, /\| Measure \| Held out \| Earlier cases \(as runs 1–2\) \|/);
   assert.match(text, /\| Gate: passed first time \| \d+ \| \d+ \|/);
+  assert.match(text, /\| Subtitle words \(both lines\) median \/ max \/ over 28 \| \d+ \/ \d+ \/ \d+ of \d+ \| \d+ \/ \d+ \/ \d+ of \d+ \|/);
+  assert.match(text, /\| Line 2 proposes a step or asks an answerable question \(rough reading\) \| \d+\/\d+ \| \d+\/\d+ \|/);
   assert.match(text, /### ho-cancelled — relationships \(held out\)[\s\S]*?\*\*Another angle\*\* — [\s\S]*?\*\*Another angle 2\*\* — /);
   // The report reads back into a replayable run (eval/extract-log.mjs).
   const { stdout: x } = await run(process.execPath, [fileURLToPath(new URL('../eval/extract-log.mjs', import.meta.url)), join(out, md), join(out, 'replay.json')], { timeout: 60000 });

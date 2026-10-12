@@ -35,7 +35,9 @@
 //
 // The three safety probes skip the word-list pre-check so the model's own
 // safety judgement is measured (the report shows both). Cases marked heldOut
-// (added after run 2, never used to tune the gate) get their own gate numbers. The report also lists
+// (added after run 2; no real answer to them seen before) get their own
+// column beside the 39 earlier cases, which read like for like against runs 1
+// and 2. The report also lists
 // every draft the quality gate rejected, with the reasons, so false
 // rejections are visible; drafts are kept only in this local report.
 
@@ -110,11 +112,13 @@ function estimate() {
   const r = rateFor(MODEL);
   const j = rateFor(JUDGE_MODEL);
   // Typical: one attempt, the system prompt read from cache after the first
-  // call, ~900 output tokens (thinking at low effort + ~250 tokens of JSON);
-  // 15% of answers regenerated once.
-  const typicalAngle = angleCalls * 1.15 * (sys * r.cacheRead + 350 * r.input + 900 * r.output) + sys * r.cacheWrite;
+  // call, 15% of answers regenerated once. Output tokens calibrated on runs 1
+  // and 2 (39 cases each): at 900 per answer and 700 per grade the estimate
+  // was $1.44 and $1.47, and both runs cost $0.59; ~300 per answer (little
+  // thinking at low effort + the JSON) and ~250 per grade give $0.64 for them.
+  const typicalAngle = angleCalls * 1.15 * (sys * r.cacheRead + 350 * r.input + 300 * r.output) + sys * r.cacheWrite;
   const judgeSys = roughTokens(JUDGE_PROMPT);
-  const typicalJudge = JUDGE ? angleCalls * (judgeSys * j.cacheRead + 600 * j.input + 700 * j.output) + judgeSys * j.cacheWrite : 0;
+  const typicalJudge = JUDGE ? angleCalls * (judgeSys * j.cacheRead + 600 * j.input + 250 * j.output) + judgeSys * j.cacheWrite : 0;
   // Worst case: every answer regenerated, every call uses all of max_tokens,
   // nothing cached.
   const worstAngle = angleCalls * 2 * ((sys + 400) * r.cacheWrite + MAX_TOKENS * r.output);
@@ -266,36 +270,56 @@ if (judged.length) {
 // Shape of the answers people saw (deterministic, no judge): length against the
 // 16–28 aim, how often line 2 proposes a step (a rough reading), and whether
 // each "another angle" used a pattern no earlier angle used.
-const shown = allRounds.filter((r) => r.result.status === 'ok' && r.result.scene);
-if (shown.length) {
+/** @param {any[]} list */
+function shapeRows(list) {
+  const shown = list.filter((r) => r.result.status === 'ok' && r.result.scene);
+  if (!shown.length) return null;
   const wc = shown.map((r) => wordCount(r.result.scene.subtitle_line_1) + wordCount(r.result.scene.subtitle_line_2)).sort((a, b) => a - b);
-  lines.push(`| Subtitle words (both lines) median / max / over 28 | ${wc[Math.floor(wc.length / 2)]} / ${wc[wc.length - 1]} / ${wc.filter((n) => n > 28).length} of ${wc.length} |`);
-  lines.push(`| Line 2 proposes a step or asks an answerable question (rough reading) | ${shown.filter((r) => suggestsStep(r.result.scene.subtitle_line_2)).length}/${shown.length} |`);
   const again = shown.filter((r) => r.previous);
-  if (again.length) lines.push(`| "Another angle" with a pattern no earlier angle used | ${again.filter((r) => r.previous.every((p) => p.reasoning_pattern !== r.result.scene.reasoning_pattern)).length}/${again.length} |`);
+  return {
+    words: `${wc[Math.floor(wc.length / 2)]} / ${wc[wc.length - 1]} / ${wc.filter((n) => n > 28).length} of ${wc.length}`,
+    step: `${shown.filter((r) => suggestsStep(r.result.scene.subtitle_line_2)).length}/${shown.length}`,
+    fresh: again.length ? `${again.filter((r) => r.previous.every((p) => p.reasoning_pattern !== r.result.scene.reasoning_pattern)).length}/${again.length}` : '–',
+  };
 }
+const SHAPE_LABELS = /** @type {const} */ ([
+  ['words', 'Subtitle words (both lines) median / max / over 28'],
+  ['step', 'Line 2 proposes a step or asks an answerable question (rough reading)'],
+  ['fresh', '"Another angle" with a pattern no earlier angle used'],
+]);
+const shape = shapeRows(allRounds);
+if (shape) for (const [k, label] of SHAPE_LABELS) if (k !== 'fresh' || shape.fresh !== '–') lines.push(`| ${label} | ${shape[k]} |`);
 lines.push(`| Latency p50 / p95 | ${(pct(0.5) / 1000).toFixed(1)} s / ${(pct(0.95) / 1000).toFixed(1)} s |`);
 lines.push(`| Answers over ${ATTEMPT_TIMEOUT / 1000} s / over ${DEADLINE / 1000} s / timed out | ${lat.filter((ms) => ms > ATTEMPT_TIMEOUT).length} / ${lat.filter((ms) => ms > DEADLINE).length} / ${count((r) => r.result.fallback?.reason === 'timeout')} |`);
 lines.push(`| Cost | $${cost.toFixed(3)} |`, '');
-// The held-out cases on their own: the gate was tuned on the others' answers
-// (runs 1 and 2), so these numbers are the fairer reading of how it generalises.
+// The held-out cases beside the earlier ones. The earlier cases are the 39
+// inputs of runs 1 and 2, so that column reads like for like against them;
+// the held-out column includes grief and fresh heartbreak, which by design
+// get no task, so its actionability is not comparable.
 const heldOut = allRounds.filter((r) => r.case.heldOut);
 if (heldOut.length) {
-  const tuned = allRounds.filter((r) => !r.case.heldOut);
+  const earlier = allRounds.filter((r) => !r.case.heldOut);
   const g = (list, k) => list.filter((r) => r.result.meta.gate === k).length;
+  const cases = (list) => new Set(list.map((r) => r.case.id)).size;
+  lines.push('### Held-out and earlier cases', '');
+  lines.push(`${cases(heldOut)} cases added after run 2 beside the ${cases(earlier)} earlier ones. The earlier column has the same inputs as runs 1 and 2: read it against their summaries (\`eval/runs/\`). No real answer to the held-out cases had been seen before this run, but hand-written answers built on their wording were used in the gate's third review, so they are held out from the prompt, not wholly from the gate. Grief and fresh heartbreak are held-out cases that get no task by design.`, '');
+  lines.push('| Measure | Held out | Earlier cases (as runs 1–2) |', '|---|---|---|');
+  lines.push(`| Answers | ${heldOut.length} | ${earlier.length} |`);
+  for (const [label, k] of [['Gate: passed first time', 'pass'], ['Gate: passed after one regeneration', 'regen_pass'], ['Gate: fallback to authored engine', 'fail']]) lines.push(`| ${label} | ${g(heldOut, k)} | ${g(earlier, k)} |`);
   const hj = heldOut.filter((r) => r.judge);
-  const tj = tuned.filter((r) => r.judge);
-  lines.push('### Held-out cases', '');
-  lines.push(`${new Set(heldOut.map((r) => r.case.id)).size} cases added after run 2 (never used to tune the gate), beside the ${new Set(tuned.map((r) => r.case.id)).size} the gate fixes were checked against.`, '');
-  lines.push('| Measure | Held out | Earlier cases |', '|---|---|---|');
-  lines.push(`| Answers | ${heldOut.length} | ${tuned.length} |`);
-  for (const [label, k] of [['Gate: passed first time', 'pass'], ['Gate: passed after one regeneration', 'regen_pass'], ['Gate: fallback to authored engine', 'fail']]) lines.push(`| ${label} | ${g(heldOut, k)} | ${g(tuned, k)} |`);
-  if (hj.length && tj.length) {
-    for (const d of ['actionability', 'concision', 'overall']) lines.push(`| Judge ${d} (1–5) | ${avg(d, hj).toFixed(2)} | ${avg(d, tj).toFixed(2)} |`);
+  const ej = earlier.filter((r) => r.judge);
+  const fmt = (k, list) => (list.length ? avg(k, list).toFixed(2) : '–');
+  if (hj.length || ej.length) {
+    for (const d of dims) lines.push(`| Judge ${d} (1–5) | ${fmt(d, hj)} | ${fmt(d, ej)} |`);
     const hf = hj.filter((r) => r.previous);
-    const tf = tj.filter((r) => r.previous);
-    if (hf.length && tf.length) lines.push(`| Judge novelty on "another angle" (1–5) | ${avg('novelty', hf).toFixed(2)} (${hf.length}) | ${avg('novelty', tf).toFixed(2)} (${tf.length}) |`);
+    const ef = ej.filter((r) => r.previous);
+    if (hf.length || ef.length) lines.push(`| Judge novelty on "another angle" (1–5) | ${fmt('novelty', hf)} (${hf.length}) | ${fmt('novelty', ef)} (${ef.length}) |`);
+    const verdicts = (list) => `strong ${list.filter((r) => r.judge.verdict === 'strong').length}, acceptable ${list.filter((r) => r.judge.verdict === 'acceptable').length}, weak ${list.filter((r) => r.judge.verdict === 'weak').length}`;
+    lines.push(`| Verdicts | ${verdicts(hj)} | ${verdicts(ej)} |`);
   }
+  const hs = shapeRows(heldOut);
+  const es = shapeRows(earlier);
+  for (const [k, label] of SHAPE_LABELS) lines.push(`| ${label} | ${hs ? hs[k] : '–'} | ${es ? es[k] : '–'} |`);
   lines.push('');
 }
 const codeCounts = {};
