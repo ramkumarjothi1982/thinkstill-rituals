@@ -91,7 +91,7 @@ const smoothGrow = (cur, v, k, init) => (!init || v > cur ? v : cur + (v - cur) 
 // obstacle kinds for the words (weights: on its own thought / on another's)
 const OB_BODY = 0, OB_FACE = 1, OB_SIB = 2, OB_SIBFACE = 3, OB_FX = 4, OB_PROP = 5;
 const W_OWN = [8, 40, 6, 30, 10, 10];
-const W_OTHER = [6, 40, 6, 30, 6, 8];
+const W_OTHER = [8, 40, 6, 30, 12, 10];
 const SIDE_NAMES = ['below', 'above', 'right', 'left', 'below', 'below', 'above', 'above'];
 // how far a crowded stage holds its thoughts (by crowd level 0 room … 3 packed)
 const CROWD_Z = [0, 0.2, 0.45, 0.62, 0.78];
@@ -189,8 +189,12 @@ export class ThoughtLayer {
     // where it rests and where its words go, chosen now (not by a stream of small relocations later)
     const env = this._envNow(nowMs());
     this._crowdLevel(env, true);
-    const home = place.exact ? want : this._place(th, want, env);
-    th.moveHome(home);
+    th._want = { x: want.x, y: want.y };
+    th.moveHome(place.exact ? want : this._place(th, want, env));
+    // no room for it at all: everyone is placed again now (largest first, hugging the walls so the free
+    // room stays in one piece) — a rearrangement because a thought arrived, never a drift seconds later.
+    // A smaller overlap is left to the gentle push (the others make room).
+    if (!place.exact && this._placeOver > 0.5 && this.thoughts.length > 1) this._repack(env);
     th.react('appear');
     this._changed();
     return th;
@@ -543,11 +547,13 @@ export class ThoughtLayer {
   // Where a new thought rests (and where its words go): the free place nearest to `want` on a grid
   // over the bounds, scored against the hero, every other thought's footprint (body, siblings,
   // effects, prop, words) and the edges. A full stage holds it a little farther (smaller) first.
-  _place(th, want, env) {
+  _place(th, want, env, fresh = false) {
     const B = env.bounds, K = this._keep();
     const e = this._extent(th, 0);
     const pr = this._predict(th);
-    e.l = Math.max(e.l, pr.l); e.r = Math.max(e.r, pr.r); e.t = Math.max(e.t, pr.t); e.b = Math.max(e.b, pr.b);
+    // (placed again for a fuller stage: plan for the size it is going to, not the size it was)
+    if (fresh && th.ov.appear >= 1) { e.l = pr.l; e.r = pr.r; e.t = pr.t; e.b = pr.b; }
+    else { e.l = Math.max(e.l, pr.l); e.r = Math.max(e.r, pr.r); e.t = Math.max(e.t, pr.t); e.b = Math.max(e.b, pr.b); }
     const tg = this.tags.get(th);
     if (tg) { this._fitText(th, tg, env.view.W); if (tg.measure) this._measureTag(tg, env.view.W); }
     const w = tg?.w || 0, h = tg?.h || 0;
@@ -555,7 +561,7 @@ export class ThoughtLayer {
     const F = this._feet || (this._feet = []);
     let n = 0;
     for (const o of this.thoughts) {
-      if (o === th || o._leaving) continue;
+      if (o === th || o._leaving || o._unplaced) continue;
       const f = this._foot(o);
       const r = F[n] || (F[n] = [0, 0, 0, 0]);
       r[0] = f.l; r[1] = f.t; r[2] = f.r; r[3] = f.b; n++;
@@ -567,50 +573,80 @@ export class ThoughtLayer {
       const el = e.l * zs, er = e.r * zs, et = e.t * zs, eb = e.b * zs;
       const minX = B.left + el, maxX = Math.max(minX, B.right - er), minY = B.top + et, maxY = Math.max(minY, B.bottom - eb);
       const sx = Math.max(10, (maxX - minX) / 18), sy = Math.max(10, (maxY - minY) / 24);
-      let bs = Infinity, bx = want.x, by = want.y, bside = 0, bover = 0;
+      let bs = Infinity, bx = want.x, by = want.y, bside = 0, bover = 0, bbare = 0;
       for (let x = minX; x <= maxX + 0.5; x += sx) {
         for (let y = minY; y <= maxY + 0.5; y += sy) {
           // the body and everything it draws
           const l = x - el - 6, t = y - et - 4, r = x + er + 6, b = y + eb + 4;
-          let over = 0;
+          let over = 0, bare = 0;
           for (let i = 0; i < n; i++) { const q = F[i]; over += overA(l, t, r, b, q[0], q[1], q[2], q[3]); }
-          if (K) over += 30 * overA(l, t, r, b, K.left - 10, K.top - 10, K.right + 10, K.bottom + 10);
+          bare = over;
+          if (K) { const k = overA(l, t, r, b, K.left - 10, K.top - 10, K.right + 10, K.bottom + 10); over += 30 * k; bare += k; }
           // its words: the best side here
-          let tbest = 0, tside = 0, tover = 0;
+          let tbest = 0, tside = 0, tover = 0, tbare = 0;
           if (w) {
             tbest = Infinity;
             for (let s = 0; s < 4; s++) {
               this._tagRel(th, et, s, w, h, rel);
               const tl = x + rel[0], tt = y + rel[1], tr = x + rel[2], tb = y + rel[3];
               // what it would cover (or how far off the stage it would hang)…
-              let ov = 0;
+              let ov = 0, ob = 0;
               const off = Math.max(0, 16 - tl) + Math.max(0, tr - env.view.W + 16) + Math.max(0, B.top - tt) + Math.max(0, tb - B.bottom - 2);
-              if (off > 0) ov += 2000 + 40 * off * h;
-              for (let i = 0; i < n; i++) { const q = F[i]; ov += 1.5 * overA(tl, tt, tr, tb, q[0], q[1], q[2], q[3]); }
-              if (K) ov += 30 * overA(tl, tt, tr, tb, K.left - 6, K.top - 6, K.right + 6, K.bottom + 6);
+              if (off > 0) { ov += 2000 + 40 * off * h; ob += off * h; }
+              for (let i = 0; i < n; i++) { const q = F[i], a = overA(tl, tt, tr, tb, q[0], q[1], q[2], q[3]); ov += 1.5 * a; ob += a; }
+              if (K) { const a = overA(tl, tt, tr, tb, K.left - 6, K.top - 6, K.right + 6, K.bottom + 6); ov += 30 * a; ob += a; }
               // …and which side it would rather be: below first, then above, right, left; below a
               // feeling whose effects rise over its head; the host's wish
               let pen = s * 60;
               if ((th.style.fx.rain > 0 || th.style.fx.steam > 0) && s === 1) pen += 3000;
               if (th.labelSide && SIDE_NAMES[s] === th.labelSide) pen -= 200;
-              if (ov + pen < tbest) { tbest = ov + pen; tside = s; tover = ov; }
+              if (ov + pen < tbest) { tbest = ov + pen; tside = s; tover = ov; tbare = ob; }
             }
           }
-          const sc = over + tbest + Math.hypot(x - want.x, y - want.y) * 4;
-          if (sc < bs) { bs = sc; bx = x; by = y; bside = tside; bover = over + tover; }
+          // (repacking a full stage: near its wish matters less than hugging a wall, which keeps the
+          // free room in one piece for the others)
+          const sc = over + tbest + (fresh ? Math.hypot(x - want.x, y - want.y) * 0.8 + 3 * (Math.min(x - minX, maxX - x) + 0.5 * Math.min(y - minY, maxY - y)) : Math.hypot(x - want.x, y - want.y) * 4);
+          if (sc < bs) { bs = sc; bx = x; by = y; bside = tside; bover = over + tover; bbare = bare + tbare; }
         }
       }
-      best = { x: bx, y: by, side: bside };
-      if (globalThis.__tmDebug) globalThis.__tmDebug.push({ id: th.id, attempt, bover: bover | 0, area: ((el + er) * (et + eb)) | 0, x: bx | 0, y: by | 0, side: bside, n, w, h, e: [el | 0, er | 0, et | 0, eb | 0], lim: [minX | 0, maxX | 0, minY | 0, maxY | 0] });
+      best = { x: bx, y: by, side: bside, over: bover, bare: bbare, area: (el + er) * (et + eb) };
       // it fits, or nearly (the gentle push makes the last room: the others can move too): done.
       // Otherwise it is held a step farther away (smaller) and placed again.
       if (bover < 0.25 * (el + er) * (et + eb) || attempt === 2) break;
       th.zFloor = Math.max(th.zFloor, attempt === 0 ? 0.3 : 0.55);
     }
     if (tg) { tg.pref = best.side; tg.cand = best.side; }
+    // (what it would really cover, px², against its own size: the fit test for a fuller stage)
+    this._placeOver = best.bare / Math.max(1, best.area);
     // the drawn body sits off its home a little (a sad thought sinks, a far one floats higher): the home
     // is placed for the drawn body, as it will be once its feeling shows
     return { x: best.x - (e.dx || 0), y: best.y - this._restDy(th) };
+  }
+
+  // place every free thought again (largest first) from where it wanted to be; returns the worst fit
+  // (largest first, then smallest first: the arrangement where the worst fit is smaller is kept)
+  _repack(env) {
+    const order = [];
+    for (const o of this.thoughts) if (!o.driven && !o.pressed && !o._leaving) { const p = this._predict(o, CROWD_Z[this.crowd || 0]); o._size = (p.l + p.r) * (p.t + p.b) + (this.tags.get(o)?.w || 0) * 60; order.push(o); }
+    order.sort((a, b) => b._size - a._size);
+    const run = (list) => {
+      for (const o of list) o._unplaced = true;
+      let worst = 0, sum = 0;
+      for (const o of list) {
+        o._unplaced = false;
+        o.zFloor = CROWD_Z[this.crowd || 0];
+        o.moveHome(this._place(o, o._want || o.home, env, true));
+        worst = Math.max(worst, this._placeOver); sum += this._placeOver;
+      }
+      return worst + 0.1 * sum;
+    };
+    const snap = () => order.map((o) => ({ o, x: o.home.x, y: o.home.y, pref: this.tags.get(o)?.pref ?? 0 }));
+    const a = run(order), A = snap();
+    if (a <= 0.12) return a;
+    const b = run(order.slice().reverse());
+    if (b <= a) return b;
+    for (const s of A) { s.o.moveHome(s); const tg = this.tags.get(s.o); if (tg) { tg.pref = tg.cand = s.pref; } }
+    return a;
   }
 
   // homes: room between thoughts (more round one given space) — then, as hard limits, inside the
@@ -654,6 +690,18 @@ export class ThoughtLayer {
         else { const d = (aUp ? -1 : 1) * oy * kk; A.home.y += d * sa; C.home.y -= d * sc; }
       }
     }
+    // still overlapping once everyone has come to rest: the estimate was hopeful — the whole stage
+    // steps one level fuller (smaller thoughts, shorter plates) rather than piling up
+    let resting = list.length > 1;
+    for (const th of list) if (th.ov.appear < 1 || !this._free(th) || Math.hypot(th.x - th.home.x, th.y - th.home.y) > 0.3 * th.render.P) resting = false;
+    this._biasT = (this._biasT || 0) + dt;
+    this._ovT = resting && this._biasT > 3 && this._visualOverlap() > 600 ? (this._ovT || 0) + dt : 0;
+    if (this._ovT > 1.5 && (this.crowd || 0) < 4) {
+      this._ovT = 0; this._biasT = 0; this._crowdBias = (this._crowdBias || 0) + 1; this._biasKeep = true;
+      this._crowdLevel(env, true);
+      // one fresh arrangement at the fuller level (rather than a slow shuffle into it)
+      this._repack(env);
+    }
     // boxed in for a while: a short glide to free room nearby (never across the stage); when there is
     // none, it is held a step farther away (smaller) instead of overlapping
     for (const th of list) {
@@ -679,12 +727,19 @@ export class ThoughtLayer {
       const f = this._foot(th), fl = h.x - f.l, fr = f.r - h.x, ft = h.y - f.t, fb = f.b - h.y;
       const l = K.left - fr - 4, r = K.right + fl + 4, t = K.top - fb - 4, b = K.bottom + ft + 2;
       if (h.x > l && h.x < r && h.y > t && h.y < b) {
+        // out by the nearest way that stays in bounds — and, of those, the one with the most room
+        // (two thoughts are never both pushed into the same corner)
         let bx = 0, by = 0, bd = Infinity, fx = 0, fy = 0, fd = Infinity;
         for (let q = 0; q < 4; q++) {
           const x = q === 0 ? l : q === 1 ? r : h.x, y = q === 2 ? t : q === 3 ? b : h.y;
           const d = Math.abs(x - h.x) + Math.abs(y - h.y);
           if (d < fd) { fd = d; fx = x; fy = y; }
-          if (x >= L.minX - 0.5 && x <= L.maxX + 0.5 && y >= L.minY - 0.5 && y <= L.maxY + 0.5 && d < bd) { bd = d; bx = x; by = y; }
+          if (!(x >= L.minX - 0.5 && x <= L.maxX + 0.5 && y >= L.minY - 0.5 && y <= L.maxY + 0.5)) continue;
+          let crowd = 0;
+          const dx = x - h.x, dy = y - h.y;
+          for (const o of list) { if (o === th) continue; const g = this._foot(o); crowd += overA(f.l + dx, f.t + dy, f.r + dx, f.b + dy, g.l, g.t, g.r, g.b); }
+          const cost = d + crowd * 0.05;
+          if (cost < bd) { bd = cost; bx = x; by = y; }
         }
         if (bd === Infinity) { bx = fx; by = fy; }
         h.x = bx; h.y = by;
@@ -694,7 +749,25 @@ export class ThoughtLayer {
 
   _free(th) { return !(th.driven || th.pressed || th._glide); }
 
-  // a short glide (≤ ~1.6 body heights) to the least crowded home nearby; true when it found clearly more room
+  // what actually overlaps on screen (px²): the words' plates and everything each thought draws, no padding
+  _visualOverlap() {
+    let sum = 0;
+    const list = this.thoughts, A = this._rect, Bx = this._rect2;
+    for (let i = 0; i < list.length; i++) {
+      const a = list[i], ta = this.tags.get(a);
+      const ea = a.extent(A), al = ea.left, at = ea.top, ar = ea.right, ab = ea.bottom;
+      for (let j = i + 1; j < list.length; j++) {
+        const b = list[j], tb = this.tags.get(b), eb = b.extent(Bx);
+        sum += overA(al, at, ar, ab, eb.left, eb.top, eb.right, eb.bottom);
+        if (ta?.shown) sum += overA(ta.x - ta.w / 2, ta.y, ta.x + ta.w / 2, ta.y + ta.h, eb.left, eb.top, eb.right, eb.bottom);
+        if (tb?.shown) sum += overA(tb.x - tb.w / 2, tb.y, tb.x + tb.w / 2, tb.y + tb.h, al, at, ar, ab);
+        if (ta?.shown && tb?.shown) sum += overA(ta.x - ta.w / 2, ta.y, ta.x + ta.w / 2, ta.y + ta.h, tb.x - tb.w / 2, tb.y, tb.x + tb.w / 2, tb.y + tb.h);
+      }
+    }
+    return sum;
+  }
+
+  // a short glide (≤ about one body height) to the least crowded home nearby; true when it found clearly more room
   _nudge(th, K, env) {
     const L = th._lim, f0 = this._foot(th);
     const ofl = f0.l - th.home.x, ofr = f0.r - th.home.x, oft = f0.t - th.home.y, ofb = f0.b - th.home.y;
@@ -712,13 +785,13 @@ export class ThoughtLayer {
       if (K) a += 30 * overA(x + ofl, y + oft, x + ofr, y + ofb, K.left - 6, K.top - 6, K.right + 6, K.bottom + 6);
       return a;
     };
-    const reach = Math.max(110, 1.6 * th.render.P), x0 = th.home.x, y0 = th.home.y;
+    const reach = Math.max(56, 0.9 * th.render.P), x0 = th.home.x, y0 = th.home.y;
     const o0 = over(x0, y0);
     let bx = x0, by = y0, bo = o0, best = o0;
     for (let gx = -6; gx <= 6; gx++) {
       for (let gy = -6; gy <= 6; gy++) {
         const x = clamp(x0 + (gx / 6) * reach, L.minX, Math.max(L.minX, L.maxX)), y = clamp(y0 + (gy / 6) * reach, L.minY, Math.max(L.minY, L.maxY));
-        const ov = over(x, y), sc = ov + Math.hypot(x - x0, y - y0) * 4;
+        const ov = over(x, y), sc = ov + Math.hypot(x - x0, y - y0) * 8;
         if (sc < best) { best = sc; bx = x; by = y; bo = ov; }
       }
     }
@@ -756,6 +829,9 @@ export class ThoughtLayer {
     const B = env.bounds, n = this.thoughts.length, K = this._keep(), c = this._crowdK;
     const v0 = n, v1 = env.view.W, v2 = env.view.H, v3 = B.left | 0, v4 = B.top | 0, v5 = B.right | 0, v6 = B.bottom | 0, v7 = K ? ((K.right - K.left) * (K.bottom - K.top)) | 0 : 0;
     if (!force && c[0] === v0 && c[1] === v1 && c[2] === v2 && c[3] === v3 && c[4] === v4 && c[5] === v5 && c[6] === v6 && Math.abs(c[7] - v7) < 2000) return this.crowd;
+    // (a changed stage starts again from the estimate; a measured correction is kept while it stays the same)
+    if (!this._biasKeep) { this._crowdBias = 0; this._biasT = 0; }
+    this._biasKeep = false;
     c[0] = v0; c[1] = v1; c[2] = v2; c[3] = v3; c[4] = v4; c[5] = v5; c[6] = v6; c[7] = v7;
     const area = Math.max(1, (B.right - B.left) * (B.bottom - B.top) - v7 * 0.8);
     // what each level needs: every thought's footprint as it would be there — its body, siblings, effects
@@ -774,11 +850,13 @@ export class ThoughtLayer {
         const l = Math.max(1, Math.min(lines, Math.ceil(tw / (maxW - pad))));
         const pw = Math.min(Math.max(maxW, Math.min(wide, three)), l > 1 ? maxW : tw + pad), ph = l * 22 + 17;
         const gap = 14 + 8 * (1 - z);
-        need += (Math.max(p.l + p.r, pw) + 16) * (p.t + p.b + gap + ph + 12);
+        // (body and plate counted apiece: the room beside a narrow body under a wide plate is someone else's)
+        need += (p.l + p.r + 16) * (p.t + p.b + 12) + (pw + 12) * (ph + gap + 6);
       }
       if (area >= need * 1.3) { crowd = lv; break; }
     }
     if (n <= 1) crowd = 0;
+    else crowd = Math.min(4, crowd + (this._crowdBias || 0));
     this.room = area / Math.max(1, n);
     if (crowd !== this.crowd) { this.crowd = crowd; for (const tg of this.tags.values()) { tg.fitKey = ''; tg.measure = true; } }
     const floor = CROWD_Z[crowd];
@@ -856,6 +934,7 @@ export class ThoughtLayer {
     el.classList.remove('tm-measure');
     el.style.maxWidth = `${maxW}px`;
     el.style.width = `${maxW}px`;
+    tg.maxW = maxW;
     const lh = parseFloat(getComputedStyle(tg.words).lineHeight) || 22;
     const fits = (txt) => { tg.words.textContent = txt; return tg.words.offsetHeight <= lines * lh + 2; };
     let text = words.join(' ');
@@ -867,7 +946,7 @@ export class ThoughtLayer {
       const minK = Math.min(3, words.length - 1);
       if (ok < minK) {
         const wide = this._tagMax(W, 0).maxW;
-        el.style.maxWidth = `${wide}px`; el.style.width = `${wide}px`;
+        el.style.maxWidth = `${wide}px`; el.style.width = `${wide}px`; tg.maxW = wide;
         if (fits(firstWords(words, minK))) ok = minK;
         else if (!ok) { lo = 1; hi = minK - 1; while (lo <= hi) { const mid = (lo + hi) >> 1; if (fits(firstWords(words, mid))) { ok = mid; lo = mid + 1; } else hi = mid - 1; } }
       }
@@ -892,9 +971,10 @@ export class ThoughtLayer {
     el.classList.add('tm-measure');
     const mc = tg.words.scrollWidth;
     el.classList.remove('tm-measure');
-    const { maxW, pad } = this._tagMax(W);
+    // (the plate's width as the words were fitted: a crowded plate may have widened for its first three words)
+    const pad = this._tagMax(W).pad, maxW = tg.maxW || this._tagMax(W).maxW;
     const lh = parseFloat(getComputedStyle(tg.words).lineHeight) || 22;
-    const lines = Math.min(3, Math.ceil((mc + 1) / Math.max(40, maxW - pad)));
+    const lines = Math.min(tg.lines || 3, Math.ceil((mc + 1) / Math.max(40, maxW - pad)));
     if (lines > 1) {
       // the narrowest plate that still holds the words in that many lines
       let w = Math.min(maxW, Math.ceil(mc / lines) + pad + 6);

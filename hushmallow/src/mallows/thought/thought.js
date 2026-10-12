@@ -164,8 +164,9 @@ export class ThoughtMallow {
     this.siblings = [];
     if (this.kind === 'thought' && !o.noSiblings) {
       const n = o.siblings ?? siblingCount(this.style, this.intensity);
+      // (a sibling is about 40 px: a 7×7 lattice moves just like 10×10 at that size, for half the solver time)
       for (let i = 0; i < n; i++) this.siblings.push(new ThoughtMallow({ kind: 'sibling', parent: this, text: '', emotion: this.emotion, style: this.style, intensity: this.intensity,
-        r: this.r * (0.5 + 0.08 * rnd(this.seed, 20 + i)), seed: this.seed + 101 * (i + 1), reducedMotion: this.reducedMotion, lowStim: this.lowStim, haptic: this.haptic, x, y, noSiblings: true, index: i }));
+        r: this.r * (0.5 + 0.08 * rnd(this.seed, 20 + i)), seed: this.seed + 101 * (i + 1), reducedMotion: this.reducedMotion, lowStim: this.lowStim, haptic: this.haptic, x, y, noSiblings: true, index: i, cols: 7, rows: 7 }));
       this.siblings.forEach((s, i) => { s.index = i; s._orbitA = SIB_ANGLES[n][i]; s.front = Math.abs(Math.sin(s._orbitA)) < 0.5; });
     }
     this._settle(true);

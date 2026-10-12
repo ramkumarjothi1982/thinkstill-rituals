@@ -101,6 +101,7 @@ export function create(ctx) {
   let lastDrip = -9, lastSwish = -9;
   let metricsCache = { chop: 0, period: 0, periodAll: 0, energy: 0 };
   let lastP = 0;
+  let restored = null;                                     // a resumed sea: where things were left
   const pk = {};                                           // scratch: the packet a stroke sculpts
 
   // fingers (two at most)
@@ -393,7 +394,15 @@ export function create(ctx) {
       const card = fromCards?.find((c) => c.i === i) || null;
       let best = -1, bd = Infinity;
       for (let k = 0; k < slots.length; k++) { if (used.has(k)) continue; const d = card ? Math.hypot(slots[k].x - card.x, slots[k].y - card.y) + (slots[k].far ? 60 : 0) : k; if (d < bd) { bd = d; best = k; } }
-      if (best < 0) { waiting.push(i); continue; }
+      if (best < 0) {
+        // no room on the water now: a postcard still turns into its bubble in place, then drifts away over the horizon
+        if (card) {
+          const hx = clamp(card.x, OCEAN.EDGE + 8, W - OCEAN.EDGE - 8), fin = makeCamera({ W, H, hy: plan.hy, homeY: plan.homeY, waterY: plan.waterY });
+          bubbles.push({ i, x: 0, z: 0, vx: 0, vz: 0, yb: 0, vb: 0, rot: 0, rv: 0, D: 12, sx: card.x, sy: card.y, alpha: 1, state: 'card', riseK: 1, lift: 0, glowAge: -1, morph: 0, glide: 0,
+            from: { x: card.x, y: card.y, size: Math.max(card.w, card.h), rot: card.rot || 0 }, target: { x: hx, y: fin.hy + 1, D: 12 }, away: true, ph: R() * TAU });
+        } else waiting.push(i);
+        continue;
+      }
       used.add(best);
       const sl = slots[best];
       unproject(cam, sl.x, sl.y + 0.3 * sl.D, wo);
@@ -760,6 +769,7 @@ export function create(ctx) {
   /** A bubble that glided down from its postcard settles on the water (physics from here). */
   function settleBubble(b) {
     const t = b.target;
+    if (b.away) { b.from = null; b.state = 'leave'; b.leaveK = 0; return; }
     unproject(cam, t.x, t.y + 0.3 * t.D, wo);
     b.x = wo.x; b.z = wo.z; b.vx = b.vz = 0;
     b.from = null; b.state = 'float'; b.alpha = 1;
@@ -770,7 +780,8 @@ export function create(ctx) {
     // from its home on the water, the swells take over
     tS.x = (plan.home.x - W / 2) / 0.5; tS.z = cam.Z0; tS.vx = tS.vz = 0; tS.yb = tS.vb = 0;
     splash(tS.sx, tS.sy + tS.r * tS.surf * 0.55, tS.r * 2 * tS.surf);
-    try { thought?.react?.('appear'); } catch { /* optional */ }
+    // a soft settle as it meets the water (never 'appear': it is the same thought, arriving)
+    try { thought?.react?.('sigh'); } catch { /* optional */ }
     ctx.sound('drip', { intensity: 0.2, pitch: 0.7 });
   }
   function splash(x, y, D) {
@@ -867,21 +878,31 @@ export function create(ctx) {
       if (b.lift > 0) b.lift = Math.max(0, b.lift - dt / 2.4);
       if (b.glowAge >= 0) { b.glowAge += dt; if (b.glowAge > 2.6) b.glowAge = -1; }
       if (b.state === 'rise') { b.riseK = Math.min(1, b.riseK + dt / 1.2); b.alpha = easeOut(b.riseK); if (b.riseK >= 1) b.state = 'float'; }
+      if (b.state === 'arrive') { b.riseK = Math.min(1, b.riseK + dt / 1.8); b.alpha = easeOut(b.riseK); if (b.riseK >= 1) b.state = 'float'; }
+      // at the far edge for a while, with others waiting their turn: it drifts on over the horizon
+      if (b.state === 'float') { b.capFor = b.z / cam.Z0 >= OCEAN.CAP - 0.6 ? (b.capFor || 0) + dt : 0; if (waiting.length && b.capFor > 6) { b.state = 'leave'; b.leaveK = 0; } }
       const s = scaleAt(cam, b.z), d = b.z / cam.Z0;
       b.D = bubbleSize(s, d, U);
       const wy = cam.hy + (cam.Hw - b.yb * (rm ? 0.3 : 1)) * s;
       let sx = W / 2 + b.x * s, sy = wy - 0.3 * b.D - easeOut(b.lift) * b.D * 0.35 + (b.state === 'rise' ? (1 - b.riseK) * b.D * 0.5 : 0);
       if (wake && wy > hyNow) sy += wake.at(sx, wy) * 3;
-      if (b.from) { const k = easeInOut(b.glide); sx = lerp(b.from.x, b.target.x, k); sy = lerp(b.from.y, b.target.y, k); b.D = b.target.D; }
+      if (b.from) { const k = easeInOut(b.glide); sx = lerp(b.from.x, b.target.x, k); sy = lerp(b.from.y, b.target.y, k); b.D = b.away ? lerp(Math.min(b.from.size, 60), b.target.D, k) : b.target.D; }
+      if (b.state === 'leave') {
+        b.leaveK = Math.min(1, (b.leaveK || 0) + dt / 1.6);
+        b.alpha = 1 - easeOut(b.leaveK);
+        if (b.away) { sx = b.target.x; sy = b.target.y - 2 * b.leaveK; b.D = b.target.D * (1 - 0.5 * b.leaveK); }
+        else b.D *= 1 - 0.4 * b.leaveK;
+      }
       b.sx = sx; b.sy = sy;
     }
+    // gone over the horizon: it waits its turn; a waiting one drifts into view far out
+    for (let k = bubbles.length - 1; k >= 0; k--) if (bubbles[k].state === 'leave' && bubbles[k].leaveK >= 1) { const g0 = bubbles[k]; bubbles.splice(k, 1); waiting.push(g0.i); if (!melt && !g0.away) arriveWaiting(g0.i); }
     separate(dt);
-    // a bubble far out lets a waiting photo rise into the room it left
+    // room on the water (a layout change, or fewer floating than fit): a waiting photo rises into it
     riseClock += dt;
     if (waiting.length && riseClock > 1.5 && !melt) {
       riseClock = 0;
-      const far = bubbles.filter((b) => b.z / cam.Z0 > 5.5).length;
-      if (far > 0 || bubbles.length < plan.slots.length) riseWaiting();
+      if (bubbles.filter((b) => b.state !== 'leave').length < plan.slots.length) riseWaiting();
     }
   }
   /** Keep floaters apart and clear of the hero, the band, the thought and its words, and the edges (in screen px → world). */
@@ -893,12 +914,12 @@ export function create(ctx) {
     for (let it = 0; it < 2; it++) {
       for (let a = 0; a < bubbles.length; a++) {
         const A = bubbles[a];
-        if (A.state !== 'float' && A.state !== 'rise') continue;
+        if (A.state !== 'float' && A.state !== 'rise' && A.state !== 'arrive') continue;
         let mx = 0, my = 0;
         const ra = A.D / 2;
         for (let c = a + 1; c < bubbles.length; c++) {
           const B = bubbles[c];
-          if (B.state !== 'float' && B.state !== 'rise') continue;
+          if (B.state !== 'float' && B.state !== 'rise' && B.state !== 'arrive') continue;
           const dx = A.sx - B.sx, dy = A.sy - B.sy, dd = Math.hypot(dx, dy) || 1e-3, need = ra + B.D / 2 + OCEAN.BUBBLE_GAP;
           if (dd < need) { const m = (need - dd) * 0.5; nudge(B, -dx / dd * m, -dy / dd * m); mx += dx / dd * m; my += dy / dd * m; }
         }
@@ -931,6 +952,26 @@ export function create(ctx) {
   function plateRect() {
     const w = tS.plateW, h = tS.plateH, x = clamp(tS.sx, OCEAN.EDGE + w / 2, W - OCEAN.EDGE - w / 2), y0 = tS.sy + tS.labelY;
     return { x0: x - w / 2 - 4, y0: y0 - 4, x1: x + w / 2 + 4, y1: y0 + h + 4 };
+  }
+  /** A waiting photo drifts into view far out on the horizon (after another drifted away over it). */
+  function arriveWaiting(skip) {
+    const k = waiting.findIndex((i) => i !== skip);
+    if (k < 0) return;
+    const d = OCEAN.CAP - 0.5, s0 = scaleAt(cam, d * cam.Z0), D = bubbleSize(s0, d, U);
+    const y = cam.hy + cam.Hw * s0 - 0.3 * D;
+    const P = thought && tS.plateW ? plateRect() : null;
+    let bestX = null, bs = -Infinity;
+    for (let x = OCEAN.EDGE + D / 2; x <= W - OCEAN.EDGE - D / 2; x += 6) {
+      if (P && x + D / 2 > P.x0 - 4 && x - D / 2 < P.x1 + 4 && y + D / 2 > P.y0 && y - D / 2 < P.y1) continue;
+      let clear = Infinity;
+      for (const b of bubbles) clear = Math.min(clear, Math.hypot(b.sx - x, b.sy - y) - (b.D + D) / 2);
+      if (thought) clear = Math.min(clear, Math.hypot(tS.sx - x, tS.sy - y) - tS.r * tS.surf - D / 2);
+      if (clear > bs) { bs = clear; bestX = x; }
+    }
+    if (bestX == null || bs < OCEAN.BUBBLE_GAP) return;
+    const i = waiting.splice(k, 1)[0];
+    unproject(cam, bestX, y + 0.3 * D, wo);
+    bubbles.push({ i, x: wo.x, z: wo.z, vx: 0, vz: 0, yb: 0, vb: 0, rot: 0, rv: 0, D, sx: bestX, sy: y, alpha: 0, state: 'arrive', riseK: 0, lift: 0, glowAge: -1, morph: 1, glide: 0, from: null, ph: R() * TAU });
   }
   function riseWaiting() {
     // the roomiest near spot that is free now
@@ -1172,8 +1213,13 @@ export function create(ctx) {
         if (v > 0.08 && j > 2) {
           const h = gH[q];
           const acrossRows = j > 0 && j < n - 1 && h >= gH[q - COLS] && h > gH[q + COLS];
-          const alongRow = c > 0 && c < COLS - 1 && h >= gH[q - 1] && h > gH[q + 1];
-          on = acrossRows || alongRow ? 1 : 0;
+          // a crest crossing the rows only where the water curves along the row more than across it
+          // (an envelope's broad hump along a row is not a crest)
+          const cRow = c > 0 && c < COLS - 1 ? 2 * h - gH[q - 1] - gH[q + 1] : 0;
+          const cCol = j > 0 && j < n - 1 ? 2 * h - gH[q - COLS] - gH[q + COLS] : 0;
+          const alongRow = c > 0 && c < COLS - 1 && h >= gH[q - 1] && h > gH[q + 1] && cRow > 2 * Math.abs(cCol);
+          // 1: a crest running along the rows (it links along the row); 2: one crossing them (it links down)
+          on = acrossRows ? 1 : alongRow ? 2 : 0;
         }
         gMark[q] = on;
       }
@@ -1185,7 +1231,9 @@ export function create(ctx) {
       for (let c = 0; c < COLS; c++) {
         const q = o + c;
         if (!gMark[q]) continue;
-        const cand = c < COLS - 1 && gMark[q + 1] ? q + 1 : j < n - 1 ? (gMark[q + COLS] ? q + COLS : c < COLS - 1 && gMark[q + COLS + 1] ? q + COLS + 1 : c > 0 && gMark[q + COLS - 1] ? q + COLS - 1 : -1) : -1;
+        let cand = -1;
+        if (gMark[q] === 1) cand = c < COLS - 1 && gMark[q + 1] === 1 ? q + 1 : -1;
+        else if (j < n - 1) cand = gMark[q + COLS] === 2 ? q + COLS : c < COLS - 1 && gMark[q + COLS + 1] === 2 ? q + COLS + 1 : c > 0 && gMark[q + COLS - 1] === 2 ? q + COLS - 1 : -1;
         if (cand >= 0 && !gPred[cand]) { gSucc[q] = cand; gPred[cand] = 1; }
       }
     }
@@ -1306,7 +1354,7 @@ export function create(ctx) {
     }
     if (thought.draw) {
       try {
-        const la = tS.labelFade >= 0 ? 0.25 + 0.75 * Math.abs(1 - 2 * tS.labelFade) : 1;
+        const la = tS.labelFade >= 0 ? Math.pow(Math.abs(1 - 2 * tS.labelFade), 1.6) : 1;
         thought.draw(g, x, y, tS.surf, { radius: tS.r, tension: tS.tension, calm: tS.calm, charge: 0, reduced: rm, now, minX: OCEAN.EDGE, maxX: W - OCEAN.EDGE, labelWidth: tS.labelW || plan.textMax, labelY: tS.labelY, alpha: tS.alpha, labelAlpha: la });
         if (thought.plate) { tS.plateW = thought.plate.w; tS.plateH = thought.plate.h; }
       } catch { /* placeholder only */ }
@@ -1355,8 +1403,9 @@ export function create(ctx) {
       const h = sm.h * (rm ? 0.4 : 1) * (1 - 0.35 * mirrorK);
       pts[k] = wl - h * wo.s * 0.6 + (wake ? wake.at(x, wl) * 3 : 0) - bob * 0.15;
     }
-    // the body's base where it is now (it bobs; the water keeps its own level)
-    const bNow = base - bob;
+    // the body's base where it is now (it bobs; the water keeps its own level) — never below where it rests
+    // (the box's margin under the art is an estimate: tinting past it would stain the water)
+    const bNow = Math.min(base, base - bob) - 1;
     let wMin = Infinity; for (let k = 1; k < N; k++) wMin = Math.min(wMin, pts[k]);
     const sub = clamp((bNow - wMin) / Math.max(4, base - wl));   // how much of the lowest tenth is under water
     const cx = (hero.left + hero.right) / 2, rx = w / 2 + 6;
@@ -1365,17 +1414,18 @@ export function create(ctx) {
       const key = `${Math.round(wMin)}|${Math.round(bNow)}`;
       if (key !== hero.lipKey) {
         hero.lipKey = key;
-        const lg = g.createLinearGradient(0, wMin - 3, 0, bNow + 4);
-        lg.addColorStop(0, 'rgba(16,84,108,0)'); lg.addColorStop(0.25, 'rgba(14,78,104,0.32)'); lg.addColorStop(0.8, 'rgba(8,52,74,0.58)'); lg.addColorStop(1, 'rgba(6,36,52,0)');
+        const lg = g.createLinearGradient(0, wMin - 3, 0, bNow);
+        lg.addColorStop(0, 'rgba(16,84,108,0)'); lg.addColorStop(0.25, 'rgba(14,78,104,0.3)'); lg.addColorStop(0.75, 'rgba(8,52,74,0.5)'); lg.addColorStop(1, 'rgba(6,36,52,0)');
         hero.lipGrad = lg;
       }
       g.save();
       // only round the body's base: an ellipse clip, so the tint never reads as a box
-      g.beginPath(); g.ellipse(cx, bNow - 4, rx, Math.max(12, bNow - wMin + 10), 0, 0, TAU); g.clip();
+      // (the base's corners are rounded: the tint stays inside the body's width there)
+      g.beginPath(); g.ellipse(cx, bNow - 2, w * 0.47, Math.max(12, bNow - wMin + 8), 0, 0, TAU); g.clip();
       g.globalAlpha = k0;
-      g.beginPath(); g.moveTo(left, bNow + 6);
-      for (let k = 0; k <= N; k++) g.lineTo(left + (right - left) * (k / N), Math.min(pts[k], bNow + 6));
-      g.lineTo(right, bNow + 6); g.closePath();
+      g.beginPath(); g.moveTo(left, bNow);
+      for (let k = 0; k <= N; k++) g.lineTo(left + (right - left) * (k / N), Math.min(pts[k], bNow));
+      g.lineTo(right, bNow); g.closePath();
       g.fillStyle = hero.lipGrad; g.fill();
       g.restore();
     }
@@ -1491,13 +1541,18 @@ export function create(ctx) {
       } else {
         // a cold start: the sea is already here; the thought surfaces at home, bubbles rise
         hero.floatK = 0;
-        if (thought) { thoughtHome(); tS.from = null; tS.landK = 1; tS.alpha = 0; }
+        if (thought) {
+          const keep = restored?.thought ? { x: tS.x, z: tS.z } : null;
+          thoughtHome(); tS.from = null; tS.landK = 1; tS.alpha = 0;
+          if (keep) { tS.x = keep.x; tS.z = keep.z; }       // resumed: it is where it was left
+        }
         initBubbles(null);
+        if (restored?.photos) for (const ps of restored.photos) { const b = bubbles.find((q) => q.i === ps.i); if (b) { b.z = clamp(+ps.d || 1, -0.5, OCEAN.CAP) * cam.Z0; b.x = +ps.x || b.x; } }
         bubbles.forEach((b, k) => { b.riseK = -0.35 * k; });
         seedSwells([]);
         introAt = 2.6;
       }
-      try { thought?.react?.('appear'); } catch { /* optional */ }
+      if (!(handoff && from)) { try { thought?.react?.('appear'); } catch { /* optional */ } }
     },
     frame,
     pointer,
@@ -1549,7 +1604,7 @@ export function create(ctx) {
         out.push({ x: tS.sx - rr - 4, y: tS.sy - rr - 4, w: 2 * rr + 8, h: 2 * rr + 8, kind: 'thought' });
         if (tS.plateW) { const P = plateRect(); out.push({ x: P.x0, y: P.y0, w: P.x1 - P.x0, h: P.y1 - P.y0, kind: 'thought' }); }
       }
-      for (const b of bubbles) if (b.alpha > 0.1) out.push({ x: b.sx - b.D / 2 - 4, y: b.sy - b.D / 2 - 4, w: b.D + 8, h: b.D + 8, kind: 'bubble' });
+      for (const b of bubbles) if (b.alpha > 0.1 && !b.away) out.push({ x: b.sx - b.D / 2 - 4, y: b.sy - b.D / 2 - 4, w: b.D + 8, h: b.D + 8, kind: 'bubble' });
       for (const f of fingers) if (f.on && !(band && f.y < band.y + band.h)) out.push({ x: f.x - 60, y: f.y - 60, w: 120, h: 120, kind: 'finger' });
       return out;
     },
@@ -1569,6 +1624,8 @@ export function create(ctx) {
       if (s.complete) { complete = true; completeAt = 0; mirrorK = 1; dawnK = dawnT = 1; }
       if (s.thought && thought) { tS.z = clamp(+s.thought.d || 1, 1, OCEAN.CAP) * cam.Z0; tS.x = +s.thought.x || 0; }
       for (const ps of s.photoState || []) { const b = bubbles.find((q) => q.i === ps.i); if (b) { b.z = clamp(+ps.d || 1, -0.5, OCEAN.CAP) * cam.Z0; b.x = +ps.x || b.x; } }
+      // (restored before enter(): enter keeps these instead of starting everything at home)
+      restored = { thought: !!(s.thought && thought), photos: (s.photoState || []).slice(0, 7) };
       return true;
     },
     resize(w, h) {

@@ -337,6 +337,14 @@ test('world: slow long strokes and flicks make different seas; the thought drift
     // still visible and on screen the whole time; its words never under the band
     const T = w.debug.thought;
     assert.ok(T.alpha > 0.9 && T.sx > 20 && T.sx < W - 20);
+    // saved progress: ids and numbers only, small, and it survives the flow-store sanitiser and a restore
+    const { sanitizeState } = await import('../src/engine/flow-store.js');
+    const st = w.serialize();
+    assert.deepEqual(sanitizeState(st), st);
+    assert.ok(JSON.stringify(st).length < 2048, `${JSON.stringify(st).length} chars`);
+    assert.ok(!JSON.stringify(st).includes('boss'), 'never the person’s words');
+    assert.ok(st.discoveries.includes('distance') && st.discoveries.includes('long-waves'));
+    assert.ok(w.restore(st));
   } finally { D?.destroy(); dom.restore(); }
 });
 
@@ -384,7 +392,7 @@ test('world: a storm melts into the ocean — horizon from 0.655H to 0.44H, post
   } finally { D?.destroy(); dom.restore(); }
 });
 
-test('world: reduced motion — a straight crossfade with everything already in place; amplitude ×0.4', async () => {
+test('world: reduced motion (+ low stimulation) — a straight crossfade with everything already in place', async () => {
   const dom = installFakeDom();
   let D = null;
   try {
@@ -393,7 +401,7 @@ test('world: reduced motion — a straight crossfade with everything already in 
     const mallow = fakeMallow(W, H), thought = fakeThought();
     const STORM = { ...WORLDS[0], load: async () => ({ create: () => ({ prepare() {}, enter() {}, frame() {}, pointer() {}, get progress() { return 1; }, get complete() { return true; }, get metrics() { return {}; },
       handoff: () => ({ horizonY: 0.655 * H, seeds: [], thought: { x: 120, y: 470, scale: 1, tension: 0.3 }, photos: [], energy: 0 }), serialize: () => ({ v: 1 }), restore() {}, pause() {}, resume() {}, destroy() {} }) }) };
-    D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow, thought, registry: createRegistry([STORM, WORLDS[1]]), ticker: fakeTicker(), store: memStore(), reducedMotion: true, subtitles: { say: () => Promise.resolve(), choice: () => new Promise(() => {}), clear() {} } });
+    D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow, thought, registry: createRegistry([STORM, WORLDS[1]]), ticker: fakeTicker(), store: memStore(), reducedMotion: true, lowStimulation: true, subtitles: { say: () => Promise.resolve(), choice: () => new Promise(() => {}), clear() {} } });
     await D.start({ worldId: 'static-storm' });
     D.next();
     for (let i = 0; i < 200 && D.state.phase !== 'melting'; i++) { D.debug.step(1 / 60); await new Promise((r) => setTimeout(r, 2)); }
@@ -402,6 +410,25 @@ test('world: reduced motion — a straight crossfade with everything already in 
     assert.ok(!ocean.debug.thought.from, 'the thought is already on the water');
     steps(D, 2);
     assert.equal(D.state.worldId, 'luminous-ocean', 'the crossfade took ~1.6 s');
+  } finally { D?.destroy(); dom.restore(); }
+});
+
+test('world: no words and no photos (a gentle world for care) — still a whole sea, it completes on the long-period route', async () => {
+  const dom = installFakeDom();
+  let D = null;
+  try {
+    const { createHushflow } = await import('../src/hushfold/flow/director.js');
+    const W = 390, H = 844, mallow = fakeMallow(W, H), found = [];
+    D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow, thought: null, registry: createRegistry(WORLDS), ticker: fakeTicker(), store: memStore(), reducedMotion: false, subtitles: { say: () => Promise.resolve(), choice: () => new Promise(() => {}), clear() {} } });
+    D.on('discovery', (e) => found.push(e.id));
+    await D.start({ worldId: 'luminous-ocean', emotion: 'sad', intention: 'calm' });
+    const w = D.world;
+    steps(D, 1);
+    assert.equal(w.metrics.dist, null, 'no thought, no distance');
+    for (let k = 0; k < 4; k++) { stroke(D, W / 2 + 20 * k - 30, 790, W / 2 + 20 * k - 20, 420, 0.18 * 390, 7); steps(D, 3); }
+    steps(D, 12);
+    assert.ok(w.complete, `complete on the period route (long ${w.metrics.long}, period ${w.metrics.period.toFixed(1)})`);
+    assert.ok(!found.includes('distance'));
   } finally { D?.destroy(); dom.restore(); }
 });
 

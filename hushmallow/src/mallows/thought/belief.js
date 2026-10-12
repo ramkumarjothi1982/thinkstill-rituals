@@ -100,7 +100,7 @@ export class BeliefMallow extends ThoughtMallow {
       this._heavy('prop', 0.34 * a, 0.06, w * 0.5, w * 0.07, 0.34, false);
     } else if (this.prop === 'thread') {
       // the thread pinches a waist (two hands squeezing the middle in, about 0.15 W); loose, it lets go
-      const pinch = w * 0.19 * a, loose = ex > 0.88;
+      const pinch = w * 0.085 * a, loose = ex > 0.88;
       this._tug('propL', 0.03 * a, 0.74, pinch, 0, 0.22, loose);
       this._tug('propR', 0.97 * a, 0.74, -pinch, 0, 0.22, loose);
     } else if (this.prop === 'charm') {
@@ -173,17 +173,20 @@ export class BeliefMallow extends ThoughtMallow {
     } else if (this.prop === 'shell') {
       // a hood over the head and the left eye, hinged on the rim at the top right (B). Explored, it
       // swings open over the top (turning over as it goes) and rests open against the right side.
-      const A = this._at(0.04, 0.8, pA), B = this._at(0.86, 0.02, pB);
+      const A = this._at(0.04, 0.8, pA), B = this._at(0.84, 0.04, pB);
+      // the hinge sits on the rim itself (the lattice corner is outside the rounded body)
+      const sy = this.surfaceY(B.x);
+      if (Number.isFinite(sy)) B.y = sy + 1.5;
       const L = Math.hypot(B.x - A.x, B.y - A.y);
       ps.size = L * 1.06 * (1 - 0.28 * ex);
       const slope = Math.atan2(B.y - A.y, B.x - A.x);
       ps.lift = lerp(ps.lift, ex, Math.min(1, dt * (rm ? 8 : 1.6)));
-      const sw = smooth01(ps.lift);
-      // closed: pointing from over the eye up to the hinge; open: hanging from the hinge down the side
-      const OPEN = SHELL_OPEN + ang0;
-      let target = slope + (OPEN - slope + 2 * Math.PI * (OPEN < slope ? 1 : 0)) * sw;
-      this._spring(dt, target, 60, 10);
-      ps.flip = 1 - 2 * smooth01((sw - 0.3) / 0.4);
+      // two phases: up to half explored it lifts like a lid (about 75°, the face shows); after that it
+      // swings on over the top, turning over as it passes upright, and rests open against the side
+      const OPEN = SHELL_OPEN + ang0, total = OPEN - slope + 2 * Math.PI * (OPEN < slope ? 1 : 0), LID = 1.3;
+      const k = ps.lift, rot = k < 0.5 ? LID * smooth01(k / 0.5) : LID + (total - LID) * smooth01((k - 0.5) / 0.5);
+      this._spring(dt, slope + rot, 60, 10);
+      ps.flip = 1 - 2 * smooth01((k - 0.62) / 0.16);
       // the hinge end stays on the rim: the shell is drawn from its free end toward B
       ps.hx = B.x; ps.hy = B.y;
       ps.x = B.x - Math.cos(ps.ang) * ps.size; ps.y = B.y - Math.sin(ps.ang) * ps.size;

@@ -8,7 +8,7 @@
 
 import { HEAVY_EMOTIONS } from './vocab.js';
 import { LENSES } from './prompt.js';
-import { tidy, words, wordCount, sentences, contentStems, allStems, meaningStems, jaccard, numberTokens, stem, IRREGULAR as TEXT_IRREGULAR } from './text.js';
+import { tidy, words, wordCount, sentences, contentStems, allStems, meaningStems, jaccard, numberTokens, stem, plainStem, wordsAndParts, STOPWORDS, BROAD_SYNONYMS, IRREGULAR as TEXT_IRREGULAR } from './text.js';
 
 export const LINE_FIELDS = /** @type {const} */ (['subtitle_line_1', 'subtitle_line_2']);
 export const EXPLORE_FIELDS = /** @type {const} */ (['known_fact', 'possible_assumption', 'alternative_angle', 'practical_next_step']);
@@ -158,7 +158,7 @@ const OTHER_NOUNS = ['boss(?:es)?', 'managers?', 'partners?', 'boyfriends?', 'gi
 const OTHERS = R`(?:he|she|they|(?:your|their|his|her) (?:${OTHER_NOUNS.join('|')})|(?:the|those) people (?:around|in|at|near|close to|with) (?:you|your [\p{L}'-]+)|(?:most|all|the) people|everyone|everybody|nobody|no one|no-one|people|others|other people)`;
 const ADVS = R`(?: (?:definitely|really|just|probably|certainly|surely|actually|only|still|totally|secretly|likely|simply|honestly|genuinely|clearly|obviously|even|already|always|never))*`;
 // Mental verbs: "he loves you", "she must hate me", "they don't care".
-const MIND_VERB = R`(?:loves?|liked?|likes|cares?|cared|hates?|hated|resents?|respects?|values?|admires?|misses|missed|wants?|wanted|meant|means (?:it|to|well)|mean (?:it|to|well|anything by it|any harm)|rates? you|rated you|thinks? (?:highly|the world) of|intended|intends|feels?|felt|thinks?|thought|knows?|knew|forgot|forgets|noticed|notices|notice|remembers?|remembered|judges?|judged|blames?|blamed|trusts?|trusted|tried to|ignored|ignores?|minds?|minded|regrets?|appreciates?|appreciated|prefers?|preferred|favou?rs?|favou?red|adores?|envies|envied|dislikes?|disliked|understands?|understood|realises?|realised|realizes?|realized|forgives?|forgave)`;
+const MIND_VERB = R`(?:loves?|loved|enjoys?|enjoyed|needs? (?:a bit of |some |more |a little |a lot of |plenty of )?(?:space|time|you|rest|quiet|a break|a day|a moment|a minute|a while|a hug|a sorry|an apology|to (?:hear|know|feel|be|see|talk|calm|cool|think))|needed (?:space|time|you|a break|to (?:hear|know|feel|be|see|talk))|liked?|likes|cares?|cared|hates?|hated|resents?|respects?|values?|admires?|misses|missed|wants?|wanted|meant|means (?:it|to|well)|mean (?:it|to|well|anything by it|any harm)|rates? you|rated you|thinks? (?:highly|the world) of|intended|intends|feels?|felt|thinks?|thought|knows?|knew|forgot|forgets|noticed|notices|notice|remembers?|remembered|judges?|judged|blames?|blamed|trusts?|trusted|tried to|ignored|ignores?|minds?|minded|regrets?|appreciates?|appreciated|prefers?|preferred|favou?rs?|favou?red|adores?|envies|envied|dislikes?|disliked|understands?|understood|realises?|realised|realizes?|realized|forgives?|forgave)`;
 // Mental states need a linking verb: "she is annoyed", "he was just busy".
 const MIND_STATE = R`(?:annoyed|angry|upset|mad|disappointed|proud|jealous|threatened|insecure|busy|stressed|distracted|overwhelmed|happy|fine|okay|interested|bored|embarrassed|hurt|sorry|over it|ignoring|avoiding|judging|thinking|trying to|testing|punishing|annoyed with|fed up|worried|scared|afraid|anxious|nervous|concerned|protective|ashamed|tired|exhausted|lonely|sad|grieving|struggling|going through something|joking|teasing|kidding|messing about|messing around|being playful|being kind|being honest|being nice|impressed|pleased|grateful|thankful|in love|attracted|threatened by you|intimidated|envious)`;
 // A short phrase may sit between the person and the verb: "everyone at that dinner was judging you".
@@ -167,6 +167,8 @@ const PP = R`(?: (?:at|in|on|from|around|across|with|near|close to) (?:(?:the|th
 const CLAIM_G = new RegExp(R`\b(${OTHERS})${PP}${ADVS}((?: does| did| do| will| would| must| has| have| had| can)?(?: not| never)?)${ADVS} (${MIND_VERB})\b`, 'giu');
 const STATE_G = new RegExp(R`\b(${OTHERS})${PP}((?: is| are| was| were| will be| would be| must be| has been| have been| had been| seems to be)(?: not| never)?)${ADVS} (${MIND_STATE})\b`, 'giu');
 const OTHERS_RE = new RegExp(R`\b${OTHERS}\b`, 'iu');
+const OTHERS_G = new RegExp(R`\b(${OTHERS})\b`, 'giu');
+const COORD_HINT = /\b(?:and|then|so)\b/iu;
 // A mind word joined to a restated event with the same subject ("…noticed and thinks…").
 const COORD_MIND = new RegExp(R`^(?: [\p{L}'-]+){0,4}? (?:and|then|so)${ADVS}(?: does| did| do)?(?: not| never)?${ADVS} (${MIND_VERB}|(?:is|was|are|were)(?: not)?${ADVS} ${MIND_STATE})\b`, 'iu');
 const THIRD_PARTY_RE = new RegExp(R`\b(?:he|she|they|him|her|them|his|their|${OTHER_NOUNS.join('|')}|everyone|everybody|nobody|no one|no-one|people)\b`, 'iu');
@@ -181,7 +183,7 @@ const PREDICT_G = new RegExp(R`\b(${OTHERS})${PP}${ADVS}((?: will| would| is goi
 const REL_G = new RegExp(R`\b((?:all )?(?:the|those) (?:people|friends|ones)|people|everyone|everybody|plenty of people|lots of people|many people|so many people)(?: around you| in your life)? (?:who|that) (?:really |truly |still |all |genuinely |deeply |already )?(love|loves|care|cares|like|likes|value|values|respect|respects|adore|adores|appreciate|appreciates|miss|misses|think about|believe in) (?:about )?you\b`, 'giu');
 // "liked a photo" is something they did, not a feeling.
 const POST_OBJECT = /^ (?:a|an|his|her|their|the|your|my|some|all|every|each|one of|two of|several|another|old|recent)(?: [\p{L}'-]+'s| [\p{L}'-]+)? (?:photos?|posts?|pictures?|pics?|stor(?:y|ies)|comments?|tweets?|status|statuses|reels?|videos?|selfies?|updates?|messages?)\b/iu;
-const LIKE_WORDS = new Set(['like', 'liked', 'likes', 'liking']);
+const LIKE_WORDS = new Set(['like', 'liked', 'likes', 'liking', 'love', 'loved', 'loves']);
 const HEDGE_SRC = String.raw`\b(?:may|might|could|can(?! not)|perhaps|possibly|maybe|if|whether|unless|whatever|not sure|do not know|don't know|can't know|cannot know|can not know|can't tell|cannot tell|no way to know|unclear|unknown|guess(?:ing)?|wonder|question|possibilit(?:y|ies)|possible|seems?|seemed|as if|does not prove|doesn't prove|is not proof|isn't proof|not proof|does not mean|doesn't mean|does not tell|doesn't tell|without knowing|has not said|hasn't said|have not said|haven't said|one reading|one explanation|explanations|interpretations?|story|stories|assum\w*|guesses|only (?:he|she|they|him|her|them) (?:knows?|can (?:say|tell|answer|explain)))\b`;
 // "Some people find it hard to say things they still feel" is a general
 // statement about how people work, so it covers its clause. A quantity word
@@ -204,6 +206,9 @@ const REPORT_IN_INPUT = /\b(?:said|says|say|told|tells|tell|texted|text|messaged
 // An embedded question names a topic, it does not assert: "how people feel
 // about you is mixed", "what he thinks is still unknown".
 const WH_BEFORE = /\b(?:how|what|why|when|where)(?: much| far| often| exactly)?\s*$/iu;
+// …unless the verb before it takes the feeling as given: "does not change
+// how much she values you" still says she values you.
+const PRESUPPOSE_WH = /\b(?:change|changes|changed|affect|affects|alter|alters|reduce|reduces|lessen|lessens|erase|erases|undo|undoes|take away from|(?<!(?:not|never) )(?:shows?|showed|proves?|proved|reflects?))\s+(?:how|what)(?: much| far| deeply)?\s*$/iu;
 // A frame covers a claim after it, unless a new clause starts in between.
 const BOUNDARY = /\b(?:so|because|since|then|which|until)\b|\band\b(?! that\b)/iu;
 const NEG_INPUT = /\b(?:not|never|no|nobody|none|nothing)\b|n't\b/iu;
@@ -294,6 +299,12 @@ function claimsOthersMinds(sentence, echo) {
         // "He liked a photo" reports something he did, not how he feels.
         .filter((c) => !(LIKE_WORDS.has(c.word.toLowerCase()) && POST_OBJECT.test(clause.slice(c.end))));
       for (const m of clause.matchAll(REL_G)) claims.push({ at: m.index ?? 0, end: (m.index ?? 0) + m[0].length, subject: m[1], neg: false, word: m[2] });
+      // A mind word joined to something they did: "Your sister crossed a line and knew it."
+      if (COORD_HINT.test(clause)) for (const m of clause.matchAll(OTHERS_G)) {
+        const end = (m.index ?? 0) + m[0].length;
+        const co = COORD_MIND.exec(clause.slice(end));
+        if (co) claims.push({ at: m.index ?? 0, end: end + co[0].length, subject: m[1], neg: /\bnot\b|\bnever\b/.test(co[0]), word: co[1].split(' ').pop() || co[1] });
+      }
       const motive = MOTIVE_RE.exec(clause);
       if (motive && OTHERS_RE.test(clause.slice(0, motive.index))) claims.push({ at: motive.index, end: motive.index + motive[0].length, subject: '', neg: false, word: 'motive' });
       const notPersonal = NOT_PERSONAL_RE.test(clause);
@@ -306,7 +317,8 @@ function claimsOthersMinds(sentence, echo) {
         const negReport = spans(NEG_REPORT_G, clause);
         const report = echo && echo.report ? spans(REPORT_G, clause) : [];
         for (const c of claims) {
-          if (hedges.some((h) => h.start < c.end) || WH_BEFORE.test(clause.slice(0, c.at))) continue;
+          const pre = clause.slice(0, c.at);
+          if (hedges.some((h) => h.start < c.end) || (WH_BEFORE.test(pre) && !PRESUPPOSE_WH.test(pre))) continue;
           if (covered(attrib, clause, c.at) || covered(negReport, clause, c.at)) continue;
           if (echo && (echoes(c, echo) || covered(report, clause, c.at))) {
             // "Your manager noticed and thinks you are careless": the echo
@@ -361,7 +373,44 @@ const SENTENCE_START_OK = new Set(['i', "i'm", "i'd", "i'll", "i've", 'zuzu', 'g
 const DATE_WORDS = new Set(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'january', 'february', 'march', 'april',
   'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december', 'christmas', 'easter', 'eid', 'diwali', 'hanukkah', 'ramadan',
   'halloween', 'boxing']);
-const DATE_PREP = /\b(?:by|before|until|till|on|this|next|over|for|from|at|after|around)\s*$/iu;
+const DATE_PREP = /\b(?:by|before|until|till|on|this|next|over|for|from|at|after|around|in|during)\s*$/iu;
+
+// The first word of a sentence is capitalised anyway, so there it is a name
+// only when it is a common given name, or when it does what a person does:
+// "Sarah may still be working out what to say", "Tom might need a day",
+// "Ella's silence…". Pronouns, roles and everyday openers are not names.
+const OPENERS = new Set(`i you he she it we they me him her us them this that these those there here the a an your my his her their our its
+what which who why how when where if maybe perhaps only just even still sometimes often then so but and or not no yes both either neither
+everyone everybody someone somebody anyone anybody nobody no-one nothing something anything everything people others all each some most many few none
+one two three four five six seven eight nine ten mum mom dad nan gran grandma grandad grandpa mother father sister brother son daughter boss manager
+partner friend friends colleague colleagues teacher family parents kids children auntie aunt uncle cousin wife husband girlfriend boyfriend ex flatmate
+landlord doctor nurse today tonight tomorrow yesterday now time life work love silence distance sleep rest change space news school money home food
+feedback waiting worry fear anger shame guilt grief luck hope`.split(/\s+/));
+const NOT_A_NAME = /(?:ing|ness|tion|sion|ment|ity|ence|ance|ism|ship|hood|dom|ful|less|ly|ed)$/u;
+const GIVEN_NAMES = new Set(`sarah emma emily olivia sophie sophia chloe charlotte jessica jess lucy hannah amy laura rachel rebecca becky megan katie kate lauren amelia
+isla ava mia ella ellie zoe abigail alice anna georgia natalie claire helen karen lisa michelle nicola kelly jen jenny beth freya evie harriet phoebe imogen
+rosie molly maya nina eva zara priya aisha fatima sunita tom tommy james jack harry oliver ollie charlie george william thomas daniel dan danny joshua josh
+ben sam joe luke matt matthew david dave chris michael mike paul andrew andy steve john peter pete richard robert adam ryan liam noah leo oscar alfie archie
+ethan jacob alex jamie freddie kyle connor callum lewis scott jordan aidan mohammed muhammad ali omar raj anil ahmed jake finn harvey theo arthur henry
+edward louis toby dylan tyler kieran nathan jason gary kevin simon ian neil graham carl`.split(/\s+/));
+const PERSON_PRED = /^\s+(?:(?:may|might|could|will|would|must|should)(?:\s+(?:still|just|not|never|also|really|probably|honestly|already))*\s+(?:be\s+[\p{L}]+ing|need|want|think|know|say|answer|reply|text|call|ring|message|come round|care|mind|miss|forgive|regret|wonder|worry|have (?:been|meant|wanted|thought|felt|seen|forgotten|said))\b|(?:has|had|is|was|does|did)(?:n't| not| never)?\s+(?:(?:still|just|probably|really|already|never)\s+)*(?:said|told|texted|replied|answered|called|rung|messaged|been in touch|got back|cancelled|invited|asked|forgotten|apologised|meant|busy|upset|angry|annoyed|hurt|cross|avoiding|ignoring|reply|text|call)\b|(?:said|says|told|texted|replied|answered|thinks|thought|feels|felt|knows|knew|wants|wanted|loves|loved|hates|hated|misses|missed|cancelled|invited|asked|forgot|cares|cared|meant|apologised|promised|admitted|agreed|decided|hasn't|didn't|won't|doesn't|isn't|wasn't)\b)/iu;
+const PERSON_THING = /^\s+(?:silence|message|messages|text|texts|reply|replies|reaction|mood|side|view|words|answer|party|birthday|plans|friends|feelings|face|voice)\b/iu;
+
+/**
+ * Why a number counts as an invented fact, for the regeneration: the model is
+ * told what made it a fact, not just that counts in steps are fine.
+ * @param {import('./text.js').NumberToken} tok @param {number} from @param {FactSpan[]} facts
+ */
+function numberMessage(tok, from, facts) {
+  const f = facts.find((sp) => tok.start >= sp.start && tok.end <= sp.end);
+  let why;
+  if (f) why = `${f.why}, so it reads as a fact about their situation${from >= 0 && tok.start >= from ? ', not part of the step' : ''}`;
+  else if (from < 0) why = 'here it reads as a fact about their situation';
+  else if (tok.start < from) why = 'it comes before the suggestion, so it reads as a fact about their situation';
+  else if ((tok.value ?? 0) > 10) why = 'only a small count (up to ten) or a time span ("for twenty minutes") reads as part of a step';
+  else why = 'it does not count something to do or a length of time, so it reads as a fact about their situation';
+  return `Do not add details the person did not give (the number "${tok.raw}"): ${why}. Use their numbers, or none.`;
+}
 
 // Everyday objects and abbreviations a situation implies ("your CV" for a
 // redundancy worry, "your GP"): not names or facts the person withheld.
@@ -375,23 +424,43 @@ const ECHO_FIELDS = new Set(['known_fact', 'subtitle_line_1', 'subtitle_line_2',
 
 // --- invented details: numbers ------------------------------------------------
 //
-// A number is the person's detail when they gave it. Two things are checked:
-//  1. A number counting the same unit as one of theirs must be theirs: they
-//     said "two weeks", so "three weeks" is wrong wherever it appears ("After
-//     three weeks of silence…", "for three weeks"), and so is "three tests"
-//     after "the second time". An ordinal may name an earlier one ("your
-//     second test" of three).
+// A number is the person's detail when they gave it. Each number in a field is
+// checked twice:
+//  1. Against the person's own units, on the whole sentence: they said "two
+//     weeks", so "three weeks" is wrong wherever it appears ("After three
+//     weeks of silence…", "for three weeks"), and so is "three tests" after
+//     "the second time", or "four friends" after "three people came". Only a
+//     forward-looking time box ("give it another week", "spend twenty
+//     minutes"), a vantage point ahead ("in five years' time"), a count of
+//     people to contact ("invite two friends") and a repeat inside a step
+//     ("say it three times") are left alone. An ordinal may name an earlier
+//     one ("your second test" of three), and the next one may be looked at
+//     ahead ("before booking test number four", "the third check is only in
+//     your head" after "I checked twice").
 //  2. Any other number they never gave is invented, apart from "one" and
-//     "two", vague plurals ("hundreds of emails") and the idioms below.
-// Not counted at all, because they are about the future, not the situation:
-// inside a suggested action (practical_next_step, or a line that proposes
-// one), a time box after a forward-looking verb ("spend twenty minutes",
-// "wait 48 hours", "for the next hour"), a small count of what to do
-// ("write down three things", "two or three people", "say them aloud three
-// times") and a clock time with its marker ("until 9 tonight", "at 7.30");
-// and outside known_fact, a vantage point ahead ("in five years' time", "six
-// months from now", "in five years, will…"). A count followed by a clause
-// about the past ("the four strengths your manager praised") is a fact again.
+//     "two", vague plurals ("hundreds of emails"), a general remark ("on the
+//     tenth replay…") and what a suggested step says about the future.
+//
+// A suggested step is practical_next_step, or the part of a subtitle line from
+// where it starts proposing something: an imperative clause ("Update your
+// CV…", "…; now knock and offer him…") or a question that asks the person to
+// do or choose something ("Could you…?", "Which… would you…?"). A question
+// about the situation ("Did the six people in that meeting…?") is not one.
+// Inside a step, these are about the future and not counted:
+//  * a small count (up to ten) before a plural noun, with up to two words
+//    between ("three things", "four cheap meals", "two or three people", "say
+//    it three times");
+//  * a time span: "for/over N minutes" (any unit up to weeks), "a
+//    twenty-minute walk", "two evenings this week", or a forward-looking verb
+//    with its time box ("spend twenty minutes", "wait 48 hours");
+//  * a clock time with its marker ("until 9 tonight", "at 7.30").
+// A count is a fact again when the words around it place it in the past:
+// "the four friends who came", "the three colleagues who saw it", "the six
+// people in that meeting", "the four strengths your manager praised", "three
+// people came", "the last three", "which of the four…"; and a time span is a
+// fact when a past or perfect verb leads up to it ("you've waited for three
+// weeks"). Choosing from their past is still a step ("the three things you
+// loved most", "three things that went well").
 
 const NUM = R`(?:\d{1,3}(?:[.,]\d{1,2})?|(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:-(?:one|two|three|four|five|six|seven|eight|nine))?|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|a hundred|a dozen)`;
 const SMALL_NUM = R`(?:[1-9]|10|one|two|three|four|five|six|seven|eight|nine|ten)`;
@@ -402,32 +471,106 @@ const FORWARD_BOX = new RegExp(R`\b${FORWARD_VERB}(?: (?!the\b|those\b|these\b|y
   + R`|\b(?:for|in|within|over|during) the (?:next|coming|first) ${NUM} ${TIME_UNIT}\b`
   + R`|\b(?:another|one more) ${NUM} ${TIME_UNIT}\b|\b${NUM} more ${TIME_UNIT}\b`
   + R`|\bin (?:about |around )?${NUM} (?:minutes?|mins?|hours?)(?:'s?| time)?\b`, 'giu');
+// Any time span inside a step: "for fifteen minutes", "over three evenings",
+// "a twenty-minute walk", "a three-day buffer", "two evenings this week".
+const SPAN_UNIT = R`(?:minutes?|mins?|seconds?|hours?|hrs?|days?|nights?|evenings?|mornings?|afternoons?|lunchtimes?|weeks?|weekends?)`;
+const TIME_SPAN = new RegExp(R`\b(?:for|over|within|across|during)\s+(?:about |around |roughly |just |only |at least |at most |no more than |up to |a good )?${NUM}(?:-| )${SPAN_UNIT}\b`
+  + R`|\b(?:a|an|one)\s+${NUM}-(?:minute|min|second|hour|day|night|evening|week)\b`
+  + R`|\b${NUM}\s+(?:minutes|hours|days|nights|evenings|mornings|afternoons|lunchtimes|weekends)\b(?=\s+(?:this|next|a|each|per|every|out|off|before|until|till|over|in|of (?:your|the) (?:week|weekend|month))\b)`, 'giu');
 // A small count of what to do. Never "times" (that is usually a count of
 // occasions); see REPEAT_ACTION for "say it three times".
 const ACTION_COUNT = new RegExp(R`\b${SMALL_NUM}(?: [\p{L}'-]+){0,2}? (?:things?|points?|questions?|lines?|sentences?|words?|examples?|reasons?|ways?|ideas?|items?|pieces?|moments?|steps?|names?|options?|bits?|breaths?|lessons?|notes?|parts?|wins?|strengths?|skills?|differences?|priorities|tasks?|choices?|bullet points?|minutes?|people|friends?|courses?|places?|flats?|jobs?|facts?|memories|photos?|messages?|texts?)\b`, 'giu');
 const ACTION_RANGE = new RegExp(R`\b${SMALL_NUM} or ${SMALL_NUM}(?: [\p{L}'-]+){1,3}\b`, 'giu');
-const REPEAT_ACTION = new RegExp(R`\b(?:say|saying|read|reading|practise|practising|repeat|rehearse|run (?:it|them|that|this) through|try|do|breathe|write|play|count)(?: (?!the\b|those\b|these\b|your\b|his\b|her\b|their\b)[\p{L}'-]+){0,3}? ${SMALL_NUM}(?: or ${SMALL_NUM})? times\b`, 'giu');
+const REPEAT_ACTION = new RegExp(R`\b(?:say|saying|read|reading|practise|practising|repeat|rehearse|run (?:it|them|that|this) through|try|do|breathe|write|play|count|check|look)(?: (?!the\b|those\b|these\b|your\b|his\b|her\b|their\b)[\p{L}'-]+){0,3}? (?:${SMALL_NUM}(?: or ${SMALL_NUM})? times|twice)\b`, 'giu');
+// Any small count before a plural noun, with up to two words between ("three
+// cheap meals", "two short emails"): found word by word (countSpans below).
+const COUNT_HEAD = new RegExp(R`\b${SMALL_NUM}\b`, 'giu');
+const NOT_MODIFIER = new Set(`of the a an and or to in on at for from with by into onto about you your yours i me my he him his she her hers it its we us our they them their is was are were be been being has have had do did does will would can could may might should must shall this that these those more less than then times ago since before after so but if as all both each every any some no not there here who whom which what when where why how one two three four five six seven eight nine ten`.split(' '));
+const NOT_PLURAL = new Set(`this his has was is its us yes less unless across always perhaps sometimes besides towards afterwards whereas thus plus minus news series means maths physics lens gas bus yours ours theirs hers does goes says gets makes takes needs wants keeps feels seems looks sounds lets puts tells asks gives means times its`.split(' '));
+// Time units are counted as spans (TIME_SPAN, FORWARD_BOX), not as things to
+// do, except the parts of a day or week a step can plan ("three evenings").
+const SPAN_WORD = /^(?:minutes?|mins?|seconds?|hours?|hrs?|days?|nights?|weeks?|months?|years?|decades?)$/u;
+// What a step picks out of their own past or present ("the three things that
+// made you love it", "the two moments you were proud of"): a choice, not a
+// count of what happened. People and occasions are not ("the four friends
+// who came", "the three times you were late").
+const SELECTION_NOUN = /^(?:things?|points?|questions?|lines?|sentences?|words?|examples?|reasons?|ways?|ideas?|items?|pieces?|moments?|steps?|bits?|lessons?|notes?|parts?|wins?|strengths?|skills?|differences?|priorities|tasks?|choices?|memories|details?|qualities|features?|habits?|costs?|bills?|expenses?|meals?|dinners?|options?)$/u;
+/** @param {string} w */
+const isPluralNoun = (w) => w.length >= 3 && /s$/u.test(w) && !/(?:ss|us|is|'s)$/u.test(w) && !NOT_PLURAL.has(w) && !SPAN_WORD.test(w);
 // A clock time needs its marker: "after three" is not a time; "until 9 tonight" is.
 const CLOCK_TIME = new RegExp(R`\b(?:at|by|until|till|before|after|from|around|about)\s+(?:\d{1,2}[:.]\d{2}(?:\s*(?:am|pm|a\.m\.|p\.m\.))?|${NUM}\s*(?:am|pm|a\.m\.|p\.m\.|o'clock)|${NUM}(?=\s+(?:tonight|tomorrow|this (?:evening|afternoon|morning)|today|on (?:mon|tues|wednes|thurs|fri|satur|sun)day)\b))(?![\p{L}\p{N}])|\b\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm)\b`, 'giu');
 // A vantage point ahead of now (the distance-or-time lens). Never "after".
 const VANTAGE = new RegExp(R`\bin (?:about |roughly |around )?${NUM} (?:weeks?|months?|years?)(?:'s?)? time\b|\b${NUM} (?:days?|weeks?|months?|years?) from (?:now|today)\b|\bin (?:about |roughly |around )?${NUM} (?:weeks?|months?|years?),? (?=(?:will|would|could|might|does|do|is|are|how|what|who|which|whether|you(?:'ll| will| might| may)|it(?:'ll| will| might| may)|this(?:'ll| will| might)|that(?:'ll| will| might)|anyone|anybody)\b)`, 'giu');
-// A count is a claim about the past again when a clause about the past
-// follows it in the same clause.
+
+// What places a count in the past. Each is tried on the words after the count
+// (THIRD_PAST, YOU_PAST, REL_PAST, IN_SITUATION, DIRECT_PAST) or before it
+// (FACT_BEFORE, PAST_BEFORE).
+const PAST_VERB = R`(?:came|went|saw|said|told|left|got|took|made|stayed|showed|turned up|laughed|noticed|watched|sat|stood|heard|knew|thought|felt|gave|sent|wrote|brought|forgot|met|ran|spoke|was|were|did|(?!(?:need|feed|speed|bleed|seed|heed|breed|proceed|succeed|exceed)\b)[\p{L}]{2,}ed)`;
+// "the four strengths your manager praised", "…that he said".
 const THIRD_PAST = new RegExp(R`^\s*(?:(?:that|which|who|when)\s+)?(?:(?:your|his|her|their|the|my|our) [\p{L}'-]+(?: [\p{L}'-]+)?|he|she|they|people|someone|everyone|everybody)\s+(?:[\p{L}'-]+ly\s+)?(?:had|has|have|did|was|were|said|told|gave|made|took|wrote|sent|thought|felt|knew|saw|left|got|brought|forgot|meant|chose|found|kept|showed|shown|[\p{L}]+ed)\b`, 'iu');
+// "the three times you were late".
 const YOU_PAST = /^\s*(?:(?:that|which|when)\s+)?you(?: have| had|'ve|'d)?\s+(?!most\b|best\b|really\b|would\b|could\b|might\b|want\b|like\b|love\b|need\b|can\b|will\b)(?:[\p{L}'-]+ly\s+)?(?:had|did|were|was|made|got|took|said|wrote|sent|forgot|missed|failed|lost|[\p{L}]+ed)\b/iu;
+// "the four friends who came", "the ten people who did not come", "the three who laughed".
+const REL_PAST = new RegExp(R`^\s*(?:[\p{L}'-]+\s+){0,2}?(?:who|that|which|whom)\s+(?:(?:all|both|really|actually|just|already|still|never|even)\s+)*(?:(?:did|didn't|had|hadn't|have|haven't|has|hasn't|was|wasn't|were|weren't)(?:\s+(?:not|never|all|already|just|really|even|been))?\s+[\p{L}'-]+|${PAST_VERB})\b`, 'iu');
+// "the six people in that meeting", "the five people at the table".
+const IN_SITUATION = /^\s*(?:[\p{L}'-]+\s+)?(?:in|at|from|on|during)\s+(?:that|the|this|those|your|his|her|their)\s+(?!(?:next|coming|list|card|page|phone|notes?|diary|calendar|fridge|wall)\b)/iu;
+// "three people came", "two friends cancelled" (participles used as
+// adjectives, "two meals based on…", are not events).
+const DIRECT_PAST = new RegExp(R`^\s*(?:(?:all|both|never|already|just|really|actually)\s+)?(?!(?:did|didn't|was|were|had|hadn't)\s+(?:you|they|we|he|she|it|i)\b)(?!(?:based|aimed|planned|priced|timed|linked|related|tied|focused|focussed|centred|geared|designed|sized|spaced|placed|built|made|needed|wanted|chosen)\b)(?:${PAST_VERB}|had|hadn't|didn't|turned)\b`, 'iu');
+// Before the count: "the last three", "of the four", "those three".
+const FACT_BEFORE = /\b(?:last|previous|past|those)\s*$|\b(?:of|from|among) (?:the|those|these|your|his|her|their)\s*$/iu;
+const DEFINITE_BEFORE = /\b(?:the|those|that|your|his|her|their)\s*$/iu;
+// A past or perfect verb leading up to a time span: "you've waited for three weeks".
+const PAST_BEFORE = /\b(?:have|has|had|'ve|'d|was|were|been|did|already|ago|since|so far)\b|\b(?:went|came|spent|waited|stayed|lasted|took|sat|slept|worked|lived|tried|felt|kept|left|gone)\b/iu;
 // "the three things you loved most": picking from their own past is a choice, not a count of it.
 const SELECTION = /^[^,;:.?!]*?\b(?:most|best|least|biggest|hardest|favourite|top)\b/iu;
-const PAST_MARK = /^[^,;:.?!]*?\b(?:last (?:week|month|year|night|term|time|summer|winter|spring|autumn)|yesterday|ago|so far|already|earlier (?:today|this week)|since then)\b/iu;
-// What makes a subtitle line a suggestion: it asks, or it proposes an action.
+// "Already" only with something done: "what is already in the cupboard" is not the past.
+const PAST_MARK = /^[^,;:.?!]*?\b(?:last (?:week|month|year|night|term|time|summer|winter|spring|autumn)|yesterday|ago|so far|already (?:been|had|happened|done|said|sent|seen|gone|left|told|tried|made|got|written|[\p{L}]+ed)|earlier (?:today|this week)|since then)\b/iu;
+
+// --- where a subtitle line starts suggesting something -------------------------
+
+// What the eval report counts as "line 2 proposes a step or asks an answerable
+// question" (a rough reading, kept as it was so runs stay comparable). The
+// gate itself never requires one (an action is not always kind), and for
+// numbers it uses the stricter reading in stepStart below.
 const ACTION_CUE = /\?["')\]]*$|^(?:try|write|jot|list|name|pick|choose|send|ask|spend|take|give|set|make|note|plan|book|put|tell|message|text|call|decide|find|look|read|practise|start|wait|leave|keep|step|sleep|go|one (?:small|useful|tiny|kind) (?:move|step|thing))\b|\b(?:you could(?! (?:be|have|feel|still|never|not|well)\b)|you might(?! (?:be|have|feel|still|never|not|well|find yourself)\b)|could you|would you|might you|what if you|how about|it (?:might|could|may) help to|try (?:to|it|this|that|one|a|an|asking|writing|saying|sending|telling|[\p{L}]+ing)\b)/iu;
 /**
  * Does a subtitle line propose something to do (an action or an answerable
- * question)? A rough reading, used by the eval report to count how often line
- * 2 carries the step; the gate itself never requires one (an action is not
- * always kind).
+ * question)? A rough reading, used by the eval report.
  * @param {string} line
  */
 export const suggestsStep = (line) => ACTION_CUE.test(tidy(line));
+
+// Verbs a step starts with, and the word that can follow each when it is a
+// verb rather than a noun ("Work on your CV", not "Work deadlines are…").
+const STEP_VERBS = 'add|agree|apologise|ask|block|book|breathe|bring|call|cancel|catch up|check|choose|clear|close|collect|compare|cook|count|cut|decide|delete|do|draft|drink|drop|eat|email|find|finish|fix|follow|gather|get|give|go|grab|have|head|hide|hold|invite|join|jot|keep|knock|label|leave|let|limit|list|listen|look|make|map|mark|meet|message|move|mute|name|note|offer|open|pack|park|pause|phone|pick|plan|post|practise|prepare|print|put|raise|read|rehearse|remind|reply|rest|return|review|rewrite|ring|run|save|say|schedule|send|set|share|shortlist|show|sit|skip|sketch|sleep|sort|speak|spend|split|start|stay|step|stop|swap|switch|take|talk|tell|text|thank|tidy|try|turn|unfollow|update|visit|wait|walk|watch|work|write';
+const STEP_NEXT = R`(?:the|a|an|your|my|his|her|their|our|them|him|it|this|that|these|those|${NUM}|half|another|some|any|each|every|both|and|or|to|on|for|with|through|up|down|out|off|back|away|in|into|over|about|around|round|aside|by|from|at|before|after|until|till|if|yourself|what|how|when|whether|who|where|why|someone|something|anything|everything|sorry|hello|no|yes|thanks|now|today|tonight|tomorrow|first|once|twice|again|just|only|ahead|along|here|there|less|more|outside|inside|outdoors|somewhere|together|alone|still|[\p{L}]+ly)`;
+const STEP_LEAD = R`(?:(?:then|now|first|next|tonight|today|tomorrow|this (?:week|evening|weekend|morning|afternoon)|after (?:that|work|school|lunch|dinner)|before (?:bed|work|school|lunch|dinner|then)|if you can|if it helps|when you(?:'re| are) ready|for now|maybe|perhaps|just|gently|calmly|quietly|kindly),?\s+){0,2}`;
+const STEP_START = new RegExp(R`^\s*${STEP_LEAD}(?:${STEP_VERBS})\b(?=\s+${STEP_NEXT}\b|\s*[.?!]?$)|^\s*one (?:small|useful|tiny|kind|good) (?:move|step|thing)\b`, 'iu');
+// A question or proposal that asks the person to do or choose something.
+const ASKS_TO_DO = /\b(?:you could(?! (?:be|have|feel|still|never|not|well)\b)|you might(?! (?:be|have|feel|still|never|not|well|find yourself)\b)|(?:could|would|will|might|can|shall) you\b|what if you|how about|it (?:might|could|may) help to|try (?:to|it|this|that|one|a|an|asking|writing|saying|sending|telling|[\p{L}]+ing)\b|(?:which|what|when|who|where|how)\b[^.?!]*?\b(?:would|could|will|might|can) you\b|what(?:'s| is) one\b|do you want to\b|which\b[^.?!]*?\b(?:most|best|least)\b)/iu;
+// A condition about the future, just before the suggestion, belongs to it:
+// "If someone mentions it on Monday, could you have one light line ready?"
+const STEP_CONDITION = /^\s*(?:if|when|whenever|once|next time|before|until|by the time|as soon as)\b[^,;:]*[,;:]\s*$/iu;
+const CLAUSE_EDGE = /[,;:—–]\s*|\s+-\s+|\b(?:and then|then|so|and|or|but)\s+/giu;
+/**
+ * Where a sentence starts suggesting something (an imperative clause, or a
+ * question that asks the person to do or choose), or -1.
+ * @param {string} s
+ */
+function stepStart(s) {
+  const starts = [0, ...[...s.matchAll(CLAUSE_EDGE)].map((m) => (m.index ?? 0) + m[0].length)];
+  let at = -1;
+  for (const c of starts) if (STEP_START.test(s.slice(c))) { at = c; break; }
+  const q = ASKS_TO_DO.exec(s);
+  if (q) {
+    const clause = Math.max(0, ...starts.filter((c) => c <= (q.index ?? 0)));
+    if (at < 0 || clause < at) at = clause;
+  }
+  if (at > 0 && STEP_CONDITION.test(s.slice(0, at))) at = 0;
+  return at;
+}
+
 // "On the tenth replay an answer can sound worse": a general statement about
 // how replays work, not a count of the person's replays.
 const GENERIC_CUE = /\b(?:often|usually|sometimes|can|could|may|might|tends? to|by the|every|any|most|many)\b/iu;
@@ -448,20 +591,24 @@ const UNIT_CLASSES = /** @type {const} */ ([
   ['minute', /^(?:minutes?|mins?)$/u], ['hour', /^(?:hours?|hrs?)$/u], ['day', /^days?$/u], ['night', /^(?:nights?|evenings?)$/u],
   ['week', /^weeks?$/u], ['month', /^months?$/u], ['year', /^(?:years?|yrs?)$/u],
   ['attempt', /^(?:times?|tests?|attempts?|tries|try|goes|resits?|retakes?)$/u],
+  ['people', /^(?:people|persons|friends?|guests?|colleagues?|mates?|classmates?|teammates?|co-?workers?|relatives|cousins|kids|children)$/u],
 ]);
+const TIME_CLASSES = new Set(['minute', 'hour', 'day', 'night', 'week', 'month', 'year']);
 /** @param {string} w */
 const unitClassOf = (w) => UNIT_CLASSES.find(([, re]) => re.test(w.toLowerCase()))?.[0] ?? null;
 const UNIT_GAP_STOP = new Set(['of', 'or', 'and', 'to', 'in', 'on', 'at', 'more', 'less', 'other', 'than', 'a', 'an', 'the', 'for', 'by', 'from', 'with', 'per', 'you', 'your', 'it', 'is', 'was']);
 const NEXT_AHEAD = /\b(?:if|before|next|booking|book|when|whether|will|would|could|might)\b/iu;
 const NEXT_DONE = /\b(?:after|since|already|so far|ago|you(?:'ve| have| had))\b/iu;
+// "The third check is happening only in your head": the next one, imagined.
+const IN_HEAD = /\b(?:in your (?:head|mind|imagination)|imagin\w*|pictur\w*)\b/iu;
 const UNIT_BEFORE = /\b(tests?|attempts?|tries|resits?|retakes?|goes|week|day|year|month)\s+(?:number\s+|no\.\s*)$/iu;
 /**
  * The unit a number counts: "two weeks", "a five-hour wait", "three failed
- * tests", "the third time", "test number four", "twice".
+ * tests", "the third time", "test number four", "twice", "three people".
  * @param {import('./text.js').NumberToken} tok @param {string} s
  */
 function unitOf(tok, s) {
-  if (tok.kind === 'times') return 'attempt';
+  if (tok.kind === 'times' || /^\s+times\b/iu.test(s.slice(tok.end))) return 'attempt';
   const m = /^(?:-|\s+)([\p{L}']+)(?:(?:-|\s+)([\p{L}']+))?/u.exec(s.slice(tok.end));
   if (m) {
     const u1 = unitClassOf(m[1]);
@@ -497,34 +644,99 @@ function inputNumbers(input) {
 }
 
 /**
- * Spans of a sentence that are about the future, not the situation (see above).
- * @param {string} s @param {{ action: boolean, vantage: boolean }} where
+ * @typedef {{ start: number, end: number }} Span
+ * @typedef {{ start: number, end: number, kind: 'box' | 'count' | 'repeat' | 'span' | 'clock' | 'vantage' }} FutureSpan
+ * @typedef {{ start: number, end: number, why: string }} FactSpan
+ */
+
+/**
+ * Why the words around a count make it a fact about the past, or null.
+ * @param {string} s @param {number} start @param {number} end end of the counted noun
+ */
+function countIsFact(s, start, end) {
+  const before = s.slice(0, start);
+  const rest = s.slice(end);
+  const near = (re) => {
+    const m = re.exec(rest);
+    return m ? `"${tidy(s.slice(start, end + m[0].length))}"` : '';
+  };
+  const fb = FACT_BEFORE.exec(before);
+  if (fb) return `"${tidy(`${fb[0]}${s.slice(start, end)}`)}" names ones that already exist`;
+  if (PAST_MARK.test(rest)) return `${near(PAST_MARK)} is about the past`;
+  if (THIRD_PAST.test(rest)) return `${near(THIRD_PAST)} describes what happened`;
+  if (DIRECT_PAST.test(rest)) return `${near(DIRECT_PAST)} describes what happened`;
+  const head = (s.slice(start, end).match(/[\p{L}'-]+$/u)?.[0] || '').toLowerCase();
+  if (DEFINITE_BEFORE.test(before) && !SELECTION.test(rest) && !SELECTION_NOUN.test(head)) {
+    for (const re of [REL_PAST, YOU_PAST, IN_SITUATION]) if (re.test(rest)) return `${near(re)} presents it as part of what happened`;
+  }
+  return null;
+}
+
+/**
+ * Spans of a sentence that are about the future, not the situation, from
+ * `from` on (where a step starts; -1 for none), and the counts that would have
+ * been but read as facts.
+ * @param {string} s @param {{ from: number, vantage: boolean }} where
+ * @returns {{ future: FutureSpan[], facts: FactSpan[] }}
  */
 function futureSpans(s, where) {
-  /** @type {{ start: number, end: number }[]} */
-  const out = [];
-  /** @param {RegExp} re @param {boolean} [guard] */
-  const add = (re, guard = false) => {
+  /** @type {FutureSpan[]} */
+  const future = [];
+  /** @type {FactSpan[]} */
+  const facts = [];
+  /** @param {RegExp} re @param {FutureSpan['kind']} kind @param {(start: number, end: number) => string | null} guard */
+  const add = (re, kind, guard) => {
     for (const m of s.matchAll(re)) {
       const start = m.index ?? 0;
       const end = start + m[0].length;
-      const rest = s.slice(end);
-      // "the three times you were late" names past occasions; "the three
-      // things you most wanted" is still a choice to make.
-      const definite = /\bthe\s*$/iu.test(s.slice(0, start));
-      if (PAST_MARK.test(rest) || (guard && (THIRD_PAST.test(rest) || (definite && YOU_PAST.test(rest) && !SELECTION.test(rest))))) continue;
-      out.push({ start, end });
+      const why = guard(start, end);
+      // Outside a step a count is a fact anyway; noting why still matters
+      // for "two", which is otherwise free ("the two people who laughed").
+      if (why) facts.push({ start, end, why });
+      else if (where.from >= 0 && start >= where.from) future.push({ start, end, kind });
     }
   };
-  if (where.action) {
-    add(FORWARD_BOX);
-    add(ACTION_COUNT, true);
-    add(ACTION_RANGE, true);
-    add(REPEAT_ACTION, true);
-    add(CLOCK_TIME);
+  const pastMarkOnly = (/** @type {number} */ _s, /** @type {number} */ e) => (PAST_MARK.test(s.slice(e)) ? 'it is about the past' : null);
+  const spanGuard = (/** @type {number} */ st, /** @type {number} */ e) => {
+    const rest = s.slice(e);
+    const lead = s.slice(Math.max(where.from, ...[...s.slice(0, st).matchAll(/[,;:]/g)].map((m) => (m.index ?? 0) + 1)), st);
+    if (PAST_BEFORE.test(lead)) return `"${tidy(`${lead}${s.slice(st, e)}`)}" is about time already spent`;
+    if (PAST_MARK.test(rest) || THIRD_PAST.test(rest) || YOU_PAST.test(rest)) return 'what follows it is about the past';
+    return null;
+  };
+  {
+    add(FORWARD_BOX, 'box', pastMarkOnly);
+    add(TIME_SPAN, 'span', spanGuard);
+    const fact = (/** @type {number} */ st, /** @type {number} */ e) => countIsFact(s, st, e);
+    add(ACTION_COUNT, 'count', fact);
+    add(ACTION_RANGE, 'count', fact);
+    add(REPEAT_ACTION, 'repeat', fact);
+    // A small count before any plural noun: "three cheap meals", "five spends".
+    for (const m of s.matchAll(COUNT_HEAD)) {
+      const start = m.index ?? 0;
+      let end = start + m[0].length;
+      const after = /^(?:\s+[\p{L}'-]+){1,3}/u.exec(s.slice(end));
+      if (!after) continue;
+      const ws = after[0].trim().split(/\s+/u);
+      let k = -1;
+      for (let i = 0; i < ws.length && i < 3; i++) {
+        const w = ws[i].toLowerCase();
+        if (isPluralNoun(w)) { k = i; break; }
+        if (NOT_MODIFIER.has(w) || SPAN_WORD.test(w) || w === 'times') break;
+      }
+      if (k < 0) continue;
+      const tail = /^(?:\s+[\p{L}'-]+)/u;
+      for (let i = 0; i <= k; i++) end += /** @type {RegExpExecArray} */ (tail.exec(s.slice(end)))[0].length;
+      const why = countIsFact(s, start, end);
+      if (why) facts.push({ start, end, why });
+      else if (where.from >= 0 && start >= where.from) future.push({ start, end, kind: 'count' });
+    }
+    add(CLOCK_TIME, 'clock', () => null);
   }
-  if (where.vantage) add(VANTAGE);
-  return out;
+  if (where.vantage) {
+    for (const m of s.matchAll(VANTAGE)) future.push({ start: m.index ?? 0, end: (m.index ?? 0) + m[0].length, kind: 'vantage' });
+  }
+  return { future, facts };
 }
 
 /** @param {keyof typeof LABEL} field */
@@ -541,6 +753,13 @@ const NAMED_PERSON = /\b(?:he|she|him|her|his|boss|manager|partner|boyfriend|gir
 const CONTACT_PERSON = /\b(?:ask|asking|tell|telling|text|texting|message|messaging|call|calling|ring|ringing|email|emailing|write to|writing to|talk to|talk with|talking to|speak to|speak with|speaking to|check with|check in with|raise it with|bring it up with|meet up with|catch up with|hear from|heard from|reply to|answer)\s+(?:him|her)\b/iu;
 const PLANNED_TALK = /\b(?:need(?:s|ed)? to talk|can we talk|wants? to (?:see|talk to|speak to|speak with|meet) (?:me|us)|asked to see (?:me|us)|(?:would not|wouldn't|won't|will not|didn't|did not) (?:say|tell me|explain)|called me in|have a chat)\b/iu;
 const TALK_REF = /\b(?:the|that|this|a|your|their|his|her) (?:conversation|chat|talk)\b/iu;
+// Idioms built on words the synonym groups hold: generic whatever the situation.
+const IDIOMS = /\bwork(?:s|ed|ing)? (?:it |this |that |things )?(?:out|through)\b|\b(?:your|my|their|his|her|the|a|an) (?:own |big |tough |hard |judgement |judgment |close )?call\b(?! (?:with|from|to|him|her|them|back))|\bcall (?:it|that) (?:a day|quits)\b|\bthe answers? (?:you (?:need|want|seek|are looking for)|may|might|is|lies|isn't|to (?:this|that|it|everything|life))\b|\bof course\b|\bin other words\b|\b(?:tell|telling|tells|told|talk|talking|talks|talked|say|saying|said) (?:to )?yourself\b|\bthat said\b|\bneedless to say\b|\bsay so\b|\bto say the least\b|\bas a result\b|\bresults? in\b|\bmake plans\b|\btalk(?:ing|ed|s)? (?:it |things |this |that )?(?:through|over)\b/giu;
+// Everyday words that, even when the person used them, say little about
+// their situation on their own ("What would help you rest tonight?").
+const WEAK_STEMS = new Set(`tonight today tomorrow morning evening night week weekend month year last first second third choice part people person life head mind
+wrong right new old whole big small little good bad lot end start real true
+give take make get go come see put try let find look keep leave help use stop turn show hold bring run move`.split(/\s+/).map(plainStem));
 const GENERIC_LINE = /\b(?:every|any|all|always|life|whatever|everyone|everybody|anything)\b/iu;
 const STOP_SHORT = new Set(['a', 'i', 'an', 'am', 'as', 'at', 'be', 'by', 'do', 'go', 'he', 'if', 'in', 'is', 'it', 'me', 'my', 'no', 'of', 'oh', 'ok', 'on', 'or', 'so', 'to', 'up', 'us', 'we']);
 const ABSOLUTES = new Set(['nobody', 'everyone', 'everybody', 'always', 'never', 'nothing', 'everything', 'anyone', 'noone']);
@@ -647,9 +866,21 @@ export function qualityGate(scene, ctx) {
     // Invented details: numbers presented as facts, and names, that the
     // person never gave (see "invented details: numbers" above).
     const isLine = field === 'subtitle_line_1' || field === 'subtitle_line_2';
+    const isStep = field === 'practical_next_step';
+    /** @param {string} s Where the sentence starts suggesting something (the whole step field when it never says). */
+    const stepFrom = (s) => {
+      const at = isLine || isStep ? stepStart(s) : -1;
+      return isStep && at < 0 ? 0 : at;
+    };
     numbers: for (const s of sentences(t)) {
-      const action = field === 'practical_next_step' || (isLine && ACTION_CUE.test(s));
-      const skip = futureSpans(s, { action, vantage: field !== 'known_fact' });
+      const toks = numberTokens(s);
+      if (!toks.some((tok) => tok.value !== null)) continue;
+      const from = stepFrom(s);
+      const { future, facts } = futureSpans(s, { from, vantage: field !== 'known_fact' });
+      /** @param {import('./text.js').NumberToken} tok @param {FutureSpan['kind'][]} kinds */
+      const inside = (tok, kinds) => future.some((sp) => tok.start >= sp.start && tok.end <= sp.end && kinds.includes(sp.kind));
+      /** @type {Span[]} */
+      const skip = [...future];
       for (const m of s.matchAll(VAGUE_QUANTITY)) skip.push({ start: m.index ?? 0, end: (m.index ?? 0) + m[0].length });
       // Only in a general remark: a clause about "you" counting their replays is a fact.
       if (field !== 'known_fact' && GENERIC_CUE.test(s)) {
@@ -659,29 +890,60 @@ export function qualityGate(scene, ctx) {
           at += cl.length;
         }
       }
+      const accepted = new Set();
+      const attempts = inputNums.units.get('attempt');
+      // 1. The person's own units, on the whole sentence.
+      for (const tok of toks) {
+        if (tok.value === null || tok.value === 1) continue;
+        const unit = unitOf(tok, s);
+        const theirs = unit ? inputNums.units.get(unit) : undefined;
+        const lead = s.slice(0, tok.start).split(/[,;:]/).pop() || '';
+        const clause = lead + (s.slice(tok.start).split(/[,;:]/)[0] || '');
+        // The next one, looked at ahead or only imagined: "before booking test
+        // number four", "if she cancels a fourth time", "the third check is
+        // happening only in your head" after "I checked twice". Never as
+        // something done ("you've failed a fourth time", "after a fourth test").
+        const next = (/** @type {number[]} */ ns) => tok.value === Math.max(...ns) + 1 && (NEXT_AHEAD.test(lead) || IN_HEAD.test(clause)) && !NEXT_DONE.test(lead);
+        if (!theirs) {
+          if (!unit && tok.kind === 'ordinal' && attempts && next(attempts)) accepted.add(tok.start);
+          continue;
+        }
+        if (inside(tok, ['box', 'vantage']) || (unit === 'people' && inside(tok, ['count'])) || (unit === 'attempt' && inside(tok, ['repeat']))) continue;
+        // Their unit: the same value, or an ordinal naming an earlier one.
+        if (theirs.includes(tok.value) || (tok.kind === 'ordinal' && tok.value <= Math.max(...theirs)) || (unit === 'attempt' && next(theirs))) {
+          accepted.add(tok.start);
+          continue;
+        }
+        fail('invented_detail', field, `Do not change the details the person gave: they gave ${theirs.join(' and ')} for this, not "${tok.raw}". Use their numbers, or none.`);
+        break numbers;
+      }
+      // 2. Numbers they never gave, outside what a step says about the future.
       let x = s;
       for (const sp of skip) x = x.slice(0, sp.start) + '·'.repeat(sp.end - sp.start) + x.slice(sp.end);
+      // "Write three things, then pick one of the three": the same count again.
+      const stepValues = new Set(toks.filter((tok) => inside(tok, ['count', 'repeat', 'span', 'box'])).map((tok) => tok.value));
       for (const tok of numberTokens(x)) {
-        if (tok.value === null) continue;
-        const unit = unitOf(tok, x);
-        const theirs = unit ? inputNums.units.get(unit) : undefined;
-        if (theirs && tok.value !== 1) {
-          // Their unit: the same value, or an ordinal naming an earlier one;
-          // or the next attempt, looked at ahead ("before booking test number
-          // four", "if she cancels a fourth time"), never as something done.
-          if (theirs.includes(tok.value) || (tok.kind === 'ordinal' && tok.value <= Math.max(...theirs))) continue;
-          const lead = x.slice(0, tok.start).split(/[,;:]/).pop() || '';
-          if (unit === 'attempt' && tok.value === Math.max(...theirs) + 1 && NEXT_AHEAD.test(lead) && !NEXT_DONE.test(lead)) continue;
-          fail('invented_detail', field, `Do not change the details the person gave: they gave ${theirs.join(' and ')} for this, not "${tok.raw}". Use their numbers, or none.`);
-          break numbers;
-        }
-        if (tok.value === 1 || tok.value === 2 || inputNums.values.has(tok.value)) continue;
-        fail('invented_detail', field, `Do not add details the person did not give (the number "${tok.raw}"). A small count or a time span inside a suggested step is fine.`);
+        if (tok.value === null || accepted.has(tok.start)) continue;
+        const inStep = from >= 0 && tok.start >= from;
+        const rest = s.slice(tok.end);
+        const lead = s.slice(Math.max(inStep ? from : 0, s.lastIndexOf(',', tok.start) + 1), tok.start);
+        // "Twice" counts occasions: theirs, or something to do ("ring her twice this week").
+        const occasions = tok.kind === 'times' || /^\s+times\b/iu.test(rest);
+        if (tok.value === 1 || inputNums.values.has(tok.value)) continue;
+        // "Two" is free ("the two of you", "one or two things"), but not as a
+        // count of what happened ("the two people who laughed"), a length of
+        // time outside a step ("two days of silence") or occasions ("twice").
+        const inFact = facts.some((sp) => tok.start >= sp.start && tok.end <= sp.end);
+        const unit = unitOf(tok, s);
+        const elapsed = unit !== null && TIME_CLASSES.has(unit) && !inStep;
+        if (tok.value === 2 && !inFact && !elapsed && (!occasions || (inStep && !PAST_BEFORE.test(lead) && !PAST_MARK.test(rest)))) continue;
+        if (inStep && stepValues.has(tok.value)) continue;
+        fail('invented_detail', field, numberMessage(tok, from, facts));
         break numbers;
       }
     }
     names: for (const s of sentences(t)) {
-      const action = field === 'practical_next_step' || (isLine && ACTION_CUE.test(s));
+      let from = -2;
       for (const m of s.matchAll(/[\p{L}][\p{L}'’&-]*/gu)) {
         const w = m[0];
         const at = m.index ?? 0;
@@ -689,16 +951,26 @@ export function qualityGate(scene, ctx) {
         // "Saturday's argument" is Saturday; "Monday's interview" is Monday.
         const lw = w.toLowerCase().replace(/’/g, "'").replace(/'s?$/u, '');
         const before = s.slice(0, at);
-        // A day, month or holiday is theirs, or the time of a suggested step ("by Friday").
+        // A day, month or holiday is theirs, or the time of a suggested step ("by Friday", "in July").
         const holiday = DATE_WORDS.has(lw) || (lw === 'new' && /^New Year\b/u.test(s.slice(at)));
         if (holiday) {
           if (inputLower.includes(lw === 'new' ? 'new year' : lw)) continue;
-          if (action && DATE_PREP.test(before)) continue;
+          if (from === -2) from = stepFrom(s);
+          if (from >= 0 && at >= from && DATE_PREP.test(before)) continue;
           fail('invented_detail', field, `Do not add a day or date the person did not give ("${w}").`);
           break names;
         }
-        if (at === 0) continue;
         if (SENTENCE_START_OK.has(lw) || COMMON_CAPS.has(lw) || inputWords.has(lw) || inputLower.includes(lw)) continue;
+        if (at === 0) {
+          // The first word is capitalised anyway: a name only when it is one
+          // ("Sarah may still be…") or does what a person does ("Tom might
+          // need a day", "Ella's silence…").
+          if (!GIVEN_NAMES.has(lw)) {
+            if (OPENERS.has(lw) || NOT_A_NAME.test(lw)) continue;
+            const rest = s.slice(at + w.length);
+            if (!(/'s$/u.test(w.replace(/’/g, "'")) ? PERSON_THING : PERSON_PRED).test(rest)) continue;
+          }
+        }
         if (/[:"“'‘]\s*$/.test(before)) continue;
         fail('invented_detail', field, `Do not add names or details the person did not give ("${w}").`);
         break names;
@@ -722,9 +994,28 @@ export function qualityGate(scene, ctx) {
   // say why") is met by "the conversation" or "a chat" in a line that is not
   // a general remark ("Every conversation is a chance…" is not about theirs).
   const talkRef = PLANNED_TALK.test(input) && [l1, l2].some((l) => TALK_REF.test(l) && !GENERIC_LINE.test(l));
-  let overlap = 0;
-  for (const s of allStems(`${l1} ${l2}`)) if (inputStems.has(s)) overlap++;
-  if (inputStems.size >= 2 && overlap === 0 && !quoted && !absRef && !personRef && !talkRef) {
+  // A hit is a word in the lines that meets one of the person's content
+  // words. Their own word counts on its own ("the exam", "five hours"); a word
+  // that only shares a group with one ("manager" for "boss", "answer" for
+  // "texted") or an everyday word ("tonight", "choice") counts only beside
+  // another; a word inside an idiom ("work out", "your call", "the answer you
+  // need", "tell yourself") does not count at all.
+  const inputPlain = new Set(wordsAndParts(input).filter((w) => w.length >= 3 && !STOPWORDS.has(w)).map(plainStem));
+  if (ON_READ.test(input)) inputPlain.add(plainStem('message'));
+  let strong = 0;
+  const weak = new Set();
+  for (const w of wordsAndParts(`${l1} ${l2}`.replace(IDIOMS, ' '))) {
+    if (w.length < 3 || /^[\d.,]+$/.test(w) || !inputStems.has(stem(w))) continue;
+    const p = plainStem(w);
+    if (WEAK_STEMS.has(p)) continue;
+    // A stop word in the line ("like you", "see them") meets their word only weakly.
+    if (STOPWORDS.has(w) || (!inputPlain.has(p) && BROAD_SYNONYMS.has(p))) weak.add(p);
+    else strong++;
+  }
+  // Their own compound ("first-choice", "box room") is theirs, however everyday its parts.
+  const lineFlat = ` ${words(`${l1} ${l2}`).join(' ').toLowerCase().replace(/-/g, ' ')} `;
+  if (words(input).some((w) => w.includes('-') && lineFlat.includes(` ${w.toLowerCase().replace(/-/g, ' ')} `))) strong++;
+  if (inputStems.size >= 2 && !strong && weak.size < 2 && !quoted && !absRef && !personRef && !talkRef) {
     fail('not_specific', 'lines', 'The lines do not mention anything from the person\'s situation; refer to the concrete details they gave (the people, the event, their words).');
   }
   if (inputStems.size >= 1) {

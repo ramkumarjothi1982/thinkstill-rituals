@@ -11,7 +11,9 @@ import { fileURLToPath } from 'node:url';
 
 import { createThought, ThoughtMallow, PT } from '../src/mallows/thought/thought.js';
 import { createBelief, PROPS, PROP_WEIGHT } from '../src/mallows/thought/belief.js';
-import { THOUGHT_STYLES, THOUGHT_KINDS, CALM_TINT, FACE_KEYS, SHAPE, TAG_MIN_PX, normaliseEmotion, styleFor, deriveLook, outlineUV, insideUV, tagBudget, hexRgb, siblingCount, wordsExcerpt } from '../src/mallows/thought/styles.js';
+import { THOUGHT_STYLES, THOUGHT_KINDS, CALM_TINT, FACE_KEYS, SHAPE, TAG_MIN_PX, RELIEVED_FACE, normaliseEmotion, styleFor, deriveLook, outlineUV, insideUV, tagBudget, tagLines, wordsOf, firstWords, hexRgb, hexOklab, mixOk, siblingCount, wordsExcerpt } from '../src/mallows/thought/styles.js';
+import { mouthGeom } from '../src/mallows/thought/render.js';
+import { FX_GEOM } from '../src/mallows/thought/thought.js';
 import { MALLOWS, MALLOW_IDS } from '../src/mallows/registry.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -63,17 +65,36 @@ function lab(hex) {
 }
 const dE = (a, b) => { const A = lab(a), B = lab(b); return Math.hypot(A[0] - B[0], A[1] - B[1], A[2] - B[2]); };
 
-test('styles: tints are distinct from each other and from every Mallow body', () => {
-  const kinds = THOUGHT_KINDS.filter((k) => k !== 'neutral');
+test('styles: tints are distinct from each other (neutral included), from every Mallow body and from the calm palette', () => {
+  const kinds = THOUGHT_KINDS;
   for (let i = 0; i < kinds.length; i++) for (let j = i + 1; j < kinds.length; j++) {
     const d = dE(THOUGHT_STYLES[kinds[i]].tint.mid, THOUGHT_STYLES[kinds[j]].tint.mid);
-    assert.ok(d >= 12, `${kinds[i]} vs ${kinds[j]}: ΔE ${d.toFixed(1)}`);
+    assert.ok(d >= 18, `${kinds[i]} vs ${kinds[j]}: ΔE ${d.toFixed(1)}`);
   }
   for (const k of THOUGHT_KINDS) for (const id of MALLOW_IDS) {
     const d = dE(THOUGHT_STYLES[k].tint.mid, MALLOWS[id].colours.body);
     assert.ok(d >= 20, `${k} vs ${id}: ΔE ${d.toFixed(1)}`);
   }
-  for (const k of kinds) assert.ok(dE(THOUGHT_STYLES[k].tint.mid, CALM_TINT.mid) >= 10, `${k} vs calm`);
+  // transforming must visibly change every feeling's colour (a lonely teal thought too)
+  for (const k of kinds) assert.ok(dE(THOUGHT_STYLES[k].tint.mid, CALM_TINT.mid) >= 15, `${k} vs calm: ΔE ${dE(THOUGHT_STYLES[k].tint.mid, CALM_TINT.mid).toFixed(1)}`);
+});
+
+test('styles: the transform blend stays clean (OKLCh): no grey or brown midpoints between a feeling and calm', () => {
+  const chroma = (h) => { const [, a, b] = hexOklab(h); return Math.hypot(a, b); };
+  for (const k of THOUGHT_KINDS) {
+    for (const key of ['mid', 'deep']) {
+      const a = THOUGHT_STYLES[k].tint[key], b = CALM_TINT[key];
+      const lo = Math.min(chroma(a), chroma(b));
+      for (const t of [0.25, 0.5, 0.75]) {
+        const m = mixOk(a, b, t);
+        assert.match(m, /^#[0-9a-f]{6}$/);
+        // the passing colour keeps most of its ends' colourfulness (an sRGB blend of coral into sage drops to grey)
+        assert.ok(chroma(m) >= 0.55 * lo, `${k}.${key} @${t}: chroma ${chroma(m).toFixed(3)} vs ${lo.toFixed(3)}`);
+      }
+    }
+  }
+  assert.equal(mixOk('#123456', '#abcdef', 0), '#123456');
+  assert.equal(mixOk('#123456', '#abcdef', 1), '#abcdef');
 });
 
 test('look: transform leads to the calm palette and the relieved face; care eases the feeling', () => {
@@ -89,6 +110,25 @@ test('look: transform leads to the calm palette and the relieved face; care ease
   assert.ok(slow.pace < a.pace * 0.5, 'slowing slows it');
   // photosafe: never more than 3 arcs a second
   assert.ok(deriveLook(s, { ...base, tension: 1, charge: 1 }).fx.crackle <= 3);
+});
+
+test('relieved face: transformed, the mouth is a smile (drawn as a line whose middle sits lower) and the eyes close softly', () => {
+  assert.ok(RELIEVED_FACE.open <= 0.06, 'a closed-mouth smile: the open-mouth branch would ignore the curve');
+  for (const emotion of ['anger', 'anxiety', 'sadness', 'embarrassment', 'loneliness', 'overwhelm']) {
+    T += 10;
+    const th = thought(emotion);
+    th.transform(1); sim(th, 4);
+    const m = mouthGeom(th);
+    assert.equal(m.open, false, `${emotion}: closed mouth`);
+    const n = m.pts.length / 2 - 1, mid = m.pts[2 * (n >> 1) + 1], ends = (m.pts[1] + m.pts[2 * n + 1]) / 2;
+    assert.ok(mid > ends + th.render.P * 0.02, `${emotion}: the smile curves up (${(mid - ends).toFixed(2)} px)`);
+    assert.ok(th.look.face.closed > 0.8, `${emotion}: eyes softly closed`);
+  }
+  // before: an anxious thought's mouth is not a smile
+  T += 10;
+  const a = thought('anxiety'); sim(a, 1.5);
+  const g = mouthGeom(a);
+  if (!g.open) { const n = g.pts.length / 2 - 1; assert.ok(g.pts[2 * (n >> 1) + 1] <= (g.pts[1] + g.pts[2 * n + 1]) / 2 + 1); }
 });
 
 // ---------------------------------------------------- motion signatures --
@@ -140,6 +180,47 @@ test('motion: anger crackles (≤ 3 arcs/s) with puffed cheeks; frustration huff
   let puffs = 0;
   sim(fr, 6, () => { puffs = Math.max(puffs, fr.fx.puffs.filter((p) => p.life > 0).length); });
   assert.ok(puffs >= 2, `steam puffs ${puffs}`);
+});
+
+test('effects: sized to read at phone size — rain 6–10 drops a second, 0.12 P long; steam 0.14 → 0.35 P; a sibling mouth up to 0.2 P', () => {
+  T += 10;
+  const sad = thought('sadness');
+  let born = 0, splash = 0;
+  const live = () => sad.fx.drops.filter((d) => d.life > 0 && !(d.splash > 0)).length;
+  let was = live();
+  sim(sad, 2);
+  sim(sad, 4, () => { const n = sad.fx.drops.filter((d) => d.life > 0).length; if (n > was) born += n - was; was = n; splash = Math.max(splash, sad.fx.drops.filter((d) => d.splash > 0).length); });
+  assert.ok(born / 4 >= 5 && born / 4 <= 11, `${(born / 4).toFixed(1)} drops/s`);
+  assert.ok(splash >= 1, 'drops splash on its head');
+  const d = sad.fx.drops.find((q) => q.life > 0) || sad.fx.drops[0];
+  assert.ok(Math.abs(d.len / sad.render.P - FX_GEOM.dropLen) < 0.02, `drop ${(d.len / sad.render.P).toFixed(3)} P`);
+  assert.ok(sad.fx.cloud > 0.8, 'its cloud is there');
+  const fr = thought('frustration');
+  let r0 = 1, r1 = 0;
+  sim(fr, 7, () => { for (const p of fr.fx.puffs) if (p.life > 0) { r0 = Math.min(r0, p.r / fr.render.P); r1 = Math.max(r1, p.r / fr.render.P); } });
+  assert.ok(r0 >= 0.1 && r0 <= 0.16 && r1 >= 0.3 && r1 <= 0.42, `steam ${r0.toFixed(2)} → ${r1.toFixed(2)} P`);
+  const ov = thought('overwhelm');
+  let open = 0;
+  sim(ov, 4, () => { for (const s of ov.siblings) { const m = mouthGeom(s); if (m.open) open = Math.max(open, (2 * m.ory) / s.render.P); } });
+  assert.ok(open >= 0.15, `sibling mouth opens ${open.toFixed(2)} P`);
+});
+
+test('effects: their zone is known (fxRect) — above the head for rain and steam, round the rim for crackle, none for a calm one', () => {
+  T += 10;
+  const sad = thought('sadness'), fr = thought('frustration'), an = thought('anger'), calm = thought('neutral');
+  sim(sad, 3); sim(fr, 3); sim(an, 3); sim(calm, 3);
+  for (const [th, up] of [[sad, 0.7], [fr, 0.9]]) {
+    const z = th.fxRect({}), b = th.bodyRect();
+    assert.ok(z && z.top <= b.top - up * th.render.P, `${th.emotion}: zone top ${(b.top - z.top).toFixed(0)} px above`);
+    assert.ok(z.bottom <= b.cy, 'it sits over the head');
+    const e = th.extent({});
+    assert.ok(e.top <= z.top + 0.5, 'and the extent holds it');
+  }
+  const za = an.fxRect({}), ba = an.bodyRect();
+  assert.ok(za && za.top < ba.top && za.left < ba.left && za.right > ba.right, 'crackle round the rim');
+  assert.equal(calm.fxRect({}), null);
+  const f = calm.faceRect({}), bc = calm.bodyRect();
+  assert.ok(f.left > bc.left && f.right < bc.right && f.top > bc.top && f.bottom < bc.bottom, 'the face sits inside the body');
 });
 
 test('motion: loneliness drifts apart; embarrassment blushes and shrinks', () => {
@@ -211,6 +292,49 @@ test('verbs: soften, slow, settle, transform, farther — and none removes the t
   assert.equal(t2.levels.soft.cur, 0);
 });
 
+test('verbs: a verb sends one "verb" event when its level changes (a world may call it every frame)', () => {
+  T += 10;
+  const th = thought('anger');
+  const seen = [];
+  th.on('verb', (e) => seen.push(e.verb));
+  for (let i = 0; i < 30; i++) { th.soften(1); th.farther(0.5); th.closer(0.5); sim(th, 1 / 60); }
+  assert.deepEqual(seen, ['soften', 'farther'], `events: ${seen}`);
+  th.slow(); assert.equal(seen.length, 3, 'a step is a change');
+  th.soften(); assert.equal(seen.length, 3, 'already fully soft: no change, no event');
+});
+
+test('state: z is a clamped depth (0..1) a world may write; rot tilts it while written; siblings share depth and scale', () => {
+  T += 10;
+  const th = thought('overwhelm');
+  sim(th, 1);
+  const P0 = th.render.P, sP0 = th.siblings[0].render.P;
+  th.z = 3; assert.equal(th.z, 1, 'clamped'); th.z = -2; assert.equal(th.z, 0);
+  // a world writing z every frame (e.g. a distance of 1..4 by mistake) never makes it vanish
+  sim(th, 1, () => { th.z = 2.5; });
+  assert.ok(th.z === 1 && th.render.P > P0 * 0.45 && Number.isFinite(th.render.P), `P ${th.render.P.toFixed(1)}`);
+  assert.ok(th.siblings[0].render.P < sP0 * 0.6, 'its siblings went far away with it');
+  sim(th, 2);
+  th.farther(0); sim(th, 3);
+  assert.ok(th.z < 0.05, 'once nobody writes it, farther(0) brings it back');
+  const ang0 = th.render.ang;
+  sim(th, 0.3, () => { th.rot = 0.4; });
+  assert.ok(th.render.ang > ang0 + 0.3, 'rot tilts it');
+  sim(th, 1);
+  assert.ok(Math.abs(th.render.ang - ang0) < 0.15, 'and fades when no longer written');
+  th.scale = 0.5; sim(th, 0.2, () => { th.scale = 0.5; });
+  assert.equal(th.siblings[0].scale, 0.5);
+});
+
+test('siblings come along: carried or gliding to a new home, the cluster keeps together', () => {
+  T += 10;
+  const th = thought('overwhelm', { x: 120, y: 400 });
+  sim(th, 1.5);
+  th.moveHome({ x: 300, y: 200 });
+  let worst = 0;
+  sim(th, 2, () => { for (const s of th.siblings) worst = Math.max(worst, Math.hypot(s._pos.x - s.home.x, s._pos.y - s.home.y)); });
+  assert.ok(worst < 0.6 * th.render.P, `a sibling trailed ${worst.toFixed(0)} px behind its place in the ring`);
+});
+
 test('state: a world may write x, y, scale and state; what it writes wins', () => {
   T += 10;
   const th = thought('anger');
@@ -230,7 +354,8 @@ test('state: a world may write x, y, scale and state; what it writes wins', () =
 // ---------------------------------------------------------------- touch --
 test('touch: press and hold squeezes it (dent, flatter, cheeks puff), release springs back and softens', () => {
   T += 10;
-  const th = thought('anger', { x: 200, y: 400 });
+  // (a fixed seed: its breathing and blinks are the same whichever tests ran before)
+  const th = thought('anger', { x: 200, y: 400, seed: 7 });
   sim(th, 1.5);
   const h0 = th.bodyRect().height, soft0 = th.earned.soft, calm0 = th.earned.calm;
   assert.ok(ptr(th, 'down', th.render.cx, th.render.cy - th.render.P * 0.15));
@@ -349,6 +474,17 @@ test('words: the tag shows the exact words (an excerpt only when long or far), n
   assert.equal(odd.tokenAt(0), '<b>not bold</b> & <img src=x onerror=alert(1)>');
 });
 
+test('words: line budgets by depth and crowding; excerpts are leading words cut at a word', () => {
+  assert.equal(tagLines(0, 0), 3); assert.equal(tagLines(0.5, 0), 2); assert.equal(tagLines(0.9, 0), 1);
+  assert.equal(tagLines(0, 1), 2); assert.equal(tagLines(0, 2), 1); assert.equal(tagLines(0, 4), 1);
+  const w = wordsOf('  My boss   embarrassed me today. ');
+  assert.deepEqual(w, ['My', 'boss', 'embarrassed', 'me', 'today.']);
+  assert.equal(firstWords(w, 5), 'My boss embarrassed me today.', 'all of it when it fits: never marked');
+  assert.equal(firstWords(w, 9), 'My boss embarrassed me today.');
+  assert.equal(firstWords(w, 3), 'My boss embarrassed…');
+  assert.equal(firstWords(wordsOf('Hello, world, again'), 1), 'Hello…', 'trailing punctuation goes before the mark');
+});
+
 test('words: the layer sets words with textContent only and never scales the tag', () => {
   const src = readFileSync(root + 'src/mallows/thought/layer.js', 'utf8');
   assert.ok(!/innerHTML|insertAdjacentHTML|outerHTML/.test(src), 'no HTML parsing');
@@ -357,6 +493,9 @@ test('words: the layer sets words with textContent only and never scales the tag
   assert.ok(!/scale\(/.test(src.replace(/\/\/.*$/gm, '').replace(/getBoundingClientRect|devicePixelRatio/g, '')), 'tags are never scaled');
   const sizes = [...src.matchAll(/font(?:-size)?:\s*(?:\d+\s+)?(\d+)px/g)].map((m) => +m[1]);
   assert.ok(sizes.length && sizes.every((px) => px >= 15), `font sizes ${sizes}`);
+  // no CSS line clamp: the excerpt is chosen by measuring, so nothing cuts the words again mid-word
+  assert.ok(!/line-clamp/.test(src), 'no line-clamp');
+  assert.match(src, /words\.dir = 'auto'/, 'right-to-left words read the right way');
   const render = readFileSync(root + 'src/mallows/thought/render.js', 'utf8');
   assert.ok(!/fillText|strokeText/.test(render), 'the words are never painted onto the body');
 });
@@ -401,6 +540,34 @@ test('beliefs: 1.4× a thought, each prop weighs on the jelly, exploring lighten
     const back = createBelief({ text: j.text, prop: j.prop }).restore(j);
     assert.ok(back.explored > 0.95);
   }
+});
+
+test('beliefs: the charm leans the body 6° or more; the thread pinches a waist; the shell stays hinged on the rim', () => {
+  T += 10;
+  const c = createBelief({ text: 'I can pause before responding.', prop: 'charm', x: 200, y: 400 });
+  sim(c, 3);
+  assert.ok(-c.render.ang >= 0.105, `charm lean ${(-c.render.ang * 180 / Math.PI).toFixed(1)}°`);
+  const r = c.propRect({}), b = c.bodyRect();
+  assert.ok(r.left < b.left + b.width * 0.25, 'it hangs from its left side');
+  c.explore(1); sim(c, 4);
+  assert.ok(-c.render.ang < 0.05, 'explored, it barely pulls');
+  const t = createBelief({ text: 'I must always be perfect.', prop: 'thread', x: 200, y: 400 });
+  sim(t, 3);
+  // the waist at the thread's height (lattice v 0.74): sampled through the outline
+  const O = t.render.outline, y = t.render.cy + 0.24 * t.render.P;
+  let xl = Infinity, xr = -Infinity;
+  for (let i = 0; i < O.length / 2; i++) { const j = (i + 1) % (O.length / 2); const y0 = O[2 * i + 1], y1 = O[2 * j + 1]; if ((y - y0) * (y - y1) <= 0 && y0 !== y1) { const x = O[2 * i] + (O[2 * j] - O[2 * i]) * ((y - y0) / (y1 - y0)); xl = Math.min(xl, x); xr = Math.max(xr, x); } }
+  const pinch = 1 - (xr - xl) / t.render.W;
+  assert.ok(pinch >= 0.1 && pinch <= 0.3, `thread pinch ${pinch.toFixed(2)} W`);
+  const s = createBelief({ text: 'Everybody judges me.', prop: 'shell', x: 200, y: 400 });
+  for (const k of [0, 0.5, 1]) {
+    s.explore(k); sim(s, 4);
+    const ps = s.propState, sy = s.surfaceY(ps.hx);
+    assert.ok(Math.abs(ps.hy - sy) < 4, `shell hinge ${(ps.hy - sy).toFixed(1)} px off the rim at ${k}`);
+  }
+  assert.ok(s.propState.flip < -0.9, 'open, it has turned over (its back against the head)');
+  const pr = s.propRect({}), bb = s.bodyRect();
+  assert.ok(pr.left > bb.cx, 'and rests against the side, not above the head');
 });
 
 test('beliefs: the person exploring by touch loosens the prop too', () => {
@@ -491,6 +658,40 @@ test('layer: the Hushfold placeholder shape (add / list / hitTest / pointer / re
   assert.equal(L.list.length, 1); assert.equal(a.destroyed, false); assert.equal(a.layer, null);
   b.destroy();
   assert.equal(L.list.length, 0);
+  L.destroy();
+});
+
+test('layer: thoughts are placed clear of each other and of the hero when they arrive (effects and props included), and stay put', async () => {
+  const { ThoughtLayer } = await import('../src/mallows/thought/layer.js');
+  const hero = { left: 85, top: 370, right: 305, bottom: 590 };
+  const B = { left: 20, top: 76, right: 370, bottom: 600 };
+  const L = new ThoughtLayer({ bounds: () => B, keepOut: () => hero, reducedMotion: false });
+  const from = { x: 195, y: 410 };
+  const a = L.add({ text: 'My boss embarrassed me today.', emotion: 'overwhelm', intensity: 0.75 }, { from, home: { x: 200, y: 260 } });
+  const b = L.add({ text: 'Nobody replied to my message.', emotion: 'sadness', intensity: 0.75 }, { from, home: { x: 200, y: 260 } });
+  const c = L.add({ text: "I'm not good enough.", prop: 'stone' }, { from, home: { x: 30, y: 250 } });
+  const homes0 = L.list.map((t) => ({ x: t.home.x, y: t.home.y }));
+  // asked for the same spot: they were given different ones at once
+  assert.ok(Math.hypot(a.home.x - b.home.x, a.home.y - b.home.y) > 60, 'not on top of each other');
+  for (let i = 0; i < 60 * 6; i++) L.frame(DT);
+  const ov = (p, q) => Math.max(0, Math.min(p.right, q.right) - Math.max(p.left, q.left)) * Math.max(0, Math.min(p.bottom, q.bottom) - Math.max(p.top, q.top));
+  const ex = L.list.map((t) => t.extent({}));
+  for (let i = 0; i < ex.length; i++) {
+    assert.equal(ov(ex[i], hero), 0, `${L.list[i].id} clear of the hero`);
+    assert.ok(ex[i].left >= B.left - 1 && ex[i].right <= B.right + 1 && ex[i].top >= B.top - 1 && ex[i].bottom <= B.bottom + 1, `${L.list[i].id} inside the bounds by its live extent ${JSON.stringify(ex[i])}`);
+    for (let j = i + 1; j < ex.length; j++) assert.ok(ov(ex[i], ex[j]) < 150, `${L.list[i].id} / ${L.list[j].id}: ${ov(ex[i], ex[j]).toFixed(0)} px²`);
+  }
+  // nothing relocated across the stage on its own
+  L.list.forEach((t, i) => assert.ok(Math.hypot(t.home.x - homes0[i].x, t.home.y - homes0[i].y) < 120, `${t.id} moved ${Math.hypot(t.home.x - homes0[i].x, t.home.y - homes0[i].y).toFixed(0)} px`));
+  // the sad thought's cloud and the stone are part of what is kept clear
+  assert.ok(b.fxRect({}) && c.propRect({}));
+  // pause: not touchable, nothing stepped
+  L.pause(true);
+  assert.equal(L.hitTest(a.render.cx, a.render.cy), null);
+  assert.equal(L.frame(DT), false);
+  L.resume();
+  assert.equal(L.hitTest(a.render.cx, a.render.cy), a);
+  assert.ok(L.roominess > 0);
   L.destroy();
 });
 

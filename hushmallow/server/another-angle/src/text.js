@@ -61,7 +61,8 @@ export const STOPWORDS = new Set(`a about above after again against ago all almo
 
 /** Groups of words that refer to the same thing in someone's situation. */
 const SYNONYMS = [
-  ['boss', 'manager', 'supervisor', 'line-manager', 'head'],
+  // Not "head": "your head is doing a lot of guessing" is not about the boss.
+  ['boss', 'manager', 'supervisor', 'line-manager', 'head-teacher', 'headteacher'],
   ['partner', 'boyfriend', 'girlfriend', 'husband', 'wife', 'fiance', 'fiancé', 'fiancée', 'spouse', 'date'],
   ['message', 'messages', 'text', 'texts', 'texted', 'texting', 'reply', 'replied', 'replies', 'replying', 'respond', 'responded', 'response', 'answer', 'answered', 'dm', 'email', 'emailed', 'whatsapp', 'silence', 'silent', 'phone'],
   ['exam', 'exams', 'test', 'tests', 'assessment', 'assessments', 'resit', 'mark', 'marks', 'grade', 'grades', 'result', 'results',
@@ -114,11 +115,26 @@ export const IRREGULAR = new Map(Object.entries({
 /** Crude, stable stem: lower case, no possessive, irregular forms mapped, common suffixes and a final e off. */
 /** @param {string} word */
 export function stem(word) {
+  return stemWith(word, true);
+}
+
+/**
+ * The same stem without the synonym groups: "manager" stays "manage" rather
+ * than meeting "boss". The engagement check uses it to tell the person's own
+ * word from a word that only shares a group with one.
+ * @param {string} word
+ */
+export function plainStem(word) {
+  return stemWith(word, false);
+}
+
+/** @param {string} word @param {boolean} syn */
+function stemWith(word, syn) {
   let w = word.toLowerCase().replace(/[’']s$/, '').replace(/[’']/g, "'");
   // A plain plural of a listed word is that word: "courses" is "course"
   // (the suffix rule below would strip "es" and leave "cours").
-  const syn = SYN_INDEX.get(w) || (w.length > 3 && w.endsWith('s') ? SYN_INDEX.get(w.slice(0, -1)) : undefined);
-  if (syn) return syn;
+  const group = syn && (SYN_INDEX.get(w) || (w.length > 3 && w.endsWith('s') ? SYN_INDEX.get(w.slice(0, -1)) : undefined));
+  if (group) return group;
   const irr = IRREGULAR.get(w);
   if (irr) w = irr;
   else {
@@ -126,7 +142,7 @@ export function stem(word) {
       if (w.length - suf.length >= 3 && w.endsWith(suf)) { w = w.slice(0, -suf.length); break; }
     }
   }
-  const syn2 = SYN_INDEX.get(w);
+  const syn2 = syn && SYN_INDEX.get(w);
   if (syn2) return syn2;
   // "like"/"liked"/"liking" → "lik"; "cancelled"/"cancel" → "cancel".
   if (w.length > 3) w = w.replace(/e$/u, '');
@@ -135,11 +151,23 @@ export function stem(word) {
 }
 
 /**
+ * Members of the synonym groups that fit almost any line ("the answer",
+ * "your call", "a result", "work", "plans", "class", "tell yourself"): a line
+ * that meets the person's words only through one of these says little about
+ * their situation, so the engagement check needs a second hit beside it. The
+ * rest of each group ("reply" for "texted", "courses" for "university",
+ * "role" for "promoted") still counts on its own.
+ */
+export const BROAD_SYNONYMS = new Set(`answer answered answers phone silence silent result results mark marks work works worked working shift position
+plans plan party call calls class classes said say says saying told tell tells telling words word talk talked talking talks spoke speak speaking`
+  .split(/\s+/).map((w) => plainStem(w)));
+
+/**
  * Lower-cased words, each hyphenated word followed by its parts, so
  * "first-choice" meets "first choice" and "second-hand" meets "hand".
  * @param {unknown} text @returns {string[]}
  */
-function wordsAndParts(text) {
+export function wordsAndParts(text) {
   const out = [];
   for (const raw of words(text)) {
     const w = raw.toLowerCase();
