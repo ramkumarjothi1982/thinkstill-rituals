@@ -4,7 +4,7 @@
 //     &text=My%20boss%20embarrassed%20me     the person's words (default: an example)
 //     &emotion=angry&intention=calm&intensity=0.7
 //     &photos=3          sample photos (0 = the seven Mallow cards)
-//     &motion=reduce     reduced motion
+//     &motion=reduce     reduced motion for this lab session only (the saved pref is untouched)
 //     &autoflow=1        Auto-flow on
 //     &next=<worldId>    force the next world (e.g. static-storm, or dev-realm for a melt test)
 //     &q=fixed | 0..3    quality: no governor / a fixed level
@@ -48,13 +48,14 @@ export async function hushflowLab(app, qs) {
   const entry = registry.get(worldId);
   if (!entry || !registry.playable(worldId)) { console.warn(`[hushflow lab] no playable world "${worldId}"`); return false; }
 
-  if (qs.get('motion') === 'reduce') app.prefs.set('motion', 'reduced');
-  if (qs.get('motion') === 'full') app.prefs.set('motion', 'full');
+  // &motion=reduce|full overrides reduced motion for this lab session only (the saved pref is untouched)
+  const motionQ = qs.get('motion');
+  const reducedOverride = motionQ === 'reduce' ? true : motionQ === 'full' ? false : null;
   const emotion = qs.get('emotion') || 'angry';
   const intention = qs.get('intention') || 'calm';
   const intensity = Number(qs.get('intensity') || 0.7);
   const text = qs.has('text') ? qs.get('text') : 'My boss embarrassed me today.';
-  const reduced = app.prefs.reducedMotion();
+  const reduced = reducedOverride ?? app.prefs.reducedMotion();
 
   history.replaceState({ i: 0 }, '', location.search + '#hushflow');
   document.title = `${entry.title} · hushmallow`;
@@ -64,21 +65,24 @@ export async function hushflowLab(app, qs) {
   const fxEl = document.getElementById('fx-layer');
   const layer = document.getElementById('mallow-layer');
 
-  // ---- the hero Mallow, standing on the storm floor (sized with CSS vars, never CSS-scaled)
+  // ---- the hero Mallow, standing on the storm floor: the same size and place as the
+  // Hushfold shell gives it in a world (hushfold.js layout(), worldMode), never CSS-scaled
   const placeMallow = () => {
-    const H = innerHeight, W = innerWidth;
-    const bodyTop = H * 0.645, bodyBottom = H * 0.885;
-    const lh = Math.min(440, (bodyBottom - bodyTop) / 0.66), lw = Math.min(W * 0.86, lh * 0.95);
-    const centre = bodyTop - lh * 0.22 + lh / 2;
+    const vh = innerHeight, vw = innerWidth;
+    const B = Math.max(130, Math.min(vw * 0.58, vh * 0.27, 300));
+    const lw = B / 0.64, lh = lw * 1.1;
+    const bodyCy = Math.min(vh * 0.885, vh - 76) - B / 2;
+    const layerCy = bodyCy - 0.098 * lw;
     layer.style.setProperty('--mw', `${Math.round(lw)}px`);
     layer.style.setProperty('--mh', `${Math.round(lh)}px`);
     layer.style.setProperty('--mx', '50');
-    layer.style.setProperty('--my', String((centre / H) * 100));
+    layer.style.setProperty('--my', String((layerCy / vh) * 100));
     layer.style.setProperty('--ms', '1');
   };
   placeMallow();
   addEventListener('resize', placeMallow);
   await app.world.setMallow(entry.mallow?.id || 'glitzi', { entrance: false });
+  if (reducedOverride != null) { try { app.world.setReducedMotion?.(reducedOverride); } catch { /* optional */ } }
   app.world.setEmotion({ frustrated: 0.6, excited: 0.2, curious: 0.2 }, 0.7, { instant: true });
   const mallow = rigMallow(app.world);
 
@@ -94,18 +98,19 @@ export async function hushflowLab(app, qs) {
 
   let fontPx = (px, w) => `${w} ${px}px "HM Nunito Sans", system-ui, sans-serif`;
   try { const t = await import('../../ui/type.js'); fontPx = t.canvasFontPx || fontPx; await t.fontsReady?.(['voice', 'ui', 'story'], 1500); } catch { /* fallback font */ }
-  const thought = words.full || words.token ? createPlaceholderThought({ words, emotion, font: fontPx, dpr: Math.min(2, devicePixelRatio || 1) }) : null;
+  // a Thought Mallow only for words the person actually typed (never from the feeling's fallback token)
+  const thought = words.own ? createPlaceholderThought({ words, emotion, font: fontPx, dpr: Math.min(2, devicePixelRatio || 1) }) : null;
 
   // ---- subtitles (W3 stand-in) — appended to body so #scene's touch rule never applies to them
   let director = null;
-  // default band: just above Glitzi (clear of the postcards and the thought); the top band when a finger is down there
-  const lowBand = () => Math.max(innerHeight * 0.5, (mallow.rect()?.top ?? innerHeight * 0.645) - 10);
-  const subtitles = createLabSubtitles({ root: document.body, avoid: () => director?.avoid() || [], slotY: lowBand, altY: () => 66 });
+  // lines, discoveries and choices live in the band the world keeps clear (director.subtitleBand())
+  const subtitles = createLabSubtitles({ root: document.body, band: () => director?.subtitleBand() || null, avoid: () => director?.avoid() || [] });
 
   const q = qs.get('q');
   director = createHushflow({
     app, worldEl, fxEl, mallow, thought, subtitles, photos, words, prefs: app.prefs, store: app.store, registry,
     forceNext, quality: q === 'fixed' || /^[0-3]$/.test(q || '') ? 'fixed' : 'auto', debug: qs.get('debug') === '1',
+    ...(reducedOverride != null ? { reducedMotion: reducedOverride } : {}),
   });
   if (/^[0-3]$/.test(q || '')) director.debug.setQuality(Number(q));
   if (qs.get('autoflow') === '1') director.setAutoFlow(true);
@@ -125,7 +130,8 @@ export async function hushflowLab(app, qs) {
   for (const ev of ['world', 'discovery', 'offer', 'complete', 'melt', 'pause', 'resume', 'stay', 'finish', 'quality', 'error']) {
     director.on(ev, (d) => { log.push({ ev, t: Math.round(director.debug.time * 100) / 100, ...(d && typeof d === 'object' ? JSON.parse(JSON.stringify(d, (k, v) => (k === 'error' ? String(v) : v))) : {}) }); });
   }
-  director.on('world', (d) => { if (!d.from) showTitle(d.title, reduced); });
+  // the world's name, once, as a title card in the subtitle band (as the shell does)
+  director.on('world', (d) => { if (!d.from && d.title) subtitles.say([d.title], { kind: 'title' }); });
   // the Memory Garden offer belongs to W5; the lab only shows that it would be offered
   director.on('offer', (d) => {
     import('../skills.js').then((m) => m.SKILLS?.[d.skillId]?.title || m.skillTitle?.(d.skillId)).catch(() => null).then((title) => {
@@ -141,21 +147,6 @@ export async function hushflowLab(app, qs) {
   window.__hushflow = { director, mallow, thought, subtitles, photos, words, log, registry, bar, get world() { return director.world; } };
   window.__hushflowReady = true;
   return true;
-}
-
-function showTitle(title, reduced) {
-  if (!title) return;
-  const el = document.createElement('div');
-  el.textContent = title;
-  Object.assign(el.style, {
-    position: 'fixed', left: '0', right: '0', top: '43%', zIndex: '4', pointerEvents: 'none', textAlign: 'center',
-    font: '540 25px/1.12 var(--ff-story, "HM Fraunces", Georgia, serif)', letterSpacing: reduced ? '-0.01em' : '0.04em', color: '#fff6e8',
-    textShadow: '0 1px 2px rgba(6,4,22,.9), 0 0 30px rgba(120,80,255,.45)', opacity: '0',
-    transition: reduced ? 'opacity .4s linear' : 'opacity 1.4s ease, letter-spacing 2.6s cubic-bezier(.2,.7,.2,1)',
-  });
-  document.body.append(el);
-  requestAnimationFrame(() => requestAnimationFrame(() => { el.style.opacity = '1'; el.style.letterSpacing = '-0.01em'; }));
-  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 1600); }, 3200);
 }
 
 function labBar({ director }) {

@@ -580,3 +580,21 @@ test('gestures: an arc of a circle is never a stroke; a gentle 0.25 turn/s circl
   q.pointer({ type: 'up', id: 1, x: 130, y: 100, t: 0.9 });
   assert.equal(ev4.find(([k]) => k === 'up')[1].kind, 'release');
 });
+
+test('core: a stroke that rests a moment before lifting still ends softly; a real press after it pops', () => {
+  const c = touchCore('blubi');
+  const r = c.rect(), x0 = r.cx - 0.3 * r.width, y0 = r.cy - 0.1 * r.height;
+  c.ptr('down', x0, y0); c.frame(1);
+  for (let i = 1; i <= 16; i++) { c.ptr('move', x0 + i * 9, y0); c.frame(); }
+  c.frame(27);                                   // rests 0.45 s: grips again
+  assert.equal(c.mt.reader.pointers[0].mode, 'press');
+  c.ptr('up', x0 + 144, y0); c.frame(30);
+  assert.ok(!c.log.reacts.includes('release') && !c.log.haptics.includes('pop'), `soft end: ${c.log.reacts.join(',')} / ${c.log.haptics.join(',')}`);
+  // …but stroking, then pressing on for a second is a squeeze
+  const d = touchCore('blubi');
+  d.ptr('down', x0, y0); d.frame(1);
+  for (let i = 1; i <= 16; i++) { d.ptr('move', x0 + i * 9, y0); d.frame(); }
+  d.frame(90);
+  d.ptr('up', x0 + 144, y0); d.frame(5);
+  assert.ok(d.log.reacts.includes('release'), d.log.reacts.join(','));
+});

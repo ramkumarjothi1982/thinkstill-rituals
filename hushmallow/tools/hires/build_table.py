@@ -3,11 +3,17 @@
     python3 tools/hires/build_table.py tools/hires/data tools/hires/data/old-registry.json \
         src/mallows/hires.js [verified ids...]
 
+    python3 tools/hires/build_table.py tools/hires/data tools/hires/data/old-registry.json \
+        /tmp/hires-nofit.js --no-fit      (the table the render-fit lab starts from)
+
 Takes measure-<id>.json (measure.py) and optional fit-<id>.json (the lab's
-render-fit pass) from the data dir, the sprite sizes from assets/rig-hires
-(derive.py), keeps
-everything the art does not define (ink colours, mouth style, tongue colour,
-cheek colour/base) from the current registry, and converts all geometry to
+render-fit pass, tools/hires/lab/fit.js) from the data dir, the sprite sizes
+from assets/rig-hires (derive.py). The painted colours measure.py samples
+(open mouths' inside and tongue, painted brows' ink) replace the registry's;
+everything else the art does not define (line colours, mouth style, cheek
+colour/base) is kept from the current registry. Writes the table, and (not
+with --no-fit) silhouette.json and checks.json into the data dir for
+tests/hires.test.mjs. It converts all geometry to
 the rig's *logical* space: new-art pixels / res, where res is the old->new
 scale (~2.3-2.7). In that space every constant inside rig.js (line widths of
 tears, glitch-line heights, thresholds, MallowTouch's padding) keeps the
@@ -18,8 +24,12 @@ import json, sys, os
 import numpy as np
 from PIL import Image
 
-WORK, OLD, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
-VERIFIED = sys.argv[4:]
+args = [a for a in sys.argv[1:] if not a.startswith('--')]
+NO_FIT = '--no-fit' in sys.argv      # the table the render-fit lab starts from
+# where assets/ is, relative to the written module (src/mallows/ -> ../../)
+ASSET_BASE = next((a.split('=', 1)[1] for a in sys.argv if a.startswith('--asset-base=')), '../../assets/')
+WORK, OLD, OUT = args[0], args[1], args[2]
+VERIFIED = args[3:]
 IDS = ['glitzi', 'zuzu', 'boppo', 'pipzi', 'blubi', 'loomi', 'noomi']
 OLD_REG = json.load(open(OLD))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -27,7 +37,15 @@ NEUTRAL = {'glitzi': {'lidTop': 0.55, 'lidSlant': 0.2}, 'boppo': {'mouthOpen': 0
 # Hand decisions after the lab check, applied last (logical px):
 #   Glitzi's lid line doubles as its blink line: the painted lid has no hard
 #   edge (a fit drives it to a hairline), a blink needs one. 6 sits between.
-TWEAKS = {'glitzi': {('eyes', 'L', 'lw'): 6.0, ('eyes', 'R', 'lw'): 6.0}}
+#   Glitzi's carved frown has no painted open mouth to measure, so the rig's
+#   default depth (w * 0.45 = 56) applied; with the redraw's deeper frown
+#   (sag 31: the corners sit low) and its shorter body that pushed an excited
+#   mouth past the outline. 27 keeps every preset, stage and reaction at full
+#   intensity, with the mouth spring's ~7% overshoot, >= 6 px inside the
+#   silhouette and a stuck-out tongue's tip >= 3 px (playful + yawn is the
+#   tightest; tests/hires.test.mjs checks all of it), and an excited Glitzi
+#   still opens a 75 px grin (the current rig: ~93 px on a taller body).
+TWEAKS = {'glitzi': {('eyes', 'L', 'lw'): 6.0, ('eyes', 'R', 'lw'): 6.0, ('mouth', 'depth'): 27.0}}
 
 
 def r1(v):
@@ -85,16 +103,25 @@ def build(name):
         b['p0'], b['c'], b['p1'] = P(b_new['p0']), P(b_new['c']), P(b_new['p1'])
         b['lw'] = L(b_new['lw'])
         b['alpha'] = b_new['alpha']
+        if 'ink_paint' in b_new:
+            # a painted brow: its own ink (the registry's line colour is a
+            # shade lighter than Pipzi's painted brows)
+            b['ink'] = b_new['ink_paint']
         cx, cy, cr = f['cheeks'][s]
         face['cheeks'][s] = [L(cx), L(cy), L(cr)]
     M_new, M = f['mouth'], face['mouth']
     for k in ('x', 'y', 'w', 'sag', 'lw', 'upper', 'depth'):
         if k in M_new and M_new[k] is not None:
             M[k] = L(M_new[k])
+    if 'mouthPaint' in meas:
+        # open mouths: interior and tongue colours of the new art, not the
+        # old registry's (the redraws are lighter and pinker inside)
+        M['inside'] = meas['mouthPaint']['inside']
+        M['tongue'] = meas['mouthPaint']['tongue']
     # optional render-fit pass (lab: the drawn neutral face vs the approved
     # art on the real rig renderer), already in logical px
     fit_path = f'{WORK}/fit-{name}.json'
-    if os.path.exists(fit_path):
+    if os.path.exists(fit_path) and not NO_FIT:
         fitj = json.load(open(fit_path))
         rep = fitj.get('report', {})
         fit = fitj['face']
@@ -115,6 +142,13 @@ def build(name):
         # only tunes line / crease mouths
         if 'mouth' in rep and face['mouth']['style'] != 'open':
             take(face['mouth'], fit['mouth'], rep['mouth']['values'])
+    # painted brows: never thinner than they are painted (the fit's
+    # luminance loss is happy with a thinner, darker core; side by side the
+    # drawn brow then reads thin). 0.95: the tube's soft shadow adds width.
+    for s in 'LR':
+        b_new, b = f['brow' + s], face['brows'][s]
+        if 'lw_paint' in b_new and b.get('alpha', 0) > 0:
+            b['lw'] = max(b['lw'], r1(b_new['lw_paint'] * 0.95 / res))
     for path, v in TWEAKS.get(name, {}).items():
         o = face
         for k in path[:-1]:
@@ -153,6 +187,49 @@ def js(v, ind=0):
 
 
 table = {name: build(name) for name in IDS}
+
+# The silhouette of every cut-out, for tests/hires.test.mjs (face parts must
+# stay inside the body): per 2 logical px column, the body's top and bottom
+# (alpha >= 50%) in logical px.
+ART = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'assets', 'mallows-hires')
+sil = {}
+for name in IDS:
+    a = np.array(Image.open(f'{ART}/{name}.webp').convert('RGBA'))[..., 3]
+    res = table[name]['res']
+    top, bot = [], []
+    for i in range(0, int(np.ceil(a.shape[1] / res)), 2):
+        x = min(a.shape[1] - 1, int(round((i + 1) * res)))
+        col = np.nonzero(a[:, x] >= 128)[0]
+        top.append(r1(col.min() / res) if len(col) else None)
+        bot.append(r1(col.max() / res) if len(col) else None)
+    sil[name] = {'step': 2, 'top': top, 'bottom': bot}
+
+
+def spiral_check(key):
+    """A rotating sprite must not carry body pixels (they would orbit inside
+    the eye), and its dark rim must read all the way round: per 5 degree
+    sector, the outer 6 px hold a dark rim pixel."""
+    a = np.array(Image.open(f'{RIG_HIRES}/{key}.webp').convert('RGBA')).astype(np.float64)
+    S = a.shape[0] / 2
+    yy, xx = np.mgrid[0:a.shape[0], 0:a.shape[1]] + 0.5
+    d, th = np.hypot(xx - S, yy - S), np.arctan2(yy - S, xx - S)
+    al, rgb = a[..., 3], a[..., :3]
+    L = rgb @ [0.299, 0.587, 0.114]
+    Rc = d[al > 128].max()
+    body = (al > 128) & (d > Rc - 12) & (rgb[..., 0] > 150) & (rgb[..., 0] > rgb[..., 2] + 10)
+    ring = (d > Rc - 6) & (al > 128)
+    sec = ((th + np.pi) / (2 * np.pi) * 72).astype(int) % 72
+    dark = [L[ring & (sec == k)].min() < 70 for k in range(72)]
+    return {'bodyPx': int(body.sum()), 'rimDark': round(float(np.mean(dark)), 3), 'size': a.shape[0]}
+
+
+checks = {'sprites': {f'zuzu-spiral-{s}': spiral_check(f'zuzu-spiral-{s}') for s in 'LR'}}
+for k, c in checks['sprites'].items():
+    if c['bodyPx'] or c['rimDark'] < 0.95:
+        sys.exit(f'{k}: body pixels in the sprite or a broken rim: {c} (re-run derive.py)')
+if not NO_FIT:
+    json.dump(sil, open(f'{WORK}/silhouette.json', 'w'), separators=(',', ':'))
+    json.dump(checks, open(f'{WORK}/checks.json', 'w'), indent=1)
 head = '''// High-res Mallow rigs: a patch table over registry.js (workstream W7).
 //
 // GENERATED by tools/hires/build_table.py from the owner's 1254 px art in
@@ -180,8 +257,8 @@ head = '''// High-res Mallow rigs: a patch table over registry.js (workstream W7
 //   import { applyHires } from './hires.js';  applyHires(MALLOWS, SPRITES);
 // and ship assets/mallows-hires + assets/rig-hires in tools/build-site.sh.
 
-const A = (p) => new URL(`../../assets/${p}`, import.meta.url).href;
-'''
+const A = (p) => new URL(`ASSET_BASE${p}`, import.meta.url).href;
+'''.replace('ASSET_BASE', ASSET_BASE)
 out = [head]
 out.append('const T = ' + js(table) + ';\n')
 out.append('''
@@ -201,7 +278,9 @@ export function hiresMallow(base, id = base?.id) {
   const h = T[id];
   if (!base || !h) return base || null;
   return { ...base, file: h.file, body: h.body, size: h.size.slice(), bodyBox: h.bodyBox.slice(), res: h.res,
-    ...(h.glitchRows ? { glitchRows: h.glitchRows.slice() } : {}), face: structuredClone(h.face), hires: true };
+    // JSON, not structuredClone: this runs at registry import time, and
+    // structuredClone throws on Safari < 15.4 (the face spec is plain JSON)
+    ...(h.glitchRows ? { glitchRows: h.glitchRows.slice() } : {}), face: JSON.parse(JSON.stringify(h.face)), hires: true };
 }
 
 /** Switch `ids` (default: HIRES_VERIFIED) to their high-res rigs in place:

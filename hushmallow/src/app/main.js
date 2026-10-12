@@ -104,8 +104,10 @@ app.back = () => history.back();
 // Transient layers (the Hushfold's input, side panel, reader) get a history
 // entry of their own, so Back closes them first, even on the root scene.
 // pushLayer() → token; popLayer(token) removes the entry when the layer
-// closes another way (✕, Escape, send). Entries are interchangeable, so only
-// the count matters; app.go() forgets them (they become plain duplicates).
+// closes another way (✕, Escape, send). On Back the scene's blockBack(token)
+// gets the token of the entry that was just consumed and closes that layer
+// only (it must not call popLayer for it). app.go() forgets them (they
+// become plain duplicates).
 const layers = [];
 let layerSeq = 0, ignorePops = 0;
 const popWaiters = [];
@@ -115,7 +117,9 @@ app.popLayer = (t) => { const k = layers.lastIndexOf(t); if (k < 0) return; laye
 
 window.addEventListener('popstate', (e) => {
   if (ignorePops > 0) { ignorePops--; if (!ignorePops) popWaiters.splice(0).forEach((r) => r()); return; }
-  if (layers.length) { layers.pop(); try { current?.blockBack?.(); } catch (err) { console.warn(err); } return; }
+  // Back consumed the newest layer's entry: the scene closes the layer that owns that
+  // token, without stepping history back again (so two open layers take two Backs)
+  if (layers.length) { const t = layers.pop(); try { const close = current?.blockBack; if (typeof close === 'function') close(t); } catch (err) { console.warn(err); } return; }
   const i = e.state?.i ?? 0;
   if (current?.blockBack) { history.pushState({ i: stack.length - 1 }, '', location.hash); current.blockBack(); return; }
   stack.length = Math.max(1, i + 1);

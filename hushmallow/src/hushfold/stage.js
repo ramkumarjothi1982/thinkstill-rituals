@@ -69,6 +69,8 @@ export function createStageMallow(world, { touch = null } = {}) {
 
   const api = {
     kind: 'rig',
+    /** The rig reads one pointer: a second finger on it goes to the world instead. */
+    multiTouch: false,
     get rig() { return rig; },
     get id() { return world.mallowId; },
     get ready() { return !!rig?.ready; },
@@ -113,6 +115,8 @@ export function createStageMallow(world, { touch = null } = {}) {
 function touchAdapter(t) {
   return {
     kind: 'touch',
+    /** MallowTouch tracks several pointers (two-finger stretch): the router routes both. */
+    multiTouch: true,
     get rig() { return t.rig; },
     get id() { return t.id ?? t.rig?.id; },
     get ready() { return true; },

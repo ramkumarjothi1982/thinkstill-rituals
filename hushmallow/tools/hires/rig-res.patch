@@ -1,8 +1,6 @@
-diff --git a/hushmallow/src/mallows/rig.js b/hushmallow/src/mallows/rig.js
-index 4eb52b0..440e1f0 100644
 --- a/hushmallow/src/mallows/rig.js
 +++ b/hushmallow/src/mallows/rig.js
-@@ -315,7 +315,7 @@ export class MallowRig {
+@@ -316,7 +316,7 @@
      this.CX = W / 2;
      this.BASE = H * this.opts.baseline;
      // skin resolution follows on-screen size (cheap for thumbnails)
@@ -11,15 +9,24 @@ index 4eb52b0..440e1f0 100644
      if (q !== this.q) {
        this.q = q;
        this.skin.width = Math.ceil(m.size[0] * q);
-@@ -822,13 +822,14 @@ export class MallowRig {
- 
-   /** Glitzi's energised glitch lines for a shader (opts.shaderGlitch): per row
-    *  [y, x0, len, alpha] in source px, plus thickness; null when calm. */
--  glitchLines(out = new Float32Array(GLITCH_ROWS.length * 4)) {
-+  glitchLines(out = new Float32Array((this.mallow.glitchRows || GLITCH_ROWS).length * 4)) {
-+    const rows = this.mallow.glitchRows || GLITCH_ROWS;
+@@ -853,21 +853,22 @@
+    *  [y, x0, len, alpha] in source px, plus out.thick and out.mode ('lit');
+    *  null when calm. With {dim:true} a calm Glitzi returns its quieted rows
+    *  instead (out.mode 'dim': dark bands over the approved lines). */
+-  glitchLines(out = new Float32Array(GLITCH_ROWS.length * 4), opts = {}) {
++  glitchLines(out = new Float32Array((this.mallow.glitchRows || GLITCH_ROWS).length * 4), opts = {}) {
++    const rows = this.mallow.glitchRows || GLITCH_ROWS;   // high-res art: its own rows
      const g = clamp(this.val.glitch, 0, 2);
-     if (this.id !== 'glitzi' || g < 0.55) return null;
+     if (this.id !== 'glitzi') return null;
+     if (g < 0.55) {
+       const a = (0.55 - g) * 1.2;
+       if (!opts.dim || a < 0.003) return null;
+-      for (let i = 0; i < GLITCH_ROWS.length; i++) { out[4 * i] = GLITCH_ROWS[i]; out[4 * i + 1] = 0; out[4 * i + 2] = this.mallow.size[0]; out[4 * i + 3] = a; }
++      for (let i = 0; i < rows.length; i++) { out[4 * i] = rows[i]; out[4 * i + 1] = 0; out[4 * i + 2] = this.mallow.size[0]; out[4 * i + 3] = a; }
+       out.thick = 6; out.mode = 'dim';
+       return out;
+     }
+     out.mode = 'lit';
      const W = this.mallow.size[0], k = (g - 0.55) / 1.45;
 -    for (let i = 0; i < GLITCH_ROWS.length; i++) {
 +    for (let i = 0; i < rows.length; i++) {
@@ -29,17 +36,17 @@ index 4eb52b0..440e1f0 100644
        out[4 * i + 1] = (Math.sin(ph) * 0.5 + 0.5) * W * 0.4;
        out[4 * i + 2] = W * (0.35 + 0.5 * k);
        out[4 * i + 3] = (0.25 + 0.55 * k) * (0.65 + 0.35 * Math.sin(ph * 2.1));
-@@ -883,7 +884,8 @@ export class MallowRig {
+@@ -927,7 +928,8 @@
      }
      ctx.setTransform(q, 0, 0, q, 0, 0);
      ctx.imageSmoothingQuality = 'high';
 -    ctx.drawImage(A.body, 0, 0);
-+    // art is drawn at the rig's logical size (high-res art: res image px per logical px)
++    // art drawn at the rig's logical size (high-res art: res image px per logical px)
 +    ctx.drawImage(A.body, 0, 0, m.size[0], m.size[1]);
  
      const f = m.face;
      const P = P0;
-@@ -900,7 +902,7 @@ export class MallowRig {
+@@ -944,7 +946,7 @@
      if (this.opts.pristine && this.restMix > 0.004) {
        ctx.globalAlpha = this.restMix;
        ctx.globalCompositeOperation = 'source-atop';   // keep the approved alpha, no edge build-up
@@ -48,7 +55,7 @@ index 4eb52b0..440e1f0 100644
        ctx.globalCompositeOperation = 'source-over';
        ctx.globalAlpha = 1;
      }
-@@ -1084,7 +1086,7 @@ function drawEye(ctx, rig, f, side, P) {
+@@ -1152,7 +1154,7 @@
      ctx.clip();
      if (style === 'spiral') {
        const img = A[spec.sprite];
@@ -57,7 +64,7 @@ index 4eb52b0..440e1f0 100644
        ctx.save();
        ctx.translate(g.ex, g.ey);
        ctx.rotate(rig.spinAngle * (side === 'L' ? 1 : -1));
-@@ -1434,6 +1436,7 @@ function drawTearsAndSweat(ctx, rig, f, P) {
+@@ -1502,6 +1504,7 @@
  }
  
  function drawGlitchLines(ctx, rig, P) {
@@ -65,7 +72,7 @@ index 4eb52b0..440e1f0 100644
    const g = clamp(P.glitch, 0, 2);
    const W = rig.mallow.size[0];
    ctx.save();
-@@ -1442,12 +1445,12 @@ function drawGlitchLines(ctx, rig, P) {
+@@ -1510,12 +1513,12 @@
      // calm / sad Glitzi: its static quiets down
      ctx.globalAlpha = (0.55 - g) * 1.2;
      ctx.fillStyle = '#1b1452';

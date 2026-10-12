@@ -160,6 +160,14 @@ def restore_cheeks(body, img, erase, meas):
             prof[:, c] = ndimage.gaussian_filter1d(prof[:, c], 2)
         cur_lf = cv2.GaussianBlur(out[..., :3], (0, 0), sig)
         target = np.stack([np.interp(d, bins, prof[:, c]) for c in range(3)], -1)
+        # the painted blush is not perfectly radial (it is brightest next to
+        # the eye): a pure profile would meet the intact blush with a seam.
+        # Gradient-domain fix: the profile's mismatch with what surrounds the
+        # rebuilt area (the intact art outside it, the filled body beyond
+        # 1.3 r) is spread smoothly across it by a harmonic solve.
+        outside_lf, _ = norm_blur(out[..., :3], (~reg).astype(np.float64), sig)
+        corr = harmonic_fill(outside_lf - target, reg, scale=2)
+        target = target + np.where(reg[..., None], corr, 0)
         w = np.clip((1.3 * r - d) / (0.3 * r), 0, 1) * reg
         w = cv2.GaussianBlur(w, (0, 0), 1.5 * u)
         out[..., :3] += (target - cur_lf) * w[..., None]
@@ -378,12 +386,14 @@ def rim_edges(L, cx, cy, r_lo, r_hi, n=180):
     return th, edge, ring
 
 
-def round_disc(img, cx, cy, th, edge, R, inset=1.5, soft=1.2):
+def round_disc(img, cx, cy, th, edge, R, inset=1.5, soft=1.2, keep=0.8):
     """A painted disc that is not quite round (Zuzu's spirals: their dark rim
     sits 145-156 px from the centre) would show a crescent of body inside the
-    eye once it rotates. Resample it radially so the rim's outer edge lands on
-    one radius R everywhere (a <= 4% radial stretch, never repainted), then
-    cut `inset` px inside that edge: no body pixel is left in the sprite."""
+    eye once it rotates. Resample its outer band radially so the rim's outer
+    edge lands on one radius R everywhere (never repainted), then cut `inset`
+    px inside that edge: no body pixel is left in the sprite. Inside
+    keep * R the disc is copied 1:1, so at rest (spin 0) the drawn spiral is
+    the painted one, pixel for pixel."""
     Rc = R - inset
     S = int(np.ceil(Rc + 2))
     yy, xx = np.mgrid[0:2 * S, 0:2 * S].astype(np.float64) + 0.5
@@ -391,7 +401,8 @@ def round_disc(img, cx, cy, th, edge, R, inset=1.5, soft=1.2):
     d = np.hypot(dx, dy)
     a = np.mod(np.arctan2(dy, dx), 2 * np.pi)
     e = np.interp(a, np.concatenate([th, [2 * np.pi]]), np.concatenate([edge, edge[:1]]))
-    sr = d * e / R
+    Ri = keep * R
+    sr = np.where(d <= Ri, d, Ri + (d - Ri) * (e - Ri) / (R - Ri))
     mx = (cx + sr * np.cos(a)).astype(np.float32)
     my = (cy + sr * np.sin(a)).astype(np.float32)
     # resample premultiplied so the cut edge gets no fringe

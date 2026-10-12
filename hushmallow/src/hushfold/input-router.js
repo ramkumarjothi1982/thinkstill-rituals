@@ -1,7 +1,8 @@
 // The Hushfold's one input router, on #fx-layer (touch-action:none).
 //
 // Every touch on the stage lands here first and goes to exactly one owner,
-// in priority order: the hero Mallow (stageMallow.hitTest) → a Thought Mallow
+// in priority order: the hero Mallow (stageMallow.hitTest; both fingers when
+// stageMallow.multiTouch) → a Thought Mallow
 // → the current world (the Hushflow director's handler) → empty space.
 // Up to two pointers are tracked, with coalesced moves and a smoothed
 // velocity. The Mallow's eyes follow any finger or cursor on the stage.
@@ -46,9 +47,11 @@ export function createInputRouter({ el, mallow, thoughts = null, onEmpty = null,
     e.preventDefault();
     const x = e.clientX, y = e.clientY;
     const p = { kind: 'empty', target: null, x, y, t: e.timeStamp || performance.now(), vx: 0, vy: 0 };
+    // a second finger on the Mallow is the Mallow's too when it reads several
+    // (MallowTouch: two-finger stretch); the single-pointer rig gets one finger
     const mallowFree = ![...owners.values()].some((o) => o.kind === 'mallow');
     let th = null;
-    if (mallowFree && mallow?.hitTest?.(x, y)) p.kind = 'mallow';
+    if ((mallowFree || mallow?.multiTouch) && mallow?.hitTest?.(x, y)) p.kind = 'mallow';
     else if ((th = thoughts?.hitTest?.(x, y))) { p.kind = 'thought'; p.target = th; }
     else if (world) p.kind = 'world';
     owners.set(e.pointerId, p);

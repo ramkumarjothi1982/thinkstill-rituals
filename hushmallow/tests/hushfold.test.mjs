@@ -48,6 +48,33 @@ test('safety: the phrases the 12 Oct audit found missing are caught on the free 
   }
 });
 
+test('safety: the common phrasings the 12 Oct review found missing (checkText and interpret alike)', () => {
+  for (const t of ['I wanna die', 'i just wanna die', 'honestly i just wanna die', 'I wanna end it', 'I wish I could die', 'I wish I could just die',
+    'I want to sleep and never wake up', 'I just want to go to sleep and not wake up', "I'd rather be dead", 'I would rather be dead', 'I’d rather die',
+    'I wish I was never born', 'I wish I’d never been born', 'I should never have been born', 'I took a bunch of pills', 'I took all my tablets',
+    'took too many pills', "what's the point of living", 'I want it all to end', 'I wish I could disappear forever', 'I want to just die']) {
+    const r = checkText(t);
+    assert.equal(r.level, 'crisis', `${t} → ${r.level}`);
+    assert.equal(r.category, 'self-harm', t);
+    assert.equal(interpret(t).safety.level, 'crisis', t);
+  }
+  // concern: keep support close, without treating it as a crisis
+  for (const [t, category] of [['I feel like dying', 'distress'], ['I wish I could just disappear', 'distress'],
+    ['I want to hurt someone', 'harm-others'], ["I'm going to hurt him", 'harm-others'], ['I want to kill my boss', 'harm-others']]) {
+    const r = checkText(t);
+    assert.equal(r.level, 'concern', `${t} → ${r.level}`);
+    assert.equal(r.category, category, t);
+    assert.equal(interpret(t).safety.level, 'concern', t);
+  }
+  // and the everyday wording next to them stays none
+  for (const t of ['I wanna end it with him', 'I want to end it with her tonight', 'I wanna diet before the wedding', 'I wanna die of embarrassment',
+    "I'm going to die of boredom in this meeting", 'I’d rather die than wear that', 'I took all my pills on time today', 'I want to sleep and not wake up until noon',
+    "what's the point of living in London if you never go out", 'I want it all to stop for a minute', 'I could kill him', 'I want to hurt his feelings']) {
+    const r = checkText(t);
+    assert.equal(r.level, 'none', `${t} → ${r.level} (${r.matched})`);
+  }
+});
+
 test('safety: every phrase the old free detector caught is still caught', () => {
   for (const t of ['I want to kill myself', 'thinking about hurting myself', 'I have been cutting myself', 'suicidal', 'I just want to end it all',
     'end my life', "I don't want to be here", 'I do not want to wake up', 'no reason to live', 'better off dead', 'everyone is better off without me',
@@ -197,7 +224,9 @@ test('lines: every Mallow has every moment, short, authored, British and AI-free
   // acknowledgements echo the chosen feeling only, never the person's text
   for (const id of MALLOW_IDS) for (const s of allStrings(MALLOW_LINES[id].ack)) assert.doesNotMatch(s, /\{text\}|\{words\}/);
   // safety lines never joke
-  for (const s of [...SHARED_LINES.support, ...SHARED_LINES.supportCare]) assert.doesNotMatch(s, /!|haha|squish/i);
+  for (const s of [...SHARED_LINES.support, ...SHARED_LINES.supportCare, ...SHARED_LINES.supportConcern, ...SHARED_LINES.harmOthers, ...SHARED_LINES.careAsk, ...SHARED_LINES.careQuiet]) assert.doesNotMatch(s, /!|haha|squish/i);
+  // no chat-style stage directions in subtitles
+  for (const s of strings) assert.doesNotMatch(s, /\*[^*]+\*/, `stage direction: ${s}`);
 });
 
 test('lines: deterministic rotation without repeats, canonical invitation first', () => {

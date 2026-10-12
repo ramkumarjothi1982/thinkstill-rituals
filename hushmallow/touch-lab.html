@@ -17,7 +17,8 @@
   #stage { position: fixed; inset: 0; }
   .ui { position: fixed; z-index: 5; }
   #roster { top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 6px; border-radius: 18px;
-    background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); max-width: calc(100vw - 40px); box-sizing: border-box; }
+    background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    width: max-content; max-width: calc(100vw - 40px); box-sizing: border-box; }
   #roster::-webkit-scrollbar { display: none; }
   #roster button { flex: 0 0 auto; width: 42px; height: 42px; border-radius: 13px; border: 1px solid transparent; background: transparent; padding: 3px; cursor: pointer; }
   #roster button img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
@@ -41,7 +42,8 @@
     color: var(--text2); background: var(--panel); border: 1px solid var(--line); padding: 4px 10px; border-radius: 999px; pointer-events: none; opacity: 0; transition: opacity .3s; }
   #log.on { opacity: 1; }
   @media (max-width: 600px) { #controls { top: calc(max(12px, env(safe-area-inset-top)) + 64px); bottom: auto; } #log { top: auto; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 136px); } }
-  @media (max-width: 360px) { #readout { min-width: 0; font-size: 13px; } #controls button { padding: 0 9px; } #roster { gap: 4px; padding: 5px; } #roster button { width: 38px; height: 38px; } }
+  @media (max-width: 440px) { #roster { gap: 5px; } #roster button { width: 38px; height: 38px; } }
+  @media (max-width: 360px) { #readout { min-width: 0; font-size: 13px; } #controls button { padding: 0 9px; } #roster { gap: 4px; padding: 5px; } #roster button { width: 34px; height: 34px; padding: 2px; } }
 </style>
 </head>
 <body>

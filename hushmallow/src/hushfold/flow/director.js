@@ -151,6 +151,27 @@ export function createHushflow(opts = {}) {
     const bottom = r ? Math.max(top + 160, r.top - 14) : H * 0.62;
     return { x: 20, y: top, w: W - 40, h: bottom - top };
   }
+  /** The shell's free area: under the top controls, above the hero Mallow (client px). */
+  const shellSafe = () => safeRect?.() || defaultSafe();
+  /**
+   * The subtitle band every world keeps clear: the full width, straight under the top
+   * controls, clamp(0.17·H, 118, 156) px tall — the same band the Hushfold shell
+   * reserves above its Mallow (opts.subtitleBand overrides the height). Lines,
+   * discoveries and choices always have this slot; worlds never put a postcard, a
+   * thought, a hint or a touch target in it.
+   */
+  function bandRect() {
+    const s = shellSafe();
+    const o = typeof opts.subtitleBand === 'function' ? opts.subtitleBand({ W, H }) : opts.subtitleBand;
+    const h = Number.isFinite(o) && o > 0 ? o : clamp(Math.round(H * 0.17), 118, 156);
+    return { x: 0, y: s.y, w: W, h };
+  }
+  /** ctx.safe: the gameplay rect — the shell's free area minus the subtitle band. */
+  function playSafe() {
+    const s = shellSafe(), b = bandRect();
+    const y = Math.max(s.y, b.y + b.h + 6);
+    return { x: s.x, y, w: s.w, h: Math.max(40, s.y + s.h - y) };
+  }
 
   function makeLayer(dpr, alpha) {
     const c = document.createElement('canvas');
@@ -177,7 +198,10 @@ export function createHushflow(opts = {}) {
       get front() { return inst.front; },
       /** An opaque back layer owned by the director (worlds with a realm use the realm's own canvas instead). */
       get back() { if (!back) { back = makeLayer(dprs().back, false); inst.back = back; } return back; },
-      get safe() { return safeRect?.() || defaultSafe(); },
+      /** The gameplay rect (excludes the top controls, the subtitle band and the Mallow). */
+      get safe() { return playSafe(); },
+      /** The reserved subtitle band (keep it clear). */
+      get band() { return bandRect(); },
       mallow, get thought() { return thought; }, words, photos,
       get reduced() { return reducedMotion(); }, get lowStim() { return lowStim(); },
       get emotion() { return session?.emotion || null; }, get intention() { return session?.intention || null; },
@@ -691,8 +715,13 @@ export function createHushflow(opts = {}) {
     pointer,
     bindPointer,
     on(ev, fn) { if (!listeners.has(ev)) listeners.set(ev, new Set()); listeners.get(ev).add(fn); return () => listeners.get(ev)?.delete(fn); },
-    /** Rects worlds want kept clear of subtitles and controls (client CSS px). */
+    /** Rects worlds want kept clear of subtitles and controls (client CSS px, {x, y, w, h}). */
     avoid() { try { return cur?.world.avoid?.() || []; } catch { return []; } },
+    /**
+     * The slot for subtitles while a world plays ({x, y, w, h}, client px): the band no
+     * world object ever enters. Shells should place lines, discoveries and choices inside it.
+     */
+    subtitleBand() { try { return cur?.world.subtitleBand?.() || bandRect(); } catch { return bandRect(); } },
     /** A saved Hushflow that can be resumed (or null). */
     resumable() {
       let c = null; try { c = loadProgress(kv); } catch { c = null; }

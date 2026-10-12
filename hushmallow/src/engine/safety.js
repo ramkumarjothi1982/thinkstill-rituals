@@ -9,13 +9,14 @@
 //              that transforms the words, a persistent Support chip
 //   care     abuse, violence, threats, harassment, discrimination, feeling
 //            unsafe → Support chip, never reframed
-//   concern  distress words (can't cope, hopeless…) → keep support close
+//   concern  distress words (can't cope, hopeless…), or wanting to hurt
+//            someone else → keep support close, nothing playful
 //   none     everything else
 // Everyday idioms ("this deadline is killing me") are blanked out first.
 //
 // Pure ES module, no DOM. Works in browsers and Node.
 
-import { HARM_LEXICON, HARM_COPY, CONCERN_LEXICON } from '../data/safety-lexicon.js';
+import { HARM_LEXICON, HARM_COPY, CONCERN_LEXICON, HARM_OTHERS_LEXICON } from '../data/safety-lexicon.js';
 
 const compile = (list, flags = 'i') => list.map((src) => new RegExp(src, flags));
 const RULES = {
@@ -24,6 +25,7 @@ const RULES = {
   crisisOther: compile(HARM_LEXICON.crisisOther),
   care: Object.entries(HARM_LEXICON.care).map(([category, list]) => [category, compile(list)]),
   concern: compile(CONCERN_LEXICON),
+  harmOthers: compile(HARM_OTHERS_LEXICON),
 };
 
 /** Length-preserving tidy: straight quotes, single spaces, 2,000 characters at most. */
@@ -47,7 +49,7 @@ function firstHit(regexes, text) {
 /**
  * checkText(text) → { level: 'none'|'concern'|'care'|'crisis', category, matched }
  * category: 'self-harm' | 'someone-in-danger' | 'abuse' | 'violence' | 'threat'
- *           | 'harassment' | 'discrimination' | 'unsafe' | 'distress' | null
+ *           | 'harassment' | 'discrimination' | 'unsafe' | 'distress' | 'harm-others' | null
  * matched: the phrase that matched (for tests and logs on this device only).
  */
 export function checkText(text) {
@@ -63,6 +65,8 @@ export function checkText(text) {
     hit = firstHit(regexes, t);
     if (hit) return { level: 'care', category, matched: hit };
   }
+  hit = firstHit(RULES.harmOthers, t);
+  if (hit) return { level: 'concern', category: 'harm-others', matched: hit };
   hit = firstHit(RULES.concern, t);
   if (hit) return { level: 'concern', category: 'distress', matched: hit };
   return { level: 'none', category: null, matched: null };

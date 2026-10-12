@@ -38,6 +38,8 @@ export class ParticleField {
   }
 
   burst(spec, opts = {}) {
+    // low stimulation (or particles switched off) means none, from any caller
+    if (this.rig.opts.particles === false || this.rig.opts.lowStim) return;
     const list = Array.isArray(spec) ? spec : [spec];
     const rm = this.rig.opts.reducedMotion;
     for (const s of list) {

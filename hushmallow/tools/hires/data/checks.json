@@ -1,0 +1,14 @@
+{
+ "sprites": {
+  "zuzu-spiral-L": {
+   "bodyPx": 0,
+   "rimDark": 1.0,
+   "size": 302
+  },
+  "zuzu-spiral-R": {
+   "bodyPx": 0,
+   "rimDark": 1.0,
+   "size": 310
+  }
+ }
+}

@@ -22,6 +22,19 @@ import { requireEntitlement } from '../entitlements.js';
 import { createStage, createStageMallow } from '../../hushfold/stage.js';
 import { createInputRouter } from '../../hushfold/input-router.js';
 import { hfIcon } from '../../hushfold/icons.js';
+import { loadProgress } from '../../engine/flow-store.js';
+
+// the realms whose daylight needs a deeper subtitle scrim (a fallback for the per-line sample)
+const BRIGHT_REALMS = new Set(['sunpop-orchard', 'blue-drift', 'moonmilk-cove']);
+// the Hushfold opened once already in this page session (Back from Settings is not a "return visit")
+let visitedThisSession = false;
+// the overlay module, once preloaded: opened synchronously inside the tap (the iPhone keyboard needs a real gesture)
+let inputMod = null;
+const preloadInput = () => {
+  if (inputMod) return Promise.resolve(inputMod);
+  return import('../../hushfold/input-overlay.js').then((m) => { inputMod = m; m.loadInputModules?.().catch(() => {}); return m; });
+};
+const idle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 1500 }) : setTimeout(fn, 300));
 
 function mallowForNow() {
   const hr = new Date().getHours();
@@ -30,7 +43,7 @@ function mallowForNow() {
   if (hr < 17) return 'pipzi';
   return 'loomi';
 }
-const REACTION_KINDS = new Set(['squeeze', 'tap', 'doubleTap', 'flick', 'stretch', 'massage', 'stroke', 'jiggle']);
+const REACTION_KINDS = new Set(['squeeze', 'tap', 'doubleTap', 'flick', 'stretch', 'massage', 'stroke', 'jiggle', 'pull']);
 
 export default function hushfold(app, params = {}) {
   const { world, prefs, ent, store } = app;
@@ -40,7 +53,7 @@ export default function hushfold(app, params = {}) {
   const lines = createLines({ store });
   const S = {
     emotion: null, emotionName: null, intention: null, reactions: 0, touches: 0, firstTouchAt: 0, lastLineAt: 0,
-    invited: false, told: false, crisis: false, photos: false, left: false,
+    invited: false, told: false, crisis: false, care: false, photos: false, left: false,
   };
   const timers = new Set();
   const later = (fn, ms) => { const t = setTimeout(() => { timers.delete(t); if (!S.left) fn(); }, ms); timers.add(t); return t; };
@@ -57,7 +70,10 @@ export default function hushfold(app, params = {}) {
   const tellLabel = h('span', { class: 'label' });
   const tellBtn = h('button', { class: 'hf-pill is-hidden', type: 'button', 'data-hf': 'tell', onclick: () => openTell('pill') }, h('span', { class: 'dot', 'aria-hidden': 'true' }), hfIcon('talk'), tellLabel);
   const supportPill = h('button', { class: 'hf-pill support', type: 'button', hidden: true, onclick: () => openSupport(app) }, hfIcon('support'), 'Support');
-  const dock = h('div', { class: 'hf-dock' }, supportPill, tellBtn);
+  // a paused world says so on the stage, with one tap back into it
+  const pausedPill = h('button', { class: 'hf-pill paused', type: 'button', hidden: true, 'aria-label': 'Paused. Resume the world.', onclick: () => resumeFlow() },
+    hfIcon('play'), h('span', {}, 'Paused · Resume'));
+  const dock = h('div', { class: 'hf-dock' }, pausedPill, supportPill, tellBtn);
   const srTitle = h('h1', { class: 'sr-only' }, 'hushmallow');
   root.append(srTitle, topEl, dock);
 
@@ -65,8 +81,13 @@ export default function hushfold(app, params = {}) {
   const subtitles = createSubtitles({
     root, prefs,
     reducedMotion: () => prefs.reducedMotion(),
-    bounds: () => ({ top: (topEl.getBoundingClientRect().bottom || 60) + 12, bottom: dockTop() - 12 }),
-    avoid: () => [mallowAvoidRect(), ...(stage?.thoughts.rects() || []), worldThoughtRect(), ...(flowRef?.avoid?.() || [])].filter(Boolean),
+    bounds: () => ({ top: (topEl.getBoundingClientRect().bottom || 60) + 12, bottom: Math.min(dockTop(), panelTop()) - 12 }),
+    avoid: () => [mallowAvoidRect(), ...(stage?.thoughts.rects() || []), worldThoughtRect(), ...(flowRef?.avoid?.() || []), overlay?.rect?.()].filter(Boolean),
+    // what is behind the band (the realm, a world's back and front layers): sampled once per line for the scrim
+    backdrop: () => [...document.querySelectorAll('#world canvas, #fx-layer canvas.hf-front')],
+    brightHint: () => !worldMode && BRIGHT_REALMS.has(world.realmId),
+    // the person's ▶ on the subtitle pill resumes a paused world too
+    onControl: (kind) => { if (kind === 'resume' && flowRef?.state?.paused) resumeFlow(); },
   });
   const say = (text, opts = {}) => {
     if (!text) return Promise.resolve(false);
@@ -84,9 +105,12 @@ export default function hushfold(app, params = {}) {
   let thoughtHome = { x: innerWidth * 0.8, y: innerHeight * 0.6 };
 
   function dockTop() {
-    const r = tellBtn.classList.contains('is-hidden') && supportPill.hidden ? null : dock.getBoundingClientRect();
+    const r = tellBtn.classList.contains('is-hidden') && supportPill.hidden && pausedPill.hidden ? null : dock.getBoundingClientRect();
     return r && r.height ? r.top : innerHeight - 24;
   }
+  /** Phones: the side panel is a bottom sheet; the stage above it stays playable. */
+  const panelSheet = () => !!panel?.isOpen && innerWidth < 700;
+  function panelTop() { return panelSheet() ? panel.el.getBoundingClientRect().top || innerHeight : innerHeight; }
   function mallowAvoidRect() {
     const b = stageMallow?.bodyRect?.() || world.bodyRect();
     if (!b || !b.height) return null;
@@ -100,21 +124,37 @@ export default function hushfold(app, params = {}) {
     const vw = innerWidth, vh = innerHeight;
     const topB = topEl.getBoundingClientRect().bottom || 60;
     const band = Math.min(156, Math.max(118, vh * 0.17));
-    const regionTop = topB + band;
-    const regionBottom = Math.min(vh - 76, dockTop() - 14);
-    const regionH = Math.max(150, regionBottom - regionTop);
+    let regionTop = topB + band;
+    let regionBottom = Math.min(vh - 76, dockTop() - 14);
+    let minB = 130;
+    const ov = overlay?.rect?.();
+    if (ov?.height) {
+      // typing: the Mallow shrinks and sits below the compact overlay (the subtitles wait meanwhile)
+      regionTop = ov.bottom + 12;
+      regionBottom = vh - 24;
+      minB = 96;
+    } else if (panelSheet()) {
+      // the bottom sheet: one subtitle line and the Mallow above it, still squeezable
+      regionTop = topB + Math.min(84, band);
+      regionBottom = panelTop() - 12;
+      minB = 96;
+    }
+    const regionH = Math.max(minB + 8, regionBottom - regionTop);
     const thought = !worldMode && (stage?.thoughts.list.length || 0) > 0;
-    let B = Math.min(vw * 0.66, regionH * 0.7, 360);
+    let B = Math.min(vw * 0.66, regionH * (ov?.height || panelSheet() ? 0.86 : 0.7), 360);
     if (thought && vw < 700) B *= 0.84;
     // in a world the Mallow stands on the floor in the foreground, smaller, leaving the sky to play in
-    if (worldMode) B = Math.min(vw * 0.58, vh * 0.27, 300);
-    B = Math.max(130, B);
+    if (worldMode && !ov?.height && !panelSheet()) B = Math.min(vw * 0.58, vh * 0.27, 300);
+    B = Math.max(minB, Math.min(B, regionH));
     const lw = B / 0.64, lh = lw * 1.1;
-    world.setLayerSize({ w: lw, h: lh });
     const cx = thought ? (vw < 700 ? vw * 0.4 : vw / 2 - B * 0.35) : vw / 2;
-    const bodyCy = worldMode ? Math.min(vh * 0.885, regionBottom) - B / 2 : regionTop + regionH * 0.5;
-    const layerCy = bodyCy - 0.098 * lw;
-    world.place({ x: (cx / vw) * 100, y: (layerCy / vh) * 100, scale: 1 });
+    const bodyCy = worldMode && !ov?.height && !panelSheet() ? Math.min(vh * 0.885, regionBottom) - B / 2 : regionTop + regionH * 0.5;
+    if (stageMallow?.kind === 'touch') stageMallow.fit?.({ cx, cy: bodyCy, size: B });
+    else {
+      world.setLayerSize({ w: lw, h: lh });
+      const layerCy = bodyCy - 0.098 * lw;
+      world.place({ x: (cx / vw) * 100, y: (layerCy / vh) * 100, scale: 1 });
+    }
     thoughtHome = vw < 700 ? { x: vw * 0.82, y: bodyCy + B * 0.22 } : { x: vw / 2 + B * 0.55, y: bodyCy + B * 0.1 };
     if (thought && vw < 700) {
       // the word tag hangs under the thought: keep it clear of the Mallow's base and of the dock
@@ -157,7 +197,8 @@ export default function hushfold(app, params = {}) {
   const flowSubtitles = {
     say: (lines, o) => { S.lastLineAt = now(); return subtitles.say(lines, whoOf(o)); },
     choice: (prompt, options, o) => subtitles.choice(prompt, options, whoOf(o)),
-    clear: () => subtitles.clear(), pause: () => subtitles.pause(), resume: () => subtitles.resume(),
+    // a paused world drops its passing lines (a held discovery stays); the shell says "Paused" itself
+    clear: () => subtitles.clear(), pause: () => subtitles.clear({ keepHeld: true }), resume: () => subtitles.resume(),
     get busy() { return subtitles.busy; }, get holding() { return subtitles.holding; },
   };
   const safeRect = () => {
@@ -204,7 +245,9 @@ export default function hushfold(app, params = {}) {
         f.on?.('offer', (d) => onOffer(d));
         f.on?.('finish', () => onFinished());
         f.on?.('error', (d) => onFlowError(d));
-        for (const ev of ['pause', 'resume', 'stay', 'complete', 'autoflow']) f.on?.(ev, () => { panel?.update(); if (ev === 'complete') app.applyUpdateIfSafe?.(); });
+        for (const ev of ['stay', 'complete', 'autoflow']) f.on?.(ev, () => { panel?.update(); if (ev === 'complete') app.applyUpdateIfSafe?.(); });
+        f.on?.('pause', () => onPaused(true));
+        f.on?.('resume', () => onPaused(false));
         return f;
       } catch (e) {
         if (!S.left) console.info('[hushfold] Hushflow director not available, using the stub:', e?.message || e);
@@ -213,6 +256,22 @@ export default function hushfold(app, params = {}) {
     })().then((f) => { flowRef = f; return f; });
     return flowP;
   }
+  /** The world paused or resumed (from the panel, the pill or the director). */
+  function onPaused(on) {
+    if (S.left) return;
+    pausedPill.hidden = !on;
+    layout();
+    panel?.update();
+    if (on) say(lines.pick(mallowId, 'paused') || SHARED_LINES.paused[0], { interrupt: !subtitles.holding });
+  }
+  function resumeFlow() {
+    pausedPill.hidden = true;
+    try { flowRef?.resume?.(); } catch (e) { console.warn(e); }
+    if (subtitles.paused) subtitles.resume();
+    layout();
+    panel?.update();
+  }
+
   let worldMode = false;
   let homeMallow = null;       // the person's own Mallow while a world borrows the stage
   function onWorld(d) {
@@ -239,12 +298,15 @@ export default function hushfold(app, params = {}) {
     router?.setWorld(null);
     try { flowRef?.destroy?.(); } catch (e) { console.warn(e); }
     flowP = null; flowRef = null; worldThought = null;
+    pausedPill.hidden = true;
     if (homeMallow) { mallowId = homeMallow; homeMallow = null; theme(); showMallow(mallowId); world.setRealm(M().realm, { crossfadeMs: 1400 }); }
     layout();
     panel?.update();
   }
   function onFinished() {
     if (S.left) return;
+    // the closing line is for the stage: the panel steps aside so it is seen
+    panel?.close();
     // the last frame melts away over the Hushfold's own realm
     document.body.classList.add('hf-world-leaving');
     later(() => { endWorldMode(); document.body.classList.remove('hf-world-leaving'); say(lines.pick(mallowId, 'finished') || SHARED_LINES.finished[0]); app.applyUpdateIfSafe?.(); }, 1250);
@@ -277,6 +339,15 @@ export default function hushfold(app, params = {}) {
 
   // ------------------------------------------------- the Mallow --
   async function showMallow(id, { entrance = true } = {}) {
+    if (touchMt) {
+      // the opt-in MallowTouch stage (W2): same calls, the soft body instead of the rig
+      if (touchMt.id !== id) touchMt.setMallow?.(id);
+      await touchMt.loaded;
+      if (S.left || id !== mallowId) return touchMt.rig;
+      if (entrance && !prefs.reducedMotion()) touchMt.react('hop');
+      theme(); layout();
+      return touchMt.rig;
+    }
     const rig = await world.setMallow(id, { entrance, interactive: true });
     if (S.left || id !== mallowId) return rig;
     stageMallow.attach(rig);
@@ -295,9 +366,9 @@ export default function hushfold(app, params = {}) {
     theme();
     await showMallow(mallowId);
     world.setRealm(M().realm, { crossfadeMs: 1200 });
-    world.setStage('curious');
-    say(M().voice.hello[S.reactions % M().voice.hello.length], { interrupt: true });
-    later(() => world.setStage('neutral'), 2600);
+    stageMallow.setStage('curious');
+    say(M().voice.hello[S.reactions % M().voice.hello.length], { interrupt: !subtitles.holding });
+    later(() => stageMallow.setStage('neutral'), 2600);
     panel?.update();
   }
 
@@ -311,24 +382,43 @@ export default function hushfold(app, params = {}) {
     const t = now();
     if (!S.firstTouchAt) {
       S.firstTouchAt = t;
+      // the overlay is ready before anyone asks for it (so it can open inside the tap)
+      idle(() => { if (!S.left) preloadInput().catch(() => {}); });
       say(lines.pick(mallowId, 'first', { kind: e.kind }), { interrupt: !subtitles.holding });
       return;
     }
-    if (!S.invited && !S.told && !S.crisis && S.reactions >= 3 && t - S.firstTouchAt > 5500 && !subtitles.busy) { invite(); return; }
+    if (canInvite() && S.reactions >= 3 && t - S.firstTouchAt > 5500 && !subtitles.busy) { invite(); return; }
+    if (S.reactions >= 3) scheduleInvite();
     // an occasional line, never a running commentary
     if (!subtitles.busy && t - S.lastLineAt > 9000 && S.reactions % 3 === 0) say(lines.pick(mallowId, 'squeeze', { kind: e.kind }));
   }
   let nudgeT = 0;
   function clearNudge() { clearTimeout(nudgeT); timers.delete(nudgeT); }
+  const canInvite = () => !S.invited && !S.told && !S.crisis && !S.care && !overlay && !worldMode && !S.flowAsked;
+  // someone who squeezed a few times and then just watches is invited too, once the stage is quiet
+  let inviteT = 0;
+  function scheduleInvite() {
+    if (!canInvite()) return;
+    clearTimeout(inviteT); timers.delete(inviteT);
+    const wait = Math.max(2600, S.firstTouchAt + 5500 - now());
+    inviteT = later(function tryInvite() {
+      if (!canInvite()) return;
+      if (subtitles.busy || panel?.isOpen || router?.active) { inviteT = later(tryInvite, 1600); return; }
+      invite();
+    }, wait);
+  }
 
   async function invite() {
     S.invited = true;
+    clearTimeout(inviteT);
+    preloadInput().catch(() => {});
     const [l1, l2] = lines.invitation(mallowId);
     await say(l1);
     if (S.left || overlay || S.told) return;
     showTell(true);
-    const v = await subtitles.choice(l2, [{ label: 'Tell me', value: 'tell', primary: true }, { label: 'Just play', value: 'play' }],
-      { who: M().name, colour: M().colours.glow, timeoutMs: 16000 });
+    // "Tell me" opens the overlay inside the tap itself; an invitation never outlives typing (transient)
+    const v = await subtitles.choice(l2, [{ label: 'Tell me', value: 'tell', primary: true, onPick: () => openTell('chip', l2) }, { label: 'Just play', value: 'play' }],
+      { who: M().name, colour: M().colours.glow, timeoutMs: 16000, transient: true });
     if (S.left) return;
     S.lastLineAt = now();
     if (v === 'tell') openTell('chip', l2);
@@ -338,19 +428,31 @@ export default function hushfold(app, params = {}) {
   function showTell(on) { tellBtn.classList.toggle('is-hidden', !on); }
 
   // ---------------------------------------------------- telling --
-  async function openTell(source, prompt) {
+  /**
+   * Open the compact overlay. Synchronous when the module is preloaded, so the
+   * text field takes focus inside the tap (the iPhone keyboard opens with it).
+   */
+  function openTell(source, prompt) {
     if (overlay || S.left) return;
-    subtitles.clear();
+    if (!inputMod) { preloadInput().then(() => { if (!S.left && !overlay) openTellNow(prompt); }).catch((e) => console.warn('[hushfold] input', e)); return; }
+    openTellNow(prompt);
+  }
+  function openTellNow(prompt) {
+    // a held discovery or a real choice waits for the overlay to close; passing lines go
+    subtitles.clear({ keepHeld: true });
+    subtitles.suspend();
+    clearTimeout(inviteT);
     panel?.close();
+    closeRead();
     showTell(false);
-    world.setStage('listening', { quiet: true });
-    const { openInput } = await import('../../hushfold/input-overlay.js');
-    if (S.left || overlay) return;
+    stageMallow.setStage('listening', { quiet: true });
     root.classList.add('hf-typing');
-    overlay = openInput({
+    overlay = inputMod.openInput({
       app, root, prompt: prompt || 'Want to tell me?',
       mallow: { id: mallowId, name: M().name, glow: M().colours.glow },
       emotion: S.emotion, intention: S.intention, hasPlan: ent.has('paid'),
+      face: (f) => stageMallow.setEmotion(f, 0.6, { quiet: true }),
+      onLayout: () => layout(),
       onSubmit: (r) => afterTell(r),
       onClose: (reason) => {
         overlay = null;
@@ -358,22 +460,25 @@ export default function hushfold(app, params = {}) {
         root.classList.remove('hf-typing');
         if (S.left) return;
         showTell(true);
-        if (reason !== 'submit') { world.setStage('neutral', { quiet: true }); app.applyUpdateIfSafe?.(); }
+        layout();
+        subtitles.unsuspend();
+        if (reason !== 'submit') { stageMallow.setStage('neutral', { quiet: true }); app.applyUpdateIfSafe?.(); }
       },
     });
     pushLayer('overlay');
     S.photos = true;   // the overlay may have loaded the photo session
+    layout();
   }
 
   async function afterTell({ text, emotion, intention, safety, input }) {
-    if (emotion) await setFeeling(emotion, { quiet: true });
+    const fam = emotion ? await setFeeling(emotion, { quiet: true }) : null;
     if (intention) S.intention = intention;
     if (safety?.level === 'crisis') {
       // no Thought Mallow, no world that transforms the words; support stays one tap away
       S.crisis = true;
       supportPill.hidden = false;
-      world.setStage('comforting');
-      say(SHARED_LINES.support, { interrupt: true });
+      stageMallow.setStage('comforting');
+      say(SHARED_LINES.support, { interrupt: !subtitles.holding });
       layout();
       return;
     }
@@ -385,15 +490,19 @@ export default function hushfold(app, params = {}) {
       return;
     }
     S.told = true;
-    world.react('nod');
+    // a harm disclosure or wanting to hurt someone: no jokes, no Thought Mallow made of it, nothing
+    // starts by itself; support first, then the person chooses whether anything plays
+    if (safety?.level === 'care' || safety?.category === 'harm-others') { await careBeat({ emotion, intention, safety }); return; }
+    stageMallow.react('nod');
     let spoken = Promise.resolve();
-    if (emotion) spoken = say(lines.pick(mallowId, 'ack', { emotion, feelingName: S.emotionName }));
+    const gentle = safety?.level === 'concern';
+    if (gentle) spoken = say(SHARED_LINES.supportConcern, { interrupt: !subtitles.holding });
+    else if (emotion) spoken = say(lines.pick(mallowId, 'ack', { emotion, feelingName: S.emotionName, family: fam?.family }));
     if (text && !worldMode) {
       spawnThought(text, emotion);
-      world.setStage('curious', { quiet: true });
-      if (!emotion) spoken = say(lines.pick(mallowId, 'thought'));
+      stageMallow.setStage('curious', { quiet: true });
+      if (!emotion && !gentle) spoken = say(lines.pick(mallowId, 'thought'));
     }
-    if (safety?.level === 'care') spoken = say(SHARED_LINES.supportCare);
     const go = () => startFlow({ emotion: emotion || S.emotion, intention: intention || S.intention, input, safety });
     if (worldMode) { go(); return; }
     // a beat with the Thought Mallow in the Hushfold (the line read to the end) before the first world melts in
@@ -405,8 +514,23 @@ export default function hushfold(app, params = {}) {
     } else await go();
   }
 
+  /** Care: support first; a gentle world only if the person asks for one (and never with their words in it). */
+  async function careBeat({ emotion, intention, safety }) {
+    S.care = true;
+    stageMallow.setStage('comforting', { quiet: true });
+    const first = safety?.category === 'harm-others' ? SHARED_LINES.harmOthers : SHARED_LINES.supportCare;
+    await say(first, { interrupt: !subtitles.holding });
+    if (S.left || overlay) return;
+    const v = await subtitles.choice(SHARED_LINES.careAsk[0],
+      [{ label: 'Stay here quietly', value: 'stay' }, { label: 'Play something gentle', value: 'play', primary: true }],
+      { who: M().name, colour: M().colours.glow, timeoutMs: 0 });
+    if (S.left) return;
+    if (v === 'play') startFlow({ emotion: emotion || S.emotion, intention: intention && intention !== 'let-go' ? intention : 'calm', input: null, safety });
+    else if (v === 'stay') say(SHARED_LINES.careQuiet);
+  }
+
   /** Start Hushflow (paid; enforced here as well as by the routes). Feeling ids map to the registry's. */
-  async function startFlow({ emotion = null, intention = null, input = null, safety = null, worldId = null } = {}) {
+  async function startFlow({ emotion = null, intention = null, input = null, safety = null, worldId = null, resume = false } = {}) {
     try { requireEntitlement(ent, 'paid'); } catch { app.go('plans', { reason: 'tell' }); return; }
     S.flowAsked = true;
     const [{ createWords }, em] = await Promise.all([import('../../v3/words.js'), import('../../data/emotions.js')]);
@@ -426,7 +550,7 @@ export default function hushfold(app, params = {}) {
     if (!flow.stub && words.full) await handThought(flow, fe);
     if (!flow.stub) { document.body.classList.add('hf-world-arriving'); if (!subtitles.holding) subtitles.clear(); }
     try {
-      await flow.start({ emotion: fe, intention, intensity: input?.intensity ?? 0.6, input: input ? { text: input.text, safety: input.safety } : null, worldId });
+      await flow.start({ emotion: fe, intention, intensity: input?.intensity ?? 0.6, input: input ? { text: input.text, safety: input.safety } : null, worldId, resume });
     } catch (e) { console.warn('[hushfold] flow.start', e); }
     if (!worldMode) document.body.classList.remove('hf-world-arriving');   // nothing started: the realm stays
     panel?.update();

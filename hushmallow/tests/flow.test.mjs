@@ -12,6 +12,7 @@ import { createSlowingDetector, createStillnessDetector, createSettleDetector, c
 import { ChargeField, FIELD, gridFor } from '../src/hushfold/flow/worlds/storm-field.js';
 import { createRealmCore, REALM_HORIZON, REALMS, resolveRealmId } from '../src/world/realm.js';
 import { createVelocity, VELOCITY } from '../src/hushfold/flow/velocity.js';
+import { planStormLayout, LAYOUT, cardSizeMax } from '../src/hushfold/flow/worlds/storm-layout.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const DT = 1 / 60;
@@ -342,6 +343,56 @@ test('slowing: time spent resting after a short fast moment never arms it (no ev
   const rest = play([{ sec: 0.4, path: zigPath(60), speed: 1500 }, { sec: 1.2 }]);
   assert.equal(rest.last, 'still', 'a stopped finger is still');
   assert.ok(rest.v.speed < PACE.touch.stillU * 390);
+});
+
+// --------------------------------------------------------------- layout --
+/** The hero Mallow as the Hushfold shell places it in a world, and the director's band and safe rect. */
+function stormScreen(W, H) {
+  const B = Math.max(130, Math.min(W * 0.58, H * 0.27, 300)), bottom = Math.min(H * 0.885, H - 76);
+  const mallow = { left: W / 2 - B / 2, right: W / 2 + B / 2, top: bottom - B, bottom, width: B, height: B };
+  const band = { x: 0, y: 76, w: W, h: Math.min(156, Math.max(118, Math.round(H * 0.17))) };
+  const safe = { x: 20, y: band.y + band.h + 6, w: W - 40, h: mallow.top - 14 - (band.y + band.h + 6) };
+  return { W, H, mallow, band, safe };
+}
+const hit = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+
+test('storm layout: the subtitle band stays clear; postcards, the words and Glitzi never overlap; 20 px edges', () => {
+  const sizes = [[320, 568], [375, 667], [375, 812], [390, 844], [430, 932], [844, 390], [1280, 800]];
+  for (const [W, H] of sizes) for (const n of [0, 3, 7]) for (const tw of [0, 120, 245, 330]) {
+    const sc = stormScreen(W, H);
+    const p = planStormLayout({ ...sc, n, thought: tw ? { textW: tw } : null });
+    const tag = `${W}×${H} n=${n} text=${tw}`;
+    assert.equal(p.slots.length, n, `${tag}: every postcard has a place`);
+    const bandBottom = sc.band.y + sc.band.h;
+    const boxes = p.slots.map((q) => ({ x0: q.x - p.s / 2, y0: q.y - p.s / 2, x1: q.x + p.s / 2, y1: q.y + p.s / 2 }));
+    const glitzi = { x0: sc.mallow.left, y0: sc.mallow.top, x1: sc.mallow.right, y1: sc.mallow.bottom };
+    boxes.forEach((b, i) => {
+      assert.ok(b.y0 >= bandBottom + 4, `${tag}: postcard ${i} under the band (${b.y0.toFixed(1)} ≥ ${bandBottom + 4})`);
+      assert.ok(b.x0 >= LAYOUT.EDGE - 0.01 && b.x1 <= W - LAYOUT.EDGE + 0.01, `${tag}: postcard ${i} keeps 20 px from the edges`);
+      assert.ok(!hit(b, glitzi), `${tag}: postcard ${i} clear of Glitzi`);
+      for (let j = 0; j < i; j++) assert.ok(!hit(b, boxes[j]), `${tag}: postcards ${i} and ${j} overlap`);
+      if (p.thought) for (const r of [p.thought.R.body, p.thought.R.plate]) assert.ok(!hit(b, r), `${tag}: postcard ${i} covers the thought`);
+    });
+    if (p.thought) {
+      const R = p.thought.R;
+      assert.ok(R.top >= bandBottom, `${tag}: the thought is under the band`);
+      assert.ok(R.plate.x0 >= LAYOUT.EDGE - 0.01 && R.plate.x1 <= W - LAYOUT.EDGE + 0.01, `${tag}: the words plate keeps 20 px from the edges`);
+      assert.ok(!hit(R.all, glitzi), `${tag}: the words are clear of Glitzi`);
+    }
+  }
+});
+
+test('storm layout: postcards are ≥ 0.2U on standard phones (0.19U at 375×812), and use the room beside Glitzi in landscape', () => {
+  for (const [W, H, min] of [[390, 844, 0.2], [430, 932, 0.2], [375, 812, 0.185]]) {
+    const U = Math.min(W, H);
+    for (const n of [3, 7]) {
+      const p = planStormLayout({ ...stormScreen(W, H), n, thought: { textW: 245 } });
+      assert.ok(p.s >= Math.floor(min * U), `${W}×${H} n=${n}: ${p.s} px ≥ ${(min * U).toFixed(0)}`);
+      assert.ok(p.s <= cardSizeMax(n, U) + 1e-6);
+    }
+  }
+  const p = planStormLayout({ ...stormScreen(844, 390), n: 7, thought: { textW: 245 } });
+  assert.ok(p.thought.name.startsWith('side'), `landscape: the thought sits beside Glitzi (${p.thought.name})`);
 });
 
 // --------------------------------------------------------- charge field --

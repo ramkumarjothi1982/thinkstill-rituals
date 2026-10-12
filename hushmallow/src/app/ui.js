@@ -138,7 +138,7 @@ function collectObstacles(world, avoid) {
   const add = (r, kind, el) => {
     if (!r) return;
     const right = r.right ?? r.left + r.width, bottom = r.bottom ?? r.top + r.height;
-    if ((right - r.left) * (bottom - r.top) > area * 0.5 && kind !== 'bar' && kind !== 'dock') return;   // full-screen layers aren't obstacles
+    if (kind === 'piece' && (right - r.left) * (bottom - r.top) > area * 0.5) return;   // full-screen layers (canvases, stages) aren't pieces
     out.push({ l: r.left, t: r.top, r: right, b: bottom, kind, el });
   };
   for (const el of document.querySelectorAll('#scene .topbar')) {
@@ -228,11 +228,11 @@ function bestSpot(b, mode, obs, { above = true, relaxTop = false } = {}) {
   return { free, titled, any };
 }
 
-/** Sentences, then (for a sentence that still won't fit) its phrases. */
+/** Its sentences; or, with `phrases`, a single sentence's phrases (or halves). */
 function splitLine(text, phrases) {
   const parts = String(text).split(/(?<=[.!?…])\s+(?=[A-Z“"‘'(])/).map((t) => t.trim()).filter(Boolean);
+  if (!phrases) return parts.length > 1 ? parts : null;
   if (parts.length > 1) return parts;
-  if (!phrases) return null;
   const t = String(text);
   const m = t.match(/^(.{14,}?[,;:—–])\s+(.{12,})$/);
   if (m) return [m[1], m[2]];
@@ -260,7 +260,7 @@ const layerVars = () => {
   const v = { x: parseFloat(cs.getPropertyValue('--mx')), y: parseFloat(cs.getPropertyValue('--my')), s: parseFloat(cs.getPropertyValue('--ms') || '1') };
   return Number.isFinite(v.x) && Number.isFinite(v.y) ? { ...v, s: Number.isFinite(v.s) && v.s > 0 ? v.s : 1 } : null;
 };
-function makeRoom(world, obs, bh, { force = false } = {}) {
+function makeRoom(world, obs, bh, { minK = 0.45 } = {}) {
   const m = obs.mallow, cur = layerVars();
   if (!m || !cur || typeof world?.place !== 'function') return false;
   const { yMin, dockTop } = bounds(obs, bh);
@@ -279,7 +279,7 @@ function makeRoom(world, obs, bh, { force = false } = {}) {
     const bottom = Math.min(dockTop - 8, m.bottom + Math.max(0, below));
     const avail = bottom - headTop;
     // never shrink a Mallow to a speck (a little further only rather than cover its face)
-    if (avail < m.height * (force ? 0.3 : 0.45)) return false;
+    if (avail < m.height * minK) return false;
     const k = avail / m.height;
     const offset = (m.top + m.height / 2) - (cur.y / 100) * innerHeight;   // body centre vs layer centre
     next = { x: cur.x, y: (((headTop + bottom) / 2 - offset * k) / innerHeight) * 100, s: cur.s * k };
@@ -301,27 +301,36 @@ function restoreRoom(delay = 700) {
   }, delay);
 }
 
-function placeBubble(b, world, opts, { allowTitle = false, allowMove = false, mode, dry = false } = {}) {
+// how far the Mallow may shrink to make room: a little first (before a line is
+// split up), more only once splitting hasn't helped, and most rather than cover its face
+const ROOM = { gentle: [0.72], normal: [0.45], force: [0.3], full: [0.45, 0.3] };
+function placeBubble(b, world, opts, { allowTitle = false, move = false, mode, dry = false } = {}) {
   const above = opts.above !== false;
   const modes = mode ? [mode] : MODES;
-  const search = (obs, relaxTop) => modes.map((md) => bestSpot(b, md, obs, { above, relaxTop }));
+  const anyAll = [];   // the least bad spot of every search, should nothing be clear
+  const search = (obs, relaxTop) => {
+    const r = modes.map((md) => bestSpot(b, md, obs, { above, relaxTop }));
+    for (const x of r) if (x.any) anyAll.push(x.any);
+    return r;
+  };
   const choose = (r) => r.find((x) => x.free)?.free || (allowTitle ? r.find((x) => x.titled)?.titled : null) || null;
   let obs = collectObstacles(world, opts.avoid);
   let r = search(obs, false);
   let pick = choose(r);
   // the title band, then the top bar's quiet middle too (its buttons stay clear)
-  if (!pick && allowTitle) { const r2 = search(obs, true); pick = choose(r2); if (!pick) r = r2; }
-  if (!pick && allowMove && obs.mallow) {
-    for (const force of [false, true]) {
+  if (!pick && allowTitle) pick = choose(search(obs, true));
+  if (!pick && move && obs.mallow) {
+    for (const minK of ROOM[move] || []) {
       const wide = r[r.length - 1].any;
-      if (!wide || !makeRoom(world, obs, wide.bh, { force })) continue;
+      if (!wide || !makeRoom(world, obs, wide.bh, { minK })) continue;
       obs = collectObstacles(world, opts.avoid);
+      anyAll.length = 0;   // the Mallow moved: only spots measured from here on count
       r = search(obs, false); pick = choose(r);
-      if (!pick) { r = search(obs, true); pick = choose(r); }
+      if (!pick && allowTitle) pick = choose(search(obs, true));
       if (pick) break;
     }
   }
-  if (!pick) pick = r.map((x) => x.any).filter(Boolean).sort((a, z) => a.sc - z.sc)[0];
+  if (!pick) pick = anyAll.sort((a, z) => a.sc - z.sc)[0] || null;
   if (!pick || dry) return pick || null;
   setMode(b, pick.mode);
   const m = obs.mallow;
@@ -376,14 +385,27 @@ function showBubble(world, text, opts, token) {
   const b = h('div', { class: 'bubble', role: 'status', 'aria-live': 'polite' }, who ? h('span', { class: 'who' }, who) : null, text);
   b.style.visibility = 'hidden';
   document.body.append(b);
-  // free space first, then the title band (the prompt dims while it shows)
+  // free space first, then the title band (the prompt dims while it shows),
+  // then the Mallow makes a little room
   let pick = placeBubble(b, world, opts, { allowTitle: true });
-  // a line that fits nowhere is shown a sentence (then a phrase) at a time
-  if (pick && pick.cost > 0 && (opts.part || 0) < 2) {
-    const parts = splitLine(text, true);
-    if (parts) { b.remove(); return { parts: groupParts(world, parts, opts) }; }
+  if (pick && pick.cost > 0) pick = placeBubble(b, world, opts, { allowTitle: true, move: 'gentle' });
+  // still nowhere: a sentence at a time; then more room; then a phrase at a
+  // time; and only then the most room the Mallow can give
+  const split = (phrases) => {
+    const parts = splitLine(text, phrases);
+    if (!parts) return null;
+    b.remove();
+    return { parts: groupParts(world, parts, opts) };
+  };
+  if (pick && pick.cost > 0 && !opts.part) { const r = split(false); if (r) return r; }
+  if (pick && pick.cost > 0) pick = placeBubble(b, world, opts, { allowTitle: true, move: 'normal' });
+  if (pick && pick.cost > 0 && (opts.part || 0) < 2) { const r = split(true); if (r) return r; }
+  if (pick && pick.cost > 0) pick = placeBubble(b, world, opts, { allowTitle: true, move: 'force' });
+  if (!pick) {   // taller than the screen allows (never expected): under the top bar, centred
+    b.classList.add('wide', 'no-tail');
+    b.style.left = `${Math.max(12, (innerWidth - b.offsetWidth) / 2)}px`;
+    b.style.top = `${safeTop() + 66}px`;
   }
-  if (pick && pick.cost > 0) pick = placeBubble(b, world, opts, { allowTitle: true, allowMove: true });
   b.style.visibility = '';
   currentBubble = b;
   // follow the Mallow (and the pieces) while the line shows; a line belongs
@@ -406,7 +428,7 @@ function showBubble(world, text, opts, token) {
     // the Mallow moved or grew (or a new piece arrived): find a new spot, and
     // if nowhere is free any more, let the Mallow make room again
     const p = placeBubble(b, world, opts, { allowTitle: true, mode: pick?.mode });
-    if (p && p.cost > 0) placeBubble(b, world, opts, { allowTitle: true, allowMove: true });
+    if (p && p.cost > 0) placeBubble(b, world, opts, { allowTitle: true, move: 'full' });
   }, 280);
   return { b, follow, ms };
 }

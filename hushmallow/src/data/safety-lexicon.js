@@ -23,7 +23,9 @@ export const HARM_LEXICON = {
     R`\b(?:is|are|was|were|it'?s|they'?re|that'?s|this is) (?:literally |actually |honestly )?killing me\b`,
     R`\bdying (?:to|for|of laughter|of embarrassment|laughing)\b`,
     R`\bto die for\b`,
-    R`\b(?:want|wanted|wanna) to die of (?:embarrassment|shame|cringe|laughter|laughing|boredom)\b`,
+    R`\b(?:(?:want|wanted|going) to|wanna|gonna) (?:just )?die of (?:embarrassment|shame|cringe|laughter|laughing|boredom)\b`,
+    // medicine taken as it should be
+    R`\b(?:took|take|taking|taken) (?:all (?:of )?)?my (?:pills|tablets|meds|medication|medicine) (?:on time|as prescribed|like (?:i'?m|i am|i was) supposed to|like the doctor (?:said|told me))\b`,
   ],
   crisis: [
     R`\bkill(?:ing)? myself\b`,
@@ -33,7 +35,16 @@ export const HARM_LEXICON = {
     R`\b(?:want|wanna|going|planning|ready|need) to end it\b(?! (?:with|between|off))`,
     R`\btake my (?:own )?life\b`,
     R`\b(?:don'?t|do not|no longer|dont) want to (?:be here|be alive|live|exist|wake up|go on|be around)\b`,
-    R`\b(?:want|wanna|wish i could|going|deserve) to die\b`,
+    R`\b(?:want|wanted|going|deserve|need|ready) to (?:just )?die\b`,
+    // 'wanna' already carries the 'to' (review 12 Oct: 'I wanna die', 'I wanna end it')
+    R`\bwanna (?:just )?(?:die\b|end it\b(?! (?:with|between|off)))`,
+    R`\bwish i could (?:just )?die\b`,
+    R`\b(?:would|'d) (?:just )?rather (?:be dead|not be alive|not exist|die(?! than\b))\b`,
+    R`\bwish (?:i (?:was|were|had)|i'd) never (?:been )?born\b`,
+    R`\bshould (?:never have|have never|'ve never|never'?ve) been born\b`,
+    R`\b(?:took|taken|take|taking|swallowed|downed) (?:a (?:bunch|load|handful|lot|whole (?:packet|box|bottle|strip)) of|all (?:of )?(?:my|the)|too many|loads of|lots of) (?:my |the )?(?:pills|tablets|meds|medication|painkillers|paracetamol|sleeping (?:pills|tablets))\b`,
+    R`\bwhat(?:'?s| is) the point (?:of|in) (?:me )?(?:living(?! (?:in|with|here|there|near|at|on|together|off|like|abroad|alone|somewhere|by|next|apart|under|away|a|the|my|our)\b)|being alive|going on|carrying on|being here|existing)\b`,
+    R`\bwant (?:my life|it all|everything) to (?:be over|end|stop)\b(?! (?:for a (?:bit|minute|moment|second|while|day)|so i can|until|till))`,
     R`\bwish i (?:was|were) dead\b`,
     R`\bwish i (?:wasn'?t|was not|weren'?t|were not) (?:here|alive|born|around)\b`,
     R`\b(?:hurt|hurting|harm|harming|cut|cutting|burn|burning|punish|punishing|starve|starving) myself\b`,
@@ -45,10 +56,10 @@ export const HARM_LEXICON = {
     R`\boverdos\w*`,
     R`\bnot worth living\b`,
     R`\blife (?:isn'?t|is not|isnt) worth (?:it|living)\b`,
-    R`\b(?:want|wish) to disappear (?:forever|for good)\b`,
+    R`\b(?:(?:want|wish) to|wanna|wish i could) (?:just )?disappear (?:forever|for good|and never come back)\b`,
     R`\bi'?m a burden (?:to|on) (?:everyone|everybody|my family|them|people)\b`,
     R`\b(?:goodbye|suicide) (?:letter|note)\b`,
-    R`\bgo to sleep and never wake up\b`,
+    R`\b(?:(?:go to|fall) )?(?:sleep|asleep) and (?:never|not) wake(?: up)?\b(?! up\b)(?! (?:until|till|before|for|early|at|in time|on time)\b)`,
     // added 12 Oct 2026 (audit: missed by both detectors)
     R`\b(?:nobody|no one|no-one|noone|nobody else) (?:would|will|is going to|'?d|is gonna) (?:even |really |ever )?(?:miss|notice) (?:me|if i(?:'?m| was| were) gone)\b`,
     R`\b(?:thinking|thought|think|considering|been thinking) (?:of|about) (?:ending it|ending it all|ending my life|ending things|killing myself|not being (?:here|alive|around))\b(?! (?:with|between|off))`,
@@ -191,14 +202,25 @@ export const HARM_COPY = {
  * feeling finder's original list (src/engine/interpret.js).
  */
 export const CONCERN_LEXICON = [
+  R`\bfeel(?:s|ing)? like (?:i'?m )?dying\b`,
   R`\bcan'?t cope\b`,
   R`\bhopeless\b`,
   R`\bworthless\b`,
   R`\bcan'?t (?:do this|take (?:it|this)|keep going) any ?more\b`,
   R`\b(?:he|she|they) (?:hit|hits|hurt|hurts) me\b`,
   R`\bunsafe at home\b`,
-  R`\b(?:want|wish i could) (?:to )?disappear\b`,
+  R`\b(?:want|wanna|wish i could) (?:to )?(?:just )?disappear\b`,
   R`\bfalling apart\b(?= .*\b(?:can'?t|cannot)\b)`,
+];
+
+/**
+ * Wanting to hurt someone else (level 'concern', category 'harm-others'):
+ * support stays one tap away and nothing playful is said, but the person is
+ * not treated as being in crisis. Only intent phrasing counts; the everyday
+ * angry idiom "I could kill him" stays none (owner to confirm, 12 Oct 2026).
+ */
+export const HARM_OTHERS_LEXICON = [
+  R`\b(?:want|wanna|going|gonna|planning|plan|about|ready|tempted|need) (?:to )?(?:really |actually |just )?(?:kill|hurt|harm|stab|shoot|attack|beat up|strangle|poison) (?:him|her|them|someone|somebody|anyone|anybody|people|everyone|everybody|my (?:partner|boyfriend|girlfriend|husband|wife|ex|boss|manager|dad|father|mum|mom|mother|brother|sister|friend|flatmate|housemate|roommate|neighbou?r|teacher|colleague|son|daughter|kids?|child|baby|family))\b(?! (?:feelings|chances|pride|ego|reputation))`,
 ];
 
 function deepFreeze(o) {
@@ -211,3 +233,4 @@ function deepFreeze(o) {
 deepFreeze(HARM_LEXICON);
 deepFreeze(HARM_COPY);
 deepFreeze(CONCERN_LEXICON);
+deepFreeze(HARM_OTHERS_LEXICON);

@@ -455,7 +455,7 @@ export class MallowTouch {
     this.sb?.setReducedMotion(b);
     this.sb?.setMaterial(this._material());
   }
-  setLowStim(b) { this.opts.lowStim = !!b; this.rig.opts.particles = !b; if (b) this.rig.particles.list.length = 0; }
+  setLowStim(b) { this.opts.lowStim = !!b; this.rig.opts.particles = !b; this.rig.opts.lowStim = !!b; if (b) { this.rig.particles.list.length = 0; this.rig.particles.cloud = 0; } }
 
   /** Body centre at (x, y) in container CSS px (or % of the container with
    *  unit:'%'); scale × the default size (≈ 0.6 of the width, ≤ 0.34 of the height). */
@@ -980,6 +980,8 @@ export class MallowTouch {
   _noteSlip(s) {
     const f = this._fingers.get(s.id), p = this.reader.ptrs.get(s.id);
     if (!f || !p || p.mode === 'glide') return;
+    // still moving fast and straight: the finger slid off and glides on (no startle)
+    if (this.reader.slide(s.id)) return;
     f.slipped = true;
     // react a moment later: a flick or a lift that follows says it better
     this._slipQ = { id: s.id, at: this.time + SLIP_DELAY };

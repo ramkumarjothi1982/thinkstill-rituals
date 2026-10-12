@@ -20,11 +20,12 @@ export function photoTray({ note = true } = {}) {
   function render() {
     const list = photoSession.list;
     count.textContent = `${list.length}/${MAX_PHOTOS}`;
-    tray.replaceChildren(...list.map((p, i) => h('div', { class: 'ph', role: 'listitem' },
+    const add = list.length === 0 ? h('button', { class: 'add wide', onclick: () => pick() }, icon('camera'), h('span', {}, 'Add photos'))
+      : list.length < MAX_PHOTOS ? h('button', { class: 'add', 'aria-label': 'Add more photos', onclick: () => pick() }, '+') : null;
+    // a full tray has no add button (and must not show a stray "null")
+    tray.replaceChildren(...[...list.map((p, i) => h('div', { class: 'ph', role: 'listitem' },
       h('button', { class: 'swap', 'aria-label': `Photo ${i + 1}. Tap to replace it.`, onclick: () => pick(p.id) }, photoSession.thumb(p, 64)),
-      h('button', { class: 'x', 'aria-label': `Remove photo ${i + 1}`, onclick: () => photoSession.remove(p.id) }, '×'))),
-    list.length === 0 ? h('button', { class: 'add wide', onclick: () => pick() }, icon('camera'), h('span', {}, 'Add photos'))
-      : list.length < MAX_PHOTOS ? h('button', { class: 'add', 'aria-label': 'Add more photos', onclick: () => pick() }, '+') : null);
+      h('button', { class: 'x', 'aria-label': `Remove photo ${i + 1}`, onclick: () => photoSession.remove(p.id) }, '×'))), add].filter(Boolean));
   }
   const off = photoSession.onChange(render);
   render();
@@ -38,5 +39,11 @@ export function photoTray({ note = true } = {}) {
 /** Say so when some picked photos didn't fit (seven is the limit). */
 export function tellIfFull(picked, added) {
   if (picked <= added || photoSession.count < MAX_PHOTOS) return;
-  toast(added ? `Up to seven photos fit, so ${added === 1 ? 'one was' : `${added} were`} added.` : 'You already have seven photos. Remove one to add another.', 3200);
+  toast(added ? `Up to seven photos fit, so ${added === 1 ? 'one was' : `${countWord(added)} were`} added.` : 'You already have seven photos. Remove one to add another.', 3200);
+}
+
+const WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'];
+/** 1 → 'one' … 7 → 'seven' (photo counts in copy are words). */
+export function countWord(n) {
+  return WORDS[n] ?? String(n);
 }

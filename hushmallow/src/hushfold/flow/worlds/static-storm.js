@@ -20,6 +20,7 @@ import { glowSprite, glintSprite, Pool, Rings, flashEnv, clamp, lerp, smoothstep
 import { Rope, Spring2 } from '../../../v3/fx.js';
 import { AngleTracker, Wobble, waitRing } from '../../../v3/kit.js';
 import { ChargeField, FIELD } from './storm-field.js';
+import { planStormLayout, freeStretches, LAYOUT } from './storm-layout.js';
 import { createPace, slowness, PACE, createSlowingDetector, createStillnessDetector, createSettleDetector } from '../discovery.js';
 
 const C = {
@@ -32,6 +33,7 @@ const BRIGHT_PER_SEC = 3;
 const ROPE_N = 6;
 
 const easeOut = (t) => 1 - Math.pow(1 - clamp(t), 3);
+const rgbaHex = (h, a) => `rgba(${parseInt(h.slice(1, 3), 16)},${parseInt(h.slice(3, 5), 16)},${parseInt(h.slice(5, 7), 16)},${a})`;
 
 export function create(ctx) {
   const { photos, words } = ctx;
@@ -104,7 +106,8 @@ export function create(ctx) {
   // thought
   const tSpring = new Spring2(0, 0, { stiffness: 30, damping: 8 });
   const tWobble = new Wobble();
-  let tAnchor = { x: 0, y: 0 }, tCharge = clamp(q0 + 0.2, 0.6, 1.2), tTension = 0.7, tSettledShown = false, tFizz = 0, tScale = 1, tR = 34;
+  let tAnchor = { x: 0, y: 0 }, tCharge = clamp(q0 + 0.2, 0.6, 1.2), tTension = 0.7, tSettledShown = false, tFizz = 0, tScale = 1, tR = 34, tLabelW = 300;
+  let ropeGrads = null;               // rope colours fading out inside the subtitle band (cached per layout)
   const tTracker = new AngleTracker();
 
   // state
@@ -112,7 +115,7 @@ export function create(ctx) {
   let firstSurge = false, discovered = new Set(), groundedCards = 0;
   let glitchAt = -10, emoAt = -10, emoKey = '';
   let holds = { charge: null, ground: null }, groundIdle = 0, holdClock = 0, ambClock = 0;
-  let hint = { next: 5, shown: 0, age: -1, x0: 0, y0: 0 };
+  let hint = { next: 5, shown: 0, age: -1, x0: 0, y0: 0, ok: false };
   let paused = false, outroK = 0;
   let pulsedThisFrame = false, pulseDrainThisFrame = 0;
   let prepared = false;
@@ -120,75 +123,106 @@ export function create(ctx) {
   let realmBuilt = false;
 
   // ---------------------------------------------------------- layout --
+  // storm-layout.js plans the screen: the subtitle band stays clear, postcards hang
+  // under the clouds (or beside Glitzi on short screens), the thought floats with its
+  // words plate, nothing overlaps and nothing comes within 20 px of an edge.
+  const EDGE = LAYOUT.EDGE;
+  let plan = null;
+  let measureG = null;
+  function textWidth(str, px = LAYOUT.LABEL_PX, weight = 700) {
+    if (!str) return 0;
+    try { measureG ||= makeCanvas(4, 4).getContext('2d'); measureG.font = ctx.font(px, weight); return measureG.measureText(str).width; } catch { return str.length * px * 0.55; }
+  }
+  function mallowBox() {
+    const r = mallow?.rect?.();
+    if (!r || !(r.height > 20) || !(r.width > 20)) return null;
+    const left = r.left ?? r.x, top = r.top ?? r.y;
+    return { left, top, right: r.right ?? left + r.width, bottom: r.bottom ?? top + r.height, width: r.width, height: r.height };
+  }
+  function planLayout() {
+    const tok = thought ? (thought.token || words?.token || '') : '';
+    return planStormLayout({ W, H, safe: ctx.safe, band: ctx.band, mallow: mallowBox(), n: Math.min(7, photos?.n || 0), thought: thought ? { textW: textWidth(tok) } : null });
+  }
+
+  // the shell may move or resize the hero Mallow after the world enters (its 720 ms glide):
+  // re-plan once its box has been steady for half a second
+  let layoutKey = '', pendingKey = '', pendingFor = 0, relayoutClock = 0;
+  function keyNow() { const m = mallowBox(), sf = ctx.safe; return m ? `${Math.round(m.left / 6)},${Math.round(m.top / 6)},${Math.round(m.width / 6)},${Math.round(sf.y / 4)},${W},${H}` : `-,${Math.round(sf.y / 4)},${W},${H}`; }
+  function relayoutCheck(dt) {
+    relayoutClock += dt;
+    if (relayoutClock < 0.25) return;
+    const step = relayoutClock; relayoutClock = 0;
+    const k = keyNow();
+    if (k === layoutKey) { pendingKey = ''; return; }
+    if (k !== pendingKey) { pendingKey = k; pendingFor = 0; return; }
+    pendingFor += step;
+    if (pendingFor >= 0.5) { pendingKey = ''; layout(); }
+  }
+
   function layout() {
-    const safe = ctx.safe;
-    const mr = mallow?.rect?.();
-    if (mr && mr.height > 20) groundFrac = clamp(mr.bottom / H, 0.78, 0.95);
-    horizonY = Math.round(H * 0.655);
-    const fy0 = Math.max(24, safe.y - 14), fy1 = Math.min(H - 30, horizonY + H * 0.07);
+    layoutKey = keyNow();
+    const mb = mallowBox();
+    if (mb) groundFrac = clamp(mb.bottom / H, 0.78, 0.95);
+    horizonY = realm?.horizonY ?? Math.round(H * 0.655);
+    const band = ctx.band;
+    // the charge field covers the whole storm sky, band included: a stroke anywhere is answered
+    const fy0 = Math.max(24, (band ? band.y : ctx.safe.y) - 14), fy1 = Math.min(H - 30, horizonY + H * 0.07);
     if (!field) field = new ChargeField({ x: 0, y: fy0, w: W, h: fy1 - fy0, q0, seed: ctx.seed });
     else field.setRect(0, fy0, W, fy1 - fy0);
-    // the Thought Mallow's tether: away from Glitzi, upper left of the play area
-    tR = clamp(U * 0.085, 26, 44);
-    // the open band between the hanging postcards and Glitzi
-    tAnchor = { x: W * (W > H * 0.9 ? 0.2 : 0.27), y: safe.y + 0.49 * safe.h };
+    plan = planLayout();
+    const T = plan.thought;
+    if (T) { tR = T.r; tAnchor = { x: T.x, y: T.y }; tLabelW = T.labelW; }
+    else { tR = clamp(U * 0.085, 26, 44); tAnchor = { x: W * 0.27, y: plan.zone.y + plan.zone.h * 0.5 }; tLabelW = Math.min(300, W - 64); }
     if (!tSpring.x && !tSpring.y) tSpring.set(tAnchor.x, tAnchor.y);
     else tSpring.to(tAnchor.x, tAnchor.y);
     layoutCards();
+    placeHint();
+    ropeGrads = null;
   }
 
   /** The underside of the storm's cloud deck at x (matches the static-storm realm). */
   function deckY(x) { const u = x / W - 0.58; return H * (0.095 + 0.3 * u * u) + Math.sin(x * 0.03) * 6; }
 
-  function cardPlan(n, safe) {
-    // a mobile hanging from the thunderheads: one tier for up to four, two staggered
-    // tiers for more, all above the open band where the Thought Mallow floats
-    const landscape = W > H * 0.9;
-    const x0 = (landscape ? 0.34 : 0.13) * W, x1 = (landscape ? 0.92 : 0.87) * W;
-    const tiers = n <= 4 ? 1 : 2;
-    const per = tiers === 1 ? [n] : [Math.ceil(n / 2), Math.floor(n / 2)];
-    const step = per[0] > 1 ? (x1 - x0) / (per[0] - 1) : 0;
-    const limitTop = tAnchor.y - tR - 18;           // keep the thought's band clear
-    let size = clamp(U * (n <= 3 ? 0.26 : n <= 5 ? 0.22 : 0.19), U * 0.18, U * 0.26);
-    if (step) size = Math.min(size, step * 0.8);
-    const slots = [];
-    for (let t = 0; t < tiers; t++) {
-      const k = per[t];
-      for (let i = 0; i < k; i++) {
-        const x = per[0] === 1 && t === 0 ? W * (landscape ? 0.62 : 0.6) : t === 0 ? x0 + step * i : x0 + step * (i + 0.5);
-        // the lower tier hangs between the upper tier's cards, staggered three quarters of a card lower
-        const rope = (t === 0 ? 18 : 18 + size * 0.78) + R() * 10;
-        slots.push({ x, rope, tier: t });
-      }
-    }
-    // shrink everything a little if the lower tier would reach the thought's band
-    const lowest = Math.max(...slots.map((s2) => deckY(s2.x) + s2.rope + size));
-    if (lowest > limitTop) { const k = clamp((limitTop - Math.min(...slots.map((s2) => deckY(s2.x)))) / (lowest - Math.min(...slots.map((s2) => deckY(s2.x)))), 0.6, 1); size *= k; for (const s2 of slots) s2.rope *= k; }
-    return { size, slots };
-  }
-
   function layoutCards() {
     const n = Math.min(7, photos?.n || 0);
-    const { size, slots } = cardPlan(n, ctx.safe);
+    const { s, slots } = plan;
     const rebuild = cards.length !== n;
     if (rebuild) cards.length = 0;
     for (let i = 0; i < n; i++) {
-      const s2 = slots[i];
-      const sz = photos.size(i, 'card', size);
-      const ax = s2.x + (R() - 0.5) * 6, ay = deckY(s2.x) - 6;
-      const top = ay + s2.rope;
+      const sl = slots[i] || { x: W / 2, y: plan.zone.y + s / 2 };
+      const sz = photos.size(i, 'card', s);
+      const ax = sl.x + (R() - 0.5) * 6, ay = Math.min(deckY(sl.x) - 6, plan.band.y + plan.band.h * 0.5);
+      const top = sl.y - sz.h / 2;
       let c = rebuild ? null : cards.find((q) => q.i === i);
       if (!c) {
-        c = { i, q: clamp(0.55 + R() * 0.35 + (hot ? 0.1 : 0), 0, 1), grounded: false, gk: 0, glowAge: -1, wobble: new Wobble(), ph: R() * TAU, tier: s2.tier, flash: 0, touched: 0, rot: 0 };
+        c = { i, q: clamp(0.55 + R() * 0.35 + (hot ? 0.1 : 0), 0, 1), grounded: false, gk: 0, glowAge: -1, wobble: new Wobble(), ph: R() * TAU, flash: 0, touched: 0, rot: 0, row: 0 };
         cards.push(c);
       }
-      Object.assign(c, { ax, ay, ay0: ay, x: s2.x, y: top + sz.h / 2, w: sz.w, h: sz.h, size, tier: s2.tier });
-      c.rope = new Rope(ROPE_N, ax, ay, s2.x, top, { gravity: 260, iterations: 6, slack: 1.0 });
+      Object.assign(c, { ax, ay, ay0: ay, x: sl.x, y: sl.y, sx: sl.x, sy: sl.y, w: sz.w, h: sz.h, size: s, row: sl.y });
+      c.rope = new Rope(ROPE_N, ax, ay, sl.x, Math.max(ay + 10, top), { gravity: 260, iterations: 6, slack: 1.0 });
       c.rope.pinB = false;
-      c.restLen = c.rope.seg * (c.grounded ? 0.86 : 1);
+      c.seg0 = c.rope.seg;
+      // grounded cards hang a little higher (never more than 10 px, so they stay clear of what is above)
+      c.restLen = c.grounded ? c.seg0 - Math.min(0.14 * c.seg0, 10 / (ROPE_N - 1)) : c.seg0;
     }
-    // back tier first, so the upper tier's cards hang in front
-    cards.sort((a, b) => b.tier - a.tier);
+    // lower rows first, so a rope from the clouds passes behind the cards above it
+    cards.sort((a, b) => b.row - a.row);
+  }
+
+  /** A clear stretch of sky for the ghost-finger hint (never in the band, on a postcard or on the words). */
+  function placeHint() {
+    const len = U * 0.42, x0 = clamp(W * 0.29, EDGE, W - EDGE - len);
+    const obs = [];
+    if (plan.thought) obs.push(plan.thought.R.body, plan.thought.R.plate);
+    for (const sl of plan.slots) obs.push({ x0: sl.x - plan.s / 2, y0: sl.y - plan.s / 2, x1: sl.x + plan.s / 2, y1: sl.y + plan.s / 2 });
+    if (plan.mrect) obs.push(plan.mrect);
+    const z = plan.zone;
+    let y = -1;
+    for (let yy = z.y + z.h - 26; yy >= z.y + 26; yy -= 6) {
+      const iv = freeStretches(x0 - 16, x0 + len + 16, yy - 30, yy + 16, obs);
+      if (iv.length === 1 && iv[0][0] <= x0 - 16 && iv[0][1] >= x0 + len + 16) { y = yy; break; }
+    }
+    hint.x0 = x0; hint.y0 = y > 0 ? y : z.y + z.h * 0.5; hint.ok = y > 0;
   }
 
   // ---------------------------------------------------------- prepare --
@@ -329,7 +363,13 @@ export function create(ctx) {
         field.deposit(x0, y0, s.x, s.y, k * mul);
         if (R() < 0.5 + k * 0.25) burstSparks(s.x, s.y, 1 + (k > 1 ? 1 : 0), 90 + 80 * k);
         const c = cardAt(s.x, s.y);
-        if (c) { c.q = Math.min(1, c.q + 0.12 * k); c.wobble.kick(0.5 * k); c.rope.px[ROPE_N - 1] -= (s.vx || 0) * 0.004; c.touched = 1; if (c.grounded && c.q > 0.3) ungroundCard(c); }
+        if (c) {
+          // charge builds with every crackling pass; the flick is felt once as the finger enters the card
+          c.q = Math.min(1, c.q + 0.12 * k * Math.min(1, Math.hypot(s.x - x0, s.y - y0) / 12));
+          if (c.touched < 0.35) { c.wobble.kick(Math.min(0.6, 0.5 * k)); c.rope.px[ROPE_N - 1] -= clamp((s.vx || 0) * 0.004, -3, 3); }
+          c.touched = 1;
+          if (c.grounded && c.q > 0.3) ungroundCard(c);
+        }
         if (elapsed - lastCrackle > 0.04) { lastCrackle = elapsed; ctx.sound('crackle', { intensity: clamp(0.25 + 0.3 * k), pan: clamp((s.x / W) * 2 - 1, -1, 1) }); }
         ctx.haptic('tick');
       }
@@ -464,6 +504,7 @@ export function create(ctx) {
     const rm = reduced();
     pulsedThisFrame = false; pulseDrainThisFrame = 0;
 
+    relayoutCheck(dt);
     // pace of the primary finger
     const f0 = fingers.find((f) => f.on) || null;
     const band = pace.update(dt, !!f0, f0 ? f0.speed : 0);
@@ -593,8 +634,8 @@ export function create(ctx) {
       hint.next -= dt;
       if (hint.next <= 0 && hint.shown < 2 && hint.age < 0) {
         // in the open band below the person's words, clear of the postcards and of Glitzi
-        const mt = mallow?.rect?.()?.top ?? H * 0.645;
-        hint.age = 0; hint.shown++; hint.next = 9; hint.x0 = W * 0.29; hint.y0 = clamp(tAnchor.y + tR + 70, H * 0.3, mt - 90);
+        if (hint.ok) { hint.age = 0; hint.shown++; hint.next = 9; }
+        else hint.next = 9;
       }
     }
     if (hint.age >= 0) { hint.age += dt; if (hint.age > 3.4) hint.age = -1; }
@@ -671,33 +712,39 @@ export function create(ctx) {
   function groundCard(c) {
     c.grounded = true; c.gk = c.gk || 0; c.glowAge = brightOK(elapsed) ? 0 : 0.3;
     groundedCards++;
-    c.restLen = c.rope.seg * 0.86;
+    c.restLen = c.seg0 - Math.min(0.14 * c.seg0, 10 / (ROPE_N - 1));
     mallow?.react?.('comfort');
     ctx.sound('glass', { note: (c.i % 6) + 2, intensity: 0.4 });
     ctx.haptic('light');
     for (let k = 0; k < 10; k++) fallers.spawn(c.x + (R() - 0.5) * c.w, c.y + (R() - 0.5) * c.h, (R() - 0.5) * 30, 6 + R() * 20, 1.4 + R(), 2 + R() * 2.5, (R() * 3) | 0, 0.85);
   }
-  function ungroundCard(c) { c.grounded = false; groundedCards = Math.max(0, groundedCards - 1); c.restLen = c.rope.seg / 0.86; }
+  function ungroundCard(c) { c.grounded = false; groundedCards = Math.max(0, groundedCards - 1); c.restLen = c.seg0; }
 
   function updateCards(dt, now) {
-    // the postcards rise a little with the clearing clouds, never into the controls
-    const lift = (realm?.st?.p || 0) * H * 0.085 * 0.45;
-    const minTop = ctx.safe.y + 6;
-    for (const c of cards) c.ay = Math.max(c.ay0 - lift, Math.min(c.ay0, minTop - (c.y - c.h / 2 - c.ay)));
     const gust = reduced() ? 0 : (Q * 26 + 6) * (Math.sin(now * 0.7) * 0.6 + Math.sin(now * 1.9 + 1) * 0.4);
+    const last = ROPE_N - 1;
     for (const c of cards) {
       const r = c.rope;
       r.seg = lerp(r.seg, c.restLen, 1 - Math.exp(-dt * 2));
       // the storm's wind pushes charged cards about; grounded ones hang still
       const wind = (c.grounded ? 0.25 : 1) * gust * (0.6 + 0.4 * Math.sin(c.ph + now * 0.5));
-      r.px[ROPE_N - 1] -= wind * dt * dt * 3;
+      r.px[last] -= wind * dt * dt * 3;
       if (dt > 0) r.update(Math.min(dt, 1 / 30), c.ax, c.ay);
-      const ex = r.x[ROPE_N - 1], ey = r.y[ROPE_N - 1], bx = r.x[ROPE_N - 2], by = r.y[ROPE_N - 2];
+      const ex = r.x[last], ey = r.y[last], bx = r.x[last - 1], by = r.y[last - 1];
       const ang = Math.atan2(ex - bx, ey - by);
       const wob = reduced() ? 0 : c.wobble.update(dt);
-      c.rot = lerp(c.rot, clamp(-ang * 0.7, -0.3, 0.3) + wob * 0.03, 1 - Math.exp(-dt * 8));
+      c.rot = lerp(c.rot, clamp(-ang * 0.7, -0.24, 0.24) + wob * 0.03, 1 - Math.exp(-dt * 8));
       if (c.grounded) c.rot *= Math.exp(-dt * 2);
+      if (reduced()) c.rot *= 0.5;
       c.x = ex + Math.sin(c.rot) * c.h * 0.5; c.y = ey + Math.cos(c.rot) * c.h * 0.5;
+      // never closer than 20 px to a screen edge, however it swings
+      const hw = (Math.abs(Math.cos(c.rot)) * c.w + Math.abs(Math.sin(c.rot)) * c.h) / 2;
+      const dx = c.x < EDGE + hw ? EDGE + hw - c.x : c.x > W - EDGE - hw ? W - EDGE - hw - c.x : 0;
+      if (dx) { c.x += dx; r.x[last] += dx; r.px[last] += dx; }
+      // …and never up into the subtitle band
+      const hh = (Math.abs(Math.sin(c.rot)) * c.w + Math.abs(Math.cos(c.rot)) * c.h) / 2;
+      const minY = (plan ? plan.band.y + plan.band.h : 0) + 4 + hh;
+      if (c.y < minY) { const dy = minY - c.y; c.y += dy; r.y[last] += dy; r.py[last] += dy; }
       c.gk = c.grounded ? Math.min(1, c.gk + dt / 0.8) : Math.max(0, c.gk - dt / 0.5);
       if (c.glowAge >= 0) { c.glowAge += dt; if (c.glowAge > 2.4) c.glowAge = -1; }
       c.touched = Math.max(0, c.touched - dt * 2);
@@ -726,11 +773,16 @@ export function create(ctx) {
     //   grain   — a static texture masked by the charge: charged sky looks staticky, grounded sky smooth
     const d = fieldData.data, md = maskData.data, cd = clearData.data, n = field.n, cols = field.cols, q = field.q, fl = field.f;
     const low = ctx.lowStim ? 0.6 : 1;
+    // as the last of the charge is grounded, and over 2.5 s after completion, the calm-night
+    // wash, the haze and the grain step aside: the realm's dawn and golden mandala carry the end
+    const resolveK = complete ? clamp((elapsed - completeAt) / 2.5) : 0;
+    const clearK = (1 - 0.75 * smoothstep(0.7, 1, p)) * (1 - resolveK);
+    const hazeK = 1 - 0.85 * resolveK;
     let anyClear = 0;
     for (let k = 0; k < n; k++) {
       const o = k * 4;
       const f = fl[k], e = q[k] - f > 0 ? q[k] - f : 0, gl = afterglow[k];
-      const ca = Math.round(255 * 0.42 * clamp(1 - q[k] / 0.4) * startQ[k]);
+      const ca = Math.round(255 * 0.42 * clamp(1 - q[k] / 0.4) * startQ[k] * clearK);
       cd[o + 3] = ca; anyClear |= ca;
       if (f < 0.02 && e < 0.01 && gl < 0.01) { d[o + 3] = 0; md[o + 3] = 0; continue; }
       const i = k % cols, j = (k / cols) | 0;
@@ -739,7 +791,7 @@ export function create(ctx) {
       const mid = 1 - Math.abs(hue - 0.5) * 2;
       // ambient: cyan (40,200,255) ↔ magenta (235,50,225), dipping through violet (120,70,255)
       const ar = 40 + 195 * hue - 17.5 * mid, ag = 200 - 150 * hue - 55 * mid, ab = 255 - 30 * hue + 15 * mid;
-      const aa = Math.pow(smoothstep(0.04, 1.15, f), 1.15) * 0.46 * sh * low;
+      const aa = Math.pow(smoothstep(0.04, 1.15, f), 1.15) * 0.46 * sh * low * hazeK;
       const fa = smoothstep(0.015, 0.4, e) * (0.75 + 0.25 * sh) * low;
       const fw = clamp(e / 0.55);                        // white-hot as fresh charge piles up
       const ga = clamp(gl) * 0.85 * low;
@@ -767,7 +819,7 @@ export function create(ctx) {
     g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.92;
     g.drawImage(midC, bx, by, bw, bh);
     // 3 static grain (jumps a few times a second; still when motion is reduced or stimulation low)
-    if (!ctx.lowStim) {
+    if (!ctx.lowStim && resolveK < 1) {
       fieldG.putImageData(maskData, 0, 0);
       midG.drawImage(fieldC, 0, 0, midC.width, midC.height);
       const tick = rm ? 0 : Math.floor(now * 11);
@@ -780,7 +832,7 @@ export function create(ctx) {
       grainG.globalCompositeOperation = 'destination-in';
       grainG.imageSmoothingEnabled = true;
       grainG.drawImage(midC, 0, 0, grainC.width, grainC.height);
-      g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.42;
+      g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.42 * (1 - resolveK);
       g.imageSmoothingEnabled = false;
       g.drawImage(grainC, field.x, field.y, grainC.width * grainScale, grainC.height * grainScale);
     }
@@ -896,30 +948,84 @@ export function create(ctx) {
     g.restore();
   }
 
+  /** Rope strokes that fade out inside the subtitle band (so lines read cleanly over the clouds). */
+  function ropeStyles(g) {
+    if (ropeGrads) return ropeGrads;
+    const b = plan?.band || { y: 0, h: 0 };
+    const mk = (hex) => {
+      const gr = g.createLinearGradient(0, b.y, 0, b.y + b.h + 12);
+      gr.addColorStop(0, rgbaHex(hex, 0.1)); gr.addColorStop(0.75, rgbaHex(hex, 0.35)); gr.addColorStop(1, rgbaHex(hex, 1));
+      return gr;
+    };
+    ropeGrads = { cyan: mk(C.cyan), gold: mk(C.gold), coreC: mk('#cdf8ff'), coreG: mk('#ffe9bf') };
+    return ropeGrads;
+  }
+
+  function cardPath(g, c) {
+    const w = c.w, h = c.h, r = Math.min(w, h) * 0.1;
+    g.beginPath();
+    g.moveTo(-w / 2 + r, -h / 2); g.arcTo(w / 2, -h / 2, w / 2, h / 2, r); g.arcTo(w / 2, h / 2, -w / 2, h / 2, r);
+    g.arcTo(-w / 2, h / 2, -w / 2, -h / 2, r); g.arcTo(-w / 2, -h / 2, w / 2, -h / 2, r); g.closePath();
+  }
+
   function drawCard(g, c, now, rm) {
     const qk = c.q;
     const charged = 1 - c.gk;
+    const gold = c.gk > 0.5;
+    const fl = c.glowAge >= 0 ? flashEnv(c.glowAge, 0.35, 0.2, 1.6) : 0;
+    const RS = ropeStyles(g);
     // rope: a flickering charged thread, warm gold once grounded
     g.save();
     g.lineCap = 'round';
     g.globalCompositeOperation = 'lighter';
-    g.strokeStyle = c.gk > 0.5 ? C.gold : C.cyan;
-    g.globalAlpha = 0.08 + 0.14 * (c.gk > 0.5 ? c.gk : qk * (rm ? 1 : 0.7 + 0.3 * Math.sin(now * 9 + c.ph)));
+    g.strokeStyle = gold ? RS.gold : RS.cyan;
+    g.globalAlpha = 0.1 + 0.16 * (gold ? c.gk : qk * (rm ? 1 : 0.7 + 0.3 * Math.sin(now * 9 + c.ph)));
     g.lineWidth = 2.4; c.rope.path(g); g.stroke();
-    g.globalAlpha = 0.42; g.lineWidth = 0.8; g.strokeStyle = c.gk > 0.5 ? '#ffe9bf' : '#cdf8ff'; c.rope.path(g); g.stroke();
+    g.globalAlpha = 0.5; g.lineWidth = 0.9; g.strokeStyle = gold ? RS.coreG : RS.coreC; c.rope.path(g); g.stroke();
     g.restore();
-    // halo behind: cyan/magenta charge, or warm gold when grounded
+    // halo behind: cyan/magenta charge, or warm gold when grounded (a soft bloom as it grounds)
     g.save();
     g.globalCompositeOperation = 'lighter';
     const hr = Math.max(c.w, c.h) * 0.95;
-    if (charged > 0.01) { g.globalAlpha = 0.22 * qk * charged; g.drawImage(c.i % 2 ? sprites.softMagenta : sprites.softCyan, c.x - hr, c.y - hr, hr * 2, hr * 2); }
-    if (c.gk > 0.01) {
-      const fl = c.glowAge >= 0 ? flashEnv(c.glowAge, 0.35, 0.2, 1.6) : 0;
-      g.globalAlpha = 0.28 * c.gk + 0.35 * fl; g.drawImage(sprites.softGold, c.x - hr, c.y - hr, hr * 2, hr * 2);
+    if (charged > 0.01) { g.globalAlpha = 0.26 * qk * charged; g.drawImage(c.i % 2 ? sprites.softMagenta : sprites.softCyan, c.x - hr, c.y - hr, hr * 2, hr * 2); }
+    if (c.gk > 0.01 || fl > 0) {
+      const br = hr * (1 + 0.35 * fl);
+      g.globalAlpha = clamp(0.3 * c.gk + 0.6 * fl); g.drawImage(sprites.softWarm, c.x - br, c.y - br, br * 2, br * 2);
+      g.globalAlpha = clamp(0.22 * c.gk + 0.35 * fl); g.drawImage(sprites.softGold, c.x - hr * 0.8, c.y - hr * 0.8, hr * 1.6, hr * 1.6);
     }
     g.restore();
     const skew = rm ? 0 : 0.02 * qk * charged * Math.sin(now * 7 + c.ph);
     photos.draw(g, c.i, c.x, c.y, c.size, { shape: 'card', rot: c.rot, tone: 'storm', toneMix: 0.8 * qk * charged, skewY: skew, shadow: false });
+    // the charged look, strong enough to read on the Mallow cards too (their own tone stays light):
+    // a cold storm wash with static lines; grounded, it lifts away to the card's own colours
+    const ck = clamp(qk * charged * 1.15);
+    g.save();
+    g.translate(c.x, c.y); g.rotate(c.rot); if (skew) g.transform(1, skew, 0, 1, 0, 0);
+    cardPath(g, c);
+    if (ck > 0.02) {
+      g.save();
+      g.clip();
+      g.globalCompositeOperation = 'source-over';
+      g.globalAlpha = 0.46 * ck; g.fillStyle = '#1a1250'; g.fillRect(-c.w / 2, -c.h / 2, c.w, c.h);
+      if (!ctx.lowStim) {
+        g.globalCompositeOperation = 'lighter';
+        const tk = rm ? 0 : Math.floor(now * 9 + c.ph * 3);
+        for (let e = 0; e < 4; e++) {
+          const h = ((c.i * 2654435761 + tk * 40503 + e * 97) >>> 0) / 4294967296;
+          g.globalAlpha = 0.22 * ck; g.fillStyle = e % 2 ? C.magenta : C.cyan;
+          g.fillRect(-c.w / 2, -c.h / 2 + h * c.h, c.w, 1 + (e === 0 ? 1 : 0));
+        }
+      }
+      g.restore();
+    }
+    // the rim: a cold flickering edge while charged, a warm gold frame once grounded
+    g.globalCompositeOperation = 'lighter';
+    if (charged > 0.05) { g.strokeStyle = c.i % 2 ? C.magenta : C.cyan; g.globalAlpha = 0.5 * qk * charged * (rm ? 1 : 0.75 + 0.25 * Math.sin(now * 11 + c.ph)); g.lineWidth = 1.4; g.stroke(); }
+    if (c.gk > 0.02 || fl > 0) {
+      g.strokeStyle = C.gold; g.globalAlpha = clamp(0.32 * c.gk + 0.4 * fl); g.lineWidth = 5; g.stroke();
+      g.strokeStyle = '#fff1cf'; g.globalAlpha = clamp(0.85 * c.gk + 0.15 * fl); g.lineWidth = 1.6; g.stroke();
+    }
+    g.restore();
     // edge glints while charged
     if (charged > 0.2 && qk > 0.25 && !ctx.lowStim) {
       const tk = rm ? 0 : Math.floor(now * 5 + c.ph);
@@ -930,9 +1036,9 @@ export function create(ctx) {
         const lx = side < 2 ? (u - 0.5) * c.w : (side === 2 ? -0.5 : 0.5) * c.w;
         const ly = side < 2 ? (side === 0 ? -0.5 : 0.5) * c.h : (u - 0.5) * c.h;
         const cs = Math.cos(c.rot), sn = Math.sin(c.rot);
-        const x = c.x + lx * cs - ly * sn, y = c.y + lx * sn + ly * cs, s = 5 + 5 * qk;
+        const x = c.x + lx * cs - ly * sn, y = c.y + lx * sn + ly * cs, sz = 5 + 5 * qk;
         g.globalAlpha = 0.55 * qk * charged;
-        g.drawImage(e % 2 ? sprites.glintM : sprites.glintC, x - s, y - s, s * 2, s * 2);
+        g.drawImage(e % 2 ? sprites.glintM : sprites.glintC, x - sz, y - sz, sz * 2, sz * 2);
       }
       g.restore();
     }
@@ -969,7 +1075,7 @@ export function create(ctx) {
       g.restore();
     }
     if (thought?.draw) {
-      try { thought.draw(g, x, y, tScale, { tension: tTension, charge: qLocal, calm: thoughtSettle.settled ? 1 : 1 - qLocal, fizz: tFizz, reduced: rm, radius: tR, now, minX: 20, maxX: W - 20, labelWidth: Math.min(300, W - 64) }); } catch (e) { /* placeholder only */ }
+      try { thought.draw(g, x, y, tScale, { tension: tTension, charge: qLocal, calm: thoughtSettle.settled ? 1 : 1 - qLocal, fizz: tFizz, reduced: rm, radius: tR, now, minX: 20, maxX: W - 20, labelWidth: tLabelW }); } catch (e) { /* placeholder only */ }
     }
   }
 
@@ -1134,23 +1240,28 @@ export function create(ctx) {
     pause() { paused = true; holds.charge?.stop(); holds.charge = null; stopGroundHold(); for (const f of fingers) { if (f.line) endLine(f, true); f.on = false; } },
     resume() { paused = false; },
     setEmotion() {},
-    setThought(h) { thought = h; },
-    /** Client rects to keep subtitles off: the thought with its words plate and fingers (hard), the postcard mobile (soft). */
+    setThought(h) { thought = h; if (prepared) layout(); },
+    /**
+     * Client rects to keep subtitles off (all hard): the Thought Mallow with its words
+     * plate, every postcard, and fingers outside the subtitle band (a finger passing
+     * through the band does not push the line away: the band is the line's own slot).
+     */
     avoid() {
       const out = [];
-      if (thought) {
-        const lw = Math.min(W - 40, Math.min(300, W - 64) + 24);
-        const x0 = clamp(tSpring.x - lw / 2, 20, W - 20 - lw);
-        out.push({ x: Math.min(x0, tSpring.x - tR * 1.3), y: tSpring.y - tR * 1.4, w: Math.max(lw, tR * 2.6), h: tR * 2.4 + 64, kind: 'thought' });
+      const band = plan?.band;
+      if (thought && plan?.thought) {
+        const T = plan.thought, dx = tSpring.x - T.x, dy = tSpring.y - T.y;
+        const x0 = Math.min(T.R.body.x0, T.R.plate.x0) + dx, x1 = Math.max(T.R.body.x1, T.R.plate.x1) + dx;
+        out.push({ x: x0, y: T.R.top + dy, w: x1 - x0, h: T.R.bottom - T.R.top, kind: 'thought' });
       }
-      for (const f of fingers) if (f.on) out.push({ x: f.x - 60, y: f.y - 60, w: 120, h: 120, kind: 'finger' });
-      if (cards.length) {
-        let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-        for (const c of cards) { x0 = Math.min(x0, c.x - c.w / 2); y0 = Math.min(y0, c.y - c.h / 2); x1 = Math.max(x1, c.x + c.w / 2); y1 = Math.max(y1, c.y + c.h / 2); }
-        out.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0, kind: 'cards', soft: true });
-      }
+      for (const c of cards) { const hw = (Math.abs(Math.cos(c.rot)) * c.w + Math.abs(Math.sin(c.rot)) * c.h) / 2 + 4, hh = (Math.abs(Math.sin(c.rot)) * c.w + Math.abs(Math.cos(c.rot)) * c.h) / 2 + 4; out.push({ x: c.x - hw, y: c.y - hh, w: hw * 2, h: hh * 2, kind: 'card' }); }
+      for (const f of fingers) if (f.on && !(band && f.y < band.y + band.h)) out.push({ x: f.x - 60, y: f.y - 60, w: 120, h: 120, kind: 'finger' });
       return out;
     },
+    /** The subtitle slot this world keeps clear (client px): the director's reserved band. */
+    subtitleBand() { const b = plan?.band || ctx.band; return b ? { x: b.x, y: b.y, w: b.w, h: b.h } : null; },
+    /** QA: the layout chosen for this screen. */
+    get layoutPlan() { return plan ? { s: plan.s, thought: plan.thought ? { name: plan.thought.name, x: plan.thought.x, y: plan.thought.y, r: plan.thought.r, labelW: plan.thought.labelW, lines: plan.thought.lines } : null, zone: plan.zone, band: plan.band, slots: plan.slots.length } : null; },
     serialize() {
       return {
         v: 1, seed: ctx.seed, progress: Math.round((complete ? 1 : p) * 1000) / 1000, complete,
@@ -1164,7 +1275,7 @@ export function create(ctx) {
       if (!field) layout();
       if (s.field) field.restore(s.field);
       for (const id of s.discoveries || []) { discovered.add(id); if (id === 'slowing') slowingD.markFired(); if (id === 'stillness') stillD.markFired(); }
-      for (const ps of s.photoState || []) { const c = cards.find((q) => q.i === ps.i); if (c) { c.q = clamp(ps.q ?? c.q); if (ps.grounded && !c.grounded) { c.grounded = true; c.gk = 1; groundedCards++; c.restLen = c.rope.seg * 0.86; } } }
+      for (const ps of s.photoState || []) { const c = cards.find((q) => q.i === ps.i); if (c) { c.q = clamp(ps.q ?? c.q); if (ps.grounded && !c.grounded) { c.grounded = true; c.gk = 1; groundedCards++; c.restLen = c.seg0 - Math.min(0.14 * c.seg0, 10 / (ROPE_N - 1)); } } }
       if (s.thought) { tCharge = clamp(s.thought.q ?? tCharge, 0, 1.3); if (s.thought.settled) { thoughtSettle.markSettled(); tSettledShown = true; } }
       if (s.complete) { complete = true; completeAt = 0; realm?.transform(1).settle(); }
       Q = field.storminess(); p = field.progress;

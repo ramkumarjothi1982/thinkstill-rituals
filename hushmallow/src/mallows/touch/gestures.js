@@ -41,7 +41,7 @@ export const GESTURE = Object.freeze({
   tapHeld: 0.35, tapDist: 14, doubleWindow: 0.33,
   jiggleWindow: 0.6, jiggleReversals: 3, jiggleSpeed: 250, jiggleAmp: 60,
   massageWindow: 3, massageRmin: 12, massageRmax: 80, massageTurn: 1.2 * Math.PI, massageSame: 0.8,
-  massageStep: 1, circleTurn: 0.6 * Math.PI, massageRecent: 1,
+  massageStep: 1.5, circleTurn: 0.6 * Math.PI, massageRecent: 1,
   strokeStart: 0.25, strokePath: 60, strokeVmin: 50, strokeVmax: 850, strokeStraight: 0.85, strokeBend: 0.08,
   stretchMin: 0.6, stretchMax: 1.6,
 });
@@ -180,8 +180,10 @@ export class TouchReader {
       if (span > 0.012) { vx = (p.x - ox) / span; vy = (p.y - oy) / span; } else { vx = p.vx; vy = p.vy; }
     }
     const speed = Math.hypot(vx, vy);
+    // a stroke or massage that paused a moment before lifting still ends softly
+    const soothedJustNow = p.mode === 'press' && p.tGrip != null && t - p.tGrip < 0.6 && !p.hold && (p.strokes > 0 || p.massaged);
     const info = { id: p.id, x: p.x, y: p.y, t, held, dist, vx, vy, speed, depth: p.depth, pull: p.pull, maxDist: p.maxDist, cancelled,
-      mode: p.mode, stroked: p.stroked, strokes: p.strokes, massaged: p.massaged };
+      mode: soothedJustNow ? 'glide' : p.mode, stroked: p.stroked, strokes: p.strokes, massaged: p.massaged };
     if (this.stretch && (this.stretch.a === p.id || this.stretch.b === p.id)) this._stretchEnd(t);
     let kind = 'release';
     if (!cancelled) {
@@ -228,6 +230,19 @@ export class TouchReader {
   }
 
   _inStretch(p) { const s = this.stretch; return !!s && (s.a === p.id || s.b === p.id); }
+
+  /** A pull that lost its grip while moving fast and straight slid off the
+   *  jelly: from here it glides (and may still count as a stroke). Returns
+   *  true when it did. */
+  slide(id) {
+    const p = this.ptrs.get(id);
+    if (!p || p.mode !== 'pull' || p.hold || this._inStretch(p) || p.path < 1) return false;
+    const straight = Math.hypot(p.x - p.x0, p.y - p.y0) / p.path;
+    if (Math.hypot(p.vx, p.vy) < 250 || straight < 0.85) return false;
+    if (p.moveStartT == null) p.moveStartT = p.t0;
+    this._setMode(p, 'glide', p.t, true);
+    return true;
+  }
 
   _setMode(p, mode, t, fromDown = false) {
     if (p.mode === mode) return;

@@ -628,5 +628,9 @@
   "depth": 155.8,
   "inside": "#4f001d",
   "tongue": "#ff6aa0"
+ },
+ "mouthPaint": {
+  "inside": "#770222",
+  "tongue": "#f84385"
  }
 }

@@ -103,3 +103,151 @@ test('hiresMallow copies; applyHires switches in place, once, and only the ids a
   assert.equal(JSON.stringify(mallows.glitzi), once, 'idempotent');
   assert.ok(HIRES_VERIFIED.every((id) => HIRES[id]), 'verified ids are known');
 });
+
+// ---- containment: every drawn face part stays inside the body ------------
+// A pure-geometry mirror of the extents rig.js draws (drawMouth, eyeGeom; W2
+// owns rig.js, keep these in step with it), checked against the silhouette
+// of each cut-out (tools/hires/data/silhouette.json, written by
+// build_table.py: per 2 logical px column, the body's top and bottom).
+import { PRESETS, STAGES, resolveExpression } from '../src/mallows/expressions.js';
+import { REACTIONS } from '../src/mallows/reactions.js';
+
+const clampN = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerpN = (a, b, t) => a + (b - a) * t;
+
+function mouthExtent(M, P) {
+  const s = clampN(P.mouthSmile, -1.2, 1.2), o = clampN(P.mouthOpen, 0, 1.4), r = clampN(P.mouthRound, 0, 1);
+  const pout = clampN(P.mouthPout, 0, 1);
+  const W = M.w * clampN(P.mouthWidth, 0.3, 1.5) * (1 - 0.5 * r) * (1 - 0.45 * pout);
+  const oc = clampN(o, 0, 1);
+  const sagS = (M.sag === 0 ? M.w * 0.18 * (1 - oc) : (M.sag ?? M.w * 0.2)) * s * (1 - 0.6 * r);
+  const tremble = Math.abs(P.mouthTremble) * 3.2;
+  const skewY = Math.abs(P.mouthSkew * M.w * 0.1), dx = P.mouthSkew * M.w * 0.04;
+  const depth = M.depth || M.w * 0.45;
+  const upperOpen = (M.upper ?? -M.w * 0.08) * (0.4 + 0.6 * Math.max(0, s));
+  let U = lerpN(sagS, upperOpen, oc) - r * o * depth * 0.28;
+  const LoT = sagS + o * depth * (1 + 0.15 * r) * (s < -0.2 ? 0.7 : 1);
+  const Lo = LoT + tremble;
+  if (s < 0 && oc > 0.05) U = Math.min(U, LoT - tremble - 2);
+  const open = Lo - U > 2.2;
+  const half = open ? Math.max(2, M.lw * 0.45) / 2 : (M.style === 'open' ? Math.max(M.lw, 8) : M.lw) / 2 + P.mouthWave * M.w * 0.05;
+  let bottom = M.y + skewY + Math.max(0, Lo, U) + half;
+  if (open) bottom = Math.max(bottom, M.y + Lo * 1.005 + M.lw * 0.45 + Math.max(1.5, M.lw * 0.25) / 2);
+  if (pout > 0.05) bottom = Math.max(bottom, M.y + Math.max(Lo, 0) + M.lw * 1.25);
+  // a tongue stuck out ("bleh") hangs below the lips: its tip, separately
+  const tip = P.tongue > 0.03 ? M.y + Math.max(Lo, U) + M.lw * 0.3 + M.w * 0.2 * clampN(P.tongue, 0, 1) * 0.94 : -Infinity;
+  return { x0: M.x + dx - W / 2 - half, x1: M.x + dx + W / 2 + half, bottom, tip, tx0: M.x - M.w * 0.17, tx1: M.x + M.w * 0.17 };
+}
+
+// the top edge of one drawn eye, as [x, y] points: an open eye draws only
+// inside its ellipse (the lid line is clipped to 1.06 x it); a closed one is
+// the lid line itself
+function eyeTop(spec, side, P, style) {
+  const es = P.eyeScale, ry = spec.ry * es, rx = spec.rx * es;
+  const ey = style === 'closed' ? spec.y + spec.sag * 0.42 : spec.y;
+  const wink = side === 'R' ? clampN(P.wink, 0, 1) : 0;
+  const o = clampN(P.eyeOpen * (1 - wink), 0, 1.45), oc = Math.min(1, o);
+  const pts = [];
+  if (o > 0.015) {
+    const RX = rx * 1.06, RY = ry * 1.06;
+    for (let k = -10; k <= 10; k++) { const x = spec.x + RX * k / 10.5; pts.push([x, ey - RY * Math.sqrt(1 - (k / 10.5) ** 2) - spec.lw / 2]); }
+  } else {
+    const inner = side === 'L' ? 1 : -1;
+    const yC = style === 'closed' ? spec.y : ey + ry * 0.12;
+    const sagC = spec.sag * lerpN(P.closedCurve, -1, wink);
+    const hw = lerpN(spec.hw * (style === 'closed' ? 1 : Math.min(1.1, es)), rx * 1.3, oc);
+    const tilt = (spec.tilt || 0) * (1 - oc);
+    const xin = spec.x + inner * hw, xout = spec.x - inner * hw, yin = yC + tilt, yout = yC - tilt;
+    const qUp = lerpN(yC + 2 * sagC, ey - ry * 2.35, clampN(o * (1 - P.lidTop), 0, 1.45));
+    for (let k = 0; k <= 20; k++) {
+      const t = k / 20;
+      pts.push([lerpN(xout, xin, t), (1 - t) ** 2 * yout + 2 * (1 - t) * t * qUp + t * t * yin - spec.lw / 2]);
+    }
+  }
+  return pts;
+}
+
+function faceStates(m) {
+  const out = [];
+  for (const p of Object.keys(PRESETS)) for (const I of [0.7, 1]) out.push([`${p}@${I}`, resolveExpression(m, { [p]: 1 }, I)]);
+  for (const [s, st] of Object.entries(STAGES)) out.push([`stage:${s}`, resolveExpression(m, st.mix, st.intensity, st.extra)]);
+  const table = { ...REACTIONS._shared, ...(REACTIONS[m.id] || {}) };
+  for (const base of ['neutral', 'happy', 'excited', 'playful']) {
+    const b = resolveExpression(m, { [base]: 1 }, 1);
+    for (const [k, r] of Object.entries(table)) {
+      const g = { ...b };
+      for (const [kk, v] of Object.entries(r.params || r)) if (kk in g) g[kk] = v;
+      out.push([`${k}/${base}`, g]);
+    }
+    out.push([`yawn-cycle/${base}`, { ...b, mouthRound: 1, mouthOpen: 1.15, mouthSmile: 0 }]);
+  }
+  return out;
+}
+
+const SIL = JSON.parse(readFileSync(new URL('../tools/hires/data/silhouette.json', import.meta.url)));
+const silAt = (S, key, x0, x1, pick) => {
+  let v = null;
+  for (let x = Math.floor(x0 / S.step); x <= Math.ceil(x1 / S.step); x++) {
+    const y = S[key][Math.max(0, Math.min(S[key].length - 1, x))];
+    if (y != null) v = v == null ? y : pick(v, y);
+  }
+  return v;
+};
+
+test('every drawn face part stays inside the body, at every preset, stage and reaction', () => {
+  const MARGIN = 6;      // logical px: the silhouette's bright rim stays clear
+  const TIP = 3;         // a tongue tip may come closer, never past it
+  for (const id of Object.keys(HIRES)) {
+    const m = hiresMallow(MALLOWS[id], id), f = m.face, S = SIL[id];
+    assert.ok(S, `${id} silhouette`);
+    const bad = [];
+    for (const [name, P0] of faceStates(m)) {
+      // the mouth spring overshoots its target by ~7% (kS 170, kD 17)
+      const P = { ...P0, mouthOpen: P0.mouthOpen * 1.07 };
+      const me = mouthExtent(f.mouth, P);
+      const floor = silAt(S, 'bottom', me.x0, me.x1, Math.min);
+      if (floor - me.bottom < MARGIN) bad.push(`mouth ${name}: ${(floor - me.bottom).toFixed(1)} px`);
+      const tfloor = silAt(S, 'bottom', me.tx0, me.tx1, Math.min);
+      if (tfloor - me.tip < TIP) bad.push(`tongue ${name}: ${(tfloor - me.tip).toFixed(1)} px`);
+      for (const side of ['L', 'R']) {
+        let worst = Infinity;
+        for (const [x, y] of eyeTop(f.eyes[side], side, P, f.eyeStyle)) worst = Math.min(worst, y - silAt(S, 'top', x, x, Math.max));
+        if (worst < MARGIN) bad.push(`eye ${side} ${name}: ${worst.toFixed(1)} px`);
+      }
+    }
+    assert.deepEqual(bad.slice(0, 8), [], `${id}: face drawn past the outline`);
+  }
+});
+
+test('Glitzi carries an explicit open-mouth depth (its frown has no painted one)', () => {
+  const M = HIRES.glitzi.face.mouth;
+  assert.equal(M.style, 'crease');
+  assert.ok(M.depth > 20 && M.depth < M.w * 0.45, `depth ${M.depth}`);
+});
+
+test('high-res sprites passed the build checks (clean spiral rims)', () => {
+  const C = JSON.parse(readFileSync(new URL('../tools/hires/data/checks.json', import.meta.url)));
+  for (const s of ['L', 'R']) {
+    const c = C.sprites[`zuzu-spiral-${s}`];
+    assert.equal(c.bodyPx, 0, `zuzu spiral ${s}: body pixels inside the sprite`);
+    assert.ok(c.rimDark > 0.95, `zuzu spiral ${s}: the rim is dark all the way round (${c.rimDark})`);
+  }
+});
+
+test('open mouths use the colours painted in the high-res art', () => {
+  for (const id of ['zuzu', 'boppo', 'pipzi']) {
+    const M = HIRES[id].face.mouth;
+    assert.notEqual(M.inside, MALLOWS[id].face.mouth.inside, `${id} inside resampled`);
+    assert.match(M.inside, /^#[0-9a-f]{6}$/);
+    assert.match(M.tongue, /^#[0-9a-f]{6}$/);
+  }
+});
+
+test('hiresMallow does not need structuredClone (Safari < 15.4 boots)', () => {
+  const keep = globalThis.structuredClone;
+  try {
+    globalThis.structuredClone = undefined;
+    const g = hiresMallow(MALLOWS.glitzi);
+    assert.equal(g.face.mouth.style, 'crease');
+  } finally { globalThis.structuredClone = keep; }
+});

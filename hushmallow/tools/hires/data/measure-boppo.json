@@ -171,7 +171,9 @@
     302.422
    ],
    "lw": 31.811,
-   "alpha": 1
+   "alpha": 1,
+   "lw_paint": 41.0,
+   "ink_paint": "#3b0200"
   },
   "browR": {
    "p0": [
@@ -187,7 +189,9 @@
     325.121
    ],
    "lw": 28.128,
-   "alpha": 1
+   "alpha": 1,
+   "lw_paint": 35.5,
+   "ink_paint": "#3e0201"
   },
   "mouth": {
    "x": 511.5,
@@ -233,5 +237,9 @@
   "depth": 153.41,
   "inside": "#440000",
   "tongue": "#c8364e"
+ },
+ "mouthPaint": {
+  "inside": "#520101",
+  "tongue": "#fb6379"
  }
 }

@@ -46,7 +46,6 @@ export default function plans(app, params = {}) {
   const focus = params.focus === 'ultra' || params.reason === 'ultra' ? 'ultra' : 'paid';
   let period = app.state.planPeriod === 'yearly' ? 'yearly' : 'monthly';
   const included = (id) => tier === id || (id === 'paid' && tier === 'ultra');
-  const actions = [];
 
   const periodNote = () => (ent.isNative
     ? (period === 'yearly' ? 'Billed once a year by the App Store. Cancel any time.' : 'Billed monthly by the App Store. Cancel any time.')
@@ -70,7 +69,6 @@ export default function plans(app, params = {}) {
     const price = h('p', { class: 'invite-price', hidden: true });
     const note = h('p', { class: 'invite-period', 'aria-live': 'polite' }, periodNote());
     notes.push([p, price, note]);
-    actions.push(note);
     const btn = h('button', { class: `btn block invite-buy ${p.id === 'ultra' ? 'ultra' : 'primary'}`, onclick: () => buy(p.id, btn) }, h('span', { class: 'invite-buy-label' }, `Step into ${p.name}`));
     buttons.push(btn);
     return h('div', { class: 'invite-cta' }, btn, price, note);

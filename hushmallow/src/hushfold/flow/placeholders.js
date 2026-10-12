@@ -21,6 +21,9 @@ const mixHex = (a, b, t) => { const A = hexRGB(a), B = hexRGB(b); const c = (i) 
 export function rigMallow(appWorld) {
   const rig = () => appWorld?.rig || null;
   const rect = () => {
+    // the rig's true body box when it has measured itself (world.bodyRect), else the layer estimate
+    const b = appWorld?.bodyRect?.();
+    if (b && b.width > 20 && b.height > 20 && b.right != null) return { left: b.left, top: b.top, width: b.width, height: b.height, right: b.right, bottom: b.bottom, cx: b.cx, cy: b.cy };
     const r = appWorld?.mallowRect?.();
     if (!r) return null;
     // the rig draws the body in roughly the middle 64% of the layer's width
@@ -106,7 +109,7 @@ function haloSprite(colour, S = 128) {
 export function createPlaceholderThought({ words, emotion = 'other', font = (px, w) => `${w} ${px}px system-ui, sans-serif`, dpr = 2 } = {}) {
   const tint = TINTS[emotion] || TINTS.other;
   let body = null, halo = null, label = null, labelKey = '';
-  let squash = 0, squashV = 0, sigh = 0, appear = 0, settledK = 0;
+  let squash = 0, squashV = 0, sigh = 0, appear = 0, settledK = 0, drawnR = 0;
   const imp = { squeeze: 0.5, release: -0.4, sigh: 0.3, appear: -0.6, poke: 0.3 };
   const handle = {
     id: 'thought-1', emotion, x: 0, y: 0, z: 0, scale: 1,
@@ -115,12 +118,14 @@ export function createPlaceholderThought({ words, emotion = 'other', font = (px,
     state: { tension: 0.7, charge: 0.7, calm: 0, distance: 0 },
     react(kind) { squashV += (imp[kind] ?? 0.2) * 6; if (kind === 'sigh') sigh = 1; if (kind === 'appear') appear = 0; },
     soften() {}, settle(k = 1) { settledK = Math.max(settledK, k); }, transform() {},
-    hitTest(x, y) { return Math.hypot(x - handle.x, y - handle.y) < 40 * handle.scale * 1.2; },
+    /** The body as drawn (radius from the last draw), with a little touch slop. */
+    hitTest(x, y) { return Math.hypot(x - handle.x, y - handle.y) < (drawnR || 40 * handle.scale) * 1.2; },
     pointer() {},
     destroy() { body = halo = label = null; },
     draw(g, x, y, scale = 1, o = {}) {
       if (!body) { body = bodySprite(tint); halo = haloSprite('#ffd98a'); }
       const now = o.now || 0, r = (o.radius || 34) * scale;
+      drawnR = r;
       const tension = clamp(o.tension ?? 0.6), calm = clamp(Math.max(o.calm ?? 0, settledK));
       // jelly springs
       const dt = 1 / 60;
@@ -241,6 +246,7 @@ function injectStyle() {
   background:radial-gradient(closest-side,rgba(10,7,32,.5),rgba(10,7,32,0));opacity:0;transform:translateY(6px);transition:opacity .45s ease,transform .6s cubic-bezier(.2,.7,.2,1);text-wrap:balance}
 .hf-line.on{opacity:1;transform:none}
 .hf-line.discovery{font:500 24px/1.18 var(--ff-story,"HM Fraunces",Georgia,serif);letter-spacing:-.005em;color:#fff6e4;text-shadow:0 1px 2px rgba(6,4,22,.9),0 0 26px rgba(255,190,110,.35),0 0 18px rgba(6,4,22,.8)}
+.hf-line.title{font:540 26px/1.12 var(--ff-story,"HM Fraunces",Georgia,serif);letter-spacing:-.01em;color:#fff6e8;text-shadow:0 1px 2px rgba(6,4,22,.9),0 0 30px rgba(120,80,255,.45)}
 .hf-go{pointer-events:auto;display:block;margin:8px auto 0;min-height:44px;min-width:44px;padding:0 18px;border-radius:999px;border:1px solid rgba(255,255,255,.24);
   background:rgba(16,12,44,.5);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);color:rgba(255,255,255,.9);font:650 14px/1 var(--ff-ui,"HM Manrope",system-ui,sans-serif);cursor:pointer}
 .hf-chips{display:flex;gap:10px;margin-top:12px;opacity:0;transition:opacity .45s ease}
@@ -253,7 +259,7 @@ function injectStyle() {
   padding:0 16px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(14,10,40,.55);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
   color:rgba(255,255,255,.9);font:600 14px/1.2 var(--ff-ui,"HM Manrope",system-ui,sans-serif);opacity:0;transition:opacity .4s ease;cursor:pointer}
 .hf-dock.on{opacity:1}
-@media (max-width: 359px){.hf-line{font-size:18px;padding:6px 12px}.hf-line.discovery{font-size:22px}.hf-chips{margin-top:8px}}
+@media (max-width: 359px){.hf-line{font-size:18px;padding:6px 12px}.hf-line.discovery{font-size:22px}.hf-line.title{font-size:24px}.hf-chips{margin-top:8px}}
 @media (prefers-reduced-motion: reduce){.hf-line,.hf-chips,.hf-dock{transition:opacity .2s linear}.hf-line{transform:none}}
 `;
   document.head.append(st);
@@ -261,11 +267,14 @@ function injectStyle() {
 
 /**
  * Lab subtitles: one short line at a time, soft fade, readable timing
- * (clamp(1400 + 55·chars, 2400, 7000) / speed), aria-live polite, the last
- * line of a held sequence stays until tapped or after holdMs it docks as a
- * replayable chip. Placed in the lowest free band between altY() and slotY() (avoid rects: hard, then soft).
+ * (clamp(1400 + 55·chars, 2400, 7000) / speed), aria-live polite. The last line
+ * of a held sequence stays until Continue is tapped (or clear()), and after
+ * holdMs it docks as a replayable chip. A choice waits up to choiceMs (20 s, as
+ * the shell's subtitles), then resolves null. Lines sit in band() — the slot the
+ * world keeps clear — or, with no band, in the lowest free band between altY()
+ * and slotY() (avoid rects: hard, then soft).
  */
-export function createLabSubtitles({ root = document.body, avoid = () => [], speed = 1, holdMs = 8000, slotY = () => 92, altY = () => innerHeight * 0.52 } = {}) {
+export function createLabSubtitles({ root = document.body, band = null, avoid = () => [], speed = 1, holdMs = 8000, choiceMs = 20000, slotY = () => innerHeight * 0.52, altY = () => 92 } = {}) {
   injectStyle();
   const box = document.createElement('div');
   box.className = 'hf-subs';
@@ -278,28 +287,36 @@ export function createLabSubtitles({ root = document.body, avoid = () => [], spe
   root.append(box, dock);
   let queue = Promise.resolve(), busy = 0, paused = false, skipFn = null;
   const wait = (ms) => new Promise((r) => { const t0 = performance.now(); const tick = () => { if (skipFn?.skipped) return r(); if (paused) { setTimeout(tick, 120); return; } if (performance.now() - t0 >= ms) r(); else setTimeout(tick, 60); }; tick(); });
-  // Find a band for the box between the top slot and the bottom slot (just above the Mallow):
-  // clear of hard rects (the thought and its words, fingers) and, if possible, soft ones
-  // (the postcards). Lowest band that fits wins, bottom-aligned; else the roomiest.
+  // Inside the world's band: centred in it (top-aligned if taller). Returns whether it fits.
+  // Without a band: the lowest free band between altY() and slotY() that is clear of hard
+  // rects (the thought, fingers) and, if possible, soft ones; else the roomiest.
   function place() {
-    const rects = avoid() || [];
     const need = box.offsetHeight || 60;
+    const b = band?.();
+    if (b && b.h > 0) {
+      const y = need <= b.h ? b.y + (b.h - need) / 2 : b.y;
+      box.style.bottom = 'auto';
+      box.style.top = `${Math.round(y)}px`;
+      return need <= b.h + 2;
+    }
+    const rects = avoid() || [];
     const top = altY(), bottom = slotY();
     const bands = (useSoft) => {
-      const cuts = rects.filter((r) => !r.soft || useSoft).map((r) => [Math.max(top, r.y - 6), Math.min(bottom, r.y + r.h + 6)]).filter(([a, b]) => b > a).sort((p1, p2) => p1[0] - p2[0]);
+      const cuts = rects.filter((r) => !r.soft || useSoft).map((r) => [Math.max(top, r.y - 6), Math.min(bottom, r.y + r.h + 6)]).filter(([a, c]) => c > a).sort((p1, p2) => p1[0] - p2[0]);
       const out = []; let y = top;
-      for (const [a, b] of cuts) { if (a > y) out.push([y, a]); y = Math.max(y, b); }
+      for (const [a, c] of cuts) { if (a > y) out.push([y, a]); y = Math.max(y, c); }
       if (y < bottom) out.push([y, bottom]);
       return out;
     };
     let pick = null;
     for (const soft of [true, false]) {
-      const fit = bands(soft).filter(([a, b]) => b - a >= need);
+      const fit = bands(soft).filter(([a, c]) => c - a >= need);
       if (fit.length) { pick = fit[fit.length - 1]; break; }
     }
     if (!pick) pick = bands(false).sort((p1, p2) => (p2[1] - p2[0]) - (p1[1] - p1[0]))[0] || [top, bottom];
     box.style.top = 'auto';
     box.style.bottom = `${Math.max(0, innerHeight - pick[1])}px`;
+    return pick[1] - pick[0] >= need;
   }
   // a discovery waits only for the line on screen (cut short), not for the dialogue queued behind it
   function queueFront(run) { const prev = current?.done || Promise.resolve(); return prev.then(run); }
@@ -308,7 +325,7 @@ export function createLabSubtitles({ root = document.body, avoid = () => [], spe
     const me = { kind, cut: () => cutNow?.(), done: null };
     current = me;
     let resolveDone; me.done = new Promise((r) => { resolveDone = r; });
-    p.className = `hf-line ${kind === 'discovery' ? 'discovery' : ''}`;
+    p.className = `hf-line ${kind === 'discovery' || kind === 'title' ? kind : ''}`;
     p.textContent = text;
     // the line never takes a touch (play goes on underneath); a small button acknowledges a held line
     let go = null;
@@ -317,9 +334,10 @@ export function createLabSubtitles({ root = document.body, avoid = () => [], spe
     requestAnimationFrame(() => p.classList.add('on'));
     if (hold) {
       await new Promise((res) => {
-        const done = () => { go?.removeEventListener('click', done); clearTimeout(tm); res(); };
+        const done = () => { go?.removeEventListener('click', done); clearTimeout(tm); cutNow = null; res(); };
         const tm = setTimeout(() => { docked(text); done(); }, holdMs);
         go?.addEventListener('click', done);
+        cutNow = done;          // clear() dismisses a held line too
       });
     } else {
       await Promise.race([wait(Math.min(7000, Math.max(2400, 1400 + 55 * text.length)) / speed), new Promise((r) => { cutNow = r; })]);
@@ -359,7 +377,9 @@ export function createLabSubtitles({ root = document.body, avoid = () => [], spe
     choice(prompt, options = []) {
       busy++;
       const job = queue.then(() => new Promise((res) => {
-        pendingChoice = (v) => { pendingChoice = null; p.classList.remove('on'); chips.classList.remove('on'); setTimeout(() => chips.replaceChildren(), 450); res(v); };
+        // unanswered choices step aside after choiceMs (null), so nothing waits on them for ever
+        const tm = setTimeout(() => pendingChoice?.(null), choiceMs);
+        pendingChoice = (v) => { clearTimeout(tm); pendingChoice = null; p.classList.remove('on'); chips.classList.remove('on'); setTimeout(() => chips.replaceChildren(), 450); res(v); };
         p.className = 'hf-line'; p.textContent = prompt;
         chips.replaceChildren(...options.map((o, i) => {
           const b = document.createElement('button'); b.type = 'button'; b.className = `hf-chip${i === options.length - 1 ? ' primary' : ''}`; b.textContent = o.label;
@@ -367,9 +387,8 @@ export function createLabSubtitles({ root = document.body, avoid = () => [], spe
           return b;
         }));
         chips.classList.remove('bottom');
-        place();
-        // too tall for any free band (small phones): the chips move to a row below the Mallow
-        if (box.getBoundingClientRect().top < altY() - 4) { chips.classList.add('bottom'); dock.classList.remove('on'); place(); }
+        // too tall for the band (very small phones): the chips move to a row below the Mallow
+        if (!place()) { chips.classList.add('bottom'); dock.classList.remove('on'); place(); }
         requestAnimationFrame(() => { p.classList.add('on'); chips.classList.add('on'); });
       })).finally(() => { busy--; });
       queue = job.catch(() => {});

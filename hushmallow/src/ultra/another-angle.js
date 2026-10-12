@@ -15,7 +15,7 @@
 //  5 NEXT        the Possibility Machine: one useful next move (+ practise words)
 //  6 STAR MAP    your new angle, assembled
 
-import { h, wait, openSheet } from '../app/ui.js';
+import { h, wait, openSheet, fitMallow } from '../app/ui.js';
 import { type } from '../ui/type.js';
 import * as LX from './lenses.js';
 
@@ -52,7 +52,18 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   };
   const stageEl = h('div', { class: 'angle-stage', style: { position: 'fixed', inset: '0', zIndex: '3', pointerEvents: 'none' } });
   document.body.append(stageEl);
-  const cleanup = () => { stageEl.remove(); world.fx.replaceChildren(); world.fx.classList.remove('live'); portalSound?.stop?.(); };
+  const cleanup = () => { stageEl.remove(); world.fx.replaceChildren(); world.fx.classList.remove('live'); portalSound?.stop?.(); world.showMallow?.(true); };
+  // Zuzu in the open band between the prompt and the dock; on a short phone
+  // with large text there is none, so Zuzu steps aside rather than sit
+  // behind the card (and comes back for the next step)
+  const fitZuzu = async (maxScale) => {
+    await wait(30);
+    const tb = document.querySelector('#scene .move-title')?.getBoundingClientRect();
+    const top = (tb && tb.height ? tb.bottom : innerHeight * 0.18) + 8;
+    const dt = dock.getBoundingClientRect();
+    const bottom = (dt.height ? dt.top : innerHeight * 0.6) - 8;
+    fitMallow(world, top, bottom, { maxScale, minPx: 64 });
+  };
   signal.addEventListener('abort', cleanup);
   let portalSound = null;
   const waitFor = (btn) => new Promise((r) => { btn.onclick = () => r(true); signal.addEventListener('abort', () => r(false)); });
@@ -62,8 +73,8 @@ export async function run(ctx, { frameworks: F, engine: E }) {
 
   // ================================================================ TELL ==
   setMove(0, { eyebrow: 'Another Angle', title: 'There’s more than one way to see it.', prompt: '' });
-  // short phones: a smaller Zuzu leaves room above it for its lines
-  world.place({ x: 50, y: 25, scale: innerHeight < 640 ? 0.44 : 0.6 });
+  // (Zuzu is fitted into the open band once the card below is laid out;
+  // on short phones a smaller Zuzu leaves room above it for its lines)
   const ta = h('textarea', { class: 'feel', 'aria-label': 'What happened, and what did your brain decide it means?', placeholder: 'e.g. “My boss criticised my work. I think I’m terrible at my job.”' });
   ta.value = ctx.input.text || '';
   const go = h('button', { class: 'btn ultra block' }, 'Ready for the plot twist?');
@@ -73,6 +84,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   h('div', { class: 'card', style: { padding: '14px' } },
     h('p', { style: type('lead', { margin: '0 0 8px', color: 'var(--text-1)' }) }, 'What happened — and what did your brain decide it means?'), ta,
     h('p', { class: 'muted', style: { margin: '8px 0 10px' } }, 'Two sentences is plenty. Your words stay on this phone.'), go));
+  await fitZuzu(innerHeight < 640 ? 0.44 : 0.6);
   say(guide('welcome') || 'Ooh, a thought to look at! Tell me what happened, and what your brain made of it.', 3600);
   for (;;) {
     if (!(await waitFor(go))) return out;
@@ -111,12 +123,14 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   }
   const ok = h('button', { class: 'btn ultra block', style: { marginTop: '10px' } }, 'That’s it');
   dock.replaceChildren(picks, ok);
+  await fitZuzu(innerHeight < 640 ? 0.44 : 0.6);
   if (!(await waitFor(ok))) return out;
   out.scenario = scenario;
   scenarioForLines = scenario;
 
   // ======================================================== 1. SPLIT ==
   setMove(1, { eyebrow: 'Fact or fiction', title: 'Pull it apart', prompt: 'Drag each piece into a portal: what a camera would catch, or what your brain added.' });
+  world.showMallow?.(true);
   world.place({ x: 50, y: 66, scale: 0.3 });
   world.setEmotion({ curious: 1 }, 0.8);
   audio.fx?.('portal', { intensity: 0.6 });

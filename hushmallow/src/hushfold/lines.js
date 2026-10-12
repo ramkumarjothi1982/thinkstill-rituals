@@ -14,6 +14,7 @@
 // Plain ES module, no DOM. Works in browsers and Node.
 
 import { drawFromBag } from '../engine/flow-store.js';
+import { ENCOUNTER } from '../mallows/voices.js';
 
 export const LINES_KEY = 'hushfold.lines';
 
@@ -42,6 +43,14 @@ const SHARED = {
     'The support lines are free, and right here whenever you need them.',
   ],
   supportCare: ['That matters, and it isn’t yours to fix alone. Support is one tap away.'],
+  // distress words (can't cope, hopeless…): gentle, no jokes, support close by
+  supportConcern: ['Thank you for telling me. Support is right here too, whenever you want it.'],
+  // wanting to hurt someone: calm, no jokes, safety first (said as a sequence, like support)
+  harmOthers: ['That’s a lot of heat to carry.', 'Let’s keep everyone safe, you included. Support is one tap away.'],
+  // after a care or harm disclosure, the person decides whether anything plays
+  careAsk: ['Stay here quietly with me, or play something gentle?'],
+  careQuiet: ['Okay. I’m right here. Squeeze me whenever you like.'],
+  resumeAsk: ['Pick up where you left off in {world}?'],
   stub: ['The new worlds are still being built. Until they open, I’m all yours to squish.'],
   paused: ['Paused. Everything waits for you.'],
   resumed: ['And we’re back.'],
@@ -71,7 +80,7 @@ const M = {
       stroke: ['Smoothing out the static. Carry on.'],
       jiggle: ['Jiggle detected. Dignity: gone.'],
     },
-    invite: [['Something bothering you?', 'Want to tell me?'], ['Something’s crackling in there, isn’t it?', 'Want to tell me? I’ll pretend not to listen. Loudly.']],
+    invite: [['Something bothering you?', 'Want to tell me?'], ['Something’s crackling in there, isn’t it?', 'Want to tell me? I’ll keep the static down while you do.']],
     justPlay: ['Just squishing? Excellent plan. Zero notes.', 'Fine by me. I’ll be over here, being squeezable.'],
     ack: {
       anger: ['Angry. Got it. Let’s give that static somewhere to go.', 'Proper anger. Fair. Let’s give it room.'],
@@ -261,13 +270,13 @@ const M = {
     nudge: ['Mmh… you can squeeze me. I’m half cloud.', 'Psst… I’m very soft. Like a pillow that blinks.'],
     first: {
       hold: ['Ooh… that’s cosy. Like a blanket hug.', 'Mmh. Lovely. Sleepy-lovely.'],
-      tap: ['Oh! *blinks* Hello.'],
+      tap: ['Oh! Hello, you.'],
       flick: ['Wheee… I’m a little moon now.'],
     },
     squeeze: {
       squeeze: ['Mmh. Cosy.', 'Soft and slow…', 'Like sinking into a cloud.'],
       release: ['…and floating back.', 'Puff. Round again.'],
-      tap: ['*blink*', 'Mm? Hello.'],
+      tap: ['Mm? Was that you?', 'Mm? Hello.'],
       doubleTap: ['Two taps… like a lullaby.'],
       flick: ['Whoa… stars everywhere.', 'Floaty… floaty…'],
       stretch: ['Long… like a yawn.'],
@@ -304,24 +313,29 @@ export function squeezeKind(kind) {
   return SQUEEZE_KINDS.has(kind) ? kind : null;
 }
 
-function listFor(mallow, moment, { kind, emotion } = {}) {
+function listFor(mallow, moment, { kind, emotion, family } = {}) {
   const m = M[mallow] || M.loomi;
   switch (moment) {
     case 'first': return m.first[FIRST_KIND[kind] || 'hold'] || m.first.hold;
     case 'squeeze': return m.squeeze[squeezeKind(kind) || 'squeeze'] || m.squeeze.squeeze;
-    case 'ack': return m.ack[emotion && m.ack[emotion] ? emotion : emotion ? 'other' : 'none'];
+    case 'ack': {
+      if (emotion && m.ack[emotion]) return m.ack[emotion];
+      // a feeling from the A–Z list: the Mallow's encounter line for its family (voices.js), else the named echo
+      const enc = emotion && family && family !== 'default' ? ENCOUNTER[mallow]?.[family] || ENCOUNTER[M[mallow] ? mallow : 'loomi']?.[family] : null;
+      return enc?.length ? enc : m.ack[emotion ? 'other' : 'none'];
+    }
     case 'nudge': case 'justPlay': case 'thought': case 'return': return m[moment];
     default: return SHARED[moment] || null;
   }
 }
 
 /** Fill {feeling} / {Feeling} with a feeling's display name (never the person's text). */
-export function fillLine(text, { feelingName } = {}) {
+export function fillLine(text, { feelingName, world } = {}) {
   if (!text.includes('{')) return text;
   const name = String(feelingName || 'That feeling');
   const lower = name.charAt(0).toLowerCase() + name.slice(1);
   const upper = name.charAt(0).toUpperCase() + name.slice(1);
-  return text.replace(/\{Feeling\}/g, upper).replace(/\{feeling\}/g, lower);
+  return text.replace(/\{Feeling\}/g, upper).replace(/\{feeling\}/g, lower).replace(/\{world\}/g, String(world || 'your last world'));
 }
 
 /**
@@ -336,7 +350,7 @@ export function createLines({ store }) {
     pick(mallow, moment, opts = {}) {
       const list = listFor(mallow, moment, opts);
       if (!list?.length) return '';
-      const sub = moment === 'ack' ? (opts.emotion || 'none') : moment === 'squeeze' ? (squeezeKind(opts.kind) || 'squeeze') : moment === 'first' ? (FIRST_KIND[opts.kind] || 'hold') : '';
+      const sub = moment === 'ack' ? `${opts.emotion || 'none'}${opts.family ? `.${opts.family}` : ''}` : moment === 'squeeze' ? (squeezeKind(opts.kind) || 'squeeze') : moment === 'first' ? (FIRST_KIND[opts.kind] || 'hold') : '';
       const i = list.length === 1 ? 0 : draw(`${mallow}|${moment}|${sub}`, list.length) ?? 0;
       return fillLine(list[i], opts);
     },
