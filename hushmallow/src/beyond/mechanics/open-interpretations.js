@@ -10,7 +10,7 @@
 // and authored ones, never a claim that any of them is true. On a narrow
 // phone they open in one column, each beside its bud, so every line reads.
 
-import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, LIGHT, Motes, blinkAt, circleRect, tintFor, ease, TAU, Timers, viewW } from './kit.js';
+import { Blob, drawGlow, drawJelly, clamp, approach, rgba, LIGHT, Motes, blinkAt, ease, TAU, Timers, viewW, RectList, thoughtFor } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'open_interpretations';
@@ -25,11 +25,10 @@ export function mount(ctx) {
   const done = new Promise((r) => { resolve = r; });
   const TM = new Timers();
   const motes = new Motes(40);
-  const [light, deep] = tintFor(ctx.emotion);
   const A0 = ctx.area();
   const R = clamp(Math.min(A0.w, A0.h) * 0.1, 22, 36);
   const from = ctx.from || { x: A0.x + A0.w / 2, y: A0.y + A0.h * 0.72 };
-  const thought = new Blob({ x: from.x, y: from.y, r: R, light, deep });
+  const thought = thoughtFor(ctx, { x: from.x, y: from.y, r: R });
   const guess = new Blob({ x: from.x + R, y: from.y - R, r: R * 0.8, light: LIGHT.guess[0], deep: LIGHT.guess[1] });
   const P = ctx.parts;
   // the first guess: what the mind assumed (the scene's, or the person's own words)
@@ -43,12 +42,12 @@ export function mount(ctx) {
   const ringMax = Math.round(clamp(A0.w / 2 - 10, 150, 210));
   const buds = others.map((text, i) => {
     const b = new Blob({ x: from.x, y: from.y, r: R * 0.8, light: BUD[i], deep: ['#3ab4e8', '#7a5cf0', '#e05aa8'][i] });
-    b.open = 0; b.goal = 0; b.hold = 0; b.knock = 0; b.i = i; b.tag = ctx.tags.add(text, { kind: 'line', max: narrow ? rowMax : ringMax }); b.scale = rm() ? 1 : 0.2;
+    b.open = 0; b.goal = 0; b.hold = 0; b.knock = 0; b.i = i; b.tag = ctx.tags.add(text, { kind: 'line', max: narrow ? rowMax : ringMax, group: 'meanings' }); b.scale = rm() ? 1 : 0.2;
     return b;
   });
   const tags = {
-    guessL: ctx.tags.add(L.labels.guess, { kind: 'label', colour: LIGHT.guess[1], priority: 1 }),
-    guessW: ctx.tags.add(guessText, { kind: 'line', max: narrow ? rowMax : ringMax }),
+    guessL: ctx.tags.add(L.labels.guess, { kind: 'label', colour: LIGHT.guess[1], priority: 1, group: 'meanings' }),
+    guessW: ctx.tags.add(guessText, { kind: 'line', max: narrow ? rowMax : ringMax, group: 'meanings' }),
     // in one column the first guess carries the words already
     words: narrow ? null : ctx.tags.add(P.excerpt, { kind: 'words' }),
   };
@@ -56,6 +55,7 @@ export function mount(ctx) {
   let equalT = 0, moves = 0;
   const t0 = performance.now();
   const holds = new Map();   // pointer id → bud
+  const BL = new RectList(), AL = new RectList();
 
   /** Even places on a ring (or one column on a narrow phone); before "equal" the first guess hugs the thought. */
   function homes() {
@@ -84,7 +84,9 @@ export function mount(ctx) {
     const n = phase === 'closed' ? buds.length : buds.length + 1;
     const all = phase === 'closed' ? buds : [guess, ...buds];
     all.forEach((b, i) => {
-      const a = -Math.PI / 2 + (phase === 'closed' ? (i - 1) * 1.05 : (i * TAU) / n + (n === 4 ? Math.PI / 4 : 0));
+      // closed: the buds wait on the side the thought isn't looking (upper left), the guess it clutches has the
+      // upper right to itself, so its name can only be read as the guess's; open: all four evenly round the ring
+      const a = phase === 'closed' ? -Math.PI + 0.22 + i * 0.6 : -Math.PI / 2 + (i * TAU) / n + (n === 4 ? Math.PI / 4 : 0);
       b.hx = cx + Math.cos(a) * rx; b.hy = cy + Math.sin(a) * ry;
     });
     if (phase === 'closed') { guess.hx = thought.hx + R * 0.95; guess.hy = thought.hy - R * 0.55; }
@@ -176,19 +178,19 @@ export function mount(ctx) {
     // words
     if (narrow) {
       // one column: every line beside its own bud (the first guess's label sits over its line while it is the only one)
-      for (const b of buds) b.tag.at(b.x + b.r + 10, b.y, 'left', clamp((b.open - 0.6) * 2.5));
-      tags.guessW.at(guess.x + guess.r + 10, guess.y, 'left', 1);
-      tags.guessL.at(guess.x + guess.r + 10, guess.y - (tags.guessW.h || 30) / 2 - 2, 'leftTop', phase === 'closed' ? 1 : 0);
+      for (const b of buds) b.tag.at(b.x + b.r + 10, b.y, 'left', clamp((b.open - 0.6) * 2.5)).own(b.x, b.y);
+      tags.guessW.at(guess.x + guess.r + 10, guess.y, 'left', 1).own(guess.x, guess.y);
+      tags.guessL.at(guess.x + guess.r + 10, guess.y - (tags.guessW.h || 30) / 2 - 2, 'leftTop', phase === 'closed' ? 1 : 0).own(guess.x, guess.y);
       return true;
     }
     // a possibility's words sit on the far side from the thought (above the upper ones, below the lower ones)
     for (const b of buds) {
       const up = b.y < thought.y - R * 0.3;
-      b.tag.at(b.x, up ? b.y - b.r * 1.08 - 4 : b.y + b.r * 1.08 + 4, up ? 'top' : 'bottom', clamp((b.open - 0.6) * 2.5));
+      b.tag.at(b.x, up ? b.y - b.r * 1.08 - 4 : b.y + b.r * 1.08 + 4, up ? 'top' : 'bottom', clamp((b.open - 0.6) * 2.5)).own(b.x, b.y);
     }
     const gUp = guess.y < thought.y - R * 0.3 && phase !== 'closed';
-    tags.guessL.at(guess.x, guess.y - guess.r * 1.15 - 4, 'top', phase === 'closed' ? 1 : 0);
-    tags.guessW.at(guess.x, gUp ? guess.y - guess.r * 1.08 - 4 : guess.y + guess.r * 1.08 + 4, gUp ? 'top' : 'bottom', phase !== 'closed' ? 1 : 0);
+    tags.guessL.at(guess.x, guess.y - guess.r * 1.15 - 4, 'top', phase === 'closed' ? 1 : 0).own(guess.x, guess.y);
+    tags.guessW.at(guess.x, gUp ? guess.y - guess.r * 1.08 - 4 : guess.y + guess.r * 1.08 + 4, gUp ? 'top' : 'bottom', phase !== 'closed' ? 1 : 0).own(guess.x, guess.y);
     tags.words?.at(thought.x, thought.y + R * 1.08 + 6, 'bottom', phase === 'closed' ? 1 : 0.0);
     return true;
   }
@@ -197,9 +199,11 @@ export function mount(ctx) {
     if (e.type === 'down') {
       const b = buds.find((x) => x.goal < 1 && x.hit(e.x, e.y, 1.6));
       if (b) { b.hold = 0.001; b.sqV += 1.6; holds.set(e.id, b); b.downAt = e.t; b.down = { x: e.x, y: e.y }; ctx.haptic('light'); return true; }
-      if (thought.hit(e.x, e.y) || guess.hit(e.x, e.y)) { (guess.hit(e.x, e.y) ? guess : thought).sqV += 2; ctx.haptic('light'); return true; }
+      if (guess.hit(e.x, e.y)) { guess.sqV += 2; ctx.haptic('light'); return true; }
+      if (thought.hit(e.x, e.y)) { thought.poke(e); ctx.haptic('light'); return true; }
       return false;
     }
+    if (thought.pointer(e)) return true;
     const b = holds.get(e.id);
     if (e.type === 'move') {
       // a second finger near the same bud spreads it open
@@ -221,10 +225,10 @@ export function mount(ctx) {
     id, frame, pointer, done,
     hitTest: (x, y) => thought.hit(x, y) || guess.hit(x, y) || buds.some((b) => b.hit(x, y, 1.6)),
     assist: step,
-    bodies: () => [circleRect(thought.x, thought.y, R * thought.scale, 2), circleRect(guess.x, guess.y, guess.r, 2), ...buds.map((b) => circleRect(b.x, b.y, b.r * b.scale, 2))],
-    avoid: () => [circleRect(thought.x, thought.y, R * 1.3), circleRect(guess.x, guess.y, guess.r * 1.3), ...buds.map((b) => circleRect(b.x, b.y, b.r * 1.3)), ...ctx.tags.rects()],
+    bodies: () => { BL.begin().circle(thought.x, thought.y, R * thought.scale, 2).circle(guess.x, guess.y, guess.r, 2); for (const b of buds) BL.circle(b.x, b.y, b.r * b.scale, 2); return BL.end(); },
+    avoid: () => { AL.begin().circle(thought.x, thought.y, R * 1.3).circle(guess.x, guess.y, guess.r * 1.3); for (const b of buds) AL.circle(b.x, b.y, b.r * 1.3); for (const r of ctx.tags.rects()) AL.box(r.left, r.top, r.right, r.bottom); return AL.end(); },
     get settled() { return phase === 'settled'; },
-    probe: () => ({ buds: buds.filter((b) => b.goal < 1).map((b) => ({ x: b.x, y: b.y })), thought: { x: thought.x, y: thought.y }, phase, narrow, others, guess: guessText }),
-    destroy() { TM.clear(); ctx.tags.clear(); },
+    probe: () => ({ buds: buds.filter((b) => b.goal < 1).map((b) => ({ x: b.x, y: b.y })), thought: { x: thought.x, y: thought.y }, guessAt: { x: guess.x, y: guess.y }, phase, narrow, others, guess: guessText }),
+    destroy() { TM.clear(); ctx.tags.clear(); thought.destroy?.(); },
   };
 }

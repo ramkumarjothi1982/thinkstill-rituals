@@ -7,7 +7,7 @@
 // "Other times" in its quiet centre and the one moment in the arc's gap.
 // Tap the glowing one (or the assist pill) to ease it out a third at a time.
 
-import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, mix, Motes, blinkAt, circleRect, tintFor, TAU, Timers } from './kit.js';
+import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, mix, Motes, blinkAt, tintFor, TAU, Timers, RectList, thoughtFor } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'separate_one';
@@ -22,13 +22,16 @@ export function mount(ctx) {
   const done = new Promise((r) => { resolve = r; });
   const TM = new Timers();
   const motes = new Motes(40);
-  const [light, deep] = tintFor(ctx.emotion);
+  let [light, deep] = tintFor(ctx.emotion);
   const A0 = ctx.area();
   // a narrow phone: fewer other times, so the arc stays calm and readable
   const COUNT = A0.w < 330 ? 11 : MAX_COUNT;
   // the cluster must leave room around it to pull the one out (≤ 36% of the area's short side)
   const R = clamp(Math.min(A0.w, A0.h) * 0.36 / (Math.sqrt(COUNT) * 1.42), 12, 22);
-  const one = new Blob({ x: ctx.from?.x ?? A0.x + A0.w / 2, y: ctx.from?.y ?? A0.y + A0.h / 2, r: R * 1.15, light, deep });
+  const one = thoughtFor(ctx, { x: ctx.from?.x ?? A0.x + A0.w / 2, y: ctx.from?.y ?? A0.y + A0.h / 2, r: R * 1.15 });
+  // its light follows the living Thought Mallow's own tint (one colour for the jelly, its trail, glow and projection)
+  if (one.w2?.style?.tint) ({ light, deep } = one.w2.style.tint);
+  const BL = new RectList(), AL = new RectList();
   // the others, packed on a sunflower spiral; each gets its own later colour
   const beads = Array.from({ length: COUNT }, (_, i) => {
     const b = new Blob({ x: one.x, y: one.y, r: R * (0.78 + ((i * 7) % 5) * 0.06), light: '#c9c4e0', deep: '#5c5785' });
@@ -44,30 +47,33 @@ export function mount(ctx) {
     rest: ctx.tags.add(L.labels.rest, { kind: 'label', colour: '#ffd98a' }),
   };
 
+  const CE = { cx: 0, cy: 0, A: null }, AR = { cx: 0, cy: 0, rx: 0, ry: 0 };
   function centre() {
     const A = ctx.area();
-    return { cx: A.x + A.w * (phase === 'fused' ? 0.5 : 0.62), cy: A.y + A.h * 0.46, A };
+    CE.cx = A.x + A.w * (phase === 'fused' ? 0.5 : 0.62); CE.cy = A.y + A.h * 0.46; CE.A = A;
+    return CE;
   }
   /** The open arc the other times settle on: round the right of the area, its gap on the left where the one moment sits. */
   function arc() {
     const A = ctx.area();
-    const cx = A.x + A.w * 0.6, cy = A.y + A.h * 0.5;
-    return { cx, cy, rx: Math.max(R * 3, Math.min(A.w * 0.36, A.w * 0.4 - R)), ry: Math.max(R * 3, Math.min(A.h * 0.4, A.h / 2 - R * 1.3)) };
+    AR.cx = A.x + A.w * 0.6; AR.cy = A.y + A.h * 0.5;
+    AR.rx = Math.max(R * 3, Math.min(A.w * 0.36, A.w * 0.4 - R)); AR.ry = Math.max(R * 3, Math.min(A.h * 0.4, A.h / 2 - R * 1.3));
+    return AR;
   }
   function homes() {
     const { cx, cy, A } = centre();
     if (phase === 'spread') {
       const C = arc();
-      beads.forEach((b, i) => {
-        const a = lerp(-0.76 * Math.PI, 0.76 * Math.PI, i / (COUNT - 1));
+      for (let i = 0; i < COUNT; i++) {
+        const b = beads[i], a = lerp(-0.76 * Math.PI, 0.76 * Math.PI, i / (COUNT - 1));
         b.hx = C.cx + Math.cos(a) * C.rx; b.hy = C.cy + Math.sin(a) * C.ry;
-      });
+      }
     } else {
-      beads.forEach((b, i) => {
-        const rr = Math.sqrt(i + 0.6) * R * 1.12;
+      for (let i = 0; i < COUNT; i++) {
+        const b = beads[i], rr = Math.sqrt(i + 0.6) * R * 1.12;
         b.hx = clamp(cx + Math.cos(b.phase) * rr, A.x + R, A.x + A.w - R);
         b.hy = clamp(cy + Math.sin(b.phase) * rr, A.y + R, A.y + A.h - R);
-      });
+      }
     }
     if (!one.press) {
       if (phase === 'fused') {
@@ -161,12 +167,12 @@ export function mount(ctx) {
 
   function pointer(e) {
     if (e.type === 'down') {
-      if (one.hit(e.x, e.y, 1.6)) { if (phase === 'fused') { one.grab(e); held = e.id; } else one.sqV += 2.4; ctx.haptic('light'); return true; }
+      if (one.hit(e.x, e.y, 1.6)) { if (phase === 'fused') { one.grab(e); held = e.id; } else one.poke(e); ctx.haptic('light'); return true; }
       const b = beads.find((x) => x.hit(e.x, e.y, 1.2));
       if (b) { b.sqV += 2.4; ctx.haptic('light'); return true; }
       return false;
     }
-    if (held !== e.id) return false;
+    if (held !== e.id) return one.pointer(e);
     if (e.type === 'move') { one.drag(e); ctx.progress(pull() * 0.8); return true; }
     if (e.type === 'up' || e.type === 'cancel') {
       held = null;
@@ -185,10 +191,10 @@ export function mount(ctx) {
     hitTest: (x, y) => one.hit(x, y, 1.6) || beads.some((b) => b.hit(x, y, 1.2)),
     assist: step,
     // (once spread, the arc's lights may sit under a label: they dim for it, so only the one moment is a body)
-    bodies: () => { const { cx, cy } = centre(); return phase === 'spread' ? [circleRect(one.x, one.y, one.r * one.scale, 2)] : [circleRect(cx, cy, clusterR(), 2), circleRect(one.x, one.y, one.r, 2)]; },
-    avoid: () => { const { cx, cy } = centre(); return [circleRect(cx, cy, clusterR() * (phase === 'spread' ? 1.4 : 1.1)), circleRect(one.x, one.y, one.r * 1.4), ...ctx.tags.rects()]; },
+    bodies: () => { const { cx, cy } = centre(); BL.begin(); if (phase === 'spread') BL.circle(one.x, one.y, one.r * one.scale, 2); else BL.circle(cx, cy, clusterR(), 2).circle(one.x, one.y, one.r, 2); return BL.end(); },
+    avoid: () => { const { cx, cy } = centre(); AL.begin().circle(cx, cy, clusterR() * (phase === 'spread' ? 1.4 : 1.1)).circle(one.x, one.y, one.r * 1.4); for (const r of ctx.tags.rects()) AL.box(r.left, r.top, r.right, r.bottom); return AL.end(); },
     get settled() { return phase === 'spread'; },
     probe: () => { const { cx, cy } = centre(); return { one: { x: one.x, y: one.y }, c: { x: cx, y: cy }, r: clusterR(), phase }; },
-    destroy() { TM.clear(); ctx.tags.clear(); },
+    destroy() { TM.clear(); ctx.tags.clear(); one.destroy?.(); },
   };
 }

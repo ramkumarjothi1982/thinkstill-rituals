@@ -418,7 +418,7 @@ globalThis.OffscreenCanvas ??= class { constructor(w, h) { this.width = w; this.
 function fakeTags() {
   const list = new Set();
   return {
-    add(text, o = {}) { const t = { text, title: o.title, w: 90, h: 30, el: { style: { setProperty() {} } }, at() { return t; }, rect: () => null, set(x) { t.text = x; return t; }, title_(x) { t.title = x; return t; }, hide() { return t; }, remove() { list.delete(t); } }; list.add(t); return t; },
+    add(text, o = {}) { const t = { text, title: o.title, w: 90, h: 30, el: { style: { setProperty() {} } }, at() { return t; }, own() { return t; }, rect: () => null, set(x) { t.text = x; return t; }, title_(x) { t.title = x; return t; }, hide() { return t; }, remove() { list.delete(t); } }; list.add(t); return t; },
     rects: () => [], clear() { list.clear(); }, get size() { return list.size; }, texts: () => [...list].map((t) => t.text),
     layout() {}, remeasure() {},
   };

@@ -15,6 +15,7 @@ export const OCEAN = Object.freeze({
   SKY_MIN: 26,            // px of sky kept between the subtitle band and the horizon
   WATER_MIN: 64,          // px of water kept above the hero Mallow's head
   GAP: 8,                 // px between the Thought Mallow and the hero / its words
+  ART_BOTTOM: 0.027,      // × the hero's body box: below its art (measured on the rig: the box ends ~6 px under the opaque body at 390 px)
   BOB: 0.07,              // × the hero's height: how far its float may lift it (the thought's home leaves room for it)
   WATER_STRIP: 0.4,       // × the thought's radius: open water kept between its ring on the water and the hero's head
   BOTTOM: 64,             // px kept clear at the bottom (choice chips on small phones)
@@ -89,7 +90,8 @@ export function planOcean({ W, H, band, mallow = null, textW = 0, plate: plateIn
   const P = plateIn && plateIn.w > 0 && plateIn.h > 0 ? { w: Math.min(plateIn.w, W - 2 * E), h: plateIn.h, lines: plateIn.lines || 1 } : plateSize(textW, labelW);
   const hyLo = bandBottom + OCEAN.SKY_MIN, hyHi = M.top - OCEAN.WATER_MIN;
   const hy = Math.round(hyHi >= hyLo ? clamp(H * OCEAN.HORIZON, hyLo, hyHi) : hyLo);
-  const waterY = Math.max(hy + 30, M.bottom - 0.18 * M.height);   // (the body box carries ~9% of margin below the art; then its lowest tenth)
+  // the hero's waterline: its lowest tenth in the water (the body box hugs the art, with a hair of soft edge below it)
+  const waterY = Math.max(hy + 30, M.bottom - (OCEAN.ART_BOTTOM + 0.1 * (1 - OCEAN.ART_BOTTOM)) * M.height);
   const mrect = { x0: M.left - 6, y0: M.top - 10, x1: M.right + 6, y1: M.bottom + 4 };
   const bandRect = { x0: 0, y0: band ? band.y : 0, x1: W, y1: bandBottom };
 

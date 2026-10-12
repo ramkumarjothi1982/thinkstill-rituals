@@ -8,7 +8,7 @@
 // small jelly beside the first: "One possibility". Tap, or the assist pill,
 // shrinks it one calm step at a time.
 
-import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, mix, LIGHT, Motes, blinkAt, circleRect, tintFor, Timers } from './kit.js';
+import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, mix, LIGHT, Motes, blinkAt, tintFor, Timers, RectList, thoughtFor } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'shrink_projection';
@@ -21,11 +21,14 @@ export function mount(ctx) {
   const done = new Promise((r) => { resolve = r; });
   const TM = new Timers();
   const motes = new Motes(30);
-  const [light, deep] = tintFor(ctx.emotion);
+  let [light, deep] = tintFor(ctx.emotion);
   const A0 = ctx.area();
   const R = clamp(Math.min(A0.w, A0.h) * 0.11, 24, 40);
   const from = ctx.from || { x: A0.x + A0.w * 0.28, y: A0.y + A0.h * 0.78 };
-  const thought = new Blob({ x: from.x, y: from.y, r: R, light, deep });
+  const thought = thoughtFor(ctx, { x: from.x, y: from.y, r: R });
+  // its light follows the living Thought Mallow's own tint (one colour for the jelly, its trail, glow and projection)
+  if (thought.w2?.style?.tint) ({ light, deep } = thought.w2.style.tint);
+  const BL = new RectList(), AL = new RectList();
   const maxS = () => { const A = ctx.area(); return clamp(Math.min(A.w * 0.46, A.h * 0.44) / R, 2.2, 4.4); };
   let S = rm() ? maxS() : 1.2;    // projection scale (× R); grows in at mount
   let target = maxS();
@@ -56,10 +59,12 @@ export function mount(ctx) {
     return gr;
   }
 
+  const AN = { px: 0, py: 0 };
   function anchor() {
     const A = ctx.area();
     thought.hx = A.x + A.w * 0.24; thought.hy = A.y + A.h - R * 1.15 - 56;
-    return { px: A.x + A.w * 0.58, py: A.y + A.h * 0.42 };
+    AN.px = A.x + A.w * 0.58; AN.py = A.y + A.h * 0.42;
+    return AN;
   }
   anchor();
   if (rm()) { thought.x = thought.hx; thought.y = thought.hy; }
@@ -174,7 +179,7 @@ export function mount(ctx) {
     const { px, py } = anchor();
     const onBig = (x, y) => Math.hypot(x - px, y - py) < S * R * 1.05;
     if (e.type === 'down') {
-      if (thought.hit(e.x, e.y)) { thought.sqV += 2.4; ctx.haptic('light'); return true; }
+      if (thought.hit(e.x, e.y)) { thought.poke(e); ctx.haptic('light'); return true; }
       if (phase !== 'project' || !onBig(e.x, e.y)) return false;
       pointers.set(e.id, { x: e.x, y: e.y, t: e.t, x0: e.x, y0: e.y, t0: e.t });
       if (pointers.size === 2) {
@@ -184,6 +189,7 @@ export function mount(ctx) {
       } else drag = { id: e.id, y: e.y, s0: target, t: e.t };
       return true;
     }
+    if (thought.pointer(e)) return true;
     const p = pointers.get(e.id);
     if (!p) return false;
     if (e.type === 'move') {
@@ -218,10 +224,10 @@ export function mount(ctx) {
     id, frame, pointer, done,
     hitTest: (x, y) => { const { px, py } = anchor(); return thought.hit(x, y) || (phase === 'project' && Math.hypot(x - px, y - py) < S * R * 1.05); },
     assist: step,
-    bodies: () => { const { px, py } = anchor(); return [circleRect(thought.x, thought.y, R, 2), phase === 'settled' || phase === 'condensing' ? circleRect(small.x, small.y, R * small.scale, 2) : circleRect(px, py, S * R * 0.62, 0)]; },
-    avoid: () => { const { px, py } = anchor(); return [circleRect(thought.x, thought.y, R * 1.3), phase === 'settled' ? circleRect(small.x, small.y, R * 1.3) : circleRect(px, py, S * R * 0.8), ...ctx.tags.rects()]; },
+    bodies: () => { const { px, py } = anchor(); BL.begin().circle(thought.x, thought.y, R, 2); if (phase === 'settled' || phase === 'condensing') BL.circle(small.x, small.y, R * small.scale, 2); else BL.circle(px, py, S * R * 0.62, 0); return BL.end(); },
+    avoid: () => { const { px, py } = anchor(); AL.begin().circle(thought.x, thought.y, R * 1.3); if (phase === 'settled') AL.circle(small.x, small.y, R * 1.3); else AL.circle(px, py, S * R * 0.8); for (const r of ctx.tags.rects()) AL.box(r.left, r.top, r.right, r.bottom); return AL.end(); },
     get settled() { return phase === 'settled'; },
     probe: () => { const { px, py } = anchor(); return { big: { x: px, y: py, r: S * R }, thought: { x: thought.x, y: thought.y }, phase, S }; },
-    destroy() { TM.clear(); ctx.tags.clear(); },
+    destroy() { TM.clear(); ctx.tags.clear(); thought.destroy?.(); },
   };
 }

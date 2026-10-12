@@ -47,8 +47,29 @@ export function rigMallow(appWorld) {
     const left = r.left + (g.CX - bw / 2) * kx, top = r.top + (g.BASE - bh) * ky, width = bw * kx, height = bh * ky;
     return { left, top, width, height, right: left + width, bottom: top + height, cx: left + width / 2, cy: top + height / 2 };
   };
+  /**
+   * The live body box: where the shell put it (restRect), with the rig's own hop and the float this adapter applied
+   * (translate, and the rotation about its transform origin) — computed, not measured: the canvas's own bounding box
+   * grows when it is rotated (it is far bigger than the body), and reading it right after our style write would force
+   * a layout.
+   */
+  const liveRect = () => {
+    const rr = restRect(), g = rig(), c = g?.canvas, layer = c?.parentElement;
+    if (!rr || !layer?.getBoundingClientRect) return null;
+    const L = layer.getBoundingClientRect(), ky = L.height / (g.H || 1);
+    const hop = (g.body?.hop || 0) * g.H * ky, ty = (c._fy || 0) - hop, th = ((c._fr || 0) * Math.PI) / 180;
+    const ox = L.left + 0.5 * L.width, oy = L.top + 0.82 * L.height, cs = Math.cos(th), sn = Math.sin(th);
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let k = 0; k < 4; k++) {
+      const px = (k & 1 ? rr.right : rr.left) - ox, py = (k & 2 ? rr.bottom : rr.top) - oy;
+      const X = ox + px * cs - py * sn, Y = oy + px * sn + py * cs + ty;
+      if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y;
+    }
+    return { left: x0, top: y0, right: x1, bottom: y1, width: x1 - x0, height: y1 - y0, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
+  };
+  const live = () => liveRect() || rect();
   return {
-    rect, bodyRect: rect, restRect,
+    rect: live, bodyRect: live, restRect,
     hitTest(x, y) {
       const g = rig();
       if (!g?.ready || !g._toLocal || !g._hit) return false;
@@ -65,7 +86,7 @@ export function rigMallow(appWorld) {
     float({ lift = 0, tilt = 0 } = {}) {
       const c = rig()?.canvas;
       if (!c?.style) return;
-      const h = rect()?.height || 200;
+      const h = restRect()?.height || rect()?.height || 200;
       const ty = Math.round(-lift * h * 10) / 10, rot = Math.round(tilt * 20) / 20;
       if (c._fy === ty && c._fr === rot) return;
       c._fy = ty; c._fr = rot;

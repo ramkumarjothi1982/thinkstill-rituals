@@ -7,7 +7,7 @@
 // wherever the person puts it is their call. Taps on the track light it bit by
 // bit (or place the thought), and the assist pill reveals a quarter at a time.
 
-import { Blob, drawGlow, clamp, lerp, approach, rgba, mix, Motes, blinkAt, circleRect, tintFor, roundRect, Timers } from './kit.js';
+import { drawGlow, clamp, lerp, approach, rgba, mix, Motes, blinkAt, roundRect, Timers, RectList, thoughtFor } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'reveal_spectrum';
@@ -22,7 +22,6 @@ export function mount(ctx) {
   const done = new Promise((r) => { resolve = r; });
   const TM = new Timers();
   const motes = new Motes(40);
-  const [light, deep] = tintFor(ctx.emotion);
   const A0 = ctx.area();
   const R = clamp(Math.min(A0.w, A0.h) * 0.1, 22, 36);
   const lit = new Float32Array(BINS);       // 0..1 per bin (eases toward 1 once touched)
@@ -31,7 +30,8 @@ export function mount(ctx) {
   let u = 0.03, uGoal = 0.03;                // the thought's place on the track (0 = All bad)
   let held = null, moves = 0, placeT = 0, grad = null, gradKey = '';
   const t0 = performance.now();
-  const thought = new Blob({ x: 0, y: 0, r: R, light, deep });
+  const thought = thoughtFor(ctx, { x: 0, y: 0, r: R });
+  const BL = new RectList(), AL = new RectList();
   const from = ctx.from;
   if (from && !rm()) { thought.x = from.x; thought.y = from.y; }
   const tags = {
@@ -42,11 +42,12 @@ export function mount(ctx) {
   };
   const regionOf = (k) => L.labels.regions[k < 0.12 ? 0 : k < 0.38 ? 1 : k < 0.62 ? 2 : k < 0.88 ? 3 : 4];
 
+  const TR = { x0: 0, x1: 0, y: 0, hgt: 12 };
   function track() {
     const A = ctx.area();
     const pad = Math.max(R + 10, 34);
-    const y = A.y + A.h * 0.58;
-    return { x0: A.x + pad, x1: A.x + A.w - pad, y, hgt: clamp(A.h * 0.06, 10, 16) };
+    TR.x0 = A.x + pad; TR.x1 = A.x + A.w - pad; TR.y = A.y + A.h * 0.58; TR.hgt = clamp(A.h * 0.06, 10, 16);
+    return TR;
   }
   /** The spectrum's light, made once per track geometry (not per frame). */
   function spectrum(T) {
@@ -178,7 +179,7 @@ export function mount(ctx) {
       const onLine = Math.abs(e.y - T.y) < T.hgt * 2.6 && e.x > T.x0 - 30 && e.x < T.x1 + 30;
       if (phase === 'reveal' && onLine) { if (light_(e.x, 1)) ctx.haptic('light'); held = { id: e.id, sweep: true, x0: e.x, t0: e.t }; return true; }
       if (thought.hit(e.x, e.y, 1.25)) {
-        thought.sqV += 2;
+        thought.poke(e);
         if (phase === 'place' || phase === 'settled') { held = { id: e.id, x0: e.x, t0: e.t, du: u - (e.x - T.x0) / (T.x1 - T.x0) }; }
         ctx.haptic('light');
         return true;
@@ -188,7 +189,8 @@ export function mount(ctx) {
       if (phase === 'place') { place((e.x - T.x0) / (T.x1 - T.x0)); return true; }
       return true;
     }
-    if (!held || held.id !== e.id) return false;
+    const tp = thought.pointer(e);
+    if (!held || held.id !== e.id) return tp;
     if (e.type === 'move') {
       if (held.sweep && phase === 'reveal') { if (light_(e.x, 1)) ctx.fx('pluck', { intensity: 0.25 }); }
       else if (!held.sweep && (phase === 'place' || phase === 'settled')) uGoal = clamp((e.x - T.x0) / (T.x1 - T.x0) + held.du, 0.02, 0.98);
@@ -207,10 +209,10 @@ export function mount(ctx) {
     id, frame, pointer, done,
     hitTest: (x, y) => { const T = track(); return thought.hit(x, y, 1.5) || (y > T.y - T.hgt * 4 - R && y < T.y + T.hgt * 4 && x > T.x0 - 30 && x < T.x1 + 30); },
     assist: step,
-    bodies: () => { const T = track(); return [circleRect(thought.x, thought.y, R, 2), { left: T.x0 - 12, right: T.x1 + 12, top: T.y - T.hgt * 1.5, bottom: T.y + T.hgt * 1.5 }]; },
-    avoid: () => { const T = track(); return [{ left: T.x0 - 30, right: T.x1 + 30, top: T.y - T.hgt - R * 2.2 - 40, bottom: T.y + T.hgt + R + 30 }, ...ctx.tags.rects()]; },
+    bodies: () => { const T = track(); return BL.begin().circle(thought.x, thought.y, R, 2).box(T.x0 - 12, T.y - T.hgt * 1.5, T.x1 + 12, T.y + T.hgt * 1.5).end(); },
+    avoid: () => { const T = track(); AL.begin().box(T.x0 - 30, T.y - T.hgt - R * 2.2 - 40, T.x1 + 30, T.y + T.hgt + R + 30); for (const r of ctx.tags.rects()) AL.box(r.left, r.top, r.right, r.bottom); return AL.end(); },
     get settled() { return phase === 'settled'; },
     probe: () => { const T = track(); return { x0: T.x0, x1: T.x1, y: T.y, thought: { x: thought.x, y: thought.y }, phase }; },
-    destroy() { TM.clear(); ctx.tags.clear(); },
+    destroy() { TM.clear(); ctx.tags.clear(); thought.destroy?.(); },
   };
 }

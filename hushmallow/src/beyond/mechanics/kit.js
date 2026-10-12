@@ -36,12 +36,17 @@ export const TINTS = Object.freeze({
 });
 const FAMILY = {
   anger: 'anger', frustration: 'frustration', irritation: 'frustration', resentment: 'anger', rage: 'anger', fury: 'anger',
-  anxiety: 'anxiety', worry: 'anxiety', fear: 'anxiety', panic: 'anxiety', dread: 'anxiety', stress: 'anxiety', nervousness: 'anxiety',
-  sadness: 'sadness', disappointment: 'sadness', hurt: 'sadness', grief: 'sadness', rejection: 'loneliness', loneliness: 'loneliness',
-  overwhelm: 'overwhelm', overthinking: 'overwhelm', confusion: 'overwhelm', restlessness: 'restlessness', boredom: 'restlessness',
-  shame: 'shame', embarrassment: 'shame', guilt: 'shame', humiliation: 'shame', jealousy: 'frustration', envy: 'frustration', insecurity: 'shame',
+  provoked: 'anger', annoyance: 'frustration', annoyed: 'frustration', outrage: 'anger', betrayal: 'anger', betrayed: 'anger', indignation: 'anger', contempt: 'anger', bitterness: 'anger',
+  anxiety: 'anxiety', worry: 'anxiety', fear: 'anxiety', panic: 'anxiety', dread: 'anxiety', stress: 'anxiety', nervousness: 'anxiety', insecure: 'anxiety', uncertainty: 'anxiety', apprehension: 'anxiety',
+  sadness: 'sadness', disappointment: 'sadness', hurt: 'sadness', grief: 'sadness', rejection: 'loneliness', loneliness: 'loneliness', heartbreak: 'sadness', regret: 'sadness', hopelessness: 'sadness',
+  overwhelm: 'overwhelm', overthinking: 'overwhelm', confusion: 'overwhelm', restlessness: 'restlessness', boredom: 'restlessness', impatience: 'restlessness',
+  shame: 'shame', embarrassment: 'shame', guilt: 'shame', humiliation: 'shame', jealousy: 'frustration', envy: 'frustration', insecurity: 'shame', inadequacy: 'shame',
+  // the calmer readings never tint a troubled thought on their own (see another-angle.js lookFor): they read as plain
+  relief: 'none', calm: 'none', contentment: 'none', hope: 'none', gratitude: 'none', joy: 'none', neutral: 'none',
 };
-export function tintFor(emotion) { return TINTS[FAMILY[emotion] || emotion] || TINTS.none; }
+/** The feeling family an emotion id belongs to ('none' when it has no troubled tint). */
+export function familyOf(emotion) { return FAMILY[emotion] || (TINTS[emotion] ? emotion : 'none'); }
+export function tintFor(emotion) { return TINTS[familyOf(emotion)] || TINTS.none; }
 /** Another Angle's own light: fact (cool), the mind's addition (warm magenta), calm (gold). */
 export const LIGHT = Object.freeze({ fact: ['#c9fbff', '#3fd6ee'], guess: ['#ffc6ee', '#e04fbf'], calm: ['#fff1c9', '#ffc35c'], steel: ['#d9dcf2', '#6d6f98'], ember: ['#ffd4a8', '#ff6a3d'] });
 
@@ -242,6 +247,97 @@ export class Blob {
   }
 }
 
+/**
+ * The person's own Thought Mallow inside a mechanic. Its springs are a Blob's
+ * (home, drag, squash), so every mechanic moves it the same way; its look is
+ * W2's Thought Mallow (src/mallows/thought: the same expressive, soft-body,
+ * feeling-styled jelly the person watched while Zuzu was exploring) when the
+ * scene hands one in (w2 = { create, draw }), else the kit's own jelly.
+ *
+ * The mechanic writes where it is (x, y, scale) and how it feels (the face's
+ * tension and calm → the thought's state) every frame; W2 adds its own life
+ * on top (breathing, the feeling's motion, the jelly's slosh when it is moved)
+ * and dents under a finger (grab / drag / drop / poke / pointer forward the
+ * touch to it). extra.squash (0..1) flattens it onto its base (a weight on it).
+ */
+export class ThoughtBody extends Blob {
+  constructor(o = {}, w2 = null) {
+    super(o);
+    this.w2 = null; this.drawW2 = null; this.touchId = null; this._dt = 1 / 60; this._rm = false;
+    // the person's reduced-motion setting (a mechanic may pin the body with step(dt, true) without meaning it)
+    this.rmFn = typeof o.rmFn === 'function' ? o.rmFn : null;
+    if (w2 && typeof w2.create === 'function' && typeof w2.draw === 'function') {
+      try {
+        this.w2 = w2.create({ text: o.text || '', emotion: o.emotion || 'anxiety', intensity: o.intensity ?? 0.7, r: this.r, x: this.x, y: this.y, reducedMotion: !!o.reducedMotion, lowStim: !!o.lowStim, siblings: 0, haptic: o.haptic || null });
+        this.drawW2 = w2.draw;
+      } catch (e) { console.info('[another angle] Thought Mallow unavailable here; the kit jelly stands in', e?.message); this.w2 = null; }
+    }
+    this.env = { now: 0, rm: false, low: false, bounds: o.bounds || null, away: null };
+    this.opts = { ox: 0, oy: 0, rm: false, low: false, q: 0, light: false };
+  }
+  get living() { return !!this.w2; }
+  step(dt, rm = false) { super.step(dt, rm); this._dt = dt; this._rm = rm; }
+  /** A finger on it (no carrying): it dents, then the up / cancel comes through pointer(). */
+  poke(e) {
+    if (this.w2) { try { this.w2.pointer({ type: 'down', id: e.id, x: e.x, y: e.y, t: e.t }); this.touchId = e.id; } catch { /* the jelly is decoration */ } }
+    else this.sqV += 2;
+  }
+  /** The rest of a poke (move / up / cancel for the same finger). True when it was this thought's. */
+  pointer(e) {
+    if (!this.w2 || this.touchId == null || e.id !== this.touchId) return false;
+    try { this.w2.pointer(e); } catch { /* ignore */ }
+    if (e.type === 'up' || e.type === 'cancel') this.touchId = null;
+    return true;
+  }
+  grab(e) { super.grab(e); this.poke(e); }
+  drag(e) { const ok = super.drag(e); if (ok && this.w2 && this.touchId === e.id) { try { this.w2.pointer(e); } catch { /* ignore */ } } return ok; }
+  drop(e) {
+    const p = super.drop(e);
+    if (p && this.w2 && this.touchId != null) { try { this.w2.pointer({ type: 'up', id: this.touchId, x: e?.x ?? this.x, y: e?.y ?? this.y, t: e?.t ?? performance.now() }); } catch { /* ignore */ } this.touchId = null; }
+    return p;
+  }
+  draw(g, face = {}, extra = {}) {
+    const th = this.w2;
+    if (!th) {
+      const sq = extra.squash || 0;
+      return super.draw(g, face, sq ? { sx: this.sx * (1 + sq * 0.9), sy: this.sy * (1 - sq), ...extra } : extra);
+    }
+    th.x = this.x; th.y = this.y;
+    th.scale = Math.max(0.05, this.scale);
+    // the mechanic's mood (a written value wins in W2's state for half a second; written every frame)
+    th.state.tension = clamp(face.tension ?? 0.4);
+    th.state.calm = clamp(face.calm ?? 0);
+    if (extra.rot) th.rot = extra.rot;
+    const env = this.env;
+    const rmNow = this.rmFn ? !!this.rmFn() : this._rm;
+    env.now = performance.now() / 1000; env.rm = rmNow; env.low = LOW;
+    try { th.step(this._dt, env); } catch (e) { console.info('[another angle] Thought Mallow step', e?.message); this.w2 = null; return this.draw(g, face, extra); }
+    const a = extra.alpha ?? this.alpha;
+    if (a < 1) th.render.alpha *= clamp(a);
+    if (th.render.alpha <= 0.004) return;
+    const o = this.opts;
+    o.rm = rmNow; o.low = LOW;
+    const sq = extra.squash || 0;
+    if (sq > 0.002) {
+      // flattened onto its base (the weight on its head), never through it
+      const by = this.y + this.r * this.scale * 0.95;
+      g.save(); g.translate(this.x, by); g.scale(1 + sq * 0.9, 1 - sq); g.translate(-this.x, -by);
+      this.drawW2(g, th, o);
+      g.restore();
+    } else this.drawW2(g, th, o);
+  }
+  destroy() { try { this.w2?.destroy(); } catch { /* ignore */ } this.w2 = null; }
+}
+/**
+ * The person's Thought Mallow for a mechanic: the scene's living one (ctx.thought), else the kit's jelly in
+ * the feeling's tint (Node tests, or W2's module unavailable).
+ */
+export function thoughtFor(ctx, o = {}) {
+  if (typeof ctx.thought === 'function') { const t = ctx.thought(o); if (t) return t; }
+  const [light, deep] = tintFor(ctx.emotion);
+  return new ThoughtBody({ light, deep, rmFn: ctx.reducedMotion, ...o });
+}
+
 // -------------------------------------------------------------- timers --
 /**
  * Delays that run on the scene's own clock (frame dt), not setTimeout: they
@@ -323,9 +419,16 @@ const cover = (L, T, R, B, o) => {
   return hh > 0 ? w * hh : 0;
 };
 // where a tag may move to dodge something (px from where its object wants it): small moves first
-const DY = [0, -8, 8, -16, 16, -26, 26, -38, 38, -52, 52, -68, 68, -86, 86];
-const DX = [0, -16, 16, -32, 32, -52, 52, -78, 78, -108, 108];
+const DY = [0, -8, 8, -16, 16, -24, 24, -38, 38, -52, 52, -68, 68, -86, 86];
+const DX = [0, -8, 8, -16, 16, -24, 24, -32, 32, -52, 52, -78, 78, -108, 108];
 const GAP = 6;
+/**
+ * How far (px, each way) the collision pass may move a tag of each kind from where its object wants it.
+ * A label names its object (a bowl, a jelly, a guess): moved further it would read as the next object's,
+ * so it stays within a short reach and the others make way for it. A possibility or a card may lean a
+ * little more; the person's own words under a thought a little more again.
+ */
+export const TIE = Object.freeze({ label: 24, card: 28, line: 32, words: 48, verdict: 0, piece: 0 });
 
 /**
  * DOM labels over the canvas (textContent only, never canvas text for words).
@@ -338,10 +441,18 @@ const GAP = 6;
  * layout(dt, obstacles) once a frame: a collision pass that keeps every
  * visible tag off the other tags, the subtitle band and its control pill, the
  * Mallows and the scene's own bodies, moving each as little as it can (and
- * easing there, with a little stickiness so nothing jitters). Earlier tags
- * win ties; a tag added with { priority } can claim its place first.
+ * easing there, with a little stickiness so nothing jitters), and never
+ * further than its tie (TIE by kind, or { tie }): a label stays by the object
+ * it names. Tags that name something claim their place first (higher
+ * { priority }, then the tighter tie, then the order added); the rest make way.
+ *
+ * A tag may say which object it belongs to (own(x, y), default: its anchor)
+ * and a { group } of tags that name like objects (the four bowls): ties()
+ * lists them so a check can prove each label sits nearest its own object.
+ * Text the screen reader should hear (cards, possibilities, labels: everything
+ * but the decoration) is announced through `announce` when it first shows.
  */
-export function makeTags(root, { bounds = null } = {}) {
+export function makeTags(root, { bounds = null, announce = null } = {}) {
   const list = new Set();
   const order = [];
   const sizes = () => { for (const t of list) { t.invalidate(); t.measure(); } };
@@ -349,8 +460,10 @@ export function makeTags(root, { bounds = null } = {}) {
   const boxes = [], probe = {};
   const slot = (i) => (boxes[i] ||= { left: 0, top: 0, right: 0, bottom: 0 });
   let frames = 0;
+  const rank = (t) => t.priority * 1000 - t.tie;
   return {
-    add(text, { kind = 'label', colour = null, max = 230, title = null, priority = 0, fixed = kind === 'piece', cls = '' } = {}) {
+    add(text, { kind = 'label', colour = null, max = 230, title = null, priority = 0, fixed = kind === 'piece', cls = '', tie = TIE[kind] ?? 108, group = null, say = kind !== 'piece' && kind !== 'words' } = {}) {
+      // the person's own words stay readable where they are; everything else is heard (once) as it appears
       const el = h('div', { class: `bx-tag ${kind}${cls ? ` ${cls}` : ''}`, 'aria-hidden': kind === 'words' ? 'false' : 'true', style: { maxWidth: `min(${max}px, ${innerWidth < 360 ? 90 : 62}vw)` } });
       if (colour) el.style.setProperty('--bx-dot', colour);
       let body = el;
@@ -362,9 +475,9 @@ export function makeTags(root, { bounds = null } = {}) {
       }
       body.textContent = String(text ?? '');
       root.append(el);
-      let shown = false, lx = -1e4, ly = -1e4, lastO = -1, w = 0, hh = 0, dirty = true;
-      // where the object wants it (dx, dy: where the collision pass moved it, eased)
-      let wx = -1e4, wy = -1e4, ox = 0, oy = 0, tx = 0, ty = 0, placed = false;
+      let shown = false, heard = false, lx = -1e4, ly = -1e4, lastO = -1, w = 0, hh = 0, dirty = true;
+      // where the object wants it (dx, dy: where the collision pass moved it, eased); own: the object it names
+      let wx = -1e4, wy = -1e4, ox = 0, oy = 0, tx = 0, ty = 0, placed = false, ownX = NaN, ownY = NaN, anchorX = 0, anchorY = 0;
       const write = () => {
         const px = Math.round(wx + ox), py = Math.round(wy + oy);
         if (px !== lx || py !== ly) { el.style.transform = `translate3d(${px}px, ${py}px, 0)`; lx = px; ly = py; }
@@ -376,8 +489,9 @@ export function makeTags(root, { bounds = null } = {}) {
         return clamp(py, 8, innerHeight - hh - 8);
       };
       const clampX = (px) => { const edge = innerWidth < 360 ? 10 : 16; return clamp(px, edge, Math.max(edge, innerWidth - edge - w)); };
+      const spoken = () => (title != null ? `${title}: ${body.textContent}` : body.textContent);
       const tag = {
-        el, kind, priority, fixed,
+        el, kind, priority, fixed, tie: fixed ? 0 : Math.max(0, tie), group,
         measure() { if (dirty || !w) { w = el.offsetWidth || 120; hh = el.offsetHeight || 36; dirty = false; } },
         get w() { tag.measure(); return w; }, get h() { tag.measure(); return hh; },
         get visible() { return lastO > 0.05; },
@@ -387,6 +501,7 @@ export function makeTags(root, { bounds = null } = {}) {
          */
         at(x, y, anchor = 'bottom', opacity = 1) {
           tag.measure();
+          anchorX = x; anchorY = y;
           const side = anchor === 'left' || anchor === 'leftTop' ? x : anchor === 'right' ? x - w : x - w / 2;
           wx = clampX(side);
           wy = clampY(anchor === 'top' || anchor === 'leftTop' ? y - hh : anchor === 'center' || anchor === 'left' || anchor === 'right' ? y - hh / 2 : y);
@@ -394,8 +509,11 @@ export function makeTags(root, { bounds = null } = {}) {
           const o = Math.round(clamp(opacity) * 100) / 100;
           if (o !== lastO) { el.style.opacity = String(o); lastO = o; }
           if (!shown) { shown = true; el.classList.add('in'); }
+          if (!heard && o > 0.5 && say && announce) { heard = true; announce(spoken()); }
           return tag;
         },
+        /** The object this tag names (for ties()); without it, the anchor point. */
+        own(x, y) { ownX = x; ownY = y; return tag; },
         /** The box it would have at offset (dx, dy) from where its object wants it, written into `out`. */
         boxAt(dx, dy, out = {}) {
           const px = clampX(wx + dx), py = clampY(wy + dy);
@@ -410,7 +528,13 @@ export function makeTags(root, { bounds = null } = {}) {
           write();
         },
         rect() { return lastO > 0.05 ? { left: lx, top: ly, right: lx + w, bottom: ly + hh } : null; },
-        set(t) { if (body.textContent !== t) { body.textContent = t; dirty = true; } return tag; },
+        /** Where it is and what it names (QA): its centre, its object, how far it was moved. */
+        tieInfo() {
+          return { text: body.textContent, title: title != null ? el.querySelector('.bx-card-title')?.textContent : null, kind, group, visible: lastO > 0.05,
+            cx: lx + w / 2, cy: ly + hh / 2, ox: Number.isFinite(ownX) ? ownX : anchorX, oy: Number.isFinite(ownY) ? ownY : anchorY, moved: Math.max(Math.abs(lx - Math.round(wx)), Math.abs(ly - Math.round(wy))), tie: tag.tie,
+            rect: { left: lx, top: ly, right: lx + w, bottom: ly + hh } };
+        },
+        set(t) { if (body.textContent !== t) { body.textContent = t; dirty = true; heard = false; } return tag; },
         title(t) { const hd = el.querySelector('.bx-card-title'); if (hd && hd.textContent !== t) { hd.textContent = t; dirty = true; } return tag; },
         hide() { el.style.opacity = '0'; lastO = 0; return tag; },
         remove() { el.remove(); list.delete(tag); const i = order.indexOf(tag); if (i >= 0) order.splice(i, 1); },
@@ -418,14 +542,17 @@ export function makeTags(root, { bounds = null } = {}) {
       };
       list.add(tag);
       order.push(tag);
-      order.sort((a, b) => b.priority - a.priority);
+      // stable: the same rank keeps the order added
+      order.sort((a, b) => rank(b) - rank(a));
       return tag;
     },
     rects() { const out = []; for (const t of list) { const r = t.rect(); if (r) out.push(r); } return out; },
+    /** Every visible tag that names an object, with where it sits and where its object is (QA: ownership checks). */
+    ties() { const out = []; for (const t of list) { if (t.visible || t.group) out.push(t.tieInfo()); } return out; },
     /**
      * The collision pass (once a frame, after the mechanic placed its tags). obstacles: rects to keep
      * clear of (subtitle band and pill, Mallows, the scene's bodies). Cheap: a handful of tags × a
-     * fixed set of candidate moves, plain arithmetic, nothing allocated per candidate.
+     * fixed set of candidate moves (only those within the tag's tie), plain arithmetic, nothing allocated.
      */
     layout(dt = 1 / 60, obstacles = [], { instant = false } = {}) {
       // sizes are cached; look again now and then (a font arriving, a longer line)
@@ -434,10 +561,12 @@ export function makeTags(root, { bounds = null } = {}) {
       for (const t of order) {
         if (!t.visible) continue;
         if (t.fixed) { const r = t.rect(); if (r) Object.assign(slot(n++), r); continue; }
-        const prev = t.target;
+        const prev = t.target, tie = t.tie;
         let bestCost = Infinity, prevCost = Infinity, bdx = 0, bdy = 0;
         for (let iy = 0; iy < DY.length; iy++) {
+          if (DY[iy] > tie || -DY[iy] > tie) continue;
           for (let ix = 0; ix < DX.length; ix++) {
+            if (DX[ix] > tie || -DX[ix] > tie) continue;
             const b = t.boxAt(DX[ix], DY[iy], probe);
             const L = b.left - GAP, T = b.top - GAP, R = b.right + GAP, B = b.bottom + GAP;
             let hit = 0;
@@ -457,6 +586,23 @@ export function makeTags(root, { bounds = null } = {}) {
     remeasure: sizes,
     clear() { for (const t of [...list]) t.remove(); },
   };
+}
+
+/**
+ * A reusable list of rects (bodies, keep-outs): the same objects every call, so a scene that is asked for
+ * its bodies ten times a second allocates nothing. begin() → add with circle()/box() → list (the array).
+ */
+export class RectList {
+  constructor() { this.list = []; this.n = 0; this.pool = []; }
+  begin() { this.n = 0; return this; }
+  box(left, top, right, bottom) {
+    const r = this.pool[this.n] || (this.pool[this.n] = { left: 0, top: 0, right: 0, bottom: 0 });
+    r.left = left; r.top = top; r.right = right; r.bottom = bottom;
+    this.list[this.n++] = r;
+    return this;
+  }
+  circle(x, y, r, pad = 6) { return this.box(x - r - pad, y - r - pad, x + r + pad, y + r + pad); }
+  end() { this.list.length = this.n; return this.list; }
 }
 
 // ------------------------------------------------------------ geometry --

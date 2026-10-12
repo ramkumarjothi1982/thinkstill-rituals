@@ -10,7 +10,7 @@
 // same thing: a side with nothing real to show asks a question instead. Tap
 // either jelly, or the assist pill, to ease them apart a step at a time.
 
-import { Blob, drawGlow, clamp, lerp, dist, approach, rgba, LIGHT, Motes, blinkAt, circleRect, Timers } from './kit.js';
+import { drawGlow, clamp, lerp, dist, approach, rgba, mix, LIGHT, Motes, blinkAt, Timers, RectList, thoughtFor } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'pull_apart';
@@ -26,20 +26,24 @@ export function mount(ctx) {
   const A0 = ctx.area();
   const R = clamp(Math.min(A0.w, A0.h) * 0.14, 28, 48);
   const from = ctx.from || { x: A0.x + A0.w / 2, y: A0.y + A0.h * 0.5, r: R };
-  const F = new Blob({ x: from.x - 4, y: from.y, r: R, light: LIGHT.fact[0], deep: LIGHT.fact[1] });
-  const G = new Blob({ x: from.x + 4, y: from.y, r: R, light: LIGHT.guess[0], deep: LIGHT.guess[1] });
+  const P = ctx.parts;
+  // two Thought Mallows from one: what happened (plain, unfeeling) and what the mind added (the feeling's own jelly)
+  const F = thoughtFor(ctx, { x: from.x - 4, y: from.y, r: R, light: LIGHT.fact[0], deep: LIGHT.fact[1], emotion: 'neutral', text: P.fact });
+  const G = thoughtFor(ctx, { x: from.x + 4, y: from.y, r: R, light: LIGHT.guess[0], deep: LIGHT.guess[1] });
+  // their colours: the living jellies' own tints when they are W2's, else the kit's fact and guess light
+  const FC = F.w2?.style?.tint?.deep || LIGHT.fact[1], GC = G.w2?.style?.tint?.deep || LIGHT.guess[1];
+  const BL = new RectList(), AL = new RectList();
   F.scale = G.scale = rm() ? 1 : 0.6;
   let phase = 'bud';        // bud → joined → letting → apart
   let stepK = 0;            // tap/assist steps (0..3)
   let let0 = 0, moves = 0, t0 = performance.now();
   let releaseD = 0, restD = 0;
   const half = Math.round(Math.min(200, A0.w / 2 - 8));
-  const P = ctx.parts;
   const tags = {
     words: ctx.tags.add(P.excerpt, { kind: 'words' }),
     // one card a side (title + line): half as many boxes to place, and they can never be read as one
-    fact: ctx.tags.add(P.fact, { kind: 'card', title: L.labels.fact, colour: LIGHT.fact[1], max: half, cls: P.factAsk ? 'ask' : '', priority: 2 }),
-    guess: ctx.tags.add(P.guess, { kind: 'card', title: L.labels.guess, colour: LIGHT.guess[1], max: half, cls: P.guessAsk ? 'ask' : '', priority: 2 }),
+    fact: ctx.tags.add(P.fact, { kind: 'card', title: L.labels.fact, colour: FC, max: half, cls: P.factAsk ? 'ask' : '', priority: 2 }),
+    guess: ctx.tags.add(P.guess, { kind: 'card', title: L.labels.guess, colour: GC, max: half, cls: P.guessAsk ? 'ask' : '', priority: 2 }),
   };
   const neckGrads = new Map();   // the neck's gradient, cached per length (drawn in the pair's own frame)
   let labelK = 0;
@@ -72,8 +76,8 @@ export function mount(ctx) {
     ctx.haptic('soft');
     ctx.fx('separate', { intensity: 0.6 });
     const mx = (F.x + G.x) / 2, my = (F.y + G.y) / 2;
-    motes.burst(mx, my, LIGHT.fact[1], 7, { speed: 50, size: 2.6 });
-    motes.burst(mx, my, LIGHT.guess[1], 7, { speed: 50, size: 2.6 });
+    motes.burst(mx, my, FC, 7, { speed: 50, size: 2.6 });
+    motes.burst(mx, my, GC, 7, { speed: 50, size: 2.6 });
     ctx.progress(1);
   }
 
@@ -95,7 +99,7 @@ export function mount(ctx) {
     let gr = neckGrads.get(key);
     if (!gr) {
       gr = g.createLinearGradient(0, 0, key, 0);
-      gr.addColorStop(0, rgba(LIGHT.fact[1], 0.8)); gr.addColorStop(0.5, rgba('#c99cf2', 0.72)); gr.addColorStop(1, rgba(LIGHT.guess[1], 0.8));
+      gr.addColorStop(0, rgba(FC, 0.8)); gr.addColorStop(0.5, rgba(mix(mix(FC, GC, 0.5), '#ffffff', 0.25), 0.72)); gr.addColorStop(1, rgba(GC, 0.8));
       if (neckGrads.size > 96) neckGrads.clear();
       neckGrads.set(key, gr);
     }
@@ -141,7 +145,8 @@ export function mount(ctx) {
       if (F.press && !G.press) { G.hx = lerp(G.hx, F.x + (G.hx - F.x) * 0.92, 0.15 * (1 - k)); }
       if (G.press && !F.press) { F.hx = lerp(F.hx, G.x + (F.hx - G.x) * 0.92, 0.15 * (1 - k)); }
       // keep inside the play area
-      for (const b of [F, G]) { b.hx = clamp(b.hx, A.x + R, A.x + A.w - R); b.hy = clamp(b.hy, A.y + R, A.y + A.h - R * 1.6); }
+      F.hx = clamp(F.hx, A.x + R, A.x + A.w - R); F.hy = clamp(F.hy, A.y + R, A.y + A.h - R * 1.6);
+      G.hx = clamp(G.hx, A.x + R, A.x + A.w - R); G.hy = clamp(G.hy, A.y + R, A.y + A.h - R * 1.6);
       if ((F.press || G.press) && separation() > releaseD) letGo();
     }
     F.step(dt, R_); G.step(dt, R_);
@@ -181,7 +186,7 @@ export function mount(ctx) {
       const dG = G.hit(e.x, e.y) ? Math.hypot(e.x - G.x, e.y - G.y) : Infinity;
       let b = dF === Infinity && dG === Infinity ? null : dF <= dG ? F : G;
       if (b && b.press) b = b === F ? (dG < Infinity ? G : null) : (dF < Infinity ? F : null);
-      if (!b || phase === 'apart') { if (b) { b.sqV += 2.4; ctx.haptic('light'); } return !!b; }
+      if (!b || phase === 'apart') { if (b) { b.poke(e); ctx.haptic('light'); } return !!b; }
       if (phase === 'bud') phase = 'joined';
       if (!b || b.press) return true;
       b.grab(e);
@@ -190,6 +195,8 @@ export function mount(ctx) {
     }
     if (e.type === 'move') { const a = F.drag(e), b = G.drag(e); if (a || b) { ctx.progress(progress()); ctx.kick(); } return a || b; }
     if (e.type === 'up' || e.type === 'cancel') {
+      // a finger only pressing a jelly (no carry) lets it go
+      F.pointer(e); G.pointer(e);
       for (const b of [F, G]) {
         const p = b.drop(e);
         if (!p) continue;
@@ -209,10 +216,10 @@ export function mount(ctx) {
     frame, pointer, done,
     hitTest: (x, y) => F.hit(x, y, 1.6) || G.hit(x, y, 1.6),
     assist: () => { if (phase !== 'apart') step(); },
-    bodies: () => [circleRect(F.x, F.y, R * F.scale, 2), circleRect(G.x, G.y, R * G.scale, 2)],
-    avoid: () => [circleRect(F.x, F.y, R * 1.25), circleRect(G.x, G.y, R * 1.25), ...ctx.tags.rects()],
+    bodies: () => BL.begin().circle(F.x, F.y, R * F.scale, 2).circle(G.x, G.y, R * G.scale, 2).end(),
+    avoid: () => { AL.begin().circle(F.x, F.y, R * 1.25).circle(G.x, G.y, R * 1.25); for (const r of ctx.tags.rects()) AL.box(r.left, r.top, r.right, r.bottom); return AL.end(); },
     get settled() { return phase === 'apart'; },
     probe: () => ({ a: { x: F.x, y: F.y }, b: { x: G.x, y: G.y }, phase }),
-    destroy() { TM.clear(); ctx.tags.clear(); },
+    destroy() { TM.clear(); ctx.tags.clear(); F.destroy?.(); G.destroy?.(); },
   };
 }

@@ -9,7 +9,7 @@
 // The pieces start out of order (a fixed shuffle, the same for the same step),
 // so putting the sentence together is the person's own small act.
 
-import { Blob, drawGlow, clamp, approach, rgba, Motes, blinkAt, circleRect, tintFor, roundRect, Timers } from './kit.js';
+import { Blob, drawGlow, clamp, approach, rgba, Motes, blinkAt, roundRect, Timers, RectList, thoughtFor } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'assemble_step';
@@ -26,10 +26,10 @@ export function mount(ctx) {
   const done = new Promise((r) => { resolve = r; });
   const TM = new Timers();
   const motes = new Motes(40);
-  const [light, deep] = tintFor(ctx.emotion);
   const A0 = ctx.area();
   const R = clamp(Math.min(A0.w, A0.h) * 0.085, 19, 30);
-  const thought = new Blob({ x: ctx.from?.x ?? A0.x + A0.w / 2, y: ctx.from?.y ?? A0.y + A0.h * 0.3, r: R, light, deep });
+  const thought = thoughtFor(ctx, { x: ctx.from?.x ?? A0.x + A0.w / 2, y: ctx.from?.y ?? A0.y + A0.h * 0.3, r: R });
+  const BL = new RectList(), AL = new RectList();
   const pieces = ctx.parts.steps.map((text, i) => {
     const b = new Blob({ x: thought.x, y: thought.y, r: R, light: WARM[0], deep: WARM[1] });
     b.i = i; b.slot = -1; b.k = 30; b.d = 8; b.scale = rm() ? 1 : 0.3;
@@ -48,32 +48,36 @@ export function mount(ctx) {
   let fuseT = 0, held = null, moves = 0;
   const t0 = performance.now();
 
-  const size = (b) => ({ w: clamp((b.tag.w || 90) + 26, 84, ctx.area().w * 0.5), h: Math.max(34, (b.tag.h || 24) + 12) });
+  // the geometry objects are made once and refreshed in place (geo() runs several times a frame)
+  const SZ = pieces.map(() => ({ w: 84, h: 34 })), TRD = pieces.map(() => ({ x: 0, y: 0, w: 84, h: 34 }));
+  const GEO = { A: null, sizes: SZ, treads: TRD, top: TRD[0], maxH: 34 };
+  const size = (b, out = SZ[b.i]) => { out.w = clamp((b.tag.w || 90) + 26, 84, ctx.area().w * 0.5); out.h = Math.max(34, (b.tag.h || 24) + 12); return out; };
   /** Treads: piece 0 on the top tread, the last piece at the bottom (reads top to bottom). */
   function geo() {
     const A = ctx.area();
-    const sizes = pieces.map(size);
+    GEO.A = A;
+    let maxH = 0;
+    for (const b of pieces) { const s = size(b); if (s.h > maxH) maxH = s.h; }
     const sx = A.x + A.w * 0.68;
-    const treads = [];
     let y = A.y + A.h - 8;
-    for (let k = 2; k >= 0; k--) {           // build from the bottom tread up
-      const s = sizes[k];
+    for (let k = pieces.length - 1; k >= 0; k--) {           // build from the bottom tread up
+      const s = SZ[k], q = TRD[k];
       y -= s.h / 2;
-      treads[k] = { x: clamp(sx - (k - 1) * A.w * 0.07, A.x + s.w / 2 + 6, A.x + A.w - s.w / 2 - 6), y, w: s.w, h: s.h };
+      q.x = clamp(sx - (k - 1) * A.w * 0.07, A.x + s.w / 2 + 6, A.x + A.w - s.w / 2 - 6); q.y = y; q.w = s.w; q.h = s.h;
       y -= s.h / 2 + 5;
     }
-    const maxH = Math.max(...sizes.map((s) => s.h));
-    return { A, sizes, treads, top: treads[0], maxH };
+    GEO.maxH = maxH;
+    return GEO;
   }
   function homes() {
     const G = geo();
     if (phase === 'pieces') { thought.hx = G.top.x; thought.hy = Math.max(G.A.y + R * 1.2, G.top.y - G.top.h / 2 - R * 2.2); }
     else { thought.hx = G.top.x; thought.hy = G.top.y - G.top.h / 2 - R * 0.98; }
-    pieces.forEach((b) => {
-      if (b.press) return;
+    for (const b of pieces) {
+      if (b.press) continue;
       if (b.slot >= 0) { const tr = G.treads[b.slot]; b.hx = tr.x; b.hy = tr.y; }
       else { const row = startRow[b.i]; b.hx = G.A.x + Math.max(G.sizes[b.i].w / 2 + 10, G.A.w * 0.26); b.hy = G.A.y + (SHORT_ ? Math.max(G.A.h * 0.16, (wordsTag.h || 32) + 10) : G.A.h * 0.16) + row * (G.maxH + 14) + G.maxH / 2; }
-    });
+    }
   }
   homes();
   if (rm()) for (const b of [thought, ...pieces]) { b.x = b.hx; b.y = b.hy; }
@@ -155,20 +159,21 @@ export function mount(ctx) {
         TM.after(() => resolve({ moves, ms: performance.now() - t0 }), R_ ? 200 : 800);
       }
     }
-    pieces.forEach((b) => {
+    for (const b of pieces) {
       b.scale = R_ ? 1 : approach(b.scale, 1, 4, dt);
       b.step(dt, R_);
       const s = G.sizes[b.i];
       block(b.x, b.y, s.w * b.scale, s.h * b.scale, 1, b.rot, 1 + b.sq * 0.5, 1 - b.sq * 0.5, phase !== 'pieces' ? 1 : 0);
       b.tag.at(b.x, b.y, 'center', clamp(b.scale * 1.4 - 0.4));
-    });
+    }
     thought.step(dt, R_);
     thought.draw(g, { tension: phase === 'pieces' ? 0.55 - placed() * 0.12 : 0.1, calm: phase === 'standing' ? 0.75 : placed() * 0.15, blink: blinkAt(t, 0.8), lookX: phase === 'pieces' ? -0.6 : 0, lookY: 0.4 });
     motes.draw(g, dt);
     if (SHORT) wordsTag.at(G.A.x + 2, G.A.y + (wordsTag.h || 34) / 2, 'left', placed() || held ? 0 : 1);
     else wordsTag.at(thought.x, thought.y - R * 1.1 - 6, 'top', 1);
     // the finished staircase names itself on its open side (left of the treads: the pieces' column is empty by then)
-    const left = Math.min(...G.treads.map((q) => q.x - q.w / 2));
+    let left = Infinity;
+    for (const q of G.treads) left = Math.min(left, q.x - q.w / 2);
     stepLabel.at(left - 12, G.treads[1].y, 'right', phase === 'standing' ? clamp(fuseT - 0.6) : 0);
     return true;
   }
@@ -178,10 +183,10 @@ export function mount(ctx) {
     if (e.type === 'down') {
       const b = phase === 'pieces' ? pieces.find((x) => onPiece(x, e.x, e.y)) : null;
       if (b && !held) { held = b; if (b.slot >= 0) b.slot = -1; b.grab(e); ctx.haptic('light'); return true; }
-      if (thought.hit(e.x, e.y)) { thought.sqV += 2.4; ctx.haptic('light'); return true; }
+      if (thought.hit(e.x, e.y)) { thought.poke(e); ctx.haptic('light'); return true; }
       return false;
     }
-    if (!held) return false;
+    if (!held) return thought.pointer(e);
     if (e.type === 'move') { held.drag(e); return true; }
     if (e.type === 'up' || e.type === 'cancel') {
       const b = held; held = null;
@@ -197,11 +202,22 @@ export function mount(ctx) {
     id, frame, pointer, done,
     hitTest: (x, y) => thought.hit(x, y) || (phase === 'pieces' && pieces.some((b) => onPiece(b, x, y))),
     assist: step,
-    bodies: () => { const G = geo(); return [circleRect(thought.x, thought.y, R, 2), ...G.treads.map((q) => ({ left: q.x - q.w / 2, right: q.x + q.w / 2, top: q.y - q.h / 2, bottom: q.y + q.h / 2 })),
-      ...pieces.map((b) => { const z = G.sizes[b.i]; return { left: b.x - z.w / 2, right: b.x + z.w / 2, top: b.y - z.h / 2, bottom: b.y + z.h / 2 }; })]; },
-    avoid: () => { const G = geo(); return [circleRect(thought.x, thought.y, R * 1.3), ...G.treads.map((q) => ({ left: q.x - q.w / 2, right: q.x + q.w / 2, top: q.y - q.h / 2, bottom: q.y + q.h / 2 })), ...ctx.tags.rects()]; },
+    bodies: () => {
+      const G = geo();
+      BL.begin().circle(thought.x, thought.y, R, 2);
+      for (const q of G.treads) BL.box(q.x - q.w / 2, q.y - q.h / 2, q.x + q.w / 2, q.y + q.h / 2);
+      for (const b of pieces) { const z = G.sizes[b.i]; BL.box(b.x - z.w / 2, b.y - z.h / 2, b.x + z.w / 2, b.y + z.h / 2); }
+      return BL.end();
+    },
+    avoid: () => {
+      const G = geo();
+      AL.begin().circle(thought.x, thought.y, R * 1.3);
+      for (const q of G.treads) AL.box(q.x - q.w / 2, q.y - q.h / 2, q.x + q.w / 2, q.y + q.h / 2);
+      for (const r of ctx.tags.rects()) AL.box(r.left, r.top, r.right, r.bottom);
+      return AL.end();
+    },
     get settled() { return phase === 'standing'; },
     probe: () => { const G = geo(); return { pieces: pieces.filter((b) => b.slot < 0).map((b) => ({ x: b.x, y: b.y, i: b.i, row: startRow[b.i] })), treads: G.treads.map((q) => ({ x: q.x, y: q.y })), phase, steps: ctx.parts.steps }; },
-    destroy() { TM.clear(); ctx.tags.clear(); },
+    destroy() { TM.clear(); ctx.tags.clear(); thought.destroy?.(); },
   };
 }

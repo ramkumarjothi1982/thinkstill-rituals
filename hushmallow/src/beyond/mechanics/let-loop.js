@@ -7,7 +7,7 @@
 // back up a little. It lands after a calm stretch of resting. A tap on the
 // stone (or the assist pill) rests for a breath at a time.
 
-import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, mix, Motes, blinkAt, circleRect, tintFor, TAU, Timers } from './kit.js';
+import { drawGlow, clamp, lerp, approach, rgba, mix, Motes, blinkAt, tintFor, TAU, Timers, RectList, thoughtFor } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'let_loop_drift';
@@ -21,7 +21,7 @@ export function mount(ctx) {
   const done = new Promise((r) => { resolve = r; });
   const TM = new Timers();
   const motes = new Motes(30);
-  const [light, deep] = tintFor(ctx.emotion);
+  let [light, deep] = tintFor(ctx.emotion);
   const A0 = ctx.area();
   const SHORT = A0.h < 270;               // a short phone: the stone and the words share the bottom row
   const R = clamp(Math.min(A0.w, A0.h) * 0.085, 18, 32);
@@ -30,7 +30,11 @@ export function mount(ctx) {
   const t0 = performance.now();
   const tx = new Float32Array(TRAIL), ty = new Float32Array(TRAIL);
   let ti = 0, trailInit = false;
-  const thought = new Blob({ x: ctx.from?.x ?? A0.x + A0.w / 2, y: ctx.from?.y ?? A0.y + A0.h * 0.3, r: R, light, deep });
+  const thought = thoughtFor(ctx, { x: ctx.from?.x ?? A0.x + A0.w / 2, y: ctx.from?.y ?? A0.y + A0.h * 0.3, r: R });
+  // its light follows the living Thought Mallow's own tint (one colour for the jelly, its trail, glow and projection)
+  if (thought.w2?.style?.tint) ({ light, deep } = thought.w2.style.tint);
+  const BL = new RectList(), AL = new RectList();
+  const GE = { cx: 0, cy: 0, ax: 0, ay: 0, st: { x: 0, y: 0, rx: 46, ry: 14 } }, LP = { x: 0, y: 0 };
   const tags = {
     words: ctx.tags.add(ctx.parts.excerpt, { kind: 'words', max: SHORT ? Math.round(A0.w * 0.5) : 230 }),
     stone: ctx.tags.add(L.labels.stone, { kind: 'label', colour: '#bfe8ff' }),
@@ -54,13 +58,15 @@ export function mount(ctx) {
     const A = ctx.area();
     const kk = k();
     // the loop drifts up and away as it eases; it widens and its thought gets smaller
-    const cx = A.x + A.w / 2, cy = A.y + A.h * lerp(0.34, 0.26, kk);
-    const ax = Math.min(A.w * lerp(0.3, 0.42, kk) * (1 - wind * 0.35), A.w / 2 - R * 1.4), ay = Math.min(A.h * lerp(0.2, 0.16, kk), A.h * 0.3);
-    const st = { x: A.x + A.w * (SHORT ? 0.74 : 0.5), y: A.y + A.h - clamp(A.h * 0.16, 34, 56), rx: clamp(A.w * 0.17, 46, 70), ry: clamp(A.h * 0.07, 14, 22) };
-    return { cx, cy, ax, ay, st };
+    GE.cx = A.x + A.w / 2; GE.cy = A.y + A.h * lerp(0.34, 0.26, kk);
+    GE.ax = Math.min(A.w * lerp(0.3, 0.42, kk) * (1 - wind * 0.35), A.w / 2 - R * 1.4); GE.ay = Math.min(A.h * lerp(0.2, 0.16, kk), A.h * 0.3);
+    const st = GE.st;
+    st.x = A.x + A.w * (SHORT ? 0.74 : 0.5); st.y = A.y + A.h - clamp(A.h * 0.16, 34, 56); st.rx = clamp(A.w * 0.17, 46, 70); st.ry = clamp(A.h * 0.07, 14, 22);
+    return GE;
   }
   // a lemniscate of Gerono (a soft figure of eight)
-  const loopAt = (G, u) => ({ x: G.cx + G.ax * Math.sin(u), y: G.cy + G.ay * Math.sin(u) * Math.cos(u) * 1.6 });
+  // (one point object, reused: read it before the next call)
+  const loopAt = (G, u) => { LP.x = G.cx + G.ax * Math.sin(u); LP.y = G.cy + G.ay * Math.sin(u) * Math.cos(u) * 1.6; return LP; };
 
   function land() {
     if (phase !== 'loop') return;
@@ -93,7 +99,8 @@ export function mount(ctx) {
     speed = approach(speed, lerp(1.25, 0.42, kk) * (1 + wind * 1.4), 2, dt);
     s += dt * speed * (R_ ? 0.5 : 1);
     const p = loopAt(G, s);
-    thought.hx = p.x; thought.hy = p.y;
+    const px = p.x, py = p.y;
+    thought.hx = px; thought.hy = py;
     thought.step(dt, true);
     // the track, fading as it eases
     // the track: a soft glowing ribbon, fading as it eases (one path, stroked twice: halo, then core)
@@ -104,16 +111,17 @@ export function mount(ctx) {
     g.globalAlpha = lerp(0.6, 0.2, kk); g.strokeStyle = rgba(light, 0.95); g.lineWidth = 1.8; g.stroke();
     g.globalAlpha = 1;
     // the trail (a ring buffer of past positions)
-    if (!trailInit) { tx.fill(p.x); ty.fill(p.y); trailInit = true; }
-    tx[ti] = p.x; ty[ti] = p.y; ti = (ti + 1) % TRAIL;
+    if (!trailInit) { tx.fill(px); ty.fill(py); trailInit = true; }
+    tx[ti] = px; ty[ti] = py; ti = (ti + 1) % TRAIL;
     if (!R_) for (let i = 0; i < TRAIL; i++) {
       const j = (ti + i) % TRAIL;
       const a = (i / TRAIL) ** 2 * lerp(0.5, 0.18, kk);
       drawGlow(g, tx[j], ty[j], R * (0.5 + 0.6 * i / TRAIL), deep, a);
     }
     const alpha = lerp(1, 0.55, kk);
-    drawJelly(g, { x: thought.x, y: thought.y, r: R * lerp(1, 0.72, kk), sx: thought.sx, sy: thought.sy, light, deep, alpha, glow: 0.5,
-      face: { tension: lerp(0.8, 0.2, kk) + wind * 0.4, calm: kk * 0.7, blink: blinkAt(t, 0.9), lookX: Math.cos(s) * 0.6, surprise: wind > 0.5 ? 0.5 : 0 } });
+    // it gets smaller and fainter as it eases (still moving, never stopped)
+    thought.scale = lerp(1, 0.72, kk);
+    thought.draw(g, { tension: lerp(0.8, 0.2, kk) + wind * 0.4, calm: kk * 0.7, blink: blinkAt(t, 0.9), lookX: Math.cos(s) * 0.6, surprise: wind > 0.5 ? 0.5 : 0 }, { alpha, glow: 0.5 });
     // the rest stone: smooth, moonlit, breathing slowly while a finger rests on it
     breath = approach(breath, resting ? 1 : 0, 2.4, dt);
     const st = G.st;
@@ -151,8 +159,9 @@ export function mount(ctx) {
     const onStone = (x, y) => ((x - G.st.x) / (G.st.rx * 1.35)) ** 2 + ((y - G.st.y) / (G.st.ry * 2.4)) ** 2 < 1;
     if (e.type === 'down') {
       if (thought.hit(e.x, e.y, 1.7)) {
-        // grabbing the loop only winds it up again
+        // grabbing the loop only winds it up again (the jelly flinches under the finger)
         held = { id: e.id, kind: 'thought', t0: e.t };
+        thought.poke(e);
         wind = Math.min(1, wind + 0.6);
         rest = Math.max(0, rest - 0.8);
         ctx.haptic('light');
@@ -162,7 +171,8 @@ export function mount(ctx) {
       if (onStone(e.x, e.y)) { held = { id: e.id, kind: 'stone', t0: e.t, x0: e.x, y0: e.y }; ctx.haptic('soft'); return true; }
       return false;
     }
-    if (!held || held.id !== e.id) return false;
+    const tp = thought.pointer(e);
+    if (!held || held.id !== e.id) return tp;
     if (e.type === 'up' || e.type === 'cancel') {
       const h0 = held; held = null; moves++;
       if (h0.kind === 'stone' && e.t - h0.t0 < 350) step();
@@ -175,11 +185,11 @@ export function mount(ctx) {
     id, frame, pointer, done,
     hitTest: (x, y) => { const G = geo(); return thought.hit(x, y, 1.7) || ((x - G.st.x) / (G.st.rx * 1.35)) ** 2 + ((y - G.st.y) / (G.st.ry * 2.4)) ** 2 < 1; },
     assist: step,
-    bodies: () => { const G = geo(); return [circleRect(thought.x, thought.y, R, 2), { left: G.st.x - G.st.rx, right: G.st.x + G.st.rx, top: G.st.y - G.st.ry, bottom: G.st.y + G.st.ry }]; },
-    avoid: () => { const G = geo(); return [{ left: G.cx - G.ax - R * 1.4, right: G.cx + G.ax + R * 1.4, top: G.cy - G.ay * 1.2 - R * 1.4, bottom: G.cy + G.ay * 1.2 + R * 1.4 }, circleRect(G.st.x, G.st.y, G.st.rx + 8), ...ctx.tags.rects()]; },
+    bodies: () => { const G = geo(); return BL.begin().circle(thought.x, thought.y, R, 2).box(G.st.x - G.st.rx, G.st.y - G.st.ry, G.st.x + G.st.rx, G.st.y + G.st.ry).end(); },
+    avoid: () => { const G = geo(); AL.begin().box(G.cx - G.ax - R * 1.4, G.cy - G.ay * 1.2 - R * 1.4, G.cx + G.ax + R * 1.4, G.cy + G.ay * 1.2 + R * 1.4).circle(G.st.x, G.st.y, G.st.rx + 8); for (const r of ctx.tags.rects()) AL.box(r.left, r.top, r.right, r.bottom); return AL.end(); },
     get settled() { return phase === 'landed'; },
     get resting() { return !!held && held.kind === 'stone'; },
     probe: () => { const G = geo(); return { stone: { x: G.st.x, y: G.st.y }, thought: { x: thought.x, y: thought.y }, rest, phase }; },
-    destroy() { TM.clear(); ctx.tags.clear(); },
+    destroy() { TM.clear(); ctx.tags.clear(); thought.destroy?.(); },
   };
 }

@@ -10,7 +10,7 @@
 // small glowing seed stays inside: "Something to learn". The lesson is kept;
 // the cruelty goes. A tap (or the assist pill) smooths it a little each time.
 
-import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, mix, Motes, blinkAt, circleRect, tintFor, TAU, Timers } from './kit.js';
+import { drawGlow, drawJelly, clamp, lerp, approach, rgba, mix, Motes, blinkAt, tintFor, TAU, Timers, RectList, thoughtFor } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'soften_harshness';
@@ -25,10 +25,13 @@ export function mount(ctx) {
   const done = new Promise((r) => { resolve = r; });
   const TM = new Timers();
   const motes = new Motes(40);
-  const [light, deep] = tintFor(ctx.emotion === 'anger' ? 'shame' : ctx.emotion || 'shame');
+  let [light, deep] = tintFor(ctx.emotion === 'anger' ? 'shame' : ctx.emotion || 'shame');
   const A0 = ctx.area();
   const R = clamp(Math.min(A0.w, A0.h) * 0.16, 34, 58);
-  const thought = new Blob({ x: ctx.from?.x ?? A0.x + A0.w / 2, y: ctx.from?.y ?? A0.y + A0.h / 2, r: R * 0.62, light, deep });
+  const thought = thoughtFor(ctx, { x: ctx.from?.x ?? A0.x + A0.w / 2, y: ctx.from?.y ?? A0.y + A0.h / 2, r: R * 0.62, light, deep });
+  // its light follows the living Thought Mallow's own tint (one colour for the jelly, its trail, glow and projection)
+  if (thought.w2?.style?.tint) ({ light, deep } = thought.w2.style.tint);
+  const BL = new RectList(), AL = new RectList(), CE = { x: 0, y: 0 };
   const spike = new Float32Array(SPIKES).fill(1);     // 1 = sharp, 0 = smoothed
   const soft = new Float32Array(SPIKES);              // eased display value
   let softness = 0, phase = 'hard', held = null, warned = false, moves = 0, doneT = 0, strokes = 0, edgeSaid = false;
@@ -51,7 +54,7 @@ export function mount(ctx) {
     }
     return gr;
   }
-  function centre() { const A = ctx.area(); return { x: A.x + A.w / 2, y: A.y + A.h * 0.48 }; }
+  function centre() { const A = ctx.area(); CE.x = A.x + A.w / 2; CE.y = A.y + A.h * 0.48; return CE; }
   const total = () => { let s = 0; for (let i = 0; i < SPIKES; i++) s += 1 - spike[i]; return s / SPIKES; };
 
   /** Smooth the spikes near angle a by amount k (a tap, or the assist pill). */
@@ -162,9 +165,11 @@ export function mount(ctx) {
     if (e.type === 'down') {
       if (!on(e.x, e.y)) return false;
       held = { id: e.id, x: e.x, y: e.y, t: e.t, x0: e.x, y0: e.y, t0: e.t, path: 0 };
-      thought.sqV += 1.2; ctx.haptic('light');
+      // the thought inside feels the stroke through its shell
+      thought.poke(e); ctx.haptic('light');
       return true;
     }
+    thought.pointer(e);
     if (!held || held.id !== e.id) return false;
     if (e.type === 'move') {
       const dx = e.x - held.x, dy = e.y - held.y, d = Math.hypot(dx, dy);
@@ -200,10 +205,10 @@ export function mount(ctx) {
     id, frame, pointer, done,
     hitTest: (x, y) => { const c = centre(); return Math.hypot(x - c.x, y - c.y) < R * 1.55; },
     assist: step,
-    bodies: () => { const c = centre(); return [circleRect(c.x, c.y, R * 1.32, 2)]; },
-    avoid: () => { const c = centre(); return [circleRect(c.x, c.y, R * 1.5), ...ctx.tags.rects()]; },
+    bodies: () => { const c = centre(); return BL.begin().circle(c.x, c.y, R * 1.32, 2).end(); },
+    avoid: () => { const c = centre(); AL.begin().circle(c.x, c.y, R * 1.5); for (const r of ctx.tags.rects()) AL.box(r.left, r.top, r.right, r.bottom); return AL.end(); },
     get settled() { return phase === 'soft'; },
-    probe: () => { const c = centre(); return { c, R, softness, phase }; },
-    destroy() { TM.clear(); ctx.tags.clear(); },
+    probe: () => { const c = centre(); return { c: { x: c.x, y: c.y }, R, softness, phase }; },
+    destroy() { TM.clear(); ctx.tags.clear(); thought.destroy?.(); },
   };
 }

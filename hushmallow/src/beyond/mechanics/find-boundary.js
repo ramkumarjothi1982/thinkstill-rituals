@@ -8,7 +8,7 @@
 // line ask for? Four quiet choices, none of them "forgive". The chosen one is
 // written on the line. Taps near the outline (or the assist pill) set posts.
 
-import { Blob, drawGlow, clamp, lerp, approach, rgba, mix, LIGHT, Motes, blinkAt, circleRect, tintFor, TAU, Timers } from './kit.js';
+import { drawGlow, clamp, lerp, approach, rgba, mix, LIGHT, Motes, blinkAt, tintFor, familyOf, TAU, Timers, RectList, thoughtFor } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'find_boundary';
@@ -23,11 +23,13 @@ export function mount(ctx) {
   const done = new Promise((r) => { resolve = r; });
   const TM = new Timers();
   const motes = new Motes(44);
-  const anger = /anger|frustr|resent|irrit|rage|fury/.test(ctx.emotion || '') || !ctx.emotion;
+  // fair anger looks hot unless the person chose another feeling for it (provoked, livid and the rest count as anger)
+  const anger = !ctx.emotion || ['anger', 'frustration'].includes(familyOf(ctx.emotion));
   const [light, deep] = anger ? EMBER : tintFor(ctx.emotion);
   const A0 = ctx.area();
   const R = clamp(Math.min(A0.w, A0.h) * 0.11, 24, 40);
-  const thought = new Blob({ x: ctx.from?.x ?? A0.x + A0.w / 2, y: ctx.from?.y ?? A0.y + A0.h / 2, r: R, light, deep });
+  const thought = thoughtFor(ctx, { x: ctx.from?.x ?? A0.x + A0.w / 2, y: ctx.from?.y ?? A0.y + A0.h / 2, r: R, light, deep, ...(anger ? { emotion: familyOf(ctx.emotion) === 'frustration' ? 'frustration' : 'anger' } : {}) });
+  const BL = new RectList(), AL = new RectList(), GE = { cx: 0, cy: 0, rr: 0 };
   const bins = new Float32Array(BINS);    // 0..1 how drawn each sector is
   const shown = new Float32Array(BINS);
   const broken = new Uint8Array(BINS);    // the outline's existing pieces (the gaps are where the line was crossed)
@@ -44,8 +46,8 @@ export function mount(ctx) {
 
   function geo() {
     const A = ctx.area();
-    const rr = Math.min(A.w * 0.36, A.h * 0.36, R * 3.4);
-    return { cx: A.x + A.w / 2, cy: A.y + A.h * 0.46, rr };
+    GE.rr = Math.min(A.w * 0.36, A.h * 0.36, R * 3.4); GE.cx = A.x + A.w / 2; GE.cy = A.y + A.h * 0.46;
+    return GE;
   }
   function homes() { const G = geo(); thought.hx = G.cx; thought.hy = G.cy; }
   homes();
@@ -162,13 +164,13 @@ export function mount(ctx) {
     const G = geo();
     const near = (x, y) => { const d = Math.hypot(x - G.cx, y - G.cy); return d > G.rr * 0.55 && d < G.rr * 1.5; };
     if (e.type === 'down') {
-      if (thought.hit(e.x, e.y)) { thought.sqV += 2; ctx.haptic('light'); return true; }
+      if (thought.hit(e.x, e.y)) { thought.poke(e); ctx.haptic('light'); return true; }
       if (phase !== 'draw' || !near(e.x, e.y)) return false;
       held = { id: e.id, x0: e.x, y0: e.y, t0: e.t, path: 0, x: e.x, y: e.y };
       trail.n = 0; trail.fade = 1;
       return true;
     }
-    if (!held || held.id !== e.id) return false;
+    if (!held || held.id !== e.id) return thought.pointer(e);
     if (e.type === 'move') {
       const d = Math.hypot(e.x - held.x, e.y - held.y);
       held.path += d; held.x = e.x; held.y = e.y;
@@ -191,10 +193,10 @@ export function mount(ctx) {
     id, frame, pointer, done,
     hitTest: (x, y) => { const G = geo(); const d = Math.hypot(x - G.cx, y - G.cy); return d < G.rr * 1.5; },
     assist: step,
-    bodies: () => { const G = geo(); return [circleRect(thought.x, thought.y, R, 2)]; },
-    avoid: () => { const G = geo(); return [circleRect(G.cx, G.cy, G.rr + 16), ...ctx.tags.rects()]; },
+    bodies: () => BL.begin().circle(thought.x, thought.y, R, 2).end(),
+    avoid: () => { const G = geo(); AL.begin().circle(G.cx, G.cy, G.rr + 16); for (const r of ctx.tags.rects()) AL.box(r.left, r.top, r.right, r.bottom); return AL.end(); },
     get settled() { return phase === 'chosen'; },
     probe: () => { const G = geo(); return { c: { x: G.cx, y: G.cy }, rr: G.rr, drawn: drawn(), phase }; },
-    destroy() { TM.clear(); ctx.tags.clear(); },
+    destroy() { TM.clear(); ctx.tags.clear(); thought.destroy?.(); },
   };
 }
