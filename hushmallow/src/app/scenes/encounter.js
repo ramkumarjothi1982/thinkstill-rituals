@@ -5,7 +5,14 @@ import { faceMix } from '../../engine/interpret.js';
 import { getEmotion, getFamily } from '../../data/emotions.js';
 import { MALLOWS } from '../../mallows/registry.js';
 import { encounterLine } from '../../mallows/voices.js';
-import { playTrick } from '../trick-launch.js';
+import { playTrick, playTrickById, allTricks } from '../trick-launch.js';
+import { createRound } from '../../engine/round.js';
+import { planOptions } from '../../engine/next.js';
+import { RITUALS } from '../../data/rituals.js';
+import { AVAILABLE } from '../../rituals/index.js';
+import { allowedFor } from '../../engine/recommend.js';
+import { titleCase } from '../../engine/tricks.js';
+import { toast } from '../ui.js';
 
 const REFRAME_FAMILIES = new Set(['shame', 'fear', 'loneliness', 'anger', 'sadness', 'envy', 'confusion']);
 
@@ -16,8 +23,23 @@ export default function encounter(app) {
   const top = getEmotion(input.emotions[0]?.id);
   const family = top?.family || 'default';
   const req = { ...input, entitlements: ent.flags(), tier: 'paid', prefs: { lowStimulation: app.prefs.get('lowStim') } };
-  let options = rec.recommend(req, { limit: 4 });
+  // what this plan may offer (Another Angle has its own door, so it isn't dealt here)
+  const offerRituals = RITUALS.filter((r) => (r.tier || 'paid') === 'paid' && allowedFor(r, ent.flags()) && AVAILABLE.has(r.module));
+  const round = createRound(app.store, ent.tier());
+  let tricks = [];
+  let options = [];
   let idx = 0;
+  async function deal() {
+    try { tricks = await allTricks(app); } catch { tricks = []; }
+    let plan = planOptions({ rec, req, rituals: offerRituals, tricks, seen: round.seen(), limit: 4 });
+    if (!plan.options.length && plan.total) {
+      // every ritual and trick in the plan has been done once: start a fresh round
+      toast(`You’ve tried all ${plan.total} in your plan. Starting a fresh round!`, 3600);
+      round.restart();
+      plan = planOptions({ rec, req, rituals: offerRituals, tricks, seen: round.seen(), limit: 4 });
+    }
+    options = plan.options;
+  }
 
   const card = h('div', { class: 'card enc-card' });
   const ultraRow = h('div');
@@ -38,23 +60,25 @@ export default function encounter(app) {
           h('button', { class: 'btn', onclick: () => app.go('home') }, 'Home')), quickBtn());
       return;
     }
-    const r = o.ritual;
-    const lead = MALLOWS[r.mallows[0]];
-    const mins = Math.max(1, Math.round(r.durationSec / 60));
+    const isTrick = o.type === 'trick';
+    const r = o.item;
+    const leadId = isTrick ? r.mallow : r.mallows[0];
+    const lead = MALLOWS[leadId];
+    const mins = isTrick ? 1 : Math.max(1, Math.round(r.durationSec / 60));
     card.replaceChildren(
-      h('div', { class: 'eyebrow', style: { color: 'var(--accent)' } }, `${lead.name} has a ritual for that`),
-      h('h3', { style: { marginTop: '8px', fontSize: '26px' } }, r.name),
-      h('p', {}, r.purpose),
-      h('div', { class: 'reasons' }, ...o.reasons.map((x) => h('span', {}, x)), h('span', {}, `About ${mins} min`)),
+      h('div', { class: 'eyebrow', style: { color: 'var(--accent)' } }, isTrick ? `${lead.name} has a quick trick for that` : `${lead.name} has a ritual for that`),
+      h('h3', { style: { marginTop: '8px', fontSize: '26px' } }, isTrick ? titleCase(r.title) : r.name),
+      h('p', {}, isTrick ? r.mission : r.purpose),
+      h('div', { class: 'reasons' }, ...o.reasons.filter((x) => !/minute/.test(x)).map((x) => h('span', {}, x)), h('span', {}, `About ${mins} min`)),
       h('div', { style: { display: 'grid', gap: '8px', marginTop: '16px' } },
         h('button', { class: 'btn primary block', onclick: () => begin(o) }, 'Let’s do it'),
         options.length > 1 ? h('button', { class: 'btn ghost block', onclick: () => { idx = (idx + 1) % options.length; app.audio.ui('toggle'); show(); } }, 'Something else') : null,
-        quickBtn()));
+        isTrick ? null : quickBtn()));
   }
 
   async function show() {
     const o = options[idx];
-    const leadId = o ? o.ritual.mallows[0] : (getFamily(family)?.mallows?.[0] || 'blubi');
+    const leadId = o ? (o.type === 'trick' ? o.item.mallow : o.item.mallows[0]) : (getFamily(family)?.mallows?.[0] || 'blubi');
     const lead = MALLOWS[leadId];
     await Promise.all([world.setRealm(lead.realm, { emotion: Object.keys(faceMix(input.emotions))[0], intensity: input.intensity }), world.setMallow(leadId)]);
     world.setEmotion(faceMix(input.emotions), Math.min(1, input.intensity * 1.05));
@@ -66,7 +90,7 @@ export default function encounter(app) {
 
   // a one-minute trick instead of a full ritual (Paid tricks; Ultra adds plot twists)
   function quickBtn() {
-    return h('button', { class: 'btn ghost block', onclick: () => { clearBubble(); app.audio.ui('open'); playTrick(app, { tier: ent.has('ultra') ? null : 'paid' }); } },
+    return h('button', { class: 'btn ghost block', onclick: () => { clearBubble(); app.audio.ui('open'); playTrick(app, { tier: ent.has('ultra') ? null : 'paid', exclude: [...round.seen()] }); } },
       'Only got a minute? Quick trick');
   }
 
@@ -81,9 +105,10 @@ export default function encounter(app) {
 
   function begin(o) {
     clearBubble();
-    rec.markDealt(o.ritual.id, o.poolKey);
-    app.state.ritual = o.ritual;
-    app.go('ritual', { id: o.ritual.id });
+    if (o.type === 'trick') { playTrickById(app, o.item.id); return; }
+    rec.markDealt(o.item.id, o.poolKey);
+    app.state.ritual = o.item;
+    app.go('ritual', { id: o.item.id });
   }
 
   // Ultra members can step into Another Angle from here. Non-members aren't
@@ -100,6 +125,7 @@ export default function encounter(app) {
       world.dim(false);
       world.showMallow(true);
       world.place({ x: 50, y: 40, scale: 0.92 });
+      await deal();
       await show();
     },
     leave() { clearBubble(); },

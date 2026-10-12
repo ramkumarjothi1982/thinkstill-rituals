@@ -5,6 +5,7 @@ import { PAID_MODULES } from '../../rituals/index.js';
 import { requireEntitlement, EntitlementError, loadUltra } from '../entitlements.js';
 import { MALLOWS } from '../../mallows/registry.js';
 import { markPlayed } from '../../engine/played.js';
+import { createRound } from '../../engine/round.js';
 
 export default function ritualScene(app, params) {
   const { world } = app;
@@ -62,6 +63,8 @@ export default function ritualScene(app, params) {
     const lead = ritual.mallows[0];
     await Promise.all([world.setRealm(ritual.world.realm), world.setMallow(lead)]);
     if (ac.signal.aborted) return;
+    // started = done for this round, wherever it was started from
+    createRound(app.store, app.ent.tier()).mark(ritual.id);
     const t0 = Date.now();
     const result = await mod.run(ctx);
     if (ac.signal.aborted) return;

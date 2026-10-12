@@ -201,3 +201,58 @@ test('Experience A input finds anger at work, and a Paid Glitzi ritual fits', ()
 test('crisis language is flagged for support, not a ritual', () => {
   assert.equal(interpret('I want to kill myself').safety.level, 'crisis');
 });
+
+// ------------------------------------------------- no repeats per round --
+import { planOptions } from '../src/engine/next.js';
+import { createRound } from '../src/engine/round.js';
+
+function playWholeRound(tier, tricks) {
+  const store = memStore();
+  const rec = createRecommender({ rituals: RITUALS, store, modules: AVAILABLE, rng: seq([0.21, 0.77, 0.4]) });
+  const ent = { paid: true, ultra: tier === 'ultra' };
+  const offer = RITUALS.filter((r) => (r.tier || 'paid') === 'paid' && allowedFor(r, ent) && AVAILABLE.has(r.module));
+  const round = createRound(store, tier);
+  const feelings = EMOTIONS.filter((_, i) => i % 7 === 0).map((e) => e.id);
+  const order = [];
+  for (let visit = 0; visit < 5000; visit++) {
+    const emo = feelings[visit % feelings.length];
+    const { options, total } = planOptions({ rec, req: { emotions: [{ id: emo, confidence: 1 }], intensity: 0.6, entitlements: ent, tier: 'paid' },
+      rituals: offer, tricks, seen: round.seen(), rng: seq([0.33, 0.66, 0.11]) });
+    if (!options.length) return { order, total, round };
+    const pick = options[0].item.id;
+    assert.ok(!round.seen().has(pick), `${pick} offered twice in round 1 (visit ${visit})`);
+    round.mark(pick);
+    order.push(options[0]);
+  }
+  throw new Error('round never finished');
+}
+
+test('Paid: nothing repeats until all 301 have been offered', () => {
+  const { order, total } = playWholeRound('paid', QUICK_TRICKS);
+  assert.equal(total, 301);
+  assert.equal(order.length, 301);
+  assert.equal(new Set(order.map((o) => o.item.id)).size, 301);
+});
+
+test('Ultra: nothing repeats until every ritual and all 1,000 tricks have been offered', () => {
+  const { order, total } = playWholeRound('ultra', [...QUICK_TRICKS, ...PLOT_TWISTS]);
+  assert.equal(total, 1010); // + Another Angle, which has its own door
+  assert.equal(new Set(order.map((o) => o.item.id)).size, 1010);
+});
+
+test('rituals made for the feeling come before tricks, then a fresh round starts clean', () => {
+  const store = memStore();
+  const rec = createRecommender({ rituals: RITUALS, store, modules: AVAILABLE });
+  const offer = RITUALS.filter((r) => (r.tier || 'paid') === 'paid');
+  const round = createRound(store, 'paid');
+  const req = { emotions: [{ id: 'fury', confidence: 1 }], intensity: 0.7, entitlements: { paid: true }, tier: 'paid' };
+  const first = planOptions({ rec, req, rituals: offer, tricks: QUICK_TRICKS, seen: round.seen() }).options[0];
+  assert.equal(first.item.id, 'static-to-signal');
+  round.mark('static-to-signal');
+  const next = planOptions({ rec, req, rituals: offer, tricks: QUICK_TRICKS, seen: round.seen() }).options;
+  assert.ok(next.every((o) => o.item.id !== 'static-to-signal'));
+  assert.equal(round.number(), 1);
+  round.restart();
+  assert.equal(round.number(), 2);
+  assert.equal(round.count(), 0);
+});

@@ -1,6 +1,7 @@
 // LIBRARY — every ritual and trick in this person's plan, to browse and play
 // directly. Search, filter by category or Mallow, and see what's been
 // finished (✓). Paid shows 10 rituals + 291 tricks; Ultra shows everything.
+// The Saved tab is the straight path back to anything the person saved.
 import { h, iconBtn, toast } from '../ui.js';
 import { RITUALS } from '../../data/rituals.js';
 import { AVAILABLE } from '../../rituals/index.js';
@@ -45,7 +46,13 @@ export default function library(app, params = {}) {
       h('div', { style: { marginTop: '8px', display: 'grid', gap: '6px' } }, catRow, mallowRow),
       h('div', { style: { overflowY: 'auto', flex: '1', minHeight: '0', marginTop: '6px' } }, list, more)));
 
-  const items = () => (tab === 'rituals'
+  const ritualItems = () => rituals.map((r) => ({ id: r.id, kind: 'ritual', name: r.name, mallow: r.mallows[0], cat: r.family, catLabel: FAMILY_LABEL[r.family] || r.family,
+    sub: r.purpose, mins: Math.max(1, Math.round(r.durationSec / 60)), ultra: (r.tier || 'paid') === 'ultra', ref: r }));
+  const trickItems = () => tricks.map((t) => ({ id: t.id, kind: 'trick', name: titleCase(t.title), mallow: t.mallow, cat: t.issue, catLabel: t.issue,
+    sub: t.mission, mins: 1, ultra: t.tier === 'ultra', ref: t, extra: `${t.ref} ${t.theme} ${t.pattern}` }));
+  const savedIds = () => app.rec.favourites();
+  const savedItems = () => { const ids = savedIds(); const all = [...ritualItems(), ...trickItems()]; return ids.map((id) => all.find((x) => x.id === id)).filter(Boolean); };
+  const items = () => (tab === 'saved' ? savedItems() : tab === 'rituals'
     ? rituals.map((r) => ({ id: r.id, kind: 'ritual', name: r.name, mallow: r.mallows[0], cat: r.family, catLabel: FAMILY_LABEL[r.family] || r.family,
       sub: r.purpose, mins: Math.max(1, Math.round(r.durationSec / 60)), ultra: (r.tier || 'paid') === 'ultra', ref: r }))
     : tricks.map((t) => ({ id: t.id, kind: 'trick', name: titleCase(t.title), mallow: t.mallow, cat: t.issue, catLabel: t.issue,
@@ -62,6 +69,7 @@ export default function library(app, params = {}) {
   function renderTabs() {
     const ritualCount = rituals.length, trickCount = tricks.length;
     tabs.replaceChildren(
+      chip(`★ Saved · ${savedItems().length}`, tab === 'saved', () => switchTab('saved')),
       chip(`Rituals · ${ritualCount}`, tab === 'rituals', () => switchTab('rituals')),
       chip(`${ent.has('ultra') ? 'Tricks & plot twists' : 'Quick tricks'} · ${trickCount || '…'}`, tab === 'tricks', () => switchTab('tricks')));
     const all = ritualCount + trickCount;
@@ -88,7 +96,10 @@ export default function library(app, params = {}) {
         h('div', { class: 'b' }, `${MALLOWS[x.mallow].name} · ${x.catLabel} · ~${x.mins} min`),
         h('div', { class: 'b', style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, x.sub)),
       h('span', { class: 'tick', 'aria-hidden': 'true', style: played.has(x.id) ? { background: 'var(--accent)', borderColor: 'transparent', color: 'var(--text-on-accent)' } : {} }, played.has(x.id) ? '✓' : '')));
-    list.replaceChildren(...(rows.length ? rows : [h('p', { class: 'muted', style: { padding: '12px 4px' } }, 'Nothing matches. Try fewer filters.')]));
+    const empty = tab === 'saved' && !savedIds().length
+      ? 'Nothing saved yet. When a ritual or trick ends, tap “Save” and it will wait for you here.'
+      : 'Nothing matches. Try fewer filters.';
+    list.replaceChildren(...(rows.length ? rows : [h('p', { class: 'muted', style: { padding: '12px 4px' } }, empty)]));
     more.style.display = xs.length > shown ? '' : 'none';
     more.textContent = `Show more (${xs.length - shown} left)`;
   }
