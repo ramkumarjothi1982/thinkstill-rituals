@@ -138,8 +138,8 @@ function snapshot(L, t, hero) {
   }
   return { t, pp, pf, ph, crowd: L.crowding, homes: list.map((th) => [th.home.x, th.home.y]), ci: list.map((th) => L.tags.get(th)?.ci), text: list.map((th) => L.tagText(th)), emo: list.map((th) => th.emotion) };
 }
-// at rest: from 3 s after the last thought arrived
-const atRest = (log) => log.frames.filter((f) => f.t >= log.lastAdd + 3);
+// at rest: from 2 s after the last thought was released (it has flown out of the hero and settled)
+const atRest = (log) => log.frames.filter((f) => f.t >= log.lastAdd + 2);
 function check(name, { L, log }) {
   const rest = atRest(log);
   assert.ok(rest.length > 4, `${name}: sampled at rest`);
@@ -172,6 +172,20 @@ test('layout gate: n = 1–3 at 320, 375, 390 and 430 — no plate on a plate, a
     }
   }
   console.log(summary.join('\n'));
+});
+
+test('layout gate: the same stages with other words (other seeds, other plate sizes)', () => {
+  const sets = [['sadness', 'sadness'], ['anger', 'overwhelm'], ['anger', 'anger', 'anger'], ['anger', 'sadness', 'overwhelm'], ['frustration', 'loneliness', 'embarrassment'], ['restlessness', 'anxiety', 'neutral']];
+  for (const rot of [1, 2]) {
+    const texts = TEXTS.slice(rot).concat(TEXTS.slice(0, rot));
+    for (const size of ['320x568', '375x812', '390x844', '430x932']) {
+      for (const feelings of sets) {
+        const st = stage(size, feelings, { texts });
+        check(`${size} ${feelings.join('+')} (texts +${rot})`, st);
+        st.L.destroy();
+      }
+    }
+  }
 });
 
 test('layout gate: released one at a time (0.25 s apart), the same holds; sad thoughts at 320 keep their words readable', () => {

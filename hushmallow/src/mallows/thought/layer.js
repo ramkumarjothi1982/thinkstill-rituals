@@ -771,7 +771,7 @@ export class ThoughtLayer {
   // grid over the bounds, scored against the hero, every other footprint (bodies, effects, props, words,
   // siblings pulled free) and the edges. fresh: placing everyone again (room for all matters more than
   // each one's wish).
-  _place(th, want, env, lv, fresh = false) {
+  _place(th, want, env, lv, fresh = false, win = 0) {
     const B = env.bounds, K = this._keep();
     const e = this._planExt(th);
     const eS = this._eS || (this._eS = { l: 0, r: 0, t: 0, b: 0 });
@@ -796,11 +796,13 @@ export class ThoughtLayer {
     }
     if (!w) penMin = 0;
     const VW = env.view.W, edge = VW < 360 ? 12 : 16, wk = fresh ? TUNE.wish : 4, grav = this._grav || 0, amp = this._amp(th);
-    const minX = B.left + el, maxX = Math.max(minX, B.right - er), minY = B.top + et, maxY = Math.max(minY, B.bottom - eb);
+    let minX = B.left + el, maxX = Math.max(minX, B.right - er), minY = B.top + et, maxY = Math.max(minY, B.bottom - eb);
+    // (a window round `want`: a short glide, never across the stage)
+    if (win > 0) { const wy = want.y + this._restDy(th); minX = clamp(want.x - win, minX, maxX); maxX = clamp(want.x + win, minX, maxX); minY = clamp(wy - win, minY, maxY); maxY = clamp(wy + win, minY, maxY); }
     const R = this._plc || (this._plc = { bs: Infinity, bx: 0, by: 0, bci: 0, bare: 0 });
     R.bs = Infinity; R.bx = want.x; R.by = want.y; R.bci = tg?.ci ?? 0; R.bare = 0;
     const tryAt = (x, y) => {
-      const d = Math.hypot(x - want.x, y - want.y) * wk + grav * (y - minY);
+      const d = Math.hypot(x - want.x, y - want.y - (win > 0 ? this._restDy(th) : 0)) * wk + grav * (y - minY);
       // the body and everything it draws
       const l = x - el - 6 - amp, t = y - et - 4 - amp, r = x + er + 6 + amp, b = y + eb + 4 + amp;
       let over = 0;
@@ -1065,6 +1067,19 @@ export class ThoughtLayer {
     const bodies = resting === list.length && list.length > 1 ? this._bodyOverlap() : 0;
     this._blockT = blocked || bodies > 400 ? this._blockT + dt : Math.min(0, this._blockT + dt);
     if (this._blockT > 0.3 && this.crowd < 4) { this._crowdBias++; this._blockT = -1; this._stepCrowd(env); }
+    // its words boxed in at rest on a packed stage (nowhere clear, even with fewer words): only that thought
+    // glides (≤ max(56 px, 0.9 P)) to the nearest place where they fit — once, then it rests
+    for (const th of list) {
+      const tg = this.tags.get(th);
+      th._blockedT = tg?.blocked && this._resting(th) && this.crowd >= 4 ? (th._blockedT || 0) + dt : 0;
+      if (th._blockedT > 0.8 && !(th._wordNudges >= 2)) {
+        th._blockedT = 0; th._wordNudges = (th._wordNudges || 0) + 1;
+        const reach = Math.max(56, 0.9 * th.render.P), want = this._wantH || (this._wantH = { x: 0, y: 0 });
+        want.x = th.home.x; want.y = th.home.y;
+        const h = this._place(th, want, env, -1, false, reach);
+        if (this._placeBare < 40) { th.moveHome(h); tg.drop = 0; tg.live = false; }
+      }
+    }
     // boxed in for a while: a short glide to free room nearby (≤ max(56 px, 0.9 P); never across the stage)
     for (const th of list) {
       // only at rest: arriving thoughts cross each other's paths on their way home
@@ -1464,10 +1479,12 @@ export class ThoughtLayer {
     this._bestHard = bh;
     return NC;
   }
-  _placeR(r, i = this._nPlaced) {
+  // a placed plate (into the frame's list): from where it is to where it will be once its thought has
+  // finished sinking or rising, so no plate placed beside it is met on the way
+  _placeR(r, i = this._nPlaced, th = null) {
     if (4 * (i + 1) > this._placedR.length) { const nb = new Float64Array(this._placedR.length * 2); nb.set(this._placedR); this._placedR = nb; }
-    const P = this._placedR, q = 4 * i;
-    P[q] = r[0]; P[q + 1] = r[1]; P[q + 2] = r[2]; P[q + 3] = r[3];
+    const P = this._placedR, q = 4 * i, d = th && !th._trav ? (th._syP ?? 0) - (th._sy ?? 0) : 0;
+    P[q] = r[0]; P[q + 1] = r[1] + Math.min(0, d); P[q + 2] = r[2]; P[q + 3] = r[3] + Math.max(0, d);
     if (i === this._nPlaced) this._nPlaced++;
     return i;
   }
@@ -1516,7 +1533,7 @@ export class ThoughtLayer {
         if (!tg || tg.mode !== mode || !tg.live || !tg.w) continue;
         const r = this._candRect(th, tg, tg.ci);
         if (this._hard(r, th, -1) > 0) continue;
-        tg.done = true; tg.pi = this._placeR(r);
+        tg.done = true; tg.pi = this._placeR(r, this._nPlaced, th);
       }
     }
     // the others look for the best clear place (a kept one stays, even on something soft: once a thought
@@ -1535,7 +1552,7 @@ export class ThoughtLayer {
         if (this._bestHard > 0 && mode === 0) { const hc = this._bestHard, wx = tg.wx, wy = tg.wy, cw = this._searchWide(th, tg, -1); if (this._bestHard < hc) c = cw; else { tg.wx = wx; tg.wy = wy; this._bestHard = hc; } }
         tg.blocked = this._bestHard > 0;
         tg.ci = c; tg.live = true; tg.done = true;
-        tg.pi = this._placeR(this._candRect(th, tg, c));
+        tg.pi = this._placeR(this._candRect(th, tg, c), this._nPlaced, th);
       }
     }
     // on its way: it keeps the side chosen for it, and waits (hidden, untouchable) while that is on the hero or a face

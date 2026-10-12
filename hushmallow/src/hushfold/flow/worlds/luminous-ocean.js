@@ -1163,41 +1163,54 @@ export function create(ctx) {
     return po;
   }
   // the words plate: candidate places round the thought (offsets from its centre, and the box on screen)
-  const pc = { lx: 0, ly: 0, x0: 0, y0: 0, x1: 0, y1: 0 };
-  const SIDES_L = ['above', 'left', 'right', 'below'], SIDES_R = ['above', 'right', 'left', 'below'];
+  const pc = { lx: 0, ly: 0, x0: 0, y0: 0, x1: 0, y1: 0 }, pb = { lx: 0, ly: 0, x0: 0, y0: 0, x1: 0, y1: 0 };
+  const SIDES_L = ['above', 'left', 'right', 'below', 'tuck'], SIDES_R = ['above', 'right', 'left', 'below', 'tuck'];
+  const ovA = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
   function plateCand(side, sx, sy, rr, w, h) {
+    const bb = bandBottom() + 4, fl = plan?.floor ?? H;
     let lx = 0, ly = 0;
     if (side === 'above') ly = -(rr + 4 + h);
     else if (side === 'below') ly = rr * 0.98 + 8;
-    else { lx = (side === 'right' ? 1 : -1) * (rr + 10 + w / 2); ly = -h / 2; }
+    else if (side === 'tuck') ly = Math.max(-(rr + 4 + h), bb - sy);      // as high as the band allows, over the thought's own top
+    else {
+      lx = (side === 'right' ? 1 : -1) * (rr + 10 + w / 2);
+      // beside it, level with it — sliding up or down (while still beside it) to stay out of the band and off the floor
+      ly = clamp(-h / 2, Math.max(bb - sy, -h + 6 - rr * 0.5), Math.min(fl - h - sy, rr * 0.5 - 6));
+    }
     const cx = side === 'left' || side === 'right' ? sx + lx : clamp(sx, OCEAN.EDGE + w / 2, W - OCEAN.EDGE - w / 2);
     pc.lx = lx; pc.ly = ly; pc.x0 = cx - w / 2; pc.x1 = cx + w / 2; pc.y0 = sy + ly; pc.y1 = sy + ly + h;
     return pc;
   }
-  function plateOk(side) {
+  /** What a place costs: 0 when wholly free; else covering the hero is worst, then the band, then the screen edge, then the thought itself. */
+  function plateCost(side, sx, sy, rr) {
     const E = OCEAN.EDGE;
-    if ((side === 'left' || side === 'right') && (pc.x0 < E - 0.5 || pc.x1 > W - E + 0.5)) return false;
-    if (pc.y0 < bandBottom() + 4 || pc.y1 > (plan?.floor ?? H)) return false;
-    return !(K.on && boxesHit(pc, K, 2));
+    let c = 0;
+    if (K.on) c += 12 * ovA(pc, K);
+    c += 6 * Math.max(0, bandBottom() + 4 - pc.y0) * (pc.x1 - pc.x0) + 6 * Math.max(0, pc.y1 - (plan?.floor ?? H)) * (pc.x1 - pc.x0);
+    if (side === 'left' || side === 'right') c += 8 * (Math.max(0, E - pc.x0) + Math.max(0, pc.x1 - (W - E))) * (pc.y1 - pc.y0);
+    // (over the thought's own body: allowed only as the last resort, and cheaply when it is small)
+    const tb = { x0: sx - rr, y0: sy - rr, x1: sx + rr, y1: sy + rr };
+    c += 0.5 * ovA(pc, tb) + (side === 'tuck' ? 1 : 0);
+    return c;
   }
   function placeWords(dt, sx, sy, rr) {
     const w = tS.plateW || 0, h = tS.plateH || 0;
     if (!w || !h) return;
     // during the melt, until it starts gliding, the words stay as the storm showed them
     if (tS.from && tS.glide <= 0) return;
-    let side = tS.side === 'tuck' ? null : tS.side;
-    if (side) plateCand(side, sx, sy, rr, w, h);
-    if (!side || !plateOk(side)) {
-      side = null;
-      for (const sd of sx < hero.cx ? SIDES_L : SIDES_R) { plateCand(sd, sx, sy, rr, w, h); if (plateOk(sd)) { side = sd; break; } }
-    }
-    if (!side) {
-      // nowhere wholly free (a thought right under the band on the smallest screens): as high as the band
-      // allows, over the thought's own top — never down into the hero
-      side = 'tuck';
-      plateCand('above', sx, sy, rr, w, h);
-      pc.ly = Math.max(pc.ly, bandBottom() + 4 - sy);
-      if (K.on) pc.ly = Math.min(pc.ly, K.y0 - 2 - h - sy);
+    // keep the side it has while that side is wholly free; else the first free side (the side away from the hero first);
+    // else the place that costs least (never into the hero while anything else is possible)
+    let side = tS.side;
+    plateCand(side, sx, sy, rr, w, h);
+    if (plateCost(side, sx, sy, rr) > 0) {
+      let best = null, bc = Infinity;
+      for (const sd of sx < hero.cx ? SIDES_L : SIDES_R) {
+        plateCand(sd, sx, sy, rr, w, h);
+        const c = plateCost(sd, sx, sy, rr);
+        if (c < bc) { bc = c; best = sd; Object.assign(pb, pc); }
+        if (c <= 0) break;
+      }
+      side = best; Object.assign(pc, pb);
     }
     tS.side = side;
     tS.labelYT = pc.ly; tS.labelXT = pc.lx;
