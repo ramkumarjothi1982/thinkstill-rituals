@@ -5,6 +5,12 @@ you. "Verified" means driven end to end in a real browser (Chromium via
 Playwright) at phone sizes, plus the automated tests. Nothing here has been
 tried on a physical phone yet; see §4.
 
+> **Hushfold update:** the home screen is now the squeezable Hushfold, with
+> Hushflow worlds and the Memory Garden. The plans are now called
+> **Hushmallow Flow** (internal id `paid`) and **Hushmallow Beyond**
+> (internal id `ultra`). Product ids are unchanged. Wherever this document
+> says Paid or Ultra, read Flow or Beyond. See `docs/HUSHFOLD.md`.
+
 ---
 
 ## 1. Built

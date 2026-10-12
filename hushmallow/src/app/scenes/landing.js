@@ -98,11 +98,11 @@ export default function landing(app) {
       g.drawImage(src, 540 - (src.width * s) / 2, 380, src.width * s, src.height * s);
     }
     g.fillStyle = '#fff'; g.textAlign = 'center';
-    g.font = '700 84px ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
+    g.font = '700 84px "Nunito Sans", ui-rounded, system-ui, sans-serif';
     g.fillText(res.share?.title || ritual.name, 540, 220);
-    g.font = '600 44px ui-rounded, system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.85)';
+    g.font = '600 44px "Nunito Sans", ui-rounded, system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.85)';
     g.fillText(res.share?.subtitle || `A Mallow Moment with ${lead.name}`, 540, 300);
-    g.font = '800 34px ui-rounded, system-ui, sans-serif'; g.fillStyle = '#ffd98a';
+    g.font = '800 34px "Nunito Sans", ui-rounded, system-ui, sans-serif'; g.fillStyle = '#ffd98a';
     g.fillText('HUSHMALLOW', 540, 1270);
     const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
     const file = new File([blob], 'hushmallow.png', { type: 'image/png' });

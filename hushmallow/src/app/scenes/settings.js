@@ -26,7 +26,7 @@ export default function settings(app) {
   const el = h('div', { style: { display: 'flex', flexDirection: 'column', height: '100%' } },
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' })),
     h('div', { class: 'card', style: { marginTop: '12px', overflowY: 'auto', maxHeight: 'calc(100dvh - 110px)' } },
-      h('h1', { class: 'title', style: { fontSize: '26px' } }, 'Settings'),
+      h('h1', { class: 'title', style: { fontSize: 'var(--type-world)' } }, 'Settings'),
       h('div', { class: 'eyebrow', style: { marginTop: '16px' } }, 'Feel'),
       sw('sound', 'Sound', 'Mallow voices, ritual sounds, realm ambience'),
       h('div', { class: 'setting' }, h('div', { class: 'grow' }, 'Volume'), vol),
@@ -35,7 +35,7 @@ export default function settings(app) {
       sw('lowStim', 'Low stimulation', 'Softer visuals and fewer sparkles'),
       h('div', { class: 'eyebrow', style: { marginTop: '18px' } }, 'Privacy'),
       sw('saveHistory', 'Remember which rituals I did', 'Ritual names and how it felt. Never your words.'),
-      sw('saveWords', 'Keep my saved angles', 'Ultra only. Stored on this phone, never uploaded.'),
+      sw('saveWords', 'Keep my saved angles', 'Beyond only. Stored on this phone, never uploaded.'),
       h('button', { class: 'btn block', style: { marginTop: '12px' }, onclick: () => confirmClear() }, 'Delete everything on this phone'),
       h('div', { class: 'eyebrow', style: { marginTop: '18px' } }, 'Plan'),
       h('div', { class: 'setting' }, h('div', { class: 'grow' }, tierName), h('button', { class: 'btn', style: { minHeight: '40px' }, onclick: () => app.go('plans') }, 'View plans')),
@@ -43,7 +43,7 @@ export default function settings(app) {
       h('div', { class: 'eyebrow', style: { marginTop: '18px' } }, 'About'),
       h('p', { class: 'muted' }, 'Hushmallow uses no AI and no chatbots. Feelings are matched with fixed word lists you confirm yourself, and every ritual and line is written in advance — nothing is generated while you use it. It’s a wellbeing app, not a medical service.'),
       h('button', { class: 'btn ghost block', onclick: () => openSupport(app) }, 'Support lines'),
-      h('p', { class: 'muted', style: { textAlign: 'center', fontSize: '12px', margin: '8px 0 0' } }, `Version ${BUILD}${RUNNING ? ` · ${RUNNING}` : ''}`),
+      h('p', { class: 'muted', style: { textAlign: 'center', fontSize: 'var(--type-label)', margin: '8px 0 0' } }, `Version ${BUILD}${RUNNING ? ` · ${RUNNING}` : ''}`),
       // developer tool: not part of the published site
       ['localhost', '127.0.0.1'].includes(location.hostname)
         ? h('a', { class: 'btn ghost block', href: './studio.html', style: { textDecoration: 'none' } }, 'Mallow Emotion Studio') : null));

@@ -60,7 +60,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   realm()?.setMood?.({ clarity: 0.1, agitation: 0.35, heaviness: 0.2, warmth: 0.2 });
 
   // ================================================================ TELL ==
-  setMove(0, { eyebrow: 'Hushmallow Ultra · Another Angle', title: 'There’s more than one way to see it.', prompt: '' });
+  setMove(0, { eyebrow: 'Hushmallow Beyond · Another Angle', title: 'There’s more than one way to see it.', prompt: '' });
   world.place({ x: 50, y: 25, scale: 0.6 });
   const ta = h('textarea', { class: 'feel', 'aria-label': 'What happened, and what did your brain decide it means?', placeholder: 'e.g. “My boss criticised my work. I think I’m terrible at my job.”' });
   ta.value = ctx.input.text || '';
@@ -139,8 +139,8 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     const el = h('div', { class: 'piece', style: pieceStyle(placeY(i)), role: 'group', 'aria-label': `Piece: ${p.text}` },
       h('div', { style: { fontWeight: 700, fontSize: '15.5px', lineHeight: '1.3' } }, p.text),
       h('div', { style: { display: 'flex', gap: '6px', marginTop: '8px' } },
-        h('button', { class: 'chip', style: { minHeight: '34px', fontSize: '13px' }, onclick: () => drop(p, 'fact') }, '← Happened'),
-        h('button', { class: 'chip', style: { minHeight: '34px', fontSize: '13px' }, onclick: () => drop(p, 'added') }, 'Brain added →')));
+        h('button', { class: 'chip', style: { minHeight: '34px', fontSize: 'var(--type-label)' }, onclick: () => drop(p, 'fact') }, '← Happened'),
+        h('button', { class: 'chip', style: { minHeight: '34px', fontSize: 'var(--type-label)' }, onclick: () => drop(p, 'added') }, 'Brain added →')));
     makeDraggable(el, (x) => drop(p, x < innerWidth / 2 ? 'fact' : 'added'));
     pieceLayer.append(el);
     p.el = el;
@@ -277,7 +277,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   const deck = interleave([shuffle(ev.supports).slice(0, 3), shuffle(ev.against).slice(0, 3), shuffle(ev.missing).slice(0, 2)]);
   const cardEl = h('div', { class: 'card', style: { padding: '14px', minHeight: '86px' } });
   const btns = h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginTop: '8px' } });
-  const mkB = (label, bucket, col) => h('button', { class: 'btn', style: { minHeight: '48px', fontSize: '13.5px', padding: '0 8px', borderColor: col }, onclick: () => place(bucket) }, label);
+  const mkB = (label, bucket, col) => h('button', { class: 'btn', style: { minHeight: '48px', fontSize: 'var(--type-label)', padding: '0 8px', borderColor: col }, onclick: () => place(bucket) }, label);
   btns.append(mkB('Fits the worry', 'supports', '#ff5be9'), mkB('Doesn’t fit', 'against', '#39f0ff'), mkB('Still unknown', 'missing', '#ffd98a'));
   const skip = h('button', { class: 'btn ghost', style: { minHeight: '38px' }, onclick: () => nextCard() }, 'Doesn’t apply · skip');
   const own = h('button', { class: 'btn ghost', style: { minHeight: '38px' }, onclick: () => addOwn() }, '+ My own');
@@ -406,7 +406,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
 
   // ------------------------------------------------------------ helpers --
   function mkPortal(label, key, col, x) {
-    const list = h('div', { style: { fontSize: '12.5px', color: 'var(--text-2)', marginTop: '6px', maxHeight: '64px', overflow: 'hidden' } });
+    const list = h('div', { style: { fontSize: 'var(--type-label)', color: 'var(--text-2)', marginTop: '6px', maxHeight: '64px', overflow: 'hidden' } });
     const el = h('div', { 'aria-label': label, role: 'region', style: { position: 'absolute', left: `${x}%`, top: '76%', transform: 'translate(-50%,-50%)', width: '42vw', maxWidth: '210px',
       aspectRatio: '1 / .78', borderRadius: '50%', display: 'grid', placeItems: 'center', textAlign: 'center', padding: '14px', transition: 'transform 700ms var(--ease-spring)',
       background: `radial-gradient(closest-side, ${col}33, ${col}11 60%, transparent 72%)`, boxShadow: `inset 0 0 0 2px ${col}aa, 0 0 40px ${col}55`, pointerEvents: 'none' } },
@@ -657,7 +657,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     const el = h('div', { class: 'card', role: 'status', style: { position: 'absolute', left: `${Math.round(z.cx - w / 2)}px`, ...at, width: `${w}px`, boxSizing: 'border-box',
       padding: '10px 12px', display: 'flex', gap: '10px', alignItems: 'center', pointerEvents: 'auto', boxShadow: '0 12px 40px rgba(10,0,40,.5)', animation: ctx.reducedMotion ? 'none' : 'bubbleIn 380ms var(--ease-spring) both' } },
     h('img', { src: new URL(`../../assets/mallows/${c.mallow}.png`, import.meta.url).href, alt: '', style: { width: '40px', height: '40px', objectFit: 'contain', flex: '0 0 auto' } }),
-    h('p', { style: { margin: 0, color: 'var(--text-1)', fontSize: '14px', lineHeight: '1.35' } }, h('b', {}, `${cap(c.mallow)}: `), c.text));
+    h('p', { style: { margin: 0, color: 'var(--text-1)', fontSize: 'var(--type-label)', lineHeight: '1.35' } }, h('b', {}, `${cap(c.mallow)}: `), c.text));
     const bye = () => { if (activeCameo === bye) activeCameo = null; el.style.transition = 'opacity 280ms'; el.style.opacity = '0'; setTimeout(() => el.remove(), 300); };
     el.onclick = bye;
     dismissCameo();
@@ -677,8 +677,8 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     const items = recs.map((r) => h('button', { class: 'choice', 'data-lens': r.id, style: { display: 'flex', gap: '12px', alignItems: 'center', width: '100%', padding: '11px 14px' } },
       lensOrb(r.id, compact() ? 38 : 44),
       h('span', { style: { minWidth: '0' } },
-        h('b', { style: { display: 'block', fontSize: '16px' } }, r.name),
-        h('span', { style: { display: 'block', marginTop: '2px', color: 'var(--text-2)', fontSize: '13.5px', fontWeight: '500', lineHeight: '1.35' } }, r.reason))));
+        h('b', { style: { display: 'block', fontSize: 'var(--type-body)' } }, r.name),
+        h('span', { style: { display: 'block', marginTop: '2px', color: 'var(--text-2)', fontSize: 'var(--type-label)', fontWeight: '500', lineHeight: '1.35' } }, r.reason))));
     const skip = h('button', { class: 'btn ghost block' }, round ? 'On to my next move' : 'Skip — on to my next move');
     dock.replaceChildren(...items, skip);
     const orbs = recs.map((r, i) => {
@@ -772,8 +772,8 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     const stopQ = h('p', { style: { margin: '4px 0 0', fontWeight: '700', color: 'var(--text-1)', fontSize: compact() ? '14.5px' : '15.5px', lineHeight: '1.3' } });
     const row = h('div', { class: 'chips scroll', role: 'group', 'aria-label': 'Lines that might be true for you', style: { margin: '10px -14px 0', padding: '2px 14px 4px', scrollSnapType: 'x proximity', scrollPadding: '0 14px', gap: '8px' } });
     const promptCard = h('div', { class: 'card', style: { padding: '12px 14px 10px', boxShadow: 'none', minWidth: '0', overflow: 'hidden' } }, stopEye, stopQ, row);
-    const zin = h('button', { class: 'icon-btn', 'aria-label': 'Zoom in', style: { fontSize: '22px', fontWeight: '700' } }, '+');
-    const zout = h('button', { class: 'icon-btn', 'aria-label': 'Zoom out', style: { fontSize: '22px', fontWeight: '700' } }, '−');
+    const zin = h('button', { class: 'icon-btn', 'aria-label': 'Zoom in', style: { fontSize: 'var(--type-world)', fontWeight: '700' } }, '+');
+    const zout = h('button', { class: 'icon-btn', 'aria-label': 'Zoom out', style: { fontSize: 'var(--type-world)', fontWeight: '700' } }, '−');
     const slider = h('input', { type: 'range', class: 'range', min: '0', max: String(N * 100), step: '1', value: '0', 'aria-label': 'Zoom level, from this moment to the whole picture', style: { flex: '1', minWidth: '0', accentColor: '#39f0ff' } });
     const doneBtn = h('button', { class: 'btn ultra block', disabled: true }, 'Done zooming');
     dock.replaceChildren(promptCard, h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', minWidth: '0' } }, zin, slider, zout), doneBtn);
@@ -869,7 +869,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
       stopQ.textContent = k ? zp.question : 'Right now this moment fills the whole view.';
       row.replaceChildren();
       if (!k) {
-        row.append(h('button', { class: 'choice', style: lineStyle(), onclick: () => goTo(1) }, h('b', {}, 'Pull back to today →'), h('span', { style: { display: 'block', color: 'var(--text-2)', fontSize: '13px', fontWeight: '500', marginTop: '2px' } }, 'Or pinch, drag up, or use the slider.')));
+        row.append(h('button', { class: 'choice', style: lineStyle(), onclick: () => goTo(1) }, h('b', {}, 'Pull back to today →'), h('span', { style: { display: 'block', color: 'var(--text-2)', fontSize: 'var(--type-label)', fontWeight: '500', marginTop: '2px' } }, 'Or pinch, drag up, or use the slider.')));
       } else {
         for (const line of zp.lines) {
           const on = chosen.get(S.id).includes(line.text);
@@ -1007,7 +1007,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     const tagStyle = (col) => ({ font: '800 10px/1.2 var(--font-ui)', letterSpacing: '.13em', textTransform: 'uppercase', color: col, marginBottom: '4px' });
     const knownTag = h('div', { style: tagStyle('#9ff4ff') }, 'Known');
     const predTag = h('div', { style: tagStyle('#d9c2ff') }, 'Predicted');
-    const listStyle = { fontSize: '12px', lineHeight: '1.3', color: 'var(--text-1)', maxWidth: '100%', overflow: 'hidden' };
+    const listStyle = { fontSize: 'var(--type-label)', lineHeight: '1.3', color: 'var(--text-1)', maxWidth: '100%', overflow: 'hidden' };
     const knownList = h('div', { style: listStyle });
     const predList = h('div', { style: { ...listStyle, color: '#efe4ff' } });
     knownHalf.append(knownTag, knownList);
@@ -1060,7 +1060,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     let idx = 0;
     const srcTag = h('div', { class: 'eyebrow', style: { color: '#d9c2ff' } });
     const ptext = h('div', { style: { fontWeight: '700', fontSize: '16.5px', lineHeight: '1.3', color: 'var(--text-1)', marginTop: '4px' } });
-    const count = h('div', { class: 'muted', style: { marginTop: '6px', fontSize: '12.5px' } });
+    const count = h('div', { class: 'muted', style: { marginTop: '6px', fontSize: 'var(--type-label)' } });
     const pcard = h('div', { class: 'card', role: 'group', style: { padding: '12px 14px', boxShadow: 'none', touchAction: 'none', cursor: 'grab', position: 'relative', zIndex: '2', userSelect: 'none', WebkitUserSelect: 'none' } }, srcTag, ptext, count);
     const mkB = (label, col, side) => h('button', { class: 'btn', style: { minHeight: '48px', fontSize: innerWidth < 360 ? '12.5px' : '13.5px', padding: '0 4px', borderColor: col }, onclick: () => sort(side) }, label);
     const bKnown = mkB('Known ↑', '#39f0ff', 'known'), bPred = mkB('Predicted ↓', '#c48cff', 'predicted'), bUnsure = mkB(C.unsureLabel || 'Not sure', '#ffd98a', 'unsure');
@@ -1091,7 +1091,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
       showPiece();
     }
     function mkGhost(r, t) {
-      return h('div', { 'aria-hidden': 'true', style: { position: 'fixed', left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, padding: '12px 14px', borderRadius: '20px', color: '#fff', fontWeight: '700', fontSize: '16px', lineHeight: '1.3',
+      return h('div', { 'aria-hidden': 'true', style: { position: 'fixed', left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, padding: '12px 14px', borderRadius: '20px', color: '#fff', fontWeight: '700', fontSize: 'var(--type-body)', lineHeight: '1.3',
         background: 'linear-gradient(135deg, rgba(57,240,255,.28), rgba(196,20,230,.34))', border: '1px solid rgba(255,255,255,.45)', boxShadow: '0 14px 40px rgba(10,0,40,.55)',
         backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', pointerEvents: 'none', zIndex: '5' } }, t);
     }
@@ -1191,7 +1191,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     arc.style.opacity = '1';
     const num = h('div', { 'aria-hidden': 'true', style: { font: '700 34px/1 var(--font-display)', color: '#ffd98a', minWidth: '2.2em', textAlign: 'right' } }, '–');
     const sure = h('input', { type: 'range', class: 'range', min: '0', max: '100', step: '1', value: '50', 'aria-label': C.sureQuestion, style: { flex: '1', minWidth: '0' } });
-    const band = h('p', { 'aria-live': 'polite', style: { margin: '8px 0 0', color: 'var(--text-2)', fontSize: '14px', minHeight: '2.6em' } }, 'Slide to show how sure it feels. You can leave it if you’d rather not.');
+    const band = h('p', { 'aria-live': 'polite', style: { margin: '8px 0 0', color: 'var(--text-2)', fontSize: 'var(--type-label)', minHeight: '2.6em' } }, 'Slide to show how sure it feels. You can leave it if you’d rather not.');
     const sealBtn = h('button', { class: 'btn', style: { fontSize: innerWidth < 360 ? '14px' : '15px' } }, 'Seal for later');
     const carry = h('button', { class: 'btn ultra', style: { fontSize: innerWidth < 360 ? '14px' : '15px' } }, 'Carry on');
     dock.replaceChildren(h('div', { class: 'card', style: { padding: '12px 14px', boxShadow: 'none' } },
@@ -1218,7 +1218,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
       dismissCameo();
       let when = 'month';
       const chips = h('div', { role: 'group', 'aria-label': C.sealQuestion, style: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginTop: '8px' } }, ...LX.SEAL_WHEN.map((w) => {
-        const c = h('button', { class: 'chip', 'aria-pressed': String(w.id === when), style: { justifyContent: 'center', textAlign: 'center', padding: '4px 6px', fontSize: '13px', lineHeight: '1.15', whiteSpace: 'normal' } }, w.label);
+        const c = h('button', { class: 'chip', 'aria-pressed': String(w.id === when), style: { justifyContent: 'center', textAlign: 'center', padding: '4px 6px', fontSize: 'var(--type-label)', lineHeight: '1.15', whiteSpace: 'normal' } }, w.label);
         c.onclick = () => { when = w.id; chips.querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', String(x === c))); audio.ui?.('select'); };
         return c;
       }));
@@ -1303,7 +1303,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     const meterBand = h('span', { style: { font: '800 10.5px/1 var(--font-ui)', letterSpacing: '.14em', textTransform: 'uppercase', color: '#ff9cf0' } });
     const fill = h('i', { style: { transition: rm ? 'none' : 'width 420ms var(--ease-out)' } });
     const meter = h('div', { class: 'meter', role: 'meter', 'aria-label': 'How heavy the sentence sounds', 'aria-valuemin': '0', 'aria-valuemax': '100', style: { height: '10px', marginTop: '6px', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.12)' } }, fill);
-    const caption = h('p', { style: { margin: '10px auto 0', maxWidth: '34ch', color: 'var(--text-2)', fontSize: '13.5px', minHeight: '1.4em', transition: 'opacity 300ms' } });
+    const caption = h('p', { style: { margin: '10px auto 0', maxWidth: '34ch', color: 'var(--text-2)', fontSize: 'var(--type-label)', minHeight: '1.4em', transition: 'opacity 300ms' } });
     const meterWrap = h('div', { style: { margin: '14px auto 0', maxWidth: '300px', textAlign: 'left' } }, h('div', { style: { display: 'flex', justifyContent: 'space-between', gap: '8px' } }, meterLbl, meterBand), meter);
     block.append(sentence, meterWrap, caption);
     stageEl.append(block);
@@ -1391,7 +1391,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
       svg.append(pointer);
       const btn = h('button', { class: 'icon-btn', style: { width: `${size + 10}px`, height: `${size + 10}px`, touchAction: 'none', background: 'radial-gradient(circle, rgba(196,20,230,.25), rgba(20,10,50,.6))', boxShadow: '0 0 24px rgba(196,20,230,.35)' } }, svg);
       const word = h('div', { 'aria-hidden': 'true', style: { font: '800 9.5px/1.1 var(--font-ui)', letterSpacing: '.12em', textTransform: 'uppercase', color: '#ff9cf0', marginTop: '6px', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, E.dialKey(d));
-      const now = h('div', { 'aria-hidden': 'true', style: { fontSize: '12px', color: 'var(--text-1)', marginTop: '2px', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } });
+      const now = h('div', { 'aria-hidden': 'true', style: { fontSize: 'var(--type-label)', color: 'var(--text-1)', marginTop: '2px', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } });
       const wrap = h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', flex: '0 1 112px', minWidth: '0', textAlign: 'center' } }, btn, word, now);
       let suppress = false;
       btn.addEventListener('click', () => { if (suppress) { suppress = false; return; } turn(i, 1, true); });

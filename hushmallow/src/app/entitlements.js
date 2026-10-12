@@ -1,7 +1,11 @@
 // Subscription entitlements: exactly two paid tiers.
 //
-//   paid  — HUSHMALLOW: the Mallows, the Hushfold, the ritual library.
-//   ultra — HUSHMALLOW ULTRA: everything in paid + Another Angle (Reframe).
+//   paid  — shown as HUSHMALLOW FLOW: the Mallows, Hushflow worlds, rituals.
+//   ultra — shown as HUSHMALLOW BEYOND: everything in Flow + Another Angle.
+//
+// The internal ids ('paid', 'ultra') and every App Store product id are
+// unchanged so existing purchases, receipts and the native bridge keep
+// working. Only the names people see changed; planName() is the adapter.
 //
 // Enforcement points (not just hidden buttons):
 //   * the router refuses to start any ritual without `paid` (or `ultra`)
@@ -18,31 +22,38 @@
 
 export const PLANS = {
   paid: {
-    id: 'paid', name: 'Hushmallow', tagline: 'Your second brain for feelings.',
+    id: 'paid', name: 'Hushmallow Flow', short: 'Flow', tagline: 'A little more room for your feelings.',
     productIds: { monthly: 'hushmallow.paid.monthly', yearly: 'hushmallow.paid.yearly' },
     includes: [
-      'All seven living Mallows and their reactions',
-      'The Hushfold: seven realms that respond to how you feel',
+      'All seven squeezable Mallows and their reactions',
+      'Hushflow worlds that respond to how you play, like the Static Storm and the Luminous Ocean',
+      'Your own words, and up to 7 photos if you like (they never leave your phone)',
+      'The Memory Garden for the tools you discover',
       'Over 1,000 interactive touch rituals for the whole A–Z of feelings',
-      'Your own words and up to 7 of your own photos inside the ritual (they never leave your phone)',
-      'Suggestions that rotate so things stay fresh',
-      'Favourites and optional private history',
-      'New rituals as the library grows',
+      'Favourites, Auto-flow and optional private history',
     ],
   },
   ultra: {
-    id: 'ultra', name: 'Hushmallow Ultra', tagline: 'See your thoughts in a different light.',
+    id: 'ultra', name: 'Hushmallow Beyond', short: 'Beyond', tagline: 'There’s more than one way to see it.',
     productIds: { monthly: 'hushmallow.ultra.monthly', yearly: 'hushmallow.ultra.yearly' },
     includes: [
-      'Everything in Hushmallow',
-      'Another Angle: separate what happened from what your brain added',
-      'Evidence orbits, perspective portals and plot twists for real situations',
-      'Authored frameworks for work, friends, family, love, rejection and more',
-      'Fact or fiction, thought X-rays and conversation practice',
-      'Plan your next move and save the angles you found',
+      'Everything in Hushmallow Flow',
+      'Another Angle: separate what happened from what your mind added',
+      'Gentle reframing with evidence orbits, perspective portals and plot twists',
+      'Alternative perspectives for work, friends, family, love, rejection and more',
+      'Fact or interpretation, thought X-rays and conversation practice',
+    ],
+    planned: [
+      'Belief Mallows you can investigate',
+      'perspective worlds built for Another Angle',
     ],
   },
 };
+
+/** Display adapter: internal tier id → the plan name people see. */
+export function planName(tier) {
+  return PLANS[tier]?.name || 'Hushmallow';
+}
 
 import { testPurchasesAllowed } from './config.js';
 
@@ -124,7 +135,7 @@ export function requireEntitlement(ent, need) {
   if (!ent.has(need)) throw new EntitlementError(need);
 }
 
-/** The only way Ultra code/content gets loaded. */
+/** The only way Beyond (ultra) code/content gets loaded. */
 export async function loadUltra(ent) {
   requireEntitlement(ent, 'ultra');
   const [angle, frameworks, engine] = await Promise.all([

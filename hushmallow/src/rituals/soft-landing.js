@@ -196,7 +196,7 @@ export async function run(ctx) {
     // own words / label under the stone
     if (S.label) {
       const ly = S.y + r * 1.25 + 16 + S.layers.length * 6;
-      g.font = '650 13px ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
+      g.font = '650 13px "Nunito Sans", ui-rounded, system-ui, sans-serif';
       g.textAlign = 'center'; g.textBaseline = 'middle';
       const lines = wrap(S.label, Math.min(W * 0.42, 170)).slice(0, 3);
       if (ly + lines.length * 16 > S.labelMax) return;

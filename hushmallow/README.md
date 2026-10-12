@@ -3,15 +3,19 @@
 A mobile-first web app (plain ES modules, no build step, no AI) with seven
 living Mallows, the Hushfold fantasy world, and two paid experiences:
 
-- **Hushmallow** (paid): express a feeling (and, if you like, add up to 7
-  of your own photos), meet a Mallow, play one of **1,000 interactive touch
-  rituals** with your own words and photos inside it, keep playing as long
-  as it helps, notice how it feels. Plus ten signature rituals.
-- **Hushmallow Ultra**: everything above, plus **Another Angle** (Reframe):
-  separate what happened from what your brain added, weigh the evidence and
-  try other plausible explanations.
+- **The Hushfold home**: open the app and a Mallow is right there to
+  squeeze, stretch, flick and jiggle. Tell it what's on your mind and your
+  exact words become a Thought Mallow you play with through Hushflow worlds
+  (Glitzi's Static Storm, Loomi's Luminous Ocean). Tools you discover go in
+  your Memory Garden. See `docs/HUSHFOLD.md`.
+- **Hushmallow Flow** ("A little more room for your feelings."): the
+  Mallows, Hushflow worlds, your own words and up to 7 photos, and over
+  1,000 interactive touch rituals.
+- **Hushmallow Beyond** ("There's more than one way to see it."):
+  everything in Flow, plus **Another Angle**, which helps you separate what
+  happened from what your mind added and try other plausible explanations.
 
-See `docs/STATUS.md` for what's done, what's left and what needs you.
+See `docs/HUSHFOLD.md` for the new home and `docs/STATUS.md` for what's done, what's left and what needs you.
 
 ## Run it
 
@@ -25,6 +29,7 @@ Then open on your computer or phone (same Wi-Fi, use your computer's IP):
 | Page | What it is |
 |---|---|
 | `http://localhost:8000/hushmallow/index.html` | The app |
+| `http://localhost:8000/hushmallow/touch-lab.html?m=glitzi` | MallowTouch lab: squeeze one Mallow on its own |
 | `http://localhost:8000/hushmallow/studio.html` | Mallow Emotion Studio (every Mallow × every expression, touch, transition tests) |
 | `http://localhost:8000/hushmallow/realms.html` | The seven Hushfold realms with mood controls |
 | `http://localhost:8000/hushmallow/sound-lab.html` | Every Mallow sound, ritual sound and realm ambience |

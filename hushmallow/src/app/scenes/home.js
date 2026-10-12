@@ -29,13 +29,14 @@ export default function home(app, params = {}) {
     h('span', {}, subscribed ? 'What’s on your mind?' : 'Start Hushmallow'), h('span', { class: 'go', 'aria-hidden': 'true' }, icon('arrow')));
   const quick = h('div', { class: 'chips scroll', role: 'group', 'aria-label': 'Quick feelings' },
     ...QUICK.map(([eid, label]) => h('button', { class: 'chip', onclick: () => start(eid) }, label)));
-  const ultra = h('button', { class: 'ultra-card', onclick: () => openUltra(), 'aria-label': 'Hushmallow Ultra: Another Angle. See your thoughts in a different light.' },
+  const ultra = h('button', { class: 'ultra-card', onclick: () => openUltra(), 'aria-label': 'Hushmallow Beyond: Another Angle. There’s more than one way to see it.' },
     h('div', { class: 'spiral', 'aria-hidden': 'true' }),
-    h('div', {}, h('span', { class: 'badge' }, 'ULTRA'), h('div', { class: 't' }, 'Another Angle'), h('div', { class: 's' }, 'See your thoughts in a different light.')));
+    h('div', {}, h('span', { class: 'badge' }, 'BEYOND'), h('div', { class: 't' }, 'Another Angle'), h('div', { class: 's' }, 'There’s more than one way to see it.')));
 
   const el = h('div', { class: 'home', style: { display: 'flex', flexDirection: 'column', height: '100%' } },
     h('div', { class: 'topbar' },
-      h('div', { class: 'brand' }, h('span', { class: 'dot' }), 'Hushmallow'), h('div', { class: 'grow' }),
+      // this screen now sits behind the Hushfold home, so it leads back there
+      iconBtn('back', 'Back to the Hushfold', () => { clearBubble(); app.back(); }), h('div', { class: 'grow' }),
       subscribed ? iconBtn('journey', 'Your journey', () => { clearBubble(); app.go('journey'); }) : null,
       subscribed ? iconBtn('star', 'Saved rituals', () => { clearBubble(); app.go('library', { tab: 'saved' }); }) : null,
       subscribed ? iconBtn('library', 'Library: every ritual', () => { clearBubble(); app.go('library'); }) : null,

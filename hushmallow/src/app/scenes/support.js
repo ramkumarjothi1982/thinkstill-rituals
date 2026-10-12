@@ -12,7 +12,7 @@ export const SUPPORT_LINES = [
 export function openSupport(app, { urgent = false } = {}) {
   app.world?.setStage?.('comforting');
   const body = h('div', {},
-    h('p', { style: { margin: '0 0 12px', fontSize: '17px', lineHeight: '1.45' } }, urgent
+    h('p', { style: { margin: '0 0 12px', fontSize: 'var(--type-body)', lineHeight: '1.45' } }, urgent
       ? 'What you wrote sounds really heavy. You deserve to talk to a real person right now. If you might act on thoughts of hurting yourself, please contact emergency services or a crisis line.'
       : 'If things feel like too much, talking to a real person can help. These are free and confidential.'),
     ...SUPPORT_LINES.map((l) => h('div', { class: 'card', style: { padding: '14px', marginTop: '10px', boxShadow: 'none' } },

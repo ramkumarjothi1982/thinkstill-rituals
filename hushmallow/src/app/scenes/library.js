@@ -36,7 +36,7 @@ export default function library(app, params = {}) {
   const el = h('div', { style: { display: 'flex', flexDirection: 'column', height: '100%' } },
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' }), countEl),
     h('div', { class: 'card', style: { marginTop: '10px', padding: '14px', display: 'flex', flexDirection: 'column', minHeight: '0', flex: '1' } },
-      h('h1', { class: 'title', style: { fontSize: '26px' } }, 'Library'),
+      h('h1', { class: 'title', style: { fontSize: 'var(--type-world)' } }, 'Library'),
       h('p', { class: 'muted', style: { margin: '4px 0 0' } }, 'Everything in your plan. Tap one to play it.'),
       tabs,
       h('div', { style: { marginTop: '10px' } }, search),
@@ -88,7 +88,7 @@ export default function library(app, params = {}) {
     const xs = filtered();
     const rows = xs.slice(0, shown).map((x) => h('button', { class: 'emo-row', role: 'listitem', 'aria-label': `${x.name}, ${MALLOWS[x.mallow].name}, ${x.catLabel}${played.has(x.id) ? ', played' : ''}`, onclick: () => play(x) },
       h('div', { style: { minWidth: '0' } },
-        h('div', { class: 'n' }, x.name, x.ultra ? h('span', { class: 'badge', style: { marginLeft: '8px', fontSize: '10px', padding: '2px 7px', borderRadius: '999px', background: 'linear-gradient(120deg,#7a3cff,#c414e6)', color: '#fff', verticalAlign: '2px' } }, 'ULTRA') : null),
+        h('div', { class: 'n' }, x.name, x.ultra ? h('span', { class: 'badge', style: { marginLeft: '8px', fontSize: 'var(--type-label)', padding: '2px 7px', borderRadius: '999px', background: 'linear-gradient(120deg,#7a3cff,#c414e6)', color: '#fff', verticalAlign: '2px' } }, 'BEYOND') : null),
         h('div', { class: 'b' }, `${MALLOWS[x.mallow].name} · ${x.catLabel} · ~${x.mins} min`),
         h('div', { class: 'b', style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, x.sub)),
       h('span', { class: 'tick', 'aria-hidden': 'true', style: played.has(x.id) ? { background: 'var(--accent)', borderColor: 'transparent', color: 'var(--text-on-accent)' } : {} }, played.has(x.id) ? '✓' : '')));

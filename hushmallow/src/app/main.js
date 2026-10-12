@@ -85,7 +85,8 @@ window.addEventListener('popstate', (e) => {
 });
 
 const SCENES = {
-  home: () => import('./scenes/home.js'),
+  home: () => import('./scenes/hushfold.js'),
+  rituals: () => import('./scenes/home.js'),
   express: () => import('./scenes/express.js'),
   encounter: () => import('./scenes/encounter.js'),
   ritual: () => import('./scenes/ritual.js'),
