@@ -32,9 +32,10 @@ export const meta = {
   finaleSec: 4.2,
 };
 
-const S1 = 0.32;                  // share of progress for the grille slide; the rest is the vent
+const S1 = 1 / 3;                 // share of progress for the grille slide; the rest is the vent
 const BANK = 0.035;               // how far input may run ahead of the gated state
-const SLIDE_STEPS = 3, VENT_STEPS = 5;
+const SLIDE_STEPS = 3, VENT_STEPS = 6;   // 9 presses of 1/9 each (lines up with three-beat and pause laws)
+const RDF = 0.15;                 // vent dial radius as a share of the tray width
 const K = 7;                      // ember slots under the grille's rings
 const BLADES = 7;                 // iris blades in the vent
 const H_LOW = 0.2;                // the steady ruby heat at the low mark
@@ -55,7 +56,7 @@ export function create(E) {
   const SWEEP = R1 ? 2.2 : 2.0 + E.rand() * 0.4;   // vent travel (rad, anticlockwise)
   const A0 = -Math.PI / 2 + SWEEP / 2, A1 = A0 - SWEEP;
   const hStart = (heavy ? 0.86 : 1) - calm0 * 0.35;
-  const agit = (heavy ? 0.62 : 1) * (1 - calm0 * 0.5) * (reduced ? 0.5 : 1);
+  const agit = (heavy ? 0.62 : 1) * (1 - calm0 * 0.5) * (reduced ? 0.5 : 1) * (lowStim ? 0.75 : 1);
 
   // ---- colours: embers are always orange → ruby; metal and light follow the realm
   const RUBY = mix(rubyBase, pal.accent, 0.1);
@@ -105,6 +106,9 @@ export function create(E) {
   crustGrad.addColorStop(0, mix('#3c2622', pal.deep, 0.2)); crustGrad.addColorStop(0.6, '#1a0c0a'); crustGrad.addColorStop(1, '#090405');
   const pearlGrad = g.createRadialGradient(-0.3, -0.35, 0.1, 0, 0, 1);
   pearlGrad.addColorStop(0, '#4a2a22'); pearlGrad.addColorStop(0.55, '#1e0e0a'); pearlGrad.addColorStop(1, '#0c0506');
+  // spherical shading for the ember pearls: clear centre, deep rim (unit circle, cached)
+  const shadeGrad = g.createRadialGradient(-0.28, -0.34, 0.15, 0, 0, 1);
+  shadeGrad.addColorStop(0, 'rgba(0,0,0,0)'); shadeGrad.addColorStop(0.62, 'rgba(24,2,8,0.12)'); shadeGrad.addColorStop(1, 'rgba(24,2,8,0.62)');
 
   // ---- ember slots: photos (or ember pearls) framed by the grille's rings
   const n = photos.n;
@@ -117,7 +121,7 @@ export function create(E) {
 
   // ---- geometry
   let BW, BH, rim, rw, railX, GW, GH, SL, gy0, gy1, hh, hw, Rd, Ri, bx, by, dx, dy;
-  let fw, bandH, rowH, cellR, ringW, wSize = 13, wLines = 1, side = false;
+  let fw, bandH, rowH, cellR, ringW, wSize = 13, wLines = 1, side = false, tokenAt = null;
   let hearthC = null, vignC = null, grilleC = null, hotC = null, rubyC = null;
   const hearthO = { x: 0, y: 0, w: 1, h: 1 };
   let gW = 1, gH = 1, gOX = 0, gOY = 0;
@@ -135,15 +139,17 @@ export function create(E) {
 
   function fit() {
     // stacked (tall stages) or vent beside the tray (short stages): whichever lets the hearth be bigger
-    const BWv = Math.min(stage.w * 0.82, (stage.h * 0.95) / 1.8), BWs = Math.min((stage.w * 0.95) / 1.7, (stage.h * 0.95) / 1.3);
+    // heights in tray widths: crossbar headroom 0.044 + grille 0.582 + tray 0.65 + handle 0.05 (+ dial 3.08 Rd)
+    const HS = 1.326, SW = 1.09 + 3.53 * RDF;
+    const BWv = Math.min(stage.w * 0.84, (stage.h * 0.98) / (HS + 3.08 * RDF)), BWs = Math.min((stage.w * 0.96) / SW, (stage.h * 0.97) / HS);
     side = BWs > BWv * 1.08;
     BW = side ? BWs : BWv;
     BH = BW * 0.56; rim = BW * 0.045; rw = Math.max(3, BW * 0.013);
     railX = BW / 2 + rim * 0.55; GW = 2 * railX - rw * 1.4; GH = BH * 1.04; hh = GH * 0.085; hw = GW * 0.22;
-    Rd = BW * 0.17; Ri = Rd * 0.74;
-    const T = GH + BH + 2 * rim + hh + (side ? 0 : 3.08 * Rd);
-    const top = stage.y + (stage.h - T) / 2;
-    bx = side ? stage.x + (stage.w - BW * 1.69) / 2 + BW / 2 + rim : stage.cx;
+    Rd = BW * RDF; Ri = Rd * 0.74;
+    const T = 3.4 * rw + GH + BH + 2 * rim + hh + (side ? 0 : 3.08 * Rd);
+    const top = stage.y + (stage.h - T) / 2 + 3.4 * rw;
+    bx = side ? stage.x + (stage.w - BW * SW) / 2 + BW / 2 + rim : stage.cx;
     gy0 = top + GH / 2; SL = GH / 2 + BH / 2 + rim; by = gy0 + SL; gy1 = by;
     if (side) { dx = bx + BW / 2 + rim + Rd * 0.25 + 1.64 * Rd; dy = by + BH * 0.12; }
     else { dx = bx; dy = by + BH / 2 + rim + hh + 1.42 * Rd; }
@@ -154,14 +160,15 @@ export function create(E) {
   function buildSlots() {
     fw = Math.max(4, GW * 0.028);
     // the words decide the band: one line if it fits, else two
-    g.save(); g.font = `600 13px ${FONT}`; const tw = g.measureText(words.token || '').width; g.restore();
+    tokenAt = words.token || '';
+    g.save(); g.font = `600 13px ${FONT}`; const tw = g.measureText(tokenAt).width; g.restore();
     wLines = tw > GW * 0.8 ? 2 : 1;
     bandH = Math.max(wLines === 2 ? 36 : 28, GH * 0.18);
     wSize = wLines === 2 ? Math.max(12, Math.min(14, bandH * 0.36)) : clamp(bandH * 0.44, 12, 16);
     rowH = (GH - 2 * fw - bandH) / 2;
     const nTop = flipRows ? 3 : 4, nBot = K - nTop, pitch = (GW - 2 * fw) / 4.25;
-    cellR = Math.max(8, Math.min(rowH * 0.42, pitch * 0.4));
-    ringW = Math.max(2.5, cellR * 0.15);
+    cellR = Math.max(8, Math.min(rowH * 0.47, pitch * 0.41));   // rings may just touch the band and frame
+    ringW = Math.max(2.2, cellR * 0.12);
     for (let i = 0; i < K; i++) {
       const top = i < nTop, j = top ? i : i - nTop, cnt = top ? nTop : nBot;
       slots[i].x = (j - (cnt - 1) / 2) * pitch;
@@ -187,7 +194,7 @@ export function create(E) {
     const c = hearthC.getContext('2d');
     c.setTransform(dpr, 0, 0, dpr, -hearthO.x * dpr, -hearthO.y * dpr);
     shadow(c, bx, by + BH * 0.6, BW * 0.68, BH * 0.24, 0.55);
-    shadow(c, dx, dy + Rd * 1.62, Rd * 1.9, Rd * 0.34, 0.45);
+    shadow(c, dx, dy + Rd * 1.36, Rd * 1.9, Rd * 0.3, 0.45);
     // vent housing below the tray: a neck and a round iron plate
     const PR = Rd * 1.64, py0 = by + BH / 2;
     const pg = c.createLinearGradient(dx - PR, dy - PR, dx + PR * 0.6, dy + PR);
@@ -211,6 +218,11 @@ export function create(E) {
     // rails the grille rides on
     const ry0 = gy0 - GH / 2 - rw * 2, ry1 = by + BH / 2 + rim * 0.3;
     c.lineCap = 'round';
+    // a gently arched copper crossbar caps the rails, so the grille hangs ready beneath it
+    const bar = (w, col, oy = 0, ox = 0) => { c.strokeStyle = col; c.lineWidth = w; c.beginPath(); c.moveTo(bx - railX + ox, ry0 + oy); c.quadraticCurveTo(bx + ox, ry0 - rw * 0.8 + oy, bx + railX + ox, ry0 + oy); c.stroke(); };
+    bar(rw * 1.5, 'rgba(0,0,0,0.3)', 3, 1.5); bar(rw * 1.25, CU_D, 0.3); bar(rw * 0.9, CU_M); bar(rw * 0.28, rgba(CU_H, 0.75), -rw * 0.22);
+    for (const sx of [-0.5, 0.5]) orb(c, bx + sx * railX, ry0 - rw * 0.3, rw * 0.62, CU_M, { light: CU_H });
+    orb(c, bx, ry0 - rw * 0.4, rw * 1.0, CU_M, { light: CU_H });
     for (const sx of [-1, 1]) {
       const x = bx + sx * railX;
       c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = rw * 1.7; c.beginPath(); c.moveTo(x + 1.5, ry0 + 3); c.lineTo(x + 1.5, ry1 + 3); c.stroke();
@@ -342,6 +354,7 @@ export function create(E) {
 
   // --------------------------------------------------------- simulation --
   function frame(dt, t) {
+    if ((words.token || '') !== tokenAt) fit();      // the person edited their words: re-cut the band
     // ---- input → gated state
     if (assistTo != null) {
       const lim = docked ? assistTo : Math.min(assistTo, S1);
@@ -451,19 +464,22 @@ export function create(E) {
   }
 
   function drawPearl(x, y, r, h, k) {
+    // hot: a bright coal with charred patches and glowing cracks; cooled: a smooth, steadily glowing ruby bead
+    const hot = smooth(invLerp(0.28, 0.85, h));
     g.save(); g.translate(x, y); g.scale(r, r);
-    g.fillStyle = hc(h * 0.72); g.beginPath(); g.arc(0, 0, 1, 0, TAU); g.fill();
-    glow(g, -0.1, -0.12, 1.05, hc(h + 0.12), 0.6 + 0.35 * h);
-    g.globalAlpha = 0.55 - 0.25 * h; g.fillStyle = pearlGrad; g.fill(emb[k].ash);
-    g.globalAlpha = 0.5; g.strokeStyle = 'rgba(28,5,6,0.8)'; g.lineWidth = 0.07; g.beginPath(); g.arc(0, 0, 0.97, 0, TAU); g.stroke();
+    g.fillStyle = hc(h * 0.62); g.beginPath(); g.arc(0, 0, 1, 0, TAU); g.fill();
+    glow(g, -0.06, -0.08, 1.0, hc(h + 0.14), 0.55 + 0.4 * h);
+    g.fillStyle = shadeGrad; g.beginPath(); g.arc(0, 0, 1, 0, TAU); g.fill();
+    if (hot > 0.02) { g.globalAlpha = 0.5 * hot; g.fillStyle = pearlGrad; g.fill(emb[k].ash); }
     g.globalCompositeOperation = 'lighter';
-    g.strokeStyle = hc(h + 0.25); g.globalAlpha = 0.45 + 0.45 * h; g.lineWidth = 0.065; g.stroke(emb[k].cracks);
-    g.globalAlpha = 0.18; g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(-0.32, -0.42, 0.32, 0.13, -0.5, 0, TAU); g.fill();
+    if (hot > 0.02) { g.strokeStyle = hc(h + 0.25); g.globalAlpha = 0.75 * hot; g.lineWidth = 0.065; g.stroke(emb[k].cracks); }
+    g.globalAlpha = 0.14 + 0.3 * (1 - hot); g.strokeStyle = ROSE; g.lineWidth = 0.08; g.beginPath(); g.arc(0, 0, 0.9, Math.PI * 0.15, Math.PI * 0.85); g.stroke();
+    g.globalAlpha = 0.16 + 0.12 * (1 - hot); g.fillStyle = '#ffffff'; g.beginPath(); g.ellipse(-0.32, -0.42, 0.32, 0.13, -0.5, 0, TAU); g.fill();
     g.restore();
   }
 
   function drawEmbers(t, flick, steady, sync, fin) {
-    const d0 = cellR * 2 * 0.94;
+    const d0 = cellR * 2 + ringW * 0.6;   // fills its ring: the copper frames the photo's edge
     for (let k = 0; k < K; k++) {
       const s = slots[k], m = emb[k], x = bx + s.x, y = by + s.y, ph = slotPh[k];
       const n1 = nz(k * 9.7 + t * 0.9 * (reduced ? 0.5 : 1), 4.2 + k);
@@ -478,7 +494,7 @@ export function create(E) {
         g.strokeStyle = rgba(hc(hk + 0.1), 0.3 + 0.35 * hk + steady * 0.15); g.lineWidth = Math.max(1.5, cellR * 0.07);
         g.beginPath(); g.arc(x, y, d / 2 - 1, 0, TAU); g.stroke(); g.restore();
         if (m.e > 0.3 && flick > 0.05) glow(g, x, y, d * 0.5, hc(hk), 0.12 * m.e * flick * (0.6 + 0.4 * n1));
-      } else drawPearl(x, y, cellR * 0.9 * (1 + lift), hk, k);
+      } else drawPearl(x, y, cellR * 0.97 * (1 + lift), hk, k);
     }
   }
 
@@ -490,8 +506,9 @@ export function create(E) {
     hz.addColorStop(0, rgba(hc(heat), a)); hz.addColorStop(1, rgba(hc(heat), 0));
     // slow warm blooms of heat rising from the bed
     for (let i = 0; i < 3; i++) {
-      const k = (t * 0.11 * (reduced ? 0.5 : 1) + i / 3) % 1;
-      glow(g, bx + Math.sin(i * 2.3 + t * 0.3) * BW * 0.2, base - k * hgt, BW * (0.16 + 0.14 * k), hc(heat), 0.11 * Math.sin(k * Math.PI) * (0.3 + 0.7 * heat));
+      const k = (t * 0.11 * (reduced ? 0.5 : 1) + i / 3) % 1, y = base - k * hgt;
+      const r = Math.min(BW * (0.16 + 0.14 * k), (y - stage.y) * 1.3);   // stays inside the stage
+      glow(g, bx + Math.sin(i * 2.3 + t * 0.3) * BW * 0.2, y, r, hc(heat), 0.11 * Math.sin(k * Math.PI) * (0.3 + 0.7 * heat));
     }
     g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round'; g.strokeStyle = hz;
     for (let i = 0; i < 3; i++) {
@@ -686,7 +703,8 @@ export function create(E) {
       drag = null;
     },
     assist() {
-      if (finAt >= 0) return;
+      if (finAt >= 0 || E.phase !== 'play') return;
+      if (E.locked) { refuse(); return; }              // the law asks for a pause: a gentle "not yet"
       const base = assistTo != null ? assistTo : Math.max(wanted, prog);
       if (!docked && base < S1 - 1e-4) {
         const D = S1 / SLIDE_STEPS;

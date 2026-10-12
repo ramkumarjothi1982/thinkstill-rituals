@@ -101,26 +101,28 @@ export function create(E) {
     for (let q = 0; q < 4; q++) { pts[q * 2] = Math.cos(a) * rr; pts[q * 2 + 1] = Math.sin(a) * rr; a += (R() - 0.5) * 0.9; rr = Math.min(0.94, rr + 0.18 + R() * 0.16); }
     return pts;
   });
+  const JAG = 26, jag = new Float32Array(JAG), jc = new Float32Array(JAG), js = new Float32Array(JAG), jx = new Float32Array(JAG), jy = new Float32Array(JAG);
+  for (let i = 0; i < JAG; i++) { const a = (i / JAG) * TAU; jag[i] = R(); jc[i] = Math.cos(a); js[i] = Math.sin(a); }
   const flecks = Array.from({ length: 7 }, (_, i) => ({ d: 0.2 + (i / 7) * 0.75, w: (R() - 0.5) * 0.8, ph: R() * TAU }));
 
   // ---- geometry
   let W, H, X0, Y0, cx, gY, isl, iry, depth, padX, padY, padRx, padRy, mz, cz, fz, orbR, TOL, maxDev, routeLen = 1;
-  let gTop, gFace, gPad, gTag;
+  let gTop, gFace, gPad, gTag, gCrust;
   let tagW = 140, tagH = 40, tagX = 0, tagY = 0, pegX = 0, pegY = 0, wordSize = 13, tokenSeen = null;
   const rx = new Float32Array(N), ry = new Float32Array(N), nx = new Float32Array(N), ny = new Float32Array(N), on = new Float32Array(N);
 
   function fit() {
     W = stage.w; H = stage.h; X0 = stage.x; Y0 = stage.y; cx = stage.cx;
-    mz = clamp(Math.min(W * 0.2, H * 0.17), 38, 86);
-    cz = clamp(Math.min(W * 0.12, H * 0.09), 22, 48);
-    fz = clamp(Math.min(W * 0.125, H * 0.095), 24, 50);
+    mz = clamp(Math.min(W * 0.22, H * 0.18), 40, 90);
+    cz = clamp(Math.min(W * 0.125, H * 0.1), 22, 50);
+    fz = clamp(Math.min(W * 0.125, H * 0.1), 24, 50);
     orbR = mz * 0.5 + cz * 0.62;
     TOL = Math.max(50, 60 * stage.s);
     maxDev = TOL * 0.75;
-    gY = Y0 + H * 0.7;
+    gY = Y0 + H * 0.66;
     isl = Math.min(W * 0.49, 240);
     iry = Math.min(isl * 0.16, H * 0.06);
-    depth = Math.min(H * 0.2, 104);
+    depth = Math.min(H * 0.2, 98);
     padX = cx; padRx = Math.min(W * 0.17, 66); padRy = Math.max(6, Math.min(padRx * 0.3, iry * 0.62)); padY = gY + iry * 0.18;
     // trees on the back rim of the island
     const cr0 = clamp(Math.min(W * 0.097, H * 0.08), 16, 40);
@@ -173,6 +175,8 @@ export function create(E) {
     gFace.addColorStop(0, soilMid); gFace.addColorStop(0.38, soilDark); gFace.addColorStop(1, rgba(soilDark, 0));
     gPad = g.createRadialGradient(padX, padY - padRy * 0.4, 0, padX, padY, padRx);
     gPad.addColorStop(0, mix(soilMid, '#8a5a34', 0.35)); gPad.addColorStop(0.7, soilDark); gPad.addColorStop(1, rgba(soilDark, 0.92));
+    gCrust = g.createRadialGradient(-0.3, -0.36, 0.15, 0, 0, 1);
+    gCrust.addColorStop(0, mix(stoneMid, '#8a7a8a', 0.35)); gCrust.addColorStop(0.8, stoneMid); gCrust.addColorStop(1, stoneDark);
     wordSize = Math.max(12, Math.min(15, W * 0.039));
     tagW = clamp(W * 0.46, 118, 190);
     pegX = padX + padRx * 0.42; pegY = padY + padRy * 0.72;
@@ -197,7 +201,7 @@ export function create(E) {
   let landed = false, landAt = -1, doneFlag = false, finAt = -1, twistAt = -1, heroHalf = false;
   let mx = rx[0], my = ry[0], pmx = NaN, pmy = 0, vx = 0, vy = 0, spd = 0, tdx = ny[0], tdy = -nx[0];
   let orbA = 0, spin = 0, noteStep = -1, lastNote = -9, lastHap = -9, lastWait = -9, lastSwish = -9, lastSpark = -9, sparkAcc = 0;
-  let tugX = 0, tugY = 0, glance = 0, seedPulse = 0, nowT = 0;
+  let tugX = 0, tugY = 0, glance = 0, seedPulse = 0, nowT = 0, lastTwo = -9;
   const wob = new Wobble();
   const tmp = { x: 0, y: 0 }, an = { x: 0, y: 0 }, anc = { ax: 0, ay: 0 }, sg = { sh: 0, sw: 0, sx: 0, sy: 0 };
 
@@ -232,8 +236,10 @@ export function create(E) {
       const k = (i - i0 + 1) / (i1 - i0 + 1), lim = maxDev * taper(i / (N - 1));
       on[i] = clamp(lerp(on[i - 1], clamp(lerp(endOff, off, k), -lim, lim), 0.55), -lim, lim);
     }
-    if (i1 >= i0) endOff = on[i1];
-    if (i1 + 1 < N) { const lim = maxDev * taper((i1 + 1) / (N - 1)); on[i1 + 1] = clamp(endOff, -lim, lim); }
+    if (i1 >= i0) {
+      endOff = on[i1];
+      for (let i = i1 + 1; i < N - 1; i++) { const lim = maxDev * taper(i / (N - 1)); on[i] = clamp(endOff * Math.exp(-(i - i1) / 6), -lim, lim); }
+    }
     on[0] = 0; on[N - 1] = 0;
     laid = s1;
     // micro-payoff: a falling pentatonic note and a tick as each stretch is laid
@@ -401,7 +407,7 @@ export function create(E) {
     for (const c of chips) if (c.st === 0 && Math.sin(c.a0 + orbA) >= 0) drawChip(c, t, fin);
     if (finAt >= 0) drawSprout(t);
     drawFinger(t);
-    if (twistAt >= 0 && twistKind === 1) drawWish(t);
+    if (twistAt >= 0 && twistKind === 1) drawWish(t, dt);
     if (finAt >= 0 && dt > 0) finaleMotes(t, dt);
   }
 
@@ -551,7 +557,7 @@ export function create(E) {
     for (let i = i0; i < N - 1; i += 2) {
       const s = i / (N - 1), w = Math.max(0, 1 - Math.abs(s - wave) * 9);
       g.globalAlpha = 0.24 + 0.46 * w;
-      g.beginPath(); g.arc(rx[i], ry[i], 1.7 + w * 1.6, 0, TAU); g.fill();
+      g.beginPath(); g.arc(rx[i] + nx[i] * on[i], ry[i] + ny[i] * on[i], 1.7 + w * 1.6, 0, TAU); g.fill();
     }
     g.restore();
   }
@@ -719,13 +725,13 @@ export function create(E) {
     g.restore();
   }
   // plot twist (even rounds): a tiny wishing star crosses and settles on a tree
-  function drawWish(t) {
+  function drawWish(t, dt) {
     const k = clamp((t - twistAt) / 2.6), tr = trees[side < 0 ? 3 : 0];
     const ex = tr.x, ey = tr.y - tr.th - tr.cr * 1.25, sx0 = side < 0 ? X0 + W * 0.05 : X0 + W * 0.95, sy0 = Y0 + H * 0.06;
     if (k < 1) {
       const e = ease.inOutSine(k), px = lerp(sx0, ex, e), py = lerp(sy0, ey, e) - Math.sin(e * Math.PI) * H * 0.08;
       glow(g, px, py, 14, '#ffffff', 0.6); glint(g, px, py, 9, '#fff6dc', 0.85, t);
-      if (!low && Math.random() < 0.5) E.particles.emit({ x: px, y: py, vx: 0, vy: 6, life: 0.8, size: 4, colour: '#fff3d0', kind: 'glint', drag: 0.9 });
+      if (!low && dt > 0 && Math.random() < 0.5) E.particles.emit({ x: px, y: py, vx: 0, vy: 6, life: 0.8, size: 4, colour: '#fff3d0', kind: 'glint', drag: 0.9 });
     } else {
       const tw = 0.5 + 0.5 * Math.sin(t * 1.6);
       glow(g, ex, ey, 12 + 4 * tw, '#fff6dc', 0.45 + 0.2 * tw); glint(g, ex, ey, 7 + 2 * tw, '#ffffff', 0.7, 0.3);
@@ -748,7 +754,14 @@ export function create(E) {
     get done() { return doneFlag; },
     frame,
     down(p) {
-      if (finAt >= 0 || drag != null) return;
+      if (finAt >= 0) return;
+      if (drag != null) {
+        // a second finger: a soft answer, no progress (the first finger keeps the trail)
+        const now = E.now();
+        E.ripples.add(p.x, p.y, { colour: seedCol, speed: 34, alpha: 0.26, r: 4 });
+        if (now - lastTwo > 0.25) { lastTwo = now; E.sound('bubble', { note: (noteOf(laid) + 3) % 10, intensity: 0.16, pan: panOf(p.x) }); E.haptic('tick'); glance = Math.max(glance, 0.5); }
+        return;
+      }
       if (landed) {
         const { sy } = seedGeom();
         if (Math.hypot(p.x - padX, p.y - sy) < mz) { seedPulse = 1; E.sound('bubble', { note: 6, intensity: 0.25 }); E.haptic('light'); E.ripples.add(padX, padY, { colour: seedCol, speed: 40, alpha: 0.35, r: 6 }); }

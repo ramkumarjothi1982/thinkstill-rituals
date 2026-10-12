@@ -192,10 +192,12 @@ export function create(E) {
     // keep the crescent's start (just below the top of the dome) inside the stage;
     // sit the window high so the bottom of the stage (law toasts) stays clear of the words
     const topRoom = Math.max(4, cr * 1.15 - ary * 0.049);
-    H = Math.min(H0, stage.h - topRoom - 4);
+    // leave a strip under the window for the law's toast so it never sits on the words in the sand
+    const botRoom = clamp(stage.h * 0.06, 16, 32);
+    H = Math.min(H0, stage.h - topRoom - botRoom);
     cx = stage.cx; x0 = cx - W / 2; x1 = cx + W / 2;
     const spare = stage.h - H;
-    y0 = stage.y + Math.min(Math.max(topRoom, spare * 0.4), Math.max(topRoom, spare - 4));
+    y0 = stage.y + clamp(spare * 0.4, topRoom, Math.max(topRoom, spare - botRoom));
     if (y0 + H > stage.y + stage.h - 2) H = stage.y + stage.h - 2 - y0;
     y1 = y0 + H; ac = y0 + ary; br = Math.min(W * 0.09, 24);
     horizonY = ac + (H - ary) * 0.06;
@@ -792,7 +794,7 @@ export function create(E) {
     const a0 = side > 0 ? Math.PI * 1.08 : -Math.PI * 0.08 - 0.62;
     g.strokeStyle = 'rgba(255,255,255,0.2)'; g.lineWidth = 3;
     g.beginPath(); g.ellipse(cx, ac, ar - 7, ary - 7, 0, a0, a0 + 0.62); g.stroke();
-    g.fillStyle = sheenGrad; g.globalAlpha = 0.5 + 0.2 * Math.sin(t * 0.4);
+    g.fillStyle = sheenGrad; g.globalAlpha = 0.32 + 0.12 * Math.sin(t * 0.4);
     g.beginPath(); g.ellipse(cx - side * W * 0.22, y0 + H * 0.33, W * 0.05, H * 0.2, side * 0.18, 0, TAU); g.fill();
     g.restore();
   }
