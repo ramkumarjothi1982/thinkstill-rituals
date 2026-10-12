@@ -8,7 +8,7 @@
 // once the incoming world is prepared (its heavy build runs in idle time), and
 // pause keeps the last frame under a soft veil.
 //
-//   const flow = createHushflow({ app, worldEl, fxEl, mallow, thought, subtitles, photos, words, prefs, store, safeRect });
+//   const flow = createHushflow({ app, worldEl, fxEl, mallow, thoughts, subtitles, photos, words, prefs, store, safeRect });
 //   await flow.start({ emotion: 'angry', intention: 'calm', intensity: 0.7 });
 //   router.setWorld((e) => flow.pointer(e));     // routed { type, id, x, y, t(ms), pointerType }
 //   flow.on('discovery', ({ id, skillId, evidence }) => …);
@@ -31,7 +31,13 @@
 // the shell's free area minus that band. Worlds keep every object, hint and
 // touch target out of the band, and flow.avoid() lists what lines must not cover.
 //
-// Thought adapter (until W2's Thought Mallows land): `thought` is one handle
+// Thoughts (HUSHFOLD §3): `thoughts` is W2's ThoughtLayer (anything with `primary`,
+// or a `list` array / list() function) or a plain array of handles; `thought` (one
+// handle) is accepted too and wins as the primary. Worlds get ctx.thought — the
+// primary, the one the person's words ride on — and ctx.thoughts, all of them (for
+// worlds that host several, e.g. overthinking siblings); both are read live, so a
+// layer that gains a thought later is seen at once. setThought(h) / setThoughts(ts)
+// swap them while a world plays (the world hears setThought / setThoughts). A handle:
 //   { token, text, x, y, z, scale, state:{tension, charge, calm, distance},
 //     react(kind), soften(k), settle(k), hitTest(x, y), pointer(e), draw?(g, x, y, scale, o) }.
 // The world writes x, y, scale and state every frame. If the handle has draw(),
@@ -55,6 +61,10 @@ const ROTATION_KEY = 'hushflow.rotation';   // which worlds were played (ids onl
 const VEIL = 0.2;
 const MAX_POINTERS = 4;
 const NOOP_HOLD = Object.freeze({ update() {}, stop() {}, active: false });
+const WATCHDOG_MS = 250;          // no shared-loop tick for this long (visible, playing) → our own rAF
+// quality governor: step down after SLOW_SEC of frames over SLOW_MS; step back up after
+// FAST_SEC of frames under FAST_MS (frames during melts and world builds are not counted)
+const SLOW_MS = 24, SLOW_SEC = 3, FAST_MS = 14, FAST_SEC = 9;
 
 const clamp = (v, a = 0, b = 1) => (v < a ? a : v > b ? b : v);
 const inOutSine = (t) => -(Math.cos(Math.PI * clamp(t)) - 1) / 2;
@@ -71,6 +81,25 @@ function rng(seed) {
 /** A key/value store over memory (when none is given). */
 function memoryStore() { const m = new Map(); return { get: (k, d = null) => (m.has(k) ? JSON.parse(m.get(k)) : d), set: (k, v) => { m.set(k, JSON.stringify(v)); return true; }, remove: (k) => m.delete(k) }; }
 
+/** All thought handles of a ThoughtLayer-like source or an array (the explicit primary first). */
+export function thoughtList(src, one = null) {
+  let l = null;
+  if (Array.isArray(src)) l = src;
+  else if (src && typeof src === 'object') {
+    const v = typeof src.list === 'function' ? src.list() : src.list ?? src.thoughts;
+    l = Array.isArray(v) ? v : src.primary ? [src.primary] : null;
+  }
+  const out = one ? [one] : [];
+  if (l) for (const h of l) if (h && h !== one) out.push(h);
+  return out;
+}
+/** The primary thought: the explicit one, else the layer's `primary`, else the first. */
+export function primaryThought(src, one = null) {
+  if (one) return one;
+  if (src && !Array.isArray(src) && typeof src === 'object' && src.primary) return src.primary;
+  return thoughtList(src)[0] ?? null;
+}
+
 export function createHushflow(opts = {}) {
   const {
     app = null, worldEl, fxEl, mallow = null, subtitles = null, photos = null, words = null, prefs = null,
@@ -79,7 +108,8 @@ export function createHushflow(opts = {}) {
   // one frame loop: the Mallow rig's shared loop (rigs first, then the world sees this frame's face);
   // { ticker: false } runs the director's own requestAnimationFrame instead (standalone pages)
   const ticker = opts.ticker === false ? null : (opts.ticker?.add ? opts.ticker : { add: addTicker, remove: removeTicker });
-  let thought = opts.thought ?? null;
+  let thoughtOne = opts.thought ?? null;          // an explicit primary handle
+  let thoughtsSrc = opts.thoughts ?? null;        // a ThoughtLayer or an array of handles
   const kv = opts.store && typeof opts.store.get === 'function' ? opts.store : memoryStore();
   const audio = opts.audio ?? app?.audio ?? null;
   const hapticFn = opts.haptic ?? app?.haptic ?? null;
@@ -114,12 +144,14 @@ export function createHushflow(opts = {}) {
   let melt = null;                  // { k, dur, from, to }
   let fadeIn = 1, revealed = false;
   let t = 0, lastTs = 0, raf = 0;
+  // loop: 'ticker' (the rig's shared loop), 'raf' (our own: standalone, or the watchdog's fallback) or 'stopped'
+  let loopMode = 'stopped', tickerOn = false, lastTickAt = 0, watchdog = 0;
   let lastInputAt = -Infinity;
   let wantNext = false, autoFlow = false;
   let discoveryPending = 0;
   let choiceOpen = null;            // the world whose 'Stay, or drift on?' is on screen
   let saveClock = 0, progressClock = 0, lastProgress = -1;
-  let frameEma = 16.7, slowSec = 0;
+  let frameEma = 16.7, slowSec = 0, workEma = 8, fastSec = 0, govQuiet = 0, upAt = -Infinity, upBackoff = 1, builtAt = -Infinity;
   let session = null;               // { emotion, intention, intensity, input, seed, discoveries:Set, offered:Set }
   const listeners = new Map();
   const pointers = new Map();       // id → pointer state (velocity) + owner instance
@@ -233,7 +265,13 @@ export function createHushflow(opts = {}) {
       get safe() { return playSafe(); },
       /** The reserved subtitle band (keep it clear). */
       get band() { return bandRect(); },
-      mallow, get thought() { return thought; }, words, photos,
+      mallow, words, photos,
+      /** The primary Thought Mallow (the person's words), or null. */
+      get thought() { return primaryThought(thoughtsSrc, thoughtOne); },
+      /** Every Thought Mallow (primary first) — for worlds that can host several. */
+      get thoughts() { return thoughtList(thoughtsSrc, thoughtOne); },
+      /** W2's ThoughtLayer itself, when one was given (it renders the thoughts on its own layer). */
+      get thoughtLayer() { return thoughtsSrc && !Array.isArray(thoughtsSrc) ? thoughtsSrc : null; },
       get reduced() { return reducedMotion(); }, get lowStim() { return lowStim(); },
       get emotion() { return session?.emotion || null; }, get intention() { return session?.intention || null; },
       get intensity() { return session?.intensity ?? 0.6; }, get input() { return session?.input || null; },
@@ -242,6 +280,8 @@ export function createHushflow(opts = {}) {
       fontsReady: (groups, ms) => fontsReady(groups, ms),
       say(lines, o = {}) { if (!subtitles?.say || paused) return Promise.resolve(); return Promise.resolve(subtitles.say(lines, { who: entry.mallow?.id, ...o })).catch(() => {}); },
       discover: (id, evidence) => discover(inst, id, evidence),
+      /** A moment of progress worth keeping (e.g. { kind:'photo', i }): emitted as 'checkpoint', and saved. */
+      checkpoint: (kind, data = {}) => { if (inst !== cur && inst !== inc) return; emit('checkpoint', { worldId: entry.id, kind, ...data }); save(); },
       sound: (name, o) => { try { return audio?.fx?.(name, o); } catch { return false; } },
       hold: (name, o) => { try { return audio?.hold?.(name, o) || NOOP_HOLD; } catch { return NOOP_HOLD; } },
       ambience: (id, o) => { try { audio?.ambience?.(id, o); } catch { /* decoration */ } },
@@ -251,6 +291,14 @@ export function createHushflow(opts = {}) {
     };
     inst.ctx = ctx;
     return inst;
+  }
+
+  function tellThoughts() {
+    const one = primaryThought(thoughtsSrc, thoughtOne), all = thoughtList(thoughtsSrc, thoughtOne);
+    for (const inst of [cur, inc]) {
+      if (!inst?.world) continue;
+      try { inst.world.setThought?.(one); inst.world.setThoughts?.(all); } catch (e) { console.warn('[hushflow] setThought', e); }
+    }
   }
 
   function haptic(kind) {
@@ -289,7 +337,7 @@ export function createHushflow(opts = {}) {
     if (!inst.preparing) {
       inst.preparing = new Promise((resolve, reject) => {
         idle(async () => {
-          try { await inst.world.prepare?.(); inst.prepared = true; resolve(inst); } catch (e) { reject(e); }
+          try { await inst.world.prepare?.(); inst.prepared = true; builtAt = t; resolve(inst); } catch (e) { builtAt = t; reject(e); }
         });
       });
     }
@@ -303,17 +351,32 @@ export function createHushflow(opts = {}) {
   }
 
   // --------------------------------------------------------- selection --
+  const failed = new Set();   // worlds that failed to load or build this session: never picked again
   function pickNext(exclude = []) {
     const res = registry.select({
       current: cur?.id, emotion: session?.emotion, intention: session?.intention,
       history: persist.history, favourites: favourites(), bags: persist.bags,
-      seed: session?.seed ?? 0, sessionCount: persist.sessionCount, exclude,
+      seed: session?.seed ?? 0, sessionCount: persist.sessionCount, exclude: [...exclude, ...failed],
     });
     return res;
   }
+  /** A world could not be loaded or built: leave it out for the rest of the session (one 'error' per world). */
+  function markFailed(id, kind, e) {
+    if (failed.has(id)) return;
+    failed.add(id);
+    console.warn(`[hushflow] next world ${kind} failed`, id, e);
+    emit('error', { kind, id, error: e });
+  }
+  /** History for 'never the last 3 played': a world counts once it was played (completed, left or melted from). */
+  function recordPlayed(inst) {
+    if (!inst || inst.recorded || !inst.entered) return;
+    inst.recorded = true;
+    persist.history = [...persist.history, inst.id].slice(-12);
+    writeStore();
+  }
   let nextChoice = null;   // { id, bags } (bags committed when the melt starts)
   function chooseNext() {
-    if (opts.forceNext && registry.has(opts.forceNext)) { nextChoice = { id: opts.forceNext, bags: persist.bags }; return nextChoice; }
+    if (opts.forceNext && registry.has(opts.forceNext) && !failed.has(opts.forceNext)) { nextChoice = { id: opts.forceNext, bags: persist.bags }; return nextChoice; }
     nextChoice = pickNext();
     if (!nextChoice.id) nextChoice = null;
     return nextChoice;
@@ -332,11 +395,15 @@ export function createHushflow(opts = {}) {
         if (!created || destroyed) return null;
         inc = created;
         resizeInstance(inc);
-        prepare(inc).catch((e) => { console.warn('[hushflow] prepare failed', e); if (inc === created) { destroyInstance(inc); inc = null; nextChoice = null; } });
+        prepare(inc).catch((e) => {
+          markFailed(id, 'prepare', e);
+          if (inc === created) { destroyInstance(inc); inc = null; nextChoice = null; }
+          if (wantNext && !nextAvailable()) wantNext = false;
+        });
       } catch (e) {
-        console.warn('[hushflow] next world failed to load', e);
-        emit('error', { kind: 'load', id, error: e });
-        nextChoice = pickNext([id]); if (!nextChoice?.id) nextChoice = null;
+        markFailed(id, 'load', e);
+        nextChoice = pickNext(); if (!nextChoice?.id) nextChoice = null;
+        if (wantNext && !nextChoice) wantNext = false;
       } finally { staging = null; }
       return inc;
     })();
@@ -438,7 +505,7 @@ export function createHushflow(opts = {}) {
     for (const p of pointers.values()) if (p.owner === from) p.owner = null;
     cur = to; inc = null; nextChoice = null;
     phase = 'playing';
-    persist.history = [...persist.history, from.id].slice(-12);
+    recordPlayed(from);
     session.sequence = [...session.sequence, cur.id].slice(-24);
     writeStore();
     save();
@@ -474,6 +541,7 @@ export function createHushflow(opts = {}) {
 
   function onComplete(inst) {
     inst.completeSeen = true;
+    recordPlayed(inst);
     emit('complete', { worldId: inst.id });
     save();
     const d = inst.entry.dialogue || {};
@@ -579,19 +647,53 @@ export function createHushflow(opts = {}) {
 
   // ------------------------------------------------------------- loop --
   function startLoop() {
-    if (frozen) return;
-    if (ticker?.add) { if (!raf) { raf = -1; ticker.add(tickFromTicker); } return; }
+    if (frozen || destroyed) return;
+    if (ticker?.add) {
+      if (!tickerOn) { tickerOn = true; ticker.add(tickFromTicker); }
+      if (loopMode !== 'raf') loopMode = 'ticker';
+      lastTickAt = nowMs();
+      if (!watchdog && typeof setInterval === 'function') watchdog = setInterval(watch, WATCHDOG_MS);
+      return;
+    }
+    runOwnRaf();
+  }
+  function runOwnRaf() {
+    loopMode = 'raf';
     if (!raf && !destroyed && !hidden) { lastTs = 0; raf = requestAnimationFrame(loop); }
   }
   function stopLoop() {
-    if (ticker?.remove && raf === -1) { ticker.remove(tickFromTicker); raf = 0; return; }
-    if (raf > 0) cancelAnimationFrame(raf);
+    if (tickerOn) { ticker.remove(tickFromTicker); tickerOn = false; }
+    if (raf) cancelAnimationFrame(raf);
     raf = 0;
+    loopMode = 'stopped';
+    if (watchdog) { clearInterval(watchdog); watchdog = 0; }
   }
-  function tickFromTicker(dt) { if (!paused && !hidden && !destroyed) step(Math.min(0.05, dt > 1 ? dt / 1000 : dt)); }
+  /**
+   * Watchdog: the rig's shared loop can die (an exception in a rig's own tick before it asks
+   * for the next frame stops every ticker). If no tick has come for WATCHDOG_MS while the
+   * world is visible and playing, run our own requestAnimationFrame until the ticker is back.
+   */
+  function watch() {
+    if (loopMode !== 'ticker' || paused || hidden || frozen || destroyed || phase === 'finished') return;
+    if (typeof document !== 'undefined' && document.hidden) return;
+    if (nowMs() - lastTickAt < WATCHDOG_MS) return;
+    console.warn('[hushflow] the shared Mallow loop stopped ticking: the world runs on its own frame loop');
+    emit('loop', { mode: 'raf', reason: 'watchdog' });
+    runOwnRaf();
+  }
+  function tickFromTicker(dt) {
+    lastTickAt = nowMs();
+    if (loopMode === 'raf') {
+      // the shared loop is back: one loop again
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0; loopMode = 'ticker';
+      emit('loop', { mode: 'ticker', reason: 'recovered' });
+    }
+    if (!paused && !hidden && !destroyed) step(Math.min(0.05, dt > 1 ? dt / 1000 : dt));
+  }
   function loop(ts) {
     raf = 0;
-    if (destroyed || hidden || paused) return;
+    if (destroyed || hidden || paused || loopMode !== 'raf') return;
     raf = requestAnimationFrame(loop);
     const dtMs = lastTs ? ts - lastTs : 16.7;
     lastTs = ts;
@@ -600,6 +702,7 @@ export function createHushflow(opts = {}) {
 
   function step(dt, rawMs = dt * 1000) {
     t += dt;
+    const t0 = nowMs();
     if (phase === 'loading' || !cur) { comp.drawFallback(); return; }
     if (phase === 'finished') return;
     if (pointers.size) idlePointers(dt);
@@ -631,18 +734,38 @@ export function createHushflow(opts = {}) {
     }
     saveClock += dt;
     if (saveClock > 5) { saveClock = 0; save(); }
-    governor(rawMs, dt);
+    governor(rawMs, nowMs() - t0, dt);
   }
 
-  function governor(rawMs, dt) {
+  /**
+   * Adaptive quality with hysteresis. Down a level after SLOW_SEC of frame intervals over
+   * SLOW_MS; back up after FAST_SEC (doubling after each bounce, ≤ 2 min) of the director's
+   * own frame work under FAST_MS while frames keep up. Melts, world builds and the second
+   * after a level change are never counted, so one hitch never leaves the world blurry.
+   */
+  function governor(rawMs, workMs, dt) {
     if (quality !== 'auto') return;
+    if (melt || buildingNow()) { govQuiet = 0.6; return; }
+    if (govQuiet > 0) { govQuiet -= dt; return; }
     frameEma += (rawMs - frameEma) * 0.05;
-    if (frameEma > 24) slowSec += dt; else slowSec = Math.max(0, slowSec - dt * 0.5);
-    if (slowSec > 3 && qLevel < 3) {
-      qLevel++; slowSec = 0; frameEma = 16.7;
-      applySize();
-      emit('quality', { level: qLevel, ...dprs() });
-    }
+    workEma += (workMs - workEma) * 0.05;
+    if (frameEma > SLOW_MS) { slowSec += dt; fastSec = 0; } else slowSec = Math.max(0, slowSec - dt * 0.5);
+    if (frameEma <= 20 && workEma < FAST_MS) fastSec += dt; else fastSec = Math.max(0, fastSec - dt);
+    if (slowSec > SLOW_SEC && qLevel < 3) {
+      // a drop soon after stepping up: wait longer before trying again
+      if (t - upAt < 30) upBackoff = Math.min(120 / FAST_SEC, upBackoff * 2);
+      setLevel(qLevel + 1);
+    } else if (qLevel > 0 && fastSec > FAST_SEC * upBackoff) { upAt = t; setLevel(qLevel - 1); }
+  }
+  function setLevel(l) {
+    qLevel = l; slowSec = 0; fastSec = 0; frameEma = 16.7; workEma = 8; govQuiet = 1;
+    applySize();
+    emit('quality', { level: qLevel, ...dprs() });
+  }
+  /** A world is being built (its prepare() runs in idle time) or was just built: frames are not representative. */
+  function buildingNow() {
+    for (const inst of [cur, inc]) if (inst && inst.preparing && !inst.prepared) return true;
+    return t - builtAt < 0.6;
   }
 
   /** Save progress through W3's flow-store (sanitised: ids and numbers only). */
@@ -716,6 +839,7 @@ export function createHushflow(opts = {}) {
       // finishing is a choice, not an interruption: nothing is left waiting to be resumed
       const id = cur?.id || null;
       try { cur?.world.pause?.(); } catch { /* ignore */ }
+      recordPlayed(cur);
       phase = 'finished';
       stopLoop();
       try { clearProgress(kv); } catch { /* ignore */ }
@@ -744,8 +868,12 @@ export function createHushflow(opts = {}) {
       return favourites().includes(id);
     },
     get favourites() { return favourites(); },
-    /** The thought handle can arrive after start (the person types while playing). */
-    setThought(h) { thought = h; try { cur?.world.setThought?.(h); } catch { /* optional */ } },
+    /** The primary thought handle can arrive after start (the person types while playing). */
+    setThought(h) { thoughtOne = h || null; tellThoughts(); },
+    /** A ThoughtLayer or an array of handles (W2); ctx.thought becomes its primary. */
+    setThoughts(ts) { thoughtsSrc = ts || null; tellThoughts(); },
+    get thought() { return primaryThought(thoughtsSrc, thoughtOne); },
+    get thoughts() { return thoughtList(thoughtsSrc, thoughtOne); },
     pointer,
     bindPointer,
     on(ev, fn) { if (!listeners.has(ev)) listeners.set(ev, new Set()); listeners.get(ev).add(fn); return () => listeners.get(ev)?.delete(fn); },
@@ -781,6 +909,7 @@ export function createHushflow(opts = {}) {
     destroy() {
       if (destroyed) return;
       save();
+      if (phase !== 'finished') recordPlayed(cur);
       destroyed = true;
       stopLoop();
       finishInstances();
@@ -794,8 +923,11 @@ export function createHushflow(opts = {}) {
       get canvases() { return { back: backCanvas, front: frontCanvas }; },
       get time() { return t; },
       get frameMs() { return frameEma; },
+      /** The director's own work per frame (worlds + compositor), ms EMA. */
+      get workMs() { return workEma; },
+      get governor() { return { level: qLevel, slowSec, fastSec, upBackoff, quiet: govQuiet }; },
       /** Which loop drives the director: the Mallow rig's shared ticker, its own rAF, or none. */
-      get loop() { return raf === -1 ? 'rig-ticker' : raf > 0 ? 'raf' : 'stopped'; },
+      get loop() { return loopMode === 'ticker' ? 'rig-ticker' : loopMode; },
       step: (dtSec = 1 / 60) => step(dtSec, dtSec * 1000),
       /** Freeze the loop without a veil (QA: step frames by hand). */
       freeze(on = true) { frozen = !!on; if (frozen) stopLoop(); else startLoop(); },

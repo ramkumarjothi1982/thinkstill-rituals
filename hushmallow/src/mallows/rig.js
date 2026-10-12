@@ -1145,8 +1145,9 @@ function quadBox(r, x0, y0, cx, cy, x1, y1, pad) {
 }
 
 /** Where one face part draws right now (source px) — the same geometry as
- *  its renderer, conservatively (curves by their control hulls, tubes by
- *  their shadow width). Empty (Infinity box) when it draws nothing. */
+ *  its renderer (curves by their exact extrema, strokes padded by their
+ *  shadow width, time-animated parts by their whole range). Empty (Infinity
+ *  box) when it draws nothing. */
 function partBounds(rig, pt, P, r) {
   r[0] = r[1] = Infinity; r[2] = r[3] = -Infinity;
   const f = rig.mallow.face, side = pt.side;

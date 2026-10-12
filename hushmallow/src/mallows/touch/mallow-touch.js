@@ -348,7 +348,7 @@ export class MallowTouch {
 
   // re-skin when the layout asks for a skin ≥ 20 % off (now, or once no finger is down)
   _checkSkin(now = false) {
-    if (!this._autoSkin || !this.rig?.assets) return;
+    if (!this._autoSkin || typeof this.rig?.setSkinSize !== 'function' || !this.rig.assets?.original) return;
     const want = this._wantSkin(), have = this.rig.opts.skinSize;
     if (!want || Math.abs(want / have - 1) < 0.2) { this._reskinTo = 0; return; }
     if (now || !this.reader?.ptrs.size) this._reskin(want); else this._reskinTo = want;
@@ -819,6 +819,9 @@ export class MallowTouch {
       const p = R.ptrs.get(e.id);
       const b = this._local(e.x, e.y);
       if (!R.stretch) this.sb.move(e.id, b.x, b.y, p ? p.pull : 0);
+      // past the slip limit: decide now (slide on or a real slip), not at the
+      // next solved frame — a whole stroke can arrive between two slow frames
+      if (p && p.mode === 'pull' && !R.stretch && this.sb.slipAt(e.id, b.x, b.y)) this._noteSlip({ id: e.id });
       this._gaze(e.x, e.y);
       const f = this._fingers.get(e.id);
       if (f && !f.pulled && p && p.mode === 'pull' && p.pull > 0.5) { f.pulled = true; this._touchEvent('pull'); }

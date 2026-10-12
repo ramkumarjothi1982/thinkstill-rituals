@@ -4,24 +4,44 @@
 // assets/source/hires (prepare.py -> measure.py -> derive.py). Re-run the
 // tools instead of editing numbers here.
 //
-// Each entry replaces a Mallow's art, body, sprites, size, bodyBox and face
-// spec. Geometry is in the rig's LOGICAL space: new-art pixels / res
-// (res ~2.3-2.7 art px per logical px), so every constant inside rig.js keeps
-// the scale it had with the original art. The rig must support `res`:
-//   * draw A.body and A.original at m.size (not their natural size),
-//   * draw sprite pixels / res (Zuzu's spirals),
-//   * read m.glitchRows (Glitzi) instead of GLITCH_ROWS,
-//   * allow skin q up to 1.25 * res.
-// (tools/hires/rig-res.patch). Without it the art draws 2.6x too big.
+// Each entry replaces a Mallow's pictures, body, sprites, size, bodyBox and
+// face spec:
+//   art    the 1024 px approved cut-out, for the rig only (loaded as
+//          `m.art || m.file`),
+//   file   the same cut-out at 384 px, for every other picture of a Mallow
+//          (side-panel switcher, mallows scene, studio tiles, ritual cards):
+//          those keep reading `m.file` and get the new drawing at the
+//          current art's decode cost (~4 MB for seven, not ~28 MB).
+// Geometry is in the rig's LOGICAL space: new-art pixels / res (res ~2.3-2.7
+// art px per logical px), so every constant inside rig.js keeps the scale it
+// had with the original art.
+//
+// THE RIG MUST SUPPORT `res` FIRST: tools/hires/rig-res.patch (git apply;
+// additive, no change for the current art). It touches
+//   rig.js       art and body drawn at m.size; spiral sprites / res (draw and
+//                dirty rect); m.glitchRows; skin q up to 1.25 * res; the
+//                crease mouth's relief (m.face.mouth.relief);
+//   touch/mallow-touch.js  _atSkin draws the approved art and Glitzi's bare
+//                body at m.size (tier A cross-fades them in at rest: without
+//                it a switched Mallow shows a 2.6x crop of its art at rest);
+//   registry.js  the rig loads m.art || m.file;
+//   expressions.js  resolveExpression merges m.presetOverrides (Glitzi's
+//                lids and round mouths).
+// Without it the art draws 2.6x too big. tests/hires.test.mjs checks the
+// patch still fits today's files and that the patched code never draws an
+// art asset at its natural size; node hushmallow/tools/hires/refresh-patch.mjs
+// rewrites it against the current files.
 //
 // Decision D13: a Mallow switches to its high-res rig only after a visual
 // check. HIRES_VERIFIED lists the ones that passed; applyHires() applies those
 // (or the ids you pass) to the registry objects, once, before rigs load.
 // The cyan file without brows is treated as Loomi (owner to confirm): its
 // high-res rig has no brows at rest (they appear only when an expression
-// raises browAlpha), so Loomi stays off HIRES_VERIFIED until the owner says.
+// raises browAlpha), so Loomi stays off HIRES_VERIFIED until the owner says,
+// and switching six while Loomi keeps its old drawing mixes two styles in
+// the switcher: switch all seven together, or none, for an owner build.
 //
-// Integration (after rig.js supports res): in registry.js, once, at the end:
+// Integration (after the patch is merged): in registry.js, once, at the end:
 //   import { applyHires } from './hires.js';  applyHires(MALLOWS, SPRITES);
 // ship assets/mallows-hires + assets/rig-hires in tools/build-site.sh, and
 // let MallowTouch use skinSize ~1024 for a high-res Mallow (its 640 default
@@ -32,7 +52,8 @@ const A = (p) => new URL(`../../assets/${p}`, import.meta.url).href;
 const T = {
   glitzi: {
     res: 2.624,
-    file: "mallows-hires/glitzi.webp",
+    file: "mallows-hires/glitzi-thumb.webp",
+    art: "mallows-hires/glitzi.webp",
     body: "rig-hires/glitzi-body.webp",
     size: [390.2, 373.1],
     bodyBox: [3.8, 3.8, 386.8, 369.3],
@@ -97,6 +118,7 @@ const T = {
         tongue: "#d4406f",
         depth: 27,
         upper: -22,
+        relief: [["rgba(34,92,235,0.6)", 0.75, 0.95], ["rgba(150,190,255,0.16)", 0.5, -0.8]],
       },
       cheeks: {
         L: [92, 243.6, 28],
@@ -120,10 +142,43 @@ const T = {
       "hires:glitzi-iris-R": "rig-hires/glitzi-iris-R.webp",
     },
     glitchRows: [57.2, 105.6, 117.4, 171.9, 213.4, 241.6, 267.5, 278.2, 322.8],
+    presetOverrides: {
+      surprised: {
+        lidTop: 0,
+        mouthOpen: 1.4,
+      },
+      scared: {
+        lidTop: 0,
+        mouthOpen: 0.9,
+      },
+      awe: {
+        lidTop: 0.05,
+        mouthOpen: 1,
+      },
+      hopeful: {
+        lidTop: 0.15,
+      },
+      curious: {
+        lidTop: 0.25,
+      },
+      anxious: {
+        lidTop: 0.25,
+      },
+      confused: {
+        lidTop: 0.35,
+      },
+      playful: {
+        lidTop: 0.35,
+      },
+      comforted: {
+        lidTop: 0.4,
+      },
+    },
   },
   zuzu: {
     res: 2.645,
-    file: "mallows-hires/zuzu.webp",
+    file: "mallows-hires/zuzu-thumb.webp",
+    art: "mallows-hires/zuzu.webp",
     body: "rig-hires/zuzu-body.webp",
     size: [387.1, 364.8],
     bodyBox: [3.4, 3, 384.1, 361.4],
@@ -203,7 +258,8 @@ const T = {
   },
   boppo: {
     res: 2.657,
-    file: "mallows-hires/boppo.webp",
+    file: "mallows-hires/boppo-thumb.webp",
+    art: "mallows-hires/boppo.webp",
     body: "rig-hires/boppo-body.webp",
     size: [385.4, 370.3],
     bodyBox: [3.4, 3.4, 382.4, 367.3],
@@ -218,8 +274,8 @@ const T = {
           rx: 51.1,
           ry: 46.3,
           iris: "hires:boppo-iris-L",
-          irisR: 38.1,
-          irisOff: [8.7, -5],
+          irisR: 36.1,
+          irisOff: [9.4, -1.8],
           hw: 46.3,
           sag: 9.4,
           lw: 11.3,
@@ -230,8 +286,8 @@ const T = {
           rx: 50.6,
           ry: 47.4,
           iris: "hires:boppo-iris-R",
-          irisR: 37.5,
-          irisOff: [-10.3, -4.5],
+          irisR: 35.8,
+          irisOff: [-9.4, -2],
           hw: 45.8,
           sag: 9.5,
           lw: 11.2,
@@ -286,7 +342,8 @@ const T = {
   },
   pipzi: {
     res: 2.36,
-    file: "mallows-hires/pipzi.webp",
+    file: "mallows-hires/pipzi-thumb.webp",
+    art: "mallows-hires/pipzi.webp",
     body: "rig-hires/pipzi-body.webp",
     size: [433.9, 415.3],
     bodyBox: [3.8, 3.8, 430.5, 411.9],
@@ -369,7 +426,8 @@ const T = {
   },
   blubi: {
     res: 2.455,
-    file: "mallows-hires/blubi.webp",
+    file: "mallows-hires/blubi-thumb.webp",
+    art: "mallows-hires/blubi.webp",
     body: "rig-hires/blubi-body.webp",
     size: [417.1, 404.5],
     bodyBox: [4.1, 3.3, 413.4, 401.2],
@@ -451,7 +509,8 @@ const T = {
   },
   loomi: {
     res: 2.676,
-    file: "mallows-hires/loomi.webp",
+    file: "mallows-hires/loomi-thumb.webp",
+    art: "mallows-hires/loomi.webp",
     body: "rig-hires/loomi-body.webp",
     size: [382.7, 358.4],
     bodyBox: [3, 3, 379.7, 355.4],
@@ -531,7 +590,8 @@ const T = {
   },
   noomi: {
     res: 2.317,
-    file: "mallows-hires/noomi.webp",
+    file: "mallows-hires/noomi-thumb.webp",
+    art: "mallows-hires/noomi.webp",
     body: "rig-hires/noomi-body.webp",
     size: [442, 409.6],
     bodyBox: [3.9, 3.5, 438.1, 405.7],
@@ -613,6 +673,7 @@ const T = {
 
 for (const e of Object.values(T)) {
   e.file = A(e.file);
+  e.art = A(e.art);
   e.body = A(e.body);
   for (const k of Object.keys(e.sprites)) e.sprites[k] = A(e.sprites[k]);
 }
@@ -626,10 +687,13 @@ export const HIRES_VERIFIED = ["glitzi", "zuzu", "boppo", "pipzi", "blubi", "noo
 export function hiresMallow(base, id = base?.id) {
   const h = T[id];
   if (!base || !h) return base || null;
-  return { ...base, file: h.file, body: h.body, size: h.size.slice(), bodyBox: h.bodyBox.slice(), res: h.res,
-    // JSON, not structuredClone: this runs at registry import time, and
-    // structuredClone throws on Safari < 15.4 (the face spec is plain JSON)
-    ...(h.glitchRows ? { glitchRows: h.glitchRows.slice() } : {}), face: JSON.parse(JSON.stringify(h.face)), hires: true };
+  // JSON, not structuredClone: this runs at registry import time, and
+  // structuredClone throws on Safari < 15.4 (the specs are plain JSON)
+  const copy = (v) => JSON.parse(JSON.stringify(v));
+  return { ...base, file: h.file, art: h.art, body: h.body, size: h.size.slice(), bodyBox: h.bodyBox.slice(), res: h.res,
+    ...(h.glitchRows ? { glitchRows: h.glitchRows.slice() } : {}),
+    ...(h.presetOverrides ? { presetOverrides: copy(h.presetOverrides) } : {}),
+    face: copy(h.face), hires: true };
 }
 
 /** Switch `ids` (default: HIRES_VERIFIED) to their high-res rigs in place:

@@ -359,6 +359,9 @@ def cut_circle(img, cx, cy, r, soft=1.5):
     yy, xx = np.mgrid[0:2 * R, 0:2 * R] + 0.5
     d = np.hypot(xx - (cx - x0), yy - (cy - y0))
     a = np.clip((r - d) / soft + 0.5, 0, 1)
+    # nothing past rc = w/2 - 2, the radius the rig maps to irisR (no stray
+    # sclera pixels outside the drawn iris): 1.5 px feather ending at rc
+    a = np.minimum(a, np.clip((R - 2 - 0.75 - d) / 1.5 + 0.5, 0, 1))
     crop[..., 3] = np.round(crop[..., 3].astype(np.float64) * a).astype(np.uint8)
     crop[..., :3][crop[..., 3] == 0] = 0
     return crop

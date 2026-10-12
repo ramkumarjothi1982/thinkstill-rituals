@@ -364,6 +364,17 @@ export class SoftBody {
 
   setGrip(id, sigmaPull) { const st = this.ptr.get(id); if (st) st.sigmaPull = Math.max(0.05, sigmaPull); }
 
+  /** Would a pull held at (x, y) be past the material's limit (the slip test
+   *  step() makes)? true marks it slipping now — for input that arrives
+   *  faster than frames are solved. */
+  slipAt(id, x, y) {
+    const st = this.ptr.get(id);
+    if (!st || st.slipping || st.surface || !(st.pull > 0.2)) return false;
+    if (Math.hypot(x - st.ax, y - st.ay) <= this.material.maxStretch * (1 + 0.6 * (this.ptr.size - 1))) return false;
+    st.slipping = true;
+    return true;
+  }
+
   /** A stroking or massaging finger: it lets go of the material it held
    *  (gently: no kick, no rebound), then glides over the skin, pressing in a
    *  little and dragging the skin it brushes. A glide never slips. */

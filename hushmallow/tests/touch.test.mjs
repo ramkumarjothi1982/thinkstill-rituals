@@ -673,3 +673,32 @@ test('gestures: an immediate drag outwards from an edge pulls; across the body i
   for (let i = 1; i <= 20; i++) c.pointer({ type: 'move', id: 1, x: 205 + i * 6, y: 300, t: i / 60 });
   assert.equal(c.pointers[0].mode, 'glide', kinds(ev3).join(','));
 });
+
+test('core: place({size}) sets the body height in CSS px; baseSize is the unscaled height', () => {
+  const c = touchCore('pipzi');
+  const base = c.mt.baseSize;
+  assert.ok(base > 100 && base < 340, `base ${base}`);
+  c.mt.place({ size: 180 }, { instant: true });
+  c.frame(2);
+  assert.ok(Math.abs(c.mt._P() - 180) < 0.5, `body height ${c.mt._P().toFixed(1)}`);
+  assert.ok(Math.abs(c.mt.goalSt.s - 180 / base) < 1e-6);
+  c.mt.place({ scale: 1 }, { instant: true });
+  c.frame(2);
+  assert.ok(Math.abs(c.mt._P() - base) < 0.5);
+});
+
+test('core: a stroke that arrives between two (very slow) frames still slides off into a stroke', () => {
+  for (const id of ['glitzi', 'blubi', 'noomi']) {
+    const c = touchCore(id);
+    const r = c.rect(), x0 = r.cx - 0.32 * r.width, y0 = r.cy - 0.12 * r.height;
+    c.ptr('down', x0, y0); c.frame(20);                       // rests first: a pull
+    // the whole 150 px slide and the lift are handled before the next frame
+    const rd = c.mt.reader;
+    let t = rd.t;
+    for (let i = 1; i <= 30; i++) { t += 1 / 60; rd.pointer({ type: 'move', id: 1, x: x0 + 5 * i, y: y0, t }); }
+    rd.pointer({ type: 'up', id: 1, x: x0 + 150, y: y0, t: t + 0.01 });
+    c.frame(40);
+    assert.ok(c.log.events.includes('stroke'), `${id}: ${c.log.events.join(',')}`);
+    assert.ok(!c.log.events.includes('slip') && !c.log.reacts.some((k) => UPSET.includes(k)), `${id}: ${c.log.events.join(',')} / ${c.log.reacts.join(',')}`);
+  }
+});

@@ -10,7 +10,14 @@
 //        and 1), stage and reaction overlay, with spring overshoot -> __overflow
 //   check.html?mode=spin&id=zuzu&kind=new&angles=0,1.6,3.2&preset=happy
 //        Zuzu's eyes at several spin angles, cropped
-//   check.html?mode=jump[&kind=new|old]   rest jump metric for every Mallow
+//   check.html?mode=jump[&kind=new|old][&skin=600]   rest jump metric for every
+//        Mallow: mean |luminance| difference (0-255) in the face rect between
+//        the approved art (pristine, restMix 1) and the drawn rest face, on
+//        the same frozen frame (t = 1.234, no blink, reduced motion). Zuzu's
+//        spirals at spinAngle 0, the painted phase (the sprites are cut from
+//        the art); __jumps.zuzuSpin07 adds the arbitrary phase 0.7 (what a
+//        rig that keeps spinning at rest shows the moment it leaves rest).
+//        node tools/hires/lab/run.cjs json 'mode=jump&kind=new' (and kind=old)
 //   check.html?mode=live&id=glitzi&kind=new&sizes=110,220,380&presets=...  live rigs (run.cjs page)
 // Results: window.__ready = true, then __out (PNG data URL) and/or numbers.
 // MALLOWS / SPRITES come from the loader: the registry the (patched) rig reads
@@ -244,8 +251,9 @@ async function jump() {
   for (const mid of MALLOW_IDS) {
     const rig = make(mid, kind, holder(), { pristine: true, skinSize: SK, reducedMotion: true });
     await rig.loaded;
-    freeze(rig);
+    freeze(rig, 1.234, 0);            // the painted phase: what the art shows
     out[mid] = jumpOf(rig).jump;
+    if (mid === 'zuzu') { rig.spinAngle = 0.7; out.zuzuSpin07 = jumpOf(rig).jump; }
   }
   window.__jumps = out;
 }

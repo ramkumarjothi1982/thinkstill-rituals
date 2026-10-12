@@ -1,10 +1,26 @@
 // High-res Mallow rigs (W7): the patch table in src/mallows/hires.js.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { join, relative } from 'node:path';
 import { MALLOWS, MALLOW_IDS, SPRITES } from '../src/mallows/registry.js';
 import { HIRES, HIRES_VERIFIED, applyHires, hiresMallow } from '../src/mallows/hires.js';
+import { parsePatch, applyFilePatch, appPath } from '../tools/hires/res-patch.mjs';
+
+// ---- the res support W2 merges: tools/hires/rig-res.patch ---------------
+// Every check below runs on the code as it will be once the patch is merged
+// (today's files + the patch, or today's files once it is in).
+const APP = fileURLToPath(new URL('../', import.meta.url));
+const PATCH = parsePatch(readFileSync(join(APP, 'tools/hires/rig-res.patch'), 'utf8'));
+const PATCHED = {};       // app path -> { state, text }
+for (const fp of PATCH) {
+  const p = appPath(fp.file);
+  PATCHED[p] = applyFilePatch(readFileSync(join(APP, p), 'utf8'), fp);
+}
+const effective = (p) => (PATCHED[p] && PATCHED[p].state !== 'failed' ? PATCHED[p].text : readFileSync(join(APP, p), 'utf8'));
+// expressions.js has no imports: the patched one loads from a data: URL
+const EXPR = await import('data:text/javascript;base64,' + Buffer.from(effective('src/mallows/expressions.js')).toString('base64'));
 
 // width/height from a WebP header (VP8X, VP8L or VP8)
 function webpSize(path) {
@@ -26,17 +42,22 @@ const path = (url) => fileURLToPath(url);
 test('every Mallow has a high-res rig whose files exist', () => {
   assert.deepEqual(Object.keys(HIRES).sort(), [...MALLOW_IDS].sort());
   for (const [id, h] of Object.entries(HIRES)) {
-    for (const f of [h.file, h.body, ...Object.values(h.sprites)]) assert.ok(existsSync(path(f)), `${id}: ${f}`);
-    assert.match(h.file, /mallows-hires\/.+\.webp$/);
+    for (const f of [h.file, h.art, h.body, ...Object.values(h.sprites)]) assert.ok(existsSync(path(f)), `${id}: ${f}`);
+    assert.match(h.art, /mallows-hires\/[a-z]+\.webp$/);
+    assert.match(h.file, /mallows-hires\/[a-z]+-thumb\.webp$/);
     assert.match(h.body, /rig-hires\/.+-body\.webp$/);
   }
 });
 
 test('art, body and logical size agree (res = art px per logical px)', () => {
   for (const [id, h] of Object.entries(HIRES)) {
-    const art = webpSize(path(h.file));
+    const art = webpSize(path(h.art));
     assert.deepEqual(webpSize(path(h.body)), art, `${id} body matches the cut-out`);
     assert.ok(Math.max(...art) === 1024, `${id} is 1024 px on its long side`);
+    // the thumbnail every non-rig picture uses: the same cut-out, 384 px
+    const th = webpSize(path(h.file));
+    assert.equal(Math.max(...th), 384, `${id} thumb`);
+    assert.ok(Math.abs(th[0] / th[1] - art[0] / art[1]) < 0.01, `${id} thumb aspect`);
     assert.ok(h.res > 2 && h.res < 3, `${id} res ${h.res}`);
     assert.ok(Math.abs(h.size[0] * h.res - art[0]) < 1 && Math.abs(h.size[1] * h.res - art[1]) < 1, `${id} size`);
     const [x0, y0, x1, y1] = h.bodyBox;
@@ -95,6 +116,8 @@ test('hiresMallow copies; applyHires switches in place, once, and only the ids a
   const sprites = { ...SPRITES };
   assert.deepEqual(applyHires(mallows, sprites, ['glitzi', 'nobody']), ['glitzi']);
   assert.equal(mallows.glitzi.file, HIRES.glitzi.file);
+  assert.equal(mallows.glitzi.art, HIRES.glitzi.art);
+  assert.deepEqual(mallows.glitzi.presetOverrides, HIRES.glitzi.presetOverrides);
   assert.equal(mallows.glitzi.voice.hello[0], MALLOWS.glitzi.voice.hello[0], 'personality kept');
   assert.equal(mallows.zuzu.file, MALLOWS.zuzu.file, 'others untouched');
   assert.ok(sprites['hires:glitzi-iris-L'] && sprites['iris-amber'], 'sprites added, none removed');
@@ -109,7 +132,7 @@ test('hiresMallow copies; applyHires switches in place, once, and only the ids a
 // owns rig.js, keep these in step with it), checked against the silhouette
 // of each cut-out (tools/hires/data/silhouette.json, written by
 // build_table.py: per 2 logical px column, the body's top and bottom).
-import { PRESETS, STAGES, resolveExpression } from '../src/mallows/expressions.js';
+const { PRESETS, STAGES, resolveExpression } = EXPR;     // with the patch's presetOverrides seam
 import { REACTIONS } from '../src/mallows/reactions.js';
 
 const clampN = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -282,4 +305,92 @@ test('hiresMallow does not need structuredClone (Safari < 15.4 boots)', () => {
     const g = hiresMallow(MALLOWS.glitzi);
     assert.equal(g.face.mouth.style, 'crease');
   } finally { globalThis.structuredClone = keep; }
+});
+
+// ---- the res contract (review r2: MallowTouch drew the art at its natural size)
+test('rig-res.patch still fits today\'s files (or is merged)', () => {
+  const files = Object.keys(PATCHED).sort();
+  for (const p of ['src/mallows/rig.js', 'src/mallows/touch/mallow-touch.js', 'src/mallows/registry.js', 'src/mallows/expressions.js']) {
+    assert.ok(files.includes(p), `the patch covers ${p}`);
+  }
+  for (const [p, r] of Object.entries(PATCHED)) {
+    const bad = r.hunks.filter((h) => h.state === 'failed').map((h) => h.header);
+    assert.deepEqual(bad, [], `${p}: hunks that fit nowhere (node hushmallow/tools/hires/refresh-patch.mjs, or edit the patch)`);
+  }
+});
+
+function jsFiles(dir) {
+  const out = [];
+  for (const n of readdirSync(dir)) {
+    const f = join(dir, n);
+    if (statSync(f).isDirectory()) out.push(...jsFiles(f));
+    else if (n.endsWith('.js')) out.push(relative(APP, f));
+  }
+  return out;
+}
+// every drawImage(...) call: its source text and top-level argument count
+function drawImageCalls(src) {
+  const out = [];
+  for (let i = src.indexOf('drawImage('); i >= 0; i = src.indexOf('drawImage(', i + 1)) {
+    let d = 0, n = 1, j = i + 'drawImage('.length;
+    for (; j < src.length; j++) {
+      const c = src[j];
+      if (c === '(' || c === '[' || c === '{') d++;
+      else if (c === ')' || c === ']' || c === '}') { if (d === 0) break; d--; } else if (c === ',' && d === 0) n++;
+    }
+    out.push({ text: src.slice(i, j + 1), args: n, line: src.slice(0, i).split('\n').length });
+  }
+  return out;
+}
+
+test('the patched rig never draws an art asset at its natural size (high-res art is res x larger)', () => {
+  const bad = [];
+  for (const p of jsFiles(join(APP, 'src/mallows'))) {
+    if (p.endsWith('hires.js')) continue;
+    const src = effective(p);
+    // a 3-argument drawImage paints the image at its natural pixel size: with
+    // 1024 px art in a ~390 unit rig that is a 2.6x crop (MallowTouch _atSkin,
+    // rig A.body / A.original before the patch)
+    for (const c of drawImageCalls(src)) if (c.args === 3) bad.push(`${p}:${c.line} ${c.text}`);
+    // a sprite's pixel width used as a size in rig units must divide by res
+    src.split('\n').forEach((l, i) => {
+      if (/\b(img|sprite|spr)\.(width|height)\b/.test(l) && /eyeScale|spriteR/.test(l) && !/\bres\b/.test(l)) bad.push(`${p}:${i + 1} ${l.trim()}`);
+    });
+  }
+  assert.deepEqual(bad, [], 'natural-size draws / sprite px used as rig units');
+});
+
+test('the patched rig reads the per-Mallow seams the table relies on', () => {
+  const rig = effective('src/mallows/rig.js');
+  // Glitzi's rows: never the module constant on its own
+  const uses = rig.split('\n').filter((l) => /GLITCH_ROWS/.test(l) && !/^const GLITCH_ROWS =/.test(l.trim()));
+  assert.ok(uses.length >= 2, 'glitch rows are read');
+  for (const l of uses) assert.match(l, /glitchRows \|\| GLITCH_ROWS/, `per-rig rows: ${l.trim()}`);
+  assert.match(rig, /1\.25 \* \(m\.res \|\| 1\)/, 'skin q may follow the art (1.25 x res)');
+  assert.match(rig, /M\.relief \|\| CREASE_RELIEF/, 'crease relief');
+  assert.match(effective('src/mallows/registry.js'), /loadImage\(m\.art \|\| m\.file\)/, 'the rig loads the 1024 px art, pictures the thumbnail');
+  assert.match(effective('src/mallows/expressions.js'), /mallow\.presetOverrides\?\.\[id\]/, 'presetOverrides merged');
+});
+
+test('Glitzi\'s redrawn lids open again for surprise, fear and awe (presetOverrides)', () => {
+  const g = hiresMallow(MALLOWS.glitzi, 'glitzi');
+  const rest = resolveExpression(g, { neutral: 1 }, 0).lidTop;
+  assert.equal(rest, 0.55);
+  for (const [p, max] of [['surprised', 0.05], ['scared', 0.05], ['awe', 0.1], ['curious', 0.3], ['anxious', 0.3]]) {
+    const v = resolveExpression(g, { [p]: 1 }, 1).lidTop;
+    assert.ok(v <= max, `${p} lidTop ${v.toFixed(2)} (rest ${rest})`);
+  }
+  // its round mouths open wider than the presets ask (depth 27 halves them)
+  for (const p of ['surprised', 'awe', 'scared']) assert.ok(resolveExpression(g, { [p]: 1 }, 1).mouthOpen >= 0.8, `${p} opens`);
+  assert.ok(Array.isArray(g.face.mouth.relief) && g.face.mouth.relief.length >= 1, 'relief');
+});
+
+test('iris sprites carry no sclera (no pale crescent, nothing past rc)', () => {
+  const C = JSON.parse(readFileSync(new URL('../tools/hires/data/checks.json', import.meta.url)));
+  for (const k of ['glitzi-iris-L', 'glitzi-iris-R', 'boppo-iris-L', 'boppo-iris-R', 'pipzi-iris-L', 'pipzi-iris-R', 'iris-navy']) {
+    const c = C.irises?.[k];
+    assert.ok(c, `${k} checked`);
+    assert.ok(c.paleOutside <= 10, `${k}: ${c.paleOutside} pale px past rc`);
+    assert.ok(c.paleRimSector <= 100, `${k}: a pale crescent on the rim (${c.paleRimSector} px in one 30 degree sector)`);
+  }
 });

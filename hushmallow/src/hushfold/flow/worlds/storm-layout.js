@@ -9,6 +9,11 @@
 // keeps the arrangement that gives the postcards the most size, never
 // overlapping each other, the thought's words plate, Glitzi (with room for a
 // hop) or the 20 px screen edges.
+//
+// Short screens (portrait, H ≤ SHORT_H): rather than seven tiny postcards
+// crowding Glitzi, at most SHORT_MAX hang at once, each at least SHORT_S px;
+// the others wait their turn and swap in as hanging ones ground (static-storm.js).
+// plan.shown says how many hang (= plan.slots.length).
 
 export const LAYOUT = Object.freeze({
   EDGE: 20,          // px kept clear at every screen edge (gestures)
@@ -17,6 +22,9 @@ export const LAYOUT = Object.freeze({
   SWING: 4,          // px of room for a postcard's swing under the band
   S_MIN: 40,         // smallest postcard (longest side, px)
   S_CAP: 150,        // largest postcard on big screens
+  SHORT_H: 600,      // portrait screens this short or shorter hang fewer, larger postcards…
+  SHORT_MAX: 5,      // …at most this many at once…
+  SHORT_S: 64,       // …each at least this big (px, longest side); the rest wait their turn
   LABEL_PX: 17, LABEL_LINE: 21.25, LABEL_PAD_X: 12, LABEL_PAD_Y: 8,   // the words plate (placeholders.js)
 });
 
@@ -82,7 +90,7 @@ export function thoughtRects(x, y, r, labelW, lines, textW, W) {
  *                          n, thought: { textW } | null })
  *   → { s, slots:[{x,y}], thought:{ name, x, y, r, labelW, lines, R }|null, zone, band, mrect, floorBot, score }
  */
-export function planStormLayout({ W, H, safe, band, mallow = null, n = 0, thought = null }) {
+export function planStormLayout({ W, H, safe, band, mallow = null, n = 0, thought = null, allowShort = true }) {
   const L = LAYOUT, U = Math.min(W, H);
   band = band || { x: 0, y: Math.max(0, safe.y - 124), w: W, h: 118 };
   const mb = mallow && mallow.height > 20 && mallow.width > 20 ? mallow : null;
@@ -133,28 +141,48 @@ export function planStormLayout({ W, H, safe, band, mallow = null, n = 0, though
       cands.push({ name: 'fallback', x: W / 2, y, r, labelW: wide, lines, R: thoughtRects(W / 2, y, r, wide, lines, tw, W), penalty: 9 });
     }
   } else cands.push(null);
+  // short portrait screens: fewer postcards at once, never below SHORT_S (the rest wait their turn)
+  const short = allowShort && !landscape && H <= L.SHORT_H && n > 0;
+  const counts = [];
+  if (short) for (let k = Math.min(n, L.SHORT_MAX); k >= 1; k--) counts.push(k);
+  else counts.push(n);
   let best = null;
   for (const c of cands) {
     const obs = [];
     if (mrect) obs.push(mrect);
     // the thought's body and its words plate (postcards may sit beside the body on a short screen)
     if (c) for (const q of [c.R.body, c.R.plate]) obs.push({ x0: q.x0 - L.PAD, y0: q.y0 - L.PAD, x1: q.x1 + L.PAD, y1: q.y1 + L.PAD });
-    let s = Math.floor(sMax), slots = n ? null : [];
-    for (; n && s >= L.S_MIN; s -= 1) { slots = placeSlots(n, s, obs, area); if (slots) break; }
-    let fits = true;
-    if (!slots) { fits = false; s = L.S_MIN; slots = placeSlots(n, s, mrect ? [mrect] : [], area) || placeSlots(n, s, [], { ...area, y1: H - L.EDGE }) || []; }
-    // prefer big postcards, then postcards under the clouds rather than beside Glitzi or the thought
-    // (a postcard hung below the thought would have its rope running behind the person's words)
-    let beside = 0, nearThought = 0, crossing = 0;
-    for (const q of slots) {
-      if (q.y + s / 2 > zBot) beside++;
-      if (c && q.y + s / 2 > c.R.all.y0 && q.y - s / 2 < c.R.all.y1) nearThought++;
-      if (c && q.y - s / 2 >= c.R.all.y1 - 1 && [c.R.body, c.R.plate].some((o) => q.x > o.x0 - 4 && q.x < o.x1 + 4)) crossing++;
+    for (const k of counts) {
+      const sLo = short ? L.SHORT_S : L.S_MIN;
+      let s = Math.floor(short ? cardSizeMax(k, U) : sMax), slots = k ? null : [];
+      // short screens hang them only under the clouds (never on long ropes beside Glitzi, behind the words)
+      const ar = short ? { ...area, y1: Math.min(area.y1, zBot) } : area;
+      for (; k && s >= sLo; s -= 1) { slots = placeSlots(k, s, obs, ar); if (slots) break; }
+      let fits = true;
+      if (!slots) {
+        if (short) continue;                     // try fewer, larger postcards
+        fits = false; s = L.S_MIN; slots = placeSlots(k, s, mrect ? [mrect] : [], area) || placeSlots(k, s, [], { ...area, y1: H - L.EDGE }) || [];
+      }
+      // prefer big postcards, then postcards under the clouds rather than beside Glitzi or the thought
+      // (a postcard hung below the thought would have its rope running behind the person's words);
+      // on a short screen, more postcards at once (each ≥ SHORT_S) wins first
+      let beside = 0, nearThought = 0, crossing = 0;
+      for (const q of slots) {
+        if (q.y + s / 2 > zBot) beside++;
+        if (c && q.y + s / 2 > c.R.all.y0 && q.y - s / 2 < c.R.all.y1) nearThought++;
+        if (c && q.y - s / 2 >= c.R.all.y1 - 1 && [c.R.body, c.R.plate].some((o) => q.x > o.x0 - 4 && q.x < o.x1 + 4)) crossing++;
+      }
+      const score = (k ? s : 0) + (short ? 40 * k : 0) - 3 * beside - 2 * nearThought - 4 * crossing - (c ? c.penalty : 0) - (fits ? 0 : 100);
+      if (!best || score > best.score + 1e-6) best = { score, s, slots, thought: c, fits };
+      if (short) break;                          // the most postcards that fit at ≥ SHORT_S for this thought
     }
-    const score = (n ? s : 0) - 3 * beside - 2 * nearThought - 4 * crossing - (c ? c.penalty : 0) - (fits ? 0 : 100);
-    if (!best || score > best.score + 1e-6) best = { score, s, slots, thought: c, fits };
+  }
+  if (!best) {
+    // a short screen where not even one postcard fits at SHORT_S: the old way (all, as large as they fit)
+    return planStormLayout({ W, H, safe, band, mallow, n, thought, allowShort: false });
   }
   best.zone = { x: L.EDGE, y: zTop, w: W - 2 * L.EDGE, h: Math.max(0, zBot - zTop) };
   best.band = band; best.mrect = mrect; best.floorBot = floorBot;
+  best.shown = best.slots.length; best.short = short;
   return best;
 }

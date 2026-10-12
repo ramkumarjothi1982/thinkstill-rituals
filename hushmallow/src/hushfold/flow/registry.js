@@ -86,6 +86,12 @@ const STATIC_STORM = {
     thoughtSettled: ['Still your thought.', 'Just not crackling now.'],
     complete: 'The storm’s gone quiet. Stay, or drift on?',
     completeStay: 'The storm’s gone quiet. Stay as long as you like.',
+    // the person picks a different feeling mid-storm (the storm's own charge follows it)
+    feeling: {
+      more: ['More charge? That’s allowed too.'],
+      less: ['A little less charge.', 'The storm heard you.'],
+      other: ['Noted. The storm’s listening.'],
+    },
   },
   discoveries: {
     slowing: { skillId: 'slowing-down', lines: ['See what happened?', 'You changed your pace.', 'The world responded.'] },

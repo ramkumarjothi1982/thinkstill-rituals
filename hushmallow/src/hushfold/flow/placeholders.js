@@ -102,6 +102,31 @@ function haloSprite(colour, S = 128) {
 }
 
 /**
+ * Wrap `text` into lines no wider than maxW (canvas 2D context `m` with its font set). Words
+ * wrap at spaces; a word wider than a line breaks between characters (code points, so emoji
+ * stay whole). Nothing is dropped.
+ */
+export function wrapLines(m, text, maxW) {
+  const out = [];
+  let line = '';
+  for (const word of String(text).split(/\s+/).filter(Boolean)) {
+    const t = line ? `${line} ${word}` : word;
+    if (m.measureText(t).width <= maxW) { line = t; continue; }
+    if (line) { out.push(line); line = ''; }
+    if (m.measureText(word).width <= maxW) { line = word; continue; }
+    const ch = Array.from(word);
+    while (ch.length) {
+      let k = ch.length;
+      while (k > 1 && m.measureText(ch.slice(0, k).join('')).width > maxW) k--;
+      const part = ch.splice(0, k).join('');
+      if (ch.length) out.push(part); else line = part;
+    }
+  }
+  if (line) out.push(line);
+  return out;
+}
+
+/**
  * A 2D Thought Mallow carrying the person's words (words.token: exact text,
  * ≤ 42 characters). font(px, weight) → canvas font string. The world sets
  * x, y, scale and state; draw(g, x, y, scale, {tension, charge, calm, fizz, radius, now}).
@@ -187,17 +212,26 @@ export function createPlaceholderThought({ words, emotion = 'other', font = (px,
   function buildLabel(calm, maxW = 210) {
     const text = words?.token || '';
     if (!text) return null;
-    const px = 17, weight = 700;
+    const weight = 700;
     const c = document.createElement('canvas');
     const m = c.getContext('2d');
-    m.font = font(px, weight);
-    // wrap into at most two lines
-    const ws = text.split(/\s+/); const ls = []; let line = '';
-    for (const w of ws) { const t = line ? `${line} ${w}` : w; if (m.measureText(t).width <= maxW || !line) line = t; else { ls.push(line); line = w; } if (ls.length === 2) break; }
-    if (line && ls.length < 2) ls.push(line);
-    if (ls.length === 2 && ls.join(' ') !== ws.join(' ')) ls[1] = ls[1].replace(/\s*\S*$/, '') + '…';
+    // the exact words on at most two lines: 17 px, stepping down to 15 px (never smaller) before
+    // anything is left out; a word too long for a line breaks between characters
+    let px = 17, ls = null;
+    for (const size of [17, 16, 15]) {
+      px = size; m.font = font(px, weight);
+      ls = wrapLines(m, text, maxW);
+      if (ls.length <= 2) break;
+    }
+    if (ls.length > 2) {
+      // still too long (the full text is one tap away in the reading overlay)
+      ls = ls.slice(0, 2);
+      const ch = Array.from(ls[1]);
+      while (ch.length > 1 && m.measureText(`${ch.join('').trimEnd()}…`).width > maxW) ch.pop();
+      ls[1] = `${ch.join('').trimEnd()}…`;
+    }
     let tw = 0; for (const l of ls) tw = Math.max(tw, m.measureText(l).width);
-    const lh = px * 1.25, padX = 12, padY = 8;
+    const lh = 21.25, padX = 12, padY = 8;     // the line box the storm layout plans for (17 px × 1.25)
     const w = Math.ceil(tw + padX * 2), h = Math.ceil(ls.length * lh + padY * 2);
     c.width = Math.ceil((w + 24) * dpr); c.height = Math.ceil((h + 24) * dpr);
     const g = c.getContext('2d');

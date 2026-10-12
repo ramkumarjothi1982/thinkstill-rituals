@@ -366,7 +366,9 @@ test('storm layout: the subtitle band stays clear; postcards, the words and Glit
     const sc = stormScreen(W, H);
     const p = planStormLayout({ ...sc, n, thought: tw ? { textW: tw } : null });
     const tag = `${W}×${H} n=${n} text=${tw}`;
-    assert.equal(p.slots.length, n, `${tag}: every postcard has a place`);
+    assert.equal(p.slots.length, p.shown, `${tag}: a slot per hanging postcard`);
+    if (!p.short) assert.equal(p.shown, n, `${tag}: every postcard has a place`);
+    else assert.ok(p.shown >= 1 && p.shown <= LAYOUT.SHORT_MAX && (p.s >= LAYOUT.SHORT_S || p.shown === n), `${tag}: short screen hangs ${p.shown} at ${p.s} px`);
     const bandBottom = sc.band.y + sc.band.h;
     const boxes = p.slots.map((q) => ({ x0: q.x - p.s / 2, y0: q.y - p.s / 2, x1: q.x + p.s / 2, y1: q.y + p.s / 2 }));
     const glitzi = { x0: sc.mallow.left, y0: sc.mallow.top, x1: sc.mallow.right, y1: sc.mallow.bottom };
@@ -397,6 +399,23 @@ test('storm layout: postcards are ≥ 0.2U on standard phones (0.19U at 375×812
   }
   const p = planStormLayout({ ...stormScreen(844, 390), n: 7, thought: { textW: 245 } });
   assert.ok(p.thought.name.startsWith('side'), `landscape: the thought sits beside Glitzi (${p.thought.name})`);
+});
+
+test('storm layout: short phones hang fewer, larger postcards (≥ 64 px, ≤ 5 at once), never beside Glitzi\'s face', () => {
+  for (const [W, H] of [[320, 568], [360, 600]]) for (const tw of [0, 245]) {
+    const sc = stormScreen(W, H);
+    const p = planStormLayout({ ...sc, n: 7, thought: tw ? { textW: tw } : null });
+    const tag = `${W}×${H} text=${tw}`;
+    assert.ok(p.short, tag);
+    assert.ok(p.shown >= 2 && p.shown <= LAYOUT.SHORT_MAX, `${tag}: ${p.shown} hang at once`);
+    assert.ok(p.s >= LAYOUT.SHORT_S, `${tag}: ${p.s} px ≥ ${LAYOUT.SHORT_S}`);
+    for (const q of p.slots) assert.ok(q.y + p.s / 2 <= sc.mallow.top, `${tag}: hung under the clouds, not beside Glitzi`);
+  }
+  // fewer than the cap: all of them, still large
+  const p3 = planStormLayout({ ...stormScreen(320, 568), n: 2, thought: { textW: 245 } });
+  assert.equal(p3.shown, 2);
+  // taller phones are unchanged: every postcard hangs
+  assert.equal(planStormLayout({ ...stormScreen(375, 667), n: 7, thought: { textW: 245 } }).shown, 7);
 });
 
 // --------------------------------------------------------- charge field --
@@ -511,4 +530,162 @@ test('progress: the storm\'s saved state passes the flow-store sanitiser intact 
   assert.ok(g.restore(fs.sanitizeState(st).w.field));
   // and words could never ride along: free text is dropped by the store
   assert.equal(fs.sanitizeState({ token: 'My boss embarrassed me' }).token, undefined);
+});
+
+// ------------------------------------------------------------- director --
+// A tiny fake DOM: enough for createHushflow (canvases, layer elements, listeners) in Node.
+function installFakeDom() {
+  const saved = {};
+  for (const k of ['document', 'addEventListener', 'removeEventListener', 'requestAnimationFrame', 'cancelAnimationFrame']) saved[k] = Object.getOwnPropertyDescriptor(globalThis, k);
+  const ctx2d = () => new Proxy({
+    createImageData: (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }),
+    createLinearGradient: () => ({ addColorStop() {} }), createRadialGradient: () => ({ addColorStop() {} }),
+    createPattern: () => ({}), measureText: (s) => ({ width: String(s).length * 8 }), getTransform: () => ({ a: 1, e: 0 }),
+  }, { get: (o, k) => (k in o ? o[k] : () => {}), set: (o, k, v) => { o[k] = v; return true; } });
+  const el = () => ({ style: {}, className: '', width: 0, height: 0, children: [], setAttribute() {}, getContext: () => ctx2d(), append(...c) { this.children.push(...c); }, remove() {}, addEventListener() {}, removeEventListener() {}, clientWidth: 390, clientHeight: 844 });
+  globalThis.document = { createElement: () => el(), addEventListener() {}, removeEventListener() {}, hidden: false };
+  globalThis.addEventListener = () => {}; globalThis.removeEventListener = () => {};
+  globalThis.requestAnimationFrame = (fn) => setTimeout(() => fn(performance.now()), 16);
+  globalThis.cancelAnimationFrame = (id) => clearTimeout(id);
+  return {
+    el,
+    restore() { for (const [k, d] of Object.entries(saved)) { if (d) Object.defineProperty(globalThis, k, d); else delete globalThis[k]; } },
+  };
+}
+/** A playable test world that records the ctx it was made with. */
+function testWorld(id, { failPrepare = false, made = [] } = {}) {
+  return {
+    id, title: id, status: STATUS.PLAYABLE, fits: { emotions: { other: 1 }, intentions: {} }, next: [], dialogue: {}, discoveries: {}, palette: { sky: '#111', deep: '#000' },
+    load: async () => ({
+      create(ctx) {
+        const w = {
+          ctx, thoughtCalls: [], thoughtsCalls: [],
+          async prepare() { if (failPrepare) throw new Error('no build'); },
+          enter() {}, frame() {}, pointer() {}, get progress() { return 0; }, get complete() { return false; }, get metrics() { return {}; },
+          serialize() { return { v: 1 }; }, restore() {}, pause() {}, resume() {}, destroy() {},
+          setThought(h) { w.thoughtCalls.push(h); }, setThoughts(l) { w.thoughtsCalls.push(l); },
+        };
+        made.push(w);
+        return w;
+      },
+    }),
+  };
+}
+const fakeTicker = () => { const t = { fns: new Set(), add(fn) { t.fns.add(fn); }, remove(fn) { t.fns.delete(fn); }, tick(dt = 1 / 60) { for (const f of t.fns) f(dt); } }; return t; };
+const memStore = () => { const m = new Map(); return { get: (k, d = null) => (m.has(k) ? JSON.parse(m.get(k)) : d), set: (k, v) => { m.set(k, JSON.stringify(v)); return true; }, remove: (k) => m.delete(k) }; };
+
+test('director: `thoughts` (an array or a ThoughtLayer) gives worlds ctx.thought (the primary) and ctx.thoughts', async () => {
+  const dom = installFakeDom();
+  try {
+    const { createHushflow } = await import('../src/hushfold/flow/director.js');
+    const made = [];
+    const registry = createRegistry([testWorld('t1', { made })]);
+    const h = { id: 'h', token: 'a' }, h2 = { id: 'h2' }, h3 = { id: 'h3' };
+    const D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), thoughts: [h], registry, ticker: fakeTicker(), store: memStore() });
+    await D.start({ worldId: 't1' });
+    const ctx = made[0].ctx;
+    assert.equal(ctx.thought, h, 'createHushflow({thoughts:[h]}) → ctx.thought === h');
+    assert.deepEqual(ctx.thoughts, [h]);
+    // a ThoughtLayer: its primary, and every thought it holds (read live)
+    const layer = { primary: h2, list: [h2, h3] };
+    D.setThoughts(layer);
+    assert.equal(ctx.thought, h2);
+    assert.deepEqual(ctx.thoughts, [h2, h3]);
+    assert.equal(ctx.thoughtLayer, layer);
+    assert.equal(made[0].thoughtCalls.at(-1), h2, 'the world hears setThought(primary)');
+    assert.deepEqual(made[0].thoughtsCalls.at(-1), [h2, h3]);
+    layer.list.push({ id: 'h4' });
+    assert.equal(ctx.thoughts.length, 3, 'a layer that gains a thought is seen at once');
+    // an explicit primary wins; a layer with only list() works too
+    D.setThought(h3);
+    assert.equal(ctx.thought, h3);
+    assert.equal(ctx.thoughts[0], h3);
+    D.setThought(null);
+    D.setThoughts({ list: () => [h] });
+    assert.equal(ctx.thought, h);
+    D.setThoughts(null);
+    assert.equal(ctx.thought, null);
+    assert.deepEqual(ctx.thoughts, []);
+    D.destroy();
+    // the single-handle form still works
+    const made2 = [];
+    const D2 = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), thought: h2, registry: createRegistry([testWorld('t2', { made: made2 })]), ticker: fakeTicker(), store: memStore() });
+    await D2.start({ worldId: 't2' });
+    assert.equal(made2[0].ctx.thought, h2);
+    D2.destroy();
+  } finally { dom.restore(); }
+});
+
+test('director: a next world that fails to build is never re-picked; one error; history records played worlds', async () => {
+  const dom = installFakeDom();
+  try {
+    const { createHushflow } = await import('../src/hushfold/flow/director.js');
+    const made = [];
+    const registry = createRegistry([testWorld('a', { made }), testWorld('b', { failPrepare: true, made })]);
+    const D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), registry, ticker: fakeTicker(), store: memStore() });
+    const errors = [];
+    D.on('error', (e) => errors.push(e));
+    await D.start({ worldId: 'a' });
+    assert.ok(D.next(), 'b is offered first');
+    for (let i = 0; i < 30; i++) { D.debug.step(1 / 60); await new Promise((r) => setTimeout(r, 12)); }
+    assert.equal(errors.length, 1, 'one error for the failing world');
+    assert.equal(errors[0].id, 'b');
+    assert.equal(made.filter((w) => w === made[1]).length, 1);
+    assert.equal(made.length, 2, 'b was built once, not again and again');
+    assert.equal(D.next(), false, 'nothing else to drift on to');
+    assert.equal(D.state.worldId, 'a');
+    D.finish();
+    assert.deepEqual(D.debug.persisted.rotation.history, ['a'], 'finishing in a world records it');
+    D.destroy();
+  } finally { dom.restore(); }
+});
+
+test('director: the quality governor steps down on slow frames and back up after a calm stretch', async () => {
+  const dom = installFakeDom();
+  try {
+    const { createHushflow } = await import('../src/hushfold/flow/director.js');
+    const D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), registry: createRegistry([testWorld('a')]), ticker: fakeTicker(), store: memStore() });
+    const q = [];
+    D.on('quality', (e) => q.push(e.level));
+    await D.start({ worldId: 'a' });
+    for (let i = 0; i < 60; i++) D.debug.step(1 / 60);       // past the build quiet time
+    for (let i = 0; i < 160; i++) D.debug.step(0.03);         // 4.8 s of 30 ms frames
+    assert.equal(D.state.quality, 1, 'one level down');
+    for (let i = 0; i < 60 * 11; i++) D.debug.step(1 / 60);   // 11 s of calm 16.7 ms frames
+    assert.equal(D.state.quality, 0, 'back up: one hitch never leaves the world blurry');
+    assert.deepEqual(q, [1, 0]);
+    D.destroy();
+  } finally { dom.restore(); }
+});
+
+test('director: a watchdog takes over when the shared Mallow loop stops ticking, and hands back', async () => {
+  const dom = installFakeDom();
+  try {
+    const { createHushflow } = await import('../src/hushfold/flow/director.js');
+    const tk = fakeTicker();
+    const D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), registry: createRegistry([testWorld('a')]), ticker: tk, store: memStore() });
+    await D.start({ worldId: 'a' });
+    assert.equal(D.debug.loop, 'rig-ticker');
+    const t0 = D.debug.time;
+    await new Promise((r) => setTimeout(r, 650));              // the ticker never ticks
+    assert.equal(D.debug.loop, 'raf', 'own requestAnimationFrame');
+    assert.ok(D.debug.time > t0, 'the world kept moving');
+    tk.tick();                                                // the shared loop is back
+    assert.equal(D.debug.loop, 'rig-ticker');
+    D.destroy();
+    assert.equal(D.debug.loop, 'stopped');
+  } finally { dom.restore(); }
+});
+
+test('thought words plate: long words break between characters, nothing is dropped, emoji stay whole', async () => {
+  const { wrapLines } = await import('../src/hushfold/flow/placeholders.js');
+  const m = { measureText: (t) => ({ width: Array.from(t).length * 8 }) };     // 8 px a character
+  const long = 'Aaaaaaaaaabbbbbbbbbbccccccccccddddddddddee';                  // 42 characters, no spaces
+  const ls = wrapLines(m, long, 256);
+  assert.equal(ls.join(''), long, 'every character is kept, in order');
+  for (const l of ls) assert.ok(m.measureText(l).width <= 256, `"${l}" fits`);
+  assert.deepEqual(wrapLines(m, 'My boss embarrassed me today.', 256), ['My boss embarrassed me today.'].flatMap((x) => (x.length * 8 <= 256 ? [x] : ['My boss embarrassed me', 'today.'])));
+  const em = wrapLines(m, '😤😤😤😤😤😤😤😤😤😤', 32);
+  assert.ok(em.every((l) => Array.from(l).every((c) => c === '😤')), 'no half emoji');
+  assert.equal(em.join(''), '😤'.repeat(10));
 });

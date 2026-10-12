@@ -570,7 +570,8 @@ export class TouchReader {
       // moving but not yet sampled this frame: decay velocity
       if (t - p.t > 0.05) { p.vx *= 0.8; p.vy *= 0.8; }
       // a glide that comes to rest grips again; a massage that stops ends
-      if (p.mode === 'glide' && t - p.stillT > G.restTime) this._regrip(p, t);
+      // (only on the body: a hand that slid off the edge and rests there holds nothing)
+      if (p.mode === 'glide' && t - p.stillT > G.restTime) { if (this.hit(p.x, p.y)) this._regrip(p, t); else p.stillT = t; }
       else if (p.massage && t - p.t > 0.5) { this._emit('massageEnd', { id: p.id, turns: p.massage.turns, dir: p.massage.dir, t }); p.massage = null; }
     }
     this._updateStretch();

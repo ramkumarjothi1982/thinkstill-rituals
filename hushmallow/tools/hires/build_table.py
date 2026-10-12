@@ -22,6 +22,7 @@ at m.size and divide sprite pixels by res.
 """
 import json, sys, os
 import numpy as np
+import cv2
 from PIL import Image
 
 args = [a for a in sys.argv[1:] if not a.startswith('--')]
@@ -34,6 +35,7 @@ IDS = ['glitzi', 'zuzu', 'boppo', 'pipzi', 'blubi', 'loomi', 'noomi']
 OLD_REG = json.load(open(OLD))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 NEUTRAL = {'glitzi': {'lidTop': 0.55, 'lidSlant': 0.2}, 'boppo': {'mouthOpen': 0.7}}
+GLITZI_ROUND_OPEN = {'surprised': 1.4, 'awe': 1.0, 'scared': 0.9}
 # Hand decisions after the lab check, applied last (logical px):
 #   Glitzi's lid line doubles as its blink line: the painted lid has no hard
 #   edge (a fit drives it to a hairline), a blink needs one. 6 sits between.
@@ -48,14 +50,40 @@ NEUTRAL = {'glitzi': {'lidTop': 0.55, 'lidSlant': 0.2}, 'boppo': {'mouthOpen': 0
 #   An explicit upper lip (-22; the default is w * -0.08 = -10) lets the open
 #   mouth grow up into the face instead: an excited grin ~85 px tall, a
 #   surprised "o" ~40 px, both well clear of the eyes (>= 25 px).
+#   relief: the painted frown is a black groove with a lit blue rim just
+#   BELOW it (sampled: rgb ~(18,52,151) against the body's ~(9,18,65),
+#   centred ~1 lw under the groove), not the faint ridge above the current
+#   rig draws; drawn here so the closed frown keeps its carved look at phone
+#   size. [colour, width, offset] in lw units, + = below.
 TWEAKS = {'glitzi': {('eyes', 'L', 'lw'): 6.0, ('eyes', 'R', 'lw'): 6.0,
-                     ('mouth', 'depth'): 27.0, ('mouth', 'upper'): -22.0}}
+                     ('mouth', 'depth'): 27.0, ('mouth', 'upper'): -22.0,
+                     ('mouth', 'relief'): [['rgba(34,92,235,0.6)', 0.75, 0.95],
+                                           ['rgba(150,190,255,0.16)', 0.5, -0.8]]}}
+# Per-preset targets for a re-rigged face (rig-res.patch: resolveExpression
+# merges mallow.presetOverrides after PERSONALITY). The redrawn Glitzi rests
+# heavier-lidded (neutral lidTop 0.55, the current art 0.40), and every
+# preset that sets no lidTop of its own inherits that: surprised, scared and
+# awe read bored. These put the lids where those feelings open them.
+# Its round mouths: depth 27 (above) keeps a wide grin and a yawn inside the
+# shorter body, but halves every "o" (surprised, awe, scared read as a dot).
+# A depth that follows mouthRound cannot help: the round yawn (open 1.15)
+# binds it at ~29 (containment test). So those three presets open wider
+# instead, as far as the containment test allows with its 6 px margin
+# (GLITZI_ROUND_OPEN).
+PRESET_OVERRIDES = {'glitzi': {
+    'surprised': {'lidTop': 0, 'mouthOpen': GLITZI_ROUND_OPEN['surprised']},
+    'scared': {'lidTop': 0, 'mouthOpen': GLITZI_ROUND_OPEN['scared']},
+    'awe': {'lidTop': 0.05, 'mouthOpen': GLITZI_ROUND_OPEN['awe']},
+    'hopeful': {'lidTop': 0.15}, 'curious': {'lidTop': 0.25}, 'anxious': {'lidTop': 0.25},
+    'confused': {'lidTop': 0.35}, 'playful': {'lidTop': 0.35}, 'comforted': {'lidTop': 0.4},
+}}
 
 
 def r1(v):
     return round(float(v), 1)
 
 
+DERIVE = json.load(open(f'{WORK}/derive-report.json')) if os.path.exists(f'{WORK}/derive-report.json') else {}
 RIG_HIRES = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'assets', 'rig-hires')
 
 
@@ -153,6 +181,18 @@ def build(name):
         b_new, b = f['brow' + s], face['brows'][s]
         if 'lw_paint' in b_new and b.get('alpha', 0) > 0:
             b['lw'] = max(b['lw'], r1(b_new['lw_paint'] * 0.95 / res))
+    # irises derive.py re-cut along the painted outline (Boppo: no sclera
+    # crescent): placed from that circle, relative to the final eye (after
+    # the fit), so the sprite sits where its pixels were painted
+    for s, c in DERIVE.get(name, {}).get('iris', {}).items():
+        e = face['eyes'][s]
+        key = e['iris'].split(':', 1)[1]
+        irR = sprite_size(key) / 2 - 2
+        lx, ly = neutral.get('lookX', 0), neutral.get('lookY', 0)
+        ir_l = irR / res
+        e['irisR'] = r1(ir_l)
+        e['irisOff'] = [r1(c['cx'] / res - e['x'] - lx * (e['rx'] - ir_l) * 0.85),
+                        r1(c['cy'] / res - e['y'] - ly * (e['ry'] - ir_l) * 0.8)]
     for path, v in TWEAKS.get(name, {}).items():
         o = face
         for k in path[:-1]:
@@ -161,13 +201,16 @@ def build(name):
     W, H = meas['size']
     entry = {
         'res': round(res, 4),
-        'file': f'mallows-hires/{name}.webp', 'body': f'rig-hires/{name}-body.webp',
+        'file': f'mallows-hires/{name}-thumb.webp', 'art': f'mallows-hires/{name}.webp',
+        'body': f'rig-hires/{name}-body.webp',
         'size': [r1(W / res), r1(H / res)],
         'bodyBox': [L(v) for v in meas['bodyBox']],
         'face': face, 'sprites': sprites,
     }
     if name == 'glitzi':
         entry['glitchRows'] = [L(v) for v in meas['glitchRows']]
+    if name in PRESET_OVERRIDES:
+        entry['presetOverrides'] = PRESET_OVERRIDES[name]
     return entry
 
 
@@ -227,10 +270,32 @@ def spiral_check(key):
     return {'bodyPx': int(body.sum()), 'rimDark': round(float(np.mean(dark)), 3), 'size': a.shape[0]}
 
 
+def iris_check(key):
+    """An iris sprite must not carry sclera: no pale (light, unsaturated)
+    pixel past rc = w/2 - 2 (the radius the rig draws at irisR), and no pale
+    crescent along its rim (per 30 degree sector of the outer 6 px; a thin
+    even gloss line is fine, Boppo's old cut held a 14 px crescent: 312)."""
+    a = np.array(Image.open(f'{RIG_HIRES}/{key}.webp').convert('RGBA'))
+    h, w = a.shape[:2]
+    yy, xx = np.mgrid[0:h, 0:w] + 0.5
+    d, th = np.hypot(xx - w / 2, yy - h / 2), np.degrees(np.arctan2(yy - h / 2, xx - w / 2)) % 360
+    hsv = cv2.cvtColor(np.ascontiguousarray(a[..., :3]), cv2.COLOR_RGB2HSV).astype(np.float64)
+    pale = (hsv[..., 2] > 150) & (hsv[..., 1] < 110) & (a[..., 3] > 64)
+    rc = w / 2 - 2
+    band = pale & (d > rc - 6)
+    sectors = np.histogram(th[band], bins=12, range=(0, 360))[0]
+    return {'paleOutside': int((pale & (d > rc)).sum()), 'paleRimSector': int(sectors.max()), 'size': w}
+
+
 checks = {'sprites': {f'zuzu-spiral-{s}': spiral_check(f'zuzu-spiral-{s}') for s in 'LR'}}
 for k, c in checks['sprites'].items():
     if c['bodyPx'] or c['rimDark'] < 0.95:
         sys.exit(f'{k}: body pixels in the sprite or a broken rim: {c} (re-run derive.py)')
+checks['irises'] = {k: iris_check(k) for k in ['glitzi-iris-L', 'glitzi-iris-R', 'boppo-iris-L', 'boppo-iris-R',
+                                                  'pipzi-iris-L', 'pipzi-iris-R', 'iris-navy']}
+for k, c in checks['irises'].items():
+    if c['paleOutside'] > 10 or c['paleRimSector'] > 100:
+        sys.exit(f'{k}: sclera in the iris sprite: {c} (re-run derive.py)')
 if not NO_FIT:
     json.dump(sil, open(f'{WORK}/silhouette.json', 'w'), separators=(',', ':'))
     json.dump(checks, open(f'{WORK}/checks.json', 'w'), indent=1)
@@ -240,24 +305,44 @@ head = '''// High-res Mallow rigs: a patch table over registry.js (workstream W7
 // assets/source/hires (prepare.py -> measure.py -> derive.py). Re-run the
 // tools instead of editing numbers here.
 //
-// Each entry replaces a Mallow's art, body, sprites, size, bodyBox and face
-// spec. Geometry is in the rig's LOGICAL space: new-art pixels / res
-// (res ~2.3-2.7 art px per logical px), so every constant inside rig.js keeps
-// the scale it had with the original art. The rig must support `res`:
-//   * draw A.body and A.original at m.size (not their natural size),
-//   * draw sprite pixels / res (Zuzu's spirals),
-//   * read m.glitchRows (Glitzi) instead of GLITCH_ROWS,
-//   * allow skin q up to 1.25 * res.
-// (tools/hires/rig-res.patch). Without it the art draws 2.6x too big.
+// Each entry replaces a Mallow's pictures, body, sprites, size, bodyBox and
+// face spec:
+//   art    the 1024 px approved cut-out, for the rig only (loaded as
+//          `m.art || m.file`),
+//   file   the same cut-out at 384 px, for every other picture of a Mallow
+//          (side-panel switcher, mallows scene, studio tiles, ritual cards):
+//          those keep reading `m.file` and get the new drawing at the
+//          current art's decode cost (~4 MB for seven, not ~28 MB).
+// Geometry is in the rig's LOGICAL space: new-art pixels / res (res ~2.3-2.7
+// art px per logical px), so every constant inside rig.js keeps the scale it
+// had with the original art.
+//
+// THE RIG MUST SUPPORT `res` FIRST: tools/hires/rig-res.patch (git apply;
+// additive, no change for the current art). It touches
+//   rig.js       art and body drawn at m.size; spiral sprites / res (draw and
+//                dirty rect); m.glitchRows; skin q up to 1.25 * res; the
+//                crease mouth's relief (m.face.mouth.relief);
+//   touch/mallow-touch.js  _atSkin draws the approved art and Glitzi's bare
+//                body at m.size (tier A cross-fades them in at rest: without
+//                it a switched Mallow shows a 2.6x crop of its art at rest);
+//   registry.js  the rig loads m.art || m.file;
+//   expressions.js  resolveExpression merges m.presetOverrides (Glitzi's
+//                lids and round mouths).
+// Without it the art draws 2.6x too big. tests/hires.test.mjs checks the
+// patch still fits today's files and that the patched code never draws an
+// art asset at its natural size; node hushmallow/tools/hires/refresh-patch.mjs
+// rewrites it against the current files.
 //
 // Decision D13: a Mallow switches to its high-res rig only after a visual
 // check. HIRES_VERIFIED lists the ones that passed; applyHires() applies those
 // (or the ids you pass) to the registry objects, once, before rigs load.
 // The cyan file without brows is treated as Loomi (owner to confirm): its
 // high-res rig has no brows at rest (they appear only when an expression
-// raises browAlpha), so Loomi stays off HIRES_VERIFIED until the owner says.
+// raises browAlpha), so Loomi stays off HIRES_VERIFIED until the owner says,
+// and switching six while Loomi keeps its old drawing mixes two styles in
+// the switcher: switch all seven together, or none, for an owner build.
 //
-// Integration (after rig.js supports res): in registry.js, once, at the end:
+// Integration (after the patch is merged): in registry.js, once, at the end:
 //   import { applyHires } from './hires.js';  applyHires(MALLOWS, SPRITES);
 // ship assets/mallows-hires + assets/rig-hires in tools/build-site.sh, and
 // let MallowTouch use skinSize ~1024 for a high-res Mallow (its 640 default
@@ -271,6 +356,7 @@ out.append('const T = ' + js(table) + ';\n')
 out.append('''
 for (const e of Object.values(T)) {
   e.file = A(e.file);
+  e.art = A(e.art);
   e.body = A(e.body);
   for (const k of Object.keys(e.sprites)) e.sprites[k] = A(e.sprites[k]);
 }
@@ -284,10 +370,13 @@ export const HIRES_VERIFIED = ''' + json.dumps(VERIFIED) + ''';
 export function hiresMallow(base, id = base?.id) {
   const h = T[id];
   if (!base || !h) return base || null;
-  return { ...base, file: h.file, body: h.body, size: h.size.slice(), bodyBox: h.bodyBox.slice(), res: h.res,
-    // JSON, not structuredClone: this runs at registry import time, and
-    // structuredClone throws on Safari < 15.4 (the face spec is plain JSON)
-    ...(h.glitchRows ? { glitchRows: h.glitchRows.slice() } : {}), face: JSON.parse(JSON.stringify(h.face)), hires: true };
+  // JSON, not structuredClone: this runs at registry import time, and
+  // structuredClone throws on Safari < 15.4 (the specs are plain JSON)
+  const copy = (v) => JSON.parse(JSON.stringify(v));
+  return { ...base, file: h.file, art: h.art, body: h.body, size: h.size.slice(), bodyBox: h.bodyBox.slice(), res: h.res,
+    ...(h.glitchRows ? { glitchRows: h.glitchRows.slice() } : {}),
+    ...(h.presetOverrides ? { presetOverrides: copy(h.presetOverrides) } : {}),
+    face: copy(h.face), hires: true };
 }
 
 /** Switch `ids` (default: HIRES_VERIFIED) to their high-res rigs in place:

@@ -188,6 +188,26 @@ export class ChargeField {
     return out;
   }
 
+  /**
+   * The person names a different feeling mid-storm: the storm's own charge (the floor) eases
+   * by ×m, fresh charge on top of it stays. Never creates light and never moves progress; when
+   * lowering, the floor keeps at least 1.3× the light still needed, so the storm can always be
+   * finished by grounding. Returns the factor applied.
+   */
+  scaleFloor(m) {
+    if (!(m > 0) || m === 1) return 1;
+    let S = 0;
+    for (let i = 0; i < this.n; i++) S += this.f[i];
+    if (S <= 0) return 1;
+    if (m < 1) m = Math.max(m, Math.min(1, (1.3 * Math.max(0, this.target - this.light)) / S));
+    for (let i = 0; i < this.n; i++) {
+      const f0 = this.f[i], ex = this.q[i] > f0 ? this.q[i] - f0 : 0;
+      const f1 = Math.min(FIELD.CAP, f0 * m);
+      this.f[i] = f1; this.q[i] = Math.min(FIELD.CAP, f1 + ex);
+    }
+    return m;
+  }
+
   /** Drain an amount directly into light (postcards and the Thought Mallow hold their own charge). */
   addLight(amount) { if (amount > 0) this.light += amount; }
 

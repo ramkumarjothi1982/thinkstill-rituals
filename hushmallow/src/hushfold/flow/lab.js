@@ -127,7 +127,7 @@ export async function hushflowLab(app, qs) {
   // QA: every line spoken, in order (text only, for the lab's own log)
   const sayOrig = subtitles.say.bind(subtitles);
   subtitles.say = (lines, o = {}) => { log.push({ ev: 'say', t: Math.round((director?.debug.time || 0) * 100) / 100, kind: o.kind || 'dialogue', lines: [].concat(lines) }); return sayOrig(lines, o); };
-  for (const ev of ['world', 'discovery', 'offer', 'complete', 'melt', 'pause', 'resume', 'stay', 'finish', 'quality', 'error']) {
+  for (const ev of ['world', 'discovery', 'offer', 'complete', 'melt', 'pause', 'resume', 'stay', 'finish', 'quality', 'error', 'checkpoint', 'loop']) {
     director.on(ev, (d) => { log.push({ ev, t: Math.round(director.debug.time * 100) / 100, ...(d && typeof d === 'object' ? JSON.parse(JSON.stringify(d, (k, v) => (k === 'error' ? String(v) : v))) : {}) }); });
   }
   // the world's name, once, as a title card in the subtitle band (as the shell does)
