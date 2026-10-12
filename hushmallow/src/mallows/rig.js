@@ -909,8 +909,8 @@ export class MallowRig {
     const S = this._sigVals || (this._sigVals = new Float64Array(FACE_SIG_KEYS.length + 2).fill(NaN));
     const nk = FACE_SIG_KEYS.length;
     let same = true;
-    for (let i = 0; i < nk; i++) if (!(Math.abs(S[i] - v[FACE_SIG_KEYS[i]]) < 5e-4)) { same = false; break; }
-    if (same && !(Math.abs(S[nk] - blinkAmt) < 5e-3)) same = false;
+    for (let i = 0; i < nk; i++) if (!(Math.abs(S[i] - v[FACE_SIG_KEYS[i]]) < 2.5e-4)) { same = false; break; }
+    if (same && !(Math.abs(S[nk] - blinkAmt) < 1e-3)) same = false;
     if (same && !shaderRest && !(Math.abs(S[nk + 1] - this.restMix) < 5e-3)) same = false;
     if (!animated && !this.skinDirty && same) return false;
     for (let i = 0; i < nk; i++) S[i] = v[FACE_SIG_KEYS[i]];
@@ -1096,7 +1096,7 @@ const FACE_SIG_KEYS = [...new Set([...PART_KEYS.eyes, ...PART_KEYS.brows, ...PAR
 function makeFaceParts(m) {
   const f = m.face, out = [];
   const mk = (k, side, keys, under) => out.push({ k, side, keys, under, init: false,
-    tol: keys.map((key) => (key === 'blink' ? 5e-3 : 5e-4)), sig: new Float64Array(keys.length).fill(NaN),
+    tol: keys.map((key) => (key === 'blink' ? 1e-3 : 2.5e-4)), sig: new Float64Array(keys.length).fill(NaN),
     prev: box(), cur: box() });
   for (const side of ['L', 'R']) {
     mk('eye', side, ['blink', ...PART_KEYS.eyes], true);
@@ -1121,6 +1121,28 @@ function hull(r, xs, ys, pad) {
   for (const x of xs) { if (x - pad < r[0]) r[0] = x - pad; if (x + pad > r[2]) r[2] = x + pad; }
   for (const y of ys) { if (y - pad < r[1]) r[1] = y - pad; if (y + pad > r[3]) r[3] = y + pad; }
 }
+// exact bounds of Bézier curves (not their control hulls), grown by pad
+function cubicAxis(a0, a1, a2, a3, lohi) {
+  let lo = Math.min(a0, a3), hi = Math.max(a0, a3);
+  const A = -a0 + 3 * a1 - 3 * a2 + a3, B = 2 * (a0 - 2 * a1 + a2), C = a1 - a0;
+  const at = (t) => { const u = 1 - t; return u * u * u * a0 + 3 * u * u * t * a1 + 3 * u * t * t * a2 + t * t * t * a3; };
+  const test = (t) => { if (t > 0 && t < 1) { const v = at(t); if (v < lo) lo = v; if (v > hi) hi = v; } };
+  if (Math.abs(A) < 1e-9) { if (Math.abs(B) > 1e-9) test(-C / B); } else {
+    const d = B * B - 4 * A * C;
+    if (d >= 0) { const q = Math.sqrt(d); test((-B + q) / (2 * A)); test((-B - q) / (2 * A)); }
+  }
+  lohi[0] = lo; lohi[1] = hi;
+  return lohi;
+}
+const _ax = [0, 0], _ay = [0, 0];
+function cubicBox(r, x0, y0, x1, y1, x2, y2, x3, y3, pad, dy = 0) {
+  cubicAxis(x0, x1, x2, x3, _ax); cubicAxis(y0, y1, y2, y3, _ay);
+  grow(r, _ax[0] - pad, _ay[0] + dy - pad, _ax[1] + pad, _ay[1] + dy + pad);
+}
+// a quadratic is the cubic with controls 2/3 of the way to its control point
+function quadBox(r, x0, y0, cx, cy, x1, y1, pad) {
+  cubicBox(r, x0, y0, x0 + (cx - x0) * 2 / 3, y0 + (cy - y0) * 2 / 3, x1 + (cx - x1) * 2 / 3, y1 + (cy - y1) * 2 / 3, x1, y1, pad);
+}
 
 /** Where one face part draws right now (source px) — the same geometry as
  *  its renderer, conservatively (curves by their control hulls, tubes by
@@ -1131,7 +1153,7 @@ function partBounds(rig, pt, P, r) {
   if (pt.k === 'eye') {
     const spec = f.eyes[side], style = f.eyeStyle, lw = spec.lw;
     const g = eyeGeom(spec, side, P, style, rig.id);
-    const ux = [g.xout, g.up[0], g.up[2], g.xin], uy = [g.yout, g.up[1], g.up[3], g.yin];
+    const upper = (pad, dy = 0) => cubicBox(r, g.xout, g.yout, g.up[0], g.up[1], g.up[2], g.up[3], g.xin, g.yin, pad, dy);
     if (g.o > 0.015) {
       // inside the lid region: the eyeball (sclera, iris, hearts, sparkle) or the spiral
       let cx0, cy0, cx1, cy1;
@@ -1150,12 +1172,14 @@ function partBounds(rig, pt, P, r) {
       }
       // …clipped to the lid region
       const reg = [Infinity, Infinity, -Infinity, -Infinity];
-      hull(reg, [g.xout, g.xin, g.up[0], g.up[2], g.lo[0], g.lo[2]], [g.yout, g.yin, g.up[1], g.up[3], g.lo[1], g.lo[3]], 1);
-      grow(r, Math.max(cx0, reg[0]), Math.max(cy0, reg[1]), Math.min(cx1, reg[2]), Math.min(cy1, reg[3]));
-      if (style === 'glitzi') hull(r, ux, uy.map((y) => y - lw * 0.75), 2);   // the neon lid rim
+      cubicBox(reg, g.xout, g.yout, g.up[0], g.up[1], g.up[2], g.up[3], g.xin, g.yin, 1);
+      cubicBox(reg, g.xin, g.yin, g.lo[0], g.lo[1], g.lo[2], g.lo[3], g.xout, g.yout, 1);
+      const bx0 = Math.max(cx0, reg[0]), by0 = Math.max(cy0, reg[1]), bx1 = Math.min(cx1, reg[2]), by1 = Math.min(cy1, reg[3]);
+      if (bx1 > bx0 && by1 > by0) grow(r, bx0, by0, bx1, by1);
+      if (style === 'glitzi') upper(2, -lw * 0.75);   // the neon lid rim
     }
     // the lid line (shut, or closing)
-    if (1 - smoothstep(0.02, 0.3, g.o) > 0.01) hull(r, ux, uy, lw * 0.9 + 1);
+    if (1 - smoothstep(0.02, 0.3, g.o) > 0.01) upper(lw * 0.9 + 1);
     return r;
   }
   if (pt.k === 'brow') {
@@ -1169,7 +1193,7 @@ function partBounds(rig, pt, P, r) {
     const mid = (spec.p0[1] + spec.p1[1]) / 2;
     const bend = 1 + P.browCurve * 0.6 + Math.min(0, P.browTilt) * 0.5;
     const cy = mid + lift + (spec.c[1] - mid) * bend + (tiltIn + tiltOut) * 0.5;
-    hull(r, [spec.p0[0], spec.c[0], spec.p1[0]], [y0, cy, y1], spec.lw * 0.9 + 1);
+    quadBox(r, spec.p0[0], y0, spec.c[0], cy, spec.p1[0], y1, spec.lw * 0.9 + 1);
     return r;
   }
   if (pt.k === 'mouth') {
@@ -1187,8 +1211,10 @@ function partBounds(rig, pt, P, r) {
     if (sm < 0 && oc > 0.05) U = Math.min(U, Lo - trem - 2);
     const k = 4 / 3, cy = M.y, wave = P.mouthWave * M.w * 0.05;
     const lw = M.style === 'open' ? Math.max(M.lw, 8) : M.lw;
-    const ys = [cy + skewY, cy - skewY, cy + U * k, cy + (Lo - trem) * k, cy + (Lo + trem) * k];
-    hull(r, [x0, x1], ys, lw * 1.25 + wave + 2);
+    const yL = cy + skewY, yR = cy - skewY, pad = lw * 1.25 + wave + 2;
+    const ux0 = x0 + W * 0.22, ux1 = x1 - W * 0.22;
+    cubicBox(r, x0, yL, ux0, cy + U * k, ux1, cy + U * k, x1, yR, pad);
+    for (const L of [Lo - trem, Lo + trem]) cubicBox(r, x1, yR, ux1, cy + L * k, ux0, cy + L * k, x0, yL, pad);
     if (pout > 0.05) grow(r, M.x - W * 0.32 - 1, cy + Math.max(Lo + trem, 0) + M.lw * 0.5, M.x + W * 0.32 + 1, cy + Math.max(Lo + trem, 0) + M.lw * 1.3);
     if (P.tongue > 0.03) {
       const t = clamp(P.tongue, 0, 1), tx = M.x + P.mouthSkew * M.w * 0.08, ty = cy + Math.max(Lo + trem, U) + M.lw * 0.3;
