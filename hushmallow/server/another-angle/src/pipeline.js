@@ -92,8 +92,8 @@ export async function runAngle(input, deps) {
 
   /** @type {{ lines: [string, string] | null, reasons: string[] } | null} */
   let rejected = null;
-  /** @type {Scene | null} */
-  let lastValid = null;
+  /** @type {Scene[]} every valid draft, newest last (for the fallback hint) */
+  const valid = [];
   const minRetry = deps.minRetryBudgetMs ?? 6000;
 
   for (let attempt = 1; attempt <= 2; attempt++) {
@@ -132,7 +132,7 @@ export async function runAngle(input, deps) {
         continue;
       }
       const reason = res.reason === 'timeout' ? 'timeout' : 'provider';
-      return /** @type {AngleResult} */ (done({ fallback: { reason, hint: lastValid ? hintOf(lastValid) : null }, keep_support_close: concern }));
+      return /** @type {AngleResult} */ (done({ fallback: { reason, hint: hintFrom(valid, input.previous) }, keep_support_close: concern }));
     }
     meta.model = res.model;
     meta.fallback_model = res.fallbackModel;
@@ -159,7 +159,7 @@ export async function runAngle(input, deps) {
     if (scene.situation_type === 'unclear') {
       return /** @type {AngleResult} */ (done({ fallback: { reason: 'unclear', hint: null }, keep_support_close: concern }));
     }
-    lastValid = scene;
+    valid.push(scene);
     // 6. Output post-check.
     if (!outputIsSafe(scene, VISIBLE_FIELDS)) {
       meta.gate_codes.push('unsafe_output');
@@ -185,7 +185,21 @@ export async function runAngle(input, deps) {
   // authored engine rather than show something weak.
   meta.gate = 'fail';
   meta.gate_codes = [...new Set(meta.gate_codes)];
-  return /** @type {AngleResult} */ (done({ fallback: { reason: 'quality', hint: lastValid ? hintOf(lastValid) : null }, keep_support_close: concern }));
+  return /** @type {AngleResult} */ (done({ fallback: { reason: 'quality', hint: hintFrom(valid, input.previous) }, keep_support_close: concern }));
+}
+
+/**
+ * The pattern the client's authored engine should try. A draft that failed
+ * for repeating an earlier angle carries a pattern the person has already
+ * played, which the client then skips; so the newest draft whose pattern no
+ * earlier angle used is the hint, and none at all if every draft repeated one
+ * (the client then chooses from the text itself).
+ * @param {Scene[]} valid @param {PreviousAngle[]} previous
+ */
+function hintFrom(valid, previous) {
+  const used = new Set(previous.map((p) => p.reasoning_pattern).filter(Boolean));
+  for (let i = valid.length - 1; i >= 0; i--) if (!used.has(valid[i].reasoning_pattern)) return hintOf(valid[i]);
+  return null;
 }
 
 /** @param {Scene} s */
