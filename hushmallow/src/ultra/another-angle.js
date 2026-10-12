@@ -576,6 +576,14 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   function relayout() { if (lensLayout) requestAnimationFrame(() => lensLayout?.()); }
 
   function compact() { return innerHeight < 700; }
+  /** Zuzu speaks in a bubble only when she has her own patch of sky and the space is tall enough
+   *  not to cover the lens; otherwise the line goes in the lens's inline caption (if it has one). */
+  function sayLens(t, ms = 2800, inline = null) {
+    if (!t) return;
+    if (!zuzuCorner && zoneRect().height >= 300) { say(t, ms); return; }
+    say('');
+    if (inline) inline.textContent = t;
+  }
   function lensLine(lens, beat) { return LX.LENS_LINES[lens]?.[beat] || null; }
   function choose(pairs) {
     return new Promise((resolve) => {
@@ -657,6 +665,8 @@ export async function run(ctx, { frameworks: F, engine: E }) {
 
   // ----------------------------------------------------- the lens menu --
   async function lensMenu(recs, round) {
+    zuzuCorner = false;   // Zuzu stands centre stage here
+    say('');
     setMove(4, { eyebrow: 'Optional lenses', title: round ? 'One more lens?' : 'Want another lens?',
       prompt: round ? 'Or head on to your next move.' : compact() ? 'Optional — about a minute each.' : 'Totally optional. Zuzu picked these for your thought — about a minute each.' });
     setZuzu({ curious: 0.6, playful: 0.4 }, 1.1, 0.2);
@@ -686,7 +696,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
       });
     };
     requestAnimationFrame(() => lensLayout?.());
-    say(lensLine('offer', round ? 'again' : 'first'), 3000);
+    sayLens(lensLine('offer', round ? 'again' : 'first'), 3000);
     const pick = await choose([...items.map((b, i) => [b, recs[i].id]), [skip, null]]);
     if (pick && pick !== ABORT) { audio.fx?.('portal', { intensity: 0.5 }); haptic('pop'); }
     lensLayout = null;
@@ -699,7 +709,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     const STOPS = LX.ZOOM_STOPS;
     const N = STOPS.length - 1;
     const rm = !!ctx.reducedMotion;
-    setMove(4, { eyebrow: 'Zoom out', title: 'Pull the camera back', prompt: compact() ? 'Pinch, drag up or slide. Pick what’s true.' : 'Pinch, drag upwards or use the slider. Tap anything that’s true for you.' });
+    setMove(4, { eyebrow: 'Zoom out', title: 'Pull the camera back', prompt: compact() ? '' : 'Pinch, drag upwards or use the slider. Tap anything that’s true for you.' });
     setZuzu({ curious: 0.8, awe: 0.2 }, 1.4, 0.5);
     audio.fx?.('portal', { intensity: 0.35, pitch: 0.8 });
     const chosen = new Map(STOPS.map((s) => [s.id, []]));
@@ -755,7 +765,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
 
     // dock: the stop's question + pick-what's-true lines, zoom controls, done
     const stopEye = h('div', { class: 'eyebrow', style: { color: '#9ff4ff' } });
-    const stopQ = h('p', { style: { margin: '4px 0 0', fontWeight: '700', color: 'var(--text-1)', fontSize: '15.5px', lineHeight: '1.3' } });
+    const stopQ = h('p', { style: { margin: '4px 0 0', fontWeight: '700', color: 'var(--text-1)', fontSize: compact() ? '14.5px' : '15.5px', lineHeight: '1.3' } });
     const row = h('div', { class: 'chips scroll', role: 'group', 'aria-label': 'Lines that might be true for you', style: { margin: '10px -14px 0', padding: '2px 14px 4px', scrollSnapType: 'x proximity', scrollPadding: '0 14px', gap: '8px' } });
     const promptCard = h('div', { class: 'card', style: { padding: '12px 14px 10px', boxShadow: 'none', minWidth: '0', overflow: 'hidden' } }, stopEye, stopQ, row);
     const zin = h('button', { class: 'icon-btn', 'aria-label': 'Zoom in', style: { fontSize: '22px', fontWeight: '700' } }, '+');
@@ -873,11 +883,11 @@ export async function run(ctx, { frameworks: F, engine: E }) {
       // Zuzu's spirals calm down as the camera pulls back
       setZuzu(k >= 3 ? { awe: 0.6, calm: 0.4 } : k === 2 ? { curious: 0.5, calm: 0.5 } : { curious: 0.8, awe: 0.2 }, Math.max(0.25, 1.4 - k * 0.3), Math.max(0, 0.5 - k * 0.16));
       realm()?.setMood?.({ clarity: 0.6 + k * 0.1 });
-      if (!spoken.has(S.id) && prev !== -1) { spoken.add(S.id); say(lensLine('zoom', S.id), 2600); }
+      if (!spoken.has(S.id) && prev !== -1) { spoken.add(S.id); sayLens(lensLine('zoom', S.id), 2600); }
       if (k === N && !cameoShown) { cameoShown = true; const seq = lensSeq; setTimeout(() => cameoPop('zoom', seq), 900); audio.fx?.('bloom', { intensity: 0.5 }); }
     }
     function lineStyle() {
-      return { flex: '0 0 auto', width: compact() ? 'min(70vw, 230px)' : 'min(64vw, 240px)', minHeight: '58px', padding: '8px 12px', fontSize: '14px', lineHeight: '1.3', whiteSpace: 'normal', scrollSnapAlign: 'start' };
+      return { flex: '0 0 auto', width: compact() ? 'min(70vw, 230px)' : 'min(64vw, 240px)', minHeight: compact() ? '50px' : '58px', padding: compact() ? '6px 12px' : '8px 12px', fontSize: compact() ? '13.5px' : '14px', lineHeight: '1.3', whiteSpace: 'normal', scrollSnapAlign: 'start' };
     }
     function toggle(S, line, b) {
       const list = chosen.get(S.id);
@@ -959,13 +969,13 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     lensLayout();
     setZ(0);
     requestAnimationFrame(() => lensLayout?.());
-    say(lensLine('zoom', 'intro'), 3000);
+    sayLens(lensLine('zoom', 'intro'), 3000);
     const r = await choose([[doneBtn, true]]);
     cancelTween();
     if (r === ABORT) return ABORT;
     audio.fx?.('chime', { intensity: 0.6 });
     haptic('success');
-    say(lensLine('zoom', 'done'), 2400);
+    sayLens(lensLine('zoom', 'done'), 2400);
     const lines = STOPS.flatMap((S) => chosen.get(S.id));
     return { lines, reached: STOPS[maxStop].id };
   }
@@ -976,7 +986,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     const deck = E.buildFutureDeck(scenario, { facts: out.facts, added: userAdded ? out.added : [] });
     const C = deck.copy;
     const res = { known: [], predicted: [], unsure: [], certainty: null, sealed: null };
-    setMove(4, { eyebrow: 'Future lens', title: 'Known, or predicted?', prompt: compact() ? 'Drop each piece into the lens.' : 'Drop each piece into the lens: the clear half if it’s known, the misty half if it hasn’t happened yet.' });
+    setMove(4, { eyebrow: 'Future lens', title: 'Known, or predicted?', prompt: compact() ? 'Drag it into the lens, or tap.' : 'Drop each piece into the lens: the clear half if it’s known, the misty half if it hasn’t happened yet.' });
     setZuzu({ curious: 0.7, awe: 0.3 }, 1.6, 0.35);
     audio.fx?.('lens-focus', { intensity: 0.6 });
 
@@ -1136,7 +1146,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     pcard.addEventListener('pointerup', drop);
     pcard.addEventListener('pointercancel', drop);
     showPiece();
-    say(lensLine('future', 'intro'), 3000);
+    sayLens(lensLine('future', 'intro'), 3000);
     const sortedOk = await Promise.race([sorted, new Promise((r) => signal.addEventListener('abort', () => r(false)))]);
     if (!sortedOk || signal.aborted) return ABORT;
     haptic('pop');
@@ -1146,15 +1156,15 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     const focus = res.predicted.find((t) => deck.ownPredictions.includes(t)) || res.predicted[0];
     if (!focus) {
       setMove(4, { eyebrow: 'Future lens', title: 'No crystal ball needed', prompt: '' });
-      say(lensLine('future', 'noPrediction'), 3000);
+      sayLens(lensLine('future', 'noPrediction'), 3000);
       const carry = h('button', { class: 'btn ultra block' }, 'Carry on');
       dock.replaceChildren(h('div', { class: 'card', style: { padding: '12px 14px', boxShadow: 'none' } },
         h('p', { style: { margin: 0, color: 'var(--text-1)' } }, lensLine('future', 'noPrediction'))), carry);
       if ((await choose([[carry, true]])) === ABORT) return ABORT;
       return res;
     }
-    setMove(4, { eyebrow: 'Future lens', title: 'How sure does it feel?', prompt: compact() ? 'There’s no right number.' : 'There’s no right number. 0 is a wild guess; 100 is certain.' });
-    say(lensLine('future', 'sorted'), 2600);
+    setMove(4, { eyebrow: 'Future lens', title: 'How sure does it feel?', prompt: compact() ? '' : 'There’s no right number. 0 is a wild guess; 100 is certain.' });
+    sayLens(lensLine('future', 'sorted'), 2600);
     { const seq = lensSeq; setTimeout(() => cameoPop('future', seq), 3000); }
     const unknownLines = deck.unknowns.slice(0, 2);
     knownList.replaceChildren(h('div', {}, res.known.length ? `${res.known.length} known ${res.known.length === 1 ? 'thing' : 'things'}` : 'Nothing known yet'));
@@ -1171,8 +1181,8 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     const num = h('div', { 'aria-hidden': 'true', style: { font: '700 34px/1 var(--font-display)', color: '#ffd98a', minWidth: '2.2em', textAlign: 'right' } }, '–');
     const sure = h('input', { type: 'range', class: 'range', min: '0', max: '100', step: '1', value: '50', 'aria-label': C.sureQuestion, style: { flex: '1', minWidth: '0' } });
     const band = h('p', { 'aria-live': 'polite', style: { margin: '8px 0 0', color: 'var(--text-2)', fontSize: '14px', minHeight: '2.6em' } }, 'Slide to show how sure it feels. You can leave it if you’d rather not.');
-    const sealBtn = h('button', { class: 'btn', style: { fontSize: '15px' } }, 'Seal for later');
-    const carry = h('button', { class: 'btn ultra', style: { fontSize: '15px' } }, 'Carry on');
+    const sealBtn = h('button', { class: 'btn', style: { fontSize: innerWidth < 360 ? '14px' : '15px' } }, 'Seal for later');
+    const carry = h('button', { class: 'btn ultra', style: { fontSize: innerWidth < 360 ? '14px' : '15px' } }, 'Carry on');
     dock.replaceChildren(h('div', { class: 'card', style: { padding: '12px 14px', boxShadow: 'none' } },
       h('div', { class: 'eyebrow', style: { color: '#ffd98a' } }, 'How sure, from 0 to 100?'),
       h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px', marginTop: '6px' } }, sure, num), band),
@@ -1219,7 +1229,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
         res.sealed = { when, stored };
         await sealAnimation();
         if (signal.aborted) return ABORT;
-        say(lensLine('future', stored ? 'sealed' : 'sealedSession'), 3000);
+        sayLens(lensLine('future', stored ? 'sealed' : 'sealedSession'), 3000);
         const fin = h('button', { class: 'btn ultra block' }, 'Carry on');
         dock.replaceChildren(h('div', { class: 'card', style: { padding: '12px 14px', boxShadow: 'none' } },
           h('div', { class: 'eyebrow', style: { color: '#ffd98a' } }, 'Sealed'),
@@ -1228,7 +1238,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
         if ((await choose([[fin, true]])) === ABORT) return ABORT;
       }
     }
-    say(lensLine('future', 'done'), 2400);
+    sayLens(lensLine('future', 'done'), 2400);
     return res;
 
     async function sealAnimation() {
@@ -1266,7 +1276,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     const picks = mx.dials.map(() => 0);
     let cur = E.mixSentence(mx, picks);
     let turns = 0;
-    setMove(4, { eyebrow: 'Meaning mixer', title: 'Turn the dials', prompt: compact() ? 'Keep the version that’s most accurate.' : 'Turn a dial on the loud words. Keep whichever version feels most accurate — even the first.' });
+    setMove(4, { eyebrow: 'Meaning mixer', title: 'Turn the dials', prompt: compact() ? '' : 'Turn a dial on the loud words. Keep whichever version feels most accurate — even the first.' });
     setZuzu({ curious: 0.6, anxious: 0.4 }, 1.4, 0.8, 0.65);
     audio.fx?.('lens-focus', { intensity: 0.5, pitch: 1.2 });
 
@@ -1284,8 +1294,8 @@ export async function run(ctx, { frameworks: F, engine: E }) {
 
     // dock: one knob per loud word, then the choice
     const knobs = mx.dials.map((d, i) => mkKnob(d, i));
-    const keepOrig = h('button', { class: 'btn', style: { fontSize: '15px' } }, 'Keep my words');
-    const keepMix = h('button', { class: 'btn ultra', disabled: true, style: { fontSize: '15px' } }, 'Keep this mix');
+    const keepOrig = h('button', { class: 'btn', style: { fontSize: innerWidth < 360 ? '14px' : '15px' } }, 'Keep my words');
+    const keepMix = h('button', { class: 'btn ultra', disabled: true, style: { fontSize: innerWidth < 360 ? '14px' : '15px' } }, 'Keep this mix');
     dock.replaceChildren(
       h('div', { style: { display: 'flex', justifyContent: 'center', gap: compact() ? '8px' : '14px' } }, ...knobs.map((k) => k.wrap)),
       h('p', { class: 'muted', style: { margin: '2px 0 0', textAlign: 'center' } }, 'Which version feels most accurate?'),
@@ -1403,11 +1413,11 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     }
     renderAll();
     requestAnimationFrame(() => lensLayout?.());
-    say(mx.dials.length ? lensLine('mixer', 'intro') : lensLine('mixer', 'none'), 3200);
+    sayLens(mx.dials.length ? lensLine('mixer', 'intro') : lensLine('mixer', 'none'), 3200, caption);
     const pick = await choose([[keepOrig, 'original'], [keepMix, 'mix']]);
     if (pick === ABORT) return ABORT;
-    if (pick === 'mix') { audio.fx?.('chime', { intensity: 0.7 }); haptic('success'); world.react('celebrate'); say(lensLine('mixer', 'mixed'), 2800); }
-    else { audio.fx?.('star', { intensity: 0.5 }); haptic('light'); world.react('nod'); say(lensLine('mixer', 'kept'), 2800); }
+    if (pick === 'mix') { audio.fx?.('chime', { intensity: 0.7 }); haptic('success'); world.react('celebrate'); sayLens(lensLine('mixer', 'mixed'), 2800); }
+    else { audio.fx?.('star', { intensity: 0.5 }); haptic('light'); world.react('nod'); sayLens(lensLine('mixer', 'kept'), 2800); }
     await wait(rm ? 200 : 650);
     return { original: mx.text, chosen: pick === 'mix' ? cur.text : mx.text, choice: pick, picks: picks.slice() };
   }
