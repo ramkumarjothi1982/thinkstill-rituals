@@ -129,6 +129,9 @@ export function create(E) {
   let touchA = 0, touchX = 0, touchY = 0, clock = 0;
   const wob = new Wobble();
   const vUp = new Float32Array(3), vZ = new Float32Array(3), vY = new Float32Array(3);
+  // frost specks on the quiet face (face-local, fixed): it reads as frosted glass, not another mirror
+  const frost = new Float32Array(16 * 3);
+  for (let i = 0; i < 16; i++) { frost[i * 3] = E.rand() - 0.5; frost[i * 3 + 1] = E.rand() - 0.5; frost[i * 3 + 2] = E.rand(); }
   const wOpts = { style: 'plain', size: 16, maxWidth: 200, lines: 2, alpha: 1, glowColour: P_GLOW, colour: undefined };
 
   const progress = () => clamp(rot / TURN);
@@ -426,7 +429,14 @@ export function create(E) {
     g.globalAlpha = 0.25 + diff * 0.45; g.fillStyle = gLip; g.fillRect(-L / 2, -side / 2, L, side * 0.3);
     g.globalAlpha = 0.2 + 0.15 * (1 - diff); g.fillStyle = gFoot; g.fillRect(-L / 2, side * 0.3, L, side * 0.2);
     if (!quiet) { g.globalAlpha = 0.05 + 0.04 * Math.sin(t * 0.5 + k); g.fillStyle = gSheen; g.fillRect(-L / 2, -side / 2, L, side); }
-    else if (prog > 0.5 || fin > 0) { g.globalAlpha = 1; glow(g, 0, 0, L * 0.36, quietGlow, smooth(invLerp(0.5, 1, prog)) * 0.1 + fin * 0.08); }
+    else {
+      if (prog > 0.5 || fin > 0) { g.globalAlpha = 1; glow(g, 0, 0, L * 0.36, quietGlow, smooth(invLerp(0.5, 1, prog)) * 0.1 + fin * 0.08); }
+      g.fillStyle = mix('#ffffff', quietGlow, 0.3);
+      for (let i = 0; i < 16; i++) {
+        g.globalAlpha = (0.12 + 0.2 * frost[i * 3 + 2]) * (0.6 + 0.4 * Math.sin(t * 0.7 + i * 1.7));
+        g.fillRect(frost[i * 3] * L * 0.92, frost[i * 3 + 1] * side * 0.86, 1.6, 1.6);
+      }
+    }
     // two slow diagonal refraction streaks drifting through the glass
     if (!lowStream) {
       g.globalAlpha = 0.07 + 0.04 * Math.sin(t * 0.4 + k * 2);
