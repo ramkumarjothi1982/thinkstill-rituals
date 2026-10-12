@@ -20,6 +20,7 @@
 import { h } from '../app/ui.js';
 
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const hexA = (hex, a) => { const n = parseInt(String(hex).slice(1), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
 const lerp = (a, b, t) => a + (b - a) * t;
 const TAU = Math.PI * 2;
 
@@ -137,7 +138,7 @@ function touchAdapter(t) {
  * One canvas on #fx-layer (DPR ≤ 2) and one rAF loop that runs only while
  * something moves (ripples, thoughts) and stops when the tab is hidden.
  */
-export function createStage({ fx, tagRoot, reducedMotion = () => false, lowStim = () => false, onReadThought } = {}) {
+export function createStage({ fx, tagRoot, reducedMotion = () => false, lowStim = () => false, onReadThought, keepOut = () => null } = {}) {
   const canvas = h('canvas', { class: 'hf-stage', 'aria-hidden': 'true' });
   fx.replaceChildren(canvas);
   fx.classList.add('live');
@@ -151,7 +152,7 @@ export function createStage({ fx, tagRoot, reducedMotion = () => false, lowStim 
   }
   const ripples = [];
   let raf = 0, last = 0, destroyed = false, drewSomething = false;
-  const thoughts = createThoughtLayer({ g, tagRoot, reducedMotion, lowStim, onRead: onReadThought, size: () => ({ W, H }) });
+  const thoughts = createThoughtLayer({ g, tagRoot, reducedMotion, lowStim, onRead: onReadThought, size: () => ({ W, H }), keepOut });
 
   function frame(t) {
     raf = 0;
@@ -231,7 +232,7 @@ function excerpt(text, max = 42) {
   return `${(out || t.slice(0, max - 1)).replace(/[.,;:]$/, '')}…`;
 }
 
-function createThoughtLayer({ g, tagRoot, reducedMotion, lowStim, onRead, size }) {
+function createThoughtLayer({ g, tagRoot, reducedMotion, lowStim, onRead, size, keepOut = () => null }) {
   const list = [];
   let nextId = 1;
   const layer = {
@@ -277,8 +278,17 @@ function createThoughtLayer({ g, tagRoot, reducedMotion, lowStim, onRead, size }
         th.press.moved = Math.max(th.press.moved, Math.hypot(e.x - th.press.x0, e.y - th.press.y0));
         if (th.press.moved > 10) {
           const { W, H } = size();
-          th.hx = clamp(e.x + th.press.ox, th.r + 16, W - th.r - 16);
-          th.hy = clamp(e.y + th.press.oy, 90 + th.r, H - th.r - 90);
+          let x = clamp(e.x + th.press.ox, th.r + 16, W - th.r - 16);
+          const y = clamp(e.y + th.press.oy, 90 + th.r, H - th.r - 90);
+          // a thought never sits on the hero Mallow (the Mallow takes touches first there)
+          const k = keepOut();
+          if (k && y > k.top - th.r && y < k.bottom + th.r && x > k.left - th.r && x < k.right + th.r) {
+            const toLeft = x - (k.left - th.r), toRight = (k.right + th.r) - x;
+            const nx = toLeft < toRight ? k.left - th.r : k.right + th.r;
+            x = nx < th.r + 8 || nx > W - th.r - 8 ? x : nx;
+            if (x > k.left - th.r && x < k.right + th.r) th.hy = Math.max(k.bottom + th.r, y); else th.hy = y;
+          } else th.hy = y;
+          th.hx = x;
         }
       } else if ((e.type === 'up' || e.type === 'cancel') && th.press && th.press.id === e.id) {
         const held = (performance.now() - th.press.t0) / 1000;
@@ -318,9 +328,12 @@ function createThoughtLayer({ g, tagRoot, reducedMotion, lowStim, onRead, size }
         const jit = rm || low ? 0 : mo.jitter * tension * 1.6;
         const jx = jit ? Math.sin(t * 37 + th.phase) * jit : 0, jy = jit ? Math.cos(t * 41 + th.phase * 2) * jit : 0;
         drawThought(g, th, th.x + jx, th.y + bob + jy, tension, t, { rm, low, droop: mo.droop || 0 });
-        // the word tag rides just under the body
+        // the word tag rides just under the body, always fully on screen
         const tagY = th.y + bob + th.r * th.scale * 1.05 + 8;
-        th.tag.style.transform = `translate3d(${Math.round(th.x)}px, ${Math.round(tagY)}px, 0) translate(-50%, 0)`;
+        const tw = th.tagW || (th.tagW = th.tag.offsetWidth || 120);
+        const { W } = size();
+        const tx = clamp(th.x, 12 + tw / 2, Math.max(12 + tw / 2, W - 12 - tw / 2));
+        th.tag.style.transform = `translate3d(${Math.round(tx)}px, ${Math.round(tagY)}px, 0) translate(-50%, 0)`;
         th.tag.style.opacity = String(clamp(th.born * 1.4 - 0.2));
       }
       return true;
@@ -338,10 +351,15 @@ function drawThought(g, th, x, y, tension, t, { rm, low, droop }) {
   g.save();
   g.translate(x, y + r * (1 - sy));
   g.scale(sx, sy);
-  // soft glow halo (no shadowBlur: cheaper, photosafe)
-  g.globalAlpha = (low ? 0.16 : 0.26) * th.born;
-  g.fillStyle = deep;
-  g.beginPath(); g.arc(0, 0, r * 1.32, 0, TAU); g.fill();
+  // soft glow halo (no shadowBlur: cheaper, photosafe); a cached falloff, not a flat disc
+  if (!th.halo || th.haloR !== Math.round(r)) {
+    const hg = g.createRadialGradient(0, 0, r * 0.7, 0, 0, r * 1.55);
+    hg.addColorStop(0, deep); hg.addColorStop(1, hexA(deep, 0));
+    th.halo = hg; th.haloR = Math.round(r);
+  }
+  g.globalAlpha = (low ? 0.22 : 0.42) * th.born;
+  g.fillStyle = th.halo;
+  g.beginPath(); g.arc(0, 0, r * 1.55, 0, TAU); g.fill();
   // jelly body
   const rk = Math.round(r * 2) / 2;      // re-make the gradient only when the size really changes
   if (!th.gradient || th.gradR !== rk) {

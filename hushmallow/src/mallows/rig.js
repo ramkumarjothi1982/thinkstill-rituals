@@ -587,7 +587,7 @@ export class MallowRig {
     c.idle -= dt;
     if (c.idle <= 0) {
       c.idle = rand(5, 10);
-      if (!this.press && this.overlays.length === 0 && this.intensity < 0.6) this.react('idle');
+      if (!this.press && !this.touch?.held && this.overlays.length === 0 && this.intensity < 0.6) this.react('idle');
     }
     // blinking (open-eyed states only)
     const b = this.blink;
@@ -667,7 +667,7 @@ export class MallowRig {
     } else {
       b.sinceLand += dt;
       const interval = 1 / Math.max(0.4, v.bounceRate);
-      if (v.bounce > 0.06 && !rm && !this.press && b.sinceLand > interval * 0.6) {
+      if (v.bounce > 0.06 && !rm && !this.press && !this.touch?.held && b.sinceLand > interval * 0.6) {
         if (this.opts.onImpulse) this.opts.onImpulse({ squash: 0.5 * v.bounce, lean: 0, shear: 0 }, 'anticipate');
         else b.squash += 0.05 * v.bounce;    // anticipation
         b.hopV = Math.sqrt(2 * g * 0.42 * v.bounce * 0.12) * 1.05;

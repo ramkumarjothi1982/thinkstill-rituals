@@ -3,13 +3,18 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "lib": ["ES2023"],
-    "types": ["@cloudflare/workers-types", "node"],
+    "lib": [
+      "ES2023"
+    ],
+    "types": [
+      "@cloudflare/workers-types",
+      "node"
+    ],
     "allowJs": true,
     "checkJs": true,
     "noEmit": true,
     "strict": false,
-    "noImplicitAny": false,
+    "noImplicitAny": true,
     "strictNullChecks": true,
     "noUnusedLocals": true,
     "noFallthroughCasesInSwitch": true,
@@ -17,5 +22,14 @@
     "resolveJsonModule": true,
     "isolatedModules": true
   },
-  "include": ["src/**/*.js", "types/**/*.d.ts", "test/**/*.js", "test/**/*.mjs", "tools/**/*.mjs", "scripts/**/*.mjs", "eval/**/*.js"]
+  "include": [
+    "src/**/*.js",
+    "types/**/*.d.ts",
+    "tools/**/*.mjs",
+    "scripts/**/*.mjs",
+    "eval/**/*.js"
+  ],
+  "exclude": [
+    "src/safety/shared-lexicon.js"
+  ]
 }

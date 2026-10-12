@@ -17,7 +17,7 @@ import { toggleFavouriteWorld, isFavouriteWorld } from '../engine/flow-store.js'
 import { hfIcon } from './icons.js';
 import { QUICK_FEELINGS, INTENTIONS } from './lines.js';
 
-export function createSidePanel({ app, root, getFlow, onFeeling, onIntention, onMallow, onClose, state = () => ({}) } = {}) {
+export function createSidePanel({ app, root, getFlow, flowAvailable = () => Promise.resolve(true), onFeeling, onIntention, onMallow, onClose, state = () => ({}) } = {}) {
   const { prefs, ent, store } = app;
   let isOpen = false;
   let opener = null;
@@ -35,7 +35,7 @@ export function createSidePanel({ app, root, getFlow, onFeeling, onIntention, on
   auto.addEventListener('change', async () => {
     prefs.set('autoFlow', auto.checked);
     app.haptic('light');
-    (await getFlow())?.setAutoFlow?.(auto.checked);
+    (await getFlow(false))?.setAutoFlow?.(auto.checked);
   });
   const pauseBtn = h('button', { class: 'hf-ghost', type: 'button', onclick: () => act('pause') }, hfIcon('pause'), h('span', {}, 'Pause'));
   const stayBtn = h('button', { class: 'hf-ghost', type: 'button', onclick: () => act('stay') }, hfIcon('stay'), 'Stay longer');
@@ -72,18 +72,28 @@ export function createSidePanel({ app, root, getFlow, onFeeling, onIntention, on
   function go(name, params) { api.close(); app.go(name, params); }
 
   async function act(kind) {
-    const flow = await getFlow();
-    const st = flow?.state || {};
+    // a running flow, or (when the director is not in this build) the shell's stub, which says so
+    const flow = (await getFlow(false)) || (!(await flowAvailable()) ? await getFlow(true) : null);
+    if (!flow) return;
+    const st = flow.state || {};
     app.haptic('light');
-    if (kind === 'pause') { if (st.status === 'paused') flow?.resume?.(); else flow?.pause?.(); }
+    if (kind === 'pause') { if (isPaused(st)) flow?.resume?.(); else flow?.pause?.(); }
     else if (kind === 'stay') flow?.stay?.();
     else if (kind === 'finish') flow?.finish?.();
     else if (kind === 'favourite') {
-      if (st.worldId) { const on = toggleFavouriteWorld(store, st.worldId); app.toast(on ? 'Saved as a favourite world' : 'Removed from favourite worlds'); }
-      else flow?.favourite?.();
+      if (st.worldId) {
+        const on = !isFav(flow, st.worldId);
+        // the director keeps favourites with its rotation; flow-store is the shell's own copy
+        if (typeof flow.setFavourite === 'function') flow.setFavourite(st.worldId, on);
+        if (on !== isFavouriteWorld(store, st.worldId)) toggleFavouriteWorld(store, st.worldId);
+        app.toast(on ? 'Saved as a favourite world' : 'Removed from favourite worlds');
+      } else flow?.stay?.();
     }
     api.update();
   }
+
+  const isPaused = (st) => !!(st.paused || st.status === 'paused' || st.phase === 'paused');
+  const isFav = (flow, id) => (Array.isArray(flow?.favourites) ? flow.favourites.includes(id) : isFavouriteWorld(store, id));
 
   function chip(label, pressed, onclick) {
     return h('button', { class: 'hf-opt', type: 'button', 'aria-pressed': String(!!pressed), onclick }, label);
@@ -105,14 +115,14 @@ export function createSidePanel({ app, root, getFlow, onFeeling, onIntention, on
         chip(s.emotion && !QUICK_FEELINGS.some(([id]) => id === s.emotion) ? `${s.emotionName || 'Something else'} ✓` : 'Something else…', s.emotion && !QUICK_FEELINGS.some(([id]) => id === s.emotion), () => onFeeling?.('other')));
       intentWrap.replaceChildren(...INTENTIONS.map(([id, label]) => chip(label, s.intention === id, () => onIntention?.(s.intention === id ? null : id))));
       auto.checked = !!prefs.get('autoFlow');
-      const flow = await getFlow();
+      const flow = await getFlow(false);
       const st = flow?.state || {};
       const world = !!st.worldId;
-      const stub = !flow || !!flow.stub;
+      const stub = flow ? !!flow.stub : !(await flowAvailable());
       for (const b of [pauseBtn, stayBtn, finishBtn]) b.disabled = !world && !stub;
       favBtn.disabled = !world && !stub;
-      pauseBtn.replaceChildren(hfIcon(st.status === 'paused' ? 'play' : 'pause'), h('span', {}, st.status === 'paused' ? 'Resume' : 'Pause'));
-      const fav = world && isFavouriteWorld(store, st.worldId);
+      pauseBtn.replaceChildren(hfIcon(isPaused(st) ? 'play' : 'pause'), h('span', {}, isPaused(st) ? 'Resume' : 'Pause'));
+      const fav = world && isFav(flow, st.worldId);
       favBtn.setAttribute('aria-pressed', String(!!fav));
       favBtn.replaceChildren(hfIcon('star', { filled: !!fav }), h('span', {}, fav ? 'Favourite' : 'Favourite world'));
       flowNote.textContent = world ? (st.title ? `Now: ${st.title}` : '')

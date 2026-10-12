@@ -147,6 +147,31 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     p.el = el;
     return el;
   });
+  // Stack the pieces under the prompt by their real heights. When they can't all
+  // fit (short phones) they become a deck: the top piece whole, the rest peeking
+  // out beneath it, moving up as each one is sorted.
+  function stackPieces() {
+    const t = document.querySelector('#scene .move-title')?.getBoundingClientRect();
+    const portalTop = Math.min(portals.fact.el.getBoundingClientRect().top, portals.added.el.getBoundingClientRect().top);
+    const live = pieces.filter((p) => !p.side && p.el.isConnected);
+    if (!t || !live.length) return;
+    const hs = live.map((p) => p.el.offsetHeight);
+    const from = t.bottom + 12, to = portalTop - 10;
+    const free = to - from - hs.reduce((a, b) => a + b, 0) - 10 * (live.length - 1);
+    live.forEach((p) => { p.el.style.transition = ctx.reducedMotion ? 'none' : 'top 320ms var(--ease-out), transform 320ms var(--ease-out), opacity 320ms'; });
+    if (free >= 0 || live.length === 1) {
+      let y = live.length === 1 ? from + Math.max(0, (to - from - hs[0]) / 2) : from;
+      live.forEach((p, i) => { Object.assign(p.el.style, { top: `${Math.round(y + hs[i] / 2)}px`, transform: 'translate(-50%,-50%)', zIndex: '', opacity: '' }); y += hs[i] + 10; });
+      return;
+    }
+    const peek = 12, y0 = Math.max(from + hs[0] / 2, Math.min(to - hs[0] / 2 - peek * Math.min(2, live.length - 1), from + hs[0] / 2));
+    live.forEach((p, i) => {
+      const k = Math.min(i, 2);
+      Object.assign(p.el.style, { top: `${Math.round(y0)}px`, zIndex: String(20 - i), opacity: i > 2 ? '0' : String(1 - k * 0.18),
+        transform: `translate(-50%,-50%) translateY(${(hs[0] - hs[i]) / 2 + k * peek}px) scale(${1 - k * 0.05})`, pointerEvents: i ? 'none' : 'auto' });
+    });
+  }
+  requestAnimationFrame(stackPieces);
   function drop(p, side) {
     p.side = side;
     const P = portals[side];
@@ -157,6 +182,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     p.el.style.opacity = '0';
     setTimeout(() => { p.el.style.display = 'none'; }, 540);
     P.add(p.text);
+    setTimeout(stackPieces, 200);
     audio.fx?.('drop-in', { pan: side === 'fact' ? -0.6 : 0.6 });
     haptic('light');
     realm()?.pulse?.('ripple', { x: innerWidth * P.x / 100, y: innerHeight * 0.76 });
@@ -328,12 +354,13 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   const portal = mkPerspectivePortal(angles);
   stageEl.append(portal.el);
   portalSound = audio.hold?.('hum', { intensity: 0.3 }) || null;
-  const keep = h('button', { class: 'btn', style: { borderColor: '#39f0ff' } }, 'Could be');
-  const notThis = h('button', { class: 'btn' }, 'Not this one');
+  const keep = h('button', { class: 'btn', style: { borderColor: '#39f0ff', fontSize: 'var(--type-control-size)', padding: '0 10px' } }, 'Could be');
+  const notThis = h('button', { class: 'btn', style: { fontSize: 'var(--type-control-size)', padding: '0 10px' } }, 'Not this one');
   const prev = h('button', { class: 'icon-btn', 'aria-label': 'Previous angle', onclick: () => portal.turn(-1) }, '‹');
   const next = h('button', { class: 'icon-btn', 'aria-label': 'Next angle', onclick: () => portal.turn(1) }, '›');
   const portalDone = h('button', { class: 'btn ultra block', disabled: true }, 'I’ve seen enough angles');
   dock.replaceChildren(h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center' } }, prev, h('div', { class: 'row-btns', style: { flex: '1' } }, notThis, keep), next), portalDone);
+  requestAnimationFrame(() => portal.fit());
   keep.onclick = () => rate(true);
   notThis.onclick = () => rate(false);
   function rate(yes) {
@@ -502,6 +529,19 @@ export async function run(ctx, { frameworks: F, engine: E }) {
       'worry-partly-true': 'Takes your worry seriously', 'not-enough-info': 'Not enough to know yet', eyes: 'Another pair of eyes' };
     const api = {
       el, index: 0,
+      /** Size and place the portal in the free band under the prompt (Zuzu above it when there's room). */
+      fit() {
+        const z = zoneRect();
+        const s = Math.round(Math.max(190, Math.min(innerWidth * 0.86, 360, z.width, z.height - 6)));
+        const { top } = placeZuzu(z, s, 0.3);
+        const s2 = Math.round(Math.max(170, Math.min(s, z.bottom - top)));
+        Object.assign(el.style, { width: `${s2}px`, height: `${s2}px`, top: `${top + s2 / 2}px`, left: `${z.cx}px` });
+        [...ticks.children].forEach((t, i) => { t.style.transform = `rotate(${(i / list.length) * 360}deg) translateY(-${s2 * 0.5 - 8}px)`; });
+        const small = s2 < 250;
+        Object.assign(lensEl.style, { inset: small ? '10%' : '15%', padding: small ? '7%' : '10%' });
+        Object.assign(textEl.style, { fontSize: small ? '13px' : s2 < 300 ? '15px' : 'calc(16px * var(--type-scale))', lineHeight: small ? '1.3' : '1.38' });
+        kindEl.style.marginBottom = small ? '4px' : '8px';
+      },
       async turn(d) {
         api.index = (api.index + d + list.length) % list.length;
         ring.style.transform = `rotate(${-api.index * (360 / list.length)}deg)`;

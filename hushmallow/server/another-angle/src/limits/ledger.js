@@ -106,8 +106,11 @@ export function memoryStorage() {
   const m = new Map();
   return {
     map: m,
+    /** @param {string} k */
     async get(k) { return m.get(k); },
+    /** @param {string} k @param {any} v */
     async put(k, v) { m.set(k, v); },
+    /** @param {string | string[]} k */
     async delete(k) { for (const x of Array.isArray(k) ? k : [k]) m.delete(x); return true; },
     async list({ prefix = '' } = {}) { return new Map([...m].filter(([k]) => k.startsWith(prefix))); },
   };

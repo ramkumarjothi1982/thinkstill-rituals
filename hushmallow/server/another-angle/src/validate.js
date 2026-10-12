@@ -7,7 +7,7 @@ import { normaliseEmotion, normaliseIntention, PATTERNS } from './vocab.js';
 export const TEXT_MAX = 600;
 export const PREVIOUS_MAX = 4;
 export const PREVIOUS_LINE_MAX = 200;
-export const ANGLE_BODY_MAX_BYTES = 8192;
+export const ANGLE_BODY_MAX_BYTES = 16384;
 export const SESSION_BODY_MAX_BYTES = 20000;
 
 // C0/C1 controls (except tab and newline), zero-width and bidi controls.
@@ -27,7 +27,7 @@ const bad = (code, field, message) => ({ ok: false, code, field, message });
 
 /**
  * @param {unknown} body
- * @returns {{ ok: true, value: { text: string, emotion: string | null, intention: ReturnType<typeof normaliseIntention>, previous: { subtitle_line_1: string, subtitle_line_2: string, reasoning_pattern?: string }[] } } | Invalid}
+ * @returns {{ ok: true, value: { text: string, emotion: string | null, intention: ReturnType<typeof normaliseIntention>, previous: { subtitle_line_1: string, subtitle_line_2: string, reasoning_pattern?: string }[], requestId: string | null } } | Invalid}
  */
 export function validateAngleRequest(body) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return bad('invalid_body', '', 'Body must be a JSON object.');
@@ -80,7 +80,7 @@ export function validateAngleRequest(body) {
       previous.push(item);
     }
   }
-  return { ok: true, value: { text, emotion, intention, previous } };
+  return { ok: true, value: { text, emotion, intention, previous, requestId: typeof b.request_id === 'string' ? b.request_id : null } };
 }
 
 /**

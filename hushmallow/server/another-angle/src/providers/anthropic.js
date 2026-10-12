@@ -40,6 +40,7 @@ export const FALLBACK_BETA = 'server-side-fallback-2026-07-01';
 export function usageParts(usage, model) {
   if (!usage) return [];
   const its = Array.isArray(usage.iterations) ? usage.iterations : null;
+  /** @param {any} u @param {string | null | undefined} m @returns {UsagePart} */
   const one = (u, m) => ({
     model: m || model,
     input: u.input_tokens || 0,
@@ -47,7 +48,7 @@ export function usageParts(usage, model) {
     cacheWrite: u.cache_creation_input_tokens || 0,
     cacheRead: u.cache_read_input_tokens || 0,
   });
-  if (its && its.length) return its.filter((u) => u && (u.type === 'message' || u.type === 'fallback_message')).map((u) => one(u, u.model));
+  if (its && its.length) return its.filter((/** @type {any} */ u) => u && (u.type === 'message' || u.type === 'fallback_message')).map((/** @type {any} */ u) => one(u, u.model));
   return [one(usage, model)];
 }
 

@@ -22,11 +22,19 @@ export const QUICK_FEELINGS = Object.freeze([
   ['anger', 'Angry'], ['anxiety', 'Anxious'], ['sadness', 'Sad'], ['overwhelm', 'Overwhelmed'],
   ['frustration', 'Frustrated'], ['loneliness', 'Lonely'], ['restlessness', 'Restless'],
 ]);
-/** The five intentions (ids are what the Hushflow director receives). */
+/** The five intentions (ids are exactly the Hushflow registry's FLOW_INTENTIONS). */
 export const INTENTIONS = Object.freeze([
   ['calm', 'Calm me down'], ['let-go', 'Help me let go'], ['distract', 'Distract me gently'],
-  ['steady', 'Help me feel steady'], ['just-play', 'Let me just play'],
+  ['steady', 'Help me feel steady'], ['play', 'Let me just play'],
 ]);
+
+/** The Hushflow registry's feeling ids (FLOW_EMOTIONS) for an emotions.js id + family. */
+const FLOW_BY_ID = { anger: 'angry', anxiety: 'anxious', sadness: 'sad', overwhelm: 'overwhelmed', frustration: 'frustrated', loneliness: 'lonely', restlessness: 'restless' };
+const FLOW_BY_FAMILY = { anger: 'angry', fear: 'anxious', sadness: 'sad', loneliness: 'lonely', boredom: 'restless' };
+export function flowEmotion(id, family = null) {
+  if (!id) return null;
+  return FLOW_BY_ID[id] || FLOW_BY_FAMILY[family] || 'other';
+}
 
 const SHARED = {
   support: [

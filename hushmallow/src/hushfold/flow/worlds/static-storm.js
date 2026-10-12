@@ -58,7 +58,7 @@ export function create(ctx) {
 
   // fingers (two at most)
   const fingers = [0, 1].map(() => ({
-    on: false, id: -1, x: 0, y: 0, px: 0, py: 0, speed: 0, s: 0, k: 0, t0: 0, still: 0, fastFor: 0, slowGap: 0,
+    on: false, id: -1, x: 0, y: 0, px: 0, py: 0, speed: 0, s: 0, k: 0, t0: 0, still: 0, fastFor: 0, slowGap: 0, slowFor: 0,
     line: null, onThought: false, pulse: { on: false, age: 0, drained: 0 }, wait: 0, tracker: new AngleTracker(), circling: 0,
     trail: { x: new Float32Array(28), y: new Float32Array(28), t: new Float32Array(28), j: new Float32Array(28), n: 0, head: 0 },
     pointerType: 'touch', grounding: 0,
@@ -93,8 +93,11 @@ export function create(ctx) {
   }
 
   // charge plasma rendering (tiny canvases, upscaled twice)
-  let fieldC = null, fieldG = null, fieldData = null, midC = null, midG = null;
+  let fieldC = null, fieldG = null, fieldData = null, maskData = null, clearData = null, midC = null, midG = null;
+  let grainC = null, grainG = null, grainPat = null, grainPatFill = null, grainScale = 1.5;
+  let startQ = null;                 // 0..1: how charged each cell was at the start (the clear sky shows only where storm was)
   let phase = null;                  // per-cell shimmer phases
+  let afterglow = null;              // per-cell warm glow where light was just grounded
 
   // postcards
   const cards = [];
@@ -113,6 +116,7 @@ export function create(ctx) {
   let paused = false, outroK = 0;
   let pulsedThisFrame = false, pulseDrainThisFrame = 0;
   let prepared = false;
+  let introAt = -1;
   let realmBuilt = false;
 
   // ---------------------------------------------------------- layout --
@@ -126,70 +130,65 @@ export function create(ctx) {
     else field.setRect(0, fy0, W, fy1 - fy0);
     // the Thought Mallow's tether: away from Glitzi, upper left of the play area
     tR = clamp(U * 0.085, 26, 44);
-    tAnchor = { x: W * 0.27, y: safe.y + 0.3 * safe.h };
+    // the open band between the hanging postcards and Glitzi
+    tAnchor = { x: W * (W > H * 0.9 ? 0.2 : 0.27), y: safe.y + 0.49 * safe.h };
     if (!tSpring.x && !tSpring.y) tSpring.set(tAnchor.x, tAnchor.y);
     else tSpring.to(tAnchor.x, tAnchor.y);
-    layoutCards(safe);
+    layoutCards();
   }
 
-  function cardSlots(n, safe) {
-    // a hanging mobile below the cloud deck: staggered rows, clear of the
-    // Thought Mallow's tether and of the Mallow's stage
-    const out = [];
-    if (!n) return out;
+  /** The underside of the storm's cloud deck at x (matches the static-storm realm). */
+  function deckY(x) { const u = x / W - 0.58; return H * (0.095 + 0.3 * u * u) + Math.sin(x * 0.03) * 6; }
+
+  function cardPlan(n, safe) {
+    // a mobile hanging from the thunderheads: one tier for up to four, two staggered
+    // tiers for more, all above the open band where the Thought Mallow floats
     const landscape = W > H * 0.9;
-    const yTop = Math.max(safe.y + 26, H * 0.15), yBot = Math.min(safe.y + safe.h - 40, H * 0.47);
-    const rows = n <= 3 ? 1 : 2;
-    const perRow = [Math.ceil(n / rows), Math.floor(n / rows)];
-    const thX = tAnchor.x, thY = tAnchor.y;
-    for (let r = 0; r < rows; r++) {
-      const k = perRow[r];
+    const x0 = (landscape ? 0.34 : 0.13) * W, x1 = (landscape ? 0.92 : 0.87) * W;
+    const tiers = n <= 4 ? 1 : 2;
+    const per = tiers === 1 ? [n] : [Math.ceil(n / 2), Math.floor(n / 2)];
+    const step = per[0] > 1 ? (x1 - x0) / (per[0] - 1) : 0;
+    const limitTop = tAnchor.y - tR - 18;           // keep the thought's band clear
+    let size = clamp(U * (n <= 3 ? 0.26 : n <= 5 ? 0.22 : 0.19), U * 0.18, U * 0.26);
+    if (step) size = Math.min(size, step * 0.8);
+    const slots = [];
+    for (let t = 0; t < tiers; t++) {
+      const k = per[t];
       for (let i = 0; i < k; i++) {
-        const fx = (i + 0.5 + (r % 2 ? 0.5 : 0)) / (k + (r % 2 ? 1 : 0));
-        let x = lerp(landscape ? 0.36 : 0.1, 0.9, fx) * W;
-        let y = rows === 1 ? lerp(yTop, yBot, 0.35) : lerp(yTop, yBot, r ? 0.86 : 0.08);
-        y += (R() - 0.5) * H * 0.03;
-        // keep clear of the thought
-        const dx = x - thX, dy = y - thY, d = Math.hypot(dx, dy), need = tR * 2.6 + U * 0.12;
-        if (d < need) { x = thX + (dx / (d || 1)) * need; if (Math.abs(dx) < 1) x = thX + need; y = clamp(y, yTop, yBot); }
-        out.push({ x: clamp(x, 20 + U * 0.1, W - 20 - U * 0.1), y });
+        const x = per[0] === 1 && t === 0 ? W * (landscape ? 0.62 : 0.6) : t === 0 ? x0 + step * i : x0 + step * (i + 0.5);
+        // the lower tier hangs between the upper tier's cards, staggered three quarters of a card lower
+        const rope = (t === 0 ? 18 : 18 + size * 0.78) + R() * 10;
+        slots.push({ x, rope, tier: t });
       }
     }
-    return out;
+    // shrink everything a little if the lower tier would reach the thought's band
+    const lowest = Math.max(...slots.map((s2) => deckY(s2.x) + s2.rope + size));
+    if (lowest > limitTop) { const k = clamp((limitTop - Math.min(...slots.map((s2) => deckY(s2.x)))) / (lowest - Math.min(...slots.map((s2) => deckY(s2.x)))), 0.6, 1); size *= k; for (const s2 of slots) s2.rope *= k; }
+    return { size, slots };
   }
 
-  function layoutCards(safe) {
+  function layoutCards() {
     const n = Math.min(7, photos?.n || 0);
-    const size = clamp(U * (0.26 - Math.max(0, n - 3) * 0.012), U * 0.2, U * 0.26);
-    const slots = cardSlots(n, safe);
-    const deckY = Math.max(10, safe.y - 30);
-    if (cards.length !== n) {
-      cards.length = 0;
-      for (let i = 0; i < n; i++) {
-        const s = slots[i];
-        const ax = s.x + (R() - 0.5) * 16, ay = deckY - R() * 10;
-        const sz = photos.size(i, 'card', size);
-        cards.push({
-          i, ax, ay, x: s.x, y: s.y, w: sz.w, h: sz.h, size, rot: 0, rotV: 0, q: clamp(0.55 + R() * 0.35 + (hot ? 0.1 : 0), 0, 1),
-          grounded: false, gk: 0, glowAge: -1, wobble: new Wobble(), ph: R() * TAU, depth: 0.85 + R() * 0.15,
-          rope: new Rope(ROPE_N, ax, ay, s.x, s.y - sz.h / 2, { gravity: 260, iterations: 6, slack: 1.0 }), restLen: 0, flash: 0, touched: 0,
-        });
-        const c = cards[i];
-        c.rope.pinB = false;
-        c.restLen = c.rope.seg;
+    const { size, slots } = cardPlan(n, ctx.safe);
+    const rebuild = cards.length !== n;
+    if (rebuild) cards.length = 0;
+    for (let i = 0; i < n; i++) {
+      const s2 = slots[i];
+      const sz = photos.size(i, 'card', size);
+      const ax = s2.x + (R() - 0.5) * 6, ay = deckY(s2.x) - 6;
+      const top = ay + s2.rope;
+      let c = rebuild ? null : cards.find((q) => q.i === i);
+      if (!c) {
+        c = { i, q: clamp(0.55 + R() * 0.35 + (hot ? 0.1 : 0), 0, 1), grounded: false, gk: 0, glowAge: -1, wobble: new Wobble(), ph: R() * TAU, tier: s2.tier, flash: 0, touched: 0, rot: 0 };
+        cards.push(c);
       }
-      cards.sort((a, b) => a.depth - b.depth);
-    } else {
-      for (let k = 0; k < n; k++) {
-        const c = cards.find((q) => q.i === k);
-        const s = slots[k];
-        const sz = photos.size(k, 'card', size);
-        c.size = size; c.w = sz.w; c.h = sz.h;
-        c.ax = s.x; c.ay = deckY;
-        c.rope = new Rope(ROPE_N, c.ax, c.ay, s.x, s.y - sz.h / 2, { gravity: 260, iterations: 6, slack: 1.0 });
-        c.rope.pinB = false; c.restLen = c.rope.seg * (c.grounded ? 0.86 : 1); c.rope.seg = c.restLen;
-      }
+      Object.assign(c, { ax, ay, ay0: ay, x: s2.x, y: top + sz.h / 2, w: sz.w, h: sz.h, size, tier: s2.tier });
+      c.rope = new Rope(ROPE_N, ax, ay, s2.x, top, { gravity: 260, iterations: 6, slack: 1.0 });
+      c.rope.pinB = false;
+      c.restLen = c.rope.seg * (c.grounded ? 0.86 : 1);
     }
+    // back tier first, so the upper tier's cards hang in front
+    cards.sort((a, b) => b.tier - a.tier);
   }
 
   // ---------------------------------------------------------- prepare --
@@ -211,10 +210,31 @@ export function create(ctx) {
     fieldC = makeCanvas(field.cols, field.rows);
     fieldG = fieldC.getContext('2d');
     fieldData = fieldG.createImageData(field.cols, field.rows);
+    maskData = fieldG.createImageData(field.cols, field.rows);
+    clearData = fieldG.createImageData(field.cols, field.rows);
+    for (let k = 0; k < field.n; k++) { clearData.data[k * 4] = 6; clearData.data[k * 4 + 1] = 6; clearData.data[k * 4 + 2] = 30; }
+    // static grain: a tile of coloured dots, shown only where there is charge
+    grainScale = 1.5;
+    grainC = makeCanvas(Math.ceil(field.w / grainScale), Math.ceil(field.h / grainScale));
+    grainG = grainC.getContext('2d');
+    if (!grainPat) {
+      const T = 96, tile = makeCanvas(T, T), tg = tile.getContext('2d'), id = tg.createImageData(T, T);
+      for (let i = 0; i < T * T; i++) {
+        const r = R(), o = i * 4;
+        if (r < 0.055) { id.data[o] = 255; id.data[o + 1] = 255; id.data[o + 2] = 255; id.data[o + 3] = 150 + R() * 105; }
+        else if (r < 0.11) { id.data[o] = 62; id.data[o + 1] = 232; id.data[o + 2] = 255; id.data[o + 3] = 140 + R() * 115; }
+        else if (r < 0.16) { id.data[o] = 255; id.data[o + 1] = 61; id.data[o + 2] = 242; id.data[o + 3] = 130 + R() * 110; }
+      }
+      tg.putImageData(id, 0, 0);
+      grainPat = tile;
+    }
     midC = makeCanvas(field.cols * 4, field.rows * 4);
     midG = midC.getContext('2d');
     midG.imageSmoothingEnabled = true;
     phase = new Float32Array(field.n * 2);
+    afterglow = new Float32Array(field.n);
+    if (!startQ || startQ.length !== field.n) { startQ = new Float32Array(field.n); for (let k = 0; k < field.n; k++) startQ[k] = clamp(field.f[k] / 0.5); }
+    grainPatFill = null;
     for (let i = 0; i < field.n; i++) { phase[i * 2] = R() * TAU; phase[i * 2 + 1] = 0.9 + R() * 1.6; }
   }
 
@@ -267,7 +287,7 @@ export function create(ctx) {
     if (s.type === 'down') {
       const f = fingers.find((q) => !q.on);
       if (!f) return;
-      f.on = true; f.id = s.id; f.x = f.px = s.x; f.y = f.py = s.y; f.speed = 0; f.s = 0; f.k = 0; f.t0 = elapsed; f.still = 0; f.fastFor = 0; f.slowGap = 0;
+      f.on = true; f.id = s.id; f.x = f.px = s.x; f.y = f.py = s.y; f.speed = 0; f.s = 0; f.k = 0; f.t0 = elapsed; f.still = 0; f.fastFor = 0; f.slowGap = 0; f.slowFor = 0;
       f.line = null; f.pulse.on = false; f.pulse.age = 0; f.pulse.drained = 0; f.wait = 0; f.circling = 0; f.grounding = 0; f.pointerType = s.pointerType || 'touch';
       f.trail.n = 0; f.trail.head = 0;
       f.onThought = hitThought(s.x, s.y);
@@ -286,8 +306,9 @@ export function create(ctx) {
     if (s.type === 'move') {
       const x0 = f.x, y0 = f.y;
       f.x = s.x; f.y = s.y; f.speed = s.speed;
+      // charge starts gathering from a brisk pace (U/s) and is in full flow at twice 'fast'
       const fastPx = pace.fastPx;
-      const k = clamp((s.speed - fastPx) / fastPx, 0, 2);
+      const k = clamp((s.speed - U) / Math.max(1, 2 * fastPx - U), 0, 2);
       f.k = k;
       // crackle trail sample
       const tr = f.trail, i = (tr.head + tr.n) % 28;
@@ -368,6 +389,7 @@ export function create(ctx) {
   // drained cells send their charge to the finger as motes
   let drainFx = { x: 0, y: 0, acc: 0 };
   const onDrain = (i, j, d) => {
+    if (afterglow) { const k = j * field.cols + i; afterglow[k] = Math.min(1.2, afterglow[k] + d * 5); }
     drainFx.acc += d;
     if (drainFx.acc < 0.05) return;
     drainFx.acc = 0;
@@ -446,7 +468,8 @@ export function create(ctx) {
     for (const f of fingers) {
       if (!f.on) continue;
       f.s = slowness(f.speed, U, PACE[f.pointerType] || PACE.touch);
-      const isStill = f.speed < (PACE[f.pointerType] || PACE.touch).stillU * U;
+      const stillPx = (PACE[f.pointerType] || PACE.touch).stillU * U;
+      const isStill = f.speed < stillPx;
       f.still = isStill ? f.still + dt : 0;
       // slow circling round the Thought Mallow grounds it ×1.8
       f.tracker.cx = tSpring.x; f.tracker.cy = tSpring.y;
@@ -455,24 +478,28 @@ export function create(ctx) {
       const w = Math.abs(f.tracker.speed);
       const ring = dT > tR * 0.5 && dT < tR * 2.8;
       f.circling = ring && w > 0.6 && w < 2.5 && f.s > 0.2 ? Math.min(1, f.circling + dt * 3) : Math.max(0, f.circling - dt * 2);
-      // lines start when the finger is slow, end when it rushes
+      // moving slowly (not resting): only this grounds under the finger and draws a line
+      const moveK = smoothstep(stillPx, stillPx * 2.2, f.speed);
+      f.slowFor = f.s >= 0.35 && moveK > 0.5 ? f.slowFor + dt : 0;
+      // lines start once the finger has been slow for a moment, end when it rushes
       if (!f.onThought && !complete) {
-        if (!f.line && f.s >= 0.35 && !isStill) startLine(f);
+        if (!f.line && f.slowFor >= 0.12) startLine(f);
         else if (f.line) {
           if (f.s < 0.12) { f.slowGap += dt; if (f.slowGap > 0.15) endLine(f, true); } else f.slowGap = 0;
           if (f.line) { f.line.age += dt; f.line.s = lerp(f.line.s, f.s, 0.1); if (f.line.age > SEGMENT_SEC && f.line.n > 24) endLine(f, false); }
         }
-      } else if (complete && !f.line && f.s >= 0.35 && !isStill && !f.onThought) startLine(f);
+      } else if (complete && !f.line && f.slowFor >= 0.12 && !f.onThought) startLine(f);
       // grounding under the finger
-      if (f.s > 0.05 && !f.onThought) {
+      const sg = f.s * moveK;
+      if (sg > 0.05 && !f.onThought) {
         drainFx.x = f.x; drainFx.y = f.y;
         const mul = 1 + 0.8 * f.circling;
-        const d = field.drain(f.x, f.y, FIELD.DRAIN_RATE * f.s * mul, dt, FIELD.DRAIN_SIGMA, onDrain);
+        const d = field.drain(f.x, f.y, FIELD.DRAIN_RATE * sg * mul, dt, FIELD.DRAIN_SIGMA, onDrain);
         if (f.line) f.line.drink = lerp(f.line.drink, clamp(d / (dt * 6 + 1e-6)), 0.2);
-        groundCardsNear(f.x, f.y, field.cell * 2, 1.4 * f.s * dt);
-        if (dT < tR * 3) groundThought(0.9 * f.s * mul * dt * (dT < tR * 1.5 ? 1 : 0.6));
+        groundCardsNear(f.x, f.y, 4, 2.2 * sg * dt);
+        if (dT < tR * 2.8) groundThought(0.32 * sg * mul * dt * (dT < tR * 1.5 ? 1 : 0.55));
       }
-      if (f.onThought && f.s > 0.4) groundThought(0.5 * f.s * dt);
+      if (f.onThought && f.s > 0.4) groundThought(0.25 * f.s * dt);
       // holding still: a waiting ring, then ground pulses
       if (isStill && !f.onThought) {
         if (!f.pulse.on) {
@@ -487,7 +514,7 @@ export function create(ctx) {
         const d = field.drainDisk(f.x, f.y, r, FIELD.PULSE_RATE, dt, onDrain);
         f.pulse.drained += d;
         groundCardsNear(f.x, f.y, r, 0.6 * dt);
-        if (Math.hypot(f.x - tSpring.x, f.y - tSpring.y) < r + tR) groundThought(0.6 * dt);
+        if (Math.hypot(f.x - tSpring.x, f.y - tSpring.y) < r + tR) groundThought(0.22 * dt);
         if (f.pulse.age >= PULSE_SEC) {
           pulsedThisFrame = true; pulseDrainThisFrame += f.pulse.drained;
           f.pulse.on = false;
@@ -499,6 +526,7 @@ export function create(ctx) {
 
     // field physics
     field.step(dt);
+    if (afterglow) { const kk = Math.exp(-dt / 0.7); for (let k = 0; k < field.n; k++) afterglow[k] *= kk; }
     if (complete) field.quieten(dt);
     Q = field.storminess();
     const drainedNow = field.light - lightBefore;
@@ -552,6 +580,7 @@ export function create(ctx) {
       const enough = p >= 1 || (p >= 0.7 && Q < 0.15 && groundedCards >= Math.min(2, cards.length));
       if (enough && !fingers.some((f) => f.on) && now - liftAt >= 1.5) finishStorm();
     }
+    if (introAt > 0) { introAt -= dt; if (introAt <= 0) { introAt = -1; ctx.say(ctx.entry.dialogue.intro, { who: 'glitzi', kind: 'dialogue' }); } }
     // a gentle ghost finger if nobody has touched yet
     if (!everTouched && !rm) {
       hint.next -= dt;
@@ -599,7 +628,7 @@ export function create(ctx) {
     tSpring.update(dt);
     const wob = tWobble.update(dt);
     const local = field.local(tSpring.x, tSpring.y, 2.5);
-    const qLocal = clamp(0.5 * local + 0.6 * tCharge, 0, 1.3);
+    const qLocal = clamp(0.35 * local + 0.75 * tCharge, 0, 1.3);
     tTension = clamp(0.4 + 0.6 * qLocal) * (thoughtSettle.settled ? 0.5 : 1);
     tFizz = Math.max(0, tFizz - dt * 1.5);
     if (thoughtSettle.update(dt, qLocal) && !tSettledShown) {
@@ -640,6 +669,10 @@ export function create(ctx) {
   function ungroundCard(c) { c.grounded = false; groundedCards = Math.max(0, groundedCards - 1); c.restLen = c.rope.seg / 0.86; }
 
   function updateCards(dt, now) {
+    // the postcards rise a little with the clearing clouds, never into the controls
+    const lift = (realm?.st?.p || 0) * H * 0.085 * 0.45;
+    const minTop = ctx.safe.y + 6;
+    for (const c of cards) c.ay = Math.max(c.ay0 - lift, Math.min(c.ay0, minTop - (c.y - c.h / 2 - c.ay)));
     const gust = reduced() ? 0 : (Q * 26 + 6) * (Math.sin(now * 0.7) * 0.6 + Math.sin(now * 1.9 + 1) * 0.4);
     for (const c of cards) {
       const r = c.rope;
@@ -676,33 +709,105 @@ export function create(ctx) {
 
   // -------------------------------------------------------------- draw --
   function drawPlasma(g, now, rm) {
-    // charge → a tiny RGBA image → upscaled twice with smoothing = soft plasma
-    const d = fieldData.data, n = field.n, cols = field.cols;
+    // per cell, packed into tiny images that are upscaled twice with smoothing:
+    //   clear   — where the storm's own charge has been grounded, the sky deepens to calm night
+    //   plasma  — ambient storm haze (violet / cyan / magenta) + fresh charge (white-cyan) + golden afterglow
+    //   grain   — a static texture masked by the charge: charged sky looks staticky, grounded sky smooth
+    const d = fieldData.data, md = maskData.data, cd = clearData.data, n = field.n, cols = field.cols, q = field.q, fl = field.f;
+    const low = ctx.lowStim ? 0.6 : 1;
     for (let k = 0; k < n; k++) {
-      const q = field.q[k];
       const o = k * 4;
-      if (q < 0.02) { d[o + 3] = 0; continue; }
+      const f = fl[k], e = q[k] - f > 0 ? q[k] - f : 0, gl = afterglow[k];
+      cd[o + 3] = Math.round(255 * 0.42 * clamp(1 - q[k] / 0.4) * startQ[k]);
+      if (f < 0.02 && e < 0.01 && gl < 0.01) { d[o + 3] = 0; md[o + 3] = 0; continue; }
       const i = k % cols, j = (k / cols) | 0;
-      const sh = rm ? 1 : 0.8 + 0.2 * Math.sin(now * phase[k * 2 + 1] + phase[k * 2]);
-      const hue = 0.5 + 0.5 * Math.sin(i * 0.55 + j * 0.37 + now * 0.25 + phase[k * 2] * 0.3);
-      const a = Math.pow(smoothstep(0.02, 1.25, q), 0.85) * sh;
-      const w = clamp((q - 0.95) / 0.55) * 0.55;   // white-hot when crowded with charge
-      // cyan (62,232,255) ↔ magenta (255,61,242), through violet
-      let r = 62 + (255 - 62) * hue, gg = 232 + (61 - 232) * hue, b = 255 + (242 - 255) * hue;
-      const mid = 1 - Math.abs(hue - 0.5) * 2;      // violet dip in the middle
-      r -= mid * 70; gg -= mid * 60;
-      d[o] = r + (255 - r) * w; d[o + 1] = gg + (255 - gg) * w; d[o + 2] = b + (255 - b) * w;
-      d[o + 3] = Math.round(255 * clamp(a * 0.82));
+      const sh = rm ? 1 : 0.78 + 0.22 * Math.sin(now * phase[k * 2 + 1] + phase[k * 2]);
+      const hue = 0.5 + 0.5 * Math.sin(i * 0.5 + j * 0.33 + now * 0.22 + phase[k * 2] * 0.35);
+      const mid = 1 - Math.abs(hue - 0.5) * 2;
+      // ambient: cyan (40,200,255) ↔ magenta (235,50,225), dipping through violet (120,70,255)
+      const ar = 40 + 195 * hue - 17.5 * mid, ag = 200 - 150 * hue - 55 * mid, ab = 255 - 30 * hue + 15 * mid;
+      const aa = Math.pow(smoothstep(0.04, 1.15, f), 1.15) * 0.46 * sh * low;
+      const fa = smoothstep(0.015, 0.4, e) * (0.75 + 0.25 * sh) * low;
+      const fw = clamp(e / 0.55);                        // white-hot as fresh charge piles up
+      const ga = clamp(gl) * 0.85 * low;
+      md[o + 3] = Math.round(255 * clamp(aa * 1.1 + fa * 1.3));
+      const A = aa + fa + ga;
+      if (A <= 0.002) { d[o + 3] = 0; continue; }
+      const R2 = ar * aa + (150 + 105 * fw) * fa + 255 * ga, G2 = ag * aa + (235 + 20 * fw) * fa + 205 * ga, B2 = ab * aa + 255 * fa + 130 * ga;
+      d[o] = R2 / A; d[o + 1] = G2 / A; d[o + 2] = B2 / A;
+      d[o + 3] = Math.round(255 * (A > 1 ? 1 : A));
     }
+    const bx = field.x - field.cw * 0.5, by = field.y - field.ch * 0.5, bw = field.w + field.cw, bh = field.h + field.ch;
+    g.save();
+    g.imageSmoothingEnabled = true;
+    // 1 clear sky where grounded
+    fieldG.putImageData(clearData, 0, 0);
+    midG.globalCompositeOperation = 'copy'; midG.drawImage(fieldC, 0, 0, midC.width, midC.height);
+    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+    g.drawImage(midC, bx, by, bw, bh);
+    // 2 plasma
     fieldG.putImageData(fieldData, 0, 0);
-    midG.globalCompositeOperation = 'copy';
     midG.drawImage(fieldC, 0, 0, midC.width, midC.height);
+    g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.92;
+    g.drawImage(midC, bx, by, bw, bh);
+    // 3 static grain (jumps a few times a second; still when motion is reduced or stimulation low)
+    if (!ctx.lowStim) {
+      fieldG.putImageData(maskData, 0, 0);
+      midG.drawImage(fieldC, 0, 0, midC.width, midC.height);
+      const tick = rm ? 0 : Math.floor(now * 11);
+      const ox = ((tick * 37) % 96), oy = ((tick * 61) % 96);
+      grainG.globalCompositeOperation = 'copy';
+      grainG.setTransform(1, 0, 0, 1, -ox, -oy);
+      grainG.fillStyle = grainG.createPattern ? (grainPatFill || (grainPatFill = grainG.createPattern(grainPat, 'repeat'))) : '#fff';
+      grainG.fillRect(ox, oy, grainC.width, grainC.height);
+      grainG.setTransform(1, 0, 0, 1, 0, 0);
+      grainG.globalCompositeOperation = 'destination-in';
+      grainG.imageSmoothingEnabled = true;
+      grainG.drawImage(midC, 0, 0, grainC.width, grainC.height);
+      g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.5;
+      g.imageSmoothingEnabled = false;
+      g.drawImage(grainC, field.x, field.y, grainC.width * grainScale, grainC.height * grainScale);
+    }
+    g.restore();
+  }
+
+  // 8 neighbours for the filaments
+  const NB = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+  function drawLattice(g, now, rm) {
+    // where fast strokes left fresh charge it crackles as forked electric filaments:
+    // each charged cell reaches for one charged neighbour (re-chosen ~15× a second)
+    const q = field.q, fl = field.f, cols = field.cols, rows = field.rows;
+    const tick = rm ? 0 : Math.floor(now * 15);
+    const amp = field.cell * (rm ? 0.15 : 0.42);
+    let segs = 0;
+    g.beginPath();
+    for (let k = 0; k < field.n && segs < 160; k++) {
+      const e = q[k] - fl[k];
+      if (e < 0.2) continue;
+      const h = ((k * 2654435761 + tick * 40503) >>> 0) / 4294967296;
+      if (h > 0.35 + e) continue;                       // not every cell fires every tick
+      const i = k % cols, j = (k / cols) | 0;
+      const nb = NB[(h * 997 | 0) % 8];
+      const i2 = i + nb[0], j2 = j + nb[1];
+      if (i2 < 0 || j2 < 0 || i2 >= cols || j2 >= rows) continue;
+      const k2 = j2 * cols + i2;
+      if (q[k2] - fl[k2] < 0.12) continue;
+      const x = field.cx(i), y = field.cy(j), x2 = field.cx(i2), y2 = field.cy(j2);
+      const h2 = ((k * 1597334677 + tick * 3812015801) >>> 0) / 4294967296 - 0.5;
+      const nx = -(y2 - y), ny = x2 - x, nl = Math.hypot(nx, ny) || 1;
+      const mx = (x + x2) / 2 + (nx / nl) * h2 * amp * 2, my = (y + y2) / 2 + (ny / nl) * h2 * amp * 2;
+      g.moveTo(x, y); g.lineTo(mx, my); g.lineTo(x2, y2);
+      // a little fork now and then
+      if (h2 > 0.25) { g.moveTo(mx, my); g.lineTo(mx + (nx / nl) * amp, my + (ny / nl) * amp + (x2 - x) * 0.2); }
+      segs++;
+    }
+    if (!segs) return;
     g.save();
     g.globalCompositeOperation = 'lighter';
-    g.globalAlpha = 0.78 * (ctx.lowStim ? 0.6 : 1);
-    g.imageSmoothingEnabled = true;
-    // drawn a touch larger than the grid so cell centres line up and edges feather out
-    g.drawImage(midC, field.x - field.cw * 0.5, field.y - field.ch * 0.5, field.w + field.cw, field.h + field.ch);
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    const a = ctx.lowStim ? 0.5 : 1;
+    g.strokeStyle = C.cyan; g.globalAlpha = 0.14 * a; g.lineWidth = 5; g.stroke();
+    g.strokeStyle = '#e8fdff'; g.globalAlpha = 0.55 * a; g.lineWidth = 1; g.stroke();
     g.restore();
   }
 
@@ -712,11 +817,11 @@ export function create(ctx) {
     const tick = rm ? 0 : Math.floor(now * 12);
     g.globalCompositeOperation = 'lighter';
     let count = 0;
-    for (let k = 0; k < field.n && count < 70; k++) {
-      const q = field.q[k];
-      if (q < 0.62) continue;
+    for (let k = 0; k < field.n && count < 80; k++) {
+      const q = field.q[k], e = q - field.f[k];
+      if (q < 0.62 && e < 0.12) continue;
       const h = ((k * 2654435761 + tick * 40503) >>> 0) / 4294967296;
-      if (h > (q - 0.55) * 0.9) continue;
+      if (h > (e > 0.12 ? 0.55 + e : (q - 0.62) * 0.5)) continue;
       count++;
       const i = k % field.cols, j = (k / field.cols) | 0;
       const h2 = ((k * 1597334677 + tick * 3812015801) >>> 0) / 4294967296;
@@ -749,6 +854,7 @@ export function create(ctx) {
     const dpr = realm.st.dpr;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawPlasma(g, now, rm);
+    drawLattice(g, now, rm);
     drawStatic(g, now, rm);
     // falling ground lines slide down into the floor behind the Mallow
     const floorY = lerp(horizonY, H * groundFrac, 0.35);
@@ -782,9 +888,9 @@ export function create(ctx) {
     g.lineCap = 'round';
     g.globalCompositeOperation = 'lighter';
     g.strokeStyle = c.gk > 0.5 ? C.gold : C.cyan;
-    g.globalAlpha = 0.18 + 0.25 * (c.gk > 0.5 ? c.gk : qk * (rm ? 1 : 0.7 + 0.3 * Math.sin(now * 9 + c.ph)));
-    g.lineWidth = 3; c.rope.path(g); g.stroke();
-    g.globalAlpha = 0.75; g.lineWidth = 1; g.strokeStyle = c.gk > 0.5 ? '#ffe9bf' : '#cdf8ff'; c.rope.path(g); g.stroke();
+    g.globalAlpha = 0.08 + 0.14 * (c.gk > 0.5 ? c.gk : qk * (rm ? 1 : 0.7 + 0.3 * Math.sin(now * 9 + c.ph)));
+    g.lineWidth = 2.4; c.rope.path(g); g.stroke();
+    g.globalAlpha = 0.42; g.lineWidth = 0.8; g.strokeStyle = c.gk > 0.5 ? '#ffe9bf' : '#cdf8ff'; c.rope.path(g); g.stroke();
     g.restore();
     // halo behind: cyan/magenta charge, or warm gold when grounded
     g.save();
@@ -846,7 +952,7 @@ export function create(ctx) {
       g.restore();
     }
     if (thought?.draw) {
-      try { thought.draw(g, x, y, tScale, { tension: tTension, charge: qLocal, calm: thoughtSettle.settled ? 1 : 1 - qLocal, fizz: tFizz, reduced: rm, radius: tR, now }); } catch (e) { /* placeholder only */ }
+      try { thought.draw(g, x, y, tScale, { tension: tTension, charge: qLocal, calm: thoughtSettle.settled ? 1 : 1 - qLocal, fizz: tFizz, reduced: rm, radius: tR, now, minX: 20, maxX: W - 20 }); } catch (e) { /* placeholder only */ }
     }
   }
 
@@ -868,12 +974,12 @@ export function create(ctx) {
   function drawCrackleTrail(g, f, now, rm) {
     const tr = f.trail;
     if (tr.n < 2) return;
-    const life = 0.28;
+    const life = 0.45;
     const jt = rm ? 0 : Math.floor(now * 20);
     for (let pass = 0; pass < 3; pass++) {
       const off = pass === 0 ? -1.6 : pass === 1 ? 1.6 : 0;
       g.strokeStyle = pass === 0 ? C.cyan : pass === 1 ? C.magenta : C.white;
-      g.lineWidth = pass === 2 ? 1.1 : 2.2;
+      g.lineWidth = pass === 2 ? 1.4 : 3.2;
       g.beginPath();
       let started = false;
       for (let k = 0; k < tr.n; k++) {
@@ -980,7 +1086,7 @@ export function create(ctx) {
       layout();
       try { thought?.react?.('appear'); } catch { /* optional */ }
       const intro = ctx.entry.dialogue?.intro;
-      if (intro && !from) ctx.say(intro, { who: 'glitzi', kind: 'dialogue' });
+      if (intro && !from) introAt = 3.8;
     },
     frame,
     pointer,

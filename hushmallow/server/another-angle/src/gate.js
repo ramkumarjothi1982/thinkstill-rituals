@@ -134,10 +134,34 @@ const MIND_VERB = R`(?:loves?|liked?|likes|cares?|cared|hates?|hated|resents?|re
 const MIND_STATE = R`(?:annoyed|angry|upset|mad|disappointed|proud|jealous|threatened|insecure|busy|stressed|distracted|overwhelmed|happy|fine|okay|interested|bored|embarrassed|hurt|sorry|over it|ignoring|avoiding|judging|thinking|trying to|testing|punishing|annoyed with|fed up)`;
 const CLAIM_RE = new RegExp(R`\b${OTHERS}(?: does| did| do| will| would| must| has| have| had| can)?(?: not| never)?${ADVS} ${MIND_VERB}\b`, 'iu');
 const STATE_RE = new RegExp(R`\b${OTHERS}(?: is| are| was| were| will be| would be| must be| has been| have been| had been| seems to be)(?: not| never)?${ADVS} ${MIND_STATE}\b`, 'iu');
+const OTHERS_RE = new RegExp(R`\b${OTHERS}\b`, 'iu');
 const NOT_PERSONAL_RE = /\b(?:it|this|that) (?:was|is|was not|is not|wasn't|isn't) (?:not )?(?:personal|about you)\b|\b(?:they|he|she) did not mean (?:it|to)\b/iu;
-const HEDGE_RE = /\b(?:may|might|could|perhaps|possibly|maybe|(?<!\beven )if|whether|unless|whatever|not sure|do not know|don't know|can't know|cannot know|can not know|can't tell|cannot tell|no way to know|unclear|unknown|guess(?:ing)?|wonder|question|possibilit(?:y|ies)|possible|seems?|seemed|as if|does not prove|doesn't prove|is not proof|isn't proof|not proof|does not mean|doesn't mean|does not tell|doesn't tell|without knowing|has not said|hasn't said|have not said|haven't said|one reading|one explanation|explanations|interpretations?|story|stories|assum\w*|guesses)\b/iu;
+const HEDGE_RE = /\b(?:may|might|could|perhaps|possibly|maybe|if|whether|unless|whatever|not sure|do not know|don't know|can't know|cannot know|can not know|can't tell|cannot tell|no way to know|unclear|unknown|guess(?:ing)?|wonder|question|possibilit(?:y|ies)|possible|seems?|seemed|as if|does not prove|doesn't prove|is not proof|isn't proof|not proof|does not mean|doesn't mean|does not tell|doesn't tell|without knowing|has not said|hasn't said|have not said|haven't said|one reading|one explanation|explanations|interpretations?|story|stories|assum\w*|guesses)\b/iu;
+
+/**
+ * Does a (contraction-expanded) sentence state another person's mind as
+ * fact? A hedge covers its own clause ("Even if your boss is annoyed, …");
+ * a lead-in hedge with no person in it ("It's possible that, after a long
+ * day, he is tired") also covers the clauses after it. "but", ";" and dashes
+ * start a fresh claim. "He might not have seen it, and he's probably busy"
+ * fails on its second clause.
+ * @param {string} sentence
+ */
+function claimsOthersMinds(sentence) {
+  for (const seg of sentence.split(/;|—|–|\s-\s|\bbut\b|\bhowever\b|\bthough\b/)) {
+    let leadIn = false;
+    for (const clause of seg.split(/[,:]/)) {
+      const claim = CLAIM_RE.test(clause) || STATE_RE.test(clause) || NOT_PERSONAL_RE.test(clause);
+      const hedged = HEDGE_RE.test(clause);
+      if (claim && !hedged && !leadIn) return true;
+      if (hedged && !claim && !OTHERS_RE.test(clause)) leadIn = true;
+    }
+  }
+  return false;
+}
 
 /** Expand common contractions so the claim patterns see "he is", "does not" and so on. */
+/** @param {string} s */
 function expand(s) {
   return tidy(s).toLowerCase()
     .replace(/\b(he|she|it|that|there|who|what)'s\b/g, '$1 is')
@@ -180,6 +204,7 @@ export function qualityGate(scene, ctx) {
   /** @type {GateFailure[]} */
   const failures = [];
   const seen = new Set();
+  /** @param {string} code @param {string} field @param {string} message */
   const fail = (code, field, message) => {
     const k = `${code}|${field}`;
     if (!seen.has(k)) { seen.add(k); failures.push({ code, field, message }); }
@@ -229,14 +254,12 @@ export function qualityGate(scene, ctx) {
     // Other people's minds stated as fact.
     // A hedge covers its own clause and what follows it, until "but", a
     // semicolon or a dash starts a new claim.
+    // Quoting the person's own words is not a claim, so quoted spans are skipped.
     for (const s of sentences(t)) {
       if (/\?["')\]]*$/.test(s)) continue;
-      for (const seg of expand(s).split(/;|—|–|\s-\s|\bbut\b|\bhowever\b|\bthough\b/)) {
-        if (HEDGE_RE.test(seg)) continue;
-        if (CLAIM_RE.test(seg) || STATE_RE.test(seg) || NOT_PERSONAL_RE.test(seg)) {
-          fail('claims_others_minds', field, `${LABEL[field]} states what someone else thinks, feels or intends as fact; only offer that as a possibility ("might", "could") or ask.`);
-          break;
-        }
+      const unquoted = s.replace(/"[^"]*"|“[^”]*”|‘[^’]*’/g, ' … ');
+      if (claimsOthersMinds(expand(unquoted))) {
+        fail('claims_others_minds', field, `${LABEL[field]} states what someone else thinks, feels or intends as fact; only offer that as a possibility ("might", "could") or ask.`);
       }
     }
     // The harsh label, repeated or flatly denied.

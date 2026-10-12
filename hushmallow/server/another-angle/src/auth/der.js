@@ -63,6 +63,7 @@ function time(b, t) {
   throw new Error('der: bad time');
 }
 
+/** @param {Uint8Array} a @param {Uint8Array} b */
 const bytesEqual = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 export { bytesEqual };
 

@@ -47,9 +47,10 @@ export function worstCaseMicros({ model, attempts, promptTokens, maxTokens }) {
   return Math.ceil(perAttempt * attempts * 1.5);
 }
 
-/** Rough token count for budgeting (about 4 characters per token for English). */
+/** Rough token count for budgeting (about 4 characters per token for English). @param {string} text */
 export function roughTokens(text) {
   return Math.ceil(String(text).length / 3.6);
 }
 
+/** @param {number} m */
 export const microsToUsd = (m) => m / 1e6;

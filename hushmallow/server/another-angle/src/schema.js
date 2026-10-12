@@ -26,7 +26,9 @@ export const SCENE_FIELDS = /** @type {const} */ ([
  * }} Scene
  */
 
+/** @param {string} description */
 const str = (description) => ({ type: 'string', description });
+/** @param {readonly string[]} values @param {string} description */
 const oneOf = (values, description) => ({ type: 'string', enum: [...values], description });
 
 /** JSON schema for output_config.format (structured outputs subset only). */

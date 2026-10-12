@@ -174,7 +174,7 @@ export function createPlaceholderThought({ words, emotion = 'other', font = (px,
       g.stroke();
       g.restore();
       // the person's words, exactly as typed, on a readable plate
-      drawLabel(g, r, calm, o, now);
+      drawLabel(g, r, calm, o);
       g.restore();
     },
   };
@@ -212,10 +212,15 @@ export function createPlaceholderThought({ words, emotion = 'other', font = (px,
     const key = `${words?.token}|${font(17, 700)}`;
     if (key !== labelKey) { labelKey = key; label = { ember: buildLabel(false), light: buildLabel(true) }; }
     if (!label?.ember) return;
-    const y = r * 1.02 + 6;
+    const y = r * 0.98 - 4;            // the plate canvas carries a 12 px margin
     const L = calm > 0.5 ? label.light : label.ember;
+    // keep the plate on screen (the canvas is translated to the thought's centre)
+    const m = g.getTransform(), cx = m.e / (m.a || 1);
+    let dx = 0;
+    if (o.minX != null && cx - L.w / 2 + 12 < o.minX) dx = o.minX - (cx - L.w / 2 + 12);
+    if (o.maxX != null && cx + L.w / 2 - 12 > o.maxX) dx = o.maxX - (cx + L.w / 2 - 12);
     g.globalAlpha = 1;
-    g.drawImage(L.c, -L.w / 2, y, L.w, L.h);
+    g.drawImage(L.c, -L.w / 2 + dx, y, L.w, L.h);
   }
   /** Re-render the label once the brand fonts have loaded. */
   handle.refreshLabel = () => { labelKey = ''; };
@@ -255,9 +260,9 @@ function injectStyle() {
  * Lab subtitles: one short line at a time, soft fade, readable timing
  * (clamp(1400 + 55·chars, 2400, 7000) / speed), aria-live polite, the last
  * line of a held sequence stays until tapped or after holdMs it docks as a
- * replayable chip. Placed in the upper band unless a finger (avoid rects) is there.
+ * replayable chip. Placed at slotY() unless a finger (avoid rects) is there, then at altY().
  */
-export function createLabSubtitles({ root = document.body, avoid = () => [], speed = 1, holdMs = 8000, topY = () => 92, lowY = () => innerHeight * 0.52 } = {}) {
+export function createLabSubtitles({ root = document.body, avoid = () => [], speed = 1, holdMs = 8000, slotY = () => 92, altY = () => innerHeight * 0.52 } = {}) {
   injectStyle();
   const box = document.createElement('div');
   box.className = 'hf-subs';
@@ -272,11 +277,20 @@ export function createLabSubtitles({ root = document.body, avoid = () => [], spe
   const wait = (ms) => new Promise((r) => { const t0 = performance.now(); const tick = () => { if (skipFn?.skipped) return r(); if (paused) { setTimeout(tick, 120); return; } if (performance.now() - t0 >= ms) r(); else setTimeout(tick, 60); }; tick(); });
   function place() {
     const rects = avoid() || [];
-    const top = topY(), band = { y: top - 10, h: 96 };
+    // the default slot is anchored by its bottom edge (just above the Mallow), so taller
+    // content (two lines, a choice) grows upwards and never covers the Mallow
+    const bottom = slotY(), band = { y: bottom - 96, h: 96 };
     const hit = rects.some((r) => r.kind === 'finger' && r.y < band.y + band.h && r.y + r.h > band.y);
-    box.style.top = `${hit ? lowY() : top}px`;
+    if (hit) { box.style.bottom = 'auto'; box.style.top = `${altY()}px`; }
+    else { box.style.top = 'auto'; box.style.bottom = `${Math.max(0, innerHeight - bottom)}px`; }
   }
+  // a discovery waits only for the line on screen (cut short), not for the dialogue queued behind it
+  function queueFront(run) { const prev = current?.done || Promise.resolve(); return prev.then(run); }
   async function showLine(text, { kind = 'dialogue', hold = false } = {}) {
+    let cutNow = null;
+    const me = { kind, cut: () => cutNow?.(), done: null };
+    current = me;
+    let resolveDone; me.done = new Promise((r) => { resolveDone = r; });
     place();
     p.className = `hf-line ${kind === 'discovery' ? 'discovery' : ''}`;
     p.textContent = text;
@@ -288,9 +302,13 @@ export function createLabSubtitles({ root = document.body, avoid = () => [], spe
         const tm = setTimeout(() => { docked(text); done(); }, holdMs);
         p.addEventListener('click', done);
       });
-    } else await wait(Math.min(7000, Math.max(2400, 1400 + 55 * text.length)) / speed);
+    } else {
+      await Promise.race([wait(Math.min(7000, Math.max(2400, 1400 + 55 * text.length)) / speed), new Promise((r) => { cutNow = r; })]);
+    }
     p.classList.remove('on');
     await wait(420);
+    if (current === me) current = null;
+    resolveDone();
   }
   function docked(text) {
     dock.textContent = `↺  ${text}`;
@@ -298,16 +316,23 @@ export function createLabSubtitles({ root = document.body, avoid = () => [], spe
     dock.classList.add('on');
     dock.onclick = () => { dock.classList.remove('on'); api.say([text], { kind: 'discovery' }); };
   }
+  let gen = 0;            // bumped by a discovery: queued dialogue that has not started yet is dropped
+  let current = null;     // { kind, cut() }
   const api = {
     say(lines, o = {}) {
       const list = (Array.isArray(lines) ? lines : [lines]).filter(Boolean);
+      const discovery = o.kind === 'discovery';
+      if (discovery) { gen++; if (current && current.kind !== 'discovery') current.cut(); }
+      const myGen = gen;
       busy++;
-      const job = queue.then(async () => {
+      const run = async () => {
         for (let i = 0; i < list.length; i++) {
+          if (!discovery && myGen !== gen) return;          // a discovery took the floor
           await showLine(list[i], { kind: o.kind, hold: o.hold && i === list.length - 1 });
-          if (o.kind === 'discovery' && i < list.length - 1) await wait(800);
+          if (discovery && i < list.length - 1) await wait(800);
         }
-      }).finally(() => { busy--; });
+      };
+      const job = (discovery ? queueFront(run) : queue.then(run)).finally(() => { busy--; });
       queue = job.catch(() => {});
       return job;
     },

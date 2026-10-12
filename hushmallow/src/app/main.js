@@ -65,10 +65,12 @@ app.applyUpdateIfSafe = () => {
 };
 
 // scenes that may not be in this build yet: a gentle note instead of an error
-const OPTIONAL_SCENES = { garden: 'The Memory Garden is still being planted. Soon.' };
+const OPTIONAL_SCENES = { garden: 'The Memory Garden opens soon.' };
 
 app.go = async function go(name, params = {}, { replace = false, fromPop = false } = {}) {
   if (newer && name === 'home' && safeToUpdate()) { moveTo(newer); return; }
+  // a layer that just closed is still stepping history back: let it land first
+  await popsSettled();
   const load = SCENES[name];
   if (!load) throw new Error(`No scene ${name}`);
   let mod;
@@ -81,6 +83,7 @@ app.go = async function go(name, params = {}, { replace = false, fromPop = false
     if (OPTIONAL_SCENES[name]) { toast(OPTIONAL_SCENES[name], 3200); return null; }
     throw new Error(`Scene ${name} has no default export`);
   }
+  layers.length = 0;
   try { await current?.leave?.(); } catch (e) { console.warn(e); }
   sceneEl.replaceChildren();
   const view = mod.default(app, params);
@@ -98,7 +101,21 @@ app.go = async function go(name, params = {}, { replace = false, fromPop = false
 };
 app.back = () => history.back();
 
+// Transient layers (the Hushfold's input, side panel, reader) get a history
+// entry of their own, so Back closes them first, even on the root scene.
+// pushLayer() → token; popLayer(token) removes the entry when the layer
+// closes another way (✕, Escape, send). Entries are interchangeable, so only
+// the count matters; app.go() forgets them (they become plain duplicates).
+const layers = [];
+let layerSeq = 0, ignorePops = 0;
+const popWaiters = [];
+const popsSettled = () => (ignorePops ? new Promise((r) => { popWaiters.push(r); setTimeout(r, 400); }) : null);
+app.pushLayer = () => { const t = ++layerSeq; layers.push(t); history.pushState({ i: stack.length - 1, layer: t }, '', location.hash); return t; };
+app.popLayer = (t) => { const k = layers.lastIndexOf(t); if (k < 0) return; layers.splice(k, 1); ignorePops++; history.back(); };
+
 window.addEventListener('popstate', (e) => {
+  if (ignorePops > 0) { ignorePops--; if (!ignorePops) popWaiters.splice(0).forEach((r) => r()); return; }
+  if (layers.length) { layers.pop(); try { current?.blockBack?.(); } catch (err) { console.warn(err); } return; }
   const i = e.state?.i ?? 0;
   if (current?.blockBack) { history.pushState({ i: stack.length - 1 }, '', location.hash); current.blockBack(); return; }
   stack.length = Math.max(1, i + 1);

@@ -17,7 +17,8 @@ import { h } from '../ui.js';
 import { MALLOWS, MALLOW_IDS } from '../../mallows/registry.js';
 import { openSupport } from './support.js';
 import { createSubtitles } from '../../hushfold/subtitles.js';
-import { createLines, SHARED_LINES } from '../../hushfold/lines.js';
+import { createLines, SHARED_LINES, flowEmotion } from '../../hushfold/lines.js';
+import { requireEntitlement } from '../entitlements.js';
 import { createStage, createStageMallow } from '../../hushfold/stage.js';
 import { createInputRouter } from '../../hushfold/input-router.js';
 import { hfIcon } from '../../hushfold/icons.js';
@@ -65,7 +66,7 @@ export default function hushfold(app, params = {}) {
     root, prefs,
     reducedMotion: () => prefs.reducedMotion(),
     bounds: () => ({ top: (topEl.getBoundingClientRect().bottom || 60) + 12, bottom: dockTop() - 12 }),
-    avoid: () => [mallowAvoidRect(), ...(stage?.thoughts.rects() || [])].filter(Boolean),
+    avoid: () => [mallowAvoidRect(), ...(stage?.thoughts.rects() || []), ...(flowRef?.avoid?.() || [])].filter(Boolean),
   });
   const say = (text, opts = {}) => {
     if (!text) return Promise.resolve(false);
@@ -75,6 +76,10 @@ export default function hushfold(app, params = {}) {
 
   // ------------------------------------------------------- stage --
   let stage = null, stageMallow = null, router = null, overlay = null, panel = null, readEl = null;
+  // each transient layer has its own history entry, so Back closes it first
+  const layer = { overlay: 0, panel: 0, read: 0 };
+  const pushLayer = (k) => { layer[k] = app.pushLayer?.() || 0; };
+  const popLayer = (k) => { const t = layer[k]; layer[k] = 0; if (t) app.popLayer?.(t); };
   let flowP = null, flowRef = null;
   let thoughtHome = { x: innerWidth * 0.8, y: innerHeight * 0.6 };
 
@@ -98,14 +103,16 @@ export default function hushfold(app, params = {}) {
     const regionTop = topB + band;
     const regionBottom = Math.min(vh - 76, dockTop() - 14);
     const regionH = Math.max(150, regionBottom - regionTop);
-    const thought = (stage?.thoughts.list.length || 0) > 0;
+    const thought = !worldMode && (stage?.thoughts.list.length || 0) > 0;
     let B = Math.min(vw * 0.66, regionH * 0.7, 360);
     if (thought && vw < 700) B *= 0.84;
+    // in a world the Mallow stands on the floor in the foreground, smaller, leaving the sky to play in
+    if (worldMode) B = Math.min(vw * 0.58, vh * 0.27, 300);
     B = Math.max(130, B);
     const lw = B / 0.64, lh = lw * 1.1;
     world.setLayerSize({ w: lw, h: lh });
     const cx = thought ? (vw < 700 ? vw * 0.4 : vw / 2 - B * 0.35) : vw / 2;
-    const bodyCy = regionTop + regionH * 0.5;
+    const bodyCy = worldMode ? Math.min(vh * 0.885, regionBottom) - B / 2 : regionTop + regionH * 0.5;
     const layerCy = bodyCy - 0.098 * lw;
     world.place({ x: (cx / vw) * 100, y: (layerCy / vh) * 100, scale: 1 });
     thoughtHome = vw < 700 ? { x: vw * 0.82, y: bodyCy + B * 0.22 } : { x: vw / 2 + B * 0.55, y: bodyCy + B * 0.1 };
@@ -127,45 +134,130 @@ export default function hushfold(app, params = {}) {
   }
 
   // --------------------------------------------------------- flow --
+  // The person's words for the worlds: one live object, so a director made
+  // before they typed still reads what they type later (exact text only).
+  let wordsCur = null;
+  const words = {
+    get full() { return wordsCur?.full || ''; }, get own() { return !!wordsCur?.own; }, get token() { return wordsCur?.token || ''; },
+    get feelings() { return wordsCur?.feelings || []; }, setToken(t) { wordsCur?.setToken(t); }, onChange(fn) { return wordsCur?.onChange?.(fn) || (() => {}); },
+  };
+  // the director speaks with Mallow ids; the subtitles show names in each Mallow's own colour
+  const whoOf = (o = {}) => {
+    const m = MALLOWS[o.who] || (o.who ? null : M());
+    return m ? { ...o, who: m.name, colour: o.colour || m.colours.glow } : o;
+  };
+  const flowSubtitles = {
+    say: (lines, o) => { S.lastLineAt = now(); return subtitles.say(lines, whoOf(o)); },
+    choice: (prompt, options, o) => subtitles.choice(prompt, options, whoOf(o)),
+    clear: () => subtitles.clear(), pause: () => subtitles.pause(), resume: () => subtitles.resume(),
+    get busy() { return subtitles.busy; }, get holding() { return subtitles.holding; },
+  };
+  const safeRect = () => {
+    const top = (topEl.getBoundingClientRect().bottom || 60) + 8;
+    const b = stageMallow?.bodyRect?.();
+    const bottom = b?.height ? Math.max(top + 160, b.top - 14) : innerHeight * 0.62;
+    return { x: 20, y: top, w: innerWidth - 40, h: bottom - top };
+  };
+
   function createStubFlow() {
-    let status = 'idle';
     const tell = (k) => say(lines.pick(mallowId, k) || SHARED_LINES[k]?.[0]);
     return {
       stub: true,
-      start() { tell('stub'); },
-      next() { tell('stub'); },
-      stay() { tell('stub'); },
-      pause() { tell('stub'); },
-      resume() { status = 'idle'; },
-      finish() { tell('stub'); },
-      setEmotion() {}, setIntention() {}, setAutoFlow() {},
+      start() { tell('stub'); return Promise.resolve(null); },
+      next() { tell('stub'); }, stay() { tell('stub'); }, pause() { tell('stub'); }, resume() {}, finish() { tell('stub'); },
+      setEmotion() {}, setIntention() {}, setAutoFlow() {}, setThought() {},
       on() { return () => {}; },
-      get state() { return { status, worldId: null, stub: true }; },
+      get state() { return { phase: 'idle', paused: false, worldId: null, stub: true }; },
       safeForUpdate() { return true; },
       destroy() {},
     };
   }
-  /** The Hushflow director (W4), loaded on first need; the stub if it is missing or throws. */
+  // Is the Hushflow director in this build? (imports the module only; never creates a director)
+  let availP = null;
+  const flowAvailable = () => (availP ||= import('../../hushfold/flow/director.js').then((m) => typeof m.createHushflow === 'function', () => false));
+  /** The Hushflow director (W4), created only when a world is about to start; the stub if it is missing or throws. */
   function getFlow() {
     flowP ||= (async () => {
       try {
-        const [mod, photos] = await Promise.all([import('../../hushfold/flow/director.js'), import('../../v3/photos.js').catch(() => null)]);
+        const [mod, photosMod, cards] = await Promise.all([
+          import('../../hushfold/flow/director.js'), import('../../v3/photos.js'), import('../../v3/mallow-cards.js').catch(() => null)]);
         if (typeof mod.createHushflow !== 'function') throw new Error('director has no createHushflow');
-        const f = await mod.createHushflow({
-          app, worldEl: document.getElementById('world'), fxEl: world.fx, mallow: stageMallow, thoughts: stage?.thoughts || null,
-          subtitles, photos: photos?.photoSession || null, words: null, prefs, store, registry: null, router, spawnThought,
+        if (S.left) throw new Error('left');
+        const fallback = cards ? await cards.mallowMaterial(mallowId).catch(() => []) : [];
+        const photos = photosMod.photoApi({ dpr: Math.min(2, devicePixelRatio || 1), seed: 11, fallback });
+        S.photos = true;
+        const f = mod.createHushflow({
+          app, worldEl: document.getElementById('world'), fxEl: world.fx, mallow: stageMallow, thought: null,
+          subtitles: flowSubtitles, photos, words, prefs, store, safeRect,
         });
         if (!f || typeof f.start !== 'function') throw new Error('director returned no flow');
-        f.on?.('world', () => { panel?.update(); });
-        f.on?.('complete', () => { app.applyUpdateIfSafe?.(); });
-        f.on?.('progress', () => {});
+        f.setAutoFlow?.(!!prefs.get('autoFlow'));
+        f.on?.('world', (d) => onWorld(d));
+        f.on?.('offer', (d) => onOffer(d));
+        f.on?.('finish', () => onFinished());
+        f.on?.('error', (d) => onFlowError(d));
+        for (const ev of ['pause', 'resume', 'stay', 'complete', 'autoflow']) f.on?.(ev, () => { panel?.update(); if (ev === 'complete') app.applyUpdateIfSafe?.(); });
         return f;
       } catch (e) {
-        console.info('[hushfold] Hushflow director not available yet, using the stub:', e?.message || e);
+        if (!S.left) console.info('[hushfold] Hushflow director not available, using the stub:', e?.message || e);
         return createStubFlow();
       }
     })().then((f) => { flowRef = f; return f; });
     return flowP;
+  }
+  let worldMode = false;
+  let homeMallow = null;       // the person's own Mallow while a world borrows the stage
+  function onWorld(d) {
+    if (S.left) return;
+    worldMode = true;
+    router.setWorld((r) => flowRef?.pointer?.(r));
+    // the words now live inside the world: the shell's placeholder hands over
+    stage?.thoughts.clear();
+    // each world has its own Mallow (Glitzi hosts the Static Storm)
+    if (d?.mallow && MALLOWS[d.mallow] && d.mallow !== mallowId) {
+      homeMallow ||= mallowId;
+      mallowId = d.mallow;
+      theme();
+      showMallow(mallowId, { entrance: !prefs.reducedMotion() });
+    }
+    layout();
+    // a world's name, once, in story type, ahead of its first line
+    if (d?.title && !d.from) subtitles.say({ text: d.title, kind: 'title' }, { first: true });
+    panel?.update();
+  }
+  function endWorldMode() {
+    worldMode = false;
+    router?.setWorld(null);
+    try { flowRef?.destroy?.(); } catch (e) { console.warn(e); }
+    flowP = null; flowRef = null;
+    if (homeMallow) { mallowId = homeMallow; homeMallow = null; theme(); showMallow(mallowId); world.setRealm(M().realm, { crossfadeMs: 1400 }); }
+    layout();
+    panel?.update();
+  }
+  function onFinished() {
+    if (S.left) return;
+    // the last frame stays a moment, then the Hushfold's own realm is back
+    later(() => { endWorldMode(); say(lines.pick(mallowId, 'finished') || SHARED_LINES.finished[0]); app.applyUpdateIfSafe?.(); }, 900);
+  }
+  function onFlowError(d) {
+    if (S.left || worldMode) return;
+    if (d?.kind === 'none' || d?.kind === 'start' || d?.kind === 'load') say(SHARED_LINES.stub[0]);
+  }
+  /** A discovery offered for the Memory Garden (W5). Offered only when the garden is in this build. */
+  async function onOffer({ skillId, worldId } = {}) {
+    let garden = null, skills = null;
+    try { [garden, skills] = await Promise.all([import('../../engine/garden.js'), import('../../hushfold/skills.js').catch(() => null)]); } catch { return; }
+    if (S.left || typeof garden?.saveSkill !== 'function') return;
+    const title = skills?.SKILLS?.[skillId]?.title || skills?.skillTitle?.(skillId) || null;
+    const v = await subtitles.choice(title ? `Keep this? ${title}` : 'Keep this discovery?',
+      [{ label: 'Keep it', value: 'keep', primary: true }, { label: 'Not now', value: 'no' }], { who: M().name, colour: M().colours.glow, timeoutMs: 20000 });
+    if (v !== 'keep' || S.left) return;
+    try { garden.saveSkill(store, { id: skillId, fromWorld: worldId, mallow: mallowId }); } catch (e) { console.warn('[garden]', e); return; }
+    try {
+      const install = await import('../../hushfold/garden-install.js');
+      const play = install.playInstall || install.install || install.default;
+      if (typeof play === 'function') await play({ app, fx: world.fx, skillId, mallow: mallowId, origin: stageMallow.bodyRect(), reducedMotion: prefs.reducedMotion() });
+    } catch { app.toast('Saved to your Memory Garden'); }
   }
 
   // ------------------------------------------------- the Mallow --
@@ -224,7 +316,7 @@ export default function hushfold(app, params = {}) {
     if (S.left) return;
     S.lastLineAt = now();
     if (v === 'tell') openTell('chip', l2);
-    else if (v === 'play') { S.intention ||= 'just-play'; say(lines.pick(mallowId, 'justPlay')); }
+    else if (v === 'play') { S.intention ||= 'play'; say(lines.pick(mallowId, 'justPlay')); }
     // ignored: nothing else. The Tell pill stays; they can play for as long as they like.
   }
   function showTell(on) { tellBtn.classList.toggle('is-hidden', !on); }
@@ -238,6 +330,7 @@ export default function hushfold(app, params = {}) {
     world.setStage('listening', { quiet: true });
     const { openInput } = await import('../../hushfold/input-overlay.js');
     if (S.left || overlay) return;
+    root.classList.add('hf-typing');
     overlay = openInput({
       app, root, prompt: prompt || 'Want to tell me?',
       mallow: { id: mallowId, name: M().name, glow: M().colours.glow },
@@ -245,11 +338,14 @@ export default function hushfold(app, params = {}) {
       onSubmit: (r) => afterTell(r),
       onClose: (reason) => {
         overlay = null;
+        popLayer('overlay');
+        root.classList.remove('hf-typing');
         if (S.left) return;
         showTell(true);
         if (reason !== 'submit') { world.setStage('neutral', { quiet: true }); app.applyUpdateIfSafe?.(); }
       },
     });
+    pushLayer('overlay');
     S.photos = true;   // the overlay may have loaded the photo session
   }
 
@@ -281,9 +377,29 @@ export default function hushfold(app, params = {}) {
       if (!emotion) say(lines.pick(mallowId, 'thought'));
     }
     if (safety?.level === 'care') say(SHARED_LINES.supportCare);
+    // a beat with the Thought Mallow in the Hushfold before the first world melts in
+    const go = () => startFlow({ emotion: emotion || S.emotion, intention: intention || S.intention, input, safety });
+    if (text) later(go, prefs.reducedMotion() ? 1200 : 2800); else await go();
+  }
+
+  /** Start Hushflow (paid; enforced here as well as by the routes). Feeling ids map to the registry's. */
+  async function startFlow({ emotion = null, intention = null, input = null, safety = null, worldId = null } = {}) {
+    try { requireEntitlement(ent, 'paid'); } catch { app.go('plans', { reason: 'tell' }); return; }
+    const [{ createWords }, em] = await Promise.all([import('../../v3/words.js'), import('../../data/emotions.js')]);
+    if (S.left) return;
+    if (input) wordsCur = createWords(input);
     const flow = await getFlow();
     if (S.left) return;
-    try { flow.start({ emotion: emotion || S.emotion, intention: intention || S.intention, input, safety }); } catch (e) { console.warn('[hushfold] flow.start', e); }
+    const fe = flowEmotion(emotion, em.getEmotion(emotion)?.family);
+    if (!flow.stub && words.full) {
+      try {
+        const [ph, type] = await Promise.all([import('../../hushfold/flow/placeholders.js'), import('../../ui/type.js').catch(() => null)]);
+        flow.setThought?.(ph.createPlaceholderThought({ words, emotion: fe || 'other', font: type?.canvasFontPx, dpr: Math.min(2, devicePixelRatio || 1) }));
+      } catch (e) { console.info('[hushfold] no placeholder thought for the world', e?.message); }
+    }
+    try {
+      await flow.start({ emotion: fe, intention, intensity: input?.intensity ?? 0.6, input: input ? { text: input.text, safety: input.safety } : null, worldId });
+    } catch (e) { console.warn('[hushfold] flow.start', e); }
     panel?.update();
   }
 
@@ -307,8 +423,9 @@ export default function hushfold(app, params = {}) {
       h('p', {}, th.text), h('button', { class: 'hf-ghost', type: 'button', onclick: () => closeRead() }, 'Close'));
     root.append(readEl);
     readEl.querySelector('button').focus({ preventScroll: true });
+    pushLayer('read');
   }
-  function closeRead() { readEl?.remove(); readEl = null; }
+  function closeRead() { if (!readEl) return; readEl.remove(); readEl = null; popLayer('read'); }
 
   // ------------------------------------------------------ panel --
   async function ensurePanel() {
@@ -316,20 +433,25 @@ export default function hushfold(app, params = {}) {
     const { createSidePanel } = await import('../../hushfold/side-panel.js');
     if (S.left) return null;
     panel ||= createSidePanel({
-      app, root, getFlow,
+      app, root,
+      getFlow: (create = false) => (create ? getFlow() : Promise.resolve(flowRef)),
+      flowAvailable,
       state: () => ({ mallow: mallowId, emotion: S.emotion, emotionName: S.emotionName, intention: S.intention }),
       onFeeling: (id) => pickFeeling(id),
       onIntention: (id) => pickIntention(id),
       onMallow: (dir) => switchMallow(dir),
-      onClose: () => panelBtn.setAttribute('aria-expanded', 'false'),
+      onClose: () => { panelBtn.setAttribute('aria-expanded', 'false'); root.classList.remove('hf-panel-open'); popLayer('panel'); },
     });
     return panel;
   }
   async function togglePanel() {
     const p = await ensurePanel();
     if (!p) return;
-    p.toggle();
-    panelBtn.setAttribute('aria-expanded', String(p.isOpen));
+    if (p.isOpen) { p.close(); return; }
+    p.open();
+    root.classList.add('hf-panel-open');
+    pushLayer('panel');
+    panelBtn.setAttribute('aria-expanded', 'true');
   }
 
   async function setFeeling(id, { quiet = false } = {}) {
@@ -350,13 +472,13 @@ export default function hushfold(app, params = {}) {
     const e = await setFeeling(id);
     panel?.update();
     if (e) say(lines.pick(mallowId, 'ack', { emotion: id, feelingName: e.name }), { interrupt: !subtitles.holding });
-    (await getFlow())?.setEmotion?.(id);
+    if (e && flowRef && !flowRef.stub) flowRef.setEmotion?.(flowEmotion(id, e.family));
   }
   async function pickIntention(id) {
     S.intention = id;
     panel?.update();
-    if (id === 'just-play') say(lines.pick(mallowId, 'justPlay'), { interrupt: !subtitles.holding });
-    (await getFlow())?.setIntention?.(id);
+    if (id === 'play') say(lines.pick(mallowId, 'justPlay'), { interrupt: !subtitles.holding });
+    if (id && flowRef && !flowRef.stub) flowRef.setIntention?.(id);
   }
 
   // ------------------------------------------------------- keys --
@@ -398,7 +520,8 @@ export default function hushfold(app, params = {}) {
       world.dim(false);
       world.showMallow(true);
       theme();
-      stage = createStage({ fx: world.fx, tagRoot: root, reducedMotion: () => prefs.reducedMotion(), lowStim: () => !!prefs.get('lowStim'), onReadThought: readThought });
+      stage = createStage({ fx: world.fx, tagRoot: root, reducedMotion: () => prefs.reducedMotion(), lowStim: () => !!prefs.get('lowStim'), onReadThought: readThought,
+        keepOut: () => { const b = stageMallow?.bodyRect?.(); return b?.height ? { left: b.left, right: b.left + b.width, top: b.top, bottom: b.top + b.height } : null; } });
       stageMallow = createStageMallow(world);
       router = createInputRouter({
         el: world.fx, mallow: stageMallow, thoughts: stage.thoughts,
@@ -416,17 +539,21 @@ export default function hushfold(app, params = {}) {
       addEventListener('resize', onResize);
       visualViewport?.addEventListener('resize', onResize);
       document.addEventListener('keydown', onKey);
+      // QA hooks on the development host only (Playwright sweeps, the other workstreams' labs)
+      if (['localhost', '127.0.0.1'].includes(location.hostname)) {
+        window.__hushfold = { subtitles, mallow: stageMallow, stage, router, spawnThought, openTell, startFlow, get flow() { return flowRef; }, get panel() { return panel; }, safeForUpdate: () => view.safeForUpdate(), layout };
+      }
       if (await resumePendingTell()) return;
       if (params.flow?.worldId && ent.has('paid')) {
         S.invited = true; showTell(true);
-        const flow = await getFlow();
-        if (!S.left) flow.start({ worldId: params.flow.worldId, emotion: S.emotion, intention: S.intention });
+        startFlow({ worldId: params.flow.worldId, emotion: S.emotion, intention: S.intention });
         return;
       }
       opening();
     },
     leave() {
       S.left = true;
+      if (window.__hushfold?.subtitles === subtitles) delete window.__hushfold;
       for (const t of timers) clearTimeout(t);
       timers.clear();
       clearTimeout(resizeT);

@@ -67,7 +67,7 @@ export async function hushflowLab(app, qs) {
   // ---- the hero Mallow, standing on the storm floor (sized with CSS vars, never CSS-scaled)
   const placeMallow = () => {
     const H = innerHeight, W = innerWidth;
-    const bodyTop = H * 0.63, bodyBottom = H * 0.885;
+    const bodyTop = H * 0.645, bodyBottom = H * 0.885;
     const lh = Math.min(440, (bodyBottom - bodyTop) / 0.66), lw = Math.min(W * 0.86, lh * 0.95);
     const centre = bodyTop - lh * 0.22 + lh / 2;
     layer.style.setProperty('--mw', `${Math.round(lw)}px`);
@@ -98,7 +98,9 @@ export async function hushflowLab(app, qs) {
 
   // ---- subtitles (W3 stand-in) — appended to body so #scene's touch rule never applies to them
   let director = null;
-  const subtitles = createLabSubtitles({ root: document.body, avoid: () => director?.avoid() || [], topY: () => 96, lowY: () => innerHeight * 0.5 });
+  // default band: just above Glitzi (clear of the postcards and the thought); the top band when a finger is down there
+  const lowBand = () => Math.max(innerHeight * 0.5, (mallow.rect()?.top ?? innerHeight * 0.645) - 10);
+  const subtitles = createLabSubtitles({ root: document.body, avoid: () => director?.avoid() || [], slotY: lowBand, altY: () => 66 });
 
   const q = qs.get('q');
   director = createHushflow({
@@ -143,7 +145,7 @@ function showTitle(title, reduced) {
   const el = document.createElement('div');
   el.textContent = title;
   Object.assign(el.style, {
-    position: 'fixed', left: '0', right: '0', top: 'calc(env(safe-area-inset-top, 0px) + 150px)', zIndex: '4', pointerEvents: 'none', textAlign: 'center',
+    position: 'fixed', left: '0', right: '0', top: '43%', zIndex: '4', pointerEvents: 'none', textAlign: 'center',
     font: '540 25px/1.12 var(--ff-story, "HM Fraunces", Georgia, serif)', letterSpacing: reduced ? '-0.01em' : '0.04em', color: '#fff6e8',
     textShadow: '0 1px 2px rgba(6,4,22,.9), 0 0 30px rgba(120,80,255,.45)', opacity: '0',
     transition: reduced ? 'opacity .4s linear' : 'opacity 1.4s ease, letter-spacing 2.6s cubic-bezier(.2,.7,.2,1)',

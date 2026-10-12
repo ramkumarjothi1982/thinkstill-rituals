@@ -2,6 +2,7 @@
 // No dependencies; behaves the same in Workers and Node.
 
 /** Straight quotes, single spaces, trimmed. */
+/** @param {unknown} text */
 export function tidy(text) {
   return String(text ?? '')
     .replace(/[‘’‛ʼ`´]/g, "'")
@@ -13,10 +14,12 @@ export function tidy(text) {
 const WORD_RE = /[\p{L}\p{N}]+(?:['’\-][\p{L}\p{N}]+)*/gu;
 
 /** Words as the person would count them (hyphenated and contracted words count once). */
+/** @param {unknown} text @returns {string[]} */
 export function words(text) {
   return tidy(text).match(WORD_RE) || [];
 }
 
+/** @param {unknown} text */
 export function wordCount(text) {
   return words(text).length;
 }
@@ -28,6 +31,7 @@ const ABBREV = /\b(?:mr|mrs|ms|dr|prof|st|vs|etc|e\.g|i\.e|approx|no)\.$/i;
  * Split into sentences on . ! ? … followed by whitespace (or the end).
  * Closing quotes/brackets stay with their sentence.
  */
+/** @param {unknown} text @returns {string[]} */
 export function sentences(text) {
   const t = tidy(text);
   if (!t) return [];
@@ -80,6 +84,7 @@ const SYN_INDEX = new Map();
 SYNONYMS.forEach((group, i) => group.forEach((w) => SYN_INDEX.set(w, `syn${i}`)));
 
 /** Crude, stable stem: lower case, no possessive, common suffixes off. */
+/** @param {string} word */
 export function stem(word) {
   let w = word.toLowerCase().replace(/[’']s$/, '').replace(/[’']/g, "'");
   const syn = SYN_INDEX.get(w);
@@ -91,6 +96,7 @@ export function stem(word) {
 }
 
 /** Content-word stems of a text (no stop words, no 1–2 letter words). */
+/** @param {unknown} text @returns {Set<string>} */
 export function contentStems(text) {
   const out = new Set();
   for (const raw of words(text)) {
@@ -102,6 +108,7 @@ export function contentStems(text) {
 }
 
 /** Jaccard similarity of two sets. */
+/** @param {Set<string>} a @param {Set<string>} b */
 export function jaccard(a, b) {
   if (!a.size && !b.size) return 0;
   let inter = 0;
@@ -115,6 +122,7 @@ const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'sev
  * Numbers mentioned in a text, normalised so "5" and "five" match.
  * @returns {Set<string>}
  */
+/** @param {unknown} text */
 export function numbersIn(text) {
   const out = new Set();
   for (const raw of words(text)) {

@@ -81,6 +81,24 @@ test('claims about other people\'s minds are rejected unless offered as possibil
     'He might be busy, asleep, or simply not looking at the message yet.',
     'Could he be busy, or is the silence filling in a story you dread?',
   ]) assert.ok(!codes(gate(1, { subtitle_line_2: ok })).includes('claims_others_minds'), ok);
+  // Clause-aware hedging.
+  for (const [line, bad] of [
+    ["Even if your boss is annoyed, that doesn't decide whether you're good at your job.", false],
+    ["It's possible that, after a long day, your boss is simply tired.", false],
+    ['Your boss might not have read it yet, and your boss is probably busy.', true],
+    ['Your boss was trying to help, even if the delivery was clumsy.', true],
+    ['Your boss may be stressed, but your boss definitely respects you.', true],
+  ]) {
+    const has = codes(gate(0, { alternative_angle: line })).includes('claims_others_minds');
+    assert.equal(has, bad, line);
+  }
+  // Quoting the person's own words is not a claim.
+  const quoted = qualityGate(anchor(1, {
+    subtitle_line_1: '"Nobody likes me" is a heavy sentence to carry from one quiet evening.',
+    subtitle_line_2: 'Who did you actually hear from this week?',
+    known_fact: 'You wrote "nobody likes me" after a quiet evening.',
+  }), { text: 'Nobody likes me. It was a quiet evening.' });
+  assert.ok(!codes(quoted).includes('claims_others_minds'), JSON.stringify(codes(quoted)));
   // Describing what someone did is a fact, not mind-reading.
   assert.ok(!codes(gate(0, { known_fact: 'Your boss embarrassed you in front of everyone.' })).includes('claims_others_minds'));
 });

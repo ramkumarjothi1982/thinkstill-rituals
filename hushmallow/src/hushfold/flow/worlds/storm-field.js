@@ -16,11 +16,11 @@ export const FIELD = Object.freeze({
   CAP: 1.5,           // max charge in a cell
   D: 0.6,             // diffusion, cells²/s
   LEAK_TAU: 14,       // s, excess charge back to the floor
-  DEPOSIT: 0.55,      // charge per cell-length of fast path at fastness 1
+  DEPOSIT: 0.9,       // charge per cell-length of fast path at fastness 1
   DEPOSIT_SIGMA: 0.8, // cells (≈ r 1.6)
   DRAIN_RATE: 2.4,    // per second at slowness 1, kernel centre
   DRAIN_SIGMA: 1.1,   // cells (≈ r 2.2)
-  PULSE_RATE: 0.6,    // per second inside a ground pulse
+  PULSE_RATE: 0.45,   // per second inside a ground pulse (the rim drains ×1.6)
   TARGET_FRAC: 0.62,  // light needed for completion, as a share of the starting charge
 });
 

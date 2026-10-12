@@ -1,0 +1,117 @@
+# Another Angle server for hushmallow Beyond (Cloudflare Worker in
+# hushmallow/server/another-angle). Never part of the GitHub Pages site.
+#
+# Every push/PR touching the server: type-check, tests, bundle check.
+# Pushes to main also deploy — but only when the CLOUDFLARE_API_TOKEN and
+# CLOUDFLARE_ACCOUNT_ID repository secrets exist; otherwise the deploy job
+# skips cleanly with a notice. ANTHROPIC_API_KEY (repository secret) is set on
+# the Worker as a secret; TOKEN_SIGNING_KEY and IP_HASH_KEY are generated on
+# the first deploy and kept afterwards. Setup: hushmallow/server/another-angle/README.md
+name: Another Angle server
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'hushmallow/server/another-angle/**'
+      - 'hushmallow/src/data/safety-lexicon.js'
+      - 'hushmallow/src/data/emotions.js'
+      - 'hushmallow/tools/angle-eval.mjs'
+      - '.github/workflows/another-angle.yml'
+  pull_request:
+    paths:
+      - 'hushmallow/server/another-angle/**'
+      - 'hushmallow/src/data/safety-lexicon.js'
+      - 'hushmallow/src/data/emotions.js'
+      - 'hushmallow/tools/angle-eval.mjs'
+      - '.github/workflows/another-angle.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: another-angle-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: hushmallow/server/another-angle
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: hushmallow/server/another-angle/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Bundle check (wrangler dry run)
+        run: npm run build:check
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Check for Cloudflare secrets
+        id: gate
+        working-directory: .
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Another Angle not deployed::Add the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repository secrets to deploy (see hushmallow/server/another-angle/README.md)."
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.ready == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: hushmallow/server/another-angle/package-lock.json
+      - run: npm ci
+        if: steps.gate.outputs.ready == 'true'
+
+      - name: Prepare Worker secrets
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          umask 077
+          if npx wrangler secret list > "$RUNNER_TEMP/existing-secrets.json" 2> "$RUNNER_TEMP/secret-list.err"; then
+            node scripts/ci-secrets.mjs "$RUNNER_TEMP/existing-secrets.json" "$RUNNER_TEMP/angle-secrets.json" --list-ok
+          else
+            echo "No existing Worker yet (first deploy)."
+            node scripts/ci-secrets.mjs - "$RUNNER_TEMP/angle-secrets.json"
+          fi
+
+      - name: Deploy
+        if: steps.gate.outputs.ready == 'true'
+        run: |
+          npx wrangler deploy --secrets-file "$RUNNER_TEMP/angle-secrets.json" | tee "$RUNNER_TEMP/deploy.log"
+
+      - name: Remove secrets file
+        if: always() && steps.gate.outputs.ready == 'true'
+        run: rm -f "$RUNNER_TEMP/angle-secrets.json" "$RUNNER_TEMP/existing-secrets.json"
+
+      - name: Smoke test
+        if: steps.gate.outputs.ready == 'true'
+        run: |
+          url="$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' "$RUNNER_TEMP/deploy.log" | head -n 1 || true)"
+          if [ -z "$url" ]; then echo "No workers.dev URL in the deploy output; skipping the smoke test."; exit 0; fi
+          echo "Checking $url/v1/health"
+          curl -fsS --retry 5 --retry-delay 3 "$url/v1/health" -H 'origin: https://ramkumarjothi1982.github.io' | tee /dev/stderr | grep -q '"ok":true'

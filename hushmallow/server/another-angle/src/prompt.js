@@ -10,7 +10,7 @@ import { INTENTIONS } from './vocab.js';
 
 export const PROMPT_VERSION = 'angle-v1';
 
-/** Escape text for inclusion inside a data tag. */
+/** Escape text for inclusion inside a data tag. @param {string} text */
 export function escapeData(text) {
   return String(text ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

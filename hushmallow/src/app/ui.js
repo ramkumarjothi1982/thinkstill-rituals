@@ -104,12 +104,15 @@ export function say(world, text, { who, ms = 3600, above = true } = {}) {
   if (cardTop < Infinity) maxBottom = Math.min(maxBottom, cardTop - 8);
   let y = rect.top + rect.height * 0.12 - bh - 6;
   let below = false;
-  if (!above || y < minTop) {
+  if (!above || y < minTop || y + bh > maxBottom) {
     const yb = rect.bottom + 12;
     if (yb + bh <= maxBottom) { y = yb; below = true; } else {
       // no free band: a compact bubble keeps more of the Mallow's face in view
       if (!b.classList.contains('compact')) { b.classList.add('compact'); bh = b.offsetHeight; bw = Math.min(b.offsetWidth, innerWidth - 24); x = Math.max(12, Math.min(innerWidth - bw - 12, rect.cx - bw / 2)); }
       y = Math.max(minTop, Math.min(rect.top + rect.height * 0.12 - bh - 6, maxBottom - bh));
+      // still no room (short phones): never sit on a card's or the dock's text —
+      // the line is announced to screen readers, but not drawn
+      if (y + bh > maxBottom + 1) b.classList.add('sr-only');
     }
   }
   b.classList.toggle('below', below);

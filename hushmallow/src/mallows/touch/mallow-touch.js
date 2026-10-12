@@ -43,6 +43,7 @@ const COLS = 21, ROWS = 21;
 const PAD = 3;                 // source px of margin around the body box
 const HOP_SCALE = 2.2;         // the rig measures hops in layer heights (≈ 2.2 body heights)
 const TIERS = { gl: 'A', tri: 'B', strip: 'C' };
+const REBOUND = 3.2;           // upward velocity (body heights/s) a full squeeze releases
 
 const hexRgb = (hex) => {
   const h = hex.replace('#', '');
@@ -513,6 +514,7 @@ export class MallowTouch {
     });
     R.on('up', (e) => this._release(e));
     R.on('stretchStart', (s) => {
+      this._wasStretch = true;
       for (const id of [s.a, s.b]) this.sb.setGrip(id, 0.38);
       this._touchEvent('stretch');
     });
@@ -523,7 +525,7 @@ export class MallowTouch {
       this.touch.jiggle = 1;
       if (!this.opts.reducedMotion) {
         const s = this._Pnow || 200;
-        const amp = e.axis === 'x' ? [Math.sign(R.ptrs.get(e.id)?.vx || 1) * 1.6, 0] : [0, Math.sign(R.ptrs.get(e.id)?.vy || 1) * 1.6];
+        const amp = e.axis === 'x' ? [Math.sign(R.ptrs.get(e.id)?.vx || 1) * 0.6, 0] : [0, Math.sign(R.ptrs.get(e.id)?.vy || 1) * 0.6];
         this.sb.impulse(amp[0] * (220 / s), amp[1] * (220 / s));
       }
       if (!this.persona.onJiggle?.(this, e)) this.rig.overlay({ mouthOpen: 0.6, mouthSmile: 1, closedCurve: -1, eyeOpen: 0.35, blush: 1.8 }, { dur: 0.9 });
@@ -561,19 +563,22 @@ export class MallowTouch {
 
   _release(e) {
     const id = e.id;
-    this._fingers.delete(id);
     // release velocity, CSS px/s → body units/s (undo the stage rotation + scale)
     const I = this.Minv;
     let vx = I[0] * e.vx + I[2] * e.vy, vy = I[1] * e.vx + I[3] * e.vy;
     const flick = e.kind === 'flick';
     const fs = this.persona.flickScale ?? 1;
     if (flick) { vx *= fs; vy *= fs; }
+    if (!flick) { vx *= 0.45; vy *= 0.45; }
     this.sb.release(id, { vx, vy, flick });
-    const depth = e.depth;
-    if (this.reader.ptrs.size === 0) { this._hold?.stop(); this._hold = null; }
-    if (e.cancelled) { this._touchEvent('release'); return; }
+    // how much of this touch was a squeeze (a pull or a two-finger stretch grips instead)
+    const stretched = this._wasStretch;
+    const depth = stretched ? 0 : e.depth * (1 - 0.7 * (e.pull || 0));
+    if (this.reader.ptrs.size === 0) { this._hold?.stop(); this._hold = null; this._wasStretch = false; }
+    if (e.cancelled) { this._fingers.delete(id); this._touchEvent('release'); return; }
     if (flick) {
       if (!this.persona.onFlick?.(this, e)) this.rig.react('flick', { dirX: Math.sign(e.vx) || 1 });
+      this._fingers.delete(id);
       this._touchEvent('flick');
       return;
     }
@@ -581,6 +586,7 @@ export class MallowTouch {
       // an instant, small poke so every tap answers within a frame
       const b = this._local(e.x, e.y);
       if (!this.opts.reducedMotion) this.sb.impulse(0, 1.4, { x: b.x, y: b.y, r: 0.22 });
+      this._fingers.delete(id);
       return;
     }
     if (depth > 0.25) {
@@ -588,7 +594,14 @@ export class MallowTouch {
       if (!this.persona.onRelease?.(this, { depth, ...e })) this.rig.react('release');
       this._muteRigHaptic = false;
       if (depth > 0.5) this._haptic('pop');
-    } else this.opts.audio?.play?.(this.id, 'release', { intensity: 0.3 });
+    } else if (!stretched || this.reader.ptrs.size === 0) this.opts.audio?.play?.(this.id, 'release', { intensity: 0.3 });
+    this._fingers.delete(id);
+    // the stored squeeze springs back: the press leaves the rest shape at once
+    // and the body pops up past its rest height before it settles
+    if (this.reader.ptrs.size === 0 && depth > 0.1) {
+      this._squash = 0;
+      if (!this.opts.reducedMotion) this.sb.deform('squash', -REBOUND * depth * (this.sb.material.dMax / 0.34));
+    }
     this._touchEvent('release', { depth });
   }
 
@@ -647,9 +660,10 @@ export class MallowTouch {
     for (const p of R.ptrs.values()) {
       const f = this._fingers.get(p.id);
       const b = this._local(p.x, p.y);
-      sb.press(p.id, b.x, b.y, p.depth * dScale, 0.21);
+      const d = p.depth * dScale * (R.stretch ? 0.4 : 1);
+      sb.press(p.id, b.x, b.y, d, 0.21);
       sb.move(p.id, b.x, b.y, R.stretch ? 1 : p.pull);
-      maxD = Math.max(maxD, p.depth);
+      maxD = Math.max(maxD, d);
       if (f) {
         // haptic beats as the squeeze deepens
         const band = p.depth > 0.66 ? 2 : p.depth > 0.33 ? 1 : 0;

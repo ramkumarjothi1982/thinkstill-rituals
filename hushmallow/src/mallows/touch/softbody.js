@@ -42,10 +42,12 @@ export const DEFAULT_MATERIAL = Object.freeze({ kG: 0.24, kL: 0.58, beta: 0.3, d
 const STIFF = 0.065;        // material k → per-substep goal-spring share
 const GRAB_K = 0.55;        // how firmly a finger holds the material under it
 const PINCH = 1.25;         // offsets near a pressed finger shrink by up to this (× depth × dMax)
-const BALLOON_K = 0.35;
-const BALLOON_GAIN = 1.0;   // area added per unit of dent volume (× dMax)
-const PLUNGE = 0.55;        // how far past the finger a plunger pushes (× depth × dMax)
+const BALLOON_K = 0.3;
+const BALLOON_GAIN = 0.75;  // area added per unit of dent volume (× dMax)
+const PLUNGE = 0.3;         // how far past the finger a plunger sinks (× depth × dMax)
 const VMAX = 40;            // body units / s, hard cap (extreme input)
+const VISC = 0.35;          // internal viscosity (neighbour velocity blend per substep)
+const LOCAL_DAMP = 0.93;    // velocity kept per substep by non-affine (bending) motion
 
 export class SoftBody {
   /**
@@ -100,10 +102,12 @@ export class SoftBody {
         this.uvs[2 * k + 1] = lerp(uv[1], uv[3], v);
       }
     }
-    // region counts (3×3, clamped at the border)
+    // shape-matching regions: (2R+1)² cells, clamped at the border. 5×5 keeps
+    // the outline smooth under fast fingers; a dent still stays local
+    const R = this.regionR = clamp((o.regionR | 0) || 1, 1, 4);
     for (let j = 0; j < rows; j++) {
-      const nj = (j > 0) + 1 + (j < rows - 1);
-      for (let i = 0; i < cols; i++) this._cnt[j * cols + i] = nj * ((i > 0) + 1 + (i < cols - 1));
+      const nj = Math.min(rows - 1, j + R) - Math.max(0, j - R) + 1;
+      for (let i = 0; i < cols; i++) this._cnt[j * cols + i] = nj * (Math.min(cols - 1, i + R) - Math.max(0, i - R) + 1);
     }
     // face weight: 1 inside the face rect, smooth falloff over ~1.5 cells
     if (o.faceRect) {
@@ -164,12 +168,14 @@ export class SoftBody {
     for (let j = rows - 2; j >= 1; j--) b.push(j * cols);
     this.boundary = new Uint16Array(b);
     this._bg = new Float32Array(2 * b.length);
-    // squeezed material escapes sideways more than upwards; the floor holds the base
-    this._bw = new Float32Array(b.length);
-    for (let t = 0; t < b.length; t++) {
-      const k = b[t], j = (k / cols) | 0;
-      this._bw[t] = j === 0 ? 0.35 : j === rows - 1 ? 0.15 : 1;
+    // barrel profile for the volume bulge: most at mid-height, little at the base
+    this._barrel = new Float32Array(cols * rows);
+    let bsum = 0;
+    for (let j = 0; j < rows; j++) {
+      const v = j / (rows - 1), w = 0.25 + 0.75 * Math.pow(Math.sin(Math.PI * Math.min(1, v * 0.85 + 0.08)), 0.8);
+      for (let i = 0; i < cols; i++) { this._barrel[j * cols + i] = w; bsum += w; }
     }
+    this._barrelMean = bsum / (cols * rows);
     for (const k of vis) this._vc[k] += 1;
   }
 
@@ -184,6 +190,8 @@ export class SoftBody {
     const crit = Math.exp(-2 * Math.sqrt(this.alphaG + this.alphaL));
     this.dampStep = rm ? Math.min(perStep, crit) : perStep;
     this.beta = clamp(M.beta, 0, 0.9);
+    // local (non-affine) motion keeps this much velocity per substep
+    this.localDamp = rm ? Math.min(0.9, crit) : clamp(M.localDamp ?? LOCAL_DAMP, 0.5, 1);
     return this;
   }
 
@@ -210,7 +218,7 @@ export class SoftBody {
       const u = q0[2 * k] - cx, vm = q0[2 * k + 1];
       const side = u < 0 ? puffL : puffR;
       const bulge = sq * 0.32 * Math.sin(Math.PI * vm) + droop * 0.07 * vm * vm - droop * 0.03 * (1 - vm)
-        + side * 0.045 * Math.exp(-((vm - cheekV) ** 2) / 0.012);
+        + side * 0.032 * Math.exp(-((vm - cheekV) ** 2) / 0.04);
       const ys = sy * (1 - droop * 0.06 * (1 - vm));
       rest[2 * k] = cx + u * sxB * (1 + bulge) + lean * (1 - vm) * (1 - vm);
       rest[2 * k + 1] = fl + (vm - fl) * ys;
@@ -393,9 +401,10 @@ export class SoftBody {
     const m = Math.min(dTop, dL * 1.1, dR * 1.1);
     const w = smoothstep(0.3, 0.1, m);
     if (w <= 0.001) { st.plunge = null; return; }
-    let nx = 0, ny = 1;
-    if (m === dTop) { nx = 0; ny = 1; } else if (m === dL * 1.1) { nx = 1; ny = 0; } else { nx = -1; ny = 0; }
-    st.plunge = { nx, ny, w };
+    let nx = 0, ny = 1, k = 1;
+    // sides are pushed more gently than the top (the top carries the squash)
+    if (m === dTop) { nx = 0; ny = 1; } else if (m === dL * 1.1) { nx = 1; ny = 0; k = 0.5; } else { nx = -1; ny = 0; k = 0.5; }
+    st.plunge = { nx, ny, w: w * k, side: k < 1 };
   }
 
   // ------------------------------------------------------------ solver --
@@ -434,13 +443,66 @@ export class SoftBody {
     }
     this._fingers();
     this._balloon();
-    this._unfold();
     this._floorClamp();
+    this._unfold();
     const ih = 1 / h;
     for (let k = 0; k < 2 * n; k++) {
       let v = (P[k] - X0[k]) * ih;
       V[k] = v > VMAX ? VMAX : v < -VMAX ? -VMAX : v;
     }
+    this._viscosity();
+    this._localDamp();
+  }
+
+  // Two-band damping: the best-fit affine motion of the whole body (sway,
+  // squash, stretch, turn) keeps its jelly wobble; everything on top of it
+  // (bending, rippling, crumpling) is damped like dense marshmallow foam.
+  _localDamp() {
+    const P = this.positions, V = this.vel, n = this.n;
+    const dl = this.localDamp;
+    if (dl >= 1) return;
+    let cx = 0, cy = 0, mx = 0, my = 0;
+    for (let k = 0; k < n; k++) { cx += P[2 * k]; cy += P[2 * k + 1]; mx += V[2 * k]; my += V[2 * k + 1]; }
+    cx /= n; cy /= n; mx /= n; my /= n;
+    let xx = 0, xy = 0, yy = 0, ax = 0, bx = 0, ay = 0, by = 0;
+    for (let k = 0; k < n; k++) {
+      const dx = P[2 * k] - cx, dy = P[2 * k + 1] - cy, vx = V[2 * k] - mx, vy = V[2 * k + 1] - my;
+      xx += dx * dx; xy += dx * dy; yy += dy * dy;
+      ax += vx * dx; bx += vx * dy; ay += vy * dx; by += vy * dy;
+    }
+    const det = xx * yy - xy * xy;
+    if (!(det > 1e-12)) return;
+    // L = [ax bx; ay by] · inv([xx xy; xy yy])
+    const i00 = yy / det, i01 = -xy / det, i11 = xx / det;
+    const l00 = ax * i00 + bx * i01, l01 = ax * i01 + bx * i11;
+    const l10 = ay * i00 + by * i01, l11 = ay * i01 + by * i11;
+    for (let k = 0; k < n; k++) {
+      const dx = P[2 * k] - cx, dy = P[2 * k + 1] - cy;
+      const fx = mx + l00 * dx + l01 * dy, fy = my + l10 * dx + l11 * dy;
+      V[2 * k] = fx + (V[2 * k] - fx) * dl;
+      V[2 * k + 1] = fy + (V[2 * k + 1] - fy) * dl;
+    }
+  }
+
+  // internal (XSPH-style) viscosity: each particle's velocity relaxes toward
+  // its lattice neighbours'. Zig-zag modes die in a few substeps while the
+  // whole-body wobble barely notices — jelly, not crumpled foil.
+  _viscosity() {
+    const V = this.vel, T = this._T, { cols, rows } = this;
+    const nu = VISC;
+    for (let j = 0; j < rows; j++) {
+      for (let i = 0; i < cols; i++) {
+        const k = j * cols + i;
+        let sx = 0, sy = 0, c = 0;
+        if (i > 0) { sx += V[2 * k - 2]; sy += V[2 * k - 1]; c++; }
+        if (i < cols - 1) { sx += V[2 * k + 2]; sy += V[2 * k + 3]; c++; }
+        if (j > 0) { const o = 2 * (k - cols); sx += V[o]; sy += V[o + 1]; c++; }
+        if (j < rows - 1) { const o = 2 * (k + cols); sx += V[o]; sy += V[o + 1]; c++; }
+        T[2 * k] = V[2 * k] + nu * (sx / c - V[2 * k]);
+        T[2 * k + 1] = V[2 * k + 1] + nu * (sy / c - V[2 * k + 1]);
+      }
+    }
+    for (let k = 0; k < 2 * this.n; k++) V[k] = T[k];
   }
 
   _globalGoal() {
@@ -462,6 +524,12 @@ export class SoftBody {
     let la = a * qa + b * qb, lb = a * qb + b * qd, lc = c * qa + d * qb, ld = c * qb + d * qd;
     const det = la * ld - lb * lc;
     if (det > 1e-6) { const s = 1 / Math.sqrt(det); la *= s; lb *= s; lc *= s; ld *= s; } else { la = co; lb = -si; lc = si; ld = co; }
+    // keep only the axis-aligned squash / stretch of it (S = Rᵀ·A, diagonal):
+    // a squeezed Mallow gets wider and shorter, a stretched one longer and
+    // thinner, but it does not shear like a deck of cards
+    let sxx = co * la + si * lc, syy = -si * lb + co * ld;
+    if (sxx > 0.05 && syy > 0.05) { const nrm = 1 / Math.sqrt(sxx * syy); sxx *= nrm; syy *= nrm; } else { sxx = 1; syy = 1; }
+    la = co * sxx; lb = -si * syy; lc = si * sxx; ld = co * syy;
     const be = this.beta;
     let ta = be * la + (1 - be) * co, tb = be * lb + (1 - be) * -si;
     let tc = be * lc + (1 - be) * si, td = be * ld + (1 - be) * co;
@@ -511,29 +579,28 @@ export class SoftBody {
     }
   }
 
-  // in-place 3×3 box sum of the first `w` of 8 interleaved fields
+  // in-place (2R+1)² box sum of the first `w` of 8 interleaved fields
   _box(w) {
-    const { cols, rows } = this;
+    const { cols, rows } = this, R = this.regionR;
     const F = this._F, T = this._T;
     for (let j = 0; j < rows; j++) {
       for (let i = 0; i < cols; i++) {
-        const o = 8 * (j * cols + i);
+        const o = 8 * (j * cols + i), a = Math.max(0, i - R) - i, b = Math.min(cols - 1, i + R) - i;
         for (let f = 0; f < w; f++) {
-          let s = F[o + f];
-          if (i > 0) s += F[o - 8 + f];
-          if (i < cols - 1) s += F[o + 8 + f];
+          let s = 0;
+          for (let d = a; d <= b; d++) s += F[o + 8 * d + f];
           T[o + f] = s;
         }
       }
     }
     const stride = 8 * cols;
     for (let j = 0; j < rows; j++) {
+      const a = Math.max(0, j - R) - j, b = Math.min(rows - 1, j + R) - j;
       for (let i = 0; i < cols; i++) {
         const o = 8 * (j * cols + i);
         for (let f = 0; f < w; f++) {
-          let s = T[o + f];
-          if (j > 0) s += T[o - stride + f];
-          if (j < rows - 1) s += T[o + stride + f];
+          let s = 0;
+          for (let d = a; d <= b; d++) s += T[o + stride * d + f];
           F[o + f] = s;
         }
       }
@@ -558,18 +625,28 @@ export class SoftBody {
       const dm = this.material.dMax;
       const pinch = PINCH * st.depth * dm;
       const pl = st.plunge;
+      const plS = pl ? 0.62 * st.depth * pl.w : 0;                 // edge-side compression
+      const plLim = pl ? PLUNGE * st.depth * dm * pl.w : 0;          // sink past the finger
+      const lr = (pl && pl.side ? 2 : 1.5) * r, ilat2 = 1 / (2 * lr * lr);
       const k = GRAB_K * st.fade * (this.reducedMotion ? 1.3 : 1);
       for (let m = 0; m < st.idx.length; m++) {
         const i = st.idx[m];
         const ox = st.ox[m], oy = st.oy[m];
         const d2 = ox * ox + oy * oy;
-        let w = Math.exp(-d2 * is2);
-        // a plunger owns the material between the finger and the edge
-        if (pl && ox * pl.nx + oy * pl.ny < 0) w *= 1 - 0.85 * pl.w;
+        const w = Math.exp(-d2 * is2);
         if (w < 0.004) continue;
         const g = Math.exp(-d2 * ir2);
-        const sh = 1 - pinch * g * (1 - 0.55 * FW[i]);
-        const tx = st.x + ox * sh, ty = st.y + oy * sh;
+        const sh = 1 - pinch * g * (1 - 0.45 * FW[i]);
+        let tx = st.x + ox * sh, ty = st.y + oy * sh;
+        // near the silhouette the finger pushes the edge in: the material
+        // between finger and edge compresses toward the finger, smoothly, and
+        // the finger sinks a little past where it touched
+        if (plS > 0) {
+          const along = ox * pl.nx + oy * pl.ny, lat = ox * pl.ny - oy * pl.nx;
+          const gl = Math.exp(-(lat * lat) * ilat2);
+          const da = gl * ((along < 0 ? -along * plS : 0) + plLim * Math.exp(-(along * along) * ir2));
+          tx += pl.nx * da; ty += pl.ny * da;
+        }
         const kw = Math.min(1, k * w);
         P[2 * i] += (tx - P[2 * i]) * kw;
         P[2 * i + 1] += (ty - P[2 * i + 1]) * kw;
@@ -577,58 +654,39 @@ export class SoftBody {
         if (dd > D[i]) D[i] = dd;
         GW[i] += w;
       }
-      // plunger: the silhouette edge beside the finger is pushed in past it,
-      // a round fingertip profile (deepest under the finger)
-      if (pl && st.depth > 0.01) {
-        const lim = PLUNGE * st.depth * dm * pl.w * st.fade;
-        const nx = pl.nx, ny = pl.ny, ir = 1 / (1.2 * r);
-        for (let m = 0; m < st.idx.length; m++) {
-          const i = st.idx[m];
-          const ex = P[2 * i] - st.x, ey = P[2 * i + 1] - st.y;
-          const along = ex * nx + ey * ny;            // + = deeper inside
-          const lat = ex * ny - ey * nx;
-          const minAlong = lim - lat * lat * ir;
-          if (along < minAlong && along > -0.6) {
-            const push = (minAlong - along) * 0.6;
-            P[2 * i] += nx * push; P[2 * i + 1] += ny * push;
-          }
-        }
-      }
+
     }
     for (let k2 = 0; k2 < this.n; k2++) vol += D[k2];
     this.dentVolume = (vol / this.n) * this.restArea;
   }
 
-  // the boundary keeps its area, plus whatever a dent pushes into the screen
+  // volume: the outline keeps its area, plus whatever a dent pushes into the
+  // screen. The missing area comes back as a smooth barrel bulge (mostly
+  // sideways, at mid-height; the floor holds the base) — never by pushing
+  // single edge particles, which crumples the outline.
   _balloon() {
-    const P = this.positions, B = this.boundary, g = this._bg, W = this._bw, m = B.length;
-    const A = polyArea(P, B);
+    const P = this.positions, n = this.n, fl = this.floor, BW = this._barrel;
+    const A = polyArea(P, this.boundary);
     const target = this.restArea + BALLOON_GAIN * this.material.dMax * this.dentVolume;
-    const C = A - target;
-    if (Math.abs(C) < 1e-7) return;
-    let sum = 0;
-    for (let t = 0; t < m; t++) {
-      const prev = B[(t + m - 1) % m], next = B[(t + 1) % m];
-      const gx = 0.5 * (P[2 * next + 1] - P[2 * prev + 1]);
-      const gy = 0.5 * (P[2 * prev] - P[2 * next]);
-      g[2 * t] = gx * W[t]; g[2 * t + 1] = gy * W[t];
-      sum += (gx * gx + gy * gy) * W[t];
-    }
-    if (sum < 1e-12) return;
-    const s = (BALLOON_K * C) / sum;
-    for (let t = 0; t < m; t++) {
-      const k = B[t];
-      P[2 * k] -= s * g[2 * t];
-      P[2 * k + 1] -= s * g[2 * t + 1];
+    const C = target - A;
+    if (Math.abs(C) < 1e-7 || A < 1e-6) return;
+    let cx = 0;
+    for (let k = 0; k < n; k++) cx += P[2 * k];
+    cx /= n;
+    const s = clamp((BALLOON_K * C) / (A * this._barrelMean), -0.02, 0.02);
+    for (let k = 0; k < n; k++) {
+      const w = BW[k];
+      P[2 * k] += s * w * (P[2 * k] - cx);
+      P[2 * k + 1] -= s * 0.3 * w * (fl - P[2 * k + 1]);
     }
   }
 
-  // no triangle may collapse below 15 % of its rest area or flip
+  // no triangle may collapse below 30 % of its rest area or flip
   _unfold() {
     const P = this.positions, T = this.triAll, R2 = this._restTri2;
     for (let t = 0; t < R2.length; t++) {
       const i = T[3 * t], j = T[3 * t + 1], k = T[3 * t + 2];
-      const a2 = cross(P, i, j, k), min = 0.15 * R2[t];
+      const a2 = cross(P, i, j, k), min = 0.3 * R2[t];
       if (a2 >= min) continue;
       const C = a2 - min;
       // ∇(2·area) for each vertex
@@ -645,6 +703,21 @@ export class SoftBody {
   }
 
   _floorClamp() {
+    this._floorClampOnly();
+    // the base can't buckle into the floor, so keep its particles in order:
+    // neighbours along the bottom row stay at least 45 % of their rest gap apart
+    const P = this.positions, R = this.rest, { cols, rows } = this, a = (rows - 1) * cols;
+    for (let pass = 0; pass < 2; pass++) {
+      for (let i = 0; i < cols - 1; i++) {
+        const k = a + i, kn = k + 1;
+        const min = 0.45 * (R[2 * kn] - R[2 * k]);
+        const gap = P[2 * kn] - P[2 * k];
+        if (gap < min) { const c = (min - gap) * 0.5; P[2 * k] -= c; P[2 * kn] += c; }
+      }
+    }
+  }
+
+  _floorClampOnly() {
     const P = this.positions, X0 = this.prev, fl = this.floor;
     for (let k = 0; k < this.n; k++) {
       const iy = 2 * k + 1;
@@ -652,7 +725,7 @@ export class SoftBody {
       if (pen > 0) {
         P[iy] = fl;
         // kinetic friction, proportional to how hard it was pushed down
-        const mu = 0.8 * Math.min(1, pen / 0.004);
+        const mu = 0.15 * Math.min(1, pen / 0.004);
         P[2 * k] = X0[2 * k] + (P[2 * k] - X0[2 * k]) * (1 - mu);
       }
     }
@@ -715,12 +788,14 @@ export class SoftBody {
       const c = a > 1e-9 ? clamp(r / a - 1, -0.6, 2) : 2;
       H[i] += c; H[j] += c; H[k] += c;
     }
+    const dm = this.material.dMax;
     for (let k = 0; k < n; k++) {
       const c = VC[k] ? H[k] / VC[k] : 0;
       S[3 * k] = c + 0.6 * D[k];
-      H[k] = -(0.55 * c + 0.9 * D[k]);       // height: dents and squeezed skin sink
+      // height (body units): a dent sinks about half the squeeze depth, squeezed skin a little
+      H[k] = -(0.55 * dm * D[k] + 0.05 * clamp(c, -0.5, 1.5));
     }
-    const kx = 0.5 / this.dx, ky = 0.5 / this.dy, NS = 0.035;
+    const kx = 0.5 / this.dx, ky = 0.5 / this.dy, NS = 1;
     for (let j = 0; j < rows; j++) {
       for (let i = 0; i < cols; i++) {
         const k = j * cols + i;

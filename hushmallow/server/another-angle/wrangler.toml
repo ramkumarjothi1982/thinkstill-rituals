@@ -8,9 +8,8 @@
 name = "hushmallow-another-angle"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
-# The SDK has Node-only code paths (credential files) that are never used here
-# (the API key is passed explicitly); nodejs_compat lets them bundle cleanly.
-compatibility_flags = ["nodejs_compat"]
+# No nodejs_compat needed: @anthropic-ai/sdk runs on the Workers runtime as
+# is (checked under `wrangler dev`; the API key is passed explicitly).
 workers_dev = true
 
 # The versioned system prompt is bundled as text.

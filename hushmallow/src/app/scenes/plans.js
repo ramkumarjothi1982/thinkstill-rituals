@@ -107,10 +107,10 @@ export default function plans(app, params = {}) {
 
   const everything = tier === 'ultra';
   const title = everything ? 'The whole Hushfold is open to you'
-    : focus === 'ultra' ? h('span', {}, 'Another Angle lives in ', brandMark(BRAND.beyondPlanName))
+    : focus === 'ultra' ? 'Meet Another Angle'
       : 'Come into the Hushfold';
   const lede = everything ? h('span', {}, brandMark(BRAND.beyondPlanName), ' is active on this phone. Thank you for being here.')
-    : focus === 'ultra' ? 'Zuzu helps you look at a real situation from a fresh side. It comes with everything in Flow.'
+    : focus === 'ultra' ? h('span', {}, 'Part of ', brandMark(BRAND.beyondPlanName), ': Zuzu helps you look at a real situation from a fresh side, with everything in Flow included.')
       : 'Two ways in. No ads, no streaks, nothing to keep up with: come back whenever you choose.';
 
   const order = focus === 'ultra' ? [PLANS.ultra, PLANS.paid] : [PLANS.paid, PLANS.ultra];

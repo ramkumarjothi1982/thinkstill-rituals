@@ -80,7 +80,7 @@ export function createHushflow(opts = {}) {
     return { back: b, front: f, density: qLevel >= 3 ? 0.7 : 1 };
   };
   let phase = 'idle';               // idle | loading | playing | melting | finished
-  let paused = false, destroyed = false, hidden = false;
+  let paused = false, destroyed = false, hidden = false, frozen = false;
   let cur = null, inc = null;       // world instances
   let melt = null;                  // { k, dur, from, to }
   let fadeIn = 1;
@@ -481,6 +481,7 @@ export function createHushflow(opts = {}) {
 
   // ------------------------------------------------------------- loop --
   function startLoop() {
+    if (frozen) return;
     if (ticker?.add) { if (!raf) { raf = -1; ticker.add(tickFromTicker); } return; }
     if (!raf && !destroyed && !hidden) { lastTs = 0; raf = requestAnimationFrame(loop); }
   }
@@ -687,6 +688,8 @@ export function createHushflow(opts = {}) {
       get time() { return t; },
       get frameMs() { return frameEma; },
       step: (dtSec = 1 / 60) => step(dtSec, dtSec * 1000),
+      /** Freeze the loop without a veil (QA: step frames by hand). */
+      freeze(on = true) { frozen = !!on; if (frozen) stopLoop(); else startLoop(); },
       setQuality(level) { qLevel = clamp(level, 0, 3) | 0; applySize(); },
       get persisted() { return JSON.parse(JSON.stringify(persist)); },
     },

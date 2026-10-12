@@ -185,6 +185,7 @@ export function createApp(options) {
     const v = validateAngleRequest(body.value);
     if (!v.ok) { logEvt({ status: 'invalid', http: 400, err: v.code }); return error(400, v.code, v.message, cors, { field: v.field }); }
     const input = v.value;
+    if (input.requestId) Object.assign(base, { client_request_id: input.requestId });
     const common = {
       chosen_emotion: input.emotion, intention: input.intention, previous: input.previous.length, text_len_bucket: lengthBucket(input.text.length),
     };

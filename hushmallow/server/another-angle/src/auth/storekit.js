@@ -102,7 +102,7 @@ export async function verifySignedTransaction(jws, opts, now) {
   /** @type {import('./der.js').Certificate[]} */
   let chain;
   try {
-    chain = header.x5c.map((c) => parseCertificate(fromB64(String(c))));
+    chain = header.x5c.map((/** @type {unknown} */ c) => parseCertificate(fromB64(String(c))));
   } catch {
     return { ok: false, code: 'bad_certificate' };
   }

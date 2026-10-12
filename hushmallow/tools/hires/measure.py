@@ -267,8 +267,11 @@ def opening_mask(A, guess_spec, margin, iris_too=True, ember=False):
         cv2.fillPoly(filled, [hull], 1)
         full = np.zeros(A.shape, bool)
         full[sub] = filled.astype(bool)
+        # the iris/sclera boundary needs the strict sclera (pure white), not
+        # the lilac-shaded rim that the opening needed
+        strict = (L > 150) & (S < 95) & filled.astype(bool)
         sclera = np.zeros(A.shape, bool)
-        sclera[sub] = scl & filled.astype(bool)
+        sclera[sub] = cv2.morphologyEx(strict.astype(np.uint8), cv2.MORPH_OPEN, np.ones((5, 5), np.uint8)).astype(bool)
         return full, sclera
     scl = (L > 150) & (S < 95)
     scl = cv2.morphologyEx(scl.astype(np.uint8), cv2.MORPH_OPEN, np.ones((5, 5), np.uint8)).astype(bool)
@@ -333,6 +336,31 @@ def measure_iris(A, opening, sclera, lid_edge=None, exclude_top_frac=0.0):
     if k.sum() > 20:
         cx, cy, r = fit_circle(xs[k].astype(float), ys[k].astype(float))
     return dict(cx=float(cx), cy=float(cy), r=float(r), mask=iris, boundary=bnd)
+
+
+def measure_iris_radial(A, opening, sclera, c0):
+    """Glitzi: the lid hides the iris top, so the outline is found along rays
+    through the lower hemisphere (first pure-white sclera pixel), then a
+    robust circle fit."""
+    cx, cy = c0
+    pts = []
+    for th in np.radians(np.arange(-15, 196, 3)):
+        dx, dy = np.cos(th), np.sin(th)
+        for r in np.arange(8, 160, 0.5):
+            x, y = int(round(cx + dx * r)), int(round(cy + dy * r))
+            if not (0 <= y < A.shape[0] and 0 <= x < A.shape[1]) or not opening[y, x]:
+                break
+            if sclera[y, x]:
+                pts.append((cx + dx * r, cy + dy * r))
+                break
+    pts = np.array(pts)
+    x, y = pts[:, 0], pts[:, 1]
+    fx, fy, fr = fit_circle(x, y)
+    for _ in range(3):
+        d = np.abs(np.hypot(x - fx, y - fy) - fr)
+        k = d < max(2.5, np.percentile(d, 80))
+        fx, fy, fr = fit_circle(x[k], y[k])
+    return dict(cx=float(fx), cy=float(fy), r=float(fr), n=int(len(pts)))
 
 
 def measure_spiral(A, guess):
@@ -504,6 +532,34 @@ def measure_cheek(A, guess, chan, margin, avoid=None):
     return dict(x=float(mx), y=float(my), r=float(rad), mask=full)
 
 
+OLD_GLITCH_ROWS = [61, 111, 122, 177, 215, 242, 269, 281, 329]   # rig.js GLITCH_ROWS (old art px)
+
+
+def measure_glitch_rows(A, old_rows, mp, avoid):
+    """Glitzi's neon glitch lines: bright saturated cyan/magenta (or white
+    core) pixels that survive a long horizontal opening, counted per row.
+    Each old row is mapped into the new space and snapped to the nearest
+    detected line, so the rig keeps the same nine-line rhythm."""
+    from scipy.signal import find_peaks
+    Hh, S, V = (A.hsv[..., k] for k in range(3))
+    neon = ((V > 200) & (S > 120) & (((Hh > 80) & (Hh < 105)) | ((Hh > 135) & (Hh < 172)))) | ((V > 235) & (S < 90))
+    neon &= (A.al > 0.95) & ~cv2.dilate(avoid.astype(np.uint8), np.ones((25, 25), np.uint8)).astype(bool)
+    ho = cv2.morphologyEx(neon.astype(np.uint8), cv2.MORPH_OPEN, np.ones((1, 25), np.uint8))
+    thick = cv2.morphologyEx(ho, cv2.MORPH_OPEN, np.ones((13, 1), np.uint8))
+    ho = (ho > 0) & ~(thick > 0)
+    prof = ho.sum(1).astype(float)
+    W = A.shape[1]
+    pk, _ = find_peaks(prof, height=W * 0.06, distance=12, prominence=W * 0.03)
+    ys = np.array([mp(0, r)[1] for r in old_rows])
+    cost = np.abs(ys[:, None] - pk[None, :].astype(float))
+    ri, ci = optimize.linear_sum_assignment(cost)   # one line per old row
+    rows = [int(round(y)) for y in ys]
+    for i, j in zip(ri, ci):
+        if cost[i, j] < 30:
+            rows[i] = int(pk[j])
+    return sorted(rows), [int(p) for p in pk]
+
+
 # --------------------------------------------------------------- run --
 def body_box(A):
     return bbox(A.al > 3 / 255)
@@ -556,6 +612,9 @@ def measure(name):
             e_start = dict(e, ry=e['ry'] * 0.8, sag=e['ry'] * 0.16) if style == 'glitzi' else e
             e1, sc, reg = fit_open_eye(A, e_start, s, P, style, opening, free=free)
             ir = measure_iris(A, opening, sclera)
+            if style == 'glitzi':
+                rr = measure_iris_radial(A, opening, sclera, (ir['cx'], ir['cy']))
+                ir.update(rr)
             # iris offset is relative to where the neutral gaze puts it
             irR = ir['r']
             lx, ly = P['lookX'], P['lookY']
@@ -644,6 +703,9 @@ def measure(name):
             ch[s] = [c['x'], c['y'], max(c['r'], f['cheeks'][s][2])]
             masks['cheek' + s] = c['mask']
     feats['cheeks'] = ch
+    if name == 'glitzi':
+        avoid = masks['eyeL'] | masks['eyeR']
+        out['glitchRows'], out['glitchPeaks'] = measure_glitch_rows(A, OLD_GLITCH_ROWS, mp, avoid)
     np.savez_compressed(f'{WORK}/masks_{name}.npz', **masks)
     json.dump(rnd(out, 3), open(f'{WORK}/measure-{name}.json', 'w'), indent=1)
     overlay(name, A, out, masks)

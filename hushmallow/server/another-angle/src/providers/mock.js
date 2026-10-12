@@ -12,9 +12,11 @@ import { PATTERN_INTERACTION, PATTERN_MALLOWS } from '../vocab.js';
 /** @typedef {import('./anthropic.js').Provider} Provider */
 /** @typedef {import('./anthropic.js').GenerateArgs} GenerateArgs */
 
+/** @param {string} s */
 const unescape = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 
 /** Pull the person's text and previous patterns back out of a user message. */
+/** @param {string} user */
 export function parseUserMessage(user) {
   const text = unescape((/<thought_text>\n([\s\S]*?)\n<\/thought_text>/.exec(user) || [])[1] || '');
   const previous = [...user.matchAll(/<angle n="\d+"(?: pattern="([a-z_]+)")?>/g)].map((m) => m[1] || null);
@@ -38,27 +40,45 @@ const DETECT = /** @type {[keyof typeof PATTERN_INTERACTION, RegExp][]} */ ([
 
 const ORDER = /** @type {(keyof typeof PATTERN_INTERACTION)[]} */ (Object.keys(PATTERN_INTERACTION));
 
-const NOUNS = ['message', 'boss', 'manager', 'exam', 'colleague', 'friend', 'partner', 'meeting', 'mum', 'dad', 'interview', 'presentation', 'promotion', 'party', 'team', 'job', 'teacher', 'sister', 'brother', 'date', 'feedback', 'deadline', 'email', 'call', 'test', 'mistake', 'comment', 'group', 'chat', 'class'];
+// Things that happened come before people, so "my colleague got promoted"
+// becomes "the promotion" rather than "the colleague".
+const EVENTS = ['promotion', 'exam', 'test', 'message', 'text', 'reply', 'meeting', 'interview', 'presentation', 'deadline', 'feedback', 'email', 'call', 'mistake', 'comment', 'party', 'date', 'review', 'appraisal', 'argument', 'rejection', 'job', 'chat'];
+const PEOPLE = ['boss', 'manager', 'colleague', 'friend', 'partner', 'mum', 'dad', 'teacher', 'sister', 'brother', 'team', 'group', 'family', 'boyfriend', 'girlfriend', 'husband', 'wife'];
+const EVENT_OF = { promoted: 'the promotion', replied: 'the reply', failed: 'the exam', invited: 'the invitation', texted: 'the message', embarrassing: 'the embarrassing moment', embarrassed: 'the embarrassing moment' };
 
-function salient(text) {
+/** A short noun phrase from the person's words ("the promotion", "what happened with your boss"). @param {string} text */
+function subject(text) {
+  /** @type {string[]} */
   const words = text.toLowerCase().match(/[a-z]+/g) || [];
-  for (const n of NOUNS) if (words.includes(n)) return n;
-  const long = words.filter((w) => w.length >= 5 && !['about', 'there', 'their', 'think', 'thing', 'really', 'because', 'everyone', 'nobody', 'always', 'never', 'something'].includes(w));
-  return long[0] || 'situation';
+  if (/\b(?:hasn'?t|haven'?t|didn'?t|not|no|never) (?:\w+ )?(?:replied|reply|answered|texted|messaged)/i.test(text)) return 'the wait for a reply';
+  for (const w of words) if (w in EVENT_OF && !(w === 'failed' && !words.includes('exam'))) return EVENT_OF[/** @type {keyof typeof EVENT_OF} */ (w)];
+  for (const n of EVENTS) if (words.includes(n)) return `the ${n}`;
+  for (const n of PEOPLE) if (words.includes(n)) return `what happened with your ${n}`;
+  if (words.includes('said')) return 'what you said';
+  return 'what happened';
 }
 
-/** Authored placeholder lines per pattern ({x} = a word from the person's text). */
+const cap = (/** @type {string} */ s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** The person's first sentence, at most ten words, without end punctuation. @param {string} text */
+function firstWords(text) {
+  const first = text.split(/(?<=[.!?])\s/)[0].replace(/[.!?…]+$/, '');
+  const w = first.split(/\s+/).filter(Boolean);
+  return w.length > 10 ? `${w.slice(0, 10).join(' ')}…` : w.join(' ');
+}
+
+/** Authored placeholder lines per pattern ({X} = subject at sentence start, {x} inside). */
 const LINES = {
-  fact_vs_assumption: ['The {x} is the part that actually happened.', 'What it means is still a question, not an answer.'],
-  catastrophising: ['Right now the {x} is one moment, not the whole ending.', 'What would you do first if the worst part really happened?'],
-  personalisation: ['The {x} had more moving parts than just you.', 'Which piece of it was genuinely yours to carry?'],
-  all_or_nothing: ['The {x} probably sits somewhere between perfect and ruined.', 'Where on that line would a fair observer put it?'],
-  mind_reading: ['You know what happened with the {x}, not what anyone was thinking.', 'What are three different things it could mean?'],
-  overgeneralisation: ['This {x} is one event, even if it feels like a pattern.', 'Can you name one time it went differently?'],
-  rumination: ['Going over the {x} again is not the same as fixing it.', 'Is there one useful thing left to do, or can it rest for now?'],
-  practical_problem: ['The {x} is a real problem with real next steps.', 'What is the smallest step you could take on it this week?'],
-  self_criticism: ['The {x} tells you about one moment, not your whole worth.', 'What would you say to a friend who had the same day?'],
-  valid_anger: ['Being annoyed about the {x} makes sense.', 'What would you want to say or ask for, if you chose to respond?'],
+  fact_vs_assumption: ['{X} is the part that actually happened.', 'What it means is still a question, not an answer.'],
+  catastrophising: ['Right now {x} is one moment, not the whole ending.', 'What would you do first if the worst part really happened?'],
+  personalisation: ['{X} had more moving parts than just you.', 'Which piece of it was genuinely yours to carry?'],
+  all_or_nothing: ['{X} probably sits somewhere between perfect and ruined.', 'Where on that line would a fair observer put it?'],
+  mind_reading: ['You know {x}, not what anyone was thinking about it.', 'What are three different things it could mean?'],
+  overgeneralisation: ['{X} is one event, even if it feels like a pattern.', 'Can you name one time it went differently?'],
+  rumination: ['Going over {x} again is not the same as fixing it.', 'Is there one useful thing left to do, or can it rest for now?'],
+  practical_problem: ['{X} is a real problem with real next steps.', 'What is the smallest step you could take on it this week?'],
+  self_criticism: ['{X} tells you about one moment, not your whole worth.', 'What would you say to a friend who had the same day?'],
+  valid_anger: ['Being annoyed about {x} makes sense.', 'What would you want to say or ask for, if you chose to respond?'],
 };
 
 const STEPS = {
@@ -83,14 +103,14 @@ export function heuristicScene(user) {
   let pattern = DETECT.find(([, re]) => re.test(text))?.[0] || 'fact_vs_assumption';
   // "Another angle": move to the next pattern not already shown.
   for (let i = 0; previous.includes(pattern) && i < ORDER.length; i++) pattern = ORDER[(ORDER.indexOf(pattern) + 1) % ORDER.length];
-  const x = salient(text);
-  const [l1, l2] = LINES[pattern].map((s) => s.replace('{x}', x));
+  const x = subject(text);
+  const [l1, l2] = LINES[pattern].map((s) => s.replace('{X}', cap(x)).replace('{x}', x));
   const emotion = pattern === 'valid_anger' ? 'frustration' : pattern === 'rumination' ? 'overthinking' : pattern === 'self_criticism' ? 'shame' : 'worry';
   return {
     emotion,
     situation_type: 'other',
     reasoning_pattern: pattern,
-    known_fact: `Something happened with the ${x}.`,
+    known_fact: `What you wrote: "${firstWords(text)}".`,
     possible_assumption: pattern === 'valid_anger' || pattern === 'practical_problem' ? '' : 'You might be filling in the gaps with the worst version.',
     alternative_angle: 'There may be more than one way to read this, including yours.',
     practical_next_step: STEPS[pattern],

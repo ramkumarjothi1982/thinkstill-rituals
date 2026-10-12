@@ -65,15 +65,21 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
   root.append(el);
 
   // --------------------------------------------------------- chips --
+  let lastSuggestKey = '';
   function renderFeelings() {
     const extra = [];
     if (extraFeeling && !QUICK_IDS.has(extraFeeling)) extra.push(extraFeeling);
     for (const id of suggested) if (!QUICK_IDS.has(id) && !extra.includes(id) && extra.length < 2) extra.push(id);
     const name = (id) => cached.get(id) || id.replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase());
+    const label = new Map(QUICK_FEELINGS);
+    // what the words suggest comes first (highlighted, never chosen for them), then the rest
+    const first = [...suggested.filter((id) => QUICK_IDS.has(id)), ...extra];
+    const rest = QUICK_FEELINGS.map(([id]) => id).filter((id) => !first.includes(id));
     feelRow.replaceChildren(
-      ...extra.map((id) => chip(name(id), id === chosenEmotion, suggested.includes(id), () => pickFeeling(id))),
-      ...QUICK_FEELINGS.map(([id, label]) => chip(label, id === chosenEmotion, suggested.includes(id), () => pickFeeling(id))),
+      ...[...first, ...rest].map((id) => chip(label.get(id) || name(id), id === chosenEmotion, suggested.includes(id), () => pickFeeling(id))),
       chip('Something else…', false, false, () => openPicker()));
+    const key = suggested.join(',');
+    if (key !== lastSuggestKey) { lastSuggestKey = key; feelRow.scrollTo?.({ left: 0, behavior: reduced ? 'auto' : 'smooth' }); }
   }
   const cached = new Map();
   function renderIntentions() {
@@ -124,7 +130,8 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     const t = ta.value;
     reading = t.trim() ? m.interpret(t) : null;
     safety = t.trim() ? m.checkText(t) : { level: 'none', category: null };
-    suggested = (reading?.emotions || []).filter((e) => e.confidence >= 0.5).slice(0, 3).map((e) => e.id);
+    // only confident matches are highlighted (typo-tolerant guesses stay quiet)
+    suggested = (reading?.emotions || []).filter((e) => e.confidence >= 0.6).slice(0, 3).map((e) => e.id);
     for (const id of suggested) if (!cached.has(id)) cached.set(id, m.getEmotion(id)?.name || id);
     if (safety.level === 'crisis' && !supportShown) { supportShown = true; openSupport(app, { urgent: true }); }
     supportBtn.hidden = safety.level === 'none';
@@ -143,8 +150,9 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
   ta.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); submit(); }
   });
-  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); close('escape'); } };
-  document.addEventListener('keydown', onKey);
+  // capture phase: Escape closes this overlay only, not the panel or sheet beneath it
+  const onKey = (e) => { if (e.key === 'Escape' && !document.querySelector('.sheet.open')) { e.preventDefault(); e.stopPropagation(); close('escape'); } };
+  document.addEventListener('keydown', onKey, true);
 
   // ------------------------------------------------------ photos --
   async function togglePhotos() {
@@ -199,7 +207,7 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     if (closed) return;
     closed = true;
     clearTimeout(timer);
-    document.removeEventListener('keydown', onKey);
+    document.removeEventListener('keydown', onKey, true);
     vv?.removeEventListener('resize', place);
     vv?.removeEventListener('scroll', place);
     tray?.destroy?.(); tray?.offLabel?.();

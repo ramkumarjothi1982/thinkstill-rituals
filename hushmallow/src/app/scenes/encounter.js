@@ -60,7 +60,7 @@ export default function encounter(app) {
 
   const card = h('div', { class: 'card enc-card' });
   const ultraRow = h('div');
-  const el = h('div', { style: { display: 'flex', flexDirection: 'column', height: '100%' } },
+  const el = h('div', { style: { display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', scrollbarWidth: 'none' } },
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' }),
       h('span', { class: 'eyebrow' }, input.emotions.map((e) => getEmotion(e.id)?.name).filter(Boolean).slice(0, 3).join(' · '))),
     h('div', { class: 'spacer' }),

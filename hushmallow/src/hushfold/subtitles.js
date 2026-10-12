@@ -10,7 +10,7 @@
 // (plus speed) and reply chips are touchable.
 //
 // createSubtitles({root, prefs, avoid, bounds, reducedMotion}) →
-//   { say(lines, {who, hold, id, kind, colour, interrupt}) → Promise<boolean>,
+//   { say(lines, {who, hold, id, kind:'dialogue'|'discovery'|'title', colour, interrupt, first}) → Promise<boolean>,
 //     choice(prompt, [{label, value, primary}], {who, timeoutMs}) → Promise<value|null>,
 //     pause, resume, replay, skip, setSpeed, clear, layout, destroy,
 //     get busy, get holding, get paused, get speed, el }
@@ -96,7 +96,7 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
   function showCtl(on) {
     clearTimeout(hideCtlTimer);
     if (on) ctl.classList.remove('is-hidden');
-    else hideCtlTimer = setTimeout(() => ctl.classList.add('is-hidden'), 2600);
+    else hideCtlTimer = setTimeout(() => { if (!paused) ctl.classList.add('is-hidden'); }, 1400);
   }
 
   function layout() {
@@ -109,7 +109,7 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
   }
 
   function lineNode(line) {
-    const kind = line.kind === 'discovery' ? 'discovery' : 'dialogue';
+    const kind = line.kind === 'discovery' || line.kind === 'title' ? line.kind : 'dialogue';
     const node = h('div', { class: `hf-sub ${kind}` },
       line.who ? h('div', { class: 'who', style: line.colour ? { '--hf-who': line.colour } : null }, line.who, h('span', { class: 'sr-only' }, ': ')) : null,
       h('p', { class: 'text' }, line.text));
@@ -205,7 +205,8 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
       const list = asLines(lines, opts);
       if (!list.length || destroyed) return Promise.resolve(false);
       if (opts.interrupt) api.clear();
-      return new Promise((resolve) => { queue.push({ lines: list, opts, resolve }); next(); });
+      // first: true jumps the queue (a world's name before its first line)
+      return new Promise((resolve) => { const it = { lines: list, opts, resolve }; if (opts.first) queue.unshift(it); else queue.push(it); next(); });
     },
     choice(prompt, options = [], opts = {}) {
       if (destroyed || !options.length) return Promise.resolve(null);

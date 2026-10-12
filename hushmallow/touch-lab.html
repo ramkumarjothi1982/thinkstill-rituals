@@ -27,7 +27,6 @@
     color: var(--text2); min-width: 168px; pointer-events: none; white-space: pre; }
   #readout b { color: var(--text); font-weight: 700; }
   #controls { right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
-  @media (max-width: 600px) { #controls { top: calc(max(12px, env(safe-area-inset-top)) + 64px); bottom: auto; } #log { top: auto; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 136px); } }
   #controls .row { display: flex; gap: 6px; }
   #controls button, #controls select { font: 600 13px system-ui, sans-serif; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
     min-height: 36px; padding: 0 12px; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
@@ -41,6 +40,7 @@
   #log { position: fixed; z-index: 5; left: 50%; transform: translateX(-50%); top: calc(max(12px, env(safe-area-inset-top)) + 64px); font: 600 13px system-ui, sans-serif;
     color: var(--text2); background: var(--panel); border: 1px solid var(--line); padding: 4px 10px; border-radius: 999px; pointer-events: none; opacity: 0; transition: opacity .3s; }
   #log.on { opacity: 1; }
+  @media (max-width: 600px) { #controls { top: calc(max(12px, env(safe-area-inset-top)) + 64px); bottom: auto; } #log { top: auto; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 136px); } }
   @media (max-width: 360px) { #readout { min-width: 0; font-size: 13px; } #controls button { padding: 0 9px; } }
 </style>
 </head>
@@ -83,7 +83,7 @@ const state = {
 };
 if (qs.get('bg') === 'light') document.body.classList.add('bg-light');
 if (qs.get('dots') === '0') document.body.classList.add('nodots');
-if (qs.get('ui') === '0') for (const el of document.querySelectorAll('.ui')) el.style.display = 'none';
+if (qs.get('ui') === '0') for (const el of document.querySelectorAll('.ui, #log')) el.style.display = 'none';
 
 let mt = null;
 let hapticLog = [];
