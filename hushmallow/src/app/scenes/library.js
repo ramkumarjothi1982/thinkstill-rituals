@@ -6,10 +6,10 @@ import { h, iconBtn, toast } from '../ui.js';
 import { RITUALS } from '../../data/rituals.js';
 import { AVAILABLE } from '../../rituals/index.js';
 import { allowedFor } from '../../engine/recommend.js';
-import { getEmotion, emotionsByFamily } from '../../data/emotions.js';
 import { MALLOWS, MALLOW_IDS } from '../../mallows/registry.js';
 import { titleCase } from '../../engine/tricks.js';
-import { allTricks, playTrickById } from '../trick-launch.js';
+import { allTricks } from '../trick-launch.js';
+import { playItem } from '../play-item.js';
 import { playedSet } from '../../engine/played.js';
 
 const FAMILY_LABEL = {
@@ -110,18 +110,7 @@ export default function library(app, params = {}) {
   let tmr = 0;
   search.addEventListener('input', () => { clearTimeout(tmr); tmr = setTimeout(() => { query = search.value; shown = PAGE; renderList(); }, 120); });
 
-  function play(x) {
-    app.audio.ui('open');
-    if (x.kind === 'trick') { playTrickById(app, x.id); return; }
-    const r = x.ref;
-    if (r.id === 'another-angle') { app.go('angle', { text: '' }); return; }
-    // start with a feeling the ritual is made for, so the Mallow's face fits
-    const ref = r.emotions.find((e) => !e.startsWith('family:') && getEmotion(e)) || r.emotions[0];
-    const id = ref.startsWith('family:') ? emotionsByFamily(ref.slice(7))[0]?.id : ref;
-    app.state.input = { text: '', emotions: id ? [{ id, confidence: 1, intensity: 0.6 }] : [], intensity: 0.6, contexts: [], desires: [] };
-    app.state.ritual = r;
-    app.go('ritual', { id: r.id });
-  }
+  function play(x) { playItem(app, x); }
 
   return {
     el, title: 'Library',
