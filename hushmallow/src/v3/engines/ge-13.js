@@ -94,6 +94,13 @@ export function create(E) {
   const brassDark = mix('#6a5232', pal.deep, 0.35);
   const lampCol = mix('#ffd99a', pal.warm || '#ffb37a', 0.35);
   const moonHalo = mix(moonCol, lampCol, 0.3);
+  // per-frame colours resolved once (no string mixing in the draw loops)
+  const earthCol = mix(mix(moonCol, pal.deep, 0.66), INK, 0.3);   // the unlit moon: a deep disc that reads on any sky
+  const mistCol = mix(pal.glow, '#ffffff', 0.5), rainCol = mistCol;
+  const trailCol = mix(moonCol, pal.glow, 0.35);
+  const grainDark = rgba(mix(sandDry, INK, 0.4), 0.3), rippleMark = rgba(mix(sandDry, INK, 0.25), 0.16);
+  const pebbleCol = [0, 1, 2].map((k) => mix(sandDry, INK, 0.35 + k * 0.08));
+  const lampHot = mix(lampCol, '#fff6e0', 0.55), glassDark = mix(mix(sandWet, INK, 0.5), pal.deep, 0.2);
 
   // ---- geometry (re-fitted on resize)
   let s = 1, cr = 20, W = 300, H = 440, cx = 0, x0 = 0, x1 = 0, y0 = 0, y1 = 0, ar = 150, ary = 150, ac = 0, br = 20;
@@ -175,7 +182,7 @@ export function create(E) {
   let drag = null, fingerQ = 0, fingX = 0, fingY = 0, grabK = 0;
   let lastNote = 0, lastHap = 0, lastRefuse = -9, lastLockCk = -9;
   let markerVis = 0, lampAt = -1, doneFlag = false, finAt = -1, twAt = -1;
-  let still = 0, rainAmt = 1, holdQ = -1;
+  let still = 0, rainAmt = 1, holdQ = -1, nudge = 0;   // nudge: the gentle "not yet" glow (works with reduced motion too)
   const wob = new Wobble();
   const tmp = { x: 0, y: 0, nx: 1, ny: 0 }, tmp2 = { x: 0, y: 0, nx: 1, ny: 0 }, pr = { p: 0, d: 0 };
   const notchP = (k) => (k + 1) / N;
@@ -183,23 +190,25 @@ export function create(E) {
   // ======================================================= geometry fit ==
   function fit() {
     s = stage.s;
-    cr = clamp(27 * s, 20, 34);
+    cr = clamp(29 * s, 21, 36);
     const m = cr * 0.85 + 6;
     // tall stages get a round-topped window; short ones a wider window with a flatter dome
     W = Math.min(stage.w - 2 * m, stage.h * 0.98, 420);
     const H0 = Math.min(stage.h - 6, W * 1.5);
-    ar = W / 2; ary = Math.min(ar, H0 * 0.34);
+    ar = W / 2; ary = Math.min(ar, H0 * lerp(0.19, 0.34, invLerp(220, 420, H0)));   // short stages: a flatter dome, more sea
     // keep the crescent's start (just below the top of the dome) inside the stage;
     // sit the window high so the bottom of the stage (law toasts) stays clear of the words
     const topRoom = Math.max(4, cr * 1.15 - ary * 0.049);
-    H = Math.min(H0, stage.h - topRoom - 4);
+    // leave a strip under the window for the law's toast so it never sits on the words in the sand
+    const botRoom = clamp(stage.h * 0.06, 16, 32);
+    H = Math.min(H0, stage.h - topRoom - botRoom);
     cx = stage.cx; x0 = cx - W / 2; x1 = cx + W / 2;
     const spare = stage.h - H;
-    y0 = stage.y + Math.min(Math.max(topRoom, spare * 0.4), Math.max(topRoom, spare - 4));
+    y0 = stage.y + clamp(spare * 0.4, topRoom, Math.max(topRoom, spare - botRoom));
     if (y0 + H > stage.y + stage.h - 2) H = stage.y + stage.h - 2 - y0;
     y1 = y0 + H; ac = y0 + ary; br = Math.min(W * 0.09, 24);
     horizonY = ac + (H - ary) * 0.06;
-    shoreH = clamp(H * 0.2, 40, 110);
+    shoreH = clamp(H * 0.2, 36, 110);
     shoreY = y1 - shoreH;
     seaH = shoreY - horizonY;
     for (let k = 0; k < N; k++) {
@@ -212,7 +221,7 @@ export function create(E) {
     wSize = clamp(13 * s + 1, 12, 17);
     wLines = shoreH > 72 ? 2 : 1;
     wordsY = shoreY + shoreH * (wLines === 2 ? 0.66 : 0.7);
-    mX = cx - side * W * 0.13; mBase = shoreY + shoreH * (wLines === 2 ? 0.32 : 0.36); mH = clamp(shoreH * 0.4, 20, 44);
+    mX = cx - side * W * 0.13; mBase = shoreY + shoreH * (wLines === 2 ? 0.34 : 0.4); mH = clamp(shoreH * 0.58, 24, 58);
     buildRail();
     buildGradients();
     // stars inside the dome
@@ -233,8 +242,10 @@ export function create(E) {
     let n = 0;
     for (let i = 0; i <= nA; i++) { const a = lerp(a0, a1, i / nA); railX[n] = cx + Math.cos(a) * ar; railY[n] = ac + Math.sin(a) * ary; n++; }
     for (let i = 1; i <= nL; i++) { railX[n] = cx + side * ar; railY[n] = lerp(ac, yEnd, i / nL); n++; }
+    // the dome arc counts a little shorter than the drop to the shore, so most of the travel
+    // (and the notches) sit on the long pull down towards the sand
     railN = n; railC[0] = 0;
-    for (let i = 1; i < n; i++) railC[i] = railC[i - 1] + Math.hypot(railX[i] - railX[i - 1], railY[i] - railY[i - 1]);
+    for (let i = 1; i < n; i++) railC[i] = railC[i - 1] + Math.hypot(railX[i] - railX[i - 1], railY[i] - railY[i - 1]) * (i <= nA ? 0.65 : 1);
     railL = railC[n - 1] || 1;
   }
   /** point on the rail at lever position p (0..1), with the outward normal */
@@ -280,7 +291,7 @@ export function create(E) {
     rimGrad.addColorStop(0, 'rgba(255,255,255,0.7)'); rimGrad.addColorStop(0.4, 'rgba(255,255,255,0.14)'); rimGrad.addColorStop(1, rgba(pal.glow, 0.45));
     moonGrad = g.createRadialGradient(-cr * 0.55, -cr * 0.2, cr * 0.05, -cr * 0.2, 0, cr * 1.15);
     moonGrad.addColorStop(0, '#ffffff'); moonGrad.addColorStop(0.35, moonCol); moonGrad.addColorStop(1, mix(moonCol, pal.deep, 0.32));
-    postGrad = g.createLinearGradient(mX - 3 * s, 0, mX + 3 * s, 0);
+    postGrad = g.createLinearGradient(mX - 3.5 * s, 0, mX + 3.5 * s, 0);
     postGrad.addColorStop(0, '#5a4330'); postGrad.addColorStop(0.45, '#b99a72'); postGrad.addColorStop(1, '#4a3424');
     sheenGrad = g.createLinearGradient(x0, 0, x0 + W * 0.5, 0);
     sheenGrad.addColorStop(0, 'rgba(255,255,255,0)'); sheenGrad.addColorStop(0.5, 'rgba(255,255,255,0.10)'); sheenGrad.addColorStop(1, 'rgba(255,255,255,0)');
@@ -289,13 +300,13 @@ export function create(E) {
   function buildPhotos() {
     const count = slots.length;
     const [kw, kh] = SIZE_K[Math.min(7, count)] || SIZE_K[3];
-    const base = Math.min(W * kw, seaH * kh) * (nP ? 1 : 0.62);
+    const base = Math.min(W * kw, seaH * kh * lerp(1.32, 1, invLerp(90, 200, seaH))) * (nP ? 1 : 0.62);   // small phones: reflections stay as large as the sea allows
     for (const sl of slots) {
       sl.x = x0 + sl.u * W; sl.y = horizonY + sl.v * seaH;
       sl.size = base * lerp(0.86, 1.12, invLerp(0.2, 0.74, sl.v));
       const { w, h } = sl.ph >= 0 ? photos.size(sl.ph, 'circle', sl.size) : { w: sl.size, h: sl.size };
-      sl.w = w; sl.h = h * 0.94;    // a touch of perspective on the water
-      sl.slices = clamp(Math.round(h / 2.6), 16, 48);
+      sl.w = w; sl.h = h * 0.9;     // a touch of perspective on the water
+      sl.slices = clamp(Math.round(h / 2.6), 14, 36);
       const pw = Math.max(8, Math.ceil(w * DPR)), phh = Math.max(8, Math.ceil(h * DPR));
       if (sl.cClear && sl.pw === pw) continue;
       sl.pw = pw;
@@ -304,13 +315,23 @@ export function create(E) {
       a.setTransform(DPR, 0, 0, DPR, 0, 0); b.setTransform(DPR, 0, 0, DPR, 0, 0);
       if (sl.ph >= 0) {
         photos.draw(a, sl.ph, w / 2, h / 2, sl.size, { shape: 'circle', shadow: false });
-        photos.draw(b, sl.ph, w / 2, h / 2, sl.size, { shape: 'circle', shadow: false, blur: 1 });
-        photos.draw(b, sl.ph, w / 2, h / 2, sl.size, { shape: 'circle', shadow: false, tone: 'rain', toneMix: 1, alpha: 0.72 });
+        // the restless reflection: rain-toned and softened by a few offset passes (smooth on every browser)
+        const rr = Math.max(1.4, sl.size * 0.024);
+        photos.draw(b, sl.ph, w / 2, h / 2, sl.size, { shape: 'circle', shadow: false, tone: 'rain', toneMix: 1, alpha: 0.6 });
+        for (let k = 0; k < 6; k++) {
+          const an = (k / 6) * TAU + 0.3;
+          photos.draw(b, sl.ph, w / 2 + Math.cos(an) * rr, h / 2 + Math.sin(an) * rr * 0.6, sl.size * 0.985, { shape: 'circle', shadow: false, tone: 'rain', toneMix: 1, alpha: 0.24 });
+        }
       } else { paintStar(a, w, false); paintStar(b, w, true); }
       for (const c of [a, b]) {
+        // a reflection has no hard rim: feather the edge into the water, and let the lower part fade deeper
+        c.globalCompositeOperation = 'destination-in';
+        const r0 = Math.min(w, h) / 2, fe = c.createRadialGradient(w / 2, h / 2, r0 * 0.8, w / 2, h / 2, r0);
+        fe.addColorStop(0, 'rgba(0,0,0,1)'); fe.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = fe; c.fillRect(0, 0, w, h);
         c.globalCompositeOperation = 'destination-out';
-        const fg = c.createLinearGradient(0, h * 0.58, 0, h);
-        fg.addColorStop(0, 'rgba(0,0,0,0)'); fg.addColorStop(1, 'rgba(0,0,0,0.62)');
+        const fg = c.createLinearGradient(0, h * 0.62, 0, h);
+        fg.addColorStop(0, 'rgba(0,0,0,0)'); fg.addColorStop(1, 'rgba(0,0,0,0.5)');
         c.fillStyle = fg; c.fillRect(0, 0, w, h);
         c.globalCompositeOperation = 'source-over';
       }
@@ -419,6 +440,7 @@ export function create(E) {
       if (k >= 0 && k < N && !flat[k]) holdQ = clamp(1 - Math.abs(amp[k] - rowTarget(k)) / Math.max(0.12, A0 * 0.6));
     }
     wob.update(dt);
+    nudge = Math.max(0, nudge - dt * 1.7);
     grabK = Math.max(0, grabK - dt * (drag != null ? 0 : 2.5));
     if (drag != null) grabK = Math.min(1, grabK + dt * 6);
   }
@@ -527,7 +549,7 @@ export function create(E) {
     if (ma > 0.005) for (let i = 0; i < 3; i++) {
       const u = ((0.15 + i * 0.37 + t * 0.006 * (i + 1) * speedK) % 1.5) - 0.25;
       const y = y0 + (horizonY - y0) * (0.4 + i * 0.2);
-      g.save(); g.translate(x0 + u * W, y); g.scale(4.2, 0.55); glow(g, 0, 0, W * 0.16, mix(pal.glow, '#ffffff', 0.5), ma); g.restore();
+      g.save(); g.translate(x0 + u * W, y); g.scale(4.2, 0.55); glow(g, 0, 0, W * 0.16, mistCol, ma); g.restore();
     }
     // moonlight on the sky
     glow(g, mx, my, cr * 5.5, moonCol, 0.22 + 0.12 * still + 0.2 * fin);
@@ -646,22 +668,30 @@ export function create(E) {
     if (la < 0.02) {
       g.globalAlpha = alpha; g.drawImage(sl.cClear, x - w / 2, top, w, h); g.globalAlpha = 1;
     } else {
-      const n = sl.slices, sh = h / n, sH = chh / n, shift = (6 * s + w * 0.05) * (heavy ? 0.8 : 1);
+      // thin slices with a smooth, slow displacement: water wavering, never a jagged mosaic
+      const n = sl.slices, sh = h / n, sH = chh / n, shift = (4.5 * s + w * 0.045) * (heavy ? 0.8 : 1);
       const m = clamp(la * 1.25);
       for (let i = 0; i < n; i++) {
         const yy = top + i * sh, a = clamp(ampAt(yy + sh / 2) * 1.1);
         const yn = i / n;
-        const off = a * shift * (Math.sin(yn * 5.4 + t * 2.0 * speedK + sl.ph0) + 0.3 * Math.sin(yn * 12 - t * 2.9 * speedK + sl.ph0 * 2));
-        const sx = x - w / 2 + off, sw = w * (1 + a * 0.03 * Math.sin(i * 1.7 + t * 1.3));
-        g.globalAlpha = alpha; g.drawImage(sl.cClear, 0, i * sH, cw, sH, sx, yy, sw, sh + 0.7);
-        if (m > 0.02) { g.globalAlpha = alpha * Math.min(1, m * (0.7 + 0.6 * a)); g.drawImage(sl.cStorm, 0, i * sH, cw, sH, sx, yy, sw, sh + 0.7); }
+        const off = a * shift * (Math.sin(yn * 3.3 + t * 1.7 * speedK + sl.ph0) + 0.22 * Math.sin(yn * 8 - t * 2.4 * speedK + sl.ph0 * 2));
+        const sw = w * (1 + a * 0.035 * Math.sin(yn * 2.6 + t * 1.1 + sl.ph0)), sx = x - sw / 2 + off;
+        const sa = m > 0.02 ? Math.min(1, m * (0.7 + 0.6 * a)) : 0;
+        if (sa < 0.97) { g.globalAlpha = alpha; g.drawImage(sl.cClear, 0, i * sH, cw, sH, sx, yy, sw, sh + 0.7); }
+        if (sa > 0) { g.globalAlpha = alpha * sa; g.drawImage(sl.cStorm, 0, i * sH, cw, sH, sx, yy, sw, sh + 0.7); }
       }
       g.globalAlpha = 1;
     }
     // a still surface: a calm sheen line across the reflection
     if (clear > 0.6) {
       g.save(); g.globalCompositeOperation = 'lighter';
-      g.save(); g.translate(x, top + h * 0.3); g.scale(3.6, 0.42); glow(g, 0, 0, w * 0.14, '#ffffff', 0.2 * (clear - 0.6) * 2.5 * (0.7 + 0.3 * Math.sin(t * 0.7 + sl.ph0))); g.restore();
+      const ck = (clear - 0.6) * 2.5;
+      g.save(); g.translate(x, top + h * 0.3); g.scale(3.6, 0.42); glow(g, 0, 0, w * 0.14, '#ffffff', 0.2 * ck * (0.7 + 0.3 * Math.sin(t * 0.7 + sl.ph0))); g.restore();
+      // two faint water lines drift slowly across it: still water, still a reflection
+      for (let j = 0; j < 2; j++) {
+        const yy = top + h * (0.56 + j * 0.2 + (reduced ? 0 : 0.03 * Math.sin(t * 0.35 + j * 2 + sl.ph0)));
+        g.save(); g.translate(x, yy); g.scale(5.5 - j * 1.5, 0.22); glow(g, 0, 0, w * 0.09, crestHi, 0.16 * ck); g.restore();
+      }
       if (ca > 0 && ca < 1) { g.strokeStyle = rgba(crestHi, 0.55 * (1 - ca)); g.lineWidth = 1.6; g.beginPath(); g.ellipse(x, top + h / 2, w * (0.52 + ca * 0.2), h * (0.52 + ca * 0.2), 0, 0, TAU); g.stroke(); }
       g.restore();
     }
@@ -692,10 +722,10 @@ export function create(E) {
     g.fillStyle = sandGrad; g.fillRect(x0 - 2, shoreY - 3, W + 4, shoreH + 6);
     // speckles + faint ripple marks in the sand
     for (let i = 0; i < SPK; i++) {
-      g.fillStyle = spS[i] > 0.5 ? rgba('#ffffff', 0.22 * spS[i]) : rgba(mix(sandDry, INK, 0.4), 0.3);
+      g.fillStyle = spS[i] > 0.5 ? rgba('#ffffff', 0.22 * spS[i]) : grainDark;
       g.fillRect(x0 + spU[i] * W, shoreY + spV[i] * shoreH, 1.3, 1.3);
     }
-    g.strokeStyle = rgba(mix(sandDry, INK, 0.25), 0.16); g.lineWidth = 1;
+    g.strokeStyle = rippleMark; g.lineWidth = 1;
     for (let i = 0; i < 3; i++) {
       const y = shoreY + shoreH * (0.5 + i * 0.17);
       g.beginPath();
@@ -731,36 +761,61 @@ export function create(E) {
   }
   function drawMarker(t, fin) {
     const v = markerVis;
-    const a = lerp(0.06, 1, v), rise = (1 - ease.outCubic(v)) * mH * 0.3;
-    const pw = 6 * s, top = mBase - mH + rise;
+    if (v < 0.003) return;                       // hidden under the surf until the tide begins to calm
+    const k = ease.outCubic(v), a = smooth(clamp(v * 1.4));
+    const pw = 7 * s, lw = 14 * s, lh = 17 * s;
+    const rise = (1 - k) * (mH + lh + 10 * s);    // it comes up out of the surf
+    const top = mBase - mH + rise, ly = top - lh / 2 - 1.5 * s;
+    const lk = lampAt >= 0 ? smooth(clamp((t - lampAt) / 1.1)) : 0;
+    const breath = reduced ? 1 : 0.9 + 0.1 * Math.sin(t * 1.2);
+    // lamplight: a warm road on the water and a pool on the sand (under the post)
+    if (lk > 0) {
+      g.save(); g.translate(mX, shoreY - seaH * 0.12); g.scale(0.26, 1.5); glow(g, 0, 0, seaH * 0.17, lampCol, 0.45 * lk * breath); g.restore();
+      for (let i = 0; i < 5; i++) {
+        const yy = shoreY - (i + 0.5) * seaH * 0.055, hw = (11 - i * 1.7) * s * (1 + fin * 0.3);
+        g.save(); g.translate(mX + (reduced ? 0 : Math.sin(t * 0.7 + i * 1.9) * 2 * s), yy); g.scale(hw / (2 * s), 1);
+        glow(g, 0, 0, 2.4 * s, lampHot, 0.7 * lk * (0.7 + 0.3 * Math.sin(t * 1.1 + i * 1.3)));
+        g.restore();
+      }
+      g.save(); g.translate(mX, mBase + 3 * s); g.scale(2.8, 0.45); glow(g, 0, 0, 24 * s, lampCol, 0.32 * lk); g.restore();
+    }
     // a little ring of pebbles around the post's foot
     for (let i = 0; i < 7; i++) {
-      const ang = (i / 7) * TAU + 0.3, px = mX + Math.cos(ang) * 15 * s, py = mBase + 2 + Math.sin(ang) * 4.5 * s;
-      g.fillStyle = rgba(mix(sandDry, INK, 0.35 + (i % 3) * 0.08), 0.55 * a);
-      g.beginPath(); g.ellipse(px, py, 3.2 * s, 2 * s, 0, 0, TAU); g.fill();
+      const ang = (i / 7) * TAU + 0.3, px = mX + Math.cos(ang) * 16 * s, py = mBase + 2 + Math.sin(ang) * 4.5 * s;
+      g.fillStyle = rgba(pebbleCol[i % 3], 0.6 * a);
+      g.beginPath(); g.ellipse(px, py, 3.4 * s, 2.1 * s, 0, 0, TAU); g.fill();
     }
-    softShadow(g, mX + side * 6 * s, mBase + 2, 14 * s, 4 * s, 0.35 * a);
-    g.save(); g.globalAlpha = a;
+    softShadow(g, mX + side * 6 * s, mBase + 2, 15 * s, 4 * s, 0.4 * a);
+    g.save();
+    g.beginPath(); g.rect(mX - 40 * s, y0, 80 * s, mBase + 2.5 * s - y0); g.clip();   // whatever is still below the sand stays hidden
+    g.globalAlpha = a;
     // driftwood post with two turns of rope
-    g.fillStyle = postGrad; roundRect(g, mX - pw / 2, top, pw, mBase - top, pw * 0.4); g.fill();
-    g.fillStyle = 'rgba(255,240,210,0.4)'; g.fillRect(mX - pw / 2 + 0.5, top + mH * 0.3, pw - 1, 1.4); g.fillRect(mX - pw / 2 + 0.5, top + mH * 0.37, pw - 1, 1.2);
-    // lantern: brass cap, glass body, ring handle
-    const lk = lampAt >= 0 ? smooth(clamp((t - lampAt) / 1.1)) : 0;
-    const lw = 11 * s, lh = 13 * s, ly = top - lh / 2 - 1;
-    g.strokeStyle = brass; g.lineWidth = 1.2 * s; g.beginPath(); g.arc(mX, ly - lh / 2 - 3.5 * s, 3 * s, Math.PI, TAU); g.stroke();
-    g.fillStyle = brassDark; roundRect(g, mX - lw / 2 - 1.5 * s, ly - lh / 2 - 3.5 * s, lw + 3 * s, 3.5 * s, 1.5 * s); g.fill();
-    g.fillStyle = mix(mix(sandWet, INK, 0.45), lampCol, lk * 0.85); roundRect(g, mX - lw / 2, ly - lh / 2, lw, lh, 3 * s); g.fill();
-    g.strokeStyle = rgba(brass, 0.9); g.lineWidth = 1; g.stroke();
-    g.fillStyle = brassDark; g.fillRect(mX - lw / 2 - 1, ly + lh / 2 - 1, lw + 2, 2.5 * s);
-    g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(mX - lw / 2 + 2, ly - lh / 2 + 2, 1.5, lh - 5);
+    g.fillStyle = postGrad; roundRect(g, mX - pw / 2, top, pw, mBase + 3 * s - top, pw * 0.4); g.fill();
+    g.strokeStyle = 'rgba(40,26,16,0.35)'; g.lineWidth = 0.8;
+    g.beginPath(); g.moveTo(mX - pw * 0.15, top + 3 * s); g.lineTo(mX - pw * 0.1, mBase); g.moveTo(mX + pw * 0.2, top + mH * 0.5); g.lineTo(mX + pw * 0.22, mBase); g.stroke();
+    g.fillStyle = 'rgba(255,240,210,0.5)';
+    g.fillRect(mX - pw / 2 - 0.5, top + mH * 0.32, pw + 1, 1.6 * s); g.fillRect(mX - pw / 2 - 0.5, top + mH * 0.32 + 3 * s, pw + 1, 1.4 * s);
+    // lantern: ring handle, brass cap, glass with a warm flame, brass base
+    g.strokeStyle = brass; g.lineWidth = 1.4 * s; g.beginPath(); g.arc(mX, ly - lh / 2 - 4 * s, 3.2 * s, Math.PI, TAU); g.stroke();
+    g.fillStyle = brassDark; roundRect(g, mX - lw / 2 - 2 * s, ly - lh / 2 - 4 * s, lw + 4 * s, 4 * s, 1.8 * s); g.fill();
+    g.fillStyle = brass; g.fillRect(mX - lw / 2 - 1 * s, ly - lh / 2 - 1.2 * s, lw + 2 * s, 1.2 * s);
+    g.fillStyle = lk > 0 ? mix(glassDark, lampCol, 0.25 + lk * 0.7) : glassDark;
+    roundRect(g, mX - lw / 2, ly - lh / 2, lw, lh, 3 * s); g.fill();
+    g.strokeStyle = rgba(brass, 0.95); g.lineWidth = 1.1 * s; g.stroke();
+    g.beginPath(); g.moveTo(mX, ly - lh / 2); g.lineTo(mX, ly + lh / 2); g.strokeStyle = rgba(brass, 0.5); g.lineWidth = 0.8 * s; g.stroke();
+    g.fillStyle = brassDark; roundRect(g, mX - lw / 2 - 1.5 * s, ly + lh / 2 - 1, lw + 3 * s, 3 * s, 1.2 * s); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.4)'; g.fillRect(mX - lw / 2 + 2 * s, ly - lh / 2 + 2.5 * s, 1.5 * s, lh - 6 * s);
+    if (lk > 0) { g.fillStyle = rgba('#fff8e8', lk); g.beginPath(); g.ellipse(mX, ly + 1.5 * s, 2.2 * s, 3.6 * s, 0, 0, TAU); g.fill(); }
     g.restore();
-    const breath = 0.88 + 0.12 * Math.sin(t * 1.2);
+    // foam swirling round its foot while it rises
+    const foam = 4 * v * (1 - v);
+    if (foam > 0.02) { g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = rgba('#ffffff', 0.5 * foam); g.lineWidth = 1.6 * s; g.beginPath(); g.ellipse(mX, mBase + 1, (12 + 6 * v) * s, (3.4 + 1.5 * v) * s, 0, 0, TAU); g.stroke(); g.restore(); }
     if (lk > 0) {
-      glow(g, mX, ly, (26 + 12 * fin) * s, lampCol, (0.5 + 0.25 * fin) * lk * breath);
-      glow(g, mX, ly + 1, 5 * s, '#fff6e0', 0.9 * lk);
-      g.save(); g.translate(mX, mBase + 4 * s); g.scale(2.4, 0.4); glow(g, 0, 0, 18 * s, lampCol, 0.22 * lk); g.restore();
+      glow(g, mX, ly, (52 + 18 * fin) * s, lampCol, (0.32 + 0.12 * fin) * lk * breath);
+      glow(g, mX, ly, (22 + 8 * fin) * s, lampCol, (0.7 + 0.2 * fin) * lk * breath);
+      glow(g, mX, ly + 1, 9 * s, '#fff6e0', 0.85 * lk);
     }
-    if (lk > 0 && fin > 0) {
+    if (lk > 0 && fin > 0 && fin < 1) {
       g.save(); g.globalCompositeOperation = 'lighter';
       const rr = (20 + 50 * fin) * s;
       g.strokeStyle = rgba(lampCol, 0.35 * (1 - fin)); g.lineWidth = 1.5; g.beginPath(); g.ellipse(mX, mBase, rr, rr * 0.3, 0, 0, TAU); g.stroke();
@@ -771,7 +826,7 @@ export function create(E) {
   function drawRain(t) {
     if (rainAmt <= 0.01) return;
     g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
-    g.strokeStyle = rgba(mix(pal.glow, '#ffffff', 0.5), 0.16 * rainAmt); g.lineWidth = 1;
+    g.strokeStyle = rgba(rainCol, 0.16 * rainAmt); g.lineWidth = 1;
     g.beginPath();
     const hgt = shoreY - y0, spd = reduced ? 0.25 : 1;
     for (let i = 0; i < RAIN; i++) {
@@ -792,7 +847,7 @@ export function create(E) {
     const a0 = side > 0 ? Math.PI * 1.08 : -Math.PI * 0.08 - 0.62;
     g.strokeStyle = 'rgba(255,255,255,0.2)'; g.lineWidth = 3;
     g.beginPath(); g.ellipse(cx, ac, ar - 7, ary - 7, 0, a0, a0 + 0.62); g.stroke();
-    g.fillStyle = sheenGrad; g.globalAlpha = 0.5 + 0.2 * Math.sin(t * 0.4);
+    g.fillStyle = sheenGrad; g.globalAlpha = 0.32 + 0.12 * Math.sin(t * 0.4);
     g.beginPath(); g.ellipse(cx - side * W * 0.22, y0 + H * 0.33, W * 0.05, H * 0.2, side * 0.18, 0, TAU); g.fill();
     g.restore();
   }
@@ -809,7 +864,7 @@ export function create(E) {
     const iEnd = Math.min(railN - 1, Math.max(1, Math.round(binIndex(hp))));
     g.globalCompositeOperation = 'lighter';
     for (const [w, a] of TRAIL_PASSES) {
-      g.strokeStyle = rgba(mix(moonCol, pal.glow, 0.35), a * (1 + fin)); g.lineWidth = w * s;
+      g.strokeStyle = rgba(trailCol, Math.min(1, a * (1 + fin))); g.lineWidth = w * s;
       g.beginPath(); g.moveTo(railX[0], railY[0]); for (let i = 2; i < iEnd; i += 2) g.lineTo(railX[i], railY[i]); g.lineTo(railX[iEnd], railY[iEnd]); g.stroke();
     }
     g.globalCompositeOperation = 'source-over';
@@ -842,16 +897,19 @@ export function create(E) {
   function drawCrescent(t, x, y, nx, ny, r, full, fin) {
     const idle = drag == null && rot < 0.01 && finAt < 0 ? 0.5 + 0.5 * Math.sin(t * 2.2) : 0;
     // contact shadow keeps the moon readable over any realm sky
-    if (full < 1) softShadow(g, x + 1.5 * s, y + 3 * s, r * 1.2, r * 1.1, 0.3 * (1 - full));
-    // halo: a wide warm bloom and a tight cool core
-    glow(g, x, y, r * (3.6 + grabK * 0.9 + full * 2), moonHalo, 0.34 + 0.22 * grabK + 0.18 * idle + 0.3 * fin);
-    glow(g, x, y, r * 1.8, '#ffffff', 0.16 + 0.14 * grabK + 0.1 * full);
+    if (full < 1) softShadow(g, x + 1.5 * s, y + 3 * s, r * 1.25, r * 1.15, 0.42 * (1 - full));
+    // halo: a wide warm bloom and a tight cool core (kept compact so it never washes over the title)
+    glow(g, x, y, r * (3 + grabK * 0.8 + full * 2.2), moonHalo, 0.3 + 0.22 * grabK + 0.16 * idle + 0.3 * fin + 0.25 * nudge);
+    glow(g, x, y, r * 1.7, '#ffffff', 0.16 + 0.14 * grabK + 0.1 * full + 0.12 * nudge);
+    // "not yet": a soft ring of moonlight swells once (no movement, so it also works with reduced motion)
+    if (nudge > 0) { g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = rgba(moonCol, 0.5 * nudge); g.lineWidth = 2 * s; g.beginPath(); g.arc(x, y, r * (1.18 + (reduced ? 0 : 0.2 * (1 - nudge))), 0, TAU); g.stroke(); g.restore(); }
     if (idle > 0) { g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = rgba(moonCol, 0.3 * idle); g.lineWidth = 1.6; g.beginPath(); g.arc(x, y, r * (1.45 + idle * 0.35), 0, TAU); g.stroke(); g.restore(); }
     g.save(); g.translate(x, y); g.rotate(Math.atan2(ny, nx)); g.scale(r / cr, r / cr);
     const R0 = cr;
     // earthshine: the rest of the moon, faint
-    g.fillStyle = rgba(mix(moonCol, pal.deep, 0.5), 0.34 * (1 - full));
+    g.fillStyle = rgba(earthCol, 0.62 * (1 - full));
     g.beginPath(); g.arc(0, 0, R0 * 0.985, 0, TAU); g.fill();
+    g.strokeStyle = rgba(moonCol, 0.3 * (1 - full)); g.lineWidth = 1; g.stroke();
     // the finale: the shadowed part fills in to a full moon with soft maria
     if (full > 0) {
       g.globalAlpha = full; g.fillStyle = moonGrad; g.beginPath(); g.arc(0, 0, R0, 0, TAU); g.fill();
@@ -914,9 +972,11 @@ export function create(E) {
     return q.d < Math.max(30, 24 * s) && q.p > rot - 0.06 && q.p < rot + 0.16;
   }
   const inWindow = (x, y) => x > x0 && x < x1 && y < y1 && (y > ac || Math.hypot((x - cx) / ar, (y - ac) / ary) < 1);
-  function refuse(t) {
+  /** a gentle "not yet": the crescent wobbles (or just glows, with reduced motion) and bubbles softly */
+  function refuse(t, byLaw = false) {
+    if (byLaw && t - lastLockCk > 0.6) { lastLockCk = t; E.checkpoint('wait'); }
     if (t - lastRefuse < 0.5) return;
-    lastRefuse = t; wob.kick(0.45);
+    lastRefuse = t; wob.kick(0.45); nudge = 1;
     E.sound('bubble', { note: 1, intensity: 0.2 }); hap('light');
   }
 
@@ -953,11 +1013,13 @@ export function create(E) {
       const ask = Math.min(q, cap);
       if (ask > wanted) wanted = Math.min(ask, rot + BANK);
       if (q > cap + 0.03 && rot >= cap - 2e-3 && cap < 1) refuse(t);          // the wave is still flattening
-      if (E.locked && q > rot + BANK * 0.9 && t - lastLockCk > 0.6) { lastLockCk = t; E.checkpoint('wait'); refuse(t); }
+      if (E.locked && q > rot + BANK * 0.9) refuse(t, true);                    // the world law asks for a pause
     },
     up(p) { if (p.id === drag) { drag = null; } },
     assist() {
       if (finAt >= 0) return;
+      // the world law is asking for a pause: say "not yet" (a step already under way keeps easing through the gate)
+      if (E.locked) { refuse(E.now(), true); return; }
       const cap = holdCap(), base = Math.max(wanted, rot);
       if (base >= cap - 1e-4) { if (cap < 1 || !flat[N - 1]) refuse(E.now()); return; }
       const step = 1 / (2 * N);

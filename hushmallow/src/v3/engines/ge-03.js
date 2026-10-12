@@ -110,7 +110,7 @@ export function create(E) {
 
   const gates = [0, 1, 2].map((k) => ({
     k, photo: paneP[k], medal: medalP[k],
-    sw: new Spring(0, { stiffness: 34, damping: 4.4 }),   // normalised swing (overshoots a little: the edge quivers)
+    sw: new Spring(0, { stiffness: 34, damping: reduced ? 10.5 : 4.4 }),   // normalised swing (overshoots a little: the edge quivers; reduced motion: no quiver)
     wob: new Wobble(),
     E: 0, E0: 1, age: 9, rx: 0, ry: 0, front: 0, wipe: -1, wx: 0, wy: 0,
     opened: false, ready: false, chimed: false, flash: 0, deny: 0, hushT: 0, settled: true,
@@ -1039,7 +1039,12 @@ export function create(E) {
       if (finAt >= 0 || E.phase !== 'play') return;
       downIds.add(pt.id);
       const k = hitGate(pt);
-      if (k < 0) return;
+      if (k < 0) {
+        // a touch on the still terrace or the sky: just a small ring and a quiet drop (it never moves the gates)
+        const now = E.now();
+        if (now - lastRing > 0.15) { lastRing = now; E.ripples.add(pt.x, pt.y, { colour: tint2, speed: 46 * U, alpha: 0.3 }); E.sound('drip', { note: 1, intensity: 0.14 }); E.haptic('tick'); }
+        return;
+      }
       const gt = gates[k];
       if (gt.opened) { reRing(gt, pt.x, pt.y); return; }
       if (k === nOpened) { tryOpen(k, pt.x, pt.y); return; }

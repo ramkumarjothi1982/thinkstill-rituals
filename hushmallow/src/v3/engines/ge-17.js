@@ -34,6 +34,7 @@ const N = 64;                 // rim vertices
 const CAP = 0.06;             // input the law gate may bank
 const KAPPA = 8;              // how far a pull spreads along the rim
 const SWEEP = 0.9;            // the suggested pull point drifts round the rim as it grows
+const WORD_GAP = 1.0;         // half-width (rad) of the film sector kept clear for the words
 const IRIS = ['#ff9ad5', '#ffd58a', '#a8ffcf', '#8fd8ff', '#b9a0ff', '#ff9ad5'];
 
 export function create(E) {
@@ -48,6 +49,10 @@ export function create(E) {
   let swirl = E.rand() < 0.5 ? 1 : -1, swirlTo = swirl;
   const ph1 = E.rand() * TAU, ph2 = E.rand() * TAU;
   const [tR, tG, tB] = hex(mix(pal.glow, '#ffffff', 0.25 + calm0 * 0.3));
+  // light skies (sunset, lagoon) need ink-tinted guides; dark skies take light ones
+  const [sR, sG, sB] = hex(pal.sky);
+  const lightSky = (0.299 * sR + 0.587 * sG + 0.114 * sB) / 255 > 0.5;
+  const ink = pal.ink || pal.deep;
 
   const n = photos.n;
   const hero = n ? (E.round - 1) % n : -1;
@@ -61,11 +66,15 @@ export function create(E) {
   let heroCk = false;
 
   // ---- geometry
-  let cx, cy, Rt, r0, M, Rd, sr, heroS = 0;
+  let cx, cy, Rt, r0, M, Rd, sr, heroS = 0, wordsUp = false;
   function fit() {
+    // short stages (small phones): the host's speech bubble and plot-twist banner sit over the
+    // lower film, so the words ride the upper film there and the joined bubbles rest below
+    wordsUp = stage.h < 330;
     Rt = Math.min(stage.w * 0.385, stage.h * 0.37);
     cx = stage.cx; cy = stage.cy;
-    r0 = Math.max(Rt * 0.52, Math.min(Rt * 0.66, 58)); M = Rt * 0.28; Rd = Rt * 1.36; sr = clamp(Rt * 0.155, 22, 32);
+    // the starting film is about half the outline, so even a small phone sees it grow ~1.7×
+    r0 = Math.max(Rt * 0.54, Math.min(Rt * 0.6, 52)); M = Rt * 0.28; Rd = Rt * 1.36; sr = clamp(Rt * 0.155, 22, 32);
     if (hero >= 0) { const s = photos.size(hero, 'natural', 100); heroS = (Rt * 2.16 * 100) / Math.max(1, Math.min(s.w, s.h)); }
   }
   fit();
@@ -80,7 +89,7 @@ export function create(E) {
   let np = 0;
   let wanted = 0, prog = 0, shown = 0, assistTo = null, doneFlag = false, finAt = -1;
   let rush = 0, flowT = E.rand() * 20, clockT = 0, lastNote = 0, noteAt = -9, waitAt = -9, rushHinted = false;
-  let tinyAt = 1.2, maxRim = 0, photoR = 0, tenseAmp = 0, breathAmp = 0, maxS = 0;
+  let tinyAt = 1.2, maxRim = 0, photoR = 0, tenseAmp = 0, breathAmp = 0, maxS = 0, waitK = 0;
   const pts = new Map();     // pointer id → {mode: 'pull'|'poke', a, r, x, y, s, spd, acc}
   const ghost = { a: A0, aTo: A0, s: 0 };
   const pokes = Array.from({ length: 4 }, () => ({ x: 0, y: 0, age: 9, amp: 0 }));
@@ -92,6 +101,10 @@ export function create(E) {
   const rBase = () => r0 + (Rt - r0) * shown;
   const satDist = (s) => lerp(r0 + sr + Rt * 0.1, Rt + sr * 0.15, s.u);
   const HA = (p) => A0 - clamp(p) * SWEEP;
+  // where a joined bubble rests on the film: its own direction, squeezed out of the
+  // sector where the words float, so pictures and words never sit on each other
+  const restAngle = (a) => { const o = wordsUp ? Math.PI / 2 : Math.PI * 1.5; return o + angDiff(o, a) * ((Math.PI - WORD_GAP) / Math.PI); };
+  E.onResize(() => { for (const s of sats) if (s.merged) s.pa = restAngle(s.a); });
   const tense = (a) => tenseAmp * (0.7 * Math.sin(2 * a + ph1 + 0.35 * Math.sin(clockT * 0.35)) + 0.45 * Math.sin(3 * a + ph2 - clockT * 0.22))
     + breathAmp * Math.sin(clockT * 1.1 + 4 * a);
   function rimAt(a) {
@@ -104,7 +117,7 @@ export function create(E) {
   function waitNudge() {
     const now = E.now();
     if (now - waitAt < 0.9) return;
-    waitAt = now; E.checkpoint('wait');
+    waitAt = now; E.checkpoint('wait'); waitK = 1;
     if (!reduced) wob.kick(0.6);
   }
 
@@ -209,14 +222,14 @@ export function create(E) {
     g.closePath();
   }
 
-  function merge(s, i) {
+  function merge(s, i, quiet = false) {
     if (s.merged) return;
-    s.merged = true; s.m = 0; s.pa = s.a; s.pr = 0.56 + E.rand() * 0.16;
+    s.merged = true; s.m = 0; s.pa = restAngle(s.a); s.pr = 0.68 + E.rand() * 0.08;
     const D = satDist(s), x = cx + Math.cos(s.a) * D, y = cy + Math.sin(s.a) * D;
     addPoke(x - cx, y - cy, 170);
     E.ripples.add(x, y, { colour: pal.glow, speed: 46, alpha: 0.4, r: sr });
-    E.sound('bubble', { note: (i * 2 + 3) % 10, intensity: 0.35, pan: clamp((x - cx) / Rt, -1, 1) * 0.5 });
-    E.haptic('soft');
+    // a reached bubble sings and taps; the ones gathered at the very end join silently
+    if (!quiet) { E.sound('bubble', { note: (i * 2 + 3) % 10, intensity: 0.35, pan: clamp((x - cx) / Rt, -1, 1) * 0.5 }); E.haptic('soft'); }
     if (s.ph >= 0) { photos.dust(s.ph, x, y, sr * 2, reduced ? 6 : 12, { shape: 'bubble', up: 12, speed: 20 }); E.checkpoint('photo', s.ph); }
     else E.particles.burst(x, y, reduced ? 3 : 7, { speed: 40, colour: '#ffffff', life: 0.9, size: 4, kind: 'glint' });
   }
@@ -232,6 +245,9 @@ export function create(E) {
   // ------------------------------------------------------------ frame --
   function frame(dt, t) {
     clockT += dt;
+    // the host only routes touches to the engine during play: a finger still down
+    // when the closing move or finale begins must not leave the film stretched
+    if (E.phase !== 'play' && pts.size) pts.clear();
     const fin = finAt >= 0 ? smooth(clamp((E.now() - finAt) / 2.6)) : 0;
     // "Tap instead": a ghost fingertip draws the rim outwards, then the film follows
     ghost.a += angDiff(ghost.a, ghost.aTo) * Math.min(1, dt * 3);
@@ -259,6 +275,7 @@ export function create(E) {
     tenseAmp = Rt * (heavy ? 0.06 : 0.045) * (1 - shown) * (1 - fin) * (1 - calm0 * 0.5);
     breathAmp = reduced ? 0 : Rt * 0.007 * (1 - fin * 0.5);
     wob.update(dt);
+    waitK = Math.max(0, waitK - dt * 1.4);
     physics(dt);
     computeRim(fin);
     photoR = photoR ? lerp(photoR, maxRim, 1 - Math.exp(-dt * 8)) : maxRim;
@@ -277,7 +294,7 @@ export function create(E) {
     // little bubbles join the film when its rim reaches them
     for (let i = 0; i < K; i++) {
       const s = sats[i];
-      if (s.merged) { s.m = Math.min(1, s.m + dt / 0.9); s.soft = Math.min(1, s.soft + dt * (heavy ? 0.18 : 0.25)); s.pa += dt * 0.05 * swirl * flowK; continue; }
+      if (s.merged) { s.m = Math.min(1, s.m + dt / 0.9); s.soft = Math.min(1, s.soft + dt * (heavy ? 0.18 : 0.25)); continue; }
       if (rimAt(s.a) >= satDist(s) - sr * 0.55) merge(s, i);
     }
     swirl = lerp(swirl, swirlTo, 1 - Math.exp(-dt * 0.8));
@@ -296,7 +313,7 @@ export function create(E) {
     if (!doneFlag && prog >= 0.999 && shown > 0.985 && !anyPull && assistTo == null && ghost.s < 1) {
       let mx = 0;
       for (let j = 0; j < N; j++) mx = Math.max(mx, Math.abs(d[j]));
-      if (mx < Rt * 0.04) { doneFlag = true; sats.forEach(merge); E.sound('settle', { intensity: 0.45 }); }
+      if (mx < Rt * 0.04) { doneFlag = true; sats.forEach((s, i) => merge(s, i, true)); E.sound('settle', { intensity: 0.45 }); }
     }
 
     // ---- drawing
@@ -313,25 +330,36 @@ export function create(E) {
   // ---------------------------------------------------------- drawing --
   function drawBackdrop(fin) {
     const rb = rBase();
-    shadow(g, cx, cy + Rt * 1.2, Rt * 0.78, Rt * 0.1, 0.22);
-    glow(g, cx, cy + Rt * 1.16, Rt * (0.45 + 0.25 * shown), mix(pal.glow, '#ffd6f2', 0.4 + 0.2 * Math.sin(flowT * 0.5)), 0.14 + 0.1 * shown + 0.1 * fin);
+    // a soft shadow and floor light under the film, kept above the dock
+    const floor = stage.y + stage.h, sy = Math.min(cy + Rt * 1.2, floor - Rt * 0.12), fy = Math.min(cy + Rt * 1.14, floor - Rt * 0.24);
+    shadow(g, cx, sy, Rt * 0.78, Rt * 0.1, 0.22);
+    glow(g, cx, fy, Math.min(Rt * (0.45 + 0.25 * shown), (floor - fy) / 0.6), mix(pal.glow, '#ffd6f2', 0.4 + 0.2 * Math.sin(flowT * 0.5)), 0.14 + 0.1 * shown + 0.1 * fin);
     glow(g, cx, cy, rb * 1.7, pal.glow, 0.11 + 0.04 * Math.sin(clockT * 0.6) + fin * (heavy ? 0.08 : 0.14));
   }
   function drawOutline(fin) {
     const nd = 72, rot = clockT * 0.03 * (reduced ? 0.3 : 1), al0 = 1 - fin;
     if (al0 <= 0.01) return;
-    g.save(); g.globalCompositeOperation = 'lighter';
-    g.strokeStyle = rgba(pal.glow, (0.06 + 0.05 * shown) * al0); g.lineWidth = 12;
-    g.beginPath(); g.arc(cx, cy, Rt, 0, TAU); g.stroke();
-    g.globalCompositeOperation = 'source-over';   // a faint shadow line so the outline reads on light skies too
-    g.strokeStyle = rgba(pal.deep, 0.16 * al0); g.lineWidth = 1; g.setLineDash([2, 5]);
+    g.save();
+    if (lightSky) {
+      // pale skies: a soft ink-tinted band and ink beads, so the goal reads without glare
+      g.strokeStyle = rgba(ink, (0.07 + 0.04 * shown) * al0); g.lineWidth = 12;
+      g.beginPath(); g.arc(cx, cy, Rt, 0, TAU); g.stroke();
+    } else {
+      g.globalCompositeOperation = 'lighter';
+      g.strokeStyle = rgba(pal.glow, (0.06 + 0.05 * shown) * al0); g.lineWidth = 12;
+      g.beginPath(); g.arc(cx, cy, Rt, 0, TAU); g.stroke();
+      g.globalCompositeOperation = 'source-over';
+    }
+    g.strokeStyle = rgba(lightSky ? ink : pal.deep, (lightSky ? 0.3 : 0.16) * al0); g.lineWidth = 1; g.setLineDash([2, 5]);
     g.beginPath(); g.arc(cx, cy, Rt + 1.5, 0, TAU); g.stroke(); g.setLineDash([]);
-    g.globalCompositeOperation = 'source-over';
-    g.fillStyle = mix(pal.glow, '#ffffff', 0.55);
+    const dotCol = lightSky ? mix(ink, pal.accent, 0.25) : mix(pal.glow, '#ffffff', 0.55), litCol = '#ffffff';
     for (let i = 0; i < nd; i++) {
-      const a = (i / nd) * TAU + rot, lit = rimAt(a) >= Rt - 3;
-      g.globalAlpha = (lit ? 0.95 : 0.42 + 0.4 * (0.5 + 0.5 * Math.sin(clockT * 0.9 - i * 0.35))) * al0;
-      g.beginPath(); g.arc(cx + Math.cos(a) * Rt, cy + Math.sin(a) * Rt, lit ? 2.6 : 2, 0, TAU); g.fill();
+      const a = (i / nd) * TAU + rot, lit = rimAt(a) >= Rt - 3, x = cx + Math.cos(a) * Rt, y = cy + Math.sin(a) * Rt;
+      const breathe = 0.5 + 0.5 * Math.sin(clockT * 0.9 - i * 0.35);
+      if (lit && lightSky) { g.globalAlpha = 0.5 * al0; g.fillStyle = ink; g.beginPath(); g.arc(x, y, 3.6, 0, TAU); g.fill(); }
+      g.fillStyle = lit ? litCol : dotCol;
+      g.globalAlpha = (lit ? 0.95 : (lightSky ? 0.4 : 0.42) + (lightSky ? 0.3 : 0.4) * breathe) * al0;
+      g.beginPath(); g.arc(x, y, lit ? 2.6 : 2, 0, TAU); g.fill();
     }
     g.restore();
   }
@@ -370,8 +398,9 @@ export function create(E) {
     g.strokeStyle = 'rgba(255,255,255,0.1)'; g.lineWidth = rb * 0.05;
     g.beginPath(); g.arc(cx, cy + rb * 1.35, rb * 1.3, Math.PI * 1.2, Math.PI * 1.8); g.stroke();
     g.strokeStyle = `rgba(255,255,255,${0.3 + 0.1 * shown})`; g.lineWidth = rb * 0.065;
-    g.beginPath(); g.arc(cx, cy, rb * 0.82, -2.6, -1.95); g.stroke();
-    g.lineWidth = rb * 0.035; g.beginPath(); g.arc(cx, cy, rb * 0.82, -1.82, -1.62); g.stroke();
+    const ho = wordsUp ? -0.42 : 0, hr = rb * (wordsUp ? 0.86 : 0.82);     // window highlight: kept off the words
+    g.beginPath(); g.arc(cx, cy, hr, -2.6 + ho, -1.95 + ho); g.stroke();
+    g.lineWidth = rb * 0.035; g.beginPath(); g.arc(cx, cy, hr, -1.82 + ho, -1.62 + ho); g.stroke();
     g.strokeStyle = 'rgba(255,255,255,0.12)'; g.lineWidth = rb * 0.04;
     g.beginPath(); g.arc(cx, cy, rb * 0.86, 0.3, 0.95); g.stroke();
     g.restore();
@@ -380,20 +409,19 @@ export function create(E) {
     for (let i = 0; i < K; i++) {
       const s = sats[i];
       if (!s.merged) continue;
-      const k = ease.outCubic(s.m), D = lerp(satDist(s), s.pr * rb, k), a = lerp(s.a, s.pa, k);
-      const x = cx + Math.cos(a) * D, y = cy + Math.sin(a) * D + (reduced ? 0 : Math.sin(clockT * 0.7 + s.bob) * 2);
-      const size = sr * 2 * lerp(1, 1.3, s.soft) * (1 + fin * 0.1);
-      if (s.ph >= 0) photos.draw(g, s.ph, x, y, size, { shape: 'bubble', blur: s.soft * 0.4 + fin * 0.2, tone: 'glow', toneMix: 0.2 + s.soft * 0.5 + fin * 0.2,
-        alpha: lerp(1, 0.8, s.soft) * smooth(s.m * 1.4), glow: 0.4, glowColour: pal.glow, shadow: false });
-      else glow(g, x, y, size * 0.75, IRIS[s.hue], 0.3 * smooth(s.m));
+      mergedPos(s, rb, fin);
+      if (s.ph >= 0) photos.draw(g, s.ph, RP.x, RP.y, RP.size, { shape: 'bubble', blur: s.soft * 0.35 + fin * 0.15, tone: 'glow', toneMix: 0.2 + s.soft * 0.45 + fin * 0.2,
+        alpha: lerp(1, 0.84, s.soft) * smooth(s.m * 1.4), glow: 0.4, glowColour: pal.glow, shadow: false });
+      else glow(g, RP.x, RP.y, RP.size * 0.75, IRIS[s.hue], 0.3 * smooth(s.m));
     }
     g.restore();
     // words float on the film surface (never clipped by its edge, so they stay whole)
     if (E.phase !== 'law') {
       const size = clamp(rb * 0.12, 13, 19);
       const wx = cx + (reduced ? 0 : Math.sin(clockT * 0.31) * rb * 0.04);
-      const wy = cy + (hero >= 0 ? rb * 0.36 : rb * 0.04) + (reduced ? 0 : Math.sin(clockT * 0.5) * 3);
-      words.draw(g, wx, wy, { style: 'light', size, maxWidth: Math.max(rb * 1.35, 104), lines: 3, alpha: 0.96, rot: reduced ? 0 : Math.sin(clockT * 0.23) * 0.035,
+      // with a photo behind, the words ride the lower film (the upper film on short stages), clear of faces and joined bubbles
+      const wy = cy + (hero >= 0 ? rb * (wordsUp ? -0.38 : 0.4) : rb * 0.04) + (reduced ? 0 : Math.sin(clockT * 0.5) * 3);
+      words.draw(g, wx, wy, { style: 'light', size, maxWidth: Math.max(rb * (hero >= 0 ? 1.2 : 1.35), 104), lines: 3, alpha: 0.96, rot: reduced ? 0 : Math.sin(clockT * 0.23) * 0.035,
         glowColour: mix(pal.glow, '#ffc8ef', 0.5 + 0.5 * Math.sin(flowT * 0.3)) });
     }
   }
@@ -413,11 +441,11 @@ export function create(E) {
     g.restore();
     // a sparkle riding the window highlight
     const rb = rBase();
-    glint(g, cx - rb * 0.52, cy - rb * 0.6, 7 + 2 * Math.sin(clockT * 1.3), '#ffffff', 0.45 + 0.15 * Math.sin(clockT * 0.9));
+    glint(g, cx - rb * (wordsUp ? 0.7 : 0.52), cy - rb * (wordsUp ? 0.42 : 0.6), 7 + 2 * Math.sin(clockT * 1.3), '#ffffff', 0.45 + 0.15 * Math.sin(clockT * 0.9));
   }
   function drawBands(fin) {
     if (!np || fin >= 1) return;
-    g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round'; g.lineWidth = 1.3;
+    g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round'; g.lineWidth = 1.5;
     for (let q = 0; q < np; q++) {
       const sn = clamp(pullS[q] / M);
       if (sn < 0.08) continue;
@@ -429,7 +457,7 @@ export function create(E) {
         for (let o = -9; o < 9; o++) {
           const j0 = (jc + o + N) % N, j1 = (j0 + 1) % N;
           const w0 = Math.exp((ca[j0] * pullC[q] + sa[j0] * pullN[q] - 1) * KAPPA), w1 = Math.exp((ca[j1] * pullC[q] + sa[j1] * pullN[q] - 1) * KAPPA);
-          const al = 0.75 * sn * (1 - b / 5) * (w0 + w1) * 0.5 * (1 - fin);
+          const al = 0.9 * sn * (1 - b / 5) * (w0 + w1) * 0.5 * (1 - fin);
           if (al < 0.02) continue;
           const r0b = rim[j0] - gap * (0.4 + 0.6 * w0), r1b = rim[j1] - gap * (0.4 + 0.6 * w1);
           g.globalAlpha = al;
@@ -438,6 +466,15 @@ export function create(E) {
       }
     }
     g.restore();
+  }
+  // a joined bubble's place on the film (written into RP: no per-frame objects)
+  const RP = { x: 0, y: 0, size: 0 };
+  function mergedPos(s, rb, fin) {
+    const size = sr * 2 * lerp(1, 1.12, s.soft) * (1 + fin * 0.06);
+    const pr = Math.max(0.3, Math.min(s.pr, 0.93 - size / (2 * Math.max(1, rb))));    // stays wholly on the film
+    const k = ease.outCubic(s.m), sway = reduced ? 0 : 0.05 * Math.sin(clockT * 0.25 + s.bob);
+    const D = lerp(satDist(s), pr * rb, k), a = s.a + angDiff(s.a, s.pa + sway) * k;
+    RP.x = cx + Math.cos(a) * D; RP.y = cy + Math.sin(a) * D + (reduced ? 0 : Math.sin(clockT * 0.7 + s.bob) * 2); RP.size = size;
   }
   function miniBubble(x, y, r, a, hue) {
     const gr = g.createRadialGradient(x - r * 0.3, y - r * 0.35, r * 0.1, x, y, r);
@@ -453,11 +490,13 @@ export function create(E) {
       const s = sats[i];
       const al = s.merged ? 1 - smooth(s.m * 1.6) : 1;
       if (al <= 0.01) continue;
-      let D = satDist(s), a = s.a + (reduced ? 0 : Math.sin(clockT * 0.3 + s.bob) * 0.03), near = 0;
-      if (!s.merged) { near = clamp(1 - (D - sr - rimAt(s.a)) / (sr * 1.6)); D -= near * 5; }     // leans towards the film as it nears
-      else { const k = ease.outCubic(s.m); D = lerp(D, s.pr * rb, k); a = lerp(s.a, s.pa, k); }
-      const x = cx + Math.cos(a) * D, y = cy + Math.sin(a) * D + (reduced ? 0 : Math.sin(clockT * 0.8 + s.bob) * 2.5);
-      if (near > 0 && !s.merged) { const rr = rimAt(s.a); glow(g, cx + Math.cos(s.a) * (rr + D - sr) / 2, cy + Math.sin(s.a) * (rr + D - sr) / 2, sr * 0.9, pal.glow, near * 0.35); }
+      let x, y, near = 0;
+      if (!s.merged) {
+        const D = satDist(s), a = s.a + (reduced ? 0 : Math.sin(clockT * 0.3 + s.bob) * 0.03);
+        near = clamp(1 - (D - sr - rimAt(s.a)) / (sr * 1.6));     // leans towards the film as it nears
+        x = cx + Math.cos(a) * (D - near * 5); y = cy + Math.sin(a) * (D - near * 5) + (reduced ? 0 : Math.sin(clockT * 0.8 + s.bob) * 2.5);
+      } else { mergedPos(s, rb, fin); x = RP.x; y = RP.y; }
+      if (near > 0 && !s.merged) { const mid = (rimAt(s.a) + satDist(s) - sr) / 2; glow(g, cx + Math.cos(s.a) * mid, cy + Math.sin(s.a) * mid, sr * 0.9, pal.glow, near * 0.35); }
       if (s.ph >= 0) photos.draw(g, s.ph, x, y, sr * 2, { shape: 'bubble', glow: 0.35 + near * 0.3, glowColour: pal.glow, shadow: false, alpha: al, scale: s.merged ? lerp(1, 0.9, s.m) : 1 });
       else miniBubble(x, y, sr * 0.82, al, s.hue);
     }
@@ -471,6 +510,7 @@ export function create(E) {
       const rr = rimAt(q.a), x = cx + Math.cos(q.a) * rr, y = cy + Math.sin(q.a) * rr;
       const sn = clamp(q.s / M);
       glow(g, x, y, 22 + 14 * sn, mix(pal.glow, '#ffffff', 0.35), 0.6 + 0.2 * sn);
+      if (waitK > 0.01) glow(g, x, y, 34 + 12 * (1 - waitK), mix(pal.glow, '#ffffff', 0.3), 0.4 * waitK);
       if (Math.hypot(q.x - x, q.y - y) > 9) {
         g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = 'rgba(255,255,255,0.45)'; g.lineWidth = 1.6; g.setLineDash([3, 4]);
         g.beginPath(); g.moveTo(x, y); g.lineTo(q.x, q.y); g.stroke(); g.restore();
@@ -480,20 +520,27 @@ export function create(E) {
     if (ghost.s > 0.5) {
       const rr = rimAt(ghost.a), x = cx + Math.cos(ghost.a) * rr, y = cy + Math.sin(ghost.a) * rr, k = clamp(ghost.s / (M * 0.6));
       glow(g, x, y, 22, mix(pal.glow, '#ffffff', 0.4), 0.6 * k);
+      if (waitK > 0.01) glow(g, x, y, 34 + 12 * (1 - waitK), mix(pal.glow, '#ffffff', 0.3), 0.4 * waitK);
       g.save(); g.strokeStyle = rgba('#ffffff', 0.5 * k); g.lineWidth = 1.5; g.beginPath(); g.arc(x, y, 9, 0, TAU); g.stroke(); g.restore();
     }
     if (anyPull || ghost.s > 0.5) return;
     // the suggested pull point: a glistening bead on the rim with an outward cue
+    // (only while it is the person's move; a closing-move law brings its own guide)
+    if (E.phase !== 'play' || doneFlag) return;
     const a = HA(prog), rr = rimAt(a), x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr;
     const pulse = 0.5 + 0.5 * Math.sin(clockT * 2.4), dim = E.locked ? 0.5 : 1;
+    const cue = lightSky ? ink : '#ffffff';
+    // "not yet": a soft halo swells on the bead (seen with reduced motion too, where nothing wobbles)
+    if (waitK > 0.01) glow(g, x, y, 30 + 10 * (1 - waitK), mix(pal.glow, '#ffffff', 0.3), 0.45 * waitK);
     glow(g, x, y, 22 + 6 * pulse, pal.accent, (0.4 + 0.25 * pulse) * dim);
     const gr = g.createRadialGradient(x - 2, y - 2, 0.5, x, y, 6.5);
     gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, rgba(mix(pal.glow, '#ffffff', 0.3), 0.6));
     g.fillStyle = gr; g.beginPath(); g.arc(x, y, 6, 0, TAU); g.fill();
     g.save(); g.lineCap = 'round';
-    g.strokeStyle = rgba('#ffffff', 0.5 * (1 - pulse) * dim); g.lineWidth = 1.4; g.beginPath(); g.arc(x, y, 9 + 11 * pulse, 0, TAU); g.stroke();
+    if (lightSky) { g.strokeStyle = rgba(ink, 0.45); g.lineWidth = 1.2; g.stroke(); }
+    g.strokeStyle = rgba(cue, 0.5 * (1 - pulse) * dim); g.lineWidth = 1.4; g.beginPath(); g.arc(x, y, 9 + 11 * pulse, 0, TAU); g.stroke();
     const ox = Math.cos(a), oy = Math.sin(a), tx = -oy, ty = ox, c0 = 20 + 4 * pulse;
-    g.strokeStyle = rgba('#ffffff', 0.55 * dim); g.lineWidth = 2;
+    g.strokeStyle = rgba(cue, (lightSky ? 0.6 : 0.55) * dim); g.lineWidth = 2;
     g.beginPath(); g.moveTo(x + ox * c0 + tx * 5, y + oy * c0 + ty * 5); g.lineTo(x + ox * (c0 + 6), y + oy * (c0 + 6)); g.lineTo(x + ox * c0 - tx * 5, y + oy * c0 - ty * 5); g.stroke();
     g.restore();
   }
@@ -516,7 +563,7 @@ export function create(E) {
     get done() { return doneFlag; },
     frame,
     down(p) {
-      if (finAt >= 0) return;
+      if (finAt >= 0 || doneFlag) return;
       const dx = p.x - cx, dy = p.y - cy, r = Math.hypot(dx, dy), a = Math.atan2(dy, dx), rr = rimAt(a);
       if (r > rr * 0.68 && r < Rt * 1.8) {
         // the rim (generous): grab it here
@@ -552,7 +599,7 @@ export function create(E) {
         if (r > rBase() + tense(a) - 6 && finAt < 0) {
           // slow pulls are followed closely; rushing thins the film and it lags behind
           const fast = invLerp(380, 1100, q.spd / stage.s);
-          wanted = Math.min(1, wanted + (dr * lerp(0.3, 0.1, fast)) / (Rt - r0), prog + CAP);
+          wanted = Math.min(1, wanted + (dr * lerp(0.36, 0.11, fast)) / (Rt - r0), prog + CAP);
           if (E.locked && wanted >= prog + CAP - 1e-3) waitNudge();
           if (fast > 0.6 && !rushHinted && prog < 0.8) { rushHinted = true; E.hint('Slowly — let the film follow your finger.'); }
         }
@@ -571,7 +618,7 @@ export function create(E) {
       }
     },
     assist() {
-      if (finAt >= 0) return;
+      if (finAt >= 0 || doneFlag) return;
       assistTo = Math.min(1, Math.max(wanted, prog) + 1 / 8);
       // aim the ghost pull at the nearest bubble still waiting outside, else the suggested point
       let best = null, bd = 1e9;
@@ -599,7 +646,7 @@ export function create(E) {
     },
     finish() {
       finAt = E.now();
-      sats.forEach(merge);
+      sats.forEach((s, i) => merge(s, i, true));
       if (!heroCk && hero >= 0) { heroCk = true; E.checkpoint('photo', hero); }
       E.sound(heavy ? 'breathe-out' : 'shimmer', { intensity: heavy ? 0.35 : 0.45 });
       // the outline's dots lift away as soft light: the film fills it now

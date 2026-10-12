@@ -6,14 +6,18 @@
 // middle of the stage. Then trace the dotted seal along the flap from corner
 // to corner: the flap folds down behind your fingertip like paper being
 // smoothed shut, and a stitched seam of thread tacks it — tacked, never
-// locked. A satin pull-loop tied to the card stays outside the flap the whole
-// time. Win: the envelope rests closed and its retrieval tab is still out,
+// locked. A satin ribbon tied to the card ends in a pull-tab that stays
+// outside the flap the whole time. Win: the envelope rests closed and its retrieval tab is still out,
 // within reach.
 //
 // Photos fan out behind the card like a hand of keepsake cards. As the card
 // goes in they follow one by one, gather into a neat stack and slip into the
 // envelope behind it, each softening into a cool mist as it tucks in; the
-// flap then seals them away (retrievable by the same pull-loop).
+// flap then seals them away (retrievable by the same pull-tab). They stay
+// softly visible through the vellum and the closed flap, and glow through the
+// paper when the envelope lights up like a lantern at the end. Touching the
+// pull-tab gives a small tug — the card lifts a hair in the pocket — to show
+// it can always come back out (it never unseals or adds progress).
 
 import { TAU, clamp, lerp, smooth, ease, rgba, mix, glow, glint, orb, motes, halo, canvas as makeCanvas, Spring, Spring2, Rope } from '../fx.js';
 import { CurveTrace, Wobble } from '../kit.js';
@@ -24,7 +28,7 @@ export const meta = {
   steps: [
     'Drag the card with your words down into the open envelope.',
     'Trace the dotted seal along the flap, from one corner to the other.',
-    'The flap folds shut behind your finger — tacked, not locked — and the pull-loop stays out.',
+    'The flap folds shut behind your finger — tacked, not locked — and the pull-tab stays out.',
   ],
   tapAlt: 'each press slides the card a little deeper, or smooths a little more of the flap shut',
   words: 'Your words are written on the index card; once it is tucked in, they still show softly through the vellum.',
@@ -33,7 +37,7 @@ export const meta = {
     becomes: 'soft photo cards',
     touch: 'As you slide the card in, they follow it one by one;',
     change: 'each softens into a cool, misty light as it tucks into the envelope, and the flap seals them away.',
-    payoff: 'They rest there safely — sealed, never locked — with the pull-loop keeping them within reach.',
+    payoff: 'They rest there safely — sealed, never locked — glowing softly through the paper, with the pull-tab keeping them within reach.',
   },
   finaleSec: 4,
 };
@@ -50,11 +54,13 @@ const TINTS = ['#fbf3e4', '#fbece8', '#eef6ef', '#f1eefb', '#f8f1df', '#ecf3fa']
 export function create(E) {
   const { g, stage, photos, words, pal } = E;
   const reduced = !!E.reduced, low = !!(E.reduced || E.lowStim), heavy = !!E.heavy;
+  const KICK = reduced ? 0.3 : 1;                    // reduced motion: small, critically damped responses
+  const damp = (k, c) => (reduced ? 2 * Math.sqrt(k) : c);
   const R1 = E.round === 1;
   const rnd = E.rand;
   const dpr = Math.min(2, globalThis.devicePixelRatio || 1);
 
-  // loop rounds: new paper, lining, flap curve, card tilt, seal direction, loop side and hero photo
+  // loop rounds: new paper, lining, flap curve, card tilt, seal direction, tab side and hero photo
   const dir = R1 ? 1 : (E.round % 2 === 0 ? -1 : 1);
   const tilt = R1 ? -1 : (rnd() < 0.5 ? -1 : 1);
   const startDX = R1 ? -0.035 : (0.015 + rnd() * 0.05) * tilt;
@@ -62,7 +68,7 @@ export function create(E) {
   const tint = R1 ? TINTS[0] : TINTS[1 + Math.floor(rnd() * (TINTS.length - 1))];
   const liningKind = R1 ? 0 : 1 + Math.floor(rnd() * 3);
   const flapRound = R1 ? 0.16 : 0.07 + rnd() * 0.22;
-  const loopSide = R1 ? 1 : (rnd() < 0.5 ? -1 : 1);
+  const tabSide = R1 ? 1 : (rnd() < 0.5 ? -1 : 1);
   const ribbonHue = R1 ? 0.35 : 0.15 + rnd() * 0.4;
   const twistKind = (E.round - 1) % 3;
   const calm0 = E.calm;
@@ -86,6 +92,8 @@ export function create(E) {
   const ribbonCol = mix(mix(pal.accent, '#ff7aa8', ribbonHue), '#2a1840', 0.1);
   const ribbonHi = mix(ribbonCol, '#ffffff', 0.5), ribbonLo = mix(ribbonCol, '#1a0c2a', 0.3);
   const stitchCol = mix(ribbonCol, '#3a2a5a', 0.3);
+  // the soft pressed seal: deep enough to read on cream paper in every realm (contrast ≥ 3.5 : 1)
+  const sealCol = mix(ribbonCol, '#2a1446', 0.28), sealHi = mix(ribbonCol, '#ffffff', 0.42), sealLo = mix(ribbonCol, '#1a0c2a', 0.5);
   const glowCol = mix(pal.glow, '#ffffff', 0.25);
   const worryCol = mix(pal.accent, pal.warm, 0.45);
 
@@ -96,19 +104,22 @@ export function create(E) {
   let seated = false, sealedAt = -1, doneFlag = false, finAt = -1, twistAt = -1;
   let stepIns = 0, stepSeal = 0, lastHap = -9, lastWait = -9, lastRustle = -9, finLift = 0;
   let elastX = 0, elastY = 0, nudge = 0, camK = 0, cam = 0, camMax = 0, zc = 1, zMax = 1, pyW = 0, guideA = 0;
+  let tabX = 0, tabY = 0, tug = 0;   // the pull-tab's centre (world) and a gentle tug response
   const tmp = { x: 0, y: 0, r: 0 };
   const wob = new Wobble(), flapWob = new Wobble();
   const card = new Spring2(0, 0, { stiffness: 260, damping: 26 });
-  const cardRot = new Spring(0, { stiffness: 150, damping: 15 });
-  const lift = new Spring(0, { stiffness: 220, damping: 18 });
-  const hug = new Spring(0, { stiffness: 240, damping: 11 });
-  const emblem = new Spring(0, { stiffness: 150, damping: 11 });
+  const cardRot = new Spring(0, { stiffness: 150, damping: damp(150, 15) });
+  const lift = new Spring(0, { stiffness: 220, damping: damp(220, 18) });
+  const hug = new Spring(0, { stiffness: 240, damping: damp(240, 11) });
+  const emblem = new Spring(0, { stiffness: 150, damping: damp(150, 11) });
+  const fbQ = new Int16Array(16); let fbHead = 0, fbN = 0, lastPhotoFb = -9;   // photo tuck feedback, released one at a time
   const star = { x: new Spring(0, { stiffness: 30, damping: 9 }), y: new Spring(0, { stiffness: 30, damping: 9 }), tx: 0, ty: 0 };
   const lights = [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }];
 
   // ---- geometry (world coordinates; once the card is in, a gentle camera glides and zooms onto the envelope)
   let W = 0, H = 0, eL = 0, eR = 0, eTop = 0, eB = 0, ecx = 0, flapH = 0, mouthMid = 0, mouthSide = 0, rcE = 6;
-  let cW = 0, cH = 0, x0 = 0, y0 = 0, yS = 0, pS = 0, tol = 40, pad = 30, wordSize = 14, rw = 6, cpad = 3, loopLen = 40;
+  let cW = 0, cH = 0, x0 = 0, y0 = 0, yS = 0, pS = 0, tol = 40, pad = 30, wordSize = 14, rw = 6, cpad = 3, ribbonLen = 40;
+  let short = false, restAng = 0.42, tabW = 20, tabH = 30, tabGrad = null, emblemSpr = null, emblemR = 10;
   const pathX = new Float32Array(NP), pathY = new Float32Array(NP);
   const fX = new Float32Array(NF), fD = new Float32Array(NF), fS = new Float32Array(NF);
   const qx = new Float32Array(NF), qy = new Float32Array(NF), qf = new Float32Array(NF);
@@ -138,13 +149,15 @@ export function create(E) {
     const order = [];
     for (let i = 0; i < n; i++) if (i !== hero) order.push(i);
     order.splice(Math.floor(n / 2), 0, hero);
-    order.forEach((i, j) => ph.push({ i, j, hero: i === hero, spr: new Spring2(0, 0, { stiffness: 85, damping: 13 }), rs: new Spring(0, { stiffness: 90, damping: 11 }),
-      sealed: false, cool: 0, lag: 0, fx: 0, fy: 0, fr: 0, sx: 0, sy: 0, sr: 0, size: 0, w: 0, h: 0, pk: 0 }));
+    order.forEach((i, j) => ph.push({ i, j, hero: i === hero, spr: new Spring2(0, 0, { stiffness: 85, damping: damp(85, 13) }), rs: new Spring(0, { stiffness: 90, damping: damp(90, 11) }),
+      sealed: false, cool: 0, lag: 0, fx: 0, fy: 0, fr: 0, sx: 0, sy: 0, sy0: 0, sr: 0, size: 0, w: 0, h: 0, pk: 0, push: 0 }));
     // they follow the card in one by one; the hero photo goes last
     const rest = ph.filter((o) => !o.hero).sort((a, b) => (a.j - b.j) * dir);
     rest.forEach((o, k) => { o.lag = 0.04 + (rest.length > 1 ? (k / (rest.length - 1)) * 0.26 : 0.1); });
     for (const o of ph) if (o.hero) o.lag = n > 1 ? 0.36 : 0.14;
   }
+  // the hero photo is drawn last: on top of the fan, and on top of the stack once tucked in
+  const drawOrder = ph.filter((o) => !o.hero).concat(ph.filter((o) => o.hero));
   function layoutPhotos() {
     if (!n) return;
     const spanX = Math.min(stage.w * 0.92, W * 1.32) - pS;
@@ -154,13 +167,16 @@ export function create(E) {
       o.size = pS * (o.hero && n > 1 ? 1.1 : 1);
       const { w, h } = photos.size(o.i, 'card', o.size);
       o.w = w; o.h = h;
-      const xj = n > 1 ? (o.j - (n - 1) / 2) * dx : -W * 0.1 * loopSide;
+      const xj = n > 1 ? (o.j - (n - 1) / 2) * dx : -W * 0.1 * tabSide;
       const u = xj / (W * 0.66);
-      o.fx = xj; o.fy = -cH / 2 - h * 0.36 + u * u * h * 0.3 - (o.hero && n > 1 ? h * 0.06 : 0);
-      o.fr = u * 0.17 + (n === 1 ? -0.08 * loopSide : 0);
-      o.sx = n > 1 ? (o.j - (n - 1) / 2) * sp : -W * 0.08 * loopSide;
+      o.fx = xj; o.fy = -cH / 2 - h * (short ? 0.24 : 0.36) + u * u * h * (short ? 0.22 : 0.3) - (o.hero && n > 1 ? h * 0.06 : 0);
+      o.fr = u * 0.17 + (n === 1 ? -0.08 * tabSide : 0);
+      o.sx = n > 1 ? (o.j - (n - 1) / 2) * sp : -W * 0.08 * tabSide;
       o.sx = clamp(o.sx, -(W / 2 - w / 2 - 6), W / 2 - w / 2 - 6);
-      o.sy = eTop + H * 0.035 + h / 2 + ((o.j * 7) % 3) * H * 0.012 - yS;
+      // tucked in, their tops stand a little above the rim (keepsakes you can still see); the closing flap presses each one down
+      const st = ((o.j * 7) % 3) * H * 0.012;
+      o.sy = eTop + H * 0.035 + h / 2 + st - yS;
+      o.sy0 = eTop - Math.min(H * 0.13, h * 0.24) + h / 2 + st - yS;
       o.sr = ((o.j % 2) - 0.5) * 0.05;
     }
   }
@@ -169,7 +185,7 @@ export function create(E) {
     o.pk = pk;
     cardAt(pk, tmp);
     const c = smooth(clamp(pk / 0.62));
-    const ox = lerp(o.fx, o.sx, c), oy = lerp(o.fy, o.sy, c);
+    const ox = lerp(o.fx, o.sx, c), oy = lerp(o.fy, lerp(o.sy0, o.sy, o.push), c);
     const cs = Math.cos(tmp.r * (1 - c)), sn = Math.sin(tmp.r * (1 - c));
     const sway = (1 - c) * (reduced ? 0.25 : 1);
     const bx = tmp.x, by = tmp.y, br = tmp.r;
@@ -182,26 +198,31 @@ export function create(E) {
   // -------------------------------------------------------------- fit --
   function fit() {
     const s = stage.s;
-    const up = n ? 1.44 : 1.16, down = 1.12;
+    // short stages (320×568): a lower photo fan and a card that starts at the rim leave room for a larger envelope
+    short = stage.h < 300;
+    const up = n ? (short ? 1.15 : 1.44) : (short ? 1.02 : 1.16), down = short ? 1.06 : 1.12;
     W = Math.min(stage.w * 0.8, 330 * s);
     H = W / 1.58;
     const maxH = (stage.h * 0.95) / (up + down);
     if (H > maxH) { H = maxH; W = H * 1.58; }
     ecx = stage.cx; eTop = stage.cy + ((up - down) * H) / 2;
     eL = ecx - W / 2; eR = ecx + W / 2; eB = eTop + H;
-    flapH = H * 0.47; mouthMid = H * 0.37; rcE = H * 0.05; mouthSide = rcE * 0.55;
+    // (a shallower flap on short stages leaves room for the words' third line below the seal)
+    flapH = H * (short ? 0.4 : 0.47); mouthMid = H * (short ? 0.33 : 0.37); rcE = H * 0.05; mouthSide = rcE * 0.55;
     // sealing view: envelope, open flap and pull-tab centred, as large as the stage allows
     pyW = eTop + H * 0.3;
-    zMax = clamp(Math.min((stage.w * 0.84) / W, (stage.h * 0.9) / (H * 1.62)), 1, 1.55);
-    camMax = pyW - (stage.cy + stage.h * 0.02);
+    // (on short stages the zoom stays modest and the envelope sits a little low, so the twist plate never covers the pull-tab)
+    zMax = clamp(Math.min((stage.w * 0.84) / W, (stage.h * 0.9) / (H * 1.62)), 1, short ? 1.18 : 1.55);
+    camMax = pyW - (stage.cy + stage.h * (short ? 0.1 : 0.02));
     setCam(camK);
     cW = W * 0.84; cH = Math.min(cW / 1.72, H * 0.78);
-    yS = eTop + H * 0.15 + cH / 2;
-    x0 = ecx + startDX * W; y0 = eTop - H * 0.06 - cH / 2;
-    pS = Math.min(W * 0.42, H * 0.64) * (n >= 5 ? 0.86 : 1);
+    yS = eTop + H * 0.16 + cH / 2;
+    x0 = ecx + startDX * W; y0 = eTop - H * (short ? -0.02 : 0.06) - cH / 2;
+    pS = Math.min(W * 0.42, H * 0.64) * (n >= 5 ? 0.86 : 1) * (short ? 0.9 : 1);
+    restAng = short ? 1.15 : 0.42;   // the pull-tab stands up and out (more sideways when headroom is short)
     tol = 40 * s + 10; pad = Math.ceil(42 * s);
     wordSize = Math.max(13, Math.min(18, cW * 0.072));
-    rw = Math.max(6, 7.5 * s); loopLen = H * 0.5;
+    rw = Math.max(6, 7.5 * s); ribbonLen = H * 0.5;
     for (let i = 0; i < NP; i++) { cardAt(i / (NP - 1), tmp); pathX[i] = tmp.x; pathY[i] = tmp.y; }
     for (let k = 0; k < NF; k++) { const fr = k / (NF - 1); fX[k] = eL + W * fr; fD[k] = depthAt(Math.abs(fX[k] - ecx) / (W / 2)); fS[k] = dir > 0 ? fr : 1 - fr; qx[k] = fX[k]; qy[k] = eTop - fD[k]; qf[k] = 0; }
     const pts = [];
@@ -215,9 +236,9 @@ export function create(E) {
     for (const o of ph) { photoTarget(o, 0); o.spr.set(tmp.x, tmp.y); o.rs.set(tmp.r); }
     computeFlap(0);
     const a = anchorWorld();
-    rope = new Rope(LN, a.x, a.y, a.x + loopSide * loopLen * 0.3, a.y - loopLen, { gravity: -45, iterations: 5 });
+    rope = new Rope(LN, a.x, a.y, a.x + tabSide * Math.sin(restAng) * ribbonLen, a.y - Math.cos(restAng) * ribbonLen, { gravity: -45, iterations: 5, slack: 1.05 });
     rope.pinB = false;
-    for (let i = 0; i < 60; i++) { loopEnds(a); rope.update(1 / 60, ends.ax, ends.ay, null, null); }
+    for (let i = 0; i < 60; i++) { ribbonRoot(a); rope.update(1 / 60, ends.ax, ends.ay, null, null); }
   }
 
   // ---------------------------------------------------------- sprites --
@@ -314,8 +335,8 @@ export function create(E) {
     b.globalAlpha = 0.06; b.fillStyle = pat(b, fibreTile); b.fillRect(0, 0, cW, cH); b.globalAlpha = 1;
     b.restore();
     b.strokeStyle = 'rgba(70,50,60,0.16)'; b.lineWidth = 1; rr(b, 0.5, 0.5, cW - 1, cH - 1, cH * 0.06); b.stroke();
-    // the eyelet the pull-loop is tied through
-    const ax = cW / 2 + loopSide * cW * 0.3, ay = cH * 0.085;
+    // the eyelet the pull-tab ribbon is tied through
+    const ax = cW / 2 + tabSide * cW * 0.3, ay = cH * 0.085;
     b.fillStyle = rgba(ribbonLo, 0.75); b.beginPath(); b.arc(ax, ay, 3.8, 0, TAU); b.fill();
     b.fillStyle = '#fffaf2'; b.beginPath(); b.arc(ax, ay, 1.7, 0, TAU); b.fill();
     if (!shadowSpr) {
@@ -330,6 +351,33 @@ export function create(E) {
     liningGrad.addColorStop(0, liningA); liningGrad.addColorStop(1, liningB);
     pocketPath = new Path2D(); tracePocket(pocketPath);
     insidePath = new Path2D(); insidePath.rect(stage.x - stage.w, eTop - stage.h * 3, stage.w * 3, stage.h * 3); insidePath.rect(eL + 1.5, eTop - 0.5, W - 3, H - 1.5);
+    // pull-tab gradient (local space: drawn under translate/rotate) and the pressed seal, built once per fit
+    tabW = 16 + 8 * s; tabH = 23 + 10 * s;
+    tabGrad = g.createLinearGradient(-tabW / 2, 0, tabW / 2, tabH);
+    tabGrad.addColorStop(0, '#fffdf6'); tabGrad.addColorStop(0.55, mix(band, '#ffffff', 0.3)); tabGrad.addColorStop(1, mix(band, ribbonCol, 0.25));
+    emblemR = H * 0.085;
+    const er = emblemR, eh = Math.ceil(er * 1.16), ES = Math.ceil(eh * 2 * dpr);
+    emblemSpr = makeCanvas(ES, ES);
+    b = emblemSpr.getContext('2d'); b.scale(dpr, dpr); b.translate(eh, eh);
+    // a soft scalloped paper seal, pressed on (it peels back off: tacked, never locked)
+    b.beginPath();
+    for (let i = 0; i <= 72; i++) { const a = (i / 72) * TAU, r2 = er * (1 + 0.07 * Math.cos(a * 12)); i ? b.lineTo(Math.cos(a) * r2, Math.sin(a) * r2) : b.moveTo(r2, 0); }
+    b.closePath();
+    const egr = b.createRadialGradient(-er * 0.35, -er * 0.4, er * 0.08, 0, 0, er * 1.08);
+    egr.addColorStop(0, sealHi); egr.addColorStop(0.5, sealCol); egr.addColorStop(1, sealLo);
+    b.fillStyle = egr; b.fill();
+    b.strokeStyle = rgba(sealLo, 0.6); b.lineWidth = 1; b.stroke();
+    // a raised rim and a ring of tiny stitches
+    b.strokeStyle = rgba('#fff6ea', 0.55); b.lineWidth = Math.max(1, er * 0.07); b.beginPath(); b.arc(0, 0, er * 0.74, 0, TAU); b.stroke();
+    b.fillStyle = rgba('#fff6ea', 0.7);
+    for (let i = 0; i < 16; i++) { const a = (i / 16) * TAU + 0.1; b.beginPath(); b.arc(Math.cos(a) * er * 0.88, Math.sin(a) * er * 0.88, Math.max(0.7, er * 0.035), 0, TAU); b.fill(); }
+    // a soft pressed star (light, not wax), with a tiny drop so it reads on any realm
+    for (let pass = 0; pass < 2; pass++) {
+      const ox = pass ? 0 : er * 0.04, oy = pass ? 0 : er * 0.07;
+      b.fillStyle = pass ? '#fffaf2' : rgba(sealLo, 0.55); b.beginPath();
+      for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i / 10) * TAU, r2 = i % 2 ? er * 0.2 : er * 0.47; const px = ox + Math.cos(a) * r2, py = oy + Math.sin(a) * r2; i ? b.lineTo(px, py) : b.moveTo(px, py); }
+      b.closePath(); b.fill();
+    }
   }
 
   // ------------------------------------------------------------- trace --
@@ -340,11 +388,11 @@ export function create(E) {
   }
   function setTrace(frac) { tr.i = frac >= 0.999 ? tr.last : traceIndex(frac); }
 
-  // ---------------------------------------------------------- the loop --
+  // ------------------------------------------------------- the pull-tab --
   const ends = { ax: 0, ay: 0, under: 0 };
   const anc = { x: 0, y: 0 };
   function anchorWorld() {
-    const ax = loopSide * cW * 0.3, ay = -cH / 2 + cH * 0.085, c = Math.cos(cardRot.x), s = Math.sin(cardRot.x), sc = 1 + 0.035 * lift.x;
+    const ax = tabSide * cW * 0.3, ay = -cH / 2 + cH * 0.085, c = Math.cos(cardRot.x), s = Math.sin(cardRot.x), sc = 1 + 0.035 * lift.x;
     anc.x = card.x + (ax * c - ay * s) * sc; anc.y = card.y + (ax * s + ay * c) * sc;
     return anc;
   }
@@ -354,7 +402,7 @@ export function create(E) {
     out.x = lerp(qx[k], qx[k + 1], u); out.y = lerp(qy[k], qy[k + 1], u); out.f = lerp(qf[k], qf[k + 1], u);
     return out;
   }
-  function loopEnds(a) {
+  function ribbonRoot(a) {
     // tied through the eyelet; once the flap folds over it, held under the flap edge
     let ax = a.x, ay = a.y;
     flapAt(ax, fa);
@@ -369,10 +417,9 @@ export function create(E) {
   // ----------------------------------------------------------- frame --
   function frame(dt, t) {
     // ---- simulation (progress only moves from input or presses, always through the law)
-    if (assistTo != null) {
-      if (E.locked) assistTo = null;
-      else { wanted = Math.min(assistTo, wanted + dt * ASSIST_RATE); if (wanted >= assistTo - 1e-4) assistTo = null; }
-    }
+    // a press is held (not dropped) while the law asks for a pause, and resumes when it opens; the BANK cap
+    // below still stops it running ahead of the law, so every press delivers its full step under every law
+    if (assistTo != null && !E.locked) { wanted = Math.min(assistTo, wanted + dt * ASSIST_RATE); if (wanted >= assistTo - 1e-4) assistTo = null; }
     if (insReal < 0.999) wanted = Math.min(wanted, S1);
     prog = E.gate(wanted);
     if (wanted > prog + BANK) wanted = prog + BANK;
@@ -389,7 +436,7 @@ export function create(E) {
     const ss = Math.floor(sealReal * 9 + 1e-6);
     if (ss > stepSeal) { stepSeal = ss; if (ss < 9) E.sound('pluck', { note: Math.min(9, ss + 1), intensity: 0.3, pitch: heavy ? 0.9 : 1 }); tick(); }
     if (!seated && insReal >= 0.999) {
-      seated = true; hug.v -= 6;
+      seated = true; hug.v -= 6 * KICK;
       E.sound('drop-in', { intensity: 0.45 }); E.haptic('pop'); E.checkpoint('step');
       E.ripples.add(ecx, sY(eTop + mouthMid), { colour: glowCol, speed: 60, alpha: 0.4, r: 8 });
       E.hint(dir > 0 ? 'Now trace the dotted seal from the left corner.' : 'Now trace the dotted seal from the right corner.');
@@ -397,7 +444,7 @@ export function create(E) {
     if (sealedAt < 0 && sealReal >= 0.999) {
       sealedAt = t; emblem.target = 1;
       E.sound('settle', { intensity: 0.45 }); E.sound('chime', { intensity: 0.3 }); E.checkpoint('step');
-      E.ripples.add(ecx, sY(eTop + depthAt(0) - H * 0.085), { colour: glowCol, speed: 55, alpha: 0.45, r: 6 });
+      E.ripples.add(ecx, sY(eTop + depthAt(0) - H * 0.11), { colour: glowCol, speed: 55, alpha: 0.45, r: 6 });
     }
     if (!doneFlag && sealedAt >= 0 && !(drag && drag.mode === 'seal') && assistTo == null && sealShown > 0.992 && t - sealedAt > 0.3) doneFlag = true;
     // once the card is in, the envelope glides up to the middle of the stage to be sealed
@@ -415,37 +462,62 @@ export function create(E) {
     let ex = elastX, ey = elastY;
     if (insShown > 0.42) { const m = (W - cW) / 2 - 3; ex = clamp(ex, -m, m); ey = clamp(ey, -22, Math.max(0, eB - 3 - (yS + cH / 2))); }
     const free = 1 - smooth(clamp(insShown * 1.8));
-    const bob = free * Math.sin(t * 1.15) * 3.2 * (reduced ? 0.35 : 1);
-    nudge *= Math.exp(-dt * 3);
+    const bob = free * Math.sin(t * 1.15) * 3.2 * (low ? 0.35 : 1);
+    nudge *= Math.exp(-dt * 3); tug *= Math.exp(-dt * 2.5);
     card.to(tx + ex, ty + ey + bob); card.update(dt);
-    const fl = reduced ? 0 : heavy ? 0.03 * Math.sin(t * 1.2) : 0.016 * Math.sin(t * 9.5) + 0.009 * Math.sin(t * 15.7 + 1);
+    // a worried tremble (a slow sway when the feeling is heavy); none with reduced motion or low stimulation
+    const fl = low ? 0 : heavy ? 0.03 * Math.sin(t * 1.2) : 0.016 * Math.sin(t * 9.5) + 0.009 * Math.sin(t * 15.7 + 1);
     cardRot.target = tr0 + fl * agit * free * (drag ? 0.4 : 1) + wob.update(dt) * 0.05 + ex * 0.0016 + nudge;
     cardRot.update(dt);
     lift.target = drag && drag.mode === 'card' ? 1 : 0; lift.update(dt);
     hug.update(dt); emblem.update(dt); flapWob.update(dt);
     for (const o of ph) {
+      // the flap folding over a photo presses it down into the pocket (driven by the traced seal, never by time)
+      if (o.pk > 0.5) {
+        const hx = ecx + o.sx, f = Math.max(flapAt(hx - o.w * 0.45, fa).f, flapAt(hx + o.w * 0.45, fa).f);
+        o.push = Math.max(o.push, smooth(clamp(f * 2.2)), sealedAt >= 0 ? 1 : 0);
+      }
       photoTarget(o, t); o.spr.to(tmp.x, tmp.y); o.rs.target = tmp.r; o.spr.update(dt); o.rs.update(dt);
       if (!o.sealed && o.pk > 0.8) {
-        o.sealed = true; sealedCount++;
+        o.sealed = true;
         photos.dust(o.i, sX(o.spr.x), sY(o.spr.y), o.size * 0.8 * zc, low ? 5 : 11, { shape: 'card', up: 22, speed: 16, sizePx: 4 });
-        E.sound('glass', { note: 2 + (sealedCount % 6), intensity: 0.32 }); E.checkpoint('photo', o.i);
+        if (fbN < fbQ.length) { fbQ[(fbHead + fbN) % fbQ.length] = o.i; fbN++; }   // the sound + Mallow reaction is queued
       }
       if (o.sealed) o.cool = Math.min(1, o.cool + dt / 1.1);
+    }
+    // a fast drag tucks every photo at once: the visuals stay simultaneous, the feedback is released one by one
+    if (fbN && t - lastPhotoFb >= 0.16) {
+      const i = fbQ[fbHead]; fbHead = (fbHead + 1) % fbQ.length; fbN--; lastPhotoFb = t; sealedCount++;
+      E.sound('glass', { note: 2 + (sealedCount % 6), intensity: 0.32 }); E.checkpoint('photo', i);
     }
 
     computeFlap(t);
     if (dt > 0) {
-      loopEnds(anchorWorld());
+      ribbonRoot(anchorWorld());
       // a slow travelling breeze gives the satin a soft S-curve
       const wind = (reduced ? 14 : 40) * (1 - calm0 * 0.4);
-      for (let i = 1; i < LN; i++) rope.x[i] += (Math.sin(t * 0.9 - i * 0.55) * wind + loopSide * 22) * dt * dt * (i / LN);
+      for (let i = 1; i < LN; i++) rope.x[i] += (Math.sin(t * 0.9 - i * 0.55) * wind + tabSide * 22) * dt * dt * (i / LN);
+      // a soft shape spring keeps the satin standing up and out of the mouth, so the tab always stays clear of the
+      // flap (it never flops back in as a hook when the card drops); a little damping settles it after a tug
+      const ks = (seated ? 70 : 34) * dt * dt, dmp = 1 - Math.exp(-dt * (seated ? 7 : 4));
+      // (the target matches the rope's own rest length, so the satin is never compressed into a zigzag)
+      // a gentle outward bow (chord 0.97, bow 0.08: the same arc length) reads as soft satin rather than a stick
+      const Lr = rope.seg * (LN - 1), ux = Math.sin(restAng) * tabSide * Lr * 0.97, uy = -Math.cos(restAng) * Lr * 0.97;
+      const bx = Math.cos(restAng) * tabSide * Lr * 0.08, by = Math.sin(restAng) * Lr * 0.08;
+      for (let i = 1; i < LN; i++) {
+        const f = i / (LN - 1), w = ks * (0.3 + 0.7 * f * f), bw = Math.sin(f * Math.PI);
+        rope.x[i] += (ends.ax + ux * f + bx * bw - rope.x[i]) * w; rope.y[i] += (ends.ay + uy * f + by * bw - rope.y[i]) * w;
+        rope.px[i] += (rope.x[i] - rope.px[i]) * dmp; rope.py[i] += (rope.y[i] - rope.py[i]) * dmp;
+      }
       rope.update(dt, ends.ax, ends.ay, null, null);
     }
 
     // finale motion
     if (finAt >= 0) {
       const k = t - finAt;
-      finLift = heavy ? -H * 0.025 * smooth(clamp(k / 2.2)) : H * (0.06 * ease.outBack(clamp(k / 0.9)) - 0.025 * smooth(clamp((k - 1.1) / 1.6)));
+      finLift = heavy ? -H * 0.025 * smooth(clamp(k / 2.2))
+        : reduced ? H * (0.05 * smooth(clamp(k / 1.2)) - 0.02 * smooth(clamp((k - 1.3) / 1.6)))   // no overshoot with reduced motion
+          : H * (0.06 * ease.outBack(clamp(k / 0.9)) - 0.025 * smooth(clamp((k - 1.1) / 1.6)));
       const rate = (heavy ? 3 : 7) * (low ? 0.4 : 1);
       if (E.rand() < dt * rate) {
         const q = tr.pointAt(E.rand());
@@ -457,9 +529,9 @@ export function create(E) {
     const calmK = Math.max(calm0, smooth(prog));
     const fin = finAt >= 0 ? smooth(clamp((t - finAt) / 2.2)) : 0;
     motes(g, stage.x, stage.y, stage.w, stage.h, t * (reduced ? 0.3 : 1), mix(pal.glow, '#ffffff', 0.45), { n: low ? 12 : 24, alpha: 0.32, seed: 34 + E.round, size: 1.5 });
+    drawAmbient(t, calmK, fin);   // screen space, sized to stay inside the stage at any zoom
     g.save(); g.translate(ecx, pyW - cam - finLift); g.scale(zc, zc); g.translate(-ecx, -pyW);
     if (fin > 0 && !reduced) { const b = 1 + 0.012 * fin * Math.sin((t - finAt) * 1.6); g.translate(ecx, eTop + H * 0.5); g.scale(b, b); g.translate(-ecx, -(eTop + H * 0.5)); }
-    drawAmbient(t, calmK, fin);
     if (twistAt >= 0 && twistKind === 2) drawMoon(t);
     drawEnvelopeBack(t, calmK);
     drawFlapBack();
@@ -467,6 +539,7 @@ export function create(E) {
     drawCard(t, calmK);
     drawPocket(fin);
     drawFlapFront();
+    drawPhotoGhosts(fin, true);
     drawSeal(t, fin);
     drawRibbon(t, fin);
     drawEmblem(t, fin);
@@ -498,9 +571,15 @@ export function create(E) {
 
   // ------------------------------------------------------------ drawing --
   function drawAmbient(t, calmK, fin) {
-    const cy = eTop + H * 0.3;
-    glow(g, ecx, cy, W * (0.95 + 0.04 * Math.sin(t * 0.5)), mix(worryCol, glowCol, calmK), (0.12 + 0.06 * calmK + fin * 0.08) * (heavy ? 0.85 : 1));
-    if (!low) halo(g, ecx, cy, W * 0.95, t, glowCol, { rings: 3, alpha: 0.045 + 0.035 * calmK, speed: 0.045 });
+    // screen space; sized to the room left inside the stage (and clipped to it), so nothing reaches the title or the dock
+    const cy = sY(eTop + H * 0.3);
+    const room = Math.max(24, Math.min(stage.w * 0.5, cy - stage.y, stage.y + stage.h - cy) - 8);
+    g.save(); g.beginPath(); g.rect(stage.x, stage.y, stage.w, stage.h); g.clip();
+    const gr = Math.min(W * zc * 0.95, room / 0.8);
+    glow(g, ecx, cy, gr * (1 + 0.03 * Math.sin(t * 0.5)), mix(worryCol, glowCol, calmK), (0.12 + 0.06 * calmK + fin * 0.08) * (heavy ? 0.85 : 1));
+    // the halo's outer ring reaches 1.1 r
+    if (!low) halo(g, ecx, cy, Math.min(W * zc * 0.95, room / 1.1), t, glowCol, { rings: 3, alpha: 0.045 + 0.035 * calmK, speed: 0.045 });
+    g.restore();
   }
   function drawEnvelopeBack(t, calmK) {
     g.save(); g.translate(ecx, eB); g.scale(1 + 0.02 * hug.x, 1 - 0.03 * hug.x); g.translate(-ecx, -eB);
@@ -536,12 +615,12 @@ export function create(E) {
   }
   function drawPhotos() {
     if (!n) return;
-    for (const o of ph) {
+    for (const o of drawOrder) {
       const inside = o.pk > 0.25;
       g.save(); if (inside) g.clip(insidePath);
       const fresh = 1 - o.cool;
       photos.draw(g, o.i, o.spr.x, o.spr.y, o.size * (1 - 0.05 * o.cool), { shape: 'card', rot: o.rs.x, tone: 'mist', toneMix: 0.5 * o.cool, blur: 0.12 * o.cool,
-        glow: o.pk < 0.6 ? 0.3 + (o.hero ? 0.15 : 0) : 0.12 * fresh, glowColour: glowCol, shadow: o.pk < 0.4 });
+        glow: o.pk < 0.6 ? 0.3 + (o.hero ? 0.15 : 0) : fresh > 0.05 ? 0.12 * fresh : 0, glowColour: glowCol, shadow: o.pk < 0.4 });
       if (o.sealed && o.cool < 1) glow(g, o.spr.x, o.spr.y, o.size * 0.7, glowCol, 0.45 * (1 - o.cool));
       g.restore();
     }
@@ -567,7 +646,7 @@ export function create(E) {
     g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
     // the little knot tying the loop through the eyelet (hidden once the flap covers it)
     if (ends.under < 0.98) {
-      const kx = loopSide * cW * 0.3, ky = -cH / 2 + cH * 0.085;
+      const kx = tabSide * cW * 0.3, ky = -cH / 2 + cH * 0.085;
       g.globalAlpha = 1 - ends.under;
       g.fillStyle = ribbonLo; g.beginPath(); g.ellipse(kx, ky, rw * 0.62, rw * 0.5, 0, 0, TAU); g.fill();
       g.fillStyle = ribbonCol; g.beginPath(); g.ellipse(kx, ky - 0.6, rw * 0.48, rw * 0.36, 0, 0, TAU); g.fill();
@@ -575,9 +654,36 @@ export function create(E) {
     }
     g.restore();
     if (E.phase !== 'law') {
-      const c = Math.cos(r), s = Math.sin(r), wy = cH * 0.14 * sc;
-      words.draw(g, x - s * wy, y + c * wy, { style: 'ink', size: wordSize, maxWidth: cW * 0.82, lines: 2, rot: r, colour: ink });
+      const c = Math.cos(r), s = Math.sin(r), wy = cH * 0.16 * sc;
+      words.draw(g, x - s * wy, y + c * wy, { style: 'ink', size: wordSize, maxWidth: cW * (short ? 0.9 : 0.84), lines: 3, rot: r, colour: ink });
     }
+  }
+  // the card's outline as a clip hole: tucked photos sit behind the card, so their ghosts never cross it
+  function clipOutsideCard() {
+    const c = Math.cos(cardRot.x), s = Math.sin(cardRot.x), sc = 1 + 0.035 * lift.x, hw = (cW / 2 - 1) * sc, hh = (cH / 2 - 1) * sc;
+    g.beginPath(); g.rect(eL - W, eTop - H * 3, W * 3, H * 5);
+    g.moveTo(card.x + (-hw * c + hh * s), card.y + (-hw * s - hh * c));
+    g.lineTo(card.x + (hw * c + hh * s), card.y + (hw * s - hh * c));
+    g.lineTo(card.x + (hw * c - hh * s), card.y + (hw * s + hh * c));
+    g.lineTo(card.x + (-hw * c - hh * s), card.y + (-hw * s + hh * c));
+    g.closePath(); g.clip('evenodd');
+  }
+  // tucked photos stay softly present: seen through the vellum front, then (fainter) through the closed flap,
+  // and glowing through the paper when the envelope lights up like a lantern
+  function drawPhotoGhosts(fin, onFlap) {
+    if (!n || insShown < 0.45) return;
+    if (onFlap) { let any = false; for (let k = 1; k < NF - 1; k++) if (qy[k] > eTop + 2) { any = true; break; } if (!any) return; }
+    const base = onFlap ? 0.22 + 0.16 * fin : 0.3 + 0.12 * fin;
+    g.save();
+    if (onFlap) { g.beginPath(); g.rect(eL - W, eTop, W * 3, H * 3); g.clip(); flapPath(); g.clip(); } else g.clip(pocketPath);
+    clipOutsideCard();
+    for (const o of drawOrder) {
+      if (o.pk < 0.55) continue;
+      const a = base * smooth((o.pk - 0.55) / 0.3) * (o.hero ? 1.3 : 1);
+      photos.draw(g, o.i, o.spr.x, o.spr.y, o.size * (1 - 0.05 * o.cool), { shape: 'card', rot: o.rs.x, alpha: a, tone: 'mist', toneMix: 0.55, blur: onFlap ? 0.5 : 0.3, shadow: false });
+      if (fin > 0) glow(g, o.spr.x, o.spr.y - o.h * 0.3, o.w * 0.55, mix(pal.warm, '#fff3d6', 0.5), 0.22 * fin * (heavy ? 0.7 : 1));
+    }
+    g.restore();
   }
   function drawPocket(fin) {
     g.save();
@@ -587,11 +693,12 @@ export function create(E) {
     // at the end the envelope glows softly from within, like a paper lantern
     if (fin > 0) glow(g, ecx, eTop + H * 0.55, W * 0.72, mix(pal.warm, '#fff3d6', 0.6), fin * (heavy ? 0.22 : 0.3) * (0.85 + 0.15 * Math.sin(E.now() * 1.1)));
     g.restore();
+    drawPhotoGhosts(fin, false);
     // ink showing through the vellum
     if (insShown > 0.3 && E.phase !== 'law') {
-      const x = card.x, y = card.y, r = cardRot.x, c = Math.cos(r), s = Math.sin(r), wy = cH * 0.14;
+      const x = card.x, y = card.y, r = cardRot.x, c = Math.cos(r), s = Math.sin(r), wy = cH * 0.16;
       g.save(); g.clip(pocketPath);
-      words.draw(g, x - s * wy, y + c * wy, { style: 'ink', size: wordSize, maxWidth: cW * 0.82, lines: 2, rot: r, colour: mix(ink, paper, 0.1), alpha: 0.7 * smooth((insShown - 0.3) / 0.4) });
+      words.draw(g, x - s * wy, y + c * wy, { style: 'ink', size: wordSize, maxWidth: cW * (short ? 0.9 : 0.84), lines: 3, rot: r, colour: mix(ink, paper, 0.1), alpha: 0.7 * smooth((insShown - 0.3) / 0.4) });
       g.restore();
     }
   }
@@ -618,25 +725,48 @@ export function create(E) {
   function drawSeal(t, fin) {
     if (!seated) return;
     const P = tr.pts, iS = sealedAt >= 0 ? tr.last : traceIndex(sealShown);
+    const u = 1 / zc;   // world units per screen pixel: the guide keeps the same on-screen weight at any zoom
     g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
+    if (iS > 0) {
+      // the stitched seam behind the finger: a soft light, a shadowed thread of tacking stitches
+      g.beginPath(); g.moveTo(P[0][0], P[0][1]); for (let k = 1; k <= iS; k++) g.lineTo(P[k][0], P[k][1]);
+      g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = rgba(pal.glow, 0.2 + 0.12 * fin); g.lineWidth = 9 * u; g.stroke(); g.restore();
+      g.setLineDash([6 * u, 4.5 * u]);
+      g.save(); g.translate(0.6 * u, 1 * u); g.strokeStyle = rgba(sealLo, 0.45); g.lineWidth = 3.2 * u; g.stroke(); g.restore();
+      g.strokeStyle = rgba(stitchCol, 0.95); g.lineWidth = 2.8 * u; g.stroke();
+      g.strokeStyle = rgba('#ffffff', 0.35); g.lineWidth = 0.9 * u; g.stroke();
+      g.setLineDash([]);
+    }
     if (sealedAt < 0 && guideA > 0.01) {
       g.globalAlpha = guideA;
-      const pulse = 0.5 + 0.5 * Math.sin(t * 2.4);
-      for (let k = iS + 5; k < P.length; k += 5) {
-        const a = 0.35 + 0.35 * Math.sin(t * 3 - k * 0.12);
-        g.fillStyle = rgba(stitchCol, 0.55 * a + 0.25); g.beginPath(); g.arc(P[k][0], P[k][1], 1.8 + a * 0.9, 0, TAU); g.fill();
+      const pulse = 0.5 + 0.5 * Math.sin(t * 2.4), held = drag && drag.mode === 'seal';
+      // the seam still to sew: thread-coloured dashes with a dark outline (cream paper) on a pale halo (dark lining)
+      if (iS < tr.last - 2) {
+        g.beginPath(); g.moveTo(P[iS][0], P[iS][1]); for (let k = iS + 1; k < P.length; k++) g.lineTo(P[k][0], P[k][1]);
+        g.strokeStyle = rgba(paperHi, 0.38); g.lineWidth = 8 * u; g.stroke();
+        g.setLineDash([7 * u, 6 * u]); g.lineDashOffset = reduced ? 0 : -t * 9 * u;
+        g.strokeStyle = rgba(sealLo, 0.55); g.lineWidth = 5.4 * u; g.stroke();
+        g.strokeStyle = rgba(stitchCol, 0.97); g.lineWidth = 3.6 * u; g.stroke();
+        g.setLineDash([]); g.lineDashOffset = 0;
       }
-      const hx = P[iS][0], hy = P[iS][1];
-      glow(g, hx, hy, 22 + 4 * pulse, glowCol, drag && drag.mode === 'seal' ? 0.85 : 0.5 + 0.2 * pulse);
-      g.strokeStyle = rgba(stitchCol, 0.75); g.lineWidth = 1.8; g.beginPath(); g.arc(hx, hy, 9 + 2 * pulse, 0, TAU); g.stroke();
+      // where to put your finger: an opaque pulsing ring around a satin bead, with a chevron pointing the way
+      const hx = P[iS][0], hy = P[iS][1], j = Math.min(tr.last, iS + 6), ang = Math.atan2(P[j][1] - hy, P[j][0] - hx);
+      glow(g, hx, hy, (24 + 4 * pulse) * u, glowCol, held ? 0.75 : 0.4 + 0.15 * pulse);
+      const ringR = (12.5 + (reduced ? 1 : 3) * pulse) * u;
+      g.strokeStyle = rgba(sealLo, 0.5); g.lineWidth = 4.6 * u; g.beginPath(); g.arc(hx, hy, ringR, 0, TAU); g.stroke();
+      g.strokeStyle = rgba(paperHi, 1); g.lineWidth = 3.2 * u; g.stroke();
+      g.strokeStyle = rgba(stitchCol, 1); g.lineWidth = 1.6 * u; g.stroke();
+      g.fillStyle = rgba(paperHi, 0.92); g.beginPath(); g.arc(hx, hy, 7 * u, 0, TAU); g.fill();
+      g.strokeStyle = rgba(sealLo, 0.5); g.lineWidth = 1 * u; g.stroke();
+      g.fillStyle = stitchCol; g.beginPath(); g.arc(hx, hy, 4.6 * u, 0, TAU); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.55)'; g.beginPath(); g.ellipse(hx - 1.4 * u, hy - 1.6 * u, 1.9 * u, 1.2 * u, -0.5, 0, TAU); g.fill();
+      if (!held) {
+        const cx2 = hx + Math.cos(ang) * (ringR + 9 * u), cy2 = hy + Math.sin(ang) * (ringR + 9 * u), cs = Math.cos(ang), sn = Math.sin(ang), L = 5 * u;
+        g.beginPath(); g.moveTo(cx2 - cs * L + sn * L, cy2 - sn * L - cs * L); g.lineTo(cx2, cy2); g.lineTo(cx2 - cs * L - sn * L, cy2 - sn * L + cs * L);
+        g.strokeStyle = rgba(sealLo, 0.55); g.lineWidth = 4.4 * u; g.stroke();
+        g.strokeStyle = rgba(paperHi, 1); g.lineWidth = 2.4 * u; g.stroke();
+      }
       g.globalAlpha = 1;
-    }
-    if (iS > 0) {
-      g.beginPath(); g.moveTo(P[0][0], P[0][1]); for (let k = 1; k <= iS; k++) g.lineTo(P[k][0], P[k][1]);
-      g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = rgba(pal.glow, 0.2 + 0.12 * fin); g.lineWidth = 9; g.stroke(); g.restore();
-      g.strokeStyle = rgba(stitchCol, 0.92); g.lineWidth = 2.3; g.setLineDash([6, 5]); g.stroke();
-      g.setLineDash([]);
-      g.strokeStyle = rgba('#ffffff', 0.3); g.lineWidth = 0.8; g.stroke();
     }
     g.restore();
   }
@@ -653,8 +783,9 @@ export function create(E) {
     for (let i = 0; i < N; i++) {
       const i0 = Math.max(0, i - 1), i1 = Math.min(N - 1, i + 1);
       let dx = R.x[i1] - R.x[i0], dy = R.y[i1] - R.y[i0]; const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
-      const twv = Math.abs(Math.cos(i * 0.36 - t * 0.6 + 0.9));
-      const hw = rw * 0.5 * (0.3 + 0.7 * twv) * (i === 0 ? 0.7 : 1);
+      // one slow, soft twist along the satin (narrow enough to read as a turn, never a crinkle)
+      const twv = Math.abs(Math.cos(i * 0.22 - t * (reduced ? 0.2 : 0.45) + 0.9));
+      const hw = rw * 0.5 * (0.5 + 0.5 * twv) * (i === 0 ? 0.75 : 1);
       tw[i] = twv; lx[i] = R.x[i] - dy * hw; ly[i] = R.y[i] + dx * hw; rx[i] = R.x[i] + dy * hw; ry[i] = R.y[i] - dx * hw;
     }
     const path = ribbonPath;
@@ -670,17 +801,17 @@ export function create(E) {
     path(); g.strokeStyle = rgba(ribbonLo, 0.4); g.lineWidth = 0.7; g.stroke();
     // the pull-tab at the free end: always out, always within reach
     const ex = R.x[N - 1], ey = R.y[N - 1], a = Math.atan2(ey - R.y[N - 3], ex - R.x[N - 3]);
-    const tw2 = 14 + 7 * stage.s, th = 20 + 9 * stage.s, pulse = 0.5 + 0.5 * Math.sin(t * 1.3);
-    glow(g, ex + Math.cos(a) * th * 0.5, ey + Math.sin(a) * th * 0.5, th * (1.25 + fin * 0.35), glowCol, (seated ? 0.3 + 0.16 * pulse : 0.2) + fin * 0.3);
+    const tw2 = tabW, th = tabH, pulse = 0.5 + 0.5 * Math.sin(t * 1.3);
+    tabX = ex + Math.cos(a) * th * 0.45; tabY = ey + Math.sin(a) * th * 0.45;
+    glow(g, tabX, tabY, th * (1.3 + fin * 0.35 + tug * 0.3), glowCol, (seated ? 0.32 + 0.16 * pulse : 0.22) + fin * 0.3 + tug * 0.35);
+    if (tug > 0.05) glint(g, tabX + tw2 * 0.25, tabY - th * 0.2, th * 0.55 * tug, '#ffffff', 0.8 * tug, t * 0.6);
     g.translate(ex, ey); g.rotate(a - Math.PI / 2);
-    g.save(); g.translate(1.5, 2.5); rr(g, -tw2 / 2, -3, tw2, th, tw2 * 0.42); g.fillStyle = rgba(shade, 0.22); g.fill(); g.restore();
-    const tg = g.createLinearGradient(-tw2 / 2, 0, tw2 / 2, th);
-    tg.addColorStop(0, '#fffdf6'); tg.addColorStop(0.55, mix(band, '#ffffff', 0.35)); tg.addColorStop(1, band);
-    rr(g, -tw2 / 2, -3, tw2, th, tw2 * 0.42); g.fillStyle = tg; g.fill();
-    g.strokeStyle = rgba(ribbonLo, 0.45); g.lineWidth = 1; g.stroke();
-    g.fillStyle = ribbonCol; g.beginPath(); g.arc(0, 1.5, 2.6, 0, TAU); g.fill();
+    g.save(); g.translate(1.5, 2.5); rr(g, -tw2 / 2, -3, tw2, th, tw2 * 0.42); g.fillStyle = rgba(shade, 0.24); g.fill(); g.restore();
+    rr(g, -tw2 / 2, -3, tw2, th, tw2 * 0.42); g.fillStyle = tabGrad; g.fill();
+    g.strokeStyle = rgba(ribbonCol, 0.85); g.lineWidth = 1.3; g.stroke();
+    g.fillStyle = ribbonCol; g.beginPath(); g.arc(0, 1.5, 2.8, 0, TAU); g.fill();
     // a tiny pressed star: this is the way back in
-    g.fillStyle = rgba(stitchCol, 0.75); g.beginPath();
+    g.fillStyle = rgba(sealCol, 0.9); g.beginPath();
     for (let i = 0; i < 8; i++) { const aa = -Math.PI / 2 + (i / 8) * TAU, r2 = i % 2 ? tw2 * 0.1 : tw2 * 0.24; const px = Math.cos(aa) * r2, py = th * 0.55 + Math.sin(aa) * r2; i ? g.lineTo(px, py) : g.moveTo(px, py); }
     g.closePath(); g.fill();
     g.restore();
@@ -688,23 +819,15 @@ export function create(E) {
   function drawEmblem(t, fin) {
     const k = emblem.x;
     if (k <= 0.01) return;
-    const x = ecx, y = eTop + depthAt(0) - H * 0.085, r = H * 0.07 * k;
-    glow(g, x, y, r * (2.6 + 0.3 * Math.sin(t * 1.1)), glowCol, 0.3 + 0.2 * fin);
+    const x = ecx, y = eTop + depthAt(0) - H * 0.11, r = emblemR * k;   // sits on the flap tip, clear of the words below
+    glow(g, x, y, r * (2.3 + 0.2 * Math.sin(t * 1.1)), glowCol, 0.16 + 0.16 * fin);
     g.save();
-    g.globalAlpha = 0.35; g.drawImage(shadowSpr, x - r * 1.2, y - r * 0.9, r * 2.4, r * 2.4); g.globalAlpha = 1;
-    g.beginPath();
-    for (let i = 0; i <= 72; i++) { const a = (i / 72) * TAU, r2 = r * (1 + 0.065 * Math.cos(a * 12)); i ? g.lineTo(x + Math.cos(a) * r2, y + Math.sin(a) * r2) : g.moveTo(x + r2, y); }
-    g.closePath();
-    const gr = g.createRadialGradient(x - r * 0.3, y - r * 0.35, r * 0.1, x, y, r * 1.05);
-    gr.addColorStop(0, mix(ribbonCol, '#ffffff', 0.62)); gr.addColorStop(0.6, ribbonCol); gr.addColorStop(1, ribbonLo);
-    g.fillStyle = gr; g.fill();
-    g.strokeStyle = rgba('#ffffff', 0.5); g.lineWidth = 1; g.beginPath(); g.arc(x, y, r * 0.72, 0, TAU); g.stroke();
-    // a soft pressed star (light, not wax)
-    g.fillStyle = rgba('#ffffff', 0.75); g.beginPath();
-    for (let i = 0; i < 8; i++) { const a = -Math.PI / 2 + (i / 8) * TAU, r2 = i % 2 ? r * 0.18 : r * 0.44; i ? g.lineTo(x + Math.cos(a) * r2, y + Math.sin(a) * r2) : g.moveTo(x + Math.cos(a) * r2, y + Math.sin(a) * r2); }
-    g.closePath(); g.fill();
+    g.globalAlpha = 0.45; g.drawImage(shadowSpr, x - r * 1.25, y - r * 0.95, r * 2.5, r * 2.5); g.globalAlpha = 1;
+    // the soft scalloped paper seal (a cached sprite: built once per fit, drawn at its pop-in scale)
+    const h = Math.ceil(emblemR * 1.16) * k;
+    g.drawImage(emblemSpr, x - h, y - h, h * 2, h * 2);
     g.restore();
-    glint(g, x - r * 0.35, y - r * 0.4, r * (0.5 + 0.08 * Math.sin(t * 1.3)), '#ffffff', 0.55, t * 0.15);
+    glint(g, x - r * 0.52, y - r * 0.5, r * (0.3 + 0.05 * Math.sin(t * 1.3)), '#ffffff', 0.5, t * 0.15);
   }
   function drawFinaleGlints(t, fin) {
     const k0 = t - finAt, m = heavy ? 1 : 3;
@@ -734,12 +857,12 @@ export function create(E) {
       const a = smooth(clamp((k - i * 0.55) / 0.9));
       if (a <= 0) continue;
       const L = lights[i], y = L.y + Math.sin(t * 0.9 + i) * 2.5 * (reduced ? 0.3 : 1);
-      glow(g, L.x, y, (24 + 5 * i) * (0.9 + 0.1 * Math.sin(t * 1.2 + i)), glowCol, 0.55 * a);
-      orb(g, L.x, y, 4.6 + i * 0.8, mix(pal.glow, '#ffffff', 0.5), { alpha: a });
+      glow(g, L.x, y, (28 - 4 * i) * (0.9 + 0.1 * Math.sin(t * 1.2 + i)) / zc, glowCol, 0.55 * a);
+      orb(g, L.x, y, (6 - i * 0.9) / zc, mix(pal.glow, '#ffffff', 0.5), { alpha: a });
     }
   }
   function drawMoon(t) {
-    const k = smooth(clamp((E.now() - twistAt) / 3)), x = ecx - loopSide * W * 0.36, y = eTop - H * lerp(0.15, 0.62, k) + Math.sin(t * 0.5) * 2, r = H * 0.13;
+    const k = smooth(clamp((E.now() - twistAt) / 3)), x = ecx - tabSide * W * 0.36, y = eTop - H * lerp(0.15, 0.62, k) + Math.sin(t * 0.5) * 2, r = H * 0.13;
     glow(g, x, y, r * 3, glowCol, 0.3 * k);
     g.save(); g.globalAlpha = 0.85 * k;
     g.beginPath(); g.arc(x, y, r, -Math.PI / 2, Math.PI / 2, true); g.ellipse(x - r * 0.18, y, r * 0.5, r, 0, Math.PI / 2, -Math.PI / 2, true); g.closePath();
@@ -753,7 +876,16 @@ export function create(E) {
     const ux = dx * c - dy * s, uy = dx * s + dy * c, m = 26 + 6 * stage.s;
     if (Math.abs(ux) < cW / 2 + m && Math.abs(uy) < cH / 2 + m) return true;
     for (const o of ph) if (o.pk < 0.3 && Math.abs(p.x - o.spr.x) < o.w / 2 + 10 && Math.abs(p.y - o.spr.y) < o.h / 2 + 10) return true;
-    return false;
+    return onTab(p);   // pulling the card by its tab works too
+  }
+  const onTab = (p) => Math.hypot(p.x - tabX, p.y - tabY) < 30;
+  function tugTab() {
+    // a gentle tug on the pull-tab: the ribbon flicks out, the card lifts a touch and slides back — still retrievable
+    let dx = rope.x[LN - 1] - rope.x[0], dy = rope.y[LN - 1] - rope.y[0]; const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
+    for (let i = 1; i < LN; i++) { const k = (reduced ? 2.5 : 5) * (i / LN); rope.px[i] -= dx * k; rope.py[i] -= dy * k; }
+    tug = 1; elastY = Math.min(elastY, -9 * KICK); hug.v -= 2 * KICK;
+    E.particles.emit({ x: sX(tabX), y: sY(tabY), vy: -10, life: 0.9, size: 6, colour: '#ffffff', alpha: 0.8, kind: 'glint' });
+    E.sound('pluck', { note: 6, intensity: 0.24, pitch: heavy ? 0.9 : 1 }); E.sound('chime', { intensity: 0.16, pitch: 1.25 }); E.haptic('light');
   }
   function nearSeal(p) {
     const h = tr.head;
@@ -785,7 +917,7 @@ export function create(E) {
   }
   function refuse() {
     const t = E.now();
-    if (t - lastWait > 0.55) { lastWait = t; (seated ? flapWob : wob).kick(0.35); E.checkpoint('wait'); }
+    if (t - lastWait > 0.55) { lastWait = t; (seated ? flapWob : wob).kick(0.35 * KICK); E.checkpoint('wait'); }
   }
 
   return {
@@ -797,22 +929,32 @@ export function create(E) {
       const p = toWorld(p0);
       if (!seated && insReal < 0.999 && onCard(p)) {
         drag = { id: p.id, mode: 'card', dx: p.x - card.x, dy: p.y - card.y, fx: card.x, fy: card.y };
-        E.sound('paper', { intensity: 0.32 }); E.haptic('light');
+        E.sound('paper', { intensity: 0.32 }); E.sound('bubble', { note: Math.min(9, stepIns + 1), intensity: 0.2, pitch: heavy ? 0.9 : 1 }); E.haptic('light');
         feedCard(p);
       } else if (seated && sealedAt < 0 && nearSeal(p)) {
         drag = { id: p.id, mode: 'seal', dx: 0, dy: 0, fx: p.x, fy: p.y };
         E.sound('pluck', { note: Math.min(9, stepSeal + 1), intensity: 0.28 }); E.haptic('light');
-        flapWob.kick(0.15);
+        flapWob.kick(0.15 * KICK);
         feedSeal(p);
+      } else if (seated && onTab(p)) {
+        tugTab();
       } else {
         // a touch anywhere else still gets a small, kind response
         E.sound('drip', { note: 3, intensity: 0.2 }); E.haptic('tick');
-        if (!seated) { nudge += clamp((p.x - card.x) / (W * 4), -0.06, 0.06); wob.kick(0.15); } else flapWob.kick(0.2);
+        if (!seated) { nudge += clamp((p.x - card.x) / (W * 4), -0.06, 0.06) * KICK; wob.kick(0.15 * KICK); } else flapWob.kick(0.2 * KICK);
       }
     },
     move(p0) {
       if (!drag || p0.id !== drag.id || finAt >= 0) return;
       const p = toWorld(p0);
+      // still holding the card after it seats: once the finger reaches the seal's start, the same touch starts sewing
+      if (drag.mode === 'card' && seated && sealedAt < 0) {
+        const h = tr.head;
+        if (Math.hypot(p.x - h.x, p.y - h.y) < tol) {
+          drag.mode = 'seal'; drag.fx = p.x; drag.fy = p.y;
+          E.sound('pluck', { note: Math.min(9, stepSeal + 1), intensity: 0.28 }); E.haptic('light'); flapWob.kick(0.15 * KICK);
+        }
+      }
       if (drag.mode === 'card') feedCard(p); else feedSeal(p);
     },
     up(p0) {
@@ -823,16 +965,19 @@ export function create(E) {
     assist() {
       if (finAt >= 0 || sealedAt >= 0) return;
       const base = Math.max(wanted, prog);
-      if (insReal < 0.999) { assistTo = Math.min(S1, base + S1 / 4); E.sound('paper', { intensity: 0.22 }); lift.v += 4; }
-      else { assistTo = Math.min(1, base + (1 - S1) / 5); E.sound('paper', { intensity: 0.18, pitch: 1.15 }); flapWob.kick(0.12); }
+      if (insReal < 0.999) { assistTo = Math.min(S1, base + S1 / 4); E.sound('paper', { intensity: 0.22 }); lift.v += 4 * KICK; }
+      else { assistTo = Math.min(1, base + (1 - S1) / 5); E.sound('paper', { intensity: 0.18, pitch: 1.15 }); flapWob.kick(0.12 * KICK); }
     },
     pointAt(q) {
       q = clamp(q);
       if (q <= S1) {
         // the card's leading top corner — it ends where the seal begins
-        cardAt(q / S1, tmp);
+        const k = q / S1;
+        cardAt(k, tmp);
         const c = Math.cos(tmp.r), s = Math.sin(tmp.r), ox = lead * cW * 0.5, oy = -cH * 0.5;
-        return { x: sX(tmp.x + ox * c - oy * s), y: sY(tmp.y + ox * s + oy * c) };
+        // over the last stretch it glides onto the seal's first corner, so the point never jumps at the hand-over
+        const m = smooth(clamp((k - 0.8) / 0.2)), P0 = tr.pts[0];
+        return { x: sX(lerp(tmp.x + ox * c - oy * s, P0[0], m)), y: sY(lerp(tmp.y + ox * s + oy * c, P0[1], m)) };
       }
       const pt = tr.pointAt((q - S1) / (1 - S1));
       return { x: sX(pt.x), y: sY(pt.y) };
@@ -855,13 +1000,22 @@ export function create(E) {
     twist() {
       twistAt = E.now();
       if (twistKind === 0) {
-        const top = toWorld({ x: stage.x + 20, y: stage.y + 12 }), sx = clamp(ecx - loopSide * W * 0.62, top.x, 2 * ecx - top.x), sy = top.y;
+        const top = toWorld({ x: stage.x + 20, y: stage.y + 12 }), sx = clamp(ecx - tabSide * W * 0.62, top.x, 2 * ecx - top.x), sy = top.y;
         star.x.set(sx); star.y.set(sy);
-        star.tx = ecx - loopSide * W * 0.42; star.ty = eTop - H * 0.04;
+        star.tx = ecx - tabSide * W * 0.42; star.ty = eTop - H * 0.04;
       } else if (twistKind === 1) {
-        const ex = rope.x[LN - 1], ey = rope.y[LN - 1];
-        const lim = toWorld({ x: stage.x + 16, y: stage.y + 16 });
-        for (let i = 0; i < 3; i++) { lights[i].x = clamp(ex + loopSide * (i + 1) * W * 0.13, lim.x, 2 * ecx - lim.x); lights[i].y = Math.max(lim.y, ey - (i + 1) * H * 0.16 + i * i * H * 0.03); }
+        // three resting lights form a little pathway from the tab: an arc that leans out, then turns inward
+        // whenever the next step would leave the stage (never clamped into a cluster)
+        const lim = toWorld({ x: stage.x + 22, y: stage.y + 22 }), minX = lim.x, maxX = 2 * ecx - lim.x, minY = lim.y;
+        const step0 = Math.max(W * 0.13, 32 / zMax);
+        let x = tabX, y = tabY, a = -Math.PI / 2 + tabSide * 0.35;
+        for (let i = 0; i < 3; i++) {
+          const step = step0 * (1 + i * 0.18);   // a little farther apart each time: a path leading away
+          let nx = x + Math.cos(a) * step, ny = y + Math.sin(a) * step;
+          for (let k = 0; k < 8 && (nx < minX || nx > maxX || ny < minY); k++) { a -= tabSide * 0.4; nx = x + Math.cos(a) * step; ny = y + Math.sin(a) * step; }
+          lights[i].x = clamp(nx, minX, maxX); lights[i].y = Math.max(minY, ny);
+          x = lights[i].x; y = lights[i].y; a -= tabSide * 0.6;   // each step curls towards the middle, away from the storm
+        }
       }
       E.particles.burst(ecx, sY(eTop - H * 0.15), low ? 4 : 10, { speed: 40, colour: glowCol, life: 1.2, size: 5, kind: 'glint' });
     },
@@ -869,7 +1023,7 @@ export function create(E) {
       if (finAt >= 0) return;
       finAt = E.now(); drag = null; assistTo = null; emblem.target = 1;
       for (const o of ph) o.sealed = true;
-      const ey = sY(eTop + depthAt(0) - H * 0.085);
+      const ey = sY(eTop + depthAt(0) - H * 0.11);
       E.ripples.add(ecx, ey, { colour: glowCol, speed: heavy ? 40 : 70, alpha: heavy ? 0.3 : 0.5, r: 10 });
       if (!heavy) E.particles.burst(ecx, ey, low ? 5 : 12, { speed: 60, colour: glowCol, life: 1.3, size: 5, kind: 'glint' });
       E.sound(heavy ? 'breathe-out' : 'shimmer', { intensity: 0.4 });

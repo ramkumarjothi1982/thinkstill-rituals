@@ -12,6 +12,8 @@ import { AVAILABLE } from '../../rituals/index.js';
 import { allowedFor } from '../../engine/recommend.js';
 import { toast } from '../ui.js';
 import { photoSession } from '../../v3/photos.js';
+import { tellIfFull } from '../../v3/tray.js';
+import { warmMallowCards } from '../../v3/mallow-cards.js';
 
 const REFRAME_FAMILIES = new Set(['shame', 'fear', 'loneliness', 'anger', 'sadness', 'envy', 'confusion']);
 
@@ -40,12 +42,21 @@ export default function encounter(app) {
 
   // add (more) photos without leaving the offer: they become part of this ritual
   const picker = h('input', { type: 'file', accept: 'image/*', multiple: true, 'aria-hidden': 'true', tabindex: '-1', style: { position: 'absolute', width: '1px', height: '1px', opacity: '0', pointerEvents: 'none' } });
-  picker.addEventListener('change', async () => { const files = [...(picker.files || [])]; picker.value = ''; if (files.length && await photoSession.add(files)) { app.haptic('light'); render(); } });
+  picker.addEventListener('change', async () => {
+    const files = [...(picker.files || [])]; picker.value = '';
+    if (!files.length) return;
+    const added = await photoSession.add(files);
+    tellIfFull(files.length, added);
+    if (added) { app.haptic('light'); render(); }
+  });
   function photoButton() {
     const n = photoSession.count;
+    if (n >= photoSession.max) return h('div', { class: 'photo-add-inline photo-full', role: 'status' }, icon('camera'), `${n} photos added`);
     return h('button', { class: 'btn ghost block photo-add-inline', onclick: () => picker.click() },
-      icon('camera'), n ? (n < photoSession.max ? `Add more photos (${n}/${photoSession.max})` : `${n} photos added`) : 'Add your photos to this ritual (optional)');
+      icon('camera'), n ? `Add more photos (${n}/${photoSession.max})` : 'Add up to six of your photos (optional)');
   }
+  // no photos yet: get the Mallow cards ready while the offer is read
+  if (!photoSession.count) warmMallowCards();
 
   const card = h('div', { class: 'card enc-card' });
   const ultraRow = h('div');
@@ -74,7 +85,7 @@ export default function encounter(app) {
       h('h3', { style: { marginTop: '8px', fontSize: '26px' } }, r.name),
       h('p', {}, r.purpose),
       h('div', { class: 'reasons' }, ...o.reasons.filter((x) => !/minute/.test(x)).map((x) => h('span', {}, x)), h('span', {}, `About ${mins} min`),
-        r.module === 'v3' && photoSession.count ? h('span', {}, `With your ${photoSession.count} photo${photoSession.count > 1 ? 's' : ''}`) : null),
+        r.module === 'v3' ? h('span', { class: 'photo-chip' }, photoSession.count ? `With your ${photoSession.count} photo${photoSession.count > 1 ? 's' : ''}` : 'With the seven Mallows') : null),
       r.module === 'v3' ? photoButton() : null,
       h('div', { style: { display: 'grid', gap: '8px', marginTop: '16px' } },
         h('button', { class: 'btn primary block', onclick: () => begin(o) }, 'Let’s do it'),

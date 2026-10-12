@@ -16,6 +16,14 @@
 // provider can grant tiers locally for development and review — it never
 // charges and the UI always says "Test purchase".
 
+import { RITUALS } from '../data/rituals.js';
+
+// say only what is switched on today (the library grows to 1,000+ as engines land)
+const PAID_COUNT = RITUALS.filter((r) => (r.tier || 'paid') === 'paid').length;
+const LIBRARY_LINE = PAID_COUNT >= 1000
+  ? 'Over 1,000 interactive touch rituals for the whole A–Z of feelings'
+  : `${PAID_COUNT.toLocaleString('en-GB')} interactive touch rituals for the A–Z of feelings, growing towards 1,000`;
+
 export const PLANS = {
   paid: {
     id: 'paid', name: 'Hushmallow', tagline: 'Your second brain for feelings.',
@@ -23,8 +31,8 @@ export const PLANS = {
     includes: [
       'All seven living Mallows and their reactions',
       'The Hushfold: seven realms that respond to how you feel',
-      'Over 1,000 interactive touch rituals for the whole A–Z of feelings',
-      'Your own words and up to 7 of your own photos inside the ritual (they never leave your phone)',
+      LIBRARY_LINE,
+      'Your own words and up to six of your own photos inside the ritual (they never leave your phone), or the seven Mallows when you add none',
       'Suggestions that rotate so things stay fresh',
       'Favourites and optional private history',
       'New rituals as the library grows',

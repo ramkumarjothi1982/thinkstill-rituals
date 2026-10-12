@@ -5,8 +5,9 @@
 // the way to the soil pad and it touches down softly instead of crashing.
 // Win: the meteor rests in the soil as a gentle glowing seed.
 //
-// Photos: one photo is the meteor's core (a circle) cooling from ember tone
-// back to its own colours, landing as the seed (a drop). The others orbit the
+// Photos: one photo is the meteor's core (a circle in a craggy ember crust that
+// flakes back to a thin stone rim) cooling from ember tone back to its own
+// colours, landing as the seed (a drop). The others orbit the
 // core as warm stones; as the meteor cools each one detaches and floats off to
 // hang as glowing fruit in the orchard trees. Words: the garden tag tied to
 // the soil pad.
@@ -101,26 +102,28 @@ export function create(E) {
     for (let q = 0; q < 4; q++) { pts[q * 2] = Math.cos(a) * rr; pts[q * 2 + 1] = Math.sin(a) * rr; a += (R() - 0.5) * 0.9; rr = Math.min(0.94, rr + 0.18 + R() * 0.16); }
     return pts;
   });
+  const JAG = 26, jag = new Float32Array(JAG), jc = new Float32Array(JAG), js = new Float32Array(JAG), jx = new Float32Array(JAG), jy = new Float32Array(JAG);
+  for (let i = 0; i < JAG; i++) { const a = (i / JAG) * TAU; jag[i] = R(); jc[i] = Math.cos(a); js[i] = Math.sin(a); }
   const flecks = Array.from({ length: 7 }, (_, i) => ({ d: 0.2 + (i / 7) * 0.75, w: (R() - 0.5) * 0.8, ph: R() * TAU }));
 
   // ---- geometry
   let W, H, X0, Y0, cx, gY, isl, iry, depth, padX, padY, padRx, padRy, mz, cz, fz, orbR, TOL, maxDev, routeLen = 1;
-  let gTop, gFace, gPad, gTag;
+  let gTop, gFace, gPad, gTag, gCrust;
   let tagW = 140, tagH = 40, tagX = 0, tagY = 0, pegX = 0, pegY = 0, wordSize = 13, tokenSeen = null;
   const rx = new Float32Array(N), ry = new Float32Array(N), nx = new Float32Array(N), ny = new Float32Array(N), on = new Float32Array(N);
 
   function fit() {
     W = stage.w; H = stage.h; X0 = stage.x; Y0 = stage.y; cx = stage.cx;
-    mz = clamp(Math.min(W * 0.2, H * 0.17), 38, 86);
-    cz = clamp(Math.min(W * 0.12, H * 0.09), 22, 48);
-    fz = clamp(Math.min(W * 0.125, H * 0.095), 24, 50);
+    mz = clamp(Math.min(W * 0.22, H * 0.18), 46, 90);
+    cz = clamp(Math.min(W * 0.125, H * 0.1), 24, 50);
+    fz = clamp(Math.min(W * 0.125, H * 0.1), 26, 50);
     orbR = mz * 0.5 + cz * 0.62;
     TOL = Math.max(50, 60 * stage.s);
     maxDev = TOL * 0.75;
-    gY = Y0 + H * 0.7;
+    gY = Y0 + H * 0.66;
     isl = Math.min(W * 0.49, 240);
     iry = Math.min(isl * 0.16, H * 0.06);
-    depth = Math.min(H * 0.2, 104);
+    depth = Math.min(H * 0.2, 98);
     padX = cx; padRx = Math.min(W * 0.17, 66); padRy = Math.max(6, Math.min(padRx * 0.3, iry * 0.62)); padY = gY + iry * 0.18;
     // trees on the back rim of the island
     const cr0 = clamp(Math.min(W * 0.097, H * 0.08), 16, 40);
@@ -173,6 +176,8 @@ export function create(E) {
     gFace.addColorStop(0, soilMid); gFace.addColorStop(0.38, soilDark); gFace.addColorStop(1, rgba(soilDark, 0));
     gPad = g.createRadialGradient(padX, padY - padRy * 0.4, 0, padX, padY, padRx);
     gPad.addColorStop(0, mix(soilMid, '#8a5a34', 0.35)); gPad.addColorStop(0.7, soilDark); gPad.addColorStop(1, rgba(soilDark, 0.92));
+    gCrust = g.createRadialGradient(-0.3, -0.36, 0.15, 0, 0, 1);
+    gCrust.addColorStop(0, mix(stoneMid, '#8a7a8a', 0.35)); gCrust.addColorStop(0.8, stoneMid); gCrust.addColorStop(1, stoneDark);
     wordSize = Math.max(12, Math.min(15, W * 0.039));
     tagW = clamp(W * 0.46, 118, 190);
     pegX = padX + padRx * 0.42; pegY = padY + padRy * 0.72;
@@ -197,7 +202,7 @@ export function create(E) {
   let landed = false, landAt = -1, doneFlag = false, finAt = -1, twistAt = -1, heroHalf = false;
   let mx = rx[0], my = ry[0], pmx = NaN, pmy = 0, vx = 0, vy = 0, spd = 0, tdx = ny[0], tdy = -nx[0];
   let orbA = 0, spin = 0, noteStep = -1, lastNote = -9, lastHap = -9, lastWait = -9, lastSwish = -9, lastSpark = -9, sparkAcc = 0;
-  let tugX = 0, tugY = 0, glance = 0, seedPulse = 0, nowT = 0;
+  let tugX = 0, tugY = 0, glance = 0, seedPulse = 0, nowT = 0, lastTwo = -9;
   const wob = new Wobble();
   const tmp = { x: 0, y: 0 }, an = { x: 0, y: 0 }, anc = { ax: 0, ay: 0 }, sg = { sh: 0, sw: 0, sx: 0, sy: 0 };
 
@@ -232,8 +237,10 @@ export function create(E) {
       const k = (i - i0 + 1) / (i1 - i0 + 1), lim = maxDev * taper(i / (N - 1));
       on[i] = clamp(lerp(on[i - 1], clamp(lerp(endOff, off, k), -lim, lim), 0.55), -lim, lim);
     }
-    if (i1 >= i0) endOff = on[i1];
-    if (i1 + 1 < N) { const lim = maxDev * taper((i1 + 1) / (N - 1)); on[i1 + 1] = clamp(endOff, -lim, lim); }
+    if (i1 >= i0) {
+      endOff = on[i1];
+      for (let i = i1 + 1; i < N - 1; i++) { const lim = maxDev * taper(i / (N - 1)); on[i] = clamp(endOff * Math.exp(-(i - i1) / 6), -lim, lim); }
+    }
     on[0] = 0; on[N - 1] = 0;
     laid = s1;
     // micro-payoff: a falling pentatonic note and a tick as each stretch is laid
@@ -401,7 +408,7 @@ export function create(E) {
     for (const c of chips) if (c.st === 0 && Math.sin(c.a0 + orbA) >= 0) drawChip(c, t, fin);
     if (finAt >= 0) drawSprout(t);
     drawFinger(t);
-    if (twistAt >= 0 && twistKind === 1) drawWish(t);
+    if (twistAt >= 0 && twistKind === 1) drawWish(t, dt);
     if (finAt >= 0 && dt > 0) finaleMotes(t, dt);
   }
 
@@ -547,11 +554,15 @@ export function create(E) {
   function drawGuide(t) {
     if (landed) return;
     const i0 = Math.ceil(laid * (N - 1)) + 1, wave = laid + ((t * 0.3 * amb) % 1.3) * (1 - laid);
-    g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = coolSoft;
-    for (let i = i0; i < N - 1; i += 2) {
-      const s = i / (N - 1), w = Math.max(0, 1 - Math.abs(s - wave) * 9);
-      g.globalAlpha = 0.24 + 0.46 * w;
-      g.beginPath(); g.arc(rx[i], ry[i], 1.7 + w * 1.6, 0, TAU); g.fill();
+    g.save();
+    // two passes: a soft ink underlay (reads on pale realms), then the additive light
+    for (let pass = 0; pass < 2; pass++) {
+      if (pass) { g.globalCompositeOperation = 'lighter'; g.fillStyle = coolSoft; } else g.fillStyle = ink;
+      for (let i = i0; i < N - 1; i += 2) {
+        const s = i / (N - 1), w = Math.max(0, 1 - Math.abs(s - wave) * 9);
+        g.globalAlpha = pass ? 0.24 + 0.46 * w : 0.16 + 0.12 * w;
+        g.beginPath(); g.arc(rx[i] + nx[i] * on[i], ry[i] + ny[i] * on[i], 1.7 + w * 1.6 + (pass ? 0 : 1.4), 0, TAU); g.fill();
+      }
     }
     g.restore();
   }
@@ -564,15 +575,19 @@ export function create(E) {
     return true;
   }
   function drawTrail(t, fin) {
-    g.save(); g.lineCap = 'round'; g.lineJoin = 'round'; g.globalCompositeOperation = 'lighter';
+    g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
     // travelled: the trail cools into stardust behind the meteor
     if (strokeRange(0, shown)) {
+      g.globalCompositeOperation = 'source-over'; g.strokeStyle = rgba(ink, 0.13); g.lineWidth = 4.5; g.stroke();
+      g.globalCompositeOperation = 'lighter';
       g.strokeStyle = rgba(coolCol, 0.1 + fin * 0.06); g.lineWidth = 6; g.stroke();
       g.setLineDash(DASH_B); g.lineDashOffset = -t * 6;
       g.strokeStyle = rgba(coolSoft, 0.38 + fin * 0.3); g.lineWidth = 1.5; g.stroke(); g.setLineDash(NO_DASH);
     }
     // ahead: the live gravity trail the meteor is about to ride
     if (strokeRange(shown, laid)) {
+      g.globalCompositeOperation = 'source-over'; g.strokeStyle = rgba(ink, 0.2); g.lineWidth = 7; g.stroke();
+      g.globalCompositeOperation = 'lighter';
       for (const [w, a] of AHEAD) { g.strokeStyle = a > 0.8 ? rgba('#ffffff', a) : rgba(coolCol, a); g.lineWidth = w || mz * 0.32; g.stroke(); }
       g.setLineDash(DASH_A); g.lineDashOffset = -t * 36 * amb; g.strokeStyle = rgba('#ffffff', 0.6); g.lineWidth = 3.4; g.stroke(); g.setLineDash(NO_DASH);
     }
@@ -596,21 +611,30 @@ export function create(E) {
       orb(g, c.x, c.y, rr, mix(mix(seedCol, '#ffffff', 0.15), '#ff8a3a', ember));
     }
   }
+  // how far a ray from (x, y) along (dx, dy) can run before leaving the stage
+  function room(x, y, dx, dy) {
+    let k = 1e4;
+    if (dx < -1e-4) k = Math.min(k, (x - X0) / -dx); else if (dx > 1e-4) k = Math.min(k, (X0 + W - x) / dx);
+    if (dy < -1e-4) k = Math.min(k, (y - Y0) / -dy); else if (dy > 1e-4) k = Math.min(k, (Y0 + H - y) / dy);
+    return Math.max(0, k);
+  }
   function drawMeteor(t, x, y, heat, lk) {
     const r = mz * 0.5 * lerp(1, 0.8, lk), hot = heat, fade = 1 - lk;
     const headCol = mix(coolSoft, HOT, hot), midCol = mix(coolCol, EMBER, hot), deepCol = mix(coolCol, RED, hot);
-    // tail: two tapered additive ribbons, length from heat and speed
-    const L = (r * (1.4 + 2.4 * hot) + Math.min(r * 3, spd * 0.3)) * fade;
+    // tail: three tapered additive ribbons; long and ember-hot at first, shorter and
+    // palette-cool as it glides (speed stretches it); never leaves the stage
+    const L = Math.min((r * (1.7 + 2.5 * hot) + Math.min(r * 3, spd * 0.35)) * fade, room(x, y, -tdx, -tdy) * 0.96);
     if (L > 2) {
       const pxn = -tdy, pyn = tdx;
-      const wig = reduced ? 0 : Math.sin(t * 3.1) * r * 0.22 * (0.4 + hot);
+      const wig = reduced ? 0 : Math.sin(t * 3.1) * r * 0.2 * (0.4 + hot);
       g.save(); g.globalCompositeOperation = 'lighter';
-      for (let layer = 0; layer < 2; layer++) {
-        const wd = r * (layer ? 0.5 : 0.92), LL = L * (layer ? 0.62 : 1);
+      for (let layer = 0; layer < 3; layer++) {
+        const wd = r * (layer === 0 ? 0.95 : layer === 1 ? 0.55 : 0.2), LL = L * (layer === 0 ? 1 : layer === 1 ? 0.66 : 0.42);
         const ex = x - tdx * LL + pxn * wig, ey = y - tdy * LL + pyn * wig;
         const lg = g.createLinearGradient(x, y, ex, ey);
-        lg.addColorStop(0, rgba(layer ? headCol : midCol, (layer ? 0.85 : 0.5) * fade));
-        lg.addColorStop(0.45, rgba(layer ? midCol : deepCol, (layer ? 0.3 : 0.16) * fade));
+        if (layer === 0) { lg.addColorStop(0, rgba(midCol, 0.6 * fade)); lg.addColorStop(0.45, rgba(deepCol, 0.2 * fade)); }
+        else if (layer === 1) { lg.addColorStop(0, rgba(headCol, 0.9 * fade)); lg.addColorStop(0.45, rgba(midCol, 0.34 * fade)); }
+        else { lg.addColorStop(0, rgba('#ffffff', (0.4 + 0.4 * hot) * fade)); lg.addColorStop(0.5, rgba(headCol, 0.2 * fade)); }
         lg.addColorStop(1, rgba(deepCol, 0));
         g.fillStyle = lg; g.beginPath();
         g.moveTo(x + pxn * wd, y + pyn * wd);
@@ -629,8 +653,10 @@ export function create(E) {
     // body
     const alpha = 1 - lk;
     if (hero >= 0) {
-      photos.draw(g, hero, x, y, r * 2, { shape: 'circle', tone: 'ember', toneMix: hot * 0.85, glow: 0.3 + 0.45 * hot, glowColour: midCol, rot: Math.sin(t * 0.6) * 0.06, alpha, shadow: false });
-      glow(g, x + tdx * r * 0.3, y + tdy * r * 0.3, r * 1.05, '#ff6a2a', 0.3 * hot * alpha);
+      // the photo is the core, inside an ember crust that cools and flakes back as it glides
+      photos.draw(g, hero, x, y, r * 1.86, { shape: 'circle', tone: 'ember', toneMix: hot * 0.85, glow: 0.25 + 0.4 * hot, glowColour: midCol, rot: Math.sin(t * 0.6) * 0.05, alpha, shadow: false });
+      drawCrust(x, y, r, hot, alpha);
+      glow(g, x + tdx * r * 0.3, y + tdy * r * 0.3, r * 1.05, '#ff6a2a', 0.26 * hot * alpha);
     } else {
       g.save(); g.globalAlpha = alpha;
       const lx = x + tdx * r * 0.35, ly = y + tdy * r * 0.35;
@@ -650,6 +676,29 @@ export function create(E) {
     const fa = Math.atan2(tdy, tdx);
     g.strokeStyle = rgba(headCol, 0.5); g.lineWidth = Math.max(1.5, r * 0.08); g.beginPath(); g.arc(x, y, r * 0.97, fa - 1.1, fa + 1.1); g.stroke();
     g.fillStyle = 'rgba(255,255,255,0.14)'; g.beginPath(); g.ellipse(x - r * 0.32, y - r * 0.42, r * 0.34, r * 0.15, -0.5, 0, TAU); g.fill();
+    g.restore();
+  }
+  // a ring of smouldering crust around the photo core: craggy and seamed with
+  // ember light while hot, a thin cool stone rim (the seed's shell) once cooled
+  function drawCrust(x, y, r, hot, alpha) {
+    const ck = 0.18 + 0.82 * hot;
+    for (let i = 0; i < JAG; i++) { const ri = 0.9 - (0.03 + 0.13 * jag[i]) * ck; jx[i] = jc[i] * ri; jy[i] = js[i] * ri; }
+    g.save(); g.globalAlpha = alpha; g.translate(x, y); g.rotate(spin * 0.5); g.scale(r, r);
+    g.beginPath(); g.arc(0, 0, 1, 0, TAU);
+    g.moveTo(jx[0], jy[0]); for (let i = JAG - 1; i > 0; i--) g.lineTo(jx[i], jy[i]); g.closePath();
+    g.fillStyle = gCrust; g.fill('evenodd');
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    g.globalCompositeOperation = 'lighter';
+    // seams: the glowing inner edge where crust meets the core, and cracks across the ring
+    g.beginPath(); g.moveTo(jx[0], jy[0]); for (let i = 1; i < JAG; i++) g.lineTo(jx[i], jy[i]); g.closePath();
+    g.strokeStyle = rgba(mix(coolSoft, '#ffb050', hot), 0.2 + 0.6 * hot); g.lineWidth = 2.2 / r; g.stroke();
+    if (hot > 0.04) {
+      g.beginPath();
+      for (let i = 1; i < JAG; i += 4) { g.moveTo(jx[i], jy[i]); g.lineTo(jc[i] * 0.97 + js[i] * 0.05, js[i] * 0.97 - jc[i] * 0.05); }
+      g.strokeStyle = rgba('#ffb45a', 0.7 * hot); g.lineWidth = 1.6 / r; g.stroke();
+    }
+    g.strokeStyle = rgba('#ffffff', 0.22); g.lineWidth = 1.2 / r;
+    g.beginPath(); g.arc(0, 0, 0.985, Math.PI * 1.05 - spin * 0.5, Math.PI * 1.6 - spin * 0.5); g.stroke();
     g.restore();
   }
   function seedGeom() { sg.sh = mz * 0.86; sg.sw = sg.sh * 0.8; sg.sx = padX; sg.sy = padY - sg.sh * 0.36; return sg; }
@@ -713,19 +762,20 @@ export function create(E) {
     if (drag == null) return;
     const a = fOn ? 1 : 0.45;
     glow(g, fX, fY, 30, coolCol, 0.4 * a);
-    g.save(); g.translate(fX, fY); g.rotate(t * (reduced ? 0.6 : 2)); g.globalCompositeOperation = 'lighter';
-    g.strokeStyle = rgba(coolSoft, 0.55 * a); g.lineWidth = 1.5;
-    g.beginPath(); g.arc(0, 0, 17, 0, 1.4); g.stroke(); g.beginPath(); g.arc(0, 0, 17, Math.PI, Math.PI + 1.4); g.stroke();
+    g.save(); g.translate(fX, fY); g.rotate(t * (reduced ? 0.6 : 2)); g.lineCap = 'round';
+    g.beginPath(); g.arc(0, 0, 17, 0, 1.4); g.moveTo(-17, 0); g.arc(0, 0, 17, Math.PI, Math.PI + 1.4);
+    g.strokeStyle = rgba(ink, 0.2 * a); g.lineWidth = 3.2; g.stroke();
+    g.globalCompositeOperation = 'lighter'; g.strokeStyle = rgba(coolSoft, 0.6 * a); g.lineWidth = 1.5; g.stroke();
     g.restore();
   }
   // plot twist (even rounds): a tiny wishing star crosses and settles on a tree
-  function drawWish(t) {
+  function drawWish(t, dt) {
     const k = clamp((t - twistAt) / 2.6), tr = trees[side < 0 ? 3 : 0];
     const ex = tr.x, ey = tr.y - tr.th - tr.cr * 1.25, sx0 = side < 0 ? X0 + W * 0.05 : X0 + W * 0.95, sy0 = Y0 + H * 0.06;
     if (k < 1) {
       const e = ease.inOutSine(k), px = lerp(sx0, ex, e), py = lerp(sy0, ey, e) - Math.sin(e * Math.PI) * H * 0.08;
       glow(g, px, py, 14, '#ffffff', 0.6); glint(g, px, py, 9, '#fff6dc', 0.85, t);
-      if (!low && Math.random() < 0.5) E.particles.emit({ x: px, y: py, vx: 0, vy: 6, life: 0.8, size: 4, colour: '#fff3d0', kind: 'glint', drag: 0.9 });
+      if (!low && dt > 0 && Math.random() < 0.5) E.particles.emit({ x: px, y: py, vx: 0, vy: 6, life: 0.8, size: 4, colour: '#fff3d0', kind: 'glint', drag: 0.9 });
     } else {
       const tw = 0.5 + 0.5 * Math.sin(t * 1.6);
       glow(g, ex, ey, 12 + 4 * tw, '#fff6dc', 0.45 + 0.2 * tw); glint(g, ex, ey, 7 + 2 * tw, '#ffffff', 0.7, 0.3);
@@ -748,7 +798,14 @@ export function create(E) {
     get done() { return doneFlag; },
     frame,
     down(p) {
-      if (finAt >= 0 || drag != null) return;
+      if (finAt >= 0) return;
+      if (drag != null) {
+        // a second finger: a soft answer, no progress (the first finger keeps the trail)
+        const now = E.now();
+        E.ripples.add(p.x, p.y, { colour: seedCol, speed: 34, alpha: 0.26, r: 4 });
+        if (now - lastTwo > 0.25) { lastTwo = now; E.sound('bubble', { note: (noteOf(laid) + 3) % 10, intensity: 0.16, pan: panOf(p.x) }); E.haptic('tick'); glance = Math.max(glance, 0.5); }
+        return;
+      }
       if (landed) {
         const { sy } = seedGeom();
         if (Math.hypot(p.x - padX, p.y - sy) < mz) { seedPulse = 1; E.sound('bubble', { note: 6, intensity: 0.25 }); E.haptic('light'); E.ripples.add(padX, padY, { colour: seedCol, speed: 40, alpha: 0.35, r: 6 }); }

@@ -1,6 +1,7 @@
-// Photo tray: add up to 7 photos, tap one to replace it, × to remove it.
-// Shown on the "What's happening" screen (and in the test panel).
-import { h, icon } from '../app/ui.js';
+// Photo tray: add up to six photos, tap one to replace it, × to remove it.
+// Shown on the "What's happening" screen. With none, the seven Mallows take
+// the photos' place in the ritual.
+import { h, icon, toast } from '../app/ui.js';
 import { photoSession, MAX_PHOTOS } from './photos.js';
 
 export function photoTray({ note = true } = {}) {
@@ -13,7 +14,7 @@ export function photoTray({ note = true } = {}) {
     input.value = '';
     if (!files.length) return;
     if (replaceId != null) { await photoSession.replace(replaceId, files[0]); replaceId = null; }
-    else await photoSession.add(files);
+    else tellIfFull(files.length, await photoSession.add(files));
   });
   function pick(id = null) { replaceId = id; input.multiple = id == null; input.click(); }
   function render() {
@@ -30,6 +31,12 @@ export function photoTray({ note = true } = {}) {
   const el = h('div', { class: 'photo-block' },
     h('div', { class: 'photo-head' }, h('span', {}, 'Add photos (optional)'), count),
     tray, input,
-    note ? h('p', { class: 'muted photo-note' }, 'People, places, screenshots, things — up to 7. They become part of your ritual, stay only on this phone, and are cleared afterwards. Never uploaded or shared.') : null);
+    note ? h('p', { class: 'muted photo-note' }, 'People, places, screenshots, things — up to six. They become part of your ritual, stay only on this phone, and are cleared afterwards. Never uploaded or shared. No photos? The seven Mallows play the part instead.') : null);
   return { el, destroy: off };
+}
+
+/** Say so when some picked photos didn't fit (six is the limit). */
+export function tellIfFull(picked, added) {
+  if (picked <= added || photoSession.count < MAX_PHOTOS) return;
+  toast(added ? `Up to six photos fit, so ${added === 1 ? 'one was' : `${added} were`} added.` : 'You already have six photos. Remove one to add another.', 3200);
 }

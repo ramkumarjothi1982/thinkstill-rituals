@@ -68,7 +68,7 @@ export function create(E) {
 | `round` | 1 for the ritual itself; 2, 3… when the person taps **Keep playing** and the game loops. The host re-creates your engine for every round, so no reset logic is needed |
 | `calm` | 0 on round 1, rising to 0.6 over loop rounds: let later rounds start a little calmer (less agitation, softer colours) so each loop feels more relieving |
 | `words.token` | the short excerpt of the person's own words (≤ 42 chars). **Must be visible in the scene**, legible (≥ 12 px), part of an object. `words.draw(g, x, y, {style, size, maxWidth, lines, alpha, rot, glowColour})` with styles `plate · light · ember · frost · etched · ink`. `words.full` is the full sentence (shown by the host's reading overlay; don't render long text in the scene) |
-| `photos` | the person's photos (0–7) — see below |
+| `photos` | the ritual's photo material: the person's own photos (1–6), or, when they add none, the seven Mallow cards (7, `photos.standIn` is true). 0 only if the Mallow art can't load — see below |
 | `particles` | shared additive particle pool: `emit({x,y,vx,vy,life,size,colour,drag,gravity,kind})`, `burst(x,y,n,{speed,colour,life,size,kind,dir,spread})`; kinds `glow` (default), `glint`, `dot` |
 | `ripples` | shared ripples: `add(x, y, {colour, speed, alpha, r})` |
 | `gate(raw)` | **call every frame** with the progress your input asks for; use the returned value as the real state. World laws use it (guide light, pauses, beats, slow last third, wakes) |
@@ -99,7 +99,7 @@ Sounds (`E.sound`): `pluck, glass, drip, bubble` (pentatonic — pass `note: 0�
 
 **Rules**
 1. Photos are ritual *material*: they become the engine's objects (tiles, charms, capsules, stones, pages, cloud portraits, lanterns…) and the person physically moves or transforms them.
-2. 0 photos must look complete and beautiful (default objects). 1 photo may be reused or be the hero object. 2–7: distribute evenly; each appears at least once.
+2. 0 photos must look complete and beautiful (default objects; test with `&mallows=0`). 1 photo may be reused or be the hero object. 2–7: distribute evenly; each appears at least once. With no photos of their own the person gets the seven Mallow cards (`src/v3/mallow-cards.js`: each Mallow in its realm's light, 4:5 portrait), so 7 is the common case.
 3. **Safety** — never strike, burn, cut, pierce, shoot, smash, crush or explode a photo (especially of a person). Allowed transformations: dissolve, wash away, cool down, unhook, shrink, soften, fade, scatter into light, detach, melt softly, seal away, untangle, release, drift into the distance, transform into a harmless form.
 4. Show them clearly: no black masks, no hard borders, recognisable, not tiny (≥ 44 px on a 390-wide phone unless deliberately in the distance).
 5. Never store or send them. They only exist in this ritual.
@@ -137,5 +137,5 @@ node hushmallow/tools/v3-lab.cjs "engine=GE-07&law=4&photos=0" /tmp/out/ge07-l4 
 
 `tap` finishes with the Tap instead button; `drag` performs the gestures your
 `hint()` describes. Both must reach `"phase":"end"` with no errors. Look at
-the screenshots. Check 0, 1 and 7 photos, a gate law (1, 2, 5, 6, 10), a phase
+the screenshots. Check `photos=0` (the seven Mallow cards), 1 and 6 photos, `photos=0&mallows=0` (none at all), a gate law (1, 2, 5, 6, 10), a phase
 law, and `&motion=reduce`. In a browser: `index.html?engine=GE-07&law=3&photos=3`.

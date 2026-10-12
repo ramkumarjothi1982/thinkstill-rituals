@@ -439,7 +439,7 @@ export function create(E) {
       const sz = gh.r * Rs, gl = 1 - gh.clear, hr = gh.spin + roll * 0.15;
       if (gh.ph >= 0) {
         if (gh.cooling && gh.clear < 1) glow(g, gh.x, gh.y, sz * 1.8, coronaCol, 0.5 * (1 - gh.clear));
-        photos.draw(g, gh.ph, gh.x, gh.y, sz * 2, { shape: 'hex', rot: hr * 0.25, tone: 'glow', toneMix: gl, blur: gl * 0.7,
+        photos.draw(g, gh.ph, gh.x, gh.y, sz * 2, { shape: 'hex', rot: Math.sin(hr) * 0.12, tone: 'glow', toneMix: gl, blur: gl * 0.7,
           glow: 0.25 + 0.55 * I * gl + 0.25 * gh.clear, glowColour: mix(glareCol, coronaCol, gh.clear), shadow: false, alpha: 0.82 + 0.18 * gh.clear });
         if (gl > 0.01) glow(g, gh.x, gh.y, sz * 1.05, '#ffffff', 0.42 * gl * (0.35 + 0.65 * I));
       } else {

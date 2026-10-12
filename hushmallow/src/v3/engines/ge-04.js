@@ -1,0 +1,566 @@
+// GE-04 · ECHO DIMMER — layered echo tiles (tap plus volume slide).
+// Three glass tiles hum with echoes: offset ghost copies of your words (and of
+// your photos) keep rolling out of each clear copy and shivering. Tap the
+// loudest tile (its echoes shake the most), then slide its glowing volume seam
+// left, towards the quiet moon. The repeating sound layer — level wash,
+// waveform bars, ghost copies, speaker ripples — fades notch by notch while the
+// exact words stay crisp on top. Win: one clear sentence remains without the
+// echo. At the finale the quiet tiles slide in behind the sentence tile (all
+// layers aligned, no echo left) and the photos settle around it as calm,
+// clear copies. The originals are never removed — only their echoes fade.
+
+import { TAU, clamp, lerp, smooth, ease, rgba, mix, glow, orb, halo, motes, roundRect, shadow } from '../fx.js';
+import { Wobble } from '../kit.js';
+
+export const meta = {
+  id: 'GE-04',
+  howTo: 'Tap the loudest echo tile, then slide its seam to the quiet side.',
+  steps: ['Tap the tile whose echoes shake the most.', 'Slide its glowing seam left, towards the little quiet moon.', 'Quieten each tile in turn until one clear sentence remains.'],
+  tapAlt: 'each press slides the loudest tile’s seam one notch quieter',
+  words: 'Your exact words sit on the sentence tile, crisp on top, while their ghost echoes fade underneath.',
+  photos: {
+    where: 'Your photos sit on the other echo tiles, each with shimmering ghost copies.',
+    becomes: 'layered photo slides',
+    touch: 'You quieten them by sliding each tile’s volume seam;',
+    change: 'the ghost copies soften, fade and fold back until one calm, clear copy of each photo remains.',
+    payoff: 'At the end they settle as calm, clear slides around your one clear sentence.',
+  },
+  finaleSec: 4,
+};
+
+const N = 3;              // echo tiles
+const U0 = 0.94;          // seam start (loud side)
+const UQ = 0.05;          // seam rest (quiet side)
+const CAP = 0.045;        // input banked ahead of the law (progress units)
+const NOTCH = 6;          // sound notches per seam travel
+const BLEND = 0.12;       // pointAt glides from one tile to the next over this share of a tile
+const SEAM_LAYERS = [[11, 0.1], [4.5, 0.3], [1.6, 0.95]];
+const ECHOES = [5, 4, 3]; // ghost copies in the echo train, loudest tile first
+const LAYERS = [3, 3, 2]; // ghost plates behind the tile, loudest tile first
+
+export function create(E) {
+  const { g, stage, photos, words, pal } = E;
+  const reduced = E.reduced, low = E.lowStim, heavy = E.heavy, calm0 = E.calm;
+  const R = () => E.rand();
+  const quietCol = mix(pal.glow, '#e8f6ff', 0.55);
+  const warmCol = mix(pal.warm || '#ffb37a', '#fff1d6', 0.45);
+  const pearl = mix(quietCol, '#ffffff', 0.18);
+  const base = [pal.accent, pal.glow, pal.warm || '#ffb37a'].map((c) => mix(heavy ? mix(c, quietCol, 0.3) : c, '#ffffff', 0.1 + calm0 * 0.25));
+  const crot = E.round === 1 ? 0 : Math.floor(R() * 3);
+  const qmix = (a, b, k) => mix(a, b, Math.round(clamp(k) * 16) / 16);   // quantised: glow sprites stay cached
+
+  // ------------------------------------------------------------- tiles --
+  // round 1: the sentence sits in the middle and is the quietest, so it clears last
+  const wordsSlot = E.round === 1 ? 1 : Math.floor(R() * N);
+  const louds = [1, 0.68, 0.42].map((v) => v * (1 - calm0 * 0.35));
+  const n = photos.n;
+  const list = Array.from({ length: n }, (_, i) => (i + E.round - 1) % n);
+  const nA = Math.ceil(n / 2);
+  const photoSlots = [0, 1, 2].filter((s) => s !== wordsSlot);
+  const tiles = [0, 1, 2].map((slot) => {
+    const kind = slot === wordsSlot ? 'words' : 'photo';
+    const pi = photoSlots.indexOf(slot);
+    const ph = kind === 'photo' ? (pi === 0 ? list.slice(0, nA) : list.slice(nA)) : [];
+    return { slot, kind, ph, L: 0, col: base[(slot + crot) % 3], col2: base[(slot + crot + 1) % 3], ec: '#ffffff', ec2: '#ffffff', ech: '#ffffff', ec2h: '#ffffff',
+      vol: 0, s: 0, qs: 0, su: U0, wob: new Wobble(), lift: 0, flare: 0, cue: 0, nE: 3, nP: 2, lvl: null, bars: null,
+      pulse: 0, clear: 0, quiet: false, ph0: R(), phase: R(), bob: R() * TAU, x: 0, y: 0, cs: 0, chH: 0, lx: [], dw: [], dh: [], side: pi === 0 ? -1 : 1 };
+  });
+  {
+    let L = louds.slice();
+    if (E.round === 1) { const a = R() < 0.5; tiles[photoSlots[0]].L = a ? L[0] : L[1]; tiles[photoSlots[1]].L = a ? L[1] : L[0]; tiles[wordsSlot].L = L[2]; }
+    else { for (let i = L.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [L[i], L[j]] = [L[j], L[i]]; } tiles.forEach((t, i) => { t.L = L[i]; }); }
+  }
+  const order = [0, 1, 2].sort((a, b) => tiles[b].L - tiles[a].L);     // loudest first
+  const rankOf = [0, 0, 0]; order.forEach((ti, r) => { rankOf[ti] = r; tiles[ti].nE = ECHOES[r]; tiles[ti].nP = LAYERS[r]; });
+  const wordsTile = tiles[wordsSlot];
+  // echo strength at full volume: even the quietest tile visibly echoes
+  const s0 = (t) => 0.55 + 0.45 * t.L;
+
+  // ------------------------------------------------------------ layout --
+  let TW, TH, GAP, RAD, CW, trackW, GW, GH, wordSize, S = 1;
+  let plateGrad, hiGrad, bandGrad, gripGrad, bevelGrad, finK = 0;
+  function fit() {
+    S = stage.s;
+    TW = Math.min(stage.w * 0.88, 430);
+    GAP = clamp(stage.h * 0.045, 8, 22);
+    TH = Math.min((stage.h * 0.9 - GAP * (N - 1)) / N, TW * 0.44);
+    RAD = Math.min(20, TH * 0.22);
+    CW = TW * 0.66;
+    trackW = TW - 26;
+    GW = Math.max(13, TW * 0.042); GH = TH * 0.44;
+    wordSize = clamp(TH * 0.14, 13, 18);
+    const total = TH * N + GAP * (N - 1), top = stage.cy - total / 2 + TH / 2;
+    for (const t of tiles) {
+      t.x = stage.cx; t.y = top + t.slot * (TH + GAP);
+      t.lx.length = 0; t.dw.length = 0; t.dh.length = 0;
+      if (t.kind === 'photo' && t.ph.length) {
+        // fit the slides in one row: ≤ 76% of the tile height, inside the content band
+        let sw = 0, mh = 0;
+        const dims = t.ph.map((i) => photos.size(i, 'card', 100));
+        for (const d of dims) { sw += d.w / 100; mh = Math.max(mh, d.h / 100); t.dw.push(d.w / 100); t.dh.push(d.h / 100); }
+        const band = TW * 0.72, gap = clamp(TW * 0.022, 5, 8), k = Math.min((TH * 0.76) / mh, (band - gap * (t.ph.length - 1)) / sw);
+        t.cs = k; t.chH = mh * k;   // cs = the card's longest side
+        let x = -(sw * k + gap * (t.ph.length - 1)) / 2;
+        for (const d of dims) { const w = (d.w / 100) * k; t.lx.push(x + w / 2); x += w + gap; }
+      } else if (t.kind === 'photo') {
+        t.cs = TH * 0.3; t.chH = t.cs;
+        for (const f of [-0.32, 0, 0.32]) t.lx.push(f * CW);
+      }
+      // the tile's own sound light: brightest at the loud end, so sliding the seam left dims it
+      t.lvl = g.createLinearGradient(-TW / 2, 0, TW / 2, 0);
+      t.lvl.addColorStop(0, rgba(t.col, 0)); t.lvl.addColorStop(0.45, rgba(t.col, 0.07)); t.lvl.addColorStop(1, rgba(t.col, 0.3));
+      t.bars = g.createLinearGradient(-TW / 2, 0, TW / 2, 0);
+      t.bars.addColorStop(0, rgba(mix(t.col, quietCol, 0.6), 0.1)); t.bars.addColorStop(0.6, rgba(t.col, 0.45)); t.bars.addColorStop(1, rgba(mix(t.col, '#ffffff', 0.3), 0.85));
+    }
+    // static gradients in tile-local coordinates
+    plateGrad = g.createLinearGradient(0, -TH / 2, 0, TH / 2);
+    plateGrad.addColorStop(0, rgba(mix(mix(pal.ink, pal.deep, 0.42), '#ffffff', 0.08), 0.88));
+    plateGrad.addColorStop(0.5, rgba(mix(pal.ink, pal.deep, 0.22), 0.91));
+    plateGrad.addColorStop(1, rgba(mix(pal.ink, '#000010', 0.4), 0.95));
+    hiGrad = g.createLinearGradient(0, -TH / 2, 0, -TH / 2 + TH * 0.45);
+    hiGrad.addColorStop(0, 'rgba(255,255,255,0.11)'); hiGrad.addColorStop(1, 'rgba(255,255,255,0)');
+    bevelGrad = g.createLinearGradient(0, -TH / 2, 0, TH / 2);
+    bevelGrad.addColorStop(0, 'rgba(255,255,255,0.42)'); bevelGrad.addColorStop(0.3, 'rgba(255,255,255,0.05)');
+    bevelGrad.addColorStop(0.8, 'rgba(255,255,255,0.03)'); bevelGrad.addColorStop(1, 'rgba(255,255,255,0.18)');
+    bandGrad = g.createLinearGradient(-TW / 2, 0, -TW / 2 + TW * 0.17, 0);
+    bandGrad.addColorStop(0, rgba(quietCol, 0.26)); bandGrad.addColorStop(1, rgba(quietCol, 0));
+    gripGrad = g.createLinearGradient(-GW / 2, 0, GW / 2, 0);
+    gripGrad.addColorStop(0, mix(quietCol, '#5a6488', 0.55)); gripGrad.addColorStop(0.42, '#ffffff');
+    gripGrad.addColorStop(0.6, mix(quietCol, '#ffffff', 0.6)); gripGrad.addColorStop(1, mix(quietCol, '#3a4468', 0.6));
+  }
+  fit();
+  E.onResize(fit);
+  const sxOf = (u) => -trackW / 2 + u * trackW;
+
+  // ------------------------------------------------------------- state --
+  let wanted = 0, p = 0, doneCount = 0, sel = -1, assistTo = null, drag = null, doneFlag = false;
+  let finAt = -1, twistAt = -1, lastNotch = 0, lastTickT = -1, waitT = -1, hum = null, hinted = false, idleT = 0;
+  const activeTile = () => (doneCount < N ? tiles[order[doneCount]] : null);
+
+  function select(t) {
+    sel = tiles.indexOf(t);
+    E.sound('glass', { note: 4 + doneCount * 2, intensity: 0.42, pan: (t.x - stage.cx) / stage.w });
+    E.haptic('light');
+    E.ripples.add(t.x + sxOf(t.su), t.y, { colour: t.ec, alpha: 0.4, speed: 90, r: 8 });
+    E.react('tap');
+    t.pulse = 1;
+  }
+  function notYet(t) {
+    // the law is asking for a moment: the tile gives a soft "not yet" sway
+    if (E.now() - waitT < 0.6) return;
+    waitT = E.now();
+    if (t) t.wob.kick(0.35);
+    E.sound('pluck', { note: 2, intensity: 0.16 });
+    E.checkpoint('wait');
+  }
+  function complete(t) {
+    t.quiet = true; t.clear = 1; doneCount++; sel = -1; lastNotch = 0;
+    E.checkpoint('step');
+    E.sound('chime', { intensity: 0.42, pitch: 1 + doneCount * 0.06 });
+    E.haptic('soft');
+    E.react(doneCount >= N ? 'success' : 'nod');
+    E.ripples.add(t.x - TW * 0.38, t.y, { colour: quietCol, alpha: 0.45, speed: 70, r: 10 });
+    const m = reduced || low ? 5 : 12;
+    for (let k = 0; k < m; k++) E.particles.emit({ x: t.x + (R() - 0.2) * TW * 0.7, y: t.y + (R() - 0.5) * TH * 0.7, vx: -30 - R() * 50, vy: (R() - 0.5) * 18, life: 1.1, size: 5, colour: quietCol, drag: 0.95 });
+    for (let j = 0; j < t.ph.length; j++) {
+      const i = t.ph[j];
+      photos.dust(i, t.x + t.lx[j], t.y, t.cs, reduced ? 5 : 10, { shape: 'card', up: 16, speed: 18, sizePx: 4 });
+      E.checkpoint('photo', i);
+    }
+    if (doneCount === 1 && !hinted) { hinted = true; E.hint('Lovely. Now tap the next loudest tile and slide its seam.'); }
+    if (doneCount >= N) E.sound('settle', { intensity: 0.5 });
+  }
+
+  // ------------------------------------------------------------- frame --
+  function frame(dt, time) {
+    S = stage.s;
+    // assisted presses travel the same path, at a slow sliding pace
+    if (assistTo != null) { wanted = Math.min(assistTo, wanted + dt * 0.32); if (wanted >= assistTo - 1e-4) assistTo = null; }
+    const lo = doneCount / N, hi = Math.min(1, (doneCount + 1) / N);
+    wanted = clamp(wanted, lo, hi);
+    p = Math.max(lo, Math.min(hi, E.gate(wanted)));
+    if (wanted > p + CAP) wanted = p + CAP;
+    const act = activeTile();
+    if (act) {
+      const qa = clamp(p * N - doneCount);
+      const notch = Math.floor(qa * NOTCH + 1e-6);
+      if (notch !== lastNotch) {
+        const down = notch > lastNotch; lastNotch = notch;
+        if (time - lastTickT > 0.07) {
+          lastTickT = time;
+          E.sound('pluck', { note: clamp(8 - notch, 1, 9), intensity: down ? lerp(0.42, 0.14, qa) : 0.2, pan: sxOf(act.su) / stage.w });
+          E.haptic('tick');
+          act.pulse = 1;
+          if (!reduced) E.particles.emit({ x: act.x + sxOf(act.su), y: act.y + (R() - 0.5) * TH * 0.5, vx: -24 - R() * 30, vy: (R() - 0.5) * 16, life: 0.7, size: 4, colour: act.ec, kind: 'glint' });
+        }
+      }
+      if (qa >= 0.995) complete(act);
+    }
+    if (!doneFlag && doneCount >= N && !drag && assistTo == null) doneFlag = true;
+    if (!drag && assistTo == null && finAt < 0) idleT += dt; else idleT = 0;
+
+    // per-tile physics: seam spring, lift, wobble, echo phase
+    const tw = twistAt >= 0 ? clamp((E.now() - twistAt) / 3.4) : 0, twOn = tw > 0 && tw < 1;
+    let loudAll = 0;
+    for (let i = 0; i < N; i++) {
+      const t = tiles[i], r = rankOf[i];
+      const q = r < doneCount ? 1 : r === doneCount ? clamp(p * N - r) : 0;
+      t.su = lerp(t.su, lerp(U0, UQ, q), 1 - Math.exp(-dt * 16));
+      t.qs = t.quiet ? 1 : clamp((U0 - t.su) / (U0 - UQ));
+      t.vol = t.quiet ? 0 : t.L * (1 - t.qs);
+      t.s = t.quiet ? 0 : s0(t) * (1 - t.qs);
+      t.ec = qmix(quietCol, t.col, t.s * 1.2);
+      t.ec2 = qmix(quietCol, t.col2, t.s * 1.2);
+      t.ech = mix(t.ec, '#ffffff', 0.3); t.ec2h = mix(t.ec2, '#ffffff', 0.3);
+      t.lift = lerp(t.lift, sel === i && finAt < 0 ? 1 : 0, 1 - Math.exp(-dt * 10));
+      t.wob.update(dt);
+      t.flare = Math.max(0, t.flare - dt * 1.2);
+      t.pulse = Math.max(0, t.pulse - dt * 3);
+      t.clear = Math.max(0, t.clear - dt * 0.8);
+      const isNext = act === t && sel < 0 && finAt < 0;
+      t.cue = (isNext ? 0.16 + 0.16 * Math.sin(time * 2.2) + Math.min(0.4, idleT * 0.08) * (0.5 + 0.5 * Math.sin(time * 2.2)) : 0) + t.flare;
+      const rate = (0.3 + 0.9 * t.vol) * (reduced ? 0.35 : 1) * (1 - calm0 * 0.35);
+      t.ph0 = (t.ph0 + dt * (twOn ? 0.25 : rate)) % 1;
+      if (twOn) t.ph0 = lerp(t.ph0, (time * 0.25) % 1, Math.min(1, dt * 2));     // the echoes fall into step
+      loudAll += t.vol / N;
+    }
+    if (hum) hum.update?.({ intensity: 0.04 + 0.18 * (act ? act.vol : 0), pitch: lerp(0.85, 1.15, act ? act.vol : 0) });
+
+    // ---- drawing
+    const fin = finAt >= 0 ? smooth(clamp((E.now() - finAt) / 2.4)) : 0;
+    finK = fin;
+    const total = TH * N + GAP * (N - 1), span = Math.max(TW, total);
+    // ambient light stays inside the stage (never over the title or the dock)
+    glow(g, stage.cx, stage.cy, Math.min(span * 0.66, stage.h * 0.62), qmix(quietCol, tiles[order[0]].col, loudAll * 1.3), 0.1 + 0.07 * loudAll + 0.08 * fin);
+    halo(g, stage.cx, stage.cy, Math.min(span * (0.6 + 0.15 * fin), stage.h * 0.44), time, mix(quietCol, '#ffffff', 0.3), { rings: 5, alpha: 0.045 + 0.08 * loudAll + 0.05 * fin, speed: (0.04 + 0.1 * loudAll) * (reduced ? 0.4 : 1) });
+    if (!low) motes(g, stage.x, stage.y, stage.w, stage.h, time, quietCol, { n: reduced ? 12 : 24, alpha: 0.32, seed: 44, size: 1.5 });
+
+    if (fin <= 0) {
+      for (let i = 0; i < N; i++) if (i !== sel) drawTile(tiles[i], time, 0);
+      if (sel >= 0) drawTile(tiles[sel], time, 0);
+      drawTether(time);
+      if (twOn) drawTwist(tw, time);
+    } else {
+      // finale: the quiet layers slide in behind the sentence tile and align; photos settle around it
+      for (const t of tiles) if (t !== wordsTile) drawPlate(t, placement(t, time, fin), time);
+      const wp = placement(wordsTile, time, fin);
+      glow(g, wp.x, wp.y, TW * 0.8, heavy ? quietCol : warmCol, 0.22 * fin);
+      drawPlate(wordsTile, wp, time);
+      drawWordsContent(wordsTile, wp, time, fin);
+      drawGrip(wordsTile, wp, time);
+      for (const t of tiles) if (t !== wordsTile) drawPhotoContent(t, placement(t, time, fin), time, fin);
+      halo(g, wp.x, wp.y, Math.min(TW * (0.5 + 0.3 * fin), stage.h * 0.44), time * 0.6, heavy ? quietCol : warmCol, { rings: 3, alpha: 0.12 * fin * (1 - fin * 0.4), speed: 0.12 });
+    }
+  }
+
+  // ------------------------------------------------------------ drawing --
+  const P = { x: 0, y: 0, sc: 1, a: 1 };
+  function placement(t, time, fin) {
+    const k = ease.inOutSine(fin);
+    const bob = reduced ? 0 : Math.sin(time * 0.7 + t.bob) * 1.6 * (1 - k);
+    P.x = t.x + t.wob.v * 7; P.y = t.y + bob - t.lift * 2; P.sc = 1 + 0.025 * t.lift; P.a = 1;
+    if (fin > 0) {
+      if (t === wordsTile) { P.y = lerp(P.y, stage.cy, k); P.sc = 1 + 0.06 * k; }
+      else { P.y = lerp(P.y, stage.cy + t.side * 4, k * 0.97); P.sc = 1 - 0.03 * k; P.a = 1 - 0.85 * k; }
+    }
+    return P;
+  }
+  function drawTile(t, time, fin) {
+    const pl = placement(t, time, fin);
+    drawPlate(t, pl, time);
+    if (t.kind === 'words') drawWordsContent(t, pl, time, fin);
+    else drawPhotoContent(t, pl, time, fin);
+    drawGrip(t, pl, time);
+  }
+  function jx(t, k, time) { return Math.sin(time * 29 + k * 2.3 + t.phase * 9); }
+  function jy(t, k, time) { return Math.cos(time * 23 + k * 1.7 + t.phase * 5); }
+  const vibOf = (t) => (reduced || low ? 0 : t.vol * 1.9 * S * (heavy ? 0.6 : 1) * (1 - calm0 * 0.5) * (1 + t.cue * 0.6));
+  // the finale keeps one clear sentence: the sentence tile's controls fade away
+  const uiA = (t) => (t === wordsTile ? 1 - 0.85 * finK : 1);
+
+  function drawPlate(t, pl, time) {
+    const s = t.s, sel = t.lift, vib = vibOf(t);
+    g.save(); g.translate(pl.x, pl.y); g.scale(pl.sc, pl.sc); g.globalAlpha = pl.a;
+    shadow(g, 0, TH * 0.5 + 3 + sel * 4, TW * 0.5, TH * 0.1, 0.32 + sel * 0.14);
+    // the tile itself echoes: layered ghost plates offset up-right, shivering with the volume
+    if (s > 0.01) {
+      g.lineWidth = 1.3;
+      for (let k = t.nP; k >= 1; k--) {
+        const off = k * s * 5 * S * (1 - t.pulse * 0.2), c = k % 2 ? t.ec : t.ec2;
+        roundRect(g, -TW / 2 + off + jx(t, k, time) * vib * 0.6, -TH / 2 - off * 0.75 + jy(t, k, time) * vib * 0.6, TW, TH, RAD);
+        g.fillStyle = rgba(c, 0.07 * s * (t.nP + 1 - k)); g.fill();
+        g.strokeStyle = rgba(c, 0.55 * s * (1 - k / (t.nP + 1.4))); g.stroke();
+      }
+    }
+    // glass body
+    roundRect(g, -TW / 2, -TH / 2, TW, TH, RAD); g.fillStyle = plateGrad; g.fill();
+    g.save(); g.clip();
+    g.fillStyle = bandGrad; g.fillRect(-TW / 2, -TH / 2, TW * 0.17, TH);
+    const sx = sxOf(t.su);
+    g.globalCompositeOperation = 'lighter';
+    // quiet light pools on the moon side as the tile quietens; the tile's voice gathers behind the seam
+    g.save(); g.scale(1, 0.55);
+    glow(g, -TW * 0.34, 0, TW * 0.34, quietCol, 0.06 + 0.2 * t.qs + 0.16 * t.clear);
+    if (s > 0.01 || t.cue > 0.01) glow(g, sx - TW * 0.16, 0, TW * 0.42, t.ec, 0.04 + 0.2 * s + 0.14 * t.cue);
+    if (t === wordsTile && finK > 0) glow(g, 0, 0, TW * 0.6, heavy ? quietCol : warmCol, 0.22 * finK);
+    g.restore();
+    // the repeating sound layer: level wash + waveform bars from the quiet edge up to the seam
+    if (s > 0.004) {
+      const e = 1 - t.qs;
+      g.globalAlpha = pl.a * s0(t) * (0.45 + 0.55 * e);
+      g.fillStyle = t.lvl; g.fillRect(-TW / 2, -TH / 2, sx + TW / 2, TH);
+      const amp = TH * 0.64 * (0.08 + 0.92 * s * s * (2 - s)), sp = (1 + 3 * t.vol) * (reduced ? 0.3 : 1);
+      g.beginPath();
+      for (let bx = -TW / 2 + 9; bx < sx - 6; bx += 6) {
+        const h = amp * (0.2 + 0.8 * Math.abs(Math.sin(bx * 0.061 + time * sp + t.phase * 6) * Math.sin(bx * 0.017 - time * 0.9 + t.phase)));
+        g.rect(bx, -h / 2, 2.6, h);
+      }
+      if (t === wordsTile) g.globalAlpha *= 0.55;       // keep the word echoes readable over the bars
+      g.fillStyle = t.bars; g.fill();
+      g.globalAlpha = pl.a;
+      // a soft column of light where the sound piles up against the seam
+      g.save(); g.translate(sx - 4, 0); g.scale(0.3, 1); glow(g, 0, 0, TH * 0.72, t.ec, 0.4 * s); g.restore();
+      // speaker ripples on the loud side
+      g.lineWidth = 2;
+      for (let i = 0; i < 3; i++) {
+        const k = (time * (0.35 + 0.8 * t.vol) * (reduced ? 0.4 : 1) + i / 3 + t.phase) % 1;
+        g.strokeStyle = rgba(t.ech, 0.6 * s * (1 - k) * smooth(k * 5));
+        g.beginPath(); g.arc(TW / 2 - TW * 0.17, 0, TH * (0.14 + 0.34 * k), -0.6, 0.6); g.stroke();
+      }
+    }
+    if (t.clear > 0) { g.fillStyle = rgba(quietCol, 0.12 * t.clear); g.fillRect(-TW / 2, -TH / 2, TW, TH); }
+    g.globalCompositeOperation = 'source-over';
+    g.fillStyle = hiGrad; g.fillRect(-TW / 2, -TH / 2, TW, TH * 0.45);
+    g.restore();
+    // bevel: crisp top edge light, soft bottom lip
+    roundRect(g, -TW / 2 + 1.5, -TH / 2 + 1.5, TW - 3, TH - 3, RAD - 1.5); g.strokeStyle = bevelGrad; g.lineWidth = 1.5; g.stroke();
+    // rim (breathes on the loudest tile; bright when chosen; tinted by the tile's voice while it echoes)
+    roundRect(g, -TW / 2, -TH / 2, TW, TH, RAD);
+    const rimCol = sel > 0.05 || t.cue > 0.05 ? mix(t.ec, '#ffffff', 0.35) : qmix('#ffffff', t.ec, s * 0.8);
+    g.strokeStyle = rgba(rimCol, Math.min(0.95, 0.18 + 0.16 * s + 0.45 * sel + 0.5 * t.cue)); g.lineWidth = 1.2 + 1.3 * sel + t.cue; g.stroke();
+    // quiet side: a little moon
+    const ua = uiA(t);
+    moon(-TW / 2 + TW * 0.075, 0, Math.max(6, TH * 0.085), quietCol, (0.45 + 0.35 * sel + (t.quiet ? 0.45 : 0)) * ua);
+    drawSeam(t, sx, sel, time, ua);
+    g.restore();
+  }
+  function moon(x, y, r, col, a) {
+    if (a <= 0.01) return;
+    glow(g, x, y, r * 3.2, col, 0.32 * a);
+    g.save(); g.globalAlpha *= Math.min(1, a); g.fillStyle = rgba(col, 0.92);
+    g.beginPath(); g.arc(x, y, r, 0.955, TAU - 0.955); g.arc(x + r * 0.5, y, r * 0.82, -1.476, 1.476, true); g.closePath(); g.fill();
+    g.restore();
+  }
+  function drawSeam(t, sx, sel, time, ua) {
+    if (ua <= 0.01) return;
+    const top = -TH / 2 + 7, bot = TH / 2 - 7;
+    const sc = t.quiet ? quietCol : mix(t.ec, '#ffffff', 0.35);
+    const k = (t.quiet ? 0.55 : 0.6 + 0.4 * sel) * ua;
+    g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+    for (const [w, al] of SEAM_LAYERS) {
+      g.strokeStyle = rgba(al > 0.9 ? '#ffffff' : sc, al * k * (1 + t.pulse * 0.4)); g.lineWidth = w;
+      g.beginPath(); g.moveTo(sx, top); g.lineTo(sx, bot); g.stroke();
+    }
+    g.restore();
+    glow(g, sx, 0, GH * (1 + 0.4 * sel + 0.3 * t.pulse), sc, (0.22 + 0.35 * sel + 0.3 * t.cue) * ua);
+  }
+  function drawGrip(t, pl, time) {
+    // grip: a glass bead riding the seam (drawn above the content — it's what the finger holds)
+    const ua = uiA(t);
+    if (ua <= 0.01) return;
+    const sx = sxOf(t.su), sel = t.lift;
+    g.save(); g.translate(pl.x, pl.y); g.scale(pl.sc, pl.sc); g.globalAlpha = pl.a * ua;
+    g.translate(sx, 0);
+    roundRect(g, -GW / 2, -GH / 2, GW, GH, GW / 2); g.fillStyle = gripGrad; g.fill();
+    g.strokeStyle = rgba('#ffffff', 0.5 + 0.35 * sel); g.lineWidth = 1; g.stroke();
+    g.strokeStyle = rgba(pal.ink, 0.4); g.lineWidth = 1.2;
+    for (let i = -1; i <= 1; i++) { g.beginPath(); g.moveTo(-GW * 0.22, i * GH * 0.14); g.lineTo(GW * 0.22, i * GH * 0.14); g.stroke(); }
+    g.translate(-sx, 0);
+    // chevrons drifting towards the quiet side while the tile is chosen
+    if (sel > 0.05 && !t.quiet && sx > -TW * 0.25) {
+      g.save(); g.lineCap = 'round'; g.lineJoin = 'round'; g.lineWidth = 2;
+      for (let i = 0; i < 3; i++) {
+        const kk = reduced ? i / 3 + 0.17 : (time * 0.7 + i / 3) % 1;
+        const cx2 = sx - GW - 6 - kk * TW * 0.16, al = sel * 0.5 * Math.sin(kk * Math.PI);
+        g.strokeStyle = rgba('#ffffff', al);
+        g.beginPath(); g.moveTo(cx2 + 5, -7); g.lineTo(cx2, 0); g.lineTo(cx2 + 5, 7); g.stroke();
+      }
+      g.restore();
+    }
+    g.restore();
+  }
+  function clipPlate(pl) {
+    const w = TW * pl.sc, h = TH * pl.sc;
+    roundRect(g, pl.x - w / 2, pl.y - h / 2, w, h, RAD * pl.sc); g.clip();
+  }
+  function drawWordsContent(t, pl, time, fin) {
+    if (E.phase === 'law') return;               // the closing-move law shows the words itself
+    const s = t.s, vib = vibOf(t);
+    g.save(); g.translate(pl.x, pl.y); g.scale(pl.sc, pl.sc);
+    if (s > 0.01) {
+      // ghost duplicates: a two-tone echo train rolling out of the clear copy, fading as it travels
+      g.save(); roundRect(g, -TW / 2, -TH / 2, TW, TH, RAD); g.clip(); g.globalCompositeOperation = 'lighter';
+      const spanW = s * (30 + 20 * s) * S * (1 - t.pulse * 0.25), nE = t.nE;
+      for (let k = nE - 1; k >= 0; k--) {
+        const f = (k + t.ph0) / nE, al = s * 0.85 * (1 - f) * smooth(f * 6);
+        if (al < 0.012) continue;
+        g.fillStyle = k % 2 ? t.ec2h : t.ech;
+        words.draw(g, f * spanW + jx(t, k, time) * vib, -f * spanW * 0.42 + jy(t, k, time) * vib, { style: 'echo', size: wordSize, maxWidth: CW, lines: 3, alpha: al });
+      }
+      // a tight two-tone split hugging the clear copy: it closes up as the volume falls
+      const cs = (0.8 + 3.2 * s) * S;
+      g.fillStyle = t.ech; words.draw(g, -cs + jx(t, 7, time) * vib * 0.5, cs * 0.4, { style: 'echo', size: wordSize, maxWidth: CW, lines: 3, alpha: 0.55 * s });
+      g.fillStyle = t.ec2h; words.draw(g, cs, -cs * 0.4 + jy(t, 8, time) * vib * 0.5, { style: 'echo', size: wordSize, maxWidth: CW, lines: 3, alpha: 0.55 * s });
+      g.restore();
+    }
+    // the exact words: always crisp, always on top of their echoes
+    words.draw(g, 0, 0, { style: 'light', size: wordSize, maxWidth: CW, lines: 3, alpha: 1, glowColour: fin > 0 ? qmix(quietCol, heavy ? quietCol : warmCol, fin) : qmix(quietCol, t.ec, s * 1.3) });
+    g.restore();
+  }
+  function drawPhotoContent(t, pl, time, fin) {
+    const s = t.s, vib = vibOf(t), k = ease.inOutSine(fin);
+    const spanW = s * (18 + 16 * s) * S * (1 - t.pulse * 0.25);
+    const fy = stage.cy + t.side * (TH * 0.56 + 12 * S + t.chH * 0.55);
+    const items = t.ph.length || 3;
+    for (let j = 0; j < items; j++) {
+      const i = t.ph.length ? t.ph[j] : -1;
+      let x = pl.x + t.lx[j] * pl.sc, y = pl.y;
+      if (fin > 0) { x = lerp(x, stage.cx + t.lx[j] * 1.04, k); y = lerp(y, fy + (reduced ? 0 : Math.sin(time * 1.2 + j * 1.3 + t.slot) * 2.5 * k), k); }
+      const sz = t.cs * (fin > 0 ? lerp(pl.sc, 1.06, k) : pl.sc);
+      if (s > 0.01) {
+        g.save(); clipPlate(pl); g.globalCompositeOperation = 'lighter';
+        const cw = i >= 0 ? sz * t.dw[j] : sz, chh = i >= 0 ? sz * t.dh[j] : sz;
+        for (let e = t.nE - 1; e >= 0; e--) {
+          const f = (e + t.ph0) / t.nE, al = s * 0.5 * (1 - f) * smooth(f * 6);
+          if (al < 0.012) continue;
+          const ox = x + f * spanW + jx(t, e + j, time) * vib, oy = y - f * spanW * 0.34 + jy(t, e + j, time) * vib;
+          const c = e % 2 ? t.ec2h : t.ech, gs = 1 + 0.05 * f;
+          if (i >= 0) {
+            photos.draw(g, i, ox, oy, sz * gs, { shape: 'card', alpha: al, tone: 'mist', toneMix: 1, shadow: false });
+            // each ghost slide carries a thin coloured edge, so the layers read as separate copies
+            g.strokeStyle = rgba(c, al * 0.9); g.lineWidth = 1.2;
+            roundRect(g, ox - (cw * gs) / 2, oy - (chh * gs) / 2, cw * gs, chh * gs, Math.min(cw, chh) * 0.1); g.stroke();
+          } else { g.strokeStyle = rgba(c, al * 1.3); g.lineWidth = 1.6; g.beginPath(); g.arc(ox, oy, sz * 0.5 * gs, 0, TAU); g.stroke(); }
+        }
+        g.restore();
+      }
+      if (i >= 0) {
+        const gc = fin > 0 ? (heavy ? quietCol : warmCol) : t.ec;
+        photos.draw(g, i, x, y, sz, { shape: 'card', tone: 'mist', toneMix: t.vol * 0.35, glow: 0.12 + 0.22 * s + 0.35 * t.clear + 0.3 * k, glowColour: gc, shadow: fin > 0.5 });
+      } else {
+        // no photos: glossy sound pearls, calming from the tile colour to a pale pearl
+        const r = sz * 0.5;
+        glow(g, x, y, r * 2.3, fin > 0 ? (heavy ? quietCol : warmCol) : t.ec, 0.3 + 0.2 * s + 0.3 * t.clear);
+        orb(g, x, y, r, fin > 0 ? qmix(pearl, heavy ? quietCol : warmCol, k * 0.6) : qmix(pearl, t.col, s * 1.2));
+      }
+    }
+  }
+  function drawTether(time) {
+    if (!drag || drag.t.quiet) return;
+    const t = drag.t, sx = t.x + sxOf(t.su) * (1 + 0.025 * t.lift), dx = drag.fx - sx;
+    if (Math.abs(dx) < 10) return;
+    // the finger is ahead of the seam (the law is pacing it): a soft elastic thread of light
+    g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+    const y = t.y, sag = Math.min(14, Math.abs(dx) * 0.12);
+    for (const [w, al] of SEAM_LAYERS) {
+      g.strokeStyle = rgba(al > 0.9 ? '#ffffff' : t.ec, al * 0.55); g.lineWidth = w * 0.6;
+      g.beginPath(); g.moveTo(sx, y); g.quadraticCurveTo((sx + drag.fx) / 2, y + sag, drag.fx, y); g.stroke();
+    }
+    g.restore();
+    glow(g, drag.fx, y, 16, t.ec, 0.5 + 0.15 * Math.sin(time * 4));
+  }
+  function drawTwist(tw, time) {
+    // the plot twist: the echoes fall into step and a cool hush-wave sweeps across every tile
+    const total = TH * N + GAP * (N - 1);
+    const x = lerp(stage.cx - TW * 0.62, stage.cx + TW * 0.62, ease.inOutSine(tw)), a = Math.sin(tw * Math.PI);
+    const gr = g.createLinearGradient(x - 40, 0, x + 40, 0);
+    gr.addColorStop(0, rgba(quietCol, 0)); gr.addColorStop(0.5, rgba(quietCol, 0.22 * a)); gr.addColorStop(1, rgba(quietCol, 0));
+    g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = gr; g.fillRect(x - 40, stage.cy - total / 2 - 6, 80, total + 12); g.restore();
+    if (!reduced && R() < 0.35) E.particles.emit({ x, y: stage.cy + (R() - 0.5) * total, vx: 10, vy: -12, life: 0.9, size: 5, colour: '#ffffff', kind: 'glint' });
+  }
+
+  // -------------------------------------------------------------- input --
+  function tileAt(pt) {
+    for (const t of tiles) if (Math.abs(pt.x - t.x) <= TW / 2 + 12 && Math.abs(pt.y - t.y) <= TH / 2 + GAP / 2) return t;
+    return null;
+  }
+  const seamPoint = (r, q) => { const t = tiles[order[r]]; return { x: t.x + sxOf(lerp(U0, UQ, q)), y: t.y }; };
+  return {
+    get progress() { return p; },
+    get done() { return doneFlag; },
+    frame,
+    down(pt) {
+      if (finAt >= 0) return;
+      const t = tileAt(pt); if (!t) return;
+      idleT = 0;
+      const act = activeTile();
+      if (t.quiet || !act) {
+        // already quiet: a soft clear note, nothing to do
+        E.sound('glass', { note: 8, intensity: 0.22 }); E.haptic('tick'); t.clear = Math.max(t.clear, 0.5);
+        E.ripples.add(pt.x, pt.y, { colour: quietCol, alpha: 0.3, speed: 60, r: 6 });
+        return;
+      }
+      if (t !== act) {
+        // not the loudest yet: a gentle wobble, and the loudest tile flares so it's easy to find
+        t.wob.kick(0.8); act.flare = 1;
+        E.sound('click', { intensity: 0.25 }); E.haptic('tick');
+        return;
+      }
+      if (sel !== tiles.indexOf(t)) select(t);
+      else { E.sound('pluck', { note: 3, intensity: 0.3 }); E.haptic('light'); t.pulse = 1; }
+      if (!drag) {
+        drag = { id: pt.id, t, lastX: pt.x, fx: pt.x, fy: pt.y };
+        hum = E.hold ? E.hold('hum', { intensity: 0.08 }) : null;
+      }
+    },
+    move(pt) {
+      if (!drag || pt.id !== drag.id) return;
+      const dx = pt.x - drag.lastX; drag.lastX = pt.x; drag.fx = pt.x; drag.fy = pt.y;
+      const t = drag.t; if (t.quiet || finAt >= 0) return;
+      const dq = (-dx / trackW) / (U0 - UQ);
+      wanted = clamp(wanted + dq / N, doneCount / N, Math.min((doneCount + 1) / N, p + CAP));
+      if (E.locked && dx < 0 && wanted >= p + CAP - 1e-3) notYet(t);
+    },
+    up(pt) {
+      if (!drag || pt.id !== drag.id) return;
+      drag = null; if (hum) { hum.stop?.(); hum = null; }
+      if (doneCount >= N && assistTo == null) doneFlag = true;
+    },
+    assist() {
+      if (finAt >= 0 || doneCount >= N) return;
+      const t = activeTile();
+      if (sel !== tiles.indexOf(t)) select(t);
+      const from = Math.max(wanted, p);
+      if (E.locked || !E.allow(Math.min(1, from + 0.01))) { notYet(t); return; }
+      const q = clamp(from * N - doneCount);
+      const nq = Math.min(1, (Math.floor(q * 3 + 0.02) + 1) / 3);
+      assistTo = (doneCount + nq) / N;
+    },
+    pointAt(pp) {
+      // continuous: the point glides from one tile's quiet moon to the next tile's loud seam
+      const v = clamp(pp), r = clamp(Math.floor(v * N - 1e-9), 0, N - 1), q = clamp(v * N - r);
+      const a = seamPoint(r, q);
+      if (r > 0 && q < BLEND) { const b = seamPoint(r - 1, 1), k = smooth(q / BLEND); a.x = lerp(b.x, a.x, k); a.y = lerp(b.y, a.y, k); }
+      return a;
+    },
+    hint() {
+      const t = activeTile();
+      if (!t) return { tap: { x: wordsTile.x, y: wordsTile.y } };
+      if (sel !== tiles.indexOf(t)) return { tap: { x: t.x, y: t.y } };
+      const x0 = t.x + sxOf(t.su), x1 = t.x + sxOf(UQ - 0.03), pts = [];
+      for (let i = 0; i <= 16; i++) pts.push([lerp(x0, x1, i / 16), t.y + Math.sin((i / 16) * Math.PI) * 3]);
+      return { path: pts };
+    },
+    twist() { twistAt = E.now(); },
+    finish() {
+      finAt = E.now();
+      if (drag) { drag = null; }
+      if (hum) { hum.stop?.(); hum = null; }
+      for (const t of tiles) if (!t.quiet) { t.quiet = true; for (const i of t.ph) E.checkpoint('photo', i); }
+      E.sound(heavy ? 'settle' : 'bloom', { intensity: heavy ? 0.4 : 0.5 });
+      if (!heavy && !reduced) E.particles.burst(stage.cx, stage.cy, low ? 8 : 18, { speed: 70, colour: warmCol, life: 1.4, size: 5, kind: 'glint' });
+      else E.ripples.add(stage.cx, stage.cy, { colour: quietCol, alpha: 0.35, speed: 50, r: 20 });
+    },
+    destroy() { if (hum) { hum.stop?.(); hum = null; } },
+  };
+}
