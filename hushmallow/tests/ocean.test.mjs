@@ -512,7 +512,7 @@ test('world (review r3): the melt never pops or tangles — every bubble eases (
       for (let i = 0; i < 300 && D.state.phase !== 'melting'; i++) { D.debug.step(1 / 60); await new Promise((r) => setTimeout(r, 2)); }
       assert.equal(D.state.phase, 'melting', tag);
       const ocean = D.incoming;
-      let prev = null, worstStep = 0, worstAt = null, overlapB = 0, overlapT = 0, overlapH = 0;
+      let prev = null, worstStep = 0, worstAt = null, overlapB = 0, overlapAt = null, overlapT = 0, overlapH = 0;
       const B = mallow.rect();
       // every bubble's way, step by step (to check no two cross each other's way at the same time)
       const path = new Map();
@@ -521,7 +521,7 @@ test('world (review r3): the melt never pops or tangles — every bubble eases (
         const w = D.state.worldId === 'luminous-ocean' && !D.incoming ? D.world : ocean;
         const bs = w.debug.bubbles.filter((b) => b.alpha > 0.3 && b.state !== 'leave'), T = w.debug.thought, rr = T.r * T.surf;
         if (prev) for (const b of bs) { const p = prev.get(b.i); if (p) { const d = Math.hypot(b.sx - p[0], b.sy - p[1]); if (d > worstStep) { worstStep = d; worstAt = { step, i: b.i, from: p, to: [b.sx, b.sy], st: b.state }; } } }
-        for (let a = 0; a < bs.length; a++) for (let c = a + 1; c < bs.length; c++) overlapB = Math.max(overlapB, (bs[a].D + bs[c].D) / 2 - Math.hypot(bs[a].sx - bs[c].sx, bs[a].sy - bs[c].sy));
+        for (let a = 0; a < bs.length; a++) for (let c = a + 1; c < bs.length; c++) { const o = (bs[a].D + bs[c].D) / 2 - Math.hypot(bs[a].sx - bs[c].sx, bs[a].sy - bs[c].sy); if (o > overlapB) { overlapB = o; overlapAt = { step, a: [bs[a].i, bs[a].state, Math.round(bs[a].sx), Math.round(bs[a].sy), Math.round(bs[a].D)], c: [bs[c].i, bs[c].state, Math.round(bs[c].sx), Math.round(bs[c].sy), Math.round(bs[c].D)] }; } }
         if (T.alpha * T.vis > 0.3) for (const b of bs) overlapT = Math.max(overlapT, b.D / 2 + rr - Math.hypot(b.sx - T.sx, b.sy - T.sy));
         for (const b of bs) { const ox = Math.min(b.sx + b.D / 2, B.right - 0.06 * B.width) - Math.max(b.sx - b.D / 2, B.left + 0.06 * B.width), oy = Math.min(b.sy + b.D / 2, B.bottom) - Math.max(b.sy - b.D / 2, B.top + 2); if (ox > 0 && oy > 0) overlapH = Math.max(overlapH, Math.min(ox, oy)); }
         prev = new Map(w.debug.bubbles.map((b) => [b.i, [b.sx, b.sy]]));
@@ -530,7 +530,7 @@ test('world (review r3): the melt never pops or tangles — every bubble eases (
       assert.equal(D.state.worldId, 'luminous-ocean', `${tag}: the melt finished`);
       const w = D.world;
       assert.ok(worstStep <= 8, `${tag}: a bubble moved ${worstStep.toFixed(1)} px in one step ${JSON.stringify(worstAt)}`);
-      assert.ok(overlapB <= 0.5, `${tag}: two bubbles overlapped by ${overlapB.toFixed(1)} px`);
+      assert.ok(overlapB <= 0.5, `${tag}: two bubbles overlapped by ${overlapB.toFixed(1)} px ${JSON.stringify(overlapAt)}`);
       assert.ok(overlapT <= 0.5, `${tag}: a bubble covered the thought by ${overlapT.toFixed(1)} px`);
       assert.equal(overlapH, 0, `${tag}: a bubble on the hero (${overlapH.toFixed(1)} px)`);
       // no two glides cross each other's way at the same time (within half a second): a tangle. (One bubble following

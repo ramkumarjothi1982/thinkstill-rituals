@@ -606,8 +606,19 @@ export function create(ctx) {
     const cost = (c, q) => Math.hypot(q.x - c.x, q.y - c.y) + (q.far ? 60 : 0) + (side(c.x) * side(q.x) < 0 ? 420 : 0);
     const cr = (ox, oy, px, py, qx, qy) => (px - ox) * (qy - oy) - (py - oy) * (qx - ox);
     const NT = 14;
+    // its way down goes round the hero and the thought's clear zone (as the glide steers), on the side of its slot
+    const obs = [plan.rects.mallow, plan.rects.plate].filter(Boolean);
+    const roundObs = (out, q, r) => {
+      for (const o of obs) {
+        const x0 = o.x0 - r - 8, x1 = o.x1 + r + 8, y0 = o.y0 - r - 8, y1 = o.y1 + r + 8;
+        if (out.x <= x0 || out.x >= x1 || out.y <= y0 || out.y >= y1) continue;
+        if (x1 - x0 > W - 2 * OCEAN.EDGE) continue;                    // (a wall: it glides past)
+        out.x = q.x < (o.x0 + o.x1) / 2 ? x0 : x1;
+      }
+      return out;
+    };
     // where card c, gliding to slot q, is at time t (s): its way down, eased; at rest once there
-    const at = (c, q, t, out) => { const d = dur(c, q), k = easeInOut(t / d); out.x = c.x + (q.x - c.x) * k; out.y = c.y + (q.y - c.y) * k; return t >= d; };
+    const at = (c, q, t, out) => { const d = dur(c, q), k = easeInOut(t / d); out.x = c.x + (q.x - c.x) * k; out.y = c.y + (q.y - c.y) * k; if (t < d) roundObs(out, q, q.D / 2); return t >= d; };
     const pa = { x: 0, y: 0 }, pb = { x: 0, y: 0 };
     const pair = (a, sa, b, sb) => {
       const A = cards[a], P = slots[sa], B = cards[b], Q = slots[sb];
@@ -615,12 +626,22 @@ export function create(ctx) {
       if (cr(A.x, A.y, P.x, P.y, B.x, B.y) * cr(A.x, A.y, P.x, P.y, Q.x, Q.y) < 0 && cr(B.x, B.y, Q.x, Q.y, A.x, A.y) * cr(B.x, B.y, Q.x, Q.y, P.x, P.y) < 0) v += 250;
       const need = (P.D + Q.D) / 2 + OCEAN.BUBBLE_GAP, T = Math.max(dur(A, P), dur(B, Q));
       let met = false, blocked = false;
-      for (let k = 1; k <= NT && !blocked; k++) {
+      const dA = dur(A, P), dB = dur(B, Q);
+      for (let k = 1; k <= NT; k++) {
         const t = (k / NT) * T, ra = at(A, P, t, pa), rb = at(B, Q, t, pb);
-        if (Math.hypot(pa.x - pb.x, pa.y - pb.y) >= need) continue;
-        if (ra !== rb) blocked = true; else if (!ra) met = true;      // (one at rest, the other still on its way: it queues)
+        if (Math.hypot(pa.x - pb.x, pa.y - pb.y) < need && !ra && !rb) met = true;
       }
-      return v + (blocked ? 1600 : met ? 160 : 0);
+      // when one comes to rest (nearly), does the other still have to pass by its slot? It would queue there
+      const queues = (X, Px, dX, Y, Qy, dY) => {
+        if (dX >= dY + 0.4) return false;
+        at(Y, Qy, Math.max(0, dX - 0.4), pa);
+        const vx = Qy.x - pa.x, vy = Qy.y - pa.y, L = vx * vx + vy * vy;
+        if (L < 1) return false;
+        const u = ((Px.x - pa.x) * vx + (Px.y - pa.y) * vy) / L;
+        return u > 0 && u < 1 && Math.hypot(pa.x + vx * u - Px.x, pa.y + vy * u - Px.y) < need;
+      };
+      blocked = queues(A, P, dA, B, Q, dB) || queues(B, Q, dB, A, P, dA);
+      return v + (blocked ? 420 : met ? 160 : 0);      // (a queue is undone by the two changing places: a cost, not a wall)
     };
     const SKIP = 1000;
     const cur = new Array(n).fill(-1), best = new Array(n).fill(-1), used = new Uint8Array(m);
@@ -658,7 +679,11 @@ export function create(ctx) {
       const k = match[c], from = { x: card.x, y: card.y, size: Math.max(card.w, card.h), rot: card.rot || 0 };
       if (k < 0) {
         // no room on the water now: it still turns into its bubble in place, then drifts away over the horizon (and takes its turn later)
-        const hx = clamp(card.x, OCEAN.EDGE + 8, W - OCEAN.EDGE - 8), fin = makeCamera({ W, H, hy: plan.hy, homeY: plan.homeY, waterY: plan.waterY });
+        // (over the horizon beside the words, never behind them)
+        let hx = clamp(card.x, OCEAN.EDGE + 8, W - OCEAN.EDGE - 8);
+        const Pl = plan.rects.plate;
+        if (Pl && hx > Pl.x0 - 10 && hx < Pl.x1 + 10) hx = hx - Pl.x0 < Pl.x1 - hx && Pl.x0 - 10 > OCEAN.EDGE + 8 ? Pl.x0 - 10 : Pl.x1 + 10 < W - OCEAN.EDGE - 8 ? Pl.x1 + 10 : hx;
+        const fin = makeCamera({ W, H, hy: plan.hy, homeY: plan.homeY, waterY: plan.waterY });
         bubbles.push(newBubble({ i: card.i, D: 12, sx: card.x, sy: card.y, gx: card.x, gy: card.y, alpha: 1, state: 'card', riseK: 1, morph: 0, from, target: { x: hx, y: fin.hy + 1, D: 12 }, away: true }));
         return;
       }
@@ -1418,7 +1443,7 @@ export function create(ctx) {
         const k = easeInOut(b.glide);
         const Dg = b.away ? lerp(Math.min(b.from.size, 60), b.target.D, k) : b.target.D;
         b.Dg = b.Dg > 0 ? b.Dg + (Dg - b.Dg) * (1 - Math.exp(-dt / 0.3)) : Dg;
-        b.D = b.Dg;
+        b.D = b.Dg; b.Dd = b.Dg;          // (after it settles, its size eases on from this)
         if (b.state === 'glide' && dt > 0) steer(b, lerp(b.from.x, b.target.x, k), lerp(b.from.y, b.target.y, k), dt);
         sx = b.gx; sy = b.gy;
       }
@@ -1530,14 +1555,14 @@ export function create(ctx) {
     if (b.sx - r < E || b.sx + r > W - E || b.sy - r < bandBottom() + 4 || b.sy + r > (plan?.floor ?? H)) return false;
     return !(K.on && discHits(b.sx, b.sy, r, K));
   }
-  const SEP_V = 150;                                        // px/s: how fast a bubble slides aside for the soft constraints
+  const SEP_V = 90;                                         // px/s: how fast a bubble slides aside for the soft constraints
   const prB = { x0: 0, y0: 0, x1: 0, y1: 0 }, TZ = { x0: 0, y0: 0, x1: 0, y1: 0 };
   /** The thought's clear zone on screen now (null when it is not shown). */
   function liveZone() {
     if (!thought || tS.alpha * tS.vis < 0.2) return null;
     return thoughtZone(tS.sx, tS.sy, tS.r * tS.surf, tS.side === 'left' || tS.side === 'right' ? 0 : tS.plateW || 0, TZ);
   }
-  const GLIDE_V = 190, REP_V = 340, REP_M = 16;     // px/s, px/s, px: the glide's top speed, how firmly things hold it off, from how far
+  const GLIDE_V = 190, REP_V = 340, REP_M = 16, REP_MB = 6;     // px/s, px/s, px: the glide's top speed, how firmly things hold it off, from how far (another bubble: closer)
   const rep = { x: 0, y: 0 };
   /** Steer a gliding bubble towards (qx, qy) on its way, held off what it must go round (velocity-limited: no jumps). */
   function steer(b, qx, qy, dt) {
@@ -1547,21 +1572,21 @@ export function create(ctx) {
     if (va > GLIDE_V) { vx *= GLIDE_V / va; vy *= GLIDE_V / va; }
     rep.x = rep.y = 0;
     if (K.on) repelBox(b.gx, b.gy, r, K);
-    // the thought: its body always; its clear zone and its words wherever there is a way round them (a words plate as
-    // wide as a small phone is a wall between the sky and the water: a bubble glides on past it, not up into the band)
+    // the thought: its body (with room round it), and its words wherever there is a way round them (a words plate as wide
+    // as a small phone is a wall between the sky and the water: a bubble glides on past it, not up into the band). Its
+    // clear zone is for the bubbles that float; one gliding by passes beside it.
     const wall = (o) => o.x1 - o.x0 > W - 2 * OCEAN.EDGE - b.D - 8;
     if (thought && tS.alpha * tS.vis > 0.2) {
-      repelDisc(b.gx, b.gy, r, tS.sx, tS.sy, tS.r * tS.surf + OCEAN.BUBBLE_GAP);
-      const Z = liveZone();
-      if (Z && !wall(Z)) repelBox(b.gx, b.gy, r, Z);
-      if (tS.plateW) { const P = plateRect(prB); if (!wall(P)) repelBox(b.gx, b.gy, r, P); }
+      repelDisc(b.gx, b.gy, r, tS.sx, tS.sy, 1.3 * tS.r * tS.surf + OCEAN.BUBBLE_GAP);
+      if (tS.plateW && !b.away) { const P = plateRect(prB); if (!wall(P)) repelBox(b.gx, b.gy, r, P); }
     }
     // never up into the subtitle band
     { const top = bandBottom() + 4 + r; if (b.gy < top + REP_M) rep.y += ((top + REP_M - b.gy) / REP_M) * REP_V; }
+    // other bubbles: a close, gentle hold-off (slots are planned BUBBLE_GAP apart: neighbours rest at their slots side by side)
     for (const o of bubbles) {
       if (o === b || o.alpha < 0.02 || o.state === 'leave') continue;
       const ox = o.from ? o.gx : o.sx, oy = o.from ? o.gy : o.sy;
-      repelDisc(b.gx, b.gy, r, ox, oy, o.D / 2 + OCEAN.BUBBLE_GAP);
+      repelDisc(b.gx, b.gy, r, ox, oy, o.D / 2 + 1, REP_MB);
     }
     vx += rep.x; vy += rep.y;
     const v = Math.hypot(vx, vy), cap = GLIDE_V * 1.15;
@@ -1573,11 +1598,16 @@ export function create(ctx) {
     b.stuck = far > 8 && Math.hypot(vx, vy) < 18 ? (b.stuck || 0) + dt : 0;
     if (b.stuck > 0.35 && !b.away) {
       for (const o of bubbles) {
-        if (o === b || !o.from || o.away || o.glide < 1 || o.target === b.target) continue;
-        if (Math.hypot(o.gx - b.gx, o.gy - b.gy) > (o.D + b.D) / 2 + OCEAN.BUBBLE_GAP + REP_M) continue;
-        // only when it helps: this one is nearer the other's slot than its own
-        if (Math.hypot(o.target.x - b.gx, o.target.y - b.gy) >= far) continue;
-        const t = b.target; b.target = o.target; o.target = t;
+        if (o === b || o.away || o.state === 'leave' || (o.from && (o.glide < 1 || o.target === b.target))) continue;
+        if (!o.from && o.state !== 'float') continue;
+        const ox = o.from ? o.gx : o.sx, oy = o.from ? o.gy : o.sy;
+        if (Math.hypot(ox - b.gx, oy - b.gy) > (o.D + b.D) / 2 + OCEAN.BUBBLE_GAP + REP_M) continue;
+        // only when it helps: this one is nearer the other's place than its own
+        const oT = o.from ? o.target : { x: ox, y: oy, D: o.D };
+        if (Math.hypot(oT.x - b.gx, oT.y - b.gy) >= far) continue;
+        // (one already floating there leaves the water for a moment and glides on to this one's slot)
+        if (!o.from) { o.from = { x: ox, y: oy, size: o.D, rot: 0 }; o.gx = ox; o.gy = oy; o.state = 'glide'; o.morph = 1; o.Dg = o.D; o.vx = o.vz = 0; }
+        o.target = b.target; b.target = oT;
         b.from = { ...b.from, x: b.gx, y: b.gy }; o.from = { ...o.from, x: o.gx, y: o.gy };
         b.glide = o.glide = 0.55; b.stuck = o.stuck = 0; b.wait = o.wait = 0;
         b.cap = b.target.D + 0.5; o.cap = o.target.D + 0.5;
@@ -1585,10 +1615,10 @@ export function create(ctx) {
       }
     }
   }
-  function repelDisc(x, y, r, cx, cy, R) {
+  function repelDisc(x, y, r, cx, cy, R, M = REP_M) {
     const dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy) || 1e-3, gap = d - R - r;
-    if (gap >= REP_M) return;
-    const f = (REP_M - gap) / REP_M;
+    if (gap >= M) return;
+    const f = (M - gap) / M;
     rep.x += (dx / d) * f * REP_V; rep.y += (dy / d) * f * REP_V;
   }
   function repelBox(x, y, r, B) {
@@ -2488,7 +2518,7 @@ export function create(ctx) {
     debug: {
       get sea() { return sea; }, get wake() { return wake; }, get cam() { return cam; }, get plan() { return plan; },
       get thought() { return { ...tS }; }, get bubbles() { return bubbles.map((b) => ({ i: b.i, sx: b.sx, sy: b.sy, D: b.D, d: b.z / cam.Z0, state: b.state, alpha: b.alpha })); },
-      get waiting() { return waiting.slice(); }, get fingers() { return fingers; }, get hero() { return { ...hero }; }, get keep() { return { K: { ...K }, Kr: { ...Kr }, fl: { ...fl } }; }, get lip() { return { ...lipStat }; }, get hint() { return { ...hint, backHint }; }, get gold() { let m = 0, c = 0; for (let q = 0; q < rowsN * COLS; q++) { if (gGold[q] > m) m = gGold[q]; if (gGold[q] > 0.12) c++; } return { max: m, n: c }; },
+      get waiting() { return waiting.slice(); }, get slotsAll() { return (slotsAll?.list || []).map((q) => [Math.round(q.x), Math.round(q.y), Math.round(q.D), q.far ? 1 : 0]); }, get targets() { return bubbles.map((b) => b.target && [b.i, Math.round(b.target.x), Math.round(b.target.y), Math.round(b.target.D)]); }, get fingers() { return fingers; }, get hero() { return { ...hero }; }, get keep() { return { K: { ...K }, Kr: { ...Kr }, fl: { ...fl } }; }, get lip() { return { ...lipStat }; }, get hint() { return { ...hint, backHint }; }, get gold() { let m = 0, c = 0; for (let q = 0; q < rowsN * COLS; q++) { if (gGold[q] > m) m = gGold[q]; if (gGold[q] > 0.12) c++; } return { max: m, n: c }; },
       get melt() { return melt ? { ...melt } : null; }, get hy() { return hyNow; }, get layouts() { return layoutLog; },
       /** Screen y of the still water at depth d·Z0. */
       surfaceY: (d) => cam.hy + cam.Hw * scaleAt(cam, d * cam.Z0),

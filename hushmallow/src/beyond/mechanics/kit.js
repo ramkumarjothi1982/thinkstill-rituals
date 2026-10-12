@@ -252,12 +252,19 @@ export class Timers {
   constructor() { this.list = []; }
   after(fn, ms = 0) { this.list.push({ left: Math.max(0, ms) / 1000, fn }); return this.list.length; }
   step(dt) {
-    if (!this.list.length) return;
-    const due = [];
-    for (const t of this.list) { t.left -= dt; if (t.left <= 0) due.push(t); }
-    if (!due.length) return;
-    this.list = this.list.filter((t) => t.left > 0);
-    for (const t of due) { try { t.fn(); } catch (e) { console.warn('[mechanic timer]', e?.message); } }
+    const L = this.list;
+    if (!L.length) return;
+    let any = false;
+    for (let i = 0; i < L.length; i++) { L[i].left -= dt; if (L[i].left <= 0) any = true; }
+    if (!any) return;
+    // the due ones leave the list first (in order, compacted in place), then run: a timer may add another
+    const due = this.due || (this.due = []);
+    due.length = 0;
+    let n = 0;
+    for (let i = 0; i < L.length; i++) { const t = L[i]; if (t.left <= 0) due.push(t); else L[n++] = t; }
+    L.length = n;
+    for (let i = 0; i < due.length; i++) { try { due[i].fn(); } catch (e) { console.warn('[mechanic timer]', e?.message); } }
+    due.length = 0;
   }
   clear() { this.list.length = 0; }
 }
