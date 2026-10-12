@@ -100,6 +100,8 @@ export function create(ctx) {
   let holds = { hum: null }, holdClock = 0, ambClock = 0, emoAt = -9, emoKey = '', hopAt = -9;
   let lastDrip = -9, lastSwish = -9;
   let metricsCache = { chop: 0, period: 0, energy: 0 };
+  let lastP = 0;
+  const pk = {};                                           // scratch: the packet a stroke sculpts
 
   // fingers (two at most)
   const fingers = [0, 1].map(() => ({
@@ -127,7 +129,7 @@ export function create(ctx) {
   const plankton = new Pool(160);    // bioluminescent motes in the wake (back)
   const rings = new Rings(14);       // taps, landings, lifts (front)
   // floaters
-  const tS = { x: 0, z: 0, vx: 0, vz: 0, yb: 0, vb: 0, sx: 0, sy: 0, r: 30, s: 0.5, alpha: 0, landK: 1, from: null, labelY: 0, labelYT: 0, plateW: 0, plateH: 0, calm: 0.4, tension: 0.5, outPrev: 0, rot: 0, surf: 1 };
+  const tS = { x: 0, z: 0, vx: 0, vz: 0, yb: 0, vb: 0, sx: 0, sy: 0, r: 30, s: 0.5, alpha: 0, landK: 1, from: null, labelY: 0, labelYT: 0, labelW: 0, labelFade: -1, plateW: 0, plateH: 0, calm: 0.4, tension: 0.5, outD: 0, outU: 0, rot: 0, surf: 1, landed: true };
   const bubbles = [];                // { i, x, z, vx, vz, yb, vb, rot, rv, D, sx, sy, alpha, state, lift, glowAge, morph, from, landK, waitIdx }
   let waiting = [];                  // photo indices waiting below the surface
   let riseClock = 0;
@@ -333,7 +335,7 @@ export function create(ctx) {
   /** Put the Thought Mallow at its home on the water (cold start or a new thought). */
   function thoughtHome() {
     tS.x = (plan.home.x - W / 2) / 0.5; tS.z = cam ? cam.Z0 : 500; tS.vx = 0; tS.vz = 0; tS.yb = 0; tS.vb = 0;
-    tS.labelY = tS.labelYT = -(tS.r + 4 + (plan.plate?.h || 40));
+    tS.labelY = tS.labelYT = -(tS.r + 4 + (plan.plate?.h || 40)); tS.labelW = plan.textMax; tS.labelFade = -1;
   }
   function initBubbles(fromCards = null) {
     bubbles.length = 0; waiting = [];
@@ -431,7 +433,7 @@ export function create(ctx) {
 
   function startStroke(f, x, y) {
     f.x0 = x; f.y0 = y; f.len = Math.hypot(f.x - x, f.y - y); f.moveT = 0; f.t0s = elapsed;
-    const P = strokePacket(cam, U, { x0: x, y0: y, x1: f.x + (f.x === x && f.y === y ? 0.5 : 0), y1: f.y + 0.01, len: Math.max(1, f.len), speed: Math.max(f.speed, 1) }, sm);
+    const P = strokePacket(cam, U, { x0: x, y0: y, x1: f.x + (f.x === x && f.y === y ? 0.5 : 0), y1: f.y + 0.01, len: Math.max(1, f.len), speed: Math.max(f.speed, 1) }, pk);
     if (!P) return;
     P.free = false; P.user = true;
     f.slot = sea.launch(P);
@@ -440,24 +442,26 @@ export function create(ctx) {
   function sculptStroke(f) {
     if (f.slot < 0 || !sea.on[f.slot] || sea.id[f.slot] !== f.sid) { f.slot = -1; return; }
     const speed = f.moveT > 0.02 ? f.len / f.moveT : f.speed;
-    const P = strokePacket(cam, U, { x0: f.x0, y0: f.y0, x1: f.x, y1: f.y, len: f.len, speed }, sm);
+    const P = strokePacket(cam, U, { x0: f.x0, y0: f.y0, x1: f.x, y1: f.y, len: f.len, speed }, pk);
     if (!P) return;
-    const k = reduced() ? 0.4 : 1;
-    sm.A = P.A * k;
+    if (reduced()) P.A *= 0.4;
     sea.sculpt(f.slot, P);
   }
   /** The finger lifts (or rests, or turns): the swell it sculpted is set free. */
   function releaseStroke(f) {
     const i = f.slot;
     f.slot = -1;
-    if (i < 0 || !sea.on[i] || sea.id[i] !== f.sid) return;
-    const speed = f.moveT > 0.02 ? f.len / f.moveT : f.speed;
-    if (f.len < 6) { sea.cancel(i); return; }
-    sculptStroke(Object.assign(f, { slot: i }));
-    f.slot = -1;
+    const len = f.len, speed = f.moveT > 0.02 ? f.len / f.moveT : f.speed;
+    const ok = i >= 0 && sea.on[i] && sea.id[i] === f.sid;
+    // the final shape of the swell: the whole stroke, start to fingertip
+    if (ok && len >= 6) { f.slot = i; sculptStroke(f); f.slot = -1; }
+    // whatever comes next starts from here
+    f.x0 = f.x; f.y0 = f.y; f.len = 0; f.moveT = 0;
+    if (!ok) return;
+    if (len < 6) { sea.cancel(i); return; }
     sea.release(i);
-    const w = strokeWave(f.len, speed, U);
-    const ev = { t: elapsed, id: sea.id[i], lambdaU: w.lambda / U, s: w.s, lenU: f.len / U, period: TAU / sea.w[i] };
+    const w = strokeWave(len, speed, U);
+    const ev = { t: elapsed, id: sea.id[i], lambdaU: w.lambda / U, s: w.s, lenU: len / U, period: TAU / sea.w[i] };
     longD.stroke(ev);
     prog.stroke(ev);
     f.strokes++;
@@ -565,6 +569,7 @@ export function create(ctx) {
     // progress and the natural completion point
     const down = fingers.some((f) => f.on);
     const pr = prog.update(dt, { dist: thought && tS.landK >= 1 ? tS.z / cam.Z0 : null, period, down });
+    lastP = pr.p;
     if (pr.complete && !complete && !melt) finishSea();
 
     // dawn and mirror
@@ -614,15 +619,29 @@ export function create(ctx) {
     }
   }
   let hushDirty = false;
+  const hushD = [{ on: false, x: 0, z: 0, r: 1, k: 0 }, { on: false, x: 0, z: 0, r: 1, k: 0 }];
+  /** Each finger's hush as a world disc (once a frame). */
+  function hushDiscs() {
+    let any = false;
+    fingers.forEach((f, k) => {
+      const d = hushD[k];
+      d.on = f.hush > 0.01;
+      if (!d.on) return;
+      unproject(cam, f.hushX, f.hushY, wo);
+      d.x = wo.x; d.z = wo.z; d.k = f.hush;
+      d.r = ((0.08 + 0.14 * easeOut(f.hush)) * U) / wo.s;
+      any = true;
+    });
+    return any;
+  }
   /** How hushed the sea is at a world point (0..1, the strongest finger). */
   function hushAt(x, z) {
     let m = 0;
-    for (const f of fingers) {
-      if (f.hush <= 0.01) continue;
-      unproject(cam, f.hushX, f.hushY, wo);
-      const r = ((0.08 + 0.14 * easeOut(f.hush)) * U) / wo.s;
-      const d = Math.hypot(x - wo.x, (z - wo.z) * 1) / r;
-      if (d < 1) m = Math.max(m, f.hush * smoothstep(1, 0.55, d));
+    for (const d of hushD) {
+      if (!d.on) continue;
+      // (in z, a world circle: the disc on screen is the foreshortened ellipse the ring draws)
+      const q = Math.hypot(x - d.x, z - d.z) / d.r;
+      if (q < 1) m = Math.max(m, d.k * smoothstep(1, 0.55, q));
     }
     return m;
   }
@@ -660,6 +679,8 @@ export function create(ctx) {
   }
   function land() {
     tS.landed = true; tS.from = null;
+    // the words settle onto the water: a soft dip of the plate, its ocean width taken at the bottom of it
+    tS.labelFade = 0;
     splash(tS.sx, tS.sy + tS.r * tS.surf * 0.55, tS.r * 2 * tS.surf);
     try { thought?.react?.('appear'); } catch { /* optional */ }
     ctx.sound('drip', { intensity: 0.2, pitch: 0.7 });
@@ -719,8 +740,15 @@ export function create(ctx) {
     const rr = tS.r * tS.surf, ph = tS.plateH || 40;
     const above = -(rr + 4 + ph), below = rr * 0.98 + 8;
     const bandBottom = (ctx.band?.y || 0) + (ctx.band?.h || 0);
-    tS.labelYT = sy + above < bandBottom + 6 ? below : above;
-    tS.labelY += (tS.labelYT - tS.labelY) * (1 - Math.exp(-dt / 0.28));
+    if (tS.labelFade >= 0) {
+      tS.labelFade += dt / 0.7;
+      if (tS.labelFade >= 0.5 && tS.labelW !== plan.textMax) { tS.labelW = plan.textMax; tS.labelY = sy + above < bandBottom + 6 ? below : above; }
+      if (tS.labelFade >= 1) tS.labelFade = -1;
+    }
+    if (!tS.from) {
+      tS.labelYT = sy + above < bandBottom + 6 ? below : above;
+      tS.labelY += (tS.labelYT - tS.labelY) * (1 - Math.exp(-dt / 0.28));
+    }
     // state: rocked gently by long swells, a little tense in chop, serene with distance
     const dist = tS.z / cam.Z0;
     const chopK = clamp(metricsCache.chop * 6), rockK = clamp((metricsCache.period - 2) / 4) * clamp(metricsCache.energy / 400);
@@ -857,9 +885,9 @@ export function create(ctx) {
     const k = hero.floatK * (1 - outroK);
     hero.lift = clamp((hero.yb * hero.s) / Math.max(40, hero.h), -0.12, 0.12) * (rm ? 0.3 : 1) * k;
     hero.tilt = clamp(0.6 * Math.atan(sm.hx) * 57.3, -7, 7) * (rm ? 0.3 : 1) * k;
-    try { mallow?.float?.({ lift: hero.lift, tilt: hero.tilt }); } catch { /* optional */ }
+    if (entered) { try { mallow?.float?.({ lift: hero.lift, tilt: hero.tilt }); } catch { /* optional */ } }
     // a tiny hop on a big crest (not under reduced motion)
-    if (!rm && sm.h > 0.75 * sm.amp && sm.amp > 14 && now - hopAt > 12 && !fingers.some((f) => f.on)) { hopAt = now; try { mallow?.react?.('hop'); } catch { /* optional */ } }
+    if (entered && !melt && !rm && sm.h > 0.75 * sm.amp && sm.amp > 14 && now - hopAt > 12 && !fingers.some((f) => f.on)) { hopAt = now; try { mallow?.react?.('hop'); } catch { /* optional */ } }
   }
 
   // --------------------------------------------------------------- draw --
@@ -923,7 +951,7 @@ export function create(ctx) {
     const Lx = (xd - W / 2) / Z0, Ly = 0.04, Lz = 1, Ll = Math.hypot(Lx, Ly, Lz);
     const lx = Lx / Ll, ly = Ly / Ll, lz = Lz / Ll;
     const bio = (low() ? 0.5 : 1);
-    const anyHush = fingers.some((f) => f.hush > 0.01);
+    const anyHush = hushDiscs();
     for (let j = 0; j < n; j++) {
       const s = rS[j], z = rZ[j], o = j * COLS;
       const x0 = (colX0 - W / 2) / s, step = colStep / s;
@@ -1133,7 +1161,8 @@ export function create(ctx) {
     }
     if (thought.draw) {
       try {
-        thought.draw(g, x, y, tS.surf, { radius: tS.r, tension: tS.tension, calm: tS.calm, charge: 0, reduced: rm, now, minX: OCEAN.EDGE, maxX: W - OCEAN.EDGE, labelWidth: plan.textMax, labelY: tS.labelY, alpha: tS.alpha });
+        const la = tS.labelFade >= 0 ? 0.25 + 0.75 * Math.abs(1 - 2 * tS.labelFade) : 1;
+        thought.draw(g, x, y, tS.surf, { radius: tS.r, tension: tS.tension, calm: tS.calm, charge: 0, reduced: rm, now, minX: OCEAN.EDGE, maxX: W - OCEAN.EDGE, labelWidth: tS.labelW || plan.textMax, labelY: tS.labelY, alpha: tS.alpha, labelAlpha: la });
         if (thought.plate) { tS.plateW = thought.plate.w; tS.plateH = thought.plate.h; }
       } catch { /* placeholder only */ }
     }
@@ -1145,7 +1174,7 @@ export function create(ctx) {
     // the postcard (from the storm) turning into a bubble, in place
     if (b.from && b.morph < 1) {
       const k = b.morph, size = lerp(b.from.size, D, k);
-      const cx = lerp(b.from.x, x, easeInOut(b.landK)), cy = lerp(b.from.y, y, easeInOut(b.landK));
+      const cx = x, cy = y;
       if (k < 1) photos.draw(g, b.i, cx, cy, size, { shape: 'card', rot: b.from.rot * (1 - k), alpha: b.alpha * (1 - k), shadow: false, glow: 0.3 * (1 - k), glowColour: C.dawn });
       if (k > 0) {
         photos.draw(g, b.i, cx, cy, size * (0.92 + 0.08 * k), { shape: 'bubble', sheen: false, shadow: false, alpha: b.alpha * k });
@@ -1224,6 +1253,7 @@ export function create(ctx) {
 
   // ------------------------------------------------------ audio + Mallow --
   function audioAndMallow(dt, now) {
+    if (!entered) return;
     holdClock += dt;
     if (holdClock > 1 / 12) {
       holdClock = 0;
@@ -1285,7 +1315,12 @@ export function create(ctx) {
         if (thought) {
           thoughtHome();
           const th = handoff.thought;
-          if (th && Number.isFinite(th.x) && Number.isFinite(th.y) && !rm) { tS.from = { x: th.x, y: th.y, scale: th.scale ?? 1 }; tS.landK = 0; tS.alpha = 1; tS.landed = false; }
+          if (th && Number.isFinite(th.x) && Number.isFinite(th.y) && !rm) {
+            tS.from = { x: th.x, y: th.y, scale: ((th.r || tS.r) * (th.scale ?? 1)) / tS.r, labelW: th.labelW || plan.textMax };
+            tS.landK = 0; tS.alpha = 1; tS.landed = false;
+            // its words stay as the storm showed them (under it) until it settles on the water
+            tS.labelY = tS.labelYT = (th.r || tS.r) * (th.scale ?? 1) * 0.98 + 8; tS.labelW = tS.from.labelW;
+          }
           else { tS.from = null; tS.landK = 1; tS.alpha = 0; }
           // carry the storm's calm over (a settled thought stays settled-looking)
           tS.tension = clamp(handoff.thought?.tension ?? 0.5, 0.2, 0.9);
@@ -1314,7 +1349,7 @@ export function create(ctx) {
         driftGain, horizon: hyNow, longPending: longD.pending, share: distD.share,
       };
     },
-    get progress() { return complete ? 1 : prog.update(0, { dist: null, period: 0, down: true }).p; },
+    get progress() { return complete ? 1 : lastP; },
     get complete() { return complete; },
     intro(k) { if (melt) melt.k = k; },
     outro(k) { outroK = k; sea.damp = 1 + 2 * k; },
@@ -1378,7 +1413,7 @@ export function create(ctx) {
     resize(w, h) {
       W = w; H = h; U = Math.min(W, H);
       layout(true);
-      sea.clear(); wake?.clear();
+      wake?.clear();
     },
     setQuality() { /* the director resizes the layers; the sea itself costs the same */ },
     destroy() {

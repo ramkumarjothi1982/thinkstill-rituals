@@ -522,7 +522,8 @@ export function createHushflow(opts = {}) {
     if (session.discoveries.has(id)) return false;
     session.discoveries.add(id);
     const def = inst.entry.discoveries?.[id] || {};
-    const skillId = def.skillId || inst.entry.memory?.skillId || null;
+    // offer: false — a discovery with nothing to keep (the world's tool is offered with another one)
+    const skillId = def.offer === false ? null : (def.skillId || inst.entry.memory?.skillId || null);
     emit('discovery', { id, worldId: inst.id, skillId, evidence });
     haptic('success');
     discoveryPending++;

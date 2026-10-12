@@ -133,7 +133,7 @@ const LUMINOUS_OCEAN = {
   id: 'luminous-ocean',
   title: 'Loomi’s Luminous Ocean',
   version: 1,
-  realm: 'blue-drift',
+  realm: null,               // its own renderer (worlds/luminous-ocean.js): sky, sea and dawn are drawn by the world
   horizon: 0.44,
   palette: { sky: '#0a3f55', deep: '#062433' },
   purpose: 'Watch a thought from a little further away: slow, long strokes roll swells that carry it towards the horizon, still there, still yours.',
@@ -149,15 +149,19 @@ const LUMINOUS_OCEAN = {
     sources: ['pubmed 38615492'],
     framing: 'The thought is never sunk, deleted or washed away; drifting back is normal and welcome.',
   },
-  scene: 'A deep teal ocean at night under the resolved storm’s dawn: luminous crest lines in perspective, bioluminescent wakes, a mirror-calm finish.',
+  scene: 'A deep teal ocean at night under the resolved storm’s dawn: luminous crest lines in perspective, a glittering dawn path that the waves break up, '
+    + 'bioluminescent wakes and plankton, the storm’s last clouds; a mirror-calm finish where the dawn path brightens.',
   touch: [
     { gesture: 'Slow, long strokes', effect: 'Raise long rolling swells that live for many seconds.' },
     { gesture: 'Quick flicks', effect: 'Make short chop that fades in a moment.' },
     { gesture: 'Strokes away from you', effect: 'Carry floating things towards the horizon; strokes towards you bring them back.' },
-    { gesture: 'Holding still on the water', effect: 'Hushes the water locally.' },
+    { gesture: 'Holding still on the water', effect: 'Hushes the water locally: a calm pool of mirror round the fingertip.' },
+    { gesture: 'Tapping the water', effect: 'Rings out a soft circle of swells (tap behind something to send it away).' },
     { gesture: 'Tapping a bubble', effect: 'Lifts it and makes it glow.' },
+    { gesture: 'Any touch', effect: 'An instant bioluminescent wake follows the finger.' },
   ],
-  mallow: { id: 'loomi', behaviour: 'Floats in the foreground on a buoyancy spring, tilting with the slope; grows sleepier as the swells lengthen.' },
+  mallow: { id: 'loomi', behaviour: 'Floats in the foreground on a buoyancy spring with a lip of water across its lowest tenth, tilting with the slope; '
+    + 'curious in chop, calmer and sleepier as the swells lengthen; watches the finger, else the thought; a tiny hop on a big crest.' },
   input: {
     words: 'The person’s exact words stay on the Thought Mallow as it rides the swells, readable at every distance.',
     photos: { becomes: 'bubbles floating on the swells', change: 'they drift further away or closer, never sink', shape: 'bubble', standIn: 'the seven Mallow cards' },
@@ -169,30 +173,48 @@ const LUMINOUS_OCEAN = {
     'Natural completion: long swells and a dominant slow period, then the moon path brightens.',
   ],
   dialogue: {
+    intro: ['Mm. Open water.', 'Take your time.'],
+    arrive: ['Ahh. Open water.'],
+    chop: ['Splashy.'],
     drift: ['You can bring it closer too.', 'Your choice.'],
     complete: 'The sea’s rolling slowly now. Stay, or drift on?',
     completeStay: 'The sea’s rolling slowly now. Stay as long as you like.',
+    feeling: {
+      more: ['A little more wind out there.', 'The sea can take it.'],
+      less: ['The wind’s dropping.', 'The sea heard you.'],
+      other: ['Noted. The sea’s listening.'],
+    },
   },
   discoveries: {
-    'long-waves': { skillId: 'a-little-more-room', lines: ['Slow and long…', '…and the whole sea rolls.'] },
+    // about pace, not distance: nothing to keep here (the ocean's tool is offered with 'distance')
+    'long-waves': { skillId: null, offer: false, lines: ['Slow and long…', '…and the whole sea rolls.'] },
     distance: { skillId: 'a-little-more-room', lines: ['Look how far it drifted.', 'Still there. Still yours.', 'Just more sea in between.'] },
   },
-  sound: { ambience: 'blue-drift', holds: { hum: 'deepens with the dominant swell period' }, fx: ['bubble with a note when a bubble is lifted'] },
-  haptics: ['soft as a long swell is launched'],
+  sound: {
+    ambience: 'blue-drift',
+    holds: { hum: 'swells with the sea’s energy and deepens with its dominant period' },
+    fx: ['a soft swish as a long swell is let go', 'a drip for quick chop (120 ms apart at most)', 'a bubble note when a bubble is lifted', 'a chime at a discovery', 'bloom at the end'],
+  },
+  haptics: ['soft as a long swell is let go', 'light when a bubble is lifted', 'success at a discovery'],
   completion: {
     rule: 'At least four long swells, and either the thought ≥ 4·Z0 away for 5 s or a dominant period ≥ 5 s held for 10 s; then 2 s idle.',
     after: 'Swells damp, the moon path brightens, the next world is prefetched.',
   },
-  transition: { next: null, melt: 'Noise-mask melt from the ocean horizon.', handoff: 'Floating things keep their places.' },
+  transition: {
+    next: null,
+    melt: 'In from the storm: the mask spreads from the storm’s horizon (0.655 H); after the midpoint the ocean’s horizon rises to 0.44 H over 3 s. Out: from the ocean horizon.',
+    handoff: 'In: the storm’s ground lines become the first gentle swells, postcards turn into bubbles in place and settle on the water, the Thought Mallow glides down and lands; '
+      + 'the ambience crossfades. Reduced motion: a straight crossfade with everything already in place. Out: floating things keep their places.',
+  },
   memory: { skillId: 'a-little-more-room' },
   accessibility: {
     tapAlt: 'A tap makes a ring of gentle swells; holding still hushes the water.',
-    reducedMotion: 'Amplitude ×0.4, drift ×0.6, bob ×0.3, no twinkle.',
+    reducedMotion: 'Amplitude ×0.4, drift ×0.6, bob ×0.3, no twinkle, no hop; the melt is a straight crossfade.',
     lowStimulation: '36 crest rows and half the glow.',
     precision: 'Strokes work anywhere on the water.',
   },
-  playtest: { results: [], note: 'Not built yet.' },
-  status: STATUS.PLANNED,
+  playtest: { results: [], note: 'Built 12 Oct; browser-checked with CDP touch (Chromium/SwiftShader). Not yet playtested with real users or on a phone.' },
+  status: STATUS.PLAYABLE,
   fits: {
     emotions: { anxious: 1, overwhelmed: 1, sad: 0.8, lonely: 0.8, restless: 0.7, frustrated: 0.7, angry: 0.6, other: 0.6 },
     intentions: { 'let-go': 1, calm: 0.9, distract: 0.8, steady: 0.7, play: 0.6 },

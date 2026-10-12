@@ -1511,14 +1511,15 @@ export function create(ctx) {
     handoff() {
       const seeds = [];
       for (const L of lines) {
-        if (!L.on || L.n < 3) continue;
+        // (W4b) every ground line still remembered — falling, or already landed in the floor — seeds a first swell
+        if (L.n < 3 || !(L.on || L.landed)) continue;
         const step = Math.max(1, Math.floor(L.n / 20)), pts = [];
         for (let i = 0; i < L.n; i += step) pts.push([Math.round(L.pts[i * 2]), Math.round(L.pts[i * 2 + 1])]);
         seeds.push(pts);
       }
       return {
         horizonY, palette: { sky: '#17135c', deep: '#05061f', warm: '#ffd98a' }, seeds,
-        thought: { x: tSpring.x, y: tSpring.y, scale: tScale, tension: tTension },
+        thought: { x: tSpring.x, y: tSpring.y, scale: tScale, tension: tTension, r: tR, labelW: tLabelW },
         photos: cards.map((c) => ({ i: c.i, x: c.x, y: c.y, w: c.w, h: c.h, rot: c.rot, state: c.grounded ? 'grounded' : 'charged' })),
         energy: Q,
       };

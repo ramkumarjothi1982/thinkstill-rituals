@@ -135,7 +135,7 @@ export function createAngleClient({ store, endpoint = resolveEndpoint(), fetchIm
       if (!endpoint) return { status: 'error', reason: 'no_endpoint', keepSupportClose: false };
       const words = String(text ?? '').trim().slice(0, 600);
       if (!words) return { status: 'unclear', reason: 'empty', keepSupportClose: false };
-      const body = { consent: true, text: words, locale: 'en-GB', request_id: makeDeviceId(random).slice(0, 20) };
+      const body = { consent: true, text: words, locale: 'en-GB', request_id: makeDeviceId(random).replace(/_/g, '-').slice(0, 20) };   // the server allows letters, digits and '-'
       if (typeof emotion === 'string' && EMOTION_ID.test(emotion)) body.emotion = emotion;
       if (typeof intention === 'string' && INTENTION_ID.test(intention)) body.intention = intention;
       const prev = previousAngles(previous);

@@ -199,6 +199,13 @@ test('client: consent:true, the words, a stable device id; nothing else is ever 
   assert.equal(angle.redirect, 'error');
   assert.deepEqual(Object.keys(angle.body).sort(), ['consent', 'emotion', 'intention', 'locale', 'request_id', 'text']);
   assert.equal(angle.body.consent, true);
+  assert.match(angle.body.request_id, /^[A-Za-z0-9-]{8,64}$/, 'the server’s request_id format');
+  // every random id fits it (base64url's "_" would not)
+  for (let i = 0; i < 64; i++) {
+    const c3 = createAngleClient({ store: memStore(), endpoint: EP, fetchImpl: srv.fetch, random: (n) => new Uint8Array(n).fill(i * 4 + 3) });
+    await c3.angle({ text: 'x y z' });
+    assert.match(srv.calls.at(-1).body.request_id, /^[A-Za-z0-9-]{8,64}$/);
+  }
   assert.equal(angle.body.text, 'My boss embarrassed me.');
   assert.doesNotMatch(JSON.stringify(srv.calls), /photo|image|canvas|data:/i);
   // the same device id next time, from the store
