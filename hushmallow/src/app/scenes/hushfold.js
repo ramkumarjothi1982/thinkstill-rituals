@@ -166,7 +166,7 @@ export default function hushfold(app, params = {}) {
       const r = stage.thoughts.list[0].r;
       const tagH = Math.max(44, ...stage.thoughts.list.map((t) => t.tag.offsetHeight || 0));
       const below = bodyCy + B / 2 + 6 - (r * 1.05 + 8);              // tag top under the body
-      const above = dockTop() - 10 - tagH - (r * 1.05 + 8);           // tag bottom over the dock
+      const above = Math.min(dockTop(), panelTop()) - 10 - tagH - (r * 1.05 + 8);   // tag bottom over the dock (or the sheet)
       thoughtHome.y = Math.min(Math.max(thoughtHome.y, below), above);
     }
     stage?.thoughts.list.forEach((th, i) => th.moveHome({ x: thoughtHome.x - i * 18, y: thoughtHome.y - i * (th.r * 2.4) }));
