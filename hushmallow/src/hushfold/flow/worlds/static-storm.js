@@ -261,7 +261,7 @@ export function create(ctx) {
     fieldData = fieldG.createImageData(field.cols, field.rows);
     maskData = fieldG.createImageData(field.cols, field.rows);
     clearData = fieldG.createImageData(field.cols, field.rows);
-    for (let k = 0; k < field.n; k++) { clearData.data[k * 4] = 18; clearData.data[k * 4 + 1] = 12; clearData.data[k * 4 + 2] = 52; }
+    for (let k = 0; k < field.n; k++) { clearData.data[k * 4] = 26; clearData.data[k * 4 + 1] = 18; clearData.data[k * 4 + 2] = 68; }
     // static grain: a tile of coloured dots, shown only where there is charge
     grainScale = 1.5;
     grainC = makeCanvas(Math.ceil(field.w / grainScale), Math.ceil(field.h / grainScale));
@@ -797,7 +797,7 @@ export function create(ctx) {
     for (let k = 0; k < n; k++) {
       const o = k * 4;
       const f = fl[k], e = q[k] - f > 0 ? q[k] - f : 0, gl = afterglow[k];
-      const ca = Math.round(255 * 0.34 * clamp(1 - q[k] / 0.4) * startQ[k] * clearK);
+      const ca = Math.round(255 * 0.28 * clamp(1 - q[k] / 0.4) * startQ[k] * clearK);
       cd[o + 3] = ca; anyClear |= ca;
       if (f < 0.02 && e < 0.01 && gl < 0.01) { d[o + 3] = 0; md[o + 3] = 0; continue; }
       const i = k % cols, j = (k / cols) | 0;

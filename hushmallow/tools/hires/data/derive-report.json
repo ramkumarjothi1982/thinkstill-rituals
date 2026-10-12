@@ -41,10 +41,10 @@
     "ring_max": 155.33
    }
   },
-  "body_kb": 293.0
+  "body_kb": 291.4
  },
  "boppo": {
-  "erase_px": 251510,
+  "erase_px": 264827,
   "sprites": {
    "boppo-iris-L": [
     206,
@@ -59,10 +59,10 @@
     206
    ]
   },
-  "body_kb": 245.8
+  "body_kb": 243.8
  },
  "pipzi": {
-  "erase_px": 269341,
+  "erase_px": 281749,
   "sprites": {
    "pipzi-iris-L": [
     190,
@@ -73,21 +73,21 @@
     188
    ]
   },
-  "body_kb": 261.3
+  "body_kb": 261.4
  },
  "blubi": {
   "erase_px": 135326,
   "sprites": {},
-  "body_kb": 218.1
+  "body_kb": 217.9
  },
  "loomi": {
   "erase_px": 93444,
   "sprites": {},
-  "body_kb": 209.9
+  "body_kb": 210.3
  },
  "noomi": {
   "erase_px": 82869,
   "sprites": {},
-  "body_kb": 139.6
+  "body_kb": 139.5
  }
 }

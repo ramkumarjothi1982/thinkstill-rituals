@@ -84,6 +84,7 @@ app.go = async function go(name, params = {}, { replace = false, fromPop = false
     throw new Error(`Scene ${name} has no default export`);
   }
   layers.length = 0;
+  pendingPush.clear();
   try { await current?.leave?.(); } catch (e) { console.warn(e); }
   sceneEl.replaceChildren();
   const view = mod.default(app, params);
@@ -112,8 +113,24 @@ const layers = [];
 let layerSeq = 0, ignorePops = 0;
 const popWaiters = [];
 const popsSettled = () => (ignorePops ? new Promise((r) => { popWaiters.push(r); setTimeout(r, 400); }) : null);
-app.pushLayer = () => { const t = ++layerSeq; layers.push(t); history.pushState({ i: stack.length - 1, layer: t }, '', location.hash); return t; };
-app.popLayer = (t) => { const k = layers.lastIndexOf(t); if (k < 0) return; layers.splice(k, 1); ignorePops++; history.back(); };
+// A layer that opens while another's history.back() is still in flight (the panel closing as the
+// overlay opens, in one tap) waits for that pop to land, or its new entry would be the one popped.
+const pendingPush = new Map();   // token → push()
+app.pushLayer = () => {
+  const t = ++layerSeq;
+  layers.push(t);
+  const push = () => { if (ignorePops && !pendingPush.has(t)) return; pendingPush.delete(t); history.pushState({ i: stack.length - 1, layer: t }, '', location.hash); };
+  if (!ignorePops) push();
+  else { pendingPush.set(t, push); popWaiters.push(() => pendingPush.get(t)?.()); setTimeout(() => pendingPush.get(t)?.(), 500); }
+  return t;
+};
+app.popLayer = (t) => {
+  const k = layers.lastIndexOf(t);
+  if (k < 0) return;
+  layers.splice(k, 1);
+  if (pendingPush.delete(t)) return;   // its entry was never pushed: nothing to step back over
+  ignorePops++; history.back();
+};
 
 window.addEventListener('popstate', (e) => {
   if (ignorePops > 0) { ignorePops--; if (!ignorePops) popWaiters.splice(0).forEach((r) => r()); return; }

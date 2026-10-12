@@ -234,33 +234,34 @@ export function createPlaceholderThought({ words, emotion = 'other', font = (px,
 }
 
 // ---------------------------------------------------------- subtitles --
+// (lab-only class names, hfl-*, so the Hushfold shell's own .hf-subs styles never apply)
 let styled = false;
 function injectStyle() {
   if (styled) return;
   styled = true;
   const st = document.createElement('style');
   st.textContent = `
-.hf-subs{position:fixed;left:0;right:0;z-index:4;pointer-events:none;display:flex;flex-direction:column;align-items:center;padding:0 24px;transition:top .5s cubic-bezier(.2,.7,.2,1)}
-.hf-line{margin:0;max-width:340px;text-align:center;color:#fff;font:600 20px/1.36 var(--ff-voice,"HM Nunito Sans",system-ui,sans-serif);letter-spacing:.004em;
-  text-shadow:0 1px 2px rgba(6,4,22,.85),0 0 22px rgba(6,4,22,.75);padding:10px 18px;border-radius:22px;
+.hfl-subs{position:fixed;left:0;right:0;z-index:4;pointer-events:none;display:flex;flex-direction:column;align-items:center;padding:0 24px;transition:top .5s cubic-bezier(.2,.7,.2,1)}
+.hfl-line{margin:0;max-width:340px;text-align:center;color:#fff;font:600 20px/1.36 var(--ff-voice,"HM Nunito Sans",system-ui,sans-serif);letter-spacing:.004em;
+  text-shadow:0 1px 2px rgba(6,4,22,.85),0 0 22px rgba(6,4,22,.75);padding:8px 16px;border-radius:22px;
   background:radial-gradient(closest-side,rgba(10,7,32,.5),rgba(10,7,32,0));opacity:0;transform:translateY(6px);transition:opacity .45s ease,transform .6s cubic-bezier(.2,.7,.2,1);text-wrap:balance}
-.hf-line.on{opacity:1;transform:none}
-.hf-line.discovery{font:500 24px/1.18 var(--ff-story,"HM Fraunces",Georgia,serif);letter-spacing:-.005em;color:#fff6e4;text-shadow:0 1px 2px rgba(6,4,22,.9),0 0 26px rgba(255,190,110,.35),0 0 18px rgba(6,4,22,.8)}
-.hf-line.title{font:540 26px/1.12 var(--ff-story,"HM Fraunces",Georgia,serif);letter-spacing:-.01em;color:#fff6e8;text-shadow:0 1px 2px rgba(6,4,22,.9),0 0 30px rgba(120,80,255,.45)}
-.hf-go{pointer-events:auto;display:block;margin:8px auto 0;min-height:44px;min-width:44px;padding:0 18px;border-radius:999px;border:1px solid rgba(255,255,255,.24);
+.hfl-line.on{opacity:1;transform:none}
+.hfl-line.discovery{font:500 24px/1.18 var(--ff-story,"HM Fraunces",Georgia,serif);letter-spacing:-.005em;color:#fff6e4;text-shadow:0 1px 2px rgba(6,4,22,.9),0 0 26px rgba(255,190,110,.35),0 0 18px rgba(6,4,22,.8)}
+.hfl-line.title{font:540 26px/1.12 var(--ff-story,"HM Fraunces",Georgia,serif);letter-spacing:-.01em;color:#fff6e8;text-shadow:0 1px 2px rgba(6,4,22,.9),0 0 30px rgba(120,80,255,.45)}
+.hfl-go{pointer-events:auto;display:block;margin:8px auto 0;min-height:44px;min-width:44px;padding:0 18px;border-radius:999px;border:1px solid rgba(255,255,255,.24);
   background:rgba(16,12,44,.5);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);color:rgba(255,255,255,.9);font:650 14px/1 var(--ff-ui,"HM Manrope",system-ui,sans-serif);cursor:pointer}
-.hf-chips{display:flex;gap:10px;margin-top:12px;opacity:0;transition:opacity .45s ease}
-.hf-chips.on{opacity:1}
-.hf-chips.bottom{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);justify-content:center;margin:0}
-.hf-chip{pointer-events:auto;min-height:44px;padding:0 20px;border-radius:999px;border:1px solid rgba(255,255,255,.28);background:rgba(20,14,52,.55);
+.hfl-chips{display:flex;gap:10px;margin-top:10px;opacity:0;transition:opacity .45s ease}
+.hfl-chips.on{opacity:1}
+.hfl-chips.bottom{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);justify-content:center;margin:0}
+.hfl-chip{pointer-events:auto;min-height:44px;padding:0 20px;border-radius:999px;border:1px solid rgba(255,255,255,.28);background:rgba(20,14,52,.55);
   -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:#fff;font:700 15px/1 var(--ff-ui,"HM Manrope",system-ui,sans-serif);cursor:pointer}
-.hf-chip.primary{background:linear-gradient(180deg,#ffe8b8,#ffcf7a);color:#2a1a08;border-color:transparent}
-.hf-dock{position:fixed;left:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:4;pointer-events:auto;max-width:calc(100vw - 32px);min-height:44px;display:flex;align-items:center;gap:8px;
+.hfl-chip.primary{background:linear-gradient(180deg,#ffe8b8,#ffcf7a);color:#2a1a08;border-color:transparent}
+.hfl-dock{position:fixed;left:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:4;pointer-events:auto;max-width:calc(100vw - 32px);min-height:44px;display:flex;align-items:center;gap:8px;
   padding:0 16px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(14,10,40,.55);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
   color:rgba(255,255,255,.9);font:600 14px/1.2 var(--ff-ui,"HM Manrope",system-ui,sans-serif);opacity:0;transition:opacity .4s ease;cursor:pointer}
-.hf-dock.on{opacity:1}
-@media (max-width: 359px){.hf-line{font-size:18px;padding:6px 12px}.hf-line.discovery{font-size:22px}.hf-line.title{font-size:24px}.hf-chips{margin-top:8px}}
-@media (prefers-reduced-motion: reduce){.hf-line,.hf-chips,.hf-dock{transition:opacity .2s linear}.hf-line{transform:none}}
+.hfl-dock.on{opacity:1}
+@media (max-width: 359px){.hfl-line{font-size:18px;padding:6px 12px}.hfl-line.discovery{font-size:22px}.hfl-line.title{font-size:24px}.hfl-chips{margin-top:8px}}
+@media (prefers-reduced-motion: reduce){.hfl-line,.hfl-chips,.hfl-dock{transition:opacity .2s linear}.hfl-line{transform:none}}
 `;
   document.head.append(st);
 }
@@ -277,13 +278,13 @@ function injectStyle() {
 export function createLabSubtitles({ root = document.body, band = null, avoid = () => [], speed = 1, holdMs = 8000, choiceMs = 20000, slotY = () => innerHeight * 0.52, altY = () => 92 } = {}) {
   injectStyle();
   const box = document.createElement('div');
-  box.className = 'hf-subs';
+  box.className = 'hfl-subs';
   box.setAttribute('aria-live', 'polite');
   box.setAttribute('role', 'status');
-  const p = document.createElement('p'); p.className = 'hf-line';
-  const chips = document.createElement('div'); chips.className = 'hf-chips';
+  const p = document.createElement('p'); p.className = 'hfl-line';
+  const chips = document.createElement('div'); chips.className = 'hfl-chips';
   box.append(p, chips);
-  const dock = document.createElement('button'); dock.className = 'hf-dock'; dock.type = 'button';
+  const dock = document.createElement('button'); dock.className = 'hfl-dock'; dock.type = 'button';
   root.append(box, dock);
   let queue = Promise.resolve(), busy = 0, paused = false, skipFn = null;
   const wait = (ms) => new Promise((r) => { const t0 = performance.now(); const tick = () => { if (skipFn?.skipped) return r(); if (paused) { setTimeout(tick, 120); return; } if (performance.now() - t0 >= ms) r(); else setTimeout(tick, 60); }; tick(); });
@@ -327,11 +328,11 @@ export function createLabSubtitles({ root = document.body, band = null, avoid = 
     const me = { kind, cut: () => cutNow?.(), done: null };
     current = me;
     let resolveDone; me.done = new Promise((r) => { resolveDone = r; });
-    p.className = `hf-line ${kind === 'discovery' || kind === 'title' ? kind : ''}`;
+    p.className = `hfl-line ${kind === 'discovery' || kind === 'title' ? kind : ''}`;
     p.textContent = text;
     // the line never takes a touch (play goes on underneath); a small button acknowledges a held line
     let go = null;
-    if (hold) { go = document.createElement('button'); go.type = 'button'; go.className = 'hf-go'; go.textContent = 'Continue'; p.append(go); }
+    if (hold) { go = document.createElement('button'); go.type = 'button'; go.className = 'hfl-go'; go.textContent = 'Continue'; p.append(go); }
     place();
     requestAnimationFrame(() => p.classList.add('on'));
     if (hold) {
@@ -384,9 +385,9 @@ export function createLabSubtitles({ root = document.body, band = null, avoid = 
         const mine = ++choiceGen;
         // (the fade-out clears only this choice's chips, never the next choice's)
         pendingChoice = (v) => { clearTimeout(tm); pendingChoice = null; p.classList.remove('on'); chips.classList.remove('on'); setTimeout(() => { if (choiceGen === mine) chips.replaceChildren(); }, 450); res(v); };
-        p.className = 'hf-line'; p.textContent = prompt;
+        p.className = 'hfl-line'; p.textContent = prompt;
         chips.replaceChildren(...options.map((o, i) => {
-          const b = document.createElement('button'); b.type = 'button'; b.className = `hf-chip${i === options.length - 1 ? ' primary' : ''}`; b.textContent = o.label;
+          const b = document.createElement('button'); b.type = 'button'; b.className = `hfl-chip${i === options.length - 1 ? ' primary' : ''}`; b.textContent = o.label;
           b.onclick = () => pendingChoice?.(o.value);
           return b;
         }));

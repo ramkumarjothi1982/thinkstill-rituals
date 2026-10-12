@@ -20,7 +20,7 @@
 // When events stop arriving (a resting mouse, often a resting finger), the
 // caller ticks idle(dt, quietSec) every frame: once the pointer has been quiet
 // for longer than its usual gap between events (1.6× the measured interval,
-// 60–250 ms), the speed decays towards 0 with the same τ — so a finger that
+// 60–400 ms), the speed decays towards 0 with the same τ — so a finger that
 // stops reads as still within about half a second.
 //
 //   const v = createVelocity();
@@ -35,7 +35,7 @@ export const VELOCITY = Object.freeze({
   MIN_STEP_PX: 1.5,     // jitter dead-band
   STALE_K: 1.6,         // quiet for 1.6× the usual event interval → stopped
   STALE_MIN_SEC: 0.06,
-  STALE_MAX_SEC: 0.25,
+  STALE_MAX_SEC: 0.4,   // (a sparse event stream — some devices, remote QA — is not a stop)
   N: 24,                // samples kept (≥ the window at 240 Hz)
 });
 
@@ -85,7 +85,7 @@ export function createVelocity(opts = {}) {
         if (t - ht[j] >= c.WINDOW_SEC) break;
       }
       const dtw = t - ht[j];
-      if (dtE > 0) interval += (Math.min(dtE, 0.5) - interval) * 0.2;
+      if (dtE > 0) interval += (Math.min(dtE, 0.5) - interval) * 0.35;
       if (dtw > 1e-4 && dtE > 0) {
         const inst = (path - cum[j]) / dtw;
         const ivx = (x - hx[j]) / dtw, ivy = (y - hy[j]) / dtw;

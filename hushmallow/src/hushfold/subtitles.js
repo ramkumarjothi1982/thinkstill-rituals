@@ -97,7 +97,7 @@ export function scrimFor([r, g, b], { target = 5.2, cover = 0.86 } = {}) {
   }
   return SCRIM_MAX;
 }
-/** The brightest tenth of the pixels (by luminance) in RGBA data → [r, g, b]. */
+/** The 95th-percentile pixel (by luminance) in RGBA data → [r, g, b]. */
 export function brightPixel(data) {
   const n = data.length >> 2;
   if (!n) return [0, 0, 0];
@@ -106,7 +106,7 @@ export function brightPixel(data) {
   const L = new Float32Array(n);
   for (let i = 0; i < n; i++) L[i] = luminance(data[i * 4], data[i * 4 + 1], data[i * 4 + 2]);
   idx.sort((p, q) => L[p] - L[q]);
-  const k = idx[Math.min(n - 1, Math.floor(n * 0.9))] * 4;
+  const k = idx[Math.min(n - 1, Math.floor(n * 0.95))] * 4;   // the brightest 5 % (a moon behind one word counts)
   return [data[k], data[k + 1], data[k + 2]];
 }
 let sampler = null;

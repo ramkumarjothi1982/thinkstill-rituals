@@ -193,7 +193,7 @@ body.hf-world-leaving #world > canvas.hf-back, body.hf-world-leaving #fx-layer >
 .hf-input .plan-note { margin: 0 4px; font: var(--hf-font-caption); color: var(--text-2, #cdc6ea); }
 .hf-input .plan-note b { color: var(--accent, #ffd98a); font-weight: 700; }
 /* photos: one compact horizontal strip */
-.hf-input .photos { display: grid; gap: 2px; }
+.hf-input .photos { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; min-width: 0; }
 .hf-input .photos .photo-head { display: none; }
 .hf-input .photos .photo-tray { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 10px; margin: 0 -12px; padding: 12px 22px 4px 14px; }
 .hf-input .photos .photo-tray::-webkit-scrollbar { display: none; }

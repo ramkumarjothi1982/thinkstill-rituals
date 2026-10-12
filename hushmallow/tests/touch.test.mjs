@@ -493,15 +493,25 @@ test('core: every Mallow pops ≥ 8 % above its rest height after a full squeeze
   }
 });
 
-test('core: a pull past the limit slips once, after a beat; a flick that follows replaces it', () => {
+test('core: a fast, bent yank past the limit slips once, after a beat; a slow one slides off softly; a flick replaces a slip', () => {
   const c = touchCore('boppo');
   const r = c.rect(), x0 = r.cx + 0.3 * r.width, y0 = r.cy;
   c.ptr('down', x0, y0); c.frame(30);                                 // rest first: a pull
-  for (let i = 1; i <= 40; i++) { c.ptr('move', x0 + i * 4, y0); c.frame(); }
+  // a rough, zig-zagging yank at ~1100 px/s: not a hand sliding off
+  for (let i = 1; i <= 10; i++) { c.ptr('move', x0 + i * 15, y0 + (i % 2) * 12); c.frame(); }
   c.frame(10);
   assert.equal(c.log.events.filter((k) => k === 'slip').length, 1, c.log.events.join(','));
   assert.equal(c.log.reacts.filter((k) => k === 'gasp').length, 1);
-  c.ptr('up', x0 + 160, y0); c.frame(20);
+  c.ptr('up', x0 + 150, y0); c.frame(20);
+  // the same rest, then a slow straight drag past the limit: the hand slides
+  // off the jelly — it glides on, counts as a stroke and never startles
+  const s = touchCore('boppo');
+  s.ptr('down', x0, y0); s.frame(30);
+  for (let i = 1; i <= 40; i++) { s.ptr('move', x0 - i * 4, y0); s.frame(); }
+  s.ptr('up', x0 - 160, y0); s.frame(20);
+  assert.ok(s.log.events.includes('pull') && !s.log.events.includes('slip'), s.log.events.join(','));
+  assert.ok(s.log.events.includes('stroke'), s.log.events.join(','));
+  assert.ok(!s.log.reacts.some((k) => UPSET.includes(k)), s.log.reacts.join(','));
   // a fast flick from rest is only a flick
   const f = touchCore('boppo');
   const q = f.rect(), fx = q.cx - 0.2 * q.width, fy = q.cy;
@@ -597,4 +607,69 @@ test('core: a stroke that rests a moment before lifting still ends softly; a rea
   d.frame(90);
   d.ptr('up', x0 + 144, y0); d.frame(5);
   assert.ok(d.log.reacts.includes('release'), d.log.reacts.join(','));
+});
+
+// The review's slow, gentle strokes: very slow from the start, and resting a
+// moment before stroking (a pull that slides off into a stroke). Every Mallow
+// must take three of them as strokes and calm down, with no gasp or flick.
+function strokeRun(id, restF, pxs, dist = 150) {
+  const c = touchCore(id);
+  for (let s = 0; s < 3; s++) {
+    const r = c.rect(), x0 = r.cx - 0.32 * r.width, y0 = r.cy - 0.12 * r.height;
+    c.ptr('down', x0, y0); c.frame(Math.max(1, restF));
+    const n = Math.max(2, Math.round((dist / pxs) * 60));
+    for (let i = 1; i <= n; i++) { c.ptr('move', x0 + (dist * i) / n, y0 + i * 0.05); c.frame(); }
+    c.ptr('up', x0 + dist, y0 + n * 0.05); c.frame(42);
+  }
+  return c;
+}
+test('core: slow strokes (80 px/s, or after resting 0.3–0.5 s) calm every Mallow — never a gasp or flick', () => {
+  for (const id of MALLOW_IDS) {
+    for (const [restF, pxs] of [[1, 80], [18, 150], [30, 100], [1, 500]]) {
+      const c = strokeRun(id, restF, pxs);
+      const tag = `${id} rest ${(restF / 60).toFixed(2)} s at ${pxs} px/s: ${c.log.events.join(',')}`;
+      assert.equal(c.log.events.filter((k) => k === 'stroke').length, 3, tag);
+      assert.ok(c.mt.touch.calm > 0.5, `${tag} calm ${c.mt.touch.calm.toFixed(2)}`);
+      assert.ok(!c.log.events.includes('slip'), tag);
+      assert.ok(!c.log.reacts.some((k) => UPSET.includes(k)), `${tag} reactions ${c.log.reacts.join(',')}`);
+    }
+  }
+});
+
+test('core: the arrow keys pull (never glide or stroke) and stop short of a slip', () => {
+  for (const id of MALLOW_IDS) {
+    const c = touchCore(id);
+    const cx0 = c.mt.sb.bounds().cx;
+    let t = 2;
+    for (let i = 0; i < 4; i++) { c.mt.reader.key({ type: 'down', key: 'ArrowRight', t, repeat: i > 0 }); t += 1 / 30; c.frame(2); }
+    const p = c.mt.reader.ptrs.get('arrow');
+    assert.equal(p.mode, 'pull', id);
+    assert.ok(p.pull > 0.5, `${id} pull ${p.pull.toFixed(2)}`);
+    c.frame(20);
+    const moved = c.mt.sb.bounds().cx - cx0;
+    assert.ok(moved > 0.04, `${id} the body follows the key (${moved.toFixed(3)} body units)`);
+    for (let i = 0; i < 20; i++) { c.mt.reader.key({ type: 'down', key: 'ArrowRight', t, repeat: true }); t += 1 / 30; c.frame(2); }
+    c.mt.reader.key({ type: 'up', key: 'ArrowRight', t }); c.frame(30);
+    assert.ok(c.log.events.includes('pull'), `${id}: ${c.log.events.join(',')}`);
+    assert.ok(!c.log.events.includes('stroke') && !c.log.events.includes('slip'), `${id}: ${c.log.events.join(',')}`);
+    assert.ok(!c.log.reacts.some((k) => UPSET.includes(k)), `${id} reactions ${c.log.reacts.join(',')}`);
+  }
+});
+
+test('gestures: an immediate drag outwards from an edge pulls; across the body it strokes', () => {
+  const mk = () => reader({ centre: () => ({ x: 200, y: 300 }), bodySize: () => 240 });
+  const [o, ev] = mk();
+  o.pointer({ type: 'down', id: 1, x: 300, y: 300, t: 0 });           // right edge, dragged right at once
+  for (let i = 1; i <= 10; i++) o.pointer({ type: 'move', id: 1, x: 300 + i * 6, y: 300, t: i / 60 });
+  assert.equal(o.pointers[0].mode, 'pull', kinds(ev).join(','));
+  assert.ok(o.pointers[0].pull > 0.5);
+  const [s, ev2] = mk();
+  s.pointer({ type: 'down', id: 1, x: 300, y: 300, t: 0 });           // the same edge, dragged across the body
+  for (let i = 1; i <= 20; i++) s.pointer({ type: 'move', id: 1, x: 300 - i * 6, y: 300, t: i / 60 });
+  assert.equal(s.pointers[0].mode, 'glide');
+  assert.ok(kinds(ev2).includes('stroke'), kinds(ev2).join(','));
+  const [c, ev3] = mk();
+  c.pointer({ type: 'down', id: 1, x: 205, y: 300, t: 0 });           // the middle, dragged outwards: a stroke
+  for (let i = 1; i <= 20; i++) c.pointer({ type: 'move', id: 1, x: 205 + i * 6, y: 300, t: i / 60 });
+  assert.equal(c.pointers[0].mode, 'glide', kinds(ev3).join(','));
 });

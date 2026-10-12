@@ -7,9 +7,14 @@
 // Everything else comes from position, speed and two-finger distance.
 // Each finger has a mode that decides what it does to the body:
 //   press     resting on the body (depth grows)
-//   pull      moved > 10 px after resting first: it holds the material and drags it
-//   glide     started sliding at once (within 0.25 s, > 100 px/s), or began to circle:
-//             it slides over the skin (a stroke or a massage) and never pulls or slips.
+//   pull      moved > 10 px after resting first, or dragged an edge outwards at once:
+//             it holds the material and drags it. A pull stretched past the material's
+//             limit lets go: unless it was a fast, bent yank (≥ 600 px/s, not straight)
+//             the hand just slides off the jelly and glides on (slide()), and a straight
+//             run from where it started still counts as a stroke
+//   glide     started sliding at once (within 0.25 s, > 50 px/s) anywhere but outwards
+//             from an edge, or began to circle: it slides over the skin (a stroke or a
+//             massage) and never pulls or slips.
 //             A glide that comes to rest for 0.35 s grips again ('regrip'); so does a jiggle.
 // Gestures:
 //   stretch   two fingers on the body: ratio d / d0 in [0.6, 1.6], axis, twist
@@ -24,10 +29,13 @@
 //   tap       held < 0.35 s and moved < 14 px; a second within 0.33 s is a double tap
 // Mouse and trackpad: Shift-drag stretches (two virtual fingers either side of
 // the press), ctrl+wheel (trackpad pinch) stretches around the cursor.
-// Keyboard: Enter/Space tap, holding Space squeezes, arrow keys pull.
+// Keyboard: Enter/Space tap, holding Space squeezes, arrow keys pull (the
+// virtual finger holds the material, never glides, and stops short of the
+// slip limit: keyReach()).
 //
 // Pure: feed it {type, id, x, y, t} (CSS px, seconds); no DOM needed, so the
-// gesture rules are unit-tested in Node.
+// gesture rules are unit-tested in Node. Allocation-free per frame (history
+// is a ring buffer walked with index loops; state() returns one reused object).
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const TAU = Math.PI * 2;
@@ -35,8 +43,8 @@ const HIST = 512;          // ≥ 3 s of samples at 120 Hz (samples closer than 
 
 export const GESTURE = Object.freeze({
   holdTau: 0.45, kneadPx: 40, kneadMax: 0.15,
-  pullStartPx: 10, pullFullPx: 40,
-  glideSpeed: 100, restPx: 4, restTime: 0.35,
+  pullStartPx: 10, pullFullPx: 40, slideFast: 600, edgeR: 0.55, edgeOut: 0.6,
+  glideSpeed: 50, againSpeed: 150, restPx: 4, restTime: 0.35,
   flickSpeed: 900, flickDist: 24, releaseWindow: 0.08,
   tapHeld: 0.35, tapDist: 14, doubleWindow: 0.33,
   jiggleWindow: 0.6, jiggleReversals: 3, jiggleSpeed: 250, jiggleAmp: 60,
@@ -76,13 +84,9 @@ class Ptr {
     this.hist[o] = t; this.hist[o + 1] = x; this.hist[o + 2] = y;
     this.hi = (this.hi + 1) % HIST; this.hn = Math.min(HIST, this.hn + 1);
   }
-  // iterate history newest → oldest while fn returns true
-  each(fn) {
-    for (let n = 0; n < this.hn; n++) {
-      const o = ((this.hi - 1 - n + HIST) % HIST) * 3;
-      if (fn(this.hist[o], this.hist[o + 1], this.hist[o + 2]) === false) return;
-    }
-  }
+  /** offset in hist of the n-th newest sample (0 = newest); walk with
+   *  for (let n = 0; n < p.hn; n++) { const o = p.off(n); … hist[o] (t), hist[o+1] (x), hist[o+2] (y) } */
+  off(n) { return ((this.hi - 1 - n + HIST) % HIST) * 3; }
 }
 
 export class TouchReader {
@@ -90,12 +94,16 @@ export class TouchReader {
    * @param {object} o
    * @param {(x:number,y:number)=>boolean} [o.hit]  is (x, y) on the body (CSS px)
    * @param {()=>number} [o.bodySize]  body width in CSS px (virtual fingers, thresholds)
-   * @param {()=>{x:number,y:number}} [o.centre]  body centre (keyboard)
+   * @param {()=>{x:number,y:number}} [o.centre]  body centre (keyboard, edge pulls)
+   * @param {()=>number} [o.keyReach]  how far (CSS px) the arrow keys may pull (short of a slip)
    */
   constructor(o = {}) {
     this.hit = o.hit || (() => true);
     this.bodySize = o.bodySize || (() => 240);
     this.centre = o.centre || (() => ({ x: 0, y: 0 }));
+    this.keyReach = o.keyReach || (() => 90);
+    this._state = { count: 0, depth: 0, speed: 0, pull: 0, held: 0, gliding: false, stretch: 1, twist: 0, axis: 0,
+      massaging: false, turns: 0, dir: 0, rate: 0 };
     this.ptrs = new Map();
     this.listeners = {};
     this.lastTap = null;       // {t, x, y}
@@ -167,6 +175,8 @@ export class TouchReader {
   }
 
   _up(p, t, cancelled) {
+    // a glide lifted right as its run became long enough still counts
+    if (!cancelled && p.mode === 'glide' && !p.seg.done) this._detectStroke(p, p.t);
     this.ptrs.delete(p.id);
     const G = GESTURE;
     const held = t - p.t0;
@@ -175,7 +185,8 @@ export class TouchReader {
     let vx = 0, vy = 0;
     if (t - p.t <= G.releaseWindow) {
       let ox = p.x, oy = p.y, ot = p.t;
-      p.each((ht, hx, hy) => { if (p.t - ht > G.releaseWindow) return false; ox = hx; oy = hy; ot = ht; return true; });
+      const H = p.hist;
+      for (let n = 0; n < p.hn; n++) { const o = p.off(n); if (p.t - H[o] > G.releaseWindow) break; ot = H[o]; ox = H[o + 1]; oy = H[o + 2]; }
       const span = p.t - ot;
       if (span > 0.012) { vx = (p.x - ox) / span; vy = (p.y - oy) / span; } else { vx = p.vx; vy = p.vy; }
     }
@@ -214,12 +225,14 @@ export class TouchReader {
     // how the finger starts moving decides what it does: sliding off at once
     // is a glide (stroke / massage), moving after resting is a pull
     if (p.mode === 'press' && dist > G.pullStartPx && !this._inStretch(p)) {
-      // after a jiggle or a stretch the finger keeps holding; after a stroke
-      // and a pause, a brisk move is another stroke, not a yank
+      // after a jiggle, a stretch or on the keyboard the finger keeps holding;
+      // sliding off at once (any gentle speed) is a stroke unless it drags an
+      // edge outwards (that pulls); after a stroke and a pause, a brisk move
+      // is another stroke, not a yank
       const sp = Math.hypot(p.vx, p.vy);
       const quick = !p.hold && p.firstMoveT >= 0 && p.firstMoveT - (p.tGrip ?? p.t0) < G.strokeStart;
-      const again = !p.hold && p.strokes > 0 && sp > G.glideSpeed * 1.5;
-      if ((quick && sp > G.glideSpeed) || again) this._setMode(p, 'glide', t, true);
+      const again = !p.hold && p.strokes > 0 && sp > G.againSpeed;
+      if ((quick && sp > G.glideSpeed && !this._outward(p, dist)) || again) this._setMode(p, 'glide', t, true);
       else this._setMode(p, 'pull', t);
     }
     // pull grows once past 10 px; a glide never pulls
@@ -231,16 +244,29 @@ export class TouchReader {
 
   _inStretch(p) { const s = this.stretch; return !!s && (s.a === p.id || s.b === p.id); }
 
-  /** A pull that lost its grip while moving fast and straight slid off the
-   *  jelly: from here it glides (and may still count as a stroke). Returns
-   *  true when it did. */
+  // does this first move drag the body's edge outwards (a pull, not a stroke)?
+  _outward(p, dist) {
+    const c = this.centre(), half = Math.max(1, this.bodySize() / 2);
+    const rx = (p.x0 - c.x) / half, ry = (p.y0 - c.y) / half, r = Math.hypot(rx, ry);
+    if (!(r >= GESTURE.edgeR) || !(dist > 0)) return false;
+    return ((p.x - p.x0) * rx + (p.y - p.y0) * ry) / (dist * r) > GESTURE.edgeOut;
+  }
+
+  /** A pull stretched past the material's limit lost its grip. Unless it was
+   *  a fast, bent yank (≥ 600 px/s and not straight), the hand simply slid
+   *  off the jelly: from here it glides, with no startle, and its run from
+   *  where it started moving may still count as a stroke. Returns true when
+   *  it glides on (false = a real slip, for the caller to react to). */
   slide(id) {
     const p = this.ptrs.get(id);
-    if (!p || p.mode !== 'pull' || p.hold || this._inStretch(p) || p.path < 1) return false;
+    if (!p || p.mode !== 'pull' || this._inStretch(p) || p.path < 1) return false;
     const straight = Math.hypot(p.x - p.x0, p.y - p.y0) / p.path;
-    if (Math.hypot(p.vx, p.vy) < 250 || straight < 0.85) return false;
+    if (Math.hypot(p.vx, p.vy) >= GESTURE.slideFast && (straight < GESTURE.strokeStraight || p.hold)) return false;
     if (p.moveStartT == null) p.moveStartT = p.t0;
+    p.hold = false;
     this._setMode(p, 'glide', p.t, true);
+    // the run so far may already be a whole stroke
+    this._detectStroke(p, p.t);
     return true;
   }
 
@@ -293,7 +319,13 @@ export class TouchReader {
     if (chord < 1 || chord / segPath < G.strokeStraight) return;
     // straight over its whole length (an arc of a circle bows away from its chord)
     let dev = 0;
-    p.each((ht, hx, hy) => { if (ht < s.t - 1e-6) return false; const d = Math.abs((hx - s.x) * dy - (hy - s.y) * dx) / chord; if (d > dev) dev = d; return true; });
+    const H = p.hist;
+    for (let n = 0; n < p.hn; n++) {
+      const o = p.off(n);
+      if (H[o] < s.t - 1e-6) break;
+      const d = Math.abs((H[o + 1] - s.x) * dy - (H[o + 2] - s.y) * dx) / chord;
+      if (d > dev) dev = d;
+    }
     if (dev > G.strokeBend * chord) return;
     const speed = segPath / Math.max(0.016, t - s.t);
     if (speed < G.strokeVmin || speed > G.strokeVmax) return;
@@ -305,29 +337,34 @@ export class TouchReader {
   _detectJiggle(p, t) {
     const G = GESTURE;
     // dominant axis over the window
+    const H = p.hist;
     let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, n = 0;
-    p.each((ht, hx, hy) => { if (t - ht > G.jiggleWindow) return false; x0 = Math.min(x0, hx); x1 = Math.max(x1, hx); y0 = Math.min(y0, hy); y1 = Math.max(y1, hy); n++; return true; });
+    for (; n < p.hn; n++) {
+      const o = p.off(n);
+      if (t - H[o] > G.jiggleWindow) break;
+      const hx = H[o + 1], hy = H[o + 2];
+      if (hx < x0) x0 = hx; if (hx > x1) x1 = hx; if (hy < y0) y0 = hy; if (hy > y1) y1 = hy;
+    }
     if (n < 6) return;
     const horiz = x1 - x0 >= y1 - y0;
     const amp = horiz ? x1 - x0 : y1 - y0;
     if (amp > G.jiggleAmp * 2 || amp < 6) return;
-    let rev = 0, lastSign = 0, px = null, pt = 0, fast = 0, segs = 0;
-    p.each((ht, hx, hy) => {
-      if (t - ht > G.jiggleWindow) return false;
-      const c = horiz ? hx : hy;
-      if (px !== null) {
+    let rev = 0, lastSign = 0, px = 0, pt = 0, fast = 0, segs = 0;
+    for (let k = 0; k < n; k++) {
+      const o = p.off(k), ht = H[o];
+      const c = horiz ? H[o + 1] : H[o + 2];
+      if (k > 0) {
         const d = px - c, dt = pt - ht;
         if (Math.abs(d) > 0.5 && dt > 0) {
-          const s = Math.sign(d);
-          if (lastSign && s !== lastSign) rev++;
-          lastSign = s;
+          const sg = Math.sign(d);
+          if (lastSign && sg !== lastSign) rev++;
+          lastSign = sg;
           segs++;
           if (Math.abs(d) / dt > G.jiggleSpeed) fast++;
         }
       }
       px = c; pt = ht;
-      return true;
-    });
+    }
     if (rev >= G.jiggleReversals && fast >= segs * 0.4 && t - p.lastJiggle > 0.35 && !p.massage) {
       p.lastJiggle = t;
       // shaking the body means holding it
@@ -339,19 +376,20 @@ export class TouchReader {
   _detectMassage(p, t) {
     const G = GESTURE;
     if (this._inStretch(p)) return;
+    const H = p.hist;
     let cx = 0, cy = 0, n = 0, tOld = t;
-    p.each((ht, hx, hy) => { if (t - ht > G.massageWindow) return false; cx += hx; cy += hy; n++; tOld = ht; return true; });
+    for (; n < p.hn; n++) { const o = p.off(n); if (t - H[o] > G.massageWindow) break; cx += H[o + 1]; cy += H[o + 2]; tOld = H[o]; }
     const span = t - tOld;
     if (n < 10 || span < 0.25) { if (p.massage) p.massage.rate = 0; return; }
     cx /= n; cy /= n;
-    let rSum = 0, sum = 0, pos = 0, neg = 0, recent = 0, lastA = null;
-    p.each((ht, hx, hy) => {
-      if (t - ht > G.massageWindow) return false;
-      const dx = hx - cx, dy = hy - cy, rr = Math.hypot(dx, dy);
+    let rSum = 0, sum = 0, pos = 0, neg = 0, recent = 0, lastA = 0, hasA = false;
+    for (let k = 0; k < n; k++) {
+      const o = p.off(k), ht = H[o];
+      const dx = H[o + 1] - cx, dy = H[o + 2] - cy, rr = Math.hypot(dx, dy);
       rSum += rr;
-      if (rr < 3) { lastA = null; return true; }     // too near the centre to read an angle
+      if (rr < 3) { hasA = false; continue; }     // too near the centre to read an angle
       const a = Math.atan2(dy, dx);
-      if (lastA !== null) {
+      if (hasA) {
         let d = lastA - a;          // newest → oldest, so lastA is later in time
         if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU;
         // gradual turning only: a jump across the centre (a straight line, a
@@ -361,9 +399,8 @@ export class TouchReader {
           if (t - ht < G.massageRecent) recent += d;
         }
       }
-      lastA = a;
-      return true;
-    });
+      lastA = a; hasA = true;
+    }
     const r = rSum / n;
     const total = pos + neg;
     const same = total > 0 ? Math.max(pos, neg) / total : 0;
@@ -490,8 +527,15 @@ export class TouchReader {
       const [dx, dy] = dirs[e.key];
       if (e.type === 'down') {
         let p = this.ptrs.get('arrow');
-        if (!p) { this._down({ type: 'down', id: 'arrow', x: c.x, y: c.y, t, virtual: true }, t); p = this.ptrs.get('arrow'); }
-        if (p) this._move(p, clamp(p.x + dx * 18 - c.x, -90, 90) + c.x, clamp(p.y + dy * 18 - c.y, -90, 90) + c.y, t + 0.05);
+        if (!p) {
+          this._down({ type: 'down', id: 'arrow', x: c.x, y: c.y, t, virtual: true }, t);
+          p = this.ptrs.get('arrow');
+          // a key holds the material: it pulls, never glides or strokes
+          if (p) p.hold = true;
+        }
+        // measured from where the key took hold (the body follows the pull)
+        const reach = Math.max(20, this.keyReach());
+        if (p) this._move(p, clamp(p.x + dx * 18 - p.xDown, -reach, reach) + p.xDown, clamp(p.y + dy * 18 - p.yDown, -reach, reach) + p.yDown, Math.max(t + 0.05, p.t + 0.005));
       } else {
         const p = this.ptrs.get('arrow');
         if (p) this._up(p, t, false);
@@ -510,8 +554,14 @@ export class TouchReader {
     for (const p of this.ptrs.values()) {
       const held = t - p.t0;
       // kneading deepens: path length in the last 300 ms
-      let path = 0, lx = null, ly = null;
-      p.each((ht, hx, hy) => { if (t - ht > 0.3) return false; if (lx !== null) path += Math.hypot(hx - lx, hy - ly); lx = hx; ly = hy; return true; });
+      let path = 0, lx = 0, ly = 0;
+      const H = p.hist;
+      for (let n = 0; n < p.hn; n++) {
+        const o = p.off(n);
+        if (t - H[o] > 0.3) break;
+        if (n > 0) path += Math.hypot(H[o + 1] - lx, H[o + 2] - ly);
+        lx = H[o + 1]; ly = H[o + 2];
+      }
       const knead = G.kneadMax * clamp(path / G.kneadPx, 0, 1);
       const hold = 1 - Math.exp(-held / G.holdTau);
       // a pull grips rather than presses; a glide (stroke, massage) barely presses
@@ -538,6 +588,7 @@ export class TouchReader {
     return this.state;
   }
 
+  /** The live state (one reused object: read it, don't keep it). */
   get state() {
     let depth = 0, speed = 0, pull = 0, massage = null, held = 0;
     for (const p of this.ptrs.values()) {
@@ -547,12 +598,11 @@ export class TouchReader {
       held = Math.max(held, this.t - p.t0);
       if (p.massage && (!massage || Math.abs(p.massage.rate) > Math.abs(massage.rate))) massage = p.massage;
     }
-    const s = this.stretch;
-    return {
-      count: this.ptrs.size, depth, speed, pull, held, gliding: this._gliding(),
-      stretch: s ? s.s : 1, twist: s ? s.twist : 0, axis: s ? s.ang : 0,
-      massaging: !!massage, turns: massage ? massage.turns : 0, dir: massage ? massage.dir : 0, rate: massage ? massage.rate : 0,
-    };
+    const s = this.stretch, o = this._state;
+    o.count = this.ptrs.size; o.depth = depth; o.speed = speed; o.pull = pull; o.held = held; o.gliding = this._gliding();
+    o.stretch = s ? s.s : 1; o.twist = s ? s.twist : 0; o.axis = s ? s.ang : 0;
+    o.massaging = !!massage; o.turns = massage ? massage.turns : 0; o.dir = massage ? massage.dir : 0; o.rate = massage ? massage.rate : 0;
+    return o;
   }
 
   _gliding() { for (const p of this.ptrs.values()) if (p.mode === 'glide') return true; return false; }

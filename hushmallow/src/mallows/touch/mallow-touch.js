@@ -242,6 +242,8 @@ export class MallowTouch {
       hit: (x, y) => this.hitTest(x, y),
       bodySize: () => this._P() * this.aspect,
       centre: () => { const r = this.bodyRect(); return { x: r.cx, y: r.cy }; },
+      // the arrow keys pull to 80 % of where this material would slip
+      keyReach: () => 0.8 * this.sb.material.maxStretch * this._P(),
     });
     this._bindReader();
   }
@@ -380,8 +382,8 @@ export class MallowTouch {
   _label() {
     if (!this.root) return;
     const d = this.rig.describe();
-    this.root.setAttribute('aria-label', `${d}. Press and hold to squeeze, drag to pull, two fingers to stretch, stroke or circle to soothe, or tap. ` +
-      'With a keyboard, hold Space to squeeze, press Enter to tap, or use the arrow keys to pull.');
+    this.root.setAttribute('aria-label', `${d}. Press and hold to squeeze, press then drag (or drag an edge outwards) to pull, two fingers to stretch, ` +
+      'stroke or circle to soothe, or tap. With a keyboard, hold Space to squeeze, press Enter to tap, or use the arrow keys to pull.');
   }
 
   // a visible keyboard-focus ring around the body (the root itself is the
@@ -980,7 +982,8 @@ export class MallowTouch {
   _noteSlip(s) {
     const f = this._fingers.get(s.id), p = this.reader.ptrs.get(s.id);
     if (!f || !p || p.mode === 'glide') return;
-    // still moving fast and straight: the finger slid off and glides on (no startle)
+    // the hand slid off the jelly (anything but a fast, bent yank): it glides
+    // on over the skin, no startle — and may still count as a stroke
     if (this.reader.slide(s.id)) return;
     f.slipped = true;
     // react a moment later: a flick or a lift that follows says it better

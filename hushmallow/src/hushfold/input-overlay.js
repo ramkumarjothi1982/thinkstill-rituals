@@ -161,7 +161,7 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     if (hinting) {
       note.append(hfIcon('mic'), h('span', {}, coarse ? 'Tap the mic on your keyboard and just talk. Your words stay on this phone.'
         : 'Your device’s dictation works here too. Your words stay on this device.'));
-    } else if (roomy() && suggested.length && !chosenEmotion) {
+    } else if (roomy() && suggested.length && !chosenEmotion && !photosOpen) {
       note.append(hfIcon('sparkle'), h('span', {}, 'Highlighted feelings are only suggestions. Pick what fits, or none.'));
     } else if (roomy() && (!planNote || planNote.hidden) && !photosOpen) {
       // (the plan note and the photo strip say it too: once is enough)

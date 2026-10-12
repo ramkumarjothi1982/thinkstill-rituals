@@ -7,10 +7,16 @@
 // evidence label and the catalogue wording, apart from creative
 // inspirations), care notes, and Forget this (with a confirm).
 //
-// Route 'garden', gated on hushmallow Flow ('paid' → plans otherwise). No
-// scores, streaks or counts: it describes, it never nags. Only ids are stored
+// Route 'garden', gated on hushmallow Flow ('paid' → plans otherwise). A
+// person whose plan has lapsed keeps a read-only garden: what they kept stays
+// readable (open it, read it, "Try it"), and only "Practise again" asks for
+// the plan (owner to confirm: READ_ONLY_WHEN_LAPSED). No scores, streaks or
+// counts: it describes, it never nags. Only ids are stored
 // (src/engine/garden.js); the charms are drawn from skill id + Mallow.
-// params.focus = skillId: that charm has just arrived from the portal.
+// params.focus = skillId: that charm has just arrived from the portal (the
+// arrival plays once; going Back to the garden later doesn't replay it).
+// The loop runs in the shared Mallow ticker (rig.js addTicker) and stops while
+// a charm is open.
 
 import { h, iconBtn } from '../ui.js';
 import { MALLOWS } from '../../mallows/registry.js';
@@ -18,7 +24,13 @@ import { getSkill, EVIDENCE_NOTE, INSPIRATION_NOTE } from '../../hushfold/skills
 import { garden as gardenList, gardenEntry, practised, forgetSkill } from '../../engine/garden.js';
 import { charmCanvas, charmPalette, drawCharm } from '../../hushfold/charm.js';
 import { registry } from '../../hushfold/flow/registry.js';
+import { addTicker, removeTicker } from '../../mallows/rig.js';
 import { openSupport } from './support.js';
+
+/** A lapsed plan keeps the garden readable (Practise again asks for the plan). Owner to confirm. */
+export const READ_ONLY_WHEN_LAPSED = true;
+// arrivals already played in this page session (`${id}:${savedAt}`), so Back to the garden never replays one
+const ARRIVED = new Set();
 
 const CSS = `
 .hg { --hg-ff-ui: var(--ff-ui, "HM Manrope", system-ui, -apple-system, "Segoe UI", sans-serif); --hg-ff-voice: var(--ff-voice, "HM Nunito Sans", ui-rounded, system-ui, sans-serif); --hg-ff-story: var(--ff-story, "HM Fraunces", Georgia, "Times New Roman", serif); --hg-k: var(--type-scale, 1);
@@ -29,7 +41,8 @@ const CSS = `
 .hg-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
 .hg-head { position: fixed; z-index: 1; top: calc(var(--safe-top, env(safe-area-inset-top, 0px)) + 12px); left: 20px; right: 20px; display: flex; align-items: flex-start; gap: 12px; pointer-events: none; }
 .hg-head > .icon-btn { pointer-events: auto; flex: 0 0 auto; }
-.hg-titles { min-width: 0; padding-top: 1px; }
+.hg-titles { position: relative; isolation: isolate; min-width: 0; padding-top: 1px; }
+.hg-titles::before { content: ''; position: absolute; z-index: -1; inset: -12px -22px -12px -16px; border-radius: 999px; background: rgba(8,6,26,.5); filter: blur(14px); pointer-events: none; }
 .hg-titles h1 { margin: 0; font: var(--type-world, 540 calc(clamp(24px, 9.091vw - 9.091px, 30px) * var(--hg-k))/1.12 var(--hg-ff-story)); letter-spacing: var(--type-world-ls, -.01em); font-optical-sizing: auto; text-wrap: balance;
   color: #fff6ea; text-shadow: 0 2px 22px rgba(6,4,22,.85), 0 0 2px rgba(6,4,22,.6); }
 .hg-titles p { margin: 4px 0 0; font: var(--type-caption, 550 calc(13px * var(--hg-k))/1.4 var(--hg-ff-ui)); letter-spacing: var(--type-caption-ls, .003em); color: #ddd6f5; text-shadow: 0 1px 10px rgba(6,4,22,.95); }
@@ -88,6 +101,7 @@ const CSS = `
 .hg-chip canvas { flex: 0 0 auto; margin: -4px -2px; }
 .hg-chip small { display: block; margin-top: 2px; font: var(--type-caption, 550 calc(13px * var(--hg-k))/1.4 var(--hg-ff-ui)); color: #b9b2dc; }
 .hg-chip.is-away { border-style: dashed; background: transparent; }
+.hg-lapsed { margin: 0 0 14px; padding: 12px 14px; border-radius: 16px; background: rgba(255,217,138,.08); border: 1px solid rgba(255,217,138,.24); font: var(--type-label, 600 calc(14px * var(--hg-k))/1.35 var(--hg-ff-ui)); color: #f3e9d2; }
 .hg-chip:focus-visible, .hg-link:focus-visible, .hg-forget:focus-visible { outline: 2.5px solid #ffd98a; outline-offset: 3px; }
 .hg-scope { display: inline-block; margin: 0 0 10px; padding: 6px 12px; border-radius: 999px; background: rgba(143,227,255,.1); border: 1px solid rgba(143,227,255,.32);
   font: var(--type-label, 600 calc(14px * var(--hg-k))/1.35 var(--hg-ff-ui)); color: #c9f2ff; }
@@ -96,6 +110,12 @@ const CSS = `
 .hg-sources .n { font: var(--type-row, 600 calc(16px * var(--hg-k))/1.3 var(--hg-ff-ui)); font-weight: 700; color: #f3efff; }
 .hg-sources .g { font: var(--type-caption, 550 calc(13px * var(--hg-k))/1.4 var(--hg-ff-ui)); color: #b9b2dc; margin-top: 2px; }
 .hg-sources q { display: block; margin-top: 8px; font: var(--type-body, 500 calc(17px * var(--hg-k))/1.5 var(--hg-ff-voice)); color: #dcd5f3; quotes: "“" "”"; }
+.hg-more { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 6px; padding: 0; border: 0; background: none; color: #ffd98a; cursor: pointer;
+  font: var(--type-row, 600 calc(16px * var(--hg-k))/1.3 var(--hg-ff-ui)); }
+.hg-more::after { content: ''; width: 8px; height: 8px; margin-top: -4px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); transition: transform .25s ease, margin .25s ease; }
+.hg-more[aria-expanded="true"]::after { transform: rotate(-135deg); margin-top: 4px; }
+.hg-more:focus-visible { outline: 2.5px solid #ffd98a; outline-offset: 3px; }
+.hg-more-body[hidden] { display: none; }
 .hg-small { margin: 12px 0 0; font: var(--type-caption, 550 calc(13px * var(--hg-k))/1.4 var(--hg-ff-ui)); color: #b9b2dc; }
 .hg-care { margin: 0; padding-left: 20px; display: grid; gap: 8px; font: var(--type-body, 500 calc(17px * var(--hg-k))/1.5 var(--hg-ff-voice)); color: #dcd5f3; }
 .hg-link { display: inline-flex; align-items: center; min-height: 44px; margin-top: 8px; padding: 0; border: 0; background: none; color: #ffd98a; cursor: pointer; text-decoration: underline; text-underline-offset: 3px;

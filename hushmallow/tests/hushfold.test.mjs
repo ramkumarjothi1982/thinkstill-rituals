@@ -375,9 +375,9 @@ test('subtitles: the scrim deepens over bright backdrops until white text reads 
     const bl = luminance(px[0] + (9 - px[0]) * k, px[1] + (6 - px[1]) * k, px[2] + (28 - px[2]) * k);
     assert.ok(contrastRatio(white, bl) >= 4.5, `${px}: ${contrastRatio(white, bl).toFixed(2)}`);
   }
-  // the brightest tenth decides, not the average
+  // the brightest few per cent decide, not the average
   const data = new Uint8ClampedArray(100 * 4);
-  for (let i = 0; i < 100; i++) { const v = i >= 88 ? 255 : 20; data.set([v, v, v, 255], i * 4); }
+  for (let i = 0; i < 100; i++) { const v = i >= 94 ? 255 : 20; data.set([v, v, v, 255], i * 4); }
   assert.deepEqual(brightPixel(data), [255, 255, 255]);
 });
 
