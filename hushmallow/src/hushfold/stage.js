@@ -2,12 +2,16 @@
 // canvas on #fx-layer (touch ripples, placeholder Thought Mallows) and the
 // one animation loop that draws it.
 //
-// stageMallow is the seam for MallowTouch (W2): today it drives the existing
-// MallowRig through app.world; later createStageMallow(world, {touch}) wraps
-// a MallowTouch instance behind exactly the same calls:
-//   setEmotion(mix, intensity, opts), setStage(name), react(kind),
-//   lookAt(nx, ny), bodyRect(), hitTest(x, y), pointer(e), on('touch', fn),
-//   multiTouch (the router gives it a second finger), fit({cx, cy, size}) (touch only)
+// stageMallow is the seam for MallowTouch (W2): createStageMallow(world) drives
+// the existing MallowRig through app.world, and createStageMallow(world, {touch})
+// wraps a MallowTouch instance behind exactly the same calls:
+//   setEmotion(mix, intensity, opts), setStage(name, opts), react(kind, opts)
+//   (opts.quiet reaches the Mallow: no anticipation squash or blink), lookAt(nx, ny),
+//   bodyRect(), rect() (the same box: the Hushflow worlds' name for it),
+//   float({lift, tilt}) (lift in body heights, tilt in degrees), hitTest(x, y),
+//   pointer(e), on('touch', fn), ready,
+//   multiTouch (the router gives it a second finger),
+//   fit({cx, cy, size}), setMallow(id), loaded, tier, wheel(e) (touch only)
 // 'touch' events: { kind: 'press'|'squeeze'|'release'|'tap'|'doubleTap'|'flick'
 //   (+ MallowTouch: 'stretch'|'massage'|'stroke'|'jiggle'), depth, speed, held }
 //
@@ -27,7 +31,7 @@ const TAU = Math.PI * 2;
 
 // ------------------------------------------------------------ Mallow --
 export function createStageMallow(world, { touch = null } = {}) {
-  if (touch) return touchAdapter(touch);
+  if (touch) return touchAdapter(touch, world);
   const subs = new Map();
   let rig = null;
   const emit = (ev, data) => { for (const fn of subs.get(ev) || []) { try { fn(data); } catch (e) { console.warn('[stageMallow]', e); } } };
@@ -65,7 +69,30 @@ export function createStageMallow(world, { touch = null } = {}) {
     if (s?.toLocal) rig._toLocal = s.toLocal; else delete rig._toLocal;
     delete rig.canvas.setPointerCapture;
     delete rig.canvas.releasePointerCapture;
+    unfloat(rig.canvas);
     rig = null;
+  }
+  // this adapter's float (below) lives on the canvas's own `translate` / `rotate`
+  function unfloat(c) {
+    if (!c?.style) return;
+    c.style.translate = '';
+    c.style.rotate = '';
+    c._fy = 0; c._fr = 0;
+  }
+  /**
+   * The body box where the shell put it, without the float or a hop: world.bodyRect()'s
+   * framing measured on the canvas's holder (which fills the layer and does not float).
+   */
+  function restRect() {
+    const g = rig, holder = g?.canvas?.parentElement;
+    if (!g?.S || !g.W || !g.H || !g.mallow?.bodyBox || !holder?.getBoundingClientRect) return null;
+    const r = holder.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    const kx = r.width / g.W, ky = r.height / g.H;
+    const [bx0, by0, bx1, by1] = g.mallow.bodyBox;
+    const bw = (bx1 - bx0) * g.S, bh = (by1 - by0) * g.S;
+    const left = r.left + (g.CX - bw / 2) * kx, top = r.top + (g.BASE - bh) * ky, width = bw * kx, height = bh * ky;
+    return { left, top, width, height, right: left + width, bottom: top + height, cx: left + width / 2, cy: top + height / 2 };
   }
 
   const api = {
@@ -81,8 +108,27 @@ export function createStageMallow(world, { touch = null } = {}) {
     react(kind, opts) { world.react(kind, opts); },
     lookAt(nx, ny) { rig?.lookAt?.(nx, ny); },
     place(p, opts) { world.place({ ...p, calm: opts?.calm }); },
-    float() {},
+    /**
+     * Float on the water: lift in body heights (up), tilt in degrees. The rig has no float of
+     * its own, so its canvas moves with the CSS `translate` / `rotate` properties — separate
+     * from the layer's `transform` (and its 720 ms transition), so the bob is never lagged or
+     * eased away. float({lift: 0, tilt: 0}) puts it back.
+     */
+    float({ lift = 0, tilt = 0 } = {}) {
+      const c = rig?.canvas;
+      if (!c?.style) return;
+      const h = (restRect() || world.bodyRect())?.height || 200;
+      const ty = Math.round(-(Number(lift) || 0) * h * 10) / 10, rot = Math.round((Number(tilt) || 0) * 20) / 20;
+      if ((c._fy || 0) === ty && (c._fr || 0) === rot) return;
+      c._fy = ty; c._fr = rot;
+      c.style.transformOrigin = '50% 82%';
+      c.style.translate = ty ? `0 ${ty}px` : '';
+      c.style.rotate = rot ? `${rot}deg` : '';
+    },
     bodyRect() { return world.bodyRect(); },
+    /** The same box as bodyRect() (the Hushflow worlds call it rect()). */
+    rect() { return world.bodyRect(); },
+    restRect,
     hitTest(x, y) {
       if (!rig?.ready || !rig.canvas) return false;
       const p = rig._toLocal({ clientX: x, clientY: y });
@@ -113,33 +159,45 @@ export function createStageMallow(world, { touch = null } = {}) {
 }
 
 /** The same interface over a W2 MallowTouch instance. */
-function touchAdapter(t) {
+function touchAdapter(t, world = null) {
   return {
     kind: 'touch',
     /** MallowTouch tracks several pointers (two-finger stretch): the router routes both. */
     multiTouch: true,
     get rig() { return t.rig; },
     get id() { return t.id ?? t.rig?.id; },
-    get ready() { return true; },
+    get ready() { return !!t.ready; },
+    /** Resolves when the current Mallow (and any swap in flight) is showing. */
+    get loaded() { return t.loaded; },
+    /** The render tier: 'A' (WebGL mesh), 'B' (2D triangles) or 'C' (2D strips). */
+    get tier() { return t.stats?.tier; },
     attach() { return t.rig; }, detach() {},
-    setEmotion: (mix, i, o) => t.setEmotion(mix, i, o),
-    setStage: (n) => t.setStage(n),
-    react: (k) => t.react(k),
+    // the realm follows the strongest feeling, as world.setEmotion does in rig mode
+    setEmotion: (mix, i, o) => {
+      t.setEmotion(mix, i, o);
+      const top = typeof mix === 'string' ? mix : Object.entries(mix || {}).sort((a, b) => b[1] - a[1])[0]?.[0] || 'neutral';
+      world?.realm?.setEmotion?.(top, i ?? 0.7);
+    },
+    setStage: (n, o) => t.setStage(n, o),
+    react: (k, o) => t.react(k, o),
     lookAt: (x, y) => t.lookAt(x, y),
     place: (p, o) => t.place(p, o),
     float: (f) => t.float?.(f),
     bodyRect: () => t.bodyRect(),
+    /** The same box as bodyRect() (MallowTouch.rect(); the Hushflow worlds call it rect()). */
+    rect: () => (typeof t.rect === 'function' ? t.rect() : t.bodyRect()),
     hitTest: (x, y) => t.hitTest(x, y),
     pointer: (e) => t.pointer(e),
+    /** ctrl + wheel over the body (a desktop trackpad pinch) stretches it. */
+    wheel: (e) => t.wheel?.(e),
+    /** Switch to another Mallow in place (same canvases and WebGL context). */
+    setMallow: (id) => t.setMallow(id),
     /**
-     * Put the body's centre at (cx, cy) client px with a body of about `size`
-     * px (the shell's layout; the container covers the viewport at 0,0).
+     * Put the body's centre at (cx, cy) client px with a body `size` px tall (the shell's
+     * layout; the container covers the viewport at 0,0). MallowTouch sizes it against its
+     * own measured view, so a fit made before it is ready lands at the right size at once.
      */
-    fit({ cx, cy, size }) {
-      const s0 = t.st?.s || 1;
-      const base = typeof t._P === 'function' ? t._P() / s0 : (t.bodyRect().height || size) / s0;
-      t.place({ x: cx, y: cy, scale: base > 0 ? size / base : 1 });
-    },
+    fit({ cx, cy, size }) { t.place({ x: cx, y: cy, size }); },
     get pressed() { return !!(t.pressed ?? t.state?.pressed); },
     // MallowTouch.on() chains (returns itself); the stage wants an unsubscribe
     on: (ev, fn) => { t.on(ev, fn); return () => t.off?.(ev, fn); },
