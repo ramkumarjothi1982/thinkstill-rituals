@@ -773,7 +773,7 @@ export function create(E) {
     }
     // ---- the stained-glass pane (only worth drawing once the leaves part)
     g.save(); g.clip(gt.openPath);
-    if (phi > 0.02) {
+    if (phi > 0.02 && gt.opened) {                         // a sealed gate's rattle never shows the true picture
       drawPane(gt);
       // mist, wiped away by the ripple's wavefront
       const mistIn = gt.wipe - 26 * U;
