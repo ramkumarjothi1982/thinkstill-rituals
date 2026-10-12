@@ -520,6 +520,300 @@ export function composeAngle({ fact = '', interpretation = '', evidence = {}, ke
 }
 
 // ---------------------------------------------------------------------------
+// Optional lenses: Future Lens, Meaning Mixer, Zoom Out
+// ---------------------------------------------------------------------------
+
+const quoteIt = (s) => { const t = stripEndPunct(tidyPhrase(asText(s))); return t ? `“${t}”` : ''; };
+
+/** STAR MAP lines (and summary sentences) for whatever lenses were used. */
+function lensLines(lenses) {
+  const lines = [];
+  const summary = [];
+  if (!lenses || typeof lenses !== 'object') return { lines, summary };
+  const z = lenses.zoom;
+  if (z) {
+    const t = listText(z.lines);
+    if (t) lines.push({ key: 'zoom', label: LABELS.zoom, text: t });
+  }
+  const fu = lenses.future;
+  if (fu) {
+    const k = listText(fu.known);
+    if (k) lines.push({ key: 'known', label: LABELS.known, text: k });
+    const preds = (fu.predicted || []).map(quoteIt).filter(Boolean);
+    const n = Number.isFinite(fu.certainty) ? Math.round(Math.max(0, Math.min(100, fu.certainty))) : null;
+    if (preds.length) {
+      lines.push({ key: 'predicted', label: LABELS.predicted, text: `${preds.join('; ')}${n != null ? ` — it felt ${n}/100 sure.` : '.'}` });
+      if (n != null) summary.push(`My prediction felt ${n}/100 sure — a forecast, not a fact.`);
+    }
+    if (fu.sealed) {
+      const id = typeof fu.sealed === 'string' ? fu.sealed : fu.sealed.when;
+      const when = SEAL_WHEN.find((w) => w.id === id);
+      lines.push({ key: 'sealed', label: LABELS.sealed, text: `${when ? when.label : 'Later'}, I’ll open it and see how it really went.` });
+    }
+  }
+  const mx = lenses.mixer;
+  if (mx) {
+    if (mx.choice === 'mix' && mx.chosen) {
+      lines.push({ key: 'words', label: LABELS.words, text: quoteIt(mx.chosen) });
+      summary.push(`Words that fit a little better: ${quoteIt(mx.chosen)}.`);
+    } else if (mx.original) {
+      lines.push({ key: 'words', label: LABELS.words, text: `${quoteIt(mx.original)} — I kept my own words.` });
+    }
+  }
+  return { lines, summary };
+}
+
+const FUTURE_RES = FUTURE_CUES.map((src) => new RegExp(src, 'i'));
+
+/**
+ * The pieces (strings or {text}) that make a prediction: future tense,
+ * "going to", "what if", "for ever"… Returned tidied, in input order.
+ */
+export function findPredictions(pieces) {
+  const list = (Array.isArray(pieces) ? pieces : [pieces]).map((p) => tidyPhrase(asText(p))).filter(Boolean);
+  return list.filter((t) => { const s = tidyInput(t); return FUTURE_RES.some((re) => re.test(s)); });
+}
+
+const MIXER_RES = MIXER_LEXICON.map((entry, order) => ({ entry, order, re: new RegExp(entry.re, 'gi') }));
+const AGREE_SINGULAR = Object.fromEntries(Object.entries(AGREE_PLURAL).map(([sg, pl]) => [pl, sg]));
+
+function fillTemplate(tpl, groups) {
+  return tpl.replace(/\{(\d)\}/g, (_, k) => {
+    const g = groups[Number(k) - 1] || '';
+    return /^i(?:['’]|$)/i.test(g) ? `I${g.slice(1)}` : g.toLowerCase();
+  });
+}
+
+/**
+ * Find the loudest words in a sentence for the Meaning Mixer: labels ("I'm
+ * terrible at my job"), certainty ("she must hate me"), predictions ("I'll
+ * never"), absolutes (always, never, everyone), should-rules and size words.
+ * Matches never overlap (earlier, then longer, then library order wins); if
+ * there are more than `limit`, the heaviest are kept, in sentence order.
+ * Setting 0 of every dial is the person's own words.
+ * → { text, dials: [{ id, entryId, kind, start, end, text, n, heat, options: [{ text, heat, n, original }] }] }
+ * `start`/`end` index tidyInput(text).
+ */
+export function buildMixer(text, { limit = 3 } = {}) {
+  const t = tidyInput(text);
+  const found = [];
+  if (t) {
+    for (const { entry, order, re } of MIXER_RES) {
+      for (const m of t.matchAll(re)) {
+        if (m[0]) found.push({ entry, order, start: m.index, end: m.index + m[0].length, text: m[0], groups: m.slice(1) });
+      }
+    }
+  }
+  found.sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start) || a.order - b.order);
+  let picked = [];
+  let lastEnd = -1;
+  for (const f of found) if (f.start >= lastEnd) { picked.push(f); lastEnd = f.end; }
+  if (picked.length > limit) {
+    picked = [...picked].sort((a, b) => b.entry.heat - a.entry.heat || a.start - b.start).slice(0, Math.max(0, limit)).sort((a, b) => a.start - b.start);
+  }
+  const dials = picked.map((f) => {
+    const n = f.entry.n || null;
+    const own = f.text.toLowerCase();
+    const alts = f.entry.options
+      .map(([tpl, heat, num]) => ({ text: fillTemplate(tpl, f.groups), heat, n: num || n, original: false }))
+      .filter((o) => o.text.toLowerCase() !== own);
+    return {
+      id: `${f.entry.id}@${f.start}`, entryId: f.entry.id, kind: f.entry.kind, start: f.start, end: f.end, text: f.text, n, heat: f.entry.heat,
+      options: [{ text: f.text, heat: f.entry.heat, n, original: true }, ...alts],
+    };
+  });
+  return { text: t, dials };
+}
+
+/** A dial's words as a short quotable key: "'s deliberately ignoring me" → "deliberately ignoring me". */
+export function dialKey(dial) {
+  const s = String(dial?.text || '').replace(/^(?:['’](?:s|re)|is|are)\s+/i, '').trim();
+  return /^I(?:\b|['’])/.test(s) ? s : s.charAt(0).toLowerCase() + s.slice(1);
+}
+
+const matchCase = (word, like) => (/^[A-Z]/.test(like) ? word[0].toUpperCase() + word.slice(1) : word);
+const atSentenceStart = (text, i) => {
+  const before = text.slice(0, i);
+  return /^\s*["'“‘(]*$/.test(before) || /[.!?…]["'”’)]*\s+["'“‘(]*$/.test(before);
+};
+
+/** "How heavy it sounds" label for a 0–1 heat. */
+export function heatBand(heat) {
+  const x = Number.isFinite(heat) ? heat : 0;
+  return (HEAT_BANDS.find((b) => x <= b.max) || HEAT_BANDS[HEAT_BANDS.length - 1]).label;
+}
+
+/**
+ * Rebuild the sentence with one setting per dial (picks[i], default 0 = the
+ * person's own words). Capitalises at the start of a sentence, spaces out
+ * contractions ("She's ignoring me" → "She might be ignoring me") and agrees
+ * the next verb when a setting changes number ("Everyone thinks" → "Some
+ * people think").
+ * → { text, heat, band, picks, changed, segments: [{ text, dial: index|null }] }
+ */
+export function mixSentence(mixer, picks = []) {
+  const dials = mixer?.dials || [];
+  const text = mixer?.text || '';
+  let out = '';
+  let pos = 0;
+  let agree = null;
+  let heatSum = 0;
+  const chosen = [];
+  const settle = (s) => {
+    if (!agree || !s) return s;
+    const m = /^(\s*)([A-Za-z'’]+)/.exec(s);
+    if (!m) { if (/\S/.test(s)) agree = null; return s; }
+    const map = agree === 'pl' ? AGREE_PLURAL : AGREE_SINGULAR;
+    agree = null;
+    const r = map[m[2].toLowerCase().replace(/’/g, "'")];
+    return r ? m[1] + matchCase(r, m[2]) + s.slice(m[0].length) : s;
+  };
+  const segments = [];
+  const push = (t, dial) => { if (t) segments.push({ text: t, dial }); };
+  dials.forEach((d, i) => {
+    push(settle(text.slice(pos, d.start)), null);
+    const k = Math.max(0, Math.min(d.options.length - 1, Math.round(Number(picks[i]) || 0)));
+    const opt = d.options[k];
+    let rep = opt.original ? d.text : opt.text;
+    let lead = '';
+    if (!opt.original) {
+      if (/^['’]/.test(d.text)) lead = ' ';
+      if (atSentenceStart(text, d.start)) rep = capFirst(rep);
+    }
+    push(lead, null);
+    push(settle(rep), i);
+    agree = !opt.original && opt.n && d.n && opt.n !== d.n ? opt.n : null;
+    heatSum += opt.heat;
+    chosen.push(k);
+    pos = d.end;
+  });
+  push(settle(text.slice(pos)), null);
+  out = segments.map((x) => x.text).join('');
+  const heat = dials.length ? Math.round((heatSum / dials.length) * 100) / 100 : 0;
+  return { text: out, heat, band: heatBand(heat), picks: chosen, changed: chosen.some((k) => k > 0), segments };
+}
+
+/**
+ * Which optional lenses to offer after the Perspective Portal (up to `limit`).
+ * Rules (weights in LENS_RULES):
+ *   Future Lens   — future-reading / worst-case / what-if habits, a prediction
+ *                   in the person's words, or a future-flavoured situation
+ *   Meaning Mixer — only when there's at least one loud word to dial; boosted
+ *                   by big labels, always/never, should-rules, all-or-nothing
+ *   Zoom Out      — always available, so it fills the remaining slot
+ * Ties keep library order (future, mixer, zoom).
+ * → [{ id, name, glyph, score, reason }]
+ */
+export function recommendLenses({ text = '', interpretation = '', patterns, scenario, limit = 2 } = {}) {
+  const sc = resolveScenario(scenario);
+  const ids = new Set(patternIdsFrom(patterns || [], ''));
+  for (const id of patternIdsFrom(null, `${text} ${interpretation}`)) ids.add(id);
+  const score = { future: 0, mixer: 0, zoom: LENS_RULES.zoomBase };
+  let zoomWhy = 'default';
+  for (const id of ids) {
+    for (const lens of LENS_IDS) {
+      const pts = LENS_RULES.patterns[lens]?.[id];
+      if (!pts) continue;
+      score[lens] += pts;
+      if (lens === 'zoom') zoomWhy = 'pattern';
+    }
+  }
+  const futureFromPattern = score.future > 0;
+  const preds = findPredictions([...splitThought(text).map((p) => p.text), interpretation]);
+  if (preds.length) score.future += LENS_RULES.predictionCue;
+  const futureContext = sc.id !== GENERAL.id && (sc.contexts || []).includes('future');
+  if (futureContext) score.future += LENS_RULES.futureContext;
+  const mixer = buildMixer(interpretation || text);
+  score.mixer += mixer.dials.length * LENS_RULES.mixerWord;
+  const eligible = { future: score.future >= LENS_RULES.futureMin, mixer: mixer.dials.length > 0, zoom: true };
+  const words = mixer.dials.slice(0, 2).map((d) => `“${dialKey(d)}”`).join(' and ');
+  const reason = {
+    future: futureFromPattern || preds.length ? LENS_REASONS.future.pattern : LENS_REASONS.future.context,
+    mixer: LENS_REASONS.mixer.words.replace('{words}', words),
+    zoom: LENS_REASONS.zoom[zoomWhy],
+  };
+  return LENS_IDS
+    .filter((id) => eligible[id])
+    .map((id, i) => ({ id, score: score[id], order: i }))
+    .sort((a, b) => b.score - a.score || a.order - b.order)
+    .slice(0, Math.max(0, limit))
+    .map(({ id, score: s }) => ({ id, name: LENSES[id].name, glyph: LENSES[id].glyph, score: s, reason: reason[id] }));
+}
+
+/** Zoom Out line family for a scenario (from its context tags), or null. */
+export function zoomFamily(scenarioOrId) {
+  const sc = resolveScenario(scenarioOrId);
+  if (sc.id === GENERAL.id) return null;
+  for (const c of sc.contexts || []) if (ZOOM_FAMILY[c]) return ZOOM_FAMILY[c];
+  return null;
+}
+
+/**
+ * The question and the pick-what's-true lines for one Zoom Out stop:
+ * up to three (situation-specific first), then always one honest line.
+ * → { stop, question, lines: [{ id, text, honest }] }
+ */
+export function zoomPrompts(scenarioOrId, stopId) {
+  const stop = ZOOM_STOPS.find((s) => s.id === stopId) || ZOOM_STOPS[0];
+  const pool = ZOOM_LINES[stop.id];
+  if (!pool) return { stop, question: stop.question, lines: [] };
+  const fam = zoomFamily(scenarioOrId);
+  const texts = [...(fam && pool[fam] ? pool[fam] : []), ...pool.universal].slice(0, 3);
+  texts.push(pool.honest);
+  return { stop, question: stop.question, lines: texts.map((t, i) => ({ id: `zoom-${stop.id}-${i + 1}`, text: t, honest: t === pool.honest })) };
+}
+
+/** The Future Lens's response to a 0–100 "how sure" rating. */
+export function certaintyBand(n) {
+  const x = Math.max(0, Math.min(100, Math.round(Number(n) || 0)));
+  return CERTAINTY_BANDS.find((b) => x <= b.max) || CERTAINTY_BANDS[CERTAINTY_BANDS.length - 1];
+}
+
+/**
+ * The Future Lens deck: the person's own facts and authored knowns, the
+ * person's own predictions (or, if they made none, predictions people often
+ * make in this situation), interleaved known/predicted. `guess` is only a
+ * hint for tests and never shown; the person sorts every piece.
+ * → { pieces: [{ id, text, guess, source }], unknowns, ownPredictions, prompts, copy }
+ */
+export function buildFutureDeck(scenarioOrId, { facts = [], added = [], limit = 5 } = {}) {
+  const sc = resolveScenario(scenarioOrId);
+  const fl = sc.futureLens;
+  const clean = (list) => (list || []).map((x) => stripEndPunct(tidyPhrase(asText(x)))).filter(Boolean);
+  const own = [...clean(facts), ...clean(added)];
+  const ownPredictions = findPredictions(own).map(stripEndPunct);
+  const ownFacts = clean(facts).filter((f) => !ownPredictions.includes(f));
+  const seen = new Set();
+  const uniq = (t) => { const k = t.toLowerCase().replace(/[’']/g, "'"); return seen.has(k) ? false : (seen.add(k), true); };
+  const known = [...ownFacts.slice(0, 2).map((text) => ({ text, source: 'you' })), ...fl.knowns.slice(0, 2).map((text) => ({ text, source: 'library' }))]
+    .filter((p) => uniq(p.text)).slice(0, 3).map((p) => ({ ...p, guess: 'known' }));
+  const predicted = (ownPredictions.length ? ownPredictions.slice(0, 2).map((text) => ({ text, source: 'you' }))
+    : fl.predictions.slice(0, 2).map((text) => ({ text, source: 'library' })))
+    .filter((p) => uniq(p.text)).map((p) => ({ ...p, guess: 'predicted' }));
+  const pieces = [];
+  for (let i = 0; pieces.length < limit && (known[i] || predicted[i]); i++) {
+    if (known[i] && pieces.length < limit) pieces.push(known[i]);
+    if (predicted[i] && pieces.length < limit) pieces.push(predicted[i]);
+  }
+  return {
+    pieces: pieces.map((p, i) => ({ id: `fl${i + 1}`, ...p })),
+    unknowns: fl.unknowns.slice(0, 3),
+    ownPredictions,
+    prompts: fl.predictionPrompts,
+    copy: fl.copy,
+  };
+}
+
+/** The scenario's cameo Mallow, popping into a lens. Falls back to Loomi. */
+export function pickLensCameo(scenarioOrId, lensId) {
+  const sc = resolveScenario(scenarioOrId);
+  const pool = LENS_CAMEOS[lensId];
+  if (!pool) return null;
+  const mallow = pool[sc.cameo?.mallow] ? sc.cameo.mallow : 'loomi';
+  return { mallow, role: 'cameo', stage: lensId, text: pool[mallow] };
+}
+
+// ---------------------------------------------------------------------------
 // Guide and cameo lines
 // ---------------------------------------------------------------------------
 

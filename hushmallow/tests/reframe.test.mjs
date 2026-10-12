@@ -5,9 +5,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import * as F from '../src/ultra/frameworks.js';
+import * as LX from '../src/ultra/lenses.js';
 import {
   checkSafety, matchScenarios, splitThought, detectPatterns, buildAngles, buildEvidence,
   buildNextSteps, composeAngle, pickCameo, tidyInput,
+  recommendLenses, buildMixer, mixSentence, heatBand, dialKey, findPredictions, zoomPrompts, zoomFamily,
+  certaintyBand, buildFutureDeck, pickLensCameo,
 } from '../src/ultra/reframe-engine.js';
 
 const {
@@ -454,4 +457,299 @@ test('determinism: same input → same output, every time', () => {
 test('library data is frozen', () => {
   assert.ok(Object.isFrozen(SCENARIOS) && Object.isFrozen(SCENARIOS[0].angles) && Object.isFrozen(SCENARIOS[0].angles[0]));
   assert.ok(Object.isFrozen(THOUGHT_PATTERNS[0]));
+});
+
+// ---------------------------------------------------------------------------
+// Optional lenses: selection rules
+// ---------------------------------------------------------------------------
+
+/** What the flow passes in: the whole text, plus the "brain added" part. */
+function lensesFor(text, opts = {}) {
+  const parts = splitThought(text);
+  const added = parts.filter((p) => p.guess !== 'fact').map((p) => p.text).join('. ');
+  const scenario = opts.scenario || matchScenarios(text)[0].scenario;
+  return recommendLenses({ text, interpretation: added, scenario, ...opts }).map((l) => l.id);
+}
+
+test('lens rules: the three directive examples get the right lenses', () => {
+  // big label → Meaning Mixer, then Zoom Out fills the second slot
+  assert.deepEqual(lensesFor("My boss criticised my work. I think I'm terrible at my job."), ['mixer', 'zoom']);
+  // mind-reading with a certainty word ("must hate me") → Mixer, then Zoom Out
+  assert.deepEqual(lensesFor("My friend hasn't replied. She must hate me."), ['mixer', 'zoom']);
+  // a prediction ("I'll never") → Future Lens first; "never" also gives the Mixer something to dial
+  assert.deepEqual(lensesFor("I failed one interview. I'll never get a good job."), ['future', 'mixer']);
+});
+
+test('lens rules: Future Lens needs a prediction; Mixer needs a loud word; Zoom Out is the fallback', () => {
+  // nothing loud and nothing predicted → Zoom Out only
+  assert.deepEqual(lensesFor('My sister got engaged.'), ['zoom']);
+  assert.deepEqual(lensesFor('zxqv blorp', { scenario: 'general' }), ['zoom']);
+  // "what if" + "tomorrow" style worry, no loud words → Future Lens, then Zoom Out
+  assert.deepEqual(lensesFor('What if I freeze in the presentation next week'), ['future', 'zoom']);
+  // "they'll think…" is a prediction too (and "I'm weird" is a label the Mixer can dial)
+  assert.deepEqual(lensesFor("I said something awkward at lunch. They'll think I'm weird.").sort(), ['future', 'mixer']);
+  // "it's going to go wrong"
+  assert.equal(lensesFor("My driving test is on Friday. It's going to go wrong.")[0], 'future');
+  // a habit id alone can switch the Future Lens on…
+  assert.deepEqual(recommendLenses({ text: 'hmm', patterns: ['future-reading'], scenario: 'general' }).map((l) => l.id), ['future', 'zoom']);
+  // …but a label habit with no dial-able words never offers an empty Mixer
+  assert.ok(!recommendLenses({ text: 'ok then', patterns: ['big-label'], scenario: 'general' }).some((l) => l.id === 'mixer'));
+  // Zoom Out climbs when the habit is "only the bad bit"
+  const zoom = recommendLenses({ text: "I can't stop thinking about the one bad comment", scenario: 'general' }).find((l) => l.id === 'zoom');
+  assert.ok(zoom.score > LX.LENS_RULES.zoomBase);
+});
+
+test('lens rules: limit, shape, reasons in the person’s words, determinism', () => {
+  const text = "Everyone thinks I'm an idiot. I'll never get anything right.";
+  const all = recommendLenses({ text, interpretation: text, limit: 3 });
+  assert.deepEqual(all.map((l) => l.id), ['mixer', 'future', 'zoom'], 'ranked by score, all three when allowed');
+  assert.equal(recommendLenses({ text, interpretation: text, limit: 1 }).length, 1);
+  assert.equal(recommendLenses({ text, interpretation: text }).length, 2, 'default is up to two');
+  for (const l of all) {
+    assert.ok(LX.LENS_IDS.includes(l.id) && l.name && l.glyph && typeof l.score === 'number');
+    assert.ok(l.reason && !/[{}]/.test(l.reason), l.reason);
+  }
+  assert.match(all.find((l) => l.id === 'mixer').reason, /“everyone”/, 'quotes the person’s own loud word');
+  const run = () => recommendLenses({ text, interpretation: text, scenario: 'mistake-judged', limit: 3 });
+  for (let i = 0; i < 3; i++) assert.deepEqual(run(), run());
+});
+
+test('findPredictions picks out the future-tense pieces only', () => {
+  assert.deepEqual(findPredictions(['I failed one interview', "I'll never get a good job"]), ["I'll never get a good job"]);
+  assert.deepEqual(findPredictions(["They'll think I'm weird", "it's going to go wrong", 'what if I freeze', 'She said no']),
+    ["They'll think I'm weird", "It's going to go wrong", 'What if I freeze']);
+  assert.deepEqual(findPredictions([]), []);
+  // every authored prediction in the library reads as a prediction
+  for (const s of ALL_FRAMEWORKS) {
+    assert.ok(s.futureLens.predictions.length >= 2, s.id);
+    for (const p of s.futureLens.predictions) assert.deepEqual(findPredictions([p]), [p], `${s.id}: ${p}`);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Meaning Mixer: detection and alternatives
+// ---------------------------------------------------------------------------
+
+const dialIds = (text) => buildMixer(text).dials.map((d) => d.entryId);
+const optionTexts = (text, i = 0) => buildMixer(text).dials[i].options.map((o) => o.text);
+
+test('mixer detection: labels, certainty, predictions, absolutes, should-rules', () => {
+  assert.deepEqual(dialIds("I'm terrible at my job"), ['label-job']);
+  assert.deepEqual(dialIds("I think I'm terrible at my job"), ['label-job']);
+  assert.deepEqual(dialIds('She must hate me'), ['must-hate']);
+  assert.deepEqual(dialIds("I'll never get a good job"), ['ill-never']);
+  assert.deepEqual(dialIds('I always mess things up'), ['always']);
+  assert.deepEqual(dialIds("Everyone thinks I'm an idiot"), ['everyone', 'thinks-im', 'label-competence']);
+  assert.deepEqual(dialIds("They'll think I'm weird"), ['theyll-think', 'label-social']);
+  assert.deepEqual(dialIds("She's deliberately ignoring me"), ['ignoring-me']);
+  assert.deepEqual(dialIds('I should be over this by now'), ['should', 'by-now']);
+  assert.deepEqual(dialIds("It's going to go wrong"), ['go-wrong']);
+  assert.deepEqual(dialIds('Nobody likes me'), ['nobody']);
+  assert.deepEqual(dialIds('I mess up every time'), ['every-time']);
+  assert.deepEqual(dialIds('I went for a walk and had a sandwich'), [], 'plain sentences have nothing to dial');
+  assert.deepEqual(buildMixer('').dials, []);
+  // "I think I'm…" is a hedge, not mind-reading; "he thinks I'm…" is
+  assert.ok(!dialIds("I think I'm boring").includes('thinks-im'));
+  assert.ok(dialIds("He thinks I'm boring").includes('thinks-im'));
+});
+
+test('mixer alternatives: the directive examples, original always first', () => {
+  assert.deepEqual(optionTexts("I'm terrible at my job"),
+    ["I'm terrible at my job", 'I’m not doing this part well yet', 'this piece of work needs fixing', 'I’m still learning this part']);
+  assert.deepEqual(optionTexts('I always mess things up'), ['always', 'often', 'sometimes', 'now and then']);
+  assert.deepEqual(optionTexts('I mess up every time'), ['every time', 'a lot', 'sometimes', 'this time']);
+  const hate = optionTexts('She must hate me');
+  assert.equal(hate[0], 'must hate me');
+  assert.ok(hate.includes('might be upset with me'), 'keeps "your worry might be partly right" on the dial');
+  assert.ok(hate.some((t) => /don’t know yet/.test(t)), 'keeps "not enough information yet" on the dial');
+  for (const d of buildMixer("Everyone thinks I'm useless and I'll never get it right").dials) {
+    assert.equal(d.options[0].original, true);
+    assert.equal(d.options[0].text, d.text);
+    assert.ok(d.options.length >= 3, d.entryId);
+    assert.ok(d.options.slice(1).every((o) => !o.original && o.heat < d.heat), `${d.entryId}: alternatives are lighter`);
+  }
+});
+
+test('mixer detection: spans index the tidied text, never overlap, cap at the heaviest three', () => {
+  const text = 'Everyone always says I’m useless, nobody cares and everything is ruined';
+  const t = tidyInput(text);
+  const all = buildMixer(text, { limit: 10 }).dials;
+  for (const d of all) assert.equal(t.slice(d.start, d.end), d.text);
+  for (let i = 1; i < all.length; i++) assert.ok(all[i].start >= all[i - 1].end, 'no overlaps');
+  const three = buildMixer(text).dials;
+  assert.equal(three.length, 3);
+  assert.deepEqual(three.map((d) => d.start), [...three.map((d) => d.start)].sort((a, b) => a - b), 'sentence order');
+  const heaviest = [...all].sort((a, b) => b.heat - a.heat || a.start - b.start).slice(0, 3).map((d) => d.id).sort();
+  assert.deepEqual(three.map((d) => d.id).sort(), heaviest);
+});
+
+test('mixSentence: swaps settings, capitalises, agrees verbs, spaces contractions', () => {
+  const job = buildMixer("I'm terrible at my job");
+  assert.deepEqual(mixSentence(job, []), { text: "I'm terrible at my job", heat: 0.95, band: 'Very heavy', picks: [0], changed: false,
+    segments: [{ text: "I'm terrible at my job", dial: 0 }] });
+  const segs = mixSentence(buildMixer("I think she's ignoring me, always."), [1, 2]).segments;
+  assert.deepEqual(segs, [{ text: 'I think she', dial: null }, { text: ' ', dial: null }, { text: 'might be ignoring me', dial: 0 },
+    { text: ', ', dial: null }, { text: 'sometimes', dial: 1 }, { text: '.', dial: null }]);
+  assert.equal(mixSentence(job, [2]).text, 'This piece of work needs fixing');
+  assert.equal(mixSentence(job, [3]).text, 'I’m still learning this part');
+  assert.equal(mixSentence(buildMixer("I think I'm terrible at my job"), [2]).text, 'I think this piece of work needs fixing');
+  assert.equal(mixSentence(buildMixer('She must hate me'), [1]).text, 'She might be upset with me');
+  assert.equal(mixSentence(buildMixer("I'll never get a good job"), [2]).text, 'It might take a while to get a good job');
+  assert.equal(mixSentence(buildMixer("I'll never get a good job"), [3]).text, 'I don’t know yet whether I’ll get a good job');
+  assert.equal(mixSentence(buildMixer("Everyone thinks I'm useless"), [2, 0]).text, "Some people think I'm useless");
+  assert.equal(mixSentence(buildMixer('Everything is going wrong'), [2]).text, 'Some things are going wrong');
+  assert.equal(mixSentence(buildMixer('Everyone else is ahead of me'), [3]).text, 'The people I’m comparing myself with are ahead of me');
+  assert.equal(mixSentence(buildMixer("She's deliberately ignoring me"), [1]).text, 'She might be ignoring me');
+  assert.equal(mixSentence(buildMixer('Things will never get better'), [3]).text, 'I don’t know yet whether things will get better');
+  assert.equal(mixSentence(buildMixer("I'm fine. Nobody likes me though"), [2]).text, "I'm fine. Not everyone likes me though");
+  // out-of-range settings clamp; heat falls as the dial turns; bands are labels only
+  const m = buildMixer('I always mess things up');
+  assert.equal(mixSentence(m, [99]).text, 'I now and then mess things up');
+  assert.equal(mixSentence(m, [-3]).text, 'I always mess things up');
+  const heats = m.dials[0].options.map((_, k) => mixSentence(m, [k]).heat);
+  assert.deepEqual(heats, [...heats].sort((a, b) => b - a));
+  assert.equal(heatBand(0.3), 'Plain');
+  assert.equal(heatBand(0.95), 'Very heavy');
+  assert.equal(mixSentence({ text: '', dials: [] }).heat, 0);
+  assert.equal(dialKey(buildMixer("She's deliberately ignoring me").dials[0]), 'deliberately ignoring me');
+  assert.equal(dialKey(buildMixer('Everyone else is ahead').dials[0]), 'everyone else');
+});
+
+test('mixer lexicon: compiles, unique ids, valid settings, every template fills', () => {
+  const ids = LX.MIXER_LEXICON.map((e) => e.id);
+  assert.equal(new Set(ids).size, ids.length);
+  const kinds = Object.keys(LX.MIXER_KIND_NAMES);
+  for (const e of LX.MIXER_LEXICON) {
+    assert.doesNotThrow(() => new RegExp(e.re, 'gi'), e.id);
+    assert.ok(kinds.includes(e.kind), `${e.id}: ${e.kind}`);
+    assert.ok(e.heat > 0 && e.heat <= 1, e.id);
+    assert.ok(e.options.length >= 2, e.id);
+    for (const [txt, heat, n] of e.options) {
+      assert.ok(typeof txt === 'string' && txt.length > 1, e.id);
+      assert.ok(heat > 0 && heat < e.heat, `${e.id}: ${txt}`);
+      assert.ok(n == null || ['sg', 'pl'].includes(n), `${e.id}: ${n}`);
+      const groups = new RegExp(e.re).source.match(/\((?!\?)/g)?.length || 0;
+      for (const [, k] of txt.matchAll(/\{(\d)\}/g)) assert.ok(Number(k) <= groups, `${e.id}: {${k}} has no capture group`);
+    }
+  }
+  // agreement map round-trips
+  for (const [sg, pl] of Object.entries(LX.AGREE_PLURAL)) assert.ok(sg && pl && sg !== pl, sg);
+});
+
+// ---------------------------------------------------------------------------
+// Zoom Out and Future Lens content
+// ---------------------------------------------------------------------------
+
+test('zoom out: five stops, situation lines first, an honest line at every stop', () => {
+  assert.deepEqual(LX.ZOOM_STOPS.map((s) => s.id), ['moment', 'today', 'week', 'year', 'whole']);
+  assert.equal(zoomFamily('work-criticism'), 'work');
+  assert.equal(zoomFamily('unanswered-message'), 'social');
+  assert.equal(zoomFamily('general'), null);
+  assert.equal(zoomPrompts('work-criticism', 'moment').lines.length, 0);
+  const today = zoomPrompts('work-criticism', 'today');
+  assert.equal(today.question, 'What’s one thing that went fine today?');
+  assert.equal(today.lines[0].text, LX.ZOOM_LINES.today.work[0]);
+  assert.match(zoomPrompts('general', 'week').question, /What else is going on in your life right now/);
+  assert.match(zoomPrompts('general', 'year').question, /matter in a month/);
+  for (const s of ALL_FRAMEWORKS) {
+    for (const stop of LX.ZOOM_STOPS.slice(1)) {
+      const z = zoomPrompts(s, stop.id);
+      assert.ok(z.lines.length >= 3 && z.lines.length <= 4, `${s.id}/${stop.id}`);
+      assert.equal(z.lines.filter((l) => l.honest).length, 1, `${s.id}/${stop.id} honest line`);
+      assert.equal(new Set(z.lines.map((l) => l.id)).size, z.lines.length);
+    }
+  }
+  // "it might still matter" is always on the table when asking about the long run
+  assert.ok(zoomPrompts('job-rejection', 'year').lines.some((l) => /might still matter/.test(l.text)));
+});
+
+test('future lens: deck sorts the person’s own words, falls back to authored predictions', () => {
+  const deck = buildFutureDeck('job-rejection', { facts: ['I failed one interview'], added: ["I'll never get a good job"] });
+  assert.deepEqual(deck.ownPredictions, ["I'll never get a good job"]);
+  assert.deepEqual(deck.pieces.slice(0, 2).map((p) => [p.text, p.guess, p.source]),
+    [['I failed one interview', 'known', 'you'], ["I'll never get a good job", 'predicted', 'you']]);
+  assert.ok(deck.pieces.length <= 5 && deck.unknowns.length >= 1);
+  assert.equal(new Set(deck.pieces.map((p) => p.id)).size, deck.pieces.length);
+  const noPred = buildFutureDeck('unanswered-message', { facts: ["My friend hasn't replied"], added: ['She must hate me'] });
+  assert.deepEqual(noPred.ownPredictions, []);
+  assert.ok(noPred.pieces.filter((p) => p.guess === 'predicted').every((p) => p.source === 'library'));
+  assert.ok(noPred.pieces.some((p) => p.guess === 'predicted'));
+  for (const s of ALL_FRAMEWORKS) {
+    const d = buildFutureDeck(s);
+    assert.ok(d.pieces.some((p) => p.guess === 'known') && d.pieces.some((p) => p.guess === 'predicted'), s.id);
+    assert.equal(d.copy.sureQuestion.includes('0 to 100'), true);
+  }
+});
+
+test('future lens: certainty bands cover 0–100 and never steer the number', () => {
+  assert.equal(certaintyBand(0).id, 'low');
+  assert.equal(certaintyBand(30).id, 'low');
+  assert.equal(certaintyBand(31).id, 'middle');
+  assert.equal(certaintyBand(70).id, 'high');
+  assert.equal(certaintyBand(90).id, 'certain');
+  assert.equal(certaintyBand(100).id, 'certain');
+  assert.equal(certaintyBand(500).id, 'certain');
+  assert.equal(certaintyBand('nope').id, 'low');
+  for (const b of LX.CERTAINTY_BANDS) assert.doesNotMatch(b.text, /\b(?:should|lower|too high|wrong)\b/i, b.text);
+});
+
+test('lens cameos: every framework gets a short line from a known Mallow, for every lens', () => {
+  for (const s of ALL_FRAMEWORKS) {
+    for (const lens of LX.LENS_IDS) {
+      const c = pickLensCameo(s, lens);
+      assert.ok(ULTRA_MALLOWS.includes(c.mallow), `${s.id}/${lens}`);
+      assert.ok(c.text.length > 10 && c.text.length <= 110, c.text);
+    }
+  }
+  assert.equal(pickLensCameo('unanswered-message', 'mixer').mallow, 'glitzi');
+  assert.equal(pickLensCameo('general', 'nope'), null);
+});
+
+test('composeAngle adds lens results to the star map', () => {
+  const out = composeAngle({
+    fact: 'I failed one interview', interpretation: "I'll never get a good job",
+    lenses: {
+      zoom: { lines: ['I’ve got through hard things before', 'I honestly can’t tell yet'] },
+      future: { known: ['I failed one interview'], predicted: ["I'll never get a good job"], certainty: 85, sealed: { when: 'month' } },
+      mixer: { original: "I'll never get a good job", chosen: 'It might take a while to get a good job', choice: 'mix' },
+    },
+    nextStep: 'Ask for feedback',
+  });
+  const byKey = Object.fromEntries(out.lines.map((l) => [l.key, l]));
+  assert.equal(byKey.zoom.label, 'Zooming out');
+  assert.equal(byKey.zoom.text, 'I’ve got through hard things before; I honestly can’t tell yet.');
+  assert.equal(byKey.known.text, 'I failed one interview.');
+  assert.equal(byKey.predicted.text, "“I'll never get a good job” — it felt 85/100 sure.");
+  assert.match(byKey.sealed.text, /^In a month/);
+  assert.equal(byKey.words.text, '“It might take a while to get a good job”');
+  assert.equal(out.lines.at(-1).key, 'next', 'next move stays last');
+  assert.ok(out.summary.includes('85/100'));
+  const kept = composeAngle({ lenses: { mixer: { original: 'she must hate me', chosen: 'She might be upset with me', choice: 'original' } } });
+  assert.equal(kept.lines[0].text, '“She must hate me” — I kept my own words.');
+  assert.deepEqual(composeAngle({ lenses: {} }).lines, []);
+  assert.deepEqual(composeAngle({ lenses: { future: { predicted: [] } } }).lines, []);
+});
+
+test('lens copy: no forbidden words, British spelling, no unfilled templates', () => {
+  const US = /\b(?:color|favorite|realiz\w*|apologiz\w*|organiz\w*|recogniz\w*|behavior|center|mom)\b/i;
+  const authored = collectStrings(Object.values(LX)).filter((s) => !/\\b|\(\?/.test(s)); // skip regex sources
+  for (const str of authored) {
+    for (const re of FORBIDDEN) assert.doesNotMatch(str, re, `forbidden ${re} in: ${str}`);
+    assert.doesNotMatch(str, US, `US spelling in: ${str}`);
+  }
+  const strings = [];
+  const text = "Everyone thinks I'm useless. I always ruin everything and I'll never get it right. She must hate me.";
+  const mx = buildMixer(text, { limit: 10 });
+  for (const d of mx.dials) for (let k = 0; k < d.options.length; k++) strings.push(mixSentence(mx, mx.dials.map((x) => (x === d ? k : 0))).text);
+  for (const s of ALL_FRAMEWORKS) {
+    for (const stop of LX.ZOOM_STOPS) strings.push(...collectStrings(zoomPrompts(s, stop.id)));
+    strings.push(...collectStrings(buildFutureDeck(s)));
+    strings.push(...recommendLenses({ text, interpretation: text, scenario: s, limit: 3 }).map((l) => l.reason));
+  }
+  assert.ok(authored.length > 150 && strings.length > 300);
+  for (const str of strings) {
+    for (const re of FORBIDDEN) assert.doesNotMatch(str, re, `forbidden ${re} in: ${str}`);
+    assert.doesNotMatch(str, US, `US spelling in: ${str}`);
+    assert.doesNotMatch(str, /[{}]/, `unfilled template: ${str}`);
+  }
 });

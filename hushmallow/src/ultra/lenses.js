@@ -58,8 +58,8 @@ export const LENS_REASONS = {
 /** Zuzu's lines for each lens. */
 export const LENS_LINES = {
   offer: {
-    first: 'Want another lens? Totally optional. Each one takes about a minute.',
-    again: 'One more lens, or on to your next move?',
+    first: 'Ooh, spare lenses! Pick one to look through — or skip. Both are fine.',
+    again: 'Nice lens work. Fancy one more?',
   },
   zoom: {
     intro: 'Let’s pull the camera back. Pinch, drag upwards or use the slider.',
@@ -159,7 +159,7 @@ export const LENS_RULES = {
     zoom: { 'only-the-bad-bit': 2, 'comparison-trap': 1, 'spotlight-on-me': 1, 'feelings-as-proof': 1 },
   },
   /** a future-tense cue in the person's own words */
-  predictionCue: 2,
+  predictionCue: 3,
   /** the situation itself is about what's coming */
   futureContext: 1,
   /** each loud word the Meaning Mixer can dial (max 3) */
@@ -229,6 +229,11 @@ export const MIXER_LEXICON = [
     options: [['I feel like I’m not enough right now', 0.65], ['I’m being really hard on myself', 0.45], ['I’m having a tough moment', 0.35]],
   },
   {
+    id: 'label-social', kind: 'label', heat: 0.85,
+    re: R`\bi'?m ${LABEL_FILLER}(?:weird|a weirdo|weirdo|annoying|awkward|cringe|cringey|odd|strange|a freak|freak)\b`,
+    options: [['I’m a bit awkward sometimes', 0.6], ['I had an awkward moment', 0.45], ['I’m human', 0.3]],
+  },
+  {
     id: 'label-competence', kind: 'label', heat: 0.9,
     re: R`\bi'?m ${LABEL_FILLER}(?:stupid|an idiot|idiot|a failure|failure|useless|hopeless|incompetent|dumb|thick|clueless|rubbish|terrible|awful|a mess|mess|a joke|joke|a fraud|fraud|a disaster|disaster)\b`,
     options: [['I got something wrong', 0.55], ['I’m finding this hard', 0.45], ['I’m still learning', 0.3]],
@@ -262,7 +267,7 @@ export const MIXER_LEXICON = [
   },
   {
     id: 'thinks-im', kind: 'certainty', heat: 0.75,
-    re: R`(?<!\bi (?:just |really |honestly |kind of |sort of )?)\b(?:thinks?|thought|believes?)(?: that)?(?= (?:i'?m|i am|i was)\b)`,
+    re: R`(?<!\bi (?:just |really |honestly |kind of |sort of )?)(?<!(?:'ll|'d|\bwill|\bwould|\bmight|\bmay|\bcould|\bmust|\bto|\bdo|\bdon't|\bdid|\bdidn't|\bdoes|\bdoesn't) )\b(?:thinks?|thought|believes?)(?: that)?(?= (?:i'?m|i am|i was)\b)`,
     options: [['might think', 0.55], ['may not think', 0.35]],
   },
   {
@@ -286,6 +291,11 @@ export const MIXER_LEXICON = [
     id: 'will-never', kind: 'prediction', heat: 0.9,
     re: R`\b(it|this|things|they|she|he|we|that|people|nobody|no one|everyone)(?:'ll| will) never\b`,
     options: [['{1} might not', 0.6], ['{1} may take a while to', 0.45], ['I don’t know yet whether {1} will', 0.35]],
+  },
+  {
+    id: 'theyll-think', kind: 'prediction', heat: 0.85,
+    re: R`\b(they|she|he|everyone|everybody|people|we)(?:'ll| will) (?:all )?(think|say|decide|assume|notice)\b`,
+    options: [['{1} might {2}', 0.6], ['I’m worried {1} will {2}', 0.5]],
   },
   {
     id: 'never-going', kind: 'prediction', heat: 0.85,
