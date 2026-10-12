@@ -91,7 +91,7 @@ const CSS = `
 .hm-offer-ask { margin: 0; font: var(--type-label, 600 calc(14px * var(--hm-k))/1.35 var(--hm-ff-ui)); color: #d9d2f2; }
 .hm-offer-title { margin: 3px 0 0; font: 750 calc(18px * var(--hm-k))/1.25 var(--hm-ff-voice); color: #fff6e6; text-wrap: balance; }
 .hm-offer .hm-actions { margin-top: 12px; }
-.hm-note { position: fixed; z-index: 6; left: 50%; bottom: 104px; transform: translateX(-50%); max-width: calc(100vw - 40px); box-sizing: border-box; padding: 11px 18px; border-radius: 999px; pointer-events: none;
+.hm-note { position: fixed; z-index: 6; left: 50%; bottom: 104px; transform: translateX(-50%); width: max-content; max-width: min(calc(100vw - 40px), 360px); box-sizing: border-box; padding: 11px 18px; border-radius: 18px; pointer-events: none; text-wrap: balance;
   background: rgba(13, 9, 34, .86); border: 1px solid rgba(255,255,255,.14); color: #f1ecff; font: var(--type-label, 600 calc(14px * var(--hm-k))/1.35 var(--hm-ff-ui)); text-align: center;
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); opacity: 0; transition: opacity .4s ease; }
 .hm-note.is-in { opacity: 1; }
@@ -598,7 +598,7 @@ export async function keepDiscovery({ app = null, store = app?.store, skillId, w
   if (!store || !getSkill(skillId)) return { kept: false, already: false, action: null };
   if (hasSkill(store, skillId)) {
     practised(store, skillId);
-    note(`${getSkill(skillId).title} · already in your Memory Garden`);
+    note(`${getSkill(skillId).title} is already in your Memory Garden.`);
     return { kept: false, already: true, action: null };
   }
   const yes = await offerSave({ skillId, mallow, app, reducedMotion, signal });
