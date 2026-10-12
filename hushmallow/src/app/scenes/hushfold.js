@@ -12,7 +12,7 @@
 //               right thing: a Thought Mallow, the Mallow, or the world
 //   .hf-ui      top bar, subtitles, tell overlay, panel, cards
 
-import { h, icon, iconBtn } from '../ui.js';
+import { h, icon, iconBtn, logo } from '../ui.js';
 import { MALLOWS, MALLOW_IDS } from '../../mallows/registry.js';
 import { SoftMallow } from '../../hushfold/touch/mallow-touch.js';
 import { ThoughtMallow, fragments } from '../../hushfold/thought-mallow.js';
@@ -57,7 +57,7 @@ export default function hushfold(app, params = {}) {
   const gardenBtn = iconBtn('leaf', 'Memory Garden', () => showGarden());
   const pauseBtn = iconBtn('pause', 'Pause', () => pause());
   const panelBtn = iconBtn('sliders', 'Hushflow settings', () => showPanel());
-  const brand = h('div', { class: 'brand hf-brand' }, h('span', { class: 'dot' }), 'Hushmallow');
+  const brand = logo('hf-brand');
   const worldChip = h('div', { class: 'hf-world-chip', 'aria-live': 'polite' });
   const top = h('div', { class: 'hf-top' }, brand, pauseBtn, h('div', { class: 'grow' }, worldChip), gardenBtn, panelBtn);
   const tellBtn = h('button', { class: 'hf-tell-btn', onclick: () => tell() }, h('span', { class: 'spark', 'aria-hidden': 'true' }), 'Tell ');
@@ -468,6 +468,8 @@ export default function hushfold(app, params = {}) {
       clearThoughts();
       mallow?.destroy();
       stage.showMallow(true);
+      // the next screen meets the same Mallow you were just squeezing
+      if (stage.rig?.id !== S.mallowId) stage.setMallow?.(S.mallowId, { entrance: false });
       if (window.__hf) delete window.__hf;
     },
   };

@@ -37,6 +37,14 @@ export function icon(name, label) {
   return svg;
 }
 
+/** The official lowercase hushmallow logo, as supplied (never re-typeset).
+ *  It sits on a soft light plate because the artwork is dark lettering. */
+const LOGO = new URL('../../assets/brand/hushmallow-logo.webp', import.meta.url).href;
+export function logo(cls = '') {
+  return h('div', { class: `brand logo-plate ${cls}`.trim(), role: 'img', 'aria-label': 'hushmallow' },
+    h('img', { src: LOGO, alt: '', width: '761', height: '132', decoding: 'async', draggable: 'false' }));
+}
+
 export function iconBtn(name, label, onclick) {
   return h('button', { class: 'icon-btn', 'aria-label': label, title: label, onclick }, icon(name));
 }
@@ -87,15 +95,31 @@ let currentBubble = null;
 export function say(world, text, { who, ms = 3600, above = true } = {}) {
   currentBubble?.remove();
   if (!text) return Promise.resolve();
-  const rect = world.mallowRect();
+  // long enough to read comfortably, however short the caller asked for
+  ms = Math.max(ms, 1600 + String(text).length * 58);
   const b = h('div', { class: 'bubble', role: 'status', 'aria-live': 'polite' }, who ? h('span', { class: 'who' }, who) : null, text);
   document.body.append(b);
+  currentBubble = b;
+  place(world, b, above);
+  // a screen's title can arrive a moment after the line does: look again
+  for (const t of [140, 450, 900, 1500]) setTimeout(() => { if (currentBubble === b) place(world, b, above); }, t);
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      if (currentBubble === b) { b.classList.add('out'); setTimeout(() => b.remove(), 260); currentBubble = null; }
+      resolve();
+    }, ms);
+  });
+}
+function place(world, b, above) {
+  const rect = world.mallowRect();
   const bw = Math.min(b.offsetWidth, innerWidth - 24);
   const x = Math.max(12, Math.min(innerWidth - bw - 12, rect.cx - bw / 2));
   // never cover a ritual's instructions: above the Mallow if it fits under the
   // title block, else below the Mallow (above the controls), else over the Mallow
   const bh = b.offsetHeight;
-  const titles = [...document.querySelectorAll('#scene .move-title')].map((e) => e.getBoundingClientRect()).filter((r) => r.height > 0);
+  // nor the top bar, nor a screen title sitting above the Mallow
+  const titles = [...document.querySelectorAll('#scene .move-title, #scene .topbar, #scene h1, #scene h2, #scene .hero, #scene .title')]
+    .map((e) => e.getBoundingClientRect()).filter((r) => r.height > 0 && r.top < rect.top + rect.height * 0.5);
   const minTop = titles.length ? Math.max(...titles.map((r) => r.bottom)) + 8 : 12;
   const dock = document.querySelector('#scene .dock');
   let maxBottom = dock && dock.children.length ? dock.getBoundingClientRect().top - 8 : innerHeight - 12;
@@ -112,13 +136,6 @@ export function say(world, text, { who, ms = 3600, above = true } = {}) {
   b.style.left = `${x}px`;
   b.style.top = `${Math.max(12, y)}px`;
   b.style.setProperty('--tail', `${Math.max(20, Math.min(bw - 20, rect.cx - x))}px`);
-  currentBubble = b;
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      if (currentBubble === b) { b.classList.add('out'); setTimeout(() => b.remove(), 260); currentBubble = null; }
-      resolve();
-    }, ms);
-  });
 }
 export function clearBubble() { currentBubble?.remove(); currentBubble = null; }
 

@@ -14,7 +14,7 @@ out="$1"; ver="$2"
 rm -rf "$out"; mkdir -p "$out/v/$ver/assets"
 cp -r "$here/src" "$out/v/$ver/"
 rm -rf "$out/v/$ver/src/v3/dev"
-cp -r "$here/assets/mallows" "$here/assets/rig" "$here/assets/fonts" "$out/v/$ver/assets/"
+cp -r "$here/assets/mallows" "$here/assets/rig" "$here/assets/fonts" "$here/assets/brand" "$out/v/$ver/assets/"
 sed -e "s#href=\"src/#href=\"v/$ver/src/#g; s#src=\"src/#src=\"v/$ver/src/#g; s#href=\"assets/#href=\"v/$ver/assets/#g" \
   "$here/index.html" > "$out/index.html"
 sed -e "s#\"assets/#\"v/$ver/assets/#g" "$here/manifest.webmanifest" > "$out/manifest.webmanifest"

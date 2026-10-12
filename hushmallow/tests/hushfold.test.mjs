@@ -237,3 +237,13 @@ test('fonts: Nunito Sans, Manrope and Fraunces are self-hosted with their licenc
   for (const tok of ['--type-cinema', '--type-world', '--type-dialogue', '--type-subtitle', '--type-body', '--type-button', '--type-label'])
     assert.ok(css.includes(tok), `${tok} defined`);
 });
+
+test('logo: the official artwork is used, never re-typed lettering', () => {
+  assert.ok(existsSync(`${root}assets/brand/hushmallow-logo.webp`));
+  for (const f of ['hushfold', 'landing']) {
+    const src = readFileSync(`${root}src/app/scenes/${f}.js`, 'utf8');
+    assert.ok(src.includes('logo('), `${f}.js shows the logo artwork`);
+    assert.ok(!/class: 'brand[^']*' \}, [^)]*'Hushmallow'\)/.test(src) && !/'HUSHMALLOW'/.test(src), `${f}.js has no typed wordmark`);
+  }
+  assert.ok(readFileSync(`${root}tools/build-site.sh`, 'utf8').includes('assets/brand'), 'the logo ships with the site');
+});

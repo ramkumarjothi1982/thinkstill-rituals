@@ -8,6 +8,17 @@
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
 
 
+/* Metric-matched fallbacks: while a web font is still loading, text is drawn
+   in a local face scaled to the same width and line height, so nothing jumps
+   when the real font swaps in (no layout shift). Values measured from the
+   woff2 files against Arial / Times New Roman. */
+@font-face { font-family: "Nunito Sans Fallback"; src: local("Arial"), local("Helvetica"), local("Liberation Sans");
+  size-adjust: 97.4%; ascent-override: 103.8%; descent-override: 36.2%; line-gap-override: 0%; }
+@font-face { font-family: "Manrope Fallback"; src: local("Arial"), local("Helvetica"), local("Liberation Sans");
+  size-adjust: 95.3%; ascent-override: 111.9%; descent-override: 31.5%; line-gap-override: 0%; }
+@font-face { font-family: "Fraunces Fallback"; src: local("Times New Roman"), local("Times"), local("Liberation Serif");
+  size-adjust: 120.3%; ascent-override: 81.3%; descent-override: 21.2%; line-gap-override: 0%; }
+
 /* Hushmallow type system (all SIL Open Font License, files in assets/fonts,
    self-hosted: no font service, nothing to fail in Framer or offline).
      Nunito Sans  — the Mallows' voice: dialogue, subtitles, body, How to Play
@@ -69,9 +80,9 @@
 
   /* type */
   --font-brand: "Fredoka", ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
-  --font-voice: "Nunito Sans", ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-ui: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-cinema: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-voice: "Nunito Sans", "Nunito Sans Fallback", ui-rounded, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-ui: "Manrope", "Manrope Fallback", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-cinema: "Fraunces", "Fraunces Fallback", "Iowan Old Style", Georgia, serif;
   /* legacy name: headings across scenes now speak in the Mallows' voice */
   --font-display: var(--font-voice);
 
@@ -90,8 +101,8 @@
   --fs-h1: var(--type-world);
   --fs-h2: 21px;
   --fs-body: var(--type-body);
-  --fs-small: 14px;
-  --fs-micro: 12.5px;
+  --fs-small: var(--type-label);
+  --fs-micro: var(--type-label);
 
   /* space (4pt) */
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s8: 32px; --s10: 40px;

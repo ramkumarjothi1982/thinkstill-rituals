@@ -32,7 +32,7 @@ export default function express(app, params = {}) {
   const el = h('div', { class: 'express', style: { display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' } },
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' }),
       h('button', { class: 'btn ghost', style: { minHeight: '40px' }, onclick: () => openSupport(app) }, 'Need support now?')),
-    h('div', { class: 'spacer', style: { minHeight: '22dvh' } }),
+    h('div', { class: 'spacer', style: { minHeight: '34dvh' } }),
     h('div', { class: 'card', style: { padding: '16px' } },
       h('h1', { class: 'title', style: { fontSize: 'var(--type-world)', marginBottom: '10px' } }, 'What’s happening in your head?'),
       ta,
