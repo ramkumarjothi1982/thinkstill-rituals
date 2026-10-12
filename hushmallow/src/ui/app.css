@@ -1,4 +1,4 @@
-/* Hushmallow app shell. One persistent world (realm + living Mallow),
+/* hushmallow app shell. One persistent world (realm + living Mallow),
    with scenes floating above it. */
 
 html, body { margin: 0; height: 100%; background: var(--ink-0); color: var(--text-1); font: 400 var(--fs-body)/var(--lh-body) var(--font-voice);
@@ -278,3 +278,6 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .photo-tray .add.wide { width: auto; padding: 0 18px; display: inline-flex; align-items: center; gap: 8px; font: 700 15px var(--font-ui); }
 .photo-tray .add.wide svg, .photo-add-inline svg { width: 20px; height: 20px; }
 .photo-add-inline { margin-top: 10px; gap: 8px; }
+
+/* labels are uppercase, but the brand never is: "hushmallow Flow" keeps its case */
+.eyebrow.keep-case { text-transform: none; letter-spacing: .01em; font-size: var(--type-body); font-weight: 700; }

@@ -11,7 +11,7 @@ export const SKILLS = {
     world: 'static-storm',
     what: 'When you slowed your hand, the storm settled. Your body works a bit like that too: deliberately slowing one movement (your walk, your typing, your breath out) tends to take the edge off feeling wound up.',
     example: 'Before replying to a message that made you angry, type your first sentence at half speed. Notice if what you want to say changes.',
-    evidence: 'Slowing and longer exhales are linked with lower arousal in research. Hushmallow itself hasn’t been tested as a treatment.',
+    evidence: 'Slowing and longer exhales are linked with lower arousal in research. hushmallow itself hasn’t been tested as a treatment.',
     related: ['making-room'],
   },
   'making-room': {

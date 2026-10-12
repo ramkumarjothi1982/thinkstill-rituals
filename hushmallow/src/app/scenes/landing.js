@@ -1,5 +1,6 @@
 // NOTICE + FINISH — an optional check-in (no "success" required), what you
 // did, and gentle ways to finish, repeat or try another ritual.
+import { BRAND } from '../brand.js';
 import { h, icon, say, clearBubble, toast, wait, logo } from '../ui.js';
 import { MALLOWS } from '../../mallows/registry.js';
 import { openSupport } from './support.js';
@@ -113,11 +114,11 @@ export default function landing(app) {
       g.drawImage(img, 540 - lw / 2, 1250 - lh / 2, lw, lh);
     } catch {}
     g.font = '600 30px "Fraunces", Georgia, serif'; g.fillStyle = 'rgba(255,255,255,.82)'; g.textAlign = 'center';
-    g.fillText('Feel it. Squish it. Shift it.', 540, 1330);
+    g.fillText(BRAND.brandSlogan, 540, 1330);
     const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
     const file = new File([blob], 'hushmallow.png', { type: 'image/png' });
     try {
-      if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: 'Hushmallow' }); return; }
+      if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: BRAND.brandName }); return; }
     } catch { return; }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = 'hushmallow.png'; a.click();

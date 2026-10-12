@@ -1,4 +1,4 @@
-// ANOTHER ANGLE — Hushmallow Ultra's Reframe experience, guided by Zuzu in
+// ANOTHER ANGLE — hushmallow Beyond's Reframe experience, guided by Zuzu in
 // the Spiral Observatory. Entirely rule-based: authored frameworks + the
 // person's own words. It never invents facts about anyone, never insists on
 // a positive explanation, and keeps "your worry might be partly right" and
@@ -60,7 +60,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   realm()?.setMood?.({ clarity: 0.1, agitation: 0.35, heaviness: 0.2, warmth: 0.2 });
 
   // ================================================================ TELL ==
-  setMove(0, { eyebrow: 'Hushmallow Beyond · Another Angle', title: 'There’s more than one way to see it.', prompt: '' });
+  setMove(0, { eyebrow: 'Another Angle · Beyond', title: 'There’s more than one way to see it.', prompt: '' });
   world.place({ x: 50, y: 25, scale: 0.6 });
   const ta = h('textarea', { class: 'feel', 'aria-label': 'What happened, and what did your brain decide it means?', placeholder: 'e.g. “My boss criticised my work. I think I’m terrible at my job.”' });
   ta.value = ctx.input.text || '';

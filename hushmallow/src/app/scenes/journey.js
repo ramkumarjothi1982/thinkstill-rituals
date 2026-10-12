@@ -1,4 +1,4 @@
-// YOUR JOURNEY — how Hushmallow has been with this person, from what's on
+// YOUR JOURNEY — how hushmallow has been with this person, from what's on
 // this device: moments finished, time spent, how they said they felt
 // afterwards, what helped most, the feelings they brought, their Mallows,
 // and where they are in this round. Never their words. No streaks, no
@@ -22,7 +22,7 @@ export default function journey(app) {
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' })),
     h('div', { class: 'card', style: { marginTop: '10px', padding: '16px', overflowY: 'auto', flex: '1', minHeight: '0' } },
       h('h1', { class: 'title', style: { fontSize: 'var(--type-world)' } }, 'Your journey'),
-      h('p', { class: 'muted', style: { margin: '4px 0 14px' } }, 'How Hushmallow has been with you. It lives only on this phone.'),
+      h('p', { class: 'muted', style: { margin: '4px 0 14px' } }, 'How hushmallow has been with you. It lives only on this phone.'),
       body));
 
   const section = (title, ...kids) => h('section', { style: { display: 'grid', gap: '8px' } }, h('div', { class: 'eyebrow' }, title), ...kids);

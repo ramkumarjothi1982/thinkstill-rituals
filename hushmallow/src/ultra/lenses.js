@@ -1,4 +1,4 @@
-// HUSHMALLOW ULTRA · "Another Angle" — the optional lenses.
+// hushmallow Beyond (internal tier: ultra) · "Another Angle" — the optional lenses.
 //
 //   ZOOM OUT       pull the camera back: this moment → today → this week →
 //                  this year → the whole picture, picking context lines that

@@ -1,4 +1,4 @@
-# Hushmallow — status
+# hushmallow — status
 
 What is built and verified, what is known to be imperfect, and what needs
 you. "Verified" means driven end to end in a real browser (Chromium via
@@ -7,7 +7,7 @@ tried on a physical phone yet; see §4.
 
 > **Hushfold update:** the home screen is now the squeezable Hushfold, with
 > Hushflow worlds and the Memory Garden. The plans are now called
-> **Hushmallow Flow** (internal id `paid`) and **Hushmallow Beyond**
+> **hushmallow Flow** (internal id `paid`) and **hushmallow Beyond**
 > (internal id `ultra`). Product ids are unchanged. Wherever this document
 > says Paid or Ultra, read Flow or Beyond. See `docs/HUSHFOLD.md`.
 
@@ -16,7 +16,7 @@ tried on a physical phone yet; see §4.
 ## 1. Built
 
 ### The two paid experiences
-| | Hushmallow (Paid) | Hushmallow Ultra |
+| | hushmallow (Paid) | hushmallow Beyond |
 |---|---|---|
 | Rituals | 10 interactive rituals (below) | Everything in Paid |
 | Quick tricks | 291 one-minute attention and getting-started tricks | All 1,000 ThinkStill tricks (the extra 709 are plot twists for thoughts) |

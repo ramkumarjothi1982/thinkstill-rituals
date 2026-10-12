@@ -1,7 +1,7 @@
 // Subscription entitlements: exactly two paid tiers.
 //
-//   paid  — shown as HUSHMALLOW FLOW: the Mallows, Hushflow worlds, rituals.
-//   ultra — shown as HUSHMALLOW BEYOND: everything in Flow + Another Angle.
+//   paid  — shown as hushmallow Flow: the Mallows, Hushflow worlds, rituals.
+//   ultra — shown as hushmallow Beyond: everything in Flow + Another Angle.
 //
 // The internal ids ('paid', 'ultra') and every App Store product id are
 // unchanged so existing purchases, receipts and the native bridge keep
@@ -20,9 +20,11 @@
 // provider can grant tiers locally for development and review — it never
 // charges and the UI always says "Test purchase".
 
+import { BRAND } from './brand.js';
+
 export const PLANS = {
   paid: {
-    id: 'paid', name: 'Hushmallow Flow', short: 'Flow', tagline: 'A little more room for your feelings.',
+    id: 'paid', name: BRAND.flowPlanName, short: 'Flow', tagline: 'A little more room for your feelings.',
     productIds: { monthly: 'hushmallow.paid.monthly', yearly: 'hushmallow.paid.yearly' },
     includes: [
       'All seven squeezable Mallows and their reactions',
@@ -34,10 +36,10 @@ export const PLANS = {
     ],
   },
   ultra: {
-    id: 'ultra', name: 'Hushmallow Beyond', short: 'Beyond', tagline: 'There’s more than one way to see it.',
+    id: 'ultra', name: BRAND.beyondPlanName, short: 'Beyond', tagline: 'There’s more than one way to see it.',
     productIds: { monthly: 'hushmallow.ultra.monthly', yearly: 'hushmallow.ultra.yearly' },
     includes: [
-      'Everything in Hushmallow Flow',
+      `Everything in ${BRAND.flowPlanName}`,
       'Another Angle: separate what happened from what your mind added',
       'Gentle reframing with evidence orbits, perspective portals and plot twists',
       'Alternative perspectives for work, friends, family, love, rejection and more',
@@ -52,7 +54,7 @@ export const PLANS = {
 
 /** Display adapter: internal tier id → the plan name people see. */
 export function planName(tier) {
-  return PLANS[tier]?.name || 'Hushmallow';
+  return PLANS[tier]?.name || BRAND.brandName;
 }
 
 import { testPurchasesAllowed } from './config.js';

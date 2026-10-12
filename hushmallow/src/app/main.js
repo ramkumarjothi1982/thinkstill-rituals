@@ -2,6 +2,7 @@
 // App bootstrap: storage, preferences, entitlements, recommender, the
 // persistent Hushfold stage and a tiny scene router with real history.
 
+import { BRAND } from './brand.js';
 import { createStore } from '../engine/storage.js';
 import { createPrefs } from './prefs.js';
 import { createEntitlements } from './entitlements.js';
@@ -71,7 +72,7 @@ app.go = async function go(name, params = {}, { replace = false, fromPop = false
   }
   await view.enter?.();
   if (name === 'home') checkVersion();
-  document.title = view.title ? `${view.title} · hushmallow` : 'hushmallow · Less noise. More magic.';
+  document.title = view.title ? `${view.title} · ${BRAND.brandName}` : BRAND.brandLine;
   sceneEl.querySelector('h1, h2, [data-focus]')?.setAttribute('tabindex', '-1');
 };
 app.back = () => history.back();

@@ -541,7 +541,7 @@ export async function run(ctx) {
         ...(copy.bend ? [{ label: 'Mind bend', text: copy.bend }] : []),
         ...(roundsDone > 1 ? [{ label: 'Calm rounds', text: `You played ${roundsDone} rounds.` }] : []),
       ],
-      share: { title: ritual.name.split(' — ')[0], subtitle: `A Hushmallow ritual with ${lead.name}` },
+      share: { title: ritual.name.split(' — ')[0], subtitle: `A hushmallow ritual with ${lead.name}` },
     });
   }
   signal.addEventListener('abort', () => { if (!finished) { finished = true; cleanup(); photoSession.release(); resolveRun({ completed: false }); } });

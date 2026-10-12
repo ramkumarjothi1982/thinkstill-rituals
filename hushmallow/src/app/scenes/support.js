@@ -1,4 +1,4 @@
-// Support — always free, always one tap away. Hushmallow is not a crisis
+// Support — always free, always one tap away. hushmallow is not a crisis
 // service; this points people to real humans.
 import { h, openSheet } from '../ui.js';
 
@@ -21,7 +21,7 @@ export function openSupport(app, { urgent = false } = {}) {
       h('p', {}, l.how),
       l.tel ? h('a', { class: 'btn primary', style: { marginTop: '10px', textDecoration: 'none' }, href: `tel:${l.tel}` }, `Call ${l.tel}`) : null,
       l.url ? h('a', { class: 'btn', style: { marginTop: '10px', textDecoration: 'none' }, href: l.url, target: '_blank', rel: 'noopener' }, 'Open') : null)),
-    h('p', { class: 'muted', style: { marginTop: '14px' } }, 'Hushmallow is a wellbeing app, not a medical or crisis service. The Mallows care, but they can’t replace people who can be there with you.'));
+    h('p', { class: 'muted', style: { marginTop: '14px' } }, 'hushmallow is a wellbeing app, not a medical or crisis service. The Mallows care, but they can’t replace people who can be there with you.'));
   return openSheet({ title: urgent ? 'You’re not alone in this' : 'Support', body, label: 'Support lines',
     foot: h('button', { class: 'btn block', onclick: (e) => e.currentTarget.closest('.sheet').querySelector('.icon-btn').click() }, urgent ? 'I’m safe — continue' : 'Close') });
 }

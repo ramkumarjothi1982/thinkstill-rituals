@@ -196,14 +196,14 @@ test('Static Storm: fast strokes raise the storm, slowing down calms it and lead
 // --------------------------------------------------- Flow and Beyond --
 test('plans: exactly two, renamed to Flow and Beyond, product ids unchanged', async () => {
   assert.deepEqual(Object.keys(PLANS), ['paid', 'ultra']);
-  assert.equal(PLANS.paid.name, 'Hushmallow Flow');
+  assert.equal(PLANS.paid.name, 'hushmallow Flow');
   assert.equal(PLANS.paid.tagline, 'A little more room for your feelings.');
-  assert.equal(PLANS.ultra.name, 'Hushmallow Beyond');
+  assert.equal(PLANS.ultra.name, 'hushmallow Beyond');
   assert.equal(PLANS.ultra.tagline, 'There’s more than one way to see it.');
   assert.deepEqual(PLANS.paid.productIds, { monthly: 'hushmallow.paid.monthly', yearly: 'hushmallow.paid.yearly' });
   assert.deepEqual(PLANS.ultra.productIds, { monthly: 'hushmallow.ultra.monthly', yearly: 'hushmallow.ultra.yearly' });
-  assert.equal(planName('paid'), 'Hushmallow Flow');
-  assert.equal(planName('ultra'), 'Hushmallow Beyond');
+  assert.equal(planName('paid'), 'hushmallow Flow');
+  assert.equal(planName('ultra'), 'hushmallow Beyond');
   assert.ok(PLANS.ultra.includes.some((x) => /Another Angle/.test(x)));
 });
 
@@ -246,4 +246,26 @@ test('logo: the official artwork is used, never re-typed lettering', () => {
     assert.ok(!/class: 'brand[^']*' \}, [^)]*'Hushmallow'\)/.test(src) && !/'HUSHMALLOW'/.test(src), `${f}.js has no typed wordmark`);
   }
   assert.ok(readFileSync(`${root}tools/build-site.sh`, 'utf8').includes('assets/brand'), 'the logo ships with the site');
+});
+
+test('brand: always lowercase hushmallow wherever people can read it', async () => {
+  const { BRAND } = await import('../src/app/brand.js');
+  assert.equal(BRAND.brandName, 'hushmallow');
+  assert.equal(BRAND.brandTagline, 'Less noise. More magic.');
+  assert.equal(BRAND.brandLine, 'hushmallow — Less noise. More magic.');
+  assert.equal(BRAND.flowPlanName, 'hushmallow Flow');
+  assert.equal(BRAND.beyondPlanName, 'hushmallow Beyond');
+  const { readdirSync, statSync } = await import('node:fs');
+  const walk = (d) => readdirSync(d).flatMap((f) => { const p = `${d}/${f}`; return statSync(p).isDirectory() ? walk(p) : [p]; });
+  const files = [...walk(`${root}src`).filter((f) => /\.(js|css)$/.test(f)), `${root}index.html`, `${root}manifest.webmanifest`];
+  const bad = /HushMallow|Hush Mallow|HUSHMALLOW(?![_A-Za-z])|Hushmallow(?!Embed|_1000|_)/;
+  // uppercase labels would print the brand in capitals, so the brand never sits in one
+  for (const f of files.filter((x) => x.endsWith('.js'))) {
+    const src = readFileSync(f, 'utf8');
+    assert.ok(!/eyebrow: '[^']*hushmallow/.test(src) && !/class: 'eyebrow' \}, [^)]*(hushmallow|p\.name)/.test(src), `${f.replace(root, '')} puts the brand in an uppercase label`);
+  }
+  for (const f of files) {
+    const lines = readFileSync(f, 'utf8').split('\n');
+    lines.forEach((l, i) => assert.ok(!bad.test(l), `${f.replace(root, '')}:${i + 1} spells the brand with capitals`));
+  }
 });

@@ -1,4 +1,4 @@
-// Hushmallow haptics — tiny, gentle vibration cues.
+// hushmallow haptics — tiny, gentle vibration cues.
 //
 // Where haptics come from:
 //  1. A native app wrapper, if present (preferred — real Taptic/Vibrator APIs):

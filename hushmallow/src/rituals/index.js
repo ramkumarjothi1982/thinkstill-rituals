@@ -14,6 +14,6 @@ export const PAID_MODULES = {
   'name-it': () => import('./name-it.js'),
 };
 export const ULTRA_MODULES = new Set(['another-angle']);
-// 'v3' runs the 1,000 Hushmallow rituals (src/v3/host.js); each ritual loads
+// 'v3' runs the 1,000 hushmallow rituals (src/v3/host.js); each ritual loads
 // its own touch engine, and only rituals whose engine is built are listed.
 export const AVAILABLE = new Set([...Object.keys(PAID_MODULES), ...ULTRA_MODULES, 'v3']);

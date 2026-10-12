@@ -46,7 +46,7 @@ export function openPanel(root, o) {
     seg([{ id: '0.7', label: 'Slower' }, { id: '1', label: 'Normal' }, { id: '1.4', label: 'Faster' }], String(st.speed), (v) => o.onSpeed(Number(v)), 'Subtitle speed'),
     h('div', { class: 'eyebrow' }, `Your photos (optional, up to ${MAX_PHOTOS})`),
     tray, file,
-    h('p', { class: 'hf-note' }, 'Photos stay in memory on this phone and are forgotten when you close Hushmallow.'),
+    h('p', { class: 'hf-note' }, 'Photos stay in memory on this phone and are forgotten when you close hushmallow.'),
     h('div', { class: 'hf-sep' }),
     h('button', { class: 'hf-row-btn', onclick: () => { close(); o.onGarden(); } }, icon('leaf'), 'Memory Garden'),
     o.inWorld ? h('button', { class: 'hf-row-btn', onclick: () => { close(); o.onFinish(); } }, icon('close'), 'Finish for now') : null,

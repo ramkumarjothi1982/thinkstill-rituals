@@ -1,4 +1,4 @@
-// Hushmallow emotion taxonomy: families, emotions and fast search.
+// hushmallow emotion taxonomy: families, emotions and fast search.
 // Plain ES module, no dependencies. Works in browsers and Node.
 
 /** Expression preset ids the Mallow face rig understands. `face` weights may only use these. */

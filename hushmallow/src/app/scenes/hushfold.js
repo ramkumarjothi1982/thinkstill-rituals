@@ -12,6 +12,7 @@
 //               right thing: a Thought Mallow, the Mallow, or the world
 //   .hf-ui      top bar, subtitles, tell overlay, panel, cards
 
+import { BRAND } from '../brand.js';
 import { h, icon, iconBtn, logo } from '../ui.js';
 import { MALLOWS, MALLOW_IDS } from '../../mallows/registry.js';
 import { SoftMallow } from '../../hushfold/touch/mallow-touch.js';
@@ -340,7 +341,7 @@ export default function hushfold(app, params = {}) {
     openPanel(ui, {
       state: { feeling: S.feeling, intention: S.intention, autoflow: S.autoflow, speed: S.speed, stay: S.stay, favourite: cur.favourite && cur.favourite === S.worldId },
       inWorld: S.mode === 'journey',
-      tierLabel: ent.has('paid') ? `Your plan: ${planName(ent.tier())}` : 'Hushmallow Flow and Beyond',
+      tierLabel: ent.has('paid') ? `Your plan: ${planName(ent.tier())}` : `${BRAND.flowPlanName} and Beyond`,
       onFeeling: (id) => { S.feeling = id; flow.set({ feeling: id }); if (S.mode === 'journey') replan(); },
       onIntention: (id) => {
         S.intention = id; flow.set({ intention: id });
@@ -438,7 +439,7 @@ export default function hushfold(app, params = {}) {
   // and leaves before the Mallow says anything (never over the Mallow)
   function showTagline() {
     try { if (sessionStorage.getItem('hm:tagline')) return; sessionStorage.setItem('hm:tagline', '1'); } catch {}
-    const el = h('div', { class: 'hf-tagline' }, h('span', {}, 'Less noise.'), ' ', h('span', {}, 'More magic.'));
+    const el = h('div', { class: 'hf-tagline' }, ...BRAND.brandTagline.split(/(?<=\.)\s+/).flatMap((t, i) => (i ? [' ', h('span', {}, t)] : [h('span', {}, t)])));
     ui.append(el);
     requestAnimationFrame(() => el.classList.add('in'));
     setTimeout(() => { el.classList.remove('in'); el.classList.add('out'); }, reduced() ? 2600 : 3400);

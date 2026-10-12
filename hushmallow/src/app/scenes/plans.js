@@ -1,5 +1,5 @@
-// PLANS — an invitation, not a sales page. Exactly two plans, Hushmallow Flow
-// and Hushmallow Beyond, each monthly or annual. No countdowns, no fake
+// PLANS — an invitation, not a sales page. Exactly two plans, hushmallow Flow
+// and hushmallow Beyond, each monthly or annual. No countdowns, no fake
 // discounts, no pressure. Prices come from the App Store, so none are written
 // here. Support lines stay free regardless.
 import { h, iconBtn, toast } from '../ui.js';
@@ -18,7 +18,7 @@ export default function plans(app, params = {}) {
     }, label)));
 
   const plan = (p, cls) => h('div', { class: `plan invite ${cls || ''}` },
-    h('div', { class: 'eyebrow' }, p.name),
+    h('div', { class: 'eyebrow keep-case' }, p.name),
     h('h3', {}, p.tagline),
     h('ul', {}, ...p.includes.map((x) => h('li', {}, x))),
     p.planned?.length ? h('p', { class: 'plan-planned' }, `Coming to ${p.short}: ${p.planned.join(', and ')}.`) : null,

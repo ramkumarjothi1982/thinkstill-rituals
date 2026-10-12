@@ -3,7 +3,7 @@
 // soon as they send. The words are kept exactly as typed. A feeling chip is
 // optional and is what chooses the authored response — never the text.
 // Speech: the iPhone keyboard's own dictation works in the field; no audio
-// is recorded or sent anywhere by Hushmallow.
+// is recorded or sent anywhere by hushmallow.
 
 import { h, icon } from '../app/ui.js';
 import { FEELINGS, ASK_FEELING } from './data/lines.js';

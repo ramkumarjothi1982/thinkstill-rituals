@@ -1,4 +1,4 @@
-// Hushmallow V3 effects library — shared by all 50 touch engines.
+// hushmallow V3 effects library — shared by all 50 touch engines.
 //
 // Everything here is canvas 2D, allocation-free per frame (pools and typed
 // arrays), and degrades for reduced motion / low stimulation. Additive light

@@ -10,10 +10,10 @@ living Mallows, the Hushfold fantasy world, and two paid experiences:
   exact words become a Thought Mallow you play with through Hushflow worlds
   (Glitzi's Static Storm, Loomi's Luminous Ocean). Tools you discover go in
   your Memory Garden. See `docs/HUSHFOLD.md`.
-- **Hushmallow Flow** ("A little more room for your feelings."): the
+- **hushmallow Flow** ("A little more room for your feelings."): the
   Mallows, Hushflow worlds, your own words and up to 7 photos, and over
   1,000 interactive touch rituals.
-- **Hushmallow Beyond** ("There's more than one way to see it."):
+- **hushmallow Beyond** ("There's more than one way to see it."):
   everything in Flow, plus **Another Angle**, which helps you separate what
   happened from what your mind added and try other plausible explanations.
 
@@ -37,8 +37,8 @@ Then open on your computer or phone (same Wi-Fi, use your computer's IP):
 | `http://localhost:8000/hushmallow/sound-lab.html` | Every Mallow sound, ritual sound and realm ambience |
 
 A browser can't take real payments, so on `localhost` the Plans screen
-shows **test purchases**. "Choose Hushmallow" unlocks Paid and "Choose
-Hushmallow Ultra" unlocks Ultra, without charging anything. Settings →
+shows **test purchases**. "Choose hushmallow" unlocks Paid and "Choose
+hushmallow Beyond" unlocks Ultra, without charging anything. Settings →
 "Remove test plan" resets this. Test purchases only work on the hosts listed
 in `src/app/config.js`, so a public site can't give plans away. The App
 Store build swaps in StoreKit (see `src/app/entitlements.js`).
@@ -57,7 +57,7 @@ the version that is running.
   furious about what happened at work." → *Meet a Mallow* → *Let's do it*.
 - **Experience B (Ultra):** Home → *Another Angle* → *Look at a real
   situation* → "My boss criticised my work. I think I'm terrible at my job."
-- **The 1,000 rituals:** Home → *Start Hushmallow*, type what's on your mind,
+- **The 1,000 rituals:** Home → *Start hushmallow*, type what's on your mind,
   add photos from the offer card if you like, and play. Or straight into one
   on localhost: `index.html?v3=HM-0001&photos=3`, or any engine × law pair:
   `index.html?engine=GE-07&law=3&photos=0`.
@@ -110,5 +110,5 @@ check that every library file is listed and every module exists.
 
 The old ThinkStill Framer app (repository root: `framer/`,
 `bubble-expressions/`, `rituals.json` …) is untouched. The quick tricks were
-removed from Hushmallow; its 1,000 rituals come from the V3 workbook in
+removed from hushmallow; its 1,000 rituals come from the V3 workbook in
 `content/`.

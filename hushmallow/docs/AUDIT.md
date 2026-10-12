@@ -1,6 +1,6 @@
-# Hushmallow — audit of the existing app (Phase 1)
+# hushmallow — audit of the existing app (Phase 1)
 
-What was in the repository before Hushmallow V2, measured against the final
+What was in the repository before hushmallow V2, measured against the final
 directive (two paid tiers, seven living Mallows, the Hushfold, no AI).
 
 ## What existed
@@ -34,7 +34,7 @@ directive (two paid tiers, seven living Mallows, the Hushfold, no AI).
   modules, no build step, PWA-ready, wrappable for the App Store). The old
   bundle is left untouched so the live Framer site keeps working until you
   switch. Nothing old is deleted.
-- **Keep the 1,000 ThinkStill rituals.** They are adapted into Hushmallow
+- **Keep the 1,000 ThinkStill rituals.** They are adapted into hushmallow
   Ultra as quick perspective tricks, with legacy bubble ids mapped to Mallows
   (glitch→Glitzi, drop→Blubi, loopie→Zuzu, patch→Boppo, rush→Pipzi,
   sync→Loomi, still→Noomi).
