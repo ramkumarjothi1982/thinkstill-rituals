@@ -179,6 +179,28 @@ function wordingProblems(paths) {
   return bad;
 }
 
+test('brand guard: the lexer tells regex guards and code from customer strings', () => {
+  const src = [
+    "if (/Hushmallow|HUSHMALLOW/.test(shown)) p.push('brand must be lowercase');   // a guard",
+    'const half = w / 2, q = total / count; const s = \'Hushmallow\';',
+    'const t = `first line',
+    '  Ultra second line ${a / 2} and ${"inner AI"}`;',
+    "const re = x.replace(/[/]/g, ''); const ok = 'Premium';",
+    '/* Hushmallow in a comment */ const z = y;',
+  ].join('\n');
+  const { strings, code } = lexJs(src);
+  assert.equal(code.split('\n').length, 6, 'line numbers kept');
+  assert.doesNotMatch(code.split('\n')[0], /Hushmallow/, 'regex literal blanked');
+  assert.match(code.split('\n')[1], /'Hushmallow'/, 'a string after a division is still a string');
+  assert.doesNotMatch(code.split('\n')[5], /Hushmallow/, 'comment blanked');
+  const texts = strings.map((s) => [s.text, s.line]);
+  assert.ok(texts.some(([t, l]) => /Ultra second line/.test(t) && l === 3), 'multi-line template caught, on its first line');
+  assert.ok(texts.some(([t]) => t === 'inner AI'), 'strings inside ${…} are lexed');
+  assert.ok(texts.some(([t, l]) => t === 'Premium' && l === 5), 'a regex with / in a class does not swallow the line');
+  // every real source lexes to the same number of lines
+  for (const p of SOURCES.filter((x) => x.endsWith('.js'))) assert.equal(lexJs(read(p)).code.split('\n').length, read(p).split('\n').length, p);
+});
+
 const mine = SOURCES.filter((p) => !PENDING_OTHERS.has(p));
 const pending = SOURCES.filter((p) => PENDING_OTHERS.has(p));
 
