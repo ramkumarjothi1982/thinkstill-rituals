@@ -644,7 +644,9 @@ export class ThoughtLayer {
     // boxed in for a while: a short glide to free room nearby (never across the stage); when there is
     // none, it is held a step farther away (smaller) instead of overlapping
     for (const th of list) {
-      if (!this._free(th)) { th._stuck = 0; continue; }
+      // only at rest: arriving thoughts cross each other's paths on their way home
+      const resting = th.ov.appear >= 1 && Math.hypot(th.x - th.home.x, th.y - th.home.y) < 0.3 * th.render.P;
+      if (!this._free(th) || !resting) { th._stuck = Math.min(0, th._stuck || 0); continue; }
       th._stuck = th._ov > 80 ? (th._stuck || 0) + dt : Math.min(0, (th._stuck || 0) + dt);
       if (th._stuck > 1.2) {
         const moved = this._nudge(th, K, env);
@@ -922,9 +924,19 @@ export class ThoughtLayer {
         c.score = sc;
         if (sc < C[best].score) best = i;
       }
-      // keep where it is unless somewhere else is clearly better (but never keep a place that is on something)
+      // The side is a layout decision, not a per-frame one: on its way home it keeps the side chosen
+      // when it arrived; at rest it moves only when its place has been clearly worse for half a second
+      // (at once when it is on a face, the hero or the effects over its head)
       const prev = tg.cand ?? 0;
-      if (prev !== best && C[prev].score <= C[best].score + 0.6 && C[prev].score < 1.2) best = prev;
+      const travelling = !tg.shown || Math.hypot(th.x - th.home.x, th.y - th.home.y) > 0.35 * th.render.P;
+      if (travelling) { best = tg.pref ?? prev; tg.badT = 0; }
+      else if (best !== prev) {
+        const worse = C[prev].score > C[best].score + 0.6;
+        tg.badT = worse ? (tg.badT || 0) + dt : 0;
+        if (C[prev].score < 6 && tg.badT < 0.5) best = prev;
+        else tg.badT = 0;
+      } else tg.badT = 0;
+      if (best !== prev && !travelling) tg.pref = best;
       const c = C[best];
       tg.cand = best; tg.side = SIDE_NAMES[best]; tg.above = best === 1;
       tg.tx = c.x; tg.ty = c.y; tg.clear = c.score < 1;
