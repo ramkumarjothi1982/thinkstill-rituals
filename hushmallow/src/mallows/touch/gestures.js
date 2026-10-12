@@ -9,7 +9,8 @@
 //   stretch   two fingers on the body: ratio d / d0 in [0.6, 1.6], axis, twist
 //   flick     released faster than 900 px/s after > 24 px (last 80 ms; a pause before letting go = no flick)
 //   jiggle    ≥ 3 velocity reversals on the dominant axis within 600 ms, > 250 px/s, < 60 px amplitude
-//   massage   circling 12–80 px around its own centre, ≥ 1.6π of turning in 1.2 s, ≥ 80 % one way
+//   massage   circling 12–80 px around its own centre, ≥ 1.5π of turning in 1.8 s (a gentle
+//             0.4 turn/s counts), ≥ 80 % one way
 //   stroke    moving within 0.25 s of touch-down, path > 60 px, 80–600 px/s, chord / path > 0.7
 //   tap       held < 0.35 s and moved < 14 px; a second within 0.33 s is a double tap
 // Mouse and trackpad: Shift-drag stretches (two virtual fingers either side of
@@ -29,7 +30,7 @@ export const GESTURE = Object.freeze({
   flickSpeed: 900, flickDist: 24, releaseWindow: 0.08,
   tapHeld: 0.35, tapDist: 14, doubleWindow: 0.33,
   jiggleWindow: 0.6, jiggleReversals: 3, jiggleSpeed: 250, jiggleAmp: 60,
-  massageWindow: 1.2, massageRmin: 12, massageRmax: 80, massageTurn: 1.6 * Math.PI, massageSame: 0.8,
+  massageWindow: 1.8, massageRmin: 12, massageRmax: 80, massageTurn: 1.5 * Math.PI, massageSame: 0.8,
   strokeStart: 0.25, strokePath: 60, strokeVmin: 80, strokeVmax: 600, strokeStraight: 0.7,
   stretchMin: 0.6, stretchMax: 1.6,
 });
