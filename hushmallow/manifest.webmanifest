@@ -7,5 +7,5 @@
   "orientation": "portrait",
   "background_color": "#0a0818",
   "theme_color": "#0a0818",
-  "icons": [{ "src": "assets/mallows/pipzi.png", "sizes": "434x423", "type": "image/png", "purpose": "any" }]
+  "icons": [{ "src": "assets/brand/mascot-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }, { "src": "assets/brand/mascot-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }]
 }
