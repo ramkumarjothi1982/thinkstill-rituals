@@ -608,3 +608,128 @@ test('hushfold: held discoveries survive Tell, care never jokes or auto-starts, 
   const subs = read('src/hushfold/subtitles.js');
   assert.match(subs, /\/\^\(INPUT\|TEXTAREA\|SELECT\)\$\/\.test\(a\.tagName\)/, 'a held line never steals focus from a text field');
 });
+
+// ------------------------------------------------ integration H1 (shell pass 1) --
+const fnBody = (src, start, end) => { const a = src.indexOf(start); assert.ok(a >= 0, start); const b = src.indexOf(end, a + start.length); return src.slice(a, b > a ? b : undefined); };
+
+test('H1: MallowTouch is the stage Mallow by default (owner P9); the rig is the fallback and goes first', () => {
+  const scene = read('src/app/scenes/hushfold.js');
+  const enter = fnBody(scene, 'async enter() {', 'leave() {');
+  assert.match(enter, /prefs\.get\('mallowTouch'\) !== false/, 'opt-out only: prefs.mallowTouch false (or ?touch=0 on the dev host)');
+  assert.match(enter, /qs\.get\('touch'\) === '0'/);
+  // the classic rig is let go before the import, so two Mallows never show
+  const rel = enter.indexOf('world.releaseMallow?.()');
+  assert.ok(rel > 0 && rel < enter.indexOf("import('../../mallows/touch/mallow-touch.js')"));
+  // its root is the focusable role=button with the squeeze instructions: no aria-hidden on the box
+  assert.match(enter, /touchBox = h\('div', \{ class: 'hf-touch' \}\)/);
+  assert.doesNotMatch(scene, /class: 'hf-touch', 'aria-hidden'/);
+  // 'system' follows the OS live; a load that never finishes falls back to the rig after 5 s
+  assert.match(enter, /reducedMotion: prefs\.get\('motion'\) === 'system' \? undefined : prefs\.reducedMotion\(\)/);
+  assert.match(enter, /quality: \(dev && qs\.get\('tier'\)\) \|\| 'auto'/);
+  assert.match(enter, /Promise\.race\(\[touchMt\.loaded, /);
+  assert.match(enter, /, 5000\)/);
+  assert.match(enter, /touchMt\?\.destroy\(\)/);
+  assert.match(enter, /stageMallow \|\|= createStageMallow\(world, \{ touch: null \}\)/);
+  // the QA hook is live, and the classic scenes learn which Mallow was on stage
+  assert.match(enter, /get touch\(\) \{ return touchMt; \}/);
+  assert.match(fnBody(scene, 'leave() {', 'get blockBack()'), /app\.state\.stageMallow = homeMallow \|\| mallowId;/);
+});
+
+test('H1: a classic scene entered from the Hushfold brings its Mallow back (plans after world.releaseMallow)', () => {
+  const plans = read('src/app/scenes/plans.js');
+  assert.match(plans, /known\(world\.mallowId\) \|\| known\(app\.state\.stageMallow\)/);
+  assert.match(plans, /else if \(!world\.rig\) await world\.setMallow\(prevMallow, \{ entrance: false \}\)/);
+  // a swap to Zuzu is undone only over a rig that was there before
+  assert.match(plans, /if \(swapMallow && hadRig && world\.mallowId === 'zuzu'\)/);
+  // the support sheet never asks the shared rig for heart eyes when it is urgent
+  assert.match(read('src/app/scenes/support.js'), /app\.world\?\.setStage\?\.\(urgent \? 'concerned' : 'comforting'\)/);
+});
+
+test('H1: worlds pause the realm and end with a real fade; nothing cheery after something heavy', () => {
+  const scene = read('src/app/scenes/hushfold.js');
+  const onWorld = fnBody(scene, 'function onWorld(d) {', 'function endWorldMode()');
+  assert.match(onWorld, /const hold = S\.holdOnWorld;/, 'a hold that began while the world loaded is read first');
+  assert.match(onWorld, /world\.realm\?\.pause\?\.\(true\)/);
+  assert.match(onWorld, /S\.worldTitle = d\?\.title \|\| S\.worldTitle/);
+  const end = fnBody(scene, 'function endWorldMode() {', 'function onFinished()');
+  assert.match(end, /stageMallow\?\.float\?\.\(\{ lift: 0, tilt: 0 \}\);\s*world\.realm\?\.pause\?\.\(false\);/);
+  assert.match(end, /showMallow\(mallowId, \{ entrance: !gentle\(\) \}\)/);
+  const fin = fnBody(scene, 'function onFinished() {', 'function onFlowError(');
+  assert.match(fin, /world\.realm\?\.pause\?\.\(false\)/);
+  assert.match(fin, /if \(S\.crisis\) \{[^}]*\} else if \(gentle\(\)\) say\(SHARED_LINES\.careQuiet\); else say\(lines\.pick\(mallowId, 'finished'\)/);
+  // the director keeps its reveal opacity inline: only !important lets Finish fade instead of cut
+  const css = read('src/ui/hushfold.css').replace(/\s+/g, ' ');
+  assert.match(css, /body\.hf-world-leaving #world > canvas\.hf-back, body\.hf-world-leaving #fx-layer > canvas\.hf-front \{ opacity: 0 !important; transition: opacity 1200ms/);
+});
+
+test('H1: the garden offer goes through garden-install with a live face, avoid rects and an abort signal', () => {
+  const scene = read('src/app/scenes/hushfold.js');
+  const offer = fnBody(scene, 'async function onOffer(', 'function offerAvoid()');
+  assert.match(offer, /install\.onOffer\(\{/);
+  assert.match(offer, /signal: ctl\.signal/);
+  assert.match(offer, /avoid: offerAvoid/);
+  assert.match(offer, /subtitles: installSubtitles/);
+  assert.doesNotMatch(offer, /\bfx:/, 'garden-install draws on its own canvas');
+  assert.doesNotMatch(offer, /saveSkill|offerSave/, 'no shell fallback that saves by itself');
+  // never while support is showing (owner P4), and never once the plan has gone
+  assert.match(offer, /if \(S\.left \|\| S\.crisis \|\| gentle\(\)\) return;/);
+  assert.match(offer, /if \(S\.left \|\| S\.crisis \|\| gentle\(\) \|\| !ent\.has\('paid'\)\) return;/);
+  assert.match(offer, /finally \{[\s\S]*installSubtitles\.resume\(\);[\s\S]*app\.applyUpdateIfSafe\?\.\(\)/);
+  // the person's own pause of the subtitles survives the installation
+  assert.match(scene, /pause\(\) \{ installPaused = !subtitles\.paused; subtitles\.clear\(\{ keepHeld: true \}\); subtitles\.pause\(\); \}/);
+  assert.match(scene, /resume\(\) \{ if \(installPaused\) \{ installPaused = false; subtitles\.resume\(\); \} \}/);
+  // no reload under an offer or an installation; leaving aborts it; layout re-places it; subtitles avoid it
+  assert.match(scene, /document\.querySelector\('\.hm-offer\.is-in'\) \|\| document\.body\.classList\.contains\('hm-installing'\)\) return false;/);
+  assert.match(fnBody(scene, 'leave() {', 'get blockBack()'), /offerCtl\?\.abort\(\)/);
+  assert.match(fnBody(scene, 'function layout() {', 'let resizeT'), /installMod\?\.relayoutInstall\?\.\(\)/);
+  assert.match(scene, /\.\.\.\(installMod\?\.installAvoidRects\?\.\(\) \|\| \[\]\)/);
+});
+
+test('H1: safety in a running world (interim): crisis holds and ends it, care pauses it, no words in a gentle world', () => {
+  const scene = read('src/app/scenes/hushfold.js');
+  const note = fnBody(scene, 'function noteSafety(r) {', 'function safetyHold(');
+  assert.match(note, /safetyHold\(r\.level\);/);
+  const hold = fnBody(scene, 'function safetyHold(level) {', 'const lowStimNow');
+  assert.match(hold, /offerCtl\?\.abort\(\);/);
+  assert.match(hold, /stage\?\.thoughts\.release\(900\);/, 'earlier thoughts drift off (owner P5)');
+  assert.match(hold, /S\.hold = 'crisis';/);
+  assert.match(hold, /flowRef\.setAutoFlow\?\.\(false\); flowRef\.pause\?\.\(\);/);
+  assert.match(hold, /S\.holdOnWorld = /);
+  // crisis sent, or the overlay closed after it: the world ends quietly (owner P3)
+  const after = fnBody(scene, 'async function afterTell(', 'async function gentleWorld(');
+  assert.match(after, /safety\?\.level === 'crisis'\) \{[\s\S]*?if \(worldMode\) flowRef\?\.finish\?\.\(\);/);
+  assert.match(scene, /if \(S\.level === 'crisis' && worldMode\) flowRef\?\.finish\?\.\(\);/);
+  // care in a world: careBeat pauses first (the care regex above needs no block before await careBeat)
+  assert.match(fnBody(scene, 'async function careBeat(', 'async function startFlow('), /^async function careBeat\(\{ emotion, intention, safety \}\) \{\s*\/\/[^\n]*\n\s*if \(worldMode && flowRef && !flowRef\.stub\) \{ S\.hold = 'care';/);
+  // no resume while held for a crisis: the pill, the subtitle play button, Space, the panel
+  assert.match(fnBody(scene, 'function resumeFlow() {', 'let worldMode'), /if \(S\.hold === 'crisis'\) \{ panel\?\.update\(\); return; \}/);
+  assert.match(scene, /onPause: \(\) => \{ if \(S\.hold === 'crisis'\) \{ panel\?\.update\(\); return true; \}/);
+  assert.match(fnBody(scene, 'function onPaused(on) {', 'function resumeFlow()'), /if \(on && S\.hold === 'crisis'\) \{ pausedPill\.hidden = true;/);
+  assert.match(scene, /say: \(lines, o\) => \{ if \(S\.hold === 'crisis'\) return Promise\.resolve\(null\);/);
+  assert.match(scene, /choice: \(prompt, options, o\) => \(S\.hold === 'crisis' \? Promise\.resolve\(null\)/);
+  // a gentle world never carries the earlier words; after a crisis nothing starts a world (owner P3)
+  const start = fnBody(scene, 'async function startFlow(', 'let worldThought = null;');
+  assert.match(start, /requireEntitlement\(ent, 'paid'\)[^\n]*\n\s*\/\/[^\n]*\n\s*if \(gentle\(\)\) wordsCur = null;/);
+  assert.match(start, /if \(S\.crisis\) return;/);
+  assert.match(start, /if \(!flow\.stub && gentle\(\)\) \{ worldThought = null; flow\.setThought\?\.\(null\); \}/);
+  assert.match(fnBody(scene, 'async function resumableNow()', 'function resumeSaved()'), /\|\| S\.crisis\) return null;/);
+  // low stimulation while the Support pill is up (owner P5)
+  assert.match(scene, /const lowStimNow = \(\) => !!prefs\.get\('lowStim'\) \|\| gentle\(\);/);
+});
+
+test('H1: back from Another Angle, panel state, and the modules warmed for a new deploy', () => {
+  const scene = read('src/app/scenes/hushfold.js');
+  const enter = fnBody(scene, 'async enter() {', 'leave() {');
+  const safetyAt = enter.indexOf('if (params.safety?.level) { noteSafety(params.safety); S.careSaid = true; }');
+  assert.ok(safetyAt > 0 && safetyAt < enter.indexOf('await resumePendingTell()'));
+  assert.match(enter, /if \(params\.flow\.emotion\) await setFeeling\(params\.flow\.emotion, \{ quiet: true \}\);/);
+  assert.match(enter, /if \(params\.flow\.intention\) S\.intention = params\.flow\.intention;/);
+  const panel = fnBody(scene, 'async function ensurePanel()', 'async function togglePanel()');
+  assert.match(panel, /angle: ent\.has\('paid'\) && !gentle\(\), worldTitle: S\.worldTitle, locked: S\.hold === 'crisis'/);
+  assert.match(panel, /onAngle: \(\) => \{/);
+  assert.match(panel, /app\.go\('angle', S\.level === 'none' && words\.full \? \{ text: words\.full \} : \{\}\)/);
+  assert.match(panel, /app\.go\('plans', \{ reason: 'ultra', focus: 'ultra' \}\)/);
+  assert.match(enter, /idle\(\(\) => warmModules\(\)\)/);
+  assert.match(fnBody(scene, 'function warmModules()', 'async function resumePendingTell()'), /\.catch\(\(\) => app\.staleCode\?\.\(\)\)/);
+  assert.match(scene, /if \(d\?\.kind === 'load'\) app\.staleCode\?\.\(\);/);
+});
