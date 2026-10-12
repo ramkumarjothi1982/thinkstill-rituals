@@ -183,7 +183,8 @@ export default function gardenScene(app, params = {}) {
 
   // ----------------------------------------------------------- state --
   const g = canvas.getContext('2d');
-  let W = 0, H = 0, dpr = 1, crest = 0, bg = null, raf = 0, left = false, lastT = 0, t0 = performance.now();
+  let W = 0, H = 0, dpr = 1, crest = 0, bg = null, ticking = false, left = false, lastT = 0, t0 = performance.now();
+  const readOnly = () => !ent.has('paid');
   let plants = [];
   let blades = null, flies = null;
   const pointer = { x: -999, y: -999, vx: 0, t: 0, down: false };
@@ -214,7 +215,7 @@ export default function gardenScene(app, params = {}) {
     const items = kept();
     const n = items.length;
     const hb = head.getBoundingClientRect().bottom || 80;
-    const mallowH = clamp(Math.min(W, H) * 0.15, 54, 92);
+    const mallowH = clamp(Math.min(W, H) * 0.2, 64, 118);
     const bottom = H - 22 - safeBottom();
     const minCrest = hb + mallowH + 12;
     let M = null;
@@ -236,7 +237,7 @@ export default function gardenScene(app, params = {}) {
       crestPts[i * 2] = x; crestPts[i * 2 + 1] = y;
     }
     field.style.top = `${Math.round(crest - 10)}px`;
-    captionEl.textContent = n ? 'Tap a charm to open it again.' : 'Kept only on this phone.';
+    captionEl.textContent = readOnly() && n ? 'Everything you kept is still here to read.' : n ? 'Tap a charm to open it again.' : 'Kept only on this device.';
     buildPlants(items, M, bottom);
     buildBackground();
     buildAmbient();
@@ -309,7 +310,9 @@ export default function gardenScene(app, params = {}) {
           th: prev?.th || 0, om: prev?.om || 0, poke: prev?.poke || -9, arrive: prev?.arrive ?? -9, fade: 1,
           glintAt: 2 + jit * 6,
         };
-        const bw = Math.min(cell - 6, Math.max(size * 1.6, 120), 240);
+        // the button stays inside its own cell, centred on its charm (neighbours never overlap)
+        const cellL = (W - usable) / 2 + cell * i, cellR = cellL + cell;
+        const bw = Math.max(44, Math.min(cell - 6, Math.max(size * 1.6, 120), 240, 2 * Math.min(cx - cellL, cellR - cx) - 4));
         const btnTop = cy - size * 0.62;
         const btn = h('button', {
           class: `hg-plant${hero ? ' is-hero' : ''}`, type: 'button',
@@ -324,9 +327,15 @@ export default function gardenScene(app, params = {}) {
         plants.push(p);
       }
     }
-    if (params.focus && !reduced()) {
-      const p = plants.find((x) => x.id === params.focus);
-      if (p && p.arrive < 0) p.arrive = (performance.now() - t0) / 1000 + 0.35;
+    const p = params.focus && plants.find((x) => x.id === params.focus);
+    if (p) {
+      const key = `${p.id}:${p.entry.savedAt}`;
+      if (!ARRIVED.has(key)) {
+        ARRIVED.add(key);
+        live.textContent = `${p.skill.title} is in your garden now.`;
+        if (!reduced() && p.arrive < 0) p.arrive = (performance.now() - t0) / 1000 + 0.35;
+        greet(p, reduced() ? 0.3 : 1.7);
+      }
     }
   }
 
