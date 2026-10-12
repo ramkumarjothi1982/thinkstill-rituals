@@ -331,8 +331,12 @@ export function create(ctx) {
     slotsAll = null;
     heroFromRect(true);
     placeHint();
-    // (a relayout: bubbles that the new layout puts under the hero, or that never moved yet, find a free place)
-    if (!first) reslot(false);
+    // (a relayout: bubbles that the new layout puts under the hero, or that never moved yet, find a free place; before
+    // the person has touched the water the thought glides to its new home too)
+    if (!first) {
+      reslot(false);
+      if (!everTouched && thought && tS.landK >= 1 && !tS.from && !melt && cam) { const a = tS.alpha; thoughtHome(); tS.alpha = a; tS.snapOff = a > 0.05; }
+    }
   }
 
   function buildImage() {
@@ -1120,10 +1124,11 @@ export function create(ctx) {
     // a re-home (landing, a new layout) glides from where it was last shown
     if (tS.snapOff) { tS.offX = tS.sx - sx; tS.offY = tS.sy - sy; tS.snapOff = false; }
     if (tS.offX || tS.offY) { const d = Math.exp(-dt / 0.45); tS.offX *= d; tS.offY *= d; if (Math.abs(tS.offX) + Math.abs(tS.offY) < 0.3) tS.offX = tS.offY = 0; }
+    const bx = sx, by = sy;
     sx += tS.offX; sy += tS.offY;
     const rr = tS.r * tS.surf;
     // never over the hero: it floats beyond it
-    keepThoughtOut(dt, sx, sy, rr, tS.landK >= 1 && !tS.from);
+    keepThoughtOut(dt, bx, by, sx, sy, rr, tS.landK >= 1 && !tS.from);
     sx += tS.koX; sy += tS.koY;
     tS.sx = sx; tS.sy = sy;
     tS.alpha = Math.min(1, tS.alpha + dt / (tS.from ? 0.01 : 0.9));
@@ -1151,12 +1156,15 @@ export function create(ctx) {
    * instead (a screen offset that is put back at once and lets go gently); if its place on the water
    * itself is on the hero (a new layout), the water carries it out to where it is clear.
    */
-  function keepThoughtOut(dt, sx, sy, rr, landed) {
+  function keepThoughtOut(dt, bx, by, sx, sy, rr, landed) {
     const d = Math.exp(-dt / 0.3); tS.koX *= d; tS.koY *= d;
     if (Math.abs(tS.koX) + Math.abs(tS.koY) < 0.05) tS.koX = tS.koY = 0;
     if (!K.on) return;
-    if (landed && discHits(sx, sy, rr + 2, Kr)) {
-      pushOut(sx, sy, rr + 2, Kr, rr);
+    // (its place on the water, without a glide's offset: only that is ever moved — and only once the camera has
+    // settled after a relayout, so a gliding camera never shoves it aside)
+    const settled = Math.abs(camHome - plan.homeY) < 2 && Math.abs(camWater - plan.waterY) < 2 && Math.abs(hyNow - hyTarget) < 2;
+    if (landed && settled && discHits(bx, by, rr + 2, Kr)) {
+      pushOut(bx, by, rr + 2, Kr, rr);
       const k = Math.min(1, dt / 0.6), s = scaleAt(cam, tS.z);
       tS.x += (po.x * k) / s;
       tS.z = clamp(tS.z - (po.y * k * cam.Z0) / (cam.Hw * s * s), cam.Z0, capD * cam.Z0);
@@ -2130,7 +2138,7 @@ export function create(ctx) {
     debug: {
       get sea() { return sea; }, get wake() { return wake; }, get cam() { return cam; }, get plan() { return plan; },
       get thought() { return { ...tS }; }, get bubbles() { return bubbles.map((b) => ({ i: b.i, sx: b.sx, sy: b.sy, D: b.D, d: b.z / cam.Z0, state: b.state, alpha: b.alpha })); },
-      get waiting() { return waiting.slice(); }, get fingers() { return fingers; }, get hero() { return { ...hero }; },
+      get waiting() { return waiting.slice(); }, get fingers() { return fingers; }, get hero() { return { ...hero }; }, get keep() { return { K: { ...K }, Kr: { ...Kr }, fl: { ...fl } }; },
       get melt() { return melt ? { ...melt } : null; }, get hy() { return hyNow; }, get layouts() { return layoutLog; },
       /** Screen y of the still water at depth d·Z0. */
       surfaceY: (d) => cam.hy + cam.Hw * scaleAt(cam, d * cam.Z0),

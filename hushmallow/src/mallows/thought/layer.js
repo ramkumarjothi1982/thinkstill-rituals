@@ -997,10 +997,16 @@ export class ThoughtLayer {
       const e = this._extent(th, dt);
       const tg = this.tags.get(th);
       // the words below or above take room in the bounds too
-      let tb = 0, tt = 0;
-      if (tg && tg.w) { const gap = 14 + 8 * (1 - th.z), side = CANDS[2 * tg.ci]; if (side === 1) tt = tg.h + gap; else if (side === 0) tb = tg.h + gap; }
+      let tb = 0, tt = 0, tl = 0, tr = 0;
+      const W = env.view.W, edge = W < 360 ? 12 : 16;
+      if (tg && tg.w) {
+        // (beside it: a plate may reach the screen's own margin, never past it — the body stops before its words would be pushed onto it)
+        const gap = 14 + 8 * (1 - th.z), side = CANDS[2 * tg.ci];
+        if (side === 1) tt = tg.h + gap; else if (side === 0) tb = tg.h + gap;
+        else if (side === 3) tl = edge + tg.w + gap; else if (side === 2) tr = edge + tg.w + gap;
+      }
       const lim = th._lim || (th._lim = { minX: 0, maxX: 0, minY: 0, maxY: 0 });
-      lim.minX = B.left + e.l - e.dx; lim.maxX = B.right - e.r - e.dx;
+      lim.minX = Math.max(B.left + e.l, tl + e.l) - e.dx; lim.maxX = Math.min(B.right - e.r, tr ? W - tr - e.r : Infinity) - e.dx;
       lim.minY = B.top + e.t + tt - e.dy; lim.maxY = B.bottom - Math.max(e.b, tb ? th.render.P / 2 + tb : 0) - e.dy;
       if (lim.maxX < lim.minX) lim.maxX = lim.minX = (lim.minX + lim.maxX) / 2;
       if (lim.maxY < lim.minY) lim.maxY = lim.minY;
@@ -1414,12 +1420,16 @@ export class ThoughtLayer {
     let h0 = 0, h3 = 0;
     if (K) { h0 += overA(l, t, rr, b, K.left - 4, K.top - 4, K.right + 4, K.bottom + 4); h3 += overA(l - m, t - m, rr + m, b + m, K.left - 4, K.top - 4, K.right + 4, K.bottom + 4); }
     const ob = this._ob, n = this._obN;
+    // (_hobDeep: what covers a face or a free sibling by more than a 1.5 px brush of its envelope)
+    let hob = 0, deep = 0;
     for (let k = 0; k < n; k++) {
       const j = 6 * k;
       if (!HARD[ob[j + 4]]) continue;
-      h0 += overA(l, t, rr, b, ob[j], ob[j + 1], ob[j + 2], ob[j + 3]);
+      const ox = Math.min(rr, ob[j + 2]) - Math.max(l, ob[j]), oy = Math.min(b, ob[j + 3]) - Math.max(t, ob[j + 1]);
+      if (ox > 0 && oy > 0) { hob += ox * oy; if (ox > 1.5 && oy > 1.5) deep += ox * oy; }
       h3 += overA(l - m, t - m, rr + m, b + m, ob[j], ob[j + 1], ob[j + 2], ob[j + 3]);
     }
+    h0 += hob; this._hob = hob; this._hobDeep = deep;
     const P = this._placedR, np = this._nPlaced;
     for (let i = 0; i < np; i++) {
       if (i === skip) continue;
@@ -1533,7 +1543,10 @@ export class ThoughtLayer {
         const tg = this.tags.get(th);
         if (!tg || tg.mode !== mode || !tg.live || !tg.w) continue;
         const r = this._candRect(th, tg, tg.ci);
-        if (this._hard(r, th, -1) > 0) continue;
+        // (a brush of a face's motion envelope — itself a pixel wider than the face goes — is not a cover:
+        // an overlap no more than 1.5 px deep is let be, so a resting plate never flickers for it)
+        const h0 = this._hard(r, th, -1);
+        if (h0 - this._hob + this._hobDeep > 0) continue;
         tg.done = true; tg.pi = this._placeR(r, this._nPlaced, th);
       }
     }
