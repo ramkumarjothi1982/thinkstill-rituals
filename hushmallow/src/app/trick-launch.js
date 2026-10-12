@@ -40,3 +40,21 @@ export async function playTrick(app, opts = {}) {
   app.go('ritual', { id: t.id }, { replace: !!opts.replace });
   return true;
 }
+
+/** Play one specific trick (from the Library). Resolves false if it isn't in this plan. */
+export async function playTrickById(app, id) {
+  let d;
+  try { d = await getDeck(app); } catch (e) {
+    if (e instanceof EntitlementError) { app.go('plans', { reason: 'start' }); return false; }
+    throw e;
+  }
+  const t = d.get(id);
+  if (!t) { toast('That one isn’t in your plan.'); return false; }
+  app.state.input = { text: '', contexts: [], desires: [], emotions: [], intensity: 0.6, ...(app.state.input || {}) };
+  app.state.ritual = trickRitual(t);
+  app.go('ritual', { id: t.id });
+  return true;
+}
+
+/** Every trick in this person's plan (for the Library). */
+export async function allTricks(app) { return (await getDeck(app)).all(); }

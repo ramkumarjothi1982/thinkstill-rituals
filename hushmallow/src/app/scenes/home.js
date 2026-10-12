@@ -36,6 +36,7 @@ export default function home(app, params = {}) {
   const el = h('div', { class: 'home', style: { display: 'flex', flexDirection: 'column', height: '100%' } },
     h('div', { class: 'topbar' },
       h('div', { class: 'brand' }, h('span', { class: 'dot' }), 'Hushmallow'), h('div', { class: 'grow' }),
+      subscribed ? iconBtn('library', 'Library: every ritual and trick', () => { clearBubble(); app.go('library'); }) : null,
       iconBtn('mallow', 'Meet the Mallows', () => app.go('mallows')),
       iconBtn('gear', 'Settings', () => app.go('settings'))),
     h('div', { style: { marginTop: '18px' } },

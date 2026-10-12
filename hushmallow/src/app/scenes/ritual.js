@@ -4,6 +4,7 @@ import { h, iconBtn, openSheet, say, clearBubble, toast } from '../ui.js';
 import { PAID_MODULES } from '../../rituals/index.js';
 import { requireEntitlement, EntitlementError, loadUltra } from '../entitlements.js';
 import { MALLOWS } from '../../mallows/registry.js';
+import { markPlayed } from '../../engine/played.js';
 
 export default function ritualScene(app, params) {
   const { world } = app;
@@ -65,6 +66,7 @@ export default function ritualScene(app, params) {
     const result = await mod.run(ctx);
     if (ac.signal.aborted) return;
     app.state.result = { ...result, ritualId: ritual.id, seconds: Math.round((Date.now() - t0) / 1000) };
+    if (result?.completed && app.prefs.get('saveHistory')) markPlayed(app.store, ritual.id);
     app.go('landing', {}, { replace: true });
   }
 
