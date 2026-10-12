@@ -42,8 +42,10 @@ export function create(E) {
   const R = () => E.rand();
   const quietCol = mix(pal.glow, '#e8f6ff', 0.55);
   const warmCol = mix(pal.warm || '#ffb37a', '#fff1d6', 0.45);
+  const pearl = mix(quietCol, '#ffffff', 0.18);
   const base = [pal.accent, pal.glow, pal.warm || '#ffb37a'].map((c) => mix(heavy ? mix(c, quietCol, 0.3) : c, '#ffffff', 0.1 + calm0 * 0.25));
   const crot = E.round === 1 ? 0 : Math.floor(R() * 3);
+  const qmix = (a, b, k) => mix(a, b, Math.round(clamp(k) * 16) / 16);   // quantised: glow sprites stay cached
 
   // ------------------------------------------------------------- tiles --
   // round 1: the sentence sits in the middle and is the quietest, so it clears last
@@ -71,12 +73,12 @@ export function create(E) {
 
   // ------------------------------------------------------------ layout --
   let TW, TH, GAP, RAD, CW, trackW, GW, GH, wordSize, S = 1;
-  let plateGrad, hiGrad, bandGrad, gripGrad, bevelGrad, innerGrad;
+  let plateGrad, hiGrad, bandGrad, gripGrad, bevelGrad, finK = 0;
   function fit() {
     S = stage.s;
     TW = Math.min(stage.w * 0.9, 430);
-    GAP = clamp(stage.h * 0.04, 8, 22);
-    TH = Math.min((stage.h * 0.9 - GAP * (N - 1)) / N, TW * 0.44);
+    GAP = clamp(stage.h * 0.04, 6, 22);
+    TH = Math.min((stage.h * 0.95 - GAP * (N - 1)) / N, TW * 0.44);
     RAD = Math.min(20, TH * 0.22);
     CW = TW * 0.66;
     trackW = TW - 26;
@@ -110,8 +112,6 @@ export function create(E) {
     bevelGrad = g.createLinearGradient(0, -TH / 2, 0, TH / 2);
     bevelGrad.addColorStop(0, 'rgba(255,255,255,0.42)'); bevelGrad.addColorStop(0.3, 'rgba(255,255,255,0.05)');
     bevelGrad.addColorStop(0.8, 'rgba(255,255,255,0.03)'); bevelGrad.addColorStop(1, 'rgba(255,255,255,0.18)');
-    innerGrad = g.createRadialGradient(TW * 0.3, 0, 0, TW * 0.3, 0, TW * 0.75);
-    innerGrad.addColorStop(0, 'rgba(255,255,255,1)'); innerGrad.addColorStop(1, 'rgba(255,255,255,0)');
     bandGrad = g.createLinearGradient(-TW / 2, 0, -TW / 2 + TW * 0.17, 0);
     bandGrad.addColorStop(0, rgba(quietCol, 0.3)); bandGrad.addColorStop(1, rgba(quietCol, 0));
     gripGrad = g.createLinearGradient(-GW / 2, 0, GW / 2, 0);
@@ -190,7 +190,7 @@ export function create(E) {
       t.su = lerp(t.su, lerp(U0, UQ, q), 1 - Math.exp(-dt * 16));
       const qs = clamp((U0 - t.su) / (U0 - UQ));
       t.vol = t.quiet ? 0 : t.L * (1 - qs);
-      t.ec = mix(quietCol, t.col, clamp(t.vol * 1.25));
+      t.ec = qmix(quietCol, t.col, t.vol * 1.25);
       t.lift = lerp(t.lift, sel === i && finAt < 0 ? 1 : 0, 1 - Math.exp(-dt * 10));
       t.wob.update(dt);
       t.flare = Math.max(0, t.flare - dt * 1.2);
@@ -207,8 +207,9 @@ export function create(E) {
 
     // ---- drawing
     const fin = finAt >= 0 ? smooth(clamp((E.now() - finAt) / 2.4)) : 0;
+    finK = fin;
     const total = TH * N + GAP * (N - 1), span = Math.max(TW, total);
-    glow(g, stage.cx, stage.cy, span * 0.78, mix(quietCol, tiles[order[0]].col, loudAll * 1.3), 0.11 + 0.07 * loudAll + 0.08 * fin);
+    glow(g, stage.cx, stage.cy, span * 0.78, qmix(quietCol, tiles[order[0]].col, loudAll * 1.3), 0.11 + 0.07 * loudAll + 0.08 * fin);
     halo(g, stage.cx, fin ? lerp(stage.cy, stage.cy, fin) : stage.cy, span * (0.6 + 0.15 * fin), time, mix(quietCol, '#ffffff', 0.3), { rings: 5, alpha: 0.045 + 0.08 * loudAll + 0.05 * fin, speed: (0.04 + 0.1 * loudAll) * (reduced ? 0.4 : 1) });
     if (!low) motes(g, stage.x, stage.y, stage.w, stage.h, time, quietCol, { n: reduced ? 12 : 24, alpha: 0.32, seed: 44, size: 1.5 });
 
@@ -224,6 +225,7 @@ export function create(E) {
       glow(g, wp.x, wp.y, TW * 0.8, heavy ? quietCol : warmCol, 0.22 * fin);
       drawPlate(wordsTile, wp, time);
       drawWordsContent(wordsTile, wp, time, fin);
+      drawGrip(wordsTile, wp, time);
       for (const t of tiles) if (t !== wordsTile) drawPhotoContent(t, placement(t, time, fin), time, fin);
       halo(g, wp.x, wp.y, TW * (0.5 + 0.35 * fin), time * 0.6, heavy ? quietCol : warmCol, { rings: 3, alpha: 0.12 * fin * (1 - fin * 0.4), speed: 0.12 });
     }
@@ -246,6 +248,7 @@ export function create(E) {
     drawPlate(t, pl, time);
     if (t.kind === 'words') drawWordsContent(t, pl, time, fin);
     else drawPhotoContent(t, pl, time, fin);
+    drawGrip(t, pl, time);
   }
   function jx(t, k, time) { return Math.sin(time * 29 + k * 2.3 + t.phase * 9); }
   function jy(t, k, time) { return Math.cos(time * 23 + k * 1.7 + t.phase * 5); }
@@ -272,11 +275,11 @@ export function create(E) {
     const sx = sxOf(t.su);
     g.globalCompositeOperation = 'lighter';
     // coloured light living inside the glass (the tile's own voice); cool and faint once quiet
-    g.globalAlpha = pl.a * (0.07 + 0.2 * vol + 0.1 * t.cue + 0.12 * t.clear);
-    g.fillStyle = innerGrad; g.save(); g.scale(1, TH / TW * 1.6); g.fillRect(-TW / 2, -TW / 2, TW, TW); g.restore();
-    g.globalAlpha = pl.a;
-    roundRect(g, -TW / 2, -TH / 2, TW, TH, RAD); g.fillStyle = rgba(t.ec, 0.05 + 0.13 * vol); g.globalCompositeOperation = 'source-over'; g.fill();
-    g.globalCompositeOperation = 'lighter';
+    g.save(); g.scale(1, 0.55);
+    glow(g, TW * 0.28, 0, TW * 0.72, t.ec, 0.14 + 0.32 * vol + 0.15 * t.cue + 0.2 * t.clear + (t === wordsTile ? 0.25 * finK : 0));
+    glow(g, -TW * 0.36, 0, TW * 0.32, quietCol, 0.1 + 0.25 * (1 - vol / Math.max(0.01, t.L)));
+    g.restore();
+    g.fillStyle = rgba(t.ec, 0.025 + 0.06 * vol); g.fillRect(-TW / 2, -TH / 2, TW, TH);
     // the repeating sound layer: level wash + waveform bars from the quiet edge up to the seam
     if (vol > 0.004) {
       g.fillStyle = rgba(t.ec, 0.04 + 0.14 * vol); g.fillRect(-TW / 2, -TH / 2, sx + TW / 2, TH);
@@ -326,24 +329,29 @@ export function create(E) {
     }
     g.restore();
     glow(g, sx, 0, GH * (1 + 0.4 * sel + 0.3 * t.pulse), sc, 0.22 + 0.35 * sel + 0.3 * t.cue);
-    // grip: a glass bead riding the seam
-    g.save(); g.translate(sx, 0);
+  }
+  function drawGrip(t, pl, time) {
+    // grip: a glass bead riding the seam (drawn above the content — it's what the finger holds)
+    const sx = sxOf(t.su), sel = t.lift;
+    g.save(); g.translate(pl.x, pl.y); g.scale(pl.sc, pl.sc); g.globalAlpha = pl.a;
+    g.translate(sx, 0);
     roundRect(g, -GW / 2, -GH / 2, GW, GH, GW / 2); g.fillStyle = gripGrad; g.fill();
     g.strokeStyle = rgba('#ffffff', 0.5 + 0.35 * sel); g.lineWidth = 1; g.stroke();
     g.strokeStyle = rgba(pal.ink, 0.4); g.lineWidth = 1.2;
     for (let i = -1; i <= 1; i++) { g.beginPath(); g.moveTo(-GW * 0.22, i * GH * 0.14); g.lineTo(GW * 0.22, i * GH * 0.14); g.stroke(); }
-    g.restore();
+    g.translate(-sx, 0);
     // chevrons drifting towards the quiet side while the tile is chosen
     if (sel > 0.05 && !t.quiet && sx > -TW * 0.25) {
       g.save(); g.lineCap = 'round'; g.lineJoin = 'round'; g.lineWidth = 2;
       for (let i = 0; i < 3; i++) {
         const kk = reduced ? i / 3 + 0.17 : (time * 0.7 + i / 3) % 1;
-        const cx2 = sx - GW - 6 - kk * TW * 0.16, al = sel * 0.6 * Math.sin(kk * Math.PI);
+        const cx2 = sx - GW - 6 - kk * TW * 0.16, al = sel * 0.45 * Math.sin(kk * Math.PI);
         g.strokeStyle = rgba('#ffffff', al);
         g.beginPath(); g.moveTo(cx2 + 5, -7); g.lineTo(cx2, 0); g.lineTo(cx2 + 5, 7); g.stroke();
       }
       g.restore();
     }
+    g.restore();
   }
   function clipPlate(pl) {
     const w = TW * pl.sc, h = TH * pl.sc;
@@ -366,7 +374,7 @@ export function create(E) {
       g.restore();
     }
     // the exact words: always crisp, always on top of their echoes
-    words.draw(g, 0, 0, { style: 'light', size: wordSize, maxWidth: CW, lines: 3, alpha: 1, glowColour: fin > 0 ? mix(quietCol, heavy ? quietCol : warmCol, fin) : mix(quietCol, t.ec, Math.min(1, vol * 1.4)) });
+    words.draw(g, 0, 0, { style: 'light', size: wordSize, maxWidth: CW, lines: 3, alpha: 1, glowColour: fin > 0 ? qmix(quietCol, heavy ? quietCol : warmCol, fin) : qmix(quietCol, t.ec, vol * 1.4) });
     g.restore();
   }
   function drawPhotoContent(t, pl, time, fin) {
@@ -397,7 +405,7 @@ export function create(E) {
         // no photos: glossy sound pearls, calming from the tile colour to a pale pearl
         const r = sz * 0.5;
         glow(g, x, y, r * 2.3, fin > 0 ? (heavy ? quietCol : warmCol) : t.ec, 0.3 + 0.2 * vol + 0.3 * t.clear);
-        orb(g, x, y, r, fin > 0 ? mix(mix(quietCol, '#ffffff', 0.2), heavy ? quietCol : warmCol, k * 0.6) : mix(mix(quietCol, '#ffffff', 0.15), t.col, clamp(vol * 1.3)));
+        orb(g, x, y, r, fin > 0 ? qmix(pearl, heavy ? quietCol : warmCol, k * 0.6) : qmix(pearl, t.col, vol * 1.3));
       }
     }
   }

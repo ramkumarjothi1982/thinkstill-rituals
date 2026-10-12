@@ -1246,8 +1246,8 @@ export function create(E) {
     pointAt(p) { return pointAtS(clamp(p) * L); },
     hint() {
       if (finAt >= 0 || traced || doneFlag) return null;
-      const a = shownS, b = Math.min(L, a + clamp(175 * stage.s, 110, 210)), out = [];
-      for (let i = 0; i <= 18; i++) { const q = pointAtS(lerp(a, b, i / 18)); out.push([q.x, q.y]); }
+      const a = shownS, b = Math.min(L, a + clamp(220 * stage.s, 130, 260)), out = [];
+      for (let i = 0; i <= 22; i++) { const q = pointAtS(lerp(a, b, i / 22)); out.push([q.x, q.y]); }
       return { path: out };
     },
     twist() {

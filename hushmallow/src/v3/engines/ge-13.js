@@ -190,7 +190,7 @@ export function create(E) {
   // ======================================================= geometry fit ==
   function fit() {
     s = stage.s;
-    cr = clamp(27 * s, 20, 34);
+    cr = clamp(29 * s, 21, 36);
     const m = cr * 0.85 + 6;
     // tall stages get a round-topped window; short ones a wider window with a flatter dome
     W = Math.min(stage.w - 2 * m, stage.h * 0.98, 420);
@@ -221,7 +221,7 @@ export function create(E) {
     wSize = clamp(13 * s + 1, 12, 17);
     wLines = shoreH > 72 ? 2 : 1;
     wordsY = shoreY + shoreH * (wLines === 2 ? 0.66 : 0.7);
-    mX = cx - side * W * 0.13; mBase = shoreY + shoreH * (wLines === 2 ? 0.32 : 0.36); mH = clamp(shoreH * 0.4, 20, 44);
+    mX = cx - side * W * 0.13; mBase = shoreY + shoreH * (wLines === 2 ? 0.34 : 0.4); mH = clamp(shoreH * 0.58, 24, 58);
     buildRail();
     buildGradients();
     // stars inside the dome
@@ -291,7 +291,7 @@ export function create(E) {
     rimGrad.addColorStop(0, 'rgba(255,255,255,0.7)'); rimGrad.addColorStop(0.4, 'rgba(255,255,255,0.14)'); rimGrad.addColorStop(1, rgba(pal.glow, 0.45));
     moonGrad = g.createRadialGradient(-cr * 0.55, -cr * 0.2, cr * 0.05, -cr * 0.2, 0, cr * 1.15);
     moonGrad.addColorStop(0, '#ffffff'); moonGrad.addColorStop(0.35, moonCol); moonGrad.addColorStop(1, mix(moonCol, pal.deep, 0.32));
-    postGrad = g.createLinearGradient(mX - 3 * s, 0, mX + 3 * s, 0);
+    postGrad = g.createLinearGradient(mX - 3.5 * s, 0, mX + 3.5 * s, 0);
     postGrad.addColorStop(0, '#5a4330'); postGrad.addColorStop(0.45, '#b99a72'); postGrad.addColorStop(1, '#4a3424');
     sheenGrad = g.createLinearGradient(x0, 0, x0 + W * 0.5, 0);
     sheenGrad.addColorStop(0, 'rgba(255,255,255,0)'); sheenGrad.addColorStop(0.5, 'rgba(255,255,255,0.10)'); sheenGrad.addColorStop(1, 'rgba(255,255,255,0)');
@@ -305,8 +305,8 @@ export function create(E) {
       sl.x = x0 + sl.u * W; sl.y = horizonY + sl.v * seaH;
       sl.size = base * lerp(0.86, 1.12, invLerp(0.2, 0.74, sl.v));
       const { w, h } = sl.ph >= 0 ? photos.size(sl.ph, 'circle', sl.size) : { w: sl.size, h: sl.size };
-      sl.w = w; sl.h = h * 0.94;    // a touch of perspective on the water
-      sl.slices = clamp(Math.round(h / 2), 18, 56);
+      sl.w = w; sl.h = h * 0.9;     // a touch of perspective on the water
+      sl.slices = clamp(Math.round(h / 2.6), 14, 36);
       const pw = Math.max(8, Math.ceil(w * DPR)), phh = Math.max(8, Math.ceil(h * DPR));
       if (sl.cClear && sl.pw === pw) continue;
       sl.pw = pw;
@@ -324,9 +324,14 @@ export function create(E) {
         }
       } else { paintStar(a, w, false); paintStar(b, w, true); }
       for (const c of [a, b]) {
+        // a reflection has no hard rim: feather the edge into the water, and let the lower part fade deeper
+        c.globalCompositeOperation = 'destination-in';
+        const r0 = Math.min(w, h) / 2, fe = c.createRadialGradient(w / 2, h / 2, r0 * 0.8, w / 2, h / 2, r0);
+        fe.addColorStop(0, 'rgba(0,0,0,1)'); fe.addColorStop(1, 'rgba(0,0,0,0)');
+        c.fillStyle = fe; c.fillRect(0, 0, w, h);
         c.globalCompositeOperation = 'destination-out';
-        const fg = c.createLinearGradient(0, h * 0.58, 0, h);
-        fg.addColorStop(0, 'rgba(0,0,0,0)'); fg.addColorStop(1, 'rgba(0,0,0,0.62)');
+        const fg = c.createLinearGradient(0, h * 0.62, 0, h);
+        fg.addColorStop(0, 'rgba(0,0,0,0)'); fg.addColorStop(1, 'rgba(0,0,0,0.5)');
         c.fillStyle = fg; c.fillRect(0, 0, w, h);
         c.globalCompositeOperation = 'source-over';
       }
@@ -680,7 +685,13 @@ export function create(E) {
     // a still surface: a calm sheen line across the reflection
     if (clear > 0.6) {
       g.save(); g.globalCompositeOperation = 'lighter';
-      g.save(); g.translate(x, top + h * 0.3); g.scale(3.6, 0.42); glow(g, 0, 0, w * 0.14, '#ffffff', 0.2 * (clear - 0.6) * 2.5 * (0.7 + 0.3 * Math.sin(t * 0.7 + sl.ph0))); g.restore();
+      const ck = (clear - 0.6) * 2.5;
+      g.save(); g.translate(x, top + h * 0.3); g.scale(3.6, 0.42); glow(g, 0, 0, w * 0.14, '#ffffff', 0.2 * ck * (0.7 + 0.3 * Math.sin(t * 0.7 + sl.ph0))); g.restore();
+      // two faint water lines drift slowly across it: still water, still a reflection
+      for (let j = 0; j < 2; j++) {
+        const yy = top + h * (0.56 + j * 0.2 + (reduced ? 0 : 0.03 * Math.sin(t * 0.35 + j * 2 + sl.ph0)));
+        g.save(); g.translate(x, yy); g.scale(5.5 - j * 1.5, 0.22); glow(g, 0, 0, w * 0.09, crestHi, 0.16 * ck); g.restore();
+      }
       if (ca > 0 && ca < 1) { g.strokeStyle = rgba(crestHi, 0.55 * (1 - ca)); g.lineWidth = 1.6; g.beginPath(); g.ellipse(x, top + h / 2, w * (0.52 + ca * 0.2), h * (0.52 + ca * 0.2), 0, 0, TAU); g.stroke(); }
       g.restore();
     }
@@ -750,36 +761,60 @@ export function create(E) {
   }
   function drawMarker(t, fin) {
     const v = markerVis;
-    const a = lerp(0.06, 1, v), rise = (1 - ease.outCubic(v)) * mH * 0.3;
-    const pw = 6 * s, top = mBase - mH + rise;
+    if (v < 0.003) return;                       // hidden under the surf until the tide begins to calm
+    const k = ease.outCubic(v), a = smooth(clamp(v * 1.4));
+    const pw = 7 * s, lw = 14 * s, lh = 17 * s;
+    const rise = (1 - k) * (mH + lh + 10 * s);    // it comes up out of the surf
+    const top = mBase - mH + rise, ly = top - lh / 2 - 1.5 * s;
+    const lk = lampAt >= 0 ? smooth(clamp((t - lampAt) / 1.1)) : 0;
+    const breath = reduced ? 1 : 0.9 + 0.1 * Math.sin(t * 1.2);
+    // lamplight: a warm road on the water and a pool on the sand (under the post)
+    if (lk > 0) {
+      g.save(); g.translate(mX, shoreY - seaH * 0.12); g.scale(0.26, 1.5); glow(g, 0, 0, seaH * 0.17, lampCol, 0.3 * lk * breath); g.restore();
+      for (let i = 0; i < 5; i++) {
+        const yy = shoreY - (i + 0.5) * seaH * 0.055, hw = (11 - i * 1.7) * s * (1 + fin * 0.3);
+        g.save(); g.translate(mX + (reduced ? 0 : Math.sin(t * 0.7 + i * 1.9) * 2 * s), yy); g.scale(hw / (2 * s), 1);
+        glow(g, 0, 0, 2 * s, lampHot, 0.5 * lk * (0.7 + 0.3 * Math.sin(t * 1.1 + i * 1.3)));
+        g.restore();
+      }
+      g.save(); g.translate(mX, mBase + 3 * s); g.scale(2.8, 0.45); glow(g, 0, 0, 24 * s, lampCol, 0.32 * lk); g.restore();
+    }
     // a little ring of pebbles around the post's foot
     for (let i = 0; i < 7; i++) {
-      const ang = (i / 7) * TAU + 0.3, px = mX + Math.cos(ang) * 15 * s, py = mBase + 2 + Math.sin(ang) * 4.5 * s;
-      g.fillStyle = rgba(mix(sandDry, INK, 0.35 + (i % 3) * 0.08), 0.55 * a);
-      g.beginPath(); g.ellipse(px, py, 3.2 * s, 2 * s, 0, 0, TAU); g.fill();
+      const ang = (i / 7) * TAU + 0.3, px = mX + Math.cos(ang) * 16 * s, py = mBase + 2 + Math.sin(ang) * 4.5 * s;
+      g.fillStyle = rgba(pebbleCol[i % 3], 0.6 * a);
+      g.beginPath(); g.ellipse(px, py, 3.4 * s, 2.1 * s, 0, 0, TAU); g.fill();
     }
-    softShadow(g, mX + side * 6 * s, mBase + 2, 14 * s, 4 * s, 0.35 * a);
-    g.save(); g.globalAlpha = a;
+    softShadow(g, mX + side * 6 * s, mBase + 2, 15 * s, 4 * s, 0.4 * a);
+    g.save();
+    g.beginPath(); g.rect(mX - 40 * s, y0, 80 * s, mBase + 2.5 * s - y0); g.clip();   // whatever is still below the sand stays hidden
+    g.globalAlpha = a;
     // driftwood post with two turns of rope
-    g.fillStyle = postGrad; roundRect(g, mX - pw / 2, top, pw, mBase - top, pw * 0.4); g.fill();
-    g.fillStyle = 'rgba(255,240,210,0.4)'; g.fillRect(mX - pw / 2 + 0.5, top + mH * 0.3, pw - 1, 1.4); g.fillRect(mX - pw / 2 + 0.5, top + mH * 0.37, pw - 1, 1.2);
-    // lantern: brass cap, glass body, ring handle
-    const lk = lampAt >= 0 ? smooth(clamp((t - lampAt) / 1.1)) : 0;
-    const lw = 11 * s, lh = 13 * s, ly = top - lh / 2 - 1;
-    g.strokeStyle = brass; g.lineWidth = 1.2 * s; g.beginPath(); g.arc(mX, ly - lh / 2 - 3.5 * s, 3 * s, Math.PI, TAU); g.stroke();
-    g.fillStyle = brassDark; roundRect(g, mX - lw / 2 - 1.5 * s, ly - lh / 2 - 3.5 * s, lw + 3 * s, 3.5 * s, 1.5 * s); g.fill();
-    g.fillStyle = mix(mix(sandWet, INK, 0.45), lampCol, lk * 0.85); roundRect(g, mX - lw / 2, ly - lh / 2, lw, lh, 3 * s); g.fill();
-    g.strokeStyle = rgba(brass, 0.9); g.lineWidth = 1; g.stroke();
-    g.fillStyle = brassDark; g.fillRect(mX - lw / 2 - 1, ly + lh / 2 - 1, lw + 2, 2.5 * s);
-    g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(mX - lw / 2 + 2, ly - lh / 2 + 2, 1.5, lh - 5);
+    g.fillStyle = postGrad; roundRect(g, mX - pw / 2, top, pw, mBase + 3 * s - top, pw * 0.4); g.fill();
+    g.strokeStyle = 'rgba(40,26,16,0.35)'; g.lineWidth = 0.8;
+    g.beginPath(); g.moveTo(mX - pw * 0.15, top + 3 * s); g.lineTo(mX - pw * 0.1, mBase); g.moveTo(mX + pw * 0.2, top + mH * 0.5); g.lineTo(mX + pw * 0.22, mBase); g.stroke();
+    g.fillStyle = 'rgba(255,240,210,0.5)';
+    g.fillRect(mX - pw / 2 - 0.5, top + mH * 0.32, pw + 1, 1.6 * s); g.fillRect(mX - pw / 2 - 0.5, top + mH * 0.32 + 3 * s, pw + 1, 1.4 * s);
+    // lantern: ring handle, brass cap, glass with a warm flame, brass base
+    g.strokeStyle = brass; g.lineWidth = 1.4 * s; g.beginPath(); g.arc(mX, ly - lh / 2 - 4 * s, 3.2 * s, Math.PI, TAU); g.stroke();
+    g.fillStyle = brassDark; roundRect(g, mX - lw / 2 - 2 * s, ly - lh / 2 - 4 * s, lw + 4 * s, 4 * s, 1.8 * s); g.fill();
+    g.fillStyle = brass; g.fillRect(mX - lw / 2 - 1 * s, ly - lh / 2 - 1.2 * s, lw + 2 * s, 1.2 * s);
+    g.fillStyle = lk > 0 ? mix(glassDark, lampCol, 0.25 + lk * 0.7) : glassDark;
+    roundRect(g, mX - lw / 2, ly - lh / 2, lw, lh, 3 * s); g.fill();
+    g.strokeStyle = rgba(brass, 0.95); g.lineWidth = 1.1 * s; g.stroke();
+    g.beginPath(); g.moveTo(mX, ly - lh / 2); g.lineTo(mX, ly + lh / 2); g.strokeStyle = rgba(brass, 0.5); g.lineWidth = 0.8 * s; g.stroke();
+    g.fillStyle = brassDark; roundRect(g, mX - lw / 2 - 1.5 * s, ly + lh / 2 - 1, lw + 3 * s, 3 * s, 1.2 * s); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.4)'; g.fillRect(mX - lw / 2 + 2 * s, ly - lh / 2 + 2.5 * s, 1.5 * s, lh - 6 * s);
+    if (lk > 0) { g.fillStyle = rgba('#fff8e8', lk); g.beginPath(); g.ellipse(mX, ly + 1.5 * s, 2.2 * s, 3.6 * s, 0, 0, TAU); g.fill(); }
     g.restore();
-    const breath = 0.88 + 0.12 * Math.sin(t * 1.2);
+    // foam swirling round its foot while it rises
+    const foam = 4 * v * (1 - v);
+    if (foam > 0.02) { g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = rgba('#ffffff', 0.5 * foam); g.lineWidth = 1.6 * s; g.beginPath(); g.ellipse(mX, mBase + 1, (12 + 6 * v) * s, (3.4 + 1.5 * v) * s, 0, 0, TAU); g.stroke(); g.restore(); }
     if (lk > 0) {
-      glow(g, mX, ly, (26 + 12 * fin) * s, lampCol, (0.5 + 0.25 * fin) * lk * breath);
-      glow(g, mX, ly + 1, 5 * s, '#fff6e0', 0.9 * lk);
-      g.save(); g.translate(mX, mBase + 4 * s); g.scale(2.4, 0.4); glow(g, 0, 0, 18 * s, lampCol, 0.22 * lk); g.restore();
+      glow(g, mX, ly, (34 + 16 * fin) * s, lampCol, (0.55 + 0.2 * fin) * lk * breath);
+      glow(g, mX, ly + 1, 9 * s, '#fff6e0', 0.85 * lk);
     }
-    if (lk > 0 && fin > 0) {
+    if (lk > 0 && fin > 0 && fin < 1) {
       g.save(); g.globalCompositeOperation = 'lighter';
       const rr = (20 + 50 * fin) * s;
       g.strokeStyle = rgba(lampCol, 0.35 * (1 - fin)); g.lineWidth = 1.5; g.beginPath(); g.ellipse(mX, mBase, rr, rr * 0.3, 0, 0, TAU); g.stroke();
