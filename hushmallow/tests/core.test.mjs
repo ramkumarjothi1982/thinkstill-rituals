@@ -70,8 +70,12 @@ test('the Paid library has a fitting ritual for every emotion family', () => {
 
 test('shipped code calls no AI or remote service', () => {
   const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap((f) => (f.isDirectory() ? walk(`${d}/${f.name}`) : f.name.endsWith('.js') ? [`${d}/${f.name}`] : []));
+  // the one request allowed: the app's own version.json on the same site,
+  // read to pick up a new deploy; it sends nothing (src/app/update.js)
+  const versionCheck = "fetch(new URL('../../version.json', folder), { cache: 'no-store' })";
+  assert.ok(readFileSync(`${root}src/app/update.js`, 'utf8').includes(versionCheck));
   for (const f of walk(`${root}src`)) {
-    const s = readFileSync(f, 'utf8');
+    const s = readFileSync(f, 'utf8').replace(f.endsWith('/src/app/update.js') ? versionCheck : '\0', '');
     assert.doesNotMatch(s, /\bfetch\s*\(|XMLHttpRequest|new WebSocket|EventSource\(|sendBeacon/, f);
     // the only URLs allowed: the SVG namespace and the support-line directory people can open themselves
     const urls = (s.match(/https?:\/\/[^'"`\s)]+/g) || []).filter((u) => !/^https?:\/\/(www\.w3\.org\/|findahelpline\.com)/.test(u));

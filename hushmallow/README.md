@@ -38,15 +38,22 @@ Store build swaps in StoreKit (see `src/app/entitlements.js`).
 
 Putting it on your Framer site: see `docs/FRAMER.md`.
 
+Publishing: every push to `main` runs the tests and publishes to GitHub
+Pages (`.github/workflows/hushmallow-pages.yml`). `tools/build-site.sh` puts
+each deploy in its own folder (`v/<commit>/`) and writes `version.json`, so
+an open app moves itself to the new version (at start or back on the home
+screen) instead of waiting for the browser cache to expire. Settings shows
+the version that is running.
+
 ### Try the two flagship experiences
 - **Experience A (Paid):** Home → *What's on your mind?* → type "I'm
   furious about what happened at work." → *Meet a Mallow* → *Let's do it*.
 - **Experience B (Ultra):** Home → *Another Angle* → *Look at a real
   situation* → "My boss criticised my work. I think I'm terrible at my job."
-- **The 1,000 rituals:** on the home screen (test hosts) the TEST MODE panel
-  steps ◀ PREV / NEXT ▶ through every ritual with your typed issue and photos.
-  Or straight into one on localhost: `index.html?v3=HM-0001&photos=3`, or any
-  engine × law pair: `index.html?engine=GE-07&law=3&photos=0`.
+- **The 1,000 rituals:** Home → *Start Hushmallow*, type what's on your mind,
+  add photos from the offer card if you like, and play. Or straight into one
+  on localhost: `index.html?v3=HM-0001&photos=3`, or any engine × law pair:
+  `index.html?engine=GE-07&law=3&photos=0`.
 
 ### Tests
 ```bash

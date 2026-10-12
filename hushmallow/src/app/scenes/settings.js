@@ -4,6 +4,7 @@ import { h, iconBtn, openSheet, toast } from '../ui.js';
 import { PLANS } from '../entitlements.js';
 import { openSupport } from './support.js';
 import { BUILD } from '../config.js';
+import { RUNNING } from '../update.js';
 
 export default function settings(app) {
   const { prefs, ent, world, rec } = app;
@@ -42,7 +43,7 @@ export default function settings(app) {
       h('div', { class: 'eyebrow', style: { marginTop: '18px' } }, 'About'),
       h('p', { class: 'muted' }, 'Hushmallow uses no AI and no chatbots. Feelings are matched with fixed word lists you confirm yourself, and every ritual and line is written in advance — nothing is generated while you use it. It’s a wellbeing app, not a medical service.'),
       h('button', { class: 'btn ghost block', onclick: () => openSupport(app) }, 'Support lines'),
-      h('p', { class: 'muted', style: { textAlign: 'center', fontSize: '12px', margin: '8px 0 0' } }, `Version ${BUILD}`),
+      h('p', { class: 'muted', style: { textAlign: 'center', fontSize: '12px', margin: '8px 0 0' } }, `Version ${BUILD}${RUNNING ? ` · ${RUNNING}` : ''}`),
       // developer tool: not part of the published site
       ['localhost', '127.0.0.1'].includes(location.hostname)
         ? h('a', { class: 'btn ghost block', href: './studio.html', style: { textDecoration: 'none' } }, 'Mallow Emotion Studio') : null));

@@ -10,6 +10,7 @@ import { createWorld } from './world.js';
 import { RITUALS } from '../data/rituals.js';
 import { AVAILABLE } from '../rituals/index.js';
 import { toast } from './ui.js';
+import { newerVersion, moveTo } from './update.js';
 
 const store = createStore();
 const prefs = createPrefs(store);
@@ -42,10 +43,22 @@ const sceneEl = document.getElementById('scene');
 let current = null;
 const stack = [];
 
+// A newer deploy takes over at a safe moment: at start, or when the person
+// is back on the home screen (never mid-ritual or mid-sentence). Code from
+// an older deploy that can no longer load also moves to the newer one.
+let newer = null;
+async function checkVersion() {
+  newer = (await newerVersion()) || newer;
+  if (newer && stack[stack.length - 1]?.name === 'home') moveTo(newer);
+  return newer;
+}
+
 app.go = async function go(name, params = {}, { replace = false, fromPop = false } = {}) {
+  if (newer && name === 'home') { moveTo(newer); return; }
   const load = SCENES[name];
   if (!load) throw new Error(`No scene ${name}`);
-  const mod = await load();
+  let mod;
+  try { mod = await load(); } catch (e) { if (await checkVersion()) return moveTo(newer); throw e; }
   try { await current?.leave?.(); } catch (e) { console.warn(e); }
   sceneEl.replaceChildren();
   const view = mod.default(app, params);
@@ -57,6 +70,7 @@ app.go = async function go(name, params = {}, { replace = false, fromPop = false
     else { stack.push(entry); history.pushState({ i: stack.length - 1 }, '', `#${name}`); }
   }
   await view.enter?.();
+  if (name === 'home') checkVersion();
   document.title = view.title ? `${view.title} · Hushmallow` : 'Hushmallow';
   sceneEl.querySelector('h1, h2, [data-focus]')?.setAttribute('tabindex', '-1');
 };
@@ -85,6 +99,7 @@ const SCENES = {
 };
 
 async function boot() {
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkVersion(); });
   app.world = createWorld({ prefs, audio: audioProxy });
   // unlock sound on the first gesture (browsers require it)
   const unlock = () => { audio.unlock?.(); removeEventListener('pointerdown', unlock); };
