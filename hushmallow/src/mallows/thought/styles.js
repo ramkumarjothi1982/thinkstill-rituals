@@ -122,7 +122,7 @@ export const THOUGHT_STYLES = Object.freeze({
     face: F({ eyeOpen: 0.66, lid: 0.48, lidTilt: -0.85, browA: 0.8, browTilt: -0.85, browY: 0.15, curve: -0.62, mouthW: 0.66, blush: 0.15, lookY: 0.55 }),
     motion: M({ bob: 0.02, bobHz: 0.16, sink: 0.42, shrink: 0 }),
     body: Object.freeze({ squash: 0.03, puff: 0, droop: 0.85 }),
-    fx: FX({ rain: 9, motes: 3 }),
+    fx: FX({ rain: 12, motes: 3 }),
   }),
   loneliness: Object.freeze({
     id: 'loneliness', label: 'drifting apart', tension: 0.5, charge: 0.4, alpha: 0.72,

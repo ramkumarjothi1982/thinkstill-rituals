@@ -836,8 +836,8 @@ const easeOutBack = (t) => { const c1 = 1.4, c3 = c1 + 1; return t >= 1 ? 1 : 1 
 // Where they are drawn (relative to the body centre, × P; the layer keeps the
 // words, the hero and the screen edges clear of this zone — fxRect()):
 export const FX_GEOM = Object.freeze({
-  cloudY: -0.98, cloudH: 0.34, cloudW: 0.92,       // the sadness cloud: centre, height (× P), width (× W)
-  rainTop: -0.82, dropLen: 0.12, dropVy: 1.25,      // drops leave the cloud's base, fall at 1.25 P/s
+  cloudY: -1.06, cloudH: 0.34, cloudW: 0.92,       // the sadness cloud: centre, height (× P), width (× W)
+  rainTop: -0.9, dropLen: 0.13, dropVy: 1.05,       // drops leave the cloud's base, fall at about 1 P/s
   steamRise: 0.6, puffR0: 0.14, puffR1: 0.35,       // steam: rises 0.6 P while each puff grows 0.14 → 0.35 P
   arcOut: 0.16,                                      // arcs crackle up to 0.16 P outside the rim
 });

@@ -447,10 +447,14 @@ function drawFx(ctx, th, pal, S, o) {
     ctx.restore();
   }
   // frustration: steam puffs rising from two vents (0.14 P growing to 0.35 P)
+  // (each puff a little curling cluster of three lobes, so it reads as steam, not a ball)
   for (const p of F.puffs) {
     if (p.life <= 0) continue;
-    const e = 1 - p.life, a = Math.pow(Math.sin(Math.PI * Math.min(1, e * 1.08)), 0.7) * 0.85;
-    blob(ctx, S.puff, p.x - ox, p.y - oy, p.r, p.r * 0.88, 0, a);
+    const e = 1 - p.life, a = Math.pow(Math.sin(Math.PI * Math.min(1, e * 1.08)), 0.7) * 0.8;
+    const x = p.x - ox, y = p.y - oy, r = p.r, sp = Math.sign(p.vx) || 1, curl = (rm ? 0 : e * 1.6) * sp;
+    blob(ctx, S.puff, x, y, r * 0.82, r * 0.72, 0, a);
+    blob(ctx, S.puff, x + Math.cos(curl - 2.4) * r * 0.55, y + Math.sin(curl - 2.4) * r * 0.42, r * 0.58, r * 0.5, 0, a * 0.9);
+    blob(ctx, S.puff, x + Math.cos(curl - 0.5) * r * 0.6, y + Math.sin(curl - 0.5) * r * 0.36 - r * 0.15, r * 0.5, r * 0.44, 0, a * 0.8);
   }
   // sadness: its own soft rain cloud (lit on top, greyer below) and a light rain that splashes on its head
   if (F.cloud > 0.02) {
@@ -476,10 +480,10 @@ function drawFx(ctx, th, pal, S, o) {
         ctx.beginPath(); ctx.ellipse(x, sy + 1, P * (0.03 + 0.06 * k), P * (0.01 + 0.015 * k), 0, Math.PI, TAU); ctx.stroke();
         continue;
       }
-      const e = 1 - d.life, a2 = smooth(0, 0.06, e) * 0.9 * F.cloud;
+      const e = 1 - d.life, a2 = smooth(0, 0.05, e) * F.cloud;
       if (a2 < 0.01) continue;
       ctx.globalAlpha = R.alpha * a2;
-      ctx.strokeStyle = 'rgba(200,220,255,1)'; ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(214,230,255,1)'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 0.8, y + d.len); ctx.stroke();
     }
     ctx.restore();

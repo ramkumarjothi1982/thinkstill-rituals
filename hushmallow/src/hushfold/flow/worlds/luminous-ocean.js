@@ -113,6 +113,7 @@ export function create(ctx) {
   // grid (rows × columns) — world → screen, shading
   const NG = ROWS * COLS;
   const gH = new Float32Array(NG), gHX = new Float32Array(NG), gHZ = new Float32Array(NG), gGX = new Float32Array(NG), gGZ = new Float32Array(NG), gA = new Float32Array(NG), gAU = new Float32Array(NG);
+  const gMark = new Uint8Array(NG);
   const gSX = new Float32Array(NG), gSY = new Float32Array(NG), gR = new Float32Array(NG), gG = new Float32Array(NG), gB = new Float32Array(NG), gCrest = new Float32Array(NG), gSpec = new Float32Array(NG), gPath = new Float32Array(NG);
   const rY = new Float32Array(ROWS), rS = new Float32Array(ROWS), rZ = new Float32Array(ROWS), rDZ = new Float32Array(ROWS);
   let rowsN = ROWS;
@@ -127,6 +128,8 @@ export function create(ctx) {
   const sky3 = [0, 0, 0];
   // particles
   const plankton = new Pool(160);    // bioluminescent motes in the wake (back)
+  const chopSparks = new Pool(220);  // broken water glinting where quick flicks made chop (back)
+  let chopClock = 0;
   const rings = new Rings(14);       // taps, landings, lifts (front)
   // floaters
   const tS = { x: 0, z: 0, vx: 0, vz: 0, yb: 0, vb: 0, sx: 0, sy: 0, r: 30, s: 0.5, alpha: 0, landK: 1, from: null, labelY: 0, labelYT: 0, labelW: 0, labelFade: -1, plateW: 0, plateH: 0, calm: 0.4, tension: 0.5, outD: 0, outU: 0, rot: 0, surf: 1, landed: true };
@@ -275,6 +278,7 @@ export function create(ctx) {
       glint: glintSprite('#fff3d6', 48), glintC: glintSprite(C.crest2, 48), star: glintSprite('#e6f4ff', 32),
     };
     sprites.plankton = [sprites.crest, glowSprite(C.crest2, { size: 64, core: 0.6 }), sprites.white];
+    sprites.chop = glowSprite('#e9fffb', { size: 32, core: 0.8, falloff: 6 });
     // the dawn: a wide warm glow resting on the horizon (drawn live, its strength follows dawnK)
     dawnSpr = makeCanvas(256, 128);
     { const dg = dawnSpr.getContext('2d'); const rg = dg.createRadialGradient(128, 128, 0, 128, 128, 128);
@@ -578,6 +582,8 @@ export function create(ctx) {
     updateBubbles(dt, now);
     updateHero(dt, now);
     plankton.update(dt, 0, 1.2);
+    chopSparks.update(dt, 0, 2);
+    if (dt > 0) sparkChop(dt);
     rings.update(dt);
 
     // discoveries (real contingency only)
@@ -614,6 +620,31 @@ export function create(ctx) {
   }
   let wakeAcc = 0, windClock = 0;
   const aliveFn = (id) => sea.alive(id);
+
+  /** Quick flicks make chop: while each chop packet lives, its envelope glitters (fading as it fades). */
+  function sparkChop(dt) {
+    const rm = reduced();
+    for (let i = 0; i < sea.max; i++) {
+      if (!sea.on[i] || !sea.user[i] || sea.lam[i] >= FLICK_U * U * 1.3) continue;
+      const A = sea.A[i], k = sea.k[i];
+      const steep = A * k;                        // 0.2–0.45 when fresh
+      if (steep < 0.02) continue;
+      const run = sea.free[i] ? sea.cg[i] * sea.age[i] : 0;
+      const ex = sea.ex[i] + sea.dx[i] * run, ez = sea.ez[i] + sea.dz[i] * run;
+      project(cam, ex, ez, 0, so);
+      if (so.y < hyNow + 2) continue;
+      const rx = Math.max(10, sea.sl[i] * so.s * 1.2), asp = clamp(so.s * cam.Hw / cam.Z0, 0.2, 1);
+      const rate = (rm ? 30 : 90) * clamp(steep * 3) * clamp(rx / 40, 0.5, 2.5) * (low() ? 0.5 : 1);
+      let n = rate * dt + R();
+      while (n >= 1 && chopSparks.n < chopSparks.max - 2) {
+        n -= 1;
+        const a = R() * TAU, r = Math.sqrt(R());
+        const x = so.x + Math.cos(a) * rx * r, y = so.y + Math.sin(a) * rx * asp * r;
+        if (y < hyNow + 2) continue;
+        chopSparks.spawn(x, y, (R() - 0.5) * 8 + sea.dx[i] * 10, (R() - 0.5) * 3, 0.22 + R() * 0.36, (1.6 + 2.6 * R()) * clamp(so.s, 0.4, 1.6), R() < 0.25 ? 1 : 0, clamp(0.45 + steep * 1.4));
+      }
+    }
+  }
 
   function ambientRipple() {
     // a small, far, slow ripple across the open water (texture; it never moves floaters much)
@@ -956,6 +987,13 @@ export function create(ctx) {
     g.drawImage(horizonSpr, 0, 0, 256, 8, xd - W * 0.75, hyNow - 4, W * 1.5, 8);
     drawSparkles(g, now, rm);
     plankton.draw(g, sprites.plankton, low() ? 0.5 : 1, 0.12);
+    // broken water: little elongated glints (a wavelet's lit edge), white-cyan, some warm in the dawn path
+    for (let i = 0; i < chopSparks.n; i++) {
+      const a = chopSparks.a[i] * chopSparks.env(i, 0.05);
+      if (a < 0.01) continue;
+      const r = chopSparks.size[i];
+      g.globalAlpha = a; g.drawImage(chopSparks.c[i] ? sprites.dawn : sprites.chop, chopSparks.x[i] - r * 2.2, chopSparks.y[i] - r * 0.6, r * 4.4, r * 1.2);
+    }
     if (hero.ok) {
       const wl = heroWater(), hw = (hero.right - hero.left);
       g.globalAlpha = 0.3 * (low() ? 0.6 : 1) * hero.floatK;
@@ -987,7 +1025,7 @@ export function create(ctx) {
     for (let j = 0; j < n; j++) {
       const s = rS[j], z = rZ[j], o = j * COLS;
       const x0 = (colX0 - W / 2) / s, step = colStep / s;
-      sea.row(z, x0, step, COLS, rDZ[j], o, gH, gHX, gHZ, gGX, gGZ, gA, true, gAU);
+      sea.row(z, x0, step, COLS, rDZ[j], o, gH, gHX, gHZ, gGX, gGZ, gA, true, gAU, FLICK_U * U);
       const sN = clamp(s / 1.2);
       for (let c = 0; c < COLS; c++) {
         const q = o + c, x = x0 + c * step;
@@ -1023,7 +1061,8 @@ export function create(ctx) {
         const a = gA[q] * amp;
         const crest = a > 0.3 ? clamp(h / (a + 0.3)) : 0;
         const pn = 0.5 + 0.5 * Math.sin(x * 0.021 + j * 1.7 + now * 0.13) * Math.sin(x * 0.047 - j * 0.83 - now * 0.07 + 1.3);
-        const glow = smoothstep(0.42, 0.95, crest) * clamp(gAU[q] * amp / 7) * bio * (0.4 + 0.6 * sN) * (0.3 + 0.7 * pn);
+        // (how bright: the steepness of the person's own waves — chop sparkles, long swells glow)
+        const glow = smoothstep(0.42, 0.95, crest) * clamp(gAU[q] * amp * 4.2) * bio * (0.45 + 0.55 * sN) * (0.3 + 0.7 * pn);
         gCrest[q] = glow; gSpec[q] = sp;
         // the dawn's glitter path: narrow at the horizon, widening towards you, broken by the slopes
         const pathW = W * (0.035 + 0.15 * sN) * (1 + 3 * clamp(Math.sqrt(hx * hx + hz * hz) * 4));
@@ -1073,7 +1112,7 @@ export function create(ctx) {
             const gx = k2 ? (wh[k + 1] - wh[k - 1]) * 0.5 + (wh[k + 2] - wh[k - 2]) * 0.25 : wh[k + 1] - wh[k - 1];
             const gy = k2 ? (wh[k + wc] - wh[k - wc]) * 0.5 + (wh[k + 2 * wc] - wh[k - 2 * wc]) * 0.25 : wh[k + wc] - wh[k - wc];
             const gl = Math.min(1, Math.sqrt(gx * gx + gy * gy) * 2.4);
-            const lift = -wh[k] * 30;
+            const lift = Math.abs(wh[k]) * 18;
             R2 += gl * wgK * 0.35 + lift; G2 += gl * wgK * 0.95 + lift; B2 += gl * wgK + lift;
           }
           D[o] = R2; D[o + 1] = G2; D[o + 2] = B2;
@@ -1085,11 +1124,31 @@ export function create(ctx) {
     }
   }
 
-  /** Crest light: luminous strokes only where crests are (in patches), soft halo + thin core, fading towards the horizon. */
+  /**
+   * Crest light along the crests themselves: a grid point is on a crest when the water is highest
+   * there across the rows or along the row; neighbouring crest points join into one luminous line
+   * that follows the crest's true curve (one line per crest, never a hatching of rows). Soft halo,
+   * thin core, bucketed by brightness and depth into a few paths.
+   */
   function drawCrests(g, now, rm) {
     const n = rowsN;
+    // mark the crest points
+    for (let j = 0; j < n; j++) {
+      const o = j * COLS;
+      for (let c = 0; c < COLS; c++) {
+        const q = o + c, v = gCrest[q];
+        let on = 0;
+        if (v > 0.08 && j > 2) {
+          const h = gH[q];
+          const acrossRows = j > 0 && j < n - 1 && h >= gH[q - COLS] && h > gH[q + COLS];
+          const alongRow = c > 0 && c < COLS - 1 && h >= gH[q - 1] && h > gH[q + 1];
+          on = acrossRows || alongRow ? 1 : 0;
+        }
+        gMark[q] = on;
+      }
+    }
     g.lineCap = 'round'; g.lineJoin = 'round';
-    const lv = [0.16, 0.34, 0.6];
+    const lv = [0.1, 0.26, 0.5];
     for (let depth = 0; depth < 2; depth++) for (let b = 0; b < 3; b++) {
       g.beginPath();
       let segs = 0;
@@ -1097,19 +1156,24 @@ export function create(ctx) {
         const sN = clamp(rS[j] / 1.2);
         if ((depth === 0) !== (sN < 0.4)) continue;
         const o = j * COLS;
-        let pen = false;
-        for (let c = 0; c < COLS - 1; c++) {
-          const v = (gCrest[o + c] + gCrest[o + c + 1]) * 0.5;
+        for (let c = 0; c < COLS; c++) {
+          const q = o + c;
+          if (!gMark[q]) continue;
+          // join to the next crest point: along the row first, else down a row (straight or diagonal)
+          const cand = c < COLS - 1 && gMark[q + 1] ? q + 1 : j < n - 1 ? (gMark[q + COLS] ? q + COLS : c < COLS - 1 && gMark[q + COLS + 1] ? q + COLS + 1 : c > 0 && gMark[q + COLS - 1] ? q + COLS - 1 : -1) : -1;
+          if (cand < 0) continue;
+          const v = (gCrest[q] + gCrest[cand]) * 0.5;
           const bi = v < lv[0] ? -1 : v < lv[1] ? 0 : v < lv[2] ? 1 : 2;
-          if (bi === b) { if (!pen) { g.moveTo(gSX[o + c], gSY[o + c]); pen = true; } g.lineTo(gSX[o + c + 1], gSY[o + c + 1]); segs++; } else pen = false;
+          if (bi !== b) continue;
+          g.moveTo(gSX[q], gSY[q]); g.lineTo(gSX[cand], gSY[cand]); segs++;
         }
       }
       if (!segs) continue;
-      const a = [0.1, 0.2, 0.34][b] * (low() ? 0.6 : 1);
+      const a = [0.16, 0.3, 0.5][b] * (low() ? 0.6 : 1);
       g.strokeStyle = b === 2 ? C.crest2 : C.crest;
-      g.globalAlpha = a * 0.3; g.lineWidth = (depth ? 11 : 5) + 2 * b; g.stroke();
-      g.globalAlpha = a * 0.55; g.lineWidth = (depth ? 3.5 : 1.8) + b * 0.6; g.stroke();
-      g.globalAlpha = a; g.lineWidth = depth ? 0.9 : 0.6; g.stroke();
+      g.globalAlpha = a * 0.28; g.lineWidth = (depth ? 10 : 5) + 2 * b; g.stroke();
+      g.globalAlpha = a * 0.55; g.lineWidth = (depth ? 3 : 1.6) + b * 0.5; g.stroke();
+      g.globalAlpha = a; g.lineWidth = depth ? 1 : 0.6; g.stroke();
     }
     g.globalAlpha = 1;
   }
@@ -1161,6 +1225,9 @@ export function create(ctx) {
     for (const b of bubbles) order.push(b);
     if (thought) order.push(tS);
     order.sort(byDepth);
+    g.globalCompositeOperation = 'lighter';
+    rings.draw(g);
+    g.globalCompositeOperation = 'source-over';
     for (const o of order) { if (o === tS) drawThought(g, now, rm); else drawBubble(g, o, now, rm); }
     drawLip(g, now, rm);
     // fingertips: a soft cyan light; the hush, a calm disc of mirror with a faint rim
@@ -1179,7 +1246,6 @@ export function create(ctx) {
       g.globalAlpha = 0.5; g.drawImage(sprites.white, f.x - 8, f.y - 8, 16, 16);
     }
     g.globalAlpha = 1;
-    rings.draw(g);
     drawHint(g, now, rm);
     g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
   }
@@ -1333,7 +1399,7 @@ export function create(ctx) {
   function fireDiscovery(ev) {
     if (discovered.has(ev.id)) return;
     discovered.add(ev.id);
-    try { mallow?.react?.(ev.id === 'distance' ? 'nod' : 'sigh'); } catch { /* optional */ }
+    try { mallow?.react?.('nod'); } catch { /* optional */ }
     ctx.sound('chime', { intensity: 0.3 });
     // a soft bloom (photosafe rise) where it happened
     if (ev.id === 'distance' && thought) rings.add(tS.sx, tS.sy + tS.r * tS.surf * 0.55, 8, U * 0.32, 2.6, 0.32, C.dawn, 0.45, 1.6);

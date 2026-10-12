@@ -83,6 +83,8 @@ const asFn = (v, d) => (typeof v === 'function' ? v : v == null ? d : () => v);
 const nowMs = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 // overlap area of two rects given as numbers
 const overA = (l1, t1, r1, b1, l2, t2, r2, b2) => { const ox = Math.min(r1, r2) - Math.max(l1, l2), oy = Math.min(b1, b2) - Math.max(t1, t2); return ox > 0 && oy > 0 ? ox * oy : 0; };
+// a feeling whose effects rise over its head (the sadness cloud and rain, steam): its words go below
+const fxAbove = (th) => th.style.fx.rain > 0 || th.style.fx.steam > 0;
 // grows at once, shrinks slowly (k per frame)
 const smoothGrow = (cur, v, k, init) => (!init || v > cur ? v : cur + (v - cur) * k);
 
@@ -507,7 +509,7 @@ export class ThoughtLayer {
       p.l = Math.max(p.l, -x + Ps * 0.56); p.r = Math.max(p.r, x + Ps * 0.56); p.t = Math.max(p.t, -y + Ps * 0.52); p.b = Math.max(p.b, y + Ps * 0.52);
     }
     const fx = th.style.fx;
-    if (fx.rain > 0) { p.t = Math.max(p.t, P * 1.2); p.l = Math.max(p.l, W * 0.56); p.r = Math.max(p.r, W * 0.56); }
+    if (fx.rain > 0) { p.t = Math.max(p.t, P * 1.3); p.l = Math.max(p.l, W * 0.56); p.r = Math.max(p.r, W * 0.56); }
     if (fx.steam > 0) { p.t = Math.max(p.t, P * 1.4); p.l = Math.max(p.l, W * 0.42 + P * 0.42); p.r = Math.max(p.r, W * 0.42 + P * 0.42); }
     if (fx.crackle > 0) { p.t = Math.max(p.t, P * 0.66); p.l = Math.max(p.l, W / 2 + P * 0.16); p.r = Math.max(p.r, W / 2 + P * 0.16); }
     if (th.kind === 'belief') {
@@ -516,6 +518,13 @@ export class ThoughtLayer {
       if (th.prop === 'charm') { p.l = Math.max(p.l, W * 0.62); p.b = Math.max(p.b, P * 0.85); }
     }
     return p;
+  }
+
+  // how far below its home the body will rest once its feeling shows (sadness sinks; far away floats higher)
+  _restDy(th) {
+    const z = Math.max(th.zGoal, th.zFloor), P = th.r * 2 * th.scale * (1 - 0.5 * z);
+    const e = 0.3 + 0.7 * clamp(th.state.tension);
+    return th.style.motion.sink * e * P - z * 0.45 * th.r;
   }
 
   // the words' rect for a side, relative to the drawn body centre (into out: [l, t, r, b]); e: extent offsets
@@ -599,8 +608,9 @@ export class ThoughtLayer {
       th.zFloor = Math.max(th.zFloor, attempt === 0 ? 0.3 : 0.55);
     }
     if (tg) { tg.pref = best.side; tg.cand = best.side; }
-    // the drawn body sits off its home a little (sink, drift): the home is placed for the drawn body
-    return { x: best.x - (e.dx || 0), y: best.y - (e.dy || 0) };
+    // the drawn body sits off its home a little (a sad thought sinks, a far one floats higher): the home
+    // is placed for the drawn body, as it will be once its feeling shows
+    return { x: best.x - (e.dx || 0), y: best.y - this._restDy(th) };
   }
 
   // homes: room between thoughts (more round one given space) — then, as hard limits, inside the
@@ -728,10 +738,11 @@ export class ThoughtLayer {
     f.l = x - e.l - pw - 6; f.r = x + e.r + pw + 6; f.t = y - e.t - ph - 4; f.b = y + e.b + ph + 4;
     const tg = this.tags.get(th);
     if (tg && tg.w) {
-      // the words where they sit now (relative to the thought), or on their chosen side before they show
+      // the words where they sit now (relative to the thought), or on their chosen side before they show;
+      // a feeling whose effects rise over its head always keeps the room below for its words
       let dx, dy;
-      if (tg.shown) { dx = tg.tx - R.cx; dy = tg.ty - R.cy; }
-      else { const rel = this._relB || (this._relB = [0, 0, 0, 0]); this._tagRel(th, e.t, tg.pref ?? 0, tg.w, tg.h, rel); dx = rel[0] + tg.w / 2; dy = rel[1]; }
+      if (tg.shown && !fxAbove(th)) { dx = tg.tx - R.cx; dy = tg.ty - R.cy; }
+      else { const rel = this._relB || (this._relB = [0, 0, 0, 0]); this._tagRel(th, e.t, fxAbove(th) ? 0 : tg.pref ?? 0, tg.w, tg.h, rel); dx = rel[0] + tg.w / 2; dy = rel[1]; }
       f.l = Math.min(f.l, x + dx - tg.w / 2 - 4); f.r = Math.max(f.r, x + dx + tg.w / 2 + 4);
       f.t = Math.min(f.t, y + dy - 4); f.b = Math.max(f.b, y + dy + tg.h + 4);
     }
@@ -948,8 +959,9 @@ export class ThoughtLayer {
           if (a > 0) sc += (own[k] === th ? W_OWN : W_OTHER)[ob[j + 4]] * a / A;
         }
         for (const q of placed) sc += 8 * overA(l, t, r, bt, q.left - 4, q.top - 4, q.right + 4, q.bottom + 4) / A;
-        // the side chosen when it arrived, or the host's wish
+        // below a feeling whose effects rise over its head; the side chosen when it arrived, or the host's wish
         const side = SIDE_NAMES[i];
+        if (side === 'above' && fxAbove(th)) sc += 2.5;
         if (th.labelSide === side) sc -= 1.5;
         else if (tg.pref === i || (tg.pref === 0 && (i === 4 || i === 5)) || (tg.pref === 1 && i >= 6)) sc -= 0.4;
         c.score = sc;

@@ -352,7 +352,8 @@ export class Sea {
    * near the horizon). Directional packets use exact recurrences along the row (one exp and
    * one sin/cos per packet per row).
    */
-  row(z, x0, step, n, dz, o, H, HX, HZ, GX, GZ, AMP, filter = true, AMPU = null) {
+  /** (AMPU, optional: Σ k·A·E of the person's own swells — their steepness — for the crest light.) */
+  row(z, x0, step, n, dz, o, H, HX, HZ, GX, GZ, AMP, filter = true, AMPU = null, lamMin = 0) {
     for (let c = 0; c < n; c++) { H[o + c] = 0; HX[o + c] = 0; HZ[o + c] = 0; GX[o + c] = 0; GZ[o + c] = 0; AMP[o + c] = 0; }
     if (AMPU) for (let c = 0; c < n; c++) AMPU[o + c] = 0;
     const sx = Math.abs(step);
@@ -386,7 +387,7 @@ export class Sea {
           const th = k * r - this.w[i] * this.age[i], cs = Math.cos(th), sn = Math.sin(th);
           const ux = rx / r, uz = ez / r;
           H[o + c] += a * cs; HX[o + c] -= a * k * ux * sn; HZ[o + c] -= a * k * uz * sn; AMP[o + c] += a;
-          if (AMPU && this.user[i]) AMPU[o + c] += a;
+          if (AMPU && this.user[i] && this.lam[i] >= lamMin) AMPU[o + c] += a * k;
           GX[o + c] -= q0 * a * ux * sn; GZ[o + c] -= q0 * a * uz * sn;
         }
         continue;
@@ -416,12 +417,12 @@ export class Sea {
       let e = a0, de = a2 + a1;
       const dde = 2 * a2;
       const kx = A * k * dx, kz = A * k * dzv, gxk = q0 * A * dx, gzk = q0 * A * dzv;
-      const U8 = AMPU && this.user[i] ? AMPU : null;
+      const U8 = AMPU && this.user[i] && this.lam[i] >= lamMin ? AMPU : null;
       for (let c = 0; c < n; c++) {
         if (e > -14) {
           const E = Math.exp(e), j = o + c;
           H[j] += A * E * cs; HX[j] -= kx * E * sn; HZ[j] -= kz * E * sn; AMP[j] += A * E;
-          if (U8) U8[j] += A * E;
+          if (U8) U8[j] += A * E * k;
           GX[j] -= gxk * E * sn; GZ[j] -= gzk * E * sn;
         }
         const ncs = cs * cd - sn * sd; sn = sn * cd + cs * sd; cs = ncs;

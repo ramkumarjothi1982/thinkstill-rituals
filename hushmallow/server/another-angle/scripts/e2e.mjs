@@ -43,7 +43,14 @@ async function call(path, { method = 'POST', body, token } = {}) {
   return { status: res.status, json, ms: Date.now() - t0, headers: res.headers };
 }
 
-const health = await call('/v1/health', { method: 'GET' });
+// A brand-new workers.dev address can answer 404 for a short while after the
+// first deploy, so wait for the Worker itself (up to about 90 s).
+let health = await call('/v1/health', { method: 'GET' });
+for (let i = 0; i < 18 && health.status !== 200; i++) {
+  console.log(`      waiting for the Worker (${health.status})…`);
+  await new Promise((r) => setTimeout(r, 5000));
+  health = await call('/v1/health', { method: 'GET' });
+}
 check(health.status === 200 && health.json?.ok === true, 'health', JSON.stringify({
   prompt: health.json?.prompt_version, provider: health.json?.provider,
   configured: health.json?.configured, entitlement: health.json?.entitlement_mode,
