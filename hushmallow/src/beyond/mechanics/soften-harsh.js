@@ -49,7 +49,7 @@ export function mount(ctx) {
     }
     softness = total();
     ctx.progress(softness * 0.95);
-    if (softness >= 0.9 && phase === 'hard') finish();
+    if (softness >= 0.85 && phase === 'hard') finish();
   }
   function finish() {
     phase = 'soft'; doneT = 0;
@@ -144,7 +144,7 @@ export function mount(ctx) {
       held.x = e.x; held.y = e.y; held.t = e.t; held.path += d;
       if (phase === 'hard' && d > 0.5) {
         // gentle strokes work; scratching barely does
-        const gentle = sp < 60 ? 0.4 : sp <= 700 ? 1 : 0.15;
+        const gentle = sp < 25 ? 0.5 : sp <= 800 ? 1 : 0.15;
         if (gentle < 0.2 && !warned && held.path > 120) { warned = true; ctx.hint(L.hint2); }
         smoothAt(Math.atan2(e.y - c.y, e.x - c.x) + Math.PI / 2, (d / (R * 2.2)) * gentle);
         held.tick = (held.tick || 0) + d * gentle;
