@@ -274,6 +274,7 @@ body.hf-world-leaving #world > canvas.hf-back, body.hf-world-leaving #fx-layer >
 .hf-touch { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
 
 /* ------------------------------------------------- Thought placeholder -- */
+.hushfold.hf-tags-away .hf-tag { opacity: 0 !important; pointer-events: none !important; }
 .hf-tag { position: fixed; z-index: 1; left: 0; top: 0; max-width: min(50vw, 230px); padding: 7px 13px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(16, 12, 40, 0.66); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: #fbf8ff; font: var(--hf-font-thought);
   font-size: max(15px, calc(17px * var(--hf-k))); text-align: center; cursor: pointer; overflow-wrap: anywhere; will-change: transform; transition: opacity 400ms;

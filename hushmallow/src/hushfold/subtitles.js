@@ -88,7 +88,7 @@ export const SCRIM_MIN = 0.5, SCRIM_MAX = 0.88;
  * backdrop pixel [r,g,b] (the browser blends in sRGB). `cover` is how much of
  * the scrim reaches the edge of the glyphs (its feathered rim). Pure; tested.
  */
-export function scrimFor([r, g, b], { target = 4.8, cover = 0.86 } = {}) {
+export function scrimFor([r, g, b], { target = 5.2, cover = 0.86 } = {}) {
   const text = luminance(251, 248, 255);
   for (let a = SCRIM_MIN; a <= SCRIM_MAX + 1e-9; a += 0.02) {
     const k = a * cover;
@@ -204,6 +204,16 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
   /** Deepen the scrim over a bright backdrop (once per line; cheap: one 48×12 sample). */
   function adaptScrim(node) {
     if (!node) return;
+    // shrink-wrap the block to its longest line, so the scrim hugs the words (not the screen's width)
+    try {
+      const p = node.querySelector('.text');
+      node.style.width = '';
+      const rng = document.createRange();
+      rng.selectNodeContents(p);
+      let w = 0;
+      for (const r of rng.getClientRects()) w = Math.max(w, r.width);
+      if (w > 0) node.style.width = `${Math.ceil(w + 4)}px`;
+    } catch { /* keep the natural width */ }
     let a = brightHint() ? 0.8 : SCRIM_MIN;
     const data = backdrop ? sampleBackdrop(node.getBoundingClientRect(), backdrop()) : null;
     if (data) a = scrimFor(brightPixel(data));

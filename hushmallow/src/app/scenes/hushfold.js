@@ -145,6 +145,8 @@ export default function hushfold(app, params = {}) {
       minB = 96;
     }
     const regionH = Math.max(minB + 8, regionBottom - regionTop);
+    // a short strip above the sheet: the thought's word tag would sit on the Mallow, so it waits
+    root.classList.toggle('hf-tags-away', panelSheet() && regionBottom - regionTop < 220);
     const thought = !worldMode && (stage?.thoughts.list.length || 0) > 0;
     let B = Math.min(vw * 0.66, regionH * (ov?.height || panelSheet() ? 0.86 : 0.7), 360);
     if (thought && vw < 700) B *= 0.84;
@@ -408,7 +410,8 @@ export default function hushfold(app, params = {}) {
     const wait = Math.max(2600, S.firstTouchAt + 5500 - now());
     inviteT = later(function tryInvite() {
       if (!canInvite()) return;
-      if (subtitles.busy || panel?.isOpen || router?.active) { inviteT = later(tryInvite, 1600); return; }
+      // (a finger still on the Mallow is fine: the brief's invitation arrives mid-squeeze)
+      if (subtitles.busy || panel?.isOpen) { inviteT = later(tryInvite, 1600); return; }
       invite();
     }, wait);
   }

@@ -51,7 +51,9 @@ function write(store, g) {
  * Keep a tool. Call it only from the person's explicit "Keep this" tap.
  * Saving one that is already there keeps its first save (and its first
  * Mallow, so the charm never changes) and counts as practising it again.
- * Returns the entry ({ id, …, isNew }) or null when the id is not valid.
+ * Returns the entry ({ id, …, isNew, stored }) or null when the id is not
+ * valid. `stored` is false when the device refused the write (private mode,
+ * storage full): callers must not tell the person it was saved.
  */
 export function saveSkill(store, { id, fromWorld = null, mallow = null } = {}, now = Date.now()) {
   if (!isId(id)) return null;
@@ -62,8 +64,8 @@ export function saveSkill(store, { id, fromWorld = null, mallow = null } = {}, n
     ? { ...had, lastPractised: now, practised: had.practised + 1, fromWorld: had.fromWorld || (isId(fromWorld) ? fromWorld : null), mallow: had.mallow || (isId(mallow) ? mallow : null) }
     : { savedAt: now, lastPractised: null, practised: 0, fromWorld: isId(fromWorld) ? fromWorld : null, mallow: isId(mallow) ? mallow : null };
   g.skills[id] = entry;
-  write(store, g);
-  return { id, ...entry, isNew: !had };
+  const stored = write(store, g);
+  return { id, ...entry, isNew: !had, stored };
 }
 
 /** Every kept tool, oldest first: [{ id, savedAt, lastPractised, practised, fromWorld, mallow }]. */

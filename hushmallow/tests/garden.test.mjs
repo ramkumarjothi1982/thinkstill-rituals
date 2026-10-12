@@ -106,6 +106,7 @@ test('garden: save, list, practise and forget', () => {
   assert.deepEqual(garden(store), []);
   const a = saveSkill(store, { id: 'slowing-down', fromWorld: 'static-storm', mallow: 'glitzi' }, 1000);
   assert.equal(a.isNew, true);
+  assert.equal(a.stored, true);
   assert.equal(a.savedAt, 1000);
   saveSkill(store, { id: 'a-little-more-room', fromWorld: 'luminous-ocean', mallow: 'loomi' }, 2000);
   assert.deepEqual(garden(store).map((x) => x.id), ['slowing-down', 'a-little-more-room']);
@@ -175,7 +176,10 @@ test('garden: corrupt, foreign or partial data reads safely', () => {
 test('garden: a store that throws or refuses never breaks the garden', () => {
   const broken = { get() { throw new Error('blocked'); }, set() { throw new Error('quota'); }, remove() { throw new Error('x'); } };
   assert.deepEqual(garden(broken), []);
-  assert.equal(saveSkill(broken, { id: 'slowing-down' }).isNew, true);
+  const r = saveSkill(broken, { id: 'slowing-down' });
+  assert.equal(r.stored, false, 'a refused write is reported, so nobody is told it was saved');
+  const refusing = { get: () => null, set: () => false, remove() {} };
+  assert.equal(saveSkill(refusing, { id: 'slowing-down' }).stored, false);
   assert.equal(forgetSkill(broken, 'slowing-down'), false);
   assert.doesNotThrow(() => clearGarden(broken));
   assert.deepEqual(readGarden(broken), { v: 1, skills: {} });

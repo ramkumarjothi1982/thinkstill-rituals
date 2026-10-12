@@ -12,7 +12,7 @@
 //   * draw sprite pixels / res (Zuzu's spirals),
 //   * read m.glitchRows (Glitzi) instead of GLITCH_ROWS,
 //   * allow skin q up to 1.25 * res.
-// (see W7's report for the exact patch). Without it the art draws 2.6x too big.
+// (tools/hires/rig-res.patch). Without it the art draws 2.6x too big.
 //
 // Decision D13: a Mallow switches to its high-res rig only after a visual
 // check. HIRES_VERIFIED lists the ones that passed; applyHires() applies those
@@ -23,7 +23,10 @@
 //
 // Integration (after rig.js supports res): in registry.js, once, at the end:
 //   import { applyHires } from './hires.js';  applyHires(MALLOWS, SPRITES);
-// and ship assets/mallows-hires + assets/rig-hires in tools/build-site.sh.
+// ship assets/mallows-hires + assets/rig-hires in tools/build-site.sh, and
+// let MallowTouch use skinSize ~1024 for a high-res Mallow (its 640 default
+// downsamples the 1024 px art and gives up most of the gain on 3x phones).
+// Pipeline, labs and checks: tools/hires/README.md.
 
 const A = (p) => new URL(`../../assets/${p}`, import.meta.url).href;
 const T = {

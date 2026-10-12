@@ -30,15 +30,16 @@
    }
   },
   "mouth": {
-   "before": 8.186,
-   "after": 8.14,
+   "before": 8.393,
+   "after": 8.345,
    "values": {
     "x": 199.76,
     "y": 290.8,
     "w": 124.11,
     "sag": 31.43,
     "lw": 5.65,
-    "depth": 30
+    "upper": -22,
+    "depth": 27
    }
   }
  },
@@ -125,7 +126,8 @@
    "style": "crease",
    "inside": "#140820",
    "tongue": "#d4406f",
-   "depth": 30
+   "depth": 27,
+   "upper": -22
   },
   "cheeks": {
    "L": [

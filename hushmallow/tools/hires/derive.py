@@ -79,7 +79,7 @@ def erase_mask(name, meas, masks, shape, img=None):
             # blush is rebuilt by restore_cheeks (its own radial profile and
             # glitter), and the shading fill never takes its colour from the
             # blush (blush_discs -> inpaint lf_exclude)
-            m |= dil(masks['eye' + s], 12 * u)
+            m |= dil(masks['eye' + s], 15 * u)   # 12u left a sliver of the socket's light rim
         elif style == 'spiral':
             sp = f['spiral' + s]
             c = np.zeros(shape, np.uint8)
@@ -309,7 +309,10 @@ def inpaint(name, img, mask, unit, protect=None, lf_exclude=None):
         # lines and sparkles out of it, they belong to the copied texture
         neon = (hsv[..., 2] > 150) & ((hsv[..., 1] > 110) | (hsv[..., 2] > 220))
         known &= ~dil(neon, 2.5 * unit)
-    s_lo = (6.0 if glitzi else 9.0) * unit
+    # the shading layer: fine enough that the body's bumps (~10u across)
+    # belong to the copied texture, or the filled sockets read flatter than
+    # the skin around them (a faint ghost ring whenever the eyes close)
+    s_lo = (6.0 if glitzi else 5.0) * unit
     lf_known, den = norm_blur(rgb, known.astype(np.float64), s_lo)
     unknown = grow | (den < 0.05)
     lf_known[~(al > 0.02)] = 0

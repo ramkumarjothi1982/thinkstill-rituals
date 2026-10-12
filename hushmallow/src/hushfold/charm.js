@@ -7,16 +7,22 @@
 // the live parts (breathing inner light, a slow glint sweep, twinkling
 // sparkles) are cheap draws on top, so nothing big is allocated per frame.
 //
-//   drawCharm(g, { skillId, mallow, x, y, size, t, alpha, glint, sparkle, dpr })
+//   drawCharm(g, { skillId, mallow, x, y, size, res, t, alpha, glint, sparkle, dpr })
 //   charmSprite(skillId, mallow, size, dpr) → canvas (cached; size = charm diameter, CSS px)
 //   charmCanvas({ skillId, mallow, box, animate, reducedMotion }) → { el, draw(t), destroy() }
 //   charmPalette(skillId, mallow) → colours
 //
 // `size` is the charm's body diameter; sprites are CHARM_PAD × larger so the
-// halo and the prism's beams have room. Readable from 40 to 220 px.
+// halo and the prism's beams have room. Readable from 40 to 220 px. A charm
+// whose size animates (the installation, a plant's bob) passes `res`, its
+// largest size: one sprite is painted at that size and scaled with drawImage,
+// so an animation never rasterises a new sprite per frame. Sparkles and
+// glints are cached sprites too (no gradient is built per frame). Live charm
+// canvases share the Mallow loop (rig.js addTicker): one requestAnimationFrame.
 
 import { getSkill, CHARM_FAMILIES } from './skills.js';
 import { MALLOWS } from '../mallows/registry.js';
+import { addTicker, removeTicker } from '../mallows/rig.js';
 
 export const CHARM_PAD = 1.6;
 
@@ -68,6 +74,7 @@ function paletteFor(skillId, mallow) {
     rim,
     glow: mix(rim, mc.glow, 0.5),
     accent: mc.accent,
+    sparkle: mix(rim, WHITE, 0.4),
     seed: hash01(String(skillId || 'charm')),
   };
 }
@@ -625,6 +632,20 @@ function liveKit(g) {
   LIVE.set(g, k);
   return k;
 }
+/** A four-point glint (soft core + thin rays) as a cached 64 px sprite, per colour. */
+const STARS = new Map();
+function starSprite(c) {
+  const key = c.join(',');
+  let s = STARS.get(key);
+  if (s) return s;
+  s = mkCanvas(64, 64);
+  const g = s.getContext('2d');
+  g.translate(32, 32); g.scale(31, 31);
+  star4(g, 0, 0, 1, 1, c);
+  if (STARS.size > 48) STARS.clear();
+  STARS.set(key, s);
+  return s;
+}
 const CORE_GLOW = new Map();
 function coreGlow(c) {
   const key = c.join(',');
@@ -643,9 +664,9 @@ function coreGlow(c) {
  * units). t: seconds (breathing light, sparkles); glint: 0..1 sweep progress
  * or null; alpha; scale-free rotation `rot`; sparkle: twinkles around it.
  */
-export function drawCharm(g, { skillId, mallow, x = 0, y = 0, size = 96, t = 0, alpha = 1, glint = null, sparkle = true, rot = 0, dpr = 1, breathe = true } = {}) {
+export function drawCharm(g, { skillId, mallow, x = 0, y = 0, size = 96, res = 0, t = 0, alpha = 1, glint = null, sparkle = true, rot = 0, dpr = 1, breathe = true } = {}) {
   if (alpha <= 0.002 || size < 2) return;
-  const sprite = charmSprite(skillId, mallow, size, dpr);
+  const sprite = charmSprite(skillId, mallow, Math.max(size, res || 0), dpr);
   const side = size * CHARM_PAD;
   const P = charmPalette(skillId, mallow);
   g.save();
@@ -681,12 +702,19 @@ export function drawCharm(g, { skillId, mallow, x = 0, y = 0, size = 96, t = 0, 
   }
   if (sparkle) {
     g.globalCompositeOperation = 'lighter';
+    const stars = starSprite(P.sparkle);
     for (let i = 0; i < 3; i++) {
       const a = P.seed * 6.28 + i * 2.2;
       const rr = R * (1.12 + 0.14 * ((i * 0.37 + P.seed) % 1));
       const tw = Math.max(0, Math.sin((t * Math.PI * 2) / (2.1 + i * 0.7) + i * 1.7 + P.seed * 9));
       const k = Math.min(1, Math.max(0.55, (R - 14) / 40));
-      star4(g, Math.cos(a) * rr, Math.sin(a) * rr * 0.92, R * (0.08 + 0.025 * i) * k, tw * tw * 0.85, mix(P.rim, WHITE, 0.4));
+      const a2 = tw * tw * 0.85;
+      if (a2 <= 0.002) continue;
+      const sr = R * (0.08 + 0.025 * i) * k;
+      const prev = g.globalAlpha;
+      g.globalAlpha = prev * a2;
+      g.drawImage(stars, Math.cos(a) * rr - sr, Math.sin(a) * rr * 0.92 - sr, sr * 2, sr * 2);
+      g.globalAlpha = prev;
     }
     g.globalCompositeOperation = 'source-over';
   }
@@ -694,18 +722,21 @@ export function drawCharm(g, { skillId, mallow, x = 0, y = 0, size = 96, t = 0, 
 }
 
 // ------------------------------------------------------------- live DOM --
-// One shared ticker for every live charm canvas on the page.
+// Every live charm canvas on the page draws from one ticker in the shared
+// Mallow loop (rig.js), which runs only while something is live.
 const LIVE_SET = new Set();
-let raf = 0;
-function tick(now) {
-  raf = 0;
-  if (typeof document !== 'undefined' && document.hidden) { raf = requestAnimationFrame(tick); return; }
+let ticking = false;
+function tick(dt, seconds) {
   for (const c of LIVE_SET) {
     if (!c.el.isConnected) { if (++c.gone > 120) LIVE_SET.delete(c); continue; }
     c.gone = 0;
-    c.draw(now / 1000);
+    c.draw(seconds);
   }
-  if (LIVE_SET.size) raf = requestAnimationFrame(tick);
+  if (!LIVE_SET.size) { removeTicker(tick); ticking = false; }
+}
+function goLive(handle) {
+  LIVE_SET.add(handle);
+  if (!ticking) { ticking = true; addTicker(tick); }
 }
 
 /**
@@ -737,9 +768,9 @@ export function charmCanvas({ skillId, mallow, box = 96, animate = true, reduced
       const dy = still || !bob ? 0 : Math.sin(tt * 1.1) * size * 0.025;
       drawCharm(g, { skillId, mallow, x: box / 2, y: box / 2 + dy, size, t: still ? 1.3 : tt, glint, sparkle: true, dpr, breathe: !still });
     },
-    destroy() { LIVE_SET.delete(handle); },
+    destroy() { LIVE_SET.delete(handle); if (!LIVE_SET.size && ticking) { removeTicker(tick); ticking = false; } },
   };
   if (reducedMotion || !animate) handle.draw(0);
-  else { LIVE_SET.add(handle); if (!raf && typeof requestAnimationFrame === 'function') raf = requestAnimationFrame(tick); handle.draw(performance.now() / 1000); }
+  else { goLive(handle); handle.draw(performance.now() / 1000); }
   return handle;
 }
