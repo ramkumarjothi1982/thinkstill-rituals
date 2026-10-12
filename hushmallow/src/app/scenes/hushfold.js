@@ -1047,7 +1047,12 @@ export default function hushfold(app, params = {}) {
       router?.destroy();
       stage?.destroy();
       stageMallow?.destroy();
-      if (touchMt) { try { touchMt.destroy(); } catch (e) { console.warn(e); } touchMt = null; touchBox?.remove(); touchBox = null; }
+      if (touchMt) {
+        // the classic scenes next find no rig (world.releaseMallow): this is the Mallow they bring back (plans.js)
+        app.state.stageMallow = homeMallow || mallowId;
+        try { touchMt.destroy(); } catch (e) { console.warn(e); }
+        touchMt = null; touchBox?.remove(); touchBox = null;
+      }
       if (S.photos) import('../../v3/photos.js').then((m) => m.photoSession.release()).catch(() => {});
       // hand the persistent stage back exactly as the classic scenes expect it
       world.setLayerSize(null);
