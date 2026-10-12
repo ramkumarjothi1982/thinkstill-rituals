@@ -161,10 +161,14 @@ export function createPlaceholderThought({ words, emotion = 'other', font = (px,
       const breathe = o.reduced ? 0 : Math.sin(now * (1.6 - 0.8 * calm)) * 0.025;
       const puff = tension * 0.06;                     // cheeks puff out when tense
       const sx = (1 + squash * 0.18 + puff + breathe) * (0.6 + 0.4 * appear), sy = (1 - squash * 0.18 - breathe * 0.6) * (0.6 + 0.4 * appear);
+      // o.alpha fades the whole thought (surfacing, a melt); the words plate keeps its own o.labelAlpha on top
+      const A0 = Number.isFinite(o.alpha) ? clamp(o.alpha) : 1;
+      if (A0 <= 0.003) return;
       g.save();
       g.translate(x + jx, y + jy);
       // a warm halo once it has settled
-      if (calm > 0.05) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.35 * calm; g.drawImage(halo, -r * 2.2, -r * 2.2, r * 4.4, r * 4.4); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; }
+      if (calm > 0.05) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.35 * calm * A0; g.drawImage(halo, -r * 2.2, -r * 2.2, r * 4.4, r * 4.4); g.globalCompositeOperation = 'source-over'; }
+      g.globalAlpha = A0;
       g.save(); g.scale(sx, sy);
       g.drawImage(body, -r * 1.25, -r * 1.25, r * 2.5, r * 2.5);
       // simple face: soft dark eyes with catch-lights, a mouth that tightens with tension
@@ -204,7 +208,7 @@ export function createPlaceholderThought({ words, emotion = 'other', font = (px,
       g.stroke();
       g.restore();
       // the person's words, exactly as typed, on a readable plate
-      drawLabel(g, r, calm, o);
+      drawLabel(g, r, calm, o, A0);
       g.restore();
     },
   };
@@ -247,20 +251,24 @@ export function createPlaceholderThought({ words, emotion = 'other', font = (px,
     ls.forEach((l, i) => g.fillText(l, w / 2, padY + lh * (i + 0.5)));
     return { c, w: w + 24, h: h + 24 };
   }
-  function drawLabel(g, r, calm, o) {
+  function drawLabel(g, r, calm, o, A0 = 1) {
     const maxW = Math.round(o.labelWidth || 210);
     const key = `${words?.token}|${font(17, 700)}|${maxW}`;
     if (key !== labelKey) { labelKey = key; label = { ember: buildLabel(false, maxW), light: buildLabel(true, maxW) }; }
     if (!label?.ember) return;
-    const y = r * 0.98 - 4;            // the plate canvas carries a 12 px margin
     const L = calm > 0.5 ? label.light : label.ember;
+    // o.labelY: where the visible plate's top edge sits, relative to the body's centre (the ocean
+    // floats the words above a far thought); default just under the body. The canvas carries a 12 px margin.
+    const y = Number.isFinite(o.labelY) ? o.labelY - 12 : r * 0.98 - 4;
+    handle.plate = { w: L.w - 24, h: L.h - 24 };
     // keep the plate on screen (the canvas is translated to the thought's centre)
     const m = g.getTransform(), cx = m.e / (m.a || 1);
     let dx = 0;
     if (o.minX != null && cx - L.w / 2 + 12 < o.minX) dx = o.minX - (cx - L.w / 2 + 12);
     if (o.maxX != null && cx + L.w / 2 - 12 > o.maxX) dx = o.maxX - (cx + L.w / 2 - 12);
-    g.globalAlpha = 1;
+    g.globalAlpha = A0 * (Number.isFinite(o.labelAlpha) ? clamp(o.labelAlpha) : 1);
     g.drawImage(L.c, -L.w / 2 + dx, y, L.w, L.h);
+    g.globalAlpha = 1;
   }
   /** Re-render the label once the brand fonts have loaded. */
   handle.refreshLabel = () => { labelKey = ''; };

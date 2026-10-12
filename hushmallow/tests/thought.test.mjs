@@ -445,3 +445,49 @@ test('frame: the render buffers are reused (no per-frame allocation of big array
   assert.equal(th.render.outline, O); assert.equal(th.render.pts, Q); assert.equal(th.sb.positions, Pp);
   assert.ok(th instanceof ThoughtMallow && th.sb.cols === 10 && th.sb.rows === 10, 'SoftBody 10×10');
 });
+
+// ------------------------------------------------- integration contracts --
+test('layer: the Hushfold placeholder shape (add / list / hitTest / pointer / rects / remove) and the director', async () => {
+  const { ThoughtLayer } = await import('../src/mallows/thought/layer.js');
+  const { thoughtList, primaryThought } = await import('../src/hushfold/flow/director.js');
+  const hero = { left: 40, top: 300, right: 180, bottom: 440 };
+  const L = new ThoughtLayer({ bounds: () => BOUNDS, keepOut: () => hero, reducedMotion: false });
+  let changed = 0;
+  L.onChange = () => { changed++; };
+  // W3 calls add({text, emotion, intensity, from, home, r})
+  const a = L.add({ text: 'My boss embarrassed me today.', emotion: 'embarrassment', intensity: 0.7, from: { x: 120, y: 250 }, home: { x: 300, y: 380 }, r: 38 });
+  const b = L.add({ text: 'Everybody judges me.', prop: 'stone' }, { x: 120, y: 360 });     // on the hero at first
+  assert.ok(changed >= 2);
+  for (const k of ['id', 'text', 'emotion', 'x', 'y', 'z', 'scale', 'state', 'r']) assert.ok(k in a, k);
+  for (const k of ['react', 'soften', 'settle', 'transform', 'hitTest', 'pointer', 'destroy', 'moveHome', 'slow', 'makeSpace', 'farther']) assert.equal(typeof a[k], 'function', k);
+  assert.equal(b.kind, 'belief');
+  assert.deepEqual(L.list, [a, b]);
+  assert.equal(L.primary, b);
+  assert.equal(primaryThought(L), b);
+  assert.equal(thoughtList(L).length, 2);
+  for (let i = 0; i < 240; i++) L.frame(DT);
+  // nothing rests on the hero (it takes touches first)
+  const r = b.bodyRect();
+  assert.ok(r.left > hero.right || r.right < hero.left || r.top > hero.bottom || r.bottom < hero.top, `belief off the hero: ${JSON.stringify(r)}`);
+  // routing: pointer(e) finds the thought; pointer(th, e) gives it to that one
+  const ms = () => performance.now();
+  assert.equal(L.hitTest(a.render.cx, a.render.cy), a);
+  assert.ok(L.pointer({ type: 'down', id: 7, x: a.render.cx, y: a.render.cy, t: ms() }));
+  assert.equal(L.owner.get(7), a);
+  assert.ok(L.pressed);
+  L.pointer({ type: 'up', id: 7, x: a.render.cx, y: a.render.cy, t: ms() });
+  assert.ok(!L.pressed);
+  assert.ok(L.pointer(b, { type: 'down', id: 8, x: b.render.cx, y: b.render.cy, t: ms() }));
+  L.pointer(b, { type: 'cancel', id: 8, x: b.render.cx, y: b.render.cy, t: ms() });
+  assert.equal(L.pointer({ type: 'down', id: 9, x: 5, y: 5, t: ms() }), false, 'empty space is not a thought');
+  // rects for the subtitles to avoid
+  const rs = L.rects();
+  assert.equal(rs.length, 2);
+  for (const q of rs) assert.ok(q.right > q.left && q.bottom > q.top);
+  // only destroy() takes one away (the host leaving); remove() keeps it alive for another layer
+  L.remove(a);
+  assert.equal(L.list.length, 1); assert.equal(a.destroyed, false); assert.equal(a.layer, null);
+  b.destroy();
+  assert.equal(L.list.length, 0);
+  L.destroy();
+});

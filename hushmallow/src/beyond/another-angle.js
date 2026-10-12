@@ -487,7 +487,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   /** The played scene steps back (dimmed, its labels hidden) so a perspective reads clearly over it. */
   function recede(on) {
     root.classList.toggle('bx-recede', !!on);
-    if (canvas) { canvas.style.transition = `opacity ${rmOn() ? 160 : 700}ms ease`; canvas.style.opacity = on ? '0.38' : '1'; }
+    if (canvas) { canvas.style.transition = `opacity ${rmOn() ? 160 : 700}ms ease`; canvas.style.opacity = on ? '0.3' : '1'; }
   }
   /** Ends the mechanic; unless `now_`, the stage fades out first (no abrupt cut). */
   function endMechanic(now_ = false) {

@@ -352,10 +352,12 @@ export class ThoughtLayer {
     return env;
   }
 
+  // the hero's rect, read once per frame
   _keep() {
-    if (this.keepOut) return this.keepOut();
-    if (this._mtKeep && this.mt?.ready) return this.mt.bodyRect();
-    return null;
+    if (this._kF === this._frames && this._frames > 0) return this._kR;
+    this._kF = this._frames;
+    this._kR = this.keepOut ? this.keepOut() : this._mtKeep && this.mt?.ready ? this.mt.bodyRect() : null;
+    return this._kR;
   }
 
   _measureView() {
@@ -375,7 +377,9 @@ export class ThoughtLayer {
   // far first; a thought's siblings just behind it
   _sortedNow() {
     const all = this.all(this._sorted);
-    all.sort((a, b) => (b.z - a.z) || ((a.kind === 'sibling' ? 0 : 1) - (b.kind === 'sibling' ? 0 : 1)));
+    // siblings round the sides talk in front of their thought, the upper ones behind it
+    const rank = (t) => (t.kind === 'sibling' ? (t.front ? 2 : 0) : 1);
+    all.sort((a, b) => (b.z - a.z) || (rank(a) - rank(b)));
     return all;
   }
 
@@ -398,7 +402,7 @@ export class ThoughtLayer {
       let hwL = Math.max(24, R.W / 2) + 6, hwR = hwL, hhT = Math.max(24, R.P / 2) + 6, hhB = hhT;
       // a thought's siblings belong to its footprint (they crowd round it)
       for (const sb of th.siblings) {
-        const r = sb.bodyRect();
+        const r = sb._bbox();
         hwL = Math.max(hwL, th.x - r.left + 4); hwR = Math.max(hwR, r.right - th.x + 4); hhT = Math.max(hhT, th.y - r.top + 4); hhB = Math.max(hhB, r.bottom - th.y + 4);
       }
       const tg = this.tags.get(th), below = tg && tg.w && (tg.side || 'below') === 'below' ? tg.h + 16 : 0;
@@ -595,7 +599,7 @@ export class ThoughtLayer {
       if (!tg) continue;
       this._setTagText(th, tg);
       if (tg.measure) this._measureTag(tg, W);
-      const Q = th.render.pts, b = th.bodyRect(), gap = 14 + 8 * (1 - th.z), w = tg.w, h = tg.h;
+      const Q = th.render.pts, b = th._bbox(), gap = 14 + 8 * (1 - th.z), w = tg.w, h = tg.h;
       const bx = Q[2 * PT.bottom], tx0 = Q[2 * PT.top];
       const set = (i, side, x, y) => { const c = C[i]; c.side = side; c.ax = x; c.ay = y; c.x = clamp(x, edge + w / 2, Math.max(edge + w / 2, W - edge - w / 2)); c.y = clamp(y, yMin, Math.max(yMin, yMax - h)); };
       set(0, 'below', bx, b.bottom + gap);
@@ -612,10 +616,10 @@ export class ThoughtLayer {
         sc += 8 * frac(c.x, c.y, w, h, b);
         for (const o of this.thoughts) {
           if (o === th || o._leaving) continue;
-          sc += 6 * frac(c.x, c.y, w, h, o.bodyRect());
-          for (const s of o.siblings) sc += 4 * frac(c.x, c.y, w, h, s.bodyRect());
+          sc += 6 * frac(c.x, c.y, w, h, o._bbox());
+          for (const s of o.siblings) sc += 4 * frac(c.x, c.y, w, h, s._bbox());
         }
-        for (const s of th.siblings) sc += 4 * frac(c.x, c.y, w, h, s.bodyRect());
+        for (const s of th.siblings) sc += 4 * frac(c.x, c.y, w, h, s._bbox());
         for (const r of placed) sc += 6 * frac(c.x, c.y, w, h, r);
         c.score = sc;
         if (sc < C[best].score) best = i;
@@ -662,7 +666,7 @@ export class ThoughtLayer {
     for (const o of this.thoughts) {
       if (o === own || o._leaving) continue;
       for (const b of [o, ...o.siblings]) {
-        const r = b.bodyRect();
+        const r = b._bbox();
         if (x + tg.w / 2 > r.left - 4 && x - tg.w / 2 < r.right + 4 && y + tg.h > r.top - 4 && y < r.bottom + 4) return r;
       }
     }

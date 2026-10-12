@@ -156,7 +156,7 @@ export class ThoughtMallow {
       const n = o.siblings ?? siblingCount(this.style, this.intensity);
       for (let i = 0; i < n; i++) this.siblings.push(new ThoughtMallow({ kind: 'sibling', parent: this, text: '', emotion: this.emotion, style: this.style, intensity: this.intensity,
         r: this.r * (0.5 + 0.08 * rnd(this.seed, 20 + i)), seed: this.seed + 101 * (i + 1), reducedMotion: this.reducedMotion, lowStim: this.lowStim, haptic: this.haptic, x, y, noSiblings: true, index: i }));
-      this.siblings.forEach((s, i) => { s.index = i; s._orbitA = SIB_ANGLES[n][i]; });
+      this.siblings.forEach((s, i) => { s.index = i; s._orbitA = SIB_ANGLES[n][i]; s.front = Math.abs(Math.sin(s._orbitA)) < 0.5; });
     }
     this._settle(true);
   }
@@ -720,6 +720,17 @@ export class ThoughtMallow {
   /** Where a named point (PT.*) is now, client px. */
   point(i, out = { x: 0, y: 0 }) { out.x = this.render.pts[2 * i]; out.y = this.render.pts[2 * i + 1]; return out; }
 
+  /** The body's box, cached for this frame (internal: the object is reused — copy it to keep it). */
+  _bbox() {
+    if (this._bbT === this.clock && this._bb) return this._bb;
+    const O = this.render.outline, b = this._bb || (this._bb = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0, cx: 0, cy: 0 });
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i < O.length; i += 2) { const x = O[i], y = O[i + 1]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    b.left = x0; b.top = y0; b.right = x1; b.bottom = y1; b.width = x1 - x0; b.height = y1 - y0; b.cx = (x0 + x1) / 2; b.cy = (y0 + y1) / 2;
+    this._bbT = this.clock;
+    return b;
+  }
+
   /** The body's box (client px). */
   bodyRect() {
     const O = this.render.outline;
@@ -741,13 +752,14 @@ export class ThoughtMallow {
 }
 
 // sibling ring: angles (radians, 0 = right, y down) for 3 and 4 siblings
-const SIB_ANGLES = { 0: [], 1: [-2.4], 2: [-2.5, -0.6], 3: [-2.55, -1.45, -0.5], 4: [-2.75, -1.85, -1.05, -0.25], 5: [-2.9, -2.1, -1.4, -0.7, 0.05] };
+// (the side ones are drawn in front of the main thought, the upper ones behind it; every mouth stays in view)
+const SIB_ANGLES = { 0: [], 1: [-2.6], 2: [-2.9, -0.24], 3: [-2.95, -1.6, -0.19], 4: [-3.02, -2.12, -1.02, -0.12], 5: [-3.05, -2.3, -1.57, -0.84, -0.09] };
 
 /** Where the siblings float: a crowded ring round the main thought, wider with room and calm. */
 export function siblingHome(main, sib, out = { x: 0, y: 0 }) {
   const look = main.look, P = main.render.P || main.r * 2;
   const space = Math.max(main.levels.space.cur, main.earned.space);
-  const rad = (P / 2 + (sib.render.P || sib.r * 2) / 2) * (0.78 + 0.6 * space + 0.35 * look.relief - 0.1 * look.motion.crowd);
+  const rad = (P / 2 + (sib.render.P || sib.r * 2) / 2) * (0.96 + 0.6 * space + 0.35 * look.relief - 0.1 * look.motion.crowd);
   const wob = main.reducedMotion ? 0 : 0.18 * Math.sin(main.clock * (0.5 + 0.3 * sib.index) + sib.index * 2) * (0.3 + look.pace);
   const a = sib._orbitA + wob;
   out.x = main._pos.x + Math.cos(a) * rad * 1.08;
