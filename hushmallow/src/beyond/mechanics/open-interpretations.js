@@ -39,14 +39,16 @@ export function mount(ctx) {
   // a narrow phone: one column of possibilities, each line beside its bud (a ring has no room for four lines)
   const narrow = viewW() < 360 || A0.w < 330;
   const rowMax = Math.round(Math.max(150, A0.w - R * 2.25 - R * 1.6 - 14));
+  // on the ring, two lines' worth across (half the area), so a long possibility doesn't grow into its bud
+  const ringMax = Math.round(clamp(A0.w / 2 - 10, 150, 210));
   const buds = others.map((text, i) => {
     const b = new Blob({ x: from.x, y: from.y, r: R * 0.8, light: BUD[i], deep: ['#3ab4e8', '#7a5cf0', '#e05aa8'][i] });
-    b.open = 0; b.goal = 0; b.hold = 0; b.knock = 0; b.i = i; b.tag = ctx.tags.add(text, { kind: 'line', max: narrow ? rowMax : 170 }); b.scale = rm() ? 1 : 0.2;
+    b.open = 0; b.goal = 0; b.hold = 0; b.knock = 0; b.i = i; b.tag = ctx.tags.add(text, { kind: 'line', max: narrow ? rowMax : ringMax }); b.scale = rm() ? 1 : 0.2;
     return b;
   });
   const tags = {
     guessL: ctx.tags.add(L.labels.guess, { kind: 'label', colour: LIGHT.guess[1], priority: 1 }),
-    guessW: ctx.tags.add(guessText, { kind: 'line', max: narrow ? rowMax : 170 }),
+    guessW: ctx.tags.add(guessText, { kind: 'line', max: narrow ? rowMax : ringMax }),
     // in one column the first guess carries the words already
     words: narrow ? null : ctx.tags.add(P.excerpt, { kind: 'words' }),
   };

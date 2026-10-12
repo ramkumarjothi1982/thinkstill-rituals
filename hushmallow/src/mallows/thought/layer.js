@@ -1532,8 +1532,9 @@ export class ThoughtLayer {
     if (tg.wy + tg.h / 2 <= -half) return 'above';
     return tg.wx >= 0 ? 'right' : 'left';
   }
+  // on its way: still appearing (it grows in, overshooting its size), tossed, or not yet home
   _travelling(th) {
-    return th.ov.appear < 0.35 || th._glide || (!th.pressed && !th.driven && Math.hypot(th.x - th.home.x, th.y - th.home.y) > 0.35 * th.render.P);
+    return th.ov.appear < 1 || th._glide || (!th.pressed && !th.driven && Math.hypot(th.x - th.home.x, th.y - th.home.y) > 0.35 * th.render.P);
   }
 
   // The words sit beside their thought where nothing else is. Hard rules: never on another plate, a face
