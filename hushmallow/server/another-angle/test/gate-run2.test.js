@@ -36,8 +36,8 @@ test('run 2 replay: every answer the gate accepted then still passes', () => {
   for (const it of items.filter((i) => i.kind === 'accepted')) assert.deepEqual(labels(it.after), [], key(it));
 });
 
-test('run 2 replay: two false rejections now pass; the real ones still fail, for that reason only', () => {
-  for (const k of ['anx-presentation#0.1', 'soc-invite#0.1']) {
+test('run 2 replay: three false rejections now pass; the real ones still fail, for that reason only', () => {
+  for (const k of ['anx-presentation#0.1', 'soc-invite#0.1', 'self-driving#1.1']) {
     const it = items.find((i) => key(i) === k);
     assert.ok(it.before.length > 0, k);
     assert.deepEqual(labels(it.after), [], k);
@@ -47,11 +47,15 @@ test('run 2 replay: two false rejections now pass; the real ones still fail, for
     assert.deepEqual(labels(it.after), ['too_long@lines'], k);
     assert.equal(it.words, n, k);
   }
-  // "test number four" after "the third time": the next test, but the gate
-  // cannot tell that from a miscount, so a fourth test stays a number they
-  // never gave (one regeneration). Its label was a false alarm and is gone.
-  const sd = items.find((i) => key(i) === 'self-driving#1.1');
-  assert.deepEqual(labels(sd.after), ['invented_detail@subtitle_line_2']);
+});
+
+test('run 2 self-driving: the next attempt, looked at ahead, is not a miscount; as something done it is', () => {
+  const t = text('self-driving');
+  const inv = (l2, tt = t) => codes(qualityGate(scene({ subtitle_line_1: 'A b c d.', subtitle_line_2: l2 }), { text: tt })).includes('invented_detail');
+  assert.ok(!inv('What would you actually tell that friend to do before booking test number four?'));
+  assert.ok(!inv('If she cancels a fourth time, what would you want to say?', text('ho-cancelled')));
+  for (const l2 of ["You've failed a fourth time.", 'After a fourth test, which fault keeps turning up?', 'Before booking test number five, which fault would you fix?']) assert.ok(inv(l2), l2);
+  assert.ok(inv('She has cancelled a fourth time now.', text('ho-cancelled')));
 });
 
 // --- each run-2 false positive on its own ---------------------------------------

@@ -120,6 +120,96 @@ test('safety: the review probe list (round 3) gives the expected level, and chec
   }
 });
 
+// safety verification (12 Oct): an independent probe list of first-person phrasings, typos and
+// third-party disclosures the free gate missed, and the everyday wording that tripped it
+const VERIFY = {
+  crisis: ['kil myself', 'i want to kil myself', 'killmyself', 'thinking about unaliving', 'i want to unalive', 'i might unalive tonight',
+    'i dont wanna be here anymore', 'i slit my wrists', 'i want to slit my wrists', 'thinking of slitting my wrists', 'i want 2 die', 'i wnat to die',
+    'i feel sucidal', 'i have a plan to end it', 'i burned myself on purpose', 'im going to swallow all my pills', 'im such a burden',
+    'i dont see the point in living', 'i want to step in front of a train', 'im going to throw myself in front of a train', 'ill throw myself off a bridge',
+    'i want to shoot myself', 'i want to stab myself', 'i should just die', 'i might as well die', 'i want to end myself', 'i want to off myself',
+    'im going to top myself', 'i want to neck myself', 'i wish i didnt exist', 'i shouldnt be alive', 'i dont deserve to live',
+    'i want to go to sleep forever and not wake up', 'i cant live like this anymore', 'ready to give up on life', 'i give up on life', 'ive given up on living',
+    "i'm gonna end it", 'im gonna end it tonight', 'i want to od', 'i overdosed last night', "I don't want to go on", 'I feel like a burden',
+    'gonna jump off the building', 'i want to jump out the window', "I'm going to die", 'I nearly killed myself last year',
+    // round two: passive wishes, cutting, endings, slang
+    'i hope i die', 'i hope i die in my sleep', 'i wish i would die', 'i hope i get hit by a car', 'i wish a bus would hit me', "i'm tired of living",
+    'im tired of being alive', 'sick of living', 'i cant do life anymore', 'my family would be happier without me', 'they would be better off if i was gone',
+    "i'm cutting again", 'i want to cut again', 'i have the urge to cut', 'im ending it tonight', "i'm going to end everything", 'i want to end everything',
+    'goodbye forever everyone', 'life is pointless', 'no one cares if i live or die', 'sewerslide', 'i want to rope myself', "i'm standing on the bridge",
+    'on the roof thinking of jumping', 'i want to bleed out', "i'm not safe with myself", 'i want to just not wake up', 'i want to kill myslef', 'my life is meaningless'],
+  crisisOther: ['my sister said she wants to die', 'my girlfriend told me she wants to die', 'my brother wants to end his life', 'my friend is cutting herself',
+    'my mum tried to kill herself', 'he is starving himself', 'my friend sent me a goodbye message', 'my brother is threatening to jump'],
+  care: ['my dad hurts me', 'my mum hurts me', 'my stepdad hurts me', 'she keeps hurting me', 'someone is hurting me', 'i am being hurt', 'im being hurt at home',
+    'my uncle touches me', 'i was groped'],
+  concern: ['my boyfriend hurt me', 'someone hurt me', 'i want to be gone', 'i want it to be over', 'i cant keep living like this', 'my life is over',
+    'tired of life', "i've said my goodbyes", 'this is my last message', "i won't be here tomorrow", "i won't be around much longer", 'my life feels so empty',
+    'i dont trust myself not to do something'],
+  harmOthers: ['i feel like hurting someone', 'feeling like killing him'],
+  none: ['I cut myself shaving', 'I hurt myself at the gym', 'I hurt myself playing football', 'it really hurt my self-esteem', 'it hurt my self esteem',
+    'this job is killing my self-esteem', 'I overdosed on chocolate', 'my phone is going to die', 'my battery is going to die', 'my plants are going to die',
+    'watching suicide squad', 'my dog is going to die', 'the doctor said she is going to die', 'my grandma is going to die', 'im going to die of hunger',
+    'we are all going to die of heat', "I don't want to live in London", 'i dont want to live with my parents', "I don't want to go on holiday with them",
+    "I don't want to go on the trip", "I don't want to wake up early tomorrow", 'i dont want to wake up at 6', "I don't want to be around him",
+    "I can't go on the trip tomorrow", 'i cant go on instagram', 'no reason to go on holiday', "i'm going to drown myself in work", 'drowning myself in coffee',
+    'I shot myself in the foot', 'shoot myself a message', 'throw myself into my work', 'I threw myself under the bus for the team', "she's taking her life back",
+    'I took the pressure off myself', 'I need to top myself up with coffee', 'she cut herself a slice of cake', "he's cutting himself off from his friends",
+    "she's burning herself out", 'killing it at work', 'dead tired', "I'd die for pizza", 'cut my hair', 'dying my hair', 'kill my self laughing',
+    'I could kill him', 'this traffic is killing me', 'I take all my meds every morning', "I can't see the point in going on holiday",
+    'I want to end it on a high note', 'I want to die laughing at this', 'im burning myself out at work', 'i keep cutting myself off mid sentence',
+    'I need to cut myself some slack', 'i need to cut costs', 'i want to cut my hair', "I can't go on stage tonight", "I don't want to go on a date",
+    'my laptop is going to die', 'my sister is going to kill me', 'thinking about jumping in the pool', 'tired of life admin', 'jump off the deep end'],
+};
+test('safety verification (12 Oct): probe misses are caught and everyday wording stays none (checkText and interpret agree)', () => {
+  const expect = { crisis: ['crisis', 'self-harm'], crisisOther: ['crisis', 'someone-in-danger'], care: ['care', null], concern: ['concern', 'distress'], harmOthers: ['concern', 'harm-others'], none: ['none', null] };
+  for (const [group, list] of Object.entries(VERIFY)) {
+    const [level, category] = expect[group];
+    for (const t of list) {
+      const r = checkText(t);
+      assert.equal(r.level, level, `${t} → ${r.level} (${r.matched})`);
+      if (category) assert.equal(r.category, category, `${t} → ${r.category}`);
+      assert.equal(interpret(t).safety.level, level === 'care' ? 'concern' : level, `interpret: ${t}`);
+    }
+  }
+});
+
+test('safety verification (12 Oct): the lexicon still compiles without lookbehind (older iPhones) and stays plain data', () => {
+  const all = [...LEX.HARM_LEXICON.idiomGuards, ...LEX.HARM_LEXICON.crisis, ...LEX.HARM_LEXICON.crisisOther, ...Object.values(LEX.HARM_LEXICON.care).flat(),
+    ...LEX.CONCERN_LEXICON, ...LEX.HARM_OTHERS_LEXICON];
+  for (const src of all) {
+    assert.doesNotThrow(() => new RegExp(src, 'i'), src);
+    assert.doesNotMatch(src, /\(\?<[=!]/, `no lookbehind: ${src}`);
+  }
+  // a long run-on message is still quick (no runaway backtracking)
+  const long = 'i dont know i just feel like everything is too much and i cant and '.repeat(30);
+  const t0 = performance.now();
+  checkText(long);
+  assert.ok(performance.now() - t0 < 150, 'checkText on 2,000 characters stays fast');
+});
+
+test('hushfold safety verification (12 Oct): a crisis or care level seen earlier in the visit holds when other words are sent', () => {
+  const scene = read('src/app/scenes/hushfold.js');
+  const after = scene.slice(scene.indexOf('async function afterTell('), scene.indexOf('async function gentleWorld('));
+  // the scene's level (typed and closed, or reworded before Send) wins over the words actually sent,
+  // before the crisis, care and D4 branches are chosen
+  const lift = after.search(/if \(LEVELS\.indexOf\(S\.level\) > LEVELS\.indexOf\(safety\?\.level \|\| 'none'\)\) safety = \{ level: S\.level, category: S\.category \};/);
+  assert.ok(lift > 0 && lift < after.indexOf("safety?.level === 'crisis'"), 'the visit level is applied before any branch');
+  // the support sheet never leaves the heart-eyed face behind after something heavy
+  assert.match(scene, /const sh = trackSheet\(openSupport\(app, opts\)\);\s*\/\/[^\n]*\n\s*if \(opts\.urgent \|\| gentle\(\)\) stageMallow\?\.setStage\?\.\(CARE_FACE, \{ quiet: true \}\);/);
+  // an invitation, a resume offer or a gentle world never follows a crisis or care seen meanwhile
+  assert.match(scene, /if \(S\.left \|\| overlay \|\| S\.told \|\| gentle\(\)\) return;/);
+  assert.match(scene, /if \(S\.left \|\| worldMode \|\| overlay \|\| S\.flowAsked \|\| gentle\(\)\) return;/);
+  assert.match(scene, /if \(v === 'play' && !S\.crisis\) \{/);
+  // a later Tell in the same visit knows: Support from the start, no plan offer on the button, the concerned
+  // face while they type, and a calm answer (never silence) when more words follow a crisis
+  assert.match(scene, /heavy: gentle\(\),/);
+  assert.match(scene, /stageMallow\.setStage\(gentle\(\) \? CARE_FACE : 'listening', \{ quiet: true \}\);/);
+  assert.match(scene, /if \(S\.crisisSpoken\) say\(SHARED_LINES\.supportConcern, \{ interrupt: !subtitles\.holding \}\);\s*else speakCrisis\(\);/);
+  const overlay = read('src/hushfold/input-overlay.js');
+  assert.match(overlay, /function plainSend\(\) \{\s*if \(hasPlan \|\| \(worst\.level === 'none' && !heavy\)/);
+  assert.match(overlay, /supportBtn\.hidden = worst\.level === 'none' && !heavy;\s*plainSend\(\);/);
+});
+
 test('hushfold r3: words waiting on the plans page survive a new deploy; a world keeps its host when the switcher is used', () => {
   const main = read('src/app/main.js');
   assert.match(main, /if \(newer && name === 'home' && !app\.state\.pendingTell && safeToUpdate\(\)\)/);
@@ -510,7 +600,7 @@ test('hushfold: held discoveries survive Tell, care never jokes or auto-starts, 
   assert.match(scene, /onSafety: \(r\) => noteSafety\(r\)/);
   assert.match(read('src/hushfold/input-overlay.js'), /report\(safety\);\s*if \(safety\.level === 'crisis' && !supportShown\)/);
   // sheets opened from the Hushfold get their own Back entry
-  assert.match(scene, /const openSupportSheet = \(opts = \{\}\) => trackSheet\(openSupport\(app, opts\)\)/);
+  assert.match(scene, /const openSupportSheet = \(opts = \{\}\) => \{\s*const sh = trackSheet\(openSupport\(app, opts\)\);/);
   assert.match(scene, /if \(S\.crisis \|\| S\.care \|\| gentle\(\) \|\| !supportPill\.hidden\) return false;/);
   assert.match(scene, /stage\?\.thoughts\.list\.length \|\| 0\) > 0\) return false;/);
   assert.match(scene, /loadProgress\(store\)/, 'the resume offer reads saved progress without making a director');

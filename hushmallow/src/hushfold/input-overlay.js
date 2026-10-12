@@ -13,7 +13,7 @@
 // before anything is typed.
 //
 //   openInput({ app, prompt, mallow:{id,name,glow}, root, emotion, intention,
-//               hasPlan, face(faceMix), onSubmit({text, emotion, intention, reading, safety, input}),
+//               hasPlan, heavy, face(faceMix), onSubmit({text, emotion, intention, reading, safety, input}),
 //               onClose(reason, {safety, supportShown}), onLayout(rect), onSafety(result), support(opts), trackSheet(sheet) })
 //     → { el, close(reason), rect(), get text, get dirty, get safety }
 //
@@ -47,7 +47,7 @@ export function loadInputModules() {
 }
 
 export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root = document.body, emotion = null, intention = null, hasPlan = true,
-  text = '', face = null, onSubmit, onClose, onLayout, onSafety = null, support = null, trackSheet = null } = {}) {
+  text = '', face = null, onSubmit, onClose, onLayout, onSafety = null, support = null, trackSheet = null, heavy = false } = {}) {
   const reduced = app?.prefs?.reducedMotion?.() ?? false;
   // larger text: the speaker's name takes its own line above the prompt
   const bigText = Number(app?.prefs?.get?.('textScale')) > 1.12;
@@ -89,6 +89,14 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     hasPlan ? 'Send' : h('span', { class: 'lbl' }, 'Continue', h('small', { class: 'sub' }, 'with ', h('span', { class: 'brand-name' }, 'hushmallow'), ' Flow')), hfIcon('send'));
   const photosBox = h('div', { class: 'photos', hidden: true });
   const planHint = hasPlan ? null : h('span', { class: 'sr-only', id: `${uid}-plan` }, 'Your words come alive as a Thought Mallow with hushmallow Flow. They stay on this phone.');
+  /** Something heavy was typed: no plan offer in this moment (the scene keeps them on the stage), just Send. */
+  function plainSend() {
+    if (hasPlan || (worst.level === 'none' && !heavy) || !sendBtn.classList.contains('two')) return;
+    sendBtn.classList.remove('two');
+    sendBtn.removeAttribute('aria-describedby');
+    sendBtn.replaceChildren('Send', hfIcon('send'));
+    planHint?.remove();
+  }
   const count = h('span', { class: 'sr-only', 'aria-live': 'polite' });
   const countVis = h('span', { class: 'count-vis', 'aria-hidden': 'true', hidden: true });
   const el = h('div', { class: `hf-input hf-ui${reduced ? ' reduced' : ''}${bigText ? ' big' : ''}`, role: 'dialog', 'aria-modal': 'false', 'aria-label': prompt, 'data-hf': 'input' },
@@ -204,7 +212,8 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     report(safety);
     if (safety.level === 'crisis' && !supportShown) { supportShown = true; openSupportSheet({ urgent: true }); }
     // once support has been needed it stays one tap away, even if the words change
-    supportBtn.hidden = worst.level === 'none';
+    supportBtn.hidden = worst.level === 'none' && !heavy;
+    plainSend();
     renderFeelings(); renderIntentions(); setNote();
   }
   // the field grows a whole line at a time and stops on a line boundary, so a scrolled
@@ -325,6 +334,8 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
   }
 
   renderFeelings(); renderIntentions(); setNote(); grow(); updateSend();
+  // something heavy earlier in this visit: support is in the overlay from the start, and no plan offer
+  if (heavy) { supportBtn.hidden = false; plainSend(); }
   loadInputModules().then((m) => {
     if (closed) return;
     if (extraFeeling) { cached.set(extraFeeling, m.getEmotion(extraFeeling)?.name || extraFeeling); renderFeelings(); }

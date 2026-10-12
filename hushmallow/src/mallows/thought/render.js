@@ -12,12 +12,18 @@
 //
 // The caller's transform maps CSS px → device px; positions are canvas CSS px
 // (the layer subtracts the canvas's client offset: o.ox, o.oy).
+// o.q is the layer's quality level (0 full … 2 under load): siblings and far
+// bodies drop their motes and fresnel first, then their depth shading.
 
 import { tintAt, rgba, mixHex, clamp, lerp, smooth } from './styles.js';
-import { PT, OUTLINE_N, rnd } from './thought.js';
+import { PT, OUTLINE_N, FX_GEOM, rnd } from './thought.js';
 
 const TAU = Math.PI * 2;
 const caches = new WeakMap();       // ctx → { palettes, shared }
+const SIDES = [-1, 1];
+const CHEEKS = [PT.cheekL, PT.cheekR];
+// cloud lobes: [dx (× W), dy (× P), rx (× W), ry (× P)] — a flat base and three soft bumps on top
+const CLOUD = [[-0.27, 0.05, 0.25, 0.12], [0.02, 0.05, 0.46, 0.13], [0.28, 0.05, 0.22, 0.11], [-0.18, -0.04, 0.2, 0.15], [0.05, -0.09, 0.24, 0.18], [0.27, -0.02, 0.17, 0.13]];
 
 function cacheFor(ctx) {
   let c = caches.get(ctx);
@@ -40,8 +46,12 @@ function sharedGrads(ctx) {
     blush: radial(ctx, 0, 0, 0, 1, [[0, 'rgba(255,104,150,0.85)'], [0.6, 'rgba(255,120,160,0.35)'], [1, 'rgba(255,130,170,0)']]),
     blushCalm: radial(ctx, 0, 0, 0, 1, [[0, 'rgba(255,170,140,0.75)'], [1, 'rgba(255,180,150,0)']]),
     dent: radial(ctx, 0, 0, 0, 1, [[0, 'rgba(10,4,30,0.22)'], [0.5, 'rgba(10,4,30,0.08)'], [0.78, 'rgba(255,250,240,0.16)'], [1, 'rgba(255,250,240,0)']]),
-    puff: radial(ctx, 0, 0, 0, 1, [[0, 'rgba(255,250,244,0.7)'], [0.55, 'rgba(255,246,236,0.3)'], [1, 'rgba(255,244,232,0)']]),
-    cloud: radial(ctx, 0, 0, 0, 1, [[0, 'rgba(206,218,240,0.75)'], [0.6, 'rgba(190,204,232,0.35)'], [1, 'rgba(180,196,228,0)']]),
+    // steam: a soft, lit puff with a denser core (reads as steam, not fog, at 0.14–0.35 P)
+    puff: radial(ctx, -0.2, -0.25, 0, 1, [[0, 'rgba(255,252,248,0.92)'], [0.4, 'rgba(250,244,238,0.62)'], [0.75, 'rgba(236,228,224,0.22)'], [1, 'rgba(230,222,220,0)']], -0.25, -0.3),
+    // a rain cloud: lit from above (the focal point high), cooler and greyer underneath
+    cloud: radial(ctx, 0, -0.35, 0.05, 1, [[0, 'rgba(236,242,255,0.96)'], [0.45, 'rgba(196,208,236,0.9)'], [0.82, 'rgba(150,166,206,0.72)'], [1, 'rgba(140,156,200,0)']], 0, -0.62),
+    cloudBase: radial(ctx, 0, 0, 0, 1, [[0, 'rgba(96,110,160,0.55)'], [0.7, 'rgba(110,124,170,0.25)'], [1, 'rgba(110,124,170,0)']]),
+    splash: radial(ctx, 0, 0, 0, 1, [[0, 'rgba(226,238,255,0.95)'], [1, 'rgba(206,224,255,0)']]),
     stone: radial(ctx, -0.35, -0.4, 0.05, 1.1, [[0, '#b9b4cc'], [0.4, '#7b7593'], [1, '#3f3a55']], -0.35, -0.4),
     stoneLight: radial(ctx, -0.35, -0.4, 0.05, 1.1, [[0, '#f1eef8'], [0.45, '#cfcadf'], [1, '#9d97b5']], -0.35, -0.4),
     shell: radial(ctx, 0.45, -0.1, 0.05, 1.05, [[0, '#fff2ea'], [0.45, '#f6b7a6'], [1, '#c26d68']], 0.3, -0.3),
@@ -56,11 +66,13 @@ function sharedGrads(ctx) {
 
 // palettes are quantised (calm transform in 16 steps, softening in 6) and cached per context
 function paletteFor(ctx, th, look) {
+  const kq = Math.round(clamp(look.tintK) * 16), sq = Math.round(clamp(look.soft) * 6), qk = kq * 8 + sq;
+  // the last palette this thought used (no lookup and no key string on most frames)
+  if (th._palQ === qk && th._palCtx === ctx && th._pal) return th._pal;
   const C = cacheFor(ctx);
-  const kq = Math.round(clamp(look.tintK) * 16), sq = Math.round(clamp(look.soft) * 6);
   const key = `${th.style.id}|${kq}|${sq}`;
   let p = C.pal.get(key);
-  if (p) return p;
+  if (p) { th._pal = p; th._palQ = qk; th._palCtx = ctx; return p; }
   const t = tintAt(th.style.tint, sq / 6, kq / 16, {});
   const a = th.alpha ?? 0.76;
   p = {
@@ -78,6 +90,7 @@ function paletteFor(ctx, th, look) {
   };
   if (C.pal.size > 160) C.pal.delete(C.pal.keys().next().value);
   C.pal.set(key, p);
+  th._pal = p; th._palQ = qk; th._palCtx = ctx;
   return p;
 }
 
@@ -132,7 +145,9 @@ export function drawThought(ctx, th, o = {}) {
   const look = th.look, f = look.face, ox = o.ox || 0, oy = o.oy || 0, t = th.clock, rm = !!o.rm, low = !!o.low;
   const S = sharedGrads(ctx), pal = paletteFor(ctx, th, look);
   const P = R.P, W = R.W, cx = R.cx - ox, cy = R.cy - oy, ang = R.ang;
-  const Q = R.pts, px = (i) => Q[2 * i] - ox, py = (i) => Q[2 * i + 1] - oy;
+  const Q = R.pts;
+  // under load, siblings and far bodies keep their shape and face but lose the finest light
+  const q = o.q || 0, lite = q > 0 && (th.kind === 'sibling' || th.z > 0.5), liter = q > 1 && lite;
   ctx.save();
   ctx.globalAlpha = R.alpha;
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -163,32 +178,34 @@ export function drawThought(ctx, th, o = {}) {
   ctx.save();
   ctx.clip();
   // depth: the gel deepens away from the light (lower right)
-  blob(ctx, pal.depth, cx + W * 0.2, cy + P * 0.26, W * 0.62, P * 0.56, ang, 0.55);
+  if (!liter) blob(ctx, pal.depth, cx + W * 0.2, cy + P * 0.26, W * 0.62, P * 0.56, ang, 0.55);
   // fresnel: the rim brightens smoothly toward the edge
-  ctx.save();
-  ctx.translate(cx, cy); ctx.rotate(ang); ctx.scale(W / 2, P / 2);
-  ctx.fillStyle = pal.fresnel;
-  ctx.fill();
-  ctx.restore();
+  if (!lite) {
+    ctx.save();
+    ctx.translate(cx, cy); ctx.rotate(ang); ctx.scale(W / 2, P / 2);
+    ctx.fillStyle = pal.fresnel;
+    ctx.fill();
+    ctx.restore();
+  }
   ctx.globalCompositeOperation = 'lighter';
   const glow = look.fx.glow * (low ? 0.7 : 1) * (rm ? 1 : 1 + 0.06 * Math.sin(t * 0.9 + th.seed));
   // the inner light, gathered low in the gel (light passing through it)
-  blob(ctx, pal.core, px(PT.core), py(PT.core) + P * 0.06, W * 0.5, P * 0.42, ang, glow * 1.1);
-  blob(ctx, pal.core, px(PT.bottom), py(PT.bottom) - P * 0.06, W * 0.36, P * 0.12, ang, glow * 0.8);
-  if (!low) {
+  blob(ctx, pal.core, Q[2 * PT.core] - ox, Q[2 * PT.core + 1] - oy + P * 0.06, W * 0.5, P * 0.42, ang, glow * 1.1);
+  blob(ctx, pal.core, Q[2 * PT.bottom] - ox, Q[2 * PT.bottom + 1] - oy - P * 0.06, W * 0.36, P * 0.12, ang, glow * 0.8);
+  if (!low && !lite) {
     const nm = Math.min(look.fx.motes, 7);
     for (let j = 0; j < nm; j++) {
       const i = PT.mote0 + j;
       const tw = rm ? 0.6 : 0.45 + 0.35 * Math.sin(t * (0.8 + 0.13 * j) + j * 2.1);
-      blob(ctx, pal.mote, px(i), py(i), P * 0.035, P * 0.035, 0, tw * (0.6 + 0.4 * look.relief));
+      blob(ctx, pal.mote, Q[2 * i] - ox, Q[2 * i + 1] - oy, P * 0.035, P * 0.035, 0, tw * (0.6 + 0.4 * look.relief));
     }
   }
   // a charm warms the side it hangs on
   if (th.kind === 'belief' && th.prop === 'charm') blob(ctx, S.charmGlow, th.propState.x - ox, th.propState.y - oy - P * 0.2, P * 0.7, P * 0.7, 0, 0.35 * th.propState.glow);
   ctx.globalCompositeOperation = 'source-over';
   // where a finger presses: a soft dent with a lit rim
-  for (const [id, fg] of th.fingers) {
-    const p = th.reader.ptrs.get(id);
+  for (const fg of th.fingers.values()) {
+    const p = th.reader.ptrs.get(fg.id);
     if (!p || fg.carry || p.depth < 0.04) continue;
     const r = P * 0.26 * (p.mode === 'glide' ? 0.75 : 1);
     blob(ctx, S.dent, fg.x - ox, fg.y - oy, r, r, 0, clamp(p.depth * (p.mode === 'glide' ? 0.5 : 1.1)));
@@ -196,9 +213,9 @@ export function drawThought(ctx, th, o = {}) {
   // cheeks (puffed ones catch a little light)
   const sx = faceScaleX(th), sy = faceScaleY(th);
   const blush = clamp(f.blush * 0.42 + look.fx.halo * 0.05);
-  if (blush > 0.01) for (const i of [PT.cheekL, PT.cheekR]) blob(ctx, look.tintK > 0.5 ? S.blushCalm : S.blush, px(i), py(i), W * 0.105 * sx, P * 0.06 * sy, ang, blush);
+  if (blush > 0.01) for (const i of CHEEKS) blob(ctx, look.tintK > 0.5 ? S.blushCalm : S.blush, Q[2 * i] - ox, Q[2 * i + 1] - oy, W * 0.105 * sx, P * 0.06 * sy, ang, blush);
   const puff = clamp(f.puff + th.touch.depth * 0.8);
-  if (puff > 0.2) for (const i of [PT.cheekL, PT.cheekR]) blob(ctx, S.spec, px(i) + (i === PT.cheekL ? -1 : 1) * W * 0.02, py(i) - P * 0.045, W * 0.05 * sx, P * 0.022 * sy, ang, 0.3 * puff);
+  if (puff > 0.2) for (const i of CHEEKS) blob(ctx, S.spec, Q[2 * i] - ox + (i === PT.cheekL ? -1 : 1) * W * 0.02, Q[2 * i + 1] - oy - P * 0.045, W * 0.05 * sx, P * 0.022 * sy, ang, 0.3 * puff);
   ctx.restore();
 
   // glassy rim and speculars
@@ -212,13 +229,14 @@ export function drawThought(ctx, th, o = {}) {
   ctx.restore();
   // a crescent of light along the upper left rim, a fainter one low on the right
   rimArc(ctx, R.outline, 34, 42, ox, oy, 'rgba(255,255,255,0.75)', Math.max(1.2, P * 0.02));
-  rimArc(ctx, R.outline, 12, 19, ox, oy, pal.lightA2, Math.max(1, P * 0.016));
+  if (!liter) rimArc(ctx, R.outline, 12, 19, ox, oy, pal.lightA2, Math.max(1, P * 0.016));
   // gloss: one soft window reflection and a crisp glint
-  blob(ctx, S.spec, px(PT.specA), py(PT.specA), W * 0.15, P * 0.07, ang - 0.6, 0.62);
-  blob(ctx, S.gloss, px(PT.specA) - W * 0.012, py(PT.specA) - P * 0.008, W * 0.075, P * 0.03, ang - 0.6, 0.9);
-  blob(ctx, S.gloss, px(PT.specB), py(PT.specB), W * 0.024, W * 0.024, 0, 0.95);
+  const sax = Q[2 * PT.specA] - ox, say = Q[2 * PT.specA + 1] - oy;
+  blob(ctx, S.spec, sax, say, W * 0.15, P * 0.07, ang - 0.6, 0.62);
+  blob(ctx, S.gloss, sax - W * 0.012, say - P * 0.008, W * 0.075, P * 0.03, ang - 0.6, 0.9);
+  blob(ctx, S.gloss, Q[2 * PT.specB] - ox, Q[2 * PT.specB + 1] - oy, W * 0.024, W * 0.024, 0, 0.95);
 
-  drawFace(ctx, th, pal, px, py, sx, sy, o);
+  drawFace(ctx, th, pal, ox, oy, sx, sy, o);
   drawFx(ctx, th, pal, S, o);
   if (th.kind === 'belief') drawPropFront(ctx, th, o, S, pal);
   ctx.restore();
@@ -236,79 +254,18 @@ function faceScaleY(th) {
   return clamp(d / Math.max(1, 0.47 * th.render.P), 0.6, 1.6);
 }
 
-function drawFace(ctx, th, pal, px, py, sx, sy, o) {
-  const look = th.look, f = look.face, ov = th.ov, R = th.render, P = R.P, W = R.W, t = th.clock, rm = !!o.rm;
-  const ang = R.ang, co = Math.cos(ang), si = Math.sin(ang);
-  const up = (d) => [si * d, -co * d];
-  const g = th.gaze;
-  // eyes: open beans, or soft closed curves when content
+const MOUTH_N = 10;
+/**
+ * The mouth this frame (pure geometry; drawFace draws it, tests read it).
+ * Returns (into `out`): { open, x, y, orx, ory, rot } for an open mouth, or { open:false, pts }
+ * for a line mouth: MOUTH_N + 1 points (client px − o) from one corner to the other. A smile's
+ * middle sits lower (larger y) than its corners.
+ */
+export function mouthGeom(th, ox = 0, oy = 0, rm = false, out = { open: false, x: 0, y: 0, orx: 0, ory: 0, rot: 0, pts: new Float32Array(2 * (MOUTH_N + 1)) }) {
+  const look = th.look, f = look.face, ov = th.ov, R = th.render, P = R.P, Q = R.pts, t = th.clock;
   const squint = clamp(ov.squint * 0.7 + th.touch.depth * 0.75);
-  const sigh = ov.sigh;
-  const open = clamp(f.eyeOpen * (1 - ov.blink) * (1 - 0.6 * squint) * (1 - 0.5 * sigh) + 0.25 * ov.gasp, 0, 1.3);
-  const closedK = smooth(0.35, 0.8, Math.max(f.closed, sigh * 0.9));
-  const rx = W * 0.072 * sx, ry0 = P * 0.1 * sy;
-  const lookX = g.x * W * 0.032, lookY = g.y * P * 0.026;
-  ctx.fillStyle = pal.inkA;
-  ctx.strokeStyle = pal.inkA;
-  for (const side of [-1, 1]) {
-    const i = side < 0 ? PT.eyeL : PT.eyeR;
-    const ex = px(i) + lookX, ey = py(i) + lookY;
-    const ry = Math.max(0.6, ry0 * open);
-    if (closedK < 0.98) {
-      ctx.save();
-      ctx.globalAlpha *= 1 - closedK;
-      // a heavy lid cuts the top of the bean (angled: inner corner low = cross, high = worried)
-      const lid = clamp(f.lid + 0.35 * squint * 0.5);
-      const tilt = f.lidTilt * 0.55 * (side < 0 ? 1 : -1);
-      if (lid > 0.04) {
-        const yl = ey - ry + 2 * ry * lid;
-        ctx.beginPath();
-        ctx.moveTo(ex - rx * 2, yl - tilt * rx * 2); ctx.lineTo(ex + rx * 2, yl + tilt * rx * 2);
-        ctx.lineTo(ex + rx * 2, ey + ry * 3); ctx.lineTo(ex - rx * 2, ey + ry * 3); ctx.closePath();
-        ctx.clip();
-      }
-      ctx.beginPath(); ctx.ellipse(ex, ey, rx, ry, ang, 0, TAU); ctx.fill();
-      // catchlights
-      if (open > 0.25) {
-        ctx.fillStyle = 'rgba(255,255,255,0.95)';
-        ctx.beginPath(); ctx.arc(ex - rx * 0.34, ey - ry * 0.4, rx * 0.34, 0, TAU); ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.beginPath(); ctx.arc(ex + rx * 0.3, ey + ry * 0.38, rx * 0.15, 0, TAU); ctx.fill();
-        ctx.fillStyle = pal.inkA;
-      }
-      ctx.restore();
-      if (f.lid > 0.06) {
-        // the lid's edge
-        const yl = ey - ry + 2 * ry * clamp(f.lid);
-        ctx.save(); ctx.globalAlpha *= (1 - closedK) * 0.85; ctx.lineWidth = Math.max(1, P * 0.02);
-        ctx.beginPath(); ctx.moveTo(ex - rx * 1.15, yl - tilt * rx * 1.15); ctx.lineTo(ex + rx * 1.15, yl + tilt * rx * 1.15); ctx.stroke();
-        ctx.restore();
-      }
-    }
-    if (closedK > 0.02) {
-      // content: a soft closed curve (◡)
-      ctx.save(); ctx.globalAlpha *= closedK; ctx.lineWidth = Math.max(1.2, P * 0.03);
-      ctx.beginPath(); ctx.ellipse(ex, ey - ry0 * 0.25, rx * 1.1, ry0 * 0.55, ang, 0.12 * Math.PI, 0.88 * Math.PI); ctx.stroke();
-      ctx.restore();
-    }
-  }
-  // brows (only when it is tense)
-  const browA = clamp(f.browA * (1 - closedK * 0.8));
-  if (browA > 0.03) {
-    ctx.save(); ctx.globalAlpha *= browA * 0.9; ctx.lineWidth = Math.max(1.2, P * 0.03);
-    for (const side of [-1, 1]) {
-      const i = side < 0 ? PT.eyeL : PT.eyeR;
-      const [ux, uy] = up(ry0 * 1.55 + f.browY * P * 0.05);
-      const bx = px(i) + ux, by = py(i) + uy;
-      const a = f.browTilt * 0.42 * (side < 0 ? 1 : -1) + ang, hl = W * 0.075 * sx;
-      const dx = Math.cos(a) * hl, dy = Math.sin(a) * hl;
-      ctx.beginPath(); ctx.moveTo(bx - dx, by - dy); ctx.quadraticCurveTo(bx + uy * 0.0, by - P * 0.012, bx + dx, by + dy); ctx.stroke();
-    }
-    ctx.restore();
-  }
-  // mouth
-  const mcX = px(PT.mouthC), mcY = py(PT.mouthC);
-  let ax = px(PT.mouthR) - px(PT.mouthL), ay = py(PT.mouthR) - py(PT.mouthL);
+  const mcX = Q[2 * PT.mouthC] - ox, mcY = Q[2 * PT.mouthC + 1] - oy;
+  let ax = Q[2 * PT.mouthR] - Q[2 * PT.mouthL], ay = Q[2 * PT.mouthR + 1] - Q[2 * PT.mouthL + 1];
   const al = Math.hypot(ax, ay) || 1; ax /= al; ay /= al;
   const skew = f.skew * 0.28;
   const cs = Math.cos(skew), sn = Math.sin(skew);
@@ -316,36 +273,125 @@ function drawFace(ctx, th, pal, px, py, sx, sy, o) {
   const nx = -dyu, ny = dxu;                                   // down, across it
   const hw = (al / 2) * (f.mouthW / 0.85) * 1.15 * (1 - 0.3 * clamp(f.puff - 0.4)) * (1 - 0.25 * squint);
   const mx = mcX + dxu * f.skew * hw * 0.35, my = mcY;
-  const talk = th.kind === 'sibling' ? th.talk : 0;
-  const mOpen = clamp(Math.max(f.open, talk * 0.75) + ov.gasp * 0.35 + ov.giggle * 0.25 + (th.parent ? 0 : 0));
+  const sib = th.kind === 'sibling';
+  const talk = sib ? th.talk : 0;
+  const mOpen = clamp(Math.max(f.open, talk) + ov.gasp * 0.35 + ov.giggle * 0.25);
+  out.open = mOpen > 0.06;
+  if (out.open) {
+    // a sibling mid-syllable opens wide (up to 0.2 P tall): you can see them talking over one another
+    out.orx = sib ? Math.max(P * 0.075, hw * (0.5 + 0.2 * f.mouthW)) * (0.8 + 0.25 * mOpen) : hw * (0.62 + 0.25 * f.mouthW);
+    out.ory = P * (sib ? 0.1 : 0.085) * mOpen;
+    out.x = mx; out.y = my + out.ory * 0.35 - f.curve * P * 0.01; out.rot = Math.atan2(dyu, dxu);
+    return out;
+  }
+  const curve = f.curve * P * 0.075 + ov.giggle * P * 0.03;
+  const wave = f.wave * P * 0.02 * (rm ? 1 : 0.85 + 0.15 * Math.sin(t * 9));
+  const pts = out.pts;
+  for (let k = 0; k <= MOUTH_N; k++) {
+    const u = k / MOUTH_N * 2 - 1;                     // −1 … 1 along the mouth
+    const sag = curve * (1 - u * u) - curve * 0.25;
+    const wv = wave * Math.sin((u + 1) * Math.PI * 1.5 + (rm ? 0 : t * 4));
+    pts[2 * k] = mx + dxu * u * hw + nx * (sag + wv); pts[2 * k + 1] = my + dyu * u * hw + ny * (sag + wv);
+  }
+  return out;
+}
+
+function drawFace(ctx, th, pal, ox, oy, sx, sy, o) {
+  const look = th.look, f = look.face, ov = th.ov, R = th.render, P = R.P, W = R.W, rm = !!o.rm, Q = R.pts;
+  const ang = R.ang, co = Math.cos(ang), si = Math.sin(ang);
+  const g = th.gaze;
+  // eyes: open beans; as they close the lid comes down (the bean narrows to a slit at full ink,
+  // never a faded ghost) and becomes a soft closed curve (◡): relieved, content
+  const squint = clamp(ov.squint * 0.7 + th.touch.depth * 0.75);
+  const sigh = ov.sigh;
+  const open = clamp(f.eyeOpen * (1 - ov.blink) * (1 - 0.6 * squint) * (1 - 0.5 * sigh) + 0.25 * ov.gasp, 0, 1.3);
+  const shut = smooth(0.35, 0.8, Math.max(f.closed, sigh * 0.9));
+  const rx = W * 0.072 * sx, ry0 = P * 0.1 * sy;
+  const lookX = g.x * W * 0.032 * (1 - shut), lookY = g.y * P * 0.026 * (1 - shut);
+  ctx.fillStyle = pal.inkA;
+  ctx.strokeStyle = pal.inkA;
+  for (const side of SIDES) {
+    const i = side < 0 ? PT.eyeL : PT.eyeR;
+    const ex0 = Q[2 * i] - ox + lookX, ey0 = Q[2 * i + 1] - oy + lookY;
+    const ryO = Math.max(0.6, ry0 * open);
+    const ry = ryO * (1 - shut);
+    // the bean sinks toward its lower lid as it closes (where the closed curve sits)
+    const ex = ex0, ey = ey0 + ryO * shut * 0.3;
+    if (ry > 0.45) {
+      ctx.save();
+      // a heavy lid cuts the top of the bean (angled: inner corner low = cross, high = worried)
+      const lid = clamp(f.lid + 0.35 * squint * 0.5);
+      const tilt = f.lidTilt * 0.55 * (side < 0 ? 1 : -1) * (1 - shut);
+      if (lid > 0.04) {
+        const yl = ey - ry + 2 * ry * lid;
+        ctx.beginPath();
+        ctx.moveTo(ex - rx * 2, yl - tilt * rx * 2); ctx.lineTo(ex + rx * 2, yl + tilt * rx * 2);
+        ctx.lineTo(ex + rx * 2, ey + ry * 3); ctx.lineTo(ex - rx * 2, ey + ry * 3); ctx.closePath();
+        ctx.clip();
+      }
+      ctx.beginPath(); ctx.ellipse(ex, ey, rx * (1 + 0.08 * shut), ry, ang, 0, TAU); ctx.fill();
+      // catchlights (only while the eye is properly open)
+      if (open > 0.25 && ry > ry0 * 0.42) {
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.beginPath(); ctx.arc(ex - rx * 0.34, ey - ry * 0.4, rx * 0.34, 0, TAU); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.beginPath(); ctx.arc(ex + rx * 0.3, ey + ry * 0.38, rx * 0.15, 0, TAU); ctx.fill();
+        ctx.fillStyle = pal.inkA;
+      }
+      ctx.restore();
+      if (f.lid > 0.06 && shut < 0.6) {
+        // the lid's edge
+        const yl = ey - ry + 2 * ry * clamp(f.lid);
+        ctx.save(); ctx.globalAlpha *= 0.85 * (1 - shut / 0.6); ctx.lineWidth = Math.max(1, P * 0.02);
+        ctx.beginPath(); ctx.moveTo(ex - rx * 1.15, yl - tilt * rx * 1.15); ctx.lineTo(ex + rx * 1.15, yl + tilt * rx * 1.15); ctx.stroke();
+        ctx.restore();
+      }
+    }
+    if (shut > 0.5) {
+      // content: a soft closed curve (◡), drawn in as the slit closes (it thickens, it does not fade in)
+      const k = smooth(0.5, 0.92, shut);
+      ctx.save(); ctx.lineWidth = Math.max(0.6, Math.max(1.2, P * 0.03) * k);
+      ctx.beginPath(); ctx.ellipse(ex0, ey0 - ry0 * 0.25, rx * 1.1, ry0 * 0.55, ang, 0.12 * Math.PI, 0.88 * Math.PI); ctx.stroke();
+      ctx.restore();
+    }
+  }
+  // brows (only when it is tense)
+  const browA = clamp(f.browA * (1 - shut * 0.8));
+  if (browA > 0.03) {
+    ctx.save(); ctx.globalAlpha *= browA * 0.9; ctx.lineWidth = Math.max(1.2, P * 0.03);
+    for (const side of SIDES) {
+      const i = side < 0 ? PT.eyeL : PT.eyeR;
+      const d = ry0 * 1.55 + f.browY * P * 0.05, ux = si * d, uy = -co * d;
+      const bx = Q[2 * i] - ox + ux, by = Q[2 * i + 1] - oy + uy;
+      const a = f.browTilt * 0.42 * (side < 0 ? 1 : -1) + ang, hl = W * 0.075 * sx;
+      const dx = Math.cos(a) * hl, dy = Math.sin(a) * hl;
+      ctx.beginPath(); ctx.moveTo(bx - dx, by - dy); ctx.quadraticCurveTo(bx, by - P * 0.012, bx + dx, by + dy); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  // mouth
+  const mg = mouthGeom(th, ox, oy, rm, th._mouth || (th._mouth = { open: false, x: 0, y: 0, orx: 0, ory: 0, rot: 0, pts: new Float32Array(2 * (MOUTH_N + 1)) }));
   ctx.lineWidth = Math.max(1.2, P * 0.028);
-  if (mOpen > 0.06) {
-    const orx = hw * (0.62 + 0.25 * f.mouthW), ory = P * 0.085 * mOpen;
+  if (mg.open) {
     ctx.save();
-    ctx.beginPath(); ctx.ellipse(mx, my + ory * 0.35 - f.curve * P * 0.01, orx, ory, Math.atan2(dyu, dxu), 0, TAU);
+    ctx.beginPath(); ctx.ellipse(mg.x, mg.y, mg.orx, mg.ory, mg.rot, 0, TAU);
     ctx.fillStyle = pal.inkA; ctx.fill();
     ctx.clip();
     ctx.fillStyle = 'rgba(236,104,128,0.55)';
-    ctx.beginPath(); ctx.ellipse(mx, my + ory * 1.05, orx * 0.8, ory * 0.6, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(mg.x, mg.y + mg.ory * 0.7, mg.orx * 0.8, mg.ory * 0.6, 0, 0, TAU); ctx.fill();
     ctx.restore();
   } else {
-    const curve = f.curve * P * 0.075 + ov.giggle * P * 0.03;
-    const wave = f.wave * P * 0.02 * (rm ? 1 : 0.85 + 0.15 * Math.sin(t * 9));
+    const M = mg.pts;
     ctx.beginPath();
-    for (let k = 0; k <= 10; k++) {
-      const u = k / 10 * 2 - 1;                     // −1 … 1 along the mouth
-      const sag = curve * (1 - u * u) - curve * 0.25;
-      const wv = wave * Math.sin((u + 1) * Math.PI * 1.5 + (rm ? 0 : t * 4));
-      const x = mx + dxu * u * hw + nx * (sag + wv), y = my + dyu * u * hw + ny * (sag + wv);
-      if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
+    ctx.moveTo(M[0], M[1]);
+    for (let k = 1; k <= MOUTH_N; k++) ctx.lineTo(M[2 * k], M[2 * k + 1]);
     ctx.stroke();
   }
   // blush lines (embarrassment)
   if (f.lines > 0.05) {
     ctx.save(); ctx.globalAlpha *= clamp(f.lines) * 0.75; ctx.strokeStyle = '#d63a6c'; ctx.lineWidth = Math.max(1, P * 0.014);
-    for (const i of [PT.cheekL, PT.cheekR]) {
-      const bx = px(i), by = py(i);
+    for (const i of CHEEKS) {
+      const bx = Q[2 * i] - ox, by = Q[2 * i + 1] - oy;
       for (let k = -1; k <= 1; k++) {
         const x0 = bx + k * W * 0.035 - W * 0.012, y0 = by + P * 0.022;
         ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + W * 0.022, y0 - P * 0.045); ctx.stroke();
@@ -357,8 +403,8 @@ function drawFace(ctx, th, pal, px, py, sx, sy, o) {
   const SW = th.fx.sweat;
   if (SW.on > 0.02 && f.sweat > 0.05) {
     const tt = SW.t, a = SW.on * Math.pow(Math.sin(Math.PI * tt), 0.6) * clamp(f.sweat);
-    const [ux, uy] = up(-tt * P * 0.3);
-    const x = px(PT.sweat) + ux, y = py(PT.sweat) + uy, r = P * 0.042;
+    const d = -tt * P * 0.3;
+    const x = Q[2 * PT.sweat] - ox + si * d, y = Q[2 * PT.sweat + 1] - oy - co * d, r = P * 0.042;
     ctx.save(); ctx.globalAlpha *= a;
     ctx.beginPath(); ctx.moveTo(x, y - r * 2.3); ctx.bezierCurveTo(x + r * 0.9, y - r * 0.9, x + r * 1.05, y + r * 0.2, x, y + r); ctx.bezierCurveTo(x - r * 1.05, y + r * 0.2, x - r * 0.9, y - r * 0.9, x, y - r * 2.3);
     ctx.fillStyle = 'rgba(228,244,255,0.9)'; ctx.fill();
@@ -400,37 +446,53 @@ function drawFx(ctx, th, pal, S, o) {
     ctx.beginPath(); ctx.arc(ex0, ey0, Math.max(0.8, P * 0.012), 0, TAU); ctx.arc(ex1, ey1, Math.max(0.8, P * 0.012), 0, TAU); ctx.fill();
     ctx.restore();
   }
-  // frustration: steam puffs rising from two vents
+  // frustration: steam puffs rising from two vents (0.14 P growing to 0.35 P)
   for (const p of F.puffs) {
     if (p.life <= 0) continue;
-    const e = 1 - p.life, a = Math.pow(Math.sin(Math.PI * Math.min(1, e * 1.1)), 0.8) * 0.75;
-    blob(ctx, S.puff, p.x - ox, p.y - oy, p.r, p.r * 0.86, 0, a);
+    const e = 1 - p.life, a = Math.pow(Math.sin(Math.PI * Math.min(1, e * 1.08)), 0.7) * 0.85;
+    blob(ctx, S.puff, p.x - ox, p.y - oy, p.r, p.r * 0.88, 0, a);
   }
-  // sadness: its own soft cloud and a light drizzle
+  // sadness: its own soft rain cloud (lit on top, greyer below) and a light rain that splashes on its head
   if (F.cloud > 0.02) {
-    const cyc = cy - P * 1.02, drift = rm ? 0 : Math.sin(t * 0.25) * W * 0.04;
-    const a = F.cloud * 0.8;
-    blob(ctx, S.cloud, cx - W * 0.2 + drift, cyc + P * 0.03, W * 0.3, P * 0.17, 0, a);
-    blob(ctx, S.cloud, cx + W * 0.04 + drift, cyc - P * 0.05, W * 0.34, P * 0.2, 0, a);
-    blob(ctx, S.cloud, cx + W * 0.27 + drift, cyc + P * 0.04, W * 0.26, P * 0.15, 0, a);
-    ctx.save(); ctx.strokeStyle = 'rgba(208,226,255,1)'; ctx.lineWidth = Math.max(1, P * 0.018);
+    const G = FX_GEOM, ccx = cx + (rm ? 0 : Math.sin(t * 0.25) * W * 0.04), ccy = cy + P * G.cloudY;
+    const a = F.cloud * 0.92, cw = W * G.cloudW / 0.92;
+    blob(ctx, S.cloudBase, ccx, ccy + P * 0.09, cw * 0.44, P * 0.1, 0, a * 0.8);
+    for (let k = 0; k < CLOUD.length; k++) {
+      const L = CLOUD[k], br = rm ? 0 : 0.02 * Math.sin(t * 0.6 + k * 1.9);
+      blob(ctx, S.cloud, ccx + L[0] * cw, ccy + L[1] * P, L[2] * cw * (1 + br), L[3] * P * (1 + br), 0, a);
+    }
+    ctx.save();
+    ctx.lineCap = 'round';
     for (const d of F.drops) {
       if (d.life <= 0) continue;
-      const e = 1 - d.life, a2 = smooth(0, 0.1, e) * (1 - smooth(0.75, 1, e)) * 0.7 * F.cloud;
+      const x = cx + d.x, y = cy + d.y;
+      if (d.splash > 0) {
+        // a short splash where it lands: two droplets thrown out and a little ring
+        const k = d.splash, sa = (1 - k) * 0.85 * F.cloud, sy = cy + d.sy;
+        ctx.globalAlpha = R.alpha * sa;
+        blob(ctx, S.splash, x - P * 0.07 * k, sy - P * 0.06 * Math.sin(Math.PI * k), P * 0.022, P * 0.022, 0, 1);
+        blob(ctx, S.splash, x + P * 0.07 * k, sy - P * 0.05 * Math.sin(Math.PI * k), P * 0.02, P * 0.02, 0, 1);
+        ctx.strokeStyle = 'rgba(214,230,255,0.9)'; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.ellipse(x, sy + 1, P * (0.03 + 0.06 * k), P * (0.01 + 0.015 * k), 0, Math.PI, TAU); ctx.stroke();
+        continue;
+      }
+      const e = 1 - d.life, a2 = smooth(0, 0.06, e) * 0.9 * F.cloud;
       if (a2 < 0.01) continue;
       ctx.globalAlpha = R.alpha * a2;
-      ctx.beginPath(); ctx.moveTo(d.x - ox, d.y - oy); ctx.lineTo(d.x - ox - 0.6, d.y - oy + d.len); ctx.stroke();
+      ctx.strokeStyle = 'rgba(200,220,255,1)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 0.8, y + d.len); ctx.stroke();
     }
     ctx.restore();
   }
-  // siblings: mumble marks beside a talking mouth
+  // siblings: mumble marks beside a talking mouth ("))", drifting off as the syllable ends)
   if (th.kind === 'sibling') {
-    ctx.save(); ctx.strokeStyle = pal.inkB; ctx.lineWidth = Math.max(1, P * 0.035);
+    ctx.save(); ctx.strokeStyle = pal.inkB; ctx.lineWidth = Math.max(1.4, P * 0.05); ctx.lineCap = 'round';
     for (const m of F.marks) {
       if (m.life <= 0) continue;
-      ctx.globalAlpha = R.alpha * Math.sin(Math.PI * (1 - m.life)) * 0.7;
-      const a0 = m.side > 0 ? -0.6 : Math.PI - 0.6;
-      ctx.beginPath(); ctx.arc(m.x - ox - m.side * m.r, m.y - oy, m.r, a0, a0 + 1.2); ctx.stroke();
+      ctx.globalAlpha = R.alpha * Math.sin(Math.PI * (1 - m.life)) * 0.8;
+      const a0 = m.side > 0 ? -0.55 : Math.PI - 0.55;
+      ctx.beginPath(); ctx.arc(m.x - ox - m.side * m.r, m.y - oy, m.r * 0.62, a0, a0 + 1.1); ctx.stroke();
+      ctx.beginPath(); ctx.arc(m.x - ox - m.side * m.r, m.y - oy, m.r, a0 - 0.05, a0 + 1.15); ctx.stroke();
     }
     ctx.restore();
   }
@@ -469,13 +531,16 @@ function drawPropFront(ctx, th, o, S, pal) {
     blob(ctx, S.spec, -r * 0.36, -r * 0.4, r * 0.32, r * 0.16, -0.5, 0.45);
     ctx.restore();
   } else if (th.prop === 'shell') {
-    const L = ps.size, H = L * 0.36;
+    // drawn from its free end (origin) to the hinge (x = L), which stays on the rim
+    const L = ps.size, H = L * 0.36, flip = ps.flip ?? 1;
     ctx.save();
     ctx.translate(ps.x - ox, ps.y - oy); ctx.rotate(ps.ang);
-    ctx.globalAlpha *= 1 - 0.25 * ex;
+    // turning over as it swings open: edge-on half way, its back toward the head once open
+    ctx.scale(1, Math.abs(flip) < 0.08 ? 0.08 * (flip < 0 ? -1 : 1) : flip);
+    ctx.globalAlpha *= 1 - 0.18 * ex;
     // a scallop: a fan from the hinge, scalloped along its rim
     ctx.beginPath();
-    ctx.moveTo(0, 0);
+    ctx.moveTo(L, 0);
     const ribs = 7;
     for (let i = 0; i <= ribs; i++) {
       const a = -Math.PI * 0.98 + (i / ribs) * Math.PI * 0.98;
@@ -493,11 +558,11 @@ function drawPropFront(ctx, th, o, S, pal) {
     ctx.strokeStyle = 'rgba(150,70,64,0.35)'; ctx.lineWidth = 1;
     for (let i = 1; i < ribs; i++) {
       const a = -Math.PI * 0.98 + (i / ribs) * Math.PI * 0.98;
-      ctx.beginPath(); ctx.moveTo(L * 0.08, 0); ctx.lineTo(Math.cos(a) * L * 0.47 + L * 0.5, Math.sin(a) * H * 0.94); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(L * 0.92, 0); ctx.lineTo(Math.cos(a) * L * 0.47 + L * 0.5, Math.sin(a) * H * 0.94); ctx.stroke();
     }
-    // the hinge and a pearly highlight
-    ctx.fillStyle = '#d48b80'; ctx.beginPath(); ctx.ellipse(L * 0.04, -H * 0.02, L * 0.07, H * 0.12, 0, 0, TAU); ctx.fill();
-    blob(ctx, S.spec, L * 0.42, -H * 0.62, L * 0.16, H * 0.12, -0.2, 0.55);
+    // the hinge (on the rim) and a pearly highlight
+    ctx.fillStyle = '#d48b80'; ctx.beginPath(); ctx.ellipse(L * 0.95, -H * 0.02, L * 0.07, H * 0.14, 0, 0, TAU); ctx.fill();
+    blob(ctx, S.spec, L * 0.58, -H * 0.62, L * 0.16, H * 0.12, 0.2, 0.55);
     ctx.restore();
   } else if (th.prop === 'thread') {
     drawThread(ctx, th, o, pal, false);
@@ -531,54 +596,69 @@ function drawPropFront(ctx, th, o, S, pal) {
   void P;
 }
 
-// the tangled thread round its middle: back half behind the body, front half (with its knots) in front
+// the tangled thread round its middle: back half behind the body, front half (with its loops and
+// knot cluster) in front. Tangled, three strands wander and cross; loosened, one soft loop slips down.
+const THREAD_N = 16;
 function drawThread(ctx, th, o, pal, back) {
   const ps = th.propState, ox = o.ox || 0, oy = o.oy || 0, R = th.render, M = R.M, sb = th.sb, P = R.P, t = th.clock, rm = !!o.rm;
   const tangle = 1 - smooth(0, 1, ps.loose);
-  const v = ps.v ?? 0.56;
+  const v = ps.v ?? 0.74;
   const sp = th._propPt;
-  const N = 14;
-  let px0 = 0, py0 = 0;
+  const lw = Math.max(3, P * 0.034);
   ctx.save();
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  ctx.beginPath();
-  for (let k = 0; k <= N; k++) {
-    const u = -0.04 + (k / N) * 1.08;
-    // the band curves round the body: lower at the front, higher behind
-    const vv = back ? v - 0.06 : v + 0.035 * Math.sin(Math.PI * (k / N));
-    sb.sample(clamp(u), clamp(vv), sp);
-    let x = M[0] * sp.x + M[2] * sp.y + M[4] - ox, y = M[1] * sp.x + M[3] * sp.y + M[5] - oy;
-    if (!back) {
-      // tangles: a wandering thread with crossings, smoothing out as it loosens
-      const w = tangle * P * 0.04;
-      y += Math.sin(k * 1.7 + rnd(ps.seed, k) * 2.4) * w + (rm ? 0 : Math.sin(t * 1.1 + k) * w * 0.1);
-      x += Math.cos(k * 2.3 + rnd(ps.seed, k + 9) * 2.4) * w * 0.5;
+  // strands: the band itself, and (tangled) two more that wander over and under it
+  const strands = back ? 1 : tangle > 0.12 ? 3 : 1;
+  for (let st = 0; st < strands; st++) {
+    let px0 = 0, py0 = 0;
+    ctx.beginPath();
+    for (let k = 0; k <= THREAD_N; k++) {
+      const u = -0.04 + (k / THREAD_N) * 1.08;
+      // the band curves round the body: lower at the front, higher behind
+      const vv = back ? v - 0.06 : v + 0.035 * Math.sin(Math.PI * (k / THREAD_N));
+      sb.sample(clamp(u), clamp(vv), sp);
+      let x = M[0] * sp.x + M[2] * sp.y + M[4] - ox, y = M[1] * sp.x + M[3] * sp.y + M[5] - oy;
+      if (!back) {
+        const w = tangle * P * (st === 0 ? 0.035 : 0.06);
+        const ph = st * 2.1 + rnd(ps.seed, k + 31 * st) * 2.4;
+        y += Math.sin(k * (1.5 + 0.4 * st) + ph) * w + (rm ? 0 : Math.sin(t * 1.1 + k + st) * w * 0.1);
+        x += Math.cos(k * (2.1 + 0.3 * st) + ph) * w * 0.45;
+      }
+      if (k === 0) ctx.moveTo(x, y); else { ctx.quadraticCurveTo(px0, py0, (px0 + x) / 2, (py0 + y) / 2); }
+      px0 = x; py0 = y;
     }
-    if (k === 0) { ctx.moveTo(x, y); } else { const mx = (px0 + x) / 2, my = (py0 + y) / 2; ctx.quadraticCurveTo(px0, py0, mx, my); }
-    px0 = x; py0 = y;
+    ctx.lineTo(px0, py0);
+    ctx.strokeStyle = back ? 'rgba(200,64,96,0.45)' : st === 0 ? '#f2557c' : st === 1 ? '#e84a72' : '#ff7196';
+    ctx.lineWidth = st === 0 ? lw : lw * 0.8;
+    ctx.globalAlpha = R.alpha * (st === 0 ? 1 : 0.92 * smooth(0.12, 0.5, tangle));
+    ctx.stroke();
+    if (!back && st === 0) { ctx.strokeStyle = 'rgba(255,214,224,0.8)'; ctx.lineWidth = Math.max(1, lw * 0.28); ctx.stroke(); }
   }
-  ctx.lineTo(px0, py0);
-  ctx.strokeStyle = back ? 'rgba(200,64,96,0.4)' : '#f2557c';
-  ctx.lineWidth = Math.max(1.6, P * 0.022);
-  ctx.stroke();
+  ctx.globalAlpha = R.alpha;
   if (!back) {
-    ctx.strokeStyle = 'rgba(255,214,224,0.75)'; ctx.lineWidth = Math.max(0.7, P * 0.007); ctx.stroke();
-    // knots and loops (fewer and smaller as it loosens)
+    // a knot cluster at the front (three tight loops round a knot); loosened, a single small loop
+    sb.sample(0.62, clamp(v + 0.035), sp);
+    const kx = M[0] * sp.x + M[2] * sp.y + M[4] - ox, ky = M[1] * sp.x + M[3] * sp.y + M[5] - oy;
     const loops = tangle > 0.15 ? 3 : 1;
     for (let j = 0; j < loops; j++) {
-      const u = loops === 1 ? 0.62 : 0.26 + j * 0.24;
-      sb.sample(u, clamp(v + 0.03), sp);
-      const x = M[0] * sp.x + M[2] * sp.y + M[4] - ox, y = M[1] * sp.x + M[3] * sp.y + M[5] - oy;
-      const r = P * (0.035 + 0.035 * tangle);
-      ctx.strokeStyle = '#f2557c'; ctx.lineWidth = Math.max(1.4, P * 0.018);
+      const r = P * (0.04 + 0.04 * tangle) * (j === 1 ? 0.8 : 1);
+      const x = kx + (loops > 1 ? (j - 1) * P * 0.055 : 0), y = ky + (loops > 1 ? (j === 1 ? -P * 0.025 : P * 0.01) : 0);
+      ctx.strokeStyle = j === 1 ? '#ff7196' : '#f2557c'; ctx.lineWidth = Math.max(2.4, lw * 0.85);
       ctx.beginPath();
-      for (let q = 0; q <= 18; q++) {
-        const a = (q / 18) * TAU * (1 + tangle * 0.8), rr = r * (0.75 + 0.35 * Math.sin(q * 1.3 + j));
-        const X = x + Math.cos(a + j) * rr, Y = y + Math.sin(a + j) * rr * 0.75;
+      for (let q = 0; q <= 20; q++) {
+        const a = (q / 20) * TAU * (1 + tangle * 0.6), rr = r * (0.75 + 0.35 * Math.sin(q * 1.3 + j * 2));
+        const X = x + Math.cos(a + j * 1.7) * rr, Y = y + Math.sin(a + j * 1.7) * rr * 0.72;
         if (q === 0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
       }
       ctx.stroke();
-      if (tangle > 0.15) { ctx.fillStyle = '#c93a62'; ctx.beginPath(); ctx.arc(x + r * 0.2, y, Math.max(1.6, P * 0.016), 0, TAU); ctx.fill(); }
+    }
+    if (tangle > 0.15) {
+      ctx.fillStyle = '#c93a62'; ctx.beginPath(); ctx.ellipse(kx, ky, P * 0.03 * (0.6 + 0.4 * tangle), P * 0.024 * (0.6 + 0.4 * tangle), 0.4, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,200,215,0.85)'; ctx.beginPath(); ctx.arc(kx - P * 0.008, ky - P * 0.008, P * 0.008, 0, TAU); ctx.fill();
+      // two loose ends hanging from the knot
+      ctx.strokeStyle = '#f2557c'; ctx.lineWidth = lw * 0.75;
+      ctx.beginPath(); ctx.moveTo(kx, ky); ctx.quadraticCurveTo(kx - P * 0.03, ky + P * 0.06, kx - P * 0.015, ky + P * 0.11 * tangle); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(kx, ky); ctx.quadraticCurveTo(kx + P * 0.04, ky + P * 0.05, kx + P * 0.035, ky + P * 0.09 * tangle); ctx.stroke();
     }
   }
   ctx.restore();

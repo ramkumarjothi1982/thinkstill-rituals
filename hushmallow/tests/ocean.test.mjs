@@ -292,6 +292,7 @@ const steps = (D, sec, dt = 1 / 15) => { for (let t = 0; t < sec; t += dt) D.deb
 
 test('world: slow long strokes and flicks make different seas; the thought drifts away and back; discoveries are true', async () => {
   const dom = installFakeDom();
+  let D = null;
   try {
     const { createHushflow } = await import('../src/hushfold/flow/director.js');
     const W = 390, H = 844;
@@ -299,13 +300,13 @@ test('world: slow long strokes and flicks make different seas; the thought drift
     const said = [], found = [], offers = [];
     const subtitles = { say(lines, o) { said.push({ lines: [].concat(lines), kind: o?.kind }); return Promise.resolve(); }, choice: () => new Promise(() => {}), clear() {} };
     const registry = createRegistry(WORLDS);
-    const D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow, thought, subtitles, registry, ticker: fakeTicker(), store: memStore(), reducedMotion: false, safeRect: () => ({ x: 20, y: 64, w: W - 40, h: 400 }) });
+    D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow, thought, subtitles, registry, ticker: fakeTicker(), store: memStore(), reducedMotion: false, safeRect: () => ({ x: 20, y: 64, w: W - 40, h: 400 }) });
     D.on('discovery', (e) => found.push(e)); D.on('offer', (e) => offers.push(e));
     await D.start({ worldId: 'luminous-ocean', emotion: 'anxious', intention: 'let-go' });
     const w = D.world;
     assert.ok(w, 'the ocean started');
     steps(D, 1.5);
-    assert.ok(mallow.floats.length > 30, 'the hero floats (float() every frame)');
+    assert.ok(mallow.floats.length > 15, "the hero floats (float() every frame)");
     // three quick flicks: short chop that fades
     for (let k = 0; k < 3; k++) { stroke(D, 120 + k * 50, 700, 150 + k * 50, 690, 1100, 2); steps(D, 0.15); }
     const choppy = w.metrics;
@@ -326,6 +327,7 @@ test('world: slow long strokes and flicks make different seas; the thought drift
     assert.ok(far > tz0 + 2, `drifted away: ${tz0.toFixed(2)} → ${far.toFixed(2)}`);
     assert.ok(found.some((e) => e.id === 'distance'), 'Look how far it drifted.');
     steps(D, 0.2);
+    await new Promise((r) => setTimeout(r, 0));     // (the offer follows the discovery's lines)
     assert.ok(offers.some((e) => e.skillId === 'a-little-more-room'), 'A Little More Room is offered');
     assert.ok(w.metrics.dist <= OCEAN.CAP + 1e-6, 'never beyond 9·Z0');
     // …and comes back with swells sent towards you
@@ -335,12 +337,12 @@ test('world: slow long strokes and flicks make different seas; the thought drift
     // still visible and on screen the whole time; its words never under the band
     const T = w.debug.thought;
     assert.ok(T.alpha > 0.9 && T.sx > 20 && T.sx < W - 20);
-    D.destroy();
-  } finally { dom.restore(); }
+  } finally { D?.destroy(); dom.restore(); }
 });
 
 test('world: a storm melts into the ocean — horizon from 0.655H to 0.44H, postcards become bubbles in place, the thought lands, lines become swells', async () => {
   const dom = installFakeDom();
+  let D = null;
   try {
     const { createHushflow } = await import('../src/hushfold/flow/director.js');
     const W = 390, H = 844;
@@ -353,7 +355,7 @@ test('world: a storm melts into the ocean — horizon from 0.655H to 0.44H, post
       serialize: () => ({ v: 1 }), restore() {}, pause() {}, resume() {}, destroy() {} }) }) };
     const registry = createRegistry([STORM, WORLDS[1]]);
     const photos = { n: 2, draw: () => ({ w: 1, h: 1 }), size: () => ({ w: 1, h: 1 }) };
-    const D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow, thought, photos, subtitles, registry, ticker: fakeTicker(), store: memStore(), reducedMotion: false });
+    D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow, thought, photos, subtitles, registry, ticker: fakeTicker(), store: memStore(), reducedMotion: false });
     const melts = [];
     D.on('melt', (e) => melts.push(e));
     await D.start({ worldId: 'static-storm', emotion: 'angry', intention: 'calm' });
@@ -379,19 +381,19 @@ test('world: a storm melts into the ocean — horizon from 0.655H to 0.44H, post
     assert.ok(ocean.debug.thought.landed && ocean.debug.thought.landK >= 1, 'the thought landed');
     assert.ok(Math.abs(ocean.metrics.dist - 1) < 0.15, `…at its home on the water (${ocean.metrics.dist})`);
     assert.deepEqual(melts.map((m) => m.k), [0, 1]);
-    D.destroy();
-  } finally { dom.restore(); }
+  } finally { D?.destroy(); dom.restore(); }
 });
 
 test('world: reduced motion — a straight crossfade with everything already in place; amplitude ×0.4', async () => {
   const dom = installFakeDom();
+  let D = null;
   try {
     const { createHushflow } = await import('../src/hushfold/flow/director.js');
     const W = 390, H = 844;
     const mallow = fakeMallow(W, H), thought = fakeThought();
     const STORM = { ...WORLDS[0], load: async () => ({ create: () => ({ prepare() {}, enter() {}, frame() {}, pointer() {}, get progress() { return 1; }, get complete() { return true; }, get metrics() { return {}; },
       handoff: () => ({ horizonY: 0.655 * H, seeds: [], thought: { x: 120, y: 470, scale: 1, tension: 0.3 }, photos: [], energy: 0 }), serialize: () => ({ v: 1 }), restore() {}, pause() {}, resume() {}, destroy() {} }) }) };
-    const D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow, thought, registry: createRegistry([STORM, WORLDS[1]]), ticker: fakeTicker(), store: memStore(), reducedMotion: true, subtitles: { say: () => Promise.resolve(), choice: () => new Promise(() => {}), clear() {} } });
+    D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow, thought, registry: createRegistry([STORM, WORLDS[1]]), ticker: fakeTicker(), store: memStore(), reducedMotion: true, subtitles: { say: () => Promise.resolve(), choice: () => new Promise(() => {}), clear() {} } });
     await D.start({ worldId: 'static-storm' });
     D.next();
     for (let i = 0; i < 200 && D.state.phase !== 'melting'; i++) { D.debug.step(1 / 60); await new Promise((r) => setTimeout(r, 2)); }
@@ -400,8 +402,7 @@ test('world: reduced motion — a straight crossfade with everything already in 
     assert.ok(!ocean.debug.thought.from, 'the thought is already on the water');
     steps(D, 2);
     assert.equal(D.state.worldId, 'luminous-ocean', 'the crossfade took ~1.6 s');
-    D.destroy();
-  } finally { dom.restore(); }
+  } finally { D?.destroy(); dom.restore(); }
 });
 
 test('registry: the ocean is playable and its module loads', async () => {

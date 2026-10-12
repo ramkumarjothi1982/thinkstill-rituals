@@ -18,8 +18,10 @@ export const LIMITS = Object.freeze({
   totalMin: 15, totalMax: 35, lineMax: 22, lineMin: 3,
   field: { known_fact: 20, possible_assumption: 20, alternative_angle: 24, practical_next_step: 20 },
   repeatSimilarity: 0.5, repeatLineSimilarity: 0.6,
-  // Novelty on meaning-bearing words (eval run 1: real follow-ups shared at
-  // most one; paraphrases three or more at a Jaccard of 0.27 and up).
+  // Novelty on meaning-bearing words (eval runs 1 and 2: real follow-ups
+  // shared at most one; close paraphrases three or more at a Jaccard of 0.27
+  // and up). A backstop for near-verbatim repeats only: it cannot see the same
+  // point made in other words, which the judge measures (README).
   meaningShared: 3, meaningSimilarity: 0.25, meaningSimilarityPair: 0.5,
   // What the prompt aims for; the gate enforces totalMin–totalMax.
   aimMin: 16, aimMax: 28,
@@ -450,6 +452,8 @@ const UNIT_CLASSES = /** @type {const} */ ([
 /** @param {string} w */
 const unitClassOf = (w) => UNIT_CLASSES.find(([, re]) => re.test(w.toLowerCase()))?.[0] ?? null;
 const UNIT_GAP_STOP = new Set(['of', 'or', 'and', 'to', 'in', 'on', 'at', 'more', 'less', 'other', 'than', 'a', 'an', 'the', 'for', 'by', 'from', 'with', 'per', 'you', 'your', 'it', 'is', 'was']);
+const NEXT_AHEAD = /\b(?:if|before|next|booking|book|when|whether|will|would|could|might)\b/iu;
+const NEXT_DONE = /\b(?:after|since|already|so far|ago|you(?:'ve| have| had))\b/iu;
 const UNIT_BEFORE = /\b(tests?|attempts?|tries|resits?|retakes?|goes|week|day|year|month)\s+(?:number\s+|no\.\s*)$/iu;
 /**
  * The unit a number counts: "two weeks", "a five-hour wait", "three failed
@@ -662,8 +666,12 @@ export function qualityGate(scene, ctx) {
         const unit = unitOf(tok, x);
         const theirs = unit ? inputNums.units.get(unit) : undefined;
         if (theirs && tok.value !== 1) {
-          // Their unit: the same value, or an ordinal naming an earlier one.
+          // Their unit: the same value, or an ordinal naming an earlier one;
+          // or the next attempt, looked at ahead ("before booking test number
+          // four", "if she cancels a fourth time"), never as something done.
           if (theirs.includes(tok.value) || (tok.kind === 'ordinal' && tok.value <= Math.max(...theirs))) continue;
+          const lead = x.slice(0, tok.start).split(/[,;:]/).pop() || '';
+          if (unit === 'attempt' && tok.value === Math.max(...theirs) + 1 && NEXT_AHEAD.test(lead) && !NEXT_DONE.test(lead)) continue;
           fail('invented_detail', field, `Do not change the details the person gave: they gave ${theirs.join(' and ')} for this, not "${tok.raw}". Use their numbers, or none.`);
           break numbers;
         }

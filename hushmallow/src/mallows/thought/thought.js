@@ -21,13 +21,21 @@
 // Handle (HUSHFOLD §3 W2): { id, text, emotion, x, y, z, scale, state:{tension, charge,
 // calm, distance}, react(kind), soften(k), settle(k), transform(k), hitTest(x, y),
 // pointer(e), destroy() } + slow, makeSpace, farther, closer, moveHome, token, siblings.
-// x / y / scale / state may be written by a world every frame: a written value
-// wins (the thought only adds its own life on top while it is driven).
+// x / y / z / scale / rot / state may be written by a world every frame: a written
+// value wins (the thought only adds its own life on top while it is driven).
+//   z         depth 0 (near) … 1 (far), clamped: smaller, a little higher and fainter;
+//             the words stay 17 px (fewer of them far away). Writing z puts it there at
+//             once; farther(k) / closer(k) / state.distance ease it to level k.
+//   rot       an extra tilt (radians, clamped to ±0.6), e.g. a swell rocking it; it
+//             eases back to 0 half a second after the last write.
+//   labelSide 'below' | 'above' | 'left' | 'right' | null: where the host would like
+//             the words (a hint the layer honours unless that side covers the hero, a
+//             face or other words).
 // No DOM here (Node runs it); a ThoughtLayer renders it and owns its word tag.
 
 import { SoftBody } from '../touch/softbody.js';
 import { TouchReader } from '../touch/gestures.js';
-import { SHAPE, styleFor, normaliseEmotion, deriveLook, makeLook, outlineUV, insideUV, siblingCount, tagBudget, wordsExcerpt, clamp, lerp } from './styles.js';
+import { SHAPE, styleFor, normaliseEmotion, deriveLook, makeLook, outlineUV, insideUV, siblingCount, tagBudget, wordsExcerpt, clamp, lerp, smooth } from './styles.js';
 
 const TAU = Math.PI * 2;
 const COLS = 10, ROWS = 10;
@@ -94,7 +102,9 @@ export class ThoughtMallow {
     this._vPrev = { x: 0, y: 0 };
     this._drivenT = -9;           // clock of the last external x / y write
     this._scale = o.scale > 0 ? +o.scale : 1; this._scaleT = -9;
-    this.z = clamp(o.z ?? 0); this.zGoal = this.z;
+    this._z = clamp(o.z ?? 0); this.zGoal = this._z; this._zT = -9;
+    this.zFloor = 0;              // the layer may hold it a little farther when the stage is full
+    this._rot = 0; this._rotT = -9; this.labelSide = null;
     this.off = { x: 0, y: 0 };    // its own life on top of the anchor (bob, tremble, sink, drift)
     this._sink = 0; this._drift = { x: 0, y: 0 }; this._driftDir = { x: 1, y: 0 };
     this._glide = false;          // a tossed thought gliding to rest
@@ -127,7 +137,7 @@ export class ThoughtMallow {
     this.material = { ...THOUGHT_MATERIAL, ...(o.material || {}) };
     this.sb = new SoftBody({ cols: o.cols || COLS, rows: o.rows || ROWS, aspect: this.aspect, mask, faceRect: [0.27, 0.36, 0.73, 0.72],
       material: this._mat(), reducedMotion: this.reducedMotion });
-    this._matKey = '';
+    this._matKey = -1;
     this._touchSquash = 0;
 
     // render data (client CSS px), filled by step()
@@ -168,6 +178,12 @@ export class ThoughtMallow {
   set y(v) { if (!Number.isFinite(v)) return; this._pos.y = v; this.home.y = v; this._drivenT = this.clock; this._glide = false; }
   get scale() { return this._scale; }
   set scale(v) { if (Number.isFinite(v) && v > 0) { this._scale = v; this._scaleT = this.clock; } }
+  /** Depth 0 (near) … 1 (far), clamped. Writing it puts the thought there now (a world driving it). */
+  get z() { return this._z; }
+  set z(v) { if (!Number.isFinite(v)) return; this._z = clamp(v); this.zGoal = this._z; this._zT = this.clock; }
+  /** An extra tilt a world may write (radians, ±0.6); it fades half a second after the last write. */
+  get rot() { return this.clock - this._rotT < 0.5 ? this._rot : 0; }
+  set rot(v) { if (!Number.isFinite(v)) return; this._rot = clamp(v, -0.6, 0.6); this._rotT = this.clock; }
   /** Being positioned by someone else (a world writes x / y every frame). */
   get driven() { return this.clock - this._drivenT < 0.5; }
   /** The words its tag shows now (exact text, or an excerpt of it when long or far away). */
@@ -186,20 +202,34 @@ export class ThoughtMallow {
 
   // -------------------------------------------------------------- verbs --
   // each eases a level toward k (0..1); no argument adds a step. None removes the thought.
-  _verb(key, k, step = 0.34) { const L = this.levels[key]; L.goal = Number.isFinite(k) ? clamp(k) : clamp(L.goal + step); if (this.reducedMotion) L.cur = lerp(L.cur, L.goal, 0.6); return this; }
+  // true when the goal changed (a 'verb' event is sent only then: a world may call a verb every frame)
+  _verb(key, k, step = 0.34) {
+    const L = this.levels[key], was = L.goal;
+    L.goal = Number.isFinite(k) ? clamp(k) : clamp(L.goal + step);
+    if (this.reducedMotion) L.cur = lerp(L.cur, L.goal, 0.6);
+    return Math.abs(L.goal - was) > 1e-6;
+  }
+  _verbAll(key, name, k, withSiblings = true) {
+    const ch = this._verb(key, k);
+    if (withSiblings) for (const s of this.siblings) s._verb(key, k);
+    if (ch) this._emit('verb', { verb: name, level: this.levels[key].goal });
+    return this;
+  }
   /** Softer jelly, gentler face, the tint mellows. */
-  soften(k) { this._verb('soft', k); for (const s of this.siblings) s._verb('soft', k); this._emit('verb', { verb: 'soften', level: this.levels.soft.goal }); return this; }
+  soften(k) { return this._verbAll('soft', 'soften', k); }
   /** Everything about it moves more slowly. */
-  slow(k) { this._verb('slow', k); for (const s of this.siblings) s._verb('slow', k); this._emit('verb', { verb: 'slow', level: this.levels.slow.goal }); return this; }
+  slow(k) { return this._verbAll('slow', 'slow', k); }
   /** Room around it: others drift away, its siblings spread out. */
-  makeSpace(k) { this._verb('space', k); this._emit('verb', { verb: 'space', level: this.levels.space.goal }); return this; }
+  makeSpace(k) { return this._verbAll('space', 'space', k, false); }
   /** It sinks a little, stops bobbing and rests. */
-  settle(k) { this._verb('settle', k); for (const s of this.siblings) s._verb('settle', k); this._emit('verb', { verb: 'settle', level: this.levels.settle.goal }); return this; }
+  settle(k) { return this._verbAll('settle', 'settle', k); }
   /** Its tint turns to the calm palette and its face relaxes into relief. */
-  transform(k) { this._verb('transform', k); for (const s of this.siblings) s._verb('transform', k); this._emit('verb', { verb: 'transform', level: this.levels.transform.goal }); return this; }
-  /** Farther away (z): smaller, quieter — the words stay readable. */
-  farther(k) { this.zGoal = Number.isFinite(k) ? clamp(k) : clamp(this.zGoal + 0.3); this._emit('verb', { verb: 'farther', level: this.zGoal }); return this; }
-  closer(k) { this.zGoal = Number.isFinite(k) ? clamp(this.zGoal - k) : clamp(this.zGoal - 0.3); this._emit('verb', { verb: 'closer', level: this.zGoal }); return this; }
+  transform(k) { return this._verbAll('transform', 'transform', k); }
+  /** Ease to distance level k (0 near … 1 far); no argument: one step farther. Smaller and quieter; the words stay readable. */
+  farther(k) { return this._depth(Number.isFinite(k) ? clamp(k) : clamp(this.zGoal + 0.3), 'farther'); }
+  /** Ease to distance level k (0 near … 1 far) as well; no argument: one step nearer. */
+  closer(k) { return this._depth(Number.isFinite(k) ? clamp(k) : clamp(this.zGoal - 0.3), 'closer'); }
+  _depth(g, name) { const ch = Math.abs(g - this.zGoal) > 1e-6; this.zGoal = g; if (ch) this._emit('verb', { verb: name, level: g }); return this; }
   /** Alias for worlds that speak of distance. */
   moveFarther(k) { return this.farther(k); }
 
@@ -251,6 +281,17 @@ export class ThoughtMallow {
 
   get pressed() { return this.reader.ptrs.size > 0; }
 
+  /** Keyboard (the words tag forwards it): holding Space squeezes, like a held finger. {type:'down'|'up', key, t (s), repeat} */
+  key(e) { return this.reader.key(e); }
+  /** Keyboard stroke (Shift + an arrow on the words tag): a gentle stroke across it in (dx, dy). */
+  keyStroke(dx, dy) {
+    this._soothe(0.13, 'stroke');
+    if (!this.reducedMotion) this.sb.impulse(dx * 0.5, dy * 0.5, { x: this.aspect / 2 - dx * 0.2, y: 0.5 - dy * 0.2, r: 0.35 });
+    this._haptic('tick');
+    this._emit('touch', { kind: 'stroke', dir: dx || dy, key: true });
+    return this;
+  }
+
   /** For a saved belief or thought: words, feeling, seed and levels (never pixels). */
   toJSON() {
     const lv = {};
@@ -261,7 +302,7 @@ export class ThoughtMallow {
   restore(j = {}) {
     for (const k of LEVELS) if (j.levels && Number.isFinite(j.levels[k])) { this.levels[k].goal = this.levels[k].cur = clamp(j.levels[k]); }
     if (Number.isFinite(j.calm)) this.earned.calm = clamp(j.calm);
-    if (Number.isFinite(j.z)) this.z = this.zGoal = clamp(j.z);
+    if (Number.isFinite(j.z)) this._z = this.zGoal = clamp(j.z);
     return this;
   }
 
@@ -275,7 +316,7 @@ export class ThoughtMallow {
     this.listeners = {};
   }
 
-  setReducedMotion(b) { this.reducedMotion = !!b; this.sb.setReducedMotion(b); this._matKey = ''; for (const s of this.siblings) s.setReducedMotion(b); }
+  setReducedMotion(b) { this.reducedMotion = !!b; this.sb.setReducedMotion(b); this._matKey = -1; for (const s of this.siblings) s.setReducedMotion(b); }
   setLowStim(b) { this.lowStim = !!b; for (const s of this.siblings) s.setLowStim(b); }
 
   // ------------------------------------------------------------- input --
@@ -286,7 +327,7 @@ export class ThoughtMallow {
       const b = this._toBody(x, y);
       this.sb.grab(e.id, b.x, b.y, 0.3);
       this.sb.press(e.id, b.x, b.y, 0, 0.24);
-      this.fingers.set(e.id, { x, y, x0: x, y0: y, band: 0, carry: false, ox: 0, oy: 0, moved: 0, squeezed: false });
+      this.fingers.set(e.id, { id: e.id, x, y, x0: x, y0: y, band: 0, carry: false, ox: 0, oy: 0, moved: 0, squeezed: false });
       this.ov.notice = 1;
       this._haptic('light');
       if (R.ptrs.size === 1) this.audio?.fx?.('bubble', { intensity: 0.16, pitch: 1.2 - 0.3 * clamp((this.render.P - 40) / 120) });
@@ -413,7 +454,7 @@ export class ThoughtMallow {
     const rm = env.rm ?? this.reducedMotion, low = env.low ?? this.lowStim;
     if (rm !== this.reducedMotion) this.setReducedMotion(rm);
     this.lowStim = low;
-    const L = this.levels, sv = this.state._v, ext = this.state._ext, recent = (k) => this.clock - ext[k] < 0.5;
+    const L = this.levels, sv = this.state._v, ext = this.state._ext, clk = this.clock;
     // the verbs ease in (about a second), the person's touch fades back very slowly
     const ke = Math.min(1, dt * (rm ? 6 : 1.8));
     for (const k of LEVELS) L[k].cur += (L[k].goal - L[k].cur) * ke;
@@ -421,12 +462,14 @@ export class ThoughtMallow {
     // siblings pulled apart give the main thought room
     if (this.siblings.length) this.earned.space = this._siblingSpace();
     // state: written values win; otherwise it follows its feeling, its touch and the verbs
-    if (!recent('tension')) sv.tension = this.base.tension;
-    if (!recent('charge')) sv.charge = this.base.charge;
-    if (!recent('calm')) sv.calm = clamp(Math.max(this.earned.calm, L.transform.cur, 0.5 * L.settle.cur, this.parent ? this.parent.state.calm * 0.8 : 0));
-    // depth
-    if (!recent('distance')) sv.distance = this.z;
-    this.z += (this.zGoal - this.z) * Math.min(1, dt * (rm ? 8 : 2.2));
+    if (clk - ext.tension >= 0.5) sv.tension = this.base.tension;
+    if (clk - ext.charge >= 0.5) sv.charge = this.base.charge;
+    if (clk - ext.calm >= 0.5) sv.calm = clamp(Math.max(this.earned.calm, L.transform.cur, 0.5 * L.settle.cur, this.parent ? this.parent.state.calm * 0.8 : 0));
+    // depth: eased to its goal (or the layer's floor when the stage is full), unless a world writes z
+    if (clk - ext.distance >= 0.5) sv.distance = this._z;
+    // (a sibling is as near or far as its thought, and as big)
+    if (this.parent) { this._z = this.parent._z; this._scale = this.parent._scale; }
+    else if (clk - this._zT >= 0.5) this._z += (Math.max(this.zGoal, this.zFloor) - this._z) * Math.min(1, dt * (rm ? 8 : 2.2));
     // the look
     const li = this._lookIn;
     li.tension = sv.tension; li.charge = sv.charge; li.calm = sv.calm; li.transform = L.transform.cur;
@@ -434,10 +477,14 @@ export class ThoughtMallow {
     li.space = Math.max(L.space.cur, this.earned.space, this.parent ? this.parent.levels.space.cur : 0);
     const look = deriveLook(this.style, li, this.look);
     // material follows softening / slowing
-    const mk = `${li.soft.toFixed(2)}|${li.slow.toFixed(2)}|${rm}`;
+    const mk = Math.round(li.soft * 100) * 1000 + Math.round(li.slow * 100) * 2 + (rm ? 1 : 0);
     if (mk !== this._matKey) { this._matKey = mk; this.sb.setMaterial(this._mat()); }
     this._readTouch(dt, env.now);
+    const mx0 = this._pos.x, my0 = this._pos.y;
     this._motion(dt, env, look, rm);
+    // its siblings come along however it moves (a carry, a toss, a glide to a new home): a ring that
+    // keeps together, with its own soft settle on top (never a spring lagging across the stage)
+    const mdx = this._pos.x - mx0, mdy = this._pos.y - my0;
     this._rest(look);
     this._propPre?.(dt, env);       // a belief's prop leans on the jelly (belief.js)
     this.sb.step(dt);
@@ -445,7 +492,10 @@ export class ThoughtMallow {
     this._computeRender(look, env);
     this._propPost?.(dt, env);
     stepFx(this, dt, look, env, rm, low);
-    for (const s of this.siblings) { if (!s.free && !s.pressed && !s.driven) siblingHome(this, s, s.home); s.step(dt, env); }
+    for (const s of this.siblings) {
+      if (!s.free && !s.pressed && !s.driven) { s._pos.x += mdx; s._pos.y += mdy; siblingHome(this, s, s.home); }
+      s.step(dt, env);
+    }
     return true;
   }
 
@@ -593,17 +643,20 @@ export class ThoughtMallow {
     const sinkGoal = m.sink * P;
     this._sink += (sinkGoal - this._sink) * Math.min(1, dt * (rm ? 4 : 0.35));
     oy += this._sink;
-    // loneliness drifts away from the others (slowly; soothing or carrying it close stops it)
+    // loneliness drifts away from the others (slowly; soothing or carrying it close stops it). It is
+    // its resting place that drifts, so the layer sees where it is going (and keeps the room it needs)
     const D = this._drift;
-    if (m.drift > 0.02 && !carry && !this.driven && env.away && !rm) {
+    if (m.drift > 0.02 && !carry && !this._glide && !this.driven && env.away && !rm) {
       const dx = pos.x - env.away.x, dy = pos.y - env.away.y, l = Math.hypot(dx, dy) || 1;
       const lim = 0.12 * Math.min(env.view?.W || 400, env.view?.H || 800) * m.drift;
       const cur = Math.hypot(D.x, D.y);
-      if (cur < lim) { D.x += (dx / l) * dt * 5 * m.drift; D.y += (dy / l) * dt * 2 * m.drift; }
-    } else { D.x *= Math.exp(-dt * 0.6); D.y *= Math.exp(-dt * 0.6); }
-    ox += D.x; oy += D.y;
+      if (cur < lim) {
+        const sx = (dx / l) * dt * 5 * m.drift, sy = (dy / l) * dt * 2 * m.drift;
+        D.x += sx; D.y += sy; home.x += sx; home.y += sy;
+      }
+    }
     // farther away it also sits a little higher, toward the horizon
-    oy -= this.z * 0.45 * this.r;
+    oy -= this._z * 0.45 * this.r;
     // a sibling's own place: in a ring round its main thought
     this.off.x = ox; this.off.y = oy;
   }
@@ -646,7 +699,8 @@ export class ThoughtMallow {
       ph.burst += dt * TAU * 0.3;
       const on = Math.sin(ph.burst) > -0.25 ? 1 : 0;
       const quiet = 1 - clamp(this.earned.calm * 1.6);
-      this.talk = P0 * quiet * on * Math.pow(Math.max(0, Math.sin(ph.talk)), 0.7);
+      // a chattering sibling opens its mouth wide (syllables you can see at phone size); calm closes it
+      this.talk = smooth(0.05, 0.4, P0) * quiet * on * Math.pow(Math.max(0, Math.sin(ph.talk)), 0.7);
     }
   }
 
@@ -669,7 +723,7 @@ export class ThoughtMallow {
   // body units → client px, the outline and the named points
   _computeRender(look, env) {
     const R = this.render, pos = this._pos;
-    const zs = lerp(1, 0.5, this.z);
+    const zs = lerp(1, 0.5, this._z);
     const shrinkK = 1 - 0.16 * look.motion.shrink;
     const appear = this.ov.appear, ap = this.reducedMotion ? 1 : 0.35 + 0.65 * easeOutBack(appear);
     const P = this.r * 2 * this._scale * zs * shrinkK * ap;
@@ -679,6 +733,8 @@ export class ThoughtMallow {
     if (this.emotion === 'embarrassment') ang += 0.07 * look.e * (look.face.lookX >= 0 ? 1 : -1);
     // a belief leans under the weight it carries (belief.js sets lean)
     if (this.lean) ang += this.lean;
+    // a world's own tilt (a swell rocking it)
+    if (this.clock - this._rotT < 0.5) ang += this._rot;
     const co = Math.cos(ang), si = Math.sin(ang), a = this.aspect;
     const M = R.M;
     M[0] = co * P; M[1] = si * P; M[2] = -si * P; M[3] = co * P;
@@ -687,7 +743,7 @@ export class ThoughtMallow {
     const det = M[0] * M[3] - M[1] * M[2] || 1e-9, I = R.Minv;
     I[0] = M[3] / det; I[1] = -M[1] / det; I[2] = -M[2] / det; I[3] = M[0] / det;
     R.P = P; R.W = P * a; R.cx = cx; R.cy = cy; R.ang = ang;
-    R.alpha = (1 - 0.28 * this.z) * clamp(appear * 1.6);
+    R.alpha = (1 - 0.28 * this._z) * clamp(appear * 1.6);
     const sb = this.sb, sp = this._sp, O = R.outline, Q = R.pts;
     for (let i = 0; i < OUTLINE_N; i++) {
       sb.sample(OUTLINE[2 * i], OUTLINE[2 * i + 1], sp);
@@ -772,79 +828,171 @@ const easeOutBack = (t) => { const c1 = 1.4, c3 = c1 + 1; return t >= 1 ? 1 : 1 
 // ---------------------------------------------------------------- effects --
 // Fixed pools per thought: arcs (anger), puffs (frustration steam), drops
 // (sadness rain), a sweat drop (anxiety), mumble marks (siblings). Spawn rates
-// come from the look; everything fades in and out softly (photosafe).
+// come from the look; everything fades in and out softly (photosafe). Sizes
+// are fractions of the body height P, chosen to read at phone size (a 76 px
+// thought): rain drops 0.12 P long and 2 px wide, steam puffs 0.14 → 0.35 P,
+// a sibling's open mouth up to 0.2 P tall.
+//
+// Where they are drawn (relative to the body centre, × P; the layer keeps the
+// words, the hero and the screen edges clear of this zone — fxRect()):
+export const FX_GEOM = Object.freeze({
+  cloudY: -0.98, cloudH: 0.34, cloudW: 0.92,       // the sadness cloud: centre, height (× P), width (× W)
+  rainTop: -0.82, dropLen: 0.12, dropVy: 1.25,      // drops leave the cloud's base, fall at 1.25 P/s
+  steamRise: 0.6, puffR0: 0.14, puffR1: 0.35,       // steam: rises 0.6 P while each puff grows 0.14 → 0.35 P
+  arcOut: 0.16,                                      // arcs crackle up to 0.16 P outside the rim
+});
 function makeFx() {
   const pool = (n, keys) => Array.from({ length: n }, () => { const o = { life: 0, dur: 1 }; for (const k of keys) o[k] = 0; return o; });
   return {
     arcs: pool(3, ['i', 'len', 'seed', 'side']), arcT: 0,
-    puffs: pool(10, ['x', 'y', 'vx', 'vy', 'r']), steamT: 0, huff: 0,
-    drops: pool(12, ['x', 'y', 'vy', 'len']), rainT: 0, cloud: 0,
+    puffs: pool(10, ['x', 'y', 'vx', 'vy', 'r', 'r0', 'r1']), steamT: 0, huff: 0, steamOn: 0,
+    // rain: positions relative to the body centre (the drizzle travels with its thought)
+    drops: pool(14, ['x', 'y', 'vy', 'len', 'splash', 'sy']), rainT: 0, cloud: 0,
     sweat: { t: 0.4, on: 0 },
-    marks: pool(3, ['x', 'y', 'side', 'r']), markT: 0, talkWas: 0,
+    marks: pool(4, ['x', 'y', 'side', 'r']), markT: 0, talkWas: 0,
   };
 }
+function spawnFrom(pool) { for (let i = 0; i < pool.length; i++) if (pool[i].life <= 0) return pool[i]; return null; }
 
 function stepFx(th, dt, look, env, rm, low) {
-  const F = th.fx, R = th.render, P = R.P, fx = look.fx, t = th.clock, seed = th.seed;
-  const live = (p) => p.life > 0;
-  const spawn = (pool) => { for (const p of pool) if (!live(p)) return p; return null; };
+  const F = th.fx, R = th.render, P = R.P, fx = look.fx, t = th.clock, seed = th.seed, G = FX_GEOM;
   const k = low ? 0.35 : 1;
   // anger: micro-arcs along the rim (≤ 3 a second, each fades in over 0.28 s)
   F.arcT += dt * fx.crackle * k * (rm ? 0.4 : 1);
   if (F.arcT >= 1) {
     F.arcT -= 1;
-    const a = spawn(F.arcs);
+    const a = spawnFrom(F.arcs);
     if (a) {
       const i = Math.floor(t * 31);
       // round the head and shoulders (outline 0 is the top centre; the base, 14–30, stays quiet)
-      const k = rnd(seed, i + 1);
+      const kk = rnd(seed, i + 1);
       a.life = 1; a.dur = 0.62 + 0.25 * rnd(seed, i); a.len = 4 + Math.floor(rnd(seed, i + 2) * 3);
-      a.i = (k < 0.5 ? 34 + Math.floor(k * 2 * 12) : 1 + Math.floor((k - 0.5) * 2 * 10)) - (k < 0.5 ? 0 : 0);
+      a.i = kk < 0.5 ? 34 + Math.floor(kk * 2 * 12) : 1 + Math.floor((kk - 0.5) * 2 * 10);
       a.seed = (seed + i * 7) >>> 0; a.side = rnd(seed, i + 3) < 0.5 ? -1 : 1;
     }
   }
-  for (const a of F.arcs) if (live(a)) a.life -= dt / a.dur;
+  for (const a of F.arcs) if (a.life > 0) a.life -= dt / a.dur;
   // frustration: a huff every few seconds — the body squashes and steam puffs from two vents
+  F.steamOn += ((th.style.fx.steam > 0 && fx.steam > 0.03 ? 1 : 0) - F.steamOn) * Math.min(1, dt * 0.8);
   F.steamT += dt * fx.steam * k;
   if (F.steamT >= 1 && P > 0) {
     F.steamT -= 1;
     F.huff = 1;
     if (!rm) th.sb.deform('squash', 1.6);
     for (let n = 0; n < 4; n++) {
-      const p = spawn(F.puffs);
+      const p = spawnFrom(F.puffs);
       if (!p) break;
       const left = n % 2 === 0, vi = left ? PT.ventL : PT.ventR;
       p.x = R.pts[2 * vi]; p.y = R.pts[2 * vi + 1];
       const j = rnd(seed, Math.floor(t * 17) + n);
-      p.vx = (left ? -1 : 1) * (8 + 14 * j) * (P / 80); p.vy = -(26 + 18 * j) * (P / 80) * (rm ? 0.5 : 1); p.r = P * (0.07 + 0.03 * j); p.life = 1; p.dur = 1.3 + 0.6 * j + n * 0.08;
+      p.dur = 1.3 + 0.5 * j + n * 0.12; p.life = 1;
+      p.vx = (left ? -1 : 1) * (0.12 + 0.16 * j) * P; p.vy = -(G.steamRise * P / p.dur) * (0.85 + 0.3 * j) * (rm ? 0.6 : 1);
+      p.r0 = P * G.puffR0 * (0.9 + 0.2 * j) * (n < 2 ? 1 : 0.8); p.r1 = P * G.puffR1 * (0.85 + 0.3 * j) * (n < 2 ? 1 : 0.8); p.r = p.r0;
     }
   }
   F.huff = Math.max(0, F.huff - dt / 0.6);
-  for (const p of F.puffs) if (live(p)) { p.life -= dt / p.dur; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= Math.exp(-dt * 0.8); p.r += dt * P * 0.12; }
-  // sadness: a soft cloud and a light, slow drizzle
-  F.cloud += ((fx.rain > 0.05 ? 1 : 0) * clamp(fx.rain / 1.2) - F.cloud) * Math.min(1, dt * 0.8);
-  F.rainT += dt * fx.rain * k * (rm ? 0.5 : 1);
+  for (const p of F.puffs) if (p.life > 0) { p.life -= dt / p.dur; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= Math.exp(-dt * 0.9); const e = 1 - p.life; p.r = p.r0 + (p.r1 - p.r0) * (1 - (1 - e) * (1 - e)); }
+  // sadness: its own soft cloud and a light rain (6–10 drops a second at full feeling) that splashes on its head
+  F.cloud += ((fx.rain > 0.3 ? 1 : 0) * clamp(fx.rain / 3) - F.cloud) * Math.min(1, dt * 0.8);
+  F.rainT += dt * fx.rain * k * (rm ? 0.5 : 1) * clamp(F.cloud * 1.5);
   if (F.rainT >= 1 && P > 0) {
     F.rainT -= 1;
-    const d = spawn(F.drops);
-    if (d) { const j = rnd(seed, Math.floor(t * 23)); d.x = R.cx + (j - 0.5) * R.W * 0.95; d.y = R.cy - P * 0.98; d.vy = (52 + 26 * rnd(seed, Math.floor(t * 29))) * (P / 80) * (rm ? 0.6 : 1); d.len = P * 0.07; d.life = 1; d.dur = 1.15; }
+    const d = spawnFrom(F.drops);
+    if (d) {
+      const j = rnd(seed, Math.floor(t * 23)), j2 = rnd(seed, Math.floor(t * 29) + 3);
+      d.x = (j - 0.5) * R.W * 0.72; d.y = P * G.rainTop + P * 0.02 * j2; d.len = P * G.dropLen; d.vy = P * G.dropVy * (0.9 + 0.25 * j2) * (rm ? 0.6 : 1);
+      d.life = 1; d.dur = 2; d.splash = 0; d.sy = 0;
+    }
   }
-  for (const d of F.drops) if (live(d)) { d.life -= dt / d.dur; d.y += d.vy * dt; }
+  for (const d of F.drops) {
+    if (d.life <= 0) continue;
+    if (d.splash > 0) { d.splash += dt / 0.24; if (d.splash >= 1) d.life = 0; continue; }
+    d.y += d.vy * dt; d.life -= dt / d.dur;
+    // reaches its head: a short splash where it lands
+    const sy = th.surfaceY(R.cx + d.x) - R.cy;
+    if (Number.isFinite(sy) && d.y + d.len >= sy) { d.splash = 0.001; d.sy = sy; }
+  }
   // anxiety: a sweat drop slides down the side, then forms again
   const sw = look.face.sweat;
   F.sweat.on += ((sw > 0.15 ? 1 : 0) - F.sweat.on) * Math.min(1, dt * 2);
   F.sweat.t = (F.sweat.t + dt / (rm ? 4 : 2.4)) % 1;
-  // siblings: a little mumble mark as a syllable opens
+  // siblings: a mumble mark as a syllable opens
   if (th.kind === 'sibling') {
     if (th.talk > 0.55 && F.talkWas <= 0.55 && !low) {
-      const m = spawn(F.marks);
-      if (m) { const mc = PT.mouthC; m.side = rnd(seed, Math.floor(t * 11)) < 0.5 ? -1 : 1; m.x = R.pts[2 * mc] + m.side * R.W * 0.32; m.y = R.pts[2 * mc + 1] - P * 0.1; m.r = P * 0.12; m.life = 1; m.dur = 0.55; }
+      const m = spawnFrom(F.marks);
+      if (m) { const mc = PT.mouthC; m.side = rnd(seed, Math.floor(t * 11)) < 0.5 ? -1 : 1; m.x = R.pts[2 * mc] + m.side * R.W * 0.4; m.y = R.pts[2 * mc + 1] - P * 0.06; m.r = P * 0.24; m.life = 1; m.dur = 0.6; }
     }
     F.talkWas = th.talk;
-    for (const m of F.marks) if (live(m)) { m.life -= dt / m.dur; m.x += m.side * dt * P * 0.35; m.y -= dt * P * 0.25; }
+    for (const m of F.marks) if (m.life > 0) { m.life -= dt / m.dur; m.x += m.side * dt * P * 0.4; m.y -= dt * P * 0.22; }
   }
   void env;
 }
+
+// the top of the deformed outline at client x (outline 0 is the top centre; 33…43 and 0…11 are the upper half)
+ThoughtMallow.prototype.surfaceY = function (x) {
+  const O = this.render.outline, n = O.length / 2;
+  let best = Infinity;
+  for (let k = -11; k < 11; k++) {
+    const i = (k + n) % n, j = (k + 1 + n) % n;
+    const x0 = O[2 * i], x1 = O[2 * j];
+    if ((x - x0) * (x - x1) > 0 || x0 === x1) continue;
+    const y = O[2 * i + 1] + (O[2 * j + 1] - O[2 * i + 1]) * ((x - x0) / (x1 - x0));
+    if (y < best) best = y;
+  }
+  return best;
+};
+
+// a rect {left, top, right, bottom} grown to hold another
+const grow = (o, l, t, r, b) => { if (l < o.left) o.left = l; if (t < o.top) o.top = t; if (r > o.right) o.right = r; if (b > o.bottom) o.bottom = b; return o; };
+const emptyRect = (o) => { o.left = o.top = Infinity; o.right = o.bottom = -Infinity; return o; };
+
+/** Where its feeling's effects draw now (the sadness cloud and rain, steam, crackle), client px; null when none. */
+ThoughtMallow.prototype.fxRect = function (out = {}) {
+  const R = this.render, P = R.P, W = R.W, cx = R.cx, cy = R.cy, F = this.fx, G = FX_GEOM;
+  emptyRect(out);
+  let on = false;
+  if (F.cloud > 0.04) { on = true; grow(out, cx - W * 0.56, cy + P * (G.cloudY - G.cloudH * 0.62), cx + W * 0.56, cy - P * 0.46); }
+  if (F.steamOn > 0.04) {
+    on = true;
+    grow(out, cx - W * 0.42 - P * 0.42, cy - P * (0.5 + G.steamRise + 0.3), cx + W * 0.42 + P * 0.42, cy - P * 0.3);
+    for (const p of F.puffs) if (p.life > 0) grow(out, p.x - p.r, p.y - p.r, p.x + p.r, p.y + p.r);
+  }
+  if (this.look.fx.crackle > 0.15) {
+    on = true;
+    const b = this._bbox(), o = P * G.arcOut;
+    grow(out, b.left - o, b.top - o, b.right + o, b.cy);
+  }
+  out.width = out.right - out.left; out.height = out.bottom - out.top;
+  return on ? out : null;
+};
+
+/** Its face (eyes to mouth), client px: words never sit on it. */
+ThoughtMallow.prototype.faceRect = function (out = {}) {
+  const Q = this.render.pts, P = this.render.P, W = this.render.W;
+  const xl = Q[2 * PT.eyeL], xr = Q[2 * PT.eyeR], yl = Q[2 * PT.eyeL + 1], yr = Q[2 * PT.eyeR + 1], ym = Q[2 * PT.mouthC + 1];
+  out.left = Math.min(xl, xr) - W * 0.12; out.right = Math.max(xl, xr) + W * 0.12;
+  out.top = Math.min(yl, yr) - P * 0.14; out.bottom = Math.max(ym, yl, yr) + P * 0.1;
+  out.width = out.right - out.left; out.height = out.bottom - out.top;
+  return out;
+};
+
+/** A prop's rect (beliefs override this); null when it carries none. */
+ThoughtMallow.prototype.propRect = function () { return null; };
+
+/** Everything it draws (body, siblings, effects, a belief's prop), client px. */
+ThoughtMallow.prototype.extent = function (out = {}) {
+  const b = this._bbox();
+  out.left = b.left; out.top = b.top; out.right = b.right; out.bottom = b.bottom;
+  for (const s of this.siblings) { if (!s.render.ready) continue; const r = s._bbox(); grow(out, r.left, r.top, r.right, r.bottom); }
+  const f = this.fxRect(this._fxR || (this._fxR = {}));
+  if (f) grow(out, f.left, f.top, f.right, f.bottom);
+  const p = this.propRect(this._prR || (this._prR = {}));
+  if (p) grow(out, p.left, p.top, p.right, p.bottom);
+  out.width = out.right - out.left; out.height = out.bottom - out.top;
+  return out;
+};
+
+export { grow, emptyRect };
 
 export { OUTLINE_N, MOTE_UV, PT_UV };
 

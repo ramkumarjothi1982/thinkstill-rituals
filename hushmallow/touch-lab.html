@@ -166,7 +166,8 @@ async function create() {
   mt.on('touch', (e) => { if (!['press', 'stretchEnd'].includes(e.kind)) say(e.kind + (e.kind === 'massage' ? ` ${e.turns.toFixed(1)}` : '')); window.__touch.events.push({ t: performance.now() | 0, ...e }); });
   mt.on('tier', (e) => say(`tier → ${e.tier} (${e.reason})`));
   await mt.loaded;
-  thoughts?.attach(mt);
+  // the Thought Mallows draw on the hero's 2D canvas only on their own tab (paused and detached on the squeeze tab)
+  if (state.tab === 'thoughts') thoughts?.attach(mt); else thoughts?.detach();
   layout();
   if (state.emotion !== 'neutral') mt.setEmotion(state.emotion, 0.7);
   markRoster();
@@ -183,16 +184,18 @@ async function switchTo(id) {
 }
 function markRoster() { for (const b of roster.children) b.setAttribute('aria-pressed', String(b.dataset.id === state.id)); }
 
-function layout() {
+function layout(count) {
   if (!mt) return;
   const w = innerWidth, h = innerHeight;
   if (state.tab === 'thoughts') {
-    // the hero on the left of the stage, room for the thoughts beside it, all above the panel
-    const top = h < 640 ? 16 : 70, bottom = h - (panel.offsetHeight || 220);
-    const size = Math.max(96, Math.min(0.3 * w / 1.05, 0.36 * (bottom - top), 220));
-    // narrow phones: the hero hugs the left so the words have room beside it
-    const x = w < 420 ? size * 0.56 + 14 : Math.max(size * 0.62 + 16, w * (w < 700 ? 0.3 : 0.36));
-    mt.place({ x, y: top + (bottom - top) * 0.5, size }, { instant: true });
+    // the hero (about half the free height, as in the Hushfold: 220–300 px on most phones) rests in the
+    // lower stage; the tiny Thought Mallows float above and beside it, all above the panel
+    const { top, bottom } = stageBand();
+    // a fuller stage on a short phone: the hero gives the thoughts a little more room (the Hushfold does this through onBand)
+    const n = Number.isFinite(count) ? count : thoughts?.list.length || 0, k = h < 700 && n > 1 ? (n > 3 ? 0.36 : 0.42) : 0.5;
+    const size = Math.round(Math.max(120, Math.min(k * (bottom - top), w < 700 ? 0.56 * w : 300, 300)));
+    const x = w < 700 ? w / 2 : Math.max(size * 0.62 + 24, w * 0.34);
+    mt.place({ x, y: bottom - size * 0.56 - 6, size }, { instant: true });
     return;
   }
   // body centre a little below the middle, clear of the roster and readout
@@ -269,10 +272,12 @@ const FEELINGS = [['anger', 'Angry'], ['frustration', 'Frustrated'], ['anxiety',
   ['loneliness', 'Lonely'], ['embarrassment', 'Embarrassed'], ['restlessness', 'Restless'], ['neutral', 'Something else']];
 let thoughts = null;
 const tEvents = [];
+// the stage above the panel (and below the roster): 20 px clear of the screen edges
+function stageBand() { const h = innerHeight; return { top: h < 640 ? 16 : 76, bottom: h - (panel.offsetHeight || 220) - 8 }; }
 function ensureThoughts() {
   if (thoughts) return thoughts;
   thoughts = new ThoughtLayer({ tagRoot: tagsEl, haptic, reducedMotion: () => mt?.opts?.reducedMotion ?? state.rm,
-    bounds: () => ({ left: 16, right: innerWidth - 16, top: innerHeight < 640 ? 14 : 64, bottom: innerHeight - (panel.offsetHeight || 220) - 6 }) });
+    bounds: () => { const b = stageBand(); return { left: 20, right: innerWidth - 20, top: b.top, bottom: b.bottom }; } });
   thoughts.on('touch', (e) => {
     tEvents.push({ t: performance.now() | 0, id: e.thought.id, kind: e.kind, depth: e.depth });
     if (tEvents.length > 200) tEvents.shift();
@@ -281,40 +286,42 @@ function ensureThoughts() {
     const r = mt?.bodyRect?.();
     if (r && mt) mt.lookAt(Math.max(-1, Math.min(1, (e.thought.x - r.cx) / (r.width * 1.2))), Math.max(-1, Math.min(1, (e.thought.y - r.cy) / (r.height * 1.2))));
   });
-  if (mt?.ready) thoughts.attach(mt);
+  if (mt?.ready && state.tab === 'thoughts') thoughts.attach(mt);
   return thoughts;
 }
-function heroSide() {
-  const r = mt?.bodyRect?.();
-  const w = innerWidth;
-  if (!r) return { x: w * 0.7, y: innerHeight * 0.4 };
-  const right = r.right + 16, room = w - 16 - right;
-  return { x: right + Math.max(44, room / 2), y: r.top + r.height * 0.45 };
+// where a new thought would like to float: above the hero on phones (beside it on wide screens);
+// the layer then takes the nearest free place (its words, effects and prop clear of everything)
+function wish(i, n) {
+  const r = mt?.bodyRect?.(), w = innerWidth, b = stageBand();
+  if (!r) return { x: w * 0.6, y: (b.top + b.bottom) / 2 };
+  if (w >= 700) return { x: Math.min(w - 120, r.right + 110 + (i % 3) * 150), y: r.top + 40 + Math.floor(i / 3) * 150 };
+  const span = Math.min(w - 120, 130 * Math.max(1, n - 1)), x = n > 1 ? w / 2 - span / 2 + (span * i) / (n - 1) : r.cx + r.width * 0.25;
+  return { x, y: b.top + (r.top - b.top) * (n > 2 && i % 2 ? 0.3 : 0.55) };
 }
 function spawn({ text = document.getElementById('ttext').value, emotion = state.feel, n = state.count, intensity = 0.75 } = {}) {
   const L = ensureThoughts();
   text = String(text || '').trim();
   if (!text) { document.getElementById('ttext').focus(); say('type a thought first'); return []; }
-  const c = heroSide();
-  const W = innerWidth, small = W < 360;
+  const small = innerWidth < 360;
   const out = [];
+  const k = L.list.length;
+  layout(k + n);                       // the hero first makes the room the new thoughts will need
   const r = mt?.bodyRect?.();
   for (let i = 0; i < n; i++) {
-    // spread round the hero: beside it first, then above and below it (the layer then makes room for each one's words)
-    const a = (i - (n - 1) / 2);
-    const x = W < 700 ? c.x + (i % 2 ? 22 : -22) * (n > 1 ? 1 : 0) - (i >= 3 && r ? (c.x - r.cx) : 0) : c.x + a * 120;
-    const y = W < 700 ? c.y + a * (small ? 64 : 84) : c.y + Math.abs(a) * 24;
-    out.push(L.add({ text, emotion, intensity, r: small ? 32 : 38 }, { from: { x: r ? r.cx : W / 2, y: r ? r.top : c.y }, home: { x, y } }));
+    // out of the hero's head, to a free place near where it would like to be
+    out.push(L.add({ text, emotion, intensity, r: small ? 32 : 38 }, { from: { x: r ? r.cx : innerWidth / 2, y: r ? r.top + r.height * 0.2 : innerHeight / 2 }, home: wish(k + i, Math.max(n, k + n)) }));
   }
-  if (r && mt) mt.lookAt(1, -0.1);
+  if (r && mt) mt.lookAt(0.2, -0.9);
   return out;
 }
 function belief(prop = 'stone', text = document.getElementById('ttext').value) {
   const L = ensureThoughts();
   text = String(text || '').trim();
   if (!text) { document.getElementById('ttext').focus(); say('type a belief first'); return null; }
-  const c = heroSide();
-  return L.add({ text, prop, r: innerWidth < 360 ? 30 : 36 }, { from: { x: c.x, y: c.y - 30 }, home: { x: c.x, y: c.y + 10 } });
+  layout(L.list.length + 1);
+  const r = mt?.bodyRect?.();
+  const k = L.list.length, home = wish(k, k + 1);
+  return L.add({ text, prop, r: innerWidth < 360 ? 30 : 36 }, { from: { x: r ? r.cx : home.x, y: r ? r.top + r.height * 0.2 : home.y }, home });
 }
 function verb(name) {
   const L = ensureThoughts();
@@ -341,7 +348,7 @@ document.getElementById('tgo').onclick = () => spawn();
 document.getElementById('ttext').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); spawn(); } });
 for (const b of document.querySelectorAll('[data-prop]')) b.onclick = () => belief(b.dataset.prop);
 for (const b of document.querySelectorAll('[data-verb]')) b.onclick = () => verb(b.dataset.verb);
-document.getElementById('tclear').onclick = () => { thoughts?.clear(); };
+document.getElementById('tclear').onclick = () => { thoughts?.clear(); layout(); };
 const trm = document.getElementById('trm');
 trm.setAttribute('aria-pressed', String(state.rm));
 trm.onclick = () => { state.rm = !state.rm; state.rmSet = true; trm.setAttribute('aria-pressed', String(state.rm)); rmB.setAttribute('aria-pressed', String(state.rm)); mt?.setReducedMotion(state.rm); thoughts?.setReducedMotion(state.rm); };
@@ -350,7 +357,8 @@ async function setTab(tab) {
   document.body.classList.toggle('tmode', tab === 'thoughts');
   document.getElementById('totab').setAttribute('aria-pressed', String(tab === 'thoughts'));
   if (tab === 'thoughts') ensureThoughts();
-  thoughts?.hideTags(tab !== 'thoughts');
+  // the squeeze tab: the thoughts wait (not drawn, not touchable, words hidden) until you come back
+  thoughts?.pause(tab !== 'thoughts');
   await create();
 }
 document.getElementById('totab').onclick = () => setTab('thoughts');

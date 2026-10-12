@@ -45,16 +45,17 @@ export const HARM_LEXICON = {
     R`\b(?:hurt|injured) my ?self (?:at (?:the gym|football|rugby|netball|hockey|training|practice)|(?:playing|lifting|running|exercising|working out|training|skiing|snowboarding|skating|climbing|cycling|dancing|tripping|moving house)\b)`,
     R`\boverdos(?:e|ed|ing) on (?:chocolate|sugar|sweets|candy|cake|carbs|cheese|pizza|ice cream|coffee|netflix|tv|telly|tik ?tok|social media|cuteness|christmas|rom-?coms|anime)\b`,
     R`\bsuicide squad\b`,
+    R`\b(?:die|died) laughing\b`,
   ],
   crisis: [
     // 'my self' as two words too (review 12 Oct: 'i want to kill my self')
     // typos and run-together spellings too ('kil myself', 'killmyself'; safety verification 12 Oct)
-    R`\bkil{1,2}(?:ing|ed)? ?my ?self\b`,
+    R`\bkil{1,2}(?:ing|ed)? ?my ?s(?:elf|lef|efl|elv)\b`,
     R`\bkms\b`,
     R`\bsuicid\w*`,
     R`\b(?:sucid|suicd|siucid|suisid|suecid|sucuid)\w*`,
     R`\bend(?:ing)? (?:it all|my life|my own life|things for good|everything for good)\b`,
-    R`\b(?:(?:want|wanna|going|planning|plan|ready|need|about|decided) to|gonna) (?:just )?end it\b(?! (?:with|between|off))`,
+    R`\b(?:(?:want|wanna|going|planning|plan|ready|need|about|decided) to|gonna) (?:just )?end it\b(?! (?:with|between|off|on a)\b)`,
     // any tense ('I'm thinking of taking my own life'); 'taking my life back' and 'my life in my hands' stay none
     R`\b(?:tak(?:e|es|ing|en)|took) my (?:own )?life\b(?! (?:back|in(?:to)? (?:my|both|your) (?:own )?hands|seriously|one day at a time|step by step|forward|in a new direction))`,
     // 'wanna' too; never 'live in London', 'go on the trip', 'wake up early', 'be around him' (safety verification 12 Oct)
@@ -74,7 +75,7 @@ export const HARM_LEXICON = {
     R`\bwant (?:my life|it all|everything) to (?:be over|end|stop)\b(?! (?:for a (?:bit|minute|moment|second|while|day)|so i can|until|till))`,
     R`\bwish i (?:was|were) dead\b`,
     R`\bwish i (?:wasn'?t|was not|weren'?t|were not) (?:here|alive|born|around)\b`,
-    R`\b(?:hurt|hurting|harm|harming|harmed|cut|cutting|burn|burning|punish|punishing|punished|starve|starving|starved) my ?self\b`,
+    R`\b(?:hurt|hurting|harm|harming|harmed|cut|cutting|burn|burning|punish|punishing|punished|starve|starving|starved) my ?self\b(?! (?:out|off|short|loose|free|some slack|a break|a slice|in on)\b)`,
     R`\bself[- ]?harm\w*`,
     R`\bno (?:reason|point) (?:to|in|for) (?:me )?(?:being alive|being here|me being here|existing|(?:live|living)\b(?! (?:in|with|here|there|near|at|on|together|abroad|alone|by|next|apart|off|a|an|the|my|our|like that)\b)|(?:go|going|carry|carrying) on\b(?! (?:a|an|the|my|our|this|that|holiday|holidays|vacation|about|and on|at|to|trips?|dates?|stage|tour|it)\b))`,
     R`\bnothing (?:left )?to live for\b`,
@@ -90,7 +91,7 @@ export const HARM_LEXICON = {
     // added 12 Oct 2026 (audit: missed by both detectors)
     R`\b(?:nobody|no one|no-one|noone|nobody else) (?:would|will|is going to|'?d|is gonna) (?:even |really |ever )?(?:miss|notice) (?:me|if i(?:'?m| was| were) gone)\b`,
     R`\b(?:thinking|thought|think|considering|been thinking) (?:of|about) (?:ending it|ending it all|ending my life|ending things|killing myself|not being (?:here|alive|around))\b(?! (?:with|between|off))`,
-    R`\b(?:hang|hanging|poison|poisoning|unalive|unaliving) my ?self\b`,
+    R`\b(?:hang|hanging|rope|roping|poison|poisoning|unalive|unaliving) my ?self\b`,
     R`\b(?:drown|drowning) my ?self\b(?! in (?:work|coffee|tea|wine|chocolate|ice cream|books?|music|netflix|tv|homework|revision|studying|study|blankets|perfume|paperwork|emails|my work|my studies|cake|sweets|junk food|fast food)\b)`,
     R`\b(?:want|wanna|wish i could) (?:to )?be dead\b`,
     R`\bjump(?:ing)? (?:off (?:a|the) (?:bridge|building|roof|cliff)|in front of (?:a|the) (?:train|bus|car|lorry|truck))\b`,
@@ -101,7 +102,7 @@ export const HARM_LEXICON = {
     R`\b(?:keep |kept |been |always |constantly |can'?t stop |cannot stop )?(?:thinking|think|thought) (?:about|of) (?:dying\b(?! (?:my|her|his|their|the|it|your|a|some|them)\b)|being dead\b|not waking up\b|never waking up\b)`,
     R`\b(?:no one|nobody|no-one|noone) (?:would|will|'?d|is going to|is gonna) (?:even |really |ever )?(?:care|notice|mind|miss me) if i (?:died|die|was gone|were gone|disappeared|disappear|wasn'?t here|weren'?t here|was dead|were dead|killed myself)\b(?! (?:my|her|his|their) hair\b)`,
     // cutting as self-harm, never cutting carbs, costs, onions or hair
-    R`\b(?:been |started |start |keep |kept |still |went back to |gone back to |back to |stopped )cutting(?: again\b| my ?self\b| my (?:arms?|legs?|wrists?|skin|thighs?|stomach|body)\b|\s*(?:[.!?,;]|$))`,
+    R`\b(?:been |started |start |keep |kept |still |went back to |gone back to |back to |stopped )cutting(?: again\b| my ?self\b(?! (?:off|out|short|loose|free|some slack)\b)| my (?:arms?|legs?|wrists?|skin|thighs?|stomach|body)\b|\s*(?:[.!?,;]|$))`,
     R`\bdone with (?:life\b(?! (?:admin|insurance|coaching|lessons)\b)|being alive\b|existing\b|living\b(?! (?:in|with|here|there|at|on|near|abroad|together|apart|out of)\b))`,
     R`\b(?:hope|wish|want|pray) (?:that )?i (?:never|don'?t|do not|won'?t) wake(?: up)?\b(?! up\b)(?! (?:until|till|before|early|at|in time|on time|(?:this|that|so|as) (?:early|late))\b)`,
     R`\b(?:have|got|'ve got|saved|saving|stockpiled|stockpiling|collected|collecting) (?:up )?(?:the |my |enough |all (?:the |my )?)?(?:pills|tablets|meds|medication|painkillers) (?:ready|saved up|stockpiled|lined up|to (?:do it|end it|take them all))\b(?! for (?:the|my|a|our|your|work|school|holiday|travel|trip|journey|flight|morning|bed|breakfast|mum|mom|dad|grandma|grandad)\b)`,
@@ -128,6 +129,25 @@ export const HARM_LEXICON = {
     R`\b(?:want|wanna|wish i could|need) (?:to )?(?:just )?(?:vanish|be gone) (?:forever|for good|permanently|for ever)\b`,
     R`\b(?:can'?t|cannot|can not) (?:keep )?(?:living|live|going on|go on|carrying on|carry on) like this any ?more\b`,
     R`\b(?:give|giving|gave|given) up on (?:life\b(?! (?:admin|insurance|coaching|drawing|lessons)\b)|being alive\b|staying alive\b|${LIVING})`,
+    // passive wishes: 'I hope I die in my sleep', 'I wish a bus would hit me'
+    R`\b(?:hope|wish|pray) (?:that )?i (?:just )?(?:die|would die|will die|could die|get hit by|got hit by|get run over|don'?t survive)\b(?! (?:of|from|laughing)\b)`,
+    R`\b(?:wish|hope|pray) (?:that )?(?:a|the|some) (?:bus|car|train|lorry|truck|plane) (?:would |will )?(?:hit|hits|crash|crashes|run me over|runs me over|kill|kills)(?: me| into me)?\b`,
+    R`\b(?:tired|sick|exhausted) of (?:being alive|existing|${LIVING}(?= *(?:$|[.,!?;]|any ?more|and\b|so\b)))`,
+    R`\bcan'?t do (?:life|this life|living) any ?more\b`,
+    R`\b(?:be|been|are|is) (?:so much |much |a lot |way )?(?:happier|better off) (?:if i (?:was|were|wasn'?t|weren'?t) (?:gone|dead|here|around|alive)|without me)\b`,
+    R`\b(?:i'?m|i am|im) (?:still |secretly )?cutting(?: my ?self)?(?: again)?(?=\s*(?:$|[.,!?;]|again\b|myself\b|every\b|at night\b|lately\b|to cope\b))`,
+    R`\b(?:want|wanting|wanted|urge|urges|tempted|need|needing|wanna) (?:to )?cut(?: my ?self\b(?! (?:off|out|short|loose|free|some slack|a break|a slice)\b))?(?: again)?(?=\s*(?:$|[.,!?;:)…]|again\b|so bad|and\b|but\b|tonight\b|right now\b))`,
+    R`\b(?:i'?m|i am|im) ending it\b(?! (?:with|between|off|on a)\b)`,
+    R`\b(?:(?:want|going|planning|ready|about|need) to|wanna|gonna|i'?ll|i will) (?:just )?end (?:everything|it all|my life|myself)\b(?! (?:with|between)\b)`,
+    R`\bgoodbye forever\b`,
+    R`\blife (?:is|feels|seems) (?:so |completely |totally |just )?(?:pointless|meaningless)\b`,
+    R`\b(?:no one|nobody|no-one|noone) (?:cares|would care|gives a \w+) (?:if|whether) i (?:live|lived) or (?:die|died)\b`,
+    R`\bsewer ?slide\b`,
+    R`\b(?:i'?m|i am|im) (?:standing |sitting )?on (?:the|a) (?:edge of (?:the|a) )?(?:bridge|ledge|roof|cliff edge|platform edge)\b`,
+    R`\b(?:thinking|thought|think|considering) (?:of|about) (?:jumping|throwing myself|hanging myself|overdosing|cutting(?: myself)?)\b(?! (?:in|into|on|at|ship|the gun|for joy|rope|jacks|back|ahead|over|the queue|my hair|my fringe|carbs|back on)\b)`,
+    R`\bbleed(?:ing)? out\b`,
+    R`\b(?:i'?m|i am|im) not safe (?:with|around|from) myself\b`,
+    R`\b(?:want|wanna|wish i could|would rather|i'?d rather|rather|need|prefer) (?:to )?(?:just )?(?:not|never) (?:be alive|have been born|wake up\b(?! (?:early|at|before|so|in time|for|till|until|on time|when)\b))`,
   ],
   crisisOther: [
     R`\b(?:kill|killing|hurt|hurting|harm|harming|end) (?:himself|herself|themselves|themself)\b`,
@@ -135,6 +155,8 @@ export const HARM_LEXICON = {
     // added 12 Oct 2026, safety verification: 'my sister said she wants to die', 'my friend is cutting herself'
     R`\b${PEOPLE}(?:'s| is| are|'re| was| were| keeps| has been)? (?:saying (?:she|he|they) )?(?:wants?|wanted|wanting|wanna|planning|plans|trying|tried|threatening|threatens|threatened) (?:to )?(?:die\b|end it(?: all)?\b(?! (?:with|between|off)\b)|end (?:his|her|their) (?:own )?life\b|disappear (?:forever|for good)\b|not (?:be here|exist|wake up|be alive)\b)`,
     R`\b(?:end|ending) (?:his|her|their) (?:own )?life\b`,
+    R`\b(?:sent|send|sends|texted|posted|left) (?:me |us )?(?:a |her |his |their )?(?:goodbye|suicide) (?:message|text|note|letter|post|video)\b`,
+    R`\b(?:threatening|threatens|threatened) to (?:jump|hang|overdose|cut|drown)\b(?! (?:in|into|on|at|ship|the queue|ties|me off)\b)`,
     R`\b(?:cuts|cutting|burns|burning|starves|starving|punishes|punishing|harms) (?:himself|herself|themselves|themself)\b(?! (?:a|an|some|off|free|loose|short|out)\b)`,
     R`\b${PEOPLE}(?:'s| is| has| have| had| was)? (?:just )?(?:overdosed|taken an overdose|took an overdose)\b`,
     R`\b(?:is|are|am|'s|'re|'m) in (?:immediate |real |serious )?danger\b(?! of)`,
@@ -149,6 +171,7 @@ export const HARM_LEXICON = {
       R`\bassault(?:ed|ing|s)?\b`,
       R`\brap(?:e|ed|ist)\b`,
       R`\bgroomed me\b`,
+      R`\b(?:my )?(?:uncle|step-?dad|step-?father|step-?brother|cousin|teacher|coach|tutor|neighbou?r|grandad|granddad|grandpa|babysitter|carer|(?:mum|mom|dad)'?s (?:boyfriend|girlfriend|partner|friend)|family friend|boss|priest|doctor)(?: \w+){0,2} (?:touches|touched|keeps touching|kept touching|is touching|tries to touch|tried to touch|gropes|groped) me\b(?! on the (?:shoulder|arm|back|hand) (?:to|and said|when|as|for)\b)`,
       R`\btouched me (?:without|when i|even though|after i)\b`,
       R`\bforced me\b`,
       R`\bwon'?t let me (?:leave|go out|see (?:my )?(?:friends|family)|have (?:my own )?money|work|have my phone)\b`,
@@ -180,6 +203,7 @@ export const HARM_LEXICON = {
       R`\bharass\w*`,
       R`\bstalk(?:s|ed|ing)? me\b`,
       R`\bstalker\b`,
+      R`\bgrop(?:ed|es|ing)\b`,
       R`\bbull(?:y|ied|ies|ying)\b`,
       R`\bunwanted (?:touching|advances|messages|photos|pictures|attention|contact)\b`,
       R`\b(?:sexual|creepy|sleazy|dirty) (?:comments|messages|remarks|jokes) (?:about|at|to) me\b`,
@@ -298,6 +322,12 @@ export const CONCERN_LEXICON = [
   R`\b(?:can'?t|cannot) keep (?:living|going on|carrying on) like this\b`,
   R`\b(?:give|giving|gave|given) up on (?:myself|everything)\b`,
   R`\bmy life is over\b`,
+  R`\b(?:tired|sick) of life\b(?! (?:admin|in (?:the|this|london|my))\b)`,
+  R`\b(?:said|saying) (?:all )?my goodbyes\b`,
+  R`\bthis is my last (?:message|post|goodbye|note)\b`,
+  R`\b(?:won'?t|will not) be (?:here|around) (?:much longer|for (?:much )?longer|for long|tomorrow|any ?more)\b`,
+  R`\bmy life (?:is|feels) (?:so |completely |totally |just )?empty\b`,
+  R`\b(?:don'?t|do not|can'?t) trust myself (?:not to|around|with|alone|any ?more)\b`,
 ];
 
 /**

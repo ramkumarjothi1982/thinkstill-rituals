@@ -146,7 +146,12 @@ export default function hushfold(app, params = {}) {
     return sheet;
   }
   /** The support sheet, as a layer of its own (urgent when the words were a crisis). */
-  const openSupportSheet = (opts = {}) => trackSheet(openSupport(app, opts));
+  const openSupportSheet = (opts = {}) => {
+    const sh = trackSheet(openSupport(app, opts));
+    // the sheet gives the shared stage its loving, heart-eyed face; after something heavy the Mallow stays attentive
+    if (opts.urgent || gentle()) stageMallow?.setStage?.(CARE_FACE, { quiet: true });
+    return sh;
+  };
   /** A sheet closed: the crisis line waits until nothing covers the stage. */
   function afterSheet() {
     // the support sheet set the shared stage to its comforting face; after something heavy the face stays attentive
@@ -507,7 +512,8 @@ export default function hushfold(app, params = {}) {
     preloadInput().catch(() => {});
     const [l1, l2] = lines.invitation(mallowId);
     await say(l1);
-    if (S.left || overlay || S.told) return;
+    // (something heavy typed meanwhile, sent or not: the invitation goes)
+    if (S.left || overlay || S.told || gentle()) return;
     showTell(true);
     // "Tell me" opens the overlay inside the tap itself; an invitation never outlives typing (transient)
     const v = await subtitles.choice(l2, [{ label: 'Tell me', value: 'tell', primary: true, onPick: () => openTell('chip', l2) }, { label: 'Just play', value: 'play' }],
@@ -515,7 +521,7 @@ export default function hushfold(app, params = {}) {
     if (S.left) return;
     S.lastLineAt = now();
     if (v === 'tell') openTell('chip', l2);
-    else if (v === 'play') { S.intention ||= 'play'; say(lines.pick(mallowId, 'justPlay')); }
+    else if (v === 'play' && !gentle()) { S.intention ||= 'play'; say(lines.pick(mallowId, 'justPlay')); }
     // ignored: nothing else. The Tell pill stays; they can play for as long as they like.
   }
   function showTell(on) { tellBtn.classList.toggle('is-hidden', !on); }
@@ -567,12 +573,15 @@ export default function hushfold(app, params = {}) {
     panel?.close();
     closeRead();
     showTell(false);
-    stageMallow.setStage('listening', { quiet: true });
+    // after something heavy the Mallow listens with its attentive, concerned face
+    stageMallow.setStage(gentle() ? CARE_FACE : 'listening', { quiet: true });
     root.classList.add('hf-typing');
     overlay = inputMod.openInput({
       app, root, prompt: prompt || 'Want to tell me?',
       mallow: { id: mallowId, name: M().name, glow: M().colours.glow },
       emotion: S.emotion, intention: S.intention, hasPlan: ent.has('paid'),
+      // something heavy earlier in this visit: the Support chip is there from the start, and no plan offer
+      heavy: gentle(),
       face: (f) => stageMallow.setEmotion(f, 0.6, { quiet: true }),
       onLayout: () => layout(),
       // the level is the scene's the moment it is seen, whether or not anything is sent
@@ -609,13 +618,18 @@ export default function hushfold(app, params = {}) {
     S.pendingResume = false;
     // safety comes first, before anything else is decided (with or without a plan)
     noteSafety(safety);
+    // the visit's level counts, not only the words sent: crisis or care seen earlier (typed and closed, or
+    // reworded before Send) still means no Thought Mallow, no world by itself and never the plans page
+    if (LEVELS.indexOf(S.level) > LEVELS.indexOf(safety?.level || 'none')) safety = { level: S.level, category: S.category };
     const fam = emotion ? await setFeeling(emotion, { quiet: true }) : null;
     if (S.left) return;
     if (intention) S.intention = intention;
     if (safety?.level === 'crisis') {
       // no Thought Mallow, no world that transforms the words; support stays one tap away
       stageMallow.setStage(CARE_FACE);
-      speakCrisis();
+      // more words later in the same visit get a calm answer, never silence (the crisis line is said once)
+      if (S.crisisSpoken) say(SHARED_LINES.supportConcern, { interrupt: !subtitles.holding });
+      else speakCrisis();
       layout();
       return;
     }
@@ -679,7 +693,8 @@ export default function hushfold(app, params = {}) {
       [{ label: 'Stay here quietly', value: 'stay', primary: true }, { label: gw.label, value: 'play' }],
       { who: M().name, colour: M().colours.glow, timeoutMs: 30000 });
     if (S.left) return;
-    if (v === 'play') {
+    // a crisis seen while the choice waited: nothing plays from it (support stays, the calm line was said)
+    if (v === 'play' && !S.crisis) {
       const calm = intention && intention !== 'let-go' ? intention : 'calm';
       if (!ent.has('paid')) {
         // D4: worlds open with hushmallow Flow. Only because they asked; their words are not carried
@@ -851,7 +866,7 @@ export default function hushfold(app, params = {}) {
     S.invited = true;   // the resume offer stands in for the first invitation
     showTell(true);
     later(async () => {
-      if (S.left || worldMode || overlay || S.flowAsked) return;
+      if (S.left || worldMode || overlay || S.flowAsked || gentle()) return;
       const v = await subtitles.choice(lines.pick(mallowId, 'resumeAsk', { world: r.title }),
         [{ label: 'Carry on', value: 'resume', primary: true }, { label: 'Not now', value: 'no' }],
         { who: M().name, colour: M().colours.glow, timeoutMs: 20000, transient: true });

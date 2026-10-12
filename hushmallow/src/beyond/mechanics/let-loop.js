@@ -23,6 +23,7 @@ export function mount(ctx) {
   const motes = new Motes(30);
   const [light, deep] = tintFor(ctx.emotion);
   const A0 = ctx.area();
+  const SHORT = A0.h < 270;               // a short phone: the stone and the words share the bottom row
   const R = clamp(Math.min(A0.w, A0.h) * 0.085, 18, 32);
   const NEED = () => (rm() ? 5 : 7);     // seconds of resting
   let rest = 0, wind = 0, phase = 'loop', s = 0, speed = 1, held = null, warned = false, moves = 0, landT = 0, breath = 0, tapBank = 0;
@@ -31,7 +32,7 @@ export function mount(ctx) {
   let ti = 0, trailInit = false;
   const thought = new Blob({ x: ctx.from?.x ?? A0.x + A0.w / 2, y: ctx.from?.y ?? A0.y + A0.h * 0.3, r: R, light, deep });
   const tags = {
-    words: ctx.tags.add(ctx.parts.excerpt, { kind: 'words' }),
+    words: ctx.tags.add(ctx.parts.excerpt, { kind: 'words', max: SHORT ? Math.round(A0.w * 0.5) : 230 }),
     stone: ctx.tags.add(L.labels.stone, { kind: 'label', colour: '#bfe8ff' }),
   };
 
@@ -42,7 +43,7 @@ export function mount(ctx) {
     // the loop drifts up and away as it eases; it widens and its thought gets smaller
     const cx = A.x + A.w / 2, cy = A.y + A.h * lerp(0.34, 0.26, kk);
     const ax = Math.min(A.w * lerp(0.3, 0.42, kk) * (1 - wind * 0.35), A.w / 2 - R * 1.4), ay = Math.min(A.h * lerp(0.2, 0.16, kk), A.h * 0.3);
-    const st = { x: A.x + A.w / 2, y: A.y + A.h - clamp(A.h * 0.16, 34, 56), rx: clamp(A.w * 0.17, 46, 70), ry: clamp(A.h * 0.07, 14, 22) };
+    const st = { x: A.x + A.w * (SHORT ? 0.74 : 0.5), y: A.y + A.h - clamp(A.h * 0.16, 34, 56), rx: clamp(A.w * 0.17, 46, 70), ry: clamp(A.h * 0.07, 14, 22) };
     return { cx, cy, ax, ay, st };
   }
   // a lemniscate of Gerono (a soft figure of eight)
@@ -64,7 +65,7 @@ export function mount(ctx) {
   function frame(dt, t) {
     TM.step(dt);
     const R_ = rm();
-    const G = geo();
+    const G = geo(), A_ = ctx.area();
     const resting = !!held && held.kind === 'stone';
     if (phase === 'loop') {
       const add = (resting ? dt : 0) + Math.min(tapBank, dt * 1.6);
@@ -125,8 +126,9 @@ export function mount(ctx) {
     motes.draw(g, dt);
     if (phase === 'landed') landT += dt;
     // the words stay put under the loop (a label riding the loop would only make it busier)
-    tags.words.at(G.cx, G.cy + G.ay * 0.9 + R * 1.2, 'bottom', lerp(1, 0.55, kk));
-    tags.stone.at(st.x, st.y - st.ry - 12, 'top', phase === 'landed' ? 0.6 : 1);
+    tags.words.at(SHORT ? A_.x + A_.w * 0.28 : G.cx, G.cy + G.ay * 0.9 + R * 1.2, 'bottom', lerp(1, 0.55, kk));
+    // the label sits on the stone itself (never on the words above it)
+    tags.stone.at(st.x, st.y, 'center', phase === 'landed' ? 0.6 : 1);
     return true;
   }
 

@@ -58,7 +58,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   const S = {
     left: false, phase: 'arrive', text: params.text || '', emotion: null, intention: null,
     scene: null, shown: [], used: [], crisis: false, care: false, keepSupport: false, kept: false,
-    touches: 0, squeezes: 0, seq: 0, lastLineAt: 0, offlineSaid: false, explored: 0, sheetAt: -1e9,
+    touches: 0, squeezes: 0, seq: 0, lastLineAt: 0, offlineSaid: false, explored: 0, sheetAt: -1e9, band: 0,
   };
   const timers = new Set();
   const later = (fn, ms) => { const t = setTimeout(() => { timers.delete(t); if (!S.left) fn(); }, ms); timers.add(t); return t; };
@@ -93,6 +93,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     dpr = Math.min(2, devicePixelRatio || 1);
     W = innerWidth; H = innerHeight;
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    if (S.phase === 'playing' && S.scene) S.band = measureBand(MECHANIC_LINES[S.scene.mechanic]?.hint);
     layout();
   }
   const topBottom = () => top.getBoundingClientRect().bottom || 58;
@@ -112,6 +113,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     let B = clamp(Math.min(vw * 0.42, vh * 0.21), 96, 210);
     if (S.phase === 'squeeze' || S.phase === 'support') B = clamp(Math.min(vw * 0.6, vh * 0.34), 140, 320);
     if (consentCard) B = clamp(vh * 0.16, 84, 150);
+    // a short phone, while a mechanic plays: Zuzu sits a little smaller so the play area keeps its room
+    if (S.phase === 'playing' && vh < 700) B = Math.min(B, clamp(vh * 0.155, 80, 130));
     if (two) B *= 0.86;
     let cy = dockTop() - 14 - B / 2;
     if (ov?.height) {
@@ -123,11 +126,29 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     zAd.fit?.({ cx: cxZ, cy, size: B });
     compAd?.fit?.({ cx: vw * 0.69, cy: cy + B * 0.03, size: B * 0.94 });
     const band = clamp(vh * 0.14, 86, 132);
-    const aTop = topB + band, aBottom = cy - B / 2 - 16;
+    // while a mechanic plays, the area starts below the subtitle band its own lines need (measured)
+    const aTop = Math.max(topB + band, S.phase === 'playing' && S.band ? topB + 8 + S.band : 0), aBottom = cy - B / 2 - 16;
     const aw = Math.min(vw - (vw < 360 ? 20 : 32), 560);
     area = { x: (vw - aw) / 2, y: aTop, w: aw, h: Math.max(150, aBottom - aTop) };
     root.style.setProperty('--bx-card-max', `${Math.round(Math.max(230, cy - B / 2 - 14 - (topB + 8)))}px`);
     subs?.layout();
+  }
+  /** The height a subtitle line (at least two rows) plus its controls takes at this size and text scale. */
+  function measureBand(text) {
+    const real = subs?.el;
+    if (!real?.parentNode || typeof getComputedStyle !== 'function') return 0;
+    try {
+      const probe = h('div', { class: 'hf-subs', 'aria-hidden': 'true', style: { visibility: 'hidden', pointerEvents: 'none', transform: 'none' } },
+        h('div', { class: 'hf-sublive' }, h('div', { class: 'hf-sub dialogue' }, h('div', { class: 'who' }, ZUZU.name), h('p', { class: 'text' }, text || 'Zuzu'))));
+      real.parentNode.append(probe);
+      const line = probe.firstChild, t = probe.querySelector('.text');
+      const lh = parseFloat(getComputedStyle(t).lineHeight) || t.offsetHeight || 28;
+      const rows = Math.max(1, Math.round(t.offsetHeight / lh));
+      const need = line.offsetHeight + Math.max(0, 2 - rows) * lh;
+      probe.remove();
+      const ctlH = real.querySelector('.hf-subctl')?.offsetHeight || 44;
+      return Math.round(need + ctlH + 22);
+    } catch { return 0; }
   }
   let resizeT = 0;
   const onResize = () => { clearTimeout(resizeT); resizeT = setTimeout(resize, 120); };
@@ -166,7 +187,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       g.beginPath(); g.arc(r.x, r.y, rmOn() ? 18 : 10 + 50 * (1 - (1 - k) * (1 - k)), 0, Math.PI * 2); g.stroke();
       g.globalAlpha = 1;
     }
-    if (TL && TL.list.length) { try { TL.frame(dt, t, g); } catch (e) { console.warn('[another angle] thought layer', e?.message); } }
+    if (TL && TL.list.length) { try { TL.frame(dt, t, g); } catch (e) { console.warn('[another angle] thought layer', e?.message); swapToLocalThought(); } }
     if (thought && !thought.w2 && !mech) drawThought(dt, t);
     if (mech) { try { mech.frame(dt, t); } catch (e) { console.warn('[another angle] mechanic frame', e?.message); } }
     g.globalAlpha = 1;
@@ -196,6 +217,16 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     thoughtTag = tags.add(sceneParts(S.text).excerpt, { kind: 'words' });
     placeThought();
     if (rmOn()) { thought.x = thought.hx; thought.y = thought.hy; }
+  }
+  /** W2's layer failed mid-flight: the local Thought Mallow takes over where it was, words and all. */
+  function swapToLocalThought() {
+    const at = thought?.w2 ? { x: thought.x, y: thought.y } : null;
+    try { TL?.clear(); } catch { /* already broken */ }
+    TL = null; wth = null; thought = null;
+    if (at && S.phase === 'waiting') {
+      spawnThought();
+      Object.assign(thought, { x: at.x, y: at.y, scale: 1, born: 1 });
+    }
   }
   function placeThought() { if (thought) { thought.hx = area.x + area.w / 2; thought.hy = area.y + area.h * 0.46; } }
   function drawThought(dt, t) {
@@ -496,6 +527,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       kick: () => {},
     };
     endMechanic(true);
+    S.band = measureBand(L.hint);
+    layout();
     mech = mod.mount(ctx);
     mechId = scene.mechanic;
     mech.tags = ctx.tags;
@@ -539,6 +572,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     zt?.setStage('transforming');
     ct?.setStage('curious');
     await subs.say({ text: 'A new perspective', kind: 'title' }, {});
+    if (S.left || seq !== S.seq) return;
     await say(scene.subtitle_line_1, { mallow: lead });
     if (S.left || seq !== S.seq) return;
     await sleep(rmOn() ? 400 : 1000);          // a natural pause between the two lines

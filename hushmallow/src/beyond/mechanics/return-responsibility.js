@@ -34,7 +34,8 @@ export function mount(ctx) {
     return b;
   });
   const places = L.labels.places.map((label, i) => ({ label, i, count: 0, glow: 0, tag: ctx.tags.add(label, { kind: 'label', colour: i === YOURS ? '#ffd98a' : ['#7fe7ff', '#b59cff', '#ff9ad5'][i] }) }));
-  const words = ctx.tags.add(ctx.parts.excerpt, { kind: 'words' });
+  // a short phone: the bowls sit either side of the thought, so its words stay narrow between them
+  const words = ctx.tags.add(ctx.parts.excerpt, { kind: 'words', max: A0.h < 270 ? Math.max(120, Math.round(A0.w - 4 * clamp(Math.min(A0.w * 0.13, A0.h * 0.16), 30, 46) - 50)) : 230 });
   let finished = false, warned = false, moves = 0, settleT = 0;
   const t0 = performance.now();
 
@@ -43,6 +44,11 @@ export function mount(ctx) {
     const tx = A.x + A.w / 2, ty = A.y + A.h - R * 1.2 - 56;
     // the four bowls on an arc above the thought
     const pr = clamp(Math.min(A.w * 0.13, A.h * 0.16), 30, 46);
+    if (A.h < 270) {
+      // a short phone: two bowls each side, the thought between them
+      const lx = A.x + pr + 6, rx = A.x + A.w - pr - 6, y0 = A.y + A.h * 0.2, y1 = A.y + A.h * 0.66;
+      return { tx, ty: A.y + A.h * 0.62, pr, pos: [{ x: lx, y: y0 }, { x: rx, y: y0 }, { x: lx, y: y1 }, { x: rx, y: y1 }] };
+    }
     const ys = [A.y + A.h * 0.44, A.y + pr + 22, A.y + pr + 22, A.y + A.h * 0.44];
     const xs = [A.x + pr + 14, A.x + A.w * 0.34, A.x + A.w * 0.66, A.x + A.w - pr - 14];
     return { tx, ty, pr, pos: xs.map((x, i) => ({ x, y: ys[i] })) };

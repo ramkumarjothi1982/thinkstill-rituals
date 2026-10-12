@@ -66,14 +66,16 @@ export function normaliseEmotion(e) {
 // lines · sweat · lookX/lookY: gaze · closed: soft closed (content) eyes
 export const FACE_KEYS = Object.freeze(['eyeOpen', 'lid', 'lidTilt', 'browA', 'browTilt', 'browY', 'curve', 'mouthW', 'wave', 'open', 'skew', 'puff', 'blush', 'lines', 'sweat', 'lookX', 'lookY', 'closed']);
 export const REST_FACE = Object.freeze({ eyeOpen: 0.95, lid: 0, lidTilt: 0, browA: 0, browTilt: 0, browY: 0, curve: 0.18, mouthW: 0.85, wave: 0, open: 0, skew: 0, puff: 0, blush: 0.3, lines: 0, sweat: 0, lookX: 0, lookY: 0, closed: 0 });
-export const RELIEVED_FACE = Object.freeze({ eyeOpen: 0.4, lid: 0, lidTilt: 0, browA: 0, browTilt: 0, browY: 0.1, curve: 0.72, mouthW: 0.9, wave: 0, open: 0.1, skew: 0, puff: 0, blush: 0.5, lines: 0, sweat: 0, lookX: 0, lookY: 0.08, closed: 0.88 });
+// relieved: soft closed eyes (◡), a gentle closed-mouth smile (open 0, so the smile curve is what is drawn)
+export const RELIEVED_FACE = Object.freeze({ eyeOpen: 0.4, lid: 0, lidTilt: 0, browA: 0, browTilt: 0, browY: 0.1, curve: 0.72, mouthW: 0.9, wave: 0, open: 0, skew: 0, puff: 0, blush: 0.5, lines: 0, sweat: 0, lookX: 0, lookY: 0.08, closed: 0.88 });
 
 // Motion signatures (fractions of the body height P, Hz, rates per second):
 // bob/bobHz breathing float · tremble/trembleHz shiver · dart gaze darts per
 // second · hop small hops per second · sway side-to-side · sink how far it
 // sinks (× P) · drift how strongly it drifts away from others · shrink (0..1)
 const M = (o) => Object.freeze({ bob: 0.03, bobHz: 0.42, tremble: 0, trembleHz: 0, dart: 0, hop: 0, sway: 0, sink: 0, drift: 0, shrink: 0, crowd: 0, ...o });
-// fx: crackle (micro-arcs/s) · steam (huffs/s) · rain (drops/s) · motes (inner lights)
+// fx: crackle (micro-arcs/s) · steam (huffs/s) · rain (drops/s at full feeling; 6–10 reads as a light
+// rain at phone size) · motes (inner lights) · chatter (siblings talk) · heat (a warm glow round it)
 const FX = (o) => Object.freeze({ crackle: 0, steam: 0, rain: 0, motes: 5, chatter: 0, heat: 0, ...o });
 const F = (o) => Object.freeze({ ...REST_FACE, ...o });
 
@@ -100,7 +102,7 @@ export const THOUGHT_STYLES = Object.freeze({
   }),
   anxiety: Object.freeze({
     id: 'anxiety', label: 'restless and trembling', tension: 0.8, charge: 0.92, alpha: 0.74,
-    tint: tint('#f1ecff', '#c7b8ff', '#7f69e0', '#e2d8ff', '#22144a'),
+    tint: tint('#eeedff', '#c0bcff', '#6f6ad8', '#dedcff', '#1d1a4a'),
     face: F({ eyeOpen: 1.18, lid: 0, lidTilt: -0.35, browA: 0.95, browTilt: -0.95, browY: 0.35, curve: -0.3, mouthW: 0.58, wave: 1, open: 0.08, blush: 0.2, sweat: 1 }),
     motion: M({ bob: 0.02, bobHz: 0.95, tremble: 0.016, trembleHz: 11, dart: 1.7, sway: 0.02 }),
     body: Object.freeze({ squash: -0.02, puff: 0, droop: 0 }),
@@ -108,7 +110,7 @@ export const THOUGHT_STYLES = Object.freeze({
   }),
   overwhelm: Object.freeze({
     id: 'overwhelm', label: 'several voices at once', tension: 0.74, charge: 0.8, alpha: 0.76,
-    tint: tint('#f7e2ff', '#dcaaf0', '#9a58c4', '#f2d2ff', '#2e0f3e'),
+    tint: tint('#fce4fa', '#e99ee6', '#a8519f', '#f8d0f4', '#33102f'),
     face: F({ eyeOpen: 1.12, browA: 0.65, browTilt: -0.6, browY: 0.3, curve: -0.2, mouthW: 0.5, wave: 0.35, open: 0.4, blush: 0.25, sweat: 0.45 }),
     motion: M({ bob: 0.025, bobHz: 0.8, tremble: 0.004, trembleHz: 9, dart: 1.2, crowd: 1 }),
     body: Object.freeze({ squash: 0, puff: 0, droop: 0 }),
@@ -120,7 +122,7 @@ export const THOUGHT_STYLES = Object.freeze({
     face: F({ eyeOpen: 0.66, lid: 0.48, lidTilt: -0.85, browA: 0.8, browTilt: -0.85, browY: 0.15, curve: -0.62, mouthW: 0.66, blush: 0.15, lookY: 0.55 }),
     motion: M({ bob: 0.02, bobHz: 0.16, sink: 0.42, shrink: 0 }),
     body: Object.freeze({ squash: 0.03, puff: 0, droop: 0.85 }),
-    fx: FX({ rain: 2.2, motes: 3 }),
+    fx: FX({ rain: 9, motes: 3 }),
   }),
   loneliness: Object.freeze({
     id: 'loneliness', label: 'drifting apart', tension: 0.5, charge: 0.4, alpha: 0.72,
@@ -156,8 +158,9 @@ export const THOUGHT_STYLES = Object.freeze({
   }),
 });
 
-/** The palette a transformed thought settles into: pearl, mint and a warm inner light. */
-export const CALM_TINT = tint('#fffdf4', '#c9efe0', '#76c3ad', '#ffe7a6', '#173530');
+/** The palette a transformed thought settles into: pearl, a soft sage and a warm inner light
+ * (sage, not teal-mint: a lonely thought's teal must visibly change when it transforms). */
+export const CALM_TINT = tint('#fffdf2', '#e2f1d6', '#86c2a2', '#ffe7a6', '#1b3527');
 
 /** Belief Mallows: denser, more opaque jelly, one palette per prop (the prop is the accent). */
 export const BELIEF_TINTS = Object.freeze({
@@ -178,14 +181,45 @@ export function hexRgb(h) {
 export const rgbHex = ([r, g, b]) => '#' + [r, g, b].map((v) => Math.round(clamp(v, 0, 255)).toString(16).padStart(2, '0')).join('');
 export function mixHex(a, b, t) { const A = hexRgb(a), B = hexRgb(b); return rgbHex([lerp(A[0], B[0], t), lerp(A[1], B[1], t), lerp(A[2], B[2], t)]); }
 export function rgba(h, a) { const [r, g, b] = hexRgb(h); return `rgba(${r},${g},${b},${+clamp(a).toFixed(3)})`; }
-/** Desaturate toward the colour's own luminance (0..1). */
-export function soften(h, t) { const [r, g, b] = hexRgb(h); const y = 0.299 * r + 0.587 * g + 0.114 * b; return rgbHex([lerp(r, y, t), lerp(g, y, t), lerp(b, y, t)]); }
 
-/** The tint for a style at desaturation `soft` (0..1) and calm transform `k` (0..1). */
+// OKLab (Björn Ottosson): blends that stay clean (an sRGB blend of coral into sage passes through brown-grey)
+const lin = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+const gam = (v) => 255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(Math.max(0, v), 1 / 2.4) - 0.055);
+export function hexOklab(h) {
+  const [R, G, B] = hexRgb(h).map(lin);
+  const l = Math.cbrt(0.4122214708 * R + 0.5363325363 * G + 0.0514459929 * B);
+  const m = Math.cbrt(0.2119034982 * R + 0.6806995451 * G + 0.1073969566 * B);
+  const s = Math.cbrt(0.0883024619 * R + 0.2817188376 * G + 0.6299787005 * B);
+  return [0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s, 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s, 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s];
+}
+export function oklabHex([L, a, b]) {
+  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3, m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3, s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+  return rgbHex([gam(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s), gam(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s), gam(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s)]);
+}
+/**
+ * Blend two colours in OKLCh: lightness and chroma even, the hue the short way round, so a coral
+ * thought warms through gold into sage instead of passing through grey-brown (as sRGB or plain
+ * OKLab blends of opposite hues do). A near-grey end takes the other end's hue.
+ */
+export function mixOk(a, b, t) {
+  if (t <= 0) return a; if (t >= 1) return b;
+  const A = hexOklab(a), B = hexOklab(b);
+  const ca = Math.hypot(A[1], A[2]), cb = Math.hypot(B[1], B[2]);
+  let ha = Math.atan2(A[2], A[1]), hb = Math.atan2(B[2], B[1]);
+  if (ca < 0.02) ha = hb; if (cb < 0.02) hb = ha;
+  let dh = hb - ha; if (dh > Math.PI) dh -= 2 * Math.PI; if (dh < -Math.PI) dh += 2 * Math.PI;
+  // a gentle chroma dip mid-way keeps the passing hue (gold, aqua) a hint, never a loud colour of its own
+  const L = lerp(A[0], B[0], t), C = lerp(ca, cb, t) * (1 - 0.3 * 4 * t * (1 - t)), h = ha + dh * t;
+  return oklabHex([L, C * Math.cos(h), C * Math.sin(h)]);
+}
+/** Desaturate (OKLab chroma toward 0) by t (0..1), keeping the lightness. */
+export function soften(h, t) { if (t <= 0) return h; const [L, a, b] = hexOklab(h); return oklabHex([L, a * (1 - t), b * (1 - t)]); }
+
+/** The tint for a style at desaturation `soft` (0..1) and calm transform `k` (0..1), blended in OKLab. */
 export function tintAt(base, soft, k, out = {}) {
   for (const key of ['light', 'mid', 'deep', 'glow', 'ink']) {
     const s = soften(base[key], 0.42 * clamp(soft));
-    out[key] = mixHex(key === 'light' || key === 'glow' ? mixHex(s, '#ffffff', 0.12 * clamp(soft)) : s, CALM_TINT[key], clamp(k));
+    out[key] = mixOk(key === 'light' || key === 'glow' ? mixOk(s, '#ffffff', 0.12 * clamp(soft)) : s, CALM_TINT[key], clamp(k));
   }
   return out;
 }
@@ -279,9 +313,19 @@ export function insideUV(u, v, pad = 0, shape = SHAPE) {
 }
 
 // ---------------------------------------------------------------- words --
-/** How much of the words a tag shows at depth z (0 near … 1 far). The tag is never smaller than 15 px. */
+/** How much of the words a tag shows at depth z (0 near … 1 far), in characters (a rough cap). The tag is never smaller than 15 px. */
 export const TAG_MIN_PX = 15;
 export function tagBudget(z) { return z < 0.34 ? 96 : z < 0.68 ? 48 : 26; }
+/** How many lines a tag may use: 3 near, 2 mid, 1 far, and fewer when the stage is crowded (0 room … 2 crowded). */
+export function tagLines(z, crowd = 0) { return Math.max(1, Math.min(z < 0.34 ? 3 : z < 0.68 ? 2 : 1, [3, 2, 1][crowd] ?? 1)); }
+/** The words split for excerpting (whitespace collapsed). */
+export function wordsOf(text) { const t = String(text ?? '').replace(/\s+/g, ' ').trim(); return t ? t.split(' ') : []; }
+/** The first k words, marked "…" when some are left out (cut at a word, never reworded). */
+export function firstWords(words, k) {
+  if (k >= words.length) return words.join(' ');
+  const out = words.slice(0, Math.max(1, k)).join(' ');
+  return out.replace(/[\s.,;:!?…–—-]+$/u, '') + '…';
+}
 
 /** The start of the person's words, cut at a word and marked "…" (never a later clause, never reworded). */
 export function wordsExcerpt(text, max) {

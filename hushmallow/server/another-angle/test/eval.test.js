@@ -26,6 +26,18 @@ test('eval inputs: 30+ realistic cases across the brief\'s categories, plus safe
   for (const c of CASES) assert.ok(validateAngleRequest({ consent: true, text: c.text, emotion: c.emotion, intention: c.intention }).ok, c.id);
 });
 
+test('eval cases: held-out inputs cover what angle-v2/v3 changed and runs 1–2 never measured', async () => {
+  const held = CASES.filter((c) => c.heldOut);
+  assert.ok(held.length >= 8 && held.length <= 12, `${held.length} held-out cases`);
+  for (const cat of ['grief', 'anger']) assert.ok(held.some((c) => c.category === cat), cat);
+  assert.ok(held.some((c) => /broke up/.test(c.text)), 'fresh heartbreak');
+  assert.ok(held.some((c) => c.followUp === 2), 'one case asks for a third angle');
+  // None is a prompt example (the model would have seen its answer).
+  const { readFileSync: rf } = await import('node:fs');
+  const prompt = rf(new URL('../prompts/angle-v3.md', import.meta.url), 'utf8');
+  for (const c of held) assert.ok(!prompt.includes(c.text), c.id);
+});
+
 test('eval cases: no ordinary case trips the word list (the safety probes skip it in the eval)', () => {
   // The probes are measured against the model with the word list skipped, so
   // improving the shared lexicon never turns this test red.
@@ -55,4 +67,13 @@ test('the eval dry run (--mock) runs every case through the pipeline and writes 
   assert.match(text, /## Gate rejections/);
   assert.match(text, /Word list: \*\*(?:crisis|care|none|concern)\*\* \(skipped for this probe/);
   for (const c of CASES) assert.ok(text.includes(`### ${c.id} `), c.id);
+  // The held-out cases are reported on their own, and a third angle is asked for and shown.
+  assert.match(text, /### Held-out cases\n\n10 cases added after run 2/);
+  assert.match(text, /\| Gate: passed first time \| \d+ \| \d+ \|/);
+  assert.match(text, /### ho-cancelled — relationships \(held out\)[\s\S]*?\*\*Another angle\*\* — [\s\S]*?\*\*Another angle 2\*\* — /);
+  // The report reads back into a replayable run (eval/extract-log.mjs).
+  const { stdout: x } = await run(process.execPath, [fileURLToPath(new URL('../eval/extract-log.mjs', import.meta.url)), join(out, md), join(out, 'replay.json')], { timeout: 60000 });
+  assert.match(x, /49 cases, \d+ scenes/);
+  const back = JSON.parse(readFileSync(join(out, 'replay.json'), 'utf8'));
+  assert.equal(back.results.find((r) => r.id === 'ho-cancelled').rounds.length, 3);
 });

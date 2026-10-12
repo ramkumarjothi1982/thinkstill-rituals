@@ -112,8 +112,8 @@ export function create(ctx) {
 
   // grid (rows × columns) — world → screen, shading
   const NG = ROWS * COLS;
-  const gH = new Float32Array(NG), gHX = new Float32Array(NG), gHZ = new Float32Array(NG), gGX = new Float32Array(NG), gGZ = new Float32Array(NG), gA = new Float32Array(NG);
-  const gSX = new Float32Array(NG), gSY = new Float32Array(NG), gR = new Float32Array(NG), gG = new Float32Array(NG), gB = new Float32Array(NG), gCrest = new Float32Array(NG), gSpec = new Float32Array(NG);
+  const gH = new Float32Array(NG), gHX = new Float32Array(NG), gHZ = new Float32Array(NG), gGX = new Float32Array(NG), gGZ = new Float32Array(NG), gA = new Float32Array(NG), gAU = new Float32Array(NG);
+  const gSX = new Float32Array(NG), gSY = new Float32Array(NG), gR = new Float32Array(NG), gG = new Float32Array(NG), gB = new Float32Array(NG), gCrest = new Float32Array(NG), gSpec = new Float32Array(NG), gPath = new Float32Array(NG);
   const rY = new Float32Array(ROWS), rS = new Float32Array(ROWS), rZ = new Float32Array(ROWS), rDZ = new Float32Array(ROWS);
   let rowsN = ROWS;
   let colX0 = 0, colStep = 1;
@@ -190,6 +190,14 @@ export function create(ctx) {
     driftGain = calibrateDrift(target, U);
     buildImage();
     buildSky();
+    if (!sea.amb.length) {
+      const a = R() * 0.6 - 0.3;
+      sea.setAmbient([
+        { lambda: 1.35 * U, A: 0.07 * 1.35 * U / TAU, dx: Math.sin(a), dz: Math.cos(a), ph: R() * TAU },
+        { lambda: 0.82 * U, A: 0.06 * 0.82 * U / TAU, dx: Math.sin(a + 0.8), dz: Math.cos(a + 0.8), ph: R() * TAU },
+        { lambda: 0.47 * U, A: 0.05 * 0.47 * U / TAU, dx: Math.sin(a - 1.0), dz: Math.cos(a - 1.0), ph: R() * TAU },
+      ]);
+    }
     tS.r = plan.home.r;
     tS.plateW = plan.plate?.w || 0; tS.plateH = plan.plate?.h || 0;
     heroFromRect(true);
@@ -273,17 +281,29 @@ export function create(ctx) {
       dg.fillStyle = rg; dg.fillRect(0, 0, 256, 128); }
     horizonSpr = makeCanvas(256, 8);
     { const hg = horizonSpr.getContext('2d'); const lg = hg.createLinearGradient(0, 0, 256, 0);
-      lg.addColorStop(0, 'rgba(124,245,255,0)'); lg.addColorStop(0.35, 'rgba(160,240,255,0.35)'); lg.addColorStop(0.62, 'rgba(255,230,180,0.9)'); lg.addColorStop(0.85, 'rgba(160,240,255,0.3)'); lg.addColorStop(1, 'rgba(124,245,255,0)');
-      hg.fillStyle = lg; hg.fillRect(0, 3, 256, 2); hg.globalAlpha = 0.35; hg.fillRect(0, 2, 256, 4); }
+      lg.addColorStop(0, 'rgba(124,245,255,0)'); lg.addColorStop(0.3, 'rgba(160,240,255,0.08)'); lg.addColorStop(0.5, 'rgba(255,226,180,0.55)'); lg.addColorStop(0.7, 'rgba(160,240,255,0.08)'); lg.addColorStop(1, 'rgba(124,245,255,0)');
+      hg.fillStyle = lg; hg.fillRect(0, 3.4, 256, 1.2); hg.globalAlpha = 0.4; hg.fillRect(0, 2, 256, 4); }
   }
 
-  /** Where a ghost fingertip draws one slow, long stroke: up the clear water beside the hero, towards the horizon. */
+  /**
+   * Where a ghost fingertip draws one slow, long stroke away from you: up the clear water beside the
+   * hero on whichever side has the longest free run (never over a bubble, the thought or its words).
+   */
   function placeHint() {
     if (!plan) return;
-    const M = plan.mallow, side = (plan.home.x < W / 2) ? 1 : -1;
-    const x = clamp(side > 0 ? (M.right + W - OCEAN.EDGE) / 2 : (OCEAN.EDGE + M.left) / 2, OCEAN.EDGE + 12, W - OCEAN.EDGE - 12);
-    hint.x0 = x; hint.y0 = Math.min(plan.floor - 10, M.bottom - 6);
-    hint.x1 = x + side * U * 0.04; hint.y1 = Math.max(plan.hy + 16, plan.home.y - 6);
+    const M = plan.mallow, E = OCEAN.EDGE;
+    const obs = plan.slots.map((sl) => ({ x0: sl.x - sl.D / 2 - 10, x1: sl.x + sl.D / 2 + 10, y1: sl.y + sl.D / 2 + 12 }));
+    if (plan.rects.plate) obs.push({ x0: plan.rects.plate.x0, x1: plan.rects.plate.x1, y1: plan.rects.plate.y1 + 8 });
+    let best = null;
+    for (const side of [-1, 1]) {
+      const x = side < 0 ? Math.max(E + 14, (E + M.left) / 2) : Math.min(W - E - 14, (M.right + W - E) / 2);
+      const y0 = Math.min(plan.floor - 8, M.bottom - 4);
+      let top = plan.hy + 14;
+      for (const o of obs) if (x > o.x0 - 14 && x < o.x1 + 14 && o.y1 < y0) top = Math.max(top, o.y1);
+      const run = y0 - top;
+      if (!best || run > best.run) best = { x, y0, top, run, side };
+    }
+    hint.x0 = best.x; hint.y0 = best.y0; hint.x1 = best.x + best.side * U * 0.03; hint.y1 = best.top + 4;
   }
 
   // ------------------------------------------------------------- hero --
@@ -516,6 +536,7 @@ export function create(ctx) {
     cam.homeY = camHome; cam.waterY = camWater; fitCamera(cam, hyNow);
     if (dt > 0 && relayoutClock === 0) wakeRows();
     heroFromRect(false);
+    if (!melt && hero.floatK < 1) hero.floatK = Math.min(1, hero.floatK + dt / 1.5);
 
     // fingers: moving time, resting, the hush
     for (const f of fingers) {
@@ -540,6 +561,7 @@ export function create(ctx) {
     if (dt > 0) sea.step(dt);
     sea.prepare();
     windK += (windT - windK) * (1 - Math.exp(-dt / 2.5));
+    sea.ambientScale((0.65 + 0.7 * windK) * (1 - 0.55 * mirrorK) * (reduced() ? 0.5 : 1));
     if (wake) {
       hushWake();
       if (dt > 0) { wakeAcc += dt; let n = 0; while (wakeAcc >= 1 / 60 && n < 3) { wakeAcc -= 1 / 60; wake.step(); n++; } if (n === 3) wakeAcc = 0; }
@@ -671,6 +693,7 @@ export function create(ctx) {
       if (b.state === 'land' && b.landK >= 1) { b.state = 'float'; b.from = null; splash(b.sx, b.sy + b.D * 0.32, b.D); }
     }
     hero.floatK = rm ? k : smoothstep(0.15, 0.9, k);
+    hero.floatRamp = false;
     const done = (rm || (melt.riseAt >= 0 && elapsed - melt.riseAt >= RISE_SEC)) && (!thought || !tS.from || tS.landK >= 1) && k >= 1 && bubbles.every((b) => b.state === 'float' || b.state === 'rise');
     if (done) {
       melt = null; hyNow = hyTarget; hero.floatK = 1;
@@ -873,10 +896,13 @@ export function create(ctx) {
   }
 
   // --------------------------------------------------------------- hero --
+  /** The hero's waterline: its lowest tenth sits in the water (the body box carries a little transparent margin below the art). */
+  const heroBase = () => hero.bottom - 0.09 * hero.h;
+  const heroWater = () => { const b = heroBase(); return b - 0.1 * (b - hero.top); };
   function updateHero(dt, now) {
     if (!hero.ok) return;
     const rm = reduced();
-    const b = hero.bottom, wl = b - 0.1 * hero.h;
+    const wl = heroWater();
     unproject(cam, hero.cx, wl, wo);
     hero.x = wo.x; hero.z = wo.z; hero.s = wo.s;
     sea.sample(hero.x, hero.z, sm);
@@ -923,14 +949,14 @@ export function create(ctx) {
     // light on top: crest lines, the horizon line, glints, plankton, Loomi's glow on the water
     g.globalCompositeOperation = 'lighter';
     drawCrests(g, now, rm);
-    g.globalAlpha = 0.55 + 0.4 * dawnK;
-    g.drawImage(horizonSpr, 0, 0, 256, 8, xd - W * 0.9, hyNow - 4, W * 1.8, 8);
+    g.globalAlpha = 0.45 + 0.45 * dawnK;
+    g.drawImage(horizonSpr, 0, 0, 256, 8, xd - W * 0.75, hyNow - 4, W * 1.5, 8);
     drawSparkles(g, now, rm);
     plankton.draw(g, sprites.plankton, low() ? 0.5 : 1, 0.12);
     if (hero.ok) {
-      const wl = hero.bottom - 0.1 * hero.h, hw = (hero.right - hero.left);
-      g.globalAlpha = 0.18 * (low() ? 0.6 : 1) * hero.floatK;
-      g.drawImage(sprites.loomi, hero.cx - hw * 0.75, wl - hw * 0.12, hw * 1.5, hw * 0.55);
+      const wl = heroWater(), hw = (hero.right - hero.left);
+      g.globalAlpha = 0.24 * (low() ? 0.6 : 1) * hero.floatK;
+      g.drawImage(sprites.loomi, hero.cx - hw * 0.95, wl - hw * 0.1, hw * 1.9, hw * 0.7);
     }
     g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
   }
@@ -956,7 +982,7 @@ export function create(ctx) {
     for (let j = 0; j < n; j++) {
       const s = rS[j], z = rZ[j], o = j * COLS;
       const x0 = (colX0 - W / 2) / s, step = colStep / s;
-      sea.row(z, x0, step, COLS, rDZ[j], o, gH, gHX, gHZ, gGX, gGZ, gA);
+      sea.row(z, x0, step, COLS, rDZ[j], o, gH, gHX, gHZ, gGX, gGZ, gA, true, gAU);
       const sN = clamp(s / 1.2);
       for (let c = 0; c < COLS; c++) {
         const q = o + c, x = x0 + c * step;
@@ -979,23 +1005,31 @@ export function create(ctx) {
         const skyY = hy - Z0 * (ry / rz), skyX = W / 2 + Z0 * (rx / rz);
         skyAt((hy - skyY) / Math.max(1, hy), sky3);
         const above = Math.max(0, hy - skyY);
-        const ddx = (skyX - xd) / (W * (0.34 + 0.1 * dawnK)), dexp = ddx * ddx + above / (H * 0.05 + 14);
+        const ddx = (skyX - xd) / (W * (0.3 + 0.1 * dawnK)), dexp = ddx * ddx + above / (H * 0.11 + 20);
         const dawn = dexp < 9 ? dawnK * Math.exp(-dexp) : 0;
-        let rr = sky3[0] + 255 * dawn, rg = sky3[1] + 214 * dawn, rb = sky3[2] + 160 * dawn;
+        let rr = sky3[0] * 0.82 + 300 * dawn, rg = sky3[1] * 0.85 + 236 * dawn, rb = sky3[2] * 0.88 + 168 * dawn;
         // the water's own colour: deep teal, lighter far away
         const wr = lerp(10, 4, sN), wg = lerp(52, 30, sN), wb = lerp(72, 46, sN);
         // specular glitter of the dawn (broad lobe here; sharp glints as sprites)
         const rdl = (rx * lx + ry * ly + rz * lz) / Math.sqrt(rx * rx + ry * ry + rz * rz);
         const sp = rdl > 0.965 ? Math.pow(rdl, 160) * dawnK * (1 + mirrorK) : 0;
-        // bioluminescent crest light
+        // bioluminescent crest light, in drifting patches (anchored to the water, never ruler lines)
         const a = gA[q] * amp;
         const crest = a > 0.3 ? clamp(h / (a + 0.3)) : 0;
-        const glow = smoothstep(0.42, 0.95, crest) * clamp(a / 7) * bio * (0.55 + 0.45 * sN);
+        const pn = 0.5 + 0.5 * Math.sin(x * 0.011 + j * 1.7 + now * 0.13) * Math.sin(x * 0.027 - j * 0.83 - now * 0.07 + 1.3);
+        const glow = smoothstep(0.42, 0.95, crest) * clamp(gAU[q] * amp / 7) * bio * (0.4 + 0.6 * sN) * (0.3 + 0.7 * pn);
         gCrest[q] = glow; gSpec[q] = sp;
+        // the dawn's glitter path: narrow at the horizon, widening towards you, broken by the slopes
+        const pathW = W * (0.035 + 0.15 * sN) * (1 + 3 * clamp(Math.sqrt(hx * hx + hz * hz) * 4));
+        const px2 = (sx - xd) / pathW;
+        gPath[q] = px2 * px2 < 9 ? Math.exp(-px2 * px2) * dawnK * (0.35 + 0.65 * clamp(Math.sqrt(hx * hx + hz * hz) * 9)) : 0;
         const Fm = F * (1 + 0.15 * mirrorK);
-        gR[q] = wr * (1 - Fm) + rr * Fm + 255 * sp * 0.8 + 70 * glow;
-        gG[q] = wg * (1 - Fm) + rg * Fm + 225 * sp * 0.8 + 210 * glow;
-        gB[q] = wb * (1 - Fm) + rb * Fm + 170 * sp * 0.8 + 220 * glow;
+        // the dawn path: a soft warm column, narrow far out and widening towards you, fading as it nears
+        const cwid = W * (0.05 + 0.13 * sN) * (1 + 0.6 * mirrorK), cdx = (sx - xd) / cwid;
+        const colm = cdx * cdx < 9 ? Math.exp(-cdx * cdx) * dawnK * (0.5 - 0.32 * sN) * (1 + 0.5 * mirrorK) : 0;
+        gR[q] = wr * (1 - Fm) + rr * Fm + 255 * sp * 0.8 + 70 * glow + 150 * colm;
+        gG[q] = wg * (1 - Fm) + rg * Fm + 225 * sp * 0.8 + 210 * glow + 118 * colm;
+        gB[q] = wb * (1 - Fm) + rb * Fm + 170 * sp * 0.8 + 220 * glow + 84 * colm;
       }
     }
   }
@@ -1043,33 +1077,17 @@ export function create(ctx) {
     }
   }
 
-  /** Crest light: each row a faint luminous line, bright along its crests (grouped into a few paths). */
+  /** Crest light: luminous strokes only where crests are (in patches), soft halo + thin core, fading towards the horizon. */
   function drawCrests(g, now, rm) {
     const n = rowsN;
     g.lineCap = 'round'; g.lineJoin = 'round';
-    const calm = 1 - 0.6 * mirrorK;
-    // the base strokes: very faint far away (they would merge into a band), clearer nearer
-    for (let pass = 0; pass < 2; pass++) {
-      g.beginPath();
-      for (let j = 3; j < n; j++) {
-        const sN = clamp(rS[j] / 1.2);
-        if ((pass === 0) !== (sN < 0.45)) continue;
-        const o = j * COLS;
-        g.moveTo(gSX[o], gSY[o]);
-        for (let c = 1; c < COLS; c++) g.lineTo(gSX[o + c], gSY[o + c]);
-      }
-      g.strokeStyle = pass === 0 ? 'rgba(124,245,255,0.05)' : 'rgba(124,245,255,0.075)';
-      g.globalAlpha = calm; g.lineWidth = pass === 0 ? 0.7 : 1.1;
-      g.stroke();
-    }
-    // the crests: segments bucketed by brightness and depth
-    const lv = [0.18, 0.4, 0.7];
+    const lv = [0.16, 0.34, 0.6];
     for (let depth = 0; depth < 2; depth++) for (let b = 0; b < 3; b++) {
       g.beginPath();
       let segs = 0;
-      for (let j = 2; j < n; j++) {
+      for (let j = 3; j < n; j++) {
         const sN = clamp(rS[j] / 1.2);
-        if ((depth === 0) !== (sN < 0.45)) continue;
+        if ((depth === 0) !== (sN < 0.4)) continue;
         const o = j * COLS;
         let pen = false;
         for (let c = 0; c < COLS - 1; c++) {
@@ -1079,34 +1097,44 @@ export function create(ctx) {
         }
       }
       if (!segs) continue;
-      const a = [0.22, 0.42, 0.7][b] * (low() ? 0.6 : 1);
+      const a = [0.16, 0.3, 0.5][b] * (low() ? 0.6 : 1);
       g.strokeStyle = b === 2 ? C.crest2 : C.crest;
-      g.globalAlpha = a * 0.5; g.lineWidth = (depth ? 4.5 : 2.6) + b; g.stroke();
-      g.globalAlpha = a; g.lineWidth = depth ? 1.5 : 0.9; g.stroke();
+      g.globalAlpha = a * 0.35; g.lineWidth = (depth ? 7 : 3.5) + 1.5 * b; g.stroke();
+      g.globalAlpha = a; g.lineWidth = depth ? 1.4 : 0.8; g.stroke();
     }
     g.globalAlpha = 1;
   }
 
-  /** Glints of the dawn on wave faces, and bioluminescent glow at the brightest crests. */
+  /** The dawn's glitter (jittered, twinkling points on the path and on facets that catch it) and soft glows at the brightest crests. */
   function drawSparkles(g, now, rm) {
     const n = rowsN;
     let gl = 0, gw = 0;
-    const tw = rm || low() ? 0 : 1;
-    for (let j = 2; j < n && (gl < 130 || gw < 70); j++) {
+    const still = rm || low();
+    const tick = still ? 0 : Math.floor(now * 5);
+    for (let j = 2; j < n && (gl < 150 || gw < 60); j++) {
       const sN = clamp(rS[j] / 1.2), o = j * COLS;
+      const cw = colStep * 0.5, rh = j < n - 1 ? (rY[j + 1] - rY[j]) * 0.5 : 4;
       for (let c = 1; c < COLS - 1; c++) {
         const q = o + c;
-        const sp = gSpec[q];
-        if (sp > 0.06 && gl < 130) {
-          const hsh = ((q * 2654435761 + Math.floor(now * 7) * 40503) >>> 0) / 4294967296;
-          const a = clamp(sp * 1.6) * (1 - tw * 0.5 + tw * 0.5 * hsh);
-          const r = 2 + 6 * sN + 4 * clamp(sp);
-          g.globalAlpha = a; g.drawImage(sprites.glint, gSX[q] - r, gSY[q] - r, r * 2, r * 2); gl++;
+        const pv = gPath[q] + gSpec[q] * 1.5;
+        if (pv > 0.02 && gl < 150) {
+          // two candidate sparkles a cell, each lit on its own beat
+          for (let e = 0; e < 2; e++) {
+            const h1 = ((q * 2654435761 + e * 97 + tick * 40503) >>> 0) / 4294967296;
+            if (h1 > pv * 1.6) continue;
+            const h2 = ((q * 1597334677 + e * 31) >>> 0) / 4294967296, h3 = ((q * 3812015801 + e * 7) >>> 0) / 4294967296;
+            const x = gSX[q] + (h2 - 0.5) * 2 * cw, y = gSY[q] + (h3 - 0.5) * 2 * rh;
+            const a = clamp(0.25 + pv) * (still ? 0.7 : 0.55 + 0.45 * Math.sin(now * 3.1 + h2 * 40));
+            const r = 1.2 + 3.2 * sN + 2.5 * clamp(pv);
+            g.globalAlpha = a * 0.85;
+            g.drawImage(pv > 0.55 && h1 < 0.12 ? sprites.glint : sprites.dawn, x - r, y - r * 0.7, r * 2, r * 1.4);
+            gl++;
+          }
         }
         const cr = gCrest[q];
-        if (cr > 0.5 && cr >= gCrest[q - 1] && cr >= gCrest[q + 1] && gw < 70) {
-          const r = 5 + 16 * sN;
-          g.globalAlpha = 0.28 * cr * (low() ? 0.5 : 1); g.drawImage(sprites.crest, gSX[q] - r, gSY[q] - r * 0.55, r * 2, r * 1.1); gw++;
+        if (cr > 0.45 && cr >= gCrest[q - 1] && cr >= gCrest[q + 1] && gw < 60) {
+          const r = 6 + 18 * sN;
+          g.globalAlpha = 0.24 * cr * (low() ? 0.5 : 1); g.drawImage(sprites.crestSoft, gSX[q] - r, gSY[q] - r * 0.45, r * 2, r * 0.9); gw++;
         }
       }
     }
@@ -1197,42 +1225,53 @@ export function create(ctx) {
     g.globalAlpha = b.alpha; g.drawImage(film, x - D / 2, y - D / 2, D, D); g.globalAlpha = 1;
   }
 
-  /** A thin translucent lip of luminous water across the hero's lowest tenth (floating, never masking the face). */
+  /**
+   * A thin, translucent lip of luminous water across the hero's lowest tenth: the base is tinted as if
+   * seen through the water, a bright meniscus line rides the waves across it, and the tint fades out
+   * into the sea below — floating, never masking the face.
+   */
   function drawLip(g, now, rm) {
     if (!hero.ok || hero.floatK <= 0.01) return;
-    const left = hero.left - 10, right = hero.right + 10, wl = hero.bottom - 0.1 * hero.h, bot = hero.bottom + 6;
-    const N = 12, pts = lipPts;
+    const w = hero.right - hero.left, base = heroBase(), wl = heroWater();
+    const left = hero.left + 0.02 * w - 8, right = hero.right - 0.02 * w + 8, N = 12, pts = lipPts;
+    const bob = hero.lift * hero.h;          // the body bobs; the water stays (its own waves only)
     for (let k = 0; k <= N; k++) {
       const x = left + (right - left) * (k / N);
       unproject(cam, x, wl, wo);
       sea.sample(wo.x, wo.z, sm);
       const h = sm.h * (rm ? 0.4 : 1) * (1 - 0.35 * mirrorK);
-      pts[k] = wl - h * wo.s * 0.6 + (wake ? wake.at(x, wl) * 3 : 0) - hero.lift * hero.h * 0.5;
+      pts[k] = wl - h * wo.s * 0.6 + (wake ? wake.at(x, wl) * 3 : 0) - bob * 0.15;
     }
-    const key = `${Math.round(left)}|${Math.round(wl)}|${Math.round(bot)}`;
+    const key = `${Math.round(wl)}|${Math.round(base)}`;
     if (key !== hero.lipKey) {
       hero.lipKey = key;
-      const lg = g.createLinearGradient(0, wl - 6, 0, bot);
-      lg.addColorStop(0, 'rgba(20,92,118,0.0)'); lg.addColorStop(0.18, 'rgba(18,86,112,0.42)'); lg.addColorStop(1, 'rgba(8,46,66,0.78)');
+      const lg = g.createLinearGradient(0, wl - 4, 0, base + 10);
+      lg.addColorStop(0, 'rgba(16,84,108,0)'); lg.addColorStop(0.2, 'rgba(14,78,104,0.34)'); lg.addColorStop(0.72, 'rgba(8,52,74,0.62)'); lg.addColorStop(1, 'rgba(6,36,52,0)');
       hero.lipGrad = lg;
     }
-    const cx = (left + right) / 2, rx = (right - left) / 2;
+    const cx = (hero.left + hero.right) / 2, rx = w / 2 + 6;
+    const k0 = hero.floatK;
     g.save();
-    // only round the body's base: an ellipse clip, so the lip never reads as a box
-    g.beginPath(); g.ellipse(cx, bot - 2, rx, Math.max(10, bot - wl + 12), 0, 0, TAU); g.clip();
-    g.globalAlpha = hero.floatK;
-    g.beginPath(); g.moveTo(left, bot + 12);
+    // only round the body's base: an ellipse clip, so the tint never reads as a box
+    g.beginPath(); g.ellipse(cx, base - 4, rx, Math.max(12, base - wl + 14), 0, 0, TAU); g.clip();
+    g.globalAlpha = k0;
+    g.beginPath(); g.moveTo(left, base + 12);
     for (let k = 0; k <= N; k++) g.lineTo(left + (right - left) * (k / N), pts[k]);
-    g.lineTo(right, bot + 12); g.closePath();
+    g.lineTo(right, base + 12); g.closePath();
     g.fillStyle = hero.lipGrad; g.fill();
     g.restore();
-    // the bright line where water meets the Mallow
+    // the meniscus: a bright line where water meets the Mallow, softly fading at both ends
     g.save();
     g.globalCompositeOperation = 'lighter'; g.lineCap = 'round'; g.lineJoin = 'round';
-    g.beginPath();
-    for (let k = 0; k <= N; k++) { const x = left + (right - left) * (k / N); const fall = Math.sin((k / N) * Math.PI); if (k === 0) g.moveTo(x, pts[k]); else g.lineTo(x, pts[k] + (1 - fall) * 2); }
-    g.strokeStyle = C.crest2; g.globalAlpha = 0.5 * hero.floatK; g.lineWidth = 1.6; g.stroke();
-    g.globalAlpha = 0.18 * hero.floatK; g.lineWidth = 5; g.stroke();
+    for (let pass = 0; pass < 2; pass++) {
+      g.beginPath();
+      for (let k = 1; k < N; k++) { const x = left + (right - left) * (k / N); if (k === 1) g.moveTo(x, pts[k]); else g.lineTo(x, pts[k]); }
+      g.strokeStyle = C.crest2; g.globalAlpha = (pass ? 0.55 : 0.16) * k0; g.lineWidth = pass ? 1.4 : 6; g.stroke();
+    }
+    // a soft ring of water round the body, flattened by the view
+    const s = Math.max(0.05, (wl - cam.hy) / cam.Hw), asp = clamp(s * cam.Hw / cam.Z0, 0.16, 0.7);
+    g.globalAlpha = 0.14 * k0; g.strokeStyle = C.crest; g.lineWidth = 1.2;
+    g.beginPath(); g.ellipse(cx, wl + 3, rx + 10, (rx + 10) * asp * 0.5, 0, 0.08 * Math.PI, 0.92 * Math.PI); g.stroke();
     g.restore();
   }
   const lipPts = new Float32Array(13);
@@ -1448,7 +1487,7 @@ export function create(ctx) {
       // a line high in the storm's sky lands further out
       const yW = lerp(plan.homeY + 20, plan.hy + 10, clamp(1 - cy / (H * 0.66)));
       unproject(cam, cx, Math.max(yW, cam.hy + 6), wo);
-      sea.launch({ x: wo.x, z: wo.z, dx: 0, dz: 1, lambda: lam, A: 0.022 * lam * (reduced() ? 0.4 : 1), len: lam * 2.4, user: false });
+      sea.launch({ x: wo.x, z: wo.z, dx: (R() - 0.5) * 0.7, dz: 1, lambda: lam, A: 0.022 * lam * (reduced() ? 0.4 : 1), len: lam * 2.4, user: false });
       made++;
     }
     if (!made) {

@@ -32,6 +32,7 @@ export function mount(ctx) {
     return b;
   });
   const wordsTag = ctx.tags.add(ctx.parts.excerpt, { kind: 'words', max: Math.round(A0.w * 0.46) });
+  const SHORT = A0.h < 270;   // a short phone: the words step aside once the first piece is in
   const stepLabel = ctx.tags.add(L.labels.step, { kind: 'label', colour: WARM[1] });
   let phase = 'pieces';    // pieces → fuse → standing
   let fuseT = 0, held = null, moves = 0;
@@ -148,7 +149,7 @@ export function mount(ctx) {
     thought.step(dt, R_);
     thought.draw(g, { tension: phase === 'pieces' ? 0.55 - placed() * 0.12 : 0.1, calm: phase === 'standing' ? 0.75 : placed() * 0.15, blink: blinkAt(t, 0.8), lookX: phase === 'pieces' ? -0.6 : 0, lookY: 0.4 });
     motes.draw(g, dt);
-    wordsTag.at(thought.x, thought.y - R * 1.1 - 6, 'top', 1);
+    wordsTag.at(thought.x, thought.y - R * 1.1 - 6, 'top', SHORT && (placed() || held) ? 0 : 1);
     stepLabel.at(G.top.x, G.treads[2].y + G.treads[2].h / 2 + 8, 'bottom', phase === 'standing' ? clamp(fuseT - 0.6) : 0);
     return true;
   }

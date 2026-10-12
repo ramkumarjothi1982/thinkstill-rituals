@@ -179,7 +179,10 @@ export class Sea {
     this.rise = F();                           // amplitude at release / A₀: eased to 1 (no pop)
     this.dec = F();                            // ∫β dt so far (the settle can change the rate without a jump)
     this.damp = 1;                             // ×β (the completion settle uses 3)
-    this.n = 0; this.serial = 0;
+    this.n = 0; this.serial = 0; this.time = 0;
+    // the sea's own breathing: a few endless, very gentle plane swells (texture and light; they carry
+    // nothing — no Stokes drift — and never count as the person's)
+    this.amb = [];
     // per-frame scratch (row evaluation)
     this._att = F(); this._list = new Int32Array(max);
     this._q = F();
@@ -257,9 +260,17 @@ export class Sea {
   /** Drop a packet still being sculpted (nothing came of the stroke). */
   cancel(i) { if (i >= 0) this.on[i] = 0; }
 
+  /** Set the ambient swells: [{ lambda, A, dx, dz, ph }]. */
+  setAmbient(list = []) {
+    this.amb = list.map((w) => { const d = dispersion(w.lambda), l = Math.hypot(w.dx, w.dz) || 1; return { k: d.k, w: d.omega, A: w.A, A0: w.A, dx: w.dx / l, dz: w.dz / l, ph: w.ph || 0 }; });
+  }
+  /** Scale the ambient swells (a calmer or windier sea; the mirror-calm finish). */
+  ambientScale(k) { for (const a of this.amb) a.A = a.A0 * k; }
+
   /** Advance: free packets travel, widen and decay; sculpted ones ease towards their target. */
   step(dt) {
     if (dt <= 0) return;
+    this.time += dt;
     for (let i = 0; i < this.max; i++) {
       if (!this.on[i]) continue;
       if (!this.free[i]) { this.A[i] += (this.At[i] - this.A[i]) * (1 - Math.exp(-dt / SEA.SCULPT_TAU)); continue; }
@@ -319,6 +330,11 @@ export class Sea {
       ux += u * dx; uz += u * dz;
       if (this.user[i]) { uux += u * dx; uuz += u * dz; }
     }
+    for (const a of this.amb) {
+      if (a.A <= 0) continue;
+      const th = a.k * (x * a.dx + z * a.dz) - a.w * this.time + a.ph, c = Math.cos(th), sn = Math.sin(th);
+      h += a.A * c; hx -= a.A * a.k * a.dx * sn; hz -= a.A * a.k * a.dz * sn;
+    }
     out.h = h; out.hx = hx; out.hz = hz; out.dx = gx; out.dz = gz; out.amp = amp;
     const G = SEA.STOKES;
     out.ux = (userOnly ? uux : ux) * G; out.uz = (userOnly ? uuz : uz) * G;
@@ -336,9 +352,24 @@ export class Sea {
    * near the horizon). Directional packets use exact recurrences along the row (one exp and
    * one sin/cos per packet per row).
    */
-  row(z, x0, step, n, dz, o, H, HX, HZ, GX, GZ, AMP, filter = true) {
+  row(z, x0, step, n, dz, o, H, HX, HZ, GX, GZ, AMP, filter = true, AMPU = null) {
     for (let c = 0; c < n; c++) { H[o + c] = 0; HX[o + c] = 0; HZ[o + c] = 0; GX[o + c] = 0; GZ[o + c] = 0; AMP[o + c] = 0; }
+    if (AMPU) for (let c = 0; c < n; c++) AMPU[o + c] = 0;
     const sx = Math.abs(step);
+    for (const a of this.amb) {
+      if (a.A <= 0) continue;
+      const att = filter ? Math.exp(-0.5 * ((a.k * a.dx * sx) ** 2 + (a.k * a.dz * dz) ** 2)) : 1;
+      if (att < 0.02) continue;
+      const A = a.A * att;
+      const th0 = a.k * (x0 * a.dx + z * a.dz) - a.w * this.time + a.ph, dth = a.k * a.dx * step;
+      let cs = Math.cos(th0), sn = Math.sin(th0);
+      const cd = Math.cos(dth), sd = Math.sin(dth), kx = A * a.k * a.dx, kz = A * a.k * a.dz;
+      for (let c = 0; c < n; c++) {
+        const j = o + c;
+        H[j] += A * cs; HX[j] -= kx * sn; HZ[j] -= kz * sn;
+        const ncs = cs * cd - sn * sd; sn = sn * cd + cs * sd; cs = ncs;
+      }
+    }
     for (let i = 0; i < this.max; i++) {
       if (!this.on[i] || this.A[i] <= 0) continue;
       const k = this.k[i];
@@ -355,6 +386,7 @@ export class Sea {
           const th = k * r - this.w[i] * this.age[i], cs = Math.cos(th), sn = Math.sin(th);
           const ux = rx / r, uz = ez / r;
           H[o + c] += a * cs; HX[o + c] -= a * k * ux * sn; HZ[o + c] -= a * k * uz * sn; AMP[o + c] += a;
+          if (AMPU && this.user[i]) AMPU[o + c] += a;
           GX[o + c] -= q0 * a * ux * sn; GZ[o + c] -= q0 * a * uz * sn;
         }
         continue;
@@ -384,10 +416,12 @@ export class Sea {
       let e = a0, de = a2 + a1;
       const dde = 2 * a2;
       const kx = A * k * dx, kz = A * k * dzv, gxk = q0 * A * dx, gzk = q0 * A * dzv;
+      const U8 = AMPU && this.user[i] ? AMPU : null;
       for (let c = 0; c < n; c++) {
         if (e > -14) {
           const E = Math.exp(e), j = o + c;
           H[j] += A * E * cs; HX[j] -= kx * E * sn; HZ[j] -= kz * E * sn; AMP[j] += A * E;
+          if (U8) U8[j] += A * E;
           GX[j] -= gxk * E * sn; GZ[j] -= gzk * E * sn;
         }
         const ncs = cs * cd - sn * sd; sn = sn * cd + cs * sd; cs = ncs;

@@ -197,8 +197,10 @@ test('verbs: soften, slow, settle, transform, farther — and none removes the t
   assert.ok(th.look.tintK > 0.95 && th.look.face.closed > 0.6 && th.look.fx.crackle < 0.2, 'transformed: calm palette, relieved');
   th.farther(1); sim(th, 3);
   assert.ok(th.z > 0.95 && th.render.P < P0 * 0.6, 'farther away');
-  th.closer(1); sim(th, 3);
+  // closer(k) eases to distance level k, as farther(k) does (no argument: one step nearer)
+  th.closer(0); sim(th, 3);
   assert.ok(th.z < 0.05);
+  th.farther(0.6); th.closer(); assert.ok(Math.abs(th.zGoal - 0.3) < 1e-9, 'a step nearer');
   th.makeSpace(1); th.soften(); th.slow(); th.settle(); th.transform(); sim(th, 1);
   assert.equal(th.destroyed, false);
   assert.ok(finite(th.sb.positions) && finite(th.render.outline));

@@ -75,7 +75,7 @@ export function planOcean({ W, H, band, mallow = null, textW = 0, n = 0 }) {
   const P = plateSize(textW, labelW);
   const hyLo = bandBottom + OCEAN.SKY_MIN, hyHi = M.top - OCEAN.WATER_MIN;
   const hy = Math.round(hyHi >= hyLo ? clamp(H * OCEAN.HORIZON, hyLo, hyHi) : hyLo);
-  const waterY = Math.max(hy + 30, M.bottom - 0.1 * M.height);
+  const waterY = Math.max(hy + 30, M.bottom - 0.18 * M.height);   // (the body box carries ~9% of margin below the art; then its lowest tenth)
   const mrect = { x0: M.left - 6, y0: M.top - 10, x1: M.right + 6, y1: M.bottom + 4 };
   const bandRect = { x0: 0, y0: band ? band.y : 0, x1: W, y1: bandBottom };
 
