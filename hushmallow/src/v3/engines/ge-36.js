@@ -12,7 +12,7 @@
 // picture as the prism turns, then rests in a quiet row. The last one (the
 // hero) stays in a single white beam for the finale.
 
-import { TAU, clamp, lerp, invLerp, smooth, ease, rgba, mix, glow, glint, motes, halo, orb } from '../fx.js';
+import { TAU, clamp, lerp, invLerp, smooth, ease, rgba, mix, glow, motes, halo, orb } from '../fx.js';
 import { Wobble } from '../kit.js';
 
 export const meta = {
@@ -33,7 +33,9 @@ export const meta = {
 
 const SQ3 = Math.sqrt(3);
 const FACE = TAU / 3;               // one face of the prism
-const TURN = FACE * 2;              // start face → middle face → the quiet face
+const TILT = 0.8;                   // the prism starts tipped towards the light, so two faces show in depth
+const TURN = FACE * 2 - TILT;       // first face → middle face → the quiet face
+const OFF = FACE - TILT;            // turn at which the middle face is square to view
 const BANK = 0.22;                  // input may run this far ahead of the law (rad)
 const GH = 0.36;                    // ghost spacing (photo widths) at full dispersion
 const SPEC0 = ['#ff8fb8', '#ffc56e', '#ffffff', '#7ff0c6', '#9ab0ff'];
@@ -51,7 +53,8 @@ export function create(E) {
   const tintK = 0.14 + (heavy ? 0.2 : 0) + calm0 * 0.35 + (loop ? E.rand() * 0.12 : 0);
   const SPEC = SPEC0.map((c, i) => (i === 2 ? mix('#ffffff', P_GLOW, 0.22) : mix(c, P_GLOW, tintK)));
   const glassC = mix(P_INK, '#03020e', 0.3);
-  const quietC = mix(glassC, P_GLOW, 0.12 + (loop ? E.rand() * 0.06 : 0));
+  const quietC = mix(glassC, P_ACC, 0.1 + (loop ? E.rand() * 0.06 : 0));
+  const quietGlow = mix(P_ACC, P_GLOW, 0.45);
   const TONES = loop && E.rand() < 0.5 ? ['warm', 'glow', null, 'mist', 'cool'] : ['dawn', 'gold', null, 'cool', 'rain'];
   const spreadK = 1 - calm0 * 0.45;
   const swayK = (reduced ? 0.15 : 1) * (1 - calm0 * 0.5) * (heavy ? 0.7 : 1);
@@ -75,7 +78,7 @@ export function create(E) {
     ri = r / 2; side = r * SQ3;
     pcx = stage.cx; pcy = stage.y + stage.h * 0.25;
     qx = stage.cx; qy = stage.y + stage.h * 0.635;
-    heroS = Math.min(stage.w * 0.5, stage.h * 0.3);
+    heroS = Math.min(stage.w * 0.5, stage.h * (stage.h < 380 ? 0.33 : 0.3));
     albumY = stage.y + stage.h * 0.925;
     albumSp = nAlbum ? Math.min(66 * stage.s, (stage.w - 16) / nAlbum) : 0;
     albumS = clamp(Math.min(stage.h * 0.105, albumSp / 0.86), 34, 66);
@@ -111,7 +114,7 @@ export function create(E) {
   let wanted = 0, rot = 0, shown = 0, vel = 0;
   let assistTo = null, drag = null, lastY = 0, lastPT = 0, rush = 0;
   let doneFlag = false, finAt = -1, twistAt = -1, restT = 0, hinted = false;
-  let lastTick = 0, lastPluck = 0, noteN = 0, lastNoteT = -9, lastHapT = -9, waitT = -9, lastFace = 0;
+  let lastTick = 0, lastPluck = 0, noteN = 0, lastNoteT = -9, lastHapT = -9, waitT = -9, lastFace = -1;
   let touchA = 0, touchX = 0, touchY = 0, clock = 0;
   const wob = new Wobble();
   const vUp = new Float32Array(3), vZ = new Float32Array(3), vY = new Float32Array(3);
@@ -129,7 +132,7 @@ export function create(E) {
   function haptic(kind, gap = 0.12) { const now = E.now(); if (now - lastHapT < gap) return; lastHapT = now; E.haptic(kind); }
 
   function applyInput(dy, dt) {
-    const dA = dy / (r * 1.1);                               // the surface follows the finger
+    const dA = dy / (r * 1.45);                              // heavy glass: the surface slips a little under the finger
     const speed = Math.abs(dA) / Math.max(1 / 120, dt);
     const k = lerp(1, 0.35, invLerp(2.4, 7.5, speed));       // rushing → the prism drags
     rush = lerp(rush, invLerp(2.4, 7, speed), 0.25);
@@ -156,11 +159,11 @@ export function create(E) {
     // ticks and a small pentatonic melody as real rotation accumulates
     if (Math.abs(rot - lastTick) > 0.24) { lastTick = rot; E.sound('rotate-tick', { pitch: lerp(1.2, 0.85, p), intensity: 0.22 }); haptic('tick', 0.14); }
     if (Math.abs(rot - lastPluck) > 0.5) { lastPluck = rot; note('pluck', (noteN++ % 5) + 2 + Math.round(p * 3), 0.24); }
-    const faceNow = Math.round(rot / FACE);                  // a face squarely in front
-    if (faceNow !== lastFace && Math.abs(rot - faceNow * FACE) < 0.06) {
+    const faceNow = Math.round((rot - OFF) / FACE);          // a face squarely in front
+    if (faceNow >= 0 && faceNow !== lastFace && Math.abs(rot - OFF - faceNow * FACE) < 0.06) {
       lastFace = faceNow; note('glass', 4 + faceNow * 2, 0.4); haptic('light', 0.05);
       edgeGlints(t);
-      if (faceNow > 0 && faceNow < 2) E.checkpoint('step');
+      if (faceNow < 1) E.checkpoint('step');
     }
     if (!hinted && p > 0.72) { hinted = true; E.hint && E.hint('Slowly now — let the quiet face come to rest.'); }
 
@@ -402,7 +405,7 @@ export function create(E) {
     g.globalAlpha = 0.25 + diff * 0.45; g.fillStyle = gLip; g.fillRect(-L / 2, -side / 2, L, side * 0.3);
     g.globalAlpha = 0.2 + 0.15 * (1 - diff); g.fillStyle = gFoot; g.fillRect(-L / 2, side * 0.3, L, side * 0.2);
     if (!quiet) { g.globalAlpha = 0.05 + 0.04 * Math.sin(t * 0.5 + k); g.fillStyle = gSheen; g.fillRect(-L / 2, -side / 2, L, side); }
-    else if (prog > 0.5 || fin > 0) { g.globalAlpha = 1; glow(g, 0, 0, L * 0.42, P_GLOW, smooth(invLerp(0.5, 1, prog)) * 0.16 + fin * 0.14); }
+    else if (prog > 0.5 || fin > 0) { g.globalAlpha = 1; glow(g, 0, 0, L * 0.36, quietGlow, smooth(invLerp(0.5, 1, prog)) * 0.1 + fin * 0.08); }
     // two slow diagonal refraction streaks drifting through the glass
     if (!lowStream) {
       g.globalAlpha = 0.07 + 0.04 * Math.sin(t * 0.4 + k * 2);
@@ -475,11 +478,9 @@ export function create(E) {
 
   function edgeGlints(t) {
     if (low) return;
-    for (let j = 0; j < 3; j++) {
-      if (vZ[j] < 0) continue;
-      const y = vY[j], xo = vZ[j] * Math.sin(yaw(t));
-      for (let i = 0; i < 3; i++) E.particles.emit({ x: pcx + (E.rand() - 0.5) * L * 0.9 + xo, y, vx: (E.rand() - 0.5) * 30, vy: -14 - E.rand() * 16, life: 0.9, size: 4, colour: SPEC[(j + i) % 5], kind: 'glint' });
-    }
+    let top = 0; for (let j = 1; j < 3; j++) if (vY[j] < vY[top]) top = j;
+    const y = vY[top] - 2, xo = vZ[top] * Math.sin(yaw(t));
+    for (let i = 0; i < 5; i++) E.particles.emit({ x: pcx + (i / 4 - 0.5) * L * 0.8 + xo, y, vx: (E.rand() - 0.5) * 16, vy: -16 - E.rand() * 14, life: 1, size: 4, colour: SPEC[i], kind: 'dot' });
   }
 
   function drawFinale(t, fin, beta, bob) {
@@ -489,7 +490,7 @@ export function create(E) {
     const rate = low ? 0.06 : heavy ? 0.12 : 0.35;
     if (fin < 1 && E.rand() < rate) {
       const x = pcx + (E.rand() - 0.5) * L * 0.95;
-      E.particles.emit({ x, y: pcy + bob - r * 0.95, vx: (E.rand() - 0.5) * 14, vy: -22 - E.rand() * 22, life: 1.8, size: heavy ? 5 : 6, colour: heavy ? P_GLOW : SPEC[Math.floor(E.rand() * 5)], kind: heavy ? 'glow' : 'glint' });
+      E.particles.emit({ x, y: pcy + bob - r * 0.95, vx: (E.rand() - 0.5) * 14, vy: -22 - E.rand() * 22, life: 1.8, size: heavy ? 5 : 6, colour: heavy ? P_GLOW : SPEC[Math.floor(E.rand() * 5)], kind: heavy || E.rand() < 0.7 ? 'glow' : 'glint' });
     }
   }
 
@@ -506,7 +507,7 @@ export function create(E) {
       if (finAt >= 0 || doneFlag || drag != null || !onPrism(p)) return;
       drag = p.id; lastY = p.y; lastPT = p.t; touchX = p.x; touchY = p.y;
       E.ripples.add(p.x, clamp(p.y, pcy - r, pcy + r), { colour: P_GLOW, alpha: 0.35, r: 10 });
-      note('glass', 2 + (Math.round(rot / FACE) % 3) * 2, 0.32); haptic('light', 0.05);
+      note('glass', 2 + (Math.max(0, Math.round((rot - OFF) / FACE)) % 3) * 2, 0.32); haptic('light', 0.05);
       E.react && E.react('tap');
     },
     move(p) {
@@ -515,6 +516,7 @@ export function create(E) {
       const dy = lastY - p.y; lastY = p.y;
       touchX = lerp(touchX, p.x, 0.5); touchY = lerp(touchY, p.y, 0.5);
       if (Math.abs(dy) > 0.01 && !doneFlag) applyInput(dy, dt);
+      if (dy < -0.5 && wanted <= 0.001 && clock - waitT > 0.6) { waitT = clock; wob.kick(-0.3); }   // the other way: a soft bump
       if (rush > 0.6 && !low && E.rand() < 0.15) { E.particles.burst(touchX, clamp(touchY, pcy - r, pcy + r), 2, { speed: 70, colour: SPEC[Math.floor(E.rand() * 5)], life: 0.5, size: 4, kind: 'glint' }); }
     },
     up(p) { if (p.id === drag) { drag = null; } },

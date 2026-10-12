@@ -797,7 +797,7 @@ export function create(E) {
       const p = toWorld(p0);
       if (!seated && insReal < 0.999 && onCard(p)) {
         drag = { id: p.id, mode: 'card', dx: p.x - card.x, dy: p.y - card.y, fx: card.x, fy: card.y };
-        E.sound('paper', { intensity: 0.32 }); E.haptic('light');
+        E.sound('paper', { intensity: 0.32 }); E.sound('bubble', { note: Math.min(9, stepIns + 1), intensity: 0.2, pitch: heavy ? 0.9 : 1 }); E.haptic('light');
         feedCard(p);
       } else if (seated && sealedAt < 0 && nearSeal(p)) {
         drag = { id: p.id, mode: 'seal', dx: 0, dy: 0, fx: p.x, fy: p.y };
