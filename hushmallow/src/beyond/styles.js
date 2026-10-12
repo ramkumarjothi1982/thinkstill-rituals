@@ -42,6 +42,13 @@ const CSS = `
 .bx-tag.piece { padding: 0 6px; font: 750 calc(15px * var(--bx-k))/1.22 var(--hf-ff-voice); color: #3a1d04; text-shadow: 0 1px 0 rgba(255, 246, 225, 0.6); }
 /* the blame, carried on its own amber weight (return_responsibility): two balanced lines at most */
 .bx-tag.piece.slab { padding: 0 4px; line-height: 1.2; color: #3a1a02; }
+/* a card whose name has gone (open_interpretations: the first guess, once it is one possibility among the others) */
+.bx-tag.card.untitled .bx-card-title { display: none; }
+.bx-tag.card.guess { justify-items: start; text-align: left; }
+/* a short phone's column of four possibilities, when they would not fit at their usual size */
+.bx-tag.line.tight, .bx-tag.card.tight .bx-card-text { font-size: calc(13px * var(--bx-k)); line-height: 1.22; }
+.bx-tag.line.tight { padding: 4px 9px; }
+.bx-tag.card.tight { padding: 5px 9px 6px; gap: 2px; }
 /* no line ever leaves one word on its own */
 .bx-tag.line, .bx-tag.words, .bx-tag.piece, .bx-tag.card .bx-card-text, .bx-tag.verdict { text-wrap: balance; }
 .bx-tag.verdict { --bx-soft: 0; padding: 8px 14px; font: 800 calc(17px * var(--bx-k))/1.25 var(--hf-ff-voice);

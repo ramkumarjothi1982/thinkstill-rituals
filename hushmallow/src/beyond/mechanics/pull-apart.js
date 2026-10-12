@@ -51,7 +51,8 @@ export function mount(ctx) {
 
   function homes() {
     const A = ctx.area();
-    restD = R * 1.08;
+    // (the living jellies are wider than tall: at rest they overlap a little less, so the gooey neck shows)
+    restD = R * (F.living ? 1.42 : 1.08);
     releaseD = Math.min(A.w * 0.64, R * 5.4);
     const cy = clamp(from.y, A.y + R * 1.6, A.y + A.h - R * 2.6);
     const cx = A.x + A.w / 2;

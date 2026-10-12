@@ -46,8 +46,11 @@ export function mount(ctx) {
     return b;
   });
   const tags = {
-    guessL: ctx.tags.add(L.labels.guess, { kind: 'label', colour: LIGHT.guess[1], priority: 1, group: 'meanings' }),
-    guessW: ctx.tags.add(guessText, { kind: 'line', max: narrow ? rowMax : ringMax, group: 'meanings' }),
+    guessL: narrow ? null : ctx.tags.add(L.labels.guess, { kind: 'label', colour: LIGHT.guess[1], priority: 1, group: 'meanings' }),
+    // in one column the guess's name and its words are one card (two boxes stacked there could touch); the name
+    // goes once it is one possibility among the others
+    guessW: narrow ? ctx.tags.add(guessText, { kind: 'card', title: L.labels.guess, colour: LIGHT.guess[1], max: rowMax, group: 'meanings', cls: 'guess' })
+      : ctx.tags.add(guessText, { kind: 'line', max: ringMax, group: 'meanings' }),
     // in one column the first guess carries the words already
     words: narrow ? null : ctx.tags.add(P.excerpt, { kind: 'words' }),
   };
@@ -56,6 +59,9 @@ export function mount(ctx) {
   const t0 = performance.now();
   const holds = new Map();   // pointer id → bud
   const BL = new RectList(), AL = new RectList();
+  // the column's rows (made once): the guess, then the three buds
+  const ROWS = [guess, ...buds], ROW_TAGS = [tags.guessW, ...buds.map((b) => b.tag)], ROW_H = new Float32Array(ROWS.length);
+  let tight = false, untitled = false;
 
   /** Even places on a ring (or one column on a narrow phone); before "equal" the first guess hugs the thought. */
   function homes() {
@@ -64,11 +70,13 @@ export function mount(ctx) {
       // the thought on the left, the guess and the three buds in a column beside it, top to bottom; each row
       // as tall as its own line (a three-line possibility gets the room it needs), the spare height shared out
       thought.hx = A.x + R * 1.05; thought.hy = A.y + A.h * 0.5;
-      const rows = [guess, ...buds], tg = [tags.guessW, ...buds.map((b) => b.tag)];
-      const hs = tg.map((t) => Math.max(R * 1.7, t.h || 40));
-      const gap = clamp((A.h - hs.reduce((a, b) => a + b, 0)) / rows.length, 4, 26);
-      let y = A.y + Math.max(0, (A.h - hs.reduce((a, b) => a + b, 0) - gap * (rows.length - 1)) / 2);
-      rows.forEach((b, i) => { b.hx = A.x + R * 2.25 + R * 0.8; b.hy = y + hs[i] / 2; y += hs[i] + gap; });
+      let sum = 0;
+      for (let i = 0; i < ROWS.length; i++) { ROW_H[i] = Math.max(R * 1.7, ROW_TAGS[i].h || 40); sum += ROW_H[i]; }
+      // four long possibilities can outgrow a short phone's column: then they set a little tighter (never below 13 px)
+      if (!tight && sum + 4 * (ROWS.length - 1) > A.h) { tight = true; for (const t of ROW_TAGS) { t.el.classList.add('tight'); t.invalidate(); } }
+      const gap = clamp((A.h - sum) / ROWS.length, 4, 26);
+      let y = A.y + Math.max(0, (A.h - sum - gap * (ROWS.length - 1)) / 2);
+      for (let i = 0; i < ROWS.length; i++) { const b = ROWS[i]; b.hx = A.x + R * 2.25 + R * 0.8; b.hy = y + ROW_H[i] / 2; y += ROW_H[i] + gap; }
       return;
     }
     const rx = Math.min(A.w * 0.34, A.w / 2 - R * 1.6), ry = Math.min(A.h * 0.34, A.h / 2 - R * 1.4);
@@ -179,8 +187,8 @@ export function mount(ctx) {
     if (narrow) {
       // one column: every line beside its own bud (the first guess's label sits over its line while it is the only one)
       for (const b of buds) b.tag.at(b.x + b.r + 10, b.y, 'left', clamp((b.open - 0.6) * 2.5)).own(b.x, b.y);
+      if (phase !== 'closed' && !untitled) { untitled = true; tags.guessW.el.classList.add('untitled'); tags.guessW.invalidate(); }
       tags.guessW.at(guess.x + guess.r + 10, guess.y, 'left', 1).own(guess.x, guess.y);
-      tags.guessL.at(guess.x + guess.r + 10, guess.y - (tags.guessW.h || 30) / 2 - 2, 'leftTop', phase === 'closed' ? 1 : 0).own(guess.x, guess.y);
       return true;
     }
     // a possibility's words sit on the far side from the thought (above the upper ones, below the lower ones)

@@ -48,7 +48,14 @@
 //     one wide line instead of two when that is what fits;
 //   · nothing is ever drawn over the hero: the thought, its words and every bubble keep a hard
 //     screen-space keep-out from the hero's live body (a bob rests against it; a bubble in a narrow
-//     gap beside it shrinks).
+//     gap beside it shrinks);
+//   · (review r3) only the water makes swells: strokes are clipped at the horizon line, and a swell
+//     counts as the person's only when it stands a few px tall on water the thought can reach;
+//   · (review r3) crest light is traced along each packet's own crests (θ = 2πn), not marked on the
+//     grid's rows, and drawn as tapered ribbons; the audit's per-row crest strokes would read as
+//     hatching, so the idle sea glimmers only along its longest gentle swell;
+//   · (review r3) the thought keeps a clear zone that bubbles slide round, and its home leaves open
+//     water above the hero's head.
 
 import { glowSprite, glintSprite, Pool, Rings, flashEnv, clamp, lerp, smoothstep, TAU, makeCanvas } from '../../../world/util.js';
 import { Sea, Wake, SEA, strokeWave, strokePacket, calibrateDrift, makeCamera, fitCamera, scaleAt, depthAt, project, unproject } from './ocean-sea.js';
@@ -2015,11 +2022,12 @@ export function create(ctx) {
     for (let grp = 0; grp < 2; grp++) {
       if (!cbHas[grp]) continue;
       const col = grp ? C.dawn : C.crest, core = grp ? C.cream : C.crest2;
-      fillCrests(g, grp, 11, 0.035 * lo, col);
-      fillCrests(g, grp, 5.5, 0.06 * lo, col);
-      fillCrests(g, grp, 2.4, 0.13 * lo, col);
-      fillCrests(g, grp, 1.1, 0.26 * lo, col);
-      fillCrests(g, grp, 0.5, (grp ? 0.5 : 0.55) * lo, core);
+      // (soft light first: wide halos carry it, the core is a fine, gentle line — never a laser)
+      fillCrests(g, grp, 12, 0.04 * lo, col);
+      fillCrests(g, grp, 6, 0.075 * lo, col);
+      fillCrests(g, grp, 2.6, 0.13 * lo, col);
+      fillCrests(g, grp, 1.1, 0.2 * lo, col);
+      fillCrests(g, grp, 0.45, (grp ? 0.42 : 0.4) * lo, core);
     }
     g.globalAlpha = 1;
   }
@@ -2124,7 +2132,9 @@ export function create(ctx) {
       const v = vA + ((vB - vA) * m) / (CR_N - 1);
       surfacePoint(bx + v * px, bz + v * pz, lamMin, amp, rm);
       // light along the crest: the envelope, in slow patches anchored to the water (never dark between them)
-      const ev = glim ? 1 : Math.exp(-0.5 * (v / sw) ** 2);
+      // (its light gathers towards the middle of the swell sooner than its height does: a crest glows where the swell
+      // is, rather than ruling a bright line from edge to edge)
+      const ev = glim ? 1 : Math.exp(-0.5 * (v / (0.6 * sw)) ** 2);
       const pt = 0.5 + 0.5 * Math.sin(v * k * 0.21 + seed + tt * 0.16) * Math.sin(v * k * 0.093 - tt * 0.11 + seed * 0.6);
       // (the idle sea's glimmer comes and goes along its crests; the person's crests stay whole lines)
       const patch = glim ? pt * pt * pt : 0.22 + 0.78 * pt * Math.sqrt(pt);

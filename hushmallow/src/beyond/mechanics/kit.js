@@ -276,7 +276,9 @@ export class ThoughtBody extends Blob {
     if (w2 && typeof w2.create === 'function' && typeof w2.draw === 'function') {
       try {
         // a mechanic may light the jelly its own way (o.tint: W2's { light, mid, deep, glow, ink }), keeping the feeling's motion and face
-        const style = o.tint && typeof w2.style === 'function' ? { ...w2.style(o.emotion || 'anxiety'), tint: o.tint } : undefined;
+        // (its own id too: W2 caches a palette per style id, and this one must not share the feeling's)
+        const base = o.tint && typeof w2.style === 'function' ? w2.style(o.emotion || 'anxiety') : null;
+        const style = base ? { ...base, tint: o.tint, id: `${base.id}~${o.tint.deep}` } : undefined;
         this.w2 = w2.create({ text: o.text || '', emotion: o.emotion || 'anxiety', intensity: o.intensity ?? 0.7, r: o.w2r || this.r, x: this.x, y: this.y, reducedMotion: !!o.reducedMotion, lowStim: !!o.lowStim, siblings: 0, haptic: o.haptic || null, ...(style ? { style } : {}) });
         this.drawW2 = w2.draw;
       } catch (e) { console.info('[another angle] Thought Mallow unavailable here; the kit jelly stands in', e?.message); this.w2 = null; }
@@ -504,6 +506,8 @@ export function makeTags(root, { bounds = null, announce = null } = {}) {
         measure() { if (dirty || !w) { w = el.offsetWidth || 120; hh = el.offsetHeight || 36; dirty = false; } },
         get w() { tag.measure(); return w; }, get h() { tag.measure(); return hh; },
         get visible() { return lastO > 0.05; },
+        /** Placed at least once (an object it names exists on the stage, shown or not yet). */
+        get placedOnce() { return shown; },
         /**
          * Place by anchor: 'top' (centred above x,y), 'bottom' (centred below), 'center'; 'left' / 'right'
          * (starting / ending at x, centred on y), 'leftTop' (starting at x, ending above y). Kept inside the screen.
@@ -557,7 +561,7 @@ export function makeTags(root, { bounds = null, announce = null } = {}) {
     },
     rects() { const out = []; for (const t of list) { const r = t.rect(); if (r) out.push(r); } return out; },
     /** Every visible tag that names an object, with where it sits and where its object is (QA: ownership checks). */
-    ties() { const out = []; for (const t of list) { if (t.visible || t.group) out.push(t.tieInfo()); } return out; },
+    ties() { const out = []; for (const t of list) { if (t.visible || (t.group && t.placedOnce)) out.push(t.tieInfo()); } return out; },
     /**
      * The collision pass (once a frame, after the mechanic placed its tags). obstacles: rects to keep
      * clear of (subtitle band and pill, Mallows, the scene's bodies). Cheap: a handful of tags × a

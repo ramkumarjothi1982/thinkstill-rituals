@@ -496,11 +496,14 @@ test('world (review r3): the melt never pops or tangles — every bubble eases (
       { W: 320, H: 568, n: 3, cards: [[1, 171, 238, 58], [2, 258, 234, 80]], th: [86, 256] },
       { W: 390, H: 844, n: 7, cards: [[0, 70, 250, 70], [3, 150, 270, 64], [5, 236, 262, 72], [6, 318, 280, 76]], th: [190, 440] },
       { W: 320, H: 568, n: 7, cards: [[0, 60, 220, 56], [2, 150, 236, 56], [4, 250, 228, 60]], th: [160, 300] },
+      // (the lab rig's own body box at 320×568, taller than it is wide, and the postcards where a touch-played storm left them)
+      { W: 320, H: 568, n: 3, cards: [[1, 175, 238, 58], [2, 259, 234, 80]], th: [86, 256], hero: { left: 79, right: 241, top: 323, bottom: 490 } },
     ];
     for (const C of CASES) {
       const { W, H } = C, tag = `${W}×${H} with ${C.n} photos`;
       const sized = () => Object.assign(dom.el(), { clientWidth: W, clientHeight: H });
       const mallow = fakeMallow(W, H), thought = fakeThought();
+      if (C.hero) { const r = { ...C.hero, width: C.hero.right - C.hero.left, height: C.hero.bottom - C.hero.top, cx: (C.hero.left + C.hero.right) / 2, cy: (C.hero.top + C.hero.bottom) / 2 }; mallow.rect = mallow.bodyRect = () => r; }
       const cards = C.cards.map(([i, x, y, w]) => ({ i, x, y, w, h: w * 0.75, rot: 0.06, state: 'grounded' }));
       const STORM = { ...WORLDS[0], load: async () => ({ create: () => ({ prepare() {}, enter() {}, frame() {}, pointer() {}, outro() {}, intro() {}, get progress() { return 1; }, get complete() { return true; }, get metrics() { return {}; },
         handoff: () => ({ horizonY: 0.655 * H, seeds: [[[40, 0.7 * H], [W / 2, 0.7 * H + 4], [W - 40, 0.7 * H]]], thought: { x: C.th[0], y: C.th[1], scale: 1, tension: 0.3, r: 30, labelW: 260 }, photos: cards, energy: 0.1 }),
@@ -516,7 +519,7 @@ test('world (review r3): the melt never pops or tangles — every bubble eases (
       const B = mallow.rect();
       // every bubble's way, step by step (to check no two cross each other's way at the same time)
       const path = new Map();
-      for (let step = 0; step < 30 * 12; step++) {
+      for (let step = 0; step < 30 * 16; step++) {
         D.debug.step(1 / 30);
         const w = D.state.worldId === 'luminous-ocean' && !D.incoming ? D.world : ocean;
         const bs = w.debug.bubbles.filter((b) => b.alpha > 0.3 && b.state !== 'leave'), T = w.debug.thought, rr = T.r * T.surf;
