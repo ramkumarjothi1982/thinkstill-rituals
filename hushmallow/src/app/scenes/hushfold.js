@@ -91,7 +91,8 @@ export default function hushfold(app, params = {}) {
     root, prefs,
     reducedMotion: () => prefs.reducedMotion(),
     bounds: () => ({ top: (topEl.getBoundingClientRect().bottom || 60) + 12, bottom: Math.min(dockTop(), panelTop()) - 12 }),
-    avoid: () => [mallowAvoidRect(), ...(stage?.thoughts.rects() || []), worldThoughtRect(), ...(flowRef?.avoid?.() || []), overlay?.rect?.()].filter(Boolean),
+    avoid: () => [mallowAvoidRect(), ...(stage?.thoughts.rects() || []), worldThoughtRect(), ...(flowRef?.avoid?.() || []), overlay?.rect?.(),
+      ...(installMod?.installAvoidRects?.() || [])].filter(Boolean),
     // what is behind the band (the realm, a world's back and front layers): sampled once per line for the scrim
     backdrop: () => [...document.querySelectorAll('#world canvas, #fx-layer canvas.hf-front')],
     brightHint: () => !worldMode && BRIGHT_REALMS.has(world.realmId),
@@ -240,6 +241,8 @@ export default function hushfold(app, params = {}) {
     // the layer glides there (720ms spring); re-place the subtitles when it lands
     later(() => subtitles.layout(), 760);
     subtitles.layout();
+    // an open garden offer or card steps out of whatever just moved (the panel, the sheet, the Mallow)
+    installMod?.relayoutInstall?.();
   }
   let resizeT = 0;
   const onResize = () => { clearTimeout(resizeT); resizeT = setTimeout(layout, 120); };
@@ -438,29 +441,55 @@ export default function hushfold(app, params = {}) {
     if (d?.kind === 'none' || d?.kind === 'start' || d?.kind === 'load') say(SHARED_LINES.stub[0]);
   }
   /**
-   * A discovery offered for the Memory Garden (W5). W5's offerSave() owns the
-   * offer when it is in the build; otherwise the shell asks and saves through
-   * garden.js. Offered only when the garden is in this build. Saving is always
-   * an explicit tap, and the reward never needs more play.
+   * A discovery offered for the Memory Garden (W5): garden-install owns the whole moment (offer →
+   * save only on the "Keep this" tap → install, or "already in your garden"). The reward never
+   * needs more play. Never after something heavy (no garden offers while support is showing, owner
+   * P4); a safety hold or leaving aborts it (signal), and the Mallow's face and what the world
+   * keeps clear are read live, so the offer stays off them as things move.
    */
   async function onOffer({ skillId, worldId } = {}) {
-    let install = null, garden = null, skills = null;
-    try { install = await import('../../hushfold/garden-install.js'); } catch { /* not in this build yet */ }
-    if (S.left) return;
-    const origin = stageMallow.bodyRect();
-    const face = (() => { try { return install?.mallowFaceRect?.(origin, MALLOWS[mallowId]) || null; } catch { return null; } })();
-    const ctx = { app, store, subtitles: flowSubtitles, skillId, worldId, mallow: mallowId, fx: world.fx, origin, face, reducedMotion: prefs.reducedMotion(), lowStim: !!prefs.get('lowStim') };
-    // W5 owns the whole moment: offer → save only on the tap → install (or "already in your garden")
-    if (typeof install?.onOffer === 'function') { try { await install.onOffer(ctx); } catch (e) { console.warn('[garden] onOffer', e); } return; }
-    try { [garden, skills] = await Promise.all([import('../../engine/garden.js'), import('../../hushfold/skills.js').catch(() => null)]); } catch { return; }
-    if (S.left || typeof garden?.saveSkill !== 'function') return;
-    const title = skills?.skillTitle?.(skillId) || skills?.SKILLS?.[skillId]?.title || null;
-    const v = await subtitles.choice(title ? `Keep this? ${title}` : 'Keep this discovery?',
-      [{ label: 'Keep it', value: 'keep', primary: true }, { label: 'Not now', value: 'no' }], { who: M().name, colour: M().colours.glow, timeoutMs: 20000 });
-    if (v !== 'keep' || S.left) return;
-    try { garden.saveSkill(store, { id: skillId, fromWorld: worldId, mallow: mallowId }); } catch (e) { console.warn('[garden]', e); return; }
-    try { if (typeof install?.playInstall === 'function') await install.playInstall(ctx); else app.toast('Saved to your Memory Garden'); } catch { app.toast('Saved to your Memory Garden'); }
+    if (S.left || S.crisis || gentle()) return;
+    let install;
+    try { install = installMod ||= await import('../../hushfold/garden-install.js'); } catch (e) { console.warn('[garden]', e?.message); app.staleCode?.(); return; }
+    let host = null;
+    try { host = (await import('../../hushfold/flow/registry.js')).registry.get(worldId)?.mallow?.id || null; } catch { /* the world's host is decoration */ }
+    if (S.left || S.crisis || gentle() || !ent.has('paid')) return;
+    const origin = () => stageMallow?.bodyRect?.() || null;
+    const face = () => { try { return install.mallowFaceRect(origin(), MALLOWS[mallowId]); } catch { return null; } };
+    offerCtl?.abort();
+    const ctl = offerCtl = new AbortController();
+    try {
+      await install.onOffer({ app, store, skillId, worldId, mallow: MALLOWS[host] ? host : mallowId, origin, face, avoid: offerAvoid,
+        subtitles: installSubtitles, reducedMotion: prefs.reducedMotion(), lowStim: lowStimNow(), signal: ctl.signal });
+    } catch (e) { console.warn('[garden] onOffer', e); } finally {
+      if (offerCtl === ctl) offerCtl = null;
+      installSubtitles.resume();
+      if (!S.left) app.applyUpdateIfSafe?.();
+    }
   }
+  /**
+   * What the offer, its card and its chip must leave uncovered (the face is kept clear through `face`).
+   * While the phone sheet holds a world, the world's subtitle band is not in use (one line sits in the strip
+   * above the Mallow, and garden-install steps out of the lines themselves), so the offer may use that room.
+   */
+  function offerAvoid() {
+    return [...(flowRef?.avoid?.() || []), worldMode && !panelSheet() ? flowRef?.subtitleBand?.() : null, worldThoughtRect(), ...(stage?.thoughts.rects() || []),
+      overlay?.rect?.(), panelRect()].filter(Boolean);
+  }
+  /** The open panel where it comes to rest (the phone sheet's slide-in transform is ignored), or null. */
+  function panelRect() {
+    if (!panel?.isOpen) return null;
+    return panelSheet() ? { left: 0, right: innerWidth, top: panelTop(), bottom: innerHeight } : panel.el.getBoundingClientRect();
+  }
+  /**
+   * The subtitles as the installation sees them: it pauses them while it plays and resumes them
+   * after, but only if it was the one that paused them (the person's own ⏸ stays pressed).
+   */
+  let installPaused = false;
+  const installSubtitles = {
+    pause() { installPaused = !subtitles.paused; subtitles.clear({ keepHeld: true }); subtitles.pause(); },
+    resume() { if (installPaused) { installPaused = false; subtitles.resume(); } },
+  };
 
   // ------------------------------------------------- the Mallow --
   async function showMallow(id, { entrance = true } = {}) {
@@ -1140,6 +1169,7 @@ export default function hushfold(app, params = {}) {
     },
     leave() {
       S.left = true;
+      offerCtl?.abort();
       if (window.__hushfold?.subtitles === subtitles) delete window.__hushfold;
       for (const t of timers) clearTimeout(t);
       timers.clear();
@@ -1186,6 +1216,8 @@ export default function hushfold(app, params = {}) {
     },
     safeForUpdate() {
       if (overlay?.dirty) return false;
+      // a garden offer waiting for its answer, or the installation playing
+      if (document.querySelector('.hm-offer.is-in') || document.body.classList.contains('hm-installing')) return false;
       if (subtitles.holding) return false;
       if (sheets.length || S.pendingResume) return false;
       // someone who went to call a helpline comes back to the same screen, Support pill and all
