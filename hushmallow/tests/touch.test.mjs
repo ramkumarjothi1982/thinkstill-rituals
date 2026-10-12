@@ -393,3 +393,190 @@ test('registry: mask sampling is bilinear and clamped', () => {
   assert.equal(maskAlpha(m, -5, 9), 0);
   assert.equal(maskAlpha(null, 0.1, 0.1), 1);
 });
+
+// ------------------------------------------- MallowTouch core (no DOM) --
+// The real MallowTouch gesture → body → face glue (_setup, _initBody,
+// _initReader, _physics), driven by synthetic fingers at 60 Hz. The rig is a
+// stand-in that records reactions and turns their impulses into soft-body
+// kicks exactly as MallowRig.react does.
+import { MallowTouch } from '../src/mallows/touch/mallow-touch.js';
+import { REACTIONS } from '../src/mallows/reactions.js';
+
+function touchCore(id, { rm = false } = {}) {
+  const log = { reacts: [], sounds: [], haptics: [], events: [] };
+  const m = MALLOWS[id], q = 640 / Math.max(...m.size);
+  const mt = Object.create(MallowTouch.prototype);
+  const rig = {
+    id, mallow: m, q, skin: { width: Math.round(m.size[0] * q), height: Math.round(m.size[1] * q) }, assets: { mask: null },
+    body: { hop: 0, hopV: 0, tilt: 0, spin: 0, lean: 0, grounded: true, glitchBurst: 0, burstRows: [] },
+    val: { float: 0, tremble: 0, breath: 1, squashBias: 0, droop: 0, shrink: 0, cheekPuff: 0, glitch: 0 },
+    time: 0, breathPhase: 0, overlays: [], opts: { reducedMotion: rm, audio: null }, cycles: {}, particles: { burst() {}, list: [], cloud: 0 },
+    react(kind) {
+      log.reacts.push(kind);
+      const r = REACTIONS[id]?.[kind] || REACTIONS._shared[kind], imp = r?.impulse || {}, k = rm ? 0.25 : 1;
+      mt._impulse({ squash: (imp.squash || 0) * 6 * k, lean: (imp.lean || 0) * 4 * k, shear: (imp.shear || 0) * 5 * k }, kind);
+      return this;
+    },
+    overlay() { log.reacts.push('overlay'); return this; },
+    lookAt() {}, setTouch(T) { this.touch = T; }, describe() { return id; }, on() {},
+  };
+  mt._setup({ getBoundingClientRect: () => ({ left: 0, top: 0, width: 390, height: 844 }) },
+    { id, reducedMotion: rm, haptic: (k) => log.haptics.push(k), audio: { play: (_, n) => log.sounds.push(n) } });
+  mt.rig = rig;
+  mt._initBody(); mt._initReader();
+  mt.view.w = 390; mt.view.h = 844;
+  mt.place({ x: 195, y: 430 }, { instant: true });
+  mt._settle();
+  mt.ready = true;
+  mt.on('touch', (e) => log.events.push(e.kind));
+  let t = 1;
+  const frame = (n = 1) => { for (let i = 0; i < n; i++) { t += 1 / 60; rig.time += 1 / 60; mt._physics(1 / 60, t); } };
+  const ptr = (type, x, y, pid = 1) => mt.reader.pointer({ type, id: pid, x, y, t });
+  const rect = () => mt.bodyRect();
+  const top = () => { const sb = mt.sb; let y = Infinity, r = Infinity; for (let k = 0; k < sb.n; k++) { y = Math.min(y, sb.positions[2 * k + 1]); r = Math.min(r, sb.rest[2 * k + 1]); } return r - y; };
+  return { mt, log, frame, ptr, rect, top };
+}
+const UPSET = ['gasp', 'flick', 'glitchBurst', 'release'];
+
+test('core: three natural 150 px strokes calm the Mallow — no gasp, flick or slip', () => {
+  for (const id of ['blubi', 'glitzi', 'noomi']) {
+    const c = touchCore(id);
+    for (let s = 0; s < 3; s++) {
+      const r = c.rect(), x0 = r.cx - 0.32 * r.width, y0 = r.cy - 0.12 * r.height;
+      c.ptr('down', x0, y0); c.frame(2);
+      for (let i = 1; i <= 18; i++) { c.ptr('move', x0 + (150 * i) / 18, y0 + i * 0.6); c.frame(); }
+      c.ptr('up', x0 + 150, y0 + 10.8); c.frame(42);
+    }
+    const strokes = c.log.events.filter((k) => k === 'stroke').length;
+    assert.equal(strokes, 3, `${id}: ${c.log.events.join(',')}`);
+    assert.ok(c.mt.touch.calm > 0.5, `${id} calm ${c.mt.touch.calm.toFixed(2)}`);
+    assert.ok(!c.log.events.includes('slip') && !c.log.events.includes('pull'), `${id} events ${c.log.events.join(',')}`);
+    assert.ok(!c.log.reacts.some((k) => UPSET.includes(k)), `${id} reactions ${c.log.reacts.join(',')}`);
+    assert.ok(!c.log.sounds.includes('surprise') && !c.log.sounds.includes('offended'), `${id} sounds ${c.log.sounds.join(',')}`);
+  }
+});
+
+test('core: a circular massage soothes and ends softly (no stroke, slip, burst or pop)', () => {
+  for (const [id, R, rate] of [['glitzi', 25, 0.8], ['glitzi', 40, 0.8], ['loomi', 35, 0.3], ['blubi', 30, 0.5]]) {
+    const c = touchCore(id);
+    const r = c.rect(), cx = r.cx, cy = r.cy;
+    c.ptr('down', cx + R, cy); c.frame(3);
+    for (let i = 1; i <= 240; i++) { const a = (i / 60) * TAU2 * rate; c.ptr('move', cx + R * Math.cos(a), cy + R * Math.sin(a)); c.frame(); }
+    const calm = c.mt.touch.calm;
+    c.ptr('up', cx + R, cy); c.frame(30);
+    const ev = c.log.events.join(',');
+    assert.ok(c.log.events.filter((k) => k === 'massage').length >= 2, `${id} r${R} ${rate}: massage ticks (${ev})`);
+    assert.ok(!c.log.events.includes('stroke') && !c.log.events.includes('slip'), `${id} r${R}: ${ev}`);
+    assert.ok(!c.log.reacts.some((k) => UPSET.includes(k)), `${id} r${R} reactions ${c.log.reacts.join(',')}`);
+    assert.ok(calm > 0.2, `${id} r${R} ${rate} turn/s calms (${calm.toFixed(2)})`);
+    assert.ok(!c.log.haptics.includes('pop'), 'no pop haptic');
+  }
+});
+const TAU2 = Math.PI * 2;
+
+test('core: every Mallow pops ≥ 8 % above its rest height after a full squeeze (reduced motion: no overshoot)', () => {
+  for (const id of MALLOW_IDS) {
+    for (const rm of [false, true]) {
+      const c = touchCore(id, { rm });
+      const r = c.rect();
+      c.ptr('down', r.cx, r.top + 0.4 * r.height);
+      for (let i = 0; i < 90; i++) { c.ptr('move', r.cx, r.top + 0.4 * r.height); c.frame(); }
+      assert.ok(c.mt.touch.depth > 0.9, `${id} squeezed (${c.mt.touch.depth.toFixed(2)})`);
+      c.ptr('up', r.cx, r.top + 0.4 * r.height);
+      let pop = -1;
+      for (let i = 0; i < 90; i++) { c.frame(); pop = Math.max(pop, c.top()); }
+      if (rm) assert.ok(pop < 0.01, `${id} reduced motion overshoot ${pop.toFixed(3)}`);
+      else assert.ok(pop > 0.08, `${id} pop ${pop.toFixed(3)} (reactions ${c.log.reacts.join(',')})`);
+      c.frame(400);
+      assert.ok(c.mt.sb.energy < 1e-3, `${id} settles`);
+    }
+  }
+});
+
+test('core: a pull past the limit slips once, after a beat; a flick that follows replaces it', () => {
+  const c = touchCore('boppo');
+  const r = c.rect(), x0 = r.cx + 0.3 * r.width, y0 = r.cy;
+  c.ptr('down', x0, y0); c.frame(30);                                 // rest first: a pull
+  for (let i = 1; i <= 40; i++) { c.ptr('move', x0 + i * 4, y0); c.frame(); }
+  c.frame(10);
+  assert.equal(c.log.events.filter((k) => k === 'slip').length, 1, c.log.events.join(','));
+  assert.equal(c.log.reacts.filter((k) => k === 'gasp').length, 1);
+  c.ptr('up', x0 + 160, y0); c.frame(20);
+  // a fast flick from rest is only a flick
+  const f = touchCore('boppo');
+  const q = f.rect(), fx = q.cx - 0.2 * q.width, fy = q.cy;
+  f.ptr('down', fx, fy); f.frame(1);
+  for (let i = 1; i <= 6; i++) { f.ptr('move', fx + 30 * i, fy); f.frame(); }
+  f.ptr('up', fx + 180, fy); f.frame(20);
+  assert.ok(f.log.events.includes('flick') && !f.log.events.includes('slip'), f.log.events.join(','));
+  assert.deepEqual(f.log.reacts, ['flick']);
+});
+
+test('softbody: a two-finger stretch pulls in a waist (hourglass), and the waist lets go', () => {
+  const sb = body();
+  sb.grab(1, 0.2, 0.5, 0.18); sb.grab(2, 0.8, 0.5, 0.18);
+  run(sb, 120, (f) => { const d = Math.min(0.15, f * 0.004); sb.move(1, 0.2 - d, 0.5, 1); sb.move(2, 0.8 + d, 0.5, 1); sb.setWaist(1, 2, 0.3); });
+  const P = sb.positions, c = sb.cols, rws = sb.rows;
+  const colH = (i) => P[2 * ((rws - 1) * c + i) + 1] - P[2 * i + 1];
+  assert.ok(colH(10) < colH(4) - 0.06, `middle ${colH(10).toFixed(3)} vs finger column ${colH(4).toFixed(3)}`);
+  sb.setWaist(null); sb.releaseAll(); run(sb, 400);
+  assert.ok(sb.energy < 1e-4 && Math.abs(colH(10) - 1) < 0.01, 'back to rest');
+});
+
+test('softbody: a glide never slips and leaves no pinned material behind', () => {
+  const sb = body();
+  sb.grab(1, 0.2, 0.4, 0.3); sb.surface(1);
+  let slipped = false;
+  run(sb, 60, (f) => { const x = 0.2 + f * 0.012; sb.press(1, x, 0.4, 0.3, 0.21); sb.move(1, x, 0.4, 1); if (sb.lastSlip) slipped = true; });
+  assert.ok(!slipped);
+  const b = sb.bounds();
+  assert.ok(b.x1 < 1.1 && b.x0 > -0.1, `the body is not dragged off with the finger (${b.x0.toFixed(2)}..${b.x1.toFixed(2)})`);
+  sb.release(1, { vx: 1, vy: 0 }); run(sb, 600);
+  assert.ok(sb.energy < 1e-6);
+});
+
+test('softbody: an idle body sleeps (step is free) and wakes on any touch or kick', () => {
+  const sb = body();
+  run(sb, 30);
+  assert.equal(sb.awake, false);
+  assert.equal(sb.step(1 / 60), 0, 'asleep: no substeps');
+  sb.setRest({});                       // the same rest shape does not wake it
+  assert.equal(sb.awake, false);
+  sb.impulse(0.5, 0);
+  assert.equal(sb.awake, true);
+  assert.ok(sb.step(1 / 60) > 0);
+  run(sb, 900);
+  assert.equal(sb.awake, false, 'falls asleep again once still');
+  sb.setRest({ squash: 0.1 });
+  assert.equal(sb.awake, true, 'a new rest shape wakes it');
+});
+
+test('gestures: an arc of a circle is never a stroke; a gentle 0.25 turn/s circle is a massage; petting counts each pass', () => {
+  for (const R of [25, 38, 70]) {
+    const [m, ev] = reader();
+    m.pointer({ type: 'down', id: 1, x: 100 + R, y: 100, t: 0 });
+    for (let i = 1; i <= 90; i++) { const a = (i / 60) * TAU2 * 0.8; m.pointer({ type: 'move', id: 1, x: 100 + R * Math.cos(a), y: 100 + R * Math.sin(a), t: i / 60 }); m.update(i / 60); }
+    assert.ok(!kinds(ev).includes('stroke'), `r ${R}: ${kinds(ev).join(',')}`);
+  }
+  const [g, ev2] = reader();
+  g.pointer({ type: 'down', id: 1, x: 140, y: 100, t: 0 });
+  for (let i = 1; i <= 240; i++) { const a = (i / 60) * TAU2 * 0.25; g.pointer({ type: 'move', id: 1, x: 100 + 40 * Math.cos(a), y: 100 + 40 * Math.sin(a), t: i / 60 }); g.update(i / 60); }
+  assert.ok(kinds(ev2).includes('massageStart'), `slow circle: ${[...new Set(kinds(ev2))].join(',')}`);
+  // stroking back and forth without lifting: every pass is a stroke, never a massage
+  const [p, ev3] = reader();
+  p.pointer({ type: 'down', id: 1, x: 40, y: 100, t: 0 });
+  let t = 0;
+  for (let pass = 0; pass < 4; pass++) {
+    for (let i = 1; i <= 15; i++) { t += 1 / 60; const k = pass % 2 ? 15 - i : i; p.pointer({ type: 'move', id: 1, x: 40 + k * 9, y: 100 + (pass % 2) * 2, t }); p.update(t); }
+  }
+  assert.equal(kinds(ev3).filter((k) => k === 'stroke').length, 4, kinds(ev3).join(','));
+  assert.ok(!kinds(ev3).includes('massageStart'));
+  // a stroke that comes to rest grips again (a press), and lifting then is not a tap
+  const [q, ev4] = reader();
+  q.pointer({ type: 'down', id: 1, x: 40, y: 100, t: 0 });
+  for (let i = 1; i <= 10; i++) q.pointer({ type: 'move', id: 1, x: 40 + i * 9, y: 100, t: i / 60 });
+  q.update(0.8);
+  assert.ok(kinds(ev4).includes('regrip') && q.pointers[0].mode === 'press');
+  q.pointer({ type: 'up', id: 1, x: 130, y: 100, t: 0.9 });
+  assert.equal(ev4.find(([k]) => k === 'up')[1].kind, 'release');
+});
