@@ -1358,8 +1358,12 @@ export function create(ctx) {
     const target = clamp(baseTension * (1 - relief) + 0.28 * chopK - 0.04 * clamp(dist - 1, 0, 3), 0.12, 0.95);
     tS.tension = clamp(lerp(tS.tension, target, 1 - Math.exp(-dt / 1.2)));
     tS.calm = clamp(1 - tS.tension);
-    // (the world's perspective is the depth: z stays 0 for a layer-drawn thought, so it is not shrunk twice)
-    thought.x = sx; thought.y = sy; thought.z = 0; thought.scale = tS.surf; thought.rot = tS.rot;
+    // depth for W2's ThoughtLayer (its words budget and tag follow z), with its own depth shrink and lift
+    // taken back out, so a layer-drawn thought is exactly the ocean's projection: tS.r × tS.surf, at (sx, sy)
+    const tz = clamp((dist - 1) / (OCEAN.CAP - 1));
+    const rK = thought.r > 0 ? tS.r / thought.r : 1;
+    thought.x = sx; thought.y = sy + (thought.r > 0 ? 0.45 * thought.r * tz : 0); thought.z = tz;
+    thought.scale = (tS.surf * rK) / (1 - 0.5 * tz); thought.rot = tS.rot;
     thought.labelSide = tS.side === 'tuck' ? 'above' : tS.side;
     if (!thought.draw) thought.opacity = tS.vis;
     const st = thought.state || (thought.state = {});
@@ -2531,7 +2535,8 @@ export function create(ctx) {
         // (a resumed sea does not introduce itself again)
         introAt = restored ? -1 : 2.6;
       }
-      if (!(handoff && from)) { try { thought?.react?.('appear'); } catch { /* optional */ } }
+      // a thought already on screen (W2's ThoughtLayer, fully appeared) only notices the sea; a new one appears
+      if (!(handoff && from)) { try { thought?.react?.(thought?.ov?.appear >= 1 ? 'notice' : 'appear'); } catch { /* optional */ } }
     },
     frame,
     pointer,
