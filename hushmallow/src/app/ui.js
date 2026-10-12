@@ -97,7 +97,10 @@ export function say(world, text, { who, ms = 3600, above = true } = {}) {
   const titles = [...document.querySelectorAll('#scene .move-title')].map((e) => e.getBoundingClientRect()).filter((r) => r.height > 0);
   const minTop = titles.length ? Math.max(...titles.map((r) => r.bottom)) + 8 : 12;
   const dock = document.querySelector('#scene .dock');
-  const maxBottom = dock && dock.children.length ? dock.getBoundingClientRect().top - 8 : innerHeight - 12;
+  let maxBottom = dock && dock.children.length ? dock.getBoundingClientRect().top - 8 : innerHeight - 12;
+  // nor a card's text (e.g. Meet a Mallow's ritual card)
+  const cardTop = [...document.querySelectorAll('#scene .card')].map((e) => e.getBoundingClientRect()).filter((r) => r.height > 0).reduce((m, r) => Math.min(m, r.top), Infinity);
+  if (cardTop < Infinity) maxBottom = Math.min(maxBottom, cardTop - 8);
   let y = rect.top + rect.height * 0.12 - bh - 6;
   let below = false;
   if (!above || y < minTop) {
