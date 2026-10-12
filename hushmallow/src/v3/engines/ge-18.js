@@ -117,7 +117,7 @@ export function create(E) {
 
   // ---- geometry
   let BW, BH, rim, rw, railX, GW, GH, SL, gy0, gy1, hh, hw, Rd, Ri, bx, by, dx, dy;
-  let fw, bandH, rowH, cellR, ringW, wSize = 13, wLines = 1;
+  let fw, bandH, rowH, cellR, ringW, wSize = 13, wLines = 1, side = false;
   let hearthC = null, vignC = null, grilleC = null, hotC = null, rubyC = null;
   const hearthO = { x: 0, y: 0, w: 1, h: 1 };
   let gW = 1, gH = 1, gOX = 0, gOY = 0;
@@ -134,14 +134,19 @@ export function create(E) {
   const wob = new Wobble(), wobG = new Wobble();
 
   function fit() {
-    BW = Math.min(stage.w * 0.82, (stage.h * 0.95) / 1.8);
+    // stacked (tall stages) or vent beside the tray (short stages): whichever lets the hearth be bigger
+    const BWv = Math.min(stage.w * 0.82, (stage.h * 0.95) / 1.8), BWs = Math.min((stage.w * 0.95) / 1.7, (stage.h * 0.95) / 1.3);
+    side = BWs > BWv * 1.08;
+    BW = side ? BWs : BWv;
     BH = BW * 0.56; rim = BW * 0.045; rw = Math.max(3, BW * 0.013);
     railX = BW / 2 + rim * 0.55; GW = 2 * railX - rw * 1.4; GH = BH * 1.04; hh = GH * 0.085; hw = GW * 0.22;
     Rd = BW * 0.17; Ri = Rd * 0.74;
-    const T = GH + BH + 2 * rim + hh + 3.08 * Rd;
+    const T = GH + BH + 2 * rim + hh + (side ? 0 : 3.08 * Rd);
     const top = stage.y + (stage.h - T) / 2;
-    bx = stage.cx; gy0 = top + GH / 2; SL = GH / 2 + BH / 2 + rim; by = gy0 + SL; gy1 = by;
-    dx = bx; dy = by + BH / 2 + rim + hh + 1.42 * Rd;
+    bx = side ? stage.x + (stage.w - BW * 1.69) / 2 + BW / 2 + rim : stage.cx;
+    gy0 = top + GH / 2; SL = GH / 2 + BH / 2 + rim; by = gy0 + SL; gy1 = by;
+    if (side) { dx = bx + BW / 2 + rim + Rd * 0.25 + 1.64 * Rd; dy = by + BH * 0.12; }
+    else { dx = bx; dy = by + BH / 2 + rim + hh + 1.42 * Rd; }
     buildSlots(); buildGradients(); buildHearth(); buildGrille();
     gyV = docked ? gy1 : lerp(gy0, gy1, clamp(prog / S1)); gV = 0;
   }
@@ -188,7 +193,10 @@ export function create(E) {
     const pg = c.createLinearGradient(dx - PR, dy - PR, dx + PR * 0.6, dy + PR);
     pg.addColorStop(0, IRON_H); pg.addColorStop(0.3, IRON_M); pg.addColorStop(1, IRON_D);
     c.fillStyle = pg;
-    c.beginPath(); c.moveTo(bx - BW * 0.2, py0); c.lineTo(bx + BW * 0.2, py0); c.lineTo(dx + Rd * 0.75, dy - PR * 0.7); c.lineTo(dx - Rd * 0.75, dy - PR * 0.7); c.closePath(); c.fill();
+    c.beginPath();
+    if (side) { const ex = bx + BW / 2; c.moveTo(ex, by - BH * 0.2); c.lineTo(dx - PR * 0.7, dy - Rd * 0.75); c.lineTo(dx - PR * 0.7, dy + Rd * 0.75); c.lineTo(ex, by + BH * 0.4); }
+    else { c.moveTo(bx - BW * 0.2, py0); c.lineTo(bx + BW * 0.2, py0); c.lineTo(dx + Rd * 0.75, dy - PR * 0.7); c.lineTo(dx - Rd * 0.75, dy - PR * 0.7); }
+    c.closePath(); c.fill();
     c.beginPath(); c.arc(dx, dy, PR, 0, TAU); c.fill();
     c.strokeStyle = rgba(IRON_H, 0.6); c.lineWidth = 1.2; c.beginPath(); c.arc(dx, dy, PR - 0.8, Math.PI * 0.85, Math.PI * 1.9); c.stroke();
     c.strokeStyle = 'rgba(0,0,0,0.55)'; c.beginPath(); c.arc(dx, dy, PR - 0.8, Math.PI * 1.9, Math.PI * 2.85); c.stroke();
@@ -480,6 +488,11 @@ export function create(E) {
     if (hgt < 20) return;
     const hz = g.createLinearGradient(0, base, 0, top);
     hz.addColorStop(0, rgba(hc(heat), a)); hz.addColorStop(1, rgba(hc(heat), 0));
+    // slow warm blooms of heat rising from the bed
+    for (let i = 0; i < 3; i++) {
+      const k = (t * 0.11 * (reduced ? 0.5 : 1) + i / 3) % 1;
+      glow(g, bx + Math.sin(i * 2.3 + t * 0.3) * BW * 0.2, base - k * hgt, BW * (0.16 + 0.14 * k), hc(heat), 0.11 * Math.sin(k * Math.PI) * (0.3 + 0.7 * heat));
+    }
     g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round'; g.strokeStyle = hz;
     for (let i = 0; i < 3; i++) {
       const x0 = bx + (i - 1) * BW * 0.3;

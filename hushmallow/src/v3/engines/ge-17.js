@@ -39,7 +39,7 @@ const IRIS = ['#ff9ad5', '#ffd58a', '#a8ffcf', '#8fd8ff', '#b9a0ff', '#ff9ad5'];
 export function create(E) {
   const { g, stage, photos, words, pal } = E;
   const reduced = E.reduced, lowStim = E.lowStim, heavy = E.heavy, calm0 = E.calm;
-  const T = reduced || lowStim ? 72 : 88;   // interference texture resolution
+  const T = reduced || lowStim ? 64 : 80;   // interference texture resolution
   const flowK = (heavy ? 0.65 : 1) * (1 - calm0 * 0.5) * (reduced ? 0.4 : 1);
 
   // ---- round variety (loop rounds: new pull point, colours, bubbles, hero)
@@ -119,8 +119,10 @@ export function create(E) {
     TX[k] = x; TY[k] = y; TR[k] = r; TC[k] = x / r; TS[k] = y / r; TI[k] = Math.min(N - 1e-3, (a / TAU) * N);
   }
   const kR = (TAU * 1.33) / 650, kG = (TAU * 1.33) / 540, kB = (TAU * 1.33) / 455;
+  let RdTex = 1;
   function updateFilm(fin) {
     const rb = rBase(), p = shown;
+    RdTex = Rd;
     const H0 = lerp(720, 330, smooth(p)) + hueShift * (1 - p * 0.5) - fin * 60;
     const L = clamp(lerp(0.05, 0.4, p) + fin * 0.28 + calm0 * 0.1), lt = 1 - L;
     const aMul = lerp(0.85, 0.62, p) * (hero >= 0 ? lerp(0.7, 0.9, p) : 1) * (1 - fin * 0.2);
@@ -148,9 +150,11 @@ export function create(E) {
       }
       for (let q = 0; q < 4; q++) {
         const pk = pokes[q];
-        if (pk.age > 2.5) continue;
-        const dx = TX[k] * Rd - pk.x, dy = TY[k] * Rd - pk.y, dd = Math.sqrt(dx * dx + dy * dy);
-        h += pk.amp * Math.exp(-pk.age * 1.5 - dd / (50 + pk.age * 110)) * Math.sin(dd * 0.09 - pk.age * 7);
+        if (pk.age > 2.2) continue;
+        const dx = TX[k] * Rd - pk.x, dy = TY[k] * Rd - pk.y, d2 = dx * dx + dy * dy, span = 50 + pk.age * 110;
+        if (d2 > span * span * 9) continue;
+        const dd = Math.sqrt(d2);
+        h += pk.amp * Math.exp(-pk.age * 1.5 - dd / span) * Math.sin(dd * 0.09 - pk.age * 7);
       }
       if (h < 90) h = 90;
       const a = Math.sin(kR * h), b = Math.sin(kG * h), c = Math.sin(kB * h);
@@ -331,8 +335,12 @@ export function create(E) {
     }
     g.restore();
   }
+  let filmTick = 0;
   function drawFilm(fin) {
-    updateFilm(fin);
+    // idle film drifts slowly: refresh it every other frame; every frame while touched or rippling
+    let busy = np > 0 || finAt >= 0;
+    for (const pk of pokes) if (pk.age < 2.2) busy = true;
+    if (busy || (filmTick++ & 1) === 0) updateFilm(fin);
     const rb = rBase();
     g.save();
     rimPath(); g.clip();
@@ -353,9 +361,9 @@ export function create(E) {
     // the iridescent film itself: a thin tint (reads on light skies) + a luminous screen layer
     g.imageSmoothingEnabled = true;
     g.globalAlpha = lerp(0.3, 0.14, shown) * (1 - fin * 0.5);
-    g.drawImage(fc, cx - Rd, cy - Rd, Rd * 2, Rd * 2);
+    g.drawImage(fc, cx - RdTex, cy - RdTex, RdTex * 2, RdTex * 2);
     g.globalAlpha = 1; g.globalCompositeOperation = 'screen';
-    g.drawImage(fc, cx - Rd, cy - Rd, Rd * 2, Rd * 2);
+    g.drawImage(fc, cx - RdTex, cy - RdTex, RdTex * 2, RdTex * 2);
     g.globalCompositeOperation = 'source-over';
     // reflections: curved horizon + window highlight
     g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
