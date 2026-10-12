@@ -8,12 +8,16 @@
 
 import { INTENTIONS, PATTERNS } from './vocab.js';
 
-// angle-v2 (12 Oct 2026, after eval run 1): line 2 carries the step, 16–28
-// words, and "another angle" needs a new pattern and a new lens. angle-v1 is
-// kept beside it for comparison (tools/angle-eval.mjs --prompt angle-v1).
-export const PROMPT_VERSION = 'angle-v2';
+// angle-v3 (12 Oct 2026, after eval run 2): shorter lines (8–14 words each),
+// line 2 in varied forms, a new angle must reach a new point, and the quality
+// anchors agree with the rules. angle-v2 (after run 1: line 2 carries the
+// step, the six lenses) and angle-v1 are kept beside it for comparison
+// (tools/angle-eval.mjs --prompt angle-v2).
+export const PROMPT_VERSION = 'angle-v3';
+/** Every prompt file in prompts/, oldest first. */
+export const PROMPT_VERSIONS = Object.freeze(['angle-v1', 'angle-v2', 'angle-v3']);
 
-/** The six lenses an angle can look through (prompts/angle-v2.md). */
+/** The six lenses an angle can look through (prompts/angle-v2.md and later). */
 export const LENSES = Object.freeze([
   "what you know versus what you're assuming", "what's in your control", "what you'd tell a friend",
   'one small step', 'distance or time', 'compassion for yourself',
@@ -34,10 +38,14 @@ export function escapeData(text) {
  */
 
 /**
- * @param {PromptInput} input
+ * The request for one answer. The instruction after the data block belongs to
+ * the prompt version it is sent with (`promptVersion`, default PROMPT_VERSION):
+ * angle-v1 never defined the lenses, so a v1 baseline gets v1's own wording.
+ * @param {PromptInput & { promptVersion?: string }} input
  * @returns {string}
  */
 export function buildUserMessage(input) {
+  const version = input.promptVersion || PROMPT_VERSION;
   const parts = ['<request>', '<locale>en-GB</locale>'];
   parts.push(`<chosen_feeling>${input.emotion ? escapeData(input.emotion) : 'not chosen'}</chosen_feeling>`);
   parts.push(`<chosen_intention>${input.intention ? escapeData(INTENTIONS[input.intention]) : 'not chosen'}</chosen_intention>`);
@@ -61,7 +69,9 @@ export function buildUserMessage(input) {
     parts.push('<gate_feedback>', ...input.rejected.reasons.slice(0, 8).map((r) => `- ${escapeData(r)}`), '</gate_feedback>');
   }
   parts.push('</request>');
-  if (input.previous.length) {
+  if (input.previous.length && version === 'angle-v1') {
+    parts.push('Write the JSON for a genuinely different angle on this situation.');
+  } else if (input.previous.length) {
     // Only values from the fixed pattern list are named outside the data block.
     const used = [...new Set(input.previous.map((p) => p.reasoning_pattern).filter((p) => p && PATTERNS.includes(/** @type {any} */ (p))))];
     const n = input.previous.length;
@@ -71,6 +81,13 @@ export function buildUserMessage(input) {
       `- lens: one that no previous angle used (${LENSES.join('; ')}).`,
       '- a different question and a different action from theirs, in new words, still true to every fact they gave.',
     );
+    if (version !== 'angle-v2') {
+      parts.push(
+        `- a different point, not the same conclusion through a new lens: the earlier ${n === 1 ? "angle's" : "angles'"} point said in a friend's voice is a repeat.`,
+        `- line 2 in a different form from ${n === 1 ? "the earlier angle's line 2" : 'every earlier line 2'} (if it asked "Could you…?", make a plain suggestion, a choice of two, or a "Which…" question).`,
+        '- 16–28 words across the two lines, 8–14 each.',
+      );
+    }
   } else {
     parts.push('Write the JSON for this situation.');
   }

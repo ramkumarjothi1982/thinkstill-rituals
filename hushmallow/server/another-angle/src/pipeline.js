@@ -49,9 +49,11 @@ export const hasWords = (text) => /[\p{L}\p{N}]/u.test(text);
  * @param {AngleInput} input
  * @param {{ provider: Provider, systemPrompt: string, maxTokens: number, attemptTimeoutMs: number,
  *   deadlineMs: number, minRetryBudgetMs?: number, userTag?: string, now?: () => number,
- *   skipLexicon?: boolean, recordDrafts?: boolean, usage?: UsagePart[] }} deps
+ *   skipLexicon?: boolean, recordDrafts?: boolean, usage?: UsagePart[], promptVersion?: string }} deps
  *   usage, when given, is the array model usage is pushed into as each call
  *   returns (so the caller can settle spend even if a later step throws).
+ *   promptVersion names the prompt file systemPrompt came from (default the
+ *   server's PROMPT_VERSION), so the request wording matches it.
  *   skipLexicon and recordDrafts are for the eval only: skipLexicon sends
  *   lexicon-flagged text to the model anyway (to measure the model's own
  *   safety judgement); recordDrafts keeps rejected drafts in meta.drafts.
@@ -107,7 +109,7 @@ export async function runAngle(input, deps) {
     try {
       res = await deps.provider.generate({
         system: deps.systemPrompt,
-        user: buildUserMessage({ ...input, concern, injectionSuspect: meta.injection, rejected }),
+        user: buildUserMessage({ ...input, concern, injectionSuspect: meta.injection, rejected, promptVersion: deps.promptVersion }),
         schema: SCENE_SCHEMA,
         maxTokens: deps.maxTokens,
         timeoutMs,

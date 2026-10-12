@@ -159,6 +159,52 @@ test('still invented: numbers presented as facts, even inside a step or a hedge'
   }
 });
 
+test('still invented: a number that changes what the person said, wherever it sits (review of the first fixes)', () => {
+  // Each of these passed the first round of fixes; the run-1 gate caught them all.
+  const weeks = "We've been waiting two weeks to hear about the redundancies at work.";
+  for (const [t, field, v] of [
+    [weeks, 'subtitle_line_2', 'After three weeks of silence, could you ask HR for a date?'],
+    [weeks, 'subtitle_line_2', "You've carried this for three weeks without an answer."],
+    ["He hasn't replied to my message for five hours.", 'subtitle_line_2', 'After nine hours you could send one short, easy message.'],
+    ['I failed my driving test for the second time.', 'subtitle_line_2', 'After three tests, which fault keeps turning up?'],
+    ["I've been in this job two years and I still feel like a fraud.", 'subtitle_line_1', 'After three years in the job, the feeling has not caught up.'],
+    ['My colleague got promoted instead of me.', 'practical_next_step', 'Bring up the four strengths your manager praised last month.'],
+    ['My partner said we need to talk and then went to work.', 'subtitle_line_2', 'Since they finish at 6, could you ask then?'],
+    // and the same shapes, reworded
+    [weeks, 'known_fact', "You've been waiting three weeks for news about redundancies."],
+    [weeks, 'practical_next_step', 'Spend twenty minutes on your CV, since it has been three weeks already.'],
+    ["I've been late to work twice this week and my manager noticed.", 'practical_next_step', 'Write down the three times you were late and what caused each.'],
+  ]) {
+    const g = qualityGate(scene({ known_fact: 'x', subtitle_line_1: 'A b c d.', subtitle_line_2: 'E f g h.', [field]: v }), { text: t });
+    assert.ok(g.failures.some((f) => f.code === 'invented_detail' && f.field === field), `${field}: ${v} → ${JSON.stringify(codes(g))}`);
+  }
+  // What is still allowed: their own number, an earlier one of theirs, and steps ahead of now.
+  for (const [t, field, v] of [
+    [weeks, 'subtitle_line_1', 'Two weeks of waiting is a long time to hold your breath.'],
+    ["I failed my driving test for the third time. I'm just stupid.", 'subtitle_line_2', 'What did your second test sheet say that the third one did too?'],
+    [weeks, 'subtitle_line_2', 'Could you give it one more week, then ask HR for a date?'],
+    [weeks, 'practical_next_step', 'Spend twenty minutes on your CV this evening.'],
+    ["He hasn't replied to my message for five hours.", 'subtitle_line_2', 'Could you wait 48 hours before you read anything into it?'],
+    ["I've been in this job two years and I still feel like a fraud.", 'subtitle_line_2', "In five years' time, which bits of this job will you be glad you learnt?"],
+    ['My partner said we need to talk and then went to work.', 'subtitle_line_2', 'Could you text to ask if 7pm tonight suits them?'],
+  ]) {
+    const g = qualityGate(scene({ known_fact: 'x', subtitle_line_1: 'A b c d.', subtitle_line_2: 'E f g h.', [field]: v }), { text: t });
+    assert.ok(!g.failures.some((f) => f.code === 'invented_detail'), `${field}: ${v} → ${JSON.stringify(g.failures.filter((f) => f.code === 'invented_detail'))}`);
+  }
+});
+
+test('still invented: a day, month or holiday the person never gave, unless it is when a step should happen', () => {
+  const t = 'I have a presentation on Thursday and I keep imagining freezing in front of everyone.';
+  for (const v of ["Friday's presentation hasn't happened yet.", 'Since the argument in March the silence has been real.', 'The talk you gave at Christmas went fine, by your own account.']) {
+    const g = qualityGate(scene({ known_fact: 'x', subtitle_line_1: v }), { text: t });
+    assert.ok(g.failures.some((f) => f.code === 'invented_detail' && f.field === 'subtitle_line_1'), v);
+  }
+  for (const [field, v] of [['subtitle_line_1', "Thursday's presentation hasn't happened yet."], ['subtitle_line_2', 'Could you run the opening past a friend by Tuesday?'], ['practical_next_step', 'Practise the first two lines aloud on Wednesday evening.']]) {
+    const g = qualityGate(scene({ known_fact: 'x', [field]: v }), { text: t });
+    assert.ok(!g.failures.some((f) => f.code === 'invented_detail'), `${v} → ${JSON.stringify(codes(g))}`);
+  }
+});
+
 test('still invented: names the person never gave; everyday objects are fine', () => {
   const t = 'My boss embarrassed me in front of everyone.';
   expectFail(qualityGate(scene({ known_fact: 'Your boss embarrassed you.', practical_next_step: 'Tell Sarah in HR what happened, in writing.' }), { text: t }), 'invented_detail');
@@ -178,6 +224,21 @@ test('still not specific: generic lines, even when the person named someone', ()
     const g = qualityGate(scene({ known_fact: 'x', subtitle_line_1: 'Sometimes life is hard and things go wrong.', subtitle_line_2: 'What matters is what you choose to do next.' }), { text: t });
     expectFail(g, 'not_specific');
   }
+  // A pronoun for the person they named is not engagement on its own, and
+  // nor is a word that only sounds like their situation in a general remark.
+  for (const [t, l1, l2] of [
+    ['My boss embarrassed me in front of everyone.', 'Life is full of hard moments, for her and for you.', 'What matters is what you choose to do next.'],
+    ['My dad keeps criticising my career choices.', 'He has his own story, and you have yours.', 'What matters most is what you choose next.'],
+    ['My boyfriend left me on read last night.', 'He is only one part of a much bigger life.', 'You can choose what happens next for you.'],
+    ['My doctor wants to see me about my blood test results.', 'Every slot in life holds something you cannot predict.', 'What matters is what you choose to do next.'],
+    ['My partner said we need to talk and then went to work.', 'Every conversation is a chance to learn something new.', 'What matters is what you choose to do next.'],
+  ]) expectFail(qualityGate(scene({ known_fact: 'x', subtitle_line_1: l1, subtitle_line_2: l2 }), { text: t }), 'not_specific');
+  // Contacting the person they named does engage with it, and so does their own subject in other words.
+  for (const [t, l1, l2] of [
+    ['My boyfriend left me on read last night.', 'Big words can take a while to land.', 'Could you check with him in person when you next meet?'],
+    ['I was rejected from my first-choice university.', 'Clearing and other offers are still open doors this year.', 'Could you write down two courses to look at this weekend?'],
+    ["I failed my exam. I'm useless.", 'One bad day on paper is not the whole of you.', 'Which topic cost you most, and could you start there?'],
+  ]) assert.ok(!codes(qualityGate(scene({ known_fact: 'x', subtitle_line_1: l1, subtitle_line_2: l2 }), { text: t })).includes('not_specific'), l2);
 });
 
 // --- counting -------------------------------------------------------------------
@@ -191,7 +252,11 @@ test('word counting: contractions, hyphens, quotes, numbers and abbreviations co
   assert.equal(wordCount('Don’t—it’s fine — really.'), 4);
   assert.deepEqual(words("first-choice"), ['first-choice']);
   assert.deepEqual([...numbersIn('It cost £1,000.')], ['1000']);
-  assert.deepEqual([...numbersIn('Three and a half: 3,5.')], ['three', '3.5']);
+  assert.deepEqual([...numbersIn('Three and a half: 3,5.')], ['3', '3.5']);
+  // Digits, words and ordinals are one value: "1,000" meets "a thousand", "5" meets "five" and "fifth".
+  assert.deepEqual([...numbersIn('a thousand, 1,000 and one thousand')], ['1000']);
+  assert.deepEqual([...numbersIn('5 hours, five days, the fifth time, 5th')], ['5']);
+  assert.deepEqual([...numbersIn('twenty-five, the twenty-first, twice, 2am')], ['25', '21', '2']);
   // The run-1 drafts the gate called too long were measured right.
   const it = items.find((i) => `${i.id}#${i.round}.${i.attempt}` === 'work-pitch#0.1');
   assert.equal(it.words, 38);

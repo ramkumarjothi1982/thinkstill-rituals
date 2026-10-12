@@ -165,6 +165,8 @@ const PP = R`(?: (?:at|in|on|from|around|across|with|near|close to) (?:(?:the|th
 const CLAIM_G = new RegExp(R`\b(${OTHERS})${PP}${ADVS}((?: does| did| do| will| would| must| has| have| had| can)?(?: not| never)?)${ADVS} (${MIND_VERB})\b`, 'giu');
 const STATE_G = new RegExp(R`\b(${OTHERS})${PP}((?: is| are| was| were| will be| would be| must be| has been| have been| had been| seems to be)(?: not| never)?)${ADVS} (${MIND_STATE})\b`, 'giu');
 const OTHERS_RE = new RegExp(R`\b${OTHERS}\b`, 'iu');
+// A mind word joined to a restated event with the same subject ("…noticed and thinks…").
+const COORD_MIND = new RegExp(R`^(?: [\p{L}'-]+){0,4}? (?:and|then|so)${ADVS}(?: does| did| do)?(?: not| never)?${ADVS} (${MIND_VERB}|(?:is|was|are|were)(?: not)?${ADVS} ${MIND_STATE})\b`, 'iu');
 const THIRD_PARTY_RE = new RegExp(R`\b(?:he|she|they|him|her|them|his|their|${OTHER_NOUNS.join('|')}|everyone|everybody|nobody|no one|no-one|people)\b`, 'iu');
 const NOT_PERSONAL_RE = /\b(?:it|this|that) (?:was|is|was not|is not|wasn't|isn't) (?:not )?(?:personal|about you)\b|\b(?:they|he|she) did not mean (?:it|to)\b|\b(?:nothing|not anything|anything) personal\b|\b(?:it|this|that) (?:was|is|were) (?:(?:probably|likely|surely|clearly|definitely|just|only|simply|almost certainly|most likely) (?:an? )?(?:oversight|accident|honest mistake|mix-up|mix up|misunderstanding|slip)|(?:an? )?(?:oversight|mix-up|mix up|misunderstanding))\b/iu;
 // Motives stated as fact: "left you out on purpose to send a message".
@@ -304,7 +306,13 @@ function claimsOthersMinds(sentence, echo) {
         for (const c of claims) {
           if (hedges.some((h) => h.start < c.end) || WH_BEFORE.test(clause.slice(0, c.at))) continue;
           if (covered(attrib, clause, c.at) || covered(negReport, clause, c.at)) continue;
-          if (echo && (echoes(c, echo) || covered(report, clause, c.at))) continue;
+          if (echo && (echoes(c, echo) || covered(report, clause, c.at))) {
+            // "Your manager noticed and thinks you are careless": the echo
+            // covers what they reported, not a mind word joined on to it.
+            const co = COORD_MIND.exec(clause.slice(c.end));
+            if (co && !(EVENT_WORDS.has(co[1].toLowerCase()) && echo.roots.has(root(co[1])))) return true;
+            continue;
+          }
           return true;
         }
       }
