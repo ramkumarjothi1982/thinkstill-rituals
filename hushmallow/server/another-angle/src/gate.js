@@ -7,7 +7,7 @@
 // after one failed regeneration the client falls back to the authored engine.
 
 import { HEAVY_EMOTIONS } from './vocab.js';
-import { tidy, words, wordCount, sentences, contentStems, jaccard, numbersIn, stem } from './text.js';
+import { tidy, words, wordCount, sentences, contentStems, allStems, jaccard, numbersIn, stem, IRREGULAR as TEXT_IRREGULAR } from './text.js';
 
 export const LINE_FIELDS = /** @type {const} */ (['subtitle_line_1', 'subtitle_line_2']);
 export const EXPLORE_FIELDS = /** @type {const} */ (['known_fact', 'possible_assumption', 'alternative_angle', 'practical_next_step']);
@@ -38,7 +38,10 @@ const RULES = [
       R`you(?:'re| are) (?:so |truly |really )?(?:worthy|enough|amazing|awesome|incredible|wonderful|brilliant|strong|stronger than you think|valued|loved|not alone|a good person|doing (?:great|amazing|so well|your best))`,
       R`believe in yourself`, R`you(?:'ve| have)? got this`, R`love yourself`, R`self-?love`, R`be proud of yourself`, R`you should be proud`,
       R`be kind to yourself`, R`be gentle (?:with|on) yourself`, R`treat yourself`, R`you deserve (?:happiness|better|the best|love|to be happy)`,
-      R`(?<!(?:how much|whether|if|how|why|what|feel like|feeling that) )you (?:really |truly |still |do )?matter`, R`keep going`, R`never give up`, R`you can do anything`, R`remember (?:that )?you(?:'re| are)`, R`worthy and valuable`,
+      R`(?<!(?:how much|whether|if|how|why|what|feel like|feeling that) )you (?:really |truly |still |do )?matter`,
+      // "Keep going!" cheers the person on; "the loop can keep going without you" describes a thought.
+      R`(?:just |so )keep going`, R`keep going(?=\s*(?:[,.!]|$))`, R`keep going,? you`, R`never give up`,
+      R`you(?:'re| are) (?:so |really |clearly |obviously |such )?(?:clever|capable|talented|smart|gifted|beautiful|hard[- ]working|a (?:hard[- ]working|talented|great|good|wonderful|lovely|kind|brilliant) (?:person|student|friend|parent|mum|mom|dad|partner|worker|colleague))\b`, R`you can do anything`, R`remember (?:that )?you(?:'re| are)`, R`worthy and valuable`,
       R`practi[sc]e self`, R`you(?:'re| are) only human`, R`everyone makes mistakes`, R`nobody(?:'s| is) perfect`, R`it(?:'s| is) okay not to be okay`,
     ]),
   },
@@ -60,13 +63,23 @@ const RULES = [
       R`you(?:'ll| will) be (?:fine|okay|ok|alright)`, R`nothing to worry about`, R`no need to worry`, R`don'?t worry`, R`do not worry`,
       R`everything happens for a reason`, R`bright side`, R`silver lining`, R`every cloud`, R`at least you`, R`it could (?:have been|be) worse`,
       R`stay positive`, R`think positive(?:ly)?`, R`positive vibes`, R`good vibes`, R`nobody (?:even )?noticed`, R`no one (?:even )?noticed`,
+      // Promises about how things will turn out.
+      R`you(?:'ll| will) (?:definitely |certainly |surely )?(?:do|be) (?:brilliantly|great|amazing|so well|really well|better next time|fine next time)`,
+      R`(?:will|'ll) (?:definitely|certainly|surely|absolutely) (?:be|go|get|work|turn)`,
     ]),
+  },
+  {
+    code: 'contradicts_person',
+    message: 'Never tell the person their account or feeling is wrong ("that isn\'t true", "you\'re wrong"); show what else might also be true instead.',
+    re: any([R`(?:that|this|it)(?:'s| is| was)(?: not|n't) true(?: at all)?`, R`that(?:'s| is) not right`, R`you(?:'re| are) wrong(?: about)?`, R`that(?:'s| is) (?:simply |just )?(?:false|untrue|nonsense|ridiculous)`]),
   },
   {
     code: 'ai_mention',
     message: 'Never mention AI, models, systems or technology.',
-    re: any([R`as an ai`, R`a\.i\.`, R`artificial intelligence`, R`language model`, R`chat ?bot`, R`algorithm`, R`claude`, R`anthropic`, R`openai`, R`gpt`]),
+    re: any([R`as an ai`, R`a\.i\.`, R`artificial intelligence`, R`language model`, R`chat ?bot`, R`algorithm`, R`anthropic`, R`openai`, R`gpt`]),
   },
+  // "Claude" is also a first name: allowed when the person wrote it themselves.
+  { code: 'ai_mention', message: 'Never mention AI, models, systems or technology.', re: any([R`claude`]), unlessInInput: /\bclaude\b/iu },
   { code: 'ai_mention', message: 'Never mention AI, models, systems or technology.', re: /\bAI\b/u },
   {
     code: 'human_claim',
@@ -81,7 +94,9 @@ const RULES = [
   {
     code: 'blame',
     message: 'Never blame the person or call their reaction an overreaction.',
-    re: any([R`your (?:own )?fault`, R`you should(?:n'?t)? have`, R`you should'?ve`, R`overreact\w*`, R`too sensitive`, R`(?:being|so|a bit) dramatic`, R`get over it`, R`just move on`, R`brought (?:it|this) on yourself`, R`you asked for`]),
+    re: any([R`your (?:own )?fault`, R`you should(?:n'?t)? have`, R`you should'?ve`, R`overreact\w*`, R`too sensitive`, R`(?:being|so|a bit) dramatic`, R`get over it`, R`just move on`, R`brought (?:it|this) on yourself`, R`you asked for`,
+      R`(?:whether|if|how) you (?:contributed|provoked|caused|deserved|invited|asked for|brought)`, R`you (?:may|might|could) have (?:provoked|deserved|caused|invited|asked for|brought) (?:it|this|that)`,
+      R`by being (?:unprepared|careless|lazy|rude|difficult|dramatic|too sensitive|so sensitive|needy|clingy)`]),
   },
   {
     code: 'condescending',
@@ -91,7 +106,7 @@ const RULES = [
       // "simply"/"clearly" only where they dismiss ("simply move on"), not in "simply note what happened".
       R`(?:simply|just) (?:move on|get over (?:it|this|that|him|her|them)|forget (?:about )?(?:it|this|that)|stop (?:worrying|thinking about (?:it|this|that)|caring|overthinking)|relax|calm down|cheer up|accept (?:it|this|that)|deal with (?:it|this|that)|toughen up|snap out of it|ignore (?:it|this|that))`,
       R`(?:simply|clearly) (?:overreacting|overthinking|exaggerating|being (?:silly|dramatic|irrational|paranoid|unreasonable|too)|wrong|irrational|paranoid|nothing|fine|silly|not (?:a big deal|that bad|worth))`,
-      R`it(?:'s| is) (?:simply|clearly) (?:not|nothing)`, R`silly`, R`not that deep`, R`calm down`, R`just relax`, R`chill out`, R`no big deal`, R`not a big deal`, R`not that big a deal`, R`it doesn'?t matter`, R`who cares`, R`you(?:'re| are) fine`, R`first[- ]world problem`]),
+      R`it(?:'s| is) (?:simply|clearly) (?:not|nothing)`, R`silly`, R`just (?:study|try|work|revise|practi[sc]e) harder`, R`not that deep`, R`calm down`, R`just relax`, R`chill out`, R`no big deal`, R`not a big deal`, R`not that big a deal`, R`it doesn'?t matter`, R`who cares`, R`you(?:'re| are) fine`, R`first[- ]world problem`]),
   },
   {
     code: 'forgive_pressure',
@@ -131,24 +146,42 @@ const RULES = [
 ];
 
 // Third parties whose minds must never be described as fact.
-const OTHER_NOUNS = ['boss', 'manager', 'partner', 'boyfriend', 'girlfriend', 'husband', 'wife', 'friends?', 'colleagues?', 'co-?workers?', 'mum', 'mom', 'dad', 'mother', 'father', 'sister', 'brother', 'family', 'teacher', 'tutor', 'ex', 'team', 'flatmate', 'housemate', 'date', 'crush', 'son', 'daughter', 'parents', 'classmates?', 'mates?', 'landlord', 'client', 'customer'];
-const OTHERS = R`(?:he|she|they|(?:your|their|his|her) (?:${OTHER_NOUNS.join('|')})|everyone|everybody|nobody|no one|no-one|people)`;
+const OTHER_NOUNS = ['boss(?:es)?', 'managers?', 'partners?', 'boyfriends?', 'girlfriends?', 'husband', 'wife', 'friends?', 'colleagues?', 'co-?workers?', 'mums?', 'moms?', 'dads?', 'mothers?', 'fathers?', 'sisters?', 'brothers?', 'family', 'teachers?', 'tutors?', 'lecturers?', 'coach(?:es)?', 'ex(?:es)?', 'team', 'flatmates?', 'housemates?', 'roommates?', 'date', 'crush', 'sons?', 'daughters?', 'parents?', "parents' friends", 'classmates?', 'mates?', 'landlord', 'clients?', 'customers?', 'neighbou?rs?', 'in-laws', 'kids', 'children', 'cousins?', 'grandparents', 'nan', 'gran', 'auntie', 'aunt', 'uncle', 'examiners?', 'interviewers?', 'audience', 'group', 'class', 'followers'];
+const OTHERS = R`(?:he|she|they|(?:your|their|his|her) (?:${OTHER_NOUNS.join('|')})|(?:the|those) people (?:around|in|at|near|close to|with) (?:you|your [\p{L}'-]+)|(?:most|all|the) people|everyone|everybody|nobody|no one|no-one|people|others|other people)`;
 const ADVS = R`(?: (?:definitely|really|just|probably|certainly|surely|actually|only|still|totally|secretly|likely|simply|honestly|genuinely|clearly|obviously|even|already|always|never))*`;
 // Mental verbs: "he loves you", "she must hate me", "they don't care".
-const MIND_VERB = R`(?:loves?|liked?|likes|cares?|cared|hates?|hated|resents?|respects?|values?|admires?|misses|missed|wants?|wanted|meant|means (?:it|to|well)|intended|intends|feels?|felt|thinks?|thought|knows?|knew|forgot|forgets|noticed|notices|notice|remembers?|remembered|judges?|judged|blames?|blamed|trusts?|trusted|tried to|ignored|ignores?|minds?|minded|regrets?|appreciates?|appreciated)`;
+const MIND_VERB = R`(?:loves?|liked?|likes|cares?|cared|hates?|hated|resents?|respects?|values?|admires?|misses|missed|wants?|wanted|meant|means (?:it|to|well)|intended|intends|feels?|felt|thinks?|thought|knows?|knew|forgot|forgets|noticed|notices|notice|remembers?|remembered|judges?|judged|blames?|blamed|trusts?|trusted|tried to|ignored|ignores?|minds?|minded|regrets?|appreciates?|appreciated|prefers?|preferred|favou?rs?|favou?red|adores?|envies|envied|dislikes?|disliked|understands?|understood|realises?|realised|realizes?|realized|forgives?|forgave)`;
 // Mental states need a linking verb: "she is annoyed", "he was just busy".
 const MIND_STATE = R`(?:annoyed|angry|upset|mad|disappointed|proud|jealous|threatened|insecure|busy|stressed|distracted|overwhelmed|happy|fine|okay|interested|bored|embarrassed|hurt|sorry|over it|ignoring|avoiding|judging|thinking|trying to|testing|punishing|annoyed with|fed up)`;
 // A short phrase may sit between the person and the verb: "everyone at that dinner was judging you".
-const PP = R`(?: (?:at|in|on|from|around|across|with) (?:the|that|this|your|their|his|her|a|an) [\p{L}'-]+(?: [\p{L}'-]+)?)?`;
+const PP = R`(?: (?:at|in|on|from|around|across|with|near|close to) (?:(?:the|that|this|your|their|his|her|a|an) [\p{L}'-]+(?: [\p{L}'-]+)?|you|work|school|home|uni|college))?`;
 // Groups: 1 the person, 2 auxiliaries and negation, 3 the mind word.
 const CLAIM_G = new RegExp(R`\b(${OTHERS})${PP}${ADVS}((?: does| did| do| will| would| must| has| have| had| can)?(?: not| never)?)${ADVS} (${MIND_VERB})\b`, 'giu');
 const STATE_G = new RegExp(R`\b(${OTHERS})${PP}((?: is| are| was| were| will be| would be| must be| has been| have been| had been| seems to be)(?: not| never)?)${ADVS} (${MIND_STATE})\b`, 'giu');
 const OTHERS_RE = new RegExp(R`\b${OTHERS}\b`, 'iu');
 const THIRD_PARTY_RE = new RegExp(R`\b(?:he|she|they|him|her|them|his|their|${OTHER_NOUNS.join('|')}|everyone|everybody|nobody|no one|no-one|people)\b`, 'iu');
-const NOT_PERSONAL_RE = /\b(?:it|this|that) (?:was|is|was not|is not|wasn't|isn't) (?:not )?(?:personal|about you)\b|\b(?:they|he|she) did not mean (?:it|to)\b/iu;
-const HEDGE_SRC = String.raw`\b(?:may|might|could|can(?! not)|perhaps|possibly|maybe|if|whether|unless|whatever|not sure|do not know|don't know|can't know|cannot know|can not know|can't tell|cannot tell|no way to know|unclear|unknown|guess(?:ing)?|wonder|question|possibilit(?:y|ies)|possible|seems?|seemed|as if|does not prove|doesn't prove|is not proof|isn't proof|not proof|does not mean|doesn't mean|does not tell|doesn't tell|without knowing|has not said|hasn't said|have not said|haven't said|one reading|one explanation|explanations|interpretations?|story|stories|assum\w*|guesses|some people|many people|plenty of people|lots of people|sometimes)\b`;
-const HEDGE_RE = new RegExp(HEDGE_SRC, 'iu');
-const HEDGE_G = new RegExp(HEDGE_SRC, 'giu');
+const NOT_PERSONAL_RE = /\b(?:it|this|that) (?:was|is|was not|is not|wasn't|isn't) (?:not )?(?:personal|about you)\b|\b(?:they|he|she) did not mean (?:it|to)\b|\b(?:nothing|not anything|anything) personal\b|\b(?:it|this|that) (?:was|is|were) (?:(?:probably|likely|surely|clearly|definitely|just|only|simply|almost certainly|most likely) (?:an? )?(?:oversight|accident|honest mistake|mix-up|mix up|misunderstanding|slip)|(?:an? )?(?:oversight|mix-up|mix up|misunderstanding))\b/iu;
+// Motives stated as fact: "left you out on purpose to send a message".
+const MOTIVE_RE = /\b(?:on purpose|deliberately|intentionally|to send (?:you )?a message|to make a point|to get at you|to hurt you|to punish you|to teach you a lesson|to humiliate you|to embarrass you|to upset you|to test you|out of spite|to spite you|out of jealousy|because (?:he|she|they)(?: is| are|'s|'re| was| were)? (?:jealous|threatened|insecure|intimidated))\b/iu;
+// "She has no respect for you", "he has a lot of love for you".
+const HAVE_G = new RegExp(R`\b(${OTHERS})${PP}${ADVS}((?: does| did| do)?(?: not| never)?(?: has| have| had| has got| have got| has had| have had| has never had| has always had))(?: no| zero| little| any| a lot of| lots of| so much| real| genuine| deep| great| huge| such| more| less)? (respect|love|feelings|interest|regard|affection|contempt|resentment|a grudge|it in|time) (?:for|towards|against|in)? ?(?:you)\b`, 'giu');
+// Predictions about what someone else will do: "He will reply soon".
+const PREDICT_G = new RegExp(R`\b(${OTHERS})${PP}${ADVS}((?: will| would| is going to| are going to| will not| would not| is not going to| are not going to)(?: soon| definitely| probably| surely| eventually| certainly| still| never)?) (reply|respond|text|call|message|answer|get back to you|come round|come around|forgive|forget|notice|remember|understand|apologi[sz]e|change|calm down|be (?:fine|okay|ok|happy|proud|angry|upset|disappointed|impressed|pleased)|see (?:it|that|how)|like|love|care|mind|judge|laugh|think)\b`, 'giu');
+// Invented people who care: "all the people who love you".
+const REL_G = new RegExp(R`\b((?:all )?(?:the|those) (?:people|friends|ones)|people|everyone|everybody|plenty of people|lots of people|many people|so many people)(?: around you| in your life)? (?:who|that) (?:really |truly |still |all |genuinely |deeply |already )?(love|loves|care|cares|like|likes|value|values|respect|respects|adore|adores|appreciate|appreciates|miss|misses|think about|believe in) (?:about )?you\b`, 'giu');
+// "liked a photo" is something they did, not a feeling.
+const POST_OBJECT = /^ (?:a|an|his|her|their|the|your|my|some|all|every|each|one of|two of|several|another|old|recent)(?: [\p{L}'-]+'s| [\p{L}'-]+)? (?:photos?|posts?|pictures?|pics?|stor(?:y|ies)|comments?|tweets?|status|statuses|reels?|videos?|selfies?|updates?|messages?)\b/iu;
+const LIKE_WORDS = new Set(['like', 'liked', 'likes', 'liking']);
+const HEDGE_SRC = String.raw`\b(?:may|might|could|can(?! not)|perhaps|possibly|maybe|if|whether|unless|whatever|not sure|do not know|don't know|can't know|cannot know|can not know|can't tell|cannot tell|no way to know|unclear|unknown|guess(?:ing)?|wonder|question|possibilit(?:y|ies)|possible|seems?|seemed|as if|does not prove|doesn't prove|is not proof|isn't proof|not proof|does not mean|doesn't mean|does not tell|doesn't tell|without knowing|has not said|hasn't said|have not said|haven't said|one reading|one explanation|explanations|interpretations?|story|stories|assum\w*|guesses)\b`;
+// "Some people find it hard to say things they still feel" is a general
+// statement about how people work, so it covers its clause. A quantity word
+// is no hedge for a claim about the person ("Plenty of people like you",
+// "Sometimes people like you more than they show"): that still claims to know
+// what others feel, so it only counts before an ordinary-experience verb whose
+// object is not "you".
+const QTY_HEDGE_SRC = String.raw`\b(?:(?:some|many|plenty of|lots of|a lot of|most|loads of) (?:people|parents|dads|mums|bosses|managers|teachers|friends|partners|families)|sometimes(?: people)?|people (?:often|sometimes))(?: (?:really|honestly|genuinely|just|also))? (?:find|finds|feel (?!(?:that )?(?:you|the same about you))|feels (?!(?:that )?you)|get|gets|notice|struggle|struggles|go quiet|freeze|need|take|have trouble|worry|forget)\b`;
+const HEDGE_RE = new RegExp(`${HEDGE_SRC}|${QTY_HEDGE_SRC}`, 'iu');
+const HEDGE_G = new RegExp(`${HEDGE_SRC}|${QTY_HEDGE_SRC}`, 'giu');
 // Attribution frames: the person's own account or feeling, not a claim about
 // anyone's mind ("You said your boss ignored you", "It feels like nobody likes you").
 const ATTRIB_G = /\b(?:you(?: have| had| are| were| keep| kept)?(?: just| really| still| already| also| even)? (?:said|say|saying|wrote|write|writing|told (?:me|us)|mentioned|mention|described|describe|noticed|notice|noticing|felt|feel|feeling|fear|feared|worry|worried|suspect|suspected|think|thought|thinking|believe|believed|sense|sensed|imagine|imagined|picture|pictured|afraid|scared|convinced|sure|guessing|hearing|telling yourself|tell yourself|told yourself)|it (?:can |may |might |could )?(?:feels?|felt|seems?|seemed|looks?|looked|sounds?|sounded) (?:like|as if|as though|that)|in your (?:head|mind|telling|version))\b/giu;
@@ -244,9 +277,14 @@ function claimsOthersMinds(sentence, echo) {
     let leadIn = false;
     for (const clause of seg.split(/[,:]/)) {
       const hedged = HEDGE_RE.test(clause);
-      const claims = [...clause.matchAll(CLAIM_G), ...clause.matchAll(STATE_G)].map((m) => ({
+      const claims = [...clause.matchAll(CLAIM_G), ...clause.matchAll(STATE_G), ...clause.matchAll(HAVE_G), ...clause.matchAll(PREDICT_G)].map((m) => ({
         at: m.index ?? 0, end: (m.index ?? 0) + m[0].length, subject: m[1], neg: /not|never/.test(m[2] || ''), word: m[3],
-      }));
+      }))
+        // "He liked a photo" reports something he did, not how he feels.
+        .filter((c) => !(LIKE_WORDS.has(c.word.toLowerCase()) && POST_OBJECT.test(clause.slice(c.end))));
+      for (const m of clause.matchAll(REL_G)) claims.push({ at: m.index ?? 0, end: (m.index ?? 0) + m[0].length, subject: m[1], neg: false, word: m[2] });
+      const motive = MOTIVE_RE.exec(clause);
+      if (motive && OTHERS_RE.test(clause.slice(0, motive.index))) claims.push({ at: motive.index, end: motive.index + motive[0].length, subject: '', neg: false, word: 'motive' });
       const notPersonal = NOT_PERSONAL_RE.test(clause);
       if ((claims.length || notPersonal) && !leadIn) {
         if (notPersonal && !hedged) return true;

@@ -19,7 +19,7 @@ const CARE_CATEGORIES = Object.keys(HARM_LEXICON.care);
 for (const k of Object.keys(EXTRA_CARE)) if (!CARE_CATEGORIES.includes(k)) CARE_CATEGORIES.push(k);
 
 const RULES = {
-  guards: compile(HARM_LEXICON.idiomGuards, 'gi'),
+  guards: compile([...HARM_LEXICON.idiomGuards, ...EXTRA_LEXICON.idiomGuards], 'gi'),
   crisis: compile([...HARM_LEXICON.crisis, ...EXTRA_LEXICON.crisis]),
   crisisOther: compile([...HARM_LEXICON.crisisOther, ...EXTRA_LEXICON.crisisOther]),
   // Third-person constructions ("my brother took an overdose") are blanked
@@ -72,6 +72,18 @@ export function checkSafety(text) {
   return { level: 'none', category: null };
 }
 
+// Run every rule once while the module loads. V8 compiles a regular
+// expression on its first use; doing that here puts the cost in the Worker's
+// startup budget instead of the first request's CPU time (README "Costs").
+export function warmSafety() {
+  const sample = 'warm up the safety rules once: i took it, he said, my friend, cutting, no point.';
+  for (const list of [RULES.guards, RULES.crisis, RULES.crisisOther, RULES.otherSpans, RULES.concern, ...RULES.care.map(([, r]) => r)]) {
+    for (const re of list) { re.lastIndex = 0; re.test(sample); re.lastIndex = 0; }
+  }
+  checkSafety(sample);
+  for (const re of OUTPUT_HARM) re.test(sample);
+}
+
 /**
  * @typedef {{ level: 'care' | 'crisis', category: string, title: string, message: string,
  *   resources: readonly { readonly label: string, readonly detail: string }[], still_here: string, source: 'lexicon' | 'model' }} Support
@@ -122,3 +134,5 @@ const OUTPUT_HARM = [
   /\b(?:want|wanting|wish) to die\b/i,
   /\bweapons?\b|\bpoison\w*/i,
 ];
+
+warmSafety();

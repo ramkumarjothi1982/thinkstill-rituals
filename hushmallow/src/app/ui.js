@@ -93,7 +93,7 @@ export function toast(text, ms = 2200) {
 // moves while it speaks.
 let currentBubble = null;
 let sayToken = 0;
-const PIECES = '#scene button, #scene .chip, #scene .choice, #scene input, #scene textarea, #scene select, #scene .ask, #scene [data-say-avoid], .angle-stage > *, .angle-stage [data-say-avoid]';
+const PIECES = '#scene button, #scene .chip, #scene .choice, #scene input, #scene textarea, #scene select, #scene .ask, #scene [data-say-avoid], .angle-stage > *, .angle-stage [data-say-avoid], #fx-layer > :not(canvas), #fx-layer > :not(canvas) > *, #fx-layer [data-say-avoid]';
 const TEXTS = '#scene h1, #scene h2, #scene h3, #scene p, #scene .eyebrow, #scene .muted, #scene .lede';
 // cost per px² of overlap (the face is never an option while anything else is)
 const COST = { face: 400, body: 60, bar: 80, dock: 60, piece: 50, card: 40, text: 30, title: 30 };
@@ -142,7 +142,7 @@ function collectObstacles(world, avoid) {
   for (const el of document.querySelectorAll('#scene .dock')) if (el.children.length) add(visibleRect(el), 'dock', el);
   for (const el of document.querySelectorAll('#scene .move-title')) add(visibleRect(el), 'title', el);
   for (const el of document.querySelectorAll('#scene .card, #scene .ultra-card, #scene .summary-card')) add(visibleRect(el), 'card', el);
-  for (const el of document.querySelectorAll(PIECES)) if (!el.closest('.topbar, .dock')) add(visibleRect(el), 'piece', el);
+  for (const el of document.querySelectorAll(PIECES)) if (!el.closest('.topbar, .dock') && el.getAttribute('data-say-avoid') !== 'off') add(visibleRect(el), 'piece', el);
   for (const el of document.querySelectorAll(TEXTS)) if (!el.closest('.topbar, .dock, .move-title, .card')) add(visibleRect(el), 'text', el);
   try { for (const r of (typeof avoid === 'function' ? avoid() : avoid) || []) add(r, 'piece'); } catch { /* a ritual's rects are optional */ }
   const m = mallowBox(world);
@@ -154,70 +154,134 @@ function collectObstacles(world, avoid) {
   return { list: out, mallow: m };
 }
 
-function bestSpot(b, mode, obs, { above = true, titleCost = COST.title } = {}) {
+// the top bar and the dock always stay clear (unless nothing fits between them)
+function bounds(obs, bh) {
+  const bar = obs.list.filter((o) => o.kind === 'bar').reduce((m, o) => Math.max(m, o.b), 0);
+  const dock = obs.list.filter((o) => o.kind === 'dock').reduce((m, o) => Math.min(m, o.t), innerHeight);
+  let yMin = Math.max(10, bar + 6), yMax = Math.min(innerHeight - 10, dock - 6) - bh;
+  if (yMax < yMin) { yMin = 10; yMax = innerHeight - 10 - bh; }
+  return { yMin, yMax, dockTop: Math.min(innerHeight - 10, dock) };
+}
+
+function setMode(b, mode) {
   b.classList.toggle('compact', mode !== 'normal');
   b.classList.toggle('wide', mode === 'wide');
+}
+
+/** The best spot for one bubble size: the nearest free one, the nearest one
+ *  that only covers the title (which then dims), and the least bad one. */
+function bestSpot(b, mode, obs, { above = true } = {}) {
+  setMode(b, mode);
   const bw = Math.min(b.offsetWidth, innerWidth - 24), bh = b.offsetHeight;
   const sc = document.getElementById('scene')?.getBoundingClientRect();
-  const xMin = Math.max(12, (sc?.left ?? 0) + 8), xMax = Math.min(innerWidth - 12, (sc?.right ?? innerWidth) - 8) - bw;
+  const xMin = Math.max(12, (sc?.left ?? 0) + 8), xMax = Math.max(xMin, Math.min(innerWidth - 12, (sc?.right ?? innerWidth) - 8) - bw);
   const m = obs.mallow;
   const cx = m ? m.cx : innerWidth / 2;
-  const xs = [...new Set([Math.max(xMin, Math.min(xMax, cx - bw / 2)), xMin, Math.max(xMin, xMax)].map(Math.round))];
-  const yMin = 10, yMax = innerHeight - 10 - bh;
+  const xs = [...new Set([Math.max(xMin, Math.min(xMax, cx - bw / 2)), xMin, xMax].map(Math.round))];
+  const { yMin, yMax } = bounds(obs, bh);
   const PAD = 6;
-  let best = null;
+  let free = null, titled = null, any = null;
   for (const x of xs) {
     for (let y = yMin; y <= yMax; y += 3) {
-      let cost = 0, titleHit = false;
+      let cost = 0, title = 0;
       for (const o of obs.list) {
         const w = Math.min(x + bw + PAD, o.r) - Math.max(x - PAD, o.l);
         if (w <= 0) continue;
         const hgt = Math.min(y + bh + PAD, o.b) - Math.max(y - PAD, o.t);
         if (hgt <= 0) continue;
-        cost += w * hgt * (o.kind === 'title' ? titleCost : COST[o.kind]);
-        if (o.kind === 'title') titleHit = true;
+        if (o.kind === 'title') title += w * hgt; else cost += w * hgt * COST[o.kind];
       }
-      // distance from the head (above) or the body's base (below)
-      let dist = 0;
+      // close to the head (above) or the body's base (below), and centred on the Mallow
+      let dist;
       if (m) {
         const up = Math.abs(y + bh + 12 - (m.top + m.height * 0.06));
         const down = Math.abs(y - (m.bottom + 12));
         dist = Math.min(up + (above ? 0 : 60), down + (above ? 60 : 0)) + Math.abs(x + bw / 2 - cx) * 0.25;
       } else dist = Math.abs(y - innerHeight * 0.3);
-      const score = cost + dist;
-      if (!best || score < best.score) best = { x, y, bw, bh, cost, score, titleHit, mode };
+      const c = { x, y, bw, bh, mode, cost, title, dist, sc: cost + title + dist };
+      if (!cost && !title && (!free || dist < free.dist)) free = c;
+      if (!cost && (!titled || c.sc < titled.sc)) titled = c;
+      if (!any || c.sc < any.sc) any = c;
     }
   }
-  return best;
+  return { free, titled, any };
 }
 
-function sentences(text) {
+/** Sentences, then (for a sentence that still won't fit) its phrases. */
+function splitLine(text, phrases) {
   const parts = String(text).split(/(?<=[.!?…])\s+(?=[A-Z“"‘'(])/).map((t) => t.trim()).filter(Boolean);
-  return parts.length > 1 ? parts : null;
+  if (parts.length > 1) return parts;
+  if (!phrases) return null;
+  const m = String(text).match(/^(.{14,}?[,;:—–])\s+(.{12,})$/);
+  return m ? [m[1], m[2]] : null;
 }
+
+const moveText = () => [...document.querySelectorAll('#scene .move-title h2')].map((e) => e.textContent).join('|');
 
 function dimTitles(on) {
   for (const el of document.querySelectorAll('#scene .move-title')) el.classList.toggle('say-dim', !!on);
 }
 
-function placeBubble(b, world, opts, { allowTitle = false, mode: forceMode } = {}) {
-  const obs = collectObstacles(world, opts.avoid);
-  let pick = null;
-  for (const mode of forceMode ? [forceMode] : MODES) {
-    const s = bestSpot(b, mode, obs, { above: opts.above !== false });
-    if (s && s.cost === 0) { pick = s; break; }
-    if (!pick || (s && s.score < pick.score)) pick = s;
+// ---- making room: when a line fits nowhere, the Mallow steps down or
+// shrinks a little (gently) and goes back once the line has gone
+let room = null;
+const layerVars = () => {
+  const layer = document.getElementById('mallow-layer');
+  if (!layer) return null;
+  const cs = getComputedStyle(layer);
+  const v = { x: parseFloat(cs.getPropertyValue('--mx')), y: parseFloat(cs.getPropertyValue('--my')), s: parseFloat(cs.getPropertyValue('--ms') || '1') };
+  return Number.isFinite(v.x) && Number.isFinite(v.y) ? { ...v, s: Number.isFinite(v.s) && v.s > 0 ? v.s : 1 } : null;
+};
+function makeRoom(world, obs, bh) {
+  const m = obs.mallow, cur = layerVars();
+  if (!m || !cur || typeof world?.place !== 'function') return false;
+  const { yMin, dockTop } = bounds(obs, bh);
+  const headTop = yMin + bh + 10;               // where the crown may start
+  const need = headTop - m.top;
+  if (need <= 0) return false;
+  const below = dockTop - 8 - m.bottom;          // free room under the body
+  let next;
+  if (need <= below) next = { x: cur.x, y: cur.y + (need / innerHeight) * 100, s: cur.s };
+  else {
+    const bottom = Math.min(dockTop - 8, m.bottom + Math.max(0, below));
+    const avail = bottom - headTop;
+    if (avail < m.height * 0.45) return false;   // never shrink a Mallow to a speck
+    const k = avail / m.height;
+    const offset = (m.top + m.height / 2) - (cur.y / 100) * innerHeight;   // body centre vs layer centre
+    next = { x: cur.x, y: (((headTop + bottom) / 2 - offset * k) / innerHeight) * 100, s: cur.s * k };
   }
-  if (pick && pick.cost > 0 && allowTitle) {
-    // borrow the title band: the prompt dims while the line shows
-    for (const mode of forceMode ? [forceMode] : ['compact', 'wide']) {
-      const s = bestSpot(b, mode, obs, { above: opts.above !== false, titleCost: 1 });
-      if (s && s.score < pick.score) pick = s;
-    }
+  world.place({ x: next.x, y: next.y, scale: next.s, calm: true });
+  if (room) clearTimeout(room.timer);
+  room = { prev: room?.prev || cur, set: next, world, timer: 0 };
+  return true;
+}
+function restoreRoom(delay = 700) {
+  if (!room) return;
+  clearTimeout(room.timer);
+  room.timer = setTimeout(() => {
+    if (!room || currentBubble) return;            // the next line's end restores it
+    const r = room; room = null;
+    const now = layerVars();
+    // only if nothing else has moved the Mallow since
+    if (now && Math.abs(now.x - r.set.x) < 0.01 && Math.abs(now.y - r.set.y) < 0.01 && Math.abs(now.s - r.set.s) < 0.001) r.world.place({ x: r.prev.x, y: r.prev.y, scale: r.prev.s, calm: true });
+  }, delay);
+}
+
+function placeBubble(b, world, opts, { allowTitle = false, allowMove = false, mode } = {}) {
+  const above = opts.above !== false;
+  const modes = mode ? [mode] : MODES;
+  const search = (obs) => modes.map((md) => bestSpot(b, md, obs, { above }));
+  const choose = (r) => r.find((x) => x.free)?.free || (allowTitle ? r.find((x) => x.titled)?.titled : null) || null;
+  let obs = collectObstacles(world, opts.avoid);
+  let r = search(obs);
+  let pick = choose(r);
+  if (!pick && allowMove && obs.mallow) {
+    const wide = r[r.length - 1].any;
+    if (wide && makeRoom(world, obs, wide.bh)) { obs = collectObstacles(world, opts.avoid); r = search(obs); pick = choose(r); }
   }
+  if (!pick) pick = r.map((x) => x.any).filter(Boolean).sort((a, z) => a.sc - z.sc)[0];
   if (!pick) return null;
-  b.classList.toggle('compact', pick.mode !== 'normal');
-  b.classList.toggle('wide', pick.mode === 'wide');
+  setMode(b, pick.mode);
   const m = obs.mallow;
   const tailUp = m && pick.y >= m.bottom - 4 && pick.y - m.bottom < 44;
   const tailDown = m && pick.y + pick.bh <= m.top + m.height * 0.2 && m.top - (pick.y + pick.bh) < 44;
@@ -227,7 +291,7 @@ function placeBubble(b, world, opts, { allowTitle = false, mode: forceMode } = {
   b.style.left = `${pick.x}px`;
   b.style.top = `${pick.y}px`;
   b.style.setProperty('--tail', `${Math.max(22, Math.min(pick.bw - 22, (m ? m.cx : innerWidth / 2) - pick.x))}px`);
-  dimTitles(pick.titleHit);
+  dimTitles(pick.title > 0);
   return pick;
 }
 
@@ -244,12 +308,12 @@ function showBubble(world, text, opts, token) {
   b.style.visibility = 'hidden';
   document.body.append(b);
   let pick = placeBubble(b, world, opts);
-  // a long line that fits nowhere is shown one sentence at a time
-  if (pick && pick.cost > 0 && !opts.part) {
-    const parts = sentences(text);
+  // a line that fits nowhere is shown a sentence (then a phrase) at a time
+  if (pick && pick.cost + pick.title > 0 && (opts.part || 0) < 2) {
+    const parts = splitLine(text, true);
     if (parts) { b.remove(); return { parts }; }
   }
-  if (pick && pick.cost > 0) pick = placeBubble(b, world, opts, { allowTitle: true });
+  if (pick && pick.cost + pick.title > 0) pick = placeBubble(b, world, opts, { allowTitle: true, allowMove: true });
   b.style.visibility = '';
   currentBubble = b;
   // follow the Mallow (and the pieces) while the line shows
@@ -273,10 +337,13 @@ export function say(world, text, opts = {}) {
     if (token !== sayToken) { resolve(); return; }
     const shown = showBubble(world, t, o, token);
     if (shown.parts) {
-      // one sentence at a time, sharing the line's time (each at least 1.6 s)
+      // one part at a time, sharing the line's time (each at least 1.6 s);
+      // the rest is dropped once the ritual moves on to its next step
       const total = shown.parts.reduce((n, p) => n + p.length, 0);
       const ms = o.ms ?? 3600;
-      shown.parts.reduce((p, part) => p.then(() => run(part, { ...o, part: true, ms: Math.max(1600, Math.round((ms * part.length) / total) + 400) })), Promise.resolve()).then(resolve);
+      const step = moveText();
+      shown.parts.reduce((p, part, k) => p.then(() => (k && moveText() !== step ? null
+        : run(part, { ...o, part: (o.part || 0) + 1, ms: Math.max(1600, Math.round((ms * part.length) / total) + 400) }))), Promise.resolve()).then(resolve);
       return;
     }
     const { b, follow } = shown;
@@ -285,6 +352,7 @@ export function say(world, text, opts = {}) {
       if (currentBubble === b) {
         b.classList.add('out'); currentBubble = null; dimTitles(false);
         setTimeout(() => b.remove(), 260);
+        restoreRoom();
       }
       resolve();
     }, shown.ms);
@@ -294,6 +362,7 @@ export function say(world, text, opts = {}) {
 export function clearBubble({ keepToken = false } = {}) {
   if (!keepToken) sayToken++;
   currentBubble?.remove(); currentBubble = null; dimTitles(false);
+  restoreRoom();
 }
 
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms));

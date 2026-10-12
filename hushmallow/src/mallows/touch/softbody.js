@@ -15,6 +15,11 @@
 //   pointers       grabs (material pinned to a finger with a gaussian falloff),
 //                  a pinch (the dent seen in perspective), plungers near the
 //                  silhouette, an inversion guard and a frictional floor
+//   glides         a stroking or massaging finger slides over the skin instead
+//                  of holding it: a light dent that travels, a little friction
+//                  drag, and it never slips (surface(id))
+//   waist          a two-finger stretch pulls the middle in toward the axis
+//                  between the fingers, so it narrows like an hourglass
 //
 // Shape matching is integrated Müller-style (goal springs act on velocity, so
 // the jelly wobble is undamped by the integrator) and damping is explicit, so
@@ -48,6 +53,10 @@ const PLUNGE = 0.3;         // how far past the finger a plunger sinks (× depth
 const VMAX = 40;            // body units / s, hard cap (extreme input)
 const VISC = 0.35;          // internal viscosity (neighbour velocity blend per substep)
 const LOCAL_DAMP = 0.93;    // velocity kept per substep by non-affine (bending) motion
+const SURF_DRAG = 0.32;     // share of a gliding finger's motion the skin under it follows
+const GLIDE_PINCH = 0.06;   // how hard a gliding finger presses the skin toward itself
+const WAIST_K = 0.12;       // per-substep pull toward the waist target
+const SLEEP_E = 1e-10;      // below this energy, with no fingers, the solver sleeps
 
 export class SoftBody {
   /**
@@ -88,6 +97,7 @@ export class SoftBody {
     this._F = new Float64Array(8 * n);      // box-sum fields
     this._T = new Float64Array(8 * n);      // box-sum scratch
     this._grabW = new Float32Array(n);      // summed grab weight (lighting / face)
+    this._waistW = new Float32Array(n);     // waist pull weight (the balloon leaves the waist alone)
     this._rowExt = new Float32Array(3 * rows);
     this._bounds = { x0: 0, y0: 0, x1: 0, y1: 0, cx: 0, cy: 0, w: 0, h: 0 };
 
@@ -133,6 +143,10 @@ export class SoftBody {
     this.lastSlip = null;       // {id, t} when a pull slipped
     this.restArea = 0;
     this._restTri2 = new Float32Array(this.triAll.length / 3);
+    this._restKey = new Float64Array(12).fill(NaN);
+    this._subLeft = 1;
+    this.waist = null;          // {a, b, k}: two-finger stretch waist
+    this.awake = true;          // false while asleep (still, no fingers): step() is free
     this.setRest();
     this.reset();
   }
@@ -211,6 +225,12 @@ export class SoftBody {
     const lean = clamp(+p.lean || 0, -0.5, 0.5);
     const puffL = clamp(+p.puffL || 0, 0, 1.5), puffR = clamp(+p.puffR || 0, 0, 1.5);
     const cheekV = p.cheekV ?? 0.62;
+    // unchanged (within 1e-6): nothing to recompute, and a sleeping body sleeps on
+    const K = this._restKey, nk = [sq, br, droop, shrink, lean, puffL, puffR, cheekV, p.sx ?? 1, p.sy ?? 1];
+    let same = true;
+    for (let i = 0; i < nk.length; i++) if (!(Math.abs(K[i] - nk[i]) < 1e-6)) { same = false; K[i] = nk[i]; }
+    if (same) return this;
+    this.awake = true;
     const sy = (1 - sq) * (1 + br) * (p.sy ?? 1) * shrink;
     const sxB = (1 + sq * 0.62) * (1 - br * 0.6) * (p.sx ?? 1) * shrink;
     const cx = aspect / 2, fl = this.floor;
@@ -257,6 +277,8 @@ export class SoftBody {
     this.ptr.clear();
     this._acc = 0;
     this.kScale = 1; this._dipT = -1;
+    this.waist = null;
+    this.awake = true;
     return this;
   }
 
@@ -279,9 +301,10 @@ export class SoftBody {
       id, x, y, x0: x, y0: y, sigma: Math.min(sigmaPull, 0.16), sigmaPull, pull: 0, depth: 0, r: 0.2,
       idx: Uint16Array.from(idx), ox: Float32Array.from(ox), oy: Float32Array.from(oy),
       anchor: g, ax: this.rest[2 * g], ay: this.rest[2 * g + 1],
-      fade: 1, slipping: false, plunge: null,
+      fade: 1, slipping: false, plunge: null, surface: false, fx: x, fy: y,
     };
     this.ptr.set(id, st);
+    this.awake = true;
     return st;
   }
 
@@ -309,13 +332,44 @@ export class SoftBody {
 
   setGrip(id, sigmaPull) { const st = this.ptr.get(id); if (st) st.sigmaPull = Math.max(0.05, sigmaPull); }
 
-  /** Let go. v: release velocity (body units/s) for the grabbed material. */
-  release(id, { vx = 0, vy = 0, flick = false } = {}) {
+  /** A stroking or massaging finger: it lets go of the material it held
+   *  (gently: no kick, no rebound), then glides over the skin, pressing in a
+   *  little and dragging the skin it brushes. A glide never slips. */
+  surface(id) {
+    const st = this.ptr.get(id);
+    if (!st || st.surface) return st || null;
+    st.surface = true; st.slipping = false; st.fade = 1; st.plunge = null; st.pull = 0;
+    st.fx = st.x; st.fy = st.y;
+    this.awake = true;
+    return st;
+  }
+
+  /** Two-finger stretch waist: the material between grabs a and b is pulled
+   *  toward the axis between them by k (0..0.5), most at the midpoint. null ends it. */
+  setWaist(a, b, k) {
+    if (a == null || b == null || !(k > 0.002)) { this.waist = null; return this; }
+    const w = this.waist || (this.waist = { a, b, k: 0 });
+    w.a = a; w.b = b; w.k = clamp(k, 0, 0.5);
+    this.awake = true;
+    return this;
+  }
+
+  /** Let go. v: release velocity (body units/s) for the grabbed material.
+   *  quiet: no velocity, no rebound (a finger changing how it touches). */
+  release(id, { vx = 0, vy = 0, flick = false, quiet = false } = {}) {
     const st = this.ptr.get(id);
     if (!st) return;
     this.ptr.delete(id);
+    if (this.waist && (this.waist.a === id || this.waist.b === id)) this.waist = null;
+    this.awake = true;
+    if (quiet) return;
     const V = this.vel, P = this.positions;
     const rm = this.reducedMotion;
+    if (st.surface) {
+      // a glide leaves the skin it brushed swinging a little, nothing more
+      if (!rm && (vx || vy)) this.impulse(vx * 0.12, vy * 0.12, { x: st.fx, y: st.fy, r: 0.2 });
+      return;
+    }
     if (!rm && (vx || vy)) {
       const s = this._sigma(st);
       const k = flick ? 0.6 : 0.35;
@@ -346,6 +400,7 @@ export class SoftBody {
   impulse(vx, vy, at = null) {
     const V = this.vel, P = this.positions;
     const rm = this.reducedMotion ? 0.35 : 1;
+    this.awake = true;
     for (let k = 0; k < this.n; k++) {
       let w = 1;
       if (at && at.r) {
@@ -359,6 +414,7 @@ export class SoftBody {
   /** Whole-body velocity fields: 'squash' (+ flatter), 'shear' (top sideways), 'twist' (rad/s). */
   deform(kind, amount) {
     if (!Number.isFinite(amount) || !amount) return;
+    this.awake = true;
     const V = this.vel, P = this.positions, fl = this.floor;
     const cx = this.c0x, cy = this.c0y;
     const rm = this.reducedMotion ? 0.3 : 1;
@@ -374,6 +430,8 @@ export class SoftBody {
   /** Tangential swirl around (x, y): rate in rad/s (+ clockwise on screen). */
   swirl(x, y, r, rate) {
     const V = this.vel, P = this.positions;
+    if (!Number.isFinite(rate) || !Number.isFinite(x) || !Number.isFinite(y)) return;
+    this.awake = true;
     const k0 = clamp(rate, -20, 20) * (this.reducedMotion ? 0.3 : 1) * 0.08;
     for (let k = 0; k < this.n; k++) {
       const dx = P[2 * k] - x, dy = P[2 * k + 1] - y;
@@ -412,11 +470,17 @@ export class SoftBody {
   step(dt) {
     if (!(dt > 0)) return 0;
     this.lastSlip = null;
+    // asleep: perfectly still at rest with no fingers — nothing to solve
+    if (!this.awake && this.ptr.size === 0) { this._acc = 0; return 0; }
     this._acc += Math.min(dt, 0.25);
     let n = Math.floor(this._acc / SUBSTEP + 1e-6);
     if (n > MAX_SUBSTEPS) { n = MAX_SUBSTEPS; this._acc = 0; } else this._acc -= n * SUBSTEP;
-    for (let s = 0; s < n; s++) this._substep(SUBSTEP);
+    for (let s = 0; s < n; s++) { this._subLeft = n - s; this._substep(SUBSTEP); }
     if (n) this._guard();
+    if (n && this.ptr.size === 0 && this._dipT < 0 && this.energy < SLEEP_E) {
+      this.positions.set(this.rest); this.prev.set(this.rest); this.vel.fill(0);
+      this.awake = false;
+    }
     return n;
   }
 
@@ -444,6 +508,7 @@ export class SoftBody {
     }
     this._fingers();
     this._balloon();
+    this._waistPull();
     this._floorClamp();
     this._unfold();
     const ih = 1 / h;
@@ -613,6 +678,7 @@ export class SoftBody {
     D.fill(0); GW.fill(0);
     let vol = 0;
     for (const st of this.ptr.values()) {
+      if (st.surface) { this._glide(st); continue; }
       // slipping: a pull stretched past the material's limit lets go
       if (!st.slipping && st.pull > 0.2) {
         const stretch = Math.hypot(st.x - st.ax, st.y - st.ay);
@@ -660,6 +726,62 @@ export class SoftBody {
     this.dentVolume = (vol / this.n) * this.restArea;
   }
 
+  // a finger sliding over the skin: this substep's share of its motion drags
+  // the skin it brushes (friction), and it presses a shallow, travelling dent
+  _glide(st) {
+    const P = this.positions, D = this.dent, GW = this._grabW, FW = this.faceW;
+    const f = 1 / Math.max(1, this._subLeft);
+    const ddx = (st.x - st.fx) * f, ddy = (st.y - st.fy) * f;
+    st.fx += ddx; st.fy += ddy;
+    const fx = st.fx, fy = st.fy;
+    const s = Math.max(0.08, st.r * 0.85), is2 = 1 / (2 * s * s);
+    const r = st.r * 0.75, ir2 = 1 / (2 * r * r);
+    const reach2 = 9 * s * s;
+    const drag = SURF_DRAG * (this.reducedMotion ? 1.2 : 1);
+    const pinch = GLIDE_PINCH * PINCH * st.depth * this.material.dMax;
+    for (let i = 0; i < this.n; i++) {
+      const dx = P[2 * i] - fx, dy = P[2 * i + 1] - fy;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > reach2) continue;
+      const w = Math.exp(-d2 * is2);
+      const g = Math.exp(-d2 * ir2);
+      const fw = 1 - 0.5 * FW[i];
+      const sh = pinch * g * (1 - 0.45 * FW[i]);
+      P[2 * i] += ddx * drag * w * fw - dx * sh;
+      P[2 * i + 1] += ddy * drag * w * fw - dy * sh;
+      const dd = st.depth * g;
+      if (dd > D[i]) D[i] = dd;
+      GW[i] += w;
+    }
+  }
+
+  // two-finger stretch: pull the material between the fingers toward their
+  // axis, most at the midpoint, so the stretched body gets a visible waist.
+  // The side resting on the floor gives less (it is held down).
+  _waistPull() {
+    const W = this.waist, WW = this._waistW;
+    if (!W) { if (this._waistOn) { WW.fill(0); this._waistOn = false; } return; }
+    const A = this.ptr.get(W.a), B = this.ptr.get(W.b);
+    if (!A || !B) return;
+    const ux = B.x - A.x, uy = B.y - A.y, L2 = ux * ux + uy * uy;
+    if (L2 < 0.0025) return;
+    this._waistOn = true;
+    const L = Math.sqrt(L2), nx = -uy / L, ny = ux / L;
+    const P = this.positions, FW = this.faceW, k = W.k;
+    for (let i = 0; i < this.n; i++) {
+      const rx = P[2 * i] - A.x, ry = P[2 * i + 1] - A.y;
+      const t = (rx * ux + ry * uy) / L2;
+      if (t <= 0 || t >= 1) { WW[i] = 0; continue; }
+      const e = rx * nx + ry * ny;                     // signed distance from the axis
+      const floorSide = e * ny > 0 ? 1 - 0.65 * Math.abs(ny) : 1;
+      const w = Math.sin(Math.PI * t);
+      const a = k * w * w * floorSide * (1 - 0.35 * FW[i]);
+      WW[i] = w;
+      const d = -e * a * WAIST_K;
+      P[2 * i] += nx * d; P[2 * i + 1] += ny * d;
+    }
+  }
+
   // volume: the outline keeps its area, plus whatever a dent pushes into the
   // screen. The missing area comes back as a smooth barrel bulge (mostly
   // sideways, at mid-height; the floor holds the base) — never by pushing
@@ -674,8 +796,9 @@ export class SoftBody {
     for (let k = 0; k < n; k++) cx += P[2 * k];
     cx /= n;
     const s = clamp((BALLOON_K * C) / (A * this._barrelMean), -0.02, 0.02);
+    const WW = this._waistOn ? this._waistW : null;
     for (let k = 0; k < n; k++) {
-      const w = BW[k];
+      const w = WW ? BW[k] * (1 - 0.85 * WW[k]) : BW[k];
       P[2 * k] += s * w * (P[2 * k] - cx);
       P[2 * k + 1] -= s * (s > 0 ? 0.3 : 0.7) * w * (fl - P[2 * k + 1]);
     }

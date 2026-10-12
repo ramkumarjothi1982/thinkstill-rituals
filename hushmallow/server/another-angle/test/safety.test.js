@@ -109,3 +109,90 @@ test('the additions leave everyday wording alone', () => {
     'She cut herself a slice of cake.', 'He cut himself shaving.', 'I feel like a burden on the team this week.', 'My boss keeps checking my work.',
   ]) assert.equal(checkSafety(s).level, 'none', s);
 });
+
+// --- Regressions from the W6 review, round 2 (12 Oct 2026) -------------------
+// Every one of these returned "none" before, so a model timeout or refusal
+// would have sent the person to the authored reframe engine.
+
+test('review round 2: the eight missed disclosures now stop the reframe', () => {
+  for (const s of ['I took a load of paracetamol', 'I took a load of paracetamol an hour ago', "I've started cutting again", 'I just want to not exist', "i wish i'd never been born", "There's no point in me being alive"]) {
+    assert.deepEqual(checkSafety(s), { level: 'crisis', category: 'self-harm' }, s);
+  }
+  assert.deepEqual(checkSafety('My friend says she wants to end her life'), { level: 'crisis', category: 'someone-in-danger' });
+  assert.deepEqual(checkSafety('my partner forces me to have sex'), { level: 'care', category: 'abuse' });
+  assert.deepEqual(checkSafety('My uncle touches me and I hate it'), { level: 'care', category: 'abuse' });
+});
+
+test('medicines: more than a dose, taken or about to be, is crisis (first person) or someone in danger', () => {
+  for (const s of [
+    'I have taken a handful of tablets', "I've swallowed a packet of paracetamol", 'I took the whole box of sleeping pills', 'I took 30 paracetamol',
+    'just took loads of ibuprofen', 'I took all of my antidepressants at once', "I OD'd last night", 'I have the pills lined up', 'How many paracetamol would it take',
+  ]) assert.deepEqual(checkSafety(s), { level: 'crisis', category: 'self-harm' }, s);
+  for (const s of ['My friend took a load of paracetamol', 'My friend overdosed last night']) assert.deepEqual(checkSafety(s), { level: 'crisis', category: 'someone-in-danger' }, s);
+  // Idiom guards: an ordinary dose, or medicine taken as prescribed.
+  for (const s of ['I took two paracetamol for my headache', 'I took all my meds on time today', 'I take a handful of tablets every morning for my heart']) assert.equal(checkSafety(s).level, 'none', s);
+});
+
+test('cutting and other self-harm in the first person; "cutting corners" and "cutting back" are not', () => {
+  for (const s of [
+    "I've been cutting", 'I keep cutting at night', "I'm cutting again", 'Cutting again. I hate myself.', 'I started cutting myself again', 'I relapsed and went back to cutting.',
+    'I burned myself on purpose', 'I cut myself again last night', 'I keep scratching myself until I bleed',
+  ]) assert.deepEqual(checkSafety(s), { level: 'crisis', category: 'self-harm' }, s);
+  for (const s of ['My sister has started cutting again', 'My son is self harming']) assert.deepEqual(checkSafety(s), { level: 'crisis', category: 'someone-in-danger' }, s);
+  for (const s of [
+    "I've started cutting back on sugar again", 'I keep cutting corners at work', "I've been cutting my own hair", "I'm cutting the grass", 'They started cutting costs again',
+    'I keep cutting and pasting the wrong file', 'My hairdresser is cutting my fringe again', "I've been cutting down on caffeine", 'I keep hitting myself in the face with my phone when I fall asleep',
+  ]) assert.equal(checkSafety(s).level, 'none', s);
+});
+
+test('not existing, never having been born, no point in being alive', () => {
+  for (const s of [
+    "I don't want to exist any more", "I wish I didn't exist", 'I want to stop existing', 'I wish I had never been born', 'I should never have been born',
+    'There is no point living', 'no point in going on', "I don't see the point in living any more", 'What is the point of living', "I'm tired of being alive",
+    'I want my life to be over', 'I want to not wake up tomorrow', 'I wish I could fall asleep and never wake up', "I can't keep living like this any more",
+    'I have a plan to end it', "I'm standing on the bridge", 'Nobody would care if I died', 'I keep thinking about dying', 'I keep looking up ways to die',
+  ]) assert.deepEqual(checkSafety(s), { level: 'crisis', category: 'self-harm' }, s);
+  for (const s of [
+    "I'd rather not wake up early tomorrow", "There's no point going on about it", "There's no point living in London if you can't afford it",
+    "There's no point in going on holiday this year", "I'm tired of living with my parents", 'I wish I had been born in the eighties',
+    "I can't live like this, my flat is a mess", 'Ways to end it with my boyfriend nicely',
+  ]) assert.equal(checkSafety(s).level, 'none', s);
+});
+
+test('someone else wanting to die or end their life is someone in danger', () => {
+  for (const s of [
+    'My brother told me he is planning to end his life', 'She keeps saying she wants to die', "My friend says she doesn't want to be alive any more",
+    'He wants to end it all', 'My mate keeps talking about ending his life',
+  ]) assert.equal(checkSafety(s).level, 'crisis', s);
+  for (const s of ['My phone is going to die', 'My plants want to die', 'The vet said she was going to die soon', 'My friend wants to end it with her boyfriend']) {
+    assert.equal(checkSafety(s).level, 'none', s);
+  }
+});
+
+test('sexual coercion, touching and violence are care, never reframed', () => {
+  const cases = [
+    ['My boyfriend forces me to do things', 'abuse'], ['He pressures me into sex', 'abuse'], ['He made me have sex', 'abuse'], ["He doesn't stop when I say no", 'abuse'],
+    ["I didn't consent", 'abuse'], ['My stepdad touched me', 'abuse'], ['My coach keeps touching me', 'abuse'], ['He touches me down there', 'abuse'],
+    ['He touched me and I froze', 'abuse'], ['My mum’s boyfriend touches me', 'abuse'], ['My dad touches me at night', 'abuse'], ['He forced himself on me', 'abuse'],
+    ['She locked me in my room for hours', 'abuse'], ['My step-dad hits me', 'violence'], ['my dad sometimes hits me', 'violence'], ['my grandad hits me', 'violence'],
+    ['He put his hands round my neck', 'violence'], ['He keeps asking me for nudes', 'harassment'], ["I'm scared he'll hurt me", 'unsafe'],
+  ];
+  for (const [s, cat] of cases) assert.deepEqual(checkSafety(s), { level: 'care', category: cat }, s);
+  assert.equal(checkSafety('My teacher groped me').level, 'care');
+  assert.equal(checkSafety('He said he will hurt me if I leave').level, 'care');
+  for (const s of [
+    'My mum forces me to do my homework', 'My boss forces me to do things I am not paid for', 'He makes me sleep with the light on',
+    'My teacher touched me on the shoulder to get my attention', 'It hits me hard when I see old photos', 'My anxiety sometimes hits me at night',
+    'My mum will kill me if I tell her I failed', "I'm worried my boss will kill me", 'My parents shared my photos without my consent',
+    'My flatmate locked me out by accident', 'My mum touched my hair and said it looked nice', "I'm banging my head against the wall with this code",
+  ]) assert.equal(checkSafety(s).level, 'none', s);
+});
+
+test('server-only lexicon entries are valid regular expressions, and the module warms them on load', async () => {
+  const { EXTRA_LEXICON } = await import('../src/safety/extra-lexicon.js');
+  for (const list of [EXTRA_LEXICON.idiomGuards, EXTRA_LEXICON.crisis, EXTRA_LEXICON.crisisOther, ...Object.values(EXTRA_LEXICON.care)]) {
+    for (const src of list) assert.doesNotThrow(() => new RegExp(src, 'i'), src);
+  }
+  const { warmSafety } = await import('../src/safety/index.js');
+  assert.equal(typeof warmSafety, 'function');
+});

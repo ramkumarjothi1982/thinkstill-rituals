@@ -58,7 +58,7 @@ export const STOPWORDS = new Set(`a about above after again against ago all almo
 const SYNONYMS = [
   ['boss', 'manager', 'supervisor', 'line-manager', 'head'],
   ['partner', 'boyfriend', 'girlfriend', 'husband', 'wife', 'fiance', 'fiancé', 'fiancée', 'spouse', 'date'],
-  ['message', 'messages', 'text', 'texts', 'texted', 'reply', 'replied', 'replies', 'respond', 'responded', 'response', 'answer', 'answered', 'dm', 'email', 'emailed', 'whatsapp'],
+  ['message', 'messages', 'text', 'texts', 'texted', 'texting', 'reply', 'replied', 'replies', 'replying', 'respond', 'responded', 'response', 'answer', 'answered', 'dm', 'email', 'emailed', 'whatsapp', 'silence', 'silent', 'phone'],
   ['exam', 'exams', 'test', 'tests', 'assessment', 'assessments', 'resit', 'mark', 'marks', 'grade', 'grades', 'result', 'results'],
   ['mum', 'mom', 'mother', 'mam', 'mummy'],
   ['dad', 'father', 'daddy'],
@@ -83,15 +83,40 @@ const SYNONYMS = [
 const SYN_INDEX = new Map();
 SYNONYMS.forEach((group, i) => group.forEach((w) => SYN_INDEX.set(w, `syn${i}`)));
 
-/** Crude, stable stem: lower case, no possessive, common suffixes off. */
+// Irregular verb forms → base form, so "rewrote" meets "rewrite" and
+// "thought" meets "think" when the gate compares a reply with the person's words.
+export const IRREGULAR = new Map(Object.entries({
+  wrote: 'write', written: 'write', rewrote: 'rewrite', rewritten: 'rewrite', thought: 'think', said: 'say', told: 'tell',
+  felt: 'feel', left: 'leave', made: 'make', took: 'take', taken: 'take', gave: 'give', given: 'give', went: 'go', gone: 'go',
+  came: 'come', saw: 'see', seen: 'see', got: 'get', gotten: 'get', forgot: 'forget', forgotten: 'forget', broke: 'break',
+  broken: 'break', spoke: 'speak', spoken: 'speak', chose: 'choose', chosen: 'choose', ate: 'eat', eaten: 'eat', drove: 'drive',
+  driven: 'drive', fell: 'fall', fallen: 'fall', lost: 'lose', won: 'win', sent: 'send', spent: 'spend', built: 'build',
+  bought: 'buy', brought: 'bring', caught: 'catch', taught: 'teach', sold: 'sell', held: 'hold', kept: 'keep', slept: 'sleep',
+  met: 'meet', ran: 'run', sat: 'sit', stood: 'stand', understood: 'understand', began: 'begin', begun: 'begin', threw: 'throw',
+  thrown: 'throw', wore: 'wear', worn: 'wear', hid: 'hide', hidden: 'hide', shook: 'shake', woke: 'wake', woken: 'wake',
+  blew: 'blow', grew: 'grow', knew: 'know', known: 'know', drew: 'draw', flew: 'fly', froze: 'freeze', frozen: 'freeze',
+  stole: 'steal', stolen: 'steal', fought: 'fight', learnt: 'learn', burnt: 'burn', dreamt: 'dream', meant: 'mean', paid: 'pay',
+  heard: 'hear', found: 'find', lied: 'lie', tried: 'try', cried: 'cry', died: 'die', dying: 'die',
+}));
+
+/** Crude, stable stem: lower case, no possessive, irregular forms mapped, common suffixes and a final e off. */
 /** @param {string} word */
 export function stem(word) {
   let w = word.toLowerCase().replace(/[’']s$/, '').replace(/[’']/g, "'");
   const syn = SYN_INDEX.get(w);
   if (syn) return syn;
-  for (const suf of ['ingly', 'edly', 'ness', 'ment', 'ing', 'ies', 'ied', 'ed', 'es', 'ly', 's']) {
-    if (w.length - suf.length >= 4 && w.endsWith(suf)) { w = w.slice(0, -suf.length); break; }
+  const irr = IRREGULAR.get(w);
+  if (irr) w = irr;
+  else {
+    for (const suf of ['ingly', 'edly', 'ations', 'ation', 'ness', 'ment', 'ing', 'ies', 'ied', 'ed', 'es', 'ly', 's']) {
+      if (w.length - suf.length >= 3 && w.endsWith(suf)) { w = w.slice(0, -suf.length); break; }
+    }
   }
+  const syn2 = SYN_INDEX.get(w);
+  if (syn2) return syn2;
+  // "like"/"liked"/"liking" → "lik"; "cancelled"/"cancel" → "cancel".
+  if (w.length > 3) w = w.replace(/e$/u, '');
+  w = w.replace(/([b-df-hj-np-tv-z])\1$/u, '$1');
   return w.length > 6 ? w.slice(0, 6) : w;
 }
 
@@ -107,6 +132,22 @@ export function contentStems(text) {
   return out;
 }
 
+/**
+ * Stems of every word, stop words included, for matching a reply against the
+ * person's content words ("Each like is a tap" engages "keeps liking his ex's
+ * photos" even though "like" is a stop word on its own).
+ * @param {unknown} text @returns {Set<string>}
+ */
+export function allStems(text) {
+  const out = new Set();
+  for (const raw of words(text)) {
+    const w = raw.toLowerCase().replace(/’/g, "'");
+    if (w.length < 3 || /^\d+$/.test(w)) continue;
+    out.add(stem(w));
+  }
+  return out;
+}
+
 /** Jaccard similarity of two sets. */
 /** @param {Set<string>} a @param {Set<string>} b */
 export function jaccard(a, b) {
@@ -117,6 +158,13 @@ export function jaccard(a, b) {
 }
 
 const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'hundred', 'thousand', 'million', 'dozen', 'dozens', 'hundreds', 'thousands'];
+// "for the third time" and "three times" are the same detail.
+const ORDINALS = new Map(Object.entries({
+  first: 'one', second: 'two', third: 'three', fourth: 'four', fifth: 'five', sixth: 'six', seventh: 'seven', eighth: 'eight',
+  ninth: 'nine', tenth: 'ten', eleventh: 'eleven', twelfth: 'twelve', twentieth: 'twenty', hundredth: 'hundred',
+  '1st': 'one', '2nd': 'two', '3rd': 'three', '4th': 'four', '5th': 'five', '6th': 'six', '7th': 'seven', '8th': 'eight', '9th': 'nine', '10th': 'ten',
+  once: 'one', twice: 'two', thrice: 'three',
+}));
 
 /**
  * Numbers mentioned in a text, normalised so "5" and "five" match.
@@ -127,6 +175,8 @@ export function numbersIn(text) {
   const out = new Set();
   for (const raw of words(text)) {
     const w = raw.toLowerCase();
+    const ord = ORDINALS.get(w);
+    if (ord) { out.add(ord); continue; }
     if (/^\d+(?:[.,]\d+)?$/.test(w)) {
       const n = Number(w.replace(',', '.'));
       out.add(Number.isInteger(n) && n < NUMBER_WORDS.indexOf('thirty') ? NUMBER_WORDS[n] || w : w);
