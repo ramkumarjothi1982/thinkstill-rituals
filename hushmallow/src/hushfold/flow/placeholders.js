@@ -179,10 +179,10 @@ export function createPlaceholderThought({ words, emotion = 'other', font = (px,
     },
   };
 
-  function buildLabel(calm) {
+  function buildLabel(calm, maxW = 210) {
     const text = words?.token || '';
     if (!text) return null;
-    const px = 17, weight = 700, maxW = 210;
+    const px = 17, weight = 700;
     const c = document.createElement('canvas');
     const m = c.getContext('2d');
     m.font = font(px, weight);
@@ -209,8 +209,9 @@ export function createPlaceholderThought({ words, emotion = 'other', font = (px,
     return { c, w: w + 24, h: h + 24 };
   }
   function drawLabel(g, r, calm, o) {
-    const key = `${words?.token}|${font(17, 700)}`;
-    if (key !== labelKey) { labelKey = key; label = { ember: buildLabel(false), light: buildLabel(true) }; }
+    const maxW = Math.round(o.labelWidth || 210);
+    const key = `${words?.token}|${font(17, 700)}|${maxW}`;
+    if (key !== labelKey) { labelKey = key; label = { ember: buildLabel(false, maxW), light: buildLabel(true, maxW) }; }
     if (!label?.ember) return;
     const y = r * 0.98 - 4;            // the plate canvas carries a 12 px margin
     const L = calm > 0.5 ? label.light : label.ember;
@@ -317,6 +318,7 @@ export function createLabSubtitles({ root = document.body, avoid = () => [], spe
     dock.onclick = () => { dock.classList.remove('on'); api.say([text], { kind: 'discovery' }); };
   }
   let gen = 0;            // bumped by a discovery: queued dialogue that has not started yet is dropped
+  let pendingChoice = null;
   let current = null;     // { kind, cut() }
   const api = {
     say(lines, o = {}) {
@@ -339,11 +341,12 @@ export function createLabSubtitles({ root = document.body, avoid = () => [], spe
     choice(prompt, options = []) {
       busy++;
       const job = queue.then(() => new Promise((res) => {
+        pendingChoice = (v) => { pendingChoice = null; p.classList.remove('on'); chips.classList.remove('on'); setTimeout(() => chips.replaceChildren(), 450); res(v); };
         place();
         p.className = 'hf-line'; p.textContent = prompt;
         chips.replaceChildren(...options.map((o, i) => {
           const b = document.createElement('button'); b.type = 'button'; b.className = `hf-chip${i === options.length - 1 ? ' primary' : ''}`; b.textContent = o.label;
-          b.onclick = () => { p.classList.remove('on'); chips.classList.remove('on'); setTimeout(() => chips.replaceChildren(), 450); res(o.value); };
+          b.onclick = () => pendingChoice?.(o.value);
           return b;
         }));
         requestAnimationFrame(() => { p.classList.add('on'); chips.classList.add('on'); });
@@ -352,7 +355,8 @@ export function createLabSubtitles({ root = document.body, avoid = () => [], spe
       return job;
     },
     pause() { paused = true; }, resume() { paused = false; },
-    clear() { p.classList.remove('on'); chips.classList.remove('on'); },
+    /** Dismiss what is on screen: a pending choice resolves with null, a line is cut short. */
+    clear() { gen++; current?.cut(); pendingChoice?.(null); p.classList.remove('on'); chips.classList.remove('on'); },
     get busy() { return busy > 0; },
     destroy() { box.remove(); dock.remove(); },
   };

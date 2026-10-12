@@ -245,22 +245,28 @@ export default function hushfold(app, params = {}) {
     if (S.left || worldMode) return;
     if (d?.kind === 'none' || d?.kind === 'start' || d?.kind === 'load') say(SHARED_LINES.stub[0]);
   }
-  /** A discovery offered for the Memory Garden (W5). Offered only when the garden is in this build. */
+  /**
+   * A discovery offered for the Memory Garden (W5). W5's offerSave() owns the
+   * offer when it is in the build; otherwise the shell asks and saves through
+   * garden.js. Offered only when the garden is in this build. Saving is always
+   * an explicit tap, and the reward never needs more play.
+   */
   async function onOffer({ skillId, worldId } = {}) {
-    let garden = null, skills = null;
+    let install = null, garden = null, skills = null;
+    try { install = await import('../../hushfold/garden-install.js'); } catch { /* not in this build yet */ }
+    if (S.left) return;
+    const ctx = { app, store, subtitles: flowSubtitles, skillId, worldId, mallow: mallowId, fx: world.fx, origin: stageMallow.bodyRect(), reducedMotion: prefs.reducedMotion() };
+    if (typeof install?.offerSave === 'function') { try { await install.offerSave(ctx); } catch (e) { console.warn('[garden] offerSave', e); } return; }
     try { [garden, skills] = await Promise.all([import('../../engine/garden.js'), import('../../hushfold/skills.js').catch(() => null)]); } catch { return; }
     if (S.left || typeof garden?.saveSkill !== 'function') return;
-    const title = skills?.SKILLS?.[skillId]?.title || skills?.skillTitle?.(skillId) || null;
+    const title = skills?.skillTitle?.(skillId) || skills?.SKILLS?.[skillId]?.title || null;
     const v = await subtitles.choice(title ? `Keep this? ${title}` : 'Keep this discovery?',
       [{ label: 'Keep it', value: 'keep', primary: true }, { label: 'Not now', value: 'no' }], { who: M().name, colour: M().colours.glow, timeoutMs: 20000 });
     if (v !== 'keep' || S.left) return;
     try { garden.saveSkill(store, { id: skillId, fromWorld: worldId, mallow: mallowId }); } catch (e) { console.warn('[garden]', e); return; }
-    try {
-      const install = await import('../../hushfold/garden-install.js');
-      const play = install.playInstall || install.install || install.default;
-      if (typeof play === 'function') await play({ app, fx: world.fx, skillId, mallow: mallowId, origin: stageMallow.bodyRect(), reducedMotion: prefs.reducedMotion() });
-    } catch { app.toast('Saved to your Memory Garden'); }
+    try { if (typeof install?.playInstall === 'function') await install.playInstall(ctx); else app.toast('Saved to your Memory Garden'); } catch { app.toast('Saved to your Memory Garden'); }
   }
+
 
   // ------------------------------------------------- the Mallow --
   async function showMallow(id, { entrance = true } = {}) {
@@ -579,7 +585,7 @@ export default function hushfold(app, params = {}) {
       document.addEventListener('keydown', onKey);
       // QA hooks on the development host only (Playwright sweeps, the other workstreams' labs)
       if (['localhost', '127.0.0.1'].includes(location.hostname)) {
-        window.__hushfold = { subtitles, mallow: stageMallow, stage, router, spawnThought, openTell, startFlow, get flow() { return flowRef; }, get panel() { return panel; }, safeForUpdate: () => view.safeForUpdate(), layout };
+        window.__hushfold = { subtitles, mallow: stageMallow, stage, router, spawnThought, openTell, startFlow, get flow() { return flowRef; }, get panel() { return panel; }, get worldThought() { return worldThought; }, safeForUpdate: () => view.safeForUpdate(), layout };
       }
       if (await resumePendingTell()) return;
       if (params.flow?.worldId && ent.has('paid')) {

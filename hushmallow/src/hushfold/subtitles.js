@@ -37,8 +37,16 @@ export function readingMs(text, speed = 1) {
  * → { y, fits, band:{top,bottom}|null }   (pure; unit-tested)
  */
 export function placeBand(bounds, blocks, need, { gap = 12 } = {}) {
+  const wide = placeBandAt(bounds, blocks, need, gap);
+  if (wide.fits || gap <= 6) return wide;
+  const tight = placeBandAt(bounds, blocks, need, 6);   // small screens: a little closer, rather than on top of something
+  return tight.fits ? tight : wide;
+}
+function placeBandAt(bounds, blocks, need, gap) {
   const top = bounds.top, bottom = bounds.bottom;
-  const spans = (blocks || []).filter((b) => b && b.bottom > b.top)
+  // DOMRect-like {top, bottom} or {x, y, w, h} (the Hushflow director's shape)
+  const spans = (blocks || []).map((b) => (b && b.top == null && b.y != null ? { top: b.y, bottom: b.y + (b.h ?? b.height ?? 0) } : b))
+    .filter((b) => b && b.bottom > b.top)
     .map((b) => [b.top - gap, b.bottom + gap]).sort((a, b) => a[0] - b[0]);
   const merged = [];
   for (const s of spans) {
@@ -83,7 +91,10 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
   let lastLine = null;
   let hideCtlTimer = 0;
   let placedOnce = false;
+  let lastY = 0;
   let destroyed = false;
+  let relayoutT = 0;          // while a line is up, keep it clear of things that move (a hop, a drifting thought)
+  const watch = (on) => { clearInterval(relayoutT); relayoutT = on ? setInterval(() => { if (cur?.lineEl || !chipsEl.hidden) layout(); }, 600) : 0; };
   const offPrefs = prefs?.onChange?.((k, v) => { if (k === 'subtitleSpeed') { speed = normaliseSpeed(v); renderSpeed(); } });
 
   function renderSpeed() {
@@ -103,9 +114,16 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
   function layout() {
     if (destroyed) return;
     const b = bounds?.() || { top: 70, bottom: innerHeight - 90 };
-    const need = el.offsetHeight || 64;
+    // only what is visible counts (a hidden pill keeps its box but must not push the line onto something)
+    const gapPx = 10;
+    let need = liveEl.offsetHeight || 0;
+    if (!chipsEl.hidden) need += chipsEl.offsetHeight + gapPx;
+    if (!ctl.classList.contains('is-hidden')) need += ctl.offsetHeight + gapPx;
+    need = need || 64;
     const { y } = placeBand(b, avoid() || [], need);
-    if (!placedOnce) { el.style.transition = 'none'; requestAnimationFrame(() => { el.style.transition = ''; }); placedOnce = true; }
+    // a long move jumps rather than gliding across the Mallow
+    if (!placedOnce || Math.abs(y - lastY) > 140) { el.style.transition = 'none'; requestAnimationFrame(() => { el.style.transition = ''; }); placedOnce = true; }
+    lastY = y;
     el.style.transform = `translateY(${y}px)`;
   }
 
@@ -134,8 +152,10 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     lastLine = line;
     chipsEl.hidden = true;
     ctl.classList.toggle('holding', cur.holding);
-    showCtl(true);
+    // a world's name is a title card, not dialogue: no controls under it
+    if (line.kind === 'title' && !cur.holding) { clearTimeout(hideCtlTimer); ctl.classList.add('is-hidden'); } else showCtl(true);
     layout();
+    watch(true);
     if (cur.holding) { cur.timer = 0; goBtn.focus?.({ preventScroll: true }); return; }
     startTimer(readingMs(line.text, speed));
   }
@@ -171,7 +191,7 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
   function next() {
     if (cur || paused || destroyed) return;
     const item = queue.shift();
-    if (!item) { showCtl(false); return; }
+    if (!item) { showCtl(false); watch(false); return; }
     cur = { item, i: 0, lineEl: null, timer: 0, t0: 0, remaining: 0, holding: false, phase: 'in' };
     if (item.choice) showChoice(); else setTimeout(() => { if (cur?.item === item) showLine(); }, GAP_MS);
   }
@@ -189,6 +209,7 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     chipsEl.hidden = false;
     ctl.classList.add('is-hidden');
     layout();
+    watch(true);
     if (opts.timeoutMs > 0) cur.timer = setTimeout(() => choose(null), opts.timeoutMs);
     function choose(value) {
       if (cur !== mine || mine.phase === 'out') return;
@@ -252,7 +273,7 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
       if (cur) { clearTimeout(cur.timer); const it = cur.item; cur = null; it.resolve(it.choice ? null : false); }
       for (const it of pending) it.resolve(it.choice ? null : false);
       liveEl.replaceChildren(); chipsEl.hidden = true; chipsEl.replaceChildren();
-      ctl.classList.remove('holding'); showCtl(false);
+      ctl.classList.remove('holding'); showCtl(false); watch(false);
     },
     layout,
     get busy() { return !!cur || queue.length > 0; },
@@ -261,7 +282,7 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     get speed() { return speed; },
     /** The rectangle the subtitle block occupies now (for tests and placement). */
     rect() { return liveEl.firstChild ? el.getBoundingClientRect() : null; },
-    destroy() { destroyed = true; api.clear(); offPrefs?.(); clearTimeout(hideCtlTimer); el.remove(); },
+    destroy() { destroyed = true; api.clear(); watch(false); offPrefs?.(); clearTimeout(hideCtlTimer); el.remove(); },
   };
   return api;
 }

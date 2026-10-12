@@ -77,7 +77,7 @@ const logEl = document.getElementById('log');
 const state = {
   id: MALLOWS[qs.get('mallow')] ? qs.get('mallow') : 'glitzi',
   quality: qs.get('quality') || 'auto',
-  rm: qs.get('rm') === '1',
+  rm: qs.has('rm') ? qs.get('rm') === '1' : matchMedia('(prefers-reduced-motion: reduce)').matches,
   audio: null,
   emotion: qs.get('emotion') || 'neutral',
 };
@@ -93,7 +93,7 @@ async function create() {
   mt?.destroy();
   mt = new MallowTouch(stage, { id: state.id, quality: state.quality, reducedMotion: state.rm, audio: state.audio, haptic });
   window.__touch.mt = mt;
-  mt.on('touch', (e) => { if (!['down', 'stretchEnd'].includes(e.kind)) say(e.kind + (e.kind === 'massage' ? ` ${e.turns.toFixed(1)}` : '')); window.__touch.events.push({ t: performance.now() | 0, ...e }); });
+  mt.on('touch', (e) => { if (!['press', 'stretchEnd'].includes(e.kind)) say(e.kind + (e.kind === 'massage' ? ` ${e.turns.toFixed(1)}` : '')); window.__touch.events.push({ t: performance.now() | 0, ...e }); });
   mt.on('tier', (e) => say(`tier → ${e.tier} (${e.reason})`));
   await mt.loaded;
   layout();

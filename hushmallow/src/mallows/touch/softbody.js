@@ -411,6 +411,7 @@ export class SoftBody {
   /** Advance by dt seconds (fixed substeps). Returns the number of substeps run. */
   step(dt) {
     if (!(dt > 0)) return 0;
+    this.lastSlip = null;
     this._acc += Math.min(dt, 0.25);
     let n = Math.floor(this._acc / SUBSTEP + 1e-6);
     if (n > MAX_SUBSTEPS) { n = MAX_SUBSTEPS; this._acc = 0; } else this._acc -= n * SUBSTEP;
@@ -611,7 +612,6 @@ export class SoftBody {
     const P = this.positions, D = this.dent, GW = this._grabW, FW = this.faceW;
     D.fill(0); GW.fill(0);
     let vol = 0;
-    this.lastSlip = null;
     for (const st of this.ptr.values()) {
       // slipping: a pull stretched past the material's limit lets go
       if (!st.slipping && st.pull > 0.2) {
@@ -677,7 +677,7 @@ export class SoftBody {
     for (let k = 0; k < n; k++) {
       const w = BW[k];
       P[2 * k] += s * w * (P[2 * k] - cx);
-      P[2 * k + 1] -= s * 0.3 * w * (fl - P[2 * k + 1]);
+      P[2 * k + 1] -= s * (s > 0 ? 0.3 : 0.7) * w * (fl - P[2 * k + 1]);
     }
   }
 

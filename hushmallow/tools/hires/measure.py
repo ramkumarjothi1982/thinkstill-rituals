@@ -595,7 +595,9 @@ def measure(name):
         e = f['eyes'][s]
         if style == 'closed':
             g = G.eye_geom(e, s, P, 'closed')
-            st = measure_stroke(A, g['upper'], margin=0.045 * W)
+            # wide window: redraws move and tilt closed eyes (Loomi's rise
+            # ~36 px toward the nose), a tight one cuts the stroke
+            st = measure_stroke(A, g['upper'], margin=0.08 * W)
             e1 = dict(e, **stroke_to_closed_eye(st, s))
             e1, sc = fit_closed_eye(A, e1, s, st, P)
             # open-eye geometry keeps the old proportions to the lid line
@@ -667,7 +669,7 @@ def measure(name):
     M = f['mouth']
     if M['style'] == 'line':
         g = G.mouth_geom(M, P)
-        st = measure_stroke(A, g['upper'], margin=0.04 * W)
+        st = measure_stroke(A, g['upper'], margin=0.07 * W)
         M1 = dict(M, **stroke_to_line_mouth(st))
         M1, sc = fit_line_mouth(A, M1, st, P)
         feats['mouth'] = M1

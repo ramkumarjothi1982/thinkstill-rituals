@@ -194,6 +194,7 @@ export class MallowTouch {
     this.st.x = this.goalSt.x ?? this.view.w / 2;
     this.st.y = this.goalSt.y ?? this.view.h * 0.52;
     this.st.s = this.goalSt.s;
+    if (this._pctPlace) { this.ready = true; this.place(...this._pctPlace); this.ready = false; this._pctPlace = null; }
     this._computeTransform(0);
     this._rest();
     this.sb.reset();
@@ -285,8 +286,13 @@ export class MallowTouch {
   }
   setLowStim(b) { this.opts.lowStim = !!b; this.rig.opts.particles = !b; if (b) this.rig.particles.list.length = 0; }
 
-  /** Body centre at (x, y) container CSS px; scale × the default size. */
-  place({ x, y, scale } = {}, { instant = false } = {}) {
+  /** Body centre at (x, y) in container CSS px (or % of the container with
+   *  unit:'%'); scale × the default size (≈ 0.6 of the width, ≤ 0.34 of the height). */
+  place({ x, y, scale, unit } = {}, { instant = false } = {}) {
+    if (unit === '%') {
+      if (!this.ready) { this._pctPlace = [{ x, y, scale, unit }, { instant }]; return this; }
+      x = Number.isFinite(x) ? (x / 100) * this.view.w : x; y = Number.isFinite(y) ? (y / 100) * this.view.h : y;
+    }
     if (Number.isFinite(x)) this.goalSt.x = x;
     if (Number.isFinite(y)) this.goalSt.y = y;
     if (Number.isFinite(scale)) this.goalSt.s = clamp(scale, 0.2, 3);
@@ -343,10 +349,13 @@ export class MallowTouch {
     return this.reader.pointer({ type: e.type, id: e.id, x: e.x, y: e.y, t, shift: !!e.shift, mouse: !!e.mouse });
   }
 
+  /** Is a finger (or mouse / key) on the Mallow right now? */
+  get pressed() { return !!this.reader && this.reader.ptrs.size > 0; }
+
   get state() {
     const T = this.touch;
     return { tier: this.stats.tier, depth: T.depth, stretch: T.stretch, speed: T.speed, turns: T.turns, strokes: T.strokes, calm: T.calm,
-      energy: this.sb ? this.sb.energy : 0, pointers: this.reader ? this.reader.ptrs.size : 0, ready: this.ready };
+      held: T.held, pressed: this.pressed, energy: this.sb ? this.sb.energy : 0, pointers: this.reader ? this.reader.ptrs.size : 0, ready: this.ready };
   }
 
   destroy() {
@@ -500,7 +509,7 @@ export class MallowTouch {
       this._haptic('light');
       this._gaze(e.x, e.y);
       this._wake();
-      this._touchEvent('down');
+      this._touchEvent('press');
     });
     R.on('move', (e) => {
       const p = R.ptrs.get(e.id);
@@ -515,7 +524,9 @@ export class MallowTouch {
     R.on('up', (e) => this._release(e));
     R.on('stretchStart', (s) => {
       this._wasStretch = true;
-      for (const id of [s.a, s.b]) this.sb.setGrip(id, 0.38);
+      // each finger holds its own side; the middle is free to narrow
+      const grip = clamp((0.45 * s.d0) / (this._Pnow || 200), 0.14, 0.38);
+      for (const id of [s.a, s.b]) this.sb.setGrip(id, grip);
       this._touchEvent('stretch');
     });
     R.on('stretchEnd', () => this._touchEvent('stretchEnd'));
@@ -590,9 +601,10 @@ export class MallowTouch {
       return;
     }
     if (depth > 0.25) {
-      this._muteRigHaptic = true;
+      // the release reaction's own squash kick is replaced by the rebound below
+      this._muteRigHaptic = true; this._inRelease = true;
       if (!this.persona.onRelease?.(this, { depth, ...e })) this.rig.react('release');
-      this._muteRigHaptic = false;
+      this._muteRigHaptic = false; this._inRelease = false;
       if (depth > 0.5) this._haptic('pop');
     } else if (!stretched || this.reader.ptrs.size === 0) this.opts.audio?.play?.(this.id, 'release', { intensity: 0.3 });
     this._fingers.delete(id);
@@ -609,7 +621,8 @@ export class MallowTouch {
 
   _touchEvent(kind, extra) {
     const T = this.touch;
-    this._emit('touch', { kind, depth: T.depth, stretch: T.stretch, speed: T.speed, turns: T.turns, dir: extra?.dir ?? 0, ...extra });
+    this._emit('touch', { kind, depth: T.depth, stretch: T.stretch, speed: T.speed, turns: T.turns, dir: extra?.dir ?? 0,
+      held: T.held, pressed: this.reader.ptrs.size > 0, calm: T.calm, ...extra });
   }
 
   _haptic(kind) { try { this.opts.haptic?.(kind); } catch { /* ignore */ } }
@@ -619,7 +632,7 @@ export class MallowTouch {
   _impulse(imp, kind) {
     if (!this.sb) return;
     const rm = this.opts.reducedMotion;
-    if (imp.squash) this.sb.deform('squash', imp.squash * 1.5);
+    if (imp.squash && !(this._inRelease && kind === 'release')) this.sb.deform('squash', imp.squash * 1.5);
     const sh = (imp.lean || 0) * 0.55 + (imp.shear || 0) * 0.18;
     if (sh) this.sb.deform('shear', sh * (rm ? 0.5 : 2.2));
     void kind;

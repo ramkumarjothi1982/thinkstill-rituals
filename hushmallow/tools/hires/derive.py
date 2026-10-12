@@ -69,11 +69,11 @@ def erase_mask(name, meas, masks, shape, img=None):
     m = np.zeros(shape, bool)
     for s in 'LR':
         if style == 'closed':
-            m |= dil(loose_stroke(masks['eye' + s], img, u), 6 * u)
+            m |= dil(loose_stroke(masks['eye' + s], img, u), 12 * u)
         elif style == 'open':
-            # sclera + its dark outline ring; not further, the blush sits
-            # right under these eyes and is part of the approved face
-            m |= dil(masks['eye' + s], 7 * u)
+            # sclera, its dark outline ring and the light rim halo around it
+            # (the blush this bites into is restored by restore_cheeks)
+            m |= dil(masks['eye' + s], 12 * u)
         elif style == 'spiral':
             sp = f['spiral' + s]
             c = np.zeros(shape, np.uint8)
@@ -100,15 +100,46 @@ def erase_mask(name, meas, masks, shape, img=None):
             limit = (yy >= topi[None, :] - 4.5 * u) | (tx[None, :] < x0 - 2 * u) | (tx[None, :] > x1 + 2 * u)
             m |= grown & limit
         if 'brow' + s in masks:
-            m |= dil(loose_stroke(masks['brow' + s], img, u), 6 * u)
+            m |= dil(loose_stroke(masks['brow' + s], img, u), 12 * u)
     mouth = f['mouth']
     if mouth['style'] == 'crease':
         m |= dil(masks['mouth'], 9 * u)
     elif mouth['style'] == 'line':
-        m |= dil(loose_stroke(masks['mouth'], img, u), 6 * u)
+        m |= dil(loose_stroke(masks['mouth'], img, u), 12 * u)
     else:
-        m |= dil(masks['mouth'], 9 * u)
+        m |= dil(masks['mouth'], 12 * u)
     return m
+
+
+def restore_cheeks(body, img, erase, meas):
+    """The blush is part of the approved face, but an eye or mouth margin
+    can bite into it. Bring the bitten part back from its mirror image across
+    the blush's horizontal centre line (the intact half), feathered."""
+    ch = meas['feats']['cheeks']
+    if ch.get('base', 1) <= 0:
+        return body
+    u = meas['unit']
+    H, W = erase.shape
+    out = body.astype(np.float64)
+    src = img.astype(np.float64)
+    bad = dil(erase, 2 * u)
+    yy, xx = np.mgrid[0:H, 0:W]
+    for s in 'LR':
+        cx, cy, r = ch[s]
+        d = np.hypot(xx - cx, yy - cy) / r
+        reg = erase & (d < 1.45)
+        if not reg.any():
+            continue
+        my = np.clip(np.round(2 * cy - yy).astype(int), 0, H - 1)
+        valid = ~bad[my, xx] & (img[my, xx, 3] > 250)
+        w = np.clip((1.45 - d) / 0.45, 0, 1) * valid * reg
+        w = cv2.GaussianBlur(w, (0, 0), 1.2 * u)
+        mir = src[my, xx]
+        out[..., :3] = out[..., :3] * (1 - w[..., None]) + mir[..., :3] * w[..., None]
+    res = body.copy()
+    res[..., :3] = np.clip(np.round(out[..., :3]), 0, 255).astype(np.uint8)
+    res[..., :3][img[..., 3] == 0] = 0
+    return res
 
 
 # ---------------------------------------------------------- inpaint --
@@ -325,6 +356,7 @@ if __name__ == '__main__':
                 top = ys_.min()
                 protect[max(0, int(top - 70 * u)):top, max(0, int(xs_.min() - 30 * u)):int(xs_.max() + 30 * u)] = True
         body = inpaint(name, img, m, u, protect=protect)
+        body = restore_cheeks(body, img, m, meas)
         assert (body[..., 3] == img[..., 3]).all()
         Image.fromarray(body, 'RGBA').save(f'{WORK}/{name}-body.png')
         save(body, f'{OUT}/{name}-body.webp')

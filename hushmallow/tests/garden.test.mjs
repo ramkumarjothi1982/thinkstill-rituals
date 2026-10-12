@@ -1,0 +1,192 @@
+// Memory Garden (W5): skill data, honest wording, the garden store.
+// Run: node --test hushmallow/tests/
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+import { SKILLS, SKILL_IDS, getSkill, skillTitle, relatedSkills, skillsForWorld, validateSkill, CHARM_FAMILIES } from '../src/hushfold/skills.js';
+import { saveSkill, garden, gardenEntry, hasSkill, practised, forgetSkill, readGarden, clearGarden, GARDEN_KEY, GARDEN_VERSION, MAX_SKILLS } from '../src/engine/garden.js';
+import { createStore } from '../src/engine/storage.js';
+import { SKILLS as CATALOG } from '../src/v3/data/catalog.js';
+import { WORLDS } from '../src/hushfold/flow/registry.js';
+import { MALLOW_IDS } from '../src/mallows/registry.js';
+
+const root = fileURLToPath(new URL('../', import.meta.url));
+const memStore = () => createStore({ backend: 'memory' });
+
+// ----------------------------------------------------------- skill data --
+test('every skill is complete, honest and valid', () => {
+  assert.ok(SKILL_IDS.length >= 6, 'the pilot three plus at least three for future worlds');
+  for (const id of SKILL_IDS) {
+    const s = SKILLS[id];
+    assert.equal(s.id, id);
+    assert.deepEqual(validateSkill(s), [], id);
+    assert.ok(MALLOW_IDS.includes(s.mallow), `${id}: unknown Mallow ${s.mallow}`);
+    assert.ok(['paid', 'ultra'].includes(s.plan), id);
+    assert.ok(s.steps.length >= 2 && s.steps.length <= 4, id);
+    assert.ok(s.care.length >= 1, `${id}: needs at least one care note`);
+    assert.ok(Object.isFrozen(s) && Object.isFrozen(s.sources), `${id}: data is read-only`);
+  }
+});
+
+test('the pilot skills exist with the brief’s wording', () => {
+  assert.equal(skillTitle('slowing-down'), 'The Power of Slowing Down');
+  assert.equal(getSkill('slowing-down').example, 'Try it: put the phone down for ten seconds before you reply.');
+  assert.deepEqual(getSkill('slowing-down').sources.map((x) => x.skill), ['Intentionally Slow', 'Reaction Gap']);
+  assert.deepEqual(getSkill('a-little-more-room').sources.map((x) => x.skill), ['Cloud Witness', 'Thought Is Not Order', 'Room for This']);
+  assert.match(getSkill('a-little-more-room').explanation, /doesn’t make the thought untrue, and it doesn’t have to disappear/);
+  assert.equal(getSkill('another-angle').plan, 'ultra');
+  assert.match(getSkill('another-angle').essence, /happened.*means/);
+  assert.equal(getSkill('nope'), null);
+  assert.equal(getSkill('__proto__'), null);
+  assert.equal(skillTitle(undefined), null);
+});
+
+test('source wording is the catalogue’s, verbatim', () => {
+  const byName = Object.fromEntries(CATALOG.map((c) => [c.name, c]));
+  for (const s of Object.values(SKILLS)) {
+    for (const x of s.sources) {
+      const c = byName[x.skill];
+      assert.ok(c, `${s.id}: ${x.skill} is not in the catalogue`);
+      for (const k of ['group', 'does', 'insight', 'precaution', 'scope']) assert.equal(x[k], c[k], `${s.id} / ${x.skill}.${k}`);
+      assert.ok(x.ref && !/https?:/.test(x.ref), `${s.id}: a citation label, never a link`);
+    }
+    // the headline label is one of its sources' scopes
+    assert.ok(s.sources.some((x) => x.scope === s.evidence.scope), `${s.id}: evidence scope must come from a source`);
+  }
+});
+
+test('scope labels match docs/V3_SKILLS.md', () => {
+  const md = readFileSync(`${root}docs/V3_SKILLS.md`, 'utf8');
+  for (const s of Object.values(SKILLS)) for (const x of s.sources) {
+    const row = md.split('\n').find((l) => l.startsWith(`| ${x.skill} |`));
+    assert.ok(row, `${x.skill} row in V3_SKILLS.md`);
+    assert.ok(row.includes(`| ${x.scope} |`), `${x.skill}: scope ${x.scope}`);
+  }
+});
+
+test('related tools exist, never point to themselves, and every charm is its own design', () => {
+  const families = new Set();
+  for (const s of Object.values(SKILLS)) {
+    assert.ok(s.related.length >= 2, s.id);
+    for (const r of s.related) { assert.ok(SKILLS[r], `${s.id} → ${r}`); assert.notEqual(r, s.id); }
+    assert.equal(relatedSkills(s.id).length, s.related.length);
+    assert.ok(CHARM_FAMILIES.includes(s.charm.family));
+    assert.ok(!families.has(s.charm.family), `${s.id}: charm family ${s.charm.family} already used`);
+    families.add(s.charm.family);
+  }
+});
+
+test('every skill the Hushflow registry offers has garden wording', () => {
+  for (const w of WORLDS) {
+    const ids = [w.memory?.skillId, ...Object.values(w.discoveries || {}).map((d) => d.skillId)].filter(Boolean);
+    for (const id of ids) {
+      assert.ok(SKILLS[id], `${w.id} offers ${id}`);
+      assert.equal(SKILLS[id].world.id, w.id, `${id} is taught by ${w.id}`);
+    }
+    assert.ok(skillsForWorld(w.id).length >= 1, w.id);
+  }
+});
+
+test('skill wording: British spelling, lowercase brand, no "AI", no cure or relief claims', () => {
+  // (the validator's own banned-word patterns are the only lines allowed to name them)
+  const src = readFileSync(`${root}src/hushfold/skills.js`, 'utf8').split('\n').filter((l) => !l.startsWith('const BANNED') && !l.includes('brand must be lowercase')).join('\n');
+  assert.doesNotMatch(src, /\bAI\b/);
+  assert.doesNotMatch(src, /Hushmallow|HUSHMALLOW|HushMallow/);
+  const shown = Object.values(SKILLS).map((s) => [s.title, s.essence, s.explanation, s.example, s.found || '', ...s.steps, ...s.care, s.evidence.plain].join(' ')).join(' ');
+  assert.doesNotMatch(shown, /\b(color|behavior|center|realize|recognize|favorite|practicing|practiced)\b/i);
+  assert.doesNotMatch(shown, /\b(cures?|treats?|relief|guarantee|rewire|reduces anxiety)\b/i);
+  assert.doesNotMatch(shown, /\bAI\b/);
+});
+
+// --------------------------------------------------------------- store --
+test('garden: save, list, practise and forget', () => {
+  const store = memStore();
+  assert.deepEqual(garden(store), []);
+  const a = saveSkill(store, { id: 'slowing-down', fromWorld: 'static-storm', mallow: 'glitzi' }, 1000);
+  assert.equal(a.isNew, true);
+  assert.equal(a.savedAt, 1000);
+  saveSkill(store, { id: 'a-little-more-room', fromWorld: 'luminous-ocean', mallow: 'loomi' }, 2000);
+  assert.deepEqual(garden(store).map((x) => x.id), ['slowing-down', 'a-little-more-room']);
+  assert.equal(hasSkill(store, 'slowing-down'), true);
+  assert.equal(hasSkill(store, 'another-angle'), false);
+
+  const p = practised(store, 'slowing-down', 5000);
+  assert.equal(p.lastPractised, 5000);
+  assert.equal(p.practised, 1);
+  assert.equal(practised(store, 'another-angle'), null, 'practising an unkept tool keeps nothing');
+  assert.equal(hasSkill(store, 'another-angle'), false);
+
+  assert.equal(forgetSkill(store, 'slowing-down'), true);
+  assert.equal(forgetSkill(store, 'slowing-down'), false);
+  assert.deepEqual(garden(store).map((x) => x.id), ['a-little-more-room']);
+});
+
+test('garden: saving again keeps the first save and its Mallow', () => {
+  const store = memStore();
+  saveSkill(store, { id: 'slowing-down', fromWorld: 'static-storm', mallow: 'glitzi' }, 1000);
+  const again = saveSkill(store, { id: 'slowing-down', fromWorld: 'luminous-ocean', mallow: 'loomi' }, 9000);
+  assert.equal(again.isNew, false);
+  assert.equal(again.savedAt, 1000);
+  assert.equal(again.mallow, 'glitzi');
+  assert.equal(again.fromWorld, 'static-storm');
+  assert.equal(again.lastPractised, 9000);
+  assert.equal(garden(store).length, 1);
+});
+
+test('garden: ids only — free text, photos and extra fields never get in', () => {
+  const store = memStore();
+  assert.equal(saveSkill(store, { id: 'My boss embarrassed me today' }), null);
+  assert.equal(saveSkill(store, { id: '' }), null);
+  assert.equal(saveSkill(store, {}), null);
+  assert.equal(saveSkill(store), null);
+  assert.equal(saveSkill(store, { id: 'x'.repeat(80) }), null);
+  saveSkill(store, { id: 'slowing-down', fromWorld: 'I feel awful', mallow: 'data:image/png;base64,AAAA', text: 'secret words', photo: 'blob:abc' });
+  const raw = store.get(GARDEN_KEY);
+  assert.equal(raw.v, GARDEN_VERSION);
+  assert.deepEqual(Object.keys(raw.skills), ['slowing-down']);
+  assert.deepEqual(Object.keys(raw.skills['slowing-down']).sort(), ['fromWorld', 'lastPractised', 'mallow', 'practised', 'savedAt']);
+  assert.equal(raw.skills['slowing-down'].fromWorld, null);
+  assert.equal(raw.skills['slowing-down'].mallow, null);
+  assert.doesNotMatch(JSON.stringify(raw), /secret|awful|base64|blob/);
+});
+
+test('garden: corrupt, foreign or partial data reads safely', () => {
+  const store = memStore();
+  for (const bad of [null, 'nonsense', 42, [], { v: 2, skills: { 'slowing-down': { savedAt: 1 } } }, { v: 1, skills: [] }, { v: 1 }]) {
+    store.set(GARDEN_KEY, bad);
+    assert.deepEqual(garden(store), [], JSON.stringify(bad));
+  }
+  store.set(GARDEN_KEY, { v: 1, skills: {
+    'slowing-down': { savedAt: 10, practised: 2, lastPractised: 20, fromWorld: 'static-storm', mallow: 'glitzi' },
+    'Bad Id': { savedAt: 10 },
+    'a-little-more-room': { savedAt: 'yesterday' },
+    'another-angle': { savedAt: 30, practised: -4, lastPractised: 'x', fromWorld: 7, mallow: {} },
+  } });
+  const g = garden(store);
+  assert.deepEqual(g.map((x) => x.id), ['slowing-down', 'another-angle']);
+  assert.deepEqual(gardenEntry(store, 'another-angle'), { id: 'another-angle', savedAt: 30, lastPractised: null, practised: 0, fromWorld: null, mallow: null });
+  // a write keeps only the valid entries
+  saveSkill(store, { id: 'name-it' }, 40);
+  assert.deepEqual(Object.keys(store.get(GARDEN_KEY).skills).sort(), ['another-angle', 'name-it', 'slowing-down']);
+});
+
+test('garden: a store that throws or refuses never breaks the garden', () => {
+  const broken = { get() { throw new Error('blocked'); }, set() { throw new Error('quota'); }, remove() { throw new Error('x'); } };
+  assert.deepEqual(garden(broken), []);
+  assert.equal(saveSkill(broken, { id: 'slowing-down' }).isNew, true);
+  assert.equal(forgetSkill(broken, 'slowing-down'), false);
+  assert.doesNotThrow(() => clearGarden(broken));
+  assert.deepEqual(readGarden(broken), { v: 1, skills: {} });
+});
+
+test('garden: capped, and wiped by Delete everything', () => {
+  const store = memStore();
+  for (let i = 0; i < MAX_SKILLS + 5; i++) saveSkill(store, { id: `skill-${i}` }, 100 + i);
+  assert.equal(garden(store).length, MAX_SKILLS);
+  assert.equal(saveSkill(store, { id: 'one-more' }), null);
+  assert.ok(saveSkill(store, { id: 'skill-0' }), 'an already kept tool can still be practised');
+  store.clearAll();
+  assert.deepEqual(garden(store), []);
+});

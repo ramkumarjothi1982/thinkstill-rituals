@@ -88,6 +88,7 @@ export function createHushflow(opts = {}) {
   let lastInputAt = -Infinity, restSince = 0;
   let wantNext = false, autoFlow = false;
   let discoveryPending = 0;
+  let choiceOpen = null;            // the world whose 'Stay, or drift on?' is on screen
   let saveClock = 0, progressClock = 0, lastProgress = -1;
   let frameEma = 16.7, slowSec = 0;
   let session = null;               // { emotion, intention, intensity, input, seed, discoveries:Set, offered:Set }
@@ -335,6 +336,8 @@ export function createHushflow(opts = {}) {
     let handoff = null;
     try { handoff = from.world.handoff?.() || null; } catch (e) { console.warn('[hushflow] handoff', e); }
     enterInstance(to, from.id, handoff);
+    // the 'Stay, or drift on?' question is answered by the melt itself
+    if (choiceOpen === from) { choiceOpen = null; try { subtitles?.clear?.(); } catch { /* optional */ } }
     const dur = reducedMotion() ? MELT_REDUCED_SEC : MELT_SEC;
     melt = { k: 0, e: 0, dur, from, to, horizonY: handoff?.horizonY ?? (from.entry.horizon ?? 0.655) * H };
     phase = 'melting';
@@ -391,8 +394,9 @@ export function createHushflow(opts = {}) {
     const say = () => {
       if (cur !== inst || melt) return;
       if (can && subtitles?.choice) {
+        choiceOpen = inst;
         Promise.resolve(subtitles.choice(d.complete || 'Stay, or drift on?', [{ label: 'Stay', value: 'stay' }, { label: 'Drift on', value: 'next' }]))
-          .then((v) => { if (cur !== inst) return; if (v === 'next') api.next(); else if (v === 'stay') api.stay(); })
+          .then((v) => { if (choiceOpen === inst) choiceOpen = null; if (cur !== inst) return; if (v === 'next') api.next(); else if (v === 'stay') api.stay(); })
           .catch(() => {});
       } else if (d.completeStay || d.complete) inst.ctx.say([can ? d.complete : (d.completeStay || d.complete)], { kind: 'dialogue' });
     };
@@ -602,13 +606,14 @@ export function createHushflow(opts = {}) {
       try { cur.world.pause?.(); melt?.to.world.pause?.(); } catch { /* ignore */ }
       for (const id of [...pointers.keys()]) release(id);
       comp.veil(VEIL);
+      try { subtitles?.pause?.(); } catch { /* optional */ }
       save();
       emit('pause', { worldId: cur.id });
     },
     resume() {
       if (!paused) return;
       paused = false;
-      try { cur?.world.resume?.(); melt?.to.world.resume?.(); } catch { /* ignore */ }
+      try { cur?.world.resume?.(); melt?.to.world.resume?.(); subtitles?.resume?.(); } catch { /* ignore */ }
       startLoop();
       emit('resume', { worldId: cur?.id });
     },

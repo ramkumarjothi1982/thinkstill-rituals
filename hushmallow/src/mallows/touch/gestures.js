@@ -79,7 +79,7 @@ export class TouchReader {
     this.lastTap = null;       // {t, x, y}
     this.pendingTap = null;
     this.stretch = null;       // {a, b, d0, ang0, s, ang, twist}
-    this.wheel = null;
+    this._wheel = null;
     this.keys = { space: null, arrows: new Set() };
     this.t = 0;
   }
@@ -329,11 +329,11 @@ export class TouchReader {
     if (!e || !Number.isFinite(e.deltaY)) return false;
     const t = Number.isFinite(e.t) ? e.t : this.t;
     this.t = Math.max(this.t, t);
-    let w = this.wheel;
+    let w = this._wheel;
     if (!w) {
       if (!this.hit(e.x, e.y) || this.ptrs.size) return false;
       const hw = this.bodySize() * 0.2;
-      w = this.wheel = { cx: e.x, cy: e.y, hw, s: 1, last: t };
+      w = this._wheel = { cx: e.x, cy: e.y, hw, s: 1, last: t };
       this._down({ type: 'down', id: 'pinchA', x: e.x - hw, y: e.y, t, virtual: true }, t);
       this._down({ type: 'down', id: 'pinchB', x: e.x + hw, y: e.y, t, virtual: true }, t);
     }
@@ -404,9 +404,9 @@ export class TouchReader {
     }
     this._updateStretch();
     // trackpad pinch ends 220 ms after the last wheel event
-    if (this.wheel && t - this.wheel.last > 0.22) {
+    if (this._wheel && t - this._wheel.last > 0.22) {
       for (const id of ['pinchA', 'pinchB']) { const p = this.ptrs.get(id); if (p) this._up(p, t, false); }
-      this.wheel = null;
+      this._wheel = null;
     }
     // a single tap waits for a possible second
     if (this.pendingTap && t - this.pendingTap.t > G.doubleWindow) {
@@ -434,5 +434,5 @@ export class TouchReader {
     };
   }
 
-  cancelAll() { for (const p of [...this.ptrs.values()]) this._up(p, this.t, true); this._shift = null; this.wheel = null; }
+  cancelAll() { for (const p of [...this.ptrs.values()]) this._up(p, this.t, true); this._shift = null; this._wheel = null; }
 }

@@ -126,8 +126,9 @@ function touchAdapter(t) {
     bodyRect: () => t.bodyRect(),
     hitTest: (x, y) => t.hitTest(x, y),
     pointer: (e) => t.pointer(e),
-    get pressed() { return !!t.pressed; },
-    on: (ev, fn) => t.on(ev, fn),
+    get pressed() { return !!(t.pressed ?? t.state?.pressed); },
+    // MallowTouch.on() chains (returns itself); the stage wants an unsubscribe
+    on: (ev, fn) => { t.on(ev, fn); return () => t.off?.(ev, fn); },
     destroy: () => {},
   };
 }

@@ -542,7 +542,7 @@ export function create(ctx) {
     // first big surge: Glitzi notices, and it's allowed
     if (!firstSurge && Q > 1.05 && everTouched) {
       firstSurge = true;
-      mallow?.react?.('gasp');
+      mallow?.react?.('glitchBurst');
       const lines2 = ctx.entry.dialogue?.charge;
       if (lines2) ctx.say(lines2, { who: 'glitzi', kind: 'dialogue' });
     }
@@ -684,7 +684,7 @@ export function create(ctx) {
       const ex = r.x[ROPE_N - 1], ey = r.y[ROPE_N - 1], bx = r.x[ROPE_N - 2], by = r.y[ROPE_N - 2];
       const ang = Math.atan2(ex - bx, ey - by);
       const wob = reduced() ? 0 : c.wobble.update(dt);
-      c.rot = lerp(c.rot, clamp(-ang * 0.8, -0.5, 0.5) + wob * 0.03, 1 - Math.exp(-dt * 8));
+      c.rot = lerp(c.rot, clamp(-ang * 0.7, -0.3, 0.3) + wob * 0.03, 1 - Math.exp(-dt * 8));
       if (c.grounded) c.rot *= Math.exp(-dt * 2);
       c.x = ex + Math.sin(c.rot) * c.h * 0.5; c.y = ey + Math.cos(c.rot) * c.h * 0.5;
       c.gk = c.grounded ? Math.min(1, c.gk + dt / 0.8) : Math.max(0, c.gk - dt / 0.5);
@@ -730,7 +730,7 @@ export function create(ctx) {
       const fa = smoothstep(0.015, 0.4, e) * (0.75 + 0.25 * sh) * low;
       const fw = clamp(e / 0.55);                        // white-hot as fresh charge piles up
       const ga = clamp(gl) * 0.85 * low;
-      md[o + 3] = Math.round(255 * clamp(aa * 1.1 + fa * 1.3));
+      md[o + 3] = Math.round(255 * clamp(aa * 0.75 + fa * 1.4));
       const A = aa + fa + ga;
       if (A <= 0.002) { d[o + 3] = 0; continue; }
       const R2 = ar * aa + (150 + 105 * fw) * fa + 255 * ga, G2 = ag * aa + (235 + 20 * fw) * fa + 205 * ga, B2 = ab * aa + 255 * fa + 130 * ga;
@@ -764,7 +764,7 @@ export function create(ctx) {
       grainG.globalCompositeOperation = 'destination-in';
       grainG.imageSmoothingEnabled = true;
       grainG.drawImage(midC, 0, 0, grainC.width, grainC.height);
-      g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.5;
+      g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.42;
       g.imageSmoothingEnabled = false;
       g.drawImage(grainC, field.x, field.y, grainC.width * grainScale, grainC.height * grainScale);
     }
@@ -952,7 +952,7 @@ export function create(ctx) {
       g.restore();
     }
     if (thought?.draw) {
-      try { thought.draw(g, x, y, tScale, { tension: tTension, charge: qLocal, calm: thoughtSettle.settled ? 1 : 1 - qLocal, fizz: tFizz, reduced: rm, radius: tR, now, minX: 20, maxX: W - 20 }); } catch (e) { /* placeholder only */ }
+      try { thought.draw(g, x, y, tScale, { tension: tTension, charge: qLocal, calm: thoughtSettle.settled ? 1 : 1 - qLocal, fizz: tFizz, reduced: rm, radius: tR, now, minX: 20, maxX: W - 20, labelWidth: Math.min(300, W - 76) }); } catch (e) { /* placeholder only */ }
     }
   }
 
@@ -1071,9 +1071,10 @@ export function create(ctx) {
     // Glitzi: bristling and glitchy → calm, with the light grounded
     if (mallow && now - emoAt > 0.6) {
       const pp = complete ? 1 : p, qn = clamp(Q / 1.2);
-      const mix = { frustrated: 0.45 * (1 - pp) * (0.5 + 0.5 * qn), excited: 0.2 * qn * (1 - pp), calm: 0.12 + 0.88 * pp, curious: 0.15 * (1 - pp) };
+      // towards 'content' (calm, relieved, a little happy) as the light is grounded
+      const mix = { frustrated: 0.45 * (1 - pp) * (0.5 + 0.5 * qn), excited: 0.2 * qn * (1 - pp), curious: 0.15 * (1 - pp), calm: 0.12 + 0.48 * pp, relieved: 0.28 * pp * pp, happy: 0.22 * pp * pp };
       const key = Object.values(mix).map((v) => Math.round(v * 10)).join(',');
-      if (key !== emoKey) { emoKey = key; emoAt = now; try { mallow.setEmotion?.(mix, 0.55 + 0.3 * (1 - pp), { quiet: true }); } catch { /* optional */ } }
+      if (key !== emoKey) { emoKey = key; emoAt = now; try { mallow.setEmotion?.(mix, 0.7 + 0.15 * (1 - pp), { quiet: true }); } catch { /* optional */ } }
     }
     if (mallow?.lookAt && f0) { const r = mallow.rect?.(); if (r) mallow.lookAt(clamp((f0.x - r.cx) / (W * 0.5), -1, 1), clamp((f0.y - r.cy) / (H * 0.5), -1, 1)); }
   }
