@@ -35,8 +35,10 @@ function core(id = 'blubi') {
   mt._settle();
   mt.ready = true;
   mt.on('touch', (e) => events.push(e.kind));
-  // routed events carry t in ms on the performance.now() clock; frames run on seconds
-  let ms = 1000;
+  // routed events carry t in ms on the performance.now() clock; frames run on
+  // seconds. The fake clock starts ahead of the real one, so MallowTouch's
+  // input-lag estimate (now - e.t) stays 0 however loaded the machine is.
+  let ms = Math.ceil(performance.now()) + 2000;
   const frame = (n = 1) => { for (let i = 0; i < n; i++) { ms += 1000 / 60; rig.time += 1 / 60; mt._physics(1 / 60, ms / 1000); } };
   return { mt, rig, events, frame, at: () => ms };
 }
