@@ -3,11 +3,13 @@
 // opens; monthly or yearly; restore; support stays free and one tap away.
 // No countdowns, no fake discounts, no pressure. The live Mallow stays
 // squeezable above the invitation (the top of the screen lets touches
-// through to it).
+// through to it) and steps aside once the invitations scroll over it.
+// Each invitation leads with three or four things; the rest waits behind
+// "Everything included".
 import { h, iconBtn, toast } from '../ui.js';
 import { PLANS } from '../entitlements.js';
 import { BRAND, brandName } from '../../brand.js';
-import { brandMark, logoImg } from '../../ui/type.js';
+import { brandMark, logoImg, fitLabel } from '../../ui/type.js';
 import { openSupport } from './support.js';
 
 const PERIODS = [['monthly', 'Monthly'], ['yearly', 'Yearly']];
@@ -34,6 +36,7 @@ function planTitle(p, id) {
 
 // "Another Angle: fresh perspectives…" → a bold lead before the colon
 function benefit(text) {
+  if (text == null) return null;
   const i = text.indexOf(': ');
   if (i > 0 && i < 40) return h('li', {}, h('b', {}, text.slice(0, i + 1)), text.slice(i + 1));
   if (text.startsWith('Everything in ')) return h('li', { class: 'all' }, h('b', {}, 'Everything in ', brandMark(text.slice(14))));
@@ -62,26 +65,37 @@ export default function plans(app, params = {}) {
   const notes = [];   // [plan, price element, period element]
   const drawNotes = () => notes.forEach(([p, price, note]) => { price.textContent = priceLine(p); price.hidden = !price.textContent; note.textContent = periodNote(); });
 
-  const buttons = [];
+  const buttons = [], fits = [];
   function action(p) {
     if (included(p.id)) return h('div', { class: 'btn block invite-included', 'aria-disabled': 'true' }, '✓ Included in your plan');
     if (!ent.canPurchase) return h('div', { class: 'btn block', 'aria-disabled': 'true' }, 'Available in the app soon');
     const price = h('p', { class: 'invite-price', hidden: true });
     const note = h('p', { class: 'invite-period', 'aria-live': 'polite' }, periodNote());
     notes.push([p, price, note]);
-    const btn = h('button', { class: `btn block invite-buy ${p.id === 'ultra' ? 'ultra' : 'primary'}`, onclick: () => buy(p.id, btn) }, h('span', { class: 'invite-buy-label' }, `Step into ${p.name}`));
+    const label = h('span', { class: 'invite-buy-label' }, `Step into ${p.name}`);
+    const btn = h('button', { class: `btn block invite-buy ${p.id === 'ultra' ? 'ultra' : 'primary'}`, onclick: () => buy(p.id, btn) }, label);
     buttons.push(btn);
+    // one line: "Step into Beyond" when the full name would wrap
+    fits.push(() => fitLabel(btn, `Step into ${p.name.slice(brandName.length).trim()}`, { target: label }));
     return h('div', { class: 'invite-cta' }, btn, price, note);
   }
 
   function invite(p) {
     const beyond = p.id === 'ultra';
     const titleId = `invite-${p.id}`;
+    // Beyond leads with what it adds (its capability lines), then "Everything in Flow"
+    const all = p.includes.filter((x) => x.startsWith('Everything in '));
+    const own = p.includes.filter((x) => !x.startsWith('Everything in '));
+    const lead = [...own.slice(0, 3), ...all];
+    const rest = own.slice(3);
     return h('section', { class: `invite ${beyond ? 'invite-beyond' : 'invite-flow'}${focus === p.id ? ' is-focus' : ''}`, 'aria-labelledby': titleId },
       h('div', { class: 'invite-head' },
         beyond ? h('div', { class: 'spiral invite-sigil', 'aria-hidden': 'true' }) : flowSigil(),
         h('div', { class: 'invite-heading' }, planTitle(p, titleId), h('p', { class: 'invite-tagline' }, p.tagline))),
-      h('ul', { class: 'invite-list' }, ...p.includes.map(benefit)),
+      h('ul', { class: 'invite-list' }, ...lead.map(benefit)),
+      rest.length ? h('details', { class: 'invite-more' },
+        h('summary', {}, h('span', {}, 'Everything included')),
+        h('ul', { class: 'invite-list' }, ...rest.map(benefit))) : null,
       // What ships today: Another Angle's angles are authored and run on the
       // phone. When the Beyond server client (W8) is switched on, this note
       // changes in the same release to the wording agreed with its consent
@@ -106,7 +120,9 @@ export default function plans(app, params = {}) {
     let r = null;
     try { r = await ent.purchase(id, period); } catch { r = { ok: false, failed: true }; }
     if (gone) return;
-    if (r?.ok) {
+    // success only when the plan is really on this phone now (a bridge reply
+    // after a cancel can carry the old tier)
+    if (r?.ok && ent.has(id)) {
       toast(r.test ? `Test purchase: ${PLANS[id].name} unlocked (no charge)` : `Welcome to ${PLANS[id].name}`);
       app.haptic('success');
       world.react('celebrate');
@@ -114,7 +130,8 @@ export default function plans(app, params = {}) {
       return;   // the buttons stay quiet until the Hushfold opens
     }
     if (r?.unavailable) toast('Subscriptions are handled in the App Store app.');
-    else if (!r?.cancelled) toast('That didn’t go through. Nothing was charged.', 3200);
+    else if (r?.cancelled) toast('No problem. Nothing was charged.');
+    else toast('That didn’t go through. Nothing was charged.', 3200);
     pending = false;
     setBusy(false);
   }
@@ -174,7 +191,14 @@ export default function plans(app, params = {}) {
           ? 'Development build: purchases here are test purchases. Nothing is charged. In the App Store version, Apple handles payment and receipts.'
           : 'Subscriptions aren’t on sale on the web yet. The App Store app handles payment and receipts.'))));
 
-  el.addEventListener('scroll', () => el.classList.toggle('scrolled', el.scrollTop > 6), { passive: true });
+  // the invitations scroll over the Mallow's spot: it steps aside (fades)
+  // and comes back near the top, so its face never shows through the cards
+  let mallowAway = false;
+  el.addEventListener('scroll', () => {
+    el.classList.toggle('scrolled', el.scrollTop > 6);
+    const away = mallowAway ? el.scrollTop >= 40 : head.getBoundingClientRect().top < gap.getBoundingClientRect().top + 8 && el.scrollTop > 40;
+    if (away !== mallowAway) { mallowAway = away; world.showMallow?.(!away); }
+  }, { passive: true });
 
   // keep the live Mallow in the open space above the invitation
   function fit() {
@@ -185,18 +209,29 @@ export default function plans(app, params = {}) {
     });
   }
 
+  // "Meet Another Angle" names Zuzu: Zuzu is the one on screen
+  const prevMallow = world.mallowId;
+  const swapMallow = focus === 'ultra' && !everything && prevMallow && prevMallow !== 'zuzu';
+
   return {
     el, title: 'Plans',
-    enter() {
+    async enter() {
       world.dim(true);
       world.showMallow?.(true);
       world.place({ x: 50, y: 14, scale: 0.42 });
+      if (swapMallow) await world.setMallow('zuzu').catch(() => {});
       world.setStage('curious');
       fit();
+      requestAnimationFrame(() => fits.forEach((f) => f()));
+      setTimeout(() => { if (!gone) fits.forEach((f) => f()); }, 700);   // after the web fonts swap in
       // localised prices from the App Store, if the native shell offers them
       Promise.resolve(typeof ent.prices === 'function' ? ent.prices() : null)
         .then((v) => { if (v && typeof v === 'object' && !gone) { prices = v; drawNotes(); } }, () => {});
     },
-    leave() { gone = true; clearTimeout(homeTimer); },
+    leave() {
+      gone = true; clearTimeout(homeTimer);
+      if (mallowAway) world.showMallow?.(true);
+      if (swapMallow && world.mallowId === 'zuzu') world.setMallow(prevMallow, { entrance: false }).catch(() => {});
+    },
   };
 }

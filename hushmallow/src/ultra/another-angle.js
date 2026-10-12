@@ -136,8 +136,8 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   audio.fx?.('portal', { intensity: 0.6 });
   const pieces = E.splitThought(text).map((p, i) => ({ ...p, key: `p${i}`, side: null }));
   const portals = {
-    fact: mkPortal('What happened', 'fact', '#39f0ff', 25),
-    added: mkPortal('What my brain added', 'added', '#ff5be9', 75),
+    fact: mkPortal('What happened', 'Happened', '#39f0ff', 25),
+    added: mkPortal('What my brain added', 'Brain added', '#ff5be9', 75),
   };
   const pieceLayer = h('div', { style: { position: 'absolute', inset: '0', pointerEvents: 'none' } });
   stageEl.append(portals.fact.el, portals.added.el, pieceLayer);
@@ -151,12 +151,20 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   await wait(380);
   crystal.remove();
   const placeY = (i) => 30 + i * 11;
+  const SORT_CHIP = { minHeight: '38px', fontWeight: '700', flex: '0 1 auto', minWidth: '0', padding: '0 12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
+  // one line per chip: the arrows go first, then some side padding
+  const fitChips = () => {
+    for (const c of stageEl.querySelectorAll('.piece .chip[data-short]')) {
+      if (c.scrollWidth > c.clientWidth) c.textContent = c.dataset.short;
+      if (c.scrollWidth > c.clientWidth) c.style.padding = '0 7px';
+    }
+  };
   const pieceEls = pieces.map((p, i) => {
     const el = h('div', { class: 'piece', style: pieceStyle(placeY(i)), role: 'group', 'aria-label': `Piece: ${p.text}` },
       h('div', { style: type('thought', { fontSize: 'calc(16px * var(--type-scale))', lineHeight: '1.3' }) }, p.text),
       h('div', { style: { display: 'flex', gap: '6px', marginTop: '8px' } },
-        h('button', { class: 'chip', style: type('label', { minHeight: '38px', fontWeight: '700' }), onclick: () => drop(p, 'fact') }, '← Happened'),
-        h('button', { class: 'chip', style: type('label', { minHeight: '38px', fontWeight: '700' }), onclick: () => drop(p, 'added') }, 'Brain added →')));
+        h('button', { class: 'chip', 'data-short': 'Happened', style: type('label', SORT_CHIP), onclick: () => drop(p, 'fact') }, '← Happened'),
+        h('button', { class: 'chip', 'data-short': 'Brain added', style: type('label', SORT_CHIP), onclick: () => drop(p, 'added') }, 'Brain added →')));
     makeDraggable(el, (x) => drop(p, x < innerWidth / 2 ? 'fact' : 'added'));
     pieceLayer.append(el);
     p.el = el;
@@ -165,9 +173,39 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   // Stack the pieces under the prompt by their real heights. When they can't all
   // fit (short phones) they become a deck: the top piece whole, the rest peeking
   // out beneath it, moving up as each one is sorted.
+  // The portals sit just above the dock, sized from their content (a name
+  // plate on the rim + two lines inside); Zuzu peeks over the gap between
+  // them, and the pieces stack in what is left under the prompt.
+  let splitTop = 0, compactPrompt = false;
+  function layoutSplit(settled = false) {
+    const dt = dock.getBoundingClientRect();
+    const bottom = (dt.height ? dt.top : innerHeight * 0.84) - 12;
+    const lh = world.layer?.offsetHeight || 470, s = 0.3;
+    const bodyH = 0.66 * lh * s;
+    // the name plates stay clear of Zuzu's face (Zuzu is about as wide as tall)
+    const clear = 0.44 * bodyH;
+    const top = Math.min(portals.fact.fit(bottom, clear), portals.added.fit(bottom, clear));
+    const cy = top + 2, zTop = cy - bodyH / 2;
+    world.place({ x: 50, y: ((cy - 0.05 * lh * s) / innerHeight) * 100, scale: s });
+    // room for the deck? On the smallest phones with large text the prompt
+    // drops its second sentence first, then Zuzu steps aside for a moment
+    const live = pieces.filter((p) => !p.side && p.el.isConnected);
+    const deckH = live.length ? live[0].el.offsetHeight + 12 * Math.min(2, live.length - 1) : 0;
+    const from = (document.querySelector('#scene .move-title')?.getBoundingClientRect().bottom || 0) + 12;
+    if (settled === true && !compactPrompt && from + deckH > zTop + 4) {
+      compactPrompt = true;
+      setMove(1, { eyebrow: 'Fact or fiction', title: 'Pull it apart', prompt: 'Drag each piece into a portal.' });
+      requestAnimationFrame(() => layoutSplit());
+      return;
+    }
+    const zuzuFits = from + deckH <= zTop + 4;
+    world.showMallow?.(zuzuFits);
+    splitTop = zuzuFits ? Math.min(top, zTop) : top;
+    stackPieces();
+  }
   function stackPieces() {
     const t = document.querySelector('#scene .move-title')?.getBoundingClientRect();
-    const portalTop = Math.min(portals.fact.el.getBoundingClientRect().top, portals.added.el.getBoundingClientRect().top);
+    const portalTop = splitTop || Math.min(portals.fact.el.getBoundingClientRect().top, portals.added.el.getBoundingClientRect().top);
     const live = pieces.filter((p) => !p.side && p.el.isConnected);
     if (!t || !live.length) return;
     const hs = live.map((p) => p.el.offsetHeight);
@@ -176,31 +214,38 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     live.forEach((p) => { p.el.style.transition = ctx.reducedMotion ? 'none' : 'top 320ms var(--ease-out), transform 320ms var(--ease-out), opacity 320ms'; });
     if (free >= 0 || live.length === 1) {
       let y = live.length === 1 ? from + Math.max(0, (to - from - hs[0]) / 2) : from;
-      live.forEach((p, i) => { Object.assign(p.el.style, { top: `${Math.round(y + hs[i] / 2)}px`, transform: 'translate(-50%,-50%)', zIndex: '', opacity: '' }); y += hs[i] + 10; });
+      live.forEach((p, i) => { Object.assign(p.el.style, { top: `${Math.round(y + hs[i] / 2)}px`, transform: 'translate(-50%,-50%)', zIndex: '', opacity: '', pointerEvents: 'auto' }); y += hs[i] + 10; });
       return;
     }
-    const peek = 12, y0 = Math.max(from + hs[0] / 2, Math.min(to - hs[0] / 2 - peek * Math.min(2, live.length - 1), from + hs[0] / 2));
+    // the deck floats a little above the middle of the open band
+    const peek = 12, deckH = hs[0] + peek * Math.min(2, live.length - 1);
+    const y0 = from + Math.max(0, (to - from - deckH) * 0.4) + hs[0] / 2;
     live.forEach((p, i) => {
       const k = Math.min(i, 2);
       Object.assign(p.el.style, { top: `${Math.round(y0)}px`, zIndex: String(20 - i), opacity: i > 2 ? '0' : String(1 - k * 0.18),
         transform: `translate(-50%,-50%) translateY(${(hs[0] - hs[i]) / 2 + k * peek}px) scale(${1 - k * 0.05})`, pointerEvents: i ? 'none' : 'auto' });
     });
   }
-  requestAnimationFrame(stackPieces);
+  const relayoutSplit = () => { fitChips(); layoutSplit(true); };
+  requestAnimationFrame(() => { fitChips(); layoutSplit(); });
+  setTimeout(relayoutSplit, 520);   // again once the prompt and dock have settled
+  addEventListener('resize', relayoutSplit);
+  signal.addEventListener('abort', () => removeEventListener('resize', relayoutSplit));
   function drop(p, side) {
+    if (p.side) return;   // a second tap while the piece is still flying
     p.side = side;
     const P = portals[side];
     p.el.style.transition = 'all 520ms var(--ease-out)';
     p.el.style.left = `${P.x}%`;
-    p.el.style.top = '76%';
+    p.el.style.top = `${P.cy()}px`;
     p.el.style.transform = 'translate(-50%,-50%) scale(.4)';
     p.el.style.opacity = '0';
     setTimeout(() => { p.el.style.display = 'none'; }, 540);
     P.add(p.text);
-    setTimeout(stackPieces, 200);
+    setTimeout(() => layoutSplit(), 200);
     audio.fx?.('drop-in', { pan: side === 'fact' ? -0.6 : 0.6 });
     haptic('light');
-    realm()?.pulse?.('ripple', { x: innerWidth * P.x / 100, y: innerHeight * 0.76 });
+    realm()?.pulse?.('ripple', { x: innerWidth * P.x / 100, y: P.cy() });
     refreshSplit();
   }
   const addFact = h('button', { class: 'btn ghost', style: { minHeight: '40px' } }, '+ Add what happened');
@@ -218,7 +263,9 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     if (!left && !a) { splitDone.disabled = false; splitDone.textContent = 'Carry on'; }
     if (!left && !f) say('Hmm — nothing in “what happened” yet. Add the camera-only version?', 3000);
   }
-  if (!(await waitFor(splitDone))) return out;
+  const splitOk = await waitFor(splitDone);
+  removeEventListener('resize', relayoutSplit);
+  if (!splitOk) return out;
   out.facts = pieces.filter((p) => p.side === 'fact').map((p) => p.text);
   out.added = pieces.filter((p) => p.side === 'added').map((p) => p.text);
   userAdded = out.added.length > 0;
@@ -383,13 +430,17 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   const portal = mkPerspectivePortal(angles);
   stageEl.append(portal.el);
   portalSound = audio.hold?.('hum', { intensity: 0.3 }) || null;
-  const keep = h('button', { class: 'btn', style: { borderColor: '#39f0ff', fontSize: 'var(--type-control-size)', padding: '0 10px' } }, 'Could be');
-  const notThis = h('button', { class: 'btn', style: { fontSize: 'var(--type-control-size)', padding: '0 10px' } }, 'Not this one');
+  const pill = { fontSize: 'var(--type-control-size)', padding: '0 10px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
+  const keep = h('button', { class: 'btn', style: { ...pill, borderColor: '#39f0ff' } }, 'Could be');
+  const notThis = h('button', { class: 'btn', style: pill }, 'Not this one');
   const prev = h('button', { class: 'icon-btn', 'aria-label': 'Previous angle', onclick: () => portal.turn(-1) }, '‹');
   const next = h('button', { class: 'icon-btn', 'aria-label': 'Next angle', onclick: () => portal.turn(1) }, '›');
   const portalDone = h('button', { class: 'btn ultra block', disabled: true }, 'I’ve seen enough angles');
   dock.replaceChildren(h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center' } }, prev, h('div', { class: 'row-btns', style: { flex: '1' } }, notThis, keep), next), portalDone);
-  requestAnimationFrame(() => portal.fit());
+  // one line each: the shorter words when the long ones would not fit
+  const fitRate = () => { fitLabel(notThis, 'Not this'); fitLabel(keep, 'Maybe'); };
+  requestAnimationFrame(() => { portal.fit(); fitRate(); });
+  setTimeout(fitRate, 700);
   keep.onclick = () => rate(true);
   notThis.onclick = () => rate(false);
   function rate(yes) {
@@ -462,13 +513,49 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   return out;
 
   // ------------------------------------------------------------ helpers --
-  function mkPortal(label, key, col, x) {
-    const list = h('div', { style: type('caption', { color: 'var(--text-2)', marginTop: '6px', maxHeight: '73px', overflow: 'hidden', lineHeight: '1.35' }) });
-    const el = h('div', { 'aria-label': label, role: 'region', style: { position: 'absolute', left: `${x}%`, top: '76%', transform: 'translate(-50%,-50%)', width: '42vw', maxWidth: '210px',
-      aspectRatio: '1 / .78', borderRadius: '50%', display: 'grid', placeItems: 'center', textAlign: 'center', padding: '14px', transition: 'transform 700ms var(--ease-spring)',
+  function fitLabel(btn, short) { if (btn.scrollWidth > btn.clientWidth) btn.textContent = short; }
+  function mkPortal(label, short, col, x) {
+    // the name plate sits on the rim, so the ellipse only has to hold the list
+    const tag = h('div', { style: type('overline', { color: col, position: 'absolute', left: '50%', top: '0', transform: 'translate(-50%,-50%)', whiteSpace: 'nowrap',
+      padding: '3px 10px', borderRadius: '999px', background: 'rgba(12,8,34,.84)', boxShadow: `inset 0 0 0 1px ${col}99` }) }, label);
+    const ls0 = tag.style.letterSpacing;
+    // two lines inside on a short phone, three when there is room
+    const L = innerHeight >= 740 ? 3 : 2;
+    const list = h('div', { style: type('caption', { color: 'var(--text-1)', width: '84%', minHeight: `calc(${L} * 1.35em)`, lineHeight: '1.35', overflow: 'hidden', overflowWrap: 'anywhere' }) });
+    const el = h('div', { 'aria-label': label, role: 'region', style: { position: 'absolute', left: `${x}%`, top: '76%', transform: 'translate(-50%,-50%)', width: '42vw', height: '26vw',
+      borderRadius: '50%', display: 'grid', placeItems: 'center', textAlign: 'center', transition: 'transform 700ms var(--ease-spring), top 320ms var(--ease-out)',
       background: `radial-gradient(closest-side, ${col}33, ${col}11 60%, transparent 72%)`, boxShadow: `inset 0 0 0 2px ${col}aa, 0 0 40px ${col}55`, pointerEvents: 'none' } },
-    h('div', {}, h('div', { style: type('overline', { color: col }) }, label), list));
-    return { el, x, add: (t) => list.append(h('div', {}, '• ' + t)) };
+    tag, list);
+    const items = [];
+    const line = (t, n) => h('div', { style: { display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: String(n), overflow: 'hidden' } }, t);
+    // never more than L lines inside: one piece gets them all; several share
+    // them (the newest gets what is left); more than fit show the newest and a
+    // count. The full words stay in the DOM for screen readers.
+    const render = () => {
+      const n = items.length, b = n > 1 ? '• ' : '';
+      if (n <= L) list.replaceChildren(...items.map((t, i) => line(b + t, i === n - 1 ? L - (n - 1) : 1)));
+      else list.replaceChildren(...items.slice(n - (L - 1)).map((t) => line(b + t, 1)), h('div', { style: { color: 'var(--text-2)', fontWeight: '700' } }, `+${n - (L - 1)} more`));
+    };
+    let cy = innerHeight * 0.76;
+    return {
+      el, x, cy: () => cy,
+      add: (t) => { items.push(t); render(); },
+      /** Size from the content and sit the ellipse on `bottom` (px); the plate keeps
+       *  `clear` px from the screen's centre line. Returns the plate's top. */
+      fit(bottom, clear = 0) {
+        const W = Math.round(Math.min(innerWidth * 0.44, 210));
+        const room = Math.min(W - 6, 2 * (Math.abs(innerWidth * (x / 100 - 0.5)) - clear));
+        Object.assign(tag.style, { letterSpacing: ls0, paddingLeft: '10px', paddingRight: '10px' });
+        tag.textContent = label;
+        if (tag.offsetWidth > room) tag.textContent = short;
+        if (tag.offsetWidth > room) Object.assign(tag.style, { letterSpacing: '0.06em', paddingLeft: '7px', paddingRight: '7px' });
+        // the list's box must sit inside the ellipse: (w/W)² + (h/H)² ≤ 1
+        const H = Math.round(Math.max(W * 0.58, list.offsetHeight / Math.sqrt(1 - 0.84 * 0.84) + 10));
+        cy = Math.round(bottom - H / 2);
+        Object.assign(el.style, { width: `${W}px`, height: `${H}px`, top: `${cy}px` });
+        return cy - H / 2 - tag.offsetHeight / 2;
+      },
+    };
   }
   function crystalStyle() {
     return { position: 'absolute', left: '50%', top: '40%', transform: 'translate(-50%,-50%)', width: 'min(84vw, 380px)', padding: '20px', borderRadius: '26px', textAlign: 'center',
@@ -568,7 +655,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
         [...ticks.children].forEach((t, i) => { t.style.transform = `rotate(${(i / list.length) * 360}deg) translateY(-${s2 * 0.5 - 8}px)`; });
         const small = s2 < 250;
         Object.assign(lensEl.style, { inset: small ? '10%' : '15%', padding: small ? '7%' : '10%' });
-        Object.assign(textEl.style, { fontSize: small ? '13px' : s2 < 300 ? '15px' : 'calc(16px * var(--type-scale))', lineHeight: small ? '1.3' : '1.38' });
+        Object.assign(textEl.style, { fontSize: `calc(${small ? 13 : s2 < 300 ? 15 : 16}px * var(--type-scale))`, lineHeight: small ? '1.3' : '1.38' });
         kindEl.style.marginBottom = small ? '4px' : '8px';
       },
       async turn(d) {
@@ -1109,8 +1196,8 @@ export async function run(ctx, { frameworks: F, engine: E }) {
       const y = top + Math.max(7, (zr.bottom - top - size) / 2);
       Object.assign(lens.style, { width: `${size}px`, height: `${size}px`, left: `${zr.cx - size / 2}px`, top: `${y}px` });
       const fs = size < 220 ? 13 : 14;   // the 13px floor, even in the smallest lens
-      knownList.style.fontSize = predList.style.fontSize = `${fs}px`;
-      if (focusText) focusText.style.fontSize = `${size < 170 ? 13 : size < 220 ? 15 : 17}px`;
+      knownList.style.fontSize = predList.style.fontSize = `calc(${fs}px * var(--type-scale))`;
+      if (focusText) focusText.style.fontSize = `calc(${size < 170 ? 13 : size < 220 ? 15 : 17}px * var(--type-scale))`;
       const tiny = phase !== 'sort' && size < 200;
       knownHalf.style.visibility = predHalf.style.visibility = tiny ? 'hidden' : 'visible';
     };
@@ -1251,7 +1338,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     Object.assign(knownHalf.style, { justifyContent: 'flex-start', padding: '11% 18% 0' });
     Object.assign(predHalf.style, { justifyContent: 'flex-end', padding: '0 16% 12%' });
     predList.replaceChildren(...unknownLines.map((t) => h('div', { style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', opacity: '.85' } }, t)));
-    focusText = h('div', { style: type('thought', { fontSize: `${lensSize < 170 ? 13 : lensSize < 220 ? 15 : 17}px`, lineHeight: '1.3', color: '#fff', textShadow: '0 2px 12px rgba(10,0,40,.8)' }) }, `“${focus}”`);
+    focusText = h('div', { style: type('thought', { fontSize: `calc(${lensSize < 170 ? 13 : lensSize < 220 ? 15 : 17}px * var(--type-scale))`, lineHeight: '1.3', color: '#fff', textShadow: '0 2px 12px rgba(10,0,40,.8)' }) }, `“${focus}”`);
     centre.replaceChildren(
       h('div', { style: type('badge', { lineHeight: '1.2', color: '#ffd98a', marginBottom: '5px' }) }, 'Your prediction'), focusText);
     centre.style.background = 'radial-gradient(closest-side, rgba(16,8,50,.92), rgba(16,8,50,.6) 70%, transparent)';
@@ -1262,8 +1349,8 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     const num = h('div', { 'aria-hidden': 'true', style: type('stat', { fontSize: 'calc(32px * var(--type-scale))', color: '#ffd98a', minWidth: '2.2em', textAlign: 'right' }) }, '–');
     const sure = h('input', { type: 'range', class: 'range', min: '0', max: '100', step: '1', value: '50', 'aria-label': C.sureQuestion, style: { flex: '1', minWidth: '0' } });
     const band = h('p', { 'aria-live': 'polite', style: type('label', { margin: '8px 0 0', color: 'var(--text-2)', minHeight: '2.7em' }) }, 'Slide to show how sure it feels. You can leave it if you’d rather not.');
-    const sealBtn = h('button', { class: 'btn', style: { fontSize: innerWidth < 360 ? '14px' : '15px' } }, 'Seal for later');
-    const carry = h('button', { class: 'btn ultra', style: { fontSize: innerWidth < 360 ? '14px' : '15px' } }, 'Carry on');
+    const sealBtn = h('button', { class: 'btn', style: { fontSize: `calc(${innerWidth < 360 ? 14 : 15}px * var(--type-scale))` } }, 'Seal for later');
+    const carry = h('button', { class: 'btn ultra', style: { fontSize: `calc(${innerWidth < 360 ? 14 : 15}px * var(--type-scale))` } }, 'Carry on');
     dock.replaceChildren(h('div', { class: 'card', style: { padding: '12px 14px', boxShadow: 'none' } },
       h('div', { class: 'eyebrow', style: { color: '#ffd98a' } }, 'How sure, from 0 to 100?'),
       h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px', marginTop: '6px' } }, sure, num), band),
@@ -1368,7 +1455,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
 
     // stage: the sentence with glowing dial words, and the heaviness meter
     const block = h('div', { style: { position: 'absolute', textAlign: 'center', pointerEvents: 'none' } });
-    const sentence = h('div', { 'aria-live': 'polite', style: type('thought', { fontSize: '22px', lineHeight: '1.42', color: '#fff', textShadow: '0 2px 18px rgba(20,0,60,.7)', textWrap: 'balance' }) });
+    const sentence = h('div', { 'aria-live': 'polite', style: type('thought', { fontSize: 'calc(22px * var(--type-scale))', lineHeight: '1.42', color: '#fff', textShadow: '0 2px 18px rgba(20,0,60,.7)', textWrap: 'balance' }) });
     const meterLbl = h('span', { style: type('overline', { lineHeight: '1', letterSpacing: '.1em', color: 'var(--text-2)' }) }, 'How heavy it sounds');
     const meterBand = h('span', { style: type('overline', { lineHeight: '1', letterSpacing: '.1em', color: '#ff9cf0' }) });
     const fill = h('i', { style: { transition: rm ? 'none' : 'width 420ms var(--ease-out)' } });
@@ -1380,8 +1467,8 @@ export async function run(ctx, { frameworks: F, engine: E }) {
 
     // dock: one knob per loud word, then the choice
     const knobs = mx.dials.map((d, i) => mkKnob(d, i));
-    const keepOrig = h('button', { class: 'btn', style: { fontSize: innerWidth < 360 ? '14px' : '15px' } }, 'Keep my words');
-    const keepMix = h('button', { class: 'btn ultra', disabled: true, style: { fontSize: innerWidth < 360 ? '14px' : '15px' } }, 'Keep this mix');
+    const keepOrig = h('button', { class: 'btn', style: { fontSize: `calc(${innerWidth < 360 ? 14 : 15}px * var(--type-scale))` } }, 'Keep my words');
+    const keepMix = h('button', { class: 'btn ultra', disabled: true, style: { fontSize: `calc(${innerWidth < 360 ? 14 : 15}px * var(--type-scale))` } }, 'Keep this mix');
     dock.replaceChildren(
       h('div', { style: { display: 'flex', justifyContent: 'center', gap: compact() ? '8px' : '14px' } }, ...knobs.map((k) => k.wrap)),
       h('p', { class: 'muted', style: { margin: '2px 0 0', textAlign: 'center' } }, 'Which version feels most accurate?'),
@@ -1390,7 +1477,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     lensLayout = () => {
       const zr = zoneRect();
       const fs = zr.height < 190 ? 18 : zr.height < 260 ? 20 : 23;
-      sentence.style.fontSize = `${fs}px`;
+      sentence.style.fontSize = `calc(${fs}px * var(--type-scale))`;
       block.style.width = `${Math.min(zr.width - 8, 420)}px`;
       block.style.left = `${zr.cx}px`;
       block.style.transform = 'translateX(-50%)';

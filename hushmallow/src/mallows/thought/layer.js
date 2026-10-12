@@ -1,0 +1,583 @@
+// ThoughtLayer — draws many Thought and Belief Mallows and owns their words.
+//
+//   const layer = new ThoughtLayer({ ctx2d, tagRoot, keepOut: () => heroRect, onRead });
+//   const th = layer.add({ text, emotion: 'anxiety', intensity: 0.7, from: {x, y}, home: {x, y} });
+//   layer.frame(dt, t);                 // each frame (or layer.attach(mallowTouch): drawn in its frame)
+//   router: if (!hero.hitTest(x, y) && layer.hitTest(x, y)) layer.pointer(e)
+//
+// Three ways to draw:
+//   { ctx2d }    the caller's canvas (it clears it and sets CSS px → device px; e.g. the Hushfold's #fx-layer)
+//   { canvas }   its own canvas: sized, cleared and ticked here (one shared rAF via rig.addTicker)
+//   attach(mt)   on a MallowTouch's 2D canvas, inside its frame (thoughts sit above the hero mesh)
+//
+// The person's words ride on a DOM tag per thought: a <button> whose words are
+// set with textContent only (never parsed), in the voice face (HM Nunito Sans)
+// at 17 px (16 px on small phones) and never below 15 px — it is never
+// scaled, however far the thought moves. Long words or a far-away thought
+// show an excerpt (cut at a word, marked "…"); a tap reads all of them
+// (onRead(th), or a small built-in reader). A soft rope tethers the tag to its
+// thought; the tag trails with a little spring and tilts at most 4°.
+// Same shape as the Hushfold's placeholder layer: add / list / remove /
+// hitTest / pointer / rects / frame / clear / release / destroy / onChange.
+
+import { ThoughtMallow, createThought, PT } from './thought.js';
+import { BeliefMallow, createBelief } from './belief.js';
+import { drawThought, drawRope } from './render.js';
+import { tintAt, rgba, clamp, tagBudget, TAG_MIN_PX } from './styles.js';
+import { addTicker, removeTicker, prefersReducedMotion } from '../rig.js';
+
+const ROPE_N = 7;
+let styled = false;
+
+function injectStyle() {
+  if (styled || typeof document === 'undefined') return;
+  styled = true;
+  const st = document.createElement('style');
+  st.id = 'thought-mallow-style';
+  st.textContent = `
+.tm-tag{position:fixed;left:0;top:0;z-index:6;margin:0;box-sizing:border-box;max-width:min(240px,calc(100vw - 40px));padding:7px 13px 8px;border-radius:15px;
+  border:1px solid rgba(255,255,255,.16);background:rgba(14,10,36,.74);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#fbf8ff;
+  font:650 17px/1.3 var(--ff-voice,"HM Nunito Sans","Nunito Sans",ui-rounded,system-ui,sans-serif);letter-spacing:.004em;text-align:center;
+  box-shadow:0 8px 22px rgba(4,2,16,.34),inset 0 1px 0 var(--tm-tint,rgba(255,255,255,.22));cursor:pointer;transform-origin:50% 0;will-change:transform;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;pointer-events:auto;
+  opacity:0;transition:opacity .45s ease,border-color .6s ease}
+.tm-tag .tm-words{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;overflow-wrap:anywhere;min-height:1.3em}
+.tm-tag.tm-on{opacity:1}
+.tm-tag.tm-belief{border-color:rgba(255,236,200,.34);font-weight:720}
+.tm-tag.tm-calm{border-color:rgba(255,231,166,.4)}
+.tm-tag:focus-visible{outline:2px solid #fff;outline-offset:3px}
+.tm-tag.tm-hidden{opacity:0!important;pointer-events:none!important}
+.tm-read{position:fixed;z-index:12;left:16px;right:16px;margin:0 auto;max-width:440px;top:calc(env(safe-area-inset-top,0px) + 72px);box-sizing:border-box;
+  padding:18px 20px 14px;border-radius:22px;border:1px solid rgba(255,255,255,.2);background:rgba(16,11,42,.9);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);
+  color:#fbf8ff;box-shadow:0 20px 50px rgba(3,1,14,.5)}
+.tm-read p{margin:0 0 12px;font:600 19px/1.45 var(--ff-voice,"HM Nunito Sans","Nunito Sans",ui-rounded,system-ui,sans-serif);white-space:pre-wrap;overflow-wrap:anywhere;
+  max-height:min(50vh,320px);overflow:auto;-webkit-user-select:text;user-select:text}
+.tm-read button{display:block;width:100%;min-height:44px;border-radius:14px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:#fbf8ff;
+  font:650 16px/1 var(--ff-ui,"HM Manrope",system-ui,sans-serif);cursor:pointer}
+@media (max-width:360px){.tm-tag{font-size:16px;max-width:min(210px,calc(100vw - 28px));padding:6px 11px 7px}}
+@media (prefers-reduced-motion:reduce){.tm-tag{transition:none}}
+`;
+  document.head.appendChild(st);
+}
+
+const asFn = (v, d) => (typeof v === 'function' ? v : v == null ? d : () => v);
+
+export class ThoughtLayer {
+  /**
+   * @param {object} o
+   * @param {CanvasRenderingContext2D} [o.ctx2d]  draw here (the caller clears it and sets the dpr transform)
+   * @param {HTMLCanvasElement} [o.canvas]  or own this canvas (sized, cleared, ticked here)
+   * @param {HTMLElement} [o.tagRoot=document.body]  where the word tags live (position:fixed)
+   * @param {boolean|()=>boolean} [o.reducedMotion]  default: the OS setting, live
+   * @param {boolean|()=>boolean} [o.lowStim]
+   * @param {()=>({left,top,right,bottom}|null)} [o.keepOut]  a rect thoughts float clear of (the hero Mallow), client px
+   * @param {()=>({left,top,right,bottom})} [o.bounds]  where thoughts may float (default: the viewport, clear of the edges)
+   * @param {(th)=>void} [o.onRead]  tap on the words (default: a small reader with all of them)
+   * @param {(kind)=>void} [o.haptic]  @param {object} [o.audio]
+   */
+  constructor(o = {}) {
+    injectStyle();
+    this.o = o;
+    this.ctx = o.ctx2d || null;
+    this.canvas = o.canvas || this.ctx?.canvas || null;
+    this.own = !!(o.canvas && !o.ctx2d);
+    if (this.own) this.ctx = o.canvas.getContext('2d');
+    this.tagRoot = o.tagRoot || (typeof document !== 'undefined' ? document.body : null);
+    this._rm = asFn(o.reducedMotion, () => prefersReducedMotion());
+    this._low = asFn(o.lowStim, () => false);
+    this.keepOut = o.keepOut || null;
+    this.bounds = o.bounds || null;
+    this.thoughts = [];
+    this.tags = new Map();
+    this.ropes = new Map();
+    this.owner = new Map();       // pointer id → thought
+    this.listeners = {};
+    this.onChange = null;
+    this.mt = null;
+    this.hidden = false;
+    this._env = { now: 0, rm: false, low: false, bounds: { left: 0, top: 0, right: 0, bottom: 0 }, away: null, view: { W: 1, H: 1 } };
+    this._awayPt = { x: 0, y: 0 };
+    this._view = { left: 0, top: 0, W: 1, H: 1, dpr: 1 };
+    this._sorted = [];
+    this._frames = 0;
+    this._lastT = 0;
+    this.destroyed = false;
+    this._onResize = () => { this._measureView(); for (const tg of this.tags.values()) tg.measure = true; };
+    if (typeof addEventListener === 'function') addEventListener('resize', this._onResize);
+    if (typeof document !== 'undefined') document.fonts?.ready?.then(() => { for (const tg of this.tags.values()) tg.measure = true; });
+    this._measureView();
+    if (this.own) { this._tick = (dt) => { if (!this.destroyed) this.frame(dt); }; addTicker(this._tick); }
+  }
+
+  // ------------------------------------------------------------ thoughts --
+  /** The thoughts and beliefs (not their siblings), oldest first. */
+  get list() { return this.thoughts; }
+  /** The thought the person's words ride on (the newest one), or null. */
+  get primary() { return this.thoughts[this.thoughts.length - 1] || null; }
+  /** Every Mallow drawn, siblings included. */
+  all(out = []) { out.length = 0; for (const th of this.thoughts) { for (const s of th.siblings) out.push(s); out.push(th); } return out; }
+
+  /**
+   * Add a thought: a ThoughtMallow / BeliefMallow, or the options for one
+   * ({text, emotion, intensity, scale, r, prop → a belief}). place: {x, y} or {from, home}.
+   */
+  add(th, place = {}) {
+    if (!(th instanceof ThoughtMallow)) {
+      const opts = { reducedMotion: this._rm(), lowStim: this._low(), haptic: this.o.haptic, audio: this.o.audio, ...th };
+      th = opts.prop || opts.kind === 'belief' ? createBelief(opts) : createThought(opts);
+      if (place === th || !place || Object.keys(place).length === 0) place = opts;
+    }
+    if (th.layer && th.layer !== this) th.layer.remove(th);
+    th.layer = this;
+    th.haptic ||= this.o.haptic || null;
+    th.audio ||= this.o.audio || null;
+    th.setReducedMotion(this._rm());
+    const home = place.home || (Number.isFinite(place.x) ? { x: place.x, y: place.y } : this._spot(th));
+    const from = place.from || home;
+    th.place(from); th.moveHome(home);
+    for (const s of th.siblings) { s.layer = this; s.haptic ||= th.haptic; s.place(from); }
+    th._computeRender(th.look, this._env);
+    this.thoughts.push(th);
+    if (th.text) this._makeTag(th);
+    th.react('appear');
+    this._changed();
+    return th;
+  }
+
+  /** Spawn n thoughts with the same words and feeling, spread round `near` ({x, y}). */
+  spawn(n, opts = {}, near = null) {
+    const out = [];
+    const c = near || this._spot();
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI / 2 + (i - (n - 1) / 2) * 0.9;
+      const r = n > 1 ? 70 + 10 * n : 0;
+      out.push(this.add({ ...opts }, { from: { x: c.x, y: c.y }, home: { x: c.x + Math.cos(a) * r, y: c.y + Math.sin(a) * r * 0.8 + (n > 1 ? r * 0.4 : 0) } }));
+    }
+    return out;
+  }
+
+  /** Take a thought off this layer (it is not destroyed; add() it elsewhere). */
+  remove(th) {
+    const i = this.thoughts.indexOf(th);
+    if (i < 0) return;
+    this.thoughts.splice(i, 1);
+    const tg = this.tags.get(th);
+    if (tg) { tg.el.remove(); this.tags.delete(th); }
+    this.ropes.delete(th);
+    for (const [id, o] of this.owner) if (o === th || o.parent === th) this.owner.delete(id);
+    if (th.layer === this) th.layer = null;
+    for (const s of th.siblings) s.layer = null;
+    this._changed();
+  }
+  _forget(th) { this.remove(th); }
+
+  clear() { for (const th of [...this.thoughts]) { this.remove(th); th.destroy(); } }
+  /** Let the thoughts fade (a world takes the words over), then take them off. */
+  release(ms = 700) {
+    const until = performance.now() + ms;
+    for (const th of this.thoughts) { th._leaving = until; th._leaveMs = ms; const tg = this.tags.get(th); if (tg) tg.el.style.pointerEvents = 'none'; }
+    this._changed();
+  }
+
+  hideTags(b = true) { this.hidden = !!b; for (const tg of this.tags.values()) tg.el.classList.toggle('tm-hidden', this.hidden); }
+  setReducedMotion(b) { this._rm = () => !!b; for (const th of this.thoughts) th.setReducedMotion(!!b); }
+  setLowStim(b) { this._low = () => !!b; }
+
+  on(ev, fn) { (this.listeners[ev] ||= []).push(fn); return this; }
+  off(ev, fn) { const l = this.listeners[ev]; if (l) { const i = l.indexOf(fn); if (i >= 0) l.splice(i, 1); } return this; }
+  _relay(ev, th, data) { for (const fn of this.listeners[ev] || []) { try { fn({ thought: th, ...data }); } catch (e) { console.error(e); } } if (ev === 'touch') this._changed(); }
+  _changed() { try { this.onChange?.(); } catch { /* ignore */ } }
+
+  /** Draw on a MallowTouch's 2D canvas, in its frame (one loop, above the hero). */
+  attach(mt) {
+    this.detach();
+    this.mt = mt;
+    this._mtLayer = mt.addLayer({
+      draw2d: (ctx, info) => { this._attachedInfo = info; this.frame(info.dt, info.time, ctx); },
+      busy: () => this.thoughts.length > 0,
+    });
+    if (!this.keepOut) this._mtKeep = true;
+    return this;
+  }
+  detach() { if (this.mt && this._mtLayer) this.mt.removeLayer(this._mtLayer); this.mt = null; this._mtLayer = null; this._mtKeep = false; }
+
+  // ------------------------------------------------------------- input --
+  /** The top thought (or sibling) at a client point, or null. */
+  hitTest(x, y) {
+    const all = this._sortedNow();
+    for (let i = all.length - 1; i >= 0; i--) { const th = all[i]; if (!th._leaving && th.hitTest(x, y)) return th; }
+    return null;
+  }
+
+  /** Route a pointer: pointer(e) finds the thought under it; pointer(th, e) gives it to that one. True when taken. */
+  pointer(a, b) {
+    let th = null, e = a;
+    if (b) { th = a; e = b; }
+    if (!e) return false;
+    if (e.type === 'down') {
+      th ||= this.hitTest(e.x, e.y);
+      if (!th) return false;
+      const ok = th.pointer(e);
+      if (ok) { this.owner.set(e.id, th); this._changed(); }
+      return ok;
+    }
+    const o = this.owner.get(e.id) || th;
+    if (!o) return false;
+    const ok = o.pointer(e);
+    if (e.type === 'up' || e.type === 'cancel') this.owner.delete(e.id);
+    this._changed();
+    return ok;
+  }
+
+  /** Is a finger on any thought? */
+  get pressed() { return this.owner.size > 0; }
+
+  /** Rects (client px) subtitles and other UI must keep clear of: each body with its words. */
+  rects(out = []) {
+    out.length = 0;
+    for (const th of this.thoughts) {
+      if (th._leaving) continue;
+      const b = th.bodyRect();
+      let l = b.left, t = b.top, r = b.right, btm = b.bottom;
+      for (const s of th.siblings) { const sb = s.bodyRect(); l = Math.min(l, sb.left); t = Math.min(t, sb.top); r = Math.max(r, sb.right); btm = Math.max(btm, sb.bottom); }
+      const tg = this.tags.get(th);
+      if (tg && tg.w) { l = Math.min(l, tg.x - tg.w / 2); r = Math.max(r, tg.x + tg.w / 2); t = Math.min(t, tg.y); btm = Math.max(btm, tg.y + tg.h); }
+      out.push({ left: l, top: t, right: r, bottom: btm, width: r - l, height: btm - t, id: th.id });
+    }
+    return out;
+  }
+
+  /** The words a thought's tag shows now. */
+  tagText(th) { return this.tags.get(th)?.text ?? th.tokenAt(); }
+  /** The tag element of a thought (the Hushfold reads its size). */
+  tagOf(th) { return this.tags.get(th)?.el || null; }
+
+  /** Show all of a thought's words. */
+  read(th) {
+    this._relay('read', th, {});
+    if (this.o.onRead) { this.o.onRead(th); return; }
+    this.closeRead();
+    const el = document.createElement('div');
+    el.className = 'tm-read';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-modal', 'false');
+    el.setAttribute('aria-label', th.kind === 'belief' ? 'The belief, in your words' : 'Your words');
+    const p = document.createElement('p');
+    p.textContent = th.text;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = 'Close';
+    btn.addEventListener('click', () => this.closeRead());
+    el.append(p, btn);
+    const key = (ev) => { if (ev.key === 'Escape') this.closeRead(); };
+    document.addEventListener('keydown', key);
+    this._readEl = el; this._readKey = key; this._readFrom = this.tags.get(th)?.el || null;
+    this.tagRoot.appendChild(el);
+    btn.focus({ preventScroll: true });
+  }
+  closeRead() {
+    if (!this._readEl) return;
+    this._readEl.remove(); document.removeEventListener('keydown', this._readKey);
+    this._readFrom?.focus?.({ preventScroll: true });
+    this._readEl = null; this._readFrom = null;
+  }
+  get reading() { return !!this._readEl; }
+
+  destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    if (this._tick) removeTicker(this._tick);
+    this.detach();
+    this.closeRead();
+    if (typeof removeEventListener === 'function') removeEventListener('resize', this._onResize);
+    this.clear();
+  }
+
+  // ------------------------------------------------------------- frame --
+  /** Step and draw every thought. Returns true while there are any. */
+  frame(dt, t, ctx = this.ctx) {
+    if (this.destroyed) return false;
+    if (!Number.isFinite(dt)) { const n = performance.now(); dt = this._lastT ? (n - this._lastT) / 1000 : 1 / 60; this._lastT = n; }
+    dt = clamp(dt, 0, 0.05);
+    this._frames++;
+    if (this._frames % 90 === 0) this._measureView();
+    const V = this._view;
+    if (this.own && ctx) {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      ctx.setTransform(V.dpr, 0, 0, V.dpr, 0, 0);
+    }
+    // leaving (release): fade, then off the layer
+    const now = performance.now();
+    for (const th of [...this.thoughts]) if (th._leaving && now >= th._leaving) { this.remove(th); th.destroy(); }
+    if (!this.thoughts.length) return false;
+    const env = this._envNow(now);
+    this._arrange(dt, env);
+    for (const th of this.thoughts) {
+      th.step(dt, env);
+      if (th._leaving) th.render.alpha *= clamp((th._leaving - now) / Math.max(1, th._leaveMs));
+    }
+    const all = this._sortedNow();
+    // ox/oy: the canvas's client offset (thoughts live in client px)
+    let ox = V.left, oy = V.top;
+    if (this.mt && this._attachedInfo) { ox = this._attachedInfo.view.left; oy = this._attachedInfo.view.top; }
+    const o = this._drawOpts || (this._drawOpts = { ox: 0, oy: 0, rm: false, low: false });
+    o.ox = ox; o.oy = oy; o.rm = env.rm; o.low = env.low;
+    this._ropes(dt, env);
+    if (ctx) {
+      for (const th of this.thoughts) {
+        const rope = this.ropes.get(th), tg = this.tags.get(th);
+        if (rope && tg && tg.shown && !this.hidden) drawRope(ctx, rope, rope.colour, th.render.alpha * 0.85, ox, oy);
+      }
+      for (const th of all) drawThought(ctx, th, o);
+    }
+    this._tags(dt, env);
+    return true;
+  }
+
+  _envNow(now) {
+    const env = this._env, V = this._view;
+    env.now = now / 1000; env.rm = this._rm(); env.low = this._low();
+    env.view.W = typeof innerWidth === 'number' ? innerWidth : V.W; env.view.H = typeof innerHeight === 'number' ? innerHeight : V.H;
+    const B = this.bounds?.();
+    const W = env.view.W, H = env.view.H, edge = W < 360 ? 12 : 20;
+    env.bounds.left = B?.left ?? edge; env.bounds.right = B?.right ?? W - edge;
+    env.bounds.top = B?.top ?? Math.min(96, H * 0.12); env.bounds.bottom = B?.bottom ?? H - edge;
+    const k = this._keep();
+    if (k) { this._awayPt.x = (k.left + k.right) / 2; this._awayPt.y = (k.top + k.bottom) / 2; env.away = this._awayPt; } else env.away = null;
+    return env;
+  }
+
+  _keep() {
+    if (this.keepOut) return this.keepOut();
+    if (this._mtKeep && this.mt?.ready) return this.mt.bodyRect();
+    return null;
+  }
+
+  _measureView() {
+    const V = this._view;
+    V.dpr = Math.min(2, (typeof devicePixelRatio === 'number' ? devicePixelRatio : 1) || 1);
+    if (this.canvas?.getBoundingClientRect) {
+      const r = this.canvas.getBoundingClientRect();
+      V.left = r.left; V.top = r.top; V.W = r.width || V.W; V.H = r.height || V.H;
+      if (this.own) {
+        const w = Math.round(V.W * V.dpr), h = Math.round(V.H * V.dpr);
+        if (this.canvas.width !== w) this.canvas.width = w;
+        if (this.canvas.height !== h) this.canvas.height = h;
+      }
+    } else if (typeof innerWidth === 'number') { V.W = innerWidth; V.H = innerHeight; }
+  }
+
+  // far first; a thought's siblings just behind it
+  _sortedNow() {
+    const all = this.all(this._sorted);
+    all.sort((a, b) => (b.z - a.z) || ((a.kind === 'sibling' ? 0 : 1) - (b.kind === 'sibling' ? 0 : 1)));
+    return all;
+  }
+
+  // a free place for a new thought: beside the hero, clear of the others
+  _spot() {
+    const W = typeof innerWidth === 'number' ? innerWidth : 390, H = typeof innerHeight === 'number' ? innerHeight : 844;
+    const k = this._keep();
+    const x = k ? (k.right + 70 < W - 30 ? k.right + 56 : Math.max(60, k.left - 56)) : W * 0.7;
+    const y = k ? Math.max(120, k.top + 20) : H * 0.45;
+    return { x: Math.min(W - 60, Math.max(60, x)), y: y + this.thoughts.length * 26 };
+  }
+
+  // homes: inside the bounds, clear of the hero, with room between thoughts (more round one given space)
+  _arrange(dt, env) {
+    const B = env.bounds, K = this._keep(), list = this.thoughts;
+    const k = Math.min(1, dt * 3);
+    for (const th of list) {
+      if (th.driven || th.pressed || th._glide) continue;
+      const R = th.render, hw = Math.max(24, R.W / 2) + 6, hh = Math.max(24, R.P / 2) + 6, h = th.home;
+      const tg = this.tags.get(th), below = tg && tg.w ? tg.h + 16 : 0;
+      // keep its body (and the words below it) inside the bounds
+      const minX = B.left + hw, maxX = B.right - hw, minY = B.top + hh, maxY = B.bottom - hh - Math.min(below, 0.5 * below + 8);
+      if (h.x < minX) h.x += (minX - h.x) * k; if (h.x > maxX) h.x += (maxX - h.x) * k;
+      if (h.y < minY) h.y += (minY - h.y) * k; if (h.y > maxY && maxY > minY) h.y += (maxY - h.y) * k;
+      // never on the hero Mallow (it takes touches first there)
+      if (K) {
+        const l = K.left - hw - 8, r = K.right + hw + 8, t = K.top - hh - 8, b = K.bottom + hh + 4;
+        if (h.x > l && h.x < r && h.y > t && h.y < b) {
+          const toL = h.x - l, toR = r - h.x;
+          const nx = toL < toR ? l : r;
+          if (nx > minX && nx < maxX) h.x += (nx - h.x) * k;
+          else h.y += ((toL < toR ? t : t) - h.y) * k;
+        }
+      }
+    }
+    // room between thoughts: footprints (body + words) never overlap; space() widens one's room
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        const A = list[i], C = list[j];
+        const fa = this._foot(A), fc = this._foot(C);
+        const ox = Math.min(fa.r, fc.r) - Math.max(fa.l, fc.l), oy = Math.min(fa.b, fc.b) - Math.max(fa.t, fc.t);
+        if (ox <= 0 || oy <= 0) continue;
+        const ma = A.driven || A.pressed ? 0 : 1, mc = C.driven || C.pressed ? 0 : 1;
+        if (!ma && !mc) continue;
+        const sa = ma / (ma + mc), sc = mc / (ma + mc);
+        const kk = Math.min(1, dt * 4);
+        if (ox < oy) { const d = (fa.l + fa.r < fc.l + fc.r ? -1 : 1) * ox * kk; A.home.x += d * sa; C.home.x -= d * sc; }
+        else { const d = (fa.t + fa.b < fc.t + fc.b ? -1 : 1) * oy * kk; A.home.y += d * sa; C.home.y -= d * sc; }
+      }
+    }
+  }
+
+  _foot(th) {
+    const f = th._footRect || (th._footRect = { l: 0, r: 0, t: 0, b: 0 });
+    const R = th.render, sp = 1 + 0.9 * Math.max(th.levels.space.cur, th.earned.space);
+    const hw = (R.W / 2) * sp + (th.siblings.length ? R.W * 0.45 : 0), hh = (R.P / 2) * sp + (th.siblings.length ? R.P * 0.35 : 0);
+    const tg = this.tags.get(th);
+    const x = th.home.x, y = th.home.y;
+    f.l = x - hw - 6; f.r = x + hw + 6; f.t = y - hh - 4; f.b = y + hh + 4;
+    if (tg && tg.w) { f.l = Math.min(f.l, x - tg.w / 2 - 4); f.r = Math.max(f.r, x + tg.w / 2 + 4); f.b += tg.h + 18; }
+    return f;
+  }
+
+  // ------------------------------------------------------------- words --
+  _makeTag(th) {
+    if (!this.tagRoot || typeof document === 'undefined') return;
+    const el = document.createElement('button');
+    el.type = 'button';
+    el.className = `tm-tag tm-${th.kind}`;
+    const words = document.createElement('span');
+    words.className = 'tm-words';
+    el.appendChild(words);
+    const label = th.kind === 'belief' ? 'Belief' : 'Thought';
+    el.setAttribute('aria-label', `${label}: ${th.text}. Press to read it all; the arrow keys move it.`);
+    el.addEventListener('click', () => this.read(th));
+    el.addEventListener('keydown', (e) => {
+      const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+      if (!d) return;
+      e.preventDefault();
+      th.moveHome({ x: th.home.x + d[0] * 18, y: th.home.y + d[1] * 18 });
+      th._explore?.(0.02);
+      this._changed();
+    });
+    // the words take their own taps; nothing underneath gets them
+    el.addEventListener('pointerdown', (e) => e.stopPropagation());
+    if (this.hidden) el.classList.add('tm-hidden');
+    this.tagRoot.appendChild(el);
+    const tg = { el, words, text: '', bucket: -1, w: 0, h: 0, x: 0, y: 0, vx: 0, vy: 0, rot: 0, key: '', measure: true, shown: false, above: false, calm: false };
+    this.tags.set(th, tg);
+    th.tag = el;
+    this._setTagText(th, tg);
+    const rope = { x: new Float32Array(ROPE_N), y: new Float32Array(ROPE_N), px: new Float32Array(ROPE_N), py: new Float32Array(ROPE_N), init: false, colour: '#ffffff' };
+    this.ropes.set(th, rope);
+  }
+
+  _setTagText(th, tg) {
+    const b = tagBudget(th.z);
+    if (b === tg.bucket) return;
+    tg.bucket = b;
+    const text = th.tokenAt(th.z);
+    if (text !== tg.text) { tg.text = text; tg.words.textContent = text; tg.measure = true; }
+  }
+
+  // tags hang under their thoughts (above, when there is no room), on screen, clear of each other
+  _tags(dt, env) {
+    const rm = env.rm, W = env.view.W, H = env.view.H, edge = W < 360 ? 12 : 16;
+    const K = this._keep();
+    for (const th of this.thoughts) {
+      const tg = this.tags.get(th);
+      if (!tg) continue;
+      this._setTagText(th, tg);
+      if (tg.measure) { tg.w = tg.el.offsetWidth || tg.w; tg.h = tg.el.offsetHeight || tg.h; tg.measure = false; }
+      const R = th.render, Q = R.pts;
+      const bx = Q[2 * PT.bottom], by = Q[2 * PT.bottom + 1];
+      const gap = 16 + 8 * (1 - th.z);
+      // below by default; above when the words would leave the screen
+      let tx = bx, ty = by + gap;
+      tg.above = ty + tg.h > H - edge - 4;
+      if (tg.above) { ty = Q[2 * PT.top + 1] - gap - tg.h; tx = Q[2 * PT.top]; }
+      tx = clamp(tx, edge + tg.w / 2, Math.max(edge + tg.w / 2, W - edge - tg.w / 2));
+      ty = clamp(ty, edge, Math.max(edge, H - edge - tg.h));
+      // never over the hero Mallow
+      if (K && tx + tg.w / 2 > K.left && tx - tg.w / 2 < K.right && ty + tg.h > K.top && ty < K.bottom) {
+        const toL = tx + tg.w / 2 - K.left, toR = K.right - (tx - tg.w / 2);
+        const nx = toL < toR ? K.left - tg.w / 2 - 6 : K.right + tg.w / 2 + 6;
+        if (nx - tg.w / 2 >= edge && nx + tg.w / 2 <= W - edge) tx = nx;
+      }
+      tg.tx = tx; tg.ty = ty;
+    }
+    // tags never overlap each other (a few relaxation passes)
+    const list = this.thoughts;
+    for (let pass = 0; pass < 3; pass++) {
+      for (let i = 0; i < list.length; i++) {
+        const A = this.tags.get(list[i]);
+        if (!A) continue;
+        for (let j = i + 1; j < list.length; j++) {
+          const C = this.tags.get(list[j]);
+          if (!C) continue;
+          const ox = Math.min(A.tx + A.w / 2, C.tx + C.w / 2) - Math.max(A.tx - A.w / 2, C.tx - C.w / 2) + 6;
+          const oy = Math.min(A.ty + A.h, C.ty + C.h) - Math.max(A.ty, C.ty) + 6;
+          if (ox <= 0 || oy <= 0) continue;
+          if (oy < ox) { const d = oy / 2 * (A.ty < C.ty ? -1 : 1); A.ty += d; C.ty -= d; }
+          else { const d = ox / 2 * (A.tx < C.tx ? -1 : 1); A.tx += d; C.tx -= d; }
+        }
+      }
+    }
+    for (const th of list) {
+      const tg = this.tags.get(th);
+      if (!tg) continue;
+      tg.tx = clamp(tg.tx, edge + tg.w / 2, Math.max(edge + tg.w / 2, W - edge - tg.w / 2));
+      tg.ty = clamp(tg.ty, edge, Math.max(edge, H - edge - tg.h));
+      if (rm || !tg.shown) { tg.x = tg.tx; tg.y = tg.ty; tg.vx = tg.vy = 0; }
+      else {
+        // a little spring lag: the words trail their thought
+        const k = 140, c = 2 * Math.sqrt(k) * 0.82;
+        tg.vx += (k * (tg.tx - tg.x) - c * tg.vx) * dt; tg.vy += (k * (tg.ty - tg.y) - c * tg.vy) * dt;
+        tg.x += tg.vx * dt; tg.y += tg.vy * dt;
+      }
+      tg.rot = rm ? 0 : clamp(tg.vx * 0.012, -4, 4);
+      const key = `${Math.round(tg.x * 2)}|${Math.round(tg.y * 2)}|${Math.round(tg.rot * 10)}`;
+      if (key !== tg.key) {
+        tg.key = key;
+        tg.el.style.transform = `translate3d(${(tg.x - tg.w / 2).toFixed(1)}px,${tg.y.toFixed(1)}px,0) rotate(${tg.rot.toFixed(1)}deg)`;
+      }
+      const show = th.ov.appear > 0.35 && !th._leaving;
+      if (show !== tg.shown) { tg.shown = show; tg.el.classList.toggle('tm-on', show); }
+      const calm = th.look.relief > 0.55;
+      if (calm !== tg.calm) { tg.calm = calm; tg.el.classList.toggle('tm-calm', calm); }
+      // the tag's top edge carries the thought's light
+      const tintKey = `${th.style.id}|${Math.round(th.look.tintK * 4)}`;
+      if (tintKey !== tg.tintKey) { tg.tintKey = tintKey; const t = tintAt(th.style.tint, 0, th.look.tintK, {}); tg.el.style.setProperty('--tm-tint', rgba(t.light, 0.55)); this.ropes.get(th).colour = rgba(t.light, 0.8); }
+    }
+  }
+
+  // the soft rope from the body to its words (verlet, pinned at both ends, a little slack)
+  _ropes(dt, env) {
+    for (const th of this.thoughts) {
+      const rope = this.ropes.get(th), tg = this.tags.get(th);
+      if (!rope || !tg) continue;
+      const Q = th.render.pts;
+      const ax = tg.above ? Q[2 * PT.top] : Q[2 * PT.bottom], ay = tg.above ? Q[2 * PT.top + 1] + 2 : Q[2 * PT.bottom + 1] - 2;
+      const bx = tg.x, by = tg.above ? tg.y + tg.h : tg.y;
+      const n = ROPE_N;
+      if (!rope.init || env.rm) {
+        for (let i = 0; i < n; i++) { const t = i / (n - 1); rope.x[i] = rope.px[i] = ax + (bx - ax) * t; rope.y[i] = rope.py[i] = ay + (by - ay) * t + Math.sin(Math.PI * t) * 4; }
+        rope.init = true;
+        continue;
+      }
+      const L = Math.hypot(bx - ax, by - ay), seg = (L / (n - 1)) * 1.06;
+      const g = 520 * dt * dt;
+      for (let i = 1; i < n - 1; i++) {
+        const vx = (rope.x[i] - rope.px[i]) * 0.9, vy = (rope.y[i] - rope.py[i]) * 0.9;
+        rope.px[i] = rope.x[i]; rope.py[i] = rope.y[i];
+        rope.x[i] += vx; rope.y[i] += vy + g;
+      }
+      for (let it = 0; it < 5; it++) {
+        rope.x[0] = ax; rope.y[0] = ay; rope.x[n - 1] = bx; rope.y[n - 1] = by;
+        for (let i = 0; i < n - 1; i++) {
+          const dx = rope.x[i + 1] - rope.x[i], dy = rope.y[i + 1] - rope.y[i], d = Math.hypot(dx, dy) || 1e-4, f = ((d - seg) / d) * 0.5;
+          if (i > 0) { rope.x[i] += dx * f; rope.y[i] += dy * f; }
+          if (i + 1 < n - 1) { rope.x[i + 1] -= dx * f; rope.y[i + 1] -= dy * f; }
+        }
+      }
+      rope.x[0] = ax; rope.y[0] = ay; rope.x[n - 1] = bx; rope.y[n - 1] = by;
+    }
+  }
+}
+
+export { TAG_MIN_PX };

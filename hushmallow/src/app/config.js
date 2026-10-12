@@ -17,5 +17,15 @@ export function testPurchasesAllowed(loc = globalThis.location) {
   return TEST_PURCHASE_HOSTS.includes(loc.hostname);
 }
 
+// Another Angle (hushmallow Beyond) — our own server (server/another-angle),
+// the only place the app sends anything. Empty = Zuzu's authored angles only,
+// worked out on the phone (nothing is sent, the consent screen never shows).
+// To switch it on, put the Worker's https address here (no trailing slash) and
+// its host in ANGLE_ALLOWED_HOSTS, and change the plans copy that says the
+// words stay on the phone (tests/beyond.test.mjs holds the two together).
+export const ANGLE_ENDPOINT = '';
+/** Hosts ANGLE_ENDPOINT may point at (https only), e.g. 'hushmallow-another-angle.<subdomain>.workers.dev'. */
+export const ANGLE_ALLOWED_HOSTS = [];
+
 /** Shown at the bottom of Settings so a tester can tell which version has loaded. */
 export const BUILD = '2026-10-12 · V3 batch 2 (240 rituals)';

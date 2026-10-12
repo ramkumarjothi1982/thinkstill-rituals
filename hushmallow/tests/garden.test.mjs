@@ -182,6 +182,14 @@ test('garden: a store that throws or refuses never breaks the garden', () => {
   assert.equal(saveSkill(refusing, { id: 'slowing-down' }).stored, false);
   assert.equal(forgetSkill(broken, 'slowing-down'), false);
   assert.doesNotThrow(() => clearGarden(broken));
+  // a kept tool on a device that then refuses writes: forgetting and practising say so honestly
+  const kept = memStore();
+  saveSkill(kept, { id: 'slowing-down', mallow: 'glitzi' }, 1000);
+  const frozen = { get: (k, d) => kept.get(k, d), set: () => false, remove() {} };
+  assert.equal(forgetSkill(frozen, 'slowing-down'), false, 'a refused forget is not reported as done');
+  assert.equal(hasSkill(frozen, 'slowing-down'), true, 'and the tool is still in the garden');
+  assert.equal(practised(frozen, 'slowing-down', 2000).stored, false);
+  assert.equal(practised(kept, 'slowing-down', 3000).stored, true);
   assert.deepEqual(readGarden(broken), { v: 1, skills: {} });
 });
 
@@ -275,4 +283,21 @@ test('one loop and no per-frame rasterising: charms, garden and install share th
   assert.doesNotMatch(body, /create(Radial|Linear)Gradient|radial\(|linear\(|star4\(/);
   // the install rasterises the charm once, at its largest size
   assert.match(install, /drawCharm\(g, \{[^}]*res: S \* 1\.12/);
+});
+
+test('the garden never veils the Mallow, and the comet tail allocates nothing per frame', () => {
+  const scene = readFileSync(`${root}src/app/scenes/garden.js`, 'utf8');
+  const install = readFileSync(`${root}src/hushfold/garden-install.js`, 'utf8');
+  // the hills are painted on a canvas that sits between the realm and the Mallow layer, not over it
+  assert.match(scene, /ml\.parentNode\.insertBefore\(bgCanvas, ml\)/);
+  assert.match(scene, /\.hg-canvas\.hg-back \{ z-index: 0;/);
+  assert.doesNotMatch(scene, /h\('div', \{ class: 'hg', 'data-garden': 'root' \}, bgCanvas/, 'the hills are not inside the scene (above the Mallow)');
+  assert.doesNotMatch(scene, /destination-out/, 'no partial cut-outs over the Mallow');
+  assert.match(scene, /bgCanvas\.remove\(\)/, 'and they leave with the scene');
+  // the Mallow sits on a level seat of the crest
+  assert.match(scene, /lerp\(curve\(u\), seatY, k\)/);
+  // the trail's gradients are made once (a local frame), never in drawTrail
+  const trail = install.slice(install.indexOf('function drawTrail('), install.indexOf('function frameFull('));
+  assert.ok(trail.length > 200);
+  assert.doesNotMatch(trail, /create(Radial|Linear)Gradient/);
 });

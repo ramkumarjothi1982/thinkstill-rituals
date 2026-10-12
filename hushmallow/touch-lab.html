@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#0a0818">
 <title>MallowTouch lab</title>
 <link rel="icon" href="data:,">
+<link rel="stylesheet" href="./src/ui/type.css">
 <style>
   :root { --ink: #0a0818; --panel: rgba(16, 12, 40, 0.72); --line: rgba(255, 255, 255, 0.14); --text: #f4f0ff; --text2: rgba(244, 240, 255, 0.74); --accent: #ffd27a; }
   html, body { margin: 0; height: 100%; background: var(--ink); color: var(--text); font: 500 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -44,6 +45,28 @@
   @media (max-width: 600px) { #controls { top: calc(max(12px, env(safe-area-inset-top)) + 64px); bottom: auto; } #log { top: auto; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 136px); } }
   @media (max-width: 440px) { #roster { gap: 5px; } #roster button { width: 38px; height: 38px; } }
   @media (max-width: 360px) { #readout { min-width: 0; font-size: 13px; } #controls button { padding: 0 9px; } #roster { gap: 4px; padding: 5px; } #roster button { width: 34px; height: 34px; padding: 2px; } }
+  /* ---- thoughts tab: type a sentence, pick a feeling, release Thought Mallows beside the hero ---- */
+  #tags { position: fixed; inset: 0; z-index: 6; pointer-events: none; }
+  #tpanel { left: 0; right: 0; bottom: 0; display: none; flex-direction: column; gap: 7px; box-sizing: border-box;
+    padding: 18px max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    background: linear-gradient(180deg, rgba(10, 8, 24, 0), rgba(10, 8, 24, 0.86) 16px); }
+  body.bg-light #tpanel { background: linear-gradient(180deg, rgba(240, 234, 255, 0), rgba(240, 234, 255, 0.9) 16px); }
+  body.tmode #tpanel { display: flex; }
+  body.tmode #controls, body.tmode #readout { display: none; }
+  .trow { display: flex; gap: 6px; align-items: center; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; padding: 1px; flex: 0 0 auto; }
+  .trow::-webkit-scrollbar { display: none; }
+  #ttext { flex: 1 1 auto; min-width: 0; height: 44px; box-sizing: border-box; padding: 0 14px; border-radius: 14px; border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.07); color: var(--text); font: 600 16px/1.2 var(--ff-voice, system-ui), system-ui, sans-serif; }
+  #ttext::placeholder { color: var(--text2); }
+  .tbtn, .chip { flex: 0 0 auto; min-height: 40px; padding: 0 13px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text);
+    font: 650 14px/1 var(--ff-ui, system-ui), system-ui, sans-serif; cursor: pointer; white-space: nowrap; }
+  .tbtn.primary { background: linear-gradient(180deg, #ffe8b8, #ffcf7a); color: #2a1a08; border-color: transparent; min-height: 44px; padding: 0 18px; }
+  .chip[aria-checked="true"], .tbtn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: rgba(255, 210, 122, 0.12); }
+  body.bg-light .chip[aria-checked="true"], body.bg-light .tbtn[aria-pressed="true"] { color: #6a4300; border-color: #c48a1a; }
+  .tlabel { flex: 0 0 auto; font: 650 13px/1 var(--ff-ui, system-ui), system-ui, sans-serif; color: var(--text2); padding: 0 2px 0 4px; }
+  #tcount { min-width: 22px; text-align: center; font: 700 16px/1 var(--ff-ui, system-ui), system-ui, sans-serif; }
+  .tsep { flex: 0 0 1px; height: 26px; background: var(--line); margin: 0 3px; }
+  @media (max-height: 640px) { body.tmode #roster { display: none; } #tpanel { gap: 5px; padding-top: 12px; } .tbtn, .chip { min-height: 38px; } }
 </style>
 </head>
 <body>
@@ -66,10 +89,35 @@
     <button id="snd" aria-pressed="false">sound</button>
     <button id="bgb" aria-pressed="false">light</button>
   </div>
+  <div class="row"><button id="totab" aria-pressed="false">thoughts</button></div>
 </div>
+<div id="tags"></div>
+<section id="tpanel" class="ui" aria-label="Thoughts">
+  <div class="trow">
+    <input id="ttext" type="text" maxlength="280" autocomplete="off" enterkeyhint="go" aria-label="A thought, in your words" placeholder="Type a thought…" value="My boss embarrassed me today.">
+    <button id="tgo" class="tbtn primary" type="button">Release</button>
+  </div>
+  <div class="trow" id="tfeel" role="radiogroup" aria-label="Feeling"></div>
+  <div class="trow">
+    <span class="tlabel" id="tcountl">How many</span>
+    <button class="tbtn" id="tminus" type="button" aria-label="Fewer">−</button><output id="tcount" aria-labelledby="tcountl">1</output><button class="tbtn" id="tplus" type="button" aria-label="More">+</button>
+    <span class="tsep"></span><span class="tlabel">Belief</span>
+    <button class="tbtn" data-prop="stone" type="button">Stone</button><button class="tbtn" data-prop="shell" type="button">Shell</button>
+    <button class="tbtn" data-prop="thread" type="button">Thread</button><button class="tbtn" data-prop="charm" type="button">Charm</button>
+  </div>
+  <div class="trow" id="tverbs">
+    <button class="tbtn" data-verb="soften" type="button">Soften</button><button class="tbtn" data-verb="slow" type="button">Slow</button>
+    <button class="tbtn" data-verb="makeSpace" type="button">Make space</button><button class="tbtn" data-verb="settle" type="button">Settle</button>
+    <button class="tbtn" data-verb="transform" type="button">Transform</button><button class="tbtn" data-verb="farther" type="button">Farther</button>
+    <button class="tbtn" data-verb="closer" type="button">Nearer</button><button class="tbtn" data-verb="explore" type="button">Explore</button>
+    <span class="tsep"></span><button class="tbtn" id="tclear" type="button">Clear</button>
+    <button class="tbtn" id="trm" type="button" aria-pressed="false">Reduced motion</button><button class="tbtn" id="tback" type="button">Squeeze tab</button>
+  </div>
+</section>
 <script type="module">
 import { MALLOWS, MALLOW_IDS } from './src/mallows/registry.js';
 import { MallowTouch } from './src/mallows/touch/mallow-touch.js';
+import { ThoughtLayer } from './src/mallows/thought/index.js';
 
 const qs = new URLSearchParams(location.search);
 const stage = document.getElementById('stage');
@@ -83,6 +131,10 @@ const state = {
   rmSet: qs.has('rm'),
   audio: null,
   emotion: qs.get('emotion') || 'neutral',
+  // thoughts tab: ?tab=thoughts&feel=anger&n=3&text=…&belief=stone
+  tab: qs.get('tab') === 'thoughts' ? 'thoughts' : 'touch',
+  feel: qs.get('feel') || 'anger',
+  count: Math.max(1, Math.min(5, Number(qs.get('n')) || 1)),
 };
 if (qs.get('bg') === 'light') document.body.classList.add('bg-light');
 if (qs.get('dots') === '0') document.body.classList.add('nodots');
@@ -96,11 +148,13 @@ const haptic = (kind) => { hapticLog.push([performance.now() | 0, kind]); if (ha
 async function create() {
   mt?.destroy();
   // without ?rm the Mallow follows the OS reduced-motion setting live
-  mt = new MallowTouch(stage, { id: state.id, quality: state.quality, reducedMotion: state.rmSet ? state.rm : undefined, audio: state.audio, haptic });
+  // the thoughts tab routes every pointer itself (hero first, then the Thought Mallows), as the Hushfold's router does
+  mt = new MallowTouch(stage, { id: state.id, quality: state.quality, reducedMotion: state.rmSet ? state.rm : undefined, audio: state.audio, haptic, bindPointer: state.tab !== 'thoughts' });
   window.__touch.mt = mt;
   mt.on('touch', (e) => { if (!['press', 'stretchEnd'].includes(e.kind)) say(e.kind + (e.kind === 'massage' ? ` ${e.turns.toFixed(1)}` : '')); window.__touch.events.push({ t: performance.now() | 0, ...e }); });
   mt.on('tier', (e) => say(`tier → ${e.tier} (${e.reason})`));
   await mt.loaded;
+  thoughts?.attach(mt);
   layout();
   if (state.emotion !== 'neutral') mt.setEmotion(state.emotion, 0.7);
   markRoster();
@@ -120,6 +174,13 @@ function markRoster() { for (const b of roster.children) b.setAttribute('aria-pr
 function layout() {
   if (!mt) return;
   const w = innerWidth, h = innerHeight;
+  if (state.tab === 'thoughts') {
+    // the hero on the left of the stage, room for the thoughts beside it, all above the panel
+    const top = h < 640 ? 16 : 70, bottom = h - (panel.offsetHeight || 220);
+    const size = Math.max(96, Math.min(0.3 * w / 1.05, 0.36 * (bottom - top), 220));
+    mt.place({ x: Math.max(size * 0.62 + 16, w * (w < 700 ? 0.3 : 0.36)), y: top + (bottom - top) * 0.5, size }, { instant: true });
+    return;
+  }
   // body centre a little below the middle, clear of the roster and readout
   // ?size=240 sizes the body (its height, CSS px); ?scale=0.8 scales the default
   const scale = Number(qs.get('scale')) || 1, size = Number(qs.get('size')) || undefined;
@@ -183,9 +244,154 @@ function tick() {
 }
 requestAnimationFrame(tick);
 
+// ------------------------------------------------------------ thoughts tab --
+// Type a sentence, pick a feeling, release 1–5 Thought Mallows (or a Belief
+// Mallow with a prop) beside the hero, then squeeze, carry, stretch, stroke
+// or toss them. One router, as in the Hushfold: the hero Mallow first, then
+// the Thought Mallows. The verbs act on every thought on stage.
+const panel = document.getElementById('tpanel');
+const tagsEl = document.getElementById('tags');
+const FEELINGS = [['anger', 'Angry'], ['frustration', 'Frustrated'], ['anxiety', 'Anxious'], ['overwhelm', 'Overthinking'], ['sadness', 'Sad'],
+  ['loneliness', 'Lonely'], ['embarrassment', 'Embarrassed'], ['restlessness', 'Restless'], ['neutral', 'Something else']];
+let thoughts = null;
+const tEvents = [];
+function ensureThoughts() {
+  if (thoughts) return thoughts;
+  thoughts = new ThoughtLayer({ tagRoot: tagsEl, haptic, reducedMotion: () => mt?.opts?.reducedMotion ?? state.rm,
+    bounds: () => ({ left: 16, right: innerWidth - 16, top: innerHeight < 640 ? 14 : 64, bottom: innerHeight - (panel.offsetHeight || 220) - 6 }) });
+  thoughts.on('touch', (e) => {
+    tEvents.push({ t: performance.now() | 0, id: e.thought.id, kind: e.kind, depth: e.depth });
+    if (tEvents.length > 200) tEvents.shift();
+    if (!['press', 'stretchEnd'].includes(e.kind)) say(`thought: ${e.kind}`);
+    // the hero notices: it looks at the thought being touched
+    const r = mt?.bodyRect?.();
+    if (r && mt) mt.lookAt(Math.max(-1, Math.min(1, (e.thought.x - r.cx) / (r.width * 1.2))), Math.max(-1, Math.min(1, (e.thought.y - r.cy) / (r.height * 1.2))));
+  });
+  if (mt?.ready) thoughts.attach(mt);
+  return thoughts;
+}
+function heroSide() {
+  const r = mt?.bodyRect?.();
+  const w = innerWidth;
+  if (!r) return { x: w * 0.7, y: innerHeight * 0.4 };
+  const right = r.right + 16, room = w - 16 - right;
+  return { x: right + Math.max(44, room / 2), y: r.top + r.height * 0.45 };
+}
+function spawn({ text = document.getElementById('ttext').value, emotion = state.feel, n = state.count, intensity = 0.75 } = {}) {
+  const L = ensureThoughts();
+  text = String(text || '').trim();
+  if (!text) { document.getElementById('ttext').focus(); say('type a thought first'); return []; }
+  const c = heroSide();
+  const W = innerWidth, small = W < 360;
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    // spread round the side of the hero: a column on phones, a small arc on wider screens
+    const a = (i - (n - 1) / 2);
+    const x = c.x + (W < 700 ? (i % 2 ? 18 : -18) * (n > 1 ? 1 : 0) : a * 110);
+    const y = c.y + (W < 700 ? a * (small ? 70 : 92) : Math.abs(a) * 24);
+    const r = mt?.bodyRect?.();
+    out.push(L.add({ text, emotion, intensity, r: small ? 32 : 38 }, { from: { x: r ? r.cx : W / 2, y: r ? r.top : c.y }, home: { x, y } }));
+  }
+  const r = mt?.bodyRect?.();
+  if (r && mt) mt.lookAt(1, -0.1);
+  return out;
+}
+function belief(prop = 'stone', text = document.getElementById('ttext').value) {
+  const L = ensureThoughts();
+  text = String(text || '').trim();
+  if (!text) { document.getElementById('ttext').focus(); say('type a belief first'); return null; }
+  const c = heroSide();
+  return L.add({ text, prop, r: innerWidth < 360 ? 30 : 36 }, { from: { x: c.x, y: c.y - 30 }, home: { x: c.x, y: c.y + 10 } });
+}
+function verb(name) {
+  const L = ensureThoughts();
+  for (const th of L.list) {
+    if (name === 'explore') { th.explore?.(); continue; }
+    th[name]?.();
+  }
+  say(name);
+}
+function markFeel() { for (const b of document.querySelectorAll('#tfeel .chip')) b.setAttribute('aria-checked', String(b.dataset.feel === state.feel)); }
+for (const [id, label] of FEELINGS) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'chip'; b.dataset.feel = id; b.setAttribute('role', 'radio'); b.textContent = label;
+  b.onclick = () => { state.feel = id; markFeel(); };
+  document.getElementById('tfeel').append(b);
+}
+markFeel();
+const countEl = document.getElementById('tcount');
+const setCount = (n) => { state.count = Math.max(1, Math.min(5, n)); countEl.textContent = String(state.count); };
+setCount(state.count);
+document.getElementById('tminus').onclick = () => setCount(state.count - 1);
+document.getElementById('tplus').onclick = () => setCount(state.count + 1);
+document.getElementById('tgo').onclick = () => spawn();
+document.getElementById('ttext').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); spawn(); } });
+for (const b of document.querySelectorAll('[data-prop]')) b.onclick = () => belief(b.dataset.prop);
+for (const b of document.querySelectorAll('[data-verb]')) b.onclick = () => verb(b.dataset.verb);
+document.getElementById('tclear').onclick = () => { thoughts?.clear(); };
+const trm = document.getElementById('trm');
+trm.setAttribute('aria-pressed', String(state.rm));
+trm.onclick = () => { state.rm = !state.rm; state.rmSet = true; trm.setAttribute('aria-pressed', String(state.rm)); rmB.setAttribute('aria-pressed', String(state.rm)); mt?.setReducedMotion(state.rm); thoughts?.setReducedMotion(state.rm); };
+async function setTab(tab) {
+  state.tab = tab;
+  document.body.classList.toggle('tmode', tab === 'thoughts');
+  document.getElementById('totab').setAttribute('aria-pressed', String(tab === 'thoughts'));
+  if (tab === 'thoughts') ensureThoughts();
+  thoughts?.hideTags(tab !== 'thoughts');
+  await create();
+}
+document.getElementById('totab').onclick = () => setTab('thoughts');
+document.getElementById('tback').onclick = () => setTab('touch');
+addEventListener('resize', () => requestAnimationFrame(layout));
+
+// the router (thoughts tab): hero Mallow first, then the Thought Mallows
+const owners = new Map();
+const evt = (e, type) => ({ type, id: e.pointerId, x: e.clientX, y: e.clientY, t: e.timeStamp > 0 && e.timeStamp <= performance.now() + 50 ? e.timeStamp : performance.now(), mouse: e.pointerType === 'mouse', shift: e.shiftKey });
+stage.style.touchAction = 'none';
+stage.addEventListener('pointerdown', (e) => {
+  if (state.tab !== 'thoughts' || !mt?.ready || e.button > 0) return;
+  const ev = evt(e, 'down');
+  let who = null;
+  if (mt.hitTest(ev.x, ev.y) && mt.pointer(ev)) who = 'hero';
+  else if (thoughts?.pointer(ev)) who = 'thought';
+  if (!who) return;
+  owners.set(e.pointerId, who);
+  try { stage.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+  e.preventDefault();
+});
+stage.addEventListener('pointermove', (e) => {
+  if (state.tab !== 'thoughts' || !mt?.ready) return;
+  const who = owners.get(e.pointerId);
+  const list = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+  const evs = list.length > 1 ? list : [e];
+  for (const c of evs) {
+    const ev = evt(c, 'move');
+    if (who === 'hero') mt.pointer(ev); else if (who === 'thought') thoughts.pointer(ev); else mt.pointer(ev);
+  }
+  if (who) e.preventDefault();
+});
+const endP = (e) => {
+  const who = owners.get(e.pointerId);
+  if (!who) return;
+  owners.delete(e.pointerId);
+  const ev = evt(e, e.type === 'pointercancel' ? 'cancel' : 'up');
+  if (who === 'hero') mt?.pointer(ev); else thoughts?.pointer(ev);
+};
+stage.addEventListener('pointerup', endP);
+stage.addEventListener('pointercancel', endP);
+stage.addEventListener('gesturestart', (e) => e.preventDefault());
+
+window.__thoughts = { get layer() { return thoughts; }, spawn, belief, verb, setTab, events: tEvents, FEELINGS };
+
 window.__touch = { mt: null, create, switchTo, state, events: [], hapticLog: () => hapticLog, MALLOW_IDS,
   set: async (o) => { Object.assign(state, o); await create(); return mt.stats.tier; } };
-create();
+if (state.tab === 'thoughts') {
+  setTab('thoughts').then(() => {
+    // ?text=…&feel=…&n=…&belief=stone spawns at once (for screenshots)
+    if (qs.has('belief')) belief(qs.get('belief'), qs.get('text') || undefined);
+    else if (qs.has('text')) spawn({ text: qs.get('text') });
+  });
+} else create();
 </script>
 </body>
 </html>

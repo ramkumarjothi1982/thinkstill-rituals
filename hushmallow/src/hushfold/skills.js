@@ -292,7 +292,7 @@ const LIST = [
   skill({
     id: 'permission-to-rest',
     title: 'Permission to Rest',
-    short: 'Permission to Rest',
+    short: 'Allowed to Rest',
     essence: 'Rest can be a valid response, even with things left to do.',
     explanation: 'Sometimes the most useful thing is a short rest that doesn’t have to earn anything. Taking a minute isn’t giving up: the tasks will still be there, and so will you.',
     steps: [

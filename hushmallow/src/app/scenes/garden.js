@@ -39,6 +39,8 @@ const CSS = `
 @keyframes hgFade { from { opacity: 0; } to { opacity: 1; } }
 .hg .hg-ui { pointer-events: auto; }
 .hg-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+/* the hills sit between the realm and the Mallow (a sibling of #mallow-layer), so nothing veils the Mallow */
+.hg-canvas.hg-back { z-index: 0; animation: hgFade 520ms cubic-bezier(.22,1,.36,1) both; }
 .hg-head { position: fixed; z-index: 1; top: calc(var(--safe-top, env(safe-area-inset-top, 0px)) + 12px); left: 20px; right: 20px; display: flex; align-items: flex-start; gap: 12px; pointer-events: none; }
 .hg-head > .icon-btn { pointer-events: auto; flex: 0 0 auto; }
 .hg-titles { position: relative; isolation: isolate; min-width: 0; padding-top: 1px; }
@@ -53,6 +55,8 @@ const CSS = `
 .hg-plant .txt { position: absolute; left: 2px; right: 2px; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
 .hg-plant .lbl { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 100%; text-align: center; text-wrap: balance;
   font: var(--type-label, 600 calc(14px * var(--hg-k))/1.35 var(--hg-ff-ui)); letter-spacing: var(--type-label-ls, 0); color: #f3efff; text-shadow: 0 1px 10px rgba(4,2,16,.95), 0 0 3px rgba(4,2,16,.9); }
+.hg-plant .lbl.is-small { font-size: calc(13px * var(--hg-k)); }
+.hg-plant .lbl.is-wrap { overflow-wrap: anywhere; -webkit-hyphens: auto; hyphens: auto; }
 .hg-plant.is-hero .lbl { font: var(--type-heading, 700 calc(20px * var(--hg-k))/1.2 var(--hg-ff-ui)); letter-spacing: var(--type-heading-ls, -.01em); }
 .hg-plant .ess { margin-top: 4px; max-width: 30ch; font: var(--type-label, 600 calc(14px * var(--hg-k))/1.35 var(--hg-ff-ui)); font-weight: 500; color: #d9d2f2; text-shadow: 0 1px 10px rgba(4,2,16,.95); text-align: center; }
 .hg-plant.is-leaving { opacity: 0; transition: opacity .5s ease; }
@@ -64,10 +68,12 @@ const CSS = `
 
 /* the open charm */
 .hg-detail { position: fixed; inset: 0; z-index: 3; display: flex; justify-content: center; pointer-events: auto;
-  background: linear-gradient(180deg, rgba(9,7,26,.78), rgba(7,5,20,.9)); -webkit-backdrop-filter: blur(16px) saturate(1.1); backdrop-filter: blur(16px) saturate(1.1);
+  background: linear-gradient(180deg, rgba(9,7,26,.9), rgba(7,5,20,.96)); -webkit-backdrop-filter: blur(18px) saturate(1.1); backdrop-filter: blur(18px) saturate(1.1);
   opacity: 0; transition: opacity .38s cubic-bezier(.22,1,.36,1); }
 .hg-detail.is-in { opacity: 1; }
 .hg-col { position: relative; width: 100%; max-width: 560px; height: 100%; transform: translateY(18px); transition: transform .55s cubic-bezier(.2,.9,.25,1); }
+/* behind the words, the column is nearly solid: the garden only glows at its edges */
+.hg-col::before { content: ''; position: absolute; inset: 0 -24px; z-index: -1; pointer-events: none; background: linear-gradient(90deg, rgba(7,5,20,0), rgba(7,5,20,.6) 24px, rgba(7,5,20,.6) calc(100% - 24px), rgba(7,5,20,0)); }
 .hg-detail.is-in .hg-col { transform: none; }
 .hg-detail.is-reduced .hg-col { transform: none; transition: none; }
 .hg-sheet { --top: calc(var(--safe-top, env(safe-area-inset-top, 0px)) + 68px); position: absolute; inset: 0; box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
@@ -172,15 +178,16 @@ export default function gardenScene(app, params = {}) {
   const mallowId = (MALLOWS[app.state?.homeMallow] && app.state.homeMallow) || (MALLOWS[prefs?.get?.('mallow')] && prefs.get('mallow')) || 'noomi';
 
   // ------------------------------------------------------------- DOM --
-  const bgCanvas = h('canvas', { class: 'hg-canvas', 'aria-hidden': 'true' });
+  // the hills are painted behind the Mallow (inserted before #mallow-layer in enter()), the living garden in front
+  const bgCanvas = h('canvas', { class: 'hg-canvas hg-back', 'aria-hidden': 'true' });
   const canvas = h('canvas', { class: 'hg-canvas', 'aria-hidden': 'true' });
   const titleEl = h('h1', {}, 'Memory Garden');
   const captionEl = h('p', {});
   const head = h('header', { class: 'hg-head' }, iconBtn('back', 'Back to the Hushfold', () => back()), h('div', { class: 'hg-titles' }, titleEl, captionEl));
   const field = h('div', { class: 'hg-field hg-ui', role: 'group', 'aria-label': 'Your kept tools' });
   const live = h('div', { class: 'hg-live', 'aria-live': 'polite' });
-  const el = h('div', { class: 'hg', 'data-garden': 'root' }, bgCanvas, canvas, head, field, live);
-  let emptyEl = null, detail = null, layerToken = 0;
+  const el = h('div', { class: 'hg', 'data-garden': 'root' }, canvas, head, field, live);
+  let emptyEl = null, detail = null, layerToken = 0, openerId = null, mallowHidden = false;
 
   // ----------------------------------------------------------- state --
   const g = canvas.getContext('2d');
@@ -216,14 +223,19 @@ export default function gardenScene(app, params = {}) {
     const items = kept();
     const n = items.length;
     const hb = head.getBoundingClientRect().bottom || 80;
-    const mallowH = clamp(Math.min(W, H) * 0.2, 64, 118);
+    // on short screens the keeper is a little smaller, so it never sits squeezed under the title
+    const mallowH = H < 700 ? clamp(Math.min(W, H) * 0.18, 56, 96) : clamp(Math.min(W, H) * 0.2, 64, 118);
     const bottom = H - 22 - safeBottom();
-    const minCrest = hb + mallowH + 12;
+    const minCrest = hb + mallowH + (H < 700 ? 24 : 20);
     let M = null;
     if (n) {
-      // the garden takes the room it needs; the rest is sky
-      M = metrics(n, Math.max(160, bottom - (minCrest + 24)));
-      crest = clamp(bottom - M.rowH * M.rows - 54, minCrest, Math.max(minCrest, H * 0.5));
+      // the garden takes the room it needs; the rest is sky (the moon stays in view when the plants fit under a lower crest)
+      const skyCrest = Math.max(minCrest, H * (W >= 700 ? 0.4 : 0.34));
+      const Ms = metrics(n, Math.max(160, bottom - (skyCrest + 24)));
+      const s1 = Ms.sizeFor(1);
+      const roomy = s1 >= (W < 560 ? 54 : 72) && Ms.rowH >= s1 * 1.75 + Ms.labelH + Ms.depth;
+      M = roomy ? Ms : metrics(n, Math.max(160, bottom - (minCrest + 24)));
+      crest = clamp(bottom - M.rowH * M.rows - 54, roomy ? skyCrest : minCrest, Math.max(minCrest, H * 0.5));
       renderEmpty(false);
     } else {
       renderEmpty(true);
@@ -231,25 +243,37 @@ export default function gardenScene(app, params = {}) {
       crest = clamp(H * 0.5, minCrest + 28, Math.max(minCrest + 28, bottom - eh - 64));
       emptyEl.style.top = `${Math.round(crest + 52)}px`;
     }
-    // the hill's crest: a gentle curve, lower at the edges
+    // the hill's crest: a gentle curve, lower at the edges, with a level seat where the Mallow sits (never perched on a slope)
+    const curve = (u) => crest + 22 * (2 * u - 1) ** 2 - 10 * Math.sin(u * Math.PI * 1.2 + 0.4) + 6 * Math.sin(u * 7.1);
+    const mx = mallowX(n, mallowH);
+    const seatY = curve(mx / Math.max(1, W));
+    const seatHalf = Math.max(mallowH * 0.62, (perch?.width || 0) / 2) + 8, ramp = clamp(mallowH * 0.8, 30, 80);
     for (let i = 0; i <= 64; i++) {
       const x = (i / 64) * W, u = i / 64;
-      const y = crest + 22 * (2 * u - 1) ** 2 - 10 * Math.sin(u * Math.PI * 1.2 + 0.4) + 6 * Math.sin(u * 7.1);
-      crestPts[i * 2] = x; crestPts[i * 2 + 1] = y;
+      const d = Math.abs(x - mx), k = d <= seatHalf ? 1 : d >= seatHalf + ramp ? 0 : 1 - ((d - seatHalf) / ramp) ** 2 * (3 - 2 * ((d - seatHalf) / ramp));
+      crestPts[i * 2] = x; crestPts[i * 2 + 1] = lerp(curve(u), seatY, k);
     }
     field.style.top = `${Math.round(crest - 10)}px`;
     captionEl.textContent = readOnly() && n ? 'Everything you kept is still here to read.' : n ? 'Tap a charm to open it again.' : 'Kept only on this device.';
     buildPlants(items, M, bottom);
     buildBackground();
     buildAmbient();
-    placeMallow(mallowH);
+    placeMallow(mallowH, mx);
     draw(performance.now());
+  }
+  /** Where the Mallow sits on the crest (x in px): beside the empty garden's seed, or at the right of the kept tools. */
+  function mallowX(n, mh) {
+    const half = mh * 0.62;
+    return clamp(n === 0 ? W * 0.5 + Math.min(120, W * 0.27) : W - Math.max(60, Math.min(W * 0.17, 130)), half + 18, W - half - 18);
   }
 
   /** How the plants are arranged for n tools in a region of height regionH. */
   function metrics(n, regionH) {
-    const usable = Math.min(W - 32, 1100);
-    const perRow = W < 560 ? 3 : W < 800 ? 4 : W < 1100 ? 5 : 6;
+    const wide = W >= 700;
+    const usable = wide ? Math.min(W - 64, 1200) : Math.min(W - 32, 1100);
+    // wide screens: one meadow of charms at two depths (two rows only when there are many), never a long grid
+    const oneRow = W >= 1200 ? 8 : W >= 1000 ? 6 : 5;
+    const perRow = W < 560 ? 3 : !wide ? 4 : n <= oneRow ? oneRow : Math.ceil(n / 2);
     const rows = n <= 1 ? 1 : Math.ceil(n / perRow);
     const base = Math.floor(n / rows), extra = n % rows;
     const counts = Array.from({ length: rows }, (_, r) => base + (r >= rows - extra ? 1 : 0));
@@ -257,25 +281,51 @@ export default function gardenScene(app, params = {}) {
     const labelH = hero ? 132 : 46;
     const maxCount = Math.max(1, ...counts);
     const cellW = usable / Math.max(maxCount, hero ? 1 : 2.4);
-    const sizeFor = (sc) => (hero ? clamp(Math.min(W * 0.36, regionH * 0.34), 104, 160) : clamp(Math.min(cellW * 0.68, (regionH / rows) * 0.46), 46, 124) * sc);
-    const rowH = Math.min(regionH / rows, (hero ? 2.05 : 2.25) * sizeFor(1) + labelH);
-    return { usable, rows, counts, hero, labelH, maxCount, cellW, sizeFor, rowH };
+    const maxSize = wide ? (W >= 1000 ? 150 : 136) : 124;
+    const short = H < 700;
+    // the depth step between the back and front charms of a row (wide screens only)
+    const depthOf = (size) => (wide && !hero && n > 1 ? clamp(size * 0.6, 26, 90) : 0);
+    const raw = (sc, room) => (hero
+      ? clamp(Math.min(W * (short ? 0.3 : 0.36), regionH * (short ? 0.28 : 0.34)), short ? 92 : 104, 160)
+      : clamp(Math.min(cellW * 0.68, (room / rows) * 0.46), 46, maxSize) * sc);
+    // the depth is taken from the room first, so the rows never press into each other
+    let depth = depthOf(raw(1, regionH));
+    const sizeFor = (sc) => raw(sc, Math.max(120, regionH - depth * rows));
+    depth = depthOf(sizeFor(1));
+    const rowH = Math.min(regionH / rows, (hero ? (short ? 1.8 : 2.05) : 2.25) * sizeFor(1) + labelH + depth);
+    return { usable, rows, counts, hero, labelH, maxCount, cellW, sizeFor, rowH, depth };
   }
 
-  // does a label fit in two lines at the label size? (else its short name)
-  let measureG = null;
-  function fitsTwoLines(text, maxW) {
+  // does a label fit in two lines, with no word cut? Measured in the label's own computed face (W1's --type-label or the fallback)
+  let measureG = null, labelFont = null;
+  function readLabelFont() {
+    const probe = h('span', { class: 'hg-plant', style: { visibility: 'hidden', left: '-999px', top: '0' } }, h('span', { class: 'lbl' }, 'Mg'));
+    field.append(probe);
+    const cs = getComputedStyle(probe.firstChild);
+    const k = parseFloat(getComputedStyle(probe).getPropertyValue('--hg-k')) || 1;
+    labelFont = { style: cs.fontStyle, weight: cs.fontWeight, size: parseFloat(cs.fontSize) || 14 * k, small: 13 * k, family: cs.fontFamily };
+    probe.remove();
+  }
+  function fitsTwoLines(text, maxW, small = false) {
     measureG ||= document.createElement('canvas').getContext('2d');
-    const k = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--type-scale')) || 1;
-    measureG.font = `600 ${14 * k}px ${getComputedStyle(document.documentElement).getPropertyValue('--ff-ui') || 'system-ui'}`;
+    if (!labelFont) readLabelFont();
+    measureG.font = `${labelFont.style} ${labelFont.weight} ${small ? labelFont.small : labelFont.size}px ${labelFont.family}`;
     let lines = 1, w = 0;
     const space = measureG.measureText(' ').width;
     for (const word of text.split(' ')) {
       const ww = measureG.measureText(word).width;
-      if (w && w + space + ww > maxW) { lines++; w = ww; } else w += (w ? space : 0) + ww;
       if (ww > maxW) return false;
+      if (w && w + space + ww > maxW) { lines++; w = ww; } else w += (w ? space : 0) + ww;
     }
     return lines <= 2;
+  }
+  /** The label for a plant button: the title, at 14 px then 13 px; then the short name; never a word cut mid-way unless nothing else fits. */
+  function plantLabel(skill, maxW) {
+    for (const text of [...new Set([skill.title, skill.short || skill.title])]) {
+      if (fitsTwoLines(text, maxW)) return { text, cls: 'lbl' };
+      if (fitsTwoLines(text, maxW, true)) return { text, cls: 'lbl is-small' };
+    }
+    return { text: skill.short || skill.title, cls: 'lbl is-small is-wrap' };
   }
 
   function buildPlants(items, M, bottom) {
@@ -283,30 +333,33 @@ export default function gardenScene(app, params = {}) {
     const old = new Map(plants.map((p) => [p.id, p]));
     field.replaceChildren();
     plants = [];
+    labelFont = null;
     if (!n) return;
     const top = crest + 24;
     const regionH = Math.max(160, bottom - top);
-    const { usable, rows, counts, hero, labelH, maxCount, sizeFor, rowH } = M;
+    const { usable, rows, counts, hero, labelH, maxCount, sizeFor, rowH, depth } = M;
     let k = 0;
     const blockTop = top + Math.max(0, regionH - rowH * rows) * (hero ? 0.42 : 0.36);
     for (let r = 0; r < rows; r++) {
       const sc = rows === 1 ? 1 : lerp(0.84, 1, r / (rows - 1));
-      const size = sizeFor(sc);
       const count = counts[r];
       const cell = usable / count;
       const rowBottom = blockTop + rowH * (r + 1);
       for (let i = 0; i < count; i++, k++) {
         const { entry, skill } = items[k];
         const jit = hash01(skill.id);
+        // wide screens: every other charm stands a step further back (higher and a little smaller), so a row reads as a meadow
+        const back = depth > 0 && count > 1 && (i + r) % 2 === 0;
+        const size = sizeFor(sc) * (back ? 0.86 : 1);
         const stagger = rows > 1 && count === maxCount && maxCount > 1 ? (r % 2 ? 0.08 : -0.08) * cell : 0;
         const cx = clamp((W - usable) / 2 + cell * (i + 0.5) + stagger + (jit - 0.5) * Math.min(14, cell * 0.12), 24 + size * 0.5, W - 24 - size * 0.5);
-        const gy = rowBottom - labelH - (jit * 8);
-        const stem = clamp(rowH - labelH - size - 14, size * 0.3, size * (hero ? 0.62 : 0.8));
+        const gy = rowBottom - labelH - (back ? depth : 0) - (jit * 8);
+        const stem = clamp(rowH - depth - labelH - size - 14, size * 0.3, size * (hero ? 0.62 : 0.8));
         const cy = gy - stem - size * 0.48;
         const prev = old.get(skill.id);
         const P = charmPalette(skill.id, entry.mallow || skill.mallow);
         const p = {
-          id: skill.id, skill, entry, cx, cy, gy, size, stem, P,
+          id: skill.id, skill, entry, cx, cy, gy, size, stem, P, back,
           phase: jit * 6.28, swayA: 0.035 + jit * 0.02, swayW: (Math.PI * 2) / (5.2 + jit * 2.2),
           th: prev?.th || 0, om: prev?.om || 0, poke: prev?.poke || -9, arrive: prev?.arrive ?? -9, fade: 1,
           glintAt: 2 + jit * 6,
@@ -315,15 +368,17 @@ export default function gardenScene(app, params = {}) {
         const cellL = (W - usable) / 2 + cell * i, cellR = cellL + cell;
         const bw = Math.max(44, Math.min(cell - 6, Math.max(size * 1.6, 120), 240, 2 * Math.min(cx - cellL, cellR - cx) - 4));
         const btnTop = cy - size * 0.62;
+        const lab = hero ? { text: skill.title, cls: 'lbl' } : plantLabel(skill, bw - 8);
+        const txt = h('span', { class: 'txt', style: { top: `${Math.round(p.gy - btnTop + 10)}px` } },
+          h('span', { class: lab.cls }, lab.text),
+          hero ? h('span', { class: 'ess' }, skill.essence) : null);
         const btn = h('button', {
           class: `hg-plant${hero ? ' is-hero' : ''}`, type: 'button',
           'aria-label': `${skill.title}. ${skill.essence}`,
           style: { left: `${Math.round(cx - bw / 2)}px`, top: `${Math.round(btnTop - (crest - 10))}px`, width: `${Math.round(bw)}px`, height: `${Math.round(gy + labelH - btnTop)}px` },
           onclick: () => tapPlant(p),
-        }, h('span', { class: 'txt', style: { top: `${Math.round(p.gy - btnTop + 10)}px` } },
-          h('span', { class: 'lbl' }, hero || fitsTwoLines(skill.title, bw - 8) ? skill.title : skill.short || skill.title),
-          hero ? h('span', { class: 'ess' }, skill.essence) : null));
-        p.btn = btn;
+        }, txt);
+        p.btn = btn; p.txt = txt;
         field.append(btn);
         plants.push(p);
       }
@@ -340,7 +395,7 @@ export default function gardenScene(app, params = {}) {
     }
   }
 
-  // the static backdrop (veil, hills, moonlight, ground flowers) is painted once per layout on its own canvas
+  // the static backdrop (veil, hills, moonlight, ground flowers) is painted once per layout on its own canvas, behind the Mallow
   function buildBackground() {
     bg = bgCanvas;
     bg.width = canvas.width; bg.height = canvas.height;
@@ -357,18 +412,6 @@ export default function gardenScene(app, params = {}) {
     gr = b.createLinearGradient(0, crest - 50, 0, crest + 120);
     gr.addColorStop(0, 'rgba(70,58,150,0.55)'); gr.addColorStop(1, 'rgba(26,20,70,0.7)');
     b.fillStyle = gr; b.fill();
-    if (perch) {
-      // the Mallow sits in front of the far hill, never half hidden and dimmed by it
-      b.save();
-      b.globalCompositeOperation = 'destination-out';
-      if ('filter' in b) b.filter = 'blur(4px)';
-      const ins = perch.width * 0.04;
-      b.beginPath();
-      b.roundRect?.(perch.left + ins, perch.top + ins, perch.width - ins * 2, perch.height - ins, perch.width * 0.3);
-      if (!b.roundRect) b.rect(perch.left + ins, perch.top + ins, perch.width - ins * 2, perch.height - ins);
-      b.fill();
-      b.restore();
-    }
     // near hill
     const hill = new Path2D();
     hill.moveTo(0, crestPts[1]);
@@ -389,7 +432,7 @@ export default function gardenScene(app, params = {}) {
     b.globalCompositeOperation = 'lighter';
     b.strokeStyle = 'rgba(160,140,255,0.12)'; b.lineWidth = 7; b.stroke();
     if (perch) {
-      // its seat: a soft pool of its own light on the crest
+      // its seat: a soft pool of its own light on the level crest, glowing out from under it
       const c = hexRgb(MALLOWS[mallowId]?.colours?.glow || '#c9c0ff');
       const s0 = glowSprite(c);
       b.globalAlpha = 0.55;
@@ -421,15 +464,12 @@ export default function gardenScene(app, params = {}) {
     }
   }
 
-  // the keeper of the garden: the person's Mallow sits on its own perch on the crest, whole and lit
+  // the keeper of the garden: the person's Mallow sits on a level seat on the crest, in front of the hills, whole and lit
   let perch = null, corrT = 0, greetT = 0;
-  function placeMallow(mh) {
+  function placeMallow(mh, xpx) {
     if (!world) return;
     const Hl = Math.min(H * 0.56, 470);
     const scale = clamp(mh / (0.66 * Hl), 0.12, 0.6);
-    const n = plants.length;
-    const half = mh * 0.62;
-    const xpx = clamp(n === 0 ? W * 0.5 + Math.min(120, W * 0.27) : W - Math.max(60, Math.min(W * 0.17, 130)), half + 18, W - half - 18);
     const bottom = crestY(xpx) + 3;
     world.place({ x: (xpx / W) * 100, y: ((bottom - 0.38 * Hl * scale) / H) * 100, scale, calm: true });
     placeMallow.want = { xpx, bottom, h: mh };
@@ -457,12 +497,16 @@ export default function gardenScene(app, params = {}) {
     world.place({ x: cx + ((want.xpx - cxAfter) / W) * 100, y: cur + ((want.bottom - bottomAfter) / H) * 100, scale: ns, calm: true });
     if (n > 1) scheduleCorrect(n - 1); else setTimeout(() => { if (!left) setPerch(world.bodyRect()); }, 780);
   }
-  /** The far hill opens behind the Mallow (it sat half sunk and dimmed behind it) and a pool of light marks its seat. */
+  /** The Mallow's true seat: a pool of its light marks it (the hills are behind it, so nothing veils it). */
   function setPerch(r) {
     if (!r?.height) return;
     const same = perch && Math.abs(perch.left - r.left) < 1 && Math.abs(perch.bottom - r.bottom) < 1 && Math.abs(perch.width - r.width) < 1;
+    const wider = !perch || r.width > perch.width + 2;
     perch = { left: r.left, top: r.top, width: r.width, height: r.height, bottom: r.top + r.height, cx: r.left + r.width / 2 };
-    if (!same) { buildBackground(); if (reduced()) draw(performance.now()); }
+    if (same) return;
+    // a wider body than planned: widen its level seat too (the crest is rebuilt; the plants stay where they are)
+    if (wider && placeMallow.want && r.width / 2 + 8 > placeMallow.want.h * 0.62 + 8) { layout(); return; }
+    buildBackground(); if (reduced()) draw(performance.now());
   }
   /** A little life: the Mallow looks towards a charm (and is pleased when one arrives). */
   function greet(p, delay = 0, kind = 'success') {
@@ -537,6 +581,8 @@ export default function gardenScene(app, params = {}) {
         let y = flies[i * 6 + 1] + (still ? 0 : Math.cos(t * sp * 0.8 + ph) * 16);
         const dx = x - pointer.x, dy = y - pointer.y, d2 = dx * dx + dy * dy;
         if (!still && d2 < 6400) { const d = Math.sqrt(d2) || 1, push = (1 - d / 80) * 28; x += (dx / d) * push; y += (dy / d) * push; }
+        // a firefly drifting past the Mallow goes behind it (never a speck on its face)
+        if (perch && x > perch.left && x < perch.left + perch.width && y > perch.top && y < perch.bottom - 4) continue;
         const tw = still ? 0.6 : 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * (0.9 + sp) + ph * 3));
         const r = flies[i * 6 + 4] * 3.2;
         g.globalAlpha = tw * 0.75;
@@ -581,6 +627,11 @@ export default function gardenScene(app, params = {}) {
       const pose = plantPose(p, t);
       const sz = p.size;
       const pool = glowSprite(p.P.glow);
+      // an arriving charm's name appears as it lands, not before
+      if (p.txt && p.arrive > -1 && !p.txtShown) {
+        const la = k01(t, p.arrive + 0.9, p.arrive + 1.5);
+        if (la < 1) p.txt.style.opacity = la.toFixed(2); else { p.txt.style.opacity = ''; p.txtShown = true; }
+      }
       const bloom = p.arrive > -1 ? env(t, p.arrive + 1.2, 0.32, 0.1, 0.9) : 0;
       g.globalCompositeOperation = 'lighter';
       g.globalAlpha = (0.42 + 0.5 * bloom) * Math.max(pose.grow, 0.2) * p.fade;
@@ -679,6 +730,7 @@ export default function gardenScene(app, params = {}) {
     app.audio?.ui?.('open');
     app.haptic?.('light');
     if (reduced()) openDetail(p.id); else setTimeout(() => { if (!left) openDetail(p.id); }, 200);
+    openerId = p.id;
   }
 
   // ----------------------------------------------------------- detail --
@@ -689,12 +741,14 @@ export default function gardenScene(app, params = {}) {
     return { note: 'You can practise this one with the “Try it” above, anywhere.' };
   }
   /** Close the open charm (and its history entry) first, then go: Back from there lands on the garden, once. */
-  function leaveTo(go) { closeDetail(true, { keepLayer: false }); go(); }
+  function leaveTo(go) { closeDetail(true, { keepLayer: false, refocus: false }); go(); }
 
   function openDetail(id) {
     const skill = getSkill(id);
     if (!skill) return;
     const entry = gardenEntry(store, id);
+    // Back, Escape or ✕ return focus to the plant that opened it (a related tool opened from inside keeps the first one)
+    if (!detail) { const a = document.activeElement; const ap = plants.find((x) => x.btn === a); if (ap) openerId = ap.id; else if (!plants.some((x) => x.id === openerId)) openerId = null; }
     closeDetail(true);
     const isReduced = reduced();
     const sheet = h('div', { class: 'hg-sheet' });
@@ -733,7 +787,7 @@ export default function gardenScene(app, params = {}) {
         h('p', {}, `Forget “${skill.title}”? It will leave your garden. You can keep it again whenever you come across it.`),
         h('div', { class: 'row-btns' },
           h('button', { class: 'btn', type: 'button', onclick: () => { endEl.replaceChildren(...endKids()); endEl.querySelector('.hg-forget')?.focus(); } }, 'Keep it'),
-          h('button', { class: 'btn danger', type: 'button', onclick: () => doForget(id) }, 'Forget'))));
+          h('button', { class: 'btn danger', type: 'button', onclick: () => doForget(id, endEl, endKids) }, 'Forget'))));
       endEl.querySelector('.btn')?.focus();
     };
     const endKids = () => [
@@ -772,6 +826,9 @@ export default function gardenScene(app, params = {}) {
     el.append(detail);
     head.style.visibility = 'hidden';
     field.setAttribute('aria-hidden', 'true');
+    field.style.visibility = 'hidden';            // the plant names never ghost through behind the words
+    // while a charm is open the Mallow steps out of sight, so nothing shows through behind the words
+    if (!mallowHidden) { mallowHidden = true; world?.showMallow?.(false); }
     requestAnimationFrame(() => requestAnimationFrame(() => detail?.classList.add('is-in')));
     setTimeout(() => title.focus({ preventScroll: true }), 60);
     if (!layerToken) layerToken = app.pushLayer?.() || 0;
@@ -783,24 +840,39 @@ export default function gardenScene(app, params = {}) {
    * open charm replacing another); by default an instant close keeps it and a
    * normal close pops it. fromBack: Back already consumed the entry.
    */
-  function closeDetail(instant = false, { fromBack = false, keepLayer = instant } = {}) {
+  function closeDetail(instant = false, { fromBack = false, keepLayer = instant, refocus = !keepLayer } = {}) {
     if (!detail) return;
     const d = detail;
     detail = null;
     d.__charms?.forEach((c) => c.destroy());
     head.style.visibility = '';
     field.removeAttribute('aria-hidden');
+    field.style.visibility = '';
     if (instant) d.remove();
     else { d.classList.remove('is-in'); setTimeout(() => d.remove(), 380); }
     if (!keepLayer && layerToken) { const t = layerToken; layerToken = 0; if (!fromBack) app.popLayer?.(t); }
-    if (!keepLayer) { kick(); if (reduced()) draw(performance.now()); }
+    if (!keepLayer) {
+      if (mallowHidden) { mallowHidden = false; world?.showMallow?.(true); }
+      kick(); if (reduced()) draw(performance.now());
+    }
+    if (refocus && !left) {
+      // back to where the person was: the plant that opened it (else the first plant, else Back)
+      const target = plants.find((x) => x.id === openerId)?.btn || plants[0]?.btn || emptyEl?.querySelector('button') || head.querySelector('button');
+      target?.focus?.({ preventScroll: true });
+    }
   }
 
-  function doForget(id) {
+  function doForget(id, endEl, endKids) {
     const skill = getSkill(id);
-    forgetSkill(store, id);
+    if (!forgetSkill(store, id) && gardenEntry(store, id)) {
+      // the device refused the write: say so quietly, and keep the charm open (it is still in the garden)
+      const msg = h('p', { class: 'hg-small', role: 'status', style: { margin: '0 0 12px' } }, 'This device couldn’t remove it just now, so it’s still in your garden. You could try again in a moment.');
+      endEl?.replaceChildren(msg, ...(endKids?.().filter((x) => x.classList?.contains('hg-forget')) || []));
+      endEl?.querySelector('.hg-forget')?.focus();
+      return;
+    }
     app.audio?.ui?.('close');
-    closeDetail();
+    closeDetail(false, { refocus: false });
     live.textContent = `${skill?.title || 'That tool'} has left your garden.`;
     // focus lands on the garden again once it has re-formed (never lost to the page)
     const settle = () => { layout(); (plants[0]?.btn || emptyEl?.querySelector('button') || head.querySelector('button'))?.focus?.({ preventScroll: true }); };
@@ -834,6 +906,9 @@ export default function gardenScene(app, params = {}) {
       if (!ent.has('paid') && !(READ_ONLY_WHEN_LAPSED && gardenList(store).length)) { app.go('plans', { reason: 'garden' }, { replace: true }); return; }
       world.dim(true);
       world.showMallow(true);
+      // the hills go between the realm and the Mallow, so the Mallow is never veiled by them
+      const ml = world.layer;
+      if (ml?.parentNode) ml.parentNode.insertBefore(bgCanvas, ml); else el.prepend(bgCanvas);
       world.setRealm('moonmilk-cove', { crossfadeMs: 1200 });
       world.setMallow(mallowId, { entrance: false, interactive: true }).then(() => { if (!left) { world.setStage('listening'); scheduleCorrect(3); } }).catch(() => {});
       addEventListener('resize', onResize);
@@ -844,7 +919,7 @@ export default function gardenScene(app, params = {}) {
       if (left) return;
       layout();
       kick();
-      if (['localhost', '127.0.0.1'].includes(location.hostname)) window.__garden = { get plants() { return plants; }, openDetail, closeDetail, layout, get detail() { return detail; }, get mallow() { return { want: placeMallow.want, perch, body: world.bodyRect(), crest: placeMallow.want && crestY(placeMallow.want.xpx) }; } };
+      if (['localhost', '127.0.0.1'].includes(location.hostname)) window.__garden = { get plants() { return plants; }, openDetail, closeDetail, layout, get detail() { return detail; }, get mallow() { return { want: placeMallow.want, perch, body: world.bodyRect(), crest: placeMallow.want && crestY(placeMallow.want.xpx), seat: perch && [crestY(perch.left), crestY(perch.cx), crestY(perch.left + perch.width)] }; }, back: bgCanvas, front: canvas };
     },
     leave() {
       left = true;
@@ -855,6 +930,8 @@ export default function gardenScene(app, params = {}) {
       document.removeEventListener('visibilitychange', onVis);
       detail?.__charms?.forEach((c) => c.destroy());
       layerToken = 0;
+      bgCanvas.remove();
+      if (mallowHidden) { mallowHidden = false; world.showMallow(true); }
       world.dim(false);
       if (window.__garden?.openDetail === openDetail) delete window.__garden;
     },

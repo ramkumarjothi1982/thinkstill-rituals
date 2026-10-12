@@ -1,7 +1,8 @@
 // The Hushflow director: one continuous movie of worlds.
 //
 // Owns the frame loop of the Hushflow (it runs inside the Mallow rig's shared
-// loop, addTicker — one requestAnimationFrame for rigs, MallowTouch and worlds),
+// loop, addTicker — one requestAnimationFrame for rigs, MallowTouch and worlds;
+// a watchdog switches to its own requestAnimationFrame if that loop ever stops),
 // the two compositor canvases (#world back, #fx-layer front), the worlds'
 // lifecycles and the melt between them. It never shows a black frame: the back
 // canvas always holds a world or the next world's palette, a melt only starts
@@ -96,7 +97,9 @@ export function thoughtList(src, one = null) {
 /** The primary thought: the explicit one, else the layer's `primary`, else the first. */
 export function primaryThought(src, one = null) {
   if (one) return one;
-  if (src && !Array.isArray(src) && typeof src === 'object' && src.primary) return src.primary;
+  if (!src || typeof src !== 'object') return null;
+  if (Array.isArray(src)) { for (const h of src) if (h) return h; return null; }
+  if (src.primary) return src.primary;
   return thoughtList(src)[0] ?? null;
 }
 

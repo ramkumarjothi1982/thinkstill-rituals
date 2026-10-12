@@ -142,10 +142,11 @@ export function requireEntitlement(ent, need) {
 /** The only way Beyond ('ultra') code/content gets loaded. */
 export async function loadUltra(ent) {
   requireEntitlement(ent, 'ultra');
-  const [angle, frameworks, engine] = await Promise.all([
+  const [angle, frameworks, engine, beyond] = await Promise.all([
     import('../ultra/another-angle.js'),
     import('../ultra/frameworks.js'),
     import('../ultra/reframe-engine.js'),
+    import('../beyond/another-angle.js'),   // the cinematic Another Angle (W8): its server client lives inside it
   ]);
-  return { angle, frameworks, engine };
+  return { angle, frameworks, engine, beyond };
 }

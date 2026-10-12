@@ -83,25 +83,32 @@ export function gardenEntry(store, id) {
 
 export function hasSkill(store, id) { return gardenEntry(store, id) !== null; }
 
-/** "Practise again": notes when, for the person's own memory (never shown as a score). Null if it isn't kept. */
+/**
+ * "Practise again": notes when, for the person's own memory (never shown as a
+ * score). Null if it isn't kept. `stored` is false when the device refused the
+ * write (the note is then simply not kept; nothing else changes).
+ */
 export function practised(store, id, now = Date.now()) {
   if (!isId(id)) return null;
   const g = readGarden(store);
   const e = g.skills[id];
   if (!e) return null;
   g.skills[id] = { ...e, lastPractised: now, practised: e.practised + 1 };
-  write(store, g);
-  return { id, ...g.skills[id] };
+  const stored = write(store, g);
+  return { id, ...g.skills[id], stored };
 }
 
-/** "Forget this": removes one tool. True when something was removed. */
+/**
+ * "Forget this": removes one tool. True only when it was there and the device
+ * accepted the change; false when it wasn't kept or the write was refused
+ * (then it is still in the garden: check gardenEntry() and say so).
+ */
 export function forgetSkill(store, id) {
   if (!isId(id)) return false;
   const g = readGarden(store);
   if (!g.skills[id]) return false;
   delete g.skills[id];
-  write(store, g);
-  return true;
+  return write(store, g);
 }
 
 /** Empties the garden (Settings uses store.clearAll; this is for tests and QA). */

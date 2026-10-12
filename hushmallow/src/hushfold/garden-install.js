@@ -98,7 +98,8 @@ const CSS = `
 .hm-install-card.is-compact .hm-install-slot, .hm-install-card.is-tight .hm-install-slot { grid-row: 1 / span 3; margin: -8px -4px -8px -2px; width: 80px; height: 80px; }
 .hm-install-card.is-tight .hm-install-slot { width: 64px; height: 64px; }
 .hm-install-card.is-compact .hm-install-over, .hm-install-card.is-tight .hm-install-over { grid-column: 2; margin: 0; }
-.hm-install-card.is-compact .hm-install-title, .hm-install-card.is-tight .hm-install-title { grid-column: 2; margin: 3px 0 0; font-size: calc(21px * var(--hm-k)); line-height: 1.14; text-wrap: balance; }
+.hm-install-card.is-compact .hm-install-title, .hm-install-card.is-tight .hm-install-title { grid-column: 2; margin: 3px 0 0; font-size: calc(24px * var(--hm-k)); line-height: 1.12; text-wrap: balance; }
+.hm-install-card.is-tight .hm-install-title { font-size: calc(22px * var(--hm-k)); }
 .hm-install-card.is-compact .hm-install-line { grid-column: 2; margin: 4px 0 0; max-width: none; font-size: calc(15px * var(--hm-k)); line-height: 1.4; }
 .hm-install-card.is-tight .hm-install-line { display: none; }
 .hm-install-card.is-compact .hm-actions, .hm-install-card.is-tight .hm-actions { grid-column: 1 / -1; margin-top: 12px; flex-wrap: nowrap; gap: 8px; }
@@ -270,17 +271,23 @@ function petalSprite(c) {
     return s;
   });
 }
-/** The portal's depth: a well (deep violet, or pale light over a bright realm) with a far, small light. */
+/**
+ * The portal's depth: a well with a far, small light. Over a dark realm it is
+ * deep violet; over a bright one it is a saturated well in the charm's own
+ * colours, deepening towards a strong coloured rim (never a pale disc).
+ */
 function wellSprite(P, bright) {
-  return cached(`w${P.deep}|${P.glow}|${P.light}|${bright ? 1 : 0}`, () => {
+  return cached(`w${P.deep}|${P.body}|${P.rim}|${P.glow}|${P.light}|${bright ? 1 : 0}`, () => {
     const s = mkCanvas(256), g = s.getContext('2d');
     const gr = g.createRadialGradient(128, 128, 0, 128, 128, 128);
     if (bright) {
       gr.addColorStop(0, 'rgba(255,252,244,1)');
-      gr.addColorStop(0.16, rgbaOf(mixC(P.light, [255, 255, 255], 0.6), 0.97));
-      gr.addColorStop(0.55, rgbaOf(mixC(P.body, P.light, 0.55), 0.94));
-      gr.addColorStop(0.82, rgbaOf(mixC(P.body, P.deep, 0.15), 0.9));
-      gr.addColorStop(0.93, rgbaOf(P.glow, 0.6));
+      gr.addColorStop(0.09, rgbaOf(mixC(P.light, [255, 255, 255], 0.55), 0.97));
+      gr.addColorStop(0.3, rgbaOf(mixC(P.body, P.light, 0.35), 0.97));
+      gr.addColorStop(0.62, rgbaOf(mixC(P.body, P.deep, 0.5), 0.97));
+      gr.addColorStop(0.8, rgbaOf(mixC(P.deep, P.body, 0.22), 0.96));
+      gr.addColorStop(0.9, rgbaOf(mixC(P.rim, P.deep, 0.3), 0.85));
+      gr.addColorStop(0.96, rgbaOf(P.glow, 0.45));
     } else {
       gr.addColorStop(0, 'rgba(255,248,230,0.95)');
       gr.addColorStop(0.07, rgbaOf(mixC(P.core, P.light, 0.4), 0.85));
@@ -324,16 +331,23 @@ function nebulaSprite(P, bright) {
     return s;
   });
 }
+/** Far specks: tiny lights (over a bright realm, light glints with a tiny four-point flare, never dark dust). */
 function specksSprite(P, bright) {
   return cached(`s${P.core}|${bright ? 1 : 0}`, () => {
     const s = mkCanvas(256), g = s.getContext('2d');
     let seed = 29;
     const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-    const dot = bright ? P.deep : [255, 255, 255];
+    const white = [255, 255, 255], warm = mixC(P.core, white, bright ? 0.45 : 0);
     for (let i = 0; i < 46; i++) {
       const a = rnd() * TAU, d = Math.sqrt(rnd()) * 118, r = 0.6 + rnd() * 1.6;
-      g.fillStyle = rgbaOf(i % 4 ? dot : P.core, (bright ? 0.25 : 0.4) + rnd() * 0.45);
-      g.beginPath(); g.arc(128 + Math.cos(a) * d, 128 + Math.sin(a) * d, r, 0, TAU); g.fill();
+      const x = 128 + Math.cos(a) * d, y = 128 + Math.sin(a) * d;
+      g.fillStyle = rgbaOf(i % 4 ? white : warm, (bright ? 0.6 : 0.4) + rnd() * (bright ? 0.4 : 0.45));
+      g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+      if (bright && i % 5 === 0) {
+        g.strokeStyle = rgbaOf(white, 0.75); g.lineWidth = 0.8; g.lineCap = 'round';
+        const f = 2.4 + r * 2.2;
+        g.beginPath(); g.moveTo(x - f, y); g.lineTo(x + f, y); g.moveTo(x, y - f); g.lineTo(x, y + f); g.stroke();
+      }
     }
     return s;
   });
@@ -448,9 +462,10 @@ function freeSpans(y0, y1, xL, xR, obstacles) {
 }
 /**
  * Place a box (offer, card, note) where it covers neither the face nor the
- * subtitles: first in the clear (below the body / above the head), trying
- * each form from the roomiest; then over the body but off the face; else the
- * smallest form against the face's edge with the most room.
+ * subtitles: first in the clear (below the body / above the head, and on a
+ * wide screen beside the body), trying each form from the roomiest; then over
+ * the body but off the face; else the smallest form against the face's edge
+ * with the most room.
  * apply(form) sets the form; lift(form) is how far a part (the card's charm)
  * rises above the box. Returns { form, left, top, w, h } (top of the box).
  */
@@ -461,7 +476,12 @@ function placeBox(el, { forms, apply = () => {}, kind = 'offer', geom = null, li
     if (!geom) return { clear: [[fr.topLimit, fr.bottomLimit, 'bottom']], face: [] };
     const below = [geom.body.bottom + 10, fr.bottomLimit, 'top'], above = [fr.topLimit, geom.body.top - geom.hop, 'bottom'];
     const belowFace = [geom.face.bottom + 8, fr.bottomLimit, 'top'], aboveFace = [fr.topLimit, geom.face.top - 8, 'bottom'];
-    return kind === 'card' ? { clear: [above, below], face: [aboveFace, belowFace] } : { clear: [below, above], face: [belowFace, aboveFace] };
+    // beside the body (wide screens): the side with more room first, level with the body's middle
+    const gap = 28, roomR = fr.W - 16 - (geom.body.right + gap), roomL = geom.body.left - gap - 16;
+    const right = [fr.topLimit, fr.bottomLimit, 'mid', (w) => (w <= roomR ? geom.body.right + gap + Math.min(40, (roomR - w) * 0.25) : null)];
+    const left = [fr.topLimit, fr.bottomLimit, 'mid', (w) => (w <= roomL ? geom.body.left - gap - w - Math.min(40, (roomL - w) * 0.25) : null)];
+    const side = fr.W >= 700 ? (roomR >= roomL ? [right, left] : [left, right]) : [];
+    return kind === 'card' ? { clear: [above, below, ...side], face: [aboveFace, belowFace] } : { clear: [below, above, ...side], face: [belowFace, aboveFace] };
   })();
   const cx = geom ? geom.body.cx : fr.W / 2;
   const size = (form) => { apply(form); return { w: el.offsetWidth || 300, h: (el.offsetHeight || 120) + lift(form), lift: lift(form) }; };
@@ -469,11 +489,17 @@ function placeBox(el, { forms, apply = () => {}, kind = 'offer', geom = null, li
   const tryIn = (list) => {
     for (const form of forms) {
       const { w, h, lift: l } = size(form);
-      const left = leftFor(w);
-      for (const [y0, y1, anchor] of list) {
-        if (y1 - y0 < h) continue;
+      for (const [y0, y1, anchor, sideLeft] of list) {
+        const left = sideLeft ? sideLeft(w) : leftFor(w);
+        if (left == null || y1 - y0 < h) continue;
         const spans = freeSpans(y0, y1, left, left + w, obstacles).filter(([s, e]) => e - s >= h);
         if (!spans.length) continue;
+        if (anchor === 'mid') {
+          // level with the body's middle, in the free span nearest to it
+          const want = geom.body.top + geom.body.height * 0.5 - (h - l) / 2 - l;
+          const best = spans.map(([s, e]) => [s, e, clamp(want, s, e - h)]).sort((a, b) => Math.abs(a[2] - want) - Math.abs(b[2] - want))[0];
+          return { form, left, top: best[2] + l, w, h: h - l, region: 'side' };
+        }
         const span = anchor === 'top' ? spans[0] : spans[spans.length - 1];
         const top = (anchor === 'top' ? span[0] : span[1] - h) + l;
         return { form, left, top, w, h: h - l, region: anchor === 'top' ? 'below' : 'above' };
@@ -796,7 +822,8 @@ export function playInstall(opts = {}) {
     placeCard();
     // the portal: above, in the clear, where the card's charm will appear when the card is above too
     const topP = fr.topLimit + Rp * 1.25;
-    const at = cardP.region === 'above' ? cardCharmAt() : null;
+    // when the card is above or beside the Mallow, the portal opens where the card's charm will be
+    const at = cardP.region === 'above' || cardP.region === 'side' ? cardCharmAt() : null;
     Pp.x = at ? at.x : W / 2;
     Pp.y = Math.max(topP, at ? at.y : F.y - Math.max(170, H * 0.3));
     const circle = (x, y) => ({ left: x - Rp * 1.3, right: x + Rp * 1.3, top: y - Rp * 1.3, bottom: y + Rp * 1.3 });
@@ -809,7 +836,7 @@ export function playInstall(opts = {}) {
       if (y != null) Pp.y = y;
       else { const x = [W * 0.28, W * 0.72].find((xx) => clearAt(xx, Pp.y)); if (x != null) Pp.x = x; }
     }
-    if (F.y - Pp.y < 110) { Pp.y = Math.max(topP, Math.min(Pp.y, F.y - 60)); if (Math.abs(Pp.x - F.x) < Rp * 1.6) Pp.x = F.x < W / 2 ? W * 0.72 : W * 0.28; }
+    if (F.y - Pp.y < 110 && Math.abs(Pp.x - F.x) < Rp * 2.6) { Pp.y = Math.max(topP, Math.min(Pp.y, F.y - 60)); if (Math.abs(Pp.x - F.x) < Rp * 1.6) Pp.x = F.x < W / 2 ? W * 0.72 : W * 0.28; }
     Pp.x = clamp(Pp.x, Rp * 1.3 + 12, W - Rp * 1.3 - 12);
     bright = opts.bright ?? brightAt(Pp.x, Pp.y);
     placeSkip(fr, obstacles);
@@ -829,6 +856,8 @@ export function playInstall(opts = {}) {
   // the portal is lit in the charm's own colours (the Mallow's glow only in the aura), feathered, never a hard neon line
   const rimC = mixC(mixC(P.rim, P.light, 0.35), C.glow, 0.18);
   const ringRim = ringSprite(rimC, 2.2), ringHalo = ringSprite(mixC(P.light, C.glow, 0.3), 2.4), ringIn = ringSprite(mixC(P.light, WHITE, 0.3), 1.6);
+  // over a bright realm the rim is the charm's deeper colour (a light rim vanishes into a pale sky)
+  const ringRimDeep = ringSprite(mixC(P.rim, P.deep, 0.4), 2.2);
   const petalA = petalSprite(mixC(P.core, P.rim, 0.4)), petalB = petalSprite(mixC(P.light, C.accent, 0.5));
   const N = lowStim ? 12 : 26;
   const motes = new Float32Array(N * 4);       // angle, radius, start, size
@@ -837,24 +866,45 @@ export function playInstall(opts = {}) {
   for (let i = 0; i < N; i++) { motes[i * 4] = rnd() * TAU; motes[i * 4 + 1] = 0.9 + rnd() * 0.7; motes[i * 4 + 2] = 0.02 + rnd() * 0.36; motes[i * 4 + 3] = 0.6 + rnd() * 0.8; }
   const dust = new Float32Array(12 * 3);
   for (let i = 0; i < 12; i++) { dust[i * 3] = rnd() * TAU; dust[i * 3 + 1] = 0.4 + rnd() * 0.6; dust[i * 3 + 2] = rnd(); }
-  const TRAIL = 18;
+  const TRAIL = 18, TRAIL_W = [1, 0.6, 0.3], TRAIL_A = [0.32, 0.58, 1];
   const trail = new Float32Array((TRAIL + 1) * 2);
   const PETALS = lowStim ? 8 : 12;
 
   const sprite = (s, x, y, r, a) => { if (a > 0.003 && r > 0.5) { g.globalAlpha = Math.min(1, a); g.drawImage(s, x - r, y - r, r * 2, r * 2); } };
+  // the comet's tail is painted in a local frame (head at u = 0, tail at u = 1), so its two gradients are made once, not per frame
+  let trailGr = null;
+  const lineGr = (stops) => { const gr = g.createLinearGradient(0, 0, 1, 0); for (const [o, c, a] of stops) gr.addColorStop(o, rgbaOf(c, a)); return gr; };
+  function trailGradients() {
+    if (trailGr?.bright === bright) return trailGr;
+    trailGr = {
+      bright,
+      body: bright
+        ? lineGr([[0, mixC(P.body, P.deep, 0.3), 0.9], [0.5, mixC(P.body, P.rim, 0.3), 0.5], [1, P.body, 0]])
+        : lineGr([[0, GOLD, 0.55], [0.45, C.glow, 0.3], [1, C.glow, 0]]),
+      core: lineGr([[0, WHITE, bright ? 0.95 : 0.7], [0.4, GOLD, bright ? 0.45 : 0.32], [1, GOLD, 0]]),
+    };
+    return trailGr;
+  }
   const ctrl = { x: 0, y: 0 };
   const setCtrl = () => { ctrl.x = lerp(F.x, Pp.x, 0.5) + (F.x <= Pp.x ? -1 : 1) * W * 0.2; ctrl.y = lerp(F.y, Pp.y, 0.55); };
   const bez = (e, out, i) => { const u = 1 - e; out[i] = u * u * F.x + 2 * u * e * ctrl.x + e * e * Pp.x; out[i + 1] = u * u * F.y + 2 * u * e * ctrl.y + e * e * Pp.y; };
   const pos = new Float32Array(2);
 
   function drawTrail(e, sc, al) {
-    // one tapered ribbon of light along the path it came (no beads)
-    const span = Math.min(e, 0.3);
-    if (span < 0.02) return;
+    // one tapered ribbon along the path it came (no beads): a coloured body (lit over a dark realm, painted over a bright
+    // one) and an additive white-gold core; at its head it is about half the charm wide
+    const span = Math.min(e, 0.42);
+    if (span < 0.02 || al <= 0.003) return;
     for (let j = 0; j <= TRAIL; j++) bez(e - span * (j / TRAIL), trail, j * 2);
-    const w0 = sc * 0.17;
-    for (let pass = 0; pass < 2; pass++) {
-      const wk = pass ? 0.38 : 1;
+    const hx = trail[0], hy = trail[1], dx = trail[TRAIL * 2] - hx, dy = trail[TRAIL * 2 + 1] - hy, L2 = dx * dx + dy * dy;
+    if (L2 < 4) return;
+    const grs = trailGradients();
+    const w0 = Math.max(sc * 0.28, 6);
+    // local frame: (u, v) → head + u·d + v·d⊥ (d = head → tail), so u runs 0 → 1 along the ribbon
+    g.setTransform(dpr * dx, dpr * dy, -dpr * dy, dpr * dx, dpr * hx, dpr * hy);
+    // three nested ribbons (wide and faint → narrow and bright) feather the edges without a blur filter
+    for (let pass = 0; pass < 3; pass++) {
+      const wk = TRAIL_W[pass];
       g.beginPath();
       for (let side = 0; side < 2; side++) {
         for (let q = 0; q <= TRAIL; q++) {
@@ -863,17 +913,17 @@ export function playInstall(opts = {}) {
           const j0 = Math.max(0, j - 1), j1 = Math.min(TRAIL, j + 1);
           let nx = -(trail[j1 * 2 + 1] - trail[j0 * 2 + 1]), ny = trail[j1 * 2] - trail[j0 * 2];
           const l = Math.hypot(nx, ny) || 1; nx /= l; ny /= l;
-          const w = w0 * wk * (1 - j / TRAIL) ** 1.25 * (side ? -1 : 1);
-          if (!side && !q) g.moveTo(x + nx * w, y + ny * w); else g.lineTo(x + nx * w, y + ny * w);
+          const w = w0 * wk * (1 - j / TRAIL) ** 0.9 * (side ? -1 : 1);
+          const px = x + nx * w - hx, py = y + ny * w - hy;
+          const u = (px * dx + py * dy) / L2, v = (py * dx - px * dy) / L2;
+          if (!side && !q) g.moveTo(u, v); else g.lineTo(u, v);
         }
       }
       g.closePath();
-      const gr = g.createLinearGradient(trail[0], trail[1], trail[TRAIL * 2], trail[TRAIL * 2 + 1]);
-      gr.addColorStop(0, rgbaOf(pass ? WHITE : GOLD, pass ? 0.6 : 0.5));
-      gr.addColorStop(0.45, rgbaOf(pass ? GOLD : C.glow, pass ? 0.3 : 0.28));
-      gr.addColorStop(1, rgbaOf(C.glow, 0));
-      g.fillStyle = gr; g.globalAlpha = al * stim; g.fill();
+      g.globalCompositeOperation = pass === 2 || !bright ? 'lighter' : 'source-over';
+      g.fillStyle = pass === 2 ? grs.core : grs.body; g.globalAlpha = Math.min(1, al * stim * TRAIL_A[pass]); g.fill();
     }
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   function frameFull(t) {
@@ -910,7 +960,9 @@ export function playInstall(opts = {}) {
     const depth = k01(travelK, 0.62, 1);                       // how far into the well it has gone
     const sc = (travelK > 0 ? (1 - 0.6 * travelK ** 1.6) * (1 - 0.5 * depth) : eBack(formK)) * S;
     const al = Math.min(1, formK * 2.2) * (1 - eIn(depth) * 0.96);
-    const inside = k01(travelK, 0.52, 0.66);                   // cross-fade from in front of the portal to inside it
+    // cross-fade from in front of the portal to inside it as the charm crosses the rim (by distance, not by time)
+    const rNow = Rp * eOut(k01(t, T.portalOpen, T.portalOpen + 0.55));
+    const inside = travelK > 0 ? k01(rNow - Math.hypot(pos[0] - Pp.x, pos[1] - Pp.y), -sc * 0.1, sc * 0.4) : 0;
     const wob = travelK > 0 ? Math.sin(t * 9) * 0.06 * (1 - travelK) : Math.sin(t * 7) * 0.12 * (1 - formK);
     const glint = k01(t, T.form + 0.4, T.form + 1.1);
     const charmAt = (a) => {
@@ -967,7 +1019,8 @@ export function playInstall(opts = {}) {
       g.restore();
       // the rim: two feathered rings at different scales breathing out of step (depth), and one slow ripple breathing out
       g.globalCompositeOperation = lit;
-      sprite(ringRim, Pp.x, Pp.y, (r * 1.0) / 0.86, (bright ? 0.5 : 0.36) * open);
+      if (bright) sprite(ringRimDeep, Pp.x, Pp.y, (r * 1.0) / 0.86, 0.85 * open);
+      sprite(ringRim, Pp.x, Pp.y, (r * (bright ? 1.035 : 1.0)) / 0.86, (bright ? 0.42 : 0.36) * open);
       sprite(ringHalo, Pp.x, Pp.y, (r * (1.16 + 0.025 * Math.sin(t * 1.1 + 1))) / 0.86, (bright ? 0.24 : 0.11) * open * stim);
       g.globalCompositeOperation = 'lighter';
       const rk = (t * 0.55) % 1;

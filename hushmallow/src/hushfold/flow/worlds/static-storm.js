@@ -25,7 +25,19 @@
 //   · the Thought Mallow floats low in the play zone (above Glitzi), not at 0.3 of
 //     the safe height, so the postcards can hang under the clouds at ≥ 0.2U;
 //   · the photo cap is 7 Mallow cards / photos (D5), and the photosafe limiter,
-//     the 'slowing' and 'stillness' discoveries and natural completion follow the spec.
+//     the 'slowing' and 'stillness' discoveries and natural completion follow the spec;
+//   · short phones (portrait, H ≤ 600) hang only 2–5 postcards at once, each ≥ 64 px,
+//     under the clouds; a grounded one lets go after 2.4 s and the next waiting photo
+//     drops into its slot (storm-layout SHORT_*), so every photo gets its turn;
+//   · however the wind blows, postcards keep a 7 px gap (oriented-box separation) and
+//     never swing into the Thought Mallow, its words, Glitzi (+ hop room), the band or
+//     an edge; a thought dragged into cards with nowhere to go slides round them;
+//   · the charge plasma is tone-mapped ('screen', alpha ≤ 0.66, never white-hot) and
+//     dimmed to 0.3 under the subtitle band, so lines stay readable over any scribble;
+//   · photosafe: only arcs longer than 70 px count against the ≤ 3 bright events a
+//     second; shorter ones (< 0.4% of the screen each) are exempt — far below the
+//     flash-area threshold. Under reduced motion there are no arcs, only a slow shimmer;
+//   · a feeling changed mid-storm eases the storm's own charge towards it (setEmotion).
 
 import { createRealmCore } from '../../../world/realm.js';
 import { glowSprite, glintSprite, Pool, Rings, flashEnv, clamp, lerp, smoothstep, TAU, makeCanvas } from '../../../world/util.js';
@@ -614,6 +626,8 @@ export function create(ctx) {
     pulsedThisFrame = false; pulseDrainThisFrame = 0;
 
     relayoutCheck(dt);
+    // a ThoughtLayer whose primary changed (the person typed again): follow it
+    { const th = ctx.thought ?? null; if (th !== thought) api.setThought(th); }
     // pace of the primary finger
     const f0 = fingers.find((f) => f.on) || null;
     const band = pace.update(dt, !!f0, f0 ? f0.speed : 0);
@@ -738,7 +752,7 @@ export function create(ctx) {
     if (f0) realm.setFocus(clamp((f0.x / W) * 2 - 1, -1, 1) * 0.5, clamp((f0.y / H) * 2 - 1, -1, 1) * 0.4);
     else realm.setFocus(0, 0);
     // reduced motion / low stimulation changed mid-world: the backdrop follows at once
-    if (realm.st.reduced !== rm) realm.setReducedMotion(rm);
+    if (!!realm.st.reduced !== !!rm) realm.setReducedMotion(!!rm);
     if (realm.st.low !== !!ctx.lowStim) realm.setLowStimulation(!!ctx.lowStim);
     realm.tick(dt * 1000);
     realm.draw();
@@ -1475,7 +1489,7 @@ export function create(ctx) {
   }
 
   // --------------------------------------------------------------- api --
-  return {
+  const api = {
     prepare,
     get backCanvas() { return realm?.canvas || null; },
     enter({ from } = {}) {
@@ -1583,6 +1597,7 @@ export function create(ctx) {
       realm?.destroy(); realm = null;
     },
     /** QA hooks. */
-    debug: { brightTimes: () => Array.from(bright.slice(0, Math.min(brightN, 8))), get brightCount() { return brightN; }, get field() { return field; }, get cards() { return cards; }, get allCards() { return allCards; }, get waiting() { return waiting.slice(); }, get realm() { return realm; }, get lines() { return lines; }, get fingers() { return fingers; }, thoughtPos: () => ({ x: tSpring.x, y: tSpring.y, r: tR }) },
+    debug: { brightTimes: () => Array.from(bright.slice(0, Math.min(brightN, 8))), get brightCount() { return brightN; }, get field() { return field; }, get cards() { return cards; }, get allCards() { return allCards; }, get waiting() { return waiting.slice(); }, get hint() { return { ...hint }; }, get realm() { return realm; }, get lines() { return lines; }, get fingers() { return fingers; }, thoughtPos: () => ({ x: tSpring.x, y: tSpring.y, r: tR }) },
   };
+  return api;
 }

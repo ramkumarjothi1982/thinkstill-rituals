@@ -144,7 +144,7 @@ export async function hushflowLab(app, qs) {
   thought?.react('appear');
   if (thought) document.fonts?.ready?.then(() => thought.refreshLabel?.());
 
-  window.__hushflow = { director, mallow, thought, subtitles, photos, words, log, registry, bar, get world() { return director.world; } };
+  window.__hushflow = { director, mallow, thought, subtitles, photos, words, log, registry, bar, get world() { return director.world; }, get rig() { return app.world?.rig || null; } };
   window.__hushflowReady = true;
   return true;
 }
