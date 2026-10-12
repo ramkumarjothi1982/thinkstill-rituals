@@ -491,3 +491,12 @@ test('layer: the Hushfold placeholder shape (add / list / hitTest / pointer / re
   assert.equal(L.list.length, 0);
   L.destroy();
 });
+
+test('low stimulation: far fewer arcs, no motes; the feeling still shows', () => {
+  T += 10;
+  const loud = thought('anger'), quiet = thought('anger', { lowStim: true });
+  const born = (th, o) => { let n = 0; const last = th.fx.arcs.map((a) => a.life); sim(th, 6, () => th.fx.arcs.forEach((a, i) => { if (a.life > last[i] + 0.5) n++; last[i] = a.life; }), o); return n; };
+  const a = born(loud), b = born(quiet, { low: true });
+  assert.ok(b < a * 0.6, `arcs ${a} → ${b}`);
+  assert.ok(quiet.look.face.browA > 0.8, 'still visibly cross');
+});

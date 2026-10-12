@@ -20,7 +20,7 @@
 // Exploration never says the belief is wrong: the prop only becomes lighter,
 // looser, less dominant. Nothing is ever removed.
 
-import { ThoughtMallow, rnd } from './thought.js';
+import { ThoughtMallow } from './thought.js';
 import { THOUGHT_STYLES, BELIEF_TINTS, REST_FACE, normaliseEmotion, clamp, lerp } from './styles.js';
 
 export const PROPS = Object.freeze(['stone', 'shell', 'thread', 'charm']);
@@ -109,7 +109,6 @@ export class BeliefMallow extends ThoughtMallow {
       }
       this._tug('prop', 0.04 * a, 0.62, dx * w * 0.08, dy * w * 0.08, 0.2, false);
     }
-    void dt;
   }
 
   // a persistent heavy finger: it presses the material at (x, y) down by `sink` with `depth`
@@ -135,8 +134,6 @@ export class BeliefMallow extends ThoughtMallow {
     const lw = this.prop === 'stone' ? 0.07 : this.prop === 'charm' ? -0.11 : 0;
     this.lean = lerp(this.lean || 0, lw * this.weight, Math.min(1, dt * 2));
     const ps = this.propState, R = this.render, P = R.P, W = R.W, ex = this.explored, rm = this.reducedMotion;
-    const pt = (i) => ({ x: R.pts[2 * i], y: R.pts[2 * i + 1] });
-    void pt;
     const S = this._propPt, sb = this.sb, M = R.M;
     const at = (u, v) => { sb.sample(u, v, S); return { x: M[0] * S.x + M[2] * S.y + M[4], y: M[1] * S.x + M[3] * S.y + M[5] }; };
     const upX = -M[2] / P, upY = -M[3] / P;          // the body's up, screen space
@@ -205,7 +202,6 @@ export class BeliefMallow extends ThoughtMallow {
       ps.x = ch.x[n - 1]; ps.y = ch.y[n - 1];
       ps.ang = Math.atan2(ch.x[n - 1] - ch.x[n - 2], ch.y[n - 1] - ch.y[n - 2]) * -1;
     }
-    void rnd;
   }
 }
 

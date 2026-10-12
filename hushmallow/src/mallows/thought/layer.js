@@ -514,7 +514,8 @@ export class ThoughtLayer {
     words.className = 'tm-words';
     el.appendChild(words);
     const label = th.kind === 'belief' ? 'Belief' : 'Thought';
-    el.setAttribute('aria-label', `${label}: ${th.text}. Press to read it all; the arrow keys move it.`);
+    const said = th.text.trim();
+    el.setAttribute('aria-label', `${label}: ${said}${/[.!?…]$/u.test(said) ? '' : '.'} Press to read it all; the arrow keys move it.`);
     el.addEventListener('click', () => this.read(th));
     el.addEventListener('keydown', (e) => {
       const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
