@@ -467,8 +467,8 @@ export class Sea {
   }
   /** Total energy (A²·√area summed) — a size measure for the hum and the settle. */
   energy(userOnly = false) { let e = 0; for (let i = 0; i < this.max; i++) if (this.on[i] && (!userOnly || this.user[i])) e += this.A[i] * this.A[i] * Math.sqrt(this.sl[i] * this.sw[i]); return e; }
-  /** How many of the person's own long swells (λ ≥ lamMin) are still rolling with at least `minA` px. */
-  swells(lamMin, minA = 1) { let c = 0; for (let i = 0; i < this.max; i++) if (this.on[i] && this.user[i] && !this.ring[i] && this.lam[i] >= lamMin && this.A[i] >= minA) c++; return c; }
+  /** How many of the person's own long swells (λ ≥ lamMin) are still rolling with at least `minFrac` of their first height. */
+  swells(lamMin, minFrac = 0.3) { let c = 0; for (let i = 0; i < this.max; i++) if (this.on[i] && this.user[i] && this.free[i] && !this.ring[i] && this.lam[i] >= lamMin && this.A[i] >= minFrac * this.A0[i]) c++; return c; }
   /** Slope energy of short waves (λ < lamMax): how choppy it is. */
   chop(lamMax, userOnly = false) { let e = 0; for (let i = 0; i < this.max; i++) if (this.on[i] && this.lam[i] < lamMax && (!userOnly || this.user[i])) { const s = this.A[i] * this.k[i]; e += s * s; } return e; }
   /** Is packet i (by serial id) still alive, and how big? */

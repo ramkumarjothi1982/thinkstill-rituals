@@ -67,7 +67,7 @@ const RISE_SEC = 3;                     // the horizon rises 0.655H → 0.44H af
 const GLIDE_SEC = 2.2;                  // a bubble / the thought glides from where it hung down onto the water
 const HINT_AT = 5.5, HINT_SEC = 3.6;
 const FLICK_U = 0.2, LONG_U = 0.6;
-const GOLD_SEC = 5;                     // the storm's seed swells keep their gold crest light this long
+const GOLD_SEC = 7;                     // the storm's seed swells keep their gold crest light this long (the melt takes 5 s)
 const TOW_TAU = 2.4, TOW_Z0 = 0.9;      // a slow long stroke towards you tows a far thought ≈0.9·Z0 home
 const TURN_SEC = 12;                    // with photos waiting, a far bubble gives up its place this often
 const RELAYOUT_TOL = 12;                // px: the hero's rest box must move this much to re-plan the screen
@@ -868,7 +868,7 @@ export function create(ctx) {
     const period = sea.dominantPeriod(true);       // the person's own swells only (not the storm's seeds or the wind)
     metricsCache.period = period; metricsCache.periodAll = sea.dominantPeriod(); metricsCache.energy = sea.energy(); metricsCache.chop = sea.chop(FLICK_U * U, true);
     metricsCache.userEnergy = sea.energy(true);
-    metricsCache.swells = sea.swells(LONG_U * U, rm ? 0.6 : 1.5);
+    metricsCache.swells = sea.swells(LONG_U * U, 0.3);
 
     updateThought(dt, now);
     updateBubbles(dt, now);
@@ -1573,13 +1573,14 @@ export function create(ctx) {
         const Fm = F * (1 + 0.15 * mirrorK);
         // the dawn path: a soft warm column, narrow far out and widening towards you, fading as it nears
         // (beside the hero, off-axis: the star of the mirror-calm finish)
-        const cwid = W * (0.045 + 0.11 * sN) * (1 + 0.5 * mirrorK), cdx = (sx - xd) / cwid;
-        const colm = cdx * cdx < 9 ? Math.exp(-cdx * cdx) * dawnK * (0.62 - 0.24 * sN) * (1 + 0.9 * mirrorK) * (0.75 + 0.25 * Math.cos(j * 0.9 + now * 0.6) * (rm ? 0 : 1)) : 0;
+        const cwid = W * (0.012 + 0.05 * sN) * (1 + 0.25 * mirrorK), cdx = (sx - xd) / cwid;
+        const colm = cdx * cdx < 9 ? Math.exp(-cdx * cdx) * dawnK * (0.6 - 0.22 * sN) * (1 + 0.6 * mirrorK) * (0.72 + 0.28 * Math.cos(j * 0.9 + now * 0.6) * (rm ? 0 : 1)) : 0;
         // the storm's ground lines, arriving as the first swells: their crests still lit in the storm's gold for a few seconds
         const gold = Math.min(1, gGold[q] * 7 * amp) * (low() ? 0.6 : 1);
-        gR[q] = wr * (1 - Fm) + rr * Fm + 255 * sp * 0.8 + 70 * glow + 185 * colm + 240 * gold;
-        gG[q] = wg * (1 - Fm) + rg * Fm + 225 * sp * 0.8 + 210 * glow + 146 * colm + 190 * gold;
-        gB[q] = wb * (1 - Fm) + rb * Fm + 170 * sp * 0.8 + 220 * glow + 100 * colm + 105 * gold;
+        gGold[q] = gold;                                  // (kept for the crest lines)
+        gR[q] = wr * (1 - Fm) + rr * Fm + 255 * sp * 0.8 + 70 * glow + 190 * colm + 240 * gold;
+        gG[q] = wg * (1 - Fm) + rg * Fm + 225 * sp * 0.8 + 210 * glow + 128 * colm + 190 * gold;
+        gB[q] = wb * (1 - Fm) + rb * Fm + 170 * sp * 0.8 + 220 * glow + 66 * colm + 105 * gold;
       }
     }
   }
@@ -1654,7 +1655,7 @@ export function create(ctx) {
     for (let j = 0; j < n; j++) {
       const o = j * COLS;
       for (let c = 0; c < COLS; c++) {
-        const q = o + c, v = gCrest[q];
+        const q = o + c, v = Math.max(gCrest[q], gGold[q]);
         let on = 0;
         if (v > 0.05 && j > 2) {
           const h = gH[q];
@@ -1714,6 +1715,27 @@ export function create(ctx) {
       g.globalAlpha = a * 0.3; g.lineWidth = (depth ? 8 : 4) + 1.6 * b; g.stroke();
       g.globalAlpha = a * 0.62; g.lineWidth = (depth ? 2.4 : 1.3) + 0.35 * b; g.stroke();
       g.globalAlpha = a; g.lineWidth = depth ? 0.9 : 0.55; g.stroke();
+    }
+    // the storm's ground lines, arriving as the first swells: their crests drawn in the storm's gold for a few seconds
+    for (let pass = 0; pass < 2; pass++) {
+      g.beginPath();
+      let segs = 0;
+      for (let q0 = 3 * COLS; q0 < n * COLS; q0++) {
+        if (!gMark[q0] || gPred[q0] || gSucc[q0] < 0) continue;
+        let q = q0, pen = false, ex = 0, ey = 0;
+        while (q >= 0 && gSucc[q] >= 0) {
+          const nq = gSucc[q], ok = Math.min(gGold[q], gGold[nq]) >= (pass ? 0.4 : 0.12);
+          const mx = (gSX[q] + gSX[nq]) * 0.5, my = (gSY[q] + gSY[nq]) * 0.5;
+          if (ok) { if (!pen) { g.moveTo(gSX[q], gSY[q]); g.lineTo(mx, my); pen = true; } else g.quadraticCurveTo(gSX[q], gSY[q], mx, my); ex = gSX[nq]; ey = gSY[nq]; segs++; }
+          else if (pen) { g.lineTo(ex, ey); pen = false; }
+          q = nq;
+        }
+        if (pen) g.lineTo(ex, ey);
+      }
+      if (!segs) continue;
+      g.strokeStyle = C.dawn;
+      g.globalAlpha = (pass ? 0.3 : 0.16) * (low() ? 0.6 : 1); g.lineWidth = pass ? 5 : 9; g.stroke();
+      g.globalAlpha = (pass ? 0.55 : 0.3) * (low() ? 0.6 : 1); g.lineWidth = pass ? 1.4 : 2.4; g.stroke();
     }
     g.globalAlpha = 1; g.lineCap = 'round';
   }
@@ -1870,6 +1892,7 @@ export function create(ctx) {
       pts[k] = clamp(wl - h * wo.s * 0.6 + (wake ? wake.at(x, wl) * 3 : 0), yHi, yLo);
       if (pts[k] < wMin) wMin = pts[k];
     }
+    lipStat.under = (base - wMin) / artH; lipStat.halfW = hw; lipStat.bodyHalfW = w / 2;
     // the submerged part: clipped to the body, the water's own colour deepening downwards
     g.save();
     g.beginPath();
@@ -1906,6 +1929,7 @@ export function create(ctx) {
     g.restore();
   }
   const LIP_N = 12, LIP_S = 28;
+  const lipStat = { under: 0, halfW: 0, bodyHalfW: 0 };     // (QA: how much of the body is under the waterline, and how wide the lip is)
   const lipPts = new Float32Array(LIP_N + 1), lipXs = new Float32Array(LIP_N + 1);
   let lipC = null;
   /** The submerged part's tint: the deep water's colour, clear at the waterline and deepening downwards (one cached strip). */
@@ -2138,7 +2162,7 @@ export function create(ctx) {
     debug: {
       get sea() { return sea; }, get wake() { return wake; }, get cam() { return cam; }, get plan() { return plan; },
       get thought() { return { ...tS }; }, get bubbles() { return bubbles.map((b) => ({ i: b.i, sx: b.sx, sy: b.sy, D: b.D, d: b.z / cam.Z0, state: b.state, alpha: b.alpha })); },
-      get waiting() { return waiting.slice(); }, get fingers() { return fingers; }, get hero() { return { ...hero }; }, get keep() { return { K: { ...K }, Kr: { ...Kr }, fl: { ...fl } }; },
+      get waiting() { return waiting.slice(); }, get fingers() { return fingers; }, get hero() { return { ...hero }; }, get keep() { return { K: { ...K }, Kr: { ...Kr }, fl: { ...fl } }; }, get lip() { return { ...lipStat }; }, get hint() { return { ...hint, backHint }; },
       get melt() { return melt ? { ...melt } : null; }, get hy() { return hyNow; }, get layouts() { return layoutLog; },
       /** Screen y of the still water at depth d·Z0. */
       surfaceY: (d) => cam.hy + cam.Hw * scaleAt(cam, d * cam.Z0),

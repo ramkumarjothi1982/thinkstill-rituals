@@ -118,6 +118,8 @@ const SIDE_NAMES = ['below', 'above', 'right', 'left'];
 const CANDS = Object.freeze([0, 0, 1, 0, 2, 0, 3, 0, 0, -0.32, 0, 0.32, 1, -0.32, 1, 0.32, 2, -0.6, 2, 0.6, 3, -0.6, 3, 0.6,
   0, -0.62, 0, 0.62, 1, -0.62, 1, 0.62, 2, -1.15, 2, 1.15, 3, -1.15, 3, 1.15]);
 const NC = CANDS.length / 2, NC_PLAN = 12;
+// which anchor reaches point outward (+1 down / right, −1 up / left): they hold their furthest (_anchors)
+const OUTWARD = Object.freeze([0, 1, 0, -1, 1, -1, 0, 1]);
 /** How far each crowd level holds its thoughts (0 room … 4 packed). */
 export const CROWD_Z = Object.freeze([0, 0.2, 0.45, 0.62, 0.78]);
 // px² of padding overlap that still counts as "fits"
@@ -997,16 +999,10 @@ export class ThoughtLayer {
       const e = this._extent(th, dt);
       const tg = this.tags.get(th);
       // the words below or above take room in the bounds too
-      let tb = 0, tt = 0, tl = 0, tr = 0;
-      const W = env.view.W, edge = W < 360 ? 12 : 16;
-      if (tg && tg.w) {
-        // (beside it: a plate may reach the screen's own margin, never past it — the body stops before its words would be pushed onto it)
-        const gap = 14 + 8 * (1 - th.z), side = CANDS[2 * tg.ci];
-        if (side === 1) tt = tg.h + gap; else if (side === 0) tb = tg.h + gap;
-        else if (side === 3) tl = edge + tg.w + gap; else if (side === 2) tr = edge + tg.w + gap;
-      }
+      let tb = 0, tt = 0;
+      if (tg && tg.w) { const gap = 14 + 8 * (1 - th.z), side = CANDS[2 * tg.ci]; if (side === 1) tt = tg.h + gap; else if (side === 0) tb = tg.h + gap; }
       const lim = th._lim || (th._lim = { minX: 0, maxX: 0, minY: 0, maxY: 0 });
-      lim.minX = Math.max(B.left + e.l, tl + e.l) - e.dx; lim.maxX = Math.min(B.right - e.r, tr ? W - tr - e.r : Infinity) - e.dx;
+      lim.minX = B.left + e.l - e.dx; lim.maxX = B.right - e.r - e.dx;
       lim.minY = B.top + e.t + tt - e.dy; lim.maxY = B.bottom - Math.max(e.b, tb ? th.render.P / 2 + tb : 0) - e.dy;
       if (lim.maxX < lim.minX) lim.maxX = lim.minX = (lim.minX + lim.maxX) / 2;
       if (lim.maxY < lim.minY) lim.maxY = lim.minY;
@@ -1175,6 +1171,8 @@ export class ThoughtLayer {
     const L = th._lim, f0 = this._foot(th), x0 = th.home.x, y0 = th.home.y, K = this._keep();
     const fl = f0.l - x0, fr = f0.r - x0, ft = f0.t - y0, fb = f0.b - y0;
     const F = this._gatherFeet(th, -1), n = this._nFeet;
+    // (its words go with it: they stay inside the screen's margin and the stage, never pushed back onto it)
+    const W = env.view.W, edge = W < 360 ? 12 : 16, B = env.bounds;
     let ax = 0, ay = 0;
     if (env.away) { const dx = x0 - env.away.x, dy = y0 - env.away.y, d = Math.hypot(dx, dy) || 1; ax += dx / d; ay += dy / d; }
     for (const o of this.thoughts) {
@@ -1191,6 +1189,7 @@ export class ThoughtLayer {
       for (let d = 12; d <= budget + 0.1; d += 6) {
         const x = x0 + ux * d, y = y0 + uy * d;
         if (x < L.minX || x > L.maxX || y < L.minY || y > L.maxY) break;
+        if (x + fl < edge - PAD_T || x + fr > W - edge + PAD_T || y + ft < B.top - PAD_T || y + fb > B.bottom + 2 + PAD_T) break;
         let hit = K ? overA(x + fl, y + ft, x + fr, y + fb, K.left - 6, K.top - 6, K.right + 6, K.bottom + 6) > 0 : false;
         for (let i = 0; i < n && !hit; i++) { const q = F[i]; if (overP(x + fl, y + ft, x + fr, y + fb, q[0], q[1], q[2], q[3]) > 0) hit = true; }
         if (hit) break;
@@ -1252,7 +1251,7 @@ export class ThoughtLayer {
       x: 0, y: 0, vx: 0, vy: 0, rot: 0, kx: NaN, ky: NaN, kr: NaN, moving: false,
       shown: false, travel: false, wait: false, above: false, calm: false, side: 'below',
       ci: 0, pi: -1, live: false, done: false, blocked: false, drop: 0, mode: 2,
-      tx: 0, ty: 0, rl: 0, rt: 0, g: new Float64Array(10), wx: 0, wy: 0, tintQ: -1, clear: true };
+      tx: 0, ty: 0, rl: 0, rt: 0, g: new Float64Array(10), ga: new Float64Array(8), gaInit: false, wx: 0, wy: 0, tintQ: -1, clear: true };
     this.tags.set(th, tg);
     th.tag = el;
     th._words = wordsOf(th.text);
@@ -1387,13 +1386,29 @@ export class ThoughtLayer {
     this._obOwner[n] = th; this._obN = n + 1;
   }
 
-  // where a thought's words may anchor this frame: below its body, above everything over its head, beside all of it
-  _anchors(th, tg) {
-    const g = tg.g, Q = th.render.pts, b = th._bbox(), ex = th.extent(this._rect3), gap = 14 + 8 * (1 - th.z);
-    g[0] = Q[2 * PT.bottom]; g[1] = b.bottom + gap;
-    g[2] = Q[2 * PT.top]; g[3] = ex.top - gap;
-    g[4] = ex.right + gap; g[5] = ex.left - gap;
-    g[6] = b.cy; g[7] = b.height / 2; g[8] = b.cx; g[9] = b.cy;
+  // where a thought's words may anchor this frame: below its body, above everything over its head, beside all
+  // of it. Measured relative to its centre and smoothed over about a second (ga), so the words follow its
+  // slow changes (a verb, a sink, going farther) and not its fast ones (a squash, a tremble, a hop, the
+  // crackle flickering on and off)
+  _anchors(th, tg, dt = 1 / 60) {
+    const g = tg.g, ga = tg.ga, R = th.render, Q = R.pts, b = th._bbox(), ex = th.extent(this._rect3), gap = 14 + 8 * (1 - th.z);
+    const cx = R.cx, cy = R.cy, A = this._anc || (this._anc = new Float64Array(8));
+    A[0] = Q[2 * PT.bottom] - cx; A[1] = b.bottom + gap - cy;
+    A[2] = Q[2 * PT.top] - cx; A[3] = ex.top - gap - cy;
+    A[4] = ex.right + gap - cx; A[5] = ex.left - gap - cx;
+    A[6] = b.cy - cy; A[7] = b.height / 2;
+    // (outward reaches — below, above, right, left, half its height — hold their furthest at once and ease
+    // back in slowly: steady through a squash or a tremble, never late for a body that grows; the x of
+    // its top and bottom and its middle follow smoothly)
+    const k = tg.gaInit ? Math.min(1, dt * (th.pressed ? 6 : 1)) : 1, kin = tg.gaInit ? Math.min(1, dt * 0.6) : 1;
+    for (let i = 0; i < 8; i++) {
+      const out = OUTWARD[i];
+      if (out && (A[i] - ga[i]) * out > 0) ga[i] = A[i];
+      else ga[i] += (A[i] - ga[i]) * (out ? kin : k);
+    }
+    tg.gaInit = true;
+    g[0] = cx + ga[0]; g[1] = cy + ga[1]; g[2] = cx + ga[2]; g[3] = cy + ga[3];
+    g[4] = cx + ga[4]; g[5] = cx + ga[5]; g[6] = cy + ga[6]; g[7] = ga[7]; g[8] = cx; g[9] = cy;
   }
   // the plate's rect for candidate c (clamped onto the screen and the stage) into the shared scratch;
   // _crD: how far the clamp moved it from where it wanted to be
@@ -1420,13 +1435,13 @@ export class ThoughtLayer {
     let h0 = 0, h3 = 0;
     if (K) { h0 += overA(l, t, rr, b, K.left - 4, K.top - 4, K.right + 4, K.bottom + 4); h3 += overA(l - m, t - m, rr + m, b + m, K.left - 4, K.top - 4, K.right + 4, K.bottom + 4); }
     const ob = this._ob, n = this._obN;
-    // (_hobDeep: what covers a face or a free sibling by more than a 1.5 px brush of its envelope)
+    // (_hobDeep: what covers a face or a free sibling by more than a 2 px brush of its envelope)
     let hob = 0, deep = 0;
     for (let k = 0; k < n; k++) {
       const j = 6 * k;
       if (!HARD[ob[j + 4]]) continue;
       const ox = Math.min(rr, ob[j + 2]) - Math.max(l, ob[j]), oy = Math.min(b, ob[j + 3]) - Math.max(t, ob[j + 1]);
-      if (ox > 0 && oy > 0) { hob += ox * oy; if (ox > 1.5 && oy > 1.5) deep += ox * oy; }
+      if (ox > 0 && oy > 0) { hob += ox * oy; if (ox > 2 && oy > 2) deep += ox * oy; }
       h3 += overA(l - m, t - m, rr + m, b + m, ob[j], ob[j + 1], ob[j + 2], ob[j + 3]);
     }
     h0 += hob; this._hob = hob; this._hobDeep = deep;
@@ -1533,7 +1548,7 @@ export class ThoughtLayer {
       const tg = this.tags.get(th);
       if (!tg) continue;
       this._fitLevel(th, tg, W);
-      this._anchors(th, tg);
+      this._anchors(th, tg, dt);
       tg.blocked = false; tg.done = false; tg.pi = -1; tg.wait = false;
       tg.mode = th._leaving ? 3 : th._trav ? 2 : th.pressed || th.driven ? 1 : 0;
     }
@@ -1544,7 +1559,7 @@ export class ThoughtLayer {
         if (!tg || tg.mode !== mode || !tg.live || !tg.w) continue;
         const r = this._candRect(th, tg, tg.ci);
         // (a brush of a face's motion envelope — itself a pixel wider than the face goes — is not a cover:
-        // an overlap no more than 1.5 px deep is let be, so a resting plate never flickers for it)
+        // an overlap no more than 2 px deep is let be, so a resting plate never flickers for it)
         const h0 = this._hard(r, th, -1);
         if (h0 - this._hob + this._hobDeep > 0) continue;
         tg.done = true; tg.pi = this._placeR(r, this._nPlaced, th);
@@ -1559,7 +1574,7 @@ export class ThoughtLayer {
         let c = this._search(th, tg, -1);
         // at rest and nowhere clear: fewer words (a narrower, shorter plate), then look again
         while (this._bestHard > 0 && mode === 0 && tg.drop < (this.crowd >= 3 ? 3 : 2)) {
-          tg.drop++; this._fitLevel(th, tg, W); this._anchors(th, tg);
+          tg.drop++; this._fitLevel(th, tg, W);
           c = this._search(th, tg, -1);
         }
         // still nowhere: a wider look round it

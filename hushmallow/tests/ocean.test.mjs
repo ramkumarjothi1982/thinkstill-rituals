@@ -184,6 +184,53 @@ test('layout: the band stays clear; the thought, its words, the hero and the bub
   assert.equal(bubbleSize(0.1, 9, 390), OCEAN.BUBBLE_FAR);
 });
 
+test('layout (review r2): every photo has a place on the smallest phone, beside the hero rather than on it — smaller, never overlapping', () => {
+  for (const [W, H] of [[320, 568], [375, 812], [390, 844]]) {
+    const band = bandFor(H);
+    for (const plate of [{ w: 196, h: 59, lines: 2 }, { w: 277, h: 38, lines: 1 }]) {
+      const p = planOcean({ W, H, band, mallow: null, plate, n: 7 });
+      assert.ok(p.slots.length >= 7, `${W}×${H} (${plate.lines} line): ${p.slots.length} slots for 7 photos`);
+      for (const s of p.slots) {
+        const B = { x0: s.x - s.D / 2, x1: s.x + s.D / 2, y0: s.y - s.D / 2, y1: s.y + s.D / 2 };
+        assert.ok(!ov(B, p.rects.mallow), `${W}×${H}: a bubble on the hero`);
+        assert.ok(s.D >= OCEAN.BUBBLE_TIGHT - 0.01 || s.d > 6, `${W}×${H}: a near bubble of ${s.D} px`);
+      }
+    }
+  }
+});
+
+test('sea (review r2): the wind carries nothing — only the person’s swells (and the storm’s seed swells) drift a floater', () => {
+  const sea = new Sea(), o = {};
+  sea.launch({ x: 0, z: 400, dx: 0, dz: 1, lambda: 120, A: 3, len: 300, user: false });            // a wind ripple
+  sea.prepare(); sea.sample(0, 400, o);
+  assert.equal(o.uz, 0, 'a background ripple moves nothing');
+  assert.ok(Math.abs(o.h) > 0 || o.amp > 0, '…though it is still there to see');
+  const seed = new Sea();
+  seed.launch({ x: 0, z: 400, dx: 0, dz: 1, lambda: 300, A: 6, len: 600, user: false, carry: true, seed: true });
+  seed.prepare(); seed.sample(0, 400, o);
+  assert.ok(o.uz > 0 && o.uuz === 0, 'a storm line rolling away carries, and is not counted as the person’s');
+  // the gold crest light of a seed swell fades with its age
+  const X = { CHOP: new Float32Array(8), chopMax: 50, GOLD: new Float32Array(8), goldSec: 5 };
+  const H8 = () => new Float32Array(8);
+  seed.row(400, -40, 10, 8, 10, 0, H8(), H8(), H8(), H8(), H8(), H8(), true, null, 0, X);
+  const g0 = Math.max(...X.GOLD);
+  for (let t = 0; t < 6; t += 0.1) seed.step(0.1);
+  seed.row(400, -40, 10, 8, 10, 0, H8(), H8(), H8(), H8(), H8(), H8(), true, null, 0, X);
+  assert.ok(g0 > 0 && Math.max(...X.GOLD) === 0, `gold at first (${g0.toFixed(3)}), gone after its few seconds`);
+});
+
+test('progress (review r2): one long swell’s period is not a sea, and nothing completes before real play', () => {
+  const p = createOceanProgress();
+  for (let k = 0; k < 4; k++) p.stroke({ lambdaU: 0.8 });
+  let r;
+  for (let t = 0; t < 14; t += DT) r = p.update(DT, { dist: 1.2, period: 7, down: false, swells: 1, played: 20 + t });
+  assert.ok(!r.complete, 'a single swell rolling with a long period: not yet');
+  for (let t = 0; t < 12; t += DT) r = p.update(DT, { dist: 1.2, period: 7, down: false, swells: 3, played: 34 + t * 0.2 });
+  assert.ok(!r.complete, 'a sustained sea, but under 40 s of play: not yet');
+  for (let t = 0; t < 4; t += DT) r = p.update(DT, { dist: 1.2, period: 7, down: false, swells: 3, played: 40 + t });
+  assert.ok(r.complete, 'a sustained sea after 40 s of play, hands off: the invitation to drift on');
+});
+
 // ----------------------------------------------------------- discoveries --
 test('long-waves: two flicks, then a slow long stroke → fires a moment later while the swell rolls; never without the contrast', () => {
   const alive = () => 5;
@@ -425,10 +472,83 @@ test('world: no words and no photos (a gentle world for care) — still a whole 
     const w = D.world;
     steps(D, 1);
     assert.equal(w.metrics.dist, null, 'no thought, no distance');
-    for (let k = 0; k < 4; k++) { stroke(D, W / 2 + 20 * k - 30, 790, W / 2 + 20 * k - 20, 420, 0.18 * 390, 7); steps(D, 3); }
-    steps(D, 12);
-    assert.ok(w.complete, `complete on the period route (long ${w.metrics.long}, period ${w.metrics.period.toFixed(1)})`);
+    for (let k = 0; k < 5; k++) { stroke(D, W / 2 + 20 * k - 30, 790, W / 2 + 20 * k - 20, 420, 0.18 * 390, 7); steps(D, 1.5); }
+    assert.ok(!w.complete, `not before 40 s of play (${w.metrics.played.toFixed(0)} s)`);
+    for (let k = 0; k < 30 && !w.complete; k++) steps(D, 1);
+    assert.ok(w.complete, `complete on the period route (long ${w.metrics.long}, period ${w.metrics.period.toFixed(1)}, played ${w.metrics.played.toFixed(0)} s)`);
+    assert.ok(w.metrics.played >= 40, 'after real play');
     assert.ok(!found.includes('distance'));
+  } finally { D?.destroy(); dom.restore(); }
+});
+
+test('world (review r2): a bobbing hero never re-plans the screen; the thought keeps its own tension; nothing is drawn on the hero; strokes towards you bring it back from anywhere', async () => {
+  const dom = installFakeDom();
+  let D = null;
+  try {
+    const { createHushflow } = await import('../src/hushfold/flow/director.js');
+    const W = 320, H = 568;
+    // a hero whose box moves with the float the world asks for (as the lab's rig and MallowTouch do)
+    const B = Math.min(W * 0.58, H * 0.27, 300), bottom = Math.min(H * 0.885, H - 76);
+    let lift = 0;
+    const box = () => { const dy = -lift * B; return { left: W / 2 - B / 2, right: W / 2 + B / 2, top: bottom - B + dy, bottom: bottom + dy, width: B, height: B, cx: W / 2, cy: bottom - B / 2 + dy }; };
+    const mallow = { rect: box, bodyRect: box, react() {}, setEmotion() {}, lookAt() {}, float(f) { lift = f.lift || 0; } };
+    const thought = { ...fakeThought(), state: {} };
+    const registry = createRegistry(WORLDS);
+    const subtitles = { say: () => Promise.resolve(), choice: () => new Promise(() => {}), clear() {} };
+    const photos = { n: 7, draw: () => ({ w: 1, h: 1 }), size: () => ({ w: 1, h: 1 }) };
+    D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow, thought, photos, subtitles, registry, ticker: fakeTicker(), store: memStore(), reducedMotion: false });
+    await D.start({ worldId: 'luminous-ocean', emotion: 'anxious', intention: 'let-go', intensity: 0.9 });
+    const w = D.world;
+    steps(D, 1);
+    const n0 = w.debug.layouts.n, t0 = w.debug.thought.tension;
+    // a big sea rocking the hero while nobody touches: the bob alone never re-plans
+    for (let k = 0; k < 3; k++) { stroke(D, 40 + 240 * (k % 2), 520, 40 + 240 * (k % 2), 270, 0.2 * W, 3); steps(D, 2); }
+    const nPlay = w.debug.layouts.n;
+    steps(D, 20);
+    assert.equal(w.debug.layouts.n, nPlay, `no relayout from the hero's own bob (${nPlay} → ${w.debug.layouts.n})`);
+    assert.ok(nPlay - n0 <= 0, 'none while playing either');
+    // the thought's tension: its own feeling, moved only by the person's sea
+    assert.ok(t0 > 0.7, `an anxious, intense thought starts tense (${t0.toFixed(2)})`);
+    // nothing on the hero, ever: the thought, its words and every bubble, checked every step through a session
+    let worst = 0;
+    const check = () => {
+      const h = box(), hb = { x0: h.left + 0.06 * B, x1: h.right - 0.06 * B, y0: h.top + 2, y1: h.bottom };
+      for (const a of w.avoid()) {
+        if (a.kind !== 'thought' && a.kind !== 'bubble') continue;
+        const r = { x0: a.x + 4, y0: a.y + 4, x1: a.x + a.w - 4, y1: a.y + a.h - 4 };
+        const o = Math.max(0, Math.min(r.y1, hb.y1) - Math.max(r.y0, hb.y0)) * (Math.min(r.x1, hb.x1) > Math.max(r.x0, hb.x0) ? 1 : 0);
+        worst = Math.max(worst, o);
+      }
+    };
+    const stepCheck = (sec) => { for (let t = 0; t < sec; t += 1 / 15) { D.debug.step(1 / 15); check(); } };
+    for (let k = 0; k < 4; k++) { stroke(D, 36 + 248 * (k % 2), 530, 36 + 248 * (k % 2), w.debug.hy + 12, 0.2 * W, 4); stepCheck(4); }
+    stepCheck(8);
+    const far = w.metrics.dist;
+    assert.ok(far >= 3, `drifted out (${far.toFixed(2)})`);
+    // towards you, starting well in front of the far thought (30 px below the horizon, at the side): it still comes back
+    for (let k = 0; k < 4; k++) { stroke(D, 36 + 248 * (k % 2), w.debug.hy + 30, 36 + 248 * (k % 2), 530, 0.2 * W, 5); stepCheck(3); }
+    stepCheck(6);
+    assert.ok(w.metrics.dist < far - 1.5, `brought back from anywhere: ${far.toFixed(2)} → ${w.metrics.dist.toFixed(2)}`);
+    assert.equal(worst, 0, `nothing drawn on the hero (worst overlap ${worst.toFixed(1)} px)`);
+    assert.ok(w.metrics.bubbles + w.metrics.waiting === 7 && w.metrics.bubbles >= 6, `the photos float (${w.metrics.bubbles} + ${w.metrics.waiting} waiting)`);
+  } finally { D?.destroy(); dom.restore(); }
+});
+
+test('world (review r2): with nobody touching, the thought’s tension holds (it never calms by itself)', async () => {
+  const dom = installFakeDom();
+  let D = null;
+  try {
+    const { createHushflow } = await import('../src/hushfold/flow/director.js');
+    const W = 390, H = 844, mallow = fakeMallow(W, H), thought = { ...fakeThought(), state: {} };
+    D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow, thought, registry: createRegistry(WORLDS), ticker: fakeTicker(), store: memStore(), reducedMotion: false, subtitles: { say: () => Promise.resolve(), choice: () => new Promise(() => {}), clear() {} } });
+    await D.start({ worldId: 'luminous-ocean', emotion: 'anxious', intention: 'calm', intensity: 0.9 });
+    const w = D.world;
+    steps(D, 1);
+    const a = w.debug.thought.tension;
+    steps(D, 25);
+    const b = w.debug.thought.tension;
+    assert.ok(a > 0.7 && Math.abs(b - a) < 0.02, `tension ${a.toFixed(2)} → ${b.toFixed(2)} with no touch`);
+    assert.ok(thought.state.tension > 0.7, 'and the handle carries it');
   } finally { D?.destroy(); dom.restore(); }
 });
 
