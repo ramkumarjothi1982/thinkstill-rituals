@@ -43,6 +43,7 @@ const COLS = 21, ROWS = 21;
 const PAD = 3;                 // source px of margin around the body box
 const HOP_SCALE = 2.2;         // the rig measures hops in layer heights (≈ 2.2 body heights)
 const TIERS = { gl: 'A', tri: 'B', strip: 'C' };
+const STRETCH_GIVE = 0.7;      // share of a two-finger spread the body follows
 const REBOUND = 2.4;           // upward velocity (body heights/s) a full squeeze releases
 
 const hexRgb = (hex) => {
@@ -514,12 +515,12 @@ export class MallowTouch {
     R.on('move', (e) => {
       const p = R.ptrs.get(e.id);
       const b = this._local(e.x, e.y);
-      this.sb.move(e.id, b.x, b.y, p ? p.pull : 0);
+      if (!R.stretch) this.sb.move(e.id, b.x, b.y, p ? p.pull : 0);
       this._gaze(e.x, e.y);
       if (!this._fingers.get(e.id)?.pulled && p && p.pull > 0.5) { this._fingers.get(e.id).pulled = true; this._touchEvent('pull'); }
       // a fast drag startles a little
       const sp = Math.hypot(e.vx, e.vy);
-      if (sp > 1700 && this.time - this._lastGasp > 1.6 && p && p.pull > 0.6 && !p.stroked && !p.massage) { this._lastGasp = this.time; this.rig.react('gasp'); }
+      if (sp > 1700 && this.time - this._lastGasp > 1.6 && p && p.pull > 0.6 && !p.stroked && !p.massage && e.t - p.t0 > 0.4) { this._lastGasp = this.time; this.rig.react('gasp'); }
     });
     R.on('up', (e) => this._release(e));
     R.on('stretchStart', (s) => {
@@ -672,9 +673,22 @@ export class MallowTouch {
     const T = this.touch, R = this.reader, sb = this.sb;
     const dScale = 1;
     let maxD = 0;
+    // two fingers: the jelly stretches less than the fingers spread (a tough,
+    // springy feel, and the approved face never smears): 70 % of the ratio
+    const S = R.stretch;
+    let mx = 0, my = 0, half = 0;
+    if (S) {
+      const a = R.ptrs.get(S.a), c = R.ptrs.get(S.b);
+      if (a && c) { mx = (a.x + c.x) / 2; my = (a.y + c.y) / 2; half = (S.d0 / 2) * (1 + (S.s - 1) * STRETCH_GIVE); }
+    }
     for (const p of R.ptrs.values()) {
       const f = this._fingers.get(p.id);
-      const b = this._local(p.x, p.y);
+      let px = p.x, py = p.y;
+      if (half > 0 && (p.id === S.a || p.id === S.b)) {
+        const dx = p.x - mx, dy = p.y - my, l = Math.hypot(dx, dy) || 1;
+        px = mx + (dx / l) * half; py = my + (dy / l) * half;
+      }
+      const b = this._local(px, py);
       const d = p.depth * dScale * (R.stretch ? 0.4 : 1);
       sb.press(p.id, b.x, b.y, d, 0.21);
       sb.move(p.id, b.x, b.y, R.stretch ? 1 : p.pull);

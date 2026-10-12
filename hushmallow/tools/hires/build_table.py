@@ -21,6 +21,10 @@ IDS = ['glitzi', 'zuzu', 'boppo', 'pipzi', 'blubi', 'loomi', 'noomi']
 OLD_REG = json.load(open(OLD))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 NEUTRAL = {'glitzi': {'lidTop': 0.55, 'lidSlant': 0.2}}
+# Hand decisions after the lab check, applied last (logical px):
+#   Glitzi's lid line doubles as its blink line: the painted lid has no hard
+#   edge (a fit drives it to a hairline), a blink needs one. 6 sits between.
+TWEAKS = {'glitzi': {('eyes', 'L', 'lw'): 6.0, ('eyes', 'R', 'lw'): 6.0}}
 
 
 def r1(v):
@@ -81,6 +85,27 @@ def build(name):
     for k in ('x', 'y', 'w', 'sag', 'lw', 'upper', 'depth'):
         if k in M_new and M_new[k] is not None:
             M[k] = L(M_new[k])
+    # optional render-fit pass (lab: the drawn neutral face vs the approved
+    # art on the real rig renderer), already in logical px
+    fit_path = f'{WORK}/fit-{name}.json'
+    if os.path.exists(fit_path):
+        fit = json.load(open(fit_path))['face']
+        for s in 'LR':
+            for k in ('x', 'y', 'rx', 'ry', 'sag', 'lw', 'irisR', 'irisOff', 'hw', 'tilt'):
+                if k in fit['eyes'][s]:
+                    face['eyes'][s][k] = [r1(v) for v in fit['eyes'][s][k]] if isinstance(fit['eyes'][s][k], list) else r1(fit['eyes'][s][k])
+            if face['brows'][s].get('alpha', 0) > 0:
+                for k in ('p0', 'c', 'p1', 'lw'):
+                    v = fit['brows'][s][k]
+                    face['brows'][s][k] = [r1(x) for x in v] if isinstance(v, list) else r1(v)
+        for k in ('x', 'y', 'w', 'sag', 'lw', 'upper', 'depth'):
+            if k in fit['mouth'] and k in face['mouth']:
+                face['mouth'][k] = r1(fit['mouth'][k])
+    for path, v in TWEAKS.get(name, {}).items():
+        o = face
+        for k in path[:-1]:
+            o = o[k]
+        o[path[-1]] = v
     W, H = meas['size']
     entry = {
         'res': round(res, 4),

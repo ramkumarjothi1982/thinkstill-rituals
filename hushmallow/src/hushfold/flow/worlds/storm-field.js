@@ -8,8 +8,9 @@
 //
 //   q[i]  current charge, 0..CAP
 //   f[i]  the floor: the storm's own charge. Excess above the floor (from fast
-//         strokes) leaks back to it (τ 14 s); the floor itself never leaks, so
-//         the storm never calms by itself — only grounding lowers it.
+//         strokes) spreads (D 0.6 cells²/s) and leaks back to it (τ 14 s); the
+//         floor itself never moves or leaks, so the storm never calms by itself —
+//         only grounding lowers it.
 
 export const FIELD = Object.freeze({
   CELLS: 512,         // target cell count (cols × rows chosen by aspect)
@@ -190,22 +191,25 @@ export class ChargeField {
   /** Drain an amount directly into light (postcards and the Thought Mallow hold their own charge). */
   addLight(amount) { if (amount > 0) this.light += amount; }
 
-  /** Diffusion + excess leak. Never creates light, never lowers the floor. */
+  /**
+   * Fresh charge (the excess above the storm's own floor) spreads and leaks back;
+   * the floor itself stays put until it is grounded. Never creates light.
+   */
   step(dt) {
     if (dt <= 0) return;
     const { cols, rows, q, f, tmp } = this;
     const a = Math.min(0.24, FIELD.D * dt);
+    const ex = (k) => (q[k] > f[k] ? q[k] - f[k] : 0);
     for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
-      const k = j * cols + i, c = q[k];
-      const l = i > 0 ? q[k - 1] : c, r = i < cols - 1 ? q[k + 1] : c;
-      const u = j > 0 ? q[k - cols] : c, d = j < rows - 1 ? q[k + cols] : c;
+      const k = j * cols + i, c = ex(k);
+      const l = i > 0 ? ex(k - 1) : c, r = i < cols - 1 ? ex(k + 1) : c;
+      const u = j > 0 ? ex(k - cols) : c, d = j < rows - 1 ? ex(k + cols) : c;
       tmp[k] = c + a * (l + r + u + d - 4 * c);
     }
-    const leak = 1 - Math.exp(-dt / FIELD.LEAK_TAU);
+    const keep = Math.exp(-dt / FIELD.LEAK_TAU);
     for (let k = 0; k < this.n; k++) {
-      let v = tmp[k];
-      if (v > f[k]) v -= (v - f[k]) * leak;
-      q[k] = v < 0 ? 0 : v > FIELD.CAP ? FIELD.CAP : v;
+      const v = f[k] + (tmp[k] > 0 ? tmp[k] * keep : 0);
+      q[k] = v > FIELD.CAP ? FIELD.CAP : v;
     }
   }
 

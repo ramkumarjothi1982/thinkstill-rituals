@@ -86,7 +86,7 @@ export function createHushflow(opts = {}) {
   let melt = null;                  // { k, dur, from, to }
   let fadeIn = 1;
   let t = 0, lastTs = 0, raf = 0;
-  let lastInputAt = -Infinity, restSince = 0;
+  let lastInputAt = -Infinity;
   let wantNext = false, autoFlow = false;
   let discoveryPending = 0;
   let choiceOpen = null;            // the world whose 'Stay, or drift on?' is on screen
@@ -127,6 +127,16 @@ export function createHushflow(opts = {}) {
     const d = dprs();
     comp.resize(W, H, d);
     for (const inst of [cur, inc]) if (inst) resizeInstance(inst);
+    redrawNow();
+  }
+
+  /** Resizing a canvas clears it: repaint at once (before the browser paints), so a rotation never shows black. */
+  function redrawNow() {
+    if (!cur || phase === 'loading') { comp.drawFallback(); comp.clearFront(); return; }
+    try { cur.world.frame(0, t); if (melt) melt.to.world.frame(0, t); } catch { /* a world mid-build */ }
+    if (melt) comp.melt(layersOf(melt.from), layersOf(melt.to), melt.e, { horizonY: melt.horizonY, t, reduced: reducedMotion() });
+    else { const L = layersOf(cur); comp.single(L.back, L.front, inOutSine(fadeIn)); }
+    if (paused) comp.veil(VEIL);
   }
 
   // ------------------------------------------------------ world ctx --
@@ -588,7 +598,7 @@ export function createHushflow(opts = {}) {
 
   // ---------------------------------------------------- environment --
   let ro = null;
-  const onResize = () => { if (measure()) { applySize(); if (paused) redrawPaused(); } };
+  const onResize = () => { if (measure()) applySize(); };
   if (typeof ResizeObserver === 'function') { ro = new ResizeObserver(onResize); ro.observe(worldEl); } else addEventListener('resize', onResize);
   const onVis = () => {
     hidden = document.hidden;
@@ -596,14 +606,6 @@ export function createHushflow(opts = {}) {
     else if (!paused) { try { cur?.world.resume?.(); } catch { /* ignore */ } startLoop(); }
   };
   document.addEventListener('visibilitychange', onVis);
-
-  function redrawPaused() {
-    if (!cur) return;
-    try { cur.world.frame(0, t); } catch { /* ignore */ }
-    const L = layersOf(cur);
-    comp.single(L.back, L.front, 1);
-    comp.veil(VEIL);
-  }
 
   function matchMediaReduced() { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } }
 
