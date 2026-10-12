@@ -172,6 +172,9 @@ export class Sea {
     // the wind's background ripples). seed: one of the storm's ground lines, turned into a swell.
     this.carry = new Uint8Array(max); this.seed = new Uint8Array(max);
     this.free = new Uint8Array(max);          // 0 while a finger sculpts it, 1 once released
+    // vis: the world saw this packet on the visible water (its envelope centre within reach, its height a few px on
+    // screen). Only those count as the person's swells: a stroke in the sky, or a sliver along the horizon, moves nothing.
+    this.vis = new Uint8Array(max);
     this.k = F(); this.w = F(); this.cg = F(); this.beta = F(); this.lam = F();
     this.A = F(); this.At = F(); this.A0 = F();
     this.dx = F(); this.dz = F();             // unit direction of travel
@@ -218,7 +221,7 @@ export class Sea {
     const i = this._slot();
     if (i < 0) return -1;
     const l = Math.hypot(o.dx || 0, o.dz || 0) || 1;
-    this.on[i] = 1; this.ring[i] = 0; this.user[i] = o.user === false ? 0 : 1; this.free[i] = o.free === false ? 0 : 1;
+    this.on[i] = 1; this.ring[i] = 0; this.user[i] = o.user === false ? 0 : 1; this.free[i] = o.free === false ? 0 : 1; this.vis[i] = o.vis ? 1 : 0;
     this.carry[i] = o.carry != null ? (o.carry ? 1 : 0) : this.user[i]; this.seed[i] = o.seed ? 1 : 0;
     this._setLambda(i, o.lambda);
     this.dx[i] = (o.dx || 0) / l; this.dz[i] = (o.dz ?? 1) / l;
@@ -234,7 +237,7 @@ export class Sea {
   ringAt(x, z, lambda, A, user = true) {
     const i = this._slot();
     if (i < 0) return -1;
-    this.on[i] = 1; this.ring[i] = 1; this.user[i] = user ? 1 : 0; this.free[i] = 1; this.carry[i] = this.user[i]; this.seed[i] = 0;
+    this.on[i] = 1; this.ring[i] = 1; this.user[i] = user ? 1 : 0; this.free[i] = 1; this.carry[i] = this.user[i]; this.seed[i] = 0; this.vis[i] = 0;
     this._setLambda(i, lambda);
     this.ex[i] = x; this.ez[i] = z; this.dx[i] = 0; this.dz[i] = 1;
     this.sl[i] = this.sl0[i] = 0.55 * lambda; this.sw[i] = this.sw0[i] = this.sl[i];
@@ -455,22 +458,53 @@ export class Sea {
     }
   }
 
-  /** Energy-weighted mean period of the sea (s), 0 when flat. userOnly: the person's own swells only. */
+  /** Is packet i one of the person's own swells, seen on the visible water? */
+  mine(i) { return this.user[i] && this.vis[i]; }
+  /** Where packet i's envelope centre is now (world z). */
+  centreZ(i) { return this.ez[i] + (this.free[i] && !this.ring[i] ? this.dz[i] * this.cg[i] * this.age[i] : 0); }
+  /**
+   * How tall packet i stands on the screen (px): the largest A·E·s along its axis
+   * (±2.5σ about its envelope centre) at depths up to zMax. A (optional) overrides its height. Also leaves the perspective scale there in `peakS`.
+   * (A stroke's envelope spans the whole stroke in world space, so its centre alone says little: a stroke from the
+   * horizon down to the hero has its centre far out, yet its swell stands tall right in front of you.)
+   */
+  peakPx(i, cam, zMax = Infinity, A = null) {
+    this.peakS = 0;
+    if (!this.on[i]) return 0;
+    const a = A ?? this.A[i];
+    if (this.ring[i]) { const z = this.ez[i]; if (z > zMax) return 0; this.peakS = scaleAt(cam, z); return a * this.peakS; }
+    const run = this.free[i] ? this.cg[i] * this.age[i] : 0, sl = this.sl[i], dz = this.dz[i];
+    const cz = this.ez[i] + dz * run;
+    let best = 0;
+    for (let k = -10; k <= 10; k++) {
+      const u = k * 0.25 * sl, z = cz + dz * u;
+      if (z > zMax || z < -0.8 * cam.Z0) continue;
+      const sc = scaleAt(cam, z), v = a * Math.exp(-0.03125 * k * k) * sc;
+      if (v > best) { best = v; this.peakS = sc; }
+    }
+    return best;
+  }
+
+  /** Energy-weighted mean period of the sea (s), 0 when flat. userOnly: the person's own visible swells only. */
   dominantPeriod(userOnly = false) {
     let e = 0, et = 0;
     for (let i = 0; i < this.max; i++) {
-      if (!this.on[i] || (userOnly && !this.user[i])) continue;
+      if (!this.on[i] || (userOnly && !this.mine(i))) continue;
       const w = this.A[i] * this.A[i] * Math.sqrt(this.sl[i] * this.sw[i]);
       e += w; et += w * (TAU / this.w[i]);
     }
     return e > 1e-6 ? et / e : 0;
   }
   /** Total energy (A²·√area summed) — a size measure for the hum and the settle. */
-  energy(userOnly = false) { let e = 0; for (let i = 0; i < this.max; i++) if (this.on[i] && (!userOnly || this.user[i])) e += this.A[i] * this.A[i] * Math.sqrt(this.sl[i] * this.sw[i]); return e; }
-  /** How many of the person's own long swells (λ ≥ lamMin) are still rolling with at least `minFrac` of their first height. */
-  swells(lamMin, minFrac = 0.3) { let c = 0; for (let i = 0; i < this.max; i++) if (this.on[i] && this.user[i] && this.free[i] && !this.ring[i] && this.lam[i] >= lamMin && this.A[i] >= minFrac * this.A0[i]) c++; return c; }
+  energy(userOnly = false) { let e = 0; for (let i = 0; i < this.max; i++) if (this.on[i] && (!userOnly || this.mine(i))) e += this.A[i] * this.A[i] * Math.sqrt(this.sl[i] * this.sw[i]); return e; }
+  /**
+   * How many of the person's own visible long swells (λ ≥ lamMin) are still rolling with at least `minFrac` of their
+   * first height (and, with a camera, still standing ≥ minPx tall on screen within depth zMax: a swell rolled away
+   * over the horizon is no longer seen).
+   */
+  swells(lamMin, minFrac = 0.3, cam = null, zMax = Infinity, minPx = 1) { let c = 0; for (let i = 0; i < this.max; i++) if (this.on[i] && this.mine(i) && this.free[i] && !this.ring[i] && this.lam[i] >= lamMin && this.A[i] >= minFrac * this.A0[i] && (!cam || this.peakPx(i, cam, zMax) >= minPx)) c++; return c; }
   /** Slope energy of short waves (λ < lamMax): how choppy it is. */
-  chop(lamMax, userOnly = false) { let e = 0; for (let i = 0; i < this.max; i++) if (this.on[i] && this.lam[i] < lamMax && (!userOnly || this.user[i])) { const s = this.A[i] * this.k[i]; e += s * s; } return e; }
+  chop(lamMax, userOnly = false) { let e = 0; for (let i = 0; i < this.max; i++) if (this.on[i] && this.lam[i] < lamMax && (!userOnly || this.mine(i))) { const s = this.A[i] * this.k[i]; e += s * s; } return e; }
   /** Is packet i (by serial id) still alive, and how big? */
   alive(id) { for (let i = 0; i < this.max; i++) if (this.on[i] && this.id[i] === id) return this.A[i]; return 0; }
   clear() { this.on.fill(0); }

@@ -395,6 +395,47 @@ test('world: slow long strokes and flicks make different seas; the thought drift
   } finally { D?.destroy(); dom.restore(); }
 });
 
+test('world (review r3): strokes in the sky shape nothing — no progress, no long swells, no "long-waves"; the water begins at the horizon line', async () => {
+  const dom = installFakeDom();
+  let D = null;
+  try {
+    const { createHushflow } = await import('../src/hushfold/flow/director.js');
+    for (const [W, H] of [[390, 844], [320, 568]]) {
+      const mallow = fakeMallow(W, H), thought = fakeThought(), found = [];
+      const subtitles = { say: () => Promise.resolve(), choice: () => new Promise(() => {}), clear() {} };
+      const sized = () => Object.assign(dom.el(), { clientWidth: W, clientHeight: H });
+      D = createHushflow({ worldEl: sized(), fxEl: sized(), mallow, thought, subtitles, registry: createRegistry(WORLDS), ticker: fakeTicker(), store: memStore(), reducedMotion: false });
+      D.on('discovery', (e) => found.push(e.id));
+      await D.start({ worldId: 'luminous-ocean', emotion: 'anxious', intention: 'let-go' });
+      const w = D.world;
+      steps(D, 1.5);
+      const hy = w.debug.hy, U = Math.min(W, H);
+      assert.equal(w.debug.cam.W, W, 'the world has the screen size');
+      const userPackets = () => { const s = w.debug.sea; let n = 0; for (let i = 0; i < s.max; i++) if (s.on[i] && s.user[i]) n++; return n; };
+      // two quick flicks and six slow, long strokes, all in the sky (the review's case: under the subtitle band too)
+      for (let k = 0; k < 2; k++) { stroke(D, 60 + 40 * k, hy - 40, 90 + 40 * k, hy - 46, 1100, 2); steps(D, 0.2); }
+      for (let k = 0; k < 6; k++) { const y = Math.max(40, hy - 30 - (k % 3) * 40); stroke(D, 30, y, W - 30, y + 10, 0.2 * U, 3); steps(D, 1.5); }
+      assert.equal(userPackets(), 0, `${W}×${H}: no swell from the sky`);
+      assert.equal(w.metrics.long, 0, `${W}×${H}: no long swells counted`);
+      assert.ok(w.progress < 0.01, `${W}×${H}: no progress (${w.progress})`);
+      assert.equal(w.metrics.period, 0, `${W}×${H}: no period of the person's sea`);
+      assert.ok(!found.includes('long-waves'), `${W}×${H}: '…and the whole sea rolls.' is never said of an unchanged sea`);
+      // a sliver along the far horizon: a ripple there at most, and it does not count either
+      stroke(D, 40, hy + 10, W - 40, hy + 12, 0.2 * U, 4); steps(D, 1);
+      assert.equal(w.metrics.long, 0, `${W}×${H}: a stroke along the horizon is not a long swell`);
+      // a stroke from the sky down onto the water: it starts at the horizon line, and that swell does count
+      stroke(D, W * 0.2, hy - 60, W * 0.24, Math.min(H - 80, hy + 0.55 * U), 0.2 * U, 5); steps(D, 0.5);
+      const s = w.debug.sea, cam = w.debug.cam;
+      let mine = -1; for (let i = 0; i < s.max; i++) if (s.on[i] && s.user[i] && (mine < 0 || s.id[i] > s.id[mine])) mine = i;
+      assert.ok(mine >= 0 && s.vis[mine] === 1, `${W}×${H}: the water part of the stroke made a visible swell`);
+      const px = s.peakPx(mine, cam, OCEAN.CAP * cam.Z0);
+      assert.ok(px >= 3, `${W}×${H}: it stands ${px.toFixed(1)} px tall on the visible water`);
+      assert.equal(w.metrics.long, 1, `${W}×${H}: …and it counts`);
+      D.destroy(); D = null;
+    }
+  } finally { D?.destroy(); dom.restore(); }
+});
+
 test('world: a storm melts into the ocean — horizon from 0.655H to 0.44H, postcards become bubbles in place, the thought lands, lines become swells', async () => {
   const dom = installFakeDom();
   let D = null;
@@ -496,7 +537,7 @@ test('world (review r2): a bobbing hero never re-plans the screen; the thought k
     const registry = createRegistry(WORLDS);
     const subtitles = { say: () => Promise.resolve(), choice: () => new Promise(() => {}), clear() {} };
     const photos = { n: 7, draw: () => ({ w: 1, h: 1 }), size: () => ({ w: 1, h: 1 }) };
-    D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow, thought, photos, subtitles, registry, ticker: fakeTicker(), store: memStore(), reducedMotion: false });
+    D = createHushflow({ worldEl: Object.assign(dom.el(), { clientWidth: W, clientHeight: H }), fxEl: Object.assign(dom.el(), { clientWidth: W, clientHeight: H }), mallow, thought, photos, subtitles, registry, ticker: fakeTicker(), store: memStore(), reducedMotion: false });
     await D.start({ worldId: 'luminous-ocean', emotion: 'anxious', intention: 'let-go', intensity: 0.9 });
     const w = D.world;
     steps(D, 1);

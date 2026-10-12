@@ -71,6 +71,8 @@ const GOLD_SEC = 10;                    // the storm's seed swells keep their go
 const TOW_TAU = 2.4, TOW_Z0 = 0.9;      // a slow long stroke towards you tows a far thought ≈0.9·Z0 home
 const TURN_SEC = 12;                    // with photos waiting, a far bubble gives up its place this often
 const RELAYOUT_TOL = 12;                // px: the hero's rest box must move this much to re-plan the screen
+const WATER_PAD = 8;                    // px below the horizon line where the water a stroke can shape begins
+const VIS_PX = 3;                       // px: a swell must be at least this tall on screen to count as the person's
 
 const rgbOf = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 const easeOut = (t) => 1 - Math.pow(1 - clamp(t), 3);
@@ -155,7 +157,7 @@ export function create(ctx) {
   // fingers (two at most)
   const fingers = [0, 1].map(() => ({
     on: false, id: -1, x: 0, y: 0, px: 0, py: 0, x0: 0, y0: 0, len: 0, moveT: 0, t0: 0, lastEv: 0, speed: 0,
-    still: 0, slot: -1, sid: 0, ix: 0, iy: 0, onThought: false, bubble: -1, hush: 0, hushX: 0, hushY: 0, pointerType: 'touch', strokes: 0,
+    still: 0, slot: -1, sid: 0, ix: 0, iy: 0, onThought: false, bubble: -1, hush: 0, hushX: 0, hushY: 0, pointerType: 'touch', strokes: 0, skyX: -1e9,
   }));
   const fingerFor = (id) => { for (const f of fingers) if (f.on && f.id === id) return f; return null; };
 
@@ -187,7 +189,7 @@ export function create(ctx) {
   const rings = new Rings(14);       // taps, landings, lifts (front)
   // floaters
   const tS = { x: 0, z: 0, vx: 0, vz: 0, yb: 0, vb: 0, sx: 0, sy: 0, r: 30, s: 0.5, alpha: 0, landK: 1, from: null, labelY: 0, labelYT: 0, labelX: 0, labelXT: 0, side: 'above', labelW: 0, labelFade: -1, plateW: 0, plateH: 0, calm: 0.4, tension: 0.5, outD: 0, outU: 0, rot: 0, surf: 1, landed: true,
-    offX: 0, offY: 0, koX: 0, koY: 0, koFor: 0, vis: 1 };
+    offX: 0, offY: 0, koX: 0, koY: 0, koFor: 0, vis: 1, dP: 1, vzP: 0 };
   const bubbles = [];                // { i, x, z, vx, vz, yb, vb, rot, rv, D, sx, sy, alpha, state, lift, glowAge, morph, from, landK, waitIdx }
   let waiting = [];                  // photo indices waiting below the surface
   let riseClock = 0, slotsAll = null; // (slotsAll: the near slots and the far row, for this layout)
@@ -545,7 +547,7 @@ export function create(ctx) {
   // ------------------------------------------------------------ floaters --
   /** Put the Thought Mallow at its home on the water (cold start or a new thought). */
   function thoughtHome() {
-    tS.x = (plan.home.x - W / 2) / 0.5; tS.z = cam ? cam.Z0 : 500; tS.vx = 0; tS.vz = 0; tS.yb = 0; tS.vb = 0;
+    tS.x = (plan.home.x - W / 2) / 0.5; tS.z = cam ? cam.Z0 : 500; tS.vx = 0; tS.vz = 0; tS.yb = 0; tS.vb = 0; tS.dP = 1; tS.vzP = 0;
     tS.offX = tS.offY = tS.koX = tS.koY = 0; tS.koFor = 0;
     tS.side = plan.plate?.side === 'below' ? 'below' : 'above';
     tS.labelX = tS.labelXT = 0;
@@ -672,7 +674,20 @@ export function create(ctx) {
       const s = Math.max(0.05, (y - cam.hy) / cam.Hw), asp = clamp(s * cam.Hw / cam.Z0, 0.18, 1);
       rings.add(x, y, 4, 26 + 18 * clamp(s), 0.9, asp, C.crest, 0.55, 1.4);
       for (let k = 0; k < (reduced() ? 2 : 6); k++) plankton.spawn(x + (R() - 0.5) * 16, y + (R() - 0.5) * 8 * asp, (R() - 0.5) * 18, (R() - 0.5) * 8, 0.8 + R() * 0.8, 2 + R() * 2.5, (R() * 3) | 0, 0.85);
-    } else rings.add(x, y, 3, 18, 0.7, 1, C.crest2, 0.35, 1.2);
+    } else {
+      rings.add(x, y, 3, 18, 0.7, 1, C.crest2, 0.35, 1.2);
+      skyCue(x, true);
+    }
+  }
+  /**
+   * A finger in the sky shapes nothing (only the water makes swells), but the water says where it is: a small ripple
+   * and a few motes on the horizon line, right below the finger.
+   */
+  function skyCue(x, down = false) {
+    if (!wake || !cam) return;
+    const y = hyNow + WATER_PAD + 3;
+    wake.inject(x, y, down ? -0.32 : -0.18, 1.8);
+    if (down || R() < 0.35) { const n = down ? (reduced() ? 1 : 3) : 1; for (let k = 0; k < n && plankton.n < plankton.max - 2; k++) plankton.spawn(x + (R() - 0.5) * 14, y + R() * 3, (R() - 0.5) * 10, 0, 0.7 + R() * 0.6, 1.4 + R() * 1.6, (R() * 3) | 0, 0.6); }
   }
 
   function pointer(s) {
@@ -680,7 +695,7 @@ export function create(ctx) {
     if (s.type === 'down') {
       const f = fingers.find((q) => !q.on);
       if (!f) return;
-      Object.assign(f, { on: true, id: s.id, x: s.x, y: s.y, px: s.x, py: s.y, x0: s.x, y0: s.y, ix: s.x, iy: s.y, len: 0, moveT: 0, t0: elapsed, lastEv: elapsed, speed: 0, still: 0, slot: -1, sid: 0, hush: 0, hushX: s.x, hushY: s.y, pointerType: s.pointerType || 'touch' });
+      Object.assign(f, { on: true, id: s.id, x: s.x, y: s.y, px: s.x, py: s.y, x0: s.x, y0: s.y, ix: s.x, iy: s.y, len: 0, moveT: 0, t0: elapsed, lastEv: elapsed, speed: 0, still: 0, slot: -1, sid: 0, hush: 0, hushX: s.x, hushY: s.y, pointerType: s.pointerType || 'touch', skyX: s.x });
       f.onThought = hitThought(s.x, s.y);
       f.bubble = bubbleAt(s.x, s.y);
       everTouched = true; lastTouch = elapsed; hint.age = -1; introAt = -1;
@@ -698,8 +713,27 @@ export function create(ctx) {
       f.px = f.x; f.py = f.y; f.x = s.x; f.y = s.y; f.speed = s.speed;
       if (f.onThought) { try { thought?.pointer?.(s); } catch { /* optional */ } }
       if (d < 0.01) return;
-      f.len += d;
       if (s.speed > 0.06 * U) f.still = 0;
+      // only the water makes swells: a stroke in the sky shapes nothing, and one that crosses the horizon line
+      // begins (or lets its swell go) exactly where it crosses it
+      const yc = hyNow + WATER_PAD;
+      if (f.y < yc) {
+        if (f.slot >= 0 && f.py >= yc) {
+          const t = (yc - f.py) / (f.y - f.py), sx = f.x, sy = f.y;
+          f.x = f.px + (sx - f.px) * t; f.y = yc;
+          f.len += d * t;
+          releaseStroke(f);
+          f.x = sx; f.y = sy;
+        } else if (f.slot >= 0) releaseStroke(f);
+        f.x0 = f.x; f.y0 = f.y; f.len = 0; f.moveT = 0; f.ix = f.x; f.iy = f.y;
+        if (Math.abs(f.x - f.skyX) > CELL * 2.5) { f.skyX = f.x; skyCue(f.x); }
+        return;
+      }
+      if (f.py < yc) {
+        // coming down out of the sky: the stroke starts at the horizon line
+        const t = (yc - f.py) / (f.y - f.py);
+        f.x0 = f.px + (f.x - f.px) * t; f.y0 = yc; f.len = d * (1 - t); f.moveT = 0; f.ix = f.x0; f.iy = f.y0;
+      } else f.len += d;
       // the wake follows the finger at once (a dip every ~1.5 cells, deeper when quicker)
       const amt = -0.42 * (0.45 + 0.55 * clamp(s.speed / (1.4 * U)));
       let ex = f.ix, ey = f.iy;
@@ -742,6 +776,19 @@ export function create(ctx) {
     if (!P) return;
     if (reduced()) P.A *= 0.4;
     sea.sculpt(f.slot, P);
+    sea.vis[f.slot] = onVisibleWater(f.slot) ? 1 : 0;
+  }
+  /**
+   * Is packet i on the water the person can see: its swell at least VIS_PX tall on screen somewhere no further out
+   * than the thought may drift (CAP·Z0)? Only such packets count as the person's swells (progress, 'long-waves', the
+   * period and the sea's state): nothing counts that the screen does not show.
+   */
+  function onVisibleWater(i) {
+    if (!cam || i < 0 || !sea.on[i]) return false;
+    const A = sea.free[i] ? sea.A0[i] : sea.At[i];
+    if (sea.peakPx(i, cam, OCEAN.CAP * cam.Z0, A) >= VIS_PX) return true;
+    // (quick chop is seen as broken, glittering water rather than height: steep enough and near enough, it shows)
+    return sea.lam[i] < FLICK_U * U * 1.3 && sea.k[i] * sea.At[i] >= 0.1 && sea.peakS >= 0.12;
   }
   /** The finger lifts (or rests, or turns): the swell it sculpted is set free. */
   function releaseStroke(f) {
@@ -756,7 +803,11 @@ export function create(ctx) {
     if (!ok) return;
     if (len < 6) { sea.cancel(i); return; }
     sea.release(i);
+    const vis = onVisibleWater(i);
+    sea.vis[i] = vis ? 1 : 0;
     const w = strokeWave(len, speed, U);
+    // (a sliver of a stroke along the far horizon makes its tiny ripple there, and nothing more)
+    if (!vis) return;
     // a swell sent towards you also tows whatever floats further out than where the stroke began
     if (sea.dz[i] < -0.35 && len > 0.12 * U) {
       const za = unproject(cam, sx0, sy0, wo).z, zb = unproject(cam, f.x, f.y, wo).z;
@@ -868,7 +919,7 @@ export function create(ctx) {
     const period = sea.dominantPeriod(true);       // the person's own swells only (not the storm's seeds or the wind)
     metricsCache.period = period; metricsCache.periodAll = sea.dominantPeriod(); metricsCache.energy = sea.energy(); metricsCache.chop = sea.chop(FLICK_U * U, true);
     metricsCache.userEnergy = sea.energy(true);
-    metricsCache.swells = sea.swells(LONG_U * U, 0.3);
+    metricsCache.swells = sea.swells(LONG_U * U, 0.3, cam, (OCEAN.CAP + 2) * cam.Z0, 1);
 
     updateThought(dt, now);
     updateBubbles(dt, now);
@@ -882,14 +933,15 @@ export function create(ctx) {
     const evL = longD.update(now, aliveFn);
     if (evL) fireDiscovery(evL);
     if (thought && tS.landK >= 1) {
-      const dist = tS.z / cam.Z0;
+      // (the distance the person's own swells made: the keep-out's nudges, a new layout or a turned phone never count)
+      const dist = tS.dP;
       const ev = distD.update(dt, { dist, out: tS.outD, outUser: tS.outU });
       if (ev?.id === 'distance') fireDiscovery(ev);
       else if (ev?.id === 'back' && !said.back) { said.back = true; say(ctx.entry.dialogue?.drift); }
     }
     // progress and the natural completion point
     const down = fingers.some((f) => f.on);
-    const pr = prog.update(dt, { dist: thought && tS.landK >= 1 ? tS.z / cam.Z0 : null, period, down, swells: metricsCache.swells, played: firstTouchAt >= 0 ? elapsed - firstTouchAt : 0 });
+    const pr = prog.update(dt, { dist: thought && tS.landK >= 1 ? tS.dP : null, period, down, swells: metricsCache.swells, played: firstTouchAt >= 0 ? elapsed - firstTouchAt : 0 });
     lastP = pr.p;
     if (pr.complete && !complete && !melt) finishSea();
 
@@ -1053,7 +1105,7 @@ export function create(ctx) {
     tS.landed = true; tS.from = null; tS.landK = 1;
     // from where it has come down to (its home), the swells take over — exactly where it is, no pop
     unproject(cam, tS.sx, tS.sy + tS.r * tS.surf * 0.55, wo);
-    tS.x = wo.x; tS.z = Math.max(cam.Z0, wo.z); tS.vx = tS.vz = 0; tS.yb = tS.vb = 0;
+    tS.x = wo.x; tS.z = Math.max(cam.Z0, wo.z); tS.vx = tS.vz = 0; tS.yb = tS.vb = 0; tS.dP = 1; tS.vzP = 0;
     tS.snapOff = true;
     splash(tS.sx, tS.sy + tS.r * tS.surf * 0.55, tS.r * 2 * tS.surf);
     // a soft settle as it meets the water (never 'appear': it is the same thought, arriving)
@@ -1087,6 +1139,8 @@ export function create(ctx) {
     const ux = sm.ux * g, uz = sm.uz * g + towAt(tS.z) * (rm ? 0.6 : 1), uuz = sm.uuz * g;
     const ki = 1 - Math.exp(-dt / 0.45);
     tS.vx += (ux - tS.vx) * ki; tS.vz += (uz - tS.vz) * ki;
+    // (the person's own part of it: their swells' drift and their tows)
+    tS.vzP += (uuz + towAt(tS.z) * (rm ? 0.6 : 1) - tS.vzP) * ki;
     const z0 = tS.z;
     if (tS.landK >= 1 && dt > 0) {
       tS.x += tS.vx * dt; tS.z += tS.vz * dt;
@@ -1100,6 +1154,8 @@ export function create(ctx) {
       if (xs !== xc) { tS.x += ((xc - W / 2) / s - tS.x) * (1 - Math.exp(-dt / 0.3)); tS.vx *= Math.exp(-dt / 0.3); }
     }
     const dz = tS.z - z0;
+    // how far out the person's swells have taken it: grows only with their drift, never beyond where it is
+    if (tS.landK >= 1 && dt > 0) tS.dP = clamp(tS.dP + (tS.vzP * dt) / cam.Z0, 1, Math.max(1, tS.z / cam.Z0));
     tS.outD = Math.max(0, dz) / cam.Z0;
     tS.outU = Math.max(0, uuz * dt * (tS.landK >= 1 ? 1 : 0)) / cam.Z0;
     // buoyancy: it rides the swell (y'' = −40(y − h) − 7y')
@@ -2072,7 +2128,7 @@ export function create(ctx) {
       const f0 = fingers.find((f) => f.on);
       return {
         speedU: f0 ? f0.speed / U : 0, period: metricsCache.period, energy: metricsCache.energy, chop: metricsCache.chop,
-        packets: sea.active, dist: thought ? tS.z / (cam?.Z0 || 1) : null, long: prog.long, progress: api.progress,
+        packets: sea.active, dist: thought ? tS.z / (cam?.Z0 || 1) : null, distP: thought ? tS.dP : null, long: prog.long, progress: api.progress,
         hush: Math.max(...fingers.map((f) => f.hush)), bubbles: bubbles.length, waiting: waiting.length, calm: 1 - clamp(metricsCache.chop * 5),
         driftGain, horizon: hyNow, longPending: longD.pending, share: distD.share,
         swells: metricsCache.swells || 0, played: firstTouchAt >= 0 ? elapsed - firstTouchAt : 0, capD, words: tS.side, tension: thought ? tS.tension : null, base: baseTension,
@@ -2125,7 +2181,7 @@ export function create(ctx) {
     serialize() {
       return {
         v: 1, seed: ctx.seed, progress: Math.round(api.progress * 1000) / 1000, complete, discoveries: [...discovered], prog: prog.snapshot(),
-        thought: thought ? { d: Math.round((tS.z / cam.Z0) * 100) / 100, x: Math.round(tS.x), base: Math.round((baseTension ?? 0.5) * 100) / 100, relief: Math.round(relief * 100) / 100 } : null,
+        thought: thought ? { d: Math.round((tS.z / cam.Z0) * 100) / 100, p: Math.round(tS.dP * 100) / 100, x: Math.round(tS.x), base: Math.round((baseTension ?? 0.5) * 100) / 100, relief: Math.round(relief * 100) / 100 } : null,
         photoState: bubbles.map((b) => ({ i: b.i, d: Math.round((b.z / cam.Z0) * 100) / 100, x: Math.round(b.x) })), elapsed: Math.round(elapsed),
       };
     },
@@ -2136,7 +2192,7 @@ export function create(ctx) {
       prog.restore(s.prog);
       if (s.complete) { complete = true; completeAt = 0; mirrorK = 1; dawnK = dawnT = 1; }
       if (s.thought && thought) {
-        tS.z = clamp(+s.thought.d || 1, 1, capD) * cam.Z0; tS.x = +s.thought.x || 0;
+        tS.z = clamp(+s.thought.d || 1, 1, capD) * cam.Z0; tS.x = +s.thought.x || 0; tS.dP = clamp(+s.thought.p || +s.thought.d || 1, 1, tS.z / cam.Z0);
         if (Number.isFinite(+s.thought.base) && s.thought.base > 0) { baseTension = clamp(+s.thought.base, 0.2, 0.9); relief = clamp(+s.thought.relief || 0, 0, 0.6); }
       }
       for (const ps of s.photoState || []) { const b = bubbles.find((q) => q.i === ps.i); if (b) { b.z = clamp(+ps.d || 1, -0.5, OCEAN.CAP) * cam.Z0; b.x = +ps.x || b.x; } }
@@ -2147,13 +2203,15 @@ export function create(ctx) {
     resize(w, h) {
       // (the quality governor changes only the layers' resolution: nothing on the water moves; the sky is redrawn for it)
       if (plan && Math.round(w) === Math.round(W) && Math.round(h) === Math.round(H)) { buildSky(); return; }
-      const dOld = cam ? tS.z / cam.Z0 : 1;
+      const dOld = cam ? tS.z / cam.Z0 : 1, pOld = tS.dP;
       W = w; H = h; U = Math.min(W, H);
       layout(true);
       wake?.clear();
-      // a turned phone: the thought keeps how far out it was (within this screen's limit), from its new home; bubbles re-slot
+      // a turned phone: the thought keeps how far out it was (within this screen's limit), in its home's column at that
+      // depth (so it is never put down on the hero), and how far the person took it; bubbles re-slot
       if (thought && tS.landK >= 1 && !tS.from) {
-        tS.x = (plan.home.x - W / 2) / 0.5; tS.z = clamp(dOld, 1, capD) * cam.Z0; tS.vx = tS.vz = 0;
+        tS.z = clamp(dOld, 1, capD) * cam.Z0; tS.x = (plan.home.x - W / 2) / scaleAt(cam, tS.z); tS.vx = tS.vz = 0; tS.vzP = 0;
+        tS.dP = clamp(pOld, 1, tS.z / cam.Z0);
         tS.offX = tS.offY = tS.koX = tS.koY = 0; tS.koFor = 0; tS.side = 'above';
       }
       reslot(true, false);
