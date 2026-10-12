@@ -33,7 +33,7 @@ import {
 } from './lines.js';
 import { authoredScene, sceneParts } from './authored.js';
 import { consentState, openConsent, noteFeedback, lessWanted, STORE_KEYS } from './consent.js';
-import { createAngleClient, resolveEndpoint } from './angle-client.js';
+import { createAngleClient, resolveEndpoint, TIMEOUTS } from './angle-client.js';
 import { RATINGS, MECHANICS } from './vocab.js';
 import { loadMechanic, prefetchMechanic } from './mechanics/index.js';
 import { makeTags, Blob, tintFor, drawGlow, blinkAt, clamp, approach, setLowStim } from './mechanics/kit.js';
@@ -50,7 +50,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   const lowOn = () => !!prefs.get('lowStim');
   const ZUZU = MALLOWS.zuzu;
   const endpoint = resolveEndpoint();
-  const client = endpoint ? createAngleClient({ store, endpoint }) : null;
+  // QA on the development host only: ?angleTimeout=<ms> shortens the wait (timeout tests)
+  const devTimeout = DEV() ? Number(new URLSearchParams(location.search).get('angleTimeout')) || 0 : 0;
+  const client = endpoint ? createAngleClient({ store, endpoint, ...(devTimeout > 0 ? { timeouts: { ...TIMEOUTS, angle: devTimeout } } : {}) }) : null;
   const serverMode = () => !!client && consentState(store) === 'yes';
 
   const S = {

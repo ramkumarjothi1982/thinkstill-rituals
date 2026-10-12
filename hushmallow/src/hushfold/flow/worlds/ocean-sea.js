@@ -112,6 +112,49 @@ export function screenToWorldVec(cam, z, dsx, dsy, out) {
   return out;
 }
 
+/**
+ * A stroke on the screen → the packet it sculpts (world units). st: { x0, y0 (where it began),
+ * x1, y1 (the fingertip now), len (path length, screen px), speed (mean moving speed, px/s) }.
+ * The envelope spans the stroke (centred at its midpoint), the swell travels along it, and its
+ * crest sits under the fingertip. Returns null for a stroke too short to point anywhere.
+ */
+export function strokePacket(cam, U, st, out = {}) {
+  const a = unproject(cam, st.x0, st.y0, { x: 0, z: 0, s: 0 }), b = unproject(cam, st.x1, st.y1, { x: 0, z: 0, s: 0 });
+  let dx = b.x - a.x, dz = b.z - a.z;
+  const chord = Math.hypot(dx, dz);
+  if (chord < 1e-3) return null;
+  const w = strokeWave(st.len, st.speed, U);
+  out.x = (a.x + b.x) / 2; out.z = (a.z + b.z) / 2; out.ax = b.x; out.az = b.z;
+  out.dx = dx / chord; out.dz = dz / chord; out.len = chord;
+  out.lambda = w.lambda; out.A = w.A; out.s = w.s;
+  return out;
+}
+
+/**
+ * The Stokes-drift gain that makes one unhurried long stroke (from in front of the hero to just
+ * beyond the Thought Mallow's home, 0.2U/s) carry the thought about `target`·Z0 further out — so
+ * the journey to 4·Z0 takes three or four of the person's own swells on any screen. (The
+ * audit's raw gain of 3 assumed its own camera; with the fitted camera a swell's push is the
+ * same in world px but Z0 differs.)
+ */
+export function calibrateDrift(cam, U, target = 0.95) {
+  const sea = new Sea(2);
+  const y0 = cam.homeY + 0.55 * (cam.waterY - cam.homeY), y1 = cam.homeY - 0.35 * (cam.homeY - cam.hy);
+  const len = y0 - y1;
+  const P = strokePacket(cam, U, { x0: cam.W / 2, y0, x1: cam.W / 2, y1, len, speed: 0.2 * U });
+  if (!P) return SEA.STOKES;
+  sea.launch(P);
+  const o = {};
+  let z = cam.Z0, x = 0, moved = 0;
+  for (let t = 0; t < 36; t += 1 / 30) {
+    sea.prepare(); sea.sample(x, z, o);
+    const dz = (o.uz / SEA.STOKES) / 30;
+    z += dz; moved += dz;
+    sea.step(1 / 30);
+  }
+  return moved > 1e-3 ? (target * cam.Z0) / moved : SEA.STOKES;
+}
+
 // --------------------------------------------------------------------- sea --
 export class Sea {
   constructor(max = SEA.K_MAX) {

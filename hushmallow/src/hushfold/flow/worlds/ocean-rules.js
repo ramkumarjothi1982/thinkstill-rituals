@@ -19,6 +19,7 @@ export const OCEAN = Object.freeze({
   BUBBLE_MIN: 44,         // px: bubbles are at least this big until they drift past 6·Z0…
   BUBBLE_FAR: 28,         // …then shrink towards this by 9·Z0
   BUBBLE_GAP: 8,
+  PLATE_MAX: 220,         // px: the words plate wraps to two lines rather than spanning the far water
   FAR: 4,                 // the 'distance' discovery: the thought ≥ 4·Z0 away…
   CAP: 9,                 // …and never further than 9·Z0 (s ≈ 0.1: still visible)
   LABEL_PX: 17, LABEL_LINE: 21.25, LABEL_PAD_X: 12, LABEL_PAD_Y: 8,   // the words plate (placeholders.js)
@@ -48,10 +49,10 @@ export function defaultMallowBox(W, H) {
  * z/Z0 = d: proportional to s, at least BUBBLE_MIN until 6·Z0, then easing to BUBBLE_FAR.
  */
 export function bubbleSize(s, d, U) {
-  const ref = clamp(0.19 * U, 56, 96);
+  const ref = clamp(0.15 * U, 48, 84);
   const far = smoothstep(6, OCEAN.CAP, d);
   const floor = OCEAN.BUBBLE_MIN * (1 - far) + OCEAN.BUBBLE_FAR * far;
-  return Math.max(floor, Math.min(ref * 1.35, (ref * s) / 0.5));
+  return Math.max(floor, Math.min(ref * 1.3, (ref * s) / 0.5));
 }
 
 const overlaps = (a, b, pad = 0) => a.x0 < b.x1 + pad && a.x1 > b.x0 - pad && a.y0 < b.y1 + pad && a.y1 > b.y0 - pad;
@@ -70,7 +71,7 @@ export function planOcean({ W, H, band, mallow = null, textW = 0, n = 0 }) {
   const bandBottom = band ? band.y + band.h : 0;
   const floor = H - OCEAN.BOTTOM;
   const r = clamp(Math.round(U * 0.085), 26, 40);
-  const labelW = Math.min(300, W - 2 * E);
+  const labelW = Math.min(OCEAN.PLATE_MAX, W - 2 * E);
   const P = plateSize(textW, labelW);
   const hyLo = bandBottom + OCEAN.SKY_MIN, hyHi = M.top - OCEAN.WATER_MIN;
   const hy = Math.round(hyHi >= hyLo ? clamp(H * OCEAN.HORIZON, hyLo, hyHi) : hyLo);
@@ -149,7 +150,7 @@ export function planOcean({ W, H, band, mallow = null, textW = 0, n = 0 }) {
         for (const q of slots) { const g = Math.hypot(c.x - q.x, c.y - q.y) - (c.D + q.D) / 2; if (g < clear) clear = g; }
         clear = Math.min(clear, Math.hypot(c.x - home.x, c.y - home.y) - r - c.D / 2);
         if (slots.length && clear < OCEAN.BUBBLE_GAP) continue;
-        const sc = Math.min(clear, U * 0.6) + c.D * 0.25 + (k >= 3 ? c.d * 4 : 0);
+        const sc = Math.min(clear, U * 0.45) + c.D * 0.3;
         if (sc > bs) { bs = sc; best = c; }
       }
       if (!best) break;
