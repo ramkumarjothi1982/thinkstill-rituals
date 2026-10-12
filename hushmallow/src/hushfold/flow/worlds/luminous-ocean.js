@@ -571,7 +571,14 @@ export function create(ctx) {
     for (const i of order) {
       const card = fromCards?.find((c) => c.i === i) || null;
       let best = -1, bd = Infinity;
-      for (let k = 0; k < slots.length; k++) { if (used.has(k)) continue; const d = card ? Math.hypot(slots[k].x - card.x, slots[k].y - card.y) + (slots[k].far ? 60 : 0) : k; if (d < bd) { bd = d; best = k; } }
+      // (a postcard keeps to its own side of the hero: its glide down to the water never crosses it)
+      const side = (x) => (x < W / 2 - 0.12 * W ? -1 : x > W / 2 + 0.12 * W ? 1 : 0);
+      for (let k = 0; k < slots.length; k++) {
+        if (used.has(k)) continue;
+        const cross = card && side(card.x) * side(slots[k].x) < 0 ? 220 : 0;
+        const d = card ? Math.hypot(slots[k].x - card.x, slots[k].y - card.y) + (slots[k].far ? 60 : 0) + cross : k;
+        if (d < bd) { bd = d; best = k; }
+      }
       if (best < 0) {
         // no room on the water now: a postcard still turns into its bubble in place, then drifts away over the horizon (and takes its turn later)
         if (card) {
@@ -1085,6 +1092,8 @@ export function create(ctx) {
     if (wake && wy > hyNow) sy += wake.at(sx, wy) * 3;
     // landing from the storm: from where it hung, down to its home on the water (a target fixed when the glide began)
     if (tS.from) {
+      // (its target is where its home was when the glide began; a relayout meanwhile moves it there gently, never in a jump)
+      if (tS.from.tx != null) { const e = 1 - Math.exp(-dt / 0.5); tS.from.tx += (plan.home.x - tS.from.tx) * e; tS.from.ty += (plan.home.y - tS.from.ty) * e; }
       const k = easeInOut(tS.glide);
       sx = lerp(tS.from.x, tS.from.tx ?? plan.home.x, k); sy = lerp(tS.from.y, tS.from.ty ?? plan.home.y, k);
       tS.surf = lerp(tS.from.scale ?? 1, 1, k);
@@ -1234,7 +1243,15 @@ export function create(ctx) {
       const wy = cam.hy + (cam.Hw - b.yb * (rm ? 0.3 : 1)) * s;
       let sx = W / 2 + b.x * s, sy = wy - 0.3 * b.D - easeOut(b.lift) * b.D * 0.35 + (b.state === 'rise' ? (1 - clamp(b.riseK)) * b.D * 0.5 : 0);
       if (wake && wy > hyNow) sy += wake.at(sx, wy) * 3;
-      if (b.from) { const k = easeInOut(b.glide); sx = lerp(b.from.x, b.target.x, k); sy = lerp(b.from.y, b.target.y, k); b.D = b.away ? lerp(Math.min(b.from.size, 60), b.target.D, k) : b.target.D; }
+      if (b.from) {
+        const k = easeInOut(b.glide); sx = lerp(b.from.x, b.target.x, k); sy = lerp(b.from.y, b.target.y, k); b.D = b.away ? lerp(Math.min(b.from.size, 60), b.target.D, k) : b.target.D;
+        // gliding down to the water it goes round the hero, never across it, and round the words
+        if (b.glide > 0) {
+          const r = b.D / 2 + 2;
+          if (K.on && discHits(sx, sy, r, K)) { pushOut(sx, sy, r, K, b.D / 2); sx += po.x; sy += po.y; }
+          if (thought && tS.plateW && discHits(sx, sy, r, plateRect(prB))) { const P = prB, l = sx + r - P.x0, rt = P.x1 - (sx - r), u = sy + r - P.y0, d = P.y1 - (sy - r), m = Math.min(l, rt, u, d); if (m === l) sx -= l; else if (m === rt) sx += rt; else if (m === u) sy -= u; else sy += d; }
+        }
+      }
       if (b.state === 'leave') {
         b.leaveK = Math.min(1, (b.leaveK || 0) + dt / 1.6);
         b.alpha = 1 - easeOut(b.leaveK);

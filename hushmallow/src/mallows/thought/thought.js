@@ -840,11 +840,12 @@ export class ThoughtMallow {
 const SIB_ANGLES = { 0: [], 1: [-2.6], 2: [-2.9, -0.24], 3: [-2.95, -1.6, -0.19], 4: [-3.02, -2.12, -1.02, -0.12], 5: [-3.05, -2.3, -1.57, -0.84, -0.09] };
 
 /** Where the siblings float: a crowded ring round the main thought, wider with room and calm. */
-export function siblingHome(main, sib, out = { x: 0, y: 0 }) {
+export function siblingHome(main, sib, out = { x: 0, y: 0 }, still = false) {
   const look = main.look, P = main.render.P || main.r * 2;
   const space = Math.max(main.levels.space.cur, main.earned.space);
   const rad = (P / 2 + (sib.render.P || sib.r * 2) / 2) * (0.96 + 0.6 * space + 0.35 * look.relief - 0.1 * look.motion.crowd);
-  const wob = main.reducedMotion ? 0 : 0.18 * Math.sin(main.clock * (0.5 + 0.3 * sib.index) + sib.index * 2) * (0.3 + look.pace);
+  // (still: where it sits in the ring without its slow wobble — the layer keeps words clear of that)
+  const wob = main.reducedMotion || still ? 0 : 0.18 * Math.sin(main.clock * (0.5 + 0.3 * sib.index) + sib.index * 2) * (0.3 + look.pace);
   const a = sib._orbitA + wob;
   out.x = main._pos.x + Math.cos(a) * rad * 1.08;
   out.y = main._pos.y + Math.sin(a) * rad * 0.9;

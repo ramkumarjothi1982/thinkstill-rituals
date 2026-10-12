@@ -80,10 +80,10 @@ const { ThoughtLayer } = await import('../src/mallows/thought/layer.js');
 // ------------------------------------------------------------ the lab's stages --
 // measured in touch-lab.html?tab=thoughts (W2b r3, geom.js): the stage band and Glitzi's body rect
 const STAGES = {
-  '390x844': { bounds: { left: 20, top: 76, right: 370, bottom: 601 }, hero: [[85.7, 365, 304.3, 581.9], [85.7, 365, 304.3, 581.9], [85.7, 365, 304.3, 581.9], [85.7, 365, 304.3, 581.9], [100.3, 395.3, 289.7, 583.7]] },
-  '375x812': { bounds: { left: 20, top: 76, right: 355, bottom: 569 }, hero: [[81.8, 342.9, 293.2, 550.4], [81.8, 342.9, 293.2, 550.4], [81.8, 342.9, 293.2, 550.4], [81.8, 342.9, 293.2, 550.4], [98.4, 377.2, 276.6, 552.4]] },
-  '430x932': { bounds: { left: 20, top: 76, right: 410, bottom: 689 }, hero: [[93.7, 430.2, 336.3, 668.5], [93.7, 430.2, 336.3, 668.5], [93.7, 430.2, 336.3, 668.5], [93.7, 430.2, 336.3, 668.5], [103.7, 451.4, 326.3, 669.7]] },
-  '320x568': { bounds: { left: 20, top: 20, right: 300, bottom: 396 }, hero: [[71, 198.6, 249, 379.3], [71, 198.6, 249, 379.3], [80.4, 219, 239.6, 380.4], [80.4, 219, 239.6, 380.4], [91.8, 243.7, 228.2, 381.8]] },
+  '390x844': { bounds: { left: 20, top: 76, right: 370, bottom: 601 }, hero: [[86.9, 360.9, 303.1, 581.9], [86.9, 360.9, 303.1, 581.9], [86.9, 361, 303.1, 581.9], [109.2, 409.3, 280.8, 584.6], [116.6, 425.5, 273.4, 585.5]] },
+  '375x812': { bounds: { left: 20, top: 76, right: 355, bottom: 569 }, hero: [[82.4, 340.7, 292.6, 550.4], [82.4, 340.6, 292.6, 550.4], [82.5, 340.4, 292.5, 550.4], [106.1, 390, 268.9, 553.2], [113.6, 405.8, 261.4, 554.1]] },
+  '430x932': { bounds: { left: 20, top: 76, right: 410, bottom: 689 }, hero: [[95.4, 424.4, 334.6, 668.5], [95.4, 424.4, 334.6, 668.5], [95.4, 424.5, 334.6, 668.5], [114.7, 466.5, 315.3, 670.9], [123.6, 485.8, 306.4, 672]] },
+  '320x568': { bounds: { left: 20, top: 20, right: 300, bottom: 396 }, hero: [[70.7, 199.7, 249.3, 379.3], [81.1, 222.2, 238.9, 380.5], [81, 222.4, 239, 380.5], [98, 258.6, 222, 382.6], [100, 262.9, 220, 382.8]] },
 };
 const TEXTS = ['Everyone saw me freeze in that meeting', 'My boss embarrassed me today.', 'What if they think I am useless?', 'I said the wrong thing again', 'Nobody texted me back'];
 const ov = (a, b) => { const x = Math.min(a.right, b.right) - Math.max(a.left, b.left), y = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top); return x > 0 && y > 0 ? x * y : 0; };
@@ -93,23 +93,30 @@ const plateOf = (L, th) => { const tg = L.tags.get(th); return tg && tg.shown ? 
 function stage(size, feelings, { gap = 0, seconds = 8, texts = null } = {}) {
   const [W, H] = size.split('x').map(Number);
   VIEW.W = W; VIEW.H = H;
-  const S = STAGES[size], n = feelings.length, h = S.hero[n - 1];
-  const hero = { left: h[0], top: h[1], right: h[2], bottom: h[3] };
+  const S = STAGES[size], n = feelings.length;
+  // the lab sizes the hero for the count before adding (one at a time: it steps down with each arrival)
+  const hero = { left: 0, top: 0, right: 0, bottom: 0 };
+  const heroFor = (k) => { const h = S.hero[k - 1]; hero.left = h[0]; hero.top = h[1]; hero.right = h[2]; hero.bottom = h[3]; };
+  heroFor(gap ? 1 : n);
   const L = new ThoughtLayer({ bounds: () => S.bounds, keepOut: () => hero, reducedMotion: false, tagRoot: document.body });
-  const r = { cx: (hero.left + hero.right) / 2, top: hero.top, width: hero.right - hero.left, height: hero.bottom - hero.top };
+  const r = { cx: 0, top: 0, width: 0, height: 0 };
+  const heroR = () => { r.cx = (hero.left + hero.right) / 2; r.top = hero.top; r.width = hero.right - hero.left; r.height = hero.bottom - hero.top; };
+  heroR();
   const wish = (i, m) => {
     const span = Math.min(W - 120, 130 * Math.max(1, m - 1));
     const x = m > 1 ? W / 2 - span / 2 + (span * i) / (m - 1) : r.cx + r.width * 0.25;
     return { x, y: S.bounds.top + (r.top - S.bounds.top) * (m > 2 && i % 2 ? 0.3 : 0.55) };
   };
-  const from = { x: r.cx, y: r.top + r.height * 0.2 };
+  const from = () => ({ x: r.cx, y: r.top + r.height * 0.2 });
   const rad = W < 360 ? 32 : 38;
   const log = { frames: [], adds: [] };
   let t = 0;
   const run = (sec) => { const k = Math.round(sec * 60); for (let i = 0; i < k; i++) { L.frame(1 / 60); t += 1 / 60; if (Math.round(t * 60) % 15 === 0) log.frames.push(snapshot(L, t, hero)); } };
   for (let i = 0; i < n; i++) {
+    if (gap) { heroFor(i + 1); heroR(); }
     const t0 = performance.now();
-    L.add({ text: (texts || TEXTS)[i % (texts || TEXTS).length], emotion: feelings[i], intensity: 0.75, r: rad }, { from, home: gap ? wish(0, 1) : wish(i, n) });
+    // (as the lab: the k-th of m wishes for a place in a row above the hero)
+    L.add({ text: (texts || TEXTS)[i % (texts || TEXTS).length], emotion: feelings[i], intensity: 0.75, r: rad }, { from: from(), home: gap ? wish(i, i + 1) : wish(i, n) });
     log.adds.push(performance.now() - t0);
     if (gap) run(gap);
   }

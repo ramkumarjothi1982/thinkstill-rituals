@@ -545,6 +545,9 @@ export class MallowTouch {
       if (this.goalSt.x != null) this.st.x = this.goalSt.x;
       if (this.goalSt.y != null) this.st.y = this.goalSt.y;
       this.st.s = this.goalSt.s; this.st.vx = this.st.vy = this.st.vs = 0;
+      // (bodyRect() is current at once: a host that places the hero and then lays things out round it
+      // sees where it is now, not where it was last frame)
+      if (this.ready && this.rig) this._computeTransform(0);
     }
     return this;
   }
