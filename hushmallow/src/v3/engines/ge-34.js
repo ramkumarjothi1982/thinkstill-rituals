@@ -210,13 +210,15 @@ export function create(E) {
     flapH = H * 0.47; mouthMid = H * 0.37; rcE = H * 0.05; mouthSide = rcE * 0.55;
     // sealing view: envelope, open flap and pull-tab centred, as large as the stage allows
     pyW = eTop + H * 0.3;
-    zMax = clamp(Math.min((stage.w * 0.84) / W, (stage.h * 0.9) / (H * 1.62)), 1, 1.55);
-    camMax = pyW - (stage.cy + stage.h * 0.02);
+    // (on short stages the zoom stays modest and the envelope sits a little low, so the twist plate never covers the pull-tab)
+    zMax = clamp(Math.min((stage.w * 0.84) / W, (stage.h * 0.9) / (H * 1.62)), 1, short ? 1.18 : 1.55);
+    camMax = pyW - (stage.cy + stage.h * (short ? 0.07 : 0.02));
     setCam(camK);
     cW = W * 0.84; cH = Math.min(cW / 1.72, H * 0.78);
-    yS = eTop + H * 0.15 + cH / 2;
-    x0 = ecx + startDX * W; y0 = eTop - H * 0.06 - cH / 2;
-    pS = Math.min(W * 0.42, H * 0.64) * (n >= 5 ? 0.86 : 1);
+    yS = eTop + H * 0.16 + cH / 2;
+    x0 = ecx + startDX * W; y0 = eTop - H * (short ? -0.02 : 0.06) - cH / 2;
+    pS = Math.min(W * 0.42, H * 0.64) * (n >= 5 ? 0.86 : 1) * (short ? 0.9 : 1);
+    restAng = short ? 1.0 : 0.42;   // the pull-tab stands up and out (more sideways when headroom is short)
     tol = 40 * s + 10; pad = Math.ceil(42 * s);
     wordSize = Math.max(13, Math.min(18, cW * 0.072));
     rw = Math.max(6, 7.5 * s); ribbonLen = H * 0.5;
