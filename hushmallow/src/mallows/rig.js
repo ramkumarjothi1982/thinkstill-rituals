@@ -47,21 +47,33 @@ const GLITCH_ROWS = [61, 111, 122, 177, 215, 242, 269, 281, 329];
 // ---------------------------------------------------------------- ticker --
 const rigs = new Set();
 const tickers = new Set();
+const failed = new WeakSet();   // rigs / tickers that threw (logged once each)
 let rafId = 0;
 let lastT = 0;
+function logOnce(who, label, e) {
+  if (failed.has(who)) return;
+  failed.add(who);
+  console.error(label, e);
+}
 function frame(t) {
-  rafId = 0;
+  // the next frame is booked first: whatever throws below, the loop (and with
+  // it MallowTouch, the thoughts and the world) keeps running
+  rafId = (rigs.size || tickers.size) ? requestAnimationFrame(frame) : 0;
   const dt = Math.min(0.05, Math.max(0.001, (t - (lastT || t)) / 1000));
   lastT = t;
   for (const r of rigs) {
-    if (r._shouldRun()) r._tick(dt, t / 1000);
+    try { if (r._shouldRun()) r._tick(dt, t / 1000); } catch (e) { logOnce(r, `Mallow rig ${r.id} failed a frame:`, e); }
   }
   // MallowTouch stages, Thought Mallows and worlds share this one loop; they
   // run after the rigs so they see this frame's face
   for (const fn of tickers) {
-    try { fn(dt, t / 1000); } catch (e) { console.error(e); }
+    try { fn(dt, t / 1000); } catch (e) { logOnce(fn, 'Mallow loop ticker failed a frame:', e); }
   }
-  if (rigs.size || tickers.size) rafId = requestAnimationFrame(frame);
+  // everything left during this frame: no loop to keep
+  if (rafId && !rigs.size && !tickers.size) {
+    if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(rafId);
+    rafId = 0;
+  }
 }
 /** Run fn(dt, seconds) every animation frame in the shared Mallow loop. */
 export function addTicker(fn) { if (typeof fn === 'function') { tickers.add(fn); ensureLoop(); } return fn; }
