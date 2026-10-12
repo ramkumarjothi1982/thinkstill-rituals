@@ -41,8 +41,10 @@ body.hf-active #fx-layer { touch-action: none; -webkit-user-select: none; user-s
 #fx-layer > canvas.hf-stage { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 /* Hushflow layers (the director's canvases) melt in over the realm and out again, never a hard cut */
 #world > canvas.hf-back, #fx-layer > canvas.hf-front { transition: opacity 1200ms cubic-bezier(0.65, 0, 0.35, 1); }
-body.hf-world-arriving #world > canvas.hf-back, body.hf-world-arriving #fx-layer > canvas.hf-front,
-body.hf-world-leaving #world > canvas.hf-back, body.hf-world-leaving #fx-layer > canvas.hf-front { opacity: 0; }
+body.hf-world-arriving #world > canvas.hf-back, body.hf-world-arriving #fx-layer > canvas.hf-front { opacity: 0; }
+/* Finish: the last frame fades out over 1.2 s (!important: the director keeps its reveal opacity and transition inline) */
+body.hf-world-leaving #world > canvas.hf-back, body.hf-world-leaving #fx-layer > canvas.hf-front {
+  opacity: 0 !important; transition: opacity 1200ms cubic-bezier(0.65, 0, 0.35, 1) !important; }
 /* phones: while the sheet holds a world, its front layer (postcards, the Thought Mallow) steps back
    so nothing ever covers the Mallow lifted above the sheet; the back layer waits under its veil */
 /* (!important: the director keeps its reveal opacity inline) */

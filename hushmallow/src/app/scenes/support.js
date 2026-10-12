@@ -12,7 +12,8 @@ export const SUPPORT_LINES = [
 ];
 
 export function openSupport(app, { urgent = false } = {}) {
-  app.world?.setStage?.('comforting');
+  // something urgent gets the attentive face, never the heart-eyed comforting one
+  app.world?.setStage?.(urgent ? 'concerned' : 'comforting');
   const body = h('div', {},
     h('p', { style: type('body', { margin: '0 0 12px', color: 'var(--text-1)' }) }, urgent
       ? 'What you wrote sounds really heavy. You deserve to talk to a real person right now. If you might act on thoughts of hurting yourself, please contact emergency services or a crisis line.'
