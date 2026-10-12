@@ -1,0 +1,228 @@
+// Checks a site assembled by tools/build-site.sh before it is published.
+//   node tools/site/check.mjs <out-dir> <version>
+//
+// 1. Every file index.html and the manifest name is there (styles, the
+//    module script, icons, fonts), and version.json names <version>.
+// 2. The module and stylesheet graph from index.html: every static import,
+//    literal import(), new URL('…', import.meta.url), ensureStylesheet('…')
+//    and CSS url() / @import resolves to a shipped file. A template specifier
+//    (`./worlds/${id}.js`) must match at least one shipped file.
+// 3. Every asset URL the Mallow registry, the hi-res table and the brand
+//    export (art, rigs, logos) is a shipped file.
+// 4. Developer-only folders are not shipped.
+// Prints a short summary; exits 1 with the list of problems.
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { dirname, join, relative, resolve, sep } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+// Referenced only by localhost labs (main.js v3Lab) and removed from the
+// published copy on purpose: listed, never a failure.
+const LOCAL_ONLY = ['src/v3/dev/'];
+// Never published (build-site.sh leaves them out).
+const DEV_ONLY = ['src/v3/dev', 'src/studio', 'assets/source'];
+// Modules whose exports name the art, rig and brand files.
+const ASSET_MODULES = ['src/mallows/registry.js', 'src/mallows/hires.js', 'src/brand.js'];
+
+const isFile = (p) => { try { return statSync(p).isFile(); } catch { return false; } };
+const isDir = (p) => { try { return statSync(p).isDirectory(); } catch { return false; } };
+const external = (s) => /^(?:[a-z][a-z0-9+.-]*:|#|\/\/)/i.test(s);   // https:, data:, blob:, #frag, //host
+const bare = (s) => s.split(/[?#]/)[0];
+const listAll = (d) => readdirSync(d, { withFileTypes: true })
+  .flatMap((e) => (e.isDirectory() ? listAll(join(d, e.name)).map((x) => `${e.name}/${x}`) : [e.name]));
+
+/**
+ * JS source with comments and regex literals blanked (strings and line
+ * breaks kept), so an example in a comment is never taken for an import.
+ */
+export function stripJs(src) {
+  const outc = src.split('');
+  const n = src.length;
+  let i = 0, prev = '';
+  const blank = (a, b) => { for (let k = a; k < b && k < n; k++) if (outc[k] !== '\n') outc[k] = ' '; };
+  const AFTER = new Set([...'(,=:[!&|?{};+-*%<>~^}']);
+  const KW = new Set(['return', 'typeof', 'case', 'do', 'else', 'in', 'of', 'new', 'delete', 'void', 'throw', 'yield', 'await', 'instanceof']);
+  const regexOk = () => !prev || AFTER.has(prev) || KW.has(prev) || prev === '=>';
+  const quoted = (q) => { i++; while (i < n && src[i] !== q && src[i] !== '\n') i += src[i] === '\\' ? 2 : 1; i++; };
+  function template() {
+    i++;
+    while (i < n && src[i] !== '`') {
+      if (src[i] === '\\') { i += 2; continue; }
+      if (src[i] === '$' && src[i + 1] === '{') { i += 2; scan(true); i++; continue; }
+      i++;
+    }
+    i++;
+  }
+  function scan(inExpr) {
+    let depth = 0;
+    while (i < n) {
+      const c = src[i], d = src[i + 1];
+      if (c === ' ' || c === '\t' || c === '\r' || c === '\n') { i++; continue; }
+      if (c === '/' && d === '/') { const s = i; while (i < n && src[i] !== '\n') i++; blank(s, i); continue; }
+      if (c === '/' && d === '*') { const s = i; i += 2; while (i < n && !(src[i] === '*' && src[i + 1] === '/')) i++; i += 2; blank(s, i); continue; }
+      if (c === "'" || c === '"') { quoted(c); prev = 'str'; continue; }
+      if (c === '`') { template(); prev = 'str'; continue; }
+      if (c === '/' && regexOk()) {
+        const s = i; let cls = false; i++;
+        while (i < n && src[i] !== '\n') {
+          const e = src[i];
+          if (e === '\\') { i += 2; continue; }
+          if (e === '[') cls = true; else if (e === ']') cls = false; else if (e === '/' && !cls) break;
+          i++;
+        }
+        i++;
+        while (i < n && /[a-z]/i.test(src[i])) i++;
+        blank(s, i); prev = 'regex'; continue;
+      }
+      if (/[\w$]/.test(c)) { const s = i; while (i < n && /[\w$]/.test(src[i])) i++; prev = src.slice(s, i); continue; }
+      if (inExpr) { if (c === '{') depth++; else if (c === '}') { if (depth === 0) return; depth--; } }
+      if (c === '=' && d === '>') { prev = '=>'; i += 2; continue; }
+      prev = c; i++;
+    }
+  }
+  scan(false);
+  return outc.join('');
+}
+
+/** { lit, tpl }: the literal and template specifiers a JS or CSS file refers to. */
+export function specifiers(src, isCss = false) {
+  const lit = [], tpl = [];
+  if (isCss) {
+    const css = src.replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const m of css.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/g)) lit.push(m[1].trim());
+    for (const m of css.matchAll(/@import\s+["']([^"']+)["']/g)) lit.push(m[1]);
+    return { lit, tpl };
+  }
+  const code = stripJs(src);
+  for (const m of code.matchAll(/(?:^|[\s;}])(?:import|export)\s[^'"`;]*?from\s*['"]([^'"]+)['"]/g)) lit.push(m[1]);
+  for (const m of code.matchAll(/(?:^|[\s;}])import\s*['"]([^'"]+)['"]/g)) lit.push(m[1]);
+  for (const m of code.matchAll(/import\(\s*['"]([^'"]+)['"]\s*\)/g)) lit.push(m[1]);
+  for (const m of code.matchAll(/new URL\(\s*['"]([^'"]+)['"]\s*,\s*import\.meta\.url/g)) lit.push(m[1]);
+  for (const m of code.matchAll(/ensureStylesheet\(\s*['"]([^'"]+)['"]/g)) lit.push(m[1]);
+  for (const m of code.matchAll(/import\(\s*`([^`]+)`\s*\)/g)) tpl.push(m[1]);
+  for (const m of code.matchAll(/new URL\(\s*`([^`]+)`\s*,\s*import\.meta\.url/g)) tpl.push(m[1]);
+  return { lit, tpl };
+}
+
+export async function checkSite(outArg, ver) {
+  const out = resolve(outArg);
+  const app = join(out, 'v', ver);
+  const problems = [], notes = [], allowed = [], templates = [];
+  const rel = (p) => relative(out, p).split(sep).join('/');
+  const localOnly = (p) => LOCAL_ONLY.some((d) => rel(p).startsWith(`v/${ver}/${d}`));
+
+  // ---------------------------------------------------------- 1. root --
+  const indexPath = join(out, 'index.html');
+  if (!isFile(indexPath)) return { problems: [`no index.html in ${out}`], notes, allowed, templates, reached: 0, assets: { checked: 0, missing: 0 } };
+  const html = readFileSync(indexPath, 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+  try {
+    const { v } = JSON.parse(readFileSync(join(out, 'version.json'), 'utf8'));
+    if (v !== ver) problems.push(`version.json names ${v}, not ${ver}`);
+  } catch (e) { problems.push(`version.json: ${e.message}`); }
+  if (!isFile(join(out, 'src/app/main.js'))) problems.push('the forwarder src/app/main.js (for pages cached before versioned folders) is missing');
+  if (!isFile(join(out, '.nojekyll'))) problems.push('.nojekyll is missing');
+  for (const d of DEV_ONLY) if (existsSync(join(app, d))) problems.push(`developer-only ${d} is published`);
+
+  const referrer = new Map();
+  const queue = [];
+  const named = [...html.matchAll(/\s(?:href|src)="([^"]+)"/g)].map((m) => m[1]).filter((s) => !external(s));
+  for (const s of named) {
+    const p = resolve(out, bare(s));
+    if (!isFile(p)) { problems.push(`index.html names ${s}, which is not in the site`); continue; }
+    if (p.endsWith('.webmanifest')) checkManifest(p);
+    else { referrer.set(p, 'index.html'); queue.push(p); }
+  }
+  if (!named.includes(`v/${ver}/src/app/main.js`)) problems.push(`index.html does not load v/${ver}/src/app/main.js`);
+  queue.push(join(out, 'src/app/main.js'));
+
+  function checkManifest(p) {
+    let man;
+    try { man = JSON.parse(readFileSync(p, 'utf8')); } catch (e) { problems.push(`${rel(p)}: ${e.message}`); return; }
+    for (const k of ['id', 'scope', 'start_url']) if (typeof man[k] !== 'string') problems.push(`${rel(p)}: no "${k}"`);
+    const urls = [man.start_url, ...(man.icons || []).map((ic) => ic.src)].filter((s) => typeof s === 'string' && !external(s));
+    for (const s of urls) if (!isFile(resolve(dirname(p), bare(s)))) problems.push(`${rel(p)} names ${s}, which is not in the site`);
+  }
+
+  // A template specifier: its fixed folder must be shipped and hold at least one file it can name.
+  function checkTemplate(from, t) {
+    const cut = t.indexOf('${');
+    const fixed = cut < 0 ? t : t.slice(0, cut);
+    if (!fixed.startsWith('.')) { notes.push(`${rel(from)}: \`${t}\` is built at run time (not checked)`); return; }
+    const slash = fixed.lastIndexOf('/');
+    const dir = resolve(dirname(from), slash < 0 ? '.' : fixed.slice(0, slash + 1));
+    if (!isDir(dir)) {
+      if (localOnly(join(dir, 'x'))) allowed.push(`${rel(dir)}/ (\`${t}\`)`);
+      else problems.push(`${rel(from)}: \`${t}\` points into ${rel(dir)}/, which is not in the site`);
+      return;
+    }
+    const parts = t.slice(slash + 1).split(/\$\{[^}]*\}/).map((s) => s.replace(/[.*+?^()|[\]\\{}$]/g, '\\$&'));
+    const re = new RegExp(`^${parts.join('.+')}$`);
+    const n = listAll(dir).filter((f) => re.test(f)).length;
+    if (!n) problems.push(`${rel(from)}: \`${t}\` matches no file in ${rel(dir)}/`);
+    else templates.push(`${rel(from)}: \`${t}\` (${n} file${n === 1 ? '' : 's'})`);
+  }
+
+  // --------------------------------------------------------- 2. graph --
+  const seen = new Set();
+  while (queue.length) {
+    const f = queue.shift();
+    if (seen.has(f)) continue;
+    seen.add(f);
+    if (!isFile(f)) {
+      if (isDir(f)) continue;   // new URL('../../', import.meta.url) names a folder
+      if (localOnly(f)) allowed.push(rel(f));
+      else problems.push(`missing: ${rel(f)} (named by ${referrer.get(f) || '?'})`);
+      continue;
+    }
+    if (!/\.(m?js|css)$/.test(f)) continue;
+    const { lit, tpl } = specifiers(readFileSync(f, 'utf8'), f.endsWith('.css'));
+    for (const s of lit) {
+      if (external(s)) continue;
+      if (!s.startsWith('.') && !s.startsWith('/')) { problems.push(`${rel(f)}: bare specifier '${s}' cannot load in a browser`); continue; }
+      const p = s.startsWith('/') ? join(out, bare(s)) : resolve(dirname(f), bare(s));
+      if (!referrer.has(p)) referrer.set(p, rel(f));
+      queue.push(p);
+    }
+    for (const t of tpl) checkTemplate(f, t);
+  }
+
+  // -------------------------------------------------------- 3. assets --
+  const urls = new Set();
+  const walk = (o, d = 0) => {
+    if (d > 6 || !o) return;
+    if (typeof o === 'string') { if (o.startsWith('file:')) urls.add(o); return; }
+    if (typeof o === 'object') for (const v of Object.values(o)) walk(v, d + 1);
+  };
+  for (const m of ASSET_MODULES) {
+    const p = join(app, m);
+    if (!isFile(p)) { problems.push(`asset table ${m} is missing`); continue; }
+    try {
+      const mod = await import(pathToFileURL(p).href);
+      walk(mod);
+      if (typeof mod.logoUrl === 'function') for (const tone of ['light', 'ink']) for (const w of mod.LOGO_WIDTHS || []) urls.add(mod.logoUrl(tone, w));
+    } catch (e) { problems.push(`asset table ${m} does not load in Node: ${e.message}`); }
+  }
+  let missing = 0;
+  for (const u of urls) {
+    const p = fileURLToPath(u.split(/[?#]/)[0]);
+    if (!p.startsWith(app + sep)) { problems.push(`asset outside v/${ver}/: ${p}`); continue; }
+    if (!isFile(p)) { missing++; problems.push(`asset missing: ${rel(p)}`); }
+  }
+
+  return { problems, notes, allowed, templates, reached: seen.size, assets: { checked: urls.size, missing } };
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const [outArg, ver] = process.argv.slice(2);
+  if (!outArg || !ver) { console.error('usage: node tools/site/check.mjs <out-dir> <version>'); process.exit(2); }
+  const r = await checkSite(outArg, ver);
+  console.log(`check: ${r.reached} files reached from index.html; ${r.templates.length} template imports matched; asset urls ${r.assets.checked}, missing ${r.assets.missing}`);
+  if (r.allowed.length) console.log(`check: local-only, not published (allowed): ${r.allowed.join(', ')}`);
+  for (const n of r.notes) console.log(`check: note: ${n}`);
+  if (process.env.CHECK_VERBOSE) for (const t of r.templates) console.log(`check: template ${t}`);
+  if (r.problems.length) {
+    console.error(`check: ${r.problems.length} problem${r.problems.length === 1 ? '' : 's'} in ${outArg}:`);
+    for (const p of r.problems) console.error(`  ${p}`);
+    process.exit(1);
+  }
+  console.log('check: ok');
+}
