@@ -128,3 +128,15 @@ jobs:
           if [ -z "$url" ]; then echo "No workers.dev URL in the deploy output; skipping the smoke test."; exit 0; fi
           echo "Checking $url/v1/health"
           curl -fsS --retry 5 --retry-delay 3 "$url/v1/health" -H 'origin: https://ramkumarjothi1982.github.io' | tee /dev/stderr | grep -q '"ok":true'
+
+      # the whole path the published app takes (session, one angle, another
+      # angle, feedback, a crisis sentence → support), from the site's origin;
+      # two model calls, about $0.03 per deploy
+      - name: End-to-end check
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          TESTER_INVITE_CODES: ${{ secrets.TESTER_INVITE_CODES }}
+        run: |
+          url="$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' "$RUNNER_TEMP/deploy.log" | head -n 1 || true)"
+          if [ -z "$url" ]; then echo "No workers.dev URL in the deploy output; skipping the end-to-end check."; exit 0; fi
+          E2E_INVITE="${TESTER_INVITE_CODES%%,*}" node scripts/e2e.mjs "$url" --origin https://ramkumarjothi1982.github.io | tee -a "$GITHUB_STEP_SUMMARY"
