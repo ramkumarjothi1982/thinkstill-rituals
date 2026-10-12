@@ -78,13 +78,84 @@ function literals(code) {
   return out;
 }
 
+/**
+ * A small JavaScript lexer: every string literal (template literals across
+ * lines included, `${…}` expressions lexed too) with the line it starts on,
+ * and the code with comments and regex literals blanked out (line numbers
+ * kept). A regex literal is code, never customer text — so a guard such as
+ * `/Hushmallow|HUSHMALLOW/.test(shown)` is not a brand problem.
+ */
+const REGEX_AFTER = new Set([...'(,=:[!&|?{};+-*%<>~^}']);
+const REGEX_KW = new Set(['return', 'typeof', 'case', 'do', 'else', 'in', 'of', 'new', 'delete', 'void', 'throw', 'yield', 'await', 'instanceof']);
+export function lexJs(src) {
+  const strings = [];
+  const out = src.split('');
+  const n = src.length;
+  let i = 0, line = 1, prev = '';
+  const blank = (a, b) => { for (let k = a; k < b && k < n; k++) if (out[k] !== '\n') out[k] = ' '; };
+  const regexOk = () => !prev || REGEX_AFTER.has(prev) || REGEX_KW.has(prev) || prev === '=>';
+  function readQuoted(q) {
+    const l0 = line; let text = ''; i++;
+    while (i < n && src[i] !== q && src[i] !== '\n') {
+      if (src[i] === '\\') { text += src[i] + (src[i + 1] ?? ''); i += 2; continue; }
+      text += src[i++];
+    }
+    i++;
+    strings.push({ text, line: l0 });
+  }
+  function readTemplate() {
+    const l0 = line; let text = ''; i++;
+    while (i < n && src[i] !== '`') {
+      const c = src[i];
+      if (c === '\\') { if (src[i + 1] === '\n') line++; text += c + (src[i + 1] ?? ''); i += 2; continue; }
+      if (c === '$' && src[i + 1] === '{') { i += 2; text += '…'; scan(true); i++; continue; }
+      if (c === '\n') line++;
+      text += c; i++;
+    }
+    i++;
+    strings.push({ text, line: l0 });
+  }
+  function scan(inExpr) {
+    let depth = 0;
+    while (i < n) {
+      const c = src[i], d = src[i + 1];
+      if (c === '\n') { line++; i++; continue; }
+      if (c === ' ' || c === '\t' || c === '\r') { i++; continue; }
+      if (c === '/' && d === '/') { const s = i; while (i < n && src[i] !== '\n') i++; blank(s, i); continue; }
+      if (c === '/' && d === '*') { const s = i; i += 2; while (i < n && !(src[i] === '*' && src[i + 1] === '/')) { if (src[i] === '\n') line++; i++; } i += 2; blank(s, i); continue; }
+      if (c === "'" || c === '"') { readQuoted(c); prev = 'str'; continue; }
+      if (c === '`') { readTemplate(); prev = 'str'; continue; }
+      if (c === '/' && regexOk()) {
+        const s = i; let cls = false; i++;
+        while (i < n && src[i] !== '\n') {
+          const e = src[i];
+          if (e === '\\') { i += 2; continue; }
+          if (e === '[') cls = true; else if (e === ']') cls = false; else if (e === '/' && !cls) break;
+          i++;
+        }
+        i++;
+        while (i < n && /[a-z]/i.test(src[i])) i++;
+        blank(s, i); prev = 'regex'; continue;
+      }
+      if (/[\w$]/.test(c)) { const s = i; while (i < n && /[\w$]/.test(src[i])) i++; prev = src.slice(s, i); continue; }
+      if (inExpr) { if (c === '{') depth++; else if (c === '}') { if (depth === 0) return; depth--; } }
+      if (c === '=' && d === '>') { prev = '=>'; i += 2; continue; }
+      prev = c; i++;
+    }
+  }
+  scan(false);
+  return { strings, code: out.join('') };
+}
+
 const WRONG_BRAND = /Hushmallow|HUSHMALLOW|HushMallow|Hush ?Mallow/g;
 const BRAND_ALLOW = /HushmallowEmbed|Hushmallow_1000_Rituals_V3/g;
 
 function brandProblems(paths) {
   const bad = [];
   for (const p of paths) {
-    const code = stripComments(read(p), p).replace(BRAND_ALLOW, '');
+    // JS: comments and regex literals are code, not customer text
+    const src = p.endsWith('.js') ? lexJs(read(p)).code : stripComments(read(p), p);
+    const code = src.replace(BRAND_ALLOW, '');
     code.split('\n').forEach((l, i) => { if (WRONG_BRAND.test(l)) bad.push(`${p}:${i + 1}: ${l.trim().slice(0, 120)}`); WRONG_BRAND.lastIndex = 0; });
   }
   return bad;
@@ -96,7 +167,10 @@ function wordingProblems(paths) {
   const bad = [];
   for (const p of paths) {
     const code = stripComments(read(p), p);
-    const texts = p.endsWith('.js') || p.endsWith('.tsx') ? literals(code) : code.split('\n').map((text, i) => ({ text, line: i + 1 }));
+    // JS: every literal, multi-line template strings included; TSX: per line (JSX text is not a literal)
+    const texts = p.endsWith('.js') ? lexJs(read(p)).strings
+      : p.endsWith('.tsx') ? [...literals(code), ...code.split('\n').map((text, i) => ({ text: text.replace(/<[^>]*>/g, ' '), line: i + 1 })).filter((t) => !/[=;(){}]/.test(t.text))]
+        : code.split('\n').map((text, i) => ({ text, line: i + 1 }));
     for (const { text, line } of texts) {
       if (PLAN_WORDS.test(text)) bad.push(`${p}:${line}: plan word in "${text.slice(0, 90)}"`);
       if (AI_WORD.test(text) && !/consent|privacy/i.test(p)) bad.push(`${p}:${line}: "AI" in "${text.slice(0, 90)}"`);
