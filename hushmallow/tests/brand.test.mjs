@@ -17,7 +17,7 @@ import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { BRAND, brandName, brandTagline, flowPlanName, beyondPlanName, docTitle, planNameFor } from '../src/brand.js';
-import { PLANS } from '../src/app/entitlements.js';
+import { PLANS, LIVE_FEATURES } from '../src/app/entitlements.js';
 import { TYPE, CANVAS_FONT, canvasFont, canvasFontPx, type } from '../src/ui/type.js';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -252,7 +252,10 @@ test('plans: customer names from brand.js; ids and StoreKit product ids frozen',
   assert.equal(Object.keys(PLANS).length, 2, 'exactly two paid plans');
   // Beyond's value is a capability, said plainly
   const beyond = PLANS.ultra.includes.join(' ');
-  for (const k of ['Another Angle', 'fresh perspectives', 'Fact versus interpretation', 'Alternative explanations', 'Belief Mallow']) assert.match(beyond, new RegExp(k));
+  for (const k of ['Another Angle', 'fresh perspectives', 'Fact versus interpretation', 'Alternative explanations']) assert.match(beyond, new RegExp(k));
+  // it sells Belief Mallows only once they are switched on in the build
+  if (LIVE_FEATURES.beliefMallows) assert.match(beyond, /Belief Mallow/);
+  else assert.doesNotMatch(beyond, /Belief Mallow/);
   for (const line of [...PLANS.paid.includes, ...PLANS.ultra.includes]) {
     assert.doesNotMatch(line, /\bAI\b|\bUltra\b|\bPaid\b|\bPremium\b/);
     assert.doesNotMatch(line, /\bcure|\bfix(es)? your|guarantee/i, 'no cure or relief claims');

@@ -64,6 +64,8 @@ a { color: var(--accent); }
 .btn.ultra { background: linear-gradient(120deg, #6a2ee6, #a512c9 50%, #157f9e); color: #fff; border-color: transparent; box-shadow: 0 10px 30px rgba(150, 60, 255, .35), inset 0 1px 0 rgba(255,255,255,.22); }
 .btn.ghost { background: transparent; border-color: transparent; backdrop-filter: none; color: var(--text-2); min-height: 44px; }
 .btn.block { width: 100%; }
+/* one line, always: fitLabel() swaps in shorter words before anything clips */
+.fit-one { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .btn[disabled] { opacity: .45; pointer-events: none; }
 .row-btns { display: flex; gap: 10px; }
 .row-btns > * { flex: 1; min-width: 0; }
@@ -291,7 +293,19 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
   .invite, .invite::after { animation: none; }
   .invite::after { display: none; }
   .invite-beyond .invite-sigil.spiral { animation: none; }
+  .invite-more[open] .invite-list { animation: none; }
+  .invite-more > summary::after { transition: none; }
 }
+/* the rest of what a plan includes, one tap away */
+.invite-more { margin: -6px 0 18px; }
+.invite-more > summary { list-style: none; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 2px; cursor: pointer;
+  font: var(--type-label); letter-spacing: var(--type-label-ls); font-weight: 700; color: var(--text-1); border-radius: 12px; }
+.invite-more > summary::-webkit-details-marker { display: none; }
+.invite-more > summary::after { content: ''; width: 8px; height: 8px; margin-top: -3px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); transition: transform 240ms var(--ease-out); opacity: .8; }
+.invite-more[open] > summary::after { transform: rotate(225deg); margin-top: 3px; }
+.invite-more > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.invite-more .invite-list { margin: 6px 0 0; }
+.invite-more[open] .invite-list { animation: fadeIn 260ms var(--ease-out) both; }
 @media (max-width: 360px) {
   .invite { padding: 18px 15px 16px; border-radius: 24px; }
   .invite-head { gap: 11px; }
@@ -309,6 +323,11 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .setting .grow { flex: 1; }
 .setting small { display: block; color: var(--text-3); font: var(--type-caption); letter-spacing: var(--type-caption-ls); margin-top: 2px; }
 .setting select { font: var(--type-input); color: var(--text-1); background: rgba(255,255,255,.06); border: 1px solid var(--line-strong); border-radius: 12px; min-height: 44px; padding: 0 10px; }
+/* small phones: a select goes under its label instead of squeezing it */
+@media (max-width: 360px) {
+  .setting { flex-wrap: wrap; }
+  .setting > select { flex: 1 1 100%; width: 100% !important; }
+}
 .switch { appearance: none; width: 50px; height: 30px; border-radius: 15px; background: rgba(255,255,255,.2); position: relative; cursor: pointer; transition: background var(--t-fast); flex: 0 0 auto; }
 .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform var(--t-fast) var(--ease-out); }
 .switch:checked { background: var(--accent); }

@@ -28,18 +28,26 @@ const LIBRARY_LINE = PAID_COUNT >= 1000
   ? 'Over 1,000 more touch rituals in the library, for the whole A–Z of feelings'
   : `${PAID_COUNT.toLocaleString('en-GB')} more touch rituals in the library, for the A–Z of feelings`;
 
+// Lines that sell something not switched on in this build stay out until
+// the release that switches it on (flip the flag in that same change).
+//   beliefMallows: Belief Mallows (W2 stage 2) inside Another Angle (W8)
+export const LIVE_FEATURES = Object.freeze({ beliefMallows: false });
+
 // Customer copy. Never the word 'AI' (brand language rule): Another Angle
 // is described by what it does; the consent and privacy screens say how.
+// The plans page leads with the first three lines of each plan (Beyond: its
+// own capabilities, then "Everything in Flow"); the rest sit behind
+// "Everything included".
 export const PLANS = {
   paid: {
     id: 'paid', name: BRAND.flowPlanName, tagline: BRAND.flowTagline,
     productIds: { monthly: 'hushmallow.paid.monthly', yearly: 'hushmallow.paid.yearly' },
     includes: [
       'The seven living, squeezable Mallows, with MallowTouch',
-      'Cinematic conversations, where your thoughts become Thought Mallows',
       'Continuous Hushflow through worlds that respond to how you feel',
-      'Release, calming and sensory play for big feelings',
       'Mallow discoveries, kept as skills in your Memory Garden',
+      'Cinematic conversations, where your thoughts become Thought Mallows',
+      'Release, calming and sensory play for big feelings',
       'Favourites and saved progress, stored on this phone',
       'Your own words and up to seven of your own photos inside the worlds (they never leave your phone), or the seven Mallows when you add none',
       LIBRARY_LINE,
@@ -53,7 +61,7 @@ export const PLANS = {
       'Another Angle: fresh perspectives on your own situations, explored with Zuzu',
       'Fact versus interpretation: what you know, and what your mind added',
       'Alternative explanations you can test for yourself',
-      'Belief Mallow investigation for the stories that keep coming back',
+      ...(LIVE_FEATURES.beliefMallows ? ['Belief Mallow investigation for the stories that keep coming back'] : []),
       'Perspective-changing worlds made for Another Angle',
     ],
   },
@@ -114,8 +122,11 @@ export function createEntitlements({ store }) {
       if (!plan) throw new Error('Unknown plan');
       if (native) {
         const r = await native.purchase(plan.productIds[period]);
-        if (r?.tier) set(r.tier, 'app-store');
-        return { ok: !!r?.tier, test: false };
+        // the shell replies {cancelled:true} when the person backs out of the sheet
+        if (r?.cancelled) return { ok: false, test: false, cancelled: true };
+        if (r?.tier && RANK[r.tier] != null) set(r.tier, 'app-store');
+        // a reply carrying the old tier is not a purchase
+        return { ok: RANK[r?.tier] >= RANK[planId], test: false };
       }
       // development/test provider: grants locally, never charges — dev/preview hosts only
       if (!testOk) return { ok: false, test: false, unavailable: true };

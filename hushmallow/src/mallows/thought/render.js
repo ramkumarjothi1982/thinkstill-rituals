@@ -48,6 +48,8 @@ function sharedGrads(ctx) {
     charm: radial(ctx, -0.2, -0.3, 0.02, 1, [[0, '#fffef4'], [0.45, '#ffe08a'], [1, '#e19b2c']], -0.2, -0.3),
     charmGlow: radial(ctx, 0, 0, 0, 1, [[0, 'rgba(255,226,150,0.6)'], [0.35, 'rgba(255,214,130,0.22)'], [1, 'rgba(255,210,120,0)']]),
     shadow: radial(ctx, 0, 0, 0, 1, [[0, 'rgba(12,6,34,0.32)'], [1, 'rgba(12,6,34,0)']]),
+    heat: radial(ctx, 0, 0, 0.7, 1.3, [[0, 'rgba(255,104,64,0.42)'], [0.4, 'rgba(255,86,70,0.14)'], [1, 'rgba(255,70,80,0)']]),
+    gloss: radial(ctx, 0, 0, 0, 1, [[0, 'rgba(255,255,255,1)'], [0.7, 'rgba(255,255,255,0.85)'], [1, 'rgba(255,255,255,0)']]),
   };
   return C.shared;
 }
@@ -69,7 +71,9 @@ function paletteFor(ctx, th, look) {
     mote: radial(ctx, 0, 0, 0, 1, [[0, 'rgba(255,255,255,0.95)'], [0.3, rgba(t.glow, 0.65)], [1, rgba(t.glow, 0)]]),
     rim: (() => { const g = ctx.createLinearGradient(-1, -1, 1, 1); g.addColorStop(0, 'rgba(255,255,255,0.9)'); g.addColorStop(0.45, 'rgba(255,255,255,0.18)'); g.addColorStop(1, rgba(t.light, 0.55)); return g; })(),
     inkA: rgba(t.ink, 0.92), inkB: rgba(t.ink, 0.78),
-    lightA: rgba(t.light, 0.32), deepA: rgba(t.deep, 0.5),
+    lightA: rgba(t.light, 0.32), lightA2: rgba(t.light, 0.6), deepA: rgba(t.deep, 0.5),
+    depth: radial(ctx, 0, 0, 0, 1, [[0, rgba(t.deep, 0.42)], [0.6, rgba(t.deep, 0.16)], [1, rgba(t.deep, 0)]]),
+    fresnel: radial(ctx, 0, 0, 0, 1.04, [[0, rgba(t.light, 0)], [0.6, rgba(t.light, 0)], [0.82, rgba(t.light, 0.12)], [0.94, rgba(t.light, 0.3)], [1, rgba(t.light, 0.5)]]),
   };
   if (C.pal.size > 160) C.pal.delete(C.pal.keys().next().value);
   C.pal.set(key, p);
@@ -102,6 +106,20 @@ function outlinePath(ctx, O, ox, oy) {
   ctx.closePath();
 }
 
+// a stroke along outline points i0..i1 (wrapping), smoothed
+function rimArc(ctx, O, i0, i1, ox, oy, colour, width) {
+  const n = O.length / 2;
+  ctx.save();
+  ctx.beginPath();
+  for (let k = i0; k <= i1; k++) {
+    const i = k % n, x = O[2 * i] - ox, y = O[2 * i + 1] - oy;
+    if (k === i0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = colour; ctx.lineWidth = width; ctx.lineCap = 'round';
+  ctx.stroke();
+  ctx.restore();
+}
+
 /** Draw a list of thoughts (far first). o: { ox, oy (canvas client offset), rm, low, t, fingers? } */
 export function drawThoughts(ctx, list, o = {}) {
   for (const th of list) drawThought(ctx, th, o);
@@ -124,6 +142,9 @@ export function drawThought(ctx, th, o = {}) {
     const br = rm ? 1 : 1 + 0.04 * Math.sin(t * 1.1);
     blob(ctx, pal.halo, cx, cy, W * 0.62 * br, P * 0.6 * br, 0, halo * 0.9);
   }
+  // anger / frustration: a low warm heat round the body (slow, never a flash)
+  const heat = look.fx.heat * (low ? 0.5 : 1);
+  if (heat > 0.02) blob(ctx, S.heat, cx, cy, W * 0.66, P * 0.64, 0, heat * (rm ? 0.5 : 0.42 + 0.08 * Math.sin(t * 2.2)));
   // props behind the body
   if (th.kind === 'belief') drawPropBack(ctx, th, o, S, pal);
   // a soft shadow of light beneath (it floats)
@@ -137,15 +158,22 @@ export function drawThought(ctx, th, o = {}) {
   ctx.fill();
   ctx.restore();
 
-  // inside the jelly: fresnel band, inner light, motes, dents, blush
+  // inside the jelly: depth, a soft fresnel edge, the inner light, motes, dents, blush
   ctx.save();
   ctx.clip();
-  ctx.lineWidth = P * 0.2;
-  ctx.strokeStyle = pal.lightA;
-  ctx.stroke();
+  // depth: the gel deepens away from the light (lower right)
+  blob(ctx, pal.depth, cx + W * 0.2, cy + P * 0.26, W * 0.62, P * 0.56, ang, 0.55);
+  // fresnel: the rim brightens smoothly toward the edge
+  ctx.save();
+  ctx.translate(cx, cy); ctx.rotate(ang); ctx.scale(W / 2, P / 2);
+  ctx.fillStyle = pal.fresnel;
+  ctx.fill();
+  ctx.restore();
   ctx.globalCompositeOperation = 'lighter';
   const glow = look.fx.glow * (low ? 0.7 : 1) * (rm ? 1 : 1 + 0.06 * Math.sin(t * 0.9 + th.seed));
-  blob(ctx, pal.core, px(PT.core), py(PT.core), W * 0.42, P * 0.38, ang, glow);
+  // the inner light, gathered low in the gel (light passing through it)
+  blob(ctx, pal.core, px(PT.core), py(PT.core) + P * 0.06, W * 0.5, P * 0.42, ang, glow * 1.1);
+  blob(ctx, pal.core, px(PT.bottom), py(PT.bottom) - P * 0.06, W * 0.36, P * 0.12, ang, glow * 0.8);
   if (!low) {
     const nm = Math.min(look.fx.motes, 7);
     for (let j = 0; j < nm; j++) {
@@ -164,10 +192,12 @@ export function drawThought(ctx, th, o = {}) {
     const r = P * 0.26 * (p.mode === 'glide' ? 0.75 : 1);
     blob(ctx, S.dent, fg.x - ox, fg.y - oy, r, r, 0, clamp(p.depth * (p.mode === 'glide' ? 0.5 : 1.1)));
   }
-  // cheeks
+  // cheeks (puffed ones catch a little light)
   const sx = faceScaleX(th), sy = faceScaleY(th);
   const blush = clamp(f.blush * 0.42 + look.fx.halo * 0.05);
   if (blush > 0.01) for (const i of [PT.cheekL, PT.cheekR]) blob(ctx, look.tintK > 0.5 ? S.blushCalm : S.blush, px(i), py(i), W * 0.105 * sx, P * 0.06 * sy, ang, blush);
+  const puff = clamp(f.puff + th.touch.depth * 0.8);
+  if (puff > 0.2) for (const i of [PT.cheekL, PT.cheekR]) blob(ctx, S.spec, px(i) + (i === PT.cheekL ? -1 : 1) * W * 0.02, py(i) - P * 0.045, W * 0.05 * sx, P * 0.022 * sy, ang, 0.3 * puff);
   ctx.restore();
 
   // glassy rim and speculars
@@ -179,8 +209,13 @@ export function drawThought(ctx, th, o = {}) {
   ctx.globalAlpha *= 0.85;
   ctx.stroke();
   ctx.restore();
-  blob(ctx, S.spec, px(PT.specA), py(PT.specA), W * 0.13, P * 0.06, ang - 0.55, 0.78);
-  blob(ctx, S.spec, px(PT.specB), py(PT.specB), W * 0.028, W * 0.028, 0, 0.85);
+  // a crescent of light along the upper left rim, a fainter one low on the right
+  rimArc(ctx, R.outline, 34, 42, ox, oy, 'rgba(255,255,255,0.75)', Math.max(1.2, P * 0.02));
+  rimArc(ctx, R.outline, 12, 19, ox, oy, pal.lightA2, Math.max(1, P * 0.016));
+  // gloss: one soft window reflection and a crisp glint
+  blob(ctx, S.spec, px(PT.specA), py(PT.specA), W * 0.15, P * 0.07, ang - 0.6, 0.62);
+  blob(ctx, S.gloss, px(PT.specA) - W * 0.012, py(PT.specA) - P * 0.008, W * 0.075, P * 0.03, ang - 0.6, 0.9);
+  blob(ctx, S.gloss, px(PT.specB), py(PT.specB), W * 0.024, W * 0.024, 0, 0.95);
 
   drawFace(ctx, th, pal, px, py, sx, sy, o);
   drawFx(ctx, th, pal, S, o);
@@ -210,7 +245,7 @@ function drawFace(ctx, th, pal, px, py, sx, sy, o) {
   const sigh = ov.sigh;
   const open = clamp(f.eyeOpen * (1 - ov.blink) * (1 - 0.6 * squint) * (1 - 0.5 * sigh) + 0.25 * ov.gasp, 0, 1.3);
   const closedK = smooth(0.35, 0.8, Math.max(f.closed, sigh * 0.9));
-  const rx = W * 0.066 * sx, ry0 = P * 0.094 * sy;
+  const rx = W * 0.072 * sx, ry0 = P * 0.1 * sy;
   const lookX = g.x * W * 0.032, lookY = g.y * P * 0.026;
   ctx.fillStyle = pal.inkA;
   ctx.strokeStyle = pal.inkA;
@@ -342,11 +377,14 @@ function drawFx(ctx, th, pal, S, o) {
     if (al < 0.01) continue;
     const tick = rm ? 0 : Math.floor(t * 12);
     ctx.beginPath();
-    for (let k = 0; k <= a.len; k++) {
-      const i = (a.i + k) % OUTLINE_N;
-      const x = O[2 * i] - ox, y = O[2 * i + 1] - oy;
+    // two zigzag points per rim step, alternating out and in, re-jagged 12 times a second
+    const steps = a.len * 2;
+    for (let k = 0; k <= steps; k++) {
+      const f = k / 2, i0 = (a.i + Math.floor(f)) % OUTLINE_N, i1 = (i0 + 1) % OUTLINE_N, u = f - Math.floor(f);
+      const x = O[2 * i0] + (O[2 * i1] - O[2 * i0]) * u - ox, y = O[2 * i0 + 1] + (O[2 * i1 + 1] - O[2 * i0 + 1]) * u - oy;
       const nx = x - cx, ny = y - cy, nl = Math.hypot(nx, ny) || 1;
-      const jag = (k === 0 || k === a.len ? 0.3 : 1) * (rnd(a.seed, k + tick * 17) - 0.3) * P * 0.11 + P * 0.035;
+      const end = k === 0 || k === steps ? 0.2 : 1;
+      const jag = P * (0.045 + end * (k % 2 ? 0.07 : -0.01) * (0.6 + 0.8 * rnd(a.seed, k + tick * 17)));
       const X = x + (nx / nl) * jag, Y = y + (ny / nl) * jag;
       if (k === 0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
     }

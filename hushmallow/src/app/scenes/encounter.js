@@ -14,6 +14,7 @@ import { toast } from '../ui.js';
 import { photoSession } from '../../v3/photos.js';
 import { tellIfFull } from '../../v3/tray.js';
 import { warmMallowCards } from '../../v3/mallow-cards.js';
+import { fitLabel } from '../../ui/type.js';
 
 const REFRAME_FAMILIES = new Set(['shame', 'fear', 'loneliness', 'anger', 'sadness', 'envy', 'confusion']);
 
@@ -76,8 +77,12 @@ export default function encounter(app) {
         h('h3', {}, 'I don’t have the right ritual for this one yet'),
         h('p', {}, 'Rather than give you something that doesn’t fit, here’s what you can do: pick a different feeling, or just stay here with the Mallows for a moment.'),
         h('div', { class: 'row-btns', style: { marginTop: '14px' } },
-          h('button', { class: 'btn', onclick: () => app.go('express', { keep: true }) }, 'Change feelings'),
-          h('button', { class: 'btn', onclick: () => app.go('home') }, 'Home')));
+          h('button', { class: 'btn fit-one', onclick: () => app.go('express', { keep: true }) }, 'Change feelings'),
+          h('button', { class: 'btn fit-one', onclick: () => app.go('home') }, 'Home')));
+      // one line on a small phone: "Pick again" when "Change feelings" would wrap
+      const change = card.querySelector('.row-btns .btn');
+      const fitChange = () => fitLabel(change, 'Pick again');
+      requestAnimationFrame(fitChange); setTimeout(fitChange, 700);
       return;
     }
     const r = o.item;

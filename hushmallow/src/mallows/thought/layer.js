@@ -35,14 +35,16 @@ function injectStyle() {
   const st = document.createElement('style');
   st.id = 'thought-mallow-style';
   st.textContent = `
-.tm-tag{position:fixed;left:0;top:0;z-index:6;margin:0;box-sizing:border-box;max-width:min(240px,calc(100vw - 40px));padding:7px 13px 8px;border-radius:15px;
+.tm-tag{position:fixed;left:0;top:0;z-index:6;margin:0;box-sizing:border-box;max-width:min(232px,calc(100vw - 40px));padding:7px 14px 8px;border-radius:15px;
   border:1px solid rgba(255,255,255,.16);background:rgba(14,10,36,.74);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#fbf8ff;
   font:650 17px/1.3 var(--ff-voice,"HM Nunito Sans","Nunito Sans",ui-rounded,system-ui,sans-serif);letter-spacing:.004em;text-align:center;
   box-shadow:0 8px 22px rgba(4,2,16,.34),inset 0 1px 0 var(--tm-tint,rgba(255,255,255,.22));cursor:pointer;transform-origin:50% 0;will-change:transform;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;pointer-events:auto;
   opacity:0;transition:opacity .45s ease,border-color .6s ease}
-.tm-tag .tm-words{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;overflow-wrap:anywhere;min-height:1.3em}
+.tm-tag .tm-words{text-wrap:balance;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;overflow-wrap:anywhere;min-height:1.3em}
 .tm-tag.tm-on{opacity:1}
+.tm-tag.tm-measure{max-width:none!important;width:auto!important}
+.tm-tag.tm-measure .tm-words{white-space:nowrap;display:block}
 .tm-tag.tm-belief{border-color:rgba(255,236,200,.34);font-weight:720}
 .tm-tag.tm-calm{border-color:rgba(255,231,166,.4)}
 .tm-tag:focus-visible{outline:2px solid #fff;outline-offset:3px}
@@ -475,6 +477,26 @@ export class ThoughtLayer {
     if (text !== tg.text) { tg.text = text; tg.words.textContent = text; tg.measure = true; }
   }
 
+  // the plate fits its balanced lines (text-wrap:balance alone keeps the box at its max width)
+  _measureTag(tg, W) {
+    const el = tg.el;
+    el.style.width = '';
+    el.classList.add('tm-measure');
+    const mc = tg.words.scrollWidth;
+    el.classList.remove('tm-measure');
+    const maxW = Math.min(W < 361 ? 210 : 232, W - (W < 361 ? 28 : 40)), pad = W < 361 ? 24 : 30;
+    const lines = Math.min(3, Math.ceil((mc + 1) / Math.max(40, maxW - pad)));
+    if (lines > 1) {
+      // the narrowest plate that still holds the words in that many lines
+      const lh = parseFloat(getComputedStyle(tg.words).lineHeight) || 22;
+      let w = Math.min(maxW, Math.ceil(mc / lines) + pad + 6);
+      el.style.width = `${w}px`;
+      for (let i = 0; i < 14 && w < maxW && tg.words.offsetHeight > lines * lh + 2; i++) { w = Math.min(maxW, w + 8); el.style.width = `${w}px`; }
+    }
+    tg.w = el.offsetWidth || tg.w; tg.h = el.offsetHeight || tg.h;
+    tg.measure = false;
+  }
+
   // tags hang under their thoughts (above, when there is no room), on screen, clear of each other
   _tags(dt, env) {
     const rm = env.rm, W = env.view.W, H = env.view.H, edge = W < 360 ? 12 : 16;
@@ -483,7 +505,7 @@ export class ThoughtLayer {
       const tg = this.tags.get(th);
       if (!tg) continue;
       this._setTagText(th, tg);
-      if (tg.measure) { tg.w = tg.el.offsetWidth || tg.w; tg.h = tg.el.offsetHeight || tg.h; tg.measure = false; }
+      if (tg.measure) this._measureTag(tg, W);
       const R = th.render, Q = R.pts;
       const bx = Q[2 * PT.bottom], by = Q[2 * PT.bottom + 1];
       const gap = 16 + 8 * (1 - th.z);

@@ -776,7 +776,14 @@ function stepFx(th, dt, look, env, rm, low) {
   if (F.arcT >= 1) {
     F.arcT -= 1;
     const a = spawn(F.arcs);
-    if (a) { const i = Math.floor(t * 31); a.life = 1; a.dur = 0.62 + 0.25 * rnd(seed, i); a.i = Math.floor(rnd(seed, i + 1) * 44); a.len = 3 + Math.floor(rnd(seed, i + 2) * 3); a.seed = (seed + i * 7) >>> 0; a.side = rnd(seed, i + 3) < 0.5 ? -1 : 1; }
+    if (a) {
+      const i = Math.floor(t * 31);
+      // round the head and shoulders (outline 0 is the top centre; the base, 14–30, stays quiet)
+      const k = rnd(seed, i + 1);
+      a.life = 1; a.dur = 0.62 + 0.25 * rnd(seed, i); a.len = 3 + Math.floor(rnd(seed, i + 2) * 2);
+      a.i = (k < 0.5 ? 34 + Math.floor(k * 2 * 12) : 1 + Math.floor((k - 0.5) * 2 * 10)) - (k < 0.5 ? 0 : 0);
+      a.seed = (seed + i * 7) >>> 0; a.side = rnd(seed, i + 3) < 0.5 ? -1 : 1;
+    }
   }
   for (const a of F.arcs) if (live(a)) a.life -= dt / a.dur;
   // frustration: a huff every few seconds — the body squashes and steam puffs from two vents
