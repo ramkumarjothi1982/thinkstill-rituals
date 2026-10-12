@@ -42,10 +42,14 @@ export default function angle(app, params = {}) {
       if (direct) { startAngle(true); return; }
       world.dim(false);
       world.showMallow(true);
-      world.place({ x: 50, y: 44, scale: 0.8 });
       await Promise.all([world.setRealm('spiral-observatory'), world.setMallow('zuzu')]);
+      // Zuzu sits in the gap between the heading and the two doors
+      const top = el.querySelector('.lede')?.getBoundingClientRect().bottom ?? 140;
+      const cardsTop = el.querySelector('.ultra-card')?.getBoundingClientRect().top ?? innerHeight * 0.55;
+      if (cardsTop > top + 70) world.fitBetween(top + 8, cardsTop - 6, { maxScale: 0.8 });
+      else world.place({ x: 31, y: 7, scale: 0.24 }); // short screens: peek from the top bar, beside Back
       world.setEmotion({ curious: 0.7, playful: 0.3 }, 0.7);
-      say(world, 'Ooh, a thought to turn over. Big one or quick one?', { who: 'Zuzu', ms: 3200 });
+      say(world, 'Ooh, a thought to turn over. Big one or quick one?', { who: 'Zuzu', ms: 3200, above: false });
       try { count.textContent = String((await loadUltraTricks(ent)).length); } catch { /* keep the generic label */ }
     },
     leave() { clearBubble(); },

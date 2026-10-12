@@ -63,10 +63,28 @@ Static Storm, Raindrop Lagoon, Spiral Observatory, Sunpop Orchard,
 new; they were grey placeholders).
 
 ### 1.4 Another Angle lenses (Ultra)
-Optional lenses after the Perspective Portal, picked by rule from what the
-person wrote: **Future Lens** (known vs predicted), **Meaning Mixer**
-(dials on loaded words like "always" or "terrible") and **Zoom Out** (the
-wider picture). See §5 for the final check of this work.
+After the Perspective Portal, "Want another lens?" offers up to two lenses,
+picked by rule from what the person wrote (`recommendLenses()` in
+`src/ultra/reframe-engine.js`):
+- **Future Lens** — offered when there's a prediction ("I'll never…",
+  "they'll think…", "what if"). Sort pieces into Known / Predicted, rate how
+  sure the prediction feels (0–100), optionally seal it to check later (only
+  stored on the phone if "Keep my saved angles" is on).
+- **Meaning Mixer** — offered when there's a loud word (labels, always/never,
+  should, all-or-nothing). Dials swap in authored alternatives ("I'm terrible
+  at my job" → "this piece of work needs fixing" → "I'm still learning this
+  part"); "partly right" and "don't know yet" are always options, and keeping
+  your own words is always allowed.
+- **Zoom Out** — always available: pull the camera back from this moment to
+  today, this week, this year and the whole picture, tapping only the lines
+  that are true for you.
+
+Results land in the star map. With the lenses, Another Angle covers the
+directive's Reframe mechanics: Perspective Portal, Fact or Fiction, Plot
+Twist (709 one-minute plot twists), Thought X-Ray, Evidence Orbit, Meaning
+Mixer, Assumption Detector (inside the X-ray), Zoom Out, Another Pair of
+Eyes (portal angles), Future Lens, Conversation practice (authored, no
+simulated personalities) and the Possibility Machine.
 
 ### 1.5 Fixed in this round
 - The finish screen never loaded (a stray bracket), so no ritual could
@@ -134,5 +152,10 @@ wider picture). See §5 for the final check of this work.
    Framer component.
 
 ## 5. Final check of this round
-See the summary at the end of the session for the last Another Angle and
-Experience B verification.
+- **Experience B** played from the real entry (Home → Ultra card → *Look at
+  a real situation* → "My boss criticised my work. I think I'm terrible at
+  my job."): split, X-ray, evidence orbit, portal, Meaning Mixer, Zoom Out,
+  next move and star map, to the finish screen, zero errors, at 390×844.
+  The future-prediction case ("I failed one interview. I'll never get a good
+  job.") ran the same way through Future Lens and Meaning Mixer at 320×568.
+- `node --test hushmallow/tests/*.test.mjs`: 59 tests, all passing.
