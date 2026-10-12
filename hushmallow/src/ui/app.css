@@ -258,3 +258,12 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .photo-head { display: flex; justify-content: space-between; align-items: baseline; margin-top: 12px; font: 700 14px var(--font-ui); }
 .photo-head .muted { font: 600 12px var(--font-ui); }
 .photo-note { font-size: 12px; margin: 4px 2px 0; }
+.dock.v3-dock.v3-ending { grid-template-columns: minmax(0, 1fr) !important; }
+@media (max-width: 360px) {
+  .v3-row .v3-tap svg { display: none; }
+  .v3-row .v3-tap { font-size: 14px; padding: 0 8px; }
+  .v3-row .btn.icon-only { width: 44px; flex-basis: 44px; }
+  .v3-bend { font-size: 15px; }
+  .v3-end .row-btns .btn { font-size: 15px; padding: 0 10px; }
+  .v3-end .row-btns .btn svg { display: none; }
+}
