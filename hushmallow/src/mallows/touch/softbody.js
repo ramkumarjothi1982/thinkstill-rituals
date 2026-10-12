@@ -345,9 +345,11 @@ export class SoftBody {
     if (!st) return null;
     st.depth = clamp(+depth || 0, 0, 1);
     st.r = clamp(+r || 0.2, 0.04, 0.6);
-    st.sigma = Math.min(st.sigmaPull, st.r * 0.8);
     if (Number.isFinite(x) && Number.isFinite(y)) { st.x = x; st.y = y; }
     this._plungeAxis(st);
+    // pressing an edge in moves a broad band of it (the top sinks flat), not a pinhole
+    const pl = st.plunge;
+    st.sigma = Math.min(st.sigmaPull, st.r * (0.8 + (pl ? 0.7 * pl.w * (pl.side ? 0.5 : 1) : 0)));
     return st;
   }
 

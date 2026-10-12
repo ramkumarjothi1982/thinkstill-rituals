@@ -376,12 +376,13 @@ def iris_circle(img, cx, cy, r, unit):
     glow, and on Boppo that circle runs ~14 px into a pale crescent of sclera
     at the top (the painted iris is smaller and sits lower), which a cut-out
     of that circle would carry into every open-eyed expression. Per 2 degrees
-    the edge is where the sclera starts: the start of the pale run that
+    the edge is where the sclera starts: the start of the bright run that
     reaches past the circle, walking out from 0.78 r (inside that sit the
-    catchlight and sparkles). A least-squares circle through those edges,
+    catchlight and sparkles; the iris's own dark outline ends every one). A least-squares circle through those edges,
     refitted without the >2 px outliers. Returns (cx, cy, r, n_edges) or None
     when the circle already sits inside the iris (no crescent)."""
-    pale = pale_px(img)
+    # bright (sclera, or its pink lid shadow): the run that reaches past the circle
+    pale = cv2.cvtColor(np.ascontiguousarray(img[..., :3]), cv2.COLOR_RGB2HSV)[..., 2] > 150
     H, W = pale.shape
     pts = []
     for deg in range(0, 360, 2):
@@ -632,9 +633,9 @@ if __name__ == '__main__':
                 cx, cy, r = ir['cx'], ir['cy'], ir['r'] - 0.5
                 ref = iris_circle(img, ir['cx'], ir['cy'], ir['r'], u)
                 if ref:
-                    # the painted outline (no sclera crescent), cut 1 px inside
+                    # the painted outline (no sclera crescent), cut 2 px inside
                     # it; build_table.py places the sprite from this circle
-                    cx, cy, r = ref[0], ref[1], ref[2] - 1.0
+                    cx, cy, r = ref[0], ref[1], ref[2] - 2.0
                     irises[s] = {'cx': round(cx, 3), 'cy': round(cy, 3), 'r': round(r, 3), 'edges': ref[3]}
                 spr[f'{name}-iris-{s}'] = cut_circle(img, cx, cy, r)
         if name == 'boppo':
