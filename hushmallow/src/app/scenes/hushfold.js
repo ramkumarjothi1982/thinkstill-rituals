@@ -58,7 +58,7 @@ export default function hushfold(app, params = {}) {
   const tellBtn = h('button', { class: 'hf-pill is-hidden', type: 'button', 'data-hf': 'tell', onclick: () => openTell('pill') }, h('span', { class: 'dot', 'aria-hidden': 'true' }), hfIcon('talk'), tellLabel);
   const supportPill = h('button', { class: 'hf-pill support', type: 'button', hidden: true, onclick: () => openSupport(app) }, hfIcon('support'), 'Support');
   const dock = h('div', { class: 'hf-dock' }, supportPill, tellBtn);
-  const srTitle = h('h1', { class: 'sr-only' }, `hushmallow. ${''}`);
+  const srTitle = h('h1', { class: 'sr-only' }, 'hushmallow');
   root.append(srTitle, topEl, dock);
 
   // --------------------------------------------------- subtitles --
@@ -116,6 +116,14 @@ export default function hushfold(app, params = {}) {
     const layerCy = bodyCy - 0.098 * lw;
     world.place({ x: (cx / vw) * 100, y: (layerCy / vh) * 100, scale: 1 });
     thoughtHome = vw < 700 ? { x: vw * 0.82, y: bodyCy + B * 0.22 } : { x: vw / 2 + B * 0.55, y: bodyCy + B * 0.1 };
+    if (thought && vw < 700) {
+      // the word tag hangs under the thought: keep it clear of the Mallow's base and of the dock
+      const r = stage.thoughts.list[0].r;
+      const tagH = Math.max(44, ...stage.thoughts.list.map((t) => t.tag.offsetHeight || 0));
+      const below = bodyCy + B / 2 + 6 - (r * 1.05 + 8);              // tag top under the body
+      const above = dockTop() - 10 - tagH - (r * 1.05 + 8);           // tag bottom over the dock
+      thoughtHome.y = Math.min(Math.max(thoughtHome.y, below), above);
+    }
     stage?.thoughts.list.forEach((th, i) => th.moveHome({ x: thoughtHome.x - i * 18, y: thoughtHome.y - i * (th.r * 2.4) }));
     // the layer glides there (720ms spring); re-place the subtitles when it lands
     later(() => subtitles.layout(), 760);
@@ -266,7 +274,6 @@ export default function hushfold(app, params = {}) {
     try { garden.saveSkill(store, { id: skillId, fromWorld: worldId, mallow: mallowId }); } catch (e) { console.warn('[garden]', e); return; }
     try { if (typeof install?.playInstall === 'function') await install.playInstall(ctx); else app.toast('Saved to your Memory Garden'); } catch { app.toast('Saved to your Memory Garden'); }
   }
-
 
   // ------------------------------------------------- the Mallow --
   async function showMallow(id, { entrance = true } = {}) {

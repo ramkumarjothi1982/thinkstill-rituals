@@ -715,10 +715,12 @@ export function create(ctx) {
     //   grain   — a static texture masked by the charge: charged sky looks staticky, grounded sky smooth
     const d = fieldData.data, md = maskData.data, cd = clearData.data, n = field.n, cols = field.cols, q = field.q, fl = field.f;
     const low = ctx.lowStim ? 0.6 : 1;
+    let anyClear = 0;
     for (let k = 0; k < n; k++) {
       const o = k * 4;
       const f = fl[k], e = q[k] - f > 0 ? q[k] - f : 0, gl = afterglow[k];
-      cd[o + 3] = Math.round(255 * 0.42 * clamp(1 - q[k] / 0.4) * startQ[k]);
+      const ca = Math.round(255 * 0.42 * clamp(1 - q[k] / 0.4) * startQ[k]);
+      cd[o + 3] = ca; anyClear |= ca;
       if (f < 0.02 && e < 0.01 && gl < 0.01) { d[o + 3] = 0; md[o + 3] = 0; continue; }
       const i = k % cols, j = (k / cols) | 0;
       const sh = rm ? 1 : 0.78 + 0.22 * Math.sin(now * phase[k * 2 + 1] + phase[k * 2]);
@@ -740,11 +742,14 @@ export function create(ctx) {
     const bx = field.x - field.cw * 0.5, by = field.y - field.ch * 0.5, bw = field.w + field.cw, bh = field.h + field.ch;
     g.save();
     g.imageSmoothingEnabled = true;
-    // 1 clear sky where grounded
-    fieldG.putImageData(clearData, 0, 0);
-    midG.globalCompositeOperation = 'copy'; midG.drawImage(fieldC, 0, 0, midC.width, midC.height);
-    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
-    g.drawImage(midC, bx, by, bw, bh);
+    midG.globalCompositeOperation = 'copy';
+    // 1 clear sky where grounded (skipped until something has been grounded)
+    if (anyClear) {
+      fieldG.putImageData(clearData, 0, 0);
+      midG.drawImage(fieldC, 0, 0, midC.width, midC.height);
+      g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+      g.drawImage(midC, bx, by, bw, bh);
+    }
     // 2 plasma
     fieldG.putImageData(fieldData, 0, 0);
     midG.drawImage(fieldC, 0, 0, midC.width, midC.height);
@@ -1155,6 +1160,6 @@ export function create(ctx) {
       realm?.destroy(); realm = null;
     },
     /** QA hooks. */
-    debug: { get field() { return field; }, get cards() { return cards; }, get realm() { return realm; }, get lines() { return lines; }, get fingers() { return fingers; }, thoughtPos: () => ({ x: tSpring.x, y: tSpring.y, r: tR }) },
+    debug: { brightTimes: () => Array.from(bright.slice(0, Math.min(brightN, 8))), get brightCount() { return brightN; }, get field() { return field; }, get cards() { return cards; }, get realm() { return realm; }, get lines() { return lines; }, get fingers() { return fingers; }, thoughtPos: () => ({ x: tSpring.x, y: tSpring.y, r: tR }) },
   };
 }

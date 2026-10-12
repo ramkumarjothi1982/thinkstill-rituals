@@ -247,6 +247,7 @@ body.hf-world-leaving #world > canvas.hf-back, body.hf-world-leaving #fx-layer >
 /* ------------------------------------------------------- small phones -- */
 @media (max-width: 360px) {
   .hushfold { --hf-edge: 12px; }
+  .hf-tag { font-size: max(15px, calc(15px * var(--hf-k))); max-width: min(58vw, 230px); padding: 6px 11px; }
   .hf-row .lbl { width: 54px; }
   .hf-btn { width: 44px; height: 44px; }
 }

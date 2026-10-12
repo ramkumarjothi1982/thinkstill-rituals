@@ -326,3 +326,17 @@ test('realm core: the realm sources still match the horizon table', () => {
     assert.ok(src.includes(`H * ${frac}`), `${id} draws its horizon at H × ${frac}`);
   }
 });
+
+test('progress: the storm\'s saved state passes the flow-store sanitiser intact (ids and numbers only)', async () => {
+  const fs = await import('../src/engine/flow-store.js');
+  const f = field(); f.drain(100, 200, 2, 1);
+  const w = { v: 1, seed: 123456, progress: 0.42, complete: false, field: f.snapshot(), discoveries: ['slowing'],
+    photoState: Array.from({ length: 7 }, (_, i) => ({ i, grounded: i < 2, q: 0.5 })), thought: { q: 0.3, settled: false }, elapsed: 31 };
+  const st = { w, d: ['slowing'], o: ['slowing-down'], i: 0.7, c: 0 };
+  assert.deepEqual(fs.sanitizeState(st), st);
+  assert.ok(JSON.stringify(st).length < 2048);
+  const g = field();
+  assert.ok(g.restore(fs.sanitizeState(st).w.field));
+  // and words could never ride along: free text is dropped by the store
+  assert.equal(fs.sanitizeState({ token: 'My boss embarrassed me' }).token, undefined);
+});

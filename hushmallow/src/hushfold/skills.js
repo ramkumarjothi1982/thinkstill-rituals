@@ -229,7 +229,7 @@ const LIST = [
       'Skip it if naming the feeling makes things feel heavier right now.',
     ],
     related: ['kinder-voice', 'a-little-more-room', 'permission-to-rest'],
-    charm: { family: 'lantern', motif: 'flame', palette: { deep: '#06195a', body: '#0b8ff0', light: '#9ad8ff', core: '#ffe1b0', rim: '#c8ecff' } },
+    charm: { family: 'lantern', motif: 'flame', palette: { deep: '#06195a', body: '#0b7fe0', light: '#9ad8ff', core: '#ffb874', rim: '#c8ecff' } },
   }),
   skill({
     id: 'kinder-voice',
@@ -315,7 +315,7 @@ const LIST = [
       'If tiredness or low mood stays with you for weeks, talk to a doctor or someone you trust.',
     ],
     related: ['one-quiet-point', 'kinder-voice', 'worry-can-wait'],
-    charm: { family: 'moon-pearl', motif: 'crescent', palette: { deep: '#18225e', body: '#b4cff5', light: '#fff8e6', core: '#fff4c8', rim: '#ffe9a8' } },
+    charm: { family: 'moon-pearl', motif: 'crescent', palette: { deep: '#141c56', body: '#7d93d6', light: '#dfe8ff', core: '#ffdf8f', rim: '#ffe9a8' } },
   }),
   skill({
     id: 'worry-can-wait',
@@ -344,7 +344,7 @@ const LIST = [
       'If you write a worry down, keep it somewhere private, and delete it whenever you like.',
     ],
     related: ['a-little-more-room', 'permission-to-rest', 'another-angle'],
-    charm: { family: 'seed', motif: 'sprout', palette: { deep: '#1c0a3c', body: '#6a3fc8', light: '#c9b2ff', core: '#c4ffe0', rim: '#8ff7c6' } },
+    charm: { family: 'seed', motif: 'sprout', palette: { deep: '#1c0a3c', body: '#6a3fc8', light: '#c9b2ff', core: '#9effd0', rim: '#8ff7c6' } },
   }),
 ];
 

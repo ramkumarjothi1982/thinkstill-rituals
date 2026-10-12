@@ -215,18 +215,24 @@ export class ChargeField {
     for (let i = 0; i < this.n; i++) { this.f[i] -= this.f[i] * m; if (this.q[i] > this.f[i]) this.q[i] -= (this.q[i] - this.f[i]) * m; }
   }
 
-  /** Compact state for serialize(): coarse floor values (0..255) and light. */
+  /**
+   * Compact state for serialize(): the floor quantised to 36 levels as base-36 digits, in
+   * chunks of 48 characters (so it passes the flow-store's id-only sanitiser), plus light.
+   */
   snapshot() {
-    const b = new Array(this.n);
-    for (let i = 0; i < this.n; i++) b[i] = Math.round((this.f[i] / FIELD.CAP) * 35).toString(36);
-    return { c: this.cols, r: this.rows, f: b.join(''), light: Math.round(this.light * 100) / 100, target: Math.round(this.target * 100) / 100 };
+    let str = '';
+    for (let i = 0; i < this.n; i++) str += Math.round((this.f[i] / FIELD.CAP) * 35).toString(36);
+    const f = [];
+    for (let i = 0; i < str.length; i += 48) f.push(str.slice(i, i + 48));
+    return { c: this.cols, r: this.rows, f, light: Math.round(this.light * 100) / 100, target: Math.round(this.target * 100) / 100 };
   }
   restore(s) {
-    if (!s || s.c !== this.cols || s.r !== this.rows || typeof s.f !== 'string' || s.f.length !== this.n) {
+    const str = Array.isArray(s?.f) ? s.f.join('') : typeof s?.f === 'string' ? s.f : '';
+    if (!s || s.c !== this.cols || s.r !== this.rows || str.length !== this.n) {
       if (s && Number.isFinite(s.light)) this.light = Math.max(0, s.light);
       return false;
     }
-    for (let i = 0; i < this.n; i++) { const v = (parseInt(s.f[i], 36) / 35) * FIELD.CAP; this.f[i] = this.q[i] = Number.isFinite(v) ? v : this.f[i]; }
+    for (let i = 0; i < this.n; i++) { const v = (parseInt(str[i], 36) / 35) * FIELD.CAP; this.f[i] = this.q[i] = Number.isFinite(v) ? v : this.f[i]; }
     if (Number.isFinite(s.light)) this.light = Math.max(0, s.light);
     if (Number.isFinite(s.target) && s.target > 0) this.target = s.target;
     return true;

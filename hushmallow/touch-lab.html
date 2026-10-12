@@ -108,7 +108,7 @@ function layout() {
   const w = innerWidth, h = innerHeight;
   // body centre a little below the middle, clear of the roster and readout
   const scale = Number(qs.get('scale')) || 1;
-  mt.place({ x: w / 2, y: h * 0.5, scale }, { instant: true });
+  mt.place({ x: w / 2, y: h * (h < 700 ? 0.46 : 0.5), scale }, { instant: true });
 }
 addEventListener('resize', layout);
 

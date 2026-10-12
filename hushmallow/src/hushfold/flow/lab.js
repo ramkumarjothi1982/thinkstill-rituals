@@ -119,6 +119,9 @@ export async function hushflowLab(app, qs) {
   // ---- a minimal lab bar: pause / resume and Auto-flow (the real side panel is W3's)
   const bar = labBar({ director, reduced });
   const log = [];
+  // QA: every line spoken, in order (text only, for the lab's own log)
+  const sayOrig = subtitles.say.bind(subtitles);
+  subtitles.say = (lines, o = {}) => { log.push({ ev: 'say', t: Math.round((director?.debug.time || 0) * 100) / 100, kind: o.kind || 'dialogue', lines: [].concat(lines) }); return sayOrig(lines, o); };
   for (const ev of ['world', 'discovery', 'offer', 'complete', 'melt', 'pause', 'resume', 'stay', 'finish', 'quality', 'error']) {
     director.on(ev, (d) => { log.push({ ev, t: Math.round(director.debug.time * 100) / 100, ...(d && typeof d === 'object' ? JSON.parse(JSON.stringify(d, (k, v) => (k === 'error' ? String(v) : v))) : {}) }); });
   }

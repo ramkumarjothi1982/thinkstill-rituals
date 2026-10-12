@@ -113,29 +113,45 @@ def erase_mask(name, meas, masks, shape, img=None):
 
 def restore_cheeks(body, img, erase, meas):
     """The blush is part of the approved face, but an eye or mouth margin
-    can bite into it. Bring the bitten part back from its mirror image across
-    the blush's horizontal centre line (the intact half), feathered."""
+    can bite into it. The blush is a soft radial glow, so the bitten part
+    gets the radial colour profile measured from the blush's intact pixels
+    (shading only; the quilted surface texture is kept)."""
     ch = meas['feats']['cheeks']
     if ch.get('base', 1) <= 0:
         return body
     u = meas['unit']
     H, W = erase.shape
     out = body.astype(np.float64)
-    src = img.astype(np.float64)
-    bad = dil(erase, 2 * u)
+    sig = 3.0 * u
+    orig_lf = cv2.GaussianBlur(img[..., :3].astype(np.float64), (0, 0), sig)
+    intact = (~dil(erase, 1.5 * u)) & (img[..., 3] > 250)
     yy, xx = np.mgrid[0:H, 0:W]
     for s in 'LR':
         cx, cy, r = ch[s]
-        d = np.hypot(xx - cx, yy - cy) / r
-        reg = erase & (d < 1.45)
+        d = np.hypot(xx - cx, yy - cy)
+        reg = erase & (d < 1.3 * r)
         if not reg.any():
             continue
-        my = np.clip(np.round(2 * cy - yy).astype(int), 0, H - 1)
-        valid = ~bad[my, xx] & (img[my, xx, 3] > 250)
-        w = np.clip((1.45 - d) / 0.45, 0, 1) * valid * reg
-        w = cv2.GaussianBlur(w, (0, 0), 1.2 * u)
-        mir = src[my, xx]
-        out[..., :3] = out[..., :3] * (1 - w[..., None]) + mir[..., :3] * w[..., None]
+        bins = np.arange(0, 1.5 * r + 3, 1.5)
+        prof = np.full((len(bins), 3), np.nan)
+        sel = intact & (d < 1.5 * r)
+        bi = np.digitize(d[sel], bins) - 1
+        vals = orig_lf[sel]
+        for k in range(len(bins)):
+            v = vals[bi == k]
+            if len(v) > 12:
+                prof[k] = np.median(v, axis=0)
+        ok = ~np.isnan(prof[:, 0])
+        if ok.sum() < 5:
+            continue
+        for c in range(3):
+            prof[:, c] = np.interp(bins, bins[ok], prof[ok, c])
+            prof[:, c] = ndimage.gaussian_filter1d(prof[:, c], 2)
+        cur_lf = cv2.GaussianBlur(out[..., :3], (0, 0), sig)
+        target = np.stack([np.interp(d, bins, prof[:, c]) for c in range(3)], -1)
+        w = np.clip((1.3 * r - d) / (0.3 * r), 0, 1) * reg
+        w = cv2.GaussianBlur(w, (0, 0), 1.5 * u)
+        out[..., :3] += (target - cur_lf) * w[..., None]
     res = body.copy()
     res[..., :3] = np.clip(np.round(out[..., :3]), 0, 255).astype(np.uint8)
     res[..., :3][img[..., 3] == 0] = 0

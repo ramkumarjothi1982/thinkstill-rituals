@@ -18,7 +18,8 @@
 // their position and physics; it forwards to thought.pointer itself).
 
 import { createCompositor } from './compositor.js';
-import { registry as defaultRegistry, isPlayable, fitScore, hash01 } from './registry.js';
+import { registry as defaultRegistry, fitScore, hash01 } from './registry.js';
+import { saveProgress, loadProgress, clearProgress, favouriteWorlds, toggleFavouriteWorld } from '../../engine/flow-store.js';
 
 const MELT_SEC = 5;               // noise melt
 const MELT_REDUCED_SEC = 1.6;     // reduced motion: straight crossfade
@@ -27,7 +28,7 @@ const AUTO_IDLE_SEC = 2;          // a completed world melts only after this muc
 const AUTOFLOW_REST_SEC = 4;      // …and with Auto-flow, after this much rest
 const PREPARE_AT = 0.7;           // progress at which the next world is built in idle time
 const FADE_IN_SEC = 0.7;          // cold start: first world over its palette
-const STORE_KEY = 'hushflow';
+const ROTATION_KEY = 'hushflow.rotation';   // which worlds were played (ids only): history + rotation bags
 const VEIL = 0.2;
 const MAX_POINTERS = 4;
 const NOOP_HOLD = Object.freeze({ update() {}, stop() {}, active: false });
@@ -97,12 +98,22 @@ export function createHushflow(opts = {}) {
   const pool = [];                  // recycled pointer states
   const hapticLast = new Map();
 
-  const saved = () => kv.get(STORE_KEY, null) || {};
-  let persist = { v: 1, history: [], bags: {}, sessionCount: 0, favourites: [], autoFlow: false, current: null, ...saved() };
-  autoFlow = !!persist.autoFlow;
+  // Persistence (ids and numbers only, never words or photos):
+  //   progress   → W3's flow-store (saveProgress / loadProgress: sanitised, versioned, 7 days)
+  //   favourites → flow-store (toggleFavouriteWorld / favouriteWorlds)
+  //   rotation   → this director's own small record (history of world ids + selection bags)
+  // All of it only while prefs.saveHistory is on; Auto-flow lives in the shell's prefs.
+  const saveOn = () => prefs?.get?.('saveHistory') !== false;
+  const rotSaved = (() => { try { const r = kv.get(ROTATION_KEY, null); return r && r.v === 1 ? r : null; } catch { return null; } })();
+  const persist = {
+    v: 1, sessionCount: Number.isFinite(rotSaved?.sessionCount) ? rotSaved.sessionCount : 0,
+    history: Array.isArray(rotSaved?.history) ? rotSaved.history.filter((x) => typeof x === 'string').slice(-12) : [],
+    bags: rotSaved?.bags && typeof rotSaved.bags === 'object' ? rotSaved.bags : {},
+  };
+  const favourites = () => { try { return favouriteWorlds(kv); } catch { return []; } };
 
   function emit(ev, data) { for (const fn of listeners.get(ev) || []) { try { fn(data); } catch (e) { console.warn('[hushflow]', ev, e); } } }
-  function writeStore() { try { kv.set(STORE_KEY, persist); } catch (e) { console.warn('[hushflow] save failed', e); } }
+  function writeStore() { if (!saveOn()) return; try { kv.set(ROTATION_KEY, persist); } catch (e) { console.warn('[hushflow] save failed', e); } }
 
   function measure() {
     const w = Math.max(1, Math.round(worldEl.clientWidth || innerWidth || 390));
@@ -225,7 +236,7 @@ export function createHushflow(opts = {}) {
   function pickNext(exclude = []) {
     const res = registry.select({
       current: cur?.id, emotion: session?.emotion, intention: session?.intention,
-      history: persist.history, favourites: persist.favourites, bags: persist.bags,
+      history: persist.history, favourites: favourites(), bags: persist.bags,
       seed: session?.seed ?? 0, sessionCount: persist.sessionCount, exclude,
     });
     return res;
@@ -268,18 +279,21 @@ export function createHushflow(opts = {}) {
     finishInstances();
     measure();
     applySize();
-    const prev = persist.current;
-    const resuming = resume && prev?.worldId && registry.playable(prev.worldId);
+    let prev = null;
+    if (resume) { try { prev = loadProgress(kv); } catch { prev = null; } }
+    const resuming = !!(prev?.worldId && registry.playable(prev.worldId));
+    const pst = resuming && prev.state && typeof prev.state === 'object' ? prev.state : {};
     persist.sessionCount = (persist.sessionCount || 0) + 1;
     session = {
       emotion: resuming ? prev.emotion ?? emotion : emotion, intention: resuming ? prev.intention ?? intention : intention,
-      intensity: resuming ? prev.intensity ?? intensity : intensity, input,
+      intensity: resuming && Number.isFinite(pst.i) ? pst.i : intensity, input,
       seed: resuming ? prev.seed : Math.floor(hash01(`hf|${persist.sessionCount}|${emotion}|${intention}`) * 2 ** 31),
-      discoveries: new Set(resuming ? prev.discoveries || [] : []), offered: new Set(resuming ? prev.offered || [] : []),
+      discoveries: new Set(resuming && Array.isArray(pst.d) ? pst.d : []), offered: new Set(resuming && Array.isArray(pst.o) ? pst.o : []),
+      sequence: resuming && Array.isArray(prev.sequence) ? [...prev.sequence] : [],
     };
     let id = resuming ? prev.worldId : worldId;
     if (!id || !registry.playable(id)) {
-      const pick = registry.select({ current: null, emotion: session.emotion, intention: session.intention, history: persist.history, favourites: persist.favourites, bags: persist.bags, seed: session.seed, sessionCount: persist.sessionCount });
+      const pick = registry.select({ current: null, emotion: session.emotion, intention: session.intention, history: persist.history, favourites: favourites(), bags: persist.bags, seed: session.seed, sessionCount: persist.sessionCount });
       id = pick.id;
       if (pick.id) persist.bags = pick.bags;
     }
@@ -296,11 +310,12 @@ export function createHushflow(opts = {}) {
       resizeInstance(cur);
       await prepare(cur);
       if (destroyed || cur !== inst) return null;
-      if (resuming && prev.state) { try { cur.world.restore?.(prev.state); } catch (e) { console.warn('[hushflow] restore failed', e); } }
+      if (resuming && pst.w) { try { cur.world.restore?.(pst.w); } catch (e) { console.warn('[hushflow] restore failed', e); } }
       enterInstance(cur, null, null);
       phase = 'playing';
-      persist.current = { worldId: id, seed: session.seed, emotion: session.emotion, intention: session.intention, intensity: session.intensity, at: Date.now(), discoveries: [...session.discoveries], offered: [...session.offered], state: null };
+      if (!session.sequence.length || session.sequence[session.sequence.length - 1] !== id) session.sequence.push(id);
       writeStore();
+      save();
       emit('world', { id, from: null, mallow: entry.mallow?.id, title: entry.title, resumed: !!resuming });
       return cur;
     } catch (e) {
@@ -352,8 +367,9 @@ export function createHushflow(opts = {}) {
     cur = to; inc = null; nextChoice = null;
     phase = 'playing';
     persist.history = [...persist.history, from.id].slice(-12);
-    persist.current = { worldId: cur.id, seed: cur.seed, emotion: session.emotion, intention: session.intention, intensity: session.intensity, at: Date.now(), discoveries: [...session.discoveries], offered: [...session.offered], state: null };
+    session.sequence = [...session.sequence, cur.id].slice(-24);
     writeStore();
+    save();
     emit('melt', { from: from.id, to: cur.id, k: 1 });
     emit('world', { id: cur.id, from: from.id, mallow: cur.entry.mallow?.id, title: cur.entry.title });
   }
@@ -370,7 +386,7 @@ export function createHushflow(opts = {}) {
     discoveryPending++;
     const lines = def.lines || [];
     const done = lines.length && subtitles?.say
-      ? Promise.resolve(subtitles.say(lines, { kind: 'discovery', hold: true, id: `discovery:${id}`, who: inst.entry.mallow?.id })).catch(() => {})
+      ? Promise.resolve(subtitles.say(lines, { kind: 'discovery', hold: true, id: `discovery:${id}`, who: inst.entry.mallow?.id, interrupt: true, first: true })).catch(() => {})
       : Promise.resolve();
     done.finally(() => {
       discoveryPending = Math.max(0, discoveryPending - 1);
@@ -549,13 +565,18 @@ export function createHushflow(opts = {}) {
     }
   }
 
+  /** Save progress through W3's flow-store (sanitised: ids and numbers only). */
   function save() {
-    if (!cur || !session) return;
-    let state = null;
-    try { state = cur.world.serialize?.() ?? null; } catch (e) { console.warn('[hushflow] serialize', e); }
-    persist.current = { worldId: cur.id, seed: cur.seed, emotion: session.emotion, intention: session.intention, intensity: session.intensity, at: Date.now(), discoveries: [...session.discoveries], offered: [...session.offered], complete: !!cur.world.complete, state };
-    persist.autoFlow = autoFlow;
-    writeStore();
+    if (!cur || !session || phase === 'finished') return;
+    let w = null;
+    try { w = cur.world.serialize?.() ?? null; } catch (e) { console.warn('[hushflow] serialize', e); }
+    try {
+      saveProgress(kv, {
+        worldId: cur.id, idx: Math.max(0, session.sequence.length - 1), sequence: session.sequence, step: cur.world.complete ? 1 : (cur.world.progress || 0),
+        emotion: session.emotion, intention: session.intention, mallow: cur.entry.mallow?.id || null, seed: cur.seed,
+        state: { w, d: [...session.discoveries], o: [...session.offered], i: Math.round((session.intensity ?? 0.6) * 100) / 100, c: cur.world.complete ? 1 : 0 },
+      }, { enabled: saveOn() });
+    } catch (e) { console.warn('[hushflow] progress not saved', e); }
   }
 
   function finishInstances() {
@@ -620,12 +641,12 @@ export function createHushflow(opts = {}) {
     /** End the Hushflow now (no penalty). The last frame stays on screen until destroy(). */
     finish() {
       if (phase === 'finished') return;
-      save();
-      if (persist.current) persist.current.finished = true;
+      // finishing is a choice, not an interruption: nothing is left waiting to be resumed
       const id = cur?.id || null;
       try { cur?.world.pause?.(); } catch { /* ignore */ }
       phase = 'finished';
       stopLoop();
+      try { clearProgress(kv); } catch { /* ignore */ }
       writeStore();
       emit('finish', { worldId: id });
     },
@@ -642,14 +663,15 @@ export function createHushflow(opts = {}) {
       nextChoice = null;
       if (cur && fitScore(cur.entry, session.emotion, id) <= 0) api.next();
     },
-    setAutoFlow(b) { autoFlow = !!b; persist.autoFlow = autoFlow; writeStore(); emit('autoflow', { on: autoFlow }); },
+    setAutoFlow(b) { autoFlow = !!b; emit('autoflow', { on: autoFlow }); },
     get autoFlow() { return autoFlow; },
+    /** ★ favourite world (flow-store). Returns whether it is now a favourite. */
     setFavourite(id, on = true) {
-      const s = new Set(persist.favourites);
-      if (on) s.add(id); else s.delete(id);
-      persist.favourites = [...s]; writeStore();
+      try { if (favourites().includes(id) !== !!on) toggleFavouriteWorld(kv, id); } catch { /* storage blocked */ }
+      nextChoice = null;
+      return favourites().includes(id);
     },
-    get favourites() { return [...persist.favourites]; },
+    get favourites() { return favourites(); },
     /** The thought handle can arrive after start (the person types while playing). */
     setThought(h) { thought = h; try { cur?.world.setThought?.(h); } catch { /* optional */ } },
     pointer,
@@ -658,7 +680,10 @@ export function createHushflow(opts = {}) {
     /** Rects worlds want kept clear of subtitles and controls (client CSS px). */
     avoid() { try { return cur?.world.avoid?.() || []; } catch { return []; } },
     /** A saved Hushflow that can be resumed (or null). */
-    resumable() { const c = persist.current; return c && !c.finished && registry.playable(c.worldId) ? { worldId: c.worldId, at: c.at, complete: !!c.complete } : null; },
+    resumable() {
+      let c = null; try { c = loadProgress(kv); } catch { c = null; }
+      return c && registry.playable(c.worldId) ? { worldId: c.worldId, at: c.savedAt, step: c.step, complete: !!c.state?.c } : null;
+    },
     get state() {
       return {
         phase: paused ? 'paused' : phase, paused, worldId: cur?.id || null, nextId: nextChoice?.id || null,
@@ -696,7 +721,7 @@ export function createHushflow(opts = {}) {
       /** Freeze the loop without a veil (QA: step frames by hand). */
       freeze(on = true) { frozen = !!on; if (frozen) stopLoop(); else startLoop(); },
       setQuality(level) { qLevel = clamp(level, 0, 3) | 0; applySize(); },
-      get persisted() { return JSON.parse(JSON.stringify(persist)); },
+      get persisted() { let progress = null; try { progress = loadProgress(kv); } catch { /* ignore */ } return JSON.parse(JSON.stringify({ rotation: persist, progress, favourites: favourites() })); },
     },
   };
   measure();

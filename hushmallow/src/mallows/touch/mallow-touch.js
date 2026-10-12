@@ -759,6 +759,15 @@ export class MallowTouch {
     let a = nowMs();
     const changed = rig.renderSkin();
     st.skinMs = lerp(st.skinMs, nowMs() - a, 0.1);
+    // idle (only breathing): draw every other frame — breathing is slow, the
+    // battery is not. Anything else (a finger, a wobble, a face change,
+    // particles, a glide) draws every frame.
+    const s = this.st, parts = rig.particles;
+    const idle = !this.reader.ptrs.size && !changed && sb.energy < 2e-5 && this._rim < 0.01 && !(parts.list.length || parts.cloud > 0.02) &&
+      Math.abs(s.vx) + Math.abs(s.vy) + Math.abs(s.vs) < 0.5 && rig.body.grounded && !(rig.body.spin > 0) && !(this.id === 'glitzi' && this.tier === 'gl' && rig.val.glitch >= 0.55);
+    this._idleFrames = idle ? (this._idleFrames || 0) + 1 : 0;
+    st.idle = idle;
+    if (idle && this._idleFrames % 2 === 0) { st.skipped = (st.skipped || 0) + 1; return; }
     // rim light rises with the squeeze, the stretch and a jiggle
     const rimGoal = clamp(0.5 * T.depth + 0.9 * Math.max(0, T.stretch - 1) + 0.3 * T.jiggle, 0, 0.75) * (this.opts.lowStim ? 0.5 : 1);
     this._rim += (rimGoal - this._rim) * Math.min(1, dt * (rimGoal > this._rim ? 10 : 3));
