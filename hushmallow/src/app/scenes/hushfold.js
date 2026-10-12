@@ -523,7 +523,7 @@ export default function hushfold(app, params = {}) {
     if (S.left || overlay) return;
     const v = await subtitles.choice(SHARED_LINES.careAsk[0],
       [{ label: 'Stay here quietly', value: 'stay' }, { label: 'Play something gentle', value: 'play', primary: true }],
-      { who: M().name, colour: M().colours.glow, timeoutMs: 0 });
+      { who: M().name, colour: M().colours.glow, timeoutMs: 30000 });
     if (S.left) return;
     if (v === 'play') startFlow({ emotion: emotion || S.emotion, intention: intention && intention !== 'let-go' ? intention : 'calm', input: null, safety });
     else if (v === 'stay') say(SHARED_LINES.careQuiet);

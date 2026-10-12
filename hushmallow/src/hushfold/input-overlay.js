@@ -13,7 +13,7 @@
 // notes only where there is room for them.
 //
 //   openInput({ app, prompt, mallow:{id,name,glow}, root, emotion, intention,
-//               hasPlan, onSubmit({text, emotion, intention, reading, safety, input}),
+//               hasPlan, face(faceMix), onSubmit({text, emotion, intention, reading, safety, input}),
 //               onClose(reason), onLayout(rect) }) → { el, close(reason), rect(), get text, get dirty }
 //
 // Words: kept exactly as typed (trimmed at the ends), shown with textContent
@@ -40,7 +40,7 @@ export function loadInputModules() {
 }
 
 export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root = document.body, emotion = null, intention = null, hasPlan = true,
-  text = '', onSubmit, onClose, onLayout } = {}) {
+  text = '', face = null, onSubmit, onClose, onLayout } = {}) {
   const reduced = app?.prefs?.reducedMotion?.() ?? false;
   const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
   const vv = typeof visualViewport !== 'undefined' ? visualViewport : null;
@@ -142,7 +142,9 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
   async function mirror() {
     const m = await loadInputModules();
     const e = m.getEmotion(chosenEmotion);
-    if (e && app?.world) app.world.setEmotion(e.face, 0.6, { quiet: true });
+    if (!e) return;
+    // the stage's Mallow mirrors the chosen feeling (the scene passes its own adapter)
+    if (face) face(e.face); else app?.world?.setEmotion(e.face, 0.6, { quiet: true });
   }
 
   // ----------------------------------------------------- notes --
