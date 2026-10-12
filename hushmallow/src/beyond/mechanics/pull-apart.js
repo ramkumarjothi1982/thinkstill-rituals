@@ -34,8 +34,8 @@ export function mount(ctx) {
     words: ctx.tags.add(ctx.parts.excerpt, { kind: 'words' }),
     factL: ctx.tags.add(L.labels.fact, { kind: 'label', colour: LIGHT.fact[1] }),
     guessL: ctx.tags.add(L.labels.guess, { kind: 'label', colour: LIGHT.guess[1] }),
-    factW: ctx.tags.add(ctx.parts.fact, { kind: 'line', max: 190 }),
-    guessW: ctx.parts.guess ? ctx.tags.add(ctx.parts.guess, { kind: 'line', max: 190 }) : null,
+    factW: ctx.tags.add(ctx.parts.fact, { kind: 'line', max: Math.round(Math.min(190, A0.w / 2 - 14)) }),
+    guessW: ctx.parts.guess ? ctx.tags.add(ctx.parts.guess, { kind: 'line', max: Math.round(Math.min(190, A0.w / 2 - 14)) }) : null,
   };
   let labelK = 0;
 

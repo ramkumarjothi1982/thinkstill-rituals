@@ -82,7 +82,7 @@ export const MECHANIC_LINES = Object.freeze({
   let_loop_drift: {
     hint: 'That thought keeps going round. Let it. Rest a finger on the stone instead.',
     hint2: 'Touching it only winds it up. Back to the stone.',
-    assist: 'Rest here', done: 'It can keep moving. You don’t have to ride it.',
+    assist: 'Rest for a breath', done: 'It can keep moving. You don’t have to ride it.',
     labels: { stone: 'Rest here' },
   },
   assemble_step: {

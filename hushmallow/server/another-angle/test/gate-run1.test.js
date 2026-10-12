@@ -227,3 +227,44 @@ test('another angle: the person\'s own words and framing words do not count as r
   const g = qualityGate(scene({ reasoning_pattern: 'practical_problem', interaction_type: 'assemble_step', mallow_character: 'boppo', known_fact: 'Your colleague got promoted instead of you.', subtitle_line_1: 'The promotion went to your colleague this time, and that stings.', subtitle_line_2: 'You could ask your manager what would make your case stronger next time.' }), { text: t, previous });
   assert.ok(!codes(g).includes('repeats_previous'), JSON.stringify(g.failures));
 });
+
+// --- angle-v2 wording the gate must not fight ---------------------------------------
+
+test('angle-v2: clock times in a step, vantage points in time and vague plurals are not invented; as facts they are', () => {
+  const t = "I sent an email to the whole department with a typo in the client's name. I'm going to get fired.";
+  const base = scene({ reasoning_pattern: 'catastrophising', interaction_type: 'shrink_projection', mallow_character: 'loomi', known_fact: "You sent a department-wide email with a typo in the client's name.", subtitle_line_1: "Between a misspelt name and losing your job there's a lot of room.", subtitle_line_2: 'Could you send a one-line correction today and leave it there?' });
+  const inv = (over) => qualityGate({ ...base, ...over }, { text: t }).failures.filter((f) => f.code === 'invented_detail').map((f) => f.field);
+  for (const over of [
+    { subtitle_line_2: 'Could you send the correction, then put the phone away until 9 tonight?' },
+    { practical_next_step: 'Send the correction at 9.30 tomorrow, then close your inbox.' },
+    { subtitle_line_2: 'In five years, will anyone remember one misspelt name?' },
+    { alternative_angle: 'Six months from now, this email may be one of hundreds in their inbox.' },
+  ]) assert.deepEqual(inv(over), [], JSON.stringify(over));
+  for (const [field, v] of [
+    ['known_fact', 'You sent it at 9 this morning.'],
+    ['subtitle_line_1', 'You sent it at 9 this morning to everyone.'],
+    ['subtitle_line_1', 'Five years in this job and one typo is all you are worried about.'],
+    ['known_fact', 'In five years you have never made a typo before.'],
+  ]) assert.deepEqual(inv({ [field]: v }), [field], v);
+});
+
+test('angle-v2: answers that reframe in line 1 and carry the step in line 2 pass (they restate little)', () => {
+  const probes = [
+    ['rel-talk', 'fact_vs_assumption', 'Four words this morning, and your mind has already written the rest.', 'Could you text to ask when tonight suits them to talk?'],
+    ['rel-read', 'fact_vs_assumption', "Big words often get a slow reply, and a slow reply isn't an answer yet.", 'Could you ask him in person next time, rather than reading the silence?'],
+    ['work-promotion', 'practical_problem', 'One decision about one role is not a ruling on your future there.', 'Could you ask your manager what would make your case stronger next time?'],
+    ['work-fraud', 'self_criticism', 'Two years of the job getting done is evidence too, not just the feeling.', 'Could you write down three things you handled that someone relied on?'],
+    ['jeal-replaced', 'all_or_nothing', 'A new friend can sit beside you rather than in your seat.', 'Could you suggest a plan this week, just the two of you?'],
+    ['dis-birthday', 'fact_vs_assumption', 'Three people chose to spend your birthday with you.', 'Could you message one of them tonight to say you were glad they came?'],
+    ['unc-argument', 'fact_vs_assumption', 'Silence since Saturday could be hurt, pride or not knowing how to start.', 'Could you send one short message that opens the door without reopening the argument?'],
+    ['anx-results', 'catastrophising', 'A doctor asking to see you tells you how they share results, not what they are.', 'Could you book the soonest slot and jot your questions down today?'],
+    ['rum-interview', 'rumination', 'Each replay of Monday makes the answers sound worse than they did in the room.', 'Is there one lesson worth noting for next time, so the rest can rest?'],
+    ['self-biscuits', 'self_criticism', 'One evening of biscuits says more about the evening than about you.', 'What was going on in the hour before you opened the packet?'],
+    ['soc-class', 'overgeneralisation', 'A quiet start in a new class is a start, not the whole term.', 'Could you ask the person next to you one small question about the class?'],
+  ];
+  for (const [id, pattern, l1, l2] of probes) {
+    const g = qualityGate(scene({ reasoning_pattern: pattern, known_fact: '', subtitle_line_1: l1, subtitle_line_2: l2 }), { text: text(id) });
+    assert.deepEqual(g.failures.filter((f) => f.field !== 'known_fact').map((f) => f.code), [], id);
+    assert.ok(g.stats.words >= 16 && g.stats.words <= 29, `${id}: ${g.stats.words}`);
+  }
+});

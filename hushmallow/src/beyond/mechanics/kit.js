@@ -284,7 +284,7 @@ export class Motes {
  * kinds: 'words' (the person's own words, voice type), 'label' (a short UI
  * label with a coloured dot), 'line' (a short authored line on an object).
  */
-export function makeTags(root) {
+export function makeTags(root, { bounds = null } = {}) {
   const list = new Set();
   return {
     add(text, { kind = 'label', colour = null, max = 230 } = {}) {
@@ -302,6 +302,9 @@ export function makeTags(root) {
           const edge = innerWidth < 360 ? 10 : 16;
           let px = clamp(x - w / 2, edge, Math.max(edge, innerWidth - edge - w));
           let py = anchor === 'top' ? y - hh : anchor === 'center' ? y - hh / 2 : y;
+          // inside the play area when there is one (never over the Mallows below it or the subtitle band above)
+          const B = bounds?.();
+          if (B) py = clamp(py, B.y - 6, Math.max(B.y - 6, B.y + B.h - hh + 6));
           py = clamp(py, 8, innerHeight - hh - 8);
           px = Math.round(px); py = Math.round(py);
           if (px !== lx || py !== ly) { el.style.transform = `translate3d(${px}px, ${py}px, 0)`; lx = px; ly = py; }

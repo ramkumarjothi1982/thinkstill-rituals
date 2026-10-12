@@ -40,7 +40,7 @@ export function mount(ctx) {
 
   function geometry() {
     const A = ctx.area();
-    const tx = A.x + A.w / 2, ty = A.y + A.h - R * 1.9;
+    const tx = A.x + A.w / 2, ty = A.y + A.h - R * 1.2 - 56;
     // the four bowls on an arc above the thought
     const pr = clamp(Math.min(A.w * 0.13, A.h * 0.16), 30, 46);
     const ys = [A.y + A.h * 0.44, A.y + pr + 22, A.y + pr + 22, A.y + A.h * 0.44];

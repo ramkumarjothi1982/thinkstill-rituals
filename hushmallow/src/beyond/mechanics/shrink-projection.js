@@ -46,7 +46,7 @@ export function mount(ctx) {
 
   function anchor() {
     const A = ctx.area();
-    thought.hx = A.x + A.w * 0.24; thought.hy = A.y + A.h - R * 1.9;
+    thought.hx = A.x + A.w * 0.24; thought.hy = A.y + A.h - R * 1.15 - 56;
     return { px: A.x + A.w * 0.58, py: A.y + A.h * 0.42 };
   }
   anchor();
@@ -110,11 +110,17 @@ export function mount(ctx) {
       const a = phase === 'condensing' ? clamp(1 - condenseT / 0.7) : 1;
       const shake = R_ ? 0 : (1 - k) * 2.2;
       const jx = shake ? Math.sin(t * 23) * shake : 0, jy = shake ? Math.cos(t * 19) * shake : 0;
-      const tone = mix('#3a2f78', deep, k * 0.6);
-      drawGlow(g, px, py, big * 1.6, '#4b2fa8', 0.35 * a * (1 - k * 0.6));
+      const tone = mix('#241a5c', deep, k * 0.6);
+      // a looming storm-shadow: dark halo, the jelly itself, and a slow cloud of shade moving inside it
+      drawGlow(g, px, py, big * 1.7, '#1d1050', 0.7 * a * (1 - k * 0.6));
+      drawGlow(g, px, py, big * 1.35, '#5a3fd0', 0.32 * a * (1 - k * 0.5));
       drawJelly(g, { x: px + jx, y: py + jy, r: big, sx: 1 + Math.sin(t * 1.3) * 0.02 * (1 - k), sy: 1 - Math.sin(t * 1.3) * 0.02 * (1 - k),
-        light: mix('#8e7fd6', light, k * 0.7), deep: tone, alpha: (0.5 + k * 0.3) * a, glow: 0,
+        light: mix('#6d5fc4', light, k * 0.7), deep: tone, alpha: (0.78 + k * 0.15) * a, glow: 0,
         face: { tension: 0.95 - k * 0.6, sad: 0.2, cross: 0.1 * (1 - k), surprise: 0, blink: blinkAt(t, 2.1, 5.3) }, faceAlpha: 0.55 + k * 0.4 });
+      if (!R_ && k < 0.9) for (let c = 0; c < 3; c++) {
+        const ca = t * (0.25 + c * 0.11) + c * 2.1;
+        drawGlow(g, px + Math.cos(ca) * big * 0.42, py + Math.sin(ca * 1.3) * big * 0.35, big * 0.55, '#120a30', 0.28 * a * (1 - k));
+      }
       // the rim flickers like candle-light (slow, never a flash)
       g.globalAlpha = 0.18 * a * (1 - k);
       g.strokeStyle = '#c7b6ff'; g.lineWidth = 2;
@@ -139,7 +145,8 @@ export function mount(ctx) {
     motes.draw(g, dt);
     // labels
     const labelA = phase === 'project' ? 1 : phase === 'condensing' ? clamp(1 - condenseT / 0.5) : 0;
-    tags.big.at(px, py - big - 8, 'top', labelA * (grown ? 1 : 0.4));
+    // the label sits inside the projection's upper rim (above it there is only the subtitle band)
+    tags.big.at(px, py - big * 0.86, 'top', labelA * (grown ? 1 : 0.4));
     tags.words.at(thought.x, thought.y + R * 1.1 + 6, 'bottom', 1);
     tags.small.at(small.x, small.y - R * 1.15 - 4, 'top', phase === 'settled' ? 1 : 0);
     return true;

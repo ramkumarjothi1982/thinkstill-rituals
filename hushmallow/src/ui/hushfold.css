@@ -157,14 +157,19 @@ body.hf-world-held #fx-layer > canvas.hf-front { opacity: 0 !important; transiti
   display: grid; place-items: center; cursor: pointer; padding: 0; }
 .hf-input .close svg { width: 18px; height: 18px; }
 .hf-input .field { position: relative; }
-.hf-input textarea { width: 100%; resize: none; border: 1px solid var(--hf-line-strong); border-radius: 18px; background: rgba(255, 255, 255, 0.06);
-  color: var(--text-1, #f7f3ff); font: var(--hf-font-entry); font-size: max(16px, calc(18px * var(--hf-k))); padding: 12px 50px 12px 14px; min-height: 50px; max-height: 128px;
-  outline: none; display: block; overflow-y: auto; scroll-padding-block: 12px; caret-color: var(--accent, #ffd98a); transition: border-color 200ms, box-shadow 200ms; }
+/* The frame (border, fill, padding) is the field, not the textarea: the textarea itself has no
+   padding, so a field scrolled to its last line shows whole lines only (a textarea's own top
+   padding scrolls away and would leave half a line under the border). */
+.hf-input .field { border: 1px solid var(--hf-line-strong); border-radius: 18px; background: rgba(255, 255, 255, 0.06); padding: 12px 50px 12px 14px; min-height: 50px;
+  transition: border-color 200ms, box-shadow 200ms; cursor: text; }
+.hf-input .field:focus-within { border-color: rgba(255, 217, 138, 0.7); box-shadow: 0 0 0 4px rgba(255, 217, 138, 0.14); }
+.hf-input textarea { width: 100%; resize: none; border: 0; border-radius: 0; background: transparent; padding: 0; margin: 0;
+  color: var(--text-1, #f7f3ff); font: var(--hf-font-entry); font-size: max(16px, calc(18px * var(--hf-k))); max-height: 128px;
+  outline: none; display: block; overflow-y: auto; caret-color: var(--accent, #ffd98a); }
 /* larger text: the speaker's name on its own line, so the prompt keeps the width */
 .hf-input.big .prompt .who { display: flex; width: fit-content; margin: 0 0 5px; }
 .hf-input textarea::placeholder { color: rgba(205, 198, 234, 0.7); }
-.hf-input textarea:focus { border-color: rgba(255, 217, 138, 0.7); box-shadow: 0 0 0 4px rgba(255, 217, 138, 0.14); }
-.hf-input .mic { position: absolute; right: 4px; top: 4px; width: 42px; height: 42px; border: 0; border-radius: 50%; background: none; color: var(--text-2, #cdc6ea);
+.hf-input .mic { position: absolute; right: 4px; top: 3px; width: 42px; height: 42px; border: 0; border-radius: 50%; background: none; color: var(--text-2, #cdc6ea);
   display: grid; place-items: center; cursor: pointer; padding: 0; }
 .hf-input .mic:active { background: rgba(255, 255, 255, 0.08); }
 .hf-input .mic svg { width: 19px; height: 19px; }

@@ -95,7 +95,8 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     h('div', { class: 'head' },
       h('p', { class: 'prompt' }, mallow.name ? h('span', { class: 'who', style: mallow.glow ? { '--hf-who': mallow.glow } : null }, mallow.name, h('span', { class: 'sr-only' }, ': ')) : null, prompt),
       h('button', { class: 'close', type: 'button', 'aria-label': 'Close', onclick: () => close('button') }, hfIcon('close'))),
-    h('div', { class: 'field' }, ta, micBtn),
+    // the frame around the words: a tap on its padding still lands in the field
+    h('div', { class: 'field', onclick: (e) => { if (e.target === e.currentTarget) ta.focus({ preventScroll: true }); } }, ta, micBtn),
     note, feelRow, intentRow, photosBox,
     h('div', { class: 'actions' }, photoBtn, supportBtn, h('div', { class: 'grow' }, countVis, planHint), sendBtn), count);
   root.append(el);
@@ -219,7 +220,8 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     const max = Math.round((roomy() ? 4 : 3) * lh + pad + bd);
     ta.style.maxHeight = `${max}px`;
     ta.style.height = 'auto';
-    ta.style.height = `${Math.min(max, Math.max(50, ta.scrollHeight + bd))}px`;
+    // (the frame around it is the .field, which keeps its own padding)
+    ta.style.height = `${Math.min(max, Math.max(Math.round(lh + pad + bd), ta.scrollHeight + bd))}px`;
   }
   function updateSend() {
     sendBtn.disabled = !(ta.value.trim() || chosenEmotion);

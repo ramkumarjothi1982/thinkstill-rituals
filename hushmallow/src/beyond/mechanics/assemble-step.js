@@ -31,7 +31,7 @@ export function mount(ctx) {
     b.tag = ctx.tags.add(text, { kind: 'piece', max: Math.round(Math.min(220, A0.w * 0.42)) });
     return b;
   });
-  const wordsTag = ctx.tags.add(ctx.parts.excerpt, { kind: 'words' });
+  const wordsTag = ctx.tags.add(ctx.parts.excerpt, { kind: 'words', max: Math.round(A0.w * 0.46) });
   const stepLabel = ctx.tags.add(L.labels.step, { kind: 'label', colour: WARM[1] });
   let phase = 'pieces';    // pieces → fuse → standing
   let fuseT = 0, held = null, moves = 0;

@@ -82,11 +82,12 @@ export function mount(ctx) {
     thought.hx = p.x; thought.hy = p.y;
     thought.step(dt, true);
     // the track, fading as it eases
-    g.globalAlpha = lerp(0.42, 0.14, kk);
-    g.strokeStyle = rgba(light, 0.9); g.lineWidth = 1.6; g.setLineDash?.([3, 7]);
+    // the track: a soft glowing ribbon, fading as it eases (one path, stroked twice: halo, then core)
     g.beginPath();
-    for (let i = 0; i <= 48; i++) { const q = loopAt(G, (i / 48) * TAU); if (i) g.lineTo(q.x, q.y); else g.moveTo(q.x, q.y); }
-    g.stroke(); g.setLineDash?.([]);
+    for (let i = 0; i <= 64; i++) { const q = loopAt(G, (i / 64) * TAU); if (i) g.lineTo(q.x, q.y); else g.moveTo(q.x, q.y); }
+    g.lineJoin = 'round';
+    g.globalAlpha = lerp(0.3, 0.1, kk); g.strokeStyle = rgba(deep, 0.9); g.lineWidth = 9; g.stroke();
+    g.globalAlpha = lerp(0.6, 0.2, kk); g.strokeStyle = rgba(light, 0.95); g.lineWidth = 1.8; g.stroke();
     g.globalAlpha = 1;
     // the trail (a ring buffer of past positions)
     if (!trailInit) { tx.fill(p.x); ty.fill(p.y); trailInit = true; }
@@ -123,7 +124,8 @@ export function mount(ctx) {
     }
     motes.draw(g, dt);
     if (phase === 'landed') landT += dt;
-    tags.words.at(thought.x, thought.y + R * 1.05 + 6, 'bottom', lerp(1, 0.6, kk));
+    // the words stay put under the loop (a label riding the loop would only make it busier)
+    tags.words.at(G.cx, G.cy + G.ay * 0.9 + R * 1.2, 'bottom', lerp(1, 0.55, kk));
     tags.stone.at(st.x, st.y - st.ry - 12, 'top', phase === 'landed' ? 0.6 : 1);
     return true;
   }

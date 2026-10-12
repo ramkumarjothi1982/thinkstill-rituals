@@ -362,6 +362,11 @@ const TIME_BOX = new RegExp(R`\b(?:in|for|within|after|over|take|give it|give yo
 // A small count inside a suggested action ("write down three things",
 // "three pieces of work you're proud of", "pick three questions").
 const ACTION_COUNT = new RegExp(R`\b${SMALL_NUM}(?: [\p{L}'-]+){0,2}? (?:things?|points?|questions?|lines?|sentences?|words?|examples?|reasons?|ways?|ideas?|items?|pieces?|moments?|steps?|names?|options?|bits?|breaths?|lessons?|notes?|parts?|wins?|strengths?|skills?|differences?|priorities|tasks?|choices?|bullet points?|minutes?)\b`, 'giu');
+// A clock time inside a suggested action ("until 9 tonight", "at 7.30").
+const CLOCK_TIME = new RegExp(R`\b(?:at|by|until|till|before|after|from|around)\s+(?:\d{1,2}[:.]\d{2}|${NUM_WORD})(?:\s*(?:am|pm|a\.m\.|p\.m\.|o'clock))?(?![\p{L}\p{N}])|\b\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm)\b`, 'giu');
+// A vantage point in time, not a fact about the past ("in five years",
+// "six months from now"): the distance-or-time lens.
+const VANTAGE = new RegExp(R`\b(?:in|after|within)(?: about| roughly| the next)? ${NUM_WORD} (?:weeks?|months?|years?)(?:' time)?\b|\b${NUM_WORD} (?:days?|weeks?|months?|years?) from (?:now|today)\b`, 'giu');
 // What makes a subtitle line a suggestion: it asks, or it proposes an action.
 const ACTION_CUE = /\?["')\]]*$|^(?:try|write|jot|list|name|pick|choose|send|ask|spend|take|give|set|make|note|plan|book|put|tell|message|text|call|decide|find|look|read|practise|start)\b|\b(?:you could|you might|could you|would you|might you|what if you|how about|try|is there|what are|which)\b/iu;
 /**
@@ -377,7 +382,7 @@ export const suggestsStep = (line) => ACTION_CUE.test(tidy(line));
 const GENERIC_CUE = /\b(?:often|usually|sometimes|can|could|may|might|tends? to|by the|every|any|most|many)\b/iu;
 const REPEAT_ORDINAL = /\b(?:third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|twentieth|fiftieth|hundredth|\d+(?:rd|th))(?: [\p{L}'-]+)? (?:replays?|re-?runs?|run-throughs?|times?|go|goes|attempts?|tries|pass|passes|listens?|reads?|looks?|rewrites?|versions?|drafts?|rounds?|loops?|retellings?)\b/giu;
 const SECOND_PERSON = /\byou(?:r|rs|rself|'ve|'re|'d|'ll)?\b/iu;
-const VAGUE_QUANTITY = /\b(?:a|one) (?:hundred|thousand|million|dozen)\b(?= (?:\w+ )?(?:things|reasons|ways|times|explanations|possibilities|thoughts|details|moments|ordinary|other|little|small|different|tiny)\b)|\b(?:hundreds|thousands|millions|dozens) of\b/giu;
+const VAGUE_QUANTITY = /\b(?:a|one) (?:hundred|thousand|million|dozen)\b(?= (?:\w+ )?(?:things|reasons|ways|times|explanations|possibilities|thoughts|details|moments|ordinary|other|little|small|different|tiny)\b)|\b(?:hundreds|thousands|millions|dozens)\b/giu;
 const NUMBER_NAMES = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
 const QUOTED_IN_INPUT = /"([^"]{1,120})"|(?<![\p{L}\p{N}])'((?:[^']|'(?=\p{L}))+?)'(?![\p{L}\p{N}])/gu;
 
@@ -435,7 +440,7 @@ export function qualityGate(scene, ctx) {
   const info = inputInfo(input);
   const inputNums = numbersIn(input);
   for (const n of quotedCounts(input)) inputNums.add(n);
-  const heavy =HEAVY_EMOTIONS.has(scene.emotion) || HEAVY_EMOTIONS.has(ctx.emotion || '') || scene.situation_type === 'loss';
+  const heavy = HEAVY_EMOTIONS.has(scene.emotion) || HEAVY_EMOTIONS.has(ctx.emotion || '') || scene.situation_type === 'loss';
 
   // 1. Shape of the two subtitle lines.
   const l1 = scene.subtitle_line_1;
@@ -519,7 +524,8 @@ export function qualityGate(scene, ctx) {
       let x = s.replace(VAGUE_QUANTITY, ' ');
       const action = field === 'practical_next_step' || (isLine && ACTION_CUE.test(s));
       if (action || field === 'subtitle_line_2') x = x.replace(TIME_BOX, ' ');
-      if (action) x = x.replace(ACTION_COUNT, ' ');
+      if (action) x = x.replace(ACTION_COUNT, ' ').replace(CLOCK_TIME, ' ');
+      if (field !== 'known_fact') x = x.replace(VANTAGE, ' ');
       // Only in a general remark: a clause about "you" counting their replays is a fact.
       if (field !== 'known_fact' && GENERIC_CUE.test(s)) x = x.split(/(?=[,;])/).map((cl) => (SECOND_PERSON.test(cl) ? cl : cl.replace(REPEAT_ORDINAL, ' '))).join('');
       for (const num of numbersIn(x)) {

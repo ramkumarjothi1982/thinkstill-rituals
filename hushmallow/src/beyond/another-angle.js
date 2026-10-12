@@ -142,7 +142,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   function subsAvoid() {
     const list = [rectOf(zAd), rectOf(compAd), overlay?.rect?.(), consentCard?.rect?.()];
     // while a mechanic is being played, its objects and labels stay clear; once it has landed, only the Mallows matter
-    if (mech && !mech.settled) list.push(...(mech.avoid?.() || []));
+    if (mech && !root.classList.contains('bx-recede')) list.push(...(mech.avoid?.() || []));
     else if (thought && !mech) list.push({ left: thought.x - thought.r * 1.4, right: thought.x + thought.r * 1.4, top: thought.y - thought.r * 1.4, bottom: thought.y + thought.r * 1.4 + 44 });
     return list.filter(Boolean);
   }
@@ -460,7 +460,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     dropThought();
     const parts = sceneParts(S.text, scene);
     const ctx = {
-      g, area: () => area, from, scene, parts, text: S.text, emotion: S.emotion, tags: makeTags(root),
+      g, area: () => area, from, scene, parts, text: S.text, emotion: S.emotion, tags: makeTags(root, { bounds: () => area }),
       reducedMotion: rmOn, lowStim: lowOn,
       hint: (line) => { if (line && !subs?.holding) say(line, { mallow: 'zuzu', interrupt: true }); },
       choose: (prompt, options) => choose(prompt, options, { mallow: scene.mallow_character }),

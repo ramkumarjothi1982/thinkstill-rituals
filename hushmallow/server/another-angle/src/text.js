@@ -67,11 +67,11 @@ const SYNONYMS = [
   ['exam', 'exams', 'test', 'tests', 'assessment', 'assessments', 'resit', 'mark', 'marks', 'grade', 'grades', 'result', 'results'],
   ['mum', 'mom', 'mother', 'mam', 'mummy'],
   ['dad', 'father', 'daddy'],
-  ['job', 'work', 'workplace', 'role', 'career', 'office', 'shift'],
+  // A promotion is about the job: "promoted" meets "the role".
+  ['job', 'work', 'workplace', 'role', 'career', 'office', 'shift', 'promotion', 'promoted', 'promote', 'position'],
   ['colleague', 'colleagues', 'coworker', 'coworkers', 'co-worker', 'co-workers', 'teammate', 'teammates', 'team'],
   ['friend', 'friends', 'mate', 'mates', 'pal', 'bestie', 'best-friend'],
   ['invite', 'invited', 'invitation', 'party', 'plans', 'group-chat'],
-  ['promotion', 'promoted', 'promote'],
   ['mistake', 'mistakes', 'error', 'errors', 'slip', 'messed', 'blunder'],
   ['meeting', 'meetings', 'call', 'presentation', 'pitch', 'standup', 'stand-up'],
   ['school', 'class', 'uni', 'university', 'college', 'course', 'lecture', 'teacher', 'tutor'],

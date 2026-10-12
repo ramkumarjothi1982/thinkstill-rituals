@@ -146,7 +146,7 @@ export function mount(ctx) {
         // gentle strokes work; scratching barely does
         const gentle = sp < 60 ? 0.4 : sp <= 700 ? 1 : 0.15;
         if (gentle < 0.2 && !warned && held.path > 120) { warned = true; ctx.hint(L.hint2); }
-        smoothAt(Math.atan2(e.y - c.y, e.x - c.x) + Math.PI / 2, (d / (R * 9)) * gentle);
+        smoothAt(Math.atan2(e.y - c.y, e.x - c.x) + Math.PI / 2, (d / (R * 2.2)) * gentle);
         held.tick = (held.tick || 0) + d * gentle;
         if (held.tick > 90) { held.tick = 0; ctx.haptic('light'); }
       }

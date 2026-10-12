@@ -120,6 +120,26 @@ test('safety: the review probe list (round 3) gives the expected level, and chec
   }
 });
 
+test('hushfold r3: words waiting on the plans page survive a new deploy; a world keeps its host when the switcher is used', () => {
+  const main = read('src/app/main.js');
+  assert.match(main, /if \(newer && name === 'home' && !app\.state\.pendingTell && safeToUpdate\(\)\)/);
+  const scene = read('src/app/scenes/hushfold.js');
+  assert.match(scene, /S\.pendingResume = true;/);
+  assert.match(scene, /if \(sheets\.length \|\| S\.pendingResume\) return false;/);
+  // the switcher in a world changes only who the person comes back to
+  const sw = scene.slice(scene.indexOf('async function switchMallow('), scene.indexOf('function onMallowTouch('));
+  assert.match(sw, /if \(worldMode\) \{[\s\S]*?homeMallow = MALLOW_IDS\[[\s\S]*?switchLater[\s\S]*?return;\s*\}/);
+  assert.ok(SHARED_LINES.switchLater[0].includes('{name}'));
+  // the phone sheet holds a world (its front layer steps back) and gives it back as it was
+  assert.match(scene, /function holdWorld\(on\)/);
+  assert.match(read('src/ui/hushfold.css'), /body\.hf-world-held #fx-layer > canvas\.hf-front \{ opacity: 0 !important;/);
+  // after something heavy: no invitations, no squeeze chatter, the concerned face (never heart eyes)
+  assert.match(scene, /const canInvite = \(\) => [^;]*!gentle\(\)/);
+  assert.match(scene, /if \(gentle\(\)\) return;\s*\/\/ after something heavy/);
+  assert.match(scene, /const CARE_FACE = 'concerned';/);
+  assert.doesNotMatch(scene, /'comforting'/);
+});
+
 test('safety: every phrase the old free detector caught is still caught', () => {
   for (const t of ['I want to kill myself', 'thinking about hurting myself', 'I have been cutting myself', 'suicidal', 'I just want to end it all',
     'end my life', "I don't want to be here", 'I do not want to wake up', 'no reason to live', 'better off dead', 'everyone is better off without me',

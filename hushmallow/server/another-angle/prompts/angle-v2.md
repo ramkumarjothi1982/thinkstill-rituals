@@ -196,7 +196,7 @@ A complete answer for "My landlord still hasn't fixed the boiler after two weeks
 
 - Two lines, one sentence each, about 16–28 words together (never over 35), neither over 22; one idea per line.
 - Line 1 says something new about their situation; line 2 carries the step or an answerable question that leads to it, unless an action would be unkind.
-- About their actual situation, using their details, inventing nothing.
+- About their actual situation: the two lines name at least one concrete detail from their words (the person, the event, the place, their own word), and invent nothing.
 - Nothing about anyone else's mind, or theirs, stated as fact.
 - For another angle: a pattern and a lens no previous angle used.
 - No banned phrasing, jargon, pattern names, lists, links or exclamation clutter; British spelling.

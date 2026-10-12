@@ -23,7 +23,8 @@ export function mount(ctx) {
   const motes = new Motes(40);
   const [light, deep] = tintFor(ctx.emotion);
   const A0 = ctx.area();
-  const R = clamp(Math.min(A0.w, A0.h) * 0.075, 16, 28);
+  // the cluster must leave room around it to pull the one out (≤ 36% of the area's short side)
+  const R = clamp(Math.min(A0.w, A0.h) * 0.36 / (Math.sqrt(COUNT) * 1.42), 12, 22);
   const one = new Blob({ x: ctx.from?.x ?? A0.x + A0.w / 2, y: ctx.from?.y ?? A0.y + A0.h / 2, r: R * 1.15, light, deep });
   // the others, packed on a sunflower spiral; each gets its own later colour
   const beads = Array.from({ length: COUNT }, (_, i) => {
@@ -48,7 +49,7 @@ export function mount(ctx) {
     const { cx, cy, A } = centre();
     const spread = phase === 'spread' ? 1 : 0;
     beads.forEach((b, i) => {
-      const rr = Math.sqrt(i + 1) * R * lerp(1.42, 2.9, spread);
+      const rr = Math.sqrt(i + 0.6) * R * lerp(1.12, 2.9, spread);
       const a = b.phase + spread * 0.6;
       b.hx = clamp(cx + Math.cos(a) * rr * lerp(1, 1.25, spread), A.x + R, A.x + A.w - R);
       b.hy = clamp(cy + Math.sin(a) * rr * lerp(1, 0.78, spread), A.y + R, A.y + A.h - R);
@@ -63,8 +64,8 @@ export function mount(ctx) {
   homes();
   if (rm()) for (const b of [one, ...beads]) { b.x = b.hx; b.y = b.hy; }
 
-  const pull = () => { const { cx, cy } = centre(); return clamp((Math.hypot(one.x - cx, one.y - cy) - R * 2) / (clusterR() + R * 2.2)); };
-  const clusterR = () => Math.sqrt(COUNT) * R * 1.42;
+  const pull = () => { const { cx, cy } = centre(); return clamp((Math.hypot(one.x - cx, one.y - cy) - R * 1.5) / (clusterR() + R * 0.6)); };
+  const clusterR = () => Math.sqrt(COUNT) * R * 1.18;
 
   function free() {
     if (phase !== 'fused') return;
@@ -96,7 +97,15 @@ export function mount(ctx) {
     if (phase === 'spread') spreadT += dt;
     const k = phase === 'fused' ? pull() : 1;
     // the cluster's weight: a dull halo while fused, many small lights once spread
-    if (phase === 'fused') drawGlow(g, cx, cy, clusterR() * 1.8, '#4a4180', 0.5);
+    if (phase === 'fused') {
+      // fused: one heavy, dull membrane holding every moment together
+      drawGlow(g, cx, cy, clusterR() * 1.9, '#2a2160', 0.75);
+      g.globalAlpha = 0.5; g.fillStyle = 'rgba(70, 62, 120, 0.55)';
+      g.beginPath(); g.arc(cx, cy, clusterR() * 1.02, 0, TAU); g.fill();
+      g.globalAlpha = 0.35; g.strokeStyle = '#c9c4e0'; g.lineWidth = 1.2;
+      g.beginPath(); g.arc(cx, cy, clusterR() * 1.02, Math.PI * 1.1, Math.PI * 1.75); g.stroke();
+      g.globalAlpha = 1;
+    }
     for (const b of beads) {
       if (!R_ && phase === 'fused') { b.hx += Math.sin(t * 1.2 + b.phase) * 1.2; b.hy += Math.cos(t * 1.1 + b.phase) * 1.2; }
       if (!R_ && phase === 'spread') { b.hx += Math.sin(t * 0.5 + b.phase) * 4; b.hy += Math.cos(t * 0.45 + b.phase) * 3; }
@@ -121,7 +130,9 @@ export function mount(ctx) {
     motes.draw(g, dt);
     const out = phase !== 'fused';
     tags.oneL.at(one.x, one.y - one.r * 1.18 - 4, 'top', out ? 1 : 0);
-    tags.words.at(one.x, one.y + one.r * 1.1 + 6, 'bottom', out ? 1 : 0.85);
+    // fused: the words hang under the whole pile; out: under the one moment
+    if (out) tags.words.at(one.x, one.y + one.r * 1.1 + 6, 'bottom', 1);
+    else tags.words.at(cx, cy + clusterR() * 1.05 + 8, 'bottom', 0.9);
     tags.rest.at(cx, cy - clusterR() * (phase === 'spread' ? 1.25 : 1) - 10, 'top', phase === 'spread' ? clamp(spreadT) : 0);
     return true;
   }

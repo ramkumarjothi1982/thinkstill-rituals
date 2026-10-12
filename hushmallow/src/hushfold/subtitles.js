@@ -274,6 +274,8 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     clearTimeout(cur.timer); cur.timer = 0;
     cur.phase = 'out';
     const mine = cur;
+    // the last line of all: the pill fades out together with it (never left alone on the stage)
+    if (cur.i >= cur.item.lines.length - 1 && !queue.length && !paused) { clearTimeout(hideCtlTimer); ctl.classList.add('idle', 'is-hidden'); }
     fadeOut(cur.lineEl, () => {
       if (cur !== mine) return;
       cur.i += 1;

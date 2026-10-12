@@ -2,3 +2,4 @@
 # (.github/workflows/another-angle-eval.yml). Lines starting with -- are passed
 # to tools/angle-eval.mjs.
 # run 1: 2026-10-12T15:45:44Z
+# run 2 (angle-v2): 2026-10-12T16:43:08Z

@@ -58,7 +58,7 @@
   #ttext { flex: 1 1 auto; min-width: 0; height: 44px; box-sizing: border-box; padding: 0 14px; border-radius: 14px; border: 1px solid var(--line);
     background: rgba(255, 255, 255, 0.07); color: var(--text); font: 600 16px/1.2 var(--ff-voice, system-ui), system-ui, sans-serif; }
   #ttext::placeholder { color: var(--text2); }
-  .tbtn, .chip { flex: 0 0 auto; min-height: 40px; padding: 0 13px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text);
+  .tbtn, .chip { flex: 0 0 auto; min-height: 44px; padding: 0 13px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text);
     font: 650 14px/1 var(--ff-ui, system-ui), system-ui, sans-serif; cursor: pointer; white-space: nowrap; }
   .tbtn.primary { background: linear-gradient(180deg, #ffe8b8, #ffcf7a); color: #2a1a08; border-color: transparent; min-height: 44px; padding: 0 18px; }
   .chip[aria-checked="true"], .tbtn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: rgba(255, 210, 122, 0.12); }
@@ -67,7 +67,16 @@
   #tcount { min-width: 22px; text-align: center; font: 700 16px/1 var(--ff-ui, system-ui), system-ui, sans-serif; }
   .tsep { flex: 0 0 1px; height: 26px; background: var(--line); margin: 0 3px; }
   body.tmode #log { top: calc(max(12px, env(safe-area-inset-top)) + 64px); bottom: auto; }
-  @media (max-height: 640px) { body.tmode #log { top: 12px; } body.tmode #roster { display: none; } #tpanel { gap: 5px; padding-top: 12px; } .tbtn, .chip { min-height: 38px; } }
+  #tlow { display: flex; flex-direction: column; gap: 7px; }
+  @media (max-height: 640px) { body.tmode #log { top: 12px; } body.tmode #roster { display: none; } #tpanel { gap: 5px; padding-top: 12px; } .tbtn, .chip { min-height: 40px; }
+    /* short phones: the count, beliefs and verbs share one scrolling row */
+    #tlow { flex-direction: row; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 1px; }
+    #tlow::-webkit-scrollbar { display: none; }
+    #tlow > .trow { display: contents; } }
+  /* a scrolling row fades at its edge so it reads as "more this way" */
+  .trow, #tlow { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); }
+  #tlow > .trow { -webkit-mask-image: none; mask-image: none; }
+  .trow:first-child { -webkit-mask-image: none; mask-image: none; }
 </style>
 </head>
 <body>
@@ -99,6 +108,7 @@
     <button id="tgo" class="tbtn primary" type="button">Release</button>
   </div>
   <div class="trow" id="tfeel" role="radiogroup" aria-label="Feeling"></div>
+  <div id="tlow">
   <div class="trow">
     <span class="tlabel" id="tcountl">How many</span>
     <button class="tbtn" id="tminus" type="button" aria-label="Fewer">−</button><output id="tcount" aria-labelledby="tcountl">1</output><button class="tbtn" id="tplus" type="button" aria-label="More">+</button>
@@ -113,6 +123,7 @@
     <button class="tbtn" data-verb="closer" type="button">Nearer</button><button class="tbtn" data-verb="explore" type="button">Explore</button>
     <span class="tsep"></span><button class="tbtn" id="tclear" type="button">Clear</button>
     <button class="tbtn" id="trm" type="button" aria-pressed="false">Reduced motion</button><button class="tbtn" id="tback" type="button">Squeeze tab</button>
+  </div>
   </div>
 </section>
 <script type="module">

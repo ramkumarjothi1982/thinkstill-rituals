@@ -151,7 +151,7 @@ export function mount(ctx) {
       { x: thought.x + (jit ? Math.sin(t * 31) * jit : 0), y: thought.y + (jit ? Math.cos(t * 27) * jit : 0), glow: 0.6 });
     motes.draw(g, dt);
     tags.words.at(thought.x, thought.y + R * 1.08 + 6, 'bottom', 1);
-    tags.line.at(G.cx, G.cy - G.rr - 14, 'top', settled ? clamp(closeT * 2) : 0);
+    tags.line.at(G.cx, G.cy - G.rr - 14, 'top', phase === 'chosen' ? 1 : 0);
     return true;
   }
 

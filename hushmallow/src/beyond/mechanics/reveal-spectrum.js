@@ -29,7 +29,7 @@ export function mount(ctx) {
   const want = new Uint8Array(BINS);
   let phase = 'reveal';                      // reveal → place → settled
   let u = 0.03, uGoal = 0.03;                // the thought's place on the track (0 = All bad)
-  let held = null, moves = 0, placeT = 0;
+  let held = null, moves = 0, placeT = 0, grad = null, gradKey = '';
   const t0 = performance.now();
   const thought = new Blob({ x: 0, y: 0, r: R, light, deep });
   const from = ctx.from;
@@ -104,20 +104,30 @@ export function mount(ctx) {
     roundRect(g, T.x0 - 6, T.y - T.hgt, T.x1 - T.x0 + 12, T.hgt * 2, T.hgt);
     g.fill();
     g.globalAlpha = 1;
-    // the spectrum, bin by bin, as it is revealed
+    // the spectrum: one continuous ribbon of light, painted bin by bin as it is revealed (clipped to the track)
     const bw = (T.x1 - T.x0) / BINS;
-    for (let i = 0; i < BINS; i++) {
-      const a = lit[i];
-      if (a <= 0.01) continue;
-      const k = i / (BINS - 1);
-      const col = k < 0.5 ? mix(LEFT, MID, k * 2) : mix(MID, RIGHT, (k - 0.5) * 2);
-      g.globalAlpha = a * 0.95;
-      g.fillStyle = col;
-      roundRect(g, T.x0 + i * bw + 0.6, T.y - T.hgt * 0.7, bw - 1.2, T.hgt * 1.4, Math.min(5, bw / 2));
-      g.fill();
-      if (!R_ && a < 0.98) drawGlow(g, T.x0 + (i + 0.5) * bw, T.y, T.hgt * 2.6, col, (1 - a) * 0.8);
+    const key = `${Math.round(T.x0)}|${Math.round(T.x1)}`;
+    if (key !== gradKey) {
+      gradKey = key;
+      grad = g.createLinearGradient(T.x0, 0, T.x1, 0);
+      grad.addColorStop(0, LEFT); grad.addColorStop(0.5, MID); grad.addColorStop(1, RIGHT);
     }
+    g.save();
+    roundRect(g, T.x0 - 2, T.y - T.hgt * 0.75, T.x1 - T.x0 + 4, T.hgt * 1.5, T.hgt * 0.75);
+    g.clip();
+    g.fillStyle = grad;
+    for (let i = 0; i < BINS; i++) {
+      if (lit[i] <= 0.01) continue;
+      g.globalAlpha = lit[i];
+      g.fillRect(T.x0 + i * bw - 0.5, T.y - T.hgt, bw + 1, T.hgt * 2);
+    }
+    // a soft sheen along the top
+    g.globalAlpha = 0.35; g.fillStyle = '#ffffff';
+    g.fillRect(T.x0, T.y - T.hgt * 0.62, T.x1 - T.x0, T.hgt * 0.22);
+    g.restore();
     g.globalAlpha = 1;
+    // where light is still arriving, it glows a little
+    if (!R_) for (let i = 0; i < BINS; i++) if (lit[i] > 0.02 && lit[i] < 0.97) drawGlow(g, T.x0 + (i + 0.5) * bw, T.y, T.hgt * 2.6, mix(LEFT, RIGHT, i / (BINS - 1)), (1 - lit[i]) * 0.7);
     // tick marks for the places in between, once lit
     for (let i = 1; i <= 3; i++) {
       const k = i / 4;

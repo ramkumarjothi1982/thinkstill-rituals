@@ -146,16 +146,20 @@ export default function hushfold(app, params = {}) {
   const openSupportSheet = (opts = {}) => trackSheet(openSupport(app, opts));
   /** A sheet closed: the crisis line waits until nothing covers the stage. */
   function afterSheet() {
-    // the support sheet set the shared stage to 'comforting'; after something heavy the face stays attentive
+    // the support sheet set the shared stage to its comforting face; after something heavy the face stays attentive
     if (gentle()) stageMallow?.setStage?.(CARE_FACE, { quiet: true });
     speakCrisis();
   }
   let flowP = null, flowRef = null, offPrefs = null;
   let thoughtHome = { x: innerWidth * 0.8, y: innerHeight * 0.6 };
 
-  function dockTop() {
-    const r = tellBtn.classList.contains('is-hidden') && supportPill.hidden && pausedPill.hidden ? null : dock.getBoundingClientRect();
-    return r && r.height ? r.top : innerHeight - 24;
+  function dockTop({ ignorePaused = false } = {}) {
+    const paused = !ignorePaused && !pausedPill.hidden;
+    if (tellBtn.classList.contains('is-hidden') && supportPill.hidden && !paused) return innerHeight - 24;
+    // (the Paused pill only appears with the rest of the dock, in its own row when it wraps)
+    const items = [tellBtn, supportPill, pausedPill].filter((e) => !e.hidden && !e.classList.contains('is-hidden') && (paused || e !== pausedPill));
+    const tops = items.map((e) => e.getBoundingClientRect()).filter((r) => r.height).map((r) => r.top);
+    return tops.length ? Math.min(...tops) : innerHeight - 24;
   }
   /** Phones: the side panel is a bottom sheet; the stage above it stays playable. */
   const panelSheet = () => !!panel?.isOpen && innerWidth < 700;
@@ -176,6 +180,8 @@ export default function hushfold(app, params = {}) {
     const band = Math.max(Math.min(156, Math.max(118, vh * 0.17)), bandNeed ? bandNeed + 24 : 0);
     let regionTop = topB + band;
     let regionBottom = Math.min(vh - 76, dockTop() - 14);
+    // a paused world does not re-plan its postcards, so the Paused pill must not lift the Mallow into them
+    const floorBottom = Math.min(vh - 76, dockTop({ ignorePaused: true }) - 14);
     let minB = 130;
     const ov = overlay?.rect?.();
     if (ov?.height) {
@@ -204,7 +210,7 @@ export default function hushfold(app, params = {}) {
     B = Math.max(minB, Math.min(B, regionH));
     const lw = B / 0.64, lh = lw * 1.1;
     const cx = thought ? (vw < 700 ? vw * 0.4 : vw / 2 - B * 0.35) : vw / 2;
-    const bodyCy = worldMode && !ov?.height && !panelSheet() ? Math.min(vh * 0.885, regionBottom) - B / 2 : regionTop + regionH * 0.5;
+    const bodyCy = worldMode && !ov?.height && !panelSheet() ? Math.min(vh * 0.885, floorBottom) - B / 2 : regionTop + regionH * 0.5;
     if (stageMallow?.kind === 'touch') stageMallow.fit?.({ cx, cy: bodyCy, size: B });
     else {
       world.setLayerSize({ w: lw, h: lh });

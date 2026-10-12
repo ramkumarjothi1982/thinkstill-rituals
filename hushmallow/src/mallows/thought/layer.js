@@ -388,67 +388,99 @@ export class ThoughtLayer {
     return { x: Math.min(W - 60, Math.max(60, x)), y: y + this.thoughts.length * 26 };
   }
 
-  // homes: inside the bounds, clear of the hero, with room between thoughts (more round one given space)
+  // homes: room between thoughts (more round one given space) — then, as hard limits, inside the
+  // bounds and clear of the hero (the hero takes touches first; nothing may sit on it)
   _arrange(dt, env) {
     const B = env.bounds, K = this._keep(), list = this.thoughts;
-    const k = Math.min(1, dt * 3);
+    const free = (th) => !(th.driven || th.pressed || th._glide);
     for (const th of list) {
-      if (th.driven || th.pressed || th._glide) continue;
-      const R = th.render, h = th.home;
+      const R = th.render;
       let hwL = Math.max(24, R.W / 2) + 6, hwR = hwL, hhT = Math.max(24, R.P / 2) + 6, hhB = hhT;
       // a thought's siblings belong to its footprint (they crowd round it)
       for (const sb of th.siblings) {
         const r = sb.bodyRect();
         hwL = Math.max(hwL, th.x - r.left + 4); hwR = Math.max(hwR, r.right - th.x + 4); hhT = Math.max(hhT, th.y - r.top + 4); hhB = Math.max(hhB, r.bottom - th.y + 4);
       }
-      const tg = this.tags.get(th), below = tg && tg.w ? tg.h + 16 : 0;
-      // keep its body (and the words below it) inside the bounds
+      const tg = this.tags.get(th), below = tg && tg.w && (tg.side || 'below') === 'below' ? tg.h + 16 : 0;
       // limits for the home, so that the drawn body (home + its own sink / drift) stays inside
       const dx = R.cx - th.x, dy = R.cy - th.y;
-      const minX = B.left + hwL - dx, maxX = B.right - hwR - dx, minY = B.top + hhT - dy, maxY = B.bottom - hhB - Math.min(below, 0.5 * below + 8) - dy;
-      const hw = (hwL + hwR) / 2, hh = (hhT + hhB) / 2;
-      const lim = th._lim || (th._lim = { minX: 0, maxX: 0, minY: 0, maxY: 0 });
-      lim.minX = minX; lim.maxX = maxX; lim.minY = minY; lim.maxY = maxY;
-      if (h.x < minX) h.x += (minX - h.x) * k; if (h.x > maxX) h.x += (maxX - h.x) * k;
-      if (h.y < minY) h.y += (minY - h.y) * k; if (h.y > maxY && maxY > minY) h.y += (maxY - h.y) * k;
-      // never on the hero Mallow (it takes touches first there): out by the nearest way that stays in bounds
-      if (K) {
-        const l = K.left - hwR - 8 - dx, r = K.right + hwL + 8 - dx, t = K.top - hhB - 8 - dy, b = K.bottom + hhT + 4 - dy;
-        if (h.x > l && h.x < r && h.y > t && h.y < b) {
-          let bx = 0, by = 0, bd = Infinity, fx = 0, fy = 0, fd = Infinity;
-          for (let q = 0; q < 4; q++) {
-            const x = q === 0 ? l : q === 1 ? r : h.x, y = q === 2 ? t : q === 3 ? b : h.y;
-            const d = Math.abs(x - h.x) + Math.abs(y - h.y);
-            if (d < fd) { fd = d; fx = x; fy = y; }
-            if (x >= minX && x <= maxX && y >= minY && y <= maxY && d < bd) { bd = d; bx = x; by = y; }
-          }
-          if (bd === Infinity) { bx = fx; by = fy; }
-          h.x += (bx - h.x) * k; h.y += (by - h.y) * k;
-        }
-      }
+      const lim = th._lim || (th._lim = { minX: 0, maxX: 0, minY: 0, maxY: 0, hwL: 0, hwR: 0, hhT: 0, hhB: 0, dx: 0, dy: 0 });
+      lim.minX = B.left + hwL - dx; lim.maxX = B.right - hwR - dx; lim.minY = B.top + hhT - dy; lim.maxY = B.bottom - hhB - below - dy;
+      if (lim.maxY < lim.minY) lim.maxY = lim.minY;
+      lim.hwL = hwL; lim.hwR = hwR; lim.hhT = hhT; lim.hhB = hhB; lim.dx = dx; lim.dy = dy;
     }
     // room between thoughts: footprints (body + words) never overlap; space() widens one's room
+    for (const th of list) th._ov = 0;
     for (let i = 0; i < list.length; i++) {
       for (let j = i + 1; j < list.length; j++) {
         const A = list[i], C = list[j];
         const fa = this._foot(A), fc = this._foot(C);
         const ox = Math.min(fa.r, fc.r) - Math.max(fa.l, fc.l), oy = Math.min(fa.b, fc.b) - Math.max(fa.t, fc.t);
         if (ox <= 0 || oy <= 0) continue;
-        const ma = A.driven || A.pressed ? 0 : 1, mc = C.driven || C.pressed ? 0 : 1;
+        A._ov += ox * oy; C._ov += ox * oy;
+        const ma = free(A) ? 1 : 0, mc = free(C) ? 1 : 0;
         if (!ma && !mc) continue;
         const sa = ma / (ma + mc), sc = mc / (ma + mc);
         const kk = Math.min(1, dt * 4);
         // the smaller overlap, unless the bounds leave no room that way
         const la = A._lim, lc = C._lim, aLeft = fa.l + fa.r < fc.l + fc.r, aUp = fa.t + fa.b < fc.t + fc.b;
-        const roomX = la && lc ? (aLeft ? (A.home.x - la.minX) * ma + (lc.maxX - C.home.x) * mc : (la.maxX - A.home.x) * ma + (C.home.x - lc.minX) * mc) : Infinity;
-        const roomY = la && lc ? (aUp ? (A.home.y - la.minY) * ma + (lc.maxY - C.home.y) * mc : (la.maxY - A.home.y) * ma + (C.home.y - lc.minY) * mc) : Infinity;
+        const roomX = aLeft ? (A.home.x - la.minX) * ma + (lc.maxX - C.home.x) * mc : (la.maxX - A.home.x) * ma + (C.home.x - lc.minX) * mc;
+        const roomY = aUp ? (A.home.y - la.minY) * ma + (lc.maxY - C.home.y) * mc : (la.maxY - A.home.y) * ma + (C.home.y - lc.minY) * mc;
         let horiz = ox < oy;
-        if (horiz && roomX < ox * 0.5 && roomY > oy * 0.5) horiz = false;
-        else if (!horiz && roomY < oy * 0.5 && roomX > ox * 0.5) horiz = true;
+        if (horiz && roomX < ox * 0.5 && roomY > roomX) horiz = false;
+        else if (!horiz && roomY < oy * 0.5 && roomX > roomY) horiz = true;
         if (horiz) { const d = (aLeft ? -1 : 1) * ox * kk; A.home.x += d * sa; C.home.x -= d * sc; }
         else { const d = (aUp ? -1 : 1) * oy * kk; A.home.y += d * sa; C.home.y -= d * sc; }
       }
     }
+    // boxed in (still overlapping after a moment): glide to the best free place on the stage
+    for (const th of list) {
+      if (!free(th)) { th._stuck = 0; continue; }
+      th._stuck = th._ov > 60 ? (th._stuck || 0) + dt : Math.min(0, (th._stuck || 0) + dt);
+      if (th._stuck > 0.8) { this._freeSpot(th, K); th._stuck = -1.5; }
+    }
+    // hard limits last: the bounds, then never on the hero (out by the nearest way that stays in bounds)
+    for (const th of list) {
+      if (!free(th)) continue;
+      const h = th.home, L = th._lim;
+      h.x = clamp(h.x, L.minX, Math.max(L.minX, L.maxX)); h.y = clamp(h.y, L.minY, Math.max(L.minY, L.maxY));
+      if (!K) continue;
+      const l = K.left - L.hwR - 8 - L.dx, r = K.right + L.hwL + 8 - L.dx, t = K.top - L.hhB - 8 - L.dy, b = K.bottom + L.hhT + 4 - L.dy;
+      if (h.x > l && h.x < r && h.y > t && h.y < b) {
+        let bx = 0, by = 0, bd = Infinity, fx = 0, fy = 0, fd = Infinity;
+        for (let q = 0; q < 4; q++) {
+          const x = q === 0 ? l : q === 1 ? r : h.x, y = q === 2 ? t : q === 3 ? b : h.y;
+          const d = Math.abs(x - h.x) + Math.abs(y - h.y);
+          if (d < fd) { fd = d; fx = x; fy = y; }
+          if (x >= L.minX - 0.5 && x <= L.maxX + 0.5 && y >= L.minY - 0.5 && y <= L.maxY + 0.5 && d < bd) { bd = d; bx = x; by = y; }
+        }
+        if (bd === Infinity) { bx = fx; by = fy; }
+        h.x = bx; h.y = by;
+      }
+    }
+  }
+
+  // the least crowded home for a thought on a coarse grid (its footprint against the others' and the hero)
+  _freeSpot(th, K) {
+    const L = th._lim, f0 = this._foot(th);
+    const ofl = f0.l - th.home.x, ofr = f0.r - th.home.x, oft = f0.t - th.home.y, ofb = f0.b - th.home.y;
+    const others = [];
+    for (const o of this.thoughts) if (o !== th) { const f = this._foot(o); others.push([f.l, f.t, f.r, f.b]); }
+    if (K) others.push([K.left - 6, K.top - 6, K.right + 6, K.bottom + 6]);
+    const over = (x, y) => {
+      let a = 0;
+      for (const [l, t, r, b] of others) { const ox = Math.min(x + ofr, r) - Math.max(x + ofl, l), oy = Math.min(y + ofb, b) - Math.max(y + oft, t); if (ox > 0 && oy > 0) a += ox * oy; }
+      return a;
+    };
+    let bx = th.home.x, by = th.home.y, best = over(bx, by) * 2;
+    const sx = Math.max(16, (L.maxX - L.minX) / 14), sy = Math.max(16, (L.maxY - L.minY) / 18);
+    for (let x = L.minX; x <= L.maxX + 0.5; x += sx) {
+      for (let y = L.minY; y <= L.maxY + 0.5; y += sy) {
+        const sc = over(x, y) * 2 + Math.hypot(x - th.home.x, y - th.home.y) * 3;
+        if (sc < best) { best = sc; bx = x; by = y; }
+      }
+    }
+    th.home.x = bx; th.home.y = by;
   }
 
   _foot(th) {
@@ -501,7 +533,7 @@ export class ThoughtLayer {
   }
 
   _setTagText(th, tg) {
-    const b = Math.min(tagBudget(th.z), [999, 30, 22][this.crowd || 0]);
+    const b = Math.min(tagBudget(th.z), [999, 48, 24][this.crowd || 0]);
     if (b === tg.bucket) return;
     tg.bucket = b;
     const text = wordsExcerpt(th.text, b);
@@ -538,7 +570,7 @@ export class ThoughtLayer {
     const K = this._keep();
     const area = Math.max(1, (B.right - B.left) * (B.bottom - B.top) - (K ? (K.right - K.left) * (K.bottom - K.top) : 0));
     const per = area / Math.max(1, n);
-    this.crowd = per < 34000 ? 2 : per < 58000 ? 1 : 0;
+    this.crowd = per < 40000 ? 2 : per < 64000 ? 1 : 0;
     for (const tg of this.tags.values()) tg.bucket = -1;
     return this.crowd;
   }
@@ -576,7 +608,7 @@ export class ThoughtLayer {
       for (let i = 0; i < C.length; i++) {
         const c = C[i];
         let sc = 0.12 * i + Math.hypot(c.x - c.ax, c.y - c.ay) / 50;
-        if (K) sc += 10 * frac(c.x, c.y, w, h, K);
+        if (K) sc += 100 * frac(c.x, c.y, w, h, K);   // words on the hero would take its touches: never
         sc += 8 * frac(c.x, c.y, w, h, b);
         for (const o of this.thoughts) {
           if (o === th || o._leaving) continue;
