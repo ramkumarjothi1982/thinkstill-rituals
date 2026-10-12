@@ -172,9 +172,15 @@ head = '''// High-res Mallow rigs: a patch table over registry.js (workstream W7
 // Decision D13: a Mallow switches to its high-res rig only after a visual
 // check. HIRES_VERIFIED lists the ones that passed; applyHires() applies those
 // (or the ids you pass) to the registry objects, once, before rigs load.
-// The cyan file without brows is treated as Loomi (owner to confirm).
+// The cyan file without brows is treated as Loomi (owner to confirm): its
+// high-res rig has no brows at rest (they appear only when an expression
+// raises browAlpha), so Loomi stays off HIRES_VERIFIED until the owner says.
+//
+// Integration (after rig.js supports res): in registry.js, once, at the end:
+//   import { applyHires } from './hires.js';  applyHires(MALLOWS, SPRITES);
+// and ship assets/mallows-hires + assets/rig-hires in tools/build-site.sh.
 
-const A = (p) => new URL(`../../assets/${p}`, import.meta.url).href;
+const A =(p) => new URL(`../../assets/${p}`, import.meta.url).href;
 '''
 out = [head]
 out.append('const T = ' + js(table) + ';\n')
