@@ -96,7 +96,7 @@ export function create(ctx) {
   const discovered = new Set();
   let said = { arrive: false, chop: false, back: false };
   let introAt = -1, arriveAt = -1, hint = { next: HINT_AT, shown: 0, age: -1, x0: 0, y0: 0, x1: 0, y1: 0 };
-  let melt = null;                                         // { k, from, riseAt, landAt, handoff } while melting in
+  let melt = null;                                         // { k, hy0, riseAt } while melting in
   let holds = { hum: null }, holdClock = 0, ambClock = 0, emoAt = -9, emoKey = '', hopAt = -9;
   let lastDrip = -9, lastSwish = -9;
   let metricsCache = { chop: 0, period: 0, periodAll: 0, energy: 0 };
@@ -1330,9 +1330,8 @@ export function create(ctx) {
     const wy = y + D * 0.32, s = Math.max(0.05, (wy - cam.hy) / cam.Hw), asp = clamp(s * cam.Hw / cam.Z0, 0.16, 0.7);
     const fl = b.glowAge >= 0 ? flashEnv(b.glowAge, 0.32, 0.4, 1.6) : 0;
     g.globalCompositeOperation = 'lighter';
-    // its ring on the water and a little reflected light
-    g.globalAlpha = 0.22 * b.alpha; g.strokeStyle = C.crest2; g.lineWidth = 1;
-    g.beginPath(); g.ellipse(x, wy, D * 0.5, D * 0.5 * asp, 0, 0, TAU); g.stroke();
+    // its ring on the water (not while it is still gliding down to it) and a little reflected light
+    if (!b.from) { g.globalAlpha = 0.22 * b.alpha; g.strokeStyle = C.crest2; g.lineWidth = 1; g.beginPath(); g.ellipse(x, wy, D * 0.5, D * 0.5 * asp, 0, 0, TAU); g.stroke(); }
     if (fl > 0 || b.lift > 0) { const hr = D * (0.9 + 0.4 * fl); g.globalAlpha = (0.35 * fl + 0.2 * b.lift) * b.alpha; g.drawImage(sprites.warm, x - hr, y - hr, hr * 2, hr * 2); }
     g.globalCompositeOperation = 'source-over';
     photos.draw(g, b.i, x, y, D, { shape: 'bubble', sheen: false, shadow: false, alpha: b.alpha, rot: b.rot, glow: 0.2 * fl, glowColour: C.dawn });
@@ -1469,7 +1468,7 @@ export function create(ctx) {
       const rm = reduced();
       if (handoff && from) {
         // melting in: start on the outgoing world's horizon, its things where they were
-        melt = { k: 0, hy0: rm ? hyTarget : clamp(handoff.horizonY ?? H * 0.655, hyTarget, H * 0.85), riseAt: -1, landAt: -1 };
+        melt = { k: 0, hy0: rm ? hyTarget : clamp(handoff.horizonY ?? H * 0.655, hyTarget, H * 0.85), riseAt: -1 };
         hyNow = melt.hy0; fitCamera(cam, hyNow);
         hero.floatK = 0;
         // the storm's grounded ground lines become the first gentle swells, rolling away

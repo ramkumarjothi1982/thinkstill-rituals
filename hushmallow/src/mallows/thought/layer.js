@@ -739,10 +739,11 @@ export class ThoughtLayer {
     const tg = this.tags.get(th);
     if (tg && tg.w) {
       // the words where they sit now (relative to the thought), or on their chosen side before they show;
-      // a feeling whose effects rise over its head always keeps the room below for its words
+      // a feeling whose effects rise over its head keeps room for its words below (or beside) it, never above
       let dx, dy;
-      if (tg.shown && !fxAbove(th)) { dx = tg.tx - R.cx; dy = tg.ty - R.cy; }
-      else { const rel = this._relB || (this._relB = [0, 0, 0, 0]); this._tagRel(th, e.t, fxAbove(th) ? 0 : tg.pref ?? 0, tg.w, tg.h, rel); dx = rel[0] + tg.w / 2; dy = rel[1]; }
+      const up = fxAbove(th) && (tg.side === 'above' || tg.pref === 1 || tg.pref >= 6);
+      if (tg.shown && !up) { dx = tg.tx - R.cx; dy = tg.ty - R.cy; }
+      else { const rel = this._relB || (this._relB = [0, 0, 0, 0]); this._tagRel(th, e.t, up ? 0 : tg.pref ?? 0, tg.w, tg.h, rel); dx = rel[0] + tg.w / 2; dy = rel[1]; }
       f.l = Math.min(f.l, x + dx - tg.w / 2 - 4); f.r = Math.max(f.r, x + dx + tg.w / 2 + 4);
       f.t = Math.min(f.t, y + dy - 4); f.b = Math.max(f.b, y + dy + tg.h + 4);
     }
