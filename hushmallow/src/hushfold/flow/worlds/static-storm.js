@@ -269,7 +269,8 @@ export function create(ctx) {
   function fingerFor(id) { for (const f of fingers) if (f.on && f.id === id) return f; return null; }
 
   function hitThought(x, y) {
-    if (thought?.hitTest) { try { if (thought.hitTest(x, y)) return true; } catch { /* placeholder */ } }
+    if (!thought) return false;
+    if (thought.hitTest) { try { if (thought.hitTest(x, y)) return true; } catch { /* placeholder */ } }
     return Math.hypot(x - tSpring.x, y - tSpring.y) < tR * 1.25;
   }
   function cardAt(x, y, pad = 6) {
@@ -476,7 +477,7 @@ export function create(ctx) {
       const dT = Math.hypot(f.x - tSpring.x, f.y - tSpring.y);
       const dA = f.tracker.feed(f.x, f.y, Math.max(dt, 1 / 240));
       const w = Math.abs(f.tracker.speed);
-      const ring = dT > tR * 0.5 && dT < tR * 2.8;
+      const ring = !!thought && dT > tR * 0.5 && dT < tR * 2.8;
       f.circling = ring && w > 0.6 && w < 2.5 && f.s > 0.2 ? Math.min(1, f.circling + dt * 3) : Math.max(0, f.circling - dt * 2);
       // moving slowly (not resting): only this grounds under the finger and draws a line
       const moveK = smoothstep(stillPx, stillPx * 2.2, f.speed);
@@ -497,7 +498,7 @@ export function create(ctx) {
         const d = field.drain(f.x, f.y, FIELD.DRAIN_RATE * sg * mul, dt, FIELD.DRAIN_SIGMA, onDrain);
         if (f.line) f.line.drink = lerp(f.line.drink, clamp(d / (dt * 6 + 1e-6)), 0.2);
         groundCardsNear(f.x, f.y, 4, 2.2 * sg * dt);
-        if (dT < tR * 2.8) groundThought(0.32 * sg * mul * dt * (dT < tR * 1.5 ? 1 : 0.55));
+        if (thought && dT < tR * 2.8) groundThought(0.32 * sg * mul * dt * (dT < tR * 1.5 ? 1 : 0.55));
       }
       if (f.onThought && f.s > 0.4) groundThought(0.25 * f.s * dt);
       // holding still: a waiting ring, then ground pulses
@@ -514,7 +515,7 @@ export function create(ctx) {
         const d = field.drainDisk(f.x, f.y, r, FIELD.PULSE_RATE, dt, onDrain);
         f.pulse.drained += d;
         groundCardsNear(f.x, f.y, r, 0.6 * dt);
-        if (Math.hypot(f.x - tSpring.x, f.y - tSpring.y) < r + tR) groundThought(0.22 * dt);
+        if (thought && Math.hypot(f.x - tSpring.x, f.y - tSpring.y) < r + tR) groundThought(0.22 * dt);
         if (f.pulse.age >= PULSE_SEC) {
           pulsedThisFrame = true; pulseDrainThisFrame += f.pulse.drained;
           f.pulse.on = false;
@@ -584,7 +585,11 @@ export function create(ctx) {
     // a gentle ghost finger if nobody has touched yet
     if (!everTouched && !rm) {
       hint.next -= dt;
-      if (hint.next <= 0 && hint.shown < 2 && hint.age < 0) { hint.age = 0; hint.shown++; hint.next = 9; hint.x0 = W * 0.3; hint.y0 = lerp(ctx.safe.y + ctx.safe.h * 0.55, H * 0.5, 0.5); }
+      if (hint.next <= 0 && hint.shown < 2 && hint.age < 0) {
+        // in the open band below the person's words, clear of the postcards and of Glitzi
+        const mt = mallow?.rect?.()?.top ?? H * 0.645;
+        hint.age = 0; hint.shown++; hint.next = 9; hint.x0 = W * 0.29; hint.y0 = clamp(tAnchor.y + tR + 70, H * 0.3, mt - 90);
+      }
     }
     if (hint.age >= 0) { hint.age += dt; if (hint.age > 3.4) hint.age = -1; }
   }
@@ -631,7 +636,7 @@ export function create(ctx) {
     const qLocal = clamp(0.35 * local + 0.75 * tCharge, 0, 1.3);
     tTension = clamp(0.4 + 0.6 * qLocal) * (thoughtSettle.settled ? 0.5 : 1);
     tFizz = Math.max(0, tFizz - dt * 1.5);
-    if (thoughtSettle.update(dt, qLocal) && !tSettledShown) {
+    if (thought && thoughtSettle.update(dt, qLocal) && !tSettledShown) {
       tSettledShown = true;
       try { thought?.react?.('sigh'); thought?.settle?.(1); } catch { /* optional */ }
       ctx.sound('settle', { intensity: 0.35 });
@@ -928,6 +933,7 @@ export function create(ctx) {
   }
 
   function drawThought(g, now, rm) {
+    if (!thought) return;              // nothing typed yet: no Thought Mallow in the storm
     const x = tSpring.x, y = tSpring.y + tWobble.v * 3;
     const qLocal = clamp(tTension - 0.4) / 0.6;
     // micro-arcs crackling round it while it holds charge
@@ -1124,7 +1130,7 @@ export function create(ctx) {
     setEmotion() {},
     setThought(h) { thought = h; },
     avoid() {
-      const out = [{ x: tSpring.x - tR * 1.6, y: tSpring.y - tR * 1.4, w: tR * 3.2, h: tR * 3.6, kind: 'thought' }];
+      const out = thought ? [{ x: tSpring.x - tR * 1.6, y: tSpring.y - tR * 1.4, w: tR * 3.2, h: tR * 3.6, kind: 'thought' }] : [];
       for (const f of fingers) if (f.on) out.push({ x: f.x - 60, y: f.y - 60, w: 120, h: 120, kind: 'finger' });
       return out;
     },

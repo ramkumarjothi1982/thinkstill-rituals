@@ -15,8 +15,6 @@
 //   Tier C  drawStripWarp — the old strip warp, with each strip's width and
 //           offset from the solver's row extents. No seams, cheapest.
 
-const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
-
 const VS = `
 attribute vec2 aPos;
 attribute vec2 aUv;
@@ -427,4 +425,3 @@ export function drawStripWarp(ctx, skin, sb, m, dpr, uvRect, strips = 44, burst 
   ctx.restore();
 }
 
-export { clamp as _clamp };

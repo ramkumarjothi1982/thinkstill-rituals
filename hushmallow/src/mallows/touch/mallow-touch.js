@@ -519,7 +519,7 @@ export class MallowTouch {
       if (!this._fingers.get(e.id)?.pulled && p && p.pull > 0.5) { this._fingers.get(e.id).pulled = true; this._touchEvent('pull'); }
       // a fast drag startles a little
       const sp = Math.hypot(e.vx, e.vy);
-      if (sp > 1700 && this.time - this._lastGasp > 1.6 && p && p.pull > 0.6) { this._lastGasp = this.time; this.rig.react('gasp'); }
+      if (sp > 1700 && this.time - this._lastGasp > 1.6 && p && p.pull > 0.6 && !p.stroked && !p.massage) { this._lastGasp = this.time; this.rig.react('gasp'); }
     });
     R.on('up', (e) => this._release(e));
     R.on('stretchStart', (s) => {

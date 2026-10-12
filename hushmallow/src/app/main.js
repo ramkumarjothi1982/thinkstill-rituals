@@ -181,6 +181,8 @@ async function devLab() {
   if ((qs.get('v3') || qs.get('engine')) && ['localhost', '127.0.0.1'].includes(location.hostname)) return v3Lab(qs);
   // Hushflow lab (W4): ?hushflow=static-storm — see src/hushfold/flow/lab.js for the parameters
   if (qs.get('hushflow') && ['localhost', '127.0.0.1'].includes(location.hostname)) return (await import('../hushfold/flow/lab.js')).hushflowLab(app, qs);
+  // Memory Garden lab (W5): ?gardenlab=install|offer|garden — see src/hushfold/garden-install.js gardenLab()
+  if (qs.get('gardenlab') && ['localhost', '127.0.0.1'].includes(location.hostname)) return (await import('../hushfold/garden-install.js')).gardenLab(app, qs);
   if (!qs.get('lab') || !['localhost', '127.0.0.1'].includes(location.hostname)) return false;
   const base = new URL('../../', import.meta.url);
   const [mod, specMod] = await Promise.all([import(new URL(qs.get('lab'), base).href), qs.get('spec') ? import(new URL(qs.get('spec'), base).href) : null]);
