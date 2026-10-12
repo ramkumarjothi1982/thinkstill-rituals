@@ -83,9 +83,22 @@ export default function landing(app) {
   function finish() { app.state.result = null; app.go('home'); }
   function another() { app.go('encounter', {}); }
 
+  // the card's font and logo are made ready when the screen opens, so share()
+  // only draws: iOS Safari lets navigator.share run only close to the tap
+  let shareLogo = null;
+  const shareAssets = Promise.all([fontsReady(['voice'], 1200), loadLogo('light', 720)]).then(([, l]) => { shareLogo = l; });
+  // a synchronous PNG (no await between the tap and navigator.share)
+  const pngBlob = (canvas) => {
+    const bin = atob(canvas.toDataURL('image/png').split(',')[1]);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Blob([bytes], { type: 'image/png' });
+  };
+
   async function share() {
     // privacy-safe: Mallow + ritual title only, never anything you typed
-    const [, logo] = await Promise.all([fontsReady(['voice'], 1200), loadLogo('light', 720)]);
+    if (!shareLogo) await Promise.race([shareAssets, wait(600)]);
+    const logo = shareLogo;
     const c = document.createElement('canvas');
     c.width = 1080; c.height = 1350;
     const g = c.getContext('2d');
@@ -109,11 +122,14 @@ export default function landing(app) {
     // the approved logo artwork, never re-typed (360×68 at the foot of the card)
     if (logo) { g.shadowColor = 'rgba(8,4,24,.5)'; g.shadowBlur = 18; g.drawImage(logo, 360, 1236, 360, 360 * logo.naturalHeight / logo.naturalWidth); g.shadowBlur = 0; }
     else { g.font = canvasFontPx(40, 800); g.fillStyle = '#f7f3ff'; g.fillText(brandName, 540, 1276); }
-    const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+    const blob = pngBlob(c);
     const file = new File([blob], 'hushmallow.png', { type: 'image/png' });
     try {
       if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: brandName }); return; }
-    } catch { return; }
+    } catch (e) {
+      if (e?.name === 'AbortError') return;   // the person closed the share sheet
+      // otherwise (no activation left, share refused): save the card instead
+    }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = 'hushmallow.png'; a.click();
     toast('Card saved. Nothing you typed is on it.');
