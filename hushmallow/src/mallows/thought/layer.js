@@ -1255,15 +1255,17 @@ export class ThoughtLayer {
   // (as it is going to be) and its own step down when nothing was clear at full budget
   _fitLevel(th, tg, W) {
     const lines = Math.max(1, tagLines(Math.max(th.zGoal, th.zFloor), this.crowd) - tg.drop);
-    return this._fit(th, tg, lines, this._tagMax(W, Math.min(4, this.crowd + tg.drop)), W);
+    // (the last step, only on a packed stage with nowhere clear: two words on a narrower plate, not three)
+    const last = tg.drop >= 3 && this.crowd + tg.drop >= 6;
+    return this._fit(th, tg, lines, last ? this._tagMax(W, 4) - 26 : this._tagMax(W, Math.min(4, this.crowd + tg.drop)), W, last ? 2 : 3);
   }
   // measured once per budget (lines × width × view) and kept: switching back costs no layout
-  _fit(th, tg, lines, maxW, W) {
+  _fit(th, tg, lines, maxW, W, minWords = 3) {
     const C = tg.fits;
     let e = null;
-    for (let i = 0; i < C.length; i++) { const q = C[i]; if (q.lines === lines && q.maxW === maxW && q.W === W) { e = q; break; } }
+    for (let i = 0; i < C.length; i++) { const q = C[i]; if (q.lines === lines && q.maxW === maxW && q.W === W && q.minWords === minWords) { e = q; break; } }
     if (!e) {
-      e = this._measure(th, tg, lines, maxW, W);
+      e = this._measure(th, tg, lines, maxW, W, minWords);
       if (e.w > 0) { if (C.length >= 8) C.shift(); C.push(e); }
       return e;
     }
@@ -1279,7 +1281,7 @@ export class ThoughtLayer {
   // The words for a budget: all of them when they fit `lines` at `maxW`, otherwise the most leading
   // words that do, cut at a word and marked "…" — never fewer than the first three (the plate widens
   // back for them) — and the narrowest plate that holds them in that many balanced lines.
-  _measure(th, tg, lines, maxW, W) {
+  _measure(th, tg, lines, maxW, W, minWords = 3) {
     const el = tg.el, wd = tg.words, words = th._words || (th._words = wordsOf(th.text));
     el.classList.remove('tm-measure');
     el.style.maxWidth = `${maxW}px`;
@@ -1292,10 +1294,11 @@ export class ThoughtLayer {
       // the most words that fit (binary search over a prefix)…
       let lo = 1, hi = words.length - 1, ok = 0;
       while (lo <= hi) { const mid = (lo + hi) >> 1; if (fits(firstWords(words, mid))) { ok = mid; lo = mid + 1; } else hi = mid - 1; }
-      // …but a crowded plate never carries fewer than the first three words: it widens back for them
-      const minK = Math.min(3, words.length - 1);
+      // …but a crowded plate never carries fewer than the first three words (two, as the very last step on
+      // a packed stage): it widens back for them
+      const minK = Math.min(minWords, words.length - 1);
       if (ok < minK) {
-        const wide = this._tagMax(W, 0);
+        const wide = minWords < 3 ? maxW : this._tagMax(W, 0);
         el.style.maxWidth = `${wide}px`; el.style.width = `${wide}px`; mw = wide;
         if (fits(firstWords(words, minK))) ok = minK;
         else if (!ok) { lo = 1; hi = minK - 1; while (lo <= hi) { const mid = (lo + hi) >> 1; if (fits(firstWords(words, mid))) { ok = mid; lo = mid + 1; } else hi = mid - 1; } }
@@ -1324,7 +1327,7 @@ export class ThoughtLayer {
       for (let i = 0; i < 16 && w < mw && wd.offsetHeight > n * lh + 2; i++) { w = Math.min(mw, w + 8); el.style.width = `${w}px`; }
       cssW = w;
     }
-    const e = { lines, maxW, W, mw, text, cssW, w: el.offsetWidth, h: el.offsetHeight };
+    const e = { lines, maxW, W, mw, text, cssW, minWords, w: el.offsetWidth, h: el.offsetHeight };
     tg.cur = e; tg.text = text; tg.w = e.w || tg.w; tg.h = e.h || tg.h; tg.lines = lines; tg.maxW = mw;
     return e;
   }
@@ -1531,7 +1534,7 @@ export class ThoughtLayer {
         }
         let c = this._search(th, tg, -1);
         // at rest and nowhere clear: fewer words (a narrower, shorter plate), then look again
-        while (this._bestHard > 0 && mode === 0 && tg.drop < 2) {
+        while (this._bestHard > 0 && mode === 0 && tg.drop < (this.crowd >= 3 ? 3 : 2)) {
           tg.drop++; this._fitLevel(th, tg, W); this._anchors(th, tg);
           c = this._search(th, tg, -1);
         }
