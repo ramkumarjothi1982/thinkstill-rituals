@@ -7,7 +7,7 @@
 // weights come off, the thought rises and breathes out. Tap a weight, or the
 // assist pill, to send it to the next bowl.
 
-import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, LIGHT, Motes, blinkAt, circleRect, tintFor, TAU } from './kit.js';
+import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, LIGHT, Motes, blinkAt, circleRect, tintFor, TAU, Timers } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'return_responsibility';
@@ -21,6 +21,7 @@ export function mount(ctx) {
   const rm = () => ctx.reducedMotion();
   let resolve;
   const done = new Promise((r) => { resolve = r; });
+  const TM = new Timers();
   const motes = new Motes(36);
   const [light, deep] = tintFor(ctx.emotion);
   const A0 = ctx.area();
@@ -88,7 +89,7 @@ export function mount(ctx) {
     ctx.progress(1 - onCount() / N);
     if (!onCount() && !finished) {
       finished = true;
-      setTimeout(() => { ctx.haptic('success'); resolve({ moves, ms: performance.now() - t0 }); }, rm() ? 200 : 900);
+      TM.after(() => { ctx.haptic('success'); resolve({ moves, ms: performance.now() - t0 }); }, rm() ? 200 : 900);
     }
     return true;
   }
@@ -103,6 +104,7 @@ export function mount(ctx) {
   }
 
   function frame(dt, t) {
+    TM.step(dt);
     const R_ = rm();
     const G = geometry();
     homes();
@@ -177,6 +179,7 @@ export function mount(ctx) {
     assist: step,
     avoid: () => { const G = geometry(); return [circleRect(thought.x, thought.y - R * 0.6, R * 1.6), ...G.pos.map((p) => circleRect(p.x, p.y, G.pr * 1.1)), ...ctx.tags.rects()]; },
     get settled() { return finished; },
-    destroy() { ctx.tags.clear(); },
+    probe: () => { const G = geometry(); return { stones: stones.filter((s) => s.place < 0).map((s) => ({ x: s.x, y: s.y })), bowls: G.pos, thought: { x: thought.x, y: thought.y } }; },
+    destroy() { TM.clear(); ctx.tags.clear(); },
   };
 }

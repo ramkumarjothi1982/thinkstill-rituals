@@ -288,7 +288,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   async function invite() {
     if (S.left) return;
     S.phase = 'invite';
-    dockShow({ tell: true });
+    dockShow({});
     preloadInput();
     let first = true;
     try { first = !store.get(STORE_KEYS.seen, false); store.set(STORE_KEYS.seen, true); } catch { /* first visit, then */ }
@@ -300,8 +300,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       { label: ARRIVAL.tell, value: 'tell', primary: true, onPick: () => openTell() },
       { label: ARRIVAL.squeeze, value: 'squeeze' },
     ], { transient: true });
-    if (S.left) return;
-    if (v === 'squeeze') { S.phase = 'invite'; say(ARRIVAL.justSqueeze[0]); }
+    if (S.left || S.phase !== 'invite') return;
+    dockShow({ tell: true });
+    if (v === 'squeeze') say(ARRIVAL.justSqueeze[0]);
   }
 
   let inputP = null;
@@ -481,16 +482,21 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     void result;
     await reveal(scene, seq);
   }
+  /** The played scene steps back (dimmed, its labels hidden) so a perspective reads clearly over it. */
+  function recede(on) {
+    root.classList.toggle('bx-recede', !!on);
+    if (canvas) { canvas.style.transition = `opacity ${rmOn() ? 160 : 700}ms ease`; canvas.style.opacity = on ? '0.38' : '1'; }
+  }
   /** Ends the mechanic; unless `now_`, the stage fades out first (no abrupt cut). */
   function endMechanic(now_ = false) {
     if (!mech) return Promise.resolve();
     const m = mech;
     const kill = () => { if (mech === m) { mech = null; mechId = null; } try { m.destroy(); } catch { /* ignore */ } };
-    if (now_ || !canvas) { kill(); return Promise.resolve(); }
+    if (now_ || !canvas) { kill(); recede(false); return Promise.resolve(); }
     for (const el of root.querySelectorAll('.bx-tag')) el.style.opacity = '0';
     canvas.style.transition = `opacity ${rmOn() ? 160 : 420}ms ease`;
     canvas.style.opacity = '0';
-    return sleep(rmOn() ? 170 : 440).then(() => { kill(); if (canvas) canvas.style.opacity = '1'; });
+    return sleep(rmOn() ? 170 : 440).then(() => { kill(); recede(false); if (canvas) canvas.style.opacity = '1'; });
   }
 
   async function reveal(scene, seq) {
@@ -500,6 +506,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     subs.clear();
     await say(L.done, { mallow: 'zuzu' });
     if (S.left || seq !== S.seq) return;
+    recede(true);
     const lead = scene.mallow_character || 'zuzu';
     if (lead !== 'zuzu') { await bringCompanion(lead); await sleep(rmOn() ? 200 : 700); }
     if (S.left || seq !== S.seq) return;

@@ -223,7 +223,7 @@ export function numbersIn(text) {
     if (/^\d+(?:[.,]\d+)*$/.test(w)) {
       // "1,000" is a thousand, "3,5" and "3.5" are three and a half.
       const n = Number(/^\d{1,3}(?:,\d{3})+$/.test(w) ? w.replace(/,/g, '') : w.replace(',', '.'));
-      out.add(Number.isInteger(n) && n < NUMBER_WORDS.indexOf('thirty') ? NUMBER_WORDS[n] || w : w);
+      out.add(Number.isInteger(n) && n < NUMBER_WORDS.indexOf('thirty') ? NUMBER_WORDS[n] || String(n) : String(n));
     } else if (NUMBER_WORDS.includes(w)) {
       out.add(w);
     }

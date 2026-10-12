@@ -22,39 +22,18 @@
 // that fails validateScene() is { status: 'error' }, which the experience
 // treats like a fallback (its own safety check, then the authored engine).
 
-import { ANGLE_ENDPOINT, ANGLE_ALLOWED_HOSTS, BUILD } from '../app/config.js';
+import { BUILD } from '../app/config.js';
+import { resolveEndpoint } from './endpoint.js';
 import { STORE_KEYS } from './consent.js';
 import { validateScene, previousAngles, PATTERNS } from './vocab.js';
 
+export { resolveEndpoint };
 export const PATHS = Object.freeze({ session: '/v1/session', angle: '/v1/angle', feedback: '/v1/feedback' });
 /** ms. The server answers within 28 s (15 s per attempt, one retry), so the client waits a little longer. */
 export const TIMEOUTS = Object.freeze({ session: 8000, angle: 31000, feedback: 6000 });
-const DEV_HOSTS = ['localhost', '127.0.0.1'];
 
 // THE network call (see the header): one place, one shape.
 const netFetch = (url, init) => globalThis.fetch(url, init);
-
-/**
- * The endpoint this build may talk to, or null (→ the authored engine only).
- * Production: ANGLE_ENDPOINT from src/app/config.js, https, on a host listed in
- * ANGLE_ALLOWED_HOSTS, nothing but an origin and a path. Development only: on
- * localhost, `?angleDev=<port>` points at a local server on this same machine
- * (server/another-angle: `npm run harness -- --serve <port>`).
- */
-export function resolveEndpoint({ configured = ANGLE_ENDPOINT, allowedHosts = ANGLE_ALLOWED_HOSTS, loc = globalThis.location } = {}) {
-  try {
-    if (loc && DEV_HOSTS.includes(loc.hostname)) {
-      const port = new URLSearchParams(loc.search || '').get('angleDev');
-      if (port && /^\d{2,5}$/.test(port)) return `${loc.protocol === 'https:' ? 'https:' : 'http:'}//${loc.hostname}:${port}`;
-    }
-  } catch { /* no dev override */ }
-  if (!configured || typeof configured !== 'string') return null;
-  let u;
-  try { u = new URL(configured); } catch { return null; }
-  if (u.protocol !== 'https:' || !Array.isArray(allowedHosts) || !allowedHosts.includes(u.hostname)) return null;
-  if (u.username || u.password || u.search || u.hash) return null;
-  return `${u.origin}${u.pathname.replace(/\/+$/, '')}`;
-}
 
 /** 16 random bytes, base64url (22 characters): the stable, meaningless id the server hashes for the daily allowance. */
 export function makeDeviceId(random = (n) => globalThis.crypto.getRandomValues(new Uint8Array(n))) {

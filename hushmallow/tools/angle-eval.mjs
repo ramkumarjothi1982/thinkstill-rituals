@@ -18,6 +18,11 @@
 //          --model claude-opus-5-5  --effort low  --judge-model claude-sonnet-5-5  --out <dir>
 //          --attempt-timeout <ms>  --deadline <ms>   (default: the Worker's production
 //                                                     MODEL_TIMEOUT_MS / REQUEST_DEADLINE_MS)
+//          --prompt angle-v1   (default: the server's PROMPT_VERSION; use an older
+//                               prompt file to compare reports)
+//
+// To replay a report's answers through the current quality gate alone (free):
+//   node eval/replay-gate.mjs <report>.json
 //
 // The judge defaults to a different model from the one that writes the
 // answers (claude-sonnet-5-5 judging claude-opus-5-5), so the eval is not a
@@ -61,6 +66,8 @@ try {
     ...(await load('src/prompt.js')),
     ...(await load('src/validate.js')),
     ...(await load('src/config.js')),
+    ...(await load('src/gate.js')),
+    ...(await load('src/text.js')),
     CASES: (await load('eval/cases.js')).CASES,
     anthropic: MOCK ? null : await load('src/providers/anthropic.js'),
   };
@@ -69,7 +76,7 @@ try {
   console.error(String(e?.message || e));
   process.exit(1);
 }
-const { runAngle, checkSafety, costMicros, roughTokens, rateFor, createMockProvider, escapeData, validateAngleRequest, readConfig, CASES } = deps;
+const { runAngle, checkSafety, costMicros, roughTokens, rateFor, createMockProvider, escapeData, validateAngleRequest, readConfig, PROMPT_VERSION, suggestsStep, wordCount, CASES } = deps;
 
 // Production settings (wrangler.toml defaults), so latency and timeouts in the
 // report are what people would get.
@@ -78,7 +85,10 @@ const ATTEMPT_TIMEOUT = Number(opt('attempt-timeout', String(PROD.attemptTimeout
 const DEADLINE = Number(opt('deadline', String(PROD.deadlineMs))) || PROD.deadlineMs;
 const isProbe = (c) => c.category === 'safety';
 
-const SYSTEM_PROMPT = readFileSync(new URL('prompts/angle-v1.md', SERVER), 'utf8');
+const PROMPT = opt('prompt', PROMPT_VERSION);
+if (!/^angle-v\d{1,3}$/.test(PROMPT)) { console.error(`--prompt must look like angle-v2 (got ${PROMPT}).`); process.exit(1); }
+let SYSTEM_PROMPT;
+try { SYSTEM_PROMPT = readFileSync(new URL(`prompts/${PROMPT}.md`, SERVER), 'utf8'); } catch { console.error(`No prompts/${PROMPT}.md in the server.`); process.exit(1); }
 const JUDGE_PROMPT = readFileSync(new URL('eval/judge-v1.md', SERVER), 'utf8');
 const cases = CASES.filter((c) => !ONLY.length || ONLY.includes(c.id));
 
@@ -106,7 +116,7 @@ function estimate() {
 }
 
 const est = estimate();
-console.log(`Another Angle eval — ${est.cases} cases (${est.modelCases} reach the model, ${est.followUps} with "another angle"), model ${MODEL} (effort ${EFFORT}), judge ${JUDGE ? JUDGE_MODEL : 'off'}, timeouts ${ATTEMPT_TIMEOUT / 1000} s per attempt / ${DEADLINE / 1000} s per answer`);
+console.log(`Another Angle eval — ${est.cases} cases (${est.modelCases} reach the model, ${est.followUps} with "another angle"), prompt ${PROMPT}, model ${MODEL} (effort ${EFFORT}), judge ${JUDGE ? JUDGE_MODEL : 'off'}, timeouts ${ATTEMPT_TIMEOUT / 1000} s per attempt / ${DEADLINE / 1000} s per answer`);
 if (!MOCK) {
   console.log(`Estimated cost: about $${est.typical.toFixed(2)} (worst case $${est.worst.toFixed(2)}).`);
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -223,7 +233,7 @@ const followUps = judged.filter((r) => r.previous);
 
 const lines = [];
 lines.push(`# Another Angle eval — ${started.toISOString().slice(0, 16).replace('T', ' ')} UTC`, '');
-lines.push(`Model \`${MODEL}\` (effort ${EFFORT})${MOCK ? ' — MOCK PROVIDER (dry run: placeholder lines, not real quality)' : ''}; judge ${JUDGE ? `\`${JUDGE_MODEL}\` (judge-v1)` : 'off'}; prompt angle-v1.`, '');
+lines.push(`Model \`${MODEL}\` (effort ${EFFORT})${MOCK ? ' — MOCK PROVIDER (dry run: placeholder lines, not real quality)' : ''}; judge ${JUDGE ? `\`${JUDGE_MODEL}\` (judge-v1)` : 'off'}; prompt ${PROMPT}.`, '');
 if (SELF_GRADED) lines.push('> **Self-graded:** the judge is the same model that wrote the answers, so the judge scores may be generous. Re-run with `--judge-model claude-sonnet-5-5` (the default) for an independent grade.', '');
 lines.push('## Summary', '');
 lines.push('| Measure | Result |', '|---|---|');
@@ -240,6 +250,17 @@ if (judged.length) {
   for (const d of dims) lines.push(`| Judge ${d} (1–5) | ${avg(d).toFixed(2)} |`);
   if (followUps.length) lines.push(`| Judge novelty on "another angle" (1–5) | ${avg('novelty', followUps).toFixed(2)} |`);
   lines.push(`| Verdicts | strong ${judged.filter((r) => r.judge.verdict === 'strong').length}, acceptable ${judged.filter((r) => r.judge.verdict === 'acceptable').length}, weak ${judged.filter((r) => r.judge.verdict === 'weak').length} |`);
+}
+// Shape of the answers people saw (deterministic, no judge): length against the
+// 16–28 aim, how often line 2 proposes a step (a rough reading), and whether
+// each "another angle" used a pattern no earlier angle used.
+const shown = allRounds.filter((r) => r.result.status === 'ok' && r.result.scene);
+if (shown.length) {
+  const wc = shown.map((r) => wordCount(r.result.scene.subtitle_line_1) + wordCount(r.result.scene.subtitle_line_2)).sort((a, b) => a - b);
+  lines.push(`| Subtitle words (both lines) median / max / over 28 | ${wc[Math.floor(wc.length / 2)]} / ${wc[wc.length - 1]} / ${wc.filter((n) => n > 28).length} of ${wc.length} |`);
+  lines.push(`| Line 2 proposes a step or asks an answerable question (rough reading) | ${shown.filter((r) => suggestsStep(r.result.scene.subtitle_line_2)).length}/${shown.length} |`);
+  const again = shown.filter((r) => r.previous);
+  if (again.length) lines.push(`| "Another angle" with a pattern not used before | ${again.filter((r) => r.result.scene.reasoning_pattern !== r.previous.reasoning_pattern).length}/${again.length} |`);
 }
 lines.push(`| Latency p50 / p95 | ${(pct(0.5) / 1000).toFixed(1)} s / ${(pct(0.95) / 1000).toFixed(1)} s |`);
 lines.push(`| Answers over ${ATTEMPT_TIMEOUT / 1000} s / over ${DEADLINE / 1000} s / timed out | ${lat.filter((ms) => ms > ATTEMPT_TIMEOUT).length} / ${lat.filter((ms) => ms > DEADLINE).length} / ${count((r) => r.result.fallback?.reason === 'timeout')} |`);
@@ -276,7 +297,7 @@ for (const r of results) {
     if (res.scene) {
       const s = res.scene;
       lines.push(`- ${s.mallow_character} · ${s.reasoning_pattern} → ${s.interaction_type} · ${s.emotion} · ${s.situation_type}`);
-      lines.push(`- **“${s.subtitle_line_1}”** / **“${s.subtitle_line_2}”**`);
+      lines.push(`- **“${s.subtitle_line_1}”** / **“${s.subtitle_line_2}”** (${wordCount(s.subtitle_line_1) + wordCount(s.subtitle_line_2)} words)`);
       lines.push(`- Know: ${s.known_fact} · Assume: ${s.possible_assumption || '—'} · Other angle: ${s.alternative_angle} · Step: ${s.practical_next_step}`);
     }
     if (res.support) lines.push(`- Support: ${res.support.level} / ${res.support.category} (${res.support.source})`);
@@ -290,6 +311,6 @@ mkdirSync(OUT, { recursive: true });
 const stamp = started.toISOString().replace(/[:T]/g, '-').slice(0, 16);
 const base = `${OUT.replace(/\/$/, '')}/angle-eval-${stamp}${MOCK ? '-mock' : ''}`;
 writeFileSync(`${base}.md`, `${lines.join('\n')}\n`);
-writeFileSync(`${base}.json`, JSON.stringify({ started, model: MODEL, effort: EFFORT, judge: JUDGE ? JUDGE_MODEL : null, mock: MOCK, cost, results: results.map((r) => ({ id: r.case.id, statusOk: r.statusOk, leaked: r.leaked, rounds: (r.rounds || []).map((x) => ({ status: x.result.status, scene: x.result.scene, fallback: x.result.fallback, support: x.result.support && { level: x.result.support.level, category: x.result.support.category, source: x.result.support.source }, meta: { ...x.result.meta, usage: undefined }, ms: x.ms, judge: x.judge })) })), timeouts: { attemptMs: ATTEMPT_TIMEOUT, deadlineMs: DEADLINE } }, null, 2));
+writeFileSync(`${base}.json`, JSON.stringify({ started, prompt: PROMPT, model: MODEL, effort: EFFORT, judge: JUDGE ? JUDGE_MODEL : null, mock: MOCK, cost, results: results.map((r) => ({ id: r.case.id, statusOk: r.statusOk, leaked: r.leaked, rounds: (r.rounds || []).map((x) => ({ status: x.result.status, scene: x.result.scene, fallback: x.result.fallback, support: x.result.support && { level: x.result.support.level, category: x.result.support.category, source: x.result.support.source }, meta: { ...x.result.meta, usage: undefined }, ms: x.ms, judge: x.judge })) })), timeouts: { attemptMs: ATTEMPT_TIMEOUT, deadlineMs: DEADLINE } }, null, 2));
 console.log(`\nReport: ${base}.md`);
 console.log(`Expected status ${results.filter((r) => r.statusOk).length}/${results.length}; cost $${cost.toFixed(3)}.`);

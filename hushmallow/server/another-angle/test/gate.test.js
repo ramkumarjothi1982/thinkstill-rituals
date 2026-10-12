@@ -297,9 +297,16 @@ test('another angle with the same pattern as the angle just shown is rejected, e
     expectFail(g, 'repeats_previous');
     assert.match(g.failures.find((f) => f.code === 'repeats_previous').message, /different reasoning_pattern/);
   }
-  // An older angle with the same pattern only blocks a close repeat.
+  // angle-v2 (after eval run 1): an older angle's pattern is off limits too —
+  // its scene has been played — so the third angle needs a third pattern.
   const older = [prev[0], { subtitle_line_1: 'Checking again will not make the message arrive.', subtitle_line_2: 'What could the next hour hold that has nothing to do with him?', reasoning_pattern: 'rumination' }];
-  const distinct = gate(1, { subtitle_line_1: 'Your message is sitting unanswered, and that part is real.', subtitle_line_2: 'Could you decide now when you will check again?' }, { previous: older });
+  const reused = gate(1, { subtitle_line_1: 'Your message is sitting unanswered, and that part is real.', subtitle_line_2: 'Could you decide now when you will check again?' }, { previous: older });
+  expectFail(reused, 'repeats_previous');
+  assert.match(reused.failures.find((f) => f.code === 'repeats_previous').message, /not fact_vs_assumption, rumination/);
+  const distinct = gate(1, {
+    reasoning_pattern: 'practical_problem', interaction_type: 'assemble_step', mallow_character: 'boppo',
+    subtitle_line_1: 'Your message is sitting unanswered, and that part is real.', subtitle_line_2: 'Could you decide now when you will check again?',
+  }, { previous: older });
   assert.ok(!codes(distinct).includes('repeats_previous'), JSON.stringify(codes(distinct)));
 });
 

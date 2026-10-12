@@ -27,7 +27,8 @@
     "types/**/*.d.ts",
     "tools/**/*.mjs",
     "scripts/**/*.mjs",
-    "eval/**/*.js"
+    "eval/**/*.js",
+    "eval/**/*.mjs"
   ],
   "exclude": [
     "src/safety/shared-lexicon.js"

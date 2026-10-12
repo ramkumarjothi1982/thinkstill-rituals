@@ -113,7 +113,6 @@ export function openConsent({ app, root = document.body, onDecide } = {}) {
   const accept = h('button', { type: 'button', class: 'hf-send bx-accept', onclick: () => decide('yes') }, 'Accept');
   const notNow = h('button', { type: 'button', class: 'hf-ghost bx-notnow', onclick: () => decide('no') }, 'Not now');
   const el = h('section', { class: `bx-consent hf-ui${reduced ? ' reduced' : ''}`, role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': `${uid}-t`, 'data-bx': 'consent' },
-    h('p', { class: 'bx-eyebrow' }, 'Another Angle'),
     h('h2', { class: 'bx-title', id: `${uid}-t` }, 'Before Zuzu looks at your words'),
     h('div', { class: 'bx-scroll' }, noticeBody(app)),
     h('div', { class: 'bx-actions' }, notNow, accept),

@@ -19,7 +19,8 @@ export function openEmotionPicker({ selected = [], multi = false, title = 'Every
     ...FAMILIES.map((f) => h('button', { class: 'chip', 'aria-pressed': 'false', onclick: (e) => setFam(f.id, e.currentTarget) }, h('span', { class: 'hue', style: { background: f.hue } }), f.name)));
   const list = h('div', { role: 'list' });
   const row = (e) => h('button', {
-    class: 'emo-row', role: 'listitem', 'aria-pressed': String(sel.has(e.id)),
+    // one-pick lists show the tick only on the chosen row (an empty circle on every row reads as 'all selected')
+    class: `emo-row${multi ? '' : ' single'}`, role: 'listitem', 'aria-pressed': String(sel.has(e.id)),
     onclick: (ev) => {
       if (!multi) { sel.clear(); sel.add(e.id); onPick?.(e.id); sheet?.close('pick'); return; }
       if (sel.has(e.id)) sel.delete(e.id); else sel.add(e.id);

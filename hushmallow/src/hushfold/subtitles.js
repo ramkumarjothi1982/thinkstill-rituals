@@ -178,7 +178,8 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     clearTimeout(hideCtlTimer);
     ctl.classList.toggle('idle', !on);
     if (on) ctl.classList.remove('is-hidden');
-    else hideCtlTimer = setTimeout(() => { if (!paused) ctl.classList.add('is-hidden'); }, 1800);
+    // the pill leaves with the last line (it never lingers alone on the stage); a paused pill stays
+    else if (!paused) ctl.classList.add('is-hidden');
   }
 
   function layout() {

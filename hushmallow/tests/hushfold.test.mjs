@@ -478,8 +478,19 @@ test('hushfold: held discoveries survive Tell, care never jokes or auto-starts, 
   const scene = read('src/app/scenes/hushfold.js');
   assert.match(scene, /subtitles\.clear\(\{ keepHeld: true \}\);\s*subtitles\.suspend\(\);/);
   assert.match(scene, /subtitles\.unsuspend\(\)/);
-  assert.match(scene, /safety\?\.level === 'care' \|\| safety\?\.category === 'harm-others'\) \{ await careBeat/);
-  assert.match(scene, /if \(S\.crisis \|\| S\.care \|\| !supportPill\.hidden\) return false;/);
+  // review r3: care, distress and harm-others are handled on the stage BEFORE the no-plan (D4) branch,
+  // so nobody is sent to the plans page straight after a disclosure
+  const after = scene.slice(scene.indexOf('async function afterTell('), scene.indexOf('async function gentleWorld('));
+  const careAt = after.search(/safety\?\.level === 'care' \|\| safety\?\.level === 'concern'\) \{[^}]*await careBeat/);
+  const crisisAt = after.indexOf("safety?.level === 'crisis'");
+  const d4At = after.indexOf("if (!ent.has('paid'))");
+  assert.ok(crisisAt > 0 && careAt > crisisAt && d4At > careAt, 'crisis, then care/concern, then the D4 plans branch');
+  // the overlay reports its level as soon as it is seen (sent or not), and the scene records it
+  assert.match(scene, /onSafety: \(r\) => noteSafety\(r\)/);
+  assert.match(read('src/hushfold/input-overlay.js'), /report\(safety\);\s*if \(safety\.level === 'crisis' && !supportShown\)/);
+  // sheets opened from the Hushfold get their own Back entry
+  assert.match(scene, /const openSupportSheet = \(opts = \{\}\) => trackSheet\(openSupport\(app, opts\)\)/);
+  assert.match(scene, /if \(S\.crisis \|\| S\.care \|\| gentle\(\) \|\| !supportPill\.hidden\) return false;/);
   assert.match(scene, /stage\?\.thoughts\.list\.length \|\| 0\) > 0\) return false;/);
   assert.match(scene, /loadProgress\(store\)/, 'the resume offer reads saved progress without making a director');
   assert.match(scene, /resume: true/);

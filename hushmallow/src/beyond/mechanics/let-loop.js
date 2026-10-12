@@ -7,7 +7,7 @@
 // back up a little. It lands after a calm stretch of resting. A tap on the
 // stone (or the assist pill) rests for a breath at a time.
 
-import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, mix, Motes, blinkAt, circleRect, tintFor, TAU } from './kit.js';
+import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, mix, Motes, blinkAt, circleRect, tintFor, TAU, Timers } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'let_loop_drift';
@@ -19,6 +19,7 @@ export function mount(ctx) {
   const rm = () => ctx.reducedMotion();
   let resolve;
   const done = new Promise((r) => { resolve = r; });
+  const TM = new Timers();
   const motes = new Motes(30);
   const [light, deep] = tintFor(ctx.emotion);
   const A0 = ctx.area();
@@ -52,7 +53,7 @@ export function mount(ctx) {
     phase = 'landed'; landT = 0;
     ctx.haptic('success'); ctx.fx('breathe-out', { intensity: 0.5 });
     ctx.progress(1);
-    setTimeout(() => resolve({ moves, ms: performance.now() - t0 }), rm() ? 200 : 900);
+    TM.after(() => resolve({ moves, ms: performance.now() - t0 }), rm() ? 200 : 900);
   }
   function step() {
     if (phase !== 'loop') return;
@@ -61,6 +62,7 @@ export function mount(ctx) {
   }
 
   function frame(dt, t) {
+    TM.step(dt);
     const R_ = rm();
     const G = geo();
     const resting = !!held && held.kind === 'stone';
@@ -158,6 +160,7 @@ export function mount(ctx) {
     avoid: () => { const G = geo(); return [{ left: G.cx - G.ax - R * 1.4, right: G.cx + G.ax + R * 1.4, top: G.cy - G.ay * 1.2 - R * 1.4, bottom: G.cy + G.ay * 1.2 + R * 1.4 }, circleRect(G.st.x, G.st.y, G.st.rx + 8), ...ctx.tags.rects()]; },
     get settled() { return phase === 'landed'; },
     get resting() { return !!held && held.kind === 'stone'; },
-    destroy() { ctx.tags.clear(); },
+    probe: () => { const G = geo(); return { stone: { x: G.st.x, y: G.st.y }, thought: { x: thought.x, y: thought.y }, rest, phase }; },
+    destroy() { TM.clear(); ctx.tags.clear(); },
   };
 }

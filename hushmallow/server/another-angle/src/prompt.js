@@ -6,9 +6,18 @@
 // pose as an instruction. The system prompt tells the model to treat these
 // blocks purely as a description of the person's situation.
 
-import { INTENTIONS } from './vocab.js';
+import { INTENTIONS, PATTERNS } from './vocab.js';
 
-export const PROMPT_VERSION = 'angle-v1';
+// angle-v2 (12 Oct 2026, after eval run 1): line 2 carries the step, 16–28
+// words, and "another angle" needs a new pattern and a new lens. angle-v1 is
+// kept beside it for comparison (tools/angle-eval.mjs --prompt angle-v1).
+export const PROMPT_VERSION = 'angle-v2';
+
+/** The six lenses an angle can look through (prompts/angle-v2.md). */
+export const LENSES = Object.freeze([
+  "what you know versus what you're assuming", "what's in your control", "what you'd tell a friend",
+  'one small step', 'distance or time', 'compassion for yourself',
+]);
 
 /** Escape text for inclusion inside a data tag. @param {string} text */
 export function escapeData(text) {
@@ -52,9 +61,19 @@ export function buildUserMessage(input) {
     parts.push('<gate_feedback>', ...input.rejected.reasons.slice(0, 8).map((r) => `- ${escapeData(r)}`), '</gate_feedback>');
   }
   parts.push('</request>');
-  parts.push(input.previous.length
-    ? 'Write the JSON for a genuinely different angle on this situation.'
-    : 'Write the JSON for this situation.');
+  if (input.previous.length) {
+    // Only values from the fixed pattern list are named outside the data block.
+    const used = [...new Set(input.previous.map((p) => p.reasoning_pattern).filter((p) => p && PATTERNS.includes(/** @type {any} */ (p))))];
+    const n = input.previous.length;
+    parts.push(
+      `Write the JSON for a genuinely different angle on this situation. The person has already seen the ${n === 1 ? 'angle' : `${n} angles`} in <previous_angles> and asked for another.`,
+      `- reasoning_pattern: one that no previous angle used${used.length ? ` (not ${used.join(', ')})` : ''}.`,
+      `- lens: one that no previous angle used (${LENSES.join('; ')}).`,
+      '- a different question and a different action from theirs, in new words, still true to every fact they gave.',
+    );
+  } else {
+    parts.push('Write the JSON for this situation.');
+  }
   return parts.join('\n');
 }
 

@@ -48,7 +48,7 @@ const SHARED = {
   // wanting to hurt someone: calm, no jokes, safety first (said as a sequence, like support)
   harmOthers: ['That’s a lot of heat to carry.', 'Let’s keep everyone safe, you included. Support is one tap away.'],
   // after a care or harm disclosure, the person decides whether anything plays
-  careAsk: ['Stay here quietly with me, or play something gentle?'],
+  careAsk: ['We can stay here quietly. Or play a little, slowly, if you’d like.'],
   careQuiet: ['Okay. I’m right here. Squeeze me whenever you like.'],
   resumeAsk: ['Pick up where you left off in {world}?'],
   stub: ['The new worlds are still being built. Until they open, I’m all yours to squish.'],
@@ -58,6 +58,8 @@ const SHARED = {
   finished: ['All done. Thank you for spending this with me.'],
   noWorld: ['Nothing to pause yet. Squeezing is always on, though.'],
   planInvite: ['That part opens with hushmallow Flow. Your words are safe here meanwhile.'],
+  // the switcher during a world: the world keeps its host; this is who the person comes back to
+  switchLater: ['{name} will be waiting when this world ends.'],
 };
 
 // Per Mallow. squeeze kinds: squeeze, release, tap, doubleTap, flick, stretch, massage, stroke, jiggle

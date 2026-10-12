@@ -48,7 +48,7 @@ function sharedGrads(ctx) {
     charm: radial(ctx, -0.2, -0.3, 0.02, 1, [[0, '#fffef4'], [0.45, '#ffe08a'], [1, '#e19b2c']], -0.2, -0.3),
     charmGlow: radial(ctx, 0, 0, 0, 1, [[0, 'rgba(255,226,150,0.6)'], [0.35, 'rgba(255,214,130,0.22)'], [1, 'rgba(255,210,120,0)']]),
     shadow: radial(ctx, 0, 0, 0, 1, [[0, 'rgba(12,6,34,0.32)'], [1, 'rgba(12,6,34,0)']]),
-    heat: radial(ctx, 0, 0, 0.7, 1.3, [[0, 'rgba(255,104,64,0.42)'], [0.4, 'rgba(255,86,70,0.14)'], [1, 'rgba(255,70,80,0)']]),
+    heat: radial(ctx, 0, 0, 0, 1, [[0, 'rgba(255,160,120,0.42)'], [0.5, 'rgba(255,140,110,0.24)'], [0.75, 'rgba(255,120,100,0.08)'], [1, 'rgba(255,110,100,0)']]),
     gloss: radial(ctx, 0, 0, 0, 1, [[0, 'rgba(255,255,255,1)'], [0.7, 'rgba(255,255,255,0.85)'], [1, 'rgba(255,255,255,0)']]),
   };
   return C.shared;
@@ -67,7 +67,8 @@ function paletteFor(ctx, th, look) {
     ...t,
     body: radial(ctx, 0, 0, 0.04, 1.18, [[0, rgba(t.light, 0.96)], [0.38, rgba(mixHex(t.light, t.mid, 0.55), a)], [0.8, rgba(t.mid, a)], [1, rgba(mixHex(t.mid, t.deep, 0.6), a)]], -0.3, -0.42),
     core: radial(ctx, 0, 0, 0, 1, [[0, rgba(t.glow, 0.62)], [0.5, rgba(t.glow, 0.22)], [1, rgba(t.glow, 0)]]),
-    halo: radial(ctx, 0, 0, 0.55, 1.65, [[0, rgba(t.glow, 0.42)], [0.5, rgba(t.glow, 0.14)], [1, rgba(t.glow, 0)]]),
+    // pale, so it reads as light over any dark world (a separate canvas cannot add light to the page)
+    halo: radial(ctx, 0, 0, 0, 1, [[0, rgba(mixHex(t.glow, '#ffffff', 0.55), 0.5)], [0.45, rgba(mixHex(t.glow, '#ffffff', 0.5), 0.3)], [0.72, rgba(mixHex(t.glow, '#ffffff', 0.45), 0.1)], [1, rgba(t.glow, 0)]]),
     mote: radial(ctx, 0, 0, 0, 1, [[0, 'rgba(255,255,255,0.95)'], [0.3, rgba(t.glow, 0.65)], [1, rgba(t.glow, 0)]]),
     rim: (() => { const g = ctx.createLinearGradient(-1, -1, 1, 1); g.addColorStop(0, 'rgba(255,255,255,0.92)'); g.addColorStop(0.45, rgba(t.light, 0.62)); g.addColorStop(1, rgba(mixHex(t.light, t.glow, 0.5), 0.75)); return g; })(),
     inkA: rgba(t.ink, 0.92), inkB: rgba(t.ink, 0.78),
@@ -140,11 +141,11 @@ export function drawThought(ctx, th, o = {}) {
   const halo = look.fx.halo * (low ? 0.5 : 1);
   if (halo > 0.02) {
     const br = rm ? 1 : 1 + 0.04 * Math.sin(t * 1.1);
-    blob(ctx, pal.halo, cx, cy, W * 0.62 * br, P * 0.6 * br, 0, halo * 0.9);
+    blob(ctx, pal.halo, cx, cy, W * 0.98 * br, P * 0.96 * br, 0, halo * 0.85);
   }
   // anger / frustration: a low warm heat round the body (slow, never a flash)
   const heat = look.fx.heat * (low ? 0.5 : 1);
-  if (heat > 0.02) blob(ctx, S.heat, cx, cy, W * 0.66, P * 0.64, 0, heat * (rm ? 0.5 : 0.42 + 0.08 * Math.sin(t * 2.2)));
+  if (heat > 0.02) blob(ctx, S.heat, cx, cy, W * 0.9, P * 0.88, 0, heat * (rm ? 0.55 : 0.5 + 0.1 * Math.sin(t * 2.2)));
   // props behind the body
   if (th.kind === 'belief') drawPropBack(ctx, th, o, S, pal);
   // a soft shadow of light beneath (it floats)

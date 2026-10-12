@@ -7,7 +7,7 @@
 // two settle on their own sides with their labels. Tap either jelly, or the
 // assist pill, to ease them apart a step at a time.
 
-import { Blob, drawGlow, clamp, lerp, dist, approach, rgba, LIGHT, Motes, blinkAt, circleRect } from './kit.js';
+import { Blob, drawGlow, clamp, lerp, dist, approach, rgba, LIGHT, Motes, blinkAt, circleRect, Timers } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'pull_apart';
@@ -18,6 +18,7 @@ export function mount(ctx) {
   const rm = () => ctx.reducedMotion();
   let resolve;
   const done = new Promise((r) => { resolve = r; });
+  const TM = new Timers();
   const motes = new Motes(36);
   const A0 = ctx.area();
   const R = clamp(Math.min(A0.w, A0.h) * 0.14, 28, 48);
@@ -79,7 +80,7 @@ export function mount(ctx) {
     ctx.haptic('light');
     homes();
     ctx.progress(stepK / 3);
-    if (stepK >= 3) setTimeout(letGo, rm() ? 60 : 420);
+    if (stepK >= 3) TM.after(letGo, rm() ? 60 : 420);
   }
 
   // the neck between the two lobes: two concave curves, pinched as it stretches
@@ -110,6 +111,7 @@ export function mount(ctx) {
   }
 
   function frame(dt, t) {
+    TM.step(dt);
     const A = ctx.area();
     const R_ = rm();
     if (phase === 'bud') {
@@ -138,7 +140,7 @@ export function mount(ctx) {
       if (fade > 0) drawNeck(0.97 + 0.03 * (1 - fade), fade);
       if (let0 > (R_ ? 0.25 : 0.75)) {
         phase = 'apart'; homes();
-        setTimeout(() => { ctx.haptic('success'); resolve({ moves, ms: performance.now() - t0 }); }, R_ ? 200 : 700);
+        TM.after(() => { ctx.haptic('success'); resolve({ moves, ms: performance.now() - t0 }); }, R_ ? 200 : 700);
       }
     }
     const tense = phase === 'apart' || phase === 'letting' ? 0.15 : 0.55 + k * 0.35;
@@ -161,10 +163,14 @@ export function mount(ctx) {
   function pointer(e) {
     if (phase === 'letting') return true;
     if (e.type === 'down') {
-      const b = G.hit(e.x, e.y) ? G : F.hit(e.x, e.y) ? F : null;
+      // the nearer lobe takes the finger (they overlap while joined); a second finger takes the other one
+      const dF = F.hit(e.x, e.y) ? Math.hypot(e.x - F.x, e.y - F.y) : Infinity;
+      const dG = G.hit(e.x, e.y) ? Math.hypot(e.x - G.x, e.y - G.y) : Infinity;
+      let b = dF === Infinity && dG === Infinity ? null : dF <= dG ? F : G;
+      if (b && b.press) b = b === F ? (dG < Infinity ? G : null) : (dF < Infinity ? F : null);
       if (!b || phase === 'apart') { if (b) { b.sqV += 2.4; ctx.haptic('light'); } return !!b; }
       if (phase === 'bud') phase = 'joined';
-      if (b.press) return true;
+      if (!b || b.press) return true;
       b.grab(e);
       ctx.haptic('light');
       return true;
@@ -192,6 +198,7 @@ export function mount(ctx) {
     assist: () => { if (phase !== 'apart') step(); },
     avoid: () => [circleRect(F.x, F.y, R * 1.25), circleRect(G.x, G.y, R * 1.25), ...ctx.tags.rects()],
     get settled() { return phase === 'apart'; },
-    destroy() { ctx.tags.clear(); },
+    probe: () => ({ a: { x: F.x, y: F.y }, b: { x: G.x, y: G.y }, phase }),
+    destroy() { TM.clear(); ctx.tags.clear(); },
   };
 }

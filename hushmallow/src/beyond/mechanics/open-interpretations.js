@@ -7,7 +7,7 @@
 // them, the same size and the same light: none of them is the answer. A tap
 // knocks a bud half open, a second tap opens it; the assist pill opens one.
 
-import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, LIGHT, Motes, blinkAt, circleRect, tintFor, ease, TAU } from './kit.js';
+import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, LIGHT, Motes, blinkAt, circleRect, tintFor, ease, TAU, Timers } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'open_interpretations';
@@ -20,6 +20,7 @@ export function mount(ctx) {
   const rm = () => ctx.reducedMotion();
   let resolve;
   const done = new Promise((r) => { resolve = r; });
+  const TM = new Timers();
   const motes = new Motes(40);
   const [light, deep] = tintFor(ctx.emotion);
   const A0 = ctx.area();
@@ -68,7 +69,7 @@ export function mount(ctx) {
     ctx.haptic('soft'); ctx.fx('bloom', { intensity: 0.5 });
     motes.burst(b.x, b.y, b.light, 8, { speed: 44, size: 2.4 });
     ctx.progress(openCount() / buds.length);
-    if (openCount() === buds.length) setTimeout(() => {
+    if (openCount() === buds.length) TM.after(() => {
       phase = 'equal'; equalT = 0; homes();
       ctx.haptic('light');
     }, rm() ? 100 : 700);
@@ -116,6 +117,7 @@ export function mount(ctx) {
   }
 
   function frame(dt, t) {
+    TM.step(dt);
     const R_ = rm();
     homes();
     for (const [pid, b] of holds) { b.hold += dt; if (b.hold >= HOLD_S) { holds.delete(pid); b.hold = 0; bloom(b); } }
@@ -125,7 +127,7 @@ export function mount(ctx) {
       b.step(dt, R_);
     }
     thought.step(dt, R_); guess.step(dt, R_);
-    if (phase === 'equal') { equalT += dt; guess.r = approach(guess.r, buds[0].r, 3, dt); if (equalT > (R_ ? 0.2 : 1.1)) { phase = 'settled'; ctx.progress(1); setTimeout(() => { ctx.haptic('success'); resolve({ moves, ms: performance.now() - t0 }); }, R_ ? 150 : 500); } }
+    if (phase === 'equal') { equalT += dt; guess.r = approach(guess.r, buds[0].r, 3, dt); if (equalT > (R_ ? 0.2 : 1.1)) { phase = 'settled'; ctx.progress(1); TM.after(() => { ctx.haptic('success'); resolve({ moves, ms: performance.now() - t0 }); }, R_ ? 150 : 500); } }
     // faint threads from the thought to every possibility: all equally possible
     const all = phase === 'closed' ? [guess] : [guess, ...buds];
     for (const b of all) {
@@ -183,6 +185,7 @@ export function mount(ctx) {
     assist: step,
     avoid: () => [circleRect(thought.x, thought.y, R * 1.3), circleRect(guess.x, guess.y, guess.r * 1.3), ...buds.map((b) => circleRect(b.x, b.y, b.r * 1.3)), ...ctx.tags.rects()],
     get settled() { return phase === 'settled'; },
-    destroy() { ctx.tags.clear(); },
+    probe: () => ({ buds: buds.filter((b) => b.goal < 1).map((b) => ({ x: b.x, y: b.y })), thought: { x: thought.x, y: thought.y }, phase }),
+    destroy() { TM.clear(); ctx.tags.clear(); },
   };
 }

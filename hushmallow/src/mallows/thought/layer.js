@@ -23,7 +23,7 @@
 import { ThoughtMallow, createThought, PT } from './thought.js';
 import { BeliefMallow, createBelief } from './belief.js';
 import { drawThought, drawRope } from './render.js';
-import { tintAt, rgba, clamp, tagBudget, TAG_MIN_PX } from './styles.js';
+import { tintAt, rgba, clamp, tagBudget, wordsExcerpt, TAG_MIN_PX } from './styles.js';
 import { addTicker, removeTicker, prefersReducedMotion } from '../rig.js';
 
 const ROPE_N = 7;
@@ -251,6 +251,8 @@ export class ThoughtLayer {
 
   /** The words a thought's tag shows now. */
   tagText(th) { return this.tags.get(th)?.text ?? th.tokenAt(); }
+  /** How full the stage is: 0 (room), 1, 2 (crowded: shorter excerpts). */
+  get crowding() { return this.crowd || 0; }
   /** The tag element of a thought (the Hushfold reads its size). */
   tagOf(th) { return this.tags.get(th)?.el || null; }
 
@@ -392,20 +394,34 @@ export class ThoughtLayer {
     const k = Math.min(1, dt * 3);
     for (const th of list) {
       if (th.driven || th.pressed || th._glide) continue;
-      const R = th.render, hw = Math.max(24, R.W / 2) + 6, hh = Math.max(24, R.P / 2) + 6, h = th.home;
+      const R = th.render, h = th.home;
+      let hwL = Math.max(24, R.W / 2) + 6, hwR = hwL, hhT = Math.max(24, R.P / 2) + 6, hhB = hhT;
+      // a thought's siblings belong to its footprint (they crowd round it)
+      for (const sb of th.siblings) {
+        const r = sb.bodyRect();
+        hwL = Math.max(hwL, th.x - r.left + 4); hwR = Math.max(hwR, r.right - th.x + 4); hhT = Math.max(hhT, th.y - r.top + 4); hhB = Math.max(hhB, r.bottom - th.y + 4);
+      }
       const tg = this.tags.get(th), below = tg && tg.w ? tg.h + 16 : 0;
       // keep its body (and the words below it) inside the bounds
-      const minX = B.left + hw, maxX = B.right - hw, minY = B.top + hh, maxY = B.bottom - hh - Math.min(below, 0.5 * below + 8);
+      const minX = B.left + hwL, maxX = B.right - hwR, minY = B.top + hhT, maxY = B.bottom - hhB - Math.min(below, 0.5 * below + 8);
+      const hw = (hwL + hwR) / 2, hh = (hhT + hhB) / 2;
+      const lim = th._lim || (th._lim = { minX: 0, maxX: 0, minY: 0, maxY: 0 });
+      lim.minX = minX; lim.maxX = maxX; lim.minY = minY; lim.maxY = maxY;
       if (h.x < minX) h.x += (minX - h.x) * k; if (h.x > maxX) h.x += (maxX - h.x) * k;
       if (h.y < minY) h.y += (minY - h.y) * k; if (h.y > maxY && maxY > minY) h.y += (maxY - h.y) * k;
-      // never on the hero Mallow (it takes touches first there)
+      // never on the hero Mallow (it takes touches first there): out by the nearest way that stays in bounds
       if (K) {
-        const l = K.left - hw - 8, r = K.right + hw + 8, t = K.top - hh - 8, b = K.bottom + hh + 4;
+        const l = K.left - hwR - 8, r = K.right + hwL + 8, t = K.top - hhB - 8, b = K.bottom + hhT + 4;
         if (h.x > l && h.x < r && h.y > t && h.y < b) {
-          const toL = h.x - l, toR = r - h.x;
-          const nx = toL < toR ? l : r;
-          if (nx > minX && nx < maxX) h.x += (nx - h.x) * k;
-          else h.y += ((toL < toR ? t : t) - h.y) * k;
+          let bx = 0, by = 0, bd = Infinity, fx = 0, fy = 0, fd = Infinity;
+          for (let q = 0; q < 4; q++) {
+            const x = q === 0 ? l : q === 1 ? r : h.x, y = q === 2 ? t : q === 3 ? b : h.y;
+            const d = Math.abs(x - h.x) + Math.abs(y - h.y);
+            if (d < fd) { fd = d; fx = x; fy = y; }
+            if (x >= minX && x <= maxX && y >= minY && y <= maxY && d < bd) { bd = d; bx = x; by = y; }
+          }
+          if (bd === Infinity) { bx = fx; by = fy; }
+          h.x += (bx - h.x) * k; h.y += (by - h.y) * k;
         }
       }
     }
@@ -420,8 +436,15 @@ export class ThoughtLayer {
         if (!ma && !mc) continue;
         const sa = ma / (ma + mc), sc = mc / (ma + mc);
         const kk = Math.min(1, dt * 4);
-        if (ox < oy) { const d = (fa.l + fa.r < fc.l + fc.r ? -1 : 1) * ox * kk; A.home.x += d * sa; C.home.x -= d * sc; }
-        else { const d = (fa.t + fa.b < fc.t + fc.b ? -1 : 1) * oy * kk; A.home.y += d * sa; C.home.y -= d * sc; }
+        // the smaller overlap, unless the bounds leave no room that way
+        const la = A._lim, lc = C._lim, aLeft = fa.l + fa.r < fc.l + fc.r, aUp = fa.t + fa.b < fc.t + fc.b;
+        const roomX = la && lc ? (aLeft ? (A.home.x - la.minX) * ma + (lc.maxX - C.home.x) * mc : (la.maxX - A.home.x) * ma + (C.home.x - lc.minX) * mc) : Infinity;
+        const roomY = la && lc ? (aUp ? (A.home.y - la.minY) * ma + (lc.maxY - C.home.y) * mc : (la.maxY - A.home.y) * ma + (C.home.y - lc.minY) * mc) : Infinity;
+        let horiz = ox < oy;
+        if (horiz && roomX < ox * 0.5 && roomY > oy * 0.5) horiz = false;
+        else if (!horiz && roomY < oy * 0.5 && roomX > ox * 0.5) horiz = true;
+        if (horiz) { const d = (aLeft ? -1 : 1) * ox * kk; A.home.x += d * sa; C.home.x -= d * sc; }
+        else { const d = (aUp ? -1 : 1) * oy * kk; A.home.y += d * sa; C.home.y -= d * sc; }
       }
     }
   }
@@ -433,7 +456,12 @@ export class ThoughtLayer {
     const tg = this.tags.get(th);
     const x = th.home.x, y = th.home.y;
     f.l = x - hw - 6; f.r = x + hw + 6; f.t = y - hh - 4; f.b = y + hh + 4;
-    if (tg && tg.w) { f.l = Math.min(f.l, x - tg.w / 2 - 4); f.r = Math.max(f.r, x + tg.w / 2 + 4); f.b += tg.h + 18; }
+    if (tg && tg.w) {
+      // the words where they sit now (relative to the thought), or below it before they are placed
+      const dx = tg.shown ? tg.tx - th.x : 0, dy = tg.shown ? tg.ty - th.y : hh + 18;
+      f.l = Math.min(f.l, x + dx - tg.w / 2 - 4); f.r = Math.max(f.r, x + dx + tg.w / 2 + 4);
+      f.t = Math.min(f.t, y + dy - 4); f.b = Math.max(f.b, y + dy + tg.h + 4);
+    }
     return f;
   }
 
@@ -470,10 +498,10 @@ export class ThoughtLayer {
   }
 
   _setTagText(th, tg) {
-    const b = tagBudget(th.z);
+    const b = Math.min(tagBudget(th.z), [999, 30, 22][this.crowd || 0]);
     if (b === tg.bucket) return;
     tg.bucket = b;
-    const text = th.tokenAt(th.z);
+    const text = wordsExcerpt(th.text, b);
     if (text !== tg.text) { tg.text = text; tg.words.textContent = text; tg.measure = true; }
   }
 
@@ -497,54 +525,80 @@ export class ThoughtLayer {
     tg.measure = false;
   }
 
-  // tags hang under their thoughts (above, when there is no room), on screen, clear of each other
+  // How full the stage is (stable: recomputed only when the count, the view or the bounds change).
+  // A crowded stage shows shorter excerpts of the words (still 17 px; a tap reads all of them).
+  _crowdLevel(env) {
+    const B = env.bounds, n = this.thoughts.length;
+    const key = `${n}|${env.view.W}|${env.view.H}|${B.left | 0}|${B.top | 0}|${B.right | 0}|${B.bottom | 0}`;
+    if (key === this._crowdKey) return this.crowd;
+    this._crowdKey = key;
+    const K = this._keep();
+    const area = Math.max(1, (B.right - B.left) * (B.bottom - B.top) - (K ? (K.right - K.left) * (K.bottom - K.top) : 0));
+    const per = area / Math.max(1, n);
+    this.crowd = per < 34000 ? 2 : per < 58000 ? 1 : 0;
+    for (const tg of this.tags.values()) tg.bucket = -1;
+    return this.crowd;
+  }
+
+  // The words sit beside their thought where nothing else is: below, above, right or left of
+  // it (scored against the hero, the other bodies and the words already placed, inside the
+  // bounds), with a little hysteresis so they never flicker between places.
   _tags(dt, env) {
     const rm = env.rm, W = env.view.W, H = env.view.H, edge = W < 360 ? 12 : 16;
-    const K = this._keep();
+    const B = env.bounds, K = this._keep();
+    const yMin = Math.max(edge, B.top - 10), yMax = Math.min(H - edge, B.bottom + 2);
+    this._crowdLevel(env);
+    const placed = this._placed || (this._placed = []);
+    placed.length = 0;
+    const C = this._cands || (this._cands = Array.from({ length: 6 }, () => ({ side: '', x: 0, y: 0, ax: 0, ay: 0, score: 0 })));
+    const frac = (x, y, w, h, r) => {
+      const ox = Math.min(x + w / 2, r.right + 4) - Math.max(x - w / 2, r.left - 4), oy = Math.min(y + h, r.bottom + 4) - Math.max(y, r.top - 4);
+      return ox > 0 && oy > 0 ? (ox * oy) / (w * h) : 0;
+    };
     for (const th of this.thoughts) {
       const tg = this.tags.get(th);
       if (!tg) continue;
       this._setTagText(th, tg);
       if (tg.measure) this._measureTag(tg, W);
-      const R = th.render, Q = R.pts;
-      const bx = Q[2 * PT.bottom], by = Q[2 * PT.bottom + 1];
-      const gap = 16 + 8 * (1 - th.z);
-      // below by default; above when the words would leave the screen
-      let tx = bx, ty = by + gap;
-      tg.above = ty + tg.h > H - edge - 4;
-      if (tg.above) { ty = Q[2 * PT.top + 1] - gap - tg.h; tx = Q[2 * PT.top]; }
-      tx = clamp(tx, edge + tg.w / 2, Math.max(edge + tg.w / 2, W - edge - tg.w / 2));
-      ty = clamp(ty, edge, Math.max(edge, H - edge - tg.h));
-      // never over the hero Mallow
-      if (K && tx + tg.w / 2 > K.left && tx - tg.w / 2 < K.right && ty + tg.h > K.top && ty < K.bottom) {
-        const toL = tx + tg.w / 2 - K.left, toR = K.right - (tx - tg.w / 2);
-        const nx = toL < toR ? K.left - tg.w / 2 - 6 : K.right + tg.w / 2 + 6;
-        if (nx - tg.w / 2 >= edge && nx + tg.w / 2 <= W - edge) tx = nx;
-      }
-      tg.tx = tx; tg.ty = ty;
-    }
-    // tags never overlap each other (a few relaxation passes)
-    const list = this.thoughts;
-    for (let pass = 0; pass < 3; pass++) {
-      for (let i = 0; i < list.length; i++) {
-        const A = this.tags.get(list[i]);
-        if (!A) continue;
-        for (let j = i + 1; j < list.length; j++) {
-          const C = this.tags.get(list[j]);
-          if (!C) continue;
-          const ox = Math.min(A.tx + A.w / 2, C.tx + C.w / 2) - Math.max(A.tx - A.w / 2, C.tx - C.w / 2) + 6;
-          const oy = Math.min(A.ty + A.h, C.ty + C.h) - Math.max(A.ty, C.ty) + 6;
-          if (ox <= 0 || oy <= 0) continue;
-          if (oy < ox) { const d = oy / 2 * (A.ty < C.ty ? -1 : 1); A.ty += d; C.ty -= d; }
-          else { const d = ox / 2 * (A.tx < C.tx ? -1 : 1); A.tx += d; C.tx -= d; }
+      const Q = th.render.pts, b = th.bodyRect(), gap = 14 + 8 * (1 - th.z), w = tg.w, h = tg.h;
+      const bx = Q[2 * PT.bottom], tx0 = Q[2 * PT.top];
+      const set = (i, side, x, y) => { const c = C[i]; c.side = side; c.ax = x; c.ay = y; c.x = clamp(x, edge + w / 2, Math.max(edge + w / 2, W - edge - w / 2)); c.y = clamp(y, yMin, Math.max(yMin, yMax - h)); };
+      set(0, 'below', bx, b.bottom + gap);
+      set(1, 'above', tx0, b.top - gap - h);
+      set(2, 'right', b.right + gap + w / 2, b.cy - h / 2);
+      set(3, 'left', b.left - gap - w / 2, b.cy - h / 2);
+      set(4, 'below', bx + w * 0.32, b.bottom + gap);
+      set(5, 'below', bx - w * 0.32, b.bottom + gap);
+      let best = 0;
+      for (let i = 0; i < C.length; i++) {
+        const c = C[i];
+        let sc = 0.12 * i + Math.hypot(c.x - c.ax, c.y - c.ay) / 50;
+        if (K) sc += 10 * frac(c.x, c.y, w, h, K);
+        sc += 8 * frac(c.x, c.y, w, h, b);
+        for (const o of this.thoughts) {
+          if (o === th || o._leaving) continue;
+          sc += 6 * frac(c.x, c.y, w, h, o.bodyRect());
+          for (const s of o.siblings) sc += 4 * frac(c.x, c.y, w, h, s.bodyRect());
         }
+        for (const s of th.siblings) sc += 4 * frac(c.x, c.y, w, h, s.bodyRect());
+        for (const r of placed) sc += 6 * frac(c.x, c.y, w, h, r);
+        c.score = sc;
+        if (sc < C[best].score) best = i;
       }
+      // keep where it is unless somewhere else is clearly better
+      const prev = tg.cand ?? 0;
+      if (prev !== best && C[prev].score <= C[best].score + 0.6) best = prev;
+      const c = C[best];
+      tg.cand = best; tg.side = c.side; tg.above = c.side === 'above';
+      tg.tx = c.x; tg.ty = c.y; tg.clear = c.score < 1;
+      const pr = this._rectPool || (this._rectPool = []);
+      const r = pr[placed.length] || (pr[placed.length] = { left: 0, right: 0, top: 0, bottom: 0 });
+      r.left = c.x - w / 2; r.right = c.x + w / 2; r.top = c.y; r.bottom = c.y + h;
+      placed.push(r);
     }
-    for (const th of list) {
+    for (const th of this.thoughts) {
       const tg = this.tags.get(th);
       if (!tg) continue;
-      tg.tx = clamp(tg.tx, edge + tg.w / 2, Math.max(edge + tg.w / 2, W - edge - tg.w / 2));
-      tg.ty = clamp(tg.ty, edge, Math.max(edge, H - edge - tg.h));
       if (rm || !tg.shown) { tg.x = tg.tx; tg.y = tg.ty; tg.vx = tg.vy = 0; }
       else {
         // a little spring lag: the words trail their thought
@@ -568,14 +622,30 @@ export class ThoughtLayer {
     }
   }
 
+  // another thought's body (or one of its siblings) under a tag placed at (x, y), or null
+  _overBody(tg, x, y, own) {
+    for (const o of this.thoughts) {
+      if (o === own || o._leaving) continue;
+      for (const b of [o, ...o.siblings]) {
+        const r = b.bodyRect();
+        if (x + tg.w / 2 > r.left - 4 && x - tg.w / 2 < r.right + 4 && y + tg.h > r.top - 4 && y < r.bottom + 4) return r;
+      }
+    }
+    return null;
+  }
+
+  _overK(x, y, tg, K) { return x + tg.w / 2 > K.left - 4 && x - tg.w / 2 < K.right + 4 && y + tg.h > K.top - 4 && y < K.bottom + 4; }
+
   // the soft rope from the body to its words (verlet, pinned at both ends, a little slack)
   _ropes(dt, env) {
     for (const th of this.thoughts) {
       const rope = this.ropes.get(th), tg = this.tags.get(th);
       if (!rope || !tg) continue;
-      const Q = th.render.pts;
-      const ax = tg.above ? Q[2 * PT.top] : Q[2 * PT.bottom], ay = tg.above ? Q[2 * PT.top + 1] + 2 : Q[2 * PT.bottom + 1] - 2;
-      const bx = tg.x, by = tg.above ? tg.y + tg.h : tg.y;
+      const Q = th.render.pts, side = tg.side || 'below';
+      const ai = side === 'above' ? PT.top : side === 'right' ? PT.right : side === 'left' ? PT.left : PT.bottom;
+      const ax = Q[2 * ai] + (side === 'right' ? -2 : side === 'left' ? 2 : 0), ay = Q[2 * ai + 1] + (side === 'above' ? 2 : side === 'below' ? -2 : 0);
+      const bx = side === 'right' ? tg.x - tg.w / 2 : side === 'left' ? tg.x + tg.w / 2 : tg.x;
+      const by = side === 'above' ? tg.y + tg.h : side === 'below' ? tg.y : tg.y + tg.h / 2;
       const n = ROPE_N;
       if (!rope.init || env.rm) {
         for (let i = 0; i < n; i++) { const t = i / (n - 1); rope.x[i] = rope.px[i] = ax + (bx - ax) * t; rope.y[i] = rope.py[i] = ay + (by - ay) * t + Math.sin(Math.PI * t) * 4; }

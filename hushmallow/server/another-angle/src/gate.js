@@ -7,7 +7,8 @@
 // after one failed regeneration the client falls back to the authored engine.
 
 import { HEAVY_EMOTIONS } from './vocab.js';
-import { tidy, words, wordCount, sentences, contentStems, allStems, jaccard, numbersIn, stem, IRREGULAR as TEXT_IRREGULAR } from './text.js';
+import { LENSES } from './prompt.js';
+import { tidy, words, wordCount, sentences, contentStems, allStems, meaningStems, jaccard, numbersIn, stem, IRREGULAR as TEXT_IRREGULAR } from './text.js';
 
 export const LINE_FIELDS = /** @type {const} */ (['subtitle_line_1', 'subtitle_line_2']);
 export const EXPLORE_FIELDS = /** @type {const} */ (['known_fact', 'possible_assumption', 'alternative_angle', 'practical_next_step']);
@@ -16,7 +17,12 @@ export const VISIBLE_FIELDS = /** @type {const} */ ([...LINE_FIELDS, ...EXPLORE_
 export const LIMITS = Object.freeze({
   totalMin: 15, totalMax: 35, lineMax: 22, lineMin: 3,
   field: { known_fact: 20, possible_assumption: 20, alternative_angle: 24, practical_next_step: 20 },
-  repeatSimilarity: 0.5, repeatLineSimilarity: 0.6, samePatternSimilarity: 0.2,
+  repeatSimilarity: 0.5, repeatLineSimilarity: 0.6,
+  // Novelty on meaning-bearing words (eval run 1: real follow-ups shared at
+  // most one; paraphrases three or more at a Jaccard of 0.27 and up).
+  meaningShared: 3, meaningSimilarity: 0.25, meaningSimilarityPair: 0.5,
+  // What the prompt aims for; the gate enforces totalMin–totalMax.
+  aimMin: 16, aimMax: 28,
 });
 
 const LABEL = {
@@ -327,8 +333,8 @@ const LABEL_RE = new RegExp(R`\byou(?:'re| are)( not| never)?(?: just| really| s
 const LABEL_CONTRAST = new RegExp(R`\b(?:tells?|shows?|measures?|measured|means?|says?|said|proves?|proved|is about|are about|was about|were about)\b[^.?!]*\b(?:not|rather than|instead of) (?:that |whether |proof that )?you(?:'re| are)(?: just| really| so| such| totally| completely)* ${HARSH}\b`, 'iu');
 // "You might be treating three failed tests as proof you're stupid": the
 // person's own verdict, named as the thing under examination ("as proof",
-// "whether", "you called yourself"), is not the gate applying the label.
-const LABEL_FRAME = new RegExp(R`\b(?:as (?:(?:proof|evidence|a sign|a verdict|confirmation|a ruling)(?: that)?|if|though)|whether|you(?: have| had)?(?: just| keep| kept| might| may)? (?:said|say|wrote|called yourself|call yourself|calling yourself|told yourself|tell yourself|telling yourself|concluded|decided|feel|felt|fear|feared)(?: that)?) you(?:'re| are)(?: just| really| so| such| totally| completely)* ${HARSH}\b`, 'iu');
+// "you called yourself"), is not the gate applying the label.
+const LABEL_FRAME = new RegExp(R`\b(?:as (?:(?:proof|evidence|a sign|a verdict|confirmation|a ruling)(?: that)?|if|though)|you(?: have| had)?(?: (?:just|keep|kept|might|may|could)(?: be)?)? (?:said|say|wrote|called yourself|call yourself|calling yourself|told yourself|tell yourself|telling yourself|concluded|decided|feel|felt|fear|feared|think|thought|believe|believed)(?: that)?) you(?:'re| are)(?: just| really| so| such| totally| completely)* ${HARSH}\b`, 'iu');
 
 // American spellings (exempted when the person used the same word).
 const IZE_ALLOW = new Set(['size', 'sizes', 'sized', 'resize', 'resized', 'downsize', 'downsized', 'oversize', 'oversized', 'prize', 'prizes', 'prized', 'seize', 'seized', 'seizes', 'seizing', 'capsize', 'maize', 'baize', 'assize']);
@@ -358,10 +364,19 @@ const TIME_BOX = new RegExp(R`\b(?:in|for|within|after|over|take|give it|give yo
 const ACTION_COUNT = new RegExp(R`\b${SMALL_NUM}(?: [\p{L}'-]+){0,2}? (?:things?|points?|questions?|lines?|sentences?|words?|examples?|reasons?|ways?|ideas?|items?|pieces?|moments?|steps?|names?|options?|bits?|breaths?|lessons?|notes?|parts?|wins?|strengths?|skills?|differences?|priorities|tasks?|choices?|bullet points?|minutes?)\b`, 'giu');
 // What makes a subtitle line a suggestion: it asks, or it proposes an action.
 const ACTION_CUE = /\?["')\]]*$|^(?:try|write|jot|list|name|pick|choose|send|ask|spend|take|give|set|make|note|plan|book|put|tell|message|text|call|decide|find|look|read|practise|start)\b|\b(?:you could|you might|could you|would you|might you|what if you|how about|try|is there|what are|which)\b/iu;
+/**
+ * Does a subtitle line propose something to do (an action or an answerable
+ * question)? A rough reading, used by the eval report to count how often line
+ * 2 carries the step; the gate itself never requires one (an action is not
+ * always kind).
+ * @param {string} line
+ */
+export const suggestsStep = (line) => ACTION_CUE.test(tidy(line));
 // "On the tenth replay an answer can sound worse": a general statement about
 // how replays work, not a count of the person's replays.
 const GENERIC_CUE = /\b(?:often|usually|sometimes|can|could|may|might|tends? to|by the|every|any|most|many)\b/iu;
 const REPEAT_ORDINAL = /\b(?:third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|twentieth|fiftieth|hundredth|\d+(?:rd|th))(?: [\p{L}'-]+)? (?:replays?|re-?runs?|run-throughs?|times?|go|goes|attempts?|tries|pass|passes|listens?|reads?|looks?|rewrites?|versions?|drafts?|rounds?|loops?|retellings?)\b/giu;
+const SECOND_PERSON = /\byou(?:r|rs|rself|'ve|'re|'d|'ll)?\b/iu;
 const VAGUE_QUANTITY = /\b(?:a|one) (?:hundred|thousand|million|dozen)\b(?= (?:\w+ )?(?:things|reasons|ways|times|explanations|possibilities|thoughts|details|moments|ordinary|other|little|small|different|tiny)\b)|\b(?:hundreds|thousands|millions|dozens) of\b/giu;
 const NUMBER_NAMES = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
 const QUOTED_IN_INPUT = /"([^"]{1,120})"|(?<![\p{L}\p{N}])'((?:[^']|'(?=\p{L}))+?)'(?![\p{L}\p{N}])/gu;
@@ -388,6 +403,10 @@ function mindsMessage(field) {
   return `${LABEL[field]} states what someone else thinks, feels or intends as fact. Restating what the person told you is fine (as theirs: "You said…", "It feels like…"); a new guess about anyone's mind must be one possibility among others ("might", "could") or a question. Never cast doubt on what the person said happened.`;
 }
 
+const ON_READ = /\bon (?:read|seen|delivered)\b/iu;
+// One particular person, named by role or pronoun ("my boyfriend", "she").
+const NAMED_PERSON = /\b(?:he|she|him|her|his|boss|manager|partner|boyfriend|girlfriend|husband|wife|friend|best friend|colleague|mum|mom|dad|mother|father|sister|brother|son|daughter|teacher|tutor|flatmate|housemate|ex|nephew|niece|aunt|auntie|uncle|cousin|nan|gran|grandma|grandad|doctor|landlord|neighbou?r)\b/iu;
+const PERSON_PRONOUN = /\b(?:he|she|him|her|his|hers)\b/iu;
 const STOP_SHORT = new Set(['a', 'i', 'an', 'am', 'as', 'at', 'be', 'by', 'do', 'go', 'he', 'if', 'in', 'is', 'it', 'me', 'my', 'no', 'of', 'oh', 'ok', 'on', 'or', 'so', 'to', 'up', 'us', 'we']);
 const ABSOLUTES = new Set(['nobody', 'everyone', 'everybody', 'always', 'never', 'nothing', 'everything', 'anyone', 'noone']);
 
@@ -432,7 +451,7 @@ export function qualityGate(scene, ctx) {
     if (!/[.?!]["')\]]*$/u.test(line)) fail('line_unfinished', field, `${LABEL[field]} must end with a full stop or question mark.`);
     if ((line.match(/\?/g) || []).length > 1) fail('too_many_questions', field, `${LABEL[field]} asks more than one question.`);
   }
-  if (total > LIMITS.totalMax) fail('too_long', 'lines', `The two lines have ${total} words together; the limit is ${LIMITS.totalMax} (aim for 18–28).`);
+  if (total > LIMITS.totalMax) fail('too_long', 'lines', `The two lines have ${total} words together; the limit is ${LIMITS.totalMax}. Aim for ${LIMITS.aimMin}–${LIMITS.aimMax}: one idea per line, plain words, no restating what they told you.`);
   if (total < LIMITS.totalMin) fail('too_short', 'lines', `The two lines have only ${total} words together; use ${LIMITS.totalMin}–${LIMITS.totalMax} so they say something specific.`);
   const bangs = (`${l1} ${l2}`.match(/!/g) || []).length;
   if (bangs > 1 || (heavy && bangs > 0)) fail('exclamation', 'lines', heavy ? 'No exclamation marks on a painful subject.' : 'Use at most one exclamation mark.');
@@ -501,7 +520,8 @@ export function qualityGate(scene, ctx) {
       const action = field === 'practical_next_step' || (isLine && ACTION_CUE.test(s));
       if (action || field === 'subtitle_line_2') x = x.replace(TIME_BOX, ' ');
       if (action) x = x.replace(ACTION_COUNT, ' ');
-      if (field !== 'known_fact' && GENERIC_CUE.test(s)) x = x.replace(REPEAT_ORDINAL, ' ');
+      // Only in a general remark: a clause about "you" counting their replays is a fact.
+      if (field !== 'known_fact' && GENERIC_CUE.test(s)) x = x.split(/(?=[,;])/).map((cl) => (SECOND_PERSON.test(cl) ? cl : cl.replace(REPEAT_ORDINAL, ' '))).join('');
       for (const num of numbersIn(x)) {
         if (num === 'one' || num === 'two' || inputNums.has(num)) continue;
         fail('invented_detail', field, `Do not add details the person did not give (the number "${num}"). A small count or a time span inside a suggested step is fine.`);
@@ -526,13 +546,17 @@ export function qualityGate(scene, ctx) {
 
   // 4. Engagement with the person's actual situation.
   const inputStems = contentStems(input);
+  // "Left me on read" is about a message, though no word says so.
+  if (ON_READ.test(input)) inputStems.add(stem('message'));
   const lineStems = contentStems(`${l1} ${l2}`);
   const inputAbs = [...inputWords].filter((w) => ABSOLUTES.has(w.replace(/'/g, '')));
   const quoted = [...`${l1} ${l2}`.matchAll(/["“‘']([^"”’']{2,40})["”’']/gu)].some((m) => inputLower.includes(m[1].toLowerCase()));
   const absRef = inputAbs.some((w) => new RegExp(R`\b${w}\b`, 'i').test(`${l1} ${l2}`));
+  // Speaking of the one person they named ("check with him") is engaging with it.
+  const personRef = NAMED_PERSON.test(input) && PERSON_PRONOUN.test(`${l1} ${l2}`);
   let overlap = 0;
   for (const s of allStems(`${l1} ${l2}`)) if (inputStems.has(s)) overlap++;
-  if (inputStems.size >= 2 && overlap === 0 && !quoted && !absRef) {
+  if (inputStems.size >= 2 && overlap === 0 && !quoted && !absRef && !personRef) {
     fail('not_specific', 'lines', 'The lines do not mention anything from the person\'s situation; refer to the concrete details they gave (the people, the event, their words).');
   }
   if (inputStems.size >= 1) {
@@ -546,25 +570,36 @@ export function qualityGate(scene, ctx) {
     if (factOverlap === 0) fail('fact_not_from_text', 'known_fact', 'known_fact must restate what the person actually said happened, in terms of their own details.');
   }
 
-  // 5. Novelty against angles already shown.
+  // 5. Novelty against angles already shown (brief §8: "genuinely different").
+  //  * The mechanic follows the pattern, so a pattern already shown would
+  //    replay a scene the person has played: every earlier angle's pattern is
+  //    off limits (word overlap cannot see a paraphrase).
+  //  * Meaning: the words each angle adds beyond the person's own (which
+  //    every angle may name) and beyond framing words ("fact", "question").
+  //    Sharing several of them is saying the same new thing again, however
+  //    the sentences are built.
+  //  * The old whole-line checks stay as a backstop.
   const previous = ctx.previous || [];
+  const usedPatterns = [...new Set(previous.map((p) => p.reasoning_pattern).filter(Boolean))];
+  const newMeaning = meaningStems(`${l1} ${l2}`, inputStems);
   previous.forEach((p, i) => {
-    const prevStems = contentStems(`${p.subtitle_line_1} ${p.subtitle_line_2}`);
+    const prevText = `${p.subtitle_line_1} ${p.subtitle_line_2}`;
+    const prevStems = contentStems(prevText);
     const sim = jaccard(lineStems, prevStems);
     const lineSim = Math.max(
       ...[l1, l2].flatMap((a) => [p.subtitle_line_1, p.subtitle_line_2].map((b) => jaccard(contentStems(a), contentStems(b)))),
     );
-    // The mechanic follows the pattern, so the same pattern replays the same
-    // scene. The angle just shown never repeats its pattern (word overlap
-    // cannot see a paraphrase); an older one only with a clearly different
-    // take (few shared words).
-    const samePattern = Boolean(p.reasoning_pattern) && p.reasoning_pattern === scene.reasoning_pattern;
-    if (samePattern && (i === previous.length - 1 || sim >= LIMITS.samePatternSimilarity)) {
-      fail('repeats_previous', 'lines', i === previous.length - 1
-        ? `This angle uses the same reasoning_pattern (${scene.reasoning_pattern}) as the angle just shown, so the app would replay the same scene. Use a different reasoning_pattern (with its matching interaction_type) that still fits the situation, and look at a different part of it in new words.`
-        : `This angle uses the same reasoning_pattern (${scene.reasoning_pattern}) as angle ${i + 1} and much of its wording. Use a different reasoning_pattern, or keep this one only with a clearly different take in new words.`);
+    const prevMeaning = meaningStems(prevText, inputStems);
+    const shared = [...newMeaning].filter((s) => prevMeaning.has(s));
+    const meaningSim = jaccard(newMeaning, prevMeaning);
+    const n = previous.length > 1 ? `angle ${i + 1}` : 'the angle just shown';
+    if (p.reasoning_pattern && p.reasoning_pattern === scene.reasoning_pattern) {
+      fail('repeats_previous', 'lines', `This angle uses the same reasoning_pattern (${scene.reasoning_pattern}) as ${n}, so the app would replay the same scene the person has already played. Use a different reasoning_pattern from every earlier angle (not ${usedPatterns.join(', ')}), with its matching interaction_type, that still fits the situation, and look through a different lens in new words.`);
+    } else if ((shared.length >= LIMITS.meaningShared && meaningSim >= LIMITS.meaningSimilarity) || (shared.length >= 2 && meaningSim >= LIMITS.meaningSimilarityPair)) {
+      const echoed = words(`${l1} ${l2}`).filter((w) => shared.includes(stem(w)));
+      fail('repeats_previous', 'lines', `This angle says what ${n} already said, in other words (it repeats "${[...new Set(echoed.map((w) => w.toLowerCase()))].slice(0, 4).join('", "')}"). Look through a different lens (${LENSES.join('; ')}) and offer a different question or action.`);
     } else if (sim >= LIMITS.repeatSimilarity || lineSim >= LIMITS.repeatLineSimilarity || tidy(p.subtitle_line_1).toLowerCase() === tidy(l1).toLowerCase()) {
-      fail('repeats_previous', 'lines', 'This angle repeats one the person has already seen; offer a genuinely different, still-accurate perspective (a different pattern, part of the situation, question or action).');
+      fail('repeats_previous', 'lines', 'This angle repeats one the person has already seen; offer a genuinely different, still-accurate perspective (a different pattern, lens, question or action).');
     }
   });
 

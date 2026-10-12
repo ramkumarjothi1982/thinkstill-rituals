@@ -229,7 +229,8 @@ export const CONCERN_LEXICON = [
   R`\b(?:there'?s|there is|is|feels like there'?s) (?:just )?no point (?:anymore|any more|in anything|to anything|in any of it)\b`,
   R`\bwhat'?s the point (?:anymore|any more|of anything|in anything|of any of it)\b`,
   R`\bthinking (?:about|of) (?:death|my (?:own )?death)\b`,
-  R`\b(?:don'?t|do not|can'?t|cannot) see (?:a|any) way out\b`,
+  // 'a way out of this car park' stays none: the phrase ends there, or with 'of this / of it all'
+  R`\b(?:don'?t|do not|can'?t|cannot) see (?:a|any) way out(?=\s*(?:$|[.!?,;…]|(?:anymore|any more|of (?:this|it all|here|everything|anything))\s*(?:$|[.!?,;…])))`,
   R`\bno way out (?:anymore|any more|for me)\b`,
   R`\b(?:want|need|wish|just want) (?:the|this|all the|all this) (?:pain|hurt|hurting) to (?:stop|end|go away)\b`,
   R`\b(?:hate|hating) (?:my (?:whole |own )?life|being alive|living)\b(?! (?:in|with|here|there|at|on|near|abroad|together|admin|insurance)\b)`,

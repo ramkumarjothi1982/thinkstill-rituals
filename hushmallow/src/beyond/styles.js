@@ -35,6 +35,9 @@ const CSS = `
   border-radius: calc(4px + 16px * var(--bx-soft)); border: 1.5px solid rgba(220, 226, 255, calc(0.7 - 0.45 * var(--bx-soft)));
   background: rgba(32, 34, 72, calc(0.86 - 0.18 * var(--bx-soft))); letter-spacing: calc(0.02em - 0.02em * var(--bx-soft)); box-shadow: 0 8px 22px rgba(4, 2, 16, 0.35); }
 
+/* a played scene steps back while its perspective is told */
+.beyond.bx-recede .bx-tag { opacity: 0 !important; }
+
 /* consent: a calm card above Zuzu (who stays squeezable underneath) */
 .bx-consent { position: fixed; z-index: 4; left: 16px; right: 16px; top: calc(var(--safe-top, 0px) + 66px); margin: 0 auto; max-width: 520px; box-sizing: border-box;
   max-height: var(--bx-card-max, calc(100dvh - 300px)); display: flex; flex-direction: column; gap: 10px; padding: 18px 18px 14px; border-radius: 26px;
@@ -47,7 +50,8 @@ const CSS = `
 .bx-consent.reduced, .bx-consent.reduced.in { transform: none; transition: opacity 200ms ease; }
 .bx-eyebrow { margin: 0; font: 700 calc(13px * var(--bx-k))/1.2 var(--hf-ff-ui); letter-spacing: 0.04em; color: #9ff7ff; }
 .bx-title { margin: 0; font: var(--type-world, 540 calc(clamp(24px, 9.091vw - 9.091px, 30px) * var(--bx-k))/1.12 var(--hf-ff-story)); font-optical-sizing: auto; letter-spacing: -0.01em; text-wrap: balance; }
-.bx-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; margin: 0 -6px; padding: 0 6px; -webkit-overflow-scrolling: touch; }
+.bx-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; margin: 0 -6px; padding: 0 6px 14px; -webkit-overflow-scrolling: touch;
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent); }
 .bx-notice { display: grid; gap: 10px; }
 .bx-notice p, .bx-notice li { font: 500 calc(15px * var(--bx-k))/1.45 var(--hf-ff-voice); color: #e9e4fb; }
 .bx-notice .bx-lead { margin: 0; font-weight: 600; color: #fbf8ff; font-size: calc(16px * var(--bx-k)); }

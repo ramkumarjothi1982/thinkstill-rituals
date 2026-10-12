@@ -6,7 +6,7 @@
 // scattered constellation in many colours: other times, not all the same.
 // Tap the glowing one (or the assist pill) to ease it out a third at a time.
 
-import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, mix, Motes, blinkAt, circleRect, tintFor, TAU } from './kit.js';
+import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, mix, Motes, blinkAt, circleRect, tintFor, TAU, Timers } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'separate_one';
@@ -19,6 +19,7 @@ export function mount(ctx) {
   const rm = () => ctx.reducedMotion();
   let resolve;
   const done = new Promise((r) => { resolve = r; });
+  const TM = new Timers();
   const motes = new Motes(40);
   const [light, deep] = tintFor(ctx.emotion);
   const A0 = ctx.area();
@@ -72,10 +73,10 @@ export function mount(ctx) {
     ctx.haptic('soft'); ctx.fx('unlock', { intensity: 0.55 });
     motes.burst(one.x, one.y, light, 8, { speed: 50, size: 2.6 });
     ctx.progress(0.85);
-    setTimeout(() => {
+    TM.after(() => {
       phase = 'spread'; spreadT = 0; homes();
       ctx.fx('shimmer', { intensity: 0.4 });
-      setTimeout(() => { ctx.progress(1); ctx.haptic('success'); resolve({ moves, ms: performance.now() - t0 }); }, rm() ? 250 : 1300);
+      TM.after(() => { ctx.progress(1); ctx.haptic('success'); resolve({ moves, ms: performance.now() - t0 }); }, rm() ? 250 : 1300);
     }, rm() ? 80 : 450);
   }
   function step() {
@@ -84,10 +85,11 @@ export function mount(ctx) {
     one.sqV += 2.4; ctx.haptic('light');
     ctx.progress(stepK / 3 * 0.8);
     homes();
-    if (stepK >= 3) setTimeout(free, rm() ? 60 : 500);
+    if (stepK >= 3) TM.after(free, rm() ? 60 : 500);
   }
 
   function frame(dt, t) {
+    TM.step(dt);
     const R_ = rm();
     homes();
     const { cx, cy } = centre();
@@ -151,6 +153,7 @@ export function mount(ctx) {
     assist: step,
     avoid: () => { const { cx, cy } = centre(); return [circleRect(cx, cy, clusterR() * (phase === 'spread' ? 1.4 : 1.1)), circleRect(one.x, one.y, one.r * 1.4), ...ctx.tags.rects()]; },
     get settled() { return phase === 'spread'; },
-    destroy() { ctx.tags.clear(); },
+    probe: () => { const { cx, cy } = centre(); return { one: { x: one.x, y: one.y }, c: { x: cx, y: cy }, r: clusterR(), phase }; },
+    destroy() { TM.clear(); ctx.tags.clear(); },
   };
 }

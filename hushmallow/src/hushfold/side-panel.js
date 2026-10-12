@@ -4,8 +4,11 @@
 // bottom sheet instead, and the scene lifts the Mallow into the space above.
 //
 // createSidePanel({ app, root, getFlow, flowAvailable, state, onFeeling,
-//   onIntention, onMallow, resumable, onResume, onClose })
+//   onIntention, onMallow, onSupport, pausedNow, onPause, resumable, onResume, onClose })
 //   → { el, open(), close(), toggle(), update(), get isOpen }
+// state() → { mallow, mallowWaiting, emotion, emotionName, intention }: in a world the
+// switcher shows who the person comes back to (mallowWaiting). pausedNow() / onPause()
+// let the scene own Pause while it holds a world behind the phone sheet.
 //
 // Every Hushflow action goes to the `flow` object (the W4 director API, or the
 // shell's stub): setEmotion, setIntention, setAutoFlow, stay, pause/resume,
@@ -20,7 +23,7 @@ import { hfIcon } from './icons.js';
 import { QUICK_FEELINGS, INTENTIONS } from './lines.js';
 
 export function createSidePanel({ app, root, getFlow, flowAvailable = () => Promise.resolve(true), onFeeling, onIntention, onMallow, onClose, state = () => ({}),
-  resumable = () => Promise.resolve(null), onResume = null } = {}) {
+  resumable = () => Promise.resolve(null), onResume = null, onSupport = null, pausedNow = () => null, onPause = null } = {}) {
   const { prefs, ent, store } = app;
   let isOpen = false;
   let opener = null;
@@ -73,7 +76,7 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
         link('library', 'More rituals', () => go('library'), 'The full library'),
         link('journey', 'Your journey', () => go('journey')),
         link('gear', 'Settings', () => go('settings')))),
-      h('section', {}, h('button', { class: 'hf-support', type: 'button', onclick: () => openSupport(app) }, hfIcon('support'), 'Need support now?'),
+      h('section', {}, h('button', { class: 'hf-support', type: 'button', onclick: () => (onSupport ? onSupport() : openSupport(app)) }, hfIcon('support'), 'Need support now?'),
         h('p', { class: 'fine' }, 'Pause, finish or switch whenever you like. Stopping never costs you anything.'))));
   root.append(el);
 
@@ -85,7 +88,7 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
     if (!flow) return;
     const st = flow.state || {};
     app.haptic('light');
-    if (kind === 'pause') { if (isPaused(st)) flow?.resume?.(); else flow?.pause?.(); }
+    if (kind === 'pause') { if (onPause?.()) { api.update(); return; } if (isPaused(st)) flow?.resume?.(); else flow?.pause?.(); }
     else if (kind === 'stay') flow?.stay?.();
     else if (kind === 'finish') { flow?.finish?.(); api.close(); return; }
     else if (kind === 'favourite') {
@@ -114,7 +117,7 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
     async update() {
       const s = state();
       const m = MALLOWS[s.mallow] || MALLOWS.loomi;
-      mallowImg.src = m.file; mallowName.textContent = m.name; mallowTitle.textContent = m.title;
+      mallowImg.src = m.file; mallowName.textContent = m.name; mallowTitle.textContent = s.mallowWaiting ? 'With you after this world' : m.title;
       const tier = ent.tier();
       planEl.className = `plan${tier === 'paid' ? ' on' : tier === 'ultra' ? ' beyond' : ''}`;
       planEl.replaceChildren(tier === 'none' ? 'No plan yet · See plans' : (PLANS[tier]?.name || 'Your plan'));
@@ -129,7 +132,9 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
       const stub = flow ? !!flow.stub : !(await flowAvailable());
       for (const b of [pauseBtn, stayBtn, finishBtn]) b.disabled = !world && !stub;
       favBtn.disabled = !world && !stub;
-      pauseBtn.replaceChildren(hfIcon(isPaused(st) ? 'play' : 'pause'), h('span', {}, isPaused(st) ? 'Resume' : 'Pause'));
+      const pz = pausedNow() ?? isPaused(st);
+      pauseBtn.replaceChildren(hfIcon(pz ? 'play' : 'pause'), h('span', {}, pz ? 'Resume' : 'Pause'));
+      pauseBtn.setAttribute('aria-pressed', String(!!pz));
       const fav = world && isFav(flow, st.worldId);
       favBtn.setAttribute('aria-pressed', String(!!fav));
       favBtn.replaceChildren(hfIcon('star', { filled: !!fav }), h('span', {}, fav ? 'Favourite' : 'Favourite world'));

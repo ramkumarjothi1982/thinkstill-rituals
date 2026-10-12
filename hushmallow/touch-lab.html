@@ -66,7 +66,8 @@
   .tlabel { flex: 0 0 auto; font: 650 13px/1 var(--ff-ui, system-ui), system-ui, sans-serif; color: var(--text2); padding: 0 2px 0 4px; }
   #tcount { min-width: 22px; text-align: center; font: 700 16px/1 var(--ff-ui, system-ui), system-ui, sans-serif; }
   .tsep { flex: 0 0 1px; height: 26px; background: var(--line); margin: 0 3px; }
-  @media (max-height: 640px) { body.tmode #roster { display: none; } #tpanel { gap: 5px; padding-top: 12px; } .tbtn, .chip { min-height: 38px; } }
+  body.tmode #log { top: calc(max(12px, env(safe-area-inset-top)) + 64px); bottom: auto; }
+  @media (max-height: 640px) { body.tmode #log { top: 12px; } body.tmode #roster { display: none; } #tpanel { gap: 5px; padding-top: 12px; } .tbtn, .chip { min-height: 38px; } }
 </style>
 </head>
 <body>
@@ -178,7 +179,9 @@ function layout() {
     // the hero on the left of the stage, room for the thoughts beside it, all above the panel
     const top = h < 640 ? 16 : 70, bottom = h - (panel.offsetHeight || 220);
     const size = Math.max(96, Math.min(0.3 * w / 1.05, 0.36 * (bottom - top), 220));
-    mt.place({ x: Math.max(size * 0.62 + 16, w * (w < 700 ? 0.3 : 0.36)), y: top + (bottom - top) * 0.5, size }, { instant: true });
+    // narrow phones: the hero hugs the left so the words have room beside it
+    const x = w < 420 ? size * 0.56 + 14 : Math.max(size * 0.62 + 16, w * (w < 700 ? 0.3 : 0.36));
+    mt.place({ x, y: top + (bottom - top) * 0.5, size }, { instant: true });
     return;
   }
   // body centre a little below the middle, clear of the roster and readout
@@ -284,15 +287,14 @@ function spawn({ text = document.getElementById('ttext').value, emotion = state.
   const c = heroSide();
   const W = innerWidth, small = W < 360;
   const out = [];
+  const r = mt?.bodyRect?.();
   for (let i = 0; i < n; i++) {
-    // spread round the side of the hero: a column on phones, a small arc on wider screens
+    // spread round the hero: beside it first, then above and below it (the layer then makes room for each one's words)
     const a = (i - (n - 1) / 2);
-    const x = c.x + (W < 700 ? (i % 2 ? 18 : -18) * (n > 1 ? 1 : 0) : a * 110);
-    const y = c.y + (W < 700 ? a * (small ? 70 : 92) : Math.abs(a) * 24);
-    const r = mt?.bodyRect?.();
+    const x = W < 700 ? c.x + (i % 2 ? 22 : -22) * (n > 1 ? 1 : 0) - (i >= 3 && r ? (c.x - r.cx) : 0) : c.x + a * 120;
+    const y = W < 700 ? c.y + a * (small ? 64 : 84) : c.y + Math.abs(a) * 24;
     out.push(L.add({ text, emotion, intensity, r: small ? 32 : 38 }, { from: { x: r ? r.cx : W / 2, y: r ? r.top : c.y }, home: { x, y } }));
   }
-  const r = mt?.bodyRect?.();
   if (r && mt) mt.lookAt(1, -0.1);
   return out;
 }

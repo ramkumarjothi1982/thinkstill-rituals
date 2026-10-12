@@ -7,7 +7,7 @@
 // three in place they fuse into one glowing staircase and the thought hops up
 // to stand on it. Tap a piece (or the assist pill) to send it to its tread.
 
-import { Blob, drawGlow, clamp, approach, rgba, Motes, blinkAt, circleRect, tintFor, roundRect } from './kit.js';
+import { Blob, drawGlow, clamp, approach, rgba, Motes, blinkAt, circleRect, tintFor, roundRect, Timers } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'assemble_step';
@@ -19,6 +19,7 @@ export function mount(ctx) {
   const rm = () => ctx.reducedMotion();
   let resolve;
   const done = new Promise((r) => { resolve = r; });
+  const TM = new Timers();
   const motes = new Motes(40);
   const [light, deep] = tintFor(ctx.emotion);
   const A0 = ctx.area();
@@ -81,7 +82,7 @@ export function mount(ctx) {
     ctx.progress(placed() / 3 * 0.9);
     if (placed() === 3) {
       pieces.forEach((p) => { p.slot = p.i; });     // into reading order
-      setTimeout(fuse, rm() ? 80 : 560);
+      TM.after(fuse, rm() ? 80 : 560);
     }
     homes();
     return true;
@@ -115,6 +116,7 @@ export function mount(ctx) {
   }
 
   function frame(dt, t) {
+    TM.step(dt);
     const R_ = rm();
     const G = geo();
     homes();
@@ -133,7 +135,7 @@ export function mount(ctx) {
       for (const q of G.treads) drawGlow(g, q.x, q.y, q.w * 0.75, '#ffcf7a', 0.32 * k);
       if (phase === 'fuse' && fuseT > (R_ ? 0.2 : 1.1)) {
         phase = 'standing'; thought.sqV -= 4; ctx.progress(1);
-        setTimeout(() => resolve({ moves, ms: performance.now() - t0 }), R_ ? 200 : 800);
+        TM.after(() => resolve({ moves, ms: performance.now() - t0 }), R_ ? 200 : 800);
       }
     }
     pieces.forEach((b) => {
@@ -177,6 +179,7 @@ export function mount(ctx) {
     assist: step,
     avoid: () => { const G = geo(); return [circleRect(thought.x, thought.y, R * 1.3), ...G.treads.map((q) => ({ left: q.x - q.w / 2, right: q.x + q.w / 2, top: q.y - q.h / 2, bottom: q.y + q.h / 2 })), ...ctx.tags.rects()]; },
     get settled() { return phase === 'standing'; },
-    destroy() { ctx.tags.clear(); },
+    probe: () => { const G = geo(); return { pieces: pieces.filter((b) => b.slot < 0).map((b) => ({ x: b.x, y: b.y, i: b.i })), treads: G.treads.map((q) => ({ x: q.x, y: q.y })), phase }; },
+    destroy() { TM.clear(); ctx.tags.clear(); },
   };
 }

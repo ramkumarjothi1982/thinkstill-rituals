@@ -8,7 +8,7 @@
 // line ask for? Four quiet choices, none of them "forgive". The chosen one is
 // written on the line. Taps near the outline (or the assist pill) set posts.
 
-import { Blob, drawGlow, clamp, lerp, approach, rgba, mix, LIGHT, Motes, blinkAt, circleRect, tintFor, TAU } from './kit.js';
+import { Blob, drawGlow, clamp, lerp, approach, rgba, mix, LIGHT, Motes, blinkAt, circleRect, tintFor, TAU, Timers } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'find_boundary';
@@ -21,6 +21,7 @@ export function mount(ctx) {
   const rm = () => ctx.reducedMotion();
   let resolve;
   const done = new Promise((r) => { resolve = r; });
+  const TM = new Timers();
   const motes = new Motes(44);
   const anger = /anger|frustr|resent|irrit|rage|fury/.test(ctx.emotion || '') || !ctx.emotion;
   const [light, deep] = anger ? EMBER : tintFor(ctx.emotion);
@@ -66,19 +67,19 @@ export function mount(ctx) {
     ctx.haptic('success'); ctx.fx('ground', { intensity: 0.5 });
     const G = geo();
     for (let i = 0; i < 4; i++) { const a = (i / 4) * TAU + 0.4; motes.burst(G.cx + Math.cos(a) * G.rr, G.cy + Math.sin(a) * G.rr, LINE, 3, { speed: 30, size: 2.2 }); }
-    setTimeout(ask, rm() ? 200 : 1000);
+    TM.after(ask, rm() ? 200 : 1000);
   }
   async function ask() {
     if (phase !== 'closed') return;
     phase = 'choosing';
     const v = await ctx.choose(L.hint2, L.responses.map((label, i) => ({ label, value: i, primary: false })));
-    if (v == null) { phase = 'closed'; setTimeout(ask, 400); return; }
+    if (v == null) { phase = 'closed'; TM.after(ask, 400); return; }
     choice = L.responses[v] || L.responses[3];
     phase = 'chosen'; moves++;
     tags.line.set(`${L.labels.line}: ${choice}`);
     ctx.haptic('soft'); ctx.fx('chime', { intensity: 0.45 });
     ctx.progress(1);
-    setTimeout(() => resolve({ moves, ms: performance.now() - t0, choice }), rm() ? 200 : 900);
+    TM.after(() => resolve({ moves, ms: performance.now() - t0, choice }), rm() ? 200 : 900);
   }
   function step() {
     if (phase !== 'draw') { if (phase === 'closed') ask(); return; }
@@ -93,6 +94,7 @@ export function mount(ctx) {
   }
 
   function frame(dt, t) {
+    TM.step(dt);
     const R_ = rm();
     const G = geo();
     homes();
@@ -188,6 +190,7 @@ export function mount(ctx) {
     assist: step,
     avoid: () => { const G = geo(); return [circleRect(G.cx, G.cy, G.rr + 16), ...ctx.tags.rects()]; },
     get settled() { return phase === 'chosen'; },
-    destroy() { ctx.tags.clear(); },
+    probe: () => { const G = geo(); return { c: { x: G.cx, y: G.cy }, rr: G.rr, drawn: drawn(), phase }; },
+    destroy() { TM.clear(); ctx.tags.clear(); },
   };
 }

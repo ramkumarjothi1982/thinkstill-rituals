@@ -13,8 +13,9 @@ import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { createApp } from '../src/app.js';
 import { memoryLedgerNamespace } from '../src/limits/ledger.js';
+import { PROMPT_VERSION } from '../src/prompt.js';
 
-const SYSTEM_PROMPT = readFileSync(new URL('../prompts/angle-v1.md', import.meta.url), 'utf8');
+const SYSTEM_PROMPT = readFileSync(new URL(`../prompts/${PROMPT_VERSION}.md`, import.meta.url), 'utf8');
 const args = process.argv.slice(2);
 const serveAt = args.indexOf('--serve');
 const port = serveAt >= 0 ? Number(args[serveAt + 1] || 8790) : 0;

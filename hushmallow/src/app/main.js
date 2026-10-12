@@ -68,7 +68,9 @@ app.applyUpdateIfSafe = () => {
 const OPTIONAL_SCENES = { garden: 'The Memory Garden opens soon.' };
 
 app.go = async function go(name, params = {}, { replace = false, fromPop = false } = {}) {
-  if (newer && name === 'home' && safeToUpdate()) { moveTo(newer); return; }
+  // words waiting to come back to the Hushfold (Continue → plans → home) are never lost to a reload;
+  // the Hushfold itself decides once they are on stage (safeForUpdate, applyUpdateIfSafe)
+  if (newer && name === 'home' && !app.state.pendingTell && safeToUpdate()) { moveTo(newer); return; }
   // a layer that just closed is still stepping history back: let it land first
   await popsSettled();
   const load = SCENES[name];

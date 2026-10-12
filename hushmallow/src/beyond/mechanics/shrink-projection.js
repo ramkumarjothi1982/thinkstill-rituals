@@ -8,7 +8,7 @@
 // small jelly beside the first: "One possibility". Tap, or the assist pill,
 // shrinks it one calm step at a time.
 
-import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, mix, LIGHT, Motes, blinkAt, circleRect, tintFor } from './kit.js';
+import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, mix, LIGHT, Motes, blinkAt, circleRect, tintFor, Timers } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'shrink_projection';
@@ -19,6 +19,7 @@ export function mount(ctx) {
   const rm = () => ctx.reducedMotion();
   let resolve;
   const done = new Promise((r) => { resolve = r; });
+  const TM = new Timers();
   const motes = new Motes(30);
   const [light, deep] = tintFor(ctx.emotion);
   const A0 = ctx.area();
@@ -79,10 +80,11 @@ export function mount(ctx) {
     target = clamp(target - (maxS() - 1) / 3 - 0.01, 1, maxS());
     ctx.haptic('light');
     ctx.progress(progress());
-    if (target <= 1.12) setTimeout(condense, rm() ? 60 : 900);
+    if (target <= 1.12) TM.after(condense, rm() ? 60 : 900);
   }
 
   function frame(dt, t) {
+    TM.step(dt);
     const R_ = rm();
     const { px, py } = anchor();
     if (!grown) { S = approach(S, maxS(), 2.4, dt); if (S > maxS() - 0.05) { S = maxS(); grown = true; target = S; } }
@@ -124,7 +126,7 @@ export function mount(ctx) {
         if (condenseT > (R_ ? 0.1 : 0.7)) {
           phase = 'settled';
           motes.burst(small.hx, small.hy, LIGHT.calm[1], 8, { speed: 40, size: 2.4 });
-          setTimeout(() => { ctx.haptic('success'); resolve({ moves, ms: performance.now() - t0 }); }, R_ ? 200 : 650);
+          TM.after(() => { ctx.haptic('success'); resolve({ moves, ms: performance.now() - t0 }); }, R_ ? 200 : 650);
         }
       }
     }
@@ -191,6 +193,7 @@ export function mount(ctx) {
     assist: step,
     avoid: () => { const { px, py } = anchor(); return [circleRect(thought.x, thought.y, R * 1.3), phase === 'settled' ? circleRect(small.x, small.y, R * 1.3) : circleRect(px, py, S * R * 0.8), ...ctx.tags.rects()]; },
     get settled() { return phase === 'settled'; },
-    destroy() { ctx.tags.clear(); },
+    probe: () => { const { px, py } = anchor(); return { big: { x: px, y: py, r: S * R }, thought: { x: thought.x, y: thought.y }, phase, S }; },
+    destroy() { TM.clear(); ctx.tags.clear(); },
   };
 }

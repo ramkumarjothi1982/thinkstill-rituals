@@ -220,6 +220,26 @@ export class Blob {
   }
 }
 
+// -------------------------------------------------------------- timers --
+/**
+ * Delays that run on the scene's own clock (frame dt), not setTimeout: they
+ * pause with the loop (a hidden tab), never fire after destroy, and replay
+ * exactly in tests. after(fn, ms) (setTimeout's order) → id; step(dt) in frame(); clear().
+ */
+export class Timers {
+  constructor() { this.list = []; }
+  after(fn, ms = 0) { this.list.push({ left: Math.max(0, ms) / 1000, fn }); return this.list.length; }
+  step(dt) {
+    if (!this.list.length) return;
+    const due = [];
+    for (const t of this.list) { t.left -= dt; if (t.left <= 0) due.push(t); }
+    if (!due.length) return;
+    this.list = this.list.filter((t) => t.left > 0);
+    for (const t of due) { try { t.fn(); } catch (e) { console.warn('[mechanic timer]', e?.message); } }
+  }
+  clear() { this.list.length = 0; }
+}
+
 // --------------------------------------------------------------- motes --
 /** A fixed pool of soft particles (no allocation after construction). */
 export class Motes {

@@ -8,7 +8,7 @@
 // small glowing seed stays inside: "Something to learn". The lesson is kept;
 // the cruelty goes. A tap (or the assist pill) smooths it a little each time.
 
-import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, mix, Motes, blinkAt, circleRect, tintFor, TAU } from './kit.js';
+import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, mix, Motes, blinkAt, circleRect, tintFor, TAU, Timers } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'soften_harshness';
@@ -21,6 +21,7 @@ export function mount(ctx) {
   const rm = () => ctx.reducedMotion();
   let resolve;
   const done = new Promise((r) => { resolve = r; });
+  const TM = new Timers();
   const motes = new Motes(40);
   const [light, deep] = tintFor(ctx.emotion === 'anger' ? 'shame' : ctx.emotion || 'shame');
   const A0 = ctx.area();
@@ -58,7 +59,7 @@ export function mount(ctx) {
     const c = centre();
     motes.burst(c.x, c.y, light, 10, { speed: 46, size: 2.6 });
     ctx.progress(1);
-    setTimeout(() => resolve({ moves, ms: performance.now() - t0 }), rm() ? 200 : 1100);
+    TM.after(() => resolve({ moves, ms: performance.now() - t0 }), rm() ? 200 : 1100);
   }
   function step() {
     if (phase !== 'hard') return;
@@ -71,6 +72,7 @@ export function mount(ctx) {
   }
 
   function frame(dt, t) {
+    TM.step(dt);
     const R_ = rm();
     const c = centre();
     thought.hx = c.x; thought.hy = c.y;
@@ -164,6 +166,7 @@ export function mount(ctx) {
     assist: step,
     avoid: () => { const c = centre(); return [circleRect(c.x, c.y, R * 1.5), ...ctx.tags.rects()]; },
     get settled() { return phase === 'soft'; },
-    destroy() { ctx.tags.clear(); },
+    probe: () => { const c = centre(); return { c, R, softness, phase }; },
+    destroy() { TM.clear(); ctx.tags.clear(); },
   };
 }

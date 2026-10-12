@@ -7,7 +7,7 @@
 // wherever the person puts it is their call. Taps on the track light it bit by
 // bit (or place the thought), and the assist pill reveals a quarter at a time.
 
-import { Blob, drawGlow, clamp, lerp, approach, rgba, mix, Motes, blinkAt, circleRect, tintFor, roundRect } from './kit.js';
+import { Blob, drawGlow, clamp, lerp, approach, rgba, mix, Motes, blinkAt, circleRect, tintFor, roundRect, Timers } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'reveal_spectrum';
@@ -20,6 +20,7 @@ export function mount(ctx) {
   const rm = () => ctx.reducedMotion();
   let resolve;
   const done = new Promise((r) => { resolve = r; });
+  const TM = new Timers();
   const motes = new Motes(40);
   const [light, deep] = tintFor(ctx.emotion);
   const A0 = ctx.area();
@@ -78,7 +79,7 @@ export function mount(ctx) {
     const T = track();
     motes.burst(lerp(T.x0, T.x1, uGoal), T.y, mix(LEFT, RIGHT, uGoal), 10, { speed: 46, size: 2.4 });
     ctx.progress(1);
-    setTimeout(() => resolve({ moves, ms: performance.now() - t0, at: uGoal }), rm() ? 200 : 900);
+    TM.after(() => resolve({ moves, ms: performance.now() - t0, at: uGoal }), rm() ? 200 : 900);
   }
   function step() {
     if (phase === 'reveal') {
@@ -93,6 +94,7 @@ export function mount(ctx) {
   }
 
   function frame(dt, t) {
+    TM.step(dt);
     const R_ = rm();
     const T = track();
     for (let i = 0; i < BINS; i++) if (want[i]) lit[i] = R_ ? 1 : approach(lit[i], 1, 3.2, dt);
@@ -158,7 +160,10 @@ export function mount(ctx) {
     const T = track();
     const nearTrack = (x, y) => y > T.y - T.hgt * 4 - R && y < T.y + T.hgt * 4 && x > T.x0 - 30 && x < T.x1 + 30;
     if (e.type === 'down') {
-      if (thought.hit(e.x, e.y, 1.5)) {
+      // on the track itself, a touch sweeps (the thought sits just above it)
+      const onLine = Math.abs(e.y - T.y) < T.hgt * 2.6 && e.x > T.x0 - 30 && e.x < T.x1 + 30;
+      if (phase === 'reveal' && onLine) { if (light_(e.x, 1)) ctx.haptic('light'); held = { id: e.id, sweep: true, x0: e.x, t0: e.t }; return true; }
+      if (thought.hit(e.x, e.y, 1.25)) {
         thought.sqV += 2;
         if (phase === 'place' || phase === 'settled') { held = { id: e.id, x0: e.x, t0: e.t, du: u - (e.x - T.x0) / (T.x1 - T.x0) }; }
         ctx.haptic('light');
@@ -190,6 +195,7 @@ export function mount(ctx) {
     assist: step,
     avoid: () => { const T = track(); return [{ left: T.x0 - 30, right: T.x1 + 30, top: T.y - T.hgt - R * 2.2 - 40, bottom: T.y + T.hgt + R + 30 }, ...ctx.tags.rects()]; },
     get settled() { return phase === 'settled'; },
-    destroy() { ctx.tags.clear(); },
+    probe: () => { const T = track(); return { x0: T.x0, x1: T.x1, y: T.y, thought: { x: thought.x, y: thought.y }, phase }; },
+    destroy() { TM.clear(); ctx.tags.clear(); },
   };
 }

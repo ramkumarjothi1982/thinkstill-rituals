@@ -41,6 +41,12 @@ export default function settings(app) {
   const tierName = ent.tier() === 'none' ? 'No plan yet' : PLANS[ent.tier()].name + (ent.source() === 'test' ? ' (test)' : '');
   const section = (title) => h('h2', { class: 'eyebrow', style: { marginTop: '22px', marginBottom: '2px' } }, title);
   const sample = h('p', { style: type('subtitle', { margin: '12px 0 2px', color: 'var(--text-1)', textAlign: 'center', textWrap: 'balance' }) }, 'Something bothering you? Want to tell me?');
+  // Another Angle (W8): share-my-words switch + "Delete my Another Angle data", only where they mean something
+  const angleRows = h('div');
+  Promise.all([import('../../beyond/consent.js'), import('../../beyond/endpoint.js')]).then(([c, a]) => {
+    const endpoint = a.resolveEndpoint();
+    if (endpoint || c.hasAngleData(app.store)) c.mountAngleSettings(app, angleRows, { endpoint });
+  }).catch(() => {});
 
   const el = h('div', { class: 'settings', style: { display: 'flex', flexDirection: 'column', height: '100%' } },
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' })),
@@ -64,6 +70,7 @@ export default function settings(app) {
       section('Privacy'),
       sw('saveHistory', 'Remember what I played', 'Rituals and worlds, how they felt and where you paused. Never your words or photos.'),
       sw('saveWords', 'Keep my saved angles', `${PLANS.ultra?.name || 'hushmallow Beyond'} only. Stored on this phone, never uploaded.`),
+      angleRows,
       h('button', { class: 'btn block', style: { marginTop: '12px' }, onclick: () => confirmClear() }, 'Delete everything on this phone'),
 
       section('Plan'),

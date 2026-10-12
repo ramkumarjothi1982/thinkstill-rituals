@@ -1,7 +1,8 @@
 // Cloudflare Worker entry for Another Angle (hushmallow Beyond).
 // The system prompt is bundled as text (wrangler.toml [[rules]] Text *.md).
 
-import SYSTEM_PROMPT from '../prompts/angle-v1.md';
+// Keep in step with PROMPT_VERSION in src/prompt.js (test/worker.test.js checks).
+import SYSTEM_PROMPT from '../prompts/angle-v2.md';
 import { createApp } from './app.js';
 import { Ledger } from './limits/ledger.js';
 

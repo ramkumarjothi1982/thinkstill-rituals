@@ -458,7 +458,12 @@ export class ThoughtMallow {
     let mx = 0, my = 0, half = 0;
     if (S) {
       const a = R.ptrs.get(S.a), c = R.ptrs.get(S.b);
-      if (a && c) { mx = (a.x + c.x) / 2 / vs; my = (a.y + c.y) / 2 / vs; half = (S.d0 / 2 / vs) * (1 + Math.max(0, S.s - 1) * 0.7); }
+      if (a && c) {
+        mx = (a.x + c.x) / 2 / vs; my = (a.y + c.y) / 2 / vs;
+        // a small jelly follows the fingers generously (85 %), never so far that it slips
+        const h0 = S.d0 / 2 / vs, hd = Math.hypot(a.x - c.x, a.y - c.y) / 2 / vs;
+        half = clamp(h0 + (hd - h0) * 0.85, h0 * 0.55, h0 + 0.8 * this.material.maxStretch * (this.render.P || 80));
+      }
       // pinch to send it farther, spread to stretch it (and bring it nearer)
       const s = S.s;
       if (s < 0.97) this.zGoal = clamp((this._zAt ?? this.zGoal) + (1 - s) * 1.4);

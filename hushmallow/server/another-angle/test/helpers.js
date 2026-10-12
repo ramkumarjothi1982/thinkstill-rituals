@@ -6,8 +6,9 @@ import { readFileSync } from 'node:fs';
 import { createApp } from '../src/app.js';
 import { createMockProvider } from '../src/providers/mock.js';
 import { memoryLedgerNamespace } from '../src/limits/ledger.js';
+import { PROMPT_VERSION } from '../src/prompt.js';
 
-export const SYSTEM_PROMPT = readFileSync(new URL('../prompts/angle-v1.md', import.meta.url), 'utf8');
+export const SYSTEM_PROMPT = readFileSync(new URL(`../prompts/${PROMPT_VERSION}.md`, import.meta.url), 'utf8');
 export const ORIGIN = 'https://ramkumarjothi1982.github.io';
 export const BASE = 'https://angle.example.workers.dev';
 

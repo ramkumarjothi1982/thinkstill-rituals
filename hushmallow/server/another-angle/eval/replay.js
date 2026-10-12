@@ -18,7 +18,7 @@ import { validateAngleRequest } from '../src/validate.js';
 import { PATTERN_INTERACTION } from '../src/vocab.js';
 
 /**
- * @typedef {{ code: string, field: string, text?: string | null }} Failure
+ * @typedef {{ code: string, field: string, text?: string | null, message?: string }} Failure
  * @typedef {{ attempt: number, lines: [string, string] | null, failures: Failure[] }} Draft
  * @typedef {{ status: string, scene: Record<string, string> | null, meta: { gate: string, drafts?: Draft[] } }} Round
  * @typedef {{ id: string, rounds: Round[] }} RunCase

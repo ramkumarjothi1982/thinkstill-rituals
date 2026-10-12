@@ -84,21 +84,20 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
   const photoCount = h('span', { class: 'count', hidden: true });
   const photoBtn = h('button', { class: 'hf-ghost photo', type: 'button', 'aria-expanded': 'false', 'aria-label': 'Add photos, up to seven', onclick: () => togglePhotos() },
     hfIcon('camera'), h('span', { class: 't' }, 'Photos'), photoCount);
-  const sendBtn = h('button', { class: 'hf-send', type: 'button', disabled: true, onclick: () => submit(), 'aria-describedby': hasPlan ? null : `${uid}-plan` },
-    hasPlan ? 'Send' : 'Continue', hfIcon('send'));
+  // no plan: Continue says where it goes inside the button itself (no extra line in the overlay)
+  const sendBtn = h('button', { class: `hf-send${hasPlan ? '' : ' two'}`, type: 'button', disabled: true, onclick: () => submit(), 'aria-describedby': hasPlan ? null : `${uid}-plan` },
+    hasPlan ? 'Send' : h('span', { class: 'lbl' }, 'Continue', h('small', { class: 'sub' }, 'with ', h('span', { class: 'brand-name' }, 'hushmallow'), ' Flow')), hfIcon('send'));
   const photosBox = h('div', { class: 'photos', hidden: true });
-  // no plan: Continue says where it goes, in the actions row itself (no extra line)
-  const planHint = hasPlan ? null : h('span', { class: 'plan-hint', id: `${uid}-plan` }, h('span', { class: 'sr-only' }, 'Continue opens '), 'with ', h('b', { class: 'brand-name' }, 'hushmallow Flow'),
-    h('span', { class: 'sr-only' }, '. Your words stay on this phone.'));
+  const planHint = hasPlan ? null : h('span', { class: 'sr-only', id: `${uid}-plan` }, 'Your words come alive as a Thought Mallow with hushmallow Flow. They stay on this phone.');
   const count = h('span', { class: 'sr-only', 'aria-live': 'polite' });
   const countVis = h('span', { class: 'count-vis', 'aria-hidden': 'true', hidden: true });
   const el = h('div', { class: `hf-input hf-ui${reduced ? ' reduced' : ''}${bigText ? ' big' : ''}`, role: 'dialog', 'aria-modal': 'false', 'aria-label': prompt, 'data-hf': 'input' },
     h('div', { class: 'head' },
       h('p', { class: 'prompt' }, mallow.name ? h('span', { class: 'who', style: mallow.glow ? { '--hf-who': mallow.glow } : null }, mallow.name, h('span', { class: 'sr-only' }, ': ')) : null, prompt),
       h('button', { class: 'close', type: 'button', 'aria-label': 'Close', onclick: () => close('button') }, hfIcon('close'))),
-    h('div', { class: 'field' }, ta, micBtn, countVis),
+    h('div', { class: 'field' }, ta, micBtn),
     note, feelRow, intentRow, photosBox,
-    h('div', { class: 'actions' }, photoBtn, supportBtn, h('div', { class: 'grow' }, planHint), sendBtn), count);
+    h('div', { class: 'actions' }, photoBtn, supportBtn, h('div', { class: 'grow' }, countVis, planHint), sendBtn), count);
   root.append(el);
 
   // --------------------------------------------------------- chips --
