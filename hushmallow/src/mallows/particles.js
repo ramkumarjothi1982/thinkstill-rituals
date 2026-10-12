@@ -17,8 +17,10 @@ export class ParticleField {
     this.cloud = 0;
   }
 
-  // body geometry in screen space
+  // body geometry in screen space (MallowTouch passes the deformed mesh bounds)
   geo() {
+    const o = this.rig.geoOverride?.();
+    if (o) return o;
     const r = this.rig;
     const [bx0, by0, bx1, by1] = r.mallow.bodyBox;
     const w = (bx1 - bx0) * r.S, h = (by1 - by0) * r.S;
@@ -27,6 +29,8 @@ export class ParticleField {
   }
 
   face(sx, sy) {
+    const o = this.rig.faceOverride?.(sx, sy);
+    if (o) return o;
     const r = this.rig;
     const [bx0, , bx1, by1] = r.mallow.bodyBox;
     const lift = r.body.hop * r.H;

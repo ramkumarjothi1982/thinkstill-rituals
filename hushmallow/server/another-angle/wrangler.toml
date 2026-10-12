@@ -1,0 +1,107 @@
+# Another Angle server for hushmallow Beyond (Cloudflare Worker).
+# Deployed by .github/workflows/another-angle.yml when CLOUDFLARE_API_TOKEN and
+# CLOUDFLARE_ACCOUNT_ID are set. Secrets (never in this file):
+#   ANTHROPIC_API_KEY   the Claude API key
+#   TOKEN_SIGNING_KEY   ≥32 random characters; signs device/session tokens
+#   IP_HASH_KEY         ≥16 random characters; keys the IP hashes used for limits
+#   TESTER_INVITE_CODES optional, comma-separated invite codes for testers
+name = "hushmallow-another-angle"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+# The SDK has Node-only code paths (credential files) that are never used here
+# (the API key is passed explicitly); nodejs_compat lets them bundle cleanly.
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+# The versioned system prompt is bundled as text.
+[[rules]]
+type = "Text"
+globs = ["**/*.md"]
+fallthrough = true
+
+[vars]
+PROVIDER = "anthropic"
+MODEL = "claude-opus-5-5"
+EFFORT = "low"
+MAX_TOKENS = "3000"
+MODEL_TIMEOUT_MS = "15000"
+REQUEST_DEADLINE_MS = "28000"
+MODEL_MAX_RETRIES = "1"
+REFUSAL_FALLBACK = "default"
+ALLOWED_ORIGINS = "https://ramkumarjothi1982.github.io"
+ALLOW_NO_ORIGIN = "false"
+REQUIRE_HTTPS = "true"
+ENTITLEMENT_MODE = "testing"
+TESTING_TOKEN_TTL_DAYS = "30"
+DEVICE_DAILY_LIMIT = "20"
+SESSION_DAILY_CAP = "500"
+SESSIONS_PER_IP_DAILY = "10"
+DAILY_SPEND_CAP_USD = "10"
+APPLE_BUNDLE_ID = ""
+APPLE_PRODUCT_IDS = "hushmallow.ultra.monthly,hushmallow.ultra.yearly"
+APPLE_ENVIRONMENTS = "Production"
+
+# Daily counters: per-device quota, per-IP session cap, global spend cap.
+[[durable_objects.bindings]]
+name = "LEDGER"
+class_name = "Ledger"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Ledger"]
+
+# Burst limits per IP (per Cloudflare location). period must be 10 or 60.
+[[ratelimits]]
+name = "ANGLE_IP_LIMITER"
+namespace_id = "41001"
+simple = { limit = 6, period = 60 }
+
+[[ratelimits]]
+name = "SESSION_IP_LIMITER"
+namespace_id = "41002"
+simple = { limit = 3, period = 60 }
+
+[observability]
+enabled = true
+
+# Local development: `npm run dev` (wrangler dev --env dev) uses the mock
+# provider and allows localhost origins. Put secrets in .dev.vars.
+[env.dev]
+name = "hushmallow-another-angle-dev"
+workers_dev = true
+
+[env.dev.vars]
+PROVIDER = "mock"
+MODEL = "claude-opus-5-5"
+EFFORT = "low"
+MAX_TOKENS = "3000"
+MODEL_TIMEOUT_MS = "15000"
+REQUEST_DEADLINE_MS = "28000"
+MODEL_MAX_RETRIES = "1"
+REFUSAL_FALLBACK = "default"
+ALLOWED_ORIGINS = "http://localhost:8000,http://127.0.0.1:8000,https://ramkumarjothi1982.github.io"
+ALLOW_NO_ORIGIN = "true"
+REQUIRE_HTTPS = "false"
+ENTITLEMENT_MODE = "testing"
+TESTING_TOKEN_TTL_DAYS = "30"
+DEVICE_DAILY_LIMIT = "50"
+SESSION_DAILY_CAP = "500"
+SESSIONS_PER_IP_DAILY = "50"
+DAILY_SPEND_CAP_USD = "2"
+APPLE_BUNDLE_ID = ""
+APPLE_PRODUCT_IDS = "hushmallow.ultra.monthly,hushmallow.ultra.yearly"
+APPLE_ENVIRONMENTS = "Sandbox"
+
+[[env.dev.durable_objects.bindings]]
+name = "LEDGER"
+class_name = "Ledger"
+
+[[env.dev.ratelimits]]
+name = "ANGLE_IP_LIMITER"
+namespace_id = "41101"
+simple = { limit = 30, period = 60 }
+
+[[env.dev.ratelimits]]
+name = "SESSION_IP_LIMITER"
+namespace_id = "41102"
+simple = { limit = 10, period = 60 }

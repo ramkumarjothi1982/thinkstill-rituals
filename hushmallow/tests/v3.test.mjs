@@ -161,9 +161,9 @@ test('rounds: no V3 ritual repeats until the whole plan has been offered', () =>
   assert.equal(planOptions({ rec, req, rituals, seen: round.seen(), limit: 1 }).options.length, 0);
 });
 
-test('photos: up to six of the person’s own; with none, the seven Mallows stand in', () => {
-  assert.equal(MAX_PHOTOS, 6);
-  assert.equal(photoSession.max, 6);
+test('photos: up to seven of the person’s own; with none, the seven Mallows stand in', () => {
+  assert.equal(MAX_PHOTOS, 7);   // D5: brief 2 §11 allows 0–7
+  assert.equal(photoSession.max, 7);
   assert.equal(photoSession.count, 0);
   // the cards are painted from the seven approved Mallow artworks
   assert.equal(REGISTRY_IDS.length, 7);

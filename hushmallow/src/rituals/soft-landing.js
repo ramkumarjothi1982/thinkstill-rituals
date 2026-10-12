@@ -18,6 +18,9 @@
 // where relevant, repair. All lines are authored; free text is only shown back.
 
 import { h, wait } from '../app/ui.js';
+import { canvasFontPx } from '../ui/type.js';
+
+const FONT_13 = canvasFontPx(13, 650);   // canvas labels: the voice face, at the 13px floor
 
 const STINGS = [
   { id: 'messed', label: 'I messed up', kind: 'guilt', tag: 'a messed-up moment',
@@ -196,7 +199,7 @@ export async function run(ctx) {
     // own words / label under the stone
     if (S.label) {
       const ly = S.y + r * 1.25 + 16 + S.layers.length * 6;
-      g.font = '650 13px ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
+      g.font = FONT_13;
       g.textAlign = 'center'; g.textBaseline = 'middle';
       const lines = wrap(S.label, Math.min(W * 0.42, 170)).slice(0, 3);
       if (ly + lines.length * 16 > S.labelMax) return;
@@ -347,7 +350,7 @@ export async function run(ctx) {
       resolve();
     };
     ownBtn.onclick = () => {
-      const ta = h('textarea', { class: 'feel', 'aria-label': 'The sting, in your own words', maxlength: '120', placeholder: 'A few words is plenty…', style: { minHeight: '72px', fontSize: '16px' } });
+      const ta = h('textarea', { class: 'feel', 'aria-label': 'The sting, in your own words', maxlength: '120', placeholder: 'A few words is plenty…', style: { minHeight: '72px', fontSize: 'var(--type-row-size)' } });
       ta.value = String(ctx.input?.text || '').trim().slice(0, 120);
       const ok = h('button', { class: 'btn primary block' }, 'That’s the one');
       const back = h('button', { class: 'btn ghost block' }, 'Back to the choices');
@@ -468,7 +471,7 @@ export async function run(ctx) {
   const wgrid = h('div', { class: 'choice-grid' });
   const wordsDone = h('button', { class: 'btn primary block', disabled: true }, 'Wrapped up warm');
   for (const [id, label] of shown) {
-    const b = h('button', { class: 'choice', 'aria-pressed': 'false', style: { minHeight: '52px', fontSize: '14px' }, 'aria-label': `${label}. Wraps the stone in a bubble.` }, label);
+    const b = h('button', { class: 'choice', 'aria-pressed': 'false', style: { minHeight: '52px', fontSize: 'var(--type-label-size)' }, 'aria-label': `${label}. Wraps the stone in a bubble.` }, label);
     b.onclick = () => {
       if (b.getAttribute('aria-pressed') === 'true') return;
       press(b, true);
@@ -487,7 +490,7 @@ export async function run(ctx) {
     const br = btn.getBoundingClientRect();
     const el = h('div', { 'aria-hidden': 'true', style: {
       position: 'fixed', left: `${br.left + br.width / 2}px`, top: `${br.top + br.height / 2}px`, transform: 'translate(-50%,-50%) scale(1)',
-      maxWidth: '46vw', padding: '8px 12px', borderRadius: '999px', font: '650 13px/1.2 var(--font-ui)', color: '#f4fbff', textAlign: 'center',
+      maxWidth: '46vw', padding: '8px 12px', borderRadius: '999px', font: '650 var(--type-caption-size)/1.2 var(--ff-ui)', color: '#f4fbff', textAlign: 'center',
       background: 'radial-gradient(120% 140% at 30% 20%, rgba(255,255,255,.35), rgba(127,212,255,.25) 50%, rgba(255,142,242,.25))',
       border: '1px solid rgba(244,251,255,.6)', boxShadow: '0 0 18px rgba(127,212,255,.35)', pointerEvents: 'none',
       transition: rm ? 'opacity 300ms' : 'left 850ms cubic-bezier(.2,.8,.2,1), top 850ms cubic-bezier(.2,.8,.2,1), transform 850ms, opacity 850ms',
@@ -529,7 +532,7 @@ export async function run(ctx) {
     swapBtn.textContent = branch === 'guilt' ? 'Rather just be gentle with yourself?' : 'Is there something to put right?';
     result.next = null; finishBtn.disabled = true;
     ngrid.replaceChildren(...list.map(([id, label, line]) => {
-      const b = h('button', { class: 'choice', 'aria-pressed': 'false', style: { minHeight: '52px', fontSize: '14px' } }, label);
+      const b = h('button', { class: 'choice', 'aria-pressed': 'false', style: { minHeight: '52px', fontSize: 'var(--type-label-size)' } }, label);
       b.onclick = () => {
         ngrid.querySelectorAll('.choice').forEach((x) => press(x, false));
         press(b, true);

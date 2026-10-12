@@ -125,9 +125,9 @@ export async function run(ctx) {
     const cy = by - 0.38 * Hl * s + 2;
     world.place({ x: (cx / W) * 100, y: (cy / H) * 100, scale: s, calm: rm });
   }
-  const note = (text) => h('p', { style: { textAlign: 'center', margin: '0 auto', padding: '6px 14px', borderRadius: '999px', background: 'rgba(20,16,48,.62)', color: 'var(--text-1)', font: '650 14px/1.3 var(--font-ui)', width: 'fit-content', maxWidth: '100%' } }, text);
+  const note = (text) => h('p', { style: { textAlign: 'center', margin: '0 auto', padding: '6px 14px', borderRadius: '999px', background: 'rgba(20,16,48,.62)', color: 'var(--text-1)', font: '650 var(--type-label-size)/1.3 var(--ff-ui)', width: 'fit-content', maxWidth: '100%' } }, text);
   const gridStyle = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' };
-  const chipStyle = { minHeight: '44px', whiteSpace: 'normal', lineHeight: '1.15', padding: '6px 10px', fontSize: '14px', justifyContent: 'center', textAlign: 'center' };
+  const chipStyle = { minHeight: '44px', whiteSpace: 'normal', lineHeight: '1.15', padding: '6px 10px', fontSize: 'var(--type-label-size)', justifyContent: 'center', textAlign: 'center' };
   const glassGhost = { background: 'rgba(20,16,48,.5)', color: 'var(--text-1)' };
   const setDock = (...kids) => { dock.replaceChildren(...kids); requestAnimationFrame(() => { if (!signal.aborted) fit(); }); };
   resize();
@@ -470,7 +470,7 @@ export async function run(ctx) {
   let picked = null;
   const chipRow = h('div', { style: gridStyle, role: 'group', 'aria-label': 'What the good thing is' });
   const ownInput = h('input', { class: 'feel', type: 'text', maxlength: '80', placeholder: 'In your own words (optional)', 'aria-label': 'The good thing, in your own words (optional)',
-    style: { minHeight: '46px', height: '46px', padding: '0 14px', fontSize: '16px', display: 'none', width: '100%', boxSizing: 'border-box', borderRadius: '14px', border: '1px solid var(--line-strong)', background: 'rgba(255,255,255,.07)', color: 'var(--text-1)' } });
+    style: { minHeight: '46px', height: '46px', padding: '0 14px', fontSize: 'var(--type-row-size)', display: 'none', width: '100%', boxSizing: 'border-box', borderRadius: '14px', border: '1px solid var(--line-strong)', background: 'rgba(255,255,255,.07)', color: 'var(--text-1)' } });
   if (ctx.input.text) ownInput.value = String(ctx.input.text).trim().slice(0, 80);
   const ownBtn = h('button', { class: 'chip', style: { ...chipStyle, borderStyle: 'dashed' }, 'aria-expanded': 'false' }, '+ My own words');
   const seedBtn = h('button', { class: 'btn primary block', disabled: true }, 'Make it a seed');
@@ -519,7 +519,7 @@ export async function run(ctx) {
   h('span', { 'aria-hidden': 'true', style: { width: '24px', height: '32px', borderRadius: '50% 50% 50% 50% / 60% 60% 40% 40%', display: 'block',
     background: 'radial-gradient(circle at 35% 30%, #fff6c4, #ffb31f 55%, #c8643a)', boxShadow: '0 0 18px rgba(255,210,58,.9), inset -3px -4px 6px rgba(120,40,10,.35)' } }));
   const tag = h('span', { 'aria-hidden': 'true', style: { position: 'absolute', top: '62px', left: '50%', transform: 'translateX(-50%)', whiteSpace: 'nowrap', maxWidth: '150px',
-    overflow: 'hidden', textOverflow: 'ellipsis', font: '700 12px var(--font-ui)', padding: '3px 9px', borderRadius: '999px', background: 'rgba(255,246,228,.92)', color: '#3a0602' } }, seedName);
+    overflow: 'hidden', textOverflow: 'ellipsis', font: '700 var(--type-caption-size)/1.3 var(--ff-ui)', padding: '3px 9px', borderRadius: '999px', background: 'rgba(255,246,228,.92)', color: '#3a0602' } }, seedName);
   seed.append(tag);
   const home = () => ({ x: Math.max(84, Math.min(W * 0.36, st.bx - st.S * 0.55)), y: Math.max(titleBottom() + 44, st.by - st.S * 0.8) });
   const h0 = home();
@@ -701,7 +701,7 @@ export async function run(ctx) {
 
   const ring = h('span', { 'aria-hidden': 'true', style: { position: 'absolute', inset: '0', borderRadius: '50%', background: 'conic-gradient(#ffd23a 0turn, rgba(255,255,255,.14) 0turn)' } });
   const core = h('span', { 'aria-hidden': 'true', style: { position: 'absolute', inset: '10px', borderRadius: '50%', background: 'radial-gradient(circle at 40% 35%, #fff6c4, #ffd23a 50%, #ff7a0a)', boxShadow: '0 0 30px rgba(255,210,58,.6)', transition: 'transform 300ms' } });
-  const holdLabel = h('span', { style: { position: 'relative', color: '#3a0602', font: '800 14px var(--font-ui)', letterSpacing: '.06em' } }, 'HOLD');
+  const holdLabel = h('span', { style: { position: 'relative', color: '#3a0602', font: '800 var(--type-label-size)/1.3 var(--ff-ui)', letterSpacing: '.06em' } }, 'HOLD');
   const sun = h('button', { class: 'hold-target', style: { width: '112px', height: '112px' }, 'aria-label': 'The sun. Press and hold to ripen the sunpop. Press Enter to start or pause.' }, ring, core, holdLabel);
   const cue = note('Press and hold the sun'); cue.setAttribute('aria-live', 'polite');
   const tapMode = h('button', { class: 'btn ghost block', style: glassGhost }, 'Can’t hold? Tap to ripen on its own');
@@ -782,10 +782,10 @@ export async function run(ctx) {
   const cardStyle = { padding: '12px 14px', borderRadius: '18px', background: 'rgba(20,16,48,.66)', display: 'grid', gap: '10px' };
   function buildDetail(id) {
     const [, label, text] = KEEP.find(([k]) => k === id);
-    const kids = [h('strong', { style: { color: 'var(--accent)', font: '800 12px/1 var(--font-ui)', letterSpacing: '.1em', textTransform: 'uppercase' } }, label),
-      h('p', { style: { margin: '0', color: 'var(--text-1)', font: '600 14px/1.35 var(--font-ui)' } }, text)];
+    const kids = [h('strong', { style: { color: 'var(--accent)', font: '800 var(--type-caption-size)/1 var(--ff-ui)', letterSpacing: '.1em', textTransform: 'uppercase' } }, label),
+      h('p', { style: { margin: '0', color: 'var(--text-1)', font: '600 var(--type-label-size)/1.35 var(--ff-ui)' } }, text)];
     if (id === 'write') {
-      const ta = h('textarea', { class: 'feel', 'aria-label': 'Note for later', style: { minHeight: '76px', height: '76px', fontSize: '16px' } }, result.note || noteText());
+      const ta = h('textarea', { class: 'feel', 'aria-label': 'Note for later', style: { minHeight: '76px', height: '76px', fontSize: 'var(--type-row-size)' } }, result.note || noteText());
       result.note = ta.value;
       listen(ta, 'input', () => { result.note = ta.value; });
       kids.push(ta);
@@ -816,7 +816,7 @@ export async function run(ctx) {
   await new Promise((resolve) => {
     const grid = h('div', { class: 'choice-grid' });
     for (const [id, label, , line] of KEEP) {
-      const b = h('button', { class: 'choice', style: { minHeight: '54px', padding: '8px 12px', fontSize: '14px', gridColumn: id === 'enjoy' ? '1 / -1' : null, textAlign: id === 'enjoy' ? 'center' : null } }, label);
+      const b = h('button', { class: 'choice', style: { minHeight: '54px', padding: '8px 12px', fontSize: 'var(--type-label-size)', gridColumn: id === 'enjoy' ? '1 / -1' : null, textAlign: id === 'enjoy' ? 'center' : null } }, label);
       listen(b, 'click', () => {
         result.keep = [id];
         if (id !== 'again') result.again = null;

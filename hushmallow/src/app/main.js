@@ -1,6 +1,8 @@
-// Hushmallow — your second brain for feelings.
+// hushmallow — your second brain for feelings.
 // App bootstrap: storage, preferences, entitlements, recommender, the
 // persistent Hushfold stage and a tiny scene router with real history.
+// 'home' is the Hushfold (src/app/scenes/hushfold.js); the old home screen
+// stays reachable as 'classic' for QA and rollback.
 
 import { createStore } from '../engine/storage.js';
 import { createPrefs } from './prefs.js';
@@ -46,19 +48,39 @@ const stack = [];
 // A newer deploy takes over at a safe moment: at start, or when the person
 // is back on the home screen (never mid-ritual or mid-sentence). Code from
 // an older deploy that can no longer load also moves to the newer one.
+// The Hushfold is where people stay, so it decides when that moment is:
+// safeForUpdate() is false while words are being typed, a world is
+// mid-progress or a discovery waits to be acknowledged.
 let newer = null;
+const safeToUpdate = () => { try { return current?.safeForUpdate?.() ?? true; } catch { return false; } };
 async function checkVersion() {
   newer = (await newerVersion()) || newer;
-  if (newer && stack[stack.length - 1]?.name === 'home') moveTo(newer);
+  if (newer && stack[stack.length - 1]?.name === 'home' && safeToUpdate()) moveTo(newer);
   return newer;
 }
+/** Called by the Hushfold when it becomes idle again (overlay closed, discovery acknowledged…). */
+app.applyUpdateIfSafe = () => {
+  if (newer && stack[stack.length - 1]?.name === 'home' && safeToUpdate()) { moveTo(newer); return true; }
+  return false;
+};
+
+// scenes that may not be in this build yet: a gentle note instead of an error
+const OPTIONAL_SCENES = { garden: 'The Memory Garden is still being planted. Soon.' };
 
 app.go = async function go(name, params = {}, { replace = false, fromPop = false } = {}) {
-  if (newer && name === 'home') { moveTo(newer); return; }
+  if (newer && name === 'home' && safeToUpdate()) { moveTo(newer); return; }
   const load = SCENES[name];
   if (!load) throw new Error(`No scene ${name}`);
   let mod;
-  try { mod = await load(); } catch (e) { if (await checkVersion()) return moveTo(newer); throw e; }
+  try { mod = await load(); } catch (e) {
+    if (await checkVersion()) return moveTo(newer);
+    if (OPTIONAL_SCENES[name]) { console.warn(`[scene ${name}]`, e?.message || e); toast(OPTIONAL_SCENES[name], 3200); return null; }
+    throw e;
+  }
+  if (typeof mod?.default !== 'function') {
+    if (OPTIONAL_SCENES[name]) { toast(OPTIONAL_SCENES[name], 3200); return null; }
+    throw new Error(`Scene ${name} has no default export`);
+  }
   try { await current?.leave?.(); } catch (e) { console.warn(e); }
   sceneEl.replaceChildren();
   const view = mod.default(app, params);
@@ -71,7 +93,7 @@ app.go = async function go(name, params = {}, { replace = false, fromPop = false
   }
   await view.enter?.();
   if (name === 'home') checkVersion();
-  document.title = view.title ? `${view.title} · Hushmallow` : 'Hushmallow';
+  document.title = view.title ? `${view.title} · hushmallow` : 'hushmallow';
   sceneEl.querySelector('h1, h2, [data-focus]')?.setAttribute('tabindex', '-1');
 };
 app.back = () => history.back();
@@ -85,7 +107,9 @@ window.addEventListener('popstate', (e) => {
 });
 
 const SCENES = {
-  home: () => import('./scenes/home.js'),
+  home: () => import('./scenes/hushfold.js'),
+  classic: () => import('./scenes/home.js'),
+  garden: () => import('./scenes/garden.js'),
   express: () => import('./scenes/express.js'),
   encounter: () => import('./scenes/encounter.js'),
   ritual: () => import('./scenes/ritual.js'),
@@ -100,7 +124,9 @@ const SCENES = {
 
 async function boot() {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkVersion(); });
-  app.world = createWorld({ prefs, audio: audioProxy });
+  app.world = createWorld({ prefs, audio: audioProxy, haptic: (k) => app.haptic(k) });
+  applyTextScale(prefs.get('textScale'));
+  const styles = ensureStylesheet('../ui/hushfold.css');
   // unlock sound on the first gesture (browsers require it)
   const unlock = () => { audio.unlock?.(); removeEventListener('pointerdown', unlock); };
   addEventListener('pointerdown', unlock);
@@ -115,9 +141,14 @@ async function boot() {
     if (k === 'sound') { audio.setEnabled?.(v); app.world.setAudio(v ? audioProxy : null); if (!v) audio.stopAmbience?.(); }
     if (k === 'volume') audio.setVolume?.(v);
     if (k === 'motion') app.world.setReducedMotion(prefs.reducedMotion());
+    if (k === 'haptics') app.world.setHaptics(v);
+    if (k === 'lowStim') app.world.setLowStim(v);
+    if (k === 'textScale') applyTextScale(v);
   });
   ent.refresh().catch(() => {});
   if (await devLab()) return;
+  await styles;
+  await import('../ui/type.js').then((t) => t.fontsReady(['voice', 'ui'], 700), () => false);   // font gate: DOM text appears in its final face (the Mallow canvas is already live)
   history.replaceState({ i: 0 }, '', '#home');
   stack.push({ name: 'home', params: {} });
   await app.go('home', { intro: !prefs.get('seenIntro') }, { replace: true });
@@ -131,6 +162,8 @@ async function boot() {
 async function devLab() {
   const qs = new URLSearchParams(location.search);
   if ((qs.get('v3') || qs.get('engine')) && ['localhost', '127.0.0.1'].includes(location.hostname)) return v3Lab(qs);
+  // Hushflow lab (W4): ?hushflow=static-storm — see src/hushfold/flow/lab.js for the parameters
+  if (qs.get('hushflow') && ['localhost', '127.0.0.1'].includes(location.hostname)) return (await import('../hushfold/flow/lab.js')).hushflowLab(app, qs);
   if (!qs.get('lab') || !['localhost', '127.0.0.1'].includes(location.hostname)) return false;
   const base = new URL('../../', import.meta.url);
   const [mod, specMod] = await Promise.all([import(new URL(qs.get('lab'), base).href), qs.get('spec') ? import(new URL(qs.get('spec'), base).href) : null]);
@@ -172,6 +205,28 @@ async function v3Lab(qs) {
   stack.push({ name: 'home', params: {} });
   await app.go('ritual', { id: spec.id });
   return true;
+}
+
+/** The Hushfold stylesheet, unless index.html already links it. Resolves when loaded (or after 1.5 s). */
+function ensureStylesheet(rel) {
+  const href = new URL(rel, import.meta.url).href;
+  const name = href.split('/').pop();
+  if ([...document.querySelectorAll('link[rel="stylesheet"]')].some((l) => (l.getAttribute('href') || '').endsWith(name))) return Promise.resolve();
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = href;
+  const done = new Promise((r) => { link.onload = r; link.onerror = r; setTimeout(r, 1500); });
+  document.head.append(link);
+  return done;
+}
+
+/** Text size (Settings): 1 | 1.12 | 1.25 on every voice / UI type token. */
+function applyTextScale(k) {
+  const v = [1, 1.12, 1.25].includes(+k) ? +k : 1;
+  import('../ui/type.js').then((m) => m.setTextScale(v)).catch(() => {
+    if (v === 1) document.documentElement.style.removeProperty('--type-scale');
+    else document.documentElement.style.setProperty('--type-scale', String(v));
+  });
 }
 
 boot();

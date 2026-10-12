@@ -37,23 +37,35 @@ const GROUPS_CALM = {
   cheek: [50, 14], body: [35, 12], fx: [25, 10],
 };
 
+// face params a soothing stroke or massage pulls toward its calm look
+const CALM_KEYS = ['eyeOpen', 'closedCurve', 'lidTop', 'lidBot', 'lidSlant', 'browY', 'browTilt', 'browAlpha', 'mouthSmile', 'mouthOpen',
+  'mouthWave', 'mouthTremble', 'tremble', 'gazeDart', 'blinkRate', 'sweat', 'blush', 'glow', 'breath', 'breathRate', 'glitch', 'spinJitter'];
+
 // GLITZI: rows of the approved glitch lines (source px)
 const GLITCH_ROWS = [61, 111, 122, 177, 215, 242, 269, 281, 329];
 
 // ---------------------------------------------------------------- ticker --
 const rigs = new Set();
+const tickers = new Set();
 let rafId = 0;
 let lastT = 0;
 function frame(t) {
   rafId = 0;
   const dt = Math.min(0.05, Math.max(0.001, (t - (lastT || t)) / 1000));
   lastT = t;
-  let any = false;
   for (const r of rigs) {
-    if (r._shouldRun()) { r._tick(dt, t / 1000); any = true; }
+    if (r._shouldRun()) r._tick(dt, t / 1000);
   }
-  if (any || rigs.size) rafId = requestAnimationFrame(frame);
+  // MallowTouch stages, Thought Mallows and worlds share this one loop; they
+  // run after the rigs so they see this frame's face
+  for (const fn of tickers) {
+    try { fn(dt, t / 1000); } catch (e) { console.error(e); }
+  }
+  if (rigs.size || tickers.size) rafId = requestAnimationFrame(frame);
 }
+/** Run fn(dt, seconds) every animation frame in the shared Mallow loop. */
+export function addTicker(fn) { if (typeof fn === 'function') { tickers.add(fn); ensureLoop(); } return fn; }
+export function removeTicker(fn) { tickers.delete(fn); }
 function ensureLoop() {
   if (!rafId && typeof requestAnimationFrame === 'function') {
     lastT = 0;
@@ -74,6 +86,14 @@ function buzz(pattern) {
   } catch { /* unsupported */ }
 }
 
+// rig vibration patterns → the kinds haptics.js understands
+function hapticKind(p) {
+  if (!Array.isArray(p)) return 'light';
+  if (p.length === 1) return 'pop';
+  if (p.length <= 3) return 'soft';
+  return p[0] <= 6 ? 'buzz' : 'success';
+}
+
 export function prefersReducedMotion() {
   try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
 }
@@ -90,6 +110,10 @@ export class MallowRig {
       audio: null, haptics: true, particles: true, shadow: true, aura: true,
       ...opts,
     };
+    // headless: no canvas of its own, no pointer, no observers — the face
+    // brain (springs, overlays, blinks, skin) for MallowTouch
+    this.headless = !!this.opts.headless;
+    if (this.opts.lowStim) this.opts.particles = false;
     this.container = container;
     this.canvas = document.createElement('canvas');
     this.canvas.className = 'mallow-canvas';
@@ -100,8 +124,8 @@ export class MallowRig {
       this.canvas.style.cursor = 'grab';
       this.canvas.tabIndex = 0;
     }
-    container.appendChild(this.canvas);
-    this.ctx = this.canvas.getContext('2d');
+    if (!this.headless) container.appendChild(this.canvas);
+    this.ctx = this.headless ? null : this.canvas.getContext('2d');
     this.skin = document.createElement('canvas');
     this.sctx = this.skin.getContext('2d');
 
@@ -131,6 +155,9 @@ export class MallowRig {
       press: 0, pressV: 0, glitchBurst: 0, burstRows: [],
     };
     this.press = null;
+    this.touch = null;       // set by MallowTouch: {depth, stretch, speed, turns, strokes, calm}
+    this.skinVersion = 0;    // bumps whenever the skin's pixels change
+    this.skinRect = null;    // the skin-px rect that changed last
     this.lastTap = 0;
     this.visible = true;
     this.destroyed = false;
@@ -139,13 +166,13 @@ export class MallowRig {
     this.particles = new ParticleField(this);
 
     this._resize = this._resize.bind(this);
-    this.ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(this._resize) : null;
+    this.ro = !this.headless && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(this._resize) : null;
     this.ro?.observe(container);
-    if (typeof IntersectionObserver !== 'undefined') {
+    if (!this.headless && typeof IntersectionObserver !== 'undefined') {
       this.io = new IntersectionObserver((es) => { this.visible = es.some((e) => e.isIntersecting); ensureLoop(); });
       this.io.observe(container);
     }
-    if (this.opts.interactive) this._bindPointer();
+    if (this.opts.interactive && !this.headless) this._bindPointer();
     this._resize();
     this._label();
 
@@ -178,7 +205,9 @@ export class MallowRig {
       const delta = Math.abs((this.target.mouthSmile || 0) - (this.val.mouthSmile || 0)) +
         Math.abs((this.target.eyeOpen || 0) - (this.val.eyeOpen || 0));
       if (delta > 0.25) {
-        this.body.squashV += this.opts.reducedMotion ? 0 : 0.9 * Math.min(1, delta);
+        const kick = this.opts.reducedMotion ? 0 : 0.9 * Math.min(1, delta);
+        if (this.opts.onImpulse) this.opts.onImpulse({ squash: kick, lean: 0, shear: 0 }, 'emotion');
+        else this.body.squashV += kick;
         this._blinkNow();
       }
     }
@@ -207,18 +236,49 @@ export class MallowRig {
     const b = this.body;
     const imp = r.impulse || {};
     const k = rm ? 0.25 : 1;
-    if (imp.squash) b.squashV += imp.squash * 6 * k;
-    if (imp.hop && b.grounded && !rm) { b.hopV = Math.sqrt(2 * 9.8 * imp.hop * 0.14) * 1.0; b.grounded = false; b.squash += 0.06; }
-    if (imp.lean) b.leanV += imp.lean * 4 * k;
-    if (imp.shear) b.shearV += imp.shear * 5 * k;
+    if (this.opts.onImpulse) {
+      // MallowTouch: squash / lean / shear become soft-body velocity fields
+      this.opts.onImpulse({ squash: (imp.squash || 0) * 6 * k + (imp.hop && b.grounded && !rm ? 0.5 : 0),
+        lean: (imp.lean || 0) * 4 * k, shear: (imp.shear || 0) * 5 * k }, kind);
+    } else {
+      if (imp.squash) b.squashV += imp.squash * 6 * k;
+      if (imp.lean) b.leanV += imp.lean * 4 * k;
+      if (imp.shear) b.shearV += imp.shear * 5 * k;
+    }
+    if (imp.hop && b.grounded && !rm) { b.hopV = Math.sqrt(2 * 9.8 * imp.hop * 0.14) * 1.0; b.grounded = false; if (!this.opts.onImpulse) b.squash += 0.06; }
     if (imp.tilt) b.tiltV += imp.tilt * 60 * k;
     if (imp.spin && !rm) b.spin = imp.spin;
     if (imp.glitch) { b.glitchBurst = Math.max(b.glitchBurst, rm ? 0 : imp.glitch); }
     if (r.fx && this.opts.particles) this.particles.burst(r.fx, opts);
     if (r.sound) this.opts.audio?.play?.(this.id, r.sound, { intensity: this.intensity });
-    if (r.haptic && this.opts.haptics) buzz(r.haptic);
+    if (r.haptic) this._haptic(r.haptic);
     if (r.blink) this._blinkNow();
     this._emit('react', { kind });
+    return this;
+  }
+
+  // haptics only through the injected fn when one is given (prefs + rate limits live there)
+  _haptic(pattern) {
+    if (typeof this.opts.haptic === 'function') { try { this.opts.haptic(hapticKind(pattern)); } catch { /* ignore */ } return; }
+    if (this.opts.haptic === null || this.opts.haptic === false) return;
+    if (this.opts.haptics) buzz(pattern);
+  }
+
+  /** MallowTouch drives the face from the gesture: {depth 0..1, stretch ~1, speed px/s, turns, strokes, calm 0..1}. */
+  setTouch(state) {
+    if (!state) { this.touch = null; return this; }
+    const t = this.touch || (this.touch = { depth: 0, stretch: 1, speed: 0, turns: 0, strokes: 0, calm: 0 });
+    for (const key of Object.keys(state)) { const v = +state[key]; if (Number.isFinite(v)) t[key] = v; }
+    return this;
+  }
+
+  /** A one-off face overlay (attack / hold / release envelope) with optional
+   *  particles and sound — for touch reactions that are not in REACTIONS. */
+  overlay(params, { dur = 1, fx = null, sound = null } = {}) {
+    if (!this.ready) return this;
+    this.overlays.push({ start: this.time, dur: dur * (this.opts.reducedMotion ? 1.15 : 1), params: params || {}, kind: 'overlay' });
+    if (fx && this.opts.particles) this.particles.burst(fx);
+    if (sound) this.opts.audio?.play?.(this.id, sound, { intensity: this.intensity });
     return this;
   }
 
@@ -238,6 +298,7 @@ export class MallowRig {
 
   // ----------------------------------------------------------- layout --
   _resize() {
+    if (this.headless) { this._resizeHeadless(); return; }
     const r = this.container.getBoundingClientRect();
     const dpr = Math.min(2, (typeof devicePixelRatio === 'number' ? devicePixelRatio : 1) || 1);
     const W = Math.max(1, Math.round(r.width)), H = Math.max(1, Math.round(r.height));
@@ -254,11 +315,25 @@ export class MallowRig {
     this.CX = W / 2;
     this.BASE = H * this.opts.baseline;
     // skin resolution follows on-screen size (cheap for thumbnails)
-    const q = clamp(this.S * dpr * 1.05, 0.28, 1.25);
+    const q = this.opts.skinSize ? this.opts.skinSize / Math.max(...m.size) : clamp(this.S * dpr * 1.05, 0.28, 1.25);
     if (q !== this.q) {
       this.q = q;
       this.skin.width = Math.ceil(m.size[0] * q);
       this.skin.height = Math.ceil(m.size[1] * q);
+    }
+    this.skinDirty = true;
+  }
+
+  _resizeHeadless() {
+    const m = this.mallow;
+    this.W = this.W || 1; this.H = this.H || 1; this.dpr = 1;
+    this.S = this.S || 1; this.CX = this.CX || 0; this.BASE = this.BASE || 0;
+    const q = (this.opts.skinSize || 640) / Math.max(...m.size);
+    if (q !== this.q) {
+      this.q = q;
+      this.skin.width = Math.ceil(m.size[0] * q);
+      this.skin.height = Math.ceil(m.size[1] * q);
+      this._faceRect = null;
     }
     this.skinDirty = true;
   }
@@ -276,8 +351,10 @@ export class MallowRig {
 
   // ---------------------------------------------------------- pointer --
   _toLocal(e) {
+    // a CSS-scaled layer: the rect includes the transform, W/H do not
     const r = this.canvas.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
+    const sx = r.width > 0 ? this.W / r.width : 1, sy = r.height > 0 ? this.H / r.height : 1;
+    return { x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy };
   }
 
   _hit(p) {
@@ -392,7 +469,7 @@ export class MallowRig {
     this._updateBody(dt, goal);
     this._updateCycles(dt);
     if (this.opts.particles) this.particles.update(dt, this.val);
-    this._render();
+    if (!this.headless) this._render();
   }
 
   _composeTargets(dt) {
@@ -404,6 +481,8 @@ export class MallowRig {
       const w = t < 0.18 ? smoothstep(0, 0.18, t) : t > 0.62 ? 1 - smoothstep(0.62, 1, t) : 1;
       for (const [k, v] of Object.entries(o.params)) if (k in goal) goal[k] = lerp(goal[k], v, w);
     }
+    // MallowTouch: the face follows how deep, how stretched and how soothed
+    if (this.touch) this._touchFace(goal, this.touch);
     // squeeze face while held
     if (this.press?.squeezed) {
       const sq = REACTIONS[this.id]?.squeezeFace || REACTIONS._shared.squeezeFace;
@@ -446,6 +525,33 @@ export class MallowRig {
     goal.lookX = clamp(goal.lookX, -1, 1);
     goal.lookY = clamp(goal.lookY, -1, 1);
     return goal;
+  }
+
+  _touchFace(goal, T) {
+    const d = clamp(T.depth || 0, 0, 1);
+    if (d > 0.004) {
+      const sq = REACTIONS[this.id]?.squeezeFace || REACTIONS._shared.squeezeFace;
+      const w = smoothstep(0.05, 0.6, d);
+      for (const k in sq) if (k in goal) goal[k] = lerp(goal[k], sq[k], w);
+      goal.cheekPuff += 0.7 * d;
+      goal.lidBot += 0.4 * d;
+      goal.eyeOpen *= 1 - 0.6 * d;
+      goal.browY -= 0.2 * d;
+    }
+    const st = T.stretch ?? 1;
+    if (st > 1.1) {
+      // a long stretch: "ooh"
+      const w = smoothstep(1.1, 1.35, st);
+      goal.mouthRound = lerp(goal.mouthRound, 0.8, w);
+      goal.mouthOpen = lerp(goal.mouthOpen, Math.max(goal.mouthOpen, 0.55), w);
+      goal.eyeOpen += 0.3 * w;
+    }
+    const calm = clamp(T.calm || 0, 0, 0.85);
+    if (calm > 0.005) {
+      const cg = this._calmGoal || (this._calmGoal = resolveExpression(this.mallow, { comforted: 0.6, calm: 0.4 }, 0.8));
+      for (const k of CALM_KEYS) goal[k] = lerp(goal[k], cg[k], calm);
+    }
+    this.opts.touchFace?.(goal, T, this);
   }
 
   _cycleEnv(name) {
@@ -552,8 +658,9 @@ export class MallowRig {
       b.hop += b.hopV * dt * 0.42;
       if (b.hop <= 0) {
         b.hop = 0; b.grounded = true; b.sinceLand = 0;
-        b.squashV += Math.min(2.6, Math.abs(b.hopV) * 1.7) * energy;
-        b.shearV += rand(-0.4, 0.4) * energy;
+        const land = Math.min(2.6, Math.abs(b.hopV) * 1.7) * energy, wob = rand(-0.4, 0.4) * energy;
+        if (this.opts.onImpulse) this.opts.onImpulse({ squash: land, lean: 0, shear: wob }, 'land');
+        else { b.squashV += land; b.shearV += wob; }
         b.hopV = 0;
         if (this.opts.particles && v.bounce > 0.3) this.particles.burst({ kind: 'dust', n: 3 });
       }
@@ -561,7 +668,8 @@ export class MallowRig {
       b.sinceLand += dt;
       const interval = 1 / Math.max(0.4, v.bounceRate);
       if (v.bounce > 0.06 && !rm && !this.press && b.sinceLand > interval * 0.6) {
-        b.squash += 0.05 * v.bounce;    // anticipation
+        if (this.opts.onImpulse) this.opts.onImpulse({ squash: 0.5 * v.bounce, lean: 0, shear: 0 }, 'anticipate');
+        else b.squash += 0.05 * v.bounce;    // anticipation
         b.hopV = Math.sqrt(2 * g * 0.42 * v.bounce * 0.12) * 1.05;
         b.grounded = false;
       }
@@ -671,35 +779,116 @@ export class MallowRig {
     if (this.opts.particles) this.particles.draw(ctx, { lift, S });
   }
 
+  /** Redraw the skin if the face changed. Returns true when its pixels changed
+   *  (skinVersion bumps; skinRect is the changed area in skin px). */
+  renderSkin() { return this._renderSkin() === true; }
+
+  /** The skin-px rectangle that holds everything the face animates (eyes,
+   *  brows, mouth, tongue, cheeks, tears, sweat) — for dirty-rect uploads. */
+  faceRect() {
+    if (this._faceRect) return this._faceRect;
+    this._faceRect = this._skinBox(faceRectSrc(this.mallow));
+    return this._faceRect;
+  }
+
+  _skinBox([x0, y0, x1, y1]) {
+    const q = this.q || 1, W = this.skin.width, H = this.skin.height;
+    const x = clamp(Math.floor(x0 * q), 0, W), y = clamp(Math.floor(y0 * q), 0, H);
+    return { x, y, w: clamp(Math.ceil(x1 * q) - x, 1, W - x), h: clamp(Math.ceil(y1 * q) - y, 1, H - y) };
+  }
+
+  // the smallest skin rect covering the face parts that changed since the last draw
+  _dirtyFaceRect(P) {
+    if (!this._partBoxes || this._partQ !== this.q) {
+      this._partQ = this.q;
+      this._partBoxes = Object.entries(facePartsSrc(this.mallow)).map(([k, r]) => [k, r]);
+      this._partSig = {};
+    }
+    const anim = {
+      eyes: this.id === 'zuzu' || P.sparkle > 1.05 || P.heartEyes > 0.01 || P.wet > 0.05,
+      mouth: P.mouthTremble > 0.01 || P.mouthWave > 0.3,
+      wet: P.tears > 0.01 || P.sweat > 0.01,
+    };
+    const u = box();
+    let any = false;
+    for (const [k, r] of this._partBoxes) {
+      let sig = k === 'eyes' ? P.blink.toFixed(2) : '';
+      for (const p of PART_KEYS[k]) sig += '|' + P[p].toFixed(3);
+      if (anim[k] || sig !== this._partSig[k]) { grow(u, ...r); any = true; }
+      this._partSig[k] = sig;
+    }
+    return any ? this._skinBox(u) : null;
+  }
+
+  /** Glitzi's energised glitch lines for a shader (opts.shaderGlitch): per row
+   *  [y, x0, len, alpha] in source px, plus thickness; null when calm. */
+  glitchLines(out = new Float32Array(GLITCH_ROWS.length * 4)) {
+    const g = clamp(this.val.glitch, 0, 2);
+    if (this.id !== 'glitzi' || g < 0.55) return null;
+    const W = this.mallow.size[0], k = (g - 0.55) / 1.45;
+    for (let i = 0; i < GLITCH_ROWS.length; i++) {
+      const ph = this.time * (0.6 + i * 0.13) + i * 1.7;
+      out[4 * i] = GLITCH_ROWS[i];
+      out[4 * i + 1] = (Math.sin(ph) * 0.5 + 0.5) * W * 0.4;
+      out[4 * i + 2] = W * (0.35 + 0.5 * k);
+      out[4 * i + 3] = (0.25 + 0.55 * k) * (0.65 + 0.35 * Math.sin(ph * 2.1));
+    }
+    out.thick = 3 + 2 * k;
+    return out;
+  }
+
   _renderSkin() {
     const v = this.val;
     const blinkAmt = this._blinkAmount();
-    const animated = this.id === 'zuzu' || this.id === 'glitzi' || v.tears > 0.01 || v.sweat > 0.01 ||
+    const shaderGlitch = this.id === 'glitzi' && !!this.opts.shaderGlitch;
+    const animated = this.id === 'zuzu' || (this.id === 'glitzi' && !shaderGlitch) || v.tears > 0.01 || v.sweat > 0.01 ||
       v.mouthTremble > 0.01 || v.heartEyes > 0.01 || v.sparkle > 1.05 || v.wet > 0.05;
     // rest state for the approved-art cross-fade
     const blinking = blinkAmt > 0.01 && v.eyeOpen > 0.05;
     const atRest = !blinking && this._deviation(v) < 0.03;
     const prevRest = this.restMix ?? 1;
     this.restMix = atRest ? Math.min(1, prevRest + (this._dt || 0.016) * 7) : 0;
-    const sig = this._faceSignature(blinkAmt) + '|' + this.restMix.toFixed(2);
-    if (!animated && !this.skinDirty && sig === this._lastSig) return;
+    const glitchSig = this.id === 'glitzi' ? '|' + (shaderGlitch ? Math.min(0.55, v.glitch).toFixed(3) : v.glitch.toFixed(3)) : '';
+    const sig = this._faceSignature(blinkAmt) + '|' + this.restMix.toFixed(2) + glitchSig;
+    if (!animated && !this.skinDirty && sig === this._lastSig) return false;
     this._lastSig = sig;
+    // headless (MallowTouch): only the face area changes between frames, so
+    // redraw just that — outside it the body and the approved art are the same
+    // pixels. Glitzi's glitch lines span the body, so they force a full redraw
+    // unless a shader draws them.
+    const fullKey = this.q + (this.id === 'glitzi' ? (shaderGlitch ? Math.min(0.55, v.glitch).toFixed(3) : String(this.time)) : '');
+    const partial = this.headless && !this.skinDirty && this.skinVersion > 0 && fullKey === this._fullKey;
+    this._fullKey = fullKey;
     this.skinDirty = false;
     const ctx = this.sctx;
     const q = this.q;
     const m = this.mallow;
     const A = this.assets;
+    const P0 = { ...v, blink: blinkAmt };
+    // the pristine fade touches everything the body art changed: the whole face
+    const restMoved = this.restMix !== this._lastRestMix;
+    this._lastRestMix = this.restMix;
+    const dirty = partial ? (restMoved ? this.faceRect() : this._dirtyFaceRect(P0)) : (this.headless && this._dirtyFaceRect(P0), null);
+    if (partial && !dirty) { this.skinRect = null; return false; }
+    ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, this.skin.width, this.skin.height);
+    if (partial) {
+      const r = dirty;
+      ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
+      ctx.clearRect(r.x, r.y, r.w, r.h);
+      this.skinRect = r;
+    } else {
+      ctx.clearRect(0, 0, this.skin.width, this.skin.height);
+      this.skinRect = { x: 0, y: 0, w: this.skin.width, h: this.skin.height, full: true };
+    }
     ctx.setTransform(q, 0, 0, q, 0, 0);
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(A.body, 0, 0);
 
     const f = m.face;
-    const P = { ...v };
-    P.blink = blinkAmt;
+    const P = P0;
     // Glitzi's energised/dimmed glitch lines sit on the body, under the eyes
-    if (this.id === 'glitzi') drawGlitchLines(ctx, this, P);
+    if (this.id === 'glitzi' && (!shaderGlitch || P.glitch < 0.55)) drawGlitchLines(ctx, this, P);
     for (const side of ['L', 'R']) drawEye(ctx, this, f, side, P);
     for (const side of ['L', 'R']) drawBrow(ctx, f, side, P);
     drawMouth(ctx, f, P, this.time);
@@ -718,6 +907,9 @@ export class MallowRig {
     drawCheeks(ctx, f, P, this.time);
     drawTearsAndSweat(ctx, this, f, P);
     ctx.globalCompositeOperation = 'source-over';
+    ctx.restore();
+    this.skinVersion++;
+    return true;
   }
 
   _faceSignature(blink) {
@@ -743,6 +935,61 @@ export class MallowRig {
 }
 
 // ---------------------------------------------------------- drawing --
+/** Source-px boxes [x0, y0, x1, y1] around each animated face feature group:
+ *  eyes, brows, mouth, cheeks, wet (tears + sweat). */
+export function facePartsSrc(m) {
+  const f = m.face;
+  const parts = { eyes: box(), brows: box(), mouth: box(), cheeks: box(), wet: box() };
+  for (const side of ['L', 'R']) {
+    const e = f.eyes[side];
+    const rx = e.rx || e.hw, ry = e.ry || e.hw * 0.7, lw = e.lw || 10;
+    // open eyes stay inside their (scaled) ellipse; closed lids are a tube
+    const hx = Math.max(rx * 1.45, (e.hw || 0) * 1.15) + lw, hy = ry * 1.5 + lw;
+    grow(parts.eyes, e.x - hx, e.y - hy, e.x + hx, e.y + hy);
+    const out = side === 'L' ? -1 : 1;
+    const tx = e.x + out * (e.hw || rx) * 0.55;
+    grow(parts.wet, tx - 12, e.y, tx + 12, e.y + (e.ry || e.sag) * 0.9 + (e.ry || 30) * 2.2 + 8);
+    if (side === 'R') grow(parts.wet, e.x + rx * 1.15 - 18, e.y - ry * 1.2 - 18, e.x + rx * 1.15 + 18, e.y - ry * 1.2 + 36);
+    const b = f.brows?.[side];
+    if (b) {
+      const lift = ry * 1.2 + b.lw;
+      grow(parts.brows, Math.min(b.p0[0], b.p1[0]) - b.lw, Math.min(b.p0[1], b.p1[1], b.c[1]) - lift,
+        Math.max(b.p0[0], b.p1[0]) + b.lw, Math.max(b.p0[1], b.p1[1], b.c[1]) + lift * 0.6);
+    }
+    const c = f.cheeks?.[side];
+    if (c) grow(parts.cheeks, c[0] - c[2] * 1.55, c[1] - c[2] * 1.55, c[0] + c[2] * 1.55, c[1] + c[2] * 1.55);
+  }
+  const M = f.mouth;
+  const depth = M.depth || M.w * 0.45;
+  grow(parts.mouth, M.x - M.w * 0.78 - M.lw, M.y - M.w * 0.22 - M.lw, M.x + M.w * 0.78 + M.lw, M.y + (M.sag || 0) + depth * 1.6 + M.w * 0.28 + M.lw);
+  const pad = 8;
+  for (const k of Object.keys(parts)) {
+    const r = parts[k];
+    if (!(r[2] > r[0])) { delete parts[k]; continue; }
+    r[0] = Math.max(0, r[0] - pad); r[1] = Math.max(0, r[1] - pad);
+    r[2] = Math.min(m.size[0], r[2] + pad); r[3] = Math.min(m.size[1], r[3] + pad);
+  }
+  return parts;
+}
+function box() { return [Infinity, Infinity, -Infinity, -Infinity]; }
+function grow(r, x0, y0, x1, y1) { r[0] = Math.min(r[0], x0); r[1] = Math.min(r[1], y0); r[2] = Math.max(r[2], x1); r[3] = Math.max(r[3], y1); }
+
+/** Source-px box [x0, y0, x1, y1] around every animated face feature. */
+export function faceRectSrc(m) {
+  const r = box();
+  for (const p of Object.values(facePartsSrc(m))) grow(r, ...p);
+  return r;
+}
+
+// which face params each part draws (for per-part dirty rects)
+const PART_KEYS = {
+  eyes: ['eyeOpen', 'closedCurve', 'lidTop', 'lidBot', 'lidSlant', 'wink', 'lookX', 'lookY', 'irisScale', 'eyeScale', 'sparkle', 'heartEyes', 'wet', 'spiralHue'],
+  brows: ['browAlpha', 'browY', 'browTilt', 'browCurve', 'browAsym'],
+  mouth: ['mouthSmile', 'mouthOpen', 'mouthWidth', 'mouthRound', 'mouthWave', 'mouthSkew', 'mouthPout', 'tongue', 'mouthTremble'],
+  cheeks: ['blush', 'blushLines', 'cheekPuff'],
+  wet: ['tears', 'sweat'],
+};
+
 function hexA(hex, a) {
   const h = hex.replace('#', '');
   const n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16);

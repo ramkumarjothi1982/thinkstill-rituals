@@ -8,6 +8,7 @@ import { MALLOWS } from '../../mallows/registry.js';
 import { openSupport } from './support.js';
 import { photoTray } from '../../v3/tray.js';
 import { warmMallowCards } from '../../v3/mallow-cards.js';
+import { type } from '../../ui/type.js';
 
 export default function express(app, params = {}) {
   const { world } = app;
@@ -36,7 +37,7 @@ export default function express(app, params = {}) {
       h('button', { class: 'btn ghost', style: { minHeight: '40px' }, onclick: () => openSupport(app) }, 'Need support now?')),
     h('div', { class: 'spacer', style: { minHeight: '22dvh' } }),
     h('div', { class: 'card', style: { padding: '16px' } },
-      h('h1', { class: 'title', style: { fontSize: '24px', marginBottom: '10px' } }, 'What’s happening in your head?'),
+      h('h1', { class: 'title express-q', style: { marginBottom: '12px' } }, 'What’s happening in your head?'),
       ta,
       h('p', { class: 'muted tip', style: { margin: '6px 2px 0' } }, 'Tip: tap the mic on your keyboard to talk instead. Your words stay on this phone.'),
       tray.el,
@@ -44,7 +45,7 @@ export default function express(app, params = {}) {
       h('button', { class: 'btn ghost', style: { padding: '0 4px', minHeight: '40px' }, onclick: () => openExplorer() }, 'Browse every feeling A–Z →'),
       h('div', { style: { marginTop: '6px' } }, chosen),
       h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' } },
-        h('span', { style: { fontWeight: 700, fontSize: '14px' } }, 'How big?'), level, levelLabel),
+        h('span', { style: type('label', { fontWeight: '700', flex: '0 0 auto' }) }, 'How big?'), level, levelLabel),
       h('div', { style: { marginTop: '12px' } }, go)));
 
   let t = 0;

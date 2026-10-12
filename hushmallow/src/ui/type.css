@@ -111,31 +111,32 @@
   }
 }
 
-/* utility classes, one per token */
-.t-cinematic { font: var(--type-cinematic); letter-spacing: var(--type-cinematic-ls); font-optical-sizing: auto; text-wrap: balance; }
-.t-world { font: var(--type-world); letter-spacing: var(--type-world-ls); font-optical-sizing: auto; text-wrap: balance; }
-.t-discovery { font: var(--type-discovery); letter-spacing: var(--type-discovery-ls); font-optical-sizing: auto; text-wrap: balance; }
-.t-reward { font: var(--type-reward); letter-spacing: var(--type-reward-ls); font-optical-sizing: auto; text-wrap: balance; }
-.t-dialogue { font: var(--type-dialogue); letter-spacing: var(--type-dialogue-ls); }
-.t-subtitle { font: var(--type-subtitle); letter-spacing: var(--type-subtitle-ls); }
-.t-thought { font: var(--type-thought); letter-spacing: var(--type-thought-ls); }
-.t-quote { font: var(--type-quote); letter-spacing: var(--type-quote-ls); }
-.t-body { font: var(--type-body); letter-spacing: var(--type-body-ls); }
-.t-howto { font: var(--type-howto); letter-spacing: var(--type-howto-ls); }
-.t-lead { font: var(--type-lead); letter-spacing: var(--type-lead-ls); }
-.t-entry { font: var(--type-entry); letter-spacing: var(--type-entry-ls); }
-.t-screen-title { font: var(--type-screen-title); letter-spacing: var(--type-screen-title-ls); }
-.t-heading { font: var(--type-heading); letter-spacing: var(--type-heading-ls); }
-.t-button { font: var(--type-button); letter-spacing: var(--type-button-ls); }
-.t-control { font: var(--type-control); letter-spacing: var(--type-control-ls); }
-.t-input { font: var(--type-input); letter-spacing: var(--type-input-ls); }
-.t-row { font: var(--type-row); letter-spacing: var(--type-row-ls); }
-.t-label { font: var(--type-label); letter-spacing: var(--type-label-ls); }
-.t-caption { font: var(--type-caption); letter-spacing: var(--type-caption-ls); }
-.t-overline { font: var(--type-overline); letter-spacing: var(--type-overline-ls); text-transform: uppercase; }
-.t-badge { font: var(--type-badge); letter-spacing: var(--type-badge-ls); text-transform: uppercase; }
-.t-stat { font: var(--type-stat); letter-spacing: var(--type-stat-ls); font-variant-numeric: tabular-nums; }
-.t-legible { text-shadow: var(--type-shadow); }
+/* utility classes, one per token. The class is doubled on purpose: a token
+   class on an element must beat component defaults such as `.card h3`. */
+.t-cinematic.t-cinematic { font: var(--type-cinematic); letter-spacing: var(--type-cinematic-ls); font-optical-sizing: auto; text-wrap: balance; }
+.t-world.t-world { font: var(--type-world); letter-spacing: var(--type-world-ls); font-optical-sizing: auto; text-wrap: balance; }
+.t-discovery.t-discovery { font: var(--type-discovery); letter-spacing: var(--type-discovery-ls); font-optical-sizing: auto; text-wrap: balance; }
+.t-reward.t-reward { font: var(--type-reward); letter-spacing: var(--type-reward-ls); font-optical-sizing: auto; text-wrap: balance; }
+.t-dialogue.t-dialogue { font: var(--type-dialogue); letter-spacing: var(--type-dialogue-ls); }
+.t-subtitle.t-subtitle { font: var(--type-subtitle); letter-spacing: var(--type-subtitle-ls); }
+.t-thought.t-thought { font: var(--type-thought); letter-spacing: var(--type-thought-ls); }
+.t-quote.t-quote { font: var(--type-quote); letter-spacing: var(--type-quote-ls); }
+.t-body.t-body { font: var(--type-body); letter-spacing: var(--type-body-ls); }
+.t-howto.t-howto { font: var(--type-howto); letter-spacing: var(--type-howto-ls); }
+.t-lead.t-lead { font: var(--type-lead); letter-spacing: var(--type-lead-ls); }
+.t-entry.t-entry { font: var(--type-entry); letter-spacing: var(--type-entry-ls); }
+.t-screen-title.t-screen-title { font: var(--type-screen-title); letter-spacing: var(--type-screen-title-ls); }
+.t-heading.t-heading { font: var(--type-heading); letter-spacing: var(--type-heading-ls); }
+.t-button.t-button { font: var(--type-button); letter-spacing: var(--type-button-ls); }
+.t-control.t-control { font: var(--type-control); letter-spacing: var(--type-control-ls); }
+.t-input.t-input { font: var(--type-input); letter-spacing: var(--type-input-ls); }
+.t-row.t-row { font: var(--type-row); letter-spacing: var(--type-row-ls); }
+.t-label.t-label { font: var(--type-label); letter-spacing: var(--type-label-ls); }
+.t-caption.t-caption { font: var(--type-caption); letter-spacing: var(--type-caption-ls); }
+.t-overline.t-overline { font: var(--type-overline); letter-spacing: var(--type-overline-ls); text-transform: uppercase; }
+.t-badge.t-badge { font: var(--type-badge); letter-spacing: var(--type-badge-ls); text-transform: uppercase; }
+.t-stat.t-stat { font: var(--type-stat); letter-spacing: var(--type-stat-ls); font-variant-numeric: tabular-nums; }
+.t-legible.t-legible { text-shadow: var(--type-shadow); }
 
 /* The brand, as text: always lowercase, also inside uppercase overlines,
    badges and speaker labels. */

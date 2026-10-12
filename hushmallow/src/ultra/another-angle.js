@@ -1,4 +1,4 @@
-// ANOTHER ANGLE — Hushmallow Ultra's Reframe experience, guided by Zuzu in
+// ANOTHER ANGLE — hushmallow Beyond's Reframe experience, guided by Zuzu in
 // the Spiral Observatory. Entirely rule-based: authored frameworks + the
 // person's own words. It never invents facts about anyone, never insists on
 // a positive explanation, and keeps "your worry might be partly right" and
@@ -16,6 +16,7 @@
 //  6 STAR MAP    your new angle, assembled
 
 import { h, wait, openSheet } from '../app/ui.js';
+import { type } from '../ui/type.js';
 import * as LX from './lenses.js';
 
 const SVGNS = 'http://www.w3.org/2000/svg';
@@ -60,7 +61,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   realm()?.setMood?.({ clarity: 0.1, agitation: 0.35, heaviness: 0.2, warmth: 0.2 });
 
   // ================================================================ TELL ==
-  setMove(0, { eyebrow: 'Hushmallow Ultra · Another Angle', title: 'There’s more than one way to see it.', prompt: '' });
+  setMove(0, { eyebrow: 'Another Angle', title: 'There’s more than one way to see it.', prompt: '' });
   world.place({ x: 50, y: 25, scale: 0.6 });
   const ta = h('textarea', { class: 'feel', 'aria-label': 'What happened, and what did your brain decide it means?', placeholder: 'e.g. “My boss criticised my work. I think I’m terrible at my job.”' });
   ta.value = ctx.input.text || '';
@@ -69,7 +70,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   dock.replaceChildren(...(dueSeal.length ? [h('div', { style: { display: 'flex', justifyContent: 'center' } },
     h('button', { class: 'chip', style: { gap: '8px' }, onclick: () => openSealed(dueSeal[0]) }, lensIcon('future', 22), 'A sealed prediction is ready to open'))] : []),
   h('div', { class: 'card', style: { padding: '14px' } },
-    h('p', { style: { margin: '0 0 8px', fontWeight: 700 } }, 'What happened — and what did your brain decide it means?'), ta,
+    h('p', { style: type('lead', { margin: '0 0 8px', color: 'var(--text-1)' }) }, 'What happened — and what did your brain decide it means?'), ta,
     h('p', { class: 'muted', style: { margin: '8px 0 10px' } }, 'Two sentences is plenty. Your words stay on this phone.'), go));
   say(guide('welcome') || 'Ooh, a thought to look at! Tell me what happened, and what your brain made of it.', 3600);
   for (;;) {
@@ -137,10 +138,10 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   const placeY = (i) => 30 + i * 11;
   const pieceEls = pieces.map((p, i) => {
     const el = h('div', { class: 'piece', style: pieceStyle(placeY(i)), role: 'group', 'aria-label': `Piece: ${p.text}` },
-      h('div', { style: { fontWeight: 700, fontSize: '15.5px', lineHeight: '1.3' } }, p.text),
+      h('div', { style: type('thought', { fontSize: 'calc(16px * var(--type-scale))', lineHeight: '1.3' }) }, p.text),
       h('div', { style: { display: 'flex', gap: '6px', marginTop: '8px' } },
-        h('button', { class: 'chip', style: { minHeight: '34px', fontSize: '13px' }, onclick: () => drop(p, 'fact') }, '← Happened'),
-        h('button', { class: 'chip', style: { minHeight: '34px', fontSize: '13px' }, onclick: () => drop(p, 'added') }, 'Brain added →')));
+        h('button', { class: 'chip', style: type('label', { minHeight: '38px', fontWeight: '700' }), onclick: () => drop(p, 'fact') }, '← Happened'),
+        h('button', { class: 'chip', style: type('label', { minHeight: '38px', fontWeight: '700' }), onclick: () => drop(p, 'added') }, 'Brain added →')));
     makeDraggable(el, (x) => drop(p, x < innerWidth / 2 ? 'fact' : 'added'));
     pieceLayer.append(el);
     p.el = el;
@@ -197,7 +198,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   const addedText = out.added.join(' ');
   const found = E.detectPatterns(addedText);
   const words = h('div', { style: { position: 'absolute', left: '50%', top: '38%', transform: 'translate(-50%,-50%)', width: 'min(88vw, 420px)', textAlign: 'center',
-    font: '700 26px/1.35 var(--font-display)', color: '#fff', textShadow: '0 2px 18px rgba(20,0,60,.6)', pointerEvents: 'none' } });
+    ...type('thought', { fontSize: 'calc(24px * var(--type-scale))', lineHeight: '1.35' }), color: '#fff', textShadow: '0 2px 18px rgba(20,0,60,.6)', pointerEvents: 'none' } });
   // wrap matched spans so the lens can light them
   const spans = [];
   let html = escapeHtml(addedText);
@@ -238,7 +239,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     const card = h('div', { class: 'card', style: { padding: '12px 14px', boxShadow: 'none' } },
       h('div', { class: 'eyebrow', style: { color: '#ff9cf0' } }, 'Found: ' + pat.name),
       h('p', { style: { margin: '4px 0 0', color: 'var(--text-1)' } }, pat.explain),
-      h('p', { style: { margin: '4px 0 0', fontStyle: 'italic' } }, pat.question));
+      h('p', { style: type('body', { margin: '6px 0 0', color: '#ffd2f6', fontWeight: '650' }) }, pat.question));
     cards.prepend(card);
     if (!out.patterns.includes(id)) out.patterns.push(id);
   }
@@ -277,7 +278,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   const deck = interleave([shuffle(ev.supports).slice(0, 3), shuffle(ev.against).slice(0, 3), shuffle(ev.missing).slice(0, 2)]);
   const cardEl = h('div', { class: 'card', style: { padding: '14px', minHeight: '86px' } });
   const btns = h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginTop: '8px' } });
-  const mkB = (label, bucket, col) => h('button', { class: 'btn', style: { minHeight: '48px', fontSize: '13.5px', padding: '0 8px', borderColor: col }, onclick: () => place(bucket) }, label);
+  const mkB = (label, bucket, col) => h('button', { class: 'btn', style: type('label', { minHeight: '48px', fontWeight: '700', padding: '0 8px', borderColor: col }), onclick: () => place(bucket) }, label);
   btns.append(mkB('Fits the worry', 'supports', '#ff5be9'), mkB('Doesn’t fit', 'against', '#39f0ff'), mkB('Still unknown', 'missing', '#ffd98a'));
   const skip = h('button', { class: 'btn ghost', style: { minHeight: '38px' }, onclick: () => nextCard() }, 'Doesn’t apply · skip');
   const own = h('button', { class: 'btn ghost', style: { minHeight: '38px' }, onclick: () => addOwn() }, '+ My own');
@@ -286,7 +287,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   let di = 0;
   function showCard() {
     const c = deck[di];
-    cardEl.replaceChildren(c ? h('p', { style: { margin: 0, color: 'var(--text-1)', fontWeight: 650, fontSize: '16.5px' } }, c.text)
+    cardEl.replaceChildren(c ? h('p', { style: type('lead', { margin: 0, color: 'var(--text-1)', lineHeight: '1.4' }) }, c.text)
       : h('p', { style: { margin: 0, color: 'var(--text-2)' } }, 'That’s the deck. Add your own, or carry on.'));
     btns.style.opacity = c ? '1' : '.4';
     btns.querySelectorAll('button').forEach((b) => { b.disabled = !c; });
@@ -376,7 +377,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   if (cameo?.text) {
     grid.prepend(h('div', { class: 'card', style: { padding: '10px 12px', display: 'flex', gap: '10px', alignItems: 'center', boxShadow: 'none' } },
       h('img', { src: new URL(`../../assets/mallows/${cameo.mallow}.png`, import.meta.url).href, alt: '', style: { width: '40px', height: '40px', objectFit: 'contain', flex: '0 0 auto' } }),
-      h('p', { style: { margin: 0, color: 'var(--text-1)', fontSize: '14.5px' } }, h('b', {}, `${cap(cameo.mallow)}: `), cameo.text)));
+      h('p', { style: type('body', { margin: 0, color: 'var(--text-1)', fontSize: 'calc(15px * var(--type-scale))', lineHeight: '1.4' }) }, h('b', {}, `${cap(cameo.mallow)}: `), cameo.text)));
   }
   dock.replaceChildren(grid, nextDone);
   if (!(await waitFor(nextDone))) return out;
@@ -406,16 +407,16 @@ export async function run(ctx, { frameworks: F, engine: E }) {
 
   // ------------------------------------------------------------ helpers --
   function mkPortal(label, key, col, x) {
-    const list = h('div', { style: { fontSize: '12.5px', color: 'var(--text-2)', marginTop: '6px', maxHeight: '64px', overflow: 'hidden' } });
+    const list = h('div', { style: type('caption', { color: 'var(--text-2)', marginTop: '6px', maxHeight: '73px', overflow: 'hidden', lineHeight: '1.35' }) });
     const el = h('div', { 'aria-label': label, role: 'region', style: { position: 'absolute', left: `${x}%`, top: '76%', transform: 'translate(-50%,-50%)', width: '42vw', maxWidth: '210px',
       aspectRatio: '1 / .78', borderRadius: '50%', display: 'grid', placeItems: 'center', textAlign: 'center', padding: '14px', transition: 'transform 700ms var(--ease-spring)',
       background: `radial-gradient(closest-side, ${col}33, ${col}11 60%, transparent 72%)`, boxShadow: `inset 0 0 0 2px ${col}aa, 0 0 40px ${col}55`, pointerEvents: 'none' } },
-    h('div', {}, h('div', { style: { font: '800 11px/1.2 var(--font-ui)', letterSpacing: '.14em', textTransform: 'uppercase', color: col } }, label), list));
+    h('div', {}, h('div', { style: type('overline', { color: col }) }, label), list));
     return { el, x, add: (t) => list.append(h('div', {}, '• ' + t)) };
   }
   function crystalStyle() {
     return { position: 'absolute', left: '50%', top: '40%', transform: 'translate(-50%,-50%)', width: 'min(84vw, 380px)', padding: '20px', borderRadius: '26px', textAlign: 'center',
-      font: '700 20px/1.35 var(--font-display)', color: '#fff', background: 'linear-gradient(135deg, rgba(57,240,255,.22), rgba(196,20,230,.28))', border: '1px solid rgba(255,255,255,.35)',
+      ...type('thought', { fontSize: 'calc(20px * var(--type-scale))', lineHeight: '1.35' }), color: '#fff', background: 'linear-gradient(135deg, rgba(57,240,255,.22), rgba(196,20,230,.28))', border: '1px solid rgba(255,255,255,.35)',
       boxShadow: '0 0 50px rgba(150,80,255,.45), inset 0 1px 0 rgba(255,255,255,.4)', backdropFilter: 'blur(10px)', transition: 'all 380ms var(--ease-out)' };
   }
   function pieceStyle(top) {
@@ -493,8 +494,8 @@ export async function run(ctx, { frameworks: F, engine: E }) {
         transform: `rotate(${(i / list.length) * 360}deg) translateY(-${size * 0.5 - 8}px)` } })));
     const lensEl = h('div', { style: { position: 'absolute', inset: '15%', borderRadius: '50%', display: 'grid', placeItems: 'center', padding: '10%', textAlign: 'center',
       background: 'radial-gradient(circle at 40% 35%, rgba(255,255,255,.16), rgba(60,20,120,.55) 60%, rgba(20,6,50,.85))', boxShadow: 'inset 0 0 40px rgba(57,240,255,.35), 0 0 60px rgba(150,80,255,.35)' } });
-    const kindEl = h('div', { style: { font: '800 10.5px/1.2 var(--font-ui)', letterSpacing: '.14em', textTransform: 'uppercase', color: '#9ff4ff', marginBottom: '8px' } });
-    const textEl = h('div', { 'aria-live': 'polite', style: { font: '650 16px/1.38 var(--font-ui)', color: '#fff', transition: 'opacity 260ms, filter 260ms' } });
+    const kindEl = h('div', { style: type('overline', { color: '#9ff4ff', marginBottom: '8px' }) });
+    const textEl = h('div', { 'aria-live': 'polite', style: type('body', { fontWeight: '650', fontSize: 'calc(16px * var(--type-scale))', lineHeight: '1.38', color: '#fff', transition: 'opacity 260ms, filter 260ms' }) });
     lensEl.append(h('div', {}, kindEl, textEl));
     el.append(ring, ticks, lensEl);
     const KIND = { context: 'Bigger picture', benign: 'A kinder possibility', neutral: 'Just the facts', growth: 'Something to build', 'self-compassion': 'Go easy on yourself',
@@ -657,7 +658,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     const el = h('div', { class: 'card', role: 'status', style: { position: 'absolute', left: `${Math.round(z.cx - w / 2)}px`, ...at, width: `${w}px`, boxSizing: 'border-box',
       padding: '10px 12px', display: 'flex', gap: '10px', alignItems: 'center', pointerEvents: 'auto', boxShadow: '0 12px 40px rgba(10,0,40,.5)', animation: ctx.reducedMotion ? 'none' : 'bubbleIn 380ms var(--ease-spring) both' } },
     h('img', { src: new URL(`../../assets/mallows/${c.mallow}.png`, import.meta.url).href, alt: '', style: { width: '40px', height: '40px', objectFit: 'contain', flex: '0 0 auto' } }),
-    h('p', { style: { margin: 0, color: 'var(--text-1)', fontSize: '14px', lineHeight: '1.35' } }, h('b', {}, `${cap(c.mallow)}: `), c.text));
+    h('p', { style: type('body', { margin: 0, color: 'var(--text-1)', fontSize: 'calc(15px * var(--type-scale))', lineHeight: '1.4' }) }, h('b', {}, `${cap(c.mallow)}: `), c.text));
     const bye = () => { if (activeCameo === bye) activeCameo = null; el.style.transition = 'opacity 280ms'; el.style.opacity = '0'; setTimeout(() => el.remove(), 300); };
     el.onclick = bye;
     dismissCameo();
@@ -677,8 +678,8 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     const items = recs.map((r) => h('button', { class: 'choice', 'data-lens': r.id, style: { display: 'flex', gap: '12px', alignItems: 'center', width: '100%', padding: '11px 14px' } },
       lensOrb(r.id, compact() ? 38 : 44),
       h('span', { style: { minWidth: '0' } },
-        h('b', { style: { display: 'block', fontSize: '16px' } }, r.name),
-        h('span', { style: { display: 'block', marginTop: '2px', color: 'var(--text-2)', fontSize: '13.5px', fontWeight: '500', lineHeight: '1.35' } }, r.reason))));
+        h('b', { style: type('row', { display: 'block', fontWeight: '700' }) }, r.name),
+        h('span', { style: type('caption', { display: 'block', marginTop: '3px', color: 'var(--text-2)' }) }, r.reason))));
     const skip = h('button', { class: 'btn ghost block' }, round ? 'On to my next move' : 'Skip — on to my next move');
     dock.replaceChildren(...items, skip);
     const orbs = recs.map((r, i) => {
@@ -751,29 +752,29 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     const labels = [null];
     const labelLayer = h('div', { 'aria-hidden': 'true', style: { position: 'absolute', inset: '0', pointerEvents: 'none' } });
     for (let i = 1; i <= N; i++) {
-      const l = h('div', { style: { position: 'absolute', left: '0', top: '0', font: '800 10.5px/1 var(--font-ui)', letterSpacing: '.14em', textTransform: 'uppercase', color: RING_COL[i], whiteSpace: 'nowrap',
+      const l = h('div', { style: { position: 'absolute', left: '0', top: '0', ...type('overline', { lineHeight: '1', letterSpacing: '.1em' }), color: RING_COL[i], whiteSpace: 'nowrap',
         padding: '4px 8px', borderRadius: '999px', background: 'rgba(14,8,40,.55)', transition: rm ? 'none' : 'opacity 240ms, box-shadow 240ms' } }, STOPS[i].label);
       labels.push(l);
       labelLayer.append(l);
     }
     const momentText = (out.facts[0] ? `${E.tidySentence(out.facts[0])} ` : '') + E.tidySentence(out.added[0] || text);
     const card = h('div', { 'aria-hidden': 'true', style: { position: 'absolute', left: '50%', top: '50%', padding: '14px 16px', borderRadius: '22px', textAlign: 'center', color: '#fff', transformOrigin: '50% 50%',
-      font: '700 16px/1.32 var(--font-display)', background: 'linear-gradient(135deg, rgba(57,240,255,.24), rgba(196,20,230,.3))', border: '1px solid rgba(255,255,255,.4)',
+      ...type('thought', { fontSize: 'calc(16px * var(--type-scale))', lineHeight: '1.32' }), background: 'linear-gradient(135deg, rgba(57,240,255,.24), rgba(196,20,230,.3))', border: '1px solid rgba(255,255,255,.4)',
       boxShadow: '0 0 40px rgba(150,80,255,.45), inset 0 1px 0 rgba(255,255,255,.4)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', overflow: 'hidden',
       display: '-webkit-box', WebkitLineClamp: '4', WebkitBoxOrient: 'vertical' } }, momentText);
     const here = h('div', { 'aria-hidden': 'true', style: { position: 'absolute', left: '50%', top: '50%', width: '12px', height: '12px', margin: '-6px 0 0 -6px', borderRadius: '50%', background: '#fff',
       boxShadow: '0 0 0 3px rgba(255,91,233,.55), 0 0 22px 6px rgba(255,91,233,.55)', opacity: '0', pointerEvents: 'none' } });
-    const hereTag = h('div', { 'aria-hidden': 'true', style: { position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, 14px)', textShadow: '0 1px 6px #12062e', font: '700 11px/1 var(--font-ui)', color: '#ffc2f5', opacity: '0', whiteSpace: 'nowrap' } }, 'this moment');
+    const hereTag = h('div', { 'aria-hidden': 'true', style: { position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, 14px)', textShadow: '0 1px 6px #12062e', ...type('caption', { fontWeight: '700', lineHeight: '1' }), color: '#ffc2f5', opacity: '0', whiteSpace: 'nowrap' } }, 'this moment');
     box.append(svg, labelLayer, card, here, hereTag);
     stageEl.append(box);
 
     // dock: the stop's question + pick-what's-true lines, zoom controls, done
     const stopEye = h('div', { class: 'eyebrow', style: { color: '#9ff4ff' } });
-    const stopQ = h('p', { style: { margin: '4px 0 0', fontWeight: '700', color: 'var(--text-1)', fontSize: compact() ? '14.5px' : '15.5px', lineHeight: '1.3' } });
+    const stopQ = h('p', { style: type('lead', { margin: '4px 0 0', color: 'var(--text-1)', fontSize: compact() ? 'calc(15px * var(--type-scale))' : 'calc(16px * var(--type-scale))', lineHeight: '1.3' }) });
     const row = h('div', { class: 'chips scroll', role: 'group', 'aria-label': 'Lines that might be true for you', style: { margin: '10px -14px 0', padding: '2px 14px 4px', scrollSnapType: 'x proximity', scrollPadding: '0 14px', gap: '8px' } });
     const promptCard = h('div', { class: 'card', style: { padding: '12px 14px 10px', boxShadow: 'none', minWidth: '0', overflow: 'hidden' } }, stopEye, stopQ, row);
-    const zin = h('button', { class: 'icon-btn', 'aria-label': 'Zoom in', style: { fontSize: '22px', fontWeight: '700' } }, '+');
-    const zout = h('button', { class: 'icon-btn', 'aria-label': 'Zoom out', style: { fontSize: '22px', fontWeight: '700' } }, '−');
+    const zin = h('button', { class: 'icon-btn', 'aria-label': 'Zoom in', style: { font: '700 22px/1 var(--ff-ui)' } }, '+');
+    const zout = h('button', { class: 'icon-btn', 'aria-label': 'Zoom out', style: { font: '700 22px/1 var(--ff-ui)' } }, '−');
     const slider = h('input', { type: 'range', class: 'range', min: '0', max: String(N * 100), step: '1', value: '0', 'aria-label': 'Zoom level, from this moment to the whole picture', style: { flex: '1', minWidth: '0', accentColor: '#39f0ff' } });
     const doneBtn = h('button', { class: 'btn ultra block', disabled: true }, 'Done zooming');
     dock.replaceChildren(promptCard, h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', minWidth: '0' } }, zin, slider, zout), doneBtn);
@@ -869,7 +870,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
       stopQ.textContent = k ? zp.question : 'Right now this moment fills the whole view.';
       row.replaceChildren();
       if (!k) {
-        row.append(h('button', { class: 'choice', style: lineStyle(), onclick: () => goTo(1) }, h('b', {}, 'Pull back to today →'), h('span', { style: { display: 'block', color: 'var(--text-2)', fontSize: '13px', fontWeight: '500', marginTop: '2px' } }, 'Or pinch, drag up, or use the slider.')));
+        row.append(h('button', { class: 'choice', style: lineStyle(), onclick: () => goTo(1) }, h('b', {}, 'Pull back to today →'), h('span', { style: type('caption', { display: 'block', color: 'var(--text-2)', marginTop: '3px' }) }, 'Or pinch, drag up, or use the slider.')));
       } else {
         for (const line of zp.lines) {
           const on = chosen.get(S.id).includes(line.text);
@@ -891,7 +892,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
       if (k === N && !cameoShown) { cameoShown = true; const seq = lensSeq; setTimeout(() => cameoPop('zoom', seq), 900); audio.fx?.('bloom', { intensity: 0.5 }); }
     }
     function lineStyle() {
-      return { flex: '0 0 auto', width: compact() ? 'min(70vw, 230px)' : 'min(64vw, 240px)', minHeight: compact() ? '50px' : '58px', padding: compact() ? '6px 12px' : '8px 12px', fontSize: compact() ? '13.5px' : '14px', lineHeight: '1.3', whiteSpace: 'normal', scrollSnapAlign: 'start' };
+      return { flex: '0 0 auto', width: compact() ? 'min(70vw, 230px)' : 'min(64vw, 240px)', minHeight: compact() ? '50px' : '58px', padding: compact() ? '6px 12px' : '8px 12px', fontSize: compact() ? 'calc(14px * var(--type-scale))' : 'calc(15px * var(--type-scale))', lineHeight: '1.3', whiteSpace: 'normal', scrollSnapAlign: 'start' };
     }
     function toggle(S, line, b) {
       const list = chosen.get(S.id);
@@ -1004,10 +1005,10 @@ export async function run(ctx, { frameworks: F, engine: E }) {
       justifyContent: top ? 'flex-end' : 'flex-start', padding: top ? '0 15% 10px' : '12px 15% 0', textAlign: 'center', transition: 'background 220ms',
       background: top ? 'radial-gradient(120% 100% at 50% 100%, rgba(57,240,255,.2), rgba(57,240,255,.03) 70%)' : 'radial-gradient(120% 100% at 50% 0%, rgba(196,140,255,.3), rgba(80,40,160,.16) 70%)' } });
     const knownHalf = mkHalf(true), predHalf = mkHalf(false);
-    const tagStyle = (col) => ({ font: '800 10px/1.2 var(--font-ui)', letterSpacing: '.13em', textTransform: 'uppercase', color: col, marginBottom: '4px' });
+    const tagStyle = (col) => type('badge', { lineHeight: '1.2', color: col, marginBottom: '4px' });
     const knownTag = h('div', { style: tagStyle('#9ff4ff') }, 'Known');
     const predTag = h('div', { style: tagStyle('#d9c2ff') }, 'Predicted');
-    const listStyle = { fontSize: '12px', lineHeight: '1.3', color: 'var(--text-1)', maxWidth: '100%', overflow: 'hidden' };
+    const listStyle = type('caption', { lineHeight: '1.3', color: 'var(--text-1)', maxWidth: '100%', overflow: 'hidden' });
     const knownList = h('div', { style: listStyle });
     const predList = h('div', { style: { ...listStyle, color: '#efe4ff' } });
     knownHalf.append(knownTag, knownList);
@@ -1015,7 +1016,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     const fog = [0, 1, 2].map((i) => h('div', { 'aria-hidden': 'true', style: { position: 'absolute', left: `${-30 + i * 25}%`, width: '90%', top: `${58 + i * 11}%`, height: '30%', borderRadius: '50%',
       background: 'radial-gradient(closest-side, rgba(255,255,255,.16), transparent)', filter: 'blur(6px)', pointerEvents: 'none' } }));
     const horizon = h('div', { 'aria-hidden': 'true', style: { position: 'absolute', left: '5%', right: '5%', top: '50%', height: '2px', marginTop: '-1px', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,.85), transparent)' } },
-      h('span', { style: { position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', padding: '2px 7px', borderRadius: '999px', background: '#1a0d44', border: '1px solid rgba(255,255,255,.5)', font: '800 9px/1.2 var(--font-ui)', letterSpacing: '.16em', color: '#fff' } }, 'NOW'));
+      h('span', { style: { position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', padding: '2px 7px', borderRadius: '999px', background: '#1a0d44', border: '1px solid rgba(255,255,255,.5)', ...type('badge', { lineHeight: '1.2' }), color: '#fff' } }, 'NOW'));
     const centre = h('div', { style: { position: 'absolute', left: '12%', right: '12%', top: '50%', transform: 'translateY(-50%)', textAlign: 'center', opacity: '0', transition: rm ? 'none' : 'opacity 400ms, filter 300ms', pointerEvents: 'none' } });
     glass.append(knownHalf, predHalf, ...fog, horizon, centre);
     const arc = svgEl('svg', { viewBox: '0 0 100 100', style: 'position:absolute;inset:-14px;width:calc(100% + 28px);height:calc(100% + 28px);overflow:visible;opacity:0;transition:opacity 400ms', 'aria-hidden': 'true' });
@@ -1038,9 +1039,9 @@ export async function run(ctx, { frameworks: F, engine: E }) {
       lensSize = size;
       const y = top + Math.max(7, (zr.bottom - top - size) / 2);
       Object.assign(lens.style, { width: `${size}px`, height: `${size}px`, left: `${zr.cx - size / 2}px`, top: `${y}px` });
-      const fs = size < 170 ? 10.5 : size < 220 ? 11.5 : 12.5;
+      const fs = size < 220 ? 13 : 14;   // the 13px floor, even in the smallest lens
       knownList.style.fontSize = predList.style.fontSize = `${fs}px`;
-      if (focusText) focusText.style.fontSize = `${size < 170 ? 12.5 : size < 220 ? 14 : 16.5}px`;
+      if (focusText) focusText.style.fontSize = `${size < 170 ? 13 : size < 220 ? 15 : 17}px`;
       const tiny = phase !== 'sort' && size < 200;
       knownHalf.style.visibility = predHalf.style.visibility = tiny ? 'hidden' : 'visible';
     };
@@ -1059,10 +1060,10 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     const pieces = deck.pieces.slice();
     let idx = 0;
     const srcTag = h('div', { class: 'eyebrow', style: { color: '#d9c2ff' } });
-    const ptext = h('div', { style: { fontWeight: '700', fontSize: '16.5px', lineHeight: '1.3', color: 'var(--text-1)', marginTop: '4px' } });
-    const count = h('div', { class: 'muted', style: { marginTop: '6px', fontSize: '12.5px' } });
+    const ptext = h('div', { style: type('thought', { fontSize: 'calc(17px * var(--type-scale))', lineHeight: '1.3', color: 'var(--text-1)', marginTop: '4px' }) });
+    const count = h('div', { class: 'muted', style: { marginTop: '6px' } });
     const pcard = h('div', { class: 'card', role: 'group', style: { padding: '12px 14px', boxShadow: 'none', touchAction: 'none', cursor: 'grab', position: 'relative', zIndex: '2', userSelect: 'none', WebkitUserSelect: 'none' } }, srcTag, ptext, count);
-    const mkB = (label, col, side) => h('button', { class: 'btn', style: { minHeight: '48px', fontSize: innerWidth < 360 ? '12.5px' : '13.5px', padding: '0 4px', borderColor: col }, onclick: () => sort(side) }, label);
+    const mkB = (label, col, side) => h('button', { class: 'btn', style: type('label', { minHeight: '48px', fontWeight: '700', fontSize: innerWidth < 360 ? '13px' : 'calc(14px * var(--type-scale))', padding: '0 4px', borderColor: col }), onclick: () => sort(side) }, label);
     const bKnown = mkB('Known ↑', '#39f0ff', 'known'), bPred = mkB('Predicted ↓', '#c48cff', 'predicted'), bUnsure = mkB(C.unsureLabel || 'Not sure', '#ffd98a', 'unsure');
     const sortRow = h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' } }, bKnown, bPred, bUnsure);
     dock.replaceChildren(pcard, sortRow);
@@ -1091,7 +1092,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
       showPiece();
     }
     function mkGhost(r, t) {
-      return h('div', { 'aria-hidden': 'true', style: { position: 'fixed', left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, padding: '12px 14px', borderRadius: '20px', color: '#fff', fontWeight: '700', fontSize: '16px', lineHeight: '1.3',
+      return h('div', { 'aria-hidden': 'true', style: { position: 'fixed', left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, padding: '12px 14px', borderRadius: '20px', color: '#fff', ...type('thought', { fontSize: 'calc(16px * var(--type-scale))', lineHeight: '1.3' }),
         background: 'linear-gradient(135deg, rgba(57,240,255,.28), rgba(196,20,230,.34))', border: '1px solid rgba(255,255,255,.45)', boxShadow: '0 14px 40px rgba(10,0,40,.55)',
         backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', pointerEvents: 'none', zIndex: '5' } }, t);
     }
@@ -1181,17 +1182,17 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     Object.assign(knownHalf.style, { justifyContent: 'flex-start', padding: '11% 18% 0' });
     Object.assign(predHalf.style, { justifyContent: 'flex-end', padding: '0 16% 12%' });
     predList.replaceChildren(...unknownLines.map((t) => h('div', { style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', opacity: '.85' } }, t)));
-    focusText = h('div', { style: { font: `700 ${lensSize < 170 ? 12.5 : lensSize < 220 ? 14 : 16.5}px/1.3 var(--font-display)`, color: '#fff', textShadow: '0 2px 12px rgba(10,0,40,.8)' } }, `“${focus}”`);
+    focusText = h('div', { style: type('thought', { fontSize: `${lensSize < 170 ? 13 : lensSize < 220 ? 15 : 17}px`, lineHeight: '1.3', color: '#fff', textShadow: '0 2px 12px rgba(10,0,40,.8)' }) }, `“${focus}”`);
     centre.replaceChildren(
-      h('div', { style: { font: '800 9.5px/1.2 var(--font-ui)', letterSpacing: '.14em', textTransform: 'uppercase', color: '#ffd98a', marginBottom: '4px' } }, 'Your prediction'), focusText);
+      h('div', { style: type('badge', { lineHeight: '1.2', color: '#ffd98a', marginBottom: '5px' }) }, 'Your prediction'), focusText);
     centre.style.background = 'radial-gradient(closest-side, rgba(16,8,50,.92), rgba(16,8,50,.6) 70%, transparent)';
     centre.style.padding = '12px 6px';
     centre.style.opacity = '1';
     horizon.style.opacity = '0';
     arc.style.opacity = '1';
-    const num = h('div', { 'aria-hidden': 'true', style: { font: '700 34px/1 var(--font-display)', color: '#ffd98a', minWidth: '2.2em', textAlign: 'right' } }, '–');
+    const num = h('div', { 'aria-hidden': 'true', style: type('stat', { fontSize: 'calc(32px * var(--type-scale))', color: '#ffd98a', minWidth: '2.2em', textAlign: 'right' }) }, '–');
     const sure = h('input', { type: 'range', class: 'range', min: '0', max: '100', step: '1', value: '50', 'aria-label': C.sureQuestion, style: { flex: '1', minWidth: '0' } });
-    const band = h('p', { 'aria-live': 'polite', style: { margin: '8px 0 0', color: 'var(--text-2)', fontSize: '14px', minHeight: '2.6em' } }, 'Slide to show how sure it feels. You can leave it if you’d rather not.');
+    const band = h('p', { 'aria-live': 'polite', style: type('label', { margin: '8px 0 0', color: 'var(--text-2)', minHeight: '2.7em' }) }, 'Slide to show how sure it feels. You can leave it if you’d rather not.');
     const sealBtn = h('button', { class: 'btn', style: { fontSize: innerWidth < 360 ? '14px' : '15px' } }, 'Seal for later');
     const carry = h('button', { class: 'btn ultra', style: { fontSize: innerWidth < 360 ? '14px' : '15px' } }, 'Carry on');
     dock.replaceChildren(h('div', { class: 'card', style: { padding: '12px 14px', boxShadow: 'none' } },
@@ -1218,7 +1219,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
       dismissCameo();
       let when = 'month';
       const chips = h('div', { role: 'group', 'aria-label': C.sealQuestion, style: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginTop: '8px' } }, ...LX.SEAL_WHEN.map((w) => {
-        const c = h('button', { class: 'chip', 'aria-pressed': String(w.id === when), style: { justifyContent: 'center', textAlign: 'center', padding: '4px 6px', fontSize: '13px', lineHeight: '1.15', whiteSpace: 'normal' } }, w.label);
+        const c = h('button', { class: 'chip', 'aria-pressed': String(w.id === when), style: type('caption', { justifyContent: 'center', textAlign: 'center', padding: '4px 6px', fontWeight: '700', lineHeight: '1.15', whiteSpace: 'normal' }) }, w.label);
         c.onclick = () => { when = w.id; chips.querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', String(x === c))); audio.ui?.('select'); };
         return c;
       }));
@@ -1228,7 +1229,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
       const doSeal = h('button', { class: 'btn ultra' }, 'Seal it');
       const back = h('button', { class: 'btn' }, 'Not now');
       dock.replaceChildren(h('div', { class: 'card', style: { padding: '12px 14px', boxShadow: 'none' } },
-        h('p', { style: { margin: 0, fontWeight: '700', color: 'var(--text-1)', fontSize: compact() ? '14.5px' : '16px' } }, C.sealQuestion), chips,
+        h('p', { style: type('lead', { margin: 0, color: 'var(--text-1)', fontSize: compact() ? 'calc(15px * var(--type-scale))' : 'calc(16px * var(--type-scale))', lineHeight: '1.35' }) }, C.sealQuestion), chips,
         h('p', { class: 'muted', style: { margin: '8px 0 0' } }, note)), h('div', { class: 'row-btns' }, back, doSeal));
       choice = await choose([[doSeal, 'seal'], [back, 'skip']]);
       if (choice === ABORT) return ABORT;
@@ -1298,12 +1299,12 @@ export async function run(ctx, { frameworks: F, engine: E }) {
 
     // stage: the sentence with glowing dial words, and the heaviness meter
     const block = h('div', { style: { position: 'absolute', textAlign: 'center', pointerEvents: 'none' } });
-    const sentence = h('div', { 'aria-live': 'polite', style: { font: '700 22px/1.42 var(--font-display)', color: '#fff', textShadow: '0 2px 18px rgba(20,0,60,.7)', textWrap: 'balance' } });
-    const meterLbl = h('span', { style: { font: '800 10.5px/1 var(--font-ui)', letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--text-2)' } }, 'How heavy it sounds');
-    const meterBand = h('span', { style: { font: '800 10.5px/1 var(--font-ui)', letterSpacing: '.14em', textTransform: 'uppercase', color: '#ff9cf0' } });
+    const sentence = h('div', { 'aria-live': 'polite', style: type('thought', { fontSize: '22px', lineHeight: '1.42', color: '#fff', textShadow: '0 2px 18px rgba(20,0,60,.7)', textWrap: 'balance' }) });
+    const meterLbl = h('span', { style: type('overline', { lineHeight: '1', letterSpacing: '.1em', color: 'var(--text-2)' }) }, 'How heavy it sounds');
+    const meterBand = h('span', { style: type('overline', { lineHeight: '1', letterSpacing: '.1em', color: '#ff9cf0' }) });
     const fill = h('i', { style: { transition: rm ? 'none' : 'width 420ms var(--ease-out)' } });
     const meter = h('div', { class: 'meter', role: 'meter', 'aria-label': 'How heavy the sentence sounds', 'aria-valuemin': '0', 'aria-valuemax': '100', style: { height: '10px', marginTop: '6px', boxShadow: 'inset 0 0 0 1px rgba(255,255,255,.12)' } }, fill);
-    const caption = h('p', { style: { margin: '10px auto 0', maxWidth: '34ch', color: 'var(--text-2)', fontSize: '13.5px', minHeight: '1.4em', transition: 'opacity 300ms' } });
+    const caption = h('p', { style: type('label', { margin: '10px auto 0', maxWidth: '34ch', color: 'var(--text-2)', minHeight: '1.4em', transition: 'opacity 300ms' }) });
     const meterWrap = h('div', { style: { margin: '14px auto 0', maxWidth: '300px', textAlign: 'left' } }, h('div', { style: { display: 'flex', justifyContent: 'space-between', gap: '8px' } }, meterLbl, meterBand), meter);
     block.append(sentence, meterWrap, caption);
     stageEl.append(block);
@@ -1390,8 +1391,8 @@ export async function run(ctx, { frameworks: F, engine: E }) {
         svgEl('circle', { cx: 50, cy: 50, r: 6, fill: '#fff' }));
       svg.append(pointer);
       const btn = h('button', { class: 'icon-btn', style: { width: `${size + 10}px`, height: `${size + 10}px`, touchAction: 'none', background: 'radial-gradient(circle, rgba(196,20,230,.25), rgba(20,10,50,.6))', boxShadow: '0 0 24px rgba(196,20,230,.35)' } }, svg);
-      const word = h('div', { 'aria-hidden': 'true', style: { font: '800 9.5px/1.1 var(--font-ui)', letterSpacing: '.12em', textTransform: 'uppercase', color: '#ff9cf0', marginTop: '6px', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, E.dialKey(d));
-      const now = h('div', { 'aria-hidden': 'true', style: { fontSize: '12px', color: 'var(--text-1)', marginTop: '2px', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } });
+      const word = h('div', { 'aria-hidden': 'true', style: type('badge', { lineHeight: '1.15', color: '#ff9cf0', marginTop: '6px', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }) }, E.dialKey(d));
+      const now = h('div', { 'aria-hidden': 'true', style: type('caption', { fontWeight: '650', color: 'var(--text-1)', marginTop: '3px', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }) });
       const wrap = h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', flex: '0 1 112px', minWidth: '0', textAlign: 'center' } }, btn, word, now);
       let suppress = false;
       btn.addEventListener('click', () => { if (suppress) { suppress = false; return; } turn(i, 1, true); });
@@ -1445,8 +1446,8 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     const draw = (reply) => {
       body.replaceChildren(
         h('p', { class: 'muted', style: { margin: '0 0 8px' } }, `Sealed on ${when}${Number.isFinite(p.certainty) ? ` · it felt ${p.certainty}/100 sure` : ''}`),
-        h('p', { style: { margin: '0 0 14px', font: '700 20px/1.35 var(--font-display)', color: 'var(--text-1)' } }, `“${p.text}”`),
-        h('p', { style: { margin: '0 0 8px', fontWeight: '700' } }, 'How did it go?'),
+        h('p', { style: type('quote', { margin: '0 0 14px', color: 'var(--text-1)' }) }, `“${p.text}”`),
+        h('p', { style: type('lead', { margin: '0 0 8px', color: 'var(--text-1)' }) }, 'How did it go?'),
         h('div', { class: 'chips' }, ...LX.SEAL_OUTCOMES.map((o) => h('button', { class: 'chip', 'aria-pressed': String(reply?.id === o.id), onclick: () => record(o) }, o.label))),
         reply ? h('p', { style: { margin: '12px 0 0', color: 'var(--text-2)' } }, reply.reply) : null,
         h('button', { class: 'btn ghost block', style: { marginTop: '14px' }, onclick: () => { sealStore?.save(sealStore.all().filter((x) => x.id !== p.id)); sheet.close(); ctx.toast('Deleted from this phone'); } }, 'Delete it'));

@@ -18,6 +18,9 @@
 // promises sleep — resting counts either way.
 
 import { h, wait } from '../app/ui.js';
+import { canvasFontPx } from '../ui/type.js';
+
+const FONT_13 = canvasFontPx(13, 650);   // canvas labels: the voice face, at the 13px floor
 
 export const meta = { id: 'moonmilk-wind-down' };
 
@@ -91,12 +94,12 @@ export async function run(ctx) {
       box-shadow:0 0 calc(30px*var(--g)) calc(6px*var(--g)) rgba(255,205,130,calc(.45*var(--g)));transition:box-shadow 300ms}
     .mm-lantern .flame{position:absolute;left:50%;top:50%;width:9px;height:14px;margin:-6px 0 0 -4.5px;border-radius:50% 50% 45% 45%;
       background:#fff3cf;opacity:var(--g);transform:scale(calc(.5 + .5*var(--g)))}
-    .mm-lantern .lab{font:650 12.5px/1.15 var(--font-ui);text-align:center;max-width:78px;text-shadow:0 1px 8px rgba(5,3,20,.9);color:var(--text-2)}
-    .mm-lantern .lab small{display:block;font-size:11px;color:var(--text-3);margin-top:1px}
+    .mm-lantern .lab{font:650 var(--type-caption-size)/1.15 var(--ff-ui);text-align:center;max-width:84px;text-shadow:0 1px 8px rgba(5,3,20,.9);color:var(--text-2)}
+    .mm-lantern .lab small{display:block;font:600 var(--type-caption-size)/1.15 var(--ff-ui);color:var(--text-3);margin-top:2px}
     .mm-lantern.out .glass{border-color:rgba(180,190,230,.25)}
     .mm-lantern.out .lab{color:var(--text-3)}
     .mm-own .glass{background:rgba(40,40,90,.35);border-style:dashed;box-shadow:none;display:grid;place-items:center}
-    .mm-own .plus{font:700 20px/1 var(--font-display);color:var(--text-2)}
+    .mm-own .plus{font:700 20px/1 var(--ff-voice);color:var(--text-2)}
     .mm-tight .mm-lantern .lab small{display:none}
     @keyframes mmFlicker{0%,100%{transform:scale(calc(.5 + .5*var(--g))) translateY(0)}50%{transform:scale(calc(.46 + .5*var(--g))) translateY(1px)}}
     .mm-flick .mm-lantern .flame{animation:mmFlicker 2.6s ease-in-out infinite}
@@ -165,8 +168,8 @@ export async function run(ctx) {
   realm()?.setMood?.({ agitation: 0.35, heaviness: 0.6, clarity: 0.2, warmth: 0.25 });
   realm()?.transform?.(0);
   const lanterns = LANTERNS.map(([id, label, line]) => ({ id, label, line, own: false, prog: 0, out: false, auto: false, el: null }));
-  const dimBtn = h('button', { class: 'btn', 'aria-label': 'Dim the next lantern for me', style: { padding: '0 12px', fontSize: '15px' } }, 'Dim one for me');
-  const doneBtn = h('button', { class: 'btn primary', disabled: true, style: { padding: '0 12px', fontSize: '15px' } }, 'Enough for tonight');
+  const dimBtn = h('button', { class: 'btn', 'aria-label': 'Dim the next lantern for me', style: { padding: '0 12px', fontSize: 'var(--type-control-size)' } }, 'Dim one for me');
+  const doneBtn = h('button', { class: 'btn primary', disabled: true, style: { padding: '0 12px', fontSize: 'var(--type-control-size)' } }, 'Enough for tonight');
   const mainRow = h('div', { class: 'row-btns' }, dimBtn, doneBtn);
   dock.replaceChildren(mainRow);
   // an unlit lantern at the end of the shore: tap it to name your own loose end
@@ -393,11 +396,11 @@ export async function run(ctx) {
       g.fillStyle = 'rgba(255,250,235,0.95)'; g.beginPath(); g.arc(hx, y, 8, 0, Math.PI * 2); g.fill();
       g.fillStyle = 'rgba(40,40,90,0.55)'; g.beginPath(); g.arc(hx + 3.5, y - 2, 6.5, 0, Math.PI * 2); g.fill();
       if (reached === 0 && !dragging && !auto) {
-        g.font = '650 13px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center';
+        g.font = FONT_13; g.textAlign = 'center';
         g.fillStyle = 'rgba(230,230,255,0.7)'; g.fillText('drag down, slowly', body.cx, y - 14);
       }
       // softened region labels on the left
-      g.font = '650 12.5px ui-rounded, system-ui, sans-serif'; g.textBaseline = 'middle';
+      g.font = FONT_13; g.textBaseline = 'middle';
       for (let i = 0; i < reached; i++) {
         const ry = body.top + body.height * REGIONS[i][2];
         const txt = `${REGIONS[i][1].toLowerCase()} · soft`;
@@ -443,7 +446,7 @@ export async function run(ctx) {
   // ================================================== 3. SLOW BLINKS ==
   setMove(2, { eyebrow: 'Move 3 of 4', title: 'Slow blinks', prompt: 'Tap as my eyes close. Each blink a little slower than the last.' });
   const blinkCanvas = h('canvas', { width: 264, height: 264, 'aria-hidden': 'true', style: { position: 'absolute', inset: '0', width: '100%', height: '100%' } });
-  const countEl = h('span', { style: { position: 'relative', transform: 'translateY(-14px)', font: '700 28px var(--font-display)', textShadow: '0 1px 8px rgba(0,0,0,.5)' } }, String(BLINKS));
+  const countEl = h('span', { style: { position: 'relative', transform: 'translateY(-14px)', font: '700 calc(28px * var(--type-scale))/1.2 var(--ff-voice)', textShadow: '0 1px 8px rgba(0,0,0,.5)' } }, String(BLINKS));
   const blinkBtn = h('button', { class: 'hold-target', style: { width: '120px', height: '120px' }, 'aria-label': `Blink with Noomi. Press as Noomi’s eyes close. ${BLINKS} blinks to go.` }, blinkCanvas, countEl);
   const bcue = h('p', { class: 'muted', 'aria-live': 'polite', style: { textAlign: 'center', margin: '4px 0 0', minHeight: '20px', color: 'var(--text-1)', textShadow: '0 1px 10px rgba(5,3,20,.95), 0 0 2px rgba(5,3,20,.8)' } }, 'Watch my eyes…');
   const watchBtn = h('button', { class: 'btn block' }, 'Just watch Noomi');
@@ -539,11 +542,11 @@ export async function run(ctx) {
   sleepyFace(0.7, { comforted: 0.6, calm: 0.4 });
   const REST = rests(day);
   const grid = h('div', { class: 'choice-grid', role: 'group', 'aria-label': 'Tiny rests' });
-  const note = h('p', { class: 'muted', 'aria-live': 'polite', style: { margin: '8px 2px 0', minHeight: '20px', textAlign: 'center', fontSize: '13.5px', color: 'var(--text-1)', textShadow: '0 1px 10px rgba(5,3,20,.95)' } }, '');
+  const note = h('p', { class: 'muted', 'aria-live': 'polite', style: { margin: '8px 2px 0', minHeight: '20px', textAlign: 'center', fontSize: 'var(--type-label-size)', color: 'var(--text-1)', textShadow: '0 1px 10px rgba(5,3,20,.95)' } }, '');
   const finishBtn = h('button', { class: 'btn primary block', disabled: true, style: { marginTop: '8px' } }, day ? 'Thanks, Noomi' : 'Goodnight, Noomi');
   for (const [id, label, line] of REST) {
     const tight = H < 700;
-    const b = h('button', { class: 'choice', 'aria-pressed': 'false', style: { minHeight: tight ? '46px' : '54px', fontSize: tight ? '13.5px' : '14.5px', padding: tight ? '7px 12px' : '10px 14px' } }, label);
+    const b = h('button', { class: 'choice', 'aria-pressed': 'false', style: { minHeight: tight ? '46px' : '54px', fontSize: tight ? 'var(--type-label-size)' : 'var(--type-control-size)', padding: tight ? '7px 12px' : '10px 14px' } }, label);
     b.onclick = () => {
       grid.querySelectorAll('.choice').forEach((x) => x.setAttribute('aria-pressed', 'false'));
       b.setAttribute('aria-pressed', 'true');
@@ -599,7 +602,7 @@ export async function run(ctx) {
       z.age += dt;
       if (!rm) { z.y -= 14 * dt; z.x += Math.sin(z.age * 0.9) * 0.25; }
       z.a = Math.min(1, z.age) * Math.max(0, 1 - z.age / 4.2);
-      g.font = `700 ${z.s + z.age * 3}px Fredoka, ui-rounded, system-ui, sans-serif`;
+      g.font = canvasFontPx(z.s + z.age * 3, 700);
       g.fillStyle = `rgba(235,235,255,${(0.6 * z.a).toFixed(3)})`;
       g.fillText('z', z.x + z.age * 8, z.y);
     }

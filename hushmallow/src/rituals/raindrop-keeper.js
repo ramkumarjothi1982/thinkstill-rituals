@@ -18,6 +18,9 @@
 // shared ideas. No promise that the sadness lifts.
 
 import { h, clearBubble } from '../app/ui.js';
+import { canvasFontPx } from '../ui/type.js';
+
+const FONT_13 = canvasFontPx(13, 650);   // canvas labels: the voice face, at the 13px floor
 
 // [id, chip label, Blubi's reply] — replies are authored per chip, never per free text
 const HOLDS = [
@@ -257,7 +260,7 @@ export async function run(ctx) {
       bead(x, y - 10 * b, 9 * b, 1, 1);
       if (L.label && b > 0.6 && labelA > 0) {
         g.save();
-        g.font = '650 12px ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
+        g.font = FONT_13;
         g.textAlign = 'center'; g.textBaseline = 'top';
         g.fillStyle = `rgba(255,246,252,${0.85 * labelA * (b - 0.6) / 0.4})`;
         g.shadowColor = 'rgba(5,10,58,.9)'; g.shadowBlur = 6;
@@ -388,13 +391,13 @@ export async function run(ctx) {
     let chosen = null;
     const keep = h('button', { class: 'btn primary block', disabled: true }, 'Hold onto this one');
     const ownInput = h('input', { type: 'text', maxlength: '60', placeholder: 'Type a few words…', 'aria-label': 'What this drop holds, in your own words',
-      style: { display: 'none', width: '100%', minHeight: '48px', boxSizing: 'border-box', borderRadius: '16px', border: '1px solid var(--line-strong)', background: 'rgba(8,16,64,.82)', color: 'var(--text-1)', font: '500 16px var(--font-ui)', padding: '0 14px' } });
+      style: { display: 'none', width: '100%', minHeight: '48px', boxSizing: 'border-box', borderRadius: '16px', border: '1px solid var(--line-strong)', background: 'rgba(8,16,64,.82)', color: 'var(--text-1)', font: '500 var(--type-row-size)/1.25 var(--ff-ui)', padding: '0 14px' } });
     // short screens: a compact two-column set, with the rest behind "More…"
     const compact = H < 700;
     const chipBox = h('div', { class: compact ? '' : 'chips', role: 'group', 'aria-label': 'What this drop holds',
       style: compact ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' } : { justifyContent: 'center', gap: '6px' } });
-    const chipStyle = compact ? { minHeight: '44px', fontSize: '13px', padding: '4px 10px', justifyContent: 'center', textAlign: 'center', lineHeight: '1.15', whiteSpace: 'normal' }
-      : { minHeight: '44px', fontSize: '14px', padding: '0 13px' };
+    const chipStyle = compact ? { minHeight: '44px', fontSize: 'var(--type-caption-size)', padding: '4px 10px', justifyContent: 'center', textAlign: 'center', lineHeight: '1.15', whiteSpace: 'normal' }
+      : { minHeight: '44px', fontSize: 'var(--type-label-size)', padding: '0 13px' };
     const chips = [];
     const select = (id, el) => {
       chosen = id;
@@ -548,7 +551,7 @@ export async function run(ctx) {
   const bandBottom = () => Math.max(bandTop() + 10, dockTop() - 40);
   const SLOTS = [[0.5, 0.35], [0.22, 0.6], [0.78, 0.55], [0.36, 0.95], [0.66, 0.9]];
   const freeSpot = (x, y, label = '') => {
-    g.font = '650 12px ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
+    g.font = FONT_13;
     const half = Math.max(34, g.measureText(label).width / 2 + 8);
     const ok = (px, py) => lanterns.every((L) => Math.hypot(L.x - px, (L.y - py) * 1.6) > 86);
     const cy = Math.max(bandTop(), Math.min(bandBottom(), y));
@@ -627,11 +630,11 @@ export async function run(ctx) {
   realm()?.transform?.(0.75);
   const grid = h('div', { class: 'choice-grid', role: 'group', 'aria-label': 'One small kindness' });
   const SAFE = 'If it ever feels like too much, the support button is always there.';
-  const note = h('p', { class: 'muted', style: { ...SOFT, margin: '0', minHeight: '20px', fontSize: H < 700 ? '13.5px' : '' }, 'aria-live': 'polite' }, H < 700 ? SAFE : '');
+  const note = h('p', { class: 'muted', style: { ...SOFT, margin: '0', minHeight: '20px', fontSize: H < 700 ? 'var(--type-label-size)' : '' }, 'aria-live': 'polite' }, H < 700 ? SAFE : '');
   const doneBtn = h('button', { class: 'btn primary block', disabled: true }, 'I’ll do that');
-  const safety = H < 700 ? null : h('p', { class: 'muted', style: { ...SOFT, margin: '0', fontSize: '13px' } }, SAFE);
+  const safety = H < 700 ? null : h('p', { class: 'muted', style: { ...SOFT, margin: '0', fontSize: 'var(--type-caption-size)' } }, SAFE);
   for (const [id, label, line] of KIND) {
-    const b = h('button', { class: 'choice', 'aria-pressed': 'false', style: H < 700 ? { minHeight: '48px', padding: '6px 10px', fontSize: '13.5px' } : { minHeight: '52px', padding: '8px 12px', fontSize: '14.5px' } }, label);
+    const b = h('button', { class: 'choice', 'aria-pressed': 'false', style: H < 700 ? { minHeight: '48px', padding: '6px 10px', fontSize: 'var(--type-label-size)' } : { minHeight: '52px', padding: '8px 12px', fontSize: 'var(--type-control-size)' } }, label);
     on(b, 'click', () => {
       grid.querySelectorAll('.choice').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
       result.kindness = id;

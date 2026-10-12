@@ -1,4 +1,4 @@
-// Photo tray: add up to six photos, tap one to replace it, × to remove it.
+// Photo tray: add up to seven photos, tap one to replace it, × to remove it.
 // Shown on the "What's happening" screen. With none, the seven Mallows take
 // the photos' place in the ritual.
 import { h, icon, toast } from '../app/ui.js';
@@ -31,12 +31,12 @@ export function photoTray({ note = true } = {}) {
   const el = h('div', { class: 'photo-block' },
     h('div', { class: 'photo-head' }, h('span', {}, 'Add photos (optional)'), count),
     tray, input,
-    note ? h('p', { class: 'muted photo-note' }, 'People, places, screenshots, things — up to six. They become part of your ritual, stay only on this phone, and are cleared afterwards. Never uploaded or shared. No photos? The seven Mallows play the part instead.') : null);
+    note ? h('p', { class: 'muted photo-note' }, 'People, places, screenshots, things — up to seven. They become part of your ritual, stay only on this phone, and are cleared afterwards. Never uploaded or shared. No photos? The seven Mallows play the part instead.') : null);
   return { el, destroy: off };
 }
 
-/** Say so when some picked photos didn't fit (six is the limit). */
+/** Say so when some picked photos didn't fit (seven is the limit). */
 export function tellIfFull(picked, added) {
   if (picked <= added || photoSession.count < MAX_PHOTOS) return;
-  toast(added ? `Up to six photos fit, so ${added === 1 ? 'one was' : `${added} were`} added.` : 'You already have six photos. Remove one to add another.', 3200);
+  toast(added ? `Up to seven photos fit, so ${added === 1 ? 'one was' : `${added} were`} added.` : 'You already have seven photos. Remove one to add another.', 3200);
 }

@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0a0818">
+<title>MallowTouch lab</title>
+<link rel="icon" href="data:,">
+<style>
+  :root { --ink: #0a0818; --panel: rgba(16, 12, 40, 0.72); --line: rgba(255, 255, 255, 0.14); --text: #f4f0ff; --text2: rgba(244, 240, 255, 0.74); --accent: #ffd27a; }
+  html, body { margin: 0; height: 100%; background: var(--ink); color: var(--text); font: 500 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+    overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
+  body { overflow: hidden; }
+  #bg { position: fixed; inset: 0; background: radial-gradient(120% 75% at 50% 92%, #3a2a8a 0%, #1b1450 38%, #0a0818 78%); }
+  body.bg-light #bg { background: radial-gradient(120% 75% at 50% 92%, #fff6e8 0%, #f1e6ff 45%, #d9d2f2 100%); }
+  body.bg-light { --panel: rgba(255, 255, 255, 0.8); --line: rgba(20, 10, 60, 0.14); --text: #1a1238; --text2: rgba(26, 18, 56, 0.72); }
+  #stage { position: fixed; inset: 0; }
+  .ui { position: fixed; z-index: 5; }
+  #roster { top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 6px; border-radius: 18px;
+    background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); max-width: calc(100vw - 40px); overflow-x: auto; scrollbar-width: none; }
+  #roster::-webkit-scrollbar { display: none; }
+  #roster button { flex: 0 0 auto; width: 42px; height: 42px; border-radius: 13px; border: 1px solid transparent; background: transparent; padding: 3px; cursor: pointer; }
+  #roster button img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+  #roster button[aria-pressed="true"] { border-color: var(--accent); background: rgba(255, 210, 122, 0.14); }
+  #readout { left: max(16px, env(safe-area-inset-left)); bottom: max(16px, env(safe-area-inset-bottom)); padding: 10px 12px; border-radius: 14px; background: var(--panel);
+    border: 1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); font: 600 13px/1.45 ui-monospace, "SF Mono", Menlo, monospace;
+    color: var(--text2); min-width: 168px; pointer-events: none; white-space: pre; }
+  #readout b { color: var(--text); font-weight: 700; }
+  #controls { right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+  @media (max-width: 600px) { #controls { top: calc(max(12px, env(safe-area-inset-top)) + 64px); bottom: auto; } #log { top: auto; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 136px); } }
+  #controls .row { display: flex; gap: 6px; }
+  #controls button, #controls select { font: 600 13px system-ui, sans-serif; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    min-height: 36px; padding: 0 12px; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  #controls select { font-size: 16px; }
+  #controls button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+  .dot { position: fixed; z-index: 4; width: 38px; height: 38px; margin: -19px 0 0 -19px; border-radius: 50%; pointer-events: none;
+    background: radial-gradient(circle, rgba(255,255,255,0.55), rgba(255,255,255,0.12) 60%, rgba(255,255,255,0) 72%); border: 1.5px solid rgba(255,255,255,0.7);
+    box-shadow: 0 0 12px rgba(255,255,255,0.35); }
+  body.bg-light .dot { border-color: rgba(30, 20, 80, 0.55); background: radial-gradient(circle, rgba(30,20,80,0.25), rgba(30,20,80,0) 70%); }
+  body.nodots .dot { display: none; }
+  #log { position: fixed; z-index: 5; left: 50%; transform: translateX(-50%); top: calc(max(12px, env(safe-area-inset-top)) + 64px); font: 600 13px system-ui, sans-serif;
+    color: var(--text2); background: var(--panel); border: 1px solid var(--line); padding: 4px 10px; border-radius: 999px; pointer-events: none; opacity: 0; transition: opacity .3s; }
+  #log.on { opacity: 1; }
+  @media (max-width: 360px) { #readout { min-width: 0; font-size: 13px; } #controls button { padding: 0 9px; } }
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<div id="stage"></div>
+<nav id="roster" class="ui" aria-label="Mallows"></nav>
+<div id="log" aria-live="polite"></div>
+<div id="readout" class="ui" aria-live="off"></div>
+<div id="controls" class="ui">
+  <div class="row">
+    <select id="quality" aria-label="Render tier">
+      <option value="auto">auto</option><option value="gl">A · WebGL</option><option value="tri">B · triangles</option><option value="strip">C · strips</option>
+    </select>
+    <select id="emotion" aria-label="Feeling">
+      <option value="neutral">neutral</option><option>happy</option><option>angry</option><option>anxious</option><option>sad</option><option>calm</option><option>excited</option><option>frustrated</option><option>lonely</option>
+    </select>
+  </div>
+  <div class="row">
+    <button id="rm" aria-pressed="false">reduced motion</button>
+    <button id="snd" aria-pressed="false">sound</button>
+    <button id="bgb" aria-pressed="false">light</button>
+  </div>
+</div>
+<script type="module">
+import { MALLOWS, MALLOW_IDS } from './src/mallows/registry.js';
+import { MallowTouch } from './src/mallows/touch/mallow-touch.js';
+
+const qs = new URLSearchParams(location.search);
+const stage = document.getElementById('stage');
+const roster = document.getElementById('roster');
+const readout = document.getElementById('readout');
+const logEl = document.getElementById('log');
+const state = {
+  id: MALLOWS[qs.get('mallow')] ? qs.get('mallow') : 'glitzi',
+  quality: qs.get('quality') || 'auto',
+  rm: qs.get('rm') === '1',
+  audio: null,
+  emotion: qs.get('emotion') || 'neutral',
+};
+if (qs.get('bg') === 'light') document.body.classList.add('bg-light');
+if (qs.get('dots') === '0') document.body.classList.add('nodots');
+if (qs.get('ui') === '0') for (const el of document.querySelectorAll('.ui')) el.style.display = 'none';
+
+let mt = null;
+let hapticLog = [];
+const haptic = (kind) => { hapticLog.push([performance.now() | 0, kind]); if (hapticLog.length > 40) hapticLog.shift(); import('./src/engine/haptics.js').then((h) => h.haptic(kind)).catch(() => {}); };
+
+async function create() {
+  mt?.destroy();
+  mt = new MallowTouch(stage, { id: state.id, quality: state.quality, reducedMotion: state.rm, audio: state.audio, haptic });
+  window.__touch.mt = mt;
+  mt.on('touch', (e) => { if (!['down', 'stretchEnd'].includes(e.kind)) say(e.kind + (e.kind === 'massage' ? ` ${e.turns.toFixed(1)}` : '')); window.__touch.events.push({ t: performance.now() | 0, ...e }); });
+  mt.on('tier', (e) => say(`tier → ${e.tier} (${e.reason})`));
+  await mt.loaded;
+  layout();
+  if (state.emotion !== 'neutral') mt.setEmotion(state.emotion, 0.7);
+  for (const b of roster.children) b.setAttribute('aria-pressed', String(b.dataset.id === state.id));
+  document.getElementById('quality').value = state.quality;
+  return mt;
+}
+
+function layout() {
+  if (!mt) return;
+  const w = innerWidth, h = innerHeight;
+  // body centre a little below the middle, clear of the roster and readout
+  const scale = Number(qs.get('scale')) || 1;
+  mt.place({ x: w / 2, y: h * 0.5, scale }, { instant: true });
+}
+addEventListener('resize', layout);
+
+let tm = 0;
+function say(t) { logEl.textContent = t; logEl.classList.add('on'); clearTimeout(tm); tm = setTimeout(() => logEl.classList.remove('on'), 1100); }
+
+for (const id of MALLOW_IDS) {
+  const b = document.createElement('button');
+  b.dataset.id = id;
+  b.setAttribute('aria-label', MALLOWS[id].name);
+  b.innerHTML = `<img alt="" src="${MALLOWS[id].file}">`;
+  b.onclick = () => { state.id = id; create(); };
+  roster.append(b);
+}
+document.getElementById('quality').onchange = (e) => { state.quality = e.target.value; mt?.setQuality(state.quality); };
+document.getElementById('emotion').onchange = (e) => { state.emotion = e.target.value; mt?.setEmotion(state.emotion, 0.7); };
+const rmB = document.getElementById('rm');
+rmB.setAttribute('aria-pressed', String(state.rm));
+rmB.onclick = () => { state.rm = !state.rm; rmB.setAttribute('aria-pressed', String(state.rm)); mt?.setReducedMotion(state.rm); };
+const sndB = document.getElementById('snd');
+sndB.onclick = async () => {
+  if (!state.audio) {
+    const mod = await import('./src/engine/audio.js');
+    state.audio = mod.default || mod.audio;
+    state.audio.unlock?.(); state.audio.setEnabled?.(true);
+  }
+  const on = sndB.getAttribute('aria-pressed') !== 'true';
+  sndB.setAttribute('aria-pressed', String(on));
+  mt?.setAudio(on ? state.audio : null);
+};
+const bgB = document.getElementById('bgb');
+bgB.onclick = () => { const on = document.body.classList.toggle('bg-light'); bgB.setAttribute('aria-pressed', String(on)); };
+
+// finger dots (QA screenshots show where the touch is)
+const dots = new Map();
+const dot = (e) => {
+  if (e.type === 'pointerdown') { const d = document.createElement('div'); d.className = 'dot'; document.body.append(d); dots.set(e.pointerId, d); }
+  const d = dots.get(e.pointerId);
+  if (!d) return;
+  if (e.type === 'pointerup' || e.type === 'pointercancel') { d.remove(); dots.delete(e.pointerId); return; }
+  d.style.left = e.clientX + 'px'; d.style.top = e.clientY + 'px';
+};
+for (const t of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel']) addEventListener(t, dot, true);
+
+function tick() {
+  if (mt?.ready) {
+    const s = mt.stats, T = mt.touch;
+    readout.innerHTML = `<b>${MALLOWS[state.id].name}</b> · tier <b>${s.tier}</b>\n` +
+      `depth   ${T.depth.toFixed(2)}  stretch ${T.stretch.toFixed(2)}\n` +
+      `calm    ${T.calm.toFixed(2)}  turns   ${T.turns.toFixed(1)}\n` +
+      `fps     ${s.fps.toFixed(0).padStart(4)}  frame ${s.frameMs.toFixed(2)}ms\n` +
+      `solver  ${s.solverMs.toFixed(2)}ms skin ${s.skinMs.toFixed(2)}ms\n` +
+      `upload  ${s.uploadMs.toFixed(2)}ms draw ${s.drawMs.toFixed(2)}ms`;
+  }
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+window.__touch = { mt: null, create, state, events: [], hapticLog: () => hapticLog, MALLOW_IDS,
+  set: async (o) => { Object.assign(state, o); await create(); return mt.stats.tier; } };
+create();
+</script>
+</body>
+</html>

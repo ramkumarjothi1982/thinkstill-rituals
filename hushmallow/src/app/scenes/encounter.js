@@ -53,7 +53,7 @@ export default function encounter(app) {
     const n = photoSession.count;
     if (n >= photoSession.max) return h('div', { class: 'photo-add-inline photo-full', role: 'status' }, icon('camera'), `${n} photos added`);
     return h('button', { class: 'btn ghost block photo-add-inline', onclick: () => picker.click() },
-      icon('camera'), n ? `Add more photos (${n}/${photoSession.max})` : 'Add up to six of your photos (optional)');
+      icon('camera'), n ? `Add more photos (${n}/${photoSession.max})` : 'Add up to seven of your photos (optional)');
   }
   // no photos yet: get the Mallow cards ready while the offer is read
   if (!photoSession.count) warmMallowCards();
@@ -82,7 +82,7 @@ export default function encounter(app) {
     const mins = Math.max(1, Math.round(r.durationSec / 60));
     card.replaceChildren(
       h('div', { class: 'eyebrow', style: { color: 'var(--accent)' } }, `${lead.name} has a ritual for that`),
-      h('h3', { style: { marginTop: '8px', fontSize: '26px' } }, r.name),
+      h('h3', { class: 't-world', style: { marginTop: '8px' } }, r.name),
       h('p', {}, r.purpose),
       h('div', { class: 'reasons' }, ...o.reasons.filter((x) => !/minute/.test(x)).map((x) => h('span', {}, x)), h('span', {}, `About ${mins} min`),
         r.module === 'v3' ? h('span', { class: 'photo-chip' }, photoSession.count ? `With your ${photoSession.count} photo${photoSession.count > 1 ? 's' : ''}` : 'With the seven Mallows') : null),
@@ -121,12 +121,12 @@ export default function encounter(app) {
     app.go('ritual', { id: o.item.id });
   }
 
-  // Ultra members can step into Another Angle from here. Non-members aren't
+  // Beyond members can step into Another Angle from here. Non-members aren't
   // shown an upsell in the middle of a hard moment.
   if (ent.has('ultra') && (REFRAME_FAMILIES.has(family) || input.text.length > 20)) {
     ultraRow.append(h('button', { class: 'ultra-card', onclick: () => app.go('angle', { text: input.text }) },
       h('div', { class: 'spiral', 'aria-hidden': 'true' }),
-      h('div', {}, h('span', { class: 'badge' }, 'ULTRA'), h('div', { class: 't' }, 'Or try Another Angle'), h('div', { class: 's' }, 'Ready for the plot twist?'))));
+      h('div', {}, h('span', { class: 'badge' }, 'BEYOND'), h('div', { class: 't' }, 'Or try Another Angle'), h('div', { class: 's' }, 'Ready for the plot twist?'))));
   }
 
   return {

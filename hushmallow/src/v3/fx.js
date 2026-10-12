@@ -1,8 +1,10 @@
-// Hushmallow V3 effects library — shared by all 50 touch engines.
+// hushmallow V3 effects library — shared by all 50 touch engines.
 //
 // Everything here is canvas 2D, allocation-free per frame (pools and typed
 // arrays), and degrades for reduced motion / low stimulation. Additive light
 // ('lighter') is used for glow; nothing here flashes the full screen.
+
+import { CANVAS_FONT } from '../ui/type.js';
 
 // ------------------------------------------------------------------ maths --
 export const TAU = Math.PI * 2;
@@ -310,7 +312,9 @@ export function wrap(g, text, maxWidth, maxLines = 3) {
   if (lines.length === maxLines && words.join(' ') !== lines.join(' ')) lines[maxLines - 1] = lines[maxLines - 1].replace(/\s*\S*$/, '') + '…';
   return lines;
 }
-export const FONT = '"Fredoka", ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
+// the Mallows' voice face (HM Nunito Sans, src/ui/type.css) for every canvas label;
+// callers keep their own weights, which are multiples of 100 for Safari's canvas parser
+export const FONT = CANVAS_FONT.voice;
 /**
  * Glowing, legible label (the person's words on an object). Always readable:
  * dark halo underneath, light ink, optional coloured glow.

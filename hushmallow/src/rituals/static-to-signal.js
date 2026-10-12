@@ -16,6 +16,9 @@
 // make the anger vanish — the aim is to be steering it.
 
 import { h, wait } from '../app/ui.js';
+import { canvasFontPx } from '../ui/type.js';
+
+const FONT_17 = canvasFontPx(17, 800);
 
 const FRAGMENTS = ['unfair', 'not listened to', 'too much at once', 'disrespected', 'blamed', 'no time', 'ignored', 'moved the goalposts'];
 const NEEDS = [
@@ -159,7 +162,7 @@ export async function run(ctx) {
     return { text, x: 0.5 + Math.cos(a) * 0.36, y: 0.47 + Math.sin(a) * 0.27, ph: Math.random() * 6, zap: 0, gone: false };
   });
   drawExtra = (dt) => {
-    g.font = '800 17px ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
+    g.font = FONT_17;
     g.textAlign = 'center'; g.textBaseline = 'middle';
     for (const f of floaters) {
       if (f.gone) continue;
@@ -341,7 +344,7 @@ export async function run(ctx) {
   signal.addEventListener('abort', () => field.remove());
   const chipEls = frags.map((text, i) => {
     const [x, y] = gridPos(i, 25);
-    const el = h('button', { class: 'chip', style: { position: 'absolute', left: `${x}%`, top: `${y}%`, transform: 'translate(-50%,-50%)', pointerEvents: 'auto', maxWidth: '31vw', whiteSpace: 'normal', lineHeight: '1.15', textAlign: 'center', padding: '6px 12px', fontSize: '14px',
+    const el = h('button', { class: 'chip', style: { position: 'absolute', left: `${x}%`, top: `${y}%`, transform: 'translate(-50%,-50%)', pointerEvents: 'auto', maxWidth: '31vw', whiteSpace: 'normal', lineHeight: '1.15', textAlign: 'center', padding: '6px 12px', fontSize: 'var(--type-label-size)',
       touchAction: 'none', background: 'rgba(14,16,48,.78)', borderColor: 'rgba(62,232,255,.45)', boxShadow: '0 0 18px rgba(62,232,255,.25)', transition: 'transform 600ms var(--ease-out), opacity 600ms' },
     'aria-label': `${text}. Flick up or press to let it drift away.` }, text);
     field.append(el);
@@ -381,7 +384,7 @@ export async function run(ctx) {
   const pos = NEEDS.map((_, i) => gridPos(i, 27));
   const needEls = NEEDS.map(([id, label], i) => {
     const el = h('button', { class: 'chip', 'aria-pressed': 'false', style: { position: 'absolute', left: `${pos[i][0]}%`, top: `${pos[i][1]}%`, transform: 'translate(-50%,-50%)',
-      pointerEvents: 'auto', maxWidth: '31vw', padding: '0 12px', fontSize: '14px' } }, h('span', { class: 'hue', style: { background: '#ffd98a', boxShadow: '0 0 10px #ffd98a' } }), label);
+      pointerEvents: 'auto', maxWidth: '31vw', padding: '0 12px', fontSize: 'var(--type-label-size)' } }, h('span', { class: 'hue', style: { background: '#ffd98a', boxShadow: '0 0 10px #ffd98a' } }), label);
     el.onclick = () => {
       const on = el.getAttribute('aria-pressed') !== 'true';
       if (on && result.needs.length >= 3) return;
@@ -439,7 +442,7 @@ export async function run(ctx) {
         const line = id === 'ask'
           ? `I’d really like ${needPhrase(need)}. Could we find ten minutes to sort it?`
           : `When that happened, I felt frustrated. What I need is ${needPhrase(need)}. Can we talk about it?`;
-        const ta = h('textarea', { class: 'feel', 'aria-label': 'Your line', style: { minHeight: '84px', fontSize: '16px' } }, line);
+        const ta = h('textarea', { class: 'feel', 'aria-label': 'Your line', style: { minHeight: '84px', fontSize: 'var(--type-row-size)' } }, line);
         kids.push(ta, h('button', { class: 'btn ghost', onclick: () => { navigator.clipboard?.writeText(ta.value); ctx.toast('Copied. It stays on your phone.'); } }, 'Copy line'));
         result.line = line;
         ta.addEventListener('input', () => { result.line = ta.value; });

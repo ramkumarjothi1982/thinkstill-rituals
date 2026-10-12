@@ -18,6 +18,7 @@
 // comparison is fair or what others really have — that's not its job.
 
 import { h, wait } from '../app/ui.js';
+import { canvasFontPx, CANVAS_FONT } from '../ui/type.js';
 
 const ITEMS = [
   ['success', 'Their success', 'BIG WIN', 'Another big win, posted.', '#ffd98a'],
@@ -234,7 +235,7 @@ export async function run(ctx) {
   const playBtn = h('button', { class: 'btn primary block', disabled: true }, 'Play the reel');
   const chipWrap = h('div', { class: 'chips', style: { justifyContent: 'center' } });
   for (const [id, label] of ITEMS) {
-    const c = h('button', { class: 'chip', 'aria-pressed': 'false', style: { minHeight: '44px', fontSize: '14px' } }, label);
+    const c = h('button', { class: 'chip', 'aria-pressed': 'false', style: { minHeight: '44px', fontSize: 'var(--type-label-size)' } }, label);
     c.onclick = () => {
       const on = !picked.has(id);
       if (on && picked.size >= 3) { ctx.toast('Three’s plenty. Envy loves a crowd.'); return; }
@@ -309,18 +310,18 @@ export async function run(ctx) {
     // big caption inside the image
     c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle';
     c.shadowColor = 'rgba(40,0,60,.55)'; c.shadowBlur = w * 0.04;
-    const lines = wrap(c, p.big, w - pad * 4, `900 ${Math.round(w * 0.11)}px ui-rounded, "SF Pro Rounded", system-ui, sans-serif`);
+    const lines = wrap(c, p.big, w - pad * 4, canvasFontPx(Math.round(w * 0.11), 900));
     const lh = w * 0.12;
     lines.slice(0, 3).forEach((ln, i) => c.fillText(ln, w / 2, imgY + imgH / 2 + (i - (Math.min(3, lines.length) - 1) / 2) * lh));
     c.shadowBlur = 0;
     // likes and caption
     c.textAlign = 'left';
-    c.font = `800 ${Math.round(w * 0.062)}px system-ui, sans-serif`;
+    c.font = canvasFontPx(Math.round(w * 0.062), 800, 'ui');
     c.fillStyle = '#ff3df2';
     const likes = 2400 + (performance.now() / 1000 - t0) * 173;
     c.fillText(`♥ ${fmt(likes)}`, pad, imgY + imgH + hh * 0.06);
     c.fillStyle = 'rgba(255,255,255,.88)';
-    c.font = `600 ${Math.round(w * 0.055)}px system-ui, sans-serif`;
+    c.font = canvasFontPx(Math.round(w * 0.055), 600, 'ui');
     wrap(c, p.cap, w - pad * 2, c.font).slice(0, 2).forEach((ln, i) => c.fillText(ln, pad, imgY + imgH + hh * 0.12 + i * w * 0.07));
     // comment pills
     c.fillStyle = 'rgba(255,255,255,.12)';
@@ -333,10 +334,10 @@ export async function run(ctx) {
     og.setTransform(1, 0, 0, 1, 0, 0);
     og.clearRect(0, 0, w, hh);
     og.fillStyle = '#0b0e33'; roundRect(og, 0, 0, w, hh, 24 * dpr); og.fill();
-    og.fillStyle = 'rgba(255,255,255,.8)'; og.font = `800 ${Math.round(w * 0.055)}px system-ui, sans-serif`; og.textAlign = 'left'; og.textBaseline = 'middle';
+    og.fillStyle = 'rgba(255,255,255,.8)'; og.font = canvasFontPx(Math.round(w * 0.055), 800, 'ui'); og.textAlign = 'left'; og.textBaseline = 'middle';
     og.fillText('highlights', w * 0.06, hh * 0.065);
     og.fillStyle = '#ff3df2'; og.beginPath(); og.arc(w * 0.86, hh * 0.065, w * 0.018, 0, TAU); og.fill();
-    og.fillStyle = 'rgba(255,255,255,.75)'; og.font = `800 ${Math.round(w * 0.045)}px system-ui, sans-serif`; og.fillText('LIVE', w * 0.68, hh * 0.066);
+    og.fillStyle = 'rgba(255,255,255,.75)'; og.font = canvasFontPx(Math.round(w * 0.045), 800, 'ui'); og.fillText('LIVE', w * 0.68, hh * 0.066);
     const per = 2.6, tt = now - t0, i = Math.floor(tt / per) % posts.length, ph = (tt % per) / per;
     const p = posts[i], q = posts[(i + 1) % posts.length];
     if (posts.length > 1 && ph > 0.88) {
@@ -487,7 +488,7 @@ export async function run(ctx) {
   compass.el.setAttribute('aria-valuemax', String(WANTS.length));
   Object.assign(compass.el.style, { position: 'absolute', pointerEvents: 'auto', touchAction: 'none', cursor: 'grab' });
   layer.append(compass.el);
-  const readTitle = h('div', { style: { font: '700 20px/1.2 var(--font-display)', textAlign: 'center' }, 'aria-live': 'polite' }, 'Needle says: …spinning…');
+  const readTitle = h('div', { style: { font: '700 calc(20px * var(--type-scale))/1.2 var(--ff-voice)', textAlign: 'center' }, 'aria-live': 'polite' }, 'Needle says: …spinning…');
   const readGloss = h('p', { class: 'muted', style: { textAlign: 'center', margin: '2px 0 0', minHeight: '20px' } }, 'Grab it. It’s faster than it looks.');
   const prevBtn = h('button', { class: 'btn', 'aria-label': 'Move the needle anticlockwise' }, '◀');
   const spinBtn = h('button', { class: 'btn', 'aria-label': 'Spin the needle' }, 'Spin');
@@ -601,12 +602,12 @@ export async function run(ctx) {
   const feedPosts = (posts.length ? posts : [{ big: 'HIGHLIGHTS', hue: '#ffd98a' }]);
   for (let k = 0; k < 4; k++) for (const p of feedPosts) {
     feedRow.append(h('div', { style: { flex: '0 0 auto', padding: '8px 12px', borderRadius: '14px', background: `linear-gradient(120deg, ${p.hue}, #ff3df2)`, color: '#fff',
-      font: '800 13px/1.1 system-ui, sans-serif', whiteSpace: 'nowrap', boxShadow: '0 0 14px rgba(255,61,242,.35)' } }, `${p.big.length > 18 ? p.big.slice(0, 17) + '…' : p.big}  ♥ ${fmt(2400 + Math.random() * 9000)}`));
+      font: '800 var(--type-caption-size)/1.1 var(--ff-ui)', whiteSpace: 'nowrap', boxShadow: '0 0 14px rgba(255,61,242,.35)' } }, `${p.big.length > 18 ? p.big.slice(0, 17) + '…' : p.big}  ♥ ${fmt(2400 + Math.random() * 9000)}`));
   }
   const feed = h('div', { 'aria-hidden': 'true', style: { position: 'absolute', left: '0', right: '0', height: '46px', overflow: 'hidden', pointerEvents: 'none',
     maskImage: 'linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent)', WebkitMaskImage: 'linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent)' } }, feedRow);
-  const knobNum = h('div', { style: { font: '800 34px/1 var(--font-display)', color: '#fff', textShadow: '0 0 12px rgba(62,232,255,.7)' } }, '10');
-  const knobLbl = h('div', { style: { font: '700 10px/1 var(--font-ui)', letterSpacing: '.16em', color: 'rgba(255,255,255,.65)', marginTop: '4px' } }, 'VOLUME');
+  const knobNum = h('div', { style: { font: '800 calc(34px * var(--type-scale))/1 var(--ff-voice)', color: '#fff', textShadow: '0 0 12px rgba(62,232,255,.7)' } }, '10');
+  const knobLbl = h('div', { style: { font: '700 var(--type-caption-size)/1 var(--ff-ui)', letterSpacing: '.16em', color: 'rgba(255,255,255,.65)', marginTop: '4px' } }, 'VOLUME');
   const grip = h('div', { style: { position: 'absolute', left: '50%', top: '8%', width: '6px', height: '22%', marginLeft: '-3px', borderRadius: '3px', background: '#fff', boxShadow: '0 0 10px #3ee8ff' } });
   const knobFace = h('div', { style: { position: 'absolute', inset: '14%', borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #3b2c8f, #160f45 70%)',
     boxShadow: 'inset 0 2px 6px rgba(255,255,255,.18), inset 0 -6px 14px rgba(0,0,0,.5), 0 8px 24px rgba(0,0,0,.45)' } }, grip);
@@ -696,7 +697,7 @@ export async function run(ctx) {
   setMove(2, { eyebrow: 'Move 3 of 4', title: 'Keep it turned down?', prompt: 'Pick any that suit. Or none — the dial counts.' });
   const muteWrap = h('div', { class: 'chips', style: { justifyContent: 'center' } });
   for (const [id, label] of MUTES) {
-    const c = h('button', { class: 'chip', 'aria-pressed': 'false', style: { minHeight: '44px', fontSize: '14px' } }, label);
+    const c = h('button', { class: 'chip', 'aria-pressed': 'false', style: { minHeight: '44px', fontSize: 'var(--type-label-size)' } }, label);
     c.onclick = () => {
       const on = c.getAttribute('aria-pressed') !== 'true';
       c.setAttribute('aria-pressed', String(on));
@@ -740,7 +741,7 @@ export async function run(ctx) {
   const lockBtn = h('button', { class: 'btn primary block', disabled: true }, 'Lock it in');
   const opts = [...STEPS[want[0]], 'My own step'];
   opts.forEach((label, i) => {
-    const b = h('button', { class: 'choice', 'aria-pressed': 'false', style: { fontSize: '14px', lineHeight: '1.25', padding: '8px 10px' } }, label);
+    const b = h('button', { class: 'choice', 'aria-pressed': 'false', style: { fontSize: 'var(--type-label-size)', lineHeight: '1.25', padding: '8px 10px' } }, label);
     b.onclick = () => {
       grid.querySelectorAll('.choice').forEach((x) => x.setAttribute('aria-pressed', 'false'));
       b.setAttribute('aria-pressed', 'true');
@@ -838,7 +839,7 @@ export async function run(ctx) {
       const a = i * (360 / WANTS.length);
       const flip = a > 90 && a < 270;
       const t = mk('text', { x: '0', y: flip ? '108' : '-104', transform: `rotate(${flip ? a + 180 : a})`, 'text-anchor': 'middle', 'dominant-baseline': 'middle',
-        fill: 'rgba(255,255,255,.72)', 'font-size': '13.5', 'font-weight': '800', 'font-family': 'ui-rounded, "SF Pro Rounded", system-ui, sans-serif' });
+        fill: 'rgba(255,255,255,.72)', 'font-size': '14', 'font-weight': '800', 'font-family': CANVAS_FONT.voice });
       t.textContent = label;
       return t;
     });
@@ -853,7 +854,7 @@ export async function run(ctx) {
       setNeedle(a, steady) { needle.setAttribute('transform', `rotate(${(a * 180) / Math.PI})`); needle.style.filter = steady ? `drop-shadow(0 0 6px ${GREEN})` : ''; },
       highlight(i) {
         wedge.setAttribute('transform', `rotate(${i * (360 / WANTS.length)})`);
-        labels.forEach((t, k) => { t.setAttribute('fill', k === i ? '#eaffef' : 'rgba(255,255,255,.62)'); t.setAttribute('font-size', k === i ? '15' : '13.5'); });
+        labels.forEach((t, k) => { t.setAttribute('fill', k === i ? '#eaffef' : 'rgba(255,255,255,.62)'); t.setAttribute('font-size', k === i ? '15' : '14'); });
       },
       lock() { locked = true; wedge.setAttribute('fill', 'rgba(124,196,138,.34)'); },
       glow() { halo.setAttribute('stroke-width', '6'); halo.setAttribute('opacity', '.85'); svg.style.filter = `drop-shadow(0 0 18px ${GREEN})`; void locked; },

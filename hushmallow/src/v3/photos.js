@@ -1,6 +1,6 @@
 // Hushmallow photos — the person's own images, used as ritual material.
 //
-// Up to six. When the person adds none, the seven Mallows take their place
+// Up to seven. When the person adds none, the seven Mallows take their place
 // (see mallow-cards.js): photoApi() is handed those cards as a fallback, so
 // every engine still gets real material to move and transform.
 //
@@ -21,7 +21,7 @@
 
 import { clamp, rgba, rng, canvas as makeCanvas, TAU, lerp } from './fx.js';
 
-export const MAX_PHOTOS = 6;
+export const MAX_PHOTOS = 7;
 const MAX_EDGE = 1024;          // downscale on import (also strips metadata)
 const SPRITE_STEP = 24;         // sprite size bucket (device px)
 const SPRITE_MAX = 640;
@@ -95,7 +95,7 @@ export const photoSession = {
   get count() { return items.length; },
   get keep() { return keepNext; },
   set keep(v) { keepNext = !!v; emit(); },
-  /** Add image files (extra files beyond six are ignored). Resolves to how many were added. */
+  /** Add image files (extra files beyond seven are ignored). Resolves to how many were added. */
   async add(files) {
     let added = 0;
     for (const f of [...(files || [])]) {

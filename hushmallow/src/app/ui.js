@@ -89,12 +89,13 @@ export function say(world, text, { who, ms = 3600, above = true } = {}) {
   const rect = world.mallowRect();
   const b = h('div', { class: 'bubble', role: 'status', 'aria-live': 'polite' }, who ? h('span', { class: 'who' }, who) : null, text);
   document.body.append(b);
-  const bw = Math.min(b.offsetWidth, innerWidth - 24);
-  const x = Math.max(12, Math.min(innerWidth - bw - 12, rect.cx - bw / 2));
-  // never cover a ritual's instructions: above the Mallow if it fits under the
-  // title block, else below the Mallow (above the controls), else over the Mallow
-  const bh = b.offsetHeight;
-  const titles = [...document.querySelectorAll('#scene .move-title')].map((e) => e.getBoundingClientRect()).filter((r) => r.height > 0);
+  let bw = Math.min(b.offsetWidth, innerWidth - 24);
+  let x = Math.max(12, Math.min(innerWidth - bw - 12, rect.cx - bw / 2));
+  // never cover a ritual's instructions or the top bar's controls: above the
+  // Mallow if it fits under them, else below the Mallow (above the controls),
+  // else a compact bubble as high as it may go
+  let bh = b.offsetHeight;
+  const titles = [...document.querySelectorAll('#scene .move-title, #scene .topbar')].map((e) => e.getBoundingClientRect()).filter((r) => r.height > 0);
   const minTop = titles.length ? Math.max(...titles.map((r) => r.bottom)) + 8 : 12;
   const dock = document.querySelector('#scene .dock');
   let maxBottom = dock && dock.children.length ? dock.getBoundingClientRect().top - 8 : innerHeight - 12;
@@ -105,7 +106,11 @@ export function say(world, text, { who, ms = 3600, above = true } = {}) {
   let below = false;
   if (!above || y < minTop) {
     const yb = rect.bottom + 12;
-    if (yb + bh <= maxBottom) { y = yb; below = true; } else y = Math.max(minTop, Math.min(y, maxBottom - bh));
+    if (yb + bh <= maxBottom) { y = yb; below = true; } else {
+      // no free band: a compact bubble keeps more of the Mallow's face in view
+      if (!b.classList.contains('compact')) { b.classList.add('compact'); bh = b.offsetHeight; bw = Math.min(b.offsetWidth, innerWidth - 24); x = Math.max(12, Math.min(innerWidth - bw - 12, rect.cx - bw / 2)); }
+      y = Math.max(minTop, Math.min(rect.top + rect.height * 0.12 - bh - 6, maxBottom - bh));
+    }
   }
   b.classList.toggle('below', below);
   b.style.left = `${x}px`;

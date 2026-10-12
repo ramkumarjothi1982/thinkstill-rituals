@@ -23,6 +23,8 @@ import { REALMS } from '../world/realm.js';
 import { MALLOWS } from '../mallows/registry.js';
 import { faceMix } from '../engine/interpret.js';
 import { openSupport } from '../app/scenes/support.js';
+import { brandName } from '../brand.js';
+import { canvasFontPx, fontsReady } from '../ui/type.js';
 
 const { clamp, lerp, smooth, ease, rgba, glow, Particles, Ripples, Trail } = fx;
 
@@ -45,7 +47,8 @@ export async function run(ctx) {
   // (never worth a wait: after a moment the ritual starts with whatever is ready)
   const soon = (p, ms) => Promise.race([p, new Promise((ok) => setTimeout(() => ok([]), ms))]);
   const standIns = photoSession.count || v.noMallows ? [] : soon(mallowMaterial(ritual.mallows[0]), 1500).catch(() => []);
-  const [copyAll, engMod, fallback] = await Promise.all([loadCopy(ENG.id), loadEngine(ENG.id, { force: !!v.force }), standIns]);
+  // engines measure and wrap text on canvas: the voice face must be loaded first
+  const [copyAll, engMod, fallback] = await Promise.all([loadCopy(ENG.id), loadEngine(ENG.id, { force: !!v.force }), standIns, fontsReady(['voice'], 1200)]);
   if (signal.aborted) return { completed: false };
   const copy = copyAll[v.code] || { open: [], during: [], exit: [], bend: '', twist: '', scene: ritual.name };
   const lead = MALLOWS[ritual.mallows[0]];
@@ -219,7 +222,7 @@ export async function run(ctx) {
           h('div', { class: 'k' }, 'Your photos'), h('div', { class: 'v' }, `${pm.where} They become ${pm.becomes}. ${pm.touch} ${pm.change} ${pm.payoff}`)) : null,
         photos.standIn ? h('div', { class: 'summary-card', style: { marginTop: '10px' } },
           h('div', { class: 'k' }, photos.n === 7 ? 'The seven Mallows' : 'The Mallows'),
-          h('div', { class: 'v' }, `You didn’t add photos, so ${photos.n === 7 ? 'the seven' : 'the'} Mallows play their part in this ritual${pm?.becomes ? `: they become ${pm.becomes}` : ''}. Add up to six of your own on the ritual card next time.`)) : null,
+          h('div', { class: 'v' }, `You didn’t add photos, so ${photos.n === 7 ? 'the seven' : 'the'} Mallows play their part in this ritual${pm?.becomes ? `: they become ${pm.becomes}` : ''}. Add up to seven of your own on the ritual card next time.`)) : null,
         h('div', { class: 'summary-card', style: { marginTop: '10px' } },
           h('div', { class: 'k' }, 'Skill you’re practising'), h('div', { class: 'v' }, `${SKILL.name}: ${SKILL.does}`),
           h('div', { class: 'k' }, 'Why it can help'), h('div', { class: 'v' }, `${SKILL.insight} (${SKILL.scope})`))),
@@ -455,9 +458,10 @@ export async function run(ctx) {
     const a = smooth(clamp(k / 0.5)) * (1 - smooth(clamp((k - dur + 0.7) / 0.7)));
     const s = stage.s, w = Math.min(stage.w - 8, 330 * s);
     g.save();
-    g.font = `600 ${13 * s + 1}px ${fx.FONT}`;
+    const body = Math.max(14, 14 * s + 1), lead = body * 1.3;
+    g.font = canvasFontPx(body, 600);
     const lines = fx.wrap(g, tw, w - 28, 3);
-    const hgt = 30 + lines.length * (16 * s + 3);
+    const hgt = 34 + lines.length * lead;
     // sit at the top or the bottom of the stage, whichever is away from the active object
     if (twistSide == null) { const q = engine?.pointAt?.(clamp(engine.progress || 0)) || { y: stage.cy }; twistSide = q.y < stage.cy ? 'bottom' : 'top'; }
     const slide = (1 - ease.outCubic(clamp(k / 0.6))) * 24;
@@ -470,9 +474,12 @@ export async function run(ctx) {
     const sg = g.createLinearGradient(sx - 60, 0, sx + 60, 0); sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(0.5, 'rgba(255,255,255,0.12)'); sg.addColorStop(1, 'rgba(255,255,255,0)');
     g.fillStyle = sg; fx.roundRect(g, stage.cx - w / 2, y, w, hgt, 18); g.fill();
     g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillStyle = pal.accent; g.font = `800 ${10 * s + 1}px ${fx.FONT}`; g.fillText('PLOT TWIST', stage.cx, y + 15);
-    g.fillStyle = '#fffaf0'; g.font = `600 ${13 * s + 1}px ${fx.FONT}`;
-    lines.forEach((l, i) => g.fillText(l, stage.cx, y + 32 + i * (16 * s + 3)));
+    g.fillStyle = pal.accent; g.font = canvasFontPx(Math.max(13, 12 * s + 1), 800, 'ui');
+    if ('letterSpacing' in g) g.letterSpacing = '1.5px';
+    g.fillText('PLOT TWIST', stage.cx, y + 16);
+    if ('letterSpacing' in g) g.letterSpacing = '0px';
+    g.fillStyle = '#fffaf0'; g.font = canvasFontPx(body, 600);
+    lines.forEach((l, i) => g.fillText(l, stage.cx, y + 34 + lead * (i + 0.5)));
     g.restore();
     if (k < 0.1) live.textContent = `Plot twist: ${tw}`;
     void t;
@@ -550,7 +557,7 @@ export async function run(ctx) {
         ...(copy.bend ? [{ label: 'Mind bend', text: copy.bend }] : []),
         ...(roundsDone > 1 ? [{ label: 'Calm rounds', text: `You played ${roundsDone} rounds.` }] : []),
       ],
-      share: { title: ritual.name.split(' — ')[0], subtitle: `A Hushmallow ritual with ${lead.name}` },
+      share: { title: ritual.name.split(' — ')[0], subtitle: `A ${brandName} ritual with ${lead.name}` },
     });
   }
   signal.addEventListener('abort', () => { if (!finished) { finished = true; cleanup(); photoSession.release(); resolveRun({ completed: false }); } });

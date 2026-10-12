@@ -20,6 +20,10 @@
 // Rule-based only: every line here is authored; nothing is generated.
 
 import { h, wait } from '../app/ui.js';
+import { canvasFontPx } from '../ui/type.js';
+
+// canvas faces (the voice face; weights in 100s for Safari's canvas parser)
+const FONT_13B = canvasFontPx(13, 700), FONT_13 = canvasFontPx(13, 600), FONT_NAME = canvasFontPx(22, 700), FONT_NAME_LONG = canvasFontPx(18, 700);
 import { EMOTIONS, FAMILIES, getEmotion, getFamily, emotionsByFamily, searchEmotions, faceSimilarity } from '../data/emotions.js';
 
 export const meta = { id: 'name-it' };
@@ -320,7 +324,7 @@ export async function run(ctx) {
   const words = h('div', { role: 'group', 'aria-label': 'Feeling words', style: { display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', maxHeight: H < 640 ? '22vh' : 'min(28vh, 210px)', overflowY: 'auto', padding: '4px 2px' } });
   const nameDone = h('button', { class: 'btn primary block', disabled: !sel.length }, 'That’s its name');
   const said = String(ctx.input?.text || '').trim();
-  const echo = said && H >= 640 ? h('p', { class: 'muted', style: { margin: '0', textAlign: 'center', fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, `You said: “${said.length > 60 ? `${said.slice(0, 58)}…` : said}”`) : null;
+  const echo = said && H >= 640 ? h('p', { class: 'muted', style: { margin: '0', textAlign: 'center', fontSize: 'var(--type-caption-size)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, `You said: “${said.length > 60 ? `${said.slice(0, 58)}…` : said}”`) : null;
   dock.replaceChildren(...[echo, tray, words, nameDone].filter(Boolean));
 
   let mode = sel.length ? 'near' : 'families';
@@ -337,10 +341,10 @@ export async function run(ctx) {
   let searchInput = null;
 
   function renderTray() {
-    if (!sel.length) { tray.replaceChildren(h('span', { class: 'muted', style: { fontSize: '14px' } }, 'No word yet. Pick one below.')); return; }
+    if (!sel.length) { tray.replaceChildren(h('span', { class: 'muted', style: { fontSize: 'var(--type-label-size)' } }, 'No word yet. Pick one below.')); return; }
     tray.replaceChildren(...sel.map((e, i) => [
       i ? h('span', { 'aria-hidden': 'true', style: { color: 'var(--text-2)', fontWeight: '700' } }, '+') : null,
-      h('button', { class: 'chip', 'aria-label': `${e.name}, chosen. Press to remove.`, style: { minHeight: '44px', fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: '700', background: rgba(getFamily(e.family)?.hue || '#a8f0ff', 0.28), borderColor: getFamily(e.family)?.hue },
+      h('button', { class: 'chip', 'aria-label': `${e.name}, chosen. Press to remove.`, style: { minHeight: '44px', fontFamily: 'var(--ff-voice)', fontSize: 'var(--type-entry-size)', fontWeight: '700', background: rgba(getFamily(e.family)?.hue || '#a8f0ff', 0.28), borderColor: getFamily(e.family)?.hue },
         onclick: () => toggle(e) }, e.name, h('span', { 'aria-hidden': 'true', style: { opacity: '.6', marginLeft: '6px' } }, '×')),
     ]).flat().filter(Boolean));
   }
@@ -365,12 +369,12 @@ export async function run(ctx) {
     } else if (mode === 'search') {
       kids.push(navChip('‹ Back', sel.length || confirmed.length ? 'near' : 'families'));
       searchInput = searchInput || h('input', { type: 'text', 'aria-label': 'Type a feeling word', placeholder: 'e.g. indignant, queasy, wistful', autocomplete: 'off',
-        style: { flex: '1 1 160px', minHeight: '44px', borderRadius: '22px', border: '1px solid var(--line-strong)', background: 'var(--glass-strong)', color: 'inherit', font: 'inherit', fontSize: '16px', padding: '0 16px' } });
+        style: { flex: '1 1 160px', minHeight: '44px', borderRadius: '22px', border: '1px solid var(--line-strong)', background: 'var(--glass-strong)', color: 'inherit', font: 'inherit', fontSize: 'var(--type-row-size)', padding: '0 16px' } });
       const results = h('div', { style: { display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', width: '100%' } });
       const update = () => {
         const q = searchInput.value.trim();
         const hits = q ? searchEmotions(q, { limit: 6 }) : [];
-        results.replaceChildren(...(hits.length ? hits.map(wordChip) : [h('span', { class: 'muted', style: { fontSize: '13px' } }, q ? 'Nothing by that name. Try a nearby word?' : 'Start typing. I’ll look it up.')]));
+        results.replaceChildren(...(hits.length ? hits.map(wordChip) : [h('span', { class: 'muted', style: { fontSize: 'var(--type-caption-size)' } }, q ? 'Nothing by that name. Try a nearby word?' : 'Start typing. I’ll look it up.')]));
       };
       searchInput.oninput = update;
       update();
@@ -418,7 +422,7 @@ export async function run(ctx) {
     if (!el || rm) return;
     const r = el.getBoundingClientRect(), m = world.mallowRect();
     const f = h('div', { 'aria-hidden': 'true', style: { position: 'fixed', left: `${r.left}px`, top: `${r.top}px`, padding: '8px 14px', borderRadius: '999px', background: rgba(getFamily(e.family)?.hue || '#a8f0ff', 0.85),
-      color: '#0b0820', font: '700 15px var(--font-display)', transition: 'transform 700ms cubic-bezier(.2,.8,.2,1), opacity 700ms', pointerEvents: 'none', zIndex: '2' } }, e.name);
+      color: '#0b0820', font: '700 var(--type-control-size)/1.25 var(--ff-voice)', transition: 'transform 700ms cubic-bezier(.2,.8,.2,1), opacity 700ms', pointerEvents: 'none', zIndex: '2' } }, e.name);
     world.fx.append(f);
     requestAnimationFrame(() => requestAnimationFrame(() => {
       f.style.transform = `translate(${m.cx - r.left - r.width / 2}px, ${m.cy - r.top - r.height / 2}px) scale(.4)`;
@@ -473,15 +477,15 @@ export async function run(ctx) {
   world.fx.append(svg);
   world.fx.classList.add('live');
 
-  const regionLabel = h('div', { 'aria-live': 'polite', style: { flex: '1', textAlign: 'center', font: '700 17px var(--font-display)' } }, 'Drag the glow');
+  const regionLabel = h('div', { 'aria-live': 'polite', style: { flex: '1', textAlign: 'center', font: '700 var(--type-body-size)/1.2 var(--ff-voice)' } }, 'Drag the glow');
   const prevB = h('button', { class: 'btn', 'aria-label': 'Previous body area', style: { minWidth: '52px', padding: '0' } }, '‹');
   const nextB = h('button', { class: 'btn', 'aria-label': 'Next body area', style: { minWidth: '52px', padding: '0' } }, '›');
-  const sizeOut = h('span', { style: { color: 'var(--text-2)', fontSize: '14px' } }, '');
+  const sizeOut = h('span', { style: { color: 'var(--text-2)', fontSize: 'var(--type-label-size)' } }, '');
   const slider = h('input', { type: 'range', class: 'range', min: 0, max: 100, step: 1, value: Math.round(size * 100), 'aria-label': 'How big is it?' });
   const whereDone = h('button', { class: 'btn primary block', disabled: true }, 'That’s where');
   dock.replaceChildren(
     h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } }, prevB, regionLabel, nextB),
-    h('label', { style: { display: 'grid', gap: '2px' } }, h('span', { style: { display: 'flex', justifyContent: 'space-between', fontSize: '14px' } }, h('span', {}, 'How big is it?'), sizeOut), slider),
+    h('label', { style: { display: 'grid', gap: '2px' } }, h('span', { style: { display: 'flex', justifyContent: 'space-between', fontSize: 'var(--type-label-size)' } }, h('span', {}, 'How big is it?'), sizeOut), slider),
     whereDone);
   const updSize = () => { sizeOut.textContent = `About ${sizeWord(size)}`; slider.setAttribute('aria-valuetext', `About the size of ${sizeWord(size)}`); };
   updSize();
@@ -736,7 +740,7 @@ export async function run(ctx) {
   await wait(30);
   relayout();
   const orb = { x: 0, y: 0, hx: 0, hy: 0, drag: false, given: false, t: 0, s: 1 };
-  g.font = '700 13px ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
+  g.font = FONT_13B;
   const labelHalf = g.measureText(NEED_LABEL).width / 2 + 10;
   const homeOrb = () => { orb.hx = Math.max(Math.max(34, labelHalf), blob.cx - blob.R * 1.6 - 10); orb.hy = Math.min(fieldBox.bottom - 34, blob.cy + blob.R * 1.1); };
   homeOrb(); orb.x = orb.hx; orb.y = orb.hy;
@@ -751,7 +755,7 @@ export async function run(ctx) {
     gr.addColorStop(0, 'rgba(255,250,225,1)'); gr.addColorStop(0.35, 'rgba(255,224,150,0.85)'); gr.addColorStop(1, 'rgba(255,200,120,0)');
     g.fillStyle = gr; g.beginPath(); g.arc(orb.x, orb.y, r * 2.4, 0, Math.PI * 2); g.fill();
     if (!orb.given) {
-      g.font = '700 13px ui-rounded, "SF Pro Rounded", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'top';
+      g.font = FONT_13B; g.textAlign = 'center'; g.textBaseline = 'top';
       g.shadowColor = 'rgba(0,0,30,0.7)'; g.shadowBlur = 6;
       g.fillStyle = 'rgba(255,255,255,0.95)'; g.fillText(NEED_LABEL, orb.x, orb.y + r + 10);
       g.shadowBlur = 0; g.shadowColor = 'transparent';
@@ -829,18 +833,18 @@ export async function run(ctx) {
       const a = Math.min(1, (p - 0.55) / 0.35);
       g.textAlign = 'center'; g.textBaseline = 'top';
       const ty = stoneY + stoneR * 1.15 + 12;
-      g.font = `700 ${NAME.length > 22 ? 18 : 22}px Fredoka, ui-rounded, system-ui, sans-serif`;
-      g.font = '600 13px ui-rounded, system-ui, sans-serif';
+      g.font = NAME.length > 22 ? FONT_NAME_LONG : FONT_NAME;
+      g.font = FONT_13;
       const pw = Math.min(W - 24, Math.max(g.measureText(sub).width, NAME.length * 12) + 36);
       g.fillStyle = `rgba(10,14,44,${0.55 * a})`;
       g.beginPath();
       if (g.roundRect) g.roundRect(W / 2 - pw / 2, ty - 8, pw, 62, 20); else g.rect(W / 2 - pw / 2, ty - 8, pw, 62);
       g.fill();
       g.fillStyle = `rgba(255,255,255,${a})`;
-      g.font = `700 ${NAME.length > 22 ? 18 : 22}px Fredoka, ui-rounded, system-ui, sans-serif`;
+      g.font = NAME.length > 22 ? FONT_NAME_LONG : FONT_NAME;
       g.fillText(NAME, W / 2, ty, W - 40);
       g.fillStyle = `rgba(220,235,255,${a * 0.8})`;
-      g.font = '600 13px ui-rounded, system-ui, sans-serif';
+      g.font = FONT_13;
       g.fillText(sub, W / 2, ty + 28, W - 40);
     }
     if (p >= 1 && !rm && !low && Math.random() < dt * 2) glints.push({ x: W / 2 + (Math.random() - 0.5) * stoneR * 2.4, y: stoneY + (Math.random() - 0.5) * stoneR * 1.4, age: 0 });
