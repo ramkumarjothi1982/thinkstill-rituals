@@ -35,6 +35,7 @@ const SQ3 = Math.sqrt(3);
 const FACE = TAU / 3;               // one face of the prism
 const TURN = FACE * 2;              // start face → middle face → the quiet face
 const BANK = 0.22;                  // input may run this far ahead of the law (rad)
+const GH = 0.36;                    // ghost spacing (photo widths) at full dispersion
 const SPEC0 = ['#ff8fb8', '#ffc56e', '#ffffff', '#7ff0c6', '#9ab0ff'];
 const wrapPi = (a) => { a %= TAU; if (a > Math.PI) a -= TAU; if (a < -Math.PI) a += TAU; return a; };
 
@@ -42,7 +43,7 @@ export function create(E) {
   const { g, stage, photos, words } = E;
   const pal = E.pal || {};
   const P_GLOW = pal.glow || '#fff4c8', P_INK = pal.ink || '#15123d', P_ACC = pal.accent || '#8fd0ff';
-  const reduced = !!E.reduced, low = reduced || !!E.lowStim, heavy = !!E.heavy;
+  const reduced = !!E.reduced, low = reduced || !!E.lowStim, heavy = !!E.heavy, lowStream = !!E.lowStim;
   const calm0 = E.calm || 0, loop = E.round > 1;
   // ---- per-round character (round 1 is fixed; loop rounds vary by E.rand)
   const yawSign = loop && E.rand() < 0.5 ? -1 : 1;
@@ -64,11 +65,13 @@ export function create(E) {
 
   // ---- geometry (re-fitted on resize)
   let L, r, ri, side, pcx, pcy, qx, qy, heroS, albumY, albumS, albumSp, fontPx, maxW;
-  let gQuiet, gMirror, gBand, gSheen, gPoolA, gPoolB, gBeamIn, gInner;
+  let gQuiet, gMirror, gBand, gSheen, gPoolA, gPoolB, gBeamIn, gInner, gLip, gFoot;
   const beamO = { x: 0, y: 0 };
+  const gShadow = g.createRadialGradient(0, 0, 0, 0, 0, 1);
+  gShadow.addColorStop(0, 'rgba(0,0,8,0.3)'); gShadow.addColorStop(1, 'rgba(0,0,8,0)');
   function fit() {
     L = Math.min(stage.w * 0.86, 390 * stage.s);
-    r = clamp(Math.min(L * 0.2, stage.h * 0.118), 30, 92);
+    r = clamp(Math.min(L * 0.215, stage.h * 0.125), 30, 96);
     ri = r / 2; side = r * SQ3;
     pcx = stage.cx; pcy = stage.y + stage.h * 0.25;
     qx = stage.cx; qy = stage.y + stage.h * 0.635;
@@ -80,7 +83,11 @@ export function create(E) {
     maxW = L * 0.7;
     // face-local gradients (faces are drawn in their own coordinates, so these stay valid)
     gQuiet = g.createLinearGradient(0, -side / 2, 0, side / 2);
-    gQuiet.addColorStop(0, mix(quietC, P_GLOW, 0.3)); gQuiet.addColorStop(0.42, quietC); gQuiet.addColorStop(1, mix(glassC, '#000000', 0.3));
+    gQuiet.addColorStop(0, mix(quietC, P_ACC, 0.3)); gQuiet.addColorStop(0.18, mix(quietC, P_ACC, 0.1)); gQuiet.addColorStop(0.55, quietC); gQuiet.addColorStop(1, mix(glassC, '#000000', 0.4));
+    gLip = g.createLinearGradient(0, -side / 2, 0, -side * 0.2);
+    gLip.addColorStop(0, 'rgba(255,255,255,0.9)'); gLip.addColorStop(0.12, 'rgba(255,255,255,0.25)'); gLip.addColorStop(1, 'rgba(255,255,255,0)');
+    gFoot = g.createLinearGradient(0, side * 0.3, 0, side / 2);
+    gFoot.addColorStop(0, rgba(P_ACC, 0)); gFoot.addColorStop(1, rgba(P_ACC, 0.55));
     gMirror = g.createLinearGradient(0, -side / 2, 0, side / 2);
     gMirror.addColorStop(0, mix(glassC, '#ffffff', 0.16)); gMirror.addColorStop(0.5, glassC); gMirror.addColorStop(1, mix(glassC, '#000000', 0.35));
     gBand = g.createLinearGradient(0, -side * 0.32, 0, side * 0.32);
@@ -111,7 +118,7 @@ export function create(E) {
   const wOpts = { style: 'plain', size: 16, maxWidth: 200, lines: 2, alpha: 1, glowColour: P_GLOW, colour: undefined };
 
   const progress = () => clamp(rot / TURN);
-  const yaw = (t) => yawSign * (0.32 + Math.sin(t * 0.33 + phase0) * 0.05 * swayK);
+  const yaw = (t) => yawSign * (0.4 + Math.sin(t * 0.33 + phase0) * 0.05 * swayK);
   const bobAt = (t) => Math.sin(t * 0.8 + phase0) * 3.2 * swayK;
 
   function note(name, n, intensity = 0.3) {
@@ -216,6 +223,8 @@ export function create(E) {
     g.moveTo(beamO.x, beamO.y - 30); g.lineTo(beamO.x + sx * -70, beamO.y);
     g.lineTo(pcx + sx * L * 0.05, pcy - r * 0.15); g.lineTo(pcx + sx * L * 0.32, pcy - r * 0.55); g.closePath(); g.fill();
     g.restore();
+    // the prism's soft shadow on the light below (it floats)
+    g.save(); g.translate(pcx, pcy + r * 1.55); g.scale(L * 0.52, r * 0.22); g.fillStyle = gShadow; g.beginPath(); g.arc(0, 0, 1, 0, TAU); g.fill(); g.restore();
     if (!low) motes(g, stage.x, stage.y, stage.w, stage.h * 0.62, t * (heavy ? 0.5 : 0.8), mix('#ffffff', P_GLOW, 0.5), { n: 22, alpha: 0.32, seed: 36 + E.round, size: 1.6 });
   }
 
@@ -249,8 +258,8 @@ export function create(E) {
     const top = qy - sz.h / 2;
     g.save(); g.globalCompositeOperation = 'lighter';
     for (let i = -2; i <= 2; i++) {
-      const gx = qx + i * G * sz.w * 0.72, gy = top + Math.abs(i) * G * 8;
-      g.fillStyle = rgba(SPEC[i + 2], (0.055 + 0.04 * (1 - G)) * (1 + fin * 0.8) * (0.4 + 0.6 * s.app));
+      const gx = qx + i * G * sz.w * GH, gy = top + Math.abs(i) * G * 6;
+      g.fillStyle = rgba(SPEC[i + 2], (0.06 + 0.05 * (1 - G)) * (1 + fin * 0.9) * (0.4 + 0.6 * s.app));
       g.beginPath(); g.moveTo(pcx - ws + i * ws * 0.3, sy); g.lineTo(pcx + ws + i * ws * 0.3, sy);
       g.lineTo(gx + sz.w * 0.46, gy); g.lineTo(gx - sz.w * 0.46, gy); g.closePath(); g.fill();
     }
@@ -286,15 +295,15 @@ export function create(E) {
       for (let i = -2; i <= 2; i++) {
         if (!i) continue;
         const sh = reduced ? 0 : Math.sin(t * 0.7 + i * 2.1) * 0.06;
-        photos.draw(g, s.ph, x + i * G * sz.w * (0.72 + sh), y + Math.abs(i) * G * 8, S, {
-          shape: 'card', tone: TONES[i + 2], toneMix: 0.55 + 0.3 * G, alpha: a * (0.2 + 0.32 * clamp(G * 1.4)) * (Math.abs(i) === 2 ? 0.8 : 1),
-          rot: i * G * 0.06, blur: 0.4 + 0.4 * G, shadow: false });
+        photos.draw(g, s.ph, x + i * G * sz.w * (GH + sh), y + Math.abs(i) * G * 6, S * (1 - Math.abs(i) * 0.03), {
+          shape: 'card', tone: TONES[i + 2], toneMix: 0.5 + 0.3 * G, alpha: a * (0.22 + 0.3 * clamp(G * 1.4)) * (Math.abs(i) === 2 ? 0.75 : 1),
+          rot: i * G * 0.05, blur: 0.2 + 0.35 * G, shadow: false });
       }
       g.restore();
     }
     const focus = 1 - clamp(G * 1.2);
     photos.draw(g, s.ph, x, y, S * (1 + (isHero ? fin * 0.05 : 0)), {
-      shape: 'card', alpha: a * (0.55 + 0.45 * focus), blur: clamp(G * 0.85), tone: 'mist', toneMix: G * 0.45,
+      shape: 'card', alpha: a * (0.72 + 0.28 * focus), blur: clamp(G * 0.7), tone: 'mist', toneMix: G * 0.4,
       glow: 0.18 + 0.25 * focus + (isHero ? fin * 0.45 : fin * 0.25), glowColour: P_GLOW, shadow: s.pos > 0.5 || G < 0.2 });
   }
   function drawMoon(x, y, S, G, t, fin, a) {
@@ -355,6 +364,20 @@ export function create(E) {
         glow(g, lerp(x0, x1, k2), y, 12 + 6 * f, '#ffffff', 0.35 * f * Math.sin(Math.PI * k2));
       }
     }
+    // the far end of each near face
+    const xf = -xe * cb;
+    g.strokeStyle = rgba(mix('#ffffff', P_GLOW, 0.4), 0.45); g.lineWidth = 1.2;
+    for (let k = 0; k < 3; k++) {
+      if (Math.cos(phi + k * FACE) <= 0.012) continue;
+      const a = (k + 2) % 3, b = k;
+      g.beginPath(); g.moveTo(pcx + xf + vZ[a] * sb, vY[a]); g.lineTo(pcx + xf + vZ[b] * sb, vY[b]); g.stroke();
+    }
+    // dispersion fringe along the top silhouette (rose above, blue below)
+    let top = 0; for (let j = 1; j < 3; j++) if (vY[j] < vY[top]) top = j;
+    const tx0 = pcx - (L / 2) * cb + vZ[top] * sb, tx1 = pcx + (L / 2) * cb + vZ[top] * sb, ty = vY[top];
+    g.globalCompositeOperation = 'lighter'; g.lineWidth = 1.2;
+    g.strokeStyle = rgba(SPEC[0], 0.32 + G * 0.2); g.beginPath(); g.moveTo(tx0, ty - 1.6); g.lineTo(tx1, ty - 1.6); g.stroke();
+    g.strokeStyle = rgba(SPEC[4], 0.32 + G * 0.2); g.beginPath(); g.moveTo(tx0, ty + 1.6); g.lineTo(tx1, ty + 1.6); g.stroke();
     g.restore();
     drawCap(t, xe, sb, cb, bob, G, fin);
     // the finger's light on the glass
@@ -376,9 +399,19 @@ export function create(E) {
     g.beginPath(); g.rect(-L / 2, -side / 2, L, side); g.clip();
     g.globalAlpha = 0.88; g.fillStyle = quiet ? gQuiet : gMirror; g.fillRect(-L / 2, -side / 2, L, side);
     g.globalCompositeOperation = 'lighter';
-    g.globalAlpha = diff * 0.1; g.fillStyle = P_GLOW; g.fillRect(-L / 2, -side / 2, L, side);
+    g.globalAlpha = 0.25 + diff * 0.45; g.fillStyle = gLip; g.fillRect(-L / 2, -side / 2, L, side * 0.3);
+    g.globalAlpha = 0.2 + 0.15 * (1 - diff); g.fillStyle = gFoot; g.fillRect(-L / 2, side * 0.3, L, side * 0.2);
     if (!quiet) { g.globalAlpha = 0.05 + 0.04 * Math.sin(t * 0.5 + k); g.fillStyle = gSheen; g.fillRect(-L / 2, -side / 2, L, side); }
-    else if (prog > 0.6 || fin > 0) { g.globalAlpha = (smooth(invLerp(0.6, 1, prog)) * 0.08 + fin * 0.1); g.fillStyle = P_GLOW; g.fillRect(-L / 2, -side / 2, L, side); }
+    else if (prog > 0.5 || fin > 0) { g.globalAlpha = 1; glow(g, 0, 0, L * 0.42, P_GLOW, smooth(invLerp(0.5, 1, prog)) * 0.16 + fin * 0.14); }
+    // two slow diagonal refraction streaks drifting through the glass
+    if (!lowStream) {
+      g.globalAlpha = 0.07 + 0.04 * Math.sin(t * 0.4 + k * 2);
+      g.strokeStyle = quiet ? P_GLOW : SPEC[(k * 2 + 1) % 5]; g.lineWidth = side * 0.05;
+      for (let i = 0; i < 2; i++) {
+        const sx = ((t * (heavy ? 7 : 11) + i * L * 0.5 + k * 97 + phase0 * 40) % (L * 1.4)) - L * 0.7;
+        g.beginPath(); g.moveTo(sx - side * 0.35, side / 2); g.lineTo(sx + side * 0.35, -side / 2); g.stroke();
+      }
+    }
     g.globalAlpha = spec * 0.4; g.translate(0, bandY); g.fillStyle = gBand; g.fillRect(-L / 2, -side * 0.32, L, side * 0.64); g.translate(0, -bandY);
     g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
     // quiet face: a small moon mark at its end
@@ -419,7 +452,7 @@ export function create(E) {
       }
       g.restore();
     }
-    wOpts.style = 'light'; wOpts.alpha = vis * (0.62 + 0.38 * (1 - conv)); wOpts.glowColour = k === 0 ? P_GLOW : mix(P_GLOW, P_ACC, 0.4);
+    wOpts.style = cs > 0.62 ? 'light' : 'plain'; g.fillStyle = '#fffaf0'; wOpts.alpha = vis * (0.62 + 0.38 * (1 - conv)); wOpts.glowColour = k === 0 ? P_GLOW : mix(P_GLOW, P_ACC, 0.4);
     words.draw(g, 0, 0, wOpts);
   }
 
@@ -452,11 +485,11 @@ export function create(E) {
   function drawFinale(t, fin, beta, bob) {
     // the quiet face breathes in clean light; a single white beam; gentle risers
     glow(g, pcx, pcy + bob, L * 0.62, P_GLOW, 0.14 * fin * (0.85 + 0.15 * Math.sin(t * 1.2)));
-    if (!reduced) halo(g, qx, qy, heroS * 0.95, t, P_GLOW, { rings: 4, alpha: 0.12 * fin, speed: heavy ? 0.06 : 0.1 });
+    if (!reduced) halo(g, qx, qy, heroS * 0.8, t, P_GLOW, { rings: 3, alpha: 0.07 * fin, speed: heavy ? 0.05 : 0.08 });
     const rate = low ? 0.06 : heavy ? 0.12 : 0.35;
     if (fin < 1 && E.rand() < rate) {
-      const x = pcx + (E.rand() - 0.5) * L * 0.9;
-      E.particles.emit({ x, y: pcy + bob - r * 0.5, vx: (E.rand() - 0.5) * 14, vy: -18 - E.rand() * 22, life: 1.8, size: heavy ? 5 : 6, colour: heavy ? P_GLOW : SPEC[Math.floor(E.rand() * 5)], kind: heavy ? 'glow' : 'glint' });
+      const x = pcx + (E.rand() - 0.5) * L * 0.95;
+      E.particles.emit({ x, y: pcy + bob - r * 0.95, vx: (E.rand() - 0.5) * 14, vy: -22 - E.rand() * 22, life: 1.8, size: heavy ? 5 : 6, colour: heavy ? P_GLOW : SPEC[Math.floor(E.rand() * 5)], kind: heavy ? 'glow' : 'glint' });
     }
   }
 
