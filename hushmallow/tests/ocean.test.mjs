@@ -176,7 +176,7 @@ test('layout: the band stays clear; the thought, its words, the hero and the bub
       const s = p.slots[a], B = { x0: s.x - s.D / 2, x1: s.x + s.D / 2, y0: s.y - s.D / 2, y1: s.y + s.D / 2 };
       assert.ok(B.x0 >= OCEAN.EDGE - 0.5 && B.x1 <= W - OCEAN.EDGE + 0.5 && B.y0 >= bb && B.y1 <= p.floor, `${tag}: bubble ${a} on screen`);
       assert.ok(!ov(B, p.rects.mallow) && !ov(B, p.rects.thought) && !(p.rects.plate && ov(B, p.rects.plate)), `${tag}: bubble ${a} clear`);
-      assert.ok(s.D >= OCEAN.BUBBLE_MIN - 0.01 || s.d > 6, `${tag}: bubble ${a} ≥ 44 px until 6·Z0 (${s.D} at ${s.d})`);
+      assert.ok(s.D >= OCEAN.BUBBLE_TIGHT - 0.01 || s.d > 6, `${tag}: bubble ${a} ≥ 36 px until 6·Z0 (${s.D} at ${s.d})`);
       for (let c = a + 1; c < p.slots.length; c++) { const t = p.slots[c]; assert.ok(Math.hypot(s.x - t.x, s.y - t.y) >= (s.D + t.D) / 2 + OCEAN.BUBBLE_GAP - 0.5, `${tag}: bubbles ${a}/${c} apart`); }
     }
     if (H >= 800 && W < 500) assert.ok(p.slots.length >= 2, `${tag}: room for some bubbles (${p.slots.length})`);

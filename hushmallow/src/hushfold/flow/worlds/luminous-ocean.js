@@ -95,6 +95,22 @@ function skyAt(t, out) {
   return out;
 }
 
+/** A periodic 32 × 32 tile of smooth value noise in −1..1, its blobs about 4 cells wide and 2 tall. */
+function facetTile(seed) {
+  let a = seed >>> 0 || 1;
+  const r = () => { a = (a * 1664525 + 1013904223) >>> 0; return a / 4294967296; };
+  const gx = 8, gy = 16, G = new Float32Array(gx * gy), T = new Float32Array(32 * 32);
+  for (let k = 0; k < G.length; k++) G[k] = r() * 2 - 1;
+  const sm = (t) => t * t * (3 - 2 * t);
+  for (let j = 0; j < 32; j++) for (let i = 0; i < 32; i++) {
+    const u = (i / 32) * gx, v = (j / 32) * gy, i0 = Math.floor(u), j0 = Math.floor(v), fu = sm(u - i0), fv = sm(v - j0);
+    const at = (x, y) => G[(y % gy) * gx + (x % gx)];
+    const top = at(i0, j0) + (at(i0 + 1, j0) - at(i0, j0)) * fu, bot = at(i0, j0 + 1) + (at(i0 + 1, j0 + 1) - at(i0, j0 + 1)) * fu;
+    T[j * 32 + i] = (top + (bot - top) * fv) * 1.6;
+  }
+  return T;
+}
+
 export function create(ctx) {
   const { photos, words } = ctx;
   const mallow = ctx.mallow || null;
@@ -150,13 +166,9 @@ export function create(ctx) {
   const gSX = new Float32Array(NG), gSY = new Float32Array(NG), gR = new Float32Array(NG), gG = new Float32Array(NG), gB = new Float32Array(NG), gCrest = new Float32Array(NG), gSpec = new Float32Array(NG), gPath = new Float32Array(NG);
   const gChop = new Float32Array(NG), gGold = new Float32Array(NG);
   const rowX = { CHOP: gChop, chopMax: 1, GOLD: gGold, goldSec: GOLD_SEC };
-  // broken water: two small tiles of facets, drifting past each other (cheap, smooth in time, no flicker)
-  const TILE = 32, tileA = new Float32Array(TILE * TILE), tileB = new Float32Array(TILE * TILE);
-  for (let j = 0; j < TILE; j++) for (let i = 0; i < TILE; i++) {
-    const a = (i / TILE) * TAU, b = (j / TILE) * TAU;
-    tileA[j * TILE + i] = Math.sin(7 * a + Math.sin(5 * b) * 1.3) * Math.sin(6 * b + 0.7);
-    tileB[j * TILE + i] = Math.sin(8 * b - Math.sin(7 * a) * 1.1 + 1.9) * Math.sin(6 * a - 3 * b);
-  }
+  // broken water: two tiles of smooth random facets (wider than tall, as the view flattens them), morphing
+  // into each other — cheap, irregular, smooth in time (no flicker)
+  const TILE = 32, tileA = facetTile(ctx.seed ^ 0x2c1b), tileB = facetTile(ctx.seed ^ 0x77e3);
   const rY = new Float32Array(ROWS), rS = new Float32Array(ROWS), rZ = new Float32Array(ROWS), rDZ = new Float32Array(ROWS);
   let rowsN = ROWS;
   let colX0 = 0, colStep = 1;
@@ -284,8 +296,12 @@ export function create(ctx) {
     const target = makeCamera({ W, H, hy: plan.hy, homeY: plan.homeY, waterY: plan.waterY });
     driftGain = calibrateDrift(target, U);
     rowX.chopMax = FLICK_U * U * 1.3;
-    // the dawn sits off-axis, on the side away from the words (its path a column beside the hero)
-    xd = (plan.plate ? plan.plate.x : plan.home.x) > W / 2 + 8 ? W * 0.22 : W * 0.78;
+    // the dawn sits off-axis, on the side away from the words, its path a column in the open water beside the hero
+    {
+      const M = plan.mallow, right = (plan.plate ? plan.plate.x : plan.home.x) <= W / 2 + 8;
+      xd = right ? clamp((M.right + W - OCEAN.EDGE) / 2, W * 0.7, W * 0.88) : clamp((M.left + OCEAN.EDGE) / 2, W * 0.12, W * 0.3);
+      xd = Math.round(xd);
+    }
     buildImage();
     buildSky();
     if (!sea.amb.length) {
@@ -1086,9 +1102,11 @@ export function create(ctx) {
     // state: its own feeling, eased by what the person's sea does — rocked by their long swells (a little for good),
     // a little tense in their chop, quieter with the distance their swells made
     const dist = tS.z / cam.Z0;
-    const chopK = clamp(metricsCache.chop * 6), rockK = clamp((metricsCache.period - 2) / 4) * clamp((metricsCache.userEnergy || 0) / 400);
-    relief = Math.min(0.6, relief + (rockK * dt) / 16);
-    const target = clamp(baseTension * (1 - relief) + 0.28 * chopK - 0.05 * clamp(dist - 1, 0, 6), 0.12, 0.95);
+    // (rockK: 1 for one unhurried long swell of the person's rolling under it — E1 is that swell's energy on this screen)
+    const E1 = 0.0023 * U * U * U;
+    const chopK = clamp(metricsCache.chop * 6), rockK = clamp((metricsCache.period - 2) / 4) * clamp((metricsCache.userEnergy || 0) / E1);
+    relief = Math.min(0.45, relief + (rockK * dt) / 40);
+    const target = clamp(baseTension * (1 - relief) + 0.28 * chopK - 0.04 * clamp(dist - 1, 0, 3), 0.12, 0.95);
     tS.tension = clamp(lerp(tS.tension, target, 1 - Math.exp(-dt / 1.2)));
     tS.calm = clamp(1 - tS.tension);
     // (the world's perspective is the depth: z stays 0 for a layer-drawn thought, so it is not shrunk twice)
@@ -1540,7 +1558,7 @@ export function create(ctx) {
           if (chv > 0.004) {
             const k = (py & (TILE - 1)) * TILE + ti, tx = tileA[k] * ca + tileB[k] * sa;
             const a = Math.min(1, chv * 5) * chopG;
-            if (tx > 0) { const l = tx * tx * a; R2 += 120 * l; G2 += 170 * l; B2 += 175 * l; } else { const l = -tx * a; R2 -= 22 * l; G2 -= 34 * l; B2 -= 38 * l; }
+            if (tx > 0) { const l = Math.min(1.4, tx * tx * tx) * a; R2 += 130 * l; G2 += 180 * l; B2 += 185 * l; } else { const l = Math.min(1, -tx) * a; R2 -= 20 * l; G2 -= 32 * l; B2 -= 36 * l; }
           }
           if (wh && py > 0 && py < ih - 1 && ic > 0 && ic < iw - 1) {
             const k = py * wc + ic;
@@ -1801,10 +1819,15 @@ export function create(ctx) {
     // the meniscus: a bright line where water meets the Mallow, following the wave, softly fading at both ends
     g.save();
     g.globalCompositeOperation = 'lighter'; g.lineCap = 'round'; g.lineJoin = 'round';
+    g.strokeStyle = C.crest2; g.lineCap = 'butt';
     for (let pass = 0; pass < 2; pass++) {
-      g.beginPath();
-      for (let k = 1; k < N; k++) { if (k === 1) g.moveTo(xs[k], pts[k]); else g.lineTo(xs[k], pts[k]); }
-      g.strokeStyle = C.crest2; g.globalAlpha = (pass ? 0.5 : 0.14) * k0; g.lineWidth = pass ? 1.3 : 5; g.stroke();
+      g.lineWidth = pass ? 1.2 : 5;
+      for (let k = 0; k < N; k++) {
+        // (each stretch its own light: brightest in the middle, gone at the body's edges)
+        const f = Math.sin(((k + 0.5) / N) * Math.PI);
+        g.globalAlpha = (pass ? 0.42 : 0.12) * k0 * f * f;
+        g.beginPath(); g.moveTo(xs[k], pts[k]); g.lineTo(xs[k + 1], pts[k + 1]); g.stroke();
+      }
     }
     // a soft ring of water round the body, flattened by the view
     const s = Math.max(0.05, (wl - cam.hy) / cam.Hw), asp = clamp(s * cam.Hw / cam.Z0, 0.16, 0.7), rr = rx + 16;

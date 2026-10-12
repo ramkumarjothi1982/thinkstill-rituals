@@ -130,6 +130,19 @@ export async function hushflowLab(app, qs) {
   for (const ev of ['world', 'discovery', 'offer', 'complete', 'melt', 'pause', 'resume', 'stay', 'finish', 'quality', 'error', 'checkpoint', 'loop']) {
     director.on(ev, (d) => { log.push({ ev, t: Math.round(director.debug.time * 100) / 100, ...(d && typeof d === 'object' ? JSON.parse(JSON.stringify(d, (k, v) => (k === 'error' ? String(v) : v))) : {}) }); });
   }
+  // (W4b) the hero changes at the melt's midpoint, while the two worlds blend (as the shell should): Glitzi → Loomi
+  director.on('melt', (d) => {
+    if (d?.k !== 0) return;
+    const id = registry.get(d.to)?.mallow?.id;
+    if (!id || id === app.world.mallowId) return;
+    const tick = () => {
+      const m = director.state.melt;
+      if (m == null) return;
+      if (m >= 0.5) { Promise.resolve(app.world.setMallow(id, { entrance: false })).catch(() => {}); return; }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
   // the world's name, once, as a title card in the subtitle band (as the shell does)
   director.on('world', (d) => { if (!d.from && d.title) subtitles.say([d.title], { kind: 'title' }); });
   // the Memory Garden offer belongs to W5; the lab only shows that it would be offered

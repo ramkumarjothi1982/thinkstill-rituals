@@ -139,13 +139,14 @@ export function planOcean({ W, H, band, mallow = null, textW = 0, plate: plateIn
     const obs = [mrect, bandRect, thoughtRect, ...(plateRect ? [plateRect] : [])];
     const cand = [];
     const sOf = (y) => (y - hy) / Hw;
-    for (let y = hy + 14; y <= floor; y += 6) {
+    const st = Math.max(6, Math.round(W / 80));
+    for (let y = hy + 14; y <= floor; y += st) {
       const s = sOf(y), d = 1 / Math.max(1e-3, s) - 1;
       if (d > OCEAN.CAP + 0.5) continue;
       const D0 = bubbleSize(s, d, U);
       // where the water is narrow (beside the hero on a small phone) a smaller bubble fits instead
       const Dmin = d <= 6 ? Math.min(D0, OCEAN.BUBBLE_TIGHT) : D0;
-      for (let x = E + Dmin / 2; x <= W - E - Dmin / 2; x += 6) {
+      for (let x = E + Dmin / 2; x <= W - E - Dmin / 2; x += st) {
         for (let D = D0; D >= Dmin - 0.01; D = D > Dmin + 0.5 ? Math.max(Dmin, D * 0.88) : Dmin - 1) {
           if (x - D / 2 < E - 0.01 || x + D / 2 > W - E + 0.01) continue;
           // the bubble sits on the water: its centre a little above the waterline
@@ -154,24 +155,27 @@ export function planOcean({ W, H, band, mallow = null, textW = 0, plate: plateIn
           const b = box(x, cy, D, D);
           if (b.y1 > floor) continue;
           if (obs.some((o) => overlaps(b, o, OCEAN.BUBBLE_GAP))) continue;
-          cand.push({ x, y: cy, D, wy: y, d });
+          cand.push({ x, y: cy, D, wy: y, d, full: D >= D0 - 0.5 });
           break;
         }
       }
     }
-    // the first slots spread wide; later ones may go far out (smaller): score = clearance + a little depth
-    for (let k = 0; k < n && cand.length; k++) {
+    // the first slots spread wide; later ones may go far out (smaller): score = clearance + a little depth.
+    // Full-size places first; a smaller bubble only where nothing full-size is left (beside the hero on a small phone).
+    for (let k = 0, pass = 0; k < n && cand.length && pass < 2;) {
       let best = null, bs = -Infinity;
       for (const c of cand) {
+        if (!pass && !c.full) continue;
         let clear = Infinity;
         for (const q of slots) { const g = Math.hypot(c.x - q.x, c.y - q.y) - (c.D + q.D) / 2; if (g < clear) clear = g; }
         clear = Math.min(clear, Math.hypot(c.x - home.x, c.y - home.y) - r - c.D / 2);
         if (slots.length && clear < OCEAN.BUBBLE_GAP) continue;
-        const sc = Math.min(clear, U * 0.45) + c.D * 0.3;
+        const sc = Math.min(clear, U * 0.2) + c.D * 1.2;      // (spread, but the bigger places first: far specks last)
         if (sc > bs) { bs = sc; best = c; }
       }
-      if (!best) break;
+      if (!best) { pass++; continue; }
       slots.push({ x: best.x, y: best.y, D: best.D, d: best.d });
+      k++;
     }
   }
   return {

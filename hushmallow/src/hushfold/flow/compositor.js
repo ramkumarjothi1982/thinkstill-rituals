@@ -154,8 +154,10 @@ export function createCompositor({ backCanvas, frontCanvas }) {
         gB.globalCompositeOperation = 'source-over'; gB.globalAlpha = 1;
       }
       clearFront();
-      if (from.front) { gF.globalAlpha = 1 - k; gF.drawImage(from.front, 0, 0, fw, fh); }
-      if (to.front) { gF.globalAlpha = k; gF.drawImage(to.front, 0, 0, fw, fh); }
+      // (W4b) the front layers carry the thought, its words, postcards and bubbles: they never show twice —
+      // the outgoing world's fade in the first half, the incoming world's in the second
+      if (from.front && k < 0.5) { gF.globalAlpha = clamp(1 - 2 * k); gF.drawImage(from.front, 0, 0, fw, fh); }
+      if (to.front && k > 0.5) { gF.globalAlpha = clamp(2 * k - 1); gF.drawImage(to.front, 0, 0, fw, fh); }
       gF.globalAlpha = 1;
       return;
     }

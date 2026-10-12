@@ -170,11 +170,11 @@ const LUMINOUS_OCEAN = {
     'The storm’s grounded lines arrive as the first gentle swells.',
     'Quick flicks make chop; slow long strokes make the whole sea roll.',
     'Discovery: the thought drifts further away through the person’s own swells.',
-    'Natural completion: long swells and a dominant slow period, then the moon path brightens.',
+    'Natural completion: long swells and a sustained slow sea (or the thought far out), after real play; then the dawn path brightens.',
   ],
   dialogue: {
     intro: ['Mm. Open water.', 'Take your time.'],
-    arrive: ['Ahh. Open water.'],
+    arrive: ['Ahh. The storm became a sea.'],
     chop: ['Splashy.'],
     drift: ['You can bring it closer too.', 'Your choice.'],
     complete: 'The sea’s rolling slowly now. Stay, or drift on?',
@@ -197,8 +197,8 @@ const LUMINOUS_OCEAN = {
   },
   haptics: ['soft as a long swell is let go', 'light when a bubble is lifted', 'success at a discovery'],
   completion: {
-    rule: 'At least four long swells, and either the thought ≥ 4·Z0 away for 5 s or a dominant period ≥ 5 s held for 10 s; then 2 s idle.',
-    after: 'Swells damp, the moon path brightens, the next world is prefetched.',
+    rule: 'At least four long swells, and either the thought ≥ 4·Z0 away for 5 s or a dominant period ≥ 5 s held for 10 s with three of the person’s long swells rolling; then 2 s idle, and never before 40 s of play.',
+    after: 'Swells damp, the dawn path brightens beside Loomi, the next world is prefetched.',
   },
   transition: {
     next: null,

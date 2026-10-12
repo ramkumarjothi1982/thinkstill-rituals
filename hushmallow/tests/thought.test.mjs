@@ -476,7 +476,8 @@ test('words: the tag shows the exact words (an excerpt only when long or far), n
 
 test('words: line budgets by depth and crowding; excerpts are leading words cut at a word', () => {
   assert.equal(tagLines(0, 0), 3); assert.equal(tagLines(0.5, 0), 2); assert.equal(tagLines(0.9, 0), 1);
-  assert.equal(tagLines(0, 1), 2); assert.equal(tagLines(0, 2), 1); assert.equal(tagLines(0, 4), 1);
+  // a fuller stage offers two lines on a narrower plate before cutting to one
+  assert.equal(tagLines(0, 1), 2); assert.equal(tagLines(0, 2), 2); assert.equal(tagLines(0, 3), 1); assert.equal(tagLines(0, 4), 1);
   const w = wordsOf('  My boss   embarrassed me today. ');
   assert.deepEqual(w, ['My', 'boss', 'embarrassed', 'me', 'today.']);
   assert.equal(firstWords(w, 5), 'My boss embarrassed me today.', 'all of it when it fits: never marked');
