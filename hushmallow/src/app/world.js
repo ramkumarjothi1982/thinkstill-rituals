@@ -3,7 +3,7 @@
 //
 // Seams for the Hushfold scene (all backward compatible; the classic scenes
 // call none of them): setLayerSize, bodyRect, setRealm(…, {crossfadeMs}),
-// setMallow(id, {entrance, interactive}), setHaptics, setLowStim.
+// setMallow(id, {entrance, interactive}), releaseMallow(), setHaptics, setLowStim.
 
 import { MALLOWS } from '../mallows/registry.js';
 import { MallowRig } from '../mallows/rig.js';
@@ -87,6 +87,19 @@ export function createWorld({ prefs, audio, haptic = null }) {
       next.setEmotion(emotion.mix, emotion.intensity, { instant: true });
       if (entrance && !prefs.reducedMotion()) next.react('hop');
       return next;
+    },
+
+    /**
+     * Let the classic rig go (its canvas, its ticker and its listeners) while another
+     * Mallow owns the stage (the Hushfold's MallowTouch). The next setMallow(id) builds a
+     * fresh rig, as the garden, the classic scenes and the rituals do on enter.
+     */
+    releaseMallow() {
+      if (!rig) return;
+      const r = rig;
+      rig = null; mallowId = null;
+      try { r.destroy(); } catch (e) { console.warn('[world] releaseMallow', e); }
+      r.container?.remove();
     },
 
     setEmotion(mix, intensity = 0.7, opts = {}) {
