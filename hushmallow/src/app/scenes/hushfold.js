@@ -44,6 +44,10 @@ function mallowForNow() {
   return 'loomi';
 }
 const REACTION_KINDS = new Set(['squeeze', 'tap', 'doubleTap', 'flick', 'stretch', 'massage', 'stroke', 'jiggle', 'pull']);
+// how carefully the stage behaves, from the shared detector (src/engine/safety.js); it only ever rises in a visit
+const LEVELS = ['none', 'concern', 'care', 'crisis'];
+// what a gentle choice after a care or distress disclosure actually plays: a calm world when there is one, else named honestly
+const GENTLE_WORLDS = [['luminous-ocean', 'Somewhere calm, with Loomi'], ['static-storm', 'Glitzi’s storm, taken slowly']];
 
 export default function hushfold(app, params = {}) {
   const { world, prefs, ent, store } = app;
@@ -54,6 +58,9 @@ export default function hushfold(app, params = {}) {
   const S = {
     emotion: null, emotionName: null, intention: null, reactions: 0, touches: 0, firstTouchAt: 0, lastLineAt: 0,
     invited: false, told: false, crisis: false, care: false, photos: false, left: false,
+    // level: the most serious thing typed this visit (sent or not). Anything above 'none' keeps the
+    // Support pill up, stops invitations and squeeze chatter, and holds off update reloads
+    level: 'none', category: null, crisisSpoken: false, pendingResume: false,
   };
   const timers = new Set();
   const later = (fn, ms) => { const t = setTimeout(() => { timers.delete(t); if (!S.left) fn(); }, ms); timers.add(t); return t; };
@@ -69,7 +76,7 @@ export default function hushfold(app, params = {}) {
   const topEl = h('header', { class: 'hf-top' }, logoBox, h('div', { class: 'grow' }), panelBtn, gearBtn);
   const tellLabel = h('span', { class: 'label' });
   const tellBtn = h('button', { class: 'hf-pill is-hidden', type: 'button', 'data-hf': 'tell', onclick: () => openTell('pill') }, h('span', { class: 'dot', 'aria-hidden': 'true' }), hfIcon('talk'), tellLabel);
-  const supportPill = h('button', { class: 'hf-pill support', type: 'button', hidden: true, onclick: () => openSupport(app) }, hfIcon('support'), 'Support');
+  const supportPill = h('button', { class: 'hf-pill support', type: 'button', hidden: true, onclick: () => openSupportSheet() }, hfIcon('support'), 'Support');
   // a paused world says so on the stage, with one tap back into it
   const pausedPill = h('button', { class: 'hf-pill paused', type: 'button', hidden: true, 'aria-label': 'Paused. Resume the world.', onclick: () => resumeFlow() },
     hfIcon('play'), h('span', {}, 'Paused · Resume'));
@@ -105,6 +112,38 @@ export default function hushfold(app, params = {}) {
   const layer = { overlay: 0, panel: 0, read: 0 };
   const pushLayer = (k) => { layer[k] = app.pushLayer?.() || 0; };
   const popLayer = (k) => { const t = layer[k]; layer[k] = 0; if (t) app.popLayer?.(t); };
+  // Sheets opened from the Hushfold (support, the A–Z list) get a history entry too, newer than the
+  // overlay or panel beneath them, so Back closes the sheet first and never the layer under it.
+  const sheets = [];   // { token, sheet, seen, obs }
+  function trackSheet(sheet) {
+    if (!sheet?.el || S.left) return sheet;
+    const rec = { token: app.pushLayer?.() || 0, sheet, seen: false, obs: [] };
+    sheets.push(rec);
+    const done = () => {
+      if (rec.done) return;
+      rec.done = true;
+      rec.obs.forEach((o) => o.disconnect());
+      const i = sheets.indexOf(rec);
+      if (i >= 0) sheets.splice(i, 1);
+      // closed another way (✕, its button, the backdrop, Escape, a pick): its history entry goes too
+      if (rec.token) { const t = rec.token; rec.token = 0; app.popLayer?.(t); }
+      if (!S.left) afterSheet();
+    };
+    const onClass = new MutationObserver(() => {
+      if (sheet.el.classList.contains('open')) rec.seen = true;
+      else if (rec.seen) done();
+    });
+    onClass.observe(sheet.el, { attributes: true, attributeFilter: ['class'] });
+    const host = sheet.el.parentNode;
+    const onGone = host ? new MutationObserver(() => { if (!sheet.el.isConnected) done(); }) : null;
+    onGone?.observe(host, { childList: true });
+    rec.obs = [onClass, onGone].filter(Boolean);
+    return sheet;
+  }
+  /** The support sheet, as a layer of its own (urgent when the words were a crisis). */
+  const openSupportSheet = (opts = {}) => trackSheet(openSupport(app, opts));
+  /** A sheet closed: the crisis line waits until nothing covers the stage. */
+  function afterSheet() { speakCrisis(); }
   let flowP = null, flowRef = null, offPrefs = null;
   let thoughtHome = { x: innerWidth * 0.8, y: innerHeight * 0.6 };
 
@@ -441,6 +480,35 @@ export default function hushfold(app, params = {}) {
     // ignored: nothing else. The Tell pill stays; they can play for as long as they like.
   }
   function showTell(on) { tellBtn.classList.toggle('is-hidden', !on); }
+
+  // ------------------------------------------------------ safety --
+  const gentle = () => S.level !== 'none';
+  /**
+   * The detector found something (while typing, sent or not, or on submit). It only rises:
+   * from here the Support pill stays, invitations and squeeze chatter stop, the Mallow comforts,
+   * and the router holds off a reload. Crisis is recorded the moment it is seen.
+   */
+  function noteSafety(r) {
+    if (!r?.level || LEVELS.indexOf(r.level) <= LEVELS.indexOf(S.level)) return;
+    S.level = r.level;
+    S.category = r.category || null;
+    if (r.level === 'crisis') S.crisis = true;
+    else S.care = true;
+    clearTimeout(inviteT); timers.delete(inviteT);
+    clearNudge();
+    supportPill.hidden = false;
+    // a pending invitation or a playful choice goes (a held discovery stays)
+    if (!overlay) subtitles.clear({ keepHeld: true });
+    stageMallow?.setStage?.('comforting', { quiet: true });
+    layout();
+  }
+  /** After a crisis: one calm line, once, when neither the overlay nor a sheet covers the stage. */
+  function speakCrisis() {
+    if (!S.crisis || S.crisisSpoken || S.left || overlay || sheets.length) return;
+    S.crisisSpoken = true;
+    stageMallow.setStage('comforting', { quiet: true });
+    say(SHARED_LINES.support, { interrupt: !subtitles.holding });
+  }
 
   // ---------------------------------------------------- telling --
   /**

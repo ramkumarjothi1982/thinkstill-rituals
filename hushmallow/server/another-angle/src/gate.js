@@ -339,11 +339,42 @@ const SENTENCE_START_OK = new Set(['i', "i'm", "i'd", "i'll", "i've", 'zuzu', 'g
   'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'january', 'february', 'march', 'april', 'may', 'june',
   'july', 'august', 'september', 'october', 'november', 'december', 'english', 'british', 'uk', 'hr', 'ok', 'christmas', 'easter', 'eid', 'diwali', 'hanukkah', 'ramadan', 'new', 'year']);
 
+// Everyday objects and abbreviations a situation implies ("your CV" for a
+// redundancy worry, "your GP"): not names or facts the person withheld.
+const COMMON_CAPS = new Set(['cv', 'cvs', 'hr', 'gp', 'nhs', 'a&e', 'mot', 'ucas', 'gcse', 'gcses', 'a-level', 'a-levels', 'dm', 'dms', 'id', 'pin', 'tv', 'pe', 'pdf', 'phd', 'linkedin', 'mp', 'uk', 'ok', 'faq', 'wi-fi', 'wifi']);
+
 const ECHO_FIELDS = new Set(['known_fact', 'subtitle_line_1']);
-const TIME_BOX_FIELDS = new Set(['practical_next_step', 'subtitle_line_2']);
 const NUM_WORD = R`(?:\d{1,3}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|twenty-five|thirty|forty|forty-five|fifty|sixty|ninety)`;
-const TIME_BOX = new RegExp(R`\b(?:in|for|within|after|over|take|give it|spend|set a timer for|wait|just|only|about|around)(?: the next| the first| just| only| about| around)? ${NUM_WORD}(?:-| )(?:minutes?|mins?|seconds?)\b|\b(?:the next|the first) ${NUM_WORD} hours?\b`, 'giu');
+const SMALL_NUM = R`(?:[1-9]|10|one|two|three|four|five|six|seven|eight|nine|ten)`;
+// A time box inside a suggested action ("spend twenty minutes", "for three
+// evenings", "in the next hour"): part of the suggestion, not a fact.
+const TIME_BOX = new RegExp(R`\b(?:in|for|within|after|over|take|give it|give yourself|spend|set a timer for|set aside|wait|just|only|about|around|try it for)(?: the next| the first| just| only| about| around)? ${NUM_WORD}(?:-| )(?:minutes?|mins?|seconds?|hours?|days?|evenings?|nights?|mornings?|weeks?|breaths?)\b|\b(?:the next|the first) ${NUM_WORD} (?:minutes?|hours?|days?|evenings?)\b`, 'giu');
+// A small count inside a suggested action ("write down three things",
+// "three pieces of work you're proud of", "pick three questions").
+const ACTION_COUNT = new RegExp(R`\b${SMALL_NUM}(?: [\p{L}'-]+){0,2}? (?:things?|points?|questions?|lines?|sentences?|words?|examples?|reasons?|ways?|ideas?|items?|pieces?|moments?|steps?|names?|options?|bits?|breaths?|lessons?|notes?|parts?|wins?|strengths?|skills?|differences?|priorities|tasks?|choices?|bullet points?|minutes?)\b`, 'giu');
+// What makes a subtitle line a suggestion: it asks, or it proposes an action.
+const ACTION_CUE = /\?["')\]]*$|^(?:try|write|jot|list|name|pick|choose|send|ask|spend|take|give|set|make|note|plan|book|put|tell|message|text|call|decide|find|look|read|practise|start)\b|\b(?:you could|you might|could you|would you|might you|what if you|how about|try|is there|what are|which)\b/iu;
+// "On the tenth replay an answer can sound worse": a general statement about
+// how replays work, not a count of the person's replays.
+const GENERIC_CUE = /\b(?:often|usually|sometimes|can|could|may|might|tends? to|by the|every|any|most|many)\b/iu;
+const REPEAT_ORDINAL = /\b(?:third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|twentieth|fiftieth|hundredth|\d+(?:rd|th))(?: [\p{L}'-]+)? (?:replays?|re-?runs?|run-throughs?|times?|go|goes|attempts?|tries|pass|passes|listens?|reads?|looks?|rewrites?|versions?|drafts?|rounds?|loops?|retellings?)\b/giu;
 const VAGUE_QUANTITY = /\b(?:a|one) (?:hundred|thousand|million|dozen)\b(?= (?:\w+ )?(?:things|reasons|ways|times|explanations|possibilities|thoughts|details|moments|ordinary|other|little|small|different|tiny)\b)|\b(?:hundreds|thousands|millions|dozens) of\b/giu;
+const NUMBER_NAMES = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+const QUOTED_IN_INPUT = /"([^"]{1,120})"|(?<![\p{L}\p{N}])'((?:[^']|'(?=\p{L}))+?)'(?![\p{L}\p{N}])/gu;
+
+/**
+ * Word counts of the phrases the person quoted: "'we need to talk'" makes
+ * "four words" their detail, not an invented one.
+ * @param {string} input (tidied)
+ */
+function quotedCounts(input) {
+  const out = new Set();
+  for (const m of input.matchAll(QUOTED_IN_INPUT)) {
+    const n = wordCount(m[1] ?? m[2] ?? '');
+    if (n > 0) out.add(NUMBER_NAMES[n] || String(n));
+  }
+  return out;
+}
 
 /** @param {keyof typeof LABEL} field */
 function mindsMessage(field) {

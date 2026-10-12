@@ -116,7 +116,7 @@ export const THOUGHT_STYLES = Object.freeze({
   }),
   sadness: Object.freeze({
     id: 'sadness', label: 'slow and heavy', tension: 0.62, charge: 0.3, alpha: 0.78,
-    tint: tint('#dbe6f7', '#86a3d4', '#46629f', '#c8d8f5', '#121c3c'),
+    tint: tint('#dde3f4', '#7f8fc0', '#43568f', '#c9d4f2', '#121a3c'),
     face: F({ eyeOpen: 0.66, lid: 0.48, lidTilt: -0.85, browA: 0.8, browTilt: -0.85, browY: 0.15, curve: -0.62, mouthW: 0.66, blush: 0.15, lookY: 0.55 }),
     motion: M({ bob: 0.02, bobHz: 0.16, sink: 0.42, shrink: 0 }),
     body: Object.freeze({ squash: 0.03, puff: 0, droop: 0.85 }),
@@ -282,3 +282,14 @@ export function insideUV(u, v, pad = 0, shape = SHAPE) {
 /** How much of the words a tag shows at depth z (0 near … 1 far). The tag is never smaller than 15 px. */
 export const TAG_MIN_PX = 15;
 export function tagBudget(z) { return z < 0.34 ? 96 : z < 0.68 ? 48 : 26; }
+
+/** The start of the person's words, cut at a word and marked "…" (never a later clause, never reworded). */
+export function wordsExcerpt(text, max) {
+  const t = String(text ?? '').replace(/\s+/g, ' ').trim();
+  if (t.length <= max) return t;
+  let out = '';
+  for (const w of t.split(' ')) { if ((out ? out.length + 1 : 0) + w.length > max - 1) break; out = out ? `${out} ${w}` : w; }
+  // a single word longer than the budget: cut inside it (by code point, so emoji stay whole)
+  if (!out) out = Array.from(t).slice(0, max - 1).join('');
+  return out.replace(/[\s.,;:!?…–—-]+$/u, '') + '…';
+}

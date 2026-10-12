@@ -86,8 +86,9 @@ export default function plans(app, params = {}) {
     // Beyond leads with what it adds (its capability lines), then "Everything in Flow"
     const all = p.includes.filter((x) => x.startsWith('Everything in '));
     const own = p.includes.filter((x) => !x.startsWith('Everything in '));
-    const lead = [...own.slice(0, 3), ...all];
-    const rest = own.slice(3);
+    const short = own.length <= 4;   // a disclosure for a single line is no help
+    const lead = [...own.slice(0, short ? 4 : 3), ...all];
+    const rest = short ? [] : own.slice(3);
     return h('section', { class: `invite ${beyond ? 'invite-beyond' : 'invite-flow'}${focus === p.id ? ' is-focus' : ''}`, 'aria-labelledby': titleId },
       h('div', { class: 'invite-head' },
         beyond ? h('div', { class: 'spiral invite-sigil', 'aria-hidden': 'true' }) : flowSigil(),
@@ -196,7 +197,7 @@ export default function plans(app, params = {}) {
   let mallowAway = false;
   el.addEventListener('scroll', () => {
     el.classList.toggle('scrolled', el.scrollTop > 6);
-    const away = mallowAway ? el.scrollTop >= 40 : head.getBoundingClientRect().top < gap.getBoundingClientRect().top + 8 && el.scrollTop > 40;
+    const away = mallowAway ? el.scrollTop >= 40 : el.scrollTop > 56;
     if (away !== mallowAway) { mallowAway = away; world.showMallow?.(!away); }
   }, { passive: true });
 

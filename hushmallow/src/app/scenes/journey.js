@@ -118,6 +118,8 @@ export default function journey(app) {
 
   return {
     el, title: 'Your journey',
-    enter() { world.dim(true); world.place({ x: 84, y: 9, scale: 0.3 }); world.setStage('resting'); render(); },
+    // the live Mallow steps aside: behind the card it would show through the glass
+    enter() { world.dim(true); world.showMallow?.(false); world.place({ x: 84, y: 9, scale: 0.3 }); world.setStage('resting'); render(); },
+    leave() { world.showMallow?.(true); },
   };
 }

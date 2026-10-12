@@ -175,7 +175,9 @@ export async function run(ctx) {
     for (const f of floaters) {
       if (f.gone) continue;
       f.ph += dt * (rm ? 0.3 : 1);
-      const x = f.x * W + Math.sin(f.ph) * 6, y = f.y * H + Math.cos(f.ph * 0.8) * 5;
+      // whole words, 20px clear of the screen edges (half-width cached per width)
+      if (f.mw !== W) { f.hw = g.measureText(f.text).width / 2 + 4; f.mw = W; }
+      const x = Math.max(f.hw + 20, Math.min(W - f.hw - 20, f.x * W + Math.sin(f.ph) * 6)), y = f.y * H + Math.cos(f.ph * 0.8) * 5;
       f.px = x; f.py = y;
       const j = f.zap > 0 && !rm ? (Math.random() - 0.5) * 8 * f.zap : 0;
       g.fillStyle = 'rgba(62,232,255,0.55)'; g.fillText(f.text, x - 2 + j, y);

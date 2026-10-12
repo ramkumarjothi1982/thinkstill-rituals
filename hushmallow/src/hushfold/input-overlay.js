@@ -8,19 +8,23 @@
 //
 // Compact by design: the prompt, one growing text field and one chip row.
 // Everything else waits until it is useful: the "I'd like…" chips appear once
-// there are words or a feeling (on short phones they follow the chosen
-// feeling in the same row), the photo strip only when asked for, and the
-// notes only where there is room for them.
+// a feeling is chosen (on short phones they follow it in the same row), the
+// photo strip only when asked for, and the privacy note only on tall screens
+// before anything is typed.
 //
 //   openInput({ app, prompt, mallow:{id,name,glow}, root, emotion, intention,
 //               hasPlan, face(faceMix), onSubmit({text, emotion, intention, reading, safety, input}),
-//               onClose(reason), onLayout(rect) }) → { el, close(reason), rect(), get text, get dirty }
+//               onClose(reason, {safety, supportShown}), onLayout(rect), onSafety(result), support(opts), trackSheet(sheet) })
+//     → { el, close(reason), rect(), get text, get dirty, get safety }
 //
 // Words: kept exactly as typed (trimmed at the ends), shown with textContent
 // only, never stored. Feelings: the person picks; the rule-based finder only
 // highlights chips as suggestions and never decides. Safety: every keystroke
-// pause runs the shared detector (src/engine/safety.js); crisis opens the
-// urgent support sheet once, care or distress shows a Support chip.
+// pause runs the shared detector (src/engine/safety.js) and reports the level
+// to the scene at once (onSafety), sent or not; crisis opens the urgent support
+// sheet once, care or distress shows a Support chip. Sheets opened from here
+// (support, the A–Z list) go through the scene (support / trackSheet), so Back
+// closes the sheet before the overlay beneath it.
 
 import { h } from '../app/ui.js';
 import { openSupport } from '../app/scenes/support.js';
@@ -29,19 +33,25 @@ import { QUICK_FEELINGS, INTENTIONS } from './lines.js';
 
 const QUICK_IDS = new Set(QUICK_FEELINGS.map(([id]) => id));
 const MAX_CHARS = 600;
+/** The visible count appears this close to the limit (sighted people see why typing stops). */
+const COUNT_FROM = 540;
+const LEVELS = ['none', 'concern', 'care', 'crisis'];
 /** Below this viewport height the overlay keeps to one chip row and no notes. */
 export const ROOMY_HEIGHT = 700;
-let mods = null;
+let mods = null, modsNow = null;
 /** interpret + safety + emotions, loaded on first use (kept out of the first second). */
 export function loadInputModules() {
   mods ||= Promise.all([import('../engine/interpret.js'), import('../engine/safety.js'), import('../data/emotions.js')])
-    .then(([interpretMod, safety, emotions]) => ({ interpret: interpretMod.interpret, checkText: safety.checkText, legacySafety: safety.legacySafety, getEmotion: emotions.getEmotion }));
+    .then(([interpretMod, safety, emotions]) => (modsNow = { interpret: interpretMod.interpret, checkText: safety.checkText, legacySafety: safety.legacySafety, getEmotion: emotions.getEmotion }));
   return mods;
 }
 
 export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root = document.body, emotion = null, intention = null, hasPlan = true,
-  text = '', face = null, onSubmit, onClose, onLayout } = {}) {
+  text = '', face = null, onSubmit, onClose, onLayout, onSafety = null, support = null, trackSheet = null } = {}) {
   const reduced = app?.prefs?.reducedMotion?.() ?? false;
+  // larger text: the speaker's name takes its own line above the prompt
+  const bigText = Number(app?.prefs?.get?.('textScale')) > 1.12;
+  const openSupportSheet = (opts = {}) => (support ? support(opts) : openSupport(app, opts));
   const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
   const vv = typeof visualViewport !== 'undefined' ? visualViewport : null;
   // a tall screen, with room left above the keyboard when it is up
@@ -50,6 +60,13 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
   let extraFeeling = emotion && !QUICK_IDS.has(emotion) ? emotion : null;  // a feeling from the A–Z list
   let suggested = [];
   let reading = null, safety = { level: 'none', category: null };
+  // the most serious level seen while this overlay was open (sent or not): the scene acts on it
+  let worst = { level: 'none', category: null };
+  function report(r) {
+    if (!r || LEVELS.indexOf(r.level) <= LEVELS.indexOf(worst.level)) return;
+    worst = { level: r.level, category: r.category };
+    try { onSafety?.({ ...worst }); } catch (e) { console.warn('[hushfold] onSafety', e); }
+  }
   let supportShown = false, closed = false, sending = false, photosOpen = false, tray = null, hintUntil = 0, hintT = 0;
   let rowMode = 'feel';          // short phones: 'feel' or 'intent' (the chosen feeling, then the "I'd like…" chips)
   const opener = document.activeElement;
@@ -62,7 +79,7 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
   const note = h('p', { class: 'note', id: `${uid}-note`, 'aria-live': 'polite' });
   const feelRow = h('div', { class: 'hf-scroll', role: 'group', 'aria-label': 'How does it feel?' });
   const intentRow = h('div', { class: 'hf-scroll intent', role: 'group', 'aria-label': 'What would help?', hidden: true });
-  const supportBtn = h('button', { class: 'hf-ghost support', type: 'button', hidden: true, 'aria-label': 'Support', onclick: () => openSupport(app) },
+  const supportBtn = h('button', { class: 'hf-ghost support', type: 'button', hidden: true, 'aria-label': 'Support', onclick: () => openSupportSheet() },
     hfIcon('support'), h('span', { class: 't' }, 'Support'));
   const photoCount = h('span', { class: 'count', hidden: true });
   const photoBtn = h('button', { class: 'hf-ghost photo', type: 'button', 'aria-expanded': 'false', 'aria-label': 'Add photos, up to seven', onclick: () => togglePhotos() },
@@ -70,15 +87,18 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
   const sendBtn = h('button', { class: 'hf-send', type: 'button', disabled: true, onclick: () => submit(), 'aria-describedby': hasPlan ? null : `${uid}-plan` },
     hasPlan ? 'Send' : 'Continue', hfIcon('send'));
   const photosBox = h('div', { class: 'photos', hidden: true });
-  const planNote = hasPlan ? null : h('p', { class: 'plan-note', id: `${uid}-plan`, hidden: true }, 'Your words come alive as a Thought Mallow with ', h('b', {}, 'hushmallow Flow'), '. They stay on this phone.');
+  // no plan: Continue says where it goes, in the actions row itself (no extra line)
+  const planHint = hasPlan ? null : h('span', { class: 'plan-hint', id: `${uid}-plan` }, h('span', { class: 'sr-only' }, 'Continue opens '), 'with ', h('b', { class: 'brand-name' }, 'hushmallow Flow'),
+    h('span', { class: 'sr-only' }, '. Your words stay on this phone.'));
   const count = h('span', { class: 'sr-only', 'aria-live': 'polite' });
-  const el = h('div', { class: `hf-input hf-ui${reduced ? ' reduced' : ''}`, role: 'dialog', 'aria-modal': 'false', 'aria-label': prompt, 'data-hf': 'input' },
+  const countVis = h('span', { class: 'count-vis', 'aria-hidden': 'true', hidden: true });
+  const el = h('div', { class: `hf-input hf-ui${reduced ? ' reduced' : ''}${bigText ? ' big' : ''}`, role: 'dialog', 'aria-modal': 'false', 'aria-label': prompt, 'data-hf': 'input' },
     h('div', { class: 'head' },
       h('p', { class: 'prompt' }, mallow.name ? h('span', { class: 'who', style: mallow.glow ? { '--hf-who': mallow.glow } : null }, mallow.name, h('span', { class: 'sr-only' }, ': ')) : null, prompt),
       h('button', { class: 'close', type: 'button', 'aria-label': 'Close', onclick: () => close('button') }, hfIcon('close'))),
-    h('div', { class: 'field' }, ta, micBtn),
-    note, feelRow, intentRow, photosBox, planNote,
-    h('div', { class: 'actions' }, photoBtn, supportBtn, h('div', { class: 'grow' }), sendBtn), count);
+    h('div', { class: 'field' }, ta, micBtn, countVis),
+    note, feelRow, intentRow, photosBox,
+    h('div', { class: 'actions' }, photoBtn, supportBtn, h('div', { class: 'grow' }, planHint), sendBtn), count);
   root.append(el);
 
   // --------------------------------------------------------- chips --
@@ -111,10 +131,10 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     chosenIntention = chosenIntention === id ? null : id; tick(); renderIntentions(); renderFeelings();
   }));
   function renderIntentions() {
-    const show = roomy() && !!(ta.value.trim() || chosenEmotion || chosenIntention);
+    // on every height the "I'd like…" chips wait for a chosen feeling
+    const show = roomy() && !!chosenEmotion;
     intentRow.hidden = !show;
     if (show) intentRow.replaceChildren(...intentionChips());
-    if (planNote) planNote.hidden = !show;
     setNote();
   }
   function chip(label, pressed, isSuggested, onclick, { ariaLabel = null, cls = '' } = {}) {
@@ -131,13 +151,15 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
   }
   async function openPicker() {
     const [{ openEmotionPicker }] = await Promise.all([import('../app/emotion-picker.js'), loadInputModules()]);
-    openEmotionPicker({ selected: chosenEmotion ? [chosenEmotion] : [], onPick: async (id) => {
+    if (closed) return;
+    const sheet = openEmotionPicker({ selected: chosenEmotion ? [chosenEmotion] : [], onPick: async (id) => {
       const m = await loadInputModules();
       cached.set(id, m.getEmotion(id)?.name || id);
       chosenEmotion = id; extraFeeling = id; rowMode = 'intent';
       tick(); renderFeelings(); renderIntentions(); updateSend(); setNote(); mirror();
       ta.focus({ preventScroll: true });
     } });
+    trackSheet?.(sheet);
   }
   function tick() { app?.audio?.ui?.('select'); app?.haptic?.('light'); }
   async function mirror() {
@@ -161,10 +183,8 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     if (hinting) {
       note.append(hfIcon('mic'), h('span', {}, coarse ? 'Tap the mic on your keyboard and just talk. Your words stay on this phone.'
         : 'Your device’s dictation works here too. Your words stay on this device.'));
-    } else if (roomy() && suggested.length && !chosenEmotion && !photosOpen) {
-      note.append(hfIcon('sparkle'), h('span', {}, 'Highlighted feelings are only suggestions. Pick what fits, or none.'));
-    } else if (roomy() && (!planNote || planNote.hidden) && !photosOpen) {
-      // (the plan note and the photo strip say it too: once is enough)
+    } else if (roomy() && !ta.value.trim() && !chosenEmotion && !photosOpen) {
+      // said once, before anything is typed (the highlighted chips carry their own 'suggested' label)
       note.append(hfIcon('sparkle'), h('span', {}, 'Your words stay on this phone.'));
     }
     note.hidden = !note.firstChild;
@@ -181,19 +201,34 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     // only confident matches are highlighted (typo-tolerant guesses stay quiet)
     suggested = (reading?.emotions || []).filter((e) => e.confidence >= 0.6).slice(0, 3).map((e) => e.id);
     for (const id of suggested) if (!cached.has(id)) cached.set(id, m.getEmotion(id)?.name || id);
-    if (safety.level === 'crisis' && !supportShown) { supportShown = true; openSupport(app, { urgent: true }); }
-    supportBtn.hidden = safety.level === 'none';
+    report(safety);
+    if (safety.level === 'crisis' && !supportShown) { supportShown = true; openSupportSheet({ urgent: true }); }
+    // once support has been needed it stays one tap away, even if the words change
+    supportBtn.hidden = worst.level === 'none';
     renderFeelings(); renderIntentions(); setNote();
   }
+  // the field grows a whole line at a time and stops on a line boundary, so a scrolled
+  // field never shows half a line under its top border
+  let metrics = null;
   function grow() {
+    if (!metrics) {
+      const cs = getComputedStyle(ta);
+      const lh = parseFloat(cs.lineHeight) || 25;
+      metrics = { lh, pad: (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0), bd: (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0) };
+    }
+    const { lh, pad, bd } = metrics;
+    const max = Math.round((roomy() ? 4 : 3) * lh + pad + bd);
+    ta.style.maxHeight = `${max}px`;
     ta.style.height = 'auto';
-    const max = roomy() ? 128 : 96;
-    ta.style.height = `${Math.min(max, Math.max(50, ta.scrollHeight + 2))}px`;
+    ta.style.height = `${Math.min(max, Math.max(50, ta.scrollHeight + bd))}px`;
   }
   function updateSend() {
     sendBtn.disabled = !(ta.value.trim() || chosenEmotion);
-    const n = ta.value.length;
-    count.textContent = n > MAX_CHARS - 60 ? `${MAX_CHARS - n} characters left` : '';
+    const n = ta.value.length, left = MAX_CHARS - n;
+    count.textContent = n > MAX_CHARS - 60 ? `${left} characters left` : '';
+    countVis.hidden = n < COUNT_FROM;
+    countVis.textContent = n >= COUNT_FROM ? (left > 0 ? `${left} left` : 'That’s the limit') : '';
+    el.classList.toggle('counting', n >= COUNT_FROM);
   }
   let hadText = !!ta.value.trim();
   ta.addEventListener('input', () => {
@@ -256,7 +291,8 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     const t = ta.value.trim();
     reading = t ? m.interpret(t) : null;
     safety = t ? m.checkText(t) : { level: 'none', category: null };
-    if (safety.level === 'crisis' && !supportShown) { supportShown = true; openSupport(app, { urgent: true }); }
+    report(safety);
+    if (safety.level === 'crisis' && !supportShown) { supportShown = true; openSupportSheet({ urgent: true }); }
     const intensity = reading?.emotions?.length ? reading.intensity : 0.6;
     const emotions = [];
     if (chosenEmotion) emotions.push({ id: chosenEmotion, confidence: 1, intensity });
@@ -271,6 +307,8 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
 
   function close(reason = 'close') {
     if (closed) return;
+    // words typed just before closing (inside the reading pause) are still checked
+    if (reason !== 'submit' && modsNow && ta.value.trim()) { try { report(modsNow.checkText(ta.value)); } catch { /* the scene still has what was seen */ } }
     closed = true;
     clearTimeout(timer); clearTimeout(hintT);
     document.removeEventListener('keydown', onKey, true);
@@ -282,7 +320,7 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     el.classList.add('out');
     setTimeout(() => el.remove(), reduced ? 160 : 300);
     if (reason !== 'submit' && opener?.isConnected) opener.focus?.({ preventScroll: true });
-    onClose?.(reason);
+    onClose?.(reason, { safety: { ...worst }, supportShown });
   }
 
   renderFeelings(); renderIntentions(); setNote(); grow(); updateSend();
@@ -302,5 +340,7 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     get text() { return ta.value; },
     get dirty() { return ta.value.trim().length > 0; },
     get safety() { return safety; },
+    /** The most serious level seen while open (sent or not). */
+    get worst() { return { ...worst }; },
   };
 }

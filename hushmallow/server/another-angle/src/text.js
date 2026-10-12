@@ -7,11 +7,16 @@ export function tidy(text) {
   return String(text ?? '')
     .replace(/[‘’‛ʼ`´]/g, "'")
     .replace(/[“”„‟]/g, '"')
+    // Hyphen and non-breaking hyphen are the same hyphen ("second‑hand").
+    .replace(/[‐‑]/g, '-')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-const WORD_RE = /[\p{L}\p{N}]+(?:['’\-][\p{L}\p{N}]+)*/gu;
+// A word: letters/digits joined by apostrophes or hyphens ("weren't",
+// "second-hand", "first-choice" count once); a number keeps its separators
+// ("1,000", "3.5"); "e.g." and "i.e." are one word.
+const WORD_RE = /\b(?:e\.g|i\.e|a\.m|p\.m)\.|\d+(?:[.,]\d+)+|[\p{L}\p{N}]+(?:['\-][\p{L}\p{N}]+)*/giu;
 
 /** Words as the person would count them (hyphenated and contracted words count once). */
 /** @param {unknown} text @returns {string[]} */
@@ -70,7 +75,10 @@ const SYNONYMS = [
   ['mistake', 'mistakes', 'error', 'errors', 'slip', 'messed', 'blunder'],
   ['meeting', 'meetings', 'call', 'presentation', 'pitch', 'standup', 'stand-up'],
   ['school', 'class', 'uni', 'university', 'college', 'course', 'lecture', 'teacher', 'tutor'],
-  ['said', 'say', 'saying', 'comment', 'comments', 'remark', 'words'],
+  // Speech: "told him I loved him" meets "words that big"; "we need to talk" meets "the conversation".
+  ['said', 'say', 'says', 'saying', 'told', 'tell', 'tells', 'telling', 'comment', 'comments', 'remark', 'remarks', 'words', 'talk', 'talked', 'talking', 'talks', 'conversation', 'conversations', 'chat', 'spoke', 'speak', 'speaking'],
+  // A doctor's appointment: "my doctor wants to see me" meets "booking the soonest slot".
+  ['doctor', 'doctors', 'gp', 'nurse', 'appointment', 'appointments', 'clinic', 'surgery', 'hospital', 'consultant', 'slot'],
   ['embarrassed', 'embarrassing', 'embarrassment', 'awkward', 'cringe', 'humiliated'],
   ['ignored', 'ignoring', 'ignore', 'blanked', 'ghosted', 'unanswered'],
   ['fail', 'failed', 'failing', 'failure'],
@@ -120,13 +128,27 @@ export function stem(word) {
   return w.length > 6 ? w.slice(0, 6) : w;
 }
 
+/**
+ * Lower-cased words, each hyphenated word followed by its parts, so
+ * "first-choice" meets "first choice" and "second-hand" meets "hand".
+ * @param {unknown} text @returns {string[]}
+ */
+function wordsAndParts(text) {
+  const out = [];
+  for (const raw of words(text)) {
+    const w = raw.toLowerCase();
+    out.push(w);
+    if (w.includes('-')) out.push(...w.split('-').filter(Boolean));
+  }
+  return out;
+}
+
 /** Content-word stems of a text (no stop words, no 1–2 letter words). */
 /** @param {unknown} text @returns {Set<string>} */
 export function contentStems(text) {
   const out = new Set();
-  for (const raw of words(text)) {
-    const w = raw.toLowerCase().replace(/’/g, "'");
-    if (w.length < 3 || STOPWORDS.has(w) || /^\d+$/.test(w)) continue;
+  for (const w of wordsAndParts(text)) {
+    if (w.length < 3 || STOPWORDS.has(w) || /^[\d.,]+$/.test(w)) continue;
     out.add(stem(w));
   }
   return out;
@@ -140,11 +162,32 @@ export function contentStems(text) {
  */
 export function allStems(text) {
   const out = new Set();
-  for (const raw of words(text)) {
-    const w = raw.toLowerCase().replace(/’/g, "'");
-    if (w.length < 3 || /^\d+$/.test(w)) continue;
+  for (const w of wordsAndParts(text)) {
+    if (w.length < 3 || /^[\d.,]+$/.test(w)) continue;
     out.add(stem(w));
   }
+  return out;
+}
+
+/**
+ * Words that frame almost any angle ("the fact is real", "it's still a
+ * question", "what it means"): they say how a line is built, not what it
+ * says, so the novelty check leaves them out.
+ */
+const FRAME_WORDS = new Set(`fact facts real true question questions answer answered unanswered mean means meaning meant possible possibility part story guess decide decided matter matters worth sure`.split(' '));
+const FRAME_STEMS = new Set([...FRAME_WORDS].map((w) => stem(w)));
+
+/**
+ * The meaning-bearing stems of an angle: its content words minus the
+ * person's own (every angle may name the exam, the boss or the five hours)
+ * and minus the framing words above. Two angles that share many of these
+ * say the same new thing, however the sentences are built.
+ * @param {unknown} text @param {Set<string>} inputStems contentStems of the person's text
+ * @returns {Set<string>}
+ */
+export function meaningStems(text, inputStems) {
+  const out = new Set();
+  for (const s of contentStems(text)) if (!inputStems.has(s) && !FRAME_STEMS.has(s)) out.add(s);
   return out;
 }
 
@@ -177,8 +220,9 @@ export function numbersIn(text) {
     const w = raw.toLowerCase();
     const ord = ORDINALS.get(w);
     if (ord) { out.add(ord); continue; }
-    if (/^\d+(?:[.,]\d+)?$/.test(w)) {
-      const n = Number(w.replace(',', '.'));
+    if (/^\d+(?:[.,]\d+)*$/.test(w)) {
+      // "1,000" is a thousand, "3,5" and "3.5" are three and a half.
+      const n = Number(/^\d{1,3}(?:,\d{3})+$/.test(w) ? w.replace(/,/g, '') : w.replace(',', '.'));
       out.add(Number.isInteger(n) && n < NUMBER_WORDS.indexOf('thirty') ? NUMBER_WORDS[n] || w : w);
     } else if (NUMBER_WORDS.includes(w)) {
       out.add(w);

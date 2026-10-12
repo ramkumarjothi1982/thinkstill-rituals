@@ -77,6 +77,48 @@ test('safety: the common phrasings the 12 Oct review found missing (checkText an
   }
 });
 
+// review round 3 (12 Oct): the whole probe list, run as a test. Levels: crisis opens the urgent
+// sheet; concern keeps support close (passive or ambiguous wishes, distress, wanting to hurt someone)
+const PROBE = {
+  crisis: ['I want to kill myself', 'i wanna die', 'I want to disappear forever', 'nobody would miss me', 'thinking of ending it',
+    'I want to stop existing', 'I keep thinking about dying', "I don't want to wake up tomorrow", "I've been cutting again", 'I started self harming',
+    'I have the pills ready', "I'm done with life", 'i want to kill my self', 'I took a bunch of pills', "I'm going to end it tonight",
+    'no one would care if I died', "I'd be better off dead", 'I want to die', 'I just want it all to stop', "I'm suicidal", 'I want to end my life',
+    "I can't go on", 'Everyone would be better off without me', 'i want to unalive myself', "I'm thinking of taking my own life",
+    "I don't want to be alive", "life isn't worth living", 'I wish I could not exist', 'nobody would notice if I disappeared', 'I started cutting myself',
+    'I hope I never wake up', 'I keep thinking about not waking up', "I'm done with living", 'I took my own life nearly, last year', 'I keep hurting my self'],
+  crisisOther: ['My friend said she wants to kill herself', 'my brother is going to kill himself'],
+  care: ['my partner threatens me', 'my dad hits me', 'My boyfriend hit me last night', 'I was raped', 'my husband controls my money', "I don't feel safe at home",
+    "I'm being bullied at school", 'she slapped me', 'my mum beats me', 'my ex is stalking me'],
+  concern: ['he hurt me', "I can't cope", 'I feel hopeless', 'I want to hurt him', "I'm going to kill him", 'I feel worthless', 'I wish I could sleep forever',
+    "there's no point anymore", "what's the point anymore", "I don't see a way out", 'I want the pain to stop', 'I hate my life and want out',
+    "I'm going to jump", 'I keep thinking about death'],
+  none: ['this deadline is killing me', 'my feet are killing me', 'I want to end it with him', 'I could kill him', "I'm dying to see the new film",
+    "I'd rather die than go to that party", 'I nearly died laughing', 'the traffic was murder', 'my phone died', 'I killed it at the gym', 'I want to die of boredom',
+    'I took all my pills on time', 'this job is a nightmare', 'my boss embarrassed me today', "I'm so angry at my sister", 'I want to end this meeting',
+    'I want to kill this bug in my code', 'I shot my shot', 'we killed the presentation', "I'm going to end it with my boyfriend tonight", "I'd kill for a coffee",
+    'That joke killed me', 'I hate myself',
+    // near-misses of the round-3 phrases
+    "I'm taking my life back", 'I took my life into my own hands', "I'm thinking of dying my hair purple", "I've been cutting carbs", 'I keep cutting my fringe too short',
+    "I've been cutting back on coffee", "I'm done with living in London", 'I could sleep forever after that run', "there's no point in arguing with him",
+    'I hate living with my flatmate', 'I hate my life admin', "I'm going to jump in the pool", "I've got my meds ready for the trip", 'thinking about the death of my cat',
+    "I'm done with life admin", 'Nobody would care if I died my hair green', 'I hope I never wake up this early again', 'started cutting the hedge', 'we kept cutting costs',
+    'I want to not exist on social media for a week', 'I wish I could sleep in forever', "I've been cutting onions", 'I killed myself laughing', 'I kill my self laughing at that show'],
+};
+test('safety: the review probe list (round 3) gives the expected level, and checkText and interpret agree', () => {
+  const expect = { crisis: ['crisis', 'self-harm'], crisisOther: ['crisis', 'someone-in-danger'], care: ['care'], concern: ['concern'], none: ['none'] };
+  for (const [group, list] of Object.entries(PROBE)) {
+    const [level, category] = expect[group];
+    for (const t of list) {
+      const r = checkText(t);
+      assert.equal(r.level, level, `${t} → ${r.level} (${r.matched})`);
+      if (category) assert.equal(r.category, category, t);
+      const legacy = interpret(t).safety.level;
+      assert.equal(legacy, level === 'care' ? 'concern' : level, `interpret: ${t}`);
+    }
+  }
+});
+
 test('safety: every phrase the old free detector caught is still caught', () => {
   for (const t of ['I want to kill myself', 'thinking about hurting myself', 'I have been cutting myself', 'suicidal', 'I just want to end it all',
     'end my life', "I don't want to be here", 'I do not want to wake up', 'no reason to live', 'better off dead', 'everyone is better off without me',

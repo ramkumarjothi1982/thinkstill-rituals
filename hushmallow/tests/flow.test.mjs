@@ -368,7 +368,7 @@ test('storm layout: the subtitle band stays clear; postcards, the words and Glit
     const tag = `${W}×${H} n=${n} text=${tw}`;
     assert.equal(p.slots.length, p.shown, `${tag}: a slot per hanging postcard`);
     if (!p.short) assert.equal(p.shown, n, `${tag}: every postcard has a place`);
-    else assert.ok(p.shown >= 1 && p.shown <= LAYOUT.SHORT_MAX && (p.s >= LAYOUT.SHORT_S || p.shown === n), `${tag}: short screen hangs ${p.shown} at ${p.s} px`);
+    else assert.ok(p.shown >= 1 && p.shown <= LAYOUT.SHORT_MAX && (p.s >= LAYOUT.SHORT_S2 || p.shown === n), `${tag}: short screen hangs ${p.shown} at ${p.s} px`);
     const bandBottom = sc.band.y + sc.band.h;
     const boxes = p.slots.map((q) => ({ x0: q.x - p.s / 2, y0: q.y - p.s / 2, x1: q.x + p.s / 2, y1: q.y + p.s / 2 }));
     const glitzi = { x0: sc.mallow.left, y0: sc.mallow.top, x1: sc.mallow.right, y1: sc.mallow.bottom };
@@ -402,13 +402,15 @@ test('storm layout: postcards are ≥ 0.2U on standard phones (0.19U at 375×812
 });
 
 test('storm layout: short phones hang fewer, larger postcards (≥ 64 px, ≤ 5 at once), never beside Glitzi\'s face', () => {
-  for (const [W, H] of [[320, 568], [360, 600]]) for (const tw of [0, 245]) {
+  for (const [W, H] of [[320, 568], [360, 600]]) for (const tw of [0, 245, 330]) {
     const sc = stormScreen(W, H);
     const p = planStormLayout({ ...sc, n: 7, thought: tw ? { textW: tw } : null });
     const tag = `${W}×${H} text=${tw}`;
     assert.ok(p.short, tag);
     assert.ok(p.shown >= 2 && p.shown <= LAYOUT.SHORT_MAX, `${tag}: ${p.shown} hang at once`);
-    assert.ok(p.s >= LAYOUT.SHORT_S, `${tag}: ${p.s} px ≥ ${LAYOUT.SHORT_S}`);
+    // one line of words leaves room for ≥ 64 px postcards; a two-line plate still ≥ 50 px (never the seven-tiny layout)
+    const min = p.thought?.lines === 2 ? LAYOUT.SHORT_S2 : LAYOUT.SHORT_S;
+    assert.ok(p.s >= min, `${tag}: ${p.s} px ≥ ${min}`);
     for (const q of p.slots) assert.ok(q.y + p.s / 2 <= sc.mallow.top, `${tag}: hung under the clouds, not beside Glitzi`);
   }
   // fewer than the cap: all of them, still large

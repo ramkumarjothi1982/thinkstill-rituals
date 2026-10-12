@@ -1539,7 +1539,7 @@ export function create(ctx) {
       const lines2 = m > 1.04 ? d.more : m < 0.96 ? d.less : (sameId ? null : d.other);
       if (prepared && !complete && Math.abs(m - 1) > 0.01) feelEase = { m, left: FEEL_SEC };
       try { mallow?.react?.('nod'); } catch { /* optional */ }
-      if (lines2 && !paused) ctx.say(lines2, { who: 'glitzi', kind: 'dialogue' });
+      if (lines2 && !paused) { introAt = -1; ctx.say(lines2, { who: 'glitzi', kind: 'dialogue' }); }
     },
     setThought(h) { thought = h; if (prepared) layout(); },
     /**

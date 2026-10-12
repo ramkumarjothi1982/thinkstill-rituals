@@ -148,7 +148,7 @@ export function createHushflow(opts = {}) {
   let fadeIn = 1, revealed = false;
   let t = 0, lastTs = 0, raf = 0;
   // loop: 'ticker' (the rig's shared loop), 'raf' (our own: standalone, or the watchdog's fallback) or 'stopped'
-  let loopMode = 'stopped', tickerOn = false, lastTickAt = 0, watchdog = 0;
+  let loopMode = 'stopped', tickerOn = false, lastTickAt = 0, watchdog = 0, probe = 0;
   let lastInputAt = -Infinity;
   let wantNext = false, autoFlow = false;
   let discoveryPending = 0;
@@ -670,6 +670,7 @@ export function createHushflow(opts = {}) {
     raf = 0;
     loopMode = 'stopped';
     if (watchdog) { clearInterval(watchdog); watchdog = 0; }
+    if (probe) { cancelAnimationFrame(probe); probe = 0; }
   }
   /**
    * Watchdog: the rig's shared loop can die (an exception in a rig's own tick before it asks
@@ -677,12 +678,19 @@ export function createHushflow(opts = {}) {
    * world is visible and playing, run our own requestAnimationFrame until the ticker is back.
    */
   function watch() {
-    if (loopMode !== 'ticker' || paused || hidden || frozen || destroyed || phase === 'finished') return;
+    if (loopMode !== 'ticker' || paused || hidden || frozen || destroyed || phase === 'finished' || probe) return;
     if (typeof document !== 'undefined' && document.hidden) return;
     if (nowMs() - lastTickAt < WATCHDOG_MS) return;
-    console.warn('[hushflow] the shared Mallow loop stopped ticking: the world runs on its own frame loop');
-    emit('loop', { mode: 'raf', reason: 'watchdog' });
-    runOwnRaf();
+    // stale — but a long task (a build, a font) also starves timers and frames alike: ask for one
+    // frame of our own; the shared loop, if alive, asked first and ticks before it does
+    probe = requestAnimationFrame(() => {
+      probe = 0;
+      if (loopMode !== 'ticker' || paused || hidden || frozen || destroyed) return;
+      if (nowMs() - lastTickAt < WATCHDOG_MS) return;
+      console.warn('[hushflow] the shared Mallow loop stopped ticking: the world runs on its own frame loop');
+      emit('loop', { mode: 'raf', reason: 'watchdog' });
+      runOwnRaf();
+    });
   }
   function tickFromTicker(dt) {
     lastTickAt = nowMs();

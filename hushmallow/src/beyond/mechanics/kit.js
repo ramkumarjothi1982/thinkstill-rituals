@@ -50,6 +50,10 @@ export function mix(a, b, t) {
   return `#${[0, 1, 2].map((i) => Math.round(lerp(A[i], B[i], clamp(t))).toString(16).padStart(2, '0')).join('')}`;
 }
 
+/** Low stimulation (Settings): fewer motes, softer glows, everywhere at once. */
+let LOW = false;
+export function setLowStim(b) { LOW = !!b; }
+
 // ------------------------------------------------------------- sprites --
 const SPRITES = new Map();
 const mkCanvas = (w, hgt) => { const c = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(w, hgt) : Object.assign(document.createElement('canvas'), { width: w, height: hgt }); return c; };
@@ -107,6 +111,7 @@ export function glowSprite(colour, falloff = 1) {
   return c;
 }
 export function drawGlow(g, x, y, r, colour, alpha = 1) {
+  if (LOW) alpha *= 0.6;
   if (alpha <= 0.004 || r <= 0.5) return;
   g.globalAlpha = clamp(alpha);
   g.drawImage(glowSprite(colour), x - r, y - r, r * 2, r * 2);
@@ -226,6 +231,7 @@ export class Motes {
     this.i = 0;
   }
   burst(x, y, colour, count = 8, { speed = 60, size = 3, life = 1.2, up = 20 } = {}) {
+    if (LOW) count = Math.min(count, 2);
     for (let k = 0; k < count; k++) {
       const i = this.i = (this.i + 1) % this.n;
       const a = (k / count) * TAU + (i % 7) * 0.4;

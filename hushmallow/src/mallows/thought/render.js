@@ -65,11 +65,11 @@ function paletteFor(ctx, th, look) {
   const a = th.alpha ?? 0.76;
   p = {
     ...t,
-    body: radial(ctx, 0, 0, 0.04, 1.18, [[0, rgba(t.light, 0.96)], [0.38, rgba(mixHex(t.light, t.mid, 0.55), a)], [0.78, rgba(t.mid, a)], [1, rgba(t.deep, Math.min(1, a + 0.08))]], -0.3, -0.42),
+    body: radial(ctx, 0, 0, 0.04, 1.18, [[0, rgba(t.light, 0.96)], [0.38, rgba(mixHex(t.light, t.mid, 0.55), a)], [0.8, rgba(t.mid, a)], [1, rgba(mixHex(t.mid, t.deep, 0.6), a)]], -0.3, -0.42),
     core: radial(ctx, 0, 0, 0, 1, [[0, rgba(t.glow, 0.62)], [0.5, rgba(t.glow, 0.22)], [1, rgba(t.glow, 0)]]),
     halo: radial(ctx, 0, 0, 0.55, 1.65, [[0, rgba(t.glow, 0.42)], [0.5, rgba(t.glow, 0.14)], [1, rgba(t.glow, 0)]]),
     mote: radial(ctx, 0, 0, 0, 1, [[0, 'rgba(255,255,255,0.95)'], [0.3, rgba(t.glow, 0.65)], [1, rgba(t.glow, 0)]]),
-    rim: (() => { const g = ctx.createLinearGradient(-1, -1, 1, 1); g.addColorStop(0, 'rgba(255,255,255,0.9)'); g.addColorStop(0.45, 'rgba(255,255,255,0.18)'); g.addColorStop(1, rgba(t.light, 0.55)); return g; })(),
+    rim: (() => { const g = ctx.createLinearGradient(-1, -1, 1, 1); g.addColorStop(0, 'rgba(255,255,255,0.92)'); g.addColorStop(0.45, rgba(t.light, 0.62)); g.addColorStop(1, rgba(mixHex(t.light, t.glow, 0.5), 0.75)); return g; })(),
     inkA: rgba(t.ink, 0.92), inkB: rgba(t.ink, 0.78),
     lightA: rgba(t.light, 0.32), lightA2: rgba(t.light, 0.6), deepA: rgba(t.deep, 0.5),
     depth: radial(ctx, 0, 0, 0, 1, [[0, rgba(t.deep, 0.42)], [0.6, rgba(t.deep, 0.16)], [1, rgba(t.deep, 0)]]),
@@ -377,20 +377,26 @@ function drawFx(ctx, th, pal, S, o) {
     if (al < 0.01) continue;
     const tick = rm ? 0 : Math.floor(t * 12);
     ctx.beginPath();
-    // two zigzag points per rim step, alternating out and in, re-jagged 12 times a second
-    const steps = a.len * 2;
+    // a hairline of static hugging the rim: three irregular kinks per rim step, re-jagged 12 times a second
+    const steps = a.len * 3;
+    let ex0 = 0, ey0 = 0, ex1 = 0, ey1 = 0;
     for (let k = 0; k <= steps; k++) {
-      const f = k / 2, i0 = (a.i + Math.floor(f)) % OUTLINE_N, i1 = (i0 + 1) % OUTLINE_N, u = f - Math.floor(f);
+      const f = k / 3, i0 = (a.i + Math.floor(f)) % OUTLINE_N, i1 = (i0 + 1) % OUTLINE_N, u = f - Math.floor(f);
       const x = O[2 * i0] + (O[2 * i1] - O[2 * i0]) * u - ox, y = O[2 * i0 + 1] + (O[2 * i1 + 1] - O[2 * i0 + 1]) * u - oy;
       const nx = x - cx, ny = y - cy, nl = Math.hypot(nx, ny) || 1;
-      const end = k === 0 || k === steps ? 0.2 : 1;
-      const jag = P * (0.045 + end * (k % 2 ? 0.07 : -0.01) * (0.6 + 0.8 * rnd(a.seed, k + tick * 17)));
+      const end = k === 0 || k === steps ? 0 : 1;
+      const r = rnd(a.seed, k + tick * 17);
+      const jag = P * (0.03 + end * (r - 0.42) * 0.11);
       const X = x + (nx / nl) * jag, Y = y + (ny / nl) * jag;
-      if (k === 0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
+      if (k === 0) { ctx.moveTo(X, Y); ex0 = X; ey0 = Y; } else ctx.lineTo(X, Y);
+      ex1 = X; ey1 = Y;
     }
     ctx.save();
-    ctx.globalAlpha *= al * 0.32; ctx.strokeStyle = '#ff6a3d'; ctx.lineWidth = Math.max(2.6, P * 0.05); ctx.stroke();
-    ctx.globalAlpha = ctx.globalAlpha / 0.32 * 0.95; ctx.strokeStyle = '#ffe6c4'; ctx.lineWidth = Math.max(1.1, P * 0.016); ctx.stroke();
+    ctx.globalAlpha *= al * 0.4; ctx.strokeStyle = '#ff6a3d'; ctx.lineWidth = Math.max(3, P * 0.06); ctx.stroke();
+    ctx.globalAlpha = ctx.globalAlpha / 0.4 * 0.95; ctx.strokeStyle = '#ffeedb'; ctx.lineWidth = Math.max(1.1, P * 0.015); ctx.stroke();
+    // a spark at each end
+    ctx.fillStyle = '#fff1dc';
+    ctx.beginPath(); ctx.arc(ex0, ey0, Math.max(0.8, P * 0.012), 0, TAU); ctx.arc(ex1, ey1, Math.max(0.8, P * 0.012), 0, TAU); ctx.fill();
     ctx.restore();
   }
   // frustration: steam puffs rising from two vents
@@ -462,10 +468,10 @@ function drawPropFront(ctx, th, o, S, pal) {
     blob(ctx, S.spec, -r * 0.36, -r * 0.4, r * 0.32, r * 0.16, -0.5, 0.45);
     ctx.restore();
   } else if (th.prop === 'shell') {
-    const L = ps.size, H = L * 0.52;
+    const L = ps.size, H = L * 0.36;
     ctx.save();
     ctx.translate(ps.x - ox, ps.y - oy); ctx.rotate(ps.ang);
-    ctx.globalAlpha *= 1 - 0.3 * ex;
+    ctx.globalAlpha *= 1 - 0.25 * ex;
     // a scallop: a fan from the hinge, scalloped along its rim
     ctx.beginPath();
     ctx.moveTo(0, 0);
@@ -531,6 +537,7 @@ function drawThread(ctx, th, o, pal, back) {
   const v = ps.v ?? 0.56;
   const sp = th._propPt;
   const N = 14;
+  let px0 = 0, py0 = 0;
   ctx.save();
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   ctx.beginPath();
@@ -542,12 +549,14 @@ function drawThread(ctx, th, o, pal, back) {
     let x = M[0] * sp.x + M[2] * sp.y + M[4] - ox, y = M[1] * sp.x + M[3] * sp.y + M[5] - oy;
     if (!back) {
       // tangles: a wandering thread with crossings, smoothing out as it loosens
-      const w = tangle * P * 0.045;
-      y += Math.sin(k * 1.9 + rnd(ps.seed, k) * 3) * w + (rm ? 0 : Math.sin(t * 1.3 + k) * w * 0.1);
-      x += Math.cos(k * 2.7 + rnd(ps.seed, k + 9) * 3) * w * 0.6;
+      const w = tangle * P * 0.04;
+      y += Math.sin(k * 1.7 + rnd(ps.seed, k) * 2.4) * w + (rm ? 0 : Math.sin(t * 1.1 + k) * w * 0.1);
+      x += Math.cos(k * 2.3 + rnd(ps.seed, k + 9) * 2.4) * w * 0.5;
     }
-    if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    if (k === 0) { ctx.moveTo(x, y); } else { const mx = (px0 + x) / 2, my = (py0 + y) / 2; ctx.quadraticCurveTo(px0, py0, mx, my); }
+    px0 = x; py0 = y;
   }
+  ctx.lineTo(px0, py0);
   ctx.strokeStyle = back ? 'rgba(200,64,96,0.4)' : '#f2557c';
   ctx.lineWidth = Math.max(1.6, P * 0.022);
   ctx.stroke();

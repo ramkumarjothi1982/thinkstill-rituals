@@ -68,17 +68,34 @@ test('the Paid library has a fitting ritual for every emotion family', () => {
   }
 });
 
-test('shipped code calls no AI or remote service', () => {
+test('shipped code calls no remote service except Another Angle’s own server', async () => {
   const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap((f) => (f.isDirectory() ? walk(`${d}/${f.name}`) : f.name.endsWith('.js') ? [`${d}/${f.name}`] : []));
-  // the one request allowed: the app's own version.json on the same site,
+  // the requests allowed: the app's own version.json on the same site,
   // read to pick up a new deploy; it sends nothing (src/app/update.js)
   const versionCheck = "fetch(new URL('../../version.json', folder), { cache: 'no-store' })";
   assert.ok(readFileSync(`${root}src/app/update.js`, 'utf8').includes(versionCheck));
+  // …and exactly one more: Another Angle's client (hushmallow Beyond, src/beyond/angle-client.js),
+  // only after consent, only to ANGLE_ENDPOINT from src/app/config.js + one of its three paths
+  const angleFetch = 'const netFetch = (url, init) => globalThis.fetch(url, init);';
+  const angleSrc = readFileSync(`${root}src/beyond/angle-client.js`, 'utf8');
+  assert.equal(angleSrc.split(angleFetch).length, 2, 'one fetch site in angle-client.js');
+  assert.match(angleSrc, /const url = `\$\{endpoint\}\$\{path\}`;/);
+  assert.match(angleSrc, /if \(!endpoint \|\| !Object\.values\(PATHS\)\.includes\(path\)\)/);
+  const { ANGLE_ENDPOINT, ANGLE_ALLOWED_HOSTS } = await import('../src/app/config.js');
+  if (ANGLE_ENDPOINT) {
+    const u = new URL(ANGLE_ENDPOINT);
+    assert.equal(u.protocol, 'https:', 'ANGLE_ENDPOINT is https');
+    assert.ok(ANGLE_ALLOWED_HOSTS.includes(u.hostname), 'ANGLE_ENDPOINT host is allow-listed');
+  }
   for (const f of walk(`${root}src`)) {
-    const s = readFileSync(f, 'utf8').replace(f.endsWith('/src/app/update.js') ? versionCheck : '\0', '');
+    let s = readFileSync(f, 'utf8');
+    if (f.endsWith('/src/app/update.js')) s = s.replace(versionCheck, '');
+    if (f.endsWith('/src/beyond/angle-client.js')) s = s.replace(angleFetch, '');
     assert.doesNotMatch(s, /\bfetch\s*\(|XMLHttpRequest|new WebSocket|EventSource\(|sendBeacon/, f);
-    // the only URLs allowed: the SVG namespace and the support-line directory people can open themselves
-    const urls = (s.match(/https?:\/\/[^'"`\s)]+/g) || []).filter((u) => !/^https?:\/\/(www\.w3\.org\/|findahelpline\.com)/.test(u));
+    // the only URLs allowed: the SVG namespace, the support-line directory people can open themselves,
+    // and (in src/app/config.js only) the configured Another Angle endpoint
+    const urls = (s.match(/https?:\/\/[^'"`\s)]+/g) || []).filter((u) => !/^https?:\/\/(www\.w3\.org\/|findahelpline\.com)/.test(u))
+      .filter((u) => !(ANGLE_ENDPOINT && f.endsWith('/src/app/config.js') && u === ANGLE_ENDPOINT));
     assert.deepEqual(urls, [], f);
   }
 });

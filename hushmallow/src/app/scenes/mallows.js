@@ -30,5 +30,7 @@ export default function mallows(app) {
     app.state.homeMallow = id;
     app.go('home');
   }
-  return { el, title: 'The Mallows', enter() { world.dim(true); world.place({ x: 50, y: 12, scale: 0.4 }); clearBubble(); } };
+  // the cards are the Mallows here: the live one steps aside rather than show
+  // through the glass behind the title
+  return { el, title: 'The Mallows', enter() { world.dim(true); world.showMallow?.(false); world.place({ x: 50, y: 12, scale: 0.4 }); clearBubble(); }, leave() { world.showMallow?.(true); } };
 }

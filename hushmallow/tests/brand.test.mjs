@@ -276,17 +276,94 @@ test('brand: index.html, manifest and the Framer embed are lowercase', () => {
   assert.match(tsx, /\burl\b/);
 });
 
+// Classes that uppercase their text, read from the CSS itself: each entry is
+// the class list of a selector's last compound (".badge.beyond" → both).
+function upperCompounds() {
+  const out = [];
+  for (const p of walk('src', ['.css'])) {
+    for (const m of stripComments(read(p), p).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      if (!/text-transform:\s*uppercase/.test(m[2])) continue;
+      for (const sel of m[1].split(',')) {
+        const last = sel.trim().split(/[\s>+~]+/).pop() || '';
+        const cls = [...new Set([...last.matchAll(/\.([\w-]+)/g)].map((c) => c[1]))];
+        if (cls.length) out.push(cls);
+      }
+    }
+  }
+  return out;
+}
+// End of the balanced bracket that opens at code[i] (strings and templates skipped).
+function closeAt(code, i) {
+  const open = code[i], close = { '(': ')', '{': '}', '[': ']' }[open];
+  let depth = 0;
+  for (let k = i; k < code.length; k++) {
+    const c = code[k];
+    if (c === "'" || c === '"') { k++; while (k < code.length && code[k] !== c && code[k] !== '\n') { if (code[k] === '\\') k++; k++; } continue; }
+    if (c === '`') { k++; let d = 0; while (k < code.length && !(code[k] === '`' && d === 0)) { if (code[k] === '\\') k++; else if (code[k] === '$' && code[k + 1] === '{') { d++; k++; } else if (code[k] === '}' && d) d--; k++; } continue; }
+    if (c === open) depth++;
+    else if (c === close && --depth === 0) return k;
+  }
+  return code.length - 1;
+}
+const BRAND_REF = /hushmallow|brandName|PlanName|planName|PLANS\.\w+\.name|\bp\.name\b|BRAND\.\w+/;
+/** Every h(tag, {attrs}, …kids) call whose attrs uppercase it, with a brand reference
+ *  anywhere in its kids (nested elements inherit text-transform) that is not
+ *  wrapped in brandMark(…) or a .brand-name element. */
+export function uppercaseBrandProblems(src, path, compounds) {
+  const code = lexJs(src).code;
+  const bad = [];
+  const isUpper = (attrs) => {
+    if (/textTransform:\s*['"`]uppercase/.test(attrs) || /type\(\s*['"](overline|badge)['"]/.test(attrs)) return true;
+    for (const m of attrs.matchAll(/class(?:Name)?:\s*(['"`])([^'"`]*)\1/g)) {
+      const list = new Set(m[2].split(/\s+/));
+      if (compounds.some((c) => c.every((x) => list.has(x)))) return true;
+    }
+    return false;
+  };
+  const scrub = (t) => {   // drop protected brand: brandMark(…) and h(…, { class: '…brand-name…' }, …)
+    for (;;) {
+      const m = /\bbrandMark\(/.exec(t) || /\bh\([^,]*,\s*\{[^{}]*brand-name[^{}]*\}/.exec(t);
+      if (!m) return t;
+      const at = t.indexOf('(', m.index);
+      t = t.slice(0, m.index) + t.slice(closeAt(t, at) + 1);
+    }
+  };
+  for (const m of code.matchAll(/\bh\(/g)) {
+    const open = m.index + 1, end = closeAt(code, open);
+    const call = code.slice(open + 1, end);
+    const comma = call.search(/,\s*\{/);
+    if (comma < 0) continue;
+    const a0 = call.indexOf('{', comma), a1 = closeAt(call, a0);
+    if (!isUpper(call.slice(a0, a1 + 1))) continue;
+    if (BRAND_REF.test(scrub(call.slice(a1 + 1)))) bad.push(`${path}:${code.slice(0, m.index).split('\n').length}`);
+  }
+  // text handed to an eyebrow or a speaker label by name (setMove, say)
+  code.split('\n').forEach((l, i) => { if (/\b(eyebrow|who):\s*[^,}]*?(hushmallow|brandName|PlanName|planName)/.test(scrub(l))) bad.push(`${path}:${i + 1}`); });
+  return bad;
+}
+
 test('brand: the brand never sits inside an uppercasing style unprotected', () => {
   // .brand-name can never be transformed
   assert.match(read('src/ui/type.css'), /\.brand-name \{[^}]*text-transform: none !important/);
-  // no brand text handed straight to an overline / badge / speaker label
-  const bad = [];
-  for (const p of mine.filter((x) => x.endsWith('.js'))) {
-    stripComments(read(p), p).split('\n').forEach((l, i) => {
-      if (/class: '(eyebrow|badge|who|k)\b/.test(l) && /hushmallow|brandName|PlanName|planName|PLANS\.\w+\.name|p\.name/.test(l) && !/brandMark\(/.test(l)) bad.push(`${p}:${i + 1}`);
-    });
-  }
+  const compounds = upperCompounds();
+  for (const c of ['eyebrow', 'badge', 'who', 'k', 't-overline']) assert.ok(compounds.some((x) => x.length === 1 && x[0] === c), `${c} found uppercasing in the CSS`);
+  const bad = mine.filter((x) => x.endsWith('.js')).flatMap((p) => uppercaseBrandProblems(read(p), p, compounds));
   assert.deepEqual(bad, []);
+});
+
+test('brand guard catches the brand in uppercase however it is written (mutation cases)', () => {
+  const compounds = upperCompounds();
+  const caught = (src) => uppercaseBrandProblems(src, 'x.js', compounds).length > 0;
+  assert.ok(caught("h('div', { class: 'eyebrow' }, brandName)"), 'eyebrow class');
+  assert.ok(caught("h('div', { class: 'eyebrow' },\n  'Welcome to',\n  ` ${BRAND.beyondPlanName}`)"), 'split across lines');
+  assert.ok(caught("h('p', { class: 'card eyebrow muted' }, h('span', {}, flowPlanName))"), 'nested child inherits the uppercase');
+  assert.ok(caught("h('span', { style: { textTransform: 'uppercase', color: 'red' } }, brandName)"), 'inline textTransform');
+  assert.ok(caught("h('span', { style: type('overline', { color: 'red' }) }, 'hushmallow Flow')"), 'overline token');
+  assert.ok(caught("h('span', { class: 'badge beyond' }, PLANS.ultra.name)"), 'badge');
+  assert.ok(caught("setMove(0, { eyebrow: brandName, title: 'x' })"), 'eyebrow by name');
+  assert.ok(!caught("h('div', { class: 'eyebrow' }, brandMark(BRAND.beyondPlanName), ' is open')"), 'brandMark is safe');
+  assert.ok(!caught("h('div', { class: 'eyebrow' }, h('span', { class: 'brand-name' }, brandName))"), '.brand-name is safe');
+  assert.ok(!caught("h('div', { class: 'eyebrow' }, 'Move 1 of 4'), h('p', {}, brandName)"), 'a sibling is not inside');
 });
 
 test('logo: approved artwork in assets/brand (light + ink, master + WebP sizes), shipped by the site build', () => {
@@ -301,6 +378,27 @@ test('logo: approved artwork in assets/brand (light + ink, master + WebP sizes),
     }
   }
   assert.match(read('tools/build-site.sh'), /"\$here\/assets\/brand"/);
+  // the high-res art ships too, so the switch at integration (D13) cannot 404 on Pages
+  assert.match(read('tools/build-site.sh'), /"\$here\/assets\/mallows-hires" "\$here\/assets\/rig-hires"/);
+});
+
+test('icons: square PNGs from the mascot, for the manifest, the home screen and the tab', () => {
+  const size = (f) => { const b = readFileSync(`${root}${f}`); assert.equal(b.toString('ascii', 1, 4), 'PNG', f); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };
+  const man = JSON.parse(read('manifest.webmanifest'));
+  assert.ok(man.icons.length >= 2);
+  for (const ic of man.icons) {
+    const [w, h] = size(ic.src);
+    assert.equal(w, h, `${ic.src} is square`);
+    assert.equal(ic.sizes, `${w}x${h}`, `${ic.src} sizes`);
+  }
+  for (const need of ['192x192', '512x512']) assert.ok(man.icons.some((i) => i.sizes === need && i.purpose === 'any'), need);
+  assert.ok(man.icons.some((i) => i.purpose === 'maskable'));
+  const html = read('index.html');
+  const touch = html.match(/<link rel="apple-touch-icon" href="([^"]+)"/)[1];
+  assert.deepEqual(size(touch), [180, 180]);
+  const fav = html.match(/<link rel="icon" href="([^"]+)"/)[1];
+  const [fw, fh] = size(fav);
+  assert.ok(fw === fh && readFileSync(`${root}${fav}`).length < 40000, 'a small square favicon');
 });
 
 test('fonts: self-hosted, licensed, preloaded once; Fredoka retired', () => {
@@ -359,9 +457,24 @@ function pxFonts(code, isCss) {
         /fontSize:\s*[^,}]*\?\s*'([\d.]+)px'/g, /fontSize:\s*[^,}]*:\s*'([\d.]+)px'/g,
         /\bfont(?:-size)?:\s*[^;{}'"`]*?\b([\d.]+)px/g];   // CSS written inside JS strings
     for (const re of pats) { let m; while ((m = re.exec(l))) found.push({ px: Number(m[1]), line: i + 1 }); }
+    // computed sizes in a font template: `${small ? 11 : 13}px`, `calc(${n ? 13 : 15}px * …)`
+    if (!isCss) {
+      for (const t of l.matchAll(/(?:fontSize\s*[:=]|\.font\s*=|\bfont\s*:|font-size\s*:)\s*`([^`]*)`/g)) {
+        for (const e of t[1].matchAll(/\$\{([^}]*)\}px/g)) {
+          for (const n of e[1].matchAll(/(?:^|[?:])\s*([\d.]+)\s*(?=[?:]|$)/g)) found.push({ px: Number(n[1]), line: i + 1 });
+        }
+      }
+    }
   });
   return found;
 }
+test('type floor guard reads computed sizes in font templates', () => {
+  const px = (l) => pxFonts(l, false).map((f) => f.px);
+  assert.deepEqual(px("el.style.fontSize = `${small ? 11 : 13}px`;"), [11, 13]);
+  assert.deepEqual(px("fontSize: `calc(${size < 170 ? 13 : size < 220 ? 15 : 17}px * var(--type-scale))`"), [13, 15, 17]);
+  assert.deepEqual(px("ctx.font = `700 ${10}px ${FAMILY}`;"), [10]);
+  assert.deepEqual(px("width: `${a ? 4 : 8}px`, fontSize: `${fs}px`"), [], 'widths and variables are not font sizes');
+});
 test('type floor: no px font size below 12 in CSS or the migrated JS', () => {
   const bad = [];
   for (const p of walk('src', ['.css'])) for (const f of pxFonts(stripComments(read(p), p), true)) if (f.px < 12) bad.push(`${p}:${f.line}: ${f.px}px`);

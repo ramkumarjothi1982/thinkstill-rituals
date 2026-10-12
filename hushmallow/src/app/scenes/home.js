@@ -1,6 +1,6 @@
 // HOME (classic) — one living Mallow, one obvious place to start, and the
 // Another Angle entry (hushmallow Beyond). Nothing else competes for attention.
-import { h, icon, iconBtn, say, clearBubble, wait } from '../ui.js';
+import { h, icon, iconBtn, say, clearBubble, wait, fitMallow } from '../ui.js';
 import { MALLOWS, MALLOW_IDS } from '../../mallows/registry.js';
 import { BRAND } from '../../brand.js';
 import { logoImg } from '../../ui/type.js';
@@ -79,12 +79,22 @@ export default function home(app, params = {}) {
     setTimeout(() => world.setStage('neutral'), 2600);
   }
 
+  // the Mallow's whole body between the lockup and the name pill, so the pill
+  // and the ask field never cover its face (small phones, large text)
+  const fit = () => requestAnimationFrame(() => {
+    const top = el.querySelector('.home-lockup')?.getBoundingClientRect().bottom;
+    const bottom = el.querySelector('.mallow-switch')?.getBoundingClientRect().top;
+    if (top && bottom) fitMallow(world, top + 6, bottom - 4, { maxScale: 1, minPx: 96 });
+  });
+
   return {
     el,
     async enter() {
       world.dim(false);
       world.showMallow(true);
       world.place({ x: 50, y: 50, scale: 1 });
+      fit();
+      addEventListener('resize', fit);
       await Promise.all([world.setRealm(m.realm), world.setMallow(id)]);
       world.setStage('neutral');
       world.rig?.on?.('react', ({ kind }) => { if (kind === 'doubleTap') app.haptic('pop'); });
@@ -103,7 +113,7 @@ export default function home(app, params = {}) {
         say(world, m.voice.hello[Math.floor(Math.random() * m.voice.hello.length)], { who: m.name, ms: 3000 });
       }
     },
-    leave() { clearBubble(); },
+    leave() { clearBubble(); removeEventListener('resize', fit); },
   };
 }
 

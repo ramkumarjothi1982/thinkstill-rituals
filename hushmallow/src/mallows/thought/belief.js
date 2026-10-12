@@ -90,14 +90,14 @@ export class BeliefMallow extends ThoughtMallow {
       // explored enough (and no finger on it): it is set down beside the belief
       if (!ps.downing && ex >= 0.72 && !this.pressed && ps.down < 1) { ps.downing = true; this._emit('prop', { kind: 'set-down' }); this.audio?.fx?.('settle', { intensity: 0.25 }); }
       if (ps.downing) ps.down = Math.min(1, ps.down + dt / (this.reducedMotion ? 0.5 : 1.5));
-      this._heavy('prop', 0.64 * a, 0.03, w * 0.95, w * 0.15, 0.27, ps.down > 0.25);
+      this._heavy('prop', 0.64 * a, 0.03, w * 0.62, w * 0.11, 0.3, ps.down > 0.25);
     } else if (this.prop === 'shell') {
-      this._heavy('prop', 0.36 * a, 0.04, w * 0.65, w * 0.09, 0.33, false);
+      this._heavy('prop', 0.34 * a, 0.06, w * 0.5, w * 0.07, 0.34, false);
     } else if (this.prop === 'thread') {
       // the thread pinches a waist (two hands squeezing the middle in); loose, it lets go
       const pinch = w * 0.085 * a, loose = ex > 0.88;
-      this._tug('propL', 0.03 * a, 0.56, pinch, 0, 0.22, loose);
-      this._tug('propR', 0.97 * a, 0.56, -pinch, 0, 0.22, loose);
+      this._tug('propL', 0.03 * a, 0.74, pinch, 0, 0.22, loose);
+      this._tug('propR', 0.97 * a, 0.74, -pinch, 0, 0.22, loose);
     } else if (this.prop === 'charm') {
       // the cord tugs the side it hangs from toward the charm
       const ch = ps.chain, I = this.render.Minv;
@@ -107,7 +107,7 @@ export class BeliefMallow extends ThoughtMallow {
         dx = I[0] * ex2 + I[2] * ey2; dy = I[1] * ex2 + I[3] * ey2;
         const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
       }
-      this._tug('prop', 0.2 * a, 0.74, dx * w * 0.07, dy * w * 0.07, 0.2, false);
+      this._tug('prop', 0.04 * a, 0.62, dx * w * 0.08, dy * w * 0.08, 0.2, false);
     }
     void dt;
   }
@@ -131,6 +131,9 @@ export class BeliefMallow extends ThoughtMallow {
 
   // where the prop is drawn (after the body has moved)
   _propPost(dt) {
+    // it leans toward the weight it carries: the stone's side, the charm's side
+    const lw = this.prop === 'stone' ? 0.07 : this.prop === 'charm' ? -0.11 : 0;
+    this.lean = lerp(this.lean || 0, lw * this.weight, Math.min(1, dt * 2));
     const ps = this.propState, R = this.render, P = R.P, W = R.W, ex = this.explored, rm = this.reducedMotion;
     const pt = (i) => ({ x: R.pts[2 * i], y: R.pts[2 * i + 1] });
     void pt;
@@ -151,8 +154,9 @@ export class BeliefMallow extends ThoughtMallow {
       ps.size = P * 0.34 * (1 - 0.3 * ex);
       const a = at(0.52, 0.02), b = at(0.84, 0.08);
       const slope = Math.atan2(b.y - a.y, b.x - a.x) * 0.6;
-      const top = at(0.64, 0.0);
-      const hx = top.x + upX * ps.size * 0.8, hy = top.y + upY * ps.size * 0.8;
+      // rest in the dent: the top of the deformed outline under the stone
+      const top = at(0.64, 0.0), sy = this._surfaceY(top.x);
+      const hx = top.x + upX * ps.size * 0.7, hy = (Number.isFinite(sy) ? sy : top.y) - ps.size * 0.7;
       // beside it, on the same ground line
       const B = this.bodyRect();
       const gx = B.right + ps.size * 1.02, gy = B.bottom - ps.size * 0.86;
@@ -162,21 +166,26 @@ export class BeliefMallow extends ThoughtMallow {
       spring(lerp(slope + ang0, 0.18, e) + Math.sin(Math.PI * e) * 1.2, 70, 9);
       if (d >= 1 && !ps.landed) { ps.landed = true; this._emit('prop', { kind: 'landed' }); }
     } else if (this.prop === 'shell') {
-      ps.size = W * 0.64;
-      const piv = at(0.2, 0.2), a = at(0.16, 0.12), b = at(0.62, 0.0);
-      const slope = Math.atan2(b.y - a.y, b.x - a.x);
-      ps.lift = lerp(ps.lift, ex * 0.85, Math.min(1, dt * 3));
-      ps.x = piv.x; ps.y = piv.y;
-      spring(slope - ps.lift, 60, 10);
+      // a hood over the head and the left eye: its edge runs from low on the left to the top right
+      const A = at(0.04, 0.8), B = at(0.86, 0.02);
+      const L = Math.hypot(B.x - A.x, B.y - A.y);
+      ps.size = L * 1.06;
+      const slope = Math.atan2(B.y - A.y, B.x - A.x);
+      ps.lift = lerp(ps.lift, ex * 0.78, Math.min(1, dt * (rm ? 8 : 2.4)));
+      spring(slope + ps.lift, 60, 10);
+      // hinged at the top right: it swings up and away from the face
+      const da = ps.ang - slope, co = Math.cos(da), si = Math.sin(da);
+      const ax = A.x - B.x, ay = A.y - B.y;
+      ps.x = B.x + ax * co - ay * si; ps.y = B.y + ax * si + ay * co;
     } else if (this.prop === 'thread') {
       ps.loose = lerp(ps.loose, ex, Math.min(1, dt * 2));
       // the band rides at the waist, and slips down as it loosens
-      ps.v = lerp(0.56, 0.86, smooth01(ps.loose));
+      ps.v = lerp(0.74, 0.9, smooth01(ps.loose));
       ps.size = P;
     } else if (this.prop === 'charm') {
       const ch = ps.chain, n = ch.x.length;
-      const A = at(0.2, 0.74);
-      const len = P * (0.44 - 0.16 * ex), seg = len / (n - 1);
+      const A = at(0.02, 0.6);
+      const len = P * (0.34 - 0.12 * ex), seg = len / (n - 1);
       ps.size = P * (0.15 + 0.04 * ex);
       if (!ch.init) { for (let i = 0; i < n; i++) { ch.x[i] = ch.px[i] = A.x - i * seg * 0.3; ch.y[i] = ch.py[i] = A.y + i * seg; } ch.init = true; }
       const g = 900 * dt * dt, damp = rm ? 0.86 : 0.97;
@@ -201,6 +210,20 @@ export class BeliefMallow extends ThoughtMallow {
 }
 
 const smooth01 = (t) => { t = clamp(t); return t * t * (3 - 2 * t); };
+
+// the top of the deformed outline at screen x (outline 0 is the top centre; 33…43 and 0…11 are the upper half)
+BeliefMallow.prototype._surfaceY = function (x) {
+  const O = this.render.outline, n = O.length / 2;
+  let best = Infinity;
+  for (let k = -11; k < 11; k++) {
+    const i = (k + n) % n, j = (k + 1 + n) % n;
+    const x0 = O[2 * i], x1 = O[2 * j];
+    if ((x - x0) * (x - x1) > 0 || x0 === x1) continue;
+    const y = O[2 * i + 1] + (O[2 * j + 1] - O[2 * i + 1]) * ((x - x0) / (x1 - x0));
+    if (y < best) best = y;
+  }
+  return best;
+};
 
 /** createBelief({text, prop:'stone'|'shell'|'thread'|'charm', emotion?, explored?}) → a Belief Mallow handle. */
 export function createBelief(o = {}) {

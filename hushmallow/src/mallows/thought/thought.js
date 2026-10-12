@@ -27,8 +27,7 @@
 
 import { SoftBody } from '../touch/softbody.js';
 import { TouchReader } from '../touch/gestures.js';
-import { excerpt } from '../../v3/words.js';
-import { SHAPE, styleFor, normaliseEmotion, deriveLook, makeLook, outlineUV, insideUV, siblingCount, tagBudget, clamp, lerp } from './styles.js';
+import { SHAPE, styleFor, normaliseEmotion, deriveLook, makeLook, outlineUV, insideUV, siblingCount, tagBudget, wordsExcerpt, clamp, lerp } from './styles.js';
 
 const TAU = Math.PI * 2;
 const COLS = 10, ROWS = 10;
@@ -172,9 +171,9 @@ export class ThoughtMallow {
   /** Being positioned by someone else (a world writes x / y every frame). */
   get driven() { return this.clock - this._drivenT < 0.5; }
   /** The words its tag shows now (exact text, or an excerpt of it when long or far away). */
-  get token() { return this.layer?.tagText?.(this) ?? (this.text ? excerpt(this.text.replace(/\s+/g, ' ').trim(), 42) : ''); }
+  get token() { return this.layer?.tagText?.(this) ?? wordsExcerpt(this.text, 42); }
   /** The words as the tag shows them for depth z (pure). */
-  tokenAt(z = this.z) { const t = this.text.replace(/\s+/g, ' ').trim(); const n = tagBudget(z); return t.length <= n ? t : excerpt(t, n); }
+  tokenAt(z = this.z) { return wordsExcerpt(this.text, tagBudget(z)); }
 
   on(ev, fn) { (this.listeners[ev] ||= []).push(fn); return this; }
   off(ev, fn) { const l = this.listeners[ev]; if (l) { const i = l.indexOf(fn); if (i >= 0) l.splice(i, 1); } return this; }
@@ -673,6 +672,8 @@ export class ThoughtMallow {
     // a slight lean into its own motion, and an embarrassed turn away
     let ang = clamp(this._vPrev.x * 0.0005, -0.14, 0.14) * (this.reducedMotion ? 0 : 1);
     if (this.emotion === 'embarrassment') ang += 0.07 * look.e * (look.face.lookX >= 0 ? 1 : -1);
+    // a belief leans under the weight it carries (belief.js sets lean)
+    if (this.lean) ang += this.lean;
     const co = Math.cos(ang), si = Math.sin(ang), a = this.aspect;
     const M = R.M;
     M[0] = co * P; M[1] = si * P; M[2] = -si * P; M[3] = co * P;
@@ -780,7 +781,7 @@ function stepFx(th, dt, look, env, rm, low) {
       const i = Math.floor(t * 31);
       // round the head and shoulders (outline 0 is the top centre; the base, 14–30, stays quiet)
       const k = rnd(seed, i + 1);
-      a.life = 1; a.dur = 0.62 + 0.25 * rnd(seed, i); a.len = 3 + Math.floor(rnd(seed, i + 2) * 2);
+      a.life = 1; a.dur = 0.62 + 0.25 * rnd(seed, i); a.len = 4 + Math.floor(rnd(seed, i + 2) * 3);
       a.i = (k < 0.5 ? 34 + Math.floor(k * 2 * 12) : 1 + Math.floor((k - 0.5) * 2 * 10)) - (k < 0.5 ? 0 : 0);
       a.seed = (seed + i * 7) >>> 0; a.side = rnd(seed, i + 3) < 0.5 ? -1 : 1;
     }

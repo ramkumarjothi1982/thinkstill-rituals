@@ -39,7 +39,10 @@ a { color: var(--accent); }
 /* home (classic): the logo lockup — the approved artwork + the tagline */
 .home-lockup { margin-top: 14px; }
 .home-logo { margin: 0; line-height: 0; }
-.home-tagline { margin: 8px 0 0 calc(min(64vw, 280px) * 0.016); font: var(--type-body); font-weight: 650; letter-spacing: .005em; color: var(--text-1); opacity: .92; text-shadow: var(--type-shadow); }
+/* on its own soft dark pill: readable over the brightest cloud of any realm */
+.home-tagline { display: inline-block; margin: 8px 0 0 calc(min(64vw, 280px) * 0.016 - 10px); padding: 2px 10px 3px; border-radius: 999px;
+  background: rgba(12,8,34,.5); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  font: var(--type-body); font-weight: 650; letter-spacing: .005em; color: var(--text-1); text-shadow: var(--type-shadow); }
 
 /* ---------------------------------------------------------- top bar -- */
 .topbar { display: flex; align-items: center; gap: 10px; min-height: 44px; }
@@ -145,8 +148,11 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .bubble.below { transform-origin: 50% 0%; }
 .bubble.moving { transition: top 260ms var(--ease-out), left 260ms var(--ease-out); }
 /* the prompt steps back while a Mallow's line borrows the title band */
+/* while a speech bubble borrows the title band the prompt steps right out
+   (a faint prompt peeking round the bubble's edges looks untidy); it stays
+   in the accessibility tree and comes back when the line ends */
 .move-title { transition: opacity 240ms var(--ease-out); }
-.move-title.say-dim { opacity: .1; }
+.move-title.say-dim { opacity: 0; }
 .bubble.out { animation: bubbleOut 260ms var(--ease-out) both; }
 @keyframes bubbleIn { from { opacity: 0; transform: translateY(8px) scale(.9); } to { opacity: 1; transform: none; } }
 @keyframes bubbleOut { to { opacity: 0; transform: translateY(-6px) scale(.96); } }

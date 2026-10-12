@@ -21,7 +21,7 @@ import { openSupport } from '../app/scenes/support.js';
 import { ensureBeyondCss } from './styles.js';
 
 export const STORE_KEYS = Object.freeze({
-  consent: 'beyond.consent', device: 'beyond.device', session: 'beyond.session', feedback: 'beyond.feedback', invite: 'beyond.invite',
+  consent: 'beyond.consent', device: 'beyond.device', session: 'beyond.session', feedback: 'beyond.feedback', invite: 'beyond.invite', seen: 'beyond.seen',
 });
 /** Bump when the notice changes in a way people should read again. */
 export const CONSENT_VERSION = 1;
@@ -54,7 +54,7 @@ export function deleteAngleData(store) {
   for (const k of Object.values(STORE_KEYS)) { try { store?.remove(k); } catch { /* ignore */ } }
 }
 export function hasAngleData(store) {
-  return Object.values(STORE_KEYS).some((k) => { try { return store?.get(k, null) != null; } catch { return false; } });
+  return [STORE_KEYS.consent, STORE_KEYS.device, STORE_KEYS.session, STORE_KEYS.feedback, STORE_KEYS.invite].some((k) => { try { return store?.get(k, null) != null; } catch { return false; } });
 }
 
 /** A tally of the four feedback buttons per pattern, on this phone only (no words). */

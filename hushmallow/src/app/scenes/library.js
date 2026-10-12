@@ -113,11 +113,15 @@ export default function library(app, params = {}) {
     async enter() {
       if (!ent.has('paid')) { app.go('plans', { reason: 'start' }, { replace: true }); return; }
       world.dim(true);
+      // no free band above the card: the live Mallow steps aside (it would
+      // show through the glass behind the title)
+      world.showMallow?.(false);
       world.place({ x: 84, y: 9, scale: 0.3 });
       world.setStage('curious');
       refresh();
       played = playedSet(app.store);
       refresh();
     },
+    leave() { world.showMallow?.(true); },
   };
 }
