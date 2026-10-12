@@ -1894,8 +1894,9 @@ export function create(ctx) {
     get backCanvas() { return ctx.back.canvas; },
     enter({ from, handoff } = {}) {
       entered = true;
-      if (!prepared) layout(true);
       const rm = reduced();
+      // (a cold start re-plans against where the shell has put the hero by now: prepare() may have run before it moved)
+      if (!prepared || !(handoff && from)) layout(true);
       if (handoff && from) {
         // melting in: start on the outgoing world's horizon, its things where they were
         melt = { k: 0, hy0: rm ? hyTarget : clamp(handoff.horizonY ?? H * 0.655, hyTarget, H * 0.85), riseAt: -1 };
@@ -1906,15 +1907,21 @@ export function create(ctx) {
         if (thought) {
           thoughtHome();
           const th = handoff.thought;
-          if (th && Number.isFinite(th.x) && Number.isFinite(th.y) && !rm) {
+          const ok = th && Number.isFinite(th.x) && Number.isFinite(th.y);
+          if (ok && !rm) {
             tS.from = { x: th.x, y: th.y, scale: ((th.r || tS.r) * (th.scale ?? 1)) / tS.r, labelW: th.labelW || plan.textMax };
             tS.landK = 0; tS.glide = 0; tS.alpha = 1; tS.landed = false; tS.sx = th.x; tS.sy = th.y; tS.surf = tS.from.scale;
             // its words stay as the storm showed them (under it) until it settles on the water
+            tS.side = 'below'; tS.labelX = tS.labelXT = 0;
             tS.labelY = tS.labelYT = (th.r || tS.r) * (th.scale ?? 1) * 0.98 + 8; tS.labelW = tS.from.labelW;
+          } else {
+            tS.from = null; tS.landK = 1; tS.alpha = 0;
+            // reduced motion: the storm's thought fades where it hung, then the ocean's at home (never both at once)
+            if (ok && rm) { melt.rmFrom = { x: th.x, y: th.y, scale: ((th.r || tS.r) * (th.scale ?? 1)) / tS.r }; tS.alpha = 1; tS.vis = 1; }
           }
-          else { tS.from = null; tS.landK = 1; tS.alpha = 0; }
-          // carry the storm's calm over (a settled thought stays settled-looking)
-          tS.tension = clamp(handoff.thought?.tension ?? 0.5, 0.2, 0.9);
+          // its own tension, from the storm (a settled thought stays settled-looking); only the person's sea changes it from here
+          captureBase(handoff.thought?.tension);
+          tS.tension = baseTension;
         }
         initBubbles(rm ? null : (handoff.photos || []).map((p) => ({ ...p })));
         if (rm) for (const b of bubbles) { b.state = 'rise'; b.riseK = 0; }
@@ -1927,10 +1934,13 @@ export function create(ctx) {
           if (keep) { tS.x = keep.x; tS.z = keep.z; }       // resumed: it is where it was left
         }
         initBubbles(null);
-        if (restored?.photos) for (const ps of restored.photos) { const b = bubbles.find((q) => q.i === ps.i); if (b) { b.z = clamp(+ps.d || 1, -0.5, OCEAN.CAP) * cam.Z0; b.x = +ps.x || b.x; } }
+        if (restored?.photos) for (const ps of restored.photos) { const b = bubbles.find((q) => q.i === ps.i); if (b) { b.z = clamp(+ps.d || 1, -0.5, OCEAN.CAP) * cam.Z0; b.x = +ps.x || b.x; b.cap = 400; } }
         bubbles.forEach((b, k) => { b.riseK = -0.35 * k; });
         seedSwells([]);
-        introAt = 2.6;
+        if (thought && baseTension == null) captureBase(restored?.base);
+        if (thought) tS.tension = baseTension;
+        // (a resumed sea does not introduce itself again)
+        introAt = restored ? -1 : 2.6;
       }
       if (!(handoff && from)) { try { thought?.react?.('appear'); } catch { /* optional */ } }
     },
@@ -1973,7 +1983,7 @@ export function create(ctx) {
       const had = !!thought;
       thought = h;
       if (prepared) layout(false);
-      if (h && !had && cam) { thoughtHome(); tS.from = null; tS.landK = 1; tS.alpha = 0; }
+      if (h && !had && cam) { thoughtHome(); tS.from = null; tS.landK = 1; tS.alpha = 0; captureBase(); tS.tension = baseTension; }
     },
     /** Client rects to keep subtitles off: the thought with its words, the bubbles, fingers outside the band. */
     avoid() {
@@ -1992,7 +2002,7 @@ export function create(ctx) {
     serialize() {
       return {
         v: 1, seed: ctx.seed, progress: Math.round(api.progress * 1000) / 1000, complete, discoveries: [...discovered], prog: prog.snapshot(),
-        thought: thought ? { d: Math.round((tS.z / cam.Z0) * 100) / 100, x: Math.round(tS.x) } : null,
+        thought: thought ? { d: Math.round((tS.z / cam.Z0) * 100) / 100, x: Math.round(tS.x), base: Math.round((baseTension ?? 0.5) * 100) / 100, relief: Math.round(relief * 100) / 100 } : null,
         photoState: bubbles.map((b) => ({ i: b.i, d: Math.round((b.z / cam.Z0) * 100) / 100, x: Math.round(b.x) })), elapsed: Math.round(elapsed),
       };
     },
@@ -2002,16 +2012,26 @@ export function create(ctx) {
       for (const id of s.discoveries || []) { discovered.add(id); if (id === 'long-waves') longD.markFired(); if (id === 'distance') distD.markFired(); }
       prog.restore(s.prog);
       if (s.complete) { complete = true; completeAt = 0; mirrorK = 1; dawnK = dawnT = 1; }
-      if (s.thought && thought) { tS.z = clamp(+s.thought.d || 1, 1, OCEAN.CAP) * cam.Z0; tS.x = +s.thought.x || 0; }
+      if (s.thought && thought) {
+        tS.z = clamp(+s.thought.d || 1, 1, capD) * cam.Z0; tS.x = +s.thought.x || 0;
+        if (Number.isFinite(+s.thought.base) && s.thought.base > 0) { baseTension = clamp(+s.thought.base, 0.2, 0.9); relief = clamp(+s.thought.relief || 0, 0, 0.6); }
+      }
       for (const ps of s.photoState || []) { const b = bubbles.find((q) => q.i === ps.i); if (b) { b.z = clamp(+ps.d || 1, -0.5, OCEAN.CAP) * cam.Z0; b.x = +ps.x || b.x; } }
       // (restored before enter(): enter keeps these instead of starting everything at home)
-      restored = { thought: !!(s.thought && thought), photos: (s.photoState || []).slice(0, 7) };
+      restored = { thought: !!(s.thought && thought), photos: (s.photoState || []).slice(0, 7), base: baseTension };
       return true;
     },
     resize(w, h) {
+      const dOld = cam ? tS.z / cam.Z0 : 1;
       W = w; H = h; U = Math.min(W, H);
       layout(true);
       wake?.clear();
+      // a turned phone: the thought keeps how far out it was (within this screen's limit), from its new home; bubbles re-slot
+      if (thought && tS.landK >= 1 && !tS.from) {
+        tS.x = (plan.home.x - W / 2) / 0.5; tS.z = clamp(dOld, 1, capD) * cam.Z0; tS.vx = tS.vz = 0;
+        tS.offX = tS.offY = tS.koX = tS.koY = 0; tS.koFor = 0; tS.side = 'above';
+      }
+      reslot(true, false);
     },
     setQuality() { /* the director resizes the layers; the sea itself costs the same */ },
     destroy() {
@@ -2040,10 +2060,10 @@ export function create(ctx) {
       for (let k = 0; k < pts.length; k++) { cx += pts[k][0]; cy += pts[k][1]; if (k) len += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]); }
       cx /= pts.length; cy /= pts.length;
       const lam = clamp(1.2 * len, 0.3 * U, 1.8 * U);
-      // a line high in the storm's sky lands further out
-      const yW = lerp(plan.homeY + 20, plan.hy + 10, clamp(1 - cy / (H * 0.66)));
-      unproject(cam, cx, Math.max(yW, cam.hy + 6), wo);
-      sea.launch({ x: wo.x, z: wo.z, dx: (R() - 0.5) * 0.7, dz: 1, lambda: lam, A: 0.022 * lam * (reduced() ? 0.4 : 1), len: lam * 2.4, user: false });
+      // where the line lay on screen (on the storm's horizon, the water at the start of the melt): it rolls away from
+      // there, its crest still lit in the storm's gold for a few seconds
+      unproject(cam, cx, Math.max(cy, cam.hy + 6), wo);
+      sea.launch({ x: wo.x, z: wo.z, dx: (R() - 0.5) * 0.7, dz: 1, lambda: lam, A: 0.022 * lam * (reduced() ? 0.4 : 1), len: clamp(len / Math.max(0.2, wo.s), lam * 2.4, lam * 4), user: false, carry: true, seed: true });
       made++;
     }
     if (!made) {
