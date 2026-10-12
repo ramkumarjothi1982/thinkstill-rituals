@@ -5,7 +5,7 @@
 // crests in direct response to where the lever sits — the far row first, the
 // shore breaker last. At every notch the lever rests while you watch that
 // wave flatten, then it lets you pull again. Win: the shoreline marker (a
-// little driftwood post with a moon-glass lamp) comes up out of the surf.
+// little driftwood post with a lantern) comes up out of the surf and lights.
 //
 // Photos are reflections on the water: rain-blue and wavering in sliced,
 // rippling strips while their wave row is restless, then still and clear in

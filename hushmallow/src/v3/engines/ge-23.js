@@ -43,7 +43,7 @@ const TOTAL = LOOPS * TAU;       // crank travel to the win (rad, clockwise)
 const BANK = 0.32;               // how far the hand may run ahead of what the law allows (rad)
 const BASE = 1.2;                // rope already on the drum at the start (loops)
 const ASSIST_SPEED = 2.5;        // rad/s while a "Tap instead" press winds the reel
-const MAX_SPIN = 5.2;            // rad/s: faster than this and the heavy drum lags the hand
+const MAX_SPIN = 6.5;            // rad/s: wind faster than this and the heavy drum lags the hand
 const NR = 30;                   // rope polyline points (free span)
 const NS = 44;                   // water surface samples
 const ZONE_W = [9, 3.6, 1.4], ZONE_A = [0.1, 0.32, 0.9];   // mooring-ring light passes
@@ -277,7 +277,7 @@ export function create(E) {
   let wanted = 0, rot = 0, shown = 0, assistTo = null, drag = null, lastT = null, rotAtDown = 0;
   let cap = TAU, atCap = false, capHinted = false, prompting = false;
   let lastTick = 0, lastHap = 0, loopsDone = 0;
-  let rush = 0, spin = 0, strain = 0, grab = 0, coilGlow = 0, waitAt = -9, backAt = -9;
+  let rush = 0, spin = 0, strain = 0, grab = 0, coilGlow = 0, waitAt = -9, backAt = -9, inSpeed = 0, accA = 0, frameDt = 1 / 60;
   let agit = agit0, T = 0.9, relax = 0, relaxV = 0;
   let fxs = 0, fv = 0, bob = 0, bobV = 0, fy = 0, tilt = 0;
   let th = -0.3 * agit0, om = 0, ax = 0, ay = 0, aRot = 0, touching = false;
@@ -344,9 +344,11 @@ export function create(E) {
     E.sound('click', { intensity: 0.16, pitch: 0.7 });
   }
 
-  function applyWind(dA, dt) {
-    const speed = dA / dt;
-    const k = lerp(1, 0.32, invLerp(MAX_SPIN, MAX_SPIN * 2.4, speed));   // rushing: the heavy drum lags the hand
+  function applyWind(dA) {
+    // hand speed is smoothed per frame (touch events within one frame share a timestamp)
+    const speed = Math.max(inSpeed, (accA + dA) / Math.max(1 / 60, frameDt));
+    accA += dA;
+    const k = lerp(1, 0.45, invLerp(MAX_SPIN, MAX_SPIN * 2.4, speed));   // rushing: the heavy drum lags the hand
     rush = lerp(rush, invLerp(MAX_SPIN, MAX_SPIN * 2.2, speed), 0.2);
     spin = lerp(spin, clamp(speed / 6), 0.3);
     const before = wanted;
@@ -364,6 +366,8 @@ export function create(E) {
   function frame(dt, t) {
     now = t;
     const s = L.s;
+    if (dt > 0) { inSpeed = lerp(inSpeed, accA / Math.max(dt, 1 / 120), 1 - Math.exp(-dt * 10)); frameDt = lerp(frameDt, dt, 0.2); }
+    accA = 0;
     // ---- input → law gate → real state
     if (assistTo != null) {
       const step = Math.min(assistTo - wanted, dt * ASSIST_SPEED);
@@ -1028,7 +1032,7 @@ export function create(E) {
       const d = Math.hypot(p.x - L.rx, p.y - L.ry);
       if (d < L.RF * 0.2) { tracker.start(p.x, p.y); return; }     // too near the axle to read a turn
       const dA = tracker.feed(p.x, p.y, dt);
-      if (dA > 0) applyWind(dA, dt);
+      if (dA > 0) applyWind(dA);
       else if (dA < -0.03 && now - backAt > 0.35) { backAt = now; wob.kick(-0.4); E.sound('click', { intensity: 0.12, pitch: 0.8 }); }   // the pawl holds
       if (E.locked && wanted >= rot + BANK * 0.85) notYet();
     },
@@ -1052,9 +1056,9 @@ export function create(E) {
     hint() {
       if (rot >= TOTAL - 1e-3) return null;     // wound home: the anchor is settling
       const a0 = crankAngle();
-      const span = clamp(nextCap() - rot, 0.8, TAU * 0.85);
+      const span = clamp(nextCap() - rot + 0.45, 1.1, TAU + 0.45);   // round to the loop's stop (the pawl takes the overshoot)
       const pts = [];
-      for (let i = 0; i <= 20; i++) { const a = a0 + (i / 20) * span; pts.push([L.rx + Math.cos(a) * L.CA, L.ry + Math.sin(a) * L.CA]); }
+      for (let i = 0; i <= 24; i++) { const a = a0 + (i / 24) * span; pts.push([L.rx + Math.cos(a) * L.CA, L.ry + Math.sin(a) * L.CA]); }
       return { path: pts };
     },
     twist() {

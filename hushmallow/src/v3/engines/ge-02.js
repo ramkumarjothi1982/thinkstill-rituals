@@ -494,9 +494,9 @@ export function create(E) {
         const kk = c.state === 1 ? 160 : 48, cc = 2 * Math.sqrt(kk) * 0.8;
         c.vx += (kk * (tx - c.x) - cc * c.vx) * Math.min(dt, 0.04); c.vy += (kk * (ty - c.y) - cc * c.vy) * Math.min(dt, 0.04);
         c.x += c.vx * Math.min(dt, 0.04); c.y += c.vy * Math.min(dt, 0.04);
-        if (finAt >= 0 && t - finAt > 0.35 + c.slot * 0.2) { c.state = 3; c.t0 = t; c.fx = c.x; c.fy = c.y; }
+        if (finAt >= 0 && t - finAt > 0.2 + c.slot * 0.16) { c.state = 3; c.t0 = t; c.fx = c.x; c.fy = c.y; }
       } else if (c.state === 3) {
-        const k = ease.inOutSine(clamp((t - c.t0) / 1.7));
+        const k = ease.inOutSine(clamp((t - c.t0) / 1.4));
         c.lift = k;
         leafPt(c.tier, c.hu, 1); c.ax = tmpX; c.ay = tmpY;
         const swing = Math.sin(t * 1.1 + c.phs) * 0.06 * (reduced ? 0.3 : 1);
@@ -1004,12 +1004,18 @@ export function create(E) {
   function drawTwist(t) {
     const k = smooth(clamp((t - twistAt) / 1.6));
     if (twistKind === 1) {
-      // a downy companion feather drifts beside the skiff
-      g.save(); g.globalAlpha = k; g.lineCap = 'round'; g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = 1;
-      g.beginPath();
-      for (let i = 0; i < 9; i++) { const a = (i / 9) * TAU + t * 0.3, rr = (7 + 2 * Math.sin(t * 2 + i)) * s; g.moveTo(down.x, down.y); g.quadraticCurveTo(down.x + Math.cos(a + 0.5) * rr * 0.6, down.y + Math.sin(a + 0.5) * rr * 0.6, down.x + Math.cos(a) * rr, down.y + Math.sin(a) * rr); }
+      // a little downy feather lifts off the plume and drifts beside the skiff
+      const rot = Math.sin(t * 0.7) * 0.5 + t * 0.15 * (reduced ? 0 : 1), len = 16 * s;
+      glow(g, down.x, down.y, 18 * s, mix(warm, '#ffffff', 0.4), 0.4 * k);
+      g.save(); g.globalAlpha = k; g.translate(down.x, down.y); g.rotate(rot); g.lineCap = 'round';
+      g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 1.1 * s; g.beginPath(); g.moveTo(-len / 2, 0); g.quadraticCurveTo(0, -2 * s, len / 2, -1 * s); g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 0.8; g.beginPath();
+      for (let i = 0; i < 7; i++) {
+        const u = -0.4 + i * 0.13, x = u * len, w = (5 + 3 * Math.sin(i * 1.7)) * s * (1 - Math.abs(u) * 0.9), cur = Math.sin(t * 2 + i) * 1.5 * s;
+        g.moveTo(x, -0.5 * s); g.quadraticCurveTo(x + 2 * s, -w * 0.6, x + 4 * s + cur, -w);
+        g.moveTo(x, 0.5 * s); g.quadraticCurveTo(x + 2 * s, w * 0.6, x + 4 * s - cur, w);
+      }
       g.stroke(); g.restore();
-      glow(g, down.x, down.y, 16 * s, mix(warm, '#ffffff', 0.4), 0.45 * k);
     } else {
       // each wind's eddy opens into a slow lotus of calm light
       for (const w of winds) {
