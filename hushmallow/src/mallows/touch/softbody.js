@@ -775,7 +775,7 @@ export class SoftBody {
       const e = rx * nx + ry * ny;                     // signed distance from the axis
       const floorSide = e * ny > 0 ? 1 - 0.65 * Math.abs(ny) : 1;
       const w = Math.sin(Math.PI * t);
-      const a = k * w * w * floorSide * (1 - 0.35 * FW[i]);
+      const a = k * w * w * floorSide * (1 - 0.5 * FW[i]);
       WW[i] = w;
       const d = -e * a * WAIST_K;
       P[2 * i] += nx * d; P[2 * i + 1] += ny * d;

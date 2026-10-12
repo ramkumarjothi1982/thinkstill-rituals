@@ -276,8 +276,11 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
   border: 2px solid currentColor; border-right-color: transparent; opacity: .8; animation: spin 900ms linear infinite; }
 @media (prefers-reduced-motion: reduce) { .invite-buy.is-busy .invite-buy-label::after { animation: none; border-right-color: currentColor; opacity: .45; } }
 /* the back button stays in reach while the invitation scrolls, on a soft fade */
-.plans > .plans-topbar { position: sticky; top: 0; z-index: 2; margin: 0 calc(var(--gutter) * -1); padding: 0 var(--gutter) 10px; transition: background 240ms var(--ease-out); }
-.plans.scrolled > .plans-topbar { background: linear-gradient(180deg, rgba(8,6,22,.92), rgba(8,6,22,.72) 62%, rgba(8,6,22,0)); }
+.plans > .plans-topbar { position: sticky; top: 0; z-index: 2; margin: 0 calc(var(--gutter) * -1); padding: 0 var(--gutter); transition: background-color 240ms var(--ease-out); }
+.plans > .plans-topbar::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 22px; pointer-events: none; opacity: 0; transition: opacity 240ms var(--ease-out);
+  background: linear-gradient(180deg, rgba(8,6,22,.78), rgba(8,6,22,0)); }
+.plans.scrolled > .plans-topbar { background-color: rgba(8,6,22,.78); }
+.plans.scrolled > .plans-topbar::after { opacity: 1; }
 .invite-included { color: var(--text-2); }
 .plans-foot { display: grid; gap: 4px; margin-top: 14px; }
 .test-note { font: var(--type-caption); letter-spacing: var(--type-caption-ls); color: var(--text-3); text-align: center; margin: 8px 8px 0; text-shadow: var(--type-shadow); }
@@ -310,6 +313,10 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 
 @media (min-width: 700px) {
   #scene { max-width: 520px; margin: 0 auto; left: 0; right: 0; }
+  /* the invitation's scroller spans the whole window (content stays in the
+     column), so the cards' soft glow is never clipped into a seam at its edge */
+  .plans { margin-inline: calc(260px - 50vw - var(--gutter)); padding-inline: calc(50vw - 260px + var(--gutter)); }
+  .plans > .plans-topbar { margin-inline: calc(260px - 50vw - var(--gutter)); padding-inline: calc(50vw - 260px + var(--gutter)); }
   .sheet { max-width: 560px; margin: 0 auto; }
 }
 

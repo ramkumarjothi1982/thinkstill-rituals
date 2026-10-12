@@ -85,12 +85,15 @@ export function toast(text, ms = 2200) {
 // A Mallow's line, placed where it covers nothing that matters: never the
 // Mallow's face, the top bar, the dock, cards, or the pieces you are meant to
 // touch (buttons, chips, choices, fields, anything marked data-say-avoid, and
-// rects a ritual passes as `avoid`). It prefers the space just above the
-// Mallow's head (tail pointing down), then just below it, then any free band.
-// With no free band it gets compact (never below the 19px dialogue size),
-// then shows a long line one sentence at a time, then borrows the title band
-// (the prompt dims while it shows). It follows the Mallow if the Mallow
-// moves while it speaks.
+// rects a ritual passes as `avoid`; in a ritual without them, the play area
+// under the Mallow's crown). It prefers the space just above the Mallow's
+// head (tail pointing down), then just below it or beside it, then any free
+// band, getting compact if that helps (never below the 19px dialogue size).
+// With no free band it borrows the title band (the prompt dims while the
+// line shows); if even that is too small it shows the line a sentence (then
+// a phrase) at a time, and as a last resort the Mallow steps down or shrinks
+// a little and goes back afterwards. It never drops onto the face, and it
+// follows the Mallow if the Mallow moves while it speaks.
 let currentBubble = null;
 let sayToken = 0;
 const PIECES = '#scene button, #scene .chip, #scene .choice, #scene input, #scene textarea, #scene select, #scene .ask, #scene [data-say-avoid], .angle-stage > *, .angle-stage [data-say-avoid], #fx-layer > :not(canvas), #fx-layer > :not(canvas) > *, #fx-layer [data-say-avoid]';

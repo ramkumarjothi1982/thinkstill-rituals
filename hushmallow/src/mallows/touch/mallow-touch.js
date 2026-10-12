@@ -55,7 +55,7 @@ const PAD = 3;                 // source px of margin around the body box
 const HOP_SCALE = 2.2;         // the rig measures hops in layer heights (≈ 2.2 body heights)
 const TIERS = { gl: 'A', tri: 'B', strip: 'C' };
 const STRETCH_GIVE = 0.7;      // share of a two-finger spread the body follows
-const WAIST_GAIN = 0.9;        // waist pull per unit of stretch past 1
+const WAIST_GAIN = 0.75;       // waist pull per unit of stretch past 1
 const REBOUND = 2.4;           // upward velocity (body heights/s) a full squeeze releases
 const SLIP_DELAY = 0.09;       // s: a slip reaction waits this long (a flick or lift cancels it)
 
@@ -379,17 +379,27 @@ export class MallowTouch {
       'box-shadow:0 0 0 2px rgba(255,255,255,0.96),0 0 0 4.5px rgba(16,10,48,0.88),0 0 22px 6px rgba(255,255,255,0.22);' +
       (this.opts.reducedMotion ? '' : 'transition:opacity .18s ease;');
     this.root.appendChild(ring);
-    const show = () => {
-      let vis = false;
-      try { vis = this.root.matches(':focus-visible'); } catch { vis = document.activeElement === this.root; }
+    const set = (vis) => {
       this._focusVisible = vis;
       ring.style.opacity = vis ? '1' : '0';
       if (vis) { this._ringKey = ''; this._focusRing(); }
     };
-    const hide = () => { this._focusVisible = false; ring.style.opacity = '0'; };
-    this.root.addEventListener('focus', show);
-    this.root.addEventListener('blur', hide);
-    this._unbindRing = () => { this.root.removeEventListener('focus', show); this.root.removeEventListener('blur', hide); };
+    // keyboard focus shows the ring; focus that follows a finger or a click does not
+    const focus = () => {
+      if (nowMs() - (this._pointerT || -1e9) < 400) { set(false); return; }
+      let vis = true;
+      try { vis = this.root.matches(':focus-visible'); } catch { /* old engines: show it */ }
+      set(vis);
+    };
+    const blur = () => set(false);
+    const key = (e) => { if (!this._focusVisible && e.key !== 'Shift' && document.activeElement === this.root) set(true); };
+    const press = () => { this._pointerT = nowMs(); if (this._focusVisible) set(false); };
+    const R = this.root;
+    R.addEventListener('focus', focus);
+    R.addEventListener('blur', blur);
+    R.addEventListener('keydown', key);
+    R.addEventListener('pointerdown', press, true);
+    this._unbindRing = () => { R.removeEventListener('focus', focus); R.removeEventListener('blur', blur); R.removeEventListener('keydown', key); R.removeEventListener('pointerdown', press, true); };
   }
 
   _focusRing() {
@@ -491,6 +501,7 @@ export class MallowTouch {
   /** Routed pointer: {type:'down'|'move'|'up'|'cancel', id, x, y, t?(ms, performance.now() clock)}. Returns true when it is the Mallow's. */
   pointer(e) {
     if (!this.ready || !e) return false;
+    if (e.type === 'down') { this._pointerT = nowMs(); if (this._focusVisible) { this._focusVisible = false; this._ring.style.opacity = '0'; } }
     const t = (Number.isFinite(e.t) ? e.t : nowMs()) / 1000;
     if (e.type === 'move' && !this.reader.ptrs.has(e.id)) { this._gaze(e.x, e.y); return false; }
     return this.reader.pointer({ type: e.type, id: e.id, x: e.x, y: e.y, t, shift: !!e.shift, mouse: !!e.mouse });
@@ -769,8 +780,9 @@ export class MallowTouch {
     }
     if (e.cancelled) { this._fingers.delete(id); this._touchEvent('release'); return; }
     if (flick) {
-      // a stroke brushed off fast still wobbles, but stays a kind touch
-      if (!(soothing && e.stroked) && !this.persona.onFlick?.(this, e)) this.rig.react('flick', { dirX: Math.sign(e.vx) || 1 });
+      // a stroke brushed off briskly still wobbles but stays a kind touch;
+      // a decisive flick (> 1125 px/s) is a flick whatever came before
+      if (!(soothing && e.stroked && !e.snap) && !this.persona.onFlick?.(this, e)) this.rig.react('flick', { dirX: Math.sign(e.vx) || 1 });
       this._fingers.delete(id);
       this._touchEvent('flick');
       return;

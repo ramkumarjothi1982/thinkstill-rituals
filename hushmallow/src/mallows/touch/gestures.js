@@ -198,6 +198,7 @@ export class TouchReader {
       }
     }
     info.kind = kind;
+    info.snap = kind === 'flick' && speed > G.flickSpeed * 1.25;   // a decisive flick (vs a brisk stroke's lift)
     this._emit('up', info);
     if (kind === 'flick') this._emit('flick', info);
     if (kind === 'doubleTap') this._emit('doubleTap', info);
@@ -211,8 +212,12 @@ export class TouchReader {
     // how the finger starts moving decides what it does: sliding off at once
     // is a glide (stroke / massage), moving after resting is a pull
     if (p.mode === 'press' && dist > G.pullStartPx && !this._inStretch(p)) {
-      const quick = p.firstMoveT >= 0 && p.firstMoveT - p.t0 < G.strokeStart;
-      if (quick && Math.hypot(p.vx, p.vy) > G.glideSpeed) this._setMode(p, 'glide', t, true);
+      // after a jiggle or a stretch the finger keeps holding; after a stroke
+      // and a pause, a brisk move is another stroke, not a yank
+      const sp = Math.hypot(p.vx, p.vy);
+      const quick = !p.hold && p.firstMoveT >= 0 && p.firstMoveT - (p.tGrip ?? p.t0) < G.strokeStart;
+      const again = !p.hold && p.strokes > 0 && sp > G.glideSpeed * 1.5;
+      if ((quick && sp > G.glideSpeed) || again) this._setMode(p, 'glide', t, true);
       else this._setMode(p, 'pull', t);
     }
     // pull grows once past 10 px; a glide never pulls
@@ -244,10 +249,12 @@ export class TouchReader {
 
   // a resting glide (or a jiggle) grips again where the finger is: depth
   // continues from where it was, so the body never pops
-  _regrip(p, t) {
+  _regrip(p, t, hold = false) {
     if (p.mode !== 'glide') return;
     if (p.massage) { this._emit('massageEnd', { id: p.id, turns: p.massage.turns, dir: p.massage.dir, t }); p.massage = null; }
     p.mode = 'press';
+    p.tGrip = t;
+    if (hold) p.hold = true;
     p.x0 = p.x; p.y0 = p.y;
     p.t0 = t + GESTURE.holdTau * Math.log(1 - clamp(p.depth, 0, 0.9));
     p.path = 0; p.maxDist = 0; p.pull = 0; p.firstMoveT = -1;
@@ -309,7 +316,7 @@ export class TouchReader {
     if (rev >= G.jiggleReversals && fast >= segs * 0.4 && t - p.lastJiggle > 0.35 && !p.massage) {
       p.lastJiggle = t;
       // shaking the body means holding it
-      if (p.mode === 'glide' && !p.stroked) this._regrip(p, t);
+      if (p.mode === 'glide' && !p.stroked) this._regrip(p, t, true);
       this._emit('jiggle', { id: p.id, x: p.x, y: p.y, t, axis: horiz ? 'x' : 'y', amp, reversals: rev });
     }
   }
@@ -373,7 +380,7 @@ export class TouchReader {
   // ---------------------------------------------------------- stretch --
   _stretchStart(t) {
     // stretching means holding: a gliding finger grips first
-    for (const p of this.ptrs.values()) this._regrip(p, t);
+    for (const p of this.ptrs.values()) { this._regrip(p, t, true); p.hold = true; }
     const [a, b] = [...this.ptrs.values()];
     const d0 = Math.max(12, Math.hypot(b.x - a.x, b.y - a.y));
     this.stretch = { a: a.id, b: b.id, d0, ang0: Math.atan2(b.y - a.y, b.x - a.x), s: 1, ang: 0, twist: 0, t0: t };
