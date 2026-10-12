@@ -326,7 +326,7 @@ body.hf-world-held #fx-layer > canvas.hf-front { opacity: 0 !important; transiti
 }
 
 /* a sheet (support, the A–Z list) is up: the Hushfold's own layers step back so nothing ghosts through it */
-.hushfold.hf-sheet-open .hf-input, .hushfold.hf-sheet-open .hf-panel, .hushfold.hf-sheet-open .hf-subs, .hushfold.hf-sheet-open .hf-top { opacity: 0; transition: opacity 200ms; }
+.hushfold.hf-sheet-open .hf-input, .hushfold.hf-sheet-open .hf-panel, .hushfold.hf-sheet-open .hf-subs, .hushfold.hf-sheet-open .hf-top { opacity: 0 !important; transition: opacity 200ms; }
 /* the A–Z list as a one-pick list (from the Hushfold): the tick only on the chosen feeling */
 .emo-row.single[aria-pressed="false"] .tick { visibility: hidden; }
 
