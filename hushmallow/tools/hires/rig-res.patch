@@ -69,21 +69,21 @@ diff --git a/hushmallow/src/mallows/rig.js b/hushmallow/src/mallows/rig.js
 +      ctx.drawImage(A.original, 0, 0, m.size[0], m.size[1]);
        ctx.globalCompositeOperation = 'source-over';
        ctx.globalAlpha = 1;
-@@ -1160,5 +1162,5 @@ function partBounds(rig, pt, P, r) {
+@@ -1161,5 +1163,5 @@ function partBounds(rig, pt, P, r) {
        if (style === 'spiral') {
          const img = rig.assets?.sprites?.[spec.sprite];
 -        const rr = ((img ? img.width / 2 : spec.spriteR || spec.rx) * P.eyeScale) + 1;
 +        const rr = ((img ? img.width / 2 / (rig.mallow.res || 1) : spec.spriteR || spec.rx) * P.eyeScale) + 1;
          cx0 = g.ex - rr; cx1 = g.ex + rr; cy0 = g.ey - rr; cy1 = g.ey + rr;
        } else {
-@@ -1347,5 +1349,5 @@ function drawEye(ctx, rig, f, side, P) {
+@@ -1348,5 +1350,5 @@ function drawEye(ctx, rig, f, side, P) {
      if (style === 'spiral') {
        const img = A[spec.sprite];
 -      const r = (img.width / 2) * P.eyeScale;
 +      const r = (img.width / 2 / (rig.mallow.res || 1)) * P.eyeScale;
        ctx.save();
        ctx.translate(g.ex, g.ey);
-@@ -1479,4 +1481,7 @@ function drawBrow(ctx, f, side, P) {
+@@ -1480,4 +1482,7 @@ function drawBrow(ctx, f, side, P) {
  }
  
 +// the carved frown's lit ridge: [colour, width, offset] strokes, in lw units
@@ -91,7 +91,7 @@ diff --git a/hushmallow/src/mallows/rig.js b/hushmallow/src/mallows/rig.js
 +
  function drawMouth(ctx, f, P, time) {
    const M = f.mouth;
-@@ -1527,11 +1532,16 @@ function drawMouth(ctx, f, P, time) {
+@@ -1528,11 +1533,16 @@ function drawMouth(ctx, f, P, time) {
    };
    if (M.style === 'crease' && !open) {
 -    // carved frown (Glitzi): shadow groove with a lit ridge above
@@ -113,13 +113,13 @@ diff --git a/hushmallow/src/mallows/rig.js b/hushmallow/src/mallows/rig.js
 +    }
      ctx.restore();
      tube(ctx, linePath, M.lw, '#05061c', null, 1);
-@@ -1705,4 +1715,5 @@ function drawTearsAndSweat(ctx, rig, f, P) {
+@@ -1706,4 +1716,5 @@ function drawTearsAndSweat(ctx, rig, f, P) {
  
  function drawGlitchLines(ctx, rig, P) {
 +  const rows = rig.mallow.glitchRows || GLITCH_ROWS;
    const g = clamp(P.glitch, 0, 2);
    const W = rig.mallow.size[0];
-@@ -1713,10 +1724,10 @@ function drawGlitchLines(ctx, rig, P) {
+@@ -1714,10 +1725,10 @@ function drawGlitchLines(ctx, rig, P) {
      ctx.globalAlpha = (0.55 - g) * 1.2;
      ctx.fillStyle = '#1b1452';
 -    for (const y of GLITCH_ROWS) ctx.fillRect(0, y - 3, W, 6);

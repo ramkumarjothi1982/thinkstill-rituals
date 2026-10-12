@@ -869,10 +869,62 @@ export function create(ctx) {
       if (c.glowAge >= 0) { c.glowAge += dt; if (c.glowAge > 2.4) c.glowAge = -1; }
       c.touched = Math.max(0, c.touched - dt * 2);
     }
-    // however the storm blows, nothing overlaps: neighbours keep their gap, and no card swings
-    // into the Thought Mallow, its words, Glitzi (with hop room), the subtitle band or a screen edge
-    if (cards.length > 1) separateCards();
-    for (const c of cards) keepClear(c);
+    // however the storm blows, nothing overlaps: no card swings into the Thought Mallow or its
+    // words, neighbours keep their gap, none enters Glitzi (with hop room), the subtitle band or a
+    // screen edge; and if a dragged thought is pressed against cards with nowhere for them to go,
+    // the thought gives way (it slides round them)
+    for (const c of cards) clearOfThought(c);
+    // (a few relaxation passes: the hard limits — edges, band, Glitzi — inside the loop, so a card
+    // pushed against an edge pushes its neighbour rather than back into it)
+    for (let it = 0; it < 3; it++) {
+      if (cards.length > 1) separateCards();
+      for (const c of cards) keepClear(c);
+    }
+    if (thought && cards.length) thoughtYields();
+  }
+  /** The Thought Mallow's body circle (with its crackle) as {x, y, r}, and its words plate rect where it is now. */
+  function thoughtShape() {
+    const T = plan.thought, dx = tSpring.x - T.x, dy = tSpring.y - T.y, P = T.R.plate;
+    return { x: tSpring.x, y: tSpring.y, r: tR * 1.32 + 4, plate: { x0: P.x0 + dx, y0: P.y0 + dy, x1: P.x1 + dx, y1: P.y1 + dy } };
+  }
+  /** How far card c must move along (ux, uy) to clear the circle (x, y, r): 0 if clear. */
+  function circleHit(c, x, y, r, out) {
+    const cs = Math.cos(c.rot), sn = Math.sin(c.rot);
+    const dx = x - c.x, dy = y - c.y, lx = dx * cs + dy * sn, ly = -dx * sn + dy * cs;
+    const qx = clamp(lx, -c.w / 2, c.w / 2), qy = clamp(ly, -c.h / 2, c.h / 2);
+    const ox = lx - qx, oy = ly - qy, d = Math.hypot(ox, oy);
+    if (d >= r) return 0;
+    if (d > 1e-3) { const wx = ox * cs - oy * sn, wy = ox * sn + oy * cs; out.x = -wx / d; out.y = -wy / d; }
+    else { const l = Math.hypot(c.x - x, c.y - y) || 1; out.x = (c.x - x) / l; out.y = (c.y - y) / l; }
+    return r - d;
+  }
+  const dir = { x: 0, y: 0 };
+  function clearOfThought(c) {
+    if (!thought || !plan?.thought) return;
+    const T = thoughtShape();
+    const m = circleHit(c, T.x, T.y, T.r, dir);
+    if (m > 0) nudgeCard(c, dir.x * m, dir.y * m);
+    pushOutOfRect(c, T.plate, 3);
+  }
+  /** Last word: a card still pressed into the thought (or its words) moves the thought instead. */
+  function thoughtYields() {
+    if (!plan?.thought) return;
+    for (let it = 0; it < 2; it++) for (const c of cards) {
+      if (c.alpha < 0.35) continue;
+      const T = thoughtShape();
+      let m = circleHit(c, T.x, T.y, T.r + 0.5, dir), mx = -dir.x * m, my = -dir.y * m;
+      if (!(m > 0)) {
+        // the words plate against the card's box
+        const hw = halfW(c) + 3, hh = halfH(c) + 3, P = T.plate;
+        if (c.x + hw <= P.x0 || c.x - hw >= P.x1 || c.y + hh <= P.y0 || c.y - hh >= P.y1) continue;
+        const left = P.x1 - (c.x - hw), right = c.x + hw - P.x0, up = P.y1 - (c.y - hh), down = c.y + hh - P.y0;
+        const k = Math.min(left, right, up, down);
+        mx = k === left ? -left : k === right ? right : 0; my = k === up ? -up : k === down ? down : 0;
+      }
+      tSpring.sx.x += mx; tSpring.sy.x += my;
+      if (mx * tSpring.sx.v < 0) tSpring.sx.v = 0;
+      if (my * tSpring.sy.v < 0) tSpring.sy.v = 0;
+    }
   }
 
   /** Move a hanging card (and its rope end, without adding velocity). */
@@ -890,7 +942,7 @@ export function create(ctx) {
   /** Pairwise separation of the oriented postcards (SAT on their four axes), keeping CARD_GAP. */
   function separateCards() {
     const gap = LAYOUT.CARD_GAP;
-    for (let it = 0; it < 2; it++) {
+    {
       for (let a = 0; a < cards.length; a++) for (let b = a + 1; b < cards.length; b++) {
         const A = cards[a], B = cards[b];
         if (A.alpha < 0.35 || B.alpha < 0.35) continue;         // a card letting go / dropping in
@@ -921,23 +973,6 @@ export function create(ctx) {
     if (m === left) nudgeCard(c, -left, 0); else if (m === right) nudgeCard(c, right, 0); else if (m === up) nudgeCard(c, 0, -up); else nudgeCard(c, 0, down);
   }
   function keepClear(c) {
-    // the Thought Mallow's body (a circle, with its crackle) and its words plate move with it
-    if (thought && plan?.thought) {
-      const tx = tSpring.x, ty = tSpring.y, Rr = tR * 1.32 + 4;
-      const cs = Math.cos(c.rot), sn = Math.sin(c.rot);
-      const dx = tx - c.x, dy = ty - c.y, lx = dx * cs + dy * sn, ly = -dx * sn + dy * cs;
-      const qx = clamp(lx, -c.w / 2, c.w / 2), qy = clamp(ly, -c.h / 2, c.h / 2);
-      const ox = lx - qx, oy = ly - qy, d = Math.hypot(ox, oy);
-      if (d < Rr) {
-        // direction from the thought towards the card (world space)
-        let ux, uy;
-        if (d > 1e-3) { const wx = ox * cs - oy * sn, wy = ox * sn + oy * cs; ux = -wx / d; uy = -wy / d; }
-        else { const l = Math.hypot(c.x - tx, c.y - ty) || 1; ux = (c.x - tx) / l; uy = (c.y - ty) / l; }
-        nudgeCard(c, ux * (Rr - d), uy * (Rr - d));
-      }
-      const T = plan.thought, pdx = tx - T.x, pdy = ty - T.y, P = T.R.plate;
-      pushOutOfRect(c, { x0: P.x0 + pdx, y0: P.y0 + pdy, x1: P.x1 + pdx, y1: P.y1 + pdy }, 3);
-    }
     // Glitzi, with room for a hop
     if (plan?.mrect) pushOutOfRect(c, plan.mrect, 0);
     // never closer than 20 px to a screen edge, however it swings…
