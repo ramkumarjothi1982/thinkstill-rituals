@@ -2,8 +2,6 @@
 // the Ultra entry. Nothing else competes for attention.
 import { h, icon, iconBtn, say, clearBubble, wait } from '../ui.js';
 import { MALLOWS, MALLOW_IDS } from '../../mallows/registry.js';
-import { testPurchasesAllowed } from '../config.js';
-import { testPanel } from '../test-panel.js';
 
 const QUICK = [
   ['anger', 'Angry'], ['anxiety', 'Anxious'], ['sadness', 'Sad'], ['overwhelm', 'Overwhelmed'],
@@ -24,8 +22,6 @@ export default function home(app, params = {}) {
   app.state.homeMallow = id;
   const m = MALLOWS[id];
   const subscribed = ent.has('paid');
-  const testing = testPurchasesAllowed(); // TESTING ONLY: see test-panel.js
-  const panel = testing ? testPanel(app) : null;
 
   const nameEl = h('div', { class: 'eyebrow', style: { textAlign: 'center', marginTop: '4px', padding: '6px 12px', borderRadius: '999px',
     background: 'rgba(14,10,40,.5)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', color: 'var(--text-1)' } }, `${m.name} · ${m.title}`);
@@ -45,7 +41,7 @@ export default function home(app, params = {}) {
       subscribed ? iconBtn('library', 'Library: every ritual', () => { clearBubble(); app.go('library'); }) : null,
       iconBtn('mallow', 'Meet the Mallows', () => app.go('mallows')),
       iconBtn('gear', 'Settings', () => app.go('settings'))),
-    panel ? panel.el : h('div', { style: { marginTop: '18px' } },
+    h('div', { style: { marginTop: '18px' } },
       h('h1', { class: 'hero' }, 'Your second brain', h('br'), 'for feelings.')),
     h('div', { class: 'spacer' }),
     h('div', { class: 'mallow-switch', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', pointerEvents: 'none' } },
@@ -103,7 +99,7 @@ export default function home(app, params = {}) {
         say(world, m.voice.hello[Math.floor(Math.random() * m.voice.hello.length)], { who: m.name, ms: 3000 });
       }
     },
-    leave() { clearBubble(); panel?.destroy?.(); },
+    leave() { clearBubble(); },
   };
 }
 

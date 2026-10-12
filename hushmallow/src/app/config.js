@@ -17,5 +17,5 @@ export function testPurchasesAllowed(loc = globalThis.location) {
   return TEST_PURCHASE_HOSTS.includes(loc.hostname);
 }
 
-/** Shown in the test panel so a tester can tell which version has loaded. */
-export const BUILD = '2026-10-12 · V3 batch 1 (140 rituals)';
+/** Shown at the bottom of Settings so a tester can tell which version has loaded. */
+export const BUILD = '2026-10-12 · V3 batch 1b (140 rituals)';

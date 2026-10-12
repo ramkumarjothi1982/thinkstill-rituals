@@ -1,6 +1,6 @@
 // MEET A MALLOW — the right Mallow arrives, wears the feeling on its face,
 // says something real, and offers one ritual (with a plain reason why).
-import { h, iconBtn, say, clearBubble, wait } from '../ui.js';
+import { h, iconBtn, icon, say, clearBubble, wait } from '../ui.js';
 import { faceMix } from '../../engine/interpret.js';
 import { getEmotion, getFamily } from '../../data/emotions.js';
 import { MALLOWS } from '../../mallows/registry.js';
@@ -11,8 +11,6 @@ import { RITUALS } from '../../data/rituals.js';
 import { AVAILABLE } from '../../rituals/index.js';
 import { allowedFor } from '../../engine/recommend.js';
 import { toast } from '../ui.js';
-import { testPurchasesAllowed } from '../config.js';
-import { planItems } from '../play-item.js';
 import { photoSession } from '../../v3/photos.js';
 
 const REFRAME_FAMILIES = new Set(['shame', 'fear', 'loneliness', 'anger', 'sadness', 'envy', 'confusion']);
@@ -38,14 +36,15 @@ export default function encounter(app) {
       plan = planOptions({ rec, req, rituals: offerRituals, seen: round.seen(), limit: 4 });
     }
     options = plan.options;
-    // TESTING: an item picked in the home TEST panel is shown first, for this issue
-    if (testPurchasesAllowed() && app.store.get('test-pick', false)) {
-      app.store.set('test-pick', false);
-      const n = app.store.get(`test-step-${ent.tier()}`, 0);
-      const items = await planItems(app);
-      const it = items[n - 1];
-      if (it) options = [{ type: it.kind, item: it.ref, reasons: [`Test item ${n} of ${items.length}`] }];
-    }
+  }
+
+  // add (more) photos without leaving the offer: they become part of this ritual
+  const picker = h('input', { type: 'file', accept: 'image/*', multiple: true, 'aria-hidden': 'true', tabindex: '-1', style: { position: 'absolute', width: '1px', height: '1px', opacity: '0', pointerEvents: 'none' } });
+  picker.addEventListener('change', async () => { const files = [...(picker.files || [])]; picker.value = ''; if (files.length && await photoSession.add(files)) { app.haptic('light'); render(); } });
+  function photoButton() {
+    const n = photoSession.count;
+    return h('button', { class: 'btn ghost block photo-add-inline', onclick: () => picker.click() },
+      icon('camera'), n ? (n < photoSession.max ? `Add more photos (${n}/${photoSession.max})` : `${n} photos added`) : 'Add your photos to this ritual (optional)');
   }
 
   const card = h('div', { class: 'card enc-card' });
@@ -54,7 +53,7 @@ export default function encounter(app) {
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' }),
       h('span', { class: 'eyebrow' }, input.emotions.map((e) => getEmotion(e.id)?.name).filter(Boolean).slice(0, 3).join(' · '))),
     h('div', { class: 'spacer' }),
-    card, h('div', { style: { height: '10px' } }), ultraRow);
+    card, picker, h('div', { style: { height: '10px' } }), ultraRow);
 
   function render() {
     const o = options[idx];
@@ -76,6 +75,7 @@ export default function encounter(app) {
       h('p', {}, r.purpose),
       h('div', { class: 'reasons' }, ...o.reasons.filter((x) => !/minute/.test(x)).map((x) => h('span', {}, x)), h('span', {}, `About ${mins} min`),
         r.module === 'v3' && photoSession.count ? h('span', {}, `With your ${photoSession.count} photo${photoSession.count > 1 ? 's' : ''}`) : null),
+      r.module === 'v3' ? photoButton() : null,
       h('div', { style: { display: 'grid', gap: '8px', marginTop: '16px' } },
         h('button', { class: 'btn primary block', onclick: () => begin(o) }, 'Let’s do it'),
         options.length > 1 ? h('button', { class: 'btn ghost block', onclick: () => { idx = (idx + 1) % options.length; app.audio.ui('toggle'); show(); } }, 'Something else') : null));

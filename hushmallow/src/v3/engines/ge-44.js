@@ -22,7 +22,7 @@
 // the silk near it. The person's words are embroidered on a satin label woven
 // into the silk — rippled while the silk is tense, lying smooth as it relaxes.
 
-import { TAU, clamp, lerp, invLerp, smooth, ease, rgba, mix, hex, glow, orb, roundRect, wrap, FONT, canvas as makeCanvas, motes } from '../fx.js';
+import { TAU, clamp, lerp, invLerp, smooth, ease, rgba, mix, hex, glow, orb, roundRect, wrap, FONT, canvas as makeCanvas, motes, noise2 } from '../fx.js';
 import { resample, Wobble } from '../kit.js';
 
 export const meta = {
@@ -101,7 +101,7 @@ export function create(E) {
 
   // -------------------------------------------------------------- waves --
   // three travelling wrinkle waves (Gerstner-like: they warp the weave and light the satin)
-  const W_ANG = [0.55, 2.02, -0.28], W_LAM = [190, 118, 60], W_OM = [0.5, -0.36, 0.82], W_SA = [0.5, 0.42, 0.55], W_Q = [1, 0.62, 0.22];
+  const W_ANG = [0.62, 1.05, 0.38], W_LAM = [160, 88, 46], W_OM = [0.5, -0.34, 0.78], W_SA = [0.22, 0.34, 0.62], W_Q = [1, 0.6, 0.24];
   const F3 = () => new Float32Array(3);
   const wang = F3(), wlam = F3(), wph = F3(), wkx = F3(), wky = F3(), wnx = F3(), wny = F3(), wsa = F3();
   for (let j = 0; j < 3; j++) {
@@ -110,6 +110,7 @@ export function create(E) {
     wph[j] = R1 ? j * 1.7 : E.rand() * TAU;
   }
   const LX = -0.55, LY = -0.83;               // light from the top left
+  const nz = noise2(E.seed * 7 + 44);          // slow patches where the creases gather
   const amp = (heavy ? 0.92 : 1.06) * (1 - E.calm * 0.65), AMB = 0.13;
   function waves() {
     for (let j = 0; j < 3; j++) {
@@ -183,26 +184,49 @@ export function create(E) {
     if (reset || !rlx || rlx.length !== FX * FY) { rlx = new Float32Array(FX * FY).fill(E.calm * 0.5); rlxT = new Float32Array(FX * FY); }
   }
 
+  let printBox = [0.36, 0.34, C - 0.36, 6];  // where the prints sit (grid units), set with the route
   function buildPath() {
     const Rw = R - 1;                    // the bottom row carries the woven label
-    let k1, k2, k3;
-    if (Rw >= 5) {
+    let k1, k2, k3, way = [], s0, F;
+    const mir = (q) => { if (pv.m) q[0] = C - q[0]; return q; };
+    if (!n && Rw >= 5) {
+      // no photos: a zigzag right across the printed moon
       const x1 = pv.a < 0.5 ? 1 : 2, x2 = pv.b < 0.5 ? C - 1 : C - 2, x3 = pv.c < 0.34 ? 1 : pv.c < 0.67 ? 2 : 3;
       const y1 = 1, y3 = Rw - 2;
       const y2 = clamp(Math.round((y1 + y3) / 2 + (pv.j < 0.33 ? -0.6 : pv.j > 0.66 ? 0.6 : 0)), y1 + 1, y3 - 1);
-      k1 = [x1, y1]; k2 = [x2, y2]; k3 = [x3, y3];
-    } else {
+      k1 = mir([x1, y1]); k2 = mir([x2, y2]); k3 = mir([x3, y3]);
+      printBox = [0.36, 0.34, C - 0.36, Rw - 0.18];
+    } else if (Rw >= 5) {
+      // photos: the thread frames the prints — down one side, along the foot, up the other — never across a face
+      const ya = clamp(pv.a < 0.5 ? 2 : pv.a < 0.8 ? 3 : 1, 1, Rw - 3), yb = clamp(pv.c < 0.6 ? 2 : pv.c < 0.85 ? 1 : 3, 1, Rw - 3);
+      const xm = pv.b < 0.34 ? 3 : pv.b < 0.67 ? 2 : 4, yf = Rw - 1;
+      k1 = mir([1, ya]); k2 = mir([xm, yf]); k3 = mir([C - 1, yb]);
+      way = [mir([1.12, yf - 0.55]), mir([C - 1.12, yf - 0.55])];
+      printBox = [1.32, 0.3, C - 1.32, yf - 0.42];
+      s0 = mir([1, Math.max(0.42, ya - 1.25)]);
+      F = mir([C - 0.5, yb - 0.5]);
+    } else if (!n) {
       const hi = Rw - 1, ya = pv.a < 0.5 ? hi : 1, yb = ya === hi ? 1 : hi;
-      k1 = [1, ya]; k2 = [3, yb]; k3 = [C - 1, ya];
+      k1 = mir([1, ya]); k2 = mir([3, yb]); k3 = mir([C - 1, ya]);
+      printBox = [0.36, 0.3, C - 0.36, Rw - 0.15];
+    } else {
+      // small screens with photos: a gentle wave along the foot of the prints
+      const y = Rw - 1;
+      k1 = mir([1, y]); k2 = mir([3, y]); k3 = mir([C - 1, y]);
+      way = [mir([2, y + 0.38]), mir([4, y + 0.38])];
+      printBox = [0.36, 0.28, C - 0.36, y - 0.42];
+      s0 = mir([0.42, y - 0.3]);
+      F = mir([C - 0.5, y + 0.5]);
     }
-    if (pv.m) { k1[0] = C - k1[0]; k2[0] = C - k2[0]; k3[0] = C - k3[0]; }
     K = [k1, k2, k3];
-    let bx = k1[0] - k2[0], by = k1[1] - k2[1]; const bl = Math.hypot(bx, by) || 1; bx /= bl; by /= bl;
-    const s0 = [clamp(k1[0] + bx * 0.72, 0.35, C - 0.35), clamp(k1[1] + by * 0.72, 0.35, Rw - 0.35)];
-    const fxs = Math.sign(k3[0] - k2[0]) || 1, fys = Math.sign(k3[1] - k2[1]) || 1;
-    const F = [k3[0] + fxs * 0.5, k3[1] + fys * 0.5];
-    fcx = Math.floor(F[0]); fcy = Math.floor(F[1]);
-    const P = [s0, k1, k2, k3, F].map(([x, y]) => [sx0 + x * cell, sy0 + y * cell]);
+    if (!s0) {
+      let bx = k1[0] - k2[0], by = k1[1] - k2[1]; const bl = Math.hypot(bx, by) || 1; bx /= bl; by /= bl;
+      s0 = [clamp(k1[0] + bx * 0.72, 0.35, C - 0.35), clamp(k1[1] + by * 0.72, 0.35, Rw - 0.35)];
+    }
+    if (!F) { const fxs = Math.sign(k3[0] - k2[0]) || 1, fys = Math.sign(k3[1] - k2[1]) || 1; F = [k3[0] + fxs * 0.5, k3[1] + fys * 0.5]; }
+    fcx = clamp(Math.floor(F[0]), 0, C - 1); fcy = clamp(Math.floor(F[1]), 0, Rw - 1);
+    const ctrl = way.length ? [s0, k1, way[0], k2, way[1], k3, F] : [s0, k1, k2, k3, F];
+    const P = ctrl.map(([x, y]) => [sx0 + x * cell, sy0 + y * cell]);
     const dense = catmull(P, 30);
     for (const q of dense) {
       q[0] = clamp(q[0], sx0 + cell * 0.22, sx0 + sw - cell * 0.22);
@@ -244,7 +268,7 @@ export function create(E) {
   function buildPrints(old) {
     prints = [];
     if (!n) return;
-    const ax = sx0 + cell * 0.36, ay = sy0 + cell * 0.34, aw = sw - cell * 0.72, ah = (R - 1) * cell - cell * 0.52;
+    const ax = sx0 + printBox[0] * cell, ay = sy0 + printBox[1] * cell, aw = (printBox[2] - printBox[0]) * cell, ah = (printBox[3] - printBox[1]) * cell;
     const mk = (k, x, y, bw, bh, shape) => {
       const ph = (k + E.round - 1) % n, a = photos.size(ph, shape, 100);
       return { ph, x, y, size: 100 * Math.min(bw / a.w, bh / a.h), shape, s: nearestS(x, y), relax: old?.[k]?.relax ?? E.calm * 0.6, painted: -1, cp: old?.[k]?.cp ?? false };
@@ -263,7 +287,7 @@ export function create(E) {
   }
 
   function buildMaps() {
-    SWm = 44; SHm = Math.max(10, Math.round(SWm * sh / sw));
+    SWm = 64; SHm = Math.max(12, Math.round(SWm * sh / sw));
     if (!sheenC || sheenC.width !== SWm || sheenC.height !== SHm) {
       sheenC = makeCanvas(SWm, SHm); sheenG = sheenC.getContext('2d'); sheenImg = sheenG.createImageData(SWm, SHm);
       desatC = makeCanvas(SWm, SHm); desatG = desatC.getContext('2d'); desatImg = desatG.createImageData(SWm, SHm);
@@ -395,7 +419,7 @@ export function create(E) {
       return gr;
     };
     gradRodL = rodGrad(sx0 - rodGap); gradRodR = rodGrad(sx0 + sw + rodGap);
-    const wid = 9 * s + 3;
+    const wid = 10.5 * s + 3;
     gradShuttle = g.createLinearGradient(0, -wid / 2, 0, wid / 2);
     gradShuttle.addColorStop(0, '#fff3dc'); gradShuttle.addColorStop(0.3, mix('#d9a066', warm, 0.25)); gradShuttle.addColorStop(0.7, '#9a5f33'); gradShuttle.addColorStop(1, '#4e2a14');
   }
@@ -410,10 +434,15 @@ export function create(E) {
     const ev = smooth(clamp(v / 0.1)) * smooth(clamp((1 - v) / 0.1));
     return ev * (0.45 + 0.55 * smooth(clamp(u / 0.12)) * smooth(clamp((1 - u) / 0.12)));
   }
+  /** How wrinkled the silk is at (x, y): tension that hasn't relaxed yet, in drifting patches. */
+  function wrinkleAt(x, y, r) {
+    const q = 0.0105 / stage.s, m = 0.62 + 0.38 * nz(x * q + tw * 0.035, y * q - tw * 0.025);
+    return amp * (1 - r) * m + AMB;
+  }
   /** Displacement of the silk at rest point (x, y) → DXo, DYo (wrinkles + mesh pull + billow). */
   function disp(x, y) {
     const u = (x - sx0) / sw, v = (y - sy0) / sh;
-    const A = envAt(u, v) * (amp * (1 - relaxAt(x, y)) + AMB) * 2.8 * stage.s;
+    const A = envAt(u, v) * wrinkleAt(x, y, relaxAt(x, y)) * 2.8 * stage.s;
     let dx = 0, dy = 0;
     for (let j = 0; j < 3; j++) { const c = Math.cos(wkx[j] * x + wky[j] * y + W_OM[j] * tw + wph[j]) * W_Q[j]; dx += c * wnx[j]; dy += c * wny[j]; }
     dx *= A; dy *= A;
@@ -616,10 +645,10 @@ export function create(E) {
         const r = relaxAt(x, y), env = envAt(u, v);
         let shd = 0;
         for (let w = 0; w < 3; w++) shd += Math.cos(wkx[w] * x + wky[w] * y + W_OM[w] * tw + wph[w] + 0.6) * wsa[w];
-        shd *= env * (amp * (1 - r) + AMB);
+        shd *= env * wrinkleAt(x, y, r);
         // a slow diagonal satin sweep, brighter where the silk lies smooth
         const sp = u * 0.75 + v * 0.45 - sweepC;
-        shd += Math.exp(-(sp * sp) / 0.012) * (0.22 + 0.32 * r + 0.25 * fin) * env;
+        shd += Math.exp(-(sp * sp) / 0.012) * (0.2 + 0.3 * r + 0.25 * fin) * env;
         if (billowA > 0.001) { const du = u - billowF; shd -= du * Math.exp(-(du * du) / 0.02) * billowA * 9 * env; }
         // fingertips press soft dimples into the satin
         for (let q = 0; q < touches.length; q++) {
@@ -634,9 +663,9 @@ export function create(E) {
           shd += taut * 1.3 * Math.exp(-(ex * ex + ey * ey) / cr2);
         }
         const o = (j * SWm + i) * 4;
-        if (shd >= 0) { sd[o] = hr; sd[o + 1] = hg; sd[o + 2] = hb; sd[o + 3] = shd * 120 > 255 ? 255 : shd * 120; }
-        else { sd[o] = sr; sd[o + 1] = sg; sd[o + 2] = sb; sd[o + 3] = -shd * 135 > 255 ? 255 : -shd * 135; }
-        const da = (1 - r) * 0.58 * (1 - fin);
+        if (shd >= 0) { const a = Math.pow(shd, 1.5) * 92; sd[o] = hr; sd[o + 1] = hg; sd[o + 2] = hb; sd[o + 3] = a > 150 ? 150 : a; }
+        else { const a = Math.pow(-shd, 1.2) * 70; sd[o] = sr; sd[o + 1] = sg; sd[o + 2] = sb; sd[o + 3] = a > 120 ? 120 : a; }
+        const da = (1 - r) * 0.44 * (1 - fin);
         if (da > dmax) dmax = da;
         dd[o] = dd[o + 1] = dd[o + 2] = 128; dd[o + 3] = da * 255;
       }
@@ -701,7 +730,7 @@ export function create(E) {
     if (desatMax > 0.01) {
       // where the silk is still tense its colours are muted (storm-dim, or misty for heavy feelings)
       g.globalCompositeOperation = 'saturation'; g.drawImage(desatC, sx0, sy0, sw, sh);
-      g.globalCompositeOperation = heavy ? 'screen' : 'multiply'; g.globalAlpha = heavy ? 0.24 : 0.42; g.drawImage(desatC, sx0, sy0, sw, sh);
+      g.globalCompositeOperation = heavy ? 'screen' : 'multiply'; g.globalAlpha = heavy ? 0.2 : 0.3; g.drawImage(desatC, sx0, sy0, sw, sh);
       g.globalAlpha = 1;
     }
     g.globalCompositeOperation = 'source-over';
@@ -811,7 +840,7 @@ export function create(E) {
     let q = 0;
     for (let li = 0; li < nl; li++) {
       const o = wOff[li], y = cy0 + (li - (nl - 1) / 2) * lh;
-      for (let i = 0; i < o.chars.length; i++) { const x = mx + o.xs[i]; disp(x, y); wCX[q] = x + DXo; wCY[q] = y + DYo * 1.3; q++; }
+      for (let i = 0; i < o.chars.length; i++) { const x = mx + o.xs[i]; disp(x, y); wCX[q] = x + DXo * 0.5; wCY[q] = y + DYo * 0.6; q++; }
     }
     g.save(); g.font = wFont; g.textAlign = 'center'; g.textBaseline = 'middle';
     glow(g, mx, cy0, sw * 0.32, glowC, 0.08);
@@ -866,10 +895,10 @@ export function create(E) {
     // where the line passes under a grid thread, that thread crosses over it
     for (let ci = 0; ci < crossIdx; ci++) {
       const c = cross[ci]; if (!c.under) continue;
-      const kk = Math.min(hi, idxAt(c.s)), x = WX[kk], y = WY[kk], a = 5.2 * s;
+      const kk = Math.min(hi, idxAt(c.s)), x = WX[kk], y = WY[kk], a = 4.2 * s;
       const dx = c.v ? 0 : a, dy = c.v ? a : 0;
-      g.strokeStyle = 'rgba(0,0,10,0.45)'; g.lineWidth = 2.6 * s; g.beginPath(); g.moveTo(x - dx + 0.6, y - dy + 0.9); g.lineTo(x + dx + 0.6, y + dy + 0.9); g.stroke();
-      g.strokeStyle = rgba(threadCol, 0.85); g.lineWidth = 1.5 * s; g.beginPath(); g.moveTo(x - dx, y - dy); g.lineTo(x + dx, y + dy); g.stroke();
+      g.strokeStyle = 'rgba(0,0,10,0.32)'; g.lineWidth = 2.2 * s; g.beginPath(); g.moveTo(x - dx + 0.5, y - dy + 0.8); g.lineTo(x + dx + 0.5, y + dy + 0.8); g.stroke();
+      g.strokeStyle = rgba(threadCol, 0.55); g.lineWidth = 1.2 * s; g.beginPath(); g.moveTo(x - dx, y - dy); g.lineTo(x + dx, y + dy); g.stroke();
     }
     // finale: a soft light flows along the whole line
     if (fin > 0 && finAt >= 0) {
@@ -882,6 +911,22 @@ export function create(E) {
     g.restore();
   }
 
+  function drawRoute(t) {
+    // the untraced route: soft stitch-holes in the weave, a slow glimmer drifting along them
+    if (traced || finAt >= 0) return;
+    const s = stage.s, step = 10 * s, s0 = shownS + 16 * s, r = 1.25 * s + 0.3;
+    if (s0 >= L) return;
+    g.save(); g.fillStyle = rgba(threadCol, 0.34); g.beginPath();
+    for (let sv = s0; sv < L; sv += step) { const q = pointAtS(sv); g.moveTo(q.x + r, q.y); g.arc(q.x, q.y, r, 0, TAU); }
+    g.fill();
+    const run = (t * 70 * s * (reduced ? 0.4 : 1)) % (L - s0 + 140 * s);
+    for (let q = 0; q < 4; q++) {
+      const sv = s0 + run - q * 12 * s; if (sv < s0 || sv > L) continue;
+      const pq = pointAtS(sv); glow(g, pq.x, pq.y, (9 - q * 1.5) * s, threadCol, 0.32 * (1 - q / 4));
+    }
+    g.restore();
+  }
+
   function drawKnots(t, fin) {
     const s = stage.s, next = knotAt.findIndex((v) => v < 0);
     for (let i = 0; i < 3; i++) {
@@ -890,12 +935,13 @@ export function create(E) {
       const x = kx + DXo, y = ky + DYo;
       if (knotAt[i] < 0) {
         const isNext = i === next, br = 0.5 + 0.5 * Math.sin(t * 2.1 * (reduced ? 0.5 : 1) + i * 1.3);
-        glow(g, x, y, (15 + (isNext ? 6 * br : 2)) * s, knotCol, isNext ? 0.42 + 0.22 * br : 0.28);
+        glow(g, x, y, (20 + (isNext ? 7 * br : 2)) * s, knotCol, isNext ? 0.48 + 0.22 * br : 0.32);
         g.strokeStyle = rgba(threadCol, 0.85); g.lineWidth = 1.7 * s; g.lineCap = 'round';
         const a = 6.5 * s;
         g.beginPath(); g.moveTo(x - a, y); g.lineTo(x + a, y); g.moveTo(x, y - a); g.lineTo(x, y + a); g.stroke();
-        orb(g, x, y, 3.8 * s + (isNext ? br * 0.8 : 0), mix(knotCol, '#ffffff', 0.35));
-        if (isNext) { g.strokeStyle = rgba(knotCol, 0.4 * (1 - br) + 0.12); g.lineWidth = 1.2; g.beginPath(); g.arc(x, y, (10 + br * 6) * s, 0, TAU); g.stroke(); }
+        orb(g, x, y, 4.6 * s + (isNext ? br * 0.9 : 0), mix(knotCol, '#ffffff', 0.35));
+        g.strokeStyle = rgba(knotCol, isNext ? 0.45 * (1 - br) + 0.18 : 0.2); g.lineWidth = 1.3;
+        g.beginPath(); g.arc(x, y, (isNext ? 11 + br * 6 : 10) * s, 0, TAU); g.stroke();
       } else {
         // tied: the knot blooms into a little woven rosette
         const k = Math.max(0, ease.outBack(clamp((t - knotAt[i]) / 0.7)));
@@ -928,7 +974,7 @@ export function create(E) {
   }
 
   function drawShuttle(t, fin) {
-    const s = stage.s, held = tracer ? 1 : 0, len = 30 * s + 4, wid = 9 * s + 3;
+    const s = stage.s, held = tracer ? 1 : 0, len = 34 * s + 5, wid = 10.5 * s + 3;
     const bob = reduced ? 0 : Math.sin(t * 1.7) * 1.1 * s * (1 - held);
     const wv = wob.v * (reduced ? 1.5 : 4) * s;
     const x = SHX - Math.sin(SHA) * wv, y = SHY + Math.cos(SHA) * wv + bob - held * 2;
@@ -1048,6 +1094,7 @@ export function create(E) {
     drawFinalCell(t, fin);
     drawWords();
     drawTwist(t);
+    drawRoute(t);
     drawWoven(t, fin);
     drawKnots(t, fin);
     drawPull(t);
@@ -1143,15 +1190,16 @@ export function create(E) {
     },
     twist() {
       twistAt = E.now();
-      // a quiet corner of the silk, away from the shuttle
-      const cand = [[0.5, 0.5], [C - 0.5, 0.5], [0.5, R - 1.5], [C - 0.5, R - 1.5]];
-      let best = cand[0], bd = -1;
-      for (const c of cand) {
-        const x = sx0 + c[0] * cell, y = sy0 + c[1] * cell;
-        const d = Math.min(Math.hypot(x - SHX, y - SHY), Math.hypot(x - (sx0 + (fcx + 0.5) * cell), y - (sy0 + (fcy + 0.5) * cell)));
-        if (d > bd) { bd = d; best = c; }
+      // a quiet cell of the silk: away from the woven route, the resting square and the prints
+      let bd = -Infinity;
+      for (let j = 0; j < R - 1; j++) for (let i = 0; i < C; i++) {
+        const x = sx0 + (i + 0.5) * cell, y = sy0 + (j + 0.5) * cell;
+        let d = Math.hypot(x - (sx0 + (fcx + 0.5) * cell), y - (sy0 + (fcy + 0.5) * cell));
+        for (let k = 0; k < NS; k += 4) d = Math.min(d, Math.hypot(x - pts[k][0], y - pts[k][1]));
+        const inPrint = n && i + 0.5 > printBox[0] && i + 0.5 < printBox[2] && j + 0.5 > printBox[1] && j + 0.5 < printBox[3];
+        const sc = d - (inPrint ? cell * 3 : 0);
+        if (sc > bd) { bd = sc; twistCX = x; twistCY = y; }
       }
-      twistCX = sx0 + best[0] * cell; twistCY = sy0 + best[1] * cell;
       if (!reduced) billowAt = twistAt;
     },
     finish() {
