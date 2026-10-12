@@ -33,9 +33,6 @@ export const meta = {
 
 const SQ3 = Math.sqrt(3);
 const FACE = TAU / 3;               // one face of the prism
-const TILT = 0.8;                   // the prism starts tipped towards the light, so two faces show in depth
-const TURN = FACE * 2 - TILT;       // first face → middle face → the quiet face
-const OFF = FACE - TILT;            // turn at which the middle face is square to view
 const BANK = 0.22;                  // input may run this far ahead of the law (rad)
 const GH = 0.36;                    // ghost spacing (photo widths) at full dispersion
 const SPEC0 = ['#ff8fb8', '#ffc56e', '#ffffff', '#7ff0c6', '#9ab0ff'];
@@ -48,10 +45,15 @@ export function create(E) {
   const reduced = !!E.reduced, low = reduced || !!E.lowStim, heavy = !!E.heavy, lowStream = !!E.lowStim;
   const calm0 = E.calm || 0, loop = E.round > 1;
   // ---- per-round character (round 1 is fixed; loop rounds vary by E.rand)
-  const yawSign = loop && E.rand() < 0.5 ? -1 : 1;
+  // the prism starts tipped towards the light, so two faces show in depth; loop rounds tip it differently
+  const TILT = loop ? 0.62 + E.rand() * 0.34 : 0.8;
+  const TURN = FACE * 2 - TILT;       // first face → middle face → the quiet face
+  const OFF = FACE - TILT;            // turn at which the middle face is square to view
+  const yawSign = loop && E.round % 2 === 0 ? -1 : 1;    // even loop rounds see the prism from its other end
   const lightLeft = loop ? E.rand() < 0.5 : true;
   const tintK = 0.14 + (heavy ? 0.2 : 0) + calm0 * 0.35 + (loop ? E.rand() * 0.12 : 0);
-  const SPEC = SPEC0.map((c, i) => (i === 2 ? mix('#ffffff', P_GLOW, 0.22) : mix(c, P_GLOW, tintK)));
+  const order = loop && E.round % 2 === 0 ? SPEC0.slice().reverse() : SPEC0;
+  const SPEC = order.map((c, i) => (i === 2 ? mix('#ffffff', P_GLOW, 0.22) : mix(c, P_GLOW, tintK)));
   const glassC = mix(P_INK, '#03020e', 0.3);
   const quietC = mix(glassC, P_ACC, 0.1 + (loop ? E.rand() * 0.06 : 0));
   const quietGlow = mix(P_ACC, P_GLOW, 0.45);
@@ -68,18 +70,19 @@ export function create(E) {
 
   // ---- geometry (re-fitted on resize)
   let L, r, ri, side, pcx, pcy, qx, qy, heroS, albumY, albumS, albumSp, fontPx, maxW;
-  let gQuiet, gMirror, gBand, gSheen, gPoolA, gPoolB, gBeamIn, gInner, gLip, gFoot;
+  let gQuiet, gMirror, gBand, gSheen, gPoolA, gPoolB, gBeamIn, gInner, gLip, gFoot, gCap;
+  const gFan = [];
   const beamO = { x: 0, y: 0 };
   const gShadow = g.createRadialGradient(0, 0, 0, 0, 0, 1);
   gShadow.addColorStop(0, 'rgba(0,0,8,0.3)'); gShadow.addColorStop(1, 'rgba(0,0,8,0)');
   function fit() {
     L = Math.min(stage.w * 0.86, 390 * stage.s);
-    r = clamp(Math.min(L * 0.215, stage.h * 0.125), 30, 96);
+    r = clamp(Math.min(L * 0.215, stage.h * (stage.h < 320 ? 0.16 : 0.125)), 30, 96);   // short stages: a chunkier prism
     ri = r / 2; side = r * SQ3;
     pcx = stage.cx; pcy = stage.y + stage.h * 0.25;
     qx = stage.cx; qy = stage.y + stage.h * 0.635;
     heroS = Math.min(stage.w * 0.5, stage.h * (stage.h < 380 ? 0.33 : 0.3));
-    albumY = stage.y + stage.h * 0.925;
+    albumY = stage.y + stage.h * 0.9;
     albumSp = nAlbum ? Math.min(66 * stage.s, (stage.w - 16) / nAlbum) : 0;
     albumS = clamp(Math.min(stage.h * 0.105, albumSp / 0.86), 34, 66);
     fontPx = clamp(side * 0.2, 13, 22);
@@ -106,6 +109,14 @@ export function create(E) {
     beamO.x = lightLeft ? stage.x - 14 : stage.x + stage.w + 14; beamO.y = stage.y - 26;
     gBeamIn = g.createLinearGradient(beamO.x, beamO.y, pcx, pcy);
     gBeamIn.addColorStop(0, 'rgba(255,255,255,0)'); gBeamIn.addColorStop(0.55, rgba(P_GLOW, 0.1)); gBeamIn.addColorStop(1, 'rgba(255,255,255,0.2)');
+    // the five beams leaving the prism: brightest at the glass, softening as they fall onto the slide
+    for (let i = 0; i < 5; i++) {
+      const fg = g.createLinearGradient(0, pcy + r * 0.3, 0, qy - heroS * 0.45);
+      fg.addColorStop(0, rgba(SPEC[i], 1)); fg.addColorStop(0.55, rgba(SPEC[i], 0.55)); fg.addColorStop(1, rgba(SPEC[i], 0.3));
+      gFan[i] = fg;
+    }
+    gCap = g.createRadialGradient(0, 0, 0, 0, 0, r);
+    gCap.addColorStop(0, rgba(mix(glassC, P_GLOW, 0.45), 0.92)); gCap.addColorStop(1, rgba(glassC, 0.92));
   }
   fit();
   E.onResize(fit);
@@ -151,7 +162,7 @@ export function create(E) {
     // weighted glass: a slightly under-damped spring follows the allowed turn
     const kS = 140, cS = reduced ? 2 * Math.sqrt(kS) : 17;
     if (dt > 0) { const h = Math.min(dt, 1 / 30); vel += ((rot - shown) * kS - vel * cS) * h; shown += vel * h; }
-    if (drag == null) rush = Math.max(0, rush - dt * 1.4);
+    if (drag == null) rush = Math.max(0, rush - dt * (doneFlag ? 4 : 1.4));
     touchA = drag != null ? Math.min(1, touchA + dt * 5) : Math.max(0, touchA - dt * 2.2);
     wob.update(Math.min(dt, 1 / 30));
     const shownP = clamp(shown / TURN);
@@ -193,8 +204,10 @@ export function create(E) {
     const fin = finAt >= 0 ? smooth(clamp((t - finAt) / 2.4)) : 0;
     const beta = yaw(t), bob = bobAt(t);
     const phi = -TURN + shown + wob.v * (reduced ? 0.01 : 0.05);
+    clipStage();                                              // the room light and the twist stay inside the stage
     drawBackdrop(t, fin);
     if (twistAt >= 0) drawTwist(t);
+    g.restore();
     computeVerts(phi, Math.sin(beta), bob);
     const G = drawProjection(dt, t, shownP, cur, fin);
     drawPrism(t, phi, beta, bob, shownP, fin, G);
@@ -214,6 +227,7 @@ export function create(E) {
   }
 
   // ------------------------------------------------------------- drawing --
+  function clipStage() { g.save(); g.beginPath(); g.rect(stage.x, stage.y, stage.w, stage.h); g.clip(); }
   function drawBackdrop(t, fin) {
     // soft ink pools give the glass a quiet room on every realm palette
     g.fillStyle = gPoolA; g.fillRect(pcx - L, pcy - L, L * 2, L * 2);
@@ -253,18 +267,23 @@ export function create(E) {
     const s = slides[cur];
     const u = clamp((shownP - cur / m) * m);
     let G = clamp((1 - ease.inOutSine(u)) * spreadK + rush * 0.45, 0, 1.25) * (1 - fin);
-    if (doneFlag || finAt >= 0) G *= 0.0;
     // the beams: five spectral fans that close into one white beam
     let maxY = vY[0]; for (let j = 1; j < 3; j++) if (vY[j] > maxY) maxY = vY[j];
     const sy = maxY - r * 0.12, ws = L * 0.07;
     const sz = cardSize(s.ph, heroS);
     const top = qy - sz.h / 2;
     g.save(); g.globalCompositeOperation = 'lighter';
+    const fa = (0.045 + 0.035 * (1 - G)) * (1 + fin * 0.4) * (0.4 + 0.6 * s.app);
     for (let i = -2; i <= 2; i++) {
-      const gx = qx + i * G * sz.w * GH, gy = top + Math.abs(i) * G * 6;
-      g.fillStyle = rgba(SPEC[i + 2], (0.06 + 0.05 * (1 - G)) * (1 + fin * 0.9) * (0.4 + 0.6 * s.app));
-      g.beginPath(); g.moveTo(pcx - ws + i * ws * 0.3, sy); g.lineTo(pcx + ws + i * ws * 0.3, sy);
-      g.lineTo(gx + sz.w * 0.46, gy); g.lineTo(gx - sz.w * 0.46, gy); g.closePath(); g.fill();
+      const gx = qx + i * G * sz.w * GH, gy = top + Math.abs(i) * G * 6, bx = pcx + i * ws * 0.3;
+      g.fillStyle = gFan[i + 2];
+      // a wide soft skirt, then the narrower core: the beam has a soft edge, not a cut-out cone
+      for (let pass = 0; pass < 2; pass++) {
+        const wk = pass ? 0.82 : 1.3;
+        g.globalAlpha = pass ? fa : fa * 0.42;
+        g.beginPath(); g.moveTo(bx - ws * wk, sy); g.lineTo(bx + ws * wk, sy);
+        g.lineTo(gx + sz.w * 0.46 * wk, gy); g.lineTo(gx - sz.w * 0.46 * wk, gy); g.closePath(); g.fill();
+      }
     }
     g.restore();
     glow(g, qx, qy, heroS * 0.95, P_GLOW, 0.16 + 0.12 * (1 - G) + fin * 0.15);
@@ -275,9 +294,11 @@ export function create(E) {
     return G;
   }
   function cardSize(ph, S) { return ph >= 0 ? photos.size(ph, 'card', S) : { w: S * 0.62, h: S * 0.62 }; }
+  const slotP = { x: 0, y: 0 };
   function slotPos(k) {
     const mid = (nAlbum - 1) / 2, d = nAlbum > 1 ? (k - mid) / mid : 0;
-    return { x: qx + (k - mid) * albumSp, y: albumY - 7 * d * d };
+    slotP.x = qx + (k - mid) * albumSp; slotP.y = albumY - 7 * d * d;
+    return slotP;
   }
   function drawSlide(s, k, G, t, fin) {
     const e = ease.inOutSine(s.pos);
@@ -451,7 +472,7 @@ export function create(E) {
         const sh = reduced ? 0 : Math.sin(t * 0.9 + i * 1.9 + k) * 0.16;
         g.fillStyle = SPEC[i + 2];
         wOpts.style = 'plain'; wOpts.alpha = a;
-        words.draw(g, i * S * (1 + sh), Math.abs(i) * S * 0.12 - i * S * 0.04, wOpts);
+        words.draw(g, i * S * (1 + sh), i * S * 0.26 + Math.abs(i) * S * 0.06, wOpts);
       }
       g.restore();
     }
@@ -460,19 +481,17 @@ export function create(E) {
   }
 
   function drawCap(t, xe, sb, cb, bob, G, fin) {
-    const ox = pcx + xe * cb;
-    g.save();
+    const ox = pcx + xe * cb, oy = pcy + bob;
+    g.save(); g.translate(ox, oy);
     g.beginPath();
-    for (let j = 0; j < 3; j++) { const x = ox + vZ[j] * sb, y = vY[j]; j ? g.lineTo(x, y) : g.moveTo(x, y); }
+    for (let j = 0; j < 3; j++) { const x = vZ[j] * sb, y = vY[j] - oy; j ? g.lineTo(x, y) : g.moveTo(x, y); }
     g.closePath();
-    const gr = g.createRadialGradient(ox, pcy + bob, 0, ox, pcy + bob, r);
-    gr.addColorStop(0, rgba(mix(glassC, P_GLOW, 0.45), 0.92)); gr.addColorStop(1, rgba(glassC, 0.92));
-    g.fillStyle = gr; g.fill();
+    g.fillStyle = gCap; g.fill();
     g.strokeStyle = rgba(mix('#ffffff', P_GLOW, 0.3), 0.75); g.lineWidth = 1.5; g.lineJoin = 'round'; g.stroke();
     g.clip();
     const sc = SPEC[Math.floor(t * 0.25 + phase0) % 5];
-    glow(g, ox, pcy + bob, r * (0.7 + 0.3 * G), sc, 0.35 + 0.25 * G);
-    glow(g, ox, pcy + bob, r * 0.35, '#ffffff', 0.25 + fin * 0.3);
+    glow(g, 0, 0, r * (0.7 + 0.3 * G), sc, 0.35 + 0.25 * G);
+    glow(g, 0, 0, r * 0.35, '#ffffff', 0.25 + fin * 0.3);
     g.restore();
   }
 
@@ -485,7 +504,7 @@ export function create(E) {
 
   function drawFinale(t, fin, beta, bob) {
     // the quiet face breathes in clean light; a single white beam; gentle risers
-    glow(g, pcx, pcy + bob, L * 0.62, P_GLOW, 0.14 * fin * (0.85 + 0.15 * Math.sin(t * 1.2)));
+    clipStage(); glow(g, pcx, pcy + bob, L * 0.62, P_GLOW, 0.14 * fin * (0.85 + 0.15 * Math.sin(t * 1.2))); g.restore();
     if (!reduced) halo(g, qx, qy, heroS * 0.8, t, P_GLOW, { rings: 3, alpha: 0.07 * fin, speed: heavy ? 0.05 : 0.08 });
     const rate = low ? 0.06 : heavy ? 0.12 : 0.35;
     if (fin < 1 && E.rand() < rate) {
@@ -495,9 +514,13 @@ export function create(E) {
   }
 
   // -------------------------------------------------------------- input --
-  function onPrism(p) {
-    const halfW = (L / 2) * Math.cos(yaw(clock)) + r * 0.5 + 24;
-    return Math.abs(p.x - pcx) < halfW && p.y > pcy - r * 1.55 - 18 && p.y < pcy + r * 1.75 + 18;
+  // forgiving: the prism is the only thing to move, so a swipe anywhere on the stage turns it
+  function onPrism(p) { return p.x > stage.x - 12 && p.x < stage.x + stage.w + 12 && p.y > stage.y - 12 && p.y < stage.y + stage.h + 12; }
+  // "not yet": the law asks to wait — the glass wobbles in place and the host explains
+  function refuse() {
+    if (clock - waitT < 0.3) return;
+    waitT = clock; wob.kick(0.45); E.checkpoint('wait');
+    note('glass', 0, 0.18); haptic('soft', 0.1);
   }
   return {
     get progress() { return progress(); },
@@ -520,7 +543,14 @@ export function create(E) {
       if (rush > 0.6 && !low && E.rand() < 0.15) { E.particles.burst(touchX, clamp(touchY, pcy - r, pcy + r), 2, { speed: 70, colour: SPEC[Math.floor(E.rand() * 5)], life: 0.5, size: 4, kind: 'glint' }); }
     },
     up(p) { if (p.id === drag) { drag = null; } },
-    assist() { if (finAt >= 0 || doneFlag) return; assistTo = Math.min(TURN, Math.max(wanted, rot) + TURN / 8); },
+    assist() {
+      if (finAt >= 0 || doneFlag) return;
+      // a press is one slow notch along the same gated turn; refused while the law asks to wait
+      if (E.locked || !E.allow(Math.min(1, rot / TURN + 0.004))) { refuse(); return; }
+      assistTo = Math.min(TURN, Math.max(wanted, rot) + TURN / 8);
+      E.ripples.add(pcx + yawSign * L * 0.3, pcy, { colour: P_GLOW, alpha: 0.3, r: 10 });
+      note('glass', 3 + (noteN % 4), 0.26); haptic('light', 0.05);
+    },
     pointAt(pp) {
       // the quiet face's moon mark as the turn brings it round
       const psi = -TURN + clamp(pp) * TURN, t = clock, beta = yaw(t), sb = Math.sin(beta), cb = Math.cos(beta);

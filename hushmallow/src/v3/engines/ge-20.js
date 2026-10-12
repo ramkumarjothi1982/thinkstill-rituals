@@ -628,9 +628,9 @@ export function create(E) {
     hint() {
       const pts = [];
       let uu = u, dd = dir;
-      for (let i = 0; i <= 26; i++) {
+      for (let i = 0; i <= 14; i++) {
         railAt(uu, railOff, O); pts.push([O.x, O.y]);
-        uu += dd * 0.02;
+        uu += dd * 0.037;
         if (uu > U1) { uu = 2 * U1 - uu; dd = -1; }
         if (uu < U0) { uu = 2 * U0 - uu; dd = 1; }
       }
