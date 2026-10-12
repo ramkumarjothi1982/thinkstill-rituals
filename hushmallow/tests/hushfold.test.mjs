@@ -693,7 +693,19 @@ test('H1: the garden offer goes through garden-install with a live face, avoid r
   // no reload under an offer or an installation; leaving aborts it; layout re-places it; subtitles avoid it
   assert.match(scene, /document\.querySelector\('\.hm-offer\.is-in'\) \|\| document\.body\.classList\.contains\('hm-installing'\)\) return false;/);
   assert.match(fnBody(scene, 'leave() {', 'get blockBack()'), /offerCtl\?\.abort\(\)/);
-  assert.match(fnBody(scene, 'function layout() {', 'let resizeT'), /installMod\?\.relayoutInstall\?\.\(\)/);
+  const lay = fnBody(scene, 'function layout() {', 'let resizeT');
+  assert.match(lay, /installMod\?\.relayoutInstall\?\.\(\)/);
+  // ...and again once the Mallow's glide has landed (a sheet that closes during an offer moves the face):
+  // at once only when something covers it now, so it moves once and never sits over the face it lands with
+  assert.match(lay, /later\(\(\) => \{ subtitles\.layout\(\); installMod\?\.relayoutInstall\?\.\(\); \}, 760\);/);
+  assert.match(lay, /if \(!landingFace\(\) \|\| installClash\(\)\) installMod\?\.relayoutInstall\?\.\(\);/);
+  const clash = fnBody(scene, 'function installClash() {', 'async function onOffer(');
+  assert.match(clash, /installMod\?\.installAvoidRects\?\.\(\)/);
+  assert.match(clash, /\[panelRect\(\), overlay\?\.rect\?\.\(\), face, landingFace\(\)\]/);
+  // the glide is the stage spring (a hop or the storm's tremble is not one), and the offer avoids where it lands
+  const landing = fnBody(scene, 'function landingFace() {', 'function onOffer(');
+  assert.match(landing, /const st = touchMt\?\.st, g = touchMt\?\.goalSt;/);
+  assert.match(fnBody(scene, 'function offerAvoid() {', 'function panelRect()'), /panelRect\(\), landingFace\(\)\]\.filter\(Boolean\)/);
   assert.match(scene, /\.\.\.\(installMod\?\.installAvoidRects\?\.\(\) \|\| \[\]\)/);
 });
 

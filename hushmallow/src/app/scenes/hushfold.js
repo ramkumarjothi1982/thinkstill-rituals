@@ -243,14 +243,43 @@ export default function hushfold(app, params = {}) {
       thoughtHome.y = Math.min(Math.max(thoughtHome.y, below), above);
     }
     stage?.thoughts.list.forEach((th, i) => th.moveHome({ x: thoughtHome.x - i * 18, y: thoughtHome.y - i * (th.r * 2.4) }));
-    // the layer glides there (720ms spring); re-place the subtitles when it lands
-    later(() => subtitles.layout(), 760);
+    // the Mallow glides there (a 720 ms spring): the subtitles and an open garden offer or card are
+    // placed again once it lands, so neither is left over the face it was placed beside mid-glide
+    later(() => { subtitles.layout(); installMod?.relayoutInstall?.(); }, 760);
     subtitles.layout();
-    // an open garden offer or card steps out of whatever just moved (the panel, the sheet, the Mallow)
-    installMod?.relayoutInstall?.();
+    // an open garden offer or card steps out of whatever just moved: at once when something covers it now
+    // (the panel, the sheet, the overlay, the face, or the face the Mallow is gliding to); when the Mallow is
+    // only on its way elsewhere, once it has landed (above), so the offer moves once and never across the face
+    if (!landingFace() || installClash()) installMod?.relayoutInstall?.();
+  }
+  const overlaps = (a, b) => !!(a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top);
+  /** Does an open garden offer, card or chip sit under the panel, the overlay, the face or the landing face? */
+  function installClash() {
+    const mine = installMod?.installAvoidRects?.() || [];
+    if (!mine.length) return false;
+    let face = null;
+    try { face = installMod.mallowFaceRect?.(stageMallow?.bodyRect?.(), MALLOWS[mallowId]) || null; } catch { face = null; }
+    const now = [panelRect(), overlay?.rect?.(), face, landingFace()].filter(Boolean);
+    return mine.some((r) => now.some((o) => overlaps(r, o)));
   }
   let resizeT = 0;
   const onResize = () => { clearTimeout(resizeT); resizeT = setTimeout(layout, 120); };
+  /**
+   * The face where the Mallow is gliding to (MallowTouch's stage spring) while it is still on its way,
+   * else null: an offer placed mid-glide keeps clear of the face it is about to have, not only the one it
+   * has. (The spring, not the body box: a hop, a squeeze or the storm's tremble is not a glide.)
+   */
+  function landingFace() {
+    const st = touchMt?.st, g = touchMt?.goalSt;
+    if (!st || !g || g.x == null || g.y == null || !installMod?.mallowFaceRect) return null;
+    if (Math.abs(g.x - st.x) < 3 && Math.abs(g.y - st.y) < 3 && Math.abs(g.s - st.s) < 0.02 * g.s) return null;
+    const b = stageMallow?.bodyRect?.();
+    if (!b?.height) return null;
+    // the body box now, moved and scaled to the spring's goal (it scales about its middle)
+    const k = g.s / (st.s || g.s), w = b.width * k, hh = b.height * k;
+    const cx = b.left + b.width / 2 + (g.x - st.x), cy = b.top + b.height / 2 + (g.y - st.y);
+    try { return installMod.mallowFaceRect({ left: cx - w / 2, top: cy - hh / 2, width: w, height: hh }, MALLOWS[mallowId]) || null; } catch { return null; }
+  }
 
   function theme() {
     const m = M();
@@ -473,13 +502,14 @@ export default function hushfold(app, params = {}) {
     }
   }
   /**
-   * What the offer, its card and its chip must leave uncovered (the face is kept clear through `face`).
-   * While the phone sheet holds a world, the world's subtitle band is not in use (one line sits in the strip
-   * above the Mallow, and garden-install steps out of the lines themselves), so the offer may use that room.
+   * What the offer, its card and its chip must leave uncovered (the face is kept clear through `face`, and
+   * the face the Mallow is gliding to through landingFace()). While the phone sheet holds a world, the
+   * world's subtitle band is not in use (one line sits in the strip above the Mallow, and garden-install
+   * steps out of the lines themselves), so the offer may use that room.
    */
   function offerAvoid() {
     return [...(flowRef?.avoid?.() || []), worldMode && !panelSheet() ? flowRef?.subtitleBand?.() : null, worldThoughtRect(), ...(stage?.thoughts.rects() || []),
-      overlay?.rect?.(), panelRect()].filter(Boolean);
+      overlay?.rect?.(), panelRect(), landingFace()].filter(Boolean);
   }
   /** The open panel where it comes to rest (the phone sheet's slide-in transform is ignored), or null. */
   function panelRect() {
