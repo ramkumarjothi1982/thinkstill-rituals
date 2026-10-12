@@ -43,7 +43,7 @@ export function create(E) {
   const loop = E.round > 1;
   const agit = reduced ? 0 : (heavy ? 0.4 : 1) * (1 - E.calm);
   const START = loop ? 0.35 + (E.rand() - 0.5) * 2.4 : 0.35;   // outer satellite's plane angle
-  const K = loop ? 0.74 + E.rand() * 0.07 : 0.77;               // tilt of the orbit plane
+  const K = loop ? 0.82 + E.rand() * 0.07 : 0.86;               // tilt of the orbit plane
   const hue = loop ? E.rand() : 0;
   const cordCol = mix(pal.glow, '#ffffff', 0.12 + hue * 0.12);
   const cordHot = mix(pal.glow, pal.accent, 0.3 + hue * 0.35);
@@ -51,6 +51,7 @@ export function create(E) {
   const laneCol = mix(pal.accent, pal.glow, 0.4 + E.calm * 0.3);
   const innerCol = mix(pal.warm, pal.glow, 0.45);
   const ribbonCol = mix(pal.deep, '#05030f', 0.4);
+  const inkCol = mix(pal.deep, '#000018', 0.35);
   const cometRev = E.round % 2 === 0;
 
   // ---- photo material: hero = inner satellite, next = outer, the rest are moons
@@ -77,7 +78,7 @@ export function create(E) {
   let snap = true;
 
   function fit() {
-    R = Math.min(stage.w * 0.39, stage.h * 0.46);
+    R = Math.min(stage.w * 0.4, stage.h * 0.46);
     cx = stage.cx; cy = stage.cy;
     rA = R * 0.3; rBs = R * 0.2; rc0 = R * 0.38; rc1 = R * 0.64; r0 = R * 0.84; r1 = R * 0.97; rIn = R * 0.54;
     mS = Math.max(44, R * 0.29);
@@ -169,7 +170,7 @@ export function create(E) {
 
     // ---- the cord: coil (wound part) + free part that slackens in slow waves
     const wound = CF * (1 - ps), fD = 1 - ps;
-    const dl = lerp(1.3, 2.7, e);
+    const dl = lerp(1.3, 3.2, e);
     const thD = thB - dl, rD = lerp(rc0, rc1, fD);
     const slack = e * (1 - fin * 0.4);
     const waveA = R * (0.012 + 0.06 * slack) * (reduced ? 0.5 : 1);
@@ -189,7 +190,7 @@ export function create(E) {
       } else {
         const u = (m - wound) / Math.max(1e-4, 1 - wound);
         const th = thD + dl * u;
-        const r = rD + (rBv - rD) * smooth(u) + waveA * Math.sin(u * 8.8 - wt * 0.85) * Math.sin(Math.PI * u);
+        const r = rD + (rBv - rD) * (1 - Math.pow(1 - u, 2.2)) + waveA * Math.sin(u * 8.8 - wt * 0.85) * Math.sin(Math.PI * u);
         tx = cx + Math.cos(th) * r; ty = cy + Math.sin(th) * r * K + Math.sin(thD + fD * 5.5) * tilt * (1 - u);
         kk = 22 + 120 * Math.max(clamp(1 - u * 6), clamp((u - 0.82) * 5.5));
       }
@@ -287,6 +288,8 @@ export function create(E) {
   function ringStroke(rx, ry, rr, front, col, a, w) {
     g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
     g.beginPath(); g.ellipse(cx, cy, rx, ry, rr, front ? 0 : Math.PI, front ? Math.PI : TAU);
+    g.globalCompositeOperation = 'source-over'; g.strokeStyle = rgba(inkCol, 0.16); g.lineWidth = w + 2; g.stroke();
+    g.globalCompositeOperation = 'lighter';
     g.strokeStyle = rgba(col, a * 0.32); g.lineWidth = w * 5; g.stroke();
     g.strokeStyle = rgba(col, a); g.lineWidth = w; g.stroke();
     g.restore();
@@ -325,6 +328,7 @@ export function create(E) {
     for (let i = 0; i < N - 1; i++) {
       if ((py[i] + py[i + 1] >= c2) === front) { if (!open) { g.moveTo(px[i], py[i]); open = true; } g.lineTo(px[i + 1], py[i + 1]); } else open = false;
     }
+    g.strokeStyle = rgba(inkCol, 0.42); g.lineWidth = Math.max(3.4, R * 0.026); g.stroke();
     g.globalCompositeOperation = 'lighter';
     g.strokeStyle = rgba(cordHot, 0.12 + 0.06 * fin + strain * 0.1); g.lineWidth = R * 0.075; g.stroke();
     g.strokeStyle = rgba(cordCol, 0.3 + 0.08 * fin); g.lineWidth = R * 0.03; g.stroke();
@@ -417,7 +421,7 @@ export function create(E) {
     g.strokeStyle = rgba(cordCol, 0.32 + 0.1 * fin); g.lineWidth = fs * 1.75 + 2.5; g.stroke();
     g.strokeStyle = rgba(ribbonCol, 0.8); g.lineWidth = fs * 1.75; g.stroke();
     g.font = `600 ${fs}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillStyle = '#fffaf0'; g.shadowColor = rgba(cordCol, 0.8); g.shadowBlur = 5;
+    g.fillStyle = '#fffaf0';
     const sc = Math.min(1, (d1 - d0) / Lt);
     let acc = 0;
     for (let k = 0; k < chars.length; k++) {

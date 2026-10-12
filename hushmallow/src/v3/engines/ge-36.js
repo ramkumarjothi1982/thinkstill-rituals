@@ -276,7 +276,7 @@ export function create(E) {
     const sz = cardSize(s.ph, heroS);
     const top = qy - sz.h / 2;
     g.save(); g.globalCompositeOperation = 'lighter';
-    const fa = (0.045 + 0.035 * (1 - G)) * (1 + fin * 0.4) * (0.4 + 0.6 * s.app);
+    const fa = (0.06 + 0.045 * (1 - G)) * (1 + fin * 0.5) * (0.4 + 0.6 * s.app);
     for (let i = -2; i <= 2; i++) {
       const gx = qx + i * G * sz.w * GH, gy = top + Math.abs(i) * G * 6, bx = pcx + i * ws * 0.3;
       g.fillStyle = gFan[i + 2];

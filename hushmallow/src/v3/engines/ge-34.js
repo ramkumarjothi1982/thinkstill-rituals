@@ -405,7 +405,7 @@ export function create(E) {
     if (sealedAt < 0 && sealReal >= 0.999) {
       sealedAt = t; emblem.target = 1;
       E.sound('settle', { intensity: 0.45 }); E.sound('chime', { intensity: 0.3 }); E.checkpoint('step');
-      E.ripples.add(ecx, sY(eTop + depthAt(0) - H * 0.085), { colour: glowCol, speed: 55, alpha: 0.45, r: 6 });
+      E.ripples.add(ecx, sY(eTop + depthAt(0) - H * 0.11), { colour: glowCol, speed: 55, alpha: 0.45, r: 6 });
     }
     if (!doneFlag && sealedAt >= 0 && !(drag && drag.mode === 'seal') && assistTo == null && sealShown > 0.992 && t - sealedAt > 0.3) doneFlag = true;
     // once the card is in, the envelope glides up to the middle of the stage to be sealed
@@ -591,7 +591,7 @@ export function create(E) {
     }
     g.restore();
     if (E.phase !== 'law') {
-      const c = Math.cos(r), s = Math.sin(r), wy = cH * 0.14 * sc;
+      const c = Math.cos(r), s = Math.sin(r), wy = cH * 0.16 * sc;
       words.draw(g, x - s * wy, y + c * wy, { style: 'ink', size: wordSize, maxWidth: cW * 0.82, lines: 2, rot: r, colour: ink });
     }
   }
@@ -605,7 +605,7 @@ export function create(E) {
     g.restore();
     // ink showing through the vellum
     if (insShown > 0.3 && E.phase !== 'law') {
-      const x = card.x, y = card.y, r = cardRot.x, c = Math.cos(r), s = Math.sin(r), wy = cH * 0.14;
+      const x = card.x, y = card.y, r = cardRot.x, c = Math.cos(r), s = Math.sin(r), wy = cH * 0.16;
       g.save(); g.clip(pocketPath);
       words.draw(g, x - s * wy, y + c * wy, { style: 'ink', size: wordSize, maxWidth: cW * 0.82, lines: 2, rot: r, colour: mix(ink, paper, 0.1), alpha: 0.7 * smooth((insShown - 0.3) / 0.4) });
       g.restore();
@@ -705,7 +705,7 @@ export function create(E) {
   function drawEmblem(t, fin) {
     const k = emblem.x;
     if (k <= 0.01) return;
-    const x = ecx, y = eTop + depthAt(0) - H * 0.085, r = Math.max(11, H * 0.088) * k;
+    const x = ecx, y = eTop + depthAt(0) - H * 0.11, r = H * 0.085 * k;   // sits on the flap tip, clear of the words below
     glow(g, x, y, r * (2.3 + 0.2 * Math.sin(t * 1.1)), glowCol, 0.16 + 0.16 * fin);
     g.save();
     g.globalAlpha = 0.45; g.drawImage(shadowSpr, x - r * 1.25, y - r * 0.95, r * 2.5, r * 2.5); g.globalAlpha = 1;
@@ -907,7 +907,7 @@ export function create(E) {
       if (finAt >= 0) return;
       finAt = E.now(); drag = null; assistTo = null; emblem.target = 1;
       for (const o of ph) o.sealed = true;
-      const ey = sY(eTop + depthAt(0) - H * 0.085);
+      const ey = sY(eTop + depthAt(0) - H * 0.11);
       E.ripples.add(ecx, ey, { colour: glowCol, speed: heavy ? 40 : 70, alpha: heavy ? 0.3 : 0.5, r: 10 });
       if (!heavy) E.particles.burst(ecx, ey, low ? 5 : 12, { speed: 60, colour: glowCol, life: 1.3, size: 5, kind: 'glint' });
       E.sound(heavy ? 'breathe-out' : 'shimmer', { intensity: 0.4 });
