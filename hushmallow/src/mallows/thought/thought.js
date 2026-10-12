@@ -41,6 +41,8 @@ const TAU = Math.PI * 2;
 const COLS = 10, ROWS = 10;
 const OUTLINE_N = 44;
 const OUTLINE = outlineUV(OUTLINE_N);
+// how far a full cheek puff bulges the outline (body units; the seven use 0.032 — a small jelly needs more to show)
+const PUFF_K = 0.1;
 const nowMs = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
 /** Named sample points on the body (lattice uv); render.js and the layer read them. */
@@ -107,6 +109,9 @@ export class ThoughtMallow {
     this._rot = 0; this._rotT = -9; this.labelSide = null;
     this.off = { x: 0, y: 0 };    // its own life on top of the anchor (bob, tremble, sink, drift)
     this._sink = 0; this._drift = { x: 0, y: 0 }; this._driftDir = { x: 1, y: 0 };
+    // loneliness: how far it has drifted (px), for how long, how far it may go (a layer plans it), and whether it is over
+    this._driftD = 0; this._driftT = 0; this._driftMax = 80; this._driftPlanned = false; this._driftEnd = false; this._zDrift = 0;
+    this._away = null; this._glanceAt = 2.5 + 2 * rnd(this.seed, 11); this._glanceUntil = 0;
     this._glide = false;          // a tossed thought gliding to rest
 
     // state: what a world reads and may write (a written value wins for 0.5 s)
@@ -406,7 +411,7 @@ export class ThoughtMallow {
       else if (flick) { this.zGoal = clamp(this.zGoal + Math.min(0.25, sp / 4000)); }
       this.home.x = this._pos.x; this.home.y = this._pos.y;
       // a sibling put somewhere else stays there (pulling the voices apart gives the main thought room)
-      if (this.kind === 'sibling' && f?.carry) this.free = true;
+      if (this.kind === 'sibling') this.free = true;
       this._explore(Math.min(0.06, (f?.moved || 0) / 2500));
       this._emit('touch', { kind: flick ? 'flick' : 'put', speed: sp });
       if (!flick) this.audio?.fx?.('settle', { intensity: 0.12 });
@@ -454,6 +459,7 @@ export class ThoughtMallow {
     this.clock += dt;
     const rm = env.rm ?? this.reducedMotion, low = env.low ?? this.lowStim;
     if (rm !== this.reducedMotion) this.setReducedMotion(rm);
+    this._away = env.away || null;
     this.lowStim = low;
     const L = this.levels, sv = this.state._v, ext = this.state._ext, clk = this.clock;
     // the verbs ease in (about a second), the person's touch fades back very slowly
@@ -470,7 +476,7 @@ export class ThoughtMallow {
     if (clk - ext.distance >= 0.5) sv.distance = this._z;
     // (a sibling is as near or far as its thought, and as big)
     if (this.parent) { this._z = this.parent._z; this._scale = this.parent._scale; }
-    else if (clk - this._zT >= 0.5) this._z += (Math.max(this.zGoal, this.zFloor) - this._z) * Math.min(1, dt * (rm ? 8 : 2.2));
+    else if (clk - this._zT >= 0.5) this._z += (Math.min(1, Math.max(this.zGoal, this.zFloor) + this._zDrift) - this._z) * Math.min(1, dt * (rm ? 8 : 2.2));
     // the look
     const li = this._lookIn;
     li.tension = sv.tension; li.charge = sv.charge; li.calm = sv.calm; li.transform = L.transform.cur;
@@ -644,19 +650,31 @@ export class ThoughtMallow {
     const sinkGoal = m.sink * P;
     this._sink += (sinkGoal - this._sink) * Math.min(1, dt * (rm ? 4 : 0.35));
     oy += this._sink;
-    // loneliness drifts away from the others (slowly; soothing or carrying it close stops it). It is
-    // its resting place that drifts, so the layer sees where it is going (and keeps the room it needs)
+    // loneliness drifts apart: a drift you can see — about 11 px a second at first, easing out to
+    // 60–90 px over 7–8 s — away from the hero (on a layer: into the free room the layer found for it,
+    // _driftDir / _driftMax), and a little farther away as it goes. It is its resting place that
+    // drifts, so the layer always sees where it is going. A touch or the person's care ends it.
     const D = this._drift;
-    // (the layer pauses the drift while it would push into another thought: _driftBlocked)
-    if (m.drift > 0.02 && !carry && !this._glide && !this.driven && env.away && !rm && !this._driftBlocked) {
-      const dx = pos.x - env.away.x, dy = pos.y - env.away.y, l = Math.hypot(dx, dy) || 1;
-      const lim = 0.12 * Math.min(env.view?.W || 400, env.view?.H || 800) * m.drift;
-      const cur = Math.hypot(D.x, D.y);
-      if (cur < lim) {
-        const sx = (dx / l) * dt * 5 * m.drift, sy = (dy / l) * dt * 2 * m.drift;
-        D.x += sx; D.y += sy; home.x += sx; home.y += sy;
+    if (m.drift > 0.02 && !this._driftEnd && !carry && !this._glide && !this.driven && !this._driftBlocked) {
+      if (this.pressed || this.earned.calm > 0.3) this._driftEnd = true;
+      else if (this._driftPlanned || !this.layer) {
+        let ux = this._driftDir.x, uy = this._driftDir.y, Dm = this._driftMax;
+        if (!this._driftPlanned) {
+          // on its own (no layer): straight away from the point it shies from, mostly sideways
+          ux = uy = 0; Dm = 80;
+          if (env.away) { const dx = pos.x - env.away.x, dy = (pos.y - env.away.y) * 0.6, l = Math.hypot(dx, dy) || 1; ux = dx / l; uy = dy / l; }
+        }
+        Dm *= clamp(m.drift / 0.5);
+        const d = this._driftD;
+        if (Dm > 1 && d < Dm && (ux || uy)) {
+          this._driftT += dt;
+          const v = 11 * (1 - (d / Dm) * (d / Dm)) * clamp(this._driftT / 0.6) * (rm ? 0.5 : 1);
+          const sd = Math.min(Dm - d, v * dt);
+          D.x += ux * sd; D.y += uy * sd; home.x += ux * sd; home.y += uy * sd; this._driftD = d + sd;
+        }
       }
     }
+    this._zDrift = 0.15 * clamp(this._driftD / 60);
     // farther away it also sits a little higher, toward the horizon
     oy -= this._z * 0.45 * this.r;
     // a sibling's own place: in a ring round its main thought
@@ -669,7 +687,10 @@ export class ThoughtMallow {
     const sq = T.depth * 0.1;
     this._touchSquash += (sq - this._touchSquash) * 0.25;
     if (Math.abs(this._touchSquash - sq) < 1e-5) this._touchSquash = sq;
-    this.sb.setRest({ squash: b.squash + this._touchSquash, droop: b.droop, shrink: b.shrink * 0.6, puffL: b.puff + T.depth * 0.6, puffR: b.puff + T.depth * 0.6, cheekV: 0.6 });
+    // (one parameter object, reused: nothing allocated per frame)
+    const p = this._restP || (this._restP = { squash: 0, droop: 0, shrink: 0, puffL: 0, puffR: 0, cheekV: 0.6, puffK: PUFF_K });
+    p.squash = b.squash + this._touchSquash; p.droop = b.droop; p.shrink = b.shrink * 0.6; p.puffL = p.puffR = b.puff + T.depth * 0.6;
+    this.sb.setRest(p);
   }
 
   // blinks, gaze darts, face overlays
@@ -691,6 +712,11 @@ export class ThoughtMallow {
       g.tx = (rnd(this.seed, i) * 2 - 1) * 0.9; g.ty = (rnd(this.seed, i + 5) * 2 - 1) * 0.6;
       this._dartAt = t + (0.25 + 0.6 * rnd(this.seed, i + 9)) / Math.max(0.3, look.motion.dart) * (rm ? 3 : 1);
     } else if (look.motion.dart <= 0.05) { g.tx = f.lookX; g.ty = f.lookY; }
+    // a lonely thought glances back now and then at the one it drifted from
+    if (this.style.motion.drift > 0 && this._away && !this.parent) {
+      if (t > this._glanceAt) { this._glanceUntil = t + 1.2; this._glanceAt = t + 4.5 + 2 * rnd(this.seed, Math.floor(t)); }
+      if (t < this._glanceUntil) { const R = this.render; g.tx = clamp(((this._away.x - R.cx) / Math.max(60, R.W * 2)) * 1.6, -1, 1); g.ty = clamp((this._away.y - R.cy) / Math.max(60, R.P * 2), -1, 1); }
+    }
     if (this._lookAt) { g.tx = this._lookAt.x; g.ty = this._lookAt.y; }
     const kg = rm ? 6 : look.motion.dart > 0.05 ? 30 : 8;
     g.x += (g.tx - g.x) * Math.min(1, dt * kg); g.y += (g.ty - g.y) * Math.min(1, dt * kg);
@@ -982,11 +1008,12 @@ ThoughtMallow.prototype.faceRect = function (out = {}) {
 /** A prop's rect (beliefs override this); null when it carries none. */
 ThoughtMallow.prototype.propRect = function () { return null; };
 
-/** Everything it draws (body, siblings, effects, a belief's prop), client px. */
+/** Everything it draws (body, the siblings round it, effects, a belief's prop), client px. */
 ThoughtMallow.prototype.extent = function (out = {}) {
   const b = this._bbox();
   out.left = b.left; out.top = b.top; out.right = b.right; out.bottom = b.bottom;
-  for (const s of this.siblings) { if (!s.render.ready) continue; const r = s._bbox(); grow(out, r.left, r.top, r.right, r.bottom); }
+  // (a sibling pulled free is no longer part of it: the layer keeps it in view and clear on its own)
+  for (const s of this.siblings) { if (!s.render.ready || s.free) continue; const r = s._bbox(); grow(out, r.left, r.top, r.right, r.bottom); }
   const f = this.fxRect(this._fxR || (this._fxR = {}));
   if (f) grow(out, f.left, f.top, f.right, f.bottom);
   const p = this.propRect(this._prR || (this._prR = {}));

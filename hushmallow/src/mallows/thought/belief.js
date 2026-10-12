@@ -71,7 +71,7 @@ export class BeliefMallow extends ThoughtMallow {
   /** How far it has been explored (0..1): the person's own touch, or explore(k). */
   get explored() { return clamp(Math.max(this.earnedExplore, this.levels.explore.cur)); }
   /** Ease exploration toward k (no argument: a step). The prop gets lighter and looser. */
-  explore(k) { this._verb('explore', k, 0.25); this._emit('verb', { verb: 'explore', level: this.levels.explore.goal }); return this; }
+  explore(k) { if (this._verb('explore', k, 0.25)) this._emit('verb', { verb: 'explore', level: this.levels.explore.goal }); return this; }
   _explore(k) { if (k > 0) this.earnedExplore = clamp(this.earnedExplore + k * 0.9); }
 
   /** The prop's weight now (0..1 of its full mechanics). */

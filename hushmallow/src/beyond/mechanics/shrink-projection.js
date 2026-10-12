@@ -187,8 +187,10 @@ export function mount(ctx) {
     const p = pointers.get(e.id);
     if (!p) return false;
     if (e.type === 'move') {
-      const dt = Math.max(1, e.t - p.t) / 1000;
-      const sp = Math.hypot(e.x - p.x, e.y - p.y) / dt;
+      // speed, smoothed: events that arrive batched (a slow frame) must not read as a rush
+      const dt = Math.max(16, e.t - p.t) / 1000;
+      p.sp = p.sp == null ? Math.hypot(e.x - p.x, e.y - p.y) / dt : p.sp * 0.7 + (Math.hypot(e.x - p.x, e.y - p.y) / dt) * 0.3;
+      const sp = p.sp;
       p.x = e.x; p.y = e.y; p.t = e.t;
       if (pinch && pointers.size === 2) {
         const [a, b] = [...pointers.values()];

@@ -68,6 +68,8 @@ export const FACE_KEYS = Object.freeze(['eyeOpen', 'lid', 'lidTilt', 'browA', 'b
 export const REST_FACE = Object.freeze({ eyeOpen: 0.95, lid: 0, lidTilt: 0, browA: 0, browTilt: 0, browY: 0, curve: 0.18, mouthW: 0.85, wave: 0, open: 0, skew: 0, puff: 0, blush: 0.3, lines: 0, sweat: 0, lookX: 0, lookY: 0, closed: 0 });
 // relieved: soft closed eyes (◡), a gentle closed-mouth smile (open 0, so the smile curve is what is drawn)
 export const RELIEVED_FACE = Object.freeze({ eyeOpen: 0.4, lid: 0, lidTilt: 0, browA: 0, browTilt: 0, browY: 0.1, curve: 0.72, mouthW: 0.9, wave: 0, open: 0, skew: 0, puff: 0, blush: 0.5, lines: 0, sweat: 0, lookX: 0, lookY: 0.08, closed: 0.88 });
+// softly open, relaxed eyes: where the eyes rest while relief is still partial (before they close)
+const EYE_SOFT = 0.86;
 
 // Motion signatures (fractions of the body height P, Hz, rates per second):
 // bob/bobHz breathing float · tremble/trembleHz shiver · dart gaze darts per
@@ -103,7 +105,7 @@ export const THOUGHT_STYLES = Object.freeze({
   anxiety: Object.freeze({
     id: 'anxiety', label: 'restless and trembling', tension: 0.8, charge: 0.92, alpha: 0.74,
     tint: tint('#eeedff', '#c0bcff', '#6f6ad8', '#dedcff', '#1d1a4a'),
-    face: F({ eyeOpen: 1.18, lid: 0, lidTilt: -0.35, browA: 0.95, browTilt: -0.95, browY: 0.35, curve: -0.3, mouthW: 0.58, wave: 1, open: 0.08, blush: 0.2, sweat: 1 }),
+    face: F({ eyeOpen: 1.18, lid: 0, lidTilt: -0.35, browA: 0.95, browTilt: -0.95, browY: 0.35, curve: -0.3, mouthW: 0.8, wave: 1, open: 0.08, blush: 0.2, sweat: 1 }),
     motion: M({ bob: 0.02, bobHz: 0.95, tremble: 0.016, trembleHz: 11, dart: 1.7, sway: 0.02 }),
     body: Object.freeze({ squash: -0.02, puff: 0, droop: 0 }),
     fx: FX({}),
@@ -244,8 +246,19 @@ export function deriveLook(style, s, out = makeLook()) {
   const charge = clamp(s.charge);
   const pace = clamp((0.35 + 0.65 * charge) * (1 - 0.6 * slow) * (1 - 0.35 * settle) * (1 - 0.4 * calm) * (1 - 0.5 * k), 0.12, 1);
   out.e = e; out.relief = relief; out.pace = pace; out.soft = soft; out.tintK = k;
+  // The relieved face arrives in order, so no in-between reads as smug: heavy lids and their tilt
+  // ease away first (gone by relief 0.35), the eyes stay softly open, then close (◡) from 0.3, and
+  // only then does the smile come (0.35 → 0.7). A settled sad thought looks calm, never amused.
   const F0 = REST_FACE, FE = style.face, FR = RELIEVED_FACE, f = out.face;
-  for (const key of FACE_KEYS) f[key] = lerp(lerp(F0[key], FE[key], e), FR[key], relief);
+  const lidK = 1 - smooth(0, 0.35, relief), smileK = smooth(0.35, 0.7, relief), shutK = smooth(0.3, 0.8, relief);
+  for (const key of FACE_KEYS) {
+    const v = lerp(F0[key], FE[key], e);
+    if (key === 'lid' || key === 'lidTilt') f[key] = v * lidK;
+    else if (key === 'curve') f[key] = lerp(v, FR.curve, smileK);
+    else if (key === 'closed') f[key] = lerp(v, FR.closed, shutK);
+    else if (key === 'eyeOpen') f[key] = lerp(lerp(v, EYE_SOFT, smooth(0, 0.4, relief)), FR.eyeOpen, smooth(0.4, 0.9, relief));
+    else f[key] = lerp(v, FR[key], relief);
+  }
   const mo = style.motion, m = out.motion;
   m.bob = lerp(mo.bob * (0.6 + 0.4 * e), 0.022, relief) * (1 - 0.6 * settle);
   m.bobHz = lerp(mo.bobHz, 0.22, relief) * (0.55 + 0.45 * pace);
@@ -316,8 +329,10 @@ export function insideUV(u, v, pad = 0, shape = SHAPE) {
 /** How much of the words a tag shows at depth z (0 near … 1 far), in characters (a rough cap). The tag is never smaller than 15 px. */
 export const TAG_MIN_PX = 15;
 export function tagBudget(z) { return z < 0.34 ? 96 : z < 0.68 ? 48 : 26; }
-/** How many lines a tag may use: 3 near, 2 mid, 1 far, and fewer when the stage is crowded (0 room … 2 crowded). */
-export function tagLines(z, crowd = 0) { return Math.max(1, Math.min(z < 0.34 ? 3 : z < 0.7 ? 2 : 1, [3, 2, 1][crowd] ?? 1)); }
+/** How many lines a tag may use: 3 near, 2 mid, 1 far, and fewer when the stage is crowded (levels 0 room … 4
+ * packed: 3, 2, 2, 1, 1 — a fuller stage offers two lines on a narrower plate before cutting to one). */
+export const CROWD_LINES = Object.freeze([3, 2, 2, 1, 1]);
+export function tagLines(z, crowd = 0) { return Math.max(1, Math.min(z < 0.34 ? 3 : z < 0.7 ? 2 : 1, CROWD_LINES[crowd] ?? 1)); }
 /** The words split for excerpting (whitespace collapsed). */
 export function wordsOf(text) { const t = String(text ?? '').replace(/\s+/g, ' ').trim(); return t ? t.split(' ') : []; }
 /** The first k words, marked "…" when some are left out (cut at a word, never reworded). */

@@ -165,8 +165,10 @@ export function mount(ctx) {
     if (!held || held.id !== e.id) return false;
     if (e.type === 'move') {
       const dx = e.x - held.x, dy = e.y - held.y, d = Math.hypot(dx, dy);
-      const dts = Math.max(1, e.t - held.t) / 1000;
-      const sp = d / dts;
+      // speed, smoothed: events that arrive batched (a slow frame) must not read as a scratch
+      const dts = Math.max(16, e.t - held.t) / 1000;
+      held.sp = held.sp == null ? d / dts : held.sp * 0.7 + (d / dts) * 0.3;
+      const sp = held.sp;
       held.x = e.x; held.y = e.y; held.t = e.t; held.path += d;
       if (phase === 'hard' && d > 0.5) {
         // gentle strokes work; scratching barely does

@@ -23,6 +23,8 @@ const caches = new WeakMap();       // ctx → { palettes, shared }
 const SIDES = [-1, 1];
 const CHEEKS = [PT.cheekL, PT.cheekR];
 // cloud lobes: [dx (× W), dy (× P), rx (× W), ry (× P)] — a flat base and three soft bumps on top
+// the stone's speckles fade as it is explored (6 steps, made once: no colour string per frame)
+const SPECKLE = Array.from({ length: 6 }, (_, i) => `rgba(30,24,52,${(0.35 * (1 - 0.6 * i / 5)).toFixed(3)})`);
 const CLOUD = [[-0.27, 0.05, 0.25, 0.12], [0.02, 0.05, 0.46, 0.13], [0.28, 0.05, 0.22, 0.11], [-0.18, -0.04, 0.2, 0.15], [0.05, -0.09, 0.24, 0.18], [0.27, -0.02, 0.17, 0.13]];
 
 function cacheFor(ctx) {
@@ -83,7 +85,7 @@ function paletteFor(ctx, th, look) {
     halo: radial(ctx, 0, 0, 0, 1, [[0, rgba(mixHex(t.glow, '#ffffff', 0.55), 0.5)], [0.45, rgba(mixHex(t.glow, '#ffffff', 0.5), 0.3)], [0.72, rgba(mixHex(t.glow, '#ffffff', 0.45), 0.1)], [1, rgba(t.glow, 0)]]),
     mote: radial(ctx, 0, 0, 0, 1, [[0, 'rgba(255,255,255,0.95)'], [0.3, rgba(t.glow, 0.65)], [1, rgba(t.glow, 0)]]),
     rim: (() => { const g = ctx.createLinearGradient(-1, -1, 1, 1); g.addColorStop(0, 'rgba(255,255,255,0.92)'); g.addColorStop(0.45, rgba(t.light, 0.62)); g.addColorStop(1, rgba(mixHex(t.light, t.glow, 0.5), 0.75)); return g; })(),
-    inkA: rgba(t.ink, 0.92), inkB: rgba(t.ink, 0.78),
+    inkA: rgba(t.ink, 0.92), inkB: rgba(t.ink, 0.78), rimDeep: rgba(mixHex(t.deep, t.ink, 0.25), 0.62),
     lightA: rgba(t.light, 0.32), lightA2: rgba(t.light, 0.6), deepA: rgba(t.deep, 0.5),
     depth: radial(ctx, 0, 0, 0, 1, [[0, rgba(t.deep, 0.42)], [0.6, rgba(t.deep, 0.16)], [1, rgba(t.deep, 0)]]),
     fresnel: radial(ctx, 0, 0, 0, 1.04, [[0, rgba(t.light, 0)], [0.6, rgba(t.light, 0)], [0.82, rgba(t.light, 0.12)], [0.94, rgba(t.light, 0.3)], [1, rgba(t.light, 0.5)]]),
@@ -163,8 +165,9 @@ export function drawThought(ctx, th, o = {}) {
   if (heat > 0.02) blob(ctx, S.heat, cx, cy, W * 0.9, P * 0.88, 0, heat * (rm ? 0.55 : 0.5 + 0.1 * Math.sin(t * 2.2)));
   // props behind the body
   if (th.kind === 'belief') drawPropBack(ctx, th, o, S, pal);
-  // a soft shadow of light beneath (it floats)
-  blob(ctx, S.shadow, cx, cy + P * 0.56, W * 0.36, P * 0.07, 0, 0.5 * (1 - th.z));
+  // a soft shadow of light beneath (it floats); on a light backdrop it needs more to sit on the world
+  const light = !!o.light;
+  blob(ctx, S.shadow, cx, cy + P * 0.56, W * (light ? 0.4 : 0.36), P * (light ? 0.085 : 0.07), 0, (light ? 0.95 : 0.5) * (1 - th.z));
 
   // the jelly
   outlinePath(ctx, R.outline, ox, oy);
@@ -227,6 +230,11 @@ export function drawThought(ctx, th, o = {}) {
   ctx.globalAlpha *= 0.85;
   ctx.stroke();
   ctx.restore();
+  // on a light backdrop pale jelly would melt into it: a deeper rim of its own tint holds the silhouette
+  if (light) {
+    outlinePath(ctx, R.outline, ox, oy);
+    ctx.save(); ctx.strokeStyle = pal.rimDeep; ctx.lineWidth = Math.max(1.4, P * 0.022); ctx.stroke(); ctx.restore();
+  }
   // a crescent of light along the upper left rim, a fainter one low on the right
   rimArc(ctx, R.outline, 34, 42, ox, oy, 'rgba(255,255,255,0.75)', Math.max(1.2, P * 0.02));
   if (!liter) rimArc(ctx, R.outline, 12, 19, ox, oy, pal.lightA2, Math.max(1, P * 0.016));
@@ -285,7 +293,7 @@ export function mouthGeom(th, ox = 0, oy = 0, rm = false, out = { open: false, x
     return out;
   }
   const curve = f.curve * P * 0.075 + ov.giggle * P * 0.03;
-  const wave = f.wave * P * 0.02 * (rm ? 1 : 0.85 + 0.15 * Math.sin(t * 9));
+  const wave = f.wave * P * 0.03 * (rm ? 1 : 0.85 + 0.15 * Math.sin(t * 9));
   const pts = out.pts;
   for (let k = 0; k <= MOUTH_N; k++) {
     const u = k / MOUTH_N * 2 - 1;                     // −1 … 1 along the mouth
@@ -530,7 +538,7 @@ function drawPropFront(ctx, th, o, S, pal) {
     if (ex > 0.01) { ctx.save(); ctx.globalAlpha *= smooth(0, 1, ex); ctx.scale(r, r); ctx.fillStyle = S.stoneLight; ctx.fill(); ctx.restore(); }
     ctx.strokeStyle = 'rgba(20,14,40,0.35)'; ctx.lineWidth = 1; ctx.stroke();
     // speckles and a dull sheen
-    ctx.fillStyle = `rgba(30,24,52,${0.35 * (1 - 0.6 * ex)})`;
+    ctx.fillStyle = SPECKLE[Math.round(clamp(ex) * 5)];
     for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.arc((rnd(ps.seed, 30 + i) - 0.5) * r * 1.2, (rnd(ps.seed, 40 + i) - 0.4) * r * 0.9, r * 0.035, 0, TAU); ctx.fill(); }
     blob(ctx, S.spec, -r * 0.36, -r * 0.4, r * 0.32, r * 0.16, -0.5, 0.45);
     ctx.restore();

@@ -11,7 +11,7 @@ import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, mix, Motes, bli
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'separate_one';
-const COUNT = 15;
+const MAX_COUNT = 15;
 const LATER = ['#ffd98a', '#9fe8ff', '#b9a6ff', '#ffc0e6', '#a8f0d8', '#ffe9b0'];
 
 export function mount(ctx) {
@@ -24,6 +24,8 @@ export function mount(ctx) {
   const motes = new Motes(40);
   const [light, deep] = tintFor(ctx.emotion);
   const A0 = ctx.area();
+  // a narrow phone: fewer other times, so the arc stays calm and readable
+  const COUNT = A0.w < 330 ? 11 : MAX_COUNT;
   // the cluster must leave room around it to pull the one out (≤ 36% of the area's short side)
   const R = clamp(Math.min(A0.w, A0.h) * 0.36 / (Math.sqrt(COUNT) * 1.42), 12, 22);
   const one = new Blob({ x: ctx.from?.x ?? A0.x + A0.w / 2, y: ctx.from?.y ?? A0.y + A0.h / 2, r: R * 1.15, light, deep });

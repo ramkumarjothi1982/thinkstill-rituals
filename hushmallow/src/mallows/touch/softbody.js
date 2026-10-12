@@ -58,6 +58,9 @@ const GLIDE_PINCH = 0.06;   // how hard a gliding finger presses the skin toward
 const WAIST_K = 0.12;       // per-substep pull toward the waist target
 const SLEEP_E = 1e-10;      // below this energy, with no fingers, the solver sleeps
 
+// one slot of the rest-shape key: 1 when it changed (and is now stored)
+const restKey = (K, i, v) => { if (Math.abs(K[i] - v) < 1e-6) return 0; K[i] = v; return 1; };
+
 export class SoftBody {
   /**
    * @param {object} o
@@ -240,7 +243,8 @@ export class SoftBody {
   /**
    * Rest shape from the face/body expression. All optional:
    * squash (+ flatter), breath (±0.014), droop, shrink (0..1), lean (body units at the top),
-   * puffL / puffR (cheek puff) at cheekV (lattice v), sx / sy extra scales, stretch {s, ax, ay}.
+   * puffL / puffR (cheek puff) at cheekV (lattice v), puffK how far a full puff bulges (default 0.032:
+   * the seven Mallows; a small Thought Mallow needs more to show in its outline), sx / sy extra scales.
    */
   setRest(p = {}) {
     const { q0, rest, n, aspect } = this;
@@ -250,12 +254,13 @@ export class SoftBody {
     const shrink = 1 - clamp(+p.shrink || 0, 0, 1) * 0.12;
     const lean = clamp(+p.lean || 0, -0.5, 0.5);
     const puffL = clamp(+p.puffL || 0, 0, 1.5), puffR = clamp(+p.puffR || 0, 0, 1.5);
-    const cheekV = p.cheekV ?? 0.62;
-    // unchanged (within 1e-6): nothing to recompute, and a sleeping body sleeps on
-    const K = this._restKey, nk = [sq, br, droop, shrink, lean, puffL, puffR, cheekV, p.sx ?? 1, p.sy ?? 1];
-    let same = true;
-    for (let i = 0; i < nk.length; i++) if (!(Math.abs(K[i] - nk[i]) < 1e-6)) { same = false; K[i] = nk[i]; }
-    if (same) return this;
+    const cheekV = p.cheekV ?? 0.62, puffK = clamp(p.puffK ?? 0.032, 0, 0.2);
+    // unchanged (within 1e-6): nothing to recompute, and a sleeping body sleeps on (no array per call)
+    const K = this._restKey;
+    // (`|`, not `||`: every slot is written)
+    const changed = restKey(K, 0, sq) | restKey(K, 1, br) | restKey(K, 2, droop) | restKey(K, 3, shrink) | restKey(K, 4, lean) | restKey(K, 5, puffL)
+      | restKey(K, 6, puffR) | restKey(K, 7, cheekV) | restKey(K, 8, p.sx ?? 1) | restKey(K, 9, p.sy ?? 1) | restKey(K, 10, puffK);
+    if (!changed) return this;
     this.awake = true;
     const sy = (1 - sq) * (1 + br) * (p.sy ?? 1) * shrink;
     const sxB = (1 + sq * 0.62) * (1 - br * 0.6) * (p.sx ?? 1) * shrink;
@@ -264,7 +269,7 @@ export class SoftBody {
       const u = q0[2 * k] - cx, vm = q0[2 * k + 1];
       const side = u < 0 ? puffL : puffR;
       const bulge = sq * 0.32 * Math.sin(Math.PI * vm) + droop * 0.07 * vm * vm - droop * 0.03 * (1 - vm)
-        + side * 0.032 * Math.exp(-((vm - cheekV) ** 2) / 0.04);
+        + side * puffK * Math.exp(-((vm - cheekV) ** 2) / 0.04);
       const ys = sy * (1 - droop * 0.06 * (1 - vm));
       rest[2 * k] = cx + u * sxB * (1 + bulge) + lean * (1 - vm) * (1 - vm);
       rest[2 * k + 1] = fl + (vm - fl) * ys;

@@ -38,7 +38,8 @@ export function mount(ctx) {
   const t0 = performance.now();
   const tags = {
     words: ctx.tags.add(ctx.parts.excerpt, { kind: 'words' }),
-    line: ctx.tags.add(L.labels.line, { kind: 'label', colour: LINE }),
+    // a small card inside the boundary: "Your line" over the chosen response (narrow enough to sit within the ring)
+    line: ctx.tags.add('', { kind: 'card', title: L.labels.line, colour: LINE, max: 170 }),
   };
 
   function geo() {
@@ -76,7 +77,7 @@ export function mount(ctx) {
     if (v == null) { phase = 'closed'; TM.after(ask, 400); return; }
     choice = L.responses[v] || L.responses[3];
     phase = 'chosen'; moves++;
-    tags.line.set(`${L.labels.line}: ${choice}`);
+    tags.line.set(choice);
     ctx.haptic('soft'); ctx.fx('chime', { intensity: 0.45 });
     ctx.progress(1);
     TM.after(() => resolve({ moves, ms: performance.now() - t0, choice }), rm() ? 200 : 900);
@@ -150,9 +151,10 @@ export function mount(ctx) {
     thought.draw(g, { tension: settled ? 0.35 : 0.7, cross: settled ? 0.35 : 0.85, calm: phase === 'chosen' ? 0.35 : 0, blink: blinkAt(t, 0.5), press: thought.press ? 1 : 0 },
       { x: thought.x + (jit ? Math.sin(t * 31) * jit : 0), y: thought.y + (jit ? Math.cos(t * 27) * jit : 0), glow: 0.6 });
     motes.draw(g, dt);
-    tags.words.at(thought.x, thought.y + R * 1.08 + 6, 'bottom', 1);
-    // the chosen line is written under the boundary (above it is where the subtitles and their choices sit)
-    tags.line.at(G.cx, G.cy + G.rr + 12, 'bottom', phase === 'chosen' ? 1 : 0);
+    // once chosen, the line is written where their words were, under the steadied thought (inside the boundary)
+    const chosen = phase === 'chosen';
+    tags.words.at(thought.x, thought.y + R * 1.08 + 6, 'bottom', chosen ? 0 : 1);
+    tags.line.at(thought.x, thought.y + R * 1.08 + 6, 'bottom', chosen ? 1 : 0);
     return true;
   }
 
