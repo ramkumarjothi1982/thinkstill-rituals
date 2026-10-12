@@ -12,7 +12,7 @@ export function testPanel(app) {
   const { world, ent } = app;
   let items = null;
   const key = () => `test-step-${ent.tier()}`;
-  const nameOf = (it) => it.ref.name;
+  const nameOf = (it) => (it.ref.code ? `${it.ref.code} · ${it.ref.name}` : it.ref.name);
 
   const issue = h('input', { class: 'search', type: 'text', placeholder: 'Type your issue (optional)…', 'aria-label': 'Test issue',
     value: app.store.get('test-issue', ''), style: { minHeight: '44px' } });
