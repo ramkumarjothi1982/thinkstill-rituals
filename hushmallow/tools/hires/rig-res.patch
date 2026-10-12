@@ -1,5 +1,5 @@
 --- hushmallow/src/mallows/rig.js	2026-10-12 11:50:39.654240600 +0000
-+++ hushmallow/src/mallows/rig.js	2026-10-12 12:20:21.532780960 +0000
++++ hushmallow/src/mallows/rig.js (with res)	2026-10-12 12:56:02.854507117 +0000
 @@ -315,7 +315,7 @@
      this.CX = W / 2;
      this.BASE = H * this.opts.baseline;
