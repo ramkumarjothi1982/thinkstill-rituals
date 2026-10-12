@@ -1,0 +1,117 @@
+# The Hushfold — architecture, decisions and build contracts
+
+This is the working spec for the redesign in `docs/REDESIGN_BRIEF.md` (the
+owner's briefs, verbatim). Read the brief first, then this file. The
+audit reports behind these decisions are summarised in "Facts we build
+on". Status of every feature lives in "Status" at the bottom: never mark
+something done that is not built and tested.
+
+## 1. Decisions (owner can overrule any of these)
+
+| # | Decision | Why |
+|---|---|---|
+| D1 | The app stays a plain ES-module web app on GitHub Pages; Framer keeps the 94-line iframe component (`framer/HushmallowEmbed.tsx`). | Framer never parses app code, so it cannot freeze; every merge updates the Framer site. |
+| D2 | The Hushfold replaces the home screen: the scene `home` becomes `src/app/scenes/hushfold.js`; the old home stays reachable as `classic`. Every `app.go('home')` lands in the Hushfold. | One continuous movie, no menus. |
+| D3 | Worlds run *inside* the Hushfold scene (no route change between worlds). The Memory Garden is its own route `garden`. | Seamless melts, real Back for the garden. |
+| D4 | No plan: you can squeeze the hero Mallow and see the first invitation. "Tell me" or any world without a plan opens the Flow invitation. Enforced in code (`requireEntitlement`). | "Squeeze within the first second", without giving the product away. |
+| D5 | Photos: up to **7** (brief 2 §11 says 0–7; it replaces the earlier six). With none, the seven Mallow cards stand in. | Latest brief. One constant: `MAX_PHOTOS` in `src/v3/photos.js`. |
+| D6 | Plan ids stay `paid`/`ultra` (+ every productId); only customer names change: **hushmallow Flow** / **hushmallow Beyond**. | StoreKit, stored entitlements and tests depend on the ids. |
+| D7 | Brand: always `hushmallow` (lowercase, also at sentence start). Tagline "Less noise. More magic."; descriptor "Your second brain for feelings." Source of truth: `src/brand.js`. Never put the brand inside an uppercasing style without `.brand-name`. | Brand rule. |
+| D8 | Type: self-hosted "HM Nunito Sans" (voice), "HM Manrope" (UI), "HM Fraunces" (story, DOM only, ≤1 element per screen). Tokens in `src/ui/type.css` / `src/ui/type.js`. No font service. Floor 13px (badges 12px). Inputs ≥16px. | Typography brief + privacy. |
+| D9 | Logo: cut from `assets/source/brand/hushmallow-logo.webp` itself (lettering recoloured, mascot pixels untouched). `logo-mascot.webp` is a different drawing: use it only as an icon/character, never pasted into the logo. | Don't alter approved artwork. |
+| D10 | AI: **only** Another Angle in hushmallow Beyond calls a model, through our own server (Cloudflare Worker → Claude). Everything else stays deterministic. The word "AI" never appears in the experience; the consent and privacy screens describe the automated processing accurately. | Brief 2 + brand language rule. |
+| D11 | Model: `claude-opus-5-5`, low effort, structured JSON output, server-side refusal fallback (`fallbacks: "default"`). Configurable by env. | Default model; latency via effort, not a weaker model. |
+| D12 | The second world keeps the feel of Drift and Dock's "Slow the wave" (slower = smoother, mirror calm, Loomi cyan) — the audit's best guess at the wave the owner liked — but you sculpt swells instead of tracing a path. | Ask the owner to confirm. |
+| D13 | High-res art (`assets/source/hires/`): re-rig per Mallow, Glitzi and Zuzu first (heroes of Static Storm and Another Angle). A Mallow switches to its high-res rig only after a visual check; until then the current approved art is used. The cyan file without brows is treated as Loomi (owner to confirm). | The redraws move features 2–4%: every rig coordinate needs re-measuring. |
+| D14 | The 1,000-ritual engine programme is stopped. The 240 live rituals and 10 signature rituals stay playable from the side panel's "More rituals" (Library). | Brief: stop building isolated games. |
+
+## 2. Layers and runtime
+
+```
+#world        z0  back compositor canvas (Hushflow worlds' back layers; realm backdrop when no world)
+#mallow-layer z1  MallowTouch WebGL canvas (hero Mallow + Thought/Belief Mallow meshes), full viewport, transparent
+#fx-layer     z2  front compositor canvas (worlds' front layers, particles, tethers) + THE input router (pointer capture)
+#scene        z3  Hushfold DOM: topbar, subtitle band, compact input overlay, side panel, controls — root is pointer-events:none, only .hf-ui elements take touches
+#sheet-root   z10 support / confirm sheets only (their backdrop would block play)
+```
+
+* One requestAnimationFrame loop for the Hushfold (director), shared with the rig ticker (`addTicker`). Pause when hidden.
+* Input: one router on `#fx-layer` (touch-action:none, gesturestart prevented, getCoalescedEvents, up to 2 pointers). Priority: hero Mallow (MallowTouch.hitTest) → Thought/Belief Mallows → the current world.
+* Everything the person types stays exact (`createWords(input).full`), never reworded, drawn with fillText or DOM textContent only.
+* Photos: one `photoApi` per Hushflow session, shared across worlds (postcard *i* becomes bubble *i* through a melt). Memory only; released on finish/leave.
+* Safety: every free-text entry goes through `src/engine/safety.js` (shared by free and Beyond paths). Crisis → `openSupport(app,{urgent:true})`, no Thought Mallow, no transforming world, a persistent Support chip. Care → support chip, no reframing.
+* Updates: the router only reloads for a new deploy when `current.safeForUpdate()` is true (no typed text, no world mid-progress, no discovery waiting).
+
+## 3. Workstreams, file ownership and contracts
+
+Agents work in one shared git tree. **Only edit files your workstream owns.** For a file shared with another workstream (listed as "shared"), use small `Edit`s on your own lines only — never `Write` the whole file. Never commit, stash, reset or checkout; the orchestrator commits. Put scratch files and screenshots in `/tmp/claude-0/hf/<workstream>/`.
+
+### W1 Brand, type, logo, plans — owner of
+`src/brand.js` (new), `src/ui/type.css` (new), `src/ui/type.js` (new), `src/ui/tokens.css`, `src/ui/app.css` (text rules; shared: W3 adds nothing here, it uses `src/ui/hushfold.css`), `index.html`, `manifest.webmanifest`, `assets/brand/` (new), `assets/fonts/`, `tools/build-site.sh` (asset copy line), `framer/HushmallowEmbed.tsx` (text only), `src/app/entitlements.js` (names/taglines/includes only), `src/app/scenes/plans.js` (invitation redesign + monthly/yearly), brand strings in `home.js, landing.js, journey.js, support.js, library.js, encounter.js, mallows.js, src/ultra/another-angle.js, src/v3/host.js, src/v3/fx.js FONT`, `tests/brand.test.mjs` (new), README/docs/FRAMER.md brand wording.
+* Assets ready from the audit: fonts `/tmp/claude-0/audit/brand/fonts/` (+OFL texts), logos `/tmp/claude-0/audit/brand/logo/final/`, prototype tokens `/tmp/claude-0/audit/brand/specimen/tokens-proposal.css`, full recipe in `docs/audit/brand.md`.
+* `BRAND = { brandName, brandTagline, brandLockup, productDescriptor, flowPlanName, flowTagline, beyondPlanName, beyondTagline, planName:{paid,ultra}, logo:{light, ink, light2x, w, h} }`, `docTitle(t)`, and in `src/ui/type.js`: `CANVAS_FONT`, `canvasFont(token, scale)`, `fontsReady(groups, timeoutMs)`, `brandMark()`, `logoImg({tone, width})`.
+
+### W2 MallowTouch — owner of `src/mallows/**` (rig.js changes must be additive), `touch-lab.html` (new dev page), `tests/touch.test.mjs`
+* `src/mallows/touch/softbody.js` — `class SoftBody({cols, rows, mask, material})`: lattice + global shape matching, area preservation, floor; `setRest`, `press(id,x,y,depth,r)`, `grab`, `move`, `release(id,{vx,vy})`, `impulse`, `step(dt)` (fixed 1/120 substeps, ≤4/frame), `positions`, `uvs`, `indices`, `bounds()`, `rowExtents()`, `energy`. Node-testable (no DOM).
+* `src/mallows/touch/gestures.js` — `TouchReader`: press/hold depth (no pressure on iPhone), pull, two-finger stretch, release/rebound, flick, jiggle, circular massage, stroke, tap/double-tap; mouse + Shift-drag and ctrl+wheel fallbacks.
+* `src/mallows/touch/mesh-gl.js` (WebGL1, one context per stage) with tiers: A WebGL mesh → B 2D triangle warp 10×10 → C strip warp driven by `rowExtents()`; context-loss handling.
+* `src/mallows/touch/persona.js` — per-Mallow material + reactions (audit table).
+* `src/mallows/touch/mallow-touch.js` — `class MallowTouch(container, {id, quality:'auto'|'gl'|'tri'|'strip', reducedMotion, lowStim, audio, haptic, bindPointer=true})`: `loaded` (Promise), `rig` (headless MallowRig), `setEmotion(mix, intensity)`, `setStage(name)`, `react(kind)`, `lookAt(nx,ny)`, `place({x,y,scale},{instant})`, `float({lift,tilt})`, `bodyRect()` (client CSS px), `hitTest(x,y)`, `pointer(e)` (routed PointerEvent-like `{type:'down'|'move'|'up'|'cancel', id, x, y, t}` when `bindPointer:false`), `on('touch', fn)` → `{kind, depth, stretch, speed, turns, dir}`, `destroy()`. The canvas is transparent and may cover the full viewport.
+* Rig seams (additive): `opts.headless`, `opts.skinSize`, `renderSkin()`→bool + `skinVersion`, `faceRect()`, `setTouch({depth, stretch, speed, turns, strokes})`, `addTicker/removeTicker`, the `_toLocal` scale fix (B2), haptics only via the passed `haptic` fn, lowStim really disables particles.
+* `src/mallows/thought/` (second stage of W2): `createThought({text, emotion, intensity, scale})` → `{ id, text, emotion, x, y, z, scale, state:{tension, charge, calm, distance}, react(kind), soften(k), settle(k), transform(k), hitTest(x,y), pointer(e), destroy() }`, a `ThoughtLayer({canvasGL|ctx2d, tagRoot})` that draws many thoughts (SoftBody 10×10) and owns their DOM word tags (textContent only, Nunito Sans, ≥15px, never scaled below legibility, tap to read full text), emotion styles (anger crackle, anxiety tremble, overthinking siblings talking over each other, sadness heavy/slow, frustration steam, loneliness drift, embarrassment blush). `createBelief({text, prop:'stone'|'shell'|'thread'|'charm'})` the same family at 1.4×, carrying a rigid prop. Thought Mallows must be clearly NOT one of the seven (rounder, translucent jelly, simple face, distinct tints) and never destroyed.
+
+### W3 Hushfold shell — owner of `src/app/scenes/hushfold.js` (new), `src/hushfold/{stage,input-router,subtitles,lines,input-overlay,side-panel}.js` (new), `src/ui/hushfold.css` (new), `src/engine/safety.js` + `src/data/safety-lexicon.js` (new; `src/ultra/frameworks.js` re-exports), `src/engine/flow-store.js` (new), `src/app/main.js`, `src/app/world.js`, `src/app/prefs.js`, `src/app/scenes/settings.js`, `src/engine/interpret.js` (delegate safety), `src/v3/photos.js` + `src/v3/tray.js` (MAX_PHOTOS 7 + copy), `tests/hushfold.test.mjs`, updates to existing tests for the photo limit.
+* Scene contract: `export default function hushfold(app, params) → { el, title:'', enter(), leave(), get blockBack(), safeForUpdate() }`; `params.flow = {worldId}` starts a world (from the garden's "Practise again").
+* `createSubtitles({root, prefs, avoid:() => rects})` → `{ say(lines, {who, hold, id, kind:'dialogue'|'discovery'}) → Promise, choice(prompt, [{label, value}]) → Promise, pause, resume, replay, skip, setSpeed, clear, get busy }`. One short line at a time, `clamp(1400 + 55·chars, 2400, 7000)/speed` ms, holds until tapped when `hold`, aria-live polite, never over the Mallow's `bodyRect()` or Thought Mallows, a small ⏸ ↺ ⏭ pill. Speed setting persisted (prefs.subtitleSpeed).
+* `openInput({app, prompt, onSubmit({text, emotion, intention, reading, safety}), onClose})`: a compact growing text field (keyboard dictation hint, no in-app speech recognition), emotion chips (Angry, Anxious, Sad, Overwhelmed, Frustrated, Lonely, Restless, Something else → A–Z picker) and intention chips (Calm me down, Help me let go, Distract me gently, Help me feel steady, Let me just play), an optional "+ photos" button (photo tray, up to 7), safety wiring, upper-band placement (visualViewport for the iOS keyboard).
+* Side panel (non-modal, fixed, ≤360px): feeling, intention, Auto-flow, Stay longer, Pause, Finish, ★ favourite world, Memory Garden, More rituals (Library), Journey, Mallow switcher, Settings, plan badge, Need support now?
+* Authored, rule-based lines in `src/hushfold/lines.js` (per Mallow personality × moment × emotion; deterministic rotation; reuse `voices.js`).
+* Until W2/W4 land, the shell uses the existing rig via `world.setMallow` and a stub world, behind the same interfaces, so integration is a swap.
+
+### W4 Hushflow worlds — owner of `src/world/**` (realm-core extraction, `mountRealm` stays a wrapper), `src/hushfold/flow/**` (new: `director.js`, `compositor.js`, `registry.js`, `discovery.js`, `worlds/static-storm.js`, `worlds/luminous-ocean.js`), a dev lab `?hushflow=<worldId>` hook (shared with W3 in main.js: one small Edit), `tests/flow.test.mjs`.
+* World module contract, director API, melt compositor, Static Storm and Luminous Ocean specs: exactly as in `docs/audit/worlds.md` proposals 3–7 (read it fully). Registry entries carry the brief §16 fields.
+* Director: `createHushflow({app, worldEl, fxEl, mallow, thoughts, subtitles, photos, words, prefs, store, registry})` → `{ start({emotion, intention, input, worldId}), next(), stay(), pause(), resume(), finish(), setEmotion(id), setIntention(id), setAutoFlow(b), on(event, fn), get state, safeForUpdate() }`; events `world`, `discovery` `{id, skillId, evidence}`, `complete`, `progress`. Deterministic selection (rotation bag per `${emotion}|${intention}`, favourites first, never the last 3 played). Prefetch + idle `prepare()` before a melt; never a black frame; pause shows the last frame under a veil.
+* `mallow` and `thoughts` are the W2 interfaces above; until W2 lands, use a thin adapter over the existing rig and a placeholder thought drawn in 2D behind the same interface.
+
+### W5 Memory Garden — owner of `src/hushfold/skills.js` (skill data from `src/v3/data/catalog.js` SKILLS + `docs/V3_SKILLS.md` wording, evidence scope labels), `src/engine/garden.js` (store API: `saveSkill`, `garden`, `practised`, `forgetSkill`), `src/hushfold/garden-install.js` (the installation animation on the fx canvas: ripple → charm → portal → "NEW TOOL SAVED" + title), `src/hushfold/charm.js` (charm renderer from skill id + Mallow colours), `src/app/scenes/garden.js` (the garden: charms, practical explanation, real-life example, Practise again, related tools), `tests/garden.test.mjs`. Saving is always an explicit tap; no user text or photos are stored.
+
+### W6 Another Angle server — owner of `server/another-angle/**` (new; never shipped to Pages), `.github/workflows/another-angle.yml` (new), `tools/angle-eval.mjs` (new), `server/another-angle/README.md`.
+* Cloudflare Worker, `@anthropic-ai/sdk` (read the claude-api skill's TypeScript docs before writing any SDK call), provider abstraction, versioned system prompt file, structured JSON output (fields: emotion, situation_type, reasoning_pattern, known_fact, possible_assumption, alternative_angle, practical_next_step, interaction_type, mallow_character, subtitle_line_1, subtitle_line_2, safety_status), strict schema validation, deterministic quality gate (≤2 short sentences, 15–35 words, no generic affirmations/therapy jargon/"As an AI"/"I understand how you feel", no claims about other people's intentions, relevant to the input, novel vs previous angles) with one regeneration, safety pre-check (shared lexicon copy) and post-check, prompt-injection hardening, CORS allowlist, per-device + per-IP rate limits, a daily spend cap, timeouts, no content logging (metadata only), entitlement: testing-phase device tokens with quotas; production StoreKit 2 JWS verification behind the same interface. Node tests with a mock provider. `tools/angle-eval.mjs` runs ≥30 realistic inputs against the real model and grades them (needs `ANTHROPIC_API_KEY` and the owner's OK on cost — build it, don't run it).
+
+### W7 High-res re-rig — owner of `tools/` rig scripts, `assets/rig-hires/` and `assets/mallows-hires/` (new, staging), a `src/mallows/hires.js` patch table (new). The switch of a Mallow to its high-res rig (registry change) happens at integration, after a studio check. Glitzi, then Zuzu, then the others.
+
+### W8 Beyond client (after W2/W3) — owner of `src/beyond/**` (new): consent screen, `angle-client.js` (the only `fetch` in src besides version.json; endpoint from `src/app/config.js`), the cinematic flow (Zuzu squeezable, input overlay, Thought Mallow, waiting subtitles "There's another side to this…", reveal two lines, explore: "What do you actually know?" / "Could there be another explanation?" / "What would you tell a friend?" / "Is there one useful action?", feedback: That helped / Show me another angle / Not relevant / I'd rather just squeeze a Mallow, Keep this discovery → Memory Garden, continue Hushflow or finish), and **ten distinct interaction mechanics** (`src/beyond/mechanics/*.js`): fact-vs-assumption (pull two connected Thought Mallows apart), catastrophising (resize an exaggerated projection), personalisation (move imagined responsibility back), all-or-nothing (reveal a spectrum), mind reading (open several interpretations), overgeneralisation (separate one event from a collection), rumination (let a loop move without engaging), practical problem (assemble one small step), self-criticism (soften a harsh interpretation without erasing accountability), valid anger (identify the boundary or response needed). Offline/no consent/server failure → the existing authored engine (`src/ultra/reframe-engine.js`).
+
+## 4. Quality bar (every workstream)
+
+* Real interactions only: everything moves because of touch; nothing completes by itself. Micro-feedback within a frame of every touch.
+* Premium visuals: depth, light, soft physics, calm motion; no clutter; nothing over the title, subtitles or controls; nothing touching screen edges (keep 20px from edges for gestures).
+* Works at 375×812, 390×844, 430×932, 320×568 and desktop; reduced motion; low stimulation; no horizontal scroll; no text below 13px (badges 12px); inputs ≥16px; contrast ≥4.5:1 for text under 18px.
+* Photosensitivity: ≤3 bright events per second, flash rise ≥0.28s, no full-screen flicker.
+* Non-clinical wording, British spelling, no cure/relief guarantees ("can help", "many people find"). Never strike/burn/cut/smash/explode a photo or a thought.
+* Performance: no per-frame allocation of big arrays/canvases; cache gradients; adaptive quality; one rAF.
+* Tests: `node --test hushmallow/tests/*.test.mjs` stays green; new pure modules get node tests; browser checks with Playwright (see below) including real multi-touch via CDP `Input.dispatchTouchEvent`.
+
+## 5. Testing tools
+
+* Serve: `cd /home/user/thinkstill-rituals && python3 -m http.server 8000` → `http://localhost:8000/hushmallow/index.html`.
+* Playwright: `const { createRequire } = require('module'); const req = createRequire('/opt/node-tools/node_modules/'); const { chromium } = req('playwright');` launch `{ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader','--enable-unsafe-swiftshader'] }`, context `{ viewport:{width:390,height:844}, deviceScaleFactor:2, hasTouch:true }`. Multi-touch: `const cdp = await page.context().newCDPSession(page); await cdp.send('Input.dispatchTouchEvent', {type:'touchStart', touchPoints:[{x,y,id:1},{x:x2,y:y2,id:2}]})` then `touchMove`/`touchEnd`.
+* The machine is shared and slow (SwiftShader, 4 cores): timings are relative; run browser jobs one at a time with `timeout 400`.
+* Dev labs (localhost only): `?v3=`, `?engine=`, `?lab=`; new: `touch-lab.html?mallow=glitzi`, `?hushflow=static-storm`.
+
+## 6. Facts we build on (from the audits, 12 Oct 2026)
+
+* The current home Mallow cannot be touched: the full-height `.home` root takes every touch (`#scene > * { pointer-events:auto }`). Fix with `.hushfold{pointer-events:none!important}` + `.hf-ui{pointer-events:auto}`.
+* Rig hit-testing breaks when the layer is CSS-scaled (`_toLocal`, ResizeObserver ignores transforms): MallowTouch uses a JS transform, not CSS scale.
+* Haptics pref leaks (rig buzzes directly); lowStim never disables Mallow particles (`|| true`).
+* The free safety detector misses phrases Beyond catches ("friend wants to kill herself", "want to disappear forever", "partner threatens me"); both miss "nobody would miss me", "thinking of ending it".
+* Realm builds take 30–58 ms synchronously; static-storm frames 23 ms agitated (SwiftShader); `drawGlitch` copies its own canvas, so each world needs its own layer canvases.
+* Boot loads 835 KB JS / 43 files; the favicon is a 325 KB PNG.
+* Uppercasing CSS (.eyebrow, .bubble .who, .summary-card .k) would capitalise the brand.
+
+## 7. Status
+
+| Area | Status |
+|---|---|
+| Audit (shell, Mallow rendering, worlds, brand/type) | Done 12 Oct |
+| W1–W8 | Not started |
