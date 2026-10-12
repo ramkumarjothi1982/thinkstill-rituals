@@ -151,13 +151,14 @@ export default function gardenScene(app, params = {}) {
   const mallowId = (MALLOWS[app.state?.homeMallow] && app.state.homeMallow) || (MALLOWS[prefs?.get?.('mallow')] && prefs.get('mallow')) || 'noomi';
 
   // ------------------------------------------------------------- DOM --
+  const bgCanvas = h('canvas', { class: 'hg-canvas', 'aria-hidden': 'true' });
   const canvas = h('canvas', { class: 'hg-canvas', 'aria-hidden': 'true' });
   const titleEl = h('h1', {}, 'Memory Garden');
   const captionEl = h('p', {});
   const head = h('header', { class: 'hg-head' }, iconBtn('back', 'Back to the Hushfold', () => back()), h('div', { class: 'hg-titles' }, titleEl, captionEl));
   const field = h('div', { class: 'hg-field hg-ui', role: 'group', 'aria-label': 'Your kept tools' });
   const live = h('div', { class: 'hg-live', 'aria-live': 'polite' });
-  const el = h('div', { class: 'hg', 'data-garden': 'root' }, canvas, field, head, live);
+  const el = h('div', { class: 'hg', 'data-garden': 'root' }, bgCanvas, canvas, field, head, live);
   let emptyEl = null, detail = null, layerToken = 0;
 
   // ----------------------------------------------------------- state --
@@ -301,8 +302,9 @@ export default function gardenScene(app, params = {}) {
     }
   }
 
+  // the static backdrop (veil, hills, moonlight, ground flowers) is painted once per layout on its own canvas
   function buildBackground() {
-    bg = document.createElement('canvas');
+    bg = bgCanvas;
     bg.width = canvas.width; bg.height = canvas.height;
     const b = bg.getContext('2d');
     b.scale(dpr, dpr);
@@ -415,7 +417,6 @@ export default function gardenScene(app, params = {}) {
     const still = reduced();
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.clearRect(0, 0, canvas.width, canvas.height);
-    if (bg) g.drawImage(bg, 0, 0);
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     // grass along the crest, bending in the breeze and away from a finger
     if (blades) {
@@ -548,25 +549,34 @@ export default function gardenScene(app, params = {}) {
   function kick() { if (!raf && !left && !reduced()) raf = requestAnimationFrame(loop); }
 
   // ------------------------------------------------------------ touch --
+  // every finger brushes on its own (two fingers through the garden lean two rows)
+  const fingers = new Map();
   function onMove(e) {
     const now = performance.now();
-    const dtp = Math.max(8, now - (pointer.t || now - 16));
-    const vx = pointer.x > -900 ? (e.clientX - pointer.x) / dtp : 0;
+    const f = fingers.get(e.pointerId);
+    const dtp = f ? Math.max(8, now - f.t) : 16;
+    const vx = f ? (e.clientX - f.x) / dtp : 0;
+    fingers.set(e.pointerId, { x: e.clientX, y: e.clientY, t: now });
     pointer.vx = vx; pointer.x = e.clientX; pointer.y = e.clientY; pointer.t = now;
-    if (reduced()) return;
+    if (reduced() || !vx) return;
+    const t = (now - t0) / 1000;
     for (const p of plants) {
-      const pose = plantPose(p, (now - t0) / 1000);
-      const d = Math.hypot(pose.x - e.clientX, pose.y - e.clientY);
-      const r = p.size * 0.9;
-      if (d < r) p.om = clamp(p.om + vx * 0.9 * (1 - d / r), -3, 3);
+      const pose = plantPose(p, t);
+      // the charm and its stem both catch the finger
+      const dy = e.clientY < pose.y ? pose.y - e.clientY : Math.max(0, e.clientY - p.gy);
+      const dx = Math.abs(lerp(p.cx, pose.x, clamp((p.gy - e.clientY) / Math.max(1, p.gy - pose.y), 0, 1)) - e.clientX);
+      const d = Math.hypot(dx, dy);
+      const r = p.size * 0.75;
+      if (d < r) p.om = clamp(p.om + vx * 1.5 * (1 - d / r), -3.2, 3.2);
     }
   }
-  function onLeavePointer() { pointer.x = pointer.y = -999; }
+  function onUpPointer(e) { fingers.delete(e.pointerId); if (!fingers.size && e.pointerType !== 'mouse') pointer.x = pointer.y = -999; }
+  function onLeavePointer(e) { fingers.delete(e.pointerId); if (!fingers.size) pointer.x = pointer.y = -999; }
   field.addEventListener('pointermove', onMove, { passive: true });
   field.addEventListener('pointerdown', onMove, { passive: true });
   field.addEventListener('pointerleave', onLeavePointer);
   field.addEventListener('pointercancel', onLeavePointer);
-  field.addEventListener('pointerup', (e) => { if (e.pointerType !== 'mouse') onLeavePointer(); });
+  field.addEventListener('pointerup', onUpPointer);
 
   function tapPlant(p) {
     p.poke = (performance.now() - t0) / 1000;
