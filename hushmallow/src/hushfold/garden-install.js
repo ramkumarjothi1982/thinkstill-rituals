@@ -10,6 +10,9 @@
 //       → Promise<{ kept, already, stored, action }>: offer → save (only on
 //       the "Keep this" tap) → install. A tool that is already kept is not
 //       offered again: it is marked as practised and a quiet note says so.
+//       signal (an AbortSignal, e.g. a safety hold): aborted during the offer,
+//       nothing is saved; aborted after the save, the installation is cancelled
+//       (its overlay removed at once) and the promise resolves, the tool kept.
 //   offerSave({ skillId, mallow, app, origin, face, reducedMotion, signal }) → Promise<boolean>
 //       Only the choice: a small non-modal card ("Keep this in your Memory
 //       Garden?" + the title, Not now / Keep this). Resolves true only on the
@@ -34,6 +37,12 @@
 //       stays), and nothing is drawn over the subtitle band, the top bar or
 //       the card.
 //   installAvoidRects() → the offer / card / chip rects, for subtitle placement.
+//   relayoutInstall() → places the open offer and card again now (call it when
+//       what they avoid moved, e.g. the side panel opened); never a fake 'resize'.
+//   window receives 'hm:offer' events ({ phase: 'open' | 'fold' | 'unfold' |
+//       'close', skillId }) as the offer appears, folds into its chip, comes back
+//       and goes. Top bars and docks avoided: .hf-top/.hf-dock and Beyond's
+//       .bx-top/.bx-dock.
 //   While it plays, <body> has the class 'hm-installing' and window receives
 //   'hm:install' events ({ phase: 'start' | 'card' | 'end', skillId }).
 //   Screen readers: one persistent polite live region (made at load) says
@@ -408,13 +417,16 @@ function extraRects(avoid) {
   if (!Array.isArray(list)) return [];
   return list.map((r) => (r && Number.isFinite(r.x) && Number.isFinite(r.w) ? asRect({ left: r.x, top: r.y, width: r.w, height: r.h }) : asRect(r))).filter(Boolean);
 }
+/** The top bars and dock pills to stay clear of: the Hushfold's and Another Angle's (Beyond). */
+const TOP_BARS = '.hf-top, .bx-top', DOCK_ITEMS = '.hf-dock > *, .bx-dock > *';
 /** The free band of the screen: under the top bar, above the dock and the home indicator. */
 function screenFrame() {
   const W = innerWidth, H = innerHeight, ins = insets();
-  const tr = visibleRect(document.querySelector('.hf-top'));
-  const topLimit = Math.max(ins.top + 14, (tr ? tr.bottom : ins.top + 60) + 10);
+  let barBottom = null;
+  for (const b of document.querySelectorAll(TOP_BARS)) { const r = visibleRect(b); if (r) barBottom = Math.max(barBottom ?? r.bottom, r.bottom); }
+  const topLimit = Math.max(ins.top + 14, (barBottom ?? ins.top + 60) + 10);
   let bottomLimit = H - ins.bottom - 18;
-  for (const d of document.querySelectorAll('.hf-dock > *')) { const r = visibleRect(d); if (r) bottomLimit = Math.min(bottomLimit, r.top - 10); }
+  for (const d of document.querySelectorAll(DOCK_ITEMS)) { const r = visibleRect(d); if (r) bottomLimit = Math.min(bottomLimit, r.top - 10); }
   return { W, H, ins, topLimit, bottomLimit: Math.max(topLimit + 60, bottomLimit) };
 }
 
@@ -533,6 +545,19 @@ if (typeof addEventListener === 'function') {
 /** Rects of the offer / card / chip on screen now (for subtitle avoidance). */
 export function installAvoidRects() {
   return [openOffer, openCard, openChip].map(visibleRect).filter(Boolean);
+}
+/**
+ * Place the open offer and card again, now (the caller's avoid rects changed: the side panel or
+ * the sheet opened or closed, the layout moved). Never dispatch a synthetic 'resize' for this:
+ * the Hushfold's own resize handler lays out the stage again and would loop.
+ */
+export function relayoutInstall() {
+  try { openOffer?.__place?.(); } catch (e) { console.warn('[garden-install]', e); }
+  try { openCard?.__place?.(); } catch (e) { console.warn('[garden-install]', e); }
+}
+/** window 'hm:offer' { phase: 'open' | 'fold' | 'unfold' | 'close', skillId }: the offer's life, for the shell (e.g. holding Auto-flow). */
+function offerEvent(phase, skillId) {
+  try { dispatchEvent(new CustomEvent('hm:offer', { detail: { phase, skillId } })); } catch { /* old browsers: no signal, nothing breaks */ }
 }
 
 function sceneRoot() { return typeof document !== 'undefined' ? document.querySelector('#scene > *') : null; }
@@ -656,6 +681,7 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
     const reveal = () => requestAnimationFrame(() => requestAnimationFrame(() => { if (!done) el.classList.add('is-in'); }));
     reveal();
     announce(`Keep this in your Memory Garden? ${name}`);
+    offerEvent('open', skillId);
 
     // left alone, it folds into a chip in a corner (nothing is saved, nothing lost)
     const armFold = () => { clearTimeout(foldT); if (foldAfterMs > 0) foldT = setTimeout(fold, foldAfterMs); };
@@ -664,8 +690,9 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
       if (el.contains(document.activeElement)) { armFold(); return; }
       folded = true;
       el.classList.remove('is-in'); el.classList.add('is-folded');
+      offerEvent('fold', skillId);
       showChip({ text: `Keep “${shortName}”?`, label: `${name}. Show the choice to keep it in your Memory Garden.`, skillId, mallow: m.id, reduced, glow, geom, avoid,
-        onTap: () => { if (done) return; folded = false; el.classList.remove('is-folded'); geom = place(); reveal(); armFold(); yes.focus({ preventScroll: true }); } });
+        onTap: () => { if (done) return; folded = false; el.classList.remove('is-folded'); geom = place(); reveal(); armFold(); offerEvent('unfold', skillId); yes.focus({ preventScroll: true }); } });
     }
     armFold();
     el.addEventListener('pointerdown', armFold);
@@ -690,12 +717,14 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
       el.classList.remove('is-in'); el.classList.add('is-out');
       setTimeout(() => { el.remove(); charm?.destroy(); if (openOffer === el) openOffer = null; }, 340);
       if (v) { try { app?.audio?.ui?.('select'); app?.haptic?.('soft'); } catch { /* sound is decoration */ } }
+      offerEvent('close', skillId);
       resolve(v);
     }
     const onAbort = () => close(false);
     if (signal?.aborted) { close(false); return; }
     signal?.addEventListener?.('abort', onAbort);
     el.__close = close;
+    el.__place = () => { if (!folded) geom = place(); };
     no.addEventListener('click', () => close(false));
     yes.addEventListener('click', () => close(true));
   });
@@ -1163,6 +1192,7 @@ export function playInstall(opts = {}) {
     if (action === 'garden' && app?.go) app.go('garden', { focus: skillId });
   }
   card.__finish = finish;
+  card.__place = () => { if (!finished) onResize(); };
   const onKey = (e) => { if (e.key !== 'Escape') return; if (cardShown) finish('play'); else if (root.classList.contains('is-animating')) doSkip(); };
   document.addEventListener('keydown', onKey);
   skip.addEventListener('click', doSkip);
@@ -1215,7 +1245,13 @@ export async function keepDiscovery({ app = null, store = app?.store, skillId, w
     note('This device wouldn’t let it be saved just now, so it may not be in your garden next time.', { ms: 5200, origin, face, avoid, mallow: mallowId || skill.mallow });
     return { kept: true, already: false, stored: false, action: null };
   }
-  const r = await playInstall({ app, skillId, mallow, origin, face, avoid, from, subtitles, reducedMotion, lowStim });
+  // stopped after the save (a safety hold, the person leaving): the tool is kept, the moment isn't played
+  if (signal?.aborted) return { kept: true, already: false, stored: true, action: null };
+  const handle = playInstall({ app, skillId, mallow, origin, face, avoid, from, subtitles, reducedMotion, lowStim });
+  const onAbort = () => handle.cancel?.();
+  signal?.addEventListener?.('abort', onAbort, { once: true });
+  const r = await handle;
+  signal?.removeEventListener?.('abort', onAbort);
   return { kept: true, already: false, stored: true, action: r.action };
 }
 /** The single entry point for the Hushfold's 'offer' event: hushfold.js calls install.onOffer(ctx). */

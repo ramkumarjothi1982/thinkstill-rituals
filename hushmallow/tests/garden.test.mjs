@@ -301,3 +301,180 @@ test('the garden never veils the Mallow, and the comet tail allocates nothing pe
   assert.ok(trail.length > 200);
   assert.doesNotMatch(trail, /create(Radial|Linear)Gradient/);
 });
+
+// ------------------------------------------------ the moment, in a fake DOM --
+// Just enough DOM for offerSave / playInstall / keepDiscovery to run in Node:
+// elements are EventTargets with children, classes, styles and fixed-size rects;
+// canvases draw into a no-op context; selectors are '.a', '#a' and '.a > *'.
+function installInstallDom({ W = 390, H = 844 } = {}) {
+  const KEYS = ['document', 'addEventListener', 'removeEventListener', 'dispatchEvent', 'requestAnimationFrame', 'cancelAnimationFrame',
+    'getComputedStyle', 'innerWidth', 'innerHeight', 'devicePixelRatio', 'matchMedia', 'Path2D'];
+  const saved = Object.fromEntries(KEYS.map((k) => [k, Object.getOwnPropertyDescriptor(globalThis, k)]));
+  const noop = () => {};
+  const ctx2d = (canvas) => new Proxy({
+    canvas, createLinearGradient: () => ({ addColorStop: noop }), createRadialGradient: () => ({ addColorStop: noop }), createPattern: () => ({}),
+    measureText: (s) => ({ width: String(s).length * 8 }), getImageData: (x, y, w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }), getTransform: () => ({ a: 1, e: 0, f: 0 }),
+  }, { get: (o, k) => (k in o ? o[k] : noop), set: (o, k, v) => { o[k] = v; return true; } });
+  let doc = null;
+  class El extends EventTarget {
+    constructor(tag) {
+      super();
+      this.tagName = String(tag).toUpperCase(); this.nodeType = 1; this.children = []; this.parentNode = null; this.hidden = false; this.id = '';
+      this.attrs = new Map(); this.dataset = {}; this._text = ''; this.width = 0; this.height = 0; this.rect = null;
+      const cls = new Set(); this._cls = cls;
+      this.classList = { add: (...c) => c.forEach((x) => cls.add(x)), remove: (...c) => c.forEach((x) => cls.delete(x)), contains: (c) => cls.has(c),
+        toggle: (c, on) => { const v = on === undefined ? !cls.has(c) : !!on; if (v) cls.add(c); else cls.delete(c); return v; } };
+      this.style = { setProperty(k, v) { this[k] = v; }, removeProperty(k) { delete this[k]; } };
+    }
+    get className() { return [...this._cls].join(' '); }
+    set className(v) { this._cls.clear(); String(v).split(/\s+/).filter(Boolean).forEach((c) => this._cls.add(c)); }
+    get textContent() { return this._text + this.children.map((c) => c.textContent).join(''); }
+    set textContent(v) { this.children.forEach((c) => { c.parentNode = null; }); this.children = []; this._text = String(v ?? ''); }
+    get isConnected() { let n = this; while (n.parentNode) n = n.parentNode; return n === doc.documentElement; }
+    get firstChild() { return this.children[0] || null; }
+    get offsetWidth() { return this.rect?.width ?? 300; }
+    get offsetHeight() { return this.rect?.height ?? 120; }
+    get clientWidth() { return this.offsetWidth; }
+    setAttribute(k, v) { this.attrs.set(k, String(v)); if (k === 'id') this.id = String(v); }
+    getAttribute(k) { return this.attrs.has(k) ? this.attrs.get(k) : null; }
+    removeAttribute(k) { this.attrs.delete(k); }
+    append(...nodes) {
+      for (const n of nodes) {
+        if (n == null) continue;
+        const c = typeof n === 'object' ? n : Object.assign(new El('#text'), { _text: String(n) });
+        c.remove(); c.parentNode = this; this.children.push(c);
+      }
+    }
+    appendChild(n) { this.append(n); return n; }
+    prepend(...nodes) { const old = this.children; this.children = []; this.append(...nodes); this.children.push(...old); }
+    replaceChildren(...nodes) { this.textContent = ''; this.append(...nodes); }
+    remove() { const p = this.parentNode; if (p) { p.children = p.children.filter((c) => c !== this); this.parentNode = null; } }
+    contains(n) { for (let x = n; x; x = x.parentNode) if (x === this) return true; return false; }
+    getBoundingClientRect() {
+      const left = this.rect?.left ?? (parseFloat(this.style.left) || 0), top = this.rect?.top ?? (parseFloat(this.style.top) || 0);
+      const width = this.offsetWidth, height = this.offsetHeight;
+      return { left, top, width, height, right: left + width, bottom: top + height, x: left, y: top };
+    }
+    getClientRects() { return [this.getBoundingClientRect()]; }
+    getContext() { return (this._ctx ||= ctx2d(this)); }
+    focus() { doc.activeElement = this; }
+    blur() { if (doc.activeElement === this) doc.activeElement = null; }
+    click() { this.dispatchEvent(new Event('click')); }
+    *all() { for (const c of this.children) { yield c; yield* c.all(); } }
+    querySelectorAll(sel) {
+      const out = new Set();
+      for (const part of String(sel).split(',').map((s) => s.trim())) {
+        let m;
+        if ((m = /^\.([\w-]+)$/.exec(part))) { for (const e of this.all()) if (e._cls.has(m[1])) out.add(e); }
+        else if ((m = /^\.([\w-]+)\s*>\s*\*$/.exec(part))) { for (const e of this.all()) if (e._cls.has(m[1])) e.children.forEach((c) => out.add(c)); }
+        else if ((m = /^#([\w-]+)$/.exec(part))) { for (const e of this.all()) if (e.id === m[1]) out.add(e); }
+      }
+      return [...out];
+    }
+    querySelector(sel) { return this.querySelectorAll(sel)[0] || null; }
+  }
+  const win = new EventTarget();
+  doc = Object.assign(new EventTarget(), { hidden: false, activeElement: null });
+  doc.documentElement = new El('html'); doc.head = new El('head'); doc.body = new El('body');
+  doc.documentElement.append(doc.head, doc.body);
+  doc.createElement = (t) => new El(t);
+  doc.createElementNS = (_ns, t) => new El(t);
+  doc.createTextNode = (s) => Object.assign(new El('#text'), { _text: String(s) });
+  doc.getElementById = (id) => doc.documentElement.querySelector(`#${id}`);
+  doc.querySelector = (s) => doc.documentElement.querySelector(s);
+  doc.querySelectorAll = (s) => doc.documentElement.querySelectorAll(s);
+  Object.assign(globalThis, {
+    document: doc, innerWidth: W, innerHeight: H, devicePixelRatio: 1,
+    addEventListener: win.addEventListener.bind(win), removeEventListener: win.removeEventListener.bind(win), dispatchEvent: win.dispatchEvent.bind(win),
+    requestAnimationFrame: (fn) => setTimeout(() => fn(performance.now()), 16), cancelAnimationFrame: (id) => clearTimeout(id),
+    getComputedStyle: (el) => ({ visibility: 'visible', display: el.hidden ? 'none' : 'block', opacity: '1', paddingTop: '0px', paddingBottom: '0px', getPropertyValue: () => '' }),
+    matchMedia: () => ({ matches: false, addEventListener: noop, removeEventListener: noop }),
+    Path2D: function Path2D() { return new Proxy({}, { get: () => noop }); },
+  });
+  return {
+    doc, El,
+    byClass: (c) => doc.body.querySelector(`.${c}`),
+    restore() { for (const [k, d] of Object.entries(saved)) { if (d) Object.defineProperty(globalThis, k, d); else delete globalThis[k]; } },
+  };
+}
+const until = async (fn, ms = 3000) => {
+  const t0 = Date.now();
+  for (;;) { const v = fn(); if (v) return v; if (Date.now() - t0 > ms) throw new Error('timed out'); await new Promise((r) => setTimeout(r, 10)); }
+};
+
+test('keepDiscovery: aborting during the installation removes it at once and the promise resolves, the tool kept', async () => {
+  const dom = installInstallDom();
+  const events = [];
+  const onEv = (e) => events.push(`${e.type.slice(3)}:${e.detail.phase}`);
+  addEventListener('hm:offer', onEv); addEventListener('hm:install', onEv);
+  try {
+    const { keepDiscovery } = await import('../src/hushfold/garden-install.js');
+    const store = memStore();
+    const ac = new AbortController();
+    const body = { left: 100, top: 380, width: 190, height: 200 };
+    const p = keepDiscovery({ store, skillId: 'slowing-down', worldId: 'static-storm', mallow: 'glitzi', origin: () => body, reducedMotion: true, signal: ac.signal });
+    const offer = await until(() => dom.byClass('hm-offer'));
+    assert.equal(hasSkill(store, 'slowing-down'), false, 'nothing is saved before the tap');
+    offer.querySelector('.hm-primary').click();
+    const install = await until(() => dom.byClass('hm-install'));
+    assert.ok(install.isConnected);
+    assert.equal(hasSkill(store, 'slowing-down'), true, 'saved on the tap, before the installation plays');
+    assert.ok(dom.doc.body.classList.contains('hm-installing'));
+    ac.abort();
+    assert.equal(dom.byClass('hm-install'), null, 'the overlay is removed at once (no card, no chip)');
+    assert.equal(dom.byClass('hm-chip'), null);
+    const r = await Promise.race([p, new Promise((res) => setTimeout(() => res('pending'), 1000))]);
+    assert.deepEqual(r, { kept: true, already: false, stored: true, action: 'cancelled' });
+    assert.equal(dom.doc.body.classList.contains('hm-installing'), false);
+    assert.deepEqual(events, ['offer:open', 'offer:close', 'install:start', 'install:end']);
+    // Not now keeps nothing
+    const ac2 = new AbortController(), store2 = memStore();
+    const p2 = keepDiscovery({ store: store2, skillId: 'a-little-more-room', mallow: 'loomi', origin: () => body, reducedMotion: true, signal: ac2.signal });
+    const offer2 = await until(() => dom.doc.body.querySelectorAll('.hm-offer').find((o) => !o.classList.contains('is-out')));
+    offer2.querySelector('.hm-quiet').click();
+    assert.deepEqual(await p2, { kept: false, already: false, stored: false, action: null });
+    // aborted while the offer is up: nothing saved, the promise resolves
+    const p3 = keepDiscovery({ store: store2, skillId: 'a-little-more-room', mallow: 'loomi', origin: () => body, reducedMotion: true, signal: ac2.signal });
+    ac2.abort();
+    assert.deepEqual(await p3, { kept: false, already: false, stored: false, action: null });
+    assert.equal(hasSkill(store2, 'a-little-more-room'), false);
+  } finally {
+    removeEventListener('hm:offer', onEv); removeEventListener('hm:install', onEv);
+    await new Promise((r) => setTimeout(r, 400));   // let the offers' fade-out timers run inside the fake DOM
+    dom.restore();
+  }
+});
+
+test('relayoutInstall places the open offer again; Beyond’s dock (.bx-dock) is kept clear like the Hushfold’s', async () => {
+  const dom = installInstallDom();
+  try {
+    const { offerSave, relayoutInstall } = await import('../src/hushfold/garden-install.js');
+    // no Mallow geometry: the offer sits at the bottom of the free band, above any dock pill
+    const ac = new AbortController();
+    const open = () => { offerSave({ skillId: 'slowing-down', mallow: 'glitzi', reducedMotion: true, signal: ac.signal }); return dom.doc.body.querySelectorAll('.hm-offer').at(-1); };
+    const free = open();
+    const bottomFree = parseFloat(free.style.top) + free.offsetHeight;
+    free.__close(false);
+    const dock = new dom.El('div'); dock.className = 'bx-dock';
+    const pill = new dom.El('button'); pill.rect = { left: 120, top: 700, width: 150, height: 48 };
+    dock.append(pill); dom.doc.body.append(dock);
+    const above = open();
+    assert.ok(parseFloat(above.style.top) + above.offsetHeight <= 690, `the offer ends above the Beyond dock pill (${above.style.top})`);
+    assert.ok(bottomFree > 690, 'and without the dock it sat lower');
+    // what it avoids moves (e.g. the side panel opened): relayoutInstall places it again, no resize event
+    const top0 = above.style.top;
+    pill.rect = { left: 120, top: 560, width: 150, height: 48 };
+    relayoutInstall();
+    assert.notEqual(above.style.top, top0);
+    assert.ok(parseFloat(above.style.top) + above.offsetHeight <= 550);
+    ac.abort();
+    const src = readFileSync(`${root}src/hushfold/garden-install.js`, 'utf8');
+    assert.match(src, /'\.hf-top, \.bx-top'/);
+    const relayout = src.slice(src.indexOf('export function relayoutInstall'), src.indexOf('function offerEvent'));
+    assert.ok(relayout.length > 50);
+    assert.doesNotMatch(relayout, /dispatchEvent|new Event\('resize'\)/, 'never a synthetic resize');
+  } finally {
+    await new Promise((r) => setTimeout(r, 400));
+    dom.restore();
+  }
+});
