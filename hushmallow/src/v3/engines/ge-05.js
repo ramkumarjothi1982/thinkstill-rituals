@@ -41,11 +41,14 @@ export function create(E) {
   const { g, stage, photos, words, pal } = E;
   const reduced = !!E.reduced, low = !!(E.lowStim || E.reduced), heavy = !!E.heavy;
   const loop = E.round > 1;
-  const agit = reduced ? 0 : (heavy ? 0.4 : 1) * (1 - E.calm);
-  const START = loop ? 0.35 + (E.rand() - 0.5) * 2.4 : 0.35;   // outer satellite's plane angle
+  const agit = low ? 0 : (heavy ? 0.4 : 1) * (1 - E.calm);          // no jitter for reduced motion or low stimulation
+  const START = loop ? 2.75 + ((E.round % 3) - 1) * 0.65 + (E.rand() - 0.5) * 0.4 : 2.75;   // outer satellite's plane angle (lower left: the ribbon rests on the front arc)
   const K = loop ? 0.82 + E.rand() * 0.07 : 0.86;               // tilt of the orbit plane
+  const PERSP = (1 + K) * 0.5;
   const hue = loop ? E.rand() : 0;
-  const cordCol = mix(pal.glow, '#ffffff', 0.12 + hue * 0.12);
+  const tilt0 = loop ? (E.round % 2 ? -1 : 1) * (0.6 + E.rand() * 0.5) : -0.95;   // linked inner orbit leans a new way each round
+  const cordBase = loop ? [pal.glow, pal.accent, pal.warm][(E.round - 1) % 3] : pal.glow;
+  const cordCol = mix(mix(cordBase, pal.glow, 0.35), '#ffffff', 0.14 + hue * 0.12);
   const cordHot = mix(pal.glow, pal.accent, 0.3 + hue * 0.35);
   const cordCore = mix(cordCol, '#ffffff', 0.6);
   const laneCol = mix(pal.accent, pal.glow, 0.4 + E.calm * 0.3);
@@ -67,14 +70,14 @@ export function create(E) {
   for (let j = 0; j < MC; j++) moons.push({ ph: j < extra ? ph(2 + j) : -1, col: moonCols[(j + E.round - 1) % 5], fo: 0, mi: 0, free: false, glide: 0, sx: 0, sy: 0, x: 0, y: 0, tone: 1, front: false, sc: 0.85 });
 
   // ---- geometry
-  let R, cx, cy, rA, rBs, rc0, rc1, r0, r1, rIn, mS, fs, Lc, CF = 0.94, Lt = 0;
+  let R, cx, cy, rA, rBs, rc0, rc1, r0, r1, rIn, mS, fs, Lc, CF = 0.94, Lt = 0, dlNeed = 1.3;
   let chars = [];
   const cw = new Float32Array(64);
   const SN = low ? 36 : 70;
   const stX = new Float32Array(SN), stY = new Float32Array(SN), stP = new Float32Array(SN), stS = new Float32Array(SN);
   for (let i = 0; i < SN; i++) { stP[i] = 0.4 + E.rand() * 1.6; stS[i] = 0.8 + E.rand() * 1.4; }
   const stU = Float32Array.from({ length: SN }, () => E.rand()), stV = Float32Array.from({ length: SN }, () => E.rand());
-  let planetGrad = null, shadeGrad = null;
+  let planetGrad = null, shadeGrad = null, discGrad = null;
   let snap = true;
 
   function fit() {
@@ -82,27 +85,38 @@ export function create(E) {
     cx = stage.cx; cy = stage.cy;
     rA = R * 0.3; rBs = R * 0.2; rc0 = R * 0.38; rc1 = R * 0.64; r0 = R * 0.84; r1 = R * 0.97; rIn = R * 0.54;
     mS = Math.max(44, R * 0.29);
-    fs = Math.max(12.5, R * 0.084);
-    const persp = (1 + K) * 0.5;
-    Lc = WRAPS * TAU * (rc0 + rc1) * 0.5 * persp;
-    const Lf0 = 1.3 * (rc1 + r0) * 0.5 * persp + (r0 - rc1);
-    CF = Lc / (Lc + Lf0);
+    fs = Math.max(12, R * 0.084);
+    Lc = WRAPS * TAU * (rc0 + rc1) * 0.5 * PERSP;
     // the words, measured once per fit
     g.save(); g.font = `600 ${fs}px ${FONT}`;
     chars = Array.from(String(words.token || '')).slice(0, 60); Lt = 0;
-    for (let i = 0; i < chars.length; i++) { cw[i] = g.measureText(chars[i]).width + 0.4; Lt += cw[i]; }
+    for (let i = 0; i < chars.length; i++) { cw[i] = g.measureText(chars[i]).width + 0.2; Lt += cw[i]; }
     g.restore();
-    // moons sit on the coil beyond the label, spread round the wraps
-    const lab = rBs * 1.15 + 8 + Lt + mS * 0.6;
-    const f0 = clamp((lab - Lf0) / Lc, 0.2, 0.5);
-    moons.forEach((m, j) => { m.fo = f0 + (MC > 1 ? j / (MC - 1) : 0.5) * (0.93 - f0); m.mi = Math.round(CF * (1 - m.fo) * (N - 1)); });
+    // the free cord is always long enough to carry the ribbon label, so the
+    // label never lies over the moons still caught in the coil
+    const need = rBs * 1.15 + 8 + Lt + mS * 0.6;
+    dlNeed = 1.3; while (dlNeed < 3.4 && freeLen(dlNeed, rc1, r0, 2) < need) dlNeed += 0.1;
+    const Lf0 = freeLen(dlNeed, rc1, r0, 2);
+    CF = Lc / (Lc + Lf0);
+    // moons sit on the outer wrap of the coil (clear of the inner satellite), beyond the label
+    const f0 = clamp((need - Lf0) / Lc + 0.05, 0.1, 0.4);
+    moons.forEach((m, j) => { m.fo = f0 + (MC > 1 ? j / (MC - 1) : 0.5) * (0.62 - f0); m.mi = Math.round(CF * (1 - m.fo) * (N - 1)); });
     for (let i = 0; i < SN; i++) { stX[i] = stage.x + stU[i] * stage.w; stY[i] = stage.y + stV[i] * stage.h; }
     planetGrad = g.createRadialGradient(-rA * 0.35, -rA * 0.4, rA * 0.06, 0, 0, rA);
-    const base = mix(pal.sky, pal.accent, 0.3);
+    const base = mix(pal.sky, pal.accent, 0.3 + hue * 0.4);
     planetGrad.addColorStop(0, mix(base, '#ffffff', 0.55)); planetGrad.addColorStop(0.5, base); planetGrad.addColorStop(1, mix(pal.deep, '#000010', 0.35));
     shadeGrad = g.createRadialGradient(rA * 0.5, rA * 0.55, rA * 0.15, rA * 0.25, rA * 0.3, rA * 1.3);
     shadeGrad.addColorStop(0, 'rgba(0,0,16,0.5)'); shadeGrad.addColorStop(1, 'rgba(0,0,16,0)');
+    // a soft glassy orbit plane under the system: depth, and contrast on bright skies
+    discGrad = g.createRadialGradient(0, 0, r1 * 0.15, 0, 0, r1 * 1.2);
+    discGrad.addColorStop(0, rgba(inkCol, 0.2)); discGrad.addColorStop(0.7, rgba(inkCol, 0.13)); discGrad.addColorStop(1, rgba(inkCol, 0));
     snap = true;
+  }
+  // screen length of a free cord leaving the coil at radius rd and reaching the satellite at rb
+  function freeLen(dl, rd, rb, pw) {
+    let L = 0, pr = rd;
+    for (let i = 1; i <= 24; i++) { const r = rd + (rb - rd) * Math.pow(i / 24, pw); L += Math.hypot(r * (dl / 24) * PERSP, r - pr); pr = r; }
+    return L;
   }
   fit();
   E.onResize(fit);
@@ -115,7 +129,7 @@ export function create(E) {
   let lastStep = 0, noteIdx = 0, lastNoteT = -9, lastHap = -9;
   let halfDone = false, ckA = false, sepPulse = 0;
   let spinA = 0, ringSpin = E.rand() * TAU, orbitExtra = 0, orbV = 0;
-  let flip = false;
+  let flip = false, crossTold = false;
   let bx = 0, by = 0, bFront = true, bSc = 1;
   let raX = 0, raY = 0, raR = 0;
   const wobA = new Wobble(), wobB = new Wobble();
@@ -166,11 +180,11 @@ export function create(E) {
 
     // ---- inner orbit ring: steeply tilted through the outer lane → a neat ring of its own
     raX = lerp(R * 0.95, rIn, e); raY = lerp(R * 0.2, rIn * K * 0.84, e);
-    raR = lerp(-0.95, -0.14, e) + (reduced ? 0 : (1 - e) * 0.06 * Math.sin(t * 0.33));
+    raR = lerp(tilt0, tilt0 * 0.15, e) + (reduced ? 0 : (1 - e) * 0.06 * Math.sin(t * 0.33));
 
     // ---- the cord: coil (wound part) + free part that slackens in slow waves
     const wound = CF * (1 - ps), fD = 1 - ps;
-    const dl = lerp(1.3, 3.2, e);
+    const dl = Math.max(lerp(1.3, 3.2, e), dlNeed), pw = lerp(2, 1.15, e);
     const thD = thB - dl, rD = lerp(rc0, rc1, fD);
     const slack = e * (1 - fin * 0.4);
     const waveA = R * (0.012 + 0.06 * slack) * (reduced ? 0.5 : 1);
@@ -190,7 +204,7 @@ export function create(E) {
       } else {
         const u = (m - wound) / Math.max(1e-4, 1 - wound);
         const th = thD + dl * u;
-        const r = rD + (rBv - rD) * (1 - Math.pow(1 - u, 2.2)) + waveA * Math.sin(u * 8.8 - wt * 0.85) * Math.sin(Math.PI * u);
+        const r = rD + (rBv - rD) * Math.pow(u, pw) + waveA * Math.sin(u * 8.8 - wt * 0.85) * Math.sin(Math.PI * u);   // runs inside the lane, rising to the satellite
         tx = cx + Math.cos(th) * r; ty = cy + Math.sin(th) * r * K + Math.sin(thD + fD * 5.5) * tilt * (1 - u);
         kk = 22 + 120 * Math.max(clamp(1 - u * 6), clamp((u - 0.82) * 5.5));
       }
@@ -280,6 +294,7 @@ export function create(E) {
     }
     g.restore();
     g.save(); g.translate(cx, cy); g.scale(1, K);
+    g.fillStyle = discGrad; g.beginPath(); g.arc(0, 0, r1 * 1.2, 0, TAU); g.fill();
     spiral(g, 0, 0, R * 1.22, spinA, pal.glow, { arms: 3, turns: 1.3, alpha: 0.04 + 0.04 * (1 - e) * (heavy ? 0.6 : 1), width: 1.3 });
     g.restore();
   }
@@ -295,8 +310,12 @@ export function create(E) {
   function drawHalf(front, t, e, fin, ps, laneR) {
     const lift = sepPulse * 0.25 + fin * 0.2;
     // outer lane (the outer satellite's orbit) and the inner orbit
-    ringStroke(laneR, laneR * K, 0, front, laneCol, 0.16 + 0.14 * e + lift, 1.4);
+    ringStroke(laneR, laneR * K, 0, front, laneCol, 0.26 + 0.12 * e + lift, 1.6);
     ringStroke(raX, raY, raR, front, innerCol, 0.2 + 0.12 * e + lift, 1.3);
+    if (finAt >= 0) {
+      const k = clamp((E.now() - finAt) / (heavy ? 3.2 : 2.4));
+      if (k < 1) { const rr = lerp(rIn * 1.05, r1 * 0.98, ease.outCubic(k)); ringStroke(rr, rr * K * lerp(0.84, 1, k), lerp(tilt0 * 0.15, 0, k), front, cordCol, (1 - k) * (heavy ? 0.35 : 0.6), 2.2); }
+    }
     // slow travelling lights on both orbits
     for (let k = 0; k < 6; k++) {
       const a = (k / 6) * TAU - spinA * 1.4;
@@ -312,7 +331,7 @@ export function create(E) {
         if ((Math.sin(a) >= 0) !== front) continue;
         P2S(a, lerp(r0, r1, clamp(ps + (k * 0.17) / TURN)));
         const shimmer = reduced ? 0.7 : 0.55 + 0.45 * Math.sin(t * 2.2 - k * 0.7);
-        glow(g, _x, _y, 4 + (1 - grab) * 1.5, laneCol, (1 - k / 10) * (0.35 + 0.25 * (1 - grab)) * shimmer);
+        glow(g, _x, _y, 5 + (1 - grab) * 2, laneCol, (1 - k / 10) * (0.45 + 0.3 * (1 - grab)) * shimmer);
       }
     }
     drawCord(front, t, e, fin);
@@ -393,7 +412,7 @@ export function create(E) {
     const s = mo.sc * mS, clr = 1 - mo.tone;
     if (mo.free && mo.glide < 1) glow(g, mo.x, mo.y, s * 1.1, pal.glow, 0.5 * Math.sin(Math.PI * mo.glide));
     if (mo.ph >= 0) photos.draw(g, mo.ph, mo.x, mo.y, s, { shape: 'bubble', tone: 'mist', toneMix: 0.6 * mo.tone, glow: 0.2 + 0.3 * clr, glowColour: pal.glow, shadow: false });
-    else { glow(g, mo.x, mo.y, s * 0.75, mo.col, 0.22 + 0.3 * clr); orb(g, mo.x, mo.y, s * 0.36, mix(mix(mo.col, '#ffffff', 0.15), '#7a7a96', 0.45 * mo.tone)); }
+    else { glow(g, mo.x, mo.y, s * 0.75, mo.col, 0.22 + 0.3 * clr); orb(g, mo.x, mo.y, s * 0.36, mix(mix(mo.col, '#ffffff', 0.15), mix(pal.deep, '#9a9ab4', 0.5), 0.28 * mo.tone)); }
   }
   // position + direction at screen distance d from the outer satellite along the cord
   function at(d) {
@@ -416,8 +435,8 @@ export function create(E) {
     at(d0 - 3); g.moveTo(_x, _y); started = true;
     for (let i = N - 1; i >= 0; i--) { const d = cum[i]; if (d <= d0 - 3) continue; if (d >= d1 + 3) break; g.lineTo(px[i], py[i]); }
     if (started) { at(d1 + 3); g.lineTo(_x, _y); }
-    g.strokeStyle = rgba(cordCol, 0.32 + 0.1 * fin); g.lineWidth = fs * 1.75 + 2.5; g.stroke();
-    g.strokeStyle = rgba(ribbonCol, 0.8); g.lineWidth = fs * 1.75; g.stroke();
+    g.strokeStyle = rgba(cordCol, 0.32 + 0.1 * fin); g.lineWidth = fs * 1.6 + 2.5; g.stroke();
+    g.strokeStyle = rgba(ribbonCol, 0.74); g.lineWidth = fs * 1.6; g.stroke();
     g.font = `600 ${fs}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillStyle = '#fffaf0';
     const sc = Math.min(1, (d1 - d0) / Lt);
@@ -434,10 +453,12 @@ export function create(E) {
     const k = (t - twistAt) / 3.4;
     if (k >= 1) return;
     const xa = cometRev ? stage.x + stage.w + 50 : stage.x - 50, xb = cometRev ? stage.x - 50 : stage.x + stage.w + 50;
-    const ya = cy - R * (cometRev ? 1.05 : 1.3), yb = cy - R * (cometRev ? 1.3 : 1.0);
+    const top = stage.y + 26, ya = Math.max(top, cy - R * (cometRev ? 1.05 : 1.3)), yb = Math.max(top, cy - R * (cometRev ? 1.3 : 1.0));
     const x = lerp(xa, xb, k), y = lerp(ya, yb, k), L = Math.hypot(xb - xa, yb - ya), ux = (xb - xa) / L, uy = (yb - ya) / L;
+    g.save(); g.beginPath(); g.rect(stage.x, stage.y, stage.w, stage.h); g.clip();
     for (let i = 8; i >= 1; i--) glow(g, x - ux * i * 11, y - uy * i * 11, (1 - i / 10) * 9 + 2, cordCol, (1 - i / 9) * 0.6);
     glint(g, x, y, 11, '#ffffff', 0.8, t);
+    g.restore();
     if (!twistKick && k > 0.45) {
       twistKick = true;
       for (let i = 1; i < N - 1; i++) vy[i] += Math.sin(i * 0.21) * (reduced ? 25 : 70);
@@ -474,7 +495,12 @@ export function create(E) {
       d = clamp(d, -0.6, 0.6);
       const want = -d;                         // anticlockwise on screen = forward
       const now = E.now();
-      if (want > 0) {
+      if (want > 0 && fingerR < Math.min(rc1 * 0.85, r0 - Math.max(46, rBs * 1.9) - 4)) {
+        // the finger has slipped inside the cord: it holds the satellite in its lane (no crossing, no progress)
+        strain = Math.min(1, strain + want * 1.8);
+        if (now - lastThrum > 0.7) { lastThrum = now; wobB.kick(0.3); E.sound('thrum', { intensity: 0.16 }); E.haptic('tick'); }
+        if (!crossTold) { crossTold = true; E.hint('Keep your finger outside the glowing cord.'); }
+      } else if (want > 0) {
         wanted = Math.min(TURN, wanted + want, rot + 0.18);
         if (E.locked && wanted >= rot + 0.17 && now - lastWait > 0.6) { lastWait = now; wobB.kick(0.35); E.checkpoint('wait'); }
       } else if (want < 0) {
@@ -489,7 +515,11 @@ export function create(E) {
       }
     },
     up(p) { if (p.id === drag) { drag = null; if (rot >= TURN * 0.998 && !doneFlag) win(); } },
-    assist() { if (finAt >= 0) return; assistTo = Math.min(TURN, Math.max(wanted, rot) + TURN / 8); },
+    assist() {
+      if (finAt >= 0) return;
+      if (E.locked) { wobB.kick(0.4); E.checkpoint('wait'); }        // not yet: the step is queued and the law releases it
+      assistTo = Math.min(TURN, Math.max(wanted, rot) + TURN / 8);
+    },
     pointAt(q) { bAt(q); return { x: _x, y: _y }; },
     hint() {
       const q0 = shownRot / TURN, pts = [];

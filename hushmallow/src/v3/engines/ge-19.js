@@ -13,7 +13,7 @@
 // echoed by a shaky double that steadies into one clear line. At the finale
 // one charm glides down the spiral and rests inside the clear ring.
 
-import { TAU, clamp, lerp, invLerp, smooth, ease, rgba, mix, glow, glint, orb, canvas, FONT } from '../fx.js';
+import { TAU, clamp, lerp, invLerp, smooth, ease, rgba, mix, glow, glint, orb, canvas, angDiff, FONT } from '../fx.js';
 import { resample, Wobble } from '../kit.js';
 
 export const meta = {
@@ -43,6 +43,7 @@ const MOUTH_B = 0.085;                // mouth ellipse half-depth (× R)
 const CAP = 0.06;                     // banked trace allowed ahead of the law
 const AHEAD = 24;                     // tracker look-ahead (points, ~4 px each)
 const NOTES = 28;                     // trace notes along the whole spiral
+const GLIDE = 2.2;                    // finale: the hero charm's glide into the centre (s)
 
 export function create(E) {
   const { g, stage, photos, words } = E;
@@ -78,6 +79,7 @@ export function create(E) {
   const glyphs = [];
   let fs = 14;
   let wordC = null, ghostC = null, wordX = 0, wordY = 0, wordW = 1, wordH = 1;
+  let tokenSeen = null, tSpan0 = 0, tSpan1 = 0;
 
   const rE = (ps) => R * Math.exp((-LNK * ps) / TAU);              // outer edge radius at tube angle ψ
   const ang = (ps) => thL - dir * ps;
@@ -125,10 +127,11 @@ export function create(E) {
   }
 
   // words inscribed along the rim, reading left → right across the top
-  const inset = () => fs * 0.95 + R * 0.03;
+  const inset = () => fs * 0.8 + R * 0.02;
   const rText = (th) => rE((thL - th) / dir) - inset();
   function buildWords() {
     glyphs.length = 0;
+    tokenSeen = words.token;
     const text = String(words.token || '').trim();
     if (!text) return;
     fs = Math.max(12.5, Math.min(17, 14.5 * s));
@@ -153,6 +156,7 @@ export function create(E) {
       th += w / 2 / Math.max(30, rText(th));
     }
     g.restore();
+    tSpan0 = glyphs[0].th; tSpan1 = glyphs[glyphs.length - 1].th;
     renderWords();
   }
   // the inscription is static, so it is rendered once per fit (crisp copy + its echo)
@@ -233,11 +237,20 @@ export function create(E) {
     for (let ps = TAU; ps < psMax; ps += 0.12) {
       const p2 = Math.min(psMax, ps + 0.14), r1 = rE(ps), r2 = rE(p2);
       const A = at(ps, r1), B = at(p2, r2);
-      sg.strokeStyle = 'rgba(0,0,10,0.5)'; sg.lineWidth = Math.max(1, r1 * 0.03);
+      sg.strokeStyle = 'rgba(0,0,10,0.62)'; sg.lineWidth = Math.max(1.2, r1 * 0.036);
       sg.beginPath(); sg.moveTo(A[0], A[1]); sg.lineTo(B[0], B[1]); sg.stroke();
-      const A2 = at(ps, r1 * 1.012), B2 = at(p2, r2 * 1.012);
-      sg.strokeStyle = rgba(C.hi, 0.26); sg.lineWidth = Math.max(0.6, r1 * 0.008);
+      const A2 = at(ps, r1 * 1.014), B2 = at(p2, r2 * 1.014);
+      sg.strokeStyle = rgba(C.hi, 0.4); sg.lineWidth = Math.max(0.7, r1 * 0.009);
       sg.beginPath(); sg.moveTo(A2[0], A2[1]); sg.lineTo(B2[0], B2[1]); sg.stroke();
+    }
+    // the spiral groove itself, carved along the whole trace (dark channel + lit lower lip)
+    for (let k0 = 0; k0 < last; k0 += 6) {
+      const k1 = Math.min(last, k0 + 7), km = (k0 + k1) >> 1;
+      const rp = Math.max(6, Math.hypot(P[km][0] - ox, P[km][1] - oy)), w = Math.max(2, rp * 0.075);
+      const run = (dx, dy) => { sg.beginPath(); sg.moveTo(P[k0][0] + dx, P[k0][1] + dy); for (let k = k0 + 1; k <= k1; k++) sg.lineTo(P[k][0] + dx, P[k][1] + dy); sg.stroke(); };
+      sg.strokeStyle = 'rgba(0,0,12,0.3)'; sg.lineWidth = w; run(0, 0);
+      sg.strokeStyle = 'rgba(0,0,12,0.3)'; sg.lineWidth = w * 0.45; run(0, -w * 0.12);
+      sg.strokeStyle = rgba(C.hi, 0.2); sg.lineWidth = Math.max(0.8, w * 0.14); run(0, w * 0.46);
     }
     // inscription groove along the lip (the words sit in it)
     if (glyphs.length) {
@@ -277,16 +290,30 @@ export function create(E) {
     sg.stroke();
     // the open lip: an elliptical mouth looking into the dark tube
     const m = mouthGeom();
+    // the open lip: a nacre-lined aperture whose throat darkens into the coil
+    const nac = mix(mix(C.pearl, pal.warm, 0.3), C.b2, 0.35);
     sg.save(); sg.translate(m.mx, m.my); sg.rotate(thL); sg.scale(1, m.b / m.a);
-    const mg = sg.createRadialGradient(0, 0, 0, 0, 0, m.a);
-    mg.addColorStop(0, 'rgba(0,0,6,0.95)'); mg.addColorStop(0.62, rgba(C.b0, 0.95)); mg.addColorStop(0.9, rgba(mix(C.b1, pal.glow, 0.2), 0.95)); mg.addColorStop(1, rgba(C.b1, 1));
+    const mg = sg.createRadialGradient(0, -dir * m.a * 0.28, 0, 0, 0, m.a);
+    mg.addColorStop(0, 'rgba(0,0,8,0.96)'); mg.addColorStop(0.38, rgba(C.b0, 0.95)); mg.addColorStop(0.66, rgba(mix(C.b1, nac, 0.35), 0.96));
+    mg.addColorStop(0.86, rgba(nac, 0.97)); mg.addColorStop(0.95, rgba(mix(nac, C.hi, 0.5), 1)); mg.addColorStop(1, rgba(C.b1, 1));
     sg.fillStyle = mg; sg.beginPath(); sg.arc(0, 0, m.a, 0, TAU); sg.fill();
+    // iridescent lining sheen on the far wall of the lip
+    sg.globalCompositeOperation = 'lighter';
+    const lg = sg.createLinearGradient(-m.a, 0, m.a, 0);
+    lg.addColorStop(0, rgba(pal.glow, 0)); lg.addColorStop(0.3, rgba(pal.accent, 0.16)); lg.addColorStop(0.55, rgba(C.pearl, 0.22)); lg.addColorStop(0.8, rgba(pal.glow, 0.16)); lg.addColorStop(1, rgba(pal.glow, 0));
+    sg.strokeStyle = lg; sg.lineWidth = m.a * 0.16; sg.beginPath(); sg.arc(0, 0, m.a * 0.86, dir > 0 ? Math.PI * 0.08 : Math.PI * 1.08, dir > 0 ? Math.PI * 0.92 : Math.PI * 1.92); sg.stroke();
+    sg.globalCompositeOperation = 'source-over';
     sg.restore();
     sg.save(); sg.translate(m.mx, m.my); sg.rotate(thL);
-    sg.strokeStyle = rgba(C.hi, 0.75); sg.lineWidth = Math.max(1.5, R * 0.016);
+    sg.strokeStyle = rgba(mix(C.b0, '#000008', 0.4), 0.55); sg.lineWidth = Math.max(2, R * 0.022);
+    sg.beginPath(); sg.ellipse(0, 0, m.a * 1.01, m.b * 1.06, 0, 0, TAU); sg.stroke();
+    sg.strokeStyle = rgba(C.hi, 0.8); sg.lineWidth = Math.max(1.5, R * 0.013);
     sg.beginPath(); sg.ellipse(0, 0, m.a, m.b, 0, 0, TAU); sg.stroke();
-    sg.strokeStyle = rgba(C.pearl, 0.35); sg.lineWidth = Math.max(1, R * 0.006);
-    sg.beginPath(); sg.ellipse(0, 0, m.a * 0.93, m.b * 0.72, 0, 0, TAU); sg.stroke();
+    // fine growth lines following the lip into the throat
+    for (const [k, al] of [[0.93, 0.32], [0.84, 0.2], [0.74, 0.12]]) {
+      sg.strokeStyle = rgba(C.pearl, al); sg.lineWidth = Math.max(0.8, R * 0.005);
+      sg.beginPath(); sg.ellipse(0, -dir * m.b * (1 - k) * 0.9, m.a * k, m.b * k * 0.8, 0, 0, TAU); sg.stroke();
+    }
     sg.restore();
     // the quiet centre: a soft hollow over the tiniest whorls
     const hg = sg.createRadialGradient(ox, oy, 0, ox, oy, coreR * 1.35);
@@ -308,22 +335,59 @@ export function create(E) {
     buildPath(); buildSilhouette(); buildWords(); renderShell();
   }
   fit();
-  const offResize = E.onResize(fit);
+  const offResize = E.onResize(() => { fit(); layoutCharms(); });
 
   // ---- charms along the groove: photos as pearl echo charms, pearls between
   const n = photos.n, KC = Math.max(5, n);
   const slot = Array.from({ length: KC }, () => -1);
   const shift = E.round > 1 ? (n === 1 ? (E.round + 1) % 2 : Math.floor(E.rand() * KC)) : 0;
   if (n) for (let j = 0; j < n; j++) slot[(Math.round((j * KC) / n) + shift) % KC] = (j + E.round - 1) % n;
-  const charms = slot.map((ph, j) => ({ ph, u: 0.08 + (0.62 * j) / (KC - 1), q: 0, passed: false, seed: E.rand() * TAU }));
+  const charms = slot.map((ph) => ({ ph, u: 0, sz: 44, q: 0, passed: false, seed: E.rand() * TAU }));
   const heroPh = n ? (E.round === 1 ? 0 : Math.floor(E.rand() * n)) : -1;
   let hero = charms.findIndex((c) => c.ph === heroPh && heroPh >= 0);
   if (hero < 0) hero = KC - 1;
-  const charmSize = (c, u = c.u) => {
+  // a charm's natural size at groove fraction u: it grows with the whorl, a photo is never
+  // under 44 px, and on the outer coil it stays clear of the inscription band
+  function natSize(c, u, k) {
     const q = pathAt(u), rp = Math.hypot(q.x - ox, q.y - oy);
-    const sz = clamp(rp * 0.66, 40, 74 * s);
-    return c.ph >= 0 ? sz : sz * 0.62;
-  };
+    let sz = Math.min(rp * 0.7 * k, 76 * s);
+    if (glyphs.length && rp > (MID * R * 1.05) / KG) {
+      const mid = (tSpan0 + tSpan1) / 2, half = Math.abs(tSpan1 - tSpan0) / 2 + 0.32;
+      if (Math.abs(angDiff(mid, Math.atan2(q.y - oy, q.x - ox))) < half) sz = Math.min(sz, 2 * (rp * 0.5 - inset() - fs * 0.62));
+    }
+    return c.ph >= 0 ? Math.max(44, sz) : Math.max(22, sz * 0.62);
+  }
+  // pack the charms along the groove without touching, from just inside the lip (the bead's
+  // start stays clear) to where the whorl is still wide enough to hold a charm
+  function layoutCharms() {
+    const N = charms.length; if (!N) return;
+    const gap = 5 * s;
+    let kIn = last;
+    while (kIn > 1 && Math.hypot(P[kIn][0] - ox, P[kIn][1] - oy) < 36) kIn--;
+    const aMax = Math.min(cum[kIn], L * 0.86), a0 = TOL + 10 * s;
+    const pos = new Array(N);
+    let k = 1, end = 0;
+    for (let tries = 0; tries < 12; tries++) {
+      let a = a0;
+      for (let j = 0; j < N; j++) {
+        let sz = natSize(charms[j], a / L, k);
+        sz = natSize(charms[j], Math.min(1, (a + sz / 2) / L), k);
+        pos[j] = a + sz / 2; a = pos[j] + sz / 2 + gap;
+      }
+      end = a - gap;
+      if (end <= aMax || tries === 11) break;
+      k -= 0.06;
+    }
+    // spread any spare groove evenly; sizes never grow again further in (a calm, even taper)
+    const spare = Math.max(0, aMax - end) * 0.7;
+    let prev = 1e9;
+    charms.forEach((c, j) => {
+      c.u = clamp((pos[j] + (N > 1 ? (spare * j) / (N - 1) : spare * 0.3)) / L);
+      const raw = natSize(c, c.u, k), eq = Math.min(c.ph >= 0 ? raw : raw / 0.62, prev * 1.04);
+      prev = eq; c.sz = c.ph >= 0 ? Math.max(44, eq) : Math.max(22, eq * 0.62);
+    });
+  }
+  layoutCharms();
 
   // ---- state
   let wanted = 0, prog = 0, shown = 0;
@@ -335,12 +399,16 @@ export function create(E) {
   let hum = null;
   const wob = new Wobble();
 
+  const heroRest = () => Math.max(44, restR * 1.55);
+
   const startHum = () => { if (!hum) hum = E.hold('hum', { intensity: 0.18, pitch: lerp(1.1, 0.82, shown) }) || null; };
   const stopHum = () => { if (hum) { try { hum.stop(); } catch (e) { /* ignore */ } hum = null; } };
 
   // ----------------------------------------------------------- frame --
   function frame(dt, t) {
     // ---- simulation
+    // the person can change which words the ritual uses at any time: re-inscribe the lip
+    if (words.token !== tokenSeen) { buildWords(); renderShell(); layoutCharms(); }
     if (assistTo != null) { wanted = Math.min(assistTo, wanted + dt * 0.24); if (assistTo - wanted < 1e-4) assistTo = null; }
     prog = E.gate(wanted);
     if (wanted > prog + CAP) wanted = prog + CAP;
@@ -352,7 +420,9 @@ export function create(E) {
     const wv = wob.update(dt);
     const head = pathAt(shown);
     const hr = Math.hypot(head.x - ox, head.y - oy);
-    clearR = lerp(clearR, Math.max(hr, restR), 1 - Math.exp(-dt * 12));
+    // at the finale the clear ring opens just enough to hold the arriving charm
+    const ringTo = finAt >= 0 ? lerp(restR, Math.max(restR, heroRest() / 2 + 6 * s), smooth(clamp((t - finAt - 1.2) / 1.4))) : restR;
+    clearR = lerp(clearR, Math.max(hr, ringTo), 1 - Math.exp(-dt * 12));
     const spd = (reduced ? 0.35 : 1) * (finAt >= 0 ? 0.3 : 1);
     sIn += dt * lerp(1.0, 0.45, calmK) * spd * (1 + rush);
     sOut += dt * lerp(0.32, 0.1, shown) * spd;
@@ -375,7 +445,7 @@ export function create(E) {
     charms.forEach((c, j) => {
       if (!c.passed && prog > 0 && shown >= c.u - 0.004) {
         c.passed = true;
-        const q = pathAt(c.u), sz = charmSize(c);
+        const q = pathAt(c.u), sz = c.sz;
         if (c.ph >= 0) { photos.dust(c.ph, q.x, q.y, sz, reduced ? 6 : 12, { shape: 'circle', up: 22, speed: 18, life: 1.3 }); E.checkpoint('photo', c.ph); }
         else E.checkpoint('step');
         E.ripples.add(q.x, q.y, { colour: C.calm, speed: 55, alpha: 0.5, r: sz * 0.4 });
@@ -430,7 +500,7 @@ export function create(E) {
     for (let j = 0; j < 48; j++) {
       const r = hr - (j + fIn) * lf;
       if (r < coreR * 0.8) break;
-      const a = (0.36 + 0.3 * Math.exp(-j * 0.45)) * (1 - fin) * smooth(clamp((hr - r) / (lf * 1.3))) * smooth(clamp((r - coreR * 0.8) / (lf * 1.6)));
+      const a = (0.16 + 0.44 * Math.exp(-j * 0.3)) * (j % 2 ? 0.78 : 1) * (1 - fin) * smooth(clamp((hr - r) / (lf * 1.3))) * smooth(clamp((r - coreR * 0.8) / (lf * 1.6)));
       if (a < 0.01) continue;
       g.strokeStyle = rgba(C.tense, a);
       g.beginPath();
@@ -499,7 +569,7 @@ export function create(E) {
   }
   function charmPos(c, j, t, fin) {
     let u = c.u;
-    if (j === hero && fin > 0) u = lerp(c.u, 1, ease.inOutSine(clamp((t - finAt) / 2.6)));
+    if (j === hero && fin > 0) u = lerp(c.u, 1, ease.inOutSine(clamp((t - finAt) / GLIDE)));
     const q = pathAt(u);
     return q;
   }
@@ -507,10 +577,9 @@ export function create(E) {
     charms.forEach((c, j) => {
       const isHero = j === hero && finAt >= 0;
       if (isHero !== heroOnly) return;
-      const glideK = isHero ? ease.inOutSine(clamp((t - finAt) / 2.6)) : 0;
+      const glideK = isHero ? ease.inOutSine(clamp((t - finAt) / GLIDE)) : 0;
       const q = charmPos(c, j, t, fin);
-      let sz = charmSize(c, isHero ? lerp(c.u, 1, glideK * 0.5) : c.u);
-      if (isHero) sz = lerp(sz, (c.ph >= 0 ? restR * 1.55 : restR * 1.1), glideK);
+      const sz = isHero ? lerp(c.sz, c.ph >= 0 ? heroRest() : restR * 1.1, glideK) : c.sz;
       const un = 1 - c.q;                                   // how "unsteady" it still is
       const shake = reduced ? 0 : un * 2.2 * s * (1 + rush);
       const x = q.x + shake * Math.sin(t * 21 + c.seed), y = q.y + shake * Math.cos(t * 17 + c.seed * 1.3);
@@ -559,7 +628,7 @@ export function create(E) {
   function drawCore(t, settle, fin) {
     const br = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(t * 0.9);
     glow(g, ox, oy, coreR * (2 + 0.8 * shown + fin), C.calm, 0.16 + 0.34 * shown + 0.2 * fin + 0.05 * br);
-    const heroIn = finAt >= 0 ? smooth(clamp((t - finAt - 1.6) / 1.0)) : 0;
+    const heroIn = finAt >= 0 ? smooth(clamp((t - finAt - (GLIDE - 0.9)) / 0.9)) : 0;
     if (heroIn < 1) orb(g, ox, oy, coreR * (0.34 + 0.08 * settle), mix(C.pearl, C.clear, settle), { alpha: 0.9 * (1 - heroIn) });
     if (settleAt >= 0 && !reduced) {
       const k = clamp((t - settleAt) / 1.6);
@@ -611,7 +680,7 @@ export function create(E) {
   }
   function drawFinale(t, fin) {
     if (finAt < 0) return;
-    const k = clamp((t - finAt) / 2.6);
+    const k = clamp((t - finAt) / GLIDE);
     if (k >= 1 && !heroArrived) {
       heroArrived = true;
       E.sound('chime', { intensity: E.heavy ? 0.25 : 0.4 });
@@ -656,7 +725,6 @@ export function create(E) {
     frame,
     down(p) {
       if (finAt >= 0) return;
-      E.ripples.add(p.x, p.y, { colour: C.calm, speed: 70, alpha: 0.35, r: 6 });
       if (drag == null && prog < 0.999 + 1e-9 && nearTrace(p)) {
         drag = p.id; fingerX = p.x; fingerY = p.y; lastMoveT = p.t; off = false;
         startHum();

@@ -12,7 +12,7 @@
 // colours as the pearl's light reaches them. Words are written in light
 // along the top of the arch, wavering at first, then resting still.
 
-import { TAU, clamp, lerp, invLerp, smooth, ease, rgba, mix, glow, glint, orb, shadow, canvas, rng, roundRect, FONT } from '../fx.js';
+import { TAU, clamp, lerp, invLerp, smooth, ease, rgba, mix, hex, glow, glint, orb, shadow, canvas, rng, roundRect, FONT } from '../fx.js';
 import { Wobble } from '../kit.js';
 
 export const meta = {
@@ -40,6 +40,19 @@ const STUDS = 21;
 const NOTES = [0, 1, 2, 3, 4, 4, 3, 2, 1, 0];   // rises to the keystone and falls again
 const TRACK = 0.7;         // letter spacing along the arch (px)
 
+// a saturated, mid-light version of a colour: pastel realm tints keep their hue as opaque glass
+function vivid(h, sMin = 0.75, lMax = 0.66) {
+  const [r, g, b] = hex(h).map((v) => v / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), l0 = (mx + mn) / 2, d = mx - mn;
+  if (d < 1e-3) return h;
+  const s0 = d / (1 - Math.abs(2 * l0 - 1));
+  let hh = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; hh = (hh * 60 + 360) % 360;
+  if (s0 < 0.32) return h;                                       // near-neutral light (moonlight, mist) stays as it is
+  const s = Math.max(s0, sMin), l = Math.min(l0, lMax), c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(((hh / 60) % 2) - 1)), m = l - c / 2;
+  const [R, G, B] = hh < 60 ? [c, x, 0] : hh < 120 ? [x, c, 0] : hh < 180 ? [0, c, x] : hh < 240 ? [0, x, c] : hh < 300 ? [x, 0, c] : [c, 0, x];
+  const t = (v) => Math.round(clamp(v + m) * 255).toString(16).padStart(2, '0');
+  return `#${t(R)}${t(G)}${t(B)}`;
+}
+
 export function create(E) {
   const { g, stage, photos, words } = E;
   const pal = E.pal;
@@ -54,13 +67,16 @@ export function create(E) {
   const WARM = soft(pal.warm || '#ffb37a');
   const LANT = loop ? soft(mix([pal.warm || '#ffb37a', pal.accent, pal.glow][Math.floor(E.rand() * 3)], '#ffffff', 0.15)) : WARM;   // lantern light in the empty windows
   const DEEP = mix(pal.deep || '#15123d', '#04031a', 0.5);
-  const BODY = mix(DEEP, TINT, 0.3);
+  const NEON = vivid(TINT);                                     // the lit core of the glass
+  const BODY = mix(DEEP, NEON, 0.34);
   const PEARL = mix(LIGHT, '#ffffff', 0.5);
+  const RIM = rgba(mix(NEON, '#ffffff', 0.45), 0.94);           // coloured glass rim (reads on pale skies too)
+  const FRAME = mix(NEON, '#ffffff', 0.42);
   const INK = '#fffaf0';
   const TRAIL = [[11, 0.12, TINT], [5, 0.34, LIGHT], [1.8, 0.9, '#ffffff']];
 
   // ---- geometry (local coords: origin at the floor between the feet, y up = negative)
-  let a, bw, Rc, Lg, L, H, span, Ro, winH, cx, footY, railOff, br, fontPx;
+  let a, bw, Rc, Lg, L, H, span, winH, cx, footY, railOff, br, fontPx, sideL = false;
   const LOC = new Float32Array((N + 1) * 4);
   const WAVE = new Float32Array(N + 1);
   for (let i = 0; i <= N; i++) WAVE[i] = Math.sin((i / N) * Math.PI * 3);
@@ -106,25 +122,63 @@ export function create(E) {
   const shift = loop ? Math.floor(E.rand() * WN) : 0;
   for (let j = 0; j < m; j++) { const base = m >= WN ? j : Math.floor(((j + 0.5) * WN) / m); slotPh[(base + shift) % WN] = (hero + 1 + j) % n; }
   const wins = slotPh.map((ph, k) => ({
-    ph, th: Math.PI + 0.34 + (k * (Math.PI - 0.68)) / (WN - 1) + (loop ? (E.rand() - 0.5) * 0.06 : 0),
-    u: 0, thr: 0, rank: 0, warm: 0, waking: false, bob: 0, bv: 0, lift: 0, delay: 0, hopAt: 0, flash: 0,
+    ph, k, jit: loop ? (E.rand() - 0.5) * 0.06 : 0, fl: k * 1.7 + 0.4,
+    lx: 0, ly: 0, u: 0, thr: 0, rank: 0, warm: 0, waking: false, bob: 0, bv: 0, lift: 0, delay: 0, hopAt: 0, flash: 0,
   }));
-  const order = wins.slice().sort((p, q) => (dir > 0 ? p.th - q.th : q.th - p.th));
+  // windows run from the left foot to the right foot in both layouts; the light wakes them in the pearl's direction
+  const order = wins.slice().sort((p, q) => (dir > 0 ? p.k - q.k : q.k - p.k));
   order.forEach((w, r) => { w.rank = r; w.thr = 0.08 + r * 0.12; });
 
   const MN = lowStim ? 8 : reduced ? 10 : 16;
   const motes = Array.from({ length: MN }, () => ({ x: E.rand() * 2 - 1, y: E.rand(), sp: 0.03 + E.rand() * 0.05, ph: E.rand() * TAU, r: 0.6 + E.rand() * 0.8 }));
 
+  // Size the gate so that everything — at its fullest breath, lean and bob — stays inside the stage.
+  // Tall stages: the windows ring the arch as a halo. Short stages: they stand in two columns
+  // beside the legs, which lets the arch itself be much larger.
+  const WTH = 0.42;          // lowest halo window above the arch's spring line (rad)
+  function geo(aa, side) {
+    const bw0 = aa * 0.3, Rc0 = aa + bw0 / 2, Lg0 = (2 * aa) / 0.78 - aa;
+    const wh = Math.max(stage.w < 340 ? 40 : 44, aa * 0.6), ww = wh * 0.78, br0 = clamp(aa * 0.125, 9, 15);
+    const down = Math.max(aa * 0.42, br0 * 3.1 + 2 - aa * 0.08), pearlUp = (Lg0 + Rc0 + bw0 * 0.64) * 1.09 + br0 * 3.1 + 3;   // the pearl (and its touch ring) at the keystone
+    if (!side) {
+      const Ro = Rc0 + bw0 / 2 + aa * 0.1 + wh / 2;
+      return { wh, Ro, down, ok: true, up: Math.max(pearlUp, (Lg0 + Ro) * 1.08 + wh * 0.62 + aa * 0.1 + 10), half: Ro * Math.cos(WTH) * 1.05 + wh * 0.46 + aa * 0.06 + 2 };
+    }
+    const X = Rc0 + bw0 * 0.64 + br0 + 8 + ww / 2, yLo = wh / 2 + aa * 0.04, yHi = Lg0 + Rc0 * 0.5;
+    return { wh, X, yLo, yHi, down, ok: (yHi - yLo) / 2 >= wh + 2,
+      up: Math.max(pearlUp, (Lg0 + Rc0 + bw0 / 2) * 1.08 + aa * 0.1 + 10, yHi * 1.08 + wh * 0.62 + aa * 0.1 + 10), half: X * 1.05 + wh * 0.46 + aa * 0.06 + 2 };
+  }
+  function solve(side) {
+    let aa = Math.min(stage.w / 3.4, stage.h / 3.3);
+    for (let i = 0; i < 7; i++) { const d = geo(aa, side); aa *= Math.min(1, stage.h / (d.up + d.down), stage.w / 2 / d.half); }
+    return Math.max(30, aa);
+  }
+  function uOf(lx, ly) {        // arch position (0..1) nearest a local point beside it
+    if (ly > -Lg) return clamp((lx < 0 ? -ly : L + ly) / L);
+    let th = Math.atan2(ly + Lg, lx); if (th < 0) th += TAU;
+    return clamp((Lg + (clamp(th, Math.PI, TAU) - Math.PI) * Rc) / L);
+  }
   function fit() {
-    a = Math.max(34, Math.min(stage.w / 3.8, stage.h / 4.3));
+    const aH = solve(false), aS = solve(true);
+    sideL = geo(aS, true).ok && aS > aH * 1.12;
+    a = sideL ? aS : aH;
+    const d = geo(a, sideL);
     bw = a * 0.3; Rc = a + bw / 2; H = (2 * a) / 0.78; Lg = H - a; L = 2 * Lg + Math.PI * Rc; span = Lg + Rc;
-    winH = Math.max(44, a * 0.6); Ro = Rc + bw / 2 + a * 0.12 + winH / 2;
-    const above = Lg + Ro + winH / 2 + 8, below = a * 0.4;
+    winH = d.wh;
     cx = stage.cx;
-    footY = Math.min(Math.max(stage.cy + (above - below) / 2, stage.y + above), stage.y + stage.h - below);
+    footY = Math.min(Math.max(stage.cy + (d.up - d.down) / 2, stage.y + d.up), stage.y + stage.h - d.down);
     railOff = bw * 0.64; br = clamp(a * 0.125, 9, 15); fontPx = clamp(bw * 0.5, 12, 16);
     for (let i = 0; i <= N; i++) { at((i / N) * L, Q); LOC[i * 4] = Q.x; LOC[i * 4 + 1] = Q.y; LOC[i * 4 + 2] = Q.nx; LOC[i * 4 + 3] = Q.ny; }
-    for (const w of wins) w.u = (Lg + (w.th - Math.PI) * Rc) / L;
+    for (const w of wins) {
+      if (sideL) {
+        const lv = w.k < 3 ? w.k : 5 - w.k, yy = lerp(d.yLo, d.yHi, lv / 2);
+        w.lx = (w.k < 3 ? -1 : 1) * d.X; w.ly = -yy;
+      } else {
+        const th = Math.PI + WTH + (w.k * (Math.PI - 2 * WTH)) / (WN - 1) + w.jit;
+        w.lx = Math.cos(th) * d.Ro; w.ly = -Lg + Math.sin(th) * d.Ro;
+      }
+      w.u = uOf(w.lx, w.ly);
+    }
     const my = footY - span * 0.55;
     gBack = g.createRadialGradient(cx, my, a * 0.3, cx, my, a * 2.4);
     gBack.addColorStop(0, rgba(DEEP, 0.46)); gBack.addColorStop(0.6, rgba(DEEP, 0.26)); gBack.addColorStop(1, rgba(DEEP, 0));
@@ -153,9 +207,9 @@ export function create(E) {
     g.stroke();
   }
   function railAt(uu, off, o) { at(uu * L, Q); const w = off + S.wob * Math.sin(uu * Math.PI * 3); return xf(Q.x + Q.nx * w, Q.y + Q.ny * w, S, o); }
-  function winPos(w, o) {
-    xf(Math.cos(w.th) * Ro, -Lg + Math.sin(w.th) * Ro, S, o);
-    o.y += w.bob - w.lift * a * 0.09;
+  function winPos(w, o) {          // windows breathe with the arch but lean only half as far
+    o.x = cx + w.lx * S.sx - (w.ly * S.lean * 0.5 * a) / span;
+    o.y = footY + w.ly * S.sy + w.bob - w.lift * a * 0.09;
     return o;
   }
   function archPath(c, x, y, w, h) {
@@ -239,19 +293,19 @@ export function create(E) {
     railAt(u, railOff, O);
     if (lastBX != null) pvx = lerp(pvx, (O.x - lastBX) / dt, 1 - Math.exp(-dt * 8));
     lastBX = O.x;
-    const leanT = clamp(pvx / 1100, -0.28, 0.28) * amp * (reduced ? 0.4 : 1);
+    const leanT = clamp(pvx / 1600, -0.13, 0.13) * amp * (reduced ? 0.4 : 1);
     S.lv += (30 * (leanT - S.lean) - (reduced ? 11 : 5) * S.lv) * dt; S.lean += S.lv * dt;
     wobAmp = lerp(wobAmp, reduced ? 0 : rush * amp * bw * 0.4, 1 - Math.exp(-dt * 3));
     S.wob = wobAmp * Math.sin(t * 8.5);
     const wv = wob.update(dt) * (reduced ? 0.01 : 0.028);
-    S.sx = 1 + 0.045 * S.b + wv; S.sy = 1 + 0.075 * S.b - wv * 0.5;
+    S.sx = 1 + 0.04 * S.b + wv; S.sy = 1 + 0.064 * S.b - wv * 0.5;
     const spread = (1 - smooth(progD)) * (1 - calm0 * 0.5);
     for (let j = 0; j < echoes.length; j++) {
       const e = echoes[j];
       springStep(e, S.b, EK[j], 2 * Math.sqrt(EK[j]) * 0.6, dt);
       e.lean += (S.lean - e.lean) * (1 - Math.exp(-dt * EK[j] * 0.4));
-      const sp = spread * (j + 1) * 0.03 * (0.75 + 0.25 * Math.sin(t * 0.5 + j * 1.7));
-      e.sx = 1 + 0.045 * e.b + sp; e.sy = 1 + 0.075 * e.b + sp * 1.25;
+      const sp = spread * (j + 1) * (sideL ? 0.016 : 0.03) * (0.75 + 0.25 * Math.sin(t * 0.5 + j * 1.7));
+      e.sx = 1 + 0.04 * e.b + sp; e.sy = 1 + 0.064 * e.b + sp * 1.25;
     }
 
     // windows warm as the light reaches them; the hero clears at halfway
@@ -360,26 +414,32 @@ export function create(E) {
   function drawWindows(t, st, fin) {
     for (const w of wins) {
       winPos(w, O);
-      const x = O.x, y = O.y + (reduced ? 0 : Math.sin(t * 0.8 + w.th * 3) * 1.6 * (1 - st));
+      const x = O.x, y = O.y + (reduced ? 0 : Math.sin(t * 0.8 + w.fl) * 1.6 * (1 - st));
       const k = ease.inOutSine(w.warm);
       const sz = winH * (1 + 0.05 * k + 0.06 * fin + 0.06 * w.flash);
       const ww = sz * 0.78;
       glow(g, x, y, sz * 1.05, w.ph >= 0 ? photos.colour(w.ph) : TINT, 0.1 + 0.28 * k + 0.25 * fin + 0.3 * w.flash);
       shadow(g, x, y + sz * 0.56, ww * 0.5, sz * 0.08, 0.25);
+      // a soft dark seat behind the glass, so the window holds its edge on pale skies
+      g.fillStyle = rgba(DEEP, 0.3); archPath(g, x, y + 1.5, ww + 6, sz + 6); g.fill();
       if (w.ph >= 0) {
-        photos.draw(g, w.ph, x, y, sz, { shape: 'arch', tone: 'mist', toneMix: (1 - k) * 0.72, blur: (1 - k) * 0.45, alpha: 0.72 + 0.28 * k, glow: 0.15 + 0.35 * k + 0.3 * fin, glowColour: LIGHT, shadow: false });
+        photos.draw(g, w.ph, x, y, sz, { shape: 'arch', tone: 'mist', toneMix: (1 - k) * 0.72, blur: (1 - k) * 0.45, alpha: 0.78 + 0.22 * k, glow: 0.15 + 0.35 * k + 0.3 * fin, glowColour: LIGHT, shadow: false });
       } else {
-        const gr = g.createLinearGradient(0, y - sz / 2, 0, y + sz / 2);
-        gr.addColorStop(0, rgba(mix(DEEP, TINT, 0.38 + 0.2 * k), 0.82)); gr.addColorStop(0.62, rgba(mix(DEEP, TINT, 0.55 + 0.25 * k), 0.8)); gr.addColorStop(1, rgba(mix(TINT, LANT, 0.55), 0.8 + 0.15 * k));
-        g.fillStyle = gr; archPath(g, x, y, ww, sz); g.fill();
-        glow(g, x, y + sz * 0.12, ww * (0.45 + 0.25 * k), LANT, 0.25 + 0.5 * k + 0.2 * fin);
-        orb(g, x, y + sz * 0.12, Math.max(2.5, ww * 0.09), mix(LANT, '#ffffff', 0.5), { alpha: 0.6 + 0.4 * k });
-        glint(g, x, y + sz * 0.12, ww * (0.2 + 0.06 * k), '#ffffff', 0.18 + 0.22 * k, reduced ? 0 : t * 0.15 + w.th);
+        // a little piece of the doorway's twilight, with its own lantern; misted until the light arrives
+        if (!vista) vista = buildVista(2 * a);
+        g.save(); g.imageSmoothingQuality = 'high'; g.translate(x, y); if (w.k % 2) g.scale(-1, 1);       // mirrored every other window
+        g.drawImage(vista, -ww / 2, -sz / 2, ww, sz); g.restore();
+        if (k < 0.995) { g.fillStyle = rgba(mix(LIGHT, DEEP, 0.35), 0.42 * (1 - k)); archPath(g, x, y, ww, sz); g.fill(); }
+        const ly = y + sz * 0.14;
+        glow(g, x, ly, ww * (0.55 + 0.3 * k), LANT, 0.22 + 0.55 * k + 0.2 * fin + 0.3 * w.flash);
+        orb(g, x, ly, Math.max(2.5, ww * (0.09 + 0.02 * k)), mix(LANT, '#ffffff', 0.45), { alpha: 0.5 + 0.5 * k });
       }
-      // luminous frame and a glass highlight
+      // coloured glass frame + a soft inner light line and a glass highlight
+      g.strokeStyle = rgba(FRAME, 0.5 + 0.38 * k + 0.12 * fin); g.lineWidth = 1.6;
+      archPath(g, x, y, ww + 3, sz + 3); g.stroke();
       g.save(); g.globalCompositeOperation = 'lighter';
-      archPath(g, x, y, ww + 3, sz + 3); g.strokeStyle = rgba(LIGHT, 0.3 + 0.4 * k + 0.2 * fin); g.lineWidth = 1.5; g.stroke();
-      g.fillStyle = 'rgba(255,255,255,0.08)'; g.beginPath(); g.ellipse(x - ww * 0.18, y - sz * 0.28, ww * 0.12, sz * 0.16, 0.3, 0, TAU); g.fill();
+      g.strokeStyle = rgba(LIGHT, 0.12 + 0.3 * k + 0.2 * fin + 0.3 * w.flash); g.lineWidth = 3; archPath(g, x, y, ww + 3, sz + 3); g.stroke();
+      g.fillStyle = 'rgba(255,255,255,0.09)'; g.beginPath(); g.ellipse(x - ww * 0.18, y - sz * 0.28, ww * 0.12, sz * 0.16, 0.3, 0, TAU); g.fill();
       g.restore();
     }
   }
@@ -454,14 +514,20 @@ export function create(E) {
 
   function drawBand(t, st, fin) {
     g.save(); g.lineCap = 'butt'; g.lineJoin = 'round';
+    // a soft dark seat under the glass keeps the light reading as light on pale skies
+    g.strokeStyle = rgba(DEEP, 0.12); g.lineWidth = bw * 2.4; line(SP, 0, N);
+    g.strokeStyle = rgba(DEEP, 0.18); g.lineWidth = bw * 1.6; line(SP, 0, N);
     g.globalCompositeOperation = 'lighter';
     g.strokeStyle = rgba(TINT, 0.1 + 0.08 * st + 0.1 * fin); g.lineWidth = bw * 2.8; line(SP, 0, N);
-    g.strokeStyle = rgba(LIGHT, 0.13 + 0.08 * st + 0.1 * fin); g.lineWidth = bw * 1.7; line(SP, 0, N);
+    g.strokeStyle = rgba(LIGHT, 0.12 + 0.08 * st + 0.1 * fin); g.lineWidth = bw * 1.7; line(SP, 0, N);
     g.globalCompositeOperation = 'source-over';
-    g.strokeStyle = rgba(mix(LIGHT, '#ffffff', 0.3), 0.9); g.lineWidth = bw + 3; line(SP, 0, N);
+    g.strokeStyle = RIM; g.lineWidth = bw + 3; line(SP, 0, N);
     g.strokeStyle = gBand; g.lineWidth = bw - 1.6; line(SP, 0, N);
+    // the lit core of the glass tube, saturated so it keeps its colour in every realm
+    g.strokeStyle = rgba(NEON, 0.5 + 0.2 * st + 0.2 * fin); g.lineWidth = bw * 0.34; line(SP, 0, N);
     g.globalCompositeOperation = 'lighter';
     g.strokeStyle = rgba(TINT, 0.16 + 0.16 * st + 0.14 * fin); g.lineWidth = bw * 0.7; line(SP, 0, N);
+    g.strokeStyle = rgba('#ffffff', 0.12 + 0.2 * st + 0.2 * fin); g.lineWidth = Math.max(1, bw * 0.08); line(SP, 0, N);
     // glass-tube pinstripes just inside each rim
     g.strokeStyle = rgba(LIGHT, 0.32 + 0.2 * st + 0.2 * fin); g.lineWidth = Math.max(1, bw * 0.06);
     fillBuf(EP, S, bw * 0.34); line(EP, 0, N);
@@ -540,15 +606,25 @@ export function create(E) {
 
   function drawPearl(t, st, fin) {
     railAt(u, railOff, O);
-    const x = O.x, y = O.y, touching = drag != null;
+    const x = O.x, y = O.y, touching = drag != null, r = br * (touching ? 1.12 : 1);
     const pulse = reduced ? 0 : Math.sin(t * 2.1) * 0.08;
-    glow(g, x, y, br * (3.4 + pulse * 4 + call * 1.5), TINT, (touching ? 0.72 : 0.46) + fin * 0.2 + call * 0.3);
-    glow(g, x, y, br * 1.6, '#ffffff', 0.3);
-    orb(g, x, y, br * (touching ? 1.12 : 1), PEARL);
+    // dark contact halo: the pearl of light stands out on pale skies as well as dark ones
+    const hs = g.createRadialGradient(x, y, r * 0.7, x, y, r * 2.1);
+    hs.addColorStop(0, rgba(DEEP, 0.42)); hs.addColorStop(1, rgba(DEEP, 0));
+    g.fillStyle = hs; g.beginPath(); g.arc(x, y, r * 2.1, 0, TAU); g.fill();
+    glow(g, x, y, br * (3.4 + pulse * 4 + call * 1.5), TINT, (touching ? 0.72 : 0.5) + fin * 0.2 + call * 0.3);
+    // a glowing pearl: white-hot heart, the realm's light in its body, a coloured rim
+    const pg = g.createRadialGradient(x - r * 0.3, y - r * 0.36, r * 0.05, x, y, r);
+    pg.addColorStop(0, '#ffffff'); pg.addColorStop(0.34, PEARL); pg.addColorStop(0.78, mix(TINT, NEON, 0.6)); pg.addColorStop(1, mix(NEON, DEEP, 0.3));
+    g.fillStyle = pg; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+    g.strokeStyle = rgba('#ffffff', 0.75); g.lineWidth = 1.2; g.stroke();
+    glow(g, x, y, r * 1.7, '#ffffff', 0.32 + (touching ? 0.15 : 0));
+    g.save(); g.globalCompositeOperation = 'lighter'; g.fillStyle = 'rgba(255,255,255,0.55)';
+    g.beginPath(); g.ellipse(x - r * 0.3, y - r * 0.42, r * 0.34, r * 0.17, -0.5, 0, TAU); g.fill(); g.restore();
     if (!touching && !doneFlag && finAt < 0) {
       const ph = (t * 0.55) % 1;
-      g.strokeStyle = rgba(LIGHT, 0.45 * (1 - ph)); g.lineWidth = 1.5;
-      g.beginPath(); g.arc(x, y, br * (1.4 + ph * 1.8), 0, TAU); g.stroke();
+      g.strokeStyle = rgba(FRAME, 0.6 * (1 - ph)); g.lineWidth = 1.6;
+      g.beginPath(); g.arc(x, y, br * (1.4 + ph * 1.5), 0, TAU); g.stroke();
     }
   }
 
@@ -572,14 +648,16 @@ export function create(E) {
     hitD = bdist;
     return bu;
   }
+  function winAt(p) {
+    for (const w of wins) { winPos(w, O); if (Math.abs(p.x - O.x) < winH * 0.46 && Math.abs(p.y - O.y) < winH * 0.56) return w; }
+    return null;
+  }
   function tapElsewhere(p) {
-    for (const w of wins) {
-      winPos(w, O);
-      if (Math.hypot(p.x - O.x, p.y - O.y) < winH * 0.62) {
-        w.bv -= 45; w.flash = Math.max(w.flash, 0.6);
-        E.sound('bubble', { note: 3 + (w.rank % 5), intensity: 0.28 }); E.haptic('tick');
-        return;
-      }
+    const w = winAt(p);
+    if (w) {
+      w.bv -= 45; w.flash = Math.max(w.flash, 0.6);
+      E.sound('bubble', { note: 3 + (w.rank % 5), intensity: 0.28 }); E.haptic('tick');
+      return;
     }
     call = 1;
     E.ripples.add(p.x, p.y, { colour: LIGHT, alpha: 0.4, r: 6 });
@@ -595,7 +673,7 @@ export function create(E) {
       const uu = nearestU(p.x, p.y, null);
       railAt(u, railOff, O);
       const nearPearl = Math.hypot(p.x - O.x, p.y - O.y) < Math.max(46, br * 3.2);
-      if (!nearPearl && hitD > bw * 0.5 + 40) { tapElsewhere(p); return; }
+      if (!nearPearl && (hitD > bw * 0.5 + 40 || (hitD > bw * 0.5 + 8 && winAt(p)))) { tapElsewhere(p); return; }
       drag = p.id; glide = false; assistLeft = 0;
       if (nearPearl) { target = u; repos = false; } else { target = clamp(uu, U0, U1); repos = Math.abs(target - u) > 0.04; }
       E.ripples.add(O.x, O.y, { colour: LIGHT, alpha: 0.6, r: br });
@@ -612,9 +690,18 @@ export function create(E) {
       if (repos) { repos = false; target = u; } else { target = clamp(target, u - 0.5, u + 0.5); glide = Math.abs(target - u) > 0.002; }
     },
     assist() {
-      if (finAt >= 0 || drag != null || wanted >= 0.999) return;
+      if (finAt >= 0 || drag != null) return;
+      if (wanted >= 0.999) { wob.kick(0.15); return; }                     // only the law's last easing is left
+      // a press is one discrete step: ask the world law first, and answer "not yet" gently
+      if (!E.allow(Math.min(1, prog + 0.004))) {
+        wob.kick(0.45); waitT = E.now(); E.checkpoint('wait');
+        E.sound('drip', { note: 0, intensity: 0.16 }); E.haptic('tick');
+        return;
+      }
       glide = false; repos = false;
       assistLeft = Math.min(assistLeft + TRAVEL / 8 + 0.002, TRAVEL / 4 + 0.004);
+      call = Math.max(call, 0.5);
+      E.sound('pluck', { note: NOTES[fretOf(u)] + 1, intensity: 0.26 }); E.haptic('light');
     },
     pointAt(p) {
       const span0 = U1 - U0;
