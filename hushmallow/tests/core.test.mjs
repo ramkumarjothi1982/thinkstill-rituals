@@ -180,7 +180,7 @@ test('journey: logs finishes (no words), attaches check-ins, summarises honestly
   assert.equal(s.total, 3);
   assert.equal(s.week, 2);
   assert.equal(s.minutes, 9);
-  assert.deepEqual(s.felt, { lighter: 1, same: 1, heavier: 0 });
+  assert.deepEqual(s.felt, { lighter: 1, same: 1, heavier: 0, unsure: 0 });
   assert.equal(s.checkIns, 2);
   assert.deepEqual(s.families[0], ['anger', 2]);
   assert.deepEqual(s.mallows[0], ['glitzi', 2]);
