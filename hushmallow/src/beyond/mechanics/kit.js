@@ -58,7 +58,25 @@ export function setLowStim(b) { LOW = !!b; }
 const SPRITES = new Map();
 const mkCanvas = (w, hgt) => { const c = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(w, hgt) : Object.assign(document.createElement('canvas'), { width: w, height: hgt }); return c; };
 const JELLY_PX = 192;
-/** A lit jelly sphere (body, inner bounce light, rim, specular), drawn once per tint. */
+/**
+ * The Thought Mallow silhouette: a soft superellipse (the family of W2's
+ * Thought Mallows, src/mallows/thought/styles.js SHAPE: rounder than the
+ * seven Mallows, a little wider than tall, a softly flattened base).
+ */
+export function jellyPath(g, r, n = 2.3) {
+  const e = 2 / n;
+  g.beginPath();
+  for (let i = 0; i <= 56; i++) {
+    const t = (i / 56) * TAU;
+    const c = Math.cos(t), sn = Math.sin(t);
+    const x = Math.sign(c) * Math.abs(c) ** e * r;
+    let y = Math.sign(sn) * Math.abs(sn) ** e * r * 0.95;
+    if (y > 0) y *= 1 - 0.08 * (y / r) ** 6;
+    if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+  }
+  g.closePath();
+}
+/** A lit jelly body (body, inner bounce light, rim, specular), drawn once per tint. */
 export function jellySprite(light, deep) {
   const key = `j|${light}|${deep}`;
   let c = SPRITES.get(key);
@@ -69,28 +87,30 @@ export function jellySprite(light, deep) {
   g.translate(R, R);
   const r = R - 3;
   // body
-  let gr = g.createRadialGradient(-r * 0.3, -r * 0.36, r * 0.06, 0, 0, r);
+  let gr = g.createRadialGradient(-r * 0.3, -r * 0.36, r * 0.06, 0, 0, r * 1.08);
   gr.addColorStop(0, 'rgba(255,255,255,0.95)');
   gr.addColorStop(0.32, rgba(light, 0.92));
   gr.addColorStop(0.78, rgba(deep, 0.86));
   gr.addColorStop(1, rgba(mix(deep, '#120a38', 0.35), 0.9));
   g.fillStyle = gr;
-  g.beginPath(); g.arc(0, 0, r, 0, TAU); g.fill();
+  jellyPath(g, r); g.fill();
+  g.save();
+  jellyPath(g, r); g.clip();
   // light bouncing up inside the jelly
   gr = g.createRadialGradient(0, r * 0.62, 0, 0, r * 0.55, r * 0.75);
   gr.addColorStop(0, rgba(light, 0.55)); gr.addColorStop(1, rgba(light, 0));
-  g.fillStyle = gr;
-  g.beginPath(); g.arc(0, 0, r, 0, TAU); g.fill();
-  // rim light
-  g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = 2.2;
-  g.beginPath(); g.arc(0, 0, r - 2, Math.PI * 1.08, Math.PI * 1.72); g.stroke();
-  g.strokeStyle = rgba(light, 0.5); g.lineWidth = 1.6;
-  g.beginPath(); g.arc(0, 0, r - 1.5, Math.PI * 0.15, Math.PI * 0.62); g.stroke();
+  g.fillStyle = gr; g.fillRect(-r, -r, r * 2, r * 2);
+  g.restore();
+  // rim light: bright at the top left, fading round the body
+  gr = g.createLinearGradient(-r, -r, r, r);
+  gr.addColorStop(0, 'rgba(255,255,255,0.7)'); gr.addColorStop(0.45, rgba(light, 0.25)); gr.addColorStop(1, rgba(light, 0.4));
+  g.strokeStyle = gr; g.lineWidth = 2;
+  jellyPath(g, r - 1.5); g.stroke();
   // specular
   g.fillStyle = 'rgba(255,255,255,0.75)';
-  g.beginPath(); g.ellipse(-r * 0.38, -r * 0.46, r * 0.2, r * 0.11, -0.55, 0, TAU); g.fill();
+  g.beginPath(); g.ellipse(-r * 0.4, -r * 0.48, r * 0.21, r * 0.11, -0.5, 0, TAU); g.fill();
   g.fillStyle = 'rgba(255,255,255,0.5)';
-  g.beginPath(); g.arc(-r * 0.12, -r * 0.6, r * 0.045, 0, TAU); g.fill();
+  g.beginPath(); g.arc(-r * 0.12, -r * 0.62, r * 0.045, 0, TAU); g.fill();
   SPRITES.set(key, c);
   return c;
 }

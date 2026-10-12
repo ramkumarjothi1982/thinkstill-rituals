@@ -40,9 +40,15 @@ test('registry: the two pilot worlds, honest status and skill ids', () => {
   const ocean = WORLDS.find((w) => w.id === 'luminous-ocean');
   assert.ok(storm && ocean);
   assert.equal(storm.status, STATUS.PLAYABLE);
-  assert.notEqual(ocean.status, STATUS.PLAYABLE, 'the ocean is not built yet, so it must never be offered');
+  assert.equal(ocean.status, STATUS.PLAYABLE, 'the ocean is built (W4b)');
   assert.equal(storm.memory.skillId, 'slowing-down');
   assert.equal(ocean.memory.skillId, 'a-little-more-room');
+  // 'long-waves' is about pace: it offers nothing; 'distance' offers A Little More Room (its found-text)
+  assert.equal(ocean.discoveries['long-waves'].offer, false);
+  assert.equal(ocean.discoveries.distance.skillId, 'a-little-more-room');
+  assert.deepEqual(ocean.discoveries['long-waves'].lines, ['Slow and long…', '…and the whole sea rolls.']);
+  assert.deepEqual(ocean.discoveries.distance.lines, ['Look how far it drifted.', 'Still there. Still yours.', 'Just more sea in between.']);
+  assert.equal(ocean.horizon, 0.44);
   assert.deepEqual(storm.discoveries.slowing.lines, ['See what happened?', 'You changed your pace.', 'The world responded.']);
   assert.ok(storm.next.includes('luminous-ocean'));
   assert.equal(storm.horizon, REALM_HORIZON['static-storm']);
@@ -112,13 +118,14 @@ test('selectNext: a rotation bag per feeling × intention plays everything befor
   assert.ok(!bags['sad|calm']);
 });
 
-test('selectNext: nothing suitable → null, and the real registry never offers the unbuilt ocean', () => {
+test('selectNext: nothing suitable → null; the real registry drifts from the storm into the ocean', () => {
   assert.equal(selectNext([fake('a')], { current: 'a', emotion: 'angry' }).id, null);
   const reg = createRegistry();
   const r = reg.select({ current: 'static-storm', emotion: 'anxious', intention: 'let-go' });
-  assert.equal(r.id, null);
+  assert.equal(r.id, 'luminous-ocean', 'the storm’s authored next world');
   assert.equal(reg.select({ current: null, emotion: 'angry', intention: 'calm' }).id, 'static-storm');
-  assert.ok(reg.playable('static-storm') && !reg.playable('luminous-ocean'));
+  assert.equal(reg.select({ current: null, emotion: 'anxious', intention: 'let-go' }).id, 'luminous-ocean', 'the better fit for anxious × let go');
+  assert.ok(reg.playable('static-storm') && reg.playable('luminous-ocean'));
   assert.ok(hash01('x') >= 0 && hash01('x') < 1 && hash01('x') === hash01('x'));
   assert.ok(isPlayable({ status: STATUS.DEV }));
 });

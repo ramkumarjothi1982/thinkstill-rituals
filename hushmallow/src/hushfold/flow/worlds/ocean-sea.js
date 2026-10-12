@@ -330,14 +330,14 @@ export class Sea {
    * near the horizon). Directional packets use exact recurrences along the row (one exp and
    * one sin/cos per packet per row).
    */
-  row(z, x0, step, n, dz, o, H, HX, HZ, GX, GZ, AMP) {
+  row(z, x0, step, n, dz, o, H, HX, HZ, GX, GZ, AMP, filter = true) {
     for (let c = 0; c < n; c++) { H[o + c] = 0; HX[o + c] = 0; HZ[o + c] = 0; GX[o + c] = 0; GZ[o + c] = 0; AMP[o + c] = 0; }
     const sx = Math.abs(step);
     for (let i = 0; i < this.max; i++) {
       if (!this.on[i] || this.A[i] <= 0) continue;
       const k = this.k[i];
       if (this.ring[i]) {
-        const att = Math.exp(-0.25 * k * k * (sx * sx + dz * dz));
+        const att = filter ? Math.exp(-0.25 * k * k * (sx * sx + dz * dz)) : 1;
         if (att < 0.02) continue;
         const A = this.A[i] * att, front = this.cg[i] * this.age[i], sl = this.sl[i], q0 = this._q[i] || 0, lam = this.lam[i];
         const ez = z - this.ez[i];
@@ -354,7 +354,7 @@ export class Sea {
         continue;
       }
       const dx = this.dx[i], dzv = this.dz[i];
-      const att = Math.exp(-0.5 * ((k * dx * sx) ** 2 + (k * dzv * dz) ** 2));
+      const att = filter ? Math.exp(-0.5 * ((k * dx * sx) ** 2 + (k * dzv * dz) ** 2)) : 1;
       if (att < 0.02) continue;
       const A = this.A[i] * att, sl = this.sl[i], sw = this.sw[i], q0 = this._q[i] || 0;
       const run = this.free[i] ? this.cg[i] * this.age[i] : 0;

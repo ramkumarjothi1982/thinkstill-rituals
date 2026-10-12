@@ -98,20 +98,29 @@ export function planOcean({ W, H, band, mallow = null, textW = 0, n = 0 }) {
     return null;
   };
   const trySide = () => {
-    // beside the hero, on the roomier side, at mid water
+    // beside the hero, on the roomier side, at mid water; its words above, below or beside it
     const leftW = M.left - E, rightW = W - E - M.right;
     const left = leftW >= rightW;
-    const span = left ? [E, M.left - 8] : [M.right + 8, W - E];
-    const pw = P ? Math.min(P.w, span[1] - span[0]) : 0;
-    const x = clamp((span[0] + span[1]) / 2, E + Math.max(r, pw / 2), W - E - Math.max(r, pw / 2));
-    for (let y = Math.max(hy + r * 0.4 + 6, bandBottom + 8 + (P ? P.h + 4 : 0) + r); y <= floor - r; y += 4) {
-      const body = box(x, y, 2 * r, 2 * r);
-      if (!fits(body)) continue;
-      if (!P) return { home: { x, y, r }, plate: null };
-      const above = box(x, y - r - 4 - P.h / 2, Math.min(P.w, labelW), P.h);
-      if (above.y0 >= bandBottom + 4 && !overlaps(above, mrect)) return { home: { x, y, r }, plate: { ...P, side: 'side', x, y: above.y0 + P.h / 2 } };
-      const below = box(x, y + r + 4 + P.h / 2, Math.min(P.w, labelW), P.h);
-      if (below.y1 <= floor && !overlaps(below, mrect)) return { home: { x, y, r }, plate: { ...P, side: 'below', x, y: below.y0 + P.h / 2 } };
+    const span = left ? [E, mrect.x0 - 2] : [mrect.x1 + 2, W - E];
+    const pw = P ? Math.min(P.w, labelW) : 0;
+    const xs = [];
+    const mid = (span[0] + span[1]) / 2;
+    xs.push(clamp(mid, span[0] + Math.max(r, pw / 2), span[1] - Math.max(r, pw / 2)));
+    if (P) { const xL = span[0] + r + 2, xR = span[1] - r - 2; xs.push(left ? xR : xL); }
+    for (const x of xs) {
+      for (let y = Math.max(hy + r * 0.4 + 6, bandBottom + 4 + r); y <= floor - r; y += 4) {
+        const body = box(x, y, 2 * r, 2 * r);
+        if (!fits(body)) continue;
+        if (!P) return { home: { x, y, r }, plate: null };
+        const cands = [
+          ['above', x, y - r - 4 - P.h / 2], ['below', x, y + r + 4 + P.h / 2],
+          ['side', left ? x - r - 8 - pw / 2 : x + r + 8 + pw / 2, y], ['side', left ? x + r + 8 + pw / 2 : x - r - 8 - pw / 2, y],
+        ];
+        for (const [side, px, py] of cands) {
+          const b = box(px, py, pw, P.h);
+          if (fits(b) && !overlaps(b, body, 2)) return { home: { x, y, r }, plate: { ...P, w: pw, side, x: px, y: py } };
+        }
+      }
     }
     return null;
   };

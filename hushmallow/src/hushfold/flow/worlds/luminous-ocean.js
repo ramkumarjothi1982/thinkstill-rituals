@@ -966,7 +966,7 @@ export function create(ctx) {
         const s2 = Z0 / (Z0 + Math.max(zz, -0.85 * Z0));
         const sx = W / 2 + xx * s2;
         let sy = hy + (Hw - h) * s2;
-        if (wake) sy += wake.at(sx, y) * 3 * (rm ? 0.5 : 1);
+        if (wake) sy += wake.at(sx, rY[j]) * 3 * (rm ? 0.5 : 1);
         gSX[q] = sx; gSY[q] = Math.max(hy, sy);
         // normal, view, reflection
         let nx = -hx, ny = 1, nz = -hz; const nl = Math.hypot(nx, ny, nz); nx /= nl; ny /= nl; nz /= nl;

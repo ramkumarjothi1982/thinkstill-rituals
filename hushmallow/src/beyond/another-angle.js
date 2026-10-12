@@ -58,7 +58,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   const S = {
     left: false, phase: 'arrive', text: params.text || '', emotion: null, intention: null,
     scene: null, shown: [], used: [], crisis: false, care: false, keepSupport: false, kept: false,
-    touches: 0, squeezes: 0, seq: 0, lastLineAt: 0, offlineSaid: false, explored: 0,
+    touches: 0, squeezes: 0, seq: 0, lastLineAt: 0, offlineSaid: false, explored: 0, sheetAt: -1e9,
   };
   const timers = new Set();
   const later = (fn, ms) => { const t = setTimeout(() => { timers.delete(t); if (!S.left) fn(); }, ms); timers.add(t); return t; };
@@ -83,6 +83,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   let canvas = null, g = null, dpr = 1, W = 0, H = 0;
   let subs = null, router = null, inputMod = null, touchBox = null, zt = null, zAd = null, compBox = null, ct = null, compAd = null, compId = null;
   let overlay = null, consentCard = null, mech = null, mechId = null, thought = null, thoughtTag = null, rigTicker = null, removeTicker = null;
+  let TL = null, wth = null, sheetObs = null;   // W2's ThoughtLayer (src/mallows/thought) and the person's Thought Mallow on it
   let area = { x: 16, y: 160, w: 358, h: 360 };
   const ripples = [];
   const layer = { overlay: 0 };
@@ -145,6 +146,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     const list = [rectOf(zAd), rectOf(compAd), overlay?.rect?.(), consentCard?.rect?.()];
     // while a mechanic is being played, its objects and labels stay clear; once it has landed, only the Mallows matter
     if (mech && !root.classList.contains('bx-recede')) list.push(...(mech.avoid?.() || []));
+    else if (thought?.w2 && !mech) list.push(...TL.rects());
     else if (thought && !mech) list.push({ left: thought.x - thought.r * 1.4, right: thought.x + thought.r * 1.4, top: thought.y - thought.r * 1.4, bottom: thought.y + thought.r * 1.4 + 44 });
     return list.filter(Boolean);
   }
@@ -164,7 +166,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       g.beginPath(); g.arc(r.x, r.y, rmOn() ? 18 : 10 + 50 * (1 - (1 - k) * (1 - k)), 0, Math.PI * 2); g.stroke();
       g.globalAlpha = 1;
     }
-    if (thought && !mech) drawThought(dt, t);
+    if (TL && TL.list.length) { try { TL.frame(dt, t, g); } catch (e) { console.warn('[another angle] thought layer', e?.message); } }
+    if (thought && !thought.w2 && !mech) drawThought(dt, t);
     if (mech) { try { mech.frame(dt, t); } catch (e) { console.warn('[another angle] mechanic frame', e?.message); } }
     g.globalAlpha = 1;
   }
@@ -173,9 +176,19 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   // The words become a small, distressed Thought Mallow while Zuzu explores:
   // it is squeezable too, and the mechanic takes it over from where it sits.
   function spawnThought() {
-    const [light, deep] = tintFor(S.emotion);
+    const [light, deep] = tintFor(S.look || S.emotion);
     const r = clamp(Math.min(area.w, area.h) * 0.12, 26, 42);
     const ov = overlay?.rect?.();
+    const fromY = ov?.bottom ? ov.top + 60 : area.y;
+    if (TL) {
+      // W2's Thought Mallow: the person's exact words, alive (emotion style, squeezable, tap to read)
+      try {
+        TL.clear();
+        wth = TL.add({ text: S.text, emotion: S.look || S.emotion || 'anxiety', intensity: 0.7, r }, { from: { x: innerWidth / 2, y: fromY }, home: { x: area.x + area.w / 2, y: area.y + area.h * 0.46 } });
+        thought = { get x() { return wth.x; }, get y() { return wth.y; }, get r() { return wth.r || r; }, w2: true };
+        return;
+      } catch (e) { console.info('[another angle] ThoughtLayer add failed; using the local Thought Mallow', e?.message); wth = null; }
+    }
     thought = new Blob({ x: innerWidth / 2, y: ov?.bottom ? ov.top + 60 : area.y, r, light, deep });
     thought.scale = rmOn() ? 1 : 0.2;
     thought.born = 0;
@@ -199,12 +212,16 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   }
   function thoughtPointer(e) {
     if (!thought) return false;
+    if (thought.w2) { const ok = TL.pointer(e); if (ok && e.type === 'down') { app.haptic('light'); S.touches++; } return ok; }
     if (e.type === 'down') { if (!thought.hit(e.x, e.y, 1.4)) return false; thought.grab(e); app.haptic('light'); S.touches++; return true; }
     if (e.type === 'move') return thought.drag(e);
     if (e.type === 'up' || e.type === 'cancel') { const p = thought.drop(e); if (p) placeThought(); return !!p; }
     return false;
   }
-  function dropThought() { thought = null; thoughtTag?.remove(); thoughtTag = null; }
+  function dropThought(fadeMs = 0) {
+    if (thought?.w2) { try { if (fadeMs > 0) TL.release(fadeMs); else TL.clear(); } catch { /* ignore */ } wth = null; }
+    thought = null; thoughtTag?.remove(); thoughtTag = null;
+  }
 
   // --------------------------------------------------------- input --
   function stagePointer(e) {
@@ -351,9 +368,11 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     layout();
   }
 
-  async function afterTell({ text, emotion, intention }) {
+  async function afterTell({ text, emotion, intention, input = null, reading = null }) {
     S.text = String(text || '').trim();
     S.emotion = emotion || null;
+    // how the Thought Mallow looks: the chosen feeling, else what the words suggest (only its look; nothing is sent)
+    S.look = emotion || input?.emotions?.[0]?.id || reading?.emotions?.[0]?.id || 'anxiety';
     S.intention = intention || null;
     S.shown = []; S.used = []; S.kept = false; S.explored = 0;
     // the app's own safety check first, always (never dependent on the server)
@@ -368,8 +387,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   function crisisMode() {
     S.crisis = true; S.phase = 'support';
     dropThought(); endMechanic(true); dismissCompanion();
-    // openInput already opened the urgent sheet when it saw the words; never twice
-    if (!document.querySelector('.sheet.open')) openSupport(app, { urgent: true });
+    // openInput opens the urgent sheet as soon as it sees the words: never a second time straight after
+    if (!document.querySelector('.sheet.open') && now() - S.sheetAt > 60000) openSupport(app, { urgent: true });
     zt?.setStage('comforting');
     dockShow({ finish: true });
     say(SAFETY.crisis, { hold: true });
@@ -459,10 +478,11 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     if (S.left || seq !== S.seq) return;
     const L = MECHANIC_LINES[scene.mechanic];
     const from = thought ? { x: thought.x, y: thought.y, r: thought.r } : null;
-    dropThought();
+    // the Thought Mallow hands over to the mechanic where it sits (a short cross-fade)
+    dropThought(rmOn() ? 120 : 420);
     const parts = sceneParts(S.text, scene);
     const ctx = {
-      g, area: () => area, from, scene, parts, text: S.text, emotion: S.emotion, tags: makeTags(root, { bounds: () => area }),
+      g, area: () => area, from, scene, parts, text: S.text, emotion: S.emotion || S.look, tags: makeTags(root, { bounds: () => area }),
       reducedMotion: rmOn, lowStim: lowOn,
       hint: (line) => { if (line && !subs?.holding) say(line, { mallow: 'zuzu', interrupt: true }); },
       // a mechanic's own question (find_boundary): the chips are the way on, so the assist pill steps aside meanwhile
@@ -702,6 +722,21 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
         zAd.fit = ({ cx, cy, size }) => { const lw = size / 0.64; world.setLayerSize({ w: lw, h: lw * 1.1 }); world.place({ x: (cx / innerWidth) * 100, y: ((cy - 0.098 * lw) / innerHeight) * 100, scale: 1 }); };
       }
       zAd.on('touch', onZuzuTouch);
+      // when a support sheet last opened (so crisis support is offered once, not twice in a row)
+      const sheets = document.getElementById('sheet-root');
+      if (sheets && typeof MutationObserver === 'function') {
+        sheetObs = new MutationObserver(() => { if (sheets.querySelector('.sheet')) S.sheetAt = now(); });
+        sheetObs.observe(sheets, { childList: true });
+      }
+      try {
+        const tm = await import('../mallows/thought/index.js');
+        if (S.left) return;
+        TL = new tm.ThoughtLayer({
+          ctx2d: g, tagRoot: root, reducedMotion: rmOn, lowStim: lowOn, keepOut: () => rectOf(zAd),
+          bounds: () => ({ left: area.x, top: area.y, right: area.x + area.w, bottom: area.y + area.h }),
+          haptic: (k) => app.haptic(k), audio: prefs.get('sound') ? app.audio : null,
+        });
+      } catch (e) { console.info('[another angle] ThoughtLayer unavailable; the local Thought Mallow stands in', e?.message); TL = null; }
       router = routerMod.createInputRouter({
         el: world.fx, mallow: zAd,
         thoughts: { hitTest: (x, y) => (compAd?.hitTest?.(x, y) ? compAd : null), pointer: (target, r) => target.pointer(r) },
@@ -714,8 +749,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       addEventListener('resize', onResize);
       visualViewport?.addEventListener('resize', onResize);
       offPrefs = prefs.onChange((k, v) => {
-        if (k === 'lowStim') { setLowStim(!!v); zt?.setLowStim(!!v); ct?.setLowStim(!!v); }
-        if (k === 'motion') { zt?.setReducedMotion(rmOn()); ct?.setReducedMotion(rmOn()); }
+        if (k === 'lowStim') { setLowStim(!!v); zt?.setLowStim(!!v); ct?.setLowStim(!!v); TL?.setLowStim(!!v); }
+        if (k === 'motion') { zt?.setReducedMotion(rmOn()); ct?.setReducedMotion(rmOn()); TL?.setReducedMotion(rmOn()); }
         if (k === 'sound') { zt?.setAudio(v ? app.audio : null); ct?.setAudio(v ? app.audio : null); }
       });
       resize();
@@ -735,6 +770,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       consentCard?.close();
       endMechanic(true);
       dropThought();
+      try { TL?.destroy(); } catch { /* ignore */ }
+      sheetObs?.disconnect();
+      TL = null;
       if (rigTicker) removeTicker?.(rigTicker);
       subs?.destroy();
       router?.destroy();
