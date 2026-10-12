@@ -118,8 +118,6 @@ const SIDE_NAMES = ['below', 'above', 'right', 'left'];
 const CANDS = Object.freeze([0, 0, 1, 0, 2, 0, 3, 0, 0, -0.32, 0, 0.32, 1, -0.32, 1, 0.32, 2, -0.6, 2, 0.6, 3, -0.6, 3, 0.6,
   0, -0.62, 0, 0.62, 1, -0.62, 1, 0.62, 2, -1.15, 2, 1.15, 3, -1.15, 3, 1.15]);
 const NC = CANDS.length / 2, NC_PLAN = 12;
-// a kept plate sitting this much on bodies (weight × covered fraction) looks for somewhere clearly better
-const SOFT_BAD = 2.2;
 /** How far each crowd level holds its thoughts (0 room … 4 packed). */
 export const CROWD_Z = Object.freeze([0, 0.2, 0.45, 0.62, 0.78]);
 // px² of padding overlap that still counts as "fits"
@@ -751,7 +749,7 @@ export class ThoughtLayer {
   _restDy(th) {
     const z = Math.max(th.zGoal, th.zFloor), P = th.r * 2 * th.scale * (1 - 0.5 * z);
     const e = 0.3 + 0.7 * clamp(th.state.tension);
-    return th.style.motion.sink * e * P - z * 0.45 * th.r;
+    return th.style.motion.sink * e * P + 0.12 * th.levels.settle.goal * P - z * 0.45 * th.r;
   }
 
   // the words' rect for candidate ci, relative to the drawn body centre (into out: [l, t, r, b]); e: extent
@@ -1232,7 +1230,7 @@ export class ThoughtLayer {
     const tg = { el, words, text: '', fits: [], cur: null, w: 0, h: 0, lines: 3, maxW: 0,
       x: 0, y: 0, vx: 0, vy: 0, rot: 0, kx: NaN, ky: NaN, kr: NaN, moving: false,
       shown: false, travel: false, wait: false, above: false, calm: false, side: 'below',
-      ci: 0, pi: -1, live: false, done: false, blocked: false, drop: 0, mode: 2, soft: 0, badT: 0,
+      ci: 0, pi: -1, live: false, done: false, blocked: false, drop: 0, mode: 2,
       tx: 0, ty: 0, rl: 0, rt: 0, g: new Float64Array(10), wx: 0, wy: 0, tintQ: -1, clear: true };
     this.tags.set(th, tg);
     th.tag = el;
@@ -1362,8 +1360,9 @@ export class ThoughtLayer {
     if (6 * (n + 1) > this._ob.length) { const nb = new Float32Array(this._ob.length * 2); nb.set(this._ob); this._ob = nb; }
     // (where it rests: its bob, tremble and hops taken out, so a resting plate's place never flickers with them)
     // (and with room for how far it moves about that place: a plate kept clear of the envelope is never touched)
-    const ob = this._ob, i = 6 * n, sx = (th._sx || 0) + dx, sy = (th._sy || 0) + dy, a = m + (th._amp || 0);
-    ob[i] = r.left + sx - a; ob[i + 1] = r.top + sy - a; ob[i + 2] = r.right + sx + a; ob[i + 3] = r.bottom + sy + a; ob[i + 4] = kind;
+    // (from where it rests now to where it will rest: a plate placed now is not covered as it sinks or rises)
+    const ob = this._ob, i = 6 * n, sx = (th._sx || 0) + dx, sy = (th._sy || 0) + dy, syP = th._trav ? sy : (th._syP ?? 0) + dy, a = m + (th._amp || 0);
+    ob[i] = r.left + sx - a; ob[i + 1] = r.top + Math.min(sy, syP) - a; ob[i + 2] = r.right + sx + a; ob[i + 3] = r.bottom + Math.max(sy, syP) + a; ob[i + 4] = kind;
     this._obOwner[n] = th; this._obN = n + 1;
   }
 
@@ -1484,10 +1483,10 @@ export class ThoughtLayer {
   }
 
   // The words sit beside their thought where nothing else is. Hard rules: never on another plate, a face
-  // or the hero. A resting plate keeps its place while it stays clear (on something soft for half a
-  // second, it moves if somewhere clearly better is clear); otherwise it searches its sides and slides,
-  // then (at rest) fewer words. A plate on its way (arriving, tossed) keeps its side and waits, hidden,
-  // while that is on the hero or a face. Resting plates are placed first, held ones next.
+  // or the hero. A resting plate keeps its place while it stays clear; otherwise it searches its sides
+  // and slides, then (at rest) fewer words, then a wider look round. A plate on its way (arriving, tossed)
+  // keeps its side and waits, hidden, while that is on the hero or a face. Resting plates are placed
+  // first, held ones next.
   _tags(dt, env) {
     const W = env.view.W, H = env.view.H, B = env.bounds, list = this.thoughts, T = this._tenv;
     T.edge = W < 360 ? 12 : 16; T.W = W; T.yMin = Math.max(T.edge, B.top); T.yMax = Math.min(H - T.edge, B.bottom + 2); T.K = this._keep();
@@ -1496,6 +1495,8 @@ export class ThoughtLayer {
       // where its body rests (home and its average drawn offset) against where it is drawn this frame
       const e = th._ext, R = th.render;
       th._sx = !th._trav && e ? th.home.x + e.rx - R.cx : 0; th._sy = !th._trav && e ? th.home.y + e.ry - R.cy : 0;
+      // (and where it will rest once its feeling has fully shown — a sad one is still sinking for seconds)
+      th._syP = !th._trav ? th.home.y + this._restDy(th) - R.cy : 0;
       th._amp = this._amp(th);
     }
     this._obstacles();
@@ -1515,23 +1516,15 @@ export class ThoughtLayer {
         if (!tg || tg.mode !== mode || !tg.live || !tg.w) continue;
         const r = this._candRect(th, tg, tg.ci);
         if (this._hard(r, th, -1) > 0) continue;
-        tg.done = true; tg.soft = this._soft(r, th, tg.ci, null); tg.pi = this._placeR(r);
+        tg.done = true; tg.pi = this._placeR(r);
       }
     }
-    // the others look for the best clear place (and a kept one on something soft, for somewhere clearly better)
+    // the others look for the best clear place (a kept one stays, even on something soft: once a thought
+    // has arrived its words move only when their place is covered)
     for (let mode = 0; mode < 2; mode++) {
       for (const th of list) {
         const tg = this.tags.get(th);
-        if (!tg || tg.mode !== mode || !tg.w) continue;
-        if (tg.done) {
-          if (mode !== 0 || tg.soft < SOFT_BAD) { tg.badT = 0; continue; }
-          const c = this._search(th, tg, tg.pi);
-          if (c !== tg.ci && this._bestHard === 0 && this._bestH3 === 0 && this._bestSoft < tg.soft - 1.5) {
-            tg.badT += dt;
-            if (tg.badT >= 0.5) { tg.ci = c; this._placeR(this._candRect(th, tg, c), tg.pi); tg.badT = 0; }
-          } else tg.badT = 0;
-          continue;
-        }
+        if (!tg || tg.mode !== mode || !tg.w || tg.done) continue;
         let c = this._search(th, tg, -1);
         // at rest and nowhere clear: fewer words (a narrower, shorter plate), then look again
         while (this._bestHard > 0 && mode === 0 && tg.drop < (this.crowd >= 3 ? 3 : 2)) {
@@ -1541,7 +1534,7 @@ export class ThoughtLayer {
         // still nowhere: a wider look round it
         if (this._bestHard > 0 && mode === 0) { const hc = this._bestHard, wx = tg.wx, wy = tg.wy, cw = this._searchWide(th, tg, -1); if (this._bestHard < hc) c = cw; else { tg.wx = wx; tg.wy = wy; this._bestHard = hc; } }
         tg.blocked = this._bestHard > 0;
-        tg.ci = c; tg.live = true; tg.done = true; tg.badT = 0;
+        tg.ci = c; tg.live = true; tg.done = true;
         tg.pi = this._placeR(this._candRect(th, tg, c));
       }
     }

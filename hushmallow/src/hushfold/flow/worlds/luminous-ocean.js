@@ -591,10 +591,16 @@ export function create(ctx) {
       used.add(best);
       const sl = slots[best];
       unproject(cam, sl.x, sl.y + 0.3 * sl.D, wo);
-      // (a photo the storm was not showing rises into its place once the melt has passed, one after another)
-      bubbles.push(newBubble({ i, x: wo.x, z: wo.z, D: sl.D, cap: sl.D + 0.5, sx: card ? card.x : sl.x, sy: card ? card.y : sl.y,
-        alpha: card ? 1 : 0, state: card ? 'card' : 'rise', riseK: card || !fromCards ? 0 : -0.6 * late++, morph: card ? 0 : 1,
-        from: card ? { x: card.x, y: card.y, size: Math.max(card.w, card.h), rot: card.rot || 0 } : null, target: { x: sl.x, y: sl.y, D: sl.D } }));
+      if (card || !fromCards) {
+        bubbles.push(newBubble({ i, x: wo.x, z: wo.z, D: sl.D, cap: sl.D + 0.5, sx: card ? card.x : sl.x, sy: card ? card.y : sl.y,
+          alpha: card ? 1 : 0, state: card ? 'card' : 'rise', morph: card ? 0 : 1,
+          from: card ? { x: card.x, y: card.y, size: Math.max(card.w, card.h), rot: card.rot || 0 } : null, target: { x: sl.x, y: sl.y, D: sl.D } }));
+      } else {
+        // a photo the storm was not showing appears in its place on the water as the melt reaches it, one after
+        // another — held on screen (the horizon is still rising) and set on the water when the melt has settled
+        bubbles.push(newBubble({ i, D: sl.D, cap: sl.D + 0.5, sx: sl.x, sy: sl.y, alpha: 0, fade: -0.6 * late++, state: 'glide', morph: 1,
+          from: { x: sl.x, y: sl.y, size: sl.D, rot: 0 }, target: { x: sl.x, y: sl.y, D: sl.D } }));
+      }
     }
   }
   /**
@@ -1023,7 +1029,7 @@ export function create(ctx) {
     if (b.away) { b.from = null; b.state = 'leave'; b.leaveK = 0; return; }
     unproject(cam, t.x, t.y + 0.3 * t.D, wo);
     b.x = wo.x; b.z = wo.z; b.vx = b.vz = 0;
-    b.from = null; b.state = 'float'; b.alpha = 1;
+    b.from = null; b.state = 'float'; if (!(b.fade != null && b.fade < 1)) b.alpha = 1;
     splash(t.x, t.y + t.D * 0.32, t.D);
   }
   function land() {
@@ -1233,6 +1239,7 @@ export function create(ctx) {
       if (b.lift > 0) b.lift = Math.max(0, b.lift - dt / 2.4);
       if (b.glowAge >= 0) { b.glowAge += dt; if (b.glowAge > 2.6) b.glowAge = -1; }
       if (b.state === 'rise') { b.riseK = Math.min(1, b.riseK + dt / 1.2); b.alpha = easeOut(b.riseK); if (b.riseK >= 1) b.state = 'float'; }
+      if (b.fade != null && b.fade < 1) { b.fade = Math.min(1, b.fade + dt / 1.2); b.alpha = easeOut(Math.max(0, b.fade)); }
       if (b.state === 'arrive') { b.riseK = Math.min(1, b.riseK + dt / 1.8); b.alpha = easeOut(b.riseK); if (b.riseK >= 1) b.state = 'float'; }
       // at the far edge for a while, with others waiting their turn: it drifts on over the horizon
       if (b.state === 'float') { b.capFor = b.z / cam.Z0 >= OCEAN.CAP - 0.6 ? (b.capFor || 0) + dt : 0; if (waiting.length && b.capFor > 6) { b.state = 'leave'; b.leaveK = 0; } }
