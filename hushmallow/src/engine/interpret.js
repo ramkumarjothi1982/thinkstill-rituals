@@ -7,6 +7,7 @@
 // low-confidence results are flagged so the UI asks instead of assuming.
 
 import { EMOTIONS, getEmotion, normalizeText, editDistance } from '../data/emotions.js';
+import { checkText, legacySafety } from './safety.js';
 
 // ----------------------------------------------------------- lexicons --
 // everyday phrases → [emotion id, confidence]
@@ -67,12 +68,8 @@ const DESIRES = [
   [/\b(move|walk|run|shake it off)\b/, 'move-body'], [/\b(laugh|cheer me up|something fun)\b/, 'laugh'],
 ];
 
-const CRISIS = [
-  /\b(kill|killing|hurt|hurting|harm|harming|cut|cutting) myself\b/, /\bsuicid\w*/, /\bend (it all|my life)\b/,
-  /\b(don'?t|do not) want to (be here|live|exist|wake up)\b/, /\bno reason to (live|go on)\b/, /\bbetter off (dead|without me)\b/,
-  /\bwant to die\b/, /\bself[- ]harm\w*/, /\boverdose\b/,
-];
-const CONCERN = [/\bcan'?t cope\b/, /\bhopeless\b/, /\bworthless\b/, /\bcan'?t go on\b/, /\b(he|she|they) (hit|hits|hurt|hurts) me\b/, /\b(abus\w+|unsafe at home)\b/];
+// Safety lives in one shared detector (./safety.js, lexicon in
+// ../data/safety-lexicon.js) so the free path and Another Angle agree.
 
 const NEGATORS = /\b(not|no|never|isn'?t|wasn'?t|aren'?t|weren'?t|don'?t|doesn'?t|didn'?t|no longer|hardly|barely)\b/;
 const INTENSIFY = /\b(really|so|very|extremely|super|completely|totally|absolutely|incredibly|beyond|utterly|fucking|f\*+ing|insanely|deeply|massively)\b/g;
@@ -113,9 +110,10 @@ export function interpret(text) {
   };
   if (!t.trim()) { out.needsClarification = true; out.acknowledgement = 'Tell me a little, or pick a feeling below.'; return out; }
 
-  // safety first
-  for (const re of CRISIS) if (re.test(t)) { out.safety = { level: 'crisis', reason: 'self-harm' }; break; }
-  if (out.safety.level === 'none') for (const re of CONCERN) if (re.test(t)) { out.safety = { level: 'concern', reason: re.source }; break; }
+  // safety first (shared detector; care is reported as 'concern' here, and
+  // the full level is kept in safety.detail for new callers)
+  const check = checkText(raw);
+  out.safety = { ...legacySafety(check), detail: { level: check.level, category: check.category } };
 
   const index = INDEX || buildIndex();
   const found = new Map();

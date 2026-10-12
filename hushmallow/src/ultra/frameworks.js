@@ -15,7 +15,8 @@
 //   - harmful experiences (abuse, violence, threats, harassment,
 //     discrimination, self-harm, danger) are never reframed
 //
-// Plain ES module, no dependencies. Works in browsers and Node.
+// Plain ES module; its only import is the shared safety lexicon
+// (src/data/safety-lexicon.js). Works in browsers and Node.
 
 const R = String.raw;
 

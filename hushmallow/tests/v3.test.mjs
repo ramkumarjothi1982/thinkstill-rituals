@@ -209,9 +209,11 @@ test('clearing photos wipes every cached copy; keeping lasts one ritual', () => 
 test('the plan page says only what is switched on', () => {
   const paid = RITUALS.filter((r) => (r.tier || 'paid') === 'paid').length;
   const line = PLANS.paid.includes.find((x) => /touch rituals/.test(x));
-  if (paid < 1000) assert.match(line, new RegExp(`^${paid.toLocaleString('en-GB')} interactive touch rituals`));
+  if (paid < 1000) assert.match(line, new RegExp(`^${paid.toLocaleString('en-GB')} more touch rituals in the library`));
   else assert.match(line, /^Over 1,000/);
-  assert.match(PLANS.paid.includes.join(' '), /up to six of your own photos/);
+  assert.doesNotMatch(line, /growing towards/, 'the 1,000-ritual programme is stopped (D14): promise nothing');
+  assert.match(PLANS.paid.includes.join(' '), /up to seven of your own photos/);   // D5: up to 7
+  assert.match(PLANS.ultra.includes[0], /^Everything in hushmallow Flow$/);
 });
 
 test('photos never leave the device: no storage or network in the photo system', () => {

@@ -38,7 +38,7 @@ export const HARM_LEXICON = {
     R`\bwish i (?:wasn'?t|was not|weren'?t|were not) (?:here|alive|born|around)\b`,
     R`\b(?:hurt|hurting|harm|harming|cut|cutting|burn|burning|punish|punishing|starve|starving) myself\b`,
     R`\bself[- ]?harm\w*`,
-    R`\bno (?:reason|point) (?:to|in|for) (?:live|living|going on|being alive|being here|me being here|carrying on)\b`,
+    R`\bno (?:reason|point) (?:to|in|for) (?:live|living|go on|going on|carry on|being alive|being here|me being here|carrying on)\b`,
     R`\bnothing (?:left )?to live for\b`,
     R`\bbetter off (?:dead|without me)\b`,
     R`\bcan'?t go on\b`,
