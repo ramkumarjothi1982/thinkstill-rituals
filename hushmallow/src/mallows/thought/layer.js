@@ -45,6 +45,14 @@
 //
 // Same shape as the Hushfold's placeholder layer: add / list / remove /
 // hitTest / pointer / rects / frame / clear / release / destroy / onChange.
+// For a host (the Hushfold shell, a world):
+//   release(ms = 700, which = null)  let every thought fade off, or only `which` (one thought or an
+//                                    array): the primary can ride into a world while the others drift off
+//   primary                          the newest thought that is not leaving; th.leaving says which are
+//   relayout()                       plan the stage again now (the host moved its bounds or its hero)
+//   { textScale: () => k }           the person's text size: the words' font and plates grow with it
+//   th.opacity = a                   a world's fade (0 … 1): body, siblings, rope and words
+//   .tm-tag sits at z-index var(--tm-z, 1): under the host's sheets and panels; a host may set --tm-z
 
 import { ThoughtMallow, createThought, PT, PUFF_K, siblingHome } from './thought.js';
 import { createBelief } from './belief.js';
@@ -61,16 +69,16 @@ function injectStyle() {
   const st = document.createElement('style');
   st.id = 'thought-mallow-style';
   st.textContent = `
-.tm-tag{position:fixed;left:0;top:0;z-index:6;margin:0;box-sizing:border-box;max-width:min(232px,calc(100vw - 40px));padding:7px 14px 8px;border-radius:15px;
+.tm-tag{position:fixed;left:0;top:0;z-index:var(--tm-z,1);margin:0;box-sizing:border-box;max-width:min(232px,calc(100vw - 40px));padding:7px 14px 8px;border-radius:15px;
   border:1px solid rgba(255,255,255,.16);background:linear-gradient(180deg,var(--tm-wash,rgba(255,255,255,.05)),rgba(255,255,255,0) 70%),rgba(14,10,36,.74);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#fbf8ff;
-  font:650 17px/1.3 var(--ff-voice,"HM Nunito Sans","Nunito Sans",ui-rounded,system-ui,sans-serif);letter-spacing:.004em;text-align:center;
+  font:650 calc(17px * var(--tm-k,1))/1.3 var(--ff-voice,"HM Nunito Sans","Nunito Sans",ui-rounded,system-ui,sans-serif);letter-spacing:.004em;text-align:center;
   box-shadow:0 8px 22px rgba(4,2,16,.34),inset 0 1px 0 var(--tm-tint,rgba(255,255,255,.22));cursor:pointer;transform-origin:50% 0;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;pointer-events:auto;
   opacity:0;transition:opacity .45s ease,border-color .6s ease}
 .tm-tag.tm-move{will-change:transform}
 .tm-tag::before{content:"";position:absolute;left:-2px;right:-2px;top:50%;height:max(100% + 4px,48px);transform:translateY(-50%)}
 .tm-tag .tm-words{display:block;text-wrap:balance;overflow-wrap:anywhere;min-height:1.3em}
-.tm-tag.tm-on{opacity:1}
+.tm-tag.tm-on{opacity:var(--tm-o,1)}
 .tm-tag.tm-travel{pointer-events:none}
 .tm-tag.tm-measure{max-width:none!important;width:auto!important}
 .tm-tag.tm-measure .tm-words{white-space:nowrap}
@@ -81,11 +89,11 @@ function injectStyle() {
 .tm-read{position:fixed;z-index:12;left:16px;right:16px;margin:0 auto;max-width:440px;top:calc(env(safe-area-inset-top,0px) + 72px);box-sizing:border-box;
   padding:18px 20px 14px;border-radius:22px;border:1px solid rgba(255,255,255,.2);background:#110c2c;
   color:#fbf8ff;box-shadow:0 20px 50px rgba(3,1,14,.55)}
-.tm-read p{margin:0 0 12px;font:600 19px/1.45 var(--ff-voice,"HM Nunito Sans","Nunito Sans",ui-rounded,system-ui,sans-serif);white-space:pre-wrap;overflow-wrap:anywhere;
+.tm-read p{margin:0 0 12px;font:600 calc(19px * var(--tm-k,1))/1.45 var(--ff-voice,"HM Nunito Sans","Nunito Sans",ui-rounded,system-ui,sans-serif);white-space:pre-wrap;overflow-wrap:anywhere;
   max-height:min(50vh,320px);overflow:auto;-webkit-user-select:text;user-select:text}
 .tm-read button{display:block;width:100%;min-height:44px;border-radius:14px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:#fbf8ff;
   font:650 16px/1 var(--ff-ui,"HM Manrope",system-ui,sans-serif);cursor:pointer}
-@media (max-width:360px){.tm-tag{font-size:16px;max-width:min(210px,calc(100vw - 28px));padding:6px 11px 7px}}
+@media (max-width:360px){.tm-tag{font-size:calc(16px * var(--tm-k,1));max-width:min(210px,calc(100vw - 28px));padding:6px 11px 7px}}
 @media (prefers-reduced-motion:reduce){.tm-tag{transition:none}}
 `;
   document.head.appendChild(st);
@@ -150,6 +158,7 @@ export class ThoughtLayer {
    * @param {()=>({left,top,right,bottom})} [o.bounds]  where thoughts may float (default: the viewport, 20 px clear of the edges)
    * @param {(th)=>void} [o.onRead]  tap on the words (default: a small reader with all of them)
    * @param {(kind)=>void} [o.haptic]  @param {object} [o.audio]
+   * @param {number|()=>number} [o.textScale=1]  the person's text size (1 … 1.25 …): the words' font and plates scale with it
    */
   constructor(o = {}) {
     injectStyle();
@@ -163,6 +172,8 @@ export class ThoughtLayer {
     this._rm = asFn(o.reducedMotion, () => prefersReducedMotion());
     this._low = asFn(o.lowStim, () => false);
     this._light = asFn(o.light, () => false);
+    this._ts = asFn(o.textScale, () => 1);
+    this._k = this._textK();
     this.keepOut = o.keepOut || null;
     this.bounds = o.bounds || null;
     this.thoughts = [];
@@ -224,8 +235,8 @@ export class ThoughtLayer {
   // ------------------------------------------------------------ thoughts --
   /** The thoughts and beliefs (not their siblings), oldest first. */
   get list() { return this.thoughts; }
-  /** The thought the person's words ride on (the newest one), or null. */
-  get primary() { return this.thoughts[this.thoughts.length - 1] || null; }
+  /** The thought the person's words ride on (the newest one not leaving), or null. */
+  get primary() { for (let i = this.thoughts.length - 1; i >= 0; i--) if (!this.thoughts[i]._leaving) return this.thoughts[i]; return null; }
   /** Every Mallow drawn, siblings included. */
   all(out = []) { out.length = 0; for (const th of this.thoughts) { for (const s of th.siblings) out.push(s); out.push(th); } return out; }
 
@@ -298,11 +309,21 @@ export class ThoughtLayer {
   _forget(th) { this.remove(th); }
 
   clear() { for (let i = this.thoughts.length - 1; i >= 0; i--) { const th = this.thoughts[i]; this.remove(th); th.destroy(); } }
-  /** Let the thoughts fade (a world takes the words over), then take them off. */
-  release(ms = 700) {
-    this.closeRead();
+  /**
+   * Let the thoughts fade over `ms` (a world takes the words over), then take them off. `which`: only
+   * this thought, or these (an array) — the others stay. One already leaving keeps its own fade.
+   */
+  release(ms = 700, which = null) {
+    const only = which == null ? null : Array.isArray(which) ? which : [which];
+    if (!only || only.includes(this._readTh)) this.closeRead();
+    ms = Math.max(0, Number.isFinite(+ms) ? +ms : 700);
     const until = nowMs() + ms;
-    for (const th of this.thoughts) { th._leaving = until; th._leaveMs = ms; const tg = this.tags.get(th); if (tg) tg.el.style.pointerEvents = 'none'; }
+    for (const th of this.thoughts) {
+      if (th._leaving || (only && !only.includes(th))) continue;
+      th._leaving = until; th._leaveMs = ms;
+      const tg = this.tags.get(th); if (tg) tg.el.style.pointerEvents = 'none';
+      for (const [id, o] of this.owner) if (o === th || o.parent === th) { o.pointer({ type: 'cancel', id, x: 0, y: 0, t: nowMs() }); this.owner.delete(id); }
+    }
     this._changed();
   }
 
@@ -317,6 +338,20 @@ export class ThoughtLayer {
     this._changed();
   }
   resume() { this.pause(false); }
+  /** Plan the stage again now: where each thought rests, its words' side and the crowd level (the host moved its bounds, its hero or the text size). */
+  relayout() {
+    if (this.destroyed) return;
+    this._measureView(); this._syncOverlay(); this._invalidateFits();
+    if (!this.thoughts.length) return;
+    const env = this._envNow(nowMs());
+    this._replanT = 0;
+    this._keyStage(env);
+    this._replan(env);
+    this._changed();
+  }
+  /** The person's text size (a number, or a function read every frame). */
+  setTextScale(k) { this._ts = asFn(k, () => 1); }
+  _textK() { const v = Number(this._ts()); return Number.isFinite(v) && v > 0 ? clamp(v, 0.8, 1.6) : 1; }
   setReducedMotion(b) { this._rm = () => !!b; for (const th of this.thoughts) th.setReducedMotion(!!b); }
   setLowStim(b) { this._low = () => !!b; }
   /** The backdrop is light (or not): a deeper rim and a firmer shadow keep pale jelly visible. */
@@ -355,7 +390,7 @@ export class ThoughtLayer {
   hitTest(x, y) {
     if (this.paused) return null;
     const all = this._sortedNow();
-    for (let i = all.length - 1; i >= 0; i--) { const th = all[i]; if (!th._leaving && th.hitTest(x, y)) return th; }
+    for (let i = all.length - 1; i >= 0; i--) { const th = all[i]; if (!th.leaving && th.hitTest(x, y)) return th; }
     return null;
   }
 
@@ -419,6 +454,7 @@ export class ThoughtLayer {
     if (typeof document === 'undefined' || !this.tagRoot) return;
     const el = document.createElement('div');
     el.className = 'tm-read';
+    if (this._k !== 1) el.style.setProperty('--tm-k', String(this._k));
     el.setAttribute('role', 'dialog');
     el.setAttribute('aria-modal', 'false');
     el.setAttribute('aria-label', th.kind === 'belief' ? 'The belief, in your words' : 'Your words');
@@ -475,6 +511,14 @@ export class ThoughtLayer {
     const t0 = nowMs();
     this._frames++;
     if (this._frames % 90 === 0) this._measureView();
+    // the person changed the text size: the words re-measure at the new size and the stage is planned again
+    const tk = this._textK();
+    if (tk !== this._k) {
+      this._k = tk;
+      for (const tg of this.tags.values()) tg.el.style.setProperty('--tm-k', String(tk));
+      this._readEl?.style.setProperty('--tm-k', String(tk));
+      this.relayout();
+    }
     const V = this._view;
     if (this.own && ctx) {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -490,7 +534,10 @@ export class ThoughtLayer {
     this._arrange(dt, env);
     for (const th of this.thoughts) {
       th.step(dt, env);
-      if (th._leaving) th.render.alpha *= clamp((th._leaving - now) / Math.max(1, th._leaveMs));
+      // a world's fade and a release fade the body, its siblings and its rope (its words: _tags)
+      let a = clamp(th.opacity ?? 1);
+      if (th._leaving) a *= clamp((th._leaving - now) / Math.max(1, th._leaveMs));
+      if (a < 1) { th.render.alpha *= a; for (const s of th.siblings) s.render.alpha *= a; }
     }
     const all = this._sortedNow();
     // ox/oy: the canvas's client offset (thoughts live in client px)
@@ -1253,12 +1300,13 @@ export class ThoughtLayer {
     // the words take their own taps; nothing underneath gets them
     el.addEventListener('pointerdown', (e) => e.stopPropagation());
     if (this.hidden || this.paused) el.classList.add('tm-hidden');
+    if (this._k !== 1) el.style.setProperty('--tm-k', String(this._k));
     this.tagRoot.appendChild(el);
     const tg = { el, words, text: '', fits: [], cur: null, w: 0, h: 0, lines: 3, maxW: 0,
       x: 0, y: 0, vx: 0, vy: 0, rot: 0, kx: NaN, ky: NaN, kr: NaN, moving: false,
       shown: false, travel: false, wait: false, above: false, calm: false, side: 'below',
       ci: 0, pi: -1, live: false, done: false, blocked: false, drop: 0, mode: 2,
-      tx: 0, ty: 0, rl: 0, rt: 0, g: new Float64Array(10), ga: new Float64Array(8), gaInit: false, gaKey: NaN, gaRest: 0, ciShown: null, hop: 0, wx: 0, wy: 0, wxShown: 0, wyShown: 0, tintQ: -1, clear: true };
+      tx: 0, ty: 0, rl: 0, rt: 0, g: new Float64Array(10), ga: new Float64Array(8), gaInit: false, gaKey: NaN, gaRest: 0, ciShown: null, hop: 0, wx: 0, wy: 0, wxShown: 0, wyShown: 0, tintQ: -1, clear: true, opQ: 20 };
     this.tags.set(th, tg);
     th.tag = el;
     th._words = wordsOf(th.text);
@@ -1270,7 +1318,8 @@ export class ThoughtLayer {
   // each tag a narrower plate (fewer words, still 17 px; a tap reads all) — and its padding
   _tagMax(W, lv = this.crowd) {
     const cap = W < 361 ? [210, 210, 184, 180, 176][Math.min(4, lv)] : [232, 232, 208, 200, 192][Math.min(4, lv)];
-    return Math.min(cap, W - (W < 361 ? 28 : 40));
+    // (a larger text size: a plate as much wider, so it holds the same words — never wider than the screen allows)
+    return Math.min(Math.round(cap * this._k), W - (W < 361 ? 28 : 40));
   }
   _tagPad(W) { return W < 361 ? 24 : 30; }
   _invalidateFits() { for (const th of this.thoughts) { const tg = this.tags.get(th); if (tg) { tg.fits.length = 0; tg.cur = null; } } }
@@ -1666,6 +1715,9 @@ export class ThoughtLayer {
       if (travel !== tg.travel) { tg.travel = travel; tg.el.classList.toggle('tm-travel', travel); }
       const calm = th.look.relief > 0.55;
       if (calm !== tg.calm) { tg.calm = calm; tg.el.classList.toggle('tm-calm', calm); }
+      // a world's fade reaches the words too (in steps of 5 %: no style write per frame)
+      const oq = Math.round(clamp(th.opacity ?? 1) * 20);
+      if (oq !== tg.opQ) { tg.opQ = oq; tg.el.style.setProperty('--tm-o', String(oq / 20)); }
       // the tag's top edge carries the thought's light
       const tq = Math.round(th.look.tintK * 4);
       if (tq !== tg.tintQ) { tg.tintQ = tq; const t = tintAt(th.style.tint, 0, th.look.tintK, {}); tg.el.style.setProperty('--tm-tint', rgba(t.light, 0.55)); tg.el.style.setProperty('--tm-wash', rgba(t.mid, 0.16)); this.ropes.get(th).colour = rgba(t.light, 0.8); }

@@ -31,6 +31,10 @@
 //   labelSide 'below' | 'above' | 'left' | 'right' | null: where the host would like
 //             the words (a hint the layer honours unless that side covers the hero, a
 //             face or other words).
+//   opacity   0 … 1, a world's fade (the ocean's surfacing): the layer fades the body,
+//             its siblings, rope and words by it; it eases back to 1 a second after the
+//             last write.
+//   leaving   (read only) true once ThoughtLayer.release() has let it go.
 // No DOM here (Node runs it); a ThoughtLayer renders it and owns its word tag.
 
 import { SoftBody } from '../touch/softbody.js';
@@ -107,6 +111,7 @@ export class ThoughtMallow {
     this._z = clamp(o.z ?? 0); this.zGoal = this._z; this._zT = -9;
     this.zFloor = 0;              // the layer may hold it a little farther when the stage is full
     this._rot = 0; this._rotT = -9; this.labelSide = null;
+    this._op = 1; this._opT = -9;  // a world's fade (opacity), and the clock of its last write
     this.off = { x: 0, y: 0 };    // its own life on top of the anchor (bob, tremble, sink, drift)
     this._sink = 0; this._drift = { x: 0, y: 0 }; this._driftDir = { x: 1, y: 0 };
     // loneliness: how far it has drifted (px), for how long, how far it may go (a layer plans it), and whether it is over
@@ -190,6 +195,15 @@ export class ThoughtMallow {
   /** An extra tilt a world may write (radians, ±0.6); it fades half a second after the last write. */
   get rot() { return this.clock - this._rotT < 0.5 ? this._rot : 0; }
   set rot(v) { if (!Number.isFinite(v)) return; this._rot = clamp(v, -0.6, 0.6); this._rotT = this.clock; }
+  /**
+   * How much of it shows, 0 … 1, as a world may write it every frame (the ocean's surfacing fade): a
+   * ThoughtLayer fades its body, its siblings, its rope and its words by it. A written value holds for
+   * half a second after the last write, then eases back to 1 over the next half second.
+   */
+  get opacity() { const a = this.clock - this._opT; return a < 0.5 ? this._op : a >= 1 ? 1 : this._op + (1 - this._op) * (a - 0.5) * 2; }
+  set opacity(v) { if (!Number.isFinite(v)) return; this._op = clamp(v); this._opT = this.clock; }
+  /** Fading away after ThoughtLayer.release() (a sibling: its thought is); no longer touchable, not the primary. */
+  get leaving() { return !!(this._leaving || this.parent?._leaving); }
   /** Being positioned by someone else (a world writes x / y every frame). */
   get driven() { return this.clock - this._drivenT < 0.5; }
   /** The words its tag shows now (exact text, or an excerpt of it when long or far away). */
