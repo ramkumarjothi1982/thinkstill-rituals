@@ -21,6 +21,8 @@ export default {
   mallows: ['loomi', 'blubi', 'glitzi', 'zuzu', 'boppo', 'pipzi', 'noomi'],
   module: 'name-it',
   tone: 'gentle',
+  // the universal fit: offered when nothing more specific suits the feeling
+  params: { fallback: true },
   moves: [
     { id: 'word', prompt: 'Find the closest word for it (up to three, mixed is fine).', kind: 'word-pick' },
     { id: 'where', prompt: 'Drag the glow to where it lives in your body, and set how big it is.', kind: 'body-map' },

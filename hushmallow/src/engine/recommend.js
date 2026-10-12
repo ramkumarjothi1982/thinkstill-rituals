@@ -84,6 +84,8 @@ export function createRecommender({ rituals, store, rng = Math.random, modules =
     if ((prefs.lowStimulation || heavy) && (r.tone === 'gentle' || r.tone === 'quiet')) { s += 0.4; if (heavy) reasons.push('Quieter, since this feels heavy'); }
     if ((prefs.preferredMallows || []).includes(r.mallows[0])) s += 0.3;
     if ((prefs.avoidModules || []).includes(r.module)) s -= 3;
+    // universal rituals step aside for anything made for this feeling
+    if (r.params?.fallback) s -= 0.8;
     return { s, reasons: [...new Set(reasons)].slice(0, 3) };
   }
 
