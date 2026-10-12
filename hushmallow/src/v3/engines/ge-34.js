@@ -13,7 +13,11 @@
 // Photos fan out behind the card like a hand of keepsake cards. As the card
 // goes in they follow one by one, gather into a neat stack and slip into the
 // envelope behind it, each softening into a cool mist as it tucks in; the
-// flap then seals them away (retrievable by the same pull-tab).
+// flap then seals them away (retrievable by the same pull-tab). They stay
+// softly visible through the vellum and the closed flap, and glow through the
+// paper when the envelope lights up like a lantern at the end. Touching the
+// pull-tab gives a small tug — the card lifts a hair in the pocket — to show
+// it can always come back out (it never unseals or adds progress).
 
 import { TAU, clamp, lerp, smooth, ease, rgba, mix, glow, glint, orb, motes, halo, canvas as makeCanvas, Spring, Spring2, Rope } from '../fx.js';
 import { CurveTrace, Wobble } from '../kit.js';
@@ -33,7 +37,7 @@ export const meta = {
     becomes: 'soft photo cards',
     touch: 'As you slide the card in, they follow it one by one;',
     change: 'each softens into a cool, misty light as it tucks into the envelope, and the flap seals them away.',
-    payoff: 'They rest there safely — sealed, never locked — with the pull-tab keeping them within reach.',
+    payoff: 'They rest there safely — sealed, never locked — glowing softly through the paper, with the pull-tab keeping them within reach.',
   },
   finaleSec: 4,
 };
@@ -50,6 +54,8 @@ const TINTS = ['#fbf3e4', '#fbece8', '#eef6ef', '#f1eefb', '#f8f1df', '#ecf3fa']
 export function create(E) {
   const { g, stage, photos, words, pal } = E;
   const reduced = !!E.reduced, low = !!(E.reduced || E.lowStim), heavy = !!E.heavy;
+  const KICK = reduced ? 0.3 : 1;                    // reduced motion: small, critically damped responses
+  const damp = (k, c) => (reduced ? 2 * Math.sqrt(k) : c);
   const R1 = E.round === 1;
   const rnd = E.rand;
   const dpr = Math.min(2, globalThis.devicePixelRatio || 1);
@@ -102,10 +108,11 @@ export function create(E) {
   const tmp = { x: 0, y: 0, r: 0 };
   const wob = new Wobble(), flapWob = new Wobble();
   const card = new Spring2(0, 0, { stiffness: 260, damping: 26 });
-  const cardRot = new Spring(0, { stiffness: 150, damping: 15 });
-  const lift = new Spring(0, { stiffness: 220, damping: 18 });
-  const hug = new Spring(0, { stiffness: 240, damping: 11 });
-  const emblem = new Spring(0, { stiffness: 150, damping: 11 });
+  const cardRot = new Spring(0, { stiffness: 150, damping: damp(150, 15) });
+  const lift = new Spring(0, { stiffness: 220, damping: damp(220, 18) });
+  const hug = new Spring(0, { stiffness: 240, damping: damp(240, 11) });
+  const emblem = new Spring(0, { stiffness: 150, damping: damp(150, 11) });
+  const fbQ = new Int16Array(16); let fbHead = 0, fbN = 0, lastPhotoFb = -9;   // photo tuck feedback, released one at a time
   const star = { x: new Spring(0, { stiffness: 30, damping: 9 }), y: new Spring(0, { stiffness: 30, damping: 9 }), tx: 0, ty: 0 };
   const lights = [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }];
 
@@ -141,7 +148,7 @@ export function create(E) {
     const order = [];
     for (let i = 0; i < n; i++) if (i !== hero) order.push(i);
     order.splice(Math.floor(n / 2), 0, hero);
-    order.forEach((i, j) => ph.push({ i, j, hero: i === hero, spr: new Spring2(0, 0, { stiffness: 85, damping: 13 }), rs: new Spring(0, { stiffness: 90, damping: 11 }),
+    order.forEach((i, j) => ph.push({ i, j, hero: i === hero, spr: new Spring2(0, 0, { stiffness: 85, damping: damp(85, 13) }), rs: new Spring(0, { stiffness: 90, damping: damp(90, 11) }),
       sealed: false, cool: 0, lag: 0, fx: 0, fy: 0, fr: 0, sx: 0, sy: 0, sy0: 0, sr: 0, size: 0, w: 0, h: 0, pk: 0, push: 0 }));
     // they follow the card in one by one; the hero photo goes last
     const rest = ph.filter((o) => !o.hero).sort((a, b) => (a.j - b.j) * dir);

@@ -272,9 +272,7 @@ export function create(E) {
 
   // ------------------------------------------------------------- drawing --
   function drawBackdrop(t, e, fin) {
-    glow(g, cx, cy, R * 2.2, pal.accent, 0.06 + 0.04 * fin);
-    glow(g, cx - R * 0.6, cy - R * 0.95, R * 1.2, pal.glow, 0.05);
-    glow(g, cx + R * 0.7, cy + R * 1.0, R * 1.1, mix(pal.warm, pal.accent, 0.5), 0.05);
+    glow(g, cx, cy, R * 1.7, pal.accent, 0.08 + 0.04 * fin);
     g.save(); g.fillStyle = '#ffffff';
     for (let i = 0; i < SN; i++) {
       g.globalAlpha = reduced ? 0.3 : 0.12 + 0.36 * (0.5 + 0.5 * Math.sin(t * stP[i] + i * 1.7));
@@ -330,10 +328,10 @@ export function create(E) {
     }
     g.strokeStyle = rgba(inkCol, 0.42); g.lineWidth = Math.max(3.4, R * 0.026); g.stroke();
     g.globalCompositeOperation = 'lighter';
-    g.strokeStyle = rgba(cordHot, 0.12 + 0.06 * fin + strain * 0.1); g.lineWidth = R * 0.075; g.stroke();
-    g.strokeStyle = rgba(cordCol, 0.3 + 0.08 * fin); g.lineWidth = R * 0.03; g.stroke();
+    g.strokeStyle = rgba(cordHot, 0.16 + 0.06 * fin + strain * 0.1); g.lineWidth = R * 0.07; g.stroke();
+    g.strokeStyle = rgba(cordCol, 0.42 + 0.08 * fin); g.lineWidth = R * 0.028; g.stroke();
     g.globalCompositeOperation = 'source-over';
-    g.strokeStyle = rgba(cordCore, 0.95); g.lineWidth = Math.max(1.6, R * 0.012); g.stroke();
+    g.strokeStyle = rgba(cordCore, 0.95); g.lineWidth = Math.max(2, R * 0.014); g.stroke();
     g.restore();
     // light pulses running along the cord, from the outer satellite inwards
     for (let k = 0; k < 3; k++) {
@@ -394,7 +392,7 @@ export function create(E) {
   function drawMoon(mo) {
     const s = mo.sc * mS, clr = 1 - mo.tone;
     if (mo.free && mo.glide < 1) glow(g, mo.x, mo.y, s * 1.1, pal.glow, 0.5 * Math.sin(Math.PI * mo.glide));
-    if (mo.ph >= 0) photos.draw(g, mo.ph, mo.x, mo.y, s, { shape: 'bubble', tone: 'mist', toneMix: 0.6 * mo.tone, blur: 0.3 * mo.tone, glow: 0.2 + 0.3 * clr, glowColour: pal.glow, shadow: false });
+    if (mo.ph >= 0) photos.draw(g, mo.ph, mo.x, mo.y, s, { shape: 'bubble', tone: 'mist', toneMix: 0.6 * mo.tone, glow: 0.2 + 0.3 * clr, glowColour: pal.glow, shadow: false });
     else { glow(g, mo.x, mo.y, s * 0.75, mo.col, 0.22 + 0.3 * clr); orb(g, mo.x, mo.y, s * 0.36, mix(mix(mo.col, '#ffffff', 0.15), '#7a7a96', 0.45 * mo.tone)); }
   }
   // position + direction at screen distance d from the outer satellite along the cord
@@ -495,7 +493,7 @@ export function create(E) {
     pointAt(q) { bAt(q); return { x: _x, y: _y }; },
     hint() {
       const q0 = shownRot / TURN, pts = [];
-      for (let i = 0; i <= 16; i++) { bAt(q0 + ((i / 16) * 0.9) / TURN); pts.push([_x, _y]); }
+      for (let i = 0; i <= 22; i++) { bAt(q0 + ((i / 22) * 1.7) / TURN); pts.push([_x, _y]); }
       return { path: pts };
     },
     twist() { twistAt = E.now(); twistKick = false; E.sound('shimmer', { intensity: 0.22 }); },
