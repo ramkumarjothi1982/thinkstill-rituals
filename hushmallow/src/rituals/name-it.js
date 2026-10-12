@@ -736,7 +736,7 @@ export async function run(ctx) {
   await wait(30);
   relayout();
   const orb = { x: 0, y: 0, hx: 0, hy: 0, drag: false, given: false, t: 0, s: 1 };
-  g.font = '700 13px ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
+  g.font = '700 13px "Nunito Sans", ui-rounded, system-ui, sans-serif';
   const labelHalf = g.measureText(NEED_LABEL).width / 2 + 10;
   const homeOrb = () => { orb.hx = Math.max(Math.max(34, labelHalf), blob.cx - blob.R * 1.6 - 10); orb.hy = Math.min(fieldBox.bottom - 34, blob.cy + blob.R * 1.1); };
   homeOrb(); orb.x = orb.hx; orb.y = orb.hy;
@@ -751,7 +751,7 @@ export async function run(ctx) {
     gr.addColorStop(0, 'rgba(255,250,225,1)'); gr.addColorStop(0.35, 'rgba(255,224,150,0.85)'); gr.addColorStop(1, 'rgba(255,200,120,0)');
     g.fillStyle = gr; g.beginPath(); g.arc(orb.x, orb.y, r * 2.4, 0, Math.PI * 2); g.fill();
     if (!orb.given) {
-      g.font = '700 13px ui-rounded, "SF Pro Rounded", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'top';
+      g.font = '700 13px "Nunito Sans", ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'top';
       g.shadowColor = 'rgba(0,0,30,0.7)'; g.shadowBlur = 6;
       g.fillStyle = 'rgba(255,255,255,0.95)'; g.fillText(NEED_LABEL, orb.x, orb.y + r + 10);
       g.shadowBlur = 0; g.shadowColor = 'transparent';
@@ -829,18 +829,18 @@ export async function run(ctx) {
       const a = Math.min(1, (p - 0.55) / 0.35);
       g.textAlign = 'center'; g.textBaseline = 'top';
       const ty = stoneY + stoneR * 1.15 + 12;
-      g.font = `700 ${NAME.length > 22 ? 18 : 22}px Fredoka, ui-rounded, system-ui, sans-serif`;
-      g.font = '600 13px ui-rounded, system-ui, sans-serif';
+      g.font = `700 ${NAME.length > 22 ? 18 : 22}px "Nunito Sans", ui-rounded, system-ui, sans-serif`;
+      g.font = '600 13px "Nunito Sans", ui-rounded, system-ui, sans-serif';
       const pw = Math.min(W - 24, Math.max(g.measureText(sub).width, NAME.length * 12) + 36);
       g.fillStyle = `rgba(10,14,44,${0.55 * a})`;
       g.beginPath();
       if (g.roundRect) g.roundRect(W / 2 - pw / 2, ty - 8, pw, 62, 20); else g.rect(W / 2 - pw / 2, ty - 8, pw, 62);
       g.fill();
       g.fillStyle = `rgba(255,255,255,${a})`;
-      g.font = `700 ${NAME.length > 22 ? 18 : 22}px Fredoka, ui-rounded, system-ui, sans-serif`;
+      g.font = `700 ${NAME.length > 22 ? 18 : 22}px "Nunito Sans", ui-rounded, system-ui, sans-serif`;
       g.fillText(NAME, W / 2, ty, W - 40);
       g.fillStyle = `rgba(220,235,255,${a * 0.8})`;
-      g.font = '600 13px ui-rounded, system-ui, sans-serif';
+      g.font = '600 13px "Nunito Sans", ui-rounded, system-ui, sans-serif';
       g.fillText(sub, W / 2, ty + 28, W - 40);
     }
     if (p >= 1 && !rm && !low && Math.random() < dt * 2) glints.push({ x: W / 2 + (Math.random() - 0.5) * stoneR * 2.4, y: stoneY + (Math.random() - 0.5) * stoneR * 1.4, age: 0 });

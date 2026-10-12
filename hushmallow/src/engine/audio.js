@@ -1,4 +1,4 @@
-// Hushmallow sound engine — everything is synthesised live with the Web Audio
+// hushmallow sound engine — everything is synthesised live with the Web Audio
 // API. There are no audio files.
 //
 // Design rules (people may be upset when they use this app):

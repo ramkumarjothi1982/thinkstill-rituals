@@ -1,5 +1,6 @@
 // HOME — the Hushfold. One living Mallow, one obvious place to start, and
 // the Ultra entry. Nothing else competes for attention.
+import { BRAND } from '../brand.js';
 import { h, icon, iconBtn, say, clearBubble, wait } from '../ui.js';
 import { MALLOWS, MALLOW_IDS } from '../../mallows/registry.js';
 
@@ -26,23 +27,24 @@ export default function home(app, params = {}) {
   const nameEl = h('div', { class: 'eyebrow', style: { textAlign: 'center', marginTop: '4px', padding: '6px 12px', borderRadius: '999px',
     background: 'rgba(14,10,40,.5)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', color: 'var(--text-1)' } }, `${m.name} · ${m.title}`);
   const ask = h('button', { class: 'ask', 'data-focus': '', onclick: () => start() },
-    h('span', {}, subscribed ? 'What’s on your mind?' : 'Start Hushmallow'), h('span', { class: 'go', 'aria-hidden': 'true' }, icon('arrow')));
+    h('span', {}, subscribed ? 'What’s on your mind?' : 'Start hushmallow'), h('span', { class: 'go', 'aria-hidden': 'true' }, icon('arrow')));
   const quick = h('div', { class: 'chips scroll', role: 'group', 'aria-label': 'Quick feelings' },
     ...QUICK.map(([eid, label]) => h('button', { class: 'chip', onclick: () => start(eid) }, label)));
-  const ultra = h('button', { class: 'ultra-card', onclick: () => openUltra(), 'aria-label': 'Hushmallow Ultra: Another Angle. See your thoughts in a different light.' },
+  const ultra = h('button', { class: 'ultra-card', onclick: () => openUltra(), 'aria-label': 'hushmallow Beyond: Another Angle. There’s more than one way to see it.' },
     h('div', { class: 'spiral', 'aria-hidden': 'true' }),
-    h('div', {}, h('span', { class: 'badge' }, 'ULTRA'), h('div', { class: 't' }, 'Another Angle'), h('div', { class: 's' }, 'See your thoughts in a different light.')));
+    h('div', {}, h('span', { class: 'badge' }, 'BEYOND'), h('div', { class: 't' }, 'Another Angle'), h('div', { class: 's' }, 'There’s more than one way to see it.')));
 
   const el = h('div', { class: 'home', style: { display: 'flex', flexDirection: 'column', height: '100%' } },
     h('div', { class: 'topbar' },
-      h('div', { class: 'brand' }, h('span', { class: 'dot' }), 'Hushmallow'), h('div', { class: 'grow' }),
+      // this screen now sits behind the Hushfold home, so it leads back there
+      iconBtn('back', 'Back to the Hushfold', () => { clearBubble(); app.back(); }), h('div', { class: 'grow' }),
       subscribed ? iconBtn('journey', 'Your journey', () => { clearBubble(); app.go('journey'); }) : null,
       subscribed ? iconBtn('star', 'Saved rituals', () => { clearBubble(); app.go('library', { tab: 'saved' }); }) : null,
       subscribed ? iconBtn('library', 'Library: every ritual', () => { clearBubble(); app.go('library'); }) : null,
       iconBtn('mallow', 'Meet the Mallows', () => app.go('mallows')),
       iconBtn('gear', 'Settings', () => app.go('settings'))),
     h('div', { style: { marginTop: '18px' } },
-      h('h1', { class: 'hero' }, 'Your second brain', h('br'), 'for feelings.')),
+      h('h1', { class: 'hero' }, ...BRAND.brandTagline.split(/(?<=\.)\s+/).flatMap((t, i) => (i ? [h('br'), t] : [t])))),
     h('div', { class: 'spacer' }),
     h('div', { class: 'mallow-switch', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', pointerEvents: 'none' } },
       h('button', { class: 'icon-btn', style: { pointerEvents: 'auto' }, 'aria-label': 'Previous Mallow', onclick: () => cycle(-1) }, icon('back')),

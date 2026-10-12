@@ -458,7 +458,7 @@ export async function run(ctx) {
       }
       g.globalCompositeOperation = 'source-over';
       // labels
-      g.font = '700 13px ui-rounded, "SF Pro Rounded", system-ui, sans-serif'; g.textAlign = 'center'; g.fillStyle = 'rgba(255,240,225,.7)';
+      g.font = '700 13px "Nunito Sans", ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.fillStyle = 'rgba(255,240,225,.7)';
       g.fillText('rising', xOf(0.36), base - 16);
       g.fillText('crest', xOf(0.5), yAt(0.5) - 34);
       g.fillText('falling', xOf(0.64), base - 16);

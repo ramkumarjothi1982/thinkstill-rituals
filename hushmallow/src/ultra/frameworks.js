@@ -1,4 +1,4 @@
-// HUSHMALLOW ULTRA · "Another Angle" (Reframe) content library.
+// hushmallow Beyond (internal tier: ultra) · "Another Angle" (Reframe) content library.
 //
 // Everything in this file is authored by hand at development time. The app
 // never writes new sentences at runtime: it only matches rule-based lexicons

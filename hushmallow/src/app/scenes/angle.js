@@ -1,4 +1,4 @@
-// Entry point for Hushmallow Ultra's Another Angle. The ritual host loads the
+// Entry point for hushmallow Beyond's Another Angle. The ritual host loads the
 // Ultra module through loadUltra(), which enforces the entitlement.
 import { h } from '../ui.js';
 import { RITUALS } from '../../data/rituals.js';

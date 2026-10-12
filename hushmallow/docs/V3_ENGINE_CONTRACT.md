@@ -1,6 +1,6 @@
 # V3 touch engine contract
 
-Every one of the 1,000 Hushmallow rituals is **one touch engine × one world
+Every one of the 1,000 hushmallow rituals is **one touch engine × one world
 law**, led by one Mallow in its realm. There are 50 engines
 (`src/v3/engines/ge-01.js` … `ge-50.js`) and 20 laws (`src/v3/laws.js`).
 The host (`src/v3/host.js`) runs both, draws the shared effects, the Mallow,

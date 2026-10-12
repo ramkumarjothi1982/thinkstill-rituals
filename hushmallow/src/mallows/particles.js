@@ -296,7 +296,7 @@ export class ParticleField {
           const ch = { z: 'z', question: '?', exclaim: '!', note: '♪' }[p.kind];
           const pop = Math.min(1, p.age / 0.18);
           const s = p.size * (0.6 + 0.4 * pop + (p.kind === 'exclaim' ? 0.1 * Math.sin(p.age * 12) : 0));
-          ctx.font = `800 ${s}px ui-rounded, "SF Pro Rounded", system-ui, sans-serif`;
+          ctx.font = `800 ${s}px "Nunito Sans", ui-rounded, system-ui, sans-serif`;
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.lineWidth = s * 0.16;
           ctx.strokeStyle = 'rgba(30,10,60,0.55)';

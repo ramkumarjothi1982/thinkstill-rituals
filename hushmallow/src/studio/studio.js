@@ -169,7 +169,7 @@ function buildStudio() {
 
   app.append(h('div', { class: 'studio' },
     h('header', { class: 'top' }, h('h1', {}, 'Mallow Emotion Studio'), h('span', { class: 'sub' }, 'Seven living Mallows · approved artwork'),
-      h('a', { href: './index.html' }, 'Open Hushmallow →')),
+      h('a', { href: './index.html' }, 'Open hushmallow →')),
     h('div', { class: 'stagewrap' }, roster, stage, sizes),
     aside));
 

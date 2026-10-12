@@ -109,7 +109,7 @@ export function validateRitual(r) {
   if (r.tone !== undefined) need('tone', TONES.includes(r.tone), `must be one of ${TONES.join(', ')}`);
   if (r.params !== undefined) need('params', isObj(r.params), 'must be an object when present');
   if (r.tier !== undefined) need('tier', TIERS.includes(r.tier), 'must be "paid" or "ultra"');
-  if (r.family === 'reframing') need('tier', r.tier === 'ultra', 'reframing rituals are Hushmallow Ultra only');
+  if (r.family === 'reframing') need('tier', r.tier === 'ultra', 'reframing rituals are hushmallow Beyond only');
   return errors;
 }
 

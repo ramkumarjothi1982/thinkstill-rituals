@@ -1,4 +1,4 @@
-// Hushmallow V3 effects library — shared by all 50 touch engines.
+// hushmallow V3 effects library — shared by all 50 touch engines.
 //
 // Everything here is canvas 2D, allocation-free per frame (pools and typed
 // arrays), and degrades for reduced motion / low stimulation. Additive light
@@ -310,7 +310,7 @@ export function wrap(g, text, maxWidth, maxLines = 3) {
   if (lines.length === maxLines && words.join(' ') !== lines.join(' ')) lines[maxLines - 1] = lines[maxLines - 1].replace(/\s*\S*$/, '') + '…';
   return lines;
 }
-export const FONT = '"Fredoka", ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
+export const FONT = '"Nunito Sans", ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
 /**
  * Glowing, legible label (the person's words on an object). Always readable:
  * dark halo underneath, light ink, optional coloured glow.

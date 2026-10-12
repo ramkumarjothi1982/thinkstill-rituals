@@ -25,7 +25,7 @@ export const meta = { id: 'untangle' };
 const TAU = Math.PI * 2;
 const N = 30; // samples per thread shape
 const MAX_STRANDS = 6;
-const FONT = 'ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif';
+const FONT = '"Nunito Sans", ui-rounded, system-ui, -apple-system, "Segoe UI", sans-serif';
 
 const CHIPS = [
   ['decision', 'a decision', 'A decision! Slippery things, decisions.'],

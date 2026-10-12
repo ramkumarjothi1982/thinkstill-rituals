@@ -79,7 +79,7 @@ const CORE = [
   },
 ];
 
-// The 1,000 Hushmallow rituals first (HM-0001 → HM-1000), then the ten
+// The 1,000 hushmallow rituals first (HM-0001 → HM-1000), then the ten
 // signature rituals, then Another Angle (Ultra).
 const SIG = [CORE[0], ...LIBRARY].map((r) => ({ ...r, params: { ...(r.params || {}), signature: true } }));
 export const RITUALS = [...V3_RITUALS, ...SIG, ...CORE.slice(1)];

@@ -71,7 +71,7 @@ export default function encounter(app) {
     const mins = Math.max(1, Math.round(r.durationSec / 60));
     card.replaceChildren(
       h('div', { class: 'eyebrow', style: { color: 'var(--accent)' } }, `${lead.name} has a ritual for that`),
-      h('h3', { style: { marginTop: '8px', fontSize: '26px' } }, r.name),
+      h('h3', { style: { marginTop: '8px', fontSize: 'var(--type-world)' } }, r.name),
       h('p', {}, r.purpose),
       h('div', { class: 'reasons' }, ...o.reasons.filter((x) => !/minute/.test(x)).map((x) => h('span', {}, x)), h('span', {}, `About ${mins} min`),
         r.module === 'v3' && photoSession.count ? h('span', {}, `With your ${photoSession.count} photo${photoSession.count > 1 ? 's' : ''}`) : null),
@@ -115,7 +115,7 @@ export default function encounter(app) {
   if (ent.has('ultra') && (REFRAME_FAMILIES.has(family) || input.text.length > 20)) {
     ultraRow.append(h('button', { class: 'ultra-card', onclick: () => app.go('angle', { text: input.text }) },
       h('div', { class: 'spiral', 'aria-hidden': 'true' }),
-      h('div', {}, h('span', { class: 'badge' }, 'ULTRA'), h('div', { class: 't' }, 'Or try Another Angle'), h('div', { class: 's' }, 'Ready for the plot twist?'))));
+      h('div', {}, h('span', { class: 'badge' }, 'BEYOND'), h('div', { class: 't' }, 'Or try Another Angle'), h('div', { class: 's' }, 'Ready for the plot twist?'))));
   }
 
   return {

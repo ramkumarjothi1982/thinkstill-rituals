@@ -257,7 +257,7 @@ export async function run(ctx) {
       bead(x, y - 10 * b, 9 * b, 1, 1);
       if (L.label && b > 0.6 && labelA > 0) {
         g.save();
-        g.font = '650 12px ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
+        g.font = '650 12px "Nunito Sans", ui-rounded, system-ui, sans-serif';
         g.textAlign = 'center'; g.textBaseline = 'top';
         g.fillStyle = `rgba(255,246,252,${0.85 * labelA * (b - 0.6) / 0.4})`;
         g.shadowColor = 'rgba(5,10,58,.9)'; g.shadowBlur = 6;
@@ -548,7 +548,7 @@ export async function run(ctx) {
   const bandBottom = () => Math.max(bandTop() + 10, dockTop() - 40);
   const SLOTS = [[0.5, 0.35], [0.22, 0.6], [0.78, 0.55], [0.36, 0.95], [0.66, 0.9]];
   const freeSpot = (x, y, label = '') => {
-    g.font = '650 12px ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
+    g.font = '650 12px "Nunito Sans", ui-rounded, system-ui, sans-serif';
     const half = Math.max(34, g.measureText(label).width / 2 + 8);
     const ok = (px, py) => lanterns.every((L) => Math.hypot(L.x - px, (L.y - py) * 1.6) > 86);
     const cy = Math.max(bandTop(), Math.min(bandBottom(), y));

@@ -159,7 +159,7 @@ export async function run(ctx) {
     return { text, x: 0.5 + Math.cos(a) * 0.36, y: 0.47 + Math.sin(a) * 0.27, ph: Math.random() * 6, zap: 0, gone: false };
   });
   drawExtra = (dt) => {
-    g.font = '800 17px ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
+    g.font = '800 17px "Nunito Sans", ui-rounded, system-ui, sans-serif';
     g.textAlign = 'center'; g.textBaseline = 'middle';
     for (const f of floaters) {
       if (f.gone) continue;

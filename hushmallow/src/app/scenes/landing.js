@@ -1,6 +1,7 @@
 // NOTICE + FINISH — an optional check-in (no "success" required), what you
 // did, and gentle ways to finish, repeat or try another ritual.
-import { h, icon, say, clearBubble, toast, wait } from '../ui.js';
+import { BRAND } from '../brand.js';
+import { h, icon, say, clearBubble, toast, wait, logo } from '../ui.js';
 import { MALLOWS } from '../../mallows/registry.js';
 import { openSupport } from './support.js';
 import { setFelt } from '../../engine/journey.js';
@@ -29,7 +30,7 @@ export default function landing(app) {
   const summary = h('div', { class: 'summary-card' }, ...(res.summary || []).flatMap((l) => [h('div', { class: 'k' }, l.label), h('div', { class: 'v' }, l.text)]));
 
   const el = h('div', { style: { display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' } },
-    h('div', { class: 'topbar' }, h('div', { class: 'brand' }, h('span', { class: 'dot' }), 'Hushmallow')),
+    h('div', { class: 'topbar' }, logo()),
     h('div', { style: { minHeight: '27dvh', flex: '0 0 auto' } }),
     h('div', { class: 'card', style: { textAlign: 'center' } },
       h('div', { class: 'eyebrow' }, 'Take a second to notice'),
@@ -98,16 +99,26 @@ export default function landing(app) {
       g.drawImage(src, 540 - (src.width * s) / 2, 380, src.width * s, src.height * s);
     }
     g.fillStyle = '#fff'; g.textAlign = 'center';
-    g.font = '700 84px ui-rounded, "SF Pro Rounded", system-ui, sans-serif';
+    g.font = '700 84px "Nunito Sans", ui-rounded, system-ui, sans-serif';
     g.fillText(res.share?.title || ritual.name, 540, 220);
-    g.font = '600 44px ui-rounded, system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.85)';
+    g.font = '600 44px "Nunito Sans", ui-rounded, system-ui, sans-serif'; g.fillStyle = 'rgba(255,255,255,.85)';
     g.fillText(res.share?.subtitle || `A Mallow Moment with ${lead.name}`, 540, 300);
-    g.font = '800 34px ui-rounded, system-ui, sans-serif'; g.fillStyle = '#ffd98a';
-    g.fillText('HUSHMALLOW', 540, 1270);
+    // the official logo artwork on a light plate, never re-typeset
+    try {
+      const img = new Image();
+      img.src = new URL('../../../assets/brand/hushmallow-logo.webp', import.meta.url).href;
+      await img.decode();
+      const lw = 380, lh = lw * img.height / img.width, px = 30, py = 18;
+      g.fillStyle = 'rgba(255,252,248,.92)';
+      g.beginPath(); g.roundRect(540 - lw / 2 - px, 1250 - lh / 2 - py, lw + px * 2, lh + py * 2, (lh + py * 2) / 2); g.fill();
+      g.drawImage(img, 540 - lw / 2, 1250 - lh / 2, lw, lh);
+    } catch {}
+    g.font = '600 30px "Fraunces", Georgia, serif'; g.fillStyle = 'rgba(255,255,255,.82)'; g.textAlign = 'center';
+    g.fillText(BRAND.brandSlogan, 540, 1330);
     const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
     const file = new File([blob], 'hushmallow.png', { type: 'image/png' });
     try {
-      if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: 'Hushmallow' }); return; }
+      if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: BRAND.brandName }); return; }
     } catch { return; }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = 'hushmallow.png'; a.click();

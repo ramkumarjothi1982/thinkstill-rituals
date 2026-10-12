@@ -15,6 +15,7 @@ export function h(tag, attrs = {}, ...kids) {
 }
 
 const P = {
+  pause: 'M8 5v14M16 5v14', play: 'M7 5l12 7-12 7z', sliders: 'M4 7h10M18 7h2M4 17h4M12 17h8M16 4v6M10 14v6', leaf: 'M5 19c0-8 6-14 15-14 0 9-6 15-14 15 M5 19l7-7', replay: 'M4 12a8 8 0 108-8H8M8 1L4 4l4 3', skip: 'M6 5l8 7-8 7z M17 5v14',
   close: 'M6 6l12 12M18 6L6 18', back: 'M15 5l-7 7 7 7', gear: 'M12 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z M19.4 13a7.6 7.6 0 000-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 00-1.7-1L15 3h-4l-.4 2.6a7.4 7.4 0 00-1.7 1l-2.4-1-2 3.4L6.6 11a7.6 7.6 0 000 2l-2 1.6 2 3.4 2.4-1c.5.4 1.1.8 1.7 1L11 21h4l.4-2.6c.6-.2 1.2-.6 1.7-1l2.4 1 2-3.4z',
   heart: 'M12 20s-7-4.4-9.2-9A5 5 0 0112 5.5 5 5 0 0121.2 11C19 15.6 12 20 12 20z', star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z',
   arrow: 'M5 12h14M13 6l6 6-6 6', support: 'M12 21a9 9 0 100-18 9 9 0 000 18z M12 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z M5.6 5.6l3.9 3.9M14.5 14.5l3.9 3.9M18.4 5.6l-3.9 3.9M9.5 14.5l-3.9 3.9',
@@ -34,6 +35,14 @@ export function icon(name, label) {
   p.setAttribute('d', P[name] || P.sparkle);
   svg.append(p);
   return svg;
+}
+
+/** The official lowercase hushmallow logo, as supplied (never re-typeset).
+ *  It sits on a soft light plate because the artwork is dark lettering. */
+const LOGO = new URL('../../assets/brand/hushmallow-logo.webp', import.meta.url).href;
+export function logo(cls = '') {
+  return h('div', { class: `brand logo-plate ${cls}`.trim(), role: 'img', 'aria-label': 'hushmallow' },
+    h('img', { src: LOGO, alt: '', width: '761', height: '132', decoding: 'async', draggable: 'false' }));
 }
 
 export function iconBtn(name, label, onclick) {
@@ -86,15 +95,31 @@ let currentBubble = null;
 export function say(world, text, { who, ms = 3600, above = true } = {}) {
   currentBubble?.remove();
   if (!text) return Promise.resolve();
-  const rect = world.mallowRect();
+  // long enough to read comfortably, however short the caller asked for
+  ms = Math.max(ms, 1600 + String(text).length * 58);
   const b = h('div', { class: 'bubble', role: 'status', 'aria-live': 'polite' }, who ? h('span', { class: 'who' }, who) : null, text);
   document.body.append(b);
+  currentBubble = b;
+  place(world, b, above);
+  // a screen's title can arrive a moment after the line does: look again
+  for (const t of [140, 450, 900, 1500]) setTimeout(() => { if (currentBubble === b) place(world, b, above); }, t);
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      if (currentBubble === b) { b.classList.add('out'); setTimeout(() => b.remove(), 260); currentBubble = null; }
+      resolve();
+    }, ms);
+  });
+}
+function place(world, b, above) {
+  const rect = world.mallowRect();
   const bw = Math.min(b.offsetWidth, innerWidth - 24);
   const x = Math.max(12, Math.min(innerWidth - bw - 12, rect.cx - bw / 2));
   // never cover a ritual's instructions: above the Mallow if it fits under the
   // title block, else below the Mallow (above the controls), else over the Mallow
   const bh = b.offsetHeight;
-  const titles = [...document.querySelectorAll('#scene .move-title')].map((e) => e.getBoundingClientRect()).filter((r) => r.height > 0);
+  // nor the top bar, nor a screen title sitting above the Mallow
+  const titles = [...document.querySelectorAll('#scene .move-title, #scene .topbar, #scene h1, #scene h2, #scene .hero, #scene .title')]
+    .map((e) => e.getBoundingClientRect()).filter((r) => r.height > 0 && r.top < rect.top + rect.height * 0.5);
   const minTop = titles.length ? Math.max(...titles.map((r) => r.bottom)) + 8 : 12;
   const dock = document.querySelector('#scene .dock');
   let maxBottom = dock && dock.children.length ? dock.getBoundingClientRect().top - 8 : innerHeight - 12;
@@ -111,13 +136,6 @@ export function say(world, text, { who, ms = 3600, above = true } = {}) {
   b.style.left = `${x}px`;
   b.style.top = `${Math.max(12, y)}px`;
   b.style.setProperty('--tail', `${Math.max(20, Math.min(bw - 20, rect.cx - x))}px`);
-  currentBubble = b;
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      if (currentBubble === b) { b.classList.add('out'); setTimeout(() => b.remove(), 260); currentBubble = null; }
-      resolve();
-    }, ms);
-  });
 }
 export function clearBubble() { currentBubble?.remove(); currentBubble = null; }
 

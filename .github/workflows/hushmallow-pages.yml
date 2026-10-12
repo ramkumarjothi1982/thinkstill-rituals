@@ -1,8 +1,8 @@
-# Publishes the Hushmallow web app (the hushmallow/ folder) to GitHub Pages.
+# Publishes the hushmallow web app (the hushmallow/ folder) to GitHub Pages.
 # One-time setup: repository Settings → Pages → Build and deployment →
 # Source: "GitHub Actions". Then run this workflow (Actions tab → "Publish
-# Hushmallow" → Run workflow), or push to main.
-name: Publish Hushmallow
+# hushmallow" → Run workflow), or push to main.
+name: Publish hushmallow
 
 on:
   workflow_dispatch:

@@ -1,4 +1,4 @@
-// YOUR JOURNEY — how Hushmallow has been with this person, from what's on
+// YOUR JOURNEY — how hushmallow has been with this person, from what's on
 // this device: moments finished, time spent, how they said they felt
 // afterwards, what helped most, the feelings they brought, their Mallows,
 // and where they are in this round. Never their words. No streaks, no
@@ -21,22 +21,22 @@ export default function journey(app) {
   const el = h('div', { style: { display: 'flex', flexDirection: 'column', height: '100%' } },
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' })),
     h('div', { class: 'card', style: { marginTop: '10px', padding: '16px', overflowY: 'auto', flex: '1', minHeight: '0' } },
-      h('h1', { class: 'title', style: { fontSize: '26px' } }, 'Your journey'),
-      h('p', { class: 'muted', style: { margin: '4px 0 14px' } }, 'How Hushmallow has been with you. It lives only on this phone.'),
+      h('h1', { class: 'title', style: { fontSize: 'var(--type-world)' } }, 'Your journey'),
+      h('p', { class: 'muted', style: { margin: '4px 0 14px' } }, 'How hushmallow has been with you. It lives only on this phone.'),
       body));
 
   const section = (title, ...kids) => h('section', { style: { display: 'grid', gap: '8px' } }, h('div', { class: 'eyebrow' }, title), ...kids);
   const tile = (value, label, sub) => h('div', { style: { padding: '12px', borderRadius: '16px', background: 'rgba(255,255,255,.06)', border: '1px solid var(--line)' } },
     h('div', { style: { font: '800 28px var(--font-display)', color: 'var(--text-1)', lineHeight: '1' } }, value),
     h('div', { style: { font: '700 13px var(--font-ui)', marginTop: '6px' } }, label),
-    sub ? h('div', { class: 'muted', style: { fontSize: '12px', marginTop: '2px' } }, sub) : null);
+    sub ? h('div', { class: 'muted', style: { fontSize: 'var(--type-label)', marginTop: '2px' } }, sub) : null);
   // one labelled horizontal bar: text in text colours, the bar carries the hue
   const bar = (label, n, max, colour = GOLD, aria) => h('div', { role: 'listitem', 'aria-label': aria || `${label}: ${n}`, title: `${label}: ${n}`,
     style: { display: 'grid', gridTemplateColumns: 'minmax(0,9.5em) 1fr 2.2em', alignItems: 'center', gap: '8px' } },
-  h('div', { style: { fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, label),
+  h('div', { style: { fontSize: 'var(--type-label)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, label),
   h('div', { style: { height: '10px', borderRadius: '5px', background: 'rgba(255,255,255,.06)' } },
     h('div', { style: { height: '100%', width: `${Math.max(4, (n / Math.max(1, max)) * 100)}%`, borderRadius: '5px', background: colour } })),
-  h('div', { style: { fontSize: '14px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' } }, String(n)));
+  h('div', { style: { fontSize: 'var(--type-label)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' } }, String(n)));
   const when = (t) => new Date(t).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
 
   async function render() {
@@ -64,7 +64,7 @@ export default function journey(app) {
         h('div', { role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(total), 'aria-valuenow': String(done), 'aria-label': `Round ${round.number()}: ${done} of ${total} tried`,
           style: { height: '12px', borderRadius: '6px', background: 'rgba(255,255,255,.08)', overflow: 'hidden' } },
         h('div', { style: { height: '100%', width: `${(done / total) * 100}%`, minWidth: done ? '6px' : '0', borderRadius: '6px', background: GOLD } })),
-        h('p', { class: 'muted', style: { margin: 0, fontSize: '13px' } }, 'Nothing repeats until you’ve tried everything in your plan. Saved ones are always one tap away.')));
+        h('p', { class: 'muted', style: { margin: 0, fontSize: 'var(--type-label)' } }, 'Nothing repeats until you’ve tried everything in your plan. Saved ones are always one tap away.')));
     }
 
     if (s.checkIns) {
@@ -72,10 +72,10 @@ export default function journey(app) {
       kids.push(section('How you felt afterwards',
         h('div', { role: 'img', 'aria-label': FELT.map(([k, l]) => `${l}: ${s.felt[k]}`).join(', '), style: { display: 'flex', gap: '2px', height: '14px', borderRadius: '7px', overflow: 'hidden' } },
           ...FELT.filter(([k]) => s.felt[k]).map(([k, l, c]) => h('div', { title: `${l}: ${s.felt[k]}`, style: { flex: String(s.felt[k]), background: c } }))),
-        h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '13px' } },
+        h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: 'var(--type-label)' } },
           ...FELT.map(([k, l, c]) => h('span', { style: { display: 'inline-flex', alignItems: 'center', gap: '6px' } },
             h('span', { 'aria-hidden': 'true', style: { width: '10px', height: '10px', borderRadius: '3px', background: c } }), `${l} · ${s.felt[k]}`))),
-        h('p', { class: 'muted', style: { margin: 0, fontSize: '12.5px' } }, 'Just what you told the Mallows, not a measure of you. Feelings don’t always move on cue.')));
+        h('p', { class: 'muted', style: { margin: 0, fontSize: 'var(--type-label)' } }, 'Just what you told the Mallows, not a measure of you. Feelings don’t always move on cue.')));
     }
 
     const dayMax = Math.max(1, ...s.days.map((d) => d.n));
@@ -83,7 +83,7 @@ export default function journey(app) {
       h('div', { role: 'list', style: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px', alignItems: 'end', height: '74px' } },
         ...s.days.map((d) => h('div', { role: 'listitem', title: `${when(d.day)}: ${d.n}`, 'aria-label': `${when(d.day)}: ${d.n}`, style: { display: 'grid', gap: '4px', justifyItems: 'center', alignItems: 'end', height: '100%' } },
           h('div', { style: { width: '70%', height: `${d.n ? Math.max(10, (d.n / dayMax) * 52) : 3}px`, borderRadius: '4px 4px 0 0', background: d.n ? GOLD : 'rgba(255,255,255,.12)' } }),
-          h('div', { class: 'muted', style: { fontSize: '11px' } }, new Date(d.day).toLocaleDateString(undefined, { weekday: 'narrow' })))))));
+          h('div', { class: 'muted', style: { fontSize: 'var(--type-label)' } }, new Date(d.day).toLocaleDateString(undefined, { weekday: 'narrow' })))))));
 
     if (s.helped.length) {
       kids.push(section('What helped most',
@@ -103,14 +103,14 @@ export default function journey(app) {
     }
 
     kids.push(section('Recent',
-      ...s.recent.map((e) => h('div', { style: { display: 'flex', justifyContent: 'space-between', gap: '10px', fontSize: '14px', padding: '6px 0', borderBottom: '1px solid var(--line)' } },
+      ...s.recent.map((e) => h('div', { style: { display: 'flex', justifyContent: 'space-between', gap: '10px', fontSize: 'var(--type-label)', padding: '6px 0', borderBottom: '1px solid var(--line)' } },
         h('span', { style: { minWidth: '0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, `${e.name} · ${MALLOWS[e.mallow]?.name || ''}`),
         h('span', { class: 'muted', style: { flex: '0 0 auto' } }, `${when(e.at)}${e.felt ? ` · ${FELT.find(([k]) => k === e.felt)[1].toLowerCase()}` : ''}`)))));
 
     kids.push(h('div', { class: 'row-btns' },
       h('button', { class: 'btn', onclick: () => app.go('library', { tab: 'saved' }) }, '★ Saved'),
       h('button', { class: 'btn', onclick: () => app.go('library') }, 'Library')));
-    kids.push(h('p', { class: 'muted', style: { margin: 0, fontSize: '12.5px' } }, 'Stored only on this phone. Turn it off or delete it in Settings.'));
+    kids.push(h('p', { class: 'muted', style: { margin: 0, fontSize: 'var(--type-label)' } }, 'Stored only on this phone. Turn it off or delete it in Settings.'));
     body.replaceChildren(...kids);
   }
 

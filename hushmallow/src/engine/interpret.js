@@ -1,6 +1,6 @@
 // Rule-based feeling finder.
 //
-// Hushmallow does not use AI. This module matches what someone typed against
+// hushmallow does not use AI. This module matches what someone typed against
 // the authored emotion taxonomy (names + aliases), an authored phrase lexicon
 // and a small situation lexicon, then returns SUGGESTIONS that the person
 // confirms or corrects. It never claims to understand arbitrary language:

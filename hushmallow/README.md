@@ -1,17 +1,23 @@
-# Hushmallow — your second brain for feelings
+# hushmallow — Less noise. More magic.
+
+*Feel it. Squish it. Shift it.*
 
 A mobile-first web app (plain ES modules, no build step, no AI) with seven
 living Mallows, the Hushfold fantasy world, and two paid experiences:
 
-- **Hushmallow** (paid): express a feeling (and, if you like, add up to 7
-  of your own photos), meet a Mallow, play one of **1,000 interactive touch
-  rituals** with your own words and photos inside it, keep playing as long
-  as it helps, notice how it feels. Plus ten signature rituals.
-- **Hushmallow Ultra**: everything above, plus **Another Angle** (Reframe):
-  separate what happened from what your brain added, weigh the evidence and
-  try other plausible explanations.
+- **The Hushfold home**: open the app and a Mallow is right there to
+  squeeze, stretch, flick and jiggle. Tell it what's on your mind and your
+  exact words become a Thought Mallow you play with through Hushflow worlds
+  (Glitzi's Static Storm, Loomi's Luminous Ocean). Tools you discover go in
+  your Memory Garden. See `docs/HUSHFOLD.md`.
+- **hushmallow Flow** ("A little more room for your feelings."): the
+  Mallows, Hushflow worlds, your own words and up to 7 photos, and over
+  1,000 interactive touch rituals.
+- **hushmallow Beyond** ("There's more than one way to see it."):
+  everything in Flow, plus **Another Angle**, which helps you separate what
+  happened from what your mind added and try other plausible explanations.
 
-See `docs/STATUS.md` for what's done, what's left and what needs you.
+See `docs/HUSHFOLD.md` for the new home and `docs/STATUS.md` for what's done, what's left and what needs you.
 
 ## Run it
 
@@ -25,13 +31,14 @@ Then open on your computer or phone (same Wi-Fi, use your computer's IP):
 | Page | What it is |
 |---|---|
 | `http://localhost:8000/hushmallow/index.html` | The app |
+| `http://localhost:8000/hushmallow/touch-lab.html?m=glitzi` | MallowTouch lab: squeeze one Mallow on its own |
 | `http://localhost:8000/hushmallow/studio.html` | Mallow Emotion Studio (every Mallow × every expression, touch, transition tests) |
 | `http://localhost:8000/hushmallow/realms.html` | The seven Hushfold realms with mood controls |
 | `http://localhost:8000/hushmallow/sound-lab.html` | Every Mallow sound, ritual sound and realm ambience |
 
 A browser can't take real payments, so on `localhost` the Plans screen
-shows **test purchases**. "Choose Hushmallow" unlocks Paid and "Choose
-Hushmallow Ultra" unlocks Ultra, without charging anything. Settings →
+shows **test purchases**. "Choose hushmallow" unlocks Paid and "Choose
+hushmallow Beyond" unlocks Ultra, without charging anything. Settings →
 "Remove test plan" resets this. Test purchases only work on the hosts listed
 in `src/app/config.js`, so a public site can't give plans away. The App
 Store build swaps in StoreKit (see `src/app/entitlements.js`).
@@ -50,7 +57,7 @@ the version that is running.
   furious about what happened at work." → *Meet a Mallow* → *Let's do it*.
 - **Experience B (Ultra):** Home → *Another Angle* → *Look at a real
   situation* → "My boss criticised my work. I think I'm terrible at my job."
-- **The 1,000 rituals:** Home → *Start Hushmallow*, type what's on your mind,
+- **The 1,000 rituals:** Home → *Start hushmallow*, type what's on your mind,
   add photos from the offer card if you like, and play. Or straight into one
   on localhost: `index.html?v3=HM-0001&photos=3`, or any engine × law pair:
   `index.html?engine=GE-07&law=3&photos=0`.
@@ -103,5 +110,5 @@ check that every library file is listed and every module exists.
 
 The old ThinkStill Framer app (repository root: `framer/`,
 `bubble-expressions/`, `rituals.json` …) is untouched. The quick tricks were
-removed from Hushmallow; its 1,000 rituals come from the V3 workbook in
+removed from hushmallow; its 1,000 rituals come from the V3 workbook in
 `content/`.

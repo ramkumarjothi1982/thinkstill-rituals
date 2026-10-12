@@ -1,4 +1,4 @@
-// Hushmallow photos — the person's own images, used as ritual material.
+// hushmallow photos — the person's own images, used as ritual material.
 //
 // PRIVACY: photos live only in this tab's memory. They are never written to
 // storage, never sent over the network, never used for training or by any

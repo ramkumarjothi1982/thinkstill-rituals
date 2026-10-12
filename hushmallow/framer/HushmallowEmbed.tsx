@@ -1,11 +1,11 @@
-// Hushmallow for Framer — paste this file into a Framer code component.
+// hushmallow for Framer — paste this file into a Framer code component.
 //
 // Framer: Assets → Code → "+" → New component → name it HushmallowEmbed →
 // replace everything with this file → drag the component onto a page and
-// set its size to Fill (width and height). Then put your hosted Hushmallow
+// set its size to Fill (width and height). Then put your hosted hushmallow
 // address in the "App URL" property on the right.
 //
-// Hushmallow is a complete web app (seven living Mallows, the Hushfold
+// hushmallow is a complete web app (seven living Mallows, the Hushfold
 // realms, the 1,000 rituals), so it is hosted as its
 // own static site and shown here full-bleed. See hushmallow/docs/FRAMER.md.
 
@@ -42,8 +42,8 @@ export default function HushmallowEmbed({ url, background, rounded }: Props) {
         return (
             <div style={{ ...frame, display: "grid", placeItems: "center", color: "#f7f3ff", font: "600 15px/1.4 system-ui, sans-serif", textAlign: "center", padding: 24 }}>
                 <div>
-                    <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 6 }}>Hushmallow</div>
-                    Add your hosted Hushmallow address (https://…) in the
+                    <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 6 }}>hushmallow</div>
+                    Add your hosted hushmallow address (https://…) in the
                     “App URL” property.
                 </div>
             </div>
@@ -53,7 +53,7 @@ export default function HushmallowEmbed({ url, background, rounded }: Props) {
     return (
         <div style={frame}>
             <iframe
-                title="Hushmallow"
+                title="hushmallow"
                 src={src}
                 onLoad={() => setLoaded(true)}
                 // sound needs autoplay after a tap; share cards and copied lines

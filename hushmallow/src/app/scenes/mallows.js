@@ -19,7 +19,7 @@ export default function mallows(app) {
   const el = h('div', { style: { display: 'flex', flexDirection: 'column', height: '100%' } },
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' })),
     h('div', { class: 'card', style: { marginTop: '8px', overflowY: 'auto', maxHeight: 'calc(100dvh - 110px)' } },
-      h('h1', { class: 'title', style: { fontSize: '26px' } }, 'The Mallows'),
+      h('h1', { class: 'title', style: { fontSize: 'var(--type-world)' } }, 'The Mallows'),
       h('p', { class: 'muted', style: { margin: '4px 0 14px' } }, 'Tap one to visit its realm. Poke, squeeze and drag them — they’re soft.'),
       grid,
       h('div', { class: 'eyebrow', style: { marginTop: '18px' } }, 'Your favourite rituals'),

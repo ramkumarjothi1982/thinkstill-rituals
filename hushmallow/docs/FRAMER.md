@@ -1,6 +1,6 @@
-# Putting Hushmallow on your Framer site
+# Putting hushmallow on your Framer site
 
-Hushmallow is a complete web app: seven living Mallows, the seven Hushfold
+hushmallow is a complete web app: seven living Mallows, the seven Hushfold
 realms, the 1,000 rituals and their touch engines. It is too big
 and too interactive to live inside a single Framer code component, so it is
 **hosted as its own small static site** and Framer shows it full-bleed with
@@ -11,7 +11,7 @@ the `HushmallowEmbed` component.
 1. Merge this branch into `main`.
 2. On GitHub: **Settings → Pages → Build and deployment → Source: GitHub
    Actions**.
-3. **Actions → Publish Hushmallow → Run workflow** (it also runs on every
+3. **Actions → Publish hushmallow → Run workflow** (it also runs on every
    push to `main` that changes `hushmallow/`). It runs the tests first and
    only publishes if they pass.
 4. Your app is at `https://ramkumarjothi1982.github.io/thinkstill-rituals/`.
@@ -41,7 +41,7 @@ work in the App Store app.
 
 A website can't take App Store payments. On the web, the plans screen uses a
 **test purchase** that unlocks a plan for free. To stop a public site from
-giving Hushmallow away, test purchases only work on the hosts listed in
+giving hushmallow away, test purchases only work on the hosts listed in
 [`src/app/config.js`](../src/app/config.js) (`localhost` by default).
 Everywhere else the plans screen says subscriptions aren't on sale on the
 web yet, and nothing paid can be opened.
@@ -49,7 +49,7 @@ web yet, and nothing paid can be opened.
 - **To preview the paid experience** on a private address (for example a
   Netlify preview URL that only you know), add that hostname to
   `TEST_PURCHASE_HOSTS`. Never add the domain your customers use.
-- **To sell on the web**, Hushmallow needs a web payment provider (for
+- **To sell on the web**, hushmallow needs a web payment provider (for
   example Stripe Checkout) plus a small server that confirms each payment
   and tells the app which plan is active. That needs your payment account
   and isn't built yet. The app is ready for it: `src/app/entitlements.js`
@@ -61,7 +61,7 @@ any paid web launch should confirm the plan on a server.
 
 ## 4. Privacy
 
-Nothing typed into Hushmallow leaves the phone. The app only loads its own
+Nothing typed into hushmallow leaves the phone. The app only loads its own
 files from wherever it's hosted: no analytics, no AI, no font service (the
 Fredoka font is bundled). Favourites, history and settings live in the browser's local
 storage for that site.

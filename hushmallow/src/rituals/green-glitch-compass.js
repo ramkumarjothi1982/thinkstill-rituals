@@ -309,18 +309,18 @@ export async function run(ctx) {
     // big caption inside the image
     c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle';
     c.shadowColor = 'rgba(40,0,60,.55)'; c.shadowBlur = w * 0.04;
-    const lines = wrap(c, p.big, w - pad * 4, `900 ${Math.round(w * 0.11)}px ui-rounded, "SF Pro Rounded", system-ui, sans-serif`);
+    const lines = wrap(c, p.big, w - pad * 4, `900 ${Math.round(w * 0.11)}px "Nunito Sans", ui-rounded, system-ui, sans-serif`);
     const lh = w * 0.12;
     lines.slice(0, 3).forEach((ln, i) => c.fillText(ln, w / 2, imgY + imgH / 2 + (i - (Math.min(3, lines.length) - 1) / 2) * lh));
     c.shadowBlur = 0;
     // likes and caption
     c.textAlign = 'left';
-    c.font = `800 ${Math.round(w * 0.062)}px system-ui, sans-serif`;
+    c.font = `800 ${Math.round(w * 0.062)}px Manrope, system-ui, sans-serif`;
     c.fillStyle = '#ff3df2';
     const likes = 2400 + (performance.now() / 1000 - t0) * 173;
     c.fillText(`♥ ${fmt(likes)}`, pad, imgY + imgH + hh * 0.06);
     c.fillStyle = 'rgba(255,255,255,.88)';
-    c.font = `600 ${Math.round(w * 0.055)}px system-ui, sans-serif`;
+    c.font = `600 ${Math.round(w * 0.055)}px Manrope, system-ui, sans-serif`;
     wrap(c, p.cap, w - pad * 2, c.font).slice(0, 2).forEach((ln, i) => c.fillText(ln, pad, imgY + imgH + hh * 0.12 + i * w * 0.07));
     // comment pills
     c.fillStyle = 'rgba(255,255,255,.12)';
@@ -333,10 +333,10 @@ export async function run(ctx) {
     og.setTransform(1, 0, 0, 1, 0, 0);
     og.clearRect(0, 0, w, hh);
     og.fillStyle = '#0b0e33'; roundRect(og, 0, 0, w, hh, 24 * dpr); og.fill();
-    og.fillStyle = 'rgba(255,255,255,.8)'; og.font = `800 ${Math.round(w * 0.055)}px system-ui, sans-serif`; og.textAlign = 'left'; og.textBaseline = 'middle';
+    og.fillStyle = 'rgba(255,255,255,.8)'; og.font = `800 ${Math.round(w * 0.055)}px Manrope, system-ui, sans-serif`; og.textAlign = 'left'; og.textBaseline = 'middle';
     og.fillText('highlights', w * 0.06, hh * 0.065);
     og.fillStyle = '#ff3df2'; og.beginPath(); og.arc(w * 0.86, hh * 0.065, w * 0.018, 0, TAU); og.fill();
-    og.fillStyle = 'rgba(255,255,255,.75)'; og.font = `800 ${Math.round(w * 0.045)}px system-ui, sans-serif`; og.fillText('LIVE', w * 0.68, hh * 0.066);
+    og.fillStyle = 'rgba(255,255,255,.75)'; og.font = `800 ${Math.round(w * 0.045)}px Manrope, system-ui, sans-serif`; og.fillText('LIVE', w * 0.68, hh * 0.066);
     const per = 2.6, tt = now - t0, i = Math.floor(tt / per) % posts.length, ph = (tt % per) / per;
     const p = posts[i], q = posts[(i + 1) % posts.length];
     if (posts.length > 1 && ph > 0.88) {
@@ -838,7 +838,7 @@ export async function run(ctx) {
       const a = i * (360 / WANTS.length);
       const flip = a > 90 && a < 270;
       const t = mk('text', { x: '0', y: flip ? '108' : '-104', transform: `rotate(${flip ? a + 180 : a})`, 'text-anchor': 'middle', 'dominant-baseline': 'middle',
-        fill: 'rgba(255,255,255,.72)', 'font-size': '13.5', 'font-weight': '800', 'font-family': 'ui-rounded, "SF Pro Rounded", system-ui, sans-serif' });
+        fill: 'rgba(255,255,255,.72)', 'font-size': '13.5', 'font-weight': '800', 'font-family': '"Nunito Sans", ui-rounded, system-ui, sans-serif' });
       t.textContent = label;
       return t;
     });

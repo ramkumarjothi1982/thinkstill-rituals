@@ -2,7 +2,7 @@
 //
 // Test purchases unlock a plan for free (no store exists in a plain browser).
 // They must never be available on the public site, or anyone could unlock
-// Hushmallow without paying. List only development / private preview hosts
+// hushmallow without paying. List only development / private preview hosts
 // here — never the domain your customers use.
 export const TEST_PURCHASE_HOSTS = [
   'localhost', '127.0.0.1',

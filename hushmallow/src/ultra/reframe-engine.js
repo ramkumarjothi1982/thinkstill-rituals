@@ -1,4 +1,4 @@
-// HUSHMALLOW ULTRA · "Another Angle" rule engine.
+// hushmallow Beyond (internal tier: ultra) · "Another Angle" rule engine.
 //
 // Pure, deterministic functions over the authored library in frameworks.js.
 // No randomness, no clock, no network, no generated language: every sentence

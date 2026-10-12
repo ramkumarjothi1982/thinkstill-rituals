@@ -393,11 +393,11 @@ export async function run(ctx) {
       g.fillStyle = 'rgba(255,250,235,0.95)'; g.beginPath(); g.arc(hx, y, 8, 0, Math.PI * 2); g.fill();
       g.fillStyle = 'rgba(40,40,90,0.55)'; g.beginPath(); g.arc(hx + 3.5, y - 2, 6.5, 0, Math.PI * 2); g.fill();
       if (reached === 0 && !dragging && !auto) {
-        g.font = '650 13px ui-rounded, system-ui, sans-serif'; g.textAlign = 'center';
+        g.font = '650 13px "Nunito Sans", ui-rounded, system-ui, sans-serif'; g.textAlign = 'center';
         g.fillStyle = 'rgba(230,230,255,0.7)'; g.fillText('drag down, slowly', body.cx, y - 14);
       }
       // softened region labels on the left
-      g.font = '650 12.5px ui-rounded, system-ui, sans-serif'; g.textBaseline = 'middle';
+      g.font = '650 12.5px "Nunito Sans", ui-rounded, system-ui, sans-serif'; g.textBaseline = 'middle';
       for (let i = 0; i < reached; i++) {
         const ry = body.top + body.height * REGIONS[i][2];
         const txt = `${REGIONS[i][1].toLowerCase()} · soft`;
@@ -599,7 +599,7 @@ export async function run(ctx) {
       z.age += dt;
       if (!rm) { z.y -= 14 * dt; z.x += Math.sin(z.age * 0.9) * 0.25; }
       z.a = Math.min(1, z.age) * Math.max(0, 1 - z.age / 4.2);
-      g.font = `700 ${z.s + z.age * 3}px Fredoka, ui-rounded, system-ui, sans-serif`;
+      g.font = `700 ${z.s + z.age * 3}px "Nunito Sans", ui-rounded, system-ui, sans-serif`;
       g.fillStyle = `rgba(235,235,255,${(0.6 * z.a).toFixed(3)})`;
       g.fillText('z', z.x + z.age * 8, z.y);
     }
