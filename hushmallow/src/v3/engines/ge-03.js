@@ -112,7 +112,7 @@ export function create(E) {
     k, photo: paneP[k], medal: medalP[k],
     sw: new Spring(0, { stiffness: 34, damping: 4.4 }),   // normalised swing (overshoots a little: the edge quivers)
     wob: new Wobble(),
-    E: 0, E0: 1, age: 9, rx: 0, ry: 0, front: 0,
+    E: 0, E0: 1, age: 9, rx: 0, ry: 0, front: 0, wipe: -1, wx: 0, wy: 0,
     opened: false, ready: false, chimed: false, flash: 0, deny: 0, hushT: 0, settled: true,
     // geometry (fit)
     W: 1, H: 1, cx: 0, base: 0, x0: 0, y0: 0, f: 1, ox: 0, oy: 0, ow: 1, oh: 1, r: 1, acy: 0, latchX: 0, latchY: 0, pl: 0, diag: 1,
@@ -541,6 +541,7 @@ export function create(E) {
     p = E.gate(wanted);                                    // the first instant of the swing is the tap itself
     if (wanted > p + 0.015) wanted = p + 0.015;
     ring(gt, x, y, AMP);
+    gt.wipe = 0; gt.wx = gt.rx; gt.wy = gt.ry;            // the opening ripple wipes the mist (once; later rings never re-mist)
     gt.sw.v += 0.9;
     const pan = clamp((gt.cx - stage.cx) / (stage.w * 0.5), -1, 1);
     E.sound('glass', { note: NOTES[k], intensity: 0.55, pan });
@@ -615,6 +616,7 @@ export function create(E) {
       if (gt.hushT > 0) gt.hushT = Math.max(0, gt.hushT - dt);
       gt.age += dt;
       gt.front = gt.age * ringSpeedK * U;
+      if (gt.wipe >= 0 && gt.wipe < gt.diag * 1.2) gt.wipe += dt * ringSpeedK * 1.35 * U;
       gt.flash = Math.max(0, gt.flash - dt * 2.2);
       gt.deny = Math.max(0, gt.deny - dt * 2.4);
       gt.settled = isSettled(gt);
@@ -774,12 +776,12 @@ export function create(E) {
     if (phi > 0.02) {
       drawPane(gt);
       // mist, wiped away by the ripple's wavefront
-      const mistIn = gt.front - 26 * U;
-      if (mistIn < gt.diag * 1.05) {
-        const r0 = Math.max(0, mistIn), r1 = Math.max(r0 + 1, gt.front + 10 * U);
-        const mg = g.createRadialGradient(gt.rx, gt.ry, r0, gt.rx, gt.ry, r1);
+      const mistIn = gt.wipe - 26 * U;
+      if (gt.wipe >= 0 && mistIn < gt.diag * 1.05 && fin < 0.98) {
+        const r0 = Math.max(0, mistIn), r1 = Math.max(r0 + 1, gt.wipe + 10 * U);
+        const mg = g.createRadialGradient(gt.wx, gt.wy, r0, gt.wx, gt.wy, r1);
         const mc = mix('#ffffff', tint, 0.3);
-        mg.addColorStop(0, rgba(mc, 0)); mg.addColorStop(1, rgba(mc, 0.34));
+        mg.addColorStop(0, rgba(mc, 0)); mg.addColorStop(1, rgba(mc, 0.34 * (1 - fin)));
         g.fillStyle = mg; g.fillRect(gt.ox - 2, gt.oy - 2, gt.ow + 4, gt.oh + 4);
       }
       // stained wash while the glass is still ringing; true colours once still

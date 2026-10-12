@@ -342,9 +342,11 @@ export function create(E) {
 
   // ---------------------------------------------------------- the loop --
   const ends = { ax: 0, ay: 0, under: 0 };
+  const anc = { x: 0, y: 0 };
   function anchorWorld() {
     const ax = loopSide * cW * 0.3, ay = -cH / 2 + cH * 0.085, c = Math.cos(cardRot.x), s = Math.sin(cardRot.x), sc = 1 + 0.035 * lift.x;
-    return { x: card.x + (ax * c - ay * s) * sc, y: card.y + (ax * s + ay * c) * sc, c, s };
+    anc.x = card.x + (ax * c - ay * s) * sc; anc.y = card.y + (ax * s + ay * c) * sc;
+    return anc;
   }
   const fa = { x: 0, y: 0, f: 0 };
   function flapAt(x, out) {
@@ -399,7 +401,7 @@ export function create(E) {
     }
     if (!doneFlag && sealedAt >= 0 && !(drag && drag.mode === 'seal') && assistTo == null && sealShown > 0.992 && t - sealedAt > 0.3) doneFlag = true;
     // once the card is in, the envelope glides up to the middle of the stage to be sealed
-    if (seated) camK = Math.min(1, camK + dt / 0.95);
+    if (seated) camK = Math.min(1, camK + dt / (reduced ? 1.4 : 0.95));
     setCam(camK);
     guideA += ((seated && sealedAt < 0 ? smooth(clamp((camK - 0.4) / 0.6)) : 0) - guideA) * (1 - Math.exp(-dt * 6));
 
@@ -466,7 +468,7 @@ export function create(E) {
     drawPocket(fin);
     drawFlapFront();
     drawSeal(t, fin);
-    drawLoop(t, fin);
+    drawRibbon(t, fin);
     drawEmblem(t, fin);
     if (fin > 0) drawFinaleGlints(t, fin);
     if (twistAt >= 0 && twistKind === 0) drawStar(dt, t);
@@ -638,7 +640,15 @@ export function create(E) {
     }
     g.restore();
   }
-  function drawLoop(t, fin) {
+  function ribbonPath() {
+    const N = LN;
+    g.beginPath(); g.moveTo(lx[0], ly[0]);
+    for (let i = 1; i < N; i++) g.quadraticCurveTo(lx[i - 1], ly[i - 1], (lx[i - 1] + lx[i]) / 2, (ly[i - 1] + ly[i]) / 2);
+    g.lineTo(lx[N - 1], ly[N - 1]); g.lineTo(rx[N - 1], ry[N - 1]);
+    for (let i = N - 2; i >= 0; i--) g.quadraticCurveTo(rx[i + 1], ry[i + 1], (rx[i + 1] + rx[i]) / 2, (ry[i + 1] + ry[i]) / 2);
+    g.lineTo(rx[0], ry[0]); g.closePath();
+  }
+  function drawRibbon(t, fin) {
     const R = rope, N = LN;
     for (let i = 0; i < N; i++) {
       const i0 = Math.max(0, i - 1), i1 = Math.min(N - 1, i + 1);
@@ -647,13 +657,7 @@ export function create(E) {
       const hw = rw * 0.5 * (0.3 + 0.7 * twv) * (i === 0 ? 0.7 : 1);
       tw[i] = twv; lx[i] = R.x[i] - dy * hw; ly[i] = R.y[i] + dx * hw; rx[i] = R.x[i] + dy * hw; ry[i] = R.y[i] - dx * hw;
     }
-    const path = () => {
-      g.beginPath(); g.moveTo(lx[0], ly[0]);
-      for (let i = 1; i < N; i++) g.quadraticCurveTo(lx[i - 1], ly[i - 1], (lx[i - 1] + lx[i]) / 2, (ly[i - 1] + ly[i]) / 2);
-      g.lineTo(lx[N - 1], ly[N - 1]); g.lineTo(rx[N - 1], ry[N - 1]);
-      for (let i = N - 2; i >= 0; i--) g.quadraticCurveTo(rx[i + 1], ry[i + 1], (rx[i + 1] + rx[i]) / 2, (ry[i + 1] + ry[i]) / 2);
-      g.lineTo(rx[0], ry[0]); g.closePath();
-    };
+    const path = ribbonPath;
     g.save(); g.lineCap = 'round';
     g.save(); g.translate(1.6, 2.8); path(); g.fillStyle = rgba(shade, 0.2); g.fill(); g.restore();
     path(); g.fillStyle = ribbonCol; g.fill();
@@ -730,15 +734,15 @@ export function create(E) {
       const a = smooth(clamp((k - i * 0.55) / 0.9));
       if (a <= 0) continue;
       const L = lights[i], y = L.y + Math.sin(t * 0.9 + i) * 2.5 * (reduced ? 0.3 : 1);
-      glow(g, L.x, y, 16 + 4 * i, glowCol, 0.5 * a);
-      orb(g, L.x, y, 3.2 + i * 0.6, mix(pal.glow, '#ffffff', 0.5), { alpha: a });
+      glow(g, L.x, y, (24 + 5 * i) * (0.9 + 0.1 * Math.sin(t * 1.2 + i)), glowCol, 0.55 * a);
+      orb(g, L.x, y, 4.6 + i * 0.8, mix(pal.glow, '#ffffff', 0.5), { alpha: a });
     }
   }
   function drawMoon(t) {
     const k = smooth(clamp((E.now() - twistAt) / 3)), x = ecx - loopSide * W * 0.36, y = eTop - H * lerp(0.15, 0.62, k) + Math.sin(t * 0.5) * 2, r = H * 0.13;
     glow(g, x, y, r * 3, glowCol, 0.3 * k);
     g.save(); g.globalAlpha = 0.85 * k;
-    g.beginPath(); g.arc(x, y, r, -Math.PI / 2, Math.PI / 2, true); g.ellipse(x, y, r * 0.45, r, 0, Math.PI / 2, -Math.PI / 2, true); g.closePath();
+    g.beginPath(); g.arc(x, y, r, -Math.PI / 2, Math.PI / 2, true); g.ellipse(x - r * 0.18, y, r * 0.5, r, 0, Math.PI / 2, -Math.PI / 2, true); g.closePath();
     g.fillStyle = mix(pal.glow, '#fffaf0', 0.6); g.fill();
     g.restore();
   }
@@ -857,7 +861,7 @@ export function create(E) {
       } else if (twistKind === 1) {
         const ex = rope.x[LN - 1], ey = rope.y[LN - 1];
         const lim = toWorld({ x: stage.x + 16, y: stage.y + 16 });
-        for (let i = 0; i < 3; i++) { lights[i].x = clamp(ex + loopSide * (i + 1) * W * 0.11, lim.x, 2 * ecx - lim.x); lights[i].y = Math.max(lim.y, ey - (i + 1) * H * 0.1 - i * i * H * 0.02); }
+        for (let i = 0; i < 3; i++) { lights[i].x = clamp(ex + loopSide * (i + 1) * W * 0.13, lim.x, 2 * ecx - lim.x); lights[i].y = Math.max(lim.y, ey - (i + 1) * H * 0.16 + i * i * H * 0.03); }
       }
       E.particles.burst(ecx, sY(eTop - H * 0.15), low ? 4 : 10, { speed: 40, colour: glowCol, life: 1.2, size: 5, kind: 'glint' });
     },

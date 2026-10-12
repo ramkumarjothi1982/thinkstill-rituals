@@ -501,7 +501,7 @@ export function create(E) {
     drawShadows(t, fin);
     drawCargo(t, fin, false);
     drawPlume(t, fin);
-    if (E.phase !== 'law') drawStemWords(t, fin);
+    if (E.phase !== 'law') drawStemWords(dt, t, fin);
     drawStem(t, fin);
     if (twistAt >= 0) drawTwist(t);
     drawTether(t);
@@ -909,7 +909,7 @@ export function create(E) {
       TBC[i] = i ? TBC[i - 1] + Math.hypot(TB[i * 2] - TB[i * 2 - 2], TB[i * 2 + 1] - TB[i * 2 - 1]) : 0;
     }
   }
-  function drawStemWords(t, fin) {
+  function drawStemWords(dt, t, fin) {
     const size = Math.max(12, Math.round(12 * s * 10) / 10);
     if (wTok !== words.token || wSize !== size || (t - wMeasuredAt > 1.5 && t < 8)) layoutWords(size, t);
     if (!wLines.length) return;
@@ -919,7 +919,7 @@ export function create(E) {
     const cx = TB[0] - TB[TBN * 2], ch = Math.hypot(cx, TB[1] - TB[TBN * 2 + 1]) || 1;
     const want = readDir === 0 ? (cx >= 0 ? 1 : -1) : readDir > 0 ? (cx < -0.34 * ch ? -1 : 1) : (cx > 0.34 * ch ? 1 : -1);
     if (want !== readDir) { if (readDir !== 0) readFade = 0; readDir = want; }
-    readFade = Math.min(1, readFade + 0.06);
+    readFade = Math.min(1, readFade + dt * 3.2);
     const m = wLines.length, lh = size * 1.08;
     const centre = Lt * 0.45;
     if (fin > 0) {
@@ -929,8 +929,9 @@ export function create(E) {
     }
     g.save();
     g.font = `600 ${size}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillStyle = C.ink; g.shadowColor = 'rgba(255,255,255,0.9)'; g.shadowBlur = 4;
-    g.globalAlpha = 0.9 * smooth(readFade);
+    // soft ink with a thin white halo (no per-letter shadow blur: cheap and crisp on a phone)
+    g.fillStyle = C.ink; g.strokeStyle = 'rgba(255,255,255,0.72)'; g.lineWidth = Math.max(2, size * 0.2); g.lineJoin = 'round';
+    g.globalAlpha = 0.92 * smooth(readFade);
     for (let j = 0; j < m; j++) {
       const ws = wWid[j], chs = wChars[j], off = ((m - 1) / 2 - j) * lh;
       let a = -wLW[j] / 2;
@@ -943,7 +944,7 @@ export function create(E) {
         const x = lerp(x0, x1, k), y = lerp(y0, y1, k);
         let tx = (x0 - x1) * readDir, ty = (y0 - y1) * readDir;   // reading direction
         const tl = Math.hypot(tx, ty) || 1; tx /= tl; ty /= tl;
-        g.save(); g.translate(x + ty * off, y - tx * off); g.rotate(Math.atan2(ty, tx)); g.fillText(chs[c], 0, 0); g.restore();
+        g.save(); g.translate(x + ty * off, y - tx * off); g.rotate(Math.atan2(ty, tx)); g.strokeText(chs[c], 0, 0); g.fillText(chs[c], 0, 0); g.restore();
         a += cw / 2;
       }
     }
