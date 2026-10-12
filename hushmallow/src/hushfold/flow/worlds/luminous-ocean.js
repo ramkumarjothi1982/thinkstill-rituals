@@ -198,6 +198,7 @@ export function create(ctx) {
   const so = { x: 0, y: 0, s: 0 }, wo = { x: 0, z: 0, s: 0 }, sm = {};
   let layoutRest = null, layoutBandB = 0, pendingRect = null, pendingFor = 0, relayoutClock = 0, skyKey = '', camKey = '';
   let measureG = null;
+  const layoutLog = { n: 0, last: null };                    // (QA: how often the screen was re-planned, and why)
   const K = { on: false, x0: 0, y0: 0, x1: 0, y1: 0 };      // the hero's keep-out this frame (screen px; its live body)
   const Kr = { on: false, x0: 0, y0: 0, x1: 0, y1: 0 };     // …and where it rests (its own bob excluded)
 
@@ -271,6 +272,7 @@ export function create(ctx) {
 
   function layout(first = true) {
     const live = mallowBox(), rest = restBox(live);
+    layoutLog.n++; layoutLog.last = { first, t: Math.round(elapsed * 10) / 10, from: layoutRest && { ...layoutRest }, to: rest && { ...rest }, bandB: bandBottom(), bandWas: layoutBandB };
     layoutRest = rest; layoutBandB = bandBottom();
     const tok = thought ? (thought.token || words?.token || '') : '';
     const n = Math.min(7, photos?.n || 0);
@@ -1276,7 +1278,7 @@ export function create(ctx) {
       for (let a = 0; a < bubbles.length; a++) {
         const A = bubbles[a];
         if (A.state !== 'float' && A.state !== 'rise' && A.state !== 'arrive') continue;
-        let mx = 0, my = 0;
+        let mx = 0, my = 0, qx = 0, qy = 0;
         const ra = A.D / 2;
         for (let c = a + 1; c < bubbles.length; c++) {
           const B = bubbles[c];
@@ -1285,21 +1287,25 @@ export function create(ctx) {
           if (dd < need) { const m = (need - dd) * 0.5; nudge(B, -dx / dd * m, -dy / dd * m); mx += dx / dd * m; my += dy / dd * m; }
         }
         if (T) { const dx = A.sx - T.x, dy = A.sy - T.y, dd = Math.hypot(dx, dy) || 1e-3, need = ra + T.r + OCEAN.BUBBLE_GAP; if (dd < need) { mx += dx / dd * (need - dd); my += dy / dd * (need - dd); } }
-        const push = (o, pad) => {
+        const push = (o, pad, world) => {
           if (!o) return;
           if (A.sx + ra <= o.x0 - pad || A.sx - ra >= o.x1 + pad || A.sy + ra <= o.y0 - pad || A.sy - ra >= o.y1 + pad) return;
           const l = A.sx + ra - (o.x0 - pad), r = o.x1 + pad - (A.sx - ra), u = A.sy + ra - (o.y0 - pad), d = o.y1 + pad - (A.sy - ra);
           const m = Math.min(l, r, u, d);
-          if (m === l) mx -= l; else if (m === r) mx += r; else if (m === u) my -= u; else my += d;
+          if (world) { if (m === l) mx -= l; else if (m === r) mx += r; else if (m === u) my -= u; else my += d; }
+          else if (m === l) qx -= l; else if (m === r) qx += r; else if (m === u) qy -= u; else qy += d;
         };
-        if (K.on) push(K, 0);
-        push(P, 4);
+        if (K.on) push(K, 0, true);
+        // (the words only hold a bubble off on screen: it keeps its distance on the water, so a far one stays small
+        // as it lines up beneath them, instead of being pushed back towards you)
+        push(P, 4, false);
         // edges and the band
         if (A.sx - ra < E) mx += E - (A.sx - ra);
         if (A.sx + ra > W - E) mx -= A.sx + ra - (W - E);
         if (A.sy - ra < bb) my += bb - (A.sy - ra);
         if (A.sy + ra > plan.floor) my -= A.sy + ra - plan.floor;
         if (mx || my) nudge(A, mx, my);
+        if (qx || qy) { A.sx += qx; A.sy += qy; }
       }
     }
     // the hero is the one thing a bubble never covers: still on it (squeezed between it and the edge)? smaller, beside it — or, with
@@ -1629,14 +1635,20 @@ export function create(ctx) {
       let segs = 0;
       for (let q0 = 3 * COLS; q0 < n * COLS; q0++) {
         if (!gMark[q0] || gPred[q0] || gSucc[q0] < 0) continue;
-        let q = q0, pen = false;
+        // (smoothed through the midpoints: a crest stepping between grid rows stays one soft curve)
+        let q = q0, pen = false, ex = 0, ey = 0;
         while (q >= 0 && gSucc[q] >= 0) {
           const nq = gSucc[q], j = (q / COLS) | 0;
           const sN = clamp(rS[j] / 1.2);
           const ok = (depth === 0) === (sN < 0.4) && Math.min(gCrest[q], gCrest[nq]) >= CREST_LV[b];
-          if (ok) { if (!pen) { g.moveTo(gSX[q], gSY[q]); pen = true; } g.lineTo(gSX[nq], gSY[nq]); segs++; } else pen = false;
+          const mx = (gSX[q] + gSX[nq]) * 0.5, my = (gSY[q] + gSY[nq]) * 0.5;
+          if (ok) {
+            if (!pen) { g.moveTo(gSX[q], gSY[q]); g.lineTo(mx, my); pen = true; } else g.quadraticCurveTo(gSX[q], gSY[q], mx, my);
+            ex = gSX[nq]; ey = gSY[nq]; segs++;
+          } else if (pen) { g.lineTo(ex, ey); pen = false; }
           q = nq;
         }
+        if (pen) g.lineTo(ex, ey);
       }
       if (!segs) continue;
       const a = CREST_A[b] * (low() ? 0.6 : 1);
@@ -2046,6 +2058,8 @@ export function create(ctx) {
       return true;
     },
     resize(w, h) {
+      // (the quality governor changes only the layers' resolution: nothing on the water moves; the sky is redrawn for it)
+      if (plan && Math.round(w) === Math.round(W) && Math.round(h) === Math.round(H)) { buildSky(); return; }
       const dOld = cam ? tS.z / cam.Z0 : 1;
       W = w; H = h; U = Math.min(W, H);
       layout(true);
@@ -2067,7 +2081,7 @@ export function create(ctx) {
       get sea() { return sea; }, get wake() { return wake; }, get cam() { return cam; }, get plan() { return plan; },
       get thought() { return { ...tS }; }, get bubbles() { return bubbles.map((b) => ({ i: b.i, sx: b.sx, sy: b.sy, D: b.D, d: b.z / cam.Z0, state: b.state, alpha: b.alpha })); },
       get waiting() { return waiting.slice(); }, get fingers() { return fingers; }, get hero() { return { ...hero }; },
-      get melt() { return melt ? { ...melt } : null; }, get hy() { return hyNow; },
+      get melt() { return melt ? { ...melt } : null; }, get hy() { return hyNow; }, get layouts() { return layoutLog; },
       /** Screen y of the still water at depth d·Z0. */
       surfaceY: (d) => cam.hy + cam.Hw * scaleAt(cam, d * cam.Z0),
       /** Mean |h| on screen rows: how much the sea is moving (QA). */

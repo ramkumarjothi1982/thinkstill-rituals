@@ -115,6 +115,15 @@ test('angle-v5: reassurance that is not known is a "may", never a promise; v4 is
   const ex = /\("(No email yet may just mean[^"]+)"\)/.exec(SYSTEM_PROMPT)[1];
   const g = qualityGate({ emotion: 'anxiety', situation_type: 'school', reasoning_pattern: 'catastrophising', interaction_type: 'shrink_projection', mallow_character: 'loomi', safety_status: 'ok', known_fact: '', possible_assumption: '', alternative_angle: '', practical_next_step: '', subtitle_line_1: `${ex}.`, subtitle_line_2: 'Which day would you check again?' }, { text: 'My results email still has not come.' });
   assert.deepEqual(g.failures.filter((f) => f.field === 'subtitle_line_1'), []);
+  // Each hedge the rule names passes the gate's minds check when the
+  // reassurance is about a person (review: "often" once cost a regeneration),
+  // and the same reassurance stated as fact still fails.
+  const hedges = [...(/say ((?:"[^"]+"(?:, | or )?)+) \(/.exec(SYSTEM_PROMPT) || [])[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  const forms = { may: 'A slow reply may just mean she is busy, not upset with you.', often: 'A slow reply often means she is busy, not upset with you.', 'could be': 'A slow reply could be her being busy, not upset with you.' };
+  assert.deepEqual(hedges.sort(), Object.keys(forms).sort());
+  const minds = (l2) => qualityGate({ emotion: 'worry', situation_type: 'family', reasoning_pattern: 'mind_reading', interaction_type: 'open_interpretations', mallow_character: 'zuzu', safety_status: 'ok', known_fact: 'Your sister has not replied to your message for two days.', possible_assumption: '', alternative_angle: '', practical_next_step: '', subtitle_line_1: 'Two days without a reply from your sister is the only fact so far.', subtitle_line_2: l2 }, { text: 'My sister has not replied to my message for two days.' }).failures.filter((f) => f.code === 'claims_others_minds');
+  for (const h of hedges) assert.deepEqual(minds(forms[h]), [], h);
+  assert.equal(minds('A slow reply means she is busy, not upset with you.').length, 1);
   // Every other v4 rule is kept: v5 is v4 plus three lines.
   const v4 = readFileSync(new URL('../prompts/angle-v4.md', import.meta.url), 'utf8');
   assert.ok(v4.startsWith('Prompt version: angle-v4\n'));

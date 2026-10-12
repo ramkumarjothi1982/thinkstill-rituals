@@ -1024,7 +1024,7 @@ ThoughtMallow.prototype.extent = function (out = {}) {
 
 export { grow, emptyRect };
 
-export { OUTLINE_N, MOTE_UV, PT_UV };
+export { OUTLINE_N, MOTE_UV, PT_UV, PUFF_K };
 
 /** createThought({text, emotion, intensity, scale, …}) → a Thought Mallow handle (add it to a ThoughtLayer to see it). */
 export function createThought(o = {}) {

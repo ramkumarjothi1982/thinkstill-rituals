@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import * as V from '../src/beyond/vocab.js';
 import * as SV from '../server/another-angle/src/vocab.js';
 import { THOUGHT_PATTERNS } from '../src/ultra/frameworks.js';
-import { authoredScene, sceneParts, exactPhrase, chunkStep, candidatePatterns } from '../src/beyond/authored.js';
+import { authoredScene, sceneParts, exactPhrase, chunkStep, candidatePatterns, sameWords, FACT_ASK, GUESS_ASK } from '../src/beyond/authored.js';
 import { createAngleClient, resolveEndpoint, makeDeviceId, PATHS } from '../src/beyond/angle-client.js';
 import { consentState, setConsent, withdrawConsent, deleteAngleData, hasAngleData, noteFeedback, lessWanted, STORE_KEYS, CONSENT_VERSION, PROVIDER_RETENTION, RETENTION_PLACEHOLDER } from '../src/beyond/consent.js';
 import * as LINES from '../src/beyond/lines.js';
@@ -151,6 +151,61 @@ test('scene parts for the mechanics: exact phrases, a harsh verdict, a step in t
   assert.equal(p.steps.join(' ').replace(/[^\p{L}\s]/gu, '').replace(/\s+/g, ' '), 'Make a small plan for your weakest area three short sessions this week');
   assert.equal(chunkStep('').length, 3);
   for (const s of SAMPLES) assert.ok(sceneParts(s).excerpt.length <= 46, s);
+});
+
+// fact versus assumption: the two sides never say the same thing (review r2, blocking 2)
+const PARTS_TEXTS = [...SAMPLES, 'She has read my message and still not replied.', 'My sister must think I’m selfish.', 'If the presentation goes badly I’m going to get fired.',
+  'The party went badly and it’s my fault.', 'Nobody ever asks me to join in.', '😞😞', 'ok', 'Everything is fine but I feel awful.'];
+test('scene parts: the fact and the assumption are never the same words; an empty side asks a question', () => {
+  for (const t of PARTS_TEXTS) {
+    const p = sceneParts(t, authoredScene(t));
+    assert.ok(p.fact && p.guess, `both sides say something: ${t}`);
+    assert.ok(!sameWords(p.fact, p.guess), `fact ≠ guess for "${t}": ${p.fact} / ${p.guess}`);
+    if (p.factAsk) assert.equal(p.fact, FACT_ASK);
+    if (p.guessAsk) assert.equal(p.guess, GUESS_ASK);
+    assert.equal(p.alternatives.length, 3, t);
+    assert.equal(new Set(p.alternatives).size, 3, `three different possibilities: ${t}`);
+  }
+  // the brief's own examples, offline
+  const boss = sceneParts('My boss embarrassed me in front of everyone.');
+  assert.ok(!sameWords(boss.fact, boss.guess));
+  const nobody = sceneParts('Nobody likes me.');
+  assert.equal(nobody.factAsk, true, 'an interpretation is never shown as the fact');
+  assert.equal(nobody.guess, 'Nobody likes me');
+  const read = sceneParts('She has read my message and still not replied.');
+  assert.equal(read.fact, 'She has read my message and still not replied');
+  assert.equal(read.guess, GUESS_ASK, 'no assumption in the words: the guess side asks, it never copies the fact');
+  // the authored explore lines never quote the same words twice either
+  const a = authoredScene('Nobody likes me.');
+  assert.ok(!(a.known_fact.includes('Nobody likes me') && a.possible_assumption.includes('Nobody likes me')), a.known_fact);
+});
+
+const SERVER_BOSS = { ...V.validateScene({
+  emotion: 'embarrassment', situation_type: 'work', reasoning_pattern: 'fact_vs_assumption',
+  known_fact: 'Your boss said something that embarrassed you in front of the team.', possible_assumption: 'That everyone now thinks less of you.',
+  alternative_angle: 'People in the room may remember the moment far less than you do.', practical_next_step: 'Decide whether to raise it with your boss privately this week.',
+  interaction_type: 'pull_apart', mallow_character: 'zuzu', subtitle_line_1: 'What your boss did may have been unfair.', subtitle_line_2: 'What matters now is whether to raise it privately.', safety_status: 'ok',
+}), source: 'server' };
+test('a server scene personalises the mechanics (known_fact, possible_assumption, alternative_angle, the step)', async () => {
+  const text = 'My boss embarrassed me in front of everyone.';
+  const p = sceneParts(text, SERVER_BOSS);
+  assert.equal(p.fact, SERVER_BOSS.known_fact);
+  assert.equal(p.guess, SERVER_BOSS.possible_assumption);
+  assert.equal(p.alternatives[0], SERVER_BOSS.alternative_angle);
+  assert.deepEqual(p.steps.join(' ').split(/\s+/).length, SERVER_BOSS.practical_next_step.replace(/[.]$/, '').split(/\s+/).length);
+  // the server's assumption reaches the pull-apart cards, and its other explanation the open buds
+  for (const [id, want] of [['pull_apart', [SERVER_BOSS.known_fact, SERVER_BOSS.possible_assumption]], ['open_interpretations', [SERVER_BOSS.alternative_angle, SERVER_BOSS.possible_assumption]]]) {
+    const mod = await MECHANIC_MODULES[id]();
+    const ctx = { ...mountCtx(id), text, scene: { ...SERVER_BOSS, mechanic: id }, parts: p };
+    const m = mod.mount(ctx);
+    for (const w of want) assert.ok(ctx.tags.texts().includes(w), `${id} shows "${w}" (has: ${ctx.tags.texts().join(' / ')})`);
+    m.destroy();
+  }
+  // a server scene with no assumption (or one that only repeats the fact) still never shows the fact twice
+  const thin = sceneParts('He hasn’t replied for five hours.', { ...SERVER_BOSS, known_fact: 'He hasn’t replied for five hours.', possible_assumption: 'He hasn’t replied for five hours.' });
+  assert.ok(!sameWords(thin.fact, thin.guess), `${thin.fact} / ${thin.guess}`);
+  // the heaviest weight carries the blame as they put it
+  assert.equal(sceneParts('The party went badly and it’s my fault.').weight, 'it’s my fault');
 });
 
 // ------------------------------------------------------------- client --
@@ -363,8 +418,9 @@ globalThis.OffscreenCanvas ??= class { constructor(w, h) { this.width = w; this.
 function fakeTags() {
   const list = new Set();
   return {
-    add(text) { const t = { text, w: 90, h: 30, el: { style: { setProperty() {} } }, at() { return t; }, rect: () => null, set(x) { t.text = x; return t; }, hide() { return t; }, remove() { list.delete(t); } }; list.add(t); return t; },
-    rects: () => [], clear() { list.clear(); }, get size() { return list.size; },
+    add(text, o = {}) { const t = { text, title: o.title, w: 90, h: 30, el: { style: { setProperty() {} } }, at() { return t; }, rect: () => null, set(x) { t.text = x; return t; }, title_(x) { t.title = x; return t; }, hide() { return t; }, remove() { list.delete(t); } }; list.add(t); return t; },
+    rects: () => [], clear() { list.clear(); }, get size() { return list.size; }, texts: () => [...list].map((t) => t.text),
+    layout() {}, remeasure() {},
   };
 }
 function mountCtx(id, { rm = false } = {}) {
@@ -442,4 +498,86 @@ test('the beyond module is gated like src/ultra (only through loadUltra)', () =>
   walk('src');
   assert.deepEqual(offenders, []);
   assert.ok(existsSync(`${root}src/beyond/angle-client.js`));
+});
+
+// ------------------------------------------------------------- safety --
+test('safety seen while typing counts, sent or not (review r2, blocking 1)', () => {
+  const src = read('src/beyond/another-angle.js');
+  // the overlay reports the level the moment it is seen, and its close reports the worst seen
+  assert.match(src, /onSafety:\s*\(r\)\s*=>\s*noteSafety\(r\)/);
+  assert.match(src, /onClose:\s*\(reason, meta = \{\}\)\s*=>[\s\S]{0,400}noteSafety\(meta\.safety\)/);
+  // closed without sending: crisis and care do what sending them would have done (and nothing is sent)
+  assert.match(src, /if \(reason !== 'submit'\) \{[\s\S]{0,240}S\.level === 'crisis'\) crisisMode[\s\S]{0,80}S\.level === 'care'\) careMode/);
+  // the visit's level decides before any request (reworded before Send still means no angle)
+  assert.match(src, /noteSafety\(seen\);\s*noteSafety\(checkText\(S\.text\)\);\s*if \(S\.level === 'crisis'\) \{ crisisMode\(\); return; \}\s*if \(S\.level === 'care'\) \{ careMode\(\); return; \}/);
+  // after something heavy: no playful squeeze lines, and the Support pill stays
+  assert.match(src, /S\.level !== 'none' \|\| S\.crisis \|\| S\.care\) return;/);
+  assert.match(src, /supportPill\.hidden = !\(S\.keepSupport \|\| S\.care \|\| S\.crisis\)/);
+  // the safety lines themselves are calm (no jokes, no "another look")
+  for (const l of [...LINES.SAFETY.crisis, ...LINES.SAFETY.care, ...LINES.SAFETY.finish]) assert.doesNotMatch(l, /squish|squeez|another look|angle\b.*fun/i, l);
+});
+
+// ------------------------------------------------------------- layout --
+test('labels: the collision pass keeps visible labels off each other and off what they must avoid', async () => {
+  const { overlapArea } = await import('../src/beyond/mechanics/kit.js');
+  assert.equal(overlapArea({ left: 0, top: 0, right: 10, bottom: 10 }, { left: 5, top: 5, right: 15, bottom: 15 }), 25);
+  assert.equal(overlapArea({ left: 0, top: 0, right: 10, bottom: 10 }, { left: 10, top: 0, right: 20, bottom: 10 }), 0);
+  // every mechanic names its bodies (the pass keeps labels off them) and every gradient is made once, not per frame
+  for (const id of V.MECHANICS) {
+    const mod = await MECHANIC_MODULES[id]();
+    const m = mod.mount(mountCtx(id));
+    assert.equal(typeof m.bodies, 'function', `${id}.bodies`);
+    assert.ok(Array.isArray(m.bodies()), `${id}.bodies()`);
+    m.destroy();
+  }
+  for (const f of readdirSync(`${root}src/beyond/mechanics`)) {
+    if (f === 'kit.js' || f === 'index.js') continue;
+    const src = read(`src/beyond/mechanics/${f}`);
+    const frame = src.slice(src.indexOf('function frame('), src.indexOf('function pointer('));
+    assert.doesNotMatch(frame, /create(?:Linear|Radial)Gradient/, `${f}: no gradient made inside frame()`);
+  }
+});
+
+test('assemble: the pieces never start in reading order; list items stay together where they can', async () => {
+  const mod = await MECHANIC_MODULES.assemble_step();
+  for (const step of ['Choose one small action for this week and put it in your diary.', 'Make a small plan for your weakest area: three short sessions this week.', 'Write down the three things due first, then pick the smallest one.']) {
+    const ctx = mountCtx('assemble_step');
+    ctx.parts = { ...ctx.parts, steps: chunkStep(step) };
+    const m = mod.mount(ctx);
+    const rows = m.probe().pieces.sort((a, b) => a.i - b.i).map((p) => p.row);
+    assert.notDeepEqual(rows, [0, 1, 2], `shuffled: ${step}`);
+    m.destroy();
+  }
+  assert.deepEqual(chunkStep('Text a friend, a sister or a colleague and ask for ten minutes tonight.')[0], 'Text a friend, a sister or a colleague');
+});
+
+test('soften: a slow straight stroke across the shell softens it as surely as one round the edge', async () => {
+  const mod = await MECHANIC_MODULES.soften_harshness();
+  const strokes = (shape) => {
+    const m = mod.mount(mountCtx('soften_harshness'));
+    for (let i = 0; i < 30; i++) m.frame(1 / 30, i / 30);
+    const { c, R } = m.probe();
+    let t = 1000, n = 0;
+    while (!m.settled && n < 20) {
+      const pts = [];
+      if (shape === 'round') for (let i = 0; i <= 60; i++) { const a = (i / 60) * Math.PI * 2 + n; pts.push([c.x + Math.cos(a) * R, c.y + Math.sin(a) * R]); }
+      else for (let i = 0; i <= 40; i++) { const k = i / 40; pts.push([c.x - R * 0.9 + R * 1.8 * k, c.y + (n % 2 ? 0.4 : -0.3) * R]); }
+      m.pointer({ type: 'down', id: 1, x: pts[0][0], y: pts[0][1], t });
+      for (const [x, y] of pts.slice(1)) { t += 45; m.pointer({ type: 'move', id: 1, x, y, t }); }
+      m.pointer({ type: 'up', id: 1, x: pts.at(-1)[0], y: pts.at(-1)[1], t: t + 10 }); t += 500;
+      for (let i = 0; i < 10; i++) m.frame(1 / 30, i / 30);
+      n++;
+    }
+    m.destroy();
+    return n;
+  };
+  const straight = strokes('straight'), round = strokes('round');
+  assert.ok(straight <= 10, `straight strokes finish (${straight})`);
+  assert.ok(round >= 2, `but never in a single swipe (${round})`);
+});
+
+test('a mechanic that stops is never a dead end (pull_apart, then the perspective itself)', () => {
+  const src = read('src/beyond/another-angle.js');
+  assert.match(src, /catch \(e\) \{ mechFailed\(e\); \}/);
+  assert.match(src, /if \(!mech \|\| mech\.failed\)[\s\S]{0,260}scene\.mechanic = 'pull_apart'[\s\S]{0,120}reveal\(scene, seq, \{ played: false \}\)/);
 });

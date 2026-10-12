@@ -46,7 +46,7 @@
 // Same shape as the Hushfold's placeholder layer: add / list / remove /
 // hitTest / pointer / rects / frame / clear / release / destroy / onChange.
 
-import { ThoughtMallow, createThought, PT } from './thought.js';
+import { ThoughtMallow, createThought, PT, PUFF_K } from './thought.js';
 import { createBelief } from './belief.js';
 import { drawThought, drawRope } from './render.js';
 import { tintAt, rgba, clamp, tagLines, wordsOf, firstWords, wordsExcerpt, TAG_MIN_PX } from './styles.js';
@@ -126,8 +126,8 @@ export const CROWD_Z = Object.freeze([0, 0.2, 0.45, 0.62, 0.78]);
 const FIT = 150;
 // the room one thought needs at level 0 (px²): roominess is the room per thought over this
 const ROOM_ONE = 52000;
-// repack starts: [smallest first, words beside]
-const REPACK_STARTS = Object.freeze([[false, false], [true, false], [false, true]]);
+// repack starts: [smallest first, words beside, stacked from the top of the stage (px of cost per px lower)]
+const REPACK_STARTS = Object.freeze([[false, false, 0], [true, false, 0], [false, true, 0], [false, true, 1.5], [false, false, 1.5]]);
 // layout tuning: wish = weight of the distance to where each wanted to be in a repack; moveCost = px of the
 // others' movement (in total) worth one crowd level when add() weighs "place everyone again" against "fuller"
 export const TUNE = { wish: 1.2, moveCost: 120 };
@@ -713,7 +713,10 @@ export class ThoughtLayer {
     const p = th._pred || (th._pred = { l: 0, r: 0, t: 0, b: 0 });
     const z = Number.isFinite(zAt) ? Math.max(th.zGoal, zAt) : Math.max(th.zGoal, th.zFloor);
     const P = th.r * 2 * th.scale * (1 - 0.5 * z) * (1 - 0.16 * th.style.motion.shrink * 0.7), W = P * th.aspect;
-    p.l = p.r = W / 2 + 2; p.t = p.b = P / 2 + 2;
+    // (puffed cheeks and a squashed body are wider; a hopping one squashes as it lands)
+    const bo = th.style.body || {}, hop = th.style.motion.hop > 0 ? 0.05 * P : 0;
+    const wide = 0.55 * Math.min(1.5, bo.puff || 0) * PUFF_K * P + (W / 2) * 0.62 * Math.max(0, bo.squash || 0) + hop;
+    p.l = p.r = W / 2 + 2 + wide; p.t = P / 2 + 2 + hop; p.b = P / 2 + 2;
     for (const s of th.siblings) {
       if (s.free) continue;
       const Ps = s.r * 2 * th.scale * (1 - 0.5 * z), rad = (P / 2 + Ps / 2) * 0.96;
@@ -723,11 +726,14 @@ export class ThoughtLayer {
     const fx = th.style.fx;
     if (fx.rain > 0) { p.t = Math.max(p.t, P * 1.3); p.l = Math.max(p.l, W * 0.56); p.r = Math.max(p.r, W * 0.56); }
     if (fx.steam > 0) { p.t = Math.max(p.t, P * 1.4); p.l = Math.max(p.l, W * 0.42 + P * 0.42); p.r = Math.max(p.r, W * 0.42 + P * 0.42); }
-    if (fx.crackle > 0) { p.t = Math.max(p.t, P * 0.66); p.l = Math.max(p.l, W / 2 + P * 0.16); p.r = Math.max(p.r, W / 2 + P * 0.16); }
+    if (fx.crackle > 0) { p.t = Math.max(p.t, P * 0.66); p.l = Math.max(p.l, W / 2 + wide + P * 0.16); p.r = Math.max(p.r, W / 2 + wide + P * 0.16); }
     if (th.kind === 'belief') {
-      if (th.prop === 'stone') { p.t = Math.max(p.t, P * 0.5 + P * 0.34 * 1.5); if (th.propState.downing || th.propState.landed) p.r = Math.max(p.r, W / 2 + P * 0.75); }
-      if (th.prop === 'shell') { p.t = Math.max(p.t, P * 0.85); p.l = Math.max(p.l, W * 0.62); }
-      if (th.prop === 'charm') { p.l = Math.max(p.l, W * 0.62); p.b = Math.max(p.b, P * 0.85); }
+      // (measured: the stone flattens and widens the body under it; the shell's hinge and dome; the
+      // thread's pinch lifts the head; the charm hangs low on its cord)
+      if (th.prop === 'stone') { p.t = Math.max(p.t, P * 0.5 + P * 0.34 * 1.5); p.l = Math.max(p.l, W / 2 + 0.24 * P + 2); p.r = Math.max(p.r, W / 2 + 0.1 * P + 2); if (th.propState.downing || th.propState.landed) p.r = Math.max(p.r, W / 2 + P * 0.75); }
+      if (th.prop === 'shell') { p.t = Math.max(p.t, P * 0.85); p.l = Math.max(p.l, W * 0.62); p.r = Math.max(p.r, W / 2 + 0.12 * P + 2); }
+      if (th.prop === 'thread') p.t = Math.max(p.t, P * 0.57 + 2);
+      if (th.prop === 'charm') { p.l = Math.max(p.l, W * 0.62); p.b = Math.max(p.b, P * 0.94); }
     }
     return p;
   }
@@ -751,6 +757,7 @@ export class ThoughtLayer {
     const side = CANDS[2 * ci], sl = CANDS[2 * ci + 1];
     const z = Math.max(th.zGoal, th.zFloor), gap = 14 + 8 * (1 - z);
     const bh = th.r * th.scale * (1 - 0.5 * z) * (1 - 0.16 * th.style.motion.shrink * 0.7);
+    if (ci >= NC) { const tg = this.tags.get(th); out[0] = (tg?.wx || 0) - w / 2; out[1] = (tg?.wy || 0) - h / 2; out[2] = out[0] + w; out[3] = out[1] + h; return out; }
     if (side === 0) { out[0] = -w / 2 + sl * w; out[1] = bh + gap; }
     else if (side === 1) { out[0] = -w / 2 + sl * w; out[1] = -e.t - gap - h; }
     else if (side === 2) { out[0] = e.r + gap; out[1] = -h / 2 + sl * (h / 2 + bh); }
@@ -787,12 +794,12 @@ export class ThoughtLayer {
       PEN[c] = pen; if (pen < penMin) penMin = pen;
     }
     if (!w) penMin = 0;
-    const VW = env.view.W, edge = VW < 360 ? 12 : 16, wk = fresh ? TUNE.wish : 4;
+    const VW = env.view.W, edge = VW < 360 ? 12 : 16, wk = fresh ? TUNE.wish : 4, grav = this._grav || 0;
     const minX = B.left + el, maxX = Math.max(minX, B.right - er), minY = B.top + et, maxY = Math.max(minY, B.bottom - eb);
     const R = this._plc || (this._plc = { bs: Infinity, bx: 0, by: 0, bci: 0, bare: 0 });
     R.bs = Infinity; R.bx = want.x; R.by = want.y; R.bci = tg?.ci ?? 0; R.bare = 0;
     const tryAt = (x, y) => {
-      const d = Math.hypot(x - want.x, y - want.y) * wk;
+      const d = Math.hypot(x - want.x, y - want.y) * wk + grav * (y - minY);
       // the body and everything it draws
       const l = x - el - 6, t = y - et - 4, r = x + er + 6, b = y + eb + 4;
       let over = 0;
@@ -843,11 +850,11 @@ export class ThoughtLayer {
       order.push(o);
     }
     order.sort((a, b) => b._size - a._size);
-    const run = (rev, beside) => {
-      this._beside = beside;
+    const run = (rev, beside, grav) => {
+      this._beside = beside; this._grav = grav;
       for (const o of order) o._unplaced = true;
       for (let k = 0; k < order.length; k++) { const o = order[rev ? order.length - 1 - k : k]; o._unplaced = false; o.moveHome(this._place(o, o._want || o.home, env, lv, true)); }
-      this._beside = false;
+      this._beside = false; this._grav = 0;
       let bare = this._stageBare(lv, env);
       // one at a time again, against everyone else where they now are (keeps only what helps)
       for (let pass = 0; pass < 2 && bare > FIT; pass++) {
@@ -861,10 +868,10 @@ export class ThoughtLayer {
       return bare;
     };
     let best = Infinity, B = null;
-    for (const [rev, beside] of REPACK_STARTS) {
+    for (const [rev, beside, grav] of REPACK_STARTS) {
       if (B) this._restore(B.s0);
       const s0 = B ? B.s0 : this._snap();
-      const bare = run(rev, beside);
+      const bare = run(rev, beside, grav);
       if (bare < best) { best = bare; B = { s0, s: this._snap() }; } else if (!B.s0) B.s0 = s0;
       if (best <= FIT || order.length < 2) break;
     }
@@ -993,12 +1000,14 @@ export class ThoughtLayer {
     const M = this._movers || (this._movers = []);
     let nm = 0;
     for (const th of list) {
-      const m = M[nm] || (M[nm] = { o: null, f: null, lim: null, move: false, ov: 0 }); nm++;
-      m.o = th; m.f = this._foot(th); m.lim = th._lim; m.move = this._free(th) && !th._leaving; m.ov = 0;
+      // (settled: at rest for a moment — just arrived, its squash and stretch still swell its outline)
+      th._restT = this._resting(th) ? (th._restT || 0) + dt : 0;
+      const m = M[nm] || (M[nm] = { o: null, f: null, lim: null, move: false, ov: 0, set: false }); nm++;
+      m.o = th; m.f = this._foot(th); m.lim = th._lim; m.move = this._free(th) && !th._leaving; m.ov = 0; m.set = th._restT > 0.8 || th.pressed;
       for (const s of th.siblings) {
         if (!s.free || !s.render.ready) continue;
-        const q = M[nm] || (M[nm] = { o: null, f: null, lim: null, move: false, ov: 0 }); nm++;
-        q.o = s; q.f = this._sibFoot(s); q.lim = this._sibLim(s, B); q.move = !s.pressed && !s.driven && !s._glide; q.ov = 0;
+        const q = M[nm] || (M[nm] = { o: null, f: null, lim: null, move: false, ov: 0, set: false }); nm++;
+        q.o = s; q.f = this._sibFoot(s); q.lim = this._sibLim(s, B); q.move = !s.pressed && !s.driven && !s._glide; q.ov = 0; q.set = !s._glide;
       }
     }
     for (let i = 0; i < nm; i++) {
@@ -1008,6 +1017,8 @@ export class ThoughtLayer {
         // (margins touching by a few px is not an overlap: nothing moves for it)
         if (ox <= 6 || oy <= 6) continue;
         A.ov += ox * oy; C.ov += ox * oy;
+        // nothing moves for a thought still arriving or settling: the plan made room for it
+        if (!A.set || !C.set) continue;
         const ma = A.move ? 1 : 0, mc = C.move ? 1 : 0;
         if (!ma && !mc) continue;
         const sa = ma / (ma + mc), sc = mc / (ma + mc);
@@ -1211,7 +1222,7 @@ export class ThoughtLayer {
       x: 0, y: 0, vx: 0, vy: 0, rot: 0, kx: NaN, ky: NaN, kr: NaN, moving: false,
       shown: false, travel: false, wait: false, above: false, calm: false, side: 'below',
       ci: 0, pi: -1, live: false, done: false, blocked: false, drop: 0, mode: 2, soft: 0, badT: 0,
-      tx: 0, ty: 0, rl: 0, rt: 0, g: new Float64Array(8), tintQ: -1, clear: true };
+      tx: 0, ty: 0, rl: 0, rt: 0, g: new Float64Array(10), wx: 0, wy: 0, tintQ: -1, clear: true };
     this.tags.set(th, tg);
     th.tag = el;
     th._words = wordsOf(th.text);
@@ -1307,12 +1318,14 @@ export class ThoughtLayer {
     return e;
   }
 
-  // The obstacles the words keep off, once per frame: every body, face, sibling, effect zone and prop.
+  // The obstacles the words keep off, once per frame: every body, face, sibling, effect zone and prop —
+  // of the thoughts at rest or held (one still on its way passes under the words: the plan has made room
+  // for where it is going, and nothing re-plans round its flight).
   _obstacles() {
     this._obN = 0;
     const R1 = this._rect, R2 = this._rect2;
     for (const th of this.thoughts) {
-      if (th._leaving) continue;
+      if (th._leaving || th._trav) continue;
       this._obPush(th, OB_BODY, th._bbox());
       this._obPush(th, OB_FACE, th.faceRect(R1));
       for (const s of th.siblings) {
@@ -1329,8 +1342,9 @@ export class ThoughtLayer {
   _obPush(th, kind, r) {
     const n = this._obN;
     if (6 * (n + 1) > this._ob.length) { const nb = new Float32Array(this._ob.length * 2); nb.set(this._ob); this._ob = nb; }
-    const ob = this._ob, i = 6 * n;
-    ob[i] = r.left; ob[i + 1] = r.top; ob[i + 2] = r.right; ob[i + 3] = r.bottom; ob[i + 4] = kind;
+    // (where it rests: its bob, tremble and hops taken out, so a resting plate's place never flickers with them)
+    const ob = this._ob, i = 6 * n, sx = th._sx || 0, sy = th._sy || 0;
+    ob[i] = r.left + sx; ob[i + 1] = r.top + sy; ob[i + 2] = r.right + sx; ob[i + 3] = r.bottom + sy; ob[i + 4] = kind;
     this._obOwner[n] = th; this._obN = n + 1;
   }
 
@@ -1340,16 +1354,20 @@ export class ThoughtLayer {
     g[0] = Q[2 * PT.bottom]; g[1] = b.bottom + gap;
     g[2] = Q[2 * PT.top]; g[3] = ex.top - gap;
     g[4] = ex.right + gap; g[5] = ex.left - gap;
-    g[6] = b.cy; g[7] = b.height / 2;
+    g[6] = b.cy; g[7] = b.height / 2; g[8] = b.cx; g[9] = b.cy;
   }
   // the plate's rect for candidate c (clamped onto the screen and the stage) into the shared scratch;
   // _crD: how far the clamp moved it from where it wanted to be
-  _candRect(th, tg, c) {
+  // (live: where the jelly is drawn this frame — for showing it; otherwise where the thought rests — for
+  // every decision, so a bob or a tremble never moves a plate's place)
+  _candRect(th, tg, c, live = false) {
     const g = tg.g, T = this._tenv, w = tg.w, h = tg.h, side = CANDS[2 * c], sl = CANDS[2 * c + 1];
     let x, y;
-    if (side === 0) { x = g[0] + sl * w; y = g[1]; }
+    if (c >= NC) { x = g[8] + tg.wx; y = g[9] + tg.wy - h / 2; }
+    else if (side === 0) { x = g[0] + sl * w; y = g[1]; }
     else if (side === 1) { x = g[2] + sl * w; y = g[3] - h; }
     else { x = side === 2 ? g[4] + w / 2 : g[5] - w / 2; y = g[6] - h / 2 + sl * (h / 2 + g[7]); }
+    if (!live) { x += th._sx || 0; y += th._sy || 0; }
     const cx = clamp(x, T.edge + w / 2, Math.max(T.edge + w / 2, T.W - T.edge - w / 2));
     const cy = clamp(y, T.yMin, Math.max(T.yMin, T.yMax - h));
     this._crD = Math.abs(cx - x) + Math.abs(cy - y);
@@ -1409,12 +1427,38 @@ export class ThoughtLayer {
     this._bestHard = bh; this._bestH3 = b3; this._bestSoft = bs;
     return best;
   }
+  // Nowhere clear round it: a wider look, a grid of places round the thought (as far as about a plate's
+  // width), the nearest clear one wins (the rope reaches it). Kept as candidate NC, relative to the body.
+  _searchWide(th, tg, skip) {
+    const g = tg.g, w = tg.w, h = tg.h, T = this._tenv;
+    let bc = Infinity, bx = 0, by = 0, bh = Infinity;
+    for (let iy = -6; iy <= 6; iy++) {
+      for (let ix = -6; ix <= 6; ix++) {
+        const dx = ix * (w + g[7] * 2) / 8, dy = iy * (h + g[7] * 2) / 6, cx = g[8] + (th._sx || 0), cy = g[9] + (th._sy || 0);
+        const x = clamp(cx + dx, T.edge + w / 2, Math.max(T.edge + w / 2, T.W - T.edge - w / 2)), y = clamp(cy + dy - h / 2, T.yMin, Math.max(T.yMin, T.yMax - h));
+        const r = this._cr; r[0] = x - w / 2; r[1] = y; r[2] = x + w / 2; r[3] = y + h; this._crD = 0;
+        const h0 = this._hard(r, th, skip);
+        const cost = (h0 > 0 ? 1e5 + h0 : 0) + (this._h3 > 0 ? 50 : 0) + this._soft(r, th, 0, null) + Math.hypot(x - cx, y + h / 2 - cy) / 25;
+        if (cost < bc) { bc = cost; bx = x - cx; by = y + h / 2 - cy; bh = h0; }
+      }
+    }
+    tg.wx = bx; tg.wy = by;
+    this._bestHard = bh;
+    return NC;
+  }
   _placeR(r, i = this._nPlaced) {
     if (4 * (i + 1) > this._placedR.length) { const nb = new Float64Array(this._placedR.length * 2); nb.set(this._placedR); this._placedR = nb; }
     const P = this._placedR, q = 4 * i;
     P[q] = r[0]; P[q + 1] = r[1]; P[q + 2] = r[2]; P[q + 3] = r[3];
     if (i === this._nPlaced) this._nPlaced++;
     return i;
+  }
+  // which side of the body a wide place is on (for the rope)
+  _wideSide(th, tg) {
+    const half = tg.g[7];
+    if (tg.wy - tg.h / 2 >= half) return 'below';
+    if (tg.wy + tg.h / 2 <= -half) return 'above';
+    return tg.wx >= 0 ? 'right' : 'left';
   }
   _travelling(th) {
     return th.ov.appear < 0.35 || th._glide || (!th.pressed && !th.driven && Math.hypot(th.x - th.home.x, th.y - th.home.y) > 0.35 * th.render.P);
@@ -1428,6 +1472,12 @@ export class ThoughtLayer {
   _tags(dt, env) {
     const W = env.view.W, H = env.view.H, B = env.bounds, list = this.thoughts, T = this._tenv;
     T.edge = W < 360 ? 12 : 16; T.W = W; T.yMin = Math.max(T.edge, B.top); T.yMax = Math.min(H - T.edge, B.bottom + 2); T.K = this._keep();
+    for (const th of list) {
+      th._trav = this._travelling(th);
+      // where its body rests (home and its average drawn offset) against where it is drawn this frame
+      const e = th._ext, R = th.render;
+      th._sx = !th._trav && e ? th.home.x + e.dx - R.cx : 0; th._sy = !th._trav && e ? th.home.y + e.dy - R.cy : 0;
+    }
     this._obstacles();
     this._nPlaced = 0;
     for (const th of list) {
@@ -1436,7 +1486,7 @@ export class ThoughtLayer {
       this._fitLevel(th, tg, W);
       this._anchors(th, tg);
       tg.blocked = false; tg.done = false; tg.pi = -1; tg.wait = false;
-      tg.mode = th._leaving ? 3 : this._travelling(th) ? 2 : th.pressed || th.driven ? 1 : 0;
+      tg.mode = th._leaving ? 3 : th._trav ? 2 : th.pressed || th.driven ? 1 : 0;
     }
     // a plate keeps its place while that place stays clear
     for (let mode = 0; mode < 2; mode++) {
@@ -1468,6 +1518,8 @@ export class ThoughtLayer {
           tg.drop++; this._fitLevel(th, tg, W); this._anchors(th, tg);
           c = this._search(th, tg, -1);
         }
+        // still nowhere: a wider look round it
+        if (this._bestHard > 0 && mode === 0) { const hc = this._bestHard, wx = tg.wx, wy = tg.wy, cw = this._searchWide(th, tg, -1); if (this._bestHard < hc) c = cw; else { tg.wx = wx; tg.wy = wy; this._bestHard = hc; } }
         tg.blocked = this._bestHard > 0;
         tg.ci = c; tg.live = true; tg.done = true; tg.badT = 0;
         tg.pi = this._placeR(this._candRect(th, tg, c));
@@ -1477,15 +1529,15 @@ export class ThoughtLayer {
     for (const th of list) {
       const tg = this.tags.get(th);
       if (!tg || tg.mode < 2) continue;
-      tg.wait = tg.mode === 2 && this._hard(this._candRect(th, tg, tg.ci), th, -1) > 0;
+      tg.wait = tg.mode === 2 && this._hard(this._candRect(th, tg, tg.ci, true), th, -1) > 0;
     }
     const dpr = this._view.dprTag || 1;
     for (const th of list) {
       const tg = this.tags.get(th);
       if (!tg) continue;
-      const r = this._candRect(th, tg, tg.ci);
+      const r = this._candRect(th, tg, tg.ci, true);
       tg.tx = (r[0] + r[2]) / 2; tg.ty = r[1]; tg.rl = r[0]; tg.rt = r[1];
-      tg.side = SIDE_NAMES[CANDS[2 * tg.ci]]; tg.above = tg.side === 'above'; tg.clear = !tg.blocked;
+      tg.side = tg.ci >= NC ? this._wideSide(th, tg) : SIDE_NAMES[CANDS[2 * tg.ci]]; tg.above = tg.side === 'above'; tg.clear = !tg.blocked;
       if (env.rm || !tg.shown) { tg.x = tg.tx; tg.y = tg.ty; tg.vx = tg.vy = 0; }
       else {
         // a little spring lag: the words trail their thought

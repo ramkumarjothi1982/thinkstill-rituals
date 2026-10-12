@@ -1,0 +1,172 @@
+{
+ "pull_apart": {
+  "text": "She has read my message and still not replied.",
+  "scene": {
+   "emotion": "anxiety",
+   "situation_type": "relationship",
+   "reasoning_pattern": "fact_vs_assumption",
+   "known_fact": "She read your message a few hours ago and hasn't answered yet.",
+   "possible_assumption": "That she's upset with you or doesn't care.",
+   "alternative_angle": "She might be busy, or waiting until she can reply properly.",
+   "practical_next_step": "Give it until this evening, then send one light check-in.",
+   "interaction_type": "pull_apart",
+   "mallow_character": "pipzi",
+   "subtitle_line_1": "She's read it and not replied yet. That's the fact.",
+   "subtitle_line_2": "Why is still an open question, not an answer.",
+   "safety_status": "ok"
+  }
+ },
+ "shrink_projection": {
+  "text": "If the presentation goes badly I'm going to get fired.",
+  "scene": {
+   "emotion": "anxiety",
+   "situation_type": "work",
+   "reasoning_pattern": "catastrophising",
+   "known_fact": "You have a presentation coming up that matters to you.",
+   "possible_assumption": "That one bad presentation would cost you your job.",
+   "alternative_angle": "One presentation is rarely the whole story of how someone does their job.",
+   "practical_next_step": "Run through your opening twice tonight and time it.",
+   "interaction_type": "shrink_projection",
+   "mallow_character": "loomi",
+   "subtitle_line_1": "A shaky presentation and losing your job are far apart.",
+   "subtitle_line_2": "What's one part you could rehearse twice tonight?",
+   "safety_status": "ok"
+  }
+ },
+ "return_responsibility": {
+  "text": "The party went badly and it's my fault.",
+  "scene": {
+   "emotion": "guilt",
+   "situation_type": "social",
+   "reasoning_pattern": "personalisation",
+   "known_fact": "The party didn't go the way you hoped.",
+   "possible_assumption": "That how it went was all down to you.",
+   "alternative_angle": "Parties depend on lots of people, plans and moods at once.",
+   "practical_next_step": "Ask one guest what they enjoyed most.",
+   "interaction_type": "return_responsibility",
+   "mallow_character": "boppo",
+   "subtitle_line_1": "A party has lots of moving parts, and you were one.",
+   "subtitle_line_2": "Which piece of it was really yours to carry?",
+   "safety_status": "ok"
+  }
+ },
+ "reveal_spectrum": {
+  "text": "My presentation was completely awful.",
+  "scene": {
+   "emotion": "disappointment",
+   "situation_type": "work",
+   "reasoning_pattern": "all_or_nothing",
+   "known_fact": "Your presentation didn't go as well as you wanted.",
+   "possible_assumption": "That the whole thing was a failure.",
+   "alternative_angle": "Some parts may have landed even if others wobbled.",
+   "practical_next_step": "Write down one bit that went fine and one to improve.",
+   "interaction_type": "reveal_spectrum",
+   "mallow_character": "zuzu",
+   "subtitle_line_1": "Between perfect and awful there's a lot of room.",
+   "subtitle_line_2": "Which part of it actually went fine?",
+   "safety_status": "ok"
+  }
+ },
+ "open_interpretations": {
+  "text": "My sister must think I'm selfish.",
+  "scene": {
+   "emotion": "worry",
+   "situation_type": "family",
+   "reasoning_pattern": "mind_reading",
+   "known_fact": "Things have felt tense with your sister lately.",
+   "possible_assumption": "That she thinks you're selfish.",
+   "alternative_angle": "She might be wrapped up in something of her own right now.",
+   "practical_next_step": "Ask her how her week has been, and listen.",
+   "interaction_type": "open_interpretations",
+   "mallow_character": "pipzi",
+   "subtitle_line_1": "You know things feel tense, not what she's thinking.",
+   "subtitle_line_2": "What else could be on her mind right now?",
+   "safety_status": "ok"
+  }
+ },
+ "separate_one": {
+  "text": "Nobody ever asks me to join in.",
+  "scene": {
+   "emotion": "loneliness",
+   "situation_type": "social",
+   "reasoning_pattern": "overgeneralisation",
+   "known_fact": "Nobody asked you to join in this time.",
+   "possible_assumption": "That nobody ever will.",
+   "alternative_angle": "This might say more about how this group plans than about you.",
+   "practical_next_step": "Message one person and suggest a small plan this week.",
+   "interaction_type": "separate_one",
+   "mallow_character": "blubi",
+   "subtitle_line_1": "Not being asked this time is one evening.",
+   "subtitle_line_2": "Who is one person you could ask first this week?",
+   "safety_status": "ok"
+  }
+ },
+ "let_loop_drift": {
+  "text": "I keep replaying the meeting over and over.",
+  "scene": {
+   "emotion": "overthinking",
+   "situation_type": "work",
+   "reasoning_pattern": "rumination",
+   "known_fact": "The meeting is over, and you keep going back to it.",
+   "possible_assumption": "That replaying it will change how it went.",
+   "alternative_angle": "Your mind might be trying to protect you, not punish you.",
+   "practical_next_step": "Write down the one thing you'd do differently, then close the notebook.",
+   "interaction_type": "let_loop_drift",
+   "mallow_character": "noomi",
+   "subtitle_line_1": "Replaying the meeting isn't the same as repairing it.",
+   "subtitle_line_2": "Is there one thing left to do, or can it rest tonight?",
+   "safety_status": "ok"
+  }
+ },
+ "assemble_step": {
+  "text": "I have a deadline on Monday and too much to do.",
+  "scene": {
+   "emotion": "overwhelm",
+   "situation_type": "work",
+   "reasoning_pattern": "practical_problem",
+   "known_fact": "You have a deadline on Monday and a lot left to do.",
+   "possible_assumption": "That you can't possibly get it all done.",
+   "alternative_angle": "Not every task needs the same level of polish.",
+   "practical_next_step": "List the three tasks due first, then start the smallest one.",
+   "interaction_type": "assemble_step",
+   "mallow_character": "boppo",
+   "subtitle_line_1": "A Monday deadline is a real problem with real steps.",
+   "subtitle_line_2": "Which small task could you finish in the next hour?",
+   "safety_status": "ok"
+  }
+ },
+ "soften_harshness": {
+  "text": "I failed my driving test. I'm so stupid.",
+  "scene": {
+   "emotion": "shame",
+   "situation_type": "self",
+   "reasoning_pattern": "self_criticism",
+   "known_fact": "You didn't pass your driving test this time.",
+   "possible_assumption": "That failing once means you're stupid.",
+   "alternative_angle": "Lots of good drivers needed more than one go.",
+   "practical_next_step": "Book a lesson that focuses on the part that went wrong.",
+   "interaction_type": "soften_harshness",
+   "mallow_character": "boppo",
+   "subtitle_line_1": "One test measured one drive on one day.",
+   "subtitle_line_2": "What would you practise before the next try?",
+   "safety_status": "ok"
+  }
+ },
+ "find_boundary": {
+  "text": "My manager took credit for my work. It was so unfair.",
+  "scene": {
+   "emotion": "anger",
+   "situation_type": "work",
+   "reasoning_pattern": "valid_anger",
+   "known_fact": "Your manager presented your work as their own.",
+   "possible_assumption": "That you just have to let it go.",
+   "alternative_angle": "Your anger might be pointing at something that needs to change.",
+   "practical_next_step": "Write down what happened and when, while it's fresh.",
+   "interaction_type": "find_boundary",
+   "mallow_character": "glitzi",
+   "subtitle_line_1": "Being angry that your work was taken makes sense.",
+   "subtitle_line_2": "What would you want to say or ask for, if you chose to?",
+   "safety_status": "ok"
+  }
+ }
+}

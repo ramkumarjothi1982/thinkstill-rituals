@@ -39,6 +39,18 @@ export function mount(ctx) {
     core: ctx.tags.add(L.labels.core, { kind: 'label', colour: '#ffd98a' }),
   };
 
+  /** The shell's light, in 24 warmth steps (made once each, in the shell's own frame). */
+  function shellGradient(warm) {
+    const step_ = Math.round(warm * 24);
+    let gr = shells.get(step_);
+    if (!gr) {
+      const wq = step_ / 24, sq = 1 - wq;
+      gr = g.createRadialGradient(-R * 0.3, -R * 0.35, R * 0.1, 0, 0, R * 1.3);
+      gr.addColorStop(0, rgba('#ffffff', 0.55 + 0.2 * wq)); gr.addColorStop(0.5, rgba(mix(STEEL, light, wq), 0.5 + 0.15 * sq)); gr.addColorStop(1, rgba(mix('#3e4170', deep, wq), 0.75));
+      shells.set(step_, gr);
+    }
+    return gr;
+  }
   function centre() { const A = ctx.area(); return { x: A.x + A.w / 2, y: A.y + A.h * 0.48 }; }
   const total = () => { let s = 0; for (let i = 0; i < SPIKES; i++) s += 1 - spike[i]; return s / SPIKES; };
 
@@ -120,16 +132,7 @@ export function mount(ctx) {
       } else g.lineTo(x, y);
     }
     g.closePath();
-    // the shell's light, in 24 warmth steps (made once each, in the shell's own frame)
-    const step_ = Math.round(warm * 24);
-    let gr = shells.get(step_);
-    if (!gr) {
-      const wq = step_ / 24, sq = 1 - wq;
-      gr = g.createRadialGradient(-R * 0.3, -R * 0.35, R * 0.1, 0, 0, R * 1.3);
-      gr.addColorStop(0, rgba('#ffffff', 0.55 + 0.2 * wq)); gr.addColorStop(0.5, rgba(mix(STEEL, light, wq), 0.5 + 0.15 * sq)); gr.addColorStop(1, rgba(mix('#3e4170', deep, wq), 0.75));
-      shells.set(step_, gr);
-    }
-    g.fillStyle = gr; g.fill();
+    g.fillStyle = shellGradient(warm); g.fill();
     g.lineJoin = warm > 0.65 ? 'round' : 'miter';
     g.strokeStyle = rgba(rim, 0.75); g.lineWidth = 1.6 + shown * 0.8; g.stroke();
     // hard facets glint (only while hard)

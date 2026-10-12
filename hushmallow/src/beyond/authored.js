@@ -266,7 +266,7 @@ export function authoredScene(text, { emotion = null, exclude = [], usedAngles =
 
 const HARSH = /\b(?:i'?m|i am|i feel like)(?: (?:so|such|a|an|just|completely|totally|really|basically|the|absolute|total|complete|utter|utterly|literally|actually|massive|huge|biggest))* (?:stupid|an? idiot|idiot|a failure|failure|a loser|loser|useless|terrible|pathetic|worthless|hopeless|incompetent|a disaster|disaster|a mess|mess|a joke|joke|a fraud|fraud|a burden|burden|awful|rubbish|not good enough|not enough|too much|dumb|thick|clueless)\b/i;
 /** The blame the person put on themselves, as typed ("it's my fault"), for the heaviest weight. */
-const BLAME_PHRASE = /\b(?:it'?s|it is|it was|that'?s|that was|all|this is|was)?\s*(?:all\s+)?(?:my fault|on me|because of me|my own fault|down to me|i ruined it|i let (?:them|everyone|the team|her|him) down)\b/iu;
+const BLAME_PHRASE = /(?:\b(?:it['’]?s|it is|it was|that['’]?s|that was|this is|was)\s+)?(?:all\s+)?\b(?:my fault|on me|because of me|my own fault|down to me|i ruined it|i let (?:them|everyone|the team|her|him) down)\b/iu;
 
 /** The question a side asks when the words give it nothing real to show (never a copy of the other side). */
 export const FACT_ASK = 'What did you actually see or hear?';

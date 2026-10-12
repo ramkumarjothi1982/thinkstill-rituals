@@ -48,6 +48,15 @@ export function mount(ctx) {
     const y = A.y + A.h * 0.58;
     return { x0: A.x + pad, x1: A.x + A.w - pad, y, hgt: clamp(A.h * 0.06, 10, 16) };
   }
+  /** The spectrum's light, made once per track geometry (not per frame). */
+  function spectrum(T) {
+    const key = `${Math.round(T.x0)}|${Math.round(T.x1)}`;
+    if (key === gradKey) return grad;
+    gradKey = key;
+    grad = g.createLinearGradient(T.x0, 0, T.x1, 0);
+    grad.addColorStop(0, LEFT); grad.addColorStop(0.5, MID); grad.addColorStop(1, RIGHT);
+    return grad;
+  }
   const revealed = () => { let s = 0; for (let i = 0; i < BINS; i++) s += want[i]; return s / BINS; };
   function light_(x, spread = 1) {
     const T = track();
@@ -106,12 +115,7 @@ export function mount(ctx) {
     g.globalAlpha = 1;
     // the spectrum: one continuous ribbon of light, painted bin by bin as it is revealed (clipped to the track)
     const bw = (T.x1 - T.x0) / BINS;
-    const key = `${Math.round(T.x0)}|${Math.round(T.x1)}`;
-    if (key !== gradKey) {
-      gradKey = key;
-      grad = g.createLinearGradient(T.x0, 0, T.x1, 0);
-      grad.addColorStop(0, LEFT); grad.addColorStop(0.5, MID); grad.addColorStop(1, RIGHT);
-    }
+    spectrum(T);
     g.save();
     roundRect(g, T.x0 - 2, T.y - T.hgt * 0.75, T.x1 - T.x0 + 4, T.hgt * 1.5, T.hgt * 0.75);
     g.clip();

@@ -25,8 +25,8 @@ export const LIMITS = Object.freeze({
   // this close (near-verbatim). Three of their words at 0.6 can be a new
   // point (run 3, ho-cancelled: "Three cancellations in one month is a lot to
   // carry" after "Being cancelled on three times this month would hurt
-  // almost anyone"); no follow-up the gate accepted in runs 1–3 comes within
-  // 0.1 of the line threshold.
+  // almost anyone"); among the follow-ups the gate accepted in runs 1–3 the
+  // closest line pair is 0.50 (four of their words).
   repeatRestated: 4, repeatVerbatim: 0.8,
   // Novelty on meaning-bearing words (eval runs 1 and 2: real follow-ups
   // shared at most one; close paraphrases three or more at a Jaccard of 0.27
@@ -135,11 +135,12 @@ const RULES = [
       // cares about you crying at work?"). Only a "who cares" that names the
       // people who care is kind, and only right after: "not" ("…tells you who
       // could make that evening, not who cares"), "of" or "about", a verb that
-      // shows or finds it out ("shows you who cares", "find out who cares"),
+      // shows, finds out or asks it ("shows you who cares", "find out who
+      // cares", "ask yourself who cares"),
       // or the person it describes ("someone who cares"); and "who cares
       // most" in a real either/or question ("…, the ones who came or the ones
       // who could not?").
-      R`(?<!\b(?:not|of|about|(?:shows?|showed|shown|tells?|told|counts?|counted|sees?|saw|seen|see|knows?|knew|known|learns?|learned|learnt|find out|finds out|found out|finding out|notices?|noticed|reveals?|revealed|proves?|proved|measures?|measured)(?: you| them| us| me| him| her)?|someone|somebody|anyone|anybody|everyone|everybody|one|person|people|the ones?|${OTHER_NOUN_SRC})\s)who(?: (?:on earth|even|really|actually|honestly|else|exactly|ever|truly|seriously))* cares\b(?!\s+(?:most|more)\b[^.?!]*\bor\b[^.?!]*\?)`,
+      R`(?<!\b(?:not|of|about|(?:shows?|showed|shown|tells?|told|counts?|counted|sees?|saw|seen|see|knows?|knew|known|learns?|learned|learnt|find out|finds out|found out|finding out|notices?|noticed|reveals?|revealed|proves?|proved|measures?|measured|ask|asks|asked|asking|wonder|wondering|remember)(?: you| them| us| me| him| her| yourself)?|someone|somebody|anyone|anybody|everyone|everybody|one|person|people|the ones?|${OTHER_NOUN_SRC})\s)who(?: (?:on earth|even|really|actually|honestly|else|exactly|ever|truly|seriously))* cares\b(?!\s+(?:most|more)\b[^.?!]*\bor\b[^.?!]*\?)`,
       // Telling them what they ought to know already: "You should know by now…".
       R`you should (?:already |really |surely |honestly )?(?:know|realise|realize|understand) (?:that|by now|better|this|how|why)\b`, R`you should (?:already |really )?know by now`]),
   },
@@ -255,23 +256,17 @@ function root(w) {
   return x.replace(/(?:ing|ed|es|(?<!s)s)$/u, '').replace(/e$/u, '');
 }
 
-// Occasions that come with other people even when nobody is named ("my
-// presentation on Thursday" has an audience).
-const PEOPLE_OCCASION = /\b(?:presentation|meeting|party|parties|interview|speech|wedding|dinner|drinks|class|lecture|seminar|pitch|date|audience|crowd|team|office|work|school|uni|college|club|gig|event|reunion|funeral|group chat)\b/iu;
-
 /**
- * @typedef {{ text: string, roots: Set<string>, stems: Set<string>, neg: boolean, third: boolean, report: boolean, people: boolean }} InputInfo
+ * @typedef {{ text: string, roots: Set<string>, stems: Set<string>, neg: boolean, third: boolean, report: boolean }} InputInfo
  * @param {string} input
  * @returns {InputInfo}
  */
 function inputInfo(input) {
   const ex = expand(input);
   const ws = words(ex).map((w) => w.toLowerCase());
-  const third = THIRD_PARTY_RE.test(ex);
   return {
     text: ex, roots: new Set(ws.map(root)), stems: new Set(ws.map(stem)),
-    neg: NEG_INPUT.test(ex), third, report: REPORT_IN_INPUT.test(ex),
-    people: third || PEOPLE_OCCASION.test(ex) || ws.some((w) => GIVEN_NAMES.has(w)),
+    neg: NEG_INPUT.test(ex), third: THIRD_PARTY_RE.test(ex), report: REPORT_IN_INPUT.test(ex),
   };
 }
 
@@ -325,11 +320,11 @@ const covered = (frames, clause, at) => frames.some((f) => f.end <= at && !BOUND
  * (thingPronouns). Returns the words that read as a claim, or null.
  * @param {string} sentence
  * @param {InputInfo | null} echo
- * @param {boolean} people the person's text names or implies other people
+ * @param {string} before what the person reads just before the sentence (line 1, for line 2), expanded
  * @returns {{ phrase: string, subject: string, thing: boolean } | null}
  */
-function claimsOthersMinds(sentence, echo, people) {
-  const s = thingPronouns(sentence, people);
+function claimsOthersMinds(sentence, echo, before) {
+  const s = thingPronouns(sentence, before);
   /** @param {string} clause @param {number} at @param {number} end @param {string} subject */
   // thing: "they" with a feeling or need a thing can also be said to have
   // ("they feel familiar", "they feel unfair"), so the message can say to
@@ -603,7 +598,8 @@ export const suggestsStep = (line) => ACTION_CUE.test(tidy(line));
 const STEP_VERBS = 'add|agree|apologise|ask|block|book|breathe|bring|call|cancel|catch up|check|choose|clear|close|collect|compare|cook|count|cut|decide|delete|do|draft|drink|drop|eat|email|find|finish|fix|follow|gather|get|give|go|grab|have|head|hide|hold|invite|join|jot|keep|knock|label|leave|let|limit|list|listen|look|make|map|mark|meet|message|move|mute|name|note|offer|open|pack|park|pause|phone|pick|plan|post|practise|prepare|print|put|raise|read|rehearse|remind|reply|rest|return|review|rewrite|ring|run|save|say|schedule|send|set|share|shortlist|show|sit|skip|sketch|sleep|sort|speak|spend|split|start|stay|step|stop|swap|switch|take|talk|tell|text|thank|tidy|try|turn|unfollow|update|visit|wait|walk|watch|work|write';
 const STEP_NEXT = R`(?:the|a|an|your|my|his|her|their|our|them|him|it|this|that|these|those|${NUM}|half|another|some|any|each|every|both|and|or|to|on|for|with|through|up|down|out|off|back|away|in|into|over|about|around|round|aside|by|from|at|before|after|until|till|if|yourself|what|how|when|whether|who|where|why|someone|something|anything|everything|sorry|hello|no|yes|thanks|now|today|tonight|tomorrow|first|once|twice|again|just|only|ahead|along|here|there|less|more|outside|inside|outdoors|somewhere|together|alone|still|[\p{L}]+ly)`;
 const STEP_LEAD = R`(?:(?:then|now|first|next|tonight|today|tomorrow|this (?:week|evening|weekend|morning|afternoon)|after (?:that|work|school|lunch|dinner)|before (?:bed|work|school|lunch|dinner|then)|if you can|if it helps|when you(?:'re| are) ready|for now|maybe|perhaps|just|gently|calmly|quietly|kindly),?\s+){0,2}`;
-const STEP_START = new RegExp(R`^\s*${STEP_LEAD}(?:${STEP_VERBS})\b(?=\s+${STEP_NEXT}\b|\s*[.?!]?$)|^\s*one (?:small|useful|tiny|kind|good) (?:move|step|thing)\b`, 'iu');
+// "Practise saying it…", "Say "I can do this"…" are steps too.
+const STEP_START = new RegExp(R`^\s*${STEP_LEAD}(?:${STEP_VERBS})\b(?=\s+${STEP_NEXT}\b|\s+[\p{L}]{2,}ing\b|\s+["“]|\s*[.?!]?$)|^\s*one (?:small|useful|tiny|kind|good) (?:move|step|thing)\b`, 'iu');
 // A question or proposal that asks the person to do or choose something.
 const ASKS_TO_DO = /\b(?:you could(?! (?:be|have|feel|still|never|not|well)\b)|you might(?! (?:be|have|feel|still|never|not|well|find yourself)\b)|(?:could|would|will|might|can|shall) you\b|what if you|how about|it (?:might|could|may) help to|try (?:to|it|this|that|one|a|an|asking|writing|saying|sending|telling|[\p{L}]+ing)\b|(?:which|what|when|who|where|how)\b[^.?!]*?\b(?:would|could|will|might|can) you\b|what(?:'s| is) one\b|do you want to\b|which\b[^.?!]*?\b(?:most|best|least)\b)/iu;
 // A condition about the future, just before the suggestion, belongs to it:
@@ -644,10 +640,11 @@ function stepStart(s) {
 //    colleagues have seen the slides, and they…"), however near a plural thing
 //    is;
 //  * a plural thing heading a noun phrase comes before it ("your opening
-//    lines", "the worries", "practise lines"), or nothing does and the
-//    person's text names or implies no people (a presentation has an
-//    audience).
-// Anything else is people, as before.
+//    lines", "the worries", "Thursday's slides", "practise lines"), in the
+//    sentence or, for line 2, in line 1 ("Your opening lines are the hard
+//    part." / "They feel easier each time.").
+// Anything else is people: a "they" with nothing before it ("They feel
+// lighter after a loss") means people.
 const PERSON_WORD = new RegExp(R`^(?:${OTHER_NOUNS.join('|')}|people|persons?|others|folks?|guests?|strangers?|everyone|everybody|someone|somebody|anyone|anybody|nobody|he|she|him|her|his|their|who|whom|whose|men|women|man|woman|girls?|boys?|lads?|adults?|students?|pupils?|staff|doctors?|nurses?|bosses|ones|person|whoever|team-?mates?|workmates?|schoolmates?|subs|substitutes|players?|regulars|members?|fans|supporters?|spectators?|viewers?|readers|listeners?|attendees?|invitees?|hosts|drivers?|judges|panel|panellists?|officials|referees?|refs|workers?|employees?|employers?|leaders?|peers|pals?|buddies|besties|relatives|relations|siblings?|twins|babies|baby|grown-ups?|elders|locals|newcomers?|passengers?|commuters?|patients|dentists?|vets|professors?|tenants?|recruiters?|police|officers?|instructors?|mentors|volunteers?|organisers?|residents?|bridesmaids?|crowd|everyone else|markers|assessors?|interviewers?|examiners?|selectors?)$`, 'iu');
 const NP_DETERMINER = new RegExp(R`^(?:the|these|those|this|that|your|my|our|its|some|any|all|both|each|every|few|several|many|such|other|more|which|what|no|${SMALL_NUM}|\d+)$`, 'iu');
 const OBJECT_LEAD = new RegExp(R`^(?:${STEP_VERBS}|of|with|on|about|through|over|into|from|for|at)$`, 'iu');
@@ -681,7 +678,7 @@ function theyRefersTo(s, at) {
     // up to three words before it with only modifiers between ("your opening
     // lines"), or a verb or preposition just before it ("practise lines").
     for (let j = i - 1; j >= Math.max(0, i - 3); j--) {
-      if (NP_DETERMINER.test(ws[j])) return 'thing';
+      if (NP_DETERMINER.test(ws[j]) || /^.+(?:'s|s')$/u.test(ws[j])) return 'thing';
       if (NOT_MODIFIER.has(ws[j])) break;
     }
     if (i > 0 && OBJECT_LEAD.test(ws[i - 1])) return 'thing';
@@ -692,13 +689,13 @@ function theyRefersTo(s, at) {
 /**
  * The sentence with each "they" that means a thing written as "these", so the
  * claim patterns below never see it as people.
- * @param {string} s expanded, lower-cased @param {boolean} people the person's text names or implies people
+ * @param {string} s expanded, lower-cased @param {string} before what the person reads just before it (line 1, for line 2), expanded
  */
-function thingPronouns(s, people) {
+function thingPronouns(s, before) {
   return s.replace(/\bthey\b/g, (w, at) => {
     if (!thingLike(s.slice(at + w.length))) return w;
-    const ref = theyRefersTo(s, at);
-    return ref === 'thing' || (ref === null && !people) ? 'these' : w;
+    const ref = theyRefersTo(s, at) ?? (before ? theyRefersTo(before, before.length) : null);
+    return ref === 'thing' ? 'these' : w;
   });
 }
 
@@ -1155,7 +1152,7 @@ export function qualityGate(scene, ctx) {
     for (const s of sentences(t)) {
       if (/\?["')\]]*$/.test(s)) continue;
       const unquoted = s.replace(/"[^"]*"|“[^”]*”|‘[^’]*’/g, ' … ');
-      const claim = claimsOthersMinds(expand(unquoted), echo, info.people);
+      const claim = claimsOthersMinds(expand(unquoted), echo, field === 'subtitle_line_2' ? expand(l1) : '');
       if (claim) fail('claims_others_minds', field, mindsMessage(field, claim));
     }
     // The harsh label, repeated or flatly denied.
