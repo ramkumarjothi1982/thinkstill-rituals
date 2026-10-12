@@ -702,8 +702,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     if (S.left || seq !== S.seq) return;
     const L = MECHANIC_LINES[scene.mechanic];
     const from = thought ? { x: thought.x, y: thought.y, r: thought.r } : null;
-    // the Thought Mallow hands over to the mechanic where it sits (a short cross-fade)
-    dropThought(rmOn() ? 120 : 420);
+    // the Thought Mallow hands over to the mechanic where it sits: the same living jelly takes over there (a
+    // quick cross-fade; a longer one only when the mechanic draws the kit's own jelly instead)
+    dropThought(rmOn() || W2 ? 120 : 420);
     const parts = sceneParts(S.text, scene);
     const look = sceneLook(scene);
     S.look = look;
@@ -713,7 +714,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       reducedMotion: rmOn, lowStim: lowOn,
       // the person's Thought Mallow in the mechanic: the same living jelly (W2) they watched while Zuzu explored
       thought: (o = {}) => new ThoughtBody({ text: S.text, emotion: look, intensity: 0.7, light: tl, deep: td, reducedMotion: rmOn(), lowStim: lowOn(), rmFn: rmOn,
-        haptic: (k) => app.haptic(k), bounds: { left: area.x, top: area.y, right: area.x + area.w, bottom: area.y + area.h }, ...o }, W2),
+        // (the mechanic gives every touch its own haptic: the jelly adds none, so nothing buzzes twice)
+        haptic: null, bounds: { left: area.x, top: area.y, right: area.x + area.w, bottom: area.y + area.h }, ...o }, W2),
       // something the mechanic changed that a screen reader should hear (a weight put down, a step made)
       say: (t) => announceSoon(t),
       hint: (line) => { if (line && !subs?.holding) say(line, { mallow: 'zuzu', interrupt: true }); },
@@ -724,7 +726,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       },
       haptic: (k) => app.haptic(k),
       fx: (name, o) => { try { app.audio.fx?.(name, o); } catch { /* sound is decoration */ } },
-      progress: (k) => { if (k >= 1) announce(L.done); },
+      // (its done line is said as a subtitle the moment it lands, and the subtitles are a live region: not twice)
+      progress: () => {},
       kick: () => {},
     };
     endMechanic(true);
@@ -1031,6 +1034,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       for (const t of timers) clearTimeout(t);
       timers.clear();
       clearTimeout(resizeT);
+      clearTimeout(heardT);
       removeEventListener('resize', onResize);
       visualViewport?.removeEventListener('resize', onResize);
       offPrefs?.();

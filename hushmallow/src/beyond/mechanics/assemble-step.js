@@ -30,6 +30,7 @@ export function mount(ctx) {
   const R = clamp(Math.min(A0.w, A0.h) * 0.085, 19, 30);
   const thought = thoughtFor(ctx, { x: ctx.from?.x ?? A0.x + A0.w / 2, y: ctx.from?.y ?? A0.y + A0.h * 0.3, r: R });
   const BL = new RectList(), AL = new RectList();
+  const TREAD_EDGE = rgba(WARM[0], 0.9), DASH = [5, 6], NO_DASH = [];
   const pieces = ctx.parts.steps.map((text, i) => {
     const b = new Blob({ x: thought.x, y: thought.y, r: R, light: WARM[0], deep: WARM[1] });
     b.i = i; b.slot = -1; b.k = 30; b.d = 8; b.scale = rm() ? 1 : 0.3;
@@ -143,12 +144,15 @@ export function mount(ctx) {
     homes();
     // empty treads: faint dashed outlines
     if (phase === 'pieces') {
-      G.treads.forEach((q, i) => {
-        if (pieces.some((b) => b.slot === i)) return;
-        g.globalAlpha = 0.55; g.strokeStyle = rgba(WARM[0], 0.9); g.lineWidth = 1.6; g.setLineDash?.([5, 6]);
-        roundRect(g, q.x - q.w / 2, q.y - q.h / 2, q.w, q.h, q.h * 0.45); g.stroke(); g.setLineDash?.([]);
+      for (let i = 0; i < G.treads.length; i++) {
+        let taken = false;
+        for (const b of pieces) if (b.slot === i) { taken = true; break; }
+        if (taken) continue;
+        const q = G.treads[i];
+        g.globalAlpha = 0.55; g.strokeStyle = TREAD_EDGE; g.lineWidth = 1.6; g.setLineDash?.(DASH);
+        roundRect(g, q.x - q.w / 2, q.y - q.h / 2, q.w, q.h, q.h * 0.45); g.stroke(); g.setLineDash?.(NO_DASH);
         g.globalAlpha = 1;
-      });
+      }
     } else {
       fuseT += dt;
       // fused: one staircase of light behind the treads

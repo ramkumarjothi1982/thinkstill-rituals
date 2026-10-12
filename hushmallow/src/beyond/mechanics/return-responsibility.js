@@ -129,7 +129,7 @@ export function mount(ctx) {
     homes();
     motes.burst(G.pos[idx].x, G.pos[idx].y, idx === YOURS ? '#ffd98a' : '#c8b8ff', s === slab ? 9 : 6, { speed: 34, size: 2.2 });
     thought.sqV -= s === slab ? 3.2 : 2.4;   // a little bounce of relief
-    if (s === slab) ctx.say?.(`${blame}: ${pl.label}`);
+    if (s === slab) ctx.say?.(`“${blame}” now sits with ${pl.label}`);
     ctx.progress(1 - onPile / N);
     if (!onPile && !finished) {
       finished = true;
