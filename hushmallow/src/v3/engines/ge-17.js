@@ -34,7 +34,7 @@ const N = 64;                 // rim vertices
 const CAP = 0.06;             // input the law gate may bank
 const KAPPA = 8;              // how far a pull spreads along the rim
 const SWEEP = 0.9;            // the suggested pull point drifts round the rim as it grows
-const WORD_GAP = 1.0;         // half-width (rad) of the lower sector kept clear for the words
+const WORD_GAP = 1.0;         // half-width (rad) of the film sector kept clear for the words
 const IRIS = ['#ff9ad5', '#ffd58a', '#a8ffcf', '#8fd8ff', '#b9a0ff', '#ff9ad5'];
 
 export function create(E) {
@@ -102,8 +102,9 @@ export function create(E) {
   const satDist = (s) => lerp(r0 + sr + Rt * 0.1, Rt + sr * 0.15, s.u);
   const HA = (p) => A0 - clamp(p) * SWEEP;
   // where a joined bubble rests on the film: its own direction, squeezed out of the
-  // lower sector where the words float, so pictures and words never sit on each other
+  // sector where the words float, so pictures and words never sit on each other
   const restAngle = (a) => { const o = wordsUp ? Math.PI / 2 : Math.PI * 1.5; return o + angDiff(o, a) * ((Math.PI - WORD_GAP) / Math.PI); };
+  E.onResize(() => { for (const s of sats) if (s.merged) s.pa = restAngle(s.a); });
   const tense = (a) => tenseAmp * (0.7 * Math.sin(2 * a + ph1 + 0.35 * Math.sin(clockT * 0.35)) + 0.45 * Math.sin(3 * a + ph2 - clockT * 0.22))
     + breathAmp * Math.sin(clockT * 1.1 + 4 * a);
   function rimAt(a) {

@@ -373,12 +373,12 @@ export function create(E) {
       const a = 0.5 + 0.5 * ((i + 1) / list.length), P = catmull(h.ctrl.map(([x, y]) => [x * cell, y * cell]), 24);
       b.save(); b.lineCap = 'round'; b.lineJoin = 'round';
       const path = () => { b.beginPath(); P.forEach(([x, y], k) => (k ? b.lineTo(x, y) : b.moveTo(x, y))); };
-      path(); b.strokeStyle = rgba(wovenCol, 0.09 * a); b.lineWidth = 7 * stage.s; b.stroke();
+      path(); b.strokeStyle = rgba(wovenCol, 0.14 * a); b.lineWidth = 7 * stage.s; b.stroke();
       b.setLineDash([7 * stage.s, 4 * stage.s]);
       b.translate(0.6, 1); path(); b.strokeStyle = rgba('#05020f', 0.35 * a); b.lineWidth = 2 * stage.s; b.stroke();
-      b.translate(-0.6, -1); path(); b.strokeStyle = rgba(wovenCol, 0.5 * a); b.lineWidth = 1.6 * stage.s; b.stroke();
+      b.translate(-0.6, -1); path(); b.strokeStyle = rgba(wovenCol, 0.72 * a); b.lineWidth = 1.8 * stage.s; b.stroke();
       b.setLineDash([]);
-      for (const k of h.knots) { const x = k[0] * cell, y = k[1] * cell; b.fillStyle = rgba(wovenCol, 0.55 * a); b.beginPath(); b.arc(x, y, 2.6 * stage.s, 0, TAU); b.fill(); }
+      for (const k of h.knots) { const x = k[0] * cell, y = k[1] * cell; b.fillStyle = rgba(wovenCol, 0.75 * a); b.beginPath(); b.arc(x, y, 2.8 * stage.s, 0, TAU); b.fill(); }
       b.restore();
     });
   }
