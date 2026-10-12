@@ -374,7 +374,7 @@ export function validateSkill(s) {
   if (!s.evidence.scope || !/hushmallow itself hasn’t been studied|isn’t about hushmallow/.test(s.evidence.plain)) p.push('evidence note must say hushmallow itself hasn’t been studied');
   const shown = [s.title, s.essence, s.explanation, s.example, s.found || '', ...s.steps, ...s.care, s.evidence.plain].join(' ');
   if (BANNED.test(shown)) p.push(`banned wording: ${shown.match(BANNED)[0]}`);
-  if (/Hushmallow|HUSHMALLOW/.test(shown)) p.push('brand must be lowercase');
+  if ((shown.match(/hushmallow/gi) || []).some((m) => m !== 'hushmallow')) p.push('brand must be lowercase');
   if (/https?:\/\//.test(JSON.stringify(s))) p.push('no URLs in shipped data');
   for (const k of ['deep', 'body', 'light', 'core', 'rim']) if (!/^#[0-9a-f]{6}$/i.test(s.charm.palette?.[k] || '')) p.push(`charm palette ${k}`);
   return p;

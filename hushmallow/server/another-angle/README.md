@@ -203,7 +203,7 @@ The report lands in `eval/reports/angle-eval-<date>.md` (and a `.json` beside it
 
 **What the server logs (Cloudflare Workers Logs, metadata only):** one line per request with: time, route, HTTP status, outcome (`ok`/`care`/`crisis`/`fallback`), fallback reason, latency, attempts, quality-gate result and failure codes, reasoning pattern, mechanic, Mallow, scene emotion and situation type, the chosen feeling and intention ids, how many earlier angles were sent, a length bucket (short/medium/long), the safety level (`none`/`concern`/`care`/`crisis`, never the category), whether the text looked like an injection attempt, model name, token counts, cost, remaining quota; and, for feedback, which of the four buttons was pressed for which pattern, mechanic and Mallow. `src/log.js` drops anything else, and the tests check that no input text reaches the logs.
 
-**What Cloudflare itself records:** Cloudflare's *invocation logs* — which would store each request's headers and Cloudflare's location data (city, postcode, coordinates, network) beside the lines above — are switched off in `wrangler.toml` (`[observability.logs] invocation_logs = false`), and so are traces. What remains is the server's own lines plus the details Cloudflare attaches to every log line (time, Worker name and version, an internal request id, outcome, CPU and wall time). Check this once after the first deploy (setup step 9); Cloudflare can change what it attaches, so look again if you change plans or settings. Cloudflare keeps Workers Logs for a few days (3 on the free plan, 7 on paid plans at the time of writing). Separately, like any web host, Cloudflare's network handles the visitor's IP address to deliver the request and protect against attacks; that is covered by Cloudflare's own privacy policy, not by anything this server keeps.
+**What Cloudflare itself records:** Cloudflare's *invocation logs* — which would store each request's headers and Cloudflare's location data (city, postcode, coordinates, network) beside the lines above — are switched off in `wrangler.toml` (`[observability.logs] invocation_logs = false`), and so are traces. What remains is the server's own lines plus the metadata Cloudflare attaches to each line (such as the time, the Worker's name and version and whether the request succeeded). The exact set is Cloudflare's and was not inspected on a live deploy when this was written, so check it once after the first deploy (setup step 9), and again if you change plans or settings. Cloudflare keeps Workers Logs for a few days; its pricing page lists the period for each plan (sources disagreed between 3 and 7 days on the free plan when this was written; 7 on the paid plan), so confirm it before quoting a number on the privacy screen. Separately, like any web host, Cloudflare's network handles the visitor's IP address to deliver the request and protect against attacks; that is covered by Cloudflare's own privacy policy, not by anything this server keeps.
 
 **Stored by the server:** daily counters only — angles per session subject, new sessions per hashed network (an IPv4 address or an IPv6 `/64`, keyed with `IP_HASH_KEY`, never the raw address), total spend — in a Durable Object, deleted after two days.
 
@@ -216,7 +216,7 @@ The report lands in `eval/reports/angle-eval-<date>.md` (and a `.json` beside it
 * The lexicon is a verbatim copy of the app's. When the app's file changes, run `npm run sync:lexicon`; the tests fail until the copy matches. Server-only additions live in `src/safety/extra-lexicon.js` (for example "stockpiling my pills", "done with life", "no way out", "sleep forever", "anyone would notice if I wasn't around", someone else "cutting herself"); once the app's shared lexicon has them, delete them there.
 * The model's own `safety_status` is honoured, so subtle crisis wording the lists miss still gets support. The eval measures that on its own (see above).
 * Harmful experiences are never reframed, and an ordinary reframe is never offered as enough support in an emergency.
-* The words "AI" never appear in what people see: the support copy, the subtitles and the gate all keep to hushmallow's own language.
+* The word "AI" never appears in what people see: the support copy, the subtitles and the gate all keep to hushmallow's own language.
 
 ## Files
 
@@ -231,7 +231,7 @@ The report lands in `eval/reports/angle-eval-<date>.md` (and a `.json` beside it
 | `src/safety/` | Lexicon copy, server additions, support copy |
 | `src/providers/` | Anthropic adapter and mock (provider abstraction) |
 | `src/auth/` | Session tokens, testing/StoreKit entitlement, StoreKit JWS + X.509 checks |
-| `src/limits/` | Durable Object counters, burst limiter |
+| `src/limits/` | Durable Object counters, burst limiter, network key (IPv4 address / IPv6 /64) |
 | `eval/` | Eval inputs, judge rubric, reports |
 | `test/` | Node tests (mock model; the StoreKit tests mint a fresh Apple-shaped certificate chain each run, so no keys are stored) |
 | `scripts/` | Lexicon sync; CI secret preparation |

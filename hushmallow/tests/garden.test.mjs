@@ -190,3 +190,39 @@ test('garden: capped, and wiped by Delete everything', () => {
   store.clearAll();
   assert.deepEqual(garden(store), []);
 });
+
+// ------------------------------------------------- installation + scene --
+test('the installation is brief, skippable and photosafe', async () => {
+  const { INSTALL_TIMING: T, INSTALL_TIMING_REDUCED: R } = await import('../src/hushfold/garden-install.js');
+  assert.ok(T.end >= 2.5 && T.end <= 4, `full sequence ${T.end}s is 2.5–4 s`);
+  assert.ok(T.card >= T.enter && T.card < T.end, 'the card follows the charm into the portal');
+  assert.ok(T.gather < T.form && T.form < T.portalOpen && T.portalOpen < T.travel && T.travel < T.enter && T.enter < T.close);
+  assert.ok(R.end < T.end && R.card < 1.2, 'reduced motion is shorter and calmer');
+  const src = readFileSync(`${root}src/hushfold/garden-install.js`, 'utf8');
+  // every light envelope rises over at least 0.28 s (no flash)
+  const rises = [...src.matchAll(/\benv\(t, [^,]+, ([0-9.]+),/g)].map((m) => Number(m[1]));
+  assert.ok(rises.length >= 4);
+  for (const r of rises) assert.ok(r >= 0.28, `rise ${r}s`);
+  // the portal breathes once a second at most
+  assert.match(src, /Math\.sin\(Math\.PI \* 2 \* t\)/);
+  assert.match(src, /'Skip'/);
+  assert.match(src, /Escape/);
+});
+
+test('garden copy: the brief’s words, lowercase brand, no "AI", no pressure mechanics', () => {
+  const install = readFileSync(`${root}src/hushfold/garden-install.js`, 'utf8');
+  const scene = readFileSync(`${root}src/app/scenes/garden.js`, 'utf8');
+  for (const s of ['New tool saved', 'Visit the garden', 'Keep playing', 'Keep this', 'Not now']) assert.ok(install.includes(`'${s}'`), s);
+  assert.match(install, /text-transform: uppercase/, 'NEW TOOL SAVED is set as an overline');
+  assert.match(install, /--type-reward/, 'the title uses the reward type token');
+  for (const s of ['Back to the Hushfold', 'Practise again', 'Forget this', 'Related tools', 'Where this comes from', 'Need support now?']) assert.ok(scene.includes(s), s);
+  for (const src of [install, scene]) {
+    assert.doesNotMatch(src, /\bAI\b/);
+    assert.doesNotMatch(src, /Hushmallow|HUSHMALLOW/);
+    assert.doesNotMatch(src, /\b(streak|score|points|level up|collect them all|unlock)\b/i);
+  }
+  // the garden is gated in code, not only in the UI, and saving only happens on the tap
+  assert.match(scene, /if \(!ent\.has\('paid'\)\) \{ app\.go\('plans'/);
+  assert.doesNotMatch(scene, /saveSkill/);
+  assert.match(install, /const yes = await offerSave\([^)]*\);\n\s+if \(!yes/);
+});

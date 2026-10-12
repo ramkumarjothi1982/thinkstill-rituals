@@ -114,8 +114,9 @@ def erase_mask(name, meas, masks, shape, img=None):
 def restore_cheeks(body, img, erase, meas):
     """The blush is part of the approved face, but an eye or mouth margin
     can bite into it. The blush is a soft radial glow, so the bitten part
-    gets the radial colour profile measured from the blush's intact pixels
-    (shading only; the quilted surface texture is kept)."""
+    gets the radial colour profile measured from the blush's intact pixels,
+    and its glitter (the fine detail above that profile) is taken from the
+    intact lower half, mirrored across the blush's centre line."""
     ch = meas['feats']['cheeks']
     if ch.get('base', 1) <= 0:
         return body
@@ -152,6 +153,15 @@ def restore_cheeks(body, img, erase, meas):
         w = np.clip((1.3 * r - d) / (0.3 * r), 0, 1) * reg
         w = cv2.GaussianBlur(w, (0, 0), 1.5 * u)
         out[..., :3] += (target - cur_lf) * w[..., None]
+        # glitter: mirrored fine detail of the intact blush, only where the
+        # mirror source is itself intact, faded out toward the blush edge
+        my = np.clip(np.round(2 * cy - yy).astype(int), 0, H - 1)
+        src_hf = img[..., :3].astype(np.float64) - orig_lf
+        cur_hf = out[..., :3] - cv2.GaussianBlur(out[..., :3], (0, 0), sig)
+        ok = intact[my, xx]
+        wg = np.clip((1.05 * r - d) / (0.35 * r), 0, 1) * reg * ok
+        wg = cv2.GaussianBlur(wg, (0, 0), 1.0 * u)
+        out[..., :3] += (src_hf[my, xx] - cur_hf) * wg[..., None]
     res = body.copy()
     res[..., :3] = np.clip(np.round(out[..., :3]), 0, 255).astype(np.uint8)
     res[..., :3][img[..., 3] == 0] = 0

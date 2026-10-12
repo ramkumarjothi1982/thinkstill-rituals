@@ -583,7 +583,7 @@ export function playInstall(opts = {}) {
       if (manual >= T.card) showCard(); else if (cardShown) { cardShown = false; card.classList.remove('is-in'); }
     },
     timing: T,
-    get points() { return { from: { ...F }, portal: { ...Pp }, charm: S, portalRadius: Rp }; },
+    get geometry() { return { from: { ...F }, portal: { ...Pp }, charm: S, portalRadius: Rp }; },
     el: root,
   });
 }
