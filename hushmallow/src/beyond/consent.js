@@ -79,7 +79,7 @@ export function lessWanted(store) {
 // ------------------------------------------------------------ the notice --
 /** "Not therapy or crisis support", with the way to support (always in view on the consent card). */
 function notTherapy(app, tag = 'p') {
-  return h(tag, { class: 'bx-small bx-care' }, h('b', {}, 'Not therapy. '), 'Another Angle isn’t therapy or crisis support. ',
+  return h(tag, { class: 'bx-small bx-care' }, h('b', {}, 'Not therapy or crisis support. '),
     h('button', { type: 'button', class: 'bx-link', onclick: () => openSupport(app) }, 'Support lines'));
 }
 /**
@@ -95,8 +95,8 @@ function noticeBody(app, { compact = false, therapy = false } = {}) {
     h('p', { class: 'bx-lead' },
       'Your words go to our secure server, where an AI language model from Anthropic, an outside provider, suggests a perspective.'),
     h('ul', { class: 'bx-points' },
-      h('li', {}, h('b', {}, 'What’s sent. '), 'Only your words, the feeling and the kind of help you pick, and (when you ask for another angle) the lines you’ve already seen. If you tap a feedback button: which button and what kind of angle it was, never your words. Never your photos.'),
-      h('li', {}, h('b', {}, 'What’s kept. '), h('span', { class: 'brand-name' }, 'hushmallow'), ' stores nothing you write on its server and doesn’t log your words. To start, this phone sends a random code, the app’s version and the kind of device (and an invite code, if you were given one), to keep the daily allowance fair. It isn’t your name or your account.'),
+      h('li', {}, h('b', {}, 'What’s sent. '), 'Only your words, the feeling and the kind of help you pick, and (for another angle) the lines you’ve seen. A feedback tap sends which button and what kind of angle it was, never your words. Never your photos.'),
+      h('li', {}, h('b', {}, 'What’s kept. '), h('span', { class: 'brand-name' }, 'hushmallow'), ' stores nothing you write and doesn’t log your words. To start, the app sends a random code for this phone, its version and device type (and any invite code) to keep the daily allowance fair. Never your name or account.'),
       h('li', {}, h('b', {}, 'Anthropic. '), 'The provider receives your words to prepare the perspective. ', retention),
       therapy ? notTherapy(app, 'li') : null),
     h('p', { class: 'bx-small' }, 'You can change your mind any time in Settings, and delete this phone’s Another Angle data there.'));
@@ -134,7 +134,7 @@ export function openConsent({ app, root = document.body, onDecide } = {}) {
     h('div', { class: 'bx-scrollwrap' }, scroll, more),
     notTherapy(app),
     h('div', { class: 'bx-actions' }, notNow, accept),
-    h('p', { class: 'bx-small bx-after' }, 'Not now: Zuzu’s own angles, worked out on this phone. Nothing is sent.'));
+    h('p', { class: 'bx-small bx-after' }, 'Not now: nothing is sent, Zuzu’s own angles.'));
   root.append(el);
   // the cue shows while there is more of the notice below what fits (looked at on scroll, resize and as fonts land)
   const cue = () => {

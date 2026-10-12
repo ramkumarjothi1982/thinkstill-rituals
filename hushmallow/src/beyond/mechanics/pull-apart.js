@@ -10,7 +10,7 @@
 // same thing: a side with nothing real to show asks a question instead. Tap
 // either jelly, or the assist pill, to ease them apart a step at a time.
 
-import { drawGlow, clamp, lerp, dist, approach, rgba, mix, LIGHT, Motes, blinkAt, Timers, RectList, thoughtFor } from './kit.js';
+import { drawGlow, clamp, lerp, dist, approach, rgba, mix, LIGHT, Motes, blinkAt, Timers, RectList, thoughtFor, familyOf, W2_TINT, WARM_FAMILIES } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'pull_apart';
@@ -28,8 +28,9 @@ export function mount(ctx) {
   const from = ctx.from || { x: A0.x + A0.w / 2, y: A0.y + A0.h * 0.5, r: R };
   const P = ctx.parts;
   // two Thought Mallows from one: what happened (plain, unfeeling) and what the mind added (the feeling's own jelly)
-  const F = thoughtFor(ctx, { x: from.x - 4, y: from.y, r: R, light: LIGHT.fact[0], deep: LIGHT.fact[1], emotion: 'neutral', text: P.fact });
-  const G = thoughtFor(ctx, { x: from.x + 4, y: from.y, r: R, light: LIGHT.guess[0], deep: LIGHT.guess[1] });
+  // (the living jellies are wider than the kit's: a little smaller, so the neck between them shows)
+  const F = thoughtFor(ctx, { x: from.x - 4, y: from.y, r: R, w2r: R * 0.84, light: LIGHT.fact[0], deep: LIGHT.fact[1], emotion: 'neutral', text: P.fact, tint: W2_TINT.fact });
+  const G = thoughtFor(ctx, { x: from.x + 4, y: from.y, r: R, w2r: R * 0.84, light: LIGHT.guess[0], deep: LIGHT.guess[1], ...(WARM_FAMILIES.has(familyOf(ctx.emotion)) ? {} : { tint: W2_TINT.guess }) });
   // their colours: the living jellies' own tints when they are W2's, else the kit's fact and guess light
   const FC = F.w2?.style?.tint?.deep || LIGHT.fact[1], GC = G.w2?.style?.tint?.deep || LIGHT.guess[1];
   const BL = new RectList(), AL = new RectList();

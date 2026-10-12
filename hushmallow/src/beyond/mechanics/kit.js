@@ -47,6 +47,13 @@ const FAMILY = {
 /** The feeling family an emotion id belongs to ('none' when it has no troubled tint). */
 export function familyOf(emotion) { return FAMILY[emotion] || (TINTS[emotion] ? emotion : 'none'); }
 export function tintFor(emotion) { return TINTS[familyOf(emotion)] || TINTS.none; }
+/** The living jellies' light for fact versus assumption (W2 tint shape): what happened is cool, what the mind added warm. */
+export const W2_TINT = Object.freeze({
+  fact: Object.freeze({ light: '#e4fdff', mid: '#8fe6f2', deep: '#2aaec6', glow: '#c9fbff', ink: '#0a2830' }),
+  guess: Object.freeze({ light: '#ffe2f4', mid: '#ff9ad8', deep: '#d84aae', glow: '#ffd0ec', ink: '#3a0b2c' }),
+});
+/** Feelings whose own light is warm enough to stand apart from the cool fact (the others take the guess's magenta). */
+export const WARM_FAMILIES = new Set(['anger', 'frustration', 'shame', 'overwhelm', 'restlessness']);
 /** Another Angle's own light: fact (cool), the mind's addition (warm magenta), calm (gold). */
 export const LIGHT = Object.freeze({ fact: ['#c9fbff', '#3fd6ee'], guess: ['#ffc6ee', '#e04fbf'], calm: ['#fff1c9', '#ffc35c'], steel: ['#d9dcf2', '#6d6f98'], ember: ['#ffd4a8', '#ff6a3d'] });
 
@@ -268,7 +275,9 @@ export class ThoughtBody extends Blob {
     this.rmFn = typeof o.rmFn === 'function' ? o.rmFn : null;
     if (w2 && typeof w2.create === 'function' && typeof w2.draw === 'function') {
       try {
-        this.w2 = w2.create({ text: o.text || '', emotion: o.emotion || 'anxiety', intensity: o.intensity ?? 0.7, r: this.r, x: this.x, y: this.y, reducedMotion: !!o.reducedMotion, lowStim: !!o.lowStim, siblings: 0, haptic: o.haptic || null });
+        // a mechanic may light the jelly its own way (o.tint: W2's { light, mid, deep, glow, ink }), keeping the feeling's motion and face
+        const style = o.tint && typeof w2.style === 'function' ? { ...w2.style(o.emotion || 'anxiety'), tint: o.tint } : undefined;
+        this.w2 = w2.create({ text: o.text || '', emotion: o.emotion || 'anxiety', intensity: o.intensity ?? 0.7, r: o.w2r || this.r, x: this.x, y: this.y, reducedMotion: !!o.reducedMotion, lowStim: !!o.lowStim, siblings: 0, haptic: o.haptic || null, ...(style ? { style } : {}) });
         this.drawW2 = w2.draw;
       } catch (e) { console.info('[another angle] Thought Mallow unavailable here; the kit jelly stands in', e?.message); this.w2 = null; }
     }

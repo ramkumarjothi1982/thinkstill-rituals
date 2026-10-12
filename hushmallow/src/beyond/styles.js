@@ -53,7 +53,7 @@ const CSS = `
 
 /* consent: a calm card above Zuzu (who stays squeezable underneath) */
 .bx-consent { position: fixed; z-index: 4; left: 16px; right: 16px; top: calc(var(--safe-top, 0px) + 66px); margin: 0 auto; max-width: 520px; box-sizing: border-box;
-  max-height: var(--bx-card-max, calc(100dvh - 300px)); display: flex; flex-direction: column; gap: 10px; padding: 18px 18px 14px; border-radius: 26px;
+  max-height: var(--bx-card-max, calc(100dvh - 300px)); display: flex; flex-direction: column; gap: 8px; padding: 18px 18px 14px; border-radius: 26px;
   background: radial-gradient(120% 70% at 50% 0%, rgba(57, 240, 255, 0.13), rgba(57, 240, 255, 0) 60%), rgba(13, 9, 34, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.14); box-shadow: 0 24px 60px rgba(4, 2, 16, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   -webkit-backdrop-filter: blur(18px) saturate(1.15); backdrop-filter: blur(18px) saturate(1.15); color: #f7f3ff;
@@ -81,7 +81,12 @@ const CSS = `
 .bx-notice p, .bx-notice li { font: 500 calc(15px * var(--bx-k))/1.45 var(--hf-ff-voice); color: #e9e4fb; }
 .bx-notice .bx-lead { margin: 0; font-weight: 600; color: #fbf8ff; font-size: calc(16px * var(--bx-k)); }
 .bx-points { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
-.bx-points li { padding: 7px 11px; border-radius: 13px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.07); }
+.bx-points li { padding: 6px 11px; border-radius: 13px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.07); line-height: 1.4; }
+.bx-points { gap: 6px; }
+@media (max-width: 429px) {
+  .bx-points li { font-size: calc(14.5px * var(--bx-k)); padding: 6px 10px; }
+  .bx-notice .bx-lead { font-size: calc(15.5px * var(--bx-k)); }
+}
 .bx-points b { color: #fff; font-weight: 800; }
 .bx-todo { display: inline; padding: 1px 6px; border-radius: 6px; border: 1.5px dashed #ffc35c; background: rgba(255, 195, 92, 0.12); color: #ffe2a6; font-weight: 700; }
 .bx-link { display: inline-flex; align-items: center; min-height: 44px; margin: -10px 0 -12px; padding: 0 4px; border: 0; background: none; color: #ffd6ea; font: 700 calc(15px * var(--bx-k))/1.2 var(--hf-ff-ui); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
@@ -100,8 +105,9 @@ const CSS = `
 .bx-setting-note { display: block; margin-top: 2px; font: var(--type-caption, 550 13px/1.4 var(--hf-ff-ui)); color: var(--text-3, #b9b1dc); }
 .bx-sheet-copy { margin: 0; font: var(--type-body, 500 17px/1.5 var(--hf-ff-voice)); color: var(--text-2, #cdc6ea); }
 
+.bx-consent .bx-title { font-size: calc(clamp(22px, 6.4vw, 28px) * var(--bx-k)); line-height: 1.12; }
 @media (max-height: 700px) {
-  .bx-consent .bx-title { font-size: calc(22px * var(--bx-k)); line-height: 1.12; }
+  .bx-consent .bx-title { font-size: calc(20px * var(--bx-k)); line-height: 1.12; }
   .bx-consent { gap: 7px; }
 }
 @media (max-width: 360px) {

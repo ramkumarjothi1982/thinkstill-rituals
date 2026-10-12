@@ -813,7 +813,7 @@ export function create(ctx) {
   function skyCue(x, down = false) {
     if (!wake || !cam) return;
     const y = hyNow + WATER_PAD + 3;
-    wake.inject(x, y, down ? -0.32 : -0.18, 1.8);
+    wake.inject(x, y, down ? -0.5 : -0.3, 2);
     if (down || R() < 0.35) { const n = down ? (reduced() ? 1 : 3) : 1; for (let k = 0; k < n && plankton.n < plankton.max - 2; k++) plankton.spawn(x + (R() - 0.5) * 14, y + R() * 3, (R() - 0.5) * 10, 0, 0.7 + R() * 0.6, 1.4 + R() * 1.6, (R() * 3) | 0, 0.6); }
   }
 
@@ -1372,9 +1372,9 @@ export function create(ctx) {
     const settled = Math.abs(camHome - plan.homeY) < 2 && Math.abs(camWater - plan.waterY) < 2 && Math.abs(hyNow - hyTarget) < 2;
     if (landed && settled && discHits(bx, by, rr + 2, Kr)) {
       pushOut(bx, by, rr + 2, Kr, rr);
-      const k = Math.min(1, dt / 0.6), s = scaleAt(cam, tS.z);
-      tS.x += (po.x * k) / s;
+      const k = Math.min(1, dt / 0.6), s = scaleAt(cam, tS.z), xs = W / 2 + tS.x * s;
       tS.z = clamp(tS.z - (po.y * k * cam.Z0) / (cam.Hw * s * s), cam.Z0, capD * cam.Z0);
+      tS.x = (xs + po.x * k - W / 2) / scaleAt(cam, tS.z);
     }
     const px = sx + tS.koX, py = sy + tS.koY;
     if (discHits(px, py, rr + 2, K)) { pushOut(px, py, rr + 2, K, rr); tS.koX += po.x; tS.koY += po.y; }
@@ -1731,10 +1731,11 @@ export function create(ctx) {
   /** Move a floating bubble by a screen offset (converted to world, so physics carries on from there). */
   function nudge(b, mx, my) {
     b.sx += mx; b.sy += my;
-    const s = scaleAt(cam, b.z);
-    b.x += mx / s;
-    // up the screen is away: dz = −dy·Z0 / (Hw·s²)
+    const s = scaleAt(cam, b.z), xs = W / 2 + b.x * s;
+    // up the screen is away: dz = −dy·Z0 / (Hw·s²); and its screen x moves by mx exactly (further out, the same world x
+    // would slide it towards the vanishing point — into the thought)
     b.z = clamp(b.z - my * cam.Z0 / (cam.Hw * s * s), -0.8 * cam.Z0, OCEAN.CAP * cam.Z0);
+    b.x = (xs + mx - W / 2) / scaleAt(cam, b.z);
   }
   /** A waiting photo drifts into view far out on the horizon (after another drifted away over it). */
   function arriveWaiting(skip) {
@@ -2255,6 +2256,12 @@ export function create(ctx) {
         g.beginPath(); g.ellipse(f.hushX, f.hushY, r, r * asp, 0, 0, TAU); g.stroke();
       }
       if (!f.on) continue;
+      // a finger in the sky: the water's edge brightens softly right below it (here is where the sea begins)
+      if (f.y < hyNow + WATER_PAD) {
+        const a = clamp((hyNow + WATER_PAD - f.y) / 40, 0.35, 1) * 0.4;
+        g.globalAlpha = a; g.drawImage(sprites.crestSoft, f.x - 46, hyNow - 4, 92, 14);
+        g.globalAlpha = a * 0.8; g.drawImage(sprites.white, f.x - 14, hyNow - 1.5, 28, 5);
+      }
       const r = 18 + 10 * clamp(f.speed / U);
       g.globalAlpha = 0.32; g.drawImage(sprites.crestSoft, f.x - r, f.y - r, r * 2, r * 2);
       g.globalAlpha = 0.5; g.drawImage(sprites.white, f.x - 8, f.y - 8, 16, 16);

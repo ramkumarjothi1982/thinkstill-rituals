@@ -69,7 +69,7 @@ const box = (x, y, w, h) => ({ x0: x - w / 2, y0: y - h / 2, x1: x + w / 2, y1: 
  */
 export function thoughtZone(x, y, rr, plateW = 0, out = {}) {
   const zx = Math.max(2.5 * rr, plateW / 2 + 6);
-  out.x0 = x - zx; out.x1 = x + zx; out.y0 = y - 2.2 * rr; out.y1 = y + 1.7 * rr;
+  out.x0 = x - zx; out.x1 = x + zx; out.y0 = y - 2.2 * rr; out.y1 = y + 2.4 * rr;
   return out;
 }
 

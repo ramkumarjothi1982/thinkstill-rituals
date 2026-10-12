@@ -430,10 +430,10 @@ test('consent: asked once per notice version, withdrawable, and deletable', () =
 
 test('the consent notice says it plainly (the one place automated processing is described)', () => {
   const src = read('src/beyond/consent.js');
-  for (const must of [/secure server/, /AI language model/, /Anthropic/, /Never your photos/, /stores nothing you write on its server/, /doesn’t log your words/, /isn’t therapy or crisis support/, /'Accept'/, /'Not now'/, /Support lines/]) assert.match(src, must);
+  for (const must of [/secure server/, /AI language model/, /Anthropic/, /Never your photos/, /stores nothing you write/, /doesn’t log your words/, /Not therapy or crisis support/, /'Accept'/, /'Not now'/, /Support lines/]) assert.match(src, must);
   // everything the client sends is told (review r3, blocking 3): the words and feeling, the kind of help
   // (intention), the lines already seen, the feedback buttons (never words), and the session's code + app version
-  for (const must of [/the feeling and the kind of help you pick/, /the lines you’ve already seen/, /If you tap a feedback button: which button and what kind of angle it was, never your words/, /a random code/, /the app’s version/, /the kind of device/, /an invite code, if you were given one/]) assert.match(src, must);
+  for (const must of [/the feeling and the kind of help you pick/, /\(for another angle\) the lines you’ve seen/, /A feedback tap sends which button and what kind of angle it was, never your words/, /a random code for this phone, its version and device type/, /any invite code/, /Never your name or account/]) assert.match(src, must);
   const client = read('src/beyond/angle-client.js');
   for (const field of ['device_id', 'platform', 'app_version', 'invite', 'intention', 'previous_angles', 'rating', 'reasoning_pattern', 'interaction_type', 'mallow_character', 'prompt_version']) assert.match(client, new RegExp(field), `the client sends ${field} (and the notice says so)`);
   // on the card, "Not therapy" and the support link sit by the buttons (always in view), and a cue says when there is more to read
@@ -653,10 +653,10 @@ test('a mechanic that stops is never a dead end (pull_apart, then the perspectiv
 });
 
 test('mechanics drive the person’s living Thought Mallow (W2) when the scene hands one in (review r3, polish 1)', async () => {
-  const { createThought } = await import('../src/mallows/thought/index.js');
+  const { createThought, styleFor } = await import('../src/mallows/thought/index.js');
   const { ThoughtBody } = await import('../src/beyond/mechanics/kit.js');
   let drawn = 0;
-  const W2 = { create: createThought, draw: () => { drawn++; } };
+  const W2 = { create: createThought, draw: () => { drawn++; }, style: styleFor };
   for (const id of V.MECHANICS) {
     const mod = await MECHANIC_MODULES[id]();
     const ctx = mountCtx(id);

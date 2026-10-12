@@ -140,7 +140,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     let B = clamp(Math.min(vw * 0.42, vh * 0.21), 96, 210);
     // plain play: Zuzu comes forward to be squeezed (after something heavy Zuzu stays its usual size, under the words)
     if (S.phase === 'squeeze') B = clamp(Math.min(vw * 0.6, vh * 0.34), 140, 320);
-    if (consentCard) B = clamp(vh * 0.16, 84, 150);
+    // while the notice is open Zuzu waits smaller beneath it (still squeezable), so more of the notice is in view
+    if (consentCard) B = clamp(vh * 0.105, 70, 116);
     const onStage = S.phase === 'playing' || (!!mech && !root.classList.contains('bx-recede'));
     // a short phone, while a mechanic is on stage: Zuzu sits a little smaller, down in the corner beside the
     // dock's pill, so the play area keeps the height it needs (squeezable there too)
@@ -174,7 +175,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     const aBottom = (corner ? Math.min(cy - B / 2, dockTop()) : cy - B / 2) - 16;
     const aw = Math.min(vw - (vw < 360 ? 20 : 32), 560);
     area = { x: (vw - aw) / 2, y: aTop, w: aw, h: Math.max(150, aBottom - aTop) };
-    root.style.setProperty('--bx-card-max', `${Math.round(Math.max(230, cy - B / 2 - 14 - (topB + 8)))}px`);
+    root.style.setProperty('--bx-card-max', `${Math.round(Math.max(230, cy - B / 2 - 20 - (topB + 8)))}px`);
     subs?.layout();
   }
   /** The height a subtitle line (at least two rows) plus its controls takes at this size and text scale (the tallest of several lines). */
@@ -996,7 +997,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       try {
         const tm = await import('../mallows/thought/index.js');
         if (S.left) return;
-        try { const tr = await import('../mallows/thought/render.js'); if (typeof tm.createThought === 'function' && typeof tr.drawThought === 'function') W2 = { create: tm.createThought, draw: tr.drawThought }; } catch { W2 = null; }
+        try { const tr = await import('../mallows/thought/render.js'); if (typeof tm.createThought === 'function' && typeof tr.drawThought === 'function') W2 = { create: tm.createThought, draw: tr.drawThought, style: tm.styleFor }; } catch { W2 = null; }
         if (S.left) return;
         TL = new tm.ThoughtLayer({
           ctx2d: g, tagRoot: root, reducedMotion: rmOn, lowStim: lowOn, keepOut: () => rectOf(zAd),
