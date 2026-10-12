@@ -1,4 +1,4 @@
-// Which rituals and tricks this person has finished, by id only (no words).
+// Which rituals this person has finished, by id only (no words).
 // Stored on this device; powers the ✓ marks and counts in the Library.
 const KEY = 'played';
 

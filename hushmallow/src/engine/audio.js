@@ -30,7 +30,9 @@ export const MALLOW_SOUNDS = ['tap', 'press', 'squeeze', 'release', 'surprise', 
   'comfort', 'sigh', 'yawn', 'hop', 'success', 'splash', 'idle'];
 export const UI_SOUNDS = ['tap', 'open', 'close', 'toggle', 'whoosh', 'select', 'error-soft'];
 export const FX_SOUNDS = ['charge', 'ground', 'crackle', 'sort', 'snap', 'drop-in', 'clear', 'portal', 'separate',
-  'rotate-tick', 'lens-focus', 'chime', 'star', 'bloom', 'breathe-in', 'breathe-out'];
+  'rotate-tick', 'lens-focus', 'chime', 'star', 'bloom', 'breathe-in', 'breathe-out',
+  // V3 ritual palette: soft, musical, never harsh
+  'pluck', 'glass', 'drip', 'paper', 'wind', 'settle', 'swish', 'shimmer', 'thrum', 'click', 'bubble', 'unlock'];
 export const HOLD_SOUNDS = ['charge', 'ground', 'drain', 'hum'];
 export const REALMS = ['static-storm', 'raindrop-lagoon', 'spiral-observatory', 'sunpop-orchard',
   'spark-festival', 'blue-drift', 'moonmilk-cove'];
@@ -40,6 +42,9 @@ export const MALLOW_IDS = ['glitzi', 'blubi', 'zuzu', 'boppo', 'pipzi', 'loomi',
 // small helpers
 
 const st = (semis) => Math.pow(2, semis / 12);
+const PENTA = [0, 2, 4, 7, 9];
+/** step n of a major pentatonic scale (wraps into higher octaves) */
+const penta = (n) => { n = Math.max(0, Math.floor(Number(n) || 0)) % 10; return st(PENTA[n % 5] + 12 * Math.floor(n / 5)); };
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = (arr) => arr[(Math.random() * arr.length) | 0];
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
@@ -1042,6 +1047,42 @@ const FX = {
     fl.connect(v.out);
     [0, 4, 7, 11, 14].forEach((s, i) => tone(v, t + i * 0.09, { type: 'triangle', f: 261.63 * o.P * st(s), a: 0.15, h: 0.25, r: 1.1,
       peak: 0.042 * o.A, shape: 'swell', dest: fl }));
+  },
+  // ---- V3 palette. `note` picks a step on a gentle pentatonic scale, so a
+  // sequence of touches plays a small melody instead of the same blip.
+  pluck(v, t, o) {
+    const f = 392 * o.P * penta(o.note);
+    tone(v, t, { type: 'triangle', f, a: 0.004, r: 0.42, peak: 0.07 * o.A, lp: 2600 });
+    tone(v, t, { type: 'sine', f: f * 2, a: 0.003, r: 0.22, peak: 0.022 * o.A });
+  },
+  glass(v, t, o) {
+    const f = 1046.5 * o.P * penta(o.note);
+    bell(v, t, { f, peak: 0.05 * o.A, r: 1.4, partials: [[1, 1, 1], [2.32, 0.28, 0.6], [4.25, 0.1, 0.35], [6.8, 0.03, 0.2]], lp: 6000 });
+  },
+  drip(v, t, o) { droplet(v, t, { f: 980 * o.P * penta(o.note), peak: 0.07 * o.A, r: 0.14, drop: 0.55 }); },
+  paper(v, t, o) {
+    noise(v, t, { dur: 0.26, a: 0.03, peak: 0.035 * o.A, type: 'bandpass', f: 2600 * o.P, f1: 1500 * o.P, q: 0.6, lp: 5200 });
+    grains(v, t, { dur: 0.22, rate: 40, len: [0.002, 0.006], peak: 0.02 * o.A, f: 3400 * o.P, q: 0.8, lp: 6000 });
+  },
+  wind(v, t, o) { noise(v, t, { dur: 1.6, a: 0.6, peak: 0.04 * o.A, type: 'bandpass', f: 380 * o.P, f1: 900 * o.P, f2: 420 * o.P, q: 1.4, shape: 'swell' }); },
+  settle(v, t, o) {
+    tone(v, t, { type: 'sine', f: 196 * o.P, f1: 147 * o.P, glide: 0.5, a: 0.02, h: 0.1, r: 0.7, peak: 0.07 * o.A, shape: 'swell' });
+    bell(v, t + 0.05, { f: 587.3 * o.P, peak: 0.03 * o.A, r: 1.1, partials: PARTIALS.celesta, lp: 3000 });
+  },
+  swish(v, t, o) { noise(v, t, { dur: 0.32, a: 0.1, peak: 0.032 * o.A, type: 'bandpass', f: 700 * o.P, f1: 2400 * o.P, q: 0.9, lp: 4200, shape: 'swell' }); },
+  shimmer(v, t, o) {
+    [0, 2, 4, 7, 9].forEach((s, i) => bell(v, t + i * 0.07, { f: 1318.5 * o.P * st(s), peak: 0.02 * o.A, r: 0.9, partials: PARTIALS.celesta, lp: 6500 }));
+  },
+  thrum(v, t, o) {
+    tone(v, t, { type: 'sine', f: 98 * o.P, a: 0.05, h: 0.15, r: 0.6, peak: 0.1 * o.A, shape: 'swell', lp: 500 });
+    tone(v, t, { type: 'triangle', f: 196 * o.P, a: 0.05, h: 0.1, r: 0.4, peak: 0.03 * o.A, lp: 900 });
+  },
+  click(v, t, o) { tone(v, t, { type: 'triangle', f: 1800 * o.P, a: 0.002, r: 0.025, peak: 0.045 * o.A, lp: 3800 }); },
+  bubble(v, t, o) { tone(v, t, { type: 'sine', f: 420 * o.P * penta(o.note), f1: 820 * o.P * penta(o.note), glide: 0.06, a: 0.004, r: 0.1, peak: 0.06 * o.A, lp: 2400 }); },
+  unlock(v, t, o) {
+    pop(v, t, { f: 900 * o.P, peak: 0.08 * o.A });
+    bell(v, t + 0.06, { f: 784 * o.P, peak: 0.045 * o.A, r: 0.8, partials: PARTIALS.musicbox, lp: 4200 });
+    bell(v, t + 0.16, { f: 1174.7 * o.P, peak: 0.035 * o.A, r: 0.9, partials: PARTIALS.musicbox, lp: 4200 });
   },
   'breathe-in'(v, t, o) {
     const d = clamp(num(o.duration, 4), 1, 10);

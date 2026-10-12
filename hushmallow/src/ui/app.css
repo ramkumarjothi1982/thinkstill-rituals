@@ -66,11 +66,6 @@ a { color: var(--accent); }
 .btn svg { width: 20px; height: 20px; flex: 0 0 auto; }
 .btn.ghost { text-shadow: 0 1px 10px rgba(5,3,20,.85); }
 
-/* ------------------------------------------------------- quick trick -- */
-.qt-note { display: table; margin: 0 auto 10px; padding: 6px 12px; border-radius: 12px; text-align: center; color: var(--text-1); font-size: 14.5px;
-  background: rgba(14,10,40,.55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-.qt-call { display: table; margin: 0 auto 10px; padding: 6px 12px; border-radius: 999px; background: rgba(14,10,40,.72);
-  border: 1px solid var(--qt-accent, rgba(255,217,138,.5)); font: 600 13px var(--font-ui); color: var(--text-1); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 
 /* ------------------------------------------------------------ input -- */
 .ask { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 62px; padding: 0 10px 0 20px; border-radius: 22px; cursor: text;
@@ -212,4 +207,63 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
   .enc-card > p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 14.5px; }
   .enc-card .reasons span:nth-child(n+3) { display: none; }
   .enc-card .btn { min-height: 46px; }
+}
+
+/* narrow phones: five top-bar icons fit if the brand shows only its dot */
+@media (max-width: 360px) { .home .brand { font-size: 0; gap: 0; } .home .topbar { gap: 6px; } }
+
+/* ------------------------------------------------------ V3 rituals -- */
+.dock.v3-dock { display: grid !important; grid-template-columns: 84px minmax(0, 1fr); gap: 10px !important; align-items: end; }
+.v3-spot { height: 96px; }
+.v3-ctrl { display: grid; gap: 8px; min-width: 0; }
+.v3-row { display: flex; gap: 8px; min-width: 0; }
+.v3-row > .btn { min-width: 0; }
+.v3-row .btn { min-height: 46px; padding: 0 14px; }
+.v3-row .v3-tap { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 15px; padding: 0 10px; gap: 6px; }
+.v3-row .v3-tap svg { width: 18px; height: 18px; }
+.btn.icon-only { width: 46px; padding: 0; flex: 0 0 46px; font: 800 18px var(--font-ui); }
+.v3-words { min-height: 44px; display: flex; align-items: center; gap: 4px; padding: 0 14px; border-radius: var(--r-pill); border: 1px solid var(--line-strong);
+  background: rgba(12,8,34,.62); color: var(--text-1); font: 650 14px var(--font-ui); text-align: left; cursor: pointer; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); min-width: 0; }
+.v3-words .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.v3-words .q { color: var(--accent); font-weight: 800; }
+.v3-words svg { width: 16px; height: 16px; opacity: .7; flex: 0 0 auto; margin-left: 4px; }
+.v3-law-chip { margin: 8px auto 0; display: inline-block; max-width: min(94%, 40ch); padding: 5px 12px; border-radius: 999px; background: rgba(12,8,34,.55);
+  border: 1px solid rgba(255,255,255,.12); font: 600 12px/1.3 var(--font-ui); color: rgba(247,243,255,.9); text-shadow: none; }
+.v3-law-chip:empty { display: none; }
+.v3-law-chip b { color: var(--accent); font-weight: 800; }
+.dock.v3-ending { grid-template-columns: minmax(0, 1fr); }
+.v3-end { text-align: left; padding: 16px 18px; }
+.v3-bend { font: 650 16px/1.4 var(--font-ui); margin: 8px 0 10px; }
+.v3-skill { font: 600 13px/1.35 var(--font-ui); color: var(--text-2); }
+.v3-loop-note { font-size: 12px; margin: 10px 2px 0; }
+.v3-row .v3-done { flex: 0 0 auto; padding: 0 14px; min-height: 46px; font-size: 15px; }
+.v3-end .row-btns .btn { white-space: nowrap; font-size: 16px; }
+.v3-end .row-btns .btn svg { width: 18px; height: 18px; }
+.v3-keep { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; font: 600 13px/1.35 var(--font-ui); color: var(--text-2); }
+.v3-keep input { width: 20px; height: 20px; flex: 0 0 auto; accent-color: var(--accent); }
+.v3-full { font: 650 20px/1.45 var(--font-ui); margin: 0; user-select: text; -webkit-user-select: text; white-space: pre-wrap; overflow-wrap: anywhere; }
+.v3-steps { margin: 0 0 10px 20px; padding: 0; display: grid; gap: 6px; font: 600 15px/1.4 var(--font-ui); }
+@media (max-height: 700px) { .v3-spot { height: 78px; } .dock.v3-dock { grid-template-columns: 70px minmax(0, 1fr); } .v3-row .btn, .btn.icon-only { min-height: 44px; } }
+
+/* photo tray (express screen + test panel) */
+.photo-tray { display: flex; gap: 10px; overflow-x: auto; padding: 8px 2px 4px; scrollbar-width: none; }
+.photo-tray::-webkit-scrollbar { display: none; }
+.photo-tray .ph { position: relative; flex: 0 0 auto; width: 64px; height: 64px; }
+.photo-tray .ph > button.swap { all: unset; display: block; width: 64px; height: 64px; border-radius: 18px; cursor: pointer; }
+.photo-tray .ph canvas { display: block; border-radius: 18px; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+.photo-tray .ph .x { position: absolute; top: -9px; right: -9px; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(255,255,255,.96); color: #1d1638;
+  font: 800 15px/1 var(--font-ui); display: grid; place-items: center; box-shadow: var(--shadow-1); cursor: pointer; padding: 0; }
+.photo-tray .add { flex: 0 0 auto; width: 64px; height: 64px; border-radius: 18px; border: 1.5px dashed var(--line-strong); background: var(--glass); color: var(--text-1);
+  display: grid; place-items: center; font: 800 24px var(--font-ui); cursor: pointer; }
+.photo-head { display: flex; justify-content: space-between; align-items: baseline; margin-top: 12px; font: 700 14px var(--font-ui); }
+.photo-head .muted { font: 600 12px var(--font-ui); }
+.photo-note { font-size: 12px; margin: 4px 2px 0; }
+.dock.v3-dock.v3-ending { grid-template-columns: minmax(0, 1fr) !important; }
+@media (max-width: 360px) {
+  .v3-row .v3-tap svg { display: none; }
+  .v3-row .v3-tap { font-size: 14px; padding: 0 8px; }
+  .v3-row .btn.icon-only { width: 44px; flex-basis: 44px; }
+  .v3-bend { font-size: 15px; }
+  .v3-end .row-btns .btn { font-size: 15px; padding: 0 10px; }
+  .v3-end .row-btns .btn svg { display: none; }
 }

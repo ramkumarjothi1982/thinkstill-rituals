@@ -8,6 +8,7 @@
 // can be told to require "approved" for production builds.
 
 import { LIBRARY } from './library/index.js';
+import { V3_RITUALS } from '../v3/rituals.js';
 
 const base = { version: '1.0.0', review: { status: 'draft', by: 'Pending editorial review' } };
 
@@ -78,4 +79,8 @@ const CORE = [
   },
 ];
 
-export const RITUALS = [CORE[0], ...LIBRARY, ...CORE.slice(1)];
+// The 1,000 Hushmallow rituals first (HM-0001 → HM-1000), then the ten
+// signature rituals, then Another Angle (Ultra).
+const SIG = [CORE[0], ...LIBRARY].map((r) => ({ ...r, params: { ...(r.params || {}), signature: true } }));
+export const RITUALS = [...V3_RITUALS, ...SIG, ...CORE.slice(1)];
+export const SIGNATURE = [...SIG, ...CORE.slice(1)];

@@ -1,7 +1,7 @@
 # Putting Hushmallow on your Framer site
 
 Hushmallow is a complete web app: seven living Mallows, the seven Hushfold
-realms, the ritual library and the 1,000 ThinkStill tricks. It is too big
+realms, the 1,000 rituals and their touch engines. It is too big
 and too interactive to live inside a single Framer code component, so it is
 **hosted as its own small static site** and Framer shows it full-bleed with
 the `HushmallowEmbed` component.

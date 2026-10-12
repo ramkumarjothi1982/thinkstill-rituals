@@ -23,8 +23,8 @@ export const PLANS = {
     includes: [
       'All seven living Mallows and their reactions',
       'The Hushfold: seven realms that respond to how you feel',
-      'Interactive rituals for the whole A–Z of feelings',
-      '291 one-minute quick tricks for attention and getting started',
+      'Over 1,000 interactive touch rituals for the whole A–Z of feelings',
+      'Your own words and up to 7 of your own photos inside the ritual (they never leave your phone)',
       'Suggestions that rotate so things stay fresh',
       'Favourites and optional private history',
       'New rituals as the library grows',
@@ -39,7 +39,6 @@ export const PLANS = {
       'Evidence orbits, perspective portals and plot twists for real situations',
       'Authored frameworks for work, friends, family, love, rejection and more',
       'Fact or fiction, thought X-rays and conversation practice',
-      '709 one-minute plot twists, so you get all 1,000 quick tricks',
       'Plan your next move and save the angles you found',
     ],
   },

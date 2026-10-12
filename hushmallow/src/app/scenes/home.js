@@ -40,8 +40,9 @@ export default function home(app, params = {}) {
   const el = h('div', { class: 'home', style: { display: 'flex', flexDirection: 'column', height: '100%' } },
     h('div', { class: 'topbar' },
       h('div', { class: 'brand' }, h('span', { class: 'dot' }), 'Hushmallow'), h('div', { class: 'grow' }),
-      subscribed ? iconBtn('star', 'Saved rituals and tricks', () => { clearBubble(); app.go('library', { tab: 'saved' }); }) : null,
-      subscribed ? iconBtn('library', 'Library: every ritual and trick', () => { clearBubble(); app.go('library'); }) : null,
+      subscribed ? iconBtn('journey', 'Your journey', () => { clearBubble(); app.go('journey'); }) : null,
+      subscribed ? iconBtn('star', 'Saved rituals', () => { clearBubble(); app.go('library', { tab: 'saved' }); }) : null,
+      subscribed ? iconBtn('library', 'Library: every ritual', () => { clearBubble(); app.go('library'); }) : null,
       iconBtn('mallow', 'Meet the Mallows', () => app.go('mallows')),
       iconBtn('gear', 'Settings', () => app.go('settings'))),
     panel ? panel.el : h('div', { style: { marginTop: '18px' } },
@@ -102,7 +103,7 @@ export default function home(app, params = {}) {
         say(world, m.voice.hello[Math.floor(Math.random() * m.voice.hello.length)], { who: m.name, ms: 3000 });
       }
     },
-    leave() { clearBubble(); },
+    leave() { clearBubble(); panel?.destroy?.(); },
   };
 }
 

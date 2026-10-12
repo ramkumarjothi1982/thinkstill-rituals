@@ -6,7 +6,6 @@ const DEFAULTS = {
   saveHistory: true,         // which rituals you did + how it felt (no typed words)
   saveWords: false,          // keep what you type in Another Angle "saved angles"
   seenIntro: false,
-  trickVoice: 'jolly',       // quick-trick lines: 'jolly' | 'cheeky' | 'unfiltered' (swearing)
 };
 
 export function createPrefs(store) {

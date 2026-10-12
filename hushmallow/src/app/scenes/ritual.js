@@ -6,6 +6,8 @@ import { requireEntitlement, EntitlementError, loadUltra } from '../entitlements
 import { MALLOWS } from '../../mallows/registry.js';
 import { markPlayed } from '../../engine/played.js';
 import { createRound } from '../../engine/round.js';
+import { logFinish } from '../../engine/journey.js';
+import { getEmotion } from '../../data/emotions.js';
 
 export default function ritualScene(app, params) {
   const { world } = app;
@@ -40,11 +42,7 @@ export default function ritualScene(app, params) {
   async function run() {
     let mod;
     try {
-      if (ritual.module === 'quick-trick') {
-        // one player for both tiers; the trick's own tier is enforced here
-        requireEntitlement(app.ent, ritual.tier || 'paid');
-        mod = await import('../../rituals/quick-trick.js');
-      } else if ((ritual.tier || 'paid') === 'ultra') {
+      if ((ritual.tier || 'paid') === 'ultra') {
         const ultra = await loadUltra(app.ent);   // throws without Ultra
         mod = { run: (c) => ultra.angle.run(c, ultra) };
       } else {
@@ -69,7 +67,13 @@ export default function ritualScene(app, params) {
     const result = await mod.run(ctx);
     if (ac.signal.aborted) return;
     app.state.result = { ...result, ritualId: ritual.id, seconds: Math.round((Date.now() - t0) / 1000) };
-    if (result?.completed && app.prefs.get('saveHistory')) markPlayed(app.store, ritual.id);
+    if (result?.completed && app.prefs.get('saveHistory')) {
+      markPlayed(app.store, ritual.id);
+      // ids and feeling families only, never the person's words
+      const fams = [...new Set((ctx.input.emotions || []).map((e) => getEmotion(e.id)?.family).filter(Boolean))];
+      logFinish(app.store, { id: ritual.id, name: ritual.name, kind: 'ritual',
+        mallow: ritual.mallows[0], families: fams, seconds: app.state.result.seconds });
+    }
     app.go('landing', {}, { replace: true });
   }
 
