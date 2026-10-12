@@ -38,7 +38,7 @@ export function mount(ctx) {
   while (others.length < 3) others.push(L.others[others.length]);
   // a narrow phone: one column of possibilities, each line beside its bud (a ring has no room for four lines)
   const narrow = viewW() < 360 || A0.w < 330;
-  const rowMax = Math.round(Math.max(150, A0.w - R * 2.5 - R * 1.6 - 18));
+  const rowMax = Math.round(Math.max(150, A0.w - R * 2.25 - R * 1.6 - 14));
   const buds = others.map((text, i) => {
     const b = new Blob({ x: from.x, y: from.y, r: R * 0.8, light: BUD[i], deep: ['#3ab4e8', '#7a5cf0', '#e05aa8'][i] });
     b.open = 0; b.goal = 0; b.hold = 0; b.knock = 0; b.i = i; b.tag = ctx.tags.add(text, { kind: 'line', max: narrow ? rowMax : 170 }); b.scale = rm() ? 1 : 0.2;
@@ -59,9 +59,14 @@ export function mount(ctx) {
   function homes() {
     const A = ctx.area();
     if (narrow) {
-      // the thought on the left, the guess and the three buds in a column beside it, top to bottom
-      thought.hx = A.x + R * 1.15; thought.hy = A.y + A.h * 0.5;
-      [guess, ...buds].forEach((b, i) => { b.hx = A.x + R * 2.5 + R * 0.8; b.hy = A.y + ((i + 0.5) * A.h) / 4; });
+      // the thought on the left, the guess and the three buds in a column beside it, top to bottom; each row
+      // as tall as its own line (a three-line possibility gets the room it needs), the spare height shared out
+      thought.hx = A.x + R * 1.05; thought.hy = A.y + A.h * 0.5;
+      const rows = [guess, ...buds], tg = [tags.guessW, ...buds.map((b) => b.tag)];
+      const hs = tg.map((t) => Math.max(R * 1.7, t.h || 40));
+      const gap = clamp((A.h - hs.reduce((a, b) => a + b, 0)) / rows.length, 4, 26);
+      let y = A.y + Math.max(0, (A.h - hs.reduce((a, b) => a + b, 0) - gap * (rows.length - 1)) / 2);
+      rows.forEach((b, i) => { b.hx = A.x + R * 2.25 + R * 0.8; b.hy = y + hs[i] / 2; y += hs[i] + gap; });
       return;
     }
     const cx = A.x + A.w / 2, cy = A.y + A.h * 0.5;

@@ -29,6 +29,8 @@ Judge overall 4.06; strong 21 / acceptable 28 / weak 1; median 26 words (max 31,
 - Judge "fix before expanding": anx-results line 1 states reassurance as fact ("tells you about the policy, not the results"); the prompt should ask for "may" when the reassurance is not known.
 - Regeneration recovered 0 of 3 failing drafts: the regeneration feedback should be checked.
 
+Addressed after the run (README, "The gate after eval run 3", and `angle-v5`): all 6 rejected drafts were false alarms and pass the gate now, with every accepted answer of runs 1–3 still passing (`npm run replay:gate`; answers in `run3-answers.json`, regressions in `test/gate-run3.test.js`); the gate feedback quotes the words that tripped each check; angle-v5 asks for "may" when a reassurance is not known.
+
 ## Full report
 
 ===== /home/runner/work/_temp/eval/angle-eval-2026-10-12-18-28.md

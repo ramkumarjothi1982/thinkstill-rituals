@@ -257,7 +257,6 @@ function inputInfo(input) {
   };
 }
 
-
 // Mind words that describe something that happened (an event the person
 // reported), so restating them is not mind-reading. Attitudes ("hates",
 // "doesn't care", "is angry") and claims about everyone or nobody stay the

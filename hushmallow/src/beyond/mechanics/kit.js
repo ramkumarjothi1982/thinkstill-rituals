@@ -365,7 +365,7 @@ export function makeTags(root, { bounds = null } = {}) {
       const clampY = (py) => {
         // inside the play area when there is one (never over the Mallows below it or the subtitle band above)
         const B = bounds?.();
-        if (B) py = clamp(py, B.y - 6, Math.max(B.y - 6, B.y + B.h - hh + 6));
+        if (B) py = clamp(py, B.y, Math.max(B.y, B.y + B.h - hh));
         return clamp(py, 8, innerHeight - hh - 8);
       };
       const clampX = (px) => { const edge = innerWidth < 360 ? 10 : 16; return clamp(px, edge, Math.max(edge, innerWidth - edge - w)); };
