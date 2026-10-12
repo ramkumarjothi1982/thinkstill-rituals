@@ -2,7 +2,7 @@
   "name": "hushmallow",
   "short_name": "hushmallow",
   "description": "Less noise. More magic. Your second brain for feelings.",
-  "id": "./",
+  "id": "./index.html",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

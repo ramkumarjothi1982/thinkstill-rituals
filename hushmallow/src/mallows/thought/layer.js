@@ -1251,7 +1251,7 @@ export class ThoughtLayer {
       x: 0, y: 0, vx: 0, vy: 0, rot: 0, kx: NaN, ky: NaN, kr: NaN, moving: false,
       shown: false, travel: false, wait: false, above: false, calm: false, side: 'below',
       ci: 0, pi: -1, live: false, done: false, blocked: false, drop: 0, mode: 2,
-      tx: 0, ty: 0, rl: 0, rt: 0, g: new Float64Array(10), ga: new Float64Array(8), gaInit: false, wx: 0, wy: 0, tintQ: -1, clear: true };
+      tx: 0, ty: 0, rl: 0, rt: 0, g: new Float64Array(10), ga: new Float64Array(8), gaInit: false, gaKey: NaN, gaRest: 0, ciShown: null, hop: 0, wx: 0, wy: 0, tintQ: -1, clear: true };
     this.tags.set(th, tg);
     th.tag = el;
     th._words = wordsOf(th.text);
@@ -1401,7 +1401,13 @@ export class ThoughtLayer {
     // (outward reaches — below, above, right, left, half its height — hold their furthest at once and ease
     // back in slowly: steady through a squash or a tremble, never late for a body that grows; the x of
     // its top and bottom and its middle follow smoothly)
-    // (still appearing or on its way: it follows exactly — an appearing jelly overshoots its size)
+    // (still appearing or on its way: it follows exactly — an appearing jelly overshoots its size). Once it
+    // has rested a second with nothing changed — no touch, no verb, the same depth and words — its words'
+    // place is held still; anything that changes it lets the anchors follow again.
+    const key = (th.pressed ? 1 : 0) + Math.round(Math.max(th.zGoal, th.zFloor) * 50) * 2 + Math.round((th.levels.soft.goal + th.levels.settle.goal + th.levels.transform.goal + th.levels.space.goal + (th.levels.explore?.goal || 0)) * 20) * 200 + tg.w * 1e5 + tg.h * 1e8;
+    if (key !== tg.gaKey) { tg.gaKey = key; tg.gaRest = 0; }
+    tg.gaRest = th._trav || th.pressed || th.ov.appear < 1 ? 0 : (tg.gaRest || 0) + dt;
+    if (tg.gaInit && tg.gaRest > 1) { g[0] = R.cx + ga[0]; g[1] = R.cy + ga[1]; g[2] = R.cx + ga[2]; g[3] = R.cy + ga[3]; g[4] = R.cx + ga[4]; g[5] = R.cx + ga[5]; g[6] = R.cy + ga[6]; g[7] = ga[7]; g[8] = R.cx; g[9] = R.cy; return; }
     const settled = tg.gaInit && th.ov.appear >= 1 && !th._trav;
     const k = settled ? Math.min(1, dt * (th.pressed ? 6 : 1)) : 1, kin = settled ? Math.min(1, dt * 0.6) : 1;
     for (let i = 0; i < 8; i++) {
@@ -1452,7 +1458,9 @@ export class ThoughtLayer {
     for (let i = 0; i < np; i++) {
       if (i === skip) continue;
       const q = 4 * i;
-      h0 += overA(l, t, rr, b, P[q], P[q + 1], P[q + 2], P[q + 3]);
+      // (edges touching — under half a pixel deep — are not an overlap)
+      const ox = Math.min(rr, P[q + 2]) - Math.max(l, P[q]), oy = Math.min(b, P[q + 3]) - Math.max(t, P[q + 1]);
+      if (ox > 0.5 && oy > 0.5) h0 += ox * oy;
       h3 += overA(l - m, t - m, rr + m, b + m, P[q], P[q + 1], P[q + 2], P[q + 3]);
     }
     this._h3 = h3;
@@ -1602,6 +1610,10 @@ export class ThoughtLayer {
       const r = this._candRect(th, tg, tg.ci, tg.mode >= 2);
       tg.tx = (r[0] + r[2]) / 2; tg.ty = r[1]; tg.rl = r[0] - (th._sx || 0) * (tg.mode < 2 ? 1 : 0); tg.rt = r[1] - (th._sy || 0) * (tg.mode < 2 ? 1 : 0);
       tg.side = tg.ci >= NC ? this._wideSide(th, tg) : SIDE_NAMES[CANDS[2 * tg.ci]]; tg.above = tg.side === 'above'; tg.clear = !tg.blocked;
+      // its words change side at rest (their place was covered): a quick hop — out, across, back in —
+      // never a slide over the faces between
+      if (tg.ciShown !== tg.ci) { if (tg.ciShown != null && tg.shown && tg.mode < 2 && !env.rm) tg.hop = 0.16; tg.ciShown = tg.ci; }
+      if (tg.hop > 0) { tg.hop -= dt; tg.x = tg.tx; tg.y = tg.ty; tg.vx = tg.vy = 0; }
       if (env.rm || !tg.shown) { tg.x = tg.tx; tg.y = tg.ty; tg.vx = tg.vy = 0; }
       else {
         // a little spring lag: the words trail their thought
@@ -1618,7 +1630,7 @@ export class ThoughtLayer {
         tg.el.style.transform = moving ? `translate3d(${X}px,${Y}px,0) rotate(${(kr / 10).toFixed(1)}deg)` : `translate(${X}px,${Y}px)`;
         if (moving !== tg.moving) { tg.moving = moving; tg.el.classList.toggle('tm-move', moving); }
       }
-      const show = th.ov.appear > 0.35 && !th._leaving && !tg.wait;
+      const show = th.ov.appear > 0.35 && !th._leaving && !tg.wait && !(tg.hop > 0);
       if (show !== tg.shown) { tg.shown = show; tg.el.classList.toggle('tm-on', show); }
       const travel = tg.mode >= 2;
       if (travel !== tg.travel) { tg.travel = travel; tg.el.classList.toggle('tm-travel', travel); }

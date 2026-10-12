@@ -25,6 +25,9 @@ on:
       - '!hushmallow/tools/**'
       - 'hushmallow/tools/build-site.sh'
       - 'hushmallow/tools/site/**'
+      - 'hushmallow/tools/hires/**'                     # hires.test reads its patch and data
+      - 'hushmallow/docs/V3_SKILLS.md'                  # garden.test / v3.test read these
+      - 'hushmallow/docs/V3_CORRECTIONS.md'
       - '.github/workflows/hushmallow-pages.yml'
   pull_request:
     paths:
@@ -38,6 +41,9 @@ on:
       - '!hushmallow/tools/**'
       - 'hushmallow/tools/build-site.sh'
       - 'hushmallow/tools/site/**'
+      - 'hushmallow/tools/hires/**'                     # hires.test reads its patch and data
+      - 'hushmallow/docs/V3_SKILLS.md'                  # garden.test / v3.test read these
+      - 'hushmallow/docs/V3_CORRECTIONS.md'
       - '.github/workflows/hushmallow-pages.yml'
 
 permissions:
