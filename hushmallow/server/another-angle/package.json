@@ -25,6 +25,7 @@
     "sync:lexicon": "node scripts/sync-lexicon.mjs",
     "eval": "node ../../tools/angle-eval.mjs",
     "replay:gate": "node eval/replay-gate.mjs",
+    "extract:log": "node eval/extract-log.mjs",
     "deploy": "wrangler deploy"
   }
 }

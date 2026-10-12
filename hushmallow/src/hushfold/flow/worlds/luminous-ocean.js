@@ -99,7 +99,7 @@ export function create(ctx) {
   let melt = null;                                         // { k, from, riseAt, landAt, handoff } while melting in
   let holds = { hum: null }, holdClock = 0, ambClock = 0, emoAt = -9, emoKey = '', hopAt = -9;
   let lastDrip = -9, lastSwish = -9;
-  let metricsCache = { chop: 0, period: 0, energy: 0 };
+  let metricsCache = { chop: 0, period: 0, periodAll: 0, energy: 0 };
   let lastP = 0;
   const pk = {};                                           // scratch: the packet a stroke sculpts
 
@@ -355,7 +355,7 @@ export function create(ctx) {
       used.add(best);
       const sl = slots[best];
       unproject(cam, sl.x, sl.y + 0.3 * sl.D, wo);
-      bubbles.push({ i, x: wo.x, z: wo.z, vx: 0, vz: 0, yb: 0, vb: 0, rot: 0, rv: 0, D: sl.D, sx: sl.x, sy: sl.y, alpha: fromCards ? 1 : 0, state: card ? 'card' : (fromCards ? 'float' : 'rise'), riseK: 0,
+      bubbles.push({ i, x: wo.x, z: wo.z, vx: 0, vz: 0, yb: 0, vb: 0, rot: 0, rv: 0, D: sl.D, sx: card ? card.x : sl.x, sy: card ? card.y : sl.y, alpha: fromCards ? 1 : 0, state: card ? 'card' : (fromCards ? 'float' : 'rise'), riseK: 0,
         lift: 0, glowAge: -1, morph: card ? 0 : 1, from: card ? { x: card.x, y: card.y, w: card.w, h: card.h, rot: card.rot || 0, size: Math.max(card.w, card.h) } : null, landK: card ? 0 : 1, ph: R() * TAU, slotW: { x: wo.x, z: wo.z } });
     }
   }
@@ -548,8 +548,8 @@ export function create(ctx) {
     windClock += dt * windK * (rm ? 0.4 : 1);
     if (windClock > 1.6 && !complete) { windClock = 0; ambientRipple(); }
 
-    const period = sea.dominantPeriod();
-    metricsCache.period = period; metricsCache.energy = sea.energy(); metricsCache.chop = sea.chop(FLICK_U * U);
+    const period = sea.dominantPeriod(true);       // the person's own swells only (not the storm's seeds or the wind)
+    metricsCache.period = period; metricsCache.periodAll = sea.dominantPeriod(); metricsCache.energy = sea.energy(); metricsCache.chop = sea.chop(FLICK_U * U, true);
 
     updateThought(dt, now);
     updateBubbles(dt, now);
@@ -558,7 +558,7 @@ export function create(ctx) {
     rings.update(dt);
 
     // discoveries (real contingency only)
-    const evL = longD.update(now, (id) => sea.alive(id));
+    const evL = longD.update(now, aliveFn);
     if (evL) fireDiscovery(evL);
     if (thought && tS.landK >= 1) {
       const dist = tS.z / cam.Z0;
@@ -590,6 +590,7 @@ export function create(ctx) {
     if (hint.age >= 0) { hint.age += dt; if (hint.age > HINT_SEC) hint.age = -1; }
   }
   let wakeAcc = 0, windClock = 0;
+  const aliveFn = (id) => sea.alive(id);
 
   function ambientRipple() {
     // a small, far, slow ripple across the open water (texture; it never moves floaters much)
@@ -969,22 +970,23 @@ export function create(ctx) {
         if (wake) sy += wake.at(sx, rY[j]) * 3 * (rm ? 0.5 : 1);
         gSX[q] = sx; gSY[q] = Math.max(hy, sy);
         // normal, view, reflection
-        let nx = -hx, ny = 1, nz = -hz; const nl = Math.hypot(nx, ny, nz); nx /= nl; ny /= nl; nz /= nl;
-        let vx = -x, vy = Hw, vz = -(Z0 + z); const vl = Math.hypot(vx, vy, vz); vx /= vl; vy /= vl; vz /= vl;
+        let nx = -hx, ny = 1, nz = -hz; const nl = 1 / Math.sqrt(nx * nx + 1 + nz * nz); nx *= nl; ny *= nl; nz *= nl;
+        let vx = -x, vy = Hw, vz = -(Z0 + z); const vl = 1 / Math.sqrt(vx * vx + vy * vy + vz * vz); vx *= vl; vy *= vl; vz *= vl;
         const ndv = Math.max(0.0001, nx * vx + ny * vy + nz * vz);
-        const F = 0.02 + 0.98 * Math.pow(1 - ndv, 5);
+        const f1 = 1 - ndv, f2 = f1 * f1, F = 0.02 + 0.98 * f2 * f2 * f1;
         const rx = 2 * ndv * nx - vx, ry = 2 * ndv * ny - vy, rz = Math.max(0.05, 2 * ndv * nz - vz);
         // the sky seen in that direction (the same gradient and dawn as the picture above)
         const skyY = hy - Z0 * (ry / rz), skyX = W / 2 + Z0 * (rx / rz);
         skyAt((hy - skyY) / Math.max(1, hy), sky3);
         const above = Math.max(0, hy - skyY);
-        const dawn = dawnK * Math.exp(-(((skyX - xd) / (W * (0.34 + 0.1 * dawnK))) ** 2)) * Math.exp(-above / (H * 0.05 + 14));
+        const ddx = (skyX - xd) / (W * (0.34 + 0.1 * dawnK)), dexp = ddx * ddx + above / (H * 0.05 + 14);
+        const dawn = dexp < 9 ? dawnK * Math.exp(-dexp) : 0;
         let rr = sky3[0] + 255 * dawn, rg = sky3[1] + 214 * dawn, rb = sky3[2] + 160 * dawn;
         // the water's own colour: deep teal, lighter far away
         const wr = lerp(10, 4, sN), wg = lerp(52, 30, sN), wb = lerp(72, 46, sN);
         // specular glitter of the dawn (broad lobe here; sharp glints as sprites)
-        const rdl = Math.max(0, rx * lx + ry * ly + rz * lz);
-        const sp = Math.pow(rdl, 160) * dawnK * (1 + mirrorK);
+        const rdl = (rx * lx + ry * ly + rz * lz) / Math.sqrt(rx * rx + ry * ry + rz * rz);
+        const sp = rdl > 0.965 ? Math.pow(rdl, 160) * dawnK * (1 + mirrorK) : 0;
         // bioluminescent crest light
         const a = gA[q] * amp;
         const crest = a > 0.3 ? clamp(h / (a + 0.3)) : 0;
@@ -1121,7 +1123,7 @@ export function create(ctx) {
     order.length = 0;
     for (const b of bubbles) order.push(b);
     if (thought) order.push(tS);
-    order.sort((a, b) => (b === tS ? tS.z : b.z) - (a === tS ? tS.z : a.z));
+    order.sort(byDepth);
     for (const o of order) { if (o === tS) drawThought(g, now, rm); else drawBubble(g, o, now, rm); }
     drawLip(g, now, rm);
     // fingertips: a soft cyan light; the hush, a calm disc of mirror with a faint rim
@@ -1145,6 +1147,7 @@ export function create(ctx) {
     g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
   }
   const order = [];
+  const byDepth = (a, b) => b.z - a.z;
 
   function drawThought(g, now, rm) {
     if (!thought || tS.alpha <= 0.01) return;
@@ -1317,7 +1320,7 @@ export function create(ctx) {
           const th = handoff.thought;
           if (th && Number.isFinite(th.x) && Number.isFinite(th.y) && !rm) {
             tS.from = { x: th.x, y: th.y, scale: ((th.r || tS.r) * (th.scale ?? 1)) / tS.r, labelW: th.labelW || plan.textMax };
-            tS.landK = 0; tS.alpha = 1; tS.landed = false;
+            tS.landK = 0; tS.alpha = 1; tS.landed = false; tS.sx = th.x; tS.sy = th.y; tS.surf = tS.from.scale;
             // its words stay as the storm showed them (under it) until it settles on the water
             tS.labelY = tS.labelYT = (th.r || tS.r) * (th.scale ?? 1) * 0.98 + 8; tS.labelW = tS.from.labelW;
           }

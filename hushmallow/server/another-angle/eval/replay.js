@@ -44,10 +44,12 @@ export function replayRun(run, opts) {
     if (!c) continue;
     const v = validateAngleRequest({ consent: true, text: c.text, emotion: c.emotion, intention: c.intention });
     const emotion = v.ok ? v.value.emotion : null;
-    const first = rc.rounds[0]?.scene;
     rc.rounds.forEach((r, i) => {
-      // "Another angle" rounds were asked with the first answer as the previous one.
-      const previous = i > 0 && first ? [{ subtitle_line_1: first.subtitle_line_1, subtitle_line_2: first.subtitle_line_2, reasoning_pattern: first.reasoning_pattern }] : [];
+      // An "another angle" round was asked with every earlier answer as a previous angle.
+      const previous = rc.rounds.slice(0, i).filter((x) => x.scene).map((x) => ({
+        subtitle_line_1: /** @type {Record<string, string>} */ (x.scene).subtitle_line_1, subtitle_line_2: /** @type {Record<string, string>} */ (x.scene).subtitle_line_2,
+        reasoning_pattern: /** @type {Record<string, string>} */ (x.scene).reasoning_pattern,
+      }));
       const ctx = { text: c.text, previous, emotion };
       if (r.scene && r.status === 'ok') {
         const g = gate(/** @type {any} */ (r.scene), ctx);

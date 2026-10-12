@@ -12,7 +12,7 @@ import { makeEnv, req, anchor } from './helpers.js';
 test('the Worker entry serves health and exports the Durable Object class', async () => {
   const res = await worker.fetch(req('/v1/health'), makeEnv({ PROVIDER: 'mock' }), { waitUntil() {} });
   assert.equal(res.status, 200);
-  assert.equal((await res.json()).prompt_version, 'angle-v2');
+  assert.equal((await res.json()).prompt_version, 'angle-v3');
   assert.equal(typeof Ledger, 'function');
 });
 

@@ -18,8 +18,12 @@
 //          --model claude-opus-5-5  --effort low  --judge-model claude-sonnet-5-5  --out <dir>
 //          --attempt-timeout <ms>  --deadline <ms>   (default: the Worker's production
 //                                                     MODEL_TIMEOUT_MS / REQUEST_DEADLINE_MS)
-//          --prompt angle-v1   (default: the server's PROMPT_VERSION; use an older
-//                               prompt file to compare reports)
+//          --prompt angle-v2   (default: the server's PROMPT_VERSION; use an older
+//                               prompt file to compare reports. The request
+//                               wording follows the prompt version; the quality
+//                               gate is always the current one, so for a true
+//                               v1 or v2 measurement read runs 1 and 2 in
+//                               server/another-angle/eval/runs/.)
 //
 // To replay a report's answers through the current quality gate alone (free):
 //   node eval/replay-gate.mjs <report>.json
@@ -30,7 +34,8 @@
 // header then says the scores may be generous (self-grading).
 //
 // The three safety probes skip the word-list pre-check so the model's own
-// safety judgement is measured (the report shows both). The report also lists
+// safety judgement is measured (the report shows both). Cases marked heldOut
+// (added after run 2, never used to tune the gate) get their own gate numbers. The report also lists
 // every draft the quality gate rejected, with the reasons, so false
 // rejections are visible; drafts are kept only in this local report.
 
@@ -84,6 +89,8 @@ const PROD = readConfig({});
 const ATTEMPT_TIMEOUT = Number(opt('attempt-timeout', String(PROD.attemptTimeoutMs))) || PROD.attemptTimeoutMs;
 const DEADLINE = Number(opt('deadline', String(PROD.deadlineMs))) || PROD.deadlineMs;
 const isProbe = (c) => c.category === 'safety';
+/** How many "another angle" requests follow the first answer (followUp: true is one). */
+const extraAngles = (c) => (c.followUp === true ? 1 : Math.max(0, Math.min(3, Number(c.followUp) || 0)));
 
 const PROMPT = opt('prompt', PROMPT_VERSION);
 if (!/^angle-v\d{1,3}$/.test(PROMPT)) { console.error(`--prompt must look like angle-v2 (got ${PROMPT}).`); process.exit(1); }
@@ -97,7 +104,7 @@ const cases = CASES.filter((c) => !ONLY.length || ONLY.includes(c.id));
 function estimate() {
   // Safety probes skip the lexicon, so they reach the model too.
   const modelCases = cases.filter((c) => isProbe(c) || !['crisis', 'care'].includes(checkSafety(c.text).level));
-  const followUps = modelCases.filter((c) => c.followUp).length;
+  const followUps = modelCases.reduce((a, c) => a + extraAngles(c), 0);
   const angleCalls = modelCases.length + followUps;
   const sys = roughTokens(SYSTEM_PROMPT);
   const r = rateFor(MODEL);
@@ -160,7 +167,8 @@ async function judge(c, scene, previous) {
     `<category>${escapeData(c.category)}</category>`,
     `<chosen_feeling>${escapeData(c.emotion || 'not chosen')}</chosen_feeling>`,
     '<person_text>', escapeData(c.text), '</person_text>',
-    previous ? `<previous_angle>${escapeData(previous.subtitle_line_1)} / ${escapeData(previous.subtitle_line_2)}</previous_angle>` : '<previous_angle>none (first answer)</previous_angle>',
+    // Every angle already shown: "genuinely different" means from all of them.
+    ...(previous?.length ? previous.map((p) => `<previous_angle>${escapeData(p.subtitle_line_1)} / ${escapeData(p.subtitle_line_2)}</previous_angle>`) : ['<previous_angle>none (first answer)</previous_angle>']),
     '<answer>', escapeData(JSON.stringify(scene)), '</answer>',
     '</case>',
     'Grade the answer.',
@@ -176,15 +184,19 @@ async function runCase(c) {
   if (!v.ok) return { case: c, error: `invalid case: ${v.code}` };
   const deps1 = {
     provider, systemPrompt: SYSTEM_PROMPT, maxTokens: MAX_TOKENS, attemptTimeoutMs: ATTEMPT_TIMEOUT, deadlineMs: DEADLINE,
-    recordDrafts: true, skipLexicon: isProbe(c),
+    recordDrafts: true, skipLexicon: isProbe(c), promptVersion: PROMPT,
   };
   const t0 = Date.now();
   const first = await runAngle(v.value, deps1);
   const rounds = [{ result: first, ms: Date.now() - t0 }];
-  if (c.followUp && first.status === 'ok' && first.scene) {
-    const prev = { subtitle_line_1: first.scene.subtitle_line_1, subtitle_line_2: first.scene.subtitle_line_2, reasoning_pattern: first.scene.reasoning_pattern };
+  // "Show me another angle", as often as the case asks, each time with every
+  // angle shown so far (as the app sends them).
+  for (let k = 0; k < extraAngles(c); k++) {
+    const last = rounds[rounds.length - 1].result;
+    if (last.status !== 'ok' || !last.scene) break;
+    const prev = rounds.filter((r) => r.result.scene).map((r) => ({ subtitle_line_1: r.result.scene.subtitle_line_1, subtitle_line_2: r.result.scene.subtitle_line_2, reasoning_pattern: r.result.scene.reasoning_pattern }));
     const t1 = Date.now();
-    const again = await runAngle({ ...v.value, previous: [prev] }, deps1);
+    const again = await runAngle({ ...v.value, previous: prev }, deps1);
     rounds.push({ result: again, ms: Date.now() - t1, previous: prev });
   }
   for (const r of rounds) {
@@ -260,21 +272,42 @@ if (shown.length) {
   lines.push(`| Subtitle words (both lines) median / max / over 28 | ${wc[Math.floor(wc.length / 2)]} / ${wc[wc.length - 1]} / ${wc.filter((n) => n > 28).length} of ${wc.length} |`);
   lines.push(`| Line 2 proposes a step or asks an answerable question (rough reading) | ${shown.filter((r) => suggestsStep(r.result.scene.subtitle_line_2)).length}/${shown.length} |`);
   const again = shown.filter((r) => r.previous);
-  if (again.length) lines.push(`| "Another angle" with a pattern not used before | ${again.filter((r) => r.result.scene.reasoning_pattern !== r.previous.reasoning_pattern).length}/${again.length} |`);
+  if (again.length) lines.push(`| "Another angle" with a pattern no earlier angle used | ${again.filter((r) => r.previous.every((p) => p.reasoning_pattern !== r.result.scene.reasoning_pattern)).length}/${again.length} |`);
 }
 lines.push(`| Latency p50 / p95 | ${(pct(0.5) / 1000).toFixed(1)} s / ${(pct(0.95) / 1000).toFixed(1)} s |`);
 lines.push(`| Answers over ${ATTEMPT_TIMEOUT / 1000} s / over ${DEADLINE / 1000} s / timed out | ${lat.filter((ms) => ms > ATTEMPT_TIMEOUT).length} / ${lat.filter((ms) => ms > DEADLINE).length} / ${count((r) => r.result.fallback?.reason === 'timeout')} |`);
 lines.push(`| Cost | $${cost.toFixed(3)} |`, '');
+// The held-out cases on their own: the gate was tuned on the others' answers
+// (runs 1 and 2), so these numbers are the fairer reading of how it generalises.
+const heldOut = allRounds.filter((r) => r.case.heldOut);
+if (heldOut.length) {
+  const tuned = allRounds.filter((r) => !r.case.heldOut);
+  const g = (list, k) => list.filter((r) => r.result.meta.gate === k).length;
+  const hj = heldOut.filter((r) => r.judge);
+  const tj = tuned.filter((r) => r.judge);
+  lines.push('### Held-out cases', '');
+  lines.push(`${new Set(heldOut.map((r) => r.case.id)).size} cases added after run 2 (never used to tune the gate), beside the ${new Set(tuned.map((r) => r.case.id)).size} the gate fixes were checked against.`, '');
+  lines.push('| Measure | Held out | Earlier cases |', '|---|---|---|');
+  lines.push(`| Answers | ${heldOut.length} | ${tuned.length} |`);
+  for (const [label, k] of [['Gate: passed first time', 'pass'], ['Gate: passed after one regeneration', 'regen_pass'], ['Gate: fallback to authored engine', 'fail']]) lines.push(`| ${label} | ${g(heldOut, k)} | ${g(tuned, k)} |`);
+  if (hj.length && tj.length) {
+    for (const d of ['actionability', 'concision', 'overall']) lines.push(`| Judge ${d} (1–5) | ${avg(d, hj).toFixed(2)} | ${avg(d, tj).toFixed(2)} |`);
+    const hf = hj.filter((r) => r.previous);
+    const tf = tj.filter((r) => r.previous);
+    if (hf.length && tf.length) lines.push(`| Judge novelty on "another angle" (1–5) | ${avg('novelty', hf).toFixed(2)} (${hf.length}) | ${avg('novelty', tf).toFixed(2)} (${tf.length}) |`);
+  }
+  lines.push('');
+}
 const codeCounts = {};
 for (const r of allRounds) for (const c of r.result.meta.gate_codes) codeCounts[c] = (codeCounts[c] || 0) + 1;
 if (Object.keys(codeCounts).length) lines.push(`Gate failure codes seen (before regeneration): ${Object.entries(codeCounts).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ×${v}`).join(', ')}.`, '');
 // Every draft the gate rejected, with its reasons: read these for false
 // rejections (a good line refused) as well as real ones.
-const rejections = allRounds.flatMap((r) => (r.result.meta.drafts || []).map((d) => ({ ...d, case: r.case, again: Boolean(r.previous) })));
+const rejections = allRounds.flatMap((r) => (r.result.meta.drafts || []).map((d) => ({ ...d, case: r.case, again: r.previous ? r.previous.length : 0 })));
 lines.push('## Gate rejections', '');
 if (!rejections.length) lines.push('None: every answer passed the gate first time.', '');
 for (const d of rejections) {
-  lines.push(`- **${d.case.id}**${d.again ? ' (another angle)' : ''}, attempt ${d.attempt}: ${d.lines ? `“${d.lines[0]}” / “${d.lines[1]}”` : '(no lines)'}`);
+  lines.push(`- **${d.case.id}**${d.again ? ` (another angle${d.again > 1 ? ` ${d.again}` : ''})` : ''}, attempt ${d.attempt}: ${d.lines ? `“${d.lines[0]}” / “${d.lines[1]}”` : '(no lines)'}`);
   for (const f of d.failures) lines.push(`  - \`${f.code}\`${f.field ? ` on ${f.field}` : ''}${f.text ? `: “${f.text}”` : ''}`);
 }
 if (rejections.length) lines.push('');
@@ -286,14 +319,14 @@ if (weak.length) {
 lines.push('## Cases', '');
 for (const r of results) {
   const c = r.case;
-  lines.push(`### ${c.id} — ${c.category}${r.statusOk ? '' : ' ⚠ unexpected status'}${r.leaked?.length ? ` ⚠ leaked: ${r.leaked.join(', ')}` : ''}`, '');
+  lines.push(`### ${c.id} — ${c.category}${c.heldOut ? ' (held out)' : ''}${r.statusOk ? '' : ' ⚠ unexpected status'}${r.leaked?.length ? ` ⚠ leaked: ${r.leaked.join(', ')}` : ''}`, '');
   lines.push(`> ${c.text}`, '');
   if (isProbe(c)) lines.push(`Word list: **${r.lexicon}** (skipped for this probe, so the model decided).`, '');
   if (r.error) { lines.push(`Error: ${r.error}`, ''); continue; }
   r.rounds.forEach((x, i) => {
     const res = x.result;
     const m = res.meta;
-    lines.push(`${i ? '**Another angle** — ' : ''}status **${res.status}**${res.fallback ? ` (${res.fallback.reason})` : ''}; gate ${m.gate}${m.gate_codes.length ? ` [${m.gate_codes.join(', ')}]` : ''}; attempts ${m.attempts}; ${(x.ms / 1000).toFixed(1)} s${m.fallback_model ? `; served by ${m.fallback_model}` : ''}`, '');
+    lines.push(`${i ? `**Another angle${i > 1 ? ` ${i}` : ''}** — ` : ''}status **${res.status}**${res.fallback ? ` (${res.fallback.reason})` : ''}; gate ${m.gate}${m.gate_codes.length ? ` [${m.gate_codes.join(', ')}]` : ''}; attempts ${m.attempts}; ${(x.ms / 1000).toFixed(1)} s${m.fallback_model ? `; served by ${m.fallback_model}` : ''}`, '');
     if (res.scene) {
       const s = res.scene;
       lines.push(`- ${s.mallow_character} · ${s.reasoning_pattern} → ${s.interaction_type} · ${s.emotion} · ${s.situation_type}`);
@@ -311,6 +344,6 @@ mkdirSync(OUT, { recursive: true });
 const stamp = started.toISOString().replace(/[:T]/g, '-').slice(0, 16);
 const base = `${OUT.replace(/\/$/, '')}/angle-eval-${stamp}${MOCK ? '-mock' : ''}`;
 writeFileSync(`${base}.md`, `${lines.join('\n')}\n`);
-writeFileSync(`${base}.json`, JSON.stringify({ started, prompt: PROMPT, model: MODEL, effort: EFFORT, judge: JUDGE ? JUDGE_MODEL : null, mock: MOCK, cost, results: results.map((r) => ({ id: r.case.id, statusOk: r.statusOk, leaked: r.leaked, rounds: (r.rounds || []).map((x) => ({ status: x.result.status, scene: x.result.scene, fallback: x.result.fallback, support: x.result.support && { level: x.result.support.level, category: x.result.support.category, source: x.result.support.source }, meta: { ...x.result.meta, usage: undefined }, ms: x.ms, judge: x.judge })) })), timeouts: { attemptMs: ATTEMPT_TIMEOUT, deadlineMs: DEADLINE } }, null, 2));
+writeFileSync(`${base}.json`, JSON.stringify({ started, prompt: PROMPT, model: MODEL, effort: EFFORT, judge: JUDGE ? JUDGE_MODEL : null, mock: MOCK, cost, results: results.map((r) => ({ id: r.case.id, statusOk: r.statusOk, leaked: r.leaked, rounds: (r.rounds || []).map((x) => ({ status: x.result.status, scene: x.result.scene, fallback: x.result.fallback, support: x.result.support && { level: x.result.support.level, category: x.result.support.category, source: x.result.support.source }, meta: { ...x.result.meta, usage: undefined }, ms: x.ms, judge: x.judge, previous: x.previous })) })), timeouts: { attemptMs: ATTEMPT_TIMEOUT, deadlineMs: DEADLINE } }, null, 2));
 console.log(`\nReport: ${base}.md`);
 console.log(`Expected status ${results.filter((r) => r.statusOk).length}/${results.length}; cost $${cost.toFixed(3)}.`);

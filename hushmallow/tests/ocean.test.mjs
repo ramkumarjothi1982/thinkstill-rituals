@@ -257,12 +257,13 @@ test('progress: monotonic, moved by the person’s swells; completion needs 4 lo
 function installFakeDom() {
   const saved = {};
   for (const k of ['document', 'addEventListener', 'removeEventListener', 'requestAnimationFrame', 'cancelAnimationFrame']) saved[k] = Object.getOwnPropertyDescriptor(globalThis, k);
+  const noop = () => {};
   const ctx2d = (c) => new Proxy({
     canvas: c,
     createImageData: (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }),
     createLinearGradient: () => ({ addColorStop() {} }), createRadialGradient: () => ({ addColorStop() {} }),
     createPattern: () => ({}), measureText: (s) => ({ width: String(s).length * 8.4 }), getTransform: () => ({ a: 1, e: 0 }),
-  }, { get: (o, k) => (k in o ? o[k] : () => {}), set: (o, k, v) => { o[k] = v; return true; } });
+  }, { get: (o, k) => (k in o ? o[k] : noop), set: (o, k, v) => { o[k] = v; return true; } });
   const el = () => { const c = { style: {}, className: '', width: 0, height: 0, children: [], setAttribute() {}, append(...x) { this.children.push(...x); }, remove() {}, addEventListener() {}, removeEventListener() {}, clientWidth: 390, clientHeight: 844 }; c.getContext = () => ctx2d(c); return c; };
   globalThis.document = { createElement: () => el(), addEventListener() {}, removeEventListener() {}, hidden: false };
   globalThis.addEventListener = () => {}; globalThis.removeEventListener = () => {};
@@ -281,13 +282,13 @@ const fakeMallow = (W, H) => {
 const fakeThought = () => ({ id: 't', token: 'My boss embarrassed me today.', text: 'My boss embarrassed me today.', x: 0, y: 0, z: 0, scale: 1, state: { tension: 0.6 }, react() {}, hitTest: () => false, pointer() {} });
 /** Drive a real-time-ish stroke through the director (60 Hz moves). */
 function stroke(D, x0, y0, x1, y1, pxPerSec, id = 1) {
-  const len = Math.hypot(x1 - x0, y1 - y0), n = Math.max(2, Math.round((len / pxPerSec) * 60));
+  const len = Math.hypot(x1 - x0, y1 - y0), n = Math.max(2, Math.round((len / pxPerSec) * 30));
   let t = D.debug.time * 1000;
   D.pointer({ type: 'down', id, x: x0, y: y0, t, pointerType: 'touch' });
-  for (let i = 1; i <= n; i++) { t += 1000 / 60; D.pointer({ type: 'move', id, x: x0 + ((x1 - x0) * i) / n, y: y0 + ((y1 - y0) * i) / n, t, pointerType: 'touch' }); D.debug.step(1 / 60); }
+  for (let i = 1; i <= n; i++) { t += 1000 / 30; D.pointer({ type: 'move', id, x: x0 + ((x1 - x0) * i) / n, y: y0 + ((y1 - y0) * i) / n, t, pointerType: 'touch' }); D.debug.step(1 / 30); }
   D.pointer({ type: 'up', id, x: x1, y: y1, t: t + 16, pointerType: 'touch' });
 }
-const steps = (D, sec) => { for (let t = 0; t < sec; t += 1 / 60) D.debug.step(1 / 60); };
+const steps = (D, sec, dt = 1 / 15) => { for (let t = 0; t < sec; t += dt) D.debug.step(dt); };
 
 test('world: slow long strokes and flicks make different seas; the thought drifts away and back; discoveries are true', async () => {
   const dom = installFakeDom();
@@ -309,7 +310,7 @@ test('world: slow long strokes and flicks make different seas; the thought drift
     for (let k = 0; k < 3; k++) { stroke(D, 120 + k * 50, 700, 150 + k * 50, 690, 1100, 2); steps(D, 0.15); }
     const choppy = w.metrics;
     assert.ok(choppy.chop > 0.01, `chop ${choppy.chop}`);
-    assert.ok(choppy.period < 2.6, `short period after flicks: ${choppy.period}`);
+    assert.ok(choppy.period < 2.6, `short period after flicks (the person's swells): ${choppy.period}`);
     steps(D, 3);
     assert.ok(w.metrics.chop < 0.3 * choppy.chop, 'the chop fades in a few seconds');
     // a slow, long stroke away from you (up the screen through the thought)
@@ -369,7 +370,7 @@ test('world: a storm melts into the ocean — horizon from 0.655H to 0.44H, post
     assert.ok(Math.abs(ocean.debug.thought.sx - 120) < 1 && Math.abs(ocean.debug.thought.sy - 470) < 1, 'the thought where it hung');
     assert.ok(ocean.debug.sea.active >= 2, 'the ground lines became the first swells');
     const ys = [];
-    for (let i = 0; i < 60 * 7; i++) { D.debug.step(1 / 60); if (i % 30 === 0) ys.push(ocean.debug.hy); }
+    for (let i = 0; i < 30 * 7; i++) { D.debug.step(1 / 30); if (i % 15 === 0) ys.push(ocean.debug.hy); }
     assert.equal(D.state.worldId, 'luminous-ocean');
     for (let i = 1; i < ys.length; i++) assert.ok(ys[i] <= ys[i - 1] + 1e-6, 'the horizon only rises');
     steps(D, 1);

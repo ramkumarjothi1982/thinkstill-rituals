@@ -1,5 +1,5 @@
 {
- "source": "Another Angle eval run 2 (GitHub Actions, 12 Oct 2026 16:43 UTC), extracted from the job log by hand-checked parser. Synthetic inputs only (eval/cases.js).",
+ "source": "Another Angle eval run 2 (GitHub Actions run 38279359296, 12 Oct 2026 16:43 UTC, angle-v2), extracted from the job log by eval/extract-log.mjs. Synthetic inputs only (eval/cases.js).",
  "prompt": "angle-v2",
  "model": "claude-opus-5-5",
  "judge": "claude-sonnet-5-5",

@@ -137,7 +137,10 @@ export function strokePacket(cam, U, st, out = {}) {
  * audit's raw gain of 3 assumed its own camera; with the fitted camera a swell's push is the
  * same in world px but Z0 differs.)
  */
+const calCache = new Map();
 export function calibrateDrift(cam, U, target = 0.95) {
+  const key = `${Math.round(cam.W)}|${Math.round(cam.H)}|${Math.round(cam.hy)}|${Math.round(cam.homeY)}|${Math.round(cam.waterY)}|${Math.round(U)}|${target}`;
+  if (calCache.has(key)) return calCache.get(key);
   const sea = new Sea(2);
   const y0 = cam.homeY + 0.55 * (cam.waterY - cam.homeY), y1 = cam.homeY - 0.35 * (cam.homeY - cam.hy);
   const len = y0 - y1;
@@ -146,13 +149,16 @@ export function calibrateDrift(cam, U, target = 0.95) {
   sea.launch(P);
   const o = {};
   let z = cam.Z0, x = 0, moved = 0;
-  for (let t = 0; t < 36; t += 1 / 30) {
+  for (let t = 0; t < 36; t += 0.1) {
     sea.prepare(); sea.sample(x, z, o);
-    const dz = (o.uz / SEA.STOKES) / 30;
+    const dz = (o.uz / SEA.STOKES) * 0.1;
     z += dz; moved += dz;
-    sea.step(1 / 30);
+    sea.step(0.1);
   }
-  return moved > 1e-3 ? (target * cam.Z0) / moved : SEA.STOKES;
+  const g = moved > 1e-3 ? (target * cam.Z0) / moved : SEA.STOKES;
+  if (calCache.size > 32) calCache.clear();
+  calCache.set(key, g);
+  return g;
 }
 
 // --------------------------------------------------------------------- sea --
@@ -289,7 +295,7 @@ export class Sea {
       if (A <= 0) continue;
       let E, th, dx, dz;
       if (this.ring[i]) {
-        const rx = x - this.ex[i], rz = z - this.ez[i], r = Math.hypot(rx, rz) || 1e-3;
+        const rx = x - this.ex[i], rz = z - this.ez[i], r = Math.sqrt(rx * rx + rz * rz) || 1e-3;
         const front = this.cg[i] * this.age[i], q = (r - front) / this.sl[i];
         if (q * q > 30) continue;
         E = Math.exp(-0.5 * q * q) * Math.sqrt(this.lam[i] / (this.lam[i] + r));
@@ -343,7 +349,7 @@ export class Sea {
         const ez = z - this.ez[i];
         if (Math.abs(ez) > front + 6 * sl) continue;
         for (let c = 0; c < n; c++) {
-          const rx = x0 + c * step - this.ex[i], r = Math.hypot(rx, ez) || 1e-3, q = (r - front) / sl;
+          const rx = x0 + c * step - this.ex[i], r = Math.sqrt(rx * rx + ez * ez) || 1e-3, q = (r - front) / sl;
           if (q * q > 30) continue;
           const a = A * Math.exp(-0.5 * q * q) * Math.sqrt(lam / (lam + r));
           const th = k * r - this.w[i] * this.age[i], cs = Math.cos(th), sn = Math.sin(th);
@@ -390,11 +396,11 @@ export class Sea {
     }
   }
 
-  /** Energy-weighted mean period of the sea (s), 0 when flat. */
-  dominantPeriod() {
+  /** Energy-weighted mean period of the sea (s), 0 when flat. userOnly: the person's own swells only. */
+  dominantPeriod(userOnly = false) {
     let e = 0, et = 0;
     for (let i = 0; i < this.max; i++) {
-      if (!this.on[i]) continue;
+      if (!this.on[i] || (userOnly && !this.user[i])) continue;
       const w = this.A[i] * this.A[i] * Math.sqrt(this.sl[i] * this.sw[i]);
       e += w; et += w * (TAU / this.w[i]);
     }
@@ -403,7 +409,7 @@ export class Sea {
   /** Total energy (A²·√area summed) — a size measure for the hum and the settle. */
   energy() { let e = 0; for (let i = 0; i < this.max; i++) if (this.on[i]) e += this.A[i] * this.A[i] * Math.sqrt(this.sl[i] * this.sw[i]); return e; }
   /** Slope energy of short waves (λ < lamMax): how choppy it is. */
-  chop(lamMax) { let e = 0; for (let i = 0; i < this.max; i++) if (this.on[i] && this.lam[i] < lamMax) { const s = this.A[i] * this.k[i]; e += s * s; } return e; }
+  chop(lamMax, userOnly = false) { let e = 0; for (let i = 0; i < this.max; i++) if (this.on[i] && this.lam[i] < lamMax && (!userOnly || this.user[i])) { const s = this.A[i] * this.k[i]; e += s * s; } return e; }
   /** Is packet i (by serial id) still alive, and how big? */
   alive(id) { for (let i = 0; i < this.max; i++) if (this.on[i] && this.id[i] === id) return this.A[i]; return 0; }
   clear() { this.on.fill(0); }

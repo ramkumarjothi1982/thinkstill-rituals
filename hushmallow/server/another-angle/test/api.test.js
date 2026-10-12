@@ -23,7 +23,7 @@ test('health reports versions and configuration without secrets', async () => {
   const res = await app.fetch(req('/v1/health'), env);
   assert.equal(res.status, 200);
   const j = await res.json();
-  assert.equal(j.prompt_version, 'angle-v2');
+  assert.equal(j.prompt_version, 'angle-v3');
   assert.equal(j.schema_version, 'scene-v1');
   assert.deepEqual(j.configured, { signing_key: true, provider_key: true });
   assert.ok(!JSON.stringify(j).includes(env.TOKEN_SIGNING_KEY));
@@ -100,7 +100,7 @@ test('angle: a good scene comes back with all twelve fields and the quota goes d
   assert.equal(j.fallback, null);
   assert.equal(j.support, null);
   assert.equal(j.quota.remaining, 4);
-  assert.equal(j.prompt_version, 'angle-v2');
+  assert.equal(j.prompt_version, 'angle-v3');
   assert.match(j.request_id, /^[0-9a-f-]{36}$/);
   assert.equal(j.client_request_id, 'client-req-0001');
   // The model saw the person's words only inside the data block.
@@ -108,7 +108,7 @@ test('angle: a good scene comes back with all twelve fields and the quota goes d
   assert.match(provider.calls[0].user, /<thought_text>\nHe hasn't replied to my message for five hours\.\n<\/thought_text>/);
   assert.match(provider.calls[0].user, /<chosen_feeling>anxiety<\/chosen_feeling>/);
   assert.equal(provider.calls[0].schema.additionalProperties, false);
-  assert.ok(provider.calls[0].system.startsWith('Prompt version: angle-v2'));
+  assert.ok(provider.calls[0].system.startsWith('Prompt version: angle-v3'));
   const evt = JSON.parse(logs.find((l) => l.includes('"evt":"angle"')));
   assert.equal(evt.gate, 'pass');
   assert.equal(evt.pattern, 'fact_vs_assumption');
@@ -471,7 +471,12 @@ test('feedback: the four buttons are recorded as metadata only', async () => {
   assert.equal(ok.status, 202);
   const evt = JSON.parse(logs.find((l) => l.includes('"evt":"feedback"')));
   assert.deepEqual([evt.rating, evt.pattern, evt.interaction, evt.mallow], ['helped', 'fact_vs_assumption', 'pull_apart', 'zuzu']);
+  // Counted against the prompt that wrote the rated scene (still open on the device after a deploy)…
+  assert.equal(evt.prompt_version, 'angle-v1');
   assert.equal((await send({ rating: 'not_relevant' })).status, 202);
+  // …or the deployed one when the client did not say.
+  assert.equal(JSON.parse(logs.filter((l) => l.includes('"evt":"feedback"')).pop()).prompt_version, 'angle-v3');
+  assert.equal((await send({ rating: 'helped', prompt_version: 'v2; drop table' })).status, 400);
   assert.equal((await send({ rating: 'meh' })).status, 400);
   assert.equal((await send({ rating: 'helped', comment: 'my boss is awful' })).status, 400, 'no free text accepted');
   assert.equal((await send({ rating: 'helped', mallow_character: 'clippy' })).status, 400);
