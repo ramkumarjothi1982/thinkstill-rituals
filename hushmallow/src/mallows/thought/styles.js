@@ -317,7 +317,7 @@ export function insideUV(u, v, pad = 0, shape = SHAPE) {
 export const TAG_MIN_PX = 15;
 export function tagBudget(z) { return z < 0.34 ? 96 : z < 0.68 ? 48 : 26; }
 /** How many lines a tag may use: 3 near, 2 mid, 1 far, and fewer when the stage is crowded (0 room … 2 crowded). */
-export function tagLines(z, crowd = 0) { return Math.max(1, Math.min(z < 0.34 ? 3 : z < 0.68 ? 2 : 1, [3, 2, 1][crowd] ?? 1)); }
+export function tagLines(z, crowd = 0) { return Math.max(1, Math.min(z < 0.34 ? 3 : z < 0.7 ? 2 : 1, [3, 2, 1][crowd] ?? 1)); }
 /** The words split for excerpting (whitespace collapsed). */
 export function wordsOf(text) { const t = String(text ?? '').replace(/\s+/g, ' ').trim(); return t ? t.split(' ') : []; }
 /** The first k words, marked "…" when some are left out (cut at a word, never reworded). */

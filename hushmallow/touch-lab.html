@@ -192,7 +192,7 @@ function layout(count) {
     // lower stage; the tiny Thought Mallows float above and beside it, all above the panel
     const { top, bottom } = stageBand();
     // a fuller stage on a short phone: the hero gives the thoughts a little more room (the Hushfold does this through onBand)
-    const n = Number.isFinite(count) ? count : thoughts?.list.length || 0, k = h < 700 && n > 1 ? (n > 3 ? 0.36 : 0.42) : 0.5;
+    const n = Number.isFinite(count) ? count : thoughts?.list.length || 0, k = n > 4 && h < 700 ? 0.3 : n > 3 ? 0.36 : n > 1 ? (h < 700 ? 0.42 : 0.46) : 0.5;
     const size = Math.round(Math.max(120, Math.min(k * (bottom - top), w < 700 ? 0.56 * w : 300, 300)));
     const x = w < 700 ? w / 2 : Math.max(size * 0.62 + 24, w * 0.34);
     mt.place({ x, y: bottom - size * 0.56 - 6, size }, { instant: true });

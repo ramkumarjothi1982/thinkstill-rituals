@@ -90,7 +90,9 @@ const smoothGrow = (cur, v, k, init) => (!init || v > cur ? v : cur + (v - cur) 
 const OB_BODY = 0, OB_FACE = 1, OB_SIB = 2, OB_SIBFACE = 3, OB_FX = 4, OB_PROP = 5;
 const W_OWN = [8, 40, 6, 30, 10, 10];
 const W_OTHER = [6, 40, 6, 30, 6, 8];
-const SIDE_NAMES = ['below', 'above', 'right', 'left', 'below', 'below'];
+const SIDE_NAMES = ['below', 'above', 'right', 'left', 'below', 'below', 'above', 'above'];
+// how far a crowded stage holds its thoughts (by crowd level 0 room … 3 packed)
+const CROWD_Z = [0, 0.2, 0.45, 0.62, 0.78];
 
 export class ThoughtLayer {
   /**
@@ -312,7 +314,7 @@ export class ThoughtLayer {
 
   /** The words a thought's tag shows now. */
   tagText(th) { return this.tags.get(th)?.text ?? th.tokenAt(); }
-  /** How full the stage is: 0 (room), 1, 2 (crowded: thoughts a little farther, fewer lines of words). */
+  /** How full the stage is: 0 (room) … 4 (packed): a fuller stage holds its thoughts a little farther and gives the words fewer lines and narrower plates. */
   get crowding() { return this.crowd || 0; }
   /** Room on the stage per thought it holds (≥ 1.15 comfortable; < 0.75 crowded): a host may give the hero less room when low. */
   get roominess() { return this.room ?? Infinity; }
@@ -653,7 +655,7 @@ export class ThoughtLayer {
       th._stuck = th._ov > big ? (th._stuck || 0) + dt : Math.min(0, (th._stuck || 0) + dt);
       if (th._stuck > 1.2) {
         const moved = this._nudge(th, K, env);
-        if (!moved) th.zFloor = Math.min(0.75, th.zFloor + 0.2);
+        if (!moved) th.zFloor = Math.min(0.85, th.zFloor + 0.15);
         th._stuck = -3;
       }
     }
@@ -663,7 +665,9 @@ export class ThoughtLayer {
       const h = th.home, L = th._lim;
       h.x = clamp(h.x, L.minX, Math.max(L.minX, L.maxX)); h.y = clamp(h.y, L.minY, Math.max(L.minY, L.maxY));
       if (!K) continue;
-      const l = K.left - L.hwR - 8 - L.dx, r = K.right + L.hwL + 8 - L.dx, t = K.top - L.hhB - 8 - L.dy, b = K.bottom + L.hhT + 6 - L.dy;
+      // the whole footprint — body, effects, prop and its words — stays off the hero
+      const f = this._foot(th), fl = h.x - f.l, fr = f.r - h.x, ft = h.y - f.t, fb = f.b - h.y;
+      const l = K.left - fr - 4, r = K.right + fl + 4, t = K.top - fb - 4, b = K.bottom + ft + 2;
       if (h.x > l && h.x < r && h.y > t && h.y < b) {
         let bx = 0, by = 0, bd = Infinity, fx = 0, fy = 0, fd = Infinity;
         for (let q = 0; q < 4; q++) {
@@ -742,14 +746,31 @@ export class ThoughtLayer {
     if (!force && c[0] === v0 && c[1] === v1 && c[2] === v2 && c[3] === v3 && c[4] === v4 && c[5] === v5 && c[6] === v6 && Math.abs(c[7] - v7) < 2000) return this.crowd;
     c[0] = v0; c[1] = v1; c[2] = v2; c[3] = v3; c[4] = v4; c[5] = v5; c[6] = v6; c[7] = v7;
     const area = Math.max(1, (B.right - B.left) * (B.bottom - B.top) - v7 * 0.8);
-    // what one thought needs to breathe: its body, its words and room round them (by its size)
-    let need = 0;
-    for (const th of this.thoughts) need += 40000 * (th.r / 38) ** 2 * (th.siblings.length ? 1.5 : 1) * (th.kind === 'belief' ? 1.1 : 1);
-    const per = area / Math.max(1, need);
-    this.room = per;
-    const crowd = n <= 1 ? 0 : per < 0.75 ? 2 : per < 1.15 ? 1 : 0;
-    if (crowd !== this.crowd) { this.crowd = crowd; for (const tg of this.tags.values()) tg.fitKey = ''; }
-    const floor = crowd === 2 ? 0.45 : crowd === 1 ? 0.2 : 0;
+    // what each level needs: every body (at that level's depth, siblings and effects round it) and its
+    // words (an estimated plate for that level's lines and width, 17 px Nunito ≈ 8.6 px a character),
+    // with slack for packing; the roomiest level that fits wins
+    const W = env.view.W;
+    let crowd = 4;
+    for (let lv = 0; lv < 5 && n > 1; lv++) {
+      const z = CROWD_Z[lv], lines = lv === 0 ? 3 : lv === 1 ? 2 : 1;
+      const { maxW, pad } = this._tagMax(W, lv);
+      let need = 0;
+      for (const th of this.thoughts) {
+        const P = th.r * 2 * th.scale * (1 - 0.5 * z), Wb = P * th.aspect;
+        let bw = Wb + 40, bh = P + 24;
+        if (th.siblings.length) { bw += Wb * 0.9; bh += P * 0.6; }
+        if (th.style.fx.rain > 0 || th.style.fx.steam > 0) bh += P * 0.75;
+        if (th.kind === 'belief') bh += P * 0.35;
+        const tw = Math.min(th.text.length * 8.6, (maxW - pad) * lines), l = Math.max(1, Math.ceil(tw / (maxW - pad)));
+        const pw = Math.min(maxW, tw / l + pad) + 16, ph = l * 22 + 32;
+        need += bw * bh + pw * ph;
+      }
+      if (area >= need * 1.25) { crowd = lv; break; }
+    }
+    if (n <= 1) crowd = 0;
+    this.room = area / Math.max(1, n);
+    if (crowd !== this.crowd) { this.crowd = crowd; for (const tg of this.tags.values()) { tg.fitKey = ''; tg.measure = true; } }
+    const floor = CROWD_Z[crowd];
     for (const th of this.thoughts) if (!th.driven) th.zFloor = Math.max(floor, Math.min(th.zFloor, floor + 0.2));
     return this.crowd;
   }
@@ -803,8 +824,12 @@ export class ThoughtLayer {
     this.ropes.set(th, rope);
   }
 
-  // the widest a tag may be at this view width (CSS max-width and padding mirrored)
-  _tagMax(W) { return { maxW: Math.min(W < 361 ? 210 : 232, W - (W < 361 ? 28 : 40)), pad: W < 361 ? 24 : 30 }; }
+  // the widest a tag may be at this view width (CSS max-width and padding mirrored); a very crowded
+  // stage gives each tag a narrower plate (its space budget: fewer words, still 17 px, a tap reads all)
+  _tagMax(W, crowd = this.crowd) {
+    const cap = crowd >= 3 ? (W < 361 ? 156 : 172) : crowd >= 2 ? (W < 361 ? 176 : 196) : W < 361 ? 210 : 232;
+    return { maxW: Math.min(cap, W - (W < 361 ? 28 : 40)), pad: W < 361 ? 24 : 30 };
+  }
 
   // The words a tag shows: all of them when they fit its line budget (3 near, 2 mid-way or crowded,
   // 1 far or very crowded) at its widest, otherwise the most leading words that do, cut at a word and
@@ -812,12 +837,13 @@ export class ThoughtLayer {
   // the view width or the fonts change.
   _fitText(th, tg, W) {
     const lines = tagLines(th.z, this.crowd || 0);
-    const key = `${lines}|${W}`;
+    const { maxW } = this._tagMax(W);
+    const key = `${lines}|${W}|${maxW}`;
     if (key === tg.fitKey) return;
     tg.fitKey = key;
     const el = tg.el, words = th._words || (th._words = wordsOf(th.text));
-    const { maxW } = this._tagMax(W);
     el.classList.remove('tm-measure');
+    el.style.maxWidth = `${maxW}px`;
     el.style.width = `${maxW}px`;
     const lh = parseFloat(getComputedStyle(tg.words).lineHeight) || 22;
     const fits = (txt) => { tg.words.textContent = txt; return tg.words.offsetHeight <= lines * lh + 2; };
@@ -893,7 +919,7 @@ export class ThoughtLayer {
     const yMin = Math.max(edge, B.top), yMax = Math.min(H - edge, B.bottom + 2);
     const placed = this._placed || (this._placed = []);
     placed.length = 0;
-    const C = this._cands || (this._cands = Array.from({ length: 6 }, () => ({ x: 0, y: 0, ax: 0, ay: 0, score: 0 })));
+    const C = this._cands || (this._cands = Array.from({ length: 8 }, () => ({ x: 0, y: 0, ax: 0, ay: 0, score: 0 })));
     const nOb = this._obstacles(), ob = this._ob, own = this._obOwner;
     for (const th of this.thoughts) {
       const tg = this.tags.get(th);
@@ -909,6 +935,8 @@ export class ThoughtLayer {
       this._cand(C[3], b.left - gap - w / 2, b.cy - h / 2, w, h, edge, W, yMin, yMax);
       this._cand(C[4], bx + w * 0.32, b.bottom + gap, w, h, edge, W, yMin, yMax);
       this._cand(C[5], bx - w * 0.32, b.bottom + gap, w, h, edge, W, yMin, yMax);
+      this._cand(C[6], tx0 + w * 0.32, topY - gap - h, w, h, edge, W, yMin, yMax);
+      this._cand(C[7], tx0 - w * 0.32, topY - gap - h, w, h, edge, W, yMin, yMax);
       let best = 0;
       for (let i = 0; i < C.length; i++) {
         const c = C[i], l = c.x - w / 2, t = c.y, r = c.x + w / 2, bt = c.y + h, A = w * h;
@@ -923,7 +951,7 @@ export class ThoughtLayer {
         // the side chosen when it arrived, or the host's wish
         const side = SIDE_NAMES[i];
         if (th.labelSide === side) sc -= 1.5;
-        else if (tg.pref === i || (tg.pref === 0 && i >= 4)) sc -= 0.4;
+        else if (tg.pref === i || (tg.pref === 0 && (i === 4 || i === 5)) || (tg.pref === 1 && i >= 6)) sc -= 0.4;
         c.score = sc;
         if (sc < C[best].score) best = i;
       }

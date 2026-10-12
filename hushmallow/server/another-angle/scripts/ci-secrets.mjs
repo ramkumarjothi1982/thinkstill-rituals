@@ -44,7 +44,9 @@ export function existingNames(listOutput) {
  * @param {string} stderr
  */
 export function workerMissing(stderr) {
-  const t = String(stderr || '');
+  // wrangler colours its errors ("\x1b[1mWorker …"), which would hide the
+  // word boundary before "Worker", so strip ANSI escape codes first.
+  const t = String(stderr || '').replace(/\x1b\[[0-9;]*[A-Za-z]/g, '');
   return /\[code: 100(?:07|90)\]/.test(t)
     || /\bdoes not exist on (?:your|this) account\b/i.test(t)
     || /\bWorker "[^"]+"(?: \(env: [^)]*\))? not found\b/i.test(t);

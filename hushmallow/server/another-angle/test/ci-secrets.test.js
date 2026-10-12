@@ -49,6 +49,9 @@ test('only "Worker not found" counts as a first deploy', () => {
   assert.ok(workerMissing('✘ [ERROR] Worker "hushmallow-another-angle" (env: dev) not found.'));
   assert.ok(workerMissing('A request to the Cloudflare API failed.\n  This Worker does not exist on your account. [code: 10007]'));
   assert.ok(workerMissing('… [code: 10090]'));
+  // As wrangler prints it in CI: coloured, with ANSI escape codes around the words.
+  assert.ok(workerMissing('\x1b[31m✘ \x1b[41;31m[\x1b[41;97mERROR\x1b[41;31m]\x1b[0m \x1b[1mWorker "hushmallow-another-angle-staging" (env: staging) not found.\x1b[0m\n\n  If this is a new Worker, run `wrangler deploy` first to create it.'));
+  assert.ok(!workerMissing('\x1b[31m✘ \x1b[41;31m[\x1b[41;97mERROR\x1b[41;31m]\x1b[0m \x1b[1mInvalid account ID set in the `CLOUDFLARE_ACCOUNT_ID` environment variable.\x1b[0m'));
   // Anything else must not regenerate the signing keys.
   for (const err of [
     '✘ [ERROR] A request to the Cloudflare API (/accounts/x/workers/scripts/y/secrets) failed.\n  Authentication error [code: 10000]',
