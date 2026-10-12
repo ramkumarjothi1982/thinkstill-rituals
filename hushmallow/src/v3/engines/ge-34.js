@@ -119,6 +119,7 @@ export function create(E) {
   // ---- geometry (world coordinates; once the card is in, a gentle camera glides and zooms onto the envelope)
   let W = 0, H = 0, eL = 0, eR = 0, eTop = 0, eB = 0, ecx = 0, flapH = 0, mouthMid = 0, mouthSide = 0, rcE = 6;
   let cW = 0, cH = 0, x0 = 0, y0 = 0, yS = 0, pS = 0, tol = 40, pad = 30, wordSize = 14, rw = 6, cpad = 3, ribbonLen = 40;
+  let short = false, restAng = 0.42, tabW = 20, tabH = 30, tabGrad = null, emblemSpr = null, emblemR = 10;
   const pathX = new Float32Array(NP), pathY = new Float32Array(NP);
   const fX = new Float32Array(NF), fD = new Float32Array(NF), fS = new Float32Array(NF);
   const qx = new Float32Array(NF), qy = new Float32Array(NF), qf = new Float32Array(NF);
@@ -168,7 +169,7 @@ export function create(E) {
       o.w = w; o.h = h;
       const xj = n > 1 ? (o.j - (n - 1) / 2) * dx : -W * 0.1 * tabSide;
       const u = xj / (W * 0.66);
-      o.fx = xj; o.fy = -cH / 2 - h * 0.36 + u * u * h * 0.3 - (o.hero && n > 1 ? h * 0.06 : 0);
+      o.fx = xj; o.fy = -cH / 2 - h * (short ? 0.24 : 0.36) + u * u * h * (short ? 0.22 : 0.3) - (o.hero && n > 1 ? h * 0.06 : 0);
       o.fr = u * 0.17 + (n === 1 ? -0.08 * tabSide : 0);
       o.sx = n > 1 ? (o.j - (n - 1) / 2) * sp : -W * 0.08 * tabSide;
       o.sx = clamp(o.sx, -(W / 2 - w / 2 - 6), W / 2 - w / 2 - 6);
@@ -197,7 +198,9 @@ export function create(E) {
   // -------------------------------------------------------------- fit --
   function fit() {
     const s = stage.s;
-    const up = n ? 1.44 : 1.16, down = 1.12;
+    // short stages (320×568): a lower photo fan and a card that starts at the rim leave room for a larger envelope
+    short = stage.h < 300;
+    const up = n ? (short ? 1.15 : 1.44) : (short ? 1.02 : 1.16), down = short ? 1.06 : 1.12;
     W = Math.min(stage.w * 0.8, 330 * s);
     H = W / 1.58;
     const maxH = (stage.h * 0.95) / (up + down);
