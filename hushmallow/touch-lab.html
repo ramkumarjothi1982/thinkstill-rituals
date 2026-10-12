@@ -247,7 +247,8 @@ const dot = (e) => {
 for (const t of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel']) addEventListener(t, dot, true);
 
 function tick() {
-  if (mt?.ready) {
+  // (the readout is hidden on the thoughts tab: no strings built for it there)
+  if (mt?.ready && state.tab !== 'thoughts') {
     const s = mt.stats, T = mt.touch;
     readout.innerHTML = `<b>${MALLOWS[state.id].name}</b> · tier <b>${s.tier}</b>\n` +
       `depth   ${T.depth.toFixed(2)}  stretch ${T.stretch.toFixed(2)}\n` +
