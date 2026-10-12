@@ -131,7 +131,7 @@ export const FEEDBACK_RATINGS = /** @type {const} */ (['helped', 'another_angle'
  * Feedback carries no words at all: one of the four buttons, plus which kind
  * of scene it was about. It is only logged as metadata, never stored per person.
  * @param {unknown} body
- * @returns {{ ok: true, value: { rating: string, reasoning_pattern: string | null, interaction_type: string | null, mallow_character: string | null } } | Invalid}
+ * @returns {{ ok: true, value: { rating: string, reasoning_pattern: string | null, interaction_type: string | null, mallow_character: string | null, prompt_version: string | null } } | Invalid}
  */
 export function validateFeedbackRequest(body) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return bad('invalid_body', '', 'Body must be a JSON object.');
@@ -147,6 +147,8 @@ export function validateFeedbackRequest(body) {
     mallow_character: pick('mallow_character', MALLOWS),
   };
   for (const [k, v] of Object.entries(value)) if (v === undefined) return bad('invalid_field', k, `${k} is not one of the allowed values.`);
-  if (b.prompt_version !== undefined && (typeof b.prompt_version !== 'string' || !/^angle-v\d{1,3}$/.test(b.prompt_version))) return bad('invalid_field', 'prompt_version', 'Unknown prompt_version.');
-  return { ok: true, value: /** @type {any} */ (value) };
+  if (b.prompt_version !== undefined && b.prompt_version !== null && (typeof b.prompt_version !== 'string' || !/^angle-v\d{1,3}$/.test(b.prompt_version))) return bad('invalid_field', 'prompt_version', 'Unknown prompt_version.');
+  // The version of the prompt that wrote the scene being rated (a scene can
+  // outlive a deploy on the device), so ratings are counted against it.
+  return { ok: true, value: /** @type {any} */ ({ ...value, prompt_version: typeof b.prompt_version === 'string' ? b.prompt_version : null }) };
 }

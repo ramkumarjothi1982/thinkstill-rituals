@@ -319,7 +319,8 @@ export function createApp(options) {
     if (!body.ok) return error(body.status, body.code, body.message, cors);
     const v = validateFeedbackRequest(body.value);
     if (!v.ok) return error(400, v.code, v.message, cors, { field: v.field });
-    logger.event({ evt: 'feedback', prompt_version: PROMPT_VERSION, rating: v.value.rating, pattern: v.value.reasoning_pattern, interaction: v.value.interaction_type, mallow: v.value.mallow_character });
+    // Counted against the prompt that wrote the rated scene, not the one deployed now.
+    logger.event({ evt: 'feedback', prompt_version: v.value.prompt_version || PROMPT_VERSION, rating: v.value.rating, pattern: v.value.reasoning_pattern, interaction: v.value.interaction_type, mallow: v.value.mallow_character });
     return json(202, { status: 'ok' }, cors);
   }
 
