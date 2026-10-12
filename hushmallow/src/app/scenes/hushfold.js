@@ -7,11 +7,15 @@
 //
 // Scene contract: hushfold(app, params) → { el, title:'', enter(), leave(),
 //   get blockBack(), safeForUpdate(), spawnThought(text, emotion) }
-// params.flow = { worldId } starts a world (the garden's "Practise again").
+// params.flow = { worldId, emotion?, intention? } starts a world (the garden's "Practise
+// again", Another Angle's Continue); params.safety = { level } (back from Another Angle
+// after something heavy) keeps support close. Leaving, it sets app.state.stageMallow to
+// the Mallow it showed, for a classic scene that finds no rig (plans.js).
 //
-// Layers: #world realm backdrop · #mallow-layer the rig · #fx-layer the stage
-// canvas + the one input router · #scene this root (pointer-events:none; only
-// .hf-ui takes touches) · #sheet-root support/confirm sheets only.
+// Layers: #world realm backdrop · .hf-touch the squeezable Mallow (MallowTouch, the
+// default; the classic rig in #mallow-layer is the fallback, released meanwhile) ·
+// #fx-layer the stage canvas + the one input router · #scene this root
+// (pointer-events:none; only .hf-ui takes touches) · #sheet-root support/confirm sheets only.
 
 import { h } from '../ui.js';
 import { MALLOWS, MALLOW_IDS } from '../../mallows/registry.js';
@@ -328,7 +332,7 @@ export default function hushfold(app, params = {}) {
         f.on?.('resume', () => onPaused(false));
         return f;
       } catch (e) {
-        if (!S.left) console.info('[hushfold] Hushflow director not available, using the stub:', e?.message || e);
+        if (!S.left) { console.info('[hushfold] Hushflow director not available, using the stub:', e?.message || e); app.staleCode?.(); }
         return createStubFlow();
       }
     })().then((f) => { flowRef = f; return f; });
@@ -908,7 +912,14 @@ export default function hushfold(app, params = {}) {
       getFlow: (create = false) => (create ? getFlow() : Promise.resolve(flowRef)),
       flowAvailable,
       // in a world, the switcher shows who the person comes back to
-      state: () => ({ mallow: worldMode ? (homeMallow || mallowId) : mallowId, mallowWaiting: worldMode, emotion: S.emotion, emotionName: S.emotionName, intention: S.intention }),
+      state: () => ({ mallow: worldMode ? (homeMallow || mallowId) : mallowId, mallowWaiting: worldMode, emotion: S.emotion, emotionName: S.emotionName, intention: S.intention,
+        // Another Angle: a link for Beyond, and for Flow an invitation to it on the plans page (owner P14); never after something heavy
+        angle: ent.has('paid') && !gentle(), worldTitle: S.worldTitle, locked: S.hold === 'crisis' }),
+      // the words told this visit go with it, on this phone only, sent only after consent and Send (owner P15)
+      onAngle: () => {
+        if (!ent.has('ultra')) { app.go('plans', { reason: 'ultra', focus: 'ultra' }); return; }
+        app.go('angle', S.level === 'none' && words.full ? { text: words.full } : {});
+      },
       onFeeling: (id) => pickFeeling(id),
       onIntention: (id) => pickIntention(id),
       onMallow: (dir) => switchMallow(dir),
@@ -1068,6 +1079,20 @@ export default function hushfold(app, params = {}) {
       nudgeT = later(() => { if (quiet()) say(lines.pick(mallowId, 'nudge')); }, 3200);
     }
   }
+  /**
+   * Fetch, in idle time, the modules the next taps need (the overlay, the panel; with Flow the
+   * director, the first two worlds and the garden), so an open session never finds them gone after
+   * a new deploy. Failing to fetch them is that case: move to the newer deploy when it is safe.
+   */
+  function warmModules() {
+    if (S.left) return;
+    const flow = ent.has('paid') ? [
+      import('../../hushfold/flow/director.js'),
+      import('../../hushfold/flow/registry.js').then((m) => { m.registry.prefetch?.('static-storm'); m.registry.prefetch?.('luminous-ocean'); }),
+      import('../../hushfold/garden-install.js').then((m) => { installMod ||= m; }),
+    ] : [];
+    Promise.all([preloadInput(), import('../../hushfold/side-panel.js'), ...flow]).catch(() => app.staleCode?.());
+  }
   async function resumePendingTell() {
     const p = app.state.pendingTell;
     app.state.pendingTell = null;
@@ -1155,13 +1180,21 @@ export default function hushfold(app, params = {}) {
         if (k === 'sound') touchMt.setAudio(v ? app.audio : null);
       });
       // QA hooks on the development host only (Playwright sweeps, the other workstreams' labs)
-      if (['localhost', '127.0.0.1'].includes(location.hostname)) {
+      if (dev) {
         window.__hushfold = { subtitles, mallow: stageMallow, stage, router, spawnThought, openTell, startFlow, get flow() { return flowRef; }, get panel() { return panel; }, get worldThought() { return worldThought; },
-          get overlay() { return overlay; }, get layers() { return { ...layer }; }, touch: touchMt, safeForUpdate: () => view.safeForUpdate(), layout, resumableNow, onOffer, S };
+          get overlay() { return overlay; }, get layers() { return { ...layer }; }, get touch() { return touchMt; }, safeForUpdate: () => view.safeForUpdate(), layout, resumableNow, onOffer, S };
       }
+      // the code the next steps need, fetched while the stage is quiet (a newer deploy can't strand it)
+      idle(() => warmModules());
+      // back from Another Angle: support stays close after something heavy there (said once, by Zuzu)
+      if (params.safety?.level) { noteSafety(params.safety); S.careSaid = true; }
       if (await resumePendingTell()) return;
       if (params.flow?.worldId && ent.has('paid')) {
         S.invited = true; showTell(true);
+        // the feeling and intention chosen in Another Angle carry on (its words as a Thought Mallow: owner P15)
+        if (params.flow.emotion) await setFeeling(params.flow.emotion, { quiet: true });
+        if (S.left) return;
+        if (params.flow.intention) S.intention = params.flow.intention;
         startFlow({ worldId: params.flow.worldId, emotion: S.emotion, intention: S.intention });
         return;
       }
