@@ -52,14 +52,28 @@ export default function plans(app, params = {}) {
     ? (period === 'yearly' ? 'Billed once a year by the App Store. Cancel any time.' : 'Billed monthly by the App Store. Cancel any time.')
     : `Test purchase · ${period === 'yearly' ? 'yearly' : 'monthly'} · nothing is charged`);
 
+  // The App Store's own localised price for the chosen period, when the
+  // native shell provides it (StoreKit Product.displayPrice through
+  // ent.prices()); until then the billing note stands alone.
+  let prices = null;
+  const priceLine = (p) => {
+    const v = prices?.[p.productIds[period]];
+    return v ? `${v} ${period === 'yearly' ? 'a year' : 'a month'}` : '';
+  };
+  const notes = [];   // [plan, price element, period element]
+  const drawNotes = () => notes.forEach(([p, price, note]) => { price.textContent = priceLine(p); price.hidden = !price.textContent; note.textContent = periodNote(); });
+
+  const buttons = [];
   function action(p) {
     if (included(p.id)) return h('div', { class: 'btn block invite-included', 'aria-disabled': 'true' }, '✓ Included in your plan');
     if (!ent.canPurchase) return h('div', { class: 'btn block', 'aria-disabled': 'true' }, 'Available in the app soon');
+    const price = h('p', { class: 'invite-price', hidden: true });
     const note = h('p', { class: 'invite-period', 'aria-live': 'polite' }, periodNote());
+    notes.push([p, price, note]);
     actions.push(note);
-    return h('div', { class: 'invite-cta' },
-      h('button', { class: `btn block ${p.id === 'ultra' ? 'ultra' : 'primary'}`, onclick: () => buy(p.id) }, `Step into ${p.name}`),
-      note);
+    const btn = h('button', { class: `btn block invite-buy ${p.id === 'ultra' ? 'ultra' : 'primary'}`, onclick: () => buy(p.id, btn) }, h('span', { class: 'invite-buy-label' }, `Step into ${p.name}`));
+    buttons.push(btn);
+    return h('div', { class: 'invite-cta' }, btn, price, note);
   }
 
   function invite(p) {
@@ -70,20 +84,41 @@ export default function plans(app, params = {}) {
         beyond ? h('div', { class: 'spiral invite-sigil', 'aria-hidden': 'true' }) : flowSigil(),
         h('div', { class: 'invite-heading' }, planTitle(p, titleId), h('p', { class: 'invite-tagline' }, p.tagline))),
       h('ul', { class: 'invite-list' }, ...p.includes.map(benefit)),
-      beyond ? h('p', { class: 'invite-note' },
-        'Another Angle is the one part of ', brandMark(brandName),
-        ' that works beyond your phone: when you ask, the words you choose to share are explored on our secure server. You’re always asked first.') : null,
+      // What ships today: Another Angle's angles are authored and run on the
+      // phone. When the Beyond server client (W8) is switched on, this note
+      // changes in the same release to the wording agreed with its consent
+      // screen (who processes the words, and that nothing is kept).
+      beyond ? h('p', { class: 'invite-note' }, 'Another Angle works on this phone: what you type stays here.') : null,
       action(p));
   }
 
-  async function buy(id) {
-    const r = await ent.purchase(id, period);
-    if (r.ok) {
+  // one purchase at a time: a double tap never sends two requests
+  let pending = false, homeTimer = 0, gone = false;
+  function setBusy(on, btn) {
+    for (const b of buttons) {
+      b.disabled = on;
+      b.toggleAttribute('aria-busy', on && b === btn);
+      b.classList.toggle('is-busy', on && b === btn);
+    }
+  }
+  async function buy(id, btn) {
+    if (pending) return;
+    pending = true;
+    setBusy(true, btn);
+    let r = null;
+    try { r = await ent.purchase(id, period); } catch { r = { ok: false, failed: true }; }
+    if (gone) return;
+    if (r?.ok) {
       toast(r.test ? `Test purchase: ${PLANS[id].name} unlocked (no charge)` : `Welcome to ${PLANS[id].name}`);
       app.haptic('success');
       world.react('celebrate');
-      setTimeout(() => app.go('home', {}, { replace: true }), 900);
-    } else if (r.unavailable) toast('Subscriptions are handled in the App Store app.');
+      homeTimer = setTimeout(() => { if (!gone) app.go('home', {}, { replace: true }); }, 900);
+      return;   // the buttons stay quiet until the Hushfold opens
+    }
+    if (r?.unavailable) toast('Subscriptions are handled in the App Store app.');
+    else if (!r?.cancelled) toast('That didn’t go through. Nothing was charged.', 3200);
+    pending = false;
+    setBusy(false);
   }
 
   // monthly / yearly (a real radio group; arrow keys move between them)
@@ -100,7 +135,7 @@ export default function plans(app, params = {}) {
     period = id; app.state.planPeriod = id;
     app.haptic?.('light'); app.audio?.ui?.('toggle');
     drawSeg();
-    actions.forEach((n) => { n.textContent = periodNote(); });
+    drawNotes();
     if (focusIt) seg.querySelector('[aria-checked="true"]')?.focus();
   }
   drawSeg();
@@ -115,25 +150,33 @@ export default function plans(app, params = {}) {
 
   const order = focus === 'ultra' ? [PLANS.ultra, PLANS.paid] : [PLANS.paid, PLANS.ultra];
   const head = h('header', { class: 'plans-head' },
-    logoImg({ tone: 'light', width: 'min(54vw, 216px)', className: 'plans-logo' }),
+    logoImg({ tone: 'light', width: 'min(54vw, 216px)', sizes: 'min(54vw, 216px)', className: 'plans-logo' }),
     h('p', { class: 'plans-tagline' }, BRAND.brandTagline),
     h('h1', { class: 'plans-title t-cinematic', 'data-focus': '' }, title),
     h('p', { class: 'plans-lede' }, lede));
   const gap = h('div', { class: 'plans-gap', 'aria-hidden': 'true' });
 
   const el = h('div', { class: 'plans' },
-    h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' })),
+    h('div', { class: 'topbar plans-topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' })),
     gap,
     h('div', { class: 'plans-body' },
       head,
       !everything && ent.canPurchase ? h('div', { class: 'seg-wrap' }, seg) : null,
       h('div', { class: 'invites' }, ...order.map(invite)),
       h('div', { class: 'plans-foot' },
-        h('button', { class: 'btn ghost block', onclick: async () => { await ent.restore(); toast(ent.has('paid') ? 'Purchases restored' : 'Nothing to restore yet'); } }, 'Restore purchases'),
+        h('button', { class: 'btn ghost block', onclick: async (e) => {
+          const b = e.currentTarget;
+          if (b.disabled) return;
+          b.disabled = true;
+          try { await ent.restore(); if (!gone) toast(ent.has('paid') ? 'Purchases restored' : 'Nothing to restore yet'); } catch { if (!gone) toast('Couldn’t reach the App Store just now. Try again in a moment.', 3200); }
+          b.disabled = false;
+        } }, 'Restore purchases'),
         h('button', { class: 'btn ghost block', onclick: () => openSupport(app) }, 'Need support right now? It’s free →'),
         ent.isNative ? null : h('p', { class: 'test-note' }, ent.canPurchase
           ? 'Development build: purchases here are test purchases. Nothing is charged. In the App Store version, Apple handles payment and receipts.'
           : 'Subscriptions aren’t on sale on the web yet. The App Store app handles payment and receipts.'))));
+
+  el.addEventListener('scroll', () => el.classList.toggle('scrolled', el.scrollTop > 6), { passive: true });
 
   // keep the live Mallow in the open space above the invitation
   function fit() {
@@ -152,6 +195,10 @@ export default function plans(app, params = {}) {
       world.place({ x: 50, y: 14, scale: 0.42 });
       world.setStage('curious');
       fit();
+      // localised prices from the App Store, if the native shell offers them
+      Promise.resolve(typeof ent.prices === 'function' ? ent.prices() : null)
+        .then((v) => { if (v && typeof v === 'object' && !gone) { prices = v; drawNotes(); } }, () => {});
     },
+    leave() { gone = true; clearTimeout(homeTimer); },
   };
 }

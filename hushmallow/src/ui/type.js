@@ -117,13 +117,15 @@ export function brandMark(text = brandName, attrs = {}) {
 
 /** The approved logo artwork. tone 'light' for dark grounds, 'ink' for light.
  *  width: px number or any CSS length; the attributes reserve the 1540×289
- *  aspect ratio so nothing shifts when it loads. */
-export function logoImg({ tone = 'light', width = 220, alt = brandName, className = '', lazy = false } = {}) {
+ *  aspect ratio so nothing shifts when it loads. `sizes` (for srcset) is the
+ *  width itself unless given: lengths such as min(54vw, 216px) are valid there. */
+export function logoImg({ tone = 'light', width = 220, sizes, alt = brandName, className = '', lazy = false } = {}) {
   const w = typeof width === 'number' ? `${width}px` : width;
+  const sz = sizes || (/^(min|max|clamp|calc)\(|^[\d.]+(px|vw|em|rem)$/.test(w) ? w : '280px');
   return h('img', {
     class: `hm-logo hm-logo-${tone === 'ink' ? 'ink' : 'light'} ${className}`.trim(),
     src: tone === 'ink' ? BRAND.logo.ink : BRAND.logo.light,
-    srcset: logoSrcset(tone), sizes: typeof width === 'number' ? `${width}px` : '280px',
+    srcset: logoSrcset(tone), sizes: sz,
     width: String(BRAND.logo.w), height: String(BRAND.logo.h),
     alt, decoding: 'async', loading: lazy ? 'lazy' : null, draggable: 'false',
     style: { width: w, height: 'auto' },

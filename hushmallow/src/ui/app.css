@@ -101,6 +101,9 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 /* body copy in cards; :where() keeps it weaker than .muted / .t-* on the same paragraph */
 :where(.card) p { font: var(--type-body); letter-spacing: var(--type-body-ls); }
 .reasons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+/* a Mallow's line written into the card (short phones, where the Mallow steps aside) */
+.card .enc-voice { margin: 6px 0 0; font: var(--type-dialogue); letter-spacing: var(--type-dialogue-ls); font-size: calc(17px * var(--type-scale)); color: var(--text-1); text-wrap: pretty; }
+.card .enc-voice[hidden] { display: none; }
 .reasons span { font: var(--type-label); letter-spacing: var(--type-label-ls); color: var(--text-2); background: rgba(255,255,255,.08); border-radius: 999px; padding: 5px 11px; }
 .ultra-card { position: relative; overflow: hidden; border-radius: var(--r-lg); padding: 16px 18px; cursor: pointer; text-align: left; width: 100%;
   border: 1px solid rgba(160, 120, 255, .45); color: var(--text-1);
@@ -127,6 +130,9 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .bubble.wide { max-width: min(calc(100vw - 24px), 480px); }
 .bubble.compact .who { margin-bottom: 3px; }
 .bubble.no-tail::after { display: none; }
+.bubble.tail-r::after, .bubble.tail-l::after { bottom: auto; top: var(--tail-y, 50%); transform: translateY(-50%) rotate(45deg); }
+.bubble.tail-r::after { left: auto; right: -8px; }
+.bubble.tail-l::after { left: -8px; }
 .bubble.below { transform-origin: 50% 0%; }
 .bubble.moving { transition: top 260ms var(--ease-out), left 260ms var(--ease-out); }
 /* the prompt steps back while a Mallow's line borrows the title band */
@@ -256,6 +262,16 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
   font: var(--type-caption); letter-spacing: var(--type-caption-ls); color: var(--text-2); }
 .invite-cta { display: grid; gap: 8px; }
 .invite-period { margin: 0; text-align: center; font: var(--type-caption); letter-spacing: var(--type-caption-ls); color: var(--text-3); }
+.invite-price { margin: 0; text-align: center; font: var(--type-label); letter-spacing: var(--type-label-ls); font-weight: 700; color: var(--text-1); }
+.invite-price[hidden] { display: none; }
+/* a purchase in flight: the tapped invitation shows a soft ring, the others rest */
+.invite-buy.is-busy { opacity: 1; }
+.invite-buy.is-busy .invite-buy-label::after { content: ''; display: inline-block; width: 15px; height: 15px; margin-left: 10px; vertical-align: -2px; border-radius: 50%;
+  border: 2px solid currentColor; border-right-color: transparent; opacity: .8; animation: spin 900ms linear infinite; }
+@media (prefers-reduced-motion: reduce) { .invite-buy.is-busy .invite-buy-label::after { animation: none; border-right-color: currentColor; opacity: .45; } }
+/* the back button stays in reach while the invitation scrolls, on a soft fade */
+.plans > .plans-topbar { position: sticky; top: 0; z-index: 2; margin: 0 calc(var(--gutter) * -1); padding: 0 var(--gutter) 10px; transition: background 240ms var(--ease-out); }
+.plans.scrolled > .plans-topbar { background: linear-gradient(180deg, rgba(8,6,22,.92), rgba(8,6,22,.72) 62%, rgba(8,6,22,0)); }
 .invite-included { color: var(--text-2); }
 .plans-foot { display: grid; gap: 4px; margin-top: 14px; }
 .test-note { font: var(--type-caption); letter-spacing: var(--type-caption-ls); color: var(--text-3); text-align: center; margin: 8px 8px 0; text-shadow: var(--type-shadow); }

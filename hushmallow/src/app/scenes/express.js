@@ -1,7 +1,7 @@
 // EXPRESS — "What's happening in your head?"
 // Type, tap or browse. The rule-based feeling finder only ever SUGGESTS;
 // you pick what fits. The Mallow above mirrors your feelings as you go.
-import { h, iconBtn, openSheet, say, clearBubble } from '../ui.js';
+import { h, iconBtn, openSheet, say, clearBubble, fitMallow } from '../ui.js';
 import { interpret, faceMix } from '../../engine/interpret.js';
 import { getEmotion, getFamily, FAMILIES, searchEmotions, azIndex, EMOTIONS } from '../../data/emotions.js';
 import { MALLOWS } from '../../mallows/registry.js';
@@ -36,7 +36,7 @@ export default function express(app, params = {}) {
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' }),
       h('button', { class: 'btn ghost', style: { minHeight: '40px' }, onclick: () => openSupport(app) }, 'Need support now?')),
     h('div', { class: 'spacer', style: { minHeight: '22dvh' } }),
-    h('div', { class: 'card', style: { padding: '16px' } },
+    h('div', { class: 'card express-card', style: { padding: '16px' } },
       h('h1', { class: 'title express-q', style: { marginBottom: '12px' } }, 'What’s happening in your head?'),
       ta,
       h('p', { class: 'muted tip', style: { margin: '6px 2px 0' } }, 'Tip: tap the mic on your keyboard to talk instead. Your words stay on this phone.'),
@@ -125,12 +125,18 @@ export default function express(app, params = {}) {
     el, title: 'What’s on your mind',
     enter() {
       world.dim(true);
-      world.place({ x: 50, y: 15, scale: 0.5 });
       world.setStage('listening');
-      setTimeout(() => say(world, m.voice.listen[0], { who: m.name, ms: 2600, above: false }), 500);
+      // the Mallow listens from the open space above the card; on short
+      // phones there is none, so it steps aside rather than sit behind the text
+      requestAnimationFrame(() => {
+        const top = el.querySelector('.topbar')?.getBoundingClientRect().bottom ?? 60;
+        const cardTop = el.querySelector('.express-card')?.getBoundingClientRect().top ?? innerHeight * 0.3;
+        const shown = fitMallow(world, top + 6, cardTop - 6, { maxScale: 0.5, minPx: 76 });
+        if (shown) setTimeout(() => say(world, m.voice.listen[0], { who: m.name, ms: 2600, above: false }), 500);
+      });
       if (params.text) read(); else render();
       if (!matchMedia('(pointer: coarse)').matches) ta.focus();
     },
-    leave() { clearBubble(); tray.destroy(); },
+    leave() { clearBubble(); tray.destroy(); world.showMallow(true); },
   };
 }

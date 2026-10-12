@@ -39,6 +39,7 @@ uniform vec2 uSrc;
 uniform vec3 uRimCol;
 uniform float uRim;
 uniform float uLight;
+uniform float uSpec;
 uniform vec4 uGl[9];
 uniform float uGlOn;
 uniform float uGlThick;
@@ -68,22 +69,28 @@ void main() {
     }
   }
   // light from the deformation: squeezed skin sinks and darkens, the walls of
-  // a dent and the bulges facing the light catch a soft specular streak
+  // a dent and the bulges facing the light catch a soft specular streak.
+  // Highlights are screened on (never past white) and gentler on pale skin,
+  // so a light Mallow keeps its texture at full squeeze.
   vec3 n = normalize(vec3(vShade.y, vShade.z, 1.0));
   vec3 L = normalize(vec3(-0.5, -0.78, 0.38));
   vec3 H = normalize(L + vec3(0.0, 0.0, 1.0));
   float comp = clamp(vShade.x, -0.6, 1.6);
   float diff = dot(n, L) - L.z;
+  float lum = dot(rgb, vec3(0.299, 0.587, 0.114)) / max(c.a, 0.004);
+  float pale = smoothstep(0.5, 0.9, lum);
   float shade = (1.0 - 0.16 * comp * uLight) * (1.0 + 0.55 * diff * uLight);
+  rgb = min(rgb * clamp(shade, 0.55, mix(1.22, 1.06, pale)), vec3(c.a));
   float spec = max(pow(max(dot(n, H), 0.0), 26.0) - pow(H.z, 26.0), 0.0) * uLight;
-  rgb = rgb * clamp(shade, 0.55, 1.25) + vec3(1.0, 0.98, 1.0) * spec * 0.42 * c.a;
+  float sp = clamp(spec * 0.42 * uSpec * (1.0 - 0.65 * pale), 0.0, 0.6);
+  rgb += (vec3(c.a) - rgb) * sp * vec3(1.0, 0.98, 1.0);
   if (uRim > 0.001) {
     float a1 = texture2D(uTex, uv + vec2(uTexel.x * 4.0, 0.0)).a;
     float a2 = texture2D(uTex, uv - vec2(uTexel.x * 4.0, 0.0)).a;
     float a3 = texture2D(uTex, uv + vec2(0.0, uTexel.y * 4.0)).a;
     float a4 = texture2D(uTex, uv - vec2(0.0, uTexel.y * 4.0)).a;
     float edge = c.a * (1.0 - min(min(a1, a2), min(a3, a4)));
-    rgb += uRimCol * edge * uRim * c.a;
+    rgb += (vec3(c.a) - rgb) * uRimCol * clamp(edge * uRim * (1.0 - 0.5 * pale), 0.0, 1.0);
   }
   gl_FragColor = vec4(rgb, c.a);
 }`;
@@ -160,7 +167,7 @@ export class MeshRenderer {
     const P = this.prog, B = this.bprog;
     this.a = { pos: gl.getAttribLocation(P, 'aPos'), uv: gl.getAttribLocation(P, 'aUv'), shade: gl.getAttribLocation(P, 'aShade'), face: gl.getAttribLocation(P, 'aFace') };
     this.u = {};
-    for (const n of ['uM', 'uLag', 'uTex', 'uTexel', 'uSrc', 'uRimCol', 'uRim', 'uLight', 'uGl', 'uGlOn', 'uGlThick', 'uBurst']) this.u[n] = gl.getUniformLocation(P, n);
+    for (const n of ['uM', 'uLag', 'uTex', 'uTexel', 'uSrc', 'uRimCol', 'uRim', 'uLight', 'uSpec', 'uGl', 'uGlOn', 'uGlThick', 'uBurst']) this.u[n] = gl.getUniformLocation(P, n);
     this.ba = gl.getAttribLocation(B, 'aQ');
     this.bu = { rect: gl.getUniformLocation(B, 'uRect'), col: gl.getUniformLocation(B, 'uCol'), inner: gl.getUniformLocation(B, 'uInner') };
     this.quad = gl.createBuffer();
@@ -183,7 +190,7 @@ export class MeshRenderer {
 
   removeBody(key) {
     const b = this.bodies.get(key), gl = this.gl;
-    if (b && gl && !this.lost) { gl.deleteTexture(b.tex); for (const k of ['pos', 'uv', 'shade', 'face', 'idx']) gl.deleteBuffer(b[k]); }
+    if (b && gl && !this.lost) { gl.deleteTexture(b.tex); for (const k of ['pos', 'uvBuf', 'shadeBuf', 'faceBuf', 'idx']) if (b[k]) gl.deleteBuffer(b[k]); }
     this.bodies.delete(key);
   }
 
@@ -209,19 +216,29 @@ export class MeshRenderer {
     if (b.source) this.updateTexture(key, b.source, null);
   }
 
-  /** Upload the skin: the whole canvas, or only rect {x,y,w,h} (texSubImage2D). */
+  /** Upload the skin: the whole canvas, or only rect {x,y,w,h} — or a list of
+   *  such rects (each face part that changed) — with texSubImage2D. */
   updateTexture(key, source, rect) {
     const gl = this.gl, b = this.bodies.get(key);
     if (!gl || this.lost || !b || !source) return 0;
     b.source = source;
     gl.bindTexture(gl.TEXTURE_2D, b.tex);
-    const full = !rect || rect.full || source.width !== b.w || source.height !== b.h || rect.w * rect.h > 0.6 * source.width * source.height;
+    let area = 0, isFull = !rect || !!rect.full;
+    if (Array.isArray(rect)) { for (const r of rect) { area += r.w * r.h; if (r.full) isFull = true; } if (!rect.length) return 0; } else if (rect) area = rect.w * rect.h;
+    const full = isFull || source.width !== b.w || source.height !== b.h || area > 0.6 * source.width * source.height;
     if (full) {
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
       b.w = source.width; b.h = source.height;
       return b.w * b.h;
     }
-    // copy the rect into a reused canvas of exactly that size, upload it
+    if (Array.isArray(rect)) { for (const r of rect) this._subUpload(source, r); return area; }
+    this._subUpload(source, rect);
+    return area;
+  }
+
+  // copy the rect into a reused canvas of exactly that size, upload it
+  _subUpload(source, rect) {
+    const gl = this.gl;
     const key2 = rect.w + 'x' + rect.h;
     let s = this._scratch.get(key2);
     if (!s) {
@@ -234,7 +251,6 @@ export class MeshRenderer {
     s.g.globalCompositeOperation = 'copy';
     s.g.drawImage(source, rect.x, rect.y, rect.w, rect.h, 0, 0, rect.w, rect.h);
     gl.texSubImage2D(gl.TEXTURE_2D, 0, rect.x, rect.y, gl.RGBA, gl.UNSIGNED_BYTE, s.c);
-    return rect.w * rect.h;
   }
 
   resize(cssW, cssH, dpr) {
@@ -291,6 +307,7 @@ export class MeshRenderer {
       gl.uniform3f(u.uRimCol, rc[0], rc[1], rc[2]);
       gl.uniform1f(u.uRim, it.rim || 0);
       gl.uniform1f(u.uLight, it.light ?? 1);
+      gl.uniform1f(u.uSpec, it.spec ?? 1);
       gl.uniform1f(u.uGlOn, it.glitch ? 1 : 0);
       gl.uniform4fv(u.uGl, it.glitch || this._noGlitch);
       gl.uniform1f(u.uGlThick, it.glitchThick || 3);
@@ -309,15 +326,28 @@ export class MeshRenderer {
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, b.idx);
       gl.drawElements(gl.TRIANGLES, b.count, gl.UNSIGNED_SHORT, 0);
     }
+    // leave no attribute enabled on a buffer a later removeBody may delete
+    gl.disableVertexAttribArray(a.pos); gl.disableVertexAttribArray(a.shade);
+    gl.disableVertexAttribArray(a.uv); gl.disableVertexAttribArray(a.face);
     return true;
   }
 
+  /** Free everything and give the context back to the browser now (iOS keeps
+   *  only a few WebGL contexts alive; waiting for GC strands them). */
   destroy() {
     this.canvas.removeEventListener('webglcontextlost', this._onLost);
     this.canvas.removeEventListener('webglcontextrestored', this._onRestored);
+    const gl = this.gl;
     for (const k of [...this.bodies.keys()]) this.removeBody(k);
+    if (gl && !this.lost) {
+      try { if (this.prog) gl.deleteProgram(this.prog); if (this.bprog) gl.deleteProgram(this.bprog); if (this.quad) gl.deleteBuffer(this.quad); } catch { /* lost */ }
+    }
+    for (const s of this._scratch.values()) { s.c.width = s.c.height = 0; }
     this._scratch.clear();
+    try { gl?.getExtension('WEBGL_lose_context')?.loseContext(); } catch { /* already lost */ }
+    this.canvas.width = this.canvas.height = 0;
     this.gl = null;
+    this.lost = true;
   }
 }
 

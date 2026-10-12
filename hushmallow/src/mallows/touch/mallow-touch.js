@@ -4,30 +4,41 @@
 //   await mt.loaded;
 //   mt.place({ x: 195, y: 430, scale: 1 });        // body centre, container CSS px
 //   mt.on('touch', (e) => …);                     // {kind, depth, stretch, speed, turns, dir}
+//   await mt.setMallow('zuzu');                   // switch character, same WebGL context
 //
 // Layers inside `container` (which it fills; it may be the full viewport):
 //   a WebGL canvas (tier A: the textured soft-body mesh, contact shadow and
 //   aura) under a 2D canvas (particles; in tiers B and C everything). Both are
-//   transparent outside the Mallow.
+//   transparent outside the Mallow. One WebGL context per MallowTouch, kept
+//   across setMallow() and released (loseContext) on destroy().
 //
 // Each frame (one shared requestAnimationFrame via rig.addTicker):
 //   1. TouchReader turns fingers into press depth / pull / stretch / flick /
-//      jiggle / massage / stroke / tap.
-//   2. Those drive SoftBody constraints (grabs, dents, plungers, swirls,
-//      release velocities) and the headless MallowRig's face (setTouch).
-//   3. The rig's expression (squash, breath, droop, cheek puff, shrink, lean)
-//      becomes SoftBody's rest shape; hop, tilt, spin and float stay a rigid
+//      jiggle / massage / stroke / tap. A finger that slides off at once or
+//      circles is a glide: it soothes (strokes, massage) and never pulls,
+//      slips or startles.
+//   2. Those drive SoftBody constraints (grabs, glides, dents, plungers, a
+//      stretch waist, swirls, release velocities) and the headless MallowRig's
+//      face (setTouch).
+//   3. The rig's expression (squash, droop, cheek puff, shrink, lean) becomes
+//      SoftBody's rest shape; breath, hop, tilt, spin and float are a rigid
 //      stage transform (a JS transform, never CSS scale, so hit-testing and
-//      raster resolution stay exact).
-//   4. The rig re-renders only the face rect that changed; tier A uploads just
-//      that rect with texSubImage2D and draws the mesh with lighting from the
-//      deformation.
+//      raster resolution stay exact). With breath out of the solver an idle
+//      Mallow's solver sleeps and it draws every other frame.
+//   4. The rig re-renders only the face parts that changed (30 Hz while a
+//      finger is down); tier A uploads just those rects with texSubImage2D and
+//      draws the mesh with lighting from the deformation.
 // At rest the mesh is the rest shape and the rig cross-fades in the untouched
 // approved artwork, so an idle Mallow is exactly the approved picture.
 //
-// Routed input (bindPointer:false): call mt.pointer({type, id, x, y, t}) with
-// client CSS px and t in ms (event.timeStamp); it returns true when the event
-// is the Mallow's. mt.hitTest(x, y) tells a router whether a touch lands on it.
+// Input. bindPointer:true (default): MallowTouch owns its container — its
+// full-size root takes every touch inside it (touches off the Mallow are
+// ignored, not passed through to elements underneath). For a shared screen use
+// bindPointer:false and route: mt.pointer({type, id, x, y, t}) with client CSS
+// px and t in ms (event.timeStamp / performance.now()); it returns true when
+// the event is the Mallow's. mt.hitTest(x, y) tells a router whether a touch
+// lands on it. Keyboard (the root is focusable): hold Space to squeeze, Enter
+// to tap, arrow keys to pull.
 
 import { MALLOWS, maskAlpha } from '../registry.js';
 import { MallowRig, addTicker, removeTicker, prefersReducedMotion, facePartsSrc } from '../rig.js';
@@ -44,7 +55,9 @@ const PAD = 3;                 // source px of margin around the body box
 const HOP_SCALE = 2.2;         // the rig measures hops in layer heights (≈ 2.2 body heights)
 const TIERS = { gl: 'A', tri: 'B', strip: 'C' };
 const STRETCH_GIVE = 0.7;      // share of a two-finger spread the body follows
+const WAIST_GAIN = 0.9;        // waist pull per unit of stretch past 1
 const REBOUND = 2.4;           // upward velocity (body heights/s) a full squeeze releases
+const SLIP_DELAY = 0.09;       // s: a slip reaction waits this long (a flick or lift cancels it)
 
 const hexRgb = (hex) => {
   const h = hex.replace('#', '');
@@ -63,9 +76,31 @@ export class MallowTouch {
    * @param {boolean} [opts.reducedMotion]  @param {boolean} [opts.lowStim]
    * @param {object} [opts.audio]  the audio engine (play / hold / fx), or null
    * @param {(kind:string)=>void} [opts.haptic]  e.g. haptics.js haptic; null = none
-   * @param {boolean} [opts.bindPointer=true]  listen to pointers itself
+   * @param {boolean} [opts.bindPointer=true]  listen to pointers itself (and own the
+   *   container's touches); false = route them in with pointer()
    */
   constructor(container, opts = {}) {
+    this._setup(container, opts);
+    const root = this.root = document.createElement('div');
+    root.className = 'mallow-touch';
+    // the outline is replaced by a ring drawn around the body (see _focusRing)
+    root.style.cssText = 'position:absolute;inset:0;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;' +
+      '-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;outline:none;';
+    root.style.pointerEvents = this.opts.bindPointer ? 'auto' : 'none';
+    root.setAttribute('role', 'button');
+    root.tabIndex = 0;
+    container.appendChild(root);
+    this.c2d = this._canvas(2);
+    this.ctx = this.c2d.getContext('2d');
+    this._makeRing();
+    this.rig = this._makeRig(this.id);
+    this._tick = this._tick.bind(this);
+    this._onResize = () => this._resize();
+    this.loaded = this.rig.loaded.then(() => { if (!this.destroyed) this._init(); return this; });
+  }
+
+  // everything that is not DOM (also used by the DOM-free core in tests)
+  _setup(container, opts) {
     const id = MALLOWS[opts.id] ? opts.id : 'boppo';
     this.opts = { quality: 'auto', reducedMotion: prefersReducedMotion(), lowStim: false, audio: null, haptic: null,
       bindPointer: true, skinSize: 640, ...opts, id };
@@ -79,28 +114,7 @@ export class MallowTouch {
     this.visible = true;
     this.time = 0;
     this.tier = null;
-    this.stats = { tier: '', fps: 0, frameMs: 0, solverMs: 0, skinMs: 0, uploadMs: 0, drawMs: 0, uploadPx: 0, substeps: 0, frames: 0 };
-
-    const root = this.root = document.createElement('div');
-    root.className = 'mallow-touch';
-    root.style.cssText = 'position:absolute;inset:0;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;' +
-      '-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;outline:none;';
-    root.style.pointerEvents = this.opts.bindPointer ? 'auto' : 'none';
-    root.setAttribute('role', 'button');
-    root.tabIndex = 0;
-    container.appendChild(root);
-    this.c2d = this._canvas(2);
-    this.ctx = this.c2d.getContext('2d');
-
-    const rm = !!this.opts.reducedMotion;
-    this.rig = new MallowRig(root, {
-      id, headless: true, interactive: false, skinSize: this.opts.skinSize, reducedMotion: rm,
-      audio: this.opts.audio, haptic: (k) => this._rigHaptic(k), particles: !this.opts.lowStim, lowStim: !!this.opts.lowStim,
-      onImpulse: (imp, kind) => this._impulse(imp, kind),
-      touchFace: (goal, T, rig) => this.persona.face?.(goal, T, rig),
-    });
-    this.rig.geoOverride = () => this._geo;
-    this.rig.faceOverride = (sx, sy) => this._facePoint(sx, sy);
+    this.stats = { tier: '', fps: 0, frameMs: 0, solverMs: 0, skinMs: 0, uploadMs: 0, drawMs: 0, uploadPx: 0, substeps: 0, frames: 0, skipped: 0, idle: false };
 
     // stage transform (springs), in container CSS px
     this.view = { w: 1, h: 1, left: 0, top: 0, dpr: 1 };
@@ -116,7 +130,7 @@ export class MallowTouch {
 
     // touch state
     this.touch = { depth: 0, stretch: 1, speed: 0, turns: 0, strokes: 0, calm: 0, jiggle: 0, held: 0, massageRate: 0, twistRate: 0 };
-    this._fingers = new Map();       // id → {band, x0, y0}
+    this._fingers = new Map();       // id → {band, x0, y0, surface, slipped, …}
     this._lastSoothe = -1;
     this._lag = { x: 0, y: 0, vx: 0, vy: 0 };
     this._rim = 0;
@@ -125,23 +139,43 @@ export class MallowTouch {
     this._hold = null;
     this._hum = null;
     this._lastGasp = -9;
+    this._slipQ = null;
     this._muteRigHaptic = false;
+    this._inRelease = false;
     this._dirty = null;
     this._frameCosts = [];
-    this._rimCol = hexRgb(this.mallow.colours.glow);
-    this._glowCol = this._rimCol;
+    this._lastSkinFrame = -9;
     this._glitch = new Float32Array(36);
     this._burst = new Float32Array(18);
-    this._item = { key: 'hero', positions: null, shade: null, m: this.M, lag: [0, 0], rim: 0, rimCol: this._rimCol, light: 1, glitch: null, glitchThick: 3, burst: null, src: [1, 1] };
+    this._item = { key: 'hero', positions: null, shade: null, m: this.M, lag: [0, 0], rim: 0, rimCol: [1, 1, 1], light: 1, spec: 1, glitch: null, glitchThick: 3, burst: null, src: [1, 1] };
     this._blobs = [
       { x: 0, y: 0, rx: 1, ry: 1, rgba: [10 / 255, 6 / 255, 30 / 255, 0.3], inner: 0 },
-      { x: 0, y: 0, rx: 1, ry: 1, rgba: [...this._glowCol, 0], inner: 0.2 },
+      { x: 0, y: 0, rx: 1, ry: 1, rgba: [1, 1, 1, 0], inner: 0.2 },
     ];
     this._blobList = [];
+    this._setColours();
+  }
 
-    this._tick = this._tick.bind(this);
-    this._onResize = () => this._resize();
-    this.loaded = this.rig.loaded.then(() => { if (!this.destroyed) this._init(); return this; });
+  _setColours() {
+    this._rimCol = hexRgb(this.mallow.colours.glow);
+    this._item.rimCol = this._rimCol;
+    this._item.spec = this.persona.specular ?? 1;
+    const a = this._blobs[1].rgba;
+    a[0] = this._rimCol[0]; a[1] = this._rimCol[1]; a[2] = this._rimCol[2];
+  }
+
+  _makeRig(id) {
+    const rm = !!this.opts.reducedMotion;
+    const rig = new MallowRig(this.root, {
+      id, headless: true, interactive: false, skinSize: this.opts.skinSize, reducedMotion: rm,
+      audio: this.opts.audio, haptic: (k) => this._rigHaptic(k), particles: !this.opts.lowStim, lowStim: !!this.opts.lowStim,
+      onImpulse: (imp, kind) => { if (this.rig === rig) this._impulse(imp, kind); },
+      touchFace: (goal, T, r) => this.persona.face?.(goal, T, r),
+    });
+    rig.geoOverride = () => this._geo;
+    rig.faceOverride = (sx, sy) => this._facePoint(sx, sy);
+    rig.on('emotion', () => { if (this.rig === rig) this._label(); });
+    return rig;
   }
 
   _canvas(z) {
@@ -154,6 +188,32 @@ export class MallowTouch {
 
   // ------------------------------------------------------------- set-up --
   _init() {
+    this._initBody();
+    this._initReader();
+    this._setTier(this.opts.quality);
+    if (this.opts.bindPointer) this._bindPointer();
+    this._bindKeys();
+    this.ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(this._onResize) : null;
+    this.ro?.observe(this.container);
+    addEventListener('resize', this._onResize);
+    if (typeof IntersectionObserver !== 'undefined') {
+      this.io = new IntersectionObserver((es) => { this.visible = es.some((e) => e.isIntersecting); this.rig.visible = this.visible; });
+      this.io.observe(this.root);
+    }
+    this._resize();
+    this.st.x = this.goalSt.x ?? this.view.w / 2;
+    this.st.y = this.goalSt.y ?? this.view.h * 0.52;
+    this.st.s = this.goalSt.s;
+    if (this._pctPlace) { this.ready = true; this.place(...this._pctPlace); this.ready = false; this._pctPlace = null; }
+    this._settle();
+    this._label();
+    this.ready = true;
+    addTicker(this._tick);
+    this._emit('ready', this);
+  }
+
+  // the soft body for the current Mallow (its box, mask, face region)
+  _initBody() {
     const m = this.mallow, rig = this.rig;
     const [bx0, by0, bx1, by1] = m.bodyBox;
     const x0 = Math.max(0, bx0 - PAD), y0 = Math.max(0, by0 - PAD), x1 = Math.min(m.size[0], bx1 + PAD), y1 = by1;
@@ -174,37 +234,23 @@ export class MallowTouch {
       material: this._material(), reducedMotion: !!this.opts.reducedMotion });
     this.coarse = coarseGrid(this.sb, 2);
     this._item.src = [m.size[0], m.size[1]];
+  }
 
+  _initReader() {
     this.reader = new TouchReader({
       hit: (x, y) => this.hitTest(x, y),
       bodySize: () => this._P() * this.aspect,
       centre: () => { const r = this.bodyRect(); return { x: r.cx, y: r.cy }; },
     });
     this._bindReader();
-    this._setTier(this.opts.quality);
-    if (this.opts.bindPointer) this._bindPointer();
-    this._bindKeys();
-    this.ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(this._onResize) : null;
-    this.ro?.observe(this.container);
-    addEventListener('resize', this._onResize);
-    if (typeof IntersectionObserver !== 'undefined') {
-      this.io = new IntersectionObserver((es) => { this.visible = es.some((e) => e.isIntersecting); this.rig.visible = this.visible; });
-      this.io.observe(this.root);
-    }
-    this._resize();
-    this.st.x = this.goalSt.x ?? this.view.w / 2;
-    this.st.y = this.goalSt.y ?? this.view.h * 0.52;
-    this.st.s = this.goalSt.s;
-    if (this._pctPlace) { this.ready = true; this.place(...this._pctPlace); this.ready = false; this._pctPlace = null; }
+  }
+
+  // snap the body, stage and geometry to where they belong now
+  _settle() {
     this._computeTransform(0);
     this._rest();
     this.sb.reset();
     this._updateGeo();
-    this._label();
-    this.rig.on('emotion', () => this._label());
-    this.ready = true;
-    addTicker(this._tick);
-    this._emit('ready', this);
   }
 
   _material() {
@@ -225,11 +271,19 @@ export class MallowTouch {
       });
       if (!r.ok) { r.destroy(); this.glCanvas.remove(); this.glCanvas = null; tier = 'tri'; } else {
         this.renderer = r;
-        r.addBody('hero', { source: this.rig.skin, indices: this.sb.indices, uvs: this.sb.uvs, faceW: this.sb.faceW, n: this.sb.n });
+        this._addGLBody();
+        if (this.view.w > 1) r.resize(this.view.w, this.view.h, this.view.dpr);
       }
     }
     if (tier === 'gl' && (!this.renderer || this._lostGL)) tier = 'tri';
     this._applyTier(tier);
+  }
+
+  _addGLBody() {
+    const r = this.renderer;
+    if (!r) return;
+    r.removeBody('hero');
+    r.addBody('hero', { source: this.rig.skin, indices: this.sb.indices, uvs: this.sb.uvs, faceW: this.sb.faceW, n: this.sb.n });
   }
 
   _applyTier(tier) {
@@ -246,6 +300,51 @@ export class MallowTouch {
 
   /** Force a tier: 'auto' | 'gl' | 'tri' | 'strip'. */
   setQuality(q) { if (this.ready) this._setTier(q); else this.opts.quality = q; }
+
+  /** Switch to another Mallow in place: same canvases, same WebGL context,
+   *  same placement and listeners; the feeling carries over. Resolves when
+   *  the new Mallow is showing. */
+  setMallow(id) {
+    if (!MALLOWS[id] || this.destroyed) return Promise.resolve(this);
+    if (id === this.id && !this._swapping) return Promise.resolve(this);
+    const token = (this._swap = (this._swap || 0) + 1);
+    this._swapping = true;
+    const rig = this._makeRig(id);
+    const p = rig.loaded.then(() => {
+      if (this.destroyed || token !== this._swap) { rig.destroy(); return this; }
+      this._swapping = false;
+      if (this.ready) this._swapIn(id, rig);
+      else { this.rig.destroy(); this.rig = rig; this.id = id; this.mallow = MALLOWS[id]; this.persona = personaFor(id); this.opts.id = id; this._setColours(); }
+      return this;
+    });
+    this.loaded = this.loaded.then(() => p);
+    return p;
+  }
+
+  _swapIn(id, rig) {
+    const old = this.rig;
+    // let go of whatever the old Mallow was doing
+    this.reader?.cancelAll();
+    this._hold?.stop(); this._hold = null; this._hum?.stop(); this._hum = null;
+    this._slipQ = null;
+    if (old.mix) rig.setEmotion(old.mix, old.intensity, { instant: true, quiet: true });
+    old.destroy();
+    this.id = id; this.mallow = MALLOWS[id]; this.persona = personaFor(id); this.opts.id = id;
+    this.rig = rig;
+    rig.visible = this.visible;
+    this._setColours();
+    this._initBody();
+    const T = this.touch;
+    T.depth = 0; T.stretch = 1; T.speed = 0; T.turns = 0; T.strokes = 0; T.calm = 0; T.jiggle = 0; T.held = 0; T.massageRate = 0; T.twistRate = 0;
+    this._fingers.clear();
+    this._squash = 0; this._rim = 0; this._lastTwist = 0; this._wasStretch = false;
+    this._lag.x = this._lag.y = this._lag.vx = this._lag.vy = 0;
+    this._addGLBody();
+    this._applyTier(this.tier === 'gl' && this.renderer && !this._lostGL ? 'gl' : this.tier);
+    this._settle();
+    this._label();
+    this._emit('mallow', { id });
+  }
 
   _resize() {
     if (this.destroyed) return;
@@ -264,8 +363,51 @@ export class MallowTouch {
   }
 
   _label() {
+    if (!this.root) return;
     const d = this.rig.describe();
-    this.root.setAttribute('aria-label', `${d}. Press and hold to squeeze, drag to pull, two fingers to stretch, or tap.`);
+    this.root.setAttribute('aria-label', `${d}. Press and hold to squeeze, drag to pull, two fingers to stretch, stroke or circle to soothe, or tap. ` +
+      'With a keyboard, hold Space to squeeze, press Enter to tap, or use the arrow keys to pull.');
+  }
+
+  // a visible keyboard-focus ring around the body (the root itself is the
+  // whole container, so its own outline would be meaningless)
+  _makeRing() {
+    const ring = this._ring = document.createElement('div');
+    ring.className = 'mallow-touch-focus';
+    ring.setAttribute('aria-hidden', 'true');
+    ring.style.cssText = 'position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:3;border-radius:42%;opacity:0;' +
+      'box-shadow:0 0 0 2px rgba(255,255,255,0.96),0 0 0 4.5px rgba(16,10,48,0.88),0 0 22px 6px rgba(255,255,255,0.22);' +
+      (this.opts.reducedMotion ? '' : 'transition:opacity .18s ease;');
+    this.root.appendChild(ring);
+    const show = () => {
+      let vis = false;
+      try { vis = this.root.matches(':focus-visible'); } catch { vis = document.activeElement === this.root; }
+      this._focusVisible = vis;
+      ring.style.opacity = vis ? '1' : '0';
+      if (vis) { this._ringKey = ''; this._focusRing(); }
+    };
+    const hide = () => { this._focusVisible = false; ring.style.opacity = '0'; };
+    this.root.addEventListener('focus', show);
+    this.root.addEventListener('blur', hide);
+    this._unbindRing = () => { this.root.removeEventListener('focus', show); this.root.removeEventListener('blur', hide); };
+  }
+
+  _focusRing() {
+    if (!this._focusVisible || !this.sb) return;
+    const b = this.sb.bounds(), M = this.M;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let c = 0; c < 4; c++) {
+      const bx = c & 1 ? b.x1 : b.x0, by = c & 2 ? b.y1 : b.y0;
+      const X = M[0] * bx + M[2] * by + M[4], Y = M[1] * bx + M[3] * by + M[5];
+      if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y;
+    }
+    const pad = 12;
+    const key = `${Math.round(x0)},${Math.round(y0)},${Math.round(x1)},${Math.round(y1)}`;
+    if (key === this._ringKey) return;
+    this._ringKey = key;
+    const s = this._ring.style;
+    s.width = `${Math.round(x1 - x0 + 2 * pad)}px`; s.height = `${Math.round(y1 - y0 + 2 * pad)}px`;
+    s.transform = `translate(${Math.round(x0 - pad)}px,${Math.round(y0 - pad)}px)`;
   }
 
   // ------------------------------------------------------------- public --
@@ -322,13 +464,17 @@ export class MallowTouch {
     }
     const b = this.sb.bounds(), M = this.M;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    for (const [bx, by] of [[b.x0, b.y0], [b.x1, b.y0], [b.x0, b.y1], [b.x1, b.y1]]) {
+    for (let c = 0; c < 4; c++) {
+      const bx = c & 1 ? b.x1 : b.x0, by = c & 2 ? b.y1 : b.y0;
       const X = M[0] * bx + M[2] * by + M[4], Y = M[1] * bx + M[3] * by + M[5];
-      x0 = Math.min(x0, X); x1 = Math.max(x1, X); y0 = Math.min(y0, Y); y1 = Math.max(y1, Y);
+      if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y;
     }
     x0 += r.left; x1 += r.left; y0 += r.top; y1 += r.top;
     return { left: x0, top: y0, width: x1 - x0, height: y1 - y0, right: x1, bottom: y1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
   }
+
+  /** Alias of bodyRect() (the Hushflow worlds' mallow interface). */
+  rect() { return this.bodyRect(); }
 
   /** Is the client point (CSS px) on the Mallow's (deformed) body? */
   hitTest(x, y) {
@@ -362,13 +508,17 @@ export class MallowTouch {
   destroy() {
     if (this.destroyed) return;
     this.destroyed = true;
+    this._swap = (this._swap || 0) + 1;
     removeTicker(this._tick);
     this._hold?.stop(); this._hum?.stop();
-    this._unbind?.(); this._unbindKeys?.();
+    this._unbind?.(); this._unbindKeys?.(); this._unbindRing?.();
     this.ro?.disconnect(); this.io?.disconnect();
     removeEventListener('resize', this._onResize);
+    // gives the WebGL context back now (iOS keeps very few), not at GC
     this.renderer?.destroy();
+    this.renderer = null;
     this.rig.destroy();
+    this.c2d.width = this.c2d.height = 0;
     this.root.remove();
   }
 
@@ -404,23 +554,29 @@ export class MallowTouch {
     const trem = rm ? 0 : v.tremble * 1.6 * (P / 215) * (Math.sin(rig.time * 41) * 0.6 + Math.sin(rig.time * 27.7) * 0.4);
     const th = ((b.tilt + fl.tilt) * Math.PI) / 180 + (b.spin > 0 ? spinCurve(1 - b.spin) * TAU : 0);
     const co = Math.cos(th), si = Math.sin(th), aw = this.aspect;
+    // breathing: taller and a touch narrower about the bottom centre (in the
+    // transform, not the solver, so an idle body's solver can sleep)
+    const br = Math.sin(rig.breathPhase || 0) * 0.014 * (v.breath || 0) * (rm ? 0.5 : 1);
+    const bsx = 1 - 0.6 * br, bsy = 1 + br;
+    const sx4 = (aw / 2) * (1 - bsx), sy5 = 1 - bsy;
     const ox = st.x, oy = st.y + P / 2;
+    const m0 = co * P, m1 = si * P, m2 = -si * P, m3 = co * P;
+    const m4 = ox + trem - co * P * aw / 2 + si * 0.5 * P;
+    const m5 = oy - lift - 0.5 * P - si * P * aw / 2 - co * 0.5 * P;
     const M = this.M;
-    M[0] = co * P; M[1] = si * P; M[2] = -si * P; M[3] = co * P;
-    M[4] = ox + trem - co * P * aw / 2 + si * 0.5 * P;
-    M[5] = oy - lift - 0.5 * P - si * P * aw / 2 - co * 0.5 * P;
+    M[0] = m0 * bsx; M[1] = m1 * bsx; M[2] = m2 * bsy; M[3] = m3 * bsy;
+    M[4] = m4 + m0 * sx4 + m2 * sy5; M[5] = m5 + m1 * sx4 + m3 * sy5;
     const det = M[0] * M[3] - M[1] * M[2] || 1e-9, I = this.Minv;
     I[0] = M[3] / det; I[1] = -M[1] / det; I[2] = -M[2] / det; I[3] = M[0] / det;
-    this._lift = lift; this._floorY = oy; this._Pnow = P;
+    this._lift = lift; this._floorY = oy; this._Pnow = P; this._trem = trem;
   }
 
   // particles spawn from the deformed body (CSS px, canvas space)
   _updateGeo() {
     const b = this.sb.bounds(), M = this.M, g = this._geo;
-    const cx = (b.x0 + b.x1) / 2;
-    const X = (x, y) => M[0] * x + M[2] * y + M[4], Y = (x, y) => M[1] * x + M[3] * y + M[5];
-    g.cx = X(cx, (b.y0 + b.y1) / 2);
-    g.top = Y(cx, b.y0); g.bottom = Y(cx, b.y1);
+    const cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
+    g.cx = M[0] * cx + M[2] * cy + M[4];
+    g.top = M[1] * cx + M[3] * b.y0 + M[5]; g.bottom = M[1] * cx + M[3] * b.y1 + M[5];
     g.w = (b.x1 - b.x0) * this._Pnow; g.h = (b.y1 - b.y0) * this._Pnow;
     g.mid = (g.top + g.bottom) / 2;
     g.kind = this.id;
@@ -505,22 +661,37 @@ export class MallowTouch {
       const b = this._local(e.x, e.y);
       this.sb.grab(e.id, b.x, b.y, 0.3);
       this.sb.press(e.id, b.x, b.y, 0, 0.21);
-      this._fingers.set(e.id, { band: 0, bx: b.x, by: b.y, x0: e.x, y0: e.y });
+      this._fingers.set(e.id, { band: 0, x0: e.x, y0: e.y, surface: false, slipped: false, pulled: false, squeezed: false });
       if (R.ptrs.size === 1) this.opts.audio?.play?.(this.id, 'press');
       this._haptic('light');
       this._gaze(e.x, e.y);
-      this._wake();
       this._touchEvent('press');
+    });
+    // a stroking or circling finger slides over the skin instead of holding it
+    R.on('glide', (e) => {
+      const f = this._fingers.get(e.id);
+      this.sb.surface(e.id);
+      if (f) f.surface = true;
+    });
+    // …and grips again where it comes to rest (or starts to jiggle / stretch)
+    R.on('regrip', (e) => {
+      const f = this._fingers.get(e.id), p = R.ptrs.get(e.id);
+      const b = this._local(e.x, e.y);
+      this.sb.release(e.id, { quiet: true });
+      this.sb.grab(e.id, b.x, b.y, 0.3);
+      this.sb.press(e.id, b.x, b.y, p ? p.depth : 0, 0.21);
+      if (f) { f.surface = false; f.slipped = false; f.pulled = false; f.x0 = e.x; f.y0 = e.y; }
     });
     R.on('move', (e) => {
       const p = R.ptrs.get(e.id);
       const b = this._local(e.x, e.y);
       if (!R.stretch) this.sb.move(e.id, b.x, b.y, p ? p.pull : 0);
       this._gaze(e.x, e.y);
-      if (!this._fingers.get(e.id)?.pulled && p && p.pull > 0.5) { this._fingers.get(e.id).pulled = true; this._touchEvent('pull'); }
-      // a fast drag startles a little
+      const f = this._fingers.get(e.id);
+      if (f && !f.pulled && p && p.mode === 'pull' && p.pull > 0.5) { f.pulled = true; this._touchEvent('pull'); }
+      // a fast yank startles a little (never a stroke or a massage)
       const sp = Math.hypot(e.vx, e.vy);
-      if (sp > 1700 && this.time - this._lastGasp > 1.6 && p && p.pull > 0.6 && !p.stroked && !p.massage && e.t - p.t0 > 0.4) { this._lastGasp = this.time; this.rig.react('gasp'); }
+      if (sp > 1700 && p && p.mode === 'pull' && p.pull > 0.6 && !R.stretch && this.time - this._lastGasp > 1.6 && e.t - p.t0 > 0.4) { this._lastGasp = this.time; this.rig.react('gasp'); }
     });
     R.on('up', (e) => this._release(e));
     R.on('stretchStart', (s) => {
@@ -530,7 +701,7 @@ export class MallowTouch {
       for (const id of [s.a, s.b]) this.sb.setGrip(id, grip);
       this._touchEvent('stretch');
     });
-    R.on('stretchEnd', () => this._touchEvent('stretchEnd'));
+    R.on('stretchEnd', () => { this.sb.setWaist(null); this._touchEvent('stretchEnd'); });
     R.on('tap', () => { this.rig.react('tap'); this._touchEvent('tap'); });
     R.on('doubleTap', () => { this.rig.react('doubleTap'); this._touchEvent('doubleTap'); });
     R.on('jiggle', (e) => {
@@ -548,8 +719,6 @@ export class MallowTouch {
       this._hum = this.opts.audio?.hold?.('hum', { intensity: 0.2, pitch: 1 }) || null;
     });
     R.on('massage', (e) => {
-      const T = this.touch;
-      T.calm = Math.min(0.8, T.calm + 0.06);
       this._lastSoothe = this.time;
       const whole = Math.floor(e.turns);
       if (whole > (this._turnTick || 0)) { this._turnTick = whole; this._haptic('tick'); }
@@ -565,7 +734,7 @@ export class MallowTouch {
       const b = this._local(e.x, e.y);
       const s = Math.min(1.5, e.speed / 400) * (this.opts.reducedMotion ? 0.3 : 1);
       // a light tangential drag on the surface it brushed
-      this.sb.impulse(e.dx * s * 0.9, e.dy * s * 0.9, { x: b.x, y: b.y, r: 0.28 });
+      this.sb.impulse(e.dx * s * 0.6, e.dy * s * 0.6, { x: b.x, y: b.y, r: 0.28 });
       this.opts.audio?.fx?.('swish', { intensity: 0.25 });
       this._haptic('tick');
       this.persona.onStroke?.(this, { ...e, strokes: T.strokes });
@@ -575,6 +744,9 @@ export class MallowTouch {
 
   _release(e) {
     const id = e.id;
+    const f = this._fingers.get(id);
+    // the lift says what happened; a slip still waiting to react is dropped
+    if (this._slipQ && this._slipQ.id === id) this._slipQ = null;
     // release velocity, CSS px/s → body units/s (undo the stage rotation + scale)
     const I = this.Minv;
     let vx = I[0] * e.vx + I[2] * e.vy, vy = I[1] * e.vx + I[3] * e.vy;
@@ -583,13 +755,22 @@ export class MallowTouch {
     if (flick) { vx *= fs; vy *= fs; }
     if (!flick) { vx *= 0.45; vy *= 0.45; }
     this.sb.release(id, { vx, vy, flick });
-    // how much of this touch was a squeeze (a pull or a two-finger stretch grips instead)
+    // how much of this touch was a squeeze: a pull or a two-finger stretch
+    // grips instead, a stroke or massage (a glide) soothes, a slip let go already
     const stretched = this._wasStretch;
-    const depth = stretched ? 0 : e.depth * (1 - 0.7 * (e.pull || 0));
-    if (this.reader.ptrs.size === 0) { this._hold?.stop(); this._hold = null; this._wasStretch = false; }
+    const soothing = e.mode === 'glide';
+    const depth = stretched || soothing || f?.slipped ? 0 : e.depth * (1 - 0.7 * (e.pull || 0));
+    if (this.reader.ptrs.size === 0) {
+      this._hold?.stop(); this._hold = null; this._wasStretch = false; this.sb.setWaist(null);
+      // the squeeze is over at once: the rest shape must not re-squash while
+      // the depth would fade (it would fight the rebound); the face springs
+      // still ease out of the squeeze face
+      this.touch.depth = 0; this._squash = 0;
+    }
     if (e.cancelled) { this._fingers.delete(id); this._touchEvent('release'); return; }
     if (flick) {
-      if (!this.persona.onFlick?.(this, e)) this.rig.react('flick', { dirX: Math.sign(e.vx) || 1 });
+      // a stroke brushed off fast still wobbles, but stays a kind touch
+      if (!(soothing && e.stroked) && !this.persona.onFlick?.(this, e)) this.rig.react('flick', { dirX: Math.sign(e.vx) || 1 });
       this._fingers.delete(id);
       this._touchEvent('flick');
       return;
@@ -602,19 +783,22 @@ export class MallowTouch {
       return;
     }
     if (depth > 0.25) {
-      // the release reaction's own squash kick is replaced by the rebound below
+      // the reactions' own squash kicks are replaced by the rebound below
       this._muteRigHaptic = true; this._inRelease = true;
-      if (!this.persona.onRelease?.(this, { depth, ...e })) this.rig.react('release');
-      this._muteRigHaptic = false; this._inRelease = false;
+      try {
+        if (!this.persona.onRelease?.(this, { ...e, depth })) this.rig.react('release', { intensity: depth });
+      } finally { this._muteRigHaptic = false; this._inRelease = false; }
       if (depth > 0.5) this._haptic('pop');
-    } else if (!stretched || this.reader.ptrs.size === 0) this.opts.audio?.play?.(this.id, 'release', { intensity: 0.3 });
+    } else if (!soothing && (!stretched || this.reader.ptrs.size === 0)) {
+      // a stroke or massage ends softly: no pop, no sound
+      this.opts.audio?.play?.(this.id, 'release', { intensity: clamp(0.15 + depth, 0.15, 0.4) });
+    }
     this._fingers.delete(id);
     // the stored squeeze springs back: the press leaves the rest shape at once
     // and the body pops up past its rest height before it settles
     if (this.reader.ptrs.size === 0 && depth > 0.1) {
-      this._squash = 0;
-      // the same pop height for every Mallow (softer ones ring slower, not taller)
-      const M = this.sb.material, k = Math.sqrt((M.kG + M.kL) / 0.83);
+      // about the same pop height for every Mallow (softer ones ring slower)
+      const M = this.sb.material, k = Math.sqrt((M.kG + M.kL) / 0.83) * (this.persona.pop ?? 1);
       if (!this.opts.reducedMotion) this.sb.deform('squash', -REBOUND * depth * k);
     }
     this._touchEvent('release', { depth });
@@ -633,46 +817,55 @@ export class MallowTouch {
   _impulse(imp, kind) {
     if (!this.sb) return;
     const rm = this.opts.reducedMotion;
-    if (imp.squash && !(this._inRelease && kind === 'release')) this.sb.deform('squash', imp.squash * 1.5);
+    // inside a release the rebound replaces every reaction's own squash
+    // (Glitzi's glitch burst squashes +2.25, which would cancel its pop)
+    if (imp.squash && !this._inRelease) this.sb.deform('squash', imp.squash * 1.5);
     const sh = (imp.lean || 0) * 0.55 + (imp.shear || 0) * 0.18;
     if (sh) this.sb.deform('shear', sh * (rm ? 0.5 : 2.2));
     void kind;
-    this._wake();
   }
-
-  _wake() { this._sleep = 0; }
 
   // -------------------------------------------------------------- frame --
   _tick(dt) {
     if (!this.ready || this.destroyed) return;
     if (!this.visible || (typeof document !== 'undefined' && document.hidden)) return;
     const t0 = nowMs();
-    this.time += dt;
-    this._dt = dt;
     const st = this.stats;
     st.fps = st.fps ? st.fps + (1 / Math.max(dt, 1e-3) - st.fps) * 0.08 : 1 / Math.max(dt, 1e-3);
-    this._computeTransform(dt);
-    const R = this.reader;
-    const rs = R.update(nowMs() / 1000);    // same clock as event.timeStamp
-    this._readTouch(rs, dt);
-    this._rest();
-    const a = nowMs();
-    st.substeps = this.sb.step(dt);
-    st.solverMs = lerp(st.solverMs, nowMs() - a, 0.1);
-    if (this.sb.lastSlip) this._slip(this.sb.lastSlip);
-    this._updateGeo();
-    this._faceLag(dt);
+    this._physics(dt, t0 / 1000);   // same clock as the pointer events
     this._render(dt);
+    this._focusRing();
     const cost = nowMs() - t0;
     st.frameMs = lerp(st.frameMs, cost, 0.1);
     st.frames++;
     this._autoTier(cost);
   }
 
+  // fingers → body → face, one frame (no DOM: also the node-tested core)
+  _physics(dt, now) {
+    this.time += dt;
+    this._dt = dt;
+    const st = this.stats;
+    this._computeTransform(dt);
+    const rs = this.reader.update(now);
+    this._readTouch(rs, dt);
+    this._rest();
+    const a = nowMs();
+    st.substeps = this.sb.step(dt);
+    st.solverMs = lerp(st.solverMs, nowMs() - a, 0.1);
+    if (this.sb.lastSlip) this._noteSlip(this.sb.lastSlip);
+    if (this._slipQ && this.time >= this._slipQ.at) {
+      const q = this._slipQ;
+      this._slipQ = null;
+      if (this.reader.ptrs.has(q.id)) this._slip(q);
+    }
+    this._updateGeo();
+    this._faceLag(dt);
+  }
+
   _readTouch(rs, dt) {
     const T = this.touch, R = this.reader, sb = this.sb;
-    const dScale = 1;
-    let maxD = 0;
+    let maxD = 0, speed = 0;
     // two fingers: the jelly stretches less than the fingers spread (a tough,
     // springy feel, and the approved face never smears): 70 % of the ratio
     const S = R.stretch;
@@ -689,40 +882,54 @@ export class MallowTouch {
         px = mx + (dx / l) * half; py = my + (dy / l) * half;
       }
       const b = this._local(px, py);
-      const d = p.depth * dScale * (R.stretch ? 0.4 : 1);
+      const d = p.depth * (S ? 0.4 : 1);
       sb.press(p.id, b.x, b.y, d, 0.21);
-      sb.move(p.id, b.x, b.y, R.stretch ? 1 : p.pull);
-      maxD = Math.max(maxD, d);
-      if (f) {
-        // haptic beats as the squeeze deepens
+      sb.move(p.id, b.x, b.y, S ? 1 : p.pull);
+      // a gliding (soothing) or slipped finger dents the skin but isn't a squeeze
+      const squeezing = p.mode !== 'glide' && !f?.slipped;
+      if (squeezing) { maxD = Math.max(maxD, d); speed = Math.max(speed, Math.hypot(p.vx, p.vy)); }
+      if (f && squeezing) {
+        // haptic beats as the squeeze deepens; 'squeeze' only for a real press
         const band = p.depth > 0.66 ? 2 : p.depth > 0.33 ? 1 : 0;
-        if (band > f.band) { this._haptic('soft'); if (band === 1 && !f.squeezed) { f.squeezed = true; this._touchEvent('squeeze'); } }
+        if (band > f.band) {
+          this._haptic('soft');
+          if (band >= 1 && !f.squeezed && !S && p.mode === 'press') { f.squeezed = true; this._touchEvent('squeeze'); }
+        }
         f.band = Math.max(f.band, band);
       }
       // massage swirls the skin under the finger
       if (p.massage && Math.abs(p.massage.rate) > 0.5) sb.swirl(b.x, b.y, 0.22, p.massage.rate);
     }
-    // pull stretch: how far the finger has dragged the body (body heights)
+    // pull stretch: how far a holding finger has dragged the body (body heights)
     let pullStretch = 1;
-    if (!R.stretch) {
+    if (!S) {
       for (const p of R.ptrs.values()) {
         const f = this._fingers.get(p.id);
-        if (!f) continue;
+        if (!f || p.mode !== 'pull' || f.slipped) continue;
         const d = Math.hypot(p.x - f.x0, p.y - f.y0) / (this._Pnow || 200);
         pullStretch = Math.max(pullStretch, 1 + d * p.pull);
       }
     }
     const k = Math.min(1, dt * 12);
     T.depth += (maxD - T.depth) * (maxD > T.depth ? 1 : k);
-    T.stretch += ((R.stretch ? rs.stretch : pullStretch) - T.stretch) * k;
-    T.speed = rs.speed;
+    T.stretch += ((S ? rs.stretch : pullStretch) - T.stretch) * k;
+    T.speed = speed;
     T.held = rs.held;
     T.turns = rs.turns;
     T.massageRate += ((rs.massaging ? rs.rate : 0) - T.massageRate) * k;
-    const tw = R.stretch ? rs.twist : 0;
+    const tw = S ? rs.twist : 0;
     T.twistRate += (((tw - this._lastTwist) / Math.max(dt, 1e-3)) - T.twistRate) * k;
     this._lastTwist = tw;
     T.jiggle = Math.max(0, T.jiggle - dt * 1.2);
+    // a two-finger stretch pulls in a waist between the fingers
+    if (S) sb.setWaist(S.a, S.b, clamp((T.stretch - 1) * WAIST_GAIN, 0, 0.45));
+    // massage soothes continuously, more for a slow, gentle circle
+    if (rs.massaging) {
+      const tps = Math.abs(rs.rate) / TAU;
+      const gentle = clamp((1.6 - tps) / 1.2, 0, 1);
+      T.calm = Math.min(0.8, T.calm + dt * 0.16 * (0.4 + 0.6 * gentle));
+      this._lastSoothe = this.time;
+    }
     // soothing fades after 4 s without strokes or circles
     if (this.time - this._lastSoothe > 4) { T.calm = Math.max(0, T.calm - dt * 0.25); if (T.calm < 0.05) T.strokes = 0; }
     this.rig.setTouch(T);
@@ -731,8 +938,17 @@ export class MallowTouch {
     if (audio?.hold && R.ptrs.size && T.depth > 0.12 && !rs.massaging) {
       if (!this._hold) this._hold = audio.hold('charge', { intensity: 0.2, pitch: 1 }) || null;
       this._hold?.update?.({ intensity: 0.15 + 0.75 * T.depth, pitch: 0.9 + 0.3 * (T.stretch - 1) + 0.15 * T.depth });
-    } else if (this._hold && (!R.ptrs.size || rs.massaging)) { this._hold.stop(); this._hold = null; }
+    } else if (this._hold && (!R.ptrs.size || rs.massaging || T.depth < 0.06)) { this._hold.stop(); this._hold = null; }
     if (this._hum) this._hum.update?.({ intensity: clamp(Math.abs(T.massageRate) / 10, 0.1, 0.7), pitch: 0.9 + clamp(Math.abs(T.massageRate) / 30, 0, 0.3) });
+  }
+
+  // a pull stretched past the material's limit let go
+  _noteSlip(s) {
+    const f = this._fingers.get(s.id), p = this.reader.ptrs.get(s.id);
+    if (!f || !p || p.mode === 'glide') return;
+    f.slipped = true;
+    // react a moment later: a flick or a lift that follows says it better
+    this._slipQ = { id: s.id, at: this.time + SLIP_DELAY };
   }
 
   _slip(s) {
@@ -745,14 +961,13 @@ export class MallowTouch {
   // the rig's body expression becomes the soft body's rest shape
   _rest() {
     const rig = this.rig, v = rig.val, b = rig.body, T = this.touch;
-    const rm = !!this.opts.reducedMotion;
-    const breath = Math.sin(rig.breathPhase) * 0.014 * v.breath * (rm ? 0.5 : 1);
     // pressing presses it into the floor a little: shorter and wider
     const dm = this.sb.material.dMax / 0.34;
     const sq = T.depth * 0.1 * dm;
     this._squash += (sq - this._squash) * Math.min(1, (this._dt || 0.016) * 15);
+    if (Math.abs(this._squash - sq) < 1e-5) this._squash = sq;
     this.sb.setRest({
-      squash: v.squashBias + this._squash, breath, droop: v.droop, shrink: v.shrink, lean: b.lean * 0.55,
+      squash: v.squashBias + this._squash, droop: v.droop, shrink: v.shrink, lean: b.lean * 0.55,
       puffL: v.cheekPuff, puffR: v.cheekPuff, cheekV: this.cheekV,
     });
   }
@@ -763,6 +978,7 @@ export class MallowTouch {
     const k = 90, c = 2 * 0.5 * Math.sqrt(k);
     L.vx += (k * (fv.x - L.x) - c * L.vx) * dt; L.x += L.vx * dt;
     L.vy += (k * (fv.y - L.y) - c * L.vy) * dt; L.y += L.vy * dt;
+    if (Math.abs(L.x) + Math.abs(L.y) + Math.abs(L.vx) + Math.abs(L.vy) < 1e-6) { L.x = L.y = L.vx = L.vy = 0; }
     const uv = this.uvRect, gain = this.opts.reducedMotion ? 0 : 0.012;
     this._item.lag[0] = clamp(L.x * gain, -0.02, 0.02) * ((uv[2] - uv[0]) / this.aspect);
     this._item.lag[1] = clamp(L.y * gain, -0.02, 0.02) * (uv[3] - uv[1]);
@@ -771,23 +987,32 @@ export class MallowTouch {
   _render(dt) {
     const st = this.stats, rig = this.rig, sb = this.sb, T = this.touch;
     let a = nowMs();
-    const changed = rig.renderSkin();
+    // while a finger is down the face redraws at most every other frame
+    // (the body still moves every frame): half the raster and upload cost
+    const touching = this.reader.ptrs.size > 0;
+    let changed = false;
+    if (!touching || st.frames - this._lastSkinFrame > 1) {
+      changed = rig.renderSkin();
+      if (changed) this._lastSkinFrame = st.frames;
+    }
     st.skinMs = lerp(st.skinMs, nowMs() - a, 0.1);
-    // idle (only breathing): draw every other frame — breathing is slow, the
-    // battery is not. Anything else (a finger, a wobble, a face change,
-    // particles, a glide) draws every frame.
-    const s = this.st, parts = rig.particles;
-    const idle = !this.reader.ptrs.size && !changed && sb.energy < 2e-5 && this._rim < 0.01 && !(parts.list.length || parts.cloud > 0.02) &&
-      Math.abs(s.vx) + Math.abs(s.vy) + Math.abs(s.vs) < 0.5 && rig.body.grounded && !(rig.body.spin > 0) && !(this.id === 'glitzi' && this.tier === 'gl' && rig.val.glitch >= 0.55);
+    // idle (only breathing, blinks drawn when they happen): draw every other
+    // frame — breathing is slow, the battery is not. Anything else (a finger,
+    // a wobble, a face change, particles, a glide, a hop) draws every frame.
+    const s = this.st, parts = rig.particles, fl = this.fl;
+    const idle = !touching && !changed && (!sb.awake || sb.energy < 2e-5) && this._rim < 0.01 && !(parts.list.length || parts.cloud > 0.02) &&
+      Math.abs(s.vx) + Math.abs(s.vy) + Math.abs(s.vs) + Math.abs(fl.vl) + Math.abs(fl.vt) < 0.5 && rig.body.grounded && !(rig.body.spin > 0) &&
+      !(rig.body.glitchBurst > 0) && !this._trem && !(this.id === 'glitzi' && this.tier === 'gl' && rig.val.glitch >= 0.55);
     this._idleFrames = idle ? (this._idleFrames || 0) + 1 : 0;
     st.idle = idle;
-    if (idle && this._idleFrames % 2 === 0) { st.skipped = (st.skipped || 0) + 1; return; }
+    if (idle && this._idleFrames % 2 === 0) { st.skipped++; return; }
     // rim light rises with the squeeze, the stretch and a jiggle
     const rimGoal = clamp(0.5 * T.depth + 0.9 * Math.max(0, T.stretch - 1) + 0.3 * T.jiggle, 0, 0.75) * (this.opts.lowStim ? 0.5 : 1);
     this._rim += (rimGoal - this._rim) * Math.min(1, dt * (rimGoal > this._rim ? 10 : 3));
+    if (this._rim < 1e-3 && rimGoal === 0) this._rim = 0;
     if (this.tier === 'gl' && this.renderer && !this.renderer.lost) {
       a = nowMs();
-      st.uploadPx = changed ? this.renderer.updateTexture('hero', rig.skin, rig.skinRect) : 0;
+      st.uploadPx = changed ? this.renderer.updateTexture('hero', rig.skin, rig.skinRects || rig.skinRect) : 0;
       st.uploadMs = lerp(st.uploadMs, nowMs() - a, 0.1);
       a = nowMs();
       sb.computeShading();
@@ -841,7 +1066,9 @@ export class MallowTouch {
     const liftF = (this._lift || 0) / Href;
     const sw = (xr - xl) * P * 0.46 * (1 - Math.min(0.5, liftF * 2.2));
     const sa = 0.3 * (1 - Math.min(0.7, liftF * 3));
-    return { cx, cy: this._floorY, sw, sa };
+    const sp = this._shadow || (this._shadow = { cx: 0, cy: 0, sw: 0, sa: 0 });
+    sp.cx = cx; sp.cy = this._floorY; sp.sw = sw; sp.sa = sa;
+    return sp;
   }
 
   _blobsFor() {
@@ -877,7 +1104,7 @@ export class MallowTouch {
     if (!body && !hasParticles && !this._dirty) return;
     this._clear2d(false);
     const g = this._geo;
-    const ext = [g.cx - g.w, g.top - g.h * 0.9, g.cx + g.w, g.bottom + g.h * 0.2];
+    let e0 = g.cx - g.w, e1 = g.top - g.h * 0.9, e2 = g.cx + g.w, e3 = g.bottom + g.h * 0.2;
     if (body) {
       const s = this._shadowParams();
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -885,7 +1112,7 @@ export class MallowTouch {
       const v = rig.val;
       if (v.glow > 0.02) drawSoftBlob(ctx, g.cx, g.mid, g.w * 0.75, g.w * 0.75, this.mallow.colours.glow, 0.32 * clamp(v.glow, 0, 1.5), 0.2);
       if (this.tier === 'strip') {
-        const burst = this.id === 'glitzi' && rig.body.glitchBurst > 0 ? (vm) => burstShift(rig.body, vm) * (7 / this._Pnow) : null;
+        const burst = this.id === 'glitzi' && rig.body.glitchBurst > 0 ? (this._burstFn || (this._burstFn = (vm) => burstShift(this.rig.body, vm) * (7 / this._Pnow))) : null;
         drawStripWarp(ctx, rig.skin, this.sb, this.M, dpr, this.uvRect, 44, burst);
       } else {
         drawTriangleWarp(ctx, rig.skin, this.sb, this.coarse, this.M, dpr);
@@ -896,13 +1123,15 @@ export class MallowTouch {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       parts.draw(ctx);
       for (const p of parts.list) {
-        if (p.x - 40 < ext[0]) ext[0] = p.x - 40; if (p.x + 40 > ext[2]) ext[2] = p.x + 40;
-        if (p.y - 40 < ext[1]) ext[1] = p.y - 40; if (p.y + 40 > ext[3]) ext[3] = p.y + 40;
+        if (p.x - 40 < e0) e0 = p.x - 40; if (p.x + 40 > e2) e2 = p.x + 40;
+        if (p.y - 40 < e1) e1 = p.y - 40; if (p.y + 40 > e3) e3 = p.y + 40;
       }
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     const v = this.view;
-    this._dirty = [Math.max(0, ext[0] - 8), Math.max(0, ext[1] - 8), Math.min(v.w, ext[2] + 8), Math.min(v.h, ext[3] + 8)];
+    const d = this._dirtyBox || (this._dirtyBox = [0, 0, 0, 0]);
+    d[0] = Math.max(0, e0 - 8); d[1] = Math.max(0, e1 - 8); d[2] = Math.min(v.w, e2 + 8); d[3] = Math.min(v.h, e3 + 8);
+    this._dirty = d;
   }
 
   // 2D tiers: a soft dark dent with a lit rim where a finger presses
@@ -913,8 +1142,11 @@ export class MallowTouch {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.globalCompositeOperation = 'source-atop';
     for (const p of R.ptrs.values()) {
-      if (p.depth < 0.03) continue;
-      const r = (this._Pnow || 200) * 0.22;
+      const f = this._fingers.get(p.id);
+      if (p.depth < 0.03 || f?.slipped) continue;
+      // a glide's dent travels with the finger and is shallower
+      const k = p.mode === 'glide' ? 0.45 : 1;
+      const r = (this._Pnow || 200) * 0.22 * (p.mode === 'glide' ? 0.8 : 1);
       const x = p.x - this.view.left, y = p.y - this.view.top;
       const gr = this._dentGrad || (this._dentGrad = (() => {
         const gg = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
@@ -924,7 +1156,7 @@ export class MallowTouch {
       })());
       ctx.save();
       ctx.translate(x, y); ctx.scale(r, r);
-      ctx.globalAlpha = clamp(p.depth, 0, 1) * (this.sb.material.dMax / 0.34);
+      ctx.globalAlpha = clamp(p.depth * k, 0, 1) * (this.sb.material.dMax / 0.34);
       ctx.fillStyle = gr;
       ctx.beginPath(); ctx.arc(0, 0, 1, 0, TAU); ctx.fill();
       ctx.restore();

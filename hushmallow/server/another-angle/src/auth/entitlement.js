@@ -2,8 +2,11 @@
 //
 //   testing  — the current phase. Anyone with the app (and, if
 //              TESTER_INVITE_CODES is set, a tester invite code) gets a
-//              device token. Abuse is bounded by per-IP session caps, the
-//              per-device daily quota and the global daily spend cap.
+//              device token. The subject is a keyed hash of the app's own
+//              device_id, so a new session for the same device keeps the same
+//              daily allowance (without a device_id each session gets a fresh
+//              one). Abuse is bounded by per-network session caps, the daily
+//              allowance per subject and the global daily spend cap.
 //   storekit — production. The app sends its StoreKit 2 signed transaction;
 //              the server verifies it (auth/storekit.js, untested against
 //              real receipts) and issues a token that expires with the
@@ -21,7 +24,7 @@ import { keyedHash, safeEqual } from './tokens.js';
  */
 
 /**
- * @param {{ invite: string | null, signedTransaction: string | null }} body
+ * @param {{ invite: string | null, signedTransaction: string | null, deviceId?: string | null }} body
  * @param {import('../config.js').Config} cfg
  * @param {number} now
  * @returns {Promise<EntitlementResult>}
@@ -43,5 +46,6 @@ export async function checkEntitlement(body, cfg, now) {
     for (const code of cfg.inviteCodes) if (body.invite && (await safeEqual(body.invite.trim(), code, cfg.hashKey))) match = true;
     if (!match) return { ok: false, status: 403, code: 'invite_required', message: 'A tester invite code is required during the testing phase.' };
   }
-  return { ok: true, subject: `dev_${crypto.randomUUID()}`, source: 'testing', expiresAt: now + cfg.testingTokenTtlMs };
+  const subject = body.deviceId ? `dev_${await keyedHash(cfg.hashKey, `device:${body.deviceId}`)}` : `dev_${crypto.randomUUID()}`;
+  return { ok: true, subject, source: 'testing', expiresAt: now + cfg.testingTokenTtlMs };
 }

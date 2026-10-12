@@ -49,7 +49,9 @@ export const hasWords = (text) => /[\p{L}\p{N}]/u.test(text);
  * @param {AngleInput} input
  * @param {{ provider: Provider, systemPrompt: string, maxTokens: number, attemptTimeoutMs: number,
  *   deadlineMs: number, minRetryBudgetMs?: number, userTag?: string, now?: () => number,
- *   skipLexicon?: boolean, recordDrafts?: boolean }} deps
+ *   skipLexicon?: boolean, recordDrafts?: boolean, usage?: UsagePart[] }} deps
+ *   usage, when given, is the array model usage is pushed into as each call
+ *   returns (so the caller can settle spend even if a later step throws).
  *   skipLexicon and recordDrafts are for the eval only: skipLexicon sends
  *   lexicon-flagged text to the model anyway (to measure the model's own
  *   safety judgement); recordDrafts keeps rejected drafts in meta.drafts.
@@ -62,7 +64,7 @@ export async function runAngle(input, deps) {
   const meta = {
     attempts: 0, gate: 'skipped', gate_codes: [], safety_level: 'none', safety_category: null, safety_source: null,
     injection: false, normalised: [], provider_error: null, refusal_category: null, model: null, fallback_model: null,
-    usage: [], model_ms: 0, lexicon_level: 'none',
+    usage: deps.usage || [], model_ms: 0, lexicon_level: 'none',
   };
   /** @type {Draft[] | null} */
   const drafts = deps.recordDrafts ? [] : null;
@@ -84,7 +86,9 @@ export async function runAngle(input, deps) {
     return /** @type {AngleResult} */ (done({ status: safety.level, support: supportPayload(safety.level, safety.category, 'lexicon'), keep_support_close: true }));
   }
   const concern = safety.level === 'concern';
-  meta.injection = looksLikeInjection(input.text);
+  // Earlier angles come back from the device too, so they are checked as well.
+  meta.injection = looksLikeInjection(input.text)
+    || input.previous.some((p) => looksLikeInjection(p.subtitle_line_1) || looksLikeInjection(p.subtitle_line_2));
 
   /** @type {{ lines: [string, string] | null, reasons: string[] } | null} */
   let rejected = null;

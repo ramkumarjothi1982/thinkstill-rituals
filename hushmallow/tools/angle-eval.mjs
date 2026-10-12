@@ -15,9 +15,14 @@
 //   node ../../tools/angle-eval.mjs --mock                                 # free dry run (mock provider, no judge)
 //
 // Options: --yes  --mock  --no-judge  --only id1,id2  --concurrency 2
-//          --model claude-opus-5-5  --effort low  --judge-model claude-opus-5-5  --out <dir>
+//          --model claude-opus-5-5  --effort low  --judge-model claude-sonnet-5-5  --out <dir>
 //          --attempt-timeout <ms>  --deadline <ms>   (default: the Worker's production
 //                                                     MODEL_TIMEOUT_MS / REQUEST_DEADLINE_MS)
+//
+// The judge defaults to a different model from the one that writes the
+// answers (claude-sonnet-5-5 judging claude-opus-5-5), so the eval is not a
+// model grading its own work. Passing the same model is allowed; the report
+// header then says the scores may be generous (self-grading).
 //
 // The three safety probes skip the word-list pre-check so the model's own
 // safety judgement is measured (the report shows both). The report also lists
@@ -39,7 +44,8 @@ const YES = flag('yes');
 const JUDGE = !flag('no-judge') && !MOCK;
 const MODEL = opt('model', process.env.MODEL || 'claude-opus-5-5');
 const EFFORT = opt('effort', process.env.EFFORT || 'low');
-const JUDGE_MODEL = opt('judge-model', MODEL);
+const JUDGE_MODEL = opt('judge-model', process.env.JUDGE_MODEL || (MODEL === 'claude-sonnet-5-5' ? 'claude-opus-5-5' : 'claude-sonnet-5-5'));
+const SELF_GRADED = JUDGE && JUDGE_MODEL === MODEL;
 const CONCURRENCY = Math.max(1, Math.min(4, Number(opt('concurrency', '2')) || 2));
 const ONLY = opt('only', '').split(',').filter(Boolean);
 const OUT = opt('out', fileURLToPath(new URL('eval/reports/', SERVER)));
@@ -119,7 +125,10 @@ const provider = MOCK
   ? createMockProvider({ mode: 'heuristic', model: MODEL })
   : deps.anthropic.createAnthropicProvider({ apiKey: process.env.ANTHROPIC_API_KEY, model: MODEL, effort: EFFORT, maxRetries: PROD.maxRetries, fallbacks: PROD.refusalFallback });
 const judgeProvider = JUDGE
-  ? deps.anthropic.createAnthropicProvider({ apiKey: process.env.ANTHROPIC_API_KEY, model: JUDGE_MODEL, effort: 'medium', maxRetries: 2, fallbacks: true })
+  // The server-side refusal fallback is known to work for the generator model;
+  // for another judge it is left off, and a judge refusal just leaves that
+  // answer unjudged (listed in the report).
+  ? deps.anthropic.createAnthropicProvider({ apiKey: process.env.ANTHROPIC_API_KEY, model: JUDGE_MODEL, effort: 'medium', maxRetries: 2, fallbacks: JUDGE_MODEL === MODEL })
   : null;
 
 const score = { type: 'integer', enum: [0, 1, 2, 3, 4, 5] };
@@ -215,6 +224,7 @@ const followUps = judged.filter((r) => r.previous);
 const lines = [];
 lines.push(`# Another Angle eval — ${started.toISOString().slice(0, 16).replace('T', ' ')} UTC`, '');
 lines.push(`Model \`${MODEL}\` (effort ${EFFORT})${MOCK ? ' — MOCK PROVIDER (dry run: placeholder lines, not real quality)' : ''}; judge ${JUDGE ? `\`${JUDGE_MODEL}\` (judge-v1)` : 'off'}; prompt angle-v1.`, '');
+if (SELF_GRADED) lines.push('> **Self-graded:** the judge is the same model that wrote the answers, so the judge scores may be generous. Re-run with `--judge-model claude-sonnet-5-5` (the default) for an independent grade.', '');
 lines.push('## Summary', '');
 lines.push('| Measure | Result |', '|---|---|');
 lines.push(`| Cases | ${results.length} (${allRounds.length} answers incl. "another angle") |`);

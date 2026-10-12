@@ -295,21 +295,35 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   realm()?.transform?.(0.35);
 
   // ======================================================= 3. ORBIT ==
-  setMove(3, { eyebrow: 'Evidence orbit', title: 'What does the evidence say?', prompt: 'For each card: does it fit the worry, not fit it, or is it still unknown? Skip anything that doesn’t apply.' });
-  world.place({ x: 50, y: 33, scale: 0.42 });
+  setMove(3, { eyebrow: 'Evidence orbit', title: 'What does the evidence say?',
+    prompt: compact() ? 'For each card: fits the worry, doesn’t fit, or still unknown?' : 'For each card: does it fit the worry, not fit it, or is it still unknown? Skip anything that doesn’t apply.' });
   world.setEmotion({ curious: 0.6, calm: 0.4 }, 0.7);
-  const orbit = drawOrbit();
-  stageEl.append(orbit.svg);
   const ev = scenario.evidence || { supports: [], against: [], missing: [] };
   const deck = interleave([shuffle(ev.supports).slice(0, 3), shuffle(ev.against).slice(0, 3), shuffle(ev.missing).slice(0, 2)]);
   const cardEl = h('div', { class: 'card', style: { padding: '14px', minHeight: '86px' } });
   const btns = h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginTop: '8px' } });
   const mkB = (label, bucket, col) => h('button', { class: 'btn', style: type('label', { minHeight: '48px', fontWeight: '700', padding: '0 8px', borderColor: col }), onclick: () => place(bucket) }, label);
   btns.append(mkB('Fits the worry', 'supports', '#ff5be9'), mkB('Doesn’t fit', 'against', '#39f0ff'), mkB('Still unknown', 'missing', '#ffd98a'));
-  const skip = h('button', { class: 'btn ghost', style: { minHeight: '38px' }, onclick: () => nextCard() }, 'Doesn’t apply · skip');
-  const own = h('button', { class: 'btn ghost', style: { minHeight: '38px' }, onclick: () => addOwn() }, '+ My own');
+  const narrow = innerWidth < 380 || parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--type-scale')) > 1.12;
+  const skip = h('button', { class: 'btn ghost', style: { minHeight: '38px', whiteSpace: 'nowrap', padding: '0 10px' }, onclick: () => nextCard(), 'aria-label': 'Doesn’t apply: skip this card' }, narrow ? 'Skip' : 'Doesn’t apply · skip');
+  const own = h('button', { class: 'btn ghost', style: { minHeight: '38px', whiteSpace: 'nowrap', padding: '0 10px' }, onclick: () => addOwn() }, '+ My own');
   const orbitDone = h('button', { class: 'btn ultra block', style: { marginTop: '8px' } }, 'That’s enough evidence');
-  dock.replaceChildren(cardEl, btns, h('div', { style: { display: 'flex', justifyContent: 'space-between' } }, skip, own), orbitDone);
+  dock.replaceChildren(cardEl, btns, h('div', { style: { display: 'flex', justifyContent: 'space-between', gap: '8px' } }, skip, own), orbitDone);
+  // the orbit and Zuzu sit in the open band between the prompt and the
+  // cards, so no ring is ever drawn through the words
+  await wait(30);
+  const band = (() => {
+    const tb = document.querySelector('#scene .move-title')?.getBoundingClientRect();
+    const top = (tb && tb.height ? tb.bottom : innerHeight * 0.2) + 8;
+    const dt = dock.getBoundingClientRect();
+    return { top, bottom: Math.max(top + 90, (dt.height ? dt.top : innerHeight * 0.62) - 8) };
+  })();
+  const orbitK = Math.min(1, (band.bottom - band.top) / 140);
+  const orbitCy = Math.max(Math.min(innerHeight * 0.3, band.bottom - 66 * orbitK), band.top + 66 * orbitK);
+  const zuzuH = Math.min(96, 120 * orbitK);
+  world.fitBetween(orbitCy - zuzuH / 2, orbitCy + zuzuH / 2, { maxScale: 0.42 });
+  const orbit = drawOrbit({ cy: orbitCy, k: orbitK });
+  stageEl.append(orbit.svg);
   let di = 0;
   function showCard() {
     const c = deck[di];
@@ -473,11 +487,11 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     });
     el.addEventListener('pointerup', () => { drag = false; });
   }
-  function drawOrbit() {
+  function drawOrbit({ cy = innerHeight * 0.3, k = 1 } = {}) {
     const svg = document.createElementNS(SVGNS, 'svg');
     svg.setAttribute('style', 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible');
-    const cx = innerWidth / 2, cy = innerHeight * 0.3;
-    const rings = { supports: [70, '#ff5be9'], against: [112, '#39f0ff'], missing: [152, '#ffd98a'] };
+    const cx = innerWidth / 2;
+    const rings = { supports: [70 * k, '#ff5be9'], against: [112 * k, '#39f0ff'], missing: [152 * k, '#ffd98a'] };
     const g = document.createElementNS(SVGNS, 'g');
     svg.append(g);
     for (const [k, [r, col]] of Object.entries(rings)) {

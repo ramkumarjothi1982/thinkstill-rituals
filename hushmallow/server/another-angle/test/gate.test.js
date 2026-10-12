@@ -302,3 +302,138 @@ test('another angle with the same pattern as the angle just shown is rejected, e
   const distinct = gate(1, { subtitle_line_1: 'Your message is sitting unanswered, and that part is real.', subtitle_line_2: 'Could you decide now when you will check again?' }, { previous: older });
   assert.ok(!codes(distinct).includes('repeats_previous'), JSON.stringify(codes(distinct)));
 });
+
+// --- Regressions from the W6 review, round 2 (12 Oct 2026) ------------------
+
+/** A rule-following scene; `over` sets the fields under test. */
+const r2Scene = (over) => ({
+  emotion: 'loneliness', situation_type: 'social', reasoning_pattern: 'overgeneralisation', interaction_type: 'separate_one',
+  mallow_character: 'zuzu', safety_status: 'ok', possible_assumption: '', alternative_angle: 'There could be more than one reason for this.',
+  practical_next_step: 'Message one person you trust today.', known_fact: 'It feels like nobody likes you.',
+  subtitle_line_1: 'It feels like nobody likes you right now, and that is a heavy feeling.', subtitle_line_2: 'Who did you actually hear from this week?', ...over,
+});
+
+test('review round 2: "Nobody likes me." — a quantity word is no hedge for what other people feel about you', () => {
+  const text = 'Nobody likes me.';
+  for (const l2 of [
+    'Plenty of people like you, even if it is hard to see today.', 'Lots of people care about you more than you realise.',
+    'Many people like you, even on days like this.', 'Some people like you more than you know.', 'Sometimes people like you more than they show.',
+    'Your friends like you more than you think.', 'People like you more than you give them credit for.',
+    'The people around you probably like you more than you think.', 'Think of all the people who care about you deeply.',
+  ]) expectFail(qualityGate(r2Scene({ subtitle_line_2: l2 }), { text }), 'claims_others_minds');
+  // A general statement about how people work still counts as a hedge.
+  for (const ok of ['Some people find it hard to say what they feel out loud.', 'Many people feel this way after a quiet week, even when it is not the whole story.']) {
+    assert.ok(!codes(qualityGate(r2Scene({ alternative_angle: ok }), { text })).includes('claims_others_minds'), ok);
+  }
+  // Contradicting the person's feeling is its own failure.
+  expectFail(qualityGate(r2Scene({ subtitle_line_2: "That isn't true at all, and you know it deep down." }), { text }), 'contradicts_person');
+});
+
+test('review round 2: plural people and "the people around you" are third parties too', () => {
+  const text = 'My teachers think I am lazy.';
+  const base = { known_fact: 'You feel your teachers think you are lazy.', subtitle_line_1: 'Feeling judged as lazy by your teachers is heavy to carry into every lesson.' };
+  expectFail(qualityGate(r2Scene({ ...base, subtitle_line_2: 'Your teachers think you are lazy, and that hurts to hear.' }), { text }), 'claims_others_minds');
+  expectFail(qualityGate(r2Scene({ ...base, known_fact: 'Your teachers think you are lazy.' }), { text }), 'claims_others_minds');
+  assert.ok(!codes(qualityGate(r2Scene({ ...base, subtitle_line_2: 'It feels like your teachers think you are lazy.' }), { text })).includes('claims_others_minds'));
+  for (const noun of ['bosses', 'managers', 'tutors', 'neighbours', 'parents']) {
+    expectFail(qualityGate(r2Scene({ subtitle_line_2: `Your ${noun} respect you more than you know.` }), { text: `My ${noun} ignore me.` }), 'claims_others_minds');
+  }
+});
+
+test('review round 2: motives, certainties and predictions about other people are claims', () => {
+  for (const [text, line] of [
+    ['My colleague got promoted instead of me.', 'Your colleague got the promotion because your manager prefers them.'],
+    ['My friend invited everyone except me.', 'Your friend left you out on purpose to send a message.'],
+    ['My mum shouted at me.', 'She clearly has no respect for you and never has.'],
+    ["My partner hasn't replied for hours.", 'He will reply soon once he has finished whatever he is doing.'],
+    ["I failed my exam. I'm useless.", 'Your teachers know how capable you are.'],
+    ['My friend invited everyone except me.', 'It was probably an oversight rather than anything personal.'],
+    ['My friend invited everyone except me.', 'It was nothing personal, just a small party.'],
+  ]) expectFail(qualityGate(r2Scene({ known_fact: text.replace(/^My /, 'Your ').replace(/\bme\b/, 'you'), subtitle_line_2: line }), { text }), 'claims_others_minds');
+  // Offered as possibilities, the same ideas pass.
+  for (const [text, line] of [
+    ['My friend invited everyone except me.', 'It might have been an oversight rather than anything personal.'],
+    ["My partner hasn't replied for hours.", 'He might reply soon, or the silence could be about something else entirely.'],
+    ['My friend invited everyone except me.', 'It could feel deliberate, but you do not know yet why you were left out.'],
+  ]) assert.ok(!codes(qualityGate(r2Scene({ subtitle_line_2: line, known_fact: 'Your friend invited everyone except you.' }), { text })).includes('claims_others_minds'), line);
+});
+
+test('review round 2: other weak answers from the probe set are caught', () => {
+  expectFail(qualityGate(r2Scene({ subtitle_line_2: 'You are clever and capable and you will do brilliantly next time.' }), { text: "I failed my exam. I'm useless." }), 'generic_affirmation');
+  expectFail(qualityGate(r2Scene({ subtitle_line_2: 'Maybe consider whether you contributed to it by being unprepared.' }), { text: 'My boss embarrassed me in front of everyone.' }), 'blame');
+  const g = qualityGate(r2Scene({ subtitle_line_2: 'Just study harder next time and the result will definitely be better.' }), { text: "I failed my exam. I'm useless." });
+  expectFail(g, 'false_reassurance');
+  expectFail(g, 'condescending');
+  // "capable of learning" is the brief's own example, not an affirmation.
+  assert.ok(!codes(gate(2, {})).includes('generic_affirmation'));
+});
+
+test('review round 2: rumination may "keep going"; only the cheer is rejected', () => {
+  const sister = r2Scene({ emotion: 'overthinking', reasoning_pattern: 'rumination', interaction_type: 'let_loop_drift', mallow_character: 'noomi', known_fact: 'You and your sister argued last night.' });
+  for (const [text, l1, l2] of [
+    ['I keep thinking about the argument with my sister last night.', 'The argument can keep going round in your head without you following it.', 'Is there one thing you would actually want to say to your sister?'],
+    ['I keep replaying the meeting where I froze.', 'The loop can keep going without you having to ride it again.', 'Freezing in one meeting is a moment, not a verdict on your work.'],
+    ['I keep replaying the argument I had with my dad last week.', 'Rewriting the argument in your head can keep going for ever without changing a word of it.', 'Is there one thing you would still want to say to your dad now?'],
+  ]) assert.deepEqual(codes(qualityGate({ ...sister, known_fact: text.startsWith('I keep replaying the meeting') ? 'You froze in a meeting.' : sister.known_fact, subtitle_line_1: l1, subtitle_line_2: l2 }, { text })), [], l1);
+  for (const cheer of ['Just keep going and the argument will fade.', 'Keep going, you have handled harder days with your sister.', 'Whatever your sister said, keep going!']) {
+    expectFail(qualityGate({ ...sister, subtitle_line_1: cheer }, { text: 'I keep thinking about the argument with my sister last night.' }), 'generic_affirmation');
+  }
+});
+
+test('review round 2: "liked a photo" is something he did (eval case jeal-ex)', () => {
+  const jeal = r2Scene({ emotion: 'jealousy', situation_type: 'relationship', reasoning_pattern: 'mind_reading', interaction_type: 'open_interpretations', mallow_character: 'pipzi' });
+  const a = qualityGate({ ...jeal, known_fact: 'Your boyfriend liked a photo of his ex.', subtitle_line_1: 'A like on a photo is a tap, and what it means is still a guess.', subtitle_line_2: 'If it keeps bothering you, could you ask him about it calmly?' }, { text: "My boyfriend liked his ex's photo." });
+  assert.deepEqual(codes(a), []);
+  const text = "My partner keeps liking his ex's photos on Instagram.";
+  const b = qualityGate({ ...jeal, known_fact: "Your partner has liked his ex's photos on Instagram more than once.", subtitle_line_1: 'Each like is a tap on a screen, and what it means to him is still unknown.', subtitle_line_2: 'Could you tell him how it lands for you, without needing to prove anything?' }, { text });
+  assert.deepEqual(codes(b), []);
+  for (const l2 of ['He liked a photo, and that is all you actually know so far.', 'Your boyfriend liked a photo; what it means is still open.']) {
+    assert.deepEqual(codes(qualityGate({ ...jeal, known_fact: 'Your boyfriend liked a photo of his ex.', subtitle_line_1: 'A like on a photo is a tap on a screen.', subtitle_line_2: l2 }, { text: "My boyfriend liked his ex's photo." })), [], l2);
+  }
+  // Liking a person is still a feeling.
+  expectFail(qualityGate({ ...jeal, subtitle_line_2: 'He still likes his ex, and you can decide what to do with that.' }, { text }), 'claims_others_minds');
+});
+
+test('review round 2: engagement sees irregular verbs and stems ("rewrote" / "rewritten", "like" / "liking")', () => {
+  const text = 'My manager rewrote my whole report without telling me.';
+  const g = qualityGate(r2Scene({
+    emotion: 'frustration', situation_type: 'work', reasoning_pattern: 'valid_anger', interaction_type: 'find_boundary', mallow_character: 'glitzi',
+    known_fact: 'Your manager rewrote your report without telling you.',
+    subtitle_line_1: 'Having your work rewritten without a word is frustrating.',
+    subtitle_line_2: 'You could ask what needed changing, so next time the feedback comes before the rewrite.',
+  }), { text });
+  assert.deepEqual(codes(g), []);
+});
+
+test('review round 2: ordinals and "a dozen" are not invented numbers (eval case self-driving)', () => {
+  const sc = r2Scene({ emotion: 'disappointment', reasoning_pattern: 'self_criticism', interaction_type: 'soften_harshness', mallow_character: 'boppo' });
+  const drive = "I failed my driving test for the third time. I'm just stupid.";
+  assert.deepEqual(codes(qualityGate({ ...sc, known_fact: 'You have failed your driving test three times.', subtitle_line_1: 'Three failed tests tell you the driving test is hard for you, not that you are stupid.', subtitle_line_2: 'Which part tripped you up each time?' }, { text: drive })), []);
+  const cancel = 'My friend cancelled on me for the third time.';
+  assert.deepEqual(codes(qualityGate({ ...sc, reasoning_pattern: 'valid_anger', interaction_type: 'find_boundary', mallow_character: 'glitzi', known_fact: 'Your friend has cancelled on you three times.', subtitle_line_1: 'Three cancellations is a pattern worth naming, not something to swallow.', subtitle_line_2: 'You could tell your friend plainly that it hurts and ask what is going on.' }, { text: cancel })), []);
+  const date = "I said something stupid on a first date and now he won't text back.";
+  assert.deepEqual(codes(qualityGate({ ...sc, reasoning_pattern: 'mind_reading', interaction_type: 'open_interpretations', mallow_character: 'pipzi', known_fact: 'He has not texted back since the date.', subtitle_line_1: 'One awkward comment and a quiet phone are two separate things.', subtitle_line_2: 'The silence could be about a dozen things, and only one of them is what you said.' }, { text: date })), []);
+  // A new number is still an invented detail.
+  expectFail(qualityGate({ ...sc, subtitle_line_1: 'Four failed tests tell you the driving test is hard for you.' }, { text: drive }), 'invented_detail');
+  // A harsh label applied (not contrasted) is still rejected.
+  expectFail(qualityGate({ ...sc, subtitle_line_1: 'Maybe you are stupid at driving, but you can still learn.' }, { text: drive }), 'label_echo');
+});
+
+test('review round 2: a person called Claude can be named; the gate still rejects talk of models', () => {
+  const text = "Claude hasn't texted me since Friday.";
+  const sc = r2Scene({ emotion: 'worry', situation_type: 'relationship', reasoning_pattern: 'mind_reading', interaction_type: 'open_interpretations', mallow_character: 'pipzi', known_fact: "Claude hasn't texted you since Friday." });
+  assert.deepEqual(codes(qualityGate({ ...sc, subtitle_line_1: "Claude hasn't texted since Friday, and that gap is all you actually know.", subtitle_line_2: 'Could you send one easy message and see what comes back?' }, { text })), []);
+  expectFail(qualityGate({ ...sc, subtitle_line_2: 'Claude, the model behind this, cannot know why your friend is quiet.' }, { text: 'My friend has gone quiet.' }), 'ai_mention');
+});
+
+test('review round 2: a short detail in known_fact counts ("You got a B.")', () => {
+  const g = qualityGate(r2Scene({ emotion: 'worry', reasoning_pattern: 'catastrophising', interaction_type: 'shrink_projection', mallow_character: 'loomi', known_fact: 'You got a B.', subtitle_line_1: 'A B is the fact; their disappointment is still a prediction.', subtitle_line_2: 'What would you say to them if you walked in proud of it?' }), { text: 'I got a B and my parents will be so disappointed.' });
+  assert.deepEqual(codes(g), []);
+});
+
+test('review round 2: the repeats_previous message asks for what the rule checks', () => {
+  const prev = [{ subtitle_line_1: ANCHORS[1].scene.subtitle_line_1, subtitle_line_2: ANCHORS[1].scene.subtitle_line_2, reasoning_pattern: 'fact_vs_assumption' }];
+  const f = gate(1, { subtitle_line_1: 'The five hours are the only solid part of this.', subtitle_line_2: 'Everything the silence seems to say is still a guess.' }, { previous: prev }).failures.find((x) => x.code === 'repeats_previous');
+  assert.match(f.message, /Use a different reasoning_pattern/);
+  assert.doesNotMatch(f.message, /only if none does/);
+});

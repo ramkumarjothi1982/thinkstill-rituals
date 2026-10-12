@@ -41,7 +41,6 @@ export function corsHeaders(request, cfg) {
   if (!cfg.allowedOrigins.includes(origin)) return null;
   return {
     'access-control-allow-origin': origin,
-    'access-control-allow-credentials': 'false',
     'access-control-expose-headers': 'retry-after',
     vary: 'Origin',
   };

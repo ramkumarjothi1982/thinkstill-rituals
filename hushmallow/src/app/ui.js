@@ -146,6 +146,14 @@ function collectObstacles(world, avoid) {
   for (const el of document.querySelectorAll(TEXTS)) if (!el.closest('.topbar, .dock, .move-title, .card')) add(visibleRect(el), 'text', el);
   try { for (const r of (typeof avoid === 'function' ? avoid() : avoid) || []) add(r, 'piece'); } catch { /* a ritual's rects are optional */ }
   const m = mallowBox(world);
+  // In a ritual, the play area around and under the Mallow holds pieces drawn
+  // on canvas (lanterns, the wave, the knot…) that the DOM can't see. Unless
+  // the ritual names its pieces (`avoid`), only the space above the Mallow's
+  // head — kept free for its lines — and the title band are fair game.
+  if (m && avoid === undefined && document.querySelector('#scene .ritual-ui')) {
+    const dockTop = out.filter((o) => o.kind === 'dock').reduce((v, o) => Math.min(v, o.t), innerHeight);
+    if (dockTop > m.top) out.push({ l: 0, t: m.top + m.height * 0.06, r: innerWidth, b: dockTop, kind: 'piece' });
+  }
   if (m) {
     // the crown may meet the tail; the eyes and mouth never get covered
     add({ left: m.left + m.width * 0.06, top: m.top + m.height * 0.06, right: m.right - m.width * 0.06, bottom: m.bottom }, 'body');
@@ -239,7 +247,12 @@ function makeRoom(world, obs, bh) {
   const headTop = yMin + bh + 10;               // where the crown may start
   const need = headTop - m.top;
   if (need <= 0) return false;
-  const below = dockTop - 8 - m.bottom;          // free room under the body
+  // free room under the body (none if pieces, cards or text sit there)
+  let below = dockTop - 8 - m.bottom;
+  for (const o of obs.list) {
+    if (o.kind === 'body' || o.kind === 'face' || o.kind === 'title' || o.kind === 'bar' || o.kind === 'dock') continue;
+    if (o.r > m.left && o.l < m.right && o.b > m.bottom - 2 && o.t < m.bottom + below) below = Math.max(0, Math.min(below, o.t - 8 - m.bottom));
+  }
   let next;
   if (need <= below) next = { x: cur.x, y: cur.y + (need / innerHeight) * 100, s: cur.s };
   else {
@@ -267,7 +280,7 @@ function restoreRoom(delay = 700) {
   }, delay);
 }
 
-function placeBubble(b, world, opts, { allowTitle = false, allowMove = false, mode } = {}) {
+function placeBubble(b, world, opts, { allowTitle = false, allowMove = false, mode, dry = false } = {}) {
   const above = opts.above !== false;
   const modes = mode ? [mode] : MODES;
   const search = (obs) => modes.map((md) => bestSpot(b, md, obs, { above }));
@@ -280,14 +293,21 @@ function placeBubble(b, world, opts, { allowTitle = false, allowMove = false, mo
     if (wide && makeRoom(world, obs, wide.bh)) { obs = collectObstacles(world, opts.avoid); r = search(obs); pick = choose(r); }
   }
   if (!pick) pick = r.map((x) => x.any).filter(Boolean).sort((a, z) => a.sc - z.sc)[0];
-  if (!pick) return null;
+  if (!pick || dry) return pick || null;
   setMode(b, pick.mode);
   const m = obs.mallow;
   const tailUp = m && pick.y >= m.bottom - 4 && pick.y - m.bottom < 44;
   const tailDown = m && pick.y + pick.bh <= m.top + m.height * 0.2 && m.top - (pick.y + pick.bh) < 44;
-  const overX = m && pick.x < m.right && pick.x + pick.bw > m.left;
+  const overX = m && pick.x < m.right - m.width * 0.12 && pick.x + pick.bw > m.left + m.width * 0.12;
+  // beside the Mallow (wide screens, short lines): the tail points sideways
+  const overY = m && pick.y < m.bottom && pick.y + pick.bh > m.top;
+  const toLeft = m && overY && !overX && pick.x + pick.bw <= m.left + m.width * 0.12 && m.left - (pick.x + pick.bw) < 44;
+  const toRight = m && overY && !overX && pick.x >= m.right - m.width * 0.12 && pick.x - m.right < 44;
   b.classList.toggle('below', !!(tailUp && overX));
-  b.classList.toggle('no-tail', !((tailUp || tailDown) && overX));
+  b.classList.toggle('tail-r', !!toLeft);
+  b.classList.toggle('tail-l', !!toRight);
+  b.classList.toggle('no-tail', !(((tailUp || tailDown) && overX) || toLeft || toRight));
+  if (m) b.style.setProperty('--tail-y', `${Math.max(18, Math.min(pick.bh - 18, m.top + m.height * 0.42 - pick.y))}px`);
   b.style.left = `${pick.x}px`;
   b.style.top = `${pick.y}px`;
   b.style.setProperty('--tail', `${Math.max(22, Math.min(pick.bw - 22, (m ? m.cx : innerWidth / 2) - pick.x))}px`);
@@ -302,18 +322,39 @@ function sig(world, avoid) {
   return `${m ? [m.left, m.top, m.width].map(q).join(',') : '-'}|${o.map((x) => [x.l, x.t, x.r, x.b].map(q).join(',')).join(';')}`;
 }
 
+/** Joins neighbouring parts back together for as long as they still fit somewhere free. */
+function groupParts(world, parts, opts) {
+  const fits = (t) => {
+    const probe = h('div', { class: 'bubble', 'aria-hidden': 'true' }, opts.who ? h('span', { class: 'who' }, opts.who) : null, t);
+    probe.style.visibility = 'hidden';
+    document.body.append(probe);
+    const p = placeBubble(probe, world, opts, { dry: true, allowTitle: true });
+    probe.remove();
+    return !!p && p.cost === 0;
+  };
+  const out = [];
+  for (let i = 0; i < parts.length;) {
+    let k = parts.length;
+    for (; k > i + 1; k--) if (!(i === 0 && k === parts.length) && fits(parts.slice(i, k).join(' '))) break;
+    out.push(parts.slice(i, k).join(' '));
+    i = k;
+  }
+  return out;
+}
+
 function showBubble(world, text, opts, token) {
   const { who, ms = 3600 } = opts;
   const b = h('div', { class: 'bubble', role: 'status', 'aria-live': 'polite' }, who ? h('span', { class: 'who' }, who) : null, text);
   b.style.visibility = 'hidden';
   document.body.append(b);
-  let pick = placeBubble(b, world, opts);
+  // free space first, then the title band (the prompt dims while it shows)
+  let pick = placeBubble(b, world, opts, { allowTitle: true });
   // a line that fits nowhere is shown a sentence (then a phrase) at a time
-  if (pick && pick.cost + pick.title > 0 && (opts.part || 0) < 2) {
+  if (pick && pick.cost > 0 && (opts.part || 0) < 2) {
     const parts = splitLine(text, true);
-    if (parts) { b.remove(); return { parts }; }
+    if (parts) { b.remove(); return { parts: groupParts(world, parts, opts) }; }
   }
-  if (pick && pick.cost + pick.title > 0) pick = placeBubble(b, world, opts, { allowTitle: true, allowMove: true });
+  if (pick && pick.cost > 0) pick = placeBubble(b, world, opts, { allowTitle: true, allowMove: true });
   b.style.visibility = '';
   currentBubble = b;
   // follow the Mallow (and the pieces) while the line shows
@@ -363,6 +404,22 @@ export function clearBubble({ keepToken = false } = {}) {
   if (!keepToken) sayToken++;
   currentBubble?.remove(); currentBubble = null; dimTitles(false);
   restoreRoom();
+}
+
+/**
+ * Fit the Mallow into the open band between two viewport y's (px). When the
+ * band is too small to show a Mallow worth looking at, it fades out instead
+ * of ghosting under text. Returns whether it is shown.
+ */
+export function fitMallow(world, top, bottom, { maxScale = 1, minPx = 64, x = 50 } = {}) {
+  const band = bottom - top;
+  if (band < minPx) { world.showMallow?.(false); return false; }
+  world.showMallow?.(true);
+  const H = document.getElementById('mallow-layer')?.offsetHeight || 470;
+  const scale = Math.min(maxScale, band / (0.66 * H));
+  if (scale >= 0.35) world.fitBetween(top, bottom, { maxScale, x });
+  else world.place({ x, y: (((top + bottom) / 2 - 0.05 * H * scale) / innerHeight) * 100, scale });
+  return true;
 }
 
 export const wait = (ms) => new Promise((r) => setTimeout(r, ms));

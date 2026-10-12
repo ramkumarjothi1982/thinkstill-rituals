@@ -6,8 +6,13 @@
 //             far it squashes and stretches as a whole), damp (velocity kept
 //             per 1/60 s → how long it wobbles), dMax (deepest squeeze),
 //             maxStretch (a pull slips past this, in body heights)
+//   pop       release rebound gain (default 1): every Mallow pops ≥ 8 % taller
+//             after a full squeeze; heavily damped, soft ones need a bigger kick
+//   specular  tier A highlight gain (default 1)
 //   face(goal, T, rig)   every frame while touched or soothed (T = rig.touch)
-//   on*(mt, info)        gesture moments; return true to replace the default
+//   on*(mt, info)        gesture moments; return true to replace the default.
+//             onRelease gets info.depth (0..1, the squeeze it lets go of); a
+//             reaction's own squash is replaced by the rebound
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -19,6 +24,7 @@ export const TOUCH_PERSONA = {
   // dense and resistant; its static rises with pressure and quiets when slowed
   glitzi: {
     material: mat(0.32, 0.7, 0.15, 0.9, 0.26, 0.3),
+    pop: 1.15,
     face(goal, T, rig) {
       const d = T.depth || 0;
       if (d > 0.01) goal.glitch = lerp(goal.glitch, 0.6 + 1.4 * d, ss(0.02, 0.3, d));
@@ -34,7 +40,7 @@ export const TOUCH_PERSONA = {
       }
     },
     onRelease(mt, { depth }) {
-      if (depth > 0.4) { mt.rig.react('glitchBurst'); return true; }
+      if (depth > 0.4) { mt.rig.react('glitchBurst', { intensity: depth }); return true; }
       return false;
     },
   },
@@ -72,7 +78,7 @@ export const TOUCH_PERSONA = {
     onRelease(mt, { depth }) {
       if (depth < 0.25) return false;
       const rig = mt.rig, b = rig.body;
-      rig.react('release');
+      rig.react('release', { intensity: depth });
       if (b.grounded && !rig.opts.reducedMotion) {
         b.hopV = Math.sqrt(2 * 9.8 * 1.2 * depth * 0.14); b.grounded = false;
       }
@@ -94,7 +100,7 @@ export const TOUCH_PERSONA = {
     },
     onRelease(mt, { depth }) {
       if (depth < 0.2) return false;
-      mt.rig.react('release');
+      mt.rig.react('release', { intensity: depth });
       mt.rig.particles?.burst?.({ kind: 'spark', n: Math.round(6 + 24 * depth) });
       return true;
     },
@@ -104,6 +110,7 @@ export const TOUCH_PERSONA = {
   loomi: {
     material: mat(0.2, 0.55, 0.25, 0.9, 0.3, 0.38),
     flickScale: 0.5,
+    pop: 1.3,
     face(goal, T) {
       if (T.calm > 0.01) goal.float = lerp(goal.float, 0.8, T.calm);
     },
@@ -113,6 +120,8 @@ export const TOUCH_PERSONA = {
   // pillowy; a long hold lulls it to sleep
   noomi: {
     material: mat(0.14, 0.45, 0.4, 0.92, 0.4, 0.4),
+    pop: 1.3,
+    specular: 0.7,
     face(goal, T, rig) {
       const held = T.held || 0;
       if (held > 2.5) {

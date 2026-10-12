@@ -196,3 +196,26 @@ test('server-only lexicon entries are valid regular expressions, and the module 
   const { warmSafety } = await import('../src/safety/index.js');
   assert.equal(typeof warmSafety, 'function');
 });
+
+test('support titles never say "reframe" (jargon the gate bans; the feature is Another Angle)', () => {
+  for (const [level, cat] of [['crisis', 'self-harm'], ['crisis', 'someone-in-danger'], ['care', 'abuse'], ['care', 'violence'], ['care', 'threat'], ['care', 'harassment'], ['care', 'discrimination'], ['care', 'unsafe'], ['care', null]]) {
+    const p = supportPayload(/** @type {any} */ (level), cat, 'lexicon');
+    assert.doesNotMatch(`${p.title} ${p.message} ${p.still_here}`, /reframe/i, `${level}/${cat}`);
+    assert.doesNotMatch(`${p.title} ${p.message}`, /\bAI\b/);
+  }
+});
+
+test('review round 2, further variants: fillers, urges, vanishing, jumping, coercion, family violence, image threats', () => {
+  for (const s of ['took like 20 paracetamol', 'I took way too many pills', "I've taken more pills than I should have", 'I keep wanting to cut again', 'I want to vanish forever', 'I wish I could cease to exist', "I'd be better off gone", "I'm going to jump"]) {
+    assert.deepEqual(checkSafety(s), { level: 'crisis', category: 'self-harm' }, s);
+  }
+  for (const s of ['My friend is going to jump off the bridge', 'My friend says she is going to jump']) assert.equal(checkSafety(s).level, 'crisis', s);
+  for (const [s, cat] of [["He made me do things I didn't want to", 'abuse'], ['A man touched me on the bus', 'harassment'], ['He rubbed himself against me on the train', 'harassment'], ['My dad beats my mum', 'violence'], ['My stepdad hits my mum', 'violence'], ["They said they'd share my nudes", 'threat']]) {
+    assert.deepEqual(checkSafety(s), { level: 'care', category: cat }, s);
+  }
+  for (const s of [
+    'My sister is going to jump on the trampoline', 'I want to cut my hair short', 'I have the urge to cut back on sugar', 'My boss makes me do things I am not paid for',
+    'My coach makes me do things like extra laps', "He hurt my mum's feelings", 'I want to be gone by five', 'I jumped to conclusions again', 'I need to cut down on screen time',
+    'I want to cut ties with her', 'The team would be better off with a new manager',
+  ]) assert.equal(checkSafety(s).level, 'none', s);
+});

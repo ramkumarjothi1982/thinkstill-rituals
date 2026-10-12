@@ -16,8 +16,8 @@
   body.bg-light { --panel: rgba(255, 255, 255, 0.8); --line: rgba(20, 10, 60, 0.14); --text: #1a1238; --text2: rgba(26, 18, 56, 0.72); }
   #stage { position: fixed; inset: 0; }
   .ui { position: fixed; z-index: 5; }
-  #roster { top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 6px; border-radius: 18px;
-    background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); max-width: calc(100vw - 40px); overflow-x: auto; scrollbar-width: none; }
+  #roster { top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 6px; border-radius: 18px;
+    background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); max-width: calc(100vw - 40px); box-sizing: border-box; }
   #roster::-webkit-scrollbar { display: none; }
   #roster button { flex: 0 0 auto; width: 42px; height: 42px; border-radius: 13px; border: 1px solid transparent; background: transparent; padding: 3px; cursor: pointer; }
   #roster button img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
@@ -41,7 +41,7 @@
     color: var(--text2); background: var(--panel); border: 1px solid var(--line); padding: 4px 10px; border-radius: 999px; pointer-events: none; opacity: 0; transition: opacity .3s; }
   #log.on { opacity: 1; }
   @media (max-width: 600px) { #controls { top: calc(max(12px, env(safe-area-inset-top)) + 64px); bottom: auto; } #log { top: auto; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 136px); } }
-  @media (max-width: 360px) { #readout { min-width: 0; font-size: 13px; } #controls button { padding: 0 9px; } }
+  @media (max-width: 360px) { #readout { min-width: 0; font-size: 13px; } #controls button { padding: 0 9px; } #roster { gap: 4px; padding: 5px; } #roster button { width: 38px; height: 38px; } }
 </style>
 </head>
 <body>
@@ -89,6 +89,7 @@ let mt = null;
 let hapticLog = [];
 const haptic = (kind) => { hapticLog.push([performance.now() | 0, kind]); if (hapticLog.length > 40) hapticLog.shift(); import('./src/engine/haptics.js').then((h) => h.haptic(kind)).catch(() => {}); };
 
+// a fresh MallowTouch (tests use this for tier / motion settings)
 async function create() {
   mt?.destroy();
   mt = new MallowTouch(stage, { id: state.id, quality: state.quality, reducedMotion: state.rm, audio: state.audio, haptic });
@@ -98,10 +99,19 @@ async function create() {
   await mt.loaded;
   layout();
   if (state.emotion !== 'neutral') mt.setEmotion(state.emotion, 0.7);
-  for (const b of roster.children) b.setAttribute('aria-pressed', String(b.dataset.id === state.id));
+  markRoster();
   document.getElementById('quality').value = state.quality;
   return mt;
 }
+// the switcher swaps the character in place: same canvases, same WebGL context
+async function switchTo(id) {
+  state.id = id;
+  markRoster();
+  if (!mt) return create();
+  await mt.setMallow(id);
+  return mt;
+}
+function markRoster() { for (const b of roster.children) b.setAttribute('aria-pressed', String(b.dataset.id === state.id)); }
 
 function layout() {
   if (!mt) return;
@@ -120,7 +130,7 @@ for (const id of MALLOW_IDS) {
   b.dataset.id = id;
   b.setAttribute('aria-label', MALLOWS[id].name);
   b.innerHTML = `<img alt="" src="${MALLOWS[id].file}">`;
-  b.onclick = () => { state.id = id; create(); };
+  b.onclick = () => { switchTo(id); };
   roster.append(b);
 }
 document.getElementById('quality').onchange = (e) => { state.quality = e.target.value; mt?.setQuality(state.quality); };
@@ -167,7 +177,7 @@ function tick() {
 }
 requestAnimationFrame(tick);
 
-window.__touch = { mt: null, create, state, events: [], hapticLog: () => hapticLog, MALLOW_IDS,
+window.__touch = { mt: null, create, switchTo, state, events: [], hapticLog: () => hapticLog, MALLOW_IDS,
   set: async (o) => { Object.assign(state, o); await create(); return mt.stats.tier; } };
 create();
 </script>

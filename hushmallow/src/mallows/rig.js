@@ -250,7 +250,8 @@ export class MallowRig {
     if (imp.spin && !rm) b.spin = imp.spin;
     if (imp.glitch) { b.glitchBurst = Math.max(b.glitchBurst, rm ? 0 : imp.glitch); }
     if (r.fx && this.opts.particles) this.particles.burst(r.fx, opts);
-    if (r.sound) this.opts.audio?.play?.(this.id, r.sound, { intensity: this.intensity });
+    // opts.intensity: e.g. how deep the squeeze was (MallowTouch release)
+    if (r.sound) this.opts.audio?.play?.(this.id, r.sound, { intensity: Number.isFinite(opts.intensity) ? clamp(opts.intensity, 0, 1) : this.intensity });
     if (r.haptic) this._haptic(r.haptic);
     if (r.blink) this._blinkNow();
     this._emit('react', { kind });
@@ -797,12 +798,18 @@ export class MallowRig {
     return { x, y, w: clamp(Math.ceil(x1 * q) - x, 1, W - x), h: clamp(Math.ceil(y1 * q) - y, 1, H - y) };
   }
 
-  // the smallest skin rect covering the face parts that changed since the last draw
+  // the smallest skin rect covering the face parts that changed since the last
+  // draw; this._dirtyRects lists the changed parts themselves (each side's eye,
+  // brow and cheek, the mouth, tears), merged where they overlap — the skin is
+  // redrawn and uploaded only inside those
   _dirtyFaceRect(P) {
     if (!this._partBoxes || this._partQ !== this.q) {
       this._partQ = this.q;
-      this._partBoxes = Object.entries(facePartsSrc(this.mallow)).map(([k, r]) => [k, r]);
-      this._partSig = {};
+      this._partBoxes = facePartBoxesSrc(this.mallow);
+      this._partSig = [];
+      this._srcPool = this._partBoxes.map(() => [0, 0, 0, 0]);
+      this._rectPool = this._partBoxes.map(() => ({ x: 0, y: 0, w: 0, h: 0 }));
+      this._dirtyRects = [];
     }
     const anim = {
       eyes: this.id === 'zuzu' || P.sparkle > 1.05 || P.heartEyes > 0.01 || P.wet > 0.05,
@@ -810,14 +817,36 @@ export class MallowRig {
       wet: P.tears > 0.01 || P.sweat > 0.01,
     };
     const u = box();
-    let any = false;
-    for (const [k, r] of this._partBoxes) {
+    const src = [];
+    for (let i = 0; i < this._partBoxes.length; i++) {
+      const [k, r] = this._partBoxes[i];
       let sig = k === 'eyes' ? P.blink.toFixed(2) : '';
       for (const p of PART_KEYS[k]) sig += '|' + P[p].toFixed(3);
-      if (anim[k] || sig !== this._partSig[k]) { grow(u, ...r); any = true; }
-      this._partSig[k] = sig;
+      if (anim[k] || sig !== this._partSig[i]) {
+        grow(u, ...r);
+        const b = this._srcPool[src.length]; b[0] = r[0]; b[1] = r[1]; b[2] = r[2]; b[3] = r[3];
+        src.push(b);
+      }
+      this._partSig[i] = sig;
     }
-    return any ? this._skinBox(u) : null;
+    // merge parts that overlap (no pixel is cleared or uploaded twice)
+    for (let merged = true; merged;) {
+      merged = false;
+      for (let i = 0; i < src.length && !merged; i++) {
+        for (let j = i + 1; j < src.length; j++) {
+          const a = src[i], b = src[j];
+          if (a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]) { grow(a, ...b); src.splice(j, 1); merged = true; break; }
+        }
+      }
+    }
+    const out = this._dirtyRects;
+    out.length = 0;
+    for (let i = 0; i < src.length; i++) {
+      const sb = this._skinBox(src[i]), o = this._rectPool[i];
+      o.x = sb.x; o.y = sb.y; o.w = sb.w; o.h = sb.h;
+      out.push(o);
+    }
+    return src.length ? this._skinBox(u) : null;
   }
 
   /** Glitzi's energised glitch lines for a shader (opts.shaderGlitch): per row
@@ -873,13 +902,17 @@ export class MallowRig {
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     if (partial) {
-      const r = dirty;
-      ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
-      ctx.clearRect(r.x, r.y, r.w, r.h);
-      this.skinRect = r;
+      const rs = restMoved ? [dirty] : this._dirtyRects;
+      ctx.beginPath();
+      for (const r of rs) ctx.rect(r.x, r.y, r.w, r.h);
+      ctx.clip();
+      for (const r of rs) ctx.clearRect(r.x, r.y, r.w, r.h);
+      this.skinRect = dirty;
+      this.skinRects = rs;
     } else {
       ctx.clearRect(0, 0, this.skin.width, this.skin.height);
       this.skinRect = { x: 0, y: 0, w: this.skin.width, h: this.skin.height, full: true };
+      this.skinRects = null;
     }
     ctx.setTransform(q, 0, 0, q, 0, 0);
     ctx.imageSmoothingQuality = 'high';
@@ -971,6 +1004,30 @@ export function facePartsSrc(m) {
   }
   return parts;
 }
+/** The same boxes, finer: [[group, box], …] with each side's eye, brow and
+ *  cheek on its own (for per-part dirty rects). */
+export function facePartBoxesSrc(m) {
+  const all = facePartsSrc(m), f = m.face, out = [];
+  const clampBox = (r) => [Math.max(0, r[0]), Math.max(0, r[1]), Math.min(m.size[0], r[2]), Math.min(m.size[1], r[3])];
+  for (const side of ['L', 'R']) {
+    const e = f.eyes[side];
+    const rx = e.rx || e.hw, ry = e.ry || e.hw * 0.7, lw = e.lw || 10;
+    const hx = Math.max(rx * 1.45, (e.hw || 0) * 1.15) + lw, hy = ry * 1.5 + lw;
+    out.push(['eyes', clampBox([e.x - hx - 8, e.y - hy - 8, e.x + hx + 8, e.y + hy + 8])]);
+    const b = f.brows?.[side];
+    if (b && all.brows) {
+      const lift = ry * 1.2 + b.lw;
+      out.push(['brows', clampBox([Math.min(b.p0[0], b.p1[0]) - b.lw - 8, Math.min(b.p0[1], b.p1[1], b.c[1]) - lift - 8,
+        Math.max(b.p0[0], b.p1[0]) + b.lw + 8, Math.max(b.p0[1], b.p1[1], b.c[1]) + lift * 0.6 + 8])]);
+    }
+    const c = f.cheeks?.[side];
+    if (c && all.cheeks) out.push(['cheeks', clampBox([c[0] - c[2] * 1.55 - 8, c[1] - c[2] * 1.55 - 8, c[0] + c[2] * 1.55 + 8, c[1] + c[2] * 1.55 + 8])]);
+  }
+  if (all.mouth) out.push(['mouth', all.mouth]);
+  if (all.wet) out.push(['wet', all.wet]);
+  return out;
+}
+
 function box() { return [Infinity, Infinity, -Infinity, -Infinity]; }
 function grow(r, x0, y0, x1, y1) { r[0] = Math.min(r[0], x0); r[1] = Math.min(r[1], y0); r[2] = Math.max(r[2], x1); r[3] = Math.max(r[3], y1); }
 

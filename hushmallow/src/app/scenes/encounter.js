@@ -1,6 +1,6 @@
 // MEET A MALLOW — the right Mallow arrives, wears the feeling on its face,
 // says something real, and offers one ritual (with a plain reason why).
-import { h, iconBtn, icon, say, clearBubble, wait } from '../ui.js';
+import { h, iconBtn, icon, say, clearBubble, wait, fitMallow } from '../ui.js';
 import { faceMix } from '../../engine/interpret.js';
 import { getEmotion, getFamily } from '../../data/emotions.js';
 import { MALLOWS } from '../../mallows/registry.js';
@@ -59,6 +59,8 @@ export default function encounter(app) {
   if (!photoSession.count) warmMallowCards();
 
   const card = h('div', { class: 'card enc-card' });
+  let voiceEl = null;          // the Mallow's line, inside the card when there's no room to show the Mallow
+  let mallowShown = true;
   const ultraRow = h('div');
   const el = h('div', { style: { display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', scrollbarWidth: 'none' } },
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' }),
@@ -80,8 +82,10 @@ export default function encounter(app) {
     const r = o.item;
     const lead = MALLOWS[r.mallows[0]];
     const mins = Math.max(1, Math.round(r.durationSec / 60));
+    voiceEl = h('p', { class: 'enc-voice', hidden: true });
     card.replaceChildren(
       h('div', { class: 'eyebrow', style: { color: 'var(--accent)' } }, `${lead.name} has a ritual for that`),
+      voiceEl,
       h('h3', { class: 't-world', style: { marginTop: '8px' } }, r.name),
       h('p', {}, r.purpose),
       h('div', { class: 'reasons' }, ...o.reasons.filter((x) => !/minute/.test(x)).map((x) => h('span', {}, x)), h('span', {}, `About ${mins} min`),
@@ -99,18 +103,23 @@ export default function encounter(app) {
     await Promise.all([world.setRealm(lead.realm, { emotion: Object.keys(faceMix(input.emotions))[0], intensity: input.intensity }), world.setMallow(leadId)]);
     world.setEmotion(faceMix(input.emotions), Math.min(1, input.intensity * 1.05));
     render();
-    fit();
+    await fit();
     await wait(850); // let the Mallow settle into place before it speaks
-    say(world, encounterLine(leadId, family), { who: lead.name, ms: 3600 });
+    const line = encounterLine(leadId, family);
+    if (mallowShown) say(world, line, { who: lead.name, ms: 3600 });
+    else if (voiceEl) { voiceEl.textContent = `“${line}”`; voiceEl.hidden = false; }
   }
 
-  // keep the Mallow's face in view: fit it into the space above the card
+  // keep the Mallow's face in view: fit it into the space above the card.
+  // On short phones there is no such space: the Mallow steps aside (it never
+  // ghosts under the card's text) and its line is written into the card.
   function fit() {
-    requestAnimationFrame(() => {
+    return new Promise((resolve) => requestAnimationFrame(() => {
       const top = el.querySelector('.topbar')?.getBoundingClientRect().bottom ?? 60;
       const cardTop = card.getBoundingClientRect().top;
-      if (cardTop > top + 60) world.fitBetween(top + 6, cardTop - 4, { maxScale: 0.92 });
-    });
+      mallowShown = fitMallow(world, top + 6, cardTop - 6, { maxScale: 0.92, minPx: 76 });
+      resolve();
+    }));
   }
 
   function begin(o) {
@@ -138,6 +147,6 @@ export default function encounter(app) {
       await deal();
       await show();
     },
-    leave() { clearBubble(); },
+    leave() { clearBubble(); world.showMallow(true); },
   };
 }

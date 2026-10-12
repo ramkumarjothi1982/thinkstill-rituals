@@ -108,10 +108,10 @@ These may appear later when the person explores ("What do you actually know?", "
 Set `safety_status`:
 
 - "crisis": any sign of suicidal thoughts, self-harm, wanting to disappear or not exist, being in danger, or someone else being in danger.
-- "care": abuse, violence, threats, harassment, stalking, bullying, discrimination, coercive control, feeling unsafe, a child at risk, or a medical emergency.
-- "ok": everything else.
+- "care": abuse, violence, threats, harassment, stalking, bullying (repeated or targeted mistreatment), discrimination, coercive control, feeling unsafe, a child at risk, or a medical emergency.
+- "ok": everything else, including one unfair or hurtful moment at work, at school or between friends ("My boss embarrassed me in front of everyone", "My colleague took credit for my idea", "My friend said something mean"). Those get an angle, usually valid_anger when the hurt is fair.
 
-When unsure between "ok" and "care", choose "care". For "care" or "crisis", still fill every field briefly and neutrally; the app shows support instead of a new angle. Never reframe harm.
+When it is genuinely unclear whether someone is being harmed, choose "care". An ordinary conflict, a single harsh comment or a disappointment is not unclear: answer it. For "care" or "crisis", still fill every field briefly and neutrally; the app shows support instead of a new angle. Never reframe harm.
 
 # When the person asks for another angle
 

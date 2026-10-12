@@ -100,10 +100,21 @@ export function supportPayload(level, category, source) {
   if (level === 'crisis') {
     const other = category === 'someone-in-danger';
     const c = other ? HARM_COPY.crisisOther : HARM_COPY.crisis;
-    return { level, category: other ? 'someone-in-danger' : 'self-harm', title: c.title, message: c.message, resources: c.resources, still_here: HARM_COPY.stillHere, source };
+    return { level, category: other ? 'someone-in-danger' : 'self-harm', title: titleFor(level, c.title), message: c.message, resources: c.resources, still_here: HARM_COPY.stillHere, source };
   }
   const copy = HARM_COPY.care[category || ''] || GENERAL_CARE;
-  return { level, category: category && copy !== GENERAL_CARE ? category : 'general', title: copy.title, message: copy.message, resources: HARM_COPY.careResources, still_here: HARM_COPY.stillHere, source };
+  return { level, category: category && copy !== GENERAL_CARE ? category : 'general', title: titleFor(level, copy.title), message: copy.message, resources: HARM_COPY.careResources, still_here: HARM_COPY.stillHere, source };
+}
+
+// "Reframe" is jargon the gate never lets the model say, and the feature is
+// called Another Angle. Until the shared copy is reworded (asked of the
+// Hushfold shell, which owns src/data/safety-lexicon.js), titles that still
+// say "reframe" are replaced here; once they change, the shared titles are
+// used as they are.
+const SERVER_TITLES = { crisis: 'Let’s pause Another Angle', care: 'This one needs real support' };
+/** @param {'care' | 'crisis'} level @param {string} title */
+function titleFor(level, title) {
+  return /reframe/i.test(title) ? SERVER_TITLES[level] : title;
 }
 
 /**

@@ -5,15 +5,16 @@
 //   POST /v1/angle    one Another Angle scene (or support, or a fallback signal)
 //   POST /v1/feedback which of the four feedback buttons was pressed (metadata only)
 //
-// Order of checks on /v1/angle: HTTPS → CORS allowlist → per-network rate
-// limit (IPv4 address or IPv6 /64, hashed) → bearer token → body size/type →
-// strict validation → safety pre-check (no quota used for crisis/care) →
+// Order of checks on /v1/angle: HTTPS → CORS allowlist → body size/type →
+// safety pre-check on the text (crisis/care get support straight away: no
+// token, no burst limit, no quota, no model) → per-network rate limit (IPv4
+// address or IPv6 /64, hashed) → bearer token → strict validation →
 // emoji-only text ("unclear", no quota) → per-device daily quota → global
 // daily spend reservation → pipeline → spend settled → metadata log.
 
 import { readConfig } from './config.js';
 import { json, error, corsHeaders, preflight, readJson, nextUtcMidnight, utcDay } from './http.js';
-import { validateAngleRequest, validateSessionRequest, validateFeedbackRequest, ANGLE_BODY_MAX_BYTES, SESSION_BODY_MAX_BYTES } from './validate.js';
+import { validateAngleRequest, validateSessionRequest, validateFeedbackRequest, cleanText, ANGLE_BODY_MAX_BYTES, SESSION_BODY_MAX_BYTES } from './validate.js';
 import { checkSafety, supportPayload } from './safety/index.js';
 import { runAngle, hasWords, PROMPT_VERSION, SCHEMA_VERSION } from './pipeline.js';
 import { signToken, verifyToken, keyedHash } from './auth/tokens.js';
@@ -174,6 +175,20 @@ export function createApp(options) {
     /** @param {Record<string, unknown>} f */
     const logEvt = (f) => logger.event({ evt: 'angle', prompt_version: PROMPT_VERSION, provider: cfg.provider, latency_ms: now() - t0, ...f });
 
+    // The body is read first so the safety pre-check can run before anything
+    // that could turn a person in crisis away (a burst limit, an expired
+    // token, a missing setting). The check is cheap, uses no quota and
+    // returns only the authored support copy.
+    const body = await readJson(request, ANGLE_BODY_MAX_BYTES);
+    const raw = body.ok && body.value && typeof body.value === 'object' ? /** @type {Record<string, unknown>} */ (body.value).text : null;
+    if (typeof raw === 'string') {
+      const early = checkSafety(cleanText(raw));
+      if (early.level === 'crisis' || early.level === 'care') {
+        logEvt({ status: early.level, http: 200, safety_level: early.level, safety_source: 'lexicon', text_len_bucket: lengthBucket(raw.length) });
+        return json(200, { ...base, status: early.level, scene: null, support: supportPayload(early.level, early.category, 'lexicon'), fallback: null, keep_support_close: true }, cors);
+      }
+    }
+
     if (!cfg.signingKeys.length) return error(503, 'not_configured', 'TOKEN_SIGNING_KEY is not set.', cors);
     const ip = await ipKey(request, cfg);
     if (!(await allow(env.ANGLE_IP_LIMITER, fallbackAngleLimiter, ip))) {
@@ -190,7 +205,6 @@ export function createApp(options) {
     }
     const subject = /** @type {any} */ (verified).payload.sub;
 
-    const body = await readJson(request, ANGLE_BODY_MAX_BYTES);
     if (!body.ok) { logEvt({ status: 'invalid', http: body.status, err: body.code }); return error(body.status, body.code, body.message, cors); }
     const v = validateAngleRequest(body.value);
     if (!v.ok) { logEvt({ status: 'invalid', http: 400, err: v.code }); return error(400, v.code, v.message, cors, { field: v.field }); }
@@ -200,7 +214,8 @@ export function createApp(options) {
       chosen_emotion: input.emotion, intention: input.intention, previous: input.previous.length, text_len_bucket: lengthBucket(input.text.length),
     };
 
-    // Crisis and care never reach the model and never use quota.
+    // Crisis and care never reach the model and never use quota (checked
+    // again on the validated text, which is what the model would see).
     const safety = checkSafety(input.text);
     if (safety.level === 'crisis' || safety.level === 'care') {
       logEvt({ ...common, status: safety.level, http: 200, safety_level: safety.level, safety_source: 'lexicon' });
@@ -245,13 +260,17 @@ export function createApp(options) {
     }
 
     let result;
+    // Usage is collected as each model call returns, so an exception later in
+    // the pipeline still settles what was actually spent.
+    /** @type {import('./cost.js').UsagePart[]} */
+    const usage = [];
     try {
       result = await runAngle(input, {
         provider, systemPrompt: options.systemPrompt, maxTokens: cfg.maxTokens, attemptTimeoutMs: cfg.attemptTimeoutMs,
-        deadlineMs: cfg.deadlineMs, userTag: await keyedHash(cfg.hashKey, `tag:${subject}`, 12), now,
+        deadlineMs: cfg.deadlineMs, userTag: await keyedHash(cfg.hashKey, `tag:${subject}`, 12), now, usage,
       });
     } catch (e) {
-      await defer(ctx, ledger.settle('global', 'spend', day, reserve, 0));
+      await defer(ctx, ledger.settle('global', 'spend', day, reserve, costMicros(usage)));
       await ledger.give(devName, 'angles', day);
       quotaOut.remaining += 1;
       logEvt({ ...common, status: 'fallback', fallback_reason: 'provider', err: 'exception', http: 200 });

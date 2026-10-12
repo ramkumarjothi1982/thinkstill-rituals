@@ -96,13 +96,18 @@ export function validateAngleRequest(body) {
 }
 
 /**
+ * device_id: a random id the app makes once and keeps (for example 22+
+ * base64url characters from crypto.getRandomValues). The server never stores
+ * it; it is hashed with IP_HASH_KEY into the session subject, so a new
+ * session for the same device keeps the same daily allowance.
  * @param {unknown} body
- * @returns {{ ok: true, value: { invite: string | null, signedTransaction: string | null, platform: string | null } } | Invalid}
+ * @returns {{ ok: true, value: { invite: string | null, signedTransaction: string | null, platform: string | null, deviceId: string | null } } | Invalid}
  */
 export function validateSessionRequest(body) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return bad('invalid_body', '', 'Body must be a JSON object.');
   const b = /** @type {Record<string, unknown>} */ (body);
-  for (const k of Object.keys(b)) if (!['invite', 'signed_transaction', 'platform', 'app_version'].includes(k)) return bad('unknown_field', k.slice(0, 40), `Unknown field "${k.slice(0, 40)}".`);
+  for (const k of Object.keys(b)) if (!['invite', 'signed_transaction', 'platform', 'app_version', 'device_id'].includes(k)) return bad('unknown_field', k.slice(0, 40), `Unknown field "${k.slice(0, 40)}".`);
+  if (b.device_id !== undefined && (typeof b.device_id !== 'string' || !/^[A-Za-z0-9_-]{16,128}$/.test(b.device_id))) return bad('invalid_device_id', 'device_id', 'device_id must be 16–128 letters, digits, "-" or "_" (a random id kept on the device).');
   if (b.invite !== undefined && (typeof b.invite !== 'string' || b.invite.length < 1 || b.invite.length > 64)) return bad('invalid_invite', 'invite', 'invite must be a string of at most 64 characters.');
   if (b.signed_transaction !== undefined && (typeof b.signed_transaction !== 'string' || b.signed_transaction.length > 16000 || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(b.signed_transaction))) {
     return bad('invalid_transaction', 'signed_transaction', 'signed_transaction must be a compact JWS.');
@@ -115,6 +120,7 @@ export function validateSessionRequest(body) {
       invite: typeof b.invite === 'string' ? b.invite : null,
       signedTransaction: typeof b.signed_transaction === 'string' ? b.signed_transaction : null,
       platform: typeof b.platform === 'string' ? b.platform : null,
+      deviceId: typeof b.device_id === 'string' ? b.device_id : null,
     },
   };
 }

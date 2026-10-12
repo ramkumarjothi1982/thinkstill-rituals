@@ -24,7 +24,7 @@ const PILLS = R`(?:pills|tablets|meds|medication|medicine|painkillers|paracetamo
 // More than a dose: "a load of", "a handful of", "the whole packet of", "30".
 const PILL_QTY = R`(?:all|all of|a load of|loads of|a lot of|lots of|a handful of|handfuls of|a bunch of|too many|(?:a|one|a whole|the whole|the entire|an entire) (?:packet|pack|box|bottle|strip|tub|blister pack)s? of|(?:two|three|four|five|several|a few|some) (?:packets|packs|boxes|bottles|strips) of|[1-9]\d|\d{3}|twenty|thirty|forty|fifty|sixty|a hundred)`;
 const TOOK = R`(?:took|take|taking|have taken|has taken|had taken|'ve taken|'d taken|swallow(?:ed|ing|s)?|have swallowed|'ve swallowed|downed|necked)`;
-const TAKE_PILLS = R`${TOOK} (?:just )?${PILL_QTY} (?:of )?(?:my |the |those |these |her |his |their |some |mum'?s |mom'?s |dad'?s )?${PILLS}\b`;
+const TAKE_PILLS = R`${TOOK} (?:just )?(?:like |about |around |maybe |nearly |over |more than |at least |way |far )?${PILL_QTY} (?:of )?(?:my |the |those |these |her |his |their |some |mum'?s |mom'?s |dad'?s )?${PILLS}\b`;
 
 // People (not phones, plants or feelings) for third-person patterns.
 const PEOPLE = R`(?:friend|best friend|bestie|mate|partner|boyfriend|girlfriend|husband|wife|ex|bf|gf|fianc[eé]e?|mum|mom|mam|dad|mother|father|parent|sister|brother|sibling|son|daughter|child|kid|cousin|niece|nephew|aunt|auntie|uncle|nan|gran|grandma|grandad|granddad|grandpa|flatmate|housemate|roommate|classmate|colleague|student|teenager|neighbou?r)`;
@@ -60,17 +60,23 @@ export const EXTRA_LEXICON = {
     // Medicines: what has happened or is about to.
     R`\b${TAKE_PILLS}`,
     R`\b(?:i|i'?ve|i have|i just) (?:just |nearly |almost )?od'?(?:d|ed)\b`,
+    R`\b${TOOK} (?:way |far |a lot )?more ${PILLS} than (?:i should|i'?m supposed to|i was supposed to|it says|the (?:box|packet|label) says|i'?m meant to|i was meant to)`,
     R`\b(?:the|my|all the|all my|all of my) ${PILLS} (?:are )?(?:in front of me|lined up|counted out|ready)\b`,
     R`\b(?:stockpil\w*|hoard(?:ed|ing)?|sav(?:ed|ing) up) (?:up )?(?:all )?(?:of )?(?:my |the |some |those |these )?${PILLS}\b`,
     // Cutting and other self-harm, in the first person.
     R`\b(?:i(?:'ve| have| had)? (?:just |now |recently |really )?(?:started|start|been|keep|kept|begun|began|gone back to|went back to|am|was)|i'?m|i am|i was|i'?ve been|started|keep|been|(?:back|went back|gone back|relapsed) (?:to|into|with)) (?:secretly |still |really |badly |properly )?cutting(?: myself)?(?: again)?${CUT_TAIL}`,
     R`(?:^|[.!?;]\s*)cutting (?:myself )?again\b`,
+    R`\b(?:want|wanting|wanted|urge|urges|tempted|need|needing) to cut(?: myself)?(?: again)?(?=\s*(?:$|[.,!?;:)…]|again\b|myself\b|and\b|but\b|so\b|when\b|because\b|tonight\b|right now\b))`,
     R`\b(?:cut|burned|burnt|hit|scratched|punched|bit|starved|bruised) myself (?:again|on purpose|deliberately|intentionally|until|till|to (?:feel|cope|punish|stop|forget|calm))\b`,
     // Not existing, not having been born.
     R`\b(?:want|wanna|wish i could|would rather|i'?d rather|rather|need|prefer) (?:to )?(?:just )?(?:not|never) (?:exist|be alive|have been born|wake up(?! early| at| before| so| in time| for| till| until| on time| when))\b`,
     R`\b(?:want|wanna|wish i could) (?:to )?(?:just )?(?:not|never) (?:be here|be around) (?:any ?more|at all|for good|forever|ever again)\b`,
     R`\b(?:want|wanna|wish i could|need) (?:to )?(?:just )?stop (?:existing|being alive|${LIVING})\b`,
     R`\bwish i (?:didn'?t|did not) exist\b`,
+    R`\b(?:want|wanna|wish i could|need) (?:to )?(?:just )?(?:vanish|be gone|disappear) (?:forever|for good|permanently|for ever)\b`,
+    R`\bcease to exist\b`,
+    R`\b(?:i'?d|i would|i'?m|i am|everyone'?d|everyone would|they'?d|they would) be better off (?:gone|not here|not alive|not around|not existing|if i (?:was|were) gone)\b`,
+    R`\bi'?m (?:going to|gonna|about to|ready to|thinking (?:of|about)) jump(?:ing)?(?= *(?:$|[.,!?;]|off\b|from\b|in front\b|tonight\b))`,
     R`\bwish (?:i'?d|i had|i) (?:never|not) (?:been |be )?born\b`,
     R`\bshould(?: have|'ve) never been born\b`,
     R`\bshould (?:never have|never'?ve|have never|'ve never) been born\b`,
@@ -112,6 +118,7 @@ export const EXTRA_LEXICON = {
     R`\b${SOMEONE}(?: (?:says|said|told me|keeps saying)(?: that)?(?: (?:she|he|they))?)? (?:doesn'?t|does not|don'?t|do not|no longer|didn'?t|did not) want(?:s)? to (?:${LIVING}|be alive|be here any ?more|exist|wake up|go on)\b`,
     R`\b${SOMEONE}(?: has| have| had|'s| is| was)? (?:just )?overdosed\b`,
     R`\b${SOMEONE}(?:'s| is| has been| was| keeps| started| has started)? self[- ]?harm\w*`,
+    R`\b${SOMEONE}(?: (?:says|said|told me|keeps saying|texted)(?: that)?(?: (?:she|he|they))?)?(?:'s| is| are|'re| was| were)? (?:going to|gonna|about to|threatening to|planning to) jump(?= *(?:$|[.,!?;]|off\b|from\b|in front\b|tonight\b))`,
     // Self-harm by someone else.
     // Habitual or deliberate forms only: "cut herself a slice", "cut himself shaving" are not this.
     R`\b(?:cuts|cutting|burns|burning|starves|starving|punishes|punishing) (?:himself|herself|themselves|themself)\b`,
@@ -136,6 +143,7 @@ export const EXTRA_LEXICON = {
       R`\btouch(?:es|ed|ing)? me (?:inappropriately|there|down there|in places|in my private|where i (?:don'?t|didn'?t) want|under my|between my|on my (?:private|privates|chest|breasts?|boobs|bum|bottom|thighs?|crotch|genitals))`,
       R`\b(?:touches|touched|comes into my room and touches) me (?:at night|in bed|in my bed|in my room|when i'?m asleep|when i was asleep|while i(?:'m| am| was) (?:asleep|sleeping)|when (?:no one|nobody|mum|mom|dad)(?:'s| is)? (?:around|home|looking|out))\b`,
       R`\bforced (?:himself|herself|themselves) on me\b`,
+      R`\b(?:he|she|they|my ${PARTNER}|my (?:uncle|step-?dad|step-?father|step-?mum|step-?mom|step-?brother|cousin|neighbou?r|babysitter|(?:mum|mom|dad)'?s (?:boyfriend|girlfriend|partner|friend)|family friend))(?: \w+)? (?:made|makes|forced|forces|pressured|pressures|pushed|pushes) me (?:to )?(?:do|doing) (?:things|stuff)(?: \w+){0,2} (?:i|that i) (?:didn'?t|did not|don'?t|do not) want\b`,
       R`\b(?:locks?|locked|locking) me (?:in|up in) (?:the|my|a|his|her|their) (?:room|bedroom|house|flat|cupboard|bathroom|car|shed|garage)\b`,
       R`\b(?:touches|touched|touching) me and i (?:hate|don'?t like|do not like|feel sick|felt sick|can'?t say no|froze|freeze|didn'?t want)\b`,
     ],
@@ -143,15 +151,20 @@ export const EXTRA_LEXICON = {
       R`\bmy (?:step-?(?:dad|mum|mom|father|mother|brother|sister)|uncle|aunt|auntie|cousin|grand(?:ad|dad|pa|father|ma|mother|mum)|nan|gran|carer|foster (?:dad|mum|mom|father|mother|parent)|coach|teacher|ex-?(?:boyfriend|girlfriend|husband|wife|partner)|(?:mum|mom|dad)'?s (?:boyfriend|girlfriend|partner|husband|wife))(?: has| had)? (?:hit|hits|punched|punches|kicked|kicks|slapped|slaps|choked|chokes|strangled|strangles|beat|beats|shoved|shoves|smacked|smacks|attacked|attacks|grabbed|grabs|burns|burned|burnt|whips|whipped|belts|belted) me\b`,
       R`\b${SOMEONE}(?: (?:sometimes|often|always|still|usually|occasionally|even|also|then|just|literally|actually|has|had|keeps|kept|has been|started|again))+ (?:hit(?:s|ting)?|punch(?:es|ed|ing)?|kick(?:s|ed|ing)?|slap(?:s|ped|ping)?|chok(?:es|ed|ing)|strangl(?:es|ed|ing)|beat(?:s|ing)?|shov(?:es|ed|ing)|smack(?:s|ed|ing)?) me\b`,
       R`\b(?:put|puts|had|has|wrapped) (?:his|her|their) hands? (?:round|around) my (?:neck|throat)\b`,
+      // Violence at home towards someone else in the family.
+      R`\b(?:hits|hit|beats|beat|punches|punched|kicks|kicked|strangles|strangled|chokes|choked|slaps|slapped|batters|battered) (?:my|our) (?:mum|mom|mother|dad|father|sister|brother|nan|gran|grandma|little brother|little sister)\b(?!'s)`,
     ],
     harassment: [
       R`\b(?:keeps?|kept|keep on|always) calling me (?:names|\w+ names)\b`,
       R`\b(?:keeps?|kept) touching (?:me|my (?:shoulder|back|leg|legs|hair|waist|arm|knee|bum|bottom|hand|neck))\b`,
       R`\bgrop(?:es|ed|ing) me\b`,
+      R`\b(?:a|an|some|this|that|the) (?:older )?(?:man|guy|woman|stranger|bloke|boy|lad|girl)(?: \w+){0,3} (?:touched|groped|grabbed|rubbed (?:himself |herself )?(?:up )?against|felt) me\b(?! on the (?:shoulder|arm) (?:to|and said)\b)`,
+      R`\brubbed (?:himself|herself|themselves) (?:up )?against me\b`,
       R`\b(?:asks?|asked|asking|keeps asking|kept asking|pressur\w+ me) (?:me )?(?:for|to send(?: him| her| them)?) (?:nudes|naked (?:pics|photos|pictures)|pics of my body)\b`,
     ],
     threat: [
       R`\bthreat(?:en|ened|ening|ens) (?:my|us)\b`,
+      R`\b(?:'d|would|will|'ll|going to|gonna) (?:leak|share|post|send|show|spread) (?:my|the) (?:nudes|naked (?:photos|pictures|pics|videos)|intimate (?:photos|pictures|videos)|private (?:photos|pictures|videos))\b`,
       R`\b(?:said|says|told me) (?:he|she|they)(?:'d| would| will|'ll| is going to|'s going to) (?:hurt|hit|kill|beat) me if i (?:leave|left|tell|told|go|went|try to leave|report|call|speak)\b`,
       R`\b(?:hurt|hit|kill|beat) me if i (?:leave|try to leave|go to the police|report (?:him|her|them|it)|call the police)\b`,
     ],
