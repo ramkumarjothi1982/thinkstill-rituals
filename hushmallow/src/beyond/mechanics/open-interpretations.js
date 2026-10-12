@@ -97,7 +97,7 @@ export function mount(ctx) {
       const a = phase === 'closed' ? -Math.PI + 0.22 + i * 0.6 : -Math.PI / 2 + (i * TAU) / n + (n === 4 ? Math.PI / 4 : 0);
       b.hx = cx + Math.cos(a) * rx; b.hy = cy + Math.sin(a) * ry;
     });
-    if (phase === 'closed') { guess.hx = thought.hx + R * 0.95; guess.hy = thought.hy - R * 0.55; }
+    if (phase === 'closed') { guess.hx = thought.hx + R * 1.15; guess.hy = thought.hy - R * 0.5; }
   }
   homes();
   if (rm()) for (const b of [thought, guess, ...buds]) { b.x = b.hx; b.y = b.hy; }
@@ -197,7 +197,8 @@ export function mount(ctx) {
       b.tag.at(b.x, up ? b.y - b.r * 1.08 - 4 : b.y + b.r * 1.08 + 4, up ? 'top' : 'bottom', clamp((b.open - 0.6) * 2.5)).own(b.x, b.y);
     }
     const gUp = guess.y < thought.y - R * 0.3 && phase !== 'closed';
-    tags.guessL.at(guess.x, guess.y - guess.r * 1.15 - 4, 'top', phase === 'closed' ? 1 : 0).own(guess.x, guess.y);
+    // the name starts over the guess and reads away to the right, away from the closed buds on the left
+    tags.guessL.at(guess.x - guess.r * 0.6, guess.y - guess.r * 1.15 - 4, 'leftTop', phase === 'closed' ? 1 : 0).own(guess.x, guess.y);
     tags.guessW.at(guess.x, gUp ? guess.y - guess.r * 1.08 - 4 : guess.y + guess.r * 1.08 + 4, gUp ? 'top' : 'bottom', phase !== 'closed' ? 1 : 0).own(guess.x, guess.y);
     tags.words?.at(thought.x, thought.y + R * 1.08 + 6, 'bottom', phase === 'closed' ? 1 : 0.0);
     return true;

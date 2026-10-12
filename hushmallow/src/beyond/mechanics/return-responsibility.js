@@ -73,7 +73,8 @@ export function mount(ctx) {
     const pr = G.pr = clamp(Math.min(A.w * 0.12, A.h * 0.15), 28, 44);
     // every bowl carries its name above it (below would put the side names beside the pile), so the side two
     // sit low enough for their names to clear the top two
-    const yTop = A.y + 36 + pr * 0.45, ySide = A.y + Math.max(A.h * 0.44, 82 + pr * 1.45);
+    // (far enough below the top pair that a side name is always nearer its own bowl than the one above it)
+    const yTop = A.y + 38 + pr * 0.45, ySide = A.y + Math.max(A.h * 0.46, 120 + pr * 0.9);
     G.pos[0].x = A.x + pr + 12; G.pos[0].y = ySide;
     G.pos[1].x = A.x + A.w * 0.29; G.pos[1].y = yTop;
     G.pos[2].x = A.x + A.w * 0.71; G.pos[2].y = yTop;
@@ -209,7 +210,8 @@ export function mount(ctx) {
       g.restore();
       if (yours && p.count >= YOURS_CAP) { g.globalAlpha = 0.5; g.strokeStyle = '#ffe9b0'; g.lineWidth = 1.2; g.beginPath(); g.ellipse(pos.x, pos.y + G.pr * 0.1, G.pr * 1.15, G.pr * 0.5, 0, 0, TAU); g.stroke(); g.globalAlpha = 1; }
       // the name: above a top bowl, below a side one; tied to its own bowl
-      if (G.top[p.i]) p.tag.at(pos.x, pos.y - G.pr * 0.45 - 6, 'top', 1);
+      // (a clear gap above the bowl, so the collision pass never needs to nudge a name off its own bowl)
+      if (G.top[p.i]) p.tag.at(pos.x, pos.y - G.pr * 0.45 - 9, 'top', 1);
       else p.tag.at(pos.x, pos.y + G.pr * 0.55 + 6, 'bottom', 1);
       p.tag.own(pos.x, pos.y);
     }
