@@ -142,3 +142,68 @@ invocation_logs = false
 
 [env.dev.observability.traces]
 enabled = false
+
+# Staging: the real model, a separate Worker with its own keys and a small
+# spending cap, deployed from a work branch by
+# .github/workflows/another-angle-staging.yml (edit deploy/STAGING to run it).
+# Lets the whole path (session → angle → feedback) be checked against the
+# real model before anything is merged to main.
+[env.staging]
+name = "hushmallow-another-angle-staging"
+workers_dev = true
+
+[env.staging.vars]
+PROVIDER = "anthropic"
+MODEL = "claude-opus-5-5"
+EFFORT = "low"
+MAX_TOKENS = "3000"
+MODEL_TIMEOUT_MS = "15000"
+REQUEST_DEADLINE_MS = "28000"
+MODEL_MAX_RETRIES = "1"
+REFUSAL_FALLBACK = "default"
+ALLOWED_ORIGINS = "https://ramkumarjothi1982.github.io,http://localhost:8000,http://127.0.0.1:8000"
+ALLOW_NO_ORIGIN = "false"
+REQUIRE_HTTPS = "true"
+ENTITLEMENT_MODE = "testing"
+TESTING_TOKEN_TTL_DAYS = "7"
+DEVICE_DAILY_LIMIT = "20"
+SESSION_DAILY_CAP = "100"
+SESSIONS_PER_IP_DAILY = "10"
+DAILY_SPEND_CAP_USD = "3"
+APPLE_BUNDLE_ID = ""
+APPLE_PRODUCT_IDS = "hushmallow.ultra.monthly,hushmallow.ultra.yearly"
+APPLE_ENVIRONMENTS = "Sandbox"
+
+[[env.staging.durable_objects.bindings]]
+name = "LEDGER"
+class_name = "Ledger"
+
+[[env.staging.migrations]]
+tag = "v1"
+new_sqlite_classes = ["Ledger"]
+
+[[env.staging.ratelimits]]
+name = "ANGLE_IP_LIMITER"
+namespace_id = "41201"
+simple = { limit = 6, period = 60 }
+
+[[env.staging.ratelimits]]
+name = "SESSION_IP_LIMITER"
+namespace_id = "41202"
+simple = { limit = 3, period = 60 }
+
+[[env.staging.ratelimits]]
+name = "FEEDBACK_IP_LIMITER"
+namespace_id = "41203"
+simple = { limit = 20, period = 60 }
+
+[env.staging.observability]
+enabled = true
+redact_query_string = true
+
+[env.staging.observability.logs]
+enabled = true
+invocation_logs = false
+
+[env.staging.observability.traces]
+enabled = false

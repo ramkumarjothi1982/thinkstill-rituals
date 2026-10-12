@@ -39,6 +39,8 @@ concurrency:
 
 defaults:
   run:
+    # bash with pipefail, so `wrangler deploy | tee` fails when the deploy does
+    shell: bash
     working-directory: hushmallow/server/another-angle
 
 jobs:

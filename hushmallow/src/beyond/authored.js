@@ -282,24 +282,26 @@ export function sceneParts(text, scene = {}) {
   };
 }
 
-/** A sentence in three similar-sized pieces, broken at commas or words (for the assemble mechanic). */
+/** A sentence in three pieces, broken at natural joins (for the assemble mechanic). */
+const JOIN_BEFORE = /^(?:and|or|but|then|so|to|before|after|when|while|until|if|how|what|that|which|with|without|for|about|by|from|into|instead|because|rather)$/i;
+const NO_END = /^(?:a|an|the|to|your|my|their|our|his|her|its|this|that|of|in|on|at|for|with|or|and|but|is|are|be|was|one|two|three|four|five|ten|few|little|small|short|quick|kind|gentle|new|very|just|you|i|we|they|he|she|it's|can|will|could|would|might|not|no|any|some|each|every|how|what|before|after|if|when)$/i;
 export function chunkStep(step) {
   const s = String(step || '').replace(/\s+/g, ' ').trim().replace(/[.!]+$/u, '');
   if (!s) return ['One small', 'doable', 'thing'];
   const w = s.split(' ');
   if (w.length <= 3) return w.length === 3 ? w : [...w, ...Array(3 - w.length).fill('·')].slice(0, 3);
   const n = w.length;
-  // prefer cuts just after a comma near the thirds
-  const cut = (target) => {
-    let best = Math.round(target), score = Infinity;
-    for (let i = 1; i < n; i++) {
-      const d = Math.abs(i - target) + (/[.!?]$/.test(w[i - 1]) ? -1.4 : /[,;:]$/.test(w[i - 1]) ? -0.9 : 0) + (/^(?:and|or|to|for|then)$/i.test(w[i]) ? -0.4 : 0);
-      if (d < score) { score = d; best = i; }
+  // how good a cut just before word i is: punctuation and joining words are good, a dangling little word is not
+  const join = (i) => (/[.!?]$/.test(w[i - 1]) ? -2 : /[,;:\u2013\u2014]$/.test(w[i - 1]) ? -1.6 : 0)
+    + (JOIN_BEFORE.test(w[i]) ? -1.2 : 0) + (NO_END.test(w[i - 1].replace(/[,;:]$/, '')) && !/[,;:]$/.test(w[i - 1]) ? 1.6 : 0);
+  let best = [Math.round(n / 3), Math.round((2 * n) / 3)], score = Infinity;
+  for (let a = 1; a < n - 1; a++) {
+    for (let b = a + 1; b < n; b++) {
+      const lens = [a, b - a, n - b];
+      const sc = join(a) + join(b) + 0.35 * (Math.max(...lens) - Math.min(...lens)) + lens.reduce((t, l) => t + Math.max(0, l - 6), 0);
+      if (sc < score - 1e-9) { score = sc; best = [a, b]; }
     }
-    return best;
-  };
-  let a = cut(n / 3), b = cut((2 * n) / 3);
-  if (b <= a) b = Math.min(n - 1, a + 1);
-  if (a < 1) a = 1;
-  return [w.slice(0, a).join(' '), w.slice(a, b).join(' '), w.slice(b).join(' ')].map((x) => x.replace(/[,;:.]$/u, ''));
+  }
+  const [a, b] = best;
+  return [w.slice(0, a).join(' '), w.slice(a, b).join(' '), w.slice(b).join(' ')].map((x) => x.replace(/[,;:.\u2013\u2014]$/u, '').trim());
 }

@@ -64,7 +64,8 @@ const SYNONYMS = [
   ['boss', 'manager', 'supervisor', 'line-manager', 'head'],
   ['partner', 'boyfriend', 'girlfriend', 'husband', 'wife', 'fiance', 'fiancé', 'fiancée', 'spouse', 'date'],
   ['message', 'messages', 'text', 'texts', 'texted', 'texting', 'reply', 'replied', 'replies', 'replying', 'respond', 'responded', 'response', 'answer', 'answered', 'dm', 'email', 'emailed', 'whatsapp', 'silence', 'silent', 'phone'],
-  ['exam', 'exams', 'test', 'tests', 'assessment', 'assessments', 'resit', 'mark', 'marks', 'grade', 'grades', 'result', 'results'],
+  ['exam', 'exams', 'test', 'tests', 'assessment', 'assessments', 'resit', 'mark', 'marks', 'grade', 'grades', 'result', 'results',
+    'topic', 'topics', 'revision', 'revise', 'revising', 'module', 'modules', 'coursework', 'syllabus'],
   ['mum', 'mom', 'mother', 'mam', 'mummy'],
   ['dad', 'father', 'daddy'],
   // A promotion is about the job: "promoted" meets "the role".
@@ -75,10 +76,13 @@ const SYNONYMS = [
   ['mistake', 'mistakes', 'error', 'errors', 'slip', 'messed', 'blunder'],
   ['meeting', 'meetings', 'call', 'presentation', 'pitch', 'standup', 'stand-up'],
   ['school', 'class', 'uni', 'university', 'college', 'course', 'lecture', 'teacher', 'tutor'],
-  // Speech: "told him I loved him" meets "words that big"; "we need to talk" meets "the conversation".
-  ['said', 'say', 'says', 'saying', 'told', 'tell', 'tells', 'telling', 'comment', 'comments', 'remark', 'remarks', 'words', 'talk', 'talked', 'talking', 'talks', 'conversation', 'conversations', 'chat', 'spoke', 'speak', 'speaking'],
-  // A doctor's appointment: "my doctor wants to see me" meets "booking the soonest slot".
-  ['doctor', 'doctors', 'gp', 'nurse', 'appointment', 'appointments', 'clinic', 'surgery', 'hospital', 'consultant', 'slot'],
+  // Speech: "told him I loved him" meets "words that big". "Conversation" and
+  // "chat" are not here: almost any line can mention one ("Every conversation
+  // is a chance…"), so the gate counts them only for a talk the person
+  // reported (src/gate.js, PLANNED_TALK).
+  ['said', 'say', 'says', 'saying', 'told', 'tell', 'tells', 'telling', 'comment', 'comments', 'remark', 'remarks', 'words', 'talk', 'talked', 'talking', 'talks', 'spoke', 'speak', 'speaking'],
+  // A doctor's appointment. ("Slot" is not here: "every slot in life…" is not about the appointment.)
+  ['doctor', 'doctors', 'gp', 'nurse', 'appointment', 'appointments', 'clinic', 'surgery', 'hospital', 'consultant'],
   ['embarrassed', 'embarrassing', 'embarrassment', 'awkward', 'cringe', 'humiliated'],
   ['ignored', 'ignoring', 'ignore', 'blanked', 'ghosted', 'unanswered'],
   ['fail', 'failed', 'failing', 'failure'],
@@ -111,7 +115,9 @@ export const IRREGULAR = new Map(Object.entries({
 /** @param {string} word */
 export function stem(word) {
   let w = word.toLowerCase().replace(/[’']s$/, '').replace(/[’']/g, "'");
-  const syn = SYN_INDEX.get(w);
+  // A plain plural of a listed word is that word: "courses" is "course"
+  // (the suffix rule below would strip "es" and leave "cours").
+  const syn = SYN_INDEX.get(w) || (w.length > 3 && w.endsWith('s') ? SYN_INDEX.get(w.slice(0, -1)) : undefined);
   if (syn) return syn;
   const irr = IRREGULAR.get(w);
   if (irr) w = irr;
@@ -200,33 +206,75 @@ export function jaccard(a, b) {
   return inter / (a.size + b.size - inter);
 }
 
-const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'hundred', 'thousand', 'million', 'dozen', 'dozens', 'hundreds', 'thousands'];
-// "for the third time" and "three times" are the same detail.
-const ORDINALS = new Map(Object.entries({
-  first: 'one', second: 'two', third: 'three', fourth: 'four', fifth: 'five', sixth: 'six', seventh: 'seven', eighth: 'eight',
-  ninth: 'nine', tenth: 'ten', eleventh: 'eleven', twelfth: 'twelve', twentieth: 'twenty', hundredth: 'hundred',
-  '1st': 'one', '2nd': 'two', '3rd': 'three', '4th': 'four', '5th': 'five', '6th': 'six', '7th': 'seven', '8th': 'eight', '9th': 'nine', '10th': 'ten',
-  once: 'one', twice: 'two', thrice: 'three',
-}));
+const UNITS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+const TENS = { twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70, eighty: 80, ninety: 90 };
+const BIG = { hundred: 100, thousand: 1000, million: 1e6, dozen: 12 };
+const ORD_UNITS = ['zeroth', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth', 'eleventh', 'twelfth', 'thirteenth', 'fourteenth', 'fifteenth', 'sixteenth', 'seventeenth', 'eighteenth', 'nineteenth'];
+const ORD_TENS = { twentieth: 20, thirtieth: 30, fortieth: 40, fiftieth: 50, sixtieth: 60, seventieth: 70, eightieth: 80, ninetieth: 90 };
+const ORD_BIG = { hundredth: 100, thousandth: 1000, millionth: 1e6 };
+const TIMES = { once: 1, twice: 2, thrice: 3 };
+/** @type {Map<string, number>} */
+const CARD = new Map([...UNITS.map((w, i) => /** @type {[string, number]} */ ([w, i])), ...Object.entries(TENS), ...Object.entries(BIG)]);
+/** @type {Map<string, number>} */
+const ORD = new Map([...ORD_UNITS.map((w, i) => /** @type {[string, number]} */ ([w, i])), ...Object.entries(ORD_TENS), ...Object.entries(ORD_BIG)]);
+const ALT = (/** @type {Iterable<string>} */ ws) => [...ws].sort((a, b) => b.length - a.length).join('|');
+const TENS_ALT = ALT(Object.keys(TENS));
+const UNIT_ALT = ALT(UNITS.slice(1, 10));
+// One number as written: digits ("1,000", "3.5", "4th", "2am"), words
+// ("twenty-five", "a hundred", "two hundred"), ordinals ("third",
+// "twenty-first"), "once"/"twice", and the vague plurals ("hundreds").
+const NUM_TOKEN = new RegExp(String.raw`(?<![\p{L}\p{N}])(?:(\d+(?:[.,]\d+)*)(st|nd|rd|th|am|pm)?|((?:a|an|one|${UNIT_ALT}) (?:hundred|thousand|million|dozen))|((?:${TENS_ALT})-(?:${UNIT_ALT}))|((?:${TENS_ALT})-(?:${ALT(ORD_UNITS.slice(1, 10))}))|(hundreds|thousands|millions|dozens)|([\p{L}]+))(?![\p{L}\p{N}])`, 'giu');
 
 /**
- * Numbers mentioned in a text, normalised so "5" and "five" match.
- * @returns {Set<string>}
+ * @typedef {{ raw: string, value: number | null, kind: 'cardinal' | 'ordinal' | 'times' | 'clock' | 'vague', start: number, end: number }} NumberToken
  */
-/** @param {unknown} text */
-export function numbersIn(text) {
-  const out = new Set();
-  for (const raw of words(text)) {
-    const w = raw.toLowerCase();
-    const ord = ORDINALS.get(w);
-    if (ord) { out.add(ord); continue; }
-    if (/^\d+(?:[.,]\d+)*$/.test(w)) {
-      // "1,000" is a thousand, "3,5" and "3.5" are three and a half.
-      const n = Number(/^\d{1,3}(?:,\d{3})+$/.test(w) ? w.replace(/,/g, '') : w.replace(',', '.'));
-      out.add(Number.isInteger(n) && n < NUMBER_WORDS.indexOf('thirty') ? NUMBER_WORDS[n] || String(n) : String(n));
-    } else if (NUMBER_WORDS.includes(w)) {
-      out.add(w);
+
+/**
+ * Every number in a text, with its value, so "5", "five" and "fifth" meet,
+ * and "1,000" meets "a thousand". Vague plurals ("hundreds of things") are
+ * kept with no value.
+ * @param {unknown} text @returns {NumberToken[]}
+ */
+export function numberTokens(text) {
+  const t = tidy(text);
+  /** @type {NumberToken[]} */
+  const out = [];
+  for (const m of t.matchAll(NUM_TOKEN)) {
+    const start = m.index ?? 0;
+    const end = start + m[0].length;
+    const raw = m[0];
+    if (m[1] !== undefined) {
+      const d = m[1];
+      // "1,000" is a thousand; "3,5" and "3.5" are three and a half.
+      const value = Number(/^\d{1,3}(?:,\d{3})+$/.test(d) ? d.replace(/,/g, '') : d.replace(',', '.'));
+      const suf = (m[2] || '').toLowerCase();
+      out.push({ raw, value, kind: suf === 'am' || suf === 'pm' ? 'clock' : suf ? 'ordinal' : 'cardinal', start, end });
+    } else if (m[3] !== undefined) {
+      const [a, b] = m[3].toLowerCase().split(' ');
+      out.push({ raw, value: (a === 'a' || a === 'an' ? 1 : CARD.get(a) ?? 1) * (BIG[/** @type {keyof typeof BIG} */ (b)] ?? 1), kind: 'cardinal', start, end });
+    } else if (m[4] !== undefined) {
+      const [a, b] = m[4].toLowerCase().split('-');
+      out.push({ raw, value: TENS[/** @type {keyof typeof TENS} */ (a)] + (CARD.get(b) ?? 0), kind: 'cardinal', start, end });
+    } else if (m[5] !== undefined) {
+      const [a, b] = m[5].toLowerCase().split('-');
+      out.push({ raw, value: TENS[/** @type {keyof typeof TENS} */ (a)] + (ORD.get(b) ?? 0), kind: 'ordinal', start, end });
+    } else if (m[6] !== undefined) {
+      out.push({ raw, value: null, kind: 'vague', start, end });
+    } else {
+      const w = m[7].toLowerCase();
+      if (CARD.has(w)) out.push({ raw, value: /** @type {number} */ (CARD.get(w)), kind: 'cardinal', start, end });
+      else if (ORD.has(w)) out.push({ raw, value: /** @type {number} */ (ORD.get(w)), kind: 'ordinal', start, end });
+      else if (w in TIMES) out.push({ raw, value: TIMES[/** @type {keyof typeof TIMES} */ (w)], kind: 'times', start, end });
     }
   }
   return out;
+}
+
+/**
+ * The numbers a text mentions, as values ("5", "five", "fifth" and "5th" are
+ * all "5"; "1,000" and "a thousand" are both "1000"); vague plurals as words.
+ * @param {unknown} text @returns {Set<string>}
+ */
+export function numbersIn(text) {
+  return new Set(numberTokens(text).map((n) => (n.value === null ? n.raw.toLowerCase() : String(n.value))));
 }
