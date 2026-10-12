@@ -86,7 +86,7 @@ export function create(E) {
   let np = 0;
   let wanted = 0, prog = 0, shown = 0, assistTo = null, doneFlag = false, finAt = -1;
   let rush = 0, flowT = E.rand() * 20, clockT = 0, lastNote = 0, noteAt = -9, waitAt = -9, rushHinted = false;
-  let tinyAt = 1.2, maxRim = 0, photoR = 0, tenseAmp = 0, breathAmp = 0, maxS = 0;
+  let tinyAt = 1.2, maxRim = 0, photoR = 0, tenseAmp = 0, breathAmp = 0, maxS = 0, waitK = 0;
   const pts = new Map();     // pointer id → {mode: 'pull'|'poke', a, r, x, y, s, spd, acc}
   const ghost = { a: A0, aTo: A0, s: 0 };
   const pokes = Array.from({ length: 4 }, () => ({ x: 0, y: 0, age: 9, amp: 0 }));
@@ -113,7 +113,7 @@ export function create(E) {
   function waitNudge() {
     const now = E.now();
     if (now - waitAt < 0.9) return;
-    waitAt = now; E.checkpoint('wait');
+    waitAt = now; E.checkpoint('wait'); waitK = 1;
     if (!reduced) wob.kick(0.6);
   }
 
@@ -499,6 +499,7 @@ export function create(E) {
       const rr = rimAt(q.a), x = cx + Math.cos(q.a) * rr, y = cy + Math.sin(q.a) * rr;
       const sn = clamp(q.s / M);
       glow(g, x, y, 22 + 14 * sn, mix(pal.glow, '#ffffff', 0.35), 0.6 + 0.2 * sn);
+      if (waitK > 0.01) glow(g, x, y, 34 + 12 * (1 - waitK), mix(pal.glow, '#ffffff', 0.3), 0.4 * waitK);
       if (Math.hypot(q.x - x, q.y - y) > 9) {
         g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = 'rgba(255,255,255,0.45)'; g.lineWidth = 1.6; g.setLineDash([3, 4]);
         g.beginPath(); g.moveTo(x, y); g.lineTo(q.x, q.y); g.stroke(); g.restore();
@@ -512,16 +513,22 @@ export function create(E) {
     }
     if (anyPull || ghost.s > 0.5) return;
     // the suggested pull point: a glistening bead on the rim with an outward cue
+    // (only while it is the person's move; a closing-move law brings its own guide)
+    if (E.phase !== 'play' || doneFlag) return;
     const a = HA(prog), rr = rimAt(a), x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr;
     const pulse = 0.5 + 0.5 * Math.sin(clockT * 2.4), dim = E.locked ? 0.5 : 1;
+    const cue = lightSky ? ink : '#ffffff';
+    // "not yet": a soft halo swells on the bead (seen with reduced motion too, where nothing wobbles)
+    if (waitK > 0.01) glow(g, x, y, 30 + 10 * (1 - waitK), mix(pal.glow, '#ffffff', 0.3), 0.45 * waitK);
     glow(g, x, y, 22 + 6 * pulse, pal.accent, (0.4 + 0.25 * pulse) * dim);
     const gr = g.createRadialGradient(x - 2, y - 2, 0.5, x, y, 6.5);
     gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, rgba(mix(pal.glow, '#ffffff', 0.3), 0.6));
     g.fillStyle = gr; g.beginPath(); g.arc(x, y, 6, 0, TAU); g.fill();
     g.save(); g.lineCap = 'round';
-    g.strokeStyle = rgba('#ffffff', 0.5 * (1 - pulse) * dim); g.lineWidth = 1.4; g.beginPath(); g.arc(x, y, 9 + 11 * pulse, 0, TAU); g.stroke();
+    if (lightSky) { g.strokeStyle = rgba(ink, 0.45); g.lineWidth = 1.2; g.stroke(); }
+    g.strokeStyle = rgba(cue, 0.5 * (1 - pulse) * dim); g.lineWidth = 1.4; g.beginPath(); g.arc(x, y, 9 + 11 * pulse, 0, TAU); g.stroke();
     const ox = Math.cos(a), oy = Math.sin(a), tx = -oy, ty = ox, c0 = 20 + 4 * pulse;
-    g.strokeStyle = rgba('#ffffff', 0.55 * dim); g.lineWidth = 2;
+    g.strokeStyle = rgba(cue, (lightSky ? 0.6 : 0.55) * dim); g.lineWidth = 2;
     g.beginPath(); g.moveTo(x + ox * c0 + tx * 5, y + oy * c0 + ty * 5); g.lineTo(x + ox * (c0 + 6), y + oy * (c0 + 6)); g.lineTo(x + ox * c0 - tx * 5, y + oy * c0 - ty * 5); g.stroke();
     g.restore();
   }
