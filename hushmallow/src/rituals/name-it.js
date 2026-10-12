@@ -324,7 +324,9 @@ export async function run(ctx) {
   const words = h('div', { role: 'group', 'aria-label': 'Feeling words', style: { display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '8px', maxHeight: H < 640 ? '22vh' : 'min(28vh, 210px)', overflowY: 'auto', padding: '4px 2px' } });
   const nameDone = h('button', { class: 'btn primary block', disabled: !sel.length }, 'That’s its name');
   const said = String(ctx.input?.text || '').trim();
-  const echo = said && H >= 640 ? h('p', { class: 'muted', style: { margin: '0', textAlign: 'center', fontSize: 'var(--type-caption-size)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, `You said: “${said.length > 60 ? `${said.slice(0, 58)}…` : said}”`) : null;
+  // over bright skies (Blue Drift) the echo sits on its own dark pill so it stays readable
+  const echo = said && H >= 640 ? h('p', { style: { margin: '0', textAlign: 'center', lineHeight: '0' } },
+    h('span', { class: 'scrim-pill t-caption', style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, `You said: “${said.length > 60 ? `${said.slice(0, 58)}…` : said}”`)) : null;
   dock.replaceChildren(...[echo, tray, words, nameDone].filter(Boolean));
 
   let mode = sel.length ? 'near' : 'families';
@@ -341,10 +343,12 @@ export async function run(ctx) {
   let searchInput = null;
 
   function renderTray() {
-    if (!sel.length) { tray.replaceChildren(h('span', { class: 'muted', style: { fontSize: 'var(--type-label-size)' } }, 'No word yet. Pick one below.')); return; }
+    if (!sel.length) { tray.replaceChildren(h('span', { class: 'scrim-pill t-label' }, 'No word yet. Pick one below.')); return; }
     tray.replaceChildren(...sel.map((e, i) => [
       i ? h('span', { 'aria-hidden': 'true', style: { color: 'var(--text-2)', fontWeight: '700' } }, '+') : null,
-      h('button', { class: 'chip', 'aria-label': `${e.name}, chosen. Press to remove.`, style: { minHeight: '44px', fontFamily: 'var(--ff-voice)', fontSize: 'var(--type-entry-size)', fontWeight: '700', background: rgba(getFamily(e.family)?.hue || '#a8f0ff', 0.28), borderColor: getFamily(e.family)?.hue },
+      // a dark glass base under the feeling's tint keeps white text ≥4.5:1 on any sky
+      h('button', { class: 'chip', 'aria-label': `${e.name}, chosen. Press to remove.`, style: { minHeight: '44px', fontFamily: 'var(--ff-voice)', fontSize: 'var(--type-entry-size)', fontWeight: '700', color: '#fff', textShadow: '0 1px 6px rgba(5,3,20,.5)',
+        background: `linear-gradient(${rgba(getFamily(e.family)?.hue || '#a8f0ff', 0.22)}, ${rgba(getFamily(e.family)?.hue || '#a8f0ff', 0.22)}), rgba(12,8,34,.74)`, borderColor: getFamily(e.family)?.hue },
         onclick: () => toggle(e) }, e.name, h('span', { 'aria-hidden': 'true', style: { opacity: '.6', marginLeft: '6px' } }, '×')),
     ]).flat().filter(Boolean));
   }

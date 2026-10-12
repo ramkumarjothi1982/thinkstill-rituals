@@ -106,8 +106,11 @@ export function fontsReady(groups = ['voice', 'ui'], timeoutMs = 1200) {
 export function setTextScale(k = 1) {
   if (typeof document === 'undefined') return;
   const v = Math.min(1.4, Math.max(1, Number(k) || 1));
-  if (v === 1) document.documentElement.style.removeProperty('--type-scale');
-  else document.documentElement.style.setProperty('--type-scale', String(v));
+  const root = document.documentElement;
+  if (v === 1) root.style.removeProperty('--type-scale');
+  else root.style.setProperty('--type-scale', String(v));
+  // for layout rules that change shape at large sizes (CSS can't compare a custom property)
+  if (v > 1.12) root.dataset.textScale = 'large'; else delete root.dataset.textScale;
 }
 
 /** The brand as text: always lowercase, even inside an uppercase style. */

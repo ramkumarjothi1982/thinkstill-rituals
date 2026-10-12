@@ -26,14 +26,15 @@ export default function home(app, params = {}) {
   const subscribed = ent.has('paid');
 
   const nameEl = h('div', { class: 'eyebrow', style: { textAlign: 'center', marginTop: '4px', padding: '6px 12px', borderRadius: '999px',
-    background: 'rgba(14,10,40,.5)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', color: 'var(--text-1)' } }, `${m.name} · ${m.title}`);
+    background: 'rgba(14,10,40,.5)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', color: 'var(--text-1)',
+    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: '0', maxWidth: '100%' } }, `${m.name} · ${m.title}`);
   const ask = h('button', { class: 'ask', 'data-focus': '', onclick: () => start() },
     h('span', {}, subscribed ? 'What’s on your mind?' : `Start ${BRAND.brandName}`), h('span', { class: 'go', 'aria-hidden': 'true' }, icon('arrow')));
   const quick = h('div', { class: 'chips scroll', role: 'group', 'aria-label': 'Quick feelings' },
     ...QUICK.map(([eid, label]) => h('button', { class: 'chip', onclick: () => start(eid) }, label)));
-  const ultra = h('button', { class: 'ultra-card', onclick: () => openUltra(), 'aria-label': `Another Angle, part of ${BRAND.beyondPlanName}. See your thoughts in a different light.` },
+  const ultra = h('button', { class: 'ultra-card', onclick: () => openUltra(), 'aria-label': `Another Angle, part of ${BRAND.beyondPlanName}. ${BRAND.beyondTagline}` },
     h('div', { class: 'spiral', 'aria-hidden': 'true' }),
-    h('div', {}, h('span', { class: 'badge' }, 'BEYOND'), h('div', { class: 't' }, 'Another Angle'), h('div', { class: 's' }, 'See your thoughts in a different light.')));
+    h('div', {}, h('span', { class: 'badge' }, 'BEYOND'), h('div', { class: 't' }, 'Another Angle'), h('div', { class: 's' }, BRAND.beyondTagline)));
 
   const el = h('div', { class: 'home', style: { display: 'flex', flexDirection: 'column', height: '100%' } },
     h('div', { class: 'topbar' },
