@@ -213,3 +213,6 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
   .enc-card .reasons span:nth-child(n+3) { display: none; }
   .enc-card .btn { min-height: 46px; }
 }
+
+/* narrow phones: five top-bar icons fit if the brand shows only its dot */
+@media (max-width: 360px) { .home .brand { font-size: 0; gap: 0; } .home .topbar { gap: 6px; } }

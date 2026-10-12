@@ -81,6 +81,7 @@ const SCENES = {
   settings: () => import('./scenes/settings.js'),
   angle: () => import('./scenes/angle.js'),
   library: () => import('./scenes/library.js'),
+  journey: () => import('./scenes/journey.js'),
 };
 
 async function boot() {

@@ -256,3 +256,31 @@ test('rituals made for the feeling come before tricks, then a fresh round starts
   assert.equal(round.number(), 2);
   assert.equal(round.count(), 0);
 });
+
+// ------------------------------------------------------------ journey --
+import { logFinish, setFelt, journeyEntries, summarise } from '../src/engine/journey.js';
+
+test('journey: logs finishes (no words), attaches check-ins, summarises honestly', () => {
+  const store = memStore();
+  const now = new Date(2026, 9, 12, 12).getTime();
+  const DAY = 86400000;
+  const add = (id, mallow, fam, daysAgo, seconds) => { logFinish(store, { id, name: id, kind: 'ritual', mallow, families: [fam], seconds });
+    const xs = journeyEntries(store); xs[xs.length - 1].at = now - daysAgo * DAY; store.set('journey', xs); };
+  add('static-to-signal', 'glitzi', 'anger', 0, 180);
+  add('raindrop-keeper', 'blubi', 'sadness', 2, 200);
+  add('static-to-signal', 'glitzi', 'anger', 10, 160);
+  setFelt(store, 'static-to-signal', 'lighter'); // latest static-to-signal entry
+  setFelt(store, 'raindrop-keeper', 'same');
+  const s = summarise(journeyEntries(store), now);
+  assert.equal(s.total, 3);
+  assert.equal(s.week, 2);
+  assert.equal(s.minutes, 9);
+  assert.deepEqual(s.felt, { lighter: 1, same: 1, heavier: 0 });
+  assert.equal(s.checkIns, 2);
+  assert.deepEqual(s.families[0], ['anger', 2]);
+  assert.deepEqual(s.mallows[0], ['glitzi', 2]);
+  assert.equal(s.helped[0].id, 'static-to-signal');
+  assert.equal(s.days.length, 7);
+  assert.equal(s.days[6].n, 1);
+  for (const e of journeyEntries(store)) assert.ok(!('text' in e), 'no typed words stored');
+});

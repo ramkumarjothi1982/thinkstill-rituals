@@ -4,6 +4,7 @@ import { h, icon, say, clearBubble, toast, wait } from '../ui.js';
 import { MALLOWS } from '../../mallows/registry.js';
 import { openSupport } from './support.js';
 import { playTrick } from '../trick-launch.js';
+import { setFelt } from '../../engine/journey.js';
 
 const CHECK = [
   ['lighter', 'A bit lighter'], ['same', 'About the same'], ['heavier', 'Heavier'],
@@ -49,7 +50,7 @@ export default function landing(app) {
   async function check(id, btn) {
     checkRow.querySelectorAll('.chip').forEach((c) => c.setAttribute('aria-pressed', String(c === btn)));
     app.haptic('light');
-    if (app.prefs.get('saveHistory')) rec.markCompleted(ritual.id, { helped: id === 'lighter' ? true : id === 'heavier' ? false : null });
+    if (app.prefs.get('saveHistory')) { rec.markCompleted(ritual.id, { helped: id === 'lighter' ? true : id === 'heavier' ? false : null }); setFelt(app.store, ritual.id, id); }
     clearBubble();
     if (id === 'lighter') {
       world.setStage('celebrating');
