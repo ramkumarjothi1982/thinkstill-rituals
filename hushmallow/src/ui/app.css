@@ -66,11 +66,6 @@ a { color: var(--accent); }
 .btn svg { width: 20px; height: 20px; flex: 0 0 auto; }
 .btn.ghost { text-shadow: 0 1px 10px rgba(5,3,20,.85); }
 
-/* ------------------------------------------------------- quick trick -- */
-.qt-note { display: table; margin: 0 auto 10px; padding: 6px 12px; border-radius: 12px; text-align: center; color: var(--text-1); font-size: 14.5px;
-  background: rgba(14,10,40,.55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-.qt-call { display: table; margin: 0 auto 10px; padding: 6px 12px; border-radius: 999px; background: rgba(14,10,40,.72);
-  border: 1px solid var(--qt-accent, rgba(255,217,138,.5)); font: 600 13px var(--font-ui); color: var(--text-1); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 
 /* ------------------------------------------------------------ input -- */
 .ask { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 62px; padding: 0 10px 0 20px; border-radius: 22px; cursor: text;

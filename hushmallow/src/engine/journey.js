@@ -1,5 +1,4 @@
-// The person's journey, on this device only: one entry per finished ritual
-// or trick — what it was, which Mallow, the feeling families they came in
+// The person's journey, on this device only: one entry per finished ritual — what it was, which Mallow, the feeling families they came in
 // with (never their words), how long, and how it felt afterwards if they
 // answered the optional check-in. Powers the Your journey screen.
 const KEY = 'journey';

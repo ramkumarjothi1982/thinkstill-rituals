@@ -53,7 +53,7 @@ export default function journey(app) {
 
     const kids = [];
     kids.push(h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' } },
-      tile(String(s.total), s.total === 1 ? 'Moment finished' : 'Moments finished', 'rituals and tricks'),
+      tile(String(s.total), s.total === 1 ? 'Moment finished' : 'Moments finished', 'rituals'),
       tile(String(s.week), 'In the last 7 days'),
       tile(`${s.minutes}`, s.minutes === 1 ? 'Minute with the Mallows' : 'Minutes with the Mallows'),
       tile(s.checkIns ? `${s.felt.lighter} of ${s.checkIns}` : '—', 'Felt a bit lighter', s.checkIns ? 'when you checked in' : 'check in after a ritual to see this')));

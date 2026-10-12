@@ -5,13 +5,11 @@ import { faceMix } from '../../engine/interpret.js';
 import { getEmotion, getFamily } from '../../data/emotions.js';
 import { MALLOWS } from '../../mallows/registry.js';
 import { encounterLine } from '../../mallows/voices.js';
-import { playTrick, playTrickById, allTricks } from '../trick-launch.js';
 import { createRound } from '../../engine/round.js';
 import { planOptions } from '../../engine/next.js';
 import { RITUALS } from '../../data/rituals.js';
 import { AVAILABLE } from '../../rituals/index.js';
 import { allowedFor } from '../../engine/recommend.js';
-import { titleCase } from '../../engine/tricks.js';
 import { toast } from '../ui.js';
 import { testPurchasesAllowed } from '../config.js';
 import { planItems } from '../play-item.js';
@@ -28,20 +26,18 @@ export default function encounter(app) {
   // what this plan may offer (Another Angle has its own door, so it isn't dealt here)
   const offerRituals = RITUALS.filter((r) => (r.tier || 'paid') === 'paid' && allowedFor(r, ent.flags()) && AVAILABLE.has(r.module));
   const round = createRound(app.store, ent.tier());
-  let tricks = [];
   let options = [];
   let idx = 0;
   async function deal() {
-    try { tricks = await allTricks(app); } catch { tricks = []; }
-    let plan = planOptions({ rec, req, rituals: offerRituals, tricks, seen: round.seen(), limit: 4 });
+    let plan = planOptions({ rec, req, rituals: offerRituals, seen: round.seen(), limit: 4 });
     if (!plan.options.length && plan.total) {
-      // every ritual and trick in the plan has been done once: start a fresh round
+      // every ritual in the plan has been done once: start a fresh round
       toast(`You’ve tried all ${plan.total} in your plan. Starting a fresh round!`, 3600);
       round.restart();
-      plan = planOptions({ rec, req, rituals: offerRituals, tricks, seen: round.seen(), limit: 4 });
+      plan = planOptions({ rec, req, rituals: offerRituals, seen: round.seen(), limit: 4 });
     }
     options = plan.options;
-    // TESTING: an item picked with the home arrows is shown first, for this issue
+    // TESTING: an item picked in the home TEST panel is shown first, for this issue
     if (testPurchasesAllowed() && app.store.get('test-pick', false)) {
       app.store.set('test-pick', false);
       const n = app.store.get(`test-step-${ent.tier()}`, 0);
@@ -57,7 +53,7 @@ export default function encounter(app) {
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' }),
       h('span', { class: 'eyebrow' }, input.emotions.map((e) => getEmotion(e.id)?.name).filter(Boolean).slice(0, 3).join(' · '))),
     h('div', { class: 'spacer' }),
-    card, testBar(), h('div', { style: { height: '10px' } }), ultraRow);
+    card, h('div', { style: { height: '10px' } }), ultraRow);
 
   function render() {
     const o = options[idx];
@@ -67,28 +63,25 @@ export default function encounter(app) {
         h('p', {}, 'Rather than give you something that doesn’t fit, here’s what you can do: pick a different feeling, or just stay here with the Mallows for a moment.'),
         h('div', { class: 'row-btns', style: { marginTop: '14px' } },
           h('button', { class: 'btn', onclick: () => app.go('express', { keep: true }) }, 'Change feelings'),
-          h('button', { class: 'btn', onclick: () => app.go('home') }, 'Home')), quickBtn());
+          h('button', { class: 'btn', onclick: () => app.go('home') }, 'Home')));
       return;
     }
-    const isTrick = o.type === 'trick';
     const r = o.item;
-    const leadId = isTrick ? r.mallow : r.mallows[0];
-    const lead = MALLOWS[leadId];
-    const mins = isTrick ? 1 : Math.max(1, Math.round(r.durationSec / 60));
+    const lead = MALLOWS[r.mallows[0]];
+    const mins = Math.max(1, Math.round(r.durationSec / 60));
     card.replaceChildren(
-      h('div', { class: 'eyebrow', style: { color: 'var(--accent)' } }, isTrick ? `${lead.name} has a quick trick for that` : `${lead.name} has a ritual for that`),
-      h('h3', { style: { marginTop: '8px', fontSize: '26px' } }, isTrick ? titleCase(r.title) : r.name),
-      h('p', {}, isTrick ? r.mission : r.purpose),
+      h('div', { class: 'eyebrow', style: { color: 'var(--accent)' } }, `${lead.name} has a ritual for that`),
+      h('h3', { style: { marginTop: '8px', fontSize: '26px' } }, r.name),
+      h('p', {}, r.purpose),
       h('div', { class: 'reasons' }, ...o.reasons.filter((x) => !/minute/.test(x)).map((x) => h('span', {}, x)), h('span', {}, `About ${mins} min`)),
       h('div', { style: { display: 'grid', gap: '8px', marginTop: '16px' } },
         h('button', { class: 'btn primary block', onclick: () => begin(o) }, 'Let’s do it'),
-        options.length > 1 ? h('button', { class: 'btn ghost block', onclick: () => { idx = (idx + 1) % options.length; app.audio.ui('toggle'); show(); } }, 'Something else') : null,
-        isTrick ? null : quickBtn()));
+        options.length > 1 ? h('button', { class: 'btn ghost block', onclick: () => { idx = (idx + 1) % options.length; app.audio.ui('toggle'); show(); } }, 'Something else') : null));
   }
 
   async function show() {
     const o = options[idx];
-    const leadId = o ? (o.type === 'trick' ? o.item.mallow : o.item.mallows[0]) : (getFamily(family)?.mallows?.[0] || 'blubi');
+    const leadId = o ? o.item.mallows[0] : (getFamily(family)?.mallows?.[0] || 'blubi');
     const lead = MALLOWS[leadId];
     await Promise.all([world.setRealm(lead.realm, { emotion: Object.keys(faceMix(input.emotions))[0], intensity: input.intensity }), world.setMallow(leadId)]);
     world.setEmotion(faceMix(input.emotions), Math.min(1, input.intensity * 1.05));
@@ -96,12 +89,6 @@ export default function encounter(app) {
     fit();
     await wait(850); // let the Mallow settle into place before it speaks
     say(world, encounterLine(leadId, family), { who: lead.name, ms: 3600 });
-  }
-
-  // a one-minute trick instead of a full ritual (Paid tricks; Ultra adds plot twists)
-  function quickBtn() {
-    return h('button', { class: 'btn ghost block', onclick: () => { clearBubble(); app.audio.ui('open'); playTrick(app, { tier: ent.has('ultra') ? null : 'paid', exclude: [...round.seen()] }); } },
-      'Only got a minute? Quick trick');
   }
 
   // keep the Mallow's face in view: fit it into the space above the card
@@ -113,45 +100,9 @@ export default function encounter(app) {
     });
   }
 
-  // TESTING ONLY (test hosts): ◀ n / total ▶ shows item n of everything in the
-  // plan (rituals first, then tricks) for the issue just typed. Position is
-  // remembered per plan, so after each one: type the next issue, press ▶.
-  function testBar() {
-    if (!testPurchasesAllowed() || !ent.has('paid')) return null;
-    const KEY = `test-step-${ent.tier()}`;
-    const label = h('div', { 'aria-live': 'polite', style: { flex: '1', minWidth: '0', textAlign: 'center', font: '600 13px var(--font-ui)', lineHeight: '1.25' } }, 'Test mode');
-    const btn = (dir, text) => h('button', { class: 'icon-btn', 'aria-label': dir < 0 ? 'Test: previous' : 'Test: next', style: { flex: '0 0 auto', fontSize: '18px' }, onclick: () => step(dir) }, text);
-    let items = null;
-    const paint = () => {
-      const n = app.store.get(KEY, 0);
-      const cur = items?.[n - 1];
-      const name = !cur ? 'Press ▶ for #1' : cur.kind === 'trick' ? `${cur.ref.ref} ${titleCase(cur.ref.title)}` : cur.ref.name;
-      label.replaceChildren(h('div', { style: { color: '#ffd98a', letterSpacing: '.08em', fontSize: '11px' } }, `TEST · ${n} / ${items ? items.length : '…'}`),
-        h('div', { style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, name));
-    };
-    async function step(dir) {
-      items ||= await planItems(app);
-      if (!items.length) return;
-      const n = Math.min(items.length, Math.max(1, app.store.get(KEY, 0) + dir));
-      app.store.set(KEY, n);
-      const it = items[n - 1];
-      options = [{ type: it.kind, item: it.ref, reasons: [`Test item ${n} of ${items.length}`] }];
-      idx = 0;
-      paint();
-      app.audio.ui('toggle');
-      await show();
-    }
-    planItems(app).then((xs) => { items = xs; paint(); });
-    paint();
-    return h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', padding: '6px 8px', borderRadius: '999px',
-      background: 'rgba(14,10,40,.62)', border: '1px dashed rgba(255,217,138,.6)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' } },
-    btn(-1, '◀'), label, btn(1, '▶'));
-  }
-
   function begin(o) {
     clearBubble();
     if (o.item.id === 'another-angle') { app.go('angle', { text: input.text || '' }); return; }
-    if (o.type === 'trick') { playTrickById(app, o.item.id); return; }
     rec.markDealt(o.item.id, o.poolKey);
     app.state.ritual = o.item;
     app.go('ritual', { id: o.item.id });

@@ -3,7 +3,6 @@
 import { h, icon, say, clearBubble, toast, wait } from '../ui.js';
 import { MALLOWS } from '../../mallows/registry.js';
 import { openSupport } from './support.js';
-import { playTrick } from '../trick-launch.js';
 import { setFelt } from '../../engine/journey.js';
 
 const CHECK = [
@@ -21,7 +20,6 @@ export default function landing(app) {
   if (!res || !ritual) { queueMicrotask(() => app.go('home', {}, { replace: true })); return { el: h('div') }; }
   const lead = MALLOWS[ritual.mallows[0]];
   let fav = rec.isFavourite(ritual.id);
-  const isTrick = ritual.module === 'quick-trick';
 
   // a good feeling isn't 'lighter' or 'heavier'; it glows more or less
   const options = ritual.family === 'celebration' ? CHECK_GLOW : CHECK;
@@ -41,7 +39,7 @@ export default function landing(app) {
     h('div', { style: { display: 'grid', gap: '8px', marginTop: '12px' } },
       h('button', { class: 'btn primary block', onclick: () => finish() }, 'Finish'),
       h('div', { class: 'row-btns' },
-        h('button', { class: 'btn', onclick: () => another() }, isTrick ? 'Another trick' : 'Another ritual'),
+        h('button', { class: 'btn', onclick: () => another() }, 'Another ritual'),
         favBtn,
         h('button', { class: 'btn', style: { flex: '0 0 56px' }, 'aria-label': 'Share a card (no personal words)', onclick: () => share() }, icon('share')))),
     h('div', { class: 'eyebrow', style: { margin: '18px 4px 8px' } }, 'What you did'),
@@ -78,10 +76,7 @@ export default function landing(app) {
     app.haptic('light');
   }
   function finish() { app.state.result = null; app.go('home'); }
-  function another() {
-    if (isTrick) playTrick(app, { tier: ritual.tier === 'ultra' ? 'ultra' : (app.ent.has('ultra') ? null : 'paid'), exclude: [ritual.id] });
-    else app.go('encounter', {});
-  }
+  function another() { app.go('encounter', {}); }
 
   async function share() {
     // privacy-safe: Mallow + ritual title only, never anything you typed

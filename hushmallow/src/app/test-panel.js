@@ -1,11 +1,9 @@
 // TESTING ONLY — shown on test hosts (src/app/config.js). One panel on Home:
-// type an issue, step ◀ PREV / NEXT ▶ through every ritual, then every trick,
-// in the plan, and play the selected one with that issue. Needs no plan:
+// type an issue, step ◀ PREV / NEXT ▶ through every ritual in the plan, and play the selected one with that issue. Needs no plan:
 // it switches on a free test Ultra plan by itself.
 import { h, say, clearBubble, toast } from './ui.js';
 import { BUILD } from './config.js';
 import { planItems, playItem } from './play-item.js';
-import { titleCase } from '../engine/tricks.js';
 import { interpret } from '../engine/interpret.js';
 import { MALLOWS } from '../mallows/registry.js';
 
@@ -13,7 +11,7 @@ export function testPanel(app) {
   const { world, ent } = app;
   let items = null;
   const key = () => `test-step-${ent.tier()}`;
-  const nameOf = (it) => (it.kind === 'trick' ? `${it.ref.ref} · ${titleCase(it.ref.title)}` : it.ref.name);
+  const nameOf = (it) => it.ref.name;
 
   const issue = h('input', { class: 'search', type: 'text', placeholder: 'Type your issue (optional)…', 'aria-label': 'Test issue',
     value: app.store.get('test-issue', ''), style: { minHeight: '44px' } });
@@ -29,9 +27,9 @@ export function testPanel(app) {
     h('span', {}, 'TEST MODE'), h('span', { style: { opacity: 0.8 } }, BUILD)),
   issue,
   h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
-    big('◀ PREV', 'Test: previous ritual or trick', () => step(-1)),
+    big('◀ PREV', 'Test: previous ritual', () => step(-1)),
     h('div', { style: { flex: '1', minWidth: '0', textAlign: 'center' } }, num, name),
-    big('NEXT ▶', 'Test: next ritual or trick', () => step(1))),
+    big('NEXT ▶', 'Test: next ritual', () => step(1))),
   play);
 
   async function ensurePlan() {
@@ -51,7 +49,7 @@ export function testPanel(app) {
     app.store.set(key(), n);
     await paint();
     const it = items[n - 1];
-    const mid = it.kind === 'trick' ? it.ref.mallow : it.ref.mallows[0];
+    const mid = it.ref.mallows[0];
     app.state.homeMallow = mid;
     app.audio.ui('toggle');
     clearBubble();

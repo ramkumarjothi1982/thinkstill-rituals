@@ -1,6 +1,5 @@
-// One "round" per plan: nothing the app offers is repeated until everything
-// in the plan has been started once (Paid: 10 rituals + 291 tricks; Ultra:
-// every ritual + all 1,000 tricks). Then a fresh round begins. Things the
+// One "round" per plan: nothing the app offers is repeated until every ritual
+// in the plan has been started once. Then a fresh round begins. Things the
 // person picks themselves (Saved, the Library, Another Angle's door) always
 // open, and still count as done for the round.
 const key = (tier) => `round-${tier}`;

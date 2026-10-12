@@ -1,14 +1,11 @@
-// LIBRARY — every ritual and trick in this person's plan, to browse and play
-// directly. Search, filter by category or Mallow, and see what's been
-// finished (✓). Paid shows 10 rituals + 291 tricks; Ultra shows everything.
+// LIBRARY — every ritual in this person's plan, to browse and play directly.
+// Search, filter by category or Mallow, and see what's been finished (✓).
 // The Saved tab is the straight path back to anything the person saved.
 import { h, iconBtn, toast } from '../ui.js';
 import { RITUALS } from '../../data/rituals.js';
 import { AVAILABLE } from '../../rituals/index.js';
 import { allowedFor } from '../../engine/recommend.js';
 import { MALLOWS, MALLOW_IDS } from '../../mallows/registry.js';
-import { titleCase } from '../../engine/tricks.js';
-import { allTricks } from '../trick-launch.js';
 import { playItem } from '../play-item.js';
 import { playedSet } from '../../engine/played.js';
 
@@ -22,7 +19,6 @@ const PAGE = 80;
 export default function library(app, params = {}) {
   const { world, ent } = app;
   const rituals = RITUALS.filter((r) => allowedFor(r, ent.flags()) && AVAILABLE.has(r.module));
-  let tricks = [];
   let tab = params.tab || 'rituals';
   let cat = 'all', mallow = 'all', onlyNew = false, query = '', shown = PAGE;
   let played = playedSet(app.store);
@@ -48,15 +44,9 @@ export default function library(app, params = {}) {
 
   const ritualItems = () => rituals.map((r) => ({ id: r.id, kind: 'ritual', name: r.name, mallow: r.mallows[0], cat: r.family, catLabel: FAMILY_LABEL[r.family] || r.family,
     sub: r.purpose, mins: Math.max(1, Math.round(r.durationSec / 60)), ultra: (r.tier || 'paid') === 'ultra', ref: r }));
-  const trickItems = () => tricks.map((t) => ({ id: t.id, kind: 'trick', name: titleCase(t.title), mallow: t.mallow, cat: t.issue, catLabel: t.issue,
-    sub: t.mission, mins: 1, ultra: t.tier === 'ultra', ref: t, extra: `${t.ref} ${t.theme} ${t.pattern}` }));
   const savedIds = () => app.rec.favourites();
-  const savedItems = () => { const ids = savedIds(); const all = [...ritualItems(), ...trickItems()]; return ids.map((id) => all.find((x) => x.id === id)).filter(Boolean); };
-  const items = () => (tab === 'saved' ? savedItems() : tab === 'rituals'
-    ? rituals.map((r) => ({ id: r.id, kind: 'ritual', name: r.name, mallow: r.mallows[0], cat: r.family, catLabel: FAMILY_LABEL[r.family] || r.family,
-      sub: r.purpose, mins: Math.max(1, Math.round(r.durationSec / 60)), ultra: (r.tier || 'paid') === 'ultra', ref: r }))
-    : tricks.map((t) => ({ id: t.id, kind: 'trick', name: titleCase(t.title), mallow: t.mallow, cat: t.issue, catLabel: t.issue,
-      sub: t.mission, mins: 1, ultra: t.tier === 'ultra', ref: t, extra: `${t.ref} ${t.theme} ${t.pattern}` })));
+  const savedItems = () => { const ids = savedIds(); const all = ritualItems(); return ids.map((id) => all.find((x) => x.id === id)).filter(Boolean); };
+  const items = () => (tab === 'saved' ? savedItems() : ritualItems());
 
   function filtered() {
     const q = query.trim().toLowerCase();
@@ -67,13 +57,12 @@ export default function library(app, params = {}) {
   function chip(label, on, onclick) { return h('button', { class: 'chip', 'aria-pressed': String(on), onclick }, label); }
 
   function renderTabs() {
-    const ritualCount = rituals.length, trickCount = tricks.length;
+    const ritualCount = rituals.length;
     tabs.replaceChildren(
       chip(`★ Saved · ${savedItems().length}`, tab === 'saved', () => switchTab('saved')),
-      chip(`Rituals · ${ritualCount}`, tab === 'rituals', () => switchTab('rituals')),
-      chip(`${ent.has('ultra') ? 'Tricks & plot twists' : 'Quick tricks'} · ${trickCount || '…'}`, tab === 'tricks', () => switchTab('tricks')));
-    const all = ritualCount + trickCount;
-    const done = [...played].filter((id) => rituals.some((r) => r.id === id) || tricks.some((t) => t.id === id)).length;
+      chip(`Rituals · ${ritualCount}`, tab === 'rituals', () => switchTab('rituals')));
+    const all = ritualCount;
+    const done = [...played].filter((id) => rituals.some((r) => r.id === id)).length;
     countEl.textContent = `Played ${done} of ${all}`;
   }
 
@@ -97,7 +86,7 @@ export default function library(app, params = {}) {
         h('div', { class: 'b', style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, x.sub)),
       h('span', { class: 'tick', 'aria-hidden': 'true', style: played.has(x.id) ? { background: 'var(--accent)', borderColor: 'transparent', color: 'var(--text-on-accent)' } : {} }, played.has(x.id) ? '✓' : '')));
     const empty = tab === 'saved' && !savedIds().length
-      ? 'Nothing saved yet. When a ritual or trick ends, tap “Save” and it will wait for you here.'
+      ? 'Nothing saved yet. When a ritual ends, tap “Save” and it will wait for you here.'
       : 'Nothing matches. Try fewer filters.';
     list.replaceChildren(...(rows.length ? rows : [h('p', { class: 'muted', style: { padding: '12px 4px' } }, empty)]));
     more.style.display = xs.length > shown ? '' : 'none';
@@ -120,7 +109,6 @@ export default function library(app, params = {}) {
       world.place({ x: 84, y: 9, scale: 0.3 });
       world.setStage('curious');
       refresh();
-      try { tricks = await allTricks(app); } catch { toast('Couldn’t open the tricks just now.'); }
       played = playedSet(app.store);
       refresh();
     },

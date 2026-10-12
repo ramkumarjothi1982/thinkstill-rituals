@@ -16,10 +16,6 @@ export default function settings(app) {
     ...[['system', 'Match my phone'], ['reduced', 'Reduced'], ['full', 'Full']].map(([v, l]) => h('option', { value: v }, l)));
   motionSel.value = prefs.get('motion');
   motionSel.addEventListener('change', () => prefs.set('motion', motionSel.value));
-  const voiceSel = h('select', { class: 'search', style: { width: 'auto', minHeight: '40px' }, 'aria-label': 'Trick voice' },
-    ...[['jolly', 'Jolly'], ['cheeky', 'Cheeky'], ['unfiltered', 'Unfiltered (swears)']].map(([v, l]) => h('option', { value: v }, l)));
-  voiceSel.value = prefs.get('trickVoice') || 'jolly';
-  voiceSel.addEventListener('change', () => { prefs.set('trickVoice', voiceSel.value); app.haptic('light'); });
   const vol = h('input', { type: 'range', class: 'range', min: 0, max: 1, step: 0.05, value: prefs.get('volume'), 'aria-label': 'Volume', style: { maxWidth: '140px' } });
   vol.addEventListener('change', () => prefs.set('volume', Number(vol.value)));
 
@@ -35,7 +31,6 @@ export default function settings(app) {
       sw('haptics', 'Haptics', 'Gentle taps and buzzes. On iPhone this needs the App Store app.'),
       h('div', { class: 'setting' }, h('div', { class: 'grow' }, 'Motion', h('small', {}, 'Reduced keeps every ritual, with calmer movement')), motionSel),
       sw('lowStim', 'Low stimulation', 'Softer visuals and fewer sparkles'),
-      h('div', { class: 'setting' }, h('div', { class: 'grow' }, 'Trick voice', h('small', {}, 'How cheeky the Mallows get in quick tricks')), voiceSel),
       h('div', { class: 'eyebrow', style: { marginTop: '18px' } }, 'Privacy'),
       sw('saveHistory', 'Remember which rituals I did', 'Ritual names and how it felt. Never your words.'),
       sw('saveWords', 'Keep my saved angles', 'Ultra only. Stored on this phone, never uploaded.'),
