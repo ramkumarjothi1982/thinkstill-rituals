@@ -32,9 +32,11 @@ const N = 3;              // echo tiles
 const U0 = 0.94;          // seam start (loud side)
 const UQ = 0.05;          // seam rest (quiet side)
 const CAP = 0.045;        // input banked ahead of the law (progress units)
-const G = 4;              // ghost copies per echo train
 const NOTCH = 6;          // sound notches per seam travel
+const BLEND = 0.12;       // pointAt glides from one tile to the next over this share of a tile
 const SEAM_LAYERS = [[11, 0.1], [4.5, 0.3], [1.6, 0.95]];
+const ECHOES = [5, 4, 3]; // ghost copies in the echo train, loudest tile first
+const LAYERS = [3, 3, 2]; // ghost plates behind the tile, loudest tile first
 
 export function create(E) {
   const { g, stage, photos, words, pal } = E;
@@ -59,8 +61,9 @@ export function create(E) {
     const kind = slot === wordsSlot ? 'words' : 'photo';
     const pi = photoSlots.indexOf(slot);
     const ph = kind === 'photo' ? (pi === 0 ? list.slice(0, nA) : list.slice(nA)) : [];
-    return { slot, kind, ph, L: 0, col: base[(slot + crot) % 3], ec: '#ffffff', vol: 0, su: U0, wob: new Wobble(), lift: 0, flare: 0, cue: 0,
-      pulse: 0, clear: 0, quiet: false, ph0: R(), phase: R(), bob: R() * TAU, x: 0, y: 0, cs: 0, chH: 0, lx: [], side: pi === 0 ? -1 : 1 };
+    return { slot, kind, ph, L: 0, col: base[(slot + crot) % 3], col2: base[(slot + crot + 1) % 3], ec: '#ffffff', ec2: '#ffffff', ech: '#ffffff', ec2h: '#ffffff',
+      vol: 0, s: 0, qs: 0, su: U0, wob: new Wobble(), lift: 0, flare: 0, cue: 0, nE: 3, nP: 2, lvl: null, bars: null,
+      pulse: 0, clear: 0, quiet: false, ph0: R(), phase: R(), bob: R() * TAU, x: 0, y: 0, cs: 0, chH: 0, lx: [], dw: [], dh: [], side: pi === 0 ? -1 : 1 };
   });
   {
     let L = louds.slice();
@@ -68,17 +71,19 @@ export function create(E) {
     else { for (let i = L.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [L[i], L[j]] = [L[j], L[i]]; } tiles.forEach((t, i) => { t.L = L[i]; }); }
   }
   const order = [0, 1, 2].sort((a, b) => tiles[b].L - tiles[a].L);     // loudest first
-  const rankOf = [0, 0, 0]; order.forEach((ti, r) => { rankOf[ti] = r; });
+  const rankOf = [0, 0, 0]; order.forEach((ti, r) => { rankOf[ti] = r; tiles[ti].nE = ECHOES[r]; tiles[ti].nP = LAYERS[r]; });
   const wordsTile = tiles[wordsSlot];
+  // echo strength at full volume: even the quietest tile visibly echoes
+  const s0 = (t) => 0.55 + 0.45 * t.L;
 
   // ------------------------------------------------------------ layout --
   let TW, TH, GAP, RAD, CW, trackW, GW, GH, wordSize, S = 1;
   let plateGrad, hiGrad, bandGrad, gripGrad, bevelGrad, finK = 0;
   function fit() {
     S = stage.s;
-    TW = Math.min(stage.w * 0.9, 430);
-    GAP = clamp(stage.h * 0.04, 6, 22);
-    TH = Math.min((stage.h * 0.95 - GAP * (N - 1)) / N, TW * 0.44);
+    TW = Math.min(stage.w * 0.88, 430);
+    GAP = clamp(stage.h * 0.045, 8, 22);
+    TH = Math.min((stage.h * 0.9 - GAP * (N - 1)) / N, TW * 0.44);
     RAD = Math.min(20, TH * 0.22);
     CW = TW * 0.66;
     trackW = TW - 26;
@@ -87,13 +92,13 @@ export function create(E) {
     const total = TH * N + GAP * (N - 1), top = stage.cy - total / 2 + TH / 2;
     for (const t of tiles) {
       t.x = stage.cx; t.y = top + t.slot * (TH + GAP);
-      t.lx.length = 0;
+      t.lx.length = 0; t.dw.length = 0; t.dh.length = 0;
       if (t.kind === 'photo' && t.ph.length) {
-        // fit the slides in one row: ≤ 74% of the tile height, inside the content band
+        // fit the slides in one row: ≤ 76% of the tile height, inside the content band
         let sw = 0, mh = 0;
         const dims = t.ph.map((i) => photos.size(i, 'card', 100));
-        for (const d of dims) { sw += d.w / 100; mh = Math.max(mh, d.h / 100); }
-        const gap = 8, k = Math.min((TH * 0.74) / mh, (CW - gap * (t.ph.length - 1)) / sw);
+        for (const d of dims) { sw += d.w / 100; mh = Math.max(mh, d.h / 100); t.dw.push(d.w / 100); t.dh.push(d.h / 100); }
+        const band = TW * 0.72, gap = clamp(TW * 0.022, 5, 8), k = Math.min((TH * 0.76) / mh, (band - gap * (t.ph.length - 1)) / sw);
         t.cs = k; t.chH = mh * k;   // cs = the card's longest side
         let x = -(sw * k + gap * (t.ph.length - 1)) / 2;
         for (const d of dims) { const w = (d.w / 100) * k; t.lx.push(x + w / 2); x += w + gap; }
@@ -101,19 +106,24 @@ export function create(E) {
         t.cs = TH * 0.3; t.chH = t.cs;
         for (const f of [-0.32, 0, 0.32]) t.lx.push(f * CW);
       }
+      // the tile's own sound light: brightest at the loud end, so sliding the seam left dims it
+      t.lvl = g.createLinearGradient(-TW / 2, 0, TW / 2, 0);
+      t.lvl.addColorStop(0, rgba(t.col, 0)); t.lvl.addColorStop(0.45, rgba(t.col, 0.07)); t.lvl.addColorStop(1, rgba(t.col, 0.3));
+      t.bars = g.createLinearGradient(-TW / 2, 0, TW / 2, 0);
+      t.bars.addColorStop(0, rgba(mix(t.col, quietCol, 0.6), 0.1)); t.bars.addColorStop(0.6, rgba(t.col, 0.45)); t.bars.addColorStop(1, rgba(mix(t.col, '#ffffff', 0.3), 0.85));
     }
     // static gradients in tile-local coordinates
     plateGrad = g.createLinearGradient(0, -TH / 2, 0, TH / 2);
-    plateGrad.addColorStop(0, rgba(mix(mix(pal.ink, pal.deep, 0.45), '#ffffff', 0.1), 0.88));
-    plateGrad.addColorStop(0.5, rgba(mix(pal.ink, pal.deep, 0.25), 0.9));
-    plateGrad.addColorStop(1, rgba(mix(pal.ink, '#000010', 0.35), 0.94));
+    plateGrad.addColorStop(0, rgba(mix(mix(pal.ink, pal.deep, 0.42), '#ffffff', 0.08), 0.88));
+    plateGrad.addColorStop(0.5, rgba(mix(pal.ink, pal.deep, 0.22), 0.91));
+    plateGrad.addColorStop(1, rgba(mix(pal.ink, '#000010', 0.4), 0.95));
     hiGrad = g.createLinearGradient(0, -TH / 2, 0, -TH / 2 + TH * 0.45);
-    hiGrad.addColorStop(0, 'rgba(255,255,255,0.12)'); hiGrad.addColorStop(1, 'rgba(255,255,255,0)');
+    hiGrad.addColorStop(0, 'rgba(255,255,255,0.11)'); hiGrad.addColorStop(1, 'rgba(255,255,255,0)');
     bevelGrad = g.createLinearGradient(0, -TH / 2, 0, TH / 2);
     bevelGrad.addColorStop(0, 'rgba(255,255,255,0.42)'); bevelGrad.addColorStop(0.3, 'rgba(255,255,255,0.05)');
     bevelGrad.addColorStop(0.8, 'rgba(255,255,255,0.03)'); bevelGrad.addColorStop(1, 'rgba(255,255,255,0.18)');
     bandGrad = g.createLinearGradient(-TW / 2, 0, -TW / 2 + TW * 0.17, 0);
-    bandGrad.addColorStop(0, rgba(quietCol, 0.3)); bandGrad.addColorStop(1, rgba(quietCol, 0));
+    bandGrad.addColorStop(0, rgba(quietCol, 0.26)); bandGrad.addColorStop(1, rgba(quietCol, 0));
     gripGrad = g.createLinearGradient(-GW / 2, 0, GW / 2, 0);
     gripGrad.addColorStop(0, mix(quietCol, '#5a6488', 0.55)); gripGrad.addColorStop(0.42, '#ffffff');
     gripGrad.addColorStop(0.6, mix(quietCol, '#ffffff', 0.6)); gripGrad.addColorStop(1, mix(quietCol, '#3a4468', 0.6));
@@ -134,6 +144,14 @@ export function create(E) {
     E.ripples.add(t.x + sxOf(t.su), t.y, { colour: t.ec, alpha: 0.4, speed: 90, r: 8 });
     E.react('tap');
     t.pulse = 1;
+  }
+  function notYet(t) {
+    // the law is asking for a moment: the tile gives a soft "not yet" sway
+    if (E.now() - waitT < 0.6) return;
+    waitT = E.now();
+    if (t) t.wob.kick(0.35);
+    E.sound('pluck', { note: 2, intensity: 0.16 });
+    E.checkpoint('wait');
   }
   function complete(t) {
     t.quiet = true; t.clear = 1; doneCount++; sel = -1; lastNotch = 0;
@@ -188,9 +206,12 @@ export function create(E) {
       const t = tiles[i], r = rankOf[i];
       const q = r < doneCount ? 1 : r === doneCount ? clamp(p * N - r) : 0;
       t.su = lerp(t.su, lerp(U0, UQ, q), 1 - Math.exp(-dt * 16));
-      const qs = clamp((U0 - t.su) / (U0 - UQ));
-      t.vol = t.quiet ? 0 : t.L * (1 - qs);
-      t.ec = qmix(quietCol, t.col, t.vol * 1.25);
+      t.qs = t.quiet ? 1 : clamp((U0 - t.su) / (U0 - UQ));
+      t.vol = t.quiet ? 0 : t.L * (1 - t.qs);
+      t.s = t.quiet ? 0 : s0(t) * (1 - t.qs);
+      t.ec = qmix(quietCol, t.col, t.s * 1.2);
+      t.ec2 = qmix(quietCol, t.col2, t.s * 1.2);
+      t.ech = mix(t.ec, '#ffffff', 0.3); t.ec2h = mix(t.ec2, '#ffffff', 0.3);
       t.lift = lerp(t.lift, sel === i && finAt < 0 ? 1 : 0, 1 - Math.exp(-dt * 10));
       t.wob.update(dt);
       t.flare = Math.max(0, t.flare - dt * 1.2);
@@ -209,8 +230,9 @@ export function create(E) {
     const fin = finAt >= 0 ? smooth(clamp((E.now() - finAt) / 2.4)) : 0;
     finK = fin;
     const total = TH * N + GAP * (N - 1), span = Math.max(TW, total);
-    glow(g, stage.cx, stage.cy, span * 0.78, qmix(quietCol, tiles[order[0]].col, loudAll * 1.3), 0.11 + 0.07 * loudAll + 0.08 * fin);
-    halo(g, stage.cx, fin ? lerp(stage.cy, stage.cy, fin) : stage.cy, span * (0.6 + 0.15 * fin), time, mix(quietCol, '#ffffff', 0.3), { rings: 5, alpha: 0.045 + 0.08 * loudAll + 0.05 * fin, speed: (0.04 + 0.1 * loudAll) * (reduced ? 0.4 : 1) });
+    // ambient light stays inside the stage (never over the title or the dock)
+    glow(g, stage.cx, stage.cy, Math.min(span * 0.66, stage.h * 0.62), qmix(quietCol, tiles[order[0]].col, loudAll * 1.3), 0.1 + 0.07 * loudAll + 0.08 * fin);
+    halo(g, stage.cx, stage.cy, Math.min(span * (0.6 + 0.15 * fin), stage.h * 0.44), time, mix(quietCol, '#ffffff', 0.3), { rings: 5, alpha: 0.045 + 0.08 * loudAll + 0.05 * fin, speed: (0.04 + 0.1 * loudAll) * (reduced ? 0.4 : 1) });
     if (!low) motes(g, stage.x, stage.y, stage.w, stage.h, time, quietCol, { n: reduced ? 12 : 24, alpha: 0.32, seed: 44, size: 1.5 });
 
     if (fin <= 0) {
@@ -227,7 +249,7 @@ export function create(E) {
       drawWordsContent(wordsTile, wp, time, fin);
       drawGrip(wordsTile, wp, time);
       for (const t of tiles) if (t !== wordsTile) drawPhotoContent(t, placement(t, time, fin), time, fin);
-      halo(g, wp.x, wp.y, TW * (0.5 + 0.35 * fin), time * 0.6, heavy ? quietCol : warmCol, { rings: 3, alpha: 0.12 * fin * (1 - fin * 0.4), speed: 0.12 });
+      halo(g, wp.x, wp.y, Math.min(TW * (0.5 + 0.3 * fin), stage.h * 0.44), time * 0.6, heavy ? quietCol : warmCol, { rings: 3, alpha: 0.12 * fin * (1 - fin * 0.4), speed: 0.12 });
     }
   }
 
@@ -253,19 +275,21 @@ export function create(E) {
   function jx(t, k, time) { return Math.sin(time * 29 + k * 2.3 + t.phase * 9); }
   function jy(t, k, time) { return Math.cos(time * 23 + k * 1.7 + t.phase * 5); }
   const vibOf = (t) => (reduced || low ? 0 : t.vol * 1.9 * S * (heavy ? 0.6 : 1) * (1 - calm0 * 0.5) * (1 + t.cue * 0.6));
+  // the finale keeps one clear sentence: the sentence tile's controls fade away
+  const uiA = (t) => (t === wordsTile ? 1 - 0.85 * finK : 1);
 
   function drawPlate(t, pl, time) {
-    const vol = t.vol, sel = t.lift, vib = vibOf(t);
+    const s = t.s, sel = t.lift, vib = vibOf(t);
     g.save(); g.translate(pl.x, pl.y); g.scale(pl.sc, pl.sc); g.globalAlpha = pl.a;
-    shadow(g, 0, TH * 0.5 + 6 + sel * 4, TW * 0.52, TH * 0.16, 0.3 + sel * 0.14);
+    shadow(g, 0, TH * 0.5 + 3 + sel * 4, TW * 0.5, TH * 0.1, 0.32 + sel * 0.14);
     // the tile itself echoes: layered ghost plates offset up-right, shivering with the volume
-    if (vol > 0.01) {
-      g.lineWidth = 1.2;
-      for (let k = 3; k >= 1; k--) {
-        const off = k * vol * 6.5 * S * (1 - t.pulse * 0.2);
-        roundRect(g, -TW / 2 + off + jx(t, k, time) * vib * 0.6, -TH / 2 - off * 0.55 + jy(t, k, time) * vib * 0.6, TW, TH, RAD);
-        g.fillStyle = rgba(t.ec, 0.05 * vol * (4 - k)); g.fill();
-        g.strokeStyle = rgba(t.ec, 0.34 * vol * (1 - k / 4.2)); g.stroke();
+    if (s > 0.01) {
+      g.lineWidth = 1.3;
+      for (let k = t.nP; k >= 1; k--) {
+        const off = k * s * 5 * S * (1 - t.pulse * 0.2), c = k % 2 ? t.ec : t.ec2;
+        roundRect(g, -TW / 2 + off + jx(t, k, time) * vib * 0.6, -TH / 2 - off * 0.75 + jy(t, k, time) * vib * 0.6, TW, TH, RAD);
+        g.fillStyle = rgba(c, 0.07 * s * (t.nP + 1 - k)); g.fill();
+        g.strokeStyle = rgba(c, 0.55 * s * (1 - k / (t.nP + 1.4))); g.stroke();
       }
     }
     // glass body
@@ -274,66 +298,78 @@ export function create(E) {
     g.fillStyle = bandGrad; g.fillRect(-TW / 2, -TH / 2, TW * 0.17, TH);
     const sx = sxOf(t.su);
     g.globalCompositeOperation = 'lighter';
-    // coloured light living inside the glass (the tile's own voice); cool and faint once quiet
+    // quiet light pools on the moon side as the tile quietens; the tile's voice gathers behind the seam
     g.save(); g.scale(1, 0.55);
-    glow(g, TW * 0.28, 0, TW * 0.72, t.ec, 0.1 + 0.24 * vol + 0.15 * t.cue + 0.2 * t.clear + (t === wordsTile ? 0.25 * finK : 0));
-    glow(g, -TW * 0.36, 0, TW * 0.32, quietCol, 0.1 + 0.25 * (1 - vol / Math.max(0.01, t.L)));
+    glow(g, -TW * 0.34, 0, TW * 0.34, quietCol, 0.06 + 0.2 * t.qs + 0.16 * t.clear);
+    if (s > 0.01 || t.cue > 0.01) glow(g, sx - TW * 0.16, 0, TW * 0.42, t.ec, 0.04 + 0.2 * s + 0.14 * t.cue);
+    if (t === wordsTile && finK > 0) glow(g, 0, 0, TW * 0.6, heavy ? quietCol : warmCol, 0.22 * finK);
     g.restore();
-    g.fillStyle = rgba(t.ec, 0.025 + 0.06 * vol); g.fillRect(-TW / 2, -TH / 2, TW, TH);
     // the repeating sound layer: level wash + waveform bars from the quiet edge up to the seam
-    if (vol > 0.004) {
-      g.fillStyle = rgba(t.ec, 0.04 + 0.14 * vol); g.fillRect(-TW / 2, -TH / 2, sx + TW / 2, TH);
-      const amp = TH * 0.62 * (0.06 + 0.94 * vol * vol * (2 - vol)), sp = (1 + 3 * vol) * (reduced ? 0.3 : 1);
+    if (s > 0.004) {
+      const e = 1 - t.qs;
+      g.globalAlpha = pl.a * s0(t) * (0.45 + 0.55 * e);
+      g.fillStyle = t.lvl; g.fillRect(-TW / 2, -TH / 2, sx + TW / 2, TH);
+      const amp = TH * 0.64 * (0.08 + 0.92 * s * s * (2 - s)), sp = (1 + 3 * t.vol) * (reduced ? 0.3 : 1);
       g.beginPath();
-      for (let bx = -TW / 2 + 9; bx < sx - 5; bx += 6) {
+      for (let bx = -TW / 2 + 9; bx < sx - 6; bx += 6) {
         const h = amp * (0.2 + 0.8 * Math.abs(Math.sin(bx * 0.061 + time * sp + t.phase * 6) * Math.sin(bx * 0.017 - time * 0.9 + t.phase)));
         g.rect(bx, -h / 2, 2.6, h);
       }
-      g.fillStyle = rgba(t.ec, 0.06 + 0.2 * vol); g.fill();
+      if (t === wordsTile) g.globalAlpha *= 0.55;       // keep the word echoes readable over the bars
+      g.fillStyle = t.bars; g.fill();
+      g.globalAlpha = pl.a;
+      // a soft column of light where the sound piles up against the seam
+      g.save(); g.translate(sx - 4, 0); g.scale(0.3, 1); glow(g, 0, 0, TH * 0.72, t.ec, 0.4 * s); g.restore();
       // speaker ripples on the loud side
       g.lineWidth = 2;
       for (let i = 0; i < 3; i++) {
-        const k = (time * (0.35 + 0.8 * vol) * (reduced ? 0.4 : 1) + i / 3 + t.phase) % 1;
-        g.strokeStyle = rgba(t.ec, 0.6 * vol * (1 - k) * smooth(k * 5));
+        const k = (time * (0.35 + 0.8 * t.vol) * (reduced ? 0.4 : 1) + i / 3 + t.phase) % 1;
+        g.strokeStyle = rgba(t.ech, 0.6 * s * (1 - k) * smooth(k * 5));
         g.beginPath(); g.arc(TW / 2 - TW * 0.17, 0, TH * (0.14 + 0.34 * k), -0.6, 0.6); g.stroke();
       }
     }
-    if (t.clear > 0) { g.fillStyle = rgba(quietCol, 0.14 * t.clear); g.fillRect(-TW / 2, -TH / 2, TW, TH); }
+    if (t.clear > 0) { g.fillStyle = rgba(quietCol, 0.12 * t.clear); g.fillRect(-TW / 2, -TH / 2, TW, TH); }
     g.globalCompositeOperation = 'source-over';
     g.fillStyle = hiGrad; g.fillRect(-TW / 2, -TH / 2, TW, TH * 0.45);
     g.restore();
     // bevel: crisp top edge light, soft bottom lip
     roundRect(g, -TW / 2 + 1.5, -TH / 2 + 1.5, TW - 3, TH - 3, RAD - 1.5); g.strokeStyle = bevelGrad; g.lineWidth = 1.5; g.stroke();
-    // rim (breathes on the loudest tile; bright when chosen)
+    // rim (breathes on the loudest tile; bright when chosen; tinted by the tile's voice while it echoes)
     roundRect(g, -TW / 2, -TH / 2, TW, TH, RAD);
-    g.strokeStyle = rgba(sel > 0.05 || t.cue > 0.05 ? mix(t.ec, '#ffffff', 0.35) : '#ffffff', Math.min(0.95, 0.16 + 0.45 * sel + 0.5 * t.cue)); g.lineWidth = 1.2 + 1.3 * sel + t.cue; g.stroke();
+    const rimCol = sel > 0.05 || t.cue > 0.05 ? mix(t.ec, '#ffffff', 0.35) : qmix('#ffffff', t.ec, s * 0.8);
+    g.strokeStyle = rgba(rimCol, Math.min(0.95, 0.18 + 0.16 * s + 0.45 * sel + 0.5 * t.cue)); g.lineWidth = 1.2 + 1.3 * sel + t.cue; g.stroke();
     // quiet side: a little moon
-    moon(-TW / 2 + TW * 0.075, 0, Math.max(6, TH * 0.085), quietCol, 0.45 + 0.35 * sel + (t.quiet ? 0.45 : 0));
-    drawSeam(t, sx, sel, time);
+    const ua = uiA(t);
+    moon(-TW / 2 + TW * 0.075, 0, Math.max(6, TH * 0.085), quietCol, (0.45 + 0.35 * sel + (t.quiet ? 0.45 : 0)) * ua);
+    drawSeam(t, sx, sel, time, ua);
     g.restore();
   }
   function moon(x, y, r, col, a) {
+    if (a <= 0.01) return;
     glow(g, x, y, r * 3.2, col, 0.32 * a);
     g.save(); g.globalAlpha *= Math.min(1, a); g.fillStyle = rgba(col, 0.92);
     g.beginPath(); g.arc(x, y, r, 0.955, TAU - 0.955); g.arc(x + r * 0.5, y, r * 0.82, -1.476, 1.476, true); g.closePath(); g.fill();
     g.restore();
   }
-  function drawSeam(t, sx, sel, time) {
+  function drawSeam(t, sx, sel, time, ua) {
+    if (ua <= 0.01) return;
     const top = -TH / 2 + 7, bot = TH / 2 - 7;
     const sc = t.quiet ? quietCol : mix(t.ec, '#ffffff', 0.35);
-    const k = t.quiet ? 0.55 : 0.6 + 0.4 * sel;
+    const k = (t.quiet ? 0.55 : 0.6 + 0.4 * sel) * ua;
     g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
     for (const [w, al] of SEAM_LAYERS) {
       g.strokeStyle = rgba(al > 0.9 ? '#ffffff' : sc, al * k * (1 + t.pulse * 0.4)); g.lineWidth = w;
       g.beginPath(); g.moveTo(sx, top); g.lineTo(sx, bot); g.stroke();
     }
     g.restore();
-    glow(g, sx, 0, GH * (1 + 0.4 * sel + 0.3 * t.pulse), sc, 0.22 + 0.35 * sel + 0.3 * t.cue);
+    glow(g, sx, 0, GH * (1 + 0.4 * sel + 0.3 * t.pulse), sc, (0.22 + 0.35 * sel + 0.3 * t.cue) * ua);
   }
   function drawGrip(t, pl, time) {
     // grip: a glass bead riding the seam (drawn above the content — it's what the finger holds)
+    const ua = uiA(t);
+    if (ua <= 0.01) return;
     const sx = sxOf(t.su), sel = t.lift;
-    g.save(); g.translate(pl.x, pl.y); g.scale(pl.sc, pl.sc); g.globalAlpha = pl.a;
+    g.save(); g.translate(pl.x, pl.y); g.scale(pl.sc, pl.sc); g.globalAlpha = pl.a * ua;
     g.translate(sx, 0);
     roundRect(g, -GW / 2, -GH / 2, GW, GH, GW / 2); g.fillStyle = gripGrad; g.fill();
     g.strokeStyle = rgba('#ffffff', 0.5 + 0.35 * sel); g.lineWidth = 1; g.stroke();
@@ -345,7 +381,7 @@ export function create(E) {
       g.save(); g.lineCap = 'round'; g.lineJoin = 'round'; g.lineWidth = 2;
       for (let i = 0; i < 3; i++) {
         const kk = reduced ? i / 3 + 0.17 : (time * 0.7 + i / 3) % 1;
-        const cx2 = sx - GW - 6 - kk * TW * 0.16, al = sel * 0.45 * Math.sin(kk * Math.PI);
+        const cx2 = sx - GW - 6 - kk * TW * 0.16, al = sel * 0.5 * Math.sin(kk * Math.PI);
         g.strokeStyle = rgba('#ffffff', al);
         g.beginPath(); g.moveTo(cx2 + 5, -7); g.lineTo(cx2, 0); g.lineTo(cx2 + 5, 7); g.stroke();
       }
@@ -359,27 +395,31 @@ export function create(E) {
   }
   function drawWordsContent(t, pl, time, fin) {
     if (E.phase === 'law') return;               // the closing-move law shows the words itself
-    const vol = t.vol, vib = vibOf(t);
+    const s = t.s, vib = vibOf(t);
     g.save(); g.translate(pl.x, pl.y); g.scale(pl.sc, pl.sc);
-    if (vol > 0.01) {
-      // ghost duplicates: an echo train rolling out of the clear copy, fading as it travels
+    if (s > 0.01) {
+      // ghost duplicates: a two-tone echo train rolling out of the clear copy, fading as it travels
       g.save(); roundRect(g, -TW / 2, -TH / 2, TW, TH, RAD); g.clip(); g.globalCompositeOperation = 'lighter';
-      g.fillStyle = mix(t.ec, '#ffffff', 0.35);
-      const spanW = vol * 34 * S * (1 - t.pulse * 0.25);
-      for (let k = G - 1; k >= 0; k--) {
-        const f = (k + t.ph0) / G, al = vol * 0.55 * (1 - f) * smooth(f * 5);
-        if (al < 0.01) continue;
-        words.draw(g, f * spanW + jx(t, k, time) * vib, -f * spanW * 0.32 + jy(t, k, time) * vib, { style: 'echo', size: wordSize, maxWidth: CW, lines: 3, alpha: al });
+      const spanW = s * (30 + 20 * s) * S * (1 - t.pulse * 0.25), nE = t.nE;
+      for (let k = nE - 1; k >= 0; k--) {
+        const f = (k + t.ph0) / nE, al = s * 0.85 * (1 - f) * smooth(f * 6);
+        if (al < 0.012) continue;
+        g.fillStyle = k % 2 ? t.ec2h : t.ech;
+        words.draw(g, f * spanW + jx(t, k, time) * vib, -f * spanW * 0.42 + jy(t, k, time) * vib, { style: 'echo', size: wordSize, maxWidth: CW, lines: 3, alpha: al });
       }
+      // a tight two-tone split hugging the clear copy: it closes up as the volume falls
+      const cs = (0.8 + 3.2 * s) * S;
+      g.fillStyle = t.ech; words.draw(g, -cs + jx(t, 7, time) * vib * 0.5, cs * 0.4, { style: 'echo', size: wordSize, maxWidth: CW, lines: 3, alpha: 0.55 * s });
+      g.fillStyle = t.ec2h; words.draw(g, cs, -cs * 0.4 + jy(t, 8, time) * vib * 0.5, { style: 'echo', size: wordSize, maxWidth: CW, lines: 3, alpha: 0.55 * s });
       g.restore();
     }
     // the exact words: always crisp, always on top of their echoes
-    words.draw(g, 0, 0, { style: 'light', size: wordSize, maxWidth: CW, lines: 3, alpha: 1, glowColour: fin > 0 ? qmix(quietCol, heavy ? quietCol : warmCol, fin) : qmix(quietCol, t.ec, vol * 1.4) });
+    words.draw(g, 0, 0, { style: 'light', size: wordSize, maxWidth: CW, lines: 3, alpha: 1, glowColour: fin > 0 ? qmix(quietCol, heavy ? quietCol : warmCol, fin) : qmix(quietCol, t.ec, s * 1.3) });
     g.restore();
   }
   function drawPhotoContent(t, pl, time, fin) {
-    const vol = t.vol, vib = vibOf(t), k = ease.inOutSine(fin);
-    const spanW = vol * 30 * S * (1 - t.pulse * 0.25);
+    const s = t.s, vib = vibOf(t), k = ease.inOutSine(fin);
+    const spanW = s * (18 + 16 * s) * S * (1 - t.pulse * 0.25);
     const fy = stage.cy + t.side * (TH * 0.56 + 12 * S + t.chH * 0.55);
     const items = t.ph.length || 3;
     for (let j = 0; j < items; j++) {
@@ -387,25 +427,31 @@ export function create(E) {
       let x = pl.x + t.lx[j] * pl.sc, y = pl.y;
       if (fin > 0) { x = lerp(x, stage.cx + t.lx[j] * 1.04, k); y = lerp(y, fy + (reduced ? 0 : Math.sin(time * 1.2 + j * 1.3 + t.slot) * 2.5 * k), k); }
       const sz = t.cs * (fin > 0 ? lerp(pl.sc, 1.06, k) : pl.sc);
-      if (vol > 0.01) {
+      if (s > 0.01) {
         g.save(); clipPlate(pl); g.globalCompositeOperation = 'lighter';
-        for (let e = G - 1; e >= 0; e--) {
-          const f = (e + t.ph0) / G, al = vol * 0.42 * (1 - f) * smooth(f * 5);
-          if (al < 0.01) continue;
-          const ox = x + f * spanW + jx(t, e + j, time) * vib, oy = y - f * spanW * 0.32 + jy(t, e + j, time) * vib;
-          if (i >= 0) photos.draw(g, i, ox, oy, sz, { shape: 'card', alpha: al, tone: 'mist', toneMix: 0.55, shadow: false });
-          else { g.strokeStyle = rgba(t.ec, al * 1.3); g.lineWidth = 1.6; g.beginPath(); g.arc(ox, oy, sz * 0.5, 0, TAU); g.stroke(); }
+        const cw = i >= 0 ? sz * t.dw[j] : sz, chh = i >= 0 ? sz * t.dh[j] : sz;
+        for (let e = t.nE - 1; e >= 0; e--) {
+          const f = (e + t.ph0) / t.nE, al = s * 0.5 * (1 - f) * smooth(f * 6);
+          if (al < 0.012) continue;
+          const ox = x + f * spanW + jx(t, e + j, time) * vib, oy = y - f * spanW * 0.34 + jy(t, e + j, time) * vib;
+          const c = e % 2 ? t.ec2h : t.ech, gs = 1 + 0.05 * f;
+          if (i >= 0) {
+            photos.draw(g, i, ox, oy, sz * gs, { shape: 'card', alpha: al, tone: 'mist', toneMix: 0.6, shadow: false });
+            // each ghost slide carries a thin coloured edge, so the layers read as separate copies
+            g.strokeStyle = rgba(c, al * 0.9); g.lineWidth = 1.2;
+            roundRect(g, ox - (cw * gs) / 2, oy - (chh * gs) / 2, cw * gs, chh * gs, Math.min(cw, chh) * 0.1); g.stroke();
+          } else { g.strokeStyle = rgba(c, al * 1.3); g.lineWidth = 1.6; g.beginPath(); g.arc(ox, oy, sz * 0.5 * gs, 0, TAU); g.stroke(); }
         }
         g.restore();
       }
       if (i >= 0) {
         const gc = fin > 0 ? (heavy ? quietCol : warmCol) : t.ec;
-        photos.draw(g, i, x, y, sz, { shape: 'card', tone: 'mist', toneMix: vol * 0.4, glow: 0.14 + 0.25 * vol + 0.35 * t.clear + 0.3 * k, glowColour: gc, shadow: fin > 0.5 });
+        photos.draw(g, i, x, y, sz, { shape: 'card', tone: 'mist', toneMix: t.vol * 0.35, glow: 0.12 + 0.22 * s + 0.35 * t.clear + 0.3 * k, glowColour: gc, shadow: fin > 0.5 });
       } else {
         // no photos: glossy sound pearls, calming from the tile colour to a pale pearl
         const r = sz * 0.5;
-        glow(g, x, y, r * 2.3, fin > 0 ? (heavy ? quietCol : warmCol) : t.ec, 0.3 + 0.2 * vol + 0.3 * t.clear);
-        orb(g, x, y, r, fin > 0 ? qmix(pearl, heavy ? quietCol : warmCol, k * 0.6) : qmix(pearl, t.col, vol * 1.3));
+        glow(g, x, y, r * 2.3, fin > 0 ? (heavy ? quietCol : warmCol) : t.ec, 0.3 + 0.2 * s + 0.3 * t.clear);
+        orb(g, x, y, r, fin > 0 ? qmix(pearl, heavy ? quietCol : warmCol, k * 0.6) : qmix(pearl, t.col, s * 1.2));
       }
     }
   }
@@ -438,6 +484,7 @@ export function create(E) {
     for (const t of tiles) if (Math.abs(pt.x - t.x) <= TW / 2 + 12 && Math.abs(pt.y - t.y) <= TH / 2 + GAP / 2) return t;
     return null;
   }
+  const seamPoint = (r, q) => { const t = tiles[order[r]]; return { x: t.x + sxOf(lerp(U0, UQ, q)), y: t.y }; };
   return {
     get progress() { return p; },
     get done() { return doneFlag; },
@@ -472,7 +519,7 @@ export function create(E) {
       const t = drag.t; if (t.quiet || finAt >= 0) return;
       const dq = (-dx / trackW) / (U0 - UQ);
       wanted = clamp(wanted + dq / N, doneCount / N, Math.min((doneCount + 1) / N, p + CAP));
-      if (E.locked && wanted >= p + CAP - 1e-3 && E.now() - waitT > 0.6) { waitT = E.now(); E.checkpoint('wait'); }
+      if (E.locked && dx < 0 && wanted >= p + CAP - 1e-3) notYet(t);
     },
     up(pt) {
       if (!drag || pt.id !== drag.id) return;
@@ -483,14 +530,18 @@ export function create(E) {
       if (finAt >= 0 || doneCount >= N) return;
       const t = activeTile();
       if (sel !== tiles.indexOf(t)) select(t);
-      const q = clamp(Math.max(wanted, p) * N - doneCount);
+      const from = Math.max(wanted, p);
+      if (E.locked || !E.allow(Math.min(1, from + 0.01))) { notYet(t); return; }
+      const q = clamp(from * N - doneCount);
       const nq = Math.min(1, (Math.floor(q * 3 + 0.02) + 1) / 3);
       assistTo = (doneCount + nq) / N;
     },
     pointAt(pp) {
-      const v = clamp(pp), r = clamp(Math.floor(v * N - 1e-9), 0, N - 1);
-      const t = tiles[order[r]], q = clamp(v * N - r);
-      return { x: t.x + sxOf(lerp(U0, UQ, q)), y: t.y };
+      // continuous: the point glides from one tile's quiet moon to the next tile's loud seam
+      const v = clamp(pp), r = clamp(Math.floor(v * N - 1e-9), 0, N - 1), q = clamp(v * N - r);
+      const a = seamPoint(r, q);
+      if (r > 0 && q < BLEND) { const b = seamPoint(r - 1, 1), k = smooth(q / BLEND); a.x = lerp(b.x, a.x, k); a.y = lerp(b.y, a.y, k); }
+      return a;
     },
     hint() {
       const t = activeTile();
