@@ -330,9 +330,11 @@ export function create(E) {
   const handleAt = (sl) => ({ x: bx, y: lerp(gy0, gy1, sl) + GH / 2 + hh * 0.55 });
   const knobAt = (f) => { const a = A0 - f * SWEEP; return { x: dx + Math.cos(a) * Rd * 1.04, y: dy + Math.sin(a) * Rd * 1.04 }; };
   function hap(kind, gap = 0.09) { const t = E.now(); if (t - lastHap > gap) { lastHap = t; E.haptic(kind); } }
-  function refuse() {
+  function refuse(press = false) {
     const t = E.now();
     if (t - lastWait > 0.7) { lastWait = t; E.checkpoint('wait'); (docked ? wob : wobG).kick(0.5); E.sound('bubble', { note: 1, intensity: 0.2 }); }
+    else if (press) { (docked ? wob : wobG).kick(0.3); hap('tick'); }
+    if (press) { if (docked) knobNudgeAt = t; else nudgeAt = t; }
   }
   function onGrille(p) { return p.x >= bx - railX - 18 && p.x <= bx + railX + 18 && p.y >= gyV - GH / 2 - 16 && p.y <= gyV + GH / 2 + hh + 20; }
   function onDial(p) { const d = Math.hypot(p.x - dx, p.y - dy); return d > Rd * 0.2 && d < Rd * 1.8; }
@@ -704,7 +706,7 @@ export function create(E) {
     },
     assist() {
       if (finAt >= 0 || E.phase !== 'play') return;
-      if (E.locked) { refuse(); return; }              // the law asks for a pause: a gentle "not yet"
+      if (E.locked) { refuse(true); return; }              // the law asks for a pause: a gentle "not yet"
       const base = assistTo != null ? assistTo : Math.max(wanted, prog);
       if (!docked && base < S1 - 1e-4) {
         const D = S1 / SLIDE_STEPS;

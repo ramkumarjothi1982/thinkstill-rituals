@@ -188,7 +188,7 @@ export function create(E) {
     // tall stages get a round-topped window; short ones a wider window with a flatter dome
     W = Math.min(stage.w - 2 * m, stage.h * 0.98, 420);
     const H0 = Math.min(stage.h - 6, W * 1.5);
-    ar = W / 2; ary = Math.min(ar, H0 * 0.34);
+    ar = W / 2; ary = Math.min(ar, H0 * lerp(0.24, 0.34, invLerp(260, 420, H0)));   // short stages: a flatter dome, more sea
     // keep the crescent's start (just below the top of the dome) inside the stage;
     // sit the window high so the bottom of the stage (law toasts) stays clear of the words
     const topRoom = Math.max(4, cr * 1.15 - ary * 0.049);
@@ -201,7 +201,7 @@ export function create(E) {
     if (y0 + H > stage.y + stage.h - 2) H = stage.y + stage.h - 2 - y0;
     y1 = y0 + H; ac = y0 + ary; br = Math.min(W * 0.09, 24);
     horizonY = ac + (H - ary) * 0.06;
-    shoreH = clamp(H * 0.2, 40, 110);
+    shoreH = clamp(H * 0.2, 36, 110);
     shoreY = y1 - shoreH;
     seaH = shoreY - horizonY;
     for (let k = 0; k < N; k++) {
@@ -291,7 +291,7 @@ export function create(E) {
   function buildPhotos() {
     const count = slots.length;
     const [kw, kh] = SIZE_K[Math.min(7, count)] || SIZE_K[3];
-    const base = Math.min(W * kw, seaH * kh) * (nP ? 1 : 0.62);
+    const base = Math.min(W * kw, seaH * kh * lerp(1.2, 1, invLerp(110, 200, seaH))) * (nP ? 1 : 0.62);
     for (const sl of slots) {
       sl.x = x0 + sl.u * W; sl.y = horizonY + sl.v * seaH;
       sl.size = base * lerp(0.86, 1.12, invLerp(0.2, 0.74, sl.v));
