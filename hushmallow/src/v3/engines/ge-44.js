@@ -1129,7 +1129,7 @@ export function create(E) {
 
   // -------------------------------------------------------------- input --
   function fingerUpdate(x, y) {
-    project(x, y, shownS - 40 * stage.s, shownS + 200 * stage.s);
+    project(x, y, shownS - 40 * stage.s, shownS + 320 * stage.s);
     if (projD < tol) { fingerValid = true; fingerS = projS; fingerOff = 0; }
     else { fingerValid = false; fingerOff = projD; }
   }
@@ -1208,8 +1208,8 @@ export function create(E) {
     pointAt(p) { return pointAtS(clamp(p) * L); },
     hint() {
       if (finAt >= 0 || traced || doneFlag) return null;
-      const a = shownS, b = Math.min(L, a + clamp(120 * stage.s, 80, 150)), out = [];
-      for (let i = 0; i <= 14; i++) { const q = pointAtS(lerp(a, b, i / 14)); out.push([q.x, q.y]); }
+      const a = shownS, b = Math.min(L, a + clamp(175 * stage.s, 110, 210)), out = [];
+      for (let i = 0; i <= 18; i++) { const q = pointAtS(lerp(a, b, i / 18)); out.push([q.x, q.y]); }
       return { path: out };
     },
     twist() {
