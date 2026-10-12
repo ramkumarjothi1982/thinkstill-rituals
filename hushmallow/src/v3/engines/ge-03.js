@@ -1039,7 +1039,12 @@ export function create(E) {
       if (finAt >= 0 || E.phase !== 'play') return;
       downIds.add(pt.id);
       const k = hitGate(pt);
-      if (k < 0) return;
+      if (k < 0) {
+        // a touch on the still terrace or the sky: just a small ring and a quiet drop (it never moves the gates)
+        const now = E.now();
+        if (now - lastRing > 0.15) { lastRing = now; E.ripples.add(pt.x, pt.y, { colour: tint2, speed: 46 * U, alpha: 0.3 }); E.sound('drip', { note: 1, intensity: 0.14 }); E.haptic('tick'); }
+        return;
+      }
       const gt = gates[k];
       if (gt.opened) { reRing(gt, pt.x, pt.y); return; }
       if (k === nOpened) { tryOpen(k, pt.x, pt.y); return; }

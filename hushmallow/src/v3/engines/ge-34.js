@@ -6,14 +6,14 @@
 // middle of the stage. Then trace the dotted seal along the flap from corner
 // to corner: the flap folds down behind your fingertip like paper being
 // smoothed shut, and a stitched seam of thread tacks it — tacked, never
-// locked. A satin pull-loop tied to the card stays outside the flap the whole
-// time. Win: the envelope rests closed and its retrieval tab is still out,
+// locked. A satin ribbon tied to the card ends in a pull-tab that stays
+// outside the flap the whole time. Win: the envelope rests closed and its retrieval tab is still out,
 // within reach.
 //
 // Photos fan out behind the card like a hand of keepsake cards. As the card
 // goes in they follow one by one, gather into a neat stack and slip into the
 // envelope behind it, each softening into a cool mist as it tucks in; the
-// flap then seals them away (retrievable by the same pull-loop).
+// flap then seals them away (retrievable by the same pull-tab).
 
 import { TAU, clamp, lerp, smooth, ease, rgba, mix, glow, glint, orb, motes, halo, canvas as makeCanvas, Spring, Spring2, Rope } from '../fx.js';
 import { CurveTrace, Wobble } from '../kit.js';
@@ -24,7 +24,7 @@ export const meta = {
   steps: [
     'Drag the card with your words down into the open envelope.',
     'Trace the dotted seal along the flap, from one corner to the other.',
-    'The flap folds shut behind your finger — tacked, not locked — and the pull-loop stays out.',
+    'The flap folds shut behind your finger — tacked, not locked — and the pull-tab stays out.',
   ],
   tapAlt: 'each press slides the card a little deeper, or smooths a little more of the flap shut',
   words: 'Your words are written on the index card; once it is tucked in, they still show softly through the vellum.',
@@ -33,7 +33,7 @@ export const meta = {
     becomes: 'soft photo cards',
     touch: 'As you slide the card in, they follow it one by one;',
     change: 'each softens into a cool, misty light as it tucks into the envelope, and the flap seals them away.',
-    payoff: 'They rest there safely — sealed, never locked — with the pull-loop keeping them within reach.',
+    payoff: 'They rest there safely — sealed, never locked — with the pull-tab keeping them within reach.',
   },
   finaleSec: 4,
 };
@@ -54,7 +54,7 @@ export function create(E) {
   const rnd = E.rand;
   const dpr = Math.min(2, globalThis.devicePixelRatio || 1);
 
-  // loop rounds: new paper, lining, flap curve, card tilt, seal direction, loop side and hero photo
+  // loop rounds: new paper, lining, flap curve, card tilt, seal direction, tab side and hero photo
   const dir = R1 ? 1 : (E.round % 2 === 0 ? -1 : 1);
   const tilt = R1 ? -1 : (rnd() < 0.5 ? -1 : 1);
   const startDX = R1 ? -0.035 : (0.015 + rnd() * 0.05) * tilt;
@@ -62,7 +62,7 @@ export function create(E) {
   const tint = R1 ? TINTS[0] : TINTS[1 + Math.floor(rnd() * (TINTS.length - 1))];
   const liningKind = R1 ? 0 : 1 + Math.floor(rnd() * 3);
   const flapRound = R1 ? 0.16 : 0.07 + rnd() * 0.22;
-  const loopSide = R1 ? 1 : (rnd() < 0.5 ? -1 : 1);
+  const tabSide = R1 ? 1 : (rnd() < 0.5 ? -1 : 1);
   const ribbonHue = R1 ? 0.35 : 0.15 + rnd() * 0.4;
   const twistKind = (E.round - 1) % 3;
   const calm0 = E.calm;
@@ -108,7 +108,7 @@ export function create(E) {
 
   // ---- geometry (world coordinates; once the card is in, a gentle camera glides and zooms onto the envelope)
   let W = 0, H = 0, eL = 0, eR = 0, eTop = 0, eB = 0, ecx = 0, flapH = 0, mouthMid = 0, mouthSide = 0, rcE = 6;
-  let cW = 0, cH = 0, x0 = 0, y0 = 0, yS = 0, pS = 0, tol = 40, pad = 30, wordSize = 14, rw = 6, cpad = 3, loopLen = 40;
+  let cW = 0, cH = 0, x0 = 0, y0 = 0, yS = 0, pS = 0, tol = 40, pad = 30, wordSize = 14, rw = 6, cpad = 3, ribbonLen = 40;
   const pathX = new Float32Array(NP), pathY = new Float32Array(NP);
   const fX = new Float32Array(NF), fD = new Float32Array(NF), fS = new Float32Array(NF);
   const qx = new Float32Array(NF), qy = new Float32Array(NF), qf = new Float32Array(NF);
@@ -154,11 +154,11 @@ export function create(E) {
       o.size = pS * (o.hero && n > 1 ? 1.1 : 1);
       const { w, h } = photos.size(o.i, 'card', o.size);
       o.w = w; o.h = h;
-      const xj = n > 1 ? (o.j - (n - 1) / 2) * dx : -W * 0.1 * loopSide;
+      const xj = n > 1 ? (o.j - (n - 1) / 2) * dx : -W * 0.1 * tabSide;
       const u = xj / (W * 0.66);
       o.fx = xj; o.fy = -cH / 2 - h * 0.36 + u * u * h * 0.3 - (o.hero && n > 1 ? h * 0.06 : 0);
-      o.fr = u * 0.17 + (n === 1 ? -0.08 * loopSide : 0);
-      o.sx = n > 1 ? (o.j - (n - 1) / 2) * sp : -W * 0.08 * loopSide;
+      o.fr = u * 0.17 + (n === 1 ? -0.08 * tabSide : 0);
+      o.sx = n > 1 ? (o.j - (n - 1) / 2) * sp : -W * 0.08 * tabSide;
       o.sx = clamp(o.sx, -(W / 2 - w / 2 - 6), W / 2 - w / 2 - 6);
       o.sy = eTop + H * 0.035 + h / 2 + ((o.j * 7) % 3) * H * 0.012 - yS;
       o.sr = ((o.j % 2) - 0.5) * 0.05;
@@ -201,7 +201,7 @@ export function create(E) {
     pS = Math.min(W * 0.42, H * 0.64) * (n >= 5 ? 0.86 : 1);
     tol = 40 * s + 10; pad = Math.ceil(42 * s);
     wordSize = Math.max(13, Math.min(18, cW * 0.072));
-    rw = Math.max(6, 7.5 * s); loopLen = H * 0.5;
+    rw = Math.max(6, 7.5 * s); ribbonLen = H * 0.5;
     for (let i = 0; i < NP; i++) { cardAt(i / (NP - 1), tmp); pathX[i] = tmp.x; pathY[i] = tmp.y; }
     for (let k = 0; k < NF; k++) { const fr = k / (NF - 1); fX[k] = eL + W * fr; fD[k] = depthAt(Math.abs(fX[k] - ecx) / (W / 2)); fS[k] = dir > 0 ? fr : 1 - fr; qx[k] = fX[k]; qy[k] = eTop - fD[k]; qf[k] = 0; }
     const pts = [];
@@ -215,9 +215,9 @@ export function create(E) {
     for (const o of ph) { photoTarget(o, 0); o.spr.set(tmp.x, tmp.y); o.rs.set(tmp.r); }
     computeFlap(0);
     const a = anchorWorld();
-    rope = new Rope(LN, a.x, a.y, a.x + loopSide * loopLen * 0.3, a.y - loopLen, { gravity: -45, iterations: 5 });
+    rope = new Rope(LN, a.x, a.y, a.x + tabSide * ribbonLen * 0.3, a.y - ribbonLen, { gravity: -45, iterations: 5 });
     rope.pinB = false;
-    for (let i = 0; i < 60; i++) { loopEnds(a); rope.update(1 / 60, ends.ax, ends.ay, null, null); }
+    for (let i = 0; i < 60; i++) { ribbonRoot(a); rope.update(1 / 60, ends.ax, ends.ay, null, null); }
   }
 
   // ---------------------------------------------------------- sprites --
@@ -314,8 +314,8 @@ export function create(E) {
     b.globalAlpha = 0.06; b.fillStyle = pat(b, fibreTile); b.fillRect(0, 0, cW, cH); b.globalAlpha = 1;
     b.restore();
     b.strokeStyle = 'rgba(70,50,60,0.16)'; b.lineWidth = 1; rr(b, 0.5, 0.5, cW - 1, cH - 1, cH * 0.06); b.stroke();
-    // the eyelet the pull-loop is tied through
-    const ax = cW / 2 + loopSide * cW * 0.3, ay = cH * 0.085;
+    // the eyelet the pull-tab ribbon is tied through
+    const ax = cW / 2 + tabSide * cW * 0.3, ay = cH * 0.085;
     b.fillStyle = rgba(ribbonLo, 0.75); b.beginPath(); b.arc(ax, ay, 3.8, 0, TAU); b.fill();
     b.fillStyle = '#fffaf2'; b.beginPath(); b.arc(ax, ay, 1.7, 0, TAU); b.fill();
     if (!shadowSpr) {
@@ -340,11 +340,11 @@ export function create(E) {
   }
   function setTrace(frac) { tr.i = frac >= 0.999 ? tr.last : traceIndex(frac); }
 
-  // ---------------------------------------------------------- the loop --
+  // ------------------------------------------------------- the pull-tab --
   const ends = { ax: 0, ay: 0, under: 0 };
   const anc = { x: 0, y: 0 };
   function anchorWorld() {
-    const ax = loopSide * cW * 0.3, ay = -cH / 2 + cH * 0.085, c = Math.cos(cardRot.x), s = Math.sin(cardRot.x), sc = 1 + 0.035 * lift.x;
+    const ax = tabSide * cW * 0.3, ay = -cH / 2 + cH * 0.085, c = Math.cos(cardRot.x), s = Math.sin(cardRot.x), sc = 1 + 0.035 * lift.x;
     anc.x = card.x + (ax * c - ay * s) * sc; anc.y = card.y + (ax * s + ay * c) * sc;
     return anc;
   }
@@ -354,7 +354,7 @@ export function create(E) {
     out.x = lerp(qx[k], qx[k + 1], u); out.y = lerp(qy[k], qy[k + 1], u); out.f = lerp(qf[k], qf[k + 1], u);
     return out;
   }
-  function loopEnds(a) {
+  function ribbonRoot(a) {
     // tied through the eyelet; once the flap folds over it, held under the flap edge
     let ax = a.x, ay = a.y;
     flapAt(ax, fa);
@@ -435,10 +435,10 @@ export function create(E) {
 
     computeFlap(t);
     if (dt > 0) {
-      loopEnds(anchorWorld());
+      ribbonRoot(anchorWorld());
       // a slow travelling breeze gives the satin a soft S-curve
       const wind = (reduced ? 14 : 40) * (1 - calm0 * 0.4);
-      for (let i = 1; i < LN; i++) rope.x[i] += (Math.sin(t * 0.9 - i * 0.55) * wind + loopSide * 22) * dt * dt * (i / LN);
+      for (let i = 1; i < LN; i++) rope.x[i] += (Math.sin(t * 0.9 - i * 0.55) * wind + tabSide * 22) * dt * dt * (i / LN);
       rope.update(dt, ends.ax, ends.ay, null, null);
     }
 
@@ -567,7 +567,7 @@ export function create(E) {
     g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
     // the little knot tying the loop through the eyelet (hidden once the flap covers it)
     if (ends.under < 0.98) {
-      const kx = loopSide * cW * 0.3, ky = -cH / 2 + cH * 0.085;
+      const kx = tabSide * cW * 0.3, ky = -cH / 2 + cH * 0.085;
       g.globalAlpha = 1 - ends.under;
       g.fillStyle = ribbonLo; g.beginPath(); g.ellipse(kx, ky, rw * 0.62, rw * 0.5, 0, 0, TAU); g.fill();
       g.fillStyle = ribbonCol; g.beginPath(); g.ellipse(kx, ky - 0.6, rw * 0.48, rw * 0.36, 0, 0, TAU); g.fill();
@@ -739,7 +739,7 @@ export function create(E) {
     }
   }
   function drawMoon(t) {
-    const k = smooth(clamp((E.now() - twistAt) / 3)), x = ecx - loopSide * W * 0.36, y = eTop - H * lerp(0.15, 0.62, k) + Math.sin(t * 0.5) * 2, r = H * 0.13;
+    const k = smooth(clamp((E.now() - twistAt) / 3)), x = ecx - tabSide * W * 0.36, y = eTop - H * lerp(0.15, 0.62, k) + Math.sin(t * 0.5) * 2, r = H * 0.13;
     glow(g, x, y, r * 3, glowCol, 0.3 * k);
     g.save(); g.globalAlpha = 0.85 * k;
     g.beginPath(); g.arc(x, y, r, -Math.PI / 2, Math.PI / 2, true); g.ellipse(x - r * 0.18, y, r * 0.5, r, 0, Math.PI / 2, -Math.PI / 2, true); g.closePath();
@@ -855,13 +855,13 @@ export function create(E) {
     twist() {
       twistAt = E.now();
       if (twistKind === 0) {
-        const top = toWorld({ x: stage.x + 20, y: stage.y + 12 }), sx = clamp(ecx - loopSide * W * 0.62, top.x, 2 * ecx - top.x), sy = top.y;
+        const top = toWorld({ x: stage.x + 20, y: stage.y + 12 }), sx = clamp(ecx - tabSide * W * 0.62, top.x, 2 * ecx - top.x), sy = top.y;
         star.x.set(sx); star.y.set(sy);
-        star.tx = ecx - loopSide * W * 0.42; star.ty = eTop - H * 0.04;
+        star.tx = ecx - tabSide * W * 0.42; star.ty = eTop - H * 0.04;
       } else if (twistKind === 1) {
         const ex = rope.x[LN - 1], ey = rope.y[LN - 1];
         const lim = toWorld({ x: stage.x + 16, y: stage.y + 16 });
-        for (let i = 0; i < 3; i++) { lights[i].x = clamp(ex + loopSide * (i + 1) * W * 0.13, lim.x, 2 * ecx - lim.x); lights[i].y = Math.max(lim.y, ey - (i + 1) * H * 0.16 + i * i * H * 0.03); }
+        for (let i = 0; i < 3; i++) { lights[i].x = clamp(ex + tabSide * (i + 1) * W * 0.13, lim.x, 2 * ecx - lim.x); lights[i].y = Math.max(lim.y, ey - (i + 1) * H * 0.16 + i * i * H * 0.03); }
       }
       E.particles.burst(ecx, sY(eTop - H * 0.15), low ? 4 : 10, { speed: 40, colour: glowCol, life: 1.2, size: 5, kind: 'glint' });
     },
