@@ -93,10 +93,11 @@ const OB_BODY = 0, OB_FACE = 1, OB_SIB = 2, OB_SIBFACE = 3, OB_FX = 4, OB_PROP =
 const W_OWN = [8, 40, 6, 30, 10, 10];
 const W_OTHER = [8, 40, 6, 30, 12, 10];
 const SIDE_NAMES = ['below', 'above', 'right', 'left', 'below', 'below', 'above', 'above'];
-// layout tuning (measured in the lab: tools are in /tmp/claude-0/hf/W2b): repack all when a newcomer's
-// fit is worse than addRepack; in a repack, wish = weight of the distance to where each wanted to be,
-// hug = weight of hugging a wall; biasRepack = repack when a measured overlap steps the stage fuller
-export const TUNE = { addRepack: 0.5, wish: 0.8, hug: 3, biasRepack: true };
+// layout tuning, chosen by measuring overlaps over many lab stages (W2b review r2): repack all when a
+// newcomer's fit is worse than addRepack; in a repack, wish = weight of the distance to where each
+// wanted to be, hug = weight of hugging a wall (0: it piled thoughts on one wall); biasRepack = repack
+// when a measured overlap steps the stage one level fuller
+export const TUNE = { addRepack: 0.5, wish: 1.2, hug: 0, biasRepack: true };
 // how far a crowded stage holds its thoughts (by crowd level 0 room … 4 packed)
 const CROWD_Z = [0, 0.2, 0.45, 0.62, 0.78];
 
@@ -195,8 +196,8 @@ export class ThoughtLayer {
     this._crowdLevel(env, true);
     th._want = { x: want.x, y: want.y };
     th.moveHome(place.exact ? want : this._place(th, want, env));
-    // no room for it at all: everyone is placed again now (largest first, hugging the walls so the free
-    // room stays in one piece) — a rearrangement because a thought arrived, never a drift seconds later.
+    // no room for it at all: everyone is placed again now (largest first, then smallest first; the better
+    // fit is kept) — a rearrangement because a thought arrived, never a drift seconds later.
     // A smaller overlap is left to the gentle push (the others make room).
     if (!place.exact && this._placeOver > TUNE.addRepack && this.thoughts.length > 1) this._repack(env);
     th.react('appear');
@@ -537,13 +538,13 @@ export class ThoughtLayer {
 
   // the words' rect for a side, relative to the drawn body centre (into out: [l, t, r, b]); e: extent offsets
   // (as _tags places them: below / beside the body itself, above whatever is over its head)
-  _tagRel(th, et, side, w, h, out) {
+  _tagRel(th, e, side, w, h, out) {
     const z = Math.max(th.zGoal, th.zFloor), gap = 14 + 8 * (1 - z);
-    const bh = th.r * th.scale * (1 - 0.5 * z), bw = bh * th.aspect;
+    const bh = th.r * th.scale * (1 - 0.5 * z);
     if (side === 0) { out[0] = -w / 2; out[1] = bh + gap; }
-    else if (side === 1) { out[0] = -w / 2; out[1] = -et - gap - h; }
-    else if (side === 2) { out[0] = bw + gap; out[1] = -h / 2; }
-    else { out[0] = -bw - gap - w; out[1] = -h / 2; }
+    else if (side === 1) { out[0] = -w / 2; out[1] = -e.t - gap - h; }
+    else if (side === 2) { out[0] = e.r + gap; out[1] = -h / 2; }
+    else { out[0] = -e.l - gap - w; out[1] = -h / 2; }
     out[2] = out[0] + w; out[3] = out[1] + h;
     return out;
   }
@@ -575,6 +576,8 @@ export class ThoughtLayer {
     for (let attempt = 0; attempt < 3; attempt++) {
       const zs = attempt === 0 ? 1 : attempt === 1 ? 0.84 : 0.72;
       const el = e.l * zs, er = e.r * zs, et = e.t * zs, eb = e.b * zs;
+      const eS = this._eS || (this._eS = { l: 0, r: 0, t: 0, b: 0 });
+      eS.l = el; eS.r = er; eS.t = et; eS.b = eb;
       const minX = B.left + el, maxX = Math.max(minX, B.right - er), minY = B.top + et, maxY = Math.max(minY, B.bottom - eb);
       const sx = Math.max(10, (maxX - minX) / 18), sy = Math.max(10, (maxY - minY) / 24);
       let bs = Infinity, bx = want.x, by = want.y, bside = 0, bover = 0, bbare = 0;
@@ -591,7 +594,7 @@ export class ThoughtLayer {
           if (w) {
             tbest = Infinity;
             for (let s = 0; s < 4; s++) {
-              this._tagRel(th, et, s, w, h, rel);
+              this._tagRel(th, eS, s, w, h, rel);
               const tl = x + rel[0], tt = y + rel[1], tr = x + rel[2], tb = y + rel[3];
               // what it would cover (or how far off the stage it would hang)…
               let ov = 0, ob = 0;
@@ -607,8 +610,7 @@ export class ThoughtLayer {
               if (ov + pen < tbest) { tbest = ov + pen; tside = s; tover = ov; tbare = ob; }
             }
           }
-          // (repacking a full stage: near its wish matters less than hugging a wall, which keeps the
-          // free room in one piece for the others)
+          // (repacking a full stage: near its wish matters less than room for everyone)
           const sc = over + tbest + (fresh ? Math.hypot(x - want.x, y - want.y) * TUNE.wish + TUNE.hug * (Math.min(x - minX, maxX - x) + 0.5 * Math.min(y - minY, maxY - y)) : Math.hypot(x - want.x, y - want.y) * 4);
           if (sc < bs) { bs = sc; bx = x; by = y; bside = tside; bover = over + tover; bbare = bare + tbare; }
         }
@@ -827,7 +829,7 @@ export class ThoughtLayer {
       let dx, dy;
       const up = fxAbove(th) && (tg.side === 'above' || tg.pref === 1 || tg.pref >= 6);
       if (tg.shown && !up) { dx = tg.tx - R.cx; dy = tg.ty - R.cy; }
-      else { const rel = this._relB || (this._relB = [0, 0, 0, 0]); this._tagRel(th, e.t, up ? 0 : tg.pref ?? 0, tg.w, tg.h, rel); dx = rel[0] + tg.w / 2; dy = rel[1]; }
+      else { const rel = this._relB || (this._relB = [0, 0, 0, 0]); this._tagRel(th, e, up ? 0 : tg.pref ?? 0, tg.w, tg.h, rel); dx = rel[0] + tg.w / 2; dy = rel[1]; }
       f.l = Math.min(f.l, x + dx - tg.w / 2 - 4); f.r = Math.max(f.r, x + dx + tg.w / 2 + 4);
       f.t = Math.min(f.t, y + dy - 4); f.b = Math.max(f.b, y + dy + tg.h + 4);
     }
@@ -1041,11 +1043,13 @@ export class ThoughtLayer {
       if (tg.measure) this._measureTag(tg, W);
       const Q = th.render.pts, b = th._bbox(), gap = 14 + 8 * (1 - th.z), w = tg.w, h = tg.h;
       const bx = Q[2 * PT.bottom], tx0 = Q[2 * PT.top];
-      const fx = th.fxRect(this._rect2), topY = fx ? Math.min(b.top, fx.top) : b.top;
+      // above, right and left clear everything it draws (its siblings, the effects over its head, its prop);
+      // below hangs from the body itself (a charm's drop beside it is scored, not stepped round)
+      const ex = th.extent(this._rect3 || (this._rect3 = {})), topY = ex.top;
       this._cand(C[0], bx, b.bottom + gap, w, h, edge, W, yMin, yMax);
       this._cand(C[1], tx0, topY - gap - h, w, h, edge, W, yMin, yMax);
-      this._cand(C[2], b.right + gap + w / 2, b.cy - h / 2, w, h, edge, W, yMin, yMax);
-      this._cand(C[3], b.left - gap - w / 2, b.cy - h / 2, w, h, edge, W, yMin, yMax);
+      this._cand(C[2], ex.right + gap + w / 2, b.cy - h / 2, w, h, edge, W, yMin, yMax);
+      this._cand(C[3], ex.left - gap - w / 2, b.cy - h / 2, w, h, edge, W, yMin, yMax);
       this._cand(C[4], bx + w * 0.32, b.bottom + gap, w, h, edge, W, yMin, yMax);
       this._cand(C[5], bx - w * 0.32, b.bottom + gap, w, h, edge, W, yMin, yMax);
       this._cand(C[6], tx0 + w * 0.32, topY - gap - h, w, h, edge, W, yMin, yMax);
