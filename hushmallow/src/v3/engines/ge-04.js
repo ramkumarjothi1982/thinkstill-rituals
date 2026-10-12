@@ -436,7 +436,7 @@ export function create(E) {
           const ox = x + f * spanW + jx(t, e + j, time) * vib, oy = y - f * spanW * 0.34 + jy(t, e + j, time) * vib;
           const c = e % 2 ? t.ec2h : t.ech, gs = 1 + 0.05 * f;
           if (i >= 0) {
-            photos.draw(g, i, ox, oy, sz * gs, { shape: 'card', alpha: al, tone: 'mist', toneMix: 0.6, shadow: false });
+            photos.draw(g, i, ox, oy, sz * gs, { shape: 'card', alpha: al, tone: 'mist', toneMix: 1, shadow: false });
             // each ghost slide carries a thin coloured edge, so the layers read as separate copies
             g.strokeStyle = rgba(c, al * 0.9); g.lineWidth = 1.2;
             roundRect(g, ox - (cw * gs) / 2, oy - (chh * gs) / 2, cw * gs, chh * gs, Math.min(cw, chh) * 0.1); g.stroke();
