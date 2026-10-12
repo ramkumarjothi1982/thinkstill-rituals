@@ -20,6 +20,29 @@ const HURTER = R`(?:he|she|they|someone|somebody|my (?:partner|boyfriend|girlfri
 // 'living' as in 'living in London' is not being alive.
 const LIVING = R`living\b(?! (?:in|with|here|there|near|at|on|together|abroad|alone|by|next|apart|off|a|an|the|my|our)\b)`;
 
+// Fragments of the Another Angle server's own list (server/another-angle/src/safety/extra-lexicon.js),
+// merged here on 12 Oct 2026 (integration B5) so the app and the server read the same words. They are
+// spelled exactly as the server spells them, so each merged pattern is the server's, character for character.
+// Medicines people take too much of.
+const PILLS = R`(?:pills|tablets|meds|medication|medicine|painkillers|paracetamol|ibuprofen|aspirin|co-?codamol|codeine|tramadol|sleeping (?:pills|tablets)|antidepressants|sertraline|diazepam|insulin)`;
+// More than a dose: 'a load of', 'a handful of', 'the whole packet of', '30'.
+const PILL_QTY = R`(?:all|all of|a load of|loads of|a lot of|lots of|a handful of|handfuls of|a bunch of|too many|(?:a|one|a whole|the whole|the entire|an entire) (?:packet|pack|box|bottle|strip|tub|blister pack)s? of|(?:two|three|four|five|several|a few|some) (?:packets|packs|boxes|bottles|strips) of|[1-9]\d|\d{3}|twenty|thirty|forty|fifty|sixty|a hundred)`;
+const TOOK = R`(?:took|take|taking|have taken|has taken|had taken|'ve taken|'d taken|swallow(?:ed|ing|s)?|have swallowed|'ve swallowed|downed|necked)`;
+const TAKE_PILLS = R`${TOOK} (?:just )?(?:like |about |around |maybe |nearly |over |more than |at least |way |far )?${PILL_QTY} (?:of )?(?:my |the |those |these |her |his |their |some |mum'?s |mom'?s |dad'?s )?${PILLS}\b`;
+// People (not phones, plants or feelings), for third-person patterns.
+const RELATIONS = R`(?:friend|best friend|bestie|mate|partner|boyfriend|girlfriend|husband|wife|ex|bf|gf|fianc[eé]e?|mum|mom|mam|dad|mother|father|parent|sister|brother|sibling|son|daughter|child|kid|cousin|niece|nephew|aunt|auntie|uncle|nan|gran|grandma|grandad|granddad|grandpa|flatmate|housemate|roommate|classmate|colleague|student|teenager|neighbou?r)`;
+const SOMEONE = R`(?:she|he|they|someone|somebody|my (?:best |close |oldest |little |big |younger |older )?${RELATIONS})`;
+// Body places people describe cutting.
+const BODY = R`(?:arms?|legs?|wrists?|thighs?|skin|stomach|hips?|body|ankles?)`;
+// What can follow 'cutting' in a self-harm disclosure ('cutting corners', 'cutting back', 'cutting my hair'
+// and 'cutting and pasting' never match).
+const CUT_TAIL = R`(?=\s*(?:$|[.,!?;:)…]|-|again\b|and (?!past|stick|edit|trim|chop|slic|dic)|but\b|at night\b|every\b|most (?:days|nights)\b|on my ${BODY}\b|my ${BODY}\b|since\b|for (?:weeks|months|years|a while|ages|a long time)\b|when\b|whenever\b|because\b|lately\b|recently\b|to (?:cope|feel|forget|punish|calm|stop|get through|deal|numb)\b|a lot\b|more\b|deeper\b|badly\b|secretly\b|in secret\b|cos\b|coz\b|myself\b|i\b))`;
+// Perpetrators of abuse who are not partners.
+const ADULT = R`(?:uncle|aunt|auntie|step-?dad|step-?father|step-?mum|step-?mom|step-?mother|step-?brother|step-?sister|cousin|teacher|coach|tutor|boss|manager|supervisor|priest|vicar|imam|rabbi|neighbou?r|grand(?:ad|dad|pa|father|ma|mother)|babysitter|carer|doctor|instructor|landlord|foster (?:dad|mum|mom|father|mother|parent|brother|sister)|(?:mum|mom|dad|mother|father)'?s (?:boyfriend|girlfriend|partner|friend|husband|wife)|family friend|older (?:boy|man|guy|kid|cousin|brother|student))`;
+const PARTNER = R`(?:partner|boyfriend|girlfriend|husband|wife|ex|bf|gf|fianc[eé]e?)`;
+// The server's 'living' (being alive, not 'living in London'): a slightly different list from LIVING above.
+const ALIVE_LIVING = R`living(?! (?:in|with|here|there|near|at|on|together|off|like|abroad|alone|somewhere|by|next|apart|under|away|a|the|my|our)\b)`;
+
 export const HARM_LEXICON = {
   idiomGuards: [
     R`\bkill(?:ed|ing)? my ?self laughing\b`,
@@ -46,6 +69,36 @@ export const HARM_LEXICON = {
     R`\boverdos(?:e|ed|ing) on (?:chocolate|sugar|sweets|candy|cake|carbs|cheese|pizza|ice cream|coffee|netflix|tv|telly|tik ?tok|social media|cuteness|christmas|rom-?coms|anime)\b`,
     R`\bsuicide squad\b`,
     R`\b(?:die|died) laughing\b`,
+    // added 12 Oct 2026, integration B5: the Another Angle server's own guards
+    // medicine taken as prescribed (every medicine the server knows)
+    R`\b${TOOK} (?:all (?:of )?)?my ${PILLS} (?:on time|as prescribed|like (?:i'?m|i am|i was) supposed to|like the doctor (?:said|told me))\b`,
+    R`\b(?:take|taking) (?:a handful of|loads of|a lot of|lots of) ${PILLS}(?: \w+){0,3} (?:every|each) (?:morning|day|night|evening)\b`,
+    // 'no point going on holiday', 'no point going on about it'
+    R`\bno (?:point|reason) (?:to |in |for )?(?:go|going) on (?:holiday|a holiday|a trip|a date|about (?:it|this|that)|and on|the trip|a course|the course|a diet)\b`,
+    R`\b(?:wants|is going|was going|'s going) to die of (?:embarrassment|shame|cringe|laughter|laughing|boredom)\b`,
+    // plants and illness: about a death, not about harming anyone
+    R`\b(?:plants?|flowers?|succulents?|basil|tomatoes|seedlings?|cactus|orchids?)(?: \w+)? (?:want|wants|are going|is going|'re going|'s going|were going|was going) to die\b`,
+    R`\b(?:the |our |my |his |her )?(?:vets?|doctors?|nurses?|consultants?|surgeons?|specialists?) (?:said|says|told (?:us|me|them|him|her)|thinks|think|warned (?:us|me)) (?:that )?(?:she|he|it|they|our \w+|my \w+|his \w+|her \w+)(?:'s| is| was| were|'re| are)? (?:going|likely|probably going|expected) to die\b`,
+    // (B5 false-positive checks) too much caffeine is not an overdose; a gym injury is not self-harm
+    R`\boverdos(?:e|ed|es|ing) on (?:caffeine|energy drinks?|red bull|monster|espresso|tea|coffee|sugar|chocolate)\b`,
+    R`\b(?:hurting|injuring) my ?self (?:at (?:the gym|football|rugby|netball|hockey|training|practice)|(?:playing|lifting|running|exercising|working out|training|skiing|snowboarding|skating|climbing|cycling|dancing|tripping|moving house)\b)`,
+    // 'I'm going to jump off the diving board' (the server's jump pattern reads 'jump off' as a bridge or a roof)
+    R`\b(?:jump|jumping) (?:off|from) (?:the |a |my )?(?:diving board|high board|high dive|top board|springboard|trampoline|swing|sofa|bed|bunk bed|stage)\b`,
+    // 'nobody would care if I died my hair green' (a spelling of dyed); 'I keep cutting myself off mid-sentence'
+    R`\b(?:died|dyed|dying|dyeing) (?:my|her|his|their|our) (?:hair|fringe|roots|eyebrows|beard)\b`,
+    R`\b(?:cut|cuts|cutting) my ?self (?:off|out|short|loose|free|some slack|a break|a slice)\b`,
+    // the server's patterns without the app's everyday exceptions: 'done with living in London', 'done with life
+    // admin', 'my meds ready for the trip', 'not exist on social media', 'cutting himself off from his friends',
+    // 'burning herself out', 'the point in going on holiday', 'sleep and not wake up until noon'
+    R`\bdone with (?:living (?:in|with|here|there|at|on|near|abroad|together|apart|out of)|life (?:admin|insurance|coaching|lessons))\b`,
+    R`\b(?:the|my|all the|all my|all of my) ${PILLS} (?:are )?(?:ready|lined up|counted out) for (?:the (?:trip|journey|flight|week|weekend|morning|holiday|day)|my (?:trip|journey|flight|holiday|week|mum|mom|dad|grandma|grandad)|a (?:trip|journey|flight|holiday)|work|school|holiday|travel|bed|breakfast)\b`,
+    R`\b(?:not|never) exist(?:ing)? (?:on|online|in (?:the|this|that|our|my) (?:group|chat|office|class|team))\b`,
+    R`\b(?:cuts?|cutting|burns?|burning|burnt|starves?|starving|punish(?:es|ing)?) (?:himself|herself|themselves|themself) (?:off|free|loose|short|out|a|an|some)\b`,
+    R`\bsee (?:the|any) point (?:in |of )?(?:going|carrying) on (?:a|an|the|my|our|this|that|holiday|holidays|vacation|about|and on|at|to|trips?|dates?|it|with)\b`,
+    R`\b(?:sleep|asleep) and (?:never|not) wake(?: up)? (?:until|till|before|early|at|in time|on time|for)\b`,
+    // 'my boss threatened my bonus' (a threat to a person stays care: 'threatened my family'); 'on the roof terrace'
+    R`\bthreat(?:en|ened|ening|ens) (?:my|our) (?:bonus|pay rise|promotion|grades?|chances|lead|record|title|deal|plans|weekend)\b`,
+    R`\bon (?:the|a) roof (?:terrace|garden|bar)\b`,
   ],
   crisis: [
     // 'my self' as two words too (review 12 Oct: 'i want to kill my self')
@@ -148,6 +201,57 @@ export const HARM_LEXICON = {
     R`\bbleed(?:ing)? out\b`,
     R`\b(?:i'?m|i am|im) not safe (?:with|around|from) myself\b`,
     R`\b(?:want|wanna|wish i could|would rather|i'?d rather|rather|need|prefer) (?:to )?(?:just )?(?:not|never) (?:be alive|have been born|wake up\b(?! (?:early|at|before|so|in time|for|till|until|on time|when)\b))`,
+    // added 12 Oct 2026, integration B5: the Another Angle server's own list (W6 r3), so the app's check
+    // is never the weaker one. (The server blanks the crisisOther spans before this list, so it reads
+    // 'my friend took a load of pills' as someone in danger; here it reads as crisis too, self-harm copy.)
+    // medicines: what has happened or is about to
+    R`\b${TAKE_PILLS}`,
+    R`\b(?:i|i'?ve|i have|i just) (?:just |nearly |almost )?od'?(?:d|ed)\b`,
+    R`\b${TOOK} (?:way |far |a lot )?more ${PILLS} than (?:i should|i'?m supposed to|i was supposed to|it says|the (?:box|packet|label) says|i'?m meant to|i was meant to)`,
+    R`\b(?:the|my|all the|all my|all of my) ${PILLS} (?:are )?(?:in front of me|lined up|counted out|ready)\b`,
+    R`\b(?:stockpil\w*|hoard(?:ed|ing)?|sav(?:ed|ing) up) (?:up )?(?:all )?(?:of )?(?:my |the |some |those |these )?${PILLS}\b`,
+    // cutting and other self-harm, in the first person
+    R`\b(?:i(?:'ve| have| had)? (?:just |now |recently |really )?(?:started|start|been|keep|kept|begun|began|gone back to|went back to|am|was)|i'?m|i am|i was|i'?ve been|started|keep|been|(?:back|went back|gone back|relapsed) (?:to|into|with)) (?:secretly |still |really |badly |properly )?cutting(?: myself)?(?: again)?${CUT_TAIL}`,
+    R`(?:^|[.!?;]\s*)cutting (?:myself )?again\b`,
+    R`\b(?:want|wanting|wanted|urge|urges|tempted|need|needing) to cut(?: myself)?(?: again)?(?=\s*(?:$|[.,!?;:)…]|again\b|myself\b|and\b|but\b|so\b|when\b|because\b|tonight\b|right now\b))`,
+    R`\b(?:cut|burned|burnt|hit|scratched|punched|bit|starved|bruised) myself (?:again|on purpose|deliberately|intentionally|until|till|to (?:feel|cope|punish|stop|forget|calm))\b`,
+    // not existing, not having been born
+    R`\b(?:want|wanna|wish i could|would rather|i'?d rather|rather|need|prefer) (?:to )?(?:just )?(?:not|never) (?:exist|be alive|have been born|wake up(?! early| at| before| so| in time| for| till| until| on time| when))\b`,
+    R`\b(?:want|wanna|wish i could) (?:to )?(?:just )?(?:not|never) (?:be here|be around) (?:any ?more|at all|for good|forever|ever again)\b`,
+    R`\b(?:want|wanna|wish i could|need) (?:to )?(?:just )?stop (?:existing|being alive|${ALIVE_LIVING})\b`,
+    R`\b(?:want|wanna|wish i could|need) (?:to )?(?:just )?(?:vanish|be gone|disappear) (?:forever|for good|permanently|for ever)\b`,
+    R`\bcease to exist\b`,
+    R`\b(?:i'?d|i would|i'?m|i am|everyone'?d|everyone would|they'?d|they would) be better off (?:gone|not here|not alive|not around|not existing|if i (?:was|were) gone)\b`,
+    R`\bi'?m (?:going to|gonna|about to|ready to|thinking (?:of|about)) jump(?:ing)?(?= *(?:$|[.,!?;]|off\b|from\b|in front\b|tonight\b))`,
+    R`\bwish (?:i'?d|i had|i) (?:never|not) (?:been |be )?born\b`,
+    R`\bshould(?: have|'ve) never been born\b`,
+    R`\bshould (?:never have|never'?ve|have never|'ve never) been born\b`,
+    // no point in being alive
+    R`\bwhat(?:'?s| is) the point (?:of|in) (?:me )?(?:${ALIVE_LIVING}|being alive|going on|carrying on|me being here|being here any ?more|existing|trying any ?more)\b`,
+    R`\bno (?:point|reason|use|sense) (?:in |of |to |for )?(?:me )?(?:being alive|staying alive|existing|${ALIVE_LIVING}|going on(?! (?:about|and on|with|holiday|a |the |to |at ))|carrying on(?! (?:with|about|at|like))|waking up(?! early| at| before| so| for)|being here any ?more|trying any ?more)\b`,
+    R`\b(?:don'?t|do not|can'?t|cannot|can not) see (?:the|any) point (?:in |of )?(?:me )?(?:${ALIVE_LIVING}|being alive|going on|carrying on|life|existing|being here)\b`,
+    R`\b(?:tired|sick) of (?:being alive|existing|life itself|${ALIVE_LIVING}(?= *(?:$|[.,!?;]|any ?more|and)))\b`,
+    R`\bwant (?:my life|it all|everything) to (?:be over|end)(?: now| for good| forever)?(?= *(?:$|[.,!?;]|now|for good|forever|and))`,
+    R`\bwant (?:it all|everything|it) to (?:stop|end) (?:for good|forever|permanently)\b`,
+    R`\b(?:want|wanna|wish i could) (?:to )?disappear and never come back\b`,
+    R`\b(?:so |completely |totally |just |really )?done with (?:life|living|being alive|existing)\b`,
+    R`\b(?:no|(?:don'?t|do not|can'?t|cannot) see (?:a|any)) way out\b(?! of (?:the|this|that|my|our|a) (?:contract|deal|lease|job|course|meeting|car park|building|room|maze|queue|traffic))`,
+    // sleep and never wake up
+    R`\b(?:want|wanna|wish i could|wish i would|would like) (?:to )?(?:just )?(?:go to )?sleep (?:forever|for ever|and never wake(?: up)?|and not wake(?: up)?)\b`,
+    R`\b(?:fall asleep|go to sleep|sleep|close my eyes) and (?:never|not) (?:wake|open them)\b`,
+    // nobody would care
+    R`\b(?:anyone|anybody|nobody|no one|no-one|noone) would (?:even |really |ever )?(?:notice|care|miss me) if i (?:wasn'?t|weren'?t|was not|were not) (?:around|here|alive|there)(?: any ?more)?\b`,
+    R`\b(?:anyone|anybody) would (?:even |really |ever )?(?:notice|care|miss me) if i (?:was|were) gone\b`,
+    R`\b(?:nobody|no one|no-one|noone|anyone|anybody|who) would (?:even |really |ever )?(?:care|notice|miss me) if i (?:died|disappeared|killed myself|was dead|were dead)\b`,
+    // plans and places
+    R`\b(?:a|my|the) plan to (?:end it|end things|end my life|die|kill myself|not be here)\b`,
+    R`\b(?:i'?m|i am) (?:standing |sitting )?on (?:the|a) (?:edge of (?:the|a) )?(?:bridge|ledge|roof|cliff edge|platform edge)\b`,
+    R`\b(?:keep|been|always|can'?t stop) thinking (?:about|of) (?:dying|being dead|not waking up|not being alive)\b`,
+    R`\bways to (?:die|kill myself|end it(?! with)|end my life)\b`,
+    R`\bhow many ${PILLS} (?:would it take|does it take|would kill|to die|until)\b`,
+    R`\bcan'?t (?:keep )?(?:living|live|going on|go on) like this any ?more\b`,
+    R`\b(?:keep|been|kept|started|start|am|i'?m) (?:scratching|hitting|punching|biting|bruising) myself (?:until|till|on purpose|deliberately|again|to (?:feel|cope|punish|stop|calm))\b`,
+    R`\bi'?m (?:just |only )?a burden\b(?! (?:on|to) (?:the|my|our) (?:team|project|budget|company|business))`,
   ],
   crisisOther: [
     R`\b(?:kill|killing|hurt|hurting|harm|harming|end) (?:himself|herself|themselves|themself)\b`,
@@ -161,6 +265,21 @@ export const HARM_LEXICON = {
     R`\b${PEOPLE}(?:'s| is| has| have| had| was)? (?:just )?(?:overdosed|taken an overdose|took an overdose)\b`,
     R`\b(?:is|are|am|'s|'re|'m) in (?:immediate |real |serious )?danger\b(?! of)`,
     R`\b(?:he|she|they|someone|somebody) (?:is|are|'s|'re) not breathing\b`,
+    // added 12 Oct 2026, integration B5: the Another Angle server's own list (W6 r3)
+    R`\b${SOMEONE} (?:just )?(?:took|has taken|have taken|had taken|swallowed|has swallowed) (?:an overdose|too many (?:pills|tablets)|${PILL_QTY} (?:of )?(?:my |the |her |his |their |some )?${PILLS})\b`,
+    R`\b(?:said|says|keeps saying|told me|tells me|texted|messaged|posted) (?:that )?(?:she|he|they)(?:'d| would| wants? to| is going to|'s going to) (?:kill|hurt|harm) (?:himself|herself|themselves|themself)\b`,
+    // someone else wanting to die or end their life
+    R`\b(?:wants?|wanted|wanting|going|gonna|planning|plans|plan|trying|tried|threaten(?:s|ed|ing)?|thinking (?:about|of)|talk(?:s|ed|ing)? about|considering|decided|ready) (?:to )?end(?:ing)? (?:her|his|their) (?:own )?life\b`,
+    R`\b${SOMEONE}(?: (?:says|said|keeps saying|told me|tells me|texted|messaged)(?: that)?(?: (?:she|he|they))?)?(?:'s| is| are|'re| was| were| keeps| has been| had been)? (?:wants?|wanted|wanting|planning|plans|trying|tried|threatening|threatens|threatened) to (?:die|end it(?: all)?(?! (?:with|between|off))|disappear (?:forever|for good)|not (?:be here|exist|wake up))\b`,
+    R`\b${SOMEONE}(?: (?:says|said|told me|keeps saying)(?: that)?(?: (?:she|he|they))?)? (?:doesn'?t|does not|don'?t|do not|no longer|didn'?t|did not) want(?:s)? to (?:${ALIVE_LIVING}|be alive|be here any ?more|exist|wake up|go on)\b`,
+    R`\b${SOMEONE}(?: has| have| had|'s| is| was)? (?:just )?overdosed\b`,
+    R`\b${SOMEONE}(?:'s| is| has been| was| keeps| started| has started)? self[- ]?harm\w*`,
+    R`\b${SOMEONE}(?: (?:says|said|told me|keeps saying|texted)(?: that)?(?: (?:she|he|they))?)?(?:'s| is| are|'re| was| were)? (?:going to|gonna|about to|threatening to|planning to) jump(?= *(?:$|[.,!?;]|off\b|from\b|in front\b|tonight\b))`,
+    // self-harm by someone else, habitual or deliberate ('cut herself a slice', 'cut himself shaving' are not this)
+    R`\b(?:cuts|cutting|burns|burning|starves|starving|punishes|punishing) (?:himself|herself|themselves|themself)\b`,
+    R`\b(?:cut|burned|burnt|starved|hurt|harmed) (?:himself|herself|themselves|themself) (?:again|on purpose|deliberately|intentionally)\b`,
+    R`\b(?:has|have|had|keeps?|started|been) (?:been )?(?:cutting|burning|starving|harming|hurting) (?:himself|herself|themselves|themself)\b`,
+    R`\b${SOMEONE}(?:'s| is| has| have|'ve| had| was| were)? (?:been |started |starting |begun |gone back to |back to |keeps |still )?cutting(?: again)?(?=\s*(?:$|[.,!?;:)]|again\b|and (?!past|stick)|at night\b|on (?:her|his|their) |(?:her|his|their) ${BODY}\b))`,
   ],
   care: {
     abuse: [
@@ -177,6 +296,25 @@ export const HARM_LEXICON = {
       R`\bwon'?t let me (?:leave|go out|see (?:my )?(?:friends|family)|have (?:my own )?money|work|have my phone)\b`,
       R`\bcontrols? (?:all )?(?:of )?my (?:money|phone|messages|life|food)\b`,
       R`\b(?:goes|went|keeps going) through my phone\b`,
+      // added 12 Oct 2026, integration B5: the Another Angle server's own list (W6 r3)
+      R`\b(?:hurts?|hurting|hits?|hitting) (?:my )?(?:child|children|kid|kids|son|daughter|baby)\b(?!'s)`,
+      R`\b(?:makes?|made|making) me (?:to )?(?:do sexual|do sex|have sex|sleep with (?:him|her|them))\b`,
+      // monitoring as control
+      R`\b(?:checks?|checking|reads?|reading|tracks?|tracking) (?:all )?(?:of )?my (?:phone|messages|texts|location|emails)\b(?= .*\b(?:every|always|all the time|each|won'?t let|makes? me|demands?|without asking)\b)`,
+      // sexual coercion
+      R`\b(?:forces?|forcing|forced|makes|made|making|pressur(?:es|ed|ing)|push(?:es|ed|ing)) me (?:to (?:have sex|sleep with (?:him|her|them|his|other|people|men|women|someone)|do (?:sexual|sex|stuff in bed|things in bed)|perform sex|send (?:nudes|naked)|watch porn|touch (?:him|her|them))|into (?:having sex|sex|sleeping with|sexual|doing sexual))\b`,
+      R`\b${PARTNER}(?: \w+)? (?:forces?|forcing|pressures?|pressuring) me (?:to|into) (?:do(?:ing)? )?(?:things|stuff|it)\b`,
+      R`\b(?:doesn'?t|does not|won'?t|wouldn'?t|didn'?t|did not) stop when i (?:say|said|tell (?:him|her|them)|told (?:him|her|them)) (?:no|stop|to stop)\b`,
+      R`\bi (?:didn'?t|did not|never|couldn'?t|could not|was too (?:drunk|out of it|young) to) consent\b`,
+      // touching by an adult or someone in authority
+      R`\b(?:my )?${ADULT}(?: \w+){0,2} (?:touches|touched|keeps touching|kept touching|has touched|is touching|tries to touch|tried to touch|gropes|groped|keeps groping) me\b(?! on the (?:shoulder|arm|back|hand) (?:to|and said|when|as|for)\b)`,
+      R`\b(?:my )?${ADULT}(?: \w+){0,2} (?:feels|felt) me up\b`,
+      R`\btouch(?:es|ed|ing)? me (?:inappropriately|there|down there|in places|in my private|where i (?:don'?t|didn'?t) want|under my|between my|on my (?:private|privates|chest|breasts?|boobs|bum|bottom|thighs?|crotch|genitals))`,
+      R`\b(?:touches|touched|comes into my room and touches) me (?:at night|in bed|in my bed|in my room|when i'?m asleep|when i was asleep|while i(?:'m| am| was) (?:asleep|sleeping)|when (?:no one|nobody|mum|mom|dad)(?:'s| is)? (?:around|home|looking|out))\b`,
+      R`\bforced (?:himself|herself|themselves) on me\b`,
+      R`\b(?:he|she|they|my ${PARTNER}|my (?:uncle|step-?dad|step-?father|step-?mum|step-?mom|step-?brother|cousin|neighbou?r|babysitter|(?:mum|mom|dad)'?s (?:boyfriend|girlfriend|partner|friend)|family friend))(?: \w+)? (?:made|makes|forced|forces|pressured|pressures|pushed|pushes) me (?:to )?(?:do|doing) (?:things|stuff)(?: \w+){0,2} (?:i|that i) (?:didn'?t|did not|don'?t|do not) want\b`,
+      R`\b(?:locks?|locked|locking) me (?:in|up in) (?:the|my|a|his|her|their) (?:room|bedroom|house|flat|cupboard|bathroom|car|shed|garage)\b`,
+      R`\b(?:touches|touched|touching) me and i (?:hate|don'?t like|do not like|feel sick|felt sick|can'?t say no|froze|freeze|didn'?t want)\b`,
     ],
     violence: [
       R`\b(?:he|she|they|my (?:partner|boyfriend|girlfriend|husband|wife|ex|dad|father|mum|mom|mother|stepdad|stepmum|stepmom|brother|sister|boss|teacher|flatmate|roommate|son|daughter)|someone|somebody)(?: has| had)? (?:hit|hits|punched|punches|kicked|kicks|slapped|slaps|choked|chokes|strangled|strangles|beat|beats|shoved|shoves|smacked|smacks|attacked|attacks|grabbed|grabs) me\b`,
@@ -190,6 +328,12 @@ export const HARM_LEXICON = {
       R`\b(?:knife|gun|weapon) (?:at|to) (?:me|my)\b`,
       R`\bthrew (?:things|something|a \w+) at me\b`,
       R`\bpushed me (?:over|down|against|into|out)\b`,
+      // added 12 Oct 2026, integration B5: the Another Angle server's own list (W6 r3)
+      R`\bmy (?:step-?(?:dad|mum|mom|father|mother|brother|sister)|uncle|aunt|auntie|cousin|grand(?:ad|dad|pa|father|ma|mother|mum)|nan|gran|carer|foster (?:dad|mum|mom|father|mother|parent)|coach|teacher|ex-?(?:boyfriend|girlfriend|husband|wife|partner)|(?:mum|mom|dad)'?s (?:boyfriend|girlfriend|partner|husband|wife))(?: has| had)? (?:hit|hits|punched|punches|kicked|kicks|slapped|slaps|choked|chokes|strangled|strangles|beat|beats|shoved|shoves|smacked|smacks|attacked|attacks|grabbed|grabs|burns|burned|burnt|whips|whipped|belts|belted) me\b`,
+      R`\b${SOMEONE}(?: (?:sometimes|often|always|still|usually|occasionally|even|also|then|just|literally|actually|has|had|keeps|kept|has been|started|again))+ (?:hit(?:s|ting)?|punch(?:es|ed|ing)?|kick(?:s|ed|ing)?|slap(?:s|ped|ping)?|chok(?:es|ed|ing)|strangl(?:es|ed|ing)|beat(?:s|ing)?|shov(?:es|ed|ing)|smack(?:s|ed|ing)?) me\b`,
+      R`\b(?:put|puts|had|has|wrapped) (?:his|her|their) hands? (?:round|around) my (?:neck|throat)\b`,
+      // violence at home towards someone else in the family
+      R`\b(?:hits|hit|beats|beat|punches|punched|kicks|kicked|strangles|strangled|chokes|choked|slaps|slapped|batters|battered) (?:my|our) (?:mum|mom|mother|dad|father|sister|brother|nan|gran|grandma|little brother|little sister)\b(?!'s)`,
     ],
     threat: [
       R`\bthreat(?:en|ened|ening|ens) (?:me|to)\b`,
@@ -198,6 +342,11 @@ export const HARM_LEXICON = {
       R`\b(?:said|says|told me) (?:he|she|they)(?:'d| would| will|'ll) (?:kill|hurt|hit|find) me\b`,
       R`\bblackmail\w*`,
       R`\b(?:going to|gonna|will|threatened to) (?:leak|share|post|send) (?:my )?(?:photos|pictures|nudes|videos)\b`,
+      // added 12 Oct 2026, integration B5: the Another Angle server's own list (W6 r3)
+      R`\bthreat(?:en|ened|ening|ens) (?:my|us)\b`,
+      R`\b(?:'d|would|will|'ll|going to|gonna) (?:leak|share|post|send|show|spread) (?:my|the) (?:nudes|naked (?:photos|pictures|pics|videos)|intimate (?:photos|pictures|videos)|private (?:photos|pictures|videos))\b`,
+      R`\b(?:said|says|told me) (?:he|she|they)(?:'d| would| will|'ll| is going to|'s going to) (?:hurt|hit|kill|beat) me if i (?:leave|left|tell|told|go|went|try to leave|report|call|speak)\b`,
+      R`\b(?:hurt|hit|kill|beat) me if i (?:leave|try to leave|go to the police|report (?:him|her|them|it)|call the police)\b`,
     ],
     harassment: [
       R`\bharass\w*`,
@@ -213,6 +362,13 @@ export const HARM_LEXICON = {
       R`\bleaked my\b`,
       R`\bfollow(?:s|ed|ing)? me home\b`,
       R`\bspread(?:s|ing)? (?:rumou?rs|lies) about me\b`,
+      // added 12 Oct 2026, integration B5: the Another Angle server's own list (W6 r3)
+      R`\b(?:keeps?|kept|keep on|always) calling me (?:names|\w+ names)\b`,
+      R`\b(?:keeps?|kept) touching (?:me|my (?:shoulder|back|leg|legs|hair|waist|arm|knee|bum|bottom|hand|neck))\b`,
+      R`\bgrop(?:es|ed|ing) me\b`,
+      R`\b(?:a|an|some|this|that|the) (?:older )?(?:man|guy|woman|stranger|bloke|boy|lad|girl)(?: \w+){0,3} (?:touched|groped|grabbed|rubbed (?:himself |herself )?(?:up )?against|felt) me\b(?! on the (?:shoulder|arm) (?:to|and said)\b)`,
+      R`\brubbed (?:himself|herself|themselves) (?:up )?against me\b`,
+      R`\b(?:asks?|asked|asking|keeps asking|kept asking|pressur\w+ me) (?:me )?(?:for|to send(?: him| her| them)?) (?:nudes|naked (?:pics|photos|pictures)|pics of my body)\b`,
     ],
     discrimination: [
       R`\b(?:racis[mt]|racial(?:ly)? (?:abuse|abused|slur|slurs)|sexis[mt]|homophob\w*|transphob\w*|biphob\w*|ableis[mt]|misogyn\w*|islamophob\w*|antisemit\w*|xenophob\w*|discriminat\w*)`,
@@ -225,6 +381,11 @@ export const HARM_LEXICON = {
       R`\b(?:not|never) safe (?:at home|with (?:him|her|them))\b`,
       R`\b(?:scared|afraid|frightened|terrified) (?:to go home|of (?:him|her|them|my (?:partner|boyfriend|girlfriend|husband|wife|dad|father|mum|mom|mother|stepdad|stepmum|stepmom|ex))(?!'s|\w))`,
       R`\bfear for my (?:life|safety)\b`,
+      // added 12 Oct 2026, integration B5: the Another Angle server's own list (W6 r3)
+      R`\b(?:scared|afraid|frightened|terrified) for my (?:life|safety)\b`,
+      R`\b(?:scared|afraid|frightened|terrified) (?:that )?(?:he|she|they|my ${PARTNER})(?:'ll| will| is going to|'s going to| might| would|'d) (?:hurt|hit|attack|beat|kill) me\b`,
+      // family: 'kill me' is left out ('scared my mum will kill me when she sees my grades')
+      R`\b(?:scared|afraid|frightened|terrified) (?:that )?my (?:dad|father|mum|mom|mother|step-?dad|step-?mum|step-?mom|brother|uncle)(?:'ll| will| is going to|'s going to| might| would|'d) (?:hurt|hit|attack|beat) me\b`,
     ],
   },
 };
@@ -234,7 +395,8 @@ const ELSEWHERE = { label: 'Anywhere else', detail: 'findahelpline.com lists fre
 
 export const HARM_COPY = {
   crisis: {
-    title: 'Let’s pause the reframe',
+    // (B5: the titles no longer say 'reframe', a word the feature never uses; the server's own titles, W6 r3)
+    title: 'Let’s pause Another Angle',
     message: 'What you’ve written sounds really painful, and it matters. This isn’t something to look at from another angle — you deserve real support with it, right now. If you might act on these thoughts, or you’re not safe, please call your local emergency number. If you can, tell someone near you how you’re feeling. You don’t need the right words first.',
     resources: [
       EMERGENCY,
@@ -255,23 +417,23 @@ export const HARM_COPY = {
   },
   care: {
     abuse: {
-      title: 'This isn’t one to reframe',
+      title: 'This one needs real support',
       message: 'What you’re describing sounds like it could be abuse, and it isn’t something to find a kinder angle on. It’s not your fault, and you don’t deserve it. If you can, tell someone you trust or contact a support service — they can help you think through your options at your own pace.',
     },
     violence: {
-      title: 'This isn’t one to reframe',
+      title: 'This one needs real support',
       message: 'Nobody has the right to hurt you. This isn’t a thought to rethink — it’s something that happened to you, and it matters. If you can, tell someone you trust, and reach out to a support service or the police when you feel ready.',
     },
     threat: {
-      title: 'This isn’t one to reframe',
+      title: 'This one needs real support',
       message: 'Being threatened is serious, and it’s not something to talk yourself out of. Keep any messages or notes, tell someone you trust, and contact the police or a support service if you feel at risk.',
     },
     harassment: {
-      title: 'This isn’t one to reframe',
+      title: 'This one needs real support',
       message: 'Being harassed or bullied isn’t a misunderstanding to rethink. It’s not okay, and it’s not on you to fix it by seeing it differently. If you can, save screenshots or notes, tell someone you trust, and use the reporting routes at school, at work or on the app or site.',
     },
     discrimination: {
-      title: 'This isn’t one to reframe',
+      title: 'This one needs real support',
       message: 'Being treated unfairly because of who you are is real, and it isn’t something to explain away. Your reaction makes sense. If you want to, keep a record of what happened and talk to someone you trust, HR, a union or an advice organisation.',
     },
     unsafe: {
