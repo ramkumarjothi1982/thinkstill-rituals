@@ -67,7 +67,7 @@ const RISE_SEC = 3;                     // the horizon rises 0.655H → 0.44H af
 const GLIDE_SEC = 2.2;                  // a bubble / the thought glides from where it hung down onto the water
 const HINT_AT = 5.5, HINT_SEC = 3.6;
 const FLICK_U = 0.2, LONG_U = 0.6;
-const GOLD_SEC = 7;                     // the storm's seed swells keep their gold crest light this long (the melt takes 5 s)
+const GOLD_SEC = 10;                    // the storm's seed swells keep their gold crest light this long (the melt itself takes 5 s)
 const TOW_TAU = 2.4, TOW_Z0 = 0.9;      // a slow long stroke towards you tows a far thought ≈0.9·Z0 home
 const TURN_SEC = 12;                    // with photos waiting, a far bubble gives up its place this often
 const RELAYOUT_TOL = 12;                // px: the hero's rest box must move this much to re-plan the screen
@@ -2162,7 +2162,7 @@ export function create(ctx) {
     debug: {
       get sea() { return sea; }, get wake() { return wake; }, get cam() { return cam; }, get plan() { return plan; },
       get thought() { return { ...tS }; }, get bubbles() { return bubbles.map((b) => ({ i: b.i, sx: b.sx, sy: b.sy, D: b.D, d: b.z / cam.Z0, state: b.state, alpha: b.alpha })); },
-      get waiting() { return waiting.slice(); }, get fingers() { return fingers; }, get hero() { return { ...hero }; }, get keep() { return { K: { ...K }, Kr: { ...Kr }, fl: { ...fl } }; }, get lip() { return { ...lipStat }; }, get hint() { return { ...hint, backHint }; },
+      get waiting() { return waiting.slice(); }, get fingers() { return fingers; }, get hero() { return { ...hero }; }, get keep() { return { K: { ...K }, Kr: { ...Kr }, fl: { ...fl } }; }, get lip() { return { ...lipStat }; }, get hint() { return { ...hint, backHint }; }, get gold() { let m = 0, c = 0; for (let q = 0; q < rowsN * COLS; q++) { if (gGold[q] > m) m = gGold[q]; if (gGold[q] > 0.12) c++; } return { max: m, n: c }; },
       get melt() { return melt ? { ...melt } : null; }, get hy() { return hyNow; }, get layouts() { return layoutLog; },
       /** Screen y of the still water at depth d·Z0. */
       surfaceY: (d) => cam.hy + cam.Hw * scaleAt(cam, d * cam.Z0),
