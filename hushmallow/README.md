@@ -3,8 +3,10 @@
 A mobile-first web app (plain ES modules, no build step, no AI) with seven
 living Mallows, the Hushfold fantasy world, and two paid experiences:
 
-- **Hushmallow** (paid): express a feeling, meet a Mallow, do an
-  interactive ritual, notice how it feels.
+- **Hushmallow** (paid): express a feeling (and, if you like, add up to 7
+  of your own photos), meet a Mallow, play one of **1,000 interactive touch
+  rituals** with your own words and photos inside it, keep playing as long
+  as it helps, notice how it feels. Plus ten signature rituals.
 - **Hushmallow Ultra**: everything above, plus **Another Angle** (Reframe):
   separate what happened from what your brain added, weigh the evidence and
   try other plausible explanations.
@@ -41,22 +43,29 @@ Putting it on your Framer site: see `docs/FRAMER.md`.
   furious about what happened at work." → *Meet a Mallow* → *Let's do it*.
 - **Experience B (Ultra):** Home → *Another Angle* → *Look at a real
   situation* → "My boss criticised my work. I think I'm terrible at my job."
-- **Quick tricks:** Meet a Mallow → *Only got a minute? Quick trick*, or the
-  Ultra door → *Ready for the plot twist?*
+- **The 1,000 rituals:** on the home screen (test hosts) the TEST MODE panel
+  steps ◀ PREV / NEXT ▶ through every ritual with your typed issue and photos.
+  Or straight into one on localhost: `index.html?v3=HM-0001&photos=3`, or any
+  engine × law pair: `index.html?engine=GE-07&law=3&photos=0`.
 
 ### Tests
 ```bash
 node --test hushmallow/tests/*.test.mjs
 ```
 
-### Updating the 1,000 tricks
-The tricks come from the locked ThinkStill workbook in `content/`. After
-changing the workbook, regenerate the content modules (needs `openpyxl`):
+### Updating the 1,000 rituals
+They come from `content/Hushmallow_1000_Rituals_V3.xlsx`: 50 touch engines ×
+20 world laws (every pair once), each led by a Mallow in its realm and
+practising one of 40 evidence-informed skills. After changing the workbook,
+regenerate the data (needs `openpyxl`):
 ```bash
-python3 -I hushmallow/tools/import_tricks.py hushmallow/content/ThinkStill_MASTER_1000_PRODUCTION_LOCKED_FINAL.xlsx
+python3 -I hushmallow/tools/import_v3.py hushmallow/content/Hushmallow_1000_Rituals_V3.xlsx --workbook
 ```
-Attention and getting-started tricks go to Paid; tricks about thoughts,
-meaning and relationships (reframing) go to Ultra only.
+The importer also corrects the workbook's copy mechanically (see
+`docs/V3_CORRECTIONS.md`); `--workbook` writes a corrected copy of the
+workbook with a CORRECTIONS sheet. Engines live in `src/v3/engines/` and
+follow `docs/V3_ENGINE_CONTRACT.md`. QA: `tools/v3-lab.cjs` (one ritual,
+screenshots) and `tools/v3-sweep.cjs` (plays every ritual to the end).
 
 ### Adding a ritual
 Two files and two list entries, no app changes: the content in
@@ -75,16 +84,17 @@ check that every library file is listed and every module exists.
 | `src/mallows/` | Living Mallow engine: registry, expressions, rig renderer, reactions, particles, voices |
 | `src/world/` | Hushfold realm engine (seven procedural realms) |
 | `src/engine/` | Feeling finder (rule-based), recommender + rotation, storage, audio, haptics |
-| `src/data/` | A–Z emotion taxonomy (334 terms), ritual schema, ritual library (`library/`, one file per ritual), Paid quick tricks (`tricks/`) |
-| `src/rituals/` | Paid ritual modules (interactive experiences) and the quick-trick player |
-| `src/ultra/` | Ultra only: Another Angle, authored Reframe frameworks, rule engine, the 709 plot twists |
-| `content/` | The locked ThinkStill master workbook (source of the 1,000 tricks) |
+| `src/data/` | A–Z emotion taxonomy (334 terms), ritual schema, signature ritual library (`library/`, one file per ritual) |
+| `src/rituals/` | The ten signature ritual modules |
+| `src/v3/` | The 1,000 rituals: host, 20 world laws, 50 touch engines, photo system, words, effects library, generated catalogue and copy |
+| `src/ultra/` | Ultra only: Another Angle, authored Reframe frameworks, rule engine |
+| `content/` | The V3 ritual workbook (source of the 1,000 rituals) and its corrected copy |
 | `framer/` | `HushmallowEmbed.tsx`, the Framer code component |
 | `src/app/` | App shell: scenes, world stage, entitlements, preferences, UI helpers |
 | `src/ui/` | Design system tokens and app styles |
 | `docs/` | Audit of the old app, status and roadmap |
 
 The old ThinkStill Framer app (repository root: `framer/`,
-`bubble-expressions/`, `rituals.json` …) is untouched. The 1,000 tricks in
-Hushmallow come from the newer locked workbook in `content/`, not from the
-old `rituals.json`.
+`bubble-expressions/`, `rituals.json` …) is untouched. The quick tricks were
+removed from Hushmallow; its 1,000 rituals come from the V3 workbook in
+`content/`.

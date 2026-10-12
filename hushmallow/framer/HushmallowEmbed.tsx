@@ -6,7 +6,7 @@
 // address in the "App URL" property on the right.
 //
 // Hushmallow is a complete web app (seven living Mallows, the Hushfold
-// realms, the ritual library and the 1,000 tricks), so it is hosted as its
+// realms, the 1,000 rituals), so it is hosted as its
 // own static site and shown here full-bleed. See hushmallow/docs/FRAMER.md.
 
 import * as React from "react"

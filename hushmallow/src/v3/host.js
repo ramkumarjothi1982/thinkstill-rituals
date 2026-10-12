@@ -125,6 +125,7 @@ export async function run(ctx) {
   const trail = new Trail(40, 0.5);
   const photos = photoApi({ particles, dpr: Math.min(2, devicePixelRatio || 1), seed: v.num });
   let clock = 0;                            // seconds; stops while paused
+  const speed = v.speed || 1;               // dev-lab QA sweeps only
   const now = () => clock;
   let randFn = fx.rng(v.num * 7 + 3);
   const rand = () => randFn();
@@ -311,8 +312,8 @@ export async function run(ctx) {
     raf = requestAnimationFrame(frame);
     const realDt = Math.min(0.25, (tNow - tPrev) / 1000); tPrev = tNow;
     const isPaused = paused();
-    const dt = isPaused ? 0 : Math.min(0.05, realDt);
-    if (!isPaused) clock += realDt;
+    const dt = isPaused ? 0 : Math.min(0.05, realDt * speed);
+    if (!isPaused) clock += realDt * speed;
     const t = clock;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, view.w, view.h);

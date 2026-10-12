@@ -139,6 +139,8 @@ async function v3Lab(qs) {
   const spec = R.specFor(code);
   if (!spec) return false;
   spec.params.v3.force = true;
+  // QA sweeps only: run the host clock faster (pacing only; every step still needs input)
+  if (qs.get('speed')) spec.params.v3.speed = Math.max(1, Math.min(6, Number(qs.get('speed')) || 1));
   if (!ent.has('ultra')) await ent.purchase('ultra');
   const n = Number(qs.get('photos') || 0);
   if (n > 0) {
