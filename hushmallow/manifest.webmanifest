@@ -1,7 +1,7 @@
 {
-  "name": "Hushmallow",
-  "short_name": "Hushmallow",
-  "description": "Your second brain for feelings.",
+  "name": "hushmallow",
+  "short_name": "hushmallow",
+  "description": "Less noise. More magic. Your second brain for feelings.",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",

@@ -1,13 +1,5 @@
-/* Fredoka (SIL Open Font License, assets/fonts/OFL.txt), self-hosted so no
-   request ever leaves for a font service. One variable file covers 500–700. */
-@font-face { font-family: "Fredoka"; font-style: normal; font-weight: 500 700; font-display: swap;
-  src: url("../../assets/fonts/fredoka-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
-@font-face { font-family: "Fredoka"; font-style: normal; font-weight: 500 700; font-display: swap;
-  src: url("../../assets/fonts/fredoka-latin-ext.woff2") format("woff2");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
-
-/* Hushmallow design system — tokens.
+/* hushmallow design system — colour, space, shape, depth and motion tokens.
+   Typography lives in type.css (faces + --type-* tokens) and type.js.
    Night-ink surfaces let the Mallows and realms carry the colour; controls
    stay quiet and precise.  One warm accent ("moonmilk gold") marks the
    primary action everywhere. */
@@ -37,15 +29,16 @@
   --care: #ff9ccf;
   --danger: #ff8a8a;
 
-  /* type */
-  --font-display: "Fredoka", ui-rounded, "SF Pro Rounded", "Nunito", system-ui, sans-serif;
-  --font-ui: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* type — the old names, kept as aliases of the type.css families so older
+     modules keep working; new code uses --ff-* / --type-* (type.css). */
+  --font-display: var(--ff-voice, ui-rounded, system-ui, sans-serif);
+  --font-ui: var(--ff-ui, system-ui, -apple-system, "Segoe UI", sans-serif);
   --fs-hero: clamp(34px, 9vw, 52px);
   --fs-h1: clamp(26px, 6.6vw, 34px);
-  --fs-h2: 21px;
+  --fs-h2: 20px;
   --fs-body: 16px;
-  --fs-small: 13.5px;
-  --fs-micro: 12px;
+  --fs-small: 14px;
+  --fs-micro: 13px;
 
   /* space (4pt) */
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s8: 32px; --s10: 40px;

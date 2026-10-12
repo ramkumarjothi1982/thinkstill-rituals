@@ -1,0 +1,19 @@
+{
+  "name": "hushmallow-another-angle",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Server for Another Angle in hushmallow Beyond (Cloudflare Worker). Never shipped to GitHub Pages.",
+  "type": "module",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261012.1",
+    "@types/node": "22.19.1",
+    "typescript": "5.9.3",
+    "wrangler": "4.149.0"
+  }
+}
