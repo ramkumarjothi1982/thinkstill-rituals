@@ -9,8 +9,8 @@
 //   get blockBack(), safeForUpdate(), spawnThought(text, emotion) }
 // params.flow = { worldId, emotion?, intention? } starts a world (the garden's "Practise
 // again", Another Angle's Continue); params.safety = { level } (back from Another Angle
-// after something heavy) keeps support close. Leaving, it sets app.state.stageMallow to
-// the Mallow it showed, for a classic scene that finds no rig (plans.js).
+// after something heavy) keeps support close. Leaving, it hands the classic rig back (the
+// person's own Mallow, let go on enter by world.releaseMallow), so every scene after it finds one.
 //
 // Layers: #world realm backdrop · .hf-touch the squeezable Mallow (MallowTouch, the
 // default; the classic rig in #mallow-layer is the fallback, released meanwhile) ·
@@ -115,6 +115,7 @@ export default function hushfold(app, params = {}) {
   // ------------------------------------------------------- stage --
   let stage = null, stageMallow = null, router = null, overlay = null, panel = null, readEl = null;
   let touchMt = null, touchBox = null;   // the MallowTouch stage (W2), else the rig (the fallback)
+  let rigReleased = false;               // the classic rig was let go for MallowTouch: leave() hands it back
   // each transient layer has its own history entry, so Back closes it first
   const layer = { overlay: 0, panel: 0, read: 0 };
   const pushLayer = (k) => { layer[k] = app.pushLayer?.() || 0; };
@@ -1131,6 +1132,7 @@ export default function hushfold(app, params = {}) {
       if (!(dev && qs.get('touch') === '0') && prefs.get('mallowTouch') !== false) {
         world.showMallow(false);
         world.releaseMallow?.();
+        rigReleased = true;
         let wait = 0;
         try {
           const { MallowTouch } = await import('../../mallows/touch/mallow-touch.js');
@@ -1222,8 +1224,6 @@ export default function hushfold(app, params = {}) {
       stage?.destroy();
       stageMallow?.destroy();
       if (touchMt) {
-        // the classic scenes next find no rig (world.releaseMallow): this is the Mallow they bring back (plans.js)
-        app.state.stageMallow = homeMallow || mallowId;
         try { touchMt.destroy(); } catch (e) { console.warn(e); }
         touchMt = null; touchBox?.remove(); touchBox = null;
       }
@@ -1233,6 +1233,12 @@ export default function hushfold(app, params = {}) {
       world.showMallow(true);
       world.realm?.pause?.(false);
       if (gentle()) world.setLowStim?.(!!prefs.get('lowStim'));
+      // ...with a rig on it again: the person's own Mallow (not a world's host), without a hop. The
+      // scene that follows (express, plans, the classic home, settings…) calls the shared stage at once
+      // and may never call setMallow itself; one that does (garden, Another Angle, rituals) swaps it.
+      // (world.setMallow sets the rig synchronously; its art loads after)
+      const own = MALLOWS[homeMallow] ? homeMallow : mallowId;
+      if (rigReleased && !world.rig) world.setMallow(own, { entrance: false, interactive: true }).catch((e) => console.warn('[hushfold] rig', e?.message || e));
       world.fx.replaceChildren();
       world.fx.classList.remove('live');
       world.dim(false);

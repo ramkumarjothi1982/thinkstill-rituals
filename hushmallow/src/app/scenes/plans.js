@@ -11,7 +11,6 @@ import { PLANS } from '../entitlements.js';
 import { BRAND, brandName } from '../../brand.js';
 import { brandMark, logoImg, fitLabel } from '../../ui/type.js';
 import { openSupport } from './support.js';
-import { MALLOWS } from '../../mallows/registry.js';
 
 const PERIODS = [['monthly', 'Monthly'], ['yearly', 'Yearly']];
 const SVG = 'http://www.w3.org/2000/svg';
@@ -211,13 +210,9 @@ export default function plans(app, params = {}) {
     });
   }
 
-  // "Meet Another Angle" names Zuzu: Zuzu is the one on screen. Come from the Hushfold, whose
-  // squeezable Mallow let the classic rig go (world.releaseMallow), there is no rig yet: the
-  // Mallow the Hushfold was showing comes back here (app.state.stageMallow).
-  const known = (id) => (id && MALLOWS[id] ? id : null);
-  const hadRig = !!world.mallowId;
-  const prevMallow = known(world.mallowId) || known(app.state.stageMallow) || known(app.state.homeMallow) || known(app.prefs?.get?.('mallow')) || 'loomi';
-  const swapMallow = focus === 'ultra' && !everything && prevMallow !== 'zuzu';
+  // "Meet Another Angle" names Zuzu: Zuzu is the one on screen
+  const prevMallow = world.mallowId;
+  const swapMallow = focus === 'ultra' && !everything && prevMallow && prevMallow !== 'zuzu';
 
   return {
     el, title: 'Plans',
@@ -226,8 +221,6 @@ export default function plans(app, params = {}) {
       world.showMallow?.(true);
       world.place({ x: 50, y: 14, scale: 0.42 });
       if (swapMallow) await world.setMallow('zuzu').catch(() => {});
-      else if (!world.rig) await world.setMallow(prevMallow, { entrance: false }).catch(() => {});
-      if (gone) return;
       world.setStage('curious');
       fit();
       requestAnimationFrame(() => fits.forEach((f) => f()));
@@ -239,8 +232,7 @@ export default function plans(app, params = {}) {
     leave() {
       gone = true; clearTimeout(homeTimer);
       if (mallowAway) world.showMallow?.(true);
-      // (back to the Hushfold, nothing to restore: its own Mallow takes the stage again)
-      if (swapMallow && hadRig && world.mallowId === 'zuzu') world.setMallow(prevMallow, { entrance: false }).catch(() => {});
+      if (swapMallow && world.mallowId === 'zuzu') world.setMallow(prevMallow, { entrance: false }).catch(() => {});
     },
   };
 }

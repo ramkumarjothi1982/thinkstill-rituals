@@ -630,17 +630,29 @@ test('H1: MallowTouch is the stage Mallow by default (owner P9); the rig is the 
   assert.match(enter, /, 5000\)/);
   assert.match(enter, /touchMt\?\.destroy\(\)/);
   assert.match(enter, /stageMallow \|\|= createStageMallow\(world, \{ touch: null \}\)/);
-  // the QA hook is live, and the classic scenes learn which Mallow was on stage
+  // the QA hook is live
   assert.match(enter, /get touch\(\) \{ return touchMt; \}/);
-  assert.match(fnBody(scene, 'leave() {', 'get blockBack()'), /app\.state\.stageMallow = homeMallow \|\| mallowId;/);
 });
 
-test('H1: a classic scene entered from the Hushfold brings its Mallow back (plans after world.releaseMallow)', () => {
-  const plans = read('src/app/scenes/plans.js');
-  assert.match(plans, /known\(world\.mallowId\) \|\| known\(app\.state\.stageMallow\)/);
-  assert.match(plans, /else if \(!world\.rig\) await world\.setMallow\(prevMallow, \{ entrance: false \}\)/);
-  // a swap to Zuzu is undone only over a rig that was there before
-  assert.match(plans, /if \(swapMallow && hadRig && world\.mallowId === 'zuzu'\)/);
+test('H1: leaving, the Hushfold hands the classic rig back, so every scene after it has a Mallow', () => {
+  const scene = read('src/app/scenes/hushfold.js');
+  const enter = fnBody(scene, 'async enter() {', 'leave() {');
+  // released on enter for MallowTouch, and remembered
+  assert.match(enter, /world\.releaseMallow\?\.\(\);\s*rigReleased = true;/);
+  const leave = fnBody(scene, 'leave() {', 'get blockBack()');
+  const back = leave.search(/if \(rigReleased && !world\.rig\) world\.setMallow\(own, \{ entrance: false, interactive: true \}\)\.catch\(/);
+  assert.ok(back > 0, 'leave() builds a rig again (express, plans, settings, the classic home call the stage at once; express never calls setMallow)');
+  // after MallowTouch has gone (one Mallow at a time), and the person's own Mallow, never a world's host
+  assert.ok(back > leave.indexOf('touchMt.destroy()'));
+  assert.match(leave, /const own = MALLOWS\[homeMallow\] \? homeMallow : mallowId;/);
+  // world.setMallow sets world.rig and world.mallowId synchronously: a scene built right after leave() reads them
+  const world = read('src/app/world.js');
+  const set = fnBody(world, 'async setMallow(id,', 'releaseMallow() {');
+  assert.ok(set.indexOf('rig = next;') > 0 && set.indexOf('rig = next;') < set.indexOf('await next.loaded'));
+  assert.ok(set.indexOf('mallowId = id;') < set.indexOf('await next.loaded'));
+  // the classic scenes keep their own code: no shell hand-off through app.state (one fix, here)
+  assert.doesNotMatch(read('src/app/scenes/plans.js'), /app\.state\.stageMallow/);
+  assert.doesNotMatch(scene, /app\.state\.stageMallow/);
   // the support sheet never asks the shared rig for heart eyes when it is urgent
   assert.match(read('src/app/scenes/support.js'), /app\.world\?\.setStage\?\.\(urgent \? 'concerned' : 'comforting'\)/);
 });
