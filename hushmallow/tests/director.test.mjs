@@ -155,7 +155,10 @@ test('director: pause({reason:"safety"}) during loading — the world enters pau
     assert.equal(D.state.paused, true, 'held at once, while it still loads');
     assert.equal(D.state.reason, 'safety');
     assert.equal(D.state.canNext, false);
+    const tl = D.debug.time;
+    for (let i = 0; i < 20; i++) tk.tick();
     await wait(80);                      // prepare() has begun (idle time)
+    assert.equal(D.debug.time, tl, 'its clock waits while it loads');
     gate.resolve();
     const st = await p;
     assert.ok(st, 'start() resolves with the world');
@@ -585,6 +588,25 @@ test("director: a safety pause drops a Drift on asked for earlier; a world's com
       }
       D2.destroy();
     }
+  } finally { dom.restore(); }
+});
+
+test('director (owner P3): paused for safety, then finished — the phase is "finished", nothing paused, Resume does nothing', async () => {
+  const dom = installFakeDom();
+  try {
+    const { D, tk } = await director(dom, [world('a'), world('b')], {});
+    await D.start({ worldId: 'a' });
+    D.pause({ reason: 'safety' });
+    D.finish({ reason: 'safety' });
+    assert.equal(D.state.phase, 'finished');
+    assert.equal(D.state.paused, false, 'no Resume shows for a finished world');
+    const t0 = D.debug.time;
+    D.resume();
+    for (let i = 0; i < 30; i++) tk.tick();
+    assert.equal(D.state.phase, 'finished');
+    assert.equal(D.debug.time, t0);
+    assert.equal(D.next(), false);
+    D.destroy();
   } finally { dom.restore(); }
 });
 

@@ -821,6 +821,8 @@ export function createHushflow(opts = {}) {
   }
 
   function step(dt, rawMs = dt * 1000) {
+    // paused while the first world loads: its clock waits too (it enters never having stepped)
+    if (pausePending && (phase === 'loading' || phase === 'idle')) return;
     t += dt;
     const t0 = nowMs();
     if (phase === 'loading' || !cur) { comp.drawFallback(); return; }
@@ -918,7 +920,7 @@ export function createHushflow(opts = {}) {
   const onVis = () => {
     hidden = document.hidden;
     if (hidden) { stopLoop(); save(); try { cur?.world.pause?.(); } catch { /* ignore */ } }
-    else if (!paused) { try { cur?.world.resume?.(); } catch { /* ignore */ } startLoop(); }
+    else if (!paused && phase !== 'finished') { try { cur?.world.resume?.(); } catch { /* ignore */ } startLoop(); }
   };
   document.addEventListener('visibilitychange', onVis);
 
@@ -1003,6 +1005,8 @@ export function createHushflow(opts = {}) {
       try { cur?.world.pause?.(); melt?.to.world.pause?.(); } catch { /* ignore */ }
       recordPlayed(cur);
       phase = 'finished';
+      // (finished, not paused: nothing is waiting to be resumed — the panel shows no Resume)
+      paused = false; pauseReason = null;
       hushed = true; wantNext = false; pausePending = null;
       // the world's own 'Stay, or drift on?' goes with it
       if (choiceOpen) { choiceOpen = null; try { subtitles?.clear?.(); } catch { /* optional */ } }
@@ -1087,7 +1091,7 @@ export function createHushflow(opts = {}) {
       const p = paused || (!!pausePending && (phase === 'loading' || phase === 'idle'));
       const why = paused ? pauseReason : (p && pausePending !== true ? pausePending : null);
       return {
-        phase: p ? 'paused' : phase, paused: p, reason: why || null, worldId: cur?.id || null, nextId: nextChoice?.id || null,
+        phase: phase === 'finished' ? 'finished' : p ? 'paused' : phase, paused: p && phase !== 'finished', reason: why || null, worldId: cur?.id || null, nextId: nextChoice?.id || null,
         // the world's name (or the one loading), for the panel's 'Now: …'
         title: (cur || (loadingId ? { entry: registry.get(loadingId) } : null))?.entry?.title || null,
         progress: cur?.world.progress ?? 0, complete: !!cur?.world.complete, staying: !!cur?.staying, autoFlow,
