@@ -10,7 +10,6 @@
 // always starts from the measured values. Result: window.__fit
 //   { id, report: { feat: { before, after, values } }, face }
 // tools/hires/lab/run.cjs fit <id> <out.json> runs it headless.
-import { MALLOWS, SPRITES } from '../../../src/mallows/registry.js';
 import { loadRig } from './rig-loader.js';
 
 const qs = new URLSearchParams(location.search);
@@ -35,7 +34,7 @@ function lumGrid(data, w, h) {
 }
 
 window.__ready = (async () => {
-  const { MallowRig } = await loadRig();
+  const { MallowRig, registry: { MALLOWS, SPRITES } } = await loadRig();   // the registry the (patched) rig reads
   const { HIRES, hiresMallow } = await import(tableUrl);
   const OLD = MALLOWS[id];
   const NEW = hiresMallow(OLD, id);

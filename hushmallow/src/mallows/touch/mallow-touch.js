@@ -5,6 +5,8 @@
 //   mt.place({ x: 195, y: 430, scale: 1 });        // body centre, container CSS px
 //   mt.on('touch', (e) => …);                     // {kind, depth, stretch, speed, turns, dir}
 //   await mt.setMallow('zuzu');                   // switch character, same WebGL context
+//   mt.place({ x, y, size: 240 });                // …or size the body: its height in CSS px
+//   mt.addLayer({ gl(items, renderer), draw2d(ctx, info), busy() });  // e.g. Thought Mallows
 //
 // Layers inside `container` (which it fills; it may be the full viewport):
 //   a WebGL canvas (tier A: the textured soft-body mesh, contact shadow and
@@ -66,6 +68,13 @@ const hexRgb = (hex) => {
 };
 const spinCurve = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
 const nowMs = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+// an input event's time on the performance.now() clock
+function eventMs(e, base) {
+  const now = nowMs(), ts = e?.timeStamp;
+  if (Number.isFinite(ts) && ts > 0 && ts <= now + 50 && now - ts < 1000) return ts;
+  if (base && Number.isFinite(base.timeStamp) && Number.isFinite(ts)) return now - Math.max(0, base.timeStamp - ts);
+  return now;
+}
 
 export class MallowTouch {
   /**
@@ -102,8 +111,12 @@ export class MallowTouch {
   // everything that is not DOM (also used by the DOM-free core in tests)
   _setup(container, opts) {
     const id = MALLOWS[opts.id] ? opts.id : 'boppo';
-    this.opts = { quality: 'auto', reducedMotion: prefersReducedMotion(), lowStim: false, audio: null, haptic: null,
-      bindPointer: true, skinSize: 640, ...opts, id };
+    // reduced motion follows the OS setting live unless the caller decides it
+    this._rmFollowsOS = opts.reducedMotion == null;
+    // skinSize 'auto': the skin's resolution follows the body's size on screen
+    this._autoSkin = !(opts.skinSize > 0);
+    this.opts = { quality: 'auto', lowStim: false, audio: null, haptic: null, bindPointer: true,
+      ...opts, reducedMotion: opts.reducedMotion ?? prefersReducedMotion(), skinSize: opts.skinSize > 0 ? opts.skinSize : 640, id };
     this.id = id;
     this.mallow = MALLOWS[id];
     this.persona = personaFor(id);
@@ -146,6 +159,9 @@ export class MallowTouch {
     this._dirty = null;
     this._frameCosts = [];
     this._lastSkinFrame = -9;
+    this._layers = new Set();
+    this._items = [];
+    this._layerInfo = { tier: '', dpr: 1, dt: 0, view: this.view, time: 0 };
     this._glitch = new Float32Array(36);
     this._burst = new Float32Array(18);
     this._item = { key: 'hero', positions: null, shade: null, m: this.M, lag: [0, 0], rim: 0, rimCol: [1, 1, 1], light: 1, spec: 1, glitch: null, glitchThick: 3, burst: null, src: [1, 1] };
@@ -167,6 +183,7 @@ export class MallowTouch {
 
   _makeRig(id) {
     const rm = !!this.opts.reducedMotion;
+    if (this._autoSkin) this.opts.skinSize = this._wantSkin(id) || this.opts.skinSize;
     const rig = new MallowRig(this.root, {
       id, headless: true, interactive: false, skinSize: this.opts.skinSize, reducedMotion: rm,
       audio: this.opts.audio, haptic: (k) => this._rigHaptic(k), particles: !this.opts.lowStim, lowStim: !!this.opts.lowStim,
@@ -202,10 +219,19 @@ export class MallowTouch {
       this.io.observe(this.root);
     }
     this._resize();
+    if (this._pctPlace) { this.ready = true; this.place(...this._pctPlace); this.ready = false; this._pctPlace = null; }
+    if (this._sizePlace != null) { this.goalSt.s = clamp(this._sizePlace / this._baseP(), 0.2, 3); this._sizePlace = null; }
     this.st.x = this.goalSt.x ?? this.view.w / 2;
     this.st.y = this.goalSt.y ?? this.view.h * 0.52;
     this.st.s = this.goalSt.s;
-    if (this._pctPlace) { this.ready = true; this.place(...this._pctPlace); this.ready = false; this._pctPlace = null; }
+    this._checkSkin(true);
+    if (this._rmFollowsOS && typeof matchMedia === 'function') {
+      try {
+        this._mq = matchMedia('(prefers-reduced-motion: reduce)');
+        this._mqFn = (e) => this.setReducedMotion(e.matches);
+        this._mq.addEventListener ? this._mq.addEventListener('change', this._mqFn) : this._mq.addListener?.(this._mqFn);
+      } catch { /* ignore */ }
+    }
     this._settle();
     this._label();
     this.ready = true;
@@ -305,6 +331,43 @@ export class MallowTouch {
     return c;
   }
 
+  // the skin's resolution for this layout: ≈ 1.1 × the body's height in
+  // device px (crisp, never minified past ~1.3×, cheap on small layouts)
+  _wantSkin(id = this.id) {
+    const m = MALLOWS[id];
+    let w = this.view.w, h = this.view.h, dpr = this.view.dpr;
+    if (!(w > 1)) {
+      const r = this.container?.getBoundingClientRect?.();
+      if (!r || !(r.width > 1)) return 0;
+      w = r.width; h = r.height; dpr = Math.min(2, (typeof devicePixelRatio === 'number' ? devicePixelRatio : 1) || 1);
+    }
+    const [bx0, by0, bx1, by1] = m.bodyBox, aspect = (bx1 - bx0 + 2 * PAD) / (by1 - by0);
+    const P = clamp(Math.min((0.6 * w) / aspect, 0.34 * h), 110, 330) * (this.goalSt?.s || 1);
+    return clamp(Math.round((1.1 * P * dpr * Math.max(...m.size)) / (by1 - by0) / 32) * 32, 320, 768);
+  }
+
+  // re-skin when the layout asks for a skin ≥ 20 % off (now, or once no finger is down)
+  _checkSkin(now = false) {
+    if (!this._autoSkin || !this.rig?.assets) return;
+    const want = this._wantSkin(), have = this.rig.opts.skinSize;
+    if (!want || Math.abs(want / have - 1) < 0.2) { this._reskinTo = 0; return; }
+    if (now || !this.reader?.ptrs.size) this._reskin(want); else this._reskinTo = want;
+  }
+
+  _reskin(px) {
+    this._reskinTo = 0;
+    const rig = this.rig;
+    rig.setSkinSize(px);
+    this.opts.skinSize = px;
+    const m = this.mallow, [x0, y0, x1, y1] = this.box, q = rig.q, skin = rig.skin;
+    this.uvRect = [(x0 * q) / skin.width, (y0 * q) / skin.height, (x1 * q) / skin.width, (y1 * q) / skin.height];
+    this.sb.setUvRect(this.uvRect);
+    void m;
+    this._addGLBody();
+    if (this.tier === 'gl' && this.renderer) this.renderer.updateTexture('hero', rig.skin, null);
+    this._dirty = null;
+  }
+
   _applyTier(tier) {
     this.tier = tier;
     this.stats.tier = TIERS[tier];
@@ -381,6 +444,7 @@ export class MallowTouch {
     this._dirty = null;
     if (this.goalSt.x == null) this.st.x = w / 2;
     if (this.goalSt.y == null) this.st.y = h * 0.52;
+    if (this.ready) this._checkSkin();
   }
 
   _label() {
@@ -464,15 +528,19 @@ export class MallowTouch {
   setLowStim(b) { this.opts.lowStim = !!b; this.rig.opts.particles = !b; this.rig.opts.lowStim = !!b; if (b) { this.rig.particles.list.length = 0; this.rig.particles.cloud = 0; } }
 
   /** Body centre at (x, y) in container CSS px (or % of the container with
-   *  unit:'%'); scale × the default size (≈ 0.6 of the width, ≤ 0.34 of the height). */
-  place({ x, y, scale, unit } = {}, { instant = false } = {}) {
+   *  unit:'%'); scale × the default size (≈ 0.6 of the width, ≤ 0.34 of the
+   *  height) — or size: the body's height in CSS px (overrides scale). */
+  place({ x, y, scale, size, unit } = {}, { instant = false } = {}) {
     if (unit === '%') {
-      if (!this.ready) { this._pctPlace = [{ x, y, scale, unit }, { instant }]; return this; }
+      if (!this.ready) { this._pctPlace = [{ x, y, scale, size, unit }, { instant }]; return this; }
       x = Number.isFinite(x) ? (x / 100) * this.view.w : x; y = Number.isFinite(y) ? (y / 100) * this.view.h : y;
+    }
+    if (Number.isFinite(size) && size > 0) {
+      if (this.view.w > 1) scale = size / this._baseP(); else { this._sizePlace = size; scale = undefined; }
     }
     if (Number.isFinite(x)) this.goalSt.x = x;
     if (Number.isFinite(y)) this.goalSt.y = y;
-    if (Number.isFinite(scale)) this.goalSt.s = clamp(scale, 0.2, 3);
+    if (Number.isFinite(scale)) { this.goalSt.s = clamp(scale, 0.2, 3); if (this.ready) this._checkSkin(); }
     if (instant || !this.ready) {
       if (this.goalSt.x != null) this.st.x = this.goalSt.x;
       if (this.goalSt.y != null) this.st.y = this.goalSt.y;
@@ -480,6 +548,22 @@ export class MallowTouch {
     }
     return this;
   }
+
+  /** The body's height (CSS px) at scale 1 for the current layout; place({size}) uses it. */
+  get baseSize() { return this._baseP(); }
+
+  /** Draw more on this Mallow's canvases in the same frame (one WebGL context):
+   *  layer = { gl(items, renderer, info) — push mesh items (bodies added with
+   *  renderer.addBody) to draw after the hero in tier A; draw2d(ctx, info) —
+   *  2D drawing (tiers B/C, and tier A when the layer has no gl);
+   *  busy() — true while it animates (keeps an idle Mallow drawing every frame) }.
+   *  info: {tier 'A'|'B'|'C', dpr, dt, view, time}. Returns the layer. */
+  addLayer(layer) { if (layer) { this._layers.add(layer); this._dirty = null; } return layer; }
+  removeLayer(layer) { this._layers.delete(layer); this._clear2d(true); }
+  /** Shorthand: fn(items, renderer, info) adds tier A mesh items each frame. */
+  addDrawItems(fn) { return this.addLayer({ gl: fn }); }
+  /** The tier A mesh renderer (null in the 2D tiers or when WebGL is unavailable). */
+  get meshRenderer() { return this.tier === 'gl' && this.renderer && !this.renderer.lost ? this.renderer : null; }
 
   /** Extra float: lift in body heights, tilt in degrees (sprung). */
   float({ lift, tilt } = {}) {
@@ -547,6 +631,8 @@ export class MallowTouch {
     removeTicker(this._tick);
     this._hold?.stop(); this._hum?.stop();
     this._unbind?.(); this._unbindKeys?.(); this._unbindRing?.();
+    if (this._mq && this._mqFn) { try { this._mq.removeEventListener ? this._mq.removeEventListener('change', this._mqFn) : this._mq.removeListener?.(this._mqFn); } catch { /* ignore */ } }
+    this._layers.clear();
     this.ro?.disconnect(); this.io?.disconnect();
     removeEventListener('resize', this._onResize);
     // gives the WebGL context back now (iOS keeps very few), not at GC
@@ -558,11 +644,12 @@ export class MallowTouch {
   }
 
   // ----------------------------------------------------------- geometry --
-  _P() {
+  _baseP() {
     const v = this.view;
-    const base = clamp(Math.min((0.6 * v.w) / (this.aspect || 1), 0.34 * v.h), 110, 330);
-    return base * this.st.s;
+    return clamp(Math.min((0.6 * v.w) / (this.aspect || 1), 0.34 * v.h), 110, 330);
   }
+
+  _P() { return this._baseP() * this.st.s; }
 
   _toBody(x, y) {
     const I = this.Minv, b = this._b;
@@ -628,11 +715,12 @@ export class MallowTouch {
   // ------------------------------------------------------------- input --
   _bindPointer() {
     const el = this.root;
-    // one clock for everything: performance.now() when handled (event.timeStamp
-    // can be on another base for synthesized input); coalesced samples keep
-    // their relative spacing
+    // one clock for everything (performance.now()): the event's own timeStamp
+    // when it is on that clock (every current engine) — so a janky main thread
+    // doesn't distort speeds and gesture decisions — else handling time, with
+    // coalesced samples keeping their relative spacing
     const conv = (e, type, base) => ({ type, id: e.pointerId, x: e.clientX, y: e.clientY,
-      t: (nowMs() - (base ? Math.max(0, base.timeStamp - e.timeStamp) : 0)) / 1000, shift: e.shiftKey, mouse: e.pointerType === 'mouse' });
+      t: eventMs(e, base) / 1000, shift: e.shiftKey, mouse: e.pointerType === 'mouse' });
     const down = (e) => {
       if (e.button > 0) return;
       const ok = this.reader.pointer(conv(e, 'down'));
@@ -649,7 +737,7 @@ export class MallowTouch {
     const leave = () => { if (!this.reader.active) this.rig.lookAt(null); };
     const wheel = (e) => {
       if (!e.ctrlKey) return;
-      if (this.reader.wheel({ x: e.clientX, y: e.clientY, deltaY: e.deltaY, t: nowMs() / 1000 })) e.preventDefault();
+      if (this.reader.wheel({ x: e.clientX, y: e.clientY, deltaY: e.deltaY, t: eventMs(e) / 1000 })) e.preventDefault();
     };
     const gesture = (e) => e.preventDefault();
     const ctx = (e) => { if (this.hitTest(e.clientX, e.clientY)) e.preventDefault(); };
@@ -673,7 +761,7 @@ export class MallowTouch {
     const el = this.root;
     const k = (type) => (e) => {
       if (!['Enter', ' ', 'Spacebar', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
-      if (this.reader.key({ type, key: e.key, t: nowMs() / 1000, repeat: e.repeat })) e.preventDefault();
+      if (this.reader.key({ type, key: e.key, t: eventMs(e) / 1000, repeat: e.repeat })) e.preventDefault();
     };
     const kd = k('down'), ku = k('up');
     el.addEventListener('keydown', kd); el.addEventListener('keyup', ku);
@@ -865,6 +953,7 @@ export class MallowTouch {
   _tick(dt) {
     if (!this.ready || this.destroyed) return;
     if (!this.visible || (typeof document !== 'undefined' && document.hidden)) return;
+    if (this._reskinTo && !this.reader.ptrs.size) this._reskin(this._reskinTo);
     const t0 = nowMs();
     const st = this.stats, last = st.last;
     st.fps = st.fps ? st.fps + (1 / Math.max(dt, 1e-3) - st.fps) * 0.08 : 1 / Math.max(dt, 1e-3);
@@ -1050,11 +1139,14 @@ export class MallowTouch {
     const s = this.st, parts = rig.particles, fl = this.fl;
     const idle = !touching && !changed && (!sb.awake || sb.energy < 2e-5) && this._rim < 0.01 && !(parts.list.length || parts.cloud > 0.02) &&
       Math.abs(s.vx) + Math.abs(s.vy) + Math.abs(s.vs) + Math.abs(fl.vl) + Math.abs(fl.vt) < 0.5 && rig.body.grounded && !(rig.body.spin > 0) &&
-      !(rig.body.glitchBurst > 0) && !this._trem && !(this.id === 'glitzi' && this.tier === 'gl' && rig.val.glitch >= 0.55 && rig.restMix < 0.999);
+      !(rig.body.glitchBurst > 0) && !this._trem && !(this.id === 'glitzi' && this.tier === 'gl' && rig.val.glitch >= 0.55 && rig.restMix < 0.999) &&
+      !this._layersBusy();
     this._idleFrames = idle ? (this._idleFrames || 0) + 1 : 0;
     st.idle = idle;
     if (idle && this._idleFrames % 2 === 0) { st.skipped++; return; }
     st.last.drawn = true;
+    const info = this._layerInfo;
+    info.tier = st.tier; info.dpr = this.view.dpr; info.dt = dt; info.time = this.time;
     // rim light rises with the squeeze, the stretch and a jiggle
     const rimGoal = clamp(0.5 * T.depth + 0.9 * Math.max(0, T.stretch - 1) + 0.3 * T.jiggle, 0, 0.75) * (this.opts.lowStim ? 0.5 : 1);
     this._rim += (rimGoal - this._rim) * Math.min(1, dt * (rimGoal > this._rim ? 10 : 3));
@@ -1072,7 +1164,10 @@ export class MallowTouch {
       it.glitch = this._glitchUniforms();
       it.glitchThick = this._glitch.thick || 3;
       it.burst = this._burstUniforms();
-      this.renderer.draw([it], this._blobsFor());
+      const items = this._items;
+      items.length = 0; items.push(it);
+      for (const L of this._layers) if (L.gl) { try { L.gl(items, this.renderer, info); } catch (e) { console.error(e); } }
+      this.renderer.draw(items, this._blobsFor());
       this._draw2d(false);
       st.last.draw = nowMs() - a;
       st.drawMs = lerp(st.drawMs, st.last.draw, 0.1);
@@ -1150,12 +1245,20 @@ export class MallowTouch {
     this._dirty = null;
   }
 
+  _layersBusy() { for (const L of this._layers) { try { if (L.busy?.()) return true; } catch { /* ignore */ } } return false; }
+
+  // layers drawing on the 2D canvas this frame (all in tiers B/C; in tier A those without gl)
+  _layers2d(body) { for (const L of this._layers) if (L.draw2d && (body || !L.gl)) return true; return false; }
+
   // 2D canvas: everything in tiers B/C, only particles over the GL mesh in tier A
   _draw2d(body) {
     const ctx = this.ctx, dpr = this.view.dpr, rig = this.rig, parts = rig.particles;
     const hasParticles = rig.opts.particles && (parts.list.length > 0 || parts.cloud > 0.02);
-    if (!body && !hasParticles && !this._dirty) return;
-    this._clear2d(false);
+    const layers = this._layers.size ? this._layers2d(body) : false;
+    if (!body && !hasParticles && !this._dirty && !layers && !this._hadLayers2d) return;
+    // other layers may draw anywhere: clear everything while there are any
+    this._clear2d(layers || this._hadLayers2d);
+    this._hadLayers2d = layers;
     const g = this._geo;
     let e0 = g.cx - g.w, e1 = g.top - g.h * 0.9, e2 = g.cx + g.w, e3 = g.bottom + g.h * 0.2;
     if (body) {
@@ -1184,6 +1287,14 @@ export class MallowTouch {
       for (const p of parts.list) {
         if (p.x - 40 < e0) e0 = p.x - 40; if (p.x + 40 > e2) e2 = p.x + 40;
         if (p.y - 40 < e1) e1 = p.y - 40; if (p.y + 40 > e3) e3 = p.y + 40;
+      }
+    }
+    if (layers) {
+      for (const L of this._layers) {
+        if (!L.draw2d || (!body && L.gl)) continue;
+        ctx.save(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        try { L.draw2d(ctx, this._layerInfo); } catch (e) { console.error(e); }
+        ctx.restore();
       }
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0);

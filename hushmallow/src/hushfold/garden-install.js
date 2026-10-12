@@ -3,8 +3,10 @@
 //
 //   onOffer(ctx) = keepDiscovery(ctx)  ← THE entry point for the Hushfold's
 //       'offer' event. ctx: { app, store, skillId, worldId, mallow, origin,
-//       face, subtitles, reducedMotion, lowStim, signal } (origin and face
-//       may be rects or functions that return the current rect).
+//       face, avoid, subtitles, reducedMotion, lowStim, signal } (origin and
+//       face may be rects or functions that return the current rect; avoid:
+//       rects, {x,y,w,h} or {left,top,…}, or a function returning them: what
+//       must stay uncovered, e.g. the world's postcards and Thought Mallow).
 //       → Promise<{ kept, already, stored, action }>: offer → save (only on
 //       the "Keep this" tap) → install. A tool that is already kept is not
 //       offered again: it is marked as practised and a quiet note says so.
@@ -386,6 +388,12 @@ function obstacleRects() {
   if (typeof document === 'undefined') return [];
   return [...document.querySelectorAll(OBSTACLES)].map(visibleRect).filter(Boolean);
 }
+/** What the caller says must stay clear (a world's postcards and Thought Mallow, a reserved band): rects or a function returning them. */
+function extraRects(avoid) {
+  const list = call(avoid);
+  if (!Array.isArray(list)) return [];
+  return list.map((r) => (r && Number.isFinite(r.x) && Number.isFinite(r.w) ? asRect({ left: r.x, top: r.y, width: r.w, height: r.h }) : asRect(r))).filter(Boolean);
+}
 /** The free band of the screen: under the top bar, above the dock and the home indicator. */
 function screenFrame() {
   const W = innerWidth, H = innerHeight, ins = insets();
@@ -510,19 +518,22 @@ function onSceneLeave(fn) {
   mo.observe(sceneEl, { childList: true });
   return () => mo.disconnect();
 }
-/** Calls fn (debounced) when the subtitle band changes, so a box can step out of its way. */
+/** Calls fn (debounced) when the subtitle band changes, and again once a new line has finished sliding in. */
 function onBandChange(fn) {
   const band = document.querySelector('.hf-subs');
   if (!band || typeof MutationObserver === 'undefined') return () => {};
-  let raf = 0;
-  const mo = new MutationObserver(() => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; fn(); }); });
+  let raf = 0, late = 0;
+  const mo = new MutationObserver(() => {
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; fn(); });
+    clearTimeout(late); late = setTimeout(fn, 720);
+  });
   mo.observe(band, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'hidden'] });
-  return () => { mo.disconnect(); cancelAnimationFrame(raf); };
+  return () => { mo.disconnect(); cancelAnimationFrame(raf); clearTimeout(late); };
 }
 
 // --------------------------------------------------------------- chip --
 /** A folded offer or card: a small chip in a corner that covers no face, no subtitle and no control. */
-function showChip({ text, label, skillId, mallow, reduced, glow, geom = null, onTap, ttl = 0 }) {
+function showChip({ text, label, skillId, mallow, reduced, glow, geom = null, avoid = null, onTap, ttl = 0 }) {
   hideChip(true);
   ensureCss();
   const b = document.createElement('button');
@@ -534,7 +545,7 @@ function showChip({ text, label, skillId, mallow, reduced, glow, geom = null, on
   const s = document.createElement('span'); s.textContent = text;
   b.append(c.el, s);
   document.body.append(b);
-  const fr = screenFrame(), obstacles = obstacleRects();
+  const fr = screenFrame(), obstacles = obstacleRects().concat(extraRects(avoid));
   const w = b.offsetWidth, h = b.offsetHeight;
   const face = geom?.face || null;
   const spots = [[20, fr.bottomLimit - h], [fr.W - 20 - w, fr.bottomLimit - h], [20, fr.topLimit], [fr.W - 20 - w, fr.topLimit]];
@@ -560,7 +571,7 @@ function hideChip(instant) { openChip?.close(instant); openChip = null; }
 
 // --------------------------------------------------------------- offer --
 /** The explicit choice. Resolves true only on "Keep this"; saves nothing itself. */
-export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, title, origin = null, face = null, foldAfterMs = FOLD_AFTER.offer } = {}) {
+export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, title, origin = null, face = null, avoid = null, foldAfterMs = FOLD_AFTER.offer } = {}) {
   ensureCss(); ensureLive();
   const skill = getSkill(skillId);
   const { reduced } = motionPrefs(app, { reducedMotion });
@@ -604,7 +615,7 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
     function place() {
       if (done) return;
       const geom = mallowGeom(origin, m, face);
-      const p = placeBox(el, { forms: ['full', 'compact', 'bar'], apply, kind: 'offer', geom });
+      const p = placeBox(el, { forms: ['full', 'compact', 'bar'], apply, kind: 'offer', geom, extra: extraRects(avoid) });
       el.style.left = `${Math.round(p.left)}px`; el.style.top = `${Math.round(p.top)}px`;
       rect = { left: p.left, top: p.top, right: p.left + p.w, bottom: p.top + p.h };
       if (p.form !== form) {
@@ -627,7 +638,7 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
       if (el.contains(document.activeElement)) { armFold(); return; }
       folded = true;
       el.classList.remove('is-in'); el.classList.add('is-folded');
-      showChip({ text: `Keep “${shortName}”?`, label: `${name}. Show the choice to keep it in your Memory Garden.`, skillId, mallow: m.id, reduced, glow, geom,
+      showChip({ text: `Keep “${shortName}”?`, label: `${name}. Show the choice to keep it in your Memory Garden.`, skillId, mallow: m.id, reduced, glow, geom, avoid,
         onTap: () => { if (done) return; folded = false; el.classList.remove('is-folded'); geom = place(); reveal(); armFold(); yes.focus({ preventScroll: true }); } });
     }
     armFold();
@@ -637,7 +648,7 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
     const stopLeave = onSceneLeave(() => close(false));
     const stopBand = onBandChange(() => {
       if (done || folded || !rect) return;
-      if (obstacleRects().some((o) => hits(rect, o, 4))) geom = place();
+      if (obstacleRects().concat(extraRects(avoid)).some((o) => hits(rect, o, 4))) geom = place();
     });
     const onResize = () => { if (!folded) geom = place(); };
     addEventListener('resize', onResize);
@@ -665,12 +676,12 @@ export function offerSave({ skillId, mallow, app = null, reducedMotion, signal, 
 }
 
 /** A quiet one-line note (already kept, couldn't save…), off the face and the subtitles. */
-function note(text, { ms = 2800, origin = null, face = null, mallow = null } = {}) {
+function note(text, { ms = 2800, origin = null, face = null, mallow = null, avoid = null } = {}) {
   ensureCss();
   const el = document.createElement('div');
   el.className = 'hm-note'; el.setAttribute('aria-hidden', 'true'); el.textContent = text;
   document.body.append(el);
-  const p = placeBox(el, { forms: ['note'], kind: 'offer', geom: mallowGeom(origin, mallow, face) });
+  const p = placeBox(el, { forms: ['note'], kind: 'offer', geom: mallowGeom(origin, mallow, face), extra: extraRects(avoid) });
   el.style.left = `${Math.round(p.left)}px`; el.style.top = `${Math.round(p.top)}px`;
   announce(text);
   requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('is-in')));
@@ -748,7 +759,7 @@ export function playInstall(opts = {}) {
   let S = 80, Rp = 64, geom = null, cardP = null, cardForm = null, charm = null;
   const applyCard = (f) => { card.classList.toggle('is-compact', f === 'compact'); card.classList.toggle('is-tight', f === 'tight'); };
   function placeCard() {
-    cardP = placeBox(card, { forms: ['full', 'compact', 'tight'], apply: applyCard, kind: 'card', geom, lift: (f) => (f === 'full' ? 60 : 0) });
+    cardP = placeBox(card, { forms: ['full', 'compact', 'tight'], apply: applyCard, kind: 'card', geom, lift: (f) => (f === 'full' ? 60 : 0), extra: extraRects(opts.avoid) });
     card.style.left = `${Math.round(cardP.left)}px`; card.style.top = `${Math.round(cardP.top)}px`;
     if (cardP.form !== cardForm) {
       cardForm = cardP.form;
@@ -1090,7 +1101,7 @@ export function playInstall(opts = {}) {
     const gone = () => { root.remove(); charm?.destroy(); if (openCard === card) openCard = null; };
     if (action === 'garden' || action === 'cancelled' || action === 'replaced') gone(); else setTimeout(gone, 340);
     if (action === 'folded') {
-      showChip({ text: 'In your garden', label: `${titleText} is saved in your Memory Garden. Visit the garden.`, skillId, mallow: m.id, reduced, glow: C.glow, geom,
+      showChip({ text: 'In your garden', label: `${titleText} is saved in your Memory Garden. Visit the garden.`, skillId, mallow: m.id, reduced, glow: C.glow, geom, avoid: opts.avoid,
         ttl: FOLD_AFTER.savedChip, onTap: () => { try { app?.audio?.ui?.('open'); } catch { /* */ } app?.go?.('garden', { focus: skillId }); } });
     }
     const result = { action, skillId };
@@ -1134,24 +1145,24 @@ export function playInstall(opts = {}) {
  * in the garden isn't offered again (it counts as practised, with a quiet
  * note); a save the device refused is said honestly, never "saved".
  */
-export async function keepDiscovery({ app = null, store = app?.store, skillId, worldId = null, mallow = null, origin = null, face = null, from = null, subtitles = null, reducedMotion, lowStim, signal } = {}) {
+export async function keepDiscovery({ app = null, store = app?.store, skillId, worldId = null, mallow = null, origin = null, face = null, avoid = null, from = null, subtitles = null, reducedMotion, lowStim, signal } = {}) {
   const skill = getSkill(skillId);
   if (!store || !skill) return { kept: false, already: false, stored: false, action: null };
   const mallowId = typeof mallow === 'string' ? mallow : mallow?.id || null;
   if (hasSkill(store, skillId)) {
     practised(store, skillId);
-    note(`${skill.title} is already in your Memory Garden.`, { origin, face, mallow: mallowId || skill.mallow });
+    note(`${skill.title} is already in your Memory Garden.`, { origin, face, avoid, mallow: mallowId || skill.mallow });
     return { kept: false, already: true, stored: true, action: null };
   }
-  const yes = await offerSave({ skillId, mallow, app, reducedMotion, signal, origin, face });
+  const yes = await offerSave({ skillId, mallow, app, reducedMotion, signal, origin, face, avoid });
   if (!yes || signal?.aborted) return { kept: false, already: false, stored: false, action: null };
   const saved = saveSkill(store, { id: skillId, fromWorld: worldId, mallow: mallowId });
   if (!saved) return { kept: false, already: false, stored: false, action: null };
   if (saved.stored === false) {
-    note('This device wouldn’t let it be saved just now, so it may not be in your garden next time.', { ms: 5200, origin, face, mallow: mallowId || skill.mallow });
+    note('This device wouldn’t let it be saved just now, so it may not be in your garden next time.', { ms: 5200, origin, face, avoid, mallow: mallowId || skill.mallow });
     return { kept: true, already: false, stored: false, action: null };
   }
-  const r = await playInstall({ app, skillId, mallow, origin, face, from, subtitles, reducedMotion, lowStim });
+  const r = await playInstall({ app, skillId, mallow, origin, face, avoid, from, subtitles, reducedMotion, lowStim });
   return { kept: true, already: false, stored: true, action: r.action };
 }
 /** The single entry point for the Hushfold's 'offer' event: hushfold.js calls install.onOffer(ctx). */

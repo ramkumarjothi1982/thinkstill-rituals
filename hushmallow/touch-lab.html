@@ -119,8 +119,9 @@ function layout() {
   if (!mt) return;
   const w = innerWidth, h = innerHeight;
   // body centre a little below the middle, clear of the roster and readout
-  const scale = Number(qs.get('scale')) || 1;
-  mt.place({ x: w / 2, y: h * (h < 700 ? 0.46 : 0.5), scale }, { instant: true });
+  // ?size=240 sizes the body (its height, CSS px); ?scale=0.8 scales the default
+  const scale = Number(qs.get('scale')) || 1, size = Number(qs.get('size')) || undefined;
+  mt.place({ x: w / 2, y: h * (h < 700 ? 0.46 : 0.5), scale, size }, { instant: true });
 }
 addEventListener('resize', layout);
 
@@ -173,7 +174,8 @@ function tick() {
       `calm    ${T.calm.toFixed(2)}  turns   ${T.turns.toFixed(1)}\n` +
       `fps     ${s.fps.toFixed(0).padStart(4)}  frame ${s.frameMs.toFixed(2)}ms\n` +
       `solver  ${s.solverMs.toFixed(2)}ms skin ${s.skinMs.toFixed(2)}ms\n` +
-      `upload  ${s.uploadMs.toFixed(2)}ms draw ${s.drawMs.toFixed(2)}ms`;
+      `upload  ${s.uploadMs.toFixed(2)}ms draw ${s.drawMs.toFixed(2)}ms\n` +
+      `skin    ${mt.rig.skin.width}px  upload ${(100 * s.last.uploadPx / (mt.rig.skin.width * mt.rig.skin.height)).toFixed(0).padStart(3)}%`;
   }
   requestAnimationFrame(tick);
 }

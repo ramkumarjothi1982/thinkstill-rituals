@@ -13,7 +13,8 @@
 //   check.html?mode=jump[&kind=new|old]   rest jump metric for every Mallow
 //   check.html?mode=live&id=glitzi&kind=new&sizes=110,220,380&presets=...  live rigs (run.cjs page)
 // Results: window.__ready = true, then __out (PNG data URL) and/or numbers.
-import { MALLOWS, SPRITES, MALLOW_IDS } from '../../../src/mallows/registry.js';
+// MALLOWS / SPRITES come from the loader: the registry the (patched) rig reads
+let MALLOWS, SPRITES, MALLOW_IDS;
 import { REACTIONS } from '../../../src/mallows/reactions.js';
 import { loadRig } from './rig-loader.js';
 
@@ -251,6 +252,7 @@ async function jump() {
 
 (async () => {
   RIG = await loadRig();
+  ({ MALLOWS, SPRITES, MALLOW_IDS } = RIG.registry);
   H = await import(tableUrl);
   await ({ skins, pair, spin, overflow, jump, live })[mode]();
 })().catch((e) => { window.__err = String(e && e.stack || e); }).finally(() => { window.__ready = true; });

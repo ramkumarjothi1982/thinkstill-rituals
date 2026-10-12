@@ -1,16 +1,35 @@
+diff --git a/hushmallow/src/mallows/expressions.js b/hushmallow/src/mallows/expressions.js
+--- a/hushmallow/src/mallows/expressions.js
++++ b/hushmallow/src/mallows/expressions.js
+@@ -259,5 +259,6 @@ export function resolveExpression(mallow, mix, intensity = 0.7, extra = null) {
+   const wsum = {};
+   for (const [id, w] of entries) {
+-    const target = { ...PRESETS[id], ...(pers.overrides?.[id] || {}) };
++    // mallow.presetOverrides: a re-rigged face's own targets (high-res Glitzi's lids)
++    const target = { ...PRESETS[id], ...(pers.overrides?.[id] || {}), ...(mallow.presetOverrides?.[id] || {}) };
+     const wi = w / totalW;
+     for (const [k, v] of Object.entries(target)) {
+diff --git a/hushmallow/src/mallows/registry.js b/hushmallow/src/mallows/registry.js
+--- a/hushmallow/src/mallows/registry.js
++++ b/hushmallow/src/mallows/registry.js
+@@ -294,5 +294,5 @@ export async function loadMallowAssets(id) {
+   }
+   const [original, body, ...sprites] = await Promise.all([
+-    loadImage(m.file), loadImage(m.body), ...[...keys].map((k) => loadImage(SPRITES[k])),
++    loadImage(m.art || m.file), loadImage(m.body), ...[...keys].map((k) => loadImage(SPRITES[k])),
+   ]);
+   const map = {};
+diff --git a/hushmallow/src/mallows/rig.js b/hushmallow/src/mallows/rig.js
 --- a/hushmallow/src/mallows/rig.js
 +++ b/hushmallow/src/mallows/rig.js
-@@ -316,7 +316,7 @@
-     this.CX = W / 2;
+@@ -317,5 +317,5 @@ export class MallowRig {
      this.BASE = H * this.opts.baseline;
      // skin resolution follows on-screen size (cheap for thumbnails)
 -    const q = this.opts.skinSize ? this.opts.skinSize / Math.max(...m.size) : clamp(this.S * dpr * 1.05, 0.28, 1.25);
 +    const q = this.opts.skinSize ? this.opts.skinSize / Math.max(...m.size) : clamp(this.S * dpr * 1.05, 0.28, 1.25 * (m.res || 1));
      if (q !== this.q) {
        this.q = q;
-       this.skin.width = Math.ceil(m.size[0] * q);
-@@ -853,21 +853,22 @@
-    *  [y, x0, len, alpha] in source px, plus out.thick and out.mode ('lit');
+@@ -860,5 +860,6 @@ export class MallowRig {
     *  null when calm. With {dim:true} a calm Glitzi returns its quieted rows
     *  instead (out.mode 'dim': dark bands over the approved lines). */
 -  glitchLines(out = new Float32Array(GLITCH_ROWS.length * 4), opts = {}) {
@@ -18,14 +37,14 @@
 +    const rows = this.mallow.glitchRows || GLITCH_ROWS;   // high-res art: its own rows
      const g = clamp(this.val.glitch, 0, 2);
      if (this.id !== 'glitzi') return null;
-     if (g < 0.55) {
+@@ -866,5 +867,5 @@ export class MallowRig {
        const a = (0.55 - g) * 1.2;
        if (!opts.dim || a < 0.003) return null;
 -      for (let i = 0; i < GLITCH_ROWS.length; i++) { out[4 * i] = GLITCH_ROWS[i]; out[4 * i + 1] = 0; out[4 * i + 2] = this.mallow.size[0]; out[4 * i + 3] = a; }
 +      for (let i = 0; i < rows.length; i++) { out[4 * i] = rows[i]; out[4 * i + 1] = 0; out[4 * i + 2] = this.mallow.size[0]; out[4 * i + 3] = a; }
        out.thick = 6; out.mode = 'dim';
        return out;
-     }
+@@ -872,7 +873,7 @@ export class MallowRig {
      out.mode = 'lit';
      const W = this.mallow.size[0], k = (g - 0.55) / 1.45;
 -    for (let i = 0; i < GLITCH_ROWS.length; i++) {
@@ -35,9 +54,7 @@
 +      out[4 * i] = rows[i];
        out[4 * i + 1] = (Math.sin(ph) * 0.5 + 0.5) * W * 0.4;
        out[4 * i + 2] = W * (0.35 + 0.5 * k);
-       out[4 * i + 3] = (0.25 + 0.55 * k) * (0.65 + 0.35 * Math.sin(ph * 2.1));
-@@ -927,7 +928,8 @@
-     }
+@@ -962,5 +963,6 @@ export class MallowRig {
      ctx.setTransform(q, 0, 0, q, 0, 0);
      ctx.imageSmoothingQuality = 'high';
 -    ctx.drawImage(A.body, 0, 0);
@@ -45,35 +62,92 @@
 +    ctx.drawImage(A.body, 0, 0, m.size[0], m.size[1]);
  
      const f = m.face;
-     const P = P0;
-@@ -944,7 +946,7 @@
-     if (this.opts.pristine && this.restMix > 0.004) {
+@@ -979,5 +981,5 @@ export class MallowRig {
        ctx.globalAlpha = this.restMix;
        ctx.globalCompositeOperation = 'source-atop';   // keep the approved alpha, no edge build-up
 -      ctx.drawImage(A.original, 0, 0);
 +      ctx.drawImage(A.original, 0, 0, m.size[0], m.size[1]);
        ctx.globalCompositeOperation = 'source-over';
        ctx.globalAlpha = 1;
-     }
-@@ -1152,7 +1154,7 @@
-     ctx.clip();
+@@ -1035,5 +1037,5 @@ export function facePartsSrc(m) {
+   }
+   const M = f.mouth;
+-  const depth = M.depth || M.w * 0.45;
++  const depth = Math.max(M.depth || M.w * 0.45, M.depthRound || 0);
+   grow(parts.mouth, M.x - M.w * 0.78 - M.lw, M.y - M.w * 0.22 - M.lw, M.x + M.w * 0.78 + M.lw, M.y + (M.sag || 0) + depth * 1.6 + M.w * 0.28 + M.lw);
+   const pad = 8;
+@@ -1160,5 +1162,5 @@ function partBounds(rig, pt, P, r) {
+       if (style === 'spiral') {
+         const img = rig.assets?.sprites?.[spec.sprite];
+-        const rr = ((img ? img.width / 2 : spec.spriteR || spec.rx) * P.eyeScale) + 1;
++        const rr = ((img ? img.width / 2 / (rig.mallow.res || 1) : spec.spriteR || spec.rx) * P.eyeScale) + 1;
+         cx0 = g.ex - rr; cx1 = g.ex + rr; cy0 = g.ey - rr; cy1 = g.ey + rr;
+       } else {
+@@ -1201,5 +1203,5 @@ function partBounds(rig, pt, P, r) {
+     const sm = clamp(P.mouthSmile, -1.2, 1.2), o = clamp(P.mouthOpen, 0, 1.4), rd = clamp(P.mouthRound, 0, 1), pout = clamp(P.mouthPout, 0, 1);
+     const W = M.w * clamp(P.mouthWidth, 0.3, 1.5) * (1 - 0.5 * rd) * (1 - 0.45 * pout);
+-    const oc = clamp(o, 0, 1), depth = M.depth || M.w * 0.45;
++    const oc = clamp(o, 0, 1), depth = mouthDepth(M, rd);
+     const sagS = (M.sag === 0 ? M.w * 0.18 * (1 - oc) : (M.sag ?? M.w * 0.2)) * sm * (1 - 0.6 * rd);
+     const trem = Math.abs(P.mouthTremble) * 3.2;
+@@ -1347,5 +1349,5 @@ function drawEye(ctx, rig, f, side, P) {
      if (style === 'spiral') {
        const img = A[spec.sprite];
 -      const r = (img.width / 2) * P.eyeScale;
 +      const r = (img.width / 2 / (rig.mallow.res || 1)) * P.eyeScale;
        ctx.save();
        ctx.translate(g.ex, g.ey);
-       ctx.rotate(rig.spinAngle * (side === 'L' ? 1 : -1));
-@@ -1502,6 +1504,7 @@
+@@ -1479,4 +1481,11 @@ function drawBrow(ctx, f, side, P) {
  }
+ 
++const CREASE_RELIEF = [['rgba(120,170,255,0.22)', 0.6, -0.8]];
++// open-mouth depth: a round mouth is narrower, so it may go deeper (M.depthRound, high-res Glitzi)
++function mouthDepth(M, r) {
++  const d = M.depth || M.w * 0.45;
++  return M.depthRound ? d + (M.depthRound - d) * r : d;
++}
++
+ function drawMouth(ctx, f, P, time) {
+   const M = f.mouth;
+@@ -1495,6 +1504,7 @@ function drawMouth(ctx, f, P, time) {
+   const upperOpen = (M.upper ?? -M.w * 0.08) * (0.4 + 0.6 * Math.max(0, s));
+   const oc = clamp(o, 0, 1);
+-  let U = lerp(sagS, upperOpen, oc) - r * o * (M.depth || M.w * 0.45) * 0.28;
+-  let Lo = sagS + o * (M.depth || M.w * 0.45) * (1 + 0.15 * r) * (s < -0.2 ? 0.7 : 1) + tremble;
++  const depth = mouthDepth(M, r);
++  let U = lerp(sagS, upperOpen, oc) - r * o * depth * 0.28;
++  let Lo = sagS + o * depth * (1 + 0.15 * r) * (s < -0.2 ? 0.7 : 1) + tremble;
+   if (s < 0 && oc > 0.05) U = Math.min(U, Lo - 2);
+   const cy = M.y;
+@@ -1527,11 +1537,16 @@ function drawMouth(ctx, f, P, time) {
+   };
+   if (M.style === 'crease' && !open) {
+-    // carved frown (Glitzi): shadow groove with a lit ridge above
++    // carved frown (Glitzi): shadow groove with a lit ridge above; a
++    // re-rigged face may carry its art's own relief (M.relief: [colour,
++    // width, offset] strokes in lw units, + = below the groove)
+     ctx.save();
+     ctx.lineCap = 'round';
+-    ctx.strokeStyle = 'rgba(120,170,255,0.22)';
+-    ctx.lineWidth = M.lw * 0.6;
+-    ctx.translate(0, -M.lw * 0.8);
+-    linePath(); ctx.stroke();
++    for (const [col, wk, yk] of M.relief || CREASE_RELIEF) {
++      ctx.strokeStyle = col;
++      ctx.lineWidth = M.lw * wk;
++      ctx.translate(0, M.lw * yk);
++      linePath(); ctx.stroke();
++      ctx.translate(0, -M.lw * yk);
++    }
+     ctx.restore();
+     tube(ctx, linePath, M.lw, '#05061c', null, 1);
+@@ -1705,4 +1720,5 @@ function drawTearsAndSweat(ctx, rig, f, P) {
  
  function drawGlitchLines(ctx, rig, P) {
 +  const rows = rig.mallow.glitchRows || GLITCH_ROWS;
    const g = clamp(P.glitch, 0, 2);
    const W = rig.mallow.size[0];
-   ctx.save();
-@@ -1510,12 +1513,12 @@
-     // calm / sad Glitzi: its static quiets down
+@@ -1713,10 +1729,10 @@ function drawGlitchLines(ctx, rig, P) {
      ctx.globalAlpha = (0.55 - g) * 1.2;
      ctx.fillStyle = '#1b1452';
 -    for (const y of GLITCH_ROWS) ctx.fillRect(0, y - 3, W, 6);
@@ -87,4 +161,13 @@
 +      const y = rows[i];
        const ph = rig.time * (0.6 + i * 0.13) + i * 1.7;
        const a = (0.25 + 0.55 * k) * (0.65 + 0.35 * Math.sin(ph * 2.1));
-       const x0 = (Math.sin(ph) * 0.5 + 0.5) * W * 0.4;
+diff --git a/hushmallow/src/mallows/touch/mallow-touch.js b/hushmallow/src/mallows/touch/mallow-touch.js
+--- a/hushmallow/src/mallows/touch/mallow-touch.js
++++ b/hushmallow/src/mallows/touch/mallow-touch.js
+@@ -302,5 +302,5 @@ export class MallowTouch {
+     g.setTransform(rig.q, 0, 0, rig.q, 0, 0);
+     g.imageSmoothingQuality = 'high';
+-    g.drawImage(img, 0, 0);
++    g.drawImage(img, 0, 0, rig.mallow.size[0], rig.mallow.size[1]);   // at the logical size (high-res art: res px per unit)
+     return c;
+   }

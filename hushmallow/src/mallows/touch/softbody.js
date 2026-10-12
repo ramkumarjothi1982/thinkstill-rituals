@@ -49,7 +49,7 @@ const GRAB_K = 0.55;        // how firmly a finger holds the material under it
 const PINCH = 1.25;         // offsets near a pressed finger shrink by up to this (× depth × dMax)
 const BALLOON_K = 0.3;
 const BALLOON_GAIN = 0.75;  // area added per unit of dent volume (× dMax)
-const PLUNGE = 0.3;         // how far past the finger a plunger sinks (× depth × dMax)
+const PLUNGE = 0.5;         // how far past the finger a plunger sinks (× depth × dMax)
 const VMAX = 40;            // body units / s, hard cap (extreme input)
 const VISC = 0.35;          // internal viscosity (neighbour velocity blend per substep)
 const LOCAL_DAMP = 0.93;    // velocity kept per substep by non-affine (bending) motion
@@ -191,6 +191,21 @@ export class SoftBody {
     }
     this._barrelMean = bsum / (cols * rows);
     for (const k of vis) this._vc[k] += 1;
+    // distance (in cells) to the visible silhouette: the waist pull eases off
+    // over the last few rows so a stretch never folds the outline into a V
+    const n = cols * rows, D = this._edgeD = new Float32Array(n).fill(1e9), q = [];
+    for (let k = 0; k < n; k++) {
+      const i = k % cols, j = (k / cols) | 0;
+      if (this._vc[k] < 6 || i === 0 || j === 0 || i === cols - 1 || j === rows - 1) { D[k] = 0; q.push(k); }
+    }
+    for (let h = 0; h < q.length; h++) {
+      const k = q[h], i = k % cols, j = (k / cols) | 0, d = D[k] + 1;
+      for (const m of [i > 0 ? k - 1 : -1, i < cols - 1 ? k + 1 : -1, j > 0 ? k - cols : -1, j < rows - 1 ? k + cols : -1]) {
+        if (m >= 0 && d < D[m]) { D[m] = d; q.push(m); }
+      }
+    }
+    this._edgeSoft = new Float32Array(n);
+    for (let k = 0; k < n; k++) this._edgeSoft[k] = 0.4 + 0.6 * smoothstep(0, 2.5, D[k]);
   }
 
   setMaterial(m = {}) {
@@ -210,6 +225,17 @@ export class SoftBody {
   }
 
   setReducedMotion(b) { this.reducedMotion = !!b; this.setMaterial(); }
+
+  /** Re-map the lattice onto texture uv rect [u0,v0,u1,v1] (the skin changed size). */
+  setUvRect(uv) {
+    const { cols, rows } = this;
+    for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+      const k = j * cols + i;
+      this.uvs[2 * k] = lerp(uv[0], uv[2], i / (cols - 1));
+      this.uvs[2 * k + 1] = lerp(uv[1], uv[3], j / (rows - 1));
+    }
+    return this;
+  }
 
   /**
    * Rest shape from the face/body expression. All optional:
@@ -693,8 +719,10 @@ export class SoftBody {
       const s = this._sigma(st), is2 = 1 / (2 * s * s);
       const r = st.r, ir2 = 1 / (2 * r * r);
       const dm = this.material.dMax;
-      const pinch = PINCH * st.depth * dm;
       const pl = st.plunge;
+      // near the silhouette the finger pushes the edge in rather than seen in
+      // perspective: little pinch (the top sinks, it doesn't gather into a trapezoid)
+      const pinch = PINCH * st.depth * dm * (pl ? 1 - 0.75 * pl.w : 1);
       const plS = pl ? 0.62 * st.depth * pl.w : 0;                 // edge-side compression
       const plLim = pl ? PLUNGE * st.depth * dm * pl.w : 0;          // sink past the finger
       const lr = (pl && pl.side ? 2 : 1.5) * r, ilat2 = 1 / (2 * lr * lr);
@@ -771,15 +799,17 @@ export class SoftBody {
     if (L2 < 0.0025) return;
     this._waistOn = true;
     const L = Math.sqrt(L2), nx = -uy / L, ny = ux / L;
-    const P = this.positions, FW = this.faceW, k = W.k;
+    const P = this.positions, FW = this.faceW, ES = this._edgeSoft, k = W.k;
     for (let i = 0; i < this.n; i++) {
       const rx = P[2 * i] - A.x, ry = P[2 * i + 1] - A.y;
       const t = (rx * ux + ry * uy) / L2;
       if (t <= 0 || t >= 1) { WW[i] = 0; continue; }
-      const e = rx * nx + ry * ny;                     // signed distance from the axis
+      const e0 = rx * nx + ry * ny;                    // signed distance from the axis
+      // far from the axis (a diagonal stretch's far corner) the pull saturates
+      const e = e0 / (1 + Math.abs(e0) / 0.35);
       const floorSide = e * ny > 0 ? 1 - 0.65 * Math.abs(ny) : 1;
       const w = Math.sin(Math.PI * t);
-      const a = k * w * w * floorSide * (1 - 0.5 * FW[i]);
+      const a = k * w * w * floorSide * (1 - 0.5 * FW[i]) * ES[i];
       WW[i] = w;
       const d = -e * a * WAIST_K;
       P[2 * i] += nx * d; P[2 * i + 1] += ny * d;

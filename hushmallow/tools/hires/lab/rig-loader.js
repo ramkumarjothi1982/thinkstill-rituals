@@ -1,51 +1,54 @@
 // W7 lab: the rig with high-res (`res`) support.
 //
-// Until W2 merges tools/hires/rig-res.patch into src/mallows/rig.js, the lab
-// patches a copy of the live rig.js in the browser (the same text edits as
-// the patch, nothing else) and imports it from a blob URL. Its imports are
-// rewritten to absolute URLs, so it shares registry.js / expressions.js with
-// the page (one MALLOWS, one SPRITES). Once rig.js has the support, the real
-// module is used as is.
-const RIG = new URL('../../../src/mallows/rig.js', import.meta.url).href;
+// Until W2 merges tools/hires/rig-res.patch, the lab applies THAT patch file
+// (the same hunks W2 will `git apply`, through tools/hires/res-patch.mjs) to
+// the live registry.js, expressions.js and rig.js in the browser and imports
+// the results from blob URLs, wired to each other. Once every hunk is merged
+// the real modules are used as they are; then this blob path can go.
+import { parsePatch, applyFilePatch, appPath } from '../res-patch.mjs';
 
-// The res support as text edits on rig.js (the intent of rig-res.patch):
-// [what, pattern, replacement]. Patterns are loose on purpose: rig.js keeps
-// changing (W2), and the lab must keep working until the support is merged.
-const EDITS = [
-  // skin resolution may follow the art (q up to 1.25 * res)
-  ['q cap', /clamp\(this\.S \* dpr \* 1\.05, 0\.28, 1\.25\)/, 'clamp(this.S * dpr * 1.05, 0.28, 1.25 * (m.res || 1))'],
-  // body and approved art drawn at the logical size
-  ['body at m.size', /ctx\.drawImage\(A\.body, 0, 0\);/, 'ctx.drawImage(A.body, 0, 0, m.size[0], m.size[1]);'],
-  ['art at m.size', /ctx\.drawImage\(A\.original, 0, 0\);/, 'ctx.drawImage(A.original, 0, 0, m.size[0], m.size[1]);'],
-  // spiral sprites drawn at native px / res
-  ['spiral / res', /const r = \(img\.width \/ 2\) \* P\.eyeScale;/, 'const r = (img.width / 2 / (rig.mallow.res || 1)) * P.eyeScale;'],
-  // Glitzi's glitch rows: the Mallow's own (m.glitchRows) when it has them.
-  // The lab renders synchronously, so a module-level switch set on entry to
-  // the two readers is enough here (the merged patch reads them per rig).
-  ['glitch rows', /const GLITCH_ROWS = (\[[^\]]*\]);/, 'const GLITCH_ROWS_BASE = $1;\nlet GLITCH_ROWS = GLITCH_ROWS_BASE;'],
-  ['rows: skin', /\n  _renderSkin\(\) \{\n/, '\n  _renderSkin() {\n    GLITCH_ROWS = this.mallow.glitchRows || GLITCH_ROWS_BASE;\n'],
-  ['rows: shader', /\n  glitchLines\(([^\n]*)\) \{\n/, (m, a) => `\n  glitchLines(${a.replace('GLITCH_ROWS.length', '(this.mallow.glitchRows || GLITCH_ROWS_BASE).length')}) {\n    GLITCH_ROWS = this.mallow.glitchRows || GLITCH_ROWS_BASE;\n`],
-];
+const APP = new URL('../../../', import.meta.url).href;            // hushmallow/
+const PATCH = new URL('../rig-res.patch', import.meta.url).href;
+// the modules the labs need, in import order (each imports only earlier ones)
+const MODS = ['src/mallows/registry.js', 'src/mallows/expressions.js', 'src/mallows/rig.js'];
 
 let cached = null;
 
-/** The rig module (MallowRig, PRESETS, STAGES, faceRectSrc, ...) with res support. */
+/** -> the rig module (MallowRig, PRESETS, STAGES, faceRectSrc, ...) with res
+ *  support, plus `registry` and `expressions` (use THESE MALLOWS / SPRITES:
+ *  the patched rig reads them) and `patched` (false once merged). */
 export function loadRig() {
   if (cached) return cached;
   cached = (async () => {
-    const src = await (await fetch(RIG, { cache: 'no-store' })).text();
-    if (/1\.25 \* \(m\.res \|\| 1\)/.test(src) && /glitchRows/.test(src)) {
-      const mod = await import(RIG);       // rig.js has the support (merged)
-      return Object.assign({ patched: false }, mod);
+    const fetchText = async (u) => { const r = await fetch(u, { cache: 'no-store' }); if (!r.ok) throw new Error(`${u}: ${r.status}`); return r.text(); };
+    const patch = parsePatch(await fetchText(PATCH));
+    const byPath = Object.fromEntries(patch.map((fp) => [appPath(fp.file), fp]));
+    const srcs = {}, states = {};
+    for (const p of MODS) {
+      const src = await fetchText(APP + p);
+      if (!byPath[p]) { srcs[p] = null; states[p] = 'untouched'; continue; }
+      const r = applyFilePatch(src, byPath[p]);
+      if (r.state === 'failed') {
+        const at = r.hunks.filter((h) => h.state === 'failed').map((h) => h.header).join(' | ');
+        throw new Error(`rig-res.patch no longer fits ${p} (run node hushmallow/tools/hires/refresh-patch.mjs): ${at}`);
+      }
+      states[p] = r.state;
+      srcs[p] = r.state === 'merged' ? null : r.text;
     }
-    const missing = EDITS.filter(([, re]) => !re.test(src)).map(([w]) => w);
-    if (missing.length) throw new Error('rig.js changed; cannot apply: ' + missing.join(', '));
-    let s = src;
-    for (const [, re, to] of EDITS) s = s.replace(re, to);
-    s = s.replace(/from '\.\/([\w./-]+\.js)'/g, (m, f) => `from '${new URL(f, RIG).href}'`);
-    const url = URL.createObjectURL(new Blob([s], { type: 'text/javascript' }));
-    const mod = await import(url);
-    return Object.assign({ patched: true }, mod);
+    const urls = {};
+    for (const p of MODS) {
+      if (srcs[p] == null) { urls[p] = APP + p; continue; }
+      // imports: patched siblings by blob, everything else by absolute URL
+      // (and import.meta.url stays the file's own: registry.js resolves its assets with it)
+      const s = srcs[p].replace(/from '(\.\.?\/[\w./-]+\.js)'/g, (m, f) => {
+        const target = new URL(f, APP + p).href.slice(APP.length);
+        return `from '${urls[target] || new URL(f, APP + p).href}'`;
+      }).split('import.meta.url').join(JSON.stringify(APP + p));
+      urls[p] = URL.createObjectURL(new Blob([s], { type: 'text/javascript' }));
+    }
+    const [registry, expressions, rig] = await Promise.all(MODS.map((p) => import(urls[p])));
+    const patched = Object.values(states).some((s) => s === 'applied' || s === 'partial');
+    return Object.assign({ patched, states, registry, expressions }, rig);
   })();
   return cached;
 }
