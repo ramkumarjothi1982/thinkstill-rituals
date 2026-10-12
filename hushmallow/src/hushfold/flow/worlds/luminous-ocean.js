@@ -119,7 +119,7 @@ export function create(ctx) {
   let colX0 = 0, colStep = 1;
 
   // the water image (cells of CELL px) and its column → grid mapping
-  let img = null, imgG = null, imgData = null, iw = 0, ih = 0, imgY0 = 0;
+  let img = null, imgG = null, imgData = null, iw = 0, ih = 0, imgY0 = 0, img2 = null, img2G = null;
   let colI = null, colF = null;
   // sky
   let skyC = null, dawnSpr = null, horizonSpr = null, stars = [];
@@ -211,7 +211,8 @@ export function create(ctx) {
       iw = w; ih = h; imgY0 = y0;
       img = makeCanvas(iw, ih); imgG = img.getContext('2d');
       imgData = imgG.createImageData(iw, ih);
-      wake = new Wake(iw, ih, CELL); wake.y0 = imgY0;
+      wake = new Wake(iw, ih, CELL); wake.y0 = imgY0; wake.c2 = 0.17; wake.visc = 0.08;
+      img2 = makeCanvas(iw * 2, ih * 2); img2G = img2.getContext('2d'); img2G.imageSmoothingEnabled = true;
       colI = new Int16Array(iw); colF = new Float32Array(iw);
     }
     colX0 = -0.04 * W; colStep = (1.08 * W) / (COLS - 1);
@@ -429,7 +430,7 @@ export function create(ctx) {
       let ex = f.ix, ey = f.iy;
       const seg = Math.hypot(s.x - ex, s.y - ey), stepPx = CELL * 1.5;
       if (s.y > hyNow + 2) {
-        for (let k = stepPx; k <= seg; k += stepPx) { const t = k / seg; wake.inject(ex + (s.x - ex) * t, ey + (s.y - ey) * t, amt, 1.8); }
+        for (let k = stepPx; k <= seg; k += stepPx) { const t = k / seg; wake.inject(ex + (s.x - ex) * t, ey + (s.y - ey) * t, amt, 2.3); }
         if (seg >= stepPx) { f.ix = s.x; f.iy = s.y; }
         if (R() < 0.5 && plankton.n < plankton.max - 2) plankton.spawn(s.x + (R() - 0.5) * 10, s.y + (R() - 0.5) * 6, (s.vx || 0) * 0.05 + (R() - 0.5) * 12, (s.vy || 0) * 0.03, 0.9 + R() * 0.9, 1.8 + R() * 2.4, (R() * 3) | 0, 0.75);
       } else { f.ix = s.x; f.iy = s.y; }
@@ -944,8 +945,10 @@ export function create(ctx) {
     gridPass(now, rm);
     rasterPass();
     imgG.putImageData(imgData, 0, 0);
+    // two bilinear steps (×2, then to size): a softer, rounder upscale than one
+    img2G.globalCompositeOperation = 'copy'; img2G.drawImage(img, 0, 0, iw * 2, ih * 2);
     g.imageSmoothingEnabled = true;
-    g.drawImage(img, 0, imgY0, iw * CELL, ih * CELL);
+    g.drawImage(img2, 0, imgY0, iw * CELL, ih * CELL);
     // light on top: crest lines, the horizon line, glints, plankton, Loomi's glow on the water
     g.globalCompositeOperation = 'lighter';
     drawCrests(g, now, rm);
@@ -955,8 +958,10 @@ export function create(ctx) {
     plankton.draw(g, sprites.plankton, low() ? 0.5 : 1, 0.12);
     if (hero.ok) {
       const wl = heroWater(), hw = (hero.right - hero.left);
-      g.globalAlpha = 0.24 * (low() ? 0.6 : 1) * hero.floatK;
-      g.drawImage(sprites.loomi, hero.cx - hw * 0.95, wl - hw * 0.1, hw * 1.9, hw * 0.7);
+      g.globalAlpha = 0.3 * (low() ? 0.6 : 1) * hero.floatK;
+      g.drawImage(sprites.loomi, hero.cx - hw * 1.2, wl - hw * 0.12, hw * 2.4, hw * 0.85);
+      g.globalAlpha = 0.12 * (low() ? 0.6 : 1) * hero.floatK;
+      g.drawImage(sprites.loomi, hero.cx - hw * 2, wl - hw * 0.1, hw * 4, hw * 1.6);
     }
     g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
   }
@@ -999,7 +1004,7 @@ export function create(ctx) {
         let nx = -hx, ny = 1, nz = -hz; const nl = 1 / Math.sqrt(nx * nx + 1 + nz * nz); nx *= nl; ny *= nl; nz *= nl;
         let vx = -x, vy = Hw, vz = -(Z0 + z); const vl = 1 / Math.sqrt(vx * vx + vy * vy + vz * vz); vx *= vl; vy *= vl; vz *= vl;
         const ndv = Math.max(0.0001, nx * vx + ny * vy + nz * vz);
-        const f1 = 1 - ndv, f2 = f1 * f1, F = 0.02 + 0.98 * f2 * f2 * f1;
+        const f1 = 1 - ndv, F = 0.05 + 0.95 * f1 * f1 * f1;
         const rx = 2 * ndv * nx - vx, ry = 2 * ndv * ny - vy, rz = Math.max(0.05, 2 * ndv * nz - vz);
         // the sky seen in that direction (the same gradient and dawn as the picture above)
         const skyY = hy - Z0 * (ry / rz), skyX = W / 2 + Z0 * (rx / rz);
@@ -1008,15 +1013,16 @@ export function create(ctx) {
         const ddx = (skyX - xd) / (W * (0.3 + 0.1 * dawnK)), dexp = ddx * ddx + above / (H * 0.11 + 20);
         const dawn = dexp < 9 ? dawnK * Math.exp(-dexp) : 0;
         let rr = sky3[0] * 0.82 + 300 * dawn, rg = sky3[1] * 0.85 + 236 * dawn, rb = sky3[2] * 0.88 + 168 * dawn;
-        // the water's own colour: deep teal, lighter far away
-        const wr = lerp(10, 4, sN), wg = lerp(52, 30, sN), wb = lerp(72, 46, sN);
+        // the water's own colour: deep teal, lighter far away; light from inside the swell on its crests
+        const sss = clamp(0.5 + h / ((gA[q] + 4) * 2)) * 0.6 + 0.2;
+        const wr = lerp(10, 5, sN) * (0.7 + 0.6 * sss), wg = lerp(54, 36, sN) * (0.7 + 0.6 * sss), wb = lerp(74, 54, sN) * (0.7 + 0.6 * sss);
         // specular glitter of the dawn (broad lobe here; sharp glints as sprites)
         const rdl = (rx * lx + ry * ly + rz * lz) / Math.sqrt(rx * rx + ry * ry + rz * rz);
         const sp = rdl > 0.965 ? Math.pow(rdl, 160) * dawnK * (1 + mirrorK) : 0;
         // bioluminescent crest light, in drifting patches (anchored to the water, never ruler lines)
         const a = gA[q] * amp;
         const crest = a > 0.3 ? clamp(h / (a + 0.3)) : 0;
-        const pn = 0.5 + 0.5 * Math.sin(x * 0.011 + j * 1.7 + now * 0.13) * Math.sin(x * 0.027 - j * 0.83 - now * 0.07 + 1.3);
+        const pn = 0.5 + 0.5 * Math.sin(x * 0.021 + j * 1.7 + now * 0.13) * Math.sin(x * 0.047 - j * 0.83 - now * 0.07 + 1.3);
         const glow = smoothstep(0.42, 0.95, crest) * clamp(gAU[q] * amp / 7) * bio * (0.4 + 0.6 * sN) * (0.3 + 0.7 * pn);
         gCrest[q] = glow; gSpec[q] = sp;
         // the dawn's glitter path: narrow at the horizon, widening towards you, broken by the slopes
@@ -1063,8 +1069,10 @@ export function create(ctx) {
           let R2 = pr + (cr - pr) * t, G2 = pg + (cg - pg) * t, B2 = pb + (cb - pb) * t;
           if (wh && py > 0 && py < ih - 1 && ic > 0 && ic < iw - 1) {
             const k = py * wc + ic;
-            const gx = wh[k + 1] - wh[k - 1], gy = wh[k + wc] - wh[k - wc];
-            const gl = Math.min(1, Math.sqrt(gx * gx + gy * gy) * 2.2);
+            const k2 = py > 1 && py < ih - 2 && ic > 1 && ic < iw - 2;
+            const gx = k2 ? (wh[k + 1] - wh[k - 1]) * 0.5 + (wh[k + 2] - wh[k - 2]) * 0.25 : wh[k + 1] - wh[k - 1];
+            const gy = k2 ? (wh[k + wc] - wh[k - wc]) * 0.5 + (wh[k + 2 * wc] - wh[k - 2 * wc]) * 0.25 : wh[k + wc] - wh[k - wc];
+            const gl = Math.min(1, Math.sqrt(gx * gx + gy * gy) * 2.4);
             const lift = -wh[k] * 30;
             R2 += gl * wgK * 0.35 + lift; G2 += gl * wgK * 0.95 + lift; B2 += gl * wgK + lift;
           }
@@ -1097,10 +1105,11 @@ export function create(ctx) {
         }
       }
       if (!segs) continue;
-      const a = [0.16, 0.3, 0.5][b] * (low() ? 0.6 : 1);
+      const a = [0.1, 0.2, 0.34][b] * (low() ? 0.6 : 1);
       g.strokeStyle = b === 2 ? C.crest2 : C.crest;
-      g.globalAlpha = a * 0.35; g.lineWidth = (depth ? 7 : 3.5) + 1.5 * b; g.stroke();
-      g.globalAlpha = a; g.lineWidth = depth ? 1.4 : 0.8; g.stroke();
+      g.globalAlpha = a * 0.3; g.lineWidth = (depth ? 11 : 5) + 2 * b; g.stroke();
+      g.globalAlpha = a * 0.55; g.lineWidth = (depth ? 3.5 : 1.8) + b * 0.6; g.stroke();
+      g.globalAlpha = a; g.lineWidth = depth ? 0.9 : 0.6; g.stroke();
     }
     g.globalAlpha = 1;
   }

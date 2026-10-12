@@ -176,7 +176,7 @@ export function mountAngleSettings(app, el, { endpoint = null } = {}) {
   function confirmDelete() {
     const s = openSheet({
       title: 'Delete your Another Angle data?',
-      body: h('p', { class: 'bx-sheet-copy' }, 'This removes this phone’s Another Angle code, your sharing choice and your feedback. Our server keeps no copy of your words, so there’s nothing of yours to delete there; its daily counters clear themselves within two days.'),
+      body: h('p', { class: 'bx-sheet-copy' }, 'This removes this phone’s Another Angle code, your sharing choice and your feedback. Our server keeps no copy of your words, so there’s nothing of yours to delete there; its daily usage counts hold no words and are cleared after two days.'),
       foot: h('div', { class: 'row-btns' }, h('button', { class: 'btn', onclick: () => s.close() }, 'Cancel'),
         h('button', { class: 'btn primary', onclick: () => { deleteAngleData(store); s.close(); toast('Deleted'); mountAngleSettings(app, el, { endpoint }); } }, 'Delete')),
     });

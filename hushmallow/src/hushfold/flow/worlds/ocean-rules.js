@@ -263,7 +263,7 @@ export function createOceanProgress(opts = {}) {
       const pLong = Math.min(1, nLong / c.long);
       const pFar = m.dist != null ? (farDone ? 1 : 0.65 * clamp((maxD - 1) / (c.far - 1), 0, 1) + 0.35 * clamp(farFor / c.farHold, 0, 1)) : 0;
       const pPer = perDone ? 1 : clamp(perFor / c.periodHold, 0, 1);
-      const raw = 0.5 * pLong + 0.5 * Math.max(pFar, pPer);
+      const raw = 0.6 * pLong + 0.4 * Math.max(pFar, pPer);
       p = Math.max(p, Math.min(0.99, raw));
       if (!complete && nLong >= c.long && (farDone || perDone) && idle >= c.idle) complete = true;
       if (complete) p = 1;

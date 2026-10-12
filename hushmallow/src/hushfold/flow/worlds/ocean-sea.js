@@ -462,6 +462,8 @@ export class Wake {
     this.cx2 = new Float32Array(rows).fill(0.24); this.cy2 = new Float32Array(rows).fill(0.24);
     this.hush = new Float32Array(this.n);
     this.damp = 0.996;
+    this.c2 = 0.24;     // the audit's wave speed² (cells²/step²) — the world may ask for a gentler one
+    this.visc = 0;      // a touch of viscosity on the velocity: keeps grid-scale ripples from stair-stepping
     // an absorbing sponge along the edges, so ripples leave the screen instead of bouncing back
     const S = 6, sp = (k, n) => { const e = Math.min(k, n - 1 - k); return e >= S ? 1 : 0.86 + 0.14 * (e / S); };
     this.spx = Float32Array.from({ length: cols }, (_, i) => sp(i, cols));
@@ -469,7 +471,7 @@ export class Wake {
     this.y0 = 0;     // screen y of row 0's centre - cell/2
   }
   /** Perspective per row: f(row) → [fx, fy] in 0..1 (screen speed relative to the near water). */
-  setRows(fn) { for (let j = 0; j < this.rows; j++) { const [fx, fy] = fn(j); this.cx2[j] = 0.24 * clamp(fx * fx, 0.02, 1); this.cy2[j] = 0.24 * clamp(fy * fy, 0.02, 1); } }
+  setRows(fn) { for (let j = 0; j < this.rows; j++) { const [fx, fy] = fn(j); this.cx2[j] = this.c2 * clamp(fx * fx, 0.02, 1); this.cy2[j] = this.c2 * clamp(fy * fy, 0.02, 1); } }
   /** Add a Gaussian dip (negative pushes the water down) at screen (x, y), radius in cells. */
   inject(x, y, amount, rCells = 2) {
     const ci = x / this.cell, cj = (y - this.y0) / this.cell, R = Math.ceil(rCells * 1.6);
@@ -486,13 +488,14 @@ export class Wake {
   step() {
     const { cols, rows, h, p, hush } = this;
     const d = this.damp;
-    const spx = this.spx;
+    const spx = this.spx, vis = this.visc;
     for (let j = 1; j < rows - 1; j++) {
       const ax = this.cx2[j], ay = this.cy2[j], o = j * cols, dj = d * this.spy[j];
       for (let i = 1; i < cols - 1; i++) {
         const q = o + i;
         const lap = ax * (h[q - 1] + h[q + 1] - 2 * h[q]) + ay * (h[q - cols] + h[q + cols] - 2 * h[q]);
-        const v = (2 * h[q] - p[q] + lap) * dj * spx[i];
+        let v = (2 * h[q] - p[q] + lap) * dj * spx[i];
+        if (vis) { const vl = (h[q - 1] - p[q - 1]) + (h[q + 1] - p[q + 1]) + (h[q - cols] - p[q - cols]) + (h[q + cols] - p[q + cols]) - 4 * (h[q] - p[q]); v += vis * vl; }
         p[q] = hush[q] > 0.01 ? v * (1 - 0.12 * hush[q]) : v;
       }
     }

@@ -2,3 +2,4 @@
 # from a work branch and run the end-to-end check against the real model.
 # See .github/workflows/another-angle-staging.yml.
 2026-10-12 first staging deploy
+2026-10-12 retry: secrets trimmed

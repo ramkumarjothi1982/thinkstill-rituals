@@ -590,10 +590,11 @@ export class ThoughtLayer {
         }
       }
       best = { x: bx, y: by, side: bside };
-      // it fits (or nothing smaller would): done; otherwise hold it (and the others) a step farther away
-      if (bover < 0.04 * (el + er) * (et + eb) || attempt === 2) break;
+      if (globalThis.__tmDebug) globalThis.__tmDebug.push({ id: th.id, attempt, bover: bover | 0, area: ((el + er) * (et + eb)) | 0, x: bx | 0, y: by | 0, side: bside, n, w, h, e: [el | 0, er | 0, et | 0, eb | 0], lim: [minX | 0, maxX | 0, minY | 0, maxY | 0] });
+      // it fits, or nearly (the gentle push makes the last room: the others can move too): done.
+      // Otherwise it is held a step farther away (smaller) and placed again.
+      if (bover < 0.25 * (el + er) * (et + eb) || attempt === 2) break;
       th.zFloor = Math.max(th.zFloor, attempt === 0 ? 0.3 : 0.55);
-      for (const o of this.thoughts) if (o !== th && !o.driven) o.zFloor = Math.max(o.zFloor, attempt === 0 ? 0.3 : 0.55);
     }
     if (tg) { tg.pref = best.side; tg.cand = best.side; }
     // the drawn body sits off its home a little (sink, drift): the home is placed for the drawn body
@@ -647,7 +648,9 @@ export class ThoughtLayer {
       // only at rest: arriving thoughts cross each other's paths on their way home
       const resting = th.ov.appear >= 1 && Math.hypot(th.x - th.home.x, th.y - th.home.y) < 0.3 * th.render.P;
       if (!this._free(th) || !resting) { th._stuck = Math.min(0, th._stuck || 0); continue; }
-      th._stuck = th._ov > 80 ? (th._stuck || 0) + dt : Math.min(0, (th._stuck || 0) + dt);
+      // (a sliver of padding is not being boxed in: a real overlap is a good part of its footprint)
+      const f = this._foot(th), big = Math.max(500, 0.07 * (f.r - f.l) * (f.b - f.t));
+      th._stuck = th._ov > big ? (th._stuck || 0) + dt : Math.min(0, (th._stuck || 0) + dt);
       if (th._stuck > 1.2) {
         const moved = this._nudge(th, K, env);
         if (!moved) th.zFloor = Math.min(0.75, th.zFloor + 0.2);
