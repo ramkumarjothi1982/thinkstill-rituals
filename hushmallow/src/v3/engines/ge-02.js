@@ -98,7 +98,7 @@ export function create(E) {
   let reedX, reedY, reedH, reedSway = 0;
   const HGU = new Float32Array(8), HGT = new Float32Array(8), LF = new Float32Array(4);   // finale: hang points on the leaf
   let LS = 1.1;                                        // lantern scale once delivered
-  const winds = [0, 1].map((k) => ({ k, yc: 0, hw: 1, sx: 0, tx: 0, sd: 1, span: 1, ex: 0, ey: 0, g: 1, col: k ? C.wind2 : C.wind1, grad: null,
+  const winds = [0, 1].map((k) => ({ k, yc: 0, hw: 1, sx: 0, tx: 0, sd: 1, span: 1, ex: 0, ey: 0, g: 1, col: k ? C.wind2 : C.wind1, grad: null, gradD: null,
     ph: rnd() * TAU, M: reduced || low ? 6 : 9, off: [], amp: [], kk: [], om: [], php: [], v: [], dash: [] }));
   for (const w of winds) {
     for (let j = 0; j < 9; j++) {
@@ -231,6 +231,10 @@ export function create(E) {
       w.ex = mapX(k ? xL : xR); w.ey = yc;           // the eddy the lane curls around
       w.grad = g.createLinearGradient(w.sx, 0, w.tx, 0);
       w.grad.addColorStop(0, rgba(w.col, 0)); w.grad.addColorStop(0.08, rgba(w.col, 0.95)); w.grad.addColorStop(0.62, rgba(w.col, 0.8)); w.grad.addColorStop(1, rgba(w.col, 0));
+      // pale skies: a deep-toned under-stroke so the light strands still read
+      const dc = mix(P.deep, ink0, 0.35);
+      w.gradD = g.createLinearGradient(w.sx, 0, w.tx, 0);
+      w.gradD.addColorStop(0, rgba(dc, 0)); w.gradD.addColorStop(0.1, rgba(dc, 0.9)); w.gradD.addColorStop(0.62, rgba(dc, 0.7)); w.gradD.addColorStop(1, rgba(dc, 0));
     });
     // reed at the end of the lane
     reedX = mapX(xE) + flip * Math.max(5, 4 * s); reedY = yC + 2;
@@ -585,6 +589,11 @@ export function create(E) {
         const core = 1 - Math.abs(w.off[jj]);
         g.setLineDash(EMPTY); g.globalAlpha = (0.1 + 0.08 * core) * vis; g.lineWidth = 1 * s; g.stroke();          // silk thread
         g.setLineDash(w.dash[jj]); g.lineDashOffset = -t * w.v[jj] * (reduced ? 0.4 : 1) * (0.45 + 0.7 * agit);
+        if (bright) {
+          g.globalCompositeOperation = 'source-over'; g.strokeStyle = w.gradD;
+          g.globalAlpha = (0.12 + 0.1 * core) * vis * 0.6; g.lineWidth = (3 + 2.4 * core) * s; g.stroke();
+          g.globalCompositeOperation = 'lighter'; g.strokeStyle = w.grad;
+        }
         g.globalAlpha = (0.26 + 0.2 * core) * vis * (0.75 + 0.25 * w.g); g.lineWidth = (1.3 + 1.5 * core) * s; g.stroke();   // flowing strand
         if (!low && j % 2 === 0) {
           const u = ((t * w.v[jj] * 0.003 * (0.5 + agit) + jj * 0.37) % 1), x = w.sx + w.sd * u * w.span, y = windY(w, jj, x, u, t, amp);
@@ -671,9 +680,18 @@ export function create(E) {
     const bw = (u) => Math.sin(Math.PI * Math.min(1, 0.12 + u * 0.95)) * (tier ? 4.2 : 7) * s + 0.8;
     for (let i = 0; i <= n2; i++) { const u = (i / n2) * k; leafPt(tier, u, k); const w = bw(u); i ? g.lineTo(tmpX, tmpY - w) : g.moveTo(tmpX, tmpY - w); }
     for (let i = n2; i >= 0; i--) { const u = (i / n2) * k; leafPt(tier, u, k); const w = bw(u) * 0.7; g.lineTo(tmpX, tmpY + w); }
-    g.closePath(); g.fillStyle = col; g.fill();
+    g.closePath();
+    if (col) { g.fillStyle = col; g.fill(); }
+    else {
+      // a living leaf: deep green at the reed, fresh in the middle, lit at the tip
+      leafPt(tier, 0, k); const ax = tmpX, ay = tmpY; leafPt(tier, k, k);
+      const lg = g.createLinearGradient(ax, ay, tmpX, tmpY);
+      lg.addColorStop(0, rgba(C.reedDeep, 0.95)); lg.addColorStop(0.35, rgba(C.leaf, 0.92)); lg.addColorStop(1, rgba(mix(C.leaf, warm, 0.35), 0.9));
+      g.fillStyle = lg; g.fill();
+      g.strokeStyle = rgba(mix(C.reedDeep, '#000010', 0.3), 0.35); g.lineWidth = 0.8; g.stroke();
+    }
     g.beginPath(); for (let i = 0; i <= n2; i++) { leafPt(tier, (i / n2) * k, k); i ? g.lineTo(tmpX, tmpY) : g.moveTo(tmpX, tmpY); }
-    g.strokeStyle = rgba(mix(C.reed, '#ffffff', 0.5), 0.45); g.lineWidth = 0.8; g.stroke();
+    g.strokeStyle = rgba(mix(C.reed, '#ffffff', 0.5), col ? 0.2 : 0.45); g.lineWidth = 0.8; g.stroke();
   }
   function drawReed(t, fin) {
     const near = smooth(invLerp(0.72, 1, shown));
@@ -697,9 +715,8 @@ export function create(E) {
     // finale: two long leaves unfurl to receive the lanterns
     if (finAt >= 0) {
       const k1 = smooth(clamp((t - finAt - 0.05) / 1.1)), k2 = smooth(clamp((t - finAt - 0.3) / 1.1));
-      const lc = rgba(mix(C.reed, warm, 0.25), 0.9);
-      drawLeaf(1, k2, lc); drawLeaf(0, k1, lc);
-      g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.5; drawLeaf(0, k1, rgba(warm, 0.18)); g.restore();
+      drawLeaf(1, k2, null); drawLeaf(0, k1, null);
+      g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.35; drawLeaf(0, k1, rgba(warm, 0.16)); g.restore();
     }
     const stalk = (ox, hh, ph, wdt, main) => {
       const sw = sway * (main ? 1 : 0.8) + Math.sin(t * 1.1 + ph) * 2 * s;

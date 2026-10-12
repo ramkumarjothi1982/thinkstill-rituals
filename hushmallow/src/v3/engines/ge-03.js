@@ -110,7 +110,7 @@ export function create(E) {
 
   const gates = [0, 1, 2].map((k) => ({
     k, photo: paneP[k], medal: medalP[k],
-    sw: new Spring(0, { stiffness: 34, damping: 4.4 }),   // normalised swing (overshoots a little: the edge quivers)
+    sw: new Spring(0, { stiffness: 34, damping: reduced ? 10.5 : 4.4 }),   // normalised swing (overshoots a little: the edge quivers; reduced motion: no quiver)
     wob: new Wobble(),
     E: 0, E0: 1, age: 9, rx: 0, ry: 0, front: 0, wipe: -1, wx: 0, wy: 0,
     opened: false, ready: false, chimed: false, flash: 0, deny: 0, hushT: 0, settled: true,
