@@ -226,3 +226,110 @@ test('layout: no timed rearrangement — after the last arrival no home jumps (�
   }
   st.L.destroy();
 });
+
+// -------------------------------------------------------------- the rest of r3 --
+const run = (L, sec) => { for (let i = 0, k = Math.round(sec * 60); i < k; i++) L.frame(1 / 60); };
+function layer390(extra = {}) {
+  VIEW.W = 390; VIEW.H = 844;
+  const S = STAGES['390x844'], h = S.hero[1], hero = { left: h[0], top: h[1], right: h[2], bottom: h[3] };
+  return { L: new ThoughtLayer({ bounds: () => S.bounds, keepOut: () => hero, reducedMotion: false, tagRoot: document.body, ...extra }), S, hero };
+}
+
+test('siblings pulled free: kept inside the bounds by their own box, out of the main thought\'s extent, and never under the words (B3)', () => {
+  const { L, S } = layer390();
+  const ov3 = L.add({ text: 'What if they think I am useless?', emotion: 'overwhelm', intensity: 0.75, r: 38 }, { from: { x: 195, y: 400 }, home: { x: 110, y: 200 } });
+  const an = L.add({ text: 'My boss embarrassed me today.', emotion: 'anger', intensity: 0.75, r: 38 }, { from: { x: 195, y: 400 }, home: { x: 290, y: 200 } });
+  run(L, 3);
+  // dragged off the right edge and let go (as a carry leaves it): it comes back into view
+  const s = ov3.siblings[0];
+  s.free = true; s.home.x = VIEW.W + 30; s._pos.x = VIEW.W + 30; s.home.y = 300; s._pos.y = 300;
+  run(L, 3);
+  const b = s.bodyRect();
+  assert.ok(b.right <= S.bounds.right + 1 && b.left >= S.bounds.left - 1, `free sibling in bounds: ${b.left.toFixed(0)}–${b.right.toFixed(0)}`);
+  const ex = ov3.extent({});
+  assert.ok(ex.right < b.left || ex.left > b.right || ex.bottom < b.top || ex.top > b.bottom, 'no longer part of its thought\'s extent');
+  // put down right on the anger thought's words: the words and the sibling end up apart
+  const tg = L.tags.get(an);
+  const s2 = ov3.siblings[1];
+  s2.free = true; s2.home.x = s2._pos.x = tg.x; s2.home.y = s2._pos.y = tg.y + tg.h / 2;
+  run(L, 4);
+  const q = s2.bodyRect(), pl = { left: tg.x - tg.w / 2, top: tg.y, right: tg.x + tg.w / 2, bottom: tg.y + tg.h };
+  assert.equal(Math.round(ov(q, pl)), 0, 'the words are clear of a sibling pulled free');
+  const rs = L.rects();
+  assert.ok(rs.some((r) => r.id === `${ov3.id}~${s2.index}`), 'subtitles keep clear of it too');
+  L.destroy();
+});
+
+test('loneliness on a stage: a drift you can see into its own free room, away from the hero, words clear (B5)', () => {
+  const { L, hero } = layer390();
+  const lo = L.add({ text: 'Nobody texted me back', emotion: 'loneliness', intensity: 0.75, r: 38 }, { from: { x: 195, y: 400 }, home: { x: 200, y: 230 } });
+  const other = L.add({ text: 'My boss embarrassed me today.', emotion: 'anger', intensity: 0.75, r: 38 }, { from: { x: 195, y: 400 }, home: { x: 100, y: 150 } });
+  run(L, 1.5);
+  const h0 = { x: lo.home.x, y: lo.home.y }, z0 = lo.z, hc = { x: (hero.left + hero.right) / 2, y: (hero.top + hero.bottom) / 2 };
+  let worst = 0;
+  for (let k = 0; k < 9 * 4; k++) {
+    run(L, 0.25);
+    const tl = L.tags.get(lo), to = L.tags.get(other);
+    const a = { left: tl.x - tl.w / 2, top: tl.y, right: tl.x + tl.w / 2, bottom: tl.y + tl.h }, c = { left: to.x - to.w / 2, top: to.y, right: to.x + to.w / 2, bottom: to.y + to.h };
+    worst = Math.max(worst, ov(a, c), ov(a, other.faceRect({})), ov(c, lo.faceRect({})));
+  }
+  const d = Math.hypot(lo.home.x - h0.x, lo.home.y - h0.y);
+  assert.ok(d >= 40 && d <= 92, `drifted ${d.toFixed(0)} px`);
+  // apart: farther from the hero and from the other thought (into the room there is)
+  const o = other.home, dHero = Math.hypot(lo.home.x - hc.x, lo.home.y - hc.y) - Math.hypot(h0.x - hc.x, h0.y - hc.y), dOther = Math.hypot(lo.home.x - o.x, lo.home.y - o.y) - Math.hypot(h0.x - o.x, h0.y - o.y);
+  assert.ok(dHero > -2 && dOther > -2 && dHero + dOther > 40, `drifted apart: hero +${dHero.toFixed(0)} px, the other +${dOther.toFixed(0)} px`);
+  assert.ok(lo.z > z0 + 0.08, `a little farther away (z ${z0.toFixed(2)} → ${lo.z.toFixed(2)})`);
+  assert.equal(Math.round(worst), 0, 'its words and the other\'s stay clear as it drifts');
+  L.destroy();
+});
+
+test('the reader: read(null) is harmless; it opens clear of the thought, and pause() / release() close it (polish 4, 11)', () => {
+  const { L } = layer390();
+  assert.doesNotThrow(() => { L.read(undefined); L.read(null); L.read({ text: 'not on this layer' }); });
+  assert.equal(L.reading, false);
+  const th = L.add({ text: 'I said the wrong thing again', emotion: 'sadness', intensity: 0.75, r: 38 }, { from: { x: 195, y: 400 }, home: { x: 200, y: 160 } });
+  run(L, 3);
+  L.read(th);
+  assert.equal(L.reading, true);
+  const top = parseFloat(L._readEl.style.top), r = L.rects().find((q) => q.id === th.id);
+  assert.ok(Number.isFinite(top) && (top >= r.bottom || top + (L._readEl.offsetHeight || 160) <= r.top), `reader at ${top}, thought ${r.top.toFixed(0)}–${r.bottom.toFixed(0)}`);
+  L.pause(true);
+  assert.equal(L.reading, false, 'pause closes it');
+  L.resume(); L.read(th); L.release(10);
+  assert.equal(L.reading, false, 'release closes it');
+  L.destroy();
+});
+
+test('words on their way are untouchable and wait off the hero; at rest they sit on whole device pixels, untilted (polish 1, 6)', () => {
+  const { L, hero } = layer390();
+  const th = L.add({ text: 'Everyone saw me freeze in that meeting', emotion: 'anxiety', intensity: 0.75, r: 38 }, { from: { x: 195, y: 380 }, home: { x: 260, y: 200 } });
+  const tg = L.tags.get(th);
+  let travelSeen = false, onHero = 0;
+  for (let i = 0; i < 40; i++) {
+    L.frame(1 / 60);
+    if (tg.el.classList.contains('tm-travel')) travelSeen = true;
+    if (tg.shown) onHero = Math.max(onHero, ov({ left: tg.x - tg.w / 2, top: tg.y, right: tg.x + tg.w / 2, bottom: tg.y + tg.h }, hero));
+  }
+  assert.ok(travelSeen, 'tm-travel (pointer-events: none) while it flies');
+  assert.equal(Math.round(onHero), 0, 'never shown over the hero');
+  run(L, 4);
+  assert.ok(!tg.el.classList.contains('tm-travel') && !tg.el.classList.contains('tm-move'), 'at rest: touchable, no will-change');
+  const m = /^translate\(([-\d.]+)px,([-\d.]+)px\)$/.exec(tg.el.style.transform);
+  assert.ok(m, `a plain 2D translate at rest: ${tg.el.style.transform}`);
+  for (const v of [+m[1], +m[2]]) assert.ok(Math.abs(v * 2 - Math.round(v * 2)) < 1e-6, `${v} sits on a device pixel (dpr 2)`);
+  L.destroy();
+});
+
+test('canvasGL only: an overlay 2D canvas is laid just above it (polish 13)', () => {
+  const host = document.createElement('div'), gl = document.createElement('canvas');
+  host.appendChild(gl);
+  const warn = console.warn; let warned = 0; console.warn = () => { warned++; };
+  const L = new ThoughtLayer({ canvasGL: gl, tagRoot: document.body });
+  console.warn = warn;
+  assert.equal(warned, 1, 'it says so once');
+  assert.equal(host.children[1], L.canvas, 'the overlay sits right after the GL canvas');
+  assert.ok(L.canvas !== gl && L.own, 'it draws on its own canvas');
+  assert.match(L.canvas.style.cssText, /pointer-events:none/);
+  L.destroy();
+  assert.equal(host.children.length, 1, 'and takes it away when destroyed');
+});

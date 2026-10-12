@@ -131,6 +131,31 @@ test('relieved face: transformed, the mouth is a smile (drawn as a line whose mi
   if (!g.open) { const n = g.pts.length / 2 - 1; assert.ok(g.pts[2 * (n >> 1) + 1] <= (g.pts[1] + g.pts[2 * n + 1]) / 2 + 1); }
 });
 
+test('look: no in-between face reads as smug — heavy lids never meet a smile (settled, soothed, explored, part transformed)', async () => {
+  const { beliefStyle, PROPS: props } = await import('../src/mallows/thought/belief.js');
+  const styles = [...Object.values(THOUGHT_STYLES), ...props.map((p) => beliefStyle(p))];
+  const steps = [0, 0.15, 0.3, 0.45, 0.6, 0.8, 1];
+  let checked = 0;
+  for (const st of styles) {
+    for (const tension of [0.3, 0.6, 1]) for (const calm of steps) for (const transform of [0, 0.25, 0.5, 1]) for (const settle of [0, 0.5, 1]) for (const soft of [0, 1]) {
+      const f = deriveLook(st, { tension, charge: 0.5, calm, transform, soft, settle, space: 0, slow: 0 }).face;
+      checked++;
+      if (f.curve > 0.3) {
+        assert.ok(f.lid <= 0.25, `${st.id} calm ${calm} transform ${transform} settle ${settle}: lid ${f.lid.toFixed(2)} with a smile ${f.curve.toFixed(2)}`);
+        assert.ok(f.eyeOpen >= 0.75 || f.closed >= 0.3, `${st.id}: half-open eyes (${f.eyeOpen.toFixed(2)}) under a smile`);
+      }
+    }
+  }
+  assert.ok(checked > 3000);
+  // the review's two cases: a sad thought after settle(1), the stone belief part explored — calm, not amused
+  T += 10;
+  const sad = thought('sadness'); sad.settle(1); sim(sad, 5);
+  assert.ok(sad.look.face.lid < 0.12 && sad.look.face.curve < 0.3, `settled sad: lid ${sad.look.face.lid.toFixed(2)}, curve ${sad.look.face.curve.toFixed(2)}`);
+  const stone = createBelief({ text: "I'm not good enough.", prop: 'stone', x: 200, y: 400 });
+  stone.earned.calm = 0.5; stone.explore(0.5); sim(stone, 4);
+  assert.ok(!(stone.look.face.lid > 0.25 && stone.look.face.curve > 0.3), `stone part explored: lid ${stone.look.face.lid.toFixed(2)}, curve ${stone.look.face.curve.toFixed(2)}`);
+});
+
 // ---------------------------------------------------- motion signatures --
 function signature(emotion, sec = 4, o = {}) {
   T += 10;
@@ -223,15 +248,30 @@ test('effects: their zone is known (fxRect) — above the head for rain and stea
   assert.ok(f.left > bc.left && f.right < bc.right && f.top > bc.top && f.bottom < bc.bottom, 'the face sits inside the body');
 });
 
-test('motion: loneliness drifts apart; embarrassment blushes and shrinks', () => {
+test('motion: loneliness drifts apart (about 8–12 px/s, easing out to 60–90 px over 7–8 s, a little farther away, glancing back); embarrassment blushes and shrinks', () => {
   T += 10;
   const lonely = thought('loneliness'), calm = thought('neutral');
   const away = { x: 100, y: 400 };
+  const h0 = { x: lonely.home.x, y: lonely.home.y }, z0 = lonely.z;
   sim(lonely, 1, null, { away });
-  const d0 = Math.hypot(lonely.render.cx - away.x, lonely.render.cy - away.y);
-  sim(lonely, 10, null, { away });
-  const d1 = Math.hypot(lonely.render.cx - away.x, lonely.render.cy - away.y);
-  assert.ok(d1 > d0 + 20, `drifted ${d0.toFixed(0)} → ${d1.toFixed(0)}`);
+  const h1 = { x: lonely.home.x, y: lonely.home.y };
+  sim(lonely, 1, null, { away });
+  const v = Math.hypot(lonely.home.x - h1.x, lonely.home.y - h1.y);
+  assert.ok(v >= 7 && v <= 13, `drifts ${v.toFixed(1)} px/s at first`);
+  let glances = 0, was = false;
+  sim(lonely, 6, () => { const g = lonely.gaze.tx < -0.3; if (g && !was) glances++; was = g; }, { away });
+  const d = Math.hypot(lonely.home.x - h0.x, lonely.home.y - h0.y);
+  assert.ok(d >= 55 && d <= 92, `drifted ${d.toFixed(0)} px in 8 s`);
+  assert.ok(lonely.home.x > h0.x, 'away from the one it shies from');
+  assert.ok(lonely.z > z0 + 0.1, `a little farther away (z ${lonely.z.toFixed(2)})`);
+  assert.ok(glances >= 1, 'it glances back');
+  // a touch ends the drift
+  const t2 = thought('loneliness');
+  sim(t2, 1, null, { away });
+  ptr(t2, 'down', t2.render.cx, t2.render.cy); sim(t2, 0.2, null, { away }); ptr(t2, 'up', t2.render.cx, t2.render.cy);
+  const hx = t2.home.x;
+  sim(t2, 3, null, { away });
+  assert.ok(Math.abs(t2.home.x - hx) < 2, 'touched, it stays');
   const emb = thought('embarrassment');
   sim(emb, 2); sim(calm, 2);
   assert.ok(emb.render.P < calm.render.P * 0.9, `shrinks ${emb.render.P.toFixed(1)} vs ${calm.render.P.toFixed(1)}`);
@@ -301,6 +341,13 @@ test('verbs: a verb sends one "verb" event when its level changes (a world may c
   assert.deepEqual(seen, ['soften', 'farther'], `events: ${seen}`);
   th.slow(); assert.equal(seen.length, 3, 'a step is a change');
   th.soften(); assert.equal(seen.length, 3, 'already fully soft: no change, no event');
+  // a belief's explore() too: one event per change of level
+  const b = createBelief({ text: 'Everybody judges me.', prop: 'shell' });
+  const ev = [];
+  b.on('verb', (e) => ev.push(e.verb));
+  for (let i = 0; i < 10; i++) b.explore(0.5);
+  b.explore(); b.explore(1); b.explore(1);
+  assert.deepEqual(ev, ['explore', 'explore', 'explore'], `explore events: ${ev}`);
 });
 
 test('state: z is a clamped depth (0..1) a world may write; rot tilts it while written; siblings share depth and scale', () => {
@@ -436,7 +483,8 @@ test('touch: two fingers — pinch sends it farther, spread stretches it (with a
 
 test('hit test: on the body, not beside it; small siblings still give a 48 px target', () => {
   T += 10;
-  const th = thought('overwhelm', { x: 200, y: 400 });
+  // (the lab's size: every sibling is then under 48 px wide, whatever its seed)
+  const th = thought('overwhelm', { x: 200, y: 400, r: 38 });
   sim(th, 1.5);
   const R = th.render;
   assert.ok(th.hitTest(R.cx, R.cy));

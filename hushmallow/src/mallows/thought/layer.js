@@ -998,14 +998,12 @@ export class ThoughtLayer {
   _arrange(dt, env) {
     const B = env.bounds, K = this._keep(), list = this.thoughts;
     for (const th of list) {
+      // (the body and everything it draws stay in the bounds; its words find their own clear place, inside
+      // the stage, each frame — the planner made room for them, nothing is pushed for them now)
       const e = this._extent(th, dt);
-      const tg = this.tags.get(th);
-      // the words below or above take room in the bounds too
-      let tb = 0, tt = 0;
-      if (tg && tg.w) { const gap = 14 + 8 * (1 - th.z), side = CANDS[2 * tg.ci]; if (side === 1) tt = tg.h + gap; else if (side === 0) tb = tg.h + gap; }
       const lim = th._lim || (th._lim = { minX: 0, maxX: 0, minY: 0, maxY: 0 });
       lim.minX = B.left + e.l - e.dx; lim.maxX = B.right - e.r - e.dx;
-      lim.minY = B.top + e.t + tt - e.dy; lim.maxY = B.bottom - Math.max(e.b, tb ? th.render.P / 2 + tb : 0) - e.dy;
+      lim.minY = B.top + e.t - e.dy; lim.maxY = B.bottom - e.b - e.dy;
       if (lim.maxX < lim.minX) lim.maxX = lim.minX = (lim.minX + lim.maxX) / 2;
       if (lim.maxY < lim.minY) lim.maxY = lim.minY;
     }
@@ -1080,8 +1078,11 @@ export class ThoughtLayer {
         th._blockedT = 0; th._wordNudges = (th._wordNudges || 0) + 1;
         const reach = Math.max(56, 0.9 * th.render.P), want = this._wantH || (this._wantH = { x: 0, y: 0 });
         want.x = th.home.x; want.y = th.home.y;
-        const h = this._place(th, want, env, -1, false, reach);
-        if (this._placeBare < 40) { th.moveHome(h); tg.drop = 0; tg.live = false; }
+        const ci = tg.ci, h = this._place(th, want, env, -1, false, reach);
+        const dd = Math.hypot(h.x - th.home.x, h.y - th.home.y);
+        if (dd > reach) { h.x = th.home.x + ((h.x - th.home.x) * reach) / dd; h.y = th.home.y + ((h.y - th.home.y) * reach) / dd; }
+        // (only a real move re-places its words; nowhere better: they stay as they are)
+        if (this._placeBare < 40 && Math.hypot(h.x - th.home.x, h.y - th.home.y) > 3) { th.moveHome(h); tg.drop = 0; tg.live = false; } else tg.ci = ci;
       }
     }
     // boxed in for a while: a short glide to free room nearby (≤ max(56 px, 0.9 P); never across the stage)
@@ -1157,6 +1158,7 @@ export class ThoughtLayer {
     let bx = x0, by = y0, bo = o0, best = o0;
     for (let gx = -6; gx <= 6; gx++) {
       for (let gy = -6; gy <= 6; gy++) {
+        if (gx * gx + gy * gy > 36) continue;           // (within the reach: a circle, not a square)
         const x = clamp(x0 + (gx / 6) * reach, L.minX, Math.max(L.minX, L.maxX)), y = clamp(y0 + (gy / 6) * reach, L.minY, Math.max(L.minY, L.maxY));
         const ov = over(x, y), sc = ov + Math.hypot(x - x0, y - y0) * 8;
         if (sc < best) { best = sc; bx = x; by = y; bo = ov; }
@@ -1452,7 +1454,9 @@ export class ThoughtLayer {
   // what a plate at r covers that it must never cover — the hero, any face, a sibling pulled free, other
   // words (except placed[skip]): the true overlap (px²) is returned; _h3 is the same with 4 px to spare
   _hard(r, th, skip, search = false) {
-    const K = this._tenv.K, l = r[0], t = r[1], rr = r[2], b = r[3], m = 4;
+    // (searching: the plate's whole way to where it will rest — its thought may still be sinking or rising)
+    const d = search && !th._trav ? (th._syP ?? 0) - (th._sy ?? 0) : 0;
+    const K = this._tenv.K, l = r[0], t = r[1] + Math.min(0, d), rr = r[2], b = r[3] + Math.max(0, d), m = 4;
     let h0 = 0, h3 = 0;
     if (K) { h0 += overA(l, t, rr, b, K.left - 4, K.top - 4, K.right + 4, K.bottom + 4); h3 += overA(l - m, t - m, rr + m, b + m, K.left - 4, K.top - 4, K.right + 4, K.bottom + 4); }
     const ob = this._ob, n = this._obN;
