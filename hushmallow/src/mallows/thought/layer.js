@@ -107,10 +107,12 @@ const smoothGrow = (cur, v, k, init) => (!init || v > cur ? v : cur + (v - cur) 
 // what the words keep off. Hard (never covered): faces, a sibling pulled free (and, in _hard, the hero
 // and other plates). Soft (avoided by weight; on its own thought / on another's): bodies, the siblings
 // round a thought, effects, props.
-const OB_BODY = 0, OB_FACE = 1, OB_SIB = 2, OB_SIBFACE = 3, OB_FX = 4, OB_PROP = 5, OB_FREE = 6;
-const HARD = [false, true, false, true, false, false, true];
-const W_OWN = [8, 0, 6, 0, 10, 10, 0];
-const W_OTHER = [8, 0, 6, 0, 12, 10, 0];
+// OB_DEST: where a thought still on its way will rest (its body there): words looking for a place keep
+// off it; words already placed are not moved for it (it passes under them on its way).
+const OB_BODY = 0, OB_FACE = 1, OB_SIB = 2, OB_SIBFACE = 3, OB_FX = 4, OB_PROP = 5, OB_FREE = 6, OB_DEST = 7;
+const HARD = [false, true, false, true, false, false, true, false];
+const W_OWN = [8, 0, 6, 0, 10, 10, 0, 0];
+const W_OTHER = [8, 0, 6, 0, 12, 10, 0, 0];
 const SIDE_NAMES = ['below', 'above', 'right', 'left'];
 // Where the words may go, in order of preference: [side, slide] — side 0 below, 1 above, 2 right,
 // 3 left; slide along the free axis (× the plate's width below / above; × half the plate plus half
@@ -1357,7 +1359,17 @@ export class ThoughtLayer {
     this._obN = 0;
     const R1 = this._rect, R2 = this._rect2;
     for (const th of this.thoughts) {
-      if (th._leaving || th._trav) continue;
+      if (th._leaving) continue;
+      if (th._trav) {
+        // (on its way: where it will rest — its body at home, at its full size)
+        const p = this._planExt(th), y = th.home.y + this._restDy(th), q = this._rect2;
+        const P = th.r * 2 * th.scale * (1 - 0.5 * Math.max(th.zGoal, th.zFloor)), W = P * th.aspect, a = this._amp(th);
+        q.left = th.home.x - W / 2 - a; q.right = th.home.x + W / 2 + a; q.top = y - Math.min(p.t, P / 2 + 2) - a; q.bottom = y + P / 2 + 2 + a;
+        const sx = th._sx, sy = th._sy, syP = th._syP; th._sx = th._sy = th._syP = 0;
+        this._obPush(th, OB_DEST, q);
+        th._sx = sx; th._sy = sy; th._syP = syP;
+        continue;
+      }
       this._obPush(th, OB_BODY, th._bbox());
       this._obPush(th, OB_FACE, th.faceRect(R1));
       for (const s of th.siblings) {
@@ -1439,7 +1451,7 @@ export class ThoughtLayer {
   }
   // what a plate at r covers that it must never cover — the hero, any face, a sibling pulled free, other
   // words (except placed[skip]): the true overlap (px²) is returned; _h3 is the same with 4 px to spare
-  _hard(r, th, skip) {
+  _hard(r, th, skip, search = false) {
     const K = this._tenv.K, l = r[0], t = r[1], rr = r[2], b = r[3], m = 4;
     let h0 = 0, h3 = 0;
     if (K) { h0 += overA(l, t, rr, b, K.left - 4, K.top - 4, K.right + 4, K.bottom + 4); h3 += overA(l - m, t - m, rr + m, b + m, K.left - 4, K.top - 4, K.right + 4, K.bottom + 4); }
@@ -1447,8 +1459,8 @@ export class ThoughtLayer {
     // (_hobDeep: what covers a face or a free sibling by more than a 2 px brush of its envelope)
     let hob = 0, deep = 0;
     for (let k = 0; k < n; k++) {
-      const j = 6 * k;
-      if (!HARD[ob[j + 4]]) continue;
+      const j = 6 * k, kind = ob[j + 4];
+      if (!HARD[kind] && !(search && kind === OB_DEST)) continue;
       const ox = Math.min(rr, ob[j + 2]) - Math.max(l, ob[j]), oy = Math.min(b, ob[j + 3]) - Math.max(t, ob[j + 1]);
       if (ox > 0 && oy > 0) { hob += ox * oy; if (ox > 2 && oy > 2) deep += ox * oy; }
       h3 += overA(l - m, t - m, rr + m, b + m, ob[j], ob[j + 1], ob[j + 2], ob[j + 3]);
@@ -1489,7 +1501,7 @@ export class ThoughtLayer {
     let best = 0, bc = Infinity, bh = 0, b3 = 0, bs = 0;
     for (let c = 0; c < NC; c++) {
       const r = this._candRect(th, tg, c);
-      const h0 = this._hard(r, th, skip), h3 = this._h3, soft = this._soft(r, th, c, tg);
+      const h0 = this._hard(r, th, skip, true), h3 = this._h3, soft = this._soft(r, th, c, tg);
       const cost = h0 > 0 ? 2e4 + h0 : h3 > 0 ? 1e4 + h3 + soft : soft;
       if (cost < bc) { bc = cost; best = c; bh = h0; b3 = h3; bs = soft; }
     }
@@ -1507,7 +1519,7 @@ export class ThoughtLayer {
         const dx = (ix * (w + g[7] * 2) * 1.2) / 8, dy = (iy * (h + g[7] * 2) * 1.6) / 13, cx = g[8] + (th._sx || 0), cy = g[9] + (th._sy || 0);
         const x = clamp(cx + dx, T.edge + w / 2, Math.max(T.edge + w / 2, T.W - T.edge - w / 2)), y = clamp(cy + dy - h / 2, T.yMin, Math.max(T.yMin, T.yMax - h));
         const r = this._cr; r[0] = x - w / 2; r[1] = y; r[2] = x + w / 2; r[3] = y + h; this._crD = 0;
-        const h0 = this._hard(r, th, skip);
+        const h0 = this._hard(r, th, skip, true);
         const cost = (h0 > 0 ? 1e5 + h0 : 0) + (this._h3 > 0 ? 50 : 0) + this._soft(r, th, 0, null) + Math.hypot(x - cx, y + h / 2 - cy) / 25;
         if (cost < bc) { bc = cost; bx = x - cx; by = y + h / 2 - cy; bh = h0; }
       }
