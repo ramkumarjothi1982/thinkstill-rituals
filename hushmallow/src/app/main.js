@@ -115,6 +115,7 @@ async function boot() {
 // tier for the session; never active on a deployed host.
 async function devLab() {
   const qs = new URLSearchParams(location.search);
+  if ((qs.get('v3') || qs.get('engine')) && ['localhost', '127.0.0.1'].includes(location.hostname)) return v3Lab(qs);
   if (!qs.get('lab') || !['localhost', '127.0.0.1'].includes(location.hostname)) return false;
   const base = new URL('../../', import.meta.url);
   const [mod, specMod] = await Promise.all([import(new URL(qs.get('lab'), base).href), qs.get('spec') ? import(new URL(qs.get('spec'), base).href) : null]);
@@ -123,6 +124,31 @@ async function devLab() {
   const emotions = (qs.get('emotions') || '').split(',').filter(Boolean).map((id) => ({ id, confidence: 1, intensity: Number(qs.get('intensity') || 0.7) }));
   app.state.input = { text: qs.get('text') || '', emotions, intensity: Number(qs.get('intensity') || 0.7), contexts: [], desires: [], safety: { level: 'none' } };
   app.state.ritual = { ...spec, __load: async () => mod };
+  history.replaceState({ i: 0 }, '', '#home');
+  stack.push({ name: 'home', params: {} });
+  await app.go('ritual', { id: spec.id });
+  return true;
+}
+
+// V3 lab (localhost only): play one of the 1,000 rituals straight away.
+//   index.html?v3=HM-0001&photos=3&text=I%27m%20furious%20about%20work
+//   index.html?engine=GE-07&law=3&photos=0      (any engine × law pair, built or not)
+async function v3Lab(qs) {
+  const R = await import('../v3/rituals.js');
+  const code = qs.get('v3') || R.codeFor(qs.get('engine').toUpperCase(), qs.get('law') || 1);
+  const spec = R.specFor(code);
+  if (!spec) return false;
+  spec.params.v3.force = true;
+  if (!ent.has('ultra')) await ent.purchase('ultra');
+  const n = Number(qs.get('photos') || 0);
+  if (n > 0) {
+    const [{ samplePhotos }, { addPhotoCanvases, photoSession }] = await Promise.all([import('../v3/dev/sample-photos.js'), import('../v3/photos.js')]);
+    photoSession.clear(); addPhotoCanvases(samplePhotos(n));
+  }
+  const text = qs.has('text') ? qs.get('text') : 'I’m so angry about what happened at work today';
+  app.state.input = { text, emotions: spec.emotions.map((id) => ({ id, confidence: 1, intensity: 0.7 })), intensity: 0.7, contexts: [], desires: [], safety: { level: 'none' } };
+  if (qs.get('motion') === 'reduce') prefs.set('motion', 'reduced');
+  app.state.ritual = spec;
   history.replaceState({ i: 0 }, '', '#home');
   stack.push({ name: 'home', params: {} });
   await app.go('ritual', { id: spec.id });

@@ -6,6 +6,7 @@ import { interpret, faceMix } from '../../engine/interpret.js';
 import { getEmotion, getFamily, FAMILIES, searchEmotions, azIndex, EMOTIONS } from '../../data/emotions.js';
 import { MALLOWS } from '../../mallows/registry.js';
 import { openSupport } from './support.js';
+import { photoTray } from '../../v3/tray.js';
 
 export default function express(app, params = {}) {
   const { world } = app;
@@ -26,6 +27,7 @@ export default function express(app, params = {}) {
   const level = h('input', { type: 'range', class: 'range', min: 0.1, max: 1, step: 0.01, value: intensity, 'aria-label': 'How big is it?' });
   const levelLabel = h('span', { class: 'muted' }, 'Medium');
   const go = h('button', { class: 'btn primary block', disabled: true }, 'Meet a Mallow');
+  const tray = photoTray();
 
   const el = h('div', { class: 'express', style: { display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' } },
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' }),
@@ -35,6 +37,7 @@ export default function express(app, params = {}) {
       h('h1', { class: 'title', style: { fontSize: '24px', marginBottom: '10px' } }, 'What’s happening in your head?'),
       ta,
       h('p', { class: 'muted tip', style: { margin: '6px 2px 0' } }, 'Tip: tap the mic on your keyboard to talk instead. Your words stay on this phone.'),
+      tray.el,
       ack, sugg,
       h('button', { class: 'btn ghost', style: { padding: '0 4px', minHeight: '40px' }, onclick: () => openExplorer() }, 'Browse every feeling A–Z →'),
       h('div', { style: { marginTop: '6px' } }, chosen),
@@ -125,6 +128,6 @@ export default function express(app, params = {}) {
       if (params.text) read(); else render();
       if (!matchMedia('(pointer: coarse)').matches) ta.focus();
     },
-    leave() { clearBubble(); },
+    leave() { clearBubble(); tray.destroy(); },
   };
 }

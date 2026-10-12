@@ -1,0 +1,504 @@
+// V3 RITUAL HOST — runs any of the 1,000 rituals: one touch engine + one
+// world law, led by one Mallow in its realm, with the person's own words
+// (and, if they added any, their own photos) inside the scene.
+//
+// Flow: play the engine (gated by the law) → the law's closing move (phase
+// laws) → finale (engine payoff + law light finale + realm resolves) → mind
+// bend → landing check-in. Nothing completes by itself; every step is driven
+// by touch or by the "Tap instead" button.
+//
+// Privacy: the words are drawn locally and never logged; photos stay in
+// memory (see photos.js) and are released when the ritual ends.
+
+import { h, icon, openSheet, clearBubble } from '../app/ui.js';
+import { ENGINES, LAWS, SKILLS } from './data/catalog.js';
+import * as fx from './fx.js';
+import { createWords, drawWords, TOKEN_MAX, excerpt } from './words.js';
+import { photoSession, photoApi } from './photos.js';
+import { createLaw, drawLightFinale, LAW_LOCK_TEXT } from './laws.js';
+import { loadEngine } from './engines/index.js';
+import { REALMS } from '../world/realm.js';
+import { MALLOWS } from '../mallows/registry.js';
+import { faceMix } from '../engine/interpret.js';
+import { openSupport } from '../app/scenes/support.js';
+
+const { clamp, lerp, smooth, ease, rgba, glow, Particles, Ripples, Trail } = fx;
+
+export const meta = { id: 'v3' };
+
+const GATE_HOW = { 1: 'a guide light leads; stay behind it', 2: 'lift and watch one pulse halfway', 5: 'three beats; let each one settle', 6: 'slow down for the last stretch', 10: 'lift and let each wake fade' };
+const HEAVY = new Set(['sadness', 'loneliness', 'hurt', 'fatigue', 'flatness', 'numbness', 'discouragement', 'disappointment',
+  'regret', 'guilt', 'shame', 'helplessness', 'apathy', 'self-blame', 'low motivation', 'self-criticism', 'embarrassment']);
+
+async function loadCopy(engineId) {
+  const m = await import(`./data/copy/${engineId.toLowerCase()}.js`);
+  return m.default;
+}
+
+export async function run(ctx) {
+  const { world, app, ritual, signal, dock } = ctx;
+  const v = ritual.params.v3;
+  const ENG = ENGINES[v.engine], LAW = LAWS[v.law - 1], SKILL = SKILLS[v.skill];
+  const [copyAll, engMod] = await Promise.all([loadCopy(ENG.id), loadEngine(ENG.id, { force: !!v.force })]);
+  if (signal.aborted) return { completed: false };
+  const copy = copyAll[v.code] || { open: [], during: [], exit: [], bend: '', twist: '', scene: ritual.name };
+  const lead = MALLOWS[ritual.mallows[0]];
+  const realmDef = REALMS[ritual.world.realm] || Object.values(REALMS)[0];
+  const P0 = realmDef.palette;
+  const pal = { ...P0, glow: P0.glow, accent: P0.accent, warm: P0.warm || P0.lantern || '#ffb37a', deep: P0.deep, sky: P0.sky, ink: P0.ink, text: '#fffaf0' };
+  const heavy = HEAVY.has(v.primary);
+  const reduced = !!ctx.reducedMotion, lowStim = !!ctx.lowStim;
+  const words = createWords(ctx.input);
+  const location = (/ in the ([^:]+):/i.exec(copy.scene || '') || [])[1] || realmDef.name;
+
+  // ------------------------------------------------------------ DOM --
+  const titleBox = document.querySelector('#scene .move-title');
+  const lawChip = h('div', { class: 'v3-law-chip' });
+  titleBox?.append(lawChip);
+  const live = h('div', { class: 'sr-only', 'aria-live': 'polite' });
+  const spot = h('div', { class: 'v3-spot', 'aria-hidden': 'true' });
+  const wordsBtn = h('button', { class: 'v3-words', 'aria-label': 'Your words — read them in full or choose which part to use' });
+  const tapBtn = h('button', { class: 'btn v3-tap' }, icon('sparkle'), 'Tap instead');
+  const howBtn = h('button', { class: 'btn icon-only', 'aria-label': 'How to play', title: 'How to play' }, '?');
+  const helpBtn = h('button', { class: 'btn icon-only', 'aria-label': 'Need support now?', title: 'Need support now?' }, icon('support'));
+  const ctrl = h('div', { class: 'v3-ctrl' }, wordsBtn, h('div', { class: 'v3-row' }, tapBtn, howBtn, helpBtn));
+  dock.classList.add('v3-dock');
+  dock.replaceChildren(spot, ctrl, live);
+  const renderWordsBtn = () => wordsBtn.replaceChildren(h('span', { class: 'q' }, '“'), h('span', { class: 't' }, words.token), h('span', { class: 'q' }, '”'), icon('search'));
+  renderWordsBtn();
+  words.onChange(renderWordsBtn);
+  wordsBtn.addEventListener('click', () => openWords());
+  howBtn.addEventListener('click', () => openHow());
+  helpBtn.addEventListener('click', () => openSupport(app));
+
+  // --------------------------------------------------------- canvas --
+  const cvs = h('canvas', { 'aria-hidden': 'true', style: { position: 'absolute', inset: '0', width: '100%', height: '100%', touchAction: 'none' } });
+  world.fx.replaceChildren(cvs);
+  world.fx.classList.add('live');
+  const g = cvs.getContext('2d');
+  let dpr = 1;
+  const view = { w: innerWidth, h: innerHeight };
+  const stage = { x: 0, y: 0, w: 300, h: 300, cx: 150, cy: 150, s: 1, v: 0 };
+  let vignette = null;
+  function layout() {
+    dpr = Math.min(2, devicePixelRatio || 1);
+    view.w = innerWidth; view.h = innerHeight;
+    cvs.width = Math.round(view.w * dpr); cvs.height = Math.round(view.h * dpr);
+    if (phaseName === 'end') { placeMallow('end'); return; }
+    const scene = document.getElementById('scene').getBoundingClientRect();
+    const tb = (titleBox?.getBoundingClientRect().bottom ?? 120) + 10;
+    const dt = dock.getBoundingClientRect().top - 10;
+    stage.x = scene.left + 12; stage.w = scene.width - 24;
+    stage.y = tb; stage.h = Math.max(220, dt - tb);
+    stage.cx = stage.x + stage.w / 2; stage.cy = stage.y + stage.h / 2;
+    stage.s = clamp(Math.min(stage.w, stage.h) / 360, 0.72, 1.45);
+    stage.v++;
+    vignette = g.createRadialGradient(stage.cx, stage.cy, Math.min(stage.w, stage.h) * 0.2, stage.cx, stage.cy, Math.max(view.w, view.h) * 0.75);
+    vignette.addColorStop(0, rgba(pal.deep, 0)); vignette.addColorStop(1, rgba(pal.deep, 0.55));
+    placeMallow();
+    for (const fn of resizeFns) fn(stage);
+  }
+  function placeMallow(mode = phaseName) {
+    const r = spot.getBoundingClientRect();
+    if (mode === 'end' || !r.width) {
+      const top = (titleBox?.getBoundingClientRect().bottom ?? 120) + 4, bottom = dock.getBoundingClientRect().top - 4;
+      world.fitBetween(top, Math.max(top + 80, bottom), { maxScale: 0.66 }); return;
+    }
+    world.fitBetween(r.top - 8, r.bottom + 2, { maxScale: 0.42, x: ((r.left + r.width / 2) / innerWidth) * 100 });
+  }
+  const resizeFns = new Set();
+  const onResize = () => layout();
+  addEventListener('resize', onResize);
+  let roT = 0;
+  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => { cancelAnimationFrame(roT); roT = requestAnimationFrame(() => layout()); }) : null;
+  if (ro) { if (titleBox) ro.observe(titleBox); ro.observe(dock); }
+
+  // ----------------------------------------------------- shared kit --
+  const particles = new Particles(lowStim ? 140 : reduced ? 180 : 360);
+  const ripples = new Ripples(24);
+  const trail = new Trail(40, 0.5);
+  const photos = photoApi({ particles, dpr: Math.min(2, devicePixelRatio || 1), seed: v.num });
+  let clock = 0;                            // seconds; stops while paused
+  const now = () => clock;
+  const rand = fx.rng(v.num * 7 + 3);
+  const lastSound = new Map();
+  const sound = (name, o = {}) => { const tt = performance.now(); if (tt - (lastSound.get(name) || 0) < 40) return; lastSound.set(name, tt); app.audio.fx(name, { intensity: 0.5, ...o }); };
+  const hold = (name, o) => app.audio.hold(name, o);
+  const haptic = (k) => app.haptic(k);
+  let reactAt = 0;
+  const react = (kind, force = false) => { const tt = performance.now(); if (!force && tt - reactAt < 700) return; reactAt = tt; world.react(kind); };
+  const say = (text, ms = 3400) => { if (text) { ctx.say(text, { who: lead.name, ms }); live.textContent = `${lead.name}: ${text}`; } };
+  const userMix = faceMix(ctx.input.emotions || []);
+  const emote = (k) => {
+    const m = {}; for (const [key, val] of Object.entries(userMix)) m[key] = val * (1 - k);
+    m.calm = (m.calm || 0) + k * 0.55; m.relieved = (m.relieved || 0) + k * 0.25; m.curious = (m.curious || 0) + (1 - k) * 0.1 + 0.05;
+    world.setEmotion(m, lerp(ctx.input.intensity ?? 0.6, 0.6, k), { quiet: true });
+  };
+  let promptOverride = null;
+  const setPrompt = (text) => { promptOverride = text; const p = titleBox?.querySelector('p'); if (p) p.textContent = text; live.textContent = text; };
+
+  // phase state
+  let phaseName = 'play', engine = null, law = null, finaleAt = 0, endAt = 0, endShown = false, twistAt = -1, twistShown = false;
+  let lastInput = 0, firstTouch = false, lastP = 0, halfSaid = false, lockToastAt = -9, lockMsg = '';
+  const route = [];
+  const finaleState = {};
+  const pointers = new Map();
+  let primary = null;
+
+  const E = {
+    g, stage, view, fx, pal, realm: ritual.world.realm, mallow: lead.id, heavy, reduced, lowStim, rand,
+    words: {
+      get full() { return words.full; }, get token() { return words.token; }, get own() { return words.own; },
+      draw: (g2, x, y, o) => drawWords(g2, words.token, x, y, o),
+    },
+    photos, particles, ripples,
+    gate: (raw) => (law && phaseName === 'play' ? law.gate(clamp(raw)) : clamp(raw)),
+    allow: (p) => (law && phaseName === 'play' ? law.allow(clamp(p)) : true),
+    get locked() { return !!(law && phaseName === 'play' && law.locked); },
+    checkpoint(name, i) {
+      if (name === 'photo') { react('comfort'); haptic('soft'); }
+      else if (name === 'step') { haptic('light'); if (rand() < 0.5) react('nod'); }
+      else if (name === 'wait') { showLock(); }
+    },
+    react: (k) => react(k), emote, look: (x, y) => world.rig?.lookAt?.((x / view.w) * 2 - 1, (y / view.h) * 2 - 1),
+    sound, hold, haptic,
+    hint: setPrompt, now, onResize: (fn) => { resizeFns.add(fn); return () => resizeFns.delete(fn); },
+    seed: v.num,
+  };
+  const L = {
+    g, get stage() { return stage; }, view, pal, now, particles, ripples, words: E.words, photos, sound, haptic, react: (k) => react(k, true), say, setPrompt,
+    get engine() { return engine; }, route, reduced, lowStim, seconds: ritual.durationSec, rand,
+    realmMood: (k) => world.realm?.setMood?.({ agitation: lerp(0.5, 0.08, k) }), checkpoint: E.checkpoint,
+  };
+
+  // ---------------------------------------------------- words sheet --
+  function openWords() {
+    const input = h('input', { class: 'search', type: 'text', maxlength: String(TOKEN_MAX), value: words.token, 'aria-label': 'Words the ritual uses (up to 42 characters)' });
+    const parts = words.own ? [...new Set(words.full.split(/(?<=[.!?;:,])\s+|\s+[—–-]\s+/).map((s) => s.trim()).filter((s) => s.length > 2).map((s) => excerpt(s)))].slice(0, 6) : [];
+    const sh = openSheet({
+      title: 'Your words',
+      body: h('div', {},
+        words.own ? h('p', { class: 'v3-full', tabindex: '0' }, words.full) : h('p', { class: 'muted' }, 'You didn’t type anything, so the ritual is using your feeling words. You can write your own here.'),
+        h('div', { class: 'eyebrow', style: { margin: '14px 0 8px' } }, 'The part the ritual carries'),
+        parts.length > 1 ? h('div', { class: 'chips', style: { marginBottom: '8px' } }, ...parts.map((pt) => h('button', { class: 'chip', onclick: () => { input.value = pt; } }, pt))) : null,
+        input,
+        h('p', { class: 'muted', style: { margin: '8px 0 0' } }, 'Only you choose this. Your words stay on this phone and never leave the ritual.')),
+      foot: h('button', { class: 'btn primary block', onclick: () => { words.setToken(input.value); sh.close(); } }, 'Use these words'),
+    });
+  }
+  function openHow() {
+    const m = engMod.meta || {};
+    const steps = [...(m.steps || [ENG.motion]), law.kind === 'phase' ? `Then: ${law.howTo}` : `World law: ${law.howTo}`];
+    const pm = m.photos;
+    openSheet({
+      title: 'How to play',
+      body: h('div', {},
+        h('p', { style: { fontWeight: 700, fontSize: '17px', margin: '0 0 10px' } }, m.howTo || ENG.motion),
+        h('ol', { class: 'v3-steps' }, ...steps.map((s) => h('li', {}, s))),
+        h('p', { class: 'muted' }, `Prefer tapping? Press “Tap instead” — ${m.tapAlt || 'each press makes one gentle move'}.`),
+        photos.n && pm ? h('div', { class: 'summary-card', style: { marginTop: '10px' } },
+          h('div', { class: 'k' }, 'Your photos'), h('div', { class: 'v' }, `${pm.where} They become ${pm.becomes}. ${pm.touch} ${pm.change} ${pm.payoff}`)) : null,
+        h('div', { class: 'summary-card', style: { marginTop: '10px' } },
+          h('div', { class: 'k' }, 'Skill you’re practising'), h('div', { class: 'v' }, `${SKILL.name}: ${SKILL.does}`),
+          h('div', { class: 'k' }, 'Why it can help'), h('div', { class: 'v' }, `${SKILL.insight} (${SKILL.scope})`))),
+    });
+  }
+
+  // ---------------------------------------------------------- input --
+  const toLocal = (e) => ({ x: e.clientX, y: e.clientY, id: e.pointerId, t: now() });
+  function onDown(e) {
+    if (paused() || phaseName === 'finale' || phaseName === 'end') return;
+    try { cvs.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    const p = toLocal(e);
+    pointers.set(e.pointerId, p);
+    if (primary == null) primary = e.pointerId;
+    lastInput = now();
+    trail.clear(); trail.add(p.x, p.y);
+    ripples.add(p.x, p.y, { colour: pal.glow, speed: 60, alpha: 0.45, r: 6 });
+    if (!firstTouch) { firstTouch = true; react('tap', true); world.setStage?.('listening'); }
+    E.look(p.x, p.y);
+    if (phaseName === 'play') { law.onDown?.(p); engine.down?.(p); route.push([p.x, p.y]); }
+    else if (phaseName === 'law') law.down?.(p);
+  }
+  function onMove(e) {
+    if (!pointers.has(e.pointerId) || paused()) return;
+    const evs = e.getCoalescedEvents?.() || [e];
+    for (const ce of evs.length ? evs : [e]) {
+      const p = { x: ce.clientX, y: ce.clientY, id: e.pointerId, t: now() };
+      pointers.set(e.pointerId, p);
+      if (e.pointerId === primary) { trail.add(p.x, p.y); if (phaseName === 'play') { route.push([p.x, p.y]); if (route.length > 900) route.splice(0, 300); } }
+      if (phaseName === 'play') engine.move?.(p); else if (phaseName === 'law') law.move?.(p);
+    }
+    lastInput = now();
+  }
+  function onUp(e) {
+    if (!pointers.has(e.pointerId)) return;
+    const p = { x: e.clientX, y: e.clientY, id: e.pointerId, t: now() };
+    pointers.delete(e.pointerId);
+    if (e.pointerId === primary) primary = pointers.size ? pointers.keys().next().value : null;
+    lastInput = now();
+    if (phaseName === 'play') { engine.up?.(p); if (!pointers.size) law.onUp?.(p); }
+    else if (phaseName === 'law') law.up?.(p);
+  }
+  cvs.addEventListener('pointerdown', onDown);
+  cvs.addEventListener('pointermove', onMove);
+  cvs.addEventListener('pointerup', onUp);
+  cvs.addEventListener('pointercancel', onUp);
+  cvs.addEventListener('lostpointercapture', (e) => { if (pointers.has(e.pointerId)) onUp(e); });
+  tapBtn.addEventListener('click', () => {
+    if (paused()) return;
+    lastInput = now();
+    if (!firstTouch) { firstTouch = true; react('tap', true); }
+    if (phaseName === 'play') {
+      if (law.locked) { showLock(); return; }
+      law.onDown?.({ x: 0, y: 0, id: -1 });
+      engine.assist?.();
+      setTimeout(() => law?.onUp?.({ x: 0, y: 0, id: -1 }), 90);
+    } else if (phaseName === 'law') law.assist?.();
+    app.audio.ui('tap');
+  });
+  const paused = () => !!document.querySelector('#sheet-root .sheet');
+
+  function showLock() { if (!law || law.kind !== 'gate') return; lockMsg = law.lockText || LAW_LOCK_TEXT[v.law] || ''; if (now() - lockToastAt > 2.4) { lockToastAt = now(); live.textContent = lockMsg; } }
+
+  // ---------------------------------------------------------- start --
+  function begin() {
+    engine?.destroy?.(); resizeFns.clear();
+    clock = 0; phaseName = 'play'; finaleAt = 0; endShown = false; twistAt = -1; twistShown = false; firstTouch = false; lastP = 0; halfSaid = false;
+    route.length = 0; particles.clear(); trail.clear(); for (const k in finaleState) delete finaleState[k];
+    promptOverride = null;
+    dock.replaceChildren(spot, ctrl, live);
+    dock.classList.remove('v3-ending');
+    cvs.style.transition = 'opacity 400ms ease'; cvs.style.opacity = '1';
+    const gate = [1, 2, 5, 6, 10].includes(v.law);
+    lawChip.replaceChildren(h('b', {}, `✦ ${LAW.name}`), ' · ', gate ? GATE_HOW[v.law] : 'then one closing move');
+    ctx.setMove(0, { eyebrow: location, title: ENG.name, prompt: engMod.meta?.howTo || ENG.motion });
+    layout();
+    engine = engMod.create(E);
+    engine.pointAt ??= () => ({ x: stage.cx, y: stage.cy });
+    law = createLaw(v.law, L);
+    placeMallow('play');
+    emote(0);
+    world.realm?.transform?.(0);
+    world.realm?.setEmotion?.(Object.keys(userMix)[0] || 'neutral', ctx.input.intensity ?? 0.6);
+    lastInput = 0;
+    setTimeout(() => { if (!signal.aborted && phaseName === 'play') say(copy.open[0], 3800); }, 650);
+  }
+
+  // ---------------------------------------------------------- frame --
+  let raf = 0, tPrev = performance.now(), resolveRun;
+  const done = new Promise((r) => { resolveRun = r; });
+  function frame(tNow) {
+    raf = requestAnimationFrame(frame);
+    const realDt = Math.min(0.25, (tNow - tPrev) / 1000); tPrev = tNow;
+    const isPaused = paused();
+    const dt = isPaused ? 0 : Math.min(0.05, realDt);
+    if (!isPaused) clock += realDt;
+    const t = clock;
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, view.w, view.h);
+    g.fillStyle = vignette; g.fillRect(0, 0, view.w, view.h);
+    try {
+      engine.frame(dt, t);
+    } catch (err) { console.error('[v3 engine]', err); }
+    g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; g.setLineDash([]);
+    if (phaseName === 'play') { law.frame?.(g, t, dt); updatePlay(); }
+    else if (phaseName === 'law') { veil(0.18); law.frame(g, t, dt); if (law.done) startFinale(); }
+    particles.update(dt); particles.draw(g);
+    ripples.update(dt); ripples.draw(g, 0.9);
+    trail.update(dt); if (pointers.size && phaseName !== 'finale' && phaseName !== 'end' && engMod.meta?.trail !== false) trail.draw(g, pal.glow, 9);
+    if (phaseName === 'finale' || phaseName === 'end') drawFinale(t);
+    drawTwist(t);
+    drawLock(t);
+    drawGhost(t);
+    expose();
+  }
+
+  function updatePlay() {
+    const p = clamp(engine.progress || 0);
+    if (p > lastP + 0.001) {
+      if (Math.floor(p * 10) > Math.floor(lastP * 10)) haptic('tick');
+      if (Math.floor(p * 4) > Math.floor(lastP * 4)) emote(Math.floor(p * 4) / 4 * 0.7);
+      world.realm?.transform?.(p * 0.55);
+      lastP = p;
+    }
+    if (!halfSaid && p >= 0.5) { halfSaid = true; say(copy.during[0], 3600); react('nod', true); }
+    if (!twistShown && p >= 0.62) { twistShown = true; twistAt = now(); engine.twist?.(); world.realm?.pulse?.('burst', { x: stage.cx, y: stage.cy }); sound('shimmer', { intensity: 0.5 }); react('gasp', true); }
+    if (law.locked && pointers.size) showLock();
+    if (engine.done && law.gateReady()) {
+      if (law.kind === 'phase') startLaw(); else startFinale();
+    }
+  }
+
+  function startLaw() {
+    phaseName = 'law';
+    law.begin?.();
+    sound('unlock', { intensity: 0.45 }); haptic('success'); react('success', true);
+    ctx.setMove(1, { eyebrow: `${location} · World law`, title: LAW.name, prompt: law.howTo });
+    if (promptOverride) promptOverride = null;
+    lawChip.replaceChildren(h('b', {}, 'Closing move'), ' · ', LAW.rule.length < 90 ? LAW.rule : law.howTo);
+    if (copy.during[1]) setTimeout(() => { if (phaseName === 'law') say(copy.during[1], 3400); }, 900);
+    lastInput = now();
+  }
+
+  function startFinale() {
+    if (phaseName === 'finale' || phaseName === 'end') return;
+    phaseName = 'finale'; finaleAt = now();
+    pointers.clear(); primary = null;
+    engine.finish?.();
+    world.realm?.transform?.(1);
+    world.realm?.pulse?.('clear', { x: stage.cx, y: stage.cy });
+    sound(heavy ? 'settle' : 'clear', { intensity: 0.55 });
+    if (heavy) setTimeout(() => sound('chime', { intensity: 0.35 }), 500);
+    haptic('success');
+    emote(1);
+    if (heavy) { world.setStage?.('comforting'); react('comfort', true); } else { world.setStage?.('celebrating'); react('celebrate', true); }
+    ctx.setMove(law.kind === 'phase' ? 2 : 1, { eyebrow: location, title: ENG.name, prompt: cap(ENG.win) + '.' });
+    lawChip.replaceChildren(h('b', {}, `✦ ${LAW.name}`), ' · ', cap(LAW.payoff) + '.');
+    setTimeout(() => say(copy.exit[0], 4200), 500);
+  }
+
+  function drawFinale(t) {
+    const k = now() - finaleAt;
+    const lk = clamp(k / 3.6);
+    drawLightFinale(v.law, g, lk, L, finaleState);
+    law.payoff?.(g, ease.outCubic(clamp(k / 1.2)));
+    if (!endShown && k > Math.max(3.8, engMod.meta?.finaleSec || 0)) showEnd();
+    void t;
+  }
+
+  function showEnd() {
+    endShown = true; phaseName = 'end'; endAt = now();
+    clearBubble();
+    // let the Mallow (beneath this canvas) come forward beside the mind bend
+    cvs.style.transition = 'opacity 900ms ease'; cvs.style.opacity = '0.16';
+    const bend = copy.bend || '';
+    const keepBox = h('input', { type: 'checkbox' });
+    keepBox.checked = photoSession.keep;
+    keepBox.addEventListener('change', () => { photoSession.keep = keepBox.checked; });
+    const card = h('div', { class: 'card v3-end' },
+      h('div', { class: 'eyebrow', style: { color: 'var(--accent)' } }, 'Mind bend'),
+      h('p', { class: 'v3-bend' }, bend),
+      h('div', { class: 'v3-skill' }, h('b', {}, SKILL.name), ` · ${SKILL.does}`),
+      photos.n ? h('label', { class: 'v3-keep' }, keepBox, ' Keep my photos for the next ritual (otherwise they’re cleared now)') : null,
+      h('div', { class: 'row-btns', style: { marginTop: '12px' } },
+        h('button', { class: 'btn', onclick: () => { app.audio.ui('tap'); begin(); } }, icon('refresh'), 'Play again'),
+        h('button', { class: 'btn primary', onclick: () => finish(true) }, 'Continue')));
+    dock.classList.add('v3-ending');
+    dock.replaceChildren(card, live);
+    live.textContent = `Mind bend: ${bend}`;
+    ctx.setMove(law.kind === 'phase' ? 3 : 2, { eyebrow: `${lead.name} · ${location}`, title: ritual.name.split(' — ')[0], prompt: 'Done. Take the moment with you.' });
+    lawChip.replaceChildren();
+    requestAnimationFrame(() => placeMallow('end'));
+  }
+
+  function veil(a) { g.fillStyle = rgba(pal.deep, a); g.fillRect(0, 0, view.w, view.h); }
+
+  // twist banner
+  function drawTwist(t) {
+    if (twistAt < 0 || !copy.twist) return;
+    const k = now() - twistAt, dur = 5.2;
+    if (k > dur) return;
+    const a = smooth(clamp(k / 0.5)) * (1 - smooth(clamp((k - dur + 0.7) / 0.7)));
+    const s = stage.s, w = Math.min(stage.w - 8, 330 * s);
+    const y = stage.y + 6 + (1 - ease.outCubic(clamp(k / 0.6))) * -24;
+    g.save(); g.globalAlpha = a;
+    g.font = `600 ${13 * s + 1}px ${fx.FONT}`;
+    const lines = fx.wrap(g, copy.twist, w - 28, 3);
+    const hgt = 30 + lines.length * (16 * s + 3);
+    fx.roundRect(g, stage.cx - w / 2, y, w, hgt, 18); g.fillStyle = 'rgba(16,10,40,0.78)'; g.fill();
+    g.strokeStyle = rgba(pal.accent, 0.5); g.lineWidth = 1.2; g.stroke();
+    // shimmer sweep across the plate
+    const sx = stage.cx - w / 2 + ((k * 0.7) % 1.4) * w;
+    const sg = g.createLinearGradient(sx - 60, 0, sx + 60, 0); sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(0.5, 'rgba(255,255,255,0.12)'); sg.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = sg; fx.roundRect(g, stage.cx - w / 2, y, w, hgt, 18); g.fill();
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = pal.accent; g.font = `800 ${10 * s + 1}px ${fx.FONT}`; g.fillText('PLOT TWIST', stage.cx, y + 15);
+    g.fillStyle = '#fffaf0'; g.font = `600 ${13 * s + 1}px ${fx.FONT}`;
+    lines.forEach((l, i) => g.fillText(l, stage.cx, y + 32 + i * (16 * s + 3)));
+    g.restore();
+    if (k < 0.1) live.textContent = `Plot twist: ${copy.twist}`;
+    void t;
+  }
+  function drawLock(t) {
+    const k = now() - lockToastAt;
+    if (k > 2.4 || !lockMsg) return;
+    const a = smooth(clamp(k / 0.25)) * (1 - smooth(clamp((k - 1.9) / 0.5)));
+    drawWords(g, lockMsg, stage.cx, stage.y + stage.h - 14, { style: 'plate', size: 13 * stage.s + 1, maxWidth: stage.w - 20, lines: 2, alpha: a, glowColour: pal.glow });
+    void t;
+  }
+
+  // ghost finger: after a few idle seconds, show what to do (never does it)
+  function drawGhost(t) {
+    if (phaseName !== 'play' && phaseName !== 'law') return;
+    if (pointers.size) return;
+    const idle = now() - lastInput;
+    const delay = firstTouch ? 5 : 2.2;
+    if (idle < delay) return;
+    const cyc = (idle - delay) % 3.2;
+    if (cyc > 2.2) return;
+    const hnt = phaseName === 'play' ? engine.hint?.() : law.hint?.();
+    if (!hnt) return;
+    let x, y, a = smooth(clamp(cyc / 0.3)) * (1 - smooth(clamp((cyc - 1.8) / 0.4)));
+    if (hnt.tap) { x = hnt.tap.x; y = hnt.tap.y; const pk = Math.sin(clamp((cyc - 0.4) / 0.6) * Math.PI); ghostDot(x, y, a, 1 - pk * 0.25, pk); return; }
+    let from = hnt.from, to = hnt.to;
+    if (hnt.path) { const k2 = ease.inOutSine(clamp((cyc - 0.3) / 1.4)); const P = hnt.path, i = Math.min(P.length - 1, Math.floor(k2 * (P.length - 1))); x = P[i][0]; y = P[i][1]; from = { x: P[0][0], y: P[0][1] }; }
+    else { const k2 = ease.inOutSine(clamp((cyc - 0.3) / 1.4)); x = lerp(from.x, to.x, k2); y = lerp(from.y, to.y, k2); }
+    ghostDot(x, y, a, 1, 0);
+    void t;
+  }
+  function ghostDot(x, y, a, scale, press) {
+    g.save(); g.globalAlpha = a * 0.9;
+    glow(g, x, y, 30 * scale, '#ffffff', 0.35 * a);
+    g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 16 * scale, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = `rgba(255,255,255,${0.35 + press * 0.4})`; g.beginPath(); g.arc(x, y, 9 * scale, 0, Math.PI * 2); g.fill();
+    g.restore();
+  }
+
+  function expose() {
+    if (!globalThis.__hm3) globalThis.__hm3 = {};
+    Object.assign(globalThis.__hm3, {
+      id: ritual.id, engine: ENG.id, law: v.law, phase: phaseName,
+      progress: engine ? clamp(engine.progress || 0) : 0, lawProgress: law?.kind === 'phase' ? clamp(law.progress || 0) : null,
+      locked: !!law?.locked, photos: photos.n, token: words.token, stage: { ...stage },
+      hint: () => (phaseName === 'play' ? engine.hint?.() : law?.hint?.()) || null,
+      pointAt: (p) => engine?.pointAt?.(p),
+    });
+  }
+
+  // --------------------------------------------------------- finish --
+  let finished = false;
+  function cleanup() {
+    cancelAnimationFrame(raf);
+    removeEventListener('resize', onResize);
+    ro?.disconnect();
+    try { engine?.destroy?.(); } catch (e) { console.warn(e); }
+    world.fx.classList.remove('live');
+    world.fx.replaceChildren();
+    lawChip.remove();
+    dock.classList.remove('v3-dock', 'v3-ending');
+    if (globalThis.__hm3) globalThis.__hm3.phase = 'closed';
+  }
+  function finish(completed) {
+    if (finished) return; finished = true;
+    cleanup();
+    photoSession.release();
+    resolveRun({
+      completed,
+      summary: [
+        { label: 'Touch engine', text: `${ENG.name} — ${cap(ENG.win)}.` },
+        { label: 'World law', text: `${LAW.name} — ${cap(LAW.payoff)}.` },
+        { label: 'Skill practised', text: `${SKILL.name}: ${SKILL.does}` },
+        ...(copy.bend ? [{ label: 'Mind bend', text: copy.bend }] : []),
+      ],
+      share: { title: ritual.name.split(' — ')[0], subtitle: `A Hushmallow ritual with ${lead.name}` },
+    });
+  }
+  signal.addEventListener('abort', () => { if (!finished) { finished = true; cleanup(); photoSession.release(); resolveRun({ completed: false }); } });
+
+  begin();
+  raf = requestAnimationFrame((t0) => { tPrev = t0; frame(t0); });
+  return done;
+}
+
+const cap = (s) => { s = String(s || '').trim(); return s ? s[0].toUpperCase() + s.slice(1) : s; };
