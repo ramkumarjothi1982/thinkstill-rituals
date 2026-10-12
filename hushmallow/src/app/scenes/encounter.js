@@ -13,6 +13,7 @@ import { allowedFor } from '../../engine/recommend.js';
 import { toast } from '../ui.js';
 import { testPurchasesAllowed } from '../config.js';
 import { planItems } from '../play-item.js';
+import { photoSession } from '../../v3/photos.js';
 
 const REFRAME_FAMILIES = new Set(['shame', 'fear', 'loneliness', 'anger', 'sadness', 'envy', 'confusion']);
 
@@ -73,7 +74,8 @@ export default function encounter(app) {
       h('div', { class: 'eyebrow', style: { color: 'var(--accent)' } }, `${lead.name} has a ritual for that`),
       h('h3', { style: { marginTop: '8px', fontSize: '26px' } }, r.name),
       h('p', {}, r.purpose),
-      h('div', { class: 'reasons' }, ...o.reasons.filter((x) => !/minute/.test(x)).map((x) => h('span', {}, x)), h('span', {}, `About ${mins} min`)),
+      h('div', { class: 'reasons' }, ...o.reasons.filter((x) => !/minute/.test(x)).map((x) => h('span', {}, x)), h('span', {}, `About ${mins} min`),
+        r.module === 'v3' && photoSession.count ? h('span', {}, `With your ${photoSession.count} photo${photoSession.count > 1 ? 's' : ''}`) : null),
       h('div', { style: { display: 'grid', gap: '8px', marginTop: '16px' } },
         h('button', { class: 'btn primary block', onclick: () => begin(o) }, 'Let’s do it'),
         options.length > 1 ? h('button', { class: 'btn ghost block', onclick: () => { idx = (idx + 1) % options.length; app.audio.ui('toggle'); show(); } }, 'Something else') : null));
