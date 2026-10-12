@@ -66,7 +66,7 @@ export default function hushfold(app, params = {}) {
     root, prefs,
     reducedMotion: () => prefs.reducedMotion(),
     bounds: () => ({ top: (topEl.getBoundingClientRect().bottom || 60) + 12, bottom: dockTop() - 12 }),
-    avoid: () => [mallowAvoidRect(), ...(stage?.thoughts.rects() || []), ...(flowRef?.avoid?.() || [])].filter(Boolean),
+    avoid: () => [mallowAvoidRect(), ...(stage?.thoughts.rects() || []), worldThoughtRect(), ...(flowRef?.avoid?.() || [])].filter(Boolean),
   });
   const say = (text, opts = {}) => {
     if (!text) return Promise.resolve(false);
@@ -230,7 +230,7 @@ export default function hushfold(app, params = {}) {
     worldMode = false;
     router?.setWorld(null);
     try { flowRef?.destroy?.(); } catch (e) { console.warn(e); }
-    flowP = null; flowRef = null;
+    flowP = null; flowRef = null; worldThought = null;
     if (homeMallow) { mallowId = homeMallow; homeMallow = null; theme(); showMallow(mallowId); world.setRealm(M().realm, { crossfadeMs: 1400 }); }
     layout();
     panel?.update();
@@ -395,6 +395,7 @@ export default function hushfold(app, params = {}) {
   /** Start Hushflow (paid; enforced here as well as by the routes). Feeling ids map to the registry's. */
   async function startFlow({ emotion = null, intention = null, input = null, safety = null, worldId = null } = {}) {
     try { requireEntitlement(ent, 'paid'); } catch { app.go('plans', { reason: 'tell' }); return; }
+    S.flowAsked = true;
     const [{ createWords }, em] = await Promise.all([import('../../v3/words.js'), import('../../data/emotions.js')]);
     if (S.left) return;
     if (input) wordsCur = createWords(input);
@@ -418,6 +419,14 @@ export default function hushfold(app, params = {}) {
     panel?.update();
   }
 
+  let worldThought = null;
+  /** Where the world's Thought Mallow and its word plate are (until worlds report it through avoid()). */
+  function worldThoughtRect() {
+    const t = worldThought;
+    if (!worldMode || !t || !(t.x || t.y)) return null;
+    const r = 34 * (t.scale || 1);
+    return { left: t.x - 130, right: t.x + 130, top: t.y - r - 6, bottom: t.y + r + 66 };
+  }
   /** Give the world its Thought Mallow for the current words (W4's 2D stand-in until W2's ThoughtLayer lands). */
   async function handThought(flow, fe) {
     try {
@@ -425,7 +434,8 @@ export default function hushfold(app, params = {}) {
       // a fresh words object each time, so an earlier thought keeps its own words
       const own = wordsCur;
       const w = { get full() { return own?.full || ''; }, get token() { return own?.token || ''; }, get own() { return !!own?.own; }, get feelings() { return own?.feelings || []; }, setToken: (t) => own?.setToken(t), onChange: (fn) => own?.onChange?.(fn) || (() => {}) };
-      flow.setThought?.(ph.createPlaceholderThought({ words: w, emotion: fe || 'other', font: type?.canvasFontPx, dpr: Math.min(2, devicePixelRatio || 1) }));
+      worldThought = ph.createPlaceholderThought({ words: w, emotion: fe || 'other', font: type?.canvasFontPx, dpr: Math.min(2, devicePixelRatio || 1) });
+      flow.setThought?.(worldThought);
     } catch (e) { console.info('[hushfold] no placeholder thought for the world', e?.message); }
   }
 
@@ -516,7 +526,7 @@ export default function hushfold(app, params = {}) {
 
   // -------------------------------------------------- the opening --
   // the opening lines only play into an untouched, quiet stage
-  const quiet = () => !S.touches && !S.told && !worldMode && !overlay;
+  const quiet = () => !S.touches && !S.told && !S.flowAsked && !worldMode && !overlay;
   function opening() {
     const returning = !params.intro && prefs.get('seenIntro');
     prefs.set('seenIntro', true);
