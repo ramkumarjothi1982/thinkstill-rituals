@@ -41,6 +41,14 @@ export default function encounter(app) {
       plan = planOptions({ rec, req, rituals: offerRituals, tricks, seen: round.seen(), limit: 4 });
     }
     options = plan.options;
+    // TESTING: an item picked with the home arrows is shown first, for this issue
+    if (testPurchasesAllowed() && app.store.get('test-pick', false)) {
+      app.store.set('test-pick', false);
+      const n = app.store.get(`test-step-${ent.tier()}`, 0);
+      const items = await planItems(app);
+      const it = items[n - 1];
+      if (it) options = [{ type: it.kind, item: it.ref, reasons: [`Test item ${n} of ${items.length}`] }];
+    }
   }
 
   const card = h('div', { class: 'card enc-card' });
