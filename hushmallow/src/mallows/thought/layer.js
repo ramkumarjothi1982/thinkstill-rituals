@@ -768,7 +768,7 @@ export class ThoughtLayer {
       let need = 0;
       for (const th of this.thoughts) {
         const P = th.r * 2 * th.scale * (1 - 0.5 * z), Wb = P * th.aspect;
-        let bw = Wb + 40, bh = P + 24;
+        let bw = Wb + 24, bh = P + 16;
         if (th.siblings.length) { bw += Wb * 0.9; bh += P * 0.6; }
         if (th.style.fx.rain > 0 || th.style.fx.steam > 0) bh += P * 0.75;
         if (th.kind === 'belief') bh += P * 0.35;
@@ -776,7 +776,7 @@ export class ThoughtLayer {
         const pw = Math.min(maxW, tw / l + pad) + 16, ph = l * 22 + 32;
         need += bw * bh + pw * ph;
       }
-      if (area >= need * 1.25) { crowd = lv; break; }
+      if (area >= need * 1.15) { crowd = lv; break; }
     }
     if (n <= 1) crowd = 0;
     this.room = area / Math.max(1, n);
@@ -838,7 +838,7 @@ export class ThoughtLayer {
   // the widest a tag may be at this view width (CSS max-width and padding mirrored); a very crowded
   // stage gives each tag a narrower plate (its space budget: fewer words, still 17 px, a tap reads all)
   _tagMax(W, crowd = this.crowd) {
-    const cap = crowd >= 3 ? (W < 361 ? 156 : 172) : crowd >= 2 ? (W < 361 ? 176 : 196) : W < 361 ? 210 : 232;
+    const cap = W < 361 ? [210, 210, 184, 180, 176][Math.min(4, crowd)] : [232, 232, 208, 200, 192][Math.min(4, crowd)];
     return { maxW: Math.min(cap, W - (W < 361 ? 28 : 40)), pad: W < 361 ? 24 : 30 };
   }
 
