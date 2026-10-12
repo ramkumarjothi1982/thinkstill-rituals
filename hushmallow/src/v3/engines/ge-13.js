@@ -94,6 +94,13 @@ export function create(E) {
   const brassDark = mix('#6a5232', pal.deep, 0.35);
   const lampCol = mix('#ffd99a', pal.warm || '#ffb37a', 0.35);
   const moonHalo = mix(moonCol, lampCol, 0.3);
+  // per-frame colours resolved once (no string mixing in the draw loops)
+  const earthCol = mix(mix(moonCol, pal.deep, 0.66), INK, 0.3);   // the unlit moon: a deep disc that reads on any sky
+  const mistCol = mix(pal.glow, '#ffffff', 0.5), rainCol = mistCol;
+  const trailCol = mix(moonCol, pal.glow, 0.35);
+  const grainDark = rgba(mix(sandDry, INK, 0.4), 0.3), rippleMark = rgba(mix(sandDry, INK, 0.25), 0.16);
+  const pebbleCol = [0, 1, 2].map((k) => mix(sandDry, INK, 0.35 + k * 0.08));
+  const lampHot = mix(lampCol, '#fff6e0', 0.55), glassDark = mix(mix(sandWet, INK, 0.5), pal.deep, 0.2);
 
   // ---- geometry (re-fitted on resize)
   let s = 1, cr = 20, W = 300, H = 440, cx = 0, x0 = 0, x1 = 0, y0 = 0, y1 = 0, ar = 150, ary = 150, ac = 0, br = 20;
@@ -175,7 +182,7 @@ export function create(E) {
   let drag = null, fingerQ = 0, fingX = 0, fingY = 0, grabK = 0;
   let lastNote = 0, lastHap = 0, lastRefuse = -9, lastLockCk = -9;
   let markerVis = 0, lampAt = -1, doneFlag = false, finAt = -1, twAt = -1;
-  let still = 0, rainAmt = 1, holdQ = -1;
+  let still = 0, rainAmt = 1, holdQ = -1, nudge = 0;   // nudge: the gentle "not yet" glow (works with reduced motion too)
   const wob = new Wobble();
   const tmp = { x: 0, y: 0, nx: 1, ny: 0 }, tmp2 = { x: 0, y: 0, nx: 1, ny: 0 }, pr = { p: 0, d: 0 };
   const notchP = (k) => (k + 1) / N;
@@ -428,6 +435,7 @@ export function create(E) {
       if (k >= 0 && k < N && !flat[k]) holdQ = clamp(1 - Math.abs(amp[k] - rowTarget(k)) / Math.max(0.12, A0 * 0.6));
     }
     wob.update(dt);
+    nudge = Math.max(0, nudge - dt * 1.7);
     grabK = Math.max(0, grabK - dt * (drag != null ? 0 : 2.5));
     if (drag != null) grabK = Math.min(1, grabK + dt * 6);
   }
@@ -536,7 +544,7 @@ export function create(E) {
     if (ma > 0.005) for (let i = 0; i < 3; i++) {
       const u = ((0.15 + i * 0.37 + t * 0.006 * (i + 1) * speedK) % 1.5) - 0.25;
       const y = y0 + (horizonY - y0) * (0.4 + i * 0.2);
-      g.save(); g.translate(x0 + u * W, y); g.scale(4.2, 0.55); glow(g, 0, 0, W * 0.16, mix(pal.glow, '#ffffff', 0.5), ma); g.restore();
+      g.save(); g.translate(x0 + u * W, y); g.scale(4.2, 0.55); glow(g, 0, 0, W * 0.16, mistCol, ma); g.restore();
     }
     // moonlight on the sky
     glow(g, mx, my, cr * 5.5, moonCol, 0.22 + 0.12 * still + 0.2 * fin);
@@ -703,10 +711,10 @@ export function create(E) {
     g.fillStyle = sandGrad; g.fillRect(x0 - 2, shoreY - 3, W + 4, shoreH + 6);
     // speckles + faint ripple marks in the sand
     for (let i = 0; i < SPK; i++) {
-      g.fillStyle = spS[i] > 0.5 ? rgba('#ffffff', 0.22 * spS[i]) : rgba(mix(sandDry, INK, 0.4), 0.3);
+      g.fillStyle = spS[i] > 0.5 ? rgba('#ffffff', 0.22 * spS[i]) : grainDark;
       g.fillRect(x0 + spU[i] * W, shoreY + spV[i] * shoreH, 1.3, 1.3);
     }
-    g.strokeStyle = rgba(mix(sandDry, INK, 0.25), 0.16); g.lineWidth = 1;
+    g.strokeStyle = rippleMark; g.lineWidth = 1;
     for (let i = 0; i < 3; i++) {
       const y = shoreY + shoreH * (0.5 + i * 0.17);
       g.beginPath();
@@ -782,7 +790,7 @@ export function create(E) {
   function drawRain(t) {
     if (rainAmt <= 0.01) return;
     g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
-    g.strokeStyle = rgba(mix(pal.glow, '#ffffff', 0.5), 0.16 * rainAmt); g.lineWidth = 1;
+    g.strokeStyle = rgba(rainCol, 0.16 * rainAmt); g.lineWidth = 1;
     g.beginPath();
     const hgt = shoreY - y0, spd = reduced ? 0.25 : 1;
     for (let i = 0; i < RAIN; i++) {
@@ -820,7 +828,7 @@ export function create(E) {
     const iEnd = Math.min(railN - 1, Math.max(1, Math.round(binIndex(hp))));
     g.globalCompositeOperation = 'lighter';
     for (const [w, a] of TRAIL_PASSES) {
-      g.strokeStyle = rgba(mix(moonCol, pal.glow, 0.35), a * (1 + fin)); g.lineWidth = w * s;
+      g.strokeStyle = rgba(trailCol, Math.min(1, a * (1 + fin))); g.lineWidth = w * s;
       g.beginPath(); g.moveTo(railX[0], railY[0]); for (let i = 2; i < iEnd; i += 2) g.lineTo(railX[i], railY[i]); g.lineTo(railX[iEnd], railY[iEnd]); g.stroke();
     }
     g.globalCompositeOperation = 'source-over';
@@ -853,16 +861,19 @@ export function create(E) {
   function drawCrescent(t, x, y, nx, ny, r, full, fin) {
     const idle = drag == null && rot < 0.01 && finAt < 0 ? 0.5 + 0.5 * Math.sin(t * 2.2) : 0;
     // contact shadow keeps the moon readable over any realm sky
-    if (full < 1) softShadow(g, x + 1.5 * s, y + 3 * s, r * 1.2, r * 1.1, 0.3 * (1 - full));
-    // halo: a wide warm bloom and a tight cool core
-    glow(g, x, y, r * (3.6 + grabK * 0.9 + full * 2), moonHalo, 0.34 + 0.22 * grabK + 0.18 * idle + 0.3 * fin);
-    glow(g, x, y, r * 1.8, '#ffffff', 0.16 + 0.14 * grabK + 0.1 * full);
+    if (full < 1) softShadow(g, x + 1.5 * s, y + 3 * s, r * 1.25, r * 1.15, 0.42 * (1 - full));
+    // halo: a wide warm bloom and a tight cool core (kept compact so it never washes over the title)
+    glow(g, x, y, r * (3 + grabK * 0.8 + full * 2.2), moonHalo, 0.3 + 0.22 * grabK + 0.16 * idle + 0.3 * fin + 0.25 * nudge);
+    glow(g, x, y, r * 1.7, '#ffffff', 0.16 + 0.14 * grabK + 0.1 * full + 0.12 * nudge);
+    // "not yet": a soft ring of moonlight swells once (no movement, so it also works with reduced motion)
+    if (nudge > 0) { g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = rgba(moonCol, 0.5 * nudge); g.lineWidth = 2 * s; g.beginPath(); g.arc(x, y, r * (1.18 + (reduced ? 0 : 0.2 * (1 - nudge))), 0, TAU); g.stroke(); g.restore(); }
     if (idle > 0) { g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = rgba(moonCol, 0.3 * idle); g.lineWidth = 1.6; g.beginPath(); g.arc(x, y, r * (1.45 + idle * 0.35), 0, TAU); g.stroke(); g.restore(); }
     g.save(); g.translate(x, y); g.rotate(Math.atan2(ny, nx)); g.scale(r / cr, r / cr);
     const R0 = cr;
     // earthshine: the rest of the moon, faint
-    g.fillStyle = rgba(mix(moonCol, pal.deep, 0.5), 0.34 * (1 - full));
+    g.fillStyle = rgba(earthCol, 0.62 * (1 - full));
     g.beginPath(); g.arc(0, 0, R0 * 0.985, 0, TAU); g.fill();
+    g.strokeStyle = rgba(moonCol, 0.3 * (1 - full)); g.lineWidth = 1; g.stroke();
     // the finale: the shadowed part fills in to a full moon with soft maria
     if (full > 0) {
       g.globalAlpha = full; g.fillStyle = moonGrad; g.beginPath(); g.arc(0, 0, R0, 0, TAU); g.fill();
@@ -925,9 +936,11 @@ export function create(E) {
     return q.d < Math.max(30, 24 * s) && q.p > rot - 0.06 && q.p < rot + 0.16;
   }
   const inWindow = (x, y) => x > x0 && x < x1 && y < y1 && (y > ac || Math.hypot((x - cx) / ar, (y - ac) / ary) < 1);
-  function refuse(t) {
+  /** a gentle "not yet": the crescent wobbles (or just glows, with reduced motion) and bubbles softly */
+  function refuse(t, byLaw = false) {
+    if (byLaw && t - lastLockCk > 0.6) { lastLockCk = t; E.checkpoint('wait'); }
     if (t - lastRefuse < 0.5) return;
-    lastRefuse = t; wob.kick(0.45);
+    lastRefuse = t; wob.kick(0.45); nudge = 1;
     E.sound('bubble', { note: 1, intensity: 0.2 }); hap('light');
   }
 
@@ -964,11 +977,13 @@ export function create(E) {
       const ask = Math.min(q, cap);
       if (ask > wanted) wanted = Math.min(ask, rot + BANK);
       if (q > cap + 0.03 && rot >= cap - 2e-3 && cap < 1) refuse(t);          // the wave is still flattening
-      if (E.locked && q > rot + BANK * 0.9 && t - lastLockCk > 0.6) { lastLockCk = t; E.checkpoint('wait'); refuse(t); }
+      if (E.locked && q > rot + BANK * 0.9) refuse(t, true);                    // the world law asks for a pause
     },
     up(p) { if (p.id === drag) { drag = null; } },
     assist() {
       if (finAt >= 0) return;
+      // the world law is asking for a pause: say "not yet" (a step already under way keeps easing through the gate)
+      if (E.locked) { refuse(E.now(), true); return; }
       const cap = holdCap(), base = Math.max(wanted, rot);
       if (base >= cap - 1e-4) { if (cap < 1 || !flat[N - 1]) refuse(E.now()); return; }
       const step = 1 / (2 * N);

@@ -48,7 +48,7 @@ export function create(E) {
   // ------------------------------------------------------------- tiles --
   // round 1: the sentence sits in the middle and is the quietest, so it clears last
   const wordsSlot = E.round === 1 ? 1 : Math.floor(R() * N);
-  const louds = [1, 0.7, 0.46].map((v) => v * (1 - calm0 * 0.35));
+  const louds = [1, 0.74, 0.54].map((v) => v * (1 - calm0 * 0.35));
   const n = photos.n;
   const list = Array.from({ length: n }, (_, i) => (i + E.round - 1) % n);
   const nA = Math.ceil(n / 2);
@@ -71,7 +71,7 @@ export function create(E) {
 
   // ------------------------------------------------------------ layout --
   let TW, TH, GAP, RAD, CW, trackW, GW, GH, wordSize, S = 1;
-  let plateGrad, hiGrad, bandGrad, gripGrad;
+  let plateGrad, hiGrad, bandGrad, gripGrad, bevelGrad, innerGrad;
   function fit() {
     S = stage.s;
     TW = Math.min(stage.w * 0.9, 430);
@@ -102,11 +102,16 @@ export function create(E) {
     }
     // static gradients in tile-local coordinates
     plateGrad = g.createLinearGradient(0, -TH / 2, 0, TH / 2);
-    plateGrad.addColorStop(0, rgba(mix(pal.ink, '#ffffff', 0.16), 0.8));
-    plateGrad.addColorStop(0.55, rgba(mix(pal.ink, pal.deep, 0.35), 0.84));
-    plateGrad.addColorStop(1, rgba(mix(pal.ink, '#000010', 0.3), 0.9));
+    plateGrad.addColorStop(0, rgba(mix(mix(pal.ink, pal.deep, 0.45), '#ffffff', 0.1), 0.88));
+    plateGrad.addColorStop(0.5, rgba(mix(pal.ink, pal.deep, 0.25), 0.9));
+    plateGrad.addColorStop(1, rgba(mix(pal.ink, '#000010', 0.35), 0.94));
     hiGrad = g.createLinearGradient(0, -TH / 2, 0, -TH / 2 + TH * 0.45);
-    hiGrad.addColorStop(0, 'rgba(255,255,255,0.13)'); hiGrad.addColorStop(1, 'rgba(255,255,255,0)');
+    hiGrad.addColorStop(0, 'rgba(255,255,255,0.12)'); hiGrad.addColorStop(1, 'rgba(255,255,255,0)');
+    bevelGrad = g.createLinearGradient(0, -TH / 2, 0, TH / 2);
+    bevelGrad.addColorStop(0, 'rgba(255,255,255,0.42)'); bevelGrad.addColorStop(0.3, 'rgba(255,255,255,0.05)');
+    bevelGrad.addColorStop(0.8, 'rgba(255,255,255,0.03)'); bevelGrad.addColorStop(1, 'rgba(255,255,255,0.18)');
+    innerGrad = g.createRadialGradient(TW * 0.3, 0, 0, TW * 0.3, 0, TW * 0.75);
+    innerGrad.addColorStop(0, 'rgba(255,255,255,1)'); innerGrad.addColorStop(1, 'rgba(255,255,255,0)');
     bandGrad = g.createLinearGradient(-TW / 2, 0, -TW / 2 + TW * 0.17, 0);
     bandGrad.addColorStop(0, rgba(quietCol, 0.3)); bandGrad.addColorStop(1, rgba(quietCol, 0));
     gripGrad = g.createLinearGradient(-GW / 2, 0, GW / 2, 0);
@@ -266,16 +271,22 @@ export function create(E) {
     g.fillStyle = bandGrad; g.fillRect(-TW / 2, -TH / 2, TW * 0.17, TH);
     const sx = sxOf(t.su);
     g.globalCompositeOperation = 'lighter';
+    // coloured light living inside the glass (the tile's own voice); cool and faint once quiet
+    g.globalAlpha = pl.a * (0.07 + 0.2 * vol + 0.1 * t.cue + 0.12 * t.clear);
+    g.fillStyle = innerGrad; g.save(); g.scale(1, TH / TW * 1.6); g.fillRect(-TW / 2, -TW / 2, TW, TW); g.restore();
+    g.globalAlpha = pl.a;
+    roundRect(g, -TW / 2, -TH / 2, TW, TH, RAD); g.fillStyle = rgba(t.ec, 0.05 + 0.13 * vol); g.globalCompositeOperation = 'source-over'; g.fill();
+    g.globalCompositeOperation = 'lighter';
     // the repeating sound layer: level wash + waveform bars from the quiet edge up to the seam
     if (vol > 0.004) {
-      g.fillStyle = rgba(t.ec, 0.03 + 0.12 * vol); g.fillRect(-TW / 2, -TH / 2, sx + TW / 2, TH);
-      const amp = TH * 0.46 * (0.1 + 0.9 * vol), sp = (1 + 3 * vol) * (reduced ? 0.3 : 1);
+      g.fillStyle = rgba(t.ec, 0.04 + 0.14 * vol); g.fillRect(-TW / 2, -TH / 2, sx + TW / 2, TH);
+      const amp = TH * 0.62 * (0.1 + 0.9 * vol), sp = (1 + 3 * vol) * (reduced ? 0.3 : 1);
       g.beginPath();
-      for (let bx = -TW / 2 + 9; bx < sx - 5; bx += 7) {
-        const h = amp * (0.25 + 0.75 * Math.abs(Math.sin(bx * 0.061 + time * sp + t.phase * 6) * Math.sin(bx * 0.017 - time * 0.9 + t.phase)));
-        g.rect(bx, -h / 2, 2.4, h);
+      for (let bx = -TW / 2 + 9; bx < sx - 5; bx += 6) {
+        const h = amp * (0.2 + 0.8 * Math.abs(Math.sin(bx * 0.061 + time * sp + t.phase * 6) * Math.sin(bx * 0.017 - time * 0.9 + t.phase)));
+        g.rect(bx, -h / 2, 2.6, h);
       }
-      g.fillStyle = rgba(t.ec, 0.05 + 0.15 * vol); g.fill();
+      g.fillStyle = rgba(t.ec, 0.08 + 0.24 * vol); g.fill();
       // speaker ripples on the loud side
       g.lineWidth = 2;
       for (let i = 0; i < 3; i++) {
@@ -288,6 +299,8 @@ export function create(E) {
     g.globalCompositeOperation = 'source-over';
     g.fillStyle = hiGrad; g.fillRect(-TW / 2, -TH / 2, TW, TH * 0.45);
     g.restore();
+    // bevel: crisp top edge light, soft bottom lip
+    roundRect(g, -TW / 2 + 1.5, -TH / 2 + 1.5, TW - 3, TH - 3, RAD - 1.5); g.strokeStyle = bevelGrad; g.lineWidth = 1.5; g.stroke();
     // rim (breathes on the loudest tile; bright when chosen)
     roundRect(g, -TW / 2, -TH / 2, TW, TH, RAD);
     g.strokeStyle = rgba(sel > 0.05 || t.cue > 0.05 ? mix(t.ec, '#ffffff', 0.35) : '#ffffff', Math.min(0.95, 0.16 + 0.45 * sel + 0.5 * t.cue)); g.lineWidth = 1.2 + 1.3 * sel + t.cue; g.stroke();
