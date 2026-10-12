@@ -148,6 +148,7 @@ async function devLab() {
 // V3 lab (localhost only): play one of the 1,000 rituals straight away.
 //   index.html?v3=HM-0001&photos=3&text=I%27m%20furious%20about%20work
 //   index.html?engine=GE-07&law=3&photos=0      (any engine × law pair, built or not)
+//   photos=0 plays with the seven Mallow cards; add &mallows=0 for none at all
 async function v3Lab(qs) {
   const R = await import('../v3/rituals.js');
   const code = qs.get('v3') || R.codeFor(qs.get('engine').toUpperCase(), qs.get('law') || 1);
@@ -156,6 +157,7 @@ async function v3Lab(qs) {
   spec.params.v3.force = true;
   // QA sweeps only: run the host clock faster (pacing only; every step still needs input)
   if (qs.get('speed')) spec.params.v3.speed = Math.max(1, Math.min(6, Number(qs.get('speed')) || 1));
+  if (qs.get('mallows') === '0') spec.params.v3.noMallows = true;
   if (!ent.has('ultra')) await ent.purchase('ultra');
   const n = Number(qs.get('photos') || 0);
   if (n > 0) {

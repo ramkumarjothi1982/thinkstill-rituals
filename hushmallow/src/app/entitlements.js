@@ -24,7 +24,7 @@ export const PLANS = {
       'All seven living Mallows and their reactions',
       'The Hushfold: seven realms that respond to how you feel',
       'Over 1,000 interactive touch rituals for the whole A–Z of feelings',
-      'Your own words and up to 7 of your own photos inside the ritual (they never leave your phone)',
+      'Your own words and up to 6 of your own photos inside the ritual (they never leave your phone), or the seven Mallows when you add none',
       'Suggestions that rotate so things stay fresh',
       'Favourites and optional private history',
       'New rituals as the library grows',

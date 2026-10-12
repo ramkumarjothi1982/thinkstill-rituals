@@ -1,5 +1,6 @@
-// Photo tray: add up to 7 photos, tap one to replace it, × to remove it.
-// Shown on the "What's happening" screen (and in the test panel).
+// Photo tray: add up to six photos, tap one to replace it, × to remove it.
+// Shown on the "What's happening" screen. With none, the seven Mallows take
+// the photos' place in the ritual.
 import { h, icon } from '../app/ui.js';
 import { photoSession, MAX_PHOTOS } from './photos.js';
 
@@ -30,6 +31,6 @@ export function photoTray({ note = true } = {}) {
   const el = h('div', { class: 'photo-block' },
     h('div', { class: 'photo-head' }, h('span', {}, 'Add photos (optional)'), count),
     tray, input,
-    note ? h('p', { class: 'muted photo-note' }, 'People, places, screenshots, things — up to 7. They become part of your ritual, stay only on this phone, and are cleared afterwards. Never uploaded or shared.') : null);
+    note ? h('p', { class: 'muted photo-note' }, 'People, places, screenshots, things — up to 6. They become part of your ritual, stay only on this phone, and are cleared afterwards. Never uploaded or shared. No photos? The seven Mallows play the part instead.') : null);
   return { el, destroy: off };
 }

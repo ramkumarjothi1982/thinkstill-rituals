@@ -1,5 +1,9 @@
 // Hushmallow photos — the person's own images, used as ritual material.
 //
+// Up to six. When the person adds none, the seven Mallows take their place
+// (see mallow-cards.js): photoApi() is handed those cards as a fallback, so
+// every engine still gets real material to move and transform.
+//
 // PRIVACY: photos live only in this tab's memory. They are never written to
 // storage, never sent over the network, never used for training or by any
 // bot, and never placed on a share card. The session is cleared after a
@@ -17,7 +21,7 @@
 
 import { clamp, rgba, rng, canvas as makeCanvas, TAU, lerp } from './fx.js';
 
-export const MAX_PHOTOS = 7;
+export const MAX_PHOTOS = 6;
 const MAX_EDGE = 1024;          // downscale on import (also strips metadata)
 const SPRITE_STEP = 24;         // sprite size bucket (device px)
 const SPRITE_MAX = 640;
@@ -80,20 +84,24 @@ function analyse(c) {
 }
 function hexOf(r, g, b) { const c = (v) => Math.round(clamp(v, 0, 255)).toString(16).padStart(2, '0'); return `#${c(r)}${c(g)}${c(b)}`; }
 
+/** A photo entry for a canvas (focus and colours measured; `extra` overrides). */
+export function photoItem(c, extra = {}) {
+  return { id: nextId++, img: c, w: c.width, h: c.height, aspect: c.width / c.height, ...analyse(c), ...extra };
+}
+
 export const photoSession = {
   max: MAX_PHOTOS,
   get list() { return items; },
   get count() { return items.length; },
   get keep() { return keepNext; },
   set keep(v) { keepNext = !!v; emit(); },
-  /** Add image files (extra files beyond 7 are ignored). Resolves to how many were added. */
+  /** Add image files (extra files beyond six are ignored). Resolves to how many were added. */
   async add(files) {
     let added = 0;
     for (const f of [...(files || [])]) {
       if (items.length >= MAX_PHOTOS) break;
       try {
-        const img = await decode(f);
-        items.push({ id: nextId++, img, w: img.width, h: img.height, aspect: img.width / img.height, ...analyse(img) });
+        items.push(photoItem(await decode(f)));
         added++;
       } catch (e) { console.warn('[photos] skipped a file', e?.message || e); }
     }
@@ -104,8 +112,7 @@ export const photoSession = {
     const i = items.findIndex((p) => p.id === id);
     if (i < 0) return false;
     try {
-      const img = await decode(file);
-      items[i] = { id: nextId++, img, w: img.width, h: img.height, aspect: img.width / img.height, ...analyse(img) };
+      items[i] = photoItem(await decode(file));
       spriteCache.clear(); emit(); return true;
     } catch { return false; }
   },
@@ -142,7 +149,7 @@ export function addPhotoCanvases(list) {
     const k = Math.min(1, MAX_EDGE / Math.max(src.width, src.height));
     const c = document.createElement('canvas'); c.width = Math.round(src.width * k); c.height = Math.round(src.height * k);
     c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
-    items.push({ id: nextId++, img: c, w: c.width, h: c.height, aspect: c.width / c.height, ...analyse(c) });
+    items.push(photoItem(c));
   }
   spriteCache.clear(); emit();
 }
@@ -405,19 +412,22 @@ function renderDissolve(s, t, edge) {
 /**
  * The photo API handed to a ritual engine. `particles` is the host's shared
  * Particles pool (for dust). All sizes are CSS px; `dpr` is the canvas scale.
+ * `fallback` (the Mallow cards) stands in while the person has no photos.
  */
-export function photoApi({ particles, dpr = 1, seed = 1 } = {}) {
-  const list = () => items;
-  const P = (i) => (i == null || i < 0 ? null : items[i] || null);
+export function photoApi({ particles, dpr = 1, seed = 1, fallback = [] } = {}) {
+  const mat = () => (items.length ? items : fallback);
+  const P = (i) => (i == null || i < 0 ? null : mat()[i] || null);
   const api = {
-    get n() { return items.length; },
-    get list() { return items; },
+    get n() { return mat().length; },
+    get list() { return mat(); },
+    /** True when the Mallow cards are standing in for the person's photos. */
+    get standIn() { return !items.length && fallback.length > 0; },
     /**
      * Spread photos over k objects: [-1…] with none, the single photo on
      * object 0 (or every object with {repeat:true}), else round-robin.
      */
     assign(k, { repeat = false } = {}) {
-      const n = items.length;
+      const n = mat().length;
       return Array.from({ length: k }, (_, i) => (n === 0 ? -1 : n === 1 ? (repeat || i === 0 ? 0 : -1) : i % n));
     },
     /** Width/height of photo i in a shape at a given longest side. */

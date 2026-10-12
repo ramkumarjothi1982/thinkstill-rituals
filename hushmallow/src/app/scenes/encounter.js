@@ -44,7 +44,7 @@ export default function encounter(app) {
   function photoButton() {
     const n = photoSession.count;
     return h('button', { class: 'btn ghost block photo-add-inline', onclick: () => picker.click() },
-      icon('camera'), n ? (n < photoSession.max ? `Add more photos (${n}/${photoSession.max})` : `${n} photos added`) : 'Add your photos to this ritual (optional)');
+      icon('camera'), n ? (n < photoSession.max ? `Add more photos (${n}/${photoSession.max})` : `${n} photos added`) : `Add up to ${photoSession.max} of your photos (optional)`);
   }
 
   const card = h('div', { class: 'card enc-card' });
@@ -74,7 +74,7 @@ export default function encounter(app) {
       h('h3', { style: { marginTop: '8px', fontSize: '26px' } }, r.name),
       h('p', {}, r.purpose),
       h('div', { class: 'reasons' }, ...o.reasons.filter((x) => !/minute/.test(x)).map((x) => h('span', {}, x)), h('span', {}, `About ${mins} min`),
-        r.module === 'v3' && photoSession.count ? h('span', {}, `With your ${photoSession.count} photo${photoSession.count > 1 ? 's' : ''}`) : null),
+        r.module === 'v3' ? h('span', {}, photoSession.count ? `With your ${photoSession.count} photo${photoSession.count > 1 ? 's' : ''}` : 'With the seven Mallows') : null),
       r.module === 'v3' ? photoButton() : null,
       h('div', { style: { display: 'grid', gap: '8px', marginTop: '16px' } },
         h('button', { class: 'btn primary block', onclick: () => begin(o) }, 'Let’s do it'),

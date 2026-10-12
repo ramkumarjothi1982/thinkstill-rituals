@@ -1,6 +1,7 @@
 // V3 RITUAL HOST — runs any of the 1,000 rituals: one touch engine + one
 // world law, led by one Mallow in its realm, with the person's own words
-// (and, if they added any, their own photos) inside the scene.
+// (and their own photos, or the seven Mallows when they add none) inside
+// the scene.
 //
 // Flow: play the engine (gated by the law) → the law's closing move (phase
 // laws) → finale (engine payoff + law light finale + realm resolves) → mind
@@ -15,6 +16,7 @@ import { ENGINES, LAWS, SKILLS } from './data/catalog.js';
 import * as fx from './fx.js';
 import { createWords, drawWords, TOKEN_MAX, excerpt } from './words.js';
 import { photoSession, photoApi } from './photos.js';
+import { mallowMaterial } from './mallow-cards.js';
 import { createLaw, drawLightFinale, LAW_LOCK_TEXT } from './laws.js';
 import { loadEngine } from './engines/index.js';
 import { REALMS } from '../world/realm.js';
@@ -39,7 +41,9 @@ export async function run(ctx) {
   const { world, app, ritual, signal, dock } = ctx;
   const v = ritual.params.v3;
   const ENG = ENGINES[v.engine], LAW = LAWS[v.law - 1], SKILL = SKILLS[v.skill];
-  const [copyAll, engMod] = await Promise.all([loadCopy(ENG.id), loadEngine(ENG.id, { force: !!v.force })]);
+  // no photos of their own: the seven Mallows become the ritual's material
+  const standIns = photoSession.count || v.noMallows ? [] : mallowMaterial(ritual.mallows[0]).catch(() => []);
+  const [copyAll, engMod, fallback] = await Promise.all([loadCopy(ENG.id), loadEngine(ENG.id, { force: !!v.force }), standIns]);
   if (signal.aborted) return { completed: false };
   const copy = copyAll[v.code] || { open: [], during: [], exit: [], bend: '', twist: '', scene: ritual.name };
   const lead = MALLOWS[ritual.mallows[0]];
@@ -123,7 +127,7 @@ export async function run(ctx) {
   const particles = new Particles(lowStim ? 140 : reduced ? 180 : 360);
   const ripples = new Ripples(24);
   const trail = new Trail(40, 0.5);
-  const photos = photoApi({ particles, dpr: Math.min(2, devicePixelRatio || 1), seed: v.num });
+  const photos = photoApi({ particles, dpr: Math.min(2, devicePixelRatio || 1), seed: v.num, fallback });
   let clock = 0;                            // seconds; stops while paused
   const speed = v.speed || 1;               // dev-lab QA sweeps only
   const now = () => clock;
@@ -209,8 +213,10 @@ export async function run(ctx) {
         h('p', { style: { fontWeight: 700, fontSize: '17px', margin: '0 0 10px' } }, m.howTo || ENG.motion),
         h('ol', { class: 'v3-steps' }, ...steps.map((s) => h('li', {}, s))),
         h('p', { class: 'muted' }, `Prefer tapping? Press “Tap instead” — ${m.tapAlt || 'each press makes one gentle move'}.`),
-        photos.n && pm ? h('div', { class: 'summary-card', style: { marginTop: '10px' } },
+        photoSession.count && pm ? h('div', { class: 'summary-card', style: { marginTop: '10px' } },
           h('div', { class: 'k' }, 'Your photos'), h('div', { class: 'v' }, `${pm.where} They become ${pm.becomes}. ${pm.touch} ${pm.change} ${pm.payoff}`)) : null,
+        photos.standIn ? h('div', { class: 'summary-card', style: { marginTop: '10px' } },
+          h('div', { class: 'k' }, 'The seven Mallows'), h('div', { class: 'v' }, 'You didn’t add photos, so the seven Mallows play their part in this ritual. Add up to six of your own on the ritual card next time.')) : null,
         h('div', { class: 'summary-card', style: { marginTop: '10px' } },
           h('div', { class: 'k' }, 'Skill you’re practising'), h('div', { class: 'v' }, `${SKILL.name}: ${SKILL.does}`),
           h('div', { class: 'k' }, 'Why it can help'), h('div', { class: 'v' }, `${SKILL.insight} (${SKILL.scope})`))),
@@ -422,7 +428,7 @@ export async function run(ctx) {
       h('div', { class: 'eyebrow', style: { color: 'var(--accent)' } }, 'Mind bend'),
       h('p', { class: 'v3-bend' }, bend),
       h('div', { class: 'v3-skill' }, h('b', {}, SKILL.name), ` · ${SKILL.does}`),
-      photos.n ? h('label', { class: 'v3-keep' }, keepBox, ' Keep my photos for the next ritual (otherwise they’re cleared now)') : null,
+      photoSession.count ? h('label', { class: 'v3-keep' }, keepBox, ' Keep my photos for the next ritual (otherwise they’re cleared now)') : null,
       h('div', { class: 'row-btns', style: { marginTop: '12px' } },
         h('button', { class: 'btn', onclick: () => finish(true) }, 'I’m done'),
         h('button', { class: 'btn primary', onclick: () => { app.audio.ui('tap'); nextRound(); } }, icon('refresh'), 'Keep playing')),
@@ -509,7 +515,7 @@ export async function run(ctx) {
       id: ritual.id, engine: ENG.id, law: v.law, phase: phaseName, round,
       keepPlaying: () => { if (phaseName === 'end') nextRound(); }, finishNow: () => finish(true),
       progress: engine ? clamp(engine.progress || 0) : 0, lawProgress: law?.kind === 'phase' ? clamp(law.progress || 0) : null,
-      locked: !!law?.locked, photos: photos.n, token: words.token, stage: { ...stage },
+      locked: !!law?.locked, photos: photos.n, userPhotos: photoSession.count, mallows: photos.standIn, token: words.token, stage: { ...stage },
       hint: () => (phaseName === 'play' ? engine.hint?.() : law?.hint?.()) || null,
       pointAt: (p) => engine?.pointAt?.(p),
     });

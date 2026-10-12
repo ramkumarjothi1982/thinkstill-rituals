@@ -3,8 +3,9 @@
 A mobile-first web app (plain ES modules, no build step, no AI) with seven
 living Mallows, the Hushfold fantasy world, and two paid experiences:
 
-- **Hushmallow** (paid): express a feeling (and, if you like, add up to 7
-  of your own photos), meet a Mallow, play one of **1,000 interactive touch
+- **Hushmallow** (paid): express a feeling (and, if you like, add up to 6
+  of your own photos; with none, the seven Mallows take their place inside
+  the ritual), meet a Mallow, play one of **1,000 interactive touch
   rituals** with your own words and photos inside it, keep playing as long
   as it helps, notice how it feels. Plus ten signature rituals.
 - **Hushmallow Ultra**: everything above, plus **Another Angle** (Reframe):

@@ -20,6 +20,8 @@ import { createStore } from '../src/engine/storage.js';
 import { planOptions } from '../src/engine/next.js';
 import { createRound } from '../src/engine/round.js';
 import { AVAILABLE } from '../src/rituals/index.js';
+import { MAX_PHOTOS, photoSession, photoApi } from '../src/v3/photos.js';
+import { MALLOWS, MALLOW_IDS as REGISTRY_IDS } from '../src/mallows/registry.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const copyFor = async (id) => (await import(`../src/v3/data/copy/${id.toLowerCase()}.js`)).default;
@@ -157,8 +159,32 @@ test('rounds: no V3 ritual repeats until the whole plan has been offered', () =>
   assert.equal(planOptions({ rec, req, rituals, seen: round.seen(), limit: 1 }).options.length, 0);
 });
 
+test('photos: up to six of the person’s own; with none, the seven Mallows stand in', () => {
+  assert.equal(MAX_PHOTOS, 6);
+  assert.equal(photoSession.max, 6);
+  assert.equal(photoSession.count, 0);
+  // the cards are painted from the seven approved Mallow artworks
+  assert.equal(REGISTRY_IDS.length, 7);
+  for (const id of REGISTRY_IDS) assert.ok(existsSync(fileURLToPath(MALLOWS[id].file)), `${id} artwork`);
+  // engines see the stand-ins as ordinary material while the person has no photos
+  const card = (i) => ({ id: 1000 + i, colour: `#00000${i}`, grid: Array(64).fill(`#00000${i}`), aspect: 0.8, w: 560, h: 700 });
+  const api = photoApi({ fallback: Array.from({ length: 7 }, (_, i) => card(i)) });
+  assert.equal(api.n, 7);
+  assert.equal(api.standIn, true);
+  assert.deepEqual(api.assign(9), [0, 1, 2, 3, 4, 5, 6, 0, 1]);
+  assert.equal(api.colour(3), '#000003');
+  const none = photoApi();
+  assert.equal(none.n, 0); assert.equal(none.standIn, false); assert.deepEqual(none.assign(2), [-1, -1]);
+  // the host uses them only when the person added none, and never treats them as theirs
+  const host = readFileSync(`${root}src/v3/host.js`, 'utf8');
+  assert.match(host, /photoSession\.count \|\| v\.noMallows \? \[\] : mallowMaterial\(/);
+  assert.match(host, /photoSession\.count \? h\('label', \{ class: 'v3-keep' \}/, 'the keep option is only for the person’s own photos');
+  assert.match(host, /photoSession\.count && pm \?/, 'the “Your photos” card is only for the person’s own photos');
+  assert.doesNotMatch(readFileSync(`${root}src/v3/mallow-cards.js`, 'utf8'), /photoSession|items\.push/, 'the cards never join the person’s photo session');
+});
+
 test('photos never leave the device: no storage or network in the photo system', () => {
-  const src = readFileSync(`${root}src/v3/photos.js`, 'utf8') + readFileSync(`${root}src/v3/tray.js`, 'utf8') + readFileSync(`${root}src/v3/host.js`, 'utf8');
+  const src = ['photos', 'tray', 'host', 'mallow-cards'].map((f) => readFileSync(`${root}src/v3/${f}.js`, 'utf8')).join('\n');
   assert.doesNotMatch(src, /localStorage|sessionStorage|indexedDB|fetch\(|XMLHttpRequest|WebSocket|sendBeacon|toDataURL/);
   assert.match(readFileSync(`${root}src/v3/host.js`, 'utf8'), /photoSession\.release\(\)/);
   assert.ok(existsSync(`${root}src/v3/dev/sample-photos.js`));
