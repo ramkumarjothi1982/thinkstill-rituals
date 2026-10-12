@@ -66,8 +66,8 @@ export function create(E) {
     ink: '#fff7ec',
     b0: mix(pal.ink || pal.deep, '#02010a', 0.5),
     b1: mix(mix(pal.deep, pal.ink || pal.deep, 0.5), pal.accent, 0.08 + 0.1 * tint),
-    b2: mix(mix(pal.deep, pal.glow, 0.3), mix(pal.warm, '#ffffff', 0.5), 0.1 + 0.12 * (1 - tint)),
-    hi: mix(pal.glow, '#ffffff', 0.55),
+    b2: mix(mix(mix(pal.deep, pal.ink || pal.deep, 0.25), pal.glow, 0.24), mix(pal.warm, '#ffffff', 0.5), 0.08 + 0.1 * (1 - tint)),
+    hi: mix(pal.glow, '#ffffff', 0.45),
   };
 
   // ---- geometry (re-fitted on resize)
@@ -208,8 +208,8 @@ export function create(E) {
       const gr = sg.createLinearGradient(ox + cm * om / KG, oy + sm * om / KG, ox + cm * om, oy + sm * om);
       const dk = clamp(ps / psMax) * 0.5;
       const st = (c) => mix(c, C.b0, dk);
-      gr.addColorStop(0, st(mix(C.b0, C.b1, 0.3))); gr.addColorStop(0.16, st(C.b1)); gr.addColorStop(0.5, st(C.b2));
-      gr.addColorStop(0.62, st(mix(C.b2, C.hi, 0.3))); gr.addColorStop(0.76, st(C.b2)); gr.addColorStop(0.9, st(C.b1)); gr.addColorStop(1, st(mix(C.b1, C.b0, 0.55)));
+      gr.addColorStop(0, st(C.b0)); gr.addColorStop(0.14, st(mix(C.b0, C.b1, 0.7))); gr.addColorStop(0.46, st(C.b2));
+      gr.addColorStop(0.6, st(mix(C.b2, C.hi, 0.42))); gr.addColorStop(0.67, st(C.b2)); gr.addColorStop(0.86, st(C.b1)); gr.addColorStop(1, st(mix(C.b1, C.b0, 0.6)));
       sg.fillStyle = gr;
       sg.beginPath();
       sg.moveTo(ox + c1 * o1, oy + s1 * o1); sg.lineTo(ox + c2 * o2, oy + s2 * o2);
@@ -313,7 +313,7 @@ export function create(E) {
   // ---- charms along the groove: photos as pearl echo charms, pearls between
   const n = photos.n, KC = Math.max(5, n);
   const slot = Array.from({ length: KC }, () => -1);
-  const shift = E.round > 1 ? Math.floor(E.rand() * KC) : 0;
+  const shift = E.round > 1 ? (n === 1 ? (E.round + 1) % 2 : Math.floor(E.rand() * KC)) : 0;
   if (n) for (let j = 0; j < n; j++) slot[(Math.round((j * KC) / n) + shift) % KC] = (j + E.round - 1) % n;
   const charms = slot.map((ph, j) => ({ ph, u: 0.08 + (0.62 * j) / (KC - 1), q: 0, passed: false, seed: E.rand() * TAU }));
   const heroPh = n ? (E.round === 1 ? 0 : Math.floor(E.rand() * n)) : -1;
@@ -322,7 +322,7 @@ export function create(E) {
   const charmSize = (c, u = c.u) => {
     const q = pathAt(u), rp = Math.hypot(q.x - ox, q.y - oy);
     const sz = clamp(rp * 0.66, 40, 74 * s);
-    return c.ph >= 0 ? sz : sz * 0.72;
+    return c.ph >= 0 ? sz : sz * 0.62;
   };
 
   // ---- state
@@ -402,9 +402,10 @@ export function create(E) {
     g.restore();
 
     drawGuide(t, fin);
-    drawCharms(t, fin);
+    drawCharms(t, fin, false);
     drawWordsOnLip(t, fin);
     drawCore(t, settle, fin);
+    if (finAt >= 0) drawCharms(t, fin, true);
     drawHead(t, head, wv, fin);
     drawTwist(t);
     drawFinale(t, fin);
@@ -429,7 +430,7 @@ export function create(E) {
     for (let j = 0; j < 48; j++) {
       const r = hr - (j + fIn) * lf;
       if (r < coreR * 0.8) break;
-      const a = 0.34 * (1 - fin) * smooth(clamp((hr - r) / (lf * 1.3))) * smooth(clamp((r - coreR * 0.8) / (lf * 1.6)));
+      const a = (0.36 + 0.3 * Math.exp(-j * 0.45)) * (1 - fin) * smooth(clamp((hr - r) / (lf * 1.3))) * smooth(clamp((r - coreR * 0.8) / (lf * 1.6)));
       if (a < 0.01) continue;
       g.strokeStyle = rgba(C.tense, a);
       g.beginPath();
@@ -453,17 +454,17 @@ export function create(E) {
       if (r > R * 1.02) break;
       const a = quiet * smooth(clamp((r - hr) / (lb * 0.6))) * smooth(clamp((R * 1.02 - r) / (R * 0.14)));
       if (a < 0.01) continue;
-      g.strokeStyle = rgba(C.calm, 0.08 * a); g.lineWidth = lb * 0.4; g.beginPath(); g.arc(ox, oy, r, 0, TAU); g.stroke();
-      g.strokeStyle = rgba(C.calm, 0.24 * a); g.lineWidth = lerp(3, 9, shown) * s; g.stroke();
-      g.strokeStyle = rgba(C.clear, 0.55 * a); g.lineWidth = Math.max(1.2, 1.7 * s); g.stroke();
+      g.strokeStyle = rgba(C.calm, 0.12 * a); g.lineWidth = lb * 0.42; g.beginPath(); g.arc(ox, oy, r, 0, TAU); g.stroke();
+      g.strokeStyle = rgba(C.calm, 0.32 * a); g.lineWidth = lerp(4, 11, shown) * s; g.stroke();
+      g.strokeStyle = rgba(C.calm, 0.62 * a); g.lineWidth = Math.max(1.3, 1.8 * s); g.stroke();
     }
     // the one clear ring, carried inwards by the trace
     const breathe = reduced ? 0 : Math.sin(t * 1.25) * 0.5 + 0.5;
     const ca = 0.62 + 0.38 * settle;
     g.beginPath(); g.arc(ox, oy, clearR * (1 + 0.015 * breathe * settle), 0, TAU);
-    g.strokeStyle = rgba(C.calm, 0.13 * ca); g.lineWidth = Math.max(12, R * 0.08); g.stroke();
-    g.strokeStyle = rgba(C.clear, (0.3 + 0.1 * breathe) * ca); g.lineWidth = 7 * s; g.stroke();
-    g.strokeStyle = rgba('#ffffff', 0.85 * ca); g.lineWidth = Math.max(1.8, 2.6 * s); g.stroke();
+    g.strokeStyle = rgba(C.clear, 0.15 * ca); g.lineWidth = Math.max(14, R * 0.09); g.stroke();
+    g.strokeStyle = rgba(C.clear, (0.38 + 0.1 * breathe) * ca); g.lineWidth = 8 * s; g.stroke();
+    g.strokeStyle = rgba('#ffffff', 0.95 * ca); g.lineWidth = Math.max(2, 3 * s); g.stroke();
     g.restore();
   }
   function drawRibbon(t, fin) {
@@ -502,9 +503,10 @@ export function create(E) {
     const q = pathAt(u);
     return q;
   }
-  function drawCharms(t, fin) {
+  function drawCharms(t, fin, heroOnly) {
     charms.forEach((c, j) => {
       const isHero = j === hero && finAt >= 0;
+      if (isHero !== heroOnly) return;
       const glideK = isHero ? ease.inOutSine(clamp((t - finAt) / 2.6)) : 0;
       const q = charmPos(c, j, t, fin);
       let sz = charmSize(c, isHero ? lerp(c.u, 1, glideK * 0.5) : c.u);
@@ -529,7 +531,7 @@ export function create(E) {
         const pr = sz * 0.36;
         if (un > 0.02) for (let sg = -1; sg <= 1; sg += 2) orb(g, x + tx * echo * sg, y + ty * echo * sg, pr, C.tense, { alpha: 0.28 * un });
         glow(g, x, y + bob, pr * 2.6, c.q > 0.5 ? C.calm : C.tense, 0.3 + 0.25 * c.q);
-        orb(g, x, y + bob, pr, mix(mix(C.pearl, C.tense, 0.35 * un), C.calm, 0.15 * c.q));
+        orb(g, x, y + bob, pr, mix(mix(C.pearl, C.tense, 0.22 * un), C.calm, 0.12 * c.q));
       }
     });
   }
@@ -557,7 +559,8 @@ export function create(E) {
   function drawCore(t, settle, fin) {
     const br = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(t * 0.9);
     glow(g, ox, oy, coreR * (2 + 0.8 * shown + fin), C.calm, 0.16 + 0.34 * shown + 0.2 * fin + 0.05 * br);
-    orb(g, ox, oy, coreR * (0.34 + 0.08 * settle), mix(C.pearl, C.clear, settle), { alpha: 0.9 });
+    const heroIn = finAt >= 0 ? smooth(clamp((t - finAt - 1.6) / 1.0)) : 0;
+    if (heroIn < 1) orb(g, ox, oy, coreR * (0.34 + 0.08 * settle), mix(C.pearl, C.clear, settle), { alpha: 0.9 * (1 - heroIn) });
     if (settleAt >= 0 && !reduced) {
       const k = clamp((t - settleAt) / 1.6);
       if (k < 1) { g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = rgba(C.clear, 0.5 * (1 - k)); g.lineWidth = 2 * s; g.beginPath(); g.arc(ox, oy, restR * (1 + k * 0.6), 0, TAU); g.stroke(); g.restore(); }
@@ -581,8 +584,12 @@ export function create(E) {
       g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = rgba(C.clear, (0.4 + invite * 0.4) * (1 - k)); g.lineWidth = 1.8 * s;
       g.beginPath(); g.arc(x, y, (12 + 22 * k) * s, 0, TAU); g.stroke(); g.restore();
     }
-    glow(g, x, y, (drag != null ? 34 : 27) * s, C.clear, (0.55 + 0.25 * br + invite * 0.3) * a);
-    orb(g, x, y, Math.max(8, 10 * s), C.pearl, { alpha: a });
+    glow(g, x, y, (drag != null ? 42 : 32) * s, C.clear, (0.6 + 0.25 * br + invite * 0.3) * a);
+    if (drag != null && !off) {
+      g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = rgba(C.clear, 0.55 * a); g.lineWidth = 1.6 * s;
+      g.beginPath(); g.arc(x, y, 19 * s, 0, TAU); g.stroke(); g.restore();
+    }
+    orb(g, x, y, Math.max(9, 11 * s), C.pearl, { alpha: a });
   }
   function drawTwist(t) {
     if (twistAt < 0) return;

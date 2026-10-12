@@ -105,30 +105,42 @@ export const photoSession = {
         added++;
       } catch (e) { console.warn('[photos] skipped a file', e?.message || e); }
     }
-    if (added) { spriteCache.clear(); emit(); }
+    if (added) emit();
     return added;
   },
   async replace(id, file) {
     const i = items.findIndex((p) => p.id === id);
     if (i < 0) return false;
     try {
-      items[i] = photoItem(await decode(file));
-      spriteCache.clear(); emit(); return true;
+      const next = photoItem(await decode(file));
+      forget([items[i]]); items[i] = next;
+      emit(); return true;
     } catch { return false; }
   },
-  remove(id) { items = items.filter((p) => p.id !== id); spriteCache.clear(); emit(); },
+  remove(id) {
+    forget(items.filter((p) => p.id === id));
+    items = items.filter((p) => p.id !== id);
+    if (!items.length) keepNext = false;
+    emit();
+  },
   move(id, dir) {
     const i = items.findIndex((p) => p.id === id), j = i + dir;
     if (i < 0 || j < 0 || j >= items.length) return;
     [items[i], items[j]] = [items[j], items[i]]; emit();
   },
-  /** Forget every photo now (wipes pixels too). */
+  /** Forget every photo now (wipes pixels too, including every cached copy). */
   clear() {
-    for (const p of items) { try { p.img.width = p.img.height = 0; } catch { /* ignore */ } }
-    items = []; keepNext = false; spriteCache.clear(); emit();
+    forget(items);
+    items = []; keepNext = false; emit();
   },
-  /** End of a ritual: forget the photos unless the person chose to keep them. */
-  release() { if (!keepNext) photoSession.clear(); },
+  /**
+   * End of a ritual: forget the photos unless the person chose to keep them
+   * for the next ritual. Keeping lasts one ritual, so the next end card
+   * asks again.
+   */
+  release() {
+    if (keepNext && items.length) { keepNext = false; emit(); } else photoSession.clear();
+  },
   onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   /** Small thumbnail canvas for the tray. */
   thumb(p, size = 72) {
@@ -151,8 +163,23 @@ export function addPhotoCanvases(list) {
     c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
     items.push(photoItem(c));
   }
-  spriteCache.clear(); emit();
+  emit();
 }
+
+/**
+ * Forget photos' pixels: the canvas itself and every cached sprite, tone,
+ * piece and dissolve copy made from it. (The Mallow cards are never passed
+ * here, so their cache stays warm.)
+ */
+function forget(list) {
+  const ids = new Set(list.map((p) => p.id));
+  if (!ids.size) return;
+  const mine = (key) => ids.has(Number(key.slice(0, key.indexOf('|'))));
+  for (const [key, v] of spriteCache) if (mine(key)) { for (const c of Array.isArray(v) ? v.map((x) => x.c) : [v]) wipe(c); spriteCache.delete(key); }
+  for (const [key, st] of dissolveCache) if (mine(key)) { st.src?.data?.fill(0); st.out?.data?.fill(0); wipe(st.c); dissolveCache.delete(key); }
+  for (const p of list) wipe(p.img);
+}
+function wipe(c) { try { if (c) c.width = c.height = 0; } catch { /* ignore */ } }
 
 // --------------------------------------------------------------- shapes --
 /** Width / height of each shape. 'card' and 'natural' follow the photo. */
@@ -451,6 +478,9 @@ export function photoApi({ particles, dpr = 1, seed = 1, fallback = [] } = {}) {
       const { shape = 'card', rot = 0, alpha = 1, scale = 1, tone = null, toneMix = 0, blur = 0, glow = 0, glowColour = p.colour,
         dissolve = 0, mode = 'edge', edgeColour = '#fff2c8', shadow = true, sheen = shape === 'bubble', seed: sd = 1, flipX = false, skewY = 0 } = o;
       if (alpha <= 0.002 || dissolve >= 0.999) return { w: 0, h: 0 };
+      // the Mallow cards are characters, not material to erode: tones stay
+      // light and a dissolve becomes a soft fade into light
+      const soft = !!p.mallow, fade = soft ? clamp(dissolve) : 0;
       const S = size * scale, px = S * dpr;
       const { w, h } = api.size(i, shape, S);
       g.save();
@@ -470,17 +500,24 @@ export function photoApi({ particles, dpr = 1, seed = 1, fallback = [] } = {}) {
         g.fillStyle = sg; g.save(); g.scale(1, 0.25); g.beginPath(); g.arc(0, h * 2.2, w * 0.6, 0, TAU); g.fill(); g.restore();
         g.globalAlpha = a0;
       }
-      if (dissolve > 0.001) {
+      if (dissolve > 0.001 && !soft) {
         const st = dissolveState(p, shape, bucket(px), sd, mode);
         const c = renderDissolve(st, clamp(dissolve), hexRGB(edgeColour));
         g.imageSmoothingQuality = 'high';
         g.drawImage(c, -w / 2, -h / 2, w, h);
       } else {
+        const a1 = g.globalAlpha;
+        if (fade) g.globalAlpha = a1 * (1 - fade) ** 1.3;
         const base = sprite(p, shape, px, 'natural', sd);
-        const tm = clamp(toneMix), bm = clamp(blur);
+        const tm = clamp(toneMix) * (soft ? 0.45 : 1), bm = Math.max(clamp(blur), fade * 0.8);
         if (tm < 1 && bm < 1) g.drawImage(base, -w / 2, -h / 2, w, h);
         if (tone && tm > 0) { const a0 = g.globalAlpha; g.globalAlpha = a0 * tm; g.drawImage(sprite(p, shape, px, tone, sd), -w / 2, -h / 2, w, h); g.globalAlpha = a0; }
         if (bm > 0) { const a0 = g.globalAlpha; g.globalAlpha = a0 * bm; g.drawImage(sprite(p, shape, px, 'blur', sd), -w / 2, -h / 2, w, h); g.globalAlpha = a0; }
+        if (fade) {
+          g.globalCompositeOperation = 'lighter'; g.globalAlpha = a1 * Math.sin(fade * Math.PI) * 0.5;
+          g.drawImage(sprite(p, shape, px, 'glow', sd), -w / 2, -h / 2, w, h);
+          g.globalCompositeOperation = 'source-over'; g.globalAlpha = a1;
+        }
       }
       if (sheen) {
         g.globalCompositeOperation = 'lighter';
@@ -571,7 +608,8 @@ export function photoApi({ particles, dpr = 1, seed = 1, fallback = [] } = {}) {
       const sc = Math.max(w / p.w, h / p.h), dw = p.w * sc, dh = p.h * sc;
       const ox = clamp(w / 2 - p.focus.x * dw, w - dw, 0), oy = clamp(h / 2 - p.focus.y * dh, h - dh, 0);
       g.drawImage(p.img, x - w / 2 + ox, y - h / 2 + oy, dw, dh);
-      if (tone && toneMix > 0) { g.globalAlpha *= toneMix; g.drawImage(toneImage(p, tone), x - w / 2 + ox, y - h / 2 + oy, dw, dh); }
+      const tm = clamp(toneMix) * (p.mallow ? 0.45 : 1);
+      if (tone && tm > 0) { g.globalAlpha *= tm; g.drawImage(toneImage(p, tone), x - w / 2 + ox, y - h / 2 + oy, dw, dh); }
       g.restore();
     },
   };

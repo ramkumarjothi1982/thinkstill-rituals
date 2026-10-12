@@ -7,6 +7,7 @@ import { getEmotion, getFamily, FAMILIES, searchEmotions, azIndex, EMOTIONS } fr
 import { MALLOWS } from '../../mallows/registry.js';
 import { openSupport } from './support.js';
 import { photoTray } from '../../v3/tray.js';
+import { warmMallowCards } from '../../v3/mallow-cards.js';
 
 export default function express(app, params = {}) {
   const { world } = app;
@@ -28,6 +29,7 @@ export default function express(app, params = {}) {
   const levelLabel = h('span', { class: 'muted' }, 'Medium');
   const go = h('button', { class: 'btn primary block', disabled: true }, 'Meet a Mallow');
   const tray = photoTray();
+  warmMallowCards();             // ready in case no photos are added
 
   const el = h('div', { class: 'express', style: { display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' } },
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' }),

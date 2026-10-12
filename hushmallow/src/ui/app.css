@@ -205,7 +205,7 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
   .enc-card { padding: 14px !important; }
   .enc-card h3 { font-size: 21px !important; margin-top: 4px !important; }
   .enc-card > p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 14.5px; }
-  .enc-card .reasons span:nth-child(n+3) { display: none; }
+  .enc-card .reasons span:nth-child(n+3):not(.photo-chip) { display: none; }
   .enc-card .btn { min-height: 46px; }
 }
 
@@ -245,9 +245,8 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .v3-steps { margin: 0 0 10px 20px; padding: 0; display: grid; gap: 6px; font: 600 15px/1.4 var(--font-ui); }
 @media (max-height: 700px) { .v3-spot { height: 78px; } .dock.v3-dock { grid-template-columns: 70px minmax(0, 1fr); } .v3-row .btn, .btn.icon-only { min-height: 44px; } }
 
-/* photo tray (express screen + test panel) */
-.photo-tray { display: flex; gap: 10px; overflow-x: auto; padding: 8px 2px 4px; scrollbar-width: none; }
-.photo-tray::-webkit-scrollbar { display: none; }
+/* photo tray (express screen): up to six tiles that wrap onto a second row, so all of them and the + stay in view */
+.photo-tray { display: flex; flex-wrap: wrap; gap: 14px 10px; padding: 10px 2px 4px; }
 .photo-tray .ph { position: relative; flex: 0 0 auto; width: 64px; height: 64px; }
 .photo-tray .ph > button.swap { all: unset; display: block; width: 64px; height: 64px; border-radius: 18px; cursor: pointer; }
 .photo-tray .ph canvas { display: block; border-radius: 18px; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
@@ -270,3 +269,4 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .photo-tray .add.wide { width: auto; padding: 0 18px; display: inline-flex; align-items: center; gap: 8px; font: 700 15px var(--font-ui); }
 .photo-tray .add.wide svg, .photo-add-inline svg { width: 20px; height: 20px; }
 .photo-add-inline { margin-top: 10px; gap: 8px; }
+.photo-full { display: flex; align-items: center; justify-content: center; min-height: 44px; font: 700 15px var(--font-ui); color: var(--text-2); }

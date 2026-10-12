@@ -48,12 +48,13 @@ export function create(E) {
 
   // ---- colours: built from the realm palette; heavy feelings get a softer, warmer light
   const soft = (c) => (heavy ? mix(c, '#ffe6d2', 0.26) : c);
-  const hueK = loop ? 0.12 + E.rand() * 0.5 : 0.3;
+  const hueK = loop ? 0.08 + E.rand() * 0.62 : 0.3;          // loop rounds shift the light within the palette
   const LIGHT = mix(soft(mix(pal.glow, '#ffffff', 0.2)), '#eef1ff', calm0 * 0.35);
   const TINT = mix(soft(mix(pal.glow, pal.accent, hueK)), '#dde4ff', calm0 * 0.3);
   const WARM = soft(pal.warm || '#ffb37a');
+  const LANT = loop ? soft(mix([pal.warm || '#ffb37a', pal.accent, pal.glow][Math.floor(E.rand() * 3)], '#ffffff', 0.15)) : WARM;   // lantern light in the empty windows
   const DEEP = mix(pal.deep || '#15123d', '#04031a', 0.5);
-  const BODY = mix(DEEP, TINT, 0.22);
+  const BODY = mix(DEEP, TINT, 0.3);
   const PEARL = mix(LIGHT, '#ffffff', 0.5);
   const INK = '#fffaf0';
   const TRAIL = [[11, 0.12, TINT], [5, 0.34, LIGHT], [1.8, 0.9, '#ffffff']];
@@ -167,7 +168,7 @@ export function create(E) {
   function springStep(St, bT, k, c, dt) { St.bv += (k * (bT - St.b) - c * St.bv) * dt; St.b += St.bv * dt; }
 
   function simulate(dt, t) {
-    const k = lerp(1, 0.6, rush);
+    const k = lerp(1, 0.7, rush);
     const room = (Math.max(0, prog + CAP - wanted) * TRAVEL) / k;
     const prevU = u;
     let travel = 0, held = false;
@@ -294,10 +295,11 @@ export function create(E) {
 
   // --------------------------------------------------------------- drawing --
   function frame(dt0, t) {
-    const dt = Math.min(dt0, 1 / 30);
     prog = E.gate(wanted);
     if (wanted > prog + CAP) wanted = prog + CAP;
-    if (dt > 0) simulate(dt, t);
+    // fixed small sub-steps keep the soft-body physics identical on slow and fast screens
+    const steps = Math.min(4, Math.ceil(Math.min(dt0, 0.12) / (1 / 30)));
+    for (let i = 0; i < steps; i++) simulate(Math.min(dt0, 0.12) / steps, t);
     const fin = finAt >= 0 ? smooth(clamp((t - finAt) / 2.4)) : 0;
     const st = progD, clear = smooth(Math.min(1, progD / 0.95));
     fillBuf(SP, S, 0); fillBuf(RP, S, railOff);
@@ -368,10 +370,10 @@ export function create(E) {
         photos.draw(g, w.ph, x, y, sz, { shape: 'arch', tone: 'mist', toneMix: (1 - k) * 0.72, blur: (1 - k) * 0.45, alpha: 0.72 + 0.28 * k, glow: 0.15 + 0.35 * k + 0.3 * fin, glowColour: LIGHT, shadow: false });
       } else {
         const gr = g.createLinearGradient(0, y - sz / 2, 0, y + sz / 2);
-        gr.addColorStop(0, rgba(mix(DEEP, TINT, 0.38 + 0.2 * k), 0.82)); gr.addColorStop(0.62, rgba(mix(DEEP, TINT, 0.55 + 0.25 * k), 0.8)); gr.addColorStop(1, rgba(mix(TINT, WARM, 0.55), 0.8 + 0.15 * k));
+        gr.addColorStop(0, rgba(mix(DEEP, TINT, 0.38 + 0.2 * k), 0.82)); gr.addColorStop(0.62, rgba(mix(DEEP, TINT, 0.55 + 0.25 * k), 0.8)); gr.addColorStop(1, rgba(mix(TINT, LANT, 0.55), 0.8 + 0.15 * k));
         g.fillStyle = gr; archPath(g, x, y, ww, sz); g.fill();
-        glow(g, x, y + sz * 0.12, ww * (0.45 + 0.25 * k), WARM, 0.25 + 0.5 * k + 0.2 * fin);
-        orb(g, x, y + sz * 0.12, Math.max(2.5, ww * 0.09), mix(WARM, '#ffffff', 0.5), { alpha: 0.6 + 0.4 * k });
+        glow(g, x, y + sz * 0.12, ww * (0.45 + 0.25 * k), LANT, 0.25 + 0.5 * k + 0.2 * fin);
+        orb(g, x, y + sz * 0.12, Math.max(2.5, ww * 0.09), mix(LANT, '#ffffff', 0.5), { alpha: 0.6 + 0.4 * k });
         glint(g, x, y + sz * 0.12, ww * (0.2 + 0.06 * k), '#ffffff', 0.18 + 0.22 * k, reduced ? 0 : t * 0.15 + w.th);
       }
       // luminous frame and a glass highlight
@@ -453,13 +455,17 @@ export function create(E) {
   function drawBand(t, st, fin) {
     g.save(); g.lineCap = 'butt'; g.lineJoin = 'round';
     g.globalCompositeOperation = 'lighter';
-    g.strokeStyle = rgba(TINT, 0.07 + 0.07 * st + 0.1 * fin); g.lineWidth = bw * 2.8; line(SP, 0, N);
-    g.strokeStyle = rgba(LIGHT, 0.09 + 0.08 * st + 0.1 * fin); g.lineWidth = bw * 1.7; line(SP, 0, N);
+    g.strokeStyle = rgba(TINT, 0.1 + 0.08 * st + 0.1 * fin); g.lineWidth = bw * 2.8; line(SP, 0, N);
+    g.strokeStyle = rgba(LIGHT, 0.13 + 0.08 * st + 0.1 * fin); g.lineWidth = bw * 1.7; line(SP, 0, N);
     g.globalCompositeOperation = 'source-over';
     g.strokeStyle = rgba(mix(LIGHT, '#ffffff', 0.3), 0.9); g.lineWidth = bw + 3; line(SP, 0, N);
     g.strokeStyle = gBand; g.lineWidth = bw - 1.6; line(SP, 0, N);
     g.globalCompositeOperation = 'lighter';
-    g.strokeStyle = rgba(TINT, 0.08 + 0.16 * st + 0.14 * fin); g.lineWidth = bw * 0.62; line(SP, 0, N);
+    g.strokeStyle = rgba(TINT, 0.16 + 0.16 * st + 0.14 * fin); g.lineWidth = bw * 0.7; line(SP, 0, N);
+    // glass-tube pinstripes just inside each rim
+    g.strokeStyle = rgba(LIGHT, 0.32 + 0.2 * st + 0.2 * fin); g.lineWidth = Math.max(1, bw * 0.06);
+    fillBuf(EP, S, bw * 0.34); line(EP, 0, N);
+    fillBuf(EP, S, -bw * 0.34); line(EP, 0, N);
     g.restore();
   }
 
@@ -521,15 +527,15 @@ export function create(E) {
       CH[i * 4 + 3] = Math.exp(-Math.abs(sc - sBead) / 46);
     }
     g.save(); g.font = `600 ${fpx}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.shadowColor = rgba(DEEP, 0.95); g.shadowBlur = 5; g.fillStyle = INK;
-    for (let i = 0; i < chars.length; i++) drawChar(chars[i], i);
-    g.globalCompositeOperation = 'lighter'; g.shadowColor = 'rgba(0,0,0,0)'; g.shadowBlur = 0; g.fillStyle = rgba(LIGHT, 1);
+    g.strokeStyle = rgba(DEEP, 0.75); g.lineWidth = Math.max(2.5, fpx * 0.24); g.lineJoin = 'round'; g.fillStyle = INK;
+    for (let i = 0; i < chars.length; i++) drawChar(chars[i], i, true);
+    g.globalCompositeOperation = 'lighter'; g.fillStyle = rgba(LIGHT, 1);
     for (let i = 0; i < chars.length; i++) { const gl = 0.12 + 0.3 * fin + 0.5 * CH[i * 4 + 3] + 0.1 * st; g.globalAlpha = gl; drawChar(chars[i], i); if (CH[i * 4 + 3] > 0.3) glow(g, CH[i * 4], CH[i * 4 + 1], fpx * 0.9, LIGHT, 0.25 * CH[i * 4 + 3]); }
     g.restore();
   }
-  function drawChar(c, i) {
+  function drawChar(c, i, edge) {
     const x = CH[i * 4], y = CH[i * 4 + 1], r = CH[i * 4 + 2];
-    g.translate(x, y); g.rotate(r); g.fillText(c, 0, 0); g.rotate(-r); g.translate(-x, -y);
+    g.translate(x, y); g.rotate(r); if (edge) g.strokeText(c, 0, 0); g.fillText(c, 0, 0); g.rotate(-r); g.translate(-x, -y);
   }
 
   function drawPearl(t, st, fin) {
@@ -602,7 +608,8 @@ export function create(E) {
     up(p) {
       if (p.id !== drag) return;
       drag = null;
-      if (repos) { repos = false; target = u; } else { target = clamp(target, u - 0.08, u + 0.08); glide = Math.abs(target - u) > 0.002; }
+      // the pearl catches up with where the hand lifted
+      if (repos) { repos = false; target = u; } else { target = clamp(target, u - 0.5, u + 0.5); glide = Math.abs(target - u) > 0.002; }
     },
     assist() {
       if (finAt >= 0 || drag != null || wanted >= 0.999) return;
@@ -621,9 +628,9 @@ export function create(E) {
     hint() {
       const pts = [];
       let uu = u, dd = dir;
-      for (let i = 0; i <= 22; i++) {
+      for (let i = 0; i <= 26; i++) {
         railAt(uu, railOff, O); pts.push([O.x, O.y]);
-        uu += dd * 0.019;
+        uu += dd * 0.02;
         if (uu > U1) { uu = 2 * U1 - uu; dd = -1; }
         if (uu < U0) { uu = 2 * U0 - uu; dd = 1; }
       }

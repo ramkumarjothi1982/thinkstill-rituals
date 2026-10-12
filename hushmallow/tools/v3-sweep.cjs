@@ -1,5 +1,5 @@
 // V3 completion sweep (dev only): plays rituals to the end in a real browser.
-//   node hushmallow/tools/v3-sweep.cjs [--from HM-0001] [--to HM-1000] [--only GE-07] [--workers 3] [--speed 3] [--drag] [--photos N] [--out report.json]
+//   node hushmallow/tools/v3-sweep.cjs [--from HM-0001] [--to HM-1000] [--only GE-07] [--workers 3] [--speed 3] [--drag] [--photos N] [--mallows 0] [--out report.json]
 // Needs the repo served on :8000. Each ritual runs with a random photo count
 // (0–6; 0 means the seven Mallow cards stand in) and is finished with the Tap instead button (or, with --drag, with the
 // gestures its ghost hints show). Writes a JSON report and prints a summary.
@@ -27,7 +27,7 @@ const has = (k) => process.argv.includes(`--${k}`);
     const t0 = Date.now();
     let phase = 'load', p = 0;
     try {
-      await page.goto(`http://localhost:8000/hushmallow/index.html?v3=${row[0]}&photos=${photos}&speed=${speed}&text=${encodeURIComponent('Everything at work went wrong today and I feel it in my chest')}`);
+      await page.goto(`http://localhost:8000/hushmallow/index.html?v3=${row[0]}&photos=${photos}${arg('mallows', null) === '0' ? '&mallows=0' : ''}&speed=${speed}&text=${encodeURIComponent('Everything at work went wrong today and I feel it in my chest')}`);
       await page.waitForFunction(() => globalThis.__hm3 && __hm3.phase === 'play', null, { timeout: 20000 });
       while (Date.now() - t0 < 180000) {
         ({ phase, p } = await page.evaluate(() => ({ phase: __hm3.phase, p: __hm3.progress })));

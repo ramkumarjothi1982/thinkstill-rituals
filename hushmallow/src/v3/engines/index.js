@@ -3,7 +3,7 @@
 // engines listed in BUILT are offered anywhere in the app.
 
 export const BUILT = new Set([
-  'GE-01', 'GE-12', 'GE-22', 'GE-32', 'GE-33', 'GE-42', 'GE-43',
+  'GE-01', 'GE-02', 'GE-03', 'GE-12', 'GE-17', 'GE-18', 'GE-22', 'GE-32', 'GE-33', 'GE-35', 'GE-42', 'GE-43',
 ]);
 
 export function loadEngine(id, { force = false } = {}) {

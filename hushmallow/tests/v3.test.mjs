@@ -22,6 +22,8 @@ import { createRound } from '../src/engine/round.js';
 import { AVAILABLE } from '../src/rituals/index.js';
 import { MAX_PHOTOS, photoSession, photoApi } from '../src/v3/photos.js';
 import { MALLOWS, MALLOW_IDS as REGISTRY_IDS } from '../src/mallows/registry.js';
+import { orderForLead } from '../src/v3/mallow-cards.js';
+import { PLANS } from '../src/app/entitlements.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const copyFor = async (id) => (await import(`../src/v3/data/copy/${id.toLowerCase()}.js`)).default;
@@ -177,10 +179,39 @@ test('photos: up to six of the person’s own; with none, the seven Mallows stan
   assert.equal(none.n, 0); assert.equal(none.standIn, false); assert.deepEqual(none.assign(2), [-1, -1]);
   // the host uses them only when the person added none, and never treats them as theirs
   const host = readFileSync(`${root}src/v3/host.js`, 'utf8');
-  assert.match(host, /photoSession\.count \|\| v\.noMallows \? \[\] : mallowMaterial\(/);
+  assert.match(host, /photoSession\.count \|\| v\.noMallows \? \[\] : soon\(mallowMaterial\(/);
   assert.match(host, /photoSession\.count \? h\('label', \{ class: 'v3-keep' \}/, 'the keep option is only for the person’s own photos');
   assert.match(host, /photoSession\.count && pm \?/, 'the “Your photos” card is only for the person’s own photos');
   assert.doesNotMatch(readFileSync(`${root}src/v3/mallow-cards.js`, 'utf8'), /photoSession|items\.push/, 'the cards never join the person’s photo session');
+  // a slow artwork never holds a ritual back
+  assert.match(host, /soon\(mallowMaterial\(ritual\.mallows\[0\]\), \d+\)/);
+  // lead last: the six companions first, starting after the lead
+  const cards = REGISTRY_IDS.map((id) => ({ mallow: id }));
+  for (const lead of REGISTRY_IDS) {
+    const order = orderForLead(cards, lead).map((p) => p.mallow);
+    assert.equal(order.length, 7); assert.equal(order[6], lead); assert.equal(new Set(order).size, 7);
+    assert.equal(order[0], REGISTRY_IDS[(REGISTRY_IDS.indexOf(lead) + 1) % 7]);
+  }
+  assert.deepEqual(orderForLead(cards.slice(0, 3), 'noomi').map((p) => p.mallow), ['glitzi', 'blubi', 'zuzu'], 'a missing lead keeps the registry order');
+});
+
+test('clearing photos wipes every cached copy; keeping lasts one ritual', () => {
+  const src = readFileSync(`${root}src/v3/photos.js`, 'utf8');
+  assert.match(src, /function forget\(list\)/);
+  for (const m of ['clear() {', 'remove(id) {', 'async replace(id, file) {']) {
+    const body = src.slice(src.indexOf(m), src.indexOf('\n  },', src.indexOf(m)));
+    assert.match(body, /forget\(/, `${m} forgets the pixels`);
+  }
+  assert.match(src, /dissolveCache\) if \(mine\(key\)\)/, 'dissolve copies are wiped too');
+  assert.match(src, /release\(\) \{\s*if \(keepNext && items\.length\) \{ keepNext = false;/, 'keep applies to the next ritual only');
+});
+
+test('the plan page says only what is switched on', () => {
+  const paid = RITUALS.filter((r) => (r.tier || 'paid') === 'paid').length;
+  const line = PLANS.paid.includes.find((x) => /touch rituals/.test(x));
+  if (paid < 1000) assert.match(line, new RegExp(`^${paid.toLocaleString('en-GB')} interactive touch rituals`));
+  else assert.match(line, /^Over 1,000/);
+  assert.match(PLANS.paid.includes.join(' '), /up to six of your own photos/);
 });
 
 test('photos never leave the device: no storage or network in the photo system', () => {

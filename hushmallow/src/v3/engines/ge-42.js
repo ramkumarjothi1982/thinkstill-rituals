@@ -501,6 +501,7 @@ export function create(E) {
       o.alpha = 0.14 * e; words.draw(g, dir * 8 * e, y - 7 * e, o);
       o.style = 'light'; o.colour = undefined; o.alpha = 0.96;
     }
+    if (photo) o.style = 'plate';            // a glass plate keeps the words readable over any photo
     words.draw(g, 0, y, o);
   }
   function drawEcho(j, t, loud) {

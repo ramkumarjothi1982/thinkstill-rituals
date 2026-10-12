@@ -42,7 +42,9 @@ export async function run(ctx) {
   const v = ritual.params.v3;
   const ENG = ENGINES[v.engine], LAW = LAWS[v.law - 1], SKILL = SKILLS[v.skill];
   // no photos of their own: the seven Mallows become the ritual's material
-  const standIns = photoSession.count || v.noMallows ? [] : mallowMaterial(ritual.mallows[0]).catch(() => []);
+  // (never worth a wait: after a moment the ritual starts with whatever is ready)
+  const soon = (p, ms) => Promise.race([p, new Promise((ok) => setTimeout(() => ok([]), ms))]);
+  const standIns = photoSession.count || v.noMallows ? [] : soon(mallowMaterial(ritual.mallows[0]), 1500).catch(() => []);
   const [copyAll, engMod, fallback] = await Promise.all([loadCopy(ENG.id), loadEngine(ENG.id, { force: !!v.force }), standIns]);
   if (signal.aborted) return { completed: false };
   const copy = copyAll[v.code] || { open: [], during: [], exit: [], bend: '', twist: '', scene: ritual.name };
@@ -216,7 +218,8 @@ export async function run(ctx) {
         photoSession.count && pm ? h('div', { class: 'summary-card', style: { marginTop: '10px' } },
           h('div', { class: 'k' }, 'Your photos'), h('div', { class: 'v' }, `${pm.where} They become ${pm.becomes}. ${pm.touch} ${pm.change} ${pm.payoff}`)) : null,
         photos.standIn ? h('div', { class: 'summary-card', style: { marginTop: '10px' } },
-          h('div', { class: 'k' }, 'The seven Mallows'), h('div', { class: 'v' }, 'You didn’t add photos, so the seven Mallows play their part in this ritual. Add up to six of your own on the ritual card next time.')) : null,
+          h('div', { class: 'k' }, photos.n === 7 ? 'The seven Mallows' : 'The Mallows'),
+          h('div', { class: 'v' }, `You didn’t add photos, so ${photos.n === 7 ? 'the seven' : 'the'} Mallows play their part in this ritual${pm?.becomes ? `: they become ${pm.becomes}` : ''}. Add up to six of your own on the ritual card next time.`)) : null,
         h('div', { class: 'summary-card', style: { marginTop: '10px' } },
           h('div', { class: 'k' }, 'Skill you’re practising'), h('div', { class: 'v' }, `${SKILL.name}: ${SKILL.does}`),
           h('div', { class: 'k' }, 'Why it can help'), h('div', { class: 'v' }, `${SKILL.insight} (${SKILL.scope})`))),
