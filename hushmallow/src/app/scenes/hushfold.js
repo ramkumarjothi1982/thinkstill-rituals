@@ -109,7 +109,7 @@ export default function hushfold(app, params = {}) {
 
   // ------------------------------------------------------- stage --
   let stage = null, stageMallow = null, router = null, overlay = null, panel = null, readEl = null;
-  let touchMt = null, touchBox = null;   // the opt-in MallowTouch stage (W2), else the rig
+  let touchMt = null, touchBox = null;   // the MallowTouch stage (W2), else the rig (the fallback)
   // each transient layer has its own history entry, so Back closes it first
   const layer = { overlay: 0, panel: 0, read: 0 };
   const pushLayer = (k) => { layer[k] = app.pushLayer?.() || 0; };
@@ -465,9 +465,11 @@ export default function hushfold(app, params = {}) {
   // ------------------------------------------------- the Mallow --
   async function showMallow(id, { entrance = true } = {}) {
     if (touchMt) {
-      // the opt-in MallowTouch stage (W2): same calls, the soft body instead of the rig
+      // the MallowTouch stage (W2): same calls, the soft body instead of the rig
       if (touchMt.id !== id) touchMt.setMallow?.(id);
-      await touchMt.loaded;
+      // (a Mallow whose art failed to load keeps the one on screen; the stage carries on)
+      try { await touchMt.loaded; } catch (e) { console.warn('[hushfold] MallowTouch', e?.message || e); }
+      if (!touchMt) return null;
       if (S.left || id !== mallowId) return touchMt.rig;
       if (entrance && !prefs.reducedMotion()) touchMt.react('hop');
       theme(); layout();
@@ -1064,25 +1066,42 @@ export default function hushfold(app, params = {}) {
     async enter() {
       document.body.classList.add('hf-active');
       world.dim(false);
-      world.showMallow(true);
       theme();
-      stage = createStage({ fx: world.fx, tagRoot: root, reducedMotion: () => prefs.reducedMotion(), lowStim: () => !!prefs.get('lowStim'), onReadThought: readThought,
+      stage = createStage({ fx: world.fx, tagRoot: root, reducedMotion: () => prefs.reducedMotion(), lowStim: () => lowStimNow(), onReadThought: readThought,
         keepOut: () => { const b = stageMallow?.bodyRect?.(); return b?.height ? { left: b.left, right: b.left + b.width, top: b.top, bottom: b.top + b.height } : null; } });
-      // MallowTouch (W2) behind the same stage calls: opt-in while it is checked (?touch=1 on the
-      // development host, or prefs.mallowTouch); the approved rig otherwise
-      const qsTouch = ['localhost', '127.0.0.1'].includes(location.hostname) && new URLSearchParams(location.search).get('touch') === '1';
-      if (qsTouch || prefs.get('mallowTouch') === true) {
+      // MallowTouch (W2), the squeezable Mallow, is the stage's Mallow for everyone (owner P9), behind the
+      // same stage calls; the approved rig is the fallback (it failed to load in 5 s, or prefs.mallowTouch
+      // is false; ?touch=0 on the development host). The classic rig goes at once, before the import, so
+      // only one Mallow is ever on screen.
+      const dev = ['localhost', '127.0.0.1'].includes(location.hostname), qs = new URLSearchParams(location.search);
+      if (!(dev && qs.get('touch') === '0') && prefs.get('mallowTouch') !== false) {
+        world.showMallow(false);
+        world.releaseMallow?.();
+        let wait = 0;
         try {
           const { MallowTouch } = await import('../../mallows/touch/mallow-touch.js');
           if (S.left) return;
-          touchBox = h('div', { class: 'hf-touch', 'aria-hidden': 'true' });
+          // (no aria-hidden: its root is the focusable role=button that carries the squeeze instructions)
+          touchBox = h('div', { class: 'hf-touch' });
           world.fx.before(touchBox);
-          touchMt = new MallowTouch(touchBox, { id: mallowId, bindPointer: false, reducedMotion: prefs.reducedMotion(), lowStim: !!prefs.get('lowStim'),
+          touchMt = new MallowTouch(touchBox, { id: mallowId, bindPointer: false, quality: (dev && qs.get('tier')) || 'auto',
+            // 'system' follows the OS setting live; the person's own choice wins otherwise
+            reducedMotion: prefs.get('motion') === 'system' ? undefined : prefs.reducedMotion(), lowStim: lowStimNow(),
             audio: prefs.get('sound') ? app.audio : null, haptic: (k) => app.haptic(k) });
-          world.showMallow(false);
-        } catch (e) { console.warn('[hushfold] MallowTouch unavailable; using the rig', e); touchMt = null; touchBox?.remove(); touchBox = null; }
+          // placed before it is ready, it starts exactly where the layout puts it (no entrance glide)
+          stageMallow = createStageMallow(world, { touch: touchMt });
+          layout();
+          await Promise.race([touchMt.loaded, new Promise((_, no) => { wait = setTimeout(() => no(new Error('not ready after 5 s')), 5000); })]);
+        } catch (e) {
+          if (S.left) return;
+          console.warn('[hushfold] MallowTouch unavailable; using the rig', e?.message || e);
+          try { touchMt?.destroy(); } catch { /* already gone */ }
+          touchMt = null; touchBox?.remove(); touchBox = null; stageMallow = null;
+        } finally { clearTimeout(wait); }
+        if (S.left) return;
       }
-      stageMallow = createStageMallow(world, { touch: touchMt });
+      if (!touchMt) world.showMallow(true);
+      stageMallow ||= createStageMallow(world, { touch: null });
       router = createInputRouter({
         el: world.fx, mallow: stageMallow, thoughts: stage.thoughts,
         onEmpty: (r) => { if (r.type === 'down') stage.ripple(r.x, r.y, M().colours.glow); },
