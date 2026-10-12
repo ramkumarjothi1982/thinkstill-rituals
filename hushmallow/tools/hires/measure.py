@@ -305,8 +305,13 @@ def opening_mask(A, guess_spec, margin, iris_too=True, ember=False):
     n, lab, st, cen = cv2.connectedComponentsWithStats(scl.astype(np.uint8), 8)
     if n > 1:
         big = st[1:, 4].max()
+        kb = 1 + int(np.argmax(st[1:, 4]))
+        bx, by, bw, bh = st[kb, :4]
+        # pieces of a sclera split by the iris lie inside the main piece's
+        # box; a pale blush glow under the eye does not
         keep = [1 + j for j in range(n - 1) if st[1 + j, 4] > 0.06 * big and
-                np.hypot(cen[1 + j, 0] - (ex - x0), cen[1 + j, 1] - (ey - y0)) < max(rx, ry) * 1.6]
+                np.hypot(cen[1 + j, 0] - (ex - x0), cen[1 + j, 1] - (ey - y0)) < max(rx, ry) * 1.6 and
+                bx <= cen[1 + j, 0] <= bx + bw and by <= cen[1 + j, 1] <= by + bh]
         scl = np.isin(lab, keep)
     pts2 = np.column_stack(np.nonzero(scl)[::-1]).astype(np.int32)
     hull = cv2.convexHull(pts2)

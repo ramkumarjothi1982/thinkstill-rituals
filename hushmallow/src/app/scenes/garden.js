@@ -158,7 +158,7 @@ export default function gardenScene(app, params = {}) {
   const head = h('header', { class: 'hg-head' }, iconBtn('back', 'Back to the Hushfold', () => back()), h('div', { class: 'hg-titles' }, titleEl, captionEl));
   const field = h('div', { class: 'hg-field hg-ui', role: 'group', 'aria-label': 'Your kept tools' });
   const live = h('div', { class: 'hg-live', 'aria-live': 'polite' });
-  const el = h('div', { class: 'hg', 'data-garden': 'root' }, bgCanvas, canvas, field, head, live);
+  const el = h('div', { class: 'hg', 'data-garden': 'root' }, bgCanvas, canvas, head, field, live);
   let emptyEl = null, detail = null, layerToken = 0;
 
   // ----------------------------------------------------------- state --
@@ -173,6 +173,14 @@ export default function gardenScene(app, params = {}) {
   const isPlayableWorld = (id) => { try { return registry.playable(id); } catch { return false; } };
 
   function back() { app.back(); }
+  // env(safe-area-inset-bottom) in px (the iPhone home indicator), measured once per layout
+  function safeBottom() {
+    const probe = h('div', { style: { position: 'fixed', bottom: '0', height: '0', paddingBottom: 'env(safe-area-inset-bottom, 0px)', visibility: 'hidden', pointerEvents: 'none' } });
+    document.body.append(probe);
+    const v = probe.getBoundingClientRect().height || 0;
+    probe.remove();
+    return v;
+  }
 
   // ------------------------------------------------------------ layout --
   function crestY(x) {
@@ -187,7 +195,7 @@ export default function gardenScene(app, params = {}) {
     const n = items.length;
     const hb = head.getBoundingClientRect().bottom || 80;
     const mallowH = clamp(Math.min(W, H) * 0.15, 54, 92);
-    const bottom = H - 22;
+    const bottom = H - 22 - safeBottom();
     const minCrest = hb + mallowH + 12;
     let M = null;
     if (n) {
@@ -209,7 +217,7 @@ export default function gardenScene(app, params = {}) {
     }
     field.style.top = `${Math.round(crest - 10)}px`;
     captionEl.textContent = n ? 'Tap a charm to open it again.' : 'Kept only on this phone.';
-    buildPlants(items, M);
+    buildPlants(items, M, bottom);
     buildBackground();
     buildAmbient();
     placeMallow(mallowH);
@@ -248,13 +256,13 @@ export default function gardenScene(app, params = {}) {
     return lines <= 2;
   }
 
-  function buildPlants(items, M) {
+  function buildPlants(items, M, bottom) {
     const n = items.length;
     const old = new Map(plants.map((p) => [p.id, p]));
     field.replaceChildren();
     plants = [];
     if (!n) return;
-    const top = crest + 24, bottom = H - 22;
+    const top = crest + 24;
     const regionH = Math.max(160, bottom - top);
     const { usable, rows, counts, hero, labelH, maxCount, sizeFor, rowH } = M;
     let k = 0;
@@ -693,20 +701,30 @@ export default function gardenScene(app, params = {}) {
     app.audio?.ui?.('close');
     closeDetail();
     live.textContent = `${skill?.title || 'That tool'} has left your garden.`;
+    // focus lands on the garden again once it has re-formed (never lost to the page)
+    const settle = () => { layout(); (plants[0]?.btn || emptyEl?.querySelector('button') || head.querySelector('button'))?.focus?.({ preventScroll: true }); };
     const p = plants.find((x) => x.id === id);
     if (p && !reduced()) {
       p.btn?.classList.add('is-leaving');
       const start = performance.now();
-      const fade = () => { if (left) return; p.fade = Math.max(0, 1 - (performance.now() - start) / 550); if (p.fade > 0) requestAnimationFrame(fade); else layout(); };
+      const fade = () => { if (left) return; p.fade = Math.max(0, 1 - (performance.now() - start) / 550); if (p.fade > 0) requestAnimationFrame(fade); else settle(); };
       requestAnimationFrame(fade);
-    } else layout();
-    setTimeout(() => (plants[0]?.btn || emptyEl?.querySelector('button') || head.querySelector('button'))?.focus?.({ preventScroll: true }), 650);
+    } else settle();
   }
 
   // ------------------------------------------------------- lifecycle --
   let resizeT = 0;
   const onResize = () => { clearTimeout(resizeT); resizeT = setTimeout(() => { if (!left) layout(); }, 120); };
-  const onKey = (e) => { if (e.key === 'Escape' && detail) closeDetail(); };
+  const onKey = (e) => {
+    if (!detail) return;
+    if (e.key === 'Escape') { closeDetail(); return; }
+    if (e.key !== 'Tab') return;
+    // the open charm is a dialog: Tab stays inside it
+    const f = [...detail.querySelectorAll('button, [href], [tabindex]:not([tabindex="-1"])')].filter((x) => !x.disabled && x.getClientRects().length);
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1], a = document.activeElement;
+    if (!detail.contains(a)) { e.preventDefault(); first.focus(); } else if (e.shiftKey && (a === first || a?.classList?.contains('hg-title'))) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && a === last) { e.preventDefault(); first.focus(); }
+  };
   const onVis = () => { if (!document.hidden) kick(); };
 
   const view = {

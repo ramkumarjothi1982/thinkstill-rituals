@@ -43,8 +43,15 @@ function mallowOf(m) {
 
 const FALLBACK = { deep: '#1a1450', body: '#5b4bd6', light: '#c9c0ff', core: '#fff4c8', rim: '#ffe9a8' };
 
-/** The charm's colours: the skill's own palette, lit by the Mallow who was there. */
+/** The charm's colours: the skill's own palette, lit by the Mallow who was there (cached). */
+const PALETTES = new Map();
 export function charmPalette(skillId, mallow) {
+  const key = `${skillId}|${typeof mallow === 'string' ? mallow : mallow?.id || ''}`;
+  let P = PALETTES.get(key);
+  if (!P) { P = Object.freeze(paletteFor(skillId, mallow)); if (PALETTES.size > 96) PALETTES.clear(); PALETTES.set(key, P); }
+  return P;
+}
+function paletteFor(skillId, mallow) {
   const s = getSkill(skillId);
   const own = s?.charm?.palette || FALLBACK;
   const home = MALLOWS[s?.mallow] || null;

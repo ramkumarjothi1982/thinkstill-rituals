@@ -115,3 +115,4 @@ Agents work in one shared git tree. **Only edit files your workstream owns.** Fo
 |---|---|
 | Audit (shell, Mallow rendering, worlds, brand/type) | Done 12 Oct |
 | W1–W8 | Not started |
+| W5 Memory Garden | Built and browser-checked 12 Oct (not yet tested with real users): `skills.js` (8 tools: the pilot's slowing-down / a-little-more-room / another-angle, plus 5 for planned worlds), `engine/garden.js` store, `charm.js` (8 charm designs), `garden-install.js` (`offerSave`, `playInstall`, `keepDiscovery`, `hm:install` events), scene `garden`, `tests/garden.test.mjs`. Dev lab: `?gardenlab=install\|offer\|garden`. "Practise again" appears only when the world's registry status is playable (Luminous Ocean is still `planned`). |

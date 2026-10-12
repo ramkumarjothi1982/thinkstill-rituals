@@ -71,9 +71,15 @@ def erase_mask(name, meas, masks, shape, img=None):
         if style == 'closed':
             m |= dil(loose_stroke(masks['eye' + s], img, u), 12 * u)
         elif style == 'open':
-            # sclera, its dark outline ring and the light rim halo around it
-            # (the blush this bites into is restored by restore_cheeks)
-            m |= dil(masks['eye' + s], 12 * u)
+            # sclera, its dark outline ring and the light rim halo around it;
+            # inside the blush only a thin margin: the blush (and the eye's
+            # glow over it) belongs to the approved face, and the harmonic
+            # fill then lights the opening from it, as the current bodies do
+            em = dil(masks['eye' + s], 12 * u)
+            cxx, cyy, cr = f['cheeks'][s]
+            yy, xx = np.mgrid[0:shape[0], 0:shape[1]]
+            blush = np.hypot(xx - cxx, yy - cyy) < cr * 1.05
+            m |= em & ~(blush & ~dil(masks['eye' + s], 4 * u))
         elif style == 'spiral':
             sp = f['spiral' + s]
             c = np.zeros(shape, np.uint8)

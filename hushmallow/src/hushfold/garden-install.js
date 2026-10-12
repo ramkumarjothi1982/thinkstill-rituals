@@ -20,6 +20,10 @@
 //       A tool that is already kept is not offered again: it is marked as
 //       practised and a quiet note says so.
 //   installAvoidRects() → the offer/card rects, for subtitle placement.
+//   While it plays, <body> has the class 'hm-installing' and window receives
+//   'hm:install' events ({ phase: 'start' | 'card' | 'end', skillId }), so the
+//   shell can clear its subtitle band (the ripple forms above the Mallow,
+//   where subtitles usually sit).
 //
 // Draws on its own full-screen canvas above the stage (pointer-events:none,
 // so the Mallow stays squeezable), or on a canvas/ctx you pass in (it then
@@ -299,6 +303,13 @@ export function playInstall(opts = {}) {
   root.append(skip, card);
   document.body.append(root);
   openCard = card;
+  const phase = (name) => {
+    try {
+      document.body.classList.toggle('hm-installing', name !== 'end');
+      dispatchEvent(new CustomEvent('hm:install', { detail: { phase: name, skillId } }));
+    } catch { /* old browsers: no signal, nothing breaks */ }
+  };
+  phase('start');
 
   // ---- geometry (client CSS px)
   let W = innerWidth, H = innerHeight, dpr = 1;
@@ -503,6 +514,7 @@ export function playInstall(opts = {}) {
   function showCard() {
     if (cardShown) return;
     cardShown = true;
+    phase('card');
     placeCard();
     card.classList.add('is-in');
     charm.draw(1.3);
@@ -542,8 +554,9 @@ export function playInstall(opts = {}) {
     if (finished || !root.classList.contains('is-animating')) return;
     skipped = true;
     manual = null;
-    t0 = performance.now() - T.end * 1000;   // the next frame is past the end: clear and show the card
-    cancelAnimationFrame(raf); raf = requestAnimationFrame(step);
+    t0 = performance.now() - T.end * 1000;   // straight to the end: clear and show the card now
+    cancelAnimationFrame(raf); raf = 0;
+    step(performance.now());
   }
   function finish(action) {
     if (finished) return;
@@ -552,6 +565,7 @@ export function playInstall(opts = {}) {
     removeEventListener('resize', onResize);
     document.removeEventListener('keydown', onKey);
     stopLeave();
+    phase('end');
     card.classList.remove('is-in'); card.classList.add('is-out');
     root.classList.remove('is-animating');
     if (!own) { try { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, canvas.width, canvas.height); } catch { /* ignore */ } }
