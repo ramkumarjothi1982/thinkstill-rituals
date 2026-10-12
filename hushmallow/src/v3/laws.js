@@ -138,7 +138,8 @@ function threeBeats(L) {
     gate(raw) {
       if (waiting && liftAt >= 0 && L.now() - liftAt >= SETTLE) { waiting = false; beat++; L.sound('pluck', { note: beat + 2, intensity: 0.5 }); L.haptic('light'); }
       const cap = marks[Math.min(2, beat)];
-      if (!waiting && beat < 3 && raw >= cap - 1e-6) { waiting = true; liftAt = down ? -1 : L.now(); L.haptic('soft'); }
+      // tolerant: an engine may settle a hair short of exactly 1/3, 2/3 or 1
+      if (!waiting && beat < 3 && raw >= cap - 0.004) { waiting = true; liftAt = down ? -1 : L.now(); L.haptic('soft'); }
       return Math.min(raw, cap);
     },
     gateReady: () => beat >= 3,
@@ -202,12 +203,12 @@ function waitWake(L) {
     },
     gate(raw) {
       if (waking >= 0) {
-        if (L.now() - waking >= WAKE) { waking = -1; if (cur >= 0.999) lastWakeDone = true; } else return cur;
+        if (L.now() - waking >= WAKE) { waking = -1; if (cur >= 0.995) lastWakeDone = true; } else return cur;
       }
       cur = raw;
       return cur;
     },
-    gateReady: () => lastWakeDone || (cur >= 0.999 && waking < 0 && !down && moved),
+    gateReady: () => lastWakeDone || (cur >= 0.995 && waking < 0 && !down && moved),
     frame(g) {
       if (waking < 0) return;
       const p = L.engine.pointAt(cur), k = clamp((L.now() - waking) / WAKE);

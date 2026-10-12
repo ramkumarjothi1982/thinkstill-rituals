@@ -2,9 +2,10 @@
 // Catch the feather by its glowing stem and guide it along a lane of lights
 // that snakes between two crosswinds, without losing its shadow. The soft
 // plume trails behind the stem on springs and bends wherever a wind touches
-// it; its shadow on the water is laid exactly along the path your stem really
-// took. Rushing (or riding a wind's edge) lifts the plume off its shadow and
-// the feather drags; a gentle hand keeps the two together.
+// it; its shadow on the water is laid along the path your finger actually
+// takes. The feather has its own gentle pace: rush and your shadow runs on
+// ahead while the feather drags behind (and the winds bend it off its shadow);
+// slow down and it glides back to settle on its shadow with a soft chime.
 // Win: the stem of the feather skiff touches the receiving reed.
 //
 // Photos wait beside the lane as postcard sails on little leaf rafts, tossed
@@ -131,7 +132,7 @@ export function create(E) {
   let lat = 0, latV = 0, stemX = 0, stemY = 0, stemSpeed = 0, prevSX = 0, prevSY = 0;
   let assistTo = null, assistStall = 0;
   let sep = 0, loss = 0, lost = false, lostHinted = false, lastLostAt = -9, lastWaitAt = -9;
-  let lastBead = 0, beadNote = 0, travel = 0, wakeAcc = 0, lookAt = 0;
+  let lastBead = 0, beadNote = 0, wakeAcc = 0, lookAt = 0;
   let doneFlag = false, finAt = -1, touchAt = -1, reedBow = 0, reedBowV = 0, lastT = 0;
   let windIn = false, readDir = 0, readFade = 1;
   let twistAt = -1;
@@ -232,7 +233,6 @@ export function create(E) {
     // reed at the end of the lane
     reedX = mapX(xE) + flip * Math.max(5, 4 * s); reedY = yC + 2;
     reedH = Math.min(D * 0.74, 128 * s);
-    // cargo buoys beside the lane, on the wind side
     // buoys ride inside the two wind bands (that is why they are tossed); split by band length, staggered when tight
     const b1 = [xS + (xR - xS) * 0.12, xR + r * 0.3], b2 = [xL - r * 0.3, xE - (xE - xL) * 0.3];
     const l1 = b1[1] - b1[0], l2 = b2[1] - b2[0];
@@ -391,7 +391,7 @@ export function create(E) {
     stemX = bx + nxl * (lat + shiver); stemY = by + nyl * (lat + shiver);
     const mv = Math.hypot(stemX - prevSX, stemY - prevSY);
     if (dt > 0) stemSpeed = lerp(stemSpeed, mv / dt, 1 - Math.exp(-dt * 8));
-    travel += mv; wakeAcc += mv; prevSX = stemX; prevSY = stemY;
+    wakeAcc += mv; prevSX = stemX; prevSY = stemY;
     const hi = (hHead - 1 + HN) % HN;
     if (Math.hypot(stemX - HX[hi], stemY - HY[hi]) >= 2.5) pushHist(stemX, stemY);
     // the shadow follows your actual path: it runs ahead with a rushing finger, and slides back under the feather when you let go
@@ -1019,9 +1019,9 @@ export function create(E) {
     } else {
       // each wind's eddy opens into a slow lotus of calm light
       for (const w of winds) {
-        g.save(); g.translate(w.ex, w.ey); g.globalCompositeOperation = 'lighter';
+        g.save(); g.translate(w.ex, w.ey); g.globalCompositeOperation = 'lighter'; g.rotate(reduced ? 0 : t * 0.06 * w.sd);
         for (let i = 0; i < 6; i++) {
-          g.rotate(TAU / 6 + (reduced ? 0 : 0.0015));
+          g.rotate(TAU / 6);
           g.fillStyle = rgba(mix(w.col, warm, 0.5), 0.1 * k); g.beginPath(); g.ellipse(0, -r * 0.22 * k, r * 0.08, r * 0.2 * k, 0, 0, TAU); g.fill();
         }
         g.restore();

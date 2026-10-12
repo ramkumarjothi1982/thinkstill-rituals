@@ -85,6 +85,8 @@ export function createRecommender({ rituals, store, rng = Math.random, modules =
     if ((prefs.avoidModules || []).includes(r.module)) s -= 3;
     // universal rituals step aside for anything made for this feeling
     if (r.params?.fallback) s -= 0.8;
+    // the ten signature rituals step back behind the 1,000 V3 rituals when both fit
+    if (r.params?.signature) s -= 0.7;
     return { s, reasons: [...new Set(reasons)].slice(0, 3) };
   }
 
