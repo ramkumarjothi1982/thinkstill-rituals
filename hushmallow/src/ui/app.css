@@ -267,3 +267,6 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
   .v3-end .row-btns .btn { font-size: 15px; padding: 0 10px; }
   .v3-end .row-btns .btn svg { display: none; }
 }
+.photo-tray .add.wide { width: auto; padding: 0 18px; display: inline-flex; align-items: center; gap: 8px; font: 700 15px var(--font-ui); }
+.photo-tray .add.wide svg, .photo-add-inline svg { width: 20px; height: 20px; }
+.photo-add-inline { margin-top: 10px; gap: 8px; }

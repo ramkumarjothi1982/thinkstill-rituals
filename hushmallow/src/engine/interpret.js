@@ -11,6 +11,7 @@ import { EMOTIONS, getEmotion, normalizeText, editDistance } from '../data/emoti
 // ----------------------------------------------------------- lexicons --
 // everyday phrases → [emotion id, confidence]
 const PHRASES = [
+  [/\b(keep|kept|still) (replaying|going over|thinking about)\b|\breplay(ing)? (it|the|that|what)\b|\bon (a )?loop\b/, 'overthinking', 0.75],
   [/\bfed up\b/, 'frustration', 0.8], [/\bon edge\b/, 'nervousness', 0.75], [/\bcan'?t stop (thinking|worrying|overthinking)\b/, 'worry', 0.75],
   [/\b(heart|chest) (is )?(racing|pounding)\b/, 'anxiety', 0.75], [/\bwant(ed)? to scream\b/, 'frustration', 0.75],
   [/\bmiss(ing)? (him|her|them|you|my|someone|home)\b/, 'longing', 0.75], [/\bcan'?t be bothered\b/, 'apathy', 0.7],

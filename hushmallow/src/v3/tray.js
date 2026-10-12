@@ -1,6 +1,6 @@
 // Photo tray: add up to 7 photos, tap one to replace it, × to remove it.
 // Shown on the "What's happening" screen (and in the test panel).
-import { h } from '../app/ui.js';
+import { h, icon } from '../app/ui.js';
 import { photoSession, MAX_PHOTOS } from './photos.js';
 
 export function photoTray({ note = true } = {}) {
@@ -22,7 +22,8 @@ export function photoTray({ note = true } = {}) {
     tray.replaceChildren(...list.map((p, i) => h('div', { class: 'ph', role: 'listitem' },
       h('button', { class: 'swap', 'aria-label': `Photo ${i + 1}. Tap to replace it.`, onclick: () => pick(p.id) }, photoSession.thumb(p, 64)),
       h('button', { class: 'x', 'aria-label': `Remove photo ${i + 1}`, onclick: () => photoSession.remove(p.id) }, '×'))),
-    list.length < MAX_PHOTOS ? h('button', { class: 'add', 'aria-label': list.length ? 'Add more photos' : 'Add photos', onclick: () => pick() }, '+') : null);
+    list.length === 0 ? h('button', { class: 'add wide', onclick: () => pick() }, icon('camera'), h('span', {}, 'Add photos'))
+      : list.length < MAX_PHOTOS ? h('button', { class: 'add', 'aria-label': 'Add more photos', onclick: () => pick() }, '+') : null);
   }
   const off = photoSession.onChange(render);
   render();

@@ -157,14 +157,14 @@ export function create(E) {
     plq.lines = tw <= maxPW - 30 ? 1 : tw <= (maxPW - 30) * 1.85 ? 2 : 3;
     plq.w = plq.lines === 1 ? clamp(tw + 34, W1 * 0.9, maxPW) : maxPW;
     plq.h = Math.round(plq.lines * fs * 1.2 + 15);
-    const below = plq.h + 10;
-    const avail = stage.h - below - 12;
-    let asp = clamp((avail * 0.86) / W1, 1.5, 1.92);
+    const below = plq.h + 10, toastRes = Math.round(16 * U + 2);   // keep the host's law note (stage bottom) clear of the words
+    const avail = stage.h - below - 12 - toastRes;
+    let asp = clamp((avail * 0.86) / W1, 1.5, 2.14);
     if (asp * W1 > avail) asp = Math.max(1.3, avail / W1);
     W1 = Math.max(60, Math.min(W1, avail / asp));
     const H1 = asp * W1;
-    const spare = Math.max(0, stage.h - (H1 + below + 8));
-    compTop = stage.y + 6 + spare * 0.55;
+    const spare = Math.max(0, stage.h - (H1 + below + 8 + toastRes));
+    compTop = stage.y + 6 + spare * 0.5;
     const base1 = compTop + H1;
     compBot = base1 + below;
     horizonY = base1 - H1 * 0.42;
@@ -203,6 +203,16 @@ export function create(E) {
       far.x = g3.cx + dir * (g3.W / 2 + far.r * 0.15);
     }
     far.x = clamp(far.x, stage.x + far.r + 2, stage.x + stage.w - far.r - 2);
+    // keep the far light clear of the third gate's keystone medallion: it rests on the gate's outer shoulder, smaller, further away
+    if (g3.medal >= 0) {
+      const mr = clamp(g3.W * 0.16, 18, 28), my = g3.y0 + g3.f * 0.5;
+      if (Math.hypot(far.x - g3.cx, far.y - my) < far.r + mr + 4) {
+        far.r = Math.max(16, Math.min(far.r, g3.W * 0.2));
+        far.y = Math.max(stage.y + far.r + 2, g3.y0 + far.r * 0.1);
+        far.x = g3.cx + dir * Math.max(g3.W / 2 - far.r * 0.2, mr + far.r + 6);
+        far.x = clamp(far.x, stage.x + far.r + 1, stage.x + stage.w - far.r - 1);
+      }
+    }
     // floor
     floor.x = stage.cx; floor.y = (g3.base + compBot) / 2 + 4; floor.rx = stage.w * 0.62; floor.ry = Math.max(30, (compBot - g3.base) * 0.85);
     floor.grad = g.createRadialGradient(0, 0, 0, 0, 0, floor.rx);

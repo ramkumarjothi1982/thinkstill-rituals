@@ -19,7 +19,7 @@ const P = {
   heart: 'M12 20s-7-4.4-9.2-9A5 5 0 0112 5.5 5 5 0 0121.2 11C19 15.6 12 20 12 20z', star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z',
   arrow: 'M5 12h14M13 6l6 6-6 6', support: 'M12 21a9 9 0 100-18 9 9 0 000 18z M12 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z M5.6 5.6l3.9 3.9M14.5 14.5l3.9 3.9M18.4 5.6l-3.9 3.9M9.5 14.5l-3.9 3.9',
   share: 'M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6', search: 'M11 18a7 7 0 100-14 7 7 0 000 14zM20 20l-4-4', sparkle: 'M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18',
-  refresh: 'M20 11a8 8 0 10-2.3 5.7M20 5v6h-6', journey: 'M4 20V10M10 20V4M16 20v-7M21 20H3', library: 'M4 5h4v14H4zM10 5h4v14h-4zM16.5 5.5l3.6 1-3.4 12.9-3.6-1z', mallow: 'M6 9c0-3 2.7-5 6-5s6 2 6 5v7c0 2.2-2.7 4-6 4s-6-1.8-6-4z',
+  refresh: 'M20 11a8 8 0 10-2.3 5.7M20 5v6h-6', camera: 'M4 8h3l2-3h6l2 3h3v11H4z M12 17a4 4 0 100-8 4 4 0 000 8z', journey: 'M4 20V10M10 20V4M16 20v-7M21 20H3', library: 'M4 5h4v14H4zM10 5h4v14h-4zM16.5 5.5l3.6 1-3.4 12.9-3.6-1z', mallow: 'M6 9c0-3 2.7-5 6-5s6 2 6 5v7c0 2.2-2.7 4-6 4s-6-1.8-6-4z',
 };
 export function icon(name, label) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');

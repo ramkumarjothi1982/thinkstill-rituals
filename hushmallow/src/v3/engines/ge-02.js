@@ -132,7 +132,7 @@ export function create(E) {
   let lat = 0, latV = 0, stemX = 0, stemY = 0, stemSpeed = 0, prevSX = 0, prevSY = 0;
   let assistTo = null, assistStall = 0;
   let sep = 0, loss = 0, lost = false, lostHinted = false, lastLostAt = -9, lastWaitAt = -9;
-  let lastBead = 0, beadNote = 0, wakeAcc = 0, lookAt = 0;
+  let lastBead = 0, beadNote = 0, wakeAcc = 0, lookAt = 0, hapAt = -9;
   let doneFlag = false, finAt = -1, touchAt = -1, reedBow = 0, reedBowV = 0, lastT = 0;
   let windIn = false, readDir = 0, readFade = 1;
   let twistAt = -1;
@@ -206,7 +206,7 @@ export function create(E) {
   function fit() {
     X0 = stage.x; Y0 = stage.y; W = stage.w; H = stage.h; s = stage.s;
     mx = Math.max(12, W * 0.045);
-    yA = Y0 + H * (0.19 + jitA); yC = Y0 + H * 0.86; D = (yC - yA) / 2; r = D / 2; yB = yA + D;
+    yA = Y0 + H * (0.17 + jitA); yC = Y0 + H * 0.82; D = (yC - yA) / 2; r = D / 2; yB = yA + D;
     L = clamp(Math.min(W * 0.4, Math.max(D * 0.95, Math.min(W * 0.35, 104)), 160 * s), 74, 170);   // small phones: a longer plume than the row gap, so the words fit
     seg = L / (N - 1);
     laneHalf = L * 0.17;
@@ -295,9 +295,9 @@ export function create(E) {
     c.save(); c.lineCap = 'round'; c.lineJoin = 'round';
     const path = (o) => { c.beginPath(); for (let i = 0; i < RN; i += 2) { const j = Math.min(RN - 1, i + 1), k = Math.max(0, i - 1); const tx = RX[j] - RX[k], ty = RY[j] - RY[k], l = Math.hypot(tx, ty) || 1; const x = RX[i] - ty / l * o, y = RY[i] + tx / l * o; i ? c.lineTo(x, y) : c.moveTo(x, y); } c.lineTo(RX[RN - 1], RY[RN - 1]); };
     c.globalCompositeOperation = 'lighter';
-    path(0); c.strokeStyle = rgba(C.lane, 0.035); c.lineWidth = laneHalf * 2 + 22; c.stroke();
-    c.strokeStyle = rgba(C.lane, 0.05); c.lineWidth = laneHalf * 2; c.stroke();
-    c.lineWidth = 1; c.strokeStyle = rgba(C.lane, 0.11);
+    path(0); c.strokeStyle = rgba(C.lane, 0.045); c.lineWidth = laneHalf * 2 + 22; c.stroke();
+    c.strokeStyle = rgba(C.lane, 0.065); c.lineWidth = laneHalf * 2; c.stroke();
+    c.lineWidth = 1; c.strokeStyle = rgba(C.lane, 0.15);
     path(laneHalf + 3); c.stroke(); path(-laneHalf - 3); c.stroke();
     c.restore();
   }
@@ -367,7 +367,10 @@ export function create(E) {
         const before = wanted;
         wanted = Math.min(assistTo, wanted + dt * 0.26);
         if (assistTo - wanted < 1e-4) assistTo = null;
-        if (wanted <= before + 1e-6 || real <= lastReal + 1e-6) { assistStall += dt; if (assistStall > 0.8) assistTo = null; } else assistStall = 0;
+        if (wanted <= before + 1e-6 || real <= lastReal + 1e-6) {
+          assistStall += dt;
+          if (assistStall > 0.8) { assistTo = null; if (E.locked) { wob.kick(0.7); E.checkpoint('wait'); } }
+        } else assistStall = 0;
       }
     }
     wanted = clamp(wanted);
@@ -446,6 +449,7 @@ export function create(E) {
     if (bead > lastBead && finAt < 0) {
       const pan = clamp((stemX - stage.cx) / (W * 0.5), -1, 1);
       E.sound('pluck', { note: MELODY[beadNote++ % MELODY.length], intensity: 0.24 + 0.08 * (1 - agit), pan });
+      if (t - hapAt > 0.28) { hapAt = t; E.haptic('tick'); }
       if (!reduced && !low) E.particles.emit({ x: BX[Math.min(NB - 1, bead - 1)], y: BY[Math.min(NB - 1, bead - 1)], vy: -14, life: 0.9, size: 7, colour: warm, alpha: 0.7 });
     }
     lastBead = Math.max(lastBead, bead);
@@ -475,7 +479,7 @@ export function create(E) {
     drawShadows(t, fin);
     drawCargo(t, fin, false);
     drawPlume(t, fin);
-    if (E.phase !== 'law') drawStemWords(t);
+    if (E.phase !== 'law') drawStemWords(t, fin);
     drawStem(t, fin);
     if (twistAt >= 0) drawTwist(t);
     drawTether(t);
@@ -539,7 +543,7 @@ export function create(E) {
     return w.yc + w.off[jj] * w.hw * (1 - 0.5 * smooth((u - 0.55) / 0.45)) + amp * Math.sin(x * w.kk[jj] / s - t * w.om[jj] * (reduced ? 0.4 : 1) * w.sd + w.php[jj]) * (0.45 + 0.55 * u);
   }
   function drawWinds(t, agit, fin) {
-    const vis = (0.55 + 0.45 * agit / Math.max(0.3, agit0)) * (1 - fin * 0.45) * (bright ? 1.35 : 1);
+    const vis = (0.55 + 0.45 * agit / Math.max(0.3, agit0)) * (1 - fin * 0.45) * (bright ? 1.65 : 1);
     g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round'; g.lineJoin = 'round';
     for (const w of winds) {
       g.strokeStyle = w.grad;
@@ -584,10 +588,16 @@ export function create(E) {
         g.fillStyle = rgba(mix(warm, '#ffffff', 0.5), 0.55 + 0.3 * sw); g.beginPath(); g.arc(BX[i], BY[i], 1.5 * s, 0, TAU); g.fill();
       } else {
         const ahead = u - shown, wave = 0.5 + 0.5 * Math.sin(t * 2.1 - i * 0.55);
-        const a = (0.16 + 0.22 * wave) * (ahead < 0.12 ? 1.4 : 1);
-        g.fillStyle = rgba(C.lane, clamp(a)); g.beginPath(); g.arc(BX[i], BY[i], (1.4 + 0.8 * wave) * s, 0, TAU); g.fill();
-        if (ahead < 0.1) glow(g, BX[i], BY[i], 7 * s, C.lane, 0.18 * (1 - ahead * 10));
+        const nearK = ahead < 0.16 ? 1 - ahead / 0.16 : 0;
+        const a = (0.22 + 0.24 * wave) * (1 + 0.6 * nearK);
+        g.fillStyle = rgba(C.lane, clamp(a)); g.beginPath(); g.arc(BX[i], BY[i], (1.7 + 0.9 * wave + 0.8 * nearK) * s, 0, TAU); g.fill();
+        if (nearK > 0) glow(g, BX[i], BY[i], (8 + 4 * nearK) * s, C.lane, 0.26 * nearK);
       }
+    }
+    // a slow light runs ahead along the next stretch of lane: the way to guide the stem
+    if (fin <= 0 && shown < 0.995 && !reduced) {
+      const k = (t * 0.42) % 1, u = Math.min(1, shown + 0.015 + k * 0.15);
+      routeAt(u); glow(g, tmpX, tmpY, 11 * s, mix(C.lane, warm, 0.35), 0.5 * Math.sin(Math.PI * k));
     }
   }
   function drawPad(t) {
@@ -768,13 +778,14 @@ export function create(E) {
     normals(PX, PY);
     const lift = loss;
     // soft halo of light under the vane
-    for (let i = 2; i < N; i += 3) glow(g, PX[i], PY[i], L * 0.36, mix(P.glow, warm, fin * 0.6), 0.13 + 0.06 * Math.sin(t * 1.3 + i) + fin * 0.1);
+    const haloC = mix(P.glow, warm, Math.round(fin * 6) / 10);
+    for (let i = 2; i < N; i += 3) glow(g, PX[i], PY[i], L * (0.36 + fin * 0.08), haloC, 0.13 + 0.06 * Math.sin(t * 1.3 + i) + fin * 0.16);
     // vane body
     const gr = g.createLinearGradient(PX[1], PY[1], PX[N - 1], PY[N - 1]);
     gr.addColorStop(0, rgba(C.vane, 1)); gr.addColorStop(0.5, rgba(C.vaneMid, 1)); gr.addColorStop(1, rgba(C.vaneTip, 1));
     g.fillStyle = gr;
     outline(PX, PY, 0, 0, 0.62, 0, t); g.globalAlpha = 0.5; g.fill();       // dense core along the stem
-    g.save(); g.shadowColor = rgba(mix(P.glow, warm, fin * 0.6), bright ? 0.45 : 0.6); g.shadowBlur = 14 * s;
+    g.save(); g.shadowColor = rgba(haloC, bright ? 0.45 : 0.6); g.shadowBlur = 14 * s;
     outline(PX, PY, 0, 0, 1, 1, t); g.globalAlpha = 0.8; g.fill();           // soft vane, haloed in light
     g.restore();
     g.globalAlpha = 1;
@@ -868,7 +879,7 @@ export function create(E) {
       TBC[i] = i ? TBC[i - 1] + Math.hypot(TB[i * 2] - TB[i * 2 - 2], TB[i * 2 + 1] - TB[i * 2 - 1]) : 0;
     }
   }
-  function drawStemWords(t) {
+  function drawStemWords(t, fin) {
     const size = Math.max(12, Math.round(12 * s * 10) / 10);
     if (wTok !== words.token || wSize !== size || (t - wMeasuredAt > 1.5 && t < 8)) layoutWords(size, t);
     if (!wLines.length) return;
@@ -881,6 +892,11 @@ export function create(E) {
     readFade = Math.min(1, readFade + 0.06);
     const m = wLines.length, lh = size * 1.08;
     const centre = Lt * 0.45;
+    if (fin > 0) {
+      // delivered: the ink is lit from beneath by a warm lantern glow
+      const mi = Math.round(TBN * 0.45);
+      glow(g, TB[mi * 2], TB[mi * 2 + 1], L * 0.5, warm, 0.34 * fin);
+    }
     g.save();
     g.font = `600 ${size}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillStyle = C.ink; g.shadowColor = 'rgba(255,255,255,0.9)'; g.shadowBlur = 4;
@@ -1068,8 +1084,10 @@ export function create(E) {
         E.particles.burst(PX[0], PY[0], reduced ? 3 : 7, { speed: 40, colour: warm, life: 0.7, size: 5 });
         return;
       }
-      // a touch on the open water: a soft ripple and a note, the stem glows to be found
-      E.sound('drip', { note: 3, intensity: 0.2 });
+      // a touch on the open water: a soft ripple and a note, and the feather shivers to be found
+      E.ripples.add(p.x, p.y, { colour: C.lane, speed: 36, alpha: 0.3, r: 4 });
+      E.sound('drip', { note: 3 + (beadNote++ % 4), intensity: 0.2 });
+      if (p.t - hapAt > 0.2) { hapAt = p.t; E.haptic('tick'); }
       wob.kick(0.3);
     },
     move(p) {
