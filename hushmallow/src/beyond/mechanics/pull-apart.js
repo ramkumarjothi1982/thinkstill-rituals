@@ -4,8 +4,11 @@
 // (what happened), one warm (what the mind added). Pull either with a finger,
 // or both with two: the neck thins as it stretches and springs back if let go
 // too soon. Past the point of release it lets go softly (never snaps), and the
-// two settle on their own sides with their labels. Tap either jelly, or the
-// assist pill, to ease them apart a step at a time.
+// two settle on their own sides, each with one card: what happened, and what
+// the mind added (a server scene's known_fact and possible_assumption, else the
+// person's own words split by the authored engine). The two cards never say the
+// same thing: a side with nothing real to show asks a question instead. Tap
+// either jelly, or the assist pill, to ease them apart a step at a time.
 
 import { Blob, drawGlow, clamp, lerp, dist, approach, rgba, LIGHT, Motes, blinkAt, circleRect, Timers } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
@@ -30,13 +33,15 @@ export function mount(ctx) {
   let stepK = 0;            // tap/assist steps (0..3)
   let let0 = 0, moves = 0, t0 = performance.now();
   let releaseD = 0, restD = 0;
+  const half = Math.round(Math.min(200, A0.w / 2 - 8));
+  const P = ctx.parts;
   const tags = {
-    words: ctx.tags.add(ctx.parts.excerpt, { kind: 'words' }),
-    factL: ctx.tags.add(L.labels.fact, { kind: 'label', colour: LIGHT.fact[1] }),
-    guessL: ctx.tags.add(L.labels.guess, { kind: 'label', colour: LIGHT.guess[1] }),
-    factW: ctx.tags.add(ctx.parts.fact, { kind: 'line', max: Math.round(Math.min(190, A0.w / 2 - 14)) }),
-    guessW: ctx.parts.guess ? ctx.tags.add(ctx.parts.guess, { kind: 'line', max: Math.round(Math.min(190, A0.w / 2 - 14)) }) : null,
+    words: ctx.tags.add(P.excerpt, { kind: 'words' }),
+    // one card a side (title + line): half as many boxes to place, and they can never be read as one
+    fact: ctx.tags.add(P.fact, { kind: 'card', title: L.labels.fact, colour: LIGHT.fact[1], max: half, cls: P.factAsk ? 'ask' : '', priority: 2 }),
+    guess: ctx.tags.add(P.guess, { kind: 'card', title: L.labels.guess, colour: LIGHT.guess[1], max: half, cls: P.guessAsk ? 'ask' : '', priority: 2 }),
   };
+  const neckGrads = new Map();   // the neck's gradient, cached per length (drawn in the pair's own frame)
   let labelK = 0;
 
   function homes() {
@@ -46,7 +51,8 @@ export function mount(ctx) {
     const cy = clamp(from.y, A.y + R * 1.6, A.y + A.h - R * 2.6);
     const cx = A.x + A.w / 2;
     if (phase === 'apart') {
-      F.hx = A.x + A.w * 0.25; G.hx = A.x + A.w * 0.75; F.hy = G.hy = cy - R * 0.2;
+      // high in the area, so each card has the room below its jelly
+      F.hx = A.x + A.w * 0.25; G.hx = A.x + A.w * 0.75; F.hy = G.hy = Math.min(cy - R * 0.2, A.y + R * 1.25);
       return;
     }
     const d = restD + (releaseD - restD) * (stepK / 3);
@@ -84,29 +90,38 @@ export function mount(ctx) {
   }
 
   // the neck between the two lobes: two concave curves, pinched as it stretches
+  function neckGradient(d) {
+    const key = Math.max(6, Math.round(d / 6) * 6);
+    let gr = neckGrads.get(key);
+    if (!gr) {
+      gr = g.createLinearGradient(0, 0, key, 0);
+      gr.addColorStop(0, rgba(LIGHT.fact[1], 0.8)); gr.addColorStop(0.5, rgba('#c99cf2', 0.72)); gr.addColorStop(1, rgba(LIGHT.guess[1], 0.8));
+      if (neckGrads.size > 96) neckGrads.clear();
+      neckGrads.set(key, gr);
+    }
+    return gr;
+  }
+  // drawn in the pair's own frame (F at the origin, G along +x), so one cached gradient serves every angle
   function drawNeck(k, alpha) {
     const dx = G.x - F.x, dy = G.y - F.y, d = Math.hypot(dx, dy) || 1;
-    const nx = -dy / d, ny = dx / d;
     const w = lerp(R * 0.66, R * 0.07, k ** 0.8);
-    const mx = (F.x + G.x) / 2, my = (F.y + G.y) / 2;
-    const a1x = F.x + nx * R * 0.62 * F.scale, a1y = F.y + ny * R * 0.62 * F.scale;
-    const a2x = F.x - nx * R * 0.62 * F.scale, a2y = F.y - ny * R * 0.62 * F.scale;
-    const b1x = G.x + nx * R * 0.62 * G.scale, b1y = G.y + ny * R * 0.62 * G.scale;
-    const b2x = G.x - nx * R * 0.62 * G.scale, b2y = G.y - ny * R * 0.62 * G.scale;
-    const gr = g.createLinearGradient(F.x, F.y, G.x, G.y);
-    gr.addColorStop(0, rgba(LIGHT.fact[1], 0.8)); gr.addColorStop(0.5, rgba('#c99cf2', 0.72)); gr.addColorStop(1, rgba(LIGHT.guess[1], 0.8));
+    const fa = R * 0.62 * F.scale, ga = R * 0.62 * G.scale;
+    g.save();
+    g.translate(F.x, F.y);
+    g.rotate(Math.atan2(dy, dx));
     g.globalAlpha = alpha;
-    g.fillStyle = gr;
+    g.fillStyle = neckGradient(d);
     g.beginPath();
-    g.moveTo(a1x, a1y);
-    g.quadraticCurveTo(mx + nx * w, my + ny * w, b1x, b1y);
-    g.lineTo(b2x, b2y);
-    g.quadraticCurveTo(mx - nx * w, my - ny * w, a2x, a2y);
+    g.moveTo(0, fa);
+    g.quadraticCurveTo(d / 2, w, d, ga);
+    g.lineTo(d, -ga);
+    g.quadraticCurveTo(d / 2, -w, 0, -fa);
     g.closePath();
     g.fill();
     // a thin highlight along the top of the neck
     g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 1.2;
-    g.beginPath(); g.moveTo(a1x, a1y); g.quadraticCurveTo(mx + nx * w * 0.8, my + ny * w * 0.8, b1x, b1y); g.stroke();
+    g.beginPath(); g.moveTo(0, -fa); g.quadraticCurveTo(d / 2, -w * 0.8, d, -ga); g.stroke();
+    g.restore();
     g.globalAlpha = 1;
   }
 
@@ -149,14 +164,12 @@ export function mount(ctx) {
     G.draw(g, { tension: tense, calm, blink: blinkAt(t, 1.7), lookX: phase === 'apart' ? 0.3 : -0.6, press: G.press ? 1 : 0, surprise: phase === 'letting' ? 0.6 : 0 });
     motes.draw(g, dt);
 
-    // words: one tag under the pair while joined; two labelled halves once apart
-    labelK = approach(labelK, phase === 'apart' ? 1 : 0, 4, dt);
+    // words: one tag under the pair while joined; a card under each half once apart
+    labelK = R_ ? (phase === 'apart' ? 1 : 0) : approach(labelK, phase === 'apart' ? 1 : 0, 4, dt);
     const below = Math.max(F.y, G.y) + R * 1.12 + 6;
     tags.words.at((F.x + G.x) / 2, below, 'bottom', 1 - labelK);
-    tags.factL.at(F.x, F.y - R * 1.18 - 4, 'top', labelK);
-    tags.guessL.at(G.x, G.y - R * 1.18 - 4, 'top', labelK);
-    tags.factW.at(F.x, F.y + R * 1.12 + 6, 'bottom', labelK);
-    tags.guessW?.at(G.x, G.y + R * 1.12 + 6, 'bottom', labelK);
+    tags.fact.at(F.x, F.y + R * 1.06 + 6, 'bottom', labelK);
+    tags.guess.at(G.x, G.y + R * 1.06 + 6, 'bottom', labelK);
     return true;
   }
 
@@ -196,6 +209,7 @@ export function mount(ctx) {
     frame, pointer, done,
     hitTest: (x, y) => F.hit(x, y, 1.6) || G.hit(x, y, 1.6),
     assist: () => { if (phase !== 'apart') step(); },
+    bodies: () => [circleRect(F.x, F.y, R * F.scale, 2), circleRect(G.x, G.y, R * G.scale, 2)],
     avoid: () => [circleRect(F.x, F.y, R * 1.25), circleRect(G.x, G.y, R * 1.25), ...ctx.tags.rects()],
     get settled() { return phase === 'apart'; },
     probe: () => ({ a: { x: F.x, y: F.y }, b: { x: G.x, y: G.y }, phase }),

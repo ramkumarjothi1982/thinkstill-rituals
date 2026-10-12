@@ -34,6 +34,8 @@ export const SAFETY = Object.freeze({
   careAsk: 'I’m staying right here. Want to see who can help?',
   careOptions: [{ label: 'See support', value: 'support', primary: true }, { label: 'Just squeeze Zuzu', value: 'squeeze' }],
   concern: 'That sounds heavy. Support is right there if you want it.',
+  /** Finishing after crisis or care: calm, no jokes, no "another look". */
+  finish: ['Go gently.', 'Support is one tap away whenever you need it.'],
 });
 
 export const UNCLEAR = Object.freeze({
@@ -93,6 +95,7 @@ export const MECHANIC_LINES = Object.freeze({
   soften_harshness: {
     hint: 'That’s a harsh verdict. Smooth it slowly, the way you’d calm a friend.',
     hint2: 'Slower. Gentle strokes soften it.',
+    hint3: 'Stroke slowly round the edge, where it’s sharpest.',
     assist: 'Smooth it', done: 'Softer. And the lesson’s still there.',
     labels: { core: 'Something to learn' },
   },

@@ -8,16 +8,19 @@
 
 import { INTENTIONS, PATTERNS } from './vocab.js';
 
-// angle-v4 (12 Oct 2026, after the review of v3, before any real-model run of
-// v3): every anchor line within the 8–14-word budget and free of the banned
-// words, the choice of two as a real question, no invented counts of people,
-// and a follow-up names each earlier angle's lens. angle-v3 (after eval run 2:
-// shorter lines, line 2 in varied forms, a new point), angle-v2 (after run 1:
-// line 2 carries the step, the six lenses) and angle-v1 are kept beside it for
-// comparison (tools/angle-eval.mjs --prompt angle-v2).
-export const PROMPT_VERSION = 'angle-v4';
+// angle-v5 (12 Oct 2026, after eval run 3 of v4): reassurance that is likely
+// but not known is said with "may", "often" or "could be", never as a promise
+// about health, results or someone else's decision; a regeneration replaces
+// the words the gate feedback names. Every other v4 rule is unchanged.
+// angle-v4 (after the review of v3: anchors within the 8–14-word budget, the
+// choice of two as a real question, a follow-up names each earlier angle's
+// lens), angle-v3 (after eval run 2: shorter lines, line 2 in varied forms, a
+// new point), angle-v2 (after run 1: line 2 carries the step, the six lenses)
+// and angle-v1 are kept beside it for comparison (tools/angle-eval.mjs
+// --prompt angle-v4).
+export const PROMPT_VERSION = 'angle-v5';
 /** Every prompt file in prompts/, oldest first. */
-export const PROMPT_VERSIONS = Object.freeze(['angle-v1', 'angle-v2', 'angle-v3', 'angle-v4']);
+export const PROMPT_VERSIONS = Object.freeze(['angle-v1', 'angle-v2', 'angle-v3', 'angle-v4', 'angle-v5']);
 
 /** The six lenses an angle can look through (prompts/angle-v2.md and later). */
 export const LENSES = Object.freeze([

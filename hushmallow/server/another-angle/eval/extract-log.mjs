@@ -2,16 +2,17 @@
 // Turns the log of an "Another Angle eval" GitHub Actions job back into the
 // JSON that tools/angle-eval.mjs writes (results[].rounds[] with scene,
 // meta.drafts and judge), so a run can be replayed through the current gate
-// (eval/replay-gate.mjs) when only the log is at hand. eval/runs/run1-answers.json
-// and run2-answers.json were made this way.
+// (eval/replay-gate.mjs) when only the log is at hand. eval/runs/run1-answers.json,
+// run2-answers.json and run3-answers.json were made this way.
 //
 //   node eval/extract-log.mjs <job-log.txt> <out.json> [--run "run 3 (…)"]
 //
 // It reads the markdown report the job prints: the "Gate rejections" list and
 // the "Cases" section. A scene keeps what the report shows (both lines, the
 // four explore fields, pattern, mechanic, Mallow, emotion, situation); a
-// rejected draft keeps its lines and the text of each failing field. Lines
-// it cannot read stop it with an error rather than guessing.
+// rejected draft keeps its lines and the text of each failing field, and,
+// in reports from after run 3, its pattern and what the regeneration was
+// told. Lines it cannot read stop it with an error rather than guessing.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 
@@ -44,15 +45,19 @@ const drafts = [];
 for (const line of md) {
   if (line.startsWith('## ')) { section = line.slice(3).trim(); continue; }
   if (section === 'Gate rejections') {
-    let m = /^- \*\*([\w-]+)\*\*(?: \(another angle(?: (\d+))?\))?, attempt (\d+): “(.*)” \/ “(.*)”$/.exec(line);
+    // Reports from after run 3 also name the draft's pattern and, under each
+    // failure, what the regeneration was told.
+    let m = /^- \*\*([\w-]+)\*\*(?: \(another angle(?: (\d+))?\))?, attempt (\d+)(?: \(([a-z_]+)\))?: “(.*)” \/ “(.*)”$/.exec(line);
     if (m) {
       const again = line.includes('(another angle') ? Number(m[2] || 1) : 0;
-      draft = { id: m[1], round: again, attempt: Number(m[3]), lines: [m[4], m[5]], failures: [] };
+      draft = { id: m[1], round: again, attempt: Number(m[3]), lines: [m[5], m[6]], failures: [], ...(m[4] ? { pattern: m[4] } : {}) };
       drafts.push(draft);
       continue;
     }
     m = /^ {2}- `([a-z_]+)`(?: on ([a-z_0-9]+))?(?:: “(.*)”)?$/.exec(line);
     if (m && draft) { draft.failures.push({ code: m[1], field: m[2] || '', text: m[3] ?? null }); continue; }
+    m = /^ {4}- told: (.*)$/.exec(line);
+    if (m && draft?.failures.length) { draft.failures[draft.failures.length - 1].message = m[1]; continue; }
     if (/^- \*\*[\w-]+\*\*.*\(no lines\)$/.test(line)) { draft = null; continue; }
     if (line.trim() && !line.startsWith('None:')) throw new Error(`unparsed rejection line: ${line}`);
     continue;
@@ -88,7 +93,7 @@ for (const line of md) {
 for (const d of drafts) {
   const r = cases.get(d.id)?.rounds[d.round];
   if (!r) throw new Error(`draft for ${d.id} round ${d.round} has no case`);
-  r.meta.drafts.push({ attempt: d.attempt, lines: d.lines, failures: d.failures });
+  r.meta.drafts.push({ attempt: d.attempt, lines: d.lines, ...(d.pattern ? { pattern: d.pattern } : {}), failures: d.failures });
 }
 const results = [...cases.values()];
 let nScenes = 0; let nDrafts = 0;

@@ -7,7 +7,7 @@
 // after one failed regeneration the client falls back to the authored engine.
 
 import { HEAVY_EMOTIONS } from './vocab.js';
-import { LENSES } from './prompt.js';
+import { LENSES, PATTERN_LENS } from './prompt.js';
 import { tidy, words, wordCount, sentences, contentStems, allStems, meaningStems, jaccard, numberTokens, stem, plainStem, wordsAndParts, STOPWORDS, BROAD_SYNONYMS, IRREGULAR as TEXT_IRREGULAR } from './text.js';
 
 export const LINE_FIELDS = /** @type {const} */ (['subtitle_line_1', 'subtitle_line_2']);
@@ -18,6 +18,9 @@ export const LIMITS = Object.freeze({
   totalMin: 15, totalMax: 35, lineMax: 22, lineMin: 3,
   field: { known_fact: 20, possible_assumption: 20, alternative_angle: 24, practical_next_step: 20 },
   repeatSimilarity: 0.5, repeatLineSimilarity: 0.6,
+  // Lines that share only the person's own words count as a repeat only when
+  // they are this close (a restatement said twice).
+  repeatVerbatim: 0.8,
   // Novelty on meaning-bearing words (eval runs 1 and 2: real follow-ups
   // shared at most one; close paraphrases three or more at a Jaccard of 0.27
   // and up). A backstop for near-verbatim repeats only: it cannot see the same
@@ -114,7 +117,15 @@ const RULES = [
       // "simply"/"clearly" only where they dismiss ("simply move on"), not in "simply note what happened".
       R`(?:simply|just) (?:move on|get over (?:it|this|that|him|her|them)|forget (?:about )?(?:it|this|that)|stop (?:worrying|thinking about (?:it|this|that)|caring|overthinking)|relax|calm down|cheer up|accept (?:it|this|that)|deal with (?:it|this|that)|toughen up|snap out of it|ignore (?:it|this|that))`,
       R`(?:simply|clearly) (?:overreacting|overthinking|exaggerating|being (?:silly|dramatic|irrational|paranoid|unreasonable|too)|wrong|irrational|paranoid|nothing|fine|silly|not (?:a big deal|that bad|worth))`,
-      R`it(?:'s| is) (?:simply|clearly) (?:not|nothing)`, R`silly`, R`just (?:study|try|work|revise|practi[sc]e) harder`, R`not that deep`, R`calm down`, R`just relax`, R`chill out`, R`no big deal`, R`not a big deal`, R`not that big a deal`, R`it doesn'?t matter`, R`who cares`, R`you(?:'re| are) fine`, R`first[- ]world problem`]),
+      R`it(?:'s| is) (?:simply|clearly) (?:not|nothing)`, R`silly`, R`just (?:study|try|work|revise|practi[sc]e) harder`, R`not that deep`, R`calm down`, R`just relax`, R`chill out`, R`no big deal`, R`not a big deal`, R`not that big a deal`, R`it doesn'?t matter`, R`you(?:'re| are) fine`, R`first[- ]world problem`,
+      // The shrug "Who cares?" opens its own clause. "Who cares" inside a
+      // sentence names the people who care ("tells you who could make that
+      // evening, not who cares"), which is a kind reading, not a dismissal.
+      // "Who cares most about you?" asks something real.
+      R`(?<=(?:^|[,;:.!?—–(]\s{0,2}|\s-\s)(?:(?:and|but|so|honestly|seriously|really|anyway|besides|well|oh|like),?\s+)?)who (?:even |really |actually |honestly |else )?cares\b(?! (?:most|more|enough|deeply|about you|for you)\b)`,
+      R`(?<=\b(?:so|honestly|seriously|anyway),?\s)who (?:even |really )?cares\b(?! (?:most|more|enough|deeply|about you|for you)\b)`,
+      // Telling them what they ought to know already: "You should know by now…".
+      R`you should (?:already |really |surely |honestly )?(?:know|realise|realize|understand) (?:that|by now|better|this|how|why)\b`, R`you should (?:already |really )?know by now`]),
   },
   {
     code: 'forgive_pressure',
@@ -226,19 +237,26 @@ function root(w) {
   return x.replace(/(?:ing|ed|es|(?<!s)s)$/u, '').replace(/e$/u, '');
 }
 
+// Occasions that come with other people even when nobody is named ("my
+// presentation on Thursday" has an audience).
+const PEOPLE_OCCASION = /\b(?:presentation|meeting|party|parties|interview|speech|wedding|dinner|drinks|class|lecture|seminar|pitch|date|audience|crowd|team|office|work|school|uni|college|club|gig|event|reunion|funeral|group chat)\b/iu;
+
 /**
- * @typedef {{ text: string, roots: Set<string>, stems: Set<string>, neg: boolean, third: boolean, report: boolean }} InputInfo
+ * @typedef {{ text: string, roots: Set<string>, stems: Set<string>, neg: boolean, third: boolean, report: boolean, people: boolean }} InputInfo
  * @param {string} input
  * @returns {InputInfo}
  */
 function inputInfo(input) {
   const ex = expand(input);
   const ws = words(ex).map((w) => w.toLowerCase());
+  const third = THIRD_PARTY_RE.test(ex);
   return {
     text: ex, roots: new Set(ws.map(root)), stems: new Set(ws.map(stem)),
-    neg: NEG_INPUT.test(ex), third: THIRD_PARTY_RE.test(ex), report: REPORT_IN_INPUT.test(ex),
+    neg: NEG_INPUT.test(ex), third, report: REPORT_IN_INPUT.test(ex),
+    people: third || PEOPLE_OCCASION.test(ex) || ws.some((w) => GIVEN_NAMES.has(w)),
   };
 }
+
 
 // Mind words that describe something that happened (an event the person
 // reported), so restating them is not mind-reading. Attitudes ("hates",
@@ -285,11 +303,19 @@ const covered = (frames, clause, at) => frames.some((f) => f.end <= at && !BOUND
  * restatement of what the person wrote ("Your girlfriend forgot your
  * anniversary" for "My girlfriend forgot our anniversary"). New guesses
  * about anyone's mind stay claims everywhere.
+ *
+ * "They" that means a thing ("…until they feel familiar") is not a person
+ * (thingPronouns). Returns the words that read as a claim, or null.
  * @param {string} sentence
  * @param {InputInfo | null} echo
+ * @param {boolean} people the person's text names or implies other people
+ * @returns {{ phrase: string, subject: string } | null}
  */
-function claimsOthersMinds(sentence, echo) {
-  for (const seg of sentence.split(/;|—|–|\s-\s|\bbut\b|\bhowever\b|\bthough\b/)) {
+function claimsOthersMinds(sentence, echo, people) {
+  const s = thingPronouns(sentence, people);
+  /** @param {string} clause @param {number} at @param {number} end @param {string} subject */
+  const hit = (clause, at, end, subject) => ({ phrase: clause.slice(at, end).trim().split(/\s+/).slice(0, 8).join(' '), subject: subject.trim() });
+  for (const seg of s.split(/;|—|–|\s-\s|\bbut\b|\bhowever\b|\bthough\b/)) {
     let leadIn = false;
     for (const clause of seg.split(/[,:]/)) {
       const hedged = HEDGE_RE.test(clause);
@@ -309,7 +335,10 @@ function claimsOthersMinds(sentence, echo) {
       if (motive && OTHERS_RE.test(clause.slice(0, motive.index))) claims.push({ at: motive.index, end: motive.index + motive[0].length, subject: '', neg: false, word: 'motive' });
       const notPersonal = NOT_PERSONAL_RE.test(clause);
       if ((claims.length || notPersonal) && !leadIn) {
-        if (notPersonal && !hedged) return true;
+        if (notPersonal && !hedged) {
+          const np = /** @type {RegExpExecArray} */ (NOT_PERSONAL_RE.exec(clause));
+          return hit(clause, np.index, np.index + np[0].length, '');
+        }
         // A hedge counts for a claim only when it comes first or inside it
         // ("If he is busy…"), not after it ("He is proud, even if…").
         const hedges = spans(HEDGE_G, clause);
@@ -324,16 +353,16 @@ function claimsOthersMinds(sentence, echo) {
             // "Your manager noticed and thinks you are careless": the echo
             // covers what they reported, not a mind word joined on to it.
             const co = COORD_MIND.exec(clause.slice(c.end));
-            if (co && !(EVENT_WORDS.has(co[1].toLowerCase()) && echo.roots.has(root(co[1])))) return true;
+            if (co && !(EVENT_WORDS.has(co[1].toLowerCase()) && echo.roots.has(root(co[1])))) return hit(clause, c.at, c.end + co[0].length, c.subject);
             continue;
           }
-          return true;
+          return hit(clause, c.at, c.end, c.subject);
         }
       }
       if (hedged && !claims.length && !notPersonal && !OTHERS_RE.test(clause)) leadIn = true;
     }
   }
-  return false;
+  return null;
 }
 
 /** Expand common contractions so the claim patterns see "he is", "does not" and so on. */
@@ -403,13 +432,19 @@ const PERSON_THING = /^\s+(?:silence|message|messages|text|texts|reply|replies|r
  */
 function numberMessage(tok, from, facts) {
   const f = facts.find((sp) => tok.start >= sp.start && tok.end <= sp.end);
+  const inStep = from >= 0 && tok.start >= from;
   let why;
-  if (f) why = `${f.why}, so it reads as a fact about their situation${from >= 0 && tok.start >= from ? ', not part of the step' : ''}`;
+  if (f) why = `${f.why}, so it reads as a fact about their situation${inStep ? ', not part of the step' : ''}`;
   else if (from < 0) why = 'here it reads as a fact about their situation';
   else if (tok.start < from) why = 'it comes before the suggestion, so it reads as a fact about their situation';
   else if ((tok.value ?? 0) > 10) why = 'only a small count (up to ten) or a time span ("for twenty minutes") reads as part of a step';
   else why = 'it does not count something to do or a length of time, so it reads as a fact about their situation';
-  return `Do not add details the person did not give (the number "${tok.raw}"): ${why}. Use their numbers, or none.`;
+  // What a second draft can do instead (run 3: told only that "three" read as
+  // a fact, the regeneration dropped the count and tripped another check).
+  const fix = inStep || from >= 0
+    ? 'A suggested step may count what to do, with the count tied to the action ("write two lines", "say them out loud three times", "for ten minutes"), but it must not restate or add facts about what happened. Use their numbers, a count of what to do, or none.'
+    : 'Use their numbers, or none; a count belongs only inside a suggested step, tied to what to do ("write two lines").';
+  return `Do not add details the person did not give (the number "${tok.raw}"): ${why}. ${fix}`;
 }
 
 // Everyday objects and abbreviations a situation implies ("your CV" for a
@@ -481,7 +516,17 @@ const TIME_SPAN = new RegExp(R`\b(?:for|over|within|across|during)\s+(?:about |a
 // occasions); see REPEAT_ACTION for "say it three times".
 const ACTION_COUNT = new RegExp(R`\b${SMALL_NUM}(?: [\p{L}'-]+){0,2}? (?:things?|points?|questions?|lines?|sentences?|words?|examples?|reasons?|ways?|ideas?|items?|pieces?|moments?|steps?|names?|options?|bits?|breaths?|lessons?|notes?|parts?|wins?|strengths?|skills?|differences?|priorities|tasks?|choices?|bullet points?|minutes?|people|friends?|courses?|places?|flats?|jobs?|facts?|memories|photos?|messages?|texts?)\b`, 'giu');
 const ACTION_RANGE = new RegExp(R`\b${SMALL_NUM} or ${SMALL_NUM}(?: [\p{L}'-]+){1,3}\b`, 'giu');
-const REPEAT_ACTION = new RegExp(R`\b(?:say|saying|read|reading|practise|practising|repeat|rehearse|run (?:it|them|that|this) through|try|do|breathe|write|play|count|check|look)(?: (?!the\b|those\b|these\b|your\b|his\b|her\b|their\b)[\p{L}'-]+){0,3}? (?:${SMALL_NUM}(?: or ${SMALL_NUM})? times|twice)\b`, 'giu');
+// "Say your opening two sentences out loud three times" (run 3): the count
+// ends the action's own phrase, so it says how often to do it. The object may
+// be a whole noun phrase ("your opening lines"), but the count must not follow
+// a determiner ("the three times you froze" counts occasions), the phrase must
+// not hold a new clause ("check why it failed three times": a wh-word, a
+// subject or a past verb) and no clause may follow the count ("…three times
+// you were late").
+// Past forms ("the comments your boss made three times") are the irregular
+// ones the text helpers know, plus any "-ed" word.
+const REPEAT_GAP_STOP = R`(?:why|what|when|where|who|whom|which|whether|if|that|because|since|after|you|he|she|they|we|i|has|have|had|was|were|did|is|are|been|[\p{L}]{3,}ed|${[...TEXT_IRREGULAR.keys()].filter((w) => !/ing$/u.test(w)).join('|')})`;
+const REPEAT_ACTION = new RegExp(R`\b(?:say|saying|read|reading|practise|practising|repeat|repeating|rehearse|rehearsing|run|go through|go over|try|do|breathe|write|play|count|check|look|sing|hum)(?: (?!${REPEAT_GAP_STOP}\b)[\p{L}'-]+){0,6}?(?<!\b(?:the|those|these|this|that|your|his|her|their|my|our|its|of|last|past|previous|other|all|both|many|several|few|first)) (?:${SMALL_NUM}(?: or ${SMALL_NUM})? times|twice)\b(?!\s+(?:you|he|she|they|we|it|that|which|when|where|who|i)\b)`, 'giu');
 // Any small count before a plural noun, with up to two words between ("three
 // cheap meals", "two short emails"): found word by word (countSpans below).
 const COUNT_HEAD = new RegExp(R`\b${SMALL_NUM}\b`, 'giu');
@@ -569,6 +614,70 @@ function stepStart(s) {
   }
   if (at > 0 && STEP_CONDITION.test(s.slice(0, at))) at = 0;
   return at;
+}
+
+// --- who "they" is ------------------------------------------------------------
+//
+// "They" is someone else's mind only when it means people. Run 3: "Tonight, say
+// your opening lines out loud until they feel familiar" was read as a claim
+// about other people's feelings, though "they" is the lines. Looking back from
+// "they" in the same sentence, the nearest plausible antecedent decides: a
+// person word, a name or "who" makes it people; a plural thing heading a noun
+// phrase ("your opening lines", "the empty seats", "practise lines") makes it
+// that thing. With neither, it is people when the person's text names or
+// implies people. A thing can only take the mind words a thing can take ("feel
+// familiar", "need practice"); "they think…", "they feel hurt" or "they are
+// busy" after a plural thing still mean people.
+const PERSON_WORD = new RegExp(R`^(?:${OTHER_NOUNS.join('|')}|people|persons?|others|folks?|guests?|strangers?|everyone|everybody|someone|somebody|anyone|anybody|nobody|he|she|him|her|his|their|who|whom|men|women|man|woman|girls?|boys?|lads?|adults?|students?|pupils?|staff|doctors?|nurses?|bosses|ones|person|whoever)$`, 'iu');
+const NP_DETERMINER = new RegExp(R`^(?:the|these|those|this|that|your|my|our|its|some|any|all|both|each|every|few|several|many|such|other|more|which|what|no|${SMALL_NUM}|\d+)$`, 'iu');
+const OBJECT_LEAD = new RegExp(R`^(?:${STEP_VERBS}|of|with|on|about|through|over|into|from|for|at)$`, 'iu');
+// What may come between "they" and its mind word.
+const PRONOUN_AUX = /^(?:\s+(?:definitely|really|just|probably|certainly|surely|actually|only|still|totally|secretly|likely|simply|honestly|genuinely|clearly|obviously|even|already|always|never|not|do|does|did|will|would|must|can|could|might|may|should|start to|begin to|start|begin))*\s+/iu;
+// Feelings a thing cannot have: "they feel hurt" is about people whatever came before it.
+const PERSON_FEELING = new RegExp(R`(?:${MIND_STATE}|bad|good|guilty|left out|let down|ignored|unwanted|rejected|unloved|awkward|uncomfortable|terrible|awful|close|closer|loved|used|the same|strongly|sorry for)\b`, 'iu');
+// The mind words a thing can take: a linking "feel" ("feel familiar", "feel
+// easier") and "need" with what a thing needs ("need more practice", "need a
+// second look"); "need space" or "need time to think" are people's needs.
+// A feeling "about" or "towards" something has someone to feel it ("they feel strange about it").
+const THING_PRED = new RegExp(R`^(?:(?:feel|feels|felt|feeling)\s+(?!(?:that|about|for|towards|like (?:you|they|he|she|we|i)|as (?:if|though) (?:you|they|he|she|we|i))\b)(?!${PERSON_FEELING.source})(?![^,;:.?!]*?\b(?:about|towards)\b)|(?:need|needs|needed)\s+(?:more |a bit more |a little more |some )?(?:practice|practising|work|editing|polishing|checking|fixing|rewriting|a rewrite|another (?:look|read|go|run-through)|a second (?:look|read|go))\b)`, 'iu');
+
+/**
+ * What "they" at `at` in a (lower-cased) sentence refers to: 'person',
+ * 'thing', or null when nothing before it in the sentence is a candidate.
+ * @param {string} s @param {number} at
+ */
+function theyRefersTo(s, at) {
+  const ws = [...s.slice(0, at).matchAll(/[\p{L}\p{N}][\p{L}\p{N}'-]*/gu)].map((m) => m[0].toLowerCase());
+  for (let i = ws.length - 1; i >= 0; i--) {
+    const w = ws[i];
+    // "their plans", "his messages", "your sister's texts": their owner may be who "they" are.
+    if (PERSON_WORD.test(w) || GIVEN_NAMES.has(w) || /^(?!let's$).+(?:'s|s')$/u.test(w)) return 'person';
+    if (!isPluralNoun(w)) continue;
+    // A plural noun counts when it heads a noun phrase: a determiner or count
+    // up to three words before it with only modifiers between ("your opening
+    // lines"), or a verb or preposition just before it ("practise lines").
+    // "Your friend texts" is not one: "friend" is not a modifier.
+    for (let j = i - 1; j >= Math.max(0, i - 3); j--) {
+      if (NP_DETERMINER.test(ws[j])) return 'thing';
+      if (NOT_MODIFIER.has(ws[j]) || PERSON_WORD.test(ws[j])) break;
+    }
+    if (i > 0 && OBJECT_LEAD.test(ws[i - 1])) return 'thing';
+  }
+  return null;
+}
+
+/**
+ * The sentence with each "they" that means a thing written as "these", so the
+ * claim patterns below never see it as people.
+ * @param {string} s expanded, lower-cased @param {boolean} people the person's text names or implies people
+ */
+function thingPronouns(s, people) {
+  return s.replace(/\bthey\b/g, (w, at) => {
+    const pred = s.slice(at + w.length).replace(PRONOUN_AUX, '');
+    if (!THING_PRED.test(pred)) return w;
+    const ref = theyRefersTo(s, at);
+    return ref === 'thing' || (ref === null && !people) ? 'these' : w;
+  });
 }
 
 // "On the tenth replay an answer can sound worse": a general statement about
@@ -739,12 +848,21 @@ function futureSpans(s, where) {
   return { future, facts };
 }
 
-/** @param {keyof typeof LABEL} field */
-function mindsMessage(field) {
+/**
+ * @param {keyof typeof LABEL} field
+ * @param {{ phrase: string, subject: string }} claim what read as a claim
+ */
+function mindsMessage(field, claim) {
+  // Say which words read as someone else's mind (run 3: "until they feel
+  // familiar", about the lines, was rejected without saying so, twice).
+  const where = claim.phrase ? ` The words that read that way: "${claim.phrase}".` : '';
+  const pronoun = /^(?:they|them)$/u.test(claim.subject)
+    ? ' If "they" there means a thing rather than people, name the thing instead ("until the lines feel familiar").'
+    : '';
   if (field === 'known_fact') {
-    return 'known_fact adds a guess about what someone else thinks, feels or intends. Restate what the person told you, plainly and in their own terms ("Your girlfriend forgot your anniversary"); where it is their reading of someone\'s feelings, say it as theirs ("You said your mum is angry with you", "It feels like nobody likes you"). Add no motives, and never cast doubt on what they said happened.';
+    return `known_fact adds a guess about what someone else thinks, feels or intends.${where} Restate what the person told you, plainly and in their own terms ("Your girlfriend forgot your anniversary"); where it is their reading of someone's feelings, say it as theirs ("You said your mum is angry with you", "It feels like nobody likes you"). Add no motives, and never cast doubt on what they said happened.${pronoun}`;
   }
-  return `${LABEL[field]} states what someone else thinks, feels or intends as fact. Restating what the person told you is fine (as theirs: "You said…", "It feels like…"); a new guess about anyone's mind must be one possibility among others ("might", "could") or a question. Never cast doubt on what the person said happened.`;
+  return `${LABEL[field]} states what someone else thinks, feels or intends as fact.${where} Restating what the person told you is fine (as theirs: "You said…", "It feels like…"); a new guess about anyone's mind must be one possibility among others ("might", "could") or a question. Never cast doubt on what the person said happened.${pronoun}`;
 }
 
 const ON_READ = /\bon (?:read|seen|delivered)\b/iu;
@@ -831,10 +949,15 @@ export function qualityGate(scene, ctx) {
     if (!v) continue;
     const t = tidy(v);
     for (const rule of RULES) {
-      if (!rule.re.test(t)) continue;
+      const m = rule.re.exec(t);
+      if (!m) continue;
       // A word the person used themselves (a friend called Claude) is theirs.
       if (rule.unlessInInput && rule.unlessInInput.test(input)) continue;
-      fail(rule.code, field, rule.message);
+      // Name the words that tripped the rule, so the regeneration does not
+      // keep them (run 3: told "avoid condescending words" with a list that
+      // did not include it, the second draft kept "not who cares").
+      const hit = m[0].replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+      fail(rule.code, field, hit ? `${rule.message} The words that tripped this check: "${hit}".` : rule.message);
     }
     // Other people's minds stated as fact.
     // A hedge covers its own clause and what follows it, until "but", a
@@ -845,7 +968,8 @@ export function qualityGate(scene, ctx) {
     for (const s of sentences(t)) {
       if (/\?["')\]]*$/.test(s)) continue;
       const unquoted = s.replace(/"[^"]*"|“[^”]*”|‘[^’]*’/g, ' … ');
-      if (claimsOthersMinds(expand(unquoted), echo)) fail('claims_others_minds', field, mindsMessage(field));
+      const claim = claimsOthersMinds(expand(unquoted), echo, info.people);
+      if (claim) fail('claims_others_minds', field, mindsMessage(field, claim));
     }
     // The harsh label, repeated or flatly denied.
     // A label inside quotes is the person's own word, quoted.
@@ -1042,27 +1166,50 @@ export function qualityGate(scene, ctx) {
   //    Sharing several of them is saying the same new thing again, however
   //    the sentences are built.
   //  * The old whole-line checks stay as a backstop.
+  //  * The person's own details are theirs in every form: "three
+  //    cancellations" restates "the third time" (run 3), so a number word
+  //    whose value they gave is one of their words, not a new point.
+  //  * The whole-line checks need a shared word beyond the person's own:
+  //    two lines that only both name the friend, the month and the three
+  //    cancellations can still make different points (run 3, ho-cancelled),
+  //    so on the person's words alone only a near-verbatim line counts.
   const previous = ctx.previous || [];
   const usedPatterns = [...new Set(previous.map((p) => p.reasoning_pattern).filter(Boolean))];
-  const newMeaning = meaningStems(`${l1} ${l2}`, inputStems);
+  const theirs = new Set(inputStems);
+  if (previous.length) {
+    for (const t of [l1, l2, ...previous.flatMap((p) => [p.subtitle_line_1, p.subtitle_line_2])]) {
+      for (const tok of numberTokens(t)) if (tok.value !== null && inputNums.values.has(tok.value)) theirs.add(stem(tok.raw));
+    }
+  }
+  const newMeaning = meaningStems(`${l1} ${l2}`, theirs);
+  /** @param {Set<string>} a @param {Set<string>} b */
+  const close = (a, b) => {
+    const sim = jaccard(a, b);
+    const beyond = [...a].some((x) => b.has(x) && !theirs.has(x));
+    return sim >= LIMITS.repeatLineSimilarity && (beyond || sim >= LIMITS.repeatVerbatim) ? sim : 0;
+  };
   previous.forEach((p, i) => {
     const prevText = `${p.subtitle_line_1} ${p.subtitle_line_2}`;
     const prevStems = contentStems(prevText);
-    const sim = jaccard(lineStems, prevStems);
-    const lineSim = Math.max(
-      ...[l1, l2].flatMap((a) => [p.subtitle_line_1, p.subtitle_line_2].map((b) => jaccard(contentStems(a), contentStems(b)))),
-    );
-    const prevMeaning = meaningStems(prevText, inputStems);
-    const shared = [...newMeaning].filter((s) => prevMeaning.has(s));
+    const simAll = jaccard(lineStems, prevStems);
+    const sim = simAll >= LIMITS.repeatSimilarity && ([...lineStems].some((x) => prevStems.has(x) && !theirs.has(x)) || simAll >= LIMITS.repeatVerbatim);
+    const pairs = [['Line 1', l1], ['Line 2', l2]].flatMap(([na, a]) => [['line 1', p.subtitle_line_1], ['line 2', p.subtitle_line_2]].map(([nb, b]) => ({ na, nb, sim: close(contentStems(a), contentStems(b)) })));
+    const closest = pairs.reduce((x, y) => (y.sim > x.sim ? y : x));
+    const prevMeaning = meaningStems(prevText, theirs);
+    const shared = [...newMeaning].filter((x) => prevMeaning.has(x));
     const meaningSim = jaccard(newMeaning, prevMeaning);
     const n = previous.length > 1 ? `angle ${i + 1}` : 'the angle just shown';
     if (p.reasoning_pattern && p.reasoning_pattern === scene.reasoning_pattern) {
       fail('repeats_previous', 'lines', `This angle uses the same reasoning_pattern (${scene.reasoning_pattern}) as ${n}, so the app would replay the same scene the person has already played. Use a different reasoning_pattern from every earlier angle (not ${usedPatterns.join(', ')}), with its matching interaction_type, that still fits the situation, and look through a different lens in new words.`);
     } else if ((shared.length >= LIMITS.meaningShared && meaningSim >= LIMITS.meaningSimilarity) || (shared.length >= 2 && meaningSim >= LIMITS.meaningSimilarityPair)) {
       const echoed = words(`${l1} ${l2}`).filter((w) => shared.includes(stem(w)));
-      fail('repeats_previous', 'lines', `This angle says what ${n} already said, in other words (it repeats "${[...new Set(echoed.map((w) => w.toLowerCase()))].slice(0, 4).join('", "')}"). Look through a different lens (${LENSES.join('; ')}) and offer a different question or action.`);
-    } else if (sim >= LIMITS.repeatSimilarity || lineSim >= LIMITS.repeatLineSimilarity || tidy(p.subtitle_line_1).toLowerCase() === tidy(l1).toLowerCase()) {
-      fail('repeats_previous', 'lines', 'This angle repeats one the person has already seen; offer a genuinely different, still-accurate perspective (a different pattern, lens, question or action).');
+      // The lenses the earlier patterns did not use (as the follow-up request names them).
+      const usedLenses = new Set(usedPatterns.map((x) => PATTERN_LENS[/** @type {string} */ (x)]));
+      const free = LENSES.filter((l) => !usedLenses.has(l));
+      fail('repeats_previous', 'lines', `This angle says what ${n} already said, in other words (it repeats "${[...new Set(echoed.map((w) => w.toLowerCase()))].slice(0, 4).join('", "')}"). Look through a different lens (${(free.length ? free : LENSES).join('; ')}) and offer a different question or action, without those words. The person's own details (their people, event and numbers) may stay.`);
+    } else if (sim || closest.sim || tidy(p.subtitle_line_1).toLowerCase() === tidy(l1).toLowerCase()) {
+      const which = closest.sim ? `${closest.na} is close to ${n}'s ${closest.nb}` : `The two lines are close to ${n}`;
+      fail('repeats_previous', 'lines', `This angle repeats one the person has already seen: ${which}. Rewrite that line to make a point ${n} did not make (a different pattern, lens, question or action), in new words; the person's own details may stay.`);
     }
   });
 

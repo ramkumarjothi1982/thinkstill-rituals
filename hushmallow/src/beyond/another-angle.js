@@ -43,6 +43,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const now = () => performance.now();
 const hasWords = (t) => /[\p{L}\p{N}]/u.test(String(t || ''));
 const REACTIONS = new Set(['squeeze', 'tap', 'doubleTap', 'flick', 'stretch', 'massage', 'stroke', 'jiggle', 'pull']);
+/** Safety levels, least to most serious (src/engine/safety.js). */
+const LEVELS = ['none', 'concern', 'care', 'crisis'];
+const worse = (a, b) => (LEVELS.indexOf(b) > LEVELS.indexOf(a) ? b : a);
+/** Zuzu's face after something heavy: attentive and soft (the Hushfold's own choice; no floating hearts). */
+const CARE_FACE = 'concerned';
+/** The overlay's privacy clause, and what it says instead once sharing is on (the rest of its note stays). */
+const PRIVACY_CLAUSE = /Your words stay on this (?:phone|device)\./i;
+const SERVER_CLAUSE = 'Only these words go to our secure server for a new perspective, never photos.';
 
 export function createAnotherAngle(app, { root, params = {} } = {}) {
   const { world, prefs, store } = app;
@@ -58,6 +66,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   const S = {
     left: false, phase: 'arrive', text: params.text || '', emotion: null, intention: null,
     scene: null, shown: [], used: [], crisis: false, care: false, keepSupport: false, kept: false,
+    // the most serious safety level seen in this visit (typed and closed, reworded before Send, or sent): it counts, not only the words sent
+    level: 'none', category: null, concernSaid: false,
     touches: 0, squeezes: 0, seq: 0, lastLineAt: 0, offlineSaid: false, explored: 0, sheetAt: -1e9, band: 0,
   };
   const timers = new Set();
@@ -93,7 +103,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     dpr = Math.min(2, devicePixelRatio || 1);
     W = innerWidth; H = innerHeight;
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
-    if (S.phase === 'playing' && S.scene) S.band = measureBand(MECHANIC_LINES[S.scene.mechanic]?.hint);
+    if (S.phase === 'playing' && S.scene) { const L = MECHANIC_LINES[S.scene.mechanic] || {}; S.band = measureBand([L.hint, L.hint2, L.hint3, L.slow, L.done]); }
+    mech?.tags?.remeasure?.();
     layout();
   }
   const topBottom = () => top.getBoundingClientRect().bottom || 58;
@@ -113,28 +124,45 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     let B = clamp(Math.min(vw * 0.42, vh * 0.21), 96, 210);
     if (S.phase === 'squeeze' || S.phase === 'support') B = clamp(Math.min(vw * 0.6, vh * 0.34), 140, 320);
     if (consentCard) B = clamp(vh * 0.16, 84, 150);
-    // a short phone, while a mechanic plays: Zuzu sits a little smaller so the play area keeps its room
-    if (S.phase === 'playing' && vh < 700) B = Math.min(B, clamp(vh * 0.155, 80, 130));
+    const onStage = S.phase === 'playing' || (!!mech && !root.classList.contains('bx-recede'));
+    // a short phone, while a mechanic is on stage: Zuzu sits a little smaller, down in the corner beside the
+    // dock's pill, so the play area keeps the height it needs (squeezable there too)
+    if (onStage && vh < 700) B = Math.min(B, clamp(vh * 0.155, 80, 130));
+    const corner = vh < 700 && onStage && !two && !ov?.height && !consentCard;
+    root.classList.toggle('bx-corner', corner);
+    // (20px from the screen's edges: room for the system's own gestures)
+    if (corner) root.style.setProperty('--bx-corner', `${Math.round(B * 1.16 + 20 + 8)}px`);
     if (two) B *= 0.86;
     let cy = dockTop() - 14 - B / 2;
+    // Zuzu and the scene's Mallow stand together, centred (never a screen apart on a wide display)
+    const spread = Math.min(vw * 0.36, B * 1.3);
+    let cxZ = two ? vw / 2 - spread / 2 : vw / 2;
+    if (corner) {
+      const pills = [...dock.children].filter((c) => !c.hidden).map((c) => c.getBoundingClientRect().bottom);
+      cxZ = 20 + B * 0.58;
+      cy = (pills.length ? Math.max(...pills) - 2 : vh - 22) - B / 2;
+    }
     if (ov?.height) {
       // typing: Zuzu waits below the compact overlay, smaller
       B = clamp(Math.min(vw * 0.36, (vh - ov.bottom) * 0.55), 80, 180);
       cy = Math.min(vh - 24 - B / 2, ov.bottom + 18 + B / 2);
     }
-    const cxZ = two ? vw * 0.33 : vw / 2;
     zAd.fit?.({ cx: cxZ, cy, size: B });
-    compAd?.fit?.({ cx: vw * 0.69, cy: cy + B * 0.03, size: B * 0.94 });
+    compAd?.fit?.({ cx: vw / 2 + spread / 2, cy: cy + B * 0.03, size: B * 0.94 });
     const band = clamp(vh * 0.14, 86, 132);
-    // while a mechanic plays, the area starts below the subtitle band its own lines need (measured)
-    const aTop = Math.max(topB + band, S.phase === 'playing' && S.band ? topB + 8 + S.band : 0), aBottom = cy - B / 2 - 16;
+    // while a mechanic is on stage (played, or landed and waiting for its line), the area starts below the
+    // subtitle band its own lines need (measured): the scene never climbs into the band as its line arrives
+    const playing = (S.phase === 'playing' || !!mech) && S.band;
+    const aTop = Math.max(topB + band, playing ? topB + 8 + S.band : 0);
+    const aBottom = (corner ? Math.min(cy - B / 2, dockTop()) : cy - B / 2) - 16;
     const aw = Math.min(vw - (vw < 360 ? 20 : 32), 560);
     area = { x: (vw - aw) / 2, y: aTop, w: aw, h: Math.max(150, aBottom - aTop) };
     root.style.setProperty('--bx-card-max', `${Math.round(Math.max(230, cy - B / 2 - 14 - (topB + 8)))}px`);
     subs?.layout();
   }
-  /** The height a subtitle line (at least two rows) plus its controls takes at this size and text scale. */
+  /** The height a subtitle line (at least two rows) plus its controls takes at this size and text scale (the tallest of several lines). */
   function measureBand(text) {
+    if (Array.isArray(text)) return Math.max(0, ...text.filter(Boolean).map((t) => measureBand(t)));
     const real = subs?.el;
     if (!real?.parentNode || typeof getComputedStyle !== 'function') return 0;
     try {
@@ -165,8 +193,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   }
   function subsAvoid() {
     const list = [rectOf(zAd), rectOf(compAd), overlay?.rect?.(), consentCard?.rect?.()];
-    // while a mechanic is being played, its objects and labels stay clear; once it has landed, only the Mallows matter
-    if (mech && !root.classList.contains('bx-recede')) list.push(...(mech.avoid?.() || []));
+    // while a mechanic is on stage its bodies stay clear (its labels make way for the line, not the other way
+    // round: a band that chased the labels would never settle); once it has receded, only the Mallows matter
+    if (mech && !root.classList.contains('bx-recede')) list.push(...(mech.bodies?.() || mech.avoid?.() || []));
     else if (thought?.w2 && !mech) list.push(...TL.rects());
     else if (thought && !mech) list.push({ left: thought.x - thought.r * 1.4, right: thought.x + thought.r * 1.4, top: thought.y - thought.r * 1.4, bottom: thought.y + thought.r * 1.4 + 44 });
     return list.filter(Boolean);
@@ -189,8 +218,38 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     }
     if (TL && TL.list.length) { try { TL.frame(dt, t, g); } catch (e) { console.warn('[another angle] thought layer', e?.message); swapToLocalThought(); } }
     if (thought && !thought.w2 && !mech) drawThought(dt, t);
-    if (mech) { try { mech.frame(dt, t); } catch (e) { console.warn('[another angle] mechanic frame', e?.message); } }
+    if (mech) {
+      try {
+        mech.frame(dt, t);
+        // the labels keep off each other, the subtitle band and its pill, the Mallows and the scene's bodies
+        mech.tags?.layout?.(dt, tagObstacles(), { instant: rmOn() });
+      } catch (e) { mechFailed(e); }
+    }
     g.globalAlpha = 1;
+  }
+  /** What a mechanic's labels must keep clear of (refreshed ~10 times a second, not every frame). */
+  let obsAt = -1e9;
+  const obsList = [];
+  function tagObstacles() {
+    const t = now();
+    if (t - obsAt < 90) return obsList;
+    obsAt = t;
+    obsList.length = 0;
+    const box = (r, pad = 0) => (r && r.width !== 0 && r.height !== 0 ? { left: r.left - pad, top: r.top - pad, right: r.right + pad, bottom: r.bottom + pad } : null);
+    if (subs?.el) for (const e of subs.el.querySelectorAll('.hf-sublive > .hf-sub, .hf-chips:not([hidden]), .hf-subctl:not(.is-hidden)')) obsList.push(box(e.getBoundingClientRect(), 2));
+    for (const ad of [zAd, compAd]) { const b = ad?.bodyRect?.(); if (b?.height) obsList.push({ left: b.left + b.width * 0.08, top: b.top, right: b.left + b.width * 0.92, bottom: b.top + b.height }); }
+    for (const c of dock.children) if (!c.hidden) obsList.push(box(c.getBoundingClientRect(), 2));
+    for (const r of mech?.bodies?.() || []) obsList.push(r);
+    return obsList;
+  }
+  /** A mechanic that throws: never a stuck scene. Its perspective still arrives (through pull_apart, or straight to the reveal). */
+  let failNote = null;
+  function mechFailed(e) {
+    const m = mech;
+    if (!m || m.failed) return;
+    m.failed = true;
+    console.warn('[another angle] mechanic stopped', mechId, e?.message);
+    failNote?.(mechId);
   }
 
   // ------------------------------------------------- Thought Mallow --
@@ -266,7 +325,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     if (e.kind === 'press') { S.touches++; return; }
     if (!REACTIONS.has(e.kind)) return;
     S.squeezes++;
-    if (overlay || S.phase === 'typing') return;
+    // after something heavy, squeezing stays and the playful lines go
+    if (overlay || S.phase === 'typing' || S.level !== 'none' || S.crisis || S.care) return;
     // an occasional line, never a running commentary (and never over a perspective)
     if (['arrive', 'invite', 'squeeze', 'end'].includes(S.phase) && !subs?.busy && now() - S.lastLineAt > 9000 && S.squeezes % 3 === 1) say(pick(ZUZU_SQUEEZE, S.squeezes));
   }
@@ -367,22 +427,34 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     subs?.clear({ keepHeld: true });
     subs?.suspend();
     S.phase = 'typing';
-    zt?.setStage('listening');
+    // after something heavy Zuzu listens with its attentive face
+    zt?.setStage(S.level !== 'none' ? CARE_FACE : 'listening');
     root.classList.add('hf-typing');
     overlay = inputMod.openInput({
       app, root, prompt: ARRIVAL.prompt,
       mallow: { id: 'zuzu', name: ZUZU.name, glow: ZUZU.colours.glow },
       emotion: S.emotion, intention: S.intention, hasPlan: true, text: S.text,
-      face: (f) => zt?.setEmotion(f, 0.6, { quiet: true }),
+      // something heavy earlier in this visit: the overlay's Support chip is there from the start
+      heavy: S.level !== 'none',
+      face: (f) => { if (S.level === 'none') zt?.setEmotion(f, 0.6, { quiet: true }); },
       onLayout: () => layout(),
+      // the level is the scene's the moment it is seen, whether or not anything is sent
+      onSafety: (r) => noteSafety(r),
       onSubmit: (r) => { afterTell(r); },
-      onClose: (reason) => {
+      onClose: (reason, meta = {}) => {
         overlay = null;
         const t = layer.overlay; layer.overlay = 0; if (t) app.popLayer?.(t);
         root.classList.remove('hf-typing');
         if (S.left) return;
+        noteSafety(meta.safety);
         subs?.unsuspend();
-        if (reason !== 'submit') { S.phase = 'invite'; zt?.setStage('curious'); dockShow({ tell: true }); }
+        if (reason !== 'submit') {
+          // crisis or care typed and closed without sending: exactly what sending them would have done (nothing is sent)
+          if (S.level === 'crisis') crisisMode({ sheetShown: !!meta.supportShown });
+          else if (S.level === 'care') careMode();
+          else if (S.level === 'concern') concernNote();
+          else { S.phase = 'invite'; zt?.setStage('curious'); dockShow({ tell: true }); }
+        }
         layout();
       },
     });
@@ -390,54 +462,100 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     const photo = overlay.el.querySelector('.hf-ghost.photo');
     if (photo) photo.hidden = true;
     if (serverMode()) {
+      // only the privacy clause changes (the dictation hint around it stays)
       const note = overlay.el.querySelector('.note');
-      const fix = () => { for (const s of note?.querySelectorAll('span') || []) if (/stay on this (?:phone|device)/i.test(s.textContent)) s.textContent = 'Only these words go to our secure server, for a new perspective. Never photos.'; };
-      if (note && typeof MutationObserver === 'function') { new MutationObserver(fix).observe(note, { childList: true, subtree: true }); fix(); }
+      const fix = () => {
+        for (const s of note?.querySelectorAll('span') || []) {
+          const was = s.textContent, now_ = was.replace(PRIVACY_CLAUSE, SERVER_CLAUSE);
+          if (now_ !== was) s.textContent = now_;
+        }
+      };
+      if (note && typeof MutationObserver === 'function') { new MutationObserver(fix).observe(note, { childList: true, subtree: true, characterData: true }); fix(); }
     }
     layer.overlay = app.pushLayer?.() || 0;
     dockShow({});
     layout();
   }
 
-  async function afterTell({ text, emotion, intention, input = null, reading = null }) {
+  async function afterTell({ text, emotion, intention, input = null, reading = null, safety: seen = null }) {
     S.text = String(text || '').trim();
     S.emotion = emotion || null;
     // how the Thought Mallow looks: the chosen feeling, else what the words suggest (only its look; nothing is sent)
     S.look = emotion || input?.emotions?.[0]?.id || reading?.emotions?.[0]?.id || 'anxiety';
     S.intention = intention || null;
     S.shown = []; S.used = []; S.kept = false; S.explored = 0;
-    // the app's own safety check first, always (never dependent on the server)
-    const safety = checkText(S.text);
-    if (safety.level === 'crisis') { crisisMode(); return; }
-    if (safety.level === 'care') { careMode(); return; }
-    if (safety.level === 'concern') S.keepSupport = true;
+    // the app's own safety check first, always (never dependent on the server); and the visit's level
+    // counts, not only the words sent (crisis or care typed earlier and reworded before Send still means no angle)
+    noteSafety(seen);
+    noteSafety(checkText(S.text));
+    if (S.level === 'crisis') { crisisMode(); return; }
+    if (S.level === 'care') { careMode(); return; }
+    if (S.level === 'concern') S.keepSupport = true;
     if (!S.text || !hasWords(S.text)) { unclear(); return; }
     startAngle({ another: false });
   }
 
-  function crisisMode() {
-    S.crisis = true; S.phase = 'support';
+  /**
+   * A safety level seen (while typing, on close, on send, or from the server). Raises the visit's level
+   * only: once support has been needed it stays one tap away, the playful lines and the invitation go.
+   */
+  function noteSafety(r) {
+    const lv = r?.level;
+    if (!lv || !LEVELS.includes(lv) || worse(S.level, lv) === S.level) return;
+    S.level = lv;
+    S.category = r.category || null;
+    S.keepSupport = true;
+    if (lv === 'crisis') S.crisis = true;
+    if (lv === 'care') S.care = true;
+    supportPill.hidden = false;
+    // a pending invitation or a playful choice goes (a held line stays); while typing nothing shows anyway
+    if (!overlay) subs?.clear({ keepHeld: true });
+    zt?.setStage(CARE_FACE);
+    if (!overlay) layout();
+  }
+  function crisisMode({ sheetShown = false } = {}) {
+    S.crisis = true; S.keepSupport = true; S.level = 'crisis'; S.phase = 'support';
+    S.seq++;                               // whatever was waiting for an answer is over
     dropThought(); endMechanic(true); dismissCompanion();
     // openInput opens the urgent sheet as soon as it sees the words: never a second time straight after
-    if (!document.querySelector('.sheet.open') && now() - S.sheetAt > 60000) openSupport(app, { urgent: true });
-    zt?.setStage('comforting');
+    if (!sheetShown && !document.querySelector('#sheet-root .sheet.open') && now() - S.sheetAt > 60000) openSupport(app, { urgent: true });
+    zt?.setStage(CARE_FACE);
     dockShow({ finish: true });
-    say(SAFETY.crisis, { hold: true });
+    if (S.crisisSaid) return;              // said once a visit; the Support pill stays
+    S.crisisSaid = true;
+    subs?.clear();
+    say(SAFETY.crisis, { hold: true, interrupt: true });
   }
   async function careMode() {
-    S.care = true; S.phase = 'support';
+    S.care = true; S.keepSupport = true; S.level = worse(S.level, 'care'); S.phase = 'support';
+    S.seq++;
     dropThought(); endMechanic(true); dismissCompanion();
-    zt?.setStage('comforting');
+    zt?.setStage(CARE_FACE);
     dockShow({ finish: true });
-    await say(SAFETY.care);
-    if (S.left) return;
+    if (S.careSaid) return;
+    S.careSaid = true;
+    subs?.clear();
+    await say(SAFETY.care, { interrupt: true });
+    if (S.left || S.phase !== 'support') return;
     const v = await choose(SAFETY.careAsk, SAFETY.careOptions);
     if (v === 'support') openSupport(app);
   }
+  /** Something heavy (not care or crisis) typed and closed without sending: support close, said once, quietly. */
+  function concernNote() {
+    S.phase = 'invite';
+    zt?.setStage(CARE_FACE);
+    dockShow({ tell: true });
+    if (S.concernSaid) return;
+    S.concernSaid = true;
+    say(SAFETY.concern, { interrupt: !subs?.holding });
+  }
   async function unclear() {
     S.phase = 'invite';
-    dockShow({ tell: true });
+    // the choice carries "Tell Zuzu more": the dock's own Tell pill waits until it is answered
+    dockShow({});
     const v = await choose(UNCLEAR.line, UNCLEAR.options.map((o) => (o.value === 'tell' ? { ...o, onPick: () => openTell() } : o)));
+    if (S.left || S.phase !== 'invite') return;
+    dockShow({ tell: true });
     if (v === 'squeeze') say(ARRIVAL.justSqueeze[0]);
   }
 
@@ -527,17 +645,34 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       kick: () => {},
     };
     endMechanic(true);
-    S.band = measureBand(L.hint);
-    layout();
-    mech = mod.mount(ctx);
-    mechId = scene.mechanic;
-    mech.tags = ctx.tags;
-    zt?.lookAt(0, -0.8);
+    // the band its own lines need (the longest of them), and the dock's pill, before the mechanic sizes itself
+    S.band = measureBand([L.hint, L.hint2, L.hint3, L.slow, L.done]);
     dockShow({ assist: L.assist });
-    say(L.hint, { mallow: 'zuzu' });
-    if (scene.offlineNote) say('Zuzu’s own angle this time, worked out on this phone.', { who: null, colour: null });
-    const result = await mech.done;
+    // a mechanic that throws (mounting or in a frame) never leaves the person stuck
+    let failed = null;
+    const failP = new Promise((r) => { failed = r; });
+    failNote = (id) => failed(id);
+    try {
+      mech = mod.mount(ctx);
+      mechId = scene.mechanic;
+      mech.tags = ctx.tags;
+    } catch (e) { console.warn('[another angle] mechanic mount', e?.message); ctx.tags.clear(); mech = null; failed(scene.mechanic); }
+    zt?.lookAt(0, -0.8);
+    if (mech) {
+      say(L.hint, { mallow: 'zuzu' });
+      if (scene.offlineNote) say('Zuzu’s own angle this time, worked out on this phone.', { who: null, colour: null });
+    }
+    const result = mech ? await Promise.race([mech.done, failP]) : await failP;
+    failNote = null;
     if (S.left || seq !== S.seq) return;
+    if (!mech || mech.failed) {
+      // pull_apart once (every scene has a fact and an assumption), else straight to the perspective
+      endMechanic(true);
+      S.shown.pop();
+      if (scene.mechanic !== 'pull_apart') { scene.mechanic = 'pull_apart'; return playScene(scene, seq); }
+      S.shown.push(scene);
+      return reveal(scene, seq, { played: false });
+    }
     void result;
     await reveal(scene, seq);
   }
@@ -558,12 +693,12 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     return sleep(rmOn() ? 170 : 440).then(() => { kill(); recede(false); if (canvas) canvas.style.opacity = '1'; });
   }
 
-  async function reveal(scene, seq) {
+  async function reveal(scene, seq, { played = true } = {}) {
     S.phase = 'reveal';
     dockShow({});
     const L = MECHANIC_LINES[scene.mechanic];
     subs.clear();
-    await say(L.done, { mallow: 'zuzu' });
+    if (played) await say(L.done, { mallow: 'zuzu' });
     if (S.left || seq !== S.seq) return;
     recede(true);
     const lead = scene.mallow_character || 'zuzu';
@@ -672,13 +807,18 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       if (S.left) return;
       const origin = () => zAd?.bodyRect?.();
       const face = () => { try { return install.mallowFaceRect?.(zAd?.bodyRect?.(), ZUZU) || null; } catch { return null; } };
+      // the install owns the stage: no line, and no subtitle pill floating on its own
+      subs?.clear({ keepHeld: false });
+      root.classList.add('bx-installing');
       const r = await install.keepDiscovery({
         app, store, skillId: 'another-angle', worldId: 'another-angle', mallow: 'zuzu', origin, face,
         avoid: () => [rectOf(compAd), ...(mech?.avoid?.() || [])].filter(Boolean),
         subtitles: subs, reducedMotion: rmOn(), lowStim: lowOn(),
+        // which kind of angle it was (no words): for the garden's own copy per kind, when it has it
+        evidence: { reasoning_pattern: S.scene?.reasoning_pattern || null, interaction_type: S.scene?.interaction_type || null },
       });
       if (r?.kept || r?.already) S.kept = true;
-    } catch (e) { console.info('[another angle] garden unavailable', e?.message); }
+    } catch (e) { console.info('[another angle] garden unavailable', e?.message); } finally { root.classList.remove('bx-installing'); }
   }
   async function endChoice(seq) {
     if (S.left || seq !== S.seq) return;
@@ -701,21 +841,26 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       const fe = flowEmotion(S.emotion, em.getEmotion(S.emotion)?.family) || null;
       worldId = registry.select({ emotion: fe, intention: S.intention && S.intention !== 'play' ? S.intention : 'calm' })?.id || null;
     } catch { worldId = null; }
-    app.go('home', worldId ? { flow: { worldId } } : {});
+    // the feeling and intention carry on into Hushflow (and the words, in memory only, if the Hushfold takes them)
+    const carry = { emotion: S.emotion || null, intention: S.intention || null, text: S.text || '' };
+    app.go('home', worldId ? { flow: { worldId, ...carry } } : { carry });
   }
   async function finish() {
     if (S.phase === 'finishing') return;
     S.phase = 'finishing';
     S.seq++;
     subs?.clear();
+    const heavy = S.crisis || S.care;
     dockShow({});
-    zt?.setStage('comforting');
-    if (!rmOn()) zt?.react('hop');
-    await say(END.finish[0], { mallow: 'zuzu' });
+    zt?.setStage(heavy ? CARE_FACE : 'comforting');
+    if (!rmOn() && !heavy) zt?.react('hop');
+    const lines = heavy ? SAFETY.finish : END.finish;
+    await say(lines[0], { mallow: 'zuzu' });
     if (S.left) return;
-    await say(END.finish[1], { mallow: 'zuzu' });
+    await say(lines[1], { mallow: 'zuzu' });
     if (S.left) return;
-    app.go('home');
+    // the Hushfold may keep support close after something heavy (it reads params.safety when it supports it)
+    app.go('home', S.level !== 'none' ? { safety: { level: S.level } } : {});
   }
 
   // ------------------------------------------------------- the view --

@@ -6,6 +6,8 @@
 // share (two) and no more: accountability stays, the rest goes back. As the
 // weights come off, the thought rises and breathes out. Tap a weight, or the
 // assist pill, to send it to the next bowl.
+// The heaviest weight carries the blame as the person put it ("it's my
+// fault"), so where it goes is their own answer to "where does this belong?".
 
 import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, LIGHT, Motes, blinkAt, circleRect, tintFor, TAU, Timers } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
@@ -29,13 +31,17 @@ export function mount(ctx) {
   const from = ctx.from || { x: A0.x + A0.w / 2, y: A0.y + A0.h * 0.7 };
   const thought = new Blob({ x: from.x, y: from.y, r: R, light, deep });
   const stones = Array.from({ length: N }, (_, i) => {
-    const b = new Blob({ x: from.x, y: from.y - R, r: R * (0.36 - i * 0.012), light: LIGHT.calm[0], deep: '#e0943a' });
+    // the first is the heaviest (it sits lowest on the pile, pressing on the thought)
+    const b = new Blob({ x: from.x, y: from.y - R, r: R * (i === 0 ? 0.5 : 0.34 - i * 0.012), light: LIGHT.calm[0], deep: i === 0 ? '#d97a2b' : '#e0943a' });
     b.place = -1; b.k = 34; b.d = 8; b.i = i;
     return b;
   });
+  const heaviest = stones[0];
+  const heavyTag = ctx.tags.add(ctx.parts.weight || 'The heaviest part', { kind: 'line', max: 150, priority: 1 });
   const places = L.labels.places.map((label, i) => ({ label, i, count: 0, glow: 0, tag: ctx.tags.add(label, { kind: 'label', colour: i === YOURS ? '#ffd98a' : ['#7fe7ff', '#b59cff', '#ff9ad5'][i] }) }));
   // a short phone: the bowls sit either side of the thought, so its words stay narrow between them
-  const words = ctx.tags.add(ctx.parts.excerpt, { kind: 'words', max: A0.h < 270 ? Math.max(120, Math.round(A0.w - 4 * clamp(Math.min(A0.w * 0.13, A0.h * 0.16), 30, 46) - 50)) : 230 });
+  const SHORT = A0.h < 270;
+  const words = ctx.tags.add(ctx.parts.excerpt, { kind: 'words', max: SHORT ? Math.max(120, Math.round(A0.w - 4 * clamp(Math.min(A0.w * 0.13, A0.h * 0.16), 30, 46) - 50)) : 230 });
   let finished = false, warned = false, moves = 0, settleT = 0;
   const t0 = performance.now();
 
@@ -58,13 +64,15 @@ export function mount(ctx) {
     const on = stones.filter((s) => s.place < 0);
     const weight = on.length / N;
     thought.hx = G.tx; thought.hy = G.ty + R * 0.22 * weight;
-    let stack = 0;
+    let stack = 0, y = thought.hy - R * (0.72 + 0.26 * weight), prevR = 0;
     for (const s of stones) {
       if (s.press) continue;
       if (s.place < 0) {
-        // piled on the head, a little off-balance
+        // piled on the head, a little off-balance (each one resting on the one below it)
         const sx = ((stack % 2) ? 1 : -1) * R * 0.18 * (stack > 0 ? 1 : 0);
-        s.hx = G.tx + sx; s.hy = thought.hy - R * (0.78 + 0.26 * weight) - stack * s.r * 1.45;
+        y -= stack ? (prevR + s.r) * 0.86 : s.r * 0.6;
+        s.hx = G.tx + sx; s.hy = y;
+        prevR = s.r;
         stack++;
       } else {
         const p = G.pos[s.place];
@@ -148,7 +156,10 @@ export function mount(ctx) {
       drawJelly(g, { x: s.x, y: s.y, r: s.r, sx: s.sx * 1.12, sy: s.sy * 0.86, light: s.light, deep: s.deep, glow: 0, alpha: 0.96 });
     }
     motes.draw(g, dt);
-    words.at(thought.x, thought.y + R * 1.05 + 8, 'bottom', 1);
+    // a short phone: the words step aside once the first weight moves (the bowls and the weights need the room)
+    words.at(thought.x, thought.y + R * 1.05 + 8, 'bottom', SHORT && (moves || held) ? 0 : 1);
+    // the heaviest weight's words ride beside it (hidden while it's held under a finger, so they never sit under it)
+    heavyTag.at(heaviest.x + heaviest.r + 8, heaviest.y, 'left', heaviest.place >= 0 ? 0.85 : 1);
     if (finished) settleT += dt;
     return true;
   }
@@ -183,9 +194,10 @@ export function mount(ctx) {
     id, frame, pointer, done,
     hitTest: (x, y) => thought.hit(x, y) || stones.some((s) => s.hit(x, y, 1.9)),
     assist: step,
+    bodies: () => { const G = geometry(); return [circleRect(thought.x, thought.y, R * 1.05, 2), ...G.pos.map((p) => ({ left: p.x - G.pr, right: p.x + G.pr, top: p.y - G.pr * 0.45, bottom: p.y + G.pr * 0.55 })), ...stones.map((x) => circleRect(x.x, x.y, x.r, 1))]; },
     avoid: () => { const G = geometry(); return [circleRect(thought.x, thought.y - R * 0.6, R * 1.6), ...G.pos.map((p) => circleRect(p.x, p.y, G.pr * 1.1)), ...ctx.tags.rects()]; },
     get settled() { return finished; },
-    probe: () => { const G = geometry(); return { stones: stones.filter((s) => s.place < 0).map((s) => ({ x: s.x, y: s.y })), bowls: G.pos, thought: { x: thought.x, y: thought.y } }; },
+    probe: () => { const G = geometry(); return { stones: stones.filter((s) => s.place < 0).map((s) => ({ x: s.x, y: s.y, heaviest: s === heaviest })), bowls: G.pos, thought: { x: thought.x, y: thought.y }, heavy: ctx.parts.weight || 'The heaviest part', places: places.map((p) => p.count) }; },
     destroy() { TM.clear(); ctx.tags.clear(); },
   };
 }

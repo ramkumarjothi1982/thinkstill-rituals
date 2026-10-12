@@ -43,6 +43,18 @@ export function mount(ctx) {
     small: ctx.tags.add(L.labels.small, { kind: 'label', colour: LIGHT.calm[1] }),
   };
   const pointers = new Map();
+  const beams = new Map();
+  function beamGradient(len) {
+    const key = Math.max(8, Math.round(len / 8) * 8);
+    let gr = beams.get(key);
+    if (!gr) {
+      gr = g.createLinearGradient(0, 0, key, 0);
+      gr.addColorStop(0, rgba(light, 0.32)); gr.addColorStop(1, rgba('#7f6bd8', 0.04));
+      if (beams.size > 64) beams.clear();
+      beams.set(key, gr);
+    }
+    return gr;
+  }
 
   function anchor() {
     const A = ctx.area();
@@ -95,15 +107,21 @@ export function mount(ctx) {
     // the lantern beam: from the small thought up to its projection
     if (phase !== 'settled') {
       const a = phase === 'condensing' ? clamp(1 - condenseT / 0.9) : 1;
-      const gr = g.createLinearGradient(thought.x, thought.y, px, py);
-      gr.addColorStop(0, rgba(light, 0.32 * a)); gr.addColorStop(1, rgba('#7f6bd8', 0.04 * a));
-      g.fillStyle = gr;
       g.beginPath();
       g.moveTo(thought.x - R * 0.35, thought.y - R * 0.5);
       g.lineTo(px - big * 0.9, py + big * 0.25);
       g.lineTo(px + big * 0.55, py - big * 0.95);
       g.lineTo(thought.x + R * 0.35, thought.y - R * 0.7);
-      g.closePath(); g.fill();
+      g.closePath();
+      // the path is in screen space; the beam's light is filled in the beam's own frame, so one cached gradient serves
+      g.save();
+      g.translate(thought.x, thought.y);
+      g.rotate(Math.atan2(py - thought.y, px - thought.x));
+      g.globalAlpha = a;
+      g.fillStyle = beamGradient(Math.hypot(px - thought.x, py - thought.y));
+      g.fill();
+      g.restore();
+      g.globalAlpha = 1;
     }
     // the projection: a big, trembling, shadowy jelly (calmer and warmer as it shrinks)
     if (phase === 'project' || phase === 'condensing') {
@@ -198,6 +216,7 @@ export function mount(ctx) {
     id, frame, pointer, done,
     hitTest: (x, y) => { const { px, py } = anchor(); return thought.hit(x, y) || (phase === 'project' && Math.hypot(x - px, y - py) < S * R * 1.05); },
     assist: step,
+    bodies: () => { const { px, py } = anchor(); return [circleRect(thought.x, thought.y, R, 2), phase === 'settled' || phase === 'condensing' ? circleRect(small.x, small.y, R * small.scale, 2) : circleRect(px, py, S * R * 0.62, 0)]; },
     avoid: () => { const { px, py } = anchor(); return [circleRect(thought.x, thought.y, R * 1.3), phase === 'settled' ? circleRect(small.x, small.y, R * 1.3) : circleRect(px, py, S * R * 0.8), ...ctx.tags.rects()]; },
     get settled() { return phase === 'settled'; },
     probe: () => { const { px, py } = anchor(); return { big: { x: px, y: py, r: S * R }, thought: { x: thought.x, y: thought.y }, phase, S }; },

@@ -110,16 +110,19 @@ export function openConsent({ app, root = document.body, onDecide } = {}) {
     close();
     onDecide?.(choice);
   };
-  const accept = h('button', { type: 'button', class: 'hf-send bx-accept', onclick: () => decide('yes') }, 'Accept');
-  const notNow = h('button', { type: 'button', class: 'hf-ghost bx-notnow', onclick: () => decide('no') }, 'Not now');
-  const el = h('section', { class: `bx-consent hf-ui${reduced ? ' reduced' : ''}`, role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': `${uid}-t`, 'data-bx': 'consent' },
-    h('h2', { class: 'bx-title', id: `${uid}-t` }, 'Before Zuzu looks at your words'),
-    h('div', { class: 'bx-scroll' }, noticeBody(app)),
+  // two equal choices (same size, same weight): the notice informs, it never nudges towards yes
+  const accept = h('button', { type: 'button', class: 'bx-choice bx-accept', onclick: () => decide('yes') }, 'Accept');
+  const notNow = h('button', { type: 'button', class: 'bx-choice bx-notnow', onclick: () => decide('no') }, 'Not now');
+  const title = h('h2', { class: 'bx-title', id: `${uid}-t`, tabindex: '-1' }, 'Before Zuzu looks at your words');
+  const el = h('section', { class: `bx-consent hf-ui${reduced ? ' reduced' : ''}`, role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': `${uid}-t`, 'aria-describedby': `${uid}-d`, 'data-bx': 'consent' },
+    title,
+    h('div', { class: 'bx-scroll', id: `${uid}-d` }, noticeBody(app)),
     h('div', { class: 'bx-actions' }, notNow, accept),
     h('p', { class: 'bx-small bx-after' }, 'Not now: Zuzu uses its own angles, worked out on this phone. Nothing is sent.'));
   root.append(el);
   requestAnimationFrame(() => el.classList.add('in'));
-  setTimeout(() => { if (!done) accept.focus({ preventScroll: true }); }, reduced ? 60 : 420);
+  // focus goes to the notice's title (read first), never to a button
+  setTimeout(() => { if (!done) title.focus({ preventScroll: true }); }, reduced ? 60 : 420);
   function close() {
     el.classList.remove('in'); el.classList.add('out');
     setTimeout(() => el.remove(), reduced ? 120 : 360);
@@ -136,7 +139,7 @@ export function openConsentSheet(app, { onDecide } = {}) {
     body: noticeBody(app, { compact: true }),
     foot: h('div', { class: 'row-btns' },
       h('button', { class: 'btn', onclick: () => { decided = true; setConsent(app.store, 'no'); s.close(); onDecide?.('no'); } }, 'Not now'),
-      h('button', { class: 'btn primary', autofocus: true, onclick: () => { decided = true; setConsent(app.store, 'yes'); s.close(); onDecide?.('yes'); } }, 'Accept')),
+      h('button', { class: 'btn', onclick: () => { decided = true; setConsent(app.store, 'yes'); s.close(); onDecide?.('yes'); } }, 'Accept')),
     onClose: () => { if (!decided) onDecide?.(null); },
   });
   return s;

@@ -203,6 +203,7 @@ export function mount(ctx) {
     id, frame, pointer, done,
     hitTest: (x, y) => { const T = track(); return thought.hit(x, y, 1.5) || (y > T.y - T.hgt * 4 - R && y < T.y + T.hgt * 4 && x > T.x0 - 30 && x < T.x1 + 30); },
     assist: step,
+    bodies: () => { const T = track(); return [circleRect(thought.x, thought.y, R, 2), { left: T.x0 - 12, right: T.x1 + 12, top: T.y - T.hgt * 1.5, bottom: T.y + T.hgt * 1.5 }]; },
     avoid: () => { const T = track(); return [{ left: T.x0 - 30, right: T.x1 + 30, top: T.y - T.hgt - R * 2.2 - 40, bottom: T.y + T.hgt + R + 30 }, ...ctx.tags.rects()]; },
     get settled() { return phase === 'settled'; },
     probe: () => { const T = track(); return { x0: T.x0, x1: T.x1, y: T.y, thought: { x: thought.x, y: thought.y }, phase }; },

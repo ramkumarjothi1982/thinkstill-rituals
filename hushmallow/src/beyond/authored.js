@@ -62,6 +62,8 @@ const SAD = new Set(['sadness', 'loneliness', 'rejection', 'hurt', 'grief', 'dis
 const ANGRY = new Set(['anger', 'frustration', 'resentment', 'irritation']);
 
 const words = (s) => (String(s).match(/[\p{L}\p{N}'’]+/gu) || []).length;
+/** "What do you actually know?" when the words were all interpretation (authored, never a copy of the assumption). */
+const KNOWN_SMALLER = 'What you know for sure is probably smaller than this thought.';
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
@@ -175,7 +177,9 @@ export function authoredScene(text, { emotion = null, exclude = [], usedAngles =
   const pattern = candidatePatterns(t, { emotion, hint, scenario }).find((p) => !exclude.includes(p))
     || ROTATION.find((p) => !exclude.includes(p)) || ROTATION[exclude.length % ROTATION.length];
   const authoredId = PATTERN_TO_AUTHORED[pattern];
-  const { fact, guess } = split(t);
+  const { fact, guess, pieces } = split(t);
+  // only an interpretation was told ("Nobody likes me"): the words are the assumption, not the fact
+  const allGuess = pieces.length > 0 && pieces.every((p) => p.guess === 'interpretation');
   const used = new Set(usedAngles);
 
   // the reveal: the habit's own angle when that habit is really in their words (it quotes them), or the matched
@@ -246,8 +250,8 @@ export function authoredScene(text, { emotion = null, exclude = [], usedAngles =
     mallow_character: mallow,
     emotion: emotion || null,
     situation_type: null,
-    known_fact: fact ? `What you know: ${quoted(fact)}.` : `What you know is what you told me: ${quoted(t)}.`,
-    possible_assumption: guess ? `What your mind might be adding: ${quoted(guess)}.` : '',
+    known_fact: fact && !sameWords(fact, guess) ? `What you know: ${quoted(fact)}.` : allGuess ? KNOWN_SMALLER : `What you know is what you told me: ${quoted(t)}.`,
+    possible_assumption: guess && !sameWords(guess, fact) ? `What your mind might be adding: ${quoted(guess)}.` : allGuess && t ? `What your mind might be adding: ${quoted(t)}.` : '',
     alternative_angle: alternative,
     practical_next_step: step,
     subtitle_line_1: l1,
@@ -261,24 +265,81 @@ export function authoredScene(text, { emotion = null, exclude = [], usedAngles =
 }
 
 const HARSH = /\b(?:i'?m|i am|i feel like)(?: (?:so|such|a|an|just|completely|totally|really|basically|the|absolute|total|complete|utter|utterly|literally|actually|massive|huge|biggest))* (?:stupid|an? idiot|idiot|a failure|failure|a loser|loser|useless|terrible|pathetic|worthless|hopeless|incompetent|a disaster|disaster|a mess|mess|a joke|joke|a fraud|fraud|a burden|burden|awful|rubbish|not good enough|not enough|too much|dumb|thick|clueless)\b/i;
+/** The blame the person put on themselves, as typed ("it's my fault"), for the heaviest weight. */
+const BLAME_PHRASE = /\b(?:it'?s|it is|it was|that'?s|that was|all|this is|was)?\s*(?:all\s+)?(?:my fault|on me|because of me|my own fault|down to me|i ruined it|i let (?:them|everyone|the team|her|him) down)\b/iu;
+
+/** The question a side asks when the words give it nothing real to show (never a copy of the other side). */
+export const FACT_ASK = 'What did you actually see or hear?';
+export const GUESS_ASK = 'What might it mean?';
+/** Authored possibilities for mind reading, after the scene's own alternative (lines.js has the same three). */
+const OTHER_MEANINGS = ['It might mean something smaller.', 'It might be about them, not you.', 'It might not mean anything yet.'];
+
+const norm = (s) => String(s ?? '').toLowerCase().replace(/[‘’`´]/g, "'").replace(/[^\p{L}\p{N}']+/gu, ' ').trim();
+/** Two lines that say the same thing (same words, ignoring case and punctuation), or one inside the other. */
+export function sameWords(a, b) {
+  const x = norm(a), y = norm(b);
+  if (!x || !y) return false;
+  return x === y || (x.length > 12 && y.includes(x)) || (y.length > 12 && x.includes(y));
+}
+/** A scene line short enough to sit by an object: its first sentence when that fits, else cut at a word. */
+export function shortLine(s, max = 72) {
+  const t = String(s ?? '').replace(/\s+/g, ' ').trim();
+  if (!t) return '';
+  const first = sentences(t)[0] || t;
+  return first.length <= max ? first : excerpt(t, max);
+}
 
 /**
- * What the mechanics need from the words: the fact and the guess (exact
- * phrases, never reworded), the harsh verdict for "soften", a short excerpt,
- * and the next step cut into three pieces for "assemble".
+ * What the mechanics need: the fact and the guess, the harsh verdict for
+ * "soften", the heaviest weight, the possibilities for "open", a short
+ * excerpt, and the next step cut into three pieces for "assemble".
+ *
+ * A server scene personalises them (its known_fact, possible_assumption,
+ * alternative_angle, practical_next_step: the game uses the structured result).
+ * Without one, the person's own words are split by the authored engine
+ * (exact phrases, never reworded). Either way the two sides of fact versus
+ * assumption are never the same words: a side with nothing real to show asks
+ * a question instead (factAsk / guessAsk).
  */
 export function sceneParts(text, scene = {}) {
   const t = String(text ?? '').trim();
-  const { fact, guess } = split(t);
+  const server = scene?.source === 'server';
+  const { fact: f0, guess: g0, pieces } = split(t);
+  // only an interpretation was told ("Nobody likes me"): there is no fact in the words to show
+  const allGuess = pieces.length > 0 && pieces.every((p) => p.guess === 'interpretation');
+  let fact = server ? shortLine(scene.known_fact) : '';
+  if (!fact && f0 && !(allGuess && sameWords(f0, g0))) fact = excerpt(f0, 46);
+  if (!fact && !allGuess && t) fact = excerpt(t, 46);
+  let guess = server ? shortLine(scene.possible_assumption) : '';
+  if (!guess && g0 && !sameWords(g0, fact)) guess = excerpt(g0, 46);
+  if (!guess && allGuess && !sameWords(t, fact)) guess = excerpt(t, 46);
+  if (guess && sameWords(guess, fact)) guess = '';
+  const factAsk = !fact, guessAsk = !guess;
+
   const harshHit = HARSH.exec(t);
   let harsh = harshHit ? harshHit[0] : '';
   if (!harsh) { try { const big = detectPatterns(t).find((f) => f.pattern.id === 'big-label'); harsh = big ? exactPhrase(t, big.matches[0].text) : ''; } catch { /* none */ } }
+
+  // the heaviest weight: the blame as they put it ("it's my fault"), else the part their mind added
+  const bm = BLAME_PHRASE.exec(t);
+  const weight = bm ? excerpt(bm[0].trim(), 28) : g0 && !sameWords(g0, f0) ? excerpt(g0, 28) : '';
+
+  // mind reading: the scene's own other explanation first, then the authored possibilities (three, all different)
+  const alternatives = [];
+  const alt = shortLine(scene?.alternative_angle, 80);
+  if (alt && !sameWords(alt, guess) && !sameWords(alt, t)) alternatives.push(alt);
+  for (const o of OTHER_MEANINGS) if (alternatives.length < 3 && !alternatives.some((a) => sameWords(a, o))) alternatives.push(o);
+
   return {
     excerpt: excerpt(t, 46),
-    fact: excerpt(fact || t, 46),
-    guess: guess ? excerpt(guess, 46) : '',
-    harsh: harsh ? excerpt(harsh, 30) : excerpt(guess || t, 30),
-    steps: chunkStep(scene.practical_next_step || ''),
+    fact: fact || FACT_ASK,
+    guess: guess || GUESS_ASK,
+    factAsk, guessAsk,
+    harsh: harsh ? excerpt(harsh, 30) : excerpt(g0 || t, 30),
+    weight,
+    alternatives,
+    steps: chunkStep(scene?.practical_next_step || ''),
+    source: server ? 'server' : 'authored',
   };
 }
 
@@ -291,9 +352,24 @@ export function chunkStep(step) {
   const w = s.split(' ');
   if (w.length <= 3) return w.length === 3 ? w : [...w, ...Array(3 - w.length).fill('·')].slice(0, 3);
   const n = w.length;
+  // a list ("a payment plan, your bank, or a free advice service"): its items belong together, so a cut inside
+  // it is the last resort; the clause around it (a colon, a dash, a full stop) is the natural place to cut
+  const inList = new Uint8Array(n + 1);
+  for (let c = 0; c < n - 1; c++) {
+    if (!/,$/.test(w[c])) continue;
+    for (let j = c + 1; j < Math.min(n, c + 6); j++) {
+      if (/[.;:!?]$/.test(w[j - 1]) && j - 1 > c) break;
+      if (/^(?:or|and)$/i.test(w[j])) {
+        // the items before the comma (back to the clause's start, at most four words) up to the word after "or"/"and"
+        let a = c; while (a > 0 && c - a < 3 && !/[,.;:!?]$/.test(w[a - 1])) a--;
+        for (let k = a + 1; k <= Math.min(n - 1, j + 2); k++) inList[k] = 1;
+        break;
+      }
+    }
+  }
   // how good a cut just before word i is: punctuation and joining words are good, a dangling little word is not
-  const join = (i) => (/[.!?]$/.test(w[i - 1]) ? -2 : /[,;:\u2013\u2014]$/.test(w[i - 1]) ? -1.6 : 0)
-    + (JOIN_BEFORE.test(w[i]) ? -1.2 : 0) + (NO_END.test(w[i - 1].replace(/[,;:]$/, '')) && !/[,;:]$/.test(w[i - 1]) ? 1.6 : 0);
+  const join = (i) => (inList[i] ? 4 : 0) + (/[.!?]$/.test(w[i - 1]) ? -2 : /[;:\u2013\u2014]$/.test(w[i - 1]) ? -2.2 : /,$/.test(w[i - 1]) ? (inList[i] ? -0.4 : -1.6) : 0)
+    + (JOIN_BEFORE.test(w[i]) && !inList[i] ? -1.2 : 0) + (NO_END.test(w[i - 1].replace(/[,;:]$/, '')) && !/[,;:]$/.test(w[i - 1]) ? 1.6 : 0);
   let best = [Math.round(n / 3), Math.round((2 * n) / 3)], score = Infinity;
   for (let a = 1; a < n - 1; a++) {
     for (let b = a + 1; b < n; b++) {

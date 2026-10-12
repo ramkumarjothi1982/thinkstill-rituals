@@ -2,8 +2,9 @@
 //
 // One moment has fused into a heavy, grey cluster of "every time". The real
 // event glows inside it. Drag it out: the cluster holds on with a stretchy
-// strand, then lets it go. Once it is out on its own, the rest loosen into a
-// scattered constellation in many colours: other times, not all the same.
+// strand, then lets it go. Once it is out on its own, the rest loosen into an
+// open arc of lights in many colours (other times, not all the same), with
+// "Other times" in its quiet centre and the one moment in the arc's gap.
 // Tap the glowing one (or the assist pill) to ease it out a third at a time.
 
 import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, mix, Motes, blinkAt, circleRect, tintFor, TAU, Timers } from './kit.js';
@@ -33,7 +34,7 @@ export function mount(ctx) {
     return b;
   });
   let phase = 'fused';     // fused → free → spread
-  let stepK = 0, held = null, moves = 0, spreadT = 0;
+  let stepK = 0, held = null, moves = 0, spreadT = 0, dimTick = 0;
   const t0 = performance.now();
   const tags = {
     oneL: ctx.tags.add(L.labels.one, { kind: 'label', colour: deep }),
@@ -45,20 +46,32 @@ export function mount(ctx) {
     const A = ctx.area();
     return { cx: A.x + A.w * (phase === 'fused' ? 0.5 : 0.62), cy: A.y + A.h * 0.46, A };
   }
+  /** The open arc the other times settle on: round the right of the area, its gap on the left where the one moment sits. */
+  function arc() {
+    const A = ctx.area();
+    const cx = A.x + A.w * 0.6, cy = A.y + A.h * 0.5;
+    return { cx, cy, rx: Math.max(R * 3, Math.min(A.w * 0.36, A.w * 0.4 - R)), ry: Math.max(R * 3, Math.min(A.h * 0.4, A.h / 2 - R * 1.3)) };
+  }
   function homes() {
     const { cx, cy, A } = centre();
-    const spread = phase === 'spread' ? 1 : 0;
-    beads.forEach((b, i) => {
-      const rr = Math.sqrt(i + 0.6) * R * lerp(1.12, 2.9, spread);
-      const a = b.phase + spread * 0.6;
-      b.hx = clamp(cx + Math.cos(a) * rr * lerp(1, 1.25, spread), A.x + R, A.x + A.w - R);
-      b.hy = clamp(cy + Math.sin(a) * rr * lerp(1, 0.78, spread), A.y + R, A.y + A.h - R);
-    });
+    if (phase === 'spread') {
+      const C = arc();
+      beads.forEach((b, i) => {
+        const a = lerp(-0.76 * Math.PI, 0.76 * Math.PI, i / (COUNT - 1));
+        b.hx = C.cx + Math.cos(a) * C.rx; b.hy = C.cy + Math.sin(a) * C.ry;
+      });
+    } else {
+      beads.forEach((b, i) => {
+        const rr = Math.sqrt(i + 0.6) * R * 1.12;
+        b.hx = clamp(cx + Math.cos(b.phase) * rr, A.x + R, A.x + A.w - R);
+        b.hy = clamp(cy + Math.sin(b.phase) * rr, A.y + R, A.y + A.h - R);
+      });
+    }
     if (!one.press) {
       if (phase === 'fused') {
         // nested in the cluster, eased outwards by taps
         one.hx = cx + R * 1.1 - stepK * (A.w * 0.12); one.hy = cy + R * 0.3 + stepK * R * 0.6;
-      } else { one.hx = A.x + A.w * 0.2; one.hy = A.y + A.h * 0.62; }
+      } else { one.hx = A.x + Math.max(one.r * 1.6, A.w * 0.16); one.hy = A.y + A.h * 0.42; }
     }
   }
   homes();
@@ -106,13 +119,19 @@ export function mount(ctx) {
       g.beginPath(); g.arc(cx, cy, clusterR() * 1.02, Math.PI * 1.1, Math.PI * 1.75); g.stroke();
       g.globalAlpha = 1;
     }
+    // a light that sits under a label steps back (dims), so the words read and the arc stays calm
+    if (phase === 'spread' && ++dimTick % 6 === 0) {
+      const rs = ctx.tags.rects();
+      for (const b of beads) b.under = rs.some((r) => b.x + b.r > r.left && b.x - b.r < r.right && b.y + b.r > r.top && b.y - b.r < r.bottom);
+    }
     for (const b of beads) {
       if (!R_ && phase === 'fused') { b.hx += Math.sin(t * 1.2 + b.phase) * 1.2; b.hy += Math.cos(t * 1.1 + b.phase) * 1.2; }
-      if (!R_ && phase === 'spread') { b.hx += Math.sin(t * 0.5 + b.phase) * 4; b.hy += Math.cos(t * 0.45 + b.phase) * 3; }
+      if (!R_ && phase === 'spread') { b.hx += Math.sin(t * 0.5 + b.phase) * 2.5; b.hy += Math.cos(t * 0.45 + b.phase) * 2; }
       b.step(dt, R_);
       const c = phase === 'spread' ? clamp(spreadT / 1.2) : 0;
+      b.dim = R_ ? (b.under ? 1 : 0) : approach(b.dim || 0, b.under ? 1 : 0, 4, dt);
       const li = c ? mix('#c9c4e0', b.col, c) : b.light, de = c ? mix('#5c5785', b.col, c * 0.65) : b.deep;
-      drawJelly(g, { x: b.x, y: b.y, r: b.r, sx: b.sx, sy: b.sy, light: li, deep: de, glow: c * 0.5, alpha: phase === 'fused' ? 0.92 : 0.85,
+      drawJelly(g, { x: b.x, y: b.y, r: b.r, sx: b.sx, sy: b.sy, light: li, deep: de, glow: c * 0.5 * (1 - b.dim * 0.7), alpha: (phase === 'fused' ? 0.92 : 0.85) * (1 - b.dim * 0.6),
         face: c > 0.5 ? { tension: 0.1, calm: 0.6, blink: blinkAt(t, b.i * 0.7) } : null });
     }
     // the strand holding on while it is pulled out
@@ -133,7 +152,8 @@ export function mount(ctx) {
     // fused: the words hang under the whole pile; out: under the one moment
     if (out) tags.words.at(one.x, one.y + one.r * 1.1 + 6, 'bottom', 1);
     else tags.words.at(cx, cy + clusterR() * 1.05 + 8, 'bottom', 0.9);
-    tags.rest.at(cx, cy - clusterR() * (phase === 'spread' ? 1.25 : 1) - 10, 'top', phase === 'spread' ? clamp(spreadT) : 0);
+    // "Other times" sits in the arc's quiet middle once they have spread
+    if (phase === 'spread') { const C = arc(); tags.rest.at(C.cx, C.cy, 'center', clamp(spreadT)); } else tags.rest.at(cx, cy, 'center', 0);
     return true;
   }
 
@@ -162,6 +182,8 @@ export function mount(ctx) {
     id, frame, pointer, done,
     hitTest: (x, y) => one.hit(x, y, 1.6) || beads.some((b) => b.hit(x, y, 1.2)),
     assist: step,
+    // (once spread, the arc's lights may sit under a label: they dim for it, so only the one moment is a body)
+    bodies: () => { const { cx, cy } = centre(); return phase === 'spread' ? [circleRect(one.x, one.y, one.r * one.scale, 2)] : [circleRect(cx, cy, clusterR(), 2), circleRect(one.x, one.y, one.r, 2)]; },
     avoid: () => { const { cx, cy } = centre(); return [circleRect(cx, cy, clusterR() * (phase === 'spread' ? 1.4 : 1.1)), circleRect(one.x, one.y, one.r * 1.4), ...ctx.tags.rects()]; },
     get settled() { return phase === 'spread'; },
     probe: () => { const { cx, cy } = centre(); return { one: { x: one.x, y: one.y }, c: { x: cx, y: cy }, r: clusterR(), phase }; },

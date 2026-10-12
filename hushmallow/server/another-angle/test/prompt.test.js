@@ -8,8 +8,8 @@ import { PATTERNS, PATTERN_INTERACTION, MALLOWS } from '../src/vocab.js';
 import { SYSTEM_PROMPT } from './helpers.js';
 
 test('the system prompt is versioned and byte-stable (cacheable)', () => {
-  assert.equal(PROMPT_VERSION, 'angle-v4');
-  assert.ok(SYSTEM_PROMPT.startsWith('Prompt version: angle-v4'));
+  assert.equal(PROMPT_VERSION, 'angle-v5');
+  assert.ok(SYSTEM_PROMPT.startsWith('Prompt version: angle-v5'));
   // Every version stays in prompts/ for comparison, each naming itself.
   assert.equal(PROMPT_VERSIONS.at(-1), PROMPT_VERSION);
   for (const v of PROMPT_VERSIONS) assert.ok(readFileSync(new URL(`../prompts/${v}.md`, import.meta.url), 'utf8').startsWith(`Prompt version: ${v}\n`), v);
@@ -101,6 +101,28 @@ test('angle-v4: every anchor line the model may copy keeps the 8–14-word budge
   const choices = [...SYSTEM_PROMPT.matchAll(/"([^"]+, or [^"]+\?)"/g)].map((m) => m[1]);
   assert.ok(choices.length >= 2, choices.join(' | '));
   for (const c of choices) assert.match(c, /^(?:Would you rather|Is there|Which|What|Could you|Do you)\b/, c);
+});
+
+test('angle-v5: reassurance that is not known is a "may", never a promise; v4 is kept unchanged beside it', () => {
+  // Eval run 3: "Not saying why on the phone tells you about the policy, not
+  // the results" stated a likely reassurance as fact.
+  assert.match(SYSTEM_PROMPT, /When the reassuring reading is likely but not known, say "may", "often" or "could be"/);
+  assert.match(SYSTEM_PROMPT, /never promise an outcome about health, results or someone else's decision/);
+  assert.match(SYSTEM_PROMPT, /- Reassurance that isn't known is a "may", "often" or "could be", never a promise about health, results or anyone's decision\./);
+  // A regeneration replaces the words the gate feedback names (it now quotes them).
+  assert.match(SYSTEM_PROMPT, /Each problem names the words that tripped it: replace those, keep the idea when only the wording failed/);
+  // The new rule's own example passes the gate's content rules.
+  const ex = /\("(No email yet may just mean[^"]+)"\)/.exec(SYSTEM_PROMPT)[1];
+  const g = qualityGate({ emotion: 'anxiety', situation_type: 'school', reasoning_pattern: 'catastrophising', interaction_type: 'shrink_projection', mallow_character: 'loomi', safety_status: 'ok', known_fact: '', possible_assumption: '', alternative_angle: '', practical_next_step: '', subtitle_line_1: `${ex}.`, subtitle_line_2: 'Which day would you check again?' }, { text: 'My results email still has not come.' });
+  assert.deepEqual(g.failures.filter((f) => f.field === 'subtitle_line_1'), []);
+  // Every other v4 rule is kept: v5 is v4 plus three lines.
+  const v4 = readFileSync(new URL('../prompts/angle-v4.md', import.meta.url), 'utf8');
+  assert.ok(v4.startsWith('Prompt version: angle-v4\n'));
+  assert.doesNotMatch(v4, /reassuring reading is likely but not known/);
+  const v4Lines = v4.split('\n').slice(1);
+  const v5Lines = SYSTEM_PROMPT.split('\n').slice(1);
+  assert.ok(v5Lines.length - v4Lines.length <= 10, `${v5Lines.length - v4Lines.length} lines longer`);
+  for (const l of v4Lines) assert.ok(v5Lines.some((x) => x.startsWith(l)), `kept: ${l.slice(0, 60)}`);
 });
 
 test('line 2 carries the step, the 16–28 aim, the lenses, and v1 is kept for comparison', () => {

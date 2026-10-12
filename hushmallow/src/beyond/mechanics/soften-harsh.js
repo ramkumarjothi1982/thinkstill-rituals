@@ -1,9 +1,11 @@
 // Self-criticism: soften a harsh interpretation without erasing accountability.
 //
 // The thought is locked in a cold, spiky crystal shell carrying the harsh
-// verdict in the person's own words. Slow strokes over the shell round its
-// spikes off where the finger passes and warm its colour; fast scratching
-// does nothing much (gentle is the point). When it has softened, the shell is
+// verdict in the person's own words. Slow strokes over the shell round off
+// the spikes the finger passes close to (by distance to each spike's tip, so a
+// stroke across works as well as one round the edge, and every gentle stroke
+// calms the whole shell a little) and warm its colour; fast scratching does
+// nothing much (gentle is the point). When it has softened, the shell is
 // a soft, warm membrane and the verdict's plate has lost its hard edge, but a
 // small glowing seed stays inside: "Something to learn". The lesson is kept;
 // the cruelty goes. A tap (or the assist pill) smooths it a little each time.
@@ -29,7 +31,8 @@ export function mount(ctx) {
   const thought = new Blob({ x: ctx.from?.x ?? A0.x + A0.w / 2, y: ctx.from?.y ?? A0.y + A0.h / 2, r: R * 0.62, light, deep });
   const spike = new Float32Array(SPIKES).fill(1);     // 1 = sharp, 0 = smoothed
   const soft = new Float32Array(SPIKES);              // eased display value
-  let softness = 0, phase = 'hard', held = null, warned = false, moves = 0, doneT = 0;
+  let softness = 0, phase = 'hard', held = null, warned = false, moves = 0, doneT = 0, strokes = 0, edgeSaid = false;
+  const shells = new Map();   // the shell's light, cached per warmth step
   const t0 = performance.now();
   const tags = {
     harsh: ctx.tags.add(ctx.parts.harsh, { kind: 'verdict', max: 220 }),
@@ -39,7 +42,7 @@ export function mount(ctx) {
   function centre() { const A = ctx.area(); return { x: A.x + A.w / 2, y: A.y + A.h * 0.48 }; }
   const total = () => { let s = 0; for (let i = 0; i < SPIKES; i++) s += 1 - spike[i]; return s / SPIKES; };
 
-  /** Smooth the spikes near angle a by amount k (a stroke, or a tap). */
+  /** Smooth the spikes near angle a by amount k (a tap, or the assist pill). */
   function smoothAt(a, k) {
     for (let i = 0; i < SPIKES; i++) {
       const ai = (i / SPIKES) * TAU;
@@ -47,6 +50,22 @@ export function mount(ctx) {
       const w = Math.exp(-(d * d) / 0.28);
       spike[i] = Math.max(0, spike[i] - k * w);
     }
+    changed();
+  }
+  /** A stroke passing (x, y): the spikes whose tips are near it soften most; the whole shell a little. */
+  function smoothNear(x, y, k) {
+    const c = centre();
+    const sig2 = 2 * (R * 0.62) ** 2;
+    for (let i = 0; i < SPIKES; i++) {
+      const a = (i / SPIKES) * TAU - Math.PI / 2;
+      const tip = R * (1 + 0.42 * spike[i]);
+      const dx = x - (c.x + Math.cos(a) * tip), dy = y - (c.y + Math.sin(a) * tip);
+      const w = Math.exp(-(dx * dx + dy * dy) / sig2);
+      spike[i] = Math.max(0, spike[i] - k * (1.1 * w + 0.06));
+    }
+    changed();
+  }
+  function changed() {
     softness = total();
     ctx.progress(softness * 0.95);
     if (softness >= 0.85 && phase === 'hard') finish();
@@ -81,7 +100,7 @@ export function mount(ctx) {
     let shown = 0; for (let i = 0; i < SPIKES; i++) shown += soft[i]; shown /= SPIKES;   // 1 hard → 0 soft
     const warm = 1 - shown;
     // the shell: a star polygon whose spikes shorten as they're smoothed, steel warming into the thought's tint
-    const col = mix(STEEL, light, warm), rim = mix(ICE, '#fff3fa', warm);
+    const rim = mix(ICE, '#fff3fa', warm);
     drawGlow(g, c.x, c.y, R * 2, mix('#5b5f9a', deep, warm), 0.38);
     g.save();
     g.translate(c.x, c.y);
@@ -101,8 +120,15 @@ export function mount(ctx) {
       } else g.lineTo(x, y);
     }
     g.closePath();
-    const gr = g.createRadialGradient(-R * 0.3, -R * 0.35, R * 0.1, 0, 0, R * 1.3);
-    gr.addColorStop(0, rgba('#ffffff', 0.55 + 0.2 * warm)); gr.addColorStop(0.5, rgba(col, 0.5 + 0.15 * shown)); gr.addColorStop(1, rgba(mix('#3e4170', deep, warm), 0.75));
+    // the shell's light, in 24 warmth steps (made once each, in the shell's own frame)
+    const step_ = Math.round(warm * 24);
+    let gr = shells.get(step_);
+    if (!gr) {
+      const wq = step_ / 24, sq = 1 - wq;
+      gr = g.createRadialGradient(-R * 0.3, -R * 0.35, R * 0.1, 0, 0, R * 1.3);
+      gr.addColorStop(0, rgba('#ffffff', 0.55 + 0.2 * wq)); gr.addColorStop(0.5, rgba(mix(STEEL, light, wq), 0.5 + 0.15 * sq)); gr.addColorStop(1, rgba(mix('#3e4170', deep, wq), 0.75));
+      shells.set(step_, gr);
+    }
     g.fillStyle = gr; g.fill();
     g.lineJoin = warm > 0.65 ? 'round' : 'miter';
     g.strokeStyle = rgba(rim, 0.75); g.lineWidth = 1.6 + shown * 0.8; g.stroke();
@@ -146,7 +172,7 @@ export function mount(ctx) {
         // gentle strokes work; scratching barely does
         const gentle = sp < 25 ? 0.5 : sp <= 800 ? 1 : 0.15;
         if (gentle < 0.2 && !warned && held.path > 120) { warned = true; ctx.hint(L.hint2); }
-        smoothAt(Math.atan2(e.y - c.y, e.x - c.x) + Math.PI / 2, (d / (R * 2.2)) * gentle);
+        smoothNear(e.x, e.y, (d / (R * 2.2)) * gentle);
         held.tick = (held.tick || 0) + d * gentle;
         if (held.tick > 90) { held.tick = 0; ctx.haptic('light'); }
       }
@@ -155,6 +181,11 @@ export function mount(ctx) {
     if (e.type === 'up' || e.type === 'cancel') {
       const h0 = held; held = null; moves++;
       if (h0.path < 12 && e.t - h0.t0 < 380 && phase === 'hard') { smoothAt(Math.atan2(e.y - c.y, e.x - c.x) + Math.PI / 2, 0.6); ctx.haptic('light'); }
+      // a few real strokes and the sharpest side still untouched: say where (once)
+      else if (phase === 'hard' && h0.path > 60) {
+        strokes++;
+        if (strokes >= 4 && !edgeSaid && softness < 0.7) { edgeSaid = true; ctx.hint(L.hint3); }
+      }
       return true;
     }
     return false;
@@ -164,6 +195,7 @@ export function mount(ctx) {
     id, frame, pointer, done,
     hitTest: (x, y) => { const c = centre(); return Math.hypot(x - c.x, y - c.y) < R * 1.55; },
     assist: step,
+    bodies: () => { const c = centre(); return [circleRect(c.x, c.y, R * 1.32, 2)]; },
     avoid: () => { const c = centre(); return [circleRect(c.x, c.y, R * 1.5), ...ctx.tags.rects()]; },
     get settled() { return phase === 'soft'; },
     probe: () => { const c = centre(); return { c, R, softness, phase }; },

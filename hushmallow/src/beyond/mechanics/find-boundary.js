@@ -151,7 +151,8 @@ export function mount(ctx) {
       { x: thought.x + (jit ? Math.sin(t * 31) * jit : 0), y: thought.y + (jit ? Math.cos(t * 27) * jit : 0), glow: 0.6 });
     motes.draw(g, dt);
     tags.words.at(thought.x, thought.y + R * 1.08 + 6, 'bottom', 1);
-    tags.line.at(G.cx, G.cy - G.rr - 14, 'top', phase === 'chosen' ? 1 : 0);
+    // the chosen line is written under the boundary (above it is where the subtitles and their choices sit)
+    tags.line.at(G.cx, G.cy + G.rr + 12, 'bottom', phase === 'chosen' ? 1 : 0);
     return true;
   }
 
@@ -188,6 +189,7 @@ export function mount(ctx) {
     id, frame, pointer, done,
     hitTest: (x, y) => { const G = geo(); const d = Math.hypot(x - G.cx, y - G.cy); return d < G.rr * 1.5; },
     assist: step,
+    bodies: () => { const G = geo(); return [circleRect(thought.x, thought.y, R, 2)]; },
     avoid: () => { const G = geo(); return [circleRect(G.cx, G.cy, G.rr + 16), ...ctx.tags.rects()]; },
     get settled() { return phase === 'chosen'; },
     probe: () => { const G = geo(); return { c: { x: G.cx, y: G.cy }, rr: G.rr, drawn: drawn(), phase }; },

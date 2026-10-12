@@ -24,6 +24,8 @@ export const ease = {
 /** Frame-rate independent approach: x → target at rate k (1/s). */
 export const approach = (x, target, k, dt) => x + (target - x) * (1 - Math.exp(-k * dt));
 export const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, ay - by);
+/** The viewport's width (390 where there is none, as in the node tests). */
+export const viewW = () => (typeof innerWidth === 'number' ? innerWidth : 390);
 
 // ------------------------------------------------------------- colours --
 /** Thought tints per feeling: [light, deep] (soft, translucent, distinct from every Mallow's body). */
@@ -299,49 +301,153 @@ export class Motes {
 }
 
 // ---------------------------------------------------------------- tags --
+/** How much two rects {left, top, right, bottom} overlap (px²). */
+export function overlapArea(a, b) {
+  if (!a || !b) return 0;
+  const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+  if (w <= 0) return 0;
+  const hh = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+  return hh > 0 ? w * hh : 0;
+}
+const cover = (L, T, R, B, o) => {
+  const w = Math.min(R, o.right) - Math.max(L, o.left);
+  if (w <= 0) return 0;
+  const hh = Math.min(B, o.bottom) - Math.max(T, o.top);
+  return hh > 0 ? w * hh : 0;
+};
+// where a tag may move to dodge something (px from where its object wants it): small moves first
+const DY = [0, -8, 8, -16, 16, -26, 26, -38, 38, -52, 52, -68, 68, -86, 86];
+const DX = [0, -16, 16, -32, 32, -52, 52, -78, 78, -108, 108];
+const GAP = 6;
+
 /**
  * DOM labels over the canvas (textContent only, never canvas text for words).
  * kinds: 'words' (the person's own words, voice type), 'label' (a short UI
- * label with a coloured dot), 'line' (a short authored line on an object).
+ * label with a coloured dot), 'line' (a short authored line on an object),
+ * 'card' (a label title over a short line: one tag, one box), 'piece' and
+ * 'verdict' (text drawn on an object: they stay where the object puts them).
+ *
+ * Each mechanic places its tags by anchor (at), then the scene calls
+ * layout(dt, obstacles) once a frame: a collision pass that keeps every
+ * visible tag off the other tags, the subtitle band and its control pill, the
+ * Mallows and the scene's own bodies, moving each as little as it can (and
+ * easing there, with a little stickiness so nothing jitters). Earlier tags
+ * win ties; a tag added with { priority } can claim its place first.
  */
 export function makeTags(root, { bounds = null } = {}) {
   const list = new Set();
+  const order = [];
+  const sizes = () => { for (const t of list) { t.invalidate(); t.measure(); } };
+  // scratch boxes for the collision pass (reused every frame)
+  const boxes = [], probe = {};
+  const slot = (i) => (boxes[i] ||= { left: 0, top: 0, right: 0, bottom: 0 });
+  let frames = 0;
   return {
-    add(text, { kind = 'label', colour = null, max = 230 } = {}) {
-      const el = h('div', { class: `bx-tag ${kind}`, 'aria-hidden': kind === 'words' ? 'false' : 'true', style: { maxWidth: `min(${max}px, 62vw)` } });
+    add(text, { kind = 'label', colour = null, max = 230, title = null, priority = 0, fixed = kind === 'piece', cls = '' } = {}) {
+      const el = h('div', { class: `bx-tag ${kind}${cls ? ` ${cls}` : ''}`, 'aria-hidden': kind === 'words' ? 'false' : 'true', style: { maxWidth: `min(${max}px, ${innerWidth < 360 ? 90 : 62}vw)` } });
       if (colour) el.style.setProperty('--bx-dot', colour);
-      el.textContent = String(text ?? '');
+      let body = el;
+      if (title != null) {
+        const head = h('span', { class: 'bx-card-title' });
+        head.textContent = String(title);
+        body = h('span', { class: 'bx-card-text' });
+        el.append(head, body);
+      }
+      body.textContent = String(text ?? '');
       root.append(el);
-      let shown = false, lx = -1e4, ly = -1e4, lastO = -1;
+      let shown = false, lx = -1e4, ly = -1e4, lastO = -1, w = 0, hh = 0, dirty = true;
+      // where the object wants it (dx, dy: where the collision pass moved it, eased)
+      let wx = -1e4, wy = -1e4, ox = 0, oy = 0, tx = 0, ty = 0, placed = false;
+      const write = () => {
+        const px = Math.round(wx + ox), py = Math.round(wy + oy);
+        if (px !== lx || py !== ly) { el.style.transform = `translate3d(${px}px, ${py}px, 0)`; lx = px; ly = py; }
+      };
+      const clampY = (py) => {
+        // inside the play area when there is one (never over the Mallows below it or the subtitle band above)
+        const B = bounds?.();
+        if (B) py = clamp(py, B.y - 6, Math.max(B.y - 6, B.y + B.h - hh + 6));
+        return clamp(py, 8, innerHeight - hh - 8);
+      };
+      const clampX = (px) => { const edge = innerWidth < 360 ? 10 : 16; return clamp(px, edge, Math.max(edge, innerWidth - edge - w)); };
       const tag = {
-        el,
-        get w() { return el.offsetWidth; }, get h() { return el.offsetHeight; },
-        /** Place by anchor: 'top' (centred above x,y), 'bottom' (centred below), 'center'. Kept 12px inside the screen. */
+        el, kind, priority, fixed,
+        measure() { if (dirty || !w) { w = el.offsetWidth || 120; hh = el.offsetHeight || 36; dirty = false; } },
+        get w() { tag.measure(); return w; }, get h() { tag.measure(); return hh; },
+        get visible() { return lastO > 0.05; },
+        /**
+         * Place by anchor: 'top' (centred above x,y), 'bottom' (centred below), 'center'; 'left' / 'right'
+         * (starting / ending at x, centred on y), 'leftTop' (starting at x, ending above y). Kept inside the screen.
+         */
         at(x, y, anchor = 'bottom', opacity = 1) {
-          const w = el.offsetWidth || 120, hh = el.offsetHeight || 36;
-          const edge = innerWidth < 360 ? 10 : 16;
-          let px = clamp(x - w / 2, edge, Math.max(edge, innerWidth - edge - w));
-          let py = anchor === 'top' ? y - hh : anchor === 'center' ? y - hh / 2 : y;
-          // inside the play area when there is one (never over the Mallows below it or the subtitle band above)
-          const B = bounds?.();
-          if (B) py = clamp(py, B.y - 6, Math.max(B.y - 6, B.y + B.h - hh + 6));
-          py = clamp(py, 8, innerHeight - hh - 8);
-          px = Math.round(px); py = Math.round(py);
-          if (px !== lx || py !== ly) { el.style.transform = `translate3d(${px}px, ${py}px, 0)`; lx = px; ly = py; }
+          tag.measure();
+          const side = anchor === 'left' || anchor === 'leftTop' ? x : anchor === 'right' ? x - w : x - w / 2;
+          wx = clampX(side);
+          wy = clampY(anchor === 'top' || anchor === 'leftTop' ? y - hh : anchor === 'center' || anchor === 'left' || anchor === 'right' ? y - hh / 2 : y);
+          write();
           const o = Math.round(clamp(opacity) * 100) / 100;
           if (o !== lastO) { el.style.opacity = String(o); lastO = o; }
           if (!shown) { shown = true; el.classList.add('in'); }
           return tag;
         },
-        rect() { const w = el.offsetWidth, hh = el.offsetHeight; return lastO > 0.05 ? { left: lx, top: ly, right: lx + w, bottom: ly + hh } : null; },
-        set(t) { if (el.textContent !== t) el.textContent = t; return tag; },
+        /** The box it would have at offset (dx, dy) from where its object wants it, written into `out`. */
+        boxAt(dx, dy, out = {}) {
+          const px = clampX(wx + dx), py = clampY(wy + dy);
+          out.left = px; out.top = py; out.right = px + w; out.bottom = py + hh; out.dx = px - wx; out.dy = py - wy;
+          return out;
+        },
+        get target() { return { dx: tx, dy: ty }; },
+        /** The collision pass's answer: ease there (or jump on the first placement and with reduced motion). */
+        settle(dx, dy, dt, instant) {
+          tx = dx; ty = dy;
+          if (instant || !placed) { ox = dx; oy = dy; placed = true; } else { ox = approach(ox, dx, 14, dt); oy = approach(oy, dy, 14, dt); if (Math.abs(ox - dx) < 0.5) ox = dx; if (Math.abs(oy - dy) < 0.5) oy = dy; }
+          write();
+        },
+        rect() { return lastO > 0.05 ? { left: lx, top: ly, right: lx + w, bottom: ly + hh } : null; },
+        set(t) { if (body.textContent !== t) { body.textContent = t; dirty = true; } return tag; },
+        title(t) { const hd = el.querySelector('.bx-card-title'); if (hd && hd.textContent !== t) { hd.textContent = t; dirty = true; } return tag; },
         hide() { el.style.opacity = '0'; lastO = 0; return tag; },
-        remove() { el.remove(); list.delete(tag); },
+        remove() { el.remove(); list.delete(tag); const i = order.indexOf(tag); if (i >= 0) order.splice(i, 1); },
+        invalidate() { dirty = true; },
       };
       list.add(tag);
+      order.push(tag);
+      order.sort((a, b) => b.priority - a.priority);
       return tag;
     },
     rects() { const out = []; for (const t of list) { const r = t.rect(); if (r) out.push(r); } return out; },
+    /**
+     * The collision pass (once a frame, after the mechanic placed its tags). obstacles: rects to keep
+     * clear of (subtitle band and pill, Mallows, the scene's bodies). Cheap: a handful of tags × a
+     * fixed set of candidate moves, plain arithmetic, nothing allocated per candidate.
+     */
+    layout(dt = 1 / 60, obstacles = [], { instant = false } = {}) {
+      // sizes are cached; look again now and then (a font arriving, a longer line)
+      if (++frames % 30 === 0) for (const t of list) t.invalidate();
+      let n = 0;
+      for (const t of order) {
+        if (!t.visible) continue;
+        if (t.fixed) { const r = t.rect(); if (r) Object.assign(slot(n++), r); continue; }
+        const prev = t.target;
+        let bestCost = Infinity, prevCost = Infinity, bdx = 0, bdy = 0;
+        for (let iy = 0; iy < DY.length; iy++) {
+          for (let ix = 0; ix < DX.length; ix++) {
+            const b = t.boxAt(DX[ix], DY[iy], probe);
+            const L = b.left - GAP, T = b.top - GAP, R = b.right + GAP, B = b.bottom + GAP;
+            let hit = 0;
+            for (let k = 0; k < obstacles.length; k++) { const o = obstacles[k]; if (o) hit += cover(L, T, R, B, o); }
+            for (let k = 0; k < n; k++) hit += cover(L, T, R, B, boxes[k]) * 1.5;
+            const cost = hit * 4 + Math.abs(b.dx) * 0.7 + Math.abs(b.dy);
+            if (cost < bestCost) { bestCost = cost; bdx = b.dx; bdy = b.dy; }
+            if (Math.abs(b.dx - prev.dx) < 1 && Math.abs(b.dy - prev.dy) < 1) prevCost = cost;
+          }
+        }
+        // stickiness: stay put unless the new place is clearly better (no jitter between two near-equal places)
+        if (prevCost <= bestCost + 18) { bdx = prev.dx; bdy = prev.dy; }
+        t.settle(bdx, bdy, dt, instant);
+        t.boxAt(bdx, bdy, slot(n++));
+      }
+    },
+    remeasure: sizes,
     clear() { for (const t of [...list]) t.remove(); },
   };
 }

@@ -6,12 +6,17 @@
 // they quietly sort themselves into reading order, top to bottom). With all
 // three in place they fuse into one glowing staircase and the thought hops up
 // to stand on it. Tap a piece (or the assist pill) to send it to its tread.
+// The pieces start out of order (a fixed shuffle, the same for the same step),
+// so putting the sentence together is the person's own small act.
 
 import { Blob, drawGlow, clamp, approach, rgba, Motes, blinkAt, circleRect, tintFor, roundRect, Timers } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'assemble_step';
 const WARM = ['#ffe2a8', '#ffb357'];
+// every order of three pieces except reading order
+const SHUFFLES = [[1, 2, 0], [2, 0, 1], [1, 0, 2], [2, 1, 0], [0, 2, 1]];
+const hash = (s) => { let x = 7; for (let i = 0; i < s.length; i++) x = (x * 31 + s.charCodeAt(i)) >>> 0; return x; };
 
 export function mount(ctx) {
   const L = MECHANIC_LINES[id];
@@ -31,7 +36,10 @@ export function mount(ctx) {
     b.tag = ctx.tags.add(text, { kind: 'piece', max: Math.round(Math.min(220, A0.w * 0.42)) });
     return b;
   });
+  // where each piece waits before it is placed: row startRow[i] (never reading order)
+  const startRow = SHUFFLES[hash(ctx.parts.steps.join('|')) % SHUFFLES.length];
   const wordsTag = ctx.tags.add(ctx.parts.excerpt, { kind: 'words', max: Math.round(A0.w * 0.46) });
+  const grads = new Map();    // the piece's light, cached per height
   const SHORT = A0.h < 270;   // a short phone: the words step aside once the first piece is in
   const stepLabel = ctx.tags.add(L.labels.step, { kind: 'label', colour: WARM[1] });
   let phase = 'pieces';    // pieces → fuse → standing
@@ -62,7 +70,7 @@ export function mount(ctx) {
     pieces.forEach((b) => {
       if (b.press) return;
       if (b.slot >= 0) { const tr = G.treads[b.slot]; b.hx = tr.x; b.hy = tr.y; }
-      else { b.hx = G.A.x + Math.max(G.sizes[b.i].w / 2 + 10, G.A.w * 0.26); b.hy = G.A.y + G.A.h * 0.16 + b.i * (G.maxH + 14) + G.maxH / 2; }
+      else { const row = startRow[b.i]; b.hx = G.A.x + Math.max(G.sizes[b.i].w / 2 + 10, G.A.w * 0.26); b.hy = G.A.y + G.A.h * 0.16 + row * (G.maxH + 14) + G.maxH / 2; }
     });
   }
   homes();
@@ -106,8 +114,14 @@ export function mount(ctx) {
     drawGlow(g, x, y, w * 0.8, WARM[1], (0.24 + lit * 0.2) * alpha);
     g.save();
     g.translate(x, y); if (rot) g.rotate(rot); g.scale(sx, sy);
-    const gr = g.createLinearGradient(0, -hh / 2, 0, hh / 2);
-    gr.addColorStop(0, rgba('#fff4dc', 0.96)); gr.addColorStop(0.45, rgba(WARM[0], 0.94)); gr.addColorStop(1, rgba(WARM[1], 0.94));
+    const key = Math.max(8, Math.round(hh / 2) * 2);
+    let gr = grads.get(key);
+    if (!gr) {
+      gr = g.createLinearGradient(0, -key / 2, 0, key / 2);
+      gr.addColorStop(0, rgba('#fff4dc', 0.96)); gr.addColorStop(0.45, rgba(WARM[0], 0.94)); gr.addColorStop(1, rgba(WARM[1], 0.94));
+      if (grads.size > 48) grads.clear();
+      grads.set(key, gr);
+    }
     g.globalAlpha = alpha; g.fillStyle = gr;
     roundRect(g, -w / 2, -hh / 2, w, hh, hh * 0.45); g.fill();
     g.globalAlpha = 0.6 * alpha; g.strokeStyle = '#ffffff'; g.lineWidth = 1.2;
@@ -150,7 +164,9 @@ export function mount(ctx) {
     thought.draw(g, { tension: phase === 'pieces' ? 0.55 - placed() * 0.12 : 0.1, calm: phase === 'standing' ? 0.75 : placed() * 0.15, blink: blinkAt(t, 0.8), lookX: phase === 'pieces' ? -0.6 : 0, lookY: 0.4 });
     motes.draw(g, dt);
     wordsTag.at(thought.x, thought.y - R * 1.1 - 6, 'top', SHORT && (placed() || held) ? 0 : 1);
-    stepLabel.at(G.top.x, G.treads[2].y + G.treads[2].h / 2 + 8, 'bottom', phase === 'standing' ? clamp(fuseT - 0.6) : 0);
+    // the finished staircase names itself on its open side (left of the treads: the pieces' column is empty by then)
+    const left = Math.min(...G.treads.map((q) => q.x - q.w / 2));
+    stepLabel.at(left - 12, G.treads[1].y, 'right', phase === 'standing' ? clamp(fuseT - 0.6) : 0);
     return true;
   }
 
@@ -178,9 +194,11 @@ export function mount(ctx) {
     id, frame, pointer, done,
     hitTest: (x, y) => thought.hit(x, y) || (phase === 'pieces' && pieces.some((b) => onPiece(b, x, y))),
     assist: step,
+    bodies: () => { const G = geo(); return [circleRect(thought.x, thought.y, R, 2), ...G.treads.map((q) => ({ left: q.x - q.w / 2, right: q.x + q.w / 2, top: q.y - q.h / 2, bottom: q.y + q.h / 2 })),
+      ...pieces.map((b) => { const z = G.sizes[b.i]; return { left: b.x - z.w / 2, right: b.x + z.w / 2, top: b.y - z.h / 2, bottom: b.y + z.h / 2 }; })]; },
     avoid: () => { const G = geo(); return [circleRect(thought.x, thought.y, R * 1.3), ...G.treads.map((q) => ({ left: q.x - q.w / 2, right: q.x + q.w / 2, top: q.y - q.h / 2, bottom: q.y + q.h / 2 })), ...ctx.tags.rects()]; },
     get settled() { return phase === 'standing'; },
-    probe: () => { const G = geo(); return { pieces: pieces.filter((b) => b.slot < 0).map((b) => ({ x: b.x, y: b.y, i: b.i })), treads: G.treads.map((q) => ({ x: q.x, y: q.y })), phase }; },
+    probe: () => { const G = geo(); return { pieces: pieces.filter((b) => b.slot < 0).map((b) => ({ x: b.x, y: b.y, i: b.i, row: startRow[b.i] })), treads: G.treads.map((q) => ({ x: q.x, y: q.y })), phase, steps: ctx.parts.steps }; },
     destroy() { TM.clear(); ctx.tags.clear(); },
   };
 }

@@ -10,16 +10,20 @@
 // A rejected draft only records its two lines and the text of each field that
 // failed, so it is rebuilt from those: the fields it never showed stay empty,
 // and only failures on fields the draft really showed count ("lines" always
-// does). The reasoning pattern and Mallow come from the answer that round
-// ended with (a draft that failed on repeats_previous would say so).
+// does). The reasoning pattern is the draft's own when the report recorded
+// it (reports after run 3); otherwise it, and the Mallow, come from the answer
+// that round ended with. A round that ended in a fallback has no answer: for a
+// follow-up the replay then assumes the draft used a pattern no earlier angle
+// used, as the request asked (a repeated pattern would fail anyway, so this
+// tests the rest of the novelty check; run 3, ho-cancelled).
 
 import { qualityGate } from '../src/gate.js';
 import { validateAngleRequest } from '../src/validate.js';
-import { PATTERN_INTERACTION } from '../src/vocab.js';
+import { PATTERN_INTERACTION, PATTERNS } from '../src/vocab.js';
 
 /**
  * @typedef {{ code: string, field: string, text?: string | null, message?: string }} Failure
- * @typedef {{ attempt: number, lines: [string, string] | null, failures: Failure[] }} Draft
+ * @typedef {{ attempt: number, lines: [string, string] | null, pattern?: string, failures: Failure[] }} Draft
  * @typedef {{ status: string, scene: Record<string, string> | null, meta: { gate: string, drafts?: Draft[] } }} Round
  * @typedef {{ id: string, rounds: Round[] }} RunCase
  * @typedef {{ kind: 'accepted' | 'draft', id: string, round: number, attempt: number, lines: [string, string],
@@ -58,7 +62,7 @@ export function replayRun(run, opts) {
       for (const d of r.meta?.drafts || []) {
         if (!d.lines) continue; // schema failures have no lines to re-check
         const known = new Set(LINE_FIELDS);
-        const pattern = r.scene?.reasoning_pattern || 'fact_vs_assumption';
+        const pattern = d.pattern || r.scene?.reasoning_pattern || draftPattern(previous);
         /** @type {Record<string, string>} */
         const scene = {
           emotion: r.scene?.emotion || 'worry', situation_type: r.scene?.situation_type || 'other', reasoning_pattern: pattern,
@@ -73,6 +77,16 @@ export function replayRun(run, opts) {
     });
   }
   return out;
+}
+
+/**
+ * The pattern assumed for a draft whose own was not recorded and whose round
+ * has no answer: the first one no earlier angle used.
+ * @param {{ reasoning_pattern?: string }[]} previous
+ */
+function draftPattern(previous) {
+  const used = new Set(previous.map((p) => p.reasoning_pattern));
+  return PATTERNS.find((p) => !used.has(p)) || 'fact_vs_assumption';
 }
 
 /** "code@field" labels for a list of failures. @param {Failure[]} fs */

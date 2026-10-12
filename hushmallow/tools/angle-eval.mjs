@@ -331,8 +331,12 @@ const rejections = allRounds.flatMap((r) => (r.result.meta.drafts || []).map((d)
 lines.push('## Gate rejections', '');
 if (!rejections.length) lines.push('None: every answer passed the gate first time.', '');
 for (const d of rejections) {
-  lines.push(`- **${d.case.id}**${d.again ? ` (another angle${d.again > 1 ? ` ${d.again}` : ''})` : ''}, attempt ${d.attempt}: ${d.lines ? `“${d.lines[0]}” / “${d.lines[1]}”` : '(no lines)'}`);
-  for (const f of d.failures) lines.push(`  - \`${f.code}\`${f.field ? ` on ${f.field}` : ''}${f.text ? `: “${f.text}”` : ''}`);
+  lines.push(`- **${d.case.id}**${d.again ? ` (another angle${d.again > 1 ? ` ${d.again}` : ''})` : ''}, attempt ${d.attempt}${d.pattern ? ` (${d.pattern})` : ''}: ${d.lines ? `“${d.lines[0]}” / “${d.lines[1]}”` : '(no lines)'}`);
+  for (const f of d.failures) {
+    lines.push(`  - \`${f.code}\`${f.field ? ` on ${f.field}` : ''}${f.text ? `: “${f.text}”` : ''}`);
+    // What the regeneration was told (eval/extract-log.mjs reads it back).
+    if (f.message) lines.push(`    - told: ${f.message.replace(/\s+/g, ' ')}`);
+  }
 }
 if (rejections.length) lines.push('');
 if (weak.length) {

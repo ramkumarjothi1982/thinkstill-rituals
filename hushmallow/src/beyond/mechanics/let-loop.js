@@ -37,6 +37,19 @@ export function mount(ctx) {
   };
 
   const k = () => clamp(rest / NEED());
+  const stones = new Map();
+  function stoneGradient(rx, ry, b) {
+    const step_ = Math.round(b * 6);
+    const key = `${Math.round(rx)}|${Math.round(ry)}|${step_}`;
+    let sg = stones.get(key);
+    if (!sg) {
+      sg = g.createRadialGradient(-rx * 0.3, -ry * 0.5, 2, 0, 0, rx);
+      sg.addColorStop(0, mix('#f4fbff', '#ffffff', step_ / 6)); sg.addColorStop(0.55, '#a9c6e8'); sg.addColorStop(1, '#56709e');
+      if (stones.size > 48) stones.clear();
+      stones.set(key, sg);
+    }
+    return sg;
+  }
   function geo() {
     const A = ctx.area();
     const kk = k();
@@ -113,10 +126,11 @@ export function mount(ctx) {
       g.beginPath(); g.ellipse(st.x, st.y, st.rx * (1 + ph * 0.8), st.ry * (1 + ph * 0.8), 0, 0, TAU); g.stroke();
       g.globalAlpha = 1;
     }
-    const sg = g.createRadialGradient(st.x - st.rx * 0.3, st.y - st.ry * 0.5, 2, st.x, st.y, st.rx);
-    sg.addColorStop(0, mix('#f4fbff', '#ffffff', breath)); sg.addColorStop(0.55, '#a9c6e8'); sg.addColorStop(1, '#56709e');
-    g.fillStyle = sg;
-    g.beginPath(); g.ellipse(st.x, st.y, st.rx * swell, st.ry * swell, 0, 0, TAU); g.fill();
+    g.beginPath(); g.ellipse(st.x, st.y, st.rx * swell, st.ry * swell, 0, 0, TAU);
+    // the stone's light in its own frame, cached per size and breath step
+    g.save(); g.translate(st.x, st.y);
+    g.fillStyle = stoneGradient(st.rx, st.ry, breath);
+    g.fill(); g.restore();
     // progress: a thin arc of light around the stone
     if (kk > 0.01) {
       g.globalAlpha = 0.9; g.strokeStyle = '#e8f7ff'; g.lineWidth = 2.4; g.lineCap = 'round';
@@ -161,6 +175,7 @@ export function mount(ctx) {
     id, frame, pointer, done,
     hitTest: (x, y) => { const G = geo(); return thought.hit(x, y, 1.7) || ((x - G.st.x) / (G.st.rx * 1.35)) ** 2 + ((y - G.st.y) / (G.st.ry * 2.4)) ** 2 < 1; },
     assist: step,
+    bodies: () => { const G = geo(); return [circleRect(thought.x, thought.y, R, 2), { left: G.st.x - G.st.rx, right: G.st.x + G.st.rx, top: G.st.y - G.st.ry, bottom: G.st.y + G.st.ry }]; },
     avoid: () => { const G = geo(); return [{ left: G.cx - G.ax - R * 1.4, right: G.cx + G.ax + R * 1.4, top: G.cy - G.ay * 1.2 - R * 1.4, bottom: G.cy + G.ay * 1.2 + R * 1.4 }, circleRect(G.st.x, G.st.y, G.st.rx + 8), ...ctx.tags.rects()]; },
     get settled() { return phase === 'landed'; },
     get resting() { return !!held && held.kind === 'stone'; },

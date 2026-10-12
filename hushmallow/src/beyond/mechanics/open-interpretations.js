@@ -6,8 +6,11 @@
 // When every bud is open, the first guess lets go and takes its place among
 // them, the same size and the same light: none of them is the answer. A tap
 // knocks a bud half open, a second tap opens it; the assist pill opens one.
+// The possibilities are the scene's own other explanation (alternative_angle)
+// and authored ones, never a claim that any of them is true. On a narrow
+// phone they open in one column, each beside its bud, so every line reads.
 
-import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, LIGHT, Motes, blinkAt, circleRect, tintFor, ease, TAU, Timers } from './kit.js';
+import { Blob, drawGlow, drawJelly, clamp, lerp, approach, rgba, LIGHT, Motes, blinkAt, circleRect, tintFor, ease, TAU, Timers, viewW } from './kit.js';
 import { MECHANIC_LINES } from '../lines.js';
 
 export const id = 'open_interpretations';
@@ -28,25 +31,39 @@ export function mount(ctx) {
   const from = ctx.from || { x: A0.x + A0.w / 2, y: A0.y + A0.h * 0.72 };
   const thought = new Blob({ x: from.x, y: from.y, r: R, light, deep });
   const guess = new Blob({ x: from.x + R, y: from.y - R, r: R * 0.8, light: LIGHT.guess[0], deep: LIGHT.guess[1] });
-  const guessText = ctx.parts.guess || ctx.scene.possible_assumption || ctx.parts.excerpt;
-  const buds = L.others.map((text, i) => {
+  const P = ctx.parts;
+  // the first guess: what the mind assumed (the scene's, or the person's own words)
+  const guessText = !P.guessAsk && P.guess ? P.guess : P.excerpt;
+  const others = (P.alternatives?.length ? P.alternatives : L.others).slice(0, 3);
+  while (others.length < 3) others.push(L.others[others.length]);
+  // a narrow phone: one column of possibilities, each line beside its bud (a ring has no room for four lines)
+  const narrow = viewW() < 360 || A0.w < 330;
+  const rowMax = Math.round(Math.max(150, A0.w - R * 2.5 - R * 1.6 - 18));
+  const buds = others.map((text, i) => {
     const b = new Blob({ x: from.x, y: from.y, r: R * 0.8, light: BUD[i], deep: ['#3ab4e8', '#7a5cf0', '#e05aa8'][i] });
-    b.open = 0; b.goal = 0; b.hold = 0; b.knock = 0; b.i = i; b.tag = ctx.tags.add(text, { kind: 'line', max: 170 }); b.scale = rm() ? 1 : 0.2;
+    b.open = 0; b.goal = 0; b.hold = 0; b.knock = 0; b.i = i; b.tag = ctx.tags.add(text, { kind: 'line', max: narrow ? rowMax : 170 }); b.scale = rm() ? 1 : 0.2;
     return b;
   });
   const tags = {
-    guessL: ctx.tags.add(L.labels.guess, { kind: 'label', colour: LIGHT.guess[1] }),
-    guessW: ctx.tags.add(guessText, { kind: 'line', max: 170 }),
-    words: ctx.tags.add(ctx.parts.excerpt, { kind: 'words' }),
+    guessL: ctx.tags.add(L.labels.guess, { kind: 'label', colour: LIGHT.guess[1], priority: 1 }),
+    guessW: ctx.tags.add(guessText, { kind: 'line', max: narrow ? rowMax : 170 }),
+    // in one column the first guess carries the words already
+    words: narrow ? null : ctx.tags.add(P.excerpt, { kind: 'words' }),
   };
   let phase = 'closed';      // closed → equal → settled
   let equalT = 0, moves = 0;
   const t0 = performance.now();
   const holds = new Map();   // pointer id → bud
 
-  /** Even places on a ring; before "equal" the first guess hugs the thought. */
+  /** Even places on a ring (or one column on a narrow phone); before "equal" the first guess hugs the thought. */
   function homes() {
     const A = ctx.area();
+    if (narrow) {
+      // the thought on the left, the guess and the three buds in a column beside it, top to bottom
+      thought.hx = A.x + R * 1.15; thought.hy = A.y + A.h * 0.5;
+      [guess, ...buds].forEach((b, i) => { b.hx = A.x + R * 2.5 + R * 0.8; b.hy = A.y + ((i + 0.5) * A.h) / 4; });
+      return;
+    }
     const cx = A.x + A.w / 2, cy = A.y + A.h * 0.5;
     const rx = Math.min(A.w * 0.34, A.w / 2 - R * 1.6), ry = Math.min(A.h * 0.34, A.h / 2 - R * 1.4);
     thought.hx = cx; thought.hy = cy + (phase === 'closed' ? ry * 0.15 : 0);
@@ -143,6 +160,13 @@ export function mount(ctx) {
       lookX: phase === 'closed' ? 0.5 : 0, lookY: -0.4, press: thought.press ? 1 : 0 });
     motes.draw(g, dt);
     // words
+    if (narrow) {
+      // one column: every line beside its own bud (the first guess's label sits over its line while it is the only one)
+      for (const b of buds) b.tag.at(b.x + b.r + 10, b.y, 'left', clamp((b.open - 0.6) * 2.5));
+      tags.guessW.at(guess.x + guess.r + 10, guess.y, 'left', 1);
+      tags.guessL.at(guess.x + guess.r + 10, guess.y - (tags.guessW.h || 30) / 2 - 2, 'leftTop', phase === 'closed' ? 1 : 0);
+      return true;
+    }
     // a possibility's words sit on the far side from the thought (above the upper ones, below the lower ones)
     for (const b of buds) {
       const up = b.y < thought.y - R * 0.3;
@@ -151,7 +175,7 @@ export function mount(ctx) {
     const gUp = guess.y < thought.y - R * 0.3 && phase !== 'closed';
     tags.guessL.at(guess.x, guess.y - guess.r * 1.15 - 4, 'top', phase === 'closed' ? 1 : 0);
     tags.guessW.at(guess.x, gUp ? guess.y - guess.r * 1.08 - 4 : guess.y + guess.r * 1.08 + 4, gUp ? 'top' : 'bottom', phase !== 'closed' ? 1 : 0);
-    tags.words.at(thought.x, thought.y + R * 1.08 + 6, 'bottom', phase === 'closed' ? 1 : 0.0);
+    tags.words?.at(thought.x, thought.y + R * 1.08 + 6, 'bottom', phase === 'closed' ? 1 : 0.0);
     return true;
   }
 
@@ -183,9 +207,10 @@ export function mount(ctx) {
     id, frame, pointer, done,
     hitTest: (x, y) => thought.hit(x, y) || guess.hit(x, y) || buds.some((b) => b.hit(x, y, 1.6)),
     assist: step,
+    bodies: () => [circleRect(thought.x, thought.y, R * thought.scale, 2), circleRect(guess.x, guess.y, guess.r, 2), ...buds.map((b) => circleRect(b.x, b.y, b.r * b.scale, 2))],
     avoid: () => [circleRect(thought.x, thought.y, R * 1.3), circleRect(guess.x, guess.y, guess.r * 1.3), ...buds.map((b) => circleRect(b.x, b.y, b.r * 1.3)), ...ctx.tags.rects()],
     get settled() { return phase === 'settled'; },
-    probe: () => ({ buds: buds.filter((b) => b.goal < 1).map((b) => ({ x: b.x, y: b.y })), thought: { x: thought.x, y: thought.y }, phase }),
+    probe: () => ({ buds: buds.filter((b) => b.goal < 1).map((b) => ({ x: b.x, y: b.y })), thought: { x: thought.x, y: thought.y }, phase, narrow, others, guess: guessText }),
     destroy() { TM.clear(); ctx.tags.clear(); },
   };
 }

@@ -37,9 +37,11 @@ import { SCHEMA_VERSION, PATTERN_TO_AUTHORED } from './vocab.js';
  *     usage: UsagePart[], model_ms: number, lexicon_level: string, drafts?: Draft[],
  *   }
  * }} AngleResult
- * @typedef {{ attempt: number, lines: [string, string] | null, failures: { code: string, field: string, text: string | null }[] }} Draft
+ * @typedef {{ attempt: number, lines: [string, string] | null, pattern?: string, failures: { code: string, field: string, text: string | null, message?: string }[] }} Draft
  *   A rejected attempt (only with deps.recordDrafts, for tools/angle-eval.mjs;
- *   never logged or returned by the Worker).
+ *   never logged or returned by the Worker). A draft that passed the schema
+ *   keeps its reasoning_pattern, and each gate failure the instruction the
+ *   regeneration was given, so a replay need not guess either.
  */
 
 /** True when the text has something to work with (not only emoji or punctuation). @param {string} text */
@@ -166,7 +168,7 @@ export async function runAngle(input, deps) {
     if (!outputIsSafe(scene, VISIBLE_FIELDS)) {
       meta.gate_codes.push('unsafe_output');
       rejected = { lines: [scene.subtitle_line_1, scene.subtitle_line_2], reasons: ['The draft used harm or crisis language; write a calm, safe angle instead.'] };
-      drafts?.push({ attempt, lines: rejected.lines, failures: [{ code: 'unsafe_output', field: '', text: null }] });
+      drafts?.push({ attempt, lines: rejected.lines, pattern: scene.reasoning_pattern, failures: [{ code: 'unsafe_output', field: '', text: null }] });
       continue;
     }
     // 7. Quality gate.
@@ -178,8 +180,8 @@ export async function runAngle(input, deps) {
     meta.gate_codes.push(...gate.failures.map((f) => f.code));
     rejected = { lines: [scene.subtitle_line_1, scene.subtitle_line_2], reasons: gate.failures.map((f) => f.message) };
     drafts?.push({
-      attempt, lines: rejected.lines,
-      failures: gate.failures.map((f) => ({ code: f.code, field: f.field, text: f.field in scene ? /** @type {Record<string, string>} */ (scene)[f.field] : null })),
+      attempt, lines: rejected.lines, pattern: scene.reasoning_pattern,
+      failures: gate.failures.map((f) => ({ code: f.code, field: f.field, text: f.field in scene ? /** @type {Record<string, string>} */ (scene)[f.field] : null, message: f.message })),
     });
   }
 
