@@ -16,3 +16,6 @@ export function testPurchasesAllowed(loc = globalThis.location) {
   if (!loc || !loc.hostname) return true; // Node tests and tooling
   return TEST_PURCHASE_HOSTS.includes(loc.hostname);
 }
+
+/** Shown in the test panel so a tester can tell which version has loaded. */
+export const BUILD = '2026-10-12 · test 7';
