@@ -143,3 +143,17 @@ export function loadLogo(tone = 'light', width = 720) {
   img.src = logoUrl(tone, width > 720 ? 960 : width > 480 ? 720 : width > 360 ? 480 : 360);
   return img.decode().then(() => img, () => null);
 }
+
+/** Keep a button's label on one line: while it would wrap or clip, swap in
+ *  the next shorter wording. Give the button the .fit-one class (white-space:
+ *  nowrap) so overflow can be measured. The last argument may be
+ *  { target } — the element whose text changes (default: the button). Run it
+ *  again once the web fonts have swapped in; it never goes back to longer words. */
+export function fitLabel(btn, ...shorter) {
+  const opts = shorter.length && typeof shorter[shorter.length - 1] === 'object' ? shorter.pop() : {};
+  const target = opts.target || btn;
+  for (const t of shorter) {
+    if (!btn || !(btn.scrollWidth > btn.clientWidth)) return;
+    target.textContent = t;
+  }
+}

@@ -73,7 +73,7 @@ export default function plans(app, params = {}) {
     const note = h('p', { class: 'invite-period', 'aria-live': 'polite' }, periodNote());
     notes.push([p, price, note]);
     const label = h('span', { class: 'invite-buy-label' }, `Step into ${p.name}`);
-    const btn = h('button', { class: `btn block invite-buy ${p.id === 'ultra' ? 'ultra' : 'primary'}`, onclick: () => buy(p.id, btn) }, label);
+    const btn = h('button', { class: `btn block fit-one invite-buy ${p.id === 'ultra' ? 'ultra' : 'primary'}`, onclick: () => buy(p.id, btn) }, label);
     buttons.push(btn);
     // one line: "Step into Beyond" when the full name would wrap
     fits.push(() => fitLabel(btn, `Step into ${p.name.slice(brandName.length).trim()}`, { target: label }));
