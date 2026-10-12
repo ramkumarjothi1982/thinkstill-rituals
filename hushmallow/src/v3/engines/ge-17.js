@@ -241,6 +241,9 @@ export function create(E) {
   // ------------------------------------------------------------ frame --
   function frame(dt, t) {
     clockT += dt;
+    // the host only routes touches to the engine during play: a finger still down
+    // when the closing move or finale begins must not leave the film stretched
+    if (E.phase !== 'play' && pts.size) pts.clear();
     const fin = finAt >= 0 ? smooth(clamp((E.now() - finAt) / 2.6)) : 0;
     // "Tap instead": a ghost fingertip draws the rim outwards, then the film follows
     ghost.a += angDiff(ghost.a, ghost.aTo) * Math.min(1, dt * 3);
@@ -268,6 +271,7 @@ export function create(E) {
     tenseAmp = Rt * (heavy ? 0.06 : 0.045) * (1 - shown) * (1 - fin) * (1 - calm0 * 0.5);
     breathAmp = reduced ? 0 : Rt * 0.007 * (1 - fin * 0.5);
     wob.update(dt);
+    waitK = Math.max(0, waitK - dt * 1.4);
     physics(dt);
     computeRim(fin);
     photoR = photoR ? lerp(photoR, maxRim, 1 - Math.exp(-dt * 8)) : maxRim;
@@ -509,6 +513,7 @@ export function create(E) {
     if (ghost.s > 0.5) {
       const rr = rimAt(ghost.a), x = cx + Math.cos(ghost.a) * rr, y = cy + Math.sin(ghost.a) * rr, k = clamp(ghost.s / (M * 0.6));
       glow(g, x, y, 22, mix(pal.glow, '#ffffff', 0.4), 0.6 * k);
+      if (waitK > 0.01) glow(g, x, y, 34 + 12 * (1 - waitK), mix(pal.glow, '#ffffff', 0.3), 0.4 * waitK);
       g.save(); g.strokeStyle = rgba('#ffffff', 0.5 * k); g.lineWidth = 1.5; g.beginPath(); g.arc(x, y, 9, 0, TAU); g.stroke(); g.restore();
     }
     if (anyPull || ghost.s > 0.5) return;
@@ -551,7 +556,7 @@ export function create(E) {
     get done() { return doneFlag; },
     frame,
     down(p) {
-      if (finAt >= 0) return;
+      if (finAt >= 0 || doneFlag) return;
       const dx = p.x - cx, dy = p.y - cy, r = Math.hypot(dx, dy), a = Math.atan2(dy, dx), rr = rimAt(a);
       if (r > rr * 0.68 && r < Rt * 1.8) {
         // the rim (generous): grab it here
@@ -606,7 +611,7 @@ export function create(E) {
       }
     },
     assist() {
-      if (finAt >= 0) return;
+      if (finAt >= 0 || doneFlag) return;
       assistTo = Math.min(1, Math.max(wanted, prog) + 1 / 8);
       // aim the ghost pull at the nearest bubble still waiting outside, else the suggested point
       let best = null, bd = 1e9;
