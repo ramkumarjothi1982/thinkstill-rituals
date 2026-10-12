@@ -245,8 +245,9 @@ export function createStage({ fx, tagRoot = null, reducedMotion = () => prefersR
     dpr = Math.min(2, (typeof devicePixelRatio === 'number' && devicePixelRatio) || 1);
     W = typeof innerWidth === 'number' ? innerWidth : 0; H = typeof innerHeight === 'number' ? innerHeight : 0;
     canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
-    // (that wiped the canvas: draw it again, frozen or not)
-    kick();
+    // (that wiped the canvas: the next tick draws it again, frozen or not; a resize alone does not join
+    // the shared loop — start() does, after the hero, so a world sees this frame's hero)
+    dirty = true;
   }
   // the person's text size as Settings sets it on <html> (ui/type.js setTextScale): the words grow with it
   const textK = textScale ?? (() => { try { return parseFloat(document.documentElement.style.getPropertyValue('--type-scale')) || 1; } catch { return 1; } });

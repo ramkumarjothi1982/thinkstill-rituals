@@ -268,6 +268,27 @@ test('createStage (B2 ordering): a world writes thought.x in its tick; the same 
   } finally { B.restore(); }
 });
 
+test('createStage: it joins the shared loop on start() — after the hero\'s ticker, so a world sees this frame\'s hero — not when it is made', async () => {
+  const B = browser();
+  try {
+    for (let i = 0; i < 5 && B.frame(); i++);
+    assert.equal(B.frame(), false, 'nothing on the shared loop to begin with');
+    const stage = createStage({ fx: B.fx });
+    await stage.whenThoughts();
+    assert.equal(B.frame(), false, 'made (and sized): not on the loop yet');
+    const order = [];
+    const hero = () => order.push('hero');      // (as MallowTouch adds its ticker when it is made)
+    addTicker(hero);
+    stage.worldTicker.add(() => order.push('world'));
+    stage.start();
+    order.length = 0;
+    B.frame(); B.frame();
+    assert.deepEqual(order, ['hero', 'world', 'hero', 'world']);
+    removeTicker(hero);
+    stage.destroy();
+  } finally { B.restore(); }
+});
+
 test('createStage: freeze holds the thoughts still while the world still ticks; idle frames draw nothing', async () => {
   const B = browser();
   try {
