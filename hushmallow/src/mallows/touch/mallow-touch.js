@@ -286,20 +286,22 @@ export class MallowTouch {
     const r = this.renderer;
     if (!r) return;
     r.removeBody('hero');
-    r.addBody('hero', { source: this.rig.skin, indices: this.sb.indices, uvs: this.sb.uvs, faceW: this.sb.faceW, n: this.sb.n, base: this._bareBody() });
+    r.addBody('hero', { source: this.rig.skin, indices: this.sb.indices, uvs: this.sb.uvs, faceW: this.sb.faceW, n: this.sb.n,
+      base: this.id === 'glitzi' ? this._atSkin(this.rig.assets?.body) : null, orig: this._atSkin(this.rig.assets?.original) });
   }
 
-  // Glitzi only: its face-cleaned body at skin size, so the shader can keep
-  // glitch lines under the face (drawn once; uploaded once per Mallow)
-  _bareBody() {
-    const rig = this.rig, body = rig.assets?.body;
-    if (this.id !== 'glitzi' || !body) return null;
+  // an asset drawn at skin size, uploaded once per Mallow: the untouched
+  // approved art (the shader cross-fades it in at rest) and, for Glitzi, its
+  // face-cleaned body (so the shader keeps glitch lines under the face)
+  _atSkin(img) {
+    const rig = this.rig;
+    if (!img) return null;
     const c = document.createElement('canvas');
     c.width = rig.skin.width; c.height = rig.skin.height;
     const g = c.getContext('2d');
     g.setTransform(rig.q, 0, 0, rig.q, 0, 0);
     g.imageSmoothingQuality = 'high';
-    g.drawImage(body, 0, 0);
+    g.drawImage(img, 0, 0);
     return c;
   }
 
@@ -307,8 +309,10 @@ export class MallowTouch {
     this.tier = tier;
     this.stats.tier = TIERS[tier];
     this._frameCosts.length = 0;
-    // Glitzi's glitch lines move to the shader in tier A; 2D tiers keep them in the skin
+    // Glitzi's glitch lines and the approved art's rest cross-fade move to the
+    // shader in tier A; the 2D tiers keep them in the skin
     this.rig.opts.shaderGlitch = tier === 'gl';
+    this.rig.opts.shaderRest = tier === 'gl';
     this.rig.skinDirty = true;
     if (this.glCanvas) this.glCanvas.style.display = tier === 'gl' ? 'block' : 'none';
     if (tier === 'gl' && this.renderer) this.renderer.updateTexture('hero', this.rig.skin, null);
@@ -1046,7 +1050,7 @@ export class MallowTouch {
     const s = this.st, parts = rig.particles, fl = this.fl;
     const idle = !touching && !changed && (!sb.awake || sb.energy < 2e-5) && this._rim < 0.01 && !(parts.list.length || parts.cloud > 0.02) &&
       Math.abs(s.vx) + Math.abs(s.vy) + Math.abs(s.vs) + Math.abs(fl.vl) + Math.abs(fl.vt) < 0.5 && rig.body.grounded && !(rig.body.spin > 0) &&
-      !(rig.body.glitchBurst > 0) && !this._trem && !(this.id === 'glitzi' && this.tier === 'gl' && rig.val.glitch >= 0.55);
+      !(rig.body.glitchBurst > 0) && !this._trem && !(this.id === 'glitzi' && this.tier === 'gl' && rig.val.glitch >= 0.55 && rig.restMix < 0.999);
     this._idleFrames = idle ? (this._idleFrames || 0) + 1 : 0;
     st.idle = idle;
     if (idle && this._idleFrames % 2 === 0) { st.skipped++; return; }
@@ -1064,6 +1068,7 @@ export class MallowTouch {
       sb.computeShading();
       const it = this._item;
       it.positions = sb.positions; it.shade = sb.shade; it.m = this.M; it.rim = this._rim;
+      it.rest = rig.opts.pristine === false ? 0 : rig.restMix ?? 0;
       it.glitch = this._glitchUniforms();
       it.glitchThick = this._glitch.thick || 3;
       it.burst = this._burstUniforms();

@@ -140,10 +140,14 @@ export default function hushfold(app, params = {}) {
       minB = 96;
     } else if (panelSheet()) {
       // the bottom sheet: one subtitle line and the Mallow above it, still squeezable
-      regionTop = topB + Math.min(84, band);
       regionBottom = panelTop() - 12;
+      const strip = regionBottom - topB;
+      // a short strip: the line stays, its ⏸ ↺ ⏭ pill steps back (it would sit on the Mallow)
+      root.classList.toggle('hf-tight', strip < 300);
+      regionTop = topB + Math.max(Math.min(84, band), bandNeed ? bandNeed + 12 : 0);
       minB = 96;
     }
+    if (!panelSheet()) root.classList.remove('hf-tight');
     const regionH = Math.max(minB + 8, regionBottom - regionTop);
     // a short strip above the sheet: the thought's word tag would sit on the Mallow, so it waits
     root.classList.toggle('hf-tags-away', panelSheet() && regionBottom - regionTop < 220);
@@ -332,8 +336,11 @@ export default function hushfold(app, params = {}) {
     let install = null, garden = null, skills = null;
     try { install = await import('../../hushfold/garden-install.js'); } catch { /* not in this build yet */ }
     if (S.left) return;
-    const ctx = { app, store, subtitles: flowSubtitles, skillId, worldId, mallow: mallowId, fx: world.fx, origin: stageMallow.bodyRect(), reducedMotion: prefs.reducedMotion() };
-    if (typeof install?.offerSave === 'function') { try { await install.offerSave(ctx); } catch (e) { console.warn('[garden] offerSave', e); } return; }
+    const origin = stageMallow.bodyRect();
+    const face = (() => { try { return install?.mallowFaceRect?.(origin, MALLOWS[mallowId]) || null; } catch { return null; } })();
+    const ctx = { app, store, subtitles: flowSubtitles, skillId, worldId, mallow: mallowId, fx: world.fx, origin, face, reducedMotion: prefs.reducedMotion(), lowStim: !!prefs.get('lowStim') };
+    // W5 owns the whole moment: offer → save only on the tap → install (or "already in your garden")
+    if (typeof install?.onOffer === 'function') { try { await install.onOffer(ctx); } catch (e) { console.warn('[garden] onOffer', e); } return; }
     try { [garden, skills] = await Promise.all([import('../../engine/garden.js'), import('../../hushfold/skills.js').catch(() => null)]); } catch { return; }
     if (S.left || typeof garden?.saveSkill !== 'function') return;
     const title = skills?.skillTitle?.(skillId) || skills?.SKILLS?.[skillId]?.title || null;
@@ -798,7 +805,7 @@ export default function hushfold(app, params = {}) {
       // QA hooks on the development host only (Playwright sweeps, the other workstreams' labs)
       if (['localhost', '127.0.0.1'].includes(location.hostname)) {
         window.__hushfold = { subtitles, mallow: stageMallow, stage, router, spawnThought, openTell, startFlow, get flow() { return flowRef; }, get panel() { return panel; }, get worldThought() { return worldThought; },
-          get overlay() { return overlay; }, get layers() { return { ...layer }; }, touch: touchMt, safeForUpdate: () => view.safeForUpdate(), layout, resumableNow, S };
+          get overlay() { return overlay; }, get layers() { return { ...layer }; }, touch: touchMt, safeForUpdate: () => view.safeForUpdate(), layout, resumableNow, onOffer, S };
       }
       if (await resumePendingTell()) return;
       if (params.flow?.worldId && ent.has('paid')) {

@@ -116,6 +116,7 @@ body.hf-world-leaving #world > canvas.hf-back, body.hf-world-leaving #fx-layer >
   background: rgba(14, 10, 36, 0.52); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); opacity: 0.82;
   transition: opacity 360ms var(--hf-ease), transform 360ms var(--hf-ease); }
 .hf-subctl.is-hidden { opacity: 0; transform: translateY(-4px); pointer-events: none !important; visibility: hidden; }
+.hushfold.hf-tight .hf-subctl { display: none; }
 .hf-subctl.idle { opacity: 0.5; }
 .hf-subs.bright .hf-subctl { background: rgba(14, 10, 36, 0.74); opacity: 0.92; }
 .hf-subs.bright .hf-subctl.idle { opacity: 0.7; }

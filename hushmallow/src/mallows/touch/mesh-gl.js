@@ -7,7 +7,11 @@
 //           dent field catches a specular streak, a rim glow in the Mallow's
 //           own colour rises while squeezed, the face trails the body by a
 //           uv offset, and Glitzi's glitch lines + slice bursts are drawn in
-//           the shader so its skin no longer redraws every frame.
+//           the shader so its skin no longer redraws every frame. The untouched
+//           approved artwork is a second texture cross-faded in by uRest
+//           (source-atop, after the glitch lines), so an idle Mallow on screen
+//           is exactly the approved picture and leaving / returning to rest
+//           costs no upload.
 //           Context loss → onLost (the stage drops to tier B) → restore.
 //   Tier B  drawTriangleWarp — Canvas 2D affine triangles on a coarse grid
 //           (every other solver vertex), each clipped and grown 1.2 device px
@@ -37,7 +41,9 @@ const FS = `
 precision mediump float;
 uniform sampler2D uTex;
 uniform sampler2D uBase;
+uniform sampler2D uOrig;
 uniform float uBaseOn;
+uniform float uRest;
 uniform vec2 uTexel;
 uniform vec2 uSrc;
 uniform vec3 uRimCol;
@@ -88,6 +94,12 @@ void main() {
       }
     }
   }
+  // the approved artwork at rest, laid over the live face and the glitch
+  // lines (source-atop, like the 2D skin's cross-fade)
+  if (uRest > 0.002) {
+    vec4 o = texture2D(uOrig, uv);
+    rgb = o.rgb * (uRest * c.a) + rgb * (1.0 - o.a * uRest);
+  }
   // light from the deformation: squeezed skin sinks and darkens, the walls of
   // a dent and the bulges facing the light catch a soft specular streak.
   // Highlights are screened on (never past white) and gentler on pale skin,
@@ -96,13 +108,16 @@ void main() {
   vec3 L = normalize(vec3(-0.5, -0.78, 0.38));
   vec3 H = normalize(L + vec3(0.0, 0.0, 1.0));
   float comp = clamp(vShade.x, -0.6, 1.6);
+  // stretched skin (negative compression) stays matte: no streak or rim
+  // flares along a pulled-thin edge
+  float taut = smoothstep(0.0, -0.25, vShade.x);
   float diff = dot(n, L) - L.z;
   float lum = dot(rgb, vec3(0.299, 0.587, 0.114)) / max(c.a, 0.004);
   float pale = smoothstep(0.5, 0.9, lum);
   float shade = (1.0 - 0.16 * comp * uLight) * (1.0 + 0.55 * diff * uLight);
   rgb = min(rgb * clamp(shade, 0.55, mix(1.22, 1.06, pale)), vec3(c.a));
   float spec = max(pow(max(dot(n, H), 0.0), 26.0) - pow(H.z, 26.0), 0.0) * uLight;
-  float sp = clamp(spec * 0.42 * uSpec * (1.0 - 0.65 * pale), 0.0, 0.6);
+  float sp = clamp(spec * 0.42 * uSpec * (1.0 - 0.65 * pale) * (1.0 - 0.8 * taut), 0.0, 0.6);
   rgb += (vec3(c.a) - rgb) * sp * vec3(1.0, 0.98, 1.0);
   if (uRim > 0.001) {
     float a1 = texture2D(uTex, uv + vec2(uTexel.x * 4.0, 0.0)).a;
@@ -110,7 +125,7 @@ void main() {
     float a3 = texture2D(uTex, uv + vec2(0.0, uTexel.y * 4.0)).a;
     float a4 = texture2D(uTex, uv - vec2(0.0, uTexel.y * 4.0)).a;
     float edge = c.a * (1.0 - min(min(a1, a2), min(a3, a4)));
-    rgb += (vec3(c.a) - rgb) * uRimCol * clamp(edge * uRim * (1.0 - 0.5 * pale), 0.0, 1.0);
+    rgb += (vec3(c.a) - rgb) * uRimCol * clamp(edge * uRim * (1.0 - 0.5 * pale) * (1.0 - 0.7 * taut), 0.0, 1.0);
   }
   gl_FragColor = vec4(rgb, c.a);
 }`;
@@ -132,6 +147,8 @@ void main() {
   if (a < 0.002) discard;
   gl_FragColor = vec4(uCol.rgb * a, a);
 }`;
+
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 export function webglAvailable(strict = false) {
   try {
@@ -187,7 +204,7 @@ export class MeshRenderer {
     const P = this.prog, B = this.bprog;
     this.a = { pos: gl.getAttribLocation(P, 'aPos'), uv: gl.getAttribLocation(P, 'aUv'), shade: gl.getAttribLocation(P, 'aShade'), face: gl.getAttribLocation(P, 'aFace') };
     this.u = {};
-    for (const n of ['uM', 'uLag', 'uTex', 'uBase', 'uBaseOn', 'uTexel', 'uSrc', 'uRimCol', 'uRim', 'uLight', 'uSpec', 'uGl', 'uGlOn', 'uGlThick', 'uBurst']) this.u[n] = gl.getUniformLocation(P, n);
+    for (const n of ['uM', 'uLag', 'uTex', 'uBase', 'uOrig', 'uBaseOn', 'uRest', 'uTexel', 'uSrc', 'uRimCol', 'uRim', 'uLight', 'uSpec', 'uGl', 'uGlOn', 'uGlThick', 'uBurst']) this.u[n] = gl.getUniformLocation(P, n);
     this.ba = gl.getAttribLocation(B, 'aQ');
     this.bu = { rect: gl.getUniformLocation(B, 'uRect'), col: gl.getUniformLocation(B, 'uCol'), inner: gl.getUniformLocation(B, 'uInner') };
     this.quad = gl.createBuffer();
@@ -200,8 +217,9 @@ export class MeshRenderer {
     return true;
   }
 
-  /** Register a mesh: {source canvas, indices, uvs, faceW, n, base?} — base:
-   *  the same-size bare body under the face (glitch lines are drawn only on it). */
+  /** Register a mesh: {source canvas, indices, uvs, faceW, n, base?, orig?} — base:
+   *  the same-size bare body under the face (glitch lines are drawn only on it);
+   *  orig: the same-size untouched approved art (cross-faded in by item.rest). */
   addBody(key, spec) {
     const b = { ...spec, tex: null, w: 0, h: 0 };
     this.bodies.set(key, b);
@@ -211,7 +229,7 @@ export class MeshRenderer {
 
   removeBody(key) {
     const b = this.bodies.get(key), gl = this.gl;
-    if (b && gl && !this.lost) { gl.deleteTexture(b.tex); if (b.baseTex) gl.deleteTexture(b.baseTex); for (const k of ['pos', 'uvBuf', 'shadeBuf', 'faceBuf', 'idx']) if (b[k]) gl.deleteBuffer(b[k]); }
+    if (b && gl && !this.lost) { gl.deleteTexture(b.tex); if (b.baseTex) gl.deleteTexture(b.baseTex); if (b.origTex) gl.deleteTexture(b.origTex); for (const k of ['pos', 'uvBuf', 'shadeBuf', 'faceBuf', 'idx']) if (b[k]) gl.deleteBuffer(b[k]); }
     this.bodies.delete(key);
   }
 
@@ -235,17 +253,22 @@ export class MeshRenderer {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     b.w = 0; b.h = 0;
     if (b.source) this.updateTexture(key, b.source, null);
-    b.baseTex = null;
-    if (b.base) {
-      b.baseTex = gl.createTexture();
-      gl.bindTexture(gl.TEXTURE_2D, b.baseTex);
+    const still = (src) => {
+      if (!src) return null;
+      const t = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, t);
       for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, b.base);
-    }
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
+      return t;
+    };
+    b.baseTex = still(b.base);
+    b.origTex = still(b.orig);
   }
 
   /** Upload the skin: the whole canvas, or only rect {x,y,w,h} — or a list of
-   *  such rects (each face part that changed) — with texSubImage2D. */
+   *  such rects (each face part that changed, uploaded on its own) — with
+   *  texSubImage2D. Whole only when the changed rects add up to > 60 % of
+   *  the skin. Returns the pixels uploaded. */
   updateTexture(key, source, rect) {
     const gl = this.gl, b = this.bodies.get(key);
     if (!gl || this.lost || !b || !source) return 0;
@@ -259,26 +282,31 @@ export class MeshRenderer {
       b.w = source.width; b.h = source.height;
       return b.w * b.h;
     }
-    if (Array.isArray(rect)) { for (const r of rect) this._subUpload(source, r); return area; }
-    this._subUpload(source, rect);
-    return area;
+    let px = 0;
+    if (Array.isArray(rect)) { for (const r of rect) px += this._subUpload(source, r); return px; }
+    return this._subUpload(source, rect);
   }
 
-  // copy the rect into a reused canvas of exactly that size, upload it
+  // copy the rect into a reused canvas and upload it. Sizes are rounded up to
+  // 16 px, so the face parts' changing rects reuse a handful of canvases
+  // (least recently used dropped past 24) instead of making new ones
   _subUpload(source, rect) {
-    const gl = this.gl;
-    const key2 = rect.w + 'x' + rect.h;
+    const gl = this.gl, Q = 16, SW = source.width, SH = source.height;
+    const w = Math.min(SW, Math.ceil(rect.w / Q) * Q), h = Math.min(SH, Math.ceil(rect.h / Q) * Q);
+    const x = Math.max(0, Math.min(rect.x, SW - w)), y = Math.max(0, Math.min(rect.y, SH - h));
+    const key2 = w * 8192 + h;
     let s = this._scratch.get(key2);
-    if (!s) {
-      if (this._scratch.size > 10) this._scratch.delete(this._scratch.keys().next().value);
+    if (s) { this._scratch.delete(key2); this._scratch.set(key2, s); } else {
+      if (this._scratch.size >= 24) { const k = this._scratch.keys().next().value; const old = this._scratch.get(k); old.c.width = old.c.height = 0; this._scratch.delete(k); }
       const c = document.createElement('canvas');
-      c.width = rect.w; c.height = rect.h;
+      c.width = w; c.height = h;
       s = { c, g: c.getContext('2d') };
       this._scratch.set(key2, s);
     }
     s.g.globalCompositeOperation = 'copy';
-    s.g.drawImage(source, rect.x, rect.y, rect.w, rect.h, 0, 0, rect.w, rect.h);
-    gl.texSubImage2D(gl.TEXTURE_2D, 0, rect.x, rect.y, gl.RGBA, gl.UNSIGNED_BYTE, s.c);
+    s.g.drawImage(source, x, y, w, h, 0, 0, w, h);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, gl.RGBA, gl.UNSIGNED_BYTE, s.c);
+    return w * h;
   }
 
   resize(cssW, cssH, dpr) {
@@ -292,7 +320,8 @@ export class MeshRenderer {
    * Draw one frame.
    * blobs: [{x, y, rx, ry, rgba:[r,g,b,a], inner}] in CSS px (drawn first)
    * items: [{key, positions, shade, m:[a,b,c,d,e,f] body→CSS px, lag:[u,v], rim, rimCol:[r,g,b], light,
-   *          glitch: Float32Array(36)|null, glitchThick, glitchMode:'lit'|'dim', burst: Float32Array(18)|null, src:[w,h]}]
+   *          glitch: Float32Array(36)|null, glitchThick, glitchMode:'lit'|'dim', burst: Float32Array(18)|null, src:[w,h],
+   *          rest: 0..1 (the approved art's cross-fade)}]
    */
   draw(items, blobs = []) {
     const gl = this.gl;
@@ -319,6 +348,7 @@ export class MeshRenderer {
     const u = this.u, a = this.a, M = this._mat;
     gl.uniform1i(u.uTex, 0);
     gl.uniform1i(u.uBase, 1);
+    gl.uniform1i(u.uOrig, 2);
     for (const it of items) {
       const b = this.bodies.get(it.key);
       if (!b || !b.tex) continue;
@@ -341,8 +371,11 @@ export class MeshRenderer {
       gl.uniform1f(u.uGlThick, it.glitchThick || 3);
       gl.uniform3fv(u.uBurst, it.burst || this._noBurst);
       gl.uniform1f(u.uBaseOn, b.baseTex && it.glitch ? 1 : 0);
+      gl.uniform1f(u.uRest, b.origTex ? clamp01(it.rest || 0) : 0);
       gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D, b.baseTex || b.tex);
+      gl.activeTexture(gl.TEXTURE2);
+      gl.bindTexture(gl.TEXTURE_2D, b.origTex || b.tex);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, b.tex);
       gl.bindBuffer(gl.ARRAY_BUFFER, b.pos);

@@ -306,7 +306,7 @@ function nebulaSprite(P, bright) {
       const x = Math.cos(a) * d, y = Math.sin(a) * d;
       const gr = g.createRadialGradient(x, y, 0, x, y, r);
       const c = cols[i % cols.length];
-      gr.addColorStop(0, rgbaOf(c, bright ? 0.22 : 0.3)); gr.addColorStop(1, rgbaOf(c, 0));
+      gr.addColorStop(0, rgbaOf(c, 0.3)); gr.addColorStop(1, rgbaOf(c, 0));
       g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
     }
     // two faint arms of a spiral, drawn as soft dust
@@ -315,7 +315,7 @@ function nebulaSprite(P, bright) {
         const u = q / 40, th = arm * Math.PI + u * 4.2, rr = 118 * Math.exp(-u * 2.1);
         const x = Math.cos(th) * rr, y = Math.sin(th) * rr, r = 10 + 14 * (1 - u);
         const gr = g.createRadialGradient(x, y, 0, x, y, r);
-        gr.addColorStop(0, rgbaOf(arm ? P.accent : P.light, (bright ? 0.1 : 0.16) * (1 - u * 0.5))); gr.addColorStop(1, rgbaOf(P.light, 0));
+        gr.addColorStop(0, rgbaOf(arm ? P.accent : P.light, (bright ? 0.15 : 0.16) * (1 - u * 0.5))); gr.addColorStop(1, rgbaOf(P.light, 0));
         g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
       }
     }
@@ -1012,6 +1012,7 @@ export function playInstall(opts = {}) {
   }
 
   // ---- clock, phases, sound (in the shared Mallow loop)
+  let brightSeen = false;
   let t0 = performance.now(), ticking = false, manual = null, cardShown = false, finished = false, skipped = false, buzzed = false, foldT = 0;
   const cues = reduced ? [] : [[0.02, 'shimmer'], [T.portalOpen + 0.05, 'portal'], [T.enter, 'chime']];
   let cue = 0;
@@ -1049,6 +1050,8 @@ export function playInstall(opts = {}) {
     if (finished) { stopTicker(); return; }
     const t = manual ?? (performance.now() - t0) / 1000;
     while (manual == null && cue < cues.length && t >= cues[cue][0]) audio(cues[cue++][1]);
+    // look at what is behind the portal once, just before it opens (the backdrop is settled by then)
+    if (!brightSeen && t >= T.portalOpen - 0.12) { brightSeen = true; if (opts.bright == null && !reduced) bright = brightAt(Pp.x, Pp.y); }
     if (t >= T.enter - 0.02 && !reduced && !buzzed && manual == null) { buzzed = true; try { app?.haptic?.('success'); } catch { /* optional */ } }
     render(t);
     if (t >= T.card) showCard();
@@ -1111,6 +1114,7 @@ export function playInstall(opts = {}) {
       manual = Math.max(0, t);
       clearTimeout(foldT);
       stopTicker();
+      if (opts.bright == null && !reduced) bright = brightAt(Pp.x, Pp.y);
       root.classList.toggle('is-animating', manual < T.end);
       if (own) canvas.style.display = '';
       render(manual);

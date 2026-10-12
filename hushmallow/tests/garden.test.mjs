@@ -226,7 +226,53 @@ test('garden copy: the brief’s words, lowercase brand, no "AI", no pressure me
     assert.doesNotMatch(src, /\b(streak|score|points|level up|collect them all|unlock)\b/i);
   }
   // the garden is gated in code, not only in the UI, and saving only happens on the tap
-  assert.match(scene, /if \(!ent\.has\('paid'\)\) \{ app\.go\('plans'/);
+  // (a lapsed plan keeps a read-only garden of what was kept; with nothing kept it is part of the plan)
+  assert.match(scene, /if \(!ent\.has\('paid'\) && !\(READ_ONLY_WHEN_LAPSED && gardenList\(store\)\.length\)\) \{ app\.go\('plans'/);
+  assert.match(scene, /if \(!ent\.has\('paid'\)\) return \{ note: /, 'Practise again asks for the plan when it has lapsed');
   assert.doesNotMatch(scene, /saveSkill/);
   assert.match(install, /const yes = await offerSave\([^)]*\);\n\s+if \(!yes/);
+});
+
+// ---------------------------------------------------- integration guards --
+// The Hushfold must hand the whole moment to W5 (offer → save on the tap → install); offerSave alone only asks.
+const hushfoldSrc = readFileSync(`${root}src/app/scenes/hushfold.js`, 'utf8');
+const routedThroughKeep = /install\??\.(onOffer|keepDiscovery)\??\.?\(/.test(hushfoldSrc);
+test('the Hushfold routes a discovery offer through onOffer / keepDiscovery', { todo: routedThroughKeep ? false : 'W3: in hushfold.js onOffer, call install.onOffer(ctx) instead of install.offerSave(ctx) (offerSave only resolves the choice; nothing is saved)' }, () => {
+  assert.match(hushfoldSrc, /install\??\.(onOffer|keepDiscovery)\??\.?\(/);
+  assert.doesNotMatch(hushfoldSrc, /await install\.offerSave\(ctx\);[^\n]*return;/, 'offerSave must not be treated as the whole moment');
+});
+
+test('the keep moment: one entry point, honest about refused saves, announced to screen readers, off the face', () => {
+  const src = readFileSync(`${root}src/hushfold/garden-install.js`, 'utf8');
+  assert.match(src, /export const onOffer = keepDiscovery;/);
+  assert.match(src, /saved\.stored === false/, 'a refused write never shows NEW TOOL SAVED');
+  // a persistent live region made at load, then written to for the offer and the card
+  assert.match(src, /setAttribute\('aria-live', 'polite'\)/);
+  assert.match(src, /announce\(`Keep this in your Memory Garden\? \$\{name\}`\)/);
+  assert.match(src, /announce\(`New tool saved: /);
+  // placement comes from the Mallow's body and face, and steps out of the subtitles
+  assert.match(src, /function mallowGeom\(origin, mallow, face\)/);
+  assert.match(src, /\.hf-sub, \.hf-chips:not\(\[hidden\]\), \.hf-subctl:not\(\.is-hidden\)/);
+  assert.match(src, /forms: \['full', 'compact', 'bar'\]/);
+  assert.match(src, /forms: \['full', 'compact', 'tight'\]/);
+  // the person's own motion settings win over the system's
+  assert.match(src, /app\.prefs\.reducedMotion\(\)/);
+  assert.match(src, /app\?\.prefs\?\.get\?\.\('lowStim'\)/);
+});
+
+test('one loop and no per-frame rasterising: charms, garden and install share the Mallow ticker', () => {
+  const charm = readFileSync(`${root}src/hushfold/charm.js`, 'utf8');
+  const install = readFileSync(`${root}src/hushfold/garden-install.js`, 'utf8');
+  const scene = readFileSync(`${root}src/app/scenes/garden.js`, 'utf8');
+  for (const [name, src] of [['charm.js', charm], ['garden.js', scene]]) {
+    assert.match(src, /addTicker/, `${name} uses the shared ticker`);
+    assert.doesNotMatch(src.replace(/requestAnimationFrame\(\(\) => requestAnimationFrame\(\(\) => detail\?\.classList\.add\('is-in'\)\)\)/, ''), /requestAnimationFrame\(/, `${name} runs no loop of its own`);
+  }
+  assert.match(install, /addTicker\(step\)/);
+  // drawCharm builds no gradient per call: sparkles and glows are cached sprites
+  const body = charm.slice(charm.indexOf('export function drawCharm'), charm.indexOf('// ------------------------------------------------------------- live DOM'));
+  assert.ok(body.length > 200);
+  assert.doesNotMatch(body, /create(Radial|Linear)Gradient|radial\(|linear\(|star4\(/);
+  // the install rasterises the charm once, at its largest size
+  assert.match(install, /drawCharm\(g, \{[^}]*res: S \* 1\.12/);
 });

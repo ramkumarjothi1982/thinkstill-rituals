@@ -141,6 +141,7 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const eOut = (k) => 1 - (1 - k) ** 3;
 const k01 = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
 const hash01 = (s) => { let x = 2166136261; for (let i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 16777619); } return ((x >>> 0) % 10000) / 10000; };
+const hexRgb = (h) => { const v = String(h).replace('#', ''); return [0, 2, 4].map((i) => parseInt(v.slice(i, i + 2), 16) || 0); };
 const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${clamp(a, 0, 1).toFixed(3)})`;
 const env = (t, start, rise, hold, decay) => {
   if (t < start) return 0;
@@ -356,6 +357,18 @@ export default function gardenScene(app, params = {}) {
     gr = b.createLinearGradient(0, crest - 50, 0, crest + 120);
     gr.addColorStop(0, 'rgba(70,58,150,0.55)'); gr.addColorStop(1, 'rgba(26,20,70,0.7)');
     b.fillStyle = gr; b.fill();
+    if (perch) {
+      // the Mallow sits in front of the far hill, never half hidden and dimmed by it
+      b.save();
+      b.globalCompositeOperation = 'destination-out';
+      if ('filter' in b) b.filter = 'blur(4px)';
+      const ins = perch.width * 0.04;
+      b.beginPath();
+      b.roundRect?.(perch.left + ins, perch.top + ins, perch.width - ins * 2, perch.height - ins, perch.width * 0.3);
+      if (!b.roundRect) b.rect(perch.left + ins, perch.top + ins, perch.width - ins * 2, perch.height - ins);
+      b.fill();
+      b.restore();
+    }
     // near hill
     const hill = new Path2D();
     hill.moveTo(0, crestPts[1]);
@@ -375,6 +388,14 @@ export default function gardenScene(app, params = {}) {
     b.strokeStyle = 'rgba(210,200,255,0.35)'; b.lineWidth = 1.4; b.stroke();
     b.globalCompositeOperation = 'lighter';
     b.strokeStyle = 'rgba(160,140,255,0.12)'; b.lineWidth = 7; b.stroke();
+    if (perch) {
+      // its seat: a soft pool of its own light on the crest
+      const c = hexRgb(MALLOWS[mallowId]?.colours?.glow || '#c9c0ff');
+      const s0 = glowSprite(c);
+      b.globalAlpha = 0.55;
+      b.drawImage(s0, perch.cx - perch.width * 0.85, perch.bottom - 14, perch.width * 1.7, 30);
+      b.globalAlpha = 1;
+    }
     b.globalCompositeOperation = 'source-over';
     // tiny flowers of light scattered over the ground
     const dot = glowSprite([200, 190, 255]), warm = glowSprite([255, 217, 138]);
@@ -400,28 +421,63 @@ export default function gardenScene(app, params = {}) {
     }
   }
 
+  // the keeper of the garden: the person's Mallow sits on its own perch on the crest, whole and lit
+  let perch = null, corrT = 0, greetT = 0;
   function placeMallow(mh) {
     if (!world) return;
-    const Hl = Math.min(H * 0.56, 470), Wl = Math.min(W * 0.86, 430);
+    const Hl = Math.min(H * 0.56, 470);
     const scale = clamp(mh / (0.66 * Hl), 0.12, 0.6);
     const n = plants.length;
-    const xpx = n === 0 ? W * 0.5 + Math.min(110, W * 0.26) : W - Math.max(52, Math.min(W * 0.16, 120));
-    const ypx = crestY(xpx) + 4 - 0.38 * Hl * scale;
-    world.place({ x: (clamp(xpx, Wl * scale * 0.4, W - Wl * scale * 0.4) / W) * 100, y: (ypx / H) * 100, scale, calm: true });
-    placeMallow.want = { xpx, bottom: crestY(xpx) + 4 };
+    const half = mh * 0.62;
+    const xpx = clamp(n === 0 ? W * 0.5 + Math.min(120, W * 0.27) : W - Math.max(60, Math.min(W * 0.17, 130)), half + 18, W - half - 18);
+    const bottom = crestY(xpx) + 3;
+    world.place({ x: (xpx / W) * 100, y: ((bottom - 0.38 * Hl * scale) / H) * 100, scale, calm: true });
+    placeMallow.want = { xpx, bottom, h: mh };
+    scheduleCorrect(4);
   }
-  function correctMallow() {
-    // one correction from the rig's true body box (the layer heuristic is approximate)
+  function scheduleCorrect(n) { clearTimeout(corrT); corrT = setTimeout(() => correctMallow(n), 780); }
+  function correctMallow(n = 1) {
+    // corrections from the rig's true body box, once each move has landed (the layer heuristic is approximate)
     if (left || !world?.bodyRect || !placeMallow.want) return;
     const r = world.bodyRect();
     if (!r || !r.height) return;
-    const dy = placeMallow.want.bottom - r.bottom;
-    if (Math.abs(dy) < 2) return;
+    const want = placeMallow.want;
+    const dy = want.bottom - r.bottom, dx = want.xpx - r.cx, k = want.h / r.height;
+    if (Math.abs(dy) < 1.5 && Math.abs(dx) < 2 && Math.abs(k - 1) < 0.05) { setPerch(r); return; }
     const layer = world.layer;
     const cur = parseFloat(layer?.style.getPropertyValue('--my')) || 50;
     const sc = parseFloat(layer?.style.getPropertyValue('--ms')) || 0.3;
     const cx = parseFloat(layer?.style.getPropertyValue('--mx')) || 80;
-    world.place({ x: cx, y: cur + (dy / H) * 100, scale: sc, calm: true });
+    // the layer scales about its centre: a new scale moves the body's bottom by (k - 1) × its distance from that centre
+    const lr = layer?.getBoundingClientRect?.();
+    const ns = clamp(sc * (Math.abs(k - 1) < 0.05 ? 1 : k), 0.12, 0.8);
+    const lcy = lr && lr.height ? lr.top + lr.height / 2 : r.bottom - r.height;
+    const bottomAfter = lcy + (r.bottom - lcy) * (ns / sc);
+    const cxAfter = (lr && lr.width ? lr.left + lr.width / 2 : r.cx) + (r.cx - (lr && lr.width ? lr.left + lr.width / 2 : r.cx)) * (ns / sc);
+    world.place({ x: cx + ((want.xpx - cxAfter) / W) * 100, y: cur + ((want.bottom - bottomAfter) / H) * 100, scale: ns, calm: true });
+    if (n > 1) scheduleCorrect(n - 1); else setTimeout(() => { if (!left) setPerch(world.bodyRect()); }, 780);
+  }
+  /** The far hill opens behind the Mallow (it sat half sunk and dimmed behind it) and a pool of light marks its seat. */
+  function setPerch(r) {
+    if (!r?.height) return;
+    const same = perch && Math.abs(perch.left - r.left) < 1 && Math.abs(perch.bottom - r.bottom) < 1 && Math.abs(perch.width - r.width) < 1;
+    perch = { left: r.left, top: r.top, width: r.width, height: r.height, bottom: r.top + r.height, cx: r.left + r.width / 2 };
+    if (!same) { buildBackground(); if (reduced()) draw(performance.now()); }
+  }
+  /** A little life: the Mallow looks towards a charm (and is pleased when one arrives). */
+  function greet(p, delay = 0, kind = 'success') {
+    clearTimeout(greetT);
+    greetT = setTimeout(() => {
+      const pr = perch || world?.bodyRect?.();
+      if (left || !pr?.height || !world?.rig) return;
+      const pose = plantPose(p, (performance.now() - t0) / 1000);
+      const pcx = pr.cx ?? pr.left + pr.width / 2;
+      try {
+        world.rig.lookAt?.(clamp((pose.x - pcx) / (W * 0.4), -1, 1), clamp((pose.y - (pr.top + pr.height * 0.45)) / (H * 0.4), -1, 1));
+        if (kind) world.react?.(kind);
+        setTimeout(() => { if (!left) world.rig?.lookAt?.(null); }, 2600);
+      } catch { /* the rig is decoration here */ }
+    }, delay * 1000);
   }
 
   function renderEmpty(on) {
@@ -515,6 +571,7 @@ export default function gardenScene(app, params = {}) {
     }
     // the plants: a pool of light, a mound, a stem, two leaves, the charm
     for (const p of plants) {
+      if (p.leaving) p.fade = Math.max(0, 1 - (now - p.leaving) / 550);
       if (!still) {
         // a soft spring: brushed by a finger, it leans and comes back
         const k = 20, c = 2.2;
@@ -577,13 +634,13 @@ export default function gardenScene(app, params = {}) {
     }
   }
 
-  function loop(now) {
-    raf = 0;
-    if (left) return;
-    if (!document.hidden && !detail) draw(now);
-    if (!reduced()) raf = requestAnimationFrame(loop);
+  // one ticker in the shared Mallow loop; it stops while a charm is open, when hidden and in reduced motion
+  function tick() {
+    if (left || detail || document.hidden || reduced()) { stopLoop(); return; }
+    draw(performance.now());
   }
-  function kick() { if (!raf && !left && !reduced()) raf = requestAnimationFrame(loop); }
+  function kick() { if (!ticking && !left && !detail && !reduced()) { ticking = true; addTicker(tick); } }
+  function stopLoop() { if (ticking) { removeTicker(tick); ticking = false; } }
 
   // ------------------------------------------------------------ touch --
   // every finger brushes on its own (two fingers through the garden lean two rows)
@@ -617,6 +674,7 @@ export default function gardenScene(app, params = {}) {
 
   function tapPlant(p) {
     p.poke = (performance.now() - t0) / 1000;
+    greet(p, 0, null);
     if (!reduced()) p.om += (p.cx < W / 2 ? 1 : -1) * 0.6;
     app.audio?.ui?.('open');
     app.haptic?.('light');
@@ -626,9 +684,12 @@ export default function gardenScene(app, params = {}) {
   // ----------------------------------------------------------- detail --
   function practiseTarget(skill) {
     if (skill.practise?.route === 'angle') return ent.has('ultra') ? { go: () => app.go('angle'), label: 'Practise again' } : { note: 'You practise this one in Another Angle, part of hushmallow Beyond.' };
-    if (ent.has('paid') && isPlayableWorld(skill.world.id)) return { go: () => app.go('home', { flow: { worldId: skill.world.id } }), label: 'Practise again' };
-    return { note: 'Its world isn’t open right now, but the “Try it” above works anywhere.' };
+    if (!ent.has('paid')) return { note: 'Practising it in its world comes with hushmallow Flow. The “Try it” above works anywhere.', plans: true };
+    if (isPlayableWorld(skill.world.id)) return { go: () => app.go('home', { flow: { worldId: skill.world.id } }), label: 'Practise again' };
+    return { note: 'You can practise this one with the “Try it” above, anywhere.' };
   }
+  /** Close the open charm (and its history entry) first, then go: Back from there lands on the garden, once. */
+  function leaveTo(go) { closeDetail(true, { keepLayer: false }); go(); }
 
   function openDetail(id) {
     const skill = getSkill(id);
@@ -646,19 +707,25 @@ export default function gardenScene(app, params = {}) {
     const target = entry ? practiseTarget(skill) : null;
     const charms = [hero];
 
+    // every related tool is listed: kept ones open as they are, the others open as "Not in your garden yet" (with their "Try it")
     const related = skill.related.map(getSkill).filter(Boolean).map((r) => {
-      const has = !!gardenEntry(store, r.id);
-      const away = !has && isPlayableWorld(r.world.id);
-      if (!has && !away) return null;
-      const c = charmCanvas({ skillId: r.id, mallow: has ? gardenEntry(store, r.id).mallow || r.mallow : r.mallow, box: 48, reducedMotion: isReduced, bob: false });
-      if (!has) c.el.style.opacity = '0.55';
+      const re = gardenEntry(store, r.id);
+      const c = charmCanvas({ skillId: r.id, mallow: re ? re.mallow || r.mallow : r.mallow, box: 48, reducedMotion: isReduced, bob: false });
+      if (!re) c.el.style.opacity = '0.6';
       charms.push(c);
-      return h('button', { class: `hg-chip${away ? ' is-away' : ''}`, type: 'button', onclick: () => openDetail(r.id) },
-        c.el, h('span', {}, r.title, away ? h('small', {}, `Waiting in ${r.world.title}`) : null));
-    }).filter(Boolean);
+      return h('button', { class: `hg-chip${re ? '' : ' is-away'}`, type: 'button', onclick: () => openDetail(r.id) },
+        c.el, h('span', {}, r.title, re ? null : h('small', {}, 'Not in your garden yet')));
+    });
 
     const sources = h('ul', { class: 'hg-sources' }, ...skill.sources.map((s) => h('li', {},
       h('div', { class: 'n' }, s.skill), h('div', { class: 'g' }, `${s.group} · ${s.scope}`), h('q', {}, s.insight), h('div', { class: 'g', style: { marginTop: '6px' } }, `Source: ${s.ref}`))));
+    // the catalogue's sources, inspirations and the evidence note wait behind a disclosure
+    const moreId = `hg-more-${id}`;
+    const moreBody = h('div', { class: 'hg-more-body', id: moreId, hidden: true }, sources,
+      h('p', { class: 'hg-small' }, `Also inspired by: ${skill.inspiredBy.join(', ')}. ${INSPIRATION_NOTE}`),
+      h('p', { class: 'hg-small' }, EVIDENCE_NOTE));
+    const moreBtn = h('button', { class: 'hg-more', type: 'button', 'aria-expanded': 'false', 'aria-controls': moreId,
+      onclick: () => { const open = moreBody.hidden; moreBody.hidden = !open; moreBtn.setAttribute('aria-expanded', String(open)); } }, 'Where this comes from');
 
     let endEl;
     const forget = () => {
@@ -670,7 +737,7 @@ export default function gardenScene(app, params = {}) {
       endEl.querySelector('.btn')?.focus();
     };
     const endKids = () => [
-      entry ? h('p', { class: 'hg-small', style: { margin: '0 0 12px' } }, `Kept on ${when(entry.savedAt)}. It lives only on this phone.`) : null,
+      entry ? h('p', { class: 'hg-small', style: { margin: '0 0 12px' } }, `Kept on ${when(entry.savedAt)}. It lives only on this device.`) : null,
       entry ? h('button', { class: 'hg-forget', type: 'button', onclick: forget }, 'Forget this') : null,
     ].filter(Boolean);
     endEl = h('div', { class: 'hg-end' }, ...endKids());
@@ -678,24 +745,23 @@ export default function gardenScene(app, params = {}) {
     const topBar = h('div', { class: 'hg-sheet-top' }, iconBtn('back', 'Back to the garden', () => closeDetail()), h('span', { class: 'where' }, 'Memory Garden'));
     sheet.append(...[
       hero.el,
-      h('p', { class: 'hg-over' }, entry ? `From ${skill.world.title}` : 'Not in your garden yet'),
+      !entry ? h('p', { class: 'hg-over' }, 'Not in your garden yet') : skill.world.title !== skill.title ? h('p', { class: 'hg-over' }, `From ${skill.world.title}`) : null,
       title,
       h('p', { class: 'hg-essence' }, skill.essence),
       h('section', { class: 'hg-sec', 'aria-label': 'What it is' }, h('p', { class: 'hg-p' }, skill.explanation),
         h('div', { class: 'hg-try' }, h('p', {}, h('b', {}, `${tryLead}:`), ` ${tryRest.join(': ')}`))),
       h('section', { class: 'hg-sec' }, h('h3', {}, 'How it goes'), h('ol', { class: 'hg-steps' }, ...skill.steps.map((s) => h('li', {}, s)))),
       entry && skill.found ? h('section', { class: 'hg-sec' }, h('h3', {}, 'How you found it'), h('p', { class: 'hg-found' }, skill.found)) : null,
-      target?.go ? h('div', { class: 'hg-practise' }, h('button', { class: 'btn primary', type: 'button', onclick: () => { practised(store, id); target.go(); } }, target.label),
+      target?.go ? h('div', { class: 'hg-practise' }, h('button', { class: 'btn primary', type: 'button', onclick: () => { practised(store, id); leaveTo(target.go); } }, target.label),
         h('p', { class: 'hg-note' }, `In ${skill.world.title}. Stay as long as you like.`)) : null,
       target?.note ? h('p', { class: 'hg-note', style: { marginTop: '22px' } }, target.note) : null,
-      !entry && isPlayableWorld(skill.world.id) && ent.has('paid') ? h('div', { class: 'hg-practise' }, h('button', { class: 'btn primary', type: 'button', onclick: () => app.go('home', { flow: { worldId: skill.world.id } }) }, `Visit ${skill.world.title}`)) : null,
+      target?.plans ? h('p', { class: 'hg-note', style: { marginTop: '2px' } }, h('button', { class: 'hg-link', type: 'button', onclick: () => leaveTo(() => app.go('plans', { reason: 'garden' })) }, 'About hushmallow Flow')) : null,
+      !entry && isPlayableWorld(skill.world.id) && ent.has('paid') ? h('div', { class: 'hg-practise' }, h('button', { class: 'btn primary', type: 'button', onclick: () => leaveTo(() => app.go('home', { flow: { worldId: skill.world.id } })) }, `Visit ${skill.world.title}`)) : null,
       related.length ? h('section', { class: 'hg-sec' }, h('h3', {}, 'Related tools'), h('div', { class: 'hg-related' }, ...related)) : null,
-      h('section', { class: 'hg-sec' }, h('h3', {}, 'Where this comes from'),
+      h('section', { class: 'hg-sec', 'aria-label': 'How well it’s backed' },
         h('span', { class: 'hg-scope' }, `Evidence: ${skill.evidence.scope}`),
         h('p', { class: 'hg-p' }, skill.evidence.plain),
-        sources,
-        h('p', { class: 'hg-small' }, `Also inspired by: ${skill.inspiredBy.join(', ')}. ${INSPIRATION_NOTE}`),
-        h('p', { class: 'hg-small' }, EVIDENCE_NOTE)),
+        moreBtn, moreBody),
       h('section', { class: 'hg-sec' }, h('h3', {}, 'Take care'),
         h('ul', { class: 'hg-care' }, ...skill.care.map((c) => h('li', {}, c))),
         h('button', { class: 'hg-link', type: 'button', onclick: () => openSupport(app) }, 'Need support now?')),
@@ -709,9 +775,15 @@ export default function gardenScene(app, params = {}) {
     requestAnimationFrame(() => requestAnimationFrame(() => detail?.classList.add('is-in')));
     setTimeout(() => title.focus({ preventScroll: true }), 60);
     if (!layerToken) layerToken = app.pushLayer?.() || 0;
+    stopLoop();
   }
 
-  function closeDetail(instant = false, { fromBack = false } = {}) {
+  /**
+   * instant: remove at once (no fade). keepLayer: keep the history entry (one
+   * open charm replacing another); by default an instant close keeps it and a
+   * normal close pops it. fromBack: Back already consumed the entry.
+   */
+  function closeDetail(instant = false, { fromBack = false, keepLayer = instant } = {}) {
     if (!detail) return;
     const d = detail;
     detail = null;
@@ -720,8 +792,8 @@ export default function gardenScene(app, params = {}) {
     field.removeAttribute('aria-hidden');
     if (instant) d.remove();
     else { d.classList.remove('is-in'); setTimeout(() => d.remove(), 380); }
-    if (!instant && layerToken) { const t = layerToken; layerToken = 0; if (!fromBack) app.popLayer?.(t); }
-    if (!instant) { kick(); if (reduced()) draw(performance.now()); }
+    if (!keepLayer && layerToken) { const t = layerToken; layerToken = 0; if (!fromBack) app.popLayer?.(t); }
+    if (!keepLayer) { kick(); if (reduced()) draw(performance.now()); }
   }
 
   function doForget(id) {
@@ -735,9 +807,8 @@ export default function gardenScene(app, params = {}) {
     const p = plants.find((x) => x.id === id);
     if (p && !reduced()) {
       p.btn?.classList.add('is-leaving');
-      const start = performance.now();
-      const fade = () => { if (left) return; p.fade = Math.max(0, 1 - (performance.now() - start) / 550); if (p.fade > 0) requestAnimationFrame(fade); else settle(); };
-      requestAnimationFrame(fade);
+      p.leaving = performance.now();
+      setTimeout(() => { if (!left) settle(); }, 580);
     } else settle();
   }
 
@@ -759,11 +830,12 @@ export default function gardenScene(app, params = {}) {
   const view = {
     el, title: 'Memory Garden',
     async enter() {
-      if (!ent.has('paid')) { app.go('plans', { reason: 'garden' }, { replace: true }); return; }
+      // a lapsed plan keeps what was kept readable; with nothing kept, the garden is part of hushmallow Flow
+      if (!ent.has('paid') && !(READ_ONLY_WHEN_LAPSED && gardenList(store).length)) { app.go('plans', { reason: 'garden' }, { replace: true }); return; }
       world.dim(true);
       world.showMallow(true);
       world.setRealm('moonmilk-cove', { crossfadeMs: 1200 });
-      world.setMallow(mallowId, { entrance: false, interactive: true }).then(() => { if (!left) { world.setStage('listening'); setTimeout(correctMallow, 820); } }).catch(() => {});
+      world.setMallow(mallowId, { entrance: false, interactive: true }).then(() => { if (!left) { world.setStage('listening'); scheduleCorrect(3); } }).catch(() => {});
       addEventListener('resize', onResize);
       document.addEventListener('keydown', onKey);
       document.addEventListener('visibilitychange', onVis);
@@ -772,16 +844,12 @@ export default function gardenScene(app, params = {}) {
       if (left) return;
       layout();
       kick();
-      if (params.focus) {
-        const s = getSkill(params.focus);
-        if (s) live.textContent = `${s.title} is in your garden now.`;
-      }
-      if (['localhost', '127.0.0.1'].includes(location.hostname)) window.__garden = { get plants() { return plants; }, openDetail, closeDetail, layout, get detail() { return detail; } };
+      if (['localhost', '127.0.0.1'].includes(location.hostname)) window.__garden = { get plants() { return plants; }, openDetail, closeDetail, layout, get detail() { return detail; }, get mallow() { return { want: placeMallow.want, perch, body: world.bodyRect(), crest: placeMallow.want && crestY(placeMallow.want.xpx) }; } };
     },
     leave() {
       left = true;
-      cancelAnimationFrame(raf); raf = 0;
-      clearTimeout(resizeT);
+      stopLoop();
+      clearTimeout(resizeT); clearTimeout(corrT); clearTimeout(greetT);
       removeEventListener('resize', onResize);
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('visibilitychange', onVis);

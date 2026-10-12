@@ -326,7 +326,8 @@ function createThoughtLayer({ g, tagRoot, reducedMotion, lowStim, onRead, size, 
       const rm = reducedMotion(), low = lowStim();
       for (const th of [...list]) {
         const mo = MOTION[th.key];
-        if (th.leaving) { th.born -= dt / th.leaving; if (th.born <= 0) { layer.remove(th); continue; } }
+        // leaving fades on the clock, not per frame (a slow frame never stretches the hand-over)
+        if (th.leaving) { th.born = th.leaveFrom * (1 - (performance.now() - th.leaveAt) / (th.leaving * 1000)); if (th.born <= 0) { layer.remove(th); continue; } }
         else th.born = Math.min(1, th.born + dt / (rm ? 0.4 : 1.1));
         // springs: home position, scale, squash
         const k = th.press ? 120 : 26, d = th.press ? 18 : 7.5;
@@ -348,7 +349,8 @@ function createThoughtLayer({ g, tagRoot, reducedMotion, lowStim, onRead, size, 
         const tagY = th.y + bob + th.r * th.scale * 1.05 + 8;
         const tw = th.tagW || (th.tagW = th.tag.offsetWidth || 120);
         const { W } = size();
-        const tx = clamp(th.x, 12 + tw / 2, Math.max(12 + tw / 2, W - 12 - tw / 2));
+        const edge = W < 360 ? 12 : 20;   // clear of the edge-swipe zone where there is room
+        const tx = clamp(th.x, edge + tw / 2, Math.max(edge + tw / 2, W - edge - tw / 2));
         th.tag.style.transform = `translate3d(${Math.round(tx)}px, ${Math.round(tagY)}px, 0) translate(-50%, 0)`;
         th.tag.style.opacity = String(clamp(th.born * 1.4 - 0.2));
       }
@@ -356,7 +358,7 @@ function createThoughtLayer({ g, tagRoot, reducedMotion, lowStim, onRead, size, 
     },
     clear() { for (const th of [...list]) layer.remove(th); },
     /** Let every thought fade away gently (a world is taking the words over). */
-    release(ms = 700) { for (const th of list) { th.leaving = ms / 1000; th.tag.style.pointerEvents = 'none'; } layer.onChange?.(); },
+    release(ms = 700) { const now = performance.now(); for (const th of list) { if (th.leaving) continue; th.leaving = ms / 1000; th.leaveAt = now; th.leaveFrom = th.born; th.tag.style.pointerEvents = 'none'; } layer.onChange?.(); },
     destroy() { layer.clear(); },
   };
   return layer;
