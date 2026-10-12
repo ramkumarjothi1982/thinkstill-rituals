@@ -43,6 +43,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   let lensLayout = null;   // the active lens's layout(); re-run on resize
   let lensSeq = 0;         // which lens is showing (stale cameo pop-ins check this)
   let zuzuCorner = false;  // is Zuzu tucked in the corner (no room above the lens)?
+  let activeCameo = null;  // dismisses the cameo pop-in that's showing, if any
   let scenarioForLines = F.GENERAL;
   const guide = (stage) => {
     try { const c = E.pickCameo(scenarioForLines, stage); if (c?.text && c.role !== 'cameo') return c.text; } catch { /* fall through */ }
@@ -642,6 +643,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     o.append(lensIcon(id, Math.round(size * 0.56)));
     return o;
   }
+  function dismissCameo() { activeCameo?.(); activeCameo = null; }
   /** The scenario's cameo Mallow pops in once per lens, then floats away. */
   function cameoPop(lensId, seq = lensSeq) {
     if (seq !== lensSeq || signal.aborted) return;
@@ -656,8 +658,10 @@ export async function run(ctx, { frameworks: F, engine: E }) {
       padding: '10px 12px', display: 'flex', gap: '10px', alignItems: 'center', pointerEvents: 'auto', boxShadow: '0 12px 40px rgba(10,0,40,.5)', animation: ctx.reducedMotion ? 'none' : 'bubbleIn 380ms var(--ease-spring) both' } },
     h('img', { src: new URL(`../../assets/mallows/${c.mallow}.png`, import.meta.url).href, alt: '', style: { width: '40px', height: '40px', objectFit: 'contain', flex: '0 0 auto' } }),
     h('p', { style: { margin: 0, color: 'var(--text-1)', fontSize: '14px', lineHeight: '1.35' } }, h('b', {}, `${cap(c.mallow)}: `), c.text));
-    const bye = () => { el.style.transition = 'opacity 280ms'; el.style.opacity = '0'; setTimeout(() => el.remove(), 300); };
+    const bye = () => { if (activeCameo === bye) activeCameo = null; el.style.transition = 'opacity 280ms'; el.style.opacity = '0'; setTimeout(() => el.remove(), 300); };
     el.onclick = bye;
+    dismissCameo();
+    activeCameo = bye;
     stageEl.append(el);
     audio.fx?.('star', { pitch: 1.4, intensity: 0.45 });
     setTimeout(bye, 4800);
@@ -1026,6 +1030,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     }
     let lensSize = 240;
     let focusText = null;
+    let phase = 'sort';
     lensLayout = () => {
       const zr = zoneRect();
       const size = Math.round(Math.max(120, Math.min(330, zr.width * 0.84, zr.height - 14)));
@@ -1036,6 +1041,8 @@ export async function run(ctx, { frameworks: F, engine: E }) {
       const fs = size < 170 ? 10.5 : size < 220 ? 11.5 : 12.5;
       knownList.style.fontSize = predList.style.fontSize = `${fs}px`;
       if (focusText) focusText.style.fontSize = `${size < 170 ? 12.5 : size < 220 ? 14 : 16.5}px`;
+      const tiny = phase !== 'sort' && size < 200;
+      knownHalf.style.visibility = predHalf.style.visibility = tiny ? 'hidden' : 'visible';
     };
     lensLayout();
 
@@ -1055,7 +1062,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     const ptext = h('div', { style: { fontWeight: '700', fontSize: '16.5px', lineHeight: '1.3', color: 'var(--text-1)', marginTop: '4px' } });
     const count = h('div', { class: 'muted', style: { marginTop: '6px', fontSize: '12.5px' } });
     const pcard = h('div', { class: 'card', role: 'group', style: { padding: '12px 14px', boxShadow: 'none', touchAction: 'none', cursor: 'grab', position: 'relative', zIndex: '2', userSelect: 'none', WebkitUserSelect: 'none' } }, srcTag, ptext, count);
-    const mkB = (label, col, side) => h('button', { class: 'btn', style: { minHeight: '48px', fontSize: '13.5px', padding: '0 6px', borderColor: col }, onclick: () => sort(side) }, label);
+    const mkB = (label, col, side) => h('button', { class: 'btn', style: { minHeight: '48px', fontSize: innerWidth < 360 ? '12.5px' : '13.5px', padding: '0 4px', borderColor: col }, onclick: () => sort(side) }, label);
     const bKnown = mkB('Known ↑', '#39f0ff', 'known'), bPred = mkB('Predicted ↓', '#c48cff', 'predicted'), bUnsure = mkB(C.unsureLabel || 'Not sure', '#ffd98a', 'unsure');
     const sortRow = h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' } }, bKnown, bPred, bUnsure);
     dock.replaceChildren(pcard, sortRow);
@@ -1168,7 +1175,11 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     { const seq = lensSeq; setTimeout(() => cameoPop('future', seq), 3000); }
     const unknownLines = deck.unknowns.slice(0, 2);
     knownList.replaceChildren(h('div', {}, res.known.length ? `${res.known.length} known ${res.known.length === 1 ? 'thing' : 'things'}` : 'Nothing known yet'));
+    phase = 'rate';
     predTag.textContent = 'Still unknown';
+    // known count up at the rim, unknowns down in the mist, the prediction in focus between
+    Object.assign(knownHalf.style, { justifyContent: 'flex-start', padding: '11% 18% 0' });
+    Object.assign(predHalf.style, { justifyContent: 'flex-end', padding: '0 16% 12%' });
     predList.replaceChildren(...unknownLines.map((t) => h('div', { style: { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', opacity: '.85' } }, t)));
     focusText = h('div', { style: { font: `700 ${lensSize < 170 ? 12.5 : lensSize < 220 ? 14 : 16.5}px/1.3 var(--font-display)`, color: '#fff', textShadow: '0 2px 12px rgba(10,0,40,.8)' } }, `“${focus}”`);
     centre.replaceChildren(
@@ -1204,17 +1215,20 @@ export async function run(ctx, { frameworks: F, engine: E }) {
 
     // --- 3. optional: seal it to open later
     if (choice === 'seal') {
+      dismissCameo();
       let when = 'month';
-      const chips = h('div', { class: 'chips', role: 'group', 'aria-label': C.sealQuestion, style: { marginTop: '8px' } }, ...LX.SEAL_WHEN.map((w) => {
-        const c = h('button', { class: 'chip', 'aria-pressed': String(w.id === when) }, w.label);
+      const chips = h('div', { role: 'group', 'aria-label': C.sealQuestion, style: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginTop: '8px' } }, ...LX.SEAL_WHEN.map((w) => {
+        const c = h('button', { class: 'chip', 'aria-pressed': String(w.id === when), style: { justifyContent: 'center', textAlign: 'center', padding: '4px 6px', fontSize: '13px', lineHeight: '1.15', whiteSpace: 'normal' } }, w.label);
         c.onclick = () => { when = w.id; chips.querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', String(x === c))); audio.ui?.('select'); };
         return c;
       }));
-      const note = sealStore ? 'Kept on this phone only. Open it next time you come to Another Angle.' : '“Keep my saved angles” is off in Settings, so this stays in today’s star map only — nothing is saved.';
+      setMove(4, { eyebrow: 'Future lens', title: 'Seal the prediction?', prompt: compact() ? '' : 'Future-you gets to open it and see what really happened.' });
+      const note = sealStore ? (compact() ? 'Kept on this phone only.' : 'Kept on this phone only. Another Angle will offer to open it when it’s time.')
+        : compact() ? 'Saved angles are off in Settings, so it stays in today’s star map only.' : '“Keep my saved angles” is off in Settings, so this stays in today’s star map only — nothing is saved.';
       const doSeal = h('button', { class: 'btn ultra' }, 'Seal it');
       const back = h('button', { class: 'btn' }, 'Not now');
       dock.replaceChildren(h('div', { class: 'card', style: { padding: '12px 14px', boxShadow: 'none' } },
-        h('p', { style: { margin: 0, fontWeight: '700', color: 'var(--text-1)' } }, C.sealQuestion), chips,
+        h('p', { style: { margin: 0, fontWeight: '700', color: 'var(--text-1)', fontSize: compact() ? '14.5px' : '16px' } }, C.sealQuestion), chips,
         h('p', { class: 'muted', style: { margin: '8px 0 0' } }, note)), h('div', { class: 'row-btns' }, back, doSeal));
       choice = await choose([[doSeal, 'seal'], [back, 'skip']]);
       if (choice === ABORT) return ABORT;
@@ -1227,6 +1241,8 @@ export async function run(ctx, { frameworks: F, engine: E }) {
           stored = sealStore.save([...sealStore.all(), entry]) !== false;
         }
         res.sealed = { when, stored };
+        setMove(4, { eyebrow: 'Future lens', title: 'Sealed', prompt: '' });
+        phase = 'sealed';
         await sealAnimation();
         if (signal.aborted) return ABORT;
         sayLens(lensLine('future', stored ? 'sealed' : 'sealedSession'), 3000);
