@@ -1,21 +1,42 @@
 // The Hushflow director: one continuous movie of worlds.
 //
-// Owns the only frame loop of the Hushflow, the two compositor canvases
-// (#world back, #fx-layer front), the worlds' lifecycles and the melt
-// between them. It never shows a black frame: the back canvas always holds a
-// world or the next world's palette, a melt only starts once the incoming
-// world is prepared (its heavy build runs in idle time), and pause keeps the
-// last frame under a soft veil.
+// Owns the frame loop of the Hushflow (it runs inside the Mallow rig's shared
+// loop, addTicker — one requestAnimationFrame for rigs, MallowTouch and worlds),
+// the two compositor canvases (#world back, #fx-layer front), the worlds'
+// lifecycles and the melt between them. It never shows a black frame: the back
+// canvas always holds a world or the next world's palette, a melt only starts
+// once the incoming world is prepared (its heavy build runs in idle time), and
+// pause keeps the last frame under a soft veil.
 //
-//   const flow = createHushflow({ app, worldEl, fxEl, mallow, thought, subtitles, photos, words, prefs, store });
+//   const flow = createHushflow({ app, worldEl, fxEl, mallow, thought, subtitles, photos, words, prefs, store, safeRect });
 //   await flow.start({ emotion: 'angry', intention: 'calm', intensity: 0.7 });
-//   router.onWorld = (e) => flow.pointer(e);   // routed { type, id, x, y, t(ms), pointerType }
+//   router.setWorld((e) => flow.pointer(e));     // routed { type, id, x, y, t(ms), pointerType }
 //   flow.on('discovery', ({ id, skillId, evidence }) => …);
+//   subtitles bounds ← flow.subtitleBand()       // the slot every world keeps clear
 //
-// Input contract: the shell's input router claims the hero Mallow first and
-// hands every other pointer event to flow.pointer(e). While a Hushflow world
-// is playing, touches on Thought Mallows go to the world too (the world owns
-// their position and physics; it forwards to thought.pointer itself).
+// Input contract. The shell's router claims the hero Mallow first and hands
+// every other pointer event to flow.pointer(e). The director measures speed
+// itself (velocity.js: path length over ≥ 60 ms, scalar EMA — a scribble reads
+// as fast; any speed the router sends is ignored) and gives worlds
+// { type, id, x, y, t, vx, vy, speed, speedU, pointerType, count, idle }. When a
+// finger rests without events, worlds get an `idle: true` 'move' each frame with
+// the speed decaying to 0, so a stopped finger becomes still. While a world owns
+// the Thought Mallow, touches on it must reach flow.pointer too (the world owns
+// its position and physics and forwards to thought.pointer itself) — W3's router
+// sends Thought Mallow hits to its thought layer first, so it needs to route
+// them here while a world is playing.
+//
+// Layout contract. flow.subtitleBand() is a full-width band straight under the
+// top controls (clamp(0.17·H, 118, 156) px, as the shell reserves); ctx.safe is
+// the shell's free area minus that band. Worlds keep every object, hint and
+// touch target out of the band, and flow.avoid() lists what lines must not cover.
+//
+// Thought adapter (until W2's Thought Mallows land): `thought` is one handle
+//   { token, text, x, y, z, scale, state:{tension, charge, calm, distance},
+//     react(kind), soften(k), settle(k), hitTest(x, y), pointer(e), draw?(g, x, y, scale, o) }.
+// The world writes x, y, scale and state every frame. If the handle has draw(),
+// the world draws it into its front layer (the 2D placeholder); without draw()
+// the world only positions it and W2's ThoughtLayer renders it on its own layer.
 
 import { createCompositor } from './compositor.js';
 import { createVelocity } from './velocity.js';
@@ -69,11 +90,13 @@ export function createHushflow(opts = {}) {
   const backCanvas = document.createElement('canvas');
   backCanvas.className = 'hf-back';
   backCanvas.setAttribute('aria-hidden', 'true');
-  Object.assign(backCanvas.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', display: 'block', pointerEvents: 'none', zIndex: '1' });
+  // both canvases stay invisible until the first world frame is ready, then fade in over
+  // whatever the shell shows (its realm): no palette flash, never a black frame
+  Object.assign(backCanvas.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', display: 'block', pointerEvents: 'none', zIndex: '1', opacity: '0' });
   const frontCanvas = document.createElement('canvas');
   frontCanvas.className = 'hf-front';
   frontCanvas.setAttribute('aria-hidden', 'true');
-  Object.assign(frontCanvas.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', display: 'block', pointerEvents: 'none' });
+  Object.assign(frontCanvas.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', display: 'block', pointerEvents: 'none', opacity: '0' });
   worldEl.append(backCanvas);
   fxEl.append(frontCanvas);
   const comp = createCompositor({ backCanvas, frontCanvas });
@@ -89,7 +112,7 @@ export function createHushflow(opts = {}) {
   let paused = false, destroyed = false, hidden = false, frozen = false;
   let cur = null, inc = null;       // world instances
   let melt = null;                  // { k, dur, from, to }
-  let fadeIn = 1;
+  let fadeIn = 1, revealed = false;
   let t = 0, lastTs = 0, raf = 0;
   let lastInputAt = -Infinity;
   let wantNext = false, autoFlow = false;
@@ -117,6 +140,14 @@ export function createHushflow(opts = {}) {
   };
   const favourites = () => { try { return favouriteWorlds(kv); } catch { return []; } };
 
+  /** The first world frame is on the canvases: fade them in (CSS) over the shell's own backdrop. */
+  function reveal() {
+    if (revealed) return;
+    revealed = true;
+    fadeIn = 1;
+    const ms = reducedMotion() ? 350 : Math.round(FADE_IN_SEC * 1000);
+    for (const c of [backCanvas, frontCanvas]) { c.style.transition = `opacity ${ms}ms ease`; c.style.opacity = '1'; }
+  }
   function emit(ev, data) { for (const fn of listeners.get(ev) || []) { try { fn(data); } catch (e) { console.warn('[hushflow]', ev, e); } } }
   function writeStore() { if (!saveOn()) return; try { kv.set(ROTATION_KEY, persist); } catch (e) { console.warn('[hushflow] save failed', e); } }
 
@@ -403,6 +434,8 @@ export function createHushflow(opts = {}) {
     const { from, to } = melt;
     melt = null;
     destroyInstance(from);
+    // a finger still resting from before the melt belonged to the old world: it stops there
+    for (const p of pointers.values()) if (p.owner === from) p.owner = null;
     cur = to; inc = null; nextChoice = null;
     phase = 'playing';
     persist.history = [...persist.history, from.id].slice(-12);
@@ -579,6 +612,7 @@ export function createHushflow(opts = {}) {
       comp.melt(layersOf(melt.from), layersOf(melt.to), melt.e, { horizonY: melt.horizonY, t, reduced: reducedMotion() });
       if (melt.k >= 1) endMelt();
     } else {
+      if (!revealed) reveal();
       fadeIn = Math.min(1, fadeIn + dt / (reducedMotion() ? 0.35 : FADE_IN_SEC));
       const L = layersOf(cur);
       comp.single(L.back, L.front, inOutSine(fadeIn));
@@ -760,6 +794,8 @@ export function createHushflow(opts = {}) {
       get canvases() { return { back: backCanvas, front: frontCanvas }; },
       get time() { return t; },
       get frameMs() { return frameEma; },
+      /** Which loop drives the director: the Mallow rig's shared ticker, its own rAF, or none. */
+      get loop() { return raf === -1 ? 'rig-ticker' : raf > 0 ? 'raf' : 'stopped'; },
       step: (dtSec = 1 / 60) => step(dtSec, dtSec * 1000),
       /** Freeze the loop without a veil (QA: step frames by hand). */
       freeze(on = true) { frozen = !!on; if (frozen) stopLoop(); else startLoop(); },

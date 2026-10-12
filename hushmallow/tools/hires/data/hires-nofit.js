@@ -93,6 +93,7 @@ const T = {
         inside: "#140820",
         tongue: "#d4406f",
         depth: 27,
+        upper: -22,
       },
       cheeks: {
         L: [92, 243.6, 28],

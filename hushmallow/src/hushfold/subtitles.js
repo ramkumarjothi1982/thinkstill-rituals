@@ -14,7 +14,7 @@
 // drawn into a tiny canvas) and the scrim's opacity is set so white text
 // keeps ≥4.5:1 against the brightest tenth of what is behind it.
 //
-// createSubtitles({root, prefs, avoid, bounds, reducedMotion, backdrop, brightHint, onControl}) →
+// createSubtitles({root, prefs, avoid, bounds, reducedMotion, backdrop, brightHint, onControl, onBand}) →
 //   { say(lines, {who, hold, id, kind:'dialogue'|'discovery'|'title', colour, interrupt, first}) → Promise<boolean>,
 //     choice(prompt, [{label, value, primary, onPick}], {who, timeoutMs, transient}) → Promise<value|null>,
 //     pause, resume, replay, skip, setSpeed, clear({keepHeld}), suspend, unsuspend, layout, destroy,
@@ -138,7 +138,7 @@ const asLines = (lines, opts) => [].concat(lines ?? []).filter((l) => l != null 
   ? { text: l, who: opts.who, kind: opts.kind, colour: opts.colour }
   : { text: String(l.text ?? ''), who: l.who ?? opts.who, kind: l.kind ?? opts.kind, colour: l.colour ?? opts.colour, hold: l.hold })).filter((l) => l.text);
 
-export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, reducedMotion = () => false, backdrop = null, brightHint = () => false, onControl = null } = {}) {
+export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, reducedMotion = () => false, backdrop = null, brightHint = () => false, onControl = null, onBand = null } = {}) {
   let speed = normaliseSpeed(prefs?.get?.('subtitleSpeed'));
   const liveEl = h('div', { class: 'hf-sublive', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true' });
   const chipsEl = h('div', { class: 'hf-chips hf-ui', role: 'group', hidden: true });
@@ -162,6 +162,8 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
   let lastY = 0;
   let destroyed = false;
   let relayoutT = 0;          // while a line is up, keep it clear of things that move (a hop, a drifting thought)
+  let reserved = 0;           // the band height the scene was asked to keep free (onBand)
+  const release = () => { if (reserved) { reserved = 0; onBand?.(0); } };
   const watch = (on) => { clearInterval(relayoutT); relayoutT = on ? setInterval(() => { if (cur?.lineEl || !chipsEl.hidden) layout(); }, 600) : 0; };
   const offPrefs = prefs?.onChange?.((k, v) => { if (k === 'subtitleSpeed') { speed = normaliseSpeed(v); renderSpeed(); } });
 
@@ -188,7 +190,11 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
     if (!chipsEl.hidden) need += chipsEl.offsetHeight + gapPx;
     if (!ctl.classList.contains('is-hidden')) need += ctl.offsetHeight + gapPx;
     need = need || 64;
-    const { y } = placeBand(b, avoid() || [], need);
+    const { y, fits } = placeBand(b, avoid() || [], need);
+    // no free band is tall enough (a choice with two rows of chips on a small phone): ask the
+    // scene for room (it shrinks the Mallow); the reservation lasts until the lines go away
+    const showing = !!liveEl.firstChild || !chipsEl.hidden;
+    if (showing && !fits && need > reserved) { reserved = need; onBand?.(need); }
     // a long move jumps rather than gliding across the Mallow
     if (!placedOnce || Math.abs(y - lastY) > 140) { el.style.transition = 'none'; requestAnimationFrame(() => { el.style.transition = ''; }); placedOnce = true; }
     lastY = y;
@@ -277,7 +283,7 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
   function next() {
     if (cur || paused || destroyed || suspended) return;
     const item = queue.shift();
-    if (!item) { showCtl(false); watch(false); return; }
+    if (!item) { showCtl(false); watch(false); release(); return; }
     cur = { item, i: Math.min(item.resumeAt || 0, Math.max(0, (item.lines?.length || 1) - 1)), lineEl: null, timer: 0, t0: 0, remaining: 0, holding: false, phase: 'in' };
     if (item.choice) showChoice(); else setTimeout(() => { if (cur?.item === item) showLine(); }, GAP_MS);
   }
@@ -383,6 +389,7 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
       liveEl.replaceChildren(); chipsEl.hidden = true; chipsEl.replaceChildren();
       ctl.classList.remove('holding'); showCtl(false); watch(false);
       if (!suspended) next();
+      if (!cur && !queue.length) release();
     },
     /** While the person types: nothing shows; held lines and choices wait, chatter is dropped. */
     suspend() {
@@ -395,6 +402,7 @@ export function createSubtitles({ root, prefs, avoid = () => [], bounds = null, 
         else { const it = cur.item; cur = null; it.resolve(it.choice ? null : false); }
       }
       hideNow();
+      release();
     },
     /** The overlay closed: a parked discovery or choice comes back, then the queue carries on. */
     unsuspend() {

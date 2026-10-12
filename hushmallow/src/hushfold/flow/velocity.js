@@ -2,7 +2,8 @@
 //
 // Speed is how far the finger really travelled — the PATH length, the sum of
 // |Δp| between samples — over a short window (≥ 60 ms), divided by the
-// window's duration, then smoothed as a SCALAR (EMA, τ 0.12 s). A fast
+// window's duration, then smoothed as a SCALAR (EMA: rises with τ 0.06 s so a
+// fast stroke registers within two or three frames, falls with τ 0.12 s). A fast
 // scribble that reverses every 80 ms therefore reads as fast. (Straight-line
 // distance over the window cuts through every reversal, and smoothing the
 // velocity VECTOR lets opposite directions cancel: a ±60 px scribble at a true
@@ -29,7 +30,8 @@
 
 export const VELOCITY = Object.freeze({
   WINDOW_SEC: 0.06,     // path length over at least this much time
-  TAU_SEC: 0.12,        // scalar speed (and direction vector) EMA
+  ATTACK_SEC: 0.06,     // scalar speed EMA while speeding up
+  TAU_SEC: 0.12,        // …while slowing down, the direction vector, and the idle decay
   MIN_STEP_PX: 1.5,     // jitter dead-band
   STALE_K: 1.6,         // quiet for 1.6× the usual event interval → stopped
   STALE_MIN_SEC: 0.06,
@@ -88,7 +90,7 @@ export function createVelocity(opts = {}) {
         const inst = (path - cum[j]) / dtw;
         const ivx = (x - hx[j]) / dtw, ivy = (y - hy[j]) / dtw;
         const a = 1 - Math.exp(-dtE / c.TAU_SEC);
-        speed += (inst - speed) * a;
+        speed += (inst - speed) * (inst > speed ? 1 - Math.exp(-dtE / c.ATTACK_SEC) : a);
         vx += (ivx - vx) * a; vy += (ivy - vy) * a;
       }
       if (t > lastT) lastT = t;

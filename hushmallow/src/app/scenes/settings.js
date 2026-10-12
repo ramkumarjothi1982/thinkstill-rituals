@@ -72,8 +72,8 @@ export default function settings(app) {
 
       section('About'),
       h('p', { style: type('body', { color: 'var(--text-2)', margin: '8px 0 0' }) },
-        'Everything you meet in ', h('span', { class: 'brand-name' }, 'hushmallow'), ' is written in advance: every Mallow line, world and ritual. Feelings are matched with fixed word lists, and you always choose what fits. Nothing you type or add leaves this phone, unless you choose Another Angle in ',
-        PLANS.ultra?.name || 'hushmallow Beyond', ', which asks you first. It’s a wellbeing app, not a medical service.'),
+        'Every Mallow line, world and ritual in ', h('span', { class: 'brand-name' }, 'hushmallow'), ' is written in advance, and feelings are matched with fixed word lists: you always choose what fits. Nothing you type or add leaves this phone. The one exception is Another Angle in ',
+        PLANS.ultra?.name || 'hushmallow Beyond', ': only after you say yes, your words go to our server, where an outside service prepares the perspectives you see. It’s a wellbeing app, not a medical service.'),
       h('button', { class: 'btn ghost block', onclick: () => openSupport(app) }, 'Support lines'),
       h('p', { style: type('caption', { color: 'var(--text-3)', textAlign: 'center', margin: '8px 0 0' }) }, `Version ${BUILD}${RUNNING ? ` · ${RUNNING}` : ''}`),
       // developer tools: not part of the published site
@@ -88,5 +88,6 @@ export default function settings(app) {
         h('button', { class: 'btn primary', onclick: () => { const keep = app.store.get('entitlement', null); app.store.clearAll(); if (keep) app.store.set('entitlement', keep); prefs.reset(); rec.clearAll(); s.close(); toast('Deleted'); app.go('home'); } }, 'Delete')) });
   }
 
-  return { el, title: 'Settings', enter() { world.dim(true); world.place({ x: 82, y: 10, scale: 0.32 }); world.setStage('resting'); } };
+  // the card fills the screen, so the Mallow rests out of sight (not half-hidden behind its corner)
+  return { el, title: 'Settings', enter() { world.dim(true); world.showMallow(false); world.setStage('resting'); }, leave() { world.showMallow(true); } };
 }

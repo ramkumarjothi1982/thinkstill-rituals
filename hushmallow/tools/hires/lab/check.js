@@ -11,6 +11,7 @@
 //   check.html?mode=spin&id=zuzu&kind=new&angles=0,1.6,3.2&preset=happy
 //        Zuzu's eyes at several spin angles, cropped
 //   check.html?mode=jump[&kind=new|old]   rest jump metric for every Mallow
+//   check.html?mode=live&id=glitzi&kind=new&sizes=110,220,380&presets=...  live rigs (run.cjs page)
 // Results: window.__ready = true, then __out (PNG data URL) and/or numbers.
 import { MALLOWS, SPRITES, MALLOW_IDS } from '../../../src/mallows/registry.js';
 import { REACTIONS } from '../../../src/mallows/reactions.js';
@@ -159,7 +160,7 @@ async function spin() {
       cells.push([`${s} spin ${a}`, c]);
     }
   }
-  window.__out = sheet(cells, 300, cells.length).toDataURL('image/png');
+  window.__out = sheet(cells, +(Q.get('cw') || 300), cells.length).toDataURL('image/png');
 }
 
 // every reachable face state worth checking for containment
@@ -210,6 +211,32 @@ async function overflow() {
   window.__overflow = res;
 }
 
+// live rigs (the real ticking renderer, strip-warp body) at several sizes:
+// screenshot the page (run.cjs page ...)
+async function live() {
+  const kind = Q.get('kind') || 'new';
+  const sizes = (Q.get('sizes') || '110,220,380').split(',').map(Number);
+  const presets = (Q.get('presets') || 'neutral,happy,excited,sad').split(',');
+  document.body.style.margin = '0';
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;flex-direction:column;gap:8px;padding:8px';
+  document.body.appendChild(wrap);
+  const rigs = [];
+  for (const s of sizes) {
+    const row = document.createElement('div'); row.style.cssText = 'display:flex;gap:8px';
+    wrap.appendChild(row);
+    for (const p of presets) {
+      const c = document.createElement('div');
+      c.style.cssText = `width:${s}px;height:${s}px;position:relative;background:rgba(255,255,255,.03);border-radius:10px`;
+      row.appendChild(c);
+      rigs.push([make(id, kind, c, { reducedMotion: Q.get('rm') === '1' }), p]);
+    }
+  }
+  await Promise.all(rigs.map(([r]) => r.loaded));
+  for (const [r, p] of rigs) if (RIG.STAGES[p]) r.setStage(p); else r.setEmotion(p, +(Q.get('i') || 0.85));
+  await new Promise((res) => setTimeout(res, +(Q.get('wait') || 2500)));
+}
+
 async function jump() {
   const kind = Q.get('kind') || 'new';
   const out = {};
@@ -225,5 +252,5 @@ async function jump() {
 (async () => {
   RIG = await loadRig();
   H = await import(tableUrl);
-  await ({ skins, pair, spin, overflow, jump })[mode]();
+  await ({ skins, pair, spin, overflow, jump, live })[mode]();
 })().catch((e) => { window.__err = String(e && e.stack || e); }).finally(() => { window.__ready = true; });

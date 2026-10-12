@@ -132,11 +132,22 @@ function mouthExtent(M, P) {
   const open = Lo - U > 2.2;
   const half = open ? Math.max(2, M.lw * 0.45) / 2 : (M.style === 'open' ? Math.max(M.lw, 8) : M.lw) / 2 + P.mouthWave * M.w * 0.05;
   let bottom = M.y + skewY + Math.max(0, Lo, U) + half;
+  const top = M.y - skewY + Math.min(0, U, Lo) - half;
+  // the upper lip, per column: the rig's cubic from corner to corner
+  const x0 = M.x + dx - W / 2, x1 = M.x + dx + W / 2;
+  const lip = (x) => {
+    let t = 0.5;
+    for (let i = 0; i < 20; i++) {   // invert x(t) by bisection (monotone)
+      const xt = (1 - t) ** 3 * x0 + 3 * (1 - t) ** 2 * t * (x0 + W * 0.22) + 3 * (1 - t) * t * t * (x1 - W * 0.22) + t ** 3 * x1;
+      t += (x > xt ? 1 : -1) * 0.5 ** (i + 2);
+    }
+    return M.y + 4 * t * (1 - t) * (open ? U : Math.min(U, 0)) - half;
+  };
   if (open) bottom = Math.max(bottom, M.y + Lo * 1.005 + M.lw * 0.45 + Math.max(1.5, M.lw * 0.25) / 2);
   if (pout > 0.05) bottom = Math.max(bottom, M.y + Math.max(Lo, 0) + M.lw * 1.25);
   // a tongue stuck out ("bleh") hangs below the lips: its tip, separately
   const tip = P.tongue > 0.03 ? M.y + Math.max(Lo, U) + M.lw * 0.3 + M.w * 0.2 * clampN(P.tongue, 0, 1) * 0.94 : -Infinity;
-  return { x0: M.x + dx - W / 2 - half, x1: M.x + dx + W / 2 + half, bottom, tip, tx0: M.x - M.w * 0.17, tx1: M.x + M.w * 0.17 };
+  return { x0: x0 - half, x1: x1 + half, top, lip, bottom, tip, tx0: M.x - M.w * 0.17, tx1: M.x + M.w * 0.17 };
 }
 
 // the top edge of one drawn eye, as [x, y] points: an open eye draws only
@@ -150,7 +161,10 @@ function eyeTop(spec, side, P, style) {
   const pts = [];
   if (o > 0.015) {
     const RX = rx * 1.06, RY = ry * 1.06;
-    for (let k = -10; k <= 10; k++) { const x = spec.x + RX * k / 10.5; pts.push([x, ey - RY * Math.sqrt(1 - (k / 10.5) ** 2) - spec.lw / 2]); }
+    for (let k = -10; k <= 10; k++) {
+      const x = spec.x + RX * k / 10.5, h = RY * Math.sqrt(1 - (k / 10.5) ** 2);
+      pts.push([x, ey - h - spec.lw / 2, ey + h + spec.lw / 2]);
+    }
   } else {
     const inner = side === 'L' ? 1 : -1;
     const yC = style === 'closed' ? spec.y : ey + ry * 0.12;
@@ -161,7 +175,8 @@ function eyeTop(spec, side, P, style) {
     const qUp = lerpN(yC + 2 * sagC, ey - ry * 2.35, clampN(o * (1 - P.lidTop), 0, 1.45));
     for (let k = 0; k <= 20; k++) {
       const t = k / 20;
-      pts.push([lerpN(xout, xin, t), (1 - t) ** 2 * yout + 2 * (1 - t) * t * qUp + t * t * yin - spec.lw / 2]);
+      const y = (1 - t) ** 2 * yout + 2 * (1 - t) * t * qUp + t * t * yin;
+      pts.push([lerpN(xout, xin, t), y - spec.lw / 2, y + spec.lw / 2]);
     }
   }
   return pts;
@@ -201,6 +216,15 @@ test('every drawn face part stays inside the body, at every preset, stage and re
     const m = hiresMallow(MALLOWS[id], id), f = m.face, S = SIL[id];
     assert.ok(S, `${id} silhouette`);
     const bad = [];
+    // how close the painted face itself puts mouth and eyes (the rest pose)
+    const gapOf = (P, side) => {
+      const me = mouthExtent(f.mouth, P);
+      let gap = Infinity;
+      for (const [x, , yb] of eyeTop(f.eyes[side], side, P, f.eyeStyle)) if (x > me.x0 + 4 && x < me.x1 - 4) gap = Math.min(gap, me.lip(x) - yb);
+      return gap;
+    };
+    const rest = resolveExpression(m, { neutral: 1 }, 0);
+    const restGap = { L: gapOf(rest, 'L'), R: gapOf(rest, 'R') };
     for (const [name, P0] of faceStates(m)) {
       // the mouth spring overshoots its target by ~7% (kS 170, kD 17)
       const P = { ...P0, mouthOpen: P0.mouthOpen * 1.07 };
@@ -213,6 +237,14 @@ test('every drawn face part stays inside the body, at every preset, stage and re
         let worst = Infinity;
         for (const [x, y] of eyeTop(f.eyes[side], side, P, f.eyeStyle)) worst = Math.min(worst, y - silAt(S, 'top', x, x, Math.max));
         if (worst < MARGIN) bad.push(`eye ${side} ${name}: ${worst.toFixed(1)} px`);
+        // Glitzi's open mouth grows upward (its explicit `upper`): it never
+        // runs into an eye. (Zuzu's spirals, scaled up by excited/calm
+        // presets, already touch its mouth corners on the current rig: the
+        // presets' business, not this table's.)
+        if (id === 'glitzi') {
+          const gap = gapOf(P, side);
+          if (gap < Math.min(restGap[side], 4) - 3) bad.push(`mouth meets eye ${side} ${name}: ${gap.toFixed(1)} px`);
+        }
       }
     }
     assert.deepEqual(bad.slice(0, 8), [], `${id}: face drawn past the outline`);

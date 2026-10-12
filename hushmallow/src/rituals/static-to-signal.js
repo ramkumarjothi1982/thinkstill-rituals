@@ -41,7 +41,9 @@ export async function run(ctx) {
   const { world, audio, haptic, setMove, dock, signal } = ctx;
   const rm = ctx.reducedMotion;
   const realm = () => world.realm;
-  const say = (t, ms) => ctx.say(t, { who: 'Glitzi', ms });
+  // Glitzi's lines keep clear of the person's floating words (drawn on canvas)
+  let wordRects = () => [];
+  const say = (t, ms) => ctx.say(t, { who: 'Glitzi', ms, avoid: () => wordRects() });
   const result = { completed: false, flicked: [], kept: [], needs: [], next: null, breaths: 0 };
 
   // ------------------------------------------------ shared fx canvas --
@@ -151,8 +153,6 @@ export async function run(ctx) {
   const startI = Math.max(0.7, ctx.input.intensity || 0.8);
   world.setEmotion({ angry: 1 }, startI);
   realm()?.setMood?.({ agitation: 0.6, clarity: 0.15, heaviness: 0.2, warmth: 0.1 });
-  say('Static levels: spicy. Go on, get it out. I can take it.', 3200);
-
   // the person's own words become zappable static
   const words = [...new Set(String(ctx.input.text || '').toLowerCase().replace(/[^a-z\s'-]/g, ' ').split(/\s+/)
     .filter((w) => w.length > 2 && !STOP.has(w)))].slice(0, 5);
@@ -161,6 +161,14 @@ export async function run(ctx) {
     const a = (i / frags.length) * Math.PI * 2 + 0.4;
     return { text, x: 0.5 + Math.cos(a) * 0.36, y: 0.47 + Math.sin(a) * 0.27, ph: Math.random() * 6, zap: 0, gone: false };
   });
+  wordRects = () => {
+    g.font = FONT_17;
+    return floaters.filter((f) => !f.gone).map((f) => {
+      const x = f.px ?? f.x * W, y = f.py ?? f.y * H, w = g.measureText(f.text).width / 2 + 10;
+      return { left: x - w, right: x + w, top: y - 16, bottom: y + 16 };
+    });
+  };
+  say('Static levels: spicy. Go on, get it out. I can take it.', 3200);
   drawExtra = (dt) => {
     g.font = FONT_17;
     g.textAlign = 'center'; g.textBaseline = 'middle';

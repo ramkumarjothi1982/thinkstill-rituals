@@ -93,6 +93,7 @@ const T = {
         inside: "#140820",
         tongue: "#d4406f",
         depth: 27,
+        upper: -22,
       },
       cheeks: {
         L: [92, 243.6, 28],
@@ -129,9 +130,9 @@ const T = {
       lineHi: "rgba(255,170,255,.3)",
       eyes: {
         L: {
-          x: 120,
+          x: 119.3,
           y: 175.5,
-          rx: 60.2,
+          rx: 59.4,
           ry: 59,
           sprite: "hires:zuzu-spiral-L",
           spriteR: 57.1,
@@ -140,10 +141,10 @@ const T = {
           lw: 10.2,
         },
         R: {
-          x: 271.9,
-          y: 175.2,
-          rx: 61.8,
-          ry: 60.5,
+          x: 271.8,
+          y: 175.4,
+          rx: 61.5,
+          ry: 60,
           sprite: "hires:zuzu-spiral-R",
           spriteR: 58.6,
           hw: 50.5,

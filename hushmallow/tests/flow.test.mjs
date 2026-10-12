@@ -280,7 +280,7 @@ test('speed: touch jitter on a resting finger is not movement; the direction vec
   assert.ok(l.vx > 1100 && Math.abs(l.vy) < 1, 'direction of travel');
 });
 
-test('speed: a finger that stops sending events slows to still (stale after its usual gap, τ 0.12 s)', () => {
+test('speed: a finger that stops sending events slows to still (stale after its usual gap, τ 0.12 s); a fast stroke registers within 3 frames', () => {
   const U = 390;
   const v = createVelocity();
   v.reset(40, 400, 0);
@@ -295,6 +295,10 @@ test('speed: a finger that stops sending events slows to still (stale after its 
   for (let i = 1; i <= 16; i++) slow.sample(i * 40, 0, i / 8);
   assert.ok(slow.staleSec > 0.15 && slow.staleSec <= VELOCITY.STALE_MAX_SEC, `stale after ${slow.staleSec.toFixed(3)} s at 8 Hz`);
   assert.equal(slow.idle(1 / 60, 0.1), false);
+  // speeding up registers quickly: a 1500 px/s stroke is past 'fast' (702) within 3 frames at 120 Hz
+  const quick = createVelocity(); quick.reset(0, 0, 0);
+  let n = 0; while (quick.speed < PACE.touch.fastU * U && n < 60) { n++; quick.sample(n * 12.5, 0, n / 120); }
+  assert.ok(n <= 6, `fast after ${n} events (${(n / 2).toFixed(1)} frames)`);
 });
 
 /**

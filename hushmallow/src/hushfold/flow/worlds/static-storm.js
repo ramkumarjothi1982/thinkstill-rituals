@@ -13,7 +13,19 @@
 // Layers: the static-storm realm core is the back layer (its own canvas —
 // its glitch bands copy that canvas); gameplay behind the Mallow is drawn
 // into it after the realm frame. Everything above the Mallow goes to ctx.front.
-// Spec and constants: docs/audit/worlds.md proposals 5 and 7.
+// Layout: storm-layout.js (the subtitle band stays clear; nothing overlaps).
+// Spec and constants: docs/audit/worlds.md proposals 5 and 7, with these
+// deliberate differences:
+//   · speeds are the director's path speeds (velocity.js), so a scribble is fast;
+//     charge deposits above 'fast' exactly as specified (0.9·clamp((v − fast)/fast, 0, 2)
+//     per cell-length of path, rather than per second);
+//   · per-person calibration only LOWERS 'fast' (min(1.8U, max(1.3U, 1.6 × median))),
+//     never raises it as max(1.8U, …) would — a scribbler is always fast, a gentle
+//     mover can get there too (discovery.js);
+//   · the Thought Mallow floats low in the play zone (above Glitzi), not at 0.3 of
+//     the safe height, so the postcards can hang under the clouds at ≥ 0.2U;
+//   · the photo cap is 7 Mallow cards / photos (D5), and the photosafe limiter,
+//     the 'slowing' and 'stillness' discoveries and natural completion follow the spec.
 
 import { createRealmCore } from '../../../world/realm.js';
 import { glowSprite, glintSprite, Pool, Rings, flashEnv, clamp, lerp, smoothstep, TAU, makeCanvas } from '../../../world/util.js';
@@ -209,19 +221,22 @@ export function create(ctx) {
     cards.sort((a, b) => b.row - a.row);
   }
 
-  /** A clear stretch of sky for the ghost-finger hint (never in the band, on a postcard or on the words). */
+  /**
+   * Where the ghost-finger hint draws its slow stroke: a clear stretch of sky in the play
+   * zone, else across a row of postcards (it shows them grounding) — never in the
+   * subtitle band, over the person's words or over Glitzi.
+   */
   function placeHint() {
     const len = U * 0.42, x0 = clamp(W * 0.29, EDGE, W - EDGE - len);
-    const obs = [];
-    if (plan.thought) obs.push(plan.thought.R.body, plan.thought.R.plate);
-    for (const sl of plan.slots) obs.push({ x0: sl.x - plan.s / 2, y0: sl.y - plan.s / 2, x1: sl.x + plan.s / 2, y1: sl.y + plan.s / 2 });
-    if (plan.mrect) obs.push(plan.mrect);
-    const z = plan.zone;
+    const hard = [];
+    if (plan.thought) hard.push(plan.thought.R.body, plan.thought.R.plate);
+    if (plan.mrect) hard.push(plan.mrect);
+    const soft = plan.slots.map((sl) => ({ x0: sl.x - plan.s / 2, y0: sl.y - plan.s / 2, x1: sl.x + plan.s / 2, y1: sl.y + plan.s / 2 }));
+    const z = plan.zone, top = plan.band.y + plan.band.h + 34;
+    const clear = (yy, obs) => { const iv = freeStretches(x0 - 16, x0 + len + 16, yy - 30, yy + 16, obs); return iv.length === 1 && iv[0][0] <= x0 - 16 && iv[0][1] >= x0 + len + 16; };
     let y = -1;
-    for (let yy = z.y + z.h - 26; yy >= z.y + 26; yy -= 6) {
-      const iv = freeStretches(x0 - 16, x0 + len + 16, yy - 30, yy + 16, obs);
-      if (iv.length === 1 && iv[0][0] <= x0 - 16 && iv[0][1] >= x0 + len + 16) { y = yy; break; }
-    }
+    for (let yy = Math.max(z.y + z.h, top) - 26; yy >= top && y < 0; yy -= 6) if (clear(yy, [...hard, ...soft])) y = yy;
+    if (y < 0) for (const ry of [...new Set(plan.slots.map((sl) => Math.round(sl.y)))]) if (ry >= top && clear(ry, hard)) { y = ry; break; }
     hint.x0 = x0; hint.y0 = y > 0 ? y : z.y + z.h * 0.5; hint.ok = y > 0;
   }
 
@@ -246,7 +261,7 @@ export function create(ctx) {
     fieldData = fieldG.createImageData(field.cols, field.rows);
     maskData = fieldG.createImageData(field.cols, field.rows);
     clearData = fieldG.createImageData(field.cols, field.rows);
-    for (let k = 0; k < field.n; k++) { clearData.data[k * 4] = 6; clearData.data[k * 4 + 1] = 6; clearData.data[k * 4 + 2] = 30; }
+    for (let k = 0; k < field.n; k++) { clearData.data[k * 4] = 18; clearData.data[k * 4 + 1] = 12; clearData.data[k * 4 + 2] = 52; }
     // static grain: a tile of coloured dots, shown only where there is charge
     grainScale = 1.5;
     grainC = makeCanvas(Math.ceil(field.w / grainScale), Math.ceil(field.h / grainScale));
@@ -633,7 +648,7 @@ export function create(ctx) {
     if (!everTouched && !rm) {
       hint.next -= dt;
       if (hint.next <= 0 && hint.shown < 2 && hint.age < 0) {
-        // in the open band below the person's words, clear of the postcards and of Glitzi
+        // where placeHint() found room (never in the band, over the words or over Glitzi)
         if (hint.ok) { hint.age = 0; hint.shown++; hint.next = 9; }
         else hint.next = 9;
       }
@@ -782,7 +797,7 @@ export function create(ctx) {
     for (let k = 0; k < n; k++) {
       const o = k * 4;
       const f = fl[k], e = q[k] - f > 0 ? q[k] - f : 0, gl = afterglow[k];
-      const ca = Math.round(255 * 0.42 * clamp(1 - q[k] / 0.4) * startQ[k] * clearK);
+      const ca = Math.round(255 * 0.34 * clamp(1 - q[k] / 0.4) * startQ[k] * clearK);
       cd[o + 3] = ca; anyClear |= ca;
       if (f < 0.02 && e < 0.01 && gl < 0.01) { d[o + 3] = 0; md[o + 3] = 0; continue; }
       const i = k % cols, j = (k / cols) | 0;
@@ -1126,12 +1141,10 @@ export function create(ctx) {
     g.clearRect(0, 0, g.canvas.width, g.canvas.height);
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
-    for (const c of cards) drawCard(g, c, now, rm);
-    drawThought(g, now, rm);
+    // arcs crackle in the sky, behind the postcards and the person's words
     g.save();
     g.globalCompositeOperation = 'lighter';
     g.lineCap = 'round'; g.lineJoin = 'round';
-    // arcs
     for (const a of arcs) {
       if (!a.on) continue;
       const e = Math.sin((a.age / a.ttl) * Math.PI) * (a.bright ? 1 : 0.35);
@@ -1142,6 +1155,12 @@ export function create(ctx) {
         g.stroke();
       }
     }
+    g.restore();
+    for (const c of cards) drawCard(g, c, now, rm);
+    drawThought(g, now, rm);
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    g.lineCap = 'round'; g.lineJoin = 'round';
     g.globalAlpha = 1;
     // fingers: crackle when fast, gold line when slow, pulses when still
     for (const f of fingers) {

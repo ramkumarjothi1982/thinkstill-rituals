@@ -17,7 +17,9 @@ import {
   isFavouriteWorld, drawFromBag, favouritesFirst, seededRng, PROGRESS_MAX_AGE_MS,
 } from '../src/engine/flow-store.js';
 import { createLines, MALLOW_LINES, SHARED_LINES, QUICK_FEELINGS, INTENTIONS, fillLine, flowEmotion, squeezeKind } from '../src/hushfold/lines.js';
-import { readingMs, placeBand, normaliseSpeed, SUBTITLE_SPEEDS } from '../src/hushfold/subtitles.js';
+import { readingMs, placeBand, normaliseSpeed, SUBTITLE_SPEEDS, scrimFor, brightPixel, luminance, contrastRatio, SCRIM_MIN, SCRIM_MAX } from '../src/hushfold/subtitles.js';
+import { createInputRouter } from '../src/hushfold/input-router.js';
+import { countWord } from '../src/v3/tray.js';
 import { createPrefs } from '../src/app/prefs.js';
 import { getEmotion } from '../src/data/emotions.js';
 import { MALLOW_IDS } from '../src/mallows/registry.js';
@@ -358,4 +360,87 @@ test('prefs: Hushfold defaults, and Delete everything tells every listener', () 
   prefs.onChange((k, v) => seen.push([k, v]));
   prefs.reset();
   assert.deepEqual(seen.sort(), [['haptics', true], ['textScale', 1]]);
+});
+
+// ------------------------------------------------------ 12 Oct review --
+test('subtitles: the scrim deepens over bright backdrops until white text reads at ≥4.5:1', () => {
+  const white = luminance(251, 248, 255);
+  // dark realms keep the light touch
+  assert.equal(scrimFor([12, 10, 40]), SCRIM_MIN);
+  for (const px of [[255, 255, 255], [255, 236, 200], [250, 190, 150], [170, 230, 255], [200, 210, 255], [255, 210, 120]]) {
+    const a = scrimFor(px);
+    assert.ok(a > SCRIM_MIN && a <= SCRIM_MAX, `${px} → ${a}`);
+    // what the glyph edge sees: the scrim's feathered rim (86 %) blended in sRGB
+    const k = a * 0.86;
+    const bl = luminance(px[0] + (9 - px[0]) * k, px[1] + (6 - px[1]) * k, px[2] + (28 - px[2]) * k);
+    assert.ok(contrastRatio(white, bl) >= 4.5, `${px}: ${contrastRatio(white, bl).toFixed(2)}`);
+  }
+  // the brightest tenth decides, not the average
+  const data = new Uint8ClampedArray(100 * 4);
+  for (let i = 0; i < 100; i++) { const v = i >= 88 ? 255 : 20; data.set([v, v, v, 255], i * 4); }
+  assert.deepEqual(brightPixel(data), [255, 255, 255]);
+});
+
+test('input router: a second finger on the Mallow reaches a multi-touch Mallow (two-finger stretch), not the rig', () => {
+  const prevDoc = globalThis.document, prevW = globalThis.innerWidth, prevH = globalThis.innerHeight;
+  globalThis.document = { addEventListener() {}, removeEventListener() {}, body: { classList: { add() {}, remove() {} } } };
+  globalThis.innerWidth = 390; globalThis.innerHeight = 844;
+  try {
+    const run = (multiTouch) => {
+      const el = new EventTarget();
+      el.setPointerCapture = () => {};
+      const got = [];
+      const mallow = { multiTouch, hitTest: () => true, pointer: (r) => got.push(r), bodyRect: () => ({ cx: 0, cy: 0 }), lookAt() {} };
+      const router = createInputRouter({ el, mallow, thoughts: null });
+      router.setWorld(() => {});
+      const ev = (type, id, x, y) => Object.assign(new Event(type, { cancelable: true }), { pointerId: id, clientX: x, clientY: y, pointerType: 'touch' });
+      el.dispatchEvent(ev('pointerdown', 1, 180, 400));
+      el.dispatchEvent(ev('pointerdown', 2, 220, 420));
+      const owners = router.owners;
+      el.dispatchEvent(ev('pointermove', 2, 260, 430));
+      el.dispatchEvent(ev('pointerup', 1, 180, 400));
+      el.dispatchEvent(ev('pointerup', 2, 260, 430));
+      router.destroy();
+      return { owners, ids: [...new Set(got.map((r) => r.id))], types: got.map((r) => `${r.id}:${r.type}`) };
+    };
+    const mt = run(true);
+    assert.deepEqual(mt.owners, ['mallow', 'mallow']);
+    assert.deepEqual(mt.ids, [1, 2]);
+    assert.ok(mt.types.includes('2:move') && mt.types.includes('2:up'));
+    const rig = run(false);
+    assert.deepEqual(rig.owners, ['mallow', 'world'], 'the single-pointer rig gets one finger; the other plays the world');
+    assert.deepEqual(rig.ids, [1]);
+  } finally { globalThis.document = prevDoc; globalThis.innerWidth = prevW; globalThis.innerHeight = prevH; }
+  const stage = read('src/hushfold/stage.js');
+  assert.match(stage, /kind: 'rig',[\s\S]*?multiTouch: false/);
+  assert.match(stage, /kind: 'touch',[\s\S]*?multiTouch: true/);
+});
+
+test('photo tray: a full tray renders no stray "null", and counts in copy are words', () => {
+  const tray = read('src/v3/tray.js');
+  assert.match(tray, /\.filter\(Boolean\)\)/, 'replaceChildren never receives null');
+  assert.doesNotMatch(tray, /\$\{added\} were/);
+  assert.equal(countWord(7), 'seven');
+  assert.equal(countWord(2), 'two');
+});
+
+test('back: a popped layer token goes to the scene, which closes that layer only', () => {
+  const main = read('src/app/main.js');
+  assert.match(main, /const t = layers\.pop\(\); try \{ const close = current\?\.blockBack; if \(typeof close === 'function'\) close\(t\);/);
+  const scene = read('src/app/scenes/hushfold.js');
+  assert.match(scene, /return \(token\) => backClose\(token\)/);
+  assert.match(scene, /layer\[k\] = 0;   \/\/ its history entry is spent/);
+});
+
+test('hushfold: held discoveries survive Tell, care never jokes or auto-starts, update guard covers crisis and thoughts', () => {
+  const scene = read('src/app/scenes/hushfold.js');
+  assert.match(scene, /subtitles\.clear\(\{ keepHeld: true \}\);\s*subtitles\.suspend\(\);/);
+  assert.match(scene, /subtitles\.unsuspend\(\)/);
+  assert.match(scene, /safety\?\.level === 'care' \|\| safety\?\.category === 'harm-others'\) \{ await careBeat/);
+  assert.match(scene, /if \(S\.crisis \|\| S\.care \|\| !supportPill\.hidden\) return false;/);
+  assert.match(scene, /stage\?\.thoughts\.list\.length \|\| 0\) > 0\) return false;/);
+  assert.match(scene, /loadProgress\(store\)/, 'the resume offer reads saved progress without making a director');
+  assert.match(scene, /resume: true/);
+  const subs = read('src/hushfold/subtitles.js');
+  assert.match(subs, /\/\^\(INPUT\|TEXTAREA\|SELECT\)\$\/\.test\(a\.tagName\)/, 'a held line never steals focus from a text field');
 });

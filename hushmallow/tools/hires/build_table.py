@@ -45,7 +45,11 @@ NEUTRAL = {'glitzi': {'lidTop': 0.55, 'lidSlant': 0.2}, 'boppo': {'mouthOpen': 0
 #   silhouette and a stuck-out tongue's tip >= 3 px (playful + yawn is the
 #   tightest; tests/hires.test.mjs checks all of it), and an excited Glitzi
 #   still opens a 75 px grin (the current rig: ~93 px on a taller body).
-TWEAKS = {'glitzi': {('eyes', 'L', 'lw'): 6.0, ('eyes', 'R', 'lw'): 6.0, ('mouth', 'depth'): 27.0}}
+#   An explicit upper lip (-22; the default is w * -0.08 = -10) lets the open
+#   mouth grow up into the face instead: an excited grin ~85 px tall, a
+#   surprised "o" ~40 px, both well clear of the eyes (>= 25 px).
+TWEAKS = {'glitzi': {('eyes', 'L', 'lw'): 6.0, ('eyes', 'R', 'lw'): 6.0,
+                     ('mouth', 'depth'): 27.0, ('mouth', 'upper'): -22.0}}
 
 
 def r1(v):
@@ -244,7 +248,7 @@ head = '''// High-res Mallow rigs: a patch table over registry.js (workstream W7
 //   * draw sprite pixels / res (Zuzu's spirals),
 //   * read m.glitchRows (Glitzi) instead of GLITCH_ROWS,
 //   * allow skin q up to 1.25 * res.
-// (see W7's report for the exact patch). Without it the art draws 2.6x too big.
+// (tools/hires/rig-res.patch). Without it the art draws 2.6x too big.
 //
 // Decision D13: a Mallow switches to its high-res rig only after a visual
 // check. HIRES_VERIFIED lists the ones that passed; applyHires() applies those
@@ -255,7 +259,10 @@ head = '''// High-res Mallow rigs: a patch table over registry.js (workstream W7
 //
 // Integration (after rig.js supports res): in registry.js, once, at the end:
 //   import { applyHires } from './hires.js';  applyHires(MALLOWS, SPRITES);
-// and ship assets/mallows-hires + assets/rig-hires in tools/build-site.sh.
+// ship assets/mallows-hires + assets/rig-hires in tools/build-site.sh, and
+// let MallowTouch use skinSize ~1024 for a high-res Mallow (its 640 default
+// downsamples the 1024 px art and gives up most of the gain on 3x phones).
+// Pipeline, labs and checks: tools/hires/README.md.
 
 const A = (p) => new URL(`ASSET_BASE${p}`, import.meta.url).href;
 '''.replace('ASSET_BASE', ASSET_BASE)

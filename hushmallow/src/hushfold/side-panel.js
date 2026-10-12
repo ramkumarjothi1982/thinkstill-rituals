@@ -1,9 +1,11 @@
 // The Hushfold's side panel: non-modal, fixed to the viewport's right edge
 // (≤360px), sliding in over the stage without a backdrop, so the Mallow and
-// the world keep playing beside it.
+// the world keep playing beside it. On phones (<700px wide) it is a shorter
+// bottom sheet instead, and the scene lifts the Mallow into the space above.
 //
-// createSidePanel({ app, root, getFlow, mallows, onFeeling, onIntention,
-//   onMallow, onClose }) → { el, open(), close(), toggle(), update(), get isOpen }
+// createSidePanel({ app, root, getFlow, flowAvailable, state, onFeeling,
+//   onIntention, onMallow, resumable, onResume, onClose })
+//   → { el, open(), close(), toggle(), update(), get isOpen }
 //
 // Every Hushflow action goes to the `flow` object (the W4 director API, or the
 // shell's stub): setEmotion, setIntention, setAutoFlow, stay, pause/resume,
@@ -17,7 +19,8 @@ import { toggleFavouriteWorld, isFavouriteWorld } from '../engine/flow-store.js'
 import { hfIcon } from './icons.js';
 import { QUICK_FEELINGS, INTENTIONS } from './lines.js';
 
-export function createSidePanel({ app, root, getFlow, flowAvailable = () => Promise.resolve(true), onFeeling, onIntention, onMallow, onClose, state = () => ({}) } = {}) {
+export function createSidePanel({ app, root, getFlow, flowAvailable = () => Promise.resolve(true), onFeeling, onIntention, onMallow, onClose, state = () => ({}),
+  resumable = () => Promise.resolve(null), onResume = null } = {}) {
   const { prefs, ent, store } = app;
   let isOpen = false;
   let opener = null;
@@ -42,6 +45,10 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
   const finishBtn = h('button', { class: 'hf-ghost', type: 'button', onclick: () => act('finish') }, hfIcon('finish'), 'Finish');
   const favBtn = h('button', { class: 'hf-ghost', type: 'button', 'aria-pressed': 'false', onclick: () => act('favourite') }, hfIcon('star', { filled: false }), h('span', {}, 'Favourite world'));
   const flowNote = h('p', { class: 'fine' });
+  // a saved Hushflow (flow-store progress) can be picked up from here too
+  const resumeTitle = h('span', {});
+  const resumeBtn = h('button', { class: 'hf-link resume', type: 'button', hidden: true, onclick: () => onResume?.() }, hfIcon('play'),
+    h('span', { class: 'grow' }, 'Resume', h('small', { style: { display: 'block', font: 'var(--hf-font-caption)', color: 'var(--text-3)' } }, resumeTitle)), hfIcon('chev'));
   const link = (iconName, label, onclick, sub) => h('button', { class: 'hf-link', type: 'button', onclick }, hfIcon(iconName),
     h('span', { class: 'grow' }, label, sub ? h('small', { style: { display: 'block', font: 'var(--hf-font-caption)', color: 'var(--text-3)' } }, sub) : null), hfIcon('chev'));
 
@@ -57,6 +64,7 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
       h('section', {}, h('h3', {}, 'What would help?'), intentWrap),
       h('section', {},
         h('h3', {}, 'Hushflow'),
+        resumeBtn,
         h('div', { class: 'hf-actions' }, pauseBtn, stayBtn, finishBtn, favBtn),
         h('label', { class: 'hf-toggle' }, h('span', { class: 't' }, 'Auto-flow', h('small', {}, 'The next world begins by itself when one is complete.')), auto),
         flowNote),
@@ -79,7 +87,7 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
     app.haptic('light');
     if (kind === 'pause') { if (isPaused(st)) flow?.resume?.(); else flow?.pause?.(); }
     else if (kind === 'stay') flow?.stay?.();
-    else if (kind === 'finish') flow?.finish?.();
+    else if (kind === 'finish') { flow?.finish?.(); api.close(); return; }
     else if (kind === 'favourite') {
       if (st.worldId) {
         const on = !isFav(flow, st.worldId);
@@ -125,6 +133,9 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
       const fav = world && isFav(flow, st.worldId);
       favBtn.setAttribute('aria-pressed', String(!!fav));
       favBtn.replaceChildren(hfIcon('star', { filled: !!fav }), h('span', {}, fav ? 'Favourite' : 'Favourite world'));
+      const saved = world ? null : await resumable().catch(() => null);
+      resumeBtn.hidden = !saved;
+      resumeTitle.textContent = saved ? `Pick up ${saved.title || 'your last world'} where you left off` : '';
       flowNote.textContent = world ? (st.title ? `Now: ${st.title}` : '')
         : stub ? 'The new worlds are still being built. The Mallows are ready to squish meanwhile.'
           : 'Worlds begin when you tell a Mallow what’s up.';

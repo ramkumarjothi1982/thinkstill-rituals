@@ -70,7 +70,7 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
   const sendBtn = h('button', { class: 'hf-send', type: 'button', disabled: true, onclick: () => submit(), 'aria-describedby': hasPlan ? null : `${uid}-plan` },
     hasPlan ? 'Send' : 'Continue', hfIcon('send'));
   const photosBox = h('div', { class: 'photos', hidden: true });
-  const planNote = hasPlan ? null : h('p', { class: 'plan-note', id: `${uid}-plan`, hidden: true }, 'Your words come alive as a Thought Mallow with ', h('b', {}, 'hushmallow Flow'), '. Nothing is sent anywhere.');
+  const planNote = hasPlan ? null : h('p', { class: 'plan-note', id: `${uid}-plan`, hidden: true }, 'Your words come alive as a Thought Mallow with ', h('b', {}, 'hushmallow Flow'), '. They stay on this phone.');
   const count = h('span', { class: 'sr-only', 'aria-live': 'polite' });
   const el = h('div', { class: `hf-input hf-ui${reduced ? ' reduced' : ''}`, role: 'dialog', 'aria-modal': 'false', 'aria-label': prompt, 'data-hf': 'input' },
     h('div', { class: 'head' },
@@ -115,6 +115,7 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     intentRow.hidden = !show;
     if (show) intentRow.replaceChildren(...intentionChips());
     if (planNote) planNote.hidden = !show;
+    setNote();
   }
   function chip(label, pressed, isSuggested, onclick, { ariaLabel = null, cls = '' } = {}) {
     return h('button', { class: `hf-opt${isSuggested ? ' suggested' : ''}${cls ? ` ${cls}` : ''}`, type: 'button', 'aria-pressed': String(!!pressed),
@@ -162,8 +163,9 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
         : 'Your device’s dictation works here too. Your words stay on this device.'));
     } else if (roomy() && suggested.length && !chosenEmotion) {
       note.append(hfIcon('sparkle'), h('span', {}, 'Highlighted feelings are only suggestions. Pick what fits, or none.'));
-    } else if (roomy()) {
-      note.append(hfIcon('sparkle'), h('span', {}, 'Your words stay on this phone. Nothing is sent anywhere.'));
+    } else if (roomy() && (!planNote || planNote.hidden) && !photosOpen) {
+      // (the plan note and the photo strip say it too: once is enough)
+      note.append(hfIcon('sparkle'), h('span', {}, 'Your words stay on this phone.'));
     }
     note.hidden = !note.firstChild;
   }
@@ -215,7 +217,7 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
       const [{ photoTray }, { photoSession }] = await Promise.all([import('../v3/tray.js'), import('../v3/photos.js')]);
       if (closed) return;
       tray = photoTray({ note: false });
-      photosBox.append(tray.el, h('p', { class: 'note photo-note' }, hfIcon('camera'), h('span', {}, 'Up to seven, optional. They stay on this phone and are cleared afterwards.')));
+      photosBox.append(tray.el, h('p', { class: 'note photo-note' }, hfIcon('camera'), h('span', {}, 'Up to seven. They stay on this phone and are cleared after.')));
       const label = () => {
         const n = photoSession.count;
         photoCount.hidden = !n;
@@ -225,6 +227,7 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
       label(); tray.offLabel = photoSession.onChange(label);
     }
     photosBox.hidden = !photosOpen;
+    setNote();
     place();
   }
 

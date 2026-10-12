@@ -53,11 +53,6 @@ body.hf-world-leaving #world > canvas.hf-back, body.hf-world-leaving #fx-layer >
 /* while the person types, the top bar steps back so the compact input reads cleanly */
 .hushfold.hf-typing .hf-top { opacity: 0; }
 .hushfold.hf-typing .hf-top > * { pointer-events: none !important; }
-/* on phones the open panel covers the bar; keep the edge clean */
-@media (max-width: 699px) {
-  .hushfold.hf-panel-open .hf-top { opacity: 0; }
-  .hushfold.hf-panel-open .hf-top > * { pointer-events: none !important; }
-}
 .hf-logo { display: inline-flex; align-items: center; height: 44px; padding: 0 2px; border: 0; background: none; color: inherit; cursor: default; }
 .hf-logo .hm-logo { width: auto !important; height: 24px; }
 .hf-logo .brand-name { font: 800 21px/1 var(--font-display, var(--hf-ff-voice)); letter-spacing: 0.01em; text-shadow: 0 2px 14px rgba(10, 6, 30, 0.5); }
@@ -214,8 +209,11 @@ body.hf-world-leaving #world > canvas.hf-back, body.hf-world-leaving #fx-layer >
   .hf-input .actions .photo { padding: 0 12px; }
 }
 @media (max-width: 379px) {
-  .hf-input .actions .support .t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* Support keeps its word (it matters most); if the row runs out, Send moves to a row of its own */
   .hf-input .actions .hf-ghost { padding: 0 12px; }
+}
+@media (max-width: 359px) {
+  .hf-input .actions:has(.support:not([hidden])) .hf-send { flex: 1 0 100%; }
 }
 
 /* --------------------------------------------------------- side panel -- */
@@ -262,6 +260,18 @@ body.hf-world-leaving #world > canvas.hf-back, body.hf-world-leaving #fx-layer >
   font: var(--hf-font-button); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 9px; }
 .hf-support svg { width: 19px; height: 19px; }
 .hf-panel .fine { font: var(--hf-font-caption); color: var(--text-3, #a59fc9); margin: 8px 0 0; }
+
+/* phones: a shorter bottom sheet, so the Mallow (lifted above it by the scene) stays playable */
+@media (max-width: 699px) {
+  .hf-panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: min(52vh, 520px); max-height: calc(100% - 150px); border-left: 0;
+    border-top: 1px solid var(--hf-line-strong); border-radius: 28px 28px 0 0; transform: translateY(104%); box-shadow: 0 -24px 60px rgba(3, 1, 14, 0.45); padding-top: 0; }
+  .hf-panel::before { content: ''; position: absolute; left: 50%; top: 8px; width: 40px; height: 4px; margin-left: -20px; border-radius: 4px; background: rgba(255, 255, 255, 0.22); }
+  .hf-panel .p-head { padding: 14px 14px 2px 20px; }
+  .hf-panel .p-head h2 { font-size: calc(18px * var(--hf-k)); }
+}
+.hf-pill.paused { border-color: rgba(255, 217, 138, 0.55); }
+.hf-pill.paused svg { color: var(--accent, #ffd98a); }
+.hf-touch { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
 
 /* ------------------------------------------------- Thought placeholder -- */
 .hf-tag { position: fixed; z-index: 1; left: 0; top: 0; max-width: min(50vw, 230px); padding: 7px 13px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.16);

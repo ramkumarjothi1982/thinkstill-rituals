@@ -88,7 +88,10 @@ export default function hushfold(app, params = {}) {
     brightHint: () => !worldMode && BRIGHT_REALMS.has(world.realmId),
     // the person's ▶ on the subtitle pill resumes a paused world too
     onControl: (kind) => { if (kind === 'resume' && flowRef?.state?.paused) resumeFlow(); },
+    // a block that fits nowhere (two rows of chips on a small phone): make room above the Mallow
+    onBand: (need) => { if (need !== bandNeed) { bandNeed = need; layout(); } },
   });
+  let bandNeed = 0;
   const say = (text, opts = {}) => {
     if (!text) return Promise.resolve(false);
     S.lastLineAt = now();
@@ -97,11 +100,12 @@ export default function hushfold(app, params = {}) {
 
   // ------------------------------------------------------- stage --
   let stage = null, stageMallow = null, router = null, overlay = null, panel = null, readEl = null;
+  let touchMt = null, touchBox = null;   // the opt-in MallowTouch stage (W2), else the rig
   // each transient layer has its own history entry, so Back closes it first
   const layer = { overlay: 0, panel: 0, read: 0 };
   const pushLayer = (k) => { layer[k] = app.pushLayer?.() || 0; };
   const popLayer = (k) => { const t = layer[k]; layer[k] = 0; if (t) app.popLayer?.(t); };
-  let flowP = null, flowRef = null;
+  let flowP = null, flowRef = null, offPrefs = null;
   let thoughtHome = { x: innerWidth * 0.8, y: innerHeight * 0.6 };
 
   function dockTop() {
@@ -110,7 +114,8 @@ export default function hushfold(app, params = {}) {
   }
   /** Phones: the side panel is a bottom sheet; the stage above it stays playable. */
   const panelSheet = () => !!panel?.isOpen && innerWidth < 700;
-  function panelTop() { return panelSheet() ? panel.el.getBoundingClientRect().top || innerHeight : innerHeight; }
+  // where the sheet comes to rest (offsetHeight ignores its slide-in transform)
+  function panelTop() { return panelSheet() ? innerHeight - (panel.el.offsetHeight || 0) : innerHeight; }
   function mallowAvoidRect() {
     const b = stageMallow?.bodyRect?.() || world.bodyRect();
     if (!b || !b.height) return null;
@@ -123,7 +128,7 @@ export default function hushfold(app, params = {}) {
     if (S.left) return;
     const vw = innerWidth, vh = innerHeight;
     const topB = topEl.getBoundingClientRect().bottom || 60;
-    const band = Math.min(156, Math.max(118, vh * 0.17));
+    const band = Math.max(Math.min(156, Math.max(118, vh * 0.17)), bandNeed ? bandNeed + 24 : 0);
     let regionTop = topB + band;
     let regionBottom = Math.min(vh - 76, dockTop() - 14);
     let minB = 130;
@@ -613,7 +618,9 @@ export default function hushfold(app, params = {}) {
       onFeeling: (id) => pickFeeling(id),
       onIntention: (id) => pickIntention(id),
       onMallow: (dir) => switchMallow(dir),
-      onClose: () => { panelBtn.setAttribute('aria-expanded', 'false'); root.classList.remove('hf-panel-open'); popLayer('panel'); },
+      resumable: () => resumableNow(),
+      onResume: () => { panel?.close(); resumeSaved(); },
+      onClose: () => { panelBtn.setAttribute('aria-expanded', 'false'); root.classList.remove('hf-panel-open'); popLayer('panel'); layout(); later(() => layout(), 480); },
     });
     return panel;
   }
@@ -621,10 +628,43 @@ export default function hushfold(app, params = {}) {
     const p = await ensurePanel();
     if (!p) return;
     if (p.isOpen) { p.close(); return; }
+    closeRead();                   // one transient layer at a time
     p.open();
     root.classList.add('hf-panel-open');
     pushLayer('panel');
     panelBtn.setAttribute('aria-expanded', 'true');
+    // phones: the bottom sheet rises and the Mallow moves up above it (still squeezable)
+    layout(); later(() => layout(), 480);
+  }
+
+  // ----------------------------------------------- saved progress --
+  /** A saved Hushflow to pick up (read straight from the store; no director is made for it). */
+  async function resumableNow() {
+    if (!ent.has('paid') || !prefs.get('saveHistory') || worldMode) return null;
+    let p = null;
+    try { p = loadProgress(store); } catch { p = null; }
+    if (!p?.worldId) return null;
+    try {
+      const { registry } = await import('../../hushfold/flow/registry.js');
+      if (!registry.playable(p.worldId)) return null;
+      return { worldId: p.worldId, title: registry.get(p.worldId)?.title || null, savedAt: p.savedAt };
+    } catch { return null; }
+  }
+  function resumeSaved() { S.invited = true; showTell(true); startFlow({ resume: true }); }
+  /** On arrival: offer to carry on, as a choice the person can ignore and keep squeezing. */
+  async function offerResume() {
+    const r = await resumableNow();
+    if (!r || S.left || !quiet()) return false;
+    S.invited = true;   // the resume offer stands in for the first invitation
+    showTell(true);
+    later(async () => {
+      if (S.left || worldMode || overlay || S.flowAsked) return;
+      const v = await subtitles.choice(lines.pick(mallowId, 'resumeAsk', { world: r.title }),
+        [{ label: 'Carry on', value: 'resume', primary: true }, { label: 'Not now', value: 'no' }],
+        { who: M().name, colour: M().colours.glow, timeoutMs: 20000, transient: true });
+      if (v === 'resume' && !S.left && !worldMode) resumeSaved();
+    }, 1200);
+    return true;
   }
 
   async function setFeeling(id, { quiet = false } = {}) {
@@ -632,8 +672,8 @@ export default function hushfold(app, params = {}) {
     const e = id ? em.getEmotion(id) : null;
     S.emotion = e ? id : null;
     S.emotionName = e?.name || null;
-    if (e) world.setEmotion(e.face, 0.6, { quiet });
-    else world.setStage('neutral', { quiet: true });
+    if (e) stageMallow.setEmotion(e.face, 0.6, { quiet });
+    else stageMallow.setStage('neutral', { quiet: true });
     return e;
   }
   async function pickFeeling(id) {
@@ -644,7 +684,7 @@ export default function hushfold(app, params = {}) {
     }
     const e = await setFeeling(id);
     panel?.update();
-    if (e) say(lines.pick(mallowId, 'ack', { emotion: id, feelingName: e.name }), { interrupt: !subtitles.holding });
+    if (e) say(lines.pick(mallowId, 'ack', { emotion: id, feelingName: e.name, family: e.family }), { interrupt: !subtitles.holding });
     if (e && flowRef && !flowRef.stub) flowRef.setEmotion?.(flowEmotion(id, e.family));
   }
   async function pickIntention(id) {
@@ -652,6 +692,16 @@ export default function hushfold(app, params = {}) {
     panel?.update();
     if (id === 'play') say(lines.pick(mallowId, 'justPlay'), { interrupt: !subtitles.holding });
     if (id && flowRef && !flowRef.stub) flowRef.setIntention?.(id);
+  }
+
+  function backClose(token) {
+    const owner = token ? Object.keys(layer).find((k) => layer[k] === token) : null;
+    const k = owner || (overlay ? 'overlay' : readEl ? 'read' : panel?.isOpen ? 'panel' : null);
+    if (!k) return;
+    layer[k] = 0;   // its history entry is spent: closing must not step back again
+    if (k === 'overlay') overlay?.close('back');
+    else if (k === 'read') closeRead();
+    else panel?.close();
   }
 
   // ------------------------------------------------------- keys --
@@ -664,10 +714,18 @@ export default function hushfold(app, params = {}) {
   // -------------------------------------------------- the opening --
   // the opening lines only play into an untouched, quiet stage
   const quiet = () => !S.touches && !S.told && !S.flowAsked && !worldMode && !overlay;
-  function opening() {
-    const returning = !params.intro && prefs.get('seenIntro');
+  async function opening() {
+    // back within this page session (from Settings, the garden, a ritual): the Tell pill, no "welcome back"
+    const again = visitedThisSession;
+    const returning = !again && !!prefs.get('seenIntro');
+    visitedThisSession = true;
     prefs.set('seenIntro', true);
-    if (returning) {
+    if (await offerResume()) return;
+    if (S.left) return;
+    if (again) {
+      showTell(true);
+      nudgeT = later(() => { if (quiet() && !subtitles.busy) say(lines.pick(mallowId, 'nudge')); }, 12000);
+    } else if (returning) {
       showTell(true);
       later(() => { if (quiet()) say(lines.pick(mallowId, 'return')); }, 1400);
       nudgeT = later(() => { if (quiet() && !subtitles.busy) say(lines.pick(mallowId, 'nudge')); }, 9000);
@@ -697,7 +755,21 @@ export default function hushfold(app, params = {}) {
       theme();
       stage = createStage({ fx: world.fx, tagRoot: root, reducedMotion: () => prefs.reducedMotion(), lowStim: () => !!prefs.get('lowStim'), onReadThought: readThought,
         keepOut: () => { const b = stageMallow?.bodyRect?.(); return b?.height ? { left: b.left, right: b.left + b.width, top: b.top, bottom: b.top + b.height } : null; } });
-      stageMallow = createStageMallow(world);
+      // MallowTouch (W2) behind the same stage calls: opt-in while it is checked (?touch=1 on the
+      // development host, or prefs.mallowTouch); the approved rig otherwise
+      const qsTouch = ['localhost', '127.0.0.1'].includes(location.hostname) && new URLSearchParams(location.search).get('touch') === '1';
+      if (qsTouch || prefs.get('mallowTouch') === true) {
+        try {
+          const { MallowTouch } = await import('../../mallows/touch/mallow-touch.js');
+          if (S.left) return;
+          touchBox = h('div', { class: 'hf-touch', 'aria-hidden': 'true' });
+          world.fx.before(touchBox);
+          touchMt = new MallowTouch(touchBox, { id: mallowId, bindPointer: false, reducedMotion: prefs.reducedMotion(), lowStim: !!prefs.get('lowStim'),
+            audio: prefs.get('sound') ? app.audio : null, haptic: (k) => app.haptic(k) });
+          world.showMallow(false);
+        } catch (e) { console.warn('[hushfold] MallowTouch unavailable; using the rig', e); touchMt = null; touchBox?.remove(); touchBox = null; }
+      }
+      stageMallow = createStageMallow(world, { touch: touchMt });
       router = createInputRouter({
         el: world.fx, mallow: stageMallow, thoughts: stage.thoughts,
         onEmpty: (r) => { if (r.type === 'down') stage.ripple(r.x, r.y, M().colours.glow); },
@@ -710,13 +782,20 @@ export default function hushfold(app, params = {}) {
       rigP.then(() => { if (!S.left) requestAnimationFrame(() => world.setRealm(M().realm, { crossfadeMs: 900 })); });
       await rigP;
       if (S.left) return;
-      world.setStage('neutral', { quiet: true });
+      stageMallow.setStage('neutral', { quiet: true });
       addEventListener('resize', onResize);
       visualViewport?.addEventListener('resize', onResize);
       document.addEventListener('keydown', onKey);
+      offPrefs = prefs.onChange((k, v) => {
+        if (!touchMt) return;
+        if (k === 'lowStim') touchMt.setLowStim(!!v);
+        if (k === 'motion') touchMt.setReducedMotion(prefs.reducedMotion());
+        if (k === 'sound') touchMt.setAudio(v ? app.audio : null);
+      });
       // QA hooks on the development host only (Playwright sweeps, the other workstreams' labs)
       if (['localhost', '127.0.0.1'].includes(location.hostname)) {
-        window.__hushfold = { subtitles, mallow: stageMallow, stage, router, spawnThought, openTell, startFlow, get flow() { return flowRef; }, get panel() { return panel; }, get worldThought() { return worldThought; }, safeForUpdate: () => view.safeForUpdate(), layout };
+        window.__hushfold = { subtitles, mallow: stageMallow, stage, router, spawnThought, openTell, startFlow, get flow() { return flowRef; }, get panel() { return panel; }, get worldThought() { return worldThought; },
+          get overlay() { return overlay; }, get layers() { return { ...layer }; }, touch: touchMt, safeForUpdate: () => view.safeForUpdate(), layout, resumableNow, S };
       }
       if (await resumePendingTell()) return;
       if (params.flow?.worldId && ent.has('paid')) {
@@ -735,6 +814,7 @@ export default function hushfold(app, params = {}) {
       removeEventListener('resize', onResize);
       visualViewport?.removeEventListener('resize', onResize);
       document.removeEventListener('keydown', onKey);
+      offPrefs?.();
       overlay?.close('leave');
       closeRead();
       try { flowRef?.pause?.(); flowRef?.destroy?.(); } catch (e) { console.warn(e); }
@@ -743,6 +823,7 @@ export default function hushfold(app, params = {}) {
       router?.destroy();
       stage?.destroy();
       stageMallow?.destroy();
+      if (touchMt) { try { touchMt.destroy(); } catch (e) { console.warn(e); } touchMt = null; touchBox?.remove(); touchBox = null; }
       if (S.photos) import('../../v3/photos.js').then((m) => m.photoSession.release()).catch(() => {});
       // hand the persistent stage back exactly as the classic scenes expect it
       world.setLayerSize(null);
@@ -752,15 +833,22 @@ export default function hushfold(app, params = {}) {
       world.dim(false);
       document.body.classList.remove('hf-active', 'hf-world-arriving', 'hf-world-leaving');
     },
+    /**
+     * Back closes the newest transient layer first. main.js passes the token of
+     * the history entry Back just used: that layer closes without stepping
+     * history again (its entry is already gone).
+     */
     get blockBack() {
-      if (overlay) return () => overlay?.close('back');
-      if (readEl) return () => closeRead();
-      if (panel?.isOpen) return () => panel.close();
-      return null;
+      if (!overlay && !readEl && !panel?.isOpen) return null;
+      return (token) => backClose(token);
     },
     safeForUpdate() {
       if (overlay?.dirty) return false;
       if (subtitles.holding) return false;
+      // someone who went to call a helpline comes back to the same screen, Support pill and all
+      if (S.crisis || S.care || !supportPill.hidden) return false;
+      // their words are on stage as a Thought Mallow
+      if (!worldMode && (stage?.thoughts.list.length || 0) > 0) return false;
       try { return flowRef?.safeForUpdate?.() ?? true; } catch { return false; }
     },
   };

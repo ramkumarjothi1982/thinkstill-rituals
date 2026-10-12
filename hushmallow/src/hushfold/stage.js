@@ -6,7 +6,8 @@
 // MallowRig through app.world; later createStageMallow(world, {touch}) wraps
 // a MallowTouch instance behind exactly the same calls:
 //   setEmotion(mix, intensity, opts), setStage(name), react(kind),
-//   lookAt(nx, ny), bodyRect(), hitTest(x, y), pointer(e), on('touch', fn)
+//   lookAt(nx, ny), bodyRect(), hitTest(x, y), pointer(e), on('touch', fn),
+//   multiTouch (the router gives it a second finger), fit({cx, cy, size}) (touch only)
 // 'touch' events: { kind: 'press'|'squeeze'|'release'|'tap'|'doubleTap'|'flick'
 //   (+ MallowTouch: 'stretch'|'massage'|'stroke'|'jiggle'), depth, speed, held }
 //
@@ -130,6 +131,15 @@ function touchAdapter(t) {
     bodyRect: () => t.bodyRect(),
     hitTest: (x, y) => t.hitTest(x, y),
     pointer: (e) => t.pointer(e),
+    /**
+     * Put the body's centre at (cx, cy) client px with a body of about `size`
+     * px (the shell's layout; the container covers the viewport at 0,0).
+     */
+    fit({ cx, cy, size }) {
+      const s0 = t.st?.s || 1;
+      const base = typeof t._P === 'function' ? t._P() / s0 : (t.bodyRect().height || size) / s0;
+      t.place({ x: cx, y: cy, scale: base > 0 ? size / base : 1 });
+    },
     get pressed() { return !!(t.pressed ?? t.state?.pressed); },
     // MallowTouch.on() chains (returns itself); the stage wants an unsubscribe
     on: (ev, fn) => { t.on(ev, fn); return () => t.off?.(ev, fn); },

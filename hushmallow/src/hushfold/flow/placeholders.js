@@ -295,6 +295,7 @@ export function createLabSubtitles({ root = document.body, band = null, avoid = 
     const b = band?.();
     if (b && b.h > 0) {
       const y = need <= b.h ? b.y + (b.h - need) / 2 : b.y;
+      box.style.transition = 'none';     // the band is fixed: no glide that could cross what is under it
       box.style.bottom = 'auto';
       box.style.top = `${Math.round(y)}px`;
       return need <= b.h + 2;
@@ -314,6 +315,7 @@ export function createLabSubtitles({ root = document.body, band = null, avoid = 
       if (fit.length) { pick = fit[fit.length - 1]; break; }
     }
     if (!pick) pick = bands(false).sort((p1, p2) => (p2[1] - p2[0]) - (p1[1] - p1[0]))[0] || [top, bottom];
+    box.style.transition = '';
     box.style.top = 'auto';
     box.style.bottom = `${Math.max(0, innerHeight - pick[1])}px`;
     return pick[1] - pick[0] >= need;
@@ -354,7 +356,7 @@ export function createLabSubtitles({ root = document.body, band = null, avoid = 
     dock.onclick = () => { dock.classList.remove('on'); api.say([text], { kind: 'discovery' }); };
   }
   let gen = 0;            // bumped by a discovery: queued dialogue that has not started yet is dropped
-  let pendingChoice = null;
+  let pendingChoice = null, choiceGen = 0;
   let current = null;     // { kind, cut() }
   const api = {
     say(lines, o = {}) {
@@ -379,7 +381,9 @@ export function createLabSubtitles({ root = document.body, band = null, avoid = 
       const job = queue.then(() => new Promise((res) => {
         // unanswered choices step aside after choiceMs (null), so nothing waits on them for ever
         const tm = setTimeout(() => pendingChoice?.(null), choiceMs);
-        pendingChoice = (v) => { clearTimeout(tm); pendingChoice = null; p.classList.remove('on'); chips.classList.remove('on'); setTimeout(() => chips.replaceChildren(), 450); res(v); };
+        const mine = ++choiceGen;
+        // (the fade-out clears only this choice's chips, never the next choice's)
+        pendingChoice = (v) => { clearTimeout(tm); pendingChoice = null; p.classList.remove('on'); chips.classList.remove('on'); setTimeout(() => { if (choiceGen === mine) chips.replaceChildren(); }, 450); res(v); };
         p.className = 'hf-line'; p.textContent = prompt;
         chips.replaceChildren(...options.map((o, i) => {
           const b = document.createElement('button'); b.type = 'button'; b.className = `hf-chip${i === options.length - 1 ? ' primary' : ''}`; b.textContent = o.label;

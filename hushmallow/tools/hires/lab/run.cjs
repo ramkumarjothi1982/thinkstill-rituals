@@ -2,6 +2,7 @@
 //   node tools/hires/lab/run.cjs fit <id> <out.json> [feats] [table]
 //   node tools/hires/lab/run.cjs shot '<check.html query>' <out.png> [crop.png]
 //   node tools/hires/lab/run.cjs json '<check.html query>'      (prints the numbers)
+//   node tools/hires/lab/run.cjs page '<check.html query>' <out.png>   (page screenshot: mode=live)
 // Serve the repo root first:  python3 -m http.server 8000   (LAB_BASE overrides)
 // Playwright is resolved from PLAYWRIGHT_DIR (default /opt/node-tools/node_modules)
 // and Chromium from CHROMIUM (default /opt/pw-browsers/chromium).
@@ -17,7 +18,7 @@ const BASE = process.env.LAB_BASE || 'http://localhost:8000/hushmallow/tools/hir
     executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium',
     args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
   });
-  const page = await (await browser.newContext({ viewport: { width: 1400, height: 1000 }, deviceScaleFactor: 1 })).newPage();
+  const page = await (await browser.newContext({ viewport: { width: 1400, height: 1000 }, deviceScaleFactor: cmd === 'page' ? 2 : 1 })).newPage();
   const errs = [];
   page.on('pageerror', (e) => errs.push(String(e)));
   page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
@@ -39,6 +40,7 @@ const BASE = process.env.LAB_BASE || 'http://localhost:8000/hushmallow/tools/hir
       const r = await page.evaluate(() => ({ err: window.__err, out: window.__out, crop: window.__crop, jump: window.__jump,
         jumps: window.__jumps, overflow: window.__overflow, info: window.__info }));
       if (r.err) throw new Error(r.err);
+      if (cmd === 'page') await page.screenshot({ path: b, fullPage: true });
       if (cmd === 'shot') {
         fs.writeFileSync(b, Buffer.from(r.out.split(',')[1], 'base64'));
         if (c && r.crop) fs.writeFileSync(c, Buffer.from(r.crop.split(',')[1], 'base64'));
