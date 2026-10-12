@@ -14,7 +14,10 @@
 //
 //   openInput({ app, prompt, mallow:{id,name,glow}, root, emotion, intention,
 //               hasPlan, heavy, face(faceMix), onSubmit({text, emotion, intention, reading, safety, input}),
-//               onClose(reason, {safety, supportShown}), onLayout(rect), onSafety(result), support(opts), trackSheet(sheet) })
+//               onClose(reason, {safety, supportShown}), onLayout(rect), onSafety(result), support(opts), trackSheet(sheet),
+//               photos = true, privacyNote = null })
+//   photos:false → no Photos button (Another Angle never takes photos). privacyNote: the privacy clause in
+//   the note (default: "Your words stay on this phone."); the dictation hint keeps its first sentence.
 //     → { el, close(reason), rect(), get text, get dirty, get safety }
 //
 // Words: kept exactly as typed (trimmed at the ends), shown with textContent
@@ -47,7 +50,8 @@ export function loadInputModules() {
 }
 
 export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root = document.body, emotion = null, intention = null, hasPlan = true,
-  text = '', face = null, onSubmit, onClose, onLayout, onSafety = null, support = null, trackSheet = null, heavy = false } = {}) {
+  text = '', face = null, onSubmit, onClose, onLayout, onSafety = null, support = null, trackSheet = null, heavy = false,
+  photos = true, privacyNote = null } = {}) {
   const reduced = app?.prefs?.reducedMotion?.() ?? false;
   // larger text: the speaker's name takes its own line above the prompt
   const bigText = Number(app?.prefs?.get?.('textScale')) > 1.12;
@@ -82,7 +86,7 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
   const supportBtn = h('button', { class: 'hf-ghost support', type: 'button', hidden: true, 'aria-label': 'Support', onclick: () => openSupportSheet() },
     hfIcon('support'), h('span', { class: 't' }, 'Support'));
   const photoCount = h('span', { class: 'count', hidden: true });
-  const photoBtn = h('button', { class: 'hf-ghost photo', type: 'button', 'aria-expanded': 'false', 'aria-label': 'Add photos, up to seven', onclick: () => togglePhotos() },
+  const photoBtn = !photos ? null : h('button', { class: 'hf-ghost photo', type: 'button', 'aria-expanded': 'false', 'aria-label': 'Add photos, up to seven', onclick: () => togglePhotos() },
     hfIcon('camera'), h('span', { class: 't' }, 'Photos'), photoCount);
   // no plan: Continue says where it goes inside the button itself (no extra line in the overlay)
   const sendBtn = h('button', { class: `hf-send${hasPlan ? '' : ' two'}`, type: 'button', disabled: true, onclick: () => submit(), 'aria-describedby': hasPlan ? null : `${uid}-plan` },
@@ -189,11 +193,13 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
     note.replaceChildren();
     const hinting = performance.now() < hintUntil;
     if (hinting) {
-      note.append(hfIcon('mic'), h('span', {}, coarse ? 'Tap the mic on your keyboard and just talk. Your words stay on this phone.'
-        : 'Your device’s dictation works here too. Your words stay on this device.'));
+      note.append(hfIcon('mic'), h('span', {}, privacyNote
+        ? `${coarse ? 'Tap the mic on your keyboard and just talk.' : 'Your device’s dictation works here too.'} ${privacyNote}`
+        : coarse ? 'Tap the mic on your keyboard and just talk. Your words stay on this phone.'
+          : 'Your device’s dictation works here too. Your words stay on this device.'));
     } else if (roomy() && !ta.value.trim() && !chosenEmotion && !photosOpen) {
       // said once, before anything is typed (the highlighted chips carry their own 'suggested' label)
-      note.append(hfIcon('sparkle'), h('span', {}, 'Your words stay on this phone.'));
+      note.append(hfIcon('sparkle'), h('span', {}, privacyNote || 'Your words stay on this phone.'));
     }
     note.hidden = !note.firstChild;
   }
@@ -256,6 +262,7 @@ export function openInput({ app, prompt = 'Want to tell me?', mallow = {}, root 
 
   // ------------------------------------------------------ photos --
   async function togglePhotos() {
+    if (!photoBtn) return;
     photosOpen = !photosOpen;
     photoBtn.setAttribute('aria-expanded', String(photosOpen));
     if (photosOpen && !tray) {
