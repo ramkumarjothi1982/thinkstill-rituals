@@ -7,14 +7,22 @@
 # bypassing every cache, and moves itself to the newer version), and the
 # old root src/app/main.js becomes a tiny forwarder for pages cached before
 # this layout existed. Only the app ships: no dev tools, workbook or Python.
+# The finished site is then checked (tools/site/check.mjs): every file the
+# page, its modules, its styles and its art tables name must be in it.
 set -euo pipefail
 here="$(cd "$(dirname "$0")/.." && pwd)"
 out="$1"; ver="$2"
 [[ "$ver" =~ ^[0-9a-zA-Z_-]+$ ]] || { echo "bad version: $ver" >&2; exit 1; }
 rm -rf "$out"; mkdir -p "$out/v/$ver/assets"
 cp -r "$here/src" "$out/v/$ver/"
-rm -rf "$out/v/$ver/src/v3/dev"
-cp -r "$here/assets/mallows" "$here/assets/rig" "$here/assets/mallows-hires" "$here/assets/rig-hires" "$here/assets/fonts" "$here/assets/brand" "$out/v/$ver/assets/"
+# developer pages only: the localhost labs' fixtures and the Emotion Studio
+rm -rf "$out/v/$ver/src/v3/dev" "$out/v/$ver/src/studio"
+# every asset folder except the source art, so a new folder is never left behind
+for d in "$here"/assets/*/; do n=$(basename "$d"); [ "$n" = source ] || cp -r "$d" "$out/v/$ver/assets/$n"; done
+# the folders the app cannot run without, the high-res art included (D13)
+for d in "$here/assets/mallows" "$here/assets/rig" "$here/assets/mallows-hires" "$here/assets/rig-hires" "$here/assets/fonts" "$here/assets/brand"; do
+  [ -d "$out/v/$ver/assets/$(basename "$d")" ] || { echo "asset folder not copied: $d" >&2; exit 1; }
+done
 sed -e "s#href=\"src/#href=\"v/$ver/src/#g; s#src=\"src/#src=\"v/$ver/src/#g; s#href=\"assets/#href=\"v/$ver/assets/#g" \
   "$here/index.html" > "$out/index.html"
 sed -e "s#\"assets/#\"v/$ver/assets/#g" "$here/manifest.webmanifest" > "$out/manifest.webmanifest"
@@ -24,4 +32,5 @@ cp "$here/tools/site/forward.js" "$out/src/app/main.js"
 touch "$out/.nojekyll"
 grep -q "v/$ver/src/app/main.js" "$out/index.html" || { echo "index.html was not rewritten" >&2; exit 1; }
 if grep -nE '(href|src)="(src|assets)/' "$out/index.html"; then echo "unversioned path left in index.html" >&2; exit 1; fi
+node "$here/tools/site/check.mjs" "$out" "$ver"
 echo "site: $out (version $ver)"

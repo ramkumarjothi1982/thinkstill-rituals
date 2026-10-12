@@ -18,6 +18,26 @@
 <link rel="stylesheet" href="src/ui/tokens.css">
 <link rel="stylesheet" href="src/ui/type.css">
 <link rel="stylesheet" href="src/ui/app.css">
+<link rel="stylesheet" href="src/ui/hushfold.css">
+<link rel="modulepreload" href="src/mallows/touch/mallow-touch.js">
+<script>
+  // A page kept in the browser cache can outlive its deploy: the folder its
+  // code lives in is gone, so the module below fails to load. Ask the site,
+  // bypassing every cache, which version is current and open that one.
+  function hmStale() {
+    if (window.__hmStale) return;
+    window.__hmStale = true;
+    fetch('version.json', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        var v = j && j.v, q = new URLSearchParams(location.search);
+        if (!v || q.get('v') === v) return;   // already asked for it: never loop
+        q.set('v', v);
+        location.replace('./?' + q.toString());
+      })
+      .catch(function () {});
+  }
+</script>
 </head>
 <body>
   <div id="world" aria-hidden="true"></div>
@@ -26,6 +46,6 @@
   <main id="scene" aria-live="off"></main>
   <div id="sheet-root"></div>
   <noscript>hushmallow needs JavaScript to bring the Mallows to life.</noscript>
-  <script type="module" src="src/app/main.js"></script>
+  <script type="module" src="src/app/main.js" onerror="hmStale()"></script>
 </body>
 </html>

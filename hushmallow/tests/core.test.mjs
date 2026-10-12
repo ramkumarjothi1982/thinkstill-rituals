@@ -71,7 +71,11 @@ test('the Paid library has a fitting ritual for every emotion family', () => {
 test('shipped code calls no remote service except Another Angle’s own server', async () => {
   const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap((f) => (f.isDirectory() ? walk(`${d}/${f.name}`) : f.name.endsWith('.js') ? [`${d}/${f.name}`] : []));
   // the requests allowed: the app's own version.json on the same site,
-  // read to pick up a new deploy; it sends nothing (src/app/update.js)
+  // read to pick up a new deploy; it sends nothing (src/app/update.js).
+  // This scans src/**/*.js only: the two other version.json reads live
+  // outside it, in index.html's inline hmStale() (a module that fails to
+  // load) and tools/site/forward.js (pages cached before v/<version>/)
+  // — both the same no-store GET of the same file on the same site.
   const versionCheck = "fetch(new URL('../../version.json', folder), { cache: 'no-store' })";
   assert.ok(readFileSync(`${root}src/app/update.js`, 'utf8').includes(versionCheck));
   // …and exactly one more: Another Angle's client (hushmallow Beyond, src/beyond/angle-client.js),

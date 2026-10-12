@@ -1,47 +1,89 @@
-# Publishes the Hushmallow web app (the hushmallow/ folder) to GitHub Pages.
+# Publishes the hushmallow web app (the hushmallow/ folder) to GitHub Pages.
 # One-time setup: repository Settings → Pages → Build and deployment →
 # Source: "GitHub Actions". Then run this workflow (Actions tab → "Publish
-# Hushmallow" → Run workflow), or push to main.
-name: Publish Hushmallow
+# hushmallow" → Run workflow), or push to main.
+#
+# Every push to main and every pull request that changes the app runs the
+# app's tests and assembles + checks the site; pushes to main then deploy it.
+# Changes that never reach the published app (docs, the workbook, source
+# art, developer tools, the Another Angle server) neither test nor deploy
+# here, so open apps are not moved to a new version for nothing.
+name: Publish hushmallow
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['hushmallow/**', '.github/workflows/hushmallow-pages.yml']
+    paths:
+      - 'hushmallow/**'
+      - '!hushmallow/server/**'
+      - 'hushmallow/server/another-angle/src/vocab.js'   # tests/beyond.test.mjs imports it
+      - '!hushmallow/docs/**'
+      - '!hushmallow/**/*.md'
+      - '!hushmallow/content/**'
+      - '!hushmallow/assets/source/**'
+      - '!hushmallow/tools/**'
+      - 'hushmallow/tools/build-site.sh'
+      - 'hushmallow/tools/site/**'
+      - '.github/workflows/hushmallow-pages.yml'
+  pull_request:
+    paths:
+      - 'hushmallow/**'
+      - '!hushmallow/server/**'
+      - 'hushmallow/server/another-angle/src/vocab.js'
+      - '!hushmallow/docs/**'
+      - '!hushmallow/**/*.md'
+      - '!hushmallow/content/**'
+      - '!hushmallow/assets/source/**'
+      - '!hushmallow/tools/**'
+      - 'hushmallow/tools/build-site.sh'
+      - 'hushmallow/tools/site/**'
+      - '.github/workflows/hushmallow-pages.yml'
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
+# one deploy at a time; a pull request's runs never cancel a deploy
 concurrency:
-  group: hushmallow-pages
+  group: ${{ github.event_name == 'pull_request' && format('hushmallow-pages-pr-{0}', github.event.pull_request.number) || 'hushmallow-pages' }}
   cancel-in-progress: true
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: node --test hushmallow/tests/*.test.mjs
+      # the same assembly and check the deploy runs, so a missing file fails here first
+      - name: Assemble and check the site
+        run: bash hushmallow/tools/build-site.sh "$RUNNER_TEMP/site" "${GITHUB_SHA::12}"
 
   deploy:
     needs: test
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       # the app only, in a folder named after this commit so every deploy
       # reaches people straight away instead of after their browser cache
-      # expires (see hushmallow/tools/build-site.sh)
+      # expires (see hushmallow/tools/build-site.sh, which also checks it)
       - name: Assemble site
-        run: hushmallow/tools/build-site.sh _site "${GITHUB_SHA::12}"
+        run: bash hushmallow/tools/build-site.sh _site "${GITHUB_SHA::12}"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
