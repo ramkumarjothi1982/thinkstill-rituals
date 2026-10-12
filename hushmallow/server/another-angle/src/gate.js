@@ -656,7 +656,7 @@ function inputNumbers(input) {
 function countIsFact(s, start, end) {
   const before = s.slice(0, start);
   const rest = s.slice(end);
-  const near = (re) => {
+  const near = (/** @type {RegExp} */ re) => {
     const m = re.exec(rest);
     return m ? `"${tidy(s.slice(start, end + m[0].length))}"` : '';
   };

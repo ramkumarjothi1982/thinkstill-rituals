@@ -1,4 +1,5 @@
-// Counts, time spans and names in the quality gate, after the third review.
+// Counts, time spans, names, other minds and engagement in the quality gate,
+// after the third review of the gate (review r3, 12 Oct 2026).
 //
 // Two failures that point in opposite directions:
 //  * Invented counts about other people slipped through when every question
@@ -207,4 +208,39 @@ test('feelings and needs stated as fact are claims, in grief and family wording 
     [text('ho-grief'), 'You loved those calls, and your hand still remembers them.'],
     [text('jeal-ex'), 'Liking a photo is a tap, not a feeling you can read.'],
   ]) assert.ok(!minds({ subtitle_line_1: l1 }, t), l1);
+});
+
+// --- polish 1: engagement through a broad synonym or an idiom ----------------------
+
+test('generic lines do not pass on a broad synonym, an idiom or an everyday word', () => {
+  const generic = [
+    ['What you tell yourself about this matters most.', 'Which words would help you most right now?'],
+    ["Some things are worth talking through when you're ready.", 'What would you want to say first?'],
+    ['The answer you need may not be the one you imagine.', 'What would help you rest tonight?'],
+    ["It's your call how much weight to give this.", 'What would feel kind right now?'],
+    ['Work out what matters most before deciding anything.', 'Which choice feels most like you?'],
+    ['Plans can change, and so can how you see them.', 'What would help you feel steadier tonight?'],
+    ['Your head is doing a lot of loud guessing right now.', 'What would help you feel steadier tonight?'],
+    ['Silence can hold many different things at once.', 'What would help you feel steadier tonight?'],
+  ];
+  // Every eval input except those whose own word is in a generic line
+  // ("imagining", "results"): the gate cannot tell their word used generically.
+  const ownWord = new Set(['anx-presentation', 'anx-results', 'ho-results']);
+  const ids = CASES.filter((c) => !['safety', 'injection', 'unclear'].includes(c.category) && !ownWord.has(c.id)).map((c) => c.id);
+  for (const id of ids) for (const [l1, l2] of generic) {
+    const g = qualityGate(scene({ subtitle_line_1: l1, subtitle_line_2: l2 }), { text: text(id) });
+    assert.ok(g.failures.some((f) => f.code === 'not_specific'), `${id}: ${l1} / ${l2}`);
+  }
+  assert.ok(ids.length >= 40, `${ids.length} inputs`);
+  // One broad synonym beside another word from their situation is engagement.
+  for (const [id, l1, l2] of [
+    ['dis-uni', 'Your first choice was one route, not the only one.', 'Shortlist two other courses that teach what drew you there.'],
+    ['work-promotion', 'One decision about one role is not a ruling on your future there.', 'Could you ask your manager what would make your case stronger next time?'],
+    ['soc-replaying-said', 'You said it once, but your head has played it back far more times than anyone heard it.', 'Is there one thing worth doing about it, or can it simply stay an awkward moment?'],
+    ['unc-argument', "Silence since Saturday tells you she hasn't texted, not why.", 'A short message tonight could open the door again.'],
+    ['ho-grief', 'Reaching for the phone is a year of habits still running.', 'You might keep her number for now; it can stay.'],
+  ]) {
+    const g = qualityGate(scene({ subtitle_line_1: l1, subtitle_line_2: l2 }), { text: text(id) });
+    assert.ok(!g.failures.some((f) => f.code === 'not_specific'), `${id}: ${JSON.stringify(g.failures)}`);
+  }
 });
