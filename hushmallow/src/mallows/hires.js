@@ -25,7 +25,7 @@
 //   import { applyHires } from './hires.js';  applyHires(MALLOWS, SPRITES);
 // and ship assets/mallows-hires + assets/rig-hires in tools/build-site.sh.
 
-const A =(p) => new URL(`../../assets/${p}`, import.meta.url).href;
+const A = (p) => new URL(`../../assets/${p}`, import.meta.url).href;
 const T = {
   glitzi: {
     res: 2.624,

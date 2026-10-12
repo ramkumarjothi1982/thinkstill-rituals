@@ -180,7 +180,7 @@ head = '''// High-res Mallow rigs: a patch table over registry.js (workstream W7
 //   import { applyHires } from './hires.js';  applyHires(MALLOWS, SPRITES);
 // and ship assets/mallows-hires + assets/rig-hires in tools/build-site.sh.
 
-const A =(p) => new URL(`../../assets/${p}`, import.meta.url).href;
+const A = (p) => new URL(`../../assets/${p}`, import.meta.url).href;
 '''
 out = [head]
 out.append('const T = ' + js(table) + ';\n')

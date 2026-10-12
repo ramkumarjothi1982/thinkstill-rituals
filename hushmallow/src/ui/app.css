@@ -122,8 +122,16 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .bubble::after { content: ""; position: absolute; left: var(--tail, 50%); bottom: -8px; width: 16px; height: 16px; background: inherit; transform: translateX(-50%) rotate(45deg); border-radius: 3px; }
 .bubble.below::after { bottom: auto; top: -8px; }
 .bubble .who { display: block; font: var(--type-overline); letter-spacing: var(--type-overline-ls); text-transform: uppercase; color: #6a4ac0; margin-bottom: 5px; }
-.bubble.compact { max-width: min(92vw, 400px); padding: 9px 15px 10px; font-size: calc(17px * var(--type-scale)); line-height: 1.3; }
+/* compact bubbles save room through padding and width, never below the 19px dialogue size */
+.bubble.compact { max-width: min(92vw, 400px); padding: 9px 15px 10px; line-height: 1.26; }
+.bubble.wide { max-width: min(calc(100vw - 24px), 480px); }
 .bubble.compact .who { margin-bottom: 3px; }
+.bubble.no-tail::after { display: none; }
+.bubble.below { transform-origin: 50% 0%; }
+.bubble.moving { transition: top 260ms var(--ease-out), left 260ms var(--ease-out); }
+/* the prompt steps back while a Mallow's line borrows the title band */
+.move-title { transition: opacity 240ms var(--ease-out); }
+.move-title.say-dim { opacity: .1; }
 .bubble.out { animation: bubbleOut 260ms var(--ease-out) both; }
 @keyframes bubbleIn { from { opacity: 0; transform: translateY(8px) scale(.9); } to { opacity: 1; transform: none; } }
 @keyframes bubbleOut { to { opacity: 0; transform: translateY(-6px) scale(.96); } }
@@ -176,7 +184,17 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .summary-card .k:first-child { margin-top: 0; }
 .summary-card .v { font: var(--type-body); letter-spacing: var(--type-body-ls); font-weight: 600; margin-top: 4px; }
 .toast { position: fixed; left: 50%; bottom: calc(var(--safe-bottom) + 24px); transform: translateX(-50%); z-index: 20; background: rgba(255,255,255,.95); color: #1d1638;
-  padding: 11px 18px; border-radius: 22px; font: var(--type-label); letter-spacing: var(--type-label-ls); text-align: center; width: max-content; max-width: calc(100vw - 40px); box-shadow: var(--shadow-1); animation: bubbleIn 300ms var(--ease-out) both; }
+  padding: 11px 18px; border-radius: 22px; font: var(--type-label); letter-spacing: var(--type-label-ls); text-align: center; text-wrap: balance; overflow-wrap: anywhere;
+  width: max-content; max-width: calc(100vw - 40px); box-sizing: border-box; box-shadow: var(--shadow-1); animation: toastIn 300ms var(--ease-out) both; }
+/* the toast's own entrance keeps the centring (bubbleIn ends at transform:none, which would undo translateX) */
+@keyframes toastIn { from { opacity: 0; transform: translate(-50%, 8px) scale(.96); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes softFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes softFadeOut { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: softFade 120ms linear both; }
+  .bubble { animation: softFade 120ms linear both; transition: none !important; }
+  .bubble.out { animation: softFadeOut 120ms linear both; }
+}
 
 /* ---------------------------------------------------------- plans --- */
 /* Two invitations into the Hushfold. The top of the screen lets touches
