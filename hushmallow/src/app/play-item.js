@@ -1,6 +1,9 @@
 // Open one ritual or trick directly (Library, Saved, the test stepper).
 import { getEmotion, emotionsByFamily } from '../data/emotions.js';
-import { playTrickById } from './trick-launch.js';
+import { playTrickById, allTricks } from './trick-launch.js';
+import { RITUALS } from '../data/rituals.js';
+import { AVAILABLE } from '../rituals/index.js';
+import { allowedFor } from '../engine/recommend.js';
 
 export function playRitual(app, r) {
   if (r.id === 'another-angle') { app.go('angle', { text: '' }); return; }
@@ -16,4 +19,13 @@ export function playItem(app, { kind, id, ref }) {
   app.audio.ui('open');
   if (kind === 'trick') return playTrickById(app, id);
   return playRitual(app, ref);
+}
+
+/** Everything in this plan, in a fixed order: rituals first, then tricks (TS order). */
+export async function planItems(app) {
+  const rituals = RITUALS.filter((r) => allowedFor(r, app.ent.flags()) && AVAILABLE.has(r.module))
+    .map((r) => ({ kind: 'ritual', id: r.id, ref: r }));
+  let tricks = [];
+  try { tricks = (await allTricks(app)).map((t) => ({ kind: 'trick', id: t.id, ref: t })); } catch { /* no plan */ }
+  return [...rituals, ...tricks];
 }

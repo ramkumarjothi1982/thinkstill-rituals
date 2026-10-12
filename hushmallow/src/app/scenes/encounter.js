@@ -13,6 +13,8 @@ import { AVAILABLE } from '../../rituals/index.js';
 import { allowedFor } from '../../engine/recommend.js';
 import { titleCase } from '../../engine/tricks.js';
 import { toast } from '../ui.js';
+import { testPurchasesAllowed } from '../config.js';
+import { planItems } from '../play-item.js';
 
 const REFRAME_FAMILIES = new Set(['shame', 'fear', 'loneliness', 'anger', 'sadness', 'envy', 'confusion']);
 
@@ -47,7 +49,7 @@ export default function encounter(app) {
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' }),
       h('span', { class: 'eyebrow' }, input.emotions.map((e) => getEmotion(e.id)?.name).filter(Boolean).slice(0, 3).join(' · '))),
     h('div', { class: 'spacer' }),
-    card, h('div', { style: { height: '10px' } }), ultraRow);
+    card, testBar(), h('div', { style: { height: '10px' } }), ultraRow);
 
   function render() {
     const o = options[idx];
@@ -84,7 +86,7 @@ export default function encounter(app) {
     world.setEmotion(faceMix(input.emotions), Math.min(1, input.intensity * 1.05));
     render();
     fit();
-    await wait(450);
+    await wait(850); // let the Mallow settle into place before it speaks
     say(world, encounterLine(leadId, family), { who: lead.name, ms: 3600 });
   }
 
@@ -103,8 +105,44 @@ export default function encounter(app) {
     });
   }
 
+  // TESTING ONLY (test hosts): ◀ n / total ▶ shows item n of everything in the
+  // plan (rituals first, then tricks) for the issue just typed. Position is
+  // remembered per plan, so after each one: type the next issue, press ▶.
+  function testBar() {
+    if (!testPurchasesAllowed() || !ent.has('paid')) return null;
+    const KEY = `test-step-${ent.tier()}`;
+    const label = h('div', { 'aria-live': 'polite', style: { flex: '1', minWidth: '0', textAlign: 'center', font: '600 13px var(--font-ui)', lineHeight: '1.25' } }, 'Test mode');
+    const btn = (dir, text) => h('button', { class: 'icon-btn', 'aria-label': dir < 0 ? 'Test: previous' : 'Test: next', style: { flex: '0 0 auto', fontSize: '18px' }, onclick: () => step(dir) }, text);
+    let items = null;
+    const paint = () => {
+      const n = app.store.get(KEY, 0);
+      const cur = items?.[n - 1];
+      const name = !cur ? 'Press ▶ for #1' : cur.kind === 'trick' ? `${cur.ref.ref} ${titleCase(cur.ref.title)}` : cur.ref.name;
+      label.replaceChildren(h('div', { style: { color: '#ffd98a', letterSpacing: '.08em', fontSize: '11px' } }, `TEST · ${n} / ${items ? items.length : '…'}`),
+        h('div', { style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, name));
+    };
+    async function step(dir) {
+      items ||= await planItems(app);
+      if (!items.length) return;
+      const n = Math.min(items.length, Math.max(1, app.store.get(KEY, 0) + dir));
+      app.store.set(KEY, n);
+      const it = items[n - 1];
+      options = [{ type: it.kind, item: it.ref, reasons: [`Test item ${n} of ${items.length}`] }];
+      idx = 0;
+      paint();
+      app.audio.ui('toggle');
+      await show();
+    }
+    planItems(app).then((xs) => { items = xs; paint(); });
+    paint();
+    return h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', padding: '6px 8px', borderRadius: '999px',
+      background: 'rgba(14,10,40,.62)', border: '1px dashed rgba(255,217,138,.6)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' } },
+    btn(-1, '◀'), label, btn(1, '▶'));
+  }
+
   function begin(o) {
     clearBubble();
+    if (o.item.id === 'another-angle') { app.go('angle', { text: input.text || '' }); return; }
     if (o.type === 'trick') { playTrickById(app, o.item.id); return; }
     rec.markDealt(o.item.id, o.poolKey);
     app.state.ritual = o.item;
