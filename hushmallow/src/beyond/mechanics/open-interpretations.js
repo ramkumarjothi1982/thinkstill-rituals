@@ -71,8 +71,15 @@ export function mount(ctx) {
       rows.forEach((b, i) => { b.hx = A.x + R * 2.25 + R * 0.8; b.hy = y + hs[i] / 2; y += hs[i] + gap; });
       return;
     }
-    const cx = A.x + A.w / 2, cy = A.y + A.h * 0.5;
     const rx = Math.min(A.w * 0.34, A.w / 2 - R * 1.6), ry = Math.min(A.h * 0.34, A.h / 2 - R * 1.4);
+    // once open, the lower lines hang below their buds and the upper ones above: when the lower ones are
+    // taller, the ring rises by half the difference, so neither row's words are pushed onto a bud
+    let lift = 0;
+    if (phase !== 'closed') {
+      const upper = Math.max(tags.guessW.h || 0, buds[2].tag.h || 0), lower = Math.max(buds[0].tag.h || 0, buds[1].tag.h || 0);
+      lift = clamp((lower - upper) / 2, -A.h * 0.12, A.h * 0.12);
+    }
+    const cx = A.x + A.w / 2, cy = A.y + A.h * 0.5 - lift;
     thought.hx = cx; thought.hy = cy + (phase === 'closed' ? ry * 0.15 : 0);
     const n = phase === 'closed' ? buds.length : buds.length + 1;
     const all = phase === 'closed' ? buds : [guess, ...buds];
