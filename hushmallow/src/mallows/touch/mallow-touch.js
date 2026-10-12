@@ -610,7 +610,9 @@ export class MallowTouch {
   pointer(e) {
     if (!this.ready || !e) return false;
     if (e.type === 'down') { this._pointerT = nowMs(); if (this._focusVisible) { this._focusVisible = false; this._ring.style.opacity = '0'; } }
-    const t = (Number.isFinite(e.t) ? e.t : nowMs()) / 1000;
+    const ms = Number.isFinite(e.t) ? e.t : nowMs();
+    this._noteLag(ms);
+    const t = ms / 1000;
     if (e.type === 'move' && !this.reader.ptrs.has(e.id)) { this._gaze(e.x, e.y); return false; }
     return this.reader.pointer({ type: e.type, id: e.id, x: e.x, y: e.y, t, shift: !!e.shift, mouse: !!e.mouse });
   }
@@ -719,8 +721,11 @@ export class MallowTouch {
     // when it is on that clock (every current engine) — so a janky main thread
     // doesn't distort speeds and gesture decisions — else handling time, with
     // coalesced samples keeping their relative spacing
-    const conv = (e, type, base) => ({ type, id: e.pointerId, x: e.clientX, y: e.clientY,
-      t: eventMs(e, base) / 1000, shift: e.shiftKey, mouse: e.pointerType === 'mouse' });
+    const conv = (e, type, base) => {
+      const ms = eventMs(e, base);
+      this._noteLag(ms);
+      return { type, id: e.pointerId, x: e.clientX, y: e.clientY, t: ms / 1000, shift: e.shiftKey, mouse: e.pointerType === 'mouse' };
+    };
     const down = (e) => {
       if (e.button > 0) return;
       const ok = this.reader.pointer(conv(e, 'down'));
@@ -767,6 +772,11 @@ export class MallowTouch {
     el.addEventListener('keydown', kd); el.addEventListener('keyup', ku);
     this._unbindKeys = () => { el.removeEventListener('keydown', kd); el.removeEventListener('keyup', ku); };
   }
+
+  // how late input arrives (handling time − the event's own time): the gesture
+  // clock runs that far behind, so a slow main thread never makes a moving
+  // finger look as if it had paused (and gripped again)
+  _noteLag(ms) { const lag = nowMs() - ms; this._inLag = lag > 0 ? Math.min(1000, lag) : 0; }
 
   _gaze(x, y) {
     if (!this.sb) return;
@@ -975,7 +985,8 @@ export class MallowTouch {
     this._dt = dt;
     const st = this.stats;
     this._computeTransform(dt);
-    const rs = this.reader.update(now);
+    if (!this.reader.ptrs.size) this._inLag = 0;
+    const rs = this.reader.update(now - (this._inLag || 0) / 1000);
     this._readTouch(rs, dt);
     this._rest();
     const a = nowMs();
