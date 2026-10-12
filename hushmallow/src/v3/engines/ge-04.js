@@ -50,7 +50,7 @@ export function create(E) {
   // ------------------------------------------------------------- tiles --
   // round 1: the sentence sits in the middle and is the quietest, so it clears last
   const wordsSlot = E.round === 1 ? 1 : Math.floor(R() * N);
-  const louds = [1, 0.74, 0.54].map((v) => v * (1 - calm0 * 0.35));
+  const louds = [1, 0.68, 0.42].map((v) => v * (1 - calm0 * 0.35));
   const n = photos.n;
   const list = Array.from({ length: n }, (_, i) => (i + E.round - 1) % n);
   const nA = Math.ceil(n / 2);
@@ -276,20 +276,20 @@ export function create(E) {
     g.globalCompositeOperation = 'lighter';
     // coloured light living inside the glass (the tile's own voice); cool and faint once quiet
     g.save(); g.scale(1, 0.55);
-    glow(g, TW * 0.28, 0, TW * 0.72, t.ec, 0.14 + 0.32 * vol + 0.15 * t.cue + 0.2 * t.clear + (t === wordsTile ? 0.25 * finK : 0));
+    glow(g, TW * 0.28, 0, TW * 0.72, t.ec, 0.1 + 0.24 * vol + 0.15 * t.cue + 0.2 * t.clear + (t === wordsTile ? 0.25 * finK : 0));
     glow(g, -TW * 0.36, 0, TW * 0.32, quietCol, 0.1 + 0.25 * (1 - vol / Math.max(0.01, t.L)));
     g.restore();
     g.fillStyle = rgba(t.ec, 0.025 + 0.06 * vol); g.fillRect(-TW / 2, -TH / 2, TW, TH);
     // the repeating sound layer: level wash + waveform bars from the quiet edge up to the seam
     if (vol > 0.004) {
       g.fillStyle = rgba(t.ec, 0.04 + 0.14 * vol); g.fillRect(-TW / 2, -TH / 2, sx + TW / 2, TH);
-      const amp = TH * 0.62 * (0.1 + 0.9 * vol), sp = (1 + 3 * vol) * (reduced ? 0.3 : 1);
+      const amp = TH * 0.62 * (0.06 + 0.94 * vol * vol * (2 - vol)), sp = (1 + 3 * vol) * (reduced ? 0.3 : 1);
       g.beginPath();
       for (let bx = -TW / 2 + 9; bx < sx - 5; bx += 6) {
         const h = amp * (0.2 + 0.8 * Math.abs(Math.sin(bx * 0.061 + time * sp + t.phase * 6) * Math.sin(bx * 0.017 - time * 0.9 + t.phase)));
         g.rect(bx, -h / 2, 2.6, h);
       }
-      g.fillStyle = rgba(t.ec, 0.08 + 0.24 * vol); g.fill();
+      g.fillStyle = rgba(t.ec, 0.06 + 0.2 * vol); g.fill();
       // speaker ripples on the loud side
       g.lineWidth = 2;
       for (let i = 0; i < 3; i++) {

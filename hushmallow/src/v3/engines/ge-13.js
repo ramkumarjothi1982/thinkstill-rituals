@@ -770,11 +770,11 @@ export function create(E) {
     const breath = reduced ? 1 : 0.9 + 0.1 * Math.sin(t * 1.2);
     // lamplight: a warm road on the water and a pool on the sand (under the post)
     if (lk > 0) {
-      g.save(); g.translate(mX, shoreY - seaH * 0.12); g.scale(0.26, 1.5); glow(g, 0, 0, seaH * 0.17, lampCol, 0.3 * lk * breath); g.restore();
+      g.save(); g.translate(mX, shoreY - seaH * 0.12); g.scale(0.26, 1.5); glow(g, 0, 0, seaH * 0.17, lampCol, 0.45 * lk * breath); g.restore();
       for (let i = 0; i < 5; i++) {
         const yy = shoreY - (i + 0.5) * seaH * 0.055, hw = (11 - i * 1.7) * s * (1 + fin * 0.3);
         g.save(); g.translate(mX + (reduced ? 0 : Math.sin(t * 0.7 + i * 1.9) * 2 * s), yy); g.scale(hw / (2 * s), 1);
-        glow(g, 0, 0, 2 * s, lampHot, 0.5 * lk * (0.7 + 0.3 * Math.sin(t * 1.1 + i * 1.3)));
+        glow(g, 0, 0, 2.4 * s, lampHot, 0.7 * lk * (0.7 + 0.3 * Math.sin(t * 1.1 + i * 1.3)));
         g.restore();
       }
       g.save(); g.translate(mX, mBase + 3 * s); g.scale(2.8, 0.45); glow(g, 0, 0, 24 * s, lampCol, 0.32 * lk); g.restore();
@@ -811,7 +811,8 @@ export function create(E) {
     const foam = 4 * v * (1 - v);
     if (foam > 0.02) { g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = rgba('#ffffff', 0.5 * foam); g.lineWidth = 1.6 * s; g.beginPath(); g.ellipse(mX, mBase + 1, (12 + 6 * v) * s, (3.4 + 1.5 * v) * s, 0, 0, TAU); g.stroke(); g.restore(); }
     if (lk > 0) {
-      glow(g, mX, ly, (34 + 16 * fin) * s, lampCol, (0.55 + 0.2 * fin) * lk * breath);
+      glow(g, mX, ly, (52 + 18 * fin) * s, lampCol, (0.32 + 0.12 * fin) * lk * breath);
+      glow(g, mX, ly, (22 + 8 * fin) * s, lampCol, (0.7 + 0.2 * fin) * lk * breath);
       glow(g, mX, ly + 1, 9 * s, '#fff6e0', 0.85 * lk);
     }
     if (lk > 0 && fin > 0 && fin < 1) {
