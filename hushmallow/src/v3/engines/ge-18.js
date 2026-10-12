@@ -439,10 +439,10 @@ export function create(E) {
       const h = clamp(heat * (0.8 + 0.34 * c.bias * (0.35 + 0.65 * flick)) + flick * 0.3 * n1 + br);
       const R = c.r * BW;
       g.save(); g.translate(bx + c.u * BW, by + c.v * BH); g.scale(R, R);
-      g.fillStyle = hc(h * 0.78); g.fill(c.path);                       // the glowing body
-      glow(g, c.hx, c.hy, 0.95, hc(h + 0.1), 0.5 + 0.45 * h);            // its hot core
-      g.globalAlpha = 0.62 - 0.3 * h; g.fillStyle = crustGrad; g.fill(c.ash);   // a charred patch
-      g.globalAlpha = 1; g.strokeStyle = 'rgba(28,5,6,0.55)'; g.lineWidth = 0.1; g.stroke(c.path);
+      g.fillStyle = hc(h * (0.55 + 0.15 * c.bias)); g.fill(c.path);    // the glowing body
+      glow(g, c.hx, c.hy, 1.0, hc(h + 0.1), 0.55 + 0.45 * h);            // its hot core
+      g.globalAlpha = 0.7 - 0.3 * h; g.fillStyle = crustGrad; g.fill(c.ash);    // a charred patch
+      g.globalAlpha = 0.4; g.strokeStyle = '#1c0506'; g.lineWidth = 0.08; g.stroke(c.path);
       g.globalCompositeOperation = 'lighter';
       g.strokeStyle = hc(h + 0.22); g.globalAlpha = 0.3 + 0.5 * h; g.lineWidth = 0.07; g.stroke(c.cracks);
       g.restore();
