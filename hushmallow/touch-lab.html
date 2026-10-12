@@ -202,7 +202,7 @@ function layout(count) {
     const { top, bottom } = stageBand();
     // a fuller stage on a short phone: the hero gives the thoughts a little more room (the Hushfold does this through onBand)
     // (four or five thoughts: the hero steps back further, as the Hushfold does when roominess is low)
-    const n = Number.isFinite(count) ? count : thoughts?.list.length || 0, k = n > 4 ? (h < 700 ? 0.27 : 0.3) : n > 3 ? 0.33 : n > 1 ? (h < 700 ? 0.42 : 0.46) : 0.5;
+    const n = Number.isFinite(count) ? count : thoughts?.list.length || 0, k = n > 4 ? (h < 700 ? 0.27 : 0.3) : n > 3 ? 0.33 : n > 2 && h < 700 ? 0.37 : n > 1 ? (h < 700 ? 0.42 : 0.46) : 0.5;
     const size = Math.round(Math.max(120, Math.min(k * (bottom - top), w < 700 ? 0.56 * w : 300, 300)));
     const x = w < 700 ? w / 2 : Math.max(size * 0.62 + 24, w * 0.34);
     mt.place({ x, y: bottom - size * 0.56 - 6, size }, { instant: true });

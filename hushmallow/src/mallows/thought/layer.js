@@ -1460,14 +1460,15 @@ export class ThoughtLayer {
     this._bestHard = bh; this._bestH3 = b3; this._bestSoft = bs;
     return best;
   }
-  // Nowhere clear round it: a wider look, a grid of places round the thought (as far as about a plate's
-  // width), the nearest clear one wins (the rope reaches it). Kept as candidate NC, relative to the body.
+  // Nowhere clear round it: a wider look, a grid of places round the thought (about a plate's width either
+  // side, a little more up and down), the nearest clear one wins (the rope reaches it). Kept as candidate NC,
+  // relative to the body.
   _searchWide(th, tg, skip) {
     const g = tg.g, w = tg.w, h = tg.h, T = this._tenv;
     let bc = Infinity, bx = 0, by = 0, bh = Infinity;
-    for (let iy = -6; iy <= 6; iy++) {
-      for (let ix = -6; ix <= 6; ix++) {
-        const dx = ix * (w + g[7] * 2) / 8, dy = iy * (h + g[7] * 2) / 6, cx = g[8] + (th._sx || 0), cy = g[9] + (th._sy || 0);
+    for (let iy = -13; iy <= 13; iy++) {
+      for (let ix = -8; ix <= 8; ix++) {
+        const dx = (ix * (w + g[7] * 2) * 1.2) / 8, dy = (iy * (h + g[7] * 2) * 1.6) / 13, cx = g[8] + (th._sx || 0), cy = g[9] + (th._sy || 0);
         const x = clamp(cx + dx, T.edge + w / 2, Math.max(T.edge + w / 2, T.W - T.edge - w / 2)), y = clamp(cy + dy - h / 2, T.yMin, Math.max(T.yMin, T.yMax - h));
         const r = this._cr; r[0] = x - w / 2; r[1] = y; r[2] = x + w / 2; r[3] = y + h; this._crD = 0;
         const h0 = this._hard(r, th, skip);

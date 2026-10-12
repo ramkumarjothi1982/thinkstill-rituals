@@ -216,11 +216,23 @@ export function create(ctx) {
     if (r) return r;
     const m = live;
     if (!m) return null;
+    // (only when the float really moves the body: some hosts take float() and do nothing with it)
+    if (!(fl.vB < fl.vA * 0.6)) return m;
     const th = ((hero.tiltApplied || 0) * Math.PI) / 180, c = Math.cos(th), sn = Math.abs(Math.sin(th)), den = c * c - sn * sn;
     let w = m.width, h = m.height;
     if (sn > 1e-3 && den > 0.5) { w = Math.max(20, (m.width * c - m.height * sn) / den); h = Math.max(20, (m.height * c - m.width * sn) / den); }
     const cx = (m.left + m.right) / 2, cy = (m.top + m.bottom) / 2 + (hero.liftApplied || 0) * h;
     return { left: cx - w / 2, right: cx + w / 2, top: cy - h / 2, bottom: cy + h / 2, width: w, height: h };
+  }
+  /**
+   * Does this host's float() move the body? The live box's top with and without the lift undone: whichever is
+   * steadier frame to frame tells (a no-op float leaves the live box still while the undone one would bob).
+   */
+  const fl = { vA: 0, vB: 0, a: null, b: null };
+  function floatEvidence(m) {
+    const a = m.top, b = m.top + (hero.liftApplied || 0) * m.height;
+    if (fl.a != null) { const da = a - fl.a, db = b - fl.b; fl.vA += (da * da - fl.vA) * 0.05; fl.vB += (db * db - fl.vB) * 0.05; }
+    fl.a = a; fl.b = b;
   }
   const bandBottom = () => (ctx.band?.y || 0) + (ctx.band?.h || 0);
   /** The words plate at the font the thought uses: ≤ `lines` lines at 17 → 15 px (null: one line does not fit at 15 px). */
@@ -478,6 +490,7 @@ export function create(ctx) {
     const m = mallowBox() || plan?.mallow;
     if (!m) { hero.ok = false; K.on = false; return; }
     hero.ok = true;
+    if (!force) floatEvidence(m);
     hero.left = m.left; hero.right = m.right ?? m.left + m.width; hero.top = m.top; hero.liveBottom = m.bottom ?? m.top + m.height;
     hero.cx = (hero.left + hero.right) / 2;
     // the rest waterline: where the shell put the body (this world's own bob excluded); a real move follows smoothly
