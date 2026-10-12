@@ -61,12 +61,12 @@ Memory Garden at any time from the top bar or the Hushflow panel.
 | Memory Garden | `src/hushfold/garden.js` | Installation animation, then a garden sheet with tool details, "Try it in real life", evidence notes and Practise again. |
 | Hushflow | `src/hushfold/flow.js`, `panel.js` | Deterministic planning, resume, favourite. Words are only stored if "Keep my words" is on. |
 | Flow and Beyond | `src/app/entitlements.js`, `scenes/plans.js` | Renamed in the UI only. Internal ids `paid`/`ultra` and all four App Store product ids are unchanged. `planName()` is the display adapter. Monthly and annual options. |
-| Typography | `src/ui/tokens.css`, `assets/fonts/` | Nunito Sans (Mallow voice), Manrope (interface), Fraunces (cinematic moments), self-hosted woff2 under the OFL. Central size tokens. The lowercase wordmark is unchanged. |
+| Typography | `src/ui/tokens.css`, `assets/fonts/` | Nunito Sans (Mallow voice), Manrope (interface), Fraunces (cinematic moments), self-hosted woff2 under the OFL. Central size tokens (nothing below 13px), metric-matched fallbacks so fonts swap in without layout shift. The supplied logo artwork is used as-is on a light plate. |
 | Old home | `#rituals` route | The previous home (rituals and library) is still there, reachable from the panel under More. |
 
 ## Tested
 
-- `node --test hushmallow/tests/*.test.mjs`: 83 tests pass (66 existing, 17
+- `node --test hushmallow/tests/*.test.mjs`: 84 tests pass (66 existing, 18
   new). The new tests cover soft-body press and rebound, the elastic limit,
   gesture classification, squeeze depth, Hushflow planning, word privacy,
   registry completeness, the storm's fast-then-slow discovery, Flow/Beyond
