@@ -465,7 +465,11 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
       g, area: () => area, from, scene, parts, text: S.text, emotion: S.emotion, tags: makeTags(root, { bounds: () => area }),
       reducedMotion: rmOn, lowStim: lowOn,
       hint: (line) => { if (line && !subs?.holding) say(line, { mallow: 'zuzu', interrupt: true }); },
-      choose: (prompt, options) => choose(prompt, options, { mallow: scene.mallow_character }),
+      // a mechanic's own question (find_boundary): the chips are the way on, so the assist pill steps aside meanwhile
+      choose: async (prompt, options) => {
+        assistBtn.hidden = true; layout();
+        try { return await choose(prompt, options, { mallow: scene.mallow_character }); } finally { if (mech && !mech.settled && S.phase === 'playing') { assistBtn.hidden = false; layout(); } }
+      },
       haptic: (k) => app.haptic(k),
       fx: (name, o) => { try { app.audio.fx?.(name, o); } catch { /* sound is decoration */ } },
       progress: (k) => { if (k >= 1) announce(L.done); },

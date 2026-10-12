@@ -79,6 +79,10 @@ body.hf-world-held #fx-layer > canvas.hf-front { opacity: 0 !important; transiti
 .hf-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--hf-glow); box-shadow: 0 0 12px var(--hf-glow); }
 .hf-pill.support { border-color: rgba(255, 156, 207, 0.55); background: rgba(70, 20, 60, 0.6); }
 .hf-pill.is-hidden { opacity: 0; pointer-events: none !important; transform: translateY(8px); }
+/* a hidden pill takes no room in the dock (it would wrap the others onto a second row, up into the Mallow) */
+.hf-dock .hf-pill.is-hidden { position: absolute; }
+/* narrow phones: the paused pill says Resume only (its label still says Paused), so the dock stays one row */
+@media (max-width: 359px) { .hf-pill.paused .pz { display: none; } .hf-pill { padding: 0 16px 0 14px; } }
 
 /* ---------------------------------------------------------- subtitles -- */
 .hf-subs { position: fixed; z-index: 2; left: 0; right: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 10px;
@@ -321,6 +325,8 @@ body.hf-world-held #fx-layer > canvas.hf-front { opacity: 0 !important; transiti
   .hf-panel.open { opacity: 1; transition: opacity 240ms, visibility 0s; }
 }
 
+/* a sheet (support, the A–Z list) is up: the Hushfold's own layers step back so nothing ghosts through it */
+.hushfold.hf-sheet-open .hf-input, .hushfold.hf-sheet-open .hf-panel, .hushfold.hf-sheet-open .hf-subs, .hushfold.hf-sheet-open .hf-top { opacity: 0; transition: opacity 200ms; }
 /* the A–Z list as a one-pick list (from the Hushfold): the tick only on the chosen feeling */
 .emo-row.single[aria-pressed="false"] .tick { visibility: hidden; }
 

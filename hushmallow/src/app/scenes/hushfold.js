@@ -81,7 +81,7 @@ export default function hushfold(app, params = {}) {
   const supportPill = h('button', { class: 'hf-pill support', type: 'button', hidden: true, onclick: () => openSupportSheet() }, hfIcon('support'), 'Support');
   // a paused world says so on the stage, with one tap back into it
   const pausedPill = h('button', { class: 'hf-pill paused', type: 'button', hidden: true, 'aria-label': 'Paused. Resume the world.', onclick: () => resumeFlow() },
-    hfIcon('play'), h('span', {}, 'Paused · Resume'));
+    hfIcon('play'), h('span', {}, h('span', { class: 'pz' }, 'Paused · '), 'Resume'));
   const dock = h('div', { class: 'hf-dock' }, pausedPill, supportPill, tellBtn);
   const srTitle = h('h1', { class: 'sr-only' }, 'hushmallow');
   root.append(srTitle, topEl, dock);
@@ -121,12 +121,15 @@ export default function hushfold(app, params = {}) {
     if (!sheet?.el || S.left) return sheet;
     const rec = { token: app.pushLayer?.() || 0, sheet, seen: false, obs: [] };
     sheets.push(rec);
+    // what is under the sheet steps back, so nothing ghosts through it
+    root.classList.add('hf-sheet-open');
     const done = () => {
       if (rec.done) return;
       rec.done = true;
       rec.obs.forEach((o) => o.disconnect());
       const i = sheets.indexOf(rec);
       if (i >= 0) sheets.splice(i, 1);
+      if (!sheets.length) root.classList.remove('hf-sheet-open');
       // closed another way (✕, its button, the backdrop, Escape, a pick): its history entry goes too
       if (rec.token) { const t = rec.token; rec.token = 0; app.popLayer?.(t); }
       if (!S.left) afterSheet();
