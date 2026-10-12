@@ -387,6 +387,7 @@ export function createRealmCore(realmId, opts = {}) {
  * loop, resize / visibility / in-view observers and client-coordinate pulses.
  * opts: { emotion, intensity, mood, transform, reducedMotion, lowStimulation,
  *         groundY = 0.86, quality: 'auto' | 'low' | 'high' }
+ * handle.pause(true) holds it still (no rAF, no draws) until handle.pause(false).
  */
 export function mountRealm(container, realmId, opts = {}) {
   const canvas = document.createElement('canvas');
@@ -399,7 +400,8 @@ export function mountRealm(container, realmId, opts = {}) {
   const id = core.id, st = core.st;
   canvas.dataset.realm = id;
 
-  let raf = 0, last = 0, destroyed = false, inView = true, needBuild = true;
+  // held: paused by the caller (e.g. while a Hushflow world covers the backdrop) — no frames, no draws
+  let raf = 0, last = 0, destroyed = false, inView = true, needBuild = true, held = false;
 
   function measure() {
     const W = Math.max(1, Math.round(container.clientWidth || canvas.clientWidth || 390));
@@ -424,7 +426,7 @@ export function mountRealm(container, realmId, opts = {}) {
     core.draw();
   }
 
-  function shouldRun() { return !destroyed && inView && !(typeof document !== 'undefined' && document.hidden); }
+  function shouldRun() { return !destroyed && !held && inView && !(typeof document !== 'undefined' && document.hidden); }
   function start() { if (!raf && shouldRun()) { last = 0; raf = requestAnimationFrame(tick); } }
   function stop() { if (raf) cancelAnimationFrame(raf); raf = 0; }
 
@@ -433,7 +435,7 @@ export function mountRealm(container, realmId, opts = {}) {
 
   let ro = null, io = null;
   if (typeof ResizeObserver === 'function') {
-    ro = new ResizeObserver(() => { needBuild = true; if (!raf) { measure(); core.draw(); } });
+    ro = new ResizeObserver(() => { needBuild = true; if (!raf && !held) { measure(); core.draw(); } });
     ro.observe(container);
   }
   if (typeof IntersectionObserver === 'function') {
@@ -471,7 +473,13 @@ export function mountRealm(container, realmId, opts = {}) {
     setFocus(nx = 0, ny = 0) { core.setFocus(nx, ny); return handle; },
     setReducedMotion(on) { core.setReducedMotion(on); return handle; },
     setLowStimulation(on) { core.setLowStimulation(on); return handle; },
-    setQuality(q) { core.setQuality(q); if (!raf) { measure(); core.draw(); } return handle; },
+    setQuality(q) { core.setQuality(q); if (!raf && !held) { measure(); core.draw(); } return handle; },
+    /**
+     * Hold the realm still (true) or let it run again (false). While held it books no frames and
+     * draws nothing (resizes and quality changes wait for the resume, which rebuilds if needed).
+     */
+    pause(b) { held = !!b; if (held) stop(); else start(); return handle; },
+    get paused() { return held; },
     destroy() {
       destroyed = true;
       stop();
