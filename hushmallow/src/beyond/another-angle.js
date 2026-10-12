@@ -195,7 +195,10 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     const list = [rectOf(zAd), rectOf(compAd), overlay?.rect?.(), consentCard?.rect?.()];
     // while a mechanic is on stage its bodies stay clear (its labels make way for the line, not the other way
     // round: a band that chased the labels would never settle); once it has receded, only the Mallows matter
-    if (mech && !root.classList.contains('bx-recede')) list.push(...(mech.bodies?.() || mech.avoid?.() || []));
+    if (mech && !root.classList.contains('bx-recede')) {
+      // the whole play area is the scene's: the band sits above it (the area was sized to leave it that room)
+      list.push({ left: area.x, right: area.x + area.w, top: area.y, bottom: area.y + area.h }, ...(mech.bodies?.() || mech.avoid?.() || []));
+    }
     else if (thought?.w2 && !mech) list.push(...TL.rects());
     else if (thought && !mech) list.push({ left: thought.x - thought.r * 1.4, right: thought.x + thought.r * 1.4, top: thought.y - thought.r * 1.4, bottom: thought.y + thought.r * 1.4 + 44 });
     return list.filter(Boolean);

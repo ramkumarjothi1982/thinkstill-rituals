@@ -332,6 +332,8 @@ export function sceneParts(text, scene = {}) {
 
   return {
     excerpt: excerpt(t, 46),
+    // one line's worth, for a crowded small screen
+    excerptShort: excerpt(t, 28),
     fact: fact || FACT_ASK,
     guess: guess || GUESS_ASK,
     factAsk, guessAsk,

@@ -17,6 +17,7 @@ export const OCEAN = Object.freeze({
   GAP: 8,                 // px between the Thought Mallow and the hero / its words
   BOTTOM: 64,             // px kept clear at the bottom (choice chips on small phones)
   BUBBLE_MIN: 44,         // px: bubbles are at least this big until they drift past 6·Z0…
+  BUBBLE_TIGHT: 36,       // …except where the water is narrow (beside the hero on a small phone): a smaller bubble, never an overlap
   BUBBLE_FAR: 28,         // …then shrink towards this by 9·Z0
   BUBBLE_GAP: 8,
   PLATE_MAX: 220,         // px: the words plate wraps to two lines rather than spanning the far water
@@ -49,7 +50,7 @@ export function defaultMallowBox(W, H) {
  * z/Z0 = d: proportional to s, at least BUBBLE_MIN until 6·Z0, then easing to BUBBLE_FAR.
  */
 export function bubbleSize(s, d, U) {
-  const ref = clamp(0.15 * U, 48, 84);
+  const ref = clamp(0.16 * U, 50, 88);
   const far = smoothstep(6, OCEAN.CAP, d);
   const floor = OCEAN.BUBBLE_MIN * (1 - far) + OCEAN.BUBBLE_FAR * far;
   return Math.max(floor, Math.min(ref * 1.3, (ref * s) / 0.5));
@@ -60,11 +61,12 @@ const box = (x, y, w, h) => ({ x0: x - w / 2, y0: y - h / 2, x1: x + w / 2, y1: 
 
 /**
  * Plan the screen. In: { W, H, band:{y,h}, mallow (client box or null), textW (the words at
- * 17 px, 0 = no thought), n (photos) }. Out: { hy, U, mallow, waterY, home:{x, y, r}, plate:{w, h,
+ * 17 px, 0 = no thought), plate (optional: the measured words plate {w, h, lines}, which wins over
+ * the textW estimate), n (photos) }. Out: { hy, U, mallow, waterY, home:{x, y, r}, plate:{w, h,
  * lines, side:'above'|'below'|'side', x, y}, homeY (camera: the s = 0.5 line), labelW, slots:[{x, y, D}],
  * floor (lowest y a floater may use), rects: { band, mallow, thought, plate } }.
  */
-export function planOcean({ W, H, band, mallow = null, textW = 0, n = 0 }) {
+export function planOcean({ W, H, band, mallow = null, textW = 0, plate: plateIn = null, n = 0 }) {
   const U = Math.min(W, H), E = OCEAN.EDGE;
   const M = mallow && mallow.height > 20 ? { left: mallow.left, right: mallow.right ?? mallow.left + mallow.width, top: mallow.top, bottom: mallow.bottom ?? mallow.top + mallow.height } : defaultMallowBox(W, H);
   M.width = M.right - M.left; M.height = M.bottom - M.top;
@@ -72,7 +74,7 @@ export function planOcean({ W, H, band, mallow = null, textW = 0, n = 0 }) {
   const floor = H - OCEAN.BOTTOM;
   const r = clamp(Math.round(U * 0.085), 26, 40);
   const labelW = Math.min(OCEAN.PLATE_MAX, W - 2 * E);
-  const P = plateSize(textW, labelW);
+  const P = plateIn && plateIn.w > 0 && plateIn.h > 0 ? { w: Math.min(plateIn.w, W - 2 * E), h: plateIn.h, lines: plateIn.lines || 1 } : plateSize(textW, labelW);
   const hyLo = bandBottom + OCEAN.SKY_MIN, hyHi = M.top - OCEAN.WATER_MIN;
   const hy = Math.round(hyHi >= hyLo ? clamp(H * OCEAN.HORIZON, hyLo, hyHi) : hyLo);
   const waterY = Math.max(hy + 30, M.bottom - 0.18 * M.height);   // (the body box carries ~9% of margin below the art; then its lowest tenth)
@@ -140,15 +142,21 @@ export function planOcean({ W, H, band, mallow = null, textW = 0, n = 0 }) {
     for (let y = hy + 14; y <= floor; y += 6) {
       const s = sOf(y), d = 1 / Math.max(1e-3, s) - 1;
       if (d > OCEAN.CAP + 0.5) continue;
-      const D = bubbleSize(s, d, U);
-      // the bubble sits on the water: its centre a little above the waterline
-      const cy = y - 0.3 * D;
-      if (cy - D / 2 < bandBottom + 4) continue;
-      for (let x = E + D / 2; x <= W - E - D / 2; x += 6) {
-        const b = box(x, cy, D, D);
-        if (b.y1 > floor) continue;
-        if (obs.some((o) => overlaps(b, o, OCEAN.BUBBLE_GAP))) continue;
-        cand.push({ x, y: cy, D, wy: y, d });
+      const D0 = bubbleSize(s, d, U);
+      // where the water is narrow (beside the hero on a small phone) a smaller bubble fits instead
+      const Dmin = d <= 6 ? Math.min(D0, OCEAN.BUBBLE_TIGHT) : D0;
+      for (let x = E + Dmin / 2; x <= W - E - Dmin / 2; x += 6) {
+        for (let D = D0; D >= Dmin - 0.01; D = D > Dmin + 0.5 ? Math.max(Dmin, D * 0.88) : Dmin - 1) {
+          if (x - D / 2 < E - 0.01 || x + D / 2 > W - E + 0.01) continue;
+          // the bubble sits on the water: its centre a little above the waterline
+          const cy = y - 0.3 * D;
+          if (cy - D / 2 < bandBottom + 4) continue;
+          const b = box(x, cy, D, D);
+          if (b.y1 > floor) continue;
+          if (obs.some((o) => overlaps(b, o, OCEAN.BUBBLE_GAP))) continue;
+          cand.push({ x, y: cy, D, wy: y, d });
+          break;
+        }
       }
     }
     // the first slots spread wide; later ones may go far out (smaller): score = clearance + a little depth
@@ -237,13 +245,15 @@ export function createDistanceDetector(opts = {}) {
 /**
  * Progress and the natural completion point (audit proposal 6): at least four long swells
  * (λ ≥ 0.6U), and either the thought ≥ 4·Z0 away for 5 s, or a dominant period ≥ 5 s held for
- * 10 s; then 2 s with no finger on the water. Progress is monotonic and moves only through
- * what the person's swells did.
+ * 10 s while the sea is really rolling (at least `sustain` of the person's long swells alive at
+ * once — one long swell's period is not a sea); then 2 s with no finger on the water — and never
+ * before `minPlay` seconds since the person first touched the water, so the invitation to drift on
+ * follows actual play. Progress is monotonic and moves only through what the person's swells did.
  *   stroke({ lambdaU })     every released stroke
- *   update(dt, { dist|null, period, down })  → { p, complete }
+ *   update(dt, { dist|null, period, down, swells (long swells alive), played (s since first touch) })  → { p, complete }
  */
 export function createOceanProgress(opts = {}) {
-  const c = { long: 4, longLamU: 0.6, far: OCEAN.FAR, farHold: 5, period: 5, periodHold: 10, idle: 2, ...opts };
+  const c = { long: 4, longLamU: 0.6, far: OCEAN.FAR, farHold: 5, period: 5, periodHold: 10, idle: 2, sustain: 3, minPlay: 40, ...opts };
   let nLong = 0, farFor = 0, perFor = 0, idle = 0, p = 0, complete = false, maxD = 1, farDone = false, perDone = false;
   const out = { p: 0, complete: false };
   return {
@@ -256,7 +266,7 @@ export function createOceanProgress(opts = {}) {
     snapshot() { return { n: nLong, p: round(p), c: complete ? 1 : 0, d: round(maxD), f: farDone ? 1 : 0, q: perDone ? 1 : 0 }; },
     update(dt, m) {
       if (m.dist != null) { maxD = Math.max(maxD, m.dist); farFor = m.dist >= c.far ? farFor + dt : 0; } else farFor = 0;
-      perFor = m.period >= c.period ? perFor + dt : 0;
+      perFor = m.period >= c.period && (m.swells ?? c.sustain) >= c.sustain ? perFor + dt : 0;
       if (farFor >= c.farHold) farDone = true;
       if (perFor >= c.periodHold) perDone = true;
       idle = m.down ? 0 : idle + dt;
@@ -265,7 +275,7 @@ export function createOceanProgress(opts = {}) {
       const pPer = perDone ? 1 : clamp(perFor / c.periodHold, 0, 1);
       const raw = 0.6 * pLong + 0.4 * Math.max(pFar, pPer);
       p = Math.max(p, Math.min(0.99, raw));
-      if (!complete && nLong >= c.long && (farDone || perDone) && idle >= c.idle) complete = true;
+      if (!complete && nLong >= c.long && (farDone || perDone) && idle >= c.idle && (m.played ?? c.minPlay) >= c.minPlay) complete = true;
       if (complete) p = 1;
       out.p = p; out.complete = complete;
       return out;

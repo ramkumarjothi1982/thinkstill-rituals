@@ -38,7 +38,8 @@ export function mount(ctx) {
   });
   const heaviest = stones[0];
   const heavyTag = ctx.tags.add(ctx.parts.weight || 'The heaviest part', { kind: 'line', max: 150, priority: 1 });
-  const places = L.labels.places.map((label, i) => ({ label, i, count: 0, glow: 0, tag: ctx.tags.add(label, { kind: 'label', colour: i === YOURS ? '#ffd98a' : ['#7fe7ff', '#b59cff', '#ff9ad5'][i] }) }));
+  // the bowls' names stay with their bowls (they claim their place first)
+  const places = L.labels.places.map((label, i) => ({ label, i, count: 0, glow: 0, tag: ctx.tags.add(label, { kind: 'label', colour: i === YOURS ? '#ffd98a' : ['#7fe7ff', '#b59cff', '#ff9ad5'][i], priority: 2 }) }));
   // a short phone: the bowls sit either side of the thought, so its words stay narrow between them
   const SHORT = A0.h < 270;
   const words = ctx.tags.add(ctx.parts.excerpt, { kind: 'words', max: SHORT ? Math.max(120, Math.round(A0.w - 4 * clamp(Math.min(A0.w * 0.13, A0.h * 0.16), 30, 46) - 50)) : 230 });
@@ -156,8 +157,8 @@ export function mount(ctx) {
       drawJelly(g, { x: s.x, y: s.y, r: s.r, sx: s.sx * 1.12, sy: s.sy * 0.86, light: s.light, deep: s.deep, glow: 0, alpha: 0.96 });
     }
     motes.draw(g, dt);
-    // a short phone: the words step aside once the first weight moves (the bowls and the weights need the room)
-    words.at(thought.x, thought.y + R * 1.05 + 8, 'bottom', SHORT && (moves || held) ? 0 : 1);
+    // a short phone has no room for the whole sentence among four bowls: the heaviest weight carries their own words there
+    words.at(thought.x, thought.y + R * 1.05 + 8, 'bottom', SHORT ? 0 : 1);
     // the heaviest weight's words ride beside it (hidden while it's held under a finger, so they never sit under it)
     heavyTag.at(heaviest.x + heaviest.r + 8, heaviest.y, 'left', heaviest.place >= 0 ? 0.85 : 1);
     if (finished) settleT += dt;

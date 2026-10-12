@@ -30,8 +30,25 @@ export function rigMallow(appWorld) {
     const w = r.width * 0.64;
     return { left: r.cx - w / 2, top: r.top, width: w, height: r.height, right: r.cx + w / 2, bottom: r.bottom, cx: r.cx, cy: r.cy };
   };
+  /**
+   * The body box where the shell put it, without this adapter's own float (the CSS translate /
+   * rotate below) or a hop: the same framing as world.bodyRect(), measured on the layer (the
+   * canvas fills it and carries the float; the layer does not). A world keys its layout on this,
+   * so its own bob never re-plans the screen.
+   */
+  const restRect = () => {
+    const g = rig(), layer = g?.canvas?.parentElement;
+    if (!g?.S || !g.W || !g.H || !g.mallow?.bodyBox || !layer?.getBoundingClientRect) return null;
+    const r = layer.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    const kx = r.width / g.W, ky = r.height / g.H;
+    const [bx0, by0, bx1, by1] = g.mallow.bodyBox;
+    const bw = (bx1 - bx0) * g.S, bh = (by1 - by0) * g.S;
+    const left = r.left + (g.CX - bw / 2) * kx, top = r.top + (g.BASE - bh) * ky, width = bw * kx, height = bh * ky;
+    return { left, top, width, height, right: left + width, bottom: top + height, cx: left + width / 2, cy: top + height / 2 };
+  };
   return {
-    rect, bodyRect: rect,
+    rect, bodyRect: rect, restRect,
     hitTest(x, y) {
       const g = rig();
       if (!g?.ready || !g._toLocal || !g._hit) return false;
@@ -228,19 +245,23 @@ export function createPlaceholderThought({ words, emotion = 'other', font = (px,
     },
   };
 
-  function buildLabel(calm, maxW = 210) {
+  function buildLabel(calm, maxW = 210, maxLines = 2) {
     const text = words?.token || '';
     if (!text) return null;
     const weight = 700;
     const c = document.createElement('canvas');
     const m = c.getContext('2d');
     // the exact words on at most two lines: 17 px, stepping down to 15 px (never smaller) before
-    // anything is left out; a word too long for a line breaks between characters
+    // anything is left out; a word too long for a line breaks between characters. maxLines 1 (a
+    // short screen): one wide line if it fits at 15 px or more, else the usual two.
     let px = 17, ls = null;
-    for (const size of [17, 16, 15]) {
-      px = size; m.font = font(px, weight);
-      ls = wrapLines(m, text, maxW);
-      if (ls.length <= 2) break;
+    for (const lim of maxLines === 1 ? [1, 2] : [2]) {
+      for (const size of [17, 16, 15]) {
+        px = size; m.font = font(px, weight);
+        ls = wrapLines(m, text, maxW);
+        if (ls.length <= lim) break;
+      }
+      if (ls.length <= lim) break;
     }
     if (ls.length > 2) {
       // still too long (the full text is one tap away in the reading overlay)
@@ -267,20 +288,21 @@ export function createPlaceholderThought({ words, emotion = 'other', font = (px,
     return { c, w: w + 24, h: h + 24 };
   }
   function drawLabel(g, r, calm, o, A0 = 1) {
-    const maxW = Math.round(o.labelWidth || 210);
-    const key = `${words?.token}|${font(17, 700)}|${maxW}`;
-    if (key !== labelKey) { labelKey = key; label = { ember: buildLabel(false, maxW), light: buildLabel(true, maxW) }; }
+    const maxW = Math.round(o.labelWidth || 210), lines = o.labelLines === 1 ? 1 : 2;
+    const key = `${words?.token}|${font(17, 700)}|${maxW}|${lines}`;
+    if (key !== labelKey) { labelKey = key; label = { ember: buildLabel(false, maxW, lines), light: buildLabel(true, maxW, lines) }; }
     if (!label?.ember) return;
     const L = calm > 0.5 ? label.light : label.ember;
     // o.labelY: where the visible plate's top edge sits, relative to the body's centre (the ocean
     // floats the words above a far thought); default just under the body. The canvas carries a 12 px margin.
     const y = Number.isFinite(o.labelY) ? o.labelY - 12 : r * 0.98 - 4;
     handle.plate = { w: L.w - 24, h: L.h - 24 };
-    // keep the plate on screen (the canvas is translated to the thought's centre)
-    const m = g.getTransform(), cx = m.e / (m.a || 1);
-    let dx = 0;
-    if (o.minX != null && cx - L.w / 2 + 12 < o.minX) dx = o.minX - (cx - L.w / 2 + 12);
-    if (o.maxX != null && cx + L.w / 2 - 12 > o.maxX) dx = o.maxX - (cx + L.w / 2 - 12);
+    // keep the plate on screen (the canvas is translated to the thought's centre); o.labelX moves
+    // the plate's centre sideways (words beside the thought)
+    const m = g.getTransform(), lx = Number.isFinite(o.labelX) ? o.labelX : 0, cx = m.e / (m.a || 1) + lx;
+    let dx = lx;
+    if (o.minX != null && cx - L.w / 2 + 12 < o.minX) dx = lx + o.minX - (cx - L.w / 2 + 12);
+    if (o.maxX != null && cx + L.w / 2 - 12 > o.maxX) dx = lx + o.maxX - (cx + L.w / 2 - 12);
     g.globalAlpha = A0 * (Number.isFinite(o.labelAlpha) ? clamp(o.labelAlpha) : 1);
     g.drawImage(L.c, -L.w / 2 + dx, y, L.w, L.h);
     g.globalAlpha = 1;

@@ -92,6 +92,8 @@ const CSS = `
   .bx-tag.words { font-size: max(15px, calc(15px * var(--bx-k))); padding: 6px 11px; }
   .bx-tag.line, .bx-tag.piece, .bx-tag.card .bx-card-text { font-size: calc(14px * var(--bx-k)); }
   .bx-tag.card { padding: 7px 10px 8px; }
+  .bx-tag.line { padding: 5px 10px; line-height: 1.25; }
+  .bx-tag.words { white-space: normal; }
   .bx-tag.card .bx-card-title { display: block; white-space: normal; text-wrap: balance; text-align: center; }
   .bx-tag.card .bx-card-title::before { display: inline-block; vertical-align: 0.08em; margin-right: 6px; }
 }

@@ -38,7 +38,9 @@ export function mount(ctx) {
   });
   // where each piece waits before it is placed: row startRow[i] (never reading order)
   const startRow = SHUFFLES[hash(ctx.parts.steps.join('|')) % SHUFFLES.length];
-  const wordsTag = ctx.tags.add(ctx.parts.excerpt, { kind: 'words', max: Math.round(A0.w * 0.46) });
+  const SHORT_ = A0.h < 270;
+  // a short phone: one line of their words, top left, above the pieces (the thought and the treads keep the right)
+  const wordsTag = ctx.tags.add(SHORT_ ? (ctx.parts.excerptShort || ctx.parts.excerpt) : ctx.parts.excerpt, { kind: 'words', max: Math.round(SHORT_ ? A0.w * 0.66 : A0.w * 0.46) });
   const grads = new Map();    // the piece's light, cached per height
   const SHORT = A0.h < 270;   // a short phone: the words step aside once the first piece is in
   const stepLabel = ctx.tags.add(L.labels.step, { kind: 'label', colour: WARM[1] });
@@ -70,7 +72,7 @@ export function mount(ctx) {
     pieces.forEach((b) => {
       if (b.press) return;
       if (b.slot >= 0) { const tr = G.treads[b.slot]; b.hx = tr.x; b.hy = tr.y; }
-      else { const row = startRow[b.i]; b.hx = G.A.x + Math.max(G.sizes[b.i].w / 2 + 10, G.A.w * 0.26); b.hy = G.A.y + G.A.h * 0.16 + row * (G.maxH + 14) + G.maxH / 2; }
+      else { const row = startRow[b.i]; b.hx = G.A.x + Math.max(G.sizes[b.i].w / 2 + 10, G.A.w * 0.26); b.hy = G.A.y + (SHORT_ ? Math.max(G.A.h * 0.16, (wordsTag.h || 32) + 10) : G.A.h * 0.16) + row * (G.maxH + 14) + G.maxH / 2; }
     });
   }
   homes();
@@ -163,7 +165,8 @@ export function mount(ctx) {
     thought.step(dt, R_);
     thought.draw(g, { tension: phase === 'pieces' ? 0.55 - placed() * 0.12 : 0.1, calm: phase === 'standing' ? 0.75 : placed() * 0.15, blink: blinkAt(t, 0.8), lookX: phase === 'pieces' ? -0.6 : 0, lookY: 0.4 });
     motes.draw(g, dt);
-    wordsTag.at(thought.x, thought.y - R * 1.1 - 6, 'top', SHORT && (placed() || held) ? 0 : 1);
+    if (SHORT) wordsTag.at(G.A.x + 2, G.A.y + (wordsTag.h || 34) / 2, 'left', placed() || held ? 0 : 1);
+    else wordsTag.at(thought.x, thought.y - R * 1.1 - 6, 'top', 1);
     // the finished staircase names itself on its open side (left of the treads: the pieces' column is empty by then)
     const left = Math.min(...G.treads.map((q) => q.x - q.w / 2));
     stepLabel.at(left - 12, G.treads[1].y, 'right', phase === 'standing' ? clamp(fuseT - 0.6) : 0);

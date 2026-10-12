@@ -168,6 +168,9 @@ export class Sea {
     const F = () => new Float32Array(max);
     // per packet (struct of arrays)
     this.on = new Uint8Array(max); this.ring = new Uint8Array(max); this.user = new Uint8Array(max);
+    // carry: the packet moves floating things (the person's swells and the storm's seed swells; never
+    // the wind's background ripples). seed: one of the storm's ground lines, turned into a swell.
+    this.carry = new Uint8Array(max); this.seed = new Uint8Array(max);
     this.free = new Uint8Array(max);          // 0 while a finger sculpts it, 1 once released
     this.k = F(); this.w = F(); this.cg = F(); this.beta = F(); this.lam = F();
     this.A = F(); this.At = F(); this.A0 = F();
@@ -216,6 +219,7 @@ export class Sea {
     if (i < 0) return -1;
     const l = Math.hypot(o.dx || 0, o.dz || 0) || 1;
     this.on[i] = 1; this.ring[i] = 0; this.user[i] = o.user === false ? 0 : 1; this.free[i] = o.free === false ? 0 : 1;
+    this.carry[i] = o.carry != null ? (o.carry ? 1 : 0) : this.user[i]; this.seed[i] = o.seed ? 1 : 0;
     this._setLambda(i, o.lambda);
     this.dx[i] = (o.dx || 0) / l; this.dz[i] = (o.dz ?? 1) / l;
     this.ex[i] = o.x; this.ez[i] = o.z; this.ax[i] = o.ax ?? o.x; this.az[i] = o.az ?? o.z;
@@ -230,7 +234,7 @@ export class Sea {
   ringAt(x, z, lambda, A, user = true) {
     const i = this._slot();
     if (i < 0) return -1;
-    this.on[i] = 1; this.ring[i] = 1; this.user[i] = user ? 1 : 0; this.free[i] = 1;
+    this.on[i] = 1; this.ring[i] = 1; this.user[i] = user ? 1 : 0; this.free[i] = 1; this.carry[i] = this.user[i]; this.seed[i] = 0;
     this._setLambda(i, lambda);
     this.ex[i] = x; this.ez[i] = z; this.dx[i] = 0; this.dz[i] = 1;
     this.sl[i] = this.sl0[i] = 0.55 * lambda; this.sw[i] = this.sw0[i] = this.sl[i];
@@ -295,8 +299,10 @@ export class Sea {
   }
 
   /**
-   * The sea at one point (world px). out: { h, hx, hz, dx, dz (Gerstner shift), amp (Σ A·E), ux, uz (Stokes drift) }.
-   * userOnly: count only the person's own swells (not the storm's seed swells) in the drift.
+   * The sea at one point (world px). out: { h, hx, hz, dx, dz (Gerstner shift), amp (Σ A·E), ux, uz (Stokes drift),
+   * uux, uuz (the drift of the person's own swells alone) }. Only carrying packets drift things (the
+   * person's swells and the storm's seed swells): the wind's ripples are texture, they move nothing.
+   * userOnly: count only the person's own swells in ux/uz too.
    */
   sample(x, z, out, userOnly = false) {
     let h = 0, hx = 0, hz = 0, gx = 0, gz = 0, amp = 0, ux = 0, uz = 0, uux = 0, uuz = 0;
@@ -326,9 +332,11 @@ export class Sea {
       h += a * c; hx -= a * k * dx * sn; hz -= a * k * dz * sn; amp += a;
       const q = this._q[i] || 0;
       gx -= q * a * dx * sn; gz -= q * a * dz * sn;
-      const u = this.w[i] * k * a * a;
-      ux += u * dx; uz += u * dz;
-      if (this.user[i]) { uux += u * dx; uuz += u * dz; }
+      if (this.carry[i]) {
+        const u = this.w[i] * k * a * a;
+        ux += u * dx; uz += u * dz;
+        if (this.user[i]) { uux += u * dx; uuz += u * dz; }
+      }
     }
     for (const a of this.amb) {
       if (a.A <= 0) continue;
@@ -352,10 +360,19 @@ export class Sea {
    * near the horizon). Directional packets use exact recurrences along the row (one exp and
    * one sin/cos per packet per row).
    */
-  /** (AMPU, optional: Σ k·A·E of the person's own swells — their steepness — for the crest light.) */
-  row(z, x0, step, n, dz, o, H, HX, HZ, GX, GZ, AMP, filter = true, AMPU = null, lamMin = 0) {
+  /**
+   * (AMPU, optional: Σ k·A·E of the person's own swells — their steepness — for the crest light.)
+   * (X, optional: { CHOP, chopMax, GOLD, goldSec } — CHOP: Σ k·A·E of the person's short waves
+   * (λ < chopMax) even where the grid cannot resolve them, so the shading can show broken water;
+   * GOLD: Σ k·A·E·max(0, cos θ)² of the storm's seed swells younger than goldSec, fading with age —
+   * their crests, still lit in the storm's gold.)
+   */
+  row(z, x0, step, n, dz, o, H, HX, HZ, GX, GZ, AMP, filter = true, AMPU = null, lamMin = 0, X = null) {
     for (let c = 0; c < n; c++) { H[o + c] = 0; HX[o + c] = 0; HZ[o + c] = 0; GX[o + c] = 0; GZ[o + c] = 0; AMP[o + c] = 0; }
     if (AMPU) for (let c = 0; c < n; c++) AMPU[o + c] = 0;
+    const XC = X && X.CHOP ? X.CHOP : null, XG = X && X.GOLD ? X.GOLD : null;
+    if (XC) for (let c = 0; c < n; c++) XC[o + c] = 0;
+    if (XG) for (let c = 0; c < n; c++) XG[o + c] = 0;
     const sx = Math.abs(step);
     for (const a of this.amb) {
       if (a.A <= 0) continue;
@@ -394,8 +411,11 @@ export class Sea {
       }
       const dx = this.dx[i], dzv = this.dz[i];
       const att = filter ? Math.exp(-0.5 * ((k * dx * sx) ** 2 + (k * dzv * dz) ** 2)) : 1;
-      if (att < 0.02) continue;
-      const A = this.A[i] * att, sl = this.sl[i], sw = this.sw[i], q0 = this._q[i] || 0;
+      const C8 = XC && this.user[i] && this.lam[i] < X.chopMax ? XC : null;
+      const G8 = XG && this.seed[i] && this.free[i] && this.age[i] < X.goldSec ? XG : null;
+      if (att < 0.02 && !C8 && !G8) continue;
+      const A0 = this.A[i], A = att >= 0.02 ? A0 * att : 0, sl = this.sl[i], sw = this.sw[i], q0 = this._q[i] || 0;
+      const gk = G8 ? A * k * (1 - this.age[i] / X.goldSec) : 0, ck = A0 * k;
       const run = this.free[i] ? this.cg[i] * this.age[i] : 0;
       // envelope: exponent quadratic in the column index c → e(c) = a2·c² + a1·c + a0
       const pz = z - this.ez[i] - dzv * run, px0 = x0 - this.ex[i] - dx * run;
@@ -421,9 +441,13 @@ export class Sea {
       for (let c = 0; c < n; c++) {
         if (e > -14) {
           const E = Math.exp(e), j = o + c;
-          H[j] += A * E * cs; HX[j] -= kx * E * sn; HZ[j] -= kz * E * sn; AMP[j] += A * E;
-          if (U8) U8[j] += A * E * k;
-          GX[j] -= gxk * E * sn; GZ[j] -= gzk * E * sn;
+          if (A > 0) {
+            H[j] += A * E * cs; HX[j] -= kx * E * sn; HZ[j] -= kz * E * sn; AMP[j] += A * E;
+            if (U8) U8[j] += A * E * k;
+            GX[j] -= gxk * E * sn; GZ[j] -= gzk * E * sn;
+          }
+          if (C8) C8[j] += ck * E;
+          if (G8 && cs > 0) G8[j] += gk * E * cs * cs;
         }
         const ncs = cs * cd - sn * sd; sn = sn * cd + cs * sd; cs = ncs;
         e += de; de += dde;
@@ -442,7 +466,9 @@ export class Sea {
     return e > 1e-6 ? et / e : 0;
   }
   /** Total energy (A²·√area summed) — a size measure for the hum and the settle. */
-  energy() { let e = 0; for (let i = 0; i < this.max; i++) if (this.on[i]) e += this.A[i] * this.A[i] * Math.sqrt(this.sl[i] * this.sw[i]); return e; }
+  energy(userOnly = false) { let e = 0; for (let i = 0; i < this.max; i++) if (this.on[i] && (!userOnly || this.user[i])) e += this.A[i] * this.A[i] * Math.sqrt(this.sl[i] * this.sw[i]); return e; }
+  /** How many of the person's own long swells (λ ≥ lamMin) are still rolling with at least `minA` px. */
+  swells(lamMin, minA = 1) { let c = 0; for (let i = 0; i < this.max; i++) if (this.on[i] && this.user[i] && !this.ring[i] && this.lam[i] >= lamMin && this.A[i] >= minA) c++; return c; }
   /** Slope energy of short waves (λ < lamMax): how choppy it is. */
   chop(lamMax, userOnly = false) { let e = 0; for (let i = 0; i < this.max; i++) if (this.on[i] && this.lam[i] < lamMax && (!userOnly || this.user[i])) { const s = this.A[i] * this.k[i]; e += s * s; } return e; }
   /** Is packet i (by serial id) still alive, and how big? */
@@ -472,7 +498,24 @@ export class Wake {
     this.y0 = 0;     // screen y of row 0's centre - cell/2
   }
   /** Perspective per row: f(row) → [fx, fy] in 0..1 (screen speed relative to the near water). */
-  setRows(fn) { for (let j = 0; j < this.rows; j++) { const [fx, fy] = fn(j); this.cx2[j] = this.c2 * clamp(fx * fx, 0.02, 1); this.cy2[j] = this.c2 * clamp(fy * fy, 0.02, 1); } }
+  setRows(fn) { for (let j = 0; j < this.rows; j++) { const [fx, fy] = fn(j); this.setRow(j, fx, fy); } }
+  /** One row's perspective (no allocation): fx, fy in 0..1. */
+  setRow(j, fx, fy) { this.cx2[j] = this.c2 * clamp(fx * fx, 0.02, 1); this.cy2[j] = this.c2 * clamp(fy * fy, 0.02, 1); }
+  /**
+   * Take over another wake's ripples (a relayout moved or resized the water): row j here is row
+   * j + dRows there; columns line up from the left. Nothing the finger made is lost.
+   */
+  adopt(old, dRows = 0) {
+    if (!old) return this;
+    const cols = Math.min(this.cols, old.cols);
+    for (let j = 0; j < this.rows; j++) {
+      const jo = j + dRows;
+      if (jo < 0 || jo >= old.rows) continue;
+      const a = j * this.cols, b = jo * old.cols;
+      for (let i = 0; i < cols; i++) { this.h[a + i] = old.h[b + i]; this.p[a + i] = old.p[b + i]; }
+    }
+    return this;
+  }
   /** Add a Gaussian dip (negative pushes the water down) at screen (x, y), radius in cells. */
   inject(x, y, amount, rCells = 2) {
     const ci = x / this.cell, cj = (y - this.y0) / this.cell, R = Math.ceil(rCells * 1.6);
