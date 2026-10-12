@@ -179,8 +179,9 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .ritual-ui > .move-title { pointer-events: none; }
 .move-title { text-align: center; margin-top: 6px; position: relative; isolation: isolate; }
 /* soft scrim so prompts stay readable over bright realms (Sunpop, Blue Drift) */
-.move-title::before { content: ''; position: absolute; inset: -14px 0 -18px; z-index: -1; pointer-events: none; border-radius: 32px;
-  background: radial-gradient(closest-side, rgba(12,8,34,.58), rgba(12,8,34,.32) 62%, rgba(12,8,34,0)); }
+/* an even veil right under the words (≥4.5:1 for the 17px prompt over Sunpop's peach sky), feathered out by its shadow */
+.move-title::before { content: ''; position: absolute; inset: -6px 6px -8px; z-index: -1; pointer-events: none; border-radius: 30px;
+  background: rgba(12,8,34,.56); box-shadow: 0 0 34px 16px rgba(12,8,34,.56); }
 .move-title .eyebrow { display: block; margin-bottom: 6px; color: var(--accent); }
 .move-title h2 { margin: 0; font: var(--type-world); letter-spacing: var(--type-world-ls); font-optical-sizing: auto; text-wrap: balance; text-shadow: 0 2px 16px rgba(5,3,20,.6); }
 .move-title p { margin: 6px auto 0; color: rgba(247,243,255,.94); max-width: 30ch; font: var(--type-howto); letter-spacing: var(--type-howto-ls); font-weight: 600; text-wrap: pretty; text-shadow: 0 1px 10px rgba(5,3,20,.85), 0 0 2px rgba(5,3,20,.6); }
