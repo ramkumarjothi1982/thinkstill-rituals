@@ -15,6 +15,8 @@ export const OCEAN = Object.freeze({
   SKY_MIN: 26,            // px of sky kept between the subtitle band and the horizon
   WATER_MIN: 64,          // px of water kept above the hero Mallow's head
   GAP: 8,                 // px between the Thought Mallow and the hero / its words
+  BOB: 0.07,              // × the hero's height: how far its float may lift it (the thought's home leaves room for it)
+  WATER_STRIP: 0.4,       // × the thought's radius: open water kept between its ring on the water and the hero's head
   BOTTOM: 64,             // px kept clear at the bottom (choice chips on small phones)
   BUBBLE_MIN: 44,         // px: bubbles are at least this big until they drift past 6·Z0…
   BUBBLE_TIGHT: 36,       // …except where the water is narrow (beside the hero on a small phone): a smaller bubble, never an overlap
@@ -60,6 +62,16 @@ const overlaps = (a, b, pad = 0) => a.x0 < b.x1 + pad && a.x1 > b.x0 - pad && a.
 const box = (x, y, w, h) => ({ x0: x - w / 2, y0: y - h / 2, x1: x + w / 2, y1: y + h / 2 });
 
 /**
+ * The Thought Mallow's clear zone at radius rr, centre (x, y), with a words plate w px wide: no bubble floats in it, so
+ * the thought keeps its focal place (bubbles the size of the thought never line up beside it).
+ */
+export function thoughtZone(x, y, rr, plateW = 0, out = {}) {
+  const zx = Math.max(2.5 * rr, plateW / 2 + 6);
+  out.x0 = x - zx; out.x1 = x + zx; out.y0 = y - 2.2 * rr; out.y1 = y + 1.7 * rr;
+  return out;
+}
+
+/**
  * Plan the screen. In: { W, H, band:{y,h}, mallow (client box or null), textW (the words at
  * 17 px, 0 = no thought), plate (optional: the measured words plate {w, h, lines}, which wins over
  * the textW estimate), n (photos) }. Out: { hy, U, mallow, waterY, home:{x, y, r}, plate:{w, h,
@@ -84,15 +96,17 @@ export function planOcean({ W, H, band, mallow = null, textW = 0, plate: plateIn
   // the Thought Mallow's home: just beyond the hero's head, its words above it (else below, else beside)
   let home = null, plate = null;
   const fits = (b) => b.x0 >= E - 0.5 && b.x1 <= W - E + 0.5 && b.y0 >= bandBottom + 4 && b.y1 <= floor && !overlaps(b, mrect);
+  // (a strip of open water between the thought and the hero's head, plus room for the hero's float: it never sits on it)
+  const lift = OCEAN.WATER_STRIP * r + OCEAN.BOB * M.height;
   const tryCentre = () => {
-    const x = W / 2, y = mrect.y0 - OCEAN.GAP - r;
+    const x = W / 2, y = mrect.y0 - OCEAN.GAP - lift - r;
     if (y < hy + r * 0.35 + 6) return null;
     const body = box(x, y, 2 * r, 2 * r);
     if (!P) return fits(body) ? { home: { x, y, r }, plate: null } : null;
     const above = box(x, y - r - 4 - P.h / 2, P.w, P.h);
     if (fits(body) && fits(above)) return { home: { x, y, r }, plate: { ...P, side: 'above', x, y: above.y0 + P.h / 2 } };
     // words below the body: lift the thought so the plate clears the hero's head
-    const y2 = mrect.y0 - OCEAN.GAP - P.h - 4 - r;
+    const y2 = mrect.y0 - OCEAN.GAP - lift - P.h - 4 - r;
     if (y2 >= hy + r * 0.35 + 6) {
       const b2 = box(x, y2, 2 * r, 2 * r), below = box(x, y2 + r + 4 + P.h / 2, P.w, P.h);
       if (fits(b2) && fits(below)) return { home: { x, y: y2, r }, plate: { ...P, side: 'below', x, y: below.y0 + P.h / 2 } };
@@ -132,11 +146,12 @@ export function planOcean({ W, H, band, mallow = null, textW = 0, plate: plateIn
   const Hw = (homeY - hy) / 0.5;
   const thoughtRect = box(home.x, home.y, 2 * r + 12, 2 * r + 12);
   const plateRect = plate ? box(clamp(plate.x, E + plate.w / 2, W - E - plate.w / 2), plate.y, plate.w + 8, plate.h + 8) : null;
+  const zoneRect = P ? thoughtZone(home.x, home.y, r, plate && plate.side !== 'side' ? plate.w : 0) : thoughtZone(home.x, home.y, r);
 
   // bubbles: candidate spots over the water, greedily spread (deterministic)
   const slots = [];
   if (n > 0) {
-    const obs = [mrect, bandRect, thoughtRect, ...(plateRect ? [plateRect] : [])];
+    const obs = [mrect, bandRect, thoughtRect, zoneRect, ...(plateRect ? [plateRect] : [])];
     const cand = [];
     const sOf = (y) => (y - hy) / Hw;
     const st = Math.max(6, Math.round(W / 80));
@@ -180,7 +195,7 @@ export function planOcean({ W, H, band, mallow = null, textW = 0, plate: plateIn
   }
   return {
     W, H, U, hy, waterY, homeY, Hw, labelW, floor, home, plate, slots,
-    mallow: M, rects: { band: bandRect, mallow: mrect, thought: thoughtRect, plate: plateRect },
+    mallow: M, rects: { band: bandRect, mallow: mrect, thought: thoughtRect, plate: plateRect, zone: zoneRect },
   };
 }
 

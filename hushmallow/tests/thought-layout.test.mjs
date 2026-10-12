@@ -136,7 +136,7 @@ function snapshot(L, t, hero) {
     for (const f of faces) pf += ov(a, f);
     ph += ov(a, hero);
   }
-  return { t, pp, pf, ph, crowd: L.crowding, homes: list.map((th) => [th.home.x, th.home.y]), ci: list.map((th) => L.tags.get(th)?.ci), text: list.map((th) => L.tagText(th)), emo: list.map((th) => th.emotion) };
+  return { t, pp, pf, ph, crowd: L.crowding, homes: list.map((th) => [th.home.x, th.home.y]), ci: list.map((th) => L.tags.get(th)?.ci), tags: list.map((th) => { const tg = L.tags.get(th); return tg ? [tg.x, tg.y] : null; }), text: list.map((th) => L.tagText(th)), emo: list.map((th) => th.emotion) };
 }
 // at rest: from 2 s after the last thought was released (it has flown out of the hero and settled)
 const atRest = (log) => log.frames.filter((f) => f.t >= log.lastAdd + 2);
@@ -155,6 +155,12 @@ function check(name, { L, log }) {
     assert.ok(d <= 25, `${name}: ${i} moved ${d.toFixed(0)} px at rest`);
   });
   assert.deepEqual(b.ci, a.ci, `${name}: plates kept their sides at rest`);
+  // and the words stay where they are, at every sample (never sliding to and fro between two places)
+  for (const f of rest) f.tags.forEach((q, i) => {
+    if (a.emo[i] === 'loneliness' || !q || !a.tags[i]) return;
+    const d = Math.hypot(q[0] - a.tags[i][0], q[1] - a.tags[i][1]);
+    assert.ok(d <= 25, `${name}: ${i}'s words moved ${d.toFixed(0)} px at rest (t ${f.t.toFixed(2)})`);
+  });
   return b;
 }
 

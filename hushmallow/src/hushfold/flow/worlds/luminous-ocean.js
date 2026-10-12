@@ -52,7 +52,7 @@
 
 import { glowSprite, glintSprite, Pool, Rings, flashEnv, clamp, lerp, smoothstep, TAU, makeCanvas } from '../../../world/util.js';
 import { Sea, Wake, SEA, strokeWave, strokePacket, calibrateDrift, makeCamera, fitCamera, scaleAt, depthAt, project, unproject } from './ocean-sea.js';
-import { planOcean, OCEAN, bubbleSize, createLongWavesDetector, createDistanceDetector, createOceanProgress } from './ocean-rules.js';
+import { planOcean, OCEAN, bubbleSize, thoughtZone, createLongWavesDetector, createDistanceDetector, createOceanProgress } from './ocean-rules.js';
 import { wrapLines } from '../placeholders.js';
 
 const C = {
@@ -164,10 +164,9 @@ export function create(ctx) {
   // grid (rows × columns) — world → screen, shading
   const NG = ROWS * COLS;
   const gH = new Float32Array(NG), gHX = new Float32Array(NG), gHZ = new Float32Array(NG), gGX = new Float32Array(NG), gGZ = new Float32Array(NG), gA = new Float32Array(NG), gAU = new Float32Array(NG);
-  const gMark = new Uint8Array(NG), gPred = new Uint8Array(NG), gSucc = new Int32Array(NG);
   const gSX = new Float32Array(NG), gSY = new Float32Array(NG), gR = new Float32Array(NG), gG = new Float32Array(NG), gB = new Float32Array(NG), gCrest = new Float32Array(NG), gSpec = new Float32Array(NG), gPath = new Float32Array(NG);
-  const gChop = new Float32Array(NG), gGold = new Float32Array(NG);
-  const rowX = { CHOP: gChop, chopMax: 1, GOLD: gGold, goldSec: GOLD_SEC };
+  const gChop = new Float32Array(NG), gGold = new Float32Array(NG), gAmb = new Float32Array(NG), gGlim = new Float32Array(NG);
+  const rowX = { CHOP: gChop, chopMax: 1, GOLD: gGold, goldSec: GOLD_SEC, AMB: gAmb, ambA: 0 };
   // broken water: two tiles of smooth random facets (wider than tall, as the view flattens them), morphing
   // into each other — cheap, irregular, smooth in time (no flicker)
   const TILE = 32, tileA = facetTile(ctx.seed ^ 0x2c1b), tileB = facetTile(ctx.seed ^ 0x77e3);
@@ -556,70 +555,135 @@ export function create(ctx) {
   }
   /**
    * Slots for the photos: the planned ones (near, roomy — smaller beside the hero on a small phone),
-   * then small ones far out on the horizon, clear of the words (where waiting photos take turns).
+   * then small ones far out, at staggered depths, on lanes clear of the thought's column (it drifts out along it, and
+   * bubbles its size never line up beside it) and of its words — where waiting photos take turns.
    */
   function bubbleSlots(n = 7) {
     if (slotsAll && slotsAll.n >= n) return slotsAll.list;
     const out = plan.slots.map((sl) => ({ x: sl.x, y: sl.y, D: sl.D, far: false }));
     const fin = makeCamera({ W, H, hy: plan.hy, homeY: plan.homeY, waterY: plan.waterY });
-    const d = 8.3, s0 = 1 / (1 + d), D = bubbleSize(s0, d, U);
-    const y = fin.hy + fin.Hw * s0 - 0.3 * D;
-    const P = plan.rects.plate, T = plan.rects.thought;
-    for (let x = OCEAN.EDGE + D / 2; x <= W - OCEAN.EDGE - D / 2 && out.length < n + 2; x += 2) {
-      const b = { x0: x - D / 2, x1: x + D / 2, y0: y - D / 2, y1: y + D / 2 };
-      const hit = (o) => o && b.x0 < o.x1 + 6 && b.x1 > o.x0 - 6 && b.y0 < o.y1 + 6 && b.y1 > o.y0 - 6;
-      if (hit(P) || hit(T) || hit(plan.rects.band)) continue;
-      if (out.some((q) => Math.hypot(q.x - x, q.y - y) < (q.D + D) / 2 + OCEAN.BUBBLE_GAP + 6)) continue;
-      out.push({ x, y, D, far: true });
-      x += D;
+    const P = plan.rects.plate, T = plan.rects.thought, Z = plan.rects.zone, E = OCEAN.EDGE;
+    const hit = (b, o) => o && b.x0 < o.x1 + 6 && b.x1 > o.x0 - 6 && b.y0 < o.y1 + 6 && b.y1 > o.y0 - 6;
+    for (let pass = 0; pass < 2; pass++) {
+      // the thought's column: as wide as its clear zone (first), else just its body and a margin (a wide words plate
+      // leaves no lanes beside it)
+      const half = pass ? 2.5 * plan.home.r + 24 : Math.max(2.5 * plan.home.r, ((P ? P.x1 - P.x0 : 0) / 2) + 6);
+      const cL = plan.home.x - half, cR = plan.home.x + half;
+      let lane = out.filter((q) => q.far).length;
+      for (let x = E + 14; x <= W - E - 14 && out.length < n + 2; x += 2) {
+        const d = FAR_D[lane % FAR_D.length], s0 = 1 / (1 + d), D = bubbleSize(s0, d, U);
+        if (x - D / 2 < E || x + D / 2 > W - E) continue;
+        if (x + D / 2 > cL - 4 && x - D / 2 < cR + 4) continue;
+        const y = fin.hy + fin.Hw * s0 - 0.3 * D;
+        const b = { x0: x - D / 2, x1: x + D / 2, y0: y - D / 2, y1: y + D / 2 };
+        if (hit(b, P) || hit(b, T) || hit(b, Z) || hit(b, plan.rects.band)) continue;
+        if (out.some((q) => Math.hypot(q.x - x, q.y - y) < (q.D + D) / 2 + OCEAN.BUBBLE_GAP + 6)) continue;
+        out.push({ x, y, D, far: true });
+        lane++; x += D;
+      }
+      if (out.some((q) => q.far)) break;
     }
     slotsAll = { n, list: out };
     return out;
   }
-  const newBubble = (o) => Object.assign({ i: 0, x: 0, z: 0, vx: 0, vz: 0, yb: 0, vb: 0, rot: 0, rv: 0, D: 44, cap: 400, offX: 0, offY: 0, sx: 0, sy: 0, alpha: 0, state: 'rise', riseK: 0, lift: 0, glowAge: -1, morph: 1, glide: 0, from: null, target: null, away: false, capFor: 0, leaveK: 0, ph: R() * TAU }, o);
+  const FAR_D = [7.4, 8.5, 7.9, 8.8, 7.6];
+  const newBubble = (o) => Object.assign({ i: 0, x: 0, z: 0, vx: 0, vz: 0, yb: 0, vb: 0, rot: 0, rv: 0, D: 44, Dd: -1, cap: 400, offX: 0, offY: 0, sx: 0, sy: 0, gx: 0, gy: 0, alpha: 0, state: 'rise', riseK: 0, lift: 0, glowAge: -1, morph: 1, glide: 0, glideSec: GLIDE_SEC, wait: 0, from: null, target: null, away: false, capFor: 0, leaveK: 0, ph: R() * TAU }, o);
+  /**
+   * Which slot each of the storm's postcards glides to. The assignment of least total way, where — played out in
+   * time, each glide eased over its own duration — no bubble ever has to pass another that has already come to rest
+   * on its way (a heavy cost: it would queue behind it), two glides meet as little as possible (a cost: they ease
+   * round each other), their paths do not cross (a cost: it reads as a tangle) and none crosses over to the hero's
+   * other side (a heavy cost). A card with no slot left turns into its bubble in place and drifts away over the
+   * horizon (taking its turn later). A small exact search (≤ 7 cards), pruned by the best so far. Returns, per card,
+   * the slot index or −1.
+   */
+  function matchCards(cards, slots) {
+    const n = cards.length, m = slots.length;
+    const order = cards.map((_, k) => k).sort((a, b) => cards[a].x - cards[b].x);
+    const cx = hero.ok ? hero.cx : W / 2;
+    const side = (x) => (x < cx - 0.12 * W ? -1 : x > cx + 0.12 * W ? 1 : 0);
+    const dur = (c, q) => clamp(Math.hypot(q.x - c.x, q.y - c.y) / 115, 1.8, 3.4);
+    const cost = (c, q) => Math.hypot(q.x - c.x, q.y - c.y) + (q.far ? 60 : 0) + (side(c.x) * side(q.x) < 0 ? 420 : 0);
+    const cr = (ox, oy, px, py, qx, qy) => (px - ox) * (qy - oy) - (py - oy) * (qx - ox);
+    const NT = 14;
+    // where card c, gliding to slot q, is at time t (s): its way down, eased; at rest once there
+    const at = (c, q, t, out) => { const d = dur(c, q), k = easeInOut(t / d); out.x = c.x + (q.x - c.x) * k; out.y = c.y + (q.y - c.y) * k; return t >= d; };
+    const pa = { x: 0, y: 0 }, pb = { x: 0, y: 0 };
+    const pair = (a, sa, b, sb) => {
+      const A = cards[a], P = slots[sa], B = cards[b], Q = slots[sb];
+      let v = 0;
+      if (cr(A.x, A.y, P.x, P.y, B.x, B.y) * cr(A.x, A.y, P.x, P.y, Q.x, Q.y) < 0 && cr(B.x, B.y, Q.x, Q.y, A.x, A.y) * cr(B.x, B.y, Q.x, Q.y, P.x, P.y) < 0) v += 250;
+      const need = (P.D + Q.D) / 2 + OCEAN.BUBBLE_GAP, T = Math.max(dur(A, P), dur(B, Q));
+      let met = false, blocked = false;
+      for (let k = 1; k <= NT && !blocked; k++) {
+        const t = (k / NT) * T, ra = at(A, P, t, pa), rb = at(B, Q, t, pb);
+        if (Math.hypot(pa.x - pb.x, pa.y - pb.y) >= need) continue;
+        if (ra !== rb) blocked = true; else if (!ra) met = true;      // (one at rest, the other still on its way: it queues)
+      }
+      return v + (blocked ? 1600 : met ? 160 : 0);
+    };
+    const SKIP = 1000;
+    const cur = new Array(n).fill(-1), best = new Array(n).fill(-1), used = new Uint8Array(m);
+    let bestCost = Infinity, nodes = 0;
+    const go = (d, acc) => {
+      if (acc >= bestCost || ++nodes > 40000) return;
+      if (d === n) { bestCost = acc; for (let k = 0; k < n; k++) best[k] = cur[k]; return; }
+      const c = order[d];
+      // nearest slots first: a good bound early
+      const js = SLOT_ORDER.slice(0, m).sort((x, y) => cost(cards[c], slots[x]) - cost(cards[c], slots[y]));
+      for (const j of js) {
+        if (used[j]) continue;
+        let v = acc + cost(cards[c], slots[j]);
+        if (v >= bestCost) continue;
+        for (let e = 0; e < d && v < bestCost; e++) { const o = order[e]; if (cur[o] >= 0) v += pair(c, j, o, cur[o]); }
+        if (v >= bestCost) continue;
+        used[j] = 1; cur[c] = j; go(d + 1, v); used[j] = 0; cur[c] = -1;
+      }
+      go(d + 1, acc + SKIP);
+    };
+    go(0, 0);
+    return best;
+  }
+  const SLOT_ORDER = Array.from({ length: 16 }, (_, k) => k);
   function initBubbles(fromCards = null) {
     bubbles.length = 0; waiting = [];
     const n = Math.min(7, photos?.n || 0);
     if (!n) return;
     const slots = bubbleSlots(n);
-    const used = new Set();
     // postcards from the storm keep their identity (postcard i → bubble i) and start where they hang
-    const order = fromCards?.length ? fromCards.map((c) => c.i).filter((i) => i < n) : [];
-    for (let i = 0; i < n; i++) if (!order.includes(i)) order.push(i);
-    let late = 0;
-    for (const i of order) {
-      const card = fromCards?.find((c) => c.i === i) || null;
-      let best = -1, bd = Infinity;
-      // (a postcard keeps to its own side of the hero: its glide down to the water never crosses it)
-      const side = (x) => (x < W / 2 - 0.12 * W ? -1 : x > W / 2 + 0.12 * W ? 1 : 0);
-      for (let k = 0; k < slots.length; k++) {
-        if (used.has(k)) continue;
-        const cross = card && side(card.x) * side(slots[k].x) < 0 ? 220 : 0;
-        const d = card ? Math.hypot(slots[k].x - card.x, slots[k].y - card.y) + (slots[k].far ? 60 : 0) + cross : k;
-        if (d < bd) { bd = d; best = k; }
+    const cards = (fromCards || []).filter((c) => c.i < n && Number.isFinite(c.x) && Number.isFinite(c.y));
+    const match = cards.length ? matchCards(cards, slots) : [];
+    const used = new Set(match.filter((k) => k >= 0));
+    cards.forEach((card, c) => {
+      const k = match[c], from = { x: card.x, y: card.y, size: Math.max(card.w, card.h), rot: card.rot || 0 };
+      if (k < 0) {
+        // no room on the water now: it still turns into its bubble in place, then drifts away over the horizon (and takes its turn later)
+        const hx = clamp(card.x, OCEAN.EDGE + 8, W - OCEAN.EDGE - 8), fin = makeCamera({ W, H, hy: plan.hy, homeY: plan.homeY, waterY: plan.waterY });
+        bubbles.push(newBubble({ i: card.i, D: 12, sx: card.x, sy: card.y, gx: card.x, gy: card.y, alpha: 1, state: 'card', riseK: 1, morph: 0, from, target: { x: hx, y: fin.hy + 1, D: 12 }, away: true }));
+        return;
       }
-      if (best < 0) {
-        // no room on the water now: a postcard still turns into its bubble in place, then drifts away over the horizon (and takes its turn later)
-        if (card) {
-          const hx = clamp(card.x, OCEAN.EDGE + 8, W - OCEAN.EDGE - 8), fin = makeCamera({ W, H, hy: plan.hy, homeY: plan.homeY, waterY: plan.waterY });
-          bubbles.push(newBubble({ i, D: 12, sx: card.x, sy: card.y, alpha: 1, state: 'card', riseK: 1, morph: 0,
-            from: { x: card.x, y: card.y, size: Math.max(card.w, card.h), rot: card.rot || 0 }, target: { x: hx, y: fin.hy + 1, D: 12 }, away: true }));
-        } else waiting.push(i);
-        continue;
-      }
-      used.add(best);
-      const sl = slots[best];
+      const sl = slots[k];
       unproject(cam, sl.x, sl.y + 0.3 * sl.D, wo);
-      if (card || !fromCards) {
-        bubbles.push(newBubble({ i, x: wo.x, z: wo.z, D: sl.D, cap: sl.D + 0.5, sx: card ? card.x : sl.x, sy: card ? card.y : sl.y,
-          alpha: card ? 1 : 0, state: card ? 'card' : 'rise', morph: card ? 0 : 1,
-          from: card ? { x: card.x, y: card.y, size: Math.max(card.w, card.h), rot: card.rot || 0 } : null, target: { x: sl.x, y: sl.y, D: sl.D } }));
-      } else {
-        // a photo the storm was not showing appears in its place on the water as the melt reaches it, one after
-        // another — held on screen (the horizon is still rising) and set on the water when the melt has settled
-        bubbles.push(newBubble({ i, D: sl.D, cap: sl.D + 0.5, sx: sl.x, sy: sl.y, alpha: 0, fade: -0.6 * late++, state: 'glide', morph: 1,
-          from: { x: sl.x, y: sl.y, size: sl.D, rot: 0 }, target: { x: sl.x, y: sl.y, D: sl.D } }));
-      }
+      // (a longer way down takes a little longer: never hurried)
+      const glideSec = clamp(Math.hypot(sl.x - card.x, sl.y - card.y) / 115, 1.8, 3.4);
+      bubbles.push(newBubble({ i: card.i, x: wo.x, z: wo.z, D: sl.D, cap: sl.D + 0.5, sx: card.x, sy: card.y, gx: card.x, gy: card.y, alpha: 1, state: 'card', morph: 0, glideSec, from, target: { x: sl.x, y: sl.y, D: sl.D } }));
+    });
+    // the other photos: on a cold start they rise at their places; in a melt, a photo the storm was not showing appears in
+    // its place on the water as the melt reaches it, one after another — held on screen (the horizon is still rising) and
+    // set on the water when the melt has settled
+    let late = 0;
+    const free = slots.map((_, k) => k).filter((k) => !used.has(k));
+    // (a photo appearing in place takes, first, a slot that no postcard's glide passes on its way down)
+    const onWay = (k) => { const q = slots[k]; return cards.some((c, ci) => { const t = match[ci] >= 0 ? slots[match[ci]] : null; if (!t) return false; const vx = t.x - c.x, vy = t.y - c.y, L = vx * vx + vy * vy || 1, u = clamp(((q.x - c.x) * vx + (q.y - c.y) * vy) / L); return Math.hypot(c.x + vx * u - q.x, c.y + vy * u - q.y) < (q.D + t.D) / 2 + OCEAN.BUBBLE_GAP; }); };
+    free.sort((a, b) => (onWay(a) ? 1 : 0) - (onWay(b) ? 1 : 0) || a - b);
+    for (let i = 0; i < n; i++) {
+      if (cards.some((c) => c.i === i)) continue;
+      const k = free.shift();
+      if (k == null) { waiting.push(i); continue; }
+      const sl = slots[k];
+      unproject(cam, sl.x, sl.y + 0.3 * sl.D, wo);
+      if (!fromCards) bubbles.push(newBubble({ i, x: wo.x, z: wo.z, D: sl.D, cap: sl.D + 0.5, sx: sl.x, sy: sl.y, alpha: 0, state: 'rise', target: { x: sl.x, y: sl.y, D: sl.D } }));
+      else bubbles.push(newBubble({ i, x: wo.x, z: wo.z, D: sl.D, cap: sl.D + 0.5, sx: sl.x, sy: sl.y, gx: sl.x, gy: sl.y, alpha: 0, fade: -0.6 * late++, state: 'glide', morph: 1, from: { x: sl.x, y: sl.y, size: sl.D, rot: 0 }, target: { x: sl.x, y: sl.y, D: sl.D } }));
     }
   }
   /**
@@ -1074,8 +1138,11 @@ export function create(ctx) {
       const m = rm ? k : mask(b.from.x, b.from.y);
       b.morph = Math.max(b.morph, rm ? k : smoothstep(0.3, 0.95, m));
       b.state = b.morph < 1 ? 'card' : 'glide';
-      if (b.morph >= 1 && k >= 0.5) b.glide = Math.min(1, b.glide + dt / GLIDE_SEC);
-      if (b.glide >= 1 && riseDone) settleBubble(b);
+      if (b.morph >= 1 && k >= 0.5) b.glide = Math.min(1, b.glide + dt / (b.glideSec || GLIDE_SEC));
+      // it settles on the water once it has arrived (or, held off its place by something floating there, after a moment where it is)
+      if (b.glide >= 1) b.wait += dt;
+      // (never above the water: a bubble only ever settles on it)
+      if (b.glide >= 1 && riseDone && b.gy > hyNow + 0.3 * b.D + 2 && (Math.hypot(b.gx - b.target.x, b.gy - b.target.y) < 2.5 || b.wait > 2.5)) settleBubble(b);
     }
     if (thought && tS.from) {
       const m = rm ? 1 : Math.min(mask(tS.from.x, tS.from.y), mask(tS.from.x, tS.from.y + (tS.r + 30)));
@@ -1092,14 +1159,14 @@ export function create(ctx) {
     const done = riseDone && k >= 1 && (!thought || !tS.from) && bubbles.every((b) => !b.from);
     if (done) { melt = null; hyNow = hyTarget; hero.floatK = 1; arriveAt = 1.6; tS.vis = 1; }
   }
-  /** A bubble that glided down from its postcard settles on the water (physics from here). */
+  /** A bubble that glided down from its postcard settles on the water exactly where it is (physics from here: no pop). */
   function settleBubble(b) {
     const t = b.target;
     if (b.away) { b.from = null; b.state = 'leave'; b.leaveK = 0; return; }
-    unproject(cam, t.x, t.y + 0.3 * t.D, wo);
-    b.x = wo.x; b.z = wo.z; b.vx = b.vz = 0;
+    unproject(cam, b.gx, b.gy + 0.3 * b.D, wo);
+    b.x = wo.x; b.z = wo.z; b.vx = b.vz = 0; b.yb = b.vb = 0;
     b.from = null; b.state = 'float'; if (!(b.fade != null && b.fade < 1)) b.alpha = 1;
-    splash(t.x, t.y + t.D * 0.32, t.D);
+    splash(b.gx, b.gy + b.D * 0.32, t.D);
   }
   function land() {
     tS.landed = true; tS.from = null; tS.landK = 1;
@@ -1322,7 +1389,7 @@ export function create(ctx) {
       b.vx += (sm.ux * g - b.vx) * ki; b.vz += (sm.uz * g + towAt(b.z) * 1.4 * (rm ? 0.6 : 1) - b.vz) * ki;
       if (!b.from && (b.state === 'float' || b.state === 'rise') && dt > 0) {
         b.x += b.vx * dt; b.z += b.vz * dt;
-        b.z = clamp(b.z, -0.6 * cam.Z0, OCEAN.CAP * cam.Z0);
+        b.z = clamp(b.z, -0.8 * cam.Z0, OCEAN.CAP * cam.Z0);
       }
       const h = sm.h * (rm ? 0.4 : 1);
       b.vb += (-40 * (b.yb - h) - 7 * b.vb) * dt; b.yb += b.vb * dt;
@@ -1336,23 +1403,24 @@ export function create(ctx) {
       if (b.state === 'float') { b.capFor = b.z / cam.Z0 >= OCEAN.CAP - 0.6 ? (b.capFor || 0) + dt : 0; if (waiting.length && b.capFor > 6) { b.state = 'leave'; b.leaveK = 0; } }
       const s = scaleAt(cam, b.z), d = b.z / cam.Z0;
       // its size: by its depth, but never more than the gap it floats in allows (cap; it grows back slowly when there is room)
-      if (b.state === 'float') b.cap = Math.min(400, b.cap + 12 * dt);
-      b.D = Math.min(bubbleSize(s, d, U), b.cap);
+      // (it grows back to its size slowly, only while there is room for it: never pumping against the hero)
+      if (b.state === 'float' && b.cap < 400 && roomy(b)) b.cap = Math.min(400, b.cap + 12 * dt);
+      // (eased: a settle, a nudge or a new gap never pops its size)
+      const Dt = Math.min(bubbleSize(s, d, U), b.cap);
+      b.Dd = b.Dd < 0 ? Dt : b.Dd + (Dt - b.Dd) * (1 - Math.exp(-dt / 0.3));
+      b.D = b.Dd;
       const wy = cam.hy + (cam.Hw - b.yb * (rm ? 0.3 : 1)) * s;
       let sx = W / 2 + b.x * s, sy = wy - 0.3 * b.D - easeOut(b.lift) * b.D * 0.35 + (b.state === 'rise' ? (1 - clamp(b.riseK)) * b.D * 0.5 : 0);
       if (wake && wy > hyNow) sy += wake.at(sx, wy) * 3;
       if (b.from) {
-        const k = easeInOut(b.glide); sx = lerp(b.from.x, b.target.x, k); sy = lerp(b.from.y, b.target.y, k); b.D = b.away ? lerp(Math.min(b.from.size, 60), b.target.D, k) : b.target.D;
-        // gliding down to the water it goes round the hero, never across it, and round the words
-        if (b.glide > 0) {
-          const r = b.D / 2 + 2;
-          if (K.on && discHits(sx, sy, r, K)) { pushOut(sx, sy, r, K, b.D / 2); sx += po.x; sy += po.y; }
-          if (thought && tS.alpha > 0.3) {
-            const dx = sx - tS.sx, dy = sy - tS.sy, d = Math.hypot(dx, dy) || 1e-3, need = r + tS.r * tS.surf + 4;
-            if (d < need) { sx += (dx / d) * (need - d); sy += (dy / d) * (need - d); }
-          }
-          if (thought && tS.plateW && discHits(sx, sy, r, plateRect(prB))) { const P = prB, l = sx + r - P.x0, rt = P.x1 - (sx - r), u = sy + r - P.y0, d = P.y1 - (sy - r), m = Math.min(l, rt, u, d); if (m === l) sx -= l; else if (m === rt) sx += rt; else if (m === u) sy -= u; else sy += d; }
-        }
+        // gliding from its postcard down to the water: it follows its way down, steering round the hero, the thought (its
+        // clear zone and its words) and the other bubbles, never faster than GLIDE_V — it eases round them, never jumps
+        const k = easeInOut(b.glide);
+        const Dg = b.away ? lerp(Math.min(b.from.size, 60), b.target.D, k) : b.target.D;
+        b.Dg = b.Dg > 0 ? b.Dg + (Dg - b.Dg) * (1 - Math.exp(-dt / 0.3)) : Dg;
+        b.D = b.Dg;
+        if (b.state === 'glide' && dt > 0) steer(b, lerp(b.from.x, b.target.x, k), lerp(b.from.y, b.target.y, k), dt);
+        sx = b.gx; sy = b.gy;
       }
       if (b.state === 'leave') {
         b.leaveK = Math.min(1, (b.leaveK || 0) + dt / 1.6);
@@ -1385,14 +1453,17 @@ export function create(ctx) {
     }
   }
   /**
-   * Keep floaters apart and clear of the hero (its live body: a hard keep-out), the band, the thought
-   * and its words, and the edges (in screen px → world). A bubble in a gap narrower than itself beside
-   * the hero shrinks to fit the gap rather than overlap.
+   * Keep floaters apart and clear of the hero (its live body: a hard keep-out), the band, the thought's clear zone and
+   * its words, and the edges (in screen px → world). Everything but the hero is a soft constraint, eased: a bubble is
+   * moved at most SEP_V px/s by them, so it slides aside rather than jumping. A bubble in a gap narrower than itself
+   * beside the hero shrinks to fit the gap rather than overlap.
    */
   function separate(dt) {
     const E = OCEAN.EDGE, bb = bandBottom() + 4;
-    const T = thought && tS.alpha > 0.3 ? { x: tS.sx, y: tS.sy, r: tS.r * tS.surf + 6 } : null;
-    const P = thought && tS.plateW ? plateRect(prB) : null;
+    const Z = liveZone();
+    const P = thought && tS.plateW && tS.alpha * tS.vis > 0.2 ? plateRect(prB) : null;
+    const lim = Math.max(0.4, SEP_V * dt) / 2;              // (two passes)
+    const capZ = (OCEAN.CAP - 0.05) * cam.Z0;
     for (let it = 0; it < 2; it++) {
       for (let a = 0; a < bubbles.length; a++) {
         const A = bubbles[a];
@@ -1403,18 +1474,18 @@ export function create(ctx) {
           const B = bubbles[c];
           if (B.state !== 'float' && B.state !== 'rise' && B.state !== 'arrive') continue;
           const dx = A.sx - B.sx, dy = A.sy - B.sy, dd = Math.hypot(dx, dy) || 1e-3, need = ra + B.D / 2 + OCEAN.BUBBLE_GAP;
-          if (dd < need) { const m = (need - dd) * 0.5; nudge(B, -dx / dd * m, -dy / dd * m); mx += dx / dd * m; my += dy / dd * m; }
+          if (dd < need) { const m = Math.min(lim, (need - dd) * 0.5); nudge(B, -dx / dd * m, -dy / dd * m); mx += dx / dd * m; my += dy / dd * m; }
         }
-        if (T) { const dx = A.sx - T.x, dy = A.sy - T.y, dd = Math.hypot(dx, dy) || 1e-3, need = ra + T.r + OCEAN.BUBBLE_GAP; if (dd < need) { mx += dx / dd * (need - dd); my += dy / dd * (need - dd); } }
-        const push = (o, pad, world) => {
+        const push = (o, pad, world, noUp) => {
           if (!o) return;
           if (A.sx + ra <= o.x0 - pad || A.sx - ra >= o.x1 + pad || A.sy + ra <= o.y0 - pad || A.sy - ra >= o.y1 + pad) return;
-          const l = A.sx + ra - (o.x0 - pad), r = o.x1 + pad - (A.sx - ra), u = A.sy + ra - (o.y0 - pad), d = o.y1 + pad - (A.sy - ra);
+          const l = A.sx + ra - (o.x0 - pad), r = o.x1 + pad - (A.sx - ra), u = noUp ? Infinity : A.sy + ra - (o.y0 - pad), d = o.y1 + pad - (A.sy - ra);
           const m = Math.min(l, r, u, d);
           if (world) { if (m === l) mx -= l; else if (m === r) mx += r; else if (m === u) my -= u; else my += d; }
           else if (m === l) qx -= l; else if (m === r) qx += r; else if (m === u) qy -= u; else qy += d;
         };
-        if (K.on) push(K, 0, true);
+        // the thought's clear zone: the bubble floats aside on the water (never further out than the far edge)
+        push(Z, OCEAN.BUBBLE_GAP * 0.5, true, A.z >= capZ);
         // (the words only hold a bubble off on screen: it keeps its distance on the water, so a far one stays small
         // as it lines up beneath them, instead of being pushed back towards you)
         push(P, 4, false);
@@ -1423,8 +1494,20 @@ export function create(ctx) {
         if (A.sx + ra > W - E) mx -= A.sx + ra - (W - E);
         if (A.sy - ra < bb) my += bb - (A.sy - ra);
         if (A.sy + ra > plan.floor) my -= A.sy + ra - plan.floor;
+        // eased: at most `lim` px this pass
+        const ml = Math.hypot(mx, my);
+        if (ml > lim) { mx *= lim / ml; my *= lim / ml; }
         if (mx || my) nudge(A, mx, my);
-        if (qx || qy) { A.sx += qx; A.sy += qy; }
+        if (qx || qy) {
+          // a screen hold-off follows the words gently too (it is undone as soon as they have moved on)
+          const ql = Math.hypot(qx, qy), k = ql > lim * 2 ? (lim * 2) / ql : 1;
+          A.offX += qx * k; A.offY += qy * k; A.sx += qx * k; A.sy += qy * k;
+        }
+        // the hero is a hard keep-out (it moves smoothly itself)
+        if (K.on && !(A.sx + ra <= K.x0 || A.sx - ra >= K.x1 || A.sy + ra <= K.y0 || A.sy - ra >= K.y1)) {
+          const l = A.sx + ra - K.x0, r = K.x1 - (A.sx - ra), u = A.sy + ra - K.y0, m = Math.min(l, r, u);
+          if (m === l) nudge(A, -l, 0); else if (m === r) nudge(A, r, 0); else nudge(A, 0, -u);
+        }
       }
     }
     // the hero is the one thing a bubble never covers: still on it (squeezed between it and the edge)? smaller, beside it — or, with
@@ -1436,19 +1519,98 @@ export function create(ctx) {
       if (A.sx + ra <= K.x0 || A.sx - ra >= K.x1 || A.sy + ra <= K.y0 || A.sy - ra >= K.y1) continue;
       const left = A.sx < hero.cx, gap = (left ? K.x0 - E : W - E - K.x1) - 2;
       if (gap >= OCEAN.BUBBLE_FAR && A.sy > K.y0 + 4) {
-        A.cap = Math.min(A.cap, gap); A.D = Math.min(A.D, gap);
+        A.cap = Math.min(A.cap, gap); A.D = Math.min(A.D, gap); A.Dd = Math.min(A.Dd, gap);
         nudge(A, (left ? K.x0 - A.D / 2 - 1 : K.x1 + A.D / 2 + 1) - A.sx, 0);
       } else nudge(A, 0, K.y0 - A.D / 2 - 1 - A.sy);
     }
   }
-  const prB = { x0: 0, y0: 0, x1: 0, y1: 0 };
+  /** Is there room round a floating bubble to grow a little (clear of the hero, the edges and the band)? */
+  function roomy(b) {
+    const r = b.D / 2 + 6, E = OCEAN.EDGE;
+    if (b.sx - r < E || b.sx + r > W - E || b.sy - r < bandBottom() + 4 || b.sy + r > (plan?.floor ?? H)) return false;
+    return !(K.on && discHits(b.sx, b.sy, r, K));
+  }
+  const SEP_V = 150;                                        // px/s: how fast a bubble slides aside for the soft constraints
+  const prB = { x0: 0, y0: 0, x1: 0, y1: 0 }, TZ = { x0: 0, y0: 0, x1: 0, y1: 0 };
+  /** The thought's clear zone on screen now (null when it is not shown). */
+  function liveZone() {
+    if (!thought || tS.alpha * tS.vis < 0.2) return null;
+    return thoughtZone(tS.sx, tS.sy, tS.r * tS.surf, tS.side === 'left' || tS.side === 'right' ? 0 : tS.plateW || 0, TZ);
+  }
+  const GLIDE_V = 190, REP_V = 340, REP_M = 16;     // px/s, px/s, px: the glide's top speed, how firmly things hold it off, from how far
+  const rep = { x: 0, y: 0 };
+  /** Steer a gliding bubble towards (qx, qy) on its way, held off what it must go round (velocity-limited: no jumps). */
+  function steer(b, qx, qy, dt) {
+    const r = b.D / 2;
+    let vx = (qx - b.gx) / 0.12, vy = (qy - b.gy) / 0.12;
+    const va = Math.hypot(vx, vy);
+    if (va > GLIDE_V) { vx *= GLIDE_V / va; vy *= GLIDE_V / va; }
+    rep.x = rep.y = 0;
+    if (K.on) repelBox(b.gx, b.gy, r, K);
+    // the thought: its body always; its clear zone and its words wherever there is a way round them (a words plate as
+    // wide as a small phone is a wall between the sky and the water: a bubble glides on past it, not up into the band)
+    const wall = (o) => o.x1 - o.x0 > W - 2 * OCEAN.EDGE - b.D - 8;
+    if (thought && tS.alpha * tS.vis > 0.2) {
+      repelDisc(b.gx, b.gy, r, tS.sx, tS.sy, tS.r * tS.surf + OCEAN.BUBBLE_GAP);
+      const Z = liveZone();
+      if (Z && !wall(Z)) repelBox(b.gx, b.gy, r, Z);
+      if (tS.plateW) { const P = plateRect(prB); if (!wall(P)) repelBox(b.gx, b.gy, r, P); }
+    }
+    // never up into the subtitle band
+    { const top = bandBottom() + 4 + r; if (b.gy < top + REP_M) rep.y += ((top + REP_M - b.gy) / REP_M) * REP_V; }
+    for (const o of bubbles) {
+      if (o === b || o.alpha < 0.02 || o.state === 'leave') continue;
+      const ox = o.from ? o.gx : o.sx, oy = o.from ? o.gy : o.sy;
+      repelDisc(b.gx, b.gy, r, ox, oy, o.D / 2 + OCEAN.BUBBLE_GAP);
+    }
+    vx += rep.x; vy += rep.y;
+    const v = Math.hypot(vx, vy), cap = GLIDE_V * 1.15;
+    if (v > cap) { vx *= cap / v; vy *= cap / v; }
+    b.gx += vx * dt; b.gy += vy * dt;
+    // held up on its way by another bubble already resting where this one must pass? They change places: the resting one
+    // glides on to this one's slot, this one takes its place (each photo stays itself; only where it rests changes)
+    const far = Math.hypot(b.target.x - b.gx, b.target.y - b.gy);
+    b.stuck = far > 8 && Math.hypot(vx, vy) < 18 ? (b.stuck || 0) + dt : 0;
+    if (b.stuck > 0.35 && !b.away) {
+      for (const o of bubbles) {
+        if (o === b || !o.from || o.away || o.glide < 1 || o.target === b.target) continue;
+        if (Math.hypot(o.gx - b.gx, o.gy - b.gy) > (o.D + b.D) / 2 + OCEAN.BUBBLE_GAP + REP_M) continue;
+        // only when it helps: this one is nearer the other's slot than its own
+        if (Math.hypot(o.target.x - b.gx, o.target.y - b.gy) >= far) continue;
+        const t = b.target; b.target = o.target; o.target = t;
+        b.from = { ...b.from, x: b.gx, y: b.gy }; o.from = { ...o.from, x: o.gx, y: o.gy };
+        b.glide = o.glide = 0.55; b.stuck = o.stuck = 0; b.wait = o.wait = 0;
+        b.cap = b.target.D + 0.5; o.cap = o.target.D + 0.5;
+        break;
+      }
+    }
+  }
+  function repelDisc(x, y, r, cx, cy, R) {
+    const dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy) || 1e-3, gap = d - R - r;
+    if (gap >= REP_M) return;
+    const f = (REP_M - gap) / REP_M;
+    rep.x += (dx / d) * f * REP_V; rep.y += (dy / d) * f * REP_V;
+  }
+  function repelBox(x, y, r, B) {
+    const cx = x < B.x0 ? B.x0 : x > B.x1 ? B.x1 : x, cy = y < B.y0 ? B.y0 : y > B.y1 ? B.y1 : y;
+    let dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy), gap;
+    if (d > 1e-3) { dx /= d; dy /= d; gap = d - r; }
+    else {
+      // inside it: out by the nearest side
+      const l = x - B.x0, rt = B.x1 - x, u = y - B.y0, dn = B.y1 - y, m = Math.min(l, rt, u, dn);
+      dx = m === l ? -1 : m === rt ? 1 : 0; dy = dx ? 0 : m === u ? -1 : 1; gap = -m - r;
+    }
+    if (gap >= REP_M) return;
+    const f = (REP_M - gap) / REP_M;
+    rep.x += dx * f * REP_V; rep.y += dy * f * REP_V;
+  }
   /** Move a floating bubble by a screen offset (converted to world, so physics carries on from there). */
   function nudge(b, mx, my) {
     b.sx += mx; b.sy += my;
     const s = scaleAt(cam, b.z);
     b.x += mx / s;
     // up the screen is away: dz = −dy·Z0 / (Hw·s²)
-    b.z = clamp(b.z - my * cam.Z0 / (cam.Hw * s * s), -0.6 * cam.Z0, OCEAN.CAP * cam.Z0);
+    b.z = clamp(b.z - my * cam.Z0 / (cam.Hw * s * s), -0.8 * cam.Z0, OCEAN.CAP * cam.Z0);
   }
   /** A waiting photo drifts into view far out on the horizon (after another drifted away over it). */
   function arriveWaiting(skip) {
@@ -1589,7 +1751,7 @@ export function create(ctx) {
       const s = rS[j], z = rZ[j], o = j * COLS;
       const x0 = (colX0 - W / 2) / s, step = colStep / s;
       sea.row(z, x0, step, COLS, rDZ[j], o, gH, gHX, gHZ, gGX, gGZ, gA, true, gAU, FLICK_U * U, rowX);
-      const sN = clamp(s / 1.2);
+      const sN = clamp(s / 1.2), ambA = rowX.ambA;
       for (let c = 0; c < COLS; c++) {
         const q = o + c, x = x0 + c * step;
         let h = gH[q] * amp, hx = gHX[q] * slopeK, hz = gHZ[q] * slopeK;
@@ -1627,6 +1789,10 @@ export function create(ctx) {
         // (how bright: the steepness of the person's own waves — chop sparkles, long swells glow)
         const glow = smoothstep(0.42, 0.95, crest) * clamp(gAU[q] * amp * 4.2) * bio * (0.45 + 0.55 * sN) * (0.3 + 0.7 * pn);
         gCrest[q] = glow; gSpec[q] = sp;
+        // the idle sea breathes: where its own gentle swells meet in a crest, a faint glimmer in drifting patches
+        // (far dimmer than the person's crest light; it quietens in the mirror-calm finish)
+        const glim = ambA > 0.4 ? smoothstep(0.5, 0.92, (gAmb[q] * (anyHush ? 1 - 0.5 * hushAt(x, z) : 1)) / ambA) * (0.25 + 0.75 * pn) * (0.35 + 0.65 * sN) * bio * (1 - 0.6 * mirrorK) : 0;
+        gGlim[q] = glim;
         // the dawn's glitter path: narrow at the horizon, widening towards you, broken by the slopes
         const pathW = W * (0.035 + 0.15 * sN) * (1 + 3 * clamp(Math.sqrt(hx * hx + hz * hz) * 4));
         const px2 = (sx - xd) / pathW;
@@ -1639,9 +1805,9 @@ export function create(ctx) {
         // the storm's ground lines, arriving as the first swells: their crests still lit in the storm's gold for a few seconds
         const gold = Math.min(1, gGold[q] * 7 * amp) * (low() ? 0.6 : 1);
         gGold[q] = gold;                                  // (kept for the crest lines)
-        gR[q] = wr * (1 - Fm) + rr * Fm + 255 * sp * 0.8 + 70 * glow + 190 * colm + 240 * gold;
-        gG[q] = wg * (1 - Fm) + rg * Fm + 225 * sp * 0.8 + 210 * glow + 128 * colm + 190 * gold;
-        gB[q] = wb * (1 - Fm) + rb * Fm + 170 * sp * 0.8 + 220 * glow + 66 * colm + 105 * gold;
+        gR[q] = wr * (1 - Fm) + rr * Fm + 255 * sp * 0.8 + 70 * glow + 190 * colm + 240 * gold + 20 * glim;
+        gG[q] = wg * (1 - Fm) + rg * Fm + 225 * sp * 0.8 + 210 * glow + 128 * colm + 190 * gold + 66 * glim;
+        gB[q] = wb * (1 - Fm) + rb * Fm + 170 * sp * 0.8 + 220 * glow + 66 * colm + 105 * gold + 76 * glim;
       }
     }
   }
@@ -1705,110 +1871,198 @@ export function create(ctx) {
   }
 
   /**
-   * Crest light along the crests themselves: a grid point is on a crest when the water is highest
-   * there across the rows or along the row; neighbouring crest points join into one luminous line
-   * that follows the crest's true curve (one line per crest, never a hatching of rows). Soft halo,
-   * thin core, bucketed by brightness and depth into a few paths.
+   * Crest light, traced analytically along each of the person's swells (and the storm's gold seed lines): the crests
+   * of a packet are the lines θ = 2πn across its direction; each is followed across the water at 22 points — the
+   * sea's height (its longer waves) lifting it, the Gerstner shift sharpening it, the wake and a hush moving it — and
+   * projected. Its light is the envelope there × the swell's steepness, in slow patches anchored to the water, so a
+   * crest is one smooth line that swells and fades along its length and tapers to nothing at its ends: never a
+   * grid-stepped trace, never a dash. Drawn as tapered ribbons (one fill per pass: two soft halos, a glow, a core).
    */
   function drawCrests(g, now, rm) {
-    const n = rowsN;
-    // mark the crest points
-    for (let j = 0; j < n; j++) {
-      const o = j * COLS;
-      for (let c = 0; c < COLS; c++) {
-        const q = o + c, v = Math.max(gCrest[q], gGold[q]);
-        let on = 0;
-        if (v > 0.05 && j > 2) {
-          const h = gH[q];
-          const acrossRows = j > 0 && j < n - 1 && h >= gH[q - COLS] && h > gH[q + COLS];
-          // a crest crossing the rows only where the water curves along the row more than across it
-          // (an envelope's broad hump along a row is not a crest)
-          const cRow = c > 0 && c < COLS - 1 ? 2 * h - gH[q - 1] - gH[q + 1] : 0;
-          const cCol = j > 0 && j < n - 1 ? 2 * h - gH[q - COLS] - gH[q + COLS] : 0;
-          const alongRow = c > 0 && c < COLS - 1 && h >= gH[q - 1] && h > gH[q + 1] && cRow > 2 * Math.abs(cCol);
-          // 1: a crest running along the rows (it links along the row); 2: one crossing them (it links down)
-          on = acrossRows ? 1 : alongRow ? 2 : 0;
-        }
-        gMark[q] = on;
-      }
+    traceCrests(now, rm);
+    if (!cbCount) return;
+    const lo = low() ? 0.6 : 1;
+    // the idle sea's glimmer: soft light only (no bright core), so it never reads as a drawn line
+    if (cbHas[2]) { fillCrests(g, 2, 10, 0.04 * lo, C.crest); fillCrests(g, 2, 4.5, 0.065 * lo, C.crest); fillCrests(g, 2, 1.8, 0.1 * lo, C.crest2); }
+    for (let grp = 0; grp < 2; grp++) {
+      if (!cbHas[grp]) continue;
+      const col = grp ? C.dawn : C.crest, core = grp ? C.cream : C.crest2;
+      fillCrests(g, grp, 11, 0.035 * lo, col);
+      fillCrests(g, grp, 5.5, 0.06 * lo, col);
+      fillCrests(g, grp, 2.4, 0.13 * lo, col);
+      fillCrests(g, grp, 1.1, 0.26 * lo, col);
+      fillCrests(g, grp, 0.5, (grp ? 0.5 : 0.55) * lo, core);
     }
-    // link each crest point to the next one along its crest (along the row first, else down a row)
-    gSucc.fill(-1); gPred.fill(0);
-    for (let j = 3; j < n; j++) {
-      const o = j * COLS;
-      for (let c = 0; c < COLS; c++) {
-        const q = o + c;
-        if (!gMark[q]) continue;
-        let cand = -1;
-        // (a crest along the rows may step a row up or down as it curves: it still links, so it reads as one line)
-        if (gMark[q] === 1) cand = c >= COLS - 1 ? -1 : gMark[q + 1] === 1 ? q + 1 : j > 3 && gMark[q + 1 - COLS] === 1 && !gPred[q + 1 - COLS] ? q + 1 - COLS : j < n - 1 && gMark[q + 1 + COLS] === 1 ? q + 1 + COLS : -1;
-        else if (j < n - 1) cand = gMark[q + COLS] === 2 ? q + COLS : c < COLS - 1 && gMark[q + COLS + 1] === 2 ? q + COLS + 1 : c > 0 && gMark[q + COLS - 1] === 2 ? q + COLS - 1 : -1;
-        if (cand >= 0 && !gPred[cand]) { gSucc[q] = cand; gPred[cand] = 1; }
-      }
-    }
-    // Each crest is one continuous line whose light rises and falls along it: cumulative passes (a stretch
-    // brighter than level k is drawn in every pass up to k, 'lighter'), butt caps inside a crest — so no
-    // beads or dashes, and it fades out towards its ends where its light does.
-    g.lineJoin = 'round'; g.lineCap = 'butt';
-    for (let depth = 0; depth < 2; depth++) for (let b = 0; b < CREST_LV.length; b++) {
-      g.beginPath();
-      let segs = 0;
-      for (let q0 = 3 * COLS; q0 < n * COLS; q0++) {
-        if (!gMark[q0] || gPred[q0] || gSucc[q0] < 0) continue;
-        // (smoothed through the midpoints: a crest stepping between grid rows stays one soft curve)
-        let q = q0, pen = false, ex = 0, ey = 0;
-        while (q >= 0 && gSucc[q] >= 0) {
-          const nq = gSucc[q], j = (q / COLS) | 0;
-          const sN = clamp(rS[j] / 1.2);
-          const ok = (depth === 0) === (sN < 0.4) && Math.min(gCrest[q], gCrest[nq]) >= CREST_LV[b];
-          const mx = (gSX[q] + gSX[nq]) * 0.5, my = (gSY[q] + gSY[nq]) * 0.5;
-          if (ok) {
-            if (!pen) { g.moveTo(gSX[q], gSY[q]); g.lineTo(mx, my); pen = true; } else g.quadraticCurveTo(gSX[q], gSY[q], mx, my);
-            ex = gSX[nq]; ey = gSY[nq]; segs++;
-          } else if (pen) { g.lineTo(ex, ey); pen = false; }
-          q = nq;
-        }
-        if (pen) g.lineTo(ex, ey);
-      }
-      if (!segs) continue;
-      const a = CREST_A[b] * (low() ? 0.6 : 1);
-      g.strokeStyle = b >= CREST_LV.length - 1 ? C.crest2 : C.crest;
-      g.globalAlpha = a * 0.3; g.lineWidth = (depth ? 8 : 4) + 1.6 * b; g.stroke();
-      g.globalAlpha = a * 0.62; g.lineWidth = (depth ? 2.4 : 1.3) + 0.35 * b; g.stroke();
-      g.globalAlpha = a; g.lineWidth = depth ? 0.9 : 0.55; g.stroke();
-    }
-    // the storm's ground lines, arriving as the first swells: their crests drawn in the storm's gold for a few seconds
-    for (let pass = 0; pass < 2; pass++) {
-      g.beginPath();
-      let segs = 0;
-      for (let q0 = 3 * COLS; q0 < n * COLS; q0++) {
-        if (!gMark[q0] || gPred[q0] || gSucc[q0] < 0) continue;
-        let q = q0, pen = false, ex = 0, ey = 0;
-        while (q >= 0 && gSucc[q] >= 0) {
-          const nq = gSucc[q], ok = Math.min(gGold[q], gGold[nq]) >= (pass ? 0.4 : 0.12);
-          const mx = (gSX[q] + gSX[nq]) * 0.5, my = (gSY[q] + gSY[nq]) * 0.5;
-          if (ok) { if (!pen) { g.moveTo(gSX[q], gSY[q]); g.lineTo(mx, my); pen = true; } else g.quadraticCurveTo(gSX[q], gSY[q], mx, my); ex = gSX[nq]; ey = gSY[nq]; segs++; }
-          else if (pen) { g.lineTo(ex, ey); pen = false; }
-          q = nq;
-        }
-        if (pen) g.lineTo(ex, ey);
-      }
-      if (!segs) continue;
-      g.strokeStyle = C.dawn;
-      g.globalAlpha = (pass ? 0.3 : 0.16) * (low() ? 0.6 : 1); g.lineWidth = pass ? 5 : 9; g.stroke();
-      g.globalAlpha = (pass ? 0.55 : 0.3) * (low() ? 0.6 : 1); g.lineWidth = pass ? 1.4 : 2.4; g.stroke();
-    }
-    g.globalAlpha = 1; g.lineCap = 'round';
+    g.globalAlpha = 1;
   }
-  const CREST_LV = [0.07, 0.17, 0.3, 0.48], CREST_A = [0.13, 0.12, 0.14, 0.17];
+  const CR_N = 22, CR_MAX = 40, CR_COARSE = 40;
+  const cbX = new Float32Array(CR_MAX * CR_N), cbY = new Float32Array(CR_MAX * CR_N), cbW = new Float32Array(CR_MAX * CR_N);
+  const cbNX = new Float32Array(CR_MAX * CR_N), cbNY = new Float32Array(CR_MAX * CR_N), cbG = new Uint8Array(CR_MAX), cbClosed = new Uint8Array(CR_MAX);
+  const cbHas = [0, 0, 0];
+  let cbCount = 0;
+  const hl = { h: 0, dx: 0, dz: 0 };
+  /** Find this frame's crest lines (into the cb* buffers; nothing allocated). */
+  function traceCrests(now, rm) {
+    cbCount = 0; cbHas[0] = cbHas[1] = cbHas[2] = 0;
+    const amp = (rm ? 0.4 : 1) * (1 - 0.35 * mirrorK), lamMin = FLICK_U * U * 1.3, tt = rm ? 0 : now;
+    for (let i = 0; i < sea.max && cbCount < CR_MAX; i++) {
+      if (!sea.on[i] || sea.A[i] <= 0 || sea.lam[i] < lamMin) continue;
+      const gold = sea.seed[i] && sea.free[i] && sea.age[i] < GOLD_SEC;
+      // only the person's own swells on the water they can see (and their taps' rings), and the storm's lines, light up
+      if (!gold && !(sea.user[i] && (sea.vis[i] || sea.ring[i]))) continue;
+      const k = sea.k[i], A = sea.A[i];
+      const str = gold ? clamp(k * A * 8 * amp) * (1 - sea.age[i] / GOLD_SEC) : clamp(k * A * 3.4 * amp);
+      if (str < 0.04) continue;
+      const grp = gold ? 1 : 0;
+      if (sea.ring[i]) {
+        // a tap's ring of swells: its crests are circles about where it landed
+        const front = sea.cg[i] * sea.age[i], sl = sea.sl[i], ph = sea.w[i] * sea.age[i];
+        const nA = Math.ceil((k * Math.max(0, front - 2.2 * sl) - ph) / TAU), nB = Math.floor((k * (front + 2.2 * sl) - ph) / TAU);
+        for (let n = nB; n >= nA && cbCount < CR_MAX; n--) {
+          const r = (TAU * n + ph) / k;
+          if (r <= 4) continue;
+          const e = Math.exp(-0.5 * ((r - front) / sl) ** 2) * Math.sqrt(sea.lam[i] / (sea.lam[i] + r)) * str;
+          if (e < 0.04) continue;
+          traceRing(i, sea.ex[i], sea.ez[i], r, e, lamMin, amp, rm);
+        }
+        continue;
+      }
+      const dx = sea.dx[i], dz = sea.dz[i], sl = sea.sl[i], sw = sea.sw[i];
+      const run = sea.free[i] ? sea.cg[i] * sea.age[i] : 0;
+      const cx = sea.ex[i] + dx * run, cz = sea.ez[i] + dz * run;
+      const thc = k * ((cx - sea.ax[i]) * dx + (cz - sea.az[i]) * dz) - (sea.free[i] ? sea.w[i] * sea.age[i] : 0);
+      // the crests within its envelope, nearest the centre first (θ(u) = θc + k·u = 2πn)
+      const n0 = Math.round(thc / TAU);
+      for (let q = 0, made = 0; q < 11 && made < 5 && cbCount < CR_MAX; q++) {
+        const n = n0 + (q % 2 ? (q + 1) >> 1 : -(q >> 1));
+        const u = (TAU * n - thc) / k, eu = Math.exp(-0.5 * (u / sl) ** 2) * str;
+        if (eu < 0.07) continue;
+        made++;
+        traceLine(i, cx + u * dx, cz + u * dz, -dz, dx, sw, eu, grp, k, lamMin, amp, rm, tt);
+      }
+    }
+    // the idle sea breathes: a faint glimmer that comes and goes along the crests of its own longest gentle swell
+    const Z0 = cam.Z0, ambK = (1 - 0.7 * mirrorK) * (low() ? 0.5 : 1);
+    for (let a = 0; a < 1 && a < sea.amb.length && cbCount < CR_MAX; a++) {
+      const wv = sea.amb[a];
+      if (wv.A <= 0 || wv.dz < 0.6) continue;
+      const e = clamp(wv.k * wv.A * amp * 4) * ambK;
+      if (e < 0.03) continue;
+      // crests: x·dx + z·dz = (2πn + ω·t − φ)/k; on the line x = 0 that is z = c/dz, for depths −0.3·Z0 … 5·Z0
+      const c0 = (wv.w * sea.time - wv.ph) / wv.k, lamA = TAU / wv.k;
+      const nA = Math.ceil(((-0.3 * Z0) * wv.dz - c0) / lamA), nB = Math.floor((5 * Z0 * wv.dz - c0) / lamA);
+      for (let n = nA, made = 0; n <= nB && made < 6 && cbCount < CR_MAX; n++, made++) {
+        const z = (c0 + n * lamA) / wv.dz;
+        traceLine(20 + a * 7 + (n & 7), 0, z, -wv.dz, wv.dx, 1000, e, 2, wv.k, lamMin, amp, rm, tt, true);
+      }
+    }
+  }
+  /** Project one point of the water surface (world x, z) to the screen as the grid does: into so (x, y, s). */
+  function surfacePoint(X, Z, lamMin, amp, rm) {
+    Z = Math.max(Z, -0.8 * cam.Z0);
+    sea.heightLong(X, Z, lamMin, hl);
+    let h = hl.h * amp;
+    if (hushD[0].on || hushD[1].on) h *= 1 - 0.5 * hushAt(X, Z);
+    const Z0 = cam.Z0, s0 = Z0 / (Z0 + Z), s2 = Z0 / (Z0 + Math.max(Z + hl.dz * amp, -0.85 * Z0));
+    const sx = W / 2 + (X + hl.dx * amp) * s2;
+    let sy = hyNow + (cam.Hw - h) * s2;
+    if (wake) sy += wake.at(sx, hyNow + cam.Hw * s0) * 3 * (rm ? 0.5 : 1);
+    so.x = sx; so.y = Math.max(hyNow, sy); so.s = s2;
+    return so;
+  }
+  /**
+   * One crest line: base point (bx, bz), running along (px, pz) (unit, across the swell), envelope width sw, peak light
+   * e. Only the part on screen is traced (a coarse pass finds it), at CR_N points.
+   */
+  function traceLine(i, bx, bz, px, pz, sw, e, grp, k, lamMin, amp, rm, tt, glim = false) {
+    const Z0 = cam.Z0;
+    let vA = Infinity, vB = -Infinity;
+    for (let c = 0; c <= CR_COARSE; c++) {
+      const v = (c / CR_COARSE - 0.5) * 4.8 * sw, Z = bz + v * pz;
+      if (Z < -0.8 * Z0) continue;
+      const s = Z0 / (Z0 + Z);
+      if (s < 0.03) continue;                       // (on the horizon line itself there is nothing to see)
+      const sx = W / 2 + (bx + v * px) * s;
+      if (sx < -60 || sx > W + 60) continue;
+      if (v < vA) vA = v;
+      if (v > vB) vB = v;
+    }
+    if (!(vB > vA)) return;
+    const pad = (4.8 * sw) / CR_COARSE;
+    vA = Math.max(-2.4 * sw, vA - pad); vB = Math.min(2.4 * sw, vB + pad);
+    const o = cbCount * CR_N, Hw = cam.Hw, seed = i * 1.7;
+    let peak = 0;
+    for (let m = 0; m < CR_N; m++) {
+      const v = vA + ((vB - vA) * m) / (CR_N - 1);
+      surfacePoint(bx + v * px, bz + v * pz, lamMin, amp, rm);
+      // light along the crest: the envelope, in slow patches anchored to the water (never dark between them)
+      const ev = glim ? 1 : Math.exp(-0.5 * (v / sw) ** 2);
+      const pt = 0.5 + 0.5 * Math.sin(v * k * 0.21 + seed + tt * 0.16) * Math.sin(v * k * 0.093 - tt * 0.11 + seed * 0.6);
+      // (the idle sea's glimmer comes and goes along its crests; the person's crests stay whole lines)
+      const patch = glim ? pt * pt * pt : 0.22 + 0.78 * pt * Math.sqrt(pt);
+      // fainter far away, and gone where the crests would crowd together towards the horizon (no ruled lines there)
+      const gap = TAU / k * so.s * Math.max(Math.abs(pz), (Math.abs(px) * Hw * so.s) / Z0);
+      const w = e * ev * patch * smoothstep(0.05, 0.42, so.s) * (0.55 + 0.45 * clamp(so.s / 1.2)) * smoothstep(7, 24, gap);
+      cbX[o + m] = so.x; cbY[o + m] = so.y; cbW[o + m] = w;
+      if (w > peak) peak = w;
+    }
+    if (peak < 0.03) return;
+    // taper both ends to nothing (the visible part may start mid-envelope at a screen edge: it is off screen there)
+    cbW[o] = 0; cbW[o + CR_N - 1] = 0;
+    finishCrest(grp, 0);
+  }
+  /** One ring crest (radius r about a tap at x, z): a closed line of even light e. */
+  function traceRing(i, x, z, r, e, lamMin, amp, rm) {
+    const o = cbCount * CR_N;
+    let on = 0;
+    for (let m = 0; m < CR_N; m++) {
+      const a = (m / CR_N) * TAU;
+      surfacePoint(x + r * Math.cos(a), z + r * Math.sin(a), lamMin, amp, rm);
+      cbX[o + m] = so.x; cbY[o + m] = so.y; cbW[o + m] = e * (0.3 + 0.7 * clamp(so.s / 1.2)) * 0.7;
+      if (so.x > -20 && so.x < W + 20) on++;
+    }
+    if (!on) return;
+    finishCrest(0, 1);
+  }
+  /** Normals for the ribbon, and keep the crest. */
+  function finishCrest(grp, closed) {
+    const o = cbCount * CR_N, n = CR_N;
+    for (let m = 0; m < n; m++) {
+      const a = closed ? (m + n - 1) % n : Math.max(0, m - 1), b = closed ? (m + 1) % n : Math.min(n - 1, m + 1);
+      const tx = cbX[o + b] - cbX[o + a], ty = cbY[o + b] - cbY[o + a], tl = Math.hypot(tx, ty) || 1;
+      cbNX[o + m] = -ty / tl; cbNY[o + m] = tx / tl;
+    }
+    cbG[cbCount] = grp; cbClosed[cbCount] = closed; cbHas[grp] = 1;
+    cbCount++;
+  }
+  /** Fill every crest of a group as a ribbon of half-width w·halfW (one path, one fill). */
+  function fillCrests(g, grp, halfW, alpha, colour) {
+    g.beginPath();
+    for (let c = 0; c < cbCount; c++) {
+      if (cbG[c] !== grp) continue;
+      const o = c * CR_N, n = CR_N;
+      if (cbClosed[c]) {
+        // a ring: outer edge round, inner edge back
+        for (let m = 0; m <= n; m++) { const q = o + (m % n), w = cbW[q] * halfW; m ? g.lineTo(cbX[q] + cbNX[q] * w, cbY[q] + cbNY[q] * w) : g.moveTo(cbX[q] + cbNX[q] * w, cbY[q] + cbNY[q] * w); }
+        for (let m = n; m >= 0; m--) { const q = o + (m % n), w = cbW[q] * halfW; g.lineTo(cbX[q] - cbNX[q] * w, cbY[q] - cbNY[q] * w); }
+        g.closePath();
+        continue;
+      }
+      g.moveTo(cbX[o], cbY[o]);
+      for (let m = 1; m < n; m++) { const q = o + m, w = cbW[q] * halfW; g.lineTo(cbX[q] + cbNX[q] * w, cbY[q] + cbNY[q] * w); }
+      for (let m = n - 2; m > 0; m--) { const q = o + m, w = cbW[q] * halfW; g.lineTo(cbX[q] - cbNX[q] * w, cbY[q] - cbNY[q] * w); }
+      g.closePath();
+    }
+    g.globalAlpha = alpha; g.fillStyle = colour; g.fill('nonzero');
+  }
 
   /** The dawn's glitter (jittered, twinkling points on the path and on facets that catch it) and soft glows at the brightest crests. */
   function drawSparkles(g, now, rm) {
     const n = rowsN;
-    let gl = 0, gw = 0;
+    let gl = 0, gw = 0, gg = 0;
     const still = rm || low();
     const tick = still ? 0 : Math.floor(now * 5);
-    for (let j = 2; j < n && (gl < 150 || gw < 60); j++) {
+    for (let j = 2; j < n && (gl < 150 || gw < 60 || gg < 24); j++) {
       const sN = clamp(rS[j] / 1.2), o = j * COLS;
       const cw = colStep * 0.5, rh = j < n - 1 ? (rY[j + 1] - rY[j]) * 0.5 : 4;
       for (let c = 1; c < COLS - 1; c++) {
@@ -1826,6 +2080,15 @@ export function create(ctx) {
             g.globalAlpha = a * 0.85;
             g.drawImage(pv > 0.55 && h1 < 0.12 ? sprites.glint : sprites.dawn, x - r, y - r * 0.7, r * 2, r * 1.4);
             gl++;
+          }
+        }
+        // slow, sparse glints where the idle sea's swells meet (each fades in and out over seconds; none under reduced motion)
+        const gm = gGlim[q];
+        if (gm > 0.3 && !rm && gg < 24) {
+          const h1 = ((q * 2246822519) >>> 0) / 4294967296;
+          if (h1 < 0.2) {
+            const tw = Math.sin(now * (0.33 + 0.3 * h1) + h1 * 60);
+            if (tw > 0.55) { const r = 1.3 + 2.4 * sN, a = gm * ((tw - 0.55) / 0.45) ** 2 * (low() ? 0.3 : 0.55); g.globalAlpha = a; g.drawImage(sprites.glintC, gSX[q] - r, gSY[q] - r * 0.7, r * 2, r * 1.4); gg++; }
           }
         }
         const cr = gCrest[q];

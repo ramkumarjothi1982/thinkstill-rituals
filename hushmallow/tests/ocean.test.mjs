@@ -189,10 +189,12 @@ test('layout (review r2): every photo has a place on the smallest phone, beside 
     const band = bandFor(H);
     for (const plate of [{ w: 196, h: 59, lines: 2 }, { w: 277, h: 38, lines: 1 }]) {
       const p = planOcean({ W, H, band, mallow: null, plate, n: 7 });
-      assert.ok(p.slots.length >= 7, `${W}×${H} (${plate.lines} line): ${p.slots.length} slots for 7 photos`);
+      // (review r3: the thought's clear zone is reserved, so on the smallest phone one photo of seven may take turns far out)
+      assert.ok(p.slots.length >= (W <= 320 ? 6 : 7), `${W}×${H} (${plate.lines} line): ${p.slots.length} slots for 7 photos`);
       for (const s of p.slots) {
         const B = { x0: s.x - s.D / 2, x1: s.x + s.D / 2, y0: s.y - s.D / 2, y1: s.y + s.D / 2 };
         assert.ok(!ov(B, p.rects.mallow), `${W}×${H}: a bubble on the hero`);
+        assert.ok(!ov(B, p.rects.zone), `${W}×${H}: a bubble in the thought's clear zone`);
         assert.ok(s.D >= OCEAN.BUBBLE_TIGHT - 0.01 || s.d > 6, `${W}×${H}: a near bubble of ${s.D} px`);
       }
     }
@@ -420,9 +422,12 @@ test('world (review r3): strokes in the sky shape nothing — no progress, no lo
       assert.ok(w.progress < 0.01, `${W}×${H}: no progress (${w.progress})`);
       assert.equal(w.metrics.period, 0, `${W}×${H}: no period of the person's sea`);
       assert.ok(!found.includes('long-waves'), `${W}×${H}: '…and the whole sea rolls.' is never said of an unchanged sea`);
-      // a sliver along the far horizon: a ripple there at most, and it does not count either
-      stroke(D, 40, hy + 10, W - 40, hy + 12, 0.2 * U, 4); steps(D, 1);
-      assert.equal(w.metrics.long, 0, `${W}×${H}: a stroke along the horizon is not a long swell`);
+      // a sliver along the far horizon, beyond where the thought may drift: a ripple there at most, and it does not count
+      // either (on a short screen the water just under the horizon line is already nearer than that: it counts there)
+      if (w.debug.surfaceY(OCEAN.CAP) > hy + 13) {
+        stroke(D, 40, hy + 10, W - 40, hy + 12, 0.2 * U, 4); steps(D, 1);
+        assert.equal(w.metrics.long, 0, `${W}×${H}: a stroke along the horizon is not a long swell`);
+      }
       // a stroke from the sky down onto the water: it starts at the horizon line, and that swell does count
       stroke(D, W * 0.2, hy - 60, W * 0.24, Math.min(H - 80, hy + 0.55 * U), 0.2 * U, 5); steps(D, 0.5);
       const s = w.debug.sea, cam = w.debug.cam;
@@ -477,6 +482,77 @@ test('world: a storm melts into the ocean — horizon from 0.655H to 0.44H, post
     assert.ok(ocean.debug.thought.landed && ocean.debug.thought.landK >= 1, 'the thought landed');
     assert.ok(Math.abs(ocean.metrics.dist - 1) < 0.15, `…at its home on the water (${ocean.metrics.dist})`);
     assert.deepEqual(melts.map((m) => m.k), [0, 1]);
+  } finally { D?.destroy(); dom.restore(); }
+});
+
+test('world (review r3): the melt never pops or tangles — every bubble eases (≤ 8 px a 1/30 s step), none crosses another, none covers another, the thought or the hero', async () => {
+  const dom = installFakeDom();
+  let D = null;
+  try {
+    const { createHushflow } = await import('../src/hushfold/flow/director.js');
+    // the storms the review played by touch (the postcards and thought where they hung), and seven photos
+    const CASES = [
+      { W: 390, H: 844, n: 3, cards: [[0, 80, 274, 80], [1, 194, 274, 73], [2, 312, 270, 101]], th: [105, 435] },
+      { W: 320, H: 568, n: 3, cards: [[1, 171, 238, 58], [2, 258, 234, 80]], th: [86, 256] },
+      { W: 390, H: 844, n: 7, cards: [[0, 70, 250, 70], [3, 150, 270, 64], [5, 236, 262, 72], [6, 318, 280, 76]], th: [190, 440] },
+      { W: 320, H: 568, n: 7, cards: [[0, 60, 220, 56], [2, 150, 236, 56], [4, 250, 228, 60]], th: [160, 300] },
+    ];
+    for (const C of CASES) {
+      const { W, H } = C, tag = `${W}×${H} with ${C.n} photos`;
+      const sized = () => Object.assign(dom.el(), { clientWidth: W, clientHeight: H });
+      const mallow = fakeMallow(W, H), thought = fakeThought();
+      const cards = C.cards.map(([i, x, y, w]) => ({ i, x, y, w, h: w * 0.75, rot: 0.06, state: 'grounded' }));
+      const STORM = { ...WORLDS[0], load: async () => ({ create: () => ({ prepare() {}, enter() {}, frame() {}, pointer() {}, outro() {}, intro() {}, get progress() { return 1; }, get complete() { return true; }, get metrics() { return {}; },
+        handoff: () => ({ horizonY: 0.655 * H, seeds: [[[40, 0.7 * H], [W / 2, 0.7 * H + 4], [W - 40, 0.7 * H]]], thought: { x: C.th[0], y: C.th[1], scale: 1, tension: 0.3, r: 30, labelW: 260 }, photos: cards, energy: 0.1 }),
+        serialize: () => ({ v: 1 }), restore() {}, pause() {}, resume() {}, destroy() {} }) }) };
+      const photos = { n: C.n, draw: () => ({ w: 1, h: 1 }), size: () => ({ w: 1, h: 1 }) };
+      D = createHushflow({ worldEl: sized(), fxEl: sized(), mallow, thought, photos, subtitles: { say: () => Promise.resolve(), choice: () => new Promise(() => {}), clear() {} }, registry: createRegistry([STORM, WORLDS[1]]), ticker: fakeTicker(), store: memStore(), reducedMotion: false });
+      await D.start({ worldId: 'static-storm', emotion: 'angry', intention: 'calm' });
+      assert.ok(D.next());
+      for (let i = 0; i < 300 && D.state.phase !== 'melting'; i++) { D.debug.step(1 / 60); await new Promise((r) => setTimeout(r, 2)); }
+      assert.equal(D.state.phase, 'melting', tag);
+      const ocean = D.incoming;
+      let prev = null, worstStep = 0, worstAt = null, overlapB = 0, overlapT = 0, overlapH = 0;
+      const B = mallow.rect();
+      // every bubble's way, step by step (to check no two cross each other's way at the same time)
+      const path = new Map();
+      for (let step = 0; step < 30 * 12; step++) {
+        D.debug.step(1 / 30);
+        const w = D.state.worldId === 'luminous-ocean' && !D.incoming ? D.world : ocean;
+        const bs = w.debug.bubbles.filter((b) => b.alpha > 0.3 && b.state !== 'leave'), T = w.debug.thought, rr = T.r * T.surf;
+        if (prev) for (const b of bs) { const p = prev.get(b.i); if (p) { const d = Math.hypot(b.sx - p[0], b.sy - p[1]); if (d > worstStep) { worstStep = d; worstAt = { step, i: b.i, from: p, to: [b.sx, b.sy], st: b.state }; } } }
+        for (let a = 0; a < bs.length; a++) for (let c = a + 1; c < bs.length; c++) overlapB = Math.max(overlapB, (bs[a].D + bs[c].D) / 2 - Math.hypot(bs[a].sx - bs[c].sx, bs[a].sy - bs[c].sy));
+        if (T.alpha * T.vis > 0.3) for (const b of bs) overlapT = Math.max(overlapT, b.D / 2 + rr - Math.hypot(b.sx - T.sx, b.sy - T.sy));
+        for (const b of bs) { const ox = Math.min(b.sx + b.D / 2, B.right - 0.06 * B.width) - Math.max(b.sx - b.D / 2, B.left + 0.06 * B.width), oy = Math.min(b.sy + b.D / 2, B.bottom) - Math.max(b.sy - b.D / 2, B.top + 2); if (ox > 0 && oy > 0) overlapH = Math.max(overlapH, Math.min(ox, oy)); }
+        prev = new Map(w.debug.bubbles.map((b) => [b.i, [b.sx, b.sy]]));
+        for (const b of w.debug.bubbles) { if (!path.has(b.i)) path.set(b.i, []); path.get(b.i).push([b.sx, b.sy, step]); }
+      }
+      assert.equal(D.state.worldId, 'luminous-ocean', `${tag}: the melt finished`);
+      const w = D.world;
+      assert.ok(worstStep <= 8, `${tag}: a bubble moved ${worstStep.toFixed(1)} px in one step ${JSON.stringify(worstAt)}`);
+      assert.ok(overlapB <= 0.5, `${tag}: two bubbles overlapped by ${overlapB.toFixed(1)} px`);
+      assert.ok(overlapT <= 0.5, `${tag}: a bubble covered the thought by ${overlapT.toFixed(1)} px`);
+      assert.equal(overlapH, 0, `${tag}: a bubble on the hero (${overlapH.toFixed(1)} px)`);
+      // no two glides cross each other's way at the same time (within half a second): a tangle. (One bubble following
+      // where another went a moment before, down the same lane beside the hero, is not one.)
+      const cr = (o, p, q) => (p[0] - o[0]) * (q[1] - o[1]) - (p[1] - o[1]) * (q[0] - o[0]);
+      const ids = [...path.keys()];
+      for (let a = 0; a < ids.length; a++) for (let c = a + 1; c < ids.length; c++) {
+        const P = path.get(ids[a]), Q = path.get(ids[c]);
+        for (let t = 1; t < P.length; t++) {
+          const p0 = P[t - 1], p1 = P[t];
+          if (Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) < 0.2) continue;
+          for (let u = 1; u < Q.length; u++) {
+            const q0 = Q[u - 1], q1 = Q[u];
+            if (Math.abs(q1[2] - p1[2]) > 15 || Math.hypot(q1[0] - q0[0], q1[1] - q0[1]) < 0.2) continue;
+            const x = cr(p0, p1, q0) * cr(p0, p1, q1) < 0 && cr(q0, q1, p0) * cr(q0, q1, p1) < 0;
+            assert.ok(!x, `${tag}: bubbles ${ids[a]} and ${ids[c]} cross each other's way at step ${p1[2]}`);
+          }
+        }
+      }
+      assert.equal(w.metrics.bubbles + w.metrics.waiting, C.n, `${tag}: every photo is still there`);
+      D.destroy(); D = null;
+    }
   } finally { D?.destroy(); dom.restore(); }
 });
 

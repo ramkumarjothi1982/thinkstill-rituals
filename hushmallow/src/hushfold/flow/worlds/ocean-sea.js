@@ -353,6 +353,43 @@ export class Sea {
     return out;
   }
 
+  /**
+   * The surface height at a point from the longer waves only (λ ≥ lamMin, the sea's own breathing included), with
+   * their Gerstner shift — what a crest line traced every few px follows without aliasing short chop into jags.
+   * out: { h, dx, dz }.
+   */
+  heightLong(x, z, lamMin, out) {
+    let h = 0, gx = 0, gz = 0;
+    for (let i = 0; i < this.max; i++) {
+      if (!this.on[i] || this.A[i] <= 0 || this.lam[i] < lamMin) continue;
+      const A = this.A[i], k = this.k[i];
+      let E, th, dx, dz;
+      if (this.ring[i]) {
+        const rx = x - this.ex[i], rz = z - this.ez[i], r = Math.sqrt(rx * rx + rz * rz) || 1e-3;
+        const q = (r - this.cg[i] * this.age[i]) / this.sl[i];
+        if (q * q > 30) continue;
+        E = Math.exp(-0.5 * q * q) * Math.sqrt(this.lam[i] / (this.lam[i] + r));
+        th = k * r - this.w[i] * this.age[i]; dx = rx / r; dz = rz / r;
+      } else {
+        dx = this.dx[i]; dz = this.dz[i];
+        const run = this.free[i] ? this.cg[i] * this.age[i] : 0;
+        const px = x - this.ex[i] - dx * run, pz = z - this.ez[i] - dz * run;
+        const al = (px * dx + pz * dz) / this.sl[i], ac = (-px * dz + pz * dx) / this.sw[i], e2 = al * al + ac * ac;
+        if (e2 > 30) continue;
+        E = Math.exp(-0.5 * e2);
+        th = k * ((x - this.ax[i]) * dx + (z - this.az[i]) * dz) - (this.free[i] ? this.w[i] * this.age[i] : 0);
+      }
+      const a = A * E, sn = Math.sin(th), q = this._q[i] || 0;
+      h += a * Math.cos(th); gx -= q * a * dx * sn; gz -= q * a * dz * sn;
+    }
+    for (const a of this.amb) {
+      if (a.A <= 0 || TAU / a.k < lamMin) continue;
+      h += a.A * Math.cos(a.k * (x * a.dx + z * a.dz) - a.w * this.time + a.ph);
+    }
+    out.h = h; out.dx = gx; out.dz = gz;
+    return out;
+  }
+
   /** Call once a frame before rows/samples: shares the Gerstner steepness. */
   prepare() { this._steep(); }
 
@@ -368,14 +405,16 @@ export class Sea {
    * (X, optional: { CHOP, chopMax, GOLD, goldSec } — CHOP: Σ k·A·E of the person's short waves
    * (λ < chopMax) even where the grid cannot resolve them, so the shading can show broken water;
    * GOLD: Σ k·A·E·max(0, cos θ)² of the storm's seed swells younger than goldSec, fading with age —
-   * their crests, still lit in the storm's gold.)
+   * their crests, still lit in the storm's gold; AMB: the sea's own breathing alone (its height here), and X.ambA is
+   * set to its amplitude on this row — so the idle sea can glimmer where its gentle swells meet.)
    */
   row(z, x0, step, n, dz, o, H, HX, HZ, GX, GZ, AMP, filter = true, AMPU = null, lamMin = 0, X = null) {
     for (let c = 0; c < n; c++) { H[o + c] = 0; HX[o + c] = 0; HZ[o + c] = 0; GX[o + c] = 0; GZ[o + c] = 0; AMP[o + c] = 0; }
     if (AMPU) for (let c = 0; c < n; c++) AMPU[o + c] = 0;
-    const XC = X && X.CHOP ? X.CHOP : null, XG = X && X.GOLD ? X.GOLD : null;
+    const XC = X && X.CHOP ? X.CHOP : null, XG = X && X.GOLD ? X.GOLD : null, XA = X && X.AMB ? X.AMB : null;
     if (XC) for (let c = 0; c < n; c++) XC[o + c] = 0;
     if (XG) for (let c = 0; c < n; c++) XG[o + c] = 0;
+    if (XA) { for (let c = 0; c < n; c++) XA[o + c] = 0; X.ambA = 0; }
     const sx = Math.abs(step);
     for (const a of this.amb) {
       if (a.A <= 0) continue;
@@ -385,9 +424,11 @@ export class Sea {
       const th0 = a.k * (x0 * a.dx + z * a.dz) - a.w * this.time + a.ph, dth = a.k * a.dx * step;
       let cs = Math.cos(th0), sn = Math.sin(th0);
       const cd = Math.cos(dth), sd = Math.sin(dth), kx = A * a.k * a.dx, kz = A * a.k * a.dz;
+      if (XA) X.ambA += A;
       for (let c = 0; c < n; c++) {
         const j = o + c;
         H[j] += A * cs; HX[j] -= kx * sn; HZ[j] -= kz * sn;
+        if (XA) XA[j] += A * cs;
         const ncs = cs * cd - sn * sd; sn = sn * cd + cs * sd; cs = ncs;
       }
     }
