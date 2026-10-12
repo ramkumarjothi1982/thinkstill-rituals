@@ -4,21 +4,29 @@
 // in priority order: the hero Mallow (stageMallow.hitTest; both fingers when
 // stageMallow.multiTouch) → a Thought Mallow
 // → the current world (the Hushflow director's handler) → empty space.
+// While a world that owns the thoughts runs (setWorld(fn, {thoughts: true})),
+// a touch on a Thought Mallow goes to the world, which hands it to the thought
+// itself (the director forwards it to thought.pointer).
 // Up to two pointers are tracked, with coalesced moves and a smoothed
 // velocity. The Mallow's eyes follow any finger or cursor on the stage.
+// ctrl + wheel over the Mallow (a desktop trackpad pinch) goes to mallow.wheel.
 //
 // createInputRouter({el, mallow, thoughts, onEmpty, onTouch}) →
-//   { setWorld(fn|null), get active, destroy() }
+//   { setWorld(fn|null, {thoughts}), get active, get owners, get worldOwnsThoughts, destroy() }
 // Routed pointer: { type:'down'|'move'|'up'|'cancel', id, x, y, t, vx, vy,
-//   speed, pointerType, count }
+//   speed, pointerType, count, shift (Shift held: a mouse Shift-drag stretches
+//   the Mallow), mouse (pointerType 'mouse') }
+// Routed wheel (to mallow.wheel): { x, y, deltaY, t } (t in ms, the event clock)
 
 export function createInputRouter({ el, mallow, thoughts = null, onEmpty = null, onTouch = null, maxPointers = 2 } = {}) {
   const owners = new Map();     // pointerId → { kind:'mallow'|'thought'|'world'|'empty', target, x, y, t, vx, vy }
   let world = null;
+  let worldOwnsThoughts = false;   // setWorld(fn, {thoughts: true}): Thought Mallow hits go to the world
 
   const routed = (type, e, p) => ({
     type, id: e.pointerId, x: e.clientX, y: e.clientY, t: e.timeStamp || performance.now(),
     vx: p?.vx || 0, vy: p?.vy || 0, speed: Math.hypot(p?.vx || 0, p?.vy || 0), pointerType: e.pointerType || 'touch', count: owners.size,
+    shift: !!e.shiftKey, mouse: e.pointerType === 'mouse',
   });
   function track(p, e) {
     const t = e.timeStamp || performance.now();
@@ -52,7 +60,7 @@ export function createInputRouter({ el, mallow, thoughts = null, onEmpty = null,
     const mallowFree = ![...owners.values()].some((o) => o.kind === 'mallow');
     let th = null;
     if ((mallowFree || mallow?.multiTouch) && mallow?.hitTest?.(x, y)) p.kind = 'mallow';
-    else if ((th = thoughts?.hitTest?.(x, y))) { p.kind = 'thought'; p.target = th; }
+    else if (!worldOwnsThoughts && (th = thoughts?.hitTest?.(x, y))) { p.kind = 'thought'; p.target = th; }
     else if (world) p.kind = 'world';
     owners.set(e.pointerId, p);
     try { el.setPointerCapture(e.pointerId); } catch { /* synthetic or already gone */ }
@@ -77,6 +85,16 @@ export function createInputRouter({ el, mallow, thoughts = null, onEmpty = null,
     onTouch?.({ kind: p.kind, type: 'up', x: e.clientX, y: e.clientY });
   };
   const noGesture = (e) => e.preventDefault();
+  // a desktop trackpad pinch arrives as ctrl + wheel: over the Mallow it stretches the
+  // Mallow (MallowTouch), never the page; a pinch already under way keeps going
+  const wheel = (e) => {
+    if (!e.ctrlKey || typeof mallow?.wheel !== 'function') return;
+    const x = e.clientX, y = e.clientY;
+    const over = !!mallow.hitTest?.(x, y);
+    if (over) e.preventDefault();
+    const took = mallow.wheel({ x, y, deltaY: e.deltaY, t: e.timeStamp || performance.now() });
+    if (took && !over) e.preventDefault();
+  };
 
   el.addEventListener('pointerdown', down);
   el.addEventListener('pointermove', move);
@@ -84,12 +102,21 @@ export function createInputRouter({ el, mallow, thoughts = null, onEmpty = null,
   el.addEventListener('pointercancel', up);
   el.addEventListener('lostpointercapture', up);
   el.addEventListener('contextmenu', noGesture);
+  el.addEventListener('wheel', wheel, { passive: false });
   document.addEventListener('gesturestart', noGesture);   // iOS Safari pinch-zoom
   document.body.classList.add('hf-active');
 
   return {
-    /** The Hushflow director's world input (or null while no world runs). */
-    setWorld(fn) { world = typeof fn === 'function' ? fn : null; },
+    /**
+     * The Hushflow director's world input (or null while no world runs). With
+     * {thoughts: true} the world owns the Thought Mallows: a touch on one goes to the
+     * world, which forwards it to the thought itself.
+     */
+    setWorld(fn, opts = {}) {
+      world = typeof fn === 'function' ? fn : null;
+      worldOwnsThoughts = !!world && !!opts?.thoughts;
+    },
+    get worldOwnsThoughts() { return worldOwnsThoughts; },
     get active() { return owners.size; },
     get owners() { return [...owners.values()].map((o) => o.kind); },
     destroy() {
@@ -99,6 +126,7 @@ export function createInputRouter({ el, mallow, thoughts = null, onEmpty = null,
       el.removeEventListener('pointercancel', up);
       el.removeEventListener('lostpointercapture', up);
       el.removeEventListener('contextmenu', noGesture);
+      el.removeEventListener('wheel', wheel);
       document.removeEventListener('gesturestart', noGesture);
       document.body.classList.remove('hf-active');
       owners.clear();
