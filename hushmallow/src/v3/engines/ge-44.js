@@ -725,17 +725,16 @@ export function create(E) {
     computeEdges();
     g.save();
     outlinePath(); g.clip();
-    const OFF = globalThis.__ge44off || {};
-    if (OFF.slices) g.drawImage(T, sx0, sy0, sw, sh); else drawSlices();
+    drawSlices();
     g.imageSmoothingEnabled = true;
-    if (desatMax > 0.01 && !OFF.sat) {
+    if (desatMax > 0.01) {
       // where the silk is still tense its colours are muted (storm-dim, or misty for heavy feelings)
       g.globalCompositeOperation = 'saturation'; g.drawImage(desatC, sx0, sy0, sw, sh);
       g.globalCompositeOperation = heavy ? 'screen' : 'multiply'; g.globalAlpha = heavy ? 0.2 : 0.3; g.drawImage(desatC, sx0, sy0, sw, sh);
       g.globalAlpha = 1;
     }
     g.globalCompositeOperation = 'source-over';
-    if (!OFF.sheen) g.drawImage(sheenC, sx0, sy0, sw, sh);
+    g.drawImage(sheenC, sx0, sy0, sw, sh);
     g.restore();
     // the hem catches the light
     outlinePath(); g.strokeStyle = rgba(threadCol, 0.22); g.lineWidth = 1.2; g.stroke();
@@ -1085,28 +1084,23 @@ export function create(E) {
     g.restore();
   }
 
-  const PROF = globalThis.__ge44prof = globalThis.__ge44prof || {};
-  const tm = (k, f) => { const a = performance.now(); f(); PROF[k] = (PROF[k] || 0) + performance.now() - a; };
   function frame(dt, t) {
-    let fin = 0;
-    PROF.n = (PROF.n || 0) + 1;
-    tm('update', () => { fin = update(dt, t); });
+    const fin = update(dt, t);
     tw += dt * spd * lerp(1, 0.45, fin);
-    tm('backdrop', () => drawBackdrop(t, fin));
+    drawBackdrop(t, fin);
     drawRods();
-    tm('maps', () => computeMaps(t, fin));
-    tm('silk', () => drawSilk(t, fin));
-    tm('grid', () => drawGrid(t, fin));
-    tm('cell', () => drawFinalCell(t, fin));
-    tm('words', () => drawWords());
+    drawSilk(t, fin);
+    drawGrid(t, fin);
+    drawFinalCell(t, fin);
+    drawWords();
     drawTwist(t);
-    tm('route', () => drawRoute(t));
-    tm('woven', () => drawWoven(t, fin));
-    tm('knots', () => drawKnots(t, fin));
+    drawRoute(t);
+    drawWoven(t, fin);
+    drawKnots(t, fin);
     drawPull(t);
-    tm('shuttle', () => drawShuttle(t, fin));
-    tm('lace', () => drawLacing(t));
-    tm('roll', () => drawRollers(fin));
+    drawShuttle(t, fin);
+    drawLacing(t);
+    drawRollers(fin);
   }
 
   // -------------------------------------------------------------- input --

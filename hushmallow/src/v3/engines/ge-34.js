@@ -438,7 +438,11 @@ export function create(E) {
     if (finAt >= 0) {
       const k = t - finAt;
       finLift = heavy ? -H * 0.025 * smooth(clamp(k / 2.2)) : H * (0.06 * ease.outBack(clamp(k / 0.9)) - 0.025 * smooth(clamp((k - 1.1) / 1.6)));
-      if (heavy && !low && E.rand() < dt * 3) E.particles.emit({ x: ecx + (E.rand() - 0.5) * W * 0.8, y: scr(eTop + H * (0.2 + E.rand() * 0.6)), vy: -14, vx: (E.rand() - 0.5) * 6, life: 2.4, size: 5, colour: glowCol, alpha: 0.5, drag: 0.99 });
+      const rate = (heavy ? 3 : 7) * (low ? 0.4 : 1);
+      if (E.rand() < dt * rate) {
+        const q = tr.pointAt(E.rand());
+        E.particles.emit({ x: q.x + (E.rand() - 0.5) * 6, y: scr(q.y), vy: heavy ? -12 : -24, vx: (E.rand() - 0.5) * 8, life: heavy ? 2.6 : 1.8, size: heavy ? 5 : 4.5, colour: E.rand() < 0.5 ? glowCol : mix(ribbonCol, '#ffffff', 0.5), alpha: 0.6, drag: 0.99, kind: heavy ? undefined : (E.rand() < 0.3 ? 'glint' : undefined) });
+      }
     }
 
     // ---- drawing
@@ -446,6 +450,7 @@ export function create(E) {
     const fin = finAt >= 0 ? smooth(clamp((t - finAt) / 2.2)) : 0;
     motes(g, stage.x, stage.y, stage.w, stage.h, t * (reduced ? 0.3 : 1), mix(pal.glow, '#ffffff', 0.45), { n: low ? 12 : 24, alpha: 0.32, seed: 34 + E.round, size: 1.5 });
     g.save(); g.translate(0, -(cam + finLift));
+    if (fin > 0 && !reduced) { const b = 1 + 0.012 * fin * Math.sin((t - finAt) * 1.6); g.translate(ecx, eTop + H * 0.5); g.scale(b, b); g.translate(-ecx, -(eTop + H * 0.5)); }
     drawAmbient(t, calmK, fin);
     if (twistAt >= 0 && twistKind === 2) drawMoon(t);
     drawEnvelopeBack(t, calmK);
@@ -571,6 +576,8 @@ export function create(E) {
     g.translate(ecx, eB); g.scale(1 + 0.02 * hug.x, 1 - 0.03 * hug.x); g.translate(-ecx, -eB);
     g.drawImage(pocketSpr, eL - pad, eTop - pad, W + pad * 2, H + pad * 2);
     if (insShown > 0.4) glow(g, ecx, yS, cW * 0.62, paperHi, (0.1 + 0.08 * fin) * smooth((insShown - 0.4) / 0.6));
+    // at the end the envelope glows softly from within, like a paper lantern
+    if (fin > 0) glow(g, ecx, eTop + H * 0.55, W * 0.72, mix(pal.warm, '#fff3d6', 0.6), fin * (heavy ? 0.22 : 0.3) * (0.85 + 0.15 * Math.sin(E.now() * 1.1)));
     g.restore();
     // ink showing through the vellum
     if (insShown > 0.3 && E.phase !== 'law') {
