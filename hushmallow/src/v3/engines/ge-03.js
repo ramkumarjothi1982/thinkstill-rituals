@@ -17,8 +17,9 @@
 // Photos are the stained-glass panes: frosted (blurred) behind the leaves at
 // first; as a gate swings open its pane is revealed misty and tinted, and the
 // ripple's wavefront wipes the mist away until the picture settles true and
-// still. Extra photos become the far "destination" light and keystone
-// medallions. Words are etched into the first gate's glass threshold — frosted
+// still. Extra photos become the far "destination" light and round
+// rose-window medallions set in the arches (frosted and cleared with their
+// pane). Words are etched into the first gate's glass threshold — frosted
 // engraving that glows clear once all three gates rest open.
 
 import { TAU, clamp, lerp, invLerp, smooth, ease, rgba, mix, glow, glint, orb, roundRect, canvas as makeCanvas, motes, rng, Spring, FONT } from '../fx.js';
@@ -111,8 +112,8 @@ export function create(E) {
     k, photo: paneP[k], medal: medalP[k],
     sw: new Spring(0, { stiffness: 34, damping: 4.4 }),   // normalised swing (overshoots a little: the edge quivers)
     wob: new Wobble(),
-    E: 0, E0: 1, age: 9, rx: 0, ry: 0, front: 0,
-    opened: false, ready: false, chimed: false, flash: 0, hushT: 0, settled: true,
+    E: 0, E0: 1, age: 9, rx: 0, ry: 0, front: 0, wipe: -1, wx: 0, wy: 0,
+    opened: false, ready: false, chimed: false, flash: 0, deny: 0, hushT: 0, settled: true,
     // geometry (fit)
     W: 1, H: 1, cx: 0, base: 0, x0: 0, y0: 0, f: 1, ox: 0, oy: 0, ow: 1, oh: 1, r: 1, acy: 0, latchX: 0, latchY: 0, pl: 0, diag: 1,
     depthA: DEPTH_A[k],
@@ -131,7 +132,7 @@ export function create(E) {
   // ---- layout + caches
   let fitKey = '', U = 1, fs = 13, horizonY = 0, compTop = 0, compBot = 0, lastToken = null;
   const plq = { x: 0, y: 0, w: 10, h: 10, lines: 2 };
-  const far = { x: 0, y: 0, r: 10 };
+  const far = { x: 0, y: 0, r: 10, haloR: 40, coreR: 20, rayL: 60, rayGrad: null };
   const floor = { x: 0, y: 0, rx: 10, ry: 10, grad: null };
   let plqGrad = null;
 
@@ -164,7 +165,9 @@ export function create(E) {
     W1 = Math.max(60, Math.min(W1, avail / asp));
     const H1 = asp * W1;
     const spare = Math.max(0, stage.h - (H1 + below + 8 + toastRes));
-    compTop = stage.y + 6 + spare * 0.5;
+    // when the stage allows, leave room above the arches for a two-line plot-twist note
+    const bannerRoom = Math.round(30 + 2 * (16 * U + 3) + 10);
+    compTop = stage.y + 6 + Math.min(spare, Math.max(spare * 0.5, bannerRoom));
     const base1 = compTop + H1;
     compBot = base1 + below;
     horizonY = base1 - H1 * 0.42;
@@ -195,7 +198,7 @@ export function create(E) {
     plqGrad.addColorStop(1, rgba(mix(tint, dark, 0.93), 0.9));
     // the far light (the calm beyond the third gate)
     const g3 = gates[2];
-    far.r = clamp(W1 * 0.2, 20, 34);
+    far.r = clamp(W1 * 0.2, 22, 34);
     far.x = g3.cx + dir * g3.W * 0.32;
     far.y = g3.y0 - far.r * 1.05;
     if (far.y - far.r < stage.y + 4) {
@@ -203,18 +206,15 @@ export function create(E) {
       far.x = g3.cx + dir * (g3.W / 2 + far.r * 0.15);
     }
     far.x = clamp(far.x, stage.x + far.r + 2, stage.x + stage.w - far.r - 2);
-    // keep the far light clear of the third gate's keystone medallion: it rests on the gate's outer shoulder, smaller, further away
-    if (g3.medal >= 0) {
-      const mr = clamp(g3.W * 0.16, 18, 28), my = g3.y0 + g3.f * 0.5;
-      if (Math.hypot(far.x - g3.cx, far.y - my) < far.r + mr + 4) {
-        far.r = Math.max(16, Math.min(far.r, g3.W * 0.2));
-        far.y = Math.max(stage.y + far.r + 2, g3.y0 + far.r * 0.1);
-        far.x = g3.cx + dir * Math.max(g3.W / 2 - far.r * 0.2, mr + far.r + 6);
-        far.x = clamp(far.x, stage.x + far.r + 1, stage.x + stage.w - far.r - 1);
-      }
-    }
-    // floor
-    floor.x = stage.cx; floor.y = (g3.base + compBot) / 2 + 4; floor.rx = stage.w * 0.62; floor.ry = Math.max(30, (compBot - g3.base) * 0.85);
+    // its halo and rays stay (all but invisibly) inside the stage: never over the title or the law chip
+    const room = Math.max(8, far.y - stage.y);
+    far.haloR = Math.min(far.r * 4.6, Math.max(room / 0.8, far.r * 1.8));
+    far.coreR = Math.min(far.r * 2.4, Math.max(room / 0.72, far.r * 1.5));
+    far.rayL = Math.min(far.r * 7, Math.max(room * 1.05, far.r * 2.5));
+    far.rayGrad = g.createRadialGradient(far.x, far.y, far.r * 0.6, far.x, far.y, far.rayL);
+    far.rayGrad.addColorStop(0, rgba(warm, 1)); far.rayGrad.addColorStop(0.55, rgba(warm, 0.45)); far.rayGrad.addColorStop(1, rgba(warm, 0));
+    // floor (its soft shadow ends at the stage edges)
+    floor.x = stage.cx; floor.y = (g3.base + compBot) / 2 + 4; floor.rx = stage.w * 0.5; floor.ry = Math.max(30, (compBot - g3.base) * 0.85);
     floor.grad = g.createRadialGradient(0, 0, 0, 0, 0, floor.rx);
     floor.grad.addColorStop(0, rgba(mix(pal.deep, tint, 0.18), 0.5));
     floor.grad.addColorStop(0.6, rgba(pal.deep, 0.26));
@@ -323,8 +323,9 @@ export function create(E) {
       q.stroke();
     }
     // the picture itself, set in its own leaded panel
-    const box = { x: ox + bw * 1.5, y: acy + r * 0.14, w: ow - bw * 3, h: base - bw * 1.6 - (acy + r * 0.14) };
-    let pr = null, rose = null;
+    const bTop = acy + r * (gt.medal >= 0 ? 0.2 : 0.14);
+    const box = { x: ox + bw * 1.5, y: bTop, w: ow - bw * 3, h: base - bw * 1.6 - bTop };
+    let pr = null, rose = null, waves = null;
     if (ph < 0) {
       // no photo: a glowing rose of coloured glass is the pane's picture
       const mr = Math.min(box.w, box.h) * 0.36, mcx = cx, mcy = box.y + box.h * 0.48, spokes = [8, 6, 10][gt.k];
@@ -338,6 +339,25 @@ export function create(E) {
       rg.addColorStop(0.72, rgba(warm, 0.8)); rg.addColorStop(1, rgba(mix(warm, pal.accent, 0.45), 0.7));
       q.fillStyle = rg; q.beginPath(); q.arc(mcx, mcy, mr, 0, TAU); q.fill();
       rose = { x: mcx, y: mcy, r: mr, n: spokes };
+      // the lower lights: two bands of coloured glass like calm water beneath the rose (never a dark hole)
+      const y1 = mcy + mr * 1.5 + 5 * U;
+      if (base - y1 > 16 * U) {
+        const y2 = lerp(y1, base, 0.5), wv = 4 * U;
+        waves = [y1, y2];
+        for (let i = 0; i < 2; i++) {
+          const ya = waves[i], yb = i ? base + 2 : y2 + wv;
+          const wg = q.createLinearGradient(0, ya - wv, 0, yb);
+          wg.addColorStop(0, rgba(mix(cols[(gt.k + i + 1) % 3], '#ffffff', 0.25), 0.46));
+          wg.addColorStop(1, rgba(cols[(gt.k + i + 2) % 3], 0.3));
+          q.fillStyle = wg; q.beginPath(); q.moveTo(ox + bw, ya + wv * 0.5);
+          q.bezierCurveTo(ox + ow * 0.34, ya - wv * (i ? -1 : 1), ox + ow * 0.66, ya + wv * (i ? -1 : 1), ox + ow - bw, ya - wv * 0.5);
+          q.lineTo(ox + ow - bw, yb); q.lineTo(ox + bw, yb); q.closePath(); q.fill();
+        }
+        // a warm path of light across the glass water
+        const sp = q.createRadialGradient(cx, y1 + (base - y1) * 0.45, 0, cx, y1 + (base - y1) * 0.45, ow * 0.42);
+        sp.addColorStop(0, rgba(mix(warm, '#ffffff', 0.4), 0.4)); sp.addColorStop(1, rgba(warm, 0));
+        q.fillStyle = sp; q.fillRect(ox, y1 - wv, ow, base - y1 + wv);
+      }
     }
     if (ph >= 0) {
       const s0 = photos.size(ph, 'card', 100), k = Math.min(box.w / s0.w, box.h / s0.h);
@@ -369,8 +389,14 @@ export function create(E) {
         q.moveTo(rose.x + rose.r * 1.5, rose.y); q.arc(rose.x, rose.y, rose.r * 1.5, 0, TAU);
         q.moveTo(rose.x + rose.r * 0.42, rose.y); q.arc(rose.x, rose.y, rose.r * 0.42, 0, TAU);
         for (let i = 0; i < rose.n; i++) { const a = (i / rose.n) * TAU - Math.PI / 2; q.moveTo(rose.x + Math.cos(a) * rose.r * 0.42, rose.y + Math.sin(a) * rose.r * 0.42); q.lineTo(rose.x + Math.cos(a) * rose.r * 1.5, rose.y + Math.sin(a) * rose.r * 1.5); }
-        const yB = lerp(acy, base, 0.86);
-        q.moveTo(ox + bw, yB); q.bezierCurveTo(ox + ow * 0.4, yB + 5 * U, ox + ow * 0.6, yB - 5 * U, ox + ow - bw, yB);
+        if (waves) {
+          const wv = 4 * U;
+          for (let i = 0; i < 2; i++) { const ya = waves[i]; q.moveTo(ox + bw, ya + wv * 0.5); q.bezierCurveTo(ox + ow * 0.34, ya - wv * (i ? -1 : 1), ox + ow * 0.66, ya + wv * (i ? -1 : 1), ox + ow - bw, ya - wv * 0.5); }
+          q.moveTo(cx, waves[1]); q.lineTo(cx, base);
+        } else {
+          const yB = lerp(acy, base, 0.86);
+          q.moveTo(ox + bw, yB); q.bezierCurveTo(ox + ow * 0.4, yB + 5 * U, ox + ow * 0.6, yB - 5 * U, ox + ow - bw, yB);
+        }
       });
     } else {
       // vista panes: a few extra leaded pieces in the lower lights
@@ -381,6 +407,15 @@ export function create(E) {
         q.moveTo(ox + bw, yB); q.bezierCurveTo(ox + ow * 0.4, yB + 6 * U, ox + ow * 0.6, yB - 6 * U, ox + ow - bw, yB);
         q.moveTo(cx, yA); q.lineTo(cx, base);
       });
+    }
+    // extra photos: a round stained-glass medallion set in the arch above the picture (a little rose window)
+    if (gt.medal >= 0) {
+      const md = r * 0.44, my = acy - r * 0.36, ring = Math.max(3, bw * 0.55);
+      const rg2 = q.createRadialGradient(cx, my, md, cx, my, md + ring);
+      rg2.addColorStop(0, rgba(mix(warm, '#ffffff', 0.35), 0.75)); rg2.addColorStop(1, rgba(mix(tint, warm, 0.5), 0.55));
+      q.fillStyle = rg2; q.beginPath(); q.arc(cx, my, md + ring, 0, TAU); q.fill();
+      photos.draw(q, gt.medal, cx, my, md * 2, { shape: 'circle', shadow: false });
+      came(() => { q.beginPath(); q.arc(cx, my, md, 0, TAU); q.moveTo(cx + md + ring, my); q.arc(cx, my, md + ring, 0, TAU); });
     }
     q.restore();
     gt.pane = c;
@@ -506,6 +541,7 @@ export function create(E) {
     p = E.gate(wanted);                                    // the first instant of the swing is the tap itself
     if (wanted > p + 0.015) wanted = p + 0.015;
     ring(gt, x, y, AMP);
+    gt.wipe = 0; gt.wx = gt.rx; gt.wy = gt.ry;            // the opening ripple wipes the mist (once; later rings never re-mist)
     gt.sw.v += 0.9;
     const pan = clamp((gt.cx - stage.cx) / (stage.w * 0.5), -1, 1);
     E.sound('glass', { note: NOTES[k], intensity: 0.55, pan });
@@ -520,9 +556,11 @@ export function create(E) {
     if (hinted) { hinted = false; E.hint(meta.howTo); }
     return true;
   }
+  // "not yet": the sealed gate rattles softly on its latch (reduced motion: its latch just glows, no shake)
+  function nudge(gt, k) { if (!reduced) gt.wob.kick(k); gt.deny = 1; }
   function refuse(gt, pv, byLaw) {
     const now = E.now();
-    gt.wob.kick(reduced ? 0.4 : 0.85);
+    nudge(gt, 0.85);
     if (pv) pv.flash = 1;
     if (now - lastRefuse > 0.22) {
       lastRefuse = now;
@@ -578,7 +616,9 @@ export function create(E) {
       if (gt.hushT > 0) gt.hushT = Math.max(0, gt.hushT - dt);
       gt.age += dt;
       gt.front = gt.age * ringSpeedK * U;
+      if (gt.wipe >= 0 && gt.wipe < gt.diag * 1.2) gt.wipe += dt * ringSpeedK * 1.35 * U;
       gt.flash = Math.max(0, gt.flash - dt * 2.2);
+      gt.deny = Math.max(0, gt.deny - dt * 2.4);
       gt.settled = isSettled(gt);
     }
     // glass hum fades with the ripple
@@ -628,8 +668,8 @@ export function create(E) {
     // slow light rays from the calm beyond (hypnotic, very faint)
     if (!lowStim) {
       g.save(); g.globalCompositeOperation = 'lighter';
-      g.fillStyle = rgba(warm, (0.03 + 0.03 * prog + 0.04 * fin) * br);
-      const L = far.r * 7, rot0 = reduced ? 0.3 : t * 0.035;
+      g.globalAlpha = (0.05 + 0.05 * prog + 0.06 * fin) * br; g.fillStyle = far.rayGrad;
+      const L = far.rayL, rot0 = reduced ? 0.3 : t * 0.035;
       g.beginPath();
       for (let i = 0; i < 7; i++) {
         const a = rot0 + (i / 7) * TAU, wa = 0.07 + 0.03 * Math.sin(i * 2.1);
@@ -637,8 +677,8 @@ export function create(E) {
       }
       g.fill(); g.restore();
     }
-    glow(g, far.x, far.y, far.r * 4.6, warm, (0.12 + 0.18 * prog + 0.24 * fin) * br);
-    glow(g, far.x, far.y, far.r * 2.4, mix(warm, '#ffffff', 0.45), 0.16 + 0.26 * prog + 0.3 * fin);
+    glow(g, far.x, far.y, far.haloR, warm, (0.12 + 0.18 * prog + 0.24 * fin) * br);
+    glow(g, far.x, far.y, far.coreR, mix(warm, '#ffffff', 0.45), 0.16 + 0.26 * prog + 0.3 * fin);
     // the far light: a photo seen through mist, or a calm sun
     const g3 = gates[2], clr = smooth(clamp(g3.sw.x * 1.1));
     if (farP >= 0) {
@@ -720,7 +760,7 @@ export function create(E) {
   function drawGate(gt, t, fin, agit, readyFrac) {
     const a = gt.depthA;
     const sw = Math.max(0, gt.sw.x);
-    const wobPhi = Math.abs(gt.wob.v) * (reduced ? 0.025 : 0.05);
+    const wobPhi = reduced ? 0 : Math.abs(gt.wob.v) * 0.05;
     const phi = clamp(sw, 0, 1.25) * PHI + (gt.opened ? 0 : wobPhi);
     const openK = smooth(clamp(sw * 1.15));
     const flowB = fin > 0 ? finFlowBoost(gt.k, t) : 0;
@@ -733,15 +773,15 @@ export function create(E) {
     }
     // ---- the stained-glass pane (only worth drawing once the leaves part)
     g.save(); g.clip(gt.openPath);
-    if (phi > 0.02) {
+    if (phi > 0.02 && gt.opened) {                         // a sealed gate's rattle never shows the true picture
       drawPane(gt);
       // mist, wiped away by the ripple's wavefront
-      const mistIn = gt.front - 26 * U;
-      if (mistIn < gt.diag * 1.05) {
-        const r0 = Math.max(0, mistIn), r1 = Math.max(r0 + 1, gt.front + 10 * U);
-        const mg = g.createRadialGradient(gt.rx, gt.ry, r0, gt.rx, gt.ry, r1);
+      const mistIn = gt.wipe - 26 * U;
+      if (gt.wipe >= 0 && mistIn < gt.diag * 1.05 && fin < 0.98) {
+        const r0 = Math.max(0, mistIn), r1 = Math.max(r0 + 1, gt.wipe + 10 * U);
+        const mg = g.createRadialGradient(gt.wx, gt.wy, r0, gt.wx, gt.wy, r1);
         const mc = mix('#ffffff', tint, 0.3);
-        mg.addColorStop(0, rgba(mc, 0)); mg.addColorStop(1, rgba(mc, 0.34));
+        mg.addColorStop(0, rgba(mc, 0)); mg.addColorStop(1, rgba(mc, 0.34 * (1 - fin)));
         g.fillStyle = mg; g.fillRect(gt.ox - 2, gt.oy - 2, gt.ow + 4, gt.oh + 4);
       }
       // stained wash while the glass is still ringing; true colours once still
@@ -762,16 +802,10 @@ export function create(E) {
     drawLeaf(gt, 1, phi, frost, t, agit);
     // ---- latch
     if (phi < 0.06) drawLatch(gt, t, readyFrac);
-    // ---- keystone: a medallion photo or a small glass jewel
+    // ---- keystone: a small glass jewel
     const kx = gt.cx, ky = gt.y0 + gt.f * 0.5;
-    if (gt.medal >= 0) {
-      const mr = clamp(gt.W * 0.16, 18, 28);
-      glow(g, kx, ky, mr * 1.8, tint, 0.3 * a);
-      photos.draw(g, gt.medal, kx, ky, mr * 2, { shape: 'circle', blur: 1 - openK, glow: 0.4 + 0.3 * openK, glowColour: tint, shadow: false, sheen: true });
-    } else {
-      glow(g, kx, ky, gt.f * 1.8, tint, (0.35 + 0.3 * openK) * a);
-      orb(g, kx, ky, gt.f * 0.5, mix(tint, '#ffffff', 0.35 + 0.3 * openK), { alpha: a });
-    }
+    glow(g, kx, ky, gt.f * 1.8, tint, (0.35 + 0.3 * openK) * a);
+    orb(g, kx, ky, gt.f * 0.5, mix(tint, '#ffffff', 0.35 + 0.3 * openK), { alpha: a });
   }
   function drawPane(gt) {
     const b = BLEED, X = gt.ox - b, Y = gt.oy - b, w = gt.ow + 2 * b, h = gt.oh + 2 * b, img = gt.pane;
@@ -919,7 +953,7 @@ export function create(E) {
     }
   }
   function drawLatch(gt, t, readyFrac) {
-    const a = gt.depthA, wx = gt.wob.v * (reduced ? 0.8 : 2.4) * U;
+    const a = gt.depthA, wx = reduced ? 0 : gt.wob.v * 2.4 * U, dn = smooth(gt.deny);
     const x = gt.latchX + wx, y = gt.latchY, r = (5.2 + 1.2 * SC[gt.k]) * U;
     if (readyFrac >= 0 && gt.ready) {
       // ready: breathing invitation
@@ -934,12 +968,12 @@ export function create(E) {
       glint(g, x - r * 0.3, y - r * 0.35, r * 0.9, '#ffffff', 0.5 + 0.3 * br, t * 0.3);
     } else if (readyFrac >= 0) {
       // sealed until the preceding glass is still: a small ring fills as it settles
-      glow(g, x, y, r * 3.2, tint, 0.22);
-      orb(g, x, y, r * 0.82, mix(tint, dark, 0.35), { alpha: 0.9 });
+      glow(g, x, y, r * (3.2 + 1.4 * dn), tint, 0.22 + 0.3 * dn);
+      orb(g, x, y, r * 0.82, mix(tint, dark, 0.35 - 0.25 * dn), { alpha: 0.9 });
       waitRing(g, x, y, r * 2.1, readyFrac, tint2, 0.85);
     } else {
-      glow(g, x, y, r * 2.4, tint, 0.14 * a);
-      orb(g, x, y, r * 0.7, mix(tint, dark, 0.45), { alpha: 0.75 * a });
+      glow(g, x, y, r * (2.4 + 1.4 * dn), tint, (0.14 + 0.3 * dn) * a);
+      orb(g, x, y, r * 0.7, mix(tint, dark, 0.45 - 0.25 * dn), { alpha: 0.75 * a });
     }
   }
   function drawPlaque(t, prog, fin) {
@@ -1010,7 +1044,7 @@ export function create(E) {
       if (gt.opened) { reRing(gt, pt.x, pt.y); return; }
       if (k === nOpened) { tryOpen(k, pt.x, pt.y); return; }
       // a later gate: it rattles softly and the gate whose turn it is glows
-      gt.wob.kick(reduced ? 0.35 : 0.7);
+      nudge(gt, 0.7);
       gates[nOpened].flash = 1;
       if (E.now() - lastRefuse > 0.22) { lastRefuse = E.now(); E.sound('click', { intensity: 0.14 }); E.haptic('tick'); }
     },
@@ -1041,6 +1075,8 @@ export function create(E) {
     hint() {
       if (finAt >= 0 || nOpened >= 3) return null;
       const gt = gates[nOpened];
+      // while the preceding glass is still rippling (or the law asks for a pause) the next move is to wait: no ghost tap
+      if (!gt.ready) return null;
       return { tap: { x: gt.latchX, y: gt.latchY } };
     },
     twist() {

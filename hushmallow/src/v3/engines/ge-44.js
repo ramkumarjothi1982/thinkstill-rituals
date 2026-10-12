@@ -48,6 +48,8 @@ export const meta = {
 const C = 6;                                  // cells across the silk
 const NOTES = [0, 2, 4, 3, 5, 7, 6, 8, 5, 9]; // a small rising-and-resting pentatonic contour
 const GSUB = 4, ESUB = 6, PIECES = 3;          // thread / edge subdivisions per cell; slice pieces
+// Threads woven in earlier Keep-playing rounds of this run (memory only; cleared when a ritual starts).
+const TAPESTRY = new Map();
 const lum = (h) => { const [r, gg, b] = hex(h); return (0.2126 * r + 0.7152 * gg + 0.0722 * b) / 255; };
 
 /** Centripetal Catmull-Rom through P (seg samples per span). */
@@ -80,6 +82,10 @@ export function create(E) {
   const reduced = E.reduced, lowStim = E.lowStim, heavy = E.heavy;
   const n = photos.n;
   const R1 = E.round === 1;
+  const ritualKey = E.seed - (E.round - 1) * 1013;
+  if (R1) TAPESTRY.delete(ritualKey);
+  const past = (TAPESTRY.get(ritualKey) || []).slice(-4);
+  let routeCtrl = [];
   const D = Math.min(2, Math.max(1, globalThis.devicePixelRatio || 1));
   const spd = (reduced ? 0.32 : 1) * (heavy ? 0.62 : 1) * (1 - E.calm * 0.3);   // ambient motion speed
 
@@ -134,6 +140,7 @@ export function create(E) {
   const SDX = new Float32Array(PIECES + 1), SDY = new Float32Array(PIECES + 1);
   const FCX = new Float32Array(4), FCY = new Float32Array(4);
   let tokC = null, wLines = [], wOff = [], wFont = '', wSize = 14, wCX = new Float32Array(1), wCY = new Float32Array(1);
+  const W_FILL = ['rgba(4,2,16,0.8)', mix('#fff7ec', glowC, 0.1), 'rgba(255,255,255,0.32)'], W_OX = [0.8, 0, -0.35], W_OY = [1.3, 0, -0.55];
   // round 1 uses the canonical route; loop rounds weave a fresh one
   const pv = R1 ? { a: 0, b: 0, c: 0.5, j: 0.5, m: false } : { a: E.rand(), b: E.rand(), c: E.rand(), j: E.rand(), m: E.rand() < 0.5 };
 
@@ -226,6 +233,7 @@ export function create(E) {
     if (!F) { const fxs = Math.sign(k3[0] - k2[0]) || 1, fys = Math.sign(k3[1] - k2[1]) || 1; F = [k3[0] + fxs * 0.5, k3[1] + fys * 0.5]; }
     fcx = clamp(Math.floor(F[0]), 0, C - 1); fcy = clamp(Math.floor(F[1]), 0, Rw - 1);
     const ctrl = way.length ? [s0, k1, way[0], k2, way[1], k3, F] : [s0, k1, k2, k3, F];
+    routeCtrl = ctrl.map((q) => [q[0], q[1]]);
     const P = ctrl.map(([x, y]) => [sx0 + x * cell, sy0 + y * cell]);
     const dense = catmull(P, 30);
     for (const q of dense) {
@@ -317,7 +325,24 @@ export function create(E) {
     b.fillStyle = hg; b.fillRect(0, 0, sw, sh);
     seigaiha(b);
     if (!n) motif(b);
+    pastThreads(b);
     labelBand(b);
+  }
+  function pastThreads(b) {
+    // every round you've finished leaves its thread embroidered in the silk: the tapestry grows as you play
+    const list = past.filter((h) => h.R === R);
+    list.forEach((h, i) => {
+      const a = 0.5 + 0.5 * ((i + 1) / list.length), P = catmull(h.ctrl.map(([x, y]) => [x * cell, y * cell]), 24);
+      b.save(); b.lineCap = 'round'; b.lineJoin = 'round';
+      const path = () => { b.beginPath(); P.forEach(([x, y], k) => (k ? b.lineTo(x, y) : b.moveTo(x, y))); };
+      path(); b.strokeStyle = rgba(wovenCol, 0.09 * a); b.lineWidth = 7 * stage.s; b.stroke();
+      b.setLineDash([7 * stage.s, 4 * stage.s]);
+      b.translate(0.6, 1); path(); b.strokeStyle = rgba('#05020f', 0.35 * a); b.lineWidth = 2 * stage.s; b.stroke();
+      b.translate(-0.6, -1); path(); b.strokeStyle = rgba(wovenCol, 0.5 * a); b.lineWidth = 1.6 * stage.s; b.stroke();
+      b.setLineDash([]);
+      for (const k of h.knots) { const x = k[0] * cell, y = k[1] * cell; b.fillStyle = rgba(wovenCol, 0.55 * a); b.beginPath(); b.arc(x, y, 2.6 * stage.s, 0, TAU); b.fill(); }
+      b.restore();
+    });
   }
   function seigaiha(b) {
     // the classic wave-scale damask, woven faintly into the satin
@@ -520,7 +545,7 @@ export function create(E) {
         for (let q = 0; q < touches.length; q++) {
           const tp = touches[q]; if (tp.amp < 0.01) continue;
           const ddx = tp.x - rx, ddy = tp.y - ry, w = Math.exp(-(ddx * ddx + ddy * ddy) / sig2);
-          const gth = (tp === tracer ? 0.05 + 0.26 * taut : 0.07) * tp.amp * w * KP;
+          const gth = (tp === tracer ? 0.05 + 0.36 * taut : 0.07) * tp.amp * w * KP;
           fx += ddx * gth; fy += ddy * gth;
         }
         mvx[k] += fx * h; mvy[k] += fy * h;
@@ -539,7 +564,7 @@ export function create(E) {
     // the shuttle glides along the route towards the fingertip (or the assist step); rushing drags it
     let Tg = null;
     if (finAt < 0) { if (tracer && fingerValid) Tg = fingerS; else if (assistTo != null) Tg = assistTo; else if (glideTo != null) Tg = glideTo; }
-    const vmax = (!tracer && assistTo != null ? 230 : lerp(520, 110, taut)) * s;
+    const vmax = (!tracer && assistTo != null ? 230 : lerp(420, 100, taut)) * s;
     const vd = Tg != null ? clamp((Tg - wanted) * 10, 0, vmax) : 0;
     vS += (vd - vS) * (1 - Math.exp(-dt * 12));
     if (Tg != null && Tg > wanted) wanted = Math.min(Tg, L, wanted + vS * dt);
@@ -636,7 +661,7 @@ export function create(E) {
     const sweepC = ((t * 0.045 * (reduced ? 0.5 : 1)) % 1.7) - 0.35;
     const tautOn = tracer && taut > 0.03;
     const ax = SHX, ay = SHY, bx = tracer ? tracer.x : 0, by = tracer ? tracer.y : 0, abx = bx - ax, aby = by - ay, ab2 = abx * abx + aby * aby || 1;
-    const cr2 = (6 * stage.s) ** 2;
+    const cr2 = (8 * stage.s) ** 2;
     let dmax = 0;
     for (let j = 0; j < SHm; j++) {
       const y = sy0 + (j + 0.5) * stepY, v = (j + 0.5) / SHm;
@@ -660,7 +685,7 @@ export function create(E) {
         if (tautOn) {
           let tq = ((x - ax) * abx + (y - ay) * aby) / ab2; tq = tq < 0 ? 0 : tq > 1 ? 1 : tq;
           const ex = ax + abx * tq - x, ey = ay + aby * tq - y;
-          shd += taut * 1.3 * Math.exp(-(ex * ex + ey * ey) / cr2);
+          shd += taut * 2 * Math.exp(-(ex * ex + ey * ey) / cr2);
         }
         const o = (j * SWm + i) * 4;
         if (shd >= 0) { const a = Math.pow(shd, 1.5) * 92; sd[o] = hr; sd[o + 1] = hg; sd[o + 2] = hb; sd[o + 3] = a > 150 ? 150 : a; }
@@ -845,12 +870,11 @@ export function create(E) {
     g.save(); g.font = wFont; g.textAlign = 'center'; g.textBaseline = 'middle';
     glow(g, mx, cy0, sw * 0.32, glowC, 0.08);
     // embroidered: a shadow under the stitches, the thread, a soft sheen on top
-    const fills = ['rgba(4,2,16,0.8)', mix('#fff7ec', glowC, 0.1), 'rgba(255,255,255,0.32)'], OX = [0.8, 0, -0.35], OY = [1.3, 0, -0.55];
     for (let pass = 0; pass < 3; pass++) {
-      g.fillStyle = fills[pass]; q = 0;
+      g.fillStyle = W_FILL[pass]; q = 0;
       for (const o of wOff) for (let i = 0; i < o.chars.length; i++, q++) {
         if (pass === 2) g.globalCompositeOperation = 'lighter';
-        g.fillText(o.chars[i], wCX[q] + OX[pass], wCY[q] + OY[pass]);
+        g.fillText(o.chars[i], wCX[q] + W_OX[pass], wCY[q] + W_OY[pass]);
       }
       g.globalCompositeOperation = 'source-over';
     }
@@ -905,7 +929,7 @@ export function create(E) {
       const fk = clamp((t - finAt) / 1.9);
       if (fk < 1) {
         const fs = ease.inOutSine(fk) * L;
-        for (let q = 0; q < 6; q++) { const pq = pointAtS(fs - q * 9 * s); glow(g, pq.x, pq.y, (13 - q * 1.5) * s, '#fff3d6', (heavy ? 0.4 : 0.6) * (1 - q / 6)); }
+        for (let q = 0; q < 6; q++) { restAt(fs - q * 9 * s); disp(RX0, RY0); glow(g, RX0 + DXo, RY0 + DYo, (13 - q * 1.5) * s, '#fff3d6', (heavy ? 0.4 : 0.6) * (1 - q / 6)); }
       }
     }
     g.restore();
@@ -917,12 +941,12 @@ export function create(E) {
     const s = stage.s, step = 10 * s, s0 = shownS + 16 * s, r = 1.25 * s + 0.3;
     if (s0 >= L) return;
     g.save(); g.fillStyle = rgba(threadCol, 0.34); g.beginPath();
-    for (let sv = s0; sv < L; sv += step) { const q = pointAtS(sv); g.moveTo(q.x + r, q.y); g.arc(q.x, q.y, r, 0, TAU); }
+    for (let sv = s0; sv < L; sv += step) { restAt(sv); disp(RX0, RY0); const x = RX0 + DXo, y = RY0 + DYo; g.moveTo(x + r, y); g.arc(x, y, r, 0, TAU); }
     g.fill();
     const run = (t * 70 * s * (reduced ? 0.4 : 1)) % (L - s0 + 140 * s);
     for (let q = 0; q < 4; q++) {
       const sv = s0 + run - q * 12 * s; if (sv < s0 || sv > L) continue;
-      const pq = pointAtS(sv); glow(g, pq.x, pq.y, (9 - q * 1.5) * s, threadCol, 0.32 * (1 - q / 4));
+      restAt(sv); disp(RX0, RY0); glow(g, RX0 + DXo, RY0 + DYo, (9 - q * 1.5) * s, threadCol, 0.32 * (1 - q / 4));
     }
     g.restore();
   }
@@ -1126,7 +1150,7 @@ export function create(E) {
     get done() { return doneFlag; },
     frame,
     down(p) {
-      if (finAt >= 0 || doneFlag) return;
+      if (finAt >= 0) return;
       const inSilk = p.x > sx0 - 14 && p.x < sx0 + sw + 14 && p.y > sy0 - 12 && p.y < sy0 + sh + 12;
       let kind = null;
       if (!tracer && !traced) {
@@ -1204,6 +1228,9 @@ export function create(E) {
     },
     finish() {
       finAt = E.now(); tracer = null; assistTo = null; glideTo = null;
+      const hist = TAPESTRY.get(ritualKey) || [];
+      hist.push({ ctrl: routeCtrl, knots: K.map((q) => [q[0], q[1]]), R });
+      TAPESTRY.set(ritualKey, hist.slice(-6));
       for (const tp of touches) tp.tgt = 0;
       if (!reduced) billowAt = finAt + 0.2;
       E.sound('shimmer', { intensity: heavy ? 0.28 : 0.42 });

@@ -37,13 +37,11 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      # the app only: no dev tools, source workbook or Python helpers
+      # the app only, in a folder named after this commit so every deploy
+      # reaches people straight away instead of after their browser cache
+      # expires (see hushmallow/tools/build-site.sh)
       - name: Assemble site
-        run: |
-          mkdir -p _site
-          mkdir -p _site/assets && cp -r hushmallow/assets/mallows hushmallow/assets/rig hushmallow/assets/fonts _site/assets/
-          cp -r hushmallow/index.html hushmallow/manifest.webmanifest hushmallow/src _site/
-          touch _site/.nojekyll
+        run: hushmallow/tools/build-site.sh _site "${GITHUB_SHA::12}"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

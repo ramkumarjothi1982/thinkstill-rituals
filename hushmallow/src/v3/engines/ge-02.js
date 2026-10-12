@@ -14,7 +14,7 @@
 // your path in tow. At the reed they are delivered and hang as calm lanterns.
 // Words are written along the feather's stem in soft ink and bend with it.
 
-import { TAU, clamp, lerp, invLerp, smooth, ease, rgba, mix, glow, glint, orb, noise2, rng, FONT, wrap, spiral, canvas as makeCanvas } from '../fx.js';
+import { TAU, clamp, lerp, invLerp, smooth, ease, rgba, mix, glow, orb, noise2, rng, FONT, wrap, spiral, canvas as makeCanvas } from '../fx.js';
 import { Wobble } from '../kit.js';
 
 export const meta = {
@@ -87,7 +87,7 @@ export function create(E) {
   if (n === 1) slots[(round - 1) % 3] = 0;
   else if (n === 2) { slots[0] = (round - 1) % 2; slots[2] = round % 2; }
   else for (let j = 0; j < K; j++) slots[j] = (j + round - 1) % n;
-  const cargo = slots.map((ph, j) => ({ ph, j, b: 0, side: 1, bx: 0, by: 0, state: 0, slot: -1, x: 0, y: 0, vx: 0, vy: 0, tone: 1, t0: 0, hx: 0, hy: 0, thread: 0, phs: rnd() * TAU, lift: 0, row: 0, tier: 0, hu: 0.5, ax: 0, ay: 0, fx: 0, fy: 0 }));
+  const cargo = slots.map((ph, j) => ({ ph, j, b: 0, side: 1, bx: 0, by: 0, state: 0, slot: -1, x: 0, y: 0, vx: 0, vy: 0, tone: 1, t0: 0, hx: 0, hy: 0, thread: 0, phs: rnd() * TAU, lift: 0, ax: 0, ay: 0, fx: 0, fy: 0 }));
   let picked = 0;
 
   // ------------------------------------------------------------- layout --
@@ -96,6 +96,8 @@ export function create(E) {
   let NB = 30, BX, BY;                                // lane beads
   let cache = null;
   let reedX, reedY, reedH, reedSway = 0;
+  const HGU = new Float32Array(8), HGT = new Float32Array(8), LF = new Float32Array(4);   // finale: hang points on the leaf
+  let LS = 1.1;                                        // lantern scale once delivered
   const winds = [0, 1].map((k) => ({ k, yc: 0, hw: 1, sx: 0, tx: 0, sd: 1, span: 1, ex: 0, ey: 0, g: 1, col: k ? C.wind2 : C.wind1, grad: null,
     ph: rnd() * TAU, M: reduced || low ? 6 : 9, off: [], amp: [], kk: [], om: [], php: [], v: [], dash: [] }));
   for (const w of winds) {
@@ -134,7 +136,7 @@ export function create(E) {
   let sep = 0, loss = 0, lost = false, lostHinted = false, lastLostAt = -9, lastWaitAt = -9;
   let lastBead = 0, beadNote = 0, wakeAcc = 0, lookAt = 0, hapAt = -9;
   let doneFlag = false, finAt = -1, touchAt = -1, reedBow = 0, reedBowV = 0, lastT = 0;
-  let windIn = false, readDir = 0, readFade = 1;
+  let windIn = false, readDir = 0, readFade = 1, restoreAt = -1;
   let twistAt = -1;
   const twistKind = round % 2;          // odd rounds: a downy companion; even: calm lotus lights in the eddies
   const down = { x: 0, y: 0, vx: 0, vy: 0 };
@@ -213,7 +215,7 @@ export function create(E) {
     xR = W - mx - r; xL = mx + r;
     xS = mx + L * 1.02;
     xE = W - mx - Math.max(24, W * 0.075);
-    cs = clamp(r * 0.58, 34, 58);
+    cs = clamp(r * 0.64, 34, 60);
     pad = 30;
     buildRoute();
     // beads
@@ -222,7 +224,7 @@ export function create(E) {
     for (let i = 0; i < NB; i++) { routeAt((i + 0.5) / NB); BX[i] = tmpX; BY[i] = tmpY; }
     // winds: W1 between rows A and B (from the start side), W2 between rows B and C (from the far side)
     const hw = r * 0.6;
-    const wl = [[yA + r, -12, xR + r * 1.08, 1], [yB + r, W + 12, xL - r * 1.08, -1]];
+    const wl = [[yA + r, 0, xR + r * 1.08, 1], [yB + r, W, xL - r * 1.08, -1]];
     winds.forEach((w, k) => {
       const [yc, ls, lt, ld] = wl[k];
       w.yc = yc; w.hw = hw; w.sx = mapX(ls); w.tx = mapX(lt); w.sd = ld * flip; w.span = Math.abs(w.tx - w.sx) || 1;
@@ -257,21 +259,27 @@ export function create(E) {
     resetPath();
   }
   function hangSpots() {
-    const two = K > 4, per = two ? Math.ceil(K / 2) : K;
+    // at the reed one long leaf unfurls; the lanterns hang beneath it in a garland, clear of the resting feather.
+    // 5–7 lanterns alternate short and long threads so neighbours never overlap.
+    LS = K <= 4 ? 1.18 : 1.04;
+    const hMax = cs * LS, sp = Math.max(4, 6 * s), two = K > 4;
+    const fTop = yC - L * 0.22 - sp;                         // the feather and its words rest below this line
+    const hy0 = fTop - hMax - sp, hy1 = hy0 - hMax - sp * 1.5;
+    const line = (two ? hy1 : hy0) - 12 * s;
+    const room = flip > 0 ? reedX - (X0 + hMax * 0.55 + 6) : (X0 + W - hMax * 0.55 - 6) - reedX;
+    const near = Math.max(hMax * 0.5 + 12 * s, W * 0.07);
+    const span = clamp((K - 1) * (two ? hMax * 0.78 : hMax * 1.32), 0, Math.max(0, room - near));
+    const dEnd = Math.min(near + span + hMax * 0.5 + 10 * s, room + hMax * 0.45);
+    LF[0] = reedX - flip * dEnd * 0.38; LF[1] = Math.min(reedY - reedH * 0.9, line) - reedH * 0.55;
+    LF[2] = reedX - flip * dEnd; LF[3] = line + 6 * s;
     const sw0 = reedSway; reedSway = 0;
-    const toU = (tier, f) => {          // arc fraction → bezier parameter
-      let acc = 0, px = 0, py = 0; const n2 = 60, lens = [];
-      for (let i = 0; i <= n2; i++) { leafPt(tier, i / n2, 1); if (i) acc += Math.hypot(tmpX - px, tmpY - py); lens.push(acc); px = tmpX; py = tmpY; }
-      const want = f * acc; let i = 1; while (i < n2 && lens[i] < want) i++;
-      return (i - 1 + (want - lens[i - 1]) / ((lens[i] - lens[i - 1]) || 1)) / n2;
-    };
-    cargo.forEach((c, j) => {
-      c.tier = two && j >= per ? 1 : 0;
-      const k = c.tier ? j - per : j, cnt = c.tier ? K - per : per;
-      const f = c.tier ? 0.4 + 0.52 * (cnt <= 1 ? 0.5 : k / (cnt - 1)) : 0.3 + 0.64 * (cnt <= 1 ? 0.5 : k / (cnt - 1));
-      c.hu = toU(c.tier, f);
-      c.thread = 10 * s + ((j * 7) % 3) * 6 * s + (c.tier ? 0 : 4 * s);
-    });
+    for (let i = 0; i < K; i++) {
+      const xt = reedX - flip * (near + (K > 1 ? (i / (K - 1)) * span : 0));
+      let lo = 0, hi = 1;
+      for (let it = 0; it < 22; it++) { const m = (lo + hi) / 2; leafPt(0, m, 1); if ((tmpX - xt) * flip > 0) lo = m; else hi = m; }
+      HGU[i] = (lo + hi) / 2; leafPt(0, HGU[i], 1);
+      HGT[i] = Math.max(6 * s, (two && i % 2 ? hy1 : hy0) - tmpY);
+    }
     reedSway = sw0;
   }
   function buildCache() {
@@ -289,7 +297,17 @@ export function create(E) {
     // faint reflected light streaks
     const rr = rng(E.seed * 3 + 7);
     c.save(); c.globalCompositeOperation = 'lighter';
-    for (let i = 0; i < 30; i++) { const x = X0 + rr() * W, y = Y0 + rr() * H, w = 10 + rr() * 50; c.fillStyle = rgba(C.lane, 0.025 + rr() * 0.04); c.beginPath(); c.ellipse(x, y, w, 1 + rr() * 1.2, 0, 0, TAU); c.fill(); }
+    for (let i = 0; i < 30; i++) { const w = 10 + rr() * 50, x = X0 + w + rr() * (W - w * 2), y = Y0 + 8 + rr() * (H - 16); c.fillStyle = rgba(C.lane, 0.025 + rr() * 0.04); c.beginPath(); c.ellipse(x, y, w, 1 + rr() * 1.2, 0, 0, TAU); c.fill(); }
+    c.restore();
+    // feather the pool to nothing at the stage edge: no hard rim, nothing over the title or the dock
+    c.save(); c.globalCompositeOperation = 'destination-in';
+    const fx0 = Math.min(W * 0.1, 40), fy0 = Math.min(H * 0.12, 54);
+    const mh = c.createLinearGradient(X0, 0, X0 + W, 0);
+    mh.addColorStop(0, 'rgba(0,0,0,0)'); mh.addColorStop(fx0 / W, 'rgba(0,0,0,1)'); mh.addColorStop(1 - fx0 / W, 'rgba(0,0,0,1)'); mh.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = mh; c.fillRect(X0 - pad, Y0 - pad, W + pad * 2, H + pad * 2);
+    const mv = c.createLinearGradient(0, Y0, 0, Y0 + H);
+    mv.addColorStop(0, 'rgba(0,0,0,0)'); mv.addColorStop(fy0 / H, 'rgba(0,0,0,1)'); mv.addColorStop(1 - fy0 / H, 'rgba(0,0,0,1)'); mv.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = mv; c.fillRect(X0 - pad, Y0 - pad, W + pad * 2, H + pad * 2);
     c.restore();
     // the calm lane: a soft channel of light with two faint banks
     c.save(); c.lineCap = 'round'; c.lineJoin = 'round';
@@ -368,8 +386,10 @@ export function create(E) {
         wanted = Math.min(assistTo, wanted + dt * 0.26);
         if (assistTo - wanted < 1e-4) assistTo = null;
         if (wanted <= before + 1e-6 || real <= lastReal + 1e-6) {
-          assistStall += dt;
-          if (assistStall > 0.8) { assistTo = null; if (E.locked) { wob.kick(0.7); E.checkpoint('wait'); } }
+          // the law is holding this press: one gentle "not yet", and the step finishes once the law lets it
+          const was = assistStall; assistStall += dt;
+          if (was <= 0.45 && assistStall > 0.45 && E.locked) { wob.kick(0.7); E.checkpoint('wait'); E.sound('drip', { note: 1, intensity: 0.2 }); }
+          if (assistStall > 5 && !E.locked) assistTo = null;
         } else assistStall = 0;
       }
     }
@@ -439,8 +459,10 @@ export function create(E) {
       if (!lostHinted && round === 1) { lostHinted = true; E.hint('Gently — slow down so the feather keeps its shadow.'); }
     } else if (lost && loss < 0.25) {
       lost = false; E.sound('glass', { note: 6, intensity: 0.3 }); E.react('nod');
+      if (lostHinted && restoreAt === -1) restoreAt = t + 2.4;
       E.particles.burst(PX[4], PY[4], reduced ? 3 : 7, { speed: 26, colour: warm, life: 0.9, size: 5 });
     }
+    if (restoreAt > 0 && t > restoreAt && !lost) { restoreAt = -2; if (E.phase === 'play') E.hint(meta.howTo); }
     if (!windIn && windHere > 0.32 * agit0 && drag != null) { windIn = true; E.sound('wind', { intensity: 0.22 + 0.2 * agit }); }
     else if (windIn && windHere < 0.15 * agit0) windIn = false;
 
@@ -465,11 +487,11 @@ export function create(E) {
       E.ripples.add(reedX, reedY, { colour: warm, speed: 50, alpha: 0.5, r: 6 }); E.ripples.add(reedX, reedY, { colour: C.lane, speed: 30, alpha: 0.35, r: 3 });
     }
     reedBowV += (-26 * reedBow - 4.2 * reedBowV) * Math.min(dt, 0.04); reedBow += reedBowV * Math.min(dt, 0.04);
-    if (!doneFlag && real >= 0.999 && drag == null && assistTo == null && shown > 0.995) doneFlag = true;
+    if (finAt < 0) doneFlag = real >= 0.999 && drag == null && assistTo == null && shown > 0.995;   // at the reed and resting
     if (twistAt >= 0) updateDown(dt, t);
 
     // ---- draw
-    g.drawImage(cache, X0 - pad, Y0 - pad, W + pad * 2, H + pad * 2);
+    g.drawImage(cache, pad * dpr, pad * dpr, W * dpr, H * dpr, X0, Y0, W, H);     // only the stage itself
     drawWaterLife(t, agit);
     drawWinds(t, agit, fin);
     drawBeads(t, fin);
@@ -479,7 +501,7 @@ export function create(E) {
     drawShadows(t, fin);
     drawCargo(t, fin, false);
     drawPlume(t, fin);
-    if (E.phase !== 'law') drawStemWords(t, fin);
+    if (E.phase !== 'law') drawStemWords(dt, t, fin);
     drawStem(t, fin);
     if (twistAt >= 0) drawTwist(t);
     drawTether(t);
@@ -502,14 +524,15 @@ export function create(E) {
       } else if (c.state === 3) {
         const k = ease.inOutSine(clamp((t - c.t0) / 1.4));
         c.lift = k;
-        leafPt(c.tier, c.hu, 1); c.ax = tmpX; c.ay = tmpY;
+        const hs = clamp(c.slot, 0, K - 1);
+        leafPt(0, HGU[hs], 1); c.ax = tmpX; c.ay = tmpY; c.thread = HGT[hs];
         const swing = Math.sin(t * 1.1 + c.phs) * 0.06 * (reduced ? 0.3 : 1);
         c.hx = c.ax + Math.sin(swing) * (c.thread + cargoH(c)); c.hy = c.ay + c.thread + cargoH(c) + cs * 0.04;
         c.x = lerp(c.fx, c.hx, k); c.y = lerp(c.fy, c.hy, k) - Math.sin(k * Math.PI) * 22 * s;
       }
     }
   }
-  function cargoH(c) { return c.ph >= 0 ? photos.size(c.ph, 'card', cs).h : cs * 0.58 * 1.1; }
+  function cargoH(c) { return c.ph >= 0 ? photos.size(c.ph, 'card', cs * LS).h : cs * 0.58 * LS; }
   function unhook(c, t) {
     c.state = 1; c.t0 = t; c.slot = picked++; c.x = c.bx; c.y = c.by;
     if (c.ph >= 0) { photos.dust(c.ph, c.bx, c.by - cs * 0.4, cs, reduced ? 6 : 14, { shape: 'card', up: 24, speed: 20 }); E.checkpoint('photo', c.ph); }
@@ -626,11 +649,18 @@ export function create(E) {
     glow(g, x + bx2, y + by2 - 5 * s, 12 * s, P.accent, 0.12 + 0.12 * left);
   }
   function leafPt(tier, u, grow) {
-    // two long leaves unfurl from the reed at the finale; lanterns hang beneath them
+    // finale leaves: tier 0 is the long receiving leaf (lanterns hang beneath it); tier 1 a short curl on the reed's far side
     const sw = reedSway * 0.5;
-    const x0 = reedX, y0 = reedY - reedH * (tier ? 0.1 : 0.18);
-    const x1 = reedX - flip * W * (tier ? 0.2 : 0.27) + sw, y1 = reedY - reedH * (tier ? 0.92 : 1.42);
-    const x2 = reedX - flip * W * (tier ? 0.52 : 0.74) + sw * 1.4, y2 = reedY - reedH * (tier ? 0.46 : 0.9) + (1 - grow) * reedH * 0.4;
+    let x0, y0, x1, y1, x2, y2;
+    if (tier === 0) {
+      x0 = reedX + sw * 0.8; y0 = reedY - reedH * 0.9;
+      x1 = LF[0] + sw; y1 = LF[1]; x2 = LF[2] + sw * 1.3; y2 = LF[3] + (1 - grow) * reedH * 0.5;
+    } else {
+      const room = Math.max(8, (flip > 0 ? X0 + W - reedX : reedX - X0) - 6);
+      x0 = reedX + sw * 0.5; y0 = reedY - reedH * 0.42;
+      x1 = reedX + flip * Math.min(30 * s, room) + sw * 0.7; y1 = reedY - reedH * 0.82;
+      x2 = reedX + flip * Math.min(12 * s, room * 0.5) + sw; y2 = reedY - reedH * 1.18 + (1 - grow) * reedH * 0.35;
+    }
     const v = u, a = (1 - v) * (1 - v), b = 2 * v * (1 - v), c = v * v;
     tmpX = a * x0 + b * x1 + c * x2; tmpY = a * y0 + b * y1 + c * y2;
   }
@@ -638,7 +668,7 @@ export function create(E) {
     if (k <= 0) return;
     const n2 = 22;
     g.beginPath();
-    const bw = (u) => Math.sin(Math.PI * Math.min(1, 0.12 + u * 0.95)) * 5.5 * s + 0.8;
+    const bw = (u) => Math.sin(Math.PI * Math.min(1, 0.12 + u * 0.95)) * (tier ? 4.2 : 7) * s + 0.8;
     for (let i = 0; i <= n2; i++) { const u = (i / n2) * k; leafPt(tier, u, k); const w = bw(u); i ? g.lineTo(tmpX, tmpY - w) : g.moveTo(tmpX, tmpY - w); }
     for (let i = n2; i >= 0; i--) { const u = (i / n2) * k; leafPt(tier, u, k); const w = bw(u) * 0.7; g.lineTo(tmpX, tmpY + w); }
     g.closePath(); g.fillStyle = col; g.fill();
@@ -668,7 +698,7 @@ export function create(E) {
     if (finAt >= 0) {
       const k1 = smooth(clamp((t - finAt - 0.05) / 1.1)), k2 = smooth(clamp((t - finAt - 0.3) / 1.1));
       const lc = rgba(mix(C.reed, warm, 0.25), 0.9);
-      drawLeaf(0, k1, lc); if (K > 4) drawLeaf(1, k2, lc);
+      drawLeaf(1, k2, lc); drawLeaf(0, k1, lc);
       g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.5; drawLeaf(0, k1, rgba(warm, 0.18)); g.restore();
     }
     const stalk = (ox, hh, ph, wdt, main) => {
@@ -879,7 +909,7 @@ export function create(E) {
       TBC[i] = i ? TBC[i - 1] + Math.hypot(TB[i * 2] - TB[i * 2 - 2], TB[i * 2 + 1] - TB[i * 2 - 1]) : 0;
     }
   }
-  function drawStemWords(t, fin) {
+  function drawStemWords(dt, t, fin) {
     const size = Math.max(12, Math.round(12 * s * 10) / 10);
     if (wTok !== words.token || wSize !== size || (t - wMeasuredAt > 1.5 && t < 8)) layoutWords(size, t);
     if (!wLines.length) return;
@@ -889,7 +919,7 @@ export function create(E) {
     const cx = TB[0] - TB[TBN * 2], ch = Math.hypot(cx, TB[1] - TB[TBN * 2 + 1]) || 1;
     const want = readDir === 0 ? (cx >= 0 ? 1 : -1) : readDir > 0 ? (cx < -0.34 * ch ? -1 : 1) : (cx > 0.34 * ch ? 1 : -1);
     if (want !== readDir) { if (readDir !== 0) readFade = 0; readDir = want; }
-    readFade = Math.min(1, readFade + 0.06);
+    readFade = Math.min(1, readFade + dt * 3.2);
     const m = wLines.length, lh = size * 1.08;
     const centre = Lt * 0.45;
     if (fin > 0) {
@@ -899,8 +929,9 @@ export function create(E) {
     }
     g.save();
     g.font = `600 ${size}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillStyle = C.ink; g.shadowColor = 'rgba(255,255,255,0.9)'; g.shadowBlur = 4;
-    g.globalAlpha = 0.9 * smooth(readFade);
+    // soft ink with a thin white halo (no per-letter shadow blur: cheap and crisp on a phone)
+    g.fillStyle = C.ink; g.strokeStyle = 'rgba(255,255,255,0.72)'; g.lineWidth = Math.max(2, size * 0.2); g.lineJoin = 'round';
+    g.globalAlpha = 0.92 * smooth(readFade);
     for (let j = 0; j < m; j++) {
       const ws = wWid[j], chs = wChars[j], off = ((m - 1) / 2 - j) * lh;
       let a = -wLW[j] / 2;
@@ -913,7 +944,7 @@ export function create(E) {
         const x = lerp(x0, x1, k), y = lerp(y0, y1, k);
         let tx = (x0 - x1) * readDir, ty = (y0 - y1) * readDir;   // reading direction
         const tl = Math.hypot(tx, ty) || 1; tx /= tl; ty /= tl;
-        g.save(); g.translate(x + ty * off, y - tx * off); g.rotate(Math.atan2(ty, tx)); g.fillText(chs[c], 0, 0); g.restore();
+        g.save(); g.translate(x + ty * off, y - tx * off); g.rotate(Math.atan2(ty, tx)); g.strokeText(chs[c], 0, 0); g.fillText(chs[c], 0, 0); g.restore();
         a += cw / 2;
       }
     }
@@ -923,7 +954,8 @@ export function create(E) {
     // the glowing quill: the place to catch the feather
     const x0 = PX[0], y0 = PY[0];
     plumeAt(0.17); const x1 = tmpX, y1 = tmpY;
-    const held = drag != null, pulse = 0.5 + 0.5 * Math.sin(t * 2.6);
+    const held = drag != null, live = E.phase === 'play' && real < 0.999 && finAt < 0;
+    const pulse = live ? 0.5 + 0.5 * Math.sin(t * 2.6) : 0.55;
     glow(g, x0, y0, (held ? 30 : 22 + 6 * pulse) * s, warm, (held ? 0.85 : 0.5 + 0.22 * pulse) + fin * 0.2);
     glow(g, lerp(x0, x1, 0.5), lerp(y0, y1, 0.5), 12 * s, mix(warm, '#ffffff', 0.4), 0.45);
     g.save(); g.lineCap = 'round';
@@ -934,7 +966,7 @@ export function create(E) {
     g.restore();
     orb(g, x0, y0, 3.2 * s, mix(warm, '#ffffff', 0.6));
     // an inviting ring while nobody holds it
-    if (!held && finAt < 0 && !reduced) {
+    if (!held && live && !reduced) {
       const k = (t * 0.45) % 1;
       g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = rgba(warm, 0.45 * (1 - k)); g.lineWidth = 1.5 * s;
       g.beginPath(); g.arc(x0, y0, (8 + 22 * ease.outCubic(k)) * s, 0, TAU); g.stroke(); g.restore();
@@ -974,8 +1006,9 @@ export function create(E) {
       }
       const calmGlow = (1 - tossed) * 0.5 + c.lift * 0.4;
       const lantern = delivered ? smooth(c.lift) : 0;
+      const csz = cs * lerp(1, LS, lantern);              // delivered lanterns grow a little
       if (c.ph >= 0) {
-        const sz = photos.size(c.ph, 'card', cs);
+        const sz = photos.size(c.ph, 'card', csz);
         const cy = y - sz.h * 0.5 - cs * 0.04;
         if (lantern > 0) { drawHangThread(x, cy - sz.h / 2, c, lantern); glow(g, x, cy, cs * 1.05, warm, 0.32 * lantern); }
         if (c.lift < 1) {
@@ -988,11 +1021,11 @@ export function create(E) {
           g.beginPath(); g.moveTo(mxp, top); g.quadraticCurveTo(mxp + 6 * s * flip, top + 1.5 * s + fl * 0.5, mxp + 11 * s * flip + fl, top + 2.5 * s + fl); g.lineTo(mxp, top + 5 * s); g.fill();
           g.restore();
         }
-        photos.draw(g, c.ph, x, cy, cs * (1 + 0.08 * lantern), { shape: 'card', rot: tilt, tone: 'storm', toneMix: tossed * 0.55, blur: tossed * 0.12,
+        photos.draw(g, c.ph, x, cy, csz, { shape: 'card', rot: tilt, tone: 'storm', toneMix: tossed * 0.55, blur: tossed * 0.12,
           glow: 0.25 + calmGlow, glowColour: tossed > 0.5 ? C.wind1 : warm, shadow: false, skewY: reduced ? 0 : tossed * 0.03 * Math.sin(t * 3.3 + c.phs) });
         if (lantern > 0) lanternCap(x, cy - sz.h / 2, sz.w, lantern);
       } else {
-        const lw = cs * 0.46, lh = cs * 0.58, cy = y - lh * 0.55;
+        const lw = csz * 0.46, lh = csz * 0.58, cy = y - lh * 0.55;
         if (lantern > 0) drawHangThread(x, cy - lh / 2, c, lantern);
         glow(g, x, cy, cs * (0.7 + 0.3 * calmGlow), tossed > 0.5 ? C.wind1 : warm, 0.35 + calmGlow * 0.5);
         g.save(); g.translate(x, cy); g.rotate(tilt);
@@ -1071,7 +1104,7 @@ export function create(E) {
     get done() { return doneFlag; },
     frame,
     down(p) {
-      if (finAt >= 0) return;
+      if (finAt >= 0 || E.phase !== 'play') return;
       const grab = drag == null ? nearFeather(p) : 0;
       if (grab) {
         drag = p.id; dragX = p.x; dragY = p.y; lastPX = p.x; lastPY = p.y;
@@ -1116,11 +1149,11 @@ export function create(E) {
       E.particles.burst(PX[2], PY[2], reduced ? 3 : 8, { speed: 24, colour: '#ffffff', life: 1.2, size: 4, kind: 'glint' });
     },
     finish() {
-      finAt = E.now();
+      finAt = E.now(); drag = null; onLane = false; relGrab = false; assistTo = null; doneFlag = true;
       for (const c of cargo) if (c.state === 0) unhook(c, finAt);
       E.sound('shimmer', { intensity: 0.4 });
       const hx = reedX, hy = reedY - reedH * 0.8, nSeed = heavy || low ? 7 : reduced ? 10 : 22;
-      for (let i = 0; i < nSeed; i++) E.particles.emit({ x: hx + (Math.random() - 0.5) * 8 * s, y: hy + (Math.random() - 0.5) * reedH * 0.1, vx: (Math.random() - 0.5) * 30 - flip * 12, vy: -16 - Math.random() * (heavy ? 14 : 30), life: 2.6 + Math.random() * 1.6, size: 4 + Math.random() * 3, colour: mix(warm, '#ffffff', 0.4), drag: 0.985, alpha: heavy ? 0.5 : 0.8 });
+      for (let i = 0; i < nSeed; i++) E.particles.emit({ x: hx + (rnd() - 0.5) * 8 * s, y: hy + (rnd() - 0.5) * reedH * 0.1, vx: (rnd() - 0.5) * 30 - flip * 12, vy: -16 - rnd() * (heavy ? 14 : 30), life: 2.6 + rnd() * 1.6, size: 4 + rnd() * 3, colour: mix(warm, '#ffffff', 0.4), drag: 0.985, alpha: heavy ? 0.5 : 0.8 });
     },
     destroy() {},
   };

@@ -32,14 +32,14 @@ export const meta = {
 
 const N = 64;                 // rim vertices
 const CAP = 0.06;             // input the law gate may bank
-const KAPPA = 5;              // how far a pull spreads along the rim
+const KAPPA = 8;              // how far a pull spreads along the rim
 const SWEEP = 0.9;            // the suggested pull point drifts round the rim as it grows
 const IRIS = ['#ff9ad5', '#ffd58a', '#a8ffcf', '#8fd8ff', '#b9a0ff', '#ff9ad5'];
 
 export function create(E) {
   const { g, stage, photos, words, pal } = E;
   const reduced = E.reduced, lowStim = E.lowStim, heavy = E.heavy, calm0 = E.calm;
-  const T = reduced || lowStim ? 72 : 88;   // interference texture resolution
+  const T = reduced || lowStim ? 64 : 80;   // interference texture resolution
   const flowK = (heavy ? 0.65 : 1) * (1 - calm0 * 0.5) * (reduced ? 0.4 : 1);
 
   // ---- round variety (loop rounds: new pull point, colours, bubbles, hero)
@@ -63,9 +63,9 @@ export function create(E) {
   // ---- geometry
   let cx, cy, Rt, r0, M, Rd, sr, heroS = 0;
   function fit() {
-    Rt = Math.min(stage.w * 0.385, stage.h * 0.34);
+    Rt = Math.min(stage.w * 0.385, stage.h * 0.37);
     cx = stage.cx; cy = stage.cy;
-    r0 = Rt * 0.52; M = Rt * 0.28; Rd = Rt * 1.36; sr = clamp(Rt * 0.155, 22, 32);
+    r0 = Math.max(Rt * 0.52, Math.min(Rt * 0.66, 58)); M = Rt * 0.28; Rd = Rt * 1.36; sr = clamp(Rt * 0.155, 22, 32);
     if (hero >= 0) { const s = photos.size(hero, 'natural', 100); heroS = (Rt * 2.16 * 100) / Math.max(1, Math.min(s.w, s.h)); }
   }
   fit();
@@ -119,12 +119,14 @@ export function create(E) {
     TX[k] = x; TY[k] = y; TR[k] = r; TC[k] = x / r; TS[k] = y / r; TI[k] = Math.min(N - 1e-3, (a / TAU) * N);
   }
   const kR = (TAU * 1.33) / 650, kG = (TAU * 1.33) / 540, kB = (TAU * 1.33) / 455;
+  let RdTex = 1;
   function updateFilm(fin) {
     const rb = rBase(), p = shown;
+    RdTex = Rd;
     const H0 = lerp(720, 330, smooth(p)) + hueShift * (1 - p * 0.5) - fin * 60;
     const L = clamp(lerp(0.05, 0.4, p) + fin * 0.28 + calm0 * 0.1), lt = 1 - L;
     const aMul = lerp(0.85, 0.62, p) * (hero >= 0 ? lerp(0.7, 0.9, p) : 1) * (1 - fin * 0.2);
-    const sw = 210 * (heavy ? 0.8 : 1);
+    const sw = 190 * (heavy ? 0.8 : 1);
     const T1 = flowT * 0.9, T2 = flowT * 0.7, T3 = flowT * 1.1;
     const margin = ((Rd * 2) / T) * 1.5, inv = Rd / rb, tw = 0.18;
     const tr = tR * tw, tg = tG * tw, tb = tB * tw, sc = 255 * (1 - tw);
@@ -138,19 +140,21 @@ export function create(E) {
       // thickness (nm): drains towards the bottom, swirls, thickens at the meniscus
       let h = H0 * (1 + 0.45 * fy)
         + sw * (Math.sin(fx * 2.9 + T1 + 1.5 * Math.sin(fy * 2.3 - T2)) + 0.6 * Math.sin(fy * 4.1 - T3 + 1.3 * Math.sin(fx * 3.2 + T1 * 0.8)))
-        + 360 * Math.exp(-edge * 11);
+        + 300 * Math.exp(-edge * 8);
       // tension bands: where the rim is drawn out, the film thins into crowded bands
       for (let q = 0; q < np; q++) {
         const s = pullS[q] / M;
         if (s <= 0.02) continue;
         const w = Math.exp((TC[k] * pullC[q] + TS[k] * pullN[q] - 1) * KAPPA * 0.8) * s;
-        if (w > 0.015) h += w * (240 * Math.cos(edge * (16 + 30 * w) * Math.PI) - 160 - 200 * rush);
+        if (w > 0.015) h += w * (230 * Math.cos(edge * (14 + 24 * w)) - 160 - 200 * rush);
       }
       for (let q = 0; q < 4; q++) {
         const pk = pokes[q];
-        if (pk.age > 2.5) continue;
-        const dx = TX[k] * Rd - pk.x, dy = TY[k] * Rd - pk.y, dd = Math.sqrt(dx * dx + dy * dy);
-        h += pk.amp * Math.exp(-pk.age * 1.5 - dd / (50 + pk.age * 110)) * Math.sin(dd * 0.09 - pk.age * 7);
+        if (pk.age > 2.2) continue;
+        const dx = TX[k] * Rd - pk.x, dy = TY[k] * Rd - pk.y, d2 = dx * dx + dy * dy, span = 50 + pk.age * 110;
+        if (d2 > span * span * 9) continue;
+        const dd = Math.sqrt(d2);
+        h += pk.amp * Math.exp(-pk.age * 1.5 - dd / span) * Math.sin(dd * 0.09 - pk.age * 7);
       }
       if (h < 90) h = 90;
       const a = Math.sin(kR * h), b = Math.sin(kG * h), c = Math.sin(kB * h);
@@ -196,6 +200,7 @@ export function create(E) {
       vx[j] = cx + ca[j] * r; vy[j] = cy + sa[j] * r;
     }
     rim[N] = rim[0];
+    Rd = maxRim * 1.05 + 4;      // the texture follows the film, so its detail stays fine at every size
   }
   function rimPath() {
     g.beginPath();
@@ -318,6 +323,9 @@ export function create(E) {
     g.save(); g.globalCompositeOperation = 'lighter';
     g.strokeStyle = rgba(pal.glow, (0.06 + 0.05 * shown) * al0); g.lineWidth = 12;
     g.beginPath(); g.arc(cx, cy, Rt, 0, TAU); g.stroke();
+    g.globalCompositeOperation = 'source-over';   // a faint shadow line so the outline reads on light skies too
+    g.strokeStyle = rgba(pal.deep, 0.16 * al0); g.lineWidth = 1; g.setLineDash([2, 5]);
+    g.beginPath(); g.arc(cx, cy, Rt + 1.5, 0, TAU); g.stroke(); g.setLineDash([]);
     g.globalCompositeOperation = 'source-over';
     g.fillStyle = mix(pal.glow, '#ffffff', 0.55);
     for (let i = 0; i < nd; i++) {
@@ -327,16 +335,21 @@ export function create(E) {
     }
     g.restore();
   }
+  let filmTick = 0;
   function drawFilm(fin) {
-    updateFilm(fin);
+    // idle film drifts slowly: refresh it every other frame; every frame while touched or rippling
+    let busy = np > 0 || finAt >= 0;
+    for (const pk of pokes) if (pk.age < 2.2) busy = true;
+    if (busy || (filmTick++ & 1) === 0) updateFilm(fin);
     const rb = rBase();
     g.save();
     rimPath(); g.clip();
     if (hero >= 0) {
-      const k = (photoR * 2.1) / (Rt * 2.16);
+      // the photo stretches with the film; as it spreads it crossfades to a soft, low-detail copy (a lighter glow)
+      const k = (photoR * 2.1) / (Rt * 2.16), soft = smooth(shown) * 0.7 + fin * 0.3, tm = shown * 0.55 + fin * 0.3, al = 1 - shown * 0.22 - fin * 0.1;
       g.save(); g.translate(cx, cy); g.scale(k, k);
-      photos.draw(g, hero, 0, 0, heroS, { shape: 'natural', blur: smooth(shown) * 0.72 + fin * 0.28, tone: 'glow', toneMix: shown * 0.55 + fin * 0.3,
-        alpha: 1 - shown * 0.22 - fin * 0.1, shadow: false });
+      photos.draw(g, hero, 0, 0, heroS, { shape: 'natural', tone: 'glow', toneMix: tm, alpha: al, shadow: false });
+      if (soft > 0.01) { g.scale(3.2, 3.2); photos.draw(g, hero, 0, 0, heroS / 3.2, { shape: 'natural', tone: 'glow', toneMix: tm, alpha: al * soft, shadow: false }); }
       g.restore();
     } else {
       // a bubble's own reflection: sky above, a curved bright horizon, deep below
@@ -348,9 +361,9 @@ export function create(E) {
     // the iridescent film itself: a thin tint (reads on light skies) + a luminous screen layer
     g.imageSmoothingEnabled = true;
     g.globalAlpha = lerp(0.3, 0.14, shown) * (1 - fin * 0.5);
-    g.drawImage(fc, cx - Rd, cy - Rd, Rd * 2, Rd * 2);
+    g.drawImage(fc, cx - RdTex, cy - RdTex, RdTex * 2, RdTex * 2);
     g.globalAlpha = 1; g.globalCompositeOperation = 'screen';
-    g.drawImage(fc, cx - Rd, cy - Rd, Rd * 2, Rd * 2);
+    g.drawImage(fc, cx - RdTex, cy - RdTex, RdTex * 2, RdTex * 2);
     g.globalCompositeOperation = 'source-over';
     // reflections: curved horizon + window highlight
     g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
@@ -370,19 +383,19 @@ export function create(E) {
       const k = ease.outCubic(s.m), D = lerp(satDist(s), s.pr * rb, k), a = lerp(s.a, s.pa, k);
       const x = cx + Math.cos(a) * D, y = cy + Math.sin(a) * D + (reduced ? 0 : Math.sin(clockT * 0.7 + s.bob) * 2);
       const size = sr * 2 * lerp(1, 1.3, s.soft) * (1 + fin * 0.1);
-      if (s.ph >= 0) photos.draw(g, s.ph, x, y, size, { shape: 'bubble', blur: s.soft * 0.6 + fin * 0.3, tone: 'glow', toneMix: 0.2 + s.soft * 0.5 + fin * 0.2,
+      if (s.ph >= 0) photos.draw(g, s.ph, x, y, size, { shape: 'bubble', blur: s.soft * 0.4 + fin * 0.2, tone: 'glow', toneMix: 0.2 + s.soft * 0.5 + fin * 0.2,
         alpha: lerp(1, 0.8, s.soft) * smooth(s.m * 1.4), glow: 0.4, glowColour: pal.glow, shadow: false });
       else glow(g, x, y, size * 0.75, IRIS[s.hue], 0.3 * smooth(s.m));
     }
-    // words float on the film surface
+    g.restore();
+    // words float on the film surface (never clipped by its edge, so they stay whole)
     if (E.phase !== 'law') {
       const size = clamp(rb * 0.12, 13, 19);
       const wx = cx + (reduced ? 0 : Math.sin(clockT * 0.31) * rb * 0.04);
       const wy = cy + (hero >= 0 ? rb * 0.36 : rb * 0.04) + (reduced ? 0 : Math.sin(clockT * 0.5) * 3);
-      words.draw(g, wx, wy, { style: 'light', size, maxWidth: rb * 1.35, lines: 3, alpha: 0.96, rot: reduced ? 0 : Math.sin(clockT * 0.23) * 0.035,
+      words.draw(g, wx, wy, { style: 'light', size, maxWidth: Math.max(rb * 1.35, 104), lines: 3, alpha: 0.96, rot: reduced ? 0 : Math.sin(clockT * 0.23) * 0.035,
         glowColour: mix(pal.glow, '#ffc8ef', 0.5 + 0.5 * Math.sin(flowT * 0.3)) });
     }
-    g.restore();
   }
   function drawRim(fin) {
     rimPath();
@@ -412,11 +425,11 @@ export function create(E) {
       const jc = Math.round(f * N);
       for (let b = 1; b <= 4; b++) {
         const gap = lerp(12, 4.5, sn) * b;          // bands crowd together as the tension rises
-        g.strokeStyle = b % 2 ? '#ffffff' : '#ffd6f4';
+        g.strokeStyle = b % 2 ? '#ffffff' : mix(pal.glow, '#ffd6f4', 0.5);
         for (let o = -9; o < 9; o++) {
           const j0 = (jc + o + N) % N, j1 = (j0 + 1) % N;
           const w0 = Math.exp((ca[j0] * pullC[q] + sa[j0] * pullN[q] - 1) * KAPPA), w1 = Math.exp((ca[j1] * pullC[q] + sa[j1] * pullN[q] - 1) * KAPPA);
-          const al = 0.4 * sn * (1 - b / 5) * (w0 + w1) * 0.5 * (1 - fin);
+          const al = 0.75 * sn * (1 - b / 5) * (w0 + w1) * 0.5 * (1 - fin);
           if (al < 0.02) continue;
           const r0b = rim[j0] - gap * (0.4 + 0.6 * w0), r1b = rim[j1] - gap * (0.4 + 0.6 * w1);
           g.globalAlpha = al;
@@ -456,12 +469,13 @@ export function create(E) {
       if (q.mode !== 'pull') continue;
       anyPull = true;
       const rr = rimAt(q.a), x = cx + Math.cos(q.a) * rr, y = cy + Math.sin(q.a) * rr;
-      glow(g, x, y, 18 + 10 * clamp(q.s / M), mix(pal.glow, '#ffffff', 0.3), 0.55);
+      const sn = clamp(q.s / M);
+      glow(g, x, y, 22 + 14 * sn, mix(pal.glow, '#ffffff', 0.35), 0.6 + 0.2 * sn);
       if (Math.hypot(q.x - x, q.y - y) > 9) {
-        g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = 'rgba(255,255,255,0.3)'; g.lineWidth = 1.4;
+        g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = 'rgba(255,255,255,0.45)'; g.lineWidth = 1.6; g.setLineDash([3, 4]);
         g.beginPath(); g.moveTo(x, y); g.lineTo(q.x, q.y); g.stroke(); g.restore();
-        glow(g, q.x, q.y, 14, pal.accent, 0.45);
       }
+      glow(g, q.x, q.y, 16, pal.accent, 0.5);
     }
     if (ghost.s > 0.5) {
       const rr = rimAt(ghost.a), x = cx + Math.cos(ghost.a) * rr, y = cy + Math.sin(ghost.a) * rr, k = clamp(ghost.s / (M * 0.6));
@@ -538,7 +552,7 @@ export function create(E) {
         if (r > rBase() + tense(a) - 6 && finAt < 0) {
           // slow pulls are followed closely; rushing thins the film and it lags behind
           const fast = invLerp(380, 1100, q.spd / stage.s);
-          wanted = Math.min(1, wanted + (dr * lerp(0.75, 0.22, fast)) / (Rt - r0), prog + CAP);
+          wanted = Math.min(1, wanted + (dr * lerp(0.3, 0.1, fast)) / (Rt - r0), prog + CAP);
           if (E.locked && wanted >= prog + CAP - 1e-3) waitNudge();
           if (fast > 0.6 && !rushHinted && prog < 0.8) { rushHinted = true; E.hint('Slowly — let the film follow your finger.'); }
         }
@@ -572,7 +586,7 @@ export function create(E) {
       const a = HA(prog), r = rimAt(a), path = [];
       const x0 = stage.x + 12, x1 = stage.x + stage.w - 12, y0 = stage.y + 12, y1 = stage.y + stage.h - 12;
       for (let i = 0; i <= 15; i++) {
-        const k = i / 15, rr = r - 2 + k * Rt * 0.36, aa = a + k * 0.06;
+        const k = i / 15, rr = r - 2 + k * Rt * 0.42, aa = a + k * 0.06;
         path.push([clamp(cx + Math.cos(aa) * rr, x0, x1), clamp(cy + Math.sin(aa) * rr, y0, y1)]);
       }
       return { path };

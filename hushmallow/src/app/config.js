@@ -18,4 +18,4 @@ export function testPurchasesAllowed(loc = globalThis.location) {
 }
 
 /** Shown at the bottom of Settings so a tester can tell which version has loaded. */
-export const BUILD = '2026-10-12 · V3 batch 1b (140 rituals)';
+export const BUILD = '2026-10-12 · V3 batch 1c (140 rituals)';

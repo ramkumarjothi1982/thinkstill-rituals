@@ -95,7 +95,7 @@ export function create(E) {
   let drag = null;               // { id, mode: 'card' | 'seal', dx, dy, fx, fy } — world coordinates
   let seated = false, sealedAt = -1, doneFlag = false, finAt = -1, twistAt = -1;
   let stepIns = 0, stepSeal = 0, lastHap = -9, lastWait = -9, lastRustle = -9, finLift = 0;
-  let elastX = 0, elastY = 0, nudge = 0, camK = 0, cam = 0, camMax = 0, guideA = 0;
+  let elastX = 0, elastY = 0, nudge = 0, camK = 0, cam = 0, camMax = 0, zc = 1, zMax = 1, pyW = 0, guideA = 0;
   const tmp = { x: 0, y: 0, r: 0 };
   const wob = new Wobble(), flapWob = new Wobble();
   const card = new Spring2(0, 0, { stiffness: 260, damping: 26 });
@@ -106,7 +106,7 @@ export function create(E) {
   const star = { x: new Spring(0, { stiffness: 30, damping: 9 }), y: new Spring(0, { stiffness: 30, damping: 9 }), tx: 0, ty: 0 };
   const lights = [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }];
 
-  // ---- geometry (world coordinates; the scene is drawn shifted up by `cam`)
+  // ---- geometry (world coordinates; once the card is in, a gentle camera glides and zooms onto the envelope)
   let W = 0, H = 0, eL = 0, eR = 0, eTop = 0, eB = 0, ecx = 0, flapH = 0, mouthMid = 0, mouthSide = 0, rcE = 6;
   let cW = 0, cH = 0, x0 = 0, y0 = 0, yS = 0, pS = 0, tol = 40, pad = 30, wordSize = 14, rw = 6, cpad = 3, loopLen = 40;
   const pathX = new Float32Array(NP), pathY = new Float32Array(NP);
@@ -127,8 +127,11 @@ export function create(E) {
     out.x = lerp(x0, ecx, kx); out.y = lerp(y0, yS, k); out.r = rot0 * (1 - smooth(clamp(k / 0.5)));
     return out;
   }
-  const toWorld = (p) => ({ x: p.x, y: p.y + cam, id: p.id, t: p.t });
-  const scr = (y) => y - cam - finLift;
+  // camera: screen = (world - pivot) * zoom + pivot - (0, cam); k = 0 is the identity
+  const sX = (x, z = zc) => (x - ecx) * z + ecx;
+  const sY = (y, z = zc, c = cam) => (y - pyW) * z + pyW - c - finLift;
+  const toWorld = (p) => ({ x: (p.x - ecx) / zc + ecx, y: (p.y + finLift - (pyW - cam)) / zc + pyW, id: p.id, t: p.t });
+  function setCam(k) { const e = ease.inOutSine(k); zc = lerp(1, zMax, e); cam = camMax * e; }
 
   // ------------------------------------------------------------- photos --
   if (n) {
@@ -179,7 +182,7 @@ export function create(E) {
   // -------------------------------------------------------------- fit --
   function fit() {
     const s = stage.s;
-    const up = n ? 1.56 : 1.24, down = 1.14;
+    const up = n ? 1.44 : 1.16, down = 1.12;
     W = Math.min(stage.w * 0.8, 330 * s);
     H = W / 1.58;
     const maxH = (stage.h * 0.95) / (up + down);
@@ -187,11 +190,14 @@ export function create(E) {
     ecx = stage.cx; eTop = stage.cy + ((up - down) * H) / 2;
     eL = ecx - W / 2; eR = ecx + W / 2; eB = eTop + H;
     flapH = H * 0.47; mouthMid = H * 0.37; rcE = H * 0.05; mouthSide = rcE * 0.55;
-    camMax = Math.max(0, eTop + H * 0.5 - (stage.cy + H * 0.12));
-    cam = camMax * ease.inOutSine(camK);
+    // sealing view: envelope, open flap and pull-tab centred, as large as the stage allows
+    pyW = eTop + H * 0.3;
+    zMax = clamp(Math.min((stage.w * 0.84) / W, (stage.h * 0.9) / (H * 1.62)), 1, 1.55);
+    camMax = pyW - (stage.cy + stage.h * 0.02);
+    setCam(camK);
     cW = W * 0.84; cH = Math.min(cW / 1.72, H * 0.78);
     yS = eTop + H * 0.15 + cH / 2;
-    x0 = ecx + startDX * W; y0 = eTop - H * 0.12 - cH / 2;
+    x0 = ecx + startDX * W; y0 = eTop - H * 0.06 - cH / 2;
     pS = Math.min(W * 0.42, H * 0.64) * (n >= 5 ? 0.86 : 1);
     tol = 40 * s + 10; pad = Math.ceil(42 * s);
     wordSize = Math.max(13, Math.min(18, cW * 0.072));
@@ -336,9 +342,11 @@ export function create(E) {
 
   // ---------------------------------------------------------- the loop --
   const ends = { ax: 0, ay: 0, under: 0 };
+  const anc = { x: 0, y: 0 };
   function anchorWorld() {
     const ax = loopSide * cW * 0.3, ay = -cH / 2 + cH * 0.085, c = Math.cos(cardRot.x), s = Math.sin(cardRot.x), sc = 1 + 0.035 * lift.x;
-    return { x: card.x + (ax * c - ay * s) * sc, y: card.y + (ax * s + ay * c) * sc, c, s };
+    anc.x = card.x + (ax * c - ay * s) * sc; anc.y = card.y + (ax * s + ay * c) * sc;
+    return anc;
   }
   const fa = { x: 0, y: 0, f: 0 };
   function flapAt(x, out) {
@@ -383,18 +391,18 @@ export function create(E) {
     if (!seated && insReal >= 0.999) {
       seated = true; hug.v -= 6;
       E.sound('drop-in', { intensity: 0.45 }); E.haptic('pop'); E.checkpoint('step');
-      E.ripples.add(ecx, scr(eTop + mouthMid), { colour: glowCol, speed: 60, alpha: 0.4, r: 8 });
+      E.ripples.add(ecx, sY(eTop + mouthMid), { colour: glowCol, speed: 60, alpha: 0.4, r: 8 });
       E.hint(dir > 0 ? 'Now trace the dotted seal from the left corner.' : 'Now trace the dotted seal from the right corner.');
     }
     if (sealedAt < 0 && sealReal >= 0.999) {
       sealedAt = t; emblem.target = 1;
       E.sound('settle', { intensity: 0.45 }); E.sound('chime', { intensity: 0.3 }); E.checkpoint('step');
-      E.ripples.add(ecx, scr(eTop + depthAt(0) - H * 0.085), { colour: glowCol, speed: 55, alpha: 0.45, r: 6 });
+      E.ripples.add(ecx, sY(eTop + depthAt(0) - H * 0.085), { colour: glowCol, speed: 55, alpha: 0.45, r: 6 });
     }
     if (!doneFlag && sealedAt >= 0 && !(drag && drag.mode === 'seal') && assistTo == null && sealShown > 0.992 && t - sealedAt > 0.3) doneFlag = true;
     // once the card is in, the envelope glides up to the middle of the stage to be sealed
-    if (seated) camK = Math.min(1, camK + dt / 0.9);
-    cam = camMax * ease.inOutSine(camK);
+    if (seated) camK = Math.min(1, camK + dt / (reduced ? 1.4 : 0.95));
+    setCam(camK);
     guideA += ((seated && sealedAt < 0 ? smooth(clamp((camK - 0.4) / 0.6)) : 0) - guideA) * (1 - Math.exp(-dt * 6));
 
     // the card follows the gated path, plus a rubber-band pull towards the finger
@@ -419,7 +427,7 @@ export function create(E) {
       photoTarget(o, t); o.spr.to(tmp.x, tmp.y); o.rs.target = tmp.r; o.spr.update(dt); o.rs.update(dt);
       if (!o.sealed && o.pk > 0.8) {
         o.sealed = true; sealedCount++;
-        photos.dust(o.i, o.spr.x, scr(o.spr.y), o.size * 0.8, low ? 5 : 11, { shape: 'card', up: 22, speed: 16, sizePx: 4 });
+        photos.dust(o.i, sX(o.spr.x), sY(o.spr.y), o.size * 0.8 * zc, low ? 5 : 11, { shape: 'card', up: 22, speed: 16, sizePx: 4 });
         E.sound('glass', { note: 2 + (sealedCount % 6), intensity: 0.32 }); E.checkpoint('photo', o.i);
       }
       if (o.sealed) o.cool = Math.min(1, o.cool + dt / 1.1);
@@ -441,7 +449,7 @@ export function create(E) {
       const rate = (heavy ? 3 : 7) * (low ? 0.4 : 1);
       if (E.rand() < dt * rate) {
         const q = tr.pointAt(E.rand());
-        E.particles.emit({ x: q.x + (E.rand() - 0.5) * 6, y: scr(q.y), vy: heavy ? -12 : -24, vx: (E.rand() - 0.5) * 8, life: heavy ? 2.6 : 1.8, size: heavy ? 5 : 4.5, colour: E.rand() < 0.5 ? glowCol : mix(ribbonCol, '#ffffff', 0.5), alpha: 0.6, drag: 0.99, kind: heavy ? undefined : (E.rand() < 0.3 ? 'glint' : undefined) });
+        E.particles.emit({ x: sX(q.x) + (E.rand() - 0.5) * 6, y: sY(q.y), vy: heavy ? -12 : -24, vx: (E.rand() - 0.5) * 8, life: heavy ? 2.6 : 1.8, size: heavy ? 5 : 4.5, colour: E.rand() < 0.5 ? glowCol : mix(ribbonCol, '#ffffff', 0.5), alpha: 0.6, drag: 0.99, kind: heavy ? undefined : (E.rand() < 0.3 ? 'glint' : undefined) });
       }
     }
 
@@ -449,7 +457,7 @@ export function create(E) {
     const calmK = Math.max(calm0, smooth(prog));
     const fin = finAt >= 0 ? smooth(clamp((t - finAt) / 2.2)) : 0;
     motes(g, stage.x, stage.y, stage.w, stage.h, t * (reduced ? 0.3 : 1), mix(pal.glow, '#ffffff', 0.45), { n: low ? 12 : 24, alpha: 0.32, seed: 34 + E.round, size: 1.5 });
-    g.save(); g.translate(0, -(cam + finLift));
+    g.save(); g.translate(ecx, pyW - cam - finLift); g.scale(zc, zc); g.translate(-ecx, -pyW);
     if (fin > 0 && !reduced) { const b = 1 + 0.012 * fin * Math.sin((t - finAt) * 1.6); g.translate(ecx, eTop + H * 0.5); g.scale(b, b); g.translate(-ecx, -(eTop + H * 0.5)); }
     drawAmbient(t, calmK, fin);
     if (twistAt >= 0 && twistKind === 2) drawMoon(t);
@@ -460,7 +468,7 @@ export function create(E) {
     drawPocket(fin);
     drawFlapFront();
     drawSeal(t, fin);
-    drawLoop(t, fin);
+    drawRibbon(t, fin);
     drawEmblem(t, fin);
     if (fin > 0) drawFinaleGlints(t, fin);
     if (twistAt >= 0 && twistKind === 0) drawStar(dt, t);
@@ -632,7 +640,15 @@ export function create(E) {
     }
     g.restore();
   }
-  function drawLoop(t, fin) {
+  function ribbonPath() {
+    const N = LN;
+    g.beginPath(); g.moveTo(lx[0], ly[0]);
+    for (let i = 1; i < N; i++) g.quadraticCurveTo(lx[i - 1], ly[i - 1], (lx[i - 1] + lx[i]) / 2, (ly[i - 1] + ly[i]) / 2);
+    g.lineTo(lx[N - 1], ly[N - 1]); g.lineTo(rx[N - 1], ry[N - 1]);
+    for (let i = N - 2; i >= 0; i--) g.quadraticCurveTo(rx[i + 1], ry[i + 1], (rx[i + 1] + rx[i]) / 2, (ry[i + 1] + ry[i]) / 2);
+    g.lineTo(rx[0], ry[0]); g.closePath();
+  }
+  function drawRibbon(t, fin) {
     const R = rope, N = LN;
     for (let i = 0; i < N; i++) {
       const i0 = Math.max(0, i - 1), i1 = Math.min(N - 1, i + 1);
@@ -641,13 +657,7 @@ export function create(E) {
       const hw = rw * 0.5 * (0.3 + 0.7 * twv) * (i === 0 ? 0.7 : 1);
       tw[i] = twv; lx[i] = R.x[i] - dy * hw; ly[i] = R.y[i] + dx * hw; rx[i] = R.x[i] + dy * hw; ry[i] = R.y[i] - dx * hw;
     }
-    const path = () => {
-      g.beginPath(); g.moveTo(lx[0], ly[0]);
-      for (let i = 1; i < N; i++) g.quadraticCurveTo(lx[i - 1], ly[i - 1], (lx[i - 1] + lx[i]) / 2, (ly[i - 1] + ly[i]) / 2);
-      g.lineTo(lx[N - 1], ly[N - 1]); g.lineTo(rx[N - 1], ry[N - 1]);
-      for (let i = N - 2; i >= 0; i--) g.quadraticCurveTo(rx[i + 1], ry[i + 1], (rx[i + 1] + rx[i]) / 2, (ry[i + 1] + ry[i]) / 2);
-      g.lineTo(rx[0], ry[0]); g.closePath();
-    };
+    const path = ribbonPath;
     g.save(); g.lineCap = 'round';
     g.save(); g.translate(1.6, 2.8); path(); g.fillStyle = rgba(shade, 0.2); g.fill(); g.restore();
     path(); g.fillStyle = ribbonCol; g.fill();
@@ -724,15 +734,15 @@ export function create(E) {
       const a = smooth(clamp((k - i * 0.55) / 0.9));
       if (a <= 0) continue;
       const L = lights[i], y = L.y + Math.sin(t * 0.9 + i) * 2.5 * (reduced ? 0.3 : 1);
-      glow(g, L.x, y, 16 + 4 * i, glowCol, 0.5 * a);
-      orb(g, L.x, y, 3.2 + i * 0.6, mix(pal.glow, '#ffffff', 0.5), { alpha: a });
+      glow(g, L.x, y, (24 + 5 * i) * (0.9 + 0.1 * Math.sin(t * 1.2 + i)), glowCol, 0.55 * a);
+      orb(g, L.x, y, 4.6 + i * 0.8, mix(pal.glow, '#ffffff', 0.5), { alpha: a });
     }
   }
   function drawMoon(t) {
     const k = smooth(clamp((E.now() - twistAt) / 3)), x = ecx - loopSide * W * 0.36, y = eTop - H * lerp(0.15, 0.62, k) + Math.sin(t * 0.5) * 2, r = H * 0.13;
     glow(g, x, y, r * 3, glowCol, 0.3 * k);
     g.save(); g.globalAlpha = 0.85 * k;
-    g.beginPath(); g.arc(x, y, r, -Math.PI / 2, Math.PI / 2, true); g.ellipse(x, y, r * 0.45, r, 0, Math.PI / 2, -Math.PI / 2, true); g.closePath();
+    g.beginPath(); g.arc(x, y, r, -Math.PI / 2, Math.PI / 2, true); g.ellipse(x - r * 0.18, y, r * 0.5, r, 0, Math.PI / 2, -Math.PI / 2, true); g.closePath();
     g.fillStyle = mix(pal.glow, '#fffaf0', 0.6); g.fill();
     g.restore();
   }
@@ -770,7 +780,7 @@ export function create(E) {
       wanted = Math.min(want, cap);
       const t = E.now();
       if (t - lastRustle > 0.26) { lastRustle = t; E.sound('paper', { intensity: 0.2, pitch: 1.05 + sealReal * 0.2 }); }
-      if (!low && E.rand() < 0.35) E.particles.emit({ x: p.x, y: scr(p.y), vx: (E.rand() - 0.5) * 20, vy: -12 - E.rand() * 14, life: 0.8, size: 5, colour: glowCol, alpha: 0.7 });
+      if (!low && E.rand() < 0.35) E.particles.emit({ x: sX(p.x), y: sY(p.y), vx: (E.rand() - 0.5) * 20, vy: -12 - E.rand() * 14, life: 0.8, size: 5, colour: glowCol, alpha: 0.7 });
     }
   }
   function refuse() {
@@ -822,43 +832,44 @@ export function create(E) {
         // the card's leading top corner — it ends where the seal begins
         cardAt(q / S1, tmp);
         const c = Math.cos(tmp.r), s = Math.sin(tmp.r), ox = lead * cW * 0.5, oy = -cH * 0.5;
-        return { x: tmp.x + ox * c - oy * s, y: tmp.y + ox * s + oy * c - cam };
+        return { x: sX(tmp.x + ox * c - oy * s), y: sY(tmp.y + ox * s + oy * c) };
       }
       const pt = tr.pointAt((q - S1) / (1 - S1));
-      return { x: pt.x, y: pt.y - cam };
+      return { x: sX(pt.x), y: sY(pt.y) };
     },
     hint() {
       // while the world law asks for a pause, the right next move is to wait — no ghost gesture
       if (finAt >= 0 || sealedAt >= 0 || E.locked) return null;
       const pts = [];
       if (insReal < 0.999) {
-        for (let i = 0; i <= 16; i++) { cardAt(lerp(insReal, 1, i / 16), tmp); pts.push([tmp.x, tmp.y - cam]); }
-        pts[0] = [card.x, card.y - cam];
+        for (let i = 0; i <= 16; i++) { cardAt(lerp(insReal, 1, i / 16), tmp); pts.push([sX(tmp.x), sY(tmp.y)]); }
+        pts[0] = [sX(card.x), sY(card.y)];
         return { path: pts };
       }
-      // the envelope settles at camMax after its glide; show the trace where it will rest
+      // the camera settles after its glide; show the trace where the envelope will rest
       const P = tr.pts, i0 = traceIndex(sealReal);
-      for (let k = i0; k <= tr.last; k += 2) pts.push([P[k][0], P[k][1] - camMax]);
-      if (pts.length < 2) pts.push([P[tr.last][0], P[tr.last][1] - camMax]);
+      for (let k = i0; k <= tr.last; k += 2) pts.push([sX(P[k][0], zMax), sY(P[k][1], zMax, camMax)]);
+      if (pts.length < 2) pts.push([sX(P[tr.last][0], zMax), sY(P[tr.last][1], zMax, camMax)]);
       return { path: pts };
     },
     twist() {
       twistAt = E.now();
       if (twistKind === 0) {
-        const sx = clamp(ecx - loopSide * W * 0.62, stage.x + 20, stage.x + stage.w - 20), sy = stage.y + 12 + cam;
+        const top = toWorld({ x: stage.x + 20, y: stage.y + 12 }), sx = clamp(ecx - loopSide * W * 0.62, top.x, 2 * ecx - top.x), sy = top.y;
         star.x.set(sx); star.y.set(sy);
         star.tx = ecx - loopSide * W * 0.42; star.ty = eTop - H * 0.04;
       } else if (twistKind === 1) {
         const ex = rope.x[LN - 1], ey = rope.y[LN - 1];
-        for (let i = 0; i < 3; i++) { lights[i].x = clamp(ex + loopSide * (i + 1) * W * 0.11, stage.x + 16, stage.x + stage.w - 16); lights[i].y = Math.max(stage.y + cam + 16, ey - (i + 1) * H * 0.1 - i * i * H * 0.02); }
+        const lim = toWorld({ x: stage.x + 16, y: stage.y + 16 });
+        for (let i = 0; i < 3; i++) { lights[i].x = clamp(ex + loopSide * (i + 1) * W * 0.13, lim.x, 2 * ecx - lim.x); lights[i].y = Math.max(lim.y, ey - (i + 1) * H * 0.16 + i * i * H * 0.03); }
       }
-      E.particles.burst(ecx, scr(eTop - H * 0.15), low ? 4 : 10, { speed: 40, colour: glowCol, life: 1.2, size: 5, kind: 'glint' });
+      E.particles.burst(ecx, sY(eTop - H * 0.15), low ? 4 : 10, { speed: 40, colour: glowCol, life: 1.2, size: 5, kind: 'glint' });
     },
     finish() {
       if (finAt >= 0) return;
       finAt = E.now(); drag = null; assistTo = null; emblem.target = 1;
       for (const o of ph) o.sealed = true;
-      const ey = scr(eTop + depthAt(0) - H * 0.085);
+      const ey = sY(eTop + depthAt(0) - H * 0.085);
       E.ripples.add(ecx, ey, { colour: glowCol, speed: heavy ? 40 : 70, alpha: heavy ? 0.3 : 0.5, r: 10 });
       if (!heavy) E.particles.burst(ecx, ey, low ? 5 : 12, { speed: 60, colour: glowCol, life: 1.3, size: 5, kind: 'glint' });
       E.sound(heavy ? 'breathe-out' : 'shimmer', { intensity: 0.4 });
