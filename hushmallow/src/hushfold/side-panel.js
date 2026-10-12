@@ -4,15 +4,21 @@
 // bottom sheet instead, and the scene lifts the Mallow into the space above.
 //
 // createSidePanel({ app, root, getFlow, flowAvailable, state, onFeeling,
-//   onIntention, onMallow, onSupport, pausedNow, onPause, resumable, onResume, onClose })
+//   onIntention, onMallow, onSupport, pausedNow, onPause, resumable, onResume, onClose, onAngle })
 //   → { el, open(), close(), toggle(), update(), get isOpen }
-// state() → { mallow, mallowWaiting, emotion, emotionName, intention }: in a world the
-// switcher shows who the person comes back to (mallowWaiting). pausedNow() / onPause()
-// let the scene own Pause while it holds a world behind the phone sheet.
+// state() → { mallow, mallowWaiting, emotion, emotionName, intention, worldTitle, locked, angle }:
+// in a world the switcher shows who the person comes back to (mallowWaiting). pausedNow() /
+// onPause() let the scene own Pause while it holds a world behind the phone sheet.
+// locked: a crisis hold — Pause/Resume, Stay longer and Drift on are disabled and do nothing
+// (Finish still works). worldTitle: the 'Now: …' line when the flow state has no title.
+// angle: show the 'Another Angle' link (default: the Beyond plan); onAngle() opens it
+// (default: app.go('angle')).
 //
 // Every Hushflow action goes to the `flow` object (the W4 director API, or the
-// shell's stub): setEmotion, setIntention, setAutoFlow, stay, pause/resume,
-// finish, plus favourite worlds through src/engine/flow-store.js.
+// shell's stub): setEmotion, setIntention, setAutoFlow, stay, next (Drift on),
+// pause/resume, finish, plus favourite worlds through src/engine/flow-store.js.
+// Stay longer shows aria-pressed from state.staying; it is not a toggle yet
+// (un-staying needs the director's stay(false); next() would melt).
 
 import { h } from '../app/ui.js';
 import { PLANS } from '../app/entitlements.js';
@@ -23,7 +29,7 @@ import { hfIcon } from './icons.js';
 import { QUICK_FEELINGS, INTENTIONS } from './lines.js';
 
 export function createSidePanel({ app, root, getFlow, flowAvailable = () => Promise.resolve(true), onFeeling, onIntention, onMallow, onClose, state = () => ({}),
-  resumable = () => Promise.resolve(null), onResume = null, onSupport = null, pausedNow = () => null, onPause = null } = {}) {
+  resumable = () => Promise.resolve(null), onResume = null, onSupport = null, pausedNow = () => null, onPause = null, onAngle = null } = {}) {
   const { prefs, ent, store } = app;
   let isOpen = false;
   let opener = null;
@@ -44,9 +50,12 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
     (await getFlow(false))?.setAutoFlow?.(auto.checked);
   });
   const pauseBtn = h('button', { class: 'hf-ghost', type: 'button', onclick: () => act('pause') }, hfIcon('pause'), h('span', {}, 'Pause'));
-  const stayBtn = h('button', { class: 'hf-ghost', type: 'button', onclick: () => act('stay') }, hfIcon('stay'), 'Stay longer');
+  const stayBtn = h('button', { class: 'hf-ghost', type: 'button', 'aria-pressed': 'false', onclick: () => act('stay') }, hfIcon('stay'), 'Stay longer');
+  // beside Stay: melt into the next world now (when there is one, or this one is complete)
+  const driftBtn = h('button', { class: 'hf-ghost', type: 'button', disabled: true, onclick: () => act('next') }, hfIcon('next'), 'Drift on');
   const finishBtn = h('button', { class: 'hf-ghost', type: 'button', onclick: () => act('finish') }, hfIcon('finish'), 'Finish');
-  const favBtn = h('button', { class: 'hf-ghost', type: 'button', 'aria-pressed': 'false', onclick: () => act('favourite') }, hfIcon('star', { filled: false }), h('span', {}, 'Favourite world'));
+  // the fifth button takes the whole last row of the two-column grid
+  const favBtn = h('button', { class: 'hf-ghost', type: 'button', 'aria-pressed': 'false', style: { gridColumn: '1 / -1' }, onclick: () => act('favourite') }, hfIcon('star', { filled: false }), h('span', {}, 'Favourite world'));
   const flowNote = h('p', { class: 'fine' });
   // a saved Hushflow (flow-store progress) can be picked up from here too
   const resumeTitle = h('span', {});
@@ -54,6 +63,9 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
     h('span', { class: 'grow' }, 'Resume', h('small', { style: { display: 'block', font: 'var(--hf-font-caption)', color: 'var(--text-3)' } }, resumeTitle)), hfIcon('chev'));
   const link = (iconName, label, onclick, sub) => h('button', { class: 'hf-link', type: 'button', onclick }, hfIcon(iconName),
     h('span', { class: 'grow' }, label, sub ? h('small', { style: { display: 'block', font: 'var(--hf-font-caption)', color: 'var(--text-3)' } }, sub) : null), hfIcon('chev'));
+  // Beyond: Another Angle with Zuzu (hidden until update() says it is part of the plan)
+  const angleLink = link('sparkle', 'Another Angle', () => { api.close(); if (onAngle) onAngle(); else app.go('angle'); }, 'With Zuzu, a fresh side to something real');
+  angleLink.hidden = true;
 
   const el = h('aside', { class: 'hf-panel hf-ui', role: 'dialog', 'aria-modal': 'false', 'aria-label': 'Feelings and worlds', 'aria-hidden': 'true', 'data-hf': 'panel', inert: '' },
     h('div', { class: 'p-head' }, h('h2', {}, 'Your Hushfold'), closeBtn),
@@ -68,10 +80,11 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
       h('section', {},
         h('h3', {}, 'Hushflow'),
         resumeBtn,
-        h('div', { class: 'hf-actions' }, pauseBtn, stayBtn, finishBtn, favBtn),
+        h('div', { class: 'hf-actions' }, pauseBtn, finishBtn, stayBtn, driftBtn, favBtn),
         h('label', { class: 'hf-toggle' }, h('span', { class: 't' }, 'Auto-flow', h('small', {}, 'The next world begins by itself when one is complete.')), auto),
         flowNote),
       h('section', {}, h('div', { class: 'hf-links' },
+        angleLink,
         link('garden', 'Memory Garden', () => go('garden'), 'The skills you chose to keep'),
         link('library', 'More rituals', () => go('library'), 'The full library'),
         link('journey', 'Your journey', () => go('journey')),
@@ -82,14 +95,21 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
 
   function go(name, params) { api.close(); app.go(name, params); }
 
+  // a crisis hold (state().locked): nothing here may resume, stay or drift on
+  const LOCKABLE = new Set(['pause', 'stay', 'next']);
   async function act(kind) {
+    if (LOCKABLE.has(kind) && state()?.locked) { api.update(); return; }
     // a running flow, or (when the director is not in this build) the shell's stub, which says so
     const flow = (await getFlow(false)) || (!(await flowAvailable()) ? await getFlow(true) : null);
     if (!flow) return;
+    if (LOCKABLE.has(kind) && state()?.locked) { api.update(); return; }   // the hold began while the flow loaded
     const st = flow.state || {};
     app.haptic('light');
     if (kind === 'pause') { if (onPause?.()) { api.update(); return; } if (isPaused(st)) flow?.resume?.(); else flow?.pause?.(); }
     else if (kind === 'stay') flow?.stay?.();
+    // the melt plays on the stage (on phones the sheet holds the world still), so the panel steps aside, as for
+    // Finish; the director's next() says false when there is nowhere to drift yet, and then the panel stays
+    else if (kind === 'next') { if (flow?.next?.() !== false) { api.close(); return; } }
     else if (kind === 'finish') { flow?.finish?.(); api.close(); return; }
     else if (kind === 'favourite') {
       if (st.worldId) {
@@ -115,7 +135,7 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
     get isOpen() { return isOpen; },
     /** Re-read Mallow, plan, feeling, intention and flow state. */
     async update() {
-      const s = state();
+      const s = state() || {};
       const m = MALLOWS[s.mallow] || MALLOWS.loomi;
       mallowImg.src = m.file; mallowName.textContent = m.name; mallowTitle.textContent = s.mallowWaiting ? 'With you after this world' : m.title;
       const tier = ent.tier();
@@ -130,8 +150,13 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
       const st = flow?.state || {};
       const world = !!st.worldId;
       const stub = flow ? !!flow.stub : !(await flowAvailable());
+      const locked = !!s.locked;
       for (const b of [pauseBtn, stayBtn, finishBtn]) b.disabled = !world && !stub;
       favBtn.disabled = !world && !stub;
+      if (locked) { pauseBtn.disabled = true; stayBtn.disabled = true; }
+      driftBtn.disabled = !(world && (st.nextId || st.complete)) || locked;
+      stayBtn.setAttribute('aria-pressed', String(!!st.staying));
+      angleLink.hidden = !(s.angle ?? ent.has('ultra'));
       const pz = pausedNow() ?? isPaused(st);
       pauseBtn.replaceChildren(hfIcon(pz ? 'play' : 'pause'), h('span', {}, pz ? 'Resume' : 'Pause'));
       pauseBtn.setAttribute('aria-pressed', String(!!pz));
@@ -141,7 +166,8 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
       const saved = world ? null : await resumable().catch(() => null);
       resumeBtn.hidden = !saved;
       resumeTitle.textContent = saved ? `Pick up ${saved.title || 'your last world'} where you left off` : '';
-      flowNote.textContent = world ? (st.title ? `Now: ${st.title}` : '')
+      const title = st.title ?? s.worldTitle;
+      flowNote.textContent = world ? (title ? `Now: ${title}` : '')
         : stub ? 'The new worlds are still being built. The Mallows are ready to squish meanwhile.'
           : 'Worlds begin when you tell a Mallow what’s up.';
     },
