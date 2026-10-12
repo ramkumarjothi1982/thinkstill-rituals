@@ -681,7 +681,7 @@ for (const e of Object.values(T)) {
 export const HIRES = T;
 
 /** Mallows whose high-res rig passed the studio check (D13). */
-export const HIRES_VERIFIED = ["glitzi", "zuzu", "boppo", "pipzi", "blubi", "noomi"];
+export const HIRES_VERIFIED = ["glitzi", "zuzu", "boppo", "blubi", "noomi"];
 
 /** The registry entry for `id` with its high-res rig, as a new object. */
 export function hiresMallow(base, id = base?.id) {

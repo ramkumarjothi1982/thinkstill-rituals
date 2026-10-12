@@ -18,6 +18,7 @@
 import { h, wait, openSheet, fitMallow } from '../app/ui.js';
 import { type } from '../ui/type.js';
 import * as LX from './lenses.js';
+import { MALLOWS } from '../mallows/registry.js';
 
 const SVGNS = 'http://www.w3.org/2000/svg';
 
@@ -483,7 +484,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   if (scenario.conversation?.openers?.length) grid.append(h('button', { class: 'btn ghost block', onclick: () => practise(scenario.conversation) }, `Practise what to say to ${scenario.conversation.with || 'them'} →`));
   if (cameo?.text) {
     grid.prepend(h('div', { class: 'card', style: { padding: '10px 12px', display: 'flex', gap: '10px', alignItems: 'center', boxShadow: 'none' } },
-      h('img', { src: new URL(`../../assets/mallows/${cameo.mallow}.png`, import.meta.url).href, alt: '', style: { width: '40px', height: '40px', objectFit: 'contain', flex: '0 0 auto' } }),
+      h('img', { src: MALLOWS[cameo.mallow]?.file, alt: '', style: { width: '40px', height: '40px', objectFit: 'contain', flex: '0 0 auto' } }),
       h('p', { style: type('body', { margin: 0, color: 'var(--text-1)', fontSize: 'calc(15px * var(--type-scale))', lineHeight: '1.4' }) }, h('b', {}, `${cap(cameo.mallow)}: `), cameo.text)));
   }
   dock.replaceChildren(grid, nextDone);
@@ -813,7 +814,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     const at = zuzuCorner ? { bottom: `${Math.round(innerHeight - z.bottom)}px` } : { top: `${Math.round(z.top)}px` };
     const el = h('div', { class: 'card', role: 'status', style: { position: 'absolute', left: `${Math.round(z.cx - w / 2)}px`, ...at, width: `${w}px`, boxSizing: 'border-box',
       padding: '10px 12px', display: 'flex', gap: '10px', alignItems: 'center', pointerEvents: 'auto', boxShadow: '0 12px 40px rgba(10,0,40,.5)', animation: ctx.reducedMotion ? 'none' : 'bubbleIn 380ms var(--ease-spring) both' } },
-    h('img', { src: new URL(`../../assets/mallows/${c.mallow}.png`, import.meta.url).href, alt: '', style: { width: '40px', height: '40px', objectFit: 'contain', flex: '0 0 auto' } }),
+    h('img', { src: MALLOWS[c.mallow]?.file, alt: '', style: { width: '40px', height: '40px', objectFit: 'contain', flex: '0 0 auto' } }),
     h('p', { style: type('body', { margin: 0, color: 'var(--text-1)', fontSize: 'calc(15px * var(--type-scale))', lineHeight: '1.4' }) }, h('b', {}, `${cap(c.mallow)}: `), c.text));
     const bye = () => { if (activeCameo === bye) activeCameo = null; el.style.transition = 'opacity 280ms'; el.style.opacity = '0'; setTimeout(() => el.remove(), 300); };
     el.onclick = bye;

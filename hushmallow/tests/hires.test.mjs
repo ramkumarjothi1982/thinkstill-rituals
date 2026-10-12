@@ -4,8 +4,16 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, relative } from 'node:path';
-import { MALLOWS, MALLOW_IDS, SPRITES } from '../src/mallows/registry.js';
+import { MALLOWS, MALLOW_IDS, SPRITES, HIRES_ON } from '../src/mallows/registry.js';
 import { HIRES, HIRES_VERIFIED, applyHires, hiresMallow } from '../src/mallows/hires.js';
+
+// The registry switches HIRES_VERIFIED at import, so the live MALLOWS are no
+// longer the original drawings: "old" values come from the snapshot the
+// pipeline was built against (never regenerate it).
+const OLD = JSON.parse(readFileSync(new URL('../tools/hires/data/old-registry.json', import.meta.url), 'utf8'));
+// a registry entry as it was before the switch (personality from the live one)
+const pre = (id) => ({ id, name: MALLOWS[id].name, voice: structuredClone(MALLOWS[id].voice),
+  file: `old/${id}.png`, body: `old/${id}-body.png`, ...structuredClone(OLD[id]) });
 import { parsePatch, applyFilePatch, appPath } from '../tools/hires/res-patch.mjs';
 
 // ---- the res support W2 merges: tools/hires/rig-res.patch ---------------
@@ -67,7 +75,7 @@ test('art, body and logical size agree (res = art px per logical px)', () => {
 
 test('face specs keep every key the rig reads, with geometry on the body', () => {
   for (const [id, h] of Object.entries(HIRES)) {
-    const old = MALLOWS[id].face, f = h.face;
+    const old = OLD[id].face, f = h.face;
     assert.equal(f.eyeStyle, old.eyeStyle);
     for (const side of ['L', 'R']) {
       for (const k of Object.keys(old.eyes[side])) assert.ok(k in f.eyes[side], `${id} eye ${side}.${k}`);
@@ -102,7 +110,7 @@ test('Glitzi carries its own iris and re-measured glitch rows', () => {
 });
 
 test('hiresMallow copies; applyHires switches in place, once, and only the ids asked', () => {
-  const base = MALLOWS.zuzu;
+  const base = pre('zuzu');
   const before = JSON.stringify(base);
   const z = hiresMallow(base);
   assert.equal(JSON.stringify(base), before, 'base untouched');
@@ -112,14 +120,15 @@ test('hiresMallow copies; applyHires switches in place, once, and only the ids a
   z.face.eyes.L.x = -1;
   assert.notEqual(HIRES.zuzu.face.eyes.L.x, -1, 'face is a deep copy');
 
-  const mallows = structuredClone({ glitzi: MALLOWS.glitzi, zuzu: MALLOWS.zuzu, noomi: MALLOWS.noomi });
-  const sprites = { ...SPRITES };
+  const mallows = { glitzi: pre('glitzi'), zuzu: pre('zuzu'), noomi: pre('noomi') };
+  const sprites = { 'iris-amber': 'old/iris-amber.png' };
   assert.deepEqual(applyHires(mallows, sprites, ['glitzi', 'nobody']), ['glitzi']);
   assert.equal(mallows.glitzi.file, HIRES.glitzi.file);
   assert.equal(mallows.glitzi.art, HIRES.glitzi.art);
   assert.deepEqual(mallows.glitzi.presetOverrides, HIRES.glitzi.presetOverrides);
   assert.equal(mallows.glitzi.voice.hello[0], MALLOWS.glitzi.voice.hello[0], 'personality kept');
-  assert.equal(mallows.zuzu.file, MALLOWS.zuzu.file, 'others untouched');
+  assert.equal(mallows.zuzu.file, 'old/zuzu.png', 'others untouched');
+  assert.deepEqual(mallows.zuzu.face, OLD.zuzu.face, 'others untouched (face)');
   assert.ok(sprites['hires:glitzi-iris-L'] && sprites['iris-amber'], 'sprites added, none removed');
   const once = JSON.stringify(mallows.glitzi);
   applyHires(mallows, sprites, ['glitzi']);
@@ -292,10 +301,45 @@ test('high-res sprites passed the build checks (clean spiral rims)', () => {
 test('open mouths use the colours painted in the high-res art', () => {
   for (const id of ['zuzu', 'boppo', 'pipzi']) {
     const M = HIRES[id].face.mouth;
-    assert.notEqual(M.inside, MALLOWS[id].face.mouth.inside, `${id} inside resampled`);
+    assert.notEqual(M.inside, OLD[id].face.mouth.inside, `${id} inside resampled`);
     assert.match(M.inside, /^#[0-9a-f]{6}$/);
     assert.match(M.tongue, /^#[0-9a-f]{6}$/);
   }
+});
+
+test('the live registry runs on the verified high-res rigs; pipzi and loomi keep their drawings; ?hires=0 keeps all seven', async () => {
+  assert.deepEqual(HIRES_VERIFIED, ['glitzi', 'zuzu', 'boppo', 'blubi', 'noomi'], 'owner decision A-1: five switch now');
+  assert.deepEqual(HIRES_ON, HIRES_VERIFIED, 'the registry applied exactly HIRES_VERIFIED');
+  for (const id of HIRES_VERIFIED) {
+    const m = MALLOWS[id], h = HIRES[id];
+    assert.equal(m.hires, true, id);
+    assert.equal(m.art, h.art, `${id} rig art (1024 px)`);
+    assert.equal(m.file, h.file, `${id} pictures (384 px thumbnail)`);
+    assert.equal(m.body, h.body, `${id} body`);
+    assert.deepEqual(m.size, h.size, `${id} logical size`);
+    assert.equal(m.res, h.res, `${id} res`);
+    assert.deepEqual(JSON.parse(JSON.stringify(m.face)), h.face, `${id} face`);
+    for (const k of Object.values(m.face.eyes).map((e) => e.iris || e.sprite)) assert.ok(SPRITES[k], `${id} sprite ${k}`);
+  }
+  for (const id of ['pipzi', 'loomi']) {
+    const m = MALLOWS[id];
+    assert.ok(!m.hires && !m.art && !m.res, `${id} stays on its drawing`);
+    assert.match(m.file, new RegExp(`/assets/mallows/${id}\\.png$`));
+    assert.deepEqual(m.size, OLD[id].size);
+    assert.deepEqual(JSON.parse(JSON.stringify(m.face)), OLD[id].face);
+  }
+  assert.ok(SPRITES['iris-amber'] && SPRITES['zuzu-spiral-L'], 'the original sprites stay for the old drawings');
+  // the escape hatch: a fresh registry instance under ?hires=0 switches nothing
+  globalThis.location = { search: '?hires=0' };
+  try {
+    const R = await import('../src/mallows/registry.js?hires-off');
+    assert.deepEqual(R.HIRES_ON, []);
+    for (const id of MALLOW_IDS) {
+      assert.ok(!R.MALLOWS[id].hires, `${id} not switched`);
+      assert.match(R.MALLOWS[id].file, new RegExp(`/assets/mallows/${id}\\.png$`));
+      assert.deepEqual(R.MALLOWS[id].size, OLD[id].size);
+    }
+  } finally { delete globalThis.location; }
 });
 
 test('hiresMallow does not need structuredClone (Safari < 15.4 boots)', () => {
